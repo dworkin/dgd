@@ -429,7 +429,7 @@ char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 int kf_query_ip_number(f)
 register frame *f;
 {
-    register object *obj;
+    object *obj;
 
     obj = OBJR(f->sp->oindex);
     if (obj->flags & O_USER) {
@@ -454,7 +454,7 @@ char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 int kf_query_ip_name(f)
 register frame *f;
 {
-    register object *obj;
+    object *obj;
 
     obj = OBJR(f->sp->oindex);
     if (obj->flags & O_USER) {
@@ -744,7 +744,7 @@ char pt_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
 int kf_send_message(f)
 register frame *f;
 {
-    object *obj;
+    register object *obj;
     int num;
 
     if (f->sp->type == T_STRING) {
@@ -791,12 +791,13 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_send_datagram(f)
 register frame *f;
 {
-    object *obj;
     int num;
 
-    obj = f->obj;
-    if (obj->count != 0 && (obj->flags & O_USER)) {
-	num = comm_udpsend(obj, f->sp->u.string);
+    if (f->obj->count != 0 && (f->obj->flags & O_USER)) {
+	if (f->data->plane->level != 0) {
+	    error("send_datagram() within atomic function (cannot undo yet)");
+	}
+	num = comm_udpsend(f->obj, f->sp->u.string);
     }
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, num);
