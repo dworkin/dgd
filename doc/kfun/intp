@@ -1,0 +1,12 @@
+NAME
+	intp - check if a value is an integer
+
+SYNOPSIS
+	int intp(mixed value)
+
+
+DESCRIPTION
+	Return 1 if the argument is an integer, or 0 otherwise.
+
+SEE ALSO
+	kfun/arrayp, kfun/objectp, kfun/stringp, kfun/mappingp
