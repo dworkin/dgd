@@ -91,27 +91,25 @@ typedef struct _value_ {
 
 typedef struct _dataspace_ dataspace;
 
-extern void		i_init		P((int, int, int, long));
-extern void		i_clear		P((void));
+extern void		i_init		P((int, int, int, long, char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
-extern void		i_check_stack	P((void));
+extern void		i_check_stack	P((int));
 extern void		i_push_value	P((value*));
 extern void		i_pop		P((int));
 extern void		i_odest		P((objkey*));
 extern void		i_index		P((value*, value*));
 extern void		i_index_lvalue	P((value*, value*));
-extern void		i_store		P((struct _dataspace_*, value*,
-					   value*));
+extern void		i_store		P((dataspace*, value*, value*));
 extern void		i_add_ticks	P((int));
 extern void		i_lock		P((void));
 extern void		i_unlock	P((void));
 extern unsigned short	i_locklvl	P((void));
 extern struct _object_ *i_this_object	P((void));
-extern struct _object_ *i_prev_object	P((void));
-extern void		i_funcall	P((struct _object_*, int, int, int,
-					   int));
-extern bool		i_apply		P((struct _object_*, char*, bool, int));
+extern struct _object_ *i_prev_object	P((int));
+extern bool		i_call		P((struct _object_*, char*, bool, int));
 extern void		i_dump_trace	P((FILE*));
+extern void		i_log_error	P((void));
+extern void		i_clear		P((void));
 
 extern value *sp;

@@ -1,11 +1,21 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
+# include "interpret.h"
+# include "str.h"
+# include "array.h"
+# include "object.h"
+# include "comm.h"
 
 # define ERRSTACKSZ		32	/* reasonable value */
+# define ERR_LOG_BUF_SZ		1024	/* extra error log buffer size */
 
 static jmp_buf stack[ERRSTACKSZ];	/* error context stack */
 static jmp_buf *esp = stack;		/* error context stack pointer */
 static char errbuf[4 * STRINGSZ];	/* current error message */
-static FILE *errlog;			/* secondary error log file */
+static char *errlog;			/* secondary error log */
+static int fd = -1;			/* file descriptor */
+static char *buffer;			/* buffer */
+static int bufsz;			/* # chars in buffer */
 
 /*
  * NAME:	errcontext->_push_()
@@ -46,8 +56,19 @@ char *errormesg()
  * DESCRIPTION:	specify a secondary error log file
  */
 void errorlog(f)
-FILE *f;
+char *f;
 {
+    if (fd >= 0) {
+	/*
+	 * close previous error stream
+	 */
+	if (bufsz > 0) {
+	    write(fd, buffer, bufsz);
+	}
+	close(fd);
+	FREE(buffer);
+	fd = -1;
+    }
     errlog = f;
 }
 
@@ -59,19 +80,42 @@ void warning(format, arg1, arg2, arg3, arg4, arg5, arg6)
 char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     if (format != (char *) NULL) {
-	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	if (errlog != (FILE *) NULL) {
-	    fprintf(errlog, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	}
-    } else {
-	fputs(errbuf, stderr);
-	if (errlog != (FILE *) NULL) {
-	    fputs(errbuf, errlog);
-	}
+	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     }
-    putc('\n', stderr);
-    if (errlog != (FILE *) NULL) {
-	putc('\n', errlog);
+    fputs(errbuf, stderr);
+    fputc('\n', stderr);
+    fflush(stderr);
+
+    /* secondary error logging */
+    if (errlog != (char *) NULL) {
+	/*
+	 * open log
+	 */
+	fd = open(errlog, O_CREAT | O_APPEND | O_WRONLY, 0664);
+	if (fd >= 0) {
+	    buffer = ALLOC(char, ERR_LOG_BUF_SZ);
+	    bufsz = 0;
+	}
+	errlog = (char *) NULL;
+    }
+    if (fd >= 0) {
+	register int len, chunk;
+	register char *buf;
+
+	len = strlen(buf = errbuf);
+	while (bufsz + len >= ERR_LOG_BUF_SZ) {
+	    chunk = ERR_LOG_BUF_SZ - bufsz;
+	    memcpy(buffer + bufsz, buf, chunk);
+	    write(fd, buffer, ERR_LOG_BUF_SZ);
+	    buf += chunk;
+	    len -= chunk;
+	    bufsz = 0;
+	}
+	if (len > 0) {
+	    memcpy(buffer + bufsz, buf, len);
+	    bufsz += len;
+	}
+	buffer[bufsz++] = '\n';
     }
 }
 
@@ -101,8 +145,10 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     if (count++ == 0) {
 	fputs("Fatal error: ", stderr);
 	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	putc('\n', stderr);
+	fputc('\n', stderr);
 	fflush(stderr);
+	comm_flush();
+	host_finish();
     }
     abort();
 }
