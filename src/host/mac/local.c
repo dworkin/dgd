@@ -11,6 +11,7 @@
 # include <ToolUtils.h>
 # include <SegLoad.h>
 # include <OSUtils.h>
+# include <Processes.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
 
@@ -37,7 +38,10 @@ enum aboutbox {
  */
 pascal static void changefont(WindowPtr window, short item)
 {
-    TextFont(geneva);
+    short id;
+    
+    GetFNum("\pgeneva", &id);
+    TextFont(id);
     TextSize(9);
 }
 
@@ -232,10 +236,10 @@ static void menuinit(void)
     mbar = GetNewMBar(128);
     SetMenuBar(mbar);
     DrawMenuBar();
-    applemenu = GetMHandle(APPLE);
-    filemenu = GetMHandle(FILE);
-    editmenu = GetMHandle(EDIT);
-    AddResMenu(applemenu, 'DRVR');
+    applemenu = GetMenuHandle(APPLE);
+    filemenu = GetMenuHandle(FILE);
+    editmenu = GetMenuHandle(EDIT);
+    AppendResMenu(applemenu, 'DRVR');
     editing = FALSE;
 }
 
@@ -304,7 +308,7 @@ static bool menusel(long menuitem)
 	    aboutbox();
 	} else {
 	    GetPort(&port);
-	    GetItem(applemenu, item, name);
+	    GetMenuItemText(applemenu, item, name);
 	    OpenDeskAcc(name);
 	    SetPort(port);
 	}

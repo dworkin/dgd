@@ -1413,3 +1413,4 @@ DGD 1.1
    activity.
  - Fixed the quit/interrupt problem on BeOS.
  - Finally fixed the DST time-jumping problem on Windows.
+ - Get the Mac version to compile with OLDROUTINENAMES=0.

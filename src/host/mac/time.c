@@ -17,7 +17,7 @@ void tminit(void)
     };
     unsigned long t;
 
-    Date2Secs(&ubirth, &timediff);
+    DateToSeconds(&ubirth, &timediff);
     GetDateTime(&t);
     timeoffset = t - timediff - TickCount() / 60;
 }
@@ -73,14 +73,14 @@ char *P_ctime(char *buf, Uint t)
 
     for (offset = 0; t + timediff > 2147397248L; t -= 883612800L, offset += 28)
 	;
-    Secs2Date((long) t + timediff, &date);
+    SecondsToDate((long) t + timediff, &date);
     if (offset != 0) {
 	if (date.year + offset > 2100 ||
 	    (date.year + offset == 2100 &&
 	     (date.month > 2 || (date.month == 2 && date.day == 29)))) {
 	    t -= 378604800L;
 	    offset += 12;
-	    Secs2Date((long) t + timediff, &date);
+	    SecondsToDate((long) t + timediff, &date);
 	}
 	date.year += offset;
     }
