@@ -449,6 +449,111 @@ static void cg_stmt P((node*));
 static int nparams;		/* number of parameters */
 
 /*
+ * NAME:	codegen->cast()
+ * DESCRIPTION:	generate code for a cast
+ */
+static void cg_cast(type)
+unsigned short type;
+{
+    code_instr(I_CAST, 0);
+    if ((type & T_REF) != 0) {
+	type = T_ARRAY;
+    }
+    code_byte(type);
+}
+
+/*
+ * NAME:	codegen->lvalue()
+ * DESCRIPTION:	generate code for an lvalue
+ */
+static void cg_lvalue(n, type)
+register node *n;
+int type;
+{
+    register node *m;
+    register int typeflag;
+
+    typeflag = (type != 0) ? I_TYPE_BIT : 0;
+
+    if (n->type == N_CAST) {
+	n = n->l.left;
+    }
+    switch (n->type) {
+    case N_LOCAL:
+	code_instr(I_PUSH_LOCAL_LVALUE | typeflag, n->line);
+	code_byte(nparams - (int) n->r.number - 1);
+	break;
+
+    case N_GLOBAL:
+	code_instr(I_PUSH_GLOBAL_LVALUE | typeflag, n->line);
+	code_word((int) n->r.number);
+	break;
+
+    case N_INDEX:
+	m = n->l.left;
+	if (m->type == N_CAST) {
+	    m = m->l.left;
+	}
+	switch (m->type) {
+	case N_LOCAL:
+	    code_instr(I_PUSH_LOCAL_LVALUE, m->line);
+	    code_byte(nparams - (int) m->r.number - 1);
+	    break;
+
+	case N_GLOBAL:
+	    code_instr(I_PUSH_GLOBAL_LVALUE, m->line);
+	    code_word((int) m->r.number);
+	    break;
+
+	case N_INDEX:
+	    cg_expr(m->l.left, FALSE);
+	    cg_expr(m->r.right, FALSE);
+	    code_instr(I_INDEX_LVALUE, m->line);
+	    break;
+
+	default:
+	    cg_expr(m, FALSE);
+	    break;
+	}
+	cg_expr(n->r.right, FALSE);
+	code_instr(I_INDEX_LVALUE | typeflag, n->line);
+	break;
+    }
+
+    if (typeflag != 0) {
+	code_byte((type & T_REF) ? T_ARRAY : type);
+    }
+}
+
+/*
+ * NAME:	codegen->fetch()
+ * DESCRIPTION:	generate code for a fetched lvalue
+ */
+static void cg_fetch(n)
+node *n;
+{
+    cg_lvalue(n, 0);
+    code_instr(I_FETCH, 0);
+    if (n->type == N_CAST) {
+	cg_cast(n->mod);
+    }
+}
+
+/*
+ * NAME:	codegen->asgnop()
+ * DESCRIPTION:	generate code for an assignment operator
+ */
+static void cg_asgnop(n, op)
+register node *n;
+int op;
+{
+    cg_fetch(n->l.left);
+    cg_expr(n->r.right, FALSE);
+    code_kfun(op, n->line);
+    code_instr(I_STORE, 0);
+}
+
+/*
  * NAME:	codegen->aggr()
  * DESCRIPTION:	generate code for an aggregate
  */
@@ -569,111 +674,6 @@ bool lv;
 	cg_expr(n, FALSE);
     }
     return i;
-}
-
-/*
- * NAME:	codegen->cast()
- * DESCRIPTION:	generate code for a cast
- */
-static void cg_cast(type)
-unsigned short type;
-{
-    code_instr(I_CAST, 0);
-    if ((type & T_REF) != 0) {
-	type = T_ARRAY;
-    }
-    code_byte(type);
-}
-
-/*
- * NAME:	codegen->lvalue()
- * DESCRIPTION:	generate code for an lvalue
- */
-static void cg_lvalue(n, type)
-register node *n;
-int type;
-{
-    register node *m;
-    register int typeflag;
-
-    typeflag = (type != 0) ? I_TYPE_BIT : 0;
-
-    if (n->type == N_CAST) {
-	n = n->l.left;
-    }
-    switch (n->type) {
-    case N_LOCAL:
-	code_instr(I_PUSH_LOCAL_LVALUE | typeflag, n->line);
-	code_byte(nparams - (int) n->r.number - 1);
-	break;
-
-    case N_GLOBAL:
-	code_instr(I_PUSH_GLOBAL_LVALUE | typeflag, n->line);
-	code_word((int) n->r.number);
-	break;
-
-    case N_INDEX:
-	m = n->l.left;
-	if (m->type == N_CAST) {
-	    m = m->l.left;
-	}
-	switch (m->type) {
-	case N_LOCAL:
-	    code_instr(I_PUSH_LOCAL_LVALUE, m->line);
-	    code_byte(nparams - (int) m->r.number - 1);
-	    break;
-
-	case N_GLOBAL:
-	    code_instr(I_PUSH_GLOBAL_LVALUE, m->line);
-	    code_word((int) m->r.number);
-	    break;
-
-	case N_INDEX:
-	    cg_expr(m->l.left, FALSE);
-	    cg_expr(m->r.right, FALSE);
-	    code_instr(I_INDEX_LVALUE, m->line);
-	    break;
-
-	default:
-	    cg_expr(m, FALSE);
-	    break;
-	}
-	cg_expr(n->r.right, FALSE);
-	code_instr(I_INDEX_LVALUE | typeflag, n->line);
-	break;
-    }
-
-    if (typeflag != 0) {
-	code_byte((type & T_REF) ? T_ARRAY : type);
-    }
-}
-
-/*
- * NAME:	codegen->fetch()
- * DESCRIPTION:	generate code for a fetched lvalue
- */
-static void cg_fetch(n)
-node *n;
-{
-    cg_lvalue(n, 0);
-    code_instr(I_FETCH, 0);
-    if (n->type == N_CAST) {
-	cg_cast(n->mod);
-    }
-}
-
-/*
- * NAME:	codegen->asgnop()
- * DESCRIPTION:	generate code for an assignment operator
- */
-static void cg_asgnop(n, op)
-register node *n;
-int op;
-{
-    cg_fetch(n->l.left);
-    cg_expr(n->r.right, FALSE);
-    code_kfun(op, n->line);
-    code_instr(I_STORE, 0);
 }
 
 /*
@@ -1263,6 +1263,16 @@ register int pop;
 	i = cg_sumargs(n);
 	code_kfun(KF_SUM, 0);
 	code_byte(i);
+	break;
+
+    case N_SUM_EQ:
+	cg_fetch(n->l.left);
+	code_instr(I_PUSH_INT1, 0);
+	code_byte(-2);
+	i = cg_sumargs(n->r.right) + 1;
+	code_kfun(KF_SUM, 0);
+	code_byte(i);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_TOFLOAT:

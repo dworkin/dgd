@@ -165,11 +165,10 @@ register int type;
  * NAME:	codegen->fetch()
  * DESCRIPTION:	generate code for a fetched lvalue
  */
-static void cg_fetch(n, type)
+static void cg_fetch(n)
 node *n;
-int type;
 {
-    cg_lvalue(n, type);
+    cg_lvalue(n, 0);
     output(", i_fetch(), ");
     if (n->type == N_CAST) {
 	cg_cast("sp", n->mod);
@@ -220,7 +219,7 @@ bool direct;
     if (n->l.left->type == N_LOCAL) {
 	cg_iasgn(n->r.right, op, (int) n->l.left->r.number, direct);
     } else {
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	cg_iasgn(n->r.right, op, -1, TRUE);
 	output(", store_int()");
     }
@@ -249,7 +248,7 @@ bool direct;
 	output("ivar%d = ((Uint) ivar%d) %s ", vars[i], vars[i], op);
 	cg_iexpr(n, direct);
     } else {
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
 	    output("sp->u.number = ((Uint) sp->u.number) %s ", op);
@@ -284,7 +283,7 @@ bool direct;
 	cg_iexpr(n->r.right, direct);
 	output(")");
     } else {
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
 	    output("sp->u.number = %s(sp->u.number, ", op);
@@ -365,6 +364,7 @@ bool direct;
     case N_SUB_EQ:
     case N_SUB_EQ_1:
     case N_SUM:
+    case N_SUM_EQ:
     case N_TOFLOAT:
     case N_TOINT:
     case N_TOSTRING:
@@ -397,7 +397,7 @@ bool direct;
 	    }
 	    output("++ivar%d", vars[n->l.left->r.number]);
 	} else {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    output("++sp->u.number, store_int()");
 	}
 	break;
@@ -583,7 +583,7 @@ bool direct;
 	    }
 	    output("--ivar%d", vars[n->l.left->r.number]);
 	} else {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    output("--sp->u.number, store_int()");
 	}
 	break;
@@ -621,7 +621,7 @@ bool direct;
 	    }
 	    output("ivar%d--", vars[n->l.left->r.number]);
 	} else {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    output("sp->u.number--, store_int() + 1");
 	}
 	break;
@@ -633,7 +633,7 @@ bool direct;
 	    }
 	    output("ivar%d++", vars[n->l.left->r.number]);
 	} else {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    output("sp->u.number++, store_int() - 1");
 	}
 	break;
@@ -662,11 +662,7 @@ char *op;
 	}
 	output("ivar%d = sp->u.number", vars[n->l.left->r.number]);
     } else {
-	if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
-	    cg_fetch(n->l.left, n->l.left->mod);
-	} else {
-	    cg_fetch(n->l.left, 0);
-	}
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, PUSH);
 	comma();
 	kfun(op);
@@ -930,7 +926,7 @@ register int state;
 	break;
 
     case N_ADD_EQ_1:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	kfun("add1");
 	store();
 	break;
@@ -1316,13 +1312,19 @@ register int state;
 	break;
 
     case N_SUB_EQ_1:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	kfun("sub1");
 	store();
 	break;
 
     case N_SUM:
 	output("kf_sum(%d)", cg_sumargs(n));
+	break;
+
+    case N_SUM_EQ:
+	cg_fetch(n->l.left);
+	output("PUSH_NUMBER -2,\n");
+	output("kf_sum(%d), store()", cg_sumargs(n->r.right) + 1);
 	break;
 
     case N_TOFLOAT:
@@ -1382,7 +1384,7 @@ register int state;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    kfun("neg");
 	    store();
 	} else {
@@ -1391,7 +1393,7 @@ register int state;
 	break;
 
     case N_MIN_MIN:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	kfun("sub1");
 	store();
 	comma();
@@ -1403,7 +1405,7 @@ register int state;
 	break;
 
     case N_PLUS_PLUS:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	kfun("add1");
 	store();
 	comma();
@@ -1455,7 +1457,7 @@ register int state;
 	    break;
 
 	case T_OBJECT:
-	    output(", sp++, sp[-1].type == T_OBJECT");
+	    output(", (sp++)->type == T_OBJECT");
 	    break;
 
 	default:

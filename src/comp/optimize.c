@@ -1107,6 +1107,32 @@ bool pop;
     }
 
     d1 = opt_lvalue(n->l.left) + 1;
+
+    if (n->type == N_ADD_EQ &&
+	(n->mod == T_STRING || (n->mod & T_REF) != 0) &&
+	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0 ||
+	 n->r.right->type == N_RANGE)) {
+	/*
+	 * see if the summand operator can be used
+	 */
+	switch (n->r.right->type) {
+	case N_ADD:
+	    n->r.right->type = N_SUM;
+	    n->type = N_SUM_EQ;
+	    d1++;				/* add (-2) */
+	    d2 += 2;				/* (-2) on both sides */
+	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+
+	case N_RANGE:
+	    d2 = max2(d2, 3);			/* add (-2), at least 3 */
+	    /* fall through */
+	case N_SUM:
+	    n->type = N_SUM_EQ;
+	    d1++;				/* add (-2) */
+	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+	}
+    }
+
     return max2(d1, ((d1 < 4) ? d1 : 4) + d2);
 }
 
@@ -1365,6 +1391,7 @@ int pop;
     case N_RSHIFT_EQ_INT:
     case N_SUB_EQ:
     case N_SUB_EQ_INT:
+    case N_SUM_EQ:
     case N_XOR_EQ:
     case N_XOR_EQ_INT:
 	return opt_asgnexp(m, pop);

@@ -1748,10 +1748,6 @@ int kf_xor_int()
 # endif
 
 
-/*
- * the following were added after 1.0.a7
- */
-
 # ifdef FUNCDEF
 FUNCDEF("(string)", kf_tostring, pt_tostring)
 # else
@@ -2019,7 +2015,7 @@ int n;
 	    result += v[1].u.number;
 	}
 
-	sp = v;
+	sp = v + 1;
 	sp->u.number += result;
     }
 
