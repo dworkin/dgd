@@ -522,7 +522,8 @@ register node **m;
 	    return d1;
 	}
 
-	if (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0) {
+	if (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0 ||
+	    n->l.left->type == N_RANGE) {
 	    /*
 	     * see if the summand operator can be used
 	     */
@@ -1132,7 +1133,8 @@ bool pop;
 
     if (n->type == N_ADD_EQ &&
 	(n->mod == T_STRING || (n->mod & T_REF) != 0) &&
-	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0)) {
+	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0 ||
+	 n->r.right->type == N_RANGE)) {
 	/*
 	 * see if the summand operator can be used
 	 */

@@ -4,9 +4,6 @@ De-binhex dgd.proj.hqx and dgd.rsrc.hqx.  Move the project file up two
 folders (into the src folder), and double-click it to start the Project
 Manager.
 
-After building the application, use a resource editor to set the SIZE
-flags "accept suspend event" and "can background" to 1.
-
 IF you want to compile DGD with CodeWarrior, you'll have to make your
 own project file.  Make sure that the size of an integer is 4 bytes,
 and that the symbol MACOS is #defined.

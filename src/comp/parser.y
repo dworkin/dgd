@@ -134,7 +134,8 @@ top_level_declaration
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
-		  } else if (!c_inherit($3->l.string->text, $2)) {
+		  } else if (nerrors > 0 || !c_inherit($3->l.string->text, $2))
+		  {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.
@@ -900,8 +901,13 @@ register node *n1, *n2;
 
     if (n1->type == N_STR && n2->type == N_INT) {
 	/* str [ int ] */
-	n2->l.number = UCHAR(n1->l.string->text[str_index(n1->l.string,
-						         (long) n2->l.number)]);
+	if (n2->l.number < 0 || n2->l.number >= (Int) n1->l.string->len) {
+	    c_error("string index out of range");
+	} else {
+	    n2->l.number =
+		    UCHAR(n1->l.string->text[str_index(n1->l.string,
+						       (long) n2->l.number)]);
+	}
 	return n2;
     }
 

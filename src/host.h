@@ -3,6 +3,51 @@
 # define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
 # endif
 
+# ifdef BEOS
+
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
+# include <limits.h>
+# include <sys/types.h>
+# include <unistd.h>
+
+# ifdef INCLUDE_FILE_IO
+# include <fcntl.h>
+# include <sys/stat.h>
+# endif
+
+# ifdef INCLUDE_CTYPE
+# include <ctype.h>
+# endif
+
+# ifdef INCLUDE_TELNET
+# include "host/telnet.h"
+# endif
+
+# include <stdlib.h>
+# include <string.h>
+# include <setjmp.h>
+# include <stdio.h>
+
+# include <alloca.h>
+
+# define STRUCT_AL		4	/* define this if align(struct) > 2 */
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+							     (size_t) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# define FS_BLOCK_SIZE		8192
+
+# define bool			dgd_bool
+# define exit			dgd_exit
+# define abort			dgd_abort
+
+# endif /* BEOS */
+
 
 # ifdef WIN32
 

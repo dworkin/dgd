@@ -1162,3 +1162,15 @@ DGD 1.1 patchlevel 5
    the if statement should have been.
  - Fixed a bad bug in global float variable initialisation, reported by
    Azhrarn@Flat Earth.
+
+DGD 1.1 patchlevel 6
+
+ - In case of an error during inheritance, the name of the relevant object
+   was not properly saved.
+ - Compensate for the latest (post 5.0) Visual C++ problem.
+ - Fixed some Mac compilation problems for various compilers.
+ - DGD ported to BeOS.
+ - Fixed a stack depth miscalculation bug for untypechecked code.
+ - Generate a proper compile-time error if a string constant is indexed by
+   an integer that is out of range.
+ - Turned off debug settings in Makefile and added optimization.

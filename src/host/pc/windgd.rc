@@ -135,18 +135,18 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About DGD"
 FONT 8, "MS Sans Serif"
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,11,14,21,20
-    LTEXT           "DGD version 1.1",IDC_STATIC,40,10,75,8,SS_NOPREFIX
-    LTEXT           "© 1993 - 1997 BeeHive Internet Technologies, Inc. All Rights Reserved.",
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,14,18,20
+    LTEXT           "DGD version 1.1p6",IDC_STATIC,40,10,75,8,SS_NOPREFIX
+    LTEXT           "© 1993 - 1998 BeeHive Internet Technologies, Inc. All Rights Reserved.",
                     IDC_STATIC,40,23,164,17
     DEFPUSHBUTTON   "OK",IDOK,212,7,32,14,WS_GROUP
     LTEXT           "Permission is granted to copy the source and executables made therefrom, but any commercial distribution or use whatsoever is not allowed. Commercial distribution or use refers to any distribution or use from which",
                     IDC_STATIC,7,43,237,25
     LTEXT           "any form of income is received regardless of profit therefrom, or from which any revenue or promotional value is received, as well as any distribution to or use in a corporate environment. Use of the source or executables made",
                     IDC_STATIC,7,67,237,25
-    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction. Exclusive worldwide rights to this program for use as a server are held by ichat, Inc. If you wish to purchase a commercial license, please",
+    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction. Exclusive worldwide rights to this program for use as a server are held by Acuity Corporation. If you wish to purchase a commercial license,",
                     IDC_STATIC,7,91,237,25
-    LTEXT           "send email to sales@ichat.com. For more information please look at the ichat web site which can be found at http://www.ichat.com.",
+    LTEXT           "please send email to sales@acuity.com. For more information please look at the Acuity web site which can be found at http://www.acuity.com.",
                     IDC_STATIC,7,115,237,17
     LTEXT           "Any modifications of this program lacking an explicit copyright notice are subject to the copyright notice stated herein. Any explicit copyright notices added to this program shall not contradict the terms stated herein, but may",
                     IDC_STATIC,7,136,237,25
@@ -164,8 +164,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,1,0,0
- PRODUCTVERSION 1,1,0,0
+ FILEVERSION 1,1,0,6
+ PRODUCTVERSION 1,1,0,6
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -182,12 +182,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "BeeHive Internet Technologies, Inc.\0"
             VALUE "FileDescription", "DGD Application\0"
-            VALUE "FileVersion", "1.1\0"
+            VALUE "FileVersion", "1.1p6\0"
             VALUE "InternalName", "DGD\0"
-            VALUE "LegalCopyright", "© 1993 - 1997 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
+            VALUE "LegalCopyright", "© 1993 - 1998 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
             VALUE "OriginalFilename", "DGD.EXE\0"
             VALUE "ProductName", "DGD Application\0"
-            VALUE "ProductVersion", "1.1\0"
+            VALUE "ProductVersion", "1.1p6\0"
         END
     END
     BLOCK "VarFileInfo"
