@@ -2,12 +2,16 @@
 # include <kernel/objreg.h>
 # include <kernel/access.h>
 # include <kernel/rsrc.h>
-# include <kernel/rlimits.h>
 # include <type.h>
+# include <trace.h>
 
-private object prev, next;		/* previous and next in linked list */
-private string creator, owner;		/* creator and owner of this object */
-private mapping resources;		/* resources associated with this */
+# define BADARG(n, func)	error("bad argument " + (n) + \
+				      " for function " + #func)
+
+private object prev, next;	/* previous and next in linked list */
+private string creator, owner;	/* creator and owner of this object */
+private mapping resources;	/* resources associated with this object */
+private mapping events;		/* events for this object */
 
 nomask _F_prev(object obj)	{ if (PRIV0()) prev = obj; }
 nomask _F_next(object obj)	{ if (PRIV0()) next = obj; }
@@ -34,7 +38,6 @@ nomask string query_owner()
     }
 }
 
-
 /*
  * NAME:	_F_rsrc_incr()
  * DESCRIPTION:	increase/decrease a resource associated with this object
@@ -42,10 +45,11 @@ nomask string query_owner()
 nomask _F_rsrc_incr(string rsrc, int incr)
 {
     if (PRIV0()) {
-	if (resources == 0) {
-	    resources = ([ ]);
+	if (!resources) {
+	    resources = ([ rsrc : incr ]);
+	} else {
+	    resources[rsrc] += incr;
 	}
-	resources[rsrc] += incr;
     }
 }
 
@@ -61,142 +65,7 @@ nomask mapping _Q_rsrcs()
 }
 
 
-/*
- * NAME:	creator()
- * DESCRIPTION:	get creator of file
- */
-private string creator(string file)
-{
-    return (sscanf(file, "/usr/%s/", file) != 0) ?
-	    file :
-	    (sscanf(file, "/kernel/%*s") != 0) ? "System" : 0;
-}
-
-/*
- * NAME:	reduce_path()
- * DESCRIPTION:	reduce a path to its minimal absolute form
- */
-private string reduce_path(string file, string dir)
-{
-    string *path;
-    int i, j, sz;
-
-    switch (file[0]) {
-    case '/':
-	/* absolute path */
-	if (sscanf(file, "%*s//") == 0 &&
-	    sscanf(file, "%*s/./") == 0 && sscanf(file, "%*s/../") == 0) {
-	    return file;	/* no changes */
-	}
-	path = explode(file + "/", "/");
-	break;
-
-    case '~':
-	/* ~path */
-	if (strlen(file) == 1 || file[1] == '/') {
-	    file = "/usr/" + creator + file[1 .. ];
-	} else {
-	    file = "/usr/" + file[1 .. ];
-	}
-	/* fall through */
-    default:
-	/* relative path */
-	if (sscanf(file, "%*s//") == 0 &&
-	    sscanf(file, "%*s/./") == 0 && sscanf(file, "%*s/../") == 0) {
-	    /* simple relative path */
-	    path = explode(dir, "/");
-	    i = sizeof(path) - 1;
-	    if (sscanf(file, "../%s", file) != 0 && --i < 0) {
-		/* ../path */
-		i = 0;
-	    }
-	    return "/" + implode(path[0 .. i - 1], "/") + "/" + file;
-	}
-	/* complex relative path */
-	path = explode(dir + "/../" + file + "/", "/");
-	break;
-    }
-
-    for (i = 0, j = 0, sz = sizeof(path); i < sz; i++) {
-	switch (path[i]) {
-	case "":
-	    /* // */
-	    if (i == sz - 1) {
-		break;	/* path/ is a special case */
-	    }
-	    /* fall through */
-	case ".":
-	    /* /./ */
-	    continue;
-
-	case "..":
-	    /* .. */
-	    if (--j < 0) {
-		j = 0;
-	    }
-	    continue;
-	}
-	path[j++] = path[i];
-    }
-
-    return "/" + implode(path[0 .. j - 1], "/");
-}
-
-/*
- * NAME:	dir_size()
- * DESCRIPTION:	get the size of all files in a directory
- */
-private int dir_size(string file)
-{
-    mixed **info;
-    int *sizes, size, i;
-
-    info = ::get_dir(file + "/*");
-    sizes = info[1];
-    size = 1;		/* 1K for directory itself */
-    i = sizeof(sizes);
-    while (--i >= 0) {
-	size += (sizes[i] < 0) ?
-		 dir_size(file + "/" + info[0][i]) :
-		 (sizes[i] + 1023) >> 10;
-    }
-
-    return size;
-}
-
-/*
- * NAME:	file_size()
- * DESCRIPTION:	get the size of a file in K, or 0 if the file doesn't exist
- */
-private int file_size(string file)
-{
-    mixed **info;
-    string *files, name;
-    int i, sz;
-
-    info = ::get_dir(file);
-    files = explode(file, "/");
-    name = files[sizeof(files) - 1];
-    files = info[0];
-    i = 0;
-    sz = sizeof(files);
-
-    if (sz <= 1) {
-	if (sz == 0 || files[0] != name) {
-	    return 0;	/* file does not exist */
-	}
-    } else {
-	/* name is a pattern: find in file list */
-	while (name != files[i]) {
-	    if (++i == sz) {
-		return 0;	/* file does not exist */
-	    }
-	}
-    }
-
-    i = info[1][i];
-    return (i < 0) ? dir_size(file) : (i + 1023) >> 10;
-}
+# include "file.c"	/* file functions */
 
 
 /*
@@ -205,7 +74,7 @@ private int file_size(string file)
  */
 nomask _F_create()
 {
-    if (creator != 0) {
+    if (creator) {
 	return;
     }
     rlimits (-1; -1) {
@@ -216,9 +85,9 @@ nomask _F_create()
 	 */
 	oname = object_name(this_object());
 	creator = creator(oname);
-	if (creator == 0 || sscanf(oname, "%s#", oname) != 0) {
+	if (!creator || sscanf(oname, "%s#", oname) != 0) {
 	    owner = previous_object()->query_owner();
-	    if (creator == 0) {
+	    if (!creator) {
 		creator = owner;
 	    }
 	} else {
@@ -237,27 +106,48 @@ nomask _F_create()
 }
 
 /*
+ * NAME:	find_object()
+ * DESCRIPTION:	find an object
+ */
+static object find_object(string path)
+{
+    if (!path) {
+	BADARG(1, find_object);
+    }
+
+    path = reduce_path(path, object_name(this_object()), creator);
+    if (sscanf(path, "%*s/lib/") != 0) {
+	return 0;	/* library object */
+    }
+    return ::find_object(path);
+}
+
+/*
  * NAME:	destruct_object()
  * DESCRIPTION:	destruct an object, if you can
  */
-static destruct_object(object obj)
+static destruct_object(mixed obj)
 {
-    string oname;
+    string oname, lib;
     mapping rsrcs;
 
-    if (obj == 0) {
-	error("Bad argument 1 for function destruct_object");
+    if (typeof(obj) == T_STRING) {
+	obj = find_object(reduce_path(obj, object_name(this_object()),
+				      creator));
+    }
+    if (typeof(obj) != T_OBJECT) {
+	BADARG(1, destruct_object);
     }
 
     /*
      * check privileges
      */
     oname = object_name(obj);
-    if ((owner != obj->query_owner() || sscanf(oname, "/kernel/%*s") != 0) &&
-	!PRIV1()) {
+    if (((owner != obj->query_owner() ||
+	  sscanf(oname, "/kernel/%s/%*s", lib) != 0) && !PRIV1()) ||
+	(lib && lib != "lib")) {
 	/*
-	 * The override check doesn't use creator, so destruct_object() in
-	 * a system object is safe.
+	 * kernel objects cannot be destructed at all
 	 */
 	error("Cannot destruct object: not owner");
     }
@@ -268,7 +158,7 @@ static destruct_object(object obj)
 	}
 
 	rsrcs = obj->_Q_rsrcs();
-	if (rsrcs != 0 && map_sizeof(rsrcs) != 0) {
+	if (rsrcs && map_sizeof(rsrcs) != 0) {
 	    string *indices;
 	    int *values, i;
 	    object rsrcd;
@@ -289,66 +179,6 @@ static destruct_object(object obj)
 }
 
 /*
- * NAME:	update_object()
- * DESCRIPTION:	destruct inherited object
- */
-static int update_object(string path)
-{
-    string str;
-    object obj;
-
-    if (path == 0) {
-	error("Bad argument 1 for function update_object");
-    }
-
-    /*
-     * check if the object exists and is a lib object
-     */
-    path = reduce_path(path, object_name(this_object()));
-    obj = ::find_object(path);
-    str = path;
-    while (sscanf(str, "%*s/lib/%s", str) != 0) ;
-    if (str == path || sscanf(str, "%*s/") != 0 || obj == 0) {
-	return 0;
-    }
-
-    /*
-     * check permission
-     */
-    if (owner != creator(path) && !PRIV1()) {
-	/*
-	 * The override check doesn't use creator, so update_object() in
-	 * a system object is safe.
-	 */
-	error("Cannot update object: not owner");
-    }
-
-    ::destruct_object(obj);
-    return 1;
-}
-
-/*
- * NAME:	find_object()
- * DESCRIPTION:	find an object
- */
-static object find_object(string path)
-{
-    string str;
-
-    if (path == 0) {
-	error("Bad argument 1 for function find_object");
-    }
-
-    path = reduce_path(path, object_name(this_object()));
-    str = path;
-    while (sscanf(str, "%*s/lib/%s", str) != 0) ;
-    if (str != path && sscanf(str, "%*s/") == 0) {
-	return 0;	/* library object */
-    }
-    return ::find_object(path);
-}
-
-/*
  * NAME:	compile_object()
  * DESCRIPTION:	compile a master object
  */
@@ -358,8 +188,8 @@ static object compile_object(string path)
     object rsrcd, obj;
     int *rsrc;
 
-    if (path == 0) {
-	error("Bad argument 1 for function compile_object");
+    if (!path) {
+	BADARG(1, compile_object);
     }
 
     /*
@@ -367,19 +197,19 @@ static object compile_object(string path)
      */
     str = object_name(this_object());
     sscanf(str, "%s#", str);
-    path = reduce_path(path, str);
+    path = reduce_path(path, str, creator);
     if (creator != "System" &&
-	::find_object(ACCESSD)->access(creator, path, READ_ACCESS) == 0) {
+	!::find_object(ACCESSD)->access(creator, path, READ_ACCESS)) {
 	error("Access denied");
     }
 
     obj = ::find_object(path);
-    if (obj == 0) {
+    if (!obj) {
 	/*
 	 * check resource usage
 	 */
 	uid = creator(path);
-	if (uid == 0) {
+	if (!uid) {
 	    uid = owner;
 	}
 	rsrcd = ::find_object(RSRCD);
@@ -389,21 +219,19 @@ static object compile_object(string path)
 	}
     }
 
-    str = path;
-    while (sscanf(str, "%*s/lib/%s", str) != 0) ;
-    if (str != path && sscanf(str, "%*s/") != 0) {
+    if (sscanf(path, "%*s/lib/") != 0) {
 	/*
 	 * library object
 	 */
 	rlimits (-1; -1) {
 	    ::compile_object(path);
-	    if (obj == 0) {
+	    if (!obj) {
 		/* new object */
 		rsrcd->rsrc_incr(uid, "objects", path, 1, 1);
 	    }
 	}
 	return 0;
-    } else if (obj != 0) {
+    } else if (obj) {
 	/*
 	 * recompile of usable object
 	 */
@@ -418,9 +246,13 @@ static object compile_object(string path)
 	 */
 	status = ::status();
 	rlimits (-1; -1) {
-	    if ((status[ST_STACKDEPTH] < CREATE_STACKDEPTH &&
-		 status[ST_STACKDEPTH] >= 0) ||
-		(status[ST_TICKS] < CREATE_TICKS && status[ST_TICKS] >= 0)) {
+	    object configd;
+
+	    configd = ::find_object(CONFIGD);
+	    if ((status[ST_STACKDEPTH] >= 0 &&
+		 status[ST_STACKDEPTH] < configd->query_stack_depth()) ||
+		(status[ST_TICKS] >= 0 &&
+		 status[ST_TICKS] < configd->query_ticks())) {
 		error("Insufficient stack or ticks to create object");
 	    }
 	    obj = ::compile_object(path);
@@ -440,20 +272,18 @@ static varargs object clone_object(string path, string oowner)
     object rsrcd, obj;
     int *rsrc, *status;
 
-    if (path == 0) {
-	error("Bad argument 1 for function clone_object");
+    if (!path) {
+	BADARG(1, clone_object);
     }
-    if (owner != "System" || oowner == 0) {
+    if (owner != "System" || !oowner) {
 	oowner = owner;
     }
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
 
-    str = path;
-    while (sscanf(str, "%*s/obj/%s", str) != 0) ;
-    if (path == str || sscanf(str, "%*s/lib/") != 0) {
-	error("Cannot clone " + path);	/* not path of master object */
+    if (sscanf(path, "%*s/obj/") == 0 || sscanf(path, "%*s/lib/") != 0) {
+	error("Cannot clone " + path);	/* not path of clonable */
     }
 
     if (creator != "System" &&
@@ -464,7 +294,7 @@ static varargs object clone_object(string path, string oowner)
 
     rsrcd = ::find_object(RSRCD);
     obj = ::find_object(path);
-    if (obj == 0) {
+    if (!obj) {
 	/* master object not compiled yet */
 	str = creator(path);
 	if (path != RSRCOBJ) {
@@ -490,12 +320,13 @@ static varargs object clone_object(string path, string oowner)
 
     status = ::status();
     rlimits (-1; -1) {
-	if (status[ST_NOBJECTS] == status[ST_OTABSIZE]) {
-	    error("Too many objects");
-	}
-	if ((status[ST_STACKDEPTH] < CREATE_STACKDEPTH &&
-	     status[ST_STACKDEPTH] >= 0) &&
-	    (status[ST_TICKS] < CREATE_TICKS && status[ST_TICKS] >= 0)) {
+	object configd;
+
+	configd = ::find_object(CONFIGD);
+	if ((status[ST_STACKDEPTH] >= 0 &&
+	     status[ST_STACKDEPTH] < configd->query_stack_depth()) &&
+	    (status[ST_TICKS] >= 0 &&
+	     status[ST_TICKS] < configd->query_ticks())) {
 	    error("Insufficient stack or ticks to create object");
 	}
 	if (oowner != owner) {
@@ -512,26 +343,17 @@ static varargs object clone_object(string path, string oowner)
 static mixed **call_trace()
 {
     mixed **trace;
-    object accessd;
-    string oname, str;
-    int i, sz, access;
+    int i, sz;
+    mixed *call;
 
     trace = ::call_trace();
-    trace = trace[ .. sizeof(trace) - 2];	/* skip last */
+    trace = trace[.. sizeof(trace) - 2];	/* skip last */
     if (creator != "System") {
-	accessd = ::find_object(ACCESSD);
-	oname = object_name(this_object());
-	sscanf(oname, "%s#", oname);
-
 	for (i = 0, sz = sizeof(trace); i < sz; i++) {
-	    if (trace[i][2]) {
-		/* external call: check access to object */
-		str = trace[i][0];
-		sscanf(str, "%s#", str);
-		access = accessd->access(oname, str, WRITE_ACCESS);
-	    }
-	    if (!access && sizeof(trace[i]) > 3) {
-		trace[i] = trace[i][ .. 2];	/* remove arguments */
+	    if ((call=sizeof(trace[i])) > TRACE_FIRSTARG &&
+		owner != creator(call[TRACE_PROGRAM])) {
+		/* remove arguments */
+		trace[i] = call[.. TRACE_FIRSTARG - 1];
 	    }
 	}
     }
@@ -545,64 +367,39 @@ static mixed **call_trace()
  */
 varargs mixed *status(mixed obj)
 {
-    mixed *status, **callouts;
-    string oname, o2name;
+    mixed *status, **callouts, *co;
     int i;
 
-    switch (typeof(obj)) {
-    case T_STRING:
+    if (typeof(obj) == T_STRING) {
 	/* get corresponding object */
-	obj = ::find_object(reduce_path(obj, object_name(this_object())));
-	if (obj == 0) {
-	    error("Bad argument 1 for function status");
-	}
-	/* fall through */
-    case T_OBJECT:
-	status = ::status(obj);
-	callouts = status[O_CALLOUTS];
-	if (sizeof(callouts) != 0) {
-	    i = sizeof(callouts);
-	    if (creator != "System") {
-		oname = object_name(this_object());
-		sscanf(oname, "%s#", oname);
-		o2name = object_name(obj);
-		sscanf(o2name, "%s#", o2name);
-		if (!::find_object(ACCESSD)->access(oname, o2name,
-						    WRITE_ACCESS)) {
-		    /* remove arguments from callouts */
-		    do {
-			--i;
-			callouts[i] = ({ callouts[i][2], callouts[i][1] });
-		    } while (i != 0);
-		    return status;
-		}
-	    }
-	    /* ({ "_F_callout", delay, func... }) -> ({ func, delay... }) */
+	obj = ::find_object(reduce_path(obj, object_name(this_object()),
+					creator));
+    }
+    if (typeof(obj) != T_OBJECT) {
+	BADARG(1, status);
+    }
+
+    status = ::status(obj);
+    callouts = status[O_CALLOUTS];
+    if ((i=sizeof(callouts)) != 0) {
+	if (creator != "System" && owner != obj->query_owner()) {
+	    /* remove arguments from callouts */
 	    do {
 		--i;
-		callouts[i] = ({ callouts[i][2], callouts[i][1] }) +
-			      callouts[i][3 ..];
+		co = callouts[i];
+		callouts[i] = ({ co[CO_HANDLE], co[CO_FIRSTARG],
+				 co[CO_DELAY] });
+	    } while (i != 0);
+	} else {
+	    do {
+		--i;
+		co = callouts[i];
+		callouts[i] = ({ co[CO_HANDLE], co[CO_FIRSTARG],
+				 co[CO_DELAY] }) + co[CO_FIRSTXARG + 1 ..];
 	    } while (i != 0);
 	}
-	return status;
-
-    case T_INT:
-	if (obj == 0) {
-	    return ::status();
-	}
-	/* fall through */
-    default:
-	error("Bad argument 1 for function status");
     }
-}
-
-/*
- * NAME:	this_user()
- * DESCRIPTION:	return current user
- */
-static object this_user()
-{
-    return (::this_user() != 0) ? ::this_user()->query_user() : 0;
+    return status;
 }
 
 /*
@@ -612,7 +409,7 @@ static object this_user()
 static dump_state()
 {
     if (PRIV1()) {
-	::find_object(DRIVER)->prepare_restore();
+	::find_object(DRIVER)->prepare_statedump();
 	::dump_state();
     }
 }
@@ -633,43 +430,37 @@ static shutdown()
  * NAME:	call_limited()
  * DESCRIPTION:	call a function with limited stack depth and ticks
  */
-static varargs mixed call_limited(mixed foo, string function, mixed args...)
+private mixed call_limited(mixed what, string function, mixed *args)
 {
     object obj, rsrcd;
     int *status, stackdepth, rstack, ticks, rticks;
-    string oowner;
     mixed result;
 
-    if (typeof(foo) == T_STRING) {
-	foo = find_object(foo);
-    }
-    if (typeof(foo) != T_OBJECT) {
-	error("Bad argument 1 for function call_limited");
-    }
-    if (function == 0) {
-	error("Bad argument 2 for function call_limited");
-    }
-
-    status = ::status();
     rlimits (-1; -1) {
-	obj = foo;
+	if (typeof(what) == T_STRING) {
+	    what = find_object(reduce_path(what, oject_name(this_object()),
+					   creator));
+	}
+
+	status = ::status();
 	rsrcd = ::find_object(RSRCD);
-	oowner = obj->query_owner();
+	obj = what;
+	what = obj->query_owner();
 
 	/* determine available stack */
-	stackdepth = status[ST_STACKDEPTH];
-	rstack = rsrcd->rsrc_get(oowner, "stackdepth")[RSRC_MAX];
+	stackdepth = status[ST_ASTACKDEPTH];
+	rstack = rsrcd->rsrc_get(what, "stackdepth")[RSRC_MAX];
 	if (rstack > stackdepth && stackdepth >= 0) {
 	    rstack = stackdepth;
 	}
 
 	/* determine available ticks */
-	ticks = status[ST_TICKS];
-	rticks = rsrcd->rsrc_get(oowner, "ticks")[RSRC_MAX];
+	ticks = status[ST_ATICKS];
+	rticks = rsrcd->rsrc_get(what, "ticks")[RSRC_MAX];
 	if (rticks >= 0) {
 	    int *rusage, max;
 
-	    rusage = rsrcd->rsrc_get(oowner, "tick usage");
+	    rusage = rsrcd->rsrc_get(what, "tick usage");
 	    max = rusage[RSRC_MAX];
 	    if (max >= 0 && rusage[RSRC_USAGE] >= max >> 1) {
 		rticks = rticks * (max - rusage[RSRC_USAGE]) / (max >> 1);
@@ -681,24 +472,21 @@ static varargs mixed call_limited(mixed foo, string function, mixed args...)
 		rticks = 1;
 	    }
 	}
-
-	foo = ({ oowner, ticks, rticks });
     }
 
     rlimits (rstack; rticks) {
-	result = call_other(obj, function, args...);
-	status = ::status();
+	result = call_other(o, function, args...);
     }
 
     rlimits (-1; -1) {
 	if (rticks >= 0) {
-	    rsrcd->rsrc_incr(oowner, "tick usage", 0, foo[2] - status[ST_TICKS],
+	    status = ::status();
+	    rsrcd->rsrc_incr(what, "tick usage", 0, foo[2] - status[ST_TICKS],
 			     1);
 	}
 	return result;
     }
 }
-
 
 /*
  * NAME:	call_out()
@@ -749,8 +537,161 @@ nomask varargs _F_callout(string function, mixed args...)
 {
     if (PRIV0()) {
 	::find_object(RSRCD)->rsrc_incr(owner, "callouts", this_object(), -1);
-	call_limited(this_object(), function, args...);
+	call_limited(this_object(), function, args);
     }
+}
+
+/*
+ * NAME:	new_event()
+ * DESCRIPTION:	add a new event type
+ */
+static new_event(string name)
+{
+    if (!name) {
+	BADARG(1, new_event);
+    }
+
+    if (!events) {
+	events = ([ ]);
+    }
+    if (!events[name]) {
+	events[name] = ([ ]);
+    }
+}
+
+/*
+ * NAME:	remove_event()
+ * DESCRIPTION:	remove an event type
+ */
+static remove_event(string name)
+{
+    mapping event;
+
+    if (!string) {
+	BADARG(1, remove_event);
+    }
+
+    if (events && (event=events[name])) {
+	rlimits (-1; -1) {
+	    object rsrcd, *indices;
+	    int i, sz;
+
+	    rsrcd = ::find_object(RSRCD);
+	    indices = map_indices(event);
+	    for (i = 0, sz = sizeof(indices); i < sz; i++) {
+		rsrcd->rsrc_incr(indices[i]->query_owner(), "events",
+				 indices[i], -1);
+	    }
+	    events[name] = 0;
+	}
+    }
+}
+
+/*
+ * NAME:	_F_subscribe_event()
+ * DESCRIPTION:	subscribe to an event
+ */
+nomask _F_subscribe_event(string name, string function)
+{
+    if (PRIV0()) {
+	mapping event;
+	object obj;
+
+	if (!events || !(event=events[name])) {
+	    error("No such event");
+	}
+
+	obj = previous_object();
+	if (function) {
+	    /* subscribe */
+	    if (!event[obj] &&
+		!rsrcd->incr_rsrc(obj->query_owner(), "events", obj, 1)) {
+		error("Too many events");
+	    }
+	} else {
+	    /* unsubscribe */
+	    if (!event[obj]) {
+		error("Not subscribed to event");
+	    }
+	    rsrcd->incr_rsrc(obj->query_owner(), "events", obj, -1);
+	}
+	event[obj] = function;
+    }
+}
+
+/*
+ * NAME:	subscribe_event()
+ * DESCRIPTION:	subscribe a function to an event
+ */
+static subscribe_event(object obj, string name, string function)
+{
+    if (!obj) {
+	BADARG(1, subscribe_event);
+    }
+    if (!name) {
+	BADARG(2, subscribe_event);
+    }
+    if (!function || strlen(function) < 4 || function[0 .. 3] != "evt_") {
+	BADARG(3, subscribe_event);
+    }
+
+    if (!obj->query_subscribe_event(obj) || !obj) {
+	error("Cannot subscribe to event");
+    }
+    rlimits (-1; -1) {
+	obj->_F_subscribe_event(name, function);
+    }
+}
+
+/*
+ * NAME:	unsubscribe_event()
+ * DESCRIPTION:	unsubscribe an object from an event
+ */
+static unsubscribe_event(object obj, string name)
+{
+    if (!obj) {
+	BADARG(1, unsubscribe_event);
+    }
+    if (!name) {
+	BADARG(2, unsubscribe_event);
+    }
+
+    rlimits (-1; -1) {
+	obj->_F_subscribe_event(name, 0);
+    }
+}
+
+/*
+ * NAME:	call_event()
+ * DESCRIPTION:	cause an event
+ */
+static varargs int call_event(string name, mixed args...)
+{
+    mapping event;
+    object *indices;
+    string *values;
+    int i, sz, recipients;
+
+    if (!name) {
+	BADARG(1, call_event);
+    }
+
+    if (!events || !(event=events[name])) {
+	error("No such event");
+    }
+    indices = map_indices(event);
+    values = map_values(event);
+    recipients = 0;
+    for (i = 0, sz = sizeof(event); i < sz; i++) {
+	if (indices[i]) {
+	    catch {
+		call_limited(indices[i], values[i], name, args);
+	    }
+	    recipients++;
+	}
+    }
+
+    return recipients;
 }
 
 
@@ -762,12 +703,13 @@ static varargs string read_file(string path, int offset, int size)
 {
     string oname;
 
-    if (path == 0) {
-	error("Bad argument 1 for function read_file");
+    if (!path) {
+	BADARG(1, read_file);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
@@ -785,15 +727,16 @@ static varargs int write_file(string path, string str, int offset)
     object rsrcd;
     int *rsrc, size, result;
 
-    if (path == 0) {
-	error("Bad argument 1 for function write_file");
+    if (!path) {
+	BADARG(1, write_file);
     }
-    if (str == 0) {
-	error("Bad argument 2 for function write_file");
+    if (!str) {
+	BADARG(2, write_file);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -828,12 +771,13 @@ static int remove_file(string path)
     string oname;
     int size, result;
 
-    if (path == 0) {
-	error("Bad argument 1 for function remove_file");
+    if (!path) {
+	BADARG(1, remove_file);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -859,14 +803,15 @@ static int rename_file(string from, string to)
     object accessd, rsrcd;
     int size, *rsrc, result;
 
-    if (from == 0) {
-	error("Bad argument 1 for function rename_file");
+    if (!from) {
+	BADARG(1, rename_file);
     }
-    if (to == 0) {
-	error("Bad argument 2 for function rename_file");
+    if (!to) {
+	BADARG(2, rename_file);
     }
-    from = reduce_path(from, oname = object_name(this_object()));
-    to = reduce_path(to, oname);
+
+    from = reduce_path(from, oname = object_name(this_object()), creator);
+    to = reduce_path(to, oname, creator);
     accessd = ::find_object(ACCESSD);
     if (creator != "System" &&
 	(!accessd->access(oname, from, WRITE_ACCESS) ||
@@ -903,12 +848,13 @@ static mixed **get_dir(string path)
 {
     string oname;
 
-    if (path == 0) {
-	error("Bad argument 1 for function get_dir");
+    if (!path) {
+	BADARG(1, get_dir);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
@@ -929,12 +875,13 @@ static int make_dir(string path)
     object rsrcd;
     int *rsrc, result;
 
-    if (path == 0) {
-	error("Bad argument 1 for function make_dir");
+    if (!path) {
+	BADARG(1, make_dir);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -967,12 +914,13 @@ static int remove_dir(string path)
     string oname;
     int result;
 
-    if (path == 0) {
-	error("Bad argument 1 for function remove_dir");
+    if (!path) {
+	BADARG(1, remove_dir);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -994,12 +942,13 @@ static int restore_object(string path)
 {
     string oname;
 
-    if (path == 0) {
-	error("Bad argument 1 for function restore_object");
+    if (!path) {
+	BADARG(1, restore_object);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
@@ -1017,12 +966,13 @@ static save_object(string path)
     object rsrcd;
     int size, *rsrc;
 
-    if (path == 0) {
-	error("Bad argument 1 for function save_object");
+    if (!path) {
+	BADARG(1, save_object);
     }
+
     oname = object_name(this_object());
     sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname);
+    path = reduce_path(path, oname, creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -1056,21 +1006,22 @@ static editor(string cmd)
     object rsrcd;
     mixed *info;
 
-    if (cmd == 0) {
-	error("Bad argument 1 to function editor");
+    if (!cmd) {
+	BADARG(1, editor);
     }
+
     rlimits (-1; -1) {
 	rsrcd = ::find_object(RSRCD);
-	if (query_editor(this_object()) == 0 &&
-	    rsrcd->rsrc_incr(owner, "editors", this_object(), 1) == 0) {
+	if (!query_editor(this_object()) &&
+	    !rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
 	    error("Too many editors");
 	}
 	::editor(cmd);
-	if (query_editor(this_object()) == 0) {
+	if (!query_editor(this_object())) {
 	    rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
 	}
 	info = ::find_object(DRIVER)->query_wfile();
-	if (info != 0) {
+	if (info) {
 	    rsrcd->rsrc_incr(creator(info[0]), "filequota", 0,
 			     file_size(info[0]) - info[1], 1);
 	}

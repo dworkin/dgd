@@ -79,7 +79,7 @@ static config conf[] = {
 				{ "swap_fragment",	INT_CONST, FALSE },
 # define SWAP_SIZE	19
 				{ "swap_size",		INT_CONST, FALSE,
-							1024, UINDEX_MAX },
+							1024, SW_UNUSED },
 # define TELNET_PORT	20
 				{ "telnet_port",	INT_CONST, FALSE,
 							1024, USHRT_MAX },
@@ -862,7 +862,12 @@ char *configfile, *dumpfile;
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
     cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
     cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
-    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
+    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012\012");
+
+    cputs("# define CO_HANDLE\t0\t/* callout handle */\012");
+    cputs("# define CO_FUNCTION\t1\t/* function name */\012");
+    cputs("# define CO_DELAY\t2\t/* delay */\012");
+    cputs("# define CO_FIRSTXARG\t3\t/* first extra argument */\012");
     cclose();
 
     /* create type.h file */
@@ -897,13 +902,7 @@ char *configfile, *dumpfile;
     cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
     cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
     sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
-	    USHRT_MAX - sizeof(string));
-    cputs(buffer);
-    sprintf(buffer, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\012",
-	    conf[ARRAY_SIZE].u.num);
-    cputs(buffer);
-    sprintf(buffer, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012",
-	    conf[ARRAY_SIZE].u.num);
+	    USHRT_MAX);
     cputs(buffer);
     cclose();
 

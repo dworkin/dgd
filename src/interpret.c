@@ -894,6 +894,9 @@ int flag;
  */
 void i_check_rlimits()
 {
+    if (cframe->obj->count == 0) {
+	error("Illegal use of rlimits");
+    }
     --sp;
     sp[0] = sp[1];
     sp[1] = sp[2];

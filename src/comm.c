@@ -81,6 +81,7 @@ unsigned int telnet_port, binary_port;
  */
 void comm_finish()
 {
+    comm_flush(FALSE);
     conn_finish();
 }
 
@@ -470,7 +471,7 @@ void comm_receive()
 	this_user = (object *) NULL;
     }
 
-    for (i = 0; i < nusers; i++) {
+    for (i = nusers; i > 0; --i) {
 	usr = lastuser;
 	lastuser = usr->next;
 
@@ -482,8 +483,7 @@ void comm_receive()
 	    v = d_get_variable(data, data->nvariables - 1);
 	    if (usr->outbufsz != 0) {
 		/* write next chunk */
-		n = conn_write(usr->conn,
-			       v->u.string->text + usr->osoffset,
+		n = conn_write(usr->conn, v->u.string->text + usr->osoffset,
 			       usr->outbufsz, TRUE);
 		if (n > 0) {
 		    usr->osoffset += n;

@@ -185,6 +185,10 @@ static initialize()
     rsrcd->set_rsrc("filequota", -1, 0, 0);
     rsrcd->set_rsrc("editors", -1, 0, 0);
 
+    /* reasonable starting values */
+    rsrcd->set_rsrc("create stack", 5, 0, 0);
+    rsrcd->set_rsrc("create ticks", 5000, 0, 0);
+
     /* access daemon */
     call_other(accessd = compile_object(ACCESSD), "???");
 
@@ -454,8 +458,8 @@ static int compile_rlimits(string objname)
  */
 static int runtime_rlimits(object obj, int depth, int ticks)
 {
-    return (sscanf(object_name(obj), "/usr/System/%*s") != 0 &&
-	    depth >= 0 && depth <= status()[ST_STACKDEPTH]);
+    return (sscanf(object_name(obj), "/usr/System/%*s") != 0 && depth == 0 &&
+	    ticks < 0);
 }
 
 # ifdef DEBUG

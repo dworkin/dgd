@@ -1,34 +1,40 @@
-   To compile DGD, you will have to set HOST in src/Makefile to the
-proper value:
+To compile DGD, you will have to set HOST in src/Makefile to the proper value:
+
 NETBSD		NetBSD.  This is the default.
 BSD386		FreeBSD or 386BSD.
-GENERIC_BSD	BSD Unix.
-SUNOS4		SunOS 4.x.  Copy src/host/Makefile.sun4 to src/host/Makefile.
-GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
 LINUX		Linux.  Copy host/Makefile.sysv to host/Makefile.
+SUNOS4		SunOS 4.x.  Copy src/host/Makefile.sun4 to src/host/Makefile.
+SOLARIS		SunOS 5.x.  Copy src/host/Makefile.sysv to src/host/Makefile,
+		and in src/Makefile also set LIBS to -lsocket -lnsl
+DECALPHA	DEC Alpha.  Copy src/host/Makefile.sysv to src/host/Makefile.
+WIN32		Windows NT or Windows 95.  Use MSVC++ 4.0 or newer, and
+		open the file dgd/src/host/pc/windgd.mak
+GENERIC_BSD	BSD Unix.
+GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
 
-   For other platforms, you can either try to use the closest of the above,
-or add your own host support to the src/host.h file.  There are some systems
-which I don't support directly yet, but for which porting is easy:
+For other platforms, you can either try to use the closest of the above, or
+add your own host support to the src/host.h file.  There are some systems
+which are not supported directly yet, but for which porting is easy:
+
 NeXT	use GENERIC_BSD, but in host/Makefile replace dirent.* by direct.*
-Solaris	use GENERIC_SYSV, in Makefile set LIBS to -lsocket -lnsl
 ULTRIX	use GENERIC_BSD
 AIX	use GENERIC_SYSV, but change the definitions of UCHAR and SCHAR to
 	the versions in the HOST_WITH_UNSIGNED_CHAR entry in host.h (AIX
 	characters are unsigned), also add #include <sys/select.h> to
 	host/unix/connect.c
-Alpha	use GENERIC_SYSV, and in host.h, the GENERIC_SYSV section, change
-	STRUCT_AL to 8.
 
-   Things may become more difficult if you want to port DGD to a different
+Things may become more difficult if you want to port DGD to a different
 type of host.  I plan a port to MacOS myself.  If you want to do your own
 port and you need some advice, contact me.
-   In general, platforms must meet the following requirements:
+
+In general, platforms must meet the following requirements:
+
  - shorts should be 2 bytes wide
  - integers should be either 2 or 4 bytes wide
  - longs should be at least as wide as pointers
  - all pointer types must be equally wide
  - two's complement should be used to represent negative numbers
  - the value of NULL must be 0.
+
 For each port, one should only have to modify src/host.h, the makefiles and
 the files in the src/host directory.

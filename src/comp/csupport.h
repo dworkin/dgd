@@ -51,7 +51,7 @@ array *pc_list		P((void));
 void   pc_control	P((control*, object*));
 bool   pc_dump		P((int));
 void   pc_restore	P((int));
-void   pc_remap		P((object*, object*));
+
 
 # define PUSH_NUMBER		(--sp)->type = T_INT, sp->u.number =
 # define push_lvalue(v, t)	((--sp)->type = T_LVALUE, sp->oindex = (t), \
@@ -61,6 +61,24 @@ void   pc_remap		P((object*, object*));
 # define truthval(v)		(((v)->type != T_INT || (v)->u.number != 0) && \
 			 	((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])
+
+/*
+ * prototypes for kfuns that might be called directly from precompiled code
+ */
+int kf_add P((void)), kf_add1 P((void)), kf_and P((void)), kf_div P((void)),
+    kf_eq P((void)), kf_ge P((void)), kf_gt P((void)), kf_le P((void)),
+    kf_lshift P((void)), kf_lt P((void)), kf_mod P((void)), kf_mult P((void)),
+    kf_ne P((void)), kf_neg P((void)), kf_not P((void)), kf_or P((void)),
+    kf_rangeft P((void)), kf_rangef P((void)), kf_ranget P((void)),
+    kf_range P((void)), kf_rshift P((void)), kf_sub P((void)),
+    kf_sub1 P((void)), kf_tofloat P((void)), kf_toint P((void)),
+    kf_tst P((void)), kf_umin P((void)), kf_xor P((void)),
+    kf_tostring P((void)), kf_ckrangeft P((void)), kf_ckrangef P((void)),
+    kf_ckranget P((void)), kf_sum P((int));
+
+int kf_this_object P((void)), kf_call_trace P((void)), kf_this_user P((void)),
+    kf_users P((void)), kf_time P((void)), kf_swapout P((void)),
+    kf_dump_state P((void)), kf_shutdown P((void));
 
 void call_kfun		P((int));
 void call_kfun_arg	P((int, int));

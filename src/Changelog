@@ -1042,3 +1042,9 @@ DGD 1.1
  - Fixed a nasty crasher in endthread() with the help of Sieni@Muhveli.
  - Fixed a problem with destructed objects as mapping indices.
  - Optimized communications handling and get_dir().
+ - Fixed memory leak in generated C code.
+ - Made the maximum string size the same on all hosts and removed
+   MAX_ARRAY_SIZE and MAX_MAPPING_SIZE from limits.h (status()[ST_ARRAYSIZE]
+   should be used).
+ - If select() is interrupted, make sure that all socket read flags are zero.
+ - DUMPFILE FORMAT STABLE AGAIN, and it had better not change before 1.1...

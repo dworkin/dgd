@@ -47,7 +47,7 @@ register long len;
     register string *s;
     string dummy;
 
-    if (len > (unsigned long) USHRT_MAX - sizeof(string)) {
+    if (len > (unsigned long) USHRT_MAX) {
 	error("String too long");
     }
 

@@ -530,7 +530,8 @@ char *dumpfile;
  * DESCRIPTION:	pretend to restore swap file
  */
 void sw_restore(fd, secsize)
-int fd, secsize;
+int fd;
+unsigned int secsize;
 {
 }
 

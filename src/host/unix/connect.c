@@ -220,6 +220,9 @@ int wait;
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
     retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
+    if (retval < 0) {
+	FD_ZERO(&readfds);
+    }
     /*
      * Now check writability for all sockets in a polling call.
      */

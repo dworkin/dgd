@@ -1226,23 +1226,19 @@ register int state;
 	break;
 
     case N_QUEST:
-	if (state != PUSH) {
-	    cg_iexpr(n, (state != TRUTHVAL));
-	} else {
-	    output("(");
-	    cg_expr(n->l.left, TOPTRUTHVAL);
-	    output(") ? (");
-	    if (n->r.right->l.left != (node *) NULL) {
-		cg_expr(n->r.right->l.left, state);
-		comma();
-	    }
-	    output("0) : (");
-	    if (n->r.right->r.right != (node *) NULL) {
-		cg_expr(n->r.right->r.right, state);
-		comma();
-	    }
-	    output("0)");
+	output("(");
+	cg_expr(n->l.left, TOPTRUTHVAL);
+	output(") ? (");
+	if (n->r.right->l.left != (node *) NULL) {
+	    cg_expr(n->r.right->l.left, state);
+	    comma();
 	}
+	output("0) : (");
+	if (n->r.right->r.right != (node *) NULL) {
+	    cg_expr(n->r.right->r.right, state);
+	    comma();
+	}
+	output("0)");
 	return;
 
     case N_RANGE:

@@ -1,3 +1,3 @@
-Once again, this is not the promised version 1.1, but a release made because
-the status of DGD has changed.  Read the files Copyright and doc/Commercial
-for details.
+This release of DGD, is intended to be the last public release before 1.1,
+which will add no major new features.  It includes a partially completed
+kernel lib which will be completed for 1.1.
