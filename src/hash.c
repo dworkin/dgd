@@ -100,10 +100,10 @@ unsigned short size;
     l = 0;
     while (*s != '\0' && len > 0) {
 	h = l;
-	l = UCHAR(table[UCHAR(l ^ *s++)]);
+	l = table[UCHAR(l ^ *s++)];
 	--len;
     }
-    return (UCHAR(h << 8) | UCHAR(l)) % size;
+    return ((unsigned short) ((UCHAR(h) << 8) | UCHAR(l))) % size;
 }
 
 /*
