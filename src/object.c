@@ -1362,10 +1362,11 @@ void o_conv()
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
 		d_conv_dataspace(o, counts);
-		o_clean();
+		o_clean_upgrades();
 		d_swapout(1);
 	    }
 	}
+	o_clean();
 
 	/*
 	 * last pass over all objects:
