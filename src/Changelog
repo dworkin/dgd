@@ -1388,3 +1388,6 @@ DGD 1.1
  - Removed some global variable dependencies from swapping and exporting.
  - Make sure that there is room for a new object when compiling.
  - Callouts were not properly committed to planes above the base plane, either.
+ - Made the number of swap sectors to be reconstructed in the main loop
+   configurable.
+ - Exported arrays could be committed to the wrong plane.

@@ -542,8 +542,6 @@ typedef struct {
 
 static char dh_layout[] = "idddd";
 
-# define CHUNKSZ	32
-
 /*
  * NAME:	swap->copy()
  * DESCRIPTION:	copy sectors from dumpfile to swapfile
@@ -554,7 +552,7 @@ void sw_copy()
 	if (dsectors > 0) {
 	    register sector n;
 
-	    n = CHUNKSZ;
+	    n = SWAPCHUNKSZ;
 	    if (n > dsectors) {
 		n = dsectors;
 	    }

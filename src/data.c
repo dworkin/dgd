@@ -1972,7 +1972,7 @@ Int level;
 		/* remove old array refs */
 		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
 		    if (a->arr != (array *) NULL) {
-			if (a->arr->primary->arr == (array *) NULL) {
+			if (a->arr->primary == &p->alocal) {
 			    a->arr->primary = &p->prev->alocal;
 			}
 			arr_del(a->arr);

@@ -29,6 +29,7 @@ typedef char eindex;
 # define OBJHASHSZ	256	/* # characters in object names to hash */
 # define COPATCHHTABSZ	64	/* callout patch hash table size */
 # define OBJPATCHHTABSZ	128	/* object patch hash table size */
+# define SWAPCHUNKSZ	32	/* # swap sectors reconstructed in main loop */
 
 
 /* interpreter */
