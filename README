@@ -1,37 +1,23 @@
-   This is release 1.0.a7 of DGD.  Many things have changed since the
-previous release.  A summary of mudlib-affecting changes:
- - When used from the auto object, call_other(), clone_object() and
-   find_object() will no longer invoke driver->path_object() to
-   translate the path.
- - The first argument has been removed in calls to driver->path_ed_read(),
-   driver->path_ed_write() and driver->path_object(), since it was always
-   the same as previous_object().
- - Dumping state is now done with dump_state(), rather than swapout(1)
-   or shutdown(1).
- - The predefined macro __VERSION__ has been removed; instead, the version
-   number has become a field in the array returned by status().
- - The fields of the array returned by status() (as well as the generated
-   include file status.h) have been reorganized.
- - intp(), stringp(), objectp(), arrayp() and mappingp() have been replaced
-   by a single kfun, typeof().
- - Callouts work differently: call_out() returns an integer value > 0,
-   which must be supplied as an argument to remove_call_out().  The kfun
-   find_call_out() has been removed.  status(obj) returns a list of callouts
-   for an object.
- - editor() now returns the output as a string, rather than calling
-   receive_message() in the editor object.
- - driver->connect() has been renamed to driver->telnet_connect().
-I've modified the 2.4.5 simulation so it works with 1.0.a7 (the 2.4.5
-simulation is not included in this distribution, but is also available at
-ftp.lysator.liu.se, directory /pub/lpmud/drivers/dgd).
+   This is release 1.0.8 of DGD.  Differences with the previous release:
 
-   Config file affecting changes:
- - port_number renamed to telnet_port.
- - Added binary_port.
- - Renamed swap_sector to sector_size.
- - Renamed swap_cache to cache_size.
+ - The 'a' (meaning alpha) from the version number has been removed, and
+   I decided to skip the beta stage.  DGD is stable.
+ - The dump file format has been changed.  It will change again, but I
+   guarantee that from now on, changes will be backward compatible.
+ - A cast between string, int and float values will attempt to convert
+   a string to a number and vice versa.  Important: (string) 0 now
+   results in "0".
+ - Some bugs were fixed and some code is better optimized.
+ - My email address has changed.
 
-   Also, a float type has been added, many bugs were fixed, and part of the
-compiler was rewritten (probably introducing some new bugs).
-   Some docs have been added or changed.  The conditions for commercial use
-are stated in doc/Commercial.
+   No changes are needed in the 2.4.5 simulation mudlib.
+
+   Once again, I didn't have the time to do all the things I wanted to do,
+but I decided to release this version because the dump file format is now
+fixed, and because my email address changed.  The following remains to be
+done for DGD:
+ - A general string parsing kfun.
+ - ANSI C math functions.
+ - Porting the driver to more platforms, especially PC and Mac.
+ - A small standard mudlib.
+ - Documentation of gamedriver internals and LPC programming language.
