@@ -1,10 +1,10 @@
 # include "comp.h"
 # include "hash.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "kfun.h"
 # include "fcontrol.h"
 # include "control.h"
@@ -77,6 +77,7 @@ static void oh_clear()
 
 typedef struct _vfh_ {		/* variable/function hash table */
     hte chain;			/* hash table chain */
+    string *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     unsigned short ct;		/* function call, or variable type */
     short index;		/* definition table index */
@@ -96,11 +97,11 @@ static int vfhchunksz = VFH_CHUNK;	/* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(name, ohash, ct, index, addr)
-char *name;
+static void vfh_new(str, ohash, ct, idx, addr)
+string *str;
 oh *ohash;
 unsigned short ct;
-short index;
+short idx;
 vfh **addr;
 {
     register vfh *h;
@@ -115,10 +116,11 @@ vfh **addr;
     }
     h = &vfhclist->vf[vfhchunksz++];
     h->chain.next = (hte *) *addr;
-    h->chain.name = name;
+    h->chain.name = str->text;
+    str_ref(h->str = str);
     h->ohash = ohash;
     h->ct = ct;
-    h->index = index;
+    h->index = idx;
     h->next = vfhlist;
     vfhlist = addr;
     *addr = h;
@@ -137,6 +139,7 @@ static void vfh_clear()
 	register vfh *f;
 
 	f = *h;
+	str_del(f->str);
 	*h = (vfh *) f->chain.next;
 	h = f->next;
     }
@@ -219,38 +222,26 @@ static void lab_clear()
 /*
  * NAME:	cmp_proto()
  * DESCRIPTION:	Compare two prototypes. Return TRUE if equal.
- *		Strict checking requires the number of arguments to be
- *		the same; otherwise the number of arguments in prot2 is
- *		allowed to be larger.
  */
-static bool cmp_proto(prot1, prot2, strict)
+static bool cmp_proto(prot1, prot2)
 register char *prot1, *prot2;
-bool strict;
 {
     register int i;
 
     /* check if either prototype is implicit */
-    if ((!(PROTO_NARGS(prot1) & C_TYPECHECKED) &&
-	 (PROTO_FTYPE(prot1) & (1 << REFSHIFT))) ||
-	(!(PROTO_NARGS(prot2) & C_TYPECHECKED) &&
-	 (PROTO_FTYPE(prot2) & (1 << REFSHIFT)))) {
+    if (PROTO_FTYPE(prot1) == T_IMPLICIT || PROTO_FTYPE(prot2) == T_IMPLICIT) {
 	return TRUE;
     }
 
     /* check if classes are equal */
-    i = UCHAR(~(C_TYPECHECKED | C_COMPILED | C_LOCAL | C_UNDEFINED));
-    if (!strict) {
-	i &= ~C_VARARGS;
-    }
-    if ((PROTO_CLASS(prot1) ^ PROTO_CLASS(prot2)) & i) {
+    if ((PROTO_CLASS(prot1) ^ PROTO_CLASS(prot2)) &
+	UCHAR(~(C_TYPECHECKED | C_COMPILED | C_LOCAL | C_UNDEFINED))) {
 	return FALSE;
     }
 
     /* check if the number of arguments is equal */
     if ((i=PROTO_NARGS(prot2)) != PROTO_NARGS(prot1)) {
-	if (strict && i > PROTO_NARGS(prot1)) {
-	    return FALSE;
-	}
+	return FALSE;
     }
 
     /* check if functions are both typechecked */
@@ -311,7 +302,7 @@ register control *ctrl;
 {
     register dvardef *v;
     register int n;
-    register char *name;
+    register string *str;
     register vfh **h;
 
     v = d_get_vardefs(ctrl);
@@ -321,14 +312,14 @@ register control *ctrl;
 	 * same name hasn't been inherited already.
 	 */
 	if (!(v->class & C_PRIVATE)) {
-	    name = d_get_strconst(ctrl, v->inherit, v->index)->text;
-	    h = (vfh **) ht_lookup(vtab, name);
+	    str = d_get_strconst(ctrl, v->inherit, v->index);
+	    h = (vfh **) ht_lookup(vtab, str->text);
 	    if (*h == (vfh *) NULL) {
 		/* new variable */
-		vfh_new(name, ohash, v->type, n, h);
+		vfh_new(str, ohash, v->type, n, h);
 	    } else {
 		/* duplicate variable */
-		yyerror("multiple inheritance of variable %s", name);
+		yyerror("multiple inheritance of variable %s", str->text);
 	    }
 	}
 	v++;
@@ -341,22 +332,22 @@ register control *ctrl;
  * DESCRIPTION:	put a function definition from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdef(ctrl, index, ohash)
+static void ctrl_funcdef(ctrl, idx, ohash)
 register control *ctrl;
-register int index;
+register int idx;
 oh *ohash;
 {
     register vfh **h;
     register dfuncdef *f;
     object *o;
-    char *name;
+    string *str;
 
-    f = &ctrl->funcdefs[index];
-    name = d_get_strconst(ctrl, f->inherit, f->index)->text;
-    h = (vfh **) ht_lookup(ftab, name);
+    f = &ctrl->funcdefs[idx];
+    str = d_get_strconst(ctrl, f->inherit, f->index);
+    h = (vfh **) ht_lookup(ftab, str->text);
     if (*h == (vfh *) NULL) {
 	/* new function (-1: no calls to it yet) */
-	vfh_new(name, ohash, -1, index, h);
+	vfh_new(str, ohash, -1, idx, h);
 	if (!(f->class & C_STATIC) || ctrl->nvirtuals != 1) {
 	    /* don't count static functions from the auto object */
 	    nsymbs++;
@@ -386,17 +377,17 @@ oh *ohash;
 		prot1 = ctrl->prog + f->offset;
 		prot2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
 		if (!((f->class | PROTO_CLASS(prot2)) & C_UNDEFINED) ||
-		    !cmp_proto(prot1, prot2, TRUE)) {
+		    !cmp_proto(prot1, prot2)) {
 		    /*
 		     * prototype conflict
 		     */
-		    yyerror("multiple inheritance of function %s", name);
+		    yyerror("multiple inheritance of function %s", str->text);
 		} else if (!(f->class & C_UNDEFINED)) {
 		    /*
 		     * replace undefined function
 		     */
 		    (*h)->ohash = ohash;
-		    (*h)->index = index;
+		    (*h)->index = idx;
 		}
 		break;
 	    }
@@ -412,7 +403,7 @@ oh *ohash;
 		    nsymbs++;
 		}
 		(*h)->ohash = ohash;
-		(*h)->index = index;
+		(*h)->index = idx;
 		break;
 	    }
 	    inh++;
@@ -607,6 +598,8 @@ typedef struct _cfunc_ {
     unsigned short progsize;		/* fuction program size */
 } cfunc;
 
+static char *name;			/* name of object compiled */
+static bool is_auto;			/* true if compiling the auto object */
 static control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *strlist;		/* list of string chunks */
@@ -623,13 +616,17 @@ static dvardef *variables;		/* defined variables */
  * NAME:	control->create()
  * DESCRIPTION:	make an initial control block
  */
-void ctrl_create()
+void ctrl_create(file)
+char *file;
 {
     register dinherit *new;
     register control *ctrl;
     register unsigned short n;
     register int i, count;
     lab *l;
+
+    name = file;
+    is_auto = (strcmp(file, auto_file) == 0);
 
     /*
      * create a new control block
@@ -780,7 +777,7 @@ char *proto;
 	     */
 	    proto2 = functions[(*h)->index].proto;
 	    if (!((PROTO_CLASS(proto) | PROTO_CLASS(proto2)) & C_UNDEFINED) ||
-		!cmp_proto(proto2, proto, TRUE)) {
+		!cmp_proto(proto2, proto)) {
 		/*
 		 * either both prototypes are from functions, or they are not
 		 * equal
@@ -791,11 +788,19 @@ char *proto;
 		 * replace empty prototype by function (assume this function is
 		 * called from ctrl_dfunc)
 		 */
+		progsize -= PROTO_SIZE(proto2);
 		FREE(proto2);
+		if (is_auto &&
+		    (PROTO_CLASS(proto) & (C_STATIC | C_PRIVATE)) == C_STATIC) {
+		    /* static function in auto object replaces prototype */
+		    PROTO_CLASS(proto) |= C_LOCAL;
+		    --nsymbs;
+		}
 		i = PROTO_SIZE(proto);
 		functions[fdef = (*h)->index].proto =
 				    (char *) memcpy(ALLOC(char, i), proto, i);
 		functions[fdef].func.class = PROTO_CLASS(proto);
+		progsize += PROTO_SIZE(proto);
 	    }
 	    return;
 	}
@@ -810,19 +815,20 @@ char *proto;
 	     * attempt to redefine nomask function
 	     */
 	    yyerror("redeclaration of nomask function %s", str->text);
-	} else if (!(PROTO_CLASS(proto2) & C_LOCAL) &&
-		   !(PROTO_CLASS(proto) & C_PRIVATE) &&
-		   !cmp_proto(proto2, proto, FALSE)) {
+	} else if (!(PROTO_CLASS(proto2) & C_LOCAL) &&		/* !autofunc */
+		   !(PROTO_CLASS(proto) & C_PRIVATE) &&		/* !private */
+		   PROTO_FTYPE(proto2) != T_IMPLICIT &&		/* !implicit */
+		   PROTO_FTYPE(proto) != PROTO_FTYPE(proto2)) {
 	    /*
 	     * Calls from the inherited object to the old function will
-	     * be redirected to the new one; it is allowed to add extra
-	     * parameters to the function, but the other ones must match.
+	     * be redirected to this new one; everything may be changed
+	     * (because of runtime typechecking) but the return type.
 	     */
 	    yyerror("invalid redeclaration of function %s", str->text);
 	}
 
-	if (!(PROTO_CLASS(proto) & C_PRIVATE) &&
-	    (PROTO_CLASS(proto2) & C_STATIC) && ctrl->nvirtuals == 1) {
+	if (!(PROTO_CLASS(proto) & C_PRIVATE) && ctrl->nvirtuals == 1 &&
+	    (PROTO_CLASS(proto2) & (C_STATIC | C_UNDEFINED)) == C_STATIC) {
 	    /*
 	     * replace static function in auto object by non-private function
 	     */
@@ -831,12 +837,15 @@ char *proto;
 	/*
 	 * insert the definition before the old one in the hash table
 	 */
-    } else if (!(PROTO_CLASS(proto) & C_PRIVATE) &&
-	       (!(PROTO_CLASS(proto) & C_STATIC) || newctrl->nvirtuals != 1)) {
+    } else if (!(PROTO_CLASS(proto) & C_PRIVATE) && (!is_auto ||
+	        (PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
 	/*
 	 * add new prototype to symbol table
 	 */
 	nsymbs++;
+    } else {
+	/* won't hurt for private functions */
+	PROTO_CLASS(proto) |= C_LOCAL;
     }
 
     if (nfdefs == 256) {
@@ -847,12 +856,7 @@ char *proto;
     /*
      * Handle actual definition.
      */
-    vfh_new(strcpy(ALLOC(char, strlen(str->text) + 1), str->text),
-	    newohash, -1, nfdefs, h);
-    if (newctrl->nvirtuals == 1 && (PROTO_CLASS(proto) & C_STATIC)) {
-	/* static function in auto object */
-	PROTO_CLASS(proto) |= C_LOCAL;
-    }
+    vfh_new(str, newohash, -1, nfdefs, h);
     i = PROTO_SIZE(proto);
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].progsize = 0;
@@ -915,7 +919,7 @@ unsigned short class, type;
     }
 
     /* actually define the variable */
-    vfh_new(str->text, newohash, type, nvars, h);
+    vfh_new(str, newohash, type, nvars, h);
     var = &variables[nvars++];
     var->class = class;
     var->type = type;
@@ -1018,7 +1022,7 @@ bool typechecking;
 
     h = *(vfh **) ht_lookup(ftab, str->text);
     if (h == (vfh *) NULL) {
-	static char uproto[] = { C_UNDEFINED, T_MIXED | (1 << REFSHIFT), 0 };
+	static char uproto[] = { C_UNDEFINED, T_IMPLICIT, 0 };
 	register short kf;
 
 	/*
@@ -1029,11 +1033,6 @@ bool typechecking;
 	    /* kfun call */
 	    *call = (KFCALL << 24L) | kf;
 	    return kftab[kf].proto;
-	}
-	if (typechecking) {
-	    /* there should have been a prototype */
-	    yyerror("undefined function %s", str->text);
-	    return (char *) NULL;
 	}
 
 	/* created an undefined prototype for the function */
@@ -1057,6 +1056,12 @@ bool typechecking;
 	 */
 	ctrl = h->ohash->obj->ctrl;
 	proto = ctrl->prog + ctrl->funcdefs[h->index].offset;
+    }
+
+    if (typechecking && PROTO_FTYPE(proto) == T_IMPLICIT) {
+	/* don't allow calls to implicit prototypes when typechecking */
+	yyerror("undefined function %s", str->text);
+	return (char *) NULL;
     }
 
     if (PROTO_CLASS(proto) & C_LOCAL) {
@@ -1223,8 +1228,6 @@ static void ctrl_mkfcalls()
 	    {
 		ctrl2 = ctrl->inherits[UCHAR(ofc[0])].obj->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
-		h = *(vfh **) ht_lookup(ftab, d_get_strconst(ctrl2, f->inherit,
-							     f->index)->text);
 		if (f->class & C_LOCAL) {
 		    /*
 		     * keep old call
@@ -1232,7 +1235,11 @@ static void ctrl_mkfcalls()
 		    *fc++ = (ofc[0] == 0) ? 0 : ofc[0] + i;
 		    *fc++ = ofc[1];
 		} else {
-		    if (functions[h->index].func.class & C_PRIVATE) {
+		    h = *(vfh **) ht_lookup(ftab,
+					    d_get_strconst(ctrl2, f->inherit,
+							   f->index)->text);
+		    if (h->ohash->index == nvirtuals &&
+			(functions[h->index].func.class & C_PRIVATE)) {
 			/*
 			 * private redefinition of (guaranteed non-private)
 			 * inherited function
@@ -1298,11 +1305,12 @@ static void ctrl_mksymbs()
 		register vfh *h;
 		register char *name;
 
-		name = d_get_strconst(ctrl, f->inherit, f->index)->text;
 		if ((f->class & C_PRIVATE) ||
-		    ((f->class & C_STATIC) && ctrl->nvirtuals == 1)) {
+		    ((f->class & C_STATIC) && ctrl->nvirtuals == 1 &&
+		      (is_auto || (ctrl->inherits[0].obj->flags & O_AUTO)))) {
 		    continue;
 		}
+		name = d_get_strconst(ctrl, f->inherit, f->index)->text;
 		h = *(vfh **) ht_lookup(ftab, name);
 		if (h->ohash->index == nvirtuals &&
 		    (functions[h->index].func.class & C_PRIVATE)) {
@@ -1403,8 +1411,7 @@ char *func;
  * DESCRIPTION:	construct and return a control block for the object just
  *		compiled
  */
-control *ctrl_construct(name)
-char *name;
+control *ctrl_construct()
 {
     register control *ctrl;
     register int i;
