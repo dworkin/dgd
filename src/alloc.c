@@ -299,18 +299,18 @@ chunk *c;
 		    l->right = n; n->parent = l;
 		    l = n;
 		    n = t;
-		    continue;
-		}
-		/* rotate */
-		if ((n->right=t->left) != (spnode *) NULL) {
-		    t->left->parent = n;
-		}
-		t->left = n; n->parent = t;
-		l->right = t; t->parent = l;
-		l = t;
-		if ((n=t->right) == (spnode *) NULL) {
-		    r->left = (spnode *) NULL;
-		    break;	/* finished */
+		} else {
+		    /* rotate */
+		    if ((n->right=t->left) != (spnode *) NULL) {
+			t->left->parent = n;
+		    }
+		    t->left = n; n->parent = t;
+		    l->right = t; t->parent = l;
+		    l = t;
+		    if ((n=t->right) == (spnode *) NULL) {
+			r->left = (spnode *) NULL;
+			break;	/* finished */
+		    }
 		}
 	    } else {
 		if ((t=n->left) == (spnode *) NULL) {
@@ -322,18 +322,18 @@ chunk *c;
 		    r->left = n; n->parent = r;
 		    r = n;
 		    n = t;
-		    continue;
-		}
-		/* rotate */
-		if ((n->left=t->right) != (spnode *) NULL) {
-		    t->right->parent = n;
-		}
-		t->right = n; n->parent = t;
-		r->left = t; t->parent = r;
-		r = t;
-		if ((n=t->left) == (spnode *) NULL) {
-		    l->right = (spnode *) NULL;
-		    break;	/* finished */
+		} else {
+		    /* rotate */
+		    if ((n->left=t->right) != (spnode *) NULL) {
+			t->right->parent = n;
+		    }
+		    t->right = n; n->parent = t;
+		    r->left = t; t->parent = r;
+		    r = t;
+		    if ((n=t->left) == (spnode *) NULL) {
+			l->right = (spnode *) NULL;
+			break;	/* finished */
+		    }
 		}
 	    }
 	}
@@ -383,27 +383,27 @@ register long size;
 		    l->right = n; n->parent = l;
 		    l = n;
 		    n = t;
-		    continue;
-		}
-		/* rotate */
-		if ((n->right=t->left) != (spnode *) NULL) {
-		    t->left->parent = n;
-		}
-		t->left = n; n->parent = t;
-		l->right = t; t->parent = l;
-		l = t;
-		if ((n=t->right) == (spnode *) NULL) {
-		    if (r == &dummy) {
-			/* all chunks are too small */
-			dtree = dummy.right;
-			dtree->parent = (spnode *) NULL;
-			return (chunk *) NULL;
+		} else {
+		    /* rotate */
+		    if ((n->right=t->left) != (spnode *) NULL) {
+			t->left->parent = n;
 		    }
-		    if ((r->parent->left=r->right) != (spnode *) NULL) {
-			r->right->parent = r->parent;
+		    t->left = n; n->parent = t;
+		    l->right = t; t->parent = l;
+		    l = t;
+		    if ((n=t->right) == (spnode *) NULL) {
+			if (r == &dummy) {
+			    /* all chunks are too small */
+			    dtree = dummy.right;
+			    dtree->parent = (spnode *) NULL;
+			    return (chunk *) NULL;
+			}
+			if ((r->parent->left=r->right) != (spnode *) NULL) {
+			    r->right->parent = r->parent;
+			}
+			n = r;
+			break;	/* finished */
 		    }
-		    n = r;
-		    break;	/* finished */
 		}
 	    } else {
 		if ((t=n->left) == (spnode *) NULL) {
@@ -417,22 +417,22 @@ register long size;
 		    r->left = n; n->parent = r;
 		    r = n;
 		    n = t;
-		    continue;
+		} else {
+		    /* rotate */
+		    if ((n->left=t->right) != (spnode *) NULL) {
+			t->right->parent = n;
+		    }
+		    if (t->left == (spnode *) NULL) {
+			r->left = n; n->parent = r;
+			l->right = (spnode *) NULL;
+			n = t;
+			break;	/* finished */
+		    }
+		    t->right = n; n->parent = t;
+		    r->left = t; t->parent = r;
+		    r = t;
+		    n = t->left;
 		}
-		/* rotate */
-		if ((n->left=t->right) != (spnode *) NULL) {
-		    t->right->parent = n;
-		}
-		if (t->left == (spnode *) NULL) {
-		    r->left = n; n->parent = r;
-		    l->right = (spnode *) NULL;
-		    n = t;
-		    break;	/* finished */
-		}
-		t->right = n; n->parent = t;
-		r->left = t; t->parent = r;
-		r = t;
-		n = t->left;
 	    }
 	}
 
