@@ -76,10 +76,8 @@ static void open(mixed *tls)
 	return;
     }
 
-    if (!user) {
-	if (timeout != 0) {
-	    call_out("timeout", timeout);
-	}
+    if (!user && timeout != 0) {
+	call_out("timeout", timeout);
     }
 }
 

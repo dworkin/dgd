@@ -616,11 +616,17 @@ static mixed *status(varargs mixed obj)
 
 /*
  * NAME:	this_user()
- * DESCRIPTION:	return the user object and not the connection object
+ * DESCRIPTION:	return the user object and not a connection object
  */
 static object this_user()
 {
-    return (::this_user()) ? ::this_user()->query_user() : nil;
+    object user;
+
+    user = ::this_user();
+    while (user && function_object("query_user", user) == LIB_CONN) {
+	user = user->query_user();
+    }
+    return user;
 }
 
 /*

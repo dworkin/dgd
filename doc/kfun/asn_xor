@@ -6,10 +6,8 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Compute the bit-wise logical xor of a and b.
-
-ERRORS
-	An error will result unless the arguments are of equal length.
+	Compute the bit-wise logical xor of a and b (sign extended).  The
+	result will be as long as the longest argument.
 
 SEE ALSO
 	kfun/asn_and, kfun/asn_lshift, kfun/asn_or, kfun/asn_rshift

@@ -190,7 +190,7 @@ Uint *c, a, b;
 /*
  * NAME:	asi->mult()
  * DESCRIPTION:	c = a * b (sizea - sizeb <= 1)
- *		sizeof(t) = sizea + sizeb + 3
+ *		sizeof(t) = (sizea + sizeb) << 1
  */
 static void asi_mult(c, t, a, b, sizea1, sizeb1)
 register Uint *c, *t, *a, *b, sizea1, sizeb1;
@@ -210,77 +210,78 @@ register Uint *c, *t, *a, *b, sizea1, sizeb1;
 	register Uint sizeab0, sizet2, sizet3, *t2;
 	bool minus;
 
+	t2 = t + ((sizea1 + sizeb1) << 1);
 	sizeab0 = sizea1 >> 1;
 	sizea1 -= sizeab0;
 	sizeb1 -= sizeab0;
 
-	/* t2 = a0 - a1, t3 = b1 - b0 */
-	t2 = t + sizea1 + sizeb1 + 1;
+	/* c0 = a0 - a1, c1 = b1 - b0 */
 	if (asi_cmp(a + sizeab0, a, sizea1, sizeab0) <= 0) {
 	    /* a0 - a1 */
 	    sizet2 = sizeab0;
-	    memcpy(t2, a, sizet2 * sizeof(Uint));
-	    asi_sub(t2, a + sizeab0, sizet2, sizet2);
+	    memcpy(c, a, sizet2 * sizeof(Uint));
+	    asi_sub(c, a + sizeab0, sizet2, sizet2);
 	    minus = FALSE;
 	} else {
 	    /* -(a1 - a0) */
 	    sizet2 = sizea1;
-	    memcpy(t2, a + sizeab0, sizet2 * sizeof(Uint));
-	    asi_sub(t2, a, sizet2, sizeab0);
+	    memcpy(c, a + sizeab0, sizet2 * sizeof(Uint));
+	    asi_sub(c, a, sizet2, sizeab0);
 	    minus = TRUE;
 	}
 	if (sizeab0 <= sizeb1) {
 	     if (asi_cmp(b + sizeab0, b, sizeb1, sizeab0) >= 0) {
 		/* b1 - b0 */
 		sizet3 = sizeb1;
-		memcpy(t2 + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
-		asi_sub(t2 + sizet2, b, sizet3, sizeab0);
+		memcpy(c + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
+		asi_sub(c + sizet2, b, sizet3, sizeab0);
 	    } else {
 		/* -(b0 - b1) */
 		sizet3 = sizeab0;
-		memcpy(t2 + sizet2, b, sizet3 * sizeof(Uint));
-		asi_sub(t2 + sizet2, b + sizeab0, sizet3, sizet3);
+		memcpy(c + sizet2, b, sizet3 * sizeof(Uint));
+		asi_sub(c + sizet2, b + sizeab0, sizet3, sizet3);
 		minus ^= TRUE;
 	    }
 	} else if (asi_cmp(b, b + sizeab0, sizeab0, sizeb1) <= 0) {
 	    /* b1 - b0 */
 	    sizet3 = sizeb1;
-	    memcpy(t2 + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
-	    asi_sub(t2 + sizet2, b, sizet3, sizet3);
+	    memcpy(c + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
+	    asi_sub(c + sizet2, b, sizet3, sizet3);
 	} else {
 	    /* -(b0 - b1) */
 	    sizet3 = sizeab0;
-	    memcpy(t2 + sizet2, b, sizet3 * sizeof(Uint));
-	    asi_sub(t2 + sizet2, b + sizeab0, sizet3, sizeb1);
+	    memcpy(c + sizet2, b, sizet3 * sizeof(Uint));
+	    asi_sub(c + sizet2, b + sizeab0, sizet3, sizeb1);
 	    minus ^= TRUE;
 	}
 
-	/* t1:t0 = t2 * t3 */
+	/* t3:t2 = c0 * c1 */
+	t2 -= sizet2 + sizet3;
 	if (sizet2 >= sizet3) {
-	    asi_mult(t, c, t2, t2 + sizet2, sizet2, sizet3);
+	    asi_mult(t2, t, c, c + sizet2, sizet2, sizet3);
 	} else {
-	    asi_mult(t, c, t2 + sizet2, t2, sizet3, sizet2);
+	    asi_mult(t2, t, c + sizet2, t2, sizet3, sizet2);
 	}
 
 	/* c1:c0 = a0 * b0, c3:c2 = a1 * b1 */
-	asi_mult(c, t2, a, b, sizeab0, sizeab0);
-	asi_mult(c + (sizeab0 << 1), t2, a + sizeab0, b + sizeab0, sizea1,
+	asi_mult(c, t, a, b, sizeab0, sizeab0);
+	asi_mult(c + (sizeab0 << 1), t, a + sizeab0, b + sizeab0, sizea1,
 		 sizeb1);
 
-	/* t3:t2 = c3:c2 + c1:c0 + t1:t0 */
+	/* t1:t0 = c3:c2 + c1:c0 + t3:t2 */
 	sizea1 += sizeb1;
-	memcpy(t2, c + (sizeab0 << 1), sizea1 * sizeof(Uint));
-	t2[sizea1] = 0;
+	memcpy(t, c + (sizeab0 << 1), sizea1 * sizeof(Uint));
+	t[sizea1] = 0;
 	sizeb1 = sizea1 + 1;
-	asi_add(t2, c, sizeb1, sizeab0 << 1);
+	asi_add(t, c, sizeb1, sizeab0 << 1);
 	if (minus) {
-	    asi_sub(t2, t, sizeb1, sizet2 + sizet3);
+	    asi_sub(t, t2, sizeb1, sizet2 + sizet3);
 	} else {
-	    asi_add(t2, t, sizeb1, sizet2 + sizet3);
+	    asi_add(t, t2, sizeb1, sizet2 + sizet3);
 	}
 
-	/* c3:c2:c1 += t3:t2 */
-	asi_add(c + sizeab0, t2, sizeab0 + sizea1, sizeb1);
+	/* c3:c2:c1 += t1:t0 */
+	asi_add(c + sizeab0, t, sizeab0 + sizea1, sizeb1);
     }
 }
 
@@ -342,7 +343,7 @@ Uint *b, a;
 /*
  * NAME:	asi->sqr()
  * DESCRIPTION:	b = a * a
- *		sizeof(t) = (sizea + 1) << 1
+ *		sizeof(t) = sizea << 2
  */
 static void asi_sqr(b, t, a, sizea1)
 register Uint *b, *t, *a, sizea1;
@@ -352,39 +353,40 @@ register Uint *b, *t, *a, sizea1;
     } else {
 	register Uint sizea0, sizet2, *t2;
 
+	t2 = t + (sizea1 << 2);
 	sizea0 = sizea1 >> 1;
 	sizea1 -= sizea0;
 
-	/* t2 = a0 - a1 */
-	t2 = t + (sizea1 << 1);
+	/* b0 = a0 - a1 */
 	if (asi_cmp(a + sizea0, a, sizea1, sizea0) <= 0) {
 	    /* a0 - a1 */
 	    sizet2 = sizea0;
-	    memcpy(t2, a, sizet2 * sizeof(Uint));
-	    asi_sub(t2, a + sizea0, sizet2, sizet2);
+	    memcpy(b, a, sizet2 * sizeof(Uint));
+	    asi_sub(b, a + sizea0, sizet2, sizet2);
 	} else {
 	    /* -(a1 - a0) */
 	    sizet2 = sizea1;
-	    memcpy(t2, a + sizea0, sizet2 * sizeof(Uint));
-	    asi_sub(t2, a, sizet2, sizea0);
+	    memcpy(b, a + sizea0, sizet2 * sizeof(Uint));
+	    asi_sub(b, a, sizet2, sizea0);
 	}
 
-	/* t1:t0 = t2 * t2 */
-	asi_sqr(t, b, t2, sizet2);
+	/* t3:t2 = b0 * b0 */
+	t2 -= sizet2 << 1;
+	asi_sqr(t2, t, b, sizet2);
 
 	/* b1:b0 = a0 * a0, b3:b2 = a1 * a1 */
-	asi_sqr(b, t2, a, sizea0);
-	asi_sqr(b + (sizea0 << 1), t2, a + sizea0, sizea1);
+	asi_sqr(b, t, a, sizea0);
+	asi_sqr(b + (sizea0 << 1), t, a + sizea0, sizea1);
 
-	/* t3:t2 = b3:b2 + b1:b0 - t1:t0 */
+	/* t1:t0 = b3:b2 + b1:b0 - t3:t2 */
 	sizea1 <<= 1;
-	memcpy(t2, b + (sizea0 << 1), sizea1 * sizeof(Uint));
-	t2[sizea1] = 0;
-	asi_add(t2, b, sizea1 + 1, sizea0 << 1);
-	asi_sub(t2, t, sizea1 + 1, sizet2 << 1);
+	memcpy(t, b + (sizea0 << 1), sizea1 * sizeof(Uint));
+	t[sizea1] = 0;
+	asi_add(t, b, sizea1 + 1, sizea0 << 1);
+	asi_sub(t, t2, sizea1 + 1, sizet2 << 1);
 
-	/* b3:b2:b1 += t3:t2 */
-	asi_add(b + sizea0, t2, sizea0 + sizea1, sizea1 + 1);
+	/* b3:b2:b1 += t1:t0 */
+	asi_add(b + sizea0, t, sizea0 + sizea1, sizea1 + 1);
     }
 }
 
@@ -951,7 +953,7 @@ string *s1, *s2, *s3;
 
     sizec = sizea + sizeb;
     cc = c = ALLOCA(Uint, sizec);
-    t1 = ALLOCA(Uint, (sizec << 1) + 3);
+    t1 = ALLOCA(Uint, (sizec << 1) + sizec);
     t2 = t1 + sizec;
     memset(c, '\0', sizec * sizeof(Uint));
     while (sizea != sizeb) {
@@ -1089,7 +1091,6 @@ string *s1, *s2;
     asi_strtonum(b, s2, &sizeb, &minusb);
     if (minusb || (sizeb == 1 && b[0] == 0)) {
 	AFREE(b);
-	AFREE(mod);
 	error("Invalid modulus");
     }
     a = ALLOCA(Uint, (s1->len >> 2) + 2);
@@ -1103,7 +1104,6 @@ string *s1, *s2;
 	    AFREE(c);
 	    AFREE(a);
 	    AFREE(b);
-	    AFREE(mod);
 	    error("Out of ticks");
 	}
 	asi_div(c, t, a, b, sizea, sizeb);
@@ -1230,7 +1230,7 @@ Uint *c, *sizec, *a, *b, sizea, sizeb;
 		sizea1 = sizeb;
 	    }
 	    if (asi_add(a1, b, sizea1, sizeb)) {
-		b[sizea1++] = 1;
+		a1[sizea1++] = 1;
 	    }
 	    if (sizeb1 < sizea) {
 		sizeb1 = sizea;
@@ -1285,7 +1285,7 @@ Uint *c, *sizec, *a, *b, sizea, sizeb;
 	sizeb1 = sizeb;
 	memcpy(b1, b, sizeb1 * sizeof(Uint));
 	asi_sub(b1, a1, sizeb1, sizea1);
-	while (c[sizeb1 - 1] == 0) {
+	while (b1[sizeb1 - 1] == 0) {
 	    if (--sizeb1 == 0) {
 		sizeb1++;
 		break;
@@ -1702,7 +1702,7 @@ string *s1, *s2, *s3;
     }
 
     c = ALLOCA(Uint, sizemod);
-    t = ALLOCA(Uint, (sizemod + 2) << 1);
+    t = ALLOCA(Uint, sizemod << 2);
     if (minusb) {
 	/* a ** -b = (a ** -1) ** b */
 	if (asn_ticks(f, sizea * (sizemod + 10))) {
@@ -1778,8 +1778,8 @@ Int shift;
 	 */
 	size = (s1->len >> 2) + 4 + sizemod;
 	a = ALLOCA(Uint, size);
-	if (size < (sizemod + 2) << 1) {
-	    size = (sizemod + 2) << 1;
+	if (size < sizemod << 2) {
+	    size = sizemod << 2;
 	}
 	t = ALLOCA(Uint, size);
 	b = ALLOCA(Uint, sizemod);
@@ -1855,19 +1855,38 @@ frame *f;
 string *s1, *s2;
 {
     register char *p, *q, *r;
-    register ssizet i;
+    register ssizet i, j;
     string *str;
 
-    if (s1->len != s2->len) {
-	error("Unequal size arguments");
+    if (s1->len < s2->len) {
+	i = s1->len;
+	j = s2->len - i;
+	q = s1->text;
+	r = s2->text;
+    } else {
+	i = s2->len;
+	j = s1->len - i;
+	q = s2->text;
+	r = s1->text;
     }
-    i_add_ticks(f, 4 + (s1->len >> 4));
-    str = str_new((char *) NULL, (long) s1->len);
+    i_add_ticks(f, 4 + ((i + j) >> 4));
+    str = str_new((char *) NULL, (long) i + j);
     p = str->text;
-    q = s1->text;
-    r = s2->text;
-    for (i = str->len; i != 0; --i) {
+    if (q[0] & 0x80) {
+	while (j != 0) {
+	    *p++ = *r++;
+	    --j;
+	}
+    } else {
+	r += j;
+	while (j != 0) {
+	    *p++ = '\0';
+	    --j;
+	}
+    }
+    while (i != 0) {
 	*p++ = *q++ & *r++;
+	--i;
     }
 
     return str;
@@ -1882,19 +1901,38 @@ frame *f;
 string *s1, *s2;
 {
     register char *p, *q, *r;
-    register ssizet i;
+    register ssizet i, j;
     string *str;
 
-    if (s1->len != s2->len) {
-	error("Unequal size arguments");
+    if (s1->len < s2->len) {
+	i = s1->len;
+	j = s2->len - i;
+	q = s1->text;
+	r = s2->text;
+    } else {
+	i = s2->len;
+	j = s1->len - i;
+	q = s2->text;
+	r = s1->text;
     }
-    i_add_ticks(f, 4 + (s1->len >> 4));
-    str = str_new((char *) NULL, (long) s1->len);
+    i_add_ticks(f, 4 + ((i + j) >> 4));
+    str = str_new((char *) NULL, (long) i + j);
     p = str->text;
-    q = s1->text;
-    r = s2->text;
-    for (i = str->len; i != 0; --i) {
+    if (q[0] & 0x80) {
+	r += j;
+	while (j != 0) {
+	    *p++ = '\xff';
+	    --j;
+	}
+    } else {
+	while (j != 0) {
+	    *p++ = *r++;
+	    --j;
+	}
+    }
+    while (i != 0) {
 	*p++ = *q++ | *r++;
+	--i;
     }
 
     return str;
@@ -1909,19 +1947,37 @@ frame *f;
 string *s1, *s2;
 {
     register char *p, *q, *r;
-    register ssizet i;
+    register ssizet i, j;
     string *str;
-
-    if (s1->len != s2->len) {
-	error("Unequal size arguments");
+ 
+    if (s1->len < s2->len) {
+	i = s1->len;
+	j = s2->len - i;
+	q = s1->text;
+	r = s2->text;
+    } else {
+	i = s2->len;
+	j = s1->len - i;
+	q = s2->text;
+	r = s1->text;
     }
-    i_add_ticks(f, 4 + (s1->len >> 4));
-    str = str_new((char *) NULL, (long) s1->len);
+    i_add_ticks(f, 4 + ((i + j) >> 4));
+    str = str_new((char *) NULL, (long) i + j);
     p = str->text;
-    q = s1->text;
-    r = s2->text;
-    for (i = str->len; i != 0; --i) {
+    if (q[0] & 0x80) {
+	while (j != 0) {
+	    *p++ = ~*r++;
+	    --j;
+	}
+    } else {
+	while (j != 0) {
+	    *p++ = *r++;
+	    --j;
+	}
+    }
+    while (i != 0) {
 	*p++ = *q++ ^ *r++;
+	--i;
     }
 
     return str;

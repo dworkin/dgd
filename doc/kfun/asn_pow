@@ -15,7 +15,7 @@ DESCRIPTION
 
 ERRORS
 	An error will result if the modulus is less than or equal to zero, or
-	is b is negative and no inverse modulo m exists.
+	if b is negative and no inverse modulo m exists.
 
 SEE ALSO
 	kfun/asn_add, kfun/asn_div, kfun/asn_mod, kfun/asn_mult, kfun/asn_sub

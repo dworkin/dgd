@@ -794,7 +794,7 @@ static void runtime_error(string str, int caught, int ticks)
     mixed **trace, tls;
     string line, function, progname, objname;
     int i, sz, len;
-    object obj;
+    object user;
 
     trace = call_trace();
     tls = trace[1][TRACE_FIRSTARG];
@@ -877,8 +877,14 @@ static void runtime_error(string str, int caught, int ticks)
 	}
 
 	message(str);
-	if (caught == 0 && this_user() && (obj=this_user()->query_user())) {
-	    obj->message(str);
+	if (caught == 0) {
+	    user = this_user();
+	    while (user && function_object("query_user", user) == LIB_CONN) {
+		user = user->query_user();
+	    }
+	    if (user) {
+		user->message(str);
+	    }
 	}
     }
 }
