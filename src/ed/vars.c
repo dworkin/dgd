@@ -12,9 +12,9 @@
 vars *va_new()
 {
     static vars dflt[] = {
-	"ignorecase",	"ic",	FALSE,
-	"shiftwidth",	"sw",	4,
-	"window",	"wi",	20,
+	{ "ignorecase",	"ic",	FALSE },
+	{ "shiftwidth",	"sw",	4 },
+	{ "window",	"wi",	20 },
     };
     register vars *v;
 
