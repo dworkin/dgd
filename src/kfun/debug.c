@@ -566,7 +566,7 @@ char p_dump_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1,
 
 int kf_dump_object()
 {
-    showctrl(o_control(o_object(&sp->u.object)));
+    showctrl(o_control(o_object(sp->oindex, sp->u.objcnt)));
     return 0;
 }
 # endif
@@ -582,11 +582,12 @@ int kf_dump_function()
 {
     dsymbol *symb;
 
-    symb = ctrl_symb(o_control(o_object(&sp[1].u.object)), sp->u.string->text);
+    symb = ctrl_symb(o_control(o_object(sp[1].oindex, sp[1].u.objcnt)),
+		     sp->u.string->text);
     if (symb != (dsymbol *) NULL) {
 	control *ctrl;
 
-	ctrl = o_control(o_object(&sp[1].u.object));
+	ctrl = o_control(o_object(sp[1].oindex, sp[1].u.objcnt));
 	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
 	       UCHAR(symb->index));
     }
