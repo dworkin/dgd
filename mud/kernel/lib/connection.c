@@ -1,5 +1,8 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
+# ifdef SYS_NETWORKING
+#  include <kernel/net.h>
+# endif
 
 private object userd;		/* user daemon */
 private object user;		/* user object */
@@ -30,13 +33,19 @@ static open(mixed *tls)
 	destruct_object(this_object());
 	return;
     }
-    if (timeout != 0) {
-	call_out("timeout", timeout);
-    }
 
-    banner = call_other(userd, "query_" + conntype + "_banner");
-    if (banner) {
-	send_message(banner);
+    if (user) {
+	/* user object already set */
+	user->login();
+    } else {
+	if (timeout != 0) {
+	    call_out("timeout", timeout);
+	}
+
+	banner = call_other(userd, "query_" + conntype + "_banner");
+	if (banner) {
+	    send_message(banner);
+	}
     }
 }
 
@@ -93,7 +102,9 @@ int change_user(object obj, string str)
 {
     if (previous_program() == LIB_USER) {
 	user = obj;
-	return obj->login(str);
+	if (str) {
+	    return obj->login(str);
+	}
     }
 }
 
@@ -163,19 +174,32 @@ int message(string str)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static void message_done(mixed *tls)
+static message_done(mixed *tls)
 {
     if (user) {
 	user->message_done();
     }
 }
 
+# ifdef SYS_NETWORKING
+/*
+ * NAME:	set_user()
+ * DESCRIPTION:	directly set the user from the port object
+ */
+set_user(object obj)
+{
+    if (previous_program() == LIB_PORT) {
+	user = obj;
+    }
+}
+# endif
+
 # ifdef SYS_DATAGRAMS
 /*
  * NAME:	receive_datagram()
  * DESCRIPTION:	forward a datagram to the user
  */
-static void receive_datagram(mixed *tls, string str)
+static receive_datagram(mixed *tls, string str)
 {
     if (user) {
 	user->receive_datagram(str);

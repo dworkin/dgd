@@ -1,8 +1,7 @@
 # include <kernel/kernel.h>
-# include <kernel/user.h>
+# include <kernel/net.h>
 
-object userd;		/* user manager object */
-string porttype;	/* telnet or binary */
+inherit LIB_PORT;
 
 /*
  * NAME:	create()
@@ -11,7 +10,7 @@ string porttype;	/* telnet or binary */
 static create(int clone)
 {
     if (clone) {
-	userd = find_object(USERD);
+	::create();
     }
 }
 
@@ -22,33 +21,18 @@ static create(int clone)
 listen(string protocol, int port)
 {
     if (previous_program() == DRIVER) {
-	porttype = (protocol == "tcp") ? "binary" : "telnet";
-	catch {
-	    open_port(protocol, port);
-	} : {
+	if (!open_port(protocol, port)) {
 	    previous_object()->message("open_port(" + protocol + ", " + port +
 				       ") failed!\n");
-	    shutdown();
 	}
     }
 }
 
 /*
- * NAME:	connection()
- * DESCRIPTION:	return an appropriate connection object
+ * NAME:	open_connection()
+ * DESCRIPTION:	don't return a user object, select it by first line of input
  */
-static object connection()
+static object open_connection()
 {
-    return call_other(userd, porttype + "_connection");
-}
-
-/*
- * NAME:	close_port()
- * DESCRIPTION:	close this port
- */
-close_port()
-{
-    if (SYSTEM()) {
-	destruct_object(this_object());
-    }
+    return 0;
 }

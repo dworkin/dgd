@@ -677,7 +677,6 @@ nomask varargs _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
-	mixed *tls;
 
 	if (!suspended &&
 	    !::find_object(RSRCD)->suspended(this_object(), owner)) {
@@ -1326,7 +1325,7 @@ static open_port(string protocol, int port)
 {
     CHECKARG(protocol, 1, "open_port");
 
-    if (creator == "System" && this_object()) {
+    if (KERNEL() && this_object()) {
 	::open_port(protocol, port);
     }
 }
