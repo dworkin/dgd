@@ -9,6 +9,7 @@
 
 # define CIRCBUF_SIZE	64		/* circular buffer size, power of 2 */
 # define CIRCBUF_MASK	(CIRCBUF_SIZE - 1) /* circular buffer mask */
+# define SWPERIOD	60		/* swaprate buffer size */
 
 typedef struct {
     uindex handle;	/* call_out handle */
@@ -30,17 +31,21 @@ static uindex cotabsz;			/* call_out table size */
 static uindex queuebrk;			/* queue brk */
 static uindex circbrk;			/* circular buffer brk */
 static uindex flist;			/* free list index */
-static uindex ncallouts;		/* current # of call_outs */
 static cbuf circbuf[CIRCBUF_SIZE];	/* circular buffer of call_out lists */
 static time_t timestamp;		/* circbuf start time */
 static time_t timeout;			/* time the alarm came */
+static int fragment;			/* swap fragment */
+static uindex swapped[SWPERIOD];	/* swapped objects per second */
+static int swapcnt;			/* index in swapped buffer */
+static unsigned long swaprate;		/* swaprate */
 
 /*
  * NAME:	call_out->init()
  * DESCRIPTION:	initialize call_out handling
  */
-void co_init(max)
-int max;
+void co_init(max, frag)
+uindex max;
+int frag;
 {
     if (max != 0) {
 	cotab = ALLOC(call_out, max + 1);
@@ -53,7 +58,8 @@ int max;
     }
     circbrk = cotabsz = max;
     queuebrk = 0;
-    ncallouts = 0;
+
+    fragment = frag;
 }
 
 /*
@@ -95,7 +101,7 @@ register unsigned int i;
 
     l = cotab - 1;
     i++;
-    t = l[queuebrk--].u.time;
+    t = l[queuebrk].u.time;
     if (t < l[i].u.time) {
 	/* sift upward */
 	for (j = i >> 1; l[j].u.time > t; i = j, j >>= 1) {
@@ -103,7 +109,7 @@ register unsigned int i;
 	}
     } else {
 	/* sift downward */
-	for (j = i << 1; j <= queuebrk; i = j, j <<= 1) {
+	for (j = i << 1; j < queuebrk; i = j, j <<= 1) {
 	    if (l[j].u.time > l[j + 1].u.time) {
 		j++;
 	    }
@@ -114,7 +120,7 @@ register unsigned int i;
 	}
     }
     /* put into place */
-    l[i] = l[queuebrk + 1];
+    l[i] = l[queuebrk--];
 }
 
 /*
@@ -125,13 +131,11 @@ static uindex newcallout(t)
 time_t t;
 {
     register uindex i;
-    register call_out *l;
 
     if (flist != 0) {
 	/* get call_out from free list */
 	i = flist;
-	l = &cotab[i];
-	flist = l->u.next;
+	flist = cotab[i].u.next;
     } else {
 	/* allocate new call_out */
 	if (circbrk == queuebrk || circbrk == 1) {
@@ -188,11 +192,10 @@ register uindex i;
  * NAME:	call_out->new()
  * DESCRIPTION:	add a new call_out
  */
-bool co_new(obj, str, delay, args, nargs)
+bool co_new(obj, str, delay, nargs)
 object *obj;
 string *str;
 long delay;
-value *args;
 int nargs;
 {
     time_t t;
@@ -232,9 +235,8 @@ int nargs;
 	co = &cotab[i];
 	co->u.time = t;
     }
-    ncallouts++;
 
-    co->handle = d_new_call_out(o_dataspace(obj), str, (unsigned long) t, args,
+    co->handle = d_new_call_out(o_dataspace(obj), str, (unsigned long) t, 
 				nargs);
     co->oindex = obj->index;
     co->objcnt = obj->count;
@@ -250,7 +252,7 @@ long co_del(obj, str)
 object *obj;
 string *str;
 {
-    register uindex handle, i, j, k, idx;
+    register uindex handle, i, j, k;
     register call_out *l;
     register cbuf *circ;
     time_t t, t2;
@@ -271,13 +273,10 @@ string *str;
     /*
      * get the call_out
      */
-    d_get_call_out(obj->data, handle, sp, &nargs);
+    d_get_call_out(obj->data, handle, &nargs);
     if (nargs > 0) {
-	sp -= nargs;
 	i_pop(nargs);
     }
-    --ncallouts;
-    idx = obj->index;
 
     /*
      * Try to find the call_out in the circular buffer
@@ -290,7 +289,7 @@ string *str;
 	     * this time-slot is in use
 	     */
 	    k = circ->list;
-	    if (l[k].oindex == idx && l[k].handle == handle) {
+	    if (l[k].objcnt == obj->count && l[k].handle == handle) {
 		/* first element in list */
 		circ->list = l[k].u.next;
 		freecallout(k);
@@ -305,7 +304,7 @@ string *str;
 		j = circ->list;
 		k = l[j].u.next;
 		do {
-		    if (l[k].oindex == idx && l[k].handle == handle) {
+		    if (l[k].objcnt == obj->count && l[k].handle == handle) {
 			/* found it */
 			if (k == circ->last) {
 			    /* last element of the list */
@@ -329,7 +328,7 @@ string *str;
      * Not found in the circular buffer; it <must> be in the queue.
      */
     for (;;) {
-	if (l->oindex == idx && l->handle == handle) {
+	if (l->objcnt == obj->count && l->handle == handle) {
 	    t = l->u.time;
 	    dequeue(l - cotab);
 	    t2 = _time();
@@ -390,23 +389,54 @@ void co_call()
 		 * set the alarm for the next round
 		 */
 		timeout = 0;
-		comm_flush();
+		comm_flush(FALSE);
+
+
+		if (fragment > 0) {
+		    uindex swaps;
+
+		    /*
+		     * swap out a fragment of all control and data blocks
+		     */
+		    swaps = d_swapout(fragment);
+		    swaprate = swaprate - swapped[swapcnt] + swaps;
+		    swapped[swapcnt++] = swaps;
+		    if (swapcnt == SWPERIOD) {
+			swapcnt = 0;
+		    }
+		}
 
 		_alarm(1);
 		return;
 	    }
 
-	    --ncallouts;
 	    if (obj == (object *) NULL) {
 		/* object destructed */
 		continue;
 	    }
 
-	    func = d_get_call_out(o_dataspace(obj), handle, sp, &nargs);
-	    sp -= nargs;
+	    func = d_get_call_out(o_dataspace(obj), handle, &nargs);
 	    if (i_call(obj, func, TRUE, nargs)) {
 		i_del_value(sp++);
 	    }
 	}
     }
+}
+
+/*
+ * NAME:	co_count
+ * DESCRIPTION:	return the number of call_outs
+ */
+uindex co_count()
+{
+    return queuebrk + cotabsz - circbrk;
+}
+
+/*
+ * NAME:	co_swaprate
+ * DESCRIPTION:	return the number of objects swapped out per minute
+ */
+long co_swaprate()
+{
+    return swaprate;
 }

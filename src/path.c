@@ -126,17 +126,18 @@ char *file;
     object *obj;
 
     obj = i_this_object();
-    if (obj->count == 0) {
-	/* from destructed object */
-	return (char *) NULL;
-    }
     if (obj->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
 	i_check_stack(2);
-	(--sp)->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	if (obj->count == 0) {
+	    (--sp)->type = T_NUMBER;
+	    sp->u.number = 0;
+	} else {
+	    (--sp)->type = T_OBJECT;
+	    sp->oindex = obj->index;
+	    sp->u.objcnt = obj->count;
+	}
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
 	call_driver_object("path_object", 2);

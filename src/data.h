@@ -32,8 +32,7 @@ typedef struct _control_ {
     uindex nsectors;		/* o # of sectors */
     sector *sectors;		/* o vector with sectors */
 
-    char ninherits;		/* i/o # inherited objects */
-    char nvirtuals;		/* i/o # virtually inherited objects */
+    short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
 
     char *prog;			/* i program text */
@@ -64,20 +63,9 @@ typedef struct _control_ {
     long symboffset;		/* o offset of symbol table */
 
     unsigned short nvariables;	/* i/o # variables */
+
+    uindex ndata;		/* # of data blocks using this control block */
 } control;
-
-typedef struct _strref_ {
-    string *string;		/* string value */
-    struct _dataspace_ *data;	/* dataspace this string is in */
-    uindex ref;			/* # of refs */
-} strref;
-
-typedef struct _arrref_ {
-    array *array;		/* array value */
-    struct _dataspace_ *data;	/* dataspace this array is in */
-    long index;			/* selts index */
-    uindex ref;			/* # of refs */
-} arrref;
 
 typedef struct _dataspace_ {
     struct _dataspace_ *prev, *next;
@@ -99,31 +87,30 @@ typedef struct _dataspace_ {
 
     uindex narrays;		/* i/o # arrays */
     long eltsize;		/* o total size of array elements */
-    arrref *arrays;		/* i/o? arrays */
+    struct _arrref_ *arrays;	/* i/o? arrays */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
     long arroffset;		/* o offset of array table in data space */
 
     uindex nstrings;		/* i/o # string constants */
     long strsize;		/* o total size of string text */
-    strref *strings;		/* i/o? string constant table */
+    struct _strref_ *strings;	/* i/o? string constant table */
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     long stroffset;		/* o offset of string table */
 
-    uindex ncallouts;		/* o # callouts */
+    uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
-    long cosize;		/* total size of callouts */
-    struct _dcallout_ *callouts;/* o callouts */
-    struct _scallout_ *scallouts;/* o scallouts */
+    struct _dcallout_ *callouts;/* callouts */
     long cooffset;		/* offset of callout table */
 } dataspace;
 
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
-
 extern control	       *d_load_control	P((sector));
 extern dataspace       *d_load_dataspace P((object*, sector));
+extern void		d_ref_control	P((control*));
+extern void		d_ref_dataspace	P((dataspace*));
 
 extern char	       *d_get_prog	P((control*));
 extern string	       *d_get_strconst	P((control*, char, unsigned short));
@@ -142,11 +129,11 @@ extern void		d_assign_elt	P((array*, struct _value_*,
 extern void		d_change_map	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, unsigned long,
-					   struct _value_*, int));
+					   int));
 extern uindex		d_find_call_out	P((dataspace*, string*));
-extern char	       *d_get_call_out	P((dataspace*, uindex, struct _value_*,
-					   int*));
+extern char	       *d_get_call_out	P((dataspace*, uindex, int*));
+extern uindex		d_ncallouts	P((dataspace*));
 
-extern void		d_clean		P((void));
+extern uindex		d_swapout	P((int));
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));

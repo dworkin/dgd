@@ -21,13 +21,13 @@ static int size;		/* current size of the dumped line */
  * DESCRIPTION:	output a number
  */
 static void dump(n)
-unsigned short n;
+int n;
 {
     if (size == 16) {
 	putchar('\n');
 	size = 0;
     }
-    printf("%u, ", n);
+    printf("%d, ", n);
     size++;
 }
 
@@ -40,7 +40,7 @@ register char *p;
 register unsigned int n;
 {
     while (n > 0) {
-	dump(UCHAR(*p++));
+	dump(*p++);
 	--n;
     }
 }
@@ -172,7 +172,7 @@ register control *ctrl;
 {
     register unsigned short foffset;
 
-    foffset = ctrl->inherits[ctrl->nvirtuals - 1].funcoffset;
+    foffset = ctrl->inherits[ctrl->ninherits - 1].funcoffset;
     if (ctrl->nfuncalls != foffset) {
 	printf("\nstatic char funcalls[] = {\n");
 	dump_chars(ctrl->funcalls + (foffset << 1),
@@ -214,7 +214,7 @@ char *argv[];
     if (len > 2 && file[len - 2] == '.' && file[len - 1] == 'c') {
 	file[len -= 2] = '\0';
     }
-    sprintf(tag, "T%03x%04x", hashstr(file, len, 0x1000),
+    sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
 	    (unsigned short) random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
@@ -244,8 +244,7 @@ char *argv[];
     dump_vardefs(ctrl);
     dump_funcalls(ctrl);
 
-    printf("\nprecomp %s = {\n%d, %d, inherits,\n", tag,
-	   UCHAR(ctrl->ninherits), UCHAR(ctrl->nvirtuals));
+    printf("\nprecomp %s = {\n%d, inherits,\n", tag, ctrl->ninherits);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
     } else {
@@ -271,7 +270,7 @@ char *argv[];
     } else {
 	printf("%u, vardefs,\n", ctrl->nvardefs);
     }
-    nfuncs = ctrl->nfuncalls - ctrl->inherits[ctrl->nvirtuals - 1].funcoffset;
+    nfuncs = ctrl->nfuncalls - ctrl->inherits[ctrl->ninherits - 1].funcoffset;
     if (nfuncs == 0) {
 	printf("0, 0\n");
     } else {
@@ -303,12 +302,11 @@ int narg;
 }
 
 /*
- * NAME:	this_user()
- * DESCRIPTION:	pretend to return the current user object
+ * NAME:	swapout()
+ * DESCRIPTION:	pretend to indicate that objects are to be swapped out
  */
-object *this_user()
+void swapout()
 {
-    return (object *) NULL;
 }
 
 pcfunc *pcfunctions;	/* dummy */
@@ -423,7 +421,8 @@ bool echo;
  * NAME:	comm->flush()
  * DESCRIPTION:	pretend to flush output to all users
  */
-void comm_flush()
+void comm_flush(flag)
+bool flag;
 {
 }
 
@@ -444,6 +443,15 @@ object *obj;
 void comm_close(obj)
 object *obj;
 {
+}
+
+/*
+ * NAME:	comm->user()
+ * DESCRIPTION:	pretend to return the current user
+ */
+object *comm_user()
+{
+    return (object *) NULL;
 }
 
 /*
@@ -507,8 +515,9 @@ object *obj;
  * NAME:	call_out->init()
  * DESCRIPTION:	pretend to initialize call_out handling
  */
-void co_init(max)
-int max;
+void co_init(max, frag)
+uindex max;
+int frag;
 {
 }
 
@@ -516,11 +525,10 @@ int max;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new call_out
  */
-bool co_new(obj, str, delay, args, nargs)
+bool co_new(obj, str, delay, nargs)
 object *obj;
 string *str;
 long delay;
-value *args;
 int nargs;
 {
     return FALSE;
@@ -543,4 +551,22 @@ string *str;
  */
 void co_call()
 {
+}
+
+/*
+ * NAME:	call_out->count()
+ * DESCRIPTION:	pretend to return the number of call_outs
+ */
+uindex co_count()
+{
+    return 0;
+}
+
+/*
+ * NAME:	call_out->swaprate()
+ * DESCRIPTION:	pretend to return the number of objects swapped out per minute
+ */
+long co_swaprate()
+{
+    return 0;
 }
