@@ -3,8 +3,8 @@
 #
 HOST=	ATARI_ST
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=$(CCFLAGS)
 LIBS=
@@ -16,12 +16,15 @@ DMAKE=	make
 
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
-a.out:	$(OBJ) lex.o
+a.out:	$(OBJ) always
 	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
 	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			     sub
 	$(LD) $(LDFLAGS) $(OBJ) lex.o `cat ../lex.sub` `cat ../host/sub` $(LIBS)
 	fixstk 64K $@
+
+always:
+	@rm -f a.out
 
 debug:	a.out
 	$(SYMLD) $(LDFLAGS) $(OBJ) lex.o `cat ../lex.sub` `cat ../host/sub` \

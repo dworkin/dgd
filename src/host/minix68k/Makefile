@@ -3,7 +3,7 @@
 #
 HOST=	MINIX_68K
 DEFINES=-D$(HOST)
-DEBUG=	-DDEBUG
+DEBUG=
 CCFLAGS=-O $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	cc
@@ -11,8 +11,8 @@ CC=	cc
 SRC=	local.c lrand.c path.c rename.c dirent.c time.c alarm.c connect.c \
 	xfloat.c
 OBJ=	local.o lrand.o path.o rename.o dirent.o time.o alarm.o connect.o \
-	xfloat.o crypt.o
-SUBOBJ=	local.o lrand.o path.o rename.o dirent.o time.o xfloat.o crypt.o
+	crypt.o xfloat.o
+SUBOBJ=	local.o lrand.o path.o rename.o dirent.o time.o crypt.o xfloat.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd

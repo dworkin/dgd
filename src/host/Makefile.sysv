@@ -3,14 +3,15 @@
 #
 HOST=	GENERIC_SYSV
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc
 
 SRC=	local.c lrand48.c path.c dirent.c time.c alarm.c connect.c xfloat.c
-OBJ=	local.o lrand48.o path.o dirent.o time.o alarm.o connect.o xfloat.o
-SUBOBJ=	local.o lrand48.o path.o dirent.o time.o xfloat.o
+OBJ=	local.o lrand48.o path.o dirent.o time.o alarm.o connect.o crypt.o \
+	xfloat.o
+SUBOBJ=	local.o lrand48.o path.o dirent.o time.o crypt.o xfloat.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd

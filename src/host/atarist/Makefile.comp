@@ -3,8 +3,8 @@
 #
 HOST=	ATARI_ST
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
 LDFLAGS=$(CCFLAGS)
 LIBS=
@@ -20,7 +20,7 @@ OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o \
 DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
-a.out:	$(COMPOBJ)
+a.out:	$(COMPOBJ) always
 	cd ..; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
 	cd ../lex; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
@@ -29,6 +29,9 @@ a.out:	$(COMPOBJ)
 	$(LD) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` `cat ../lex/comp` \
 	      `cat ../kfun/comp` `cat ../host/sub` $(LIBS)
 	fixstk 64K $@
+
+always:
+	@rm -f a.out
 
 debug:	a.out
 	$(SYMLD) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` `cat ../lex/comp` \
