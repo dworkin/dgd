@@ -12,6 +12,7 @@ DESCRIPTION
 	negative to offset backwards from the end of the file.
 	To write a string to the beginning of a file, let the offset be
 	equal to minus the length of the file.
+	The return value is 1 for success, 0 for failure.
 
 SEE ALSO
 	kfun/editor, kfun/read_file

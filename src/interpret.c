@@ -1901,28 +1901,40 @@ register frame *f;
 	}
 
 	switch (instr & I_INSTR_MASK) {
+	case I_INDEX_LVALUE:
+	    if (instr & I_TYPE_BIT) {
+		pc++;
+	    }
+	    /* fall through */
 	case I_PUSH_ZERO:
 	case I_PUSH_ONE:
 	case I_INDEX:
-	case I_INDEX_LVALUE:
 	case I_FETCH:
 	case I_STORE:
 	case I_RETURN:
 	    break;
 
+	case I_PUSH_LOCAL_LVALUE:
+	    if (instr & I_TYPE_BIT) {
+		pc++;
+	    }
+	    /* fall through */
 	case I_PUSH_INT1:
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
-	case I_PUSH_LOCAL_LVALUE:
 	case I_SPREAD:
 	case I_CAST:
 	case I_RLIMITS:
 	    pc++;
 	    break;
 
+	case I_PUSH_GLOBAL_LVALUE:
+	    if (instr & I_TYPE_BIT) {
+		pc++;
+	    }
+	    /* fall through */
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_GLOBAL:
-	case I_PUSH_GLOBAL_LVALUE:
 	case I_AGGREGATE:
 	case I_MAP_AGGREGATE:
 	case I_JUMP:
