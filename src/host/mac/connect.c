@@ -1,3 +1,8 @@
+# include <Files.h>
+# include <Folders.h>
+# include <Errors.h>
+# include <Resources.h>
+# include <Memory.h>
 # include <Devices.h>
 # include <MacTCP.h>
 # include <OSUtils.h>
@@ -8,6 +13,400 @@
 # include "data.h"
 # include "comm.h"
 
+# define OPENRESOLVER	1L
+# define CLOSERESOLVER	2L
+# define ADDRTONAME	6L
+
+# define NUM_ALT_ADDRS	4
+
+struct hostInfo {
+    int rtnCode;			/* call return code */
+    char cname[255];			/* host name */
+    unsigned long addr[NUM_ALT_ADDRS];	/* addresses */
+};
+typedef pascal void (*ResultProcPtr)(struct hostInfo *host, char *data);
+typedef OSErr (*dnrfunc)(long, ...);
+
+static Handle code;	/* DNR code resource */
+static dnrfunc dnr;	/* DNR function pointer */
+
+/*
+ * NAME:	findcdev()
+ * DESCRIPTION:	find TCP/IP control panel with the given creator
+ */
+static short findcdev(long creator, short vref, long dirid)
+{
+    HFileInfo buf;
+    Str255 str;
+    short rsrc;
+
+    buf.ioNamePtr = str;
+    buf.ioVRefNum = vref;
+    buf.ioDirID = dirid;
+    buf.ioFDirIndex = 1;
+
+    while (PBGetCatInfoSync((CInfoPBPtr) &buf) == noErr) {
+	if (buf.ioFlFndrInfo.fdType == 'cdev' &&
+	    buf.ioFlFndrInfo.fdCreator == creator) {
+	    rsrc = HOpenResFile(vref, dirid, str, fsRdPerm);
+	    if (GetIndResource('dnrp', 1) == NULL) {
+		CloseResFile(rsrc);	/* failed */
+	    } else {
+		return rsrc;	/* found TCP/IP cdev */
+	    }
+	}
+	buf.ioFDirIndex++;
+	buf.ioDirID = dirid;
+    }
+
+    return -1;
+}
+
+/*
+ * NAME:	opendnrp()
+ * DESCRIPTION:	open the 'dnrp' resource in the TCP/IP control panel
+ */
+static short opendnrp(void)
+{
+    short rsrc;
+    short vref;
+    long dirid;
+
+    /* search for MacTCP 1.1, 2.0.x */
+    FindFolder(kOnSystemDisk, kControlPanelFolderType, kDontCreateFolder,
+	       &vref, &dirid);
+    rsrc = findcdev('ztcp', vref, dirid);
+    if (rsrc >= 0) {
+	return rsrc;
+    }
+
+    /* search for MacTCP 1.0.x */
+    FindFolder(kOnSystemDisk, kSystemFolderType, kDontCreateFolder,
+	       &vref, &dirid);
+    rsrc = findcdev('mtcp', vref, dirid);
+    if (rsrc >= 0) {
+	return rsrc;
+    }
+
+    /* search for MacTCP 1.0.x */
+    FindFolder(kOnSystemDisk, kControlPanelFolderType, kDontCreateFolder,
+	       &vref, &dirid);
+    rsrc = findcdev('mtcp', vref, dirid);
+    if (rsrc >= 0) {
+	return rsrc;
+    }
+
+    return -1;	/* not found */
+}
+
+/*
+ * NAME:	OpenResolver()
+ * DESCRIPTION:	MacTCP: open DNR
+ */
+static OSErr OpenResolver(char *filename)
+{
+    short rsrc;
+    OSErr result;
+
+    if (dnr != NULL) {
+	return noErr;	/* already open */
+    }
+
+    /* open 'dnrp' resource in TCP/IP control panel */
+    rsrc = opendnrp();
+    code = GetIndResource('dnrp', 1);
+    if (code == NULL) {
+	return ResError();	/* failed; rsrc < 0 */
+    }
+    DetachResource(code);
+    if (rsrc >= 0) {
+	CloseResFile(rsrc);
+    }
+    HLock(code);
+    dnr = (dnrfunc) *code;
+
+    /* initialize DNR */
+    result = (*dnr)(OPENRESOLVER, filename);
+    if (result != noErr) {
+	/* init failed, unload DNR */
+	HUnlock(code);
+	DisposeHandle(code);
+	dnr = NULL;
+    }
+    return result;
+}
+
+/*
+ * NAME:	CloseResolver()
+ * DESCRIPTION:	MacTCP: close DNR
+ */
+static OSErr CloseResolver(void)
+{
+    if (dnr == NULL) {
+	return notOpenErr;
+    }
+
+    /* close & unload */
+    (*dnr)(CLOSERESOLVER);
+    dnr = NULL;
+    HUnlock(code);
+    DisposeHandle(code);
+
+    return noErr;
+}
+
+/*
+ * NAME:	AddrToName()
+ * DESCRIPTION:	MacTCP: gethostbyaddr()
+ */
+static OSErr AddrToName(unsigned long addr, struct hostInfo *host,
+			ResultProcPtr report, char *data)
+{
+    if (dnr == NULL) {
+	return notOpenErr;
+    }
+
+    return (*dnr)(ADDRTONAME, addr, host, report, data);
+}
+
+
+# define MAXHOSTNAMELEN	256
+# define NFREE		32
+
+typedef struct _ipaddr_ {
+    struct _ipaddr_ *link;		/* next in hash table */
+    struct _ipaddr_ *prev;		/* previous in linked list */
+    struct _ipaddr_ *next;		/* next in linked list */
+    Uint ref;				/* reference count */
+    unsigned long ipnum;		/* ip number */
+    char name[MAXHOSTNAMELEN];		/* ip name */
+} ipaddr;
+
+static ipaddr **ipahtab;		/* ip address hash table */
+static unsigned int ipahtabsz;		/* hash table size */
+static ipaddr *qhead, *qtail;		/* request queue */
+static ipaddr *ffirst, *flast;		/* free list */
+static int nfree;			/* # in free list */
+static ipaddr *lastreq;			/* last request */
+static struct hostInfo host;		/* host name etc. */
+static bool lookup, busy;		/* name resolver activity */
+
+/*
+ * NAME:	ipaddr->report()
+ * DESCRIPTION:	DNR reporting back
+ */
+static pascal void ipa_report(struct hostInfo *host, char *busy)
+{
+    *busy = FALSE;
+}
+
+/*
+ * NAME:	ipaddr->init()
+ * DESCRIPTION:	initialize name lookup
+ */
+static bool ipa_init(int maxusers)
+{
+    if (OpenResolver(NULL) != noErr) {
+	return FALSE;
+    }
+
+    ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
+    memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
+    qhead = qtail = ffirst = flast = lastreq = (ipaddr *) NULL;
+    nfree = 0;
+    lookup = busy = FALSE;
+
+    return TRUE;
+}
+
+/*
+ * NAME:	ipaddr->finish()
+ * DESCRIPTION:	stop name lookup
+ */
+static void ipa_finish(void)
+{
+    CloseResolver();
+}
+
+/*
+ * NAME:	ipaddr->new()
+ * DESCRIPTION:	return a new ipaddr
+ */
+static ipaddr *ipa_new(unsigned long ipnum)
+{
+    register ipaddr *ipa, **hash;
+
+    /* check hash table */
+    hash = &ipahtab[ipnum % ipahtabsz];
+    while (*hash != (ipaddr *) NULL) {
+	ipa = *hash;
+	if (ipnum == ipa->ipnum) {
+	    /*
+	     * found it
+	     */
+	    if (ipa->ref == 0) {
+		/* remove from free list */
+		if (ipa->prev == (ipaddr *) NULL) {
+		    ffirst = ipa->next;
+		} else {
+		    ipa->prev->next = ipa->next;
+		}
+		if (ipa->next == (ipaddr *) NULL) {
+		    flast = ipa->prev;
+		} else {
+		    ipa->next->prev = ipa->prev;
+		}
+		ipa->prev = ipa->next = (ipaddr *) NULL;
+		--nfree;
+	    }
+	    ipa->ref++;
+	    return ipa;
+	}
+	hash = &ipa->link;
+    }
+
+    if (nfree >= NFREE && ffirst != (ipaddr *) NULL) {
+	register ipaddr **h;
+
+	/*
+	 * use first ipaddr in free list
+	 */
+	ipa = ffirst;
+	ffirst = ipa->next;
+	if (ffirst == (ipaddr *) NULL) {
+	    flast = (ipaddr *) NULL;
+	}
+	--nfree;
+
+	/* remove from hash table */
+	for (h = &ipahtab[ipa->ipnum % ipahtabsz];
+	     *h != ipa;
+	     h = &(*h)->link) ;
+	*h = ipa->next;
+
+	if (ipa == lastreq) {
+	    lastreq = (ipaddr *) NULL;
+	}
+    } else {
+	/*
+	 * allocate new ipaddr
+	 */
+	m_static();
+	ipa = ALLOC(ipaddr, 1);
+	m_dynamic();
+    }
+
+    /* put in hash table */
+    ipa->link = *hash;
+    *hash = ipa;
+    ipa->ref++;
+    ipa->ipnum = ipnum;
+    ipa->name[0] = '\0';
+
+    if (!busy) {
+	/* send query to name resolver */
+	host.cname[0] = '\0';
+	lookup = busy = TRUE;
+	if (AddrToName(ipnum, &host, ipa_report, &busy) != cacheFault) {
+	    busy = FALSE;
+	}
+	ipa->prev = ipa->next = (ipaddr *) NULL;
+	lastreq = ipa;
+    } else {
+	/* put in request queue */
+	ipa->prev = qtail;
+	if (qtail == (ipaddr *) NULL) {
+	    qhead = ipa;
+	}
+	qtail = ipa;
+	ipa->next = (ipaddr *) NULL;
+    }
+
+    return ipa;
+}
+
+/*
+ * NAME:	ipaddr->del()
+ * DESCRIPTION:	delete an ipaddr
+ */
+static void ipa_del(ipaddr *ipa)
+{
+    if (--ipa->ref == 0) {
+	if (ipa->prev != (ipaddr *) NULL || qhead == ipa) {
+	    /* remove from queue */
+	    if (ipa->prev != (ipaddr *) NULL) {
+		ipa->prev->next = ipa->next;
+	    } else {
+		qhead = ipa->next;
+	    }
+	    if (ipa->next != (ipaddr *) NULL) {
+		ipa->next->prev = ipa->prev;
+	    } else {
+		qtail = ipa->prev;
+	    }
+	}
+
+	/* add to free list */
+	if (flast != (ipaddr *) NULL) {
+	    flast->next = ipa;
+	    ipa->prev = flast;
+	} else {
+	    ffirst = flast = ipa;
+	    ipa->prev = (ipaddr *) NULL;
+	}
+	ipa->next = (ipaddr *) NULL;
+	nfree++;
+    }
+}
+
+/*
+ * NAME:	ipaddr->lookup()
+ * DESCRIPTION:	lookup another ip name
+ */
+static void ipa_lookup()
+{
+    int i;
+    ipaddr *ipa;
+
+    lookup = FALSE;
+    if (lastreq != (ipaddr *) NULL) {
+	/* read ip name */
+	if (host.rtnCode == noErr) {
+	    i = strlen(host.cname) - 1;
+	    if (host.cname[i] == '.') {
+		host.cname[i] = '\0';
+	    }
+	    strcpy(lastreq->name, host.cname);
+	} else {
+	    lastreq->name[0] = '\0';
+	}
+	qhead = lastreq->next;
+	if (qhead == (ipaddr *) NULL) {
+	    qtail = (ipaddr *) NULL;
+	}
+    }
+
+    /* if request queue not empty, write new query */
+    if (qhead != (ipaddr *) NULL) {
+	ipa = qhead;
+	host.cname[0] = '\0';
+	lookup = busy = TRUE;
+	if (AddrToName(ipa->ipnum, &host, ipa_report, &busy) != cacheFault) {
+	    busy = FALSE;
+	}
+	qhead = ipa->next;
+	if (qhead == (ipaddr *) NULL) {
+	    qtail = (ipaddr *) NULL;
+	}
+	ipa->prev = ipa->next = (ipaddr *) NULL;
+	lastreq = ipa;
+    } else {
+	lastreq = (ipaddr *) NULL;
+	busy = FALSE;
+    }
+}
+
+
 
 # define TCPBUFSZ	8192
 
@@ -15,11 +414,15 @@ struct _connection_ {
     connection *next;			/* next in list */
     short qType;			/* queue type */
     connection *prev;			/* prev in list */
+    connection *hash;			/* next in hashed list */
     char dflag;				/* data arrival flag */
     char cflags;			/* closing/closed flags */
     char sflags;			/* status flags */
-    long addr;				/* internet address of connection */
+    ipaddr *addr;			/* internet address of connection */
+    unsigned short port;		/* port of connection */
     int ssize;				/* send size */
+    int bufsz;				/* UDP buffer size */
+    char *udpbuf;			/* UDP read buffer */
     TCPiopb iobuf;			/* I/O parameter buffer */
     struct wdsEntry wds[2];		/* WDS */
 };
@@ -39,9 +442,12 @@ static QHdr flist;			/* free connection queue */
 static QHdr telnet;			/* telnet accept queue */
 static QHdr binary;			/* binary accept queue */
 static int tcpbufsz;			/* TCP buffer size */
+static connection **udphtab;		/* UDP hash table */
+static int udphtabsz;			/* UDP hash table size */
 static unsigned int telnet_port;	/* telnet port number */
 static unsigned int binary_port;	/* binary port number */
-static short mactcp;			/* MacTCP driver handle */
+static UDPiopb udpbuf;			/* UDP I/O buffer */
+static bool udpdata;			/* UDP data ready */
 
 
 /*
@@ -107,10 +513,10 @@ static void conn_start(connection *conn, unsigned int port)
 }
 
 /*
- * NAME:	completion()
+ * NAME:	tcpcompletion()
  * DESCRIPTION:	conn start completion
  */
-static void completion(struct TCPiopb *iobuf)
+static void tcpcompletion(struct TCPiopb *iobuf)
 {
     connection *conn;
     QHdr *queue;
@@ -138,6 +544,15 @@ static void completion(struct TCPiopb *iobuf)
 }
 
 /*
+ * NAME:	udpcompletion()
+ * DESCRIPTION:	udp message received
+ */
+static void udpcompletion(struct UDPiopb *iobuf)
+{
+    udpdata = TRUE;
+}
+
+/*
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
@@ -145,7 +560,6 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 {
     IOParam device;
     GetAddrParamBlock addr;
-    UDPiopb iobuf;
     connection *conn;
 
     connlist = NULL;
@@ -163,24 +577,38 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	P_message("Config error: cannot initialize MacTCP\012"); /* LF */
 	return FALSE;
     }
-    mactcp = device.ioRefNum;
-    addr.ioCRefNum = mactcp;
+    if (!ipa_init(nusers)) {
+	P_message("Config error: cannot initialize DNR\012");	/* LF */
+	return FALSE;
+    }
+    addr.ioCRefNum = device.ioRefNum;
     addr.csCode = ipctlGetAddr;
     if (PBControlSync((ParmBlkPtr) &addr) != noErr) {
 	P_message("Config error: cannot get host address\012");	/* LF */
 	return FALSE;
     }
-    iobuf.ioCRefNum = mactcp;
-    iobuf.csCode = UDPMaxMTUSize;
-    iobuf.csParam.mtu.remoteHost = addr.ourAddress;
-    if (PBControlSync((ParmBlkPtr) &iobuf) != noErr) {
+    udpbuf.ioCRefNum = device.ioRefNum;
+    udpbuf.csCode = UDPMaxMTUSize;
+    udpbuf.csParam.mtu.remoteHost = addr.ourAddress;
+    if (PBControlSync((ParmBlkPtr) &udpbuf) != noErr) {
 	P_message("Config error: cannot get MTU size\012");	/* LF */
 	return FALSE;
     }
-    tcpbufsz = 4 * iobuf.csParam.mtu.mtuSize + 1024;
+    tcpbufsz = 4 * udpbuf.csParam.mtu.mtuSize + 1024;
     if (tcpbufsz < TCPBUFSZ) {
 	tcpbufsz = TCPBUFSZ;
     }
+    udpbuf.csCode = UDPCreate;
+    udpbuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, 32768);
+    udpbuf.csParam.create.rcvBuffLen = 32768;
+    udpbuf.csParam.create.notifyProc = NULL;
+    udpbuf.csParam.create.localPort = b_port;
+    if (PBControlSync((ParmBlkPtr) &udpbuf) != noErr) {
+	P_message("Config error: cannot open UDP port\012");	/* LF */
+	return FALSE;
+    }
+    udphtab = ALLOC(connection*, udphtabsz = nusers);
+    memset(udphtab, '\0', udphtabsz * sizeof(connection*));
 
     /* initialize TCP streams */
     if (nusers < 2) {
@@ -189,18 +617,18 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
     conn = ALLOC(connection, nusers);
     while (--nusers >= 0) {
 	/* open TCP stream */
-	conn->iobuf.ioCRefNum = mactcp;
+	conn->iobuf.ioCRefNum = device.ioRefNum;
 	conn->iobuf.csCode = TCPCreate;
 	conn->iobuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, tcpbufsz);
 	conn->iobuf.csParam.create.rcvBuffLen = tcpbufsz;
-	conn->iobuf.csParam.create.notifyProc = NewTCPNotifyProc(asr);
+	conn->iobuf.csParam.create.notifyProc = asr;
 	conn->iobuf.csParam.create.userDataPtr = (Ptr) conn;
 	if (PBControlSync((ParmBlkPtr) &conn->iobuf) != noErr) {
 	    /* failed (too many TCP streams?) */
 	    FREE(conn->iobuf.csParam.create.rcvBuff);
 	    break;
 	}
-	conn->iobuf.ioCompletion = NewTCPIOCompletionProc(completion);
+	conn->iobuf.ioCompletion = tcpcompletion;
 	conn->qType = 0;
 	Enqueue((QElemPtr) conn, &flist);
 	conn++;
@@ -235,11 +663,20 @@ static void conn_release(connection *conn)
  */
 void conn_finish(void)
 {
+    UDPiopb iobuf;
+
     /* remove all existing connections */
     conn_release(connlist);
     conn_release((connection *) telnet.qHead);
     conn_release((connection *) binary.qHead);
     conn_release((connection *) flist.qHead);
+
+    /* close UDP port */
+    iobuf = udpbuf;
+    iobuf.csCode = UDPRelease;
+    PBControlSync((ParmBlkPtr) &iobuf);
+
+    ipa_finish();
 }
 
 /*
@@ -264,6 +701,14 @@ void conn_listen(void)
     Enqueue((QElemPtr) bconn, &binary);
     binary.qFlags = TRUE;
     conn_start(bconn, binary_port);
+
+    /* start reading on UDP port */
+    udpdata = FALSE;
+    udpbuf.ioCompletion = udpcompletion;
+    udpbuf.csCode = UDPRead;
+    udpbuf.csParam.receive.timeOut = 0;
+    udpbuf.csParam.receive.secondTimeStamp = 0;
+    PBControlAsync((ParmBlkPtr) &udpbuf);
 }
 
 /*
@@ -285,10 +730,11 @@ static connection *conn_accept(QHdr *queue, unsigned int portno)
 	connlist = conn;
 
 	/* fully initialize connection struct */
-	DisposeRoutineDescriptor(conn->iobuf.ioCompletion);
 	conn->iobuf.ioCompletion = NULL;
-	conn->addr = conn->iobuf.csParam.open.remoteHost;
+	conn->addr = ipa_new(conn->iobuf.csParam.open.remoteHost);
+	conn->port = conn->iobuf.csParam.open.remotePort;
 	conn->ssize = 0;
+	conn->udpbuf = (char *) NULL;
 	conn->wds[0].length = 0;
 	m_static();
 	conn->wds[0].ptr = (Ptr) ALLOC(char, tcpbufsz);
@@ -317,6 +763,24 @@ connection *conn_tnew(void)
 connection *conn_bnew(void)
 {
     return conn_accept(&binary, binary_port);
+}
+
+/*
+ * NAME:        conn->udp()
+ * DESCRIPTION: enable the UDP channel of a binary connection
+ */
+void conn_udp(connection *conn)
+{
+    connection **hash;
+
+    m_static();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+    m_dynamic();
+    conn->bufsz = -1;
+
+    hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
+    conn->hash = *hash;
+    *hash = conn;
 }
 
 /*
@@ -369,6 +833,8 @@ static bool conn_flush(connection *conn)
  */
 void conn_del(connection *conn)
 {
+    connection **hash;
+
     conn->sflags |= TCP_CLOSE;
     if (!(conn->cflags & TCP_TERMINATED)) {
 	if (!conn_flush(conn)) {
@@ -395,7 +861,16 @@ void conn_del(connection *conn)
 
     /* prepare for new use */
     FREE(conn->wds[0].ptr);
-    conn->iobuf.ioCompletion = NewTCPIOCompletionProc(completion);
+    conn->iobuf.ioCompletion = tcpcompletion;
+    if (conn->udpbuf != (char *) NULL) {
+	FREE(conn->udpbuf);
+
+	for (hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
+	     *hash != conn;
+	     hash = &(*hash)->hash) ;
+	*hash = conn->hash;
+    }
+    ipa_del(conn->addr);
 
     /*
      * put in free list
@@ -449,17 +924,45 @@ int conn_select(int wait)
 {
     long ticks;
     bool stop;
-    connection *conn, *next;
+    connection *conn, *next, **hash;
 
     ticks = TickCount() + wait * 60;
     stop = FALSE;
     do {
 	getevent();
+	if (lookup && !busy) {
+	    ipa_lookup();
+	}
+	if (udpdata) {
+	    hash = &udphtab[(udpbuf.csParam.receive.remoteHost ^
+			     udpbuf.csParam.receive.remotePort) % udphtabsz];
+	    while (*hash != (connection *) NULL) {
+		if ((*hash)->addr->ipnum == udpbuf.csParam.receive.remoteHost &&
+		    (*hash)->port == udpbuf.csParam.receive.remotePort) {
+		    /*
+		     * copy to connection's buffer
+		     */
+		    memcpy((*hash)->udpbuf, udpbuf.csParam.receive.rcvBuff,
+			   (*hash)->bufsz = udpbuf.csParam.receive.rcvBuffLen);
+		    break;
+		}
+		hash = &(*hash)->hash;
+	    }
+	    /* else from unknown source: ignore */
+
+	    udpdata = FALSE;
+	    udpbuf.csCode = UDPBfrReturn;
+	    PBControlSync((ParmBlkPtr) &udpbuf);
+	    udpbuf.ioCompletion = udpcompletion;
+	    udpbuf.csCode = UDPRead;
+	    PBControlAsync((ParmBlkPtr) &udpbuf);
+	    stop = TRUE;
+	}
 
 	for (conn = connlist; conn != NULL; conn = next) {
 	    next = conn->next;
 	    if (conn->sflags & TCP_CLOSE) {
-	    	conn_del(conn);
+		conn_del(conn);
 	    } else {
 		conn_flush(conn);
 		if ((conn->dflag && !(conn->sflags & TCP_BLOCKED)) ||
@@ -526,6 +1029,25 @@ int conn_read(connection *conn, char *buf, unsigned int len)
 }
 
 /*
+ * NAME:        conn->udpread()
+ * DESCRIPTION: read a message from a UDP channel
+ */
+int conn_udpread(connection *conn, char *buf, unsigned int len)
+{
+    if (conn->bufsz >= 0) {
+	/* udp buffer is not empty */
+	if (conn->bufsz <= len) {
+	    memcpy(buf, conn->udpbuf, len = conn->bufsz);
+	} else {
+	    len = 0;
+	}
+	conn->bufsz = -1;
+	return len;
+    }
+    return -1;
+}
+
+/*
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
@@ -558,6 +1080,32 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 }
 
 /*
+ * NAME:        conn->udpwrite()
+ * DESCRIPTION: write a message to a UDP channel
+ */
+int conn_udpwrite(connection *conn, char *buf, unsigned int len)
+{
+    struct wdsEntry wds[2];
+    UDPiopb iobuf;
+
+    if (conn->cflags) {
+	return 0;
+    }
+    wds[0].ptr = (Ptr) buf;
+    wds[0].length = len;
+    wds[1].ptr = NULL;
+    wds[1].length = 0;
+    iobuf = udpbuf;
+    iobuf.csCode = UDPWrite;
+    iobuf.csParam.send.remoteHost = conn->addr->ipnum;
+    iobuf.csParam.send.remotePort = conn->port;
+    iobuf.csParam.send.wdsPtr = (Ptr) wds;
+    iobuf.csParam.send.checkSum = 1;
+    iobuf.csParam.send.sendLength = 0;
+    return (PBControlSync((ParmBlkPtr) &iobuf) != noErr) ? -1 : len;
+}
+
+/*
  * NAME:	conn->wrdone()
  * DESCRIPTION:	return TRUE if a connection is ready for output
  */
@@ -580,8 +1128,20 @@ bool conn_wrdone(connection *conn)
 char *conn_ipnum(connection *conn)
 {
     static char buf[16];
+    unsigned long ipnum;
 
-    sprintf(buf, "%d.%d.%d.%d", UCHAR(conn->addr >> 24),
-	    UCHAR(conn->addr >> 16), UCHAR(conn->addr >> 8), UCHAR(conn->addr));
+    ipnum = conn->addr->ipnum;
+    sprintf(buf, "%d.%d.%d.%d", UCHAR(ipnum >> 24), UCHAR(ipnum >> 16),
+	    UCHAR(ipnum >> 8), UCHAR(ipnum));
     return buf;
+}
+
+/*
+ * NAME:	conn->ipname()
+ * DESCRIPTION:	return the ip name of a connection
+ */
+char *conn_ipname(connection *conn)
+{
+    return (conn->addr->name[0] != '\0') ?
+	    conn->addr->name : conn_ipnum(conn);
 }

@@ -855,7 +855,7 @@ int poll;
 	     */
 	    if (usr->flags & CF_UDP) {
 		n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
-		if (n != 0) {
+		if (n >= 0) {
 		    /*
 		     * received datagram
 		     */

@@ -1200,3 +1200,7 @@ DGD 1.1
    out and compressed.
  - Increased max number of function parameters + local variables to 255.
  - Fixed a stack depth miscalculation bug for untypechecked code.
+ - Generate a proper compile-time error if a string constant is indexed by
+   an integer that is out of range.
+ - Allow datagrams of length 0.
+ - Ported query_ip_name() and send_datagram() to Mac and Win32.

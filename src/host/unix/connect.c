@@ -581,7 +581,7 @@ register connection *conn;
     m_static();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
-    conn->bufsz = 0;
+    conn->bufsz = -1;
 
     hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) % udphtabsz];
     conn->next = *hash;
@@ -677,7 +677,7 @@ int wait;
 	fromlen = sizeof(struct sockaddr_in);
 	size = recvfrom(udp, buffer, BINBUF_SIZE, 0, (struct sockaddr *) &from,
 			&fromlen);
-	if (size > 0) {
+	if (size >= 0) {
 	    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
 			    udphtabsz];
 	    while (*hash != (connection *) NULL) {
@@ -732,17 +732,17 @@ register connection *conn;
 char *buf;
 unsigned int len;
 {
-    if (conn->bufsz != 0) {
+    if (conn->bufsz >= 0) {
 	/* udp buffer is not empty */
 	if (conn->bufsz <= len) {
 	    memcpy(buf, conn->udpbuf, len = conn->bufsz);
 	} else {
 	    len = 0;
 	}
-	conn->bufsz = 0;
+	conn->bufsz = -1;
 	return len;
     }
-    return 0;
+    return -1;
 }
 
 /*
@@ -792,7 +792,7 @@ unsigned int len;
 {
     struct sockaddr_in to;
 
-    if (conn->fd >= 0 && len != 0) {
+    if (conn->fd >= 0) {
 	to.sin_family = addrtype;
 	to.sin_addr.s_addr = conn->addr->ipnum.s_addr;
 	to.sin_port = conn->port;
