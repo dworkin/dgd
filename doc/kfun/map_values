@@ -1,0 +1,12 @@
+NAME
+	map_values - get the values of a mapping
+
+SYNOPSIS
+	mixed *map_values(mapping map)
+
+
+DESCRIPTION
+	Return an array containing the values of mapping map.
+
+SEE ALSO
+	kfun/map_indices

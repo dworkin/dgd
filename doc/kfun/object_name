@@ -1,0 +1,12 @@
+NAME
+	object_name - return the name of an object
+
+SYNOPSIS
+	string object_name(object obj)
+
+
+DESCRIPTION
+	Return the name of object obj.
+
+SEE ALSO
+	kfun/find_object
