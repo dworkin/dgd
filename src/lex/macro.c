@@ -11,6 +11,7 @@ typedef struct _mchunk_ {
     macro m[MCHUNKSZ];		/* macros */
     struct _mchunk_ *next;	/* next in list */
 } mchunk;
+
 static mchunk *mlist;		/* list of macro chunks */
 static int mchunksz;		/* size of current macro chunk */
 static macro *flist;		/* list of free macros */
@@ -30,29 +31,26 @@ void mc_init()
 }
 
 /*
- * NAME:	macro->delete()
- * DESCRIPTION:	delete a macro in the macro table
- */
-static void mc_delete(mac)
-register macro *mac;
-{
-    FREE(mac->chain.name);
-    if (mac->replace != (char *) NULL) {
-	FREE(mac->replace);
-    }
-}
-
-/*
  * NAME:	macro->clear()
  * DESCRIPTION:	clear the macro table
  */
 void mc_clear()
 {
+    register macro *m;
     register mchunk *l, *f;
 
-    ht_del(mt, mc_delete);
+    ht_del(mt);
 
     for (l = mlist; l != (mchunk *) NULL; ) {
+	for (m = l->m; mchunksz > 0; m++, --mchunksz) {
+	    if (m->chain.name != (char *) NULL) {
+		FREE(m->chain.name);
+		if (m->replace != (char *) NULL) {
+		    FREE(m->replace);
+		}
+	    }
+	}
+	mchunksz = MCHUNKSZ;
 	f = l;
 	l = l->next;
 	FREE(f);
@@ -74,7 +72,7 @@ int narg;
 	/* the macro already exists. */
 	if ((*m)->replace != (char *) NULL) {
 	    if ((*m)->narg != narg || strcmp((*m)->replace, replace) != 0) {
-		lexwarning("macro %s redefined", name);
+		warning("macro %s redefined", name);
 	    }
 	    FREE((*m)->replace);
 	}
@@ -119,11 +117,13 @@ char *name;
     m = (macro **) ht_lookup(mt, name);
     if (*m != (macro *) NULL) {
 	/* it really exists. */
-	FREE((*m)->chain.name);
-	if ((*m)->replace != (char *) NULL) {
-	    FREE((*m)->replace);
-	}
 	mac = *m;
+	FREE(mac->chain.name);
+	mac->chain.name = (char *) NULL;
+	if (mac->replace != (char *) NULL) {
+	    FREE(mac->replace);
+	    mac->replace = (char *) NULL;
+	}
 	*m = (macro *) mac->chain.next;
 	/* put macro in free list */
 	mac->chain.next = (hte *) flist;
