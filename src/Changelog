@@ -1418,3 +1418,4 @@ DGD 1.1
  - If an IP name query for an IP number failed once, it would erroneously not
    be re-requested as long as it was still in the cache.
  - Start with fixed window size on Windows.
+ - Fixed a bug in committing plane n, and then discarding plane n-1.

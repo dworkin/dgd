@@ -1906,7 +1906,7 @@ value *retval;
 	    /* insert commit plane */
 	    commit = ALLOC(dataplane, 1);
 	    commit->level = level - 1;
-	    commit->original = p->original;
+	    commit->original = (value *) NULL;
 	    commit->alocal.arr = (array *) NULL;
 	    commit->alocal.plane = commit;
 	    commit->alocal.data = p->alocal.data;
@@ -1940,12 +1940,15 @@ value *retval;
 	 */
 	data = p->alocal.data;
 	if (p->original != (value *) NULL) {
-	    if (p->flags & PLANE_MERGE) {
+	    if (p->level == 1 || p->prev->original != (value *) NULL) {
 		/* free backed-up variable values */
 		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
 		    i_del_value(v);
 		}
 		FREE(p->original);
+	    } else {
+		/* move originals to previous plane */
+		p->prev->original = p->original;
 	    }
 	    commit_values(data->variables, data->nvariables, level - 1);
 	}
