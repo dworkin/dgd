@@ -1432,3 +1432,4 @@ DGD 1.3
  - remove_call_out() would not always return the correct remaining time.
  - Destructing and then recompiling an object within the same thread could lead
    to trouble.
+ - Return the correct time in the per-object list of callouts, also.

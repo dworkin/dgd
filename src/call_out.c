@@ -577,10 +577,11 @@ array *a;
 {
     register value *v, *w;
     register unsigned short i;
+    Uint time, t;
     unsigned short mtime, m;
-    Uint t;
     xfloat flt;
 
+    time = co_time(&mtime);
     for (i = a->size, v = a->elts; i != 0; --i, v++) {
 	w = &v->u.array->elts[2];
 	switch ((Uint) w->u.number >> 24) {
@@ -590,15 +591,24 @@ array *a;
 
 	case 1:
 	    /* encoded millisecond */
-	    t = decode((Uint) w->u.number, &m) - co_time(&mtime);
-	    flt_itof((Int) t * 1000 + m - mtime, &flt);
-	    flt_mult(&flt, &thousandth);
-	    PUT_FLTVAL(w, flt);
+	    t = decode((Uint) w->u.number, &m);
+	    if (t > time || t == time && m > mtime) {
+		flt_itof((Int) (t - time) * 1000 + m - mtime, &flt);
+		flt_mult(&flt, &thousandth);
+		PUT_FLTVAL(w, flt);
+	    } else {
+		w->u.number = 0;
+	    }
 	    break;
 
 	default:
 	    /* normal */
-	    w->u.number -= timestamp - timediff;
+	    t = w->u.number + timediff;
+	    if (t > time) {
+		w->u.number = t - time;
+	    } else {
+		w->u.number = 0;
+	    }
 	    break;
 	}
     }
