@@ -2793,13 +2793,25 @@ object *old;
 
     /* map variables */
     for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
-	if (NEW_VAR(*vmap)) {
-	    *v++ = (*vmap == NEW_INT) ? zero_int : zero_float;
-	} else {
+	switch (*vmap) {
+	case NEW_INT:
+	    *v++ = zero_int;
+	    break;
+
+	case NEW_FLOAT:
+	    *v++ = zero_float;
+	    break;
+
+	case NEW_POINTER:
+	    *v++ = nil_value;
+	    break;
+
+	default:
 	    *v = vars[*vmap];
 	    i_ref_value(&vars[*vmap]);	/* don't wipe out objects */
 	    v->modified = TRUE;
 	    ref_rhs(data, v++);
+	    break;
 	}
 	vmap++;
     }

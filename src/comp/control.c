@@ -1937,10 +1937,20 @@ register control *old, *new;
 			    (Uint) 0);
 		if ((n & 0xff) == v->type) {
 		    *vmap = inh2->varoffset + (n >> 8);
-		} else if (v->type == T_FLOAT) {
-		    *vmap = NEW_FLOAT;
 		} else {
-		    *vmap = NEW_INT;
+		    switch (v->type) {
+		    case T_INT:
+			*vmap = NEW_INT;
+			break;
+
+		    case T_FLOAT:
+			*vmap = NEW_FLOAT;
+			break;
+
+		    default:
+			*vmap = NEW_POINTER;
+			break;
+		    }
 		}
 		vmap++;
 	    }

@@ -48,7 +48,7 @@ static close(int dest)
 static receive_message(string str)
 {
     int mode, len;
-    string head;
+    string head, pre;
 
     buffer += str;
     mode = query_mode();
@@ -56,20 +56,24 @@ static receive_message(string str)
 	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
-		do {
-		    while (sscanf(str, "%s\b%s", head, str) != 0) {
-			len = strlen(head);
+		while (sscanf(str, "%s\b%s", head, str) != 0) {
+		    while (sscanf(head, "%s\x7f%s", pre, head) != 0) {
+			len = strlen(pre);
 			if (len != 0) {
-			    str = head[0 .. len - 2] + str;
+			    head = pre[0 .. len - 2] + head;
 			}
 		    }
-		    while (sscanf(str, "%s\x7f%s", head, str) != 0) {
-			len = strlen(head);
-			if (len != 0) {
-			    str = head[0 .. len - 2] + str;
-			}
+		    len = strlen(head);
+		    if (len != 0) {
+			str = head[0 .. len - 2] + str;
 		    }
-		} while (sscanf(str, "%*s\b") != 0);
+		}
+		while (sscanf(str, "%s\x7f%s", head, str) != 0) {
+		    len = strlen(head);
+		    if (len != 0) {
+			str = head[0 .. len - 2] + str;
+		    }
+		}
 
 		mode = ::receive_message(allocate(TLS_SIZE), str);
 	    } else {

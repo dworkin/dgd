@@ -272,7 +272,7 @@ static receive_datagram(mixed *tls, string str)
 
 /*
  * NAME:	datagram()
- * DESCRIPTION:	forward a datagram to the user
+ * DESCRIPTION:	send a datagram across the connection
  */
 int datagram(string str)
 {

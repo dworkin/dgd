@@ -87,7 +87,7 @@
 # define T_ARITHMETIC(t) ((t) <= T_FLOAT)
 # define T_ARITHSTR(t)	((t) <= T_STRING)
 # define T_POINTER(t)	((t) >= T_STRING)
-# define T_INDEXED(t)	((t) == T_ARRAY || (t) == T_MAPPING)
+# define T_INDEXED(t)	((t) >= T_ARRAY)	/* only T_ARRAY and T_MAPPING */
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
 			  "array", "mapping", "reserved", "mixed", "void" }
@@ -167,7 +167,7 @@ struct _frame_ {
 };
 
 
-extern void		i_init		P((char*, bool));
+extern void		i_init		P((char*, int));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
 extern void		i_copy		P((value*, value*, unsigned int));

@@ -41,6 +41,10 @@ void set_object_manager(object objectd)	[System only]
 
 	The given object is about to be destructed.
 
+    * void destruct_lib(string owner, string path)
+
+	The given inheritable object is about to be destructed.
+
     * void remove_program(string owner, string path, int timestamp, int index)
 
 	The last reference to the given program has been removed.

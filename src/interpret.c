@@ -33,7 +33,7 @@ value nil_value = { T_NIL, TRUE };
  */
 void i_init(create, flag)
 char *create;
-bool flag;
+int flag;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.prev_lip = topframe.lip = stack;

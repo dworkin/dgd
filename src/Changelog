@@ -1252,3 +1252,7 @@ DGD 1.1
    longer be specified explicitly.
  - Changed over kfuns to the new varargs system.
  - Removed some kfun argument count checks that have become superfluous.
+ - New variables in upgraded objects were initialized with integer 0 rather
+   than nil.
+ - Let send_message() and message_done() behave in the same way for telnet and
+   binary connections.  send_message() now never returns -1.

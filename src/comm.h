@@ -27,7 +27,7 @@ extern void	comm_finish	P((void));
 extern void	comm_listen	P((void));
 extern int	comm_send	P((object*, string*));
 extern int	comm_udpsend	P((object*, string*));
-extern void	comm_echo	P((object*, int));
+extern bool	comm_echo	P((object*, int));
 extern void	comm_flush	P((int));
 extern void	comm_block	P((object*, int));
 extern void	comm_receive	P((frame*, int));

@@ -176,7 +176,7 @@ bool force;
 	FREE(usr->outbuf);
 	FREE(usr->inbuf);
     }
-    if ((obj->flags & O_PENDIO) && usr->osleft != 0) {
+    if (obj->flags & O_PENDIO) {
 	/* remove old buffer */
 	d_wipe_extravar(o_dataspace(obj));
     }
@@ -225,10 +225,10 @@ bool force;
  * DESCRIPTION:	write more data to a connection; return bytes written (binary)
  *		or bytes left in output buffer (telnet)
  */
-static int comm_write(usr, str, prompt)
+static int comm_write(usr, str, prompt, flushbuf)
 register user *usr;
 string *str;
-int prompt;
+bool prompt, flushbuf;
 {
     register char *p, *q;
     register unsigned int len;
@@ -239,23 +239,17 @@ int prompt;
     if (str != (string *) NULL) {
 	/* new string to write */
 	if (usr->obj->flags & O_PENDIO) {
-	    if (usr->flags & CF_TELNET) {
-		/*
-		 * discard new data as long as buffer not flushed, to avoid
-		 * half-written telnet escape sequences
-		 */
-		usr->flags |= CF_NOPROMPT;
-		return usr->outbufsz;
-	    } else {
-		/*
-		 * binary connection: discard old data to make room for new
-		 */
-		usr->obj->flags &= ~O_PENDIO;
-		d_wipe_extravar(data);
-	    }
+	    /*
+	     * discard old data to make room for new
+	     */
+	    usr->obj->flags &= ~O_PENDIO;
+	    d_wipe_extravar(data);
 	}
 	len = str->len;
 	p = str->text;
+	if (len != 0) {
+	    usr->flags &= ~CF_NOPROMPT;
+	}
     } else {
 	/* flush */
 	len = usr->osleft;
@@ -267,11 +261,14 @@ int prompt;
     }
 
     if (usr->flags & CF_TELNET) {
+	unsigned int length;
+
 	/*
 	 * telnet connection
 	 */
 	size = usr->outbufsz;
 	q = usr->outbuf + size;
+	length = len;
 	while (len != 0) {
 	    if (size >= OUTBUF_SIZE - 1) {
 		n = conn_write(usr->conn, q = usr->outbuf, size);
@@ -314,8 +311,7 @@ int prompt;
 	    len == 0 && (usr->obj == this_user || usr->outbuf[size - 1] != LF))
 	{
 	    /*
-	     * If no output has been discarded (which would include the prompt),
-	     * add go-ahead, for which there is always space at this point.
+	     * Add go-ahead, for which there is always space at this point.
 	     */
 	    *q++ = (char) IAC;
 	    *q++ = (char) GA;
@@ -323,7 +319,7 @@ int prompt;
 	    usr->flags |= CF_NOPROMPT;	/* send go-ahead only once */
 	}
 
-	if (str == (string *) NULL) {
+	if (flushbuf) {
 	    /*
 	     * try to flush the buffer
 	     */
@@ -335,7 +331,11 @@ int prompt;
 		}
 	    }
 	}
+	if (len == 0 && size != 0) {
+	    flush = TRUE;
+	}
 	usr->outbufsz = size;
+	size = length - len;
     } else {
 	/*
 	 * binary connection
@@ -343,38 +343,28 @@ int prompt;
 	size = conn_write(usr->conn, p, len);
 	if (size > 0) {
 	    len -= size;
+	} else {
+	    size = 0;
 	}
     }
 
     if (usr->obj->flags & O_PENDIO) {
 	/* old pending output */
 	if (len == 0) {
-	    if (usr->osleft != 0) {
-		/* get rid of output buffer */
-		d_wipe_extravar(data);
-	    }
-	    if (usr->outbufsz == 0) {
-		/* no more pending output */
-		usr->obj->flags &= ~O_PENDIO;
-		usr->flags &= ~CF_NOPROMPT;
-	    }
+	    d_wipe_extravar(data);
+	    usr->obj->flags &= ~O_PENDIO;
 	}
-    } else if (len != 0 || (str == (string *) NULL && usr->outbufsz != 0)) {
-	/* leftover output */
-	usr->obj->flags |= O_PENDIO;
-	if (len != 0 && str != (string *) NULL) {
-	    value v;
+    } else if (len != 0) {
+	value v;
 
-	    /*
-	     * buffer the remainder of the string
-	     */
-	    v.type = T_STRING;
-	    v.u.string = str;
-	    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &v);
-	}
-    } else {
-	/* no delayed output at all */
-	usr->flags &= ~CF_NOPROMPT;
+	/*
+	 * buffer the remainder of the string
+	 */
+	v.type = T_STRING;
+	v.u.string = str;
+	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &v);
+	usr->obj->flags |= O_PENDIO;
+	usr->flags |= CF_NOPROMPT;
     }
     usr->osleft = len;
 
@@ -390,16 +380,9 @@ object *obj;
 string *str;
 {
     user *usr;
-    int size;
 
     usr = &users[UCHAR(obj->etabi)];
-    size = comm_write(usr, str, FALSE);
-    if (usr->flags & CF_TELNET) {
-	flush = TRUE;
-	return str->len;
-    } else {
-	return size;
-    }
+    return comm_write(usr, str, FALSE, FALSE);
 }
 
 /*
@@ -426,7 +409,7 @@ string *str;
  * NAME:	comm_telnet()
  * DESCRIPTION:	add telnet data to output buffer
  */
-static void comm_telnet(usr, buf, len)
+static bool comm_telnet(usr, buf, len)
 register user *usr;
 char *buf;
 register unsigned int len;
@@ -439,28 +422,29 @@ register unsigned int len;
 	 * attempt to flush the buffer before adding telnet data
 	 */
 	size = conn_write(usr->conn, usr->outbuf, usr->outbufsz);
-	if (size <= 0 ||
-	    usr->outbufsz - size > OUTBUF_SIZE + TELBUF_SIZE - 2 - len) {
-	    return;	/* failed to make room; abort */
+	if (size > 0) {
+	    /* shift buffer */
+	    usr->outbufsz -= size;
+	    for (p = usr->outbuf, q = p + size; size > 0; --size) {
+		*p++ = *q++;
+	    }
 	}
-
-	/* shift buffer to make room for new data */
-	usr->outbufsz -= size;
-	for (p = usr->outbuf, q = p + size; size > 0; --size) {
-	    *p++ = *q++;
+	if (size < 0 || usr->outbufsz > OUTBUF_SIZE + TELBUF_SIZE - 2 - len) {
+	    return FALSE;	/* failed to make room */
 	}
     }
 
     memcpy(usr->outbuf + usr->outbufsz, buf, len);
     usr->outbufsz += len;
     flush = TRUE;
+    return TRUE;
 }
 
 /*
  * NAME:	comm->echo()
  * DESCRIPTION:	turn on/off input echoing for a user
  */
-void comm_echo(obj, echo)
+bool comm_echo(obj, echo)
 object *obj;
 int echo;
 {
@@ -468,18 +452,25 @@ int echo;
     char buf[3];
 
     usr = &users[UCHAR(obj->etabi)];
-    if ((usr->flags & CF_TELNET) && echo != (usr->flags & CF_ECHO)) {
-	buf[0] = (char) IAC;
-	buf[1] = (echo) ? WONT : WILL;
-	buf[2] = TELOPT_ECHO;
-	comm_telnet(usr, buf, 3);
-	usr->flags ^= CF_ECHO;
+    if (usr->flags & CF_TELNET) {
+	if (echo != (usr->flags & CF_ECHO)) {
+	    buf[0] = (char) IAC;
+	    buf[1] = (echo) ? WONT : WILL;
+	    buf[2] = TELOPT_ECHO;
+	    if (comm_telnet(usr, buf, 3)) {
+		usr->flags ^= CF_ECHO;
+	    } else {
+		return FALSE;
+	    }
+	}
+	return TRUE;
     }
+    return FALSE;
 }
 
 /*
  * NAME:	comm->flush()
- * DESCRIPTION:	flush output to all users
+ * DESCRIPTION:	flush output on telnet connections
  */
 void comm_flush(prompt)
 int prompt;
@@ -493,8 +484,8 @@ int prompt;
     flush = FALSE;
 
     for (usr = lastuser, i = nusers; i != 0; usr = usr->next, --i) {
-	if (usr->outbufsz != 0 && comm_write(usr, (string *) NULL, prompt) != 0)
-	{
+	if (usr->outbufsz != 0 && !(usr->obj->flags & O_PENDIO) &&
+	    comm_write(usr, (string *) NULL, prompt, TRUE) != 0) {
 	    /* couldn't flush everything */
 	    flush = TRUE;
 	}
@@ -632,9 +623,10 @@ int poll;
 	lastuser = usr->next;
 
 	if ((usr->obj->flags & O_PENDIO) && conn_wrdone(usr->conn)) {
-	    comm_write(usr, (string *) NULL, FALSE);
-	    if (!(usr->obj->flags & O_PENDIO) && !(usr->flags & CF_TELNET)) {
+	    comm_write(usr, (string *) NULL, FALSE, FALSE);
+	    if (!(usr->obj->flags & O_PENDIO)) {
 		/* callback */
+		usr->flags &= ~CF_NOPROMPT;
 		this_user = usr->obj;
 		if (i_call(f, this_user, "message_done", 12, TRUE, 0)) {
 		    i_del_value(f->sp++);
@@ -940,7 +932,7 @@ object *obj;
     register user *usr;
 
     usr = &users[UCHAR(obj->etabi)];
-    if (usr->outbufsz != 0) {
+    if ((usr->obj->flags & O_PENDIO) || usr->outbufsz != 0) {
 	/*
 	 * flush last bit of output
 	 */

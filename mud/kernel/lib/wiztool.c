@@ -758,7 +758,7 @@ static mixed *expand(string files, int exist, int full)
 
 /*
  * NAME:	cmd_code()
- * DESCTIPTION:	implementation of the code command
+ * DESCRIPTION:	implementation of the code command
  */
 static cmd_code(object user, string cmd, string str)
 {
@@ -1959,7 +1959,7 @@ static cmd_statedump(object user, string cmd, string str)
 
 /*
  * NAME:	cmd_shutdown()
- * DESCTIPTION:	shut down the system
+ * DESCRIPTION:	shut down the system
  */
 static cmd_shutdown(object user, string cmd, string str)
 {
@@ -1973,7 +1973,7 @@ static cmd_shutdown(object user, string cmd, string str)
 
 /*
  * NAME:	cmd_reboot()
- * DESCTIPTION:	reboot system
+ * DESCRIPTION:	reboot system
  */
 static cmd_reboot(object user, string cmd, string str)
 {

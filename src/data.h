@@ -94,7 +94,8 @@ struct _control_ {
 
 # define NEW_INT		((unsigned short) -1)
 # define NEW_FLOAT		((unsigned short) -2)
-# define NEW_VAR(x)		((x) >= NEW_FLOAT)
+# define NEW_POINTER		((unsigned short) -3)
+# define NEW_VAR(x)		((x) >= NEW_POINTER)
 
 typedef struct _strref_ {
     string *str;		/* string value */

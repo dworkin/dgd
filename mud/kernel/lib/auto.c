@@ -473,10 +473,11 @@ static mixed *status(varargs mixed obj)
      * check arguments
      */
     driver = ::find_object(DRIVER);
-    oname = object_name(this_object());
     if (typeof(obj) == T_STRING) {
 	/* get corresponding object */
-	obj = ::find_object(driver->normalize_path(obj, oname + "/..",
+	obj = ::find_object(driver->normalize_path(obj,
+						   object_name(this_object()) +
+						   "/..",
 						   creator));
 	if (!obj) {
 	    return nil;
@@ -487,11 +488,12 @@ static mixed *status(varargs mixed obj)
     status = ::status(obj);
     callouts = status[O_CALLOUTS];
     if ((i=sizeof(callouts)) != 0) {
+	oname = object_name(obj);
 	if (sscanf(oname, "/kernel/%*s") != 0) {
 	    /* can't see callouts in kernel objects */
 	    status[O_CALLOUTS] = ({ });
 	} else if (creator != "System" &&
-		   (!owner || owner != driver->creator(object_name(obj)))) {
+		   (!owner || owner != driver->creator(oname))) {
 	    /* remove arguments from callouts */
 	    do {
 		--i;

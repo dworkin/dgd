@@ -787,7 +787,7 @@ register frame *f;
     if (f->sp->type == T_STRING) {
 	num = f->sp->u.string->len;
     } else if (f->sp->type == T_INT) {
-	num = 1;
+	num = 0;
     } else {
 	return 1;
     }
@@ -796,7 +796,7 @@ register frame *f;
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
 	    if (f->sp->type == T_INT) {
-		comm_echo(obj, f->sp->u.number != 0);
+		num = comm_echo(obj, f->sp->u.number != 0);
 	    } else {
 		num = comm_send(obj, f->sp->u.string);
 	    }
@@ -806,8 +806,8 @@ register frame *f;
     }
     if (f->sp->type == T_STRING) {
 	str_del(f->sp->u.string);
+	f->sp->type = T_INT;
     }
-    f->sp->type = T_INT;
     f->sp->u.number = num;
     return 0;
 }
