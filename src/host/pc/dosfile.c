@@ -1,10 +1,10 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # include <ctype.h>
 # include <io.h>
 # include <direct.h>
 # include <fcntl.h>
 # include <sys\stat.h>
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 
 /*
  * NAME:	path_native()

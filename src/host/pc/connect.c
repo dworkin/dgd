@@ -1,8 +1,8 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # define FD_SETSIZE   1024
 # include <winsock.h>
 # include <process.h>
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 # include "hash.h"
 # include "comm.h"
 

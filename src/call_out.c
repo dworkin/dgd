@@ -45,6 +45,8 @@ static Uint timeout;			/* time of first callout in cycbuf */
 static Uint atimeout;			/* alarm time in seconds */
 static unsigned short amtime;		/* alarm time in milliseconds */
 static Uint timediff;			/* stored/actual time difference */
+static Uint cotime;			/* callout time */
+static unsigned short comtime;		/* callout millisecond time */
 static Uint swaptime;			/* last swap count timestamp */
 static Uint swapped1[SWPERIOD];		/* swap info for last minute */
 static Uint swapped5[SWPERIOD];		/* swap info for last five minutes */
@@ -78,6 +80,7 @@ unsigned int max;
     cycbrk = cotabsz = max;
     queuebrk = 0;
     nzero = nshort = 0;
+    cotime = 0;
 
     swaptime = P_time();
     memset(swapped1, '\0', sizeof(swapped1));
@@ -349,6 +352,11 @@ unsigned short *mtime;
 {
     Uint t;
 
+    if (cotime != 0) {
+	*mtime = comtime;
+	return cotime;
+    }
+
     t = P_mtime(mtime);
     if (t < timestamp) {
 	/* clock turned back? */
@@ -369,7 +377,8 @@ unsigned short *mtime;
 	}
     }
 
-    return t;
+    comtime = *mtime;
+    return cotime = t;
 }
 
 /*
@@ -571,16 +580,16 @@ Uint t;
      */
     l = cotab;
     for (;;) {
-	if (l->oindex == oindex && l->handle == handle) {
-	    dequeue(l - cotab);
-	    return;
-	}
-	l++;
 # ifdef DEBUG
 	if (l == cotab + queuebrk) {
 	    fatal("failed to remove callout");
 	}
 # endif
+	if (l->oindex == oindex && l->handle == handle) {
+	    dequeue(l - cotab);
+	    return;
+	}
+	l++;
     }
 }
 
@@ -787,6 +796,7 @@ unsigned short *mtime;
     }
 
     t = co_time(&m);
+    cotime = 0;
     if (t > rtime || (t == rtime && m >= rmtime)) {
 	/* immediate */
 	*mtime = 0;
@@ -811,6 +821,7 @@ unsigned int count;
     swaprate5 += count;
     swapped1[swaptime % SWPERIOD] += count;
     swapped5[swaptime % (SWPERIOD * 5) / 5] += count;
+    cotime = 0;
 }
 
 /*
@@ -871,6 +882,7 @@ int fd;
 
     /* update timestamp */
     co_time(&m);
+    cotime = 0;
 
     /* fill in header */
     dh.cotabsz = cotabsz;

@@ -1566,3 +1566,10 @@ DGD 1.3
  - Don't look for further connections when no new ones can be accepted.
  - Prepare the name lookup thread for running again after exiting (Windows).
  - A few more fixes to get restarting (not just on Windows) to work.
+ - Two callouts started during the same thread will now always be executed in
+   the proper order if the first has a delay N (milli)seconds larger than the
+   second, even if DGD is delayed for more than N (milli)seconds between the
+   first and the second callout (DGD/MP compatibility).
+ - Make sure that a callout handle is not truncated to 16 bits before an
+   attempt is made to remove it.
+ - Include system files before DGD files on Windows.
