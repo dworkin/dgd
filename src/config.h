@@ -4,8 +4,10 @@
 
 # ifdef __STDC__
 #  define P(proto)	proto
+#  define cvoid		const void
 # else
 #  define P(proto)	()
+#  define cvoid		char
 # endif
 
 typedef char bool;
@@ -49,7 +51,7 @@ typedef unsigned short uindex;
 # define MACHASHSZ	10	/* # characters in macros to hash */
 
 /* compiler */
-# define YYDEPTH	200	/* parser stack size */
+# define YYMAXDEPTH	500	/* parser stack size */
 # define MAX_ERRORS	5	/* max. number of errors during compilation */
 # define MAX_LOCALS	32	/* max. number of parameters + local vars */
 # define OMERGETABSZ	128	/* inherit object merge table size */
