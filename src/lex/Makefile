@@ -1,7 +1,7 @@
 #
 # Makefile for lexical scanner, part of DGD.
 #
-HOST=	SUN
+HOST=	SUNOS4
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
@@ -10,15 +10,15 @@ LDFLAGS=
 LIBS=
 CC=	gcc
 LD=	$(CC)
-MAKE=	make
+DMAKE=	make
 
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
 a.out:	$(OBJ) lex.o
-	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
-	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			    host.a
-	$(LD) $(LDFLAGS) $(OBJ) lex.o `cat ../lex.sub` ../host/host.a $(LIBS)
+	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
+	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+			     sub
+	$(LD) $(LDFLAGS) $(OBJ) lex.o `cat ../lex.sub` `cat ../host/sub` $(LIBS)
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo lex/$$i; done > dgd

@@ -1,7 +1,7 @@
 #
 # Makefile for editor, part of DGD.
 #
-HOST=	SUN
+HOST=	SUNOS4
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
@@ -10,15 +10,15 @@ LDFLAGS=
 LIBS=
 CC=	gcc
 LD=	$(CC)
-MAKE=	make
+DMAKE=	make
 
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
 
 a.out:	$(OBJ) ed.o
-	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
-	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			    host.a
-	$(LD) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` ../host/host.a $(LIBS)
+	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
+	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+			     sub
+	$(LD) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` `cat ../host/sub` $(LIBS)
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd

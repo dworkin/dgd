@@ -1,7 +1,7 @@
 #
 # Makefile for LPC precompiler, part of DGD.
 #
-HOST=	SUN
+HOST=	SUNOS4
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
@@ -10,7 +10,7 @@ LDFLAGS=
 LIBS=
 CC=	gcc
 LD=	$(CC)
-MAKE=	make
+DMAKE=	make
 YACC=	yacc
 
 OBJ=	node.o parser.o control.o compile.o codegeni.o csupport.o codegenc.o \
@@ -19,13 +19,13 @@ DGDOBJ=	node.o parser.o control.o compile.o codegeni.o csupport.o
 COMPOBJ=node.o parser.o control.o compile.o codegenc.o comp.o
 
 a.out:	$(COMPOBJ)
-	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			    host.a
+	cd ..; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
+	cd ../lex; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+			     sub
 	$(LD) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` `cat ../lex/comp` \
-	      `cat ../kfun/comp` ../host/host.a $(LIBS)
+	      `cat ../kfun/comp` `cat ../host/sub` $(LIBS)
 
 dgd:	$(DGDOBJ)
 	@for i in $(DGDOBJ); do echo comp/$$i; done > dgd

@@ -1,7 +1,7 @@
 #
 # Makefile for DGD, Dworkin's Game Driver
 #
-HOST=	SUN
+HOST=	SUNOS4
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
@@ -10,7 +10,7 @@ LDFLAGS=
 LIBS=
 CC=	gcc
 LD=	$(CC)
-MAKE=	make
+DMAKE=	make
 BIN=	../bin
 
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
@@ -21,14 +21,14 @@ COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 
 a.out:	$(OBJ)
-	cd comp; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lex; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' host.a
+	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lex; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd ed; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd kfun; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` `cat ed/dgd` \
-	      `cat kfun/dgd` `cat lpc/dgd` host/host.a $(LIBS)
+	      `cat kfun/dgd` `cat lpc/dgd` `cat host/dgd` $(LIBS)
 
 $(BIN)/driver: a.out
 	cp a.out $(BIN)/driver
@@ -48,16 +48,16 @@ ed.sub:	$(EDOBJ)
 	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
 comp/a.out:
-	cd comp; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' a.out
+	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' a.out
 
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
-	cd comp; $(MAKE) clean
-	cd lex; $(MAKE) clean
-	cd ed; $(MAKE) clean
-	cd kfun; $(MAKE) clean
-	cd lpc; $(MAKE) clean
-	cd host; $(MAKE) clean
+	cd comp; $(DMAKE) clean
+	cd lex; $(DMAKE) clean
+	cd ed; $(DMAKE) clean
+	cd kfun; $(DMAKE) clean
+	cd lpc; $(DMAKE) clean
+	cd host; $(DMAKE) clean
 
 
 config.o dgd.o: comp/node.h comp/compile.h
@@ -80,6 +80,6 @@ interpret.o: fcontrol.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o data.o: swap.h
-ed.o config.o: ed.h
+ed.o config.o dgd.o: ed.h
 call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o dgd.o: comm.h
