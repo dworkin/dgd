@@ -5,7 +5,7 @@ HOST=	NETBSD
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
+CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
 CC=	gcc
 
 OBJ=	builtin.o std.o file.o math.o extra.o debug.o
@@ -25,10 +25,11 @@ $(OBJ): ../object.h ../xfloat.h ../interpret.h ../data.h
 std.o file.o: ../path.h ../editor.h
 std.o: ../comm.h ../call_out.h
 file.o: ../editor.h
-extra.o: ../parse.h
 
 std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
 debug.o: ../comp/control.h
+
+extra.o: ../parser/parse.h
 
 $(OBJ): kfun.h
 builtin.o debug.o: table.h

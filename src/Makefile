@@ -5,7 +5,7 @@ HOST=	NETBSD
 DEFINES=-D$(HOST) #-DDUMP_FUNCS
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -Icomp -Ilex -Ied -Ikfun $(CCFLAGS)
+CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
 CC=	gcc
@@ -14,22 +14,24 @@ DMAKE=	make
 BIN=	../bin
 
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
-	editor.o comm.o call_out.o parse.o interpret.o config.o dgd.o
+	editor.o comm.o call_out.o interpret.o config.o dgd.o
 EDOBJ=	alloc.o error.o
 LEXOBJ=	alloc.o hash.o
-COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o parse.o \
+COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 
 a.out:	$(OBJ) always
 	cd comp; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lex; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd parser; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd kfun; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lpc; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			'LIBS=$(LIBS)' dgd
 	cd host; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` \
-	      `cat ed/dgd` `cat kfun/dgd` `cat lpc/dgd` `cat host/dgd` $(LIBS)
+	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
+	      `cat host/dgd` $(LIBS)
 
 always:
 	@rm -f a.out
@@ -73,22 +75,23 @@ interpret.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
-editor.o:	ed/edcmd.h
+editor.o: ed/edcmd.h
+
+data.o: parser/parse.h
 
 interpret.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o parse.o interpret.o config.o dgd.o: str.h array.h object.h
+editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
 array.o interpret.o path.o config.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-parse.o interpret.o config.o dgd.o: interpret.h
-str.o array.o object.o data.o path.o comm.o call_out.o parse.o: data.h
-interpret.o config.o dgd.o: data.h
+interpret.o config.o dgd.o: interpret.h
+str.o array.o object.o data.o path.o comm.o call_out.o interpret.o: data.h
+config.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
-parse.o data.o: parse.h
 editor.o config.o dgd.o: editor.h
 call_out.o config.o dgd.o: call_out.h
 error.o comm.o call_out.o config.o dgd.o: comm.h

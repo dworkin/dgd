@@ -5,7 +5,7 @@ HOST=	NETBSD
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
+CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
 CC=	gcc
@@ -21,11 +21,13 @@ COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 a.out:	$(COMPOBJ) always
 	cd ..; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
 	cd ../lex; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../parser; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			     sub
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
-	      `cat ../lex/comp` `cat ../kfun/comp` `cat ../host/sub` $(LIBS)
+	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
+	      `cat ../host/sub` $(LIBS)
 
 always:
 	@rm -f a.out
