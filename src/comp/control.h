@@ -1,4 +1,4 @@
-extern void	 ctrl_init	P((char*));
+extern void	 ctrl_init	P((char*, char*));
 extern void	 ctrl_inherit	P((object*, string*));
 extern void	 ctrl_create	P((char*));
 extern long	 ctrl_dstring	P((string*));
@@ -8,6 +8,7 @@ extern void	 ctrl_dprogram	P((char*, unsigned short));
 extern void	 ctrl_dvar	P((string*, unsigned short, unsigned short));
 extern char	*ctrl_lfcall	P((string*, char*, long*));
 extern char	*ctrl_ifcall	P((string*, long*));
+extern void	 ctrl_funcall	P((char, char));
 extern char	*ctrl_fcall	P((string*, long*, bool));
 extern short	 ctrl_var	P((string*, long*));
 extern control	*ctrl_construct	P((void));
