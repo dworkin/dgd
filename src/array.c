@@ -1865,10 +1865,9 @@ value *val, *elt;
 	 * extend mapping
 	 */
 	e = map_grow(m, i);
-	d_change_map(m);
-
 	d_assign_elt(data, m, &e->idx, val);
 	d_assign_elt(data, m, &e->val, elt);
+	d_change_map(m);
     }
 
     /*

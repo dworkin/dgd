@@ -1316,3 +1316,6 @@ DGD 1.1
  - Adjust precompiler to latest changes in callout interface.
  - Get DGD on BeOS to compile again.
  - Fix a bug in name lookup which could hang the server.
+ - Use a Windows font that displays properly on foreign language systems.
+ - Only commit changes to a previous plane if there <is> a previous plane.
+ - Fixed a bug in atomic code when swapout is involved.

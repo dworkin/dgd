@@ -960,10 +960,9 @@ static int write_file(string path, string str, varargs int offset)
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (creator != "System") {
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    if (creator != "System" && rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] &&
+	rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     size = driver->file_size(path);
@@ -1053,10 +1052,9 @@ static int rename_file(string from, string to)
     size = driver->file_size(from, TRUE);
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(tcreator, "filequota");
-    if (size != 0 && fcreator != tcreator && creator != "System") {
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    if (size != 0 && fcreator != tcreator && creator != "System" &&
+	rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     catch {
@@ -1198,10 +1196,9 @@ static int make_dir(string path)
     fcreator = driver->creator(path + "/");
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (creator != "System") {
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    if (creator != "System" && rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] &&
+	rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     catch {
@@ -1304,10 +1301,9 @@ static void save_object(string path)
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (creator != "System") {
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    if (creator != "System" && rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] &&
+	rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     size = driver->file_size(path);

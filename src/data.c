@@ -1014,7 +1014,7 @@ register int n;
 static void d_new_variables(data)
 dataspace *data;
 {
-    register unsigned short nfdefs, nvars, nvinit;
+    register unsigned short nifdefs, nvars, nvinit;
     register value *val;
     register dvardef *var;
     register control *ctrl;
@@ -1038,14 +1038,14 @@ dataspace *data;
 		ctrl = o_control(inh->obj);
 		if (ctrl->nifdefs != 0) {
 		    nvinit -= ctrl->nifdefs;
-		    for (nfdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
-			 nfdefs > 0; var++) {
+		    for (nifdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
+			 nifdefs > 0; var++) {
 			if (var->type == T_INT && nilisnot0) {
 			    data->variables[nvars] = zero_int;
-			    --nfdefs;
+			    --nifdefs;
 			} else if (var->type == T_FLOAT) {
 			    data->variables[nvars] = zero_float;
-			    --nfdefs;
+			    --nifdefs;
 			}
 			nvars++;
 		    }
@@ -1338,42 +1338,53 @@ plane *values;
 void d_commit_plane(level)
 Int level;
 {
-    register plane *p;
+    register plane *p, **r;
     register dataspace *data;
     register value *v;
     register arrref *a;
     register Uint i;
 
-    for (p = plist; p != (plane *) NULL && p->level == level; p = plist) {
-	p->prev->flags = p->flags;
-	p->prev->achange = p->achange;
-	p->prev->imports = p->imports;
+    for (r = &plist, p = *r; p != (plane *) NULL && p->level == level; p = *r) {
+	if (p->prev->level == level - 1) {
+	    /*
+	     * commit changes to previous plane
+	     */
+	    p->prev->flags = p->flags;
+	    p->prev->achange = p->achange;
+	    p->prev->imports = p->imports;
 
-	data = p->alocal.data;
-	if (p->original != (value *) NULL) {
-	    /* free backed-up variable values */
-	    for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
-		i_del_value(v);
-	    }
-	    FREE(p->original);
-	    commit_values(data->variables, data->nvariables, p->prev);
-	}
-
-	arr_commit(&p->achunk, p->prev);
-	if (p->arrays != (arrref *) NULL) {
-	    /* replace old array refs */
-	    for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
-		if (a->arr != (array *) NULL) {
-		    arr_del(a->arr);
+	    data = p->alocal.data;
+	    if (p->original != (value *) NULL) {
+		/* free backed-up variable values */
+		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
+		    i_del_value(v);
 		}
+		FREE(p->original);
+		commit_values(data->variables, data->nvariables, p->prev);
 	    }
-	    FREE(p->prev->arrays);
-	    p->prev->arrays = p->arrays;
-	}
 
-	data->values = p->prev;
-	plist = p->plist;
-	FREE(p);
+	    arr_commit(&p->achunk, p->prev);
+	    if (p->arrays != (arrref *) NULL) {
+		/* replace old array refs */
+		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
+		    if (a->arr != (array *) NULL) {
+			arr_del(a->arr);
+		    }
+		}
+		FREE(p->prev->arrays);
+		p->prev->arrays = p->arrays;
+	    }
+
+	    data->values = p->prev;
+	    *r = p->plist;
+	    FREE(p);
+	} else {
+	    /*
+	     * move plane to previous level
+	     */
+	    p->level--;
+	    r = &p->plist;
+	}
     }
 }
 

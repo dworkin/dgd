@@ -37,7 +37,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     listbox->Create(LBS_EXTENDEDSEL | LBS_NOINTEGRALHEIGHT | LBS_USETABSTOPS | WS_VSCROLL,
 		    rect, this, 0);
     listbox->InitStorage(MAXITEMS, MAXITEMS * 100);
-    listbox->SetFont(CFont::FromHandle((HFONT) GetStockObject(ANSI_FIXED_FONT)));
+    listbox->SetFont(CFont::FromHandle((HFONT) GetStockObject(SYSTEM_FIXED_FONT)));
     listbox->ShowWindow(SW_SHOW);
     lsize = 0;
     lldone = TRUE;
