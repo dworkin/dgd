@@ -2,7 +2,7 @@ typedef struct _array_ {
     unsigned short size;		/* number of elements */
     uindex ref;				/* number of references */
     long tag;				/* used in sorting */
-    value *elts;			/* elements */
+    struct _value_ *elts;		/* elements */
     struct _maphash_ *hashed;		/* hashed mapping elements */
     struct _arrref_ *primary;		/* primary reference */
     struct _array_ *prev, *next;	/* double linked list of all arrays */
@@ -21,14 +21,15 @@ extern void		arr_clear	P((void));
 extern array	       *arr_add		P((array*, array*));
 extern array	       *arr_sub		P((array*, array*));
 extern array	       *arr_intersect	P((array*, array*));
-extern unsigned short	arr_index	P((array*, Int));
-extern array	       *arr_range	P((array*, Int, Int));
+extern unsigned short	arr_index	P((array*, long));
+extern array	       *arr_range	P((array*, long, long));
 
 extern array	       *map_new		P((long));
 extern void		map_sort	P((array*));
 extern unsigned short	map_size	P((array*));
 extern void		map_compact	P((array*));
 extern array	       *map_add		P((array*, array*));
-extern value	       *map_index	P((array*, value*, value*));
+extern struct _value_  *map_index	P((array*, struct _value_*,
+					   struct _value_*));
 extern array	       *map_indices	P((array*));
 extern array	       *map_values	P((array*));
