@@ -788,3 +788,4 @@ DGD 1.1
  - Fixed some remaining ANSI C incompatible prototypes <-> function
    declarations in the editor.
  - Fixed some bugs in the array exporting code.
+ - And some more.

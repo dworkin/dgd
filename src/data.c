@@ -845,7 +845,6 @@ register value *rhs;
 {
     register string *str;
     register array *arr;
-    register int n;
 
     switch (rhs->type) {
     case T_STRING:
@@ -859,8 +858,7 @@ register value *rhs;
 		   str->u.primary->data == data) {
 	    /* in this object */
 	    if (str->u.primary->ref++ == 0) {
-		/* first reference restored */
-		data->schange--;
+		data->schange--;	/* first reference restored */
 	    }
 	    data->modified |= M_STRINGREF;
 	} else {
@@ -875,8 +873,7 @@ register value *rhs;
 	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (arr->primary->ref++ == 0) {
-		/* first reference restored */
-		data->achange--;
+		data->achange--;	/* first reference restored */
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -897,7 +894,6 @@ register value *lhs;
 {
     register string *str;
     register array *arr;
-    register int n;
 
     switch (lhs->type) {
     case T_STRING:
@@ -911,8 +907,7 @@ register value *lhs;
 		   str->u.primary->data == data) {
 	    /* in this object */
 	    if (--(str->u.primary->ref) == 0) {
-		/* last reference removed */
-		data->schange++;
+		data->schange++;	/* last reference removed */
 	    }
 	    data->modified |= M_STRINGREF;
 	} else {
@@ -927,8 +922,7 @@ register value *lhs;
 	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (--(arr->primary->ref) == 0) {
-		/* last reference removed */
-		data->achange++;
+		data->achange++;	/* last reference removed */
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -2120,14 +2114,17 @@ register unsigned short n;
 		     */
 		    if (i >= itabsz) {
 			array **tmp;
+			register int n;
 
 			/*
-			 * double size of itab
+			 * increase size of itab
 			 */
-			tmp = ALLOC(array*, itabsz += itabsz);
-			memcpy(tmp, itab, itabsz * sizeof(array*) / 2);
+			for (n = itabsz; n <= i; n += n) ;
+			tmp = ALLOC(array*, n);
+			memcpy(tmp, itab, itabsz * sizeof(array*));
 			FREE(itab);
 			itab = tmp;
+			itabsz = n;
 		    }
 		    arr_put(itab[i] = a);
 		    narr += 2;	/* 1 old, 1 new */
