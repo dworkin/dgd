@@ -969,3 +969,4 @@ DGD 1.1
  - Made often-used objects less likely to be swapped out during a lull in
    activity.
  - With global typechecking, a function without declared type has type void.
+ - Fixed some bugs in new output buffer handling.

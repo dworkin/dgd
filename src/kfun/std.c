@@ -344,6 +344,23 @@ int kf_function_object()
 
 
 # ifdef FUNCDEF
+FUNCDEF("upgrade_object", kf_upgrade_object, pt_upgrade_object)
+# else
+char pt_upgrade_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_VOID,
+			     1, T_OBJECT | T_ELLIPSIS };
+
+/*
+ * NAME:	kfun->upgrade_object()
+ * DESCRIPTION:	upgrade the objects given as arguments
+ */
+int kf_upgrade_object()
+{
+    error("Not yet implemented");
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("this_user", kf_this_user, pt_this_user)
 # else
 char pt_this_user[] = { C_STATIC, T_OBJECT, 0 };

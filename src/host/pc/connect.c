@@ -239,7 +239,7 @@ int conn_read(connection *conn, char *buf, int size)
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-int conn_write(connection *conn, char *buf, int len, int wait)
+int conn_write(connection *conn, char *buf, int len)
 {
     int size;
 
@@ -254,7 +254,7 @@ int conn_write(connection *conn, char *buf, int len, int wait)
 	    FD_CLR(conn->fd, &fds);
 	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = INVALID_SOCKET;
-	} else if (wait && size != len) {
+	} else {
 	    /* waiting for wrdone */
 	    FD_SET(conn->fd, &wfds);
 	}
