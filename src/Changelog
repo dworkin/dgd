@@ -1218,3 +1218,5 @@ DGD 1.1
    the maximum array size.
  - Fixed a spurious inherited function clash in multiple inheritance.
  - Added private inheritance.
+ - Avoided the use of gethostbyname() on BeOS for similar reasons as on Win95.
+ - Non-unix versions compile again.

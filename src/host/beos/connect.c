@@ -1,7 +1,6 @@
 # include <kernel/OS.h>
 # include <sys/time.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
+# include <socket.h>
 # include <netdb.h>
 # include <errno.h>
 # define INCLUDE_FILE_IO
@@ -300,17 +299,8 @@ static int maxfd;			/* largest fd opened yet */
 bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
     struct sockaddr_in sin;
-    struct hostent *host;
     connection *conn;
-    char buffer[MAXHOSTNAMELEN];
     int n, on;
-
-    gethostname(buffer, MAXHOSTNAMELEN);
-    host = gethostbyname(buffer);
-    if (host == (struct hostent *) NULL) {
-	perror("gethostbyname");
-	return FALSE;
-    }
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
@@ -363,7 +353,6 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
 
     memset(&sin, '\0', sizeof(sin));
-    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
     sin.sin_port = htons(telnet_port);
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;

@@ -217,7 +217,7 @@ char *argv[];
     }
 
     /* initialize */
-    if (!conf_init(argv[1], -1)) {
+    if (!conf_init(argv[1], (char *) NULL)) {
 	P_message("Initialization failed\012");	/* LF */
 	return 2;
     }

@@ -1485,7 +1485,7 @@ register node *n;
      * switch table
      */
     code_instr(I_SWITCH | I_POP_BIT, 0);
-    code_byte(0);
+    code_byte(SWITCH_INT);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1504,7 +1504,7 @@ register node *n;
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
-	register long l;
+	register Int l;
 
 	l = m->l.left->l.number;
 	switch (sz) {
@@ -1566,7 +1566,7 @@ register node *n;
      * switch table
      */
     code_instr(I_SWITCH | I_POP_BIT, 0);
-    code_byte(1);
+    code_byte(SWITCH_RANGE);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1585,7 +1585,7 @@ register node *n;
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
-	register long l;
+	register Int l;
 
 	l = m->l.left->l.number;
 	switch (sz) {
@@ -1664,7 +1664,7 @@ register node *n;
      * switch table
      */
     code_instr(I_SWITCH | I_POP_BIT, 0);
-    code_byte(2);
+    code_byte(SWITCH_STRING);
     m = n->l.left;
     size = n->mod;
     if (m->l.left == (node *) NULL) {
@@ -1692,7 +1692,7 @@ register node *n;
 	code_byte(1);
     }
     while (i < size) {
-	register long l;
+	register Int l;
 
 	l = ctrl_dstring(m->l.left->l.string);
 	code_byte((int) (l >> 16));

@@ -609,8 +609,8 @@ int fd;
     }
 
     /* write header and objects */
-    if (write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
-	write(fd, (char *) otable, nobjects * sizeof(object)) < 0) {
+    if (P_write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
+	P_write(fd, (char *) otable, nobjects * sizeof(object)) < 0) {
 	return FALSE;
     }
 
@@ -620,7 +620,7 @@ int fd;
 	if (o->chain.name != (char *) NULL) {
 	    len = strlen(o->chain.name) + 1;
 	    if (buflen + len > CHUNKSZ) {
-		if (write(fd, buffer, buflen) < 0) {
+		if (P_write(fd, buffer, buflen) < 0) {
 		    return FALSE;
 		}
 		buflen = 0;
@@ -629,7 +629,7 @@ int fd;
 	    buflen += len;
 	}
     }
-    return (buflen == 0 || write(fd, buffer, buflen) >= 0);
+    return (buflen == 0 || P_write(fd, buffer, buflen) >= 0);
 }
 
 /*
@@ -679,7 +679,7 @@ int fd;
 		}
 		len = (dh.onamelen > CHUNKSZ - buflen) ?
 		       CHUNKSZ - buflen : dh.onamelen;
-		if (read(fd, buffer + buflen, len) != len) {
+		if (P_read(fd, buffer + buflen, len) != len) {
 		    fatal("cannot restore object names");
 		}
 		dh.onamelen -= len;

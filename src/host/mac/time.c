@@ -43,7 +43,7 @@ Uint P_time(void)
  * NAME:	P->ctime()
  * DESCRIPTION:	convert a time to a string
  */
-char *P_ctime(Uint t)
+char *P_ctime(char *buf, Uint t)
 {
     static char *weekday[] = {
 	"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -52,7 +52,6 @@ char *P_ctime(Uint t)
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     };
-    static char buf[26];
     DateTimeRec date;
     int offset;
 

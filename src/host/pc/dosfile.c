@@ -1,44 +1,191 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include <ctype.h>
 # include <io.h>
 # include <direct.h>
+# include <fcntl.h>
+# include <sys\stat.h>
 
 /*
- * NAME:	path->file()
- * DESCRIPTION:	translate a path into a local file name
+ * NAME:	path_native()
+ * DESCRIPTION:	deal with a path that's already native
  */
-char *path_file(char *path)
+char *path_native(char *to, char *from)
 {
-    static char file[_MAX_PATH];
-
-    if (path == (char *) NULL || strpbrk(path, ":\\") != (char *) NULL ||
-	strlen(path) >= _MAX_PATH) {
-	return (char *) NULL;
-    }
-    strcpy(file, path);
-    for (path = file; *path != '\0'; path++) {
-	if (*path == '/') {
-	    *path = '\\';
-	}
-    }
-    return file;
+    to[0] = '/';	/* mark as native */
+    strncpy(to + 1, from, STRINGSZ - 1);
+    to[STRINGSZ - 1] = '\0';
+    return to;
 }
 
 /*
- * NAME:	path->unfile()
- * DESCRIPTION:	translate a local file name into a path
+ * NAME:	path_file()
+ * DESCRIPTION:	translate a path into a native file name
  */
-char *path_unfile(char *file)
+static char *path_file(char *buf, char *path)
 {
-    static char path[STRINGSZ];
-
-    strncpy(path, file, STRINGSZ - 1);
-    for (file = path; *file != '\0'; file++) {
-	if (*file == '\\') {
-	    *file = '/';
+    if (path[0] == '/') {
+	/* already native */
+	strcpy(buf, path + 1);
+    } else if (strpbrk(path, ":\\") != (char *) NULL ||
+	       strlen(path) >= _MAX_PATH) {
+	return (char *) NULL;
+    } else {
+	strcpy(buf, path);
+	for (path = buf; *path != '\0'; path++) {
+	    if (*path == '/') {
+		*path = '\\';
+	    }
 	}
     }
-    return path;
+    return buf;
+}
+
+/*
+ * NAME:	P->open()
+ * DESCRIPTION:	open a file
+ */
+int P_open(char *file, int flags, int mode)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, file) == (char *) NULL) {
+	return -1;
+    }
+    return _open(buf, flags, mode);
+}
+
+/*
+ * NAME:	P->close()
+ * DESCRIPTION:	close a file
+ */
+int P_close(int fd)
+{
+    return _close(fd);
+}
+
+/*
+ * NAME:	P->read()
+ * DESCRIPTION:	read from a file
+ */
+int P_read(int fd, char *buf, int nbytes)
+{
+    return _read(fd, buf, nbytes);
+}
+
+/*
+ * NAME:	P_write()
+ * DESCRIPTION:	write to a file
+ */
+int P_write(int fd, char *buf, int nbytes)
+{
+    return _write(fd, buf, nbytes);
+}
+
+/*
+ * NAME:	P->lseek()
+ * DESCRIPTION:	seek on a file
+ */
+long P_lseek(int fd, long offset, int whence)
+{
+    return _lseek(fd, offset, whence);
+}
+
+/*
+ * NAME:	P->stat()
+ * DESCRIPTION:	get information about a file
+ */
+int P_stat(char *path, struct stat *sb)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, path) == (char *) NULL) {
+	return -1;
+    }
+    return _stat(buf, (struct _stat *) sb);
+}
+
+/*
+ * NAME:	P->fstat()
+ * DESCRIPTION:	get information about an open file
+ */
+int P_fstat(int fd, struct stat *sb)
+{
+    return _fstat(fd, (struct _stat *) sb);
+}
+
+/*
+ * NAME:	P->unlink()
+ * DESCRIPTION:	remove a file (but not a directory)
+ */
+int P_unlink(char *path)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, path) == (char *) NULL) {
+	return -1;
+    }
+
+    return _unlink(buf);
+}
+
+/*
+ * NAME:	P->rename()
+ * DESCRIPTION:	rename a file
+ */
+int P_rename(char *from, char *to)
+{
+    char buf1[STRINGSZ], buf2[STRINGSZ];
+
+    if (path_file(buf1, from) == (char *) NULL ||
+	path_file(buf2, to) == (char *) NULL) {
+	return -1;
+    }
+    return rename(buf1, buf2);	/* has no underscore for some reason */
+}
+
+/*
+ * NAME:	P_access()
+ * DESCRIPTION:	check access on a file
+ */
+int P_access(char *path, int mode)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, path) == (char *) NULL) {
+	return -1;
+    }
+    return _access(buf, mode);
+}
+
+/*
+ * NAME:	P->mkdir()
+ * DESCRIPTION:	create a directory
+ */
+int P_mkdir(char *path, int mode)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, path) == (char *) NULL) {
+	return -1;
+    }
+
+    return _mkdir(buf);
+}
+
+/*
+ * NAME:	P_rmdir()
+ * DESCRIPTION:	remove an empty directory
+ */
+int P_rmdir(char *path)
+{
+    char buf[STRINGSZ];
+
+    if (path_file(buf, path) == (char *) NULL) {
+	return -1;
+    }
+
+    return _rmdir(buf);
 }
 
 /*
@@ -47,10 +194,12 @@ char *path_unfile(char *file)
  */
 int P_chdir(char *dir)
 {
-    if (_chdir(dir) < 0) {
+    char buf[STRINGSZ];
+
+    if (path_file(buf, dir) == (char *) NULL || _chdir(buf) < 0) {
 	return -1;
     }
-    if (dir[1] == ':' && _chdrive(toupper(dir[0]) - 'A' + 1) < 0) {
+    if (buf[1] == ':' && _chdrive(toupper(buf[0]) - 'A' + 1) < 0) {
 	return -1;
     }
     return 0;
@@ -67,7 +216,9 @@ char P_opendir(char *dir)
 {
     char path[_MAX_PATH + 2];
 
-    strcpy(path, dir);
+    if (path_file(path, dir) == (char *) NULL) {
+	return FALSE;
+    }
     strcat(path, "\\*");
     d = _findfirst(path, &fdata);
     return (d != -1);

@@ -1,4 +1,3 @@
-# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -145,9 +144,6 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
-    int fd;
-    bool init;
-
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
@@ -157,20 +153,7 @@ char **argv;
     driver = (object *) NULL;
     driver_name = (char *) NULL;
     swap = dump = intr = stop = FALSE;
-    if (argc == 3) {
-	fd = P_open(argv[2], O_RDONLY | O_BINARY, 0);
-	if (fd < 0) {
-	    P_message("Config error: cannot open restore file\012");	/* LF */
-	    return 2;
-	}
-    } else {
-	fd = -1;
-    }
-    init = conf_init(argv[1], fd);
-    if (fd >= 0) {
-	P_close(fd);
-    }
-    if (!init) {
+    if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL)) {
 	return 2;	/* initialization failed */
     }
 

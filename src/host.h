@@ -78,20 +78,6 @@ typedef unsigned int Uint;
 # include <fcntl.h>
 # include <sys\stat.h>
 
-# define open			_open
-# define close			_close
-# define read			_read
-# define write			_write
-# define lseek			_lseek
-# define unlink			_unlink
-# define chdir			P_chdir
-# define mkdir(dir, mode)	_mkdir(dir)
-# define rmdir			_rmdir
-# define access			_access
-# define stat			_stat
-
-extern int P_chdir(char*);
-
 # define F_OK	0
 # define R_OK	4
 # define W_OK	2
@@ -313,6 +299,9 @@ extern void  P_message	P((char*));
 
 # ifdef INCLUDE_FILE_IO
 # if defined(GENERIC_BSD) || defined(GENERIC_SYSV) || defined(BEOS)
+	/* no filename translation */
+# define path_native(buf, path)	(path)
+
 # define P_open		open
 # define P_close	close
 # define P_read		read
@@ -327,11 +316,14 @@ extern void  P_message	P((char*));
 # define P_rmdir	rmdir
 # define P_chdir	chdir
 # else
+	/* filename translation */
+extern char *path_native	P((char*, char*));
+
 extern int P_open	P((char*, int, int));
 extern int P_close	P((int));
 extern int P_read	P((int, char*, int));
 extern int P_write	P((int, char*, int));
-extern int P_lseek	P((int, unsigned long, int));
+extern long P_lseek	P((int, long, int));
 extern int P_fstat	P((int, struct stat*));
 extern int P_stat	P((char*, struct stat*));
 extern int P_access	P((char*, int));
@@ -341,7 +333,7 @@ extern int P_mkdir	P((char*, int));
 extern int P_rmdir	P((char*));
 extern int P_chdir	P((char*));
 # endif
-# endif	/* INCLUDE_FILE_IO */
+# endif /* INCLUDE_FILE_IO */
 
 extern bool  P_opendir	P((char*));
 extern char *P_readdir	P((void));

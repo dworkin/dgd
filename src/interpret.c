@@ -1620,15 +1620,15 @@ register char *pc;
 
 	case I_SWITCH:
 	    switch (FETCH1U(pc)) {
-	    case 0:
+	    case SWITCH_INT:
 		pc = f->prog + i_switch_int(f, pc);
 		break;
 
-	    case 1:
+	    case SWITCH_RANGE:
 		pc = f->prog + i_switch_range(f, pc);
 		break;
 
-	    case 2:
+	    case SWITCH_STRING:
 		pc = f->prog + i_switch_str(f, pc);
 		break;
 	    }

@@ -45,7 +45,7 @@ typedef uindex sector;
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
 
-extern bool		conf_init	P((char*, int));
+extern bool		conf_init	P((char*, char*));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
 extern bool		conf_typechecking P((void));

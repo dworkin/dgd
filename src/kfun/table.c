@@ -125,7 +125,7 @@ int fd;
     }
 
     /* write header */
-    if (write(fd, (char *) &dh, sizeof(dump_header)) < 0) {
+    if (P_write(fd, (char *) &dh, sizeof(dump_header)) < 0) {
 	return FALSE;
     }
 
@@ -138,7 +138,7 @@ int fd;
 	memcpy(buffer + buflen, kf->name, len);
 	buflen += len;
     }
-    flag = (write(fd, buffer, buflen) >= 0);
+    flag = (P_write(fd, buffer, buflen) >= 0);
     AFREE(buffer);
 
     return flag;
@@ -160,7 +160,7 @@ int fd;
 
     /* fix kfuns */
     buffer = ALLOCA(char, dh.kfnamelen);
-    if (read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
+    if (P_read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
 	fatal("cannot restore kfun names");
     }
     buflen = 0;

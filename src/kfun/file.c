@@ -1525,7 +1525,7 @@ frame *f;
 	 * single file
 	 */
 	nfiles++;
-    } else if (strcmp(dir, ".") == 0 || chdir(dir) >= 0) {
+    } else if (strcmp(dir, ".") == 0 || P_chdir(dir) >= 0) {
 	if (P_opendir(".")) {
 	    /*
 	     * read files from directory
@@ -1549,7 +1549,8 @@ frame *f;
 	    P_closedir();
 	}
 
-	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
+	if (strcmp(dir, ".") != 0 &&
+	    P_chdir(path_native(buf, conf_base_dir())) < 0) {
 	    fatal("cannot chdir back to base dir");
 	}
     }

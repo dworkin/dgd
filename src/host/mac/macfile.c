@@ -46,7 +46,6 @@ char *getpath(char *buf, short vref, unsigned char *fname)
 {
     Str255 str;
     DirInfo dir;
-    char buf2
 
     buf += STRINGSZ - 1;
     buf[0] = '\0';
@@ -61,10 +60,10 @@ char *getpath(char *buf, short vref, unsigned char *fname)
     for (;;) {
 	PBGetCatInfoSync((CInfoPBPtr) &dir);
 	memcpy(buf -= str[0], str + 1, str[0]);
-	*--buf = '/';
 	if (dir.ioDrDirID == 2) {
 	    return buf;
 	}
+	*--buf = ':';
 	dir.ioFDirIndex = -1;
 	dir.ioDrDirID = dir.ioDrParID;
     }
@@ -93,29 +92,46 @@ char *getfile(char *buf, long type)
 
 
 /*
- * NAME:	filename()
+ * NAME:	path_native()
+ * DESCRIPTION:	deal with path that's already native
+ */
+char *path_native(char *to, char *from)
+{
+    to[0] = '/';	/* mark as native */
+    strncpy(to + 1, from, STRINGSZ - 1);
+    to[STRINGSZ - 1] = '\0';
+    return to;
+}
+
+/*
+ * NAME:	path_file()
  * DESCRIPTION:	translate a path to a pascal string
  */
-static unsigned char *filename(unsigned char *to, const char *from)
+static unsigned char *path_file(unsigned char *to, const char *from)
 {
     char *p, *q;
     int n;
 
     p = (char *) to + 1;
-    q = from;
-    n = 0;
-    if (*q != '/') {
-	/* relative */
-	*p++ = ':';
-	if (*q == '.' && q[1] == '\0') {
-	    *p = '\0';
-	    to[0] = 1;
-	    return to;
+    q = (char *) from;
+    if (*q == '/') {
+	/* native path: copy directly */
+	q++;
+	while (*q != '\0') {
+	    *p++ = *q++;
 	}
-	n++;
-    } else {
-	q++;	/* absolute */
+	to[0] = (unsigned char *) p - to - 1;
+	return to;
     }
+
+    n = 0;
+    *p++ = ':';
+    if (*q == '.' && q[1] == '\0') {
+	*p = '\0';
+	to[0] = 1;
+	return to;
+    }
+    n++;
 
     while (n < 255 && *q != '\0') {
 	if (*q == '/') {
@@ -135,10 +151,10 @@ static unsigned char *filename(unsigned char *to, const char *from)
 }
 
 /*
- * NAME:	pathname()
+ * NAME:	path_unfile()
  * DESCRIPTION:	translate a pascal filename to a path
  */
-static char *pathname(char *to, const unsigned char *from)
+static char *path_unfile(char *to, const unsigned char *from)
 {
     char *p, *q;
     int n;
@@ -171,7 +187,7 @@ bool P_opendir(char *path)
 
     buf.ioVRefNum = vref;
     buf.ioFDirIndex = 0;
-    buf.ioNamePtr = filename(str, path);
+    buf.ioNamePtr = path_file(str, path);
     buf.ioDirID = dirid;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
 	(buf.ioFlAttrib & ioDirMask) == 0) {
@@ -199,7 +215,7 @@ char *P_readdir(void)
 	return NULL;
     }
 
-    return pathname(path, str);
+    return path_unfile(path, str);
 }
 
 /*
@@ -227,7 +243,7 @@ int P_open(char *path, int flags, int mode)
 	}
     }
 
-    switch (HOpen(vref, dirid, filename(fdtab[fd].fname, path), fsRdWrShPerm,
+    switch (HOpen(vref, dirid, path_file(fdtab[fd].fname, path), fsRdWrShPerm,
 		  &fref)) {
     case noErr:
 	if ((flags & O_EXCL) ||
@@ -353,7 +369,7 @@ int P_stat(char *path, struct stat *sb)
     } else {
 	buf.ioVRefNum = vref;
 	buf.ioFDirIndex = 0;
-	buf.ioNamePtr = filename(str, path);
+	buf.ioNamePtr = path_file(str, path);
 	buf.ioDirID = dirid;
 	if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
 	    return -1;
@@ -401,7 +417,7 @@ int P_unlink(char *path)
 
     buf.ioVRefNum = vref;
     buf.ioFDirIndex = 0;
-    buf.ioNamePtr = filename(str, path);
+    buf.ioNamePtr = path_file(str, path);
     buf.ioDirID = dirid;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
 	(buf.ioFlAttrib & ioDirMask)) {
@@ -430,12 +446,12 @@ int P_rename(char *from, char *to)
     if (dir1[0] == 0) {
 	dir1[++(dir1[0])] = ':';
     }
-    filename(file1, p);
+    path_file(file1, p);
     memcpy(dir2 + 1, to, dir2[0] = q - to);
     if (dir2[0] == 0) {
 	dir2[++(dir2[0])] = ':';
     }
-    filename(file2, q);
+    path_file(file2, q);
 
     /* source directory must exist */
     buf.ioVRefNum = vref;
@@ -528,7 +544,7 @@ int P_access(char *path, int mode)
 
     buf.ioVRefNum = vref;
     buf.ioFDirIndex = 0;
-    buf.ioNamePtr = filename(str, path);
+    buf.ioNamePtr = path_file(str, path);
     buf.ioDirID = dirid;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
 	return -1;
@@ -549,7 +565,7 @@ int P_mkdir(char *path, int mode)
     Str255 str;
     long newdir;
 
-    if (DirCreate(vref, dirid, filename(str, path), &newdir) == noErr) {
+    if (DirCreate(vref, dirid, path_file(str, path), &newdir) == noErr) {
 	return 0;
     } else {
 	return -1;
@@ -567,7 +583,7 @@ int P_rmdir(char *path)
 
     buf.ioVRefNum = vref;
     buf.ioFDirIndex = 0;
-    buf.ioNamePtr = filename(str, path);
+    buf.ioNamePtr = path_file(str, path);
     buf.ioDirID = dirid;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
 	(buf.ioFlAttrib & ioDirMask) == 0) {
@@ -587,7 +603,7 @@ int P_chdir(char *path)
 
     buf.ioVRefNum = vref;
     buf.ioFDirIndex = 0;
-    buf.ioNamePtr = filename(str, path);
+    buf.ioNamePtr = path_file(str, path);
     buf.ioDirID = dirid;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
 	(buf.ioFlAttrib & ioDirMask) == 0) {

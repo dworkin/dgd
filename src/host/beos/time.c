@@ -14,14 +14,13 @@ Uint P_time()
  * NAME:	P->ctime()
  * DESCRIPTION:	convert the given time to a string
  */
-char *P_ctime(Uint t)
+char *P_ctime(char *buf, Uint t)
 {
-    char *buf;
     register int offset;
 
     offset = 0;
     for (offset = 0; t >= 2147397248L; t -= 1009843200L, offset += 32) ;
-    buf = ctime((time_t *) &t);
+    memcpy(buf, ctime((time_t *) &t), 26);
     if (offset != 0) {
 	long year;
 
@@ -34,7 +33,7 @@ char *P_ctime(Uint t)
 		t -= 1009843200L;
 		offset += 32;
 	    }
-	    buf = ctime((time_t *) &t);
+	    memcpy(buf, ctime((time_t *) &t), 26);
 	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
 	}
 	sprintf(buf + 20, "%ld\012", year);

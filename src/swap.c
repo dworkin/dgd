@@ -92,8 +92,10 @@ unsigned int secsize;
 void sw_finish()
 {
     if (swap >= 0) {
+	char buf[STRINGSZ];
+
 	P_close(swap);
-	P_unlink(swapfile);
+	P_unlink(path_native(buf, swapfile));
     }
     if (dump >= 0) {
 	P_close(dump);
@@ -106,8 +108,11 @@ void sw_finish()
  */
 static void sw_create()
 {
+    char buf[STRINGSZ];
+
     memset(cbuf, '\0', sectorsize);
-    swap = P_open(swapfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
+    swap = P_open(path_native(buf, swapfile),
+		  O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
     if (swap < 0 || P_write(swap, cbuf, sectorsize) < 0) {
 	fatal("cannot create swap file \"%s\"", swapfile);
     }
@@ -575,7 +580,7 @@ char *dumpfile;
 {
     register header *h;
     register sector sec;
-    char buffer[STRINGSZ + 4];
+    char buffer[STRINGSZ + 4], buf1[STRINGSZ], buf2[STRINGSZ], *p, *q;
     register sector n;
     dump_header dh;
 
@@ -588,9 +593,11 @@ char *dumpfile;
 	}
 	P_close(dump);
     }
+    p = path_native(buf1, dumpfile);
     sprintf(buffer, "%s.old", dumpfile);
-    P_unlink(buffer);
-    P_rename(dumpfile, buffer);
+    q = path_native(buf2, buffer);
+    P_unlink(q);
+    P_rename(p, q);
     if (swap < 0) {
 	sw_create();
     }
@@ -624,14 +631,15 @@ char *dumpfile;
 
     /* move to dumpfile */
     P_close(swap);
-    if (P_rename(swapfile, dumpfile) < 0) {
+    q = path_native(buf2, swapfile);
+    if (P_rename(q, p) < 0) {
 	/*
 	 * The rename failed.  Attempt to copy the dumpfile instead.
 	 * This will take a long, long while, so keep the swapfile and
 	 * dumpfile on the same file system if at all possible.
 	 */
-	swap = P_open(swapfile, O_RDWR | O_BINARY, 0);
-	dump = P_open(dumpfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
+	swap = P_open(q, O_RDWR | O_BINARY, 0);
+	dump = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
 	if (swap < 0 || dump < 0) {
 	    fatal("cannot move swap file");
 	}
@@ -655,7 +663,7 @@ char *dumpfile;
 	/*
 	 * The rename succeeded; reopen the new dumpfile.
 	 */
-	dump = P_open(dumpfile, O_RDWR | O_BINARY, 0);
+	dump = P_open(p, O_RDWR | O_BINARY, 0);
 	if (dump < 0) {
 	    fatal("cannot reopen dump file");
 	}

@@ -350,7 +350,7 @@ int fd;
     }
 
     /* write header */
-    if (write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+    if (P_write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	return FALSE;
     }
 
@@ -450,23 +450,23 @@ int fd;
 	vardefs -= dh.nvardefs;
 	funcalls -= 2 * dh.nfuncalls;
 
-	if (write(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
+	if (P_write(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
 					dh.nprecomps * sizeof(dump_precomp) ||
-	    write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
+	    P_write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
 					dh.ninherits * sizeof(dump_inherit) ||
 	    (dh.nstrings != 0 &&
-	     write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
+	     P_write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
 					    dh.nstrings * sizeof(dstrconst)) ||
 	    (dh.stringsz != 0 &&
-	     write(fd, stext, dh.stringsz) != dh.stringsz) ||
+	     P_write(fd, stext, dh.stringsz) != dh.stringsz) ||
 	    (dh.nfuncdefs != 0 &&
-	     write(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
+	     P_write(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
 					    dh.nfuncdefs * sizeof(dfuncdef)) ||
 	    (dh.nvardefs != 0 &&
-	     write(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
+	     P_write(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
 					    dh.nvardefs * sizeof(dvardef)) ||
 	    (dh.nfuncalls != 0 &&
-	     write(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls)) {
+	     P_write(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls)) {
 	    ok = FALSE;
 	}
 
@@ -691,7 +691,7 @@ int fd;
 	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
 	    if (dh.stringsz != 0) {
 		stext = ALLOCA(char, dh.stringsz);
-		if (read(fd, stext, dh.stringsz) != dh.stringsz) {
+		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
 		    fatal("cannot read from dump file");
 		}
 	    }
@@ -706,7 +706,7 @@ int fd;
 	}
 	if (dh.nfuncalls != 0) {
 	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
-	    if (read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
+	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
 		fatal("cannot read from dump file");
 	    }
 	}

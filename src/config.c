@@ -36,7 +36,7 @@ static config conf[] = {
 				{ "array_size",		INT_CONST, FALSE,
 							1, USHRT_MAX / 2 },
 # define AUTO_OBJECT	1
-				{ "auto_object",	STRING_CONST, FALSE },
+				{ "auto_object",	STRING_CONST, TRUE },
 # define BINARY_PORT	2
 				{ "binary_port",	INT_CONST, FALSE,
 							0, USHRT_MAX },
@@ -51,7 +51,7 @@ static config conf[] = {
 # define DIRECTORY	6
 				{ "directory",		STRING_CONST, FALSE },
 # define DRIVER_OBJECT	7
-				{ "driver_object",	STRING_CONST, FALSE },
+				{ "driver_object",	STRING_CONST, TRUE },
 # define DUMP_FILE	8
 				{ "dump_file",		STRING_CONST, FALSE },
 # define DYNAMIC_CHUNK	9
@@ -64,7 +64,7 @@ static config conf[] = {
 # define INCLUDE_DIRS	12
 				{ "include_dirs",	'(', FALSE },
 # define INCLUDE_FILE	13
-				{ "include_file",	STRING_CONST, FALSE },
+				{ "include_file",	STRING_CONST, TRUE },
 # define OBJECTS	14
 				{ "objects",		INT_CONST, FALSE,
 							2, UINDEX_MAX },
@@ -653,8 +653,7 @@ static bool conf_config()
 	    break;
 
 	case STRING_CONST:
-	    p = (m == AUTO_OBJECT || m == DRIVER_OBJECT || m == INCLUDE_FILE) ?
-		 path_resolve(buf, yytext) : yytext;
+	    p = (conf[m].set) ? path_resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
@@ -927,16 +926,17 @@ static bool conf_includes()
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(configfile, fd)
-char *configfile;
-int fd;
+bool conf_init(configfile, dumpfile)
+char *configfile, *dumpfile;
 {
+    char buf[STRINGSZ];
+    int fd;
     bool init;
 
     /*
      * process config file
      */
-    if (!pp_init(configfile, (char **) NULL, 0)) {
+    if (!pp_init(path_native(buf, configfile), (char **) NULL, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
 	m_finish();
 	return FALSE;
@@ -947,11 +947,21 @@ int fd;
 	m_finish();
 	return FALSE;
     }
+    if (dumpfile != (char *) NULL) {
+	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
+	if (fd < 0) {
+	    P_message("Config error: cannot open restore file\012");    /* LF */
+	    return FALSE;
+	}
+    }
 
     /* change directory */
-    if (chdir(conf[DIRECTORY].u.str) < 0) {
+    if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */
 		conf[DIRECTORY].u.str);
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
 	m_finish();
 	return FALSE;
     }
@@ -963,6 +973,9 @@ int fd;
 		   (unsigned int) conf[TELNET_PORT].u.num,
 		   (unsigned int) conf[BINARY_PORT].u.num)) {
 	comm_finish();
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
 	m_finish();
 	return FALSE;
     }
@@ -1016,6 +1029,9 @@ int fd;
      */
     if (!conf_includes()) {
 	comm_finish();
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
 	m_finish();
 	return FALSE;
     }
@@ -1032,15 +1048,19 @@ int fd;
 	message("Config error: initialization failed\012");	/* LF */
 	comm_finish();
 	ed_finish();
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
 	m_finish();
 	return FALSE;
     }
-    if (fd < 0) {
+    if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */
 	call_driver_object(cframe, "initialize", 0);
     } else {
 	/* restore dump file */
 	conf_restore(fd);
+	P_close(fd);
 
 	/* notify mudlib */
 	call_driver_object(cframe, "restored", 0);

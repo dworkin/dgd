@@ -647,13 +647,13 @@ int fd;
     }
 
     /* write header and callouts */
-    ret = (write(fd, (char *) &dh, sizeof(dump_header)) > 0 &&
+    ret = (P_write(fd, (char *) &dh, sizeof(dump_header)) > 0 &&
 	   (queuebrk == 0 ||
-	    write(fd, (char *) cotab, queuebrk * sizeof(call_out)) > 0) &&
+	    P_write(fd, (char *) cotab, queuebrk * sizeof(call_out)) > 0) &&
 	   (cycbrk == cotabsz ||
-	    write(fd, (char *) (cotab + cycbrk),
-		  (cotabsz - cycbrk) * sizeof(call_out)) > 0) &&
-	   write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
+	    P_write(fd, (char *) (cotab + cycbrk),
+		    (cotabsz - cycbrk) * sizeof(call_out)) > 0) &&
+	   P_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 
     /* fix up immediate callouts */
     if (nzero != 0) {

@@ -125,6 +125,11 @@ struct _value_ {
 # define C_UNDEFINED	0x80
 
 
+# define SWITCH_INT	0
+# define SWITCH_RANGE	1
+# define SWITCH_STRING	2
+
+
 struct _frame_ {
     frame *prev;		/* previous stack frame */
     object *obj;		/* current object */
