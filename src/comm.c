@@ -206,8 +206,7 @@ bool force;
 	error((char *) NULL);
     } else {
 	this_user = obj;
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = force;
+	PUSH_INTVAL(f, force);
 	if (i_call(f, obj, "close", 5, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	}
@@ -360,8 +359,7 @@ bool prompt, flushbuf;
 	/*
 	 * buffer the remainder of the string
 	 */
-	v.type = T_STRING;
-	v.u.string = str;
+	PUT_STRVAL_NOREF(&v, str);
 	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &v);
 	usr->obj->flags |= O_PENDIO;
 	usr->flags |= CF_NOPROMPT;
@@ -832,8 +830,7 @@ unsigned int mtime;
 		p++;			/* skip \n */
 		usr->inbufsz -= n + 1;
 
-		(--f->sp)->type = T_STRING;
-		str_ref(f->sp->u.string = str_new(usr->inbuf, (long) n));
+		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
 		for (n = usr->inbufsz; n != 0; --n) {
 		    *q++ = *p++;
 		}
@@ -843,8 +840,7 @@ unsigned int mtime;
 		 */
 		n = usr->inbufsz;
 		usr->inbufsz = 0;
-		(--f->sp)->type = T_STRING;
-		str_ref(f->sp->u.string = str_new(usr->inbuf, (long) n));
+		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
 	    }
 	} else {
 	    /*
@@ -857,8 +853,7 @@ unsigned int mtime;
 		     * received datagram
 		     */
 		    usr->flags |= CF_UDPDATA;
-		    (--f->sp)->type = T_STRING;
-		    str_ref(f->sp->u.string = str_new(buffer, (long) n));
+		    PUSH_STRVAL(f, str_new(buffer, (long) n));
 		    this_user = usr->obj;
 		    if (i_call(f, usr->obj, "receive_datagram", 16, TRUE, 1)) {
 			i_del_value(f->sp++);
@@ -883,8 +878,7 @@ unsigned int mtime;
 		continue;
 	    }
 
-	    (--f->sp)->type = T_STRING;
-	    str_ref(f->sp->u.string = str_new(buffer, (long) n));
+	    PUSH_STRVAL(f, str_new(buffer, (long) n));
 	}
 
 	this_user = usr->obj;
@@ -971,9 +965,7 @@ dataspace *data;
     v = a->elts;
     for (usr = users; i > 0; usr++) {
 	if (usr->obj != (object *) NULL) {
-	    v->type = T_OBJECT;
-	    v->oindex = usr->obj->index;
-	    v->u.objcnt = usr->obj->count;
+	    PUT_OBJVAL(v, usr->obj);
 	    v++;
 	    --i;
 	}
