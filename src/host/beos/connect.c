@@ -95,7 +95,7 @@ static bool ipa_init(int maxusers)
  * NAME:	ipaddr->start()
  * DESCRIPTION:	start name resolver thread
  */
-static void ipa_start(int sock)
+static void ipa_start(int sock, bool any)
 {
     if (out < 0) {
 	struct sockaddr_in addr;
@@ -103,7 +103,9 @@ static void ipa_start(int sock)
 
 	len = sizeof(struct sockaddr_in);
 	getsockname(sock, (struct sockaddr *) &addr, &len);
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	if (any) {
+	    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	}
 	connect(in, (struct sockaddr *) &addr, len);
 	out = accept(sock, (struct sockaddr *) &addr, &len);
 	resume_thread(spawn_thread(ipa_run, "name_lookup", B_NORMAL_PRIORITY,
@@ -346,6 +348,8 @@ static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
 static int npackets;			/* # packets buffered */
 static int closed;			/* #fds closed in write */
+static int ipa;				/* ipa socket */
+static bool any;			/* ipa socket bound to INADDR_ANY */
 
 /*
  * NAME:	conn->port()
@@ -395,6 +399,8 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
     if (!ipa_init(maxusers)) {
 	return FALSE;
     }
+    ipa = -1;
+    any = FALSE;
 
     nusers = 0;
     maxfd = 0;
@@ -437,6 +443,10 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	if (!conn_port(&tdescs[n], SOCK_STREAM, &sin, tports[n])) {
 	    return FALSE;
 	}
+	if (ipa < 0) {
+	    ipa = tdescs[n];
+	    any = (thosts[n] == (char *) NULL);
+	}
     }
 
     for (n = 0; n < nbdescs; n++) {
@@ -456,6 +466,10 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	}
 	if (!conn_port(&udescs[n], SOCK_DGRAM, &sin, bports[n])) {
 	    return FALSE;
+	}
+	if (ipa < 0) {
+	    ipa = bdescs[n];
+	    any = (bhosts[n] == (char *) NULL);
 	}
     }
 
@@ -530,12 +544,16 @@ void conn_listen()
 	    perror("setsockopt");
 	    fatal("setsockopt failed");
 	}
+	on = TRUE;
+	if (setsockopt(udescs[n], SOL_SOCKET, SO_NONBLOCK, (char *) &on,
+		       sizeof(on)) < 0) {
+	    perror("setsockopt");
+	    fatal("setsockopt failed");
+	}
     }
 
-    if (ntdescs != 0) {
-	ipa_start(tdescs[0]);
-    } else if (nbdescs != 0) {
-	ipa_start(bdescs[0]);
+    if (ipa >= 0) {
+	ipa_start(ipa, any);
     }
 }
 

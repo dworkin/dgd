@@ -1590,3 +1590,4 @@ DGD 1.3
  - Fixed various bugs in asn_* kfuns and made the bit string functions more
    easily usable.
  - Added IPv6 support for unix.
+ - Got namelookup to work properly again on Windows and BeOS.

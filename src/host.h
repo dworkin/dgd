@@ -170,7 +170,7 @@ typedef unsigned int Uint;
 # endif /* DECALPHA */
 
 
-# if defined(NETBSD) || defined(BSD386)
+# ifdef NETBSD
 
 # ifdef __alpha__
 # define STRUCT_AL		8	/* define this if align(struct) > 2 */
@@ -182,7 +182,7 @@ typedef unsigned int Uint;
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
-# endif /* NETBSD || BSD386 */
+# endif /* NETBSD */
 
 
 # ifdef LINUX

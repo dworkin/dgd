@@ -1,13 +1,14 @@
 To compile DGD, you will have to set HOST in src/Makefile to the proper value:
 
-NETBSD		NetBSD.  This is the default.
-BSD386		FreeBSD or 386BSD.
-LINUX		Linux.  Copy src/host/Makefile.sysv to src/host/Makefile.
+NETBSD		NetBSD.  Also works for MacOS X, FreeBSD, OpenBSD and Linux.
+LINUX		Older versions of Linux.  Copy src/host/Makefile.sysv to
+		src/host/Makefile.
 SUNOS4		SunOS 4.x.
-SOLARIS		SunOS 5.x.  Copy src/host/Makefile.sysv to src/host/Makefile,
-		and in src/Makefile also set LIBS to -lsocket -lnsl
+SOLARIS		SunOS 5.x.  In src/Makefile set LIBS to -lsocket -lnsl.  Older
+		versions also require src/host/Makefile.sysv to be copied to
+		src/host/Makefile.
 DECALPHA	DEC Alpha.  Copy src/host/Makefile.sysv to src/host/Makefile.
-BEOS		BeOS.  Set LDFLAGS to -lbe -ltracker, and copy
+BEOS		BeOS.  In src/Makefile set LIBS to -lbe -ltracker, and copy
 		src/host/Makefile.beos to src/host/Makefile.
 WIN32		Windows NT or Windows 95.  Follow the instructions in
 		src/host/pc/README.

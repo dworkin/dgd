@@ -100,7 +100,9 @@ static void ipa_start(SOCKET sock)
 
 	len = sizeof(struct sockaddr_in);
 	getsockname(sock, (struct sockaddr *) &addr, &len);
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	if (addr.sin_addr.s_addr == INADDR_ANY) {
+	    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	}
 	connect(in, (struct sockaddr *) &addr, len);
 	out = accept(sock, (struct sockaddr *) &addr, &len);
 
@@ -532,24 +534,37 @@ void conn_listen(void)
     unsigned long nonblock;
 
     for (n = 0; n < ntdescs; n++) {
+	if (listen(tdescs[n], 64) != 0) {
+	    fatal("listen failed");
+	}
+    }
+    for (n = 0; n < nbdescs; n++) {
+	if (listen(bdescs[n], 64) != 0) {
+	    fatal("listen failed");
+	}
+    }
+    if (ntdescs != 0) {
+	ipa_start(tdescs[0]);
+    } else if (nbdescs != 0) {
+	ipa_start(bdescs[0]);
+    }
+
+    for (n = 0; n < ntdescs; n++) {
 	nonblock = TRUE;
-	if (listen(tdescs[n], 64) != 0 ||
-	    ioctlsocket(tdescs[n], FIONBIO, &nonblock) != 0) {
-	    fatal("conn_listen failed");
+	if (ioctlsocket(tdescs[n], FIONBIO, &nonblock) != 0) {
+	    fatal("ioctlsocket failed");
 	}
     }
     for (n = 0; n < nbdescs; n++) {
 	nonblock = TRUE;
-	if (listen(bdescs[n], 64) != 0 ||
-	    ioctlsocket(bdescs[n], FIONBIO, &nonblock) != 0) {
-	    fatal("conn_listen failed");
+	if (ioctlsocket(bdescs[n], FIONBIO, &nonblock) != 0) {
+	    fatal("ioctlsocket failed");
 	}
 	nonblock = TRUE;
 	if (ioctlsocket(udescs[n], FIONBIO, &nonblock) != 0) {
-	    fatal("conn_listen failed");
+	    fatal("ioctlsocket failed");
 	}
     }
-    ipa_start(bdescs[0]);
 }
 
 /*
