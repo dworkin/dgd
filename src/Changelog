@@ -707,3 +707,44 @@ DGD 1.0.8
    operator.
  - Fixed a bug which caused <digits>. to be rejected as a valid floating point
    constant.
+
+DGD 1.0.9
+
+ - call_trace() could give incorrect arguments for varargs functions.
+ - Fixed a bug which could occur for strval[i] = intval.
+ - Attempt to use telnet linemode.  This makes *BSD telnet usable, let's hope
+   nothing else breaks.
+ - Fixed a bug in code generated for switch statements which only have a
+   default entry with break statement.
+ - Fixed an overflow problem in the array/mapping sort compare function.
+ - DGD will now compile without warnings using gcc 2.4.5 -ansi -pedantic.
+ - Fixed a bug in telnet subnegotiations.
+ - Fixed some other ANSI C pointer problems.
+ - The driver can now call static functions in the auto object.
+ - Found a crasher in str.c::str_put() that had eluded me for quite a while.
+ - Undid the static function patch (dumpfile incompatibility and other
+   problems).
+ - Made state dumps for which the whole swapfile was copied in one go more
+   efficient.
+ - 'make a.out' will now always relink a.out.  This fixes a dependency problem.
+ - Global commands in the editor would crash with a bad regular expression.
+ - Widened the size limits for arrays and mappings somewhat.
+ - The precompiler will accept an optional 3rd argument, the output file.
+   This file will be removed if an error occurs during precompiling (fixing
+   another dependency problem).
+ - Turned off type errors for ?: .  In case of a type conflict, the result
+   type is mixed.
+ - Extended status() array with some limits, also in status.h (needed for
+   continuous muds).
+ - Added array | array (A + (B - A)) and array ^ array ((A - B) + (B - A)).
+ - String and array reference counts are now 4 bytes, instead of 2.
+ - Fixed a bug that could remove code with a case label inside.
+ - Translate std include file to a local filename before using it.
+ - Removed spurious path_file() from path_object().
+ - Added path_unfile() to translate a filename in host format back to DGD
+   format.
+ - Fixed a problem regarding mapping aggregates with identical indices;
+   calling error() from within qsort() might leave the mapping in an
+   inconsistant state.
+ - Changed YYDEPTH into YYMAXDEPTH in config.h; this should work for a wider
+   range of yaccs.

@@ -48,7 +48,7 @@ typedef struct _maphash_ {
 # define MTABLE_SIZE	16	/* most mappings are quite small */
 
 static unsigned long max_size;	/* max. size of array and mapping */
-static long tag;		/* current array tag */
+static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
 static array *flist;		/* free arrays */
@@ -83,7 +83,7 @@ int size;
  * DESCRIPTION:	create a new array
  */
 array *arr_alloc(size)
-unsigned short size;
+unsigned int size;
 {
     register array *a;
 
@@ -302,15 +302,6 @@ void arr_freeall()
 }
 
 /*
- * NAME:	array->maxsize()
- * DESCRIPTION:	return the maximum array size
- */
-int arr_maxsize()
-{
-    return max_size;
-}
-
-/*
  * NAME:	array->put()
  * DESCRIPTION:	Put an array in the merge table, and return its "index".
  */
@@ -413,26 +404,25 @@ register array *a1, *a2;
  * NAME:	cmp()
  * DESCRIPTION:	compare two values
  */
-static int cmp(v1, v2)
-register value *v1, *v2;
+static int cmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
+    register value *v1, *v2;
     register int i;
-    register long l;
     xfloat f1, f2;
 
+    v1 = (value *) cv1;
+    v2 = (value *) cv2;
     i = v1->type - v2->type;
     if (i != 0) {
 	return i;	/* order by type */
     }
 
-    /*
-     * No special check for destructed objects is made here; if desired,
-     * that should be done in advance.
-     */
     switch (v1->type) {
     case T_INT:
-	l = v1->u.number - v2->u.number;
-	break;
+	return (v1->u.number <= v2->u.number) ?
+		(v1->u.number < v2->u.number) ? -1 : 0 :
+		1;
 
     case T_FLOAT:
 	VFLT_GET(v1, f1);
@@ -443,18 +433,18 @@ register value *v1, *v2;
 	return str_cmp(v1->u.string, v2->u.string);
 
     case T_OBJECT:
+	/*
+	 * No special check for destructed objects is made here; if desired,
+	 * that should be done in advance.
+	 */
 	return v1->oindex - v2->oindex;
 
     case T_ARRAY:
     case T_MAPPING:
-	l = v1->u.array->tag - v2->u.array->tag;
-	break;
+	return (v1->u.array->tag <= v2->u.array->tag) ?
+		(v1->u.array->tag < v2->u.array->tag) ? -1 : 0 :
+		1;
     }
-    /*
-     * Unfortunately, since longs may be larger than integers, we cannot just
-     * subtract one long from another and return the result as an int.
-     */
-    return (l > 0) ? 1 : l >> 16;
 }
 
 /*
@@ -673,6 +663,193 @@ array *a1, *a2;
 }
 
 /*
+ * NAME:	array->setadd()
+ * DESCRIPTION:	A + (B - A).  If A and B are sets, the result is a set also.
+ */
+array *arr_setadd(a1, a2)
+array *a1, *a2;
+{
+    register value *v, *v1, *v2;
+    value *v3;
+    register array *a3;
+    register unsigned short n, size;
+
+    if (a1->size == 0) {
+	/* ({ }) | array */
+	a3 = arr_alloc(a2->size);
+	copy(a3->elts, d_get_elts(a2), a3->size);
+	return a3;
+    }
+    if (a2->size == 0) {
+	/* array | ({ }) */
+	a3 = arr_alloc(a1->size);
+	copy(a3->elts, d_get_elts(a1), a3->size);
+	return a3;
+    }
+
+    /* make room for elements to add */
+    v3 = ALLOCA(value, a2->size);
+
+    /*
+     * If destructed objects are found, they will be replaced by 0 in the
+     * original arrays.
+     */
+
+    /* copy values of 1st array */
+    v1 = ALLOCA(value, size = a1->size);
+    v = d_get_elts(a1);
+    for (n = size; n > 0; --n) {
+	if (v->type == T_OBJECT && DESTRUCTED(v)) {
+	    /* replace destructed object by 0 */
+	    *v = zero_value;
+	}
+	*v1++ = *v++;
+    }
+    /* sort values */
+    qsort(v1 -= size, size, sizeof(value), cmp);
+
+    v = v3;
+    v2 = d_get_elts(a2);
+    for (n = a2->size; n > 0; --n) {
+	if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
+	    /* replace destructed object by 0 */
+	    *v2 = zero_value;
+	}
+	if (search(v2, v1, size, 1) < 0) {
+	    /*
+	     * element is only in second array: copy to result array
+	     */
+	    *v++ = *v2;
+	}
+	v2++;
+    }
+    AFREE(v1);	/* free copy of values of 1st array */
+
+    n = v - v3;
+    if ((long) size + n > max_size) {
+	AFREE(v3);
+	error("Array too large");
+    }
+
+    a3 = arr_alloc(size + n);
+    copy(a3->elts, a1->elts, size);
+    copy(a3->elts + size, v3, n);
+    AFREE(v3);
+    return a3;
+}
+
+/*
+ * NAME:	array->setxadd()
+ * DESCRIPTION:	(A - B) + (B - A).  If A and B are sets, the result is a set
+ *		also.
+ */
+array *arr_setxadd(a1, a2)
+array *a1, *a2;
+{
+    register value *v, *w, *v1, *v2;
+    value *v3;
+    register array *a3;
+    register unsigned short n, size;
+    unsigned short num;
+
+    if (a1->size == 0) {
+	/* ({ }) ^ array */
+	a3 = arr_alloc(a2->size);
+	copy(a3->elts, d_get_elts(a2), a3->size);
+	return a3;
+    }
+    if (a2->size == 0) {
+	/* array ^ ({ }) */
+	a3 = arr_alloc(a1->size);
+	copy(a3->elts, d_get_elts(a1), a3->size);
+	return a3;
+    }
+
+    /*
+     * If destructed objects are found, they will be replaced by 0 in the
+     * original arrays.
+     */
+
+    /* copy values of 1st array */
+    v = d_get_elts(a1);
+    v1 = ALLOCA(value, size = a1->size);
+    for (n = size; n > 0; --n) {
+	if (v->type == T_OBJECT && DESTRUCTED(v)) {
+	    /* replace destructed object by 0 */
+	    *v = zero_value;
+	}
+	*v1++ = *v++;
+    }
+    v1 -= size;
+
+    /* copy values of 2nd array */
+    v = d_get_elts(a2);
+    v2 = ALLOCA(value, size = a2->size);
+    for (n = size; n > 0; --n) {
+	if (v->type == T_OBJECT && DESTRUCTED(v)) {
+	    /* replace destructed object by 0 */
+	    *v = zero_value;
+	}
+	*v2++ = *v++;
+    }
+    /* sort 2nd array */
+    qsort(v2 -= size, size, sizeof(value), cmp);
+
+    /* room for first half of result */
+    v3 = ALLOCA(value, a1->size);
+
+    v = v3;
+    w = v1;
+    for (n = a1->size; n > 0; --n) {
+	if (search(v1, v2, size, 1) < 0) {
+	    /*
+	     * element is only in first array: copy to result array
+	     */
+	    *v++ = *v1;
+	} else {
+	    /*
+	     * element is in both: keep it for the next round
+	     */
+	    *w++ = *v1;
+	}
+	v1++;
+    }
+    num = v - v3;
+
+    /* sort copy of 1st array */
+    v1 -= a1->size;
+    qsort(v1, size = w - v1, sizeof(value), cmp);
+
+    v = v2;
+    w = a2->elts;
+    for (n = a2->size; n > 0; --n) {
+	if (search(w, v1, size, 1) < 0) {
+	    /*
+	     * element is only in second array: copy to 2nd result array
+	     */
+	    *v++ = *w;
+	}
+	w++;
+    }
+
+    n = v - v2;
+    if ((long) num + n > max_size) {
+	AFREE(v3);
+	AFREE(v2);
+	AFREE(v1);
+	error("Array too large");
+    }
+
+    a3 = arr_alloc(num + n);
+    copy(a3->elts, v3, num);
+    copy(a3->elts + num, v2, n);
+    AFREE(v3);
+    AFREE(v2);
+    AFREE(v1);
+    return a3;
+}
+
+/*
  * NAME:	array->index()
  * DESCRIPTION:	index an array
  */
@@ -694,8 +871,6 @@ void arr_ckrange(a, l1, l2)
 array *a;
 register long l1, l2;
 {
-    register array *range;
-
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
     }
@@ -721,19 +896,25 @@ register long l1, l2;
 }
 
 
+static bool ididx;	/* flag for identical indices */
+
 /*
  * NAME:	mapcmp()
  * DESCRIPTION:	compare two mapping indices
  */
-static int mapcmp(v1, v2)
-value *v1, *v2;
+static int mapcmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
     register int c;
+    register value *v1, *v2;
 
-    c = cmp(v1, v2);
+    c = cmp(cv1, cv2);
+    v1 = (value *) cv1;
+    v2 = (value *) cv2;
     if (c == 0 && v1 != v2 && (!T_INDEXED(v1->type) ||
 	v1->u.array == v2->u.array)) {
-	error("Identical indices in mapping");
+	/* jumping out of qsort might leave the mapping in a bad state */
+	ididx = TRUE;
     }
     return c;
 }
@@ -774,7 +955,11 @@ register array *m;
     }
 
     if (sz != 0) {
+	ididx = FALSE;
 	qsort(m->elts, sz >> 1, 2 * sizeof(value), mapcmp);
+	if (ididx) {
+	    error("Identical indices in mapping");
+	}
     } else if (m->size > 0) {
 	FREE(m->elts);
 	m->elts = (value *) NULL;

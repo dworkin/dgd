@@ -98,7 +98,7 @@ unsigned short olddepth;
 }
 
 
-static unsigned short opt_expr P((node**, bool));
+static unsigned short opt_expr P((node**, int));
 
 /*
  * NAME:	optimize->lvalue()
@@ -941,7 +941,7 @@ register node **m;
  */
 static unsigned short opt_expr(m, pop)
 register node **m;
-bool pop;
+int pop;
 {
     register unsigned short d1, d2, i;
     register node *n;
@@ -1499,7 +1499,7 @@ register node *n;
 	    break;
 
 	case N_IF:
-	    m->l.left->l.left = opt_skip(m->r.right->l.left);
+	    m->r.right->l.left = opt_skip(m->r.right->l.left);
 	    m->r.right->r.right = opt_skip(m->r.right->r.right);
 	    if (m->r.right->l.left != (node *) NULL ||
 		m->r.right->r.right != (node *) NULL) {

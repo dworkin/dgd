@@ -24,7 +24,7 @@ typedef struct {
     char *name;		/* name of the option */
     short type;		/* option type */
     bool set;		/* TRUE if option is set */
-    long low, high;	/* lower and higher bound, for numeric values */
+    Uint low, high;	/* lower and higher bound, for numeric values */
     union {
 	long num;	/* numeric value */
 	char *str;	/* string value */
@@ -34,7 +34,7 @@ typedef struct {
 static config conf[] = {
 # define ARRAY_SIZE	0
 				{ "array_size",		INT_CONST, FALSE,
-							1000, 8192 },
+							1, USHRT_MAX },
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, FALSE },
 # define BINARY_PORT	2
@@ -48,7 +48,7 @@ static config conf[] = {
 							0, UINDEX_MAX },
 # define CALL_STACK	5
 				{ "call_stack",		INT_CONST, FALSE,
-							10 },
+							5 },
 # define CREATE		6
 				{ "create",		STRING_CONST, FALSE },
 # define DIRECTORY	7
@@ -63,20 +63,20 @@ static config conf[] = {
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
 # define EDITORS	12
 				{ "editors",		INT_CONST, FALSE,
-							1, 255 },
+							1, UCHAR_MAX },
 # define INCLUDE_DIRS	13
 				{ "include_dirs",	'(', FALSE },
 # define INCLUDE_FILE	14
 				{ "include_file",	STRING_CONST, FALSE },
 # define MAX_COST	15
 				{ "max_cost",		INT_CONST, FALSE,
-							100000L },
+							10000L },
 # define OBJECTS	16
 				{ "objects",		INT_CONST, FALSE,
-							100 },
+							2, UINDEX_MAX },
 # define RESERVED_CSTACK 17
 				{ "reserved_cstack",	INT_CONST, FALSE,
-							5 },
+							1 },
 # define RESERVED_VSTACK 18
 				{ "reserved_vstack",	INT_CONST, FALSE,
 							20 },
@@ -94,13 +94,13 @@ static config conf[] = {
 							1024, UINDEX_MAX },
 # define TELNET_PORT	24
 				{ "telnet_port",	INT_CONST, FALSE,
-							1000 },
+							1024, USHRT_MAX },
 # define TYPECHECKING	25
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 1 },
 # define USERS		26
 				{ "users",		INT_CONST, FALSE,
-							1, 255 },
+							1, UCHAR_MAX },
 # define VALUE_STACK	27
 				{ "value_stack",	INT_CONST, FALSE,
 							100 },
@@ -162,6 +162,9 @@ void conf_dump()
     if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
     }
+    if (!pc_dump(fd)) {
+	fatal("failed to dump precompiled objects");
+    }
 
     header[2] = conf[TYPECHECKING].u.num;
     t[0] = conf[SECTOR_SIZE].u.num;
@@ -185,8 +188,7 @@ int fd;
     Uint t[4];
 
     if (read(fd, buffer, sizeof(header)) != sizeof(header) ||
-	buffer[0] != 1 ||
-	memcmp(buffer + 2, header + 2, sizeof(header) - 2) != 0 ||
+	memcmp(buffer, header, sizeof(header)) != 0 ||
 	read(fd, (char *) t, sizeof(t)) != sizeof(t)) {
 	fatal("bad or incompatible restore file header");
     }
@@ -197,6 +199,7 @@ int fd;
     kf_restore(fd);
     o_restore(fd, t[1]);
     co_restore(fd, t[1]);
+    pc_restore(fd);
 }
 
 /*
@@ -359,10 +362,10 @@ char *configfile, *dumpfile;
     /* initialize arrays */
     arr_init((int) conf[ARRAY_SIZE].u.num);
 
-    /* initialize object */
+    /* initialize objects */
     o_init((int) conf[OBJECTS].u.num);
 
-    /* initialize swap */
+    /* initialize swap device */
     sw_init(conf[SWAP_FILE].u.str,
 	    (int) conf[SWAP_SIZE].u.num,
 	    (int) conf[CACHE_SIZE].u.num,
@@ -436,6 +439,10 @@ char *configfile, *dumpfile;
 
     fprintf(fp, "# define ST_UTABSIZE\t18\t/* user table size */\012");
     fprintf(fp, "# define ST_ETABSIZE\t19\t/* editor table size */\012");
+
+    fprintf(fp, "# define ST_STRSIZE\t20\t/* max string size */\012");
+    fprintf(fp, "# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
+    fprintf(fp, "# define ST_EXECCOST\t22\t/* max exec cost */\012");
 
     fprintf(fp, "\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     fprintf(fp, "# define O_PROGSIZE\t1\t/* program size of object */\012");
@@ -519,7 +526,7 @@ char *configfile, *dumpfile;
     s = 0x1234;
     i = 0x12345678L;
     header[0] = 1;				/* valid dump flag */
-    header[1] = 0;				/* editor flag */
+    header[1] = 0;				/* dump file version number */
     header[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
     header[3] = sizeof(uindex);			/* sizeof uindex */
     header[4] = sizeof(long);			/* sizeof long */
@@ -610,7 +617,7 @@ array *conf_status()
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
-    a = arr_new(20L);
+    a = arr_new(23L);
     v = a->elts;
 
     /* version */
@@ -668,7 +675,15 @@ array *conf_status()
     v->type = T_INT;
     (v++)->u.number = conf[USERS].u.num;
     v->type = T_INT;
-    v->u.number = conf[EDITORS].u.num;
+    (v++)->u.number = conf[EDITORS].u.num;
+
+    /* limits */
+    v->type = T_INT;
+    (v++)->u.number = USHRT_MAX - sizeof(string);
+    v->type = T_INT;
+    (v++)->u.number = conf[ARRAY_SIZE].u.num;
+    v->type = T_INT;
+    v->u.number = conf[MAX_COST].u.num;
 
     return a;
 }
