@@ -1,11 +1,12 @@
 # ifndef FUNCDEF
 # define INCLUDE_TIME
 # include "kfun.h"
-# include "path.h"
 # include "fcontrol.h"
-# include "comp.h"
+# include "path.h"
 # include "comm.h"
 # include "call_out.h"
+# include "node.h"
+# include "compile.h"
 # endif
 
 
@@ -134,7 +135,6 @@ int nargs;
     register object *obj;
 
     if (nargs == 0) {
-	i_check_stack(1);
 	(--sp)->type = T_NUMBER;
 	sp->u.number = 0;
     }
@@ -326,7 +326,6 @@ int kf_this_user()
 {
     object *obj;
 
-    i_check_stack(1);
     obj = this_user();
     if (obj != (object *) NULL) {
 	(--sp)->type = T_OBJECT;
@@ -379,7 +378,6 @@ char p_users[] = { C_STATIC | C_LOCAL, T_OBJECT | (1 << REFSHIFT), 0 };
  */
 int kf_users()
 {
-    i_check_stack(1);
     (--sp)->type = T_ARRAY;
     arr_ref(sp->u.array = comm_users());
     return 0;
@@ -808,5 +806,6 @@ int kf_shutdown()
     host_finish();
     warning("Shutdown.");
     exit(0);
+    return 0;
 }
 # endif

@@ -2,8 +2,8 @@
 # define INCLUDE_FILE_IO
 # include "kfun.h"
 # include <ctype.h>
-# include "ed.h"
 # include "path.h"
+# include "ed.h"
 # endif
 
 # ifdef FUNCDEF
@@ -32,7 +32,6 @@ int nargs;
 	ed_new(obj);
     }
     if (nargs == 0) {
-	i_check_stack(1);
 	--sp;
     } else {
 	ed_command(obj, sp->u.string->text);
@@ -1456,7 +1455,7 @@ int kf_get_dir()
 
     if (strcmp(dir, ".") != 0) {
 	/* change directory back to base dir */
-	if (chdir(base_dir()) < 0) {
+	if (chdir(conf_base_dir()) < 0) {
 	    fatal("cannot chdir back to base dir");
 	}
     }

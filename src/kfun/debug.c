@@ -1,8 +1,9 @@
 # ifndef FUNCDEF
 # include "kfun.h"
-# include "table.h"
 # include "fcontrol.h"
-# include "comp.h"
+# include "node.h"
+# include "compile.h"
+# include "table.h"
 
 static void showclass(class)
 register short class;
@@ -205,11 +206,16 @@ int func;
     pc = d_get_prog(ctrl) + ctrl->funcdefs[func].offset;
     show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
 			      ctrl->funcdefs[func].index)->text, pc);
+    u2 = PROTO_CLASS(pc) & C_COMPILED;
     pc += PROTO_SIZE(pc);
-    printf("; %d local vars\n", FETCH1U(pc));
+    printf("; depth %u,", FETCH2U(pc, u));
+    printf(" %d local vars\n", FETCH1U(pc));
+    if (u2) {
+	return;
+    }
     progsize = FETCH2U(pc, u);
     end = linenumbers = pc + progsize;
-    addr = 3;
+    addr = 5;
     line = 0;
     newline = 0;
     printf("addr\tline\tcode\t    pop instruction\n");
@@ -567,6 +573,7 @@ char p_dump_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1,
 int kf_dump_object()
 {
     showctrl(o_control(o_object(sp->oindex, sp->u.objcnt)));
+    fflush(stdout);
     return 0;
 }
 # endif
@@ -590,6 +597,7 @@ int kf_dump_function()
 	ctrl = o_control(o_object(sp[1].oindex, sp[1].u.objcnt));
 	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
 	       UCHAR(symb->index));
+	fflush(stdout);
     }
     str_del((sp++)->u.string);
     return 0;
