@@ -287,7 +287,8 @@ static object compile_object(string path)
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
-    if (creator != "System" &&
+    uid = driver->creator(path);
+    if (uid && creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
     }
@@ -296,7 +297,7 @@ static object compile_object(string path)
      * check resource usage
      */
     rsrcd = ::find_object(RSRCD);
-    rsrc = rsrcd->rsrc_get(uid = driver->creator(path), "objects");
+    rsrc = rsrcd->rsrc_get(uid, "objects");
     if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	error("Too many objects");
     }
