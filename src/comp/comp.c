@@ -422,11 +422,6 @@ int fd;
 {
 }
 
-void pc_remap(from, to)
-object *from, *to;
-{
-}
-
 /*
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device

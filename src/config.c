@@ -1082,7 +1082,7 @@ array *conf_status()
 
     /* limits */
     v->type = T_INT;
-    (v++)->u.number = USHRT_MAX - sizeof(string);
+    (v++)->u.number = USHRT_MAX;
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;

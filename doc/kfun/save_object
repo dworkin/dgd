@@ -13,4 +13,4 @@ ERRORS
 	An error will result if the save file could not be created.
 
 SEE ALSO
-	kfun/save_object
+	kfun/restore_object

@@ -197,6 +197,9 @@ compiling(string path)
 	}
 	compiled = path;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(path);
+	}
     }
 }
 
@@ -393,6 +396,8 @@ prepare_reboot()
  */
 static restored()
 {
+    message("DGD " + status()[ST_VERSION] + "\n");
+
     rsrcd->reboot();
     userd->reboot();
     if (initd) {
@@ -517,6 +522,9 @@ static object inherit_program(string from, string path)
 	saved = compiled;
 	compiled = path;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(path);
+	}
 	obj = compile_object(path);
 	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
 	if (objectd) {
@@ -548,15 +556,15 @@ static string path_include(string from, string path)
 	/*
 	 * safe include: return immediately
 	 */
-	if (path[0] == '/') {
-	    return path;
-	}
 	if (objectd) {
 	    objectd->include(from, path);
 	}
+	if (path[0] == '/') {
+	    return path;
+	}
 	return from + "/../" + path;
     } else {
-	path = normalize_path(path, from, creator(from));
+	path = normalize_path(path, from + "/..", creator(from));
     }
 
     if (accessd->access(from, path, READ_ACCESS)) {
@@ -618,11 +626,13 @@ static object binary_connect()
  */
 static interrupt()
 {
-    shutdown();
+    message("Interrupt.\n");
+
 # ifdef SYS_CONTINUOUS
     prepare_reboot();
     dump_state();
 # endif
+    shutdown();
 }
 
 /*

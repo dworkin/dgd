@@ -1038,18 +1038,16 @@ char *command;
 		    break;
 		}
 
-		/* no autoprint in global */
-		if (!(cb->flags & CB_GLOBAL)) {
-		    if (cb->this <= 0) {
-			cb->this = 1;
-		    }
-		    if (cb->this > cb->edbuf->lines) {
-			cb->this = cb->edbuf->lines;
-		    }
-		    if (cb->this != 0) {
-			cb->first = cb->last = cb->this;
-			cb_print(cb);
-		    }
+		if (cb->this <= 0) {
+		    cb->this = 1;
+		}
+		if (cb->this > cb->edbuf->lines) {
+		    cb->this = cb->edbuf->lines;
+		}
+		if (cb->this != 0 && !(cb->flags & CB_GLOBAL)) {
+		    /* no autoprint in global */
+		    cb->first = cb->last = cb->this;
+		    cb_print(cb);
 		}
 		p = skipst(cb->cmd);
 	    }

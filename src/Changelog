@@ -1123,3 +1123,9 @@ DGD 1.1
    indices.
  - Made map_sizeof() a cheaper operation.
  - PC version: enabled the edit menu.
+
+ DGD 1.1 patchlevel 1
+
+ - Fixed a stack depth miscalculation bug.
+ - Increased max string length in status() to 65535.
+ - Fixed a line range bug in editor global commands.

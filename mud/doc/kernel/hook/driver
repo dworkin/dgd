@@ -19,6 +19,10 @@ void set_object_manager(object objectd)	[System only]
     Install an object manager, in which the following functions will be called
     afterwards:
 
+    * void compiling(string path)
+
+	The given object is about to be compiled.
+
     * void compile(string owner, object obj, string inherited...)
 
 	The given object has just been compiled.  Called just before the object

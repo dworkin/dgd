@@ -228,7 +228,7 @@ register array *a;
 {
     register arrh **h;
 
-    for (h = &ht[(long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
+    for (h = &ht[(unsigned long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
 	 h = &(*h)->next) {
 	if ((*h)->arr == a) {
 	    return (*h)->index;

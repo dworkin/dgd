@@ -117,18 +117,12 @@ register node *n;
 	if (m->type == N_CAST) {
 	    m = m->l.left;
 	}
-	switch (m->type) {
-	case N_LOCAL:
-	case N_GLOBAL:
-	    return 3;	/* mapvar[mixed] */
-
-	case N_INDEX:
+	if (m->type == N_INDEX) {
 	    /* strarray[x][y] = 'c'; */
 	    return max3(opt_expr(&m->l.left, FALSE),
 			opt_expr(&m->r.right, FALSE) + 1,
 			opt_expr(&n->r.right, FALSE) + 3);
-
-	default:
+	} else {
 	    /* mapval[mixed] */
 	    return max3(opt_expr(&n->l.left, FALSE),
 			opt_expr(&n->r.right, FALSE) + 1, 3);
