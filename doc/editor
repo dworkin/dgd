@@ -159,9 +159,10 @@ lines are printed.  The characters have the following meaning:
    Flags may be repeated, with a cumulative effect.
 
 
-   2.4 Multiple commands
+   2.4 Multiple commands inside a global command
 
-   More than one command may be given on one line, by separating them with '|'.
+   More than one command may be given inside a global command, by separating
+the individual commands with '|'.
 
 
    2.5 Command summary
