@@ -19,9 +19,10 @@ static create(int clone)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static int open()
 {
     ::open(allocate(TLS_SIZE));
+    return FALSE;
 }
 
 /*

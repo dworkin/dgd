@@ -39,7 +39,7 @@ static connect(object conn)
  * NAME:	redirect()
  * DESCRIPTION:	direct connection to a different user object
  */
-static int redirect(object user, string str)
+static redirect(object user, string str)
 {
     object conn;
 
@@ -48,7 +48,7 @@ static int redirect(object user, string str)
     }
     conn = connection;
     connection = nil;
-    return conn->set_user(user, str);
+    conn->set_user(user, str);
 }
 
 /*

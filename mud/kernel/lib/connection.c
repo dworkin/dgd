@@ -102,7 +102,12 @@ static open(mixed *tls)
     }
 # ifdef SYS_NETWORKING
     else {
-	user->login(nil);
+	mode = user->login(nil);
+	if (mode == MODE_DISCONNECT) {
+	    destruct_object(this_object());
+	} else if (mode == MODE_BLOCK) {
+	    ::block_input(TRUE);
+	}
     }
 # endif
 }
@@ -156,12 +161,15 @@ reboot()
  * NAME:	set_user()
  * DESCRIPTION:	set or change the user object directly
  */
-int set_user(object obj, string str)
+set_user(object obj, string str)
 {
-    if (KERNEL()) {
+    if (previous_program() == LIB_USER) {
 	user = obj;
-	if (query_ip_number(this_object())) {
-	    return obj->login(str);
+	mode = obj->login(str);
+	if (mode == MODE_DISCONNECT) {
+	    destruct_object(this_object());
+	} else if (mode == MODE_BLOCK) {
+	    ::block_input(TRUE);
 	}
     }
 }
@@ -198,7 +206,7 @@ static int receive_message(mixed *tls, string str)
     } else {
 	mode = user->receive_message(str);
     }
-    if (mode == MODE_DISCONNECT && this_object()) {
+    if (mode == MODE_DISCONNECT) {
 	destruct_object(this_object());
     } else if (mode == MODE_BLOCK) {
 	::block_input(TRUE);
@@ -254,7 +262,12 @@ int message(string str)
 static message_done(mixed *tls)
 {
     if (user) {
-	user->message_done();
+	mode = user->message_done();
+	if (mode == MODE_DISCONNECT) {
+	    destruct_object(this_object());
+	} else if (mode == MODE_BLOCK) {
+	    ::block_input(TRUE);
+	}
     }
 }
 
