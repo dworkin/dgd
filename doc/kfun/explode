@@ -1,0 +1,18 @@
+NAME
+	explode - explode a string
+
+SYNOPSIS
+	string *explode(string str, string separator)
+
+
+DESCRIPTION
+	Return an array of substrings of str, devided by the given separator.
+	The separators that str starts and ends with, if any, are not taken
+	into account.
+
+ERRORS
+	If the resulting array size is larger than the constant MAX_ARRAY_SIZE,
+	defined in the include file <limits.h>, an error will result.
+
+SEE ALSO
+	kfun/implode, kfun/sscanf
