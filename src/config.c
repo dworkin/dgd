@@ -3,12 +3,14 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "path.h"
 # include "ed.h"
 # include "call_out.h"
 # include "comm.h"
+# include "version.h"
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
@@ -16,6 +18,7 @@
 # include "parser.h"
 # include "compile.h"
 # include "csupport.h"
+# include "table.h"
 
 typedef struct {
     char *name;		/* name of the option */
@@ -34,71 +37,74 @@ static config conf[] = {
 							1000, 8192 },
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, FALSE },
-# define CALL_OUTS	2
+# define BINARY_PORT	2
+				{ "binary_port",	INT_CONST, FALSE,
+							1000 },
+# define CACHE_SIZE	3
+				{ "cache_size",		INT_CONST, FALSE,
+							100, UINDEX_MAX },
+# define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE,
 							0, UINDEX_MAX },
-# define CALL_STACK	3
+# define CALL_STACK	5
 				{ "call_stack",		INT_CONST, FALSE,
 							10 },
-# define CREATE		4
+# define CREATE		6
 				{ "create",		STRING_CONST, FALSE },
-# define DIRECTORY	5
+# define DIRECTORY	7
 				{ "directory",		STRING_CONST, FALSE },
-# define DRIVER_OBJECT	6
+# define DRIVER_OBJECT	8
 				{ "driver_object",	STRING_CONST, FALSE },
-# define DUMP_FILE	7
+# define DUMP_FILE	9
 				{ "dump_file",		STRING_CONST, FALSE },
-# define DYNAMIC_CHUNK	8
+# define DYNAMIC_CHUNK	10
 				{ "dynamic_chunk",	INT_CONST, FALSE },
-# define ED_TMPFILE	9
+# define ED_TMPFILE	11
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
-# define EDITORS	10
+# define EDITORS	12
 				{ "editors",		INT_CONST, FALSE,
 							1, 255 },
-# define INCLUDE_DIRS	11
+# define INCLUDE_DIRS	13
 				{ "include_dirs",	'(', FALSE },
-# define INCLUDE_FILE	12
+# define INCLUDE_FILE	14
 				{ "include_file",	STRING_CONST, FALSE },
-# define MAX_COST	13
+# define MAX_COST	15
 				{ "max_cost",		INT_CONST, FALSE,
 							100000L },
-# define OBJECTS	14
+# define OBJECTS	16
 				{ "objects",		INT_CONST, FALSE,
 							100 },
-# define PORT_NUMBER	15
-				{ "port_number",	INT_CONST, FALSE,
-							1000 },
-# define RESERVED_CSTACK 16
+# define RESERVED_CSTACK 17
 				{ "reserved_cstack",	INT_CONST, FALSE,
 							5 },
-# define RESERVED_VSTACK 17
+# define RESERVED_VSTACK 18
 				{ "reserved_vstack",	INT_CONST, FALSE,
 							20 },
-# define STATIC_CHUNK	18
-				{ "static_chunk",	INT_CONST, FALSE },
-# define SWAP_CACHE	19
-				{ "swap_cache",		INT_CONST, FALSE,
-							100, UINDEX_MAX },
-# define SWAP_FILE	20
-				{ "swap_file",		STRING_CONST, FALSE },
-# define SWAP_FRAGMENT	21
-				{ "swap_fragment",	INT_CONST, FALSE },
-# define SWAP_SECTOR	22
-				{ "swap_sector",	INT_CONST, FALSE,
+# define SECTOR_SIZE	19
+				{ "sector_size",	INT_CONST, FALSE,
 							512, 8192 },
+# define STATIC_CHUNK	20
+				{ "static_chunk",	INT_CONST, FALSE },
+# define SWAP_FILE	21
+				{ "swap_file",		STRING_CONST, FALSE },
+# define SWAP_FRAGMENT	22
+				{ "swap_fragment",	INT_CONST, FALSE },
 # define SWAP_SIZE	23
 				{ "swap_size",		INT_CONST, FALSE,
-							1024, UINDEX_MAX - 1 },
-# define TYPECHECKING	24
+							1024, UINDEX_MAX },
+# define TELNET_PORT	24
+				{ "telnet_port",	INT_CONST, FALSE,
+							1000 },
+# define TYPECHECKING	25
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 1 },
-# define USERS		25
+# define USERS		26
 				{ "users",		INT_CONST, FALSE,
 							1, 255 },
-# define VALUE_STACK	26
+# define VALUE_STACK	27
 				{ "value_stack",	INT_CONST, FALSE,
 							100 },
-# define NR_OPTIONS	27
+# define NR_OPTIONS	28
 };
 
 
@@ -131,8 +137,11 @@ typedef struct {	/* struct align */
     char c;
 } align;
 
-static char header[16];	/* dump file header */
 
+static char header[18];	/* dump file header */
+static Uint starttime;	/* start time */
+static Uint elapsed;	/* elapsed time */
+static Uint boottime;	/* boot time */
 
 /*
  * NAME:	conf->dump()
@@ -140,59 +149,55 @@ static char header[16];	/* dump file header */
  */
 void conf_dump()
 {
-    char buffer[STRINGSZ + 4];
+    Uint t[4];
     int fd;
-    long t;
 
-    sprintf(buffer, "%s.old", conf[DUMP_FILE].u.str);
-    unlink(buffer);
-    rename(conf[DUMP_FILE].u.str, buffer);
-    fd = open(conf[DUMP_FILE].u.str, O_CREAT | O_TRUNC | O_WRONLY, 0600);
-    if (fd < 0) {
-	fatal("cannot create dump file \"%s\"", conf[DUMP_FILE].u.str);
+    fd = sw_dump(conf[DUMP_FILE].u.str);
+    if (!kf_dump(fd)) {
+	fatal("failed to dump kfun table");
+    }
+    if (!o_dump(fd)) {
+	fatal("failed to dump object table");
+    }
+    if (!co_dump(fd)) {
+	fatal("failed to dump callout table");
     }
 
-    header[0] = 0;
-    t = P_time();
-    if (write(fd, header, sizeof(header)) >= 0 &&
-	write(fd, &t, sizeof(long)) >= 0 &&
-	sw_dump(fd) && o_dump(fd) && co_dump(fd)) {
-	header[0] = 1;
-	lseek(fd, 0L, SEEK_SET);
-	write(fd, header, 1);
-	fprintf(stderr, "*** State dumped.\n");
-    } else {
-	fprintf(stderr, "*** State dump failed.\n");
-    }
-    close(fd);
+    header[2] = conf[TYPECHECKING].u.num;
+    t[0] = conf[SECTOR_SIZE].u.num;
+    t[1] = P_time();
+    t[2] = starttime;
+    t[3] = elapsed + t[1] - boottime;
+
+    lseek(fd, 0L, SEEK_SET);
+    write(fd, header, sizeof(header));
+    write(fd, (char *) t, sizeof(t));
+    P_message("*** State dumped.\012");
 }
 
 /*
  * NAME:	conf->restore()
  * DESCRIPTION:	restore system stare from file
  */
-static void conf_restore(file)
-char *file;
+static void conf_restore(fd)
+int fd;
 {
     char buffer[sizeof(header)];
-    int fd;
-    long t;
+    Uint t[4];
 
-    fd = open(file, O_RDONLY);
-    if (fd < 0) {
-	fatal("cannot open restore file");
-    }
-    header[0] = 1;
     if (read(fd, buffer, sizeof(header)) != sizeof(header) ||
-	memcmp(buffer, header, sizeof(header)) != 0 ||
-	read(fd, &t, sizeof(long)) != sizeof(long)) {
-	fatal("bad restore file header");
+	buffer[0] != 1 ||
+	memcmp(buffer + 2, header + 2, sizeof(header) - 2) != 0 ||
+	read(fd, t, sizeof(t)) != sizeof(t)) {
+	fatal("bad or incompatible restore file header");
     }
-    sw_restore(fd);
-    t = P_time() - t;
-    o_restore(fd, t);
-    co_restore(fd, t);
-    close(fd);
+    t[1] = P_time() - t[1];
+    starttime = t[2];
+    elapsed = t[3];
+    sw_restore(fd, (int) t[0]);
+    kf_restore(fd);
+    o_restore(fd, t[1]);
+    co_restore(fd, t[1]);
 }
 
 /*
@@ -220,12 +225,12 @@ char *configfile, *dumpfile;
     FILE *fp;
     short s;
     Int i;
+    int fd;
     calign cdummy;
     salign sdummy;
     ialign idummy;
     lalign ldummy;
     palign pdummy;
-    align dummy;
 
     if (!pp_init(configfile, nodir, 0)) {
 	fatal("cannot open config file");
@@ -335,6 +340,13 @@ char *configfile, *dumpfile;
     }
     pp_clear();
 
+    if (dumpfile != (char *) NULL) {
+	fd = open(dumpfile, O_RDONLY | O_BINARY);
+	if (fd < 0) {
+	    fatal("cannot open restore file");
+	}
+    }
+
     /* change directory */
     if (chdir(conf[DIRECTORY].u.str) < 0) {
 	fatal("bad base directory \"%s\"", conf[DIRECTORY].u.str);
@@ -354,8 +366,8 @@ char *configfile, *dumpfile;
     /* initialize swap */
     sw_init(conf[SWAP_FILE].u.str,
 	    (int) conf[SWAP_SIZE].u.num,
-	    (int) conf[SWAP_CACHE].u.num,
-	    (int) conf[SWAP_SECTOR].u.num);
+	    (int) conf[CACHE_SIZE].u.num,
+	    (int) conf[SECTOR_SIZE].u.num);
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,
@@ -388,60 +400,117 @@ char *configfile, *dumpfile;
     minit((unsigned int) conf[STATIC_CHUNK].u.num,
     	  (unsigned int) conf[DYNAMIC_CHUNK].u.num);
 
-    /* create limits file */
-    sprintf(buffer, "%s/limits.h", dirs[0]);
-    fp = fopen(path_resolve(buffer), "w");
+    /* create status.h file */
+    sprintf(buffer, "%s/status.h", dirs[0]);
+    fp = fopen(path_file(path_resolve(buffer)), "w");
     if (fp == (FILE *) NULL) {
 	fatal("cannot create \"%s\"", buffer);
     }
-    fprintf(fp, "/*\n * This file defines some basic sizes of datatypes and ");
-    fprintf(fp, "resources.\n * It is automatically generated by DGD on ");
-    fprintf(fp, "startup.\n */\n\n");
-    fprintf(fp, "# define CHAR_BIT\t\t8\t\t/* # bits in character */\n");
-    fprintf(fp, "# define CHAR_MIN\t\t0\t\t/* min character value */\n");
-    fprintf(fp, "# define CHAR_MAX\t\t255\t\t/* max character value */\n\n");
-    fprintf(fp, "# define INT_MIN\t\t%ld\t/* min integer value */\n",
-	    (long) (Int) 0x80000000L);
-    fprintf(fp, "# define INT_MAX\t\t%ld\t/* max integer value */\n\n",
-	    (long) (Int) 0x7fffffffL);
-    fprintf(fp, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\n",
-	    USHRT_MAX - sizeof(string));
-    fprintf(fp, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\n",
-	    conf[ARRAY_SIZE].u.num);
-    fprintf(fp, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\n\n",
-	    conf[ARRAY_SIZE].u.num);
-    fprintf(fp, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\n",
-	    conf[MAX_COST].u.num);
-    fprintf(fp, "# define MAX_OBJECTS\t\t%ld\t\t/* max # of objects */\n",
-	    conf[OBJECTS].u.num);
-    fprintf(fp, "# define MAX_CALL_OUTS\t\t%ld\t\t/* max # of call_outs */\n\n",
-	    conf[CALL_OUTS].u.num);
-    fprintf(fp, "# define MAX_USERS\t\t%ld\t\t/* max # of users */\n",
-	    conf[USERS].u.num);
-    fprintf(fp, "# define MAX_EDITORS\t\t%ld\t\t/* max # of editors */\n",
-	    conf[EDITORS].u.num);
+    P_fbinio(fp);
+
+    fprintf(fp, "/*\012 * This file defines the fields of the array returned ");
+    fprintf(fp, "by the\012 * status() kfun.  It is automatically generated ");
+    fprintf(fp, "by DGD on startup.\012 */\012\012");
+    fprintf(fp, "# define ST_VERSION\t0\t/* driver version */\012");
+
+    fprintf(fp, "# define ST_STARTTIME\t1\t/* system start time */\012");
+    fprintf(fp, "# define ST_BOOTTIME\t2\t/* system boot time */\012");
+    fprintf(fp, "# define ST_UPTIME\t3\t/* system virtual uptime */\012");
+
+    fprintf(fp, "# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
+    fprintf(fp, "# define ST_SWAPUSED\t5\t/* # sectors allocated */\012");
+    fprintf(fp, "# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
+    fprintf(fp, "# define ST_SWAPRATE1\t7\t/* # objects swapped out per minute */\012");
+    fprintf(fp, "# define ST_SWAPRATE5\t8\t/* # objects swapped out per five minutes */\012");
+
+    fprintf(fp, "# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
+    fprintf(fp, "# define ST_SMEMUSED\t10\t/* static memory in use */\012");
+    fprintf(fp, "# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
+    fprintf(fp, "# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
+
+    fprintf(fp, "# define ST_OTABSIZE\t13\t/* object table size */\012");
+    fprintf(fp, "# define ST_NOBJECTS\t14\t/* # objects in the system */\012");
+
+    fprintf(fp, "# define ST_COTABSIZE\t15\t/* callouts table size */\012");
+    fprintf(fp, "# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
+    fprintf(fp, "# define ST_NCOLONG\t17\t/* # long-term callouts */\012");
+
+    fprintf(fp, "# define ST_UTABSIZE\t18\t/* user table size */\012");
+    fprintf(fp, "# define ST_ETABSIZE\t19\t/* editor table size */\012");
+
+    fprintf(fp, "\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
+    fprintf(fp, "# define O_PROGSIZE\t1\t/* program size of object */\012");
+    fprintf(fp, "# define O_DATASIZE\t2\t/* data size of object */\012");
+    fprintf(fp, "# define O_NSECTORS\t3\t/* # sectors used by object */\012");
+    fprintf(fp, "# define O_CALLOUTS\t4\t/* callouts in object */\012");
     fclose(fp);
 
-    /* create status file */
-    sprintf(buffer, "%s/status.h", dirs[0]);
-    fp = fopen(path_resolve(buffer), "w");
+    /* create type.h file */
+    sprintf(buffer, "%s/type.h", dirs[0]);
+    fp = fopen(path_file(path_resolve(buffer)), "w");
     if (fp == (FILE *) NULL) {
 	fatal("cannot create \"%s\"", buffer);
     }
-    fprintf(fp, "/*\n * This file defines the fields of the array returned ");
-    fprintf(fp, "by the\n * status() kfun.  It is automatically generated by ");
-    fprintf(fp, "DGD on startup.\n */\n\n");
-    fprintf(fp, "# define ST_SWAPSIZE\t0\t/* # sectors on swap device */\n");
-    fprintf(fp, "# define ST_SWAPUSED\t1\t/* # sectors allocated */\n");
-    fprintf(fp,
-	   "# define ST_SWAPRATE\t2\t/* # objects swapped out per minute */\n");
-    fprintf(fp, "# define ST_MEMSIZE\t3\t/* size of memory allocated */\n");
-    fprintf(fp, "# define ST_MEMUSED\t4\t/* size of memory in use */\n");
-    fprintf(fp, "# define ST_NOBJECTS\t5\t/* # objects in the system */\n");
-    fprintf(fp, "# define ST_NCALLOUTS\t6\t/* # call_outs in the system */\n");
-    fprintf(fp, "\n# define O_PROGSIZE\t0\t/* program size of object */\n");
-    fprintf(fp, "# define O_NSECTORS\t1\t/* # sectors used by object */\n");
-    fprintf(fp, "# define O_NCALLOUTS\t2\t/* # call_outs in object */\n");
+    P_fbinio(fp);
+
+    fprintf(fp, "/*\012 * This file gives definitions for the value returned ");
+    fprintf(fp, "by the\012 * typeof() kfun.  It is automatically generated ");
+    fprintf(fp, "by DGD on startup.\012 */\012\012");
+    fprintf(fp, "# define T_INT\t\t%d\012", T_INT);
+    fprintf(fp, "# define T_FLOAT\t%d\012", T_FLOAT);
+    fprintf(fp, "# define T_STRING\t%d\012", T_STRING);
+    fprintf(fp, "# define T_OBJECT\t%d\012", T_OBJECT);
+    fprintf(fp, "# define T_ARRAY\t%d\012", T_ARRAY);
+    fprintf(fp, "# define T_MAPPING\t%d\012", T_MAPPING);
+    fclose(fp);
+
+    /* create limits.h file */
+    sprintf(buffer, "%s/limits.h", dirs[0]);
+    fp = fopen(path_file(path_resolve(buffer)), "w");
+    if (fp == (FILE *) NULL) {
+	fatal("cannot create \"%s\"", buffer);
+    }
+    P_fbinio(fp);
+
+    fprintf(fp, "/*\012 * This file defines some basic sizes of datatypes and ");
+    fprintf(fp, "resources.\012 * It is automatically generated by DGD on ");
+    fprintf(fp, "startup.\012 */\012\012");
+    fprintf(fp, "# define CHAR_BIT\t\t8\t\t/* # bits in character */\012");
+    fprintf(fp, "# define CHAR_MIN\t\t0\t\t/* min character value */\012");
+    fprintf(fp, "# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
+    fprintf(fp, "# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
+    fprintf(fp, "# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
+    fprintf(fp, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
+	    USHRT_MAX - sizeof(string));
+    fprintf(fp, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\012",
+	    conf[ARRAY_SIZE].u.num);
+    fprintf(fp, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012\012",
+	    conf[ARRAY_SIZE].u.num);
+    fprintf(fp, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\012",
+	    conf[MAX_COST].u.num);
+    fclose(fp);
+
+    /* create float.h file */
+    sprintf(buffer, "%s/float.h", dirs[0]);
+    fp = fopen(path_file(path_resolve(buffer)), "w");
+    if (fp == (FILE *) NULL) {
+	fatal("cannot create \"%s\"", buffer);
+    }
+    P_fbinio(fp);
+
+    fprintf(fp, "/*\012 * This file describes the floating point type. It is ");
+    fprintf(fp, "automatically\012 * generated by DGD on startup.\012 */\012\012");
+    fprintf(fp, "# define FLT_RADIX\t2\t\t\t/* binary */\012");
+    fprintf(fp, "# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
+    fprintf(fp, "# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
+    fprintf(fp, "# define FLT_DIG\t10\t\t\t/* decimal digits of precision*/\012");
+    fprintf(fp, "# define FLT_MANT_DIG\t36\t\t\t/* binary digits of precision */\012");
+    fprintf(fp, "# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
+    fprintf(fp, "# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
+    fprintf(fp, "# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
+    fprintf(fp, "# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
+    fprintf(fp, "# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
+    fprintf(fp, "# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
     fclose(fp);
 
     /* preload compiled objects */
@@ -450,39 +519,47 @@ char *configfile, *dumpfile;
     /* initialize dumpfile header */
     s = 0x1234;
     i = 0x12345678L;
-    header[0] = 0;
-    header[1] = sizeof(uindex);
-    header[2] = sizeof(long);
-    header[3] = sizeof(char *);
-    header[4] = ((char *) &s)[0];
-    header[5] = ((char *) &s)[1];
-    header[6] = ((char *) &i)[0];
-    header[7] = ((char *) &i)[1];
-    header[8] = ((char *) &i)[2];
-    header[9] = ((char *) &i)[3];
-    header[10] = (char *) &cdummy.c - (char *) &cdummy.fill;
-    header[11] = (char *) &sdummy.s - (char *) &sdummy.fill;
-    header[12] = (char *) &idummy.i - (char *) &idummy.fill;
-    header[13] = (char *) &ldummy.l - (char *) &ldummy.fill;
-    header[14] = (char *) &pdummy.p - (char *) &pdummy.fill;
-    header[15] = sizeof(align);
+    header[0] = 1;				/* valid dump flag */
+    header[1] = 0;				/* editor flag */
+    header[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
+    header[3] = sizeof(uindex);			/* sizeof uindex */
+    header[4] = sizeof(long);			/* sizeof long */
+    header[5] = sizeof(char *);			/* sizeof char* */
+    header[6] = ((char *) &s)[0];		/* 1 of 2 */
+    header[7] = ((char *) &s)[1];		/* 2 of 2 */
+    header[8] = ((char *) &i)[0];		/* 1 of 4 */
+    header[9] = ((char *) &i)[1];		/* 2 of 4 */
+    header[10] = ((char *) &i)[2];		/* 3 of 4 */
+    header[11] = ((char *) &i)[3];		/* 4 of 4 */
+    header[12] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
+    header[13] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
+    header[14] = (char *) &idummy.i - (char *) &idummy.fill; /* int align */
+    header[15] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
+    header[16] = (char *) &pdummy.p - (char *) &pdummy.fill; /* pointer align */
+    header[17] = sizeof(align);				     /* struct align */
 
+    starttime = boottime = P_time();
     i_set_cost((Int) conf[MAX_COST].u.num);
     if (dumpfile == (char *) NULL) {
-	/* initialize mudlib */
+	/*
+	 * initialize mudlib
+	 */
 	call_driver_object("initialize", 0);
-	i_del_value(sp++);
     } else {
-	/* restore dump file */
-	conf_restore(dumpfile);
+	/*
+	 * restore dump file
+	 */
+	conf_restore(fd);
+	close(fd);
 	call_driver_object("restored", 0);
-	i_del_value(sp++);
     }
+    i_del_value(sp++);
 
     /* initialize communications */
     mstatic();
     comm_init((int) conf[USERS].u.num,
-	      (int) conf[PORT_NUMBER].u.num);
+	      (int) conf[TELNET_PORT].u.num,
+	      (int) conf[BINARY_PORT].u.num);
     mdynamic();
 }
 
@@ -519,25 +596,71 @@ Int conf_exec_cost()
  */
 array *conf_status()
 {
-    array *a;
     register value *v;
+    array *a;
+    char *version;
+    allocinfo *mstat;
+    uindex ncoshort, ncolong;
 
-    a = arr_new(7L);
+    a = arr_new(20L);
     v = a->elts;
-    v->type = T_NUMBER;
+
+    /* version */
+    v->type = T_STRING;
+    version = VERSION;
+    str_ref((v++)->u.string = str_new(version, (long) strlen(version)));
+
+    /* uptime */
+    v->type = T_INT;
+    (v++)->u.number = starttime;
+    v->type = T_INT;
+    (v++)->u.number = boottime;
+    v->type = T_INT;
+    (v++)->u.number = elapsed + P_time() - boottime;
+
+    /* swap */
+    v->type = T_INT;
     (v++)->u.number = conf[SWAP_SIZE].u.num;
-    v->type = T_NUMBER;
+    v->type = T_INT;
     (v++)->u.number = sw_count();
-    v->type = T_NUMBER;
-    (v++)->u.number = co_swaprate();
-    v->type = T_NUMBER;
-    (v++)->u.number = memsize();
-    v->type = T_NUMBER;
-    (v++)->u.number = memused();
-    v->type = T_NUMBER;
+    v->type = T_INT;
+    (v++)->u.number = conf[SECTOR_SIZE].u.num;
+    v->type = T_INT;
+    (v++)->u.number = co_swaprate1();
+    v->type = T_INT;
+    (v++)->u.number = co_swaprate5();
+
+    /* memory */
+    mstat = minfo();
+    v->type = T_INT;
+    (v++)->u.number = mstat->smemsize;
+    v->type = T_INT;
+    (v++)->u.number = mstat->smemused;
+    v->type = T_INT;
+    (v++)->u.number = mstat->dmemsize;
+    v->type = T_INT;
+    (v++)->u.number = mstat->dmemused;
+
+    /* objects */
+    v->type = T_INT;
+    (v++)->u.number = conf[OBJECTS].u.num;
+    v->type = T_INT;
     (v++)->u.number = o_count();
-    v->type = T_NUMBER;
-    v->u.number = co_count();
+
+    /* callouts */
+    co_info(&ncoshort, &ncolong);
+    v->type = T_INT;
+    (v++)->u.number = conf[CALL_OUTS].u.num;
+    v->type = T_INT;
+    (v++)->u.number = ncoshort;
+    v->type = T_INT;
+    (v++)->u.number = ncolong;
+
+    /* users & editors */
+    v->type = T_INT;
+    (v++)->u.number = conf[USERS].u.num;
+    v->type = T_INT;
+    v->u.number = conf[EDITORS].u.num;
 
     return a;
 }
@@ -549,36 +672,38 @@ array *conf_status()
 array *conf_object(obj)
 object *obj;
 {
-    array *a;
+    register control *ctrl;
     register value *v;
+    array *clist, *a;
     dataspace *data;
 
-    a = arr_new(3L);
-    v = a->elts;
+    clist = co_list(obj);
+    ctrl = o_control(obj);
     data = o_dataspace(obj);
-    if (obj->flags & O_MASTER) {
-	register control *ctrl;
+    a = arr_new(5L);
 
-	ctrl = o_control(obj);
-	v->type = T_NUMBER;
-	(v++)->u.number = ctrl->ninherits * sizeof(dinherit) +
-			  ctrl->progsize +
-			  ctrl->nstrings * (long) sizeof(dstrconst) +
-			  ctrl->strsize +
-			  ctrl->nfuncdefs * sizeof(dfuncdef) +
-			  ctrl->nvardefs * sizeof(dvardef) +
-			  ctrl->nfuncalls * 2L +
-			  ctrl->nsymbols * (long) sizeof(dsymbol);
-	v->type = T_NUMBER;
+    v = a->elts;
+    v->type = T_INT;
+    (v++)->u.number = ctrl->compiled;
+    v->type = T_INT;
+    (v++)->u.number = ctrl->ninherits * sizeof(dinherit) +
+		      ctrl->progsize +
+		      ctrl->nstrings * (long) sizeof(dstrconst) +
+		      ctrl->strsize +
+		      ctrl->nfuncdefs * sizeof(dfuncdef) +
+		      ctrl->nvardefs * sizeof(dvardef) +
+		      ctrl->nfuncalls * 2L +
+		      ctrl->nsymbols * (long) sizeof(dsymbol);
+    v->type = T_INT;
+    (v++)->u.number = ctrl->nvariables * sizeof(value);
+    v->type = T_INT;
+    if (obj->flags & O_MASTER) {
 	(v++)->u.number = ctrl->nsectors + data->nsectors;
     } else {
-	v->type = T_NUMBER;
-	(v++)->u.number = 0;
-	v->type = T_NUMBER;
 	(v++)->u.number = data->nsectors;
     }
-    v->type = T_NUMBER;
-    v->u.number = d_ncallouts(data);
+    v->type = T_ARRAY;
+    arr_ref(v->u.array = clist);
 
     return a;
 }
