@@ -693,7 +693,7 @@ struct _connection_ *conn;
     }
     call_driver_object(f, "telnet_connect", 1);
     if (f->sp->type != T_OBJECT) {
-	fatal("driver->telnet_connect() did not return a persistent object");
+	fatal("driver->telnet_connect() did not return persistent object");
     }
     obj = OBJ(f->sp->oindex);
     f->sp++;
@@ -728,7 +728,7 @@ struct _connection_ *conn;
     }
     call_driver_object(f, "binary_connect", 1);
     if (f->sp->type != T_OBJECT) {
-	fatal("driver->binary_connect() did not return a persistent object");
+	fatal("driver->binary_connect() did not return persistent object");
     }
     obj = OBJ(f->sp->oindex);
     f->sp++;

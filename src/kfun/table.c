@@ -113,7 +113,6 @@ char *proto;
     p = proto;
     q = proto = ALLOC(char, 6 + nargs + vargs);
     *q++ = class;
-    *q++ = type;
     *q++ = nargs;
     *q++ = vargs;
     *q++ = 0;
