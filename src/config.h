@@ -54,3 +54,10 @@ typedef unsigned short uindex;
 # define OMERGETABSZ	131	/* inherit object merge table size */
 # define VFMERGETABSZ	257	/* variable/function merge table sizes */
 # define VFMERGEHASHSZ	10	/* # characters in function/variables to hash */
+# define NTMPVAL	64	/* # of temporary values for LPC->C code */
+
+
+extern void  conf_init		P((char*));
+extern char *conf_base_dir	P((void));
+extern char *conf_driver	P((void));
+extern long  conf_exec_cost	P((void));
