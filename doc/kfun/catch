@@ -1,0 +1,25 @@
+NAME
+	catch - catch errors in code
+
+SYNOPSIS
+	string catch(expression)
+
+
+DESCRIPTION
+	Execute the code for <expression> until an error results, or until
+	execution is complete.  If an error resulted, catch() will return
+	the error message as a string; otherwise, it will return 0.
+	If catch() is used inside lock(), the execution cost will be reset,
+	and the effect of lock() will be cancelled inside the catch().
+
+ERRORS
+	A limited number of nested catches is allowed.  The limit is
+	implementation-defined, and should be sufficient for ordinary
+	purposes.
+
+SEE ALSO
+	kfun/error, kfun/lock()
+
+NOTE
+	catch() is not a real kfun.  catch(a, b) will evaluate the expression
+	(a, b), rather than "call catch() with arguments a and b".
