@@ -41,6 +41,9 @@ int flag;
     rlim.nodepth = TRUE;
     rlim.noticks = TRUE;
     topframe.rlim = &rlim;
+    topframe.plist = (dataspace *) NULL;
+    topframe.level = 0;
+    topframe.atomic = FALSE;
     cframe = &topframe;
 
     creator = create;
@@ -60,12 +63,6 @@ register value *v;
     switch (v->type) {
     case T_STRING:
 	str_ref(v->u.string);
-	break;
-
-    case T_OBJECT:
-	if (DESTRUCTED(v)) {
-	    *v = nil_value;
-	}
 	break;
 
     case T_ARRAY:
@@ -935,7 +932,7 @@ frame *f;
     if (rlim->noticks) {
 	return -1;
     } else {
-	return (rlim->ticks < 0) ? 0 : rlim->ticks;
+	return (rlim->ticks < 0) ? 0 : rlim->ticks * (f->level + 1);
     }
 }
 
@@ -1442,6 +1439,7 @@ register char *pc;
     xfloat flt;
     int size;
     Int newdepth, newticks;
+    bool atomic;
 
     size = 0;
 
@@ -1673,6 +1671,8 @@ register char *pc;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
+	    atomic = f->atomic;
+	    f->atomic = FALSE;
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		i_interpret(f, pc);
 		ec_pop();
@@ -1685,6 +1685,7 @@ register char *pc;
 		(--f->sp)->type = T_STRING;
 		str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
 	    }
+	    f->atomic = atomic;
 	    break;
 
 	case I_RLIMITS:
@@ -1911,6 +1912,24 @@ int funci;
     cframe = &f;
     f.nargs = nargs;
 
+    /* deal with atomic functions */
+    f.plist = prev_f->plist;
+    f.level = prev_f->level;
+    if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
+	d_new_plane(f.data, ++f.level, (dataspace *) NULL);
+	f.plist = f.data;
+	f.atomic = TRUE;
+	if (!f.rlim->noticks) {
+	    f.rlim->ticks >>= 1;
+	}
+    } else {
+	if (f.level != f.data->values->level) {
+	    d_new_plane(f.data, f.level, f.plist);
+	    f.plist = f.data;
+	}
+	f.atomic = prev_f->atomic;
+    }
+
     /* create new local stack */
     f.prev_lip = prev_f->lip;
     FETCH2U(pc, n);
@@ -1958,9 +1977,45 @@ int funci;
 	/* extended and malloced */
 	FREE(f.stack);
     }
+    if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
+	do {
+	    f.plist = d_commit_plane(f.plist);
+	} while (f.plist != (dataspace *) NULL);
+	if (!f.rlim->noticks) {
+	    f.rlim->ticks <<= 1;
+	}
+    } else {
+	prev_f->plist = f.plist;
+    }
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
+}
+
+/*
+ * NAME:	interpret->restore()
+ * DESCRIPTION:	restore state to given level
+ */
+frame *i_restore(ftop, level)
+frame *ftop;
+Int level;
+{
+    register frame *f;
+    register dataspace *data;
+
+    for (f = ftop; f->level != level; f = f->prev) ;
+    if (f->rlim != ftop->rlim) {
+	i_set_rlimits(ftop, f->rlim);
+    }
+    if (f != ftop) {
+	i_set_sp(ftop, f->sp);
+	data = ftop->plist;
+	do {
+	    data = d_del_plane(data);
+	} while (data != (dataspace *) NULL);
+    }
+
+    return f;
 }
 
 /*

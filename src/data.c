@@ -268,9 +268,10 @@ object *obj;
     data->basic.alocal.values = &data->basic;
     data->basic.alocal.arr = (array *) NULL;
     data->basic.alocal.data = data;
+    data->basic.alocal.changed = TRUE;
     data->basic.arrays = (arrref *) NULL;
     data->basic.prev = (plane *) NULL;
-    data->basic.next = (plane *) NULL;
+    data->basic.next = (dataspace *) NULL;
     data->values = &data->basic;
 
     /* parse_string data */
@@ -939,9 +940,10 @@ register Uint idx;
 	a->ref = 1;
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->values->arrays[idx];
-	a->primary->values = data->values;
 	a->primary->arr = a;
+	a->primary->values = data->values;
 	a->primary->data = data;
+	a->primary->changed = FALSE;
 	a->primary->ref = data->sarrays[idx].ref;
 	return a;
     }
@@ -1276,6 +1278,14 @@ register value *var;
 register value *val;
 {
     if (var >= data->variables && var < data->variables + data->nvariables) {
+	if (data->values->level != 0 &&
+	    data->values->original == (value *) NULL) {
+	    /*
+	     * back up variables
+	     */
+	    i_copy(data->values->original = ALLOC(value, data->nvariables),
+		   data->variables, data->nvariables);
+	}
 	ref_rhs(data, val);
 	del_lhs(data, var);
 	data->values->flags |= MOD_VARIABLE;
@@ -1295,13 +1305,7 @@ register value *val;
 void d_wipe_extravar(data)
 register dataspace *data;
 {
-    register value *var;
-
-    var = d_get_variable(data, data->nvariables - 1);
-    del_lhs(data, var);
-    i_del_value(var);
-    *var = nil_value;
-    data->values->flags |= MOD_VARIABLE;
+    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &nil_value);
 
     if (data->parser != (struct _parser_ *) NULL) {
 	/*
@@ -1323,6 +1327,18 @@ register value *elt, *val;
     register dataspace *data;
 
     data = arr->primary->data;
+    if (arr->primary->values != data->values) {
+	/*
+	 * backup array's current elements
+	 */
+	arr_backup(&data->values->achunk, arr);
+	if (arr->primary->arr != (array *) NULL) {
+	    arr->primary->values = data->values;
+	} else {
+	    arr->primary = &data->values->alocal;
+	}
+    }
+
     if (arr->primary->arr != (array *) NULL) {
 	/*
 	 * the array is in the loaded dataspace of some object
@@ -1364,15 +1380,190 @@ register value *elt, *val;
 
 /*
  * NAME:	data->change_map()
- * DESCRIPTION:	mark a mapping as changed
+ * DESCRIPTION:	mark a mapping as changed in size
  */
 void d_change_map(map)
 array *map;
 {
-    if (map->primary->arr != (array *) NULL) {
-	map->primary->data->values->achange++;
+    register arrref *a;
+
+    a = map->primary;
+    if (!a->changed) {
+	a->values->achange++;
+	a->changed = TRUE;
     }
 }
+
+
+/*
+ * NAME:	data->new_plane()
+ * DESCRIPTION:	create a new data plane
+ */
+void d_new_plane(data, level, next)
+register dataspace *data;
+Int level;
+dataspace *next;
+{
+    register plane *p;
+
+    p = ALLOC(plane, 1);
+
+    p->level = level;
+    p->flags = data->values->flags;
+    p->achange = data->values->achange;
+    p->imports = data->values->imports;
+
+    /* copy value information from previous plane */
+    p->original = (value *) NULL;
+    p->alocal.values = p;
+    p->alocal.arr = (array *) NULL;
+    p->alocal.data = data;
+    p->alocal.changed = TRUE;
+
+    if (data->values->arrays != (arrref *) NULL) {
+	register arrref *a, *b;
+	register Uint i;
+
+	p->arrays = ALLOC(arrref, i = data->narrays);
+	for (a = p->arrays, b = data->values->arrays, i = data->narrays; i != 0;
+	     a++, b++, --i) {
+	    if (b->arr != (array *) NULL) {
+		*a = *b;
+		a->arr->primary = a;	/* let array point to new plane */
+	    } else {
+		a->arr = (array *) NULL;
+	    }
+	}
+    } else {
+	p->arrays = (arrref *) NULL;
+    }
+    p->achunk = (abchunk *) NULL;
+
+    p->prev = data->values;
+    data->values = p;
+    p->next = next;
+}
+
+/*
+ * NAME:	data->commit_plane()
+ * DESCRIPTION:	commit the current data plane
+ */
+dataspace *d_commit_plane(data)
+register dataspace *data;
+{
+    register plane *p;
+    register value *v;
+    register unsigned short i;
+
+    p = data->values;
+
+    p->prev->flags = p->flags;
+    p->prev->achange = p->achange;
+    p->prev->imports = p->imports;
+
+    if (p->original != (value *) NULL) {
+	/* free backed-up variable values */
+	for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
+	    i_del_value(v);
+	}
+	FREE(p->original);
+    }
+
+    if (p->arrays != (arrref *) NULL) {
+	/*
+	 * move array refs into previous plane
+	 */
+	if (p->prev->arrays != (arrref *) NULL) {
+	    memcpy(p->prev->arrays, p->arrays, data->narrays * sizeof(arrref));
+	} else {
+	    p->prev->arrays = p->arrays;
+	}
+    }
+    arr_commit(&p->achunk);
+    if (p->arrays != (arrref *) NULL && p->arrays != p->prev->arrays) {
+	FREE(p->arrays);
+    }
+
+    data->values = p->prev;
+    data = p->next;
+    FREE(p);
+    return data;
+}
+
+/*
+ * NAME:	data->del_plane()
+ * DESCRIPTION:	discard the current data plane without committing it
+ */
+dataspace *d_del_plane(data)
+register dataspace *data;
+{
+    register plane *p;
+    register value *v;
+    register Uint i;
+
+    p = data->values;
+
+    if (p->original != (value *) NULL) {
+	/* restore original variable values */
+	for (v = data->variables, i = data->nvariables; i != 0; --i, v++) {
+	    i_del_value(v);
+	}
+	memcpy(data->variables, p->original, data->nvariables * sizeof(value));
+	FREE(p->original);
+    }
+
+    if (p->arrays != (arrref *) NULL) {
+	register arrref *a, *b;
+	register sarray *s;
+
+	/*
+	 * copy unchanged arrref info back to previous plane if needed
+	 */
+	b = p->prev->arrays;
+	if (b == (arrref *) NULL) {
+	    b = p->prev->arrays = ALLOC(arrref, data->narrays);
+	    memset(b, '\0', data->narrays * sizeof(arrref));
+	}
+	for (a = p->arrays, s = data->sarrays, i = data->narrays; i > 0;
+	     a++, b++, s++, --i) {
+	    if (a->arr != (array *) NULL && b->arr == (array *) NULL) {
+		b->arr = a->arr;
+		b->values = p;	/* changed later */
+		b->data = data;
+		b->changed = FALSE;
+		b->ref = s->ref;
+	    }
+	}
+    }
+    arr_restore(&p->achunk);
+    if (p->arrays != (arrref *) NULL) {
+	FREE(p->arrays);
+    }
+
+    data->values = p->prev;
+    data = p->next;
+    FREE(p);
+    return data;
+}
+
+/*
+ * NAME:	data->revert_arr()
+ * DESCRIPTION:	revert array back to previous plane
+ */
+void d_revert_arr(a)
+register array *a;
+{
+    register arrref *r;
+
+    r = a->primary;
+    if (r->arr != (array *) NULL) {
+	a->primary = r->values->prev->arrays + (r - r->values->arrays);
+	a->primary->values = r->values->prev;
+    } else {
+	a->primary = &r->values->prev->alocal;
+    }
+}
+
 
 /*
  * NAME:	data->get_callouts()
@@ -2561,27 +2752,11 @@ register unsigned short n;
 			a->primary = &data->values->alocal;
 
 			if (a->size > 0) {
-			    register value *v;
-
 			    /*
 			     * copy elements
 			     */
-			    a->elts = v = ALLOC(value, j = a->size);
-			    memcpy(v, d_get_elts(val->u.array),
-				   j * sizeof(value));
-			    do {
-				switch (v->type) {
-				case T_STRING:
-				    str_ref(v->u.string);
-				    break;
-
-				case T_ARRAY:
-				case T_MAPPING:
-				    arr_ref(v->u.array);
-				    break;
-				}
-				v++;
-			    } while (--j != 0);
+			    i_copy(a->elts = ALLOC(value, a->size),
+				   d_get_elts(val->u.array), a->size);
 			}
 
 			/*
@@ -2732,7 +2907,7 @@ object *old;
 
 	default:
 	    *v = vars[*vmap];
-	    i_ref_value(&vars[*vmap]);	/* don't wipe out objects */
+	    i_ref_value(v);
 	    v->modified = TRUE;
 	    ref_rhs(data, v++);
 	    break;

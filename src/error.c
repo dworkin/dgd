@@ -104,6 +104,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     offset = e->offset;
     memcpy(&env, &e->env, sizeof(jmp_buf));
 
+    cframe = i_restore(cframe, f->level);
     do {
 	if (e->handler != (ec_ftn) NULL) {
 	    handler = e->handler;

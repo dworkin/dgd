@@ -106,12 +106,12 @@ typedef struct _arrref_ {
     array *arr;			/* array value */
     struct _plane_ *values;	/* value plane this array is in */
     dataspace *data;		/* dataspace this array is in */
+    bool changed;		/* mapping has changed in size */
     Uint ref;			/* # of refs */
-    value *elts;		/* alternate elements */
 } arrref;
 
 typedef struct _plane_ {
-    long level;			/* plane level */
+    Int level;			/* plane level */
 
     short flags;		/* modification flags */
     long achange;		/* # array changes */
@@ -120,13 +120,10 @@ typedef struct _plane_ {
     value *original;		/* original variables */
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
-
-    struct _alchunk_ *chunk;	/* chunk of array links */
-    unsigned short chunksz;	/* size left in current chunk */
-    struct _arlink_ *list;	/* list of non-swapped changed arrays */
+    abchunk *achunk;		/* chunk of array backup info */
 
     struct _plane_ *prev;	/* previous in per-dataspace linked list */
-    struct _plane_ *next;	/* next in per-level linked list */
+    dataspace *next;		/* next in per-level linked list */
 } plane;
 
 struct _dataspace_ {
@@ -171,6 +168,8 @@ struct _dataspace_ {
     struct _parser_ *parser;	/* parse_string data */
 };
 
+# define THISPLANE(a)		((a)->values == (a)->data->values)
+
 extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
@@ -202,6 +201,11 @@ extern void		d_assign_var	P((dataspace*, value*, value*));
 extern void		d_wipe_extravar	P((dataspace*));
 extern void		d_assign_elt	P((array*, value*, value*));
 extern void		d_change_map	P((array*));
+
+extern void		d_new_plane	P((dataspace*, Int, dataspace*));
+extern dataspace       *d_commit_plane	P((dataspace*));
+extern dataspace       *d_del_plane	P((dataspace*));
+extern void		d_revert_arr	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
 					   int));

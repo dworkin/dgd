@@ -219,16 +219,32 @@ static bool cmp_proto(prot1, prot2)
 register char *prot1, *prot2;
 {
     register int i;
+    register char c1, c2;
 
     /* check if either prototype is implicit */
     if (PROTO_FTYPE(prot1) == T_IMPLICIT || PROTO_FTYPE(prot2) == T_IMPLICIT) {
 	return TRUE;
     }
 
-    /* check if classes are equal */
-    if ((PROTO_CLASS(prot1) ^ PROTO_CLASS(prot2)) &
-	UCHAR(~(C_COMPILED | C_UNDEFINED))) {
-	return FALSE;
+    /* check if classes are compatible */
+    c1 = PROTO_CLASS(prot1);
+    c2 = PROTO_CLASS(prot2);
+    if ((c1 ^ c2) & (C_PRIVATE | C_VARARGS)) {
+	return FALSE;		/* must agree on this much */
+    } else if (c1 & c2 & C_UNDEFINED) {
+	if ((c1 ^ c2) & ~C_TYPECHECKED) {
+	    return FALSE;	/* 2 prototypes must be equal */
+	}
+    } else if (c1 & C_UNDEFINED) {
+	if ((c1 ^ (c1 & c2)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
+	    return FALSE;	/* everthing in prototype must be supported */
+	}
+    } else if (c2 & C_UNDEFINED) {
+	if ((c2 ^ (c2 & c1)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
+	    return FALSE;	/* everthing in prototype must be supported */
+	}
+    } else {
+	return FALSE;		/* not compatible */
     }
 
     /* compare return type */

@@ -1294,3 +1294,7 @@ DGD 1.1
  - Fixed a file descriptor leak in P_readdir() for Windows.
  - Fixed a crash in the first uncaught error.  Whoops.
  - Last batch of changes before atomic.
+ - There is no need to use static, nomask or atomic in prototypes anymore.
+   However, if any of these are specified, they must also be present in the
+   actual function declaration.
+ - Partial implementation of atomic functions.

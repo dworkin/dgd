@@ -168,6 +168,9 @@ struct _frame_ {
     string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     rlinfo *rlim;		/* rlimits info */
+    dataspace *plist;		/* linked list of planes on current level */
+    Int level;			/* plane level */
+    bool atomic;		/* within uncaught atomic code */
 };
 
 extern void	i_init		P((char*, int));
@@ -201,6 +204,7 @@ extern char    *i_prev_program	P((frame*, int));
 extern void	i_typecheck	P((frame*, char*, char*, char*, int, int));
 extern void	i_catcherr	P((frame*, Int));
 extern void	i_funcall	P((frame*, object*, int, int, int));
+extern frame   *i_restore	P((frame*, Int));
 extern bool	i_call		P((frame*, object*, char*, unsigned int, int,
 				   int));
 extern bool	i_call_tracei	P((frame*, Int, value*));

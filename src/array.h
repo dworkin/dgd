@@ -8,6 +8,8 @@ struct _array_ {
     struct _arrref_ *primary;		/* primary reference */
 };
 
+typedef struct _abchunk_ abchunk;	/* array backup chunk */
+
 extern void		arr_init	P((unsigned int));
 extern array	       *arr_alloc	P((unsigned int));
 extern array	       *arr_new		P((dataspace*, long));
@@ -17,6 +19,10 @@ extern void		arr_freeall	P((void));
 
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
+
+extern void		arr_backup	P((abchunk**, array*));
+extern void		arr_commit	P((abchunk**));
+extern void		arr_restore	P((abchunk**));
 
 extern array	       *arr_add		P((dataspace*, array*, array*));
 extern array	       *arr_sub		P((dataspace*, array*, array*));

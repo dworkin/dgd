@@ -47,6 +47,20 @@ typedef struct _maphash_ {
 
 # define MTABLE_SIZE	16	/* most mappings are quite small */
 
+# define ABCHUNKSZ	32
+
+typedef struct arrbak {
+    array *arr;			/* array backed up */
+    unsigned short size;	/* original size (of mapping) */
+    value *original;		/* original values */
+} arrbak;
+
+struct _abchunk_ {
+    arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
+    short chunksz;		/* size of this chunk */
+    struct _abchunk_ *next;	/* next in linked list */
+};
+
 static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
@@ -285,6 +299,125 @@ void arr_clear()
     ahchunksz = ARR_CHUNK;
 }
 
+
+/*
+ * NAME:	array->backup()
+ * DESCRIPTION:	make a backup of the current elements of an array or mapping
+ */
+void arr_backup(ac, a)
+register abchunk **ac;
+register array *a;
+{
+    register abchunk *c;
+    register arrbak *ab;
+
+    if (*ac == (abchunk *) NULL || (*ac)->chunksz == ABCHUNKSZ) {
+	c = ALLOC(abchunk, 1);
+	c->next = *ac;
+	c->chunksz = 0;
+	*ac = c;
+    } else {
+	c = *ac;
+    }
+
+    ab = &c->ab[c->chunksz++];
+    ab->arr = a;
+    ab->size = a->size;
+    if (ab->size != 0) {
+	i_copy(ab->original = ALLOC(value, a->size), a->elts, a->size);
+    } else {
+	ab->original = (value *) NULL;
+    }
+}
+
+/*
+ * NAME:	array->commit()
+ * DESCRIPTION:	commit current array values and discard originals
+ */
+void arr_commit(ac)
+abchunk **ac;
+{
+    register abchunk *c, *n;
+    register arrbak *ab;
+    register short i;
+
+    for (c = *ac; c != (abchunk *) NULL; c = n) {
+	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
+	    if (ab->original != (value *) NULL) {
+		register value *v;
+		register unsigned short j;
+
+		for (v = ab->original, j = ab->size; j != 0; v++, --j) {
+		    i_del_value(v);
+		}
+		FREE(ab->original);
+	    }
+
+	    d_revert_arr(ab->arr);
+	}
+
+	n = c->next;
+	FREE(c);
+    }
+
+    *ac = (abchunk *) NULL;
+}
+
+/*
+ * NAME:	array->restore()
+ * DESCRIPTION:	restore originals and discard current values
+ */
+void arr_restore(ac)
+abchunk **ac;
+{
+    register abchunk *c, *n;
+    register arrbak *ab;
+    register short i;
+    register array *a;
+    register unsigned short j;
+
+    for (c = *ac; c != (abchunk *) NULL; c = n) {
+	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
+	    a = ab->arr;
+	    if (a->elts != (value *) NULL) {
+		register value *v;
+
+		for (v = a->elts, j = a->size; j != 0; v++, --j) {
+		    i_del_value(v);
+		}
+		FREE(a->elts);
+	    }
+
+	    if (a->hashed != (maphash *) NULL) {
+		register mapelt *e, *n, **t;
+
+		for (j = a->hashed->size, t = a->hashed->table; j > 0; t++) {
+		    for (e = *t; e != (mapelt *) NULL; e = n) {
+			i_del_value(&e->idx);
+			i_del_value(&e->val);
+			n = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			--j;
+		    }
+		}
+		FREE(a->hashed);
+		a->hashed = (maphash *) NULL;
+	    }
+
+	    a->elts = ab->original;
+	    a->size = ab->size;
+	    d_revert_arr(a);
+	}
+
+	n = c->next;
+	FREE(c);
+    }
+
+    *ac = (abchunk *) NULL;
+}
+
+
 /*
  * NAME:	copytmp()
  * DESCRIPTION:	make temporary copies of values
@@ -305,7 +438,7 @@ register array *a;
     } else {
 	/*
 	 * Copy and check for destructed objects.  If destructed objects are
-	 * found, they will be replaced by 0 in the original array.
+	 * found, they will be replaced by nil in the original array.
 	 */
 	a->odcount = odcount;
 	for (n = a->size; n != 0; --n) {
@@ -315,18 +448,6 @@ register array *a;
 	    *v1++ = *v2++;
 	}
     }
-}
-
-/*
- * NAME:	array->copy()
- * DESCRIPTION:	copy the elements of an array or mapping
- */
-static void arr_copy(v, a)
-value *v;
-array *a;
-{
-    i_copy(v, d_get_elts(a), a->size);
-    a->odcount = odcount;
 }
 
 /*
@@ -340,8 +461,8 @@ register array *a1, *a2;
     register array *a;
 
     a = arr_new(data, (long) a1->size + a2->size);
-    arr_copy(a->elts, a1);
-    arr_copy(a->elts + a1->size, a2);
+    i_copy(a->elts, d_get_elts(a1), a1->size);
+    i_copy(a->elts + a1->size, d_get_elts(a2), a2->size);
     d_ref_imports(a);
 
     return a;
@@ -494,7 +615,7 @@ array *a1, *a2;
 	 * Return a copy of the first array.
 	 */
 	a3 = arr_new(data, (long) a1->size);
-	arr_copy(a3->elts, a1);
+	i_copy(a3->elts, d_get_elts(a1), a1->size);
 	d_ref_imports(a3);
 	return a3;
     }
@@ -636,14 +757,14 @@ array *a1, *a2;
     if (a1->size == 0) {
 	/* ({ }) | array */
 	a3 = arr_new(data, (long) a2->size);
-	arr_copy(a3->elts, a2);
+	i_copy(a3->elts, d_get_elts(a2), a2->size);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
 	a3 = arr_new(data, (long) a1->size);
-	arr_copy(a3->elts, a1);
+	i_copy(a3->elts, d_get_elts(a1), a1->size);
 	d_ref_imports(a3);
 	return a3;
     }
@@ -718,14 +839,14 @@ array *a1, *a2;
     if (a1->size == 0) {
 	/* ({ }) ^ array */
 	a3 = arr_new(data, (long) a2->size);
-	arr_copy(a3->elts, a2);
+	i_copy(a3->elts, d_get_elts(a2), a2->size);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
 	a3 = arr_new(data, (long) a1->size);
-	arr_copy(a3->elts, a1);
+	i_copy(a3->elts, d_get_elts(a1), a1->size);
 	d_ref_imports(a3);
 	return a3;
     }
@@ -904,6 +1025,75 @@ register array *m;
 }
 
 /*
+ * NAME:	mapping->dehash()
+ * DESCRIPTION:	merge hashtable component with array part of mapping
+ */
+static void map_dehash(m)
+register array *m;
+{
+    register unsigned short hashsize;
+
+    /*
+     * convert hashtable into sorted array
+     */
+    hashsize = m->hashed->size << 1;
+    if (hashsize != 0) {
+	register value *v1, *v2, *v3;
+	register unsigned short i, j;
+	register mapelt *e, *n, **t;
+
+	v2 = ALLOCA(value, m->hashed->size << 1);
+	t = m->hashed->table;
+	for (i = m->hashed->size; i > 0; ) {
+	    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
+		*v2++ = e->idx;
+		*v2++ = e->val;
+		n = e->next;
+		e->next = fmelt;
+		fmelt = e;
+	    }
+	}
+	v2 -= hashsize;
+	qsort(v2, hashsize >> 1, 2 * sizeof(value), cmp);
+
+	/*
+	 * merge the two value arrays
+	 */
+	v1 = m->elts;
+	v3 = ALLOC(value, m->size + hashsize);
+	for (i = m->size, j = hashsize; i > 0 && j > 0; ) {
+	    if (cmp(v1, v2) <= 0) {
+		*v3++ = *v1++;
+		*v3++ = *v1++;
+		i -= 2;
+	    } else {
+		*v3++ = *v2++;
+		*v3++ = *v2++;
+		j -= 2;
+	    }
+	}
+
+	/*
+	 * copy tails of arrays
+	 */
+	memcpy(v3, v1, i * sizeof(value));
+	v3 += i;
+	memcpy(v3, v2, j * sizeof(value));
+	v3 += j;
+
+	AFREE(v2 - (hashsize - j));
+	if (m->size > 0) {
+	    FREE(m->elts);
+	}
+	m->size += hashsize;
+	m->elts = v3 - m->size;
+    }
+
+    FREE(m->hashed);
+    m->hashed = (maphash *) NULL;
+}
+
+/*
  * NAME:	mapping->clean()
  * DESCRIPTION:	remove destructed objects from mapping
  */
@@ -915,6 +1105,10 @@ register array *m;
 
     if (m->odcount == odcount) {
 	return;	/* no destructed objects */
+    }
+
+    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+	map_dehash(m);
     }
 
     /*
@@ -1003,6 +1197,10 @@ register array *m;
 	(m->hashed == (maphash *) NULL || m->hashed->size == 0)) {
 	/* skip empty or unchanged mapping */
 	return;
+    }
+
+    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+	map_dehash(m);
     }
 
     arrsize = 0;
@@ -1268,7 +1466,7 @@ array *m1, *a2;
     }
     if ((size=a2->size) == 0) {
 	/* subtract empty array */
-	arr_copy(m3->elts, m1);
+	i_copy(m3->elts, m1->elts, m1->size);
 	d_ref_imports(m3);
 	return m3;
     }
@@ -1522,6 +1720,10 @@ value *val, *elt;
 	del = TRUE;
     } else {
 	del = FALSE;
+    }
+
+    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+	map_dehash(m);
     }
 
     if (m->size > 0) {
