@@ -494,15 +494,25 @@ char quote;
 	c = gc();
 	if (c == quote) {
 	    break;
+	} else if (c == '\\') {
+	    int res;
+
+	    if (pp_level != 0 || do_include) {
+		/* recognize, but do not translate escape sequence */
+		*p++ = c;
+		p = tk_esc(p, &res);
+		c = *--p;
+	    } else {
+		/* translate escape sequence */
+		tk_esc(p, &res);
+		c = res;
+	    }
+	} else if (c == '\n') {
+	    yyerror("unterminated string");
+	    break;
 	} else if (c == EOF) {
 	    yyerror("EOF in string");
 	    break;
-	} else if (c == '\\' && pp_level == 0 && !do_include) {
-	    int res;
-
-	    /* translate escape sequences */
-	    tk_esc(p, &res);
-	    c = res;
 	}
 	if (p >= yytext + MAX_LINE_SIZE - 5) {
 	    yyerror("string too long");
