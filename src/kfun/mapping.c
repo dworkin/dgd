@@ -1,0 +1,5 @@
+m_indices()
+m_sizeof()
+m_values()
+mappingp()
+mkmapping()
