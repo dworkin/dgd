@@ -229,7 +229,7 @@ int kf_eq()
 
     case T_OBJECT:
 	sp[1].type = T_NUMBER;
-	sp[1].u.number = (sp[1].u.object.count == sp->u.object.count);
+	sp[1].u.number = (sp[1].u.objcnt == sp->u.objcnt);
 	sp++;
 	break;
 
@@ -269,7 +269,7 @@ char p_eq_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
  */
 int kf_eq_int()
 {
-    sp[1].u.number == (sp[1].u.number == sp->u.number);
+    sp[1].u.number = (sp[1].u.number == sp->u.number);
     sp++;
     return 0;
 }
@@ -624,7 +624,7 @@ int kf_ne()
 
     case T_OBJECT:
 	sp[1].type = T_NUMBER;
-	sp[1].u.number = (sp[1].u.object.count != sp->u.object.count);
+	sp[1].u.number = (sp[1].u.objcnt != sp->u.objcnt);
 	sp++;
 	break;
 
@@ -770,14 +770,16 @@ int kf_range()
 
     switch (sp[2].type) {
     case T_STRING:
-	str = str_range(sp[2].u.string, sp[1].u.number, sp->u.number);
+	str = str_range(sp[2].u.string, (long) sp[1].u.number,
+			(long) sp->u.number);
 	sp += 2;
 	str_del(sp->u.string);
 	str_ref(sp->u.string = str);
 	break;
 
     case T_ARRAY:
-	a = arr_range(sp[2].u.array, sp[1].u.number, sp->u.number);
+	a = arr_range(sp[2].u.array, (long) sp[1].u.number,
+		      (long) sp->u.number);
 	sp += 2;
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
