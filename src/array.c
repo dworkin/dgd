@@ -1583,7 +1583,7 @@ value *val, *elt;
 	break;
 
     case T_STRING:
-	i = hashstr(val->u.string->text, STRMAPHASHSZ);
+	i = hashstr(val->u.string->text, STRMAPHASHSZ) ^ val->u.string->len;
 	break;
 
     case T_OBJECT:
