@@ -273,7 +273,7 @@ static void uc(c)
 int c;
 {
     if (c != EOF) {	/* don't unget EOF */
-	if (c == '\n' && tbuffer == ibuffer) {
+	if (c == LF && tbuffer == ibuffer) {
 	    ibuffer->line--;
 	}
 	*(tbuffer->up)++ = c;
@@ -316,7 +316,7 @@ static int gc()
 	    c = UCHAR(*(tbuffer->p)++);
 	}
 
-	if (c == '\n' && tbuffer == ibuffer) {
+	if (c == LF && tbuffer == ibuffer) {
 	    ibuffer->line++;
 	    if (!backslash) {
 		return c;
@@ -361,7 +361,7 @@ static void comment()
 	/* skip following whitespace */
 	do {
 	    c = gc();
-	} while (c == ' ' || c == '\t');
+	} while (c == ' ' || c == HT);
 
 	/* check if a new comment starts after this one */
 	if (c != '/') {
@@ -388,15 +388,15 @@ int *res;
     register int c, i;
 
     switch (c = *p++ = gc()) {
-    case 'a': c = '\007'; break;
-    case 'b': c = '\b'; break;
-    case 't': c = '\t'; break;
-    case 'n': c = '\n'; break;
-    case 'v': c = '\013'; break;
-    case 'f': c = '\014'; break;
-    case 'r': c = '\r'; break;
+    case 'a': c = BEL; break;
+    case 'b': c = BS; break;
+    case 't': c = HT; break;
+    case 'n': c = LF; break;
+    case 'v': c = VT; break;
+    case 'f': c = FF; break;
+    case 'r': c = CR; break;
 
-    case '\n':
+    case LF:
 	/* newline in string or character constant */
 	uc(c);
 	return p - 1;
@@ -428,16 +428,8 @@ int *res;
 	/* hexadecimal constant */
 	c = gc();
 	if (isxdigit(c)) {
-	    /* first hex digit */
-	    *p++ = c;
-	    if (isdigit(c)) {
-		i = c - '0';
-	    } else {
-		i = toupper(c) + 10 - 'A';
-	    }
-	    c = gc();
-	    if (isxdigit(c)) {
-		/* second hex digit */
+	    i = 0;
+	    do {
 		*p++ = c;
 		i <<= 4;
 		if (isdigit(c)) {
@@ -446,24 +438,10 @@ int *res;
 		    i += toupper(c) + 10 - 'A';
 		}
 		c = gc();
-		if (isxdigit(c)) {
-		    /* third hex digit */
-		    *p++ = c;
-		    i <<= 4;
-		    if (isdigit(c)) {
-			i += c - '0';
-		    } else {
-			i += toupper(c) + 10 - 'A';
-		    }
-		} else {
-		    uc(c);
-		}
-	    } else {
-		uc(c);
-	    }
+	    } while (isxdigit(c));
+	    uc(c);
 	} else {
 	    i = 'x';
-	    uc(c);
 	}
 	c = UCHAR(i);
 	break;
@@ -507,7 +485,7 @@ char quote;
 		tk_esc(p, &res);
 		c = res;
 	    }
-	} else if (c == '\n') {
+	} else if (c == LF) {
 	    yyerror("unterminated string");
 	    break;
 	} else if (c == EOF) {
@@ -549,7 +527,7 @@ int tk_gettok()
     p = yytext;
     *p++ = c = gc();
     switch (c) {
-    case '\n':
+    case LF:
 	if (tbuffer == ibuffer) {
 	    seen_nl = TRUE;
 	    *p = '\0';
@@ -558,7 +536,7 @@ int tk_gettok()
 	c = (pp_level > 0) ? MARK : ' ';
 	break;
 
-    case '\t':
+    case HT:
 	if (tbuffer != ibuffer) {
 	    /* expanding a macro: keep separator */
 	    break;
@@ -569,7 +547,7 @@ int tk_gettok()
 	/* white space */
 	do {
 	    c = gc();
-	} while (c == ' ' || (c == '\t' && tbuffer == ibuffer));
+	} while (c == ' ' || (c == HT && tbuffer == ibuffer));
 
 	/* check for comment after white space */
 	if (c == '/') {
@@ -635,8 +613,15 @@ int tk_gettok()
 	break;
 
     case '.':
-	CHECK('.', DOT_DOT);
-	c = '.';
+	c = gc();
+	if (c == '.') {
+	    *p++ = c;
+	    CHECK('.', ELLIPSIS);
+	    c = DOT_DOT;
+	} else {
+	    uc(c);
+	    c = '.';
+	}
 	break;
 
     case '/':
@@ -823,12 +808,12 @@ bool ws;
 	    yyerror("unterminated line");
 	    return;
 
-	case '\n':
+	case LF:
 	    seen_nl = TRUE;
 	    return;
 
 	case ' ':
-	case '\t':
+	case HT:
 	    break;
 
 	case '/':
@@ -866,7 +851,7 @@ register macro *mc;
 	register tbuf *tb;
 
 	token = gc();
-	if (token == '\n') {
+	if (token == LF) {
 	    return -1;
 	}
 	uc(token);
@@ -902,7 +887,7 @@ register macro *mc;
 		}
 		break;
 	    }
-	} while (token == ' ' || token == '\t' || token == '\n');
+	} while (token == ' ' || token == HT || token == LF);
 
 	if (token != '(') {
 	    /* macro is function-like, and this is not an invocation */
@@ -917,7 +902,7 @@ register macro *mc;
 	s = pps_new(ppbuf, sizeof(ppbuf));
 	do {
 	    token = tk_gettok();
-	} while (token == ' ' || token == '\t' || token == '\n');
+	} while (token == ' ' || token == HT || token == LF);
 
 	if (token != ')' || mc->narg != 0) {
 	    int paren;
@@ -956,7 +941,7 @@ register macro *mc;
 
 		    do {
 			token = tk_gettok();
-		    } while (token == ' ' || token == '\t' || token == '\n');
+		    } while (token == ' ' || token == HT || token == LF);
 		    seen_space = FALSE;
 		    seen_sep = FALSE;
 		} else {
@@ -965,7 +950,7 @@ register macro *mc;
 			seen_space = FALSE;
 			seen_sep = FALSE;
 		    } else if (seen_sep) {
-			pps_ccat(s, '\t');
+			pps_ccat(s, HT);
 			seen_sep = FALSE;
 		    }
 		    pps_scat(s, yytext);
@@ -977,9 +962,9 @@ register macro *mc;
 
 		    for (;;) {
 			token = tk_gettok();
-			if (token == ' ' || token == '\n') {
+			if (token == ' ' || token == LF) {
 			    seen_space = TRUE;
-			} else if (token == '\t') {
+			} else if (token == HT) {
 			    seen_sep = TRUE;
 			} else {
 			    break;
@@ -1023,7 +1008,7 @@ register macro *mc;
 			push((macro *) NULL, args[narg], TRUE);
 			pps_ccat(s, '"');
 			while ((token=tk_gettok()) != EOF) {
-			    if (token != '\t') {
+			    if (token != HT) {
 				p = yytext;
 				if (*p == '\'' || *p == '"') {
 				    /* escape \ and " */
@@ -1047,7 +1032,7 @@ register macro *mc;
 			 * if the previous token was a not-to-expand macro,
 			 * make it a normal identifier
 			 */
-			if (s->len > 0 && ppbuf[s->len - 1] == '\n') {
+			if (s->len > 0 && ppbuf[s->len - 1] == LF) {
 			    s->len--;
 			}
 
@@ -1057,7 +1042,7 @@ register macro *mc;
 			 * if the first token of the argument is a
 			 * not-to-expand macro, make it a normal identifier
 			 */
-			if (token == IDENTIFIER && (narg=gc()) != '\n') {
+			if (token == IDENTIFIER && (narg=gc()) != LF) {
 			    uc(narg);
 			}
 			while (token != EOF) {
@@ -1080,7 +1065,7 @@ register macro *mc;
 				    }
 				    if (token < 0) {
 					pps_scat(s, yytext);
-					pps_ccat(s, '\n');
+					pps_ccat(s, LF);
 					continue;
 				    }
 				}
