@@ -1,6 +1,4 @@
-# include "config.h"
-# include "alloc.h"
-# include "error.h"
+# include "dgd.h"
 # include "interpret.h"
 # include "str.h"
 # include "array.h"
