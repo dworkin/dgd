@@ -430,6 +430,8 @@ register char *file;
 	if (c_autodriver() != 0) {
 	    ctrl_init(auto_object, driver_object);
 	} else {
+	    object *obj;
+
 	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
 		/*
 		 * (re)compile the driver object to do pathname translation
@@ -438,18 +440,19 @@ register char *file;
 		c_compile(driver_object);
 		current = &c;
 	    }
-	    ctrl_init(auto_object, driver_object);
-	    if (!c_inherit(auto_object, (node *) NULL)) {
+
+	    obj = o_find(auto_object);
+	    if (obj == (object *) NULL) {
 		/*
-		 * (re)compile auto object and inherit it
+		 * (re)compile auto object
 		 */
-		ctrl_clear();
 		current = (context *) NULL;
-		c_compile(auto_object);
+		obj = c_compile(auto_object);
 		current = &c;
-		ctrl_init(auto_object, driver_object);
-		c_inherit(auto_object, (node *) NULL);
 	    }
+	    /* inherit auto object */
+	    ctrl_init(auto_object, driver_object);
+	    ctrl_inherit(c.file, obj, (string *) NULL);
 	}
 
 	if (!pp_init(file_c, paths, 1)) {

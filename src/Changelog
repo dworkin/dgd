@@ -902,3 +902,5 @@ DGD 1.1
    away.
  - Replaced driver->path_inherit() by driver->inherit_program(), which must
    return an object (which may be compiled inside the function).
+ - driver->inherit_program() was accidentally called when implicitly inheriting
+   the auto object, too.
