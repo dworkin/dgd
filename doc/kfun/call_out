@@ -2,7 +2,7 @@ NAME
 	call_out - call function with delay
 
 SYNOPSIS
-	varargs void call_out(string function, int delay, mixed args...)
+	varargs int call_out(string function, int delay, mixed args...)
 
 
 DESCRIPTION
@@ -10,6 +10,8 @@ DESCRIPTION
 	be called must not be private.  The delay is specified in seconds.
 	The minimum delay is 1 second; if the given delay is less, it is
 	changed into 1 second.
+	The returned value is the callout handle, an integer > 0 which
+	must be used if the callout is to be removed.
 
 ERRORS
 	If the total number of active delayed calls in the system is equal to

@@ -2,11 +2,11 @@ NAME
 	remove_call_out - remove a delayed call to a function
 
 SYNOPSIS
-	int remove_call_out(string function)
+	int remove_call_out(int handle)
 
 
 DESCRIPTION
-	Remove the first scheduled delayed call to function.  The delay before
+	Remove the callout associated with handle.  The delay before
 	which the function would be called is returned.  If there is no
 	scheduled call to function in the current object, return -1.
 
