@@ -1,8 +1,6 @@
 /*
  * LPC grammar, handles construction of parse trees and type checking.
- * Currently there are two shift/reduce conflicts, one on opt_inherit_label
- * and one on else.  These could be disposed of by moving the ugliness from
- * the grammar to the C code.
+ * Currently there is one shift/reduce conflict, on else.
  * The node->mod field is used to store the type of an expression. (!)
  */
 
@@ -62,15 +60,16 @@ static bool typechecking;	/* does the current function have it? */
  * rule types
  */
 %type <type> class_specifier_list class_specifier type_specifier star_list
-%type <node> opt_inherit_label formals_declaration formal_declaration_list
-	     formal_declaration data_dcltr function_dcltr dcltr list_dcltr
-	     dcltr_or_stmt_list dcltr_or_stmt stmt compound_stmt function_name
-	     primary_p1_exp primary_p2_exp postfix_exp prefix_exp cast_exp
-	     mult_oper_exp add_oper_exp shift_oper_exp rel_oper_exp
-	     equ_oper_exp bitand_oper_exp bitxor_oper_exp bitor_oper_exp
-	     and_oper_exp or_oper_exp cond_exp exp list_exp opt_list_exp
-	     f_list_exp f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma
-	     assoc_arg assoc_arg_list opt_assoc_arg_list_comma ident
+%type <node> opt_inherit_label string inherit_string formals_declaration
+	     formal_declaration_list formal_declaration data_dcltr
+	     function_dcltr dcltr list_dcltr dcltr_or_stmt_list dcltr_or_stmt
+	     stmt compound_stmt function_name primary_p1_exp primary_p2_exp
+	     postfix_exp prefix_exp cast_exp mult_oper_exp add_oper_exp
+	     shift_oper_exp rel_oper_exp equ_oper_exp bitand_oper_exp
+	     bitxor_oper_exp bitor_oper_exp and_oper_exp or_oper_exp cond_exp
+	     exp list_exp opt_list_exp f_list_exp f_opt_list_exp arg_list
+	     opt_arg_list opt_arg_list_comma assoc_arg assoc_arg_list
+	     opt_assoc_arg_list_comma ident
 
 %%
 
@@ -84,6 +83,11 @@ program
 
 top_level_declarations
 	: /* empty */
+		{
+		  if (nerrors > 0) {
+		      YYABORT;
+		  }
+		}
 	| top_level_declarations top_level_declaration
 		{
 		  if (nerrors > 0) {
@@ -93,7 +97,7 @@ top_level_declarations
 	;
 
 top_level_declaration
-	: INHERIT opt_inherit_label exp ';'
+	: INHERIT opt_inherit_label inherit_string ';'
 		{
 		  if (ndeclarations > 0) {
 		      yyerror("inherit must precede all declarations");
@@ -114,11 +118,21 @@ top_level_declaration
 		{ ndeclarations++; }
 	;
 
-/* will cause shift/reduce conflict */
 opt_inherit_label
 	: /* empty */
 		{ $$ = (node *) NULL; }
 	| ident
+	;
+
+string
+	: STRING_CONST
+		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
+	;
+
+inherit_string
+	: string
+	| inherit_string '+' string
+		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
 	;
 
 data_declaration
@@ -194,7 +208,7 @@ class_specifier
 	| STATIC
 		{ $$ = C_STATIC; }
 	| NOMASK
-		{ $$ = C_NOMASK | C_LOCAL; }
+		{ $$ = C_NOMASK; }
 	| VARARGS
 		{ $$ = C_VARARGS; }
 	;
@@ -404,8 +418,7 @@ function_name
 primary_p1_exp
 	: INT_CONST
 		{ $$ = node_int($1); }
-	| STRING_CONST
-		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
+	| string
 	| '(' '{' opt_arg_list_comma '}' ')'
 		{ $$ = node_mon(N_AGGR, T_MIXED | (1 << REFSHIFT), $3); }
 	| '(' '[' opt_assoc_arg_list_comma ']' ')'
