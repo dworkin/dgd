@@ -1384,3 +1384,5 @@ DGD 1.1
  - Fixed a bug in restoring a parser state machine.
  - Fixed a reference counting problem in the atomic array code.
  - Fixed a bug which could cause an infinite loop in flushing socket output.
+ - The arguments of callouts were not properly committed to the base plane.
+ - Removed some global variable dependencies from swapping and exporting.

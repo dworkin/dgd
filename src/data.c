@@ -159,6 +159,23 @@ typedef struct _coptable_ {
     copatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
 } coptable;
 
+typedef struct {
+    Uint narr;				/* # of arrays */
+    Uint nstr;				/* # of strings */
+    Uint arrsize;			/* # of array elements */
+    Uint strsize;			/* total string size */
+    sarray *sarrays;			/* save arrays */
+    svalue *selts;			/* save array elements */
+    sstring *sstrings;			/* save strings */
+    char *stext;			/* save string elements */
+} savedata;
+
+typedef struct {
+    array **itab;			/* imported array replacement table */
+    Uint itabsz;			/* size of table */
+    Uint narr;				/* # of arrays */
+} arrimport;
+
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static dataplane *plist;		/* list of dataplanes */
@@ -1761,6 +1778,12 @@ bool merge;
 	    c = t;
 	    do {
 		cop = *c;
+		if (cop->type != COP_REMOVE) {
+		    commit_values(cop->aco.val + 1,
+				  (cop->aco.nargs > 3) ? 3 : cop->aco.nargs,
+				  prev->level);
+		}
+
 		if (prev->level == 0) {
 		    /*
 		     * commit to last plane
@@ -1795,14 +1818,7 @@ bool merge;
 		    /*
 		     * commit to previous plane
 		     */
-		    if (cop->type != COP_REMOVE) {
-			commit_values(cop->aco.val + 1,
-				      (cop->aco.nargs > 3) ?
-				       3 : cop->aco.nargs,
-				      prev->level);
-		    }
 		    cop->plane = prev;
-
 		    if (merge) {
 			for (n = next;
 			     *n != (copatch *) NULL && (*n)->plane == prev;
@@ -2893,35 +2909,33 @@ register control *ctrl;
 }
 
 
-static Uint narr, nstr;		/* # of arrays, strings, string constants */
-static Uint arrsize, strsize;	/* # of array elements, total string size */
-
 /*
  * NAME:	data->count()
  * DESCRIPTION:	recursively count the number of arrays and strings in an object
  */
-static void d_count(v, n)
+static void d_count(save, v, n)
+register savedata *save;
 register value *v;
 register unsigned short n;
 {
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (str_put(v->u.string, nstr) >= nstr) {
-		nstr++;
-		strsize += v->u.string->len;
+	    if (str_put(v->u.string, save->nstr) >= save->nstr) {
+		save->nstr++;
+		save->strsize += v->u.string->len;
 	    }
 	    break;
 
 	case T_ARRAY:
 	case T_MAPPING:
-	    if (arr_put(v->u.array) >= narr) {
+	    if (arr_put(v->u.array) >= save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
 		}
-		narr++;
-		arrsize += v->u.array->size;
-		d_count(d_get_elts(v->u.array), v->u.array->size);
+		save->narr++;
+		save->arrsize += v->u.array->size;
+		d_count(save, d_get_elts(v->u.array), v->u.array->size);
 	    }
 	    break;
 	}
@@ -2931,16 +2945,12 @@ register unsigned short n;
     }
 }
 
-static sarray *sarrays;		/* save arrays */
-static svalue *selts;		/* save array elements */
-static sstring *sstrings;	/* save strings */
-static char *stext;		/* save string elements */
-
 /*
  * NAME:	data->save()
  * DESCRIPTION:	recursively save the values in an object
  */
-static void d_save(sv, v, n)
+static void d_save(save, sv, v, n)
+register savedata *save;
 register svalue *sv;
 register value *v;
 register unsigned short n;
@@ -2960,20 +2970,20 @@ register unsigned short n;
 	    break;
 
 	case T_STRING:
-	    i = str_put(v->u.string, nstr);
+	    i = str_put(v->u.string, save->nstr);
 	    sv->oindex = 0;
 	    sv->u.string = i;
-	    if (i >= nstr) {
+	    if (i >= save->nstr) {
 		/* new string value */
-		sstrings[i].index = strsize;
-		sstrings[i].len = v->u.string->len;
-		sstrings[i].ref = 0;
-		memcpy(stext + strsize, v->u.string->text,
+		save->sstrings[i].index = save->strsize;
+		save->sstrings[i].len = v->u.string->len;
+		save->sstrings[i].ref = 0;
+		memcpy(save->stext + save->strsize, v->u.string->text,
 		       v->u.string->len);
-		strsize += v->u.string->len;
-		nstr++;
+		save->strsize += v->u.string->len;
+		save->nstr++;
 	    }
-	    sstrings[i].ref++;
+	    save->sstrings[i].ref++;
 	    break;
 
 	case T_FLOAT:
@@ -2987,20 +2997,20 @@ register unsigned short n;
 	    i = arr_put(v->u.array);
 	    sv->oindex = 0;
 	    sv->u.array = i;
-	    if (i >= narr) {
+	    if (i >= save->narr) {
 		svalue *tmp;
 
 		/* new array */
-		sarrays[i].index = arrsize;
-		sarrays[i].size = v->u.array->size;
-		sarrays[i].ref = 0;
-		sarrays[i].tag = v->u.array->tag;
-		tmp = selts + arrsize;
-		arrsize += v->u.array->size;
-		narr++;
-		d_save(tmp, v->u.array->elts, v->u.array->size);
+		save->sarrays[i].index = save->arrsize;
+		save->sarrays[i].size = v->u.array->size;
+		save->sarrays[i].ref = 0;
+		save->sarrays[i].tag = v->u.array->tag;
+		tmp = save->selts + save->arrsize;
+		save->arrsize += v->u.array->size;
+		save->narr++;
+		d_save(save, tmp, v->u.array->elts, v->u.array->size);
 	    }
-	    sarrays[i].ref++;
+	    save->sarrays[i].ref++;
 	    break;
 	}
 	sv++;
@@ -3277,6 +3287,7 @@ register dataspace *data;
 	    AFREE(scallouts);
 	}
     } else {
+	savedata save;
 	scallout *scallouts;
 	char *text;
 	register Uint size;
@@ -3284,16 +3295,16 @@ register dataspace *data;
 	/*
 	 * count the number and sizes of strings and arrays
 	 */
-	narr = 0;
-	nstr = 0;
-	arrsize = 0;
-	strsize = 0;
+	save.narr = 0;
+	save.nstr = 0;
+	save.arrsize = 0;
+	save.strsize = 0;
 
 	d_get_variable(data, 0);
 	if (data->svariables == (svalue *) NULL) {
 	    data->svariables = ALLOC(svalue, data->nvariables);
 	}
-	d_count(data->variables, data->nvariables);
+	d_count(&save, data->variables, data->nvariables);
 
 	if (data->ncallouts > 0) {
 	    register dcallout *co;
@@ -3328,7 +3339,8 @@ register dataspace *data;
 		scallouts = ALLOCA(scallout, n);
 		for (co = data->callouts; n > 0; --n, co++) {
 		    if (co->val[0].type == T_STRING) {
-			d_count(co->val, (co->nargs > 3) ? 4 : co->nargs + 1);
+			d_count(&save, co->val,
+				(co->nargs > 3) ? 4 : co->nargs + 1);
 		    }
 		}
 	    }
@@ -3337,28 +3349,30 @@ register dataspace *data;
 	/* fill in header */
 	header.flags = 0;
 	header.nvariables = data->nvariables;
-	header.narrays = narr;
-	header.eltsize = arrsize;
-	header.nstrings = nstr;
-	header.strsize = strsize;
+	header.narrays = save.narr;
+	header.eltsize = save.arrsize;
+	header.nstrings = save.nstr;
+	header.strsize = save.strsize;
 	header.ncallouts = data->ncallouts;
 	header.fcallouts = data->fcallouts;
 
 	/*
 	 * put everything in a saveable form
 	 */
-	sstrings = data->sstrings =
-		   REALLOC(data->sstrings, sstring, 0, header.nstrings);
-	stext = data->stext = REALLOC(data->stext, char, 0, header.strsize);
-	sarrays = data->sarrays =
-		  REALLOC(data->sarrays, sarray, 0, header.narrays);
-	selts = data->selts = REALLOC(data->selts, svalue, 0, header.eltsize);
-	narr = 0;
-	nstr = 0;
-	arrsize = 0;
-	strsize = 0;
+	save.sstrings = data->sstrings =
+			REALLOC(data->sstrings, sstring, 0, header.nstrings);
+	save.stext = data->stext =
+		     REALLOC(data->stext, char, 0, header.strsize);
+	save.sarrays = data->sarrays =
+		       REALLOC(data->sarrays, sarray, 0, header.narrays);
+	save.selts = data->selts =
+		     REALLOC(data->selts, svalue, 0, header.eltsize);
+	save.narr = 0;
+	save.nstr = 0;
+	save.arrsize = 0;
+	save.strsize = 0;
 
-	d_save(data->svariables, data->variables, data->nvariables);
+	d_save(&save, data->svariables, data->variables, data->nvariables);
 	if (header.ncallouts > 0) {
 	    register scallout *sco;
 	    register dcallout *co;
@@ -3369,7 +3383,7 @@ register dataspace *data;
 		sco->time = co->time;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
-		    d_save(sco->val, co->val,
+		    d_save(&save, sco->val, co->val,
 			   (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
 		    sco->val[0].type = T_NIL;
@@ -3383,16 +3397,16 @@ register dataspace *data;
 	str_clear();
 	arr_clear();
 
-	text = stext;
+	text = save.stext;
 	if (header.strsize >= CMPLIMIT) {
 	    text = ALLOCA(char, header.strsize);
-	    size = compress(text, stext, header.strsize);
+	    size = compress(text, save.stext, header.strsize);
 	    if (size != 0) {
 		header.flags |= CMP_PRED;
 		header.strsize = size;
 	    } else {
 		AFREE(text);
-		text = stext;
+		text = save.stext;
 	    }
 	}
 
@@ -3423,11 +3437,11 @@ register dataspace *data;
 	/* save arrays */
 	data->arroffset = size;
 	if (header.narrays > 0) {
-	    sw_writev((char *) sarrays, data->sectors,
+	    sw_writev((char *) save.sarrays, data->sectors,
 		      header.narrays * sizeof(sarray), size);
 	    size += header.narrays * sizeof(sarray);
 	    if (header.eltsize > 0) {
-		sw_writev((char *) selts, data->sectors,
+		sw_writev((char *) save.selts, data->sectors,
 			  header.eltsize * sizeof(svalue), size);
 		size += header.eltsize * sizeof(svalue);
 	    }
@@ -3436,13 +3450,13 @@ register dataspace *data;
 	/* save strings */
 	data->stroffset = size;
 	if (header.nstrings > 0) {
-	    sw_writev((char *) sstrings, data->sectors,
+	    sw_writev((char *) save.sstrings, data->sectors,
 		      header.nstrings * sizeof(sstring), size);
 	    size += header.nstrings * sizeof(sstring);
 	    if (header.strsize > 0) {
 		sw_writev(text, data->sectors, header.strsize, size);
 		size += header.strsize;
-		if (text != stext) {
+		if (text != save.stext) {
 		    AFREE(text);
 		}
 	    }
@@ -3462,7 +3476,7 @@ register dataspace *data;
 	data->narrays = header.narrays;
 	data->eltsize = header.eltsize;
 	data->nstrings = header.nstrings;
-	data->strsize = strsize;
+	data->strsize = save.strsize;
 
 	data->base.schange = 0;
 	data->base.achange = 0;
@@ -3472,14 +3486,12 @@ register dataspace *data;
     return TRUE;
 }
 
-static array **itab;	/* imported array replacement table */
-static Uint itabsz;	/* size of table */
-
 /*
  * NAME:	data->import()
  * DESCRIPTION:	copy imported arrays to current dataspace
  */
-static void d_import(data, val, n)
+static void d_import(imp, data, val, n)
+register arrimport *imp;
 register dataspace *data;
 register value *val;
 register unsigned short n;
@@ -3495,7 +3507,7 @@ register unsigned short n;
 		 * imported array
 		 */
 		i = arr_put(a);
-		if (i >= narr) {
+		if (i >= imp->narr) {
 		    /*
 		     * first time encountered
 		     */
@@ -3507,7 +3519,6 @@ register unsigned short n;
 			/*
 			 * move array to new dataspace
 			 */
-			d_get_elts(a);
 			a->primary = &data->base.alocal;
 		    } else {
 			/*
@@ -3531,47 +3542,47 @@ register unsigned short n;
 			 */
 			arr_del(val->u.array);
 			arr_ref(val->u.array = a);
-			narr++;
+			imp->narr++;
 		    }
 
 		    /*
 		     * store in itab
 		     */
-		    if (i >= itabsz) {
+		    if (i >= imp->itabsz) {
 			/*
 			 * increase size of itab
 			 */
-			for (j = itabsz; j <= i; j += j) ;
-			itab = REALLOC(itab, array*, itabsz, j);
-			itabsz = j;
+			for (j = imp->itabsz; j <= i; j += j) ;
+			imp->itab = REALLOC(imp->itab, array*, imp->itabsz, j);
+			imp->itabsz = j;
 		    }
-		    arr_put(itab[i] = a);
-		    narr++;
+		    arr_put(imp->itab[i] = a);
+		    imp->narr++;
 
 		    if (a->size > 0) {
 			/*
 			 * import elements too
 			 */
-			d_import(data, a->elts, a->size);
+			d_import(imp, data, a->elts, a->size);
 		    }
 		} else {
 		    /*
 		     * array was previously replaced
 		     */
-		    arr_ref(a = itab[i]);
+		    arr_ref(a = imp->itab[i]);
 		    arr_del(val->u.array);
 		    val->u.array = a;
 		}
-	    } else if (arr_put(a) >= narr) {
+	    } else if (arr_put(a) >= imp->narr) {
 		/*
 		 * not previously encountered mapping or array
 		 */
-		narr++;
+		imp->narr++;
 		if (a->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(a);
-		    d_import(data, a->elts, a->size);
+		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (value *) NULL) {
-		    d_import(data, a->elts, a->size);
+		    d_import(imp, data, a->elts, a->size);
 		}
 	    }
 	}
@@ -3588,16 +3599,17 @@ void d_export()
 {
     register dataspace *data;
     register Uint n;
+    arrimport imp;
 
     if (ifirst != (dataspace *) NULL) {
-	itab = ALLOC(array*, itabsz = 16);
+	imp.itab = ALLOC(array*, imp.itabsz = 64);
 
 	for (data = ifirst; data != (dataspace *) NULL; data = data->inext) {
 	    if (data->base.imports != 0) {
 		data->base.imports = 0;
-		narr = 0;
+		imp.narr = 0;
 		if (data->variables != (value *) NULL) {
-		    d_import(data, data->variables, data->nvariables);
+		    d_import(&imp, data, data->variables, data->nvariables);
 		}
 		if (data->base.arrays != (arrref *) NULL) {
 		    register arrref *a;
@@ -3608,9 +3620,11 @@ void d_export()
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
 				map_compact(a->arr);
-				d_import(data, a->arr->elts, a->arr->size);
+				d_import(&imp, data, a->arr->elts,
+					 a->arr->size);
 			    } else if (a->arr->elts != (value *) NULL) {
-				d_import(data, a->arr->elts, a->arr->size);
+				d_import(&imp, data, a->arr->elts,
+					 a->arr->size);
 			    }
 			}
 		    }
@@ -3621,7 +3635,7 @@ void d_export()
 		    co = data->callouts;
 		    for (n = data->ncallouts; n > 0; --n) {
 			if (co->val[0].type == T_STRING) {
-			    d_import(data, co->val,
+			    d_import(&imp, data, co->val,
 				     (co->nargs > 3) ? 4 : co->nargs + 1);
 			}
 			co++;
@@ -3633,7 +3647,7 @@ void d_export()
 	}
 	ifirst = (dataspace *) NULL;
 
-	FREE(itab);
+	FREE(imp.itab);
     }
 }
 
