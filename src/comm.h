@@ -1,5 +1,5 @@
 # define INBUF_SIZE	2048
-# define OUTBUF_SIZE	1024
+# define OUTBUF_SIZE	2048
 # define BINBUF_SIZE	8192
 
 typedef struct _connection_ connection;

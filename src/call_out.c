@@ -365,7 +365,10 @@ void co_call()
     int nargs;
 
     if (P_timeout()) {
-	timeout = P_time();
+	if ((t=P_time()) <= timeout) {
+	    return;
+	}
+	timeout = t;
 	for (;;) {
 	    if (queuebrk > 0 && cotab[0].time <= timeout) {
 		/*
@@ -425,8 +428,8 @@ void co_call()
 		}
 
 		/* allow as much time for non-callouts as for callouts */
-		i = P_time() - timeout;
-		P_alarm((i == 0) ? 1 : i);
+		t = P_time();
+		P_alarm((t <= timeout) ? 1 : t - timeout);
 		return;
 	    }
 
