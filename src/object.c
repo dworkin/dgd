@@ -636,7 +636,6 @@ void o_lwobj(obj)
 object *obj;
 {
     obj->flags |= O_LWOBJ;
-    obj->cref++;
 }
 
 /*
