@@ -604,7 +604,7 @@ int nargs;
 	    return 3;
 	}
     } else {
-	maxalt = 1;	/* default: just one valid parsing */
+	maxalt = 1;	/* default: just one valid parse tree */
     }
 
     if (f->obj->flags & (O_USER | O_EDITOR)) {

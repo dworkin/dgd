@@ -14,4 +14,4 @@ ERRORS
 	The argument array may contain only string values.
 
 SEE ALSO
-	kfun/explode, kfun/sscanf, kfun/parse_string
+	kfun/explode, kfun/parse_string, kfun/sscanf

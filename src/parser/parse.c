@@ -461,7 +461,6 @@ char *text;
 unsigned short len;
 {
     register int n;
-    register char *p;
 
     n = srp_shift(ps->lr, sn->pn->state, token);
     if (n >= 0) {
@@ -516,6 +515,12 @@ bool *toobig;
 	 */
 	for (sn = ps->list.first; sn != (snode *) NULL; sn = sn->next) {
 	    n = srp_check(ps->lr, sn->pn->state, &nred, &red);
+	    if (n < 0) {
+		/* parser grown to big */
+		FREE(ps->states);
+		*toobig = TRUE;
+		return (pnode *) NULL;
+	    }
 	    if (n > ps->nstates) {
 		/* grow tables */
 		n <<= 1;
@@ -982,6 +987,7 @@ Int maxalt;
 	    /*
 	     * lexer or parser has become too big
 	     */
+	    ec_pop();
 	    pn_clear(ps->pnc);
 	    ps->data->parser = (parser *) NULL;
 	    ps_del(ps);

@@ -784,6 +784,7 @@ static cmd_code(object user, string cmd, string str)
 		    remove_file(str + ".c"),
 		    result = obj->exec(user, parsed[1 ..]...));
 	if (err) {
+	    remove_file(str + ".c");
 	    message("Error: " + err + ".\n");
 	} else {
 	    store(user, result);

@@ -16,4 +16,4 @@ ERRORS
 	result.
 
 SEE ALSO
-	kfun/implode, kfun/sscanf, kfun/parse_string
+	kfun/implode, kfun/parse_string, kfun/sscanf

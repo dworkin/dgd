@@ -26,4 +26,4 @@ ERRORS
 	lvalue arguments were given.
 
 SEE ALSO
-	kfun/parse_string, kfun/explode, kfun/implode
+	kfun/explode, kfun/implode, kfun/parse_string

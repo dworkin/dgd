@@ -1,4 +1,4 @@
-# Microsoft Developer Studio Generated NMAKE File, Format Version 4.00
+# Microsoft Developer Studio Generated NMAKE File, Format Version 40001
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Application" 0x0101
@@ -32,8 +32,8 @@ NULL=nul
 # Begin Project
 # PROP Target_Last_Scanned "windgd - Win32 Debug"
 CPP=cl.exe
-RSC=rc.exe
 MTL=mktyplib.exe
+RSC=rc.exe
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
@@ -54,68 +54,72 @@ ALL : "$(OUTDIR)\dgd.exe"
 
 CLEAN : 
 	-@erase ".\Release\dgd.exe"
-	-@erase ".\Release\ppstr.obj"
-	-@erase ".\Release\MainFrame.obj"
-	-@erase ".\Release\special.obj"
-	-@erase ".\Release\builtin.obj"
-	-@erase ".\Release\math.obj"
-	-@erase ".\Release\lpc.obj"
-	-@erase ".\Release\codegeni.obj"
-	-@erase ".\Release\table.obj"
-	-@erase ".\Release\extra.obj"
-	-@erase ".\Release\hash.obj"
-	-@erase ".\Release\edcmd.obj"
-	-@erase ".\Release\data.obj"
-	-@erase ".\Release\object.obj"
+	-@erase ".\Release\path.obj"
 	-@erase ".\Release\node.obj"
-	-@erase ".\Release\vars.obj"
-	-@erase ".\Release\fileio.obj"
-	-@erase ".\Release\interpret.obj"
+	-@erase ".\Release\parse.obj"
+	-@erase ".\Release\special.obj"
+	-@erase ".\Release\config.obj"
+	-@erase ".\Release\ppcontrol.obj"
 	-@erase ".\Release\swap.obj"
 	-@erase ".\Release\comm.obj"
-	-@erase ".\Release\line.obj"
+	-@erase ".\Release\debug.obj"
+	-@erase ".\Release\dfa.obj"
+	-@erase ".\Release\str.obj"
+	-@erase ".\Release\srp.obj"
+	-@erase ".\Release\local.obj"
+	-@erase ".\Release\dgd.obj"
+	-@erase ".\Release\object.obj"
+	-@erase ".\Release\simfloat.obj"
+	-@erase ".\Release\std.obj"
+	-@erase ".\Release\array.obj"
+	-@erase ".\Release\fileio.obj"
+	-@erase ".\Release\csupport.obj"
+	-@erase ".\Release\crypt.obj"
+	-@erase ".\Release\token.obj"
+	-@erase ".\Release\codegeni.obj"
+	-@erase ".\Release\alloc.obj"
+	-@erase ".\Release\hash.obj"
 	-@erase ".\Release\control.obj"
+	-@erase ".\Release\ppstr.obj"
+	-@erase ".\Release\regexp.obj"
+	-@erase ".\Release\lpc.obj"
+	-@erase ".\Release\data.obj"
+	-@erase ".\Release\windgd.obj"
+	-@erase ".\Release\optimize.obj"
+	-@erase ".\Release\table.obj"
+	-@erase ".\Release\extra.obj"
+	-@erase ".\Release\vars.obj"
+	-@erase ".\Release\edcmd.obj"
+	-@erase ".\Release\cmdsub.obj"
+	-@erase ".\Release\connect.obj"
+	-@erase ".\Release\editor.obj"
+	-@erase ".\Release\line.obj"
+	-@erase ".\Release\grammar.obj"
+	-@erase ".\Release\builtin.obj"
+	-@erase ".\Release\call_out.obj"
+	-@erase ".\Release\compile.obj"
+	-@erase ".\Release\MainFrame.obj"
 	-@erase ".\Release\macro.obj"
 	-@erase ".\Release\error.obj"
-	-@erase ".\Release\str.obj"
-	-@erase ".\Release\ppcontrol.obj"
-	-@erase ".\Release\config.obj"
-	-@erase ".\Release\dgd.obj"
-	-@erase ".\Release\csupport.obj"
-	-@erase ".\Release\std.obj"
+	-@erase ".\Release\dosfile.obj"
 	-@erase ".\Release\time.obj"
 	-@erase ".\Release\file.obj"
-	-@erase ".\Release\compile.obj"
-	-@erase ".\Release\optimize.obj"
-	-@erase ".\Release\path.obj"
-	-@erase ".\Release\editor.obj"
-	-@erase ".\Release\dosfile.obj"
-	-@erase ".\Release\regexp.obj"
-	-@erase ".\Release\windgd.obj"
-	-@erase ".\Release\debug.obj"
-	-@erase ".\Release\call_out.obj"
-	-@erase ".\Release\local.obj"
+	-@erase ".\Release\math.obj"
 	-@erase ".\Release\buffer.obj"
 	-@erase ".\Release\parser.obj"
-	-@erase ".\Release\cmdsub.obj"
-	-@erase ".\Release\array.obj"
-	-@erase ".\Release\crypt.obj"
-	-@erase ".\Release\connect.obj"
-	-@erase ".\Release\token.obj"
-	-@erase ".\Release\simfloat.obj"
-	-@erase ".\Release\alloc.obj"
+	-@erase ".\Release\interpret.obj"
 	-@erase ".\Release\windgd.res"
 
 "$(OUTDIR)" :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /c
-# ADD CPP /nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /c
+# ADD CPP /nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /I ".\..\..\parser" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /c
 # SUBTRACT CPP /Ow /YX /Yc /Yu
-CPP_PROJ=/nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I\
- ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I\
- ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"\
- /D "_MBCS" /Fo"$(INTDIR)/" /c 
+CPP_PROJ=/nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I ".\..\.." /I\
+ ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /I\
+ ".\..\..\parser" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS"\
+ /Fo"$(INTDIR)/" /c 
 CPP_OBJS=.\Release/
 CPP_SBRS=
 # ADD BASE MTL /nologo /D "NDEBUG" /win32
@@ -135,56 +139,60 @@ LINK32=link.exe
 LINK32_FLAGS=nafxcw.lib /nologo /subsystem:windows /incremental:no\
  /pdb:"$(OUTDIR)/dgd.pdb" /machine:I386 /out:"$(OUTDIR)/dgd.exe" 
 LINK32_OBJS= \
-	"$(INTDIR)/ppstr.obj" \
-	"$(INTDIR)/MainFrame.obj" \
-	"$(INTDIR)/special.obj" \
-	"$(INTDIR)/builtin.obj" \
-	"$(INTDIR)/math.obj" \
-	"$(INTDIR)/lpc.obj" \
-	"$(INTDIR)/codegeni.obj" \
-	"$(INTDIR)/table.obj" \
-	"$(INTDIR)/extra.obj" \
-	"$(INTDIR)/hash.obj" \
-	"$(INTDIR)/edcmd.obj" \
-	"$(INTDIR)/data.obj" \
-	"$(INTDIR)/object.obj" \
+	"$(INTDIR)/path.obj" \
 	"$(INTDIR)/node.obj" \
-	"$(INTDIR)/vars.obj" \
-	"$(INTDIR)/fileio.obj" \
-	"$(INTDIR)/interpret.obj" \
+	"$(INTDIR)/parse.obj" \
+	"$(INTDIR)/special.obj" \
+	"$(INTDIR)/config.obj" \
+	"$(INTDIR)/ppcontrol.obj" \
 	"$(INTDIR)/swap.obj" \
 	"$(INTDIR)/comm.obj" \
-	"$(INTDIR)/line.obj" \
+	"$(INTDIR)/debug.obj" \
+	"$(INTDIR)/dfa.obj" \
+	"$(INTDIR)/str.obj" \
+	"$(INTDIR)/srp.obj" \
+	"$(INTDIR)/local.obj" \
+	"$(INTDIR)/dgd.obj" \
+	"$(INTDIR)/object.obj" \
+	"$(INTDIR)/simfloat.obj" \
+	"$(INTDIR)/std.obj" \
+	"$(INTDIR)/array.obj" \
+	"$(INTDIR)/fileio.obj" \
+	"$(INTDIR)/csupport.obj" \
+	"$(INTDIR)/crypt.obj" \
+	"$(INTDIR)/token.obj" \
+	"$(INTDIR)/codegeni.obj" \
+	"$(INTDIR)/alloc.obj" \
+	"$(INTDIR)/hash.obj" \
 	"$(INTDIR)/control.obj" \
+	"$(INTDIR)/ppstr.obj" \
+	"$(INTDIR)/regexp.obj" \
+	"$(INTDIR)/lpc.obj" \
+	"$(INTDIR)/data.obj" \
+	"$(INTDIR)/windgd.obj" \
+	"$(INTDIR)/optimize.obj" \
+	"$(INTDIR)/table.obj" \
+	"$(INTDIR)/extra.obj" \
+	"$(INTDIR)/vars.obj" \
+	"$(INTDIR)/edcmd.obj" \
+	"$(INTDIR)/cmdsub.obj" \
+	"$(INTDIR)/connect.obj" \
+	"$(INTDIR)/editor.obj" \
+	"$(INTDIR)/line.obj" \
+	"$(INTDIR)/grammar.obj" \
+	"$(INTDIR)/builtin.obj" \
+	"$(INTDIR)/call_out.obj" \
+	"$(INTDIR)/compile.obj" \
+	"$(INTDIR)/MainFrame.obj" \
 	"$(INTDIR)/macro.obj" \
 	"$(INTDIR)/error.obj" \
-	"$(INTDIR)/str.obj" \
-	"$(INTDIR)/ppcontrol.obj" \
-	"$(INTDIR)/config.obj" \
-	"$(INTDIR)/dgd.obj" \
-	"$(INTDIR)/csupport.obj" \
-	"$(INTDIR)/std.obj" \
+	"$(INTDIR)/dosfile.obj" \
 	"$(INTDIR)/time.obj" \
 	"$(INTDIR)/file.obj" \
-	"$(INTDIR)/compile.obj" \
-	"$(INTDIR)/optimize.obj" \
-	"$(INTDIR)/path.obj" \
-	"$(INTDIR)/editor.obj" \
-	"$(INTDIR)/dosfile.obj" \
-	"$(INTDIR)/regexp.obj" \
-	"$(INTDIR)/windgd.obj" \
-	"$(INTDIR)/debug.obj" \
-	"$(INTDIR)/call_out.obj" \
-	"$(INTDIR)/local.obj" \
+	"$(INTDIR)/math.obj" \
 	"$(INTDIR)/buffer.obj" \
 	"$(INTDIR)/parser.obj" \
-	"$(INTDIR)/cmdsub.obj" \
-	"$(INTDIR)/array.obj" \
-	"$(INTDIR)/crypt.obj" \
-	"$(INTDIR)/connect.obj" \
-	"$(INTDIR)/token.obj" \
-	"$(INTDIR)/simfloat.obj" \
-	"$(INTDIR)/alloc.obj" \
+	"$(INTDIR)/interpret.obj" \
 	"$(INTDIR)/windgd.res"
 
 "$(OUTDIR)\dgd.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
@@ -213,107 +221,115 @@ CLEAN :
 	-@erase ".\Debug\vc40.pdb"
 	-@erase ".\Debug\vc40.idb"
 	-@erase ".\Debug\windgd.bsc"
-	-@erase ".\Debug\edcmd.sbr"
-	-@erase ".\Debug\simfloat.sbr"
-	-@erase ".\Debug\time.sbr"
-	-@erase ".\Debug\windgd.sbr"
-	-@erase ".\Debug\csupport.sbr"
-	-@erase ".\Debug\file.sbr"
-	-@erase ".\Debug\buffer.sbr"
-	-@erase ".\Debug\interpret.sbr"
-	-@erase ".\Debug\codegeni.sbr"
-	-@erase ".\Debug\dosfile.sbr"
-	-@erase ".\Debug\parser.sbr"
-	-@erase ".\Debug\cmdsub.sbr"
+	-@erase ".\Debug\call_out.sbr"
 	-@erase ".\Debug\vars.sbr"
-	-@erase ".\Debug\array.sbr"
-	-@erase ".\Debug\optimize.sbr"
-	-@erase ".\Debug\crypt.sbr"
-	-@erase ".\Debug\path.sbr"
+	-@erase ".\Debug\cmdsub.sbr"
+	-@erase ".\Debug\debug.sbr"
+	-@erase ".\Debug\local.sbr"
 	-@erase ".\Debug\macro.sbr"
+	-@erase ".\Debug\error.sbr"
+	-@erase ".\Debug\editor.sbr"
+	-@erase ".\Debug\control.sbr"
+	-@erase ".\Debug\line.sbr"
+	-@erase ".\Debug\simfloat.sbr"
+	-@erase ".\Debug\interpret.sbr"
+	-@erase ".\Debug\token.sbr"
+	-@erase ".\Debug\csupport.sbr"
+	-@erase ".\Debug\codegeni.sbr"
+	-@erase ".\Debug\alloc.sbr"
+	-@erase ".\Debug\connect.sbr"
+	-@erase ".\Debug\time.sbr"
+	-@erase ".\Debug\parse.sbr"
+	-@erase ".\Debug\ppcontrol.sbr"
+	-@erase ".\Debug\grammar.sbr"
+	-@erase ".\Debug\optimize.sbr"
+	-@erase ".\Debug\builtin.sbr"
+	-@erase ".\Debug\compile.sbr"
 	-@erase ".\Debug\MainFrame.sbr"
-	-@erase ".\Debug\dgd.sbr"
-	-@erase ".\Debug\special.sbr"
-	-@erase ".\Debug\extra.sbr"
-	-@erase ".\Debug\object.sbr"
-	-@erase ".\Debug\fileio.sbr"
+	-@erase ".\Debug\buffer.sbr"
+	-@erase ".\Debug\dfa.sbr"
 	-@erase ".\Debug\math.sbr"
+	-@erase ".\Debug\str.sbr"
+	-@erase ".\Debug\srp.sbr"
+	-@erase ".\Debug\parser.sbr"
+	-@erase ".\Debug\dgd.sbr"
+	-@erase ".\Debug\std.sbr"
+	-@erase ".\Debug\dosfile.sbr"
+	-@erase ".\Debug\path.sbr"
+	-@erase ".\Debug\node.sbr"
+	-@erase ".\Debug\config.sbr"
+	-@erase ".\Debug\array.sbr"
+	-@erase ".\Debug\crypt.sbr"
+	-@erase ".\Debug\lpc.sbr"
+	-@erase ".\Debug\swap.sbr"
+	-@erase ".\Debug\comm.sbr"
+	-@erase ".\Debug\ppstr.sbr"
+	-@erase ".\Debug\object.sbr"
+	-@erase ".\Debug\table.sbr"
+	-@erase ".\Debug\extra.sbr"
+	-@erase ".\Debug\fileio.sbr"
+	-@erase ".\Debug\special.sbr"
+	-@erase ".\Debug\edcmd.sbr"
 	-@erase ".\Debug\regexp.sbr"
 	-@erase ".\Debug\hash.sbr"
-	-@erase ".\Debug\debug.sbr"
+	-@erase ".\Debug\file.sbr"
+	-@erase ".\Debug\windgd.sbr"
 	-@erase ".\Debug\data.sbr"
-	-@erase ".\Debug\config.sbr"
-	-@erase ".\Debug\local.sbr"
-	-@erase ".\Debug\node.sbr"
-	-@erase ".\Debug\error.sbr"
-	-@erase ".\Debug\control.sbr"
-	-@erase ".\Debug\ppcontrol.sbr"
-	-@erase ".\Debug\str.sbr"
-	-@erase ".\Debug\token.sbr"
-	-@erase ".\Debug\swap.sbr"
-	-@erase ".\Debug\std.sbr"
-	-@erase ".\Debug\comm.sbr"
-	-@erase ".\Debug\call_out.sbr"
-	-@erase ".\Debug\line.sbr"
-	-@erase ".\Debug\connect.sbr"
-	-@erase ".\Debug\alloc.sbr"
-	-@erase ".\Debug\ppstr.sbr"
-	-@erase ".\Debug\table.sbr"
-	-@erase ".\Debug\editor.sbr"
-	-@erase ".\Debug\builtin.sbr"
-	-@erase ".\Debug\lpc.sbr"
-	-@erase ".\Debug\compile.sbr"
 	-@erase ".\Debug\dgd.exe"
-	-@erase ".\Debug\token.obj"
-	-@erase ".\Debug\swap.obj"
-	-@erase ".\Debug\std.obj"
-	-@erase ".\Debug\comm.obj"
-	-@erase ".\Debug\call_out.obj"
-	-@erase ".\Debug\line.obj"
-	-@erase ".\Debug\connect.obj"
-	-@erase ".\Debug\alloc.obj"
-	-@erase ".\Debug\ppstr.obj"
 	-@erase ".\Debug\table.obj"
-	-@erase ".\Debug\editor.obj"
-	-@erase ".\Debug\builtin.obj"
-	-@erase ".\Debug\lpc.obj"
-	-@erase ".\Debug\compile.obj"
-	-@erase ".\Debug\edcmd.obj"
-	-@erase ".\Debug\simfloat.obj"
-	-@erase ".\Debug\time.obj"
-	-@erase ".\Debug\windgd.obj"
-	-@erase ".\Debug\csupport.obj"
-	-@erase ".\Debug\file.obj"
-	-@erase ".\Debug\buffer.obj"
-	-@erase ".\Debug\interpret.obj"
-	-@erase ".\Debug\codegeni.obj"
-	-@erase ".\Debug\dosfile.obj"
-	-@erase ".\Debug\parser.obj"
-	-@erase ".\Debug\cmdsub.obj"
-	-@erase ".\Debug\vars.obj"
-	-@erase ".\Debug\array.obj"
-	-@erase ".\Debug\optimize.obj"
-	-@erase ".\Debug\crypt.obj"
-	-@erase ".\Debug\path.obj"
-	-@erase ".\Debug\macro.obj"
-	-@erase ".\Debug\MainFrame.obj"
-	-@erase ".\Debug\dgd.obj"
-	-@erase ".\Debug\special.obj"
 	-@erase ".\Debug\extra.obj"
-	-@erase ".\Debug\object.obj"
 	-@erase ".\Debug\fileio.obj"
-	-@erase ".\Debug\math.obj"
+	-@erase ".\Debug\special.obj"
+	-@erase ".\Debug\edcmd.obj"
 	-@erase ".\Debug\regexp.obj"
 	-@erase ".\Debug\hash.obj"
-	-@erase ".\Debug\debug.obj"
+	-@erase ".\Debug\file.obj"
+	-@erase ".\Debug\windgd.obj"
 	-@erase ".\Debug\data.obj"
-	-@erase ".\Debug\config.obj"
+	-@erase ".\Debug\call_out.obj"
+	-@erase ".\Debug\vars.obj"
+	-@erase ".\Debug\cmdsub.obj"
+	-@erase ".\Debug\debug.obj"
 	-@erase ".\Debug\local.obj"
-	-@erase ".\Debug\node.obj"
+	-@erase ".\Debug\macro.obj"
 	-@erase ".\Debug\error.obj"
+	-@erase ".\Debug\editor.obj"
 	-@erase ".\Debug\control.obj"
+	-@erase ".\Debug\line.obj"
+	-@erase ".\Debug\simfloat.obj"
+	-@erase ".\Debug\interpret.obj"
+	-@erase ".\Debug\token.obj"
+	-@erase ".\Debug\csupport.obj"
+	-@erase ".\Debug\codegeni.obj"
+	-@erase ".\Debug\alloc.obj"
+	-@erase ".\Debug\connect.obj"
+	-@erase ".\Debug\time.obj"
+	-@erase ".\Debug\parse.obj"
 	-@erase ".\Debug\ppcontrol.obj"
+	-@erase ".\Debug\grammar.obj"
+	-@erase ".\Debug\optimize.obj"
+	-@erase ".\Debug\builtin.obj"
+	-@erase ".\Debug\compile.obj"
+	-@erase ".\Debug\MainFrame.obj"
+	-@erase ".\Debug\buffer.obj"
+	-@erase ".\Debug\dfa.obj"
+	-@erase ".\Debug\math.obj"
 	-@erase ".\Debug\str.obj"
+	-@erase ".\Debug\srp.obj"
+	-@erase ".\Debug\parser.obj"
+	-@erase ".\Debug\dgd.obj"
+	-@erase ".\Debug\std.obj"
+	-@erase ".\Debug\dosfile.obj"
+	-@erase ".\Debug\path.obj"
+	-@erase ".\Debug\node.obj"
+	-@erase ".\Debug\config.obj"
+	-@erase ".\Debug\array.obj"
+	-@erase ".\Debug\crypt.obj"
+	-@erase ".\Debug\lpc.obj"
+	-@erase ".\Debug\swap.obj"
+	-@erase ".\Debug\comm.obj"
+	-@erase ".\Debug\ppstr.obj"
+	-@erase ".\Debug\object.obj"
 	-@erase ".\Debug\windgd.res"
 	-@erase ".\Debug\dgd.ilk"
 	-@erase ".\Debug\dgd.pdb"
@@ -322,12 +338,12 @@ CLEAN :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /c
-# ADD CPP /nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR /c
+# ADD CPP /nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /I ".\..\..\parser" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR /c
 # SUBTRACT CPP /YX /Yc /Yu
-CPP_PROJ=/nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I\
- ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I\
- ".\..\..\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS"\
- /FR"$(INTDIR)/" /Fo"$(INTDIR)/" /Fd"$(INTDIR)/" /c 
+CPP_PROJ=/nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I ".\..\..\comp"\
+ /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /I ".\..\..\parser" /D\
+ "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"$(INTDIR)/"\
+ /Fo"$(INTDIR)/" /Fd"$(INTDIR)/" /c 
 CPP_OBJS=.\Debug/
 CPP_SBRS=.\Debug/
 # ADD BASE MTL /nologo /D "_DEBUG" /win32
@@ -341,56 +357,60 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 BSC32_FLAGS=/nologo /o"$(OUTDIR)/windgd.bsc" 
 BSC32_SBRS= \
-	"$(INTDIR)/edcmd.sbr" \
-	"$(INTDIR)/simfloat.sbr" \
-	"$(INTDIR)/time.sbr" \
-	"$(INTDIR)/windgd.sbr" \
-	"$(INTDIR)/csupport.sbr" \
-	"$(INTDIR)/file.sbr" \
-	"$(INTDIR)/buffer.sbr" \
-	"$(INTDIR)/interpret.sbr" \
-	"$(INTDIR)/codegeni.sbr" \
-	"$(INTDIR)/dosfile.sbr" \
-	"$(INTDIR)/parser.sbr" \
-	"$(INTDIR)/cmdsub.sbr" \
+	"$(INTDIR)/call_out.sbr" \
 	"$(INTDIR)/vars.sbr" \
-	"$(INTDIR)/array.sbr" \
-	"$(INTDIR)/optimize.sbr" \
-	"$(INTDIR)/crypt.sbr" \
-	"$(INTDIR)/path.sbr" \
+	"$(INTDIR)/cmdsub.sbr" \
+	"$(INTDIR)/debug.sbr" \
+	"$(INTDIR)/local.sbr" \
 	"$(INTDIR)/macro.sbr" \
+	"$(INTDIR)/error.sbr" \
+	"$(INTDIR)/editor.sbr" \
+	"$(INTDIR)/control.sbr" \
+	"$(INTDIR)/line.sbr" \
+	"$(INTDIR)/simfloat.sbr" \
+	"$(INTDIR)/interpret.sbr" \
+	"$(INTDIR)/token.sbr" \
+	"$(INTDIR)/csupport.sbr" \
+	"$(INTDIR)/codegeni.sbr" \
+	"$(INTDIR)/alloc.sbr" \
+	"$(INTDIR)/connect.sbr" \
+	"$(INTDIR)/time.sbr" \
+	"$(INTDIR)/parse.sbr" \
+	"$(INTDIR)/ppcontrol.sbr" \
+	"$(INTDIR)/grammar.sbr" \
+	"$(INTDIR)/optimize.sbr" \
+	"$(INTDIR)/builtin.sbr" \
+	"$(INTDIR)/compile.sbr" \
 	"$(INTDIR)/MainFrame.sbr" \
-	"$(INTDIR)/dgd.sbr" \
-	"$(INTDIR)/special.sbr" \
-	"$(INTDIR)/extra.sbr" \
-	"$(INTDIR)/object.sbr" \
-	"$(INTDIR)/fileio.sbr" \
+	"$(INTDIR)/buffer.sbr" \
+	"$(INTDIR)/dfa.sbr" \
 	"$(INTDIR)/math.sbr" \
+	"$(INTDIR)/str.sbr" \
+	"$(INTDIR)/srp.sbr" \
+	"$(INTDIR)/parser.sbr" \
+	"$(INTDIR)/dgd.sbr" \
+	"$(INTDIR)/std.sbr" \
+	"$(INTDIR)/dosfile.sbr" \
+	"$(INTDIR)/path.sbr" \
+	"$(INTDIR)/node.sbr" \
+	"$(INTDIR)/config.sbr" \
+	"$(INTDIR)/array.sbr" \
+	"$(INTDIR)/crypt.sbr" \
+	"$(INTDIR)/lpc.sbr" \
+	"$(INTDIR)/swap.sbr" \
+	"$(INTDIR)/comm.sbr" \
+	"$(INTDIR)/ppstr.sbr" \
+	"$(INTDIR)/object.sbr" \
+	"$(INTDIR)/table.sbr" \
+	"$(INTDIR)/extra.sbr" \
+	"$(INTDIR)/fileio.sbr" \
+	"$(INTDIR)/special.sbr" \
+	"$(INTDIR)/edcmd.sbr" \
 	"$(INTDIR)/regexp.sbr" \
 	"$(INTDIR)/hash.sbr" \
-	"$(INTDIR)/debug.sbr" \
-	"$(INTDIR)/data.sbr" \
-	"$(INTDIR)/config.sbr" \
-	"$(INTDIR)/local.sbr" \
-	"$(INTDIR)/node.sbr" \
-	"$(INTDIR)/error.sbr" \
-	"$(INTDIR)/control.sbr" \
-	"$(INTDIR)/ppcontrol.sbr" \
-	"$(INTDIR)/str.sbr" \
-	"$(INTDIR)/token.sbr" \
-	"$(INTDIR)/swap.sbr" \
-	"$(INTDIR)/std.sbr" \
-	"$(INTDIR)/comm.sbr" \
-	"$(INTDIR)/call_out.sbr" \
-	"$(INTDIR)/line.sbr" \
-	"$(INTDIR)/connect.sbr" \
-	"$(INTDIR)/alloc.sbr" \
-	"$(INTDIR)/ppstr.sbr" \
-	"$(INTDIR)/table.sbr" \
-	"$(INTDIR)/editor.sbr" \
-	"$(INTDIR)/builtin.sbr" \
-	"$(INTDIR)/lpc.sbr" \
-	"$(INTDIR)/compile.sbr"
+	"$(INTDIR)/file.sbr" \
+	"$(INTDIR)/windgd.sbr" \
+	"$(INTDIR)/data.sbr"
 
 "$(OUTDIR)\windgd.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
@@ -403,56 +423,60 @@ LINK32=link.exe
 LINK32_FLAGS=/nologo /subsystem:windows /incremental:yes\
  /pdb:"$(OUTDIR)/dgd.pdb" /debug /machine:I386 /out:"$(OUTDIR)/dgd.exe" 
 LINK32_OBJS= \
-	"$(INTDIR)/token.obj" \
-	"$(INTDIR)/swap.obj" \
-	"$(INTDIR)/std.obj" \
-	"$(INTDIR)/comm.obj" \
-	"$(INTDIR)/call_out.obj" \
-	"$(INTDIR)/line.obj" \
-	"$(INTDIR)/connect.obj" \
-	"$(INTDIR)/alloc.obj" \
-	"$(INTDIR)/ppstr.obj" \
 	"$(INTDIR)/table.obj" \
-	"$(INTDIR)/editor.obj" \
-	"$(INTDIR)/builtin.obj" \
-	"$(INTDIR)/lpc.obj" \
-	"$(INTDIR)/compile.obj" \
-	"$(INTDIR)/edcmd.obj" \
-	"$(INTDIR)/simfloat.obj" \
-	"$(INTDIR)/time.obj" \
-	"$(INTDIR)/windgd.obj" \
-	"$(INTDIR)/csupport.obj" \
-	"$(INTDIR)/file.obj" \
-	"$(INTDIR)/buffer.obj" \
-	"$(INTDIR)/interpret.obj" \
-	"$(INTDIR)/codegeni.obj" \
-	"$(INTDIR)/dosfile.obj" \
-	"$(INTDIR)/parser.obj" \
-	"$(INTDIR)/cmdsub.obj" \
-	"$(INTDIR)/vars.obj" \
-	"$(INTDIR)/array.obj" \
-	"$(INTDIR)/optimize.obj" \
-	"$(INTDIR)/crypt.obj" \
-	"$(INTDIR)/path.obj" \
-	"$(INTDIR)/macro.obj" \
-	"$(INTDIR)/MainFrame.obj" \
-	"$(INTDIR)/dgd.obj" \
-	"$(INTDIR)/special.obj" \
 	"$(INTDIR)/extra.obj" \
-	"$(INTDIR)/object.obj" \
 	"$(INTDIR)/fileio.obj" \
-	"$(INTDIR)/math.obj" \
+	"$(INTDIR)/special.obj" \
+	"$(INTDIR)/edcmd.obj" \
 	"$(INTDIR)/regexp.obj" \
 	"$(INTDIR)/hash.obj" \
-	"$(INTDIR)/debug.obj" \
+	"$(INTDIR)/file.obj" \
+	"$(INTDIR)/windgd.obj" \
 	"$(INTDIR)/data.obj" \
-	"$(INTDIR)/config.obj" \
+	"$(INTDIR)/call_out.obj" \
+	"$(INTDIR)/vars.obj" \
+	"$(INTDIR)/cmdsub.obj" \
+	"$(INTDIR)/debug.obj" \
 	"$(INTDIR)/local.obj" \
-	"$(INTDIR)/node.obj" \
+	"$(INTDIR)/macro.obj" \
 	"$(INTDIR)/error.obj" \
+	"$(INTDIR)/editor.obj" \
 	"$(INTDIR)/control.obj" \
+	"$(INTDIR)/line.obj" \
+	"$(INTDIR)/simfloat.obj" \
+	"$(INTDIR)/interpret.obj" \
+	"$(INTDIR)/token.obj" \
+	"$(INTDIR)/csupport.obj" \
+	"$(INTDIR)/codegeni.obj" \
+	"$(INTDIR)/alloc.obj" \
+	"$(INTDIR)/connect.obj" \
+	"$(INTDIR)/time.obj" \
+	"$(INTDIR)/parse.obj" \
 	"$(INTDIR)/ppcontrol.obj" \
+	"$(INTDIR)/grammar.obj" \
+	"$(INTDIR)/optimize.obj" \
+	"$(INTDIR)/builtin.obj" \
+	"$(INTDIR)/compile.obj" \
+	"$(INTDIR)/MainFrame.obj" \
+	"$(INTDIR)/buffer.obj" \
+	"$(INTDIR)/dfa.obj" \
+	"$(INTDIR)/math.obj" \
 	"$(INTDIR)/str.obj" \
+	"$(INTDIR)/srp.obj" \
+	"$(INTDIR)/parser.obj" \
+	"$(INTDIR)/dgd.obj" \
+	"$(INTDIR)/std.obj" \
+	"$(INTDIR)/dosfile.obj" \
+	"$(INTDIR)/path.obj" \
+	"$(INTDIR)/node.obj" \
+	"$(INTDIR)/config.obj" \
+	"$(INTDIR)/array.obj" \
+	"$(INTDIR)/crypt.obj" \
+	"$(INTDIR)/lpc.obj" \
+	"$(INTDIR)/swap.obj" \
+	"$(INTDIR)/comm.obj" \
+	"$(INTDIR)/ppstr.obj" \
+	"$(INTDIR)/object.obj" \
 	"$(INTDIR)/windgd.res"
 
 "$(OUTDIR)\dgd.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
@@ -504,9 +528,13 @@ DEP_CPP_WINDG=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_WINDG=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -551,9 +579,13 @@ DEP_CPP_SWAP_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_SWAP_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -594,11 +626,15 @@ DEP_CPP_ARRAY=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_ARRAY=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -635,15 +671,20 @@ DEP_CPP_CALL_=\
 	".\..\..\object.h"\
 	".\..\..\interpret.h"\
 	".\..\..\data.h"\
+	".\..\..\comm.h"\
 	".\..\..\call_out.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CALL_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -684,11 +725,15 @@ DEP_CPP_COMM_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_COMM_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -742,11 +787,15 @@ DEP_CPP_CONFI=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CONFI=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -782,16 +831,22 @@ DEP_CPP_DATA_=\
 	".\..\..\array.h"\
 	".\..\..\object.h"\
 	".\..\..\interpret.h"\
-	".\..\..\swap.h"\
 	".\..\..\data.h"\
+	".\..\..\call_out.h"\
 	".\..\..\comp\csupport.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
+	".\..\..\swap.h"\
+	
+NODEP_CPP_DATA_=\
+	".\..\..\parse.h"\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -837,11 +892,15 @@ DEP_CPP_DGD_C=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_DGD_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -871,7 +930,7 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\editor.c
-DEP_CPP_ED_C12=\
+DEP_CPP_EDITO=\
 	".\..\..\dgd.h"\
 	".\..\..\str.h"\
 	".\..\..\array.h"\
@@ -882,9 +941,9 @@ DEP_CPP_ED_C12=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\ed\regexp.h"\
@@ -892,11 +951,15 @@ DEP_CPP_ED_C12=\
 	".\..\..\ed\vars.h"\
 	".\..\..\ed\line.h"\
 	
+NODEP_CPP_EDITO=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 
-"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_EDITO) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
 
 
@@ -907,10 +970,10 @@ BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
 	
 
-"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_EDITO) "$(INTDIR)"
    $(BuildCmds)
 
-"$(INTDIR)\editor.sbr" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.sbr" : $(SOURCE) $(DEP_CPP_EDITO) "$(INTDIR)"
    $(BuildCmds)
 
 !ENDIF 
@@ -930,11 +993,15 @@ DEP_CPP_ERROR=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_ERROR=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -970,9 +1037,13 @@ DEP_CPP_HASH_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_HASH_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1016,11 +1087,15 @@ DEP_CPP_INTER=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_INTER=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1060,11 +1135,15 @@ DEP_CPP_OBJEC=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_OBJEC=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1108,11 +1187,15 @@ DEP_CPP_PATH_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_PATH_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1152,10 +1235,14 @@ DEP_CPP_STR_C=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_STR_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1190,9 +1277,13 @@ DEP_CPP_ALLOC=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_ALLOC=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1239,11 +1330,15 @@ DEP_CPP_CODEG=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CODEG=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1294,11 +1389,15 @@ DEP_CPP_COMPI=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_COMPI=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1345,10 +1444,14 @@ DEP_CPP_CONTR=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CONTR=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1388,16 +1491,22 @@ DEP_CPP_CSUPP=\
 	".\..\..\data.h"\
 	".\..\..\kfun\table.h"\
 	".\..\..\comp\control.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
 	".\..\..\comp\csupport.h"\
 	".\..\..\dgd.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CSUPP=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1441,11 +1550,15 @@ DEP_CPP_NODE_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_NODE_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1482,18 +1595,25 @@ DEP_CPP_OPTIM=\
 	".\..\..\object.h"\
 	".\..\..\xfloat.h"\
 	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\kfun\table.h"\
 	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\optimize.h"\
 	".\..\..\dgd.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_OPTIM=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1539,11 +1659,15 @@ DEP_CPP_PARSE=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_PARSE=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1579,10 +1703,14 @@ DEP_CPP_BUFFE=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\ed\line.h"\
+	
+NODEP_CPP_BUFFE=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1619,13 +1747,17 @@ DEP_CPP_CMDSU=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\ed\regexp.h"\
 	".\..\..\ed\buffer.h"\
 	".\..\..\ed\vars.h"\
 	".\..\..\ed\line.h"\
+	
+NODEP_CPP_CMDSU=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1661,13 +1793,17 @@ DEP_CPP_EDCMD=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\ed\regexp.h"\
 	".\..\..\ed\buffer.h"\
 	".\..\..\ed\vars.h"\
 	".\..\..\ed\line.h"\
+	
+NODEP_CPP_EDCMD=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1705,10 +1841,14 @@ DEP_CPP_FILEI=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\ed\line.h"\
+	
+NODEP_CPP_FILEI=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1744,9 +1884,13 @@ DEP_CPP_LINE_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_LINE_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1782,9 +1926,13 @@ DEP_CPP_REGEX=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_REGEX=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1820,9 +1968,13 @@ DEP_CPP_VARS_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_VARS_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1851,16 +2003,20 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=.\..\simfloat.c
+SOURCE=.\..\..\host\simfloat.c
 DEP_CPP_SIMFL=\
 	".\..\..\dgd.h"\
 	".\..\..\xfloat.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_SIMFL=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1889,15 +2045,19 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=.\..\crypt.c
+SOURCE=.\..\..\host\crypt.c
 DEP_CPP_CRYPT=\
 	".\..\..\dgd.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_CRYPT=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1946,9 +2106,9 @@ DEP_CPP_TABLE=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\path.h"\
@@ -1958,6 +2118,11 @@ DEP_CPP_TABLE=\
 	".\..\..\comp\node.h"\
 	".\..\..\comp\control.h"\
 	".\..\..\comp\compile.h"\
+	
+NODEP_CPP_TABLE=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	".\..\..\kfun\parse.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1976,10 +2141,14 @@ BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
 	
 
-"$(INTDIR)\table.obj" : $(SOURCE) $(DEP_CPP_TABLE) "$(INTDIR)"
+"$(INTDIR)\table.obj" : $(SOURCE) $(DEP_CPP_TABLE) "$(INTDIR)"\
+ ".\..\..\kfun\builtin.c" ".\..\..\kfun\std.c" ".\..\..\kfun\file.c"\
+ ".\..\..\kfun\math.c" ".\..\..\kfun\extra.c" ".\..\..\kfun\debug.c"
    $(BuildCmds)
 
-"$(INTDIR)\table.sbr" : $(SOURCE) $(DEP_CPP_TABLE) "$(INTDIR)"
+"$(INTDIR)\table.sbr" : $(SOURCE) $(DEP_CPP_TABLE) "$(INTDIR)"\
+ ".\..\..\kfun\builtin.c" ".\..\..\kfun\std.c" ".\..\..\kfun\file.c"\
+ ".\..\..\kfun\math.c" ".\..\..\kfun\extra.c" ".\..\..\kfun\debug.c"
    $(BuildCmds)
 
 !ENDIF 
@@ -1989,9 +2158,6 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\debug.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_DEBUG=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\comp\control.h"\
@@ -2006,12 +2172,19 @@ DEP_CPP_DEBUG=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_DEBUG=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\debug.obj" : $(SOURCE) $(DEP_CPP_DEBUG) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2019,26 +2192,6 @@ DEP_CPP_DEBUG=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_DEBUG=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\comp\control.h"\
-	".\..\..\kfun\table.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2057,9 +2210,6 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\extra.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_EXTRA=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\dgd.h"\
@@ -2072,12 +2222,20 @@ DEP_CPP_EXTRA=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_EXTRA=\
+	".\..\..\kfun\parse.h"\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\extra.obj" : $(SOURCE) $(DEP_CPP_EXTRA) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2085,24 +2243,6 @@ DEP_CPP_EXTRA=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_EXTRA=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2121,9 +2261,6 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\file.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_FILE_=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\path.h"\
@@ -2138,12 +2275,19 @@ DEP_CPP_FILE_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_FILE_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\file.obj" : $(SOURCE) $(DEP_CPP_FILE_) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2151,26 +2295,6 @@ DEP_CPP_FILE_=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_FILE_=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\path.h"\
-	".\..\..\editor.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2189,9 +2313,6 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\math.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_MATH_=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\dgd.h"\
@@ -2204,12 +2325,19 @@ DEP_CPP_MATH_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_MATH_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\math.obj" : $(SOURCE) $(DEP_CPP_MATH_) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2217,24 +2345,6 @@ DEP_CPP_MATH_=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_MATH_=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2253,9 +2363,6 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\std.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_STD_C=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\path.h"\
@@ -2275,12 +2382,19 @@ DEP_CPP_STD_C=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_STD_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\std.obj" : $(SOURCE) $(DEP_CPP_STD_C) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2288,31 +2402,6 @@ DEP_CPP_STD_C=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_STD_C=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\path.h"\
-	".\..\..\comm.h"\
-	".\..\..\call_out.h"\
-	".\..\..\editor.h"\
-	".\..\..\comp\node.h"\
-	".\..\..\comp\control.h"\
-	".\..\..\comp\compile.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2331,11 +2420,9 @@ BuildCmds= \
 # Begin Source File
 
 SOURCE=.\..\..\kfun\builtin.c
-
-!IF  "$(CFG)" == "windgd - Win32 Release"
-
 DEP_CPP_BUILT=\
 	".\..\..\kfun\kfun.h"\
+	".\..\..\kfun\table.h"\
 	".\..\..\dgd.h"\
 	".\..\..\str.h"\
 	".\..\..\array.h"\
@@ -2346,12 +2433,19 @@ DEP_CPP_BUILT=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
+NODEP_CPP_BUILT=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
 
 "$(INTDIR)\builtin.obj" : $(SOURCE) $(DEP_CPP_BUILT) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
@@ -2359,24 +2453,6 @@ DEP_CPP_BUILT=\
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
-DEP_CPP_BUILT=\
-	".\..\..\kfun\kfun.h"\
-	".\..\..\dgd.h"\
-	".\..\..\str.h"\
-	".\..\..\array.h"\
-	".\..\..\object.h"\
-	".\..\..\xfloat.h"\
-	".\..\..\interpret.h"\
-	".\..\..\data.h"\
-	".\..\..\config.h"\
-	".\..\..\alloc.h"\
-	".\..\..\hash.h"\
-	".\..\..\swap.h"\
-	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
-	".\..\telnet.h"\
-	
 
 BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
@@ -2410,10 +2486,14 @@ DEP_CPP_TOKEN=\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
+	
+NODEP_CPP_TOKEN=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2459,10 +2539,14 @@ DEP_CPP_PPCON=\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
+	
+NODEP_CPP_PPCON=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2503,9 +2587,13 @@ DEP_CPP_PPSTR=\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_PPSTR=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2548,10 +2636,14 @@ DEP_CPP_SPECI=\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
+	
+NODEP_CPP_SPECI=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2592,10 +2684,14 @@ DEP_CPP_MACRO=\
 	".\..\..\comp\compile.h"\
 	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
+	
+NODEP_CPP_MACRO=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2637,11 +2733,33 @@ DEP_CPP_LPC_C=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_LPC_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	".\..\..\lpc\driver.c"\
+	".\..\..\lpc\auto.c"\
+	".\..\..\lpc\objregd.c"\
+	".\..\..\lpc\rsrcd.c"\
+	".\..\..\lpc\accessd.c"\
+	".\..\..\lpc\userd.c"\
+	".\..\..\lpc\api_objreg.c"\
+	".\..\..\lpc\api_rsrc.c"\
+	".\..\..\lpc\api_access.c"\
+	".\..\..\lpc\api_user.c"\
+	".\..\..\lpc\lib_connection.c"\
+	".\..\..\lpc\lib_user.c"\
+	".\..\..\lpc\lib_wiztool.c"\
+	".\..\..\lpc\rsrc.c"\
+	".\..\..\lpc\telnet.c"\
+	".\..\..\lpc\binary.c"\
+	".\..\..\lpc\user.c"\
+	".\..\..\lpc\wiztool.c"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2676,9 +2794,13 @@ DEP_CPP_TIME_=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_TIME_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2707,9 +2829,13 @@ DEP_CPP_DOSFI=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_DOSFI=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2738,9 +2864,13 @@ DEP_CPP_LOCAL=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_LOCAL=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2773,11 +2903,15 @@ DEP_CPP_CONNE=\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
-	{$(INCLUDE)}"\sys\Types.h"\
-	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
 	".\..\..\hash.h"\
 	".\..\..\swap.h"\
+	
+NODEP_CPP_CONNE=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2820,6 +2954,189 @@ DEP_CPP_MAINF=\
 
 "$(INTDIR)\MainFrame.sbr" : $(SOURCE) $(DEP_CPP_MAINF) "$(INTDIR)"
 
+
+!ENDIF 
+
+# End Source File
+################################################################################
+# Begin Source File
+
+SOURCE=.\..\..\parser\srp.c
+DEP_CPP_SRP_C=\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\parser\srp.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\host.h"\
+	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_SRP_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
+
+"$(INTDIR)\srp.obj" : $(SOURCE) $(DEP_CPP_SRP_C) "$(INTDIR)"
+   $(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
+
+
+BuildCmds= \
+	$(CPP) $(CPP_PROJ) $(SOURCE) \
+	
+
+"$(INTDIR)\srp.obj" : $(SOURCE) $(DEP_CPP_SRP_C) "$(INTDIR)"
+   $(BuildCmds)
+
+"$(INTDIR)\srp.sbr" : $(SOURCE) $(DEP_CPP_SRP_C) "$(INTDIR)"
+   $(BuildCmds)
+
+!ENDIF 
+
+# End Source File
+################################################################################
+# Begin Source File
+
+SOURCE=.\..\..\parser\parse.c
+DEP_CPP_PARSE_=\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\parser\grammar.h"\
+	".\..\..\parser\dfa.h"\
+	".\..\..\parser\srp.h"\
+	".\..\..\parser\parse.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\host.h"\
+	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	".\..\..\hash.h"\
+	".\..\..\swap.h"\
+	
+NODEP_CPP_PARSE_=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
+
+"$(INTDIR)\parse.obj" : $(SOURCE) $(DEP_CPP_PARSE_) "$(INTDIR)"
+   $(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
+
+
+BuildCmds= \
+	$(CPP) $(CPP_PROJ) $(SOURCE) \
+	
+
+"$(INTDIR)\parse.obj" : $(SOURCE) $(DEP_CPP_PARSE_) "$(INTDIR)"
+   $(BuildCmds)
+
+"$(INTDIR)\parse.sbr" : $(SOURCE) $(DEP_CPP_PARSE_) "$(INTDIR)"
+   $(BuildCmds)
+
+!ENDIF 
+
+# End Source File
+################################################################################
+# Begin Source File
+
+SOURCE=.\..\..\parser\grammar.c
+DEP_CPP_GRAMM=\
+	".\..\..\dgd.h"\
+	".\..\..\hash.h"\
+	".\..\..\str.h"\
+	".\..\..\parser\grammar.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\host.h"\
+	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_GRAMM=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
+
+"$(INTDIR)\grammar.obj" : $(SOURCE) $(DEP_CPP_GRAMM) "$(INTDIR)"
+   $(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
+
+
+BuildCmds= \
+	$(CPP) $(CPP_PROJ) $(SOURCE) \
+	
+
+"$(INTDIR)\grammar.obj" : $(SOURCE) $(DEP_CPP_GRAMM) "$(INTDIR)"
+   $(BuildCmds)
+
+"$(INTDIR)\grammar.sbr" : $(SOURCE) $(DEP_CPP_GRAMM) "$(INTDIR)"
+   $(BuildCmds)
+
+!ENDIF 
+
+# End Source File
+################################################################################
+# Begin Source File
+
+SOURCE=.\..\..\parser\dfa.c
+DEP_CPP_DFA_C=\
+	".\..\..\dgd.h"\
+	".\..\..\hash.h"\
+	".\..\..\str.h"\
+	".\..\..\parser\dfa.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\host.h"\
+	".\..\telnet.h"\
+	{$(INCLUDE)}"\sys\TYPES.H"\
+	{$(INCLUDE)}"\sys\STAT.H"\
+	
+NODEP_CPP_DFA_C=\
+	".\..\..\macdgd.h"\
+	".\..\..\telnet.h"\
+	
+
+!IF  "$(CFG)" == "windgd - Win32 Release"
+
+
+"$(INTDIR)\dfa.obj" : $(SOURCE) $(DEP_CPP_DFA_C) "$(INTDIR)"
+   $(CPP) $(CPP_PROJ) $(SOURCE)
+
+
+!ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
+
+
+BuildCmds= \
+	$(CPP) $(CPP_PROJ) $(SOURCE) \
+	
+
+"$(INTDIR)\dfa.obj" : $(SOURCE) $(DEP_CPP_DFA_C) "$(INTDIR)"
+   $(BuildCmds)
+
+"$(INTDIR)\dfa.sbr" : $(SOURCE) $(DEP_CPP_DFA_C) "$(INTDIR)"
+   $(BuildCmds)
 
 !ENDIF 
 

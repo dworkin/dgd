@@ -1183,3 +1183,4 @@ DGD 1.1
    and returns an array of tokens.  Only Unix makefiles have been adjusted yet.
  - Fixed some Mac compilation problems for various compilers.
  - Replaced some FREE,ALLOC pairs with REALLOC.
+ - Completed parse_string implementation on all platforms.
