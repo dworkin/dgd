@@ -1808,7 +1808,7 @@ static cmd_status(object user, string cmd, string str)
 "swap average:  " + (swapnum(status[ST_SWAPRATE1], 60) + ", " +
 		     swapnum(status[ST_SWAPRATE5], 300) + SPACE16)[.. 15] +
   "           Uptime:       " +
-  ((uptime == 0) ? "" : uptime + (uptime == 1) ? " day, " : " days, ") +
+  ((uptime == 0) ? "" : uptime + ((uptime == 1) ? " day, " : " days, ")) +
   ralign("00" + hours, 2) + ":" + ralign("00" + minutes, 2) + ":" +
   ralign("00" + seconds, 2) + "\n\n" +
 "--------------- Memory ---------------" +
