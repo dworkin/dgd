@@ -36,6 +36,7 @@ typedef struct _tchunk_ {
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */
+int yyleng;			/* length of string/identifier */
 long yynumber;			/* integer constants */
 static tchunk *tlist;		/* list of token buffer chunks */
 static int tchunksz;		/* token buffer chunk size */
@@ -376,6 +377,102 @@ static void comment()
 }
 
 /*
+ * NAME:	token->esc()
+ * DESCRIPTION:	handle an escaped character
+ */
+static char *tk_esc(p, res)
+register char *p;
+int *res;
+{
+    register int c, i;
+
+    switch (c = *p++ = gc()) {
+    case 'a': c = '\007'; break;
+    case 'b': c = '\b'; break;
+    case 't': c = '\t'; break;
+    case 'n': c = '\n'; break;
+    case 'v': c = '\013'; break;
+    case 'f': c = '\014'; break;
+    case 'r': c = '\r'; break;
+
+    case '\n':
+	/* newline in string or character constant */
+	uc(c);
+	return p - 1;
+
+    case '0': case '1': case '2': case '3':
+    case '4': case '5': case '6': case '7':
+	/* octal constant */
+	i = c - '0';
+	c = gc();
+	if (c >= '0' && c <= '7') {
+	    /* second digit */
+	    *p++ = c;
+	    i = (i << 3) + c - '0';
+	    c = gc();
+	    if (c >= '0' && c <= '7') {
+		/* third digit */
+		*p++ = c;
+		i = (i << 3) + c - '0';
+	    } else {
+		uc(c);
+	    }
+	} else {
+	    uc(c);
+	}
+	c = UCHAR(i);
+	break;
+
+    case 'x':
+	/* hexadecimal constant */
+	c = gc();
+	if (isxdigit(c)) {
+	    /* first hex digit */
+	    *p++ = c;
+	    if (isdigit(c)) {
+		i = c - '0';
+	    } else {
+		i = toupper(c) + 10 - 'A';
+	    }
+	    c = gc();
+	    if (isxdigit(c)) {
+		/* second hex digit */
+		*p++ = c;
+		i <<= 4;
+		if (isdigit(c)) {
+		    i += c - '0';
+		} else {
+		    i += toupper(c) + 10 - 'A';
+		}
+		c = gc();
+		if (isxdigit(c)) {
+		    /* third hex digit */
+		    *p++ = c;
+		    i <<= 4;
+		    if (isdigit(c)) {
+			i += c - '0';
+		    } else {
+			i += toupper(c) + 10 - 'A';
+		    }
+		} else {
+		    uc(c);
+		}
+	    } else {
+		uc(c);
+	    }
+	} else {
+	    i = 'x';
+	    uc(c);
+	}
+	c = UCHAR(i);
+	break;
+    }
+
+    *res = c;
+    return p;
+}
+
+/*
  * NAME:	token->string()
  * DESCRIPTION:	handle a string. If pp_level > 0, don't translate escape
  *		sequences.
@@ -399,29 +496,16 @@ char quote;
 	} else if (c == EOF) {
 	    yyerror("EOF in string");
 	    break;
-	} else if (c == '\\') {
-	    c = gc();
-	    if (c == EOF) {
-		continue;
-	    }
-	    if (pp_level == 0 && !do_include) {
-		/* translate escape sequences */
-		switch (c) {
-		case 'n':
-		    c = '\n';
-		    break;
+	} else if (c == '\\' && pp_level == 0 && !do_include) {
+	    int res;
 
-		case 't':
-		    c = '\t';
-		    break;
-		}
-	    } else {
-		*p++ = '\\';
-	    }
+	    /* translate escape sequences */
+	    tk_esc(p, &res);
+	    c = res;
 	}
-	if (p >= yytext + MAX_LINE_SIZE - 2) {
+	if (p >= yytext + MAX_LINE_SIZE - 5) {
 	    yyerror("string too long");
-	    p = yytext + MAX_LINE_SIZE - 2;
+	    p = yytext + MAX_LINE_SIZE - 5;
 	    break;
 	}
 	*p++ = c;
@@ -432,6 +516,7 @@ char quote;
 	*p++ = quote;
     }
     *p = '\0';
+    yyleng = p - yytext;
     return (quote == '>') ? INCL_CONST : STRING_CONST;
 }
 
@@ -676,6 +761,7 @@ int tk_gettok()
 	    }
 	}
 	uc(c);
+	yyleng = p - yytext;
 	c = IDENTIFIER;
 	break;
 
@@ -684,12 +770,10 @@ int tk_gettok()
 	if (c == '\'') {
 	    yyerror("too short character constant");
 	} else if (c == '\\') {
-	    *p++ = c = gc();
-	    if (c == 'n') {
-		c = '\n';
-	    } else if (c == 't') {
-		c = '\t';
-	    }
+	    int res;
+
+	    p = tk_esc(p, &res);
+	    c = res;
 	}
 	if ((*p++ = gc()) != '\'') {
 	    yyerror("illegal character constant");
@@ -921,11 +1005,17 @@ register macro *mc;
 			while ((token=tk_gettok()) != EOF) {
 			    if (token != '\t') {
 				p = yytext;
-				while (*p != '\0') {
-				    if (*p == '"' || *p == '\\') {
-					pps_ccat(s, '\\');
-				    }
-				    pps_ccat(s, *p++);
+				if (*p == '\'' || *p == '"') {
+				    /* escape \ and " */
+				    do {
+					if (*p == '"' || *p == '\\') {
+					    pps_ccat(s, '\\');
+					}
+					pps_ccat(s, *p++);
+				    } while (*p != '\0');
+				} else {
+				    /* just add token */
+				    pps_scat(s, yytext);
 				}
 			    }
 			}
