@@ -1,6 +1,8 @@
 # include "dgd.h"
+# include <windows.h>
 # include <time.h>
-# include <sys\timeb.h>
+
+# define UNIXBIRTH	0x019db1ded53e8000
 
 /*
  * NAME:	P->time()
@@ -8,7 +10,14 @@
  */
 Uint P_time(void)
 {
-    return (Uint) time((time_t *) NULL);
+    FILETIME ft;
+    SYSTEMTIME st;
+    __int64 time;
+
+    GetSystemTime(&st);
+    SystemTimeToFileTime(&st, &ft);
+    time = ((__int64) ft.dwHighDateTime << 32) + ft.dwLowDateTime - UNIXBIRTH;
+    return (Uint) (time / 10000000);
 }
 
 /*
@@ -17,11 +26,15 @@ Uint P_time(void)
  */
 Uint P_mtime(unsigned short *milli)
 {
-    struct _timeb t;
+    FILETIME ft;
+    SYSTEMTIME st;
+    __int64 time;
 
-    _ftime(&t);
-    *milli = t.millitm;
-    return (Uint) t.time;
+    GetSystemTime(&st);
+    SystemTimeToFileTime(&st, &ft);
+    time = ((__int64) ft.dwHighDateTime << 32) + ft.dwLowDateTime - UNIXBIRTH;
+    *milli = (unsigned short) ((time % 10000000) / 10000);
+    return (Uint) (time / 10000000);
 }
 
 /*
@@ -56,7 +69,8 @@ char *P_ctime(char *buf, Uint t)
     return buf;
 }
 
-static struct _timeb timeout;
+static Uint timeout;
+static unsigned short mtimeout;
 
 /*
  * NAME:        P->timer()
@@ -65,8 +79,8 @@ static struct _timeb timeout;
  */
 void P_timer(Uint t, unsigned int mtime)
 {
-    timeout.time = t;
-    timeout.millitm = mtime;
+    timeout = t;
+    mtimeout = mtime;
 }
 
 /*
@@ -75,15 +89,18 @@ void P_timer(Uint t, unsigned int mtime)
  */
 bool P_timeout(Uint *t, unsigned short *mtime)
 {
-    struct _timeb time;
+    FILETIME ft;
+    SYSTEMTIME st;
+    __int64 time;
 
-    _ftime(&time);
-    *t = time.time;
-    *mtime = time.millitm;
+    GetSystemTime(&st);
+    SystemTimeToFileTime(&st, &ft);
+    time = ((__int64) ft.dwHighDateTime << 32) + ft.dwLowDateTime - UNIXBIRTH;
+    *t = (Uint) (time / 10000000);
+    *mtime = (unsigned short) ((time % 10000000) / 10000);
 
-    if (timeout.time == 0) {
+    if (timeout == 0) {
 	return FALSE;
     }
-    return (time.time > timeout.time || 
-	    (time.time == timeout.time && time.millitm >= timeout.millitm));
+    return (*t > timeout || (*t == timeout && *mtime >= mtimeout));
 }

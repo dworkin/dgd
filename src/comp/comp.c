@@ -522,8 +522,9 @@ sector sw_count()
  * NAME:	swap->copy()
  * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
  */
-void sw_copy()
+bool sw_copy()
 {
+    return FALSE;
 }
 
 /*

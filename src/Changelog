@@ -1412,3 +1412,4 @@ DGD 1.1
  - Rebuild the swapfile slowly, even if there is no socket and/or callout
    activity.
  - Fixed the quit/interrupt problem on BeOS.
+ - Finally fixed the DST time-jumping problem on Windows.
