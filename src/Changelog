@@ -1367,3 +1367,4 @@ DGD 1.1
  - Got precompiling to work again; add global variable and function names to
    generated C output.
  - Make sure the error context is cleared at the proper time.
+ - Fixed another object undo bug.

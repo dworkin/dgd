@@ -932,10 +932,6 @@ unsigned int mtime;
 		for (n = usr->inbufsz; n != 0; --n) {
 		    *q++ = *p++;
 		}
-		usr->flags |= CF_PROMPT;
-		if (!(usr->flags & CF_FLUSH)) {
-		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
-		}
 	    } else {
 		/*
 		 * input buffer full
@@ -943,6 +939,10 @@ unsigned int mtime;
 		n = usr->inbufsz;
 		usr->inbufsz = 0;
 		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
+	    }
+	    usr->flags |= CF_PROMPT;
+	    if (!(usr->flags & CF_FLUSH)) {
+		addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
 	    }
 	} else {
 	    /*
