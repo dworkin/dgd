@@ -270,14 +270,14 @@ register unsigned int handle;
     /*
      * get the callout
      */
-    if (d_get_call_out(o_dataspace(obj), handle, &t, &nargs) == (char *) NULL) {
+    if (d_get_call_out(o_dataspace(obj), handle, &t, &nargs) == (string *) NULL)
+    {
 	/* no such callout */
 	return -1;
     }
+    i_pop(nargs + 1);
+
     t += timediff;
-    if (nargs > 0) {
-	i_pop(nargs);
-    }
     if (obj->count == 0) {
 	/* destructed object */
 	return t - timeout;
@@ -360,7 +360,7 @@ void co_call()
 {
     register uindex i, handle;
     object *obj;
-    char *func;
+    string *str;
     Uint t;
     int nargs;
 
@@ -432,10 +432,15 @@ void co_call()
 
 	    if (obj != (object *) NULL) {
 		/* object exists */
-		func = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
-		if (i_call(obj, func, TRUE, nargs)) {
+		str = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
+		if (i_call(obj, str->text, str->len, TRUE, nargs)) {
+		    /* function exists */
 		    i_del_value(sp++);
+		    str_del((sp++)->u.string);
 		    d_export();
+		} else {
+		    /* function doesn't exist */
+		    str_del((sp++)->u.string);
 		}
 	    }
 	}

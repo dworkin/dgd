@@ -8,7 +8,8 @@ SYNOPSIS
 DESCRIPTION
 	Remove the callout associated with handle.  The delay before
 	which the function would be called is returned.  If there is no
-	scheduled call to function in the current object, return -1.
+	scheduled call associated with the handle in the current object,
+	return -1.
 
 SEE ALSO
 	kfun/call_out

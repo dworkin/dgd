@@ -477,6 +477,9 @@ char *configfile, *dumpfile;
     cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
     cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
     cputs("# define ST_PRECOMPILED\t24\t/* precompiled objects */\012");
+    cputs("# define ST_ASTACKDEPTH\t25\t/* actual remaining stack depth */\012");
+    cputs("# define ST_ATICKS\t26\t/* actual remaining ticks */\012");
+
     cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
     cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
@@ -637,7 +640,7 @@ array *conf_status()
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
-    a = arr_new(25L);
+    a = arr_new(27L);
     v = a->elts;
 
     /* version */
@@ -703,13 +706,19 @@ array *conf_status()
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;
-    (v++)->u.number = i_get_depth();
+    (v++)->u.number = i_get_depth(FALSE);
     v->type = T_INT;
-    (v++)->u.number = i_get_ticks();
+    (v++)->u.number = i_get_ticks(FALSE);
 
     /* precompiled objects */
     v->type = T_ARRAY;
-    arr_ref(v->u.array = pc_list());
+    arr_ref((v++)->u.array = pc_list());
+
+    /* more limits */
+    v->type = T_INT;
+    (v++)->u.number = i_get_depth(TRUE);
+    v->type = T_INT;
+    v->u.number = i_get_ticks(TRUE);
 
     return a;
 }
@@ -724,11 +733,17 @@ object *obj;
     register control *ctrl;
     register value *v;
     array *clist, *a;
-    dataspace *data;
+    sector nsectors;
 
-    clist = co_list(obj);
     ctrl = o_control(obj);
-    data = o_dataspace(obj);
+    if (obj->flags & O_CREATED) {
+	clist = co_list(obj);
+	nsectors = obj->data->nsectors;
+    } else {
+	/* avoid creating a dataspace for this object */
+	clist = arr_new(0L);
+	nsectors = 0;
+    }
     a = arr_new(5L);
 
     v = a->elts;
@@ -747,9 +762,9 @@ object *obj;
     (v++)->u.number = ctrl->nvariables * sizeof(value);
     v->type = T_INT;
     if (obj->flags & O_MASTER) {
-	(v++)->u.number = ctrl->nsectors + data->nsectors;
+	(v++)->u.number = ctrl->nsectors + nsectors;
     } else {
-	(v++)->u.number = data->nsectors;
+	(v++)->u.number = nsectors;
     }
     v->type = T_ARRAY;
     arr_ref(v->u.array = clist);

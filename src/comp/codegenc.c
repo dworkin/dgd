@@ -1814,15 +1814,41 @@ register node *n;
 		}
 	    }
 	    output("pre_catch();\n");
-	    output("if (ec_push((ec_ftn) i_catcherr)) ec_pop(); else {\n");
+	    output("if (!ec_push((ec_ftn) i_catcherr)) {\n");
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;
-	    output("} post_catch();\n");
-	    if (catch_level == 0) {
-		for (i = nvars; i > 0; ) {
-		    if (vars[--i] != 0) {
-			output("ivar%d = %s->u.number;\n", vars[i], local(i));
+	    output("ec_pop();");
+	    if (m->r.right != (node *) NULL) {
+		/* caught */
+		output("post_catch();\n");
+		if (catch_level == 0) {
+		    for (i = nvars; i > 0; ) {
+			if (vars[--i] != 0) {
+			    output("ivar%d = %s->u.number;\n", vars[i],
+				   local(i));
+			}
+		    }
+		}
+		output("} else { post_catch();\n");
+		if (catch_level == 0) {
+		    for (i = nvars; i > 0; ) {
+			if (vars[--i] != 0) {
+			    output("ivar%d = %s->u.number;\n", vars[i],
+				   local(i));
+			}
+		    }
+		}
+		cg_stmt(m->r.right);
+		output("}\n");
+	    } else {
+		output("} post_catch();\n");
+		if (catch_level == 0) {
+		    for (i = nvars; i > 0; ) {
+			if (vars[--i] != 0) {
+			    output("ivar%d = %s->u.number;\n", vars[i],
+				   local(i));
+			}
 		    }
 		}
 	    }

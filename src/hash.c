@@ -80,8 +80,7 @@ register unsigned int len;
     };
     register char h, l;
 
-    h = 0;
-    l = 0;
+    h = l = 0;
     while (*s != '\0' && len > 0) {
 	h = l;
 	l = table[UCHAR(l ^ *s++)];
@@ -95,14 +94,26 @@ register unsigned int len;
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-hte **ht_lookup(ht, name)
+hte **ht_lookup(ht, name, move)
 hashtab *ht;
 register char *name;
+int move;
 {
-    register hte **e;
+    register hte **first, **e, *next;
 
-    e = &(ht->table[hashstr(name, ht->maxlen) & (ht->size - 1)]);
-    while (*e != (hte *) NULL && strcmp((*e)->name, name) != 0) {
+    first = e = &(ht->table[hashstr(name, ht->maxlen) & (ht->size - 1)]);
+    while (*e != (hte *) NULL) {
+	if (strcmp((*e)->name, name) == 0) {
+	    if (move && e != first) {
+		/* move to first position */
+		next = (*e)->next;
+		(*e)->next = *first;
+		*first = *e;
+		*e = next;
+		return first;
+	    }
+	    break;
+	}
 	e = &((*e)->next);
     }
     return e;

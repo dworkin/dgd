@@ -250,13 +250,12 @@ int wait;
 	if (len == 0) {
 	    return 0;	/* send_message("") can be used to flush buffer */
 	}
-	while ((size=write(conn->fd, buf, len)) < 0 && errno == EINTR) ;
-	if (size < 0 && errno != EWOULDBLOCK) {
+	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
 	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = -1;
-	} else if (wait) {
+	} else if (size != len && wait) {
 	    /* waiting for wrdone */
 	    FD_SET(conn->fd, &wfds);
 	}
@@ -272,7 +271,7 @@ int wait;
 bool conn_wrdone(conn)
 connection *conn;
 {
-    if (conn->fd < 0) {
+    if (conn->fd < 0 || !FD_ISSET(conn->fd, &wfds)) {
 	return TRUE;
     }
     if (FD_ISSET(conn->fd, &writefds)) {

@@ -18,17 +18,28 @@ pcfunc *pcfunctions;		/* table of precompiled functions */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static void pc_inherits(inh, pcinh, ninherits)
+static void pc_inherits(inh, pcinh, ninherits, compiled)
 register dinherit *inh;
 register pcinherit *pcinh;
 register int ninherits;
+Uint compiled;
 {
+    register Uint cc;
+
+    cc = 0;
     while (--ninherits > 0) {
 	if ((inh->obj=o_find(pcinh->name)) == (object *) NULL) {
 	    fatal("cannot inherit /%s", pcinh->name);
 	}
+	if (precompiled[inh->obj->index]->compiled > cc) {
+	    cc = precompiled[inh->obj->index]->compiled;
+	}
+
 	inh->funcoffset = pcinh->funcoffset;
 	(inh++)->varoffset = (pcinh++)->varoffset;
+    }
+    if (cc > compiled) {
+	fatal("object out of date: /%s", pcinh->name);
     }
     if (o_find(pcinh->name) != (object *) NULL) {
 	fatal("object precompiled twice: /%s", pcinh->name);
@@ -98,7 +109,7 @@ char *auto_name, *driver_name;
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
 	    pc_inherits(ctrl.inherits = inherits + ninherits, l->inherits,
-			ctrl.ninherits = l->ninherits);
+			ctrl.ninherits = l->ninherits, l->compiled);
 	    ninherits += l->ninherits;
 	    itab[++nobjects] = ninherits;
 
@@ -376,21 +387,72 @@ int fd;
 
 /*
  * NAME:	precomp->restore()
- * DESCRIPTION:	restore precompiled objects (not yet)
+ * DESCRIPTION:	restore precompiled objects
  */
 void pc_restore(fd)
 int fd;
 {
     dump_header dh;
 
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	lseek(fd, dh.nprecomps * sizeof(dump_precomp) +
-		  dh.ninherits * sizeof(dump_inherit) +
-		  dh.nstrings * sizeof(dstrconst) +
-		  dh.stringsz +
-		  dh.nfuncdefs * sizeof(dfuncdef) +
-		  dh.nvardefs * sizeof(dvardef), SEEK_CUR) < 0) {
-	fatal("cannot restore precompiled objects");
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+	fatal("cannot restore precompiled objects header");
+    }
+
+    if (dh.nprecomps != 0) {
+	dump_precomp *dpc;
+	dump_inherit *inh;
+	dstrconst *strings;
+	char *stext;
+	dfuncdef *funcdefs;
+	dvardef *vardefs;
+
+	dpc = ALLOCA(dump_precomp, dh.nprecomps);
+	inh = ALLOCA(dump_inherit, dh.ninherits);
+	if (dh.nstrings != 0) {
+	    strings = ALLOCA(dstrconst, dh.nstrings);
+	    if (dh.stringsz != 0) {
+		stext = ALLOCA(char, dh.stringsz);
+	    }
+	}
+	if (dh.nfuncdefs != 0) {
+	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
+	}
+	if (dh.nvardefs != 0) {
+	    vardefs = ALLOCA(dvardef, dh.nvardefs);
+	}
+
+	if (read(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
+					dh.nprecomps * sizeof(dump_precomp) ||
+	    read(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
+					dh.ninherits * sizeof(dump_inherit) ||
+	    (dh.nstrings != 0 &&
+	     read(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
+					dh.nstrings * sizeof(dstrconst)) ||
+	    (dh.stringsz != 0 &&
+	     read(fd, (char *) stext, dh.stringsz) != dh.stringsz) ||
+	    (dh.nfuncdefs != 0 &&
+	     read(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
+					dh.nfuncdefs * sizeof(dfuncdef)) ||
+	    (dh.nvardefs != 0 &&
+	     read(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
+					dh.nvardefs * sizeof(dvardef))) {
+	    fatal("cannot restore precompiled objects");
+	}
+
+	if (dh.nvardefs != 0) {
+	    AFREE(vardefs);
+	}
+	if (dh.nfuncdefs != 0) {
+	    AFREE(funcdefs);
+	}
+	if (dh.nstrings != 0) {
+	    if (dh.stringsz != 0) {
+		AFREE(stext);
+	    }
+	    AFREE(strings);
+	}
+	AFREE(inh);
+	AFREE(dpc);
     }
 }
 

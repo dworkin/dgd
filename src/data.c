@@ -1424,20 +1424,20 @@ int nargs;
  * NAME:	data->get_call_out()
  * DESCRIPTION:	get a callout
  */
-char *d_get_call_out(data, handle, t, nargs)
+string *d_get_call_out(data, handle, t, nargs)
 dataspace *data;
 unsigned int handle;
 Uint *t;
 int *nargs;
 {
-    static char func[STRINGSZ];
+    string *str;
     register dcallout *co;
     register value *v;
     register uindex n;
 
     if (handle == 0 || handle > data->ncallouts) {
 	/* no such callout */
-	return (char *) NULL;
+	return (string *) NULL;
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
@@ -1446,19 +1446,15 @@ int *nargs;
     co = &data->callouts[handle - 1];
     if (co->val[0].type == T_INVALID) {
 	/* invalid callout */
-	return (char *) NULL;
+	return (string *) NULL;
     }
-    i_grow_stack(*nargs = co->nargs);
+    i_grow_stack((*nargs = co->nargs) + 1);
     *t = co->time;
     v = co->val;
 
-    strncpy(func, v[0].u.string->text, STRINGSZ - 1);
-    func[STRINGSZ - 1] = '\0';
-    if (strlen(func) != v[0].u.string->len) {
-	func[0] = '?';	/* make function name unusable */
-    }
     del_lhs(data, &v[0]);
-    str_del(v[0].u.string);
+    *--sp = v[0];
+    str = v[0].u.string;
     v[0].type = T_INVALID;
 
     switch (co->nargs) {
@@ -1504,7 +1500,7 @@ int *nargs;
     data->fcallouts = handle;
 
     data->flags |= F_CALLOUT;
-    return func;
+    return str;
 }
 
 /*

@@ -90,7 +90,7 @@ register long n;
 {
     register strh **h;
 
-    h = (strh **) ht_lookup(ht, str->text);
+    h = (strh **) ht_lookup(ht, str->text, FALSE);
     for (;;) {
 	/*
 	 * The hasher doesn't handle \0 in strings, and so may not have

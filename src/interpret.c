@@ -25,6 +25,7 @@ static bool nodepth;		/* no stack depth checking */
 static bool noticks;		/* no ticks checking */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
+static unsigned int clen;	/* creator function name length */
 
 value zero_value = { T_INT, TRUE };
 
@@ -44,6 +45,7 @@ char *create;
     nodepth = TRUE;
     noticks = TRUE;
     creator = create;
+    clen = strlen(create);
 }
 
 /*
@@ -813,13 +815,34 @@ register value *lval, *val;
     }
 }
 
+typedef struct {
+    Int depth;		/* stack depth */
+    Int ticks;		/* ticks left */
+    bool nodepth;	/* no depth checking */
+    bool noticks;	/* no ticks checking */
+} rlinfo;
+
+static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
+static int rli;				/* rlimits stack index */
+
 /*
  * NAME:	interpret->get_depth()
  * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
-Int i_get_depth()
+Int i_get_depth(flag)
+int flag;
 {
     if (nodepth) {
+	if (flag) {
+	    register rlinfo *rl;
+
+	    rl = &rlstack[rli];
+	    while (--rl >= rlstack) {
+		if (!rl->nodepth) {
+		    return rl->depth;
+		}
+	    }
+	}
 	return -1;
     }
     return maxdepth - cframe->depth;
@@ -829,9 +852,20 @@ Int i_get_depth()
  * NAME:	interpret->get_ticks()
  * DESCRIPTION:	get the remaining ticks (negative: infinite)
  */
-Int i_get_ticks()
+Int i_get_ticks(flag)
+int flag;
 {
     if (noticks) {
+	if (flag) {
+	    register rlinfo *rl;
+
+	    rl = &rlstack[rli];
+	    while (--rl >= rlstack) {
+		if (!rl->noticks) {
+		    return rl->ticks;
+		}
+	    }
+	}
 	return -1;
     } else if (ticks < 0) {
 	return 0;
@@ -862,17 +896,6 @@ void i_check_rlimits()
     i_del_value(sp++);
 }
 
-typedef struct {
-    Int depth;		/* stack depth */
-    Int ticks;		/* ticks left */
-    Int nticks;		/* new number of ticks */
-    bool nodepth;	/* no depth checking */
-    bool noticks;	/* no ticks checking */
-} rlinfo;
-
-static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
-static int rli;				/* rlimits stack index */
-
 /*
  * NAME:	interpret->set_rlimits()
  * DESCRIPTION:	set new rlimits.  Return an integer that can be used in
@@ -885,7 +908,6 @@ Int depth, t;
 	error("Too deep rlimits nesting");
     }
     rlstack[rli].depth = maxdepth;
-    rlstack[rli].ticks = ticks;
     rlstack[rli].nodepth = nodepth;
     rlstack[rli].noticks = noticks;
 
@@ -899,15 +921,15 @@ Int depth, t;
     }
     if (t != 0) {
 	if (t < 0) {
-	    rlstack[rli].nticks = 0;
+	    rlstack[rli].ticks = ticks;
 	    noticks = TRUE;
 	} else {
-	    rlstack[rli].nticks = (t > ticks) ? 0 : t;
+	    rlstack[rli].ticks = ticks - t;
 	    ticks = t;
 	    noticks = FALSE;
 	}
     } else {
-	rlstack[rli].nticks = ticks;
+	rlstack[rli].ticks = 0;
     }
 
     return rli++;
@@ -938,10 +960,10 @@ int n;
     while (rli > n) {
 	--rli;
 	maxdepth = rlstack[rli].depth;
-	if (rlstack[rli].nticks == 0) {
+	if (noticks) {
 	    ticks = rlstack[rli].ticks;
 	} else {
-	    ticks += rlstack[rli].ticks - rlstack[rli].nticks;
+	    ticks += rlstack[rli].ticks;
 	}
 	nodepth = rlstack[rli].nodepth;
 	noticks = rlstack[rli].noticks;
@@ -1778,9 +1800,10 @@ int funci;
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(obj, func, call_static, nargs)
+bool i_call(obj, func, len, call_static, nargs)
 object *obj;
 char *func;
+unsigned int len;
 int call_static;
 int nargs;
 {
@@ -1794,13 +1817,13 @@ int nargs;
 	 * initialize the object
 	 */
 	obj->flags |= O_CREATED;
-	if (i_call(obj, creator, TRUE, 0)) {
+	if (i_call(obj, creator, clen, TRUE, 0)) {
 	    i_del_value(sp++);
 	}
     }
 
     /* find the function in the symbol table */
-    symb = ctrl_symb(ctrl, func);
+    symb = ctrl_symb(ctrl, func, len);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
 	i_pop(nargs);

@@ -628,7 +628,7 @@ int kf_dump_function()
     dsymbol *symb;
 
     symb = ctrl_symb(o_control(o_object(sp[1].oindex, sp[1].u.objcnt)),
-		     sp->u.string->text);
+		     sp->u.string->text, sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
 	control *ctrl;
 

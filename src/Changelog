@@ -977,3 +977,8 @@ DGD 1.1
  - No more core dumps for errors in the configuration phase.
  - PC version: don't exit program immediately on a configuration error when
    started without an argument.
+ - Fixed a problem in precompiled code generated for catch { }.
+ - Catch { code; } is now optionally followed by : { caught; }.
+ - Functions without declared type were accidentally untypechecked, even with
+   global typechecking enabled.
+ - Made hashtables faster in some cases.

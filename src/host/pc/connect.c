@@ -254,7 +254,7 @@ int conn_write(connection *conn, char *buf, int len, int wait)
 	    FD_CLR(conn->fd, &fds);
 	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = INVALID_SOCKET;
-	} else if (wait) {
+	} else if (size != len && wait) {
 	    /* waiting for wrdone */
 	    FD_SET(conn->fd, &wfds);
 	}
@@ -269,7 +269,7 @@ int conn_write(connection *conn, char *buf, int len, int wait)
  */
 bool conn_wrdone(connection *conn)
 {
-    if (conn->fd == INVALID_SOCKET) {
+    if (conn->fd == INVALID_SOCKET || !FD_ISSET(conn->fd, &wfds)) {
 	return TRUE;
     }
     if (FD_ISSET(conn->fd, &writefds)) {

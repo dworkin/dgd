@@ -164,7 +164,7 @@ bool force;
     } else {
 	(--sp)->type = T_INT;
 	sp->u.number = force;
-	if (i_call(obj, "close", TRUE, 1)) {
+	if (i_call(obj, "close", 5, TRUE, 1)) {
 	    i_del_value(sp++);
 	}
 	if (obj == olduser) {
@@ -391,7 +391,7 @@ int *size;
 		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
 		sp++;
 		ec_pop();
-		if (i_call(o, "open", TRUE, 0)) {
+		if (i_call(o, "open", 4, TRUE, 0)) {
 		    i_del_value(sp++);
 		    d_export();
 		}
@@ -417,7 +417,7 @@ int *size;
 		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
 		sp++;
 		ec_pop();
-		if (i_call(o, "open", TRUE, 0)) {
+		if (i_call(o, "open", 4, TRUE, 0)) {
 		    i_del_value(sp++);
 		    d_export();
 		}
@@ -621,7 +621,7 @@ int *size;
 		    d_assign_var(data, v, &zero_value);
 		    /* callback */
 		    this_user = (*usr)->u.obj;
-		    if (i_call(this_user, "message_done", TRUE, 0)) {
+		    if (i_call(this_user, "message_done", 12, TRUE, 0)) {
 			i_del_value(sp++);
 			d_export();
 		    }

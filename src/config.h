@@ -42,7 +42,6 @@ typedef unsigned short uindex;
 # define STRMERGETABSZ	1024	/* general string merge table size */
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1024	/* general array merge table size */
-# define OBJTABSZ	1024	/* object name table size */
 # define OBJHASHSZ	100	/* # characters in object names to hash */
 
 /* interpreter */
@@ -54,7 +53,7 @@ typedef unsigned short uindex;
 /*# define TMPFILE_SIZE	2097152 */ /* max. editor tmpfile size */
 
 /* lexical scanner */
-# define MACTABSZ	256	/* macro hash table size */
+# define MACTABSZ	1024	/* macro hash table size */
 # define MACHASHSZ	10	/* # characters in macros to hash */
 
 /* compiler */

@@ -1824,7 +1824,14 @@ register node *n;
 	    cg_stmt(m->l.left);
 	    code_instr(I_PUSH_ZERO, 0);
 	    code_instr(I_RETURN, 0);
-	    jump_resolve(jlist, here);
+	    if (m->r.right != (node *) NULL) {
+		j2list = jump(I_JUMP, 0);
+		jump_resolve(jlist, here);
+		cg_stmt(m->r.right);
+		jump_resolve(j2list, here);
+	    } else {
+		jump_resolve(jlist, here);
+	    }
 	    break;
 
 	case N_IF:

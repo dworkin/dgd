@@ -1631,7 +1631,13 @@ unsigned short *depth;
 
 	case N_CATCH:
 	    opt_stmt(m->l.left, &d1);
-	    d = max3(d, d1, 1);
+	    if (m->r.right != (node *) NULL) {
+		opt_stmt(m->r.right, &d2);
+		d2 = max2(d2, 1);
+	    } else {
+		d2 = 1;
+	    }
+	    d = max3(d, d1, d2);
 	    break;
 
 	case N_IF:

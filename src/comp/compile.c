@@ -307,6 +307,15 @@ static void c_clear()
     rlimits = 0;
 }
 
+/*
+ * NAME:	compile->typechecking()
+ * DESCRIPTION:	return the global typechecking flag
+ */
+bool c_typechecking()
+{
+    return typechecking;
+}
+
 static bool inheriting;		/* inside inherit_program() */
 static long ncompiled;		/* # objects compiled */
 
@@ -575,15 +584,9 @@ bool function;
 	c_error("private contradicts nomask");
     }
     if ((type & T_TYPE) == T_INVALID) {
-	if (typechecking) {
-	    /* no return type defaults to void with typechecking */
-	    typechecked = TRUE;
-	    type = T_VOID;
-	} else {
-	    /* don't typecheck this function */
-	    typechecked = FALSE;
-	    type = T_MIXED;
-	}
+	/* don't typecheck this function */
+	typechecked = FALSE;
+	type = T_MIXED;
     } else {
 	typechecked = TRUE;
 	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
@@ -1021,13 +1024,13 @@ node *n1, *n2, *n3;
  * NAME:	compile->startswitch()
  * DESCRIPTION:	start a switch statement
  */
-void c_startswitch(n, typechecking)
+void c_startswitch(n, typechecked)
 register node *n;
-int typechecking;
+int typechecked;
 {
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
-    if (typechecking &&
+    if (typechecked &&
 	n->mod != T_INT && n->mod != T_STRING && n->mod != T_MIXED) {
 	c_error("bad switch expression type (%s)", i_typename(n->mod));
 	switch_list->type = T_INVALID;
@@ -1397,16 +1400,16 @@ node *c_continue()
  * NAME:	compile->return()
  * DESCRIPTION:	handle a return statement
  */
-node *c_return(n, typechecking)
+node *c_return(n, typechecked)
 register node *n;
-int typechecking;
+int typechecked;
 {
     if (n == (node *) NULL) {
-	if (typechecking && ftype != T_VOID) {
+	if (typechecked && ftype != T_VOID) {
 	    c_error("function must return value");
 	}
 	n = node_int((Int) 0);
-    } else if (typechecking) {
+    } else if (typechecked) {
 	if (ftype == T_VOID) {
 	    /*
 	     * can't return anything from a void function
@@ -1462,9 +1465,9 @@ register node *n;
  * NAME:	compile->flookup()
  * DESCRIPTION:	look up a local function, inherited function or kfun
  */
-node *c_flookup(n, typechecking)
+node *c_flookup(n, typechecked)
 register node *n;
-int typechecking;
+int typechecked;
 {
     if (strcmp(n->l.string->text, "catch") == 0) {
 	return node_mon(N_CATCH, T_STRING, n);
@@ -1472,7 +1475,7 @@ int typechecking;
 	char *proto;
 	long call;
 
-	proto = ctrl_fcall(n->l.string, &call, typechecking);
+	proto = ctrl_fcall(n->l.string, &call, typechecked);
 	n->r.right = (proto == (char *) NULL) ? (node *) NULL :
 		      node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
 	return n;

@@ -71,7 +71,7 @@ int narg;
 {
     register macro **m;
 
-    m = (macro **) ht_lookup(mt, name);
+    m = (macro **) ht_lookup(mt, name, FALSE);
     if (*m != (macro *) NULL) {
 	/* the macro already exists. */
 	if ((*m)->replace != (char *) NULL) {
@@ -118,7 +118,7 @@ char *name;
 {
     register macro **m, *mac;
 
-    m = (macro **) ht_lookup(mt, name);
+    m = (macro **) ht_lookup(mt, name, FALSE);
     if (*m != (macro *) NULL) {
 	/* it really exists. */
 	mac = *m;
@@ -143,5 +143,5 @@ char *name;
 macro *mc_lookup(name)
 char *name;
 {
-    return *(macro **) ht_lookup(mt, name);
+    return *(macro **) ht_lookup(mt, name, TRUE);
 }

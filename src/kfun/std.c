@@ -87,16 +87,16 @@ int nargs;
     val->u.number = 0;
     --val;
 
-    if (strlen(val->u.string->text) != val->u.string->len ||
-	cframe->obj->count == 0) {
+    if (cframe->obj->count == 0) {
 	/*
-	 * embedded \0 in function, or call from destructed object
+	 * call from destructed object
 	 */
 	i_pop(nargs - 1);
 	return 0;
     }
 
-    if (i_call(obj, val->u.string->text, FALSE, nargs - 2)) {
+    if (i_call(obj, val->u.string->text, val->u.string->len, FALSE, nargs - 2))
+    {
 	/* function exists */
 	val = sp++;
 	str_del((sp++)->u.string);
@@ -213,7 +213,7 @@ int kf_clone_object()
     obj = o_new((char *) NULL, obj, (control *) NULL);
     sp->oindex = obj->index;
     sp->u.objcnt = obj->count;
-    i_call(obj, "", FALSE, 0);	/* cause creator to be called */
+    i_call(obj, "", 0, FALSE, 0);	/* cause creator to be called */
     return 0;
 }
 # endif
@@ -317,7 +317,7 @@ int kf_function_object()
     i_add_ticks(2);
     obj = o_object(sp->oindex, sp->u.objcnt);
     sp++;
-    symb = ctrl_symb(o_control(obj), sp->u.string->text);
+    symb = ctrl_symb(o_control(obj), sp->u.string->text, sp->u.string->len);
     str_del(sp->u.string);
 
     if (symb != (dsymbol *) NULL) {
@@ -346,7 +346,7 @@ int kf_function_object()
 # ifdef FUNCDEF
 FUNCDEF("upgrade_object", kf_upgrade_object, pt_upgrade_object)
 # else
-char pt_upgrade_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT,
+char pt_upgrade_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_VOID,
 			     1, T_MIXED | T_ELLIPSIS };
 
 /*
@@ -818,14 +818,17 @@ char pt_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
 int kf_status(nargs)
 int nargs;
 {
+    array *a;
+
+    i_add_ticks(100);
     if (nargs == 0) {
-	(--sp)->u.array = conf_status();
+	a = conf_status();
+	--sp;
     } else {
-	sp->u.array = conf_object(o_object(sp->oindex, sp->u.objcnt));
+	a = conf_object(o_object(sp->oindex, sp->u.objcnt));
     }
     sp->type = T_ARRAY;
-    arr_ref(sp->u.array);
-    i_add_ticks(100 + sp->u.array->size);
+    arr_ref(sp->u.array = a);
     return 0;
 }
 # endif

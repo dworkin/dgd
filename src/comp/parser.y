@@ -96,13 +96,13 @@ static node *comma	P((node*, node*));
 %type <node> opt_inherit_label string inherit_string formals_declaration
 	     formal_declaration_list formal_declaration data_dcltr
 	     function_dcltr dcltr list_dcltr dcltr_or_stmt_list dcltr_or_stmt
-	     stmt compound_stmt function_name primary_p1_exp primary_p2_exp
-	     postfix_exp prefix_exp cast_exp mult_oper_exp add_oper_exp
-	     shift_oper_exp rel_oper_exp equ_oper_exp bitand_oper_exp
-	     bitxor_oper_exp bitor_oper_exp and_oper_exp or_oper_exp cond_exp
-	     exp list_exp opt_list_exp f_list_exp f_opt_list_exp arg_list
-	     opt_arg_list opt_arg_list_comma assoc_exp assoc_arg_list
-	     opt_assoc_arg_list_comma ident
+	     stmt compound_stmt opt_caught_stmt function_name primary_p1_exp
+	     primary_p2_exp postfix_exp prefix_exp cast_exp mult_oper_exp
+	     add_oper_exp shift_oper_exp rel_oper_exp equ_oper_exp
+	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
+	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
+	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
+	     assoc_arg_list opt_assoc_arg_list_comma ident
 
 %%
 
@@ -191,8 +191,9 @@ function_declaration
 		}
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
-		  typechecking = FALSE;
-		  c_function($1, T_INVALID, node_bin(N_FUNC, 0, $2, $4));
+		  typechecking = c_typechecking();
+		  c_function($1, (typechecking) ? T_VOID : T_INVALID,
+			     node_bin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
 		{
@@ -370,8 +371,8 @@ stmt
 		}
 	  compound_stmt
 		{ $$ = c_endrlimits($3, $5, $8); }
-	| CATCH compound_stmt
-		{ $$ = node_mon(N_CATCH, 0, $2); }
+	| CATCH compound_stmt opt_caught_stmt
+		{ $$ = node_bin(N_CATCH, 0, $2, $3); }
 	| SWITCH '(' f_list_exp ')'
 		{ c_startswitch($3, typechecking); }
 	  compound_stmt
@@ -429,6 +430,13 @@ compound_stmt
 		  nstatements = 1;	/* any non-zero value will do */
 		  $$ = c_endcompound($3);
 		}
+	;
+
+opt_caught_stmt
+	: /* empty */
+		{ $$ = (node *) NULL; }
+	| ':' stmt
+		{ $$ = $2; }
 	;
 
 function_name
@@ -956,9 +964,11 @@ register node *n1, *n2, *n3;
 
     if (typechecking) {
 	/* indices */
-	if ((n2 != (node*) NULL && n2->mod != T_INT && n2->mod != T_MIXED) ||
-	    (n3 != (node*) NULL && n3->mod != T_INT && n3->mod != T_MIXED)) {
+	if (n2 != (node*) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
 	    c_error("bad index type (%s)", i_typename(n2->mod));
+	}
+	if (n3 != (node*) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
+	    c_error("bad index type (%s)", i_typename(n3->mod));
 	}
 	/* range */
 	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)

@@ -33,7 +33,7 @@ int narg;
 	}
 	dcount = driver->count;
     }
-    if (!i_call(driver, func, TRUE, narg)) {
+    if (!i_call(driver, func, strlen(func), TRUE, narg)) {
 	fatal("missing function in driver object: %s", func);
     }
     return TRUE;
@@ -170,7 +170,7 @@ char **argv;
 	if (usr != (object *) NULL) {
 	    (--sp)->type = T_STRING;
 	    str_ref(sp->u.string = str_new(buf, (long) size));
-	    if (i_call(usr, "receive_message", TRUE, 1)) {
+	    if (i_call(usr, "receive_message", 15, TRUE, 1)) {
 		i_del_value(sp++);
 		comm_flush(TRUE);
 		d_export();

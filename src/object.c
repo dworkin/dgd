@@ -22,10 +22,11 @@ static Uint count;		/* object creation count */
  * DESCRIPTION:	initialize the object tables
  */
 void o_init(n)
-unsigned int n;
+register unsigned int n;
 {
     otab = ALLOC(object, otabsize = n);
-    htab = ht_new(OBJTABSZ, OBJHASHSZ);
+    for (n = 4; n < otabsize; n <<= 1) ;
+    htab = ht_new(n >> 2, OBJHASHSZ);
     free_obj = (object *) NULL;
     nobjects = 0;
     nfreeobjs = 0;
@@ -70,7 +71,7 @@ control *ctrl;
 	m_static();
 	strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
 	m_dynamic();
-	h = ht_lookup(htab, name);
+	h = ht_lookup(htab, name, FALSE);
 	o->chain.next = *h;
 	*h = (hte *) o;
 	o->flags = O_MASTER;
@@ -153,7 +154,7 @@ register object *o;
 
     if (o->flags & O_MASTER) {
 	/* remove from object name hash table */
-	*ht_lookup(htab, o->chain.name) = o->chain.next;
+	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 
 	o_delete(o);
     } else {
@@ -250,7 +251,7 @@ char *name;
 	return o;
     } else {
 	/* look it up in the hash table */
-	return (object *) *ht_lookup(htab, name);
+	return (object *) *ht_lookup(htab, name, TRUE);
     }
 }
 
@@ -433,7 +434,7 @@ int fd;
      * Free object names of precompiled objects.
      */
     for (i = nobjects, o = otab; i > 0; --i, o++) {
-	*ht_lookup(htab, o->chain.name) = o->chain.next;
+	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 	FREE(o->chain.name);
     }
 
@@ -483,7 +484,7 @@ int fd;
 	    if (o->count != 0) {
 		register hte **h;
 
-		h = ht_lookup(htab, p);
+		h = ht_lookup(htab, p, FALSE);
 		o->chain.next = *h;
 		*h = (hte *) o;
 	    }
