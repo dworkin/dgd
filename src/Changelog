@@ -1276,3 +1276,6 @@ DGD 1.1
  - Show which function is actually being called with too many or too few
    arguments.
  - Fixed a bug which could mess up the callout table when making a state dump.
+ - Fixed a bug in the configuration phase which mysteriously escaped notice
+   until now.
+ - Guard against too deep recursion in the editor.

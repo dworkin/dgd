@@ -716,6 +716,8 @@ static bool conf_config()
 	    return FALSE;
 	}
     }
+
+    return TRUE;
 }
 
 static char *fname;		/* file name */
