@@ -601,3 +601,313 @@ int nargs;
     return 0;
 }
 # endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("hash_crc16", kf_hash_crc16, pt_hash_crc16)
+# else
+char pt_hash_crc16[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_INT, 2,
+			 T_STRING, T_STRING | T_ELLIPSIS };
+
+/*
+ * NAME:	kfun->hash_crc16()
+ * DESCRIPTION:	Compute a 16 bit cyclic redundancy code for a string.
+ *		Based on "A PAINLESS GUIDE TO CRC ERROR DETECTION ALGORITHMS",
+ *		by Ross N. Williams.
+ *
+ *		    Name:	"CRC-16/CCITT"	(supposedly)
+ *		    Width:	16
+ *		    Poly:	1021		(X^16 + X^12 + X^5 + 1)
+ *		    Init:	FFFF
+ *		    RefIn:	False
+ *		    RefOut:	False
+ *		    XorOut:	0000
+ *		    Check:	29B1
+ */
+int kf_hash_crc16(f, nargs)
+register frame *f;
+int nargs;
+{
+    static unsigned short crctab[] = {
+	0x0000, 0x2110, 0x4220, 0x6330, 0x8440, 0xa550, 0xc660, 0xe770,
+	0x0881, 0x2991, 0x4aa1, 0x6bb1, 0x8cc1, 0xadd1, 0xcee1, 0xeff1,
+	0x3112, 0x1002, 0x7332, 0x5222, 0xb552, 0x9442, 0xf772, 0xd662,
+	0x3993, 0x1883, 0x7bb3, 0x5aa3, 0xbdd3, 0x9cc3, 0xfff3, 0xdee3,
+	0x6224, 0x4334, 0x2004, 0x0114, 0xe664, 0xc774, 0xa444, 0x8554,
+	0x6aa5, 0x4bb5, 0x2885, 0x0995, 0xeee5, 0xcff5, 0xacc5, 0x8dd5,
+	0x5336, 0x7226, 0x1116, 0x3006, 0xd776, 0xf666, 0x9556, 0xb446,
+	0x5bb7, 0x7aa7, 0x1997, 0x3887, 0xdff7, 0xfee7, 0x9dd7, 0xbcc7,
+	0xc448, 0xe558, 0x8668, 0xa778, 0x4008, 0x6118, 0x0228, 0x2338,
+	0xccc9, 0xedd9, 0x8ee9, 0xaff9, 0x4889, 0x6999, 0x0aa9, 0x2bb9,
+	0xf55a, 0xd44a, 0xb77a, 0x966a, 0x711a, 0x500a, 0x333a, 0x122a,
+	0xfddb, 0xdccb, 0xbffb, 0x9eeb, 0x799b, 0x588b, 0x3bbb, 0x1aab,
+	0xa66c, 0x877c, 0xe44c, 0xc55c, 0x222c, 0x033c, 0x600c, 0x411c,
+	0xaeed, 0x8ffd, 0xeccd, 0xcddd, 0x2aad, 0x0bbd, 0x688d, 0x499d,
+	0x977e, 0xb66e, 0xd55e, 0xf44e, 0x133e, 0x322e, 0x511e, 0x700e,
+	0x9fff, 0xbeef, 0xdddf, 0xfccf, 0x1bbf, 0x3aaf, 0x599f, 0x788f,
+	0x8891, 0xa981, 0xcab1, 0xeba1, 0x0cd1, 0x2dc1, 0x4ef1, 0x6fe1,
+	0x8010, 0xa100, 0xc230, 0xe320, 0x0450, 0x2540, 0x4670, 0x6760,
+	0xb983, 0x9893, 0xfba3, 0xdab3, 0x3dc3, 0x1cd3, 0x7fe3, 0x5ef3,
+	0xb102, 0x9012, 0xf322, 0xd232, 0x3542, 0x1452, 0x7762, 0x5672,
+	0xeab5, 0xcba5, 0xa895, 0x8985, 0x6ef5, 0x4fe5, 0x2cd5, 0x0dc5,
+	0xe234, 0xc324, 0xa014, 0x8104, 0x6674, 0x4764, 0x2454, 0x0544,
+	0xdba7, 0xfab7, 0x9987, 0xb897, 0x5fe7, 0x7ef7, 0x1dc7, 0x3cd7,
+	0xd326, 0xf236, 0x9106, 0xb016, 0x5766, 0x7676, 0x1546, 0x3456,
+	0x4cd9, 0x6dc9, 0x0ef9, 0x2fe9, 0xc899, 0xe989, 0x8ab9, 0xaba9,
+	0x4458, 0x6548, 0x0678, 0x2768, 0xc018, 0xe108, 0x8238, 0xa328,
+	0x7dcb, 0x5cdb, 0x3feb, 0x1efb, 0xf98b, 0xd89b, 0xbbab, 0x9abb,
+	0x754a, 0x545a, 0x376a, 0x167a, 0xf10a, 0xd01a, 0xb32a, 0x923a,
+	0x2efd, 0x0fed, 0x6cdd, 0x4dcd, 0xaabd, 0x8bad, 0xe89d, 0xc98d,
+	0x267c, 0x076c, 0x645c, 0x454c, 0xa23c, 0x832c, 0xe01c, 0xc10c,
+	0x1fef, 0x3eff, 0x5dcf, 0x7cdf, 0x9baf, 0xbabf, 0xd98f, 0xf89f,
+	0x176e, 0x367e, 0x554e, 0x745e, 0x932e, 0xb23e, 0xd10e, 0xf01e
+    };
+    register unsigned short crc;
+    register int i;
+    register unsigned short len;
+    register char *p;
+    register Int cost;
+
+    cost = 0;
+    for (i = nargs; --i >= 0; ) {
+	cost += f->sp[i].u.string->len;
+    }
+    cost = 3 * nargs + (cost >> 2);
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
+    i_add_ticks(f, cost);
+
+    crc = 0xffff;
+    for (i = nargs; --i >= 0; ) {
+	p = f->sp[i].u.string->text;
+	for (len = f->sp[i].u.string->len; len != 0; --len) {
+	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
+	}
+	str_del(f->sp[i].u.string);
+    }
+    crc = (crc >> 8) + (crc << 8);
+
+    f->sp += nargs - 1;
+    PUT_INTVAL(f->sp, crc);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("hash_md5", kf_hash_md5, pt_hash_md5)
+# else
+char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_STRING, 2,
+		       T_STRING, T_STRING | T_ELLIPSIS };
+
+# define ROTL(x, s)			((x << s) | (x >> (32 - s)))
+# define R1(a, b, c, d, Mj, s, ti)	(a += ((b & c) | (~b & d)) + Mj + ti, \
+					 a = b + ROTL(a, s))
+# define R2(a, b, c, d, Mj, s, ti)	(a += ((b & d) | (c & ~d)) + Mj + ti, \
+					 a = b + ROTL(a, s))
+# define R3(a, b, c, d, Mj, s, ti)	(a += (b ^ c ^ d) + Mj + ti,	      \
+					 a = b + ROTL(a, s))
+# define R4(a, b, c, d, Mj, s, ti)	(a += (c ^ (b | ~d)) + Mj + ti,	      \
+					 a = b + ROTL(a, s))
+
+/*
+ * NAME:	md5_block()
+ * DESCRIPTION:	add another 512 bit block to the message digest
+ */
+static void md5_block(ABCD, block)
+Uint *ABCD;
+register char *block;
+{
+    Uint M[16];
+    register int i, j;
+    register Uint a, b, c, d;
+
+    for (i = j = 0; i < 16; i++, j += 4) {
+	M[i] = UCHAR(block[j + 0]) | (UCHAR(block[j + 1]) << 8) |
+	       (UCHAR(block[j + 2]) << 16) | (UCHAR(block[j + 3]) << 24);
+    }
+
+    a = ABCD[0];
+    b = ABCD[1];
+    c = ABCD[2];
+    d = ABCD[3];
+
+    R1(a, b, c, d, M[ 0],  7, 0xd76aa478);
+    R1(d, a, b, c, M[ 1], 12, 0xe8c7b756);
+    R1(c, d, a, b, M[ 2], 17, 0x242070db);
+    R1(b, c, d, a, M[ 3], 22, 0xc1bdceee);
+    R1(a, b, c, d, M[ 4],  7, 0xf57c0faf);
+    R1(d, a, b, c, M[ 5], 12, 0x4787c62a);
+    R1(c, d, a, b, M[ 6], 17, 0xa8304613);
+    R1(b, c, d, a, M[ 7], 22, 0xfd469501);
+    R1(a, b, c, d, M[ 8],  7, 0x698098d8);
+    R1(d, a, b, c, M[ 9], 12, 0x8b44f7af);
+    R1(c, d, a, b, M[10], 17, 0xffff5bb1);
+    R1(b, c, d, a, M[11], 22, 0x895cd7be);
+    R1(a, b, c, d, M[12],  7, 0x6b901122);
+    R1(d, a, b, c, M[13], 12, 0xfd987193);
+    R1(c, d, a, b, M[14], 17, 0xa679438e);
+    R1(b, c, d, a, M[15], 22, 0x49b40821);
+
+    R2(a, b, c, d, M[ 1],  5, 0xf61e2562);
+    R2(d, a, b, c, M[ 6],  9, 0xc040b340);
+    R2(c, d, a, b, M[11], 14, 0x265e5a51);
+    R2(b, c, d, a, M[ 0], 20, 0xe9b6c7aa);
+    R2(a, b, c, d, M[ 5],  5, 0xd62f105d);
+    R2(d, a, b, c, M[10],  9,  0x2441453);
+    R2(c, d, a, b, M[15], 14, 0xd8a1e681);
+    R2(b, c, d, a, M[ 4], 20, 0xe7d3fbc8);
+    R2(a, b, c, d, M[ 9],  5, 0x21e1cde6);
+    R2(d, a, b, c, M[14],  9, 0xc33707d6);
+    R2(c, d, a, b, M[ 3], 14, 0xf4d50d87);
+    R2(b, c, d, a, M[ 8], 20, 0x455a14ed);
+    R2(a, b, c, d, M[13],  5, 0xa9e3e905);
+    R2(d, a, b, c, M[ 2],  9, 0xfcefa3f8);
+    R2(c, d, a, b, M[ 7], 14, 0x676f02d9);
+    R2(b, c, d, a, M[12], 20, 0x8d2a4c8a);
+
+    R3(a, b, c, d, M[ 5],  4, 0xfffa3942);
+    R3(d, a, b, c, M[ 8], 11, 0x8771f681);
+    R3(c, d, a, b, M[11], 16, 0x6d9d6122);
+    R3(b, c, d, a, M[14], 23, 0xfde5380c);
+    R3(a, b, c, d, M[ 1],  4, 0xa4beea44);
+    R3(d, a, b, c, M[ 4], 11, 0x4bdecfa9);
+    R3(c, d, a, b, M[ 7], 16, 0xf6bb4b60);
+    R3(b, c, d, a, M[10], 23, 0xbebfbc70);
+    R3(a, b, c, d, M[13],  4, 0x289b7ec6);
+    R3(d, a, b, c, M[ 0], 11, 0xeaa127fa);
+    R3(c, d, a, b, M[ 3], 16, 0xd4ef3085);
+    R3(b, c, d, a, M[ 6], 23,  0x4881d05);
+    R3(a, b, c, d, M[ 9],  4, 0xd9d4d039);
+    R3(d, a, b, c, M[12], 11, 0xe6db99e5);
+    R3(c, d, a, b, M[15], 16, 0x1fa27cf8);
+    R3(b, c, d, a, M[ 2], 23, 0xc4ac5665);
+
+    R4(a, b, c, d, M[ 0],  6, 0xf4292244);
+    R4(d, a, b, c, M[ 7], 10, 0x432aff97);
+    R4(c, d, a, b, M[14], 15, 0xab9423a7);
+    R4(b, c, d, a, M[ 5], 21, 0xfc93a039);
+    R4(a, b, c, d, M[12],  6, 0x655b59c3);
+    R4(d, a, b, c, M[ 3], 10, 0x8f0ccc92);
+    R4(c, d, a, b, M[10], 15, 0xffeff47d);
+    R4(b, c, d, a, M[ 1], 21, 0x85845dd1);
+    R4(a, b, c, d, M[ 8],  6, 0x6fa87e4f);
+    R4(d, a, b, c, M[15], 10, 0xfe2ce6e0);
+    R4(c, d, a, b, M[ 6], 15, 0xa3014314);
+    R4(b, c, d, a, M[13], 21, 0x4e0811a1);
+    R4(a, b, c, d, M[ 4],  6, 0xf7537e82);
+    R4(d, a, b, c, M[11], 10, 0xbd3af235);
+    R4(c, d, a, b, M[ 2], 15, 0x2ad7d2bb);
+    R4(b, c, d, a, M[ 9], 21, 0xeb86d391);
+
+    ABCD[0] += a;
+    ABCD[1] += b;
+    ABCD[2] += c;
+    ABCD[3] += d;
+}
+
+/*
+ * NAME:	kfun->hash_md5()
+ * DESCRIPTION:	Compute MD5 message digest.  See "Applied Cryptography" by
+ *		Bruce Schneier, Second Edition, p. 436-441.
+ */
+int kf_hash_md5(f, nargs)
+register frame *f;
+int nargs;
+{
+    char buffer[64];
+    Uint cv[4];
+    register int i;
+    register unsigned short len, bufsz;
+    register char *p;
+    register Int cost;
+    register Uint length;
+
+    cost = 3 * nargs + 64;
+    for (i = nargs; --i >= 0; ) {
+	cost += f->sp[i].u.string->len;
+    }
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
+    i_add_ticks(f, cost);
+
+    /*
+     * These constants must apparently be little-endianized, though AC2 does
+     * not explicitly say so.
+     */
+    cv[0] = 0x67452301;
+    cv[1] = 0xefcdab89;
+    cv[2] = 0x98badcfe;
+    cv[3] = 0x10325476;
+    length = 0;
+    bufsz = 0;
+
+    for (i = nargs; --i >= 0; ) {
+	len = f->sp[i].u.string->len;
+	if (len != 0) {
+	    length += len;
+	    p = f->sp[i].u.string->text;
+	    if (bufsz != 0) {
+		register unsigned short size;
+
+		/* fill buffer and digest */
+		size = 64 - bufsz;
+		if (size > len) {
+		    size = len;
+		}
+		memcpy(buffer + bufsz, p, size);
+		p += size;
+		len -= size;
+		bufsz += size;
+
+		if (bufsz == 64) {
+		    md5_block(cv, buffer);
+		    bufsz = 0;
+		}
+	    }
+
+	    while (len >= 64) {
+		/* digest directly from string */
+		md5_block(cv, p);
+		p += 64;
+		len -= 64;
+	    }
+
+	    if (len != 0) {
+		/* put remainder in buffer */
+		memcpy(buffer, p, bufsz = len);
+	    }
+	}
+	str_del(f->sp[i].u.string);
+    }
+
+    /* append padding and digest final block(s) */
+    buffer[bufsz++] = 0x80;
+    if (bufsz > 56) {
+	memset(buffer + bufsz, '\0', 64 - bufsz);
+	md5_block(cv, buffer);
+	bufsz = 0;
+    }
+    memset(buffer + bufsz, '\0', 64 - bufsz);
+    buffer[56] = length << 3;
+    buffer[57] = length >> 5;
+    buffer[58] = length >> 13;
+    buffer[59] = length >> 21;
+    buffer[60] = length >> 29;
+    md5_block(cv, buffer);
+
+    for (bufsz = i = 0; i < 4; bufsz += 4, i++) {
+	buffer[bufsz + 0] = cv[i];
+	buffer[bufsz + 1] = cv[i] >> 8;
+	buffer[bufsz + 2] = cv[i] >> 16;
+	buffer[bufsz + 3] = cv[i] >> 24;
+    }
+    f->sp += nargs - 1;
+    PUT_STR(f->sp, str_new(buffer, 16L));
+    return 0;
+}
+# endif

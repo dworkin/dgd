@@ -1,0 +1,13 @@
+NAME
+	hash_md5 - MD5 message digest
+
+SYNOPSIS
+	string hash_md5(string str, string extra...)
+
+
+DESCRIPTION
+	Compute the 128 bit MD5 message digest of the concatenation of all
+	string arguments.  The result is a string of 16 characters.
+
+SEE ALSO
+	kfun/hash_crc16

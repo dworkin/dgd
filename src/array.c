@@ -1414,7 +1414,7 @@ array *m1, *m2;
 	} else {
 	    /* the smaller - or overriding - element is in m2 */
 	    i_copy(v3, v2, 2);
-	    v2 += 2; v3 += 2; n2 -= 2;
+	    v3 += 2;
 	    if (c == 0) {
 		/* equal elements? */
 		if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
@@ -1445,6 +1445,7 @@ array *m1, *m2;
 		/* skip m1 */
 		v1 += 2; n1 -= 2;
 	    }
+	    v2 += 2; n2 -= 2;
 	}
     }
 

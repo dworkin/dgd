@@ -1326,5 +1326,7 @@ DGD 1.1
  - String constants for string switches were generated in the wrong order.
  - Completed callout undo (atomic functions).
  - Fixed a reference counting bug in callout undo.
- - Replaced many direct object references by indirect ones.
+ - Replaced many direct object references with indirect ones.
  - Fixed yet another bug in the name lookup code.
+ - Fixed a old and very rare bug in mapping addition.
+ - New kfuns hash_crc16(), hash_md5().
