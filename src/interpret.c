@@ -13,10 +13,9 @@
 
 typedef struct _frame_ {
     object *obj;		/* current object */
-    bool external;		/* TRUE if it's an external call */
+    control *ctrl;		/* object control block */
     dataspace *data;		/* dataspace of current object */
-    control *v_ctrl;		/* virtual control block */
-    unsigned short voffset;	/* virtual variable offset */
+    bool external;		/* TRUE if it's an external call */
     control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
     unsigned short foffset;	/* program function offset */
@@ -34,9 +33,8 @@ static frame *iframe;		/* stack frames */
 static frame *cframe;		/* current frame */
 static frame *maxframe;		/* max frame */
 static frame *maxmaxframe;	/* max locked frame */
-static long max_cost;		/* max exec cost allowed */
-long exec_cost;			/* interpreter ticks left */
-static unsigned short catch;	/* current catch level */
+static Int max_cost;		/* max exec cost allowed */
+Int exec_cost;			/* interpreter ticks left */
 static unsigned short lock;	/* current lock level */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
@@ -236,8 +234,7 @@ void i_global(inherit, index)
 register int inherit, index;
 {
     if (inherit != 0) {
-	inherit = cframe->voffset +
-		  cframe->v_ctrl->inherits[cframe->p_index + inherit].varoffset;
+	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     i_push_value(d_get_variable(cframe->data, inherit + index));
     exec_cost -= 3;
@@ -251,8 +248,7 @@ void i_global_lvalue(inherit, index)
 register int inherit, index;
 {
     if (inherit != 0) {
-	inherit = cframe->voffset +
-		  cframe->v_ctrl->inherits[cframe->p_index + inherit].varoffset;
+	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     (--sp)->type = T_LVALUE;
     sp->u.lval = d_get_variable(cframe->data, inherit + index);
@@ -294,7 +290,14 @@ register unsigned short size;
 	a = map_new((long) size);
 	memcpy(a->elts, sp, size * sizeof(value));
 	sp += size;
+	if (ec_push()) {
+	    /* error in sorting, delete mapping and pass on error */
+	    arr_ref(a);
+	    arr_del(a);
+	    error((char *) NULL);
+	}
 	map_sort(a);
+	ec_pop();
     }
     (--sp)->type = T_MAPPING;
     arr_ref(sp->u.array = a);
@@ -624,8 +627,8 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(v->u.string,
-		     (unsigned short) lval->u.number, val));
+	d_assign_elt(a, v, istr(v->u.string, (unsigned short) lval->u.number,
+				val));
 	i_del_value(--ilvp);
 	--ilvp;
 	arr_del(a);
@@ -638,9 +641,22 @@ register value *lval, *val;
  * DESCRIPTION:	set the maximum allowed execution cost
  */
 void i_set_cost(cost)
-long cost;
+Int cost;
 {
     max_cost = cost;
+}
+
+/*
+ * NAME:	interpret->reset_cost()
+ * DESCRIPTION:	reset the execution cost, and return the previous value
+ */
+Int i_reset_cost()
+{
+    Int cost;
+
+    cost = exec_cost;
+    exec_cost = max_cost;
+    return cost;
 }
 
 /*
@@ -660,6 +676,44 @@ void i_lock()
 void i_unlock()
 {
     --lock;
+}
+
+/*
+ * NAME:	interpret->set_lock()
+ * DESCRIPTION:	set the current lock level
+ */
+void i_set_lock(l)
+unsigned short l;
+{
+    lock = l;
+}
+
+/*
+ * NAME:	interpret->query_lock()
+ * DESCRIPTION:	return the current lock level
+ */
+unsigned short i_query_lock()
+{
+    return lock;
+}
+
+/*
+ * NAME:	interpret->set_frame()
+ * DESCRIPTION:	set the current stack frame level
+ */
+void i_set_frame(f)
+int f;
+{
+    cframe = iframe + f;
+}
+
+/*
+ * NAME:	interpret->query_frame()
+ * DESCRIPTION:	return the current stack frame level
+ */
+int i_query_frame()
+{
+    return cframe - iframe;
 }
 
 /*
@@ -699,7 +753,16 @@ register int n;
 char *i_foffset(index)
 unsigned short index;
 {
-    return &cframe->v_ctrl->funcalls[2L * (cframe->foffset + index)];
+    return &cframe->ctrl->funcalls[2L * (cframe->foffset + index)];
+}
+
+/*
+ * NAME:	interpret->pindex()
+ * DESCRIPTION:	return the current program index
+ */
+int i_pindex()
+{
+    return cframe->p_index;
 }
 
 /*
@@ -751,16 +814,18 @@ static void i_interpret P((char*));
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
+void i_funcall(obj, p_ctrli, funci, nargs)
 register object *obj;
-register int v_ctrli, p_ctrli, nargs;
+register int p_ctrli, nargs;
 int funci;
 {
     register frame *f, *pf;
     register char *pc;
     register unsigned short n;
-    bool external;
     value val;
+# ifdef DEBUG
+    value *keep;
+# endif
 
     f = pf = cframe;
     f++;
@@ -773,49 +838,33 @@ int funci;
 	 * top level call
 	 */
 	exec_cost = max_cost;
-	external = TRUE;
 
 	f->obj = obj;
-	f->external = TRUE;
+	f->ctrl = obj->ctrl;
 	f->data = o_dataspace(obj);
-	f->v_ctrl = obj->ctrl;
-	f->voffset = 0;
+	f->external = TRUE;
     } else if (obj != (object *) NULL) {
 	/*
 	 * call_other
 	 */
-	external = TRUE;
 	f->obj = obj;
-	f->external = TRUE;
+	f->ctrl = obj->ctrl;
 	f->data = o_dataspace(obj);
-	f->v_ctrl = obj->ctrl;
-	f->voffset = 0;
+	f->external = TRUE;
     } else {
 	/*
-	 * local function call or labeled function call
+	 * local function call
 	 */
-	external = FALSE;
 	f->obj = pf->obj;
-	f->external = FALSE;
+	f->ctrl = pf->ctrl;
 	f->data = pf->data;
-	f->voffset = pf->voffset;
-	if (v_ctrli == 0) {
-	    /* local or virtually inherited function call */
-	    f->v_ctrl = pf->v_ctrl;
-	} else {
-	    /* labeled inherited function call */
-	    f->v_ctrl = o_control(pf->p_ctrl->inherits[v_ctrli].obj);
-	    f->voffset += pf->v_ctrl->inherits[pf->p_ctrl->nvirtuals +
-					       pf->p_index - 1].varoffset +
-			  pf->p_ctrl->inherits[v_ctrli].varoffset -
-			  pf->p_ctrl->inherits[1].varoffset;
-	}
+	f->external = FALSE;
     }
 
     /* set the program control block */
-    f->p_ctrl = o_control(f->v_ctrl->inherits[p_ctrli].obj);
-    f->foffset = f->v_ctrl->inherits[p_ctrli].funcoffset;
-    f->p_index = p_ctrli + 1 - f->p_ctrl->nvirtuals;
+    f->foffset = f->ctrl->inherits[p_ctrli].funcoffset;
+    f->p_ctrl = o_control(f->ctrl->inherits[p_ctrli].obj);
+    f->p_index = p_ctrli + 1 - f->p_ctrl->ninherits;
 
     /* get the function */
     f->func = &d_get_funcdefs(f->p_ctrl)[funci];
@@ -836,7 +885,7 @@ int funci;
     /* handle arguments */
     n = PROTO_NARGS(pc);
     if (nargs > n) {
-	if (!external) {
+	if (!f->external) {
 	    error("Too many arguments for function %s",
 		  d_get_strconst(f->p_ctrl, f->func->inherit,
 				 f->func->index)->text);
@@ -845,7 +894,7 @@ int funci;
 	i_pop(nargs - n);
 	nargs = n;
     } else if (nargs < n) {
-	if (!(PROTO_CLASS(pc) & C_VARARGS) && !external) {
+	if (!(PROTO_CLASS(pc) & C_VARARGS) && !f->external) {
 	    error("Too few arguments for function %s",
 		  d_get_strconst(f->p_ctrl, f->func->inherit,
 				 f->func->index)->text);
@@ -871,8 +920,12 @@ int funci;
     }
     f->fp = sp;
 
+    d_get_funcalls(f->ctrl);	/* make sure they are available */
     exec_cost -= 5;
     cframe++;
+# ifdef DEBUG
+    keep = sp;
+# endif
     if (f->func->class & C_COMPILED) {
 	/* compiled function */
 	(*pcfunctions[FETCH2U(pc, n)])();
@@ -885,6 +938,11 @@ int funci;
 
     /* clean up stack, move return value upwards */
     val = *sp++;
+# ifdef DEBUG
+    if (sp != keep) {
+	fatal("bad stack pointer after function call");
+    }
+# endif
     i_pop(nargs);
     *--sp = val;
 }
@@ -1142,8 +1200,7 @@ register char *pc;
 
     for (;;) {
 	if (--exec_cost <= 0 && lock == 0) {
-	    error("Maximum execution cost exceeded (%ld)",
-		  max_cost - exec_cost);
+	    error("Maximum execution cost exceeded (%ld)", (long) max_cost);
 	}
 	instr = FETCH1U(pc);
 	f->pc = pc;
@@ -1176,7 +1233,7 @@ register char *pc;
 	case I_PUSH_STRING:
 	    (--sp)->type = T_STRING;
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl,
-						  f->p_ctrl->nvirtuals - 1,
+						  f->p_ctrl->ninherits - 1,
 						  FETCH1U(pc)));
 	    break;
 
@@ -1200,7 +1257,7 @@ register char *pc;
 	case I_PUSH_GLOBAL:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
+		u = f->ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
 	    exec_cost -= 3;
@@ -1214,7 +1271,7 @@ register char *pc;
 	case I_PUSH_GLOBAL_LVALUE:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
+		u = f->ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
@@ -1239,7 +1296,7 @@ register char *pc;
 
 	case I_CHECK_INT:
 	    if (sp->type != T_NUMBER) {
-		error("Argument is not a number");
+		error("Value is not a number");
 	    }
 	    break;
 
@@ -1305,61 +1362,49 @@ register char *pc;
 	    }
 	    break;
 
-	case I_CALL_LFUNC:
+	case I_CALL_AFUNC:
 	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    u3 = FETCH1U(pc);
-	    i_funcall((object *) NULL, u, u2, u3, FETCH1U(pc));
+	    i_funcall((object *) NULL, 0, u, FETCH1U(pc));
 	    break;
 
 	case I_CALL_DFUNC:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    i_funcall((object *) NULL, 0, u, u2, FETCH1U(pc));
+	    i_funcall((object *) NULL, f->p_index + u, u2, FETCH1U(pc));
 	    break;
 
 	case I_CALL_FUNC:
-	    p = &f->v_ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall((object *) NULL, 0, UCHAR(p[0]), UCHAR(p[1]),
-		      FETCH1U(pc));
+	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
+	    i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), FETCH1U(pc));
 	    break;
 
 	case I_CATCH:
 	    p = pc;
 	    p += FETCH2S(pc, u);
-	    catch++;
 	    u = lock;
-	    if (u != 0) {
-		/* temporarily turn off lock and reset exec cost */
-		l = max_cost - exec_cost;
-		exec_cost = max_cost;
-		lock = 0;
-	    }
 	    v = sp;
+	    if (f->obj->flags & O_DRIVER) {
+		/* reset execution cost */
+		l = exec_cost;
+		exec_cost = max_cost;
+	    }
 	    if (!ec_push()) {
 		i_interpret(pc);
 		ec_pop();
-		lock = u;
-		if (u != 0) {
-		    /* correct value of exec_cost */
-		    exec_cost -= l;
-		}
-		--catch;
 		pc = f->pc;
 	    } else {
 		/* error */
 		lock = u;
-		if (u != 0) {
-		    /* correct value of exec_cost */
-		    exec_cost -= l;
-		}
-		--catch;
 		cframe = f;
 		f->pc = pc = p;
 		i_pop(v - sp);
 		p = errormesg();
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
+	    }
+	    if (f->obj->flags & O_DRIVER) {
+		/* restore execution cost */
+		exec_cost = l;
 	    }
 	    break;
 
@@ -1397,6 +1442,10 @@ int nargs;
     register control *ctrl;
 
     if (!(obj->flags & O_CREATED)) {
+	if (cframe >= iframe && exec_cost < 100 && lock == 0) {
+	    /* might not be enough left to initialize the object properly */
+	    error("Maximum execution cost exceeded (%ld)", (long) max_cost);
+	}
 	/*
 	 * call the creator function in the object, if this hasn't happened
 	 * before
@@ -1426,7 +1475,7 @@ int nargs;
     }
 
     /* call the function */
-    i_funcall(obj, 0, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
+    i_funcall(obj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
 
     return TRUE;
 }
@@ -1496,6 +1545,7 @@ register frame *f;
 	case I_JUMP:
 	case I_JUMP_ZERO:
 	case I_JUMP_NONZERO:
+	case I_CALL_AFUNC:
 	case I_CATCH:
 	    pc += 2;
 	    break;
@@ -1507,7 +1557,6 @@ register frame *f;
 	    break;
 
 	case I_PUSH_INT4:
-	case I_CALL_LFUNC:
 	    pc += 4;
 	    break;
 
@@ -1557,7 +1606,7 @@ FILE *fp;
     register char *p;
 
     for (f = iframe; f <= cframe; f++) {
-	prog = f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj;
+	prog = f->p_ctrl->inherits[f->p_ctrl->ninherits - 1].obj;
 	if (f->func->class & C_COMPILED) {
 	    fprintf(fp, "    ");
 	} else {
@@ -1567,7 +1616,7 @@ FILE *fp;
 		d_get_strconst(f->p_ctrl, f->func->inherit,
 			       f->func->index)->text,
 		prog->chain.name);
-	if (f->obj != f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj) {
+	if (f->obj != f->p_ctrl->inherits[f->p_ctrl->ninherits - 1].obj) {
 	    /*
 	     * Program and object are not the same; the object name must
 	     * be printed as well.
@@ -1622,17 +1671,16 @@ void i_clear()
     if (cframe < iframe) {
 	line = 0;
     } else {
-	control *p_ctrl;
+	control *prog;
 
-	/* keep error context */
 	if (cframe->func->class & C_COMPILED) {
-	    line = -1;
+	    line = (unsigned short) -1;
 	} else {
 	    line = i_line(cframe);
 	}
 	oname = o_name(cframe->obj);
-	p_ctrl = cframe->p_ctrl;
-	pname = o_name(p_ctrl->inherits[p_ctrl->nvirtuals - 1].obj);
+	prog = cframe->p_ctrl;
+	pname = o_name(prog->inherits[prog->ninherits - 1].obj);
 
 	cframe = iframe - 1;
     }

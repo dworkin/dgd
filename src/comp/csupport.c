@@ -9,42 +9,32 @@
 # include "control.h"
 # include "csupport.h"
 
-static object **virtuals;	/* virtually inherited objects */
+static object **inherits;	/* inherited objects */
 static string **strings;	/* strings defined */
 pcfunc *pcfunctions;		/* table of precompiled functions */
-Int tv[NTMPVAL];		/* table of temporary values */
 
 /*
  * NAME:	preload->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static void pl_inherits(inherits, nvirtuals, ninherits)
-register char **inherits;
-register int nvirtuals, ninherits;
+static void pl_inherits(inh, ninherits)
+register char **inh;
+register int ninherits;
 {
     char label[5];
     register int i;
     register object *obj;
 
-    for (i = 0; i < nvirtuals - 1; i++) {
-	obj = o_find(*inherits);
+    for (i = 0; i < ninherits - 1; i++) {
+	obj = o_find(*inh);
 	if (obj == (object *) NULL) {
-	    fatal("cannot inherit \"/%s\"", *inherits);
+	    fatal("cannot inherit \"/%s\"", *inh);
 	}
-	virtuals[i] = obj;
+	inherits[i] = obj;
 	ctrl_inherit(obj, (string *) NULL);
-	inherits++;
+	inh++;
     }
-    virtuals[i++] = (object *) NULL;
-    while (i < ninherits) {
-	obj = o_find(*++inherits);
-	if (obj == (object *) NULL) {
-	    fatal("cannot inherit \"/%s\"", *inherits);
-	}
-	sprintf(label, "l%d", i);
-	ctrl_inherit(obj, str_new(label, (long) strlen(label)));
-	i++;
-    }
+    inherits[i++] = (object *) NULL;
 }
 
 /*
@@ -72,11 +62,11 @@ register unsigned short inherit, index;
 {
     register control *ctrl;
 
-    if (virtuals[inherit] == (object *) NULL) {
+    if (inherits[inherit] == (object *) NULL) {
 	return strings[index];
     }
-    ctrl = virtuals[inherit]->ctrl;
-    return d_get_strconst(ctrl, ctrl->nvirtuals - 1, index);
+    ctrl = inherits[inherit]->ctrl;
+    return d_get_strconst(ctrl, ctrl->ninherits - 1, index);
 }
 
 /*
@@ -156,22 +146,24 @@ void preload()
     }
 
     if (nfuncs > 0) {
+	mstatic();
 	pcfunctions = ALLOC(pcfunc, nfuncs);
+	mdynamic();
 	nfuncs = 0;
     }
 
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	l = *pc;
 	message("Precompiled: \"/%s\"\n",
-		l->inherits[UCHAR(l->nvirtuals) - 1]);
+		l->inherits[l->ninherits - 1]);
 
-	virtuals = ALLOC(object*, UCHAR(l->nvirtuals));
+	inherits = ALLOC(object*, l->ninherits);
 	if (l->nstrings > 0) {
 	    strings = ALLOC(string*, l->nstrings);
 	}
 
-	pl_inherits(l->inherits, UCHAR(l->nvirtuals), UCHAR(l->ninherits));
-	ctrl_create(l->inherits[UCHAR(l->nvirtuals) - 1]);
+	pl_inherits(l->inherits, l->ninherits);
+	ctrl_create(l->inherits[l->ninherits - 1]);
 	pl_strings(l->stext, l->slength, l->nstrings);
 	pl_funcdefs(l->program, l->funcdefs, l->nfuncdefs, nfuncs);
 	memcpy(pcfunctions + nfuncs, l->functions,
@@ -183,7 +175,7 @@ void preload()
 	if (l->nstrings > 0) {
 	    FREE(strings);
 	}
-	FREE(virtuals);
+	FREE(inherits);
 
 	ctrl_construct();
 	ctrl_clear();
@@ -236,7 +228,7 @@ void check_int(v)
 value *v;
 {
     if (v->type != T_NUMBER) {
-	error("Argument is not a number");
+	error("Value is not a number");
     }
 }
 
@@ -277,6 +269,40 @@ bool poptruthval()
     }
     i_del_value(sp++);
     return TRUE;
+}
+
+typedef struct {
+    value *sp;			/* stack pointer */
+    int frame;			/* function call frame level */
+    unsigned short lock;	/* lock value */
+} catchinfo;
+
+static catchinfo cstack[ERRSTACKSZ];	/* catch stack */
+static int csi;				/* catch stack index */
+
+/*
+ * NAME:	pre_catch()
+ * DESCRIPTION:	prepare for a catch
+ */
+void pre_catch()
+{
+    if (csi == ERRSTACKSZ) {
+	error("Too deep catch() nesting");
+    }
+    cstack[csi].sp = sp;
+    cstack[csi].frame = i_query_frame();
+    cstack[csi++].lock = i_query_lock();
+}
+
+/*
+ * NAME:	post_catch()
+ * DESCRIPTION:	clean up after a catch
+ */
+void post_catch()
+{
+    i_pop(cstack[--csi].sp - sp);
+    i_set_frame(cstack[csi].frame);
+    i_set_lock(cstack[csi].lock);
 }
 
 /*
