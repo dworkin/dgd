@@ -10,8 +10,7 @@ DESCRIPTION
 	In the first form, send a message to the user associated with the
 	current object.  In the second form, user input echoing will be
 	turned off or on, the value of echo being zero or non-zero,
-	respectively.  If the current object is not associated with a user,
-	nothing will happen.
+	respectively.
 	When used by the driver object, send_message() will write the message
 	on stderr.
 
