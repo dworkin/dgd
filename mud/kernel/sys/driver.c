@@ -535,6 +535,10 @@ static object inherit_program(string from, string path, int priv)
 	return nil;
     }
 
+    if (objectd && objectd->forbid_inherit(from, path, priv)) {
+	return nil;
+    }
+
     obj = find_object(path);
     if (!obj) {
 	int *rsrc;
