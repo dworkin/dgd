@@ -306,12 +306,10 @@ static object compile_object(string path)
      */
     lib = sscanf(path, "%*s/lib/");
     new = !::find_object(path);
-    if (new && !lib) {
-	stack = ::status()[ST_STACKDEPTH];
-	ticks = ::status()[ST_TICKS];
-    }
-    catch {
-	rlimits (-1; -1) {
+    stack = ::status()[ST_STACKDEPTH];
+    ticks = ::status()[ST_TICKS];
+    rlimits (-1; -1) {
+	catch {
 	    if (new && !lib) {
 		if ((stack >= 0 &&
 		     stack - 2 < rsrcd->rsrc_get(uid,
@@ -331,8 +329,13 @@ static object compile_object(string path)
 	    } else {
 		driver->compile(obj, uid);
 	    }
+	} : {
+	    driver->compile_failed(path, uid);
+	    rlimits (stack; ticks) {
+		error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    }
     if (new && !lib) {
 	call_other(obj, "???");	/* initialize & register */
     }

@@ -1208,8 +1208,7 @@ cvoid *cv1, *cv2;
     n2 = (node **) cv2;
     if (n1[0]->l.left->type == N_STR) {
 	if (n2[0]->l.left->type == N_STR) {
-	    return strcmp(n1[0]->l.left->l.string->text,
-			  n2[0]->l.left->l.string->text);
+	    return str_cmp(n1[0]->l.left->l.string, n2[0]->l.left->l.string);
 	} else {
 	    return 1;	/* str > nil */
 	}
@@ -1290,8 +1289,8 @@ node *expr, *stmt;
 		} else {
 		    i = (v[0]->l.left->type == nil_node);
 		    for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
-			if (strcmp(w[0]->l.left->l.string->text,
-				   w[1]->l.left->l.string->text) == 0) {
+			if (str_cmp(w[0]->l.left->l.string,
+				    w[1]->l.left->l.string) == 0) {
 			    c_error("duplicate case labels in switch");
 			    break;
 			}

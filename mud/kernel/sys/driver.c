@@ -239,6 +239,18 @@ compile_lib(string path, string owner)
 }
 
 /*
+ * NAME:	compile_failed()
+ * DESCRIPTION:	object couldn't be compiled
+ */
+compile_failed(string path, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->compile_failed(owner, path);
+	inherited = nil;
+    }
+}
+
+/*
  * NAME:	clone()
  * DESCRIPTION:	object cloned
  */

@@ -32,6 +32,10 @@ void set_object_manager(object objectd)	[System only]
 
 	The given inheritable object has just been compiled.
 
+    * void compile_failed(string owner, string path)
+
+	An attempt to compile the given object has failed.
+
     * void clone(string owner, object obj)
 
 	The given object has just been cloned.  Called just before the object
