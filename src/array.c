@@ -861,7 +861,7 @@ register long size;
 {
     array *m;
 
-    if (size > max_size) {
+    if (size > max_size << 1) {
 	error("Mapping too large");
     }
     m = arr_alloc((unsigned short) size);
@@ -1418,7 +1418,7 @@ unsigned short hashval;
 /*
  * NAME:	mapping->index()
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
- *		perform an assignment.
+ *		perform an assignment; otherwise return the indexed value.
  */
 value *map_index(m, val, elt)
 register array *m;
@@ -1427,7 +1427,12 @@ value *val, *elt;
     register unsigned short i;
     bool del;
 
-    del = (elt != (value *) NULL && elt->type == T_INT && elt->u.number == 0);
+    if (elt != (value *) NULL && elt->type == T_INT && elt->u.number == 0) {
+	elt = (value *) NULL;
+	del = TRUE;
+    } else {
+	del = FALSE;
+    }
 
     if (m->size > 0) {
 	register int n;
@@ -1440,9 +1445,17 @@ value *val, *elt;
 	     * found in the array
 	     */
 	    v = &m->elts[n];
-	    if (del ||
-		(elt != (value *) NULL && val->type == T_OBJECT &&
-		 val->u.objcnt != v->u.objcnt)) {
+	    if (elt != (value *) NULL) {
+		/*
+		 * change the element
+		 */
+		if (val->type == T_OBJECT) {
+		    v->u.objcnt = val->u.objcnt;	/* refresh */
+		}
+		d_assign_elt(m, v + 1, elt);
+	    } else if (del ||
+		       (val->type == T_OBJECT &&
+			val->u.objcnt != v->u.objcnt)) {
 		/*
 		 * delete the element
 		 */
@@ -1459,12 +1472,7 @@ value *val, *elt;
 		    memcpy(v, v + 2, (m->size - n) * sizeof(value));
 		}
 		d_change_map(m);
-		return (value *) NULL;
-	    } else if (elt != (value *) NULL) {
-		/*
-		 * change the element
-		 */
-		d_assign_elt(m, v + 1, elt);
+		return &zero_value;
 	    }
 	    return v + 1;
 	}
@@ -1503,9 +1511,17 @@ value *val, *elt;
 		/*
 		 * found in the hashtable
 		 */
-		if (del ||
-		    (elt == (value *) NULL && val->type == T_OBJECT &&
-		     val->u.objcnt != (*e)->idx.u.objcnt)) {
+		if (elt != (value *) NULL) {
+		    /*
+		     * change element
+		     */
+		    if (val->type == T_OBJECT) {
+			(*e)->idx.u.objcnt = val->u.objcnt;	/* refresh */
+		    }
+		    d_assign_elt(m, &(*e)->val, elt);
+		} else if (del ||
+			   (val->type == T_OBJECT &&
+			    val->u.objcnt != (*e)->idx.u.objcnt)) {
 		    mapelt *next;
 
 		    /*
@@ -1519,12 +1535,7 @@ value *val, *elt;
 		    fmelt = *e;
 		    *e = next;
 		    m->hashed->size--;
-		    return (value *) NULL;
-		} else if (elt != (value *) NULL) {
-		    /*
-		     * change element
-		     */
-		    d_assign_elt(m, &(*e)->val, elt);
+		    return &zero_value;
 		}
 		return &(*e)->val;
 	    }
@@ -1532,20 +1543,16 @@ value *val, *elt;
     }
 
     if (elt != (value *) NULL) {
-	if (!del) {
-	    register mapelt *e;
+	register mapelt *e;
 
-	    /*
-	     * extend mapping
-	     */
-	    e = map_grow(m, i);
-	    d_change_map(m);
+	/*
+	 * extend mapping
+	 */
+	e = map_grow(m, i);
+	d_change_map(m);
 
-	    d_assign_elt(m, &e->idx, val);
-	    d_assign_elt(m, &e->val, elt);
-	}
-
-	return (value *) NULL;
+	d_assign_elt(m, &e->idx, val);
+	d_assign_elt(m, &e->val, elt);
     }
 
     /*

@@ -1051,3 +1051,4 @@ DGD 1.1
  - Added 3rd argument to runtime_error(), ticks left, and removed ST_ASTACKDEPTH
    and ST_ATICKS.
  - Patterns in get_dir() accidentally matched almost anything.
+ - Several mapping problems fixed.
