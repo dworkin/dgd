@@ -477,6 +477,9 @@ object *obj;
 		aobj = c_compile(auto_object, (object *) NULL);
 	    }
 	    /* inherit auto object */
+	    if (O_UPGRADING(aobj)) {
+		error("Upgraded auto object while compiling \"/%s.c\"", c.file);
+	    }
 	    ctrl_init();
 	    ctrl_inherit(c.file, aobj, (string *) NULL);
 	}

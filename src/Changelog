@@ -1118,3 +1118,4 @@ DGD 1.1
  - Worked around the latest Visual C++ bugs.
  - Changed the meaning of O_DATASIZE in status(obj): this now returns the
    number of variables, rather than the assumed amount of space they take.
+ - Deal with the auto object possibly being upgraded while inherited.
