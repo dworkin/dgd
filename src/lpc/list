@@ -1,1 +1,23 @@
-
+# if 0
+# include "driver.c"
+# include "auto.c"
+# include "objregd.c"
+# include "rsrcd.c"
+# include "accessd.c"
+# include "userd.c"
+# include "api_objreg.c"
+# include "api_rsrc.c"
+# include "api_access.c"
+# include "api_user.c"
+# include "lib_connection.c"
+# include "lib_user.c"
+# include "lib_wiztool.c"
+# include "rsrc.c"
+# include "telnet.c"
+# include "binary.c"
+# include "user.c"
+# include "wiztool.c"
+/*
+# include "port.c"
+ */
+# endif

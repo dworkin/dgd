@@ -47,7 +47,8 @@ static string *query_owners()
  */
 static set_rsrc(string name, int max, int decay, int period)
 {
-    if (!name || max < -1 || decay < 0 || decay > 100 || period < 0) {
+    if (!name || max < -1 || decay < 0 || decay > 100 || period < 0 ||
+	!decay != !period) {
 	error("Bad arguments for set_rsrc");
     }
     rsrcd->set_rsrc(name, max, decay, period);
@@ -60,7 +61,7 @@ static set_rsrc(string name, int max, int decay, int period)
 static remove_rsrc(string name)
 {
     if (!name) {
-	error("Bad argument to remove_rsrc");
+	error("Bad argument for remove_rsrc");
     }
     rsrcd->remove_rsrc(name);
 }
@@ -72,7 +73,7 @@ static remove_rsrc(string name)
 static mixed *query_rsrc(string name)
 {
     if (!name) {
-	error("Bad argument to query_rsrc");
+	error("Bad argument for query_rsrc");
     }
     return rsrcd->query_rsrc(name);
 }
@@ -94,7 +95,7 @@ static string *query_resources()
 static rsrc_set_limit(string owner, string name, int max)
 {
     if (!name || max < -1) {
-	error("Bad arguments to rsrc_set_limit");
+	error("Bad arguments for rsrc_set_limit");
     }
     rsrcd->rsrc_set_limit(owner, name, max);
 }
@@ -120,7 +121,7 @@ static varargs int rsrc_incr(string owner, string name, mixed index, int incr,
 			     int force)
 {
     if (!name) {
-	error("Bad arguments to rsrc_incr");
+	error("Bad arguments for rsrc_incr");
     }
     return rsrcd->rsrc_incr(owner, name, index, incr, force);
 }

@@ -18,10 +18,7 @@ static create()
  */
 object first_link(string owner)
 {
-    if (!owner) {
-	error("Bad argument for first_link");
-    }
-    return objregd->first_link();
+    return objregd->first_link(owner);
 }
 
 /*

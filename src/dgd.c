@@ -127,9 +127,10 @@ void endthread()
  * NAME:	errhandler()
  * DESCRIPTION:	handle an error
  */
-static void errhandler()
+static void errhandler(depth)
+Int depth;
 {
-    i_runtime_error(FALSE);
+    i_runtime_error((Int) 0);
 }
 
 /*

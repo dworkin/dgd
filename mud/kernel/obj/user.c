@@ -61,6 +61,9 @@ private tell_audience(string str)
 int login(string str)
 {
     if (previous_program() == LIB_CONN) {
+	if (nconn == 0) {
+	    ::login(str);
+	}
 	nconn++;
 	if (strlen(str) == 0 || sscanf(str, "%*s ") != 0 ||
 	    sscanf(str, "%*s/") != 0) {
@@ -79,7 +82,6 @@ int login(string str)
 	} else {
 	    /* no password; login immediately */
 	    connect(previous_object());
-	    previous_object()->set_name(str);
 	    tell_audience(Name + " logs in.\n");
 	    if (sizeof(rsrc::query_owners() & ({ str })) == 0) {
 		message("> ");
@@ -103,11 +105,14 @@ int login(string str)
 logout(int quit)
 {
     if (previous_program() == LIB_CONN && --nconn == 0) {
-	if (quit) {
-	    tell_audience(Name + " logs out.\n");
-	} else {
-	    tell_audience(Name + " disconnects.\n");
+	if (query_conn()) {
+	    if (quit) {
+		tell_audience(Name + " logs out.\n");
+	    } else {
+		tell_audience(Name + " disconnected.\n");
+	    }
 	}
+	::logout();
 	if (wiztool) {
 	    destruct_object(wiztool);
 	}
@@ -217,8 +222,11 @@ int receive_message(string str)
 	    }
 
 	    if (str) {
-		/* try wiztool */
-		event("input", str);
+		if (wiztool) {
+		    event("input", str);
+		} else {
+		    message("No command: " + str + "\n");
+		}
 	    }
 	    break;
 
@@ -228,7 +236,6 @@ int receive_message(string str)
 		return MODE_DISCONNECT;
 	    }
 	    connect(previous_object());
-	    previous_object()->set_name(name);
 	    message("\n");
 	    tell_audience(Name + " logs in.\n");
 	    if (!wiztool && sizeof(rsrc::query_owners() & ({ name })) != 0) {
@@ -278,20 +285,11 @@ int receive_message(string str)
 }
 
 /*
- * NAME:	query_name()
- * DESCRIPTION:	return user's name
- */
-string query_name()
-{
-    return name;
-}
-
-/*
- * NAME:	allow_subscribe_event()
+ * NAME:	allow_subscribe()
  * DESCRIPTION:	allow objects to subscribe to input events if they're owned
  *		by this user
  */
-int allow_subscribe_event(object obj, string event)
+int allow_subscribe(object obj, string event)
 {
     return (event == "input" && query_conn() && obj->query_owner() == name);
 }

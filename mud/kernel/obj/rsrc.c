@@ -1,6 +1,7 @@
 # include <kernel/kernel.h>
 # include <kernel/rsrc.h>
 # include <type.h>
+# include <status.h>
 
 object rsrcd;		/* resource manager */
 mapping resources;	/* registered resources */
@@ -13,7 +14,11 @@ string owner;		/* owner of these resources */
 static create(int clone)
 {
     if (clone) {
-	resources = ([ ]);		/* no resources yet */
+	resources = ([
+			"stack" :	({   0, -1, 0 }),
+			"ticks" :	({   0, -1, 0 }),
+			"tick usage" :	({ 0.0, -1, 0 })
+		    ]);
 	rsrcd = find_object(RSRCD);
     }
 }
@@ -49,8 +54,7 @@ rsrc_set_limit(string name, int max, int decay)
     if (previous_object() == rsrcd) {
 	mixed *rsrc;
 
-	rsrc = resources[name];
-	if (rsrc) {
+	if ((rsrc=resources[name])) {
 	    rsrc[RSRC_MAX] = max;
 	} else {
 	    resources[name] = ({ (decay == 0) ? 0 : 0.0, max, 0 });
@@ -157,7 +161,7 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 
 	if (!force && max >= 0 &&
 	    (incr > max || (int) rsrc[RSRC_USAGE] > max - incr) && incr > 0) {
-	    return 0;	/* would exceed limit */
+	    return FALSE;	/* would exceed limit */
 	}
 
 	rlimits (-1; -1) {
@@ -175,24 +179,92 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 			rsrc[RSRC_INDEXED][index] += incr;
 		    }
 		} : {
-		    return 0;	/* error: increment failed */
+		    return FALSE;	/* error: increment failed */
 		}
 	    }
 	    if (typeof(rsrc[RSRC_USAGE]) == T_INT) {
 		/* normal resource */
 		rsrc[RSRC_USAGE] += incr;
 		grsrc[RSRC_USAGE] += incr;
-TRACE(owner + ": " + name + " from " + ((int) rsrc[RSRC_USAGE] - incr) + " to " + (int) rsrc[RSRC_USAGE]);
 	    } else {
 		/* decaying resource */
 		index = (float) incr;
 		rsrc[RSRC_USAGE] += index;
 		grsrc[RSRC_USAGE] += index;
-TRACE(owner + ": " + name + " from " + ((float) rsrc[RSRC_USAGE] - index) + " to " + (float) rsrc[RSRC_USAGE]);
 	    }
 	}
 
-	return 1;
+	return TRUE;
+    }
+}
+
+/*
+ * NAME:	call_limits()
+ * DESCRIPTION:	return stack & ticks limits
+ */
+mixed *call_limits(mixed *limits, mixed *status, int *stack, int *ticks,
+		   int *usage)
+{
+    if (previous_object() == rsrcd) {
+	int maxstack, maxticks, n;
+
+	/* determine available stack */
+	maxstack = resources["stack"][RSRC_MAX];
+	if (maxstack < 0) {
+	    maxstack = stack[RSRC_MAX];
+	}
+	n = status[ST_STACKDEPTH];
+	if (maxstack > n && n >= 0) {
+	    maxstack = n;
+	}
+	if (maxstack >= 0) {
+	    maxstack++;
+	}
+
+	/* determine available ticks */
+	maxticks = resources["ticks"][RSRC_MAX];
+	if (maxticks < 0) {
+	    maxticks = ticks[RSRC_MAX];
+	}
+	if (maxticks >= 0) {
+	    mixed *rsrc;
+
+	    rsrc = resources["tick usage"];
+	    if ((n=time()) - (int) rsrc[RSRC_DECAYTIME] >=
+						    usage[RSRC_PERIOD - 1]) {
+		/* decay resource */
+		decay_rsrc(rsrc, usage, n);
+	    }
+	    n = rsrc[RSRC_MAX];
+	    if (n < 0) {
+		n = usage[RSRC_MAX];
+	    }
+	    if (n >= 0 && (int) rsrc[RSRC_USAGE] >= n >> 1) {
+		maxticks = (int) ((float) maxticks *
+				  ((float) n - rsrc[RSRC_USAGE]) /
+				  (float) (n >> 1));
+	    }
+	    n = status[ST_TICKS];
+	    if (maxticks > n - 25 && n >= 0) {
+		maxticks = n - 25;
+	    }
+	    if (maxticks <= 0) {
+		maxticks = 1;
+	    }
+	}
+
+	return ({ limits, owner, maxstack, maxticks, n });
+    }
+}
+
+/*
+ * NAME:	update_ticks()
+ * DESCRIPTION:	update ticks for the current owner
+ */
+update_ticks(int ticks)
+{
+    if (previous_object() == rsrcd) {
+	resources["tick usage"][RSRC_USAGE] += (float) ticks;
     }
 }
 
@@ -211,7 +283,7 @@ reboot(int downtime)
 	for (i = sizeof(rsrcs); --i >= 0; ) {
 	    rsrc = rsrcs[i];
 	    if (typeof(rsrc[RSRC_DECAYTIME]) == T_INT &&
-		(int) rsrc[RSRC_DECAYTIME] > 0) {
+		(int) rsrc[RSRC_DECAYTIME] != 0) {
 		rsrc[RSRC_DECAYTIME] += downtime;
 	    }
 	}

@@ -1,0 +1,13 @@
+NAME
+	add_event - create a new type of event
+
+SYNOPSIS
+	void add_event(string name)
+
+
+DESCRIPTION
+	Add a new event type.  If the event type already existed, nothing
+	is changed.
+
+SEE ALSO
+	efun/event, efun/query_events, efun/remove_event

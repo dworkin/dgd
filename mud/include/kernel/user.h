@@ -15,4 +15,4 @@
 # define MODE_ECHO		2	/* telnet */
 # define MODE_RAW		3	/* binary */
 
-# define DEFAULT_TIMEOUT	120
+# define DEFAULT_TIMEOUT	120	/* two minutes */

@@ -557,8 +557,8 @@ register dataspace *data;
  */
 void d_varmap(ctrl, nvar, vmap)
 register control *ctrl;
-register unsigned int nvar;
-register unsigned short *vmap;
+unsigned int nvar;
+unsigned short *vmap;
 {
     ctrl->vmapsize = nvar;
     ctrl->vmap = vmap;

@@ -116,7 +116,8 @@ object *obj;
  * NAME:	ed->handler()
  * DESCRIPTION:	fake error handler
  */
-static void ed_handler()
+static void ed_handler(depth)
+Int depth;
 {
     /*
      * This function just exists to prevent the higher level error handler

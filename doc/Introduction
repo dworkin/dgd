@@ -85,8 +85,9 @@ driver, mostly to translate pathnames.
 
     void runtime_error(string error, int caught, int ticks)
 
-	Called when a runtime error occurs.  <caught> specifies whether or
-	not the error occurred in code run with catch().  runtime_error()
+	Called when a runtime error occurs.  <caught> is 0 if the error
+	is not caught, or 1 + an index in the return value of call_trace(),
+	indicating the frame in which the error is caught.  runtime_error()
 	is called with rlimits (-1; -1) so it will not run out of stack or
 	ticks.  <ticks> specifies the amount of ticks left at the moment
 	the error occurred.

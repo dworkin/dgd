@@ -2,18 +2,22 @@
 # include <kernel/objreg.h>
 # include <kernel/rsrc.h>
 # include <kernel/access.h>
-# include <kernel/timer.h>
 # include <kernel/user.h>
+# ifdef SYS_NETWORKING
+#  include <kernel/net.h>
+# endif
 # include <status.h>
 # include <trace.h>
 
 object rsrcd;		/* resource manager object */
 object accessd;		/* access manager object */
-object timerd;		/* time manager object */
 object userd;		/* user manager object */
 object initd;		/* init manager object */
+object objectd;		/* object manager object */
+object errord;		/* error manager object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
+string compiled;	/* object currently being compiled */
 string error;		/* last error */
 
 /*
@@ -118,7 +122,7 @@ private int dir_size(string file)
  */
 varargs int file_size(string file, int dir)
 {
-    if (KERNEL()) {
+    if (KERNEL() || SYSTEM()) {
 	mixed **info;
 	string *files, name;
 	int i, sz;
@@ -151,16 +155,79 @@ varargs int file_size(string file, int dir)
 }
 
 /*
- * NAME:	init_filequota()
- * DESCRIPTION:	set initial file quota for user
+ * NAME:	set_objectd()
+ * DESCRIPTION:	set the object manager
  */
-init_filequota(string owner)
+set_objectd(object obj)
 {
-    if (previous_program() == DRIVER || SYSTEM()) {
-	rsrcd->rsrc_incr(owner, "filequota", 0,
-			 file_size(USR + "/" + owner, 1) -
-			     rsrcd->rsrc_get(owner, "filequota")[RSRC_USAGE],
-			 1);
+    if (SYSTEM()) {
+	objectd = obj;
+    }
+}
+
+/*
+ * NAME:	set_errord()
+ * DESCRIPTION:	set the error manager
+ */
+set_errord(object obj)
+{
+    if (SYSTEM()) {
+	errord = obj;
+    }
+}
+
+/*
+ * NAME:	compiling()
+ * DESCRIPTION:	object being compiled
+ */
+compiling(string path)
+{
+    if (previous_program() == AUTO) {
+	compiled = path;
+    }
+}
+
+/*
+ * NAME:	compile()
+ * DESCRIPTION:	object compiled
+ */
+compile(object obj, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->compile(obj, owner);
+    }
+}
+
+/*
+ * NAME:	compile_lib()
+ * DESCRIPTION:	inherited object compiled
+ */
+compile_lib(string path, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->compile_lib(path, owner);
+    }
+}
+
+/*
+ * NAME:	clone()
+ * DESCRIPTION:	object cloned
+ */
+clone(object obj, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->clone(obj, owner);
+    }
+}
+
+/*
+ * NAME:	destruct()
+ * DESCRIPTION:	object destructed
+ */
+destruct(object obj, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->destruct(obj, owner);
     }
 }
 
@@ -175,44 +242,80 @@ string query_owner()
 
 
 /*
+ * NAME:	load()
+ * DESCRIPTION:	find or compile object
+ */
+private object load(string path)
+{
+    object obj;
+
+    obj = find_object(path);
+    return (obj) ? obj : compile_object(path);
+}
+
+/*
  * NAME:	initialize()
  * DESCRIPTION:	called once at system startup
  */
 static initialize()
 {
-    compile_object(AUTO);
+    object port, telnet, binary;
 
-    call_other(compile_object(OBJREGD), "???");
-    call_other(rsrcd = compile_object(RSRCD), "???");
+    send_message(ctime(time())[4 .. 18] + " ** Initializing...\n");
 
+    /* load initial objects */
+    load(AUTO);
+    call_other(load(OBJREGD), "???");
+    call_other(rsrcd = load(RSRCD), "???");
+
+    /* initialize some resources */
     rsrcd->set_rsrc("stack",	        50, 0, 0);
-    rsrcd->set_rsrc("ticks",	    500000, 0, 0);
+    rsrcd->set_rsrc("ticks",	    250000, 0, 0);
     rsrcd->set_rsrc("create stack",      5, 0, 0);
     rsrcd->set_rsrc("create ticks",  10000, 0, 0);
 
-    compile_object(RSRCOBJ);
+    load(RSRCOBJ);
+
+    /* create initial resource owners */
     rsrcd->add_owner("System");
-    init_filequota("System");
-    rsrcd->rsrc_incr("System", "filequota", 0, dir_size("/kernel"));
-
-    call_other(accessd = compile_object(ACCESSD), "???");
-    call_other(timerd = compile_object(TIMERD), "???");
-    call_other(userd = compile_object(USERD), "???");
-    call_other(compile_object(DEFAULT_WIZTOOL), "???");
-
-    rsrcd->rsrc_incr("System", "objects", 0, 9);
-
+    rsrcd->rsrc_incr("System", "filequota", 0,
+		     dir_size("/kernel") + file_size(USR + "/System", TRUE));
     rsrcd->add_owner(0);	/* Ecru */
-    rsrcd->rsrc_incr(0, "filequota", 0, dir_size("/include"));
-
+    rsrcd->rsrc_incr(0, "filequota", 0,
+		     file_size("/doc", TRUE) + file_size("/include", TRUE));
     rsrcd->add_owner("admin");
-    init_filequota("admin");
+    rsrcd->rsrc_incr("admin", "filequota", 0, file_size(USR + "/admin", TRUE));
 
+    /* load remainder of manager objects */
+    call_other(accessd = load(ACCESSD), "???");
+    call_other(userd = load(USERD), "???");
+    call_other(load(DEFAULT_WIZTOOL), "???");
+# ifdef SYS_NETWORKING
+    call_other(port = load(PORT_OBJECT), "???");
+    telnet = clone_object(port);
+    binary = clone_object(port);
+# endif
     catch {
-	initd = compile_object(USR + "/System/initialize");
-	rsrcd->rsrc_incr("System", "objects", 0, 1);
-	call_other(initd, "???");
+	initd = load(USR + "/System/initd");
     }
+
+    /* correct object count */
+    rsrcd->rsrc_incr("System", "objects", 0,
+		     status()[ST_NOBJECTS] -
+			     rsrcd->rsrc_get("System", "objects")[RSRC_USAGE],
+		     1);
+
+    /* system-specific initialization */
+    if (initd) {
+	call_other(initd, "???");
+# ifdef SYS_NETWORKING
+    } else {
+	telnet->listen("telnet", TELNET_PORT);
+	binary->listen("tcp", BINARY_PORT);
+# endif
+    }
+
+    send_message(ctime(time())[4 .. 18] + " ** Initialization complete.\n");
 }
 
 /*
@@ -221,15 +324,23 @@ static initialize()
  */
 prepare_reboot()
 {
-    if (previous_program() == AUTO) {
+    if (KERNEL()) {
 	rsrcd->prepare_reboot();
-	timerd->prepare_reboot();
 	userd->prepare_reboot();
 	if (initd) {
-	    catch {
-		initd->prepare_reboot();
-	    }
+	    initd->prepare_reboot();
 	}
+    }
+}
+
+/*
+ * NAME:	halt()
+ * DESCRIPTION:	show shutdown message
+ */
+halt()
+{
+    if (previous_program() == AUTO) {
+	send_message(ctime(time())[4 .. 18] + " ** System halted.\n");
     }
 }
 
@@ -240,13 +351,12 @@ prepare_reboot()
 static restored()
 {
     rsrcd->reboot();
-    timerd->reboot();
     userd->reboot();
     if (initd) {
-	catch {
-	    initd->reboot();
-	}
+	initd->reboot();
     }
+
+    send_message(ctime(time())[4 .. 18] + " ** State restored.\n");
 }
 
 /*
@@ -266,6 +376,7 @@ static string path_read(string path)
 	return ((creator == "System" ||
 		 accessd->access(oname, path, READ_ACCESS)) ? path : 0);
     }
+    return 0;
 }
 
 /*
@@ -286,11 +397,11 @@ static string path_write(string path)
 	    sscanf(path, "/include/kernel/%*s") == 0 &&
 	    (creator == "System" || accessd->access(oname, path, WRITE_ACCESS)))
 	{
-	    file = path;
-	    size = file_size(path);
+	    size = file_size(file = path);
 	    return path;
 	}
     }
+    return 0;
 }
 
 /*
@@ -299,15 +410,14 @@ static string path_write(string path)
  */
 mixed *query_wfile()
 {
-    if (file == 0) {
-	return 0;
-    } else {
-	mixed *info;
+    mixed *info;
 
+    if (file) {
 	info = ({ file, size });
 	file = 0;
 	return info;
     }
+    return 0;
 }
 
 /*
@@ -319,7 +429,7 @@ static object call_object(string path)
     string oname;
 
     oname = object_name(previous_object());
-    path = normalize_path(path, oname, creator(oname));
+    path = normalize_path(path, oname + "/..", creator(oname));
     if (sscanf(path, "%*s/lib/") != 0) {
 	error("Illegal use of call_other");
     }
@@ -343,20 +453,24 @@ static object inherit_program(string from, string path)
     }
 
     obj = find_object(path);
-    if (obj == 0) {
+    if (!obj) {
 	int *rsrc;
+	string saved;
 
 	creator = creator(path);
 	rsrc = rsrcd->rsrc_get(creator, "objects");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("Too many objects");
 	}
-	catch {
-	    rlimits (-1; -1) {
-		obj = compile_object(path);
-		rsrcd->rsrc_incr(creator, "objects", 0, 1, 1);
-	    }
-	} : error(error);
+
+	saved = compiled;
+	compiled = path;
+	obj = compile_object(path);
+	compiled = saved;
+	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
+	if (objectd) {
+	    objectd->compile_lib(path, creator);
+	}
     }
     return obj;
 }
@@ -374,7 +488,11 @@ static string path_include(string from, string path)
 	path[0] != '~') {
 	return (path[0] == '/') ? path : from + "/../" + path;
     }
-    path = normalize_path(path, from, creator);
+    if (path == "SPECIAL" && from == "/include/std.h" && objectd) {
+	path = objectd->path_special(compiled);
+    } else {
+	path = normalize_path(path, from, creator);
+    }
     return (accessd->access(from, path, READ_ACCESS)) ? path : 0;
 }
 
@@ -384,8 +502,13 @@ static string path_include(string from, string path)
  */
 static remove_program(string path, int timestamp, int index)
 {
+    string creator;
+
     if (path != RSRCOBJ) {
-	rsrcd->rsrc_incr(creator(path), "objects", 0, -1);
+	rsrcd->rsrc_incr(creator=creator(path), "objects", 0, -1);
+    }
+    if (objectd) {
+	objectd->remove_program(path, timestamp, index, creator);
     }
 }
 
@@ -424,7 +547,7 @@ static interrupt()
 {
     shutdown();
 # ifdef SYS_CONTINUOUS
-    prepare_statedump();
+    prepare_reboot();
     dump_state();
 # endif
 }
@@ -451,26 +574,22 @@ static runtime_error(string str, int caught, int ticks)
     int i, sz, spent, len;
     object obj;
 
-    if (caught) {
-	if (ticks < 0) {
-	    error = str;
-	    return;
-	}
-	str += " [caught]";
+    if (caught == 1) {
+	/* top-level catch: ignore */
+	caught = 0;
+    } else if (caught != 0 && ticks < 0) {
+	error = str;
+	return;
     }
 
     trace = call_trace();
     i = sz = sizeof(trace) - 1;
 
     if (ticks >= 0) {
-	while (--i >= 0) {
+	while (--i >= caught) {
 	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited" &&
 		trace[i][TRACE_PROGNAME] == AUTO) {
-		what = trace[i][TRACE_FIRSTARG];
-		spent = what[2] - ticks;
-		rsrcd->rsrc_incr(what[0], "tick usage", 0, spent, 1);
-		what[2] = ticks;
-		ticks = what[1] - spent;
+		ticks = rsrcd->update_ticks(ticks);
 		if (ticks < 0) {
 		    break;
 		}
@@ -478,44 +597,52 @@ static runtime_error(string str, int caught, int ticks)
 	}
     }
 
-    str = ctime(time())[4 .. 18] + " ** " + str + "\n";
-
-    for (i = 0; i < sz; i++) {
-	progname = trace[i][TRACE_PROGNAME];
-	len      = trace[i][TRACE_LINE];
-	if (len == 0) {
-	    line = "    ";
-	} else {
-	    line = "    " + len;
-	    line = line[strlen(line) - 4 ..];
+    if (errord) {
+	errord->runtime_error(str, caught, trace);
+    } else {
+	if (caught != 0) {
+	    str += " [caught]";
 	}
+	str = ctime(time())[4 .. 18] + " ** " + str + "\n";
 
-	function = trace[i][TRACE_FUNCTION];
-	len = strlen(function);
-	if (len > 3 && progname == AUTO &&
-	    (function[.. 2] == "_F_" || function[.. 2] == "_Q_")) {
-	    continue;
-	}
-	if (len < 17) {
-	    function += "                 "[len ..];
-	}
-
-	objname  = trace[i][TRACE_OBJNAME];
-	if (progname != objname) {
-	    len = strlen(progname);
-	    if (len < strlen(objname) && progname == objname[.. len - 1] &&
-		objname[len] == '#') {
-		objname = objname[len ..];
+	for (i = 0; i < sz; i++) {
+	    progname = trace[i][TRACE_PROGNAME];
+	    len      = trace[i][TRACE_LINE];
+	    if (len == 0) {
+		line = "    ";
+	    } else {
+		line = "    " + len;
+		line = line[strlen(line) - 4 ..];
 	    }
-	    str += line + " " + function + " " + progname + " (" + objname +
-		   ")\n";
-	} else {
-	    str += line + " " + function + " " + progname + "\n";
+
+	    function = trace[i][TRACE_FUNCTION];
+	    len = strlen(function);
+	    if (len > 3 && progname == AUTO &&
+		(function[.. 2] == "_F_" || function[.. 2] == "_Q_")) {
+		continue;
+	    }
+	    if (len < 17) {
+		function += "                 "[len ..];
+	    }
+
+	    objname  = trace[i][TRACE_OBJNAME];
+	    if (progname != objname) {
+		len = strlen(progname);
+		if (len < strlen(objname) && progname == objname[.. len - 1] &&
+		    objname[len] == '#') {
+		    objname = objname[len ..];
+		}
+		str += line + " " + function + " " + progname + " (" + objname +
+		       ")\n";
+	    } else {
+		str += line + " " + function + " " + progname + "\n";
+	    }
 	}
-    }
-    send_message(str);
-    if (!caught && this_user() && (obj=this_user()->query_user())) {
-	obj->message(str);
+
+	send_message(str);
+	if (caught == 0 && this_user() && (obj=this_user()->query_user())) {
+	    obj->message(str);
+	}
     }
 }
 
@@ -527,9 +654,13 @@ static compile_error(string file, int line, string err)
 {
     object obj;
 
-    send_message(file += ", " + line + ": " + err + "\n");
-    if (this_user() && (obj=this_user()->query_user())) {
-	obj->message(file);
+    if (errord) {
+	errord->compile_error(file, line, err);
+    } else {
+	send_message(file += ", " + line + ": " + err + "\n");
+	if (this_user() && (obj=this_user()->query_user())) {
+	    obj->message(file);
+	}
     }
 }
 
@@ -553,6 +684,13 @@ static int runtime_rlimits(object obj, int depth, int ticks)
 	    depth == 0 && ticks < 0);
 }
 
-# ifdef DEBUG
-trace(string s) { send_message("TRACE: " + s + "\n"); }
-# endif
+/*
+ * NAME:	message()
+ * DESCRIPTION:	show message
+ */
+message(string str)
+{
+    if (SYSTEM() || KERNEL()) {
+	send_message(ctime(time())[4 .. 18] + " ** " + str);
+    }
+}

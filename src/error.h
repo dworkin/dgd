@@ -1,6 +1,6 @@
 # define ec_push(cleanup)	setjmp(*_ec_push_(cleanup))
 
-typedef void  (*ec_ftn)		P((void));
+typedef void  (*ec_ftn)		P((Int));
 
 extern jmp_buf *_ec_push_	P((ec_ftn));
 extern void	ec_pop		P((void));

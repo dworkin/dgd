@@ -176,13 +176,13 @@ extern void		i_set_sp	P((value*));
 extern object	       *i_prev_object	P((int));
 extern char	       *i_prev_program	P((int));
 extern void		i_typecheck	P((char*, char*, char*, int, int));
-extern void		i_catcherr	P((void));
+extern void		i_catcherr	P((Int));
 extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, unsigned int, int,
 					   int));
 extern array	       *i_call_trace	P((void));
 extern bool		i_call_critical	P((char*, int, int));
-extern void		i_runtime_error	P((int));
+extern void		i_runtime_error	P((Int));
 extern void		i_clear		P((void));
 
 extern frame *cframe;

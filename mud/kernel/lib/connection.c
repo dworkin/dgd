@@ -4,7 +4,6 @@
 private object userd;		/* user daemon */
 private object user;		/* user object */
 private string conntype;	/* connection type */
-private int timeout;		/* timeout callout handle */
 
 /*
  * NAME:	create()
@@ -22,16 +21,18 @@ static create(string type)
  */
 static open()
 {
+    int timeout;
     string banner;
 
-    timeout = call_other(userd, "query_" + conntype + "_timeout",
-			 query_ip_number(this_object()));
+    timeout = call_other(userd, "query_" + conntype + "_timeout");
     if (timeout < 0) {
 	/* disconnect immediately */
 	destruct_object(this_object());
 	return;
     }
-    timeout = call_out("timeout", timeout);
+    if (timeout != 0) {
+	call_out("timeout", timeout);
+    }
 
     banner = call_other(userd, "query_" + conntype + "_banner");
     if (banner) {
@@ -47,7 +48,6 @@ static close(int dest)
 {
     rlimits (-1; -1) {
 	if (user) {
-	    call_other(userd, conntype + "_disconnect", user);
 	    catch {
 		user->logout(dest);
 	    }
@@ -66,17 +66,6 @@ reboot()
 {
     if (previous_object() == userd) {
 	close(0);
-    }
-}
-
-/*
- * NAME:	set_name()
- * DESCRIPTION:	set the name of this connection
- */
-set_name(string name)
-{
-    if (previous_object() == user) {
-	userd->set_name(name, this_object());
     }
 }
 
@@ -124,9 +113,20 @@ static int receive_message(string str)
  * NAME:	message()
  * DESCRIPTION:	send a message across the connection
  */
-message(string str)
+int message(string str)
 {
     if (previous_object() == user) {
-	send_message(str);
+	return (send_message(str) == strlen(str));
+    }
+}
+
+/*
+ * NAME:	message_done()
+ * DESCRIPTION:	called when output is completed
+ */
+static void message_done()
+{
+    if (user) {
+	user->message_done();
     }
 }

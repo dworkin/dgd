@@ -1,0 +1,10 @@
+NAME
+	create - initialize object
+
+SYNOPSIS
+	void create(int clone)
+
+
+DESCRIPTION
+	This function is called when an object is initialized.  The argument
+	is 1 if the object is a clone, or 0 otherwise.

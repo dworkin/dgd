@@ -15,7 +15,7 @@ static create(int clone)
 {
     if (clone) {
 	::create("binary");
-	linemode = 1;
+	linemode = TRUE;
 	buffer = "";
     }
 }
@@ -65,10 +65,10 @@ static receive_message(string str)
  * NAME:	message()
  * DESCRIPTION:	send a message to the other side
  */
-message(string str)
+int message(string str)
 {
     if (linemode) {
 	str = implode(explode("\n" + str + "\n", "\n"), "\r\n");
     }
-    ::message(str);
+    return ::message(str);
 }

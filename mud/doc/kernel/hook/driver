@@ -1,0 +1,83 @@
+string creator(string file)
+
+    Get the creator of a file.
+
+
+string normalize_path(string file, string directory, string owner)
+
+    Normalize a path.
+
+
+int file_size(string file, int dirflag)	[System only]
+
+    Check size of a file.  If dirflag is TRUE, recursively check size
+    of directory.
+
+
+void set_objectd(object objectd)	[System only]
+
+    Install an object manager, in which the following functions will be called
+    afterwards:
+
+    * void compile(object obj, string owner)
+
+	The given object has just been compiled.  Called just before the object
+	is initialized with create(0).
+
+    * void compile_lib(string path, string owner)
+
+	The given inheritable object has just been compiled.
+
+    * void clone(object obj, string owner)
+
+	The given object has just been cloned.  Called just before the object
+	is initialized with create(1).
+
+    * void destruct(object obj, string owner)
+
+	The given object is about to be destructed.
+
+    * void remove_program(string path, int timestamp, int index)
+
+	The last reference to the given program has been removed.
+
+    * string path_special(string compiled)
+
+	If the standard include file contains the line `# include "SPECIAL"',
+	this function is called so a file can be included that depends on
+	what file is currently being compiled.
+
+
+void set_errord(object errord)	[System only]
+
+    Install an error manager, in which the following functions can be called
+    afterwards:
+
+    * void runtime_error(string error, int caught, mixed **trace)
+
+	A runtime error has occurred.
+
+    * void compile_error(string file, int line, string error)
+
+	A compile-time error has occurred.
+
+
+string query_error()	[System only]
+
+    Return the last error in caught code run with infinite ticks.  This can
+    be used for code like:
+
+	catch {
+	    rlimits (0; -1) {
+		... do something ...
+	    }
+	} : error(DRIVER->query_error());
+
+    Code run with infinite ticks should ALWAYS be run inside a catch.  This
+    construct allows errors to be passed on to where they can be properly
+    processed.
+
+
+void message(string str)	[System only]
+
+    Show the given string with send_message().

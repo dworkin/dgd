@@ -1,0 +1,14 @@
+NAME
+	event - broadcast event to subscribers
+
+SYNOPSIS
+	varargs void event(string name, mixed args...)
+
+
+DESCRIPTION
+	The function "evt_" + name is called in all objects subscribed to
+	this event with the given arguments.  Each call is done using the
+	tick and stack resources of the subscribed object.
+
+SEE ALSO
+	efun/add_event, efun/query_events, efun/remove_event

@@ -1,0 +1,25 @@
+telnet_port	= 6047;			/* telnet port number */
+binary_port	= 6048;			/* binary port number */
+directory	= "/home/dworkin/dgd/mud";/* base directory (MUST be absolute) */
+users		= 40;			/* max # of users */
+editors		= 40;			/* max # of editor sessions */
+ed_tmpfile	= "../tmp/ed";		/* proto editor tmpfile */
+swap_file	= "../tmp/swap";	/* swap file */
+swap_size	= 1024;			/* # sectors in swap file */
+cache_size	= 50;			/* # sectors in swap cache */
+sector_size	= 512;			/* swap sector size */
+swap_fragment	= 32;			/* fragment to swap out */
+static_chunk	= 64512;		/* static memory chunk */
+dynamic_chunk	= 261120;		/* dynamic memory chunk */
+dump_file	= "../dump";		/* dump file */
+
+typechecking	= 1;			/* global typechecking */
+include_file	= "/include/std.h";	/* standard include file */
+include_dirs	= ({ "/include", "~/include" }); /* directories to search */
+auto_object	= "/kernel/lib/auto";	/* auto inherited object */
+driver_object	= "/kernel/sys/driver";	/* driver object */
+create		= "_F_create";		/* name of create function */
+
+array_size	= 1000;			/* max array size */
+objects		= 500;			/* max # of objects */
+call_outs	= 100;			/* max # of call_outs */

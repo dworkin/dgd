@@ -179,14 +179,15 @@ static rsrc_set_limit(string rowner, string name, int max)
 
 /*
  * NAME:	rsrc_incr()
- * DESCRIPTION:	increment or decrement a resource, returning 1 if succeeded,
- *		0 if failed
+ * DESCRIPTION:	increment or decrement a resource, returning TRUE if succeeded,
+ *		FALSE if failed
  */
 static varargs int rsrc_incr(string rowner, string name, mixed index, int incr,
 			     int force)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	this_user()->message("Permission denied.\n");
+	return FALSE;
     } else {
 	return ::rsrc_incr(rowner, name, index, incr, force);
     }
@@ -201,7 +202,7 @@ static object compile_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	this_user()->message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::compile_object(path);
@@ -214,8 +215,8 @@ static object compile_object(string path)
 static object clone_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
-    if (!access(owner, path, READ_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+    if (sscanf(path, "/kernel/%*s") != 0 || !access(owner, path, READ_ACCESS)) {
+	this_user()->message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::clone_object(path);
@@ -237,7 +238,7 @@ static int destruct_object(mixed obj)
 	} else {
 	    obj = find_object(path);
 	    if (!obj) {
-		return 0;
+		return FALSE;
 	    }
 	    oowner = obj->query_owner();
 	}
@@ -249,8 +250,10 @@ static int destruct_object(mixed obj)
 	break;
     }
 
-    if (path && owner != oowner && !access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+    if (path && owner != oowner &&
+	((sscanf(path, "/kernel/%*s") != 0 && sscanf(path, "%*s/lib/") == 0) ||
+	 !access(owner, path, WRITE_ACCESS))) {
+	this_user()->message(path + ": Permission denied.\n");
 	return -1;
     }
     return ::destruct_object(obj);
@@ -772,7 +775,7 @@ static cmd_code(object user, string cmd, string str)
 	err = catch(obj = compile_object(str),
 		    result = obj->exec(user, parsed[1 ..]...));
 	if (err) {
-	    user->message(err + ".\n");
+	    user->message("Error: " + err + ".\n");
 	} else {
 	    store(user, result);
 	}
@@ -842,7 +845,7 @@ static cmd_compile(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, 1, 1);		/* must exist, full filenames */
+    files = expand(str, 1, TRUE);	/* must exist, full filenames */
     names = files[0];
     num = sizeof(names);
 
@@ -867,13 +870,14 @@ static cmd_compile(object user, string cmd, string str)
 static cmd_clone(object user, string cmd, string str)
 {
     mixed *files;
+    object obj;
 
     if (!str) {
 	user->message("Usage: " + cmd + " <obj>\n");
 	return;
     }
 
-    files = expand(str, -1, 1);		/* may not exist, full filenames */
+    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
     if (files[4] != 1) {
 	user->message("Usage: " + cmd + " <obj>\n");
 	return;
@@ -886,7 +890,10 @@ static cmd_clone(object user, string cmd, string str)
 	} else if (sscanf(str, "%*s/obj/") == 0) {
 	    user->message("Not clonable: " + str + "\n");
 	} else {
-	    store(user, clone_object(str));
+	    obj = clone_object(str);
+	    if (obj) {
+		store(user, obj);
+	    }
 	}
     }
 }
@@ -944,7 +951,7 @@ static cmd_cd(object user, string cmd, string str)
 	str = "~";
     }
 
-    files = expand(str, -1, 1);		/* may not exist, full filenames */
+    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
     if (files[4] == 1) {
 	str = files[0][0];
 	if (!access(owner, str + "/.", READ_ACCESS)) {
@@ -1003,7 +1010,7 @@ static cmd_ls(object user, string cmd, string str)
 	}
     }
 
-    files = expand(str, 1, 0);	/* must exist, short file names */
+    files = expand(str, 1, FALSE);	/* must exist, short file names */
 
     if (files[4] == 1 && sizeof(files[0]) == 1 && files[1][0] == -2) {
 	str = files[0][0];
@@ -1104,7 +1111,7 @@ static cmd_cp(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, 0, 1);	/* last may not exist, full filenames */
+    files = expand(str, 0, TRUE);	/* last may not exist, full filenames */
     names = files[0];
     sizes = files[1];
     num = sizeof(names) - 1;
@@ -1167,7 +1174,7 @@ static cmd_mv(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, 0, 1);	/* last may not exist, full filenames */
+    files = expand(str, 0, TRUE);	/* last may not exist, full filenames */
     names = files[0];
     sizes = files[1];
     num = sizeof(names) - 1;
@@ -1212,7 +1219,7 @@ static cmd_rm(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, 1, 1);		/* must exist, full filenames */
+    files = expand(str, 1, TRUE);		/* must exist, full filenames */
     names = files[0];
     sizes = files[1];
     num = sizeof(names);
@@ -1242,7 +1249,7 @@ static cmd_mkdir(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, -1, 1);		/* may not exist, full filenames */
+    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
     names = files[0];
     sizes = files[1];
     num = sizeof(names);
@@ -1272,7 +1279,7 @@ static cmd_rmdir(object user, string cmd, string str)
 	return;
     }
 
-    files = expand(str, 1, 1);		/* must exist, full filenames */
+    files = expand(str, 1, TRUE);	/* must exist, full filenames */
     names = files[0];
     sizes = files[1];
     num = sizeof(names);
@@ -1296,7 +1303,7 @@ static cmd_ed(object user, string cmd, string str)
     mixed *files;
 
     if (str) {
-	files = expand(str, -1, 0);
+	files = expand(str, -1, FALSE);
 	if (files[4] != 1) {
 	    user->message("Usage: " + cmd + " [<file>]\n");
 	    return;
@@ -1373,7 +1380,7 @@ static cmd_access(object user, string cmd, string str)
 	    break;
 	}
     } else {
-	if (sscanf(str, "%*s ") != 0 || (files=expand(str, 0, 1))[4] != 1) {
+	if (sscanf(str, "%*s ") != 0 || (files=expand(str, 0, TRUE))[4] != 1) {
 	    user->message("Usage: " + cmd + " <user> | global | <directory>\n");
 	    return;
 	}
@@ -1408,7 +1415,7 @@ static cmd_grant(object user, string cmd, string str)
 	(sscanf(str, "%s %s %s", who, dir, type) != 3 &&
 	 sscanf(str, "%s %s", who, dir) != 2) ||
 	(who == "global" && type) ||
-	((dir == "access") ? type : (files=expand(dir, 0, 1))[4] != 1)) {
+	((dir == "access") ? type : (files=expand(dir, 0, TRUE))[4] != 1)) {
 	user->message(
 	    "Usage: " + cmd + " <user> access\n" +
 	    "       " + cmd + " <user> <directory> [read | write | full]\n" +
@@ -1449,7 +1456,7 @@ static cmd_grant(object user, string cmd, string str)
 	} else if (sizeof(query_global_access() & ({ str })) != 0) {
 	    user->message("That global access already exists.\n");
 	} else {
-	    set_global_access(str, 1);
+	    set_global_access(str, TRUE);
 	}
     } else if (dir == "access") {
 	/*
@@ -1457,9 +1464,11 @@ static cmd_grant(object user, string cmd, string str)
 	 */
 	if (sizeof(query_users() & ({ who })) != 0) {
 	    user->message(who + " already has file access.\n");
+	} else if (!access(owner, "/", FULL_ACCESS)) {
+	    user->message("Insufficient access granting privileges.\n");
 	} else {
-	    add_user(who);
-	    add_owner(who);
+	    ::add_user(who);
+	    ::add_owner(who);
 	    ::make_dir(USR + "/" + who);
 	}
     } else {
@@ -1487,7 +1496,7 @@ static cmd_ungrant(object user, string cmd, string str)
 
     if (!str || sscanf(str, "%s %s", who, dir) != 2 ||
 	(dir != "access" &&
-	 (sscanf(dir, "%*s ") != 0 || (files=expand(dir, 0, 1))[4] != 1))) {
+	 (sscanf(dir, "%*s ") != 0 || (files=expand(dir, 0, TRUE))[4] != 1))) {
 	user->message("Usage: " + cmd + " <user> access\n" +
 		      "       " + cmd + " <user> <directory>\n" +
 		      "       " + cmd + " global <directory>\n");
@@ -1506,7 +1515,7 @@ static cmd_ungrant(object user, string cmd, string str)
 	} else if (sizeof(query_global_access() & ({ str })) == 0) {
 	    user->message("That global access does not exist.\n");
 	} else {
-	    set_global_access(str, 0);
+	    set_global_access(str, FALSE);
 	}
     } else if (dir == "access") {
 	/*
@@ -1734,7 +1743,7 @@ static cmd_people(object user, string cmd, string str)
 	usr = users[i];
 	name = usr->query_name();
 	str += (query_ip_number(usr->query_conn()) + SPACE16)[.. 15] +
-	       ((sizeof(query_owners() & ({ name })) == 0) ? "  " : " *") +
+	       ((sizeof(query_owners() & ({ name })) == 0) ? " " : "*") +
 	       name + "\n";
     }
     user->message(str);
@@ -1860,14 +1869,24 @@ static cmd_status(object user, string cmd, string str)
 	} else if (!status) {
 	    str = "No such object.\n";
 	} else {
-	    str =
-"Object:      <" + ((typeof(obj) == T_OBJECT) ? object_name(obj) : obj) + ">" +
+	    if (typeof(obj) == T_OBJECT) {
+		obj = object_name(obj);
+	    }
+	    str = driver->creator(obj);
+	    if (!str) {
+		str = "Ecru";
+	    }
+	    str = "Object:      <" + obj + ">" +
 "\nCompiled at: " + ctime(status[O_COMPILETIME])[4 ..] +
   "    Program size: " + (int) status[O_PROGSIZE] +
-"\nMaster ID:   " + ((int) status[O_INDEX] + SPACE16)[.. 15] +
-  "        Variables:    " + (int) status[O_DATASIZE] +
-"\nCallouts:    " + (sizeof(status[O_CALLOUTS]) + SPACE16)[.. 15] +
-  "        Sectors:      " + (int) status[O_NSECTORS] + "\n";
+"\nCreator:     " + (str + SPACE16)[.. 16] +
+  "       Variables:    " + (int) status[O_DATASIZE] +
+"\nOwner:       " + (((obj=find_object(obj)) ?
+		     (obj=obj->query_owner()) ? obj : "Ecru" :
+		     str) + SPACE16)[.. 16] +
+  "       Callouts:     " + sizeof(status[O_CALLOUTS]) +
+"\nMaster ID:   " + ((int) status[O_INDEX] + SPACE16)[.. 16] +
+  "       Sectors:      " + (int) status[O_NSECTORS] + "\n";
 	}
     }
 

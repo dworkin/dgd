@@ -1,11 +1,18 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
+# ifdef SYS_NETWORKING
+#  include <kernel/net.h>
+#  define PORT	PORT_OBJECT
+# else
+#  define PORT	DRIVER
+# endif
 # include <status.h>
 
-mapping telnet_users, binary_users;		/* user mappings */
-object telnet_manager, binary_manager;		/* user object managers */
-mapping names;					/* name : connection object */
-object *connections;				/* saved connections */
+
+object *users;				/* user mappings */
+object telnet_manager, binary_manager;	/* user object managers */
+mapping names;				/* name : connection object */
+object *connections;			/* saved connections */
 
 /*
  * NAME:	create()
@@ -13,14 +20,13 @@ object *connections;				/* saved connections */
  */
 static create()
 {
-    /* compile essential objects */
-    compile_object(TELNET_CONN);
-    compile_object(BINARY_CONN);
-    compile_object(DEFAULT_USER);
+    /* load essential objects */
+    if (!find_object(TELNET_CONN)) { compile_object(TELNET_CONN); }
+    if (!find_object(BINARY_CONN)) { compile_object(BINARY_CONN); }
+    if (!find_object(DEFAULT_USER)) { compile_object(DEFAULT_USER); }
 
     /* initialize user arrays */
-    telnet_users = ([ ]);
-    binary_users = ([ ]);
+    users = ({ });
     names = ([ ]);
 }
 
@@ -30,7 +36,7 @@ static create()
  */
 object telnet_connection()
 {
-    if (previous_program() == DRIVER) {
+    if (previous_program() == PORT) {
 	return clone_object(TELNET_CONN);
     }
 }
@@ -41,7 +47,7 @@ object telnet_connection()
  */
 object binary_connection()
 {
-    if (previous_program() == DRIVER) {
+    if (previous_program() == PORT) {
 	return clone_object(BINARY_CONN);
     }
 }
@@ -83,21 +89,15 @@ object telnet_user(string str)
 
 	if (telnet_manager) {
 	    user = telnet_manager->select(str);
-	    if (!user) {
-		return 0;
+	    if (function_object("query_conn", user) != LIB_USER) {
+		error("Invalid user object");
 	    }
 	} else {
 	    user = names[str];
-	    if (user) {
-		user = user->query_user();
-	    } else {
+	    if (!user) {
 		user = clone_object(DEFAULT_USER);
 	    }
 	}
-	if (function_object("query_conn", user) != LIB_USER) {
-	    error("Invalid user object");
-	}
-	telnet_users[user]++;
 	return user;
     }
 }
@@ -114,33 +114,16 @@ object binary_user(string str)
 
 	if (binary_manager && str != "admin") {
 	    user = binary_manager->select(str);
-	    if (!user) {
-		return 0;
+	    if (function_object("query_conn", user) != LIB_USER) {
+		error("Invalid user object");
 	    }
 	} else {
 	    user = names[str];
-	    if (user) {
-		user = user->query_user();
-	    } else {
+	    if (!user) {
 		user = clone_object(DEFAULT_USER);
 	    }
 	}
-	if (function_object("query_conn", user) != LIB_USER) {
-	    error("Invalid user object");
-	}
-	binary_users[user]++;
 	return user;
-    }
-}
-
-/*
- * NAME:	set_name()
- * DESCRIPTION:	set the name of a connection object
- */
-set_name(string name, object conn)
-{
-    if (previous_program() == LIB_CONN) {
-	names[name] = conn;
     }
 }
 
@@ -148,11 +131,12 @@ set_name(string name, object conn)
  * NAME:	query_telnet_timeout()
  * DESCRIPTION:	return the current telnet connection timeout
  */
-int query_telnet_timeout(string ipnum)
+int query_telnet_timeout()
 {
     if (previous_program() == LIB_CONN) {
 	return (telnet_manager) ?
-		telnet_manager->query_timeout(ipnum) : DEFAULT_TIMEOUT;
+		telnet_manager->query_timeout(previous_object()) :
+		DEFAULT_TIMEOUT;
     }
 }
 
@@ -160,11 +144,12 @@ int query_telnet_timeout(string ipnum)
  * NAME:	query_binary_timeout()
  * DESCRIPTION:	return the current binary connection timeout
  */
-int query_binary_timeout(string ipnum)
+int query_binary_timeout()
 {
     if (previous_program() == LIB_CONN) {
 	return (binary_manager) ?
-		binary_manager->query_timeout(ipnum) : DEFAULT_TIMEOUT;
+		binary_manager->query_timeout(previous_object()) :
+		DEFAULT_TIMEOUT;
     }
 }
 
@@ -176,7 +161,7 @@ string query_telnet_banner()
 {
     if (previous_program() == LIB_CONN) {
 	return (telnet_manager) ?
-		telnet_manager->query_banner() :
+		telnet_manager->query_banner(previous_object()) :
 		"\nDGD " + status()[ST_VERSION] + " (telnet)\n\nlogin: ";
     }
 }
@@ -189,30 +174,33 @@ string query_binary_banner()
 {
     if (previous_program() == LIB_CONN) {
 	return (binary_manager) ?
-		binary_manager->query_banner() :
+		binary_manager->query_banner(previous_object()) :
 		"\r\nDGD " + status()[ST_VERSION] + " (binary)\r\n\r\nlogin: ";
     }
 }
 
+
 /*
- * NAME:	telnet_disconnect()
- * DESCRIPTION:	disconnect telnet user
+ * NAME:	login()
+ * DESCRIPTION:	login user
  */
-telnet_disconnect(object user)
+login(object user, string name)
 {
-    if (previous_program() == LIB_CONN) {
-	telnet_users[user]--;
+    if (previous_program() == LIB_USER) {
+	users |= ({ user });
+	names[name] = user;
     }
 }
 
 /*
- * NAME:	binary_disconnect()
- * DESCRIPTION:	disconnect binary user
+ * NAME:	logout()
+ * DESCRIPTION:	log user out
  */
-binary_disconnect(object user)
+logout(object user, string name)
 {
-    if (previous_program() == LIB_CONN) {
-	binary_users[user]--;
+    if (previous_program() == LIB_USER) {
+	users -= ({ user });
+	names[name] = 0;
     }
 }
 
@@ -224,7 +212,18 @@ binary_disconnect(object user)
 object *query_users()
 {
     if (previous_program() == AUTO) {
-	return map_indices(telnet_users) + map_indices(binary_users);
+	object *usr;
+	int i, changed;
+
+	usr = users[..];
+	changed = FALSE;
+	for (i = sizeof(usr); --i >= 0; ) {
+	    if (!usr[i]->query_conn()) {
+		usr[i] = 0;
+		changed = TRUE;
+	    }
+	}
+	return (changed) ? usr - ({ 0 }) : usr;
     }
 }
 
@@ -240,38 +239,13 @@ object *query_connections()
 }
 
 /*
- * NAME:	query_telnet_users()
- * DESCRIPTION:	return the current telnet users
- */
-object *query_telnet_users()
-{
-    if (previous_program() == API_USER) {
-	return map_indices(telnet_users);
-    }
-}
-
-/*
- * NAME:	query_binary_users()
- * DESCRIPTION:	return the current binary users
- */
-object *query_binary_users()
-{
-    if (previous_program() == API_USER) {
-	return map_indices(binary_users);
-    }
-}
-
-/*
  * NAME:	find_user()
  * DESCRIPTION:	find the user associated with a certain name
  */
 object find_user(string name)
 {
     if (previous_program() == API_USER) {
-	object obj;
-
-	obj = names[name];
-	return (obj) ? obj->query_user() : 0;
+	return names[name];
     }
 }
 

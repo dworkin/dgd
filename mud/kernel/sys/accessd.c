@@ -76,20 +76,20 @@ int access(string user, string file, int type)
 	     * read access outside /usr, in /usr/foo/open and in selected
 	     * other directories in /usr
 	     */
-	    return 1;
+	    return TRUE;
 	}
 	if (user == dir ||
 	    (user && sscanf(user, USR + "/%s/", str) != 0 && str == dir)) {
 	    /*
 	     * full access to own/owner directory
 	     */
-	    return 1;
+	    return TRUE;
 	}
 	if (user == "admin") {
 	    /*
 	     * admin always has access (hardcoded)
 	     */
-	    return 1;
+	    return TRUE;
 	}
 
 	/*
@@ -98,7 +98,7 @@ int access(string user, string file, int type)
 	access = uaccess[user];
 	if (typeof(access) == T_MAPPING) {
 	    if (access["/"] >= type) {
-		return 1;
+		return TRUE;
 	    }
 
 	    path = explode(file, "/");
@@ -106,11 +106,12 @@ int access(string user, string file, int type)
 	    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
 		file += "/" + path[i];
 		if (access[file] >= type) {
-		    return 1;
+		    return TRUE;
 		}
 	    }
 	}
     }
+    return FALSE;
 }
 
 /*
@@ -121,7 +122,7 @@ add_user(string user)
 {
     if (previous_program() == API_ACCESS && !uaccess[user]) {
 	rlimits (-1; -1) {
-	    uaccess[user] = 1;
+	    uaccess[user] = TRUE;
 # ifndef SYS_CONTINUOUS
 	    save_object(ACCESSDATA);
 # endif
@@ -194,7 +195,7 @@ set_access(string user, string file, int type)
 		/*
 		 * add access
 		 */
-		if (access(user, file + "/*", type)) {
+		if (access(user, file + "/", type)) {
 		    return;	/* access already exists */
 		}
 
@@ -227,7 +228,7 @@ set_access(string user, string file, int type)
 		    access[file] = 0;
 		}
 		if (map_sizeof(access) == 0) {
-		    uaccess[user] = 1;
+		    uaccess[user] = TRUE;
 		}
 	    }
 # ifndef SYS_CONTINUOUS

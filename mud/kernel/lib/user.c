@@ -2,6 +2,7 @@
 # include <kernel/user.h>
 
 private object connection;	/* associated connection object */
+private string name;		/* name of user */
 
 
 /*
@@ -26,12 +27,41 @@ static disconnect()
 
 /*
  * NAME:	connect()
- * DESCRIPTION:	establish a connection
+ * DESCRIPTION:	establish connection
  */
 static connect(object conn)
 {
     disconnect();
     connection = conn;
+}
+
+/*
+ * NAME:	login()
+ * DESCRIPTION:	log this user in
+ */
+static login(string str)
+{
+    if (!name || name == str) {
+	USERD->login(this_object(), name = str);
+    }
+}
+
+/*
+ * NAME:	logout()
+ * DESCRIPTION:	logout this user
+ */
+static logout()
+{
+    USERD->logout(this_object(), name);
+}
+
+/*
+ * NAME:	query_name()
+ * DESCRIPTION:	return this user's name (if any)
+ */
+string query_name()
+{
+    return name;
 }
 
 /*

@@ -1341,9 +1341,10 @@ register char *pc;
  * NAME:	interpret->catcherr()
  * DESCRIPTION:	handle caught error
  */
-void i_catcherr()
+void i_catcherr(depth)
+Int depth;
 {
-    i_runtime_error(TRUE);
+    i_runtime_error(depth + 1);
 }
 
 /*
@@ -2120,8 +2121,8 @@ int narg, flag;
  * NAME:	interpret->runtime_error()
  * DESCRIPTION:	handle a runtime error
  */
-void i_runtime_error(flag)
-int flag;
+void i_runtime_error(depth)
+Int depth;
 {
     char *err;
 
@@ -2129,7 +2130,7 @@ int flag;
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new(err, (long) strlen(err)));
     (--sp)->type = T_INT;
-    sp->u.number = flag;
+    sp->u.number = depth;
     (--sp)->type = T_INT;
     sp->u.number = i_get_ticks();
     if (!i_call_critical("runtime_error", 3, FALSE)) {
