@@ -280,7 +280,7 @@ register frame *f;
 
     case O_EDITOR:
 	if (f->level != 0) {
-	    error("Editor object destructed in atomic function");
+	    error("Destructing editor object in atomic function");
 	}
 	ed_del(obj);
 	break;

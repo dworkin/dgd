@@ -25,10 +25,10 @@ int nargs;
 
     obj = OBJW(f->oindex);
     if (obj->count == 0) {
-	error("editor() from destructed object");
+	error("editor() in destructed object");
     }
     if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
-	error("editor() from special purpose object");
+	error("editor() in special purpose object");
     }
     if (f->level != 0) {
 	error("editor() within atomic function");

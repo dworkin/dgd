@@ -123,26 +123,37 @@ static Uint opt_expr P((node**, int));
 static Uint opt_lvalue(n)
 register node *n;
 {
+    register node *m;
+
     if (n->type == N_CAST) {
 	n = n->l.left;
     }
-    if (n->type == N_INDEX) {
-	register node *m;
+    switch (n->type) {
+    case N_GLOBAL:
+	return 2;
 
+    case N_INDEX:
 	m = n->l.left;
 	if (m->type == N_CAST) {
 	    m = m->l.left;
 	}
-	if (m->type == N_INDEX) {
+	switch (m->type) {
+	case N_GLOBAL:
+	    /* global_strval[x] = 'c'; */
+	    return opt_expr(&n->r.right, FALSE) + 2;
+
+	case N_INDEX:
 	    /* strarray[x][y] = 'c'; */
 	    return max3(opt_expr(&m->l.left, FALSE),
 			opt_expr(&m->r.right, FALSE) + 1,
 			opt_expr(&n->r.right, FALSE) + 3);
-	} else {
+
+	default:
 	    return max2(opt_expr(&n->l.left, FALSE),
 			opt_expr(&n->r.right, FALSE) + 1);
 	}
-    } else {
+
+    default:
 	return 1;
     }
 }

@@ -355,7 +355,7 @@ static object compile_object(string path)
  */
 static object clone_object(string path, varargs string uid)
 {
-    string oname, str;
+    string oname;
     object rsrcd, obj;
     int *rsrc, stack, ticks;
 
@@ -1492,7 +1492,7 @@ static void open_port(string protocol, int port)
  */
 static object *ports()
 {
-    if (creator == "System" && this_object()) {
+    if (creator == "System") {
 	return ::ports();
     }
 }
