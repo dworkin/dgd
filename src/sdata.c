@@ -1416,6 +1416,7 @@ register unsigned short n;
 		    d_count(save, elts, v->u.array->size);
 		}
 	    } else {
+		arr_del(v->u.array);
 		*v = nil_value;
 	    }
 	    break;

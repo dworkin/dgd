@@ -183,37 +183,51 @@ register array *a;
     if (--(a->ref) == 0) {
 	register value *v;
 	register unsigned short i;
-
-	if ((v=a->elts) != (value *) NULL) {
-	    for (i = a->size; i > 0; --i) {
-		i_del_value(v++);
-	    }
-	    FREE(a->elts);
-	}
-
-	if (a->hashed != (maphash *) NULL) {
-	    register mapelt *e, *n, **t;
-
-	    /*
-	     * delete the hashtable of a mapping
-	     */
-	    for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
-		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    i_del_value(&e->idx);
-		    i_del_value(&e->val);
-		    n = e->next;
-		    e->next = fmelt;
-		    fmelt = e;
-		    --i;
-		}
-	    }
-	    FREE(a->hashed);
-	}
+	static array *dlist;
 
 	a->prev->next = a->next;
 	a->next->prev = a->prev;
-	a->next = flist;
-	flist = a;
+	a->prev = (array *) NULL;
+	if (dlist != (array *) NULL) {
+	    dlist->prev = a;
+	    dlist = a;
+	    return;
+	}
+	dlist = a;
+
+	do {
+	    if ((v=a->elts) != (value *) NULL) {
+		for (i = a->size; i > 0; --i) {
+		    i_del_value(v++);
+		}
+		FREE(a->elts);
+	    }
+
+	    if (a->hashed != (maphash *) NULL) {
+		register mapelt *e, *n, **t;
+
+		/*
+		 * delete the hashtable of a mapping
+		 */
+		for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
+		    for (e = *t; e != (mapelt *) NULL; e = n) {
+			i_del_value(&e->idx);
+			i_del_value(&e->val);
+			n = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			--i;
+		    }
+		}
+		FREE(a->hashed);
+	    }
+
+	    a->next = flist;
+	    flist = a;
+	    a = a->prev;
+	} while (a != (array *) NULL);
+
+	dlist = (array *) NULL;
     }
 }
 
