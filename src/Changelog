@@ -1611,3 +1611,5 @@ DGD 1.3
  - Fixed a problem in object type function argument checking that could lead
    to a crash.
  - And another one in a similar situation.
+ - Fixed a compile-time check for the number of arguments, wrong since the
+   introduction of object types.

@@ -1861,7 +1861,7 @@ node *call, *args;
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
-	    if (n < PROTO_NARGS(proto)) {
+	    if (n <= PROTO_NARGS(proto)) {
 		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
