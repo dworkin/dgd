@@ -502,8 +502,8 @@ DGD 1.0.a6
  - Added find_call_out().  I previously left it out because I considered
    using it bad programming practice.  I still think so, but it might be
    useful in some rare cases, and the current implementation is fairly fast.
- - All of x[y .. z], x[y ..], x[.. y] and x[..] are now possible work, with
-   the obvious meanings.
+ - All of x[y .. z], x[y ..], x[.. y] and x[..] are now possible, with the
+   obvious meanings.
  - The swapfile and editor tmpfiles are now removed on a shutdown.
  - Fixed a bug in the compiler, which would not always cast the result of
    a function call to int when this was needed.
@@ -533,3 +533,124 @@ DGD 1.0.a6
  - Variables could erroneously be redeclared as private in the same object.
  - Redeclaration of an inherited function or variable will now give the
    inherited object in the errormessage.
+
+DGD 1.0.a7
+
+ - Fixed a bug with saving large numbers in arrays and mappings.
+ - Improved memory allocation in case sizeof(long) > 4.  Also improved
+   efficiency for the case that DEBUG is not defined.
+ - String hash tables are no longer cleared before being deleted.  Some hash
+   tables used by the compiler which were previously statically allocated are
+   now dynamically allocated.
+ - The >> and << operators now shift unsigned values, so the result is
+   identical on all hosts.
+ - Fixed a memory leak in i_index() and i_index_lvalue().
+ - Comm.c can now deal with ^Z as well.
+ - Cleaned up the inheritance logic in control.c, and removed some bugs.
+ - Fixed several bugs in the restoring of object names.
+ - Fixed some code in switch_str(), which would only work properly for the
+   auto object and driver object.
+ - Replaced longs by Ints in the editor, to save space on hosts with
+   sizeof(long) > 4.
+ - Fixed a bug in c_tst() and c_not().
+ - Changed the alarm/timeout interface.  co_call() now calls P_timeout()
+   to determine if an alarm timed out; co_timeout() has been removed.
+ - main() is now in local.c, and should call dgd_main(argc, argv).
+ - All occurrances of fprintf(stderr, ...) replaced with P_message(...) .
+ - path_object() (call_other, clone_object, find_object) from the auto
+   object will no longer call the driver object to translate the path.
+ - Fixed yet another problem in the C code generated for catch().
+ - Added function name comments to generated C code.
+ - The class specifier private no longer implies static, for variables.
+   This means that private variables can be saved with save_object(), and
+   restored with restore_object().  To get the old behaviour, use both
+   static and private.
+ - A new kfun is added, dump_state().  swapout() and shutdown() no longer
+   do a state dump through a flag argument; dump_state() should be used
+   instead.  dump_state(1) will create an incremental dump on top of an
+   old one.
+ - Fixed a possible memory leak in sscanf().
+ - Fixed a bug in src/host/unix/connect.c which could hang the driver.
+ - Made IAC GA optional.  The client must request it with IAC DONT TELOPT_SGA,
+   which the driver will respond to with IAC WONT TELOPT_SGA.  I badly
+   underestimated the number of faulty clients, and even plain telnets could
+   not handle it.
+ - Editor marks and secondary buffers were not cleared in between edits.
+ - In the editor, changing a line into nothing could cause a crash.
+ - Added a float type.  Fairly useless for muds, but not for other
+   applications.  Everything has been adapted (save_object, sscanf), but
+   apart from floatp no kfuns have been added yet.  Four new builtin kfuns,
+   ADD1, ADD1_INT, SUB1, SUB1_INT have been added.
+   The float type has 1 sign bit, 11 exponent bits and 36 mantissa bits.
+   The format is basically a truncated IEEE double, with a few alterations:
+   exponent 0x7fff is illegal, and there is no gradual underflow.
+ - Fixed various minor bugs in the compiler.  Also made runtime typechecking
+   more strict, and improved optimisation.
+ - The dataspace of destructed objects that are not freed for some reason
+   is now deleted right away.
+ - The object argument has been removed from driver->path_ed_read(),
+   driver->path_ed_write() and driver->path_object().
+ - intp(), floatp(), stringp(), objectp(), arrayp() and mappingp() have
+   been replaced with a single kfun, typeof().
+ - The swapfile is not created before sectors are actually written to it.
+ - A float.h file is now created on startup.
+ - Added 2nd swapout measure for last five minutes.
+ - Renamed config parameter swap_sector to sector_size.
+ - Added some kfuns: fabs(), floor(), ceil(), fmod(), frexp(), ldexp(), modf().
+ - Floats (both global and local) are initialized to 0.0, rather than integer 0.
+ - Added time of compilation to control block struct.
+ - Callouts have been changed: call_out() now returns an integer > 0, which
+   must be given as an argument to remove_call_out() to remove it.  The kfun
+   find_call_out() no longer exists.  status(obj) gives a list of all callouts
+   in an object.
+ - Renamed port_number to telnet_port, added binary_port (dummy, for now).
+ - Reorganized status() and limits.h .
+ - Fixed several bugs in the handling of callouts, which could result in random
+   memory trashing.
+ - Fixed some bugs in control.c for sizeof(int) == 2.
+ - Fixed a bug in the swapping of large mappings.
+ - Some more editor bugs fixed.
+ - In the editor, use of | is restricted to inside global commands.
+ - editor() no longer sends output to receive_message() in the editor object,
+   but returns it as a string.
+ - The optimizer has been made a separate part of the compiler.
+ - dump_state() changed again: it will now sync the swapfile, append some
+   tables at the end, and move it to a dump file.  Afterwards, the driver will
+   read from the dump file to reconstruct the swap file at low priority.
+   Incremental dumps no longer exist.
+ - The swapfile was not always created before a dump was made, resulting in
+   a fatal error.
+ - float.h and float.c have been renamed to xfloat.h and xfloat.c, respectively.
+ - The maximum stack depth of a function call with one argument was not
+   computed correctly.
+ - Multiple inheritance of the same file in different ways could, in some
+   cases, lead to invalid fcall and variable offsets.
+ - Fixed a bug that caused spurious stack overflow errors.
+ - Fixed a problem with expressions of the form (a) ? (b, c) : d.
+ - Dead code is now silently thrown away, instead of resulting in a
+   "statement not reached" error.
+ - Changed #include "float.h" to #include "xfloat.h" in generated C code.
+ - Fixed a bug in the optimizer which mangled sscanf() assigned value checks.
+ - The replies to DO TELOPT_SGA and DONT TELOPT_SGA were accidentally reversed.
+ - Lexical errors were repeated for each rescanning of the input.
+ - Some improvements in the typechecking for mixed... .
+ - Enabled binary port.
+ - Fixed a bug with # define foo "gnu.h" \n # include foo
+ - Some bugs in binary connections fixed.
+ - Fixed a bad bug in comm.c which could hang the driver.
+ - Fixed a newly introduced lexical scanner problem.
+ - get_dir("/a/b") returned "a/b" as the name of the file, instead of "b".
+ - Oops, several private variables with the same name would each be saved with
+   save_object().  Private for variables made to imply static again.
+ - Filename matching in get_dir() made more efficient (thank you, Aedil).
+ - Fixed a bug in && and || used as standalone expressions.
+ - Dump files now include a kfun table.  This enables the driver to restore
+   a dump file that was made by a driver version with fewer kfuns.  As long
+   as no kfuns are removed and the interpreter itself is not changed, dump
+   files can be used with future driver versions.
+ - Let (x, 0) match any type but float in situations where 0 would.
+ - The command line restore file argument is taken to be relative to the
+   current directory at the time, rather than relative to the mudlib directory.
+ - Makefiles brought up to date.
+ - (int) 0.0 yielded a wrong value.
+ - Max execution cost is no longer halved during a callout.

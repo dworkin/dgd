@@ -31,9 +31,9 @@ $(OBJ) ed.o: ../config.h ../host.h ../alloc.h ../error.h
 file.o: ../path.h
 
 $(OBJ) ed.o: ed.h
-edcmd.o cmdsub.o file.o buffer.o: buffer.h
-ed.o edcmd.o cmdsub.o: edcmd.h
+buffer.o file.o edcmd.o cmdsub.o ed.o: buffer.h
+edcmd.o cmdsub.o ed.o: edcmd.h
 cmdsub.o file.o: file.h
-edcmd.o cmdsub.o file.o buffer.o line.o: line.h
-ed.o edcmd.o cmdsub.o regexp.o: regexp.h
-ed.o edcmd.o cmdsub.o vars.o: vars.h
+line.o buffer.o file.o edcmd.o cmdsub.o ed.o: line.h
+regexp.o edcmd.o cmdsub.o ed.o: regexp.h
+vars.o edcmd.o cmdsub.o ed.o: vars.h

@@ -2,7 +2,9 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
+# include "data.h"
 # include "ed.h"
 # include "call_out.h"
 # include "comm.h"
@@ -18,7 +20,7 @@ char *func;
 int narg;
 {
     static object *driver;
-    static Int dcount;
+    static Uint dcount;
     static char *driver_name;
 
     if (driver == (object *) NULL || dcount != driver->count) {
@@ -38,49 +40,60 @@ int narg;
 }
 
 static bool swap;	/* are objects to be swapped out? */
-static bool stop;	/* is the program to terminate? */
 static bool dump;	/* is the program to dump? */
+static bool intr;	/* received an interrupt? */
+static bool stop;	/* is the program to terminate? */
 
 /*
  * NAME:	swapout()
  * DESCRIPTION:	indicate that objects are to be swapped out
  */
-void swapout(flag)
-bool flag;
+void swapout()
 {
     swap = TRUE;
-    dump = flag;
+}
+
+/*
+ * NAME:	dump_state()
+ * DESCRIPTION:	indicate that the state must be dumped
+ */
+void dump_state()
+{
+    dump = TRUE;
+}
+
+/*
+ * NAME:	interrupt()
+ * DESCRIPTION:	register an interrupt
+ */
+void interrupt()
+{
+    intr = TRUE;
 }
 
 /*
  * NAME:	finish()
  * DESCRIPTION:	indicate that the program must finish
  */
-void finish(flag)
-bool flag;
+void finish()
 {
     stop = TRUE;
-    swap = dump = flag;
 }
 
 /*
- * NAME:	main()
+ * NAME:	dgd_main()
  * DESCRIPTION:	the main loop of DGD
  */
-int main(argc, argv)
+int dgd_main(argc, argv)
 int argc;
-char *argv[];
+char **argv;
 {
     char buf[INBUF_SIZE];
-    Int max_cost;
     int size;
     object *usr;
 
-    host_init();
-
     if (argc < 2 || argc > 3) {
-	fprintf(stderr, "Usage: %s config_file [dump_file]\n", argv[0]);
-	host_finish();
+	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
     }
 
@@ -94,7 +107,6 @@ char *argv[];
 	conf_init(argv[1], argv[2]);
     }
     ec_pop();
-    max_cost = conf_exec_cost();
 
     while (ec_push()) {
 	i_log_error(FALSE);
@@ -102,12 +114,17 @@ char *argv[];
     }
 
     do {
-	i_set_cost(max_cost >> 1);
+	P_getevent();
+	if (intr) {
+	    intr = FALSE;
+	    call_driver_object("interrupt", 0);
+	    i_del_value(sp++);
+	}
+
 	co_call();
 	comm_flush(FALSE);
 
 	if (!stop) {
-	    i_set_cost(max_cost);
 	    usr = comm_receive(buf, &size);
 	    if (usr != (object *) NULL) {
 		(--sp)->type = T_STRING;
@@ -134,15 +151,17 @@ char *argv[];
 	swap = FALSE;
 
 	if (dump) {
+	    d_swapsync();
 	    conf_dump();
 	    dump = FALSE;
 	}
+
+	sw_copy();
     } while (!stop);
 
     ec_pop();
     comm_finish();
     ed_finish();
     sw_finish();
-    host_finish();
     return 0;
 }

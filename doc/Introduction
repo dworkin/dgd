@@ -1,0 +1,182 @@
+   DGD, which stands for Dworkin's Game Driver, is a mud server that
+uses the same overall design as the LP server made by Lars Pensjö.
+However, there are several important differences: DGD uses less memory
+because it is disk-based; it can dump state and later restart from a
+state dump; it uses LPC as an internal interpreted language, but also
+offers the option of precompiling LPC objects to C, making them part of
+the program itself.
+   DGD has two special objects which determine the interface with the 
+server for all other objects: the auto object and the driver object.
+   The auto object (short for automatically inherited object) is
+inherited by all other objects, except for the driver object.  It can
+redeclare the predefined functions (called kfuns, kernel functions)
+that DGD provides, and it can also define standard properties that
+every object should have.  DGD is made in such a way that some kfuns
+<have> to be redeclared in an environment with several users
+programming together; for instance, by default there is no file security.
+The auto object has some other special properties; static functions
+declared in the auto object cannot be called using this_object()->func()
+(i.e. they behave like kfuns), and the auto object can use a special
+construct, lock(expression), to execute code without regard for execution
+cost, and with extra space on the stack.
+   The driver object defines several functions which are called by the
+driver, mostly to translate pathnames.
+   The following functions will be called by the driver:
+ - in the driver object:
+
+    void initialize()
+
+	Called when the system starts up after a reboot.
+
+    void restored()
+
+	Called after the system has restarted from a state dump.
+
+    string path_ed_read(string path)
+
+	Used to translate a path for an editor read command.  If 0 is
+	returned, the file cannot be read.
+
+    string path_ed_write(string path)
+
+	Used to translate a path for an editor write command.  If 0 is
+	returned, the file cannot be written to.
+
+    string path_object(string path)
+
+	Used to translate a path for call_other(), clone_object() or
+	find_object().  If 0 is returned, the object cannot be used.
+	This function is only called if call_other(), clone_object()
+	or find_object() is not used by the driver object, and not
+	used from a function that is defined in the auto object.
+
+    string path_inherit(string file, string path)
+
+	Used to translate inheritance path <path> upon compilation of
+	the object with filename <file>.  If 0 is returned, the object
+	for <path> cannot be inherited.
+
+    string path_include(string file, string path)
+
+	Used to translate include path <path> upon compilation of the
+	object with filename <file>.  If 0 is returned, the file <path>
+	cannot be included.
+
+    object compile_object(string file)
+
+	If there is no LPC .c file for an object to be compiled from
+	<file>, this function is called; if it returns an object, this
+	object will be substituted for the object to be loaded (renaming
+	the object).
+
+    void recompile(object obj)
+
+	If an object A is loaded, A inherits B, B inherits C, and the
+	version of C inherited by B is out of date, recompile(B) will be
+	called in the driver object.  If B should actually be recompiled
+	(inheriting the new version of C from B), the driver object must
+	destruct B; if this is done, A will inherit the most recent
+	versions of B and C.
+
+    object telnet_connect()
+
+	Return an object for a new connection on the telnet port.
+
+    object binary_connect()
+
+	Return an object for a new connection on the binary port.
+
+    void log_error(string error, int caught)
+
+	Called when an error occurs.  <caught> specifies whether or not
+	the error occurred in code run with catch().  log_error() is
+	called locked, so it will not run out of execution cost.
+
+    string compile_log(string file)
+
+	Return the path of a secondary error log upon the compilation of
+	an object from <file>.  If 0 is returned, compile time errors are
+	only logged on stderr.
+
+ - in every object:
+
+    void create()
+
+	Called in an object which has just been cloned, or if it is not a
+	clone, just before a function is called in it for the first time.
+	The actual name of this function is configurable.
+
+ - in the user object (returned by driver->telnet_connect() or
+   driver->binary_connect()):
+
+    void open()
+
+	A connection has just been opened for this object.
+
+    void close()
+
+	The connection for this object has just been closed.  close() is
+	called when the user goes linkdead, or when the user object is
+	destructed.
+
+   On startup, the system is configured with a configuration file, which
+must specify the following configuration parameters:
+
+param		type	meaning
+--------------------------------------------------------------------------
+telnet_port	number	The port number on which the driver will accept
+			telnet connections.
+binary_port	number	The port number on which the driver will accept
+			binary connections.  Communication on the binary
+			port is raw TCP/IP without additional protocol.
+directory	string	The base directory for the system.
+users		number	The maximum number of active telnet and binary
+			connections.
+editors		number	The maximum number of simultaneously active
+			editor instances.
+ed_tmpfile	string	The proto editor temporary file (actual files
+			will have a number appended).
+swap_file	string	The name of the swap file.
+swap_size	number	The total number of sectors in the swap file.
+cache_size	number	The number of sectors in the swap cache in memory.
+sector_size	number	The size of a swap sector in bytes.
+swap_fragment	number	The fragment of all objects to swap out each
+			second (e.g. with a swap_fragment of 32, 1/32th
+			of all objects will be swapped out each second).
+static_chunk	number	The size in bytes of a static or dynamic chunk
+dynamic_chunk	number	of memory.  Memory is divided into static memory
+			and dynamic memory; static memory is never freed.
+			Both are allocated in chunks of the specified size.
+dump_file	string	The name of the state dump file.
+typechecking	number	If non-zero, all LPC objects must be typechecked.
+			If zero, only functions with a declared type are
+			typechecked.
+include_file	string	The standard include file, which is always
+			included automatically for each compiled object
+			(relative to the base directory).
+include_dirs	string*	The standard system include directories (relative
+			to the base directory).  In the first of those,
+			the include files which are automatically
+			generated on startup will be placed.
+auto_object	string	The file name of the auto object (relative to the
+			base directory).
+driver_object	string	The file name of the driver object (relative to
+			the base directory).
+create		string	The name of the create function.
+value_stack	int	The size of the value stack for the system's
+			internal interpreted language.
+call_stack	int	The size of the function call stack for the
+			system's internal interpreted language.
+reserved_vstack	int	The extra value stack available for code executed
+			with a lock.
+reserved_cstack	int	The extra function call stack available for code
+			executed with a lock.
+max_cost	int	The maximum execution cost.
+array_size	int	The maximum array and mapping size.
+objects		int	The maximum number of objects.
+call_outs	int	The maximum number of simultaneously active
+			callouts.
+
+   Examples of the auto object, driver object and config file are present
+in the simulation of LPmud 2.4.5 for DGD, at ftp.lysator.liu.se, in
+directory /pub/lpmud/drivers/dgd.

@@ -24,6 +24,7 @@
 /* # define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
 
 typedef long Int;
+typedef unsigned long Uint;
 
 # define ALLOCA(type, size)	ALLOC(type, size)
 # define AFREE(ptr)		FREE(ptr)
@@ -34,6 +35,45 @@ extern int   rename		P((char*, char*));		/* simulated */
 extern char *crypt		P((const char*, const char*));
 
 # endif	/* MINIX_68K */
+
+
+# ifdef ATARI_ST
+
+# include <limits.h>
+# include <sys/types.h>
+# include <unistd.h>
+
+# ifdef INCLUDE_FILE_IO
+# include <fcntl.h>
+# include <sys/stat.h>
+# endif
+
+# ifdef INCLUDE_TELNET
+# include "host/telnet.h"
+# endif
+
+# include <stdlib.h>
+# include <string.h>
+# include <setjmp.h>
+# include <stdio.h>
+
+# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+						 (unsigned int) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# define FS_BLOCK_SIZE		512
+
+# define P_fbinio(fp)		((fp)->_flag |= _IOBIN)
+
+extern char *crypt		P((char*, char*));
+
+# endif	/* ATARI_ST */
 
 
 # ifdef SUNOS4
@@ -58,10 +98,11 @@ extern char *crypt		P((const char*, const char*));
 # include <stdio.h>
 
 # define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	(int)((c)&0xFF)	/* unsigned character */
-# define SCHAR(c)	(c)		/* signed character */
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
+typedef unsigned int Uint;
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 						 (unsigned int) (size)))
@@ -76,6 +117,14 @@ extern char *crypt		P((const char*, const char*));
 
 
 # ifdef BSD386
+# define GENERIC_BSD
+# endif
+# ifdef LINUX
+# define GENERIC_SYSV
+# endif
+
+
+# ifdef GENERIC_BSD
 
 # include <limits.h>
 # include <sys/types.h>
@@ -96,10 +145,11 @@ extern char *crypt		P((const char*, const char*));
 # include <stdio.h>
 
 # define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	(int)((c)&0xFF)	/* unsigned character */
-# define SCHAR(c)	(c)		/* signed character */
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
+typedef unsigned int Uint;
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 						 (unsigned int) (size)))
@@ -107,10 +157,10 @@ typedef int Int;
 
 # define FS_BLOCK_SIZE		8192
 
-# endif	/* BSD386 */
+# endif	/* GENERIC_BSD */
 
 
-# ifdef LINUX
+# ifdef GENERIC_SYSV
 
 # include <limits.h>
 # include <sys/types.h>
@@ -132,10 +182,11 @@ typedef int Int;
 # include <stdio.h>
 
 # define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	(int)((c)&0xFF)	/* unsigned character */
-# define SCHAR(c)	(c)		/* signed character */
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
+typedef unsigned int Uint;
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 						 (unsigned int) (size)))
@@ -143,24 +194,31 @@ typedef int Int;
 
 # define FS_BLOCK_SIZE		8192
 
-# endif	/* LINUX */
+# endif	/* GENERIC_SYSV */
 
 
-extern void  host_init		P((void));
-extern void  host_finish	P((void));
-extern void  host_message	P((char*));
+extern void  P_getevent	P((void));
+extern void  P_message	P((char*));
 
-extern bool  P_opendir		P((char*));
-extern char *P_readdir		P((void));
-extern void  P_closedir		P((void));
+# ifndef P_fbinio
+# define P_fbinio(x)	/* nothing */
+# endif
+# ifndef O_BINARY
+# define O_BINARY	0
+# endif
 
-extern void  P_seed		P((long));
-extern long  P_random		P((void));
+extern bool  P_opendir	P((char*));
+extern char *P_readdir	P((void));
+extern void  P_closedir	P((void));
 
-extern unsigned long  P_time	P((void));
-extern char	     *P_ctime	P((unsigned long));
+extern void  P_srandom	P((long));
+extern long  P_random	P((void));
 
-extern void  P_alarm		P((unsigned int));
+extern Uint  P_time	P((void));
+extern char *P_ctime	P((Uint));
+
+extern void  P_alarm	P((unsigned int));
+extern bool  P_timeout	P((void));
 
 
 /* these must be the same on all hosts */

@@ -1,6 +1,6 @@
-# include <ctype.h>
 # define INCLUDE_FILE_IO
 # include "lex.h"
+# include <ctype.h>
 # include "macro.h"
 # include "special.h"
 # include "ppstr.h"
@@ -36,8 +36,11 @@ typedef struct _tchunk_ {
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */
-int yyleng;			/* length of string/identifier */
-long yynumber;			/* integer constants */
+static char *yyend;		/* end of current buffer */
+int yyleng;			/* length of token */
+long yynumber;			/* integer constant */
+xfloat yyfloat;			/* floating point constant */
+
 static tchunk *tlist;		/* list of token buffer chunks */
 static int tchunksz;		/* token buffer chunk size */
 static tbuf *flist;		/* free token buffer list */
@@ -161,7 +164,7 @@ char *file;
     int fd;
 
     if (file != (char *) NULL) {
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY | O_BINARY);
 	if (fd >= 0) {
 	    char *buffer;
 	    register int len;
@@ -257,7 +260,7 @@ bool incl;
 /*
  * NAME:	token->setpp()
  * DESCRIPTION:	if the argument is true, do not translate escape sequences in
- *		strings.
+ *		strings, and don't report errors.
  */
 void tk_setpp(pp)
 bool pp;
@@ -349,7 +352,7 @@ static void comment()
 	    do {
 		c = gc();
 		if (c == EOF) {
-		    yyerror("EOF in comment");
+		    error("EOF in comment");
 		    return;
 		}
 	    } while (c != '*');
@@ -379,13 +382,12 @@ static void comment()
 
 /*
  * NAME:	token->esc()
- * DESCRIPTION:	handle an escaped character
+ * DESCRIPTION:	handle an escaped character, leaving the value in yynumber
  */
-static char *tk_esc(p, res)
+static char *tk_esc(p)
 register char *p;
-int *res;
 {
-    register int c, i;
+    register int c, i, n;
 
     switch (c = *p++ = gc()) {
     case 'a': c = BEL; break;
@@ -404,23 +406,16 @@ int *res;
     case '0': case '1': case '2': case '3':
     case '4': case '5': case '6': case '7':
 	/* octal constant */
-	i = c - '0';
-	c = gc();
-	if (c >= '0' && c <= '7') {
-	    /* second digit */
+	i = 0;
+	n = 3;
+	--p;
+	do {
 	    *p++ = c;
-	    i = (i << 3) + c - '0';
+	    i <<= 3;
+	    i += c - '0';
 	    c = gc();
-	    if (c >= '0' && c <= '7') {
-		/* third digit */
-		*p++ = c;
-		i = (i << 3) + c - '0';
-	    } else {
-		uc(c);
-	    }
-	} else {
-	    uc(c);
-	}
+	} while (--n > 0 && c >= '0' && c <= '7');
+	uc(c);
 	c = UCHAR(i);
 	break;
 
@@ -429,6 +424,7 @@ int *res;
 	c = gc();
 	if (isxdigit(c)) {
 	    i = 0;
+	    n = 3;
 	    do {
 		*p++ = c;
 		i <<= 4;
@@ -438,16 +434,16 @@ int *res;
 		    i += toupper(c) + 10 - 'A';
 		}
 		c = gc();
-	    } while (isxdigit(c));
-	    uc(c);
+	    } while (--n > 0 && isxdigit(c));
 	} else {
 	    i = 'x';
 	}
+	uc(c);
 	c = UCHAR(i);
 	break;
     }
 
-    *res = c;
+    yynumber = c;
     return p;
 }
 
@@ -460,49 +456,54 @@ static int tk_string(quote)
 char quote;
 {
     register char *p;
-    register int c;
+    register int c, n;
 
     p = yytext;
     if (pp_level > 0) {
 	/* keep the quotes if not on top level */
 	p++;
+	n = 0;
+    } else {
+	n = 2;
     }
 
     for (;;) {
 	c = gc();
 	if (c == quote) {
+	    if (pp_level > 0) {
+		/* keep the quotes if not on top level */
+		*p++ = c;
+	    }
 	    break;
 	} else if (c == '\\') {
 	    int res;
 
-	    if (pp_level != 0 || do_include) {
+	    if (pp_level > 0 || do_include) {
 		/* recognize, but do not translate escape sequence */
 		*p++ = c;
-		p = tk_esc(p, &res);
+		p = tk_esc(p);
 		c = *--p;
 	    } else {
 		/* translate escape sequence */
-		tk_esc(p, &res);
-		c = res;
+		n += tk_esc(p) - p;
+		c = yynumber;
 	    }
-	} else if (c == LF) {
-	    yyerror("unterminated string");
-	    break;
-	} else if (c == EOF) {
-	    yyerror("EOF in string");
-	    break;
-	}
-	if (p >= yytext + MAX_LINE_SIZE - 5) {
-	    yyerror("string too long");
-	    p = yytext + MAX_LINE_SIZE - 5;
+	} else if (c == LF || c == EOF) {
+	    if (pp_level == 0) {
+		error("unterminated string");
+	    }
+	    uc(c);
 	    break;
 	}
 	*p++ = c;
+	if (p > yyend - 4) {
+	    n += p - (yyend - 4);
+	    p = yyend - 4;
+	}
     }
 
-    if (pp_level > 0) {
-	/* keep the quotes if not on top level */
-	*p++ = quote;
+    if (pp_level == 0 && p + n > yyend - 4) {
+	error("string too long");
     }
     *p = '\0';
     yyleng = p - yytext;
@@ -518,12 +519,17 @@ int tk_gettok()
     register int c;
     register long result;
     register char *p;
+    register bool overflow;
+    bool is_float;
 
 # define TEST(x, tok)	if (c == x) { c = tok; break; }
 # define CHECK(x, tok)	*p++ = c = gc(); TEST(x, tok); --p; uc(c)
 
     result = 0;
+    overflow = FALSE;
+    is_float = FALSE;
     yytext = (yytext == yytext1) ? yytext2 : yytext1;
+    yyend = yytext + MAX_LINE_SIZE - 1;
     p = yytext;
     *p++ = c = gc();
     switch (c) {
@@ -542,7 +548,6 @@ int tk_gettok()
 	    break;
 	}
 	/* fall through */
-
     case ' ':
 	/* white space */
 	do {
@@ -561,6 +566,7 @@ int tk_gettok()
 	} else {
 	    uc(c);
 	}
+	yyleng = 1;
 	*p = '\0';
 	return p[-1] = ' ';
 
@@ -570,11 +576,10 @@ int tk_gettok()
 	break;
 
     case '#':
-	if (seen_nl) {
-	    break;
+	if (!seen_nl) {
+	    CHECK('#', HASH_HASH);
+	    c = HASH;
 	}
-	CHECK('#', HASH_HASH);
-	c = HASH;
 	break;
 
     case '%':
@@ -614,7 +619,89 @@ int tk_gettok()
 
     case '.':
 	c = gc();
-	if (c == '.') {
+	if (isdigit(c)) {
+	    /*
+	     * Come here when a decimal '.' has been spotted; c holds the next
+	     * character.
+	     */
+	fraction:
+	    is_float = TRUE;
+	    do {
+		if (p < yyend) {
+		    *p++ = c;
+		}
+		c = gc();
+	    } while (isdigit(c));
+	    if (c == 'e' || c == 'E') {
+		char *q, exp, sign;
+
+		/*
+		 * Come here when 'e' or 'E' has been spotted after a number.
+		 */
+	    exponent:
+		exp = c;
+		sign = 0;
+		q = p;
+		if (p < yyend) {
+		    *p++ = c;
+		}
+		c = gc();
+		if (c == '+' || c == '-') {
+		    if (p < yyend) {
+			*p++ = c;
+		    }
+		    sign = c;
+		    c = gc();
+		}
+		if (isdigit(c)) {
+		    do {
+			if (p < yyend) {
+			    *p++ = c;
+			}
+			c = gc();
+		    } while (isdigit(c));
+		    is_float = TRUE;
+		} else {
+		    /*
+		     * assume the e isn't part of this token
+		     */
+		    uc(c);
+		    if (sign != 0) {
+			uc(sign);
+		    }
+		    c = exp;
+		    p = q;
+		}
+	    }
+	    uc(c);
+
+	    if (is_float) {
+		yyfloat.high = 0;
+		yyfloat.low = 0;
+		if (pp_level == 0) {
+		    if (p == yyend) {
+			error("too long floating point constant");
+		    } else {
+			*p = '\0';
+			if (!flt_atof(yytext, &yyfloat)) {
+			    error("overflow in floating point constant");
+			}
+		    }
+		}
+		c = FLOAT_CONST;
+	    } else {
+		if (pp_level == 0) {
+		    /* unclear if this was decimal or octal */
+		    if (p == yyend) {
+			error("too long integer constant");
+		    } else if (overflow) {
+			error("overflow in integer constant");
+		    }
+		}
+		c = INT_CONST;
+	    }
+	    break;
+	} else if (c == '.') {
 	    *p++ = c;
 	    CHECK('.', ELLIPSIS);
 	    c = DOT_DOT;
@@ -628,6 +715,7 @@ int tk_gettok()
 	c = gc();
 	if (c == '*') {
 	    comment();
+	    yyleng = 1;
 	    *p = '\0';
 	    return p[-1] = ' ';
 	}
@@ -693,48 +781,107 @@ int tk_gettok()
 	c = gc();
 	if (c == 'x' || c == 'X') {
 	    *p++ = c;
-	    while (isxdigit(c = gc())) {
-		if (p < yytext + MAX_LINE_SIZE - 1) {
-		    *p++ = c;
-		}
-		if (isdigit(c)) {
-		    c -= '0';
-		} else {
-		    c = toupper(c) + 10 - 'A';
-		}
-		result <<= 4;
-		result += c;
+	    c = gc();
+	    if (isxdigit(c)) {
+		do {
+		    if (p < yyend) {
+			*p++ = c;
+		    }
+		    if (result > 0x0fffffffL) {
+			overflow = TRUE;
+		    }
+		    if (isdigit(c)) {
+			c -= '0';
+		    } else {
+			c = toupper(c) + 10 - 'A';
+		    }
+		    result <<= 4;
+		    result += c;
+		    c = gc();
+		} while (isxdigit(c));
+	    } else {
+		/* not a hexadecimal constant */
+		uc(c);
+		c = *--p;
 	    }
+	    yynumber = result;
 	} else {
 	    while (c >= '0' && c <= '7') {
-		if (p < yytext + MAX_LINE_SIZE) {
+		if (p < yyend) {
 		    *p++ = c;
+		}
+		if (result > 0x1fffffffL) {
+		    overflow = TRUE;
 		}
 		result <<= 3;
 		result += c - '0';
 		c = gc();
 	    }
+	    yynumber = result;
+
+	    if (c == '.') {
+		if (p < yyend) {
+		    *p++ = c;
+		}
+		c = gc();
+		if (c != '.') {
+		    goto fraction;
+		}
+		--p; uc(c);
+	    } else if (c == 'e' || c == 'E') {
+		goto exponent;
+	    }
 	}
 	uc(c);
-	yynumber = result;
+	if (pp_level == 0) {
+	    if (p == yyend) {
+		error("too long integer constant");
+	    } else if (overflow) {
+		error("overflow in integer constant");
+	    }
+	}
 	c = INT_CONST;
 	break;
 
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
 	for (;;) {
+	    if (result >= 214748364L && (result > 214748364L || c >= '8')) {
+		overflow = TRUE;
+	    }
 	    result *= 10;
 	    result += c - '0';
 	    c = gc();
 	    if (!isdigit(c)) {
 		break;
 	    }
-	    if (p < yytext + MAX_LINE_SIZE - 1) {
+	    if (p < yyend) {
 		*p++ = c;
 	    }
 	}
-	uc(c);
 	yynumber = result;
+
+	if (c == '.') {
+	    if (p < yyend) {
+		*p++ = c;
+	    }
+	    c = gc();
+	    if (c != '.') {
+		goto fraction;
+	    }
+	    --p; uc(c);
+	}
+	if (c == 'e' || c == 'E') {
+	    goto exponent;
+	}
+	uc(c);
+	if (pp_level == 0) {
+	    if (p == yyend) {
+		error("too long integer constant");
+	    } else if (overflow) {
+		error("overflow in integer constant");
+	    }
+	}
 	c = INT_CONST;
 	break;
 
@@ -752,41 +899,51 @@ int tk_gettok()
 	    if (!isalnum(c) && c != '_') {
 		break;
 	    }
-	    if (p != yytext + MAX_LINE_SIZE - 1) {
+	    if (p < yyend) {
 		*p++ = c;
 	    }
 	}
 	uc(c);
-	yyleng = p - yytext;
+	if (pp_level == 0 && p == yyend) {
+	    error("too long identifier");
+	}
 	c = IDENTIFIER;
 	break;
 
     case '\'':
 	*p++ = c = gc();
 	if (c == '\'') {
-	    yyerror("too short character constant");
-	} else if (c == '\\') {
-	    int res;
-
-	    p = tk_esc(p, &res);
-	    c = res;
+	    if (pp_level == 0) {
+		error("too short character constant");
+	    }
+	} else if (c == LF || c == EOF) {
+	    if (pp_level == 0) {
+		error("unterminated character constant");
+	    }
+	    uc(c);
+	} else {
+	    if (c == '\\') {
+		p = tk_esc(p);
+	    } else {
+		yynumber = c;
+	    }
+	    *p++ = c = gc();
+	    if (c != '\'') {
+		if (pp_level == 0) {
+		    error("illegal character constant");
+		}
+		uc(c);
+	    }
 	}
-	if ((*p++ = gc()) != '\'') {
-	    yyerror("illegal character constant");
-	}
-	yynumber = c;
 	c = INT_CONST;
 	break;
 
     case '"':
 	seen_nl = FALSE;
 	return tk_string('"');
-
-    case EOF:
-	c = EOF;
-	break;
     }
     *p = '\0';
+    yyleng = p - yytext;
     seen_nl = FALSE;
 
     return c;
@@ -800,34 +957,25 @@ int tk_gettok()
 void tk_skiptonl(ws)
 bool ws;
 {
-    register int c;
-
+    pp_level++;
     for (;;) {
-	switch (gc()) {
+	switch (tk_gettok()) {
 	case EOF:
-	    yyerror("unterminated line");
+	    error("unterminated line");
+	    --pp_level;
 	    return;
 
 	case LF:
-	    seen_nl = TRUE;
+	    --pp_level;
 	    return;
 
 	case ' ':
 	case HT:
 	    break;
 
-	case '/':
-	    c = gc();
-	    if (c == '*') {
-		comment();
-		break;
-	    } else {
-		uc(c);
-	    }
-	    /* fall through */
 	default:
 	    if (ws) {
-		yyerror("bad token in control");
+		error("bad token in control");
 		ws = FALSE;
 	    }
 	    break;
@@ -867,7 +1015,7 @@ register macro *mc;
     }
 
     if (mc->narg >= 0) {
-	char *args[MAX_NARG], ppbuf[MAX_REPL_SIZE];
+	char *args[MAX_NARG], *arg, ppbuf[MAX_REPL_SIZE];
 	register int narg;
 	register str *s;
 	unsigned short startline, line;
@@ -916,7 +1064,7 @@ register macro *mc;
 		if (token == EOF) {	/* sigh */
 		    line = ibuffer->line;
 		    ibuffer->line = startline;
-		    yyerror("EOF in macro call");
+		    error("EOF in macro call");
 		    ibuffer->line = line;
 		    errcount++;
 		    break;
@@ -926,11 +1074,12 @@ register macro *mc;
 		    if (s->len < 0) {
 			line = ibuffer->line;
 			ibuffer->line = startline;
-			yyerror("macro argument too long");
+			error("macro argument too long");
 			ibuffer->line = line;
 			errcount++;
 		    } else if (narg < mc->narg) {
-			args[narg] = strcpy(ALLOCA(char, s->len + 1), ppbuf);
+			arg = ALLOCA(char, s->len + 1);
+			args[narg] = strcpy(arg, ppbuf);
 		    }
 		    narg++;
 		    if (token == ')') {
@@ -976,7 +1125,7 @@ register macro *mc;
 	--pp_level;
 
 	if (errcount == 0 && narg != mc->narg) {
-	    yyerror("macro argument count mismatch");
+	    error("macro argument count mismatch");
 	    errcount++;
 	}
 
@@ -1056,10 +1205,10 @@ register macro *mc;
 			push((macro *) NULL, args[narg], TRUE);
 			while ((token=tk_gettok()) != EOF) {
 			    if (token == IDENTIFIER) {
-				macro *mc;
+				macro *m;
 
-				if ((mc=mc_lookup(yytext)) != (macro *) NULL) {
-				    token = tk_expand(mc);
+				if ((m=mc_lookup(yytext)) != (macro *) NULL) {
+				    token = tk_expand(m);
 				    if (token > 0) {
 					continue;
 				    }
@@ -1092,7 +1241,7 @@ register macro *mc;
 	    narg = s->len;	/* so s can be deleted before the push */
 	    pps_del(s);
 	    if (narg < 0) {
-		yyerror("macro expansion too large");
+		error("macro expansion too large");
 	    } else {
 		push(mc, strcpy(ALLOC(char, narg + 1), ppbuf), FALSE);
 	    }

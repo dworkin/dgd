@@ -30,12 +30,11 @@ clean:
 	rm -f dgd comp a.out $(OBJ) lex.o
 
 
-$(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h
-macro.o special.o token.o ppcontrol.o: ../hash.h
-token.o: ../path.h
-ppcontrol.o: ../version.h
+$(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h ../str.h ../xfloat.h
+macro.o special.o token.o ppcontrol.o lex.o: ../hash.h
+ppcontrol.o: ../path.h
 
-$(OBJ) lex.o: ../comp/parser.h
+$(OBJ) lex.o: ../comp/node.h ../comp/compile.h ../comp/parser.h
 
 $(OBJ) lex.o: lex.h
 macro.o special.o token.o ppcontrol.o lex.o: macro.h

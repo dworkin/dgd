@@ -1,5 +1,5 @@
-# include <ctype.h>
 # include "ed.h"
+# include <ctype.h>
 # include "edcmd.h"
 
 /*
@@ -9,7 +9,7 @@
 /*
  * These functions are in cmdsub.c
  */
-extern long cb_search	P((cmdbuf*, long, long, bool));
+extern Int  cb_search	P((cmdbuf*, Int, Int, bool));
 extern int  cb_print	P((cmdbuf*));
 extern int  cb_list	P((cmdbuf*));
 extern int  cb_number	P((cmdbuf*));
@@ -166,11 +166,11 @@ char delim;
  * DESCRIPTION:	parse an address. First is the first line to search from if the
  *		address is a search pattern.
  */
-static long cb_address(cb, first)
+static Int cb_address(cb, first)
 register cmdbuf *cb;
-long first;
+Int first;
 {
-    register long l;
+    register Int l;
     register char *p;
 
     l = 0;
@@ -260,7 +260,7 @@ long first;
 
     cb->cmd = skipst(cb->cmd);
     while (cb->cmd[0] == '+' || cb->cmd[0] == '-') {
-	register long r;
+	register Int r;
 
 	p = skipst(cb->cmd + 1);
 	if (!isdigit(*p)) {
@@ -332,7 +332,7 @@ register cmdbuf *cb;
 
     p = cb->cmd;
     if (isdigit(*p)) {
-	register long count;
+	register Int count;
 
 	count = 0;
 	do {
@@ -369,7 +369,7 @@ cmdbuf *cb;
  */
 void cb_do(cb, this)
 register cmdbuf *cb;
-long this;
+Int this;
 {
     cb->undo = cb->edbuf->buffer;
     cb->uthis = this;
@@ -385,7 +385,7 @@ int cb_undo(cb)
 register cmdbuf *cb;
 {
     block b;
-    long this, mark[26];
+    Int this, mark[26];
 
     not_in_global(cb);
     if (cb->undo == (block) -1) {
@@ -449,7 +449,7 @@ register block b;
  * Next_global specifies the next line to be affected by the global command, and
  * size_global specifies the number of lines to be affected.
  */
-static long next_global, size_global;
+static Int next_global, size_global;
 
 /*
  * NAME:	add()
@@ -457,10 +457,10 @@ static long next_global, size_global;
  */
 void add(cb, ln, b, size)
 register cmdbuf *cb;
-register long ln, size;
+register Int ln, size;
 block b;
 {
-    register long *m;
+    register Int *m;
 
     /* global checks */
     if (cb->flags & CB_GLOBAL) {
@@ -489,9 +489,9 @@ block b;
  */
 block delete(cb, first, last)
 register cmdbuf *cb;
-register long first, last;
+register Int first, last;
 {
-    register long size, *m;
+    register Int size, *m;
 
     size = last - first + 1;
 
@@ -535,10 +535,10 @@ register long first, last;
  */
 void change(cb, first, last, b)
 register cmdbuf *cb;
-register long first, last;
+register Int first, last;
 block b;
 {
-    register long offset, *m;
+    register Int offset, *m;
 
     offset = last - first + 1;
     if (b != (block) 0) {
@@ -610,13 +610,17 @@ register cmdbuf *cb;
     if (cb->flags & CB_CHANGE) {
 	if (cb->first <= cb->last) {
 	    change(cb, cb->first, cb->last, cb->edbuf->flines);
+	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
+	    cb->this = cb->othis = 1;
 	} else {
 	    cb->this = cb->othis = cb->first;
 	}
     } else {
 	if (cb->edbuf->flines != (block) 0) {
 	    add(cb, cb->first, cb->edbuf->flines,
-	      bk_size(cb->edbuf->lb, cb->edbuf->flines));
+		bk_size(cb->edbuf->lb, cb->edbuf->flines));
+	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
+	    cb->this = cb->othis = 1;
 	} else {
 	    cb->this = cb->othis = cb->first;
 	}
@@ -655,7 +659,8 @@ register cmdbuf *cb;
     register char *p;
     char buffer[STRINGSZ], delim;
     block undo;
-    long uthis, umark[26];
+    Int uthis, umark[26];
+    bool aborted;
 
     not_in_global(cb);	/* no recursion please */
 
@@ -714,10 +719,9 @@ register cmdbuf *cb;
 
 	/* pop error context */
 	ec_pop();
-	p = (char *) NULL;
+	aborted = FALSE;
     } else {
-	/* get the error */
-	p = errormesg();
+	aborted = TRUE;
     }
     /* come here if global is finished or in case of an error */
 
@@ -732,8 +736,8 @@ register cmdbuf *cb;
     /* no longer in global */
     cb->flags &= ~CB_GLOBAL;
 
-    if (p != (char *) NULL) {
-	error(p);
+    if (aborted) {
+	error((char *) NULL);
     }
     return 0;
 }
@@ -770,48 +774,48 @@ typedef struct {
 # define CM_COUNT	0x40	/* count argument */
 
 static cmd ed_commands[] = {
-    CM_LN0,				'a', "append",	cb_append,
+    { CM_LN0,				'a', "append",	cb_append },
 # define CM_ASSIGN 1
-    CM_LNNONE,				'=', (char*) NULL,
-							cb_assign,
-    CM_LNDOT | CM_COUNT,		'c', "change",	cb_change,
-    CM_LNDOT | CM_BUFFER | CM_COUNT, 	'd', "delete",	cb_delete,
-    CM_LNNONE | CM_EXCL,		'e', "edit",	cb_edit,
-    CM_LNNONE,				'f', "file",	cb_file,
-    CM_LNRNG | CM_EXCL,			'g', "global",	cb_global,
-    CM_LN0 | CM_BUFFER,			 0,  "put",	cb_put,
-    CM_LN0,				'i', "insert",	cb_insert,
-    CM_LNNONE | CM_EXCL | CM_COUNT, 	'j', "join",	cb_join,
-    CM_LNDOT,				'k', "mark",	cb_mark,
-    CM_LNDOT | CM_COUNT,		'l', "list",	cb_list,
-    CM_LNDOT | CM_ADDR,			'm', "move",	cb_move,
+    { CM_LNNONE,			'=', (char*) NULL,
+							cb_assign },
+    { CM_LNDOT | CM_COUNT,		'c', "change",	cb_change },
+    { CM_LNDOT | CM_BUFFER | CM_COUNT, 	'd', "delete",	cb_delete },
+    { CM_LNNONE | CM_EXCL,		'e', "edit",	cb_edit },
+    { CM_LNNONE,			'f', "file",	cb_file },
+    { CM_LNRNG | CM_EXCL,		'g', "global",	cb_global },
+    { CM_LN0 | CM_BUFFER,		 0,  "put",	cb_put },
+    { CM_LN0,				'i', "insert",	cb_insert },
+    { CM_LNNONE | CM_EXCL | CM_COUNT, 	'j', "join",	cb_join },
+    { CM_LNDOT,				'k', "mark",	cb_mark },
+    { CM_LNDOT | CM_COUNT,		'l', "list",	cb_list },
+    { CM_LNDOT | CM_ADDR,		'm', "move",	cb_move },
 # define CM_NUMBER 13
-    CM_LNDOT | CM_COUNT,		'#', "number",	cb_number,
-    CM_LNRNG | CM_EXCL,			 0,  "wq",	cb_wq,
-    CM_LNDOT | CM_COUNT,		'p', "print",	cb_print,
-    CM_LNNONE | CM_EXCL,		'q', "quit",	cb_quit,
-    CM_LN0,				'r', "read",	cb_read,
-    CM_LNDOT,				's', "substitute",
-							cb_subst,
-    CM_LNDOT | CM_ADDR,			't', "copy",	cb_copy,
-    CM_LNNONE,				'u', "undo",	cb_undo,
-    CM_LNRNG,				'v', (char*) NULL,
-							cb_vglobal,
-    CM_LNRNG | CM_EXCL,			'w', "write",	cb_write,
-    CM_LNRNG,				'x', "xit",	cb_xit,
-    CM_LNDOT | CM_BUFFER | CM_COUNT,	'y', "yank",	cb_yank,
-    CM_LNNONE,				'z', (char*) NULL,
-							cb_page,
-    CM_LNNONE,				 0,  "set",	cb_set,
+    { CM_LNDOT | CM_COUNT,		'#', "number",	cb_number },
+    { CM_LNRNG | CM_EXCL,		 0,  "wq",	cb_wq },
+    { CM_LNDOT | CM_COUNT,		'p', "print",	cb_print },
+    { CM_LNNONE | CM_EXCL,		'q', "quit",	cb_quit },
+    { CM_LN0,				'r', "read",	cb_read },
+    { CM_LNDOT,				's', "substitute",
+							cb_subst },
+    { CM_LNDOT | CM_ADDR,		't', "copy",	cb_copy },
+    { CM_LNNONE,			'u', "undo",	cb_undo },
+    { CM_LNRNG,				'v', (char*) NULL,
+							cb_vglobal },
+    { CM_LNRNG | CM_EXCL,		'w', "write",	cb_write },
+    { CM_LNRNG,				'x', "xit",	cb_xit },
+    { CM_LNDOT | CM_BUFFER | CM_COUNT,	'y', "yank",	cb_yank },
+    { CM_LNNONE,			'z', (char*) NULL,
+							cb_page },
+    { CM_LNNONE,			 0,  "set",	cb_set },
 # define CM_LSHIFT	27
-    CM_LNDOT | CM_COUNT,		'<', (char*) NULL,
-							cb_lshift,
+    { CM_LNDOT | CM_COUNT,		'<', (char*) NULL,
+							cb_lshift },
 # define CM_RSHIFT	28
-    CM_LNDOT | CM_COUNT,		'>', (char*) NULL,
-							cb_rshift,
+    { CM_LNDOT | CM_COUNT,		'>', (char*) NULL,
+							cb_rshift },
 # define CM_INDENT	29
-    CM_LNRNG,				'I', (char*) NULL,
-							cb_indent,
+    { CM_LNRNG,				'I', (char*) NULL,
+							cb_indent },
 };
 
 # define NR_CMD		27	/* not including <, > and I */
@@ -1050,7 +1054,7 @@ char *command;
 	    }
 
 	    /* another command? */
-	    if (*p == '|' && ret != RET_QUIT) {
+	    if (*p == '|' && (cb->flags & CB_GLOBAL) && ret != RET_QUIT) {
 		cb->cmd = p + 1;
 		continue;
 	    }

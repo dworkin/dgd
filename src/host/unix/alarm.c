@@ -1,11 +1,7 @@
 # include "dgd.h"
 # include <signal.h>
-# include "str.h"
-# include "array.h"
-# include "object.h"
-# include "data.h"
-# include "interpret.h"
-# include "call_out.h"
+
+static bool timeout;		/* alarm timed out */
 
 /*
  * NAME:	intr
@@ -14,7 +10,7 @@
 static void intr(arg)
 int arg;
 {
-    co_timeout();
+    timeout = TRUE;
 }
 
 /*
@@ -22,9 +18,19 @@ int arg;
  * DESCRIPTION:	cause an alarm signal to occur after the given number of
  *		seconds
  */
-void P_alarm(timeout)
-unsigned int timeout;
+void P_alarm(delay)
+unsigned int delay;
 {
+    timeout = FALSE;
     signal(SIGALRM, intr);
-    alarm(timeout);
+    alarm(delay);
+}
+
+/*
+ * NAME:	P->timeout()
+ * DESCRIPTION:	return the value of the timeout flag
+ */
+bool P_timeout()
+{
+    return timeout;
 }

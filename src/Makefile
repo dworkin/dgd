@@ -21,12 +21,12 @@ COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 
 a.out:	$(OBJ)
-	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lex; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd comp; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lex; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd ed; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd kfun; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lpc; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` `cat ed/dgd` \
 	      `cat kfun/dgd` `cat lpc/dgd` `cat host/dgd` $(LIBS)
 
@@ -60,8 +60,8 @@ clean:
 	cd host; $(DMAKE) clean
 
 
-config.o dgd.o: comp/node.h comp/compile.h
-config.o interpret.o: comp/csupport.h
+path.o config.o dgd.o: comp/node.h comp/compile.h
+config.o data.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
@@ -73,13 +73,16 @@ interpret.o: kfun/table.h
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
 ed.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
+array.o interpret.o path.o config.o dgd.o: xfloat.h
 array.o object.o data.o path.o ed.o comm.o call_out.o: interpret.h
 interpret.o config.o dgd.o: interpret.h
-str.o array.o object.o data.o call_out.o interpret.o config.o: data.h
+str.o array.o object.o data.o path.o call_out.o interpret.o: data.h
+config.o dgd.o: data.h
 interpret.o: fcontrol.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o data.o: swap.h
 ed.o config.o dgd.o: ed.h
 call_out.o config.o dgd.o: call_out.h
-error.o comm.o config.o dgd.o: comm.h
+error.o comm.o call_out.o config.o dgd.o: comm.h
+config.o: version.h

@@ -4,7 +4,6 @@
 # include "ppstr.h"
 # include "token.h"
 # include "path.h"
-# include "version.h"
 # include "ppcontrol.h"
 
 /*
@@ -58,7 +57,6 @@ int level;
     mc_init();
     special_define();
     mc_define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
-    mc_define("__VERSION__", VERSION, -1);
     pps_init();
     include_level = level;
     ifs = &top;
@@ -251,12 +249,12 @@ static int expr_get()
 		}
 		strcpy(buf, yytext);
 		if (token != IDENTIFIER) {
-		    yyerror("missing identifier in defined");
+		    error("missing identifier in defined");
 		}
 		if (paren && token != ')') {
 		    token = wsgettok();
 		    if (token != ')') {
-			yyerror("missing ) in defined");
+			error("missing ) in defined");
 			expr_unget(token);
 		    }
 		}
@@ -287,7 +285,7 @@ int priority;
 	expr = eval_expr(0);
 	token = expr_get();
 	if (token != ')') {
-	    yyerror("missing ) in conditional control");
+	    error("missing ) in conditional control");
 	    expr_unget(token);
 	}
     } else if (pri[token] & UNARY) {
@@ -304,7 +302,7 @@ int priority;
     } else {
 	/* bad token */
 	if (token == LF) {
-	    yyerror("missing expression in conditional control");
+	    error("missing expression in conditional control");
 	}
 	expr_unget(token);
 	return 0;
@@ -322,9 +320,9 @@ int priority;
 	    expr2 = eval_expr((int) expr2);
 	    if (expr2 == 0) {
 		if (token == '/') {
-		    yyerror("division by zero in conditional control");
+		    error("division by zero in conditional control");
 		} else if (token == '%') {
-		    yyerror("modulus by zero in conditional control");
+		    error("modulus by zero in conditional control");
 		}
 	    } else {
 		switch (token) {
@@ -349,7 +347,7 @@ int priority;
 		case '?':
 		    token = expr_get();
 		    if (token != ':') {
-			yyerror("? without : in conditional control");
+			error("? without : in conditional control");
 			expr_unget(token);
 		    } else if (expr == 0) {
 			expr = eval_expr(0);
@@ -408,7 +406,7 @@ register int len;
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..24 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..26 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
@@ -417,20 +415,20 @@ register char *key;
 register int len;
 {
     static char *keyword[] = {
-      "for", "void", "lock", "nomask", "catch", "case", "inherit",
-      "mapping", "continue", "break", "int", "do", "else", "varargs",
-      "static", "mixed", "if", "object", "string", "switch", "private",
-      "return", "while", "default"
+      "for", "void", "do", "continue", "inherit", "mapping", "int",
+      "lock", "nomask", "catch", "case", "float", "break", "mixed",
+      "static", "varargs", "string", "else", "if", "while", "switch",
+      "default", "return", "private", "object"
     };
 
     static char value[] = {
-      2, 15, 2, 11, 14, 15, 11, 13, 1, 0, 0, 9, 0,
-      5, 0, 0, 0, 7, 3, 13, 8, 0, 17, 0, 0, 0
+      2, 17, 7, 2, 12, 17, 13, 10, 1, 0, 0, 9, 0,
+      3, 0, 0, 0, 10, 8, 13, 3, 0, 13, 0, 0, 0
     };
 
     if (len >= 2) {
 	len = value[key[1] - 'a'] + value[key[len - 2] - 'a'] + 1;
-	if (len >= 1 && len <= 24 && strcmp(keyword[len - 1], key) == 0) {
+	if (len >= 1 && len <= 25 && strcmp(keyword[len - 1], key) == 0) {
 	    return len;
 	}
     }
@@ -447,9 +445,9 @@ int token;
 char *wanted, *directive;
 {
     if (token == LF) {
-	yyerror("missing %s in #%s", wanted, directive);
+	error("missing %s in #%s", wanted, directive);
     } else {
-	yyerror("unexpected token in #%s", directive);
+	error("unexpected token in #%s", directive);
 	tk_skiptonl(FALSE);
     }
 }
@@ -465,7 +463,7 @@ static void do_include()
     register char **idir;
 
     if (include_level == 8) {
-	yyerror("#include nesting too deep");
+	error("#include nesting too deep");
 	tk_skiptonl(FALSE);
 	return;
     }
@@ -501,7 +499,7 @@ static void do_include()
 	    return;
 	}
     }
-    yyerror("cannot include \"%s\"", file);
+    error("cannot include \"%s\"", file);
 }
 
 /*
@@ -529,7 +527,7 @@ register int narg, token;
  */
 static void do_define()
 {
-    char name[MAX_LINE_SIZE], buf[MAX_REPL_SIZE], *args[MAX_NARG];
+    char name[MAX_LINE_SIZE], buf[MAX_REPL_SIZE], *args[MAX_NARG], *arg;
     register int token, i, narg, errcount;
     register str *s;
     bool seen_space;
@@ -551,21 +549,21 @@ static void do_define()
 	if (token != ')') {
 	    for (;;) {
 		if (token == LF || token == EOF) {
-		    yyerror("unterminated macro definition");
+		    error("unterminated macro definition");
 		    errcount++;
 		    break;
 		}
 		if (token != IDENTIFIER) {
-		    yyerror("unexpected token in macro parameter list");
+		    error("unexpected token in macro parameter list");
 		    errcount++;
 		    tk_skiptonl(FALSE);
 		    break;
 		}
 		if (narg < MAX_NARG) {
-		    args[narg++] = strcpy(ALLOCA(char, strlen(yytext) + 1),
-					  yytext);
+		    arg = ALLOCA(char, strlen(yytext) + 1);
+		    args[narg++] = strcpy(arg, yytext);
 		} else {
-		    yyerror("too many parameters in macro definition");
+		    error("too many parameters in macro definition");
 		    errcount++;
 		    tk_skiptonl(FALSE);
 		    break;
@@ -575,12 +573,12 @@ static void do_define()
 		    break;
 		}
 		if (token == LF || token == EOF) {
-		    yyerror("unterminated macro definition");
+		    error("unterminated macro definition");
 		    errcount++;
 		    break;
 		}
 		if (token != ',') {
-		    yyerror("unexpected token in macro parameter list");
+		    error("unexpected token in macro parameter list");
 		    errcount++;
 		    tk_skiptonl(FALSE);
 		    break;
@@ -623,7 +621,7 @@ static void do_define()
 		    pps_ccat(s, (i | MA_TAG | MA_STRING));
 		    pps_ccat(s, HT);
 		} else {
-		    yyerror("# must be followed by parameter");
+		    error("# must be followed by parameter");
 		    errcount++;
 		    tk_skiptonl(FALSE);
 		    break;
@@ -631,14 +629,14 @@ static void do_define()
 	    } else if (token == HASH_HASH) {
 		/* concatenate previous token with next */
 		if (s->len == 1) {
-		    yyerror("## at start of macro replacement list");
+		    error("## at start of macro replacement list");
 		    errcount++;
 		    tk_skiptonl(FALSE);
 		    break;
 		}
 		token = wsgettok();
 		if (token == LF || token == EOF) {
-		    yyerror("## at end of macro replacement list");
+		    error("## at end of macro replacement list");
 		    errcount++;
 		    break;
 		}
@@ -685,9 +683,9 @@ static void do_define()
 
     if (errcount == 0) {
 	if (i < 0) {
-	    yyerror("macro replacement list too large");
+	    error("macro replacement list too large");
 	} else if (special_replace(name) != (char *) NULL) {
-	    yyerror("#define of predefined macro");
+	    error("#define of predefined macro");
 	} else {
 	    mc_define(name, buf, narg);
 	}
@@ -705,15 +703,21 @@ int pp_gettok()
     register macro *mc;
 
     for (;;) {
-	token = tk_gettok();
-	if (ifs->skipping && token != '#' && token != LF && token != EOF) {
-	    tk_skiptonl(FALSE);
-	    continue;
+	if (ifs->skipping) {
+	    tk_setpp(TRUE);
+	    token = wsgettok();
+	    tk_setpp(FALSE);
+	    if (token != '#' && token != LF && token != EOF) {
+		tk_skiptonl(FALSE);
+		continue;
+	    }
+	} else {
+	    token = tk_gettok();
 	}
 	switch (token) {
 	case EOF:
 	    while (ifs->level > include_level) {
-		yyerror("missing #endif");
+		error("missing #endif");
 		pop();
 	    }
 	    if (include_level > 0) {
@@ -748,6 +752,11 @@ int pp_gettok()
 	    yylval.number = yynumber;
 	    return token;
 
+	case FLOAT_CONST:
+	    /* floating point constant */
+	    yylval.real = yyfloat;
+	    return token;
+
 	case IDENTIFIER:
 	    mc = mc_lookup(yytext);
 	    if (mc != (macro *) NULL && tk_expand(mc) > 0) {
@@ -761,8 +770,9 @@ int pp_gettok()
 
 	case HASH:
 	    token = '#';
+	    /* fall through */
 	default:
-	    yyerror("illegal character: 0x%02x", token);
+	    error("illegal character: 0x%02x", token);
 	    break;
 
 	case '#':
@@ -791,10 +801,10 @@ int pp_gettok()
 
 		case PP_ELIF:
 		    if (ifs == &top) {
-			yyerror("#elif without #if");
+			error("#elif without #if");
 			tk_skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
-			yyerror("#elif after #else");
+			error("#elif after #else");
 			tk_skiptonl(FALSE);
 		    } else if (!ifs->active || !ifs->skipping) {
 			/* #elif within unactive/after non-skipped #if */
@@ -845,10 +855,10 @@ int pp_gettok()
 
 		case PP_ELSE:
 		    if (ifs == &top) {
-			yyerror("#else without #if");
+			error("#else without #if");
 			tk_skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
-			yyerror("#else after #else");
+			error("#else after #else");
 			tk_skiptonl(FALSE);
 		    } else {
 			ifs->expect_else = FALSE;
@@ -859,7 +869,7 @@ int pp_gettok()
 
 		case PP_ENDIF:
 		    if (ifs->level <= include_level) {
-			yyerror("#endif without #if");
+			error("#endif without #if");
 			tk_skiptonl(FALSE);
 		    } else {
 			pop();
@@ -885,9 +895,9 @@ int pp_gettok()
 			}
 			tk_setpp(FALSE);
 			if (s->len == 0) {
-			    lexwarning("#error directive");
+			    warning("#error directive");
 			} else {
-			    lexwarning("#error:%s", buf);
+			    warning("#error:%s", buf);
 			}
 			pps_del(s);
 		    } else {
@@ -943,7 +953,7 @@ int pp_gettok()
 		    token = wsgettok();
 		    if (token == IDENTIFIER) {
 			if (special_replace(yytext) != (char *) NULL) {
-			    yyerror("#undef of predefined macro");
+			    error("#undef of predefined macro");
 			} else {
 			    mc_undef(yytext);
 			}
@@ -959,12 +969,12 @@ int pp_gettok()
 		    break;
 
 		default:
-		    yyerror("undefined control");
+		    error("undefined control");
 		    tk_skiptonl(FALSE);
 		    break;
 		}
 	    } else if (token != LF) {
-		yyerror("undefined control");
+		error("undefined control");
 		tk_skiptonl(FALSE);
 	    }
 	    break;

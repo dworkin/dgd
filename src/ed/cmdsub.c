@@ -1,5 +1,5 @@
-# include <ctype.h>
 # include "ed.h"
+# include <ctype.h>
 # include "edcmd.h"
 # include "file.h"
 
@@ -11,11 +11,11 @@ extern char *skipst		P((char*));
 extern char *pattern		P((char*, char, char*));
 extern void  cb_count		P((cmdbuf*));
 extern void  not_in_global	P((cmdbuf*));
-extern void  cb_do		P((cmdbuf*, long));
+extern void  cb_do		P((cmdbuf*, Int));
 extern void  cb_buf		P((cmdbuf*, block));
-extern void  add		P((cmdbuf*, long, block, long));
-extern block delete		P((cmdbuf*, long, long));
-extern void  change		P((cmdbuf*, long, long, block));
+extern void  add		P((cmdbuf*, Int, block, Int));
+extern block delete		P((cmdbuf*, Int, Int));
+extern void  change		P((cmdbuf*, Int, Int, block));
 extern void  startblock		P((cmdbuf*));
 extern void  addblock		P((cmdbuf*, char*));
 extern void  endblock		P((cmdbuf*));
@@ -23,7 +23,7 @@ extern void  endblock		P((cmdbuf*));
 
 static jmp_buf env;	/* env to jump back to when pattern is found */
 static rxbuf *rx;	/* current pattern */
-static long lineno;	/* current line number */
+static Int lineno;	/* current line number */
 static bool ignorecase;	/* current ignorecase status */
 
 /*
@@ -45,9 +45,9 @@ char *text;
  * DESCRIPTION:	search a range of lines for the occurance of a pattern. When
  *		found, jump out immediately.
  */
-long cb_search(cb, first, last, reverse)
+Int cb_search(cb, first, last, reverse)
 cmdbuf *cb;
-long first, last;
+Int first, last;
 bool reverse;
 {
     if (setjmp(env)) {
@@ -186,7 +186,7 @@ cmdbuf *cb;
 int cb_page(cb)
 register cmdbuf *cb;
 {
-    register long offset, window;
+    register Int offset, window;
 
     if (cb->edbuf->lines == 0) {
 	error("No lines in buffer");
@@ -295,7 +295,7 @@ cmdbuf *cb;
 int cb_change(cb)
 cmdbuf *cb;
 {
-    register long *m;
+    register Int *m;
 
     not_in_global(cb);
     cb_do(cb, cb->first);
@@ -352,8 +352,8 @@ register cmdbuf *cb;
 int cb_move(cb)
 register cmdbuf *cb;
 {
-    long mark[26];
-    register long offset, *m1, *m2;
+    Int mark[26];
+    register Int offset, *m1, *m2;
 
     if (cb->a_addr >= cb->first - 1 && cb->a_addr <= cb->last) {
 	error("Move to moved line");
@@ -916,7 +916,7 @@ int cb_join(cb)
 register cmdbuf *cb;
 {
     char buf[MAX_LINE_SIZE + 1];
-    register long *m;
+    register Int *m;
 
     if (cb->edbuf->lines == 0) {
 	error("No lines in buffer");
@@ -954,7 +954,7 @@ register cmdbuf *cb;
 
 /* status variables for substitute */
 static bool currentblock, skipped, globsubst, upper, lower, tupper, tlower;
-static long offset, *mark;
+static Int offset, *mark;
 static int buflen;
 
 /*
@@ -1022,8 +1022,8 @@ register char *text;
     char line[MAX_LINE_SIZE];
     register int idx, size;
     register char *p;
-    register long *k, *l;
-    long newlines;
+    register Int *k, *l;
+    Int newlines;
     bool found;
 
     found = FALSE;
@@ -1218,10 +1218,10 @@ int cb_subst(cb)
 register cmdbuf *cb;
 {
     char buf[MAX_LINE_SIZE], delim;
-    long m[26];
-    long edit;
+    Int m[26];
+    Int edit;
     register char *p;
-    register long *k, *l;
+    register Int *k, *l;
 
     delim = cb->cmd[0];
     if (delim == '\0' || strchr("0123456789gpl#-+", delim) != (char*) NULL) {
@@ -1468,16 +1468,19 @@ register cmdbuf *cb;
 
     eb_clear(cb->edbuf);
     cb->flags &= ~CB_NOIMAGE;
-    cb->first = cb->this = 0;
-    cb->undo = (block) -1;	/* not 0! */
     cb->edit = 0;
+    cb->first = cb->this = 0;
+    memset(cb->mark, '\0', sizeof(cb->mark));
+    cb->buf = 0;
+    memset(cb->zbuf, '\0', sizeof(cb->zbuf));
+    cb->undo = (block) -1;	/* not 0! */
     cb_read(cb);
     if (iob->zero > 0 || iob->split > 0 || iob->ill) {
 	/* the editbuffer in memory is not a perfect image of the file read */
 	cb->flags |= CB_NOIMAGE;
     }
-    cb->undo = (block) -1;	/* again after read */
     cb->edit = 0;
+    cb->undo = (block) -1;	/* again after read */
 
     return 0;
 }

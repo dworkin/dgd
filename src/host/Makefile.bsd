@@ -1,7 +1,7 @@
 #
-# Makefile for host dependent object files for SunOS 4.x
+# Makefile for host dependent object files for BSD
 #
-HOST=	SUNOS4
+HOST=	GENERIC_BSD
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)

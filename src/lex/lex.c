@@ -1,5 +1,6 @@
-# include <ctype.h>
 # include "lex.h"
+# undef error
+# include <ctype.h>
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
@@ -17,7 +18,7 @@ register char *s;
     }
 }
 
-int main(argc, argv)
+int dgd_main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -53,18 +54,28 @@ char *argv[];
     return 0;
 }
 
-void yyerror(s1, s2, s3)
+void c_error(s1, s2, s3)
 char *s1, *s2, *s3;
 {
-    fprintf(stderr, "\"%s\", line %u: ", tk_filename(), tk_line());
+    fprintf(stderr, "/%s, line %u: ", tk_filename(), tk_line());
     fprintf(stderr, s1, s2, s3);
     fputc('\n', stderr);
+}
+
+void error(s1, s2, s3)
+char *s1, *s2, *s3;
+{
+    fprintf(stderr, "/%s, line %u: ", tk_filename(), tk_line());
+    fprintf(stderr, s1, s2, s3);
+    fputc('\n', stderr);
+    exit(1);
 }
 
 void fatal(f, a1, a2)
 char *f, *a1, *a2;
 {
-    printf(f, a1, a2);
+    fprintf(stderr, "Fatal error: ");
+    fprintf(stderr, f, a1, a2);
     abort();
 }
 

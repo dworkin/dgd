@@ -1,5 +1,5 @@
-# include <ctype.h>
 # include "ed.h"
+# include <ctype.h>
 # include "regexp.h"
 
 /*
@@ -316,25 +316,25 @@ char *text;
 	case EOM:
 	    /* found a match */
 	    l_rx->start = t;
-	    return 1;
+	    return TRUE;
 
 	case EOL:
 	    if (*t != '\0') {
-		return 0;
+		return FALSE;
 	    }
 	    /* cannot return at this point as a \) might still follow. */
 	    continue;
 
 	case ANY:
 	    if (*t == '\0') {	/* any but '\0' */
-		return 0;
+		return FALSE;
 	    }
 	    break;
 
 	case SINGLE:
 	    /* match single character */
 	    if (*t != *m && (!l_ic || tolower(*t) != tolower(*m))) {
-		return 0;
+		return FALSE;
 	    }
 	    m++;
 	    break;
@@ -349,7 +349,7 @@ char *text;
 			break;
 		    }
 		}
-		return 0;
+		return FALSE;
 	    }
 	    break;
 
@@ -392,7 +392,9 @@ char *text;
 	    } else {
 		/* try all possible lengths of the starred pattern */
 		while (p > t) {
-		    if (match(m, p)) return 1;
+		    if (match(m, p)) {
+			return TRUE;
+		    }
 		    --p;
 		}
 	    }
@@ -402,7 +404,7 @@ char *text;
 	    /* start of word */
 	    if ((t != l_text && (isalnum(t[-1]) || t[-1] == '_'))
 	      || (!isalpha(*t) && *t != '_')) {
-		return 0;
+		return FALSE;
 	    }
 	    continue;
 
@@ -410,7 +412,7 @@ char *text;
 	    /* end of word */
 	    if ((!isalnum(t[-1]) && t[-1] != '_')
 	      || (isalpha(*t) || *t == '_')) {
-		return 0;
+		return FALSE;
 	    }
 	    continue;
 

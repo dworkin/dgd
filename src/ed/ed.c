@@ -1,4 +1,5 @@
 # include "ed.h"
+# undef error
 # include <signal.h>
 # include "edcmd.h"
 
@@ -10,7 +11,7 @@ void intr()
     exit(2);
 }
 
-int main(argc, argv)
+int dgd_main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -69,4 +70,10 @@ void output(f, a1, a2, a3, a4)
 char *f, *a1, *a2, *a3, *a4;
 {
     printf(f, a1, a2, a3, a4);
+}
+
+void ed_error(f, a1, a2, a3)
+char *f, *a1, *a2, *a3;
+{
+    error(f, a1,a2, a3);
 }

@@ -1,11 +1,37 @@
-   FreeBSD and Linux are now supported directly (Linux support is untested).
-To compile, modify HOST in src/Makefile, and copy src/host/Makefile.yourhost
-to src/host/Makefile.
+   This is release 1.0.a7 of DGD.  Many things have changed since the
+previous release.  A summary of mudlib-affecting changes:
+ - When used from the auto object, call_other(), clone_object() and
+   find_object() will no longer invoke driver->path_object() to
+   translate the path.
+ - The first argument has been removed in calls to driver->path_ed_read(),
+   driver->path_ed_write() and driver->path_object(), since it was always
+   the same as previous_object().
+ - Dumping state is now done with dump_state(), rather than swapout(1)
+   or shutdown(1).
+ - The predefined macro __VERSION__ has been removed; instead, the version
+   number has become a field in the array returned by status().
+ - The fields of the array returned by status() (as well as the generated
+   include file status.h) have been reorganized.
+ - intp(), stringp(), objectp(), arrayp() and mappingp() have been replaced
+   by a single kfun, typeof().
+ - Callouts work differently: call_out() returns an integer value > 0,
+   which must be supplied as an argument to remove_call_out().  The kfun
+   find_call_out() has been removed.  status(obj) returns a list of callouts
+   for an object.
+ - editor() now returns the output as a string, rather than calling
+   receive_message() in the editor object.
+ - driver->connect() has been renamed to driver->telnet_connect().
+I've modified the 2.4.5 simulation so it works with 1.0.a7 (the 2.4.5
+simulation is not included in this distribution, but is also available at
+ftp.lysator.liu.se, directory /pub/lpmud/drivers/dgd).
 
-   To port DGD to a new host, find out if it is closest to V7, BSD, or SysV;
-add a new entry for it to the src/host.h file, which you base on MINIX68K,
-BSD386 or LINUX respectively (warning: if you use MINIX68K, you probably
-don't want 2-byte integers).  Also make a new src/host/Makefile.yourhost.
+   Config file affecting changes:
+ - port_number renamed to telnet_port.
+ - Added binary_port.
+ - Renamed swap_sector to sector_size.
+ - Renamed swap_cache to cache_size.
 
-   The 2.4.5 simulation is now separated from the DGD distribution; it is
-called sim-2.4.5.tar.gz .
+   Also, a float type has been added, many bugs were fixed, and part of the
+compiler was rewritten (probably introducing some new bugs).
+   Some docs have been added or changed.  The conditions for commercial use
+are stated in doc/Commercial.

@@ -11,11 +11,16 @@ typedef struct _editor_ {
     struct _editor_ *next;	/* next in free list */
 } editor;
 
+# define EOUTBUFSZ	20480	/* 20 K */
+
 static editor *editors;		/* editor table */
 static editor *flist;		/* free list */
 static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
+static char *outbuf;		/* output buffer */
+static int outbufsz;		/* chars in output buffer */
 static bool recursion;		/* recursion in editor command */
+static bool internal;		/* flag editor internal error */
 
 /*
  * NAME:	ed->init()
@@ -111,33 +116,47 @@ object *obj;
  * NAME:	ed->command()
  * DESCRIPTION:	handle an editor command
  */
-void ed_command(obj, cmd)
+string *ed_command(obj, cmd)
 object *obj;
 char *cmd;
 {
     register editor *e;
+    char buffer[EOUTBUFSZ];
+    extern void output();
 
     check_recursion();
     if (strchr(cmd, LF) != (char *) NULL) {
 	error("Newline in editor command");
     }
+
     e = &editors[UCHAR(obj->eduser)];
+    outbuf = buffer;
+    outbufsz = 0;
+    internal = FALSE;
     if (ec_push()) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;
+	if (!internal) {
+	    error((char *) NULL);	/* pass on error */
+	}
 	output("%s\012", errormesg());	/* LF */
-	return;
-    }
-    recursion = TRUE;
-    if (cb_command(e->ed, cmd)) {
-	lb_inact(e->ed->edbuf->lb);
-	recursion = FALSE;
     } else {
-	recursion = FALSE;
-	ed_del(obj);
+	recursion = TRUE;
+	if (cb_command(e->ed, cmd)) {
+	    lb_inact(e->ed->edbuf->lb);
+	    recursion = FALSE;
+	} else {
+	    recursion = FALSE;
+	    ed_del(obj);
+	}
+	ec_pop();
     }
-    ec_pop();
+
+    if (outbufsz == 0) {
+	return (string *) NULL;
+    }
+    return str_new(outbuf, (long) outbufsz);
 }
 
 /*
@@ -159,12 +178,26 @@ void output(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
     char buf[2 * MAX_LINE_SIZE + 15];
+    int len;
 
-    i_check_stack(1);
     sprintf(buf, f, a1, a2, a3);
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(buf, (long) strlen(buf)));
-    if (i_call(i_this_object(), "receive_message", TRUE, 1)) {
-	i_del_value(sp++);
+    len = strlen(buf);
+    if (outbufsz + len > EOUTBUFSZ) {
+	error("Editor output string too long");
     }
+    memcpy(outbuf + outbufsz, buf, len);
+    outbufsz += len;
+}
+
+/*
+ * NAME:	ed_error()
+ * DESCRIPTION:	handle an editor internal error
+ */
+void ed_error(f, a1, a2, a3)
+char *f, *a1, *a2, *a3;
+{
+    if (f != (char *) NULL) {
+	internal = TRUE;
+    }
+    error(f, a1,a2, a3);
 }

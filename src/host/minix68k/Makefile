@@ -8,9 +8,11 @@ CCFLAGS=-O $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	cc
 
-SRC=	local.c lrand.c path.c rename.c dirent.c time.c alarm.c connect.c
-OBJ=	local.o lrand.o path.o rename.o dirent.o time.o alarm.o connect.o
-SUBOBJ=	local.o lrand.o path.o rename.o dirent.o time.o
+SRC=	local.c lrand.c path.c rename.c dirent.c time.c alarm.c connect.c \
+	xfloat.c
+OBJ=	local.o lrand.o path.o rename.o dirent.o time.o alarm.o connect.o \
+	xfloat.o crypt.o
+SUBOBJ=	local.o lrand.o path.o rename.o dirent.o time.o xfloat.o crypt.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
@@ -28,4 +30,10 @@ local.c connect.c: minix68k/$@
 lrand.c path.c rename.c dirent.c time.c alarm.c: unix/$@
 	cp unix/$@ $@
 
-$(OBJ):	../dgd.h ../host.h
+xfloat.c: simfloat.c
+	cp simfloat.c xfloat.c
+
+$(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
+path.o: ../path.h
+connect.o: ../str.h ../array.h ../object.h ../comm.h
+xfloat.o: ../xfloat.h
