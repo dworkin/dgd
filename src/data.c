@@ -1738,10 +1738,10 @@ register Int level;
 	    arr = v->u.array;
 	    if (arr->primary->arr == (array *) NULL &&
 		arr->primary->plane->level > level) {
-		arr->primary = &arr->primary->plane->prev->alocal;
 		if (arr->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(arr);
 		}
+		arr->primary = &arr->primary->plane->prev->alocal;
 		commit_values(arr->elts, arr->size, level);
 	    }
 
@@ -1937,11 +1937,6 @@ Int level;
 	/*
 	 * commit changes to previous plane
 	 */
-	p->prev->flags = p->flags & MOD_ALL;
-	p->prev->schange = p->schange;
-	p->prev->achange = p->achange;
-	p->prev->imports = p->imports;
-
 	data = p->alocal.data;
 	if (p->original != (value *) NULL) {
 	    if (p->flags & PLANE_MERGE) {
@@ -2004,6 +1999,10 @@ Int level;
      * pass 3: deallocate
      */
     for (p = plist; p != clist; p = plist) {
+	p->prev->flags = p->flags & MOD_ALL;
+	p->prev->schange = p->schange;
+	p->prev->achange = p->achange;
+	p->prev->imports = p->imports;
 	plist = p->plist;
 	FREE(p);
     }

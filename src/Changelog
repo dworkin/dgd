@@ -1406,3 +1406,4 @@ DGD 1.1
  - Removed support for stand-alone compilations of editor and lexical scanner.
  - Implemented DGD runtime extension interface.
  - Fixed another tricky bug that could commit arrays to the wrong plane.
+ - Even tricker than I thought.
