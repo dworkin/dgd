@@ -1313,3 +1313,6 @@ DGD 1.1
    closed.
  - Newly added mixed variables would get the value of the old variable in the
    same slot during upgrading.
+ - Adjust precompiler to latest changes in callout interface.
+ - Get DGD on BeOS to compile again.
+ - Fix a bug in name lookup which could hang the server.

@@ -282,7 +282,7 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	for (h = &ipahtab[ipa->ipnum % ipahtabsz];
 	     *h != ipa;
 	     h = &(*h)->link) ;
-	*h = ipa->next;
+	*h = ipa->link;
 
 	if (ipa == lastreq) {
 	    lastreq = (ipaddr *) NULL;

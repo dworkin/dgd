@@ -168,7 +168,7 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
 	for (h = &ipahtab[(Uint) ipa->ipnum.s_addr % ipahtabsz];
 	     *h != ipa;
 	     h = &(*h)->link) ;
-	*h = ipa->next;
+	*h = ipa->link;
 
 	if (ipa == lastreq) {
 	    lastreq = (ipaddr *) NULL;

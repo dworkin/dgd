@@ -362,8 +362,8 @@ unsigned short *mtime;
  * NAME:	call_out->check()
  * DESCRIPTION:	check if, and how, a new callout can be added
  */
-Uint co_check(ns, nl, delay, mdelay, tp, mp, qp)
-unsigned int ns, nl, mdelay;
+Uint co_check(n, delay, mdelay, tp, mp, qp)
+unsigned int n, mdelay;
 Int delay;
 Uint *tp;
 unsigned short *mp;
@@ -381,7 +381,7 @@ cbuf **qp;
 	return 0;
     }
 
-    if (nshort + ns + queuebrk + nl == cotabsz || nshort + ns == cotabsz - 1) {
+    if (queuebrk + nshort + n == cotabsz || nshort + n == cotabsz - 1) {
 	error("Too many callouts");
     }
 

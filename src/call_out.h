@@ -1,8 +1,7 @@
 typedef struct _cbuf_ cbuf;
 
 extern void	co_init		P((unsigned int));
-extern Uint	co_check	P((unsigned int, unsigned int,
-				   Int, unsigned int,
+extern Uint	co_check	P((unsigned int, Int, unsigned int,
 				   Uint*, unsigned short*, cbuf**));
 extern void	co_new		P((unsigned int, object*, Uint, unsigned int,
 				   cbuf*));

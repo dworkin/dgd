@@ -722,7 +722,7 @@ object *obj;
 
 /*
  * NAME:	call_out->init()
- * DESCRIPTION:	pretend to initialize call_out handling
+ * DESCRIPTION:	pretend to initialize callout handling
  */
 void co_init(max)
 unsigned int max;
@@ -730,45 +730,64 @@ unsigned int max;
 }
 
 /*
- * NAME:	call_out->new()
- * DESCRIPTION:	pretend to add a new call_out
+ * NAME:	call_out->check()
+ * DESCRIPTION:	pretend to check a new callout
  */
-uindex co_new(obj, str, delay, mdelay, f, nargs)
-object *obj;
-string *str;
+Uint co_check(n, delay, mdelay, tp, mp, qp)
+unsigned int n, mdelay;
 Int delay;
-unsigned int mdelay;
-frame *f;
-int nargs;
+Uint *tp;
+unsigned short *mp;
+cbuf **qp;
 {
     return 0;
 }
 
 /*
- * NAME:	call_out->del()
- * DESCRIPTION:	pretend to remove a call_out
+ * NAME:	call_out->new()
+ * DESCRIPTION:	pretend to add a new callout
  */
-Int co_del(obj, handle)
+void co_new(handle, obj, t, m, q)
+unsigned int handle, m;
+object *obj;
+Uint t;
+cbuf* q;
+{
+}
+
+/*
+ * NAME:	call_out->del()
+ * DESCRIPTION:	pretend to remove a callout
+ */
+void co_del(obj, handle, t)
 object *obj;
 unsigned int handle;
+Uint t;
 {
-    return -1;
+}
+
+/*
+ * NAME:	call_out->remaining()
+ * DESCRIPTION:	pretend to return the time remaining before a callout expires
+ */
+Int co_remaining(t)
+Uint t;
+{
+    return 0;
 }
 
 /*
  * NAME:	call_out->list()
- * DESCRIPTION:	pretend to return a list of callouts
+ * DESCRIPTION:	pretend to adjust callout delays in an array
  */
-array *co_list(data, obj)
-dataspace *data;
-object *obj;
+void co_list(a)
+array *a;
 {
-    return (array *) NULL;
 }
 
 /*
  * NAME:	call_out->call()
- * DESCRIPTION:	pretend to call expired call_outs
+ * DESCRIPTION:	pretend to call expired callouts
  */
 void co_call(f)
 frame *f;
@@ -804,7 +823,7 @@ long co_swaprate5()
 
 /*
  * NAME:	call_out->dump()
- * DESCRIPTION:	pretend to dump call_out table
+ * DESCRIPTION:	pretend to dump callout table
  */
 bool co_dump(fd)
 int fd;
@@ -814,7 +833,7 @@ int fd;
 
 /*
  * NAME:	call_out->restore()
- * DESCRIPTION:	pretend to restore call_out table
+ * DESCRIPTION:	pretend to restore callout table
  */
 void co_restore(fd, t)
 int fd;

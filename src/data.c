@@ -1120,6 +1120,138 @@ register array *arr;
 }
 
 
+static dataspace *ifirst, *ilast;	/* list of dataspaces with imports */
+
+/*
+ * NAME:	ref_rhs()
+ * DESCRIPTION:	reference the right-hand side in an assignment
+ */
+static void ref_rhs(data, rhs)
+register dataspace *data;
+register value *rhs;
+{
+    register string *str;
+    register array *arr;
+
+    switch (rhs->type) {
+    case T_STRING:
+	str = rhs->u.string;
+	if (str->primary != (strref *) NULL && str->primary->data == data) {
+	    /* in this object */
+	    str->primary->ref++;
+	    data->values->flags |= MOD_STRINGREF;
+	} else {
+	    /* not in this object: ref imported string */
+	    data->schange++;
+	}
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+	arr = rhs->u.array;
+	if (arr->primary->data == data) {
+	    /* in this object */
+	    if (arr->primary->arr != (array *) NULL) {
+		/* swapped in */
+		arr->primary->ref++;
+		data->values->flags |= MOD_ARRAYREF;
+	    } else {
+		/* ref new array */
+		data->values->achange++;
+	    }
+	} else {
+	    /* not in this object: ref imported array */
+	    if (data->values->imports++ == 0 &&
+		data->ilist == (dataspace *) NULL &&
+		ilast != data) {
+		/* add to imports list */
+		if (ifirst == (dataspace *) NULL) {
+		    ifirst = data;
+		} else {
+		    ilast->ilist = data;
+		}
+		ilast = data;
+		data->ilist = (dataspace *) NULL;
+	    }
+	    data->values->achange++;
+	}
+	break;
+    }
+}
+
+/*
+ * NAME:	del_lhs()
+ * DESCRIPTION:	delete the left-hand side in an assignment
+ */
+static void del_lhs(data, lhs)
+register dataspace *data;
+register value *lhs;
+{
+    register string *str;
+    register array *arr;
+
+    switch (lhs->type) {
+    case T_STRING:
+	str = lhs->u.string;
+	if (str->primary != (strref *) NULL && str->primary->data == data) {
+	    /* in this object */
+	    if (--(str->primary->ref) == 0) {
+		str->primary->str = (string *) NULL;
+		str->primary = (strref *) NULL;
+		str_del(str);
+		data->schange++;	/* last reference removed */
+	    }
+	    data->values->flags |= MOD_STRINGREF;
+	} else {
+	    /* not in this object: deref imported string */
+	    data->schange--;
+	}
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+	arr = lhs->u.array;
+	if (arr->primary->data == data) {
+	    /* in this object */
+	    if (arr->primary->arr != (array *) NULL) {
+		/* swapped in */
+		data->values->flags |= MOD_ARRAYREF;
+		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
+		    /* last reference removed */
+		    arr->primary->arr = (array *) NULL;
+		    data->values->achange++;
+
+		    if (arr->hashed != (struct _maphash_ *) NULL) {
+			map_compact(arr);
+		    }
+		    /*
+		     * If the array is not loaded, don't bother to load it now.
+		     */
+		    if ((lhs=arr->elts) != (value *) NULL) {
+			register unsigned short n;
+
+			n = arr->size;
+			data = arr->primary->data;
+			do {
+			    del_lhs(data, lhs++);
+			} while (--n != 0);
+		    }
+		    arr_del(arr);
+		}
+	    } else {
+		/* deref new array */
+		data->values->achange--;
+	    }
+	} else {
+	    /* not in this object: deref imported array */
+	    data->values->imports--;
+	    data->values->achange--;
+	}
+	break;
+    }
+}
+
+
 /*
  * NAME:	data->new_plane()
  * DESCRIPTION:	create a new data plane
@@ -1332,8 +1464,6 @@ plane *values;
 }
 
 
-static dataspace *ifirst, *ilast;	/* list of dataspaces with imports */
-
 /*
  * NAME:	data->ref_imports()
  * DESCRIPTION:	check the elements of an array for imports
@@ -1361,135 +1491,6 @@ array *arr;
 		data->ilist = (dataspace *) NULL;
 	    }
 	}
-    }
-}
-
-/*
- * NAME:	ref_rhs()
- * DESCRIPTION:	reference the right-hand side in an assignment
- */
-static void ref_rhs(data, rhs)
-register dataspace *data;
-register value *rhs;
-{
-    register string *str;
-    register array *arr;
-
-    switch (rhs->type) {
-    case T_STRING:
-	str = rhs->u.string;
-	if (str->primary != (strref *) NULL && str->primary->data == data) {
-	    /* in this object */
-	    str->primary->ref++;
-	    data->values->flags |= MOD_STRINGREF;
-	} else {
-	    /* not in this object: ref imported string */
-	    data->schange++;
-	}
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr = rhs->u.array;
-	if (arr->primary->data == data) {
-	    /* in this object */
-	    if (arr->primary->arr != (array *) NULL) {
-		/* swapped in */
-		arr->primary->ref++;
-		data->values->flags |= MOD_ARRAYREF;
-	    } else {
-		/* ref new array */
-		data->values->achange++;
-	    }
-	} else {
-	    /* not in this object: ref imported array */
-	    if (data->values->imports++ == 0 &&
-		data->ilist == (dataspace *) NULL &&
-		ilast != data) {
-		/* add to imports list */
-		if (ifirst == (dataspace *) NULL) {
-		    ifirst = data;
-		} else {
-		    ilast->ilist = data;
-		}
-		ilast = data;
-		data->ilist = (dataspace *) NULL;
-	    }
-	    data->values->achange++;
-	}
-	break;
-    }
-}
-
-/*
- * NAME:	del_lhs()
- * DESCRIPTION:	delete the left-hand side in an assignment
- */
-static void del_lhs(data, lhs)
-register dataspace *data;
-register value *lhs;
-{
-    register string *str;
-    register array *arr;
-
-    switch (lhs->type) {
-    case T_STRING:
-	str = lhs->u.string;
-	if (str->primary != (strref *) NULL && str->primary->data == data) {
-	    /* in this object */
-	    if (--(str->primary->ref) == 0) {
-		str->primary->str = (string *) NULL;
-		str->primary = (strref *) NULL;
-		str_del(str);
-		data->schange++;	/* last reference removed */
-	    }
-	    data->values->flags |= MOD_STRINGREF;
-	} else {
-	    /* not in this object: deref imported string */
-	    data->schange--;
-	}
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr = lhs->u.array;
-	if (arr->primary->data == data) {
-	    /* in this object */
-	    if (arr->primary->arr != (array *) NULL) {
-		/* swapped in */
-		data->values->flags |= MOD_ARRAYREF;
-		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
-		    /* last reference removed */
-		    arr->primary->arr = (array *) NULL;
-		    data->values->achange++;
-
-		    if (arr->hashed != (struct _maphash_ *) NULL) {
-			map_compact(arr);
-		    }
-		    /*
-		     * If the array is not loaded, don't bother to load it now.
-		     */
-		    if ((lhs=arr->elts) != (value *) NULL) {
-			register unsigned short n;
-
-			n = arr->size;
-			data = arr->primary->data;
-			do {
-			    del_lhs(data, lhs++);
-			} while (--n != 0);
-		    }
-		    arr_del(arr);
-		}
-	    } else {
-		/* deref new array */
-		data->values->achange--;
-	    }
-	} else {
-	    /* not in this object: deref imported array */
-	    data->values->imports--;
-	    data->values->achange--;
-	}
-	break;
     }
 }
 
@@ -1679,7 +1680,7 @@ int nargs;
     unsigned short m;
     cbuf *q;
 
-    ct = co_check(0, 0, delay, mdelay, &t, &m, &q);
+    ct = co_check(0, delay, mdelay, &t, &m, &q);
     if (ct == 0 && q == (cbuf *) NULL) {
 	/* callouts are disabled */
 	return 0;
