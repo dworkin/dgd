@@ -144,7 +144,7 @@ register int type;
 	case N_GLOBAL:
 	    output("i_global_lvalue(f, %d, %d/*%s*/, 0)",
 		   ((int) m->r.number >> 8) & 0xff, ((int) m->r.number) & 0xff,
-		   n->l.left->l.string->text);
+		   m->l.left->l.string->text);
 	    break;
 
 	case N_INDEX:

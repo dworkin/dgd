@@ -2,11 +2,12 @@
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX
 
-typedef unsigned short ssizet;
-# define SSIZET_MAX	USHRT_MAX
-
 typedef uindex sector;
 # define SW_UNUSED	UINDEX_MAX
+
+/* sizeof(ssizet) <= sizeof(uindex) */
+typedef unsigned short ssizet;
+# define SSIZET_MAX	USHRT_MAX
 
 /* eindex can be anything */
 typedef char eindex;

@@ -197,7 +197,6 @@ struct _frame_ {
     value *lip;			/* lvalue index pointer */
     value *argp;		/* argument pointer (previous sp) */
     value *fp;			/* frame pointer (at end of local stack) */
-    string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     rlinfo *rlim;		/* rlimits info */
     Int level;			/* plane level */

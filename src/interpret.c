@@ -259,7 +259,7 @@ register int n;
 	    break;
 
 	case T_SLVALUE:
-	    --f->lip;
+	    str_del((--f->lip)->u.string);
 	    break;
 
 	case T_MLVALUE:
@@ -268,13 +268,14 @@ register int n;
 	    break;
 
 	case T_SALVALUE:
-	    f->lip -= 2;
+	    str_del((--f->lip)->u.string);
+	    --f->lip;
 	    arr_del(v->u.array);
 	    break;
 
 	case T_SMLVALUE:
-	    f->lip -= 2;
-	    i_del_value(f->lip);
+	    str_del((--f->lip)->u.string);
+	    i_del_value(--f->lip);
 	    arr_del(v->u.array);
 	    break;
 	}
@@ -701,13 +702,12 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(f->lvstr = lval->u.lval->u.string,
-			  (long) ival->u.number);
-	    /* indexed string lvalues are not referenced */
+	    i = str_index(lval->u.lval->u.string, (long) ival->u.number);
 	    lval->type = T_SLVALUE;
 	    lval->oindex = vtype;
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = i;
+	    f->lip->type = T_STRING;
+	    f->lip->oindex = i;
+	    str_ref((f->lip++)->u.string = lval->u.lval->u.string);
 	    return;
 
 	case T_ARRAY:
@@ -740,11 +740,12 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
+	    i = str_index(val->u.string, (long) ival->u.number);
 	    lval->type = T_SALVALUE;
 	    lval->oindex = vtype;
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = i;
+	    f->lip->type = T_STRING;
+	    f->lip->oindex = i;
+	    str_ref((f->lip++)->u.string = val->u.string);
 	    return;
 
 	case T_ARRAY:
@@ -779,11 +780,12 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
+	    i = str_index(val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->oindex = vtype;
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = i;
+	    f->lip->type = T_STRING;
+	    f->lip->oindex = i;
+	    str_ref((f->lip++)->u.string = val->u.string);
 	    return;
 
 	case T_ARRAY:
@@ -888,10 +890,8 @@ register frame *f;
     default:
 	/*
          * Indexed string.
-         * The fetch is always done directly after an lvalue
-         * constructor, so lvstr is valid.
          */
-	PUSH_INTVAL(f, UCHAR(f->lvstr->text[f->lip[-1].u.number]));
+	PUSH_INTVAL(f, UCHAR(f->lip[-1].u.string->text[f->lip[-1].oindex]));
 	break;
     }
 }
@@ -923,8 +923,7 @@ void i_store(f)
 register frame *f;
 {
     value ival;
-    register value *lval, *val, *v;
-    register ssizet i;
+    register value *lval, *val;
     register array *a;
 
     lval = f->sp + 1;
@@ -940,16 +939,10 @@ register frame *f;
 	break;
 
     case T_SLVALUE:
-	v = lval->u.lval;
-	i = f->lip[-1].u.number;
-	if (v->type != T_STRING || i >= v->u.string->len) {
-	    /*
-	     * The lvalue was changed.
-	     */
-	    error("Lvalue disappeared!");
-	}
 	--f->lip;
-	d_assign_var(f->data, v, istr(&ival, v->u.string, i, val));
+	d_assign_var(f->data, lval->u.lval,
+		     istr(&ival, f->lip->u.string, f->lip->oindex, val));
+	str_del(f->lip->u.string);
 	break;
 
     case T_ALVALUE:
@@ -965,33 +958,21 @@ register frame *f;
 	break;
 
     case T_SALVALUE:
+	--f->lip;
 	a = lval->u.array;
-	v = &a->elts[f->lip[-2].u.number];
-	i = f->lip[-1].u.number;
-	if (v->type != T_STRING || i >= v->u.string->len) {
-	    /*
-	     * The lvalue was changed.
-	     */
-	    error("Lvalue disappeared!");
-	}
-	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
-	f->lip -= 2;
-	arr_del(a);
+	d_assign_elt(f->data, a, &a->elts[f->lip[-1].u.number],
+		     istr(&ival, f->lip->u.string, f->lip->oindex, val));
+	str_del(f->lip->u.string);
+	--f->lip;
+  	arr_del(a);
 	break;
 
     case T_SMLVALUE:
-	a = lval->u.array;
-	v = map_index(f->data, a, &f->lip[-2], (value *) NULL);
-	i = f->lip[-1].u.number;
-	if (v->type != T_STRING || i >= v->u.string->len) {
-	    /*
-	     * The lvalue was changed.
-	     */
-	    error("Lvalue disappeared!");
-	}
-	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
-	f->lip -= 2;
-	i_del_value(f->lip);
+	--f->lip;
+	map_index(f->data, a = lval->u.array, &f->lip[-1],
+		  istr(&ival, f->lip->u.string, f->lip->oindex, val));
+	str_del(f->lip->u.string);
+	i_del_value(--f->lip);
 	arr_del(a);
 	break;
     }
@@ -1156,7 +1137,7 @@ register value *sp;
 		break;
 
 	    case T_SLVALUE:
-		--w;
+		str_del((--w)->u.string);
 		break;
 
 	    case T_ALVALUE:
@@ -1173,13 +1154,14 @@ register value *sp;
 		break;
 
 	    case T_SALVALUE:
-		w -= 2;
+		str_del((--w)->u.string);
+		--w;
 		arr_del(v->u.array);
 		break;
 
 	    case T_SMLVALUE:
-		w -= 2;
-		i_del_value(w);
+		str_del((--w)->u.string);
+		i_del_value(--w);
 		arr_del(v->u.array);
 		break;
 	    }

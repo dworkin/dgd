@@ -1,5 +1,6 @@
 struct _array_ {
     unsigned short size;		/* number of elements */
+    bool hashmod;			/* hashed part contains new elements */
     Uint ref;				/* number of references */
     Uint tag;				/* used in sorting */
     Uint odcount;			/* last destructed object count */

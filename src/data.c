@@ -149,7 +149,7 @@ register value *lhs;
 		    register unsigned short n;
 
 		    /* last reference removed */
-		    if (arr->hashed != (struct _maphash_ *) NULL) {
+		    if (arr->hashmod) {
 			map_compact(data, arr);
 		    } else {
 			d_get_elts(arr);
@@ -587,7 +587,7 @@ register Int level;
 	    arr = v->u.array;
 	    if (arr->primary->arr == (array *) NULL &&
 		arr->primary->plane->level > level) {
-		if (arr->hashed != (struct _maphash_ *) NULL) {
+		if (arr->hashmod) {
 		    map_compact(arr->primary->data, arr);
 		}
 		arr->primary = &arr->primary->plane->prev->alocal;
@@ -997,7 +997,7 @@ register array *arr;
 dataplane *prev, *old;
 {
     if (arr->primary->plane != prev) {
-	if (arr->hashed != (struct _maphash_ *) NULL) {
+	if (arr->hashmod) {
 	    map_compact(arr->primary->data, arr);
 	}
 
@@ -1810,7 +1810,7 @@ register unsigned short n;
 		    /*
 		     * first time encountered
 		     */
-		    if (a->hashed != (struct _maphash_ *) NULL) {
+		    if (a->hashmod) {
 			map_compact(a->primary->data, a);
 		    }
 
@@ -1882,7 +1882,7 @@ register unsigned short n;
 		 * not previously encountered mapping or array
 		 */
 		imp->narr++;
-		if (a->hashed != (struct _maphash_ *) NULL) {
+		if (a->hashmod) {
 		    map_compact(data, a);
 		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (value *) NULL) {
@@ -1923,7 +1923,7 @@ void d_export()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (array *) NULL) {
-			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
+			    if (a->arr->hashmod) {
 				/* mapping */
 				map_compact(data, a->arr);
 				d_import(&imp, data, a->arr->elts,

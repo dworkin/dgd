@@ -36,6 +36,7 @@ struct _arrmerge_ {
 
 typedef struct _mapelt_ {
     unsigned short hashval;	/* hash value of index */
+    bool add;			/* new element? */
     value idx;			/* index */
     value val;			/* value */
     struct _mapelt_ *next;	/* next in hash table */
@@ -48,6 +49,7 @@ typedef struct _meltchunk_ {
 
 typedef struct _maphash_ {
     unsigned short size;	/* # elements in hash table */
+    unsigned short sizemod;	/* mapping size modification */
     unsigned short tablesize;	/* actual hash table size */
     mapelt *table[1];		/* hash table */
 } maphash;
@@ -117,6 +119,7 @@ unsigned int size;
 	a = &aclist->a[achunksz++];
     }
     a->size = size;
+    a->hashmod = FALSE;
     a->elts = (value *) NULL;
     a->ref = 0;
     a->odcount = 0;			/* if swapped in, check objects */
@@ -211,8 +214,10 @@ register array *a;
 		 */
 		for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
 		    for (e = *t; e != (mapelt *) NULL; e = n) {
-			i_del_value(&e->idx);
-			i_del_value(&e->val);
+			if (e->add) {
+			    i_del_value(&e->idx);
+			    i_del_value(&e->val);
+			}
 			n = e->next;
 			e->next = fmelt;
 			fmelt = e;
@@ -261,11 +266,13 @@ array *alist;
 	     */
 	    for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
 		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    if (e->idx.type == T_STRING) {
-			str_del(e->idx.u.string);
-		    }
-		    if (e->val.type == T_STRING) {
-			str_del(e->val.u.string);
+		    if (e->add) {
+			if (e->idx.type == T_STRING) {
+			    str_del(e->idx.u.string);
+			}
+			if (e->val.type == T_STRING) {
+			    str_del(e->val.u.string);
+			}
 		    }
 		    n = e->next;
 		    e->next = fmelt;
@@ -452,6 +459,11 @@ register array *a;
     register value *elts;
     register unsigned short i;
 
+# ifdef DEBUG
+    if (a->hashmod) {
+	fatal("backing up unclean mapping");
+    }
+# endif
     if (a->size != 0) {
 	memcpy(elts = ALLOC(value, a->size), a->elts, a->size * sizeof(value));
 	for (i = a->size; i != 0; --i) {
@@ -556,8 +568,10 @@ abchunk **ac;
 
 		for (j = a->hashed->size, t = a->hashed->table; j > 0; t++) {
 		    for (e = *t; e != (mapelt *) NULL; e = n) {
-			i_del_value(&e->idx);
-			i_del_value(&e->val);
+			if (e->add) {
+			    i_del_value(&e->idx);
+			    i_del_value(&e->val);
+			}
 			n = e->next;
 			e->next = fmelt;
 			fmelt = e;
@@ -566,6 +580,7 @@ abchunk **ac;
 		}
 		FREE(a->hashed);
 		a->hashed = (maphash *) NULL;
+		a->hashmod = FALSE;
 	    }
 
 	    a->elts = ab->original;
@@ -1240,98 +1255,21 @@ register array *m;
 
 /*
  * NAME:	mapping->dehash()
- * DESCRIPTION:	merge hashtable component with array part of mapping
+ * DESCRIPTION:	commit changes from the hash table to the array part
  */
-static void map_dehash(m)
-register array *m;
-{
-    register unsigned short hashsize;
-
-    /*
-     * convert hashtable into sorted array
-     */
-    hashsize = m->hashed->size << 1;
-    if (hashsize != 0) {
-	register value *v1, *v2, *v3;
-	register unsigned short i, j;
-	register mapelt *e, *n, **t;
-
-	v2 = ALLOCA(value, m->hashed->size << 1);
-	t = m->hashed->table;
-	for (i = m->hashed->size; i > 0; ) {
-	    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
-		*v2++ = e->idx;
-		*v2++ = e->val;
-		n = e->next;
-		e->next = fmelt;
-		fmelt = e;
-	    }
-	}
-	v2 -= hashsize;
-	qsort(v2, hashsize >> 1, 2 * sizeof(value), cmp);
-
-	/*
-	 * merge the two value arrays
-	 */
-	v1 = m->elts;
-	v3 = ALLOC(value, m->size + hashsize);
-	for (i = m->size, j = hashsize; i > 0 && j > 0; ) {
-	    if (cmp(v1, v2) <= 0) {
-		*v3++ = *v1++;
-		*v3++ = *v1++;
-		i -= 2;
-	    } else {
-		*v3++ = *v2++;
-		*v3++ = *v2++;
-		j -= 2;
-	    }
-	}
-
-	/*
-	 * copy tails of arrays
-	 */
-	memcpy(v3, v1, i * sizeof(value));
-	v3 += i;
-	memcpy(v3, v2, j * sizeof(value));
-	v3 += j;
-
-	AFREE(v2 - (hashsize - j));
-	if (m->size > 0) {
-	    FREE(m->elts);
-	}
-	m->size += hashsize;
-	m->elts = v3 - m->size;
-    }
-
-    FREE(m->hashed);
-    m->hashed = (maphash *) NULL;
-}
-
-/*
- * NAME:	mapping->clean()
- * DESCRIPTION:	remove destructed objects from mapping
- */
-static void map_clean(data, m)
+static void map_dehash(data, m, clean)
 register dataspace *data;
 register array *m;
+bool clean;
 {
-    register unsigned short i, size;
+    register unsigned short size, i, j;
+    register value *v1, *v2, *v3;
+    register mapelt *e, **t, **p;
 
-    if (m->odcount == odcount) {
-	return;	/* no destructed objects */
-    }
-
-    if (m->hashed != (maphash *) NULL &&
-	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
-	map_dehash(m);
-    }
-
-    /*
-     * remove destructed objects in the array
-     */
-    if (m->size != 0) {
-	register value *v1, *v2, *o;
-
+    if (clean && m->size != 0) {
+	/*
+	 * remove destructed objects from array part
+	 */
 	size = 0;
 	v1 = v2 = d_get_elts(m);
 	for (i = m->size; i > 0; i -= 2) {
@@ -1348,8 +1286,8 @@ register array *m;
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2->u.array);
-		if (DESTRUCTED(o)) {
+		v3 = d_get_elts(v2->u.array);
+		if (DESTRUCTED(v3)) {
 		    /*
 		     * index is destructed object
 		     */
@@ -1372,8 +1310,8 @@ register array *m;
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v2[1].u.array);
-		if (DESTRUCTED(o)) {
+		v3 = d_get_elts(v2[1].u.array);
+		if (DESTRUCTED(v3)) {
 		    /*
 		     * value is destructed object
 		     */
@@ -1388,324 +1326,188 @@ register array *m;
 	    *v1++ = *v2++;
 	    size += 2;
 	}
-	if (size == 0) {
-	    FREE(m->elts);
-	    m->elts = (value *) NULL;
-	}
+
 	if (size != m->size) {
 	    d_change_map(m);
-	}
-	m->size = size;
-    }
-
-    /*
-     * remove destructed objects in the hash table
-     */
-    if (m->hashed != (maphash *) NULL && m->hashed->size != 0) {
-	register mapelt *e, **p, **t;
-	register value *o;
-
-	size = 0;
-	t = m->hashed->table;
-	for (i = m->hashed->size; i > 0; ) {
-	    for (p = t++; (e=*p) != (mapelt *) NULL; --i) {
-		switch (e->idx.type) {
-		case T_OBJECT:
-		    if (DESTRUCTED(&e->idx)) {
-			/*
-			 * index is destructed object
-			 */
-			d_assign_elt(data, m, &e->val, &nil_value);
-			*p = e->next;
-			e->next = fmelt;
-			fmelt = e;
-			continue;
-		    }
-		    break;
-
-		case T_LWOBJECT:
-		    o = d_get_elts(e->idx.u.array);
-		    if (DESTRUCTED(&e->idx)) {
-			/*
-			 * index is destructed object
-			 */
-			d_assign_elt(data, m, &e->idx, &nil_value);
-			d_assign_elt(data, m, &e->val, &nil_value);
-			*p = e->next;
-			e->next = fmelt;
-			fmelt = e;
-			continue;
-		    }
-		    break;
-		}
-		switch (e->val.type) {
-		case T_OBJECT:
-		    if (DESTRUCTED(&e->val)) {
-			/*
-			 * value is destructed object
-			 */
-			d_assign_elt(data, m, &e->idx, &nil_value);
-			*p = e->next;
-			e->next = fmelt;
-			fmelt = e;
-			continue;
-		    }
-		    break;
-
-		case T_LWOBJECT:
-		    o = d_get_elts(e->val.u.array);
-		    if (DESTRUCTED(o)) {
-			/*
-			 * value is destructed object
-			 */
-			d_assign_elt(data, m, &e->idx, &nil_value);
-			d_assign_elt(data, m, &e->val, &nil_value);
-			*p = e->next;
-			e->next = fmelt;
-			fmelt = e;
-			continue;
-		    }
-		    break;
-		}
-
-		size++;
-		p = &e->next;
+	    m->size = size;
+	    if (size == 0) {
+		FREE(m->elts);
+		m->elts = (value *) NULL;
 	    }
 	}
-	m->hashed->size = size;
     }
 
-    m->odcount = odcount;	/* update */
+    if (m->hashmod) {
+	/*
+	 * merge copy of hashtable with sorted array
+	 */
+	size = m->hashed->size;
+	v2 = ALLOCA(value, size << 1);
+	t = m->hashed->table;
+	if (clean) {
+	    for (i = size, size = j = 0; i > 0; ) {
+		for (p = t++; (e=*p) != (mapelt *) NULL; --i) {
+		    switch (e->idx.type) {
+		    case T_OBJECT:
+			if (DESTRUCTED(&e->idx)) {
+			    /*
+			     * index is destructed object
+			     */
+			    if (e->add) {
+				d_assign_elt(data, m, &e->val, &nil_value);
+			    }
+			    *p = e->next;
+			    e->next = fmelt;
+			    fmelt = e;
+			    continue;
+			}
+			break;
+
+		    case T_LWOBJECT:
+			v3 = d_get_elts(e->idx.u.array);
+			if (DESTRUCTED(v3)) {
+			    /*
+			     * index is destructed object
+			     */
+			    if (e->add) {
+				d_assign_elt(data, m, &e->idx, &nil_value);
+				d_assign_elt(data, m, &e->val, &nil_value);
+			    }
+			    *p = e->next;
+			    e->next = fmelt;
+			    fmelt = e;
+			    continue;
+			}
+			break;
+		    }
+		    switch (e->val.type) {
+		    case T_OBJECT:
+			if (DESTRUCTED(&e->val)) {
+			    /*
+			     * value is destructed object
+			     */
+			    if (e->add) {
+				d_assign_elt(data, m, &e->idx, &nil_value);
+			    }
+			    *p = e->next;
+			    e->next = fmelt;
+			    fmelt = e;
+			    continue;
+			}
+			break;
+
+		    case T_LWOBJECT:
+			v3 = d_get_elts(e->val.u.array);
+			if (DESTRUCTED(v3)) {
+			    /*
+			     * value is destructed object
+			     */
+			    if (e->add) {
+				d_assign_elt(data, m, &e->idx, &nil_value);
+				d_assign_elt(data, m, &e->val, &nil_value);
+			    }
+			    *p = e->next;
+			    e->next = fmelt;
+			    fmelt = e;
+			    continue;
+			}
+			break;
+		    }
+
+		    if (e->add) {
+			e->add = FALSE;
+			*v2++ = e->idx;
+			*v2++ = e->val;
+			size++;
+		    }
+		    j++;
+
+		    p = &e->next;
+		}
+	    }
+
+	    if (j != m->hashed->size) {
+		m->hashed->size = j;
+		d_change_map(m);
+	    }
+	} else {
+	    size = m->hashed->sizemod;
+	    if (size != 0) {
+		i = size;
+		for (e = *t++; e != (mapelt *) NULL; e = e->next) {
+		    if (e->add) {
+			e->add = FALSE;
+			*v2++ = e->idx;
+			*v2++ = e->val;
+			if (--i == 0) {
+			    break;
+			}
+		    }
+		}
+	    }
+	}
+	m->hashed->sizemod = 0;
+
+	if (size != 0) {
+	    size <<= 1;
+	    qsort(v2 -= size, size >> 1, sizeof(value) << 1, cmp);
+
+	    /*
+	     * merge the two value arrays
+	     */
+	    v1 = m->elts;
+	    v3 = ALLOC(value, m->size + size);
+	    for (i = m->size, j = size; i > 0 && j > 0; ) {
+		if (cmp(v1, v2) <= 0) {
+		    *v3++ = *v1++;
+		    *v3++ = *v1++;
+		    i -= 2;
+		} else {
+		    *v3++ = *v2++;
+		    *v3++ = *v2++;
+		    j -= 2;
+		}
+	    }
+
+	    /*
+	     * copy tails of arrays
+	     */
+	    memcpy(v3, v1, i * sizeof(value));
+	    v3 += i;
+	    memcpy(v3, v2, j * sizeof(value));
+	    v3 += j;
+
+	    v2 -= (size - j);
+	    if (m->size > 0) {
+		FREE(m->elts);
+	    }
+	    m->size += size;
+	    m->elts = v3 - m->size;
+	}
+
+	AFREE(v2);
+    }
+
+    m->hashmod = FALSE;
 }
 
 /*
  * NAME:	mapping->compact()
- * DESCRIPTION:	compact a mapping: put elements from the hash table into
+ * DESCRIPTION:	compact a mapping: copy new elements from the hash table into
  *		the array, and remove destructed objects
  */
 void map_compact(data, m)
 register dataspace *data;
 register array *m;
 {
-    register value *v1, *v2, *o;
-    register unsigned short i, arrsize, hashsize;
-
-    if ((m->size == 0 || m->odcount == odcount) &&
-	(m->hashed == (maphash *) NULL || m->hashed->size == 0)) {
-	/* skip empty or unchanged mapping */
-	return;
-    }
-
-    if (m->hashed != (maphash *) NULL &&
-	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
-	map_dehash(m);
-    }
-
-    arrsize = 0;
-    if (m->size > 0) {
-	v1 = v2 = d_get_elts(m);
-	if (m->odcount != odcount) {
-	    /*
-	     * remove destructed objects in the array
-	     */
-	    for (i = m->size; i > 0; i -= 2) {
-		switch (v2->type) {
-		case T_OBJECT:
-		    if (DESTRUCTED(v2)) {
-			/*
-			 * index is destructed object
-			 */
-			d_assign_elt(data, m, v2 + 1, &nil_value);
-			v2 += 2;
-			continue;
-		    }
-		    break;
-
-		case T_LWOBJECT:
-		    o = d_get_elts(v2->u.array);
-		    if (DESTRUCTED(o)) {
-			/*
-			 * index is destructed object
-			 */
-			d_assign_elt(data, m, v2++, &nil_value);
-			d_assign_elt(data, m, v2++, &nil_value);
-			continue;
-		    }
-		    break;
-		}
-		switch (v2[1].type) {
-		case T_OBJECT:
-		    if (DESTRUCTED(&v2[1])) {
-			/*
-			 * value is destructed object
-			 */
-			d_assign_elt(data, m, v2, &nil_value);
-			v2 += 2;
-			continue;
-		    }
-		    break;
-
-		case T_LWOBJECT:
-		    o = d_get_elts(v2[1].u.array);
-		    if (DESTRUCTED(o)) {
-			/*
-			 * value is destructed object
-			 */
-			d_assign_elt(data, m, v2++, &nil_value);
-			d_assign_elt(data, m, v2++, &nil_value);
-			continue;
-		    }
-		    break;
-		}
-
-		*v1++ = *v2++;
-		*v1++ = *v2++;
-		arrsize += 2;
-	    }
-	} else {
-	    arrsize = m->size;
-	}
-    }
-
-    /*
-     * convert hashtable into sorted array
-     */
-    hashsize = 0;
-    if (m->hashed != (maphash *) NULL) {
-	if (m->hashed->size != 0) {
-	    register mapelt *e, *n, **t;
-
-	    v2 = ALLOCA(value, m->hashed->size << 1);
-	    t = m->hashed->table;
-	    if (m->odcount == odcount) {
-		for (i = m->hashed->size; i > 0; ) {
-		    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
-			*v2++ = e->idx;
-			*v2++ = e->val;
-			n = e->next;
-			e->next = fmelt;
-			fmelt = e;
-		    }
-		}
-		hashsize = m->hashed->size << 1;
-	    } else {
-		for (i = m->hashed->size; i > 0; ) {
-		    for (e = *t++; e != (mapelt *) NULL;
-			 --i, n = e->next, e->next = fmelt, fmelt = e, e = n) {
-			switch (e->idx.type) {
-			case T_OBJECT:
-			    if (DESTRUCTED(&e->idx)) {
-				/*
-				 * index is destructed object
-				 */
-				d_assign_elt(data, m, &e->val, &nil_value);
-				continue;
-			    }
-			    break;
-
-			case T_LWOBJECT:
-			    o = d_get_elts(e->idx.u.array);
-			    if (DESTRUCTED(o)) {
-				/*
-				 * index is destructed object
-				 */
-				d_assign_elt(data, m, &e->idx, &nil_value);
-				d_assign_elt(data, m, &e->val, &nil_value);
-				continue;
-			    }
-			    break;
-			}
-			switch (e->val.type) {
-			case T_OBJECT:
-			    if (DESTRUCTED(&e->val)) {
-				/*
-				 * value is destructed object
-				 */
-				d_assign_elt(data, m, &e->idx, &nil_value);
-				continue;
-			    }
-			    break;
-
-			case T_LWOBJECT:
-			    o = d_get_elts(e->val.u.array);
-			    if (DESTRUCTED(o)) {
-				/*
-				 * value is destructed object
-				 */
-				d_assign_elt(data, m, &e->idx, &nil_value);
-				d_assign_elt(data, m, &e->val, &nil_value);
-				continue;
-			    }
-			    break;
-			}
-
-			/*
-			 * copy to array
-			 */
-			*v2++ = e->idx;
-			*v2++ = e->val;
-			hashsize += 2;
-		    }
-		}
-	    }
-	    if (hashsize == 0) {
-		AFREE(v2);	/* nothing in the hash table */
-	    } else {
-		v2 -= hashsize;
-		qsort(v2, hashsize >> 1, 2 * sizeof(value), cmp);
-	    }
-	}
-	FREE(m->hashed);
-	m->hashed = (maphash *) NULL;
-    }
-
-    m->odcount = odcount;	/* update */
-
-    if (hashsize > 0) {
-	register value *v3;
-	register unsigned short j;
-
-	/*
-	 * merge the two value arrays
-	 */
-	v1 = m->elts;
-	v3 = ALLOC(value, arrsize + hashsize);
-	for (i = arrsize, j = hashsize; i > 0 && j > 0; ) {
-	    if (cmp(v1, v2) <= 0) {
-		*v3++ = *v1++;
-		*v3++ = *v1++;
-		i -= 2;
-	    } else {
-		*v3++ = *v2++;
-		*v3++ = *v2++;
-		j -= 2;
-	    }
+    if (m->hashmod || m->odcount != odcount) {
+	if (m->hashmod &&
+	    (!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
+	    map_dehash(data, m, FALSE);
 	}
 
-	/*
-	 * copy tails of arrays
-	 */
-	memcpy(v3, v1, i * sizeof(value));
-	v3 += i;
-	memcpy(v3, v2, j * sizeof(value));
-	v3 += j;
-
-	AFREE(v2 - (hashsize - j));
-	if (m->size > 0) {
-	    FREE(m->elts);
-	}
-	m->size = arrsize + hashsize;
-	m->elts = v3 - m->size;
-    } else if (arrsize != m->size) {
-	/*
-	 * destructed objects were removed
-	 */
-	if (arrsize == 0) {
-	    FREE(m->elts);
-	    m->elts = (value *) NULL;
-	}
-	m->size = arrsize;
-	d_change_map(m);
+	map_dehash(data, m, TRUE);
+	m->odcount = odcount;
     }
 }
 
@@ -1719,12 +1521,8 @@ register array *m;
 {
     unsigned short size;
 
-    map_clean(data, m);
-    size = m->size >> 1;
-    if (m->hashed != (maphash *) NULL) {
-	size += m->hashed->size;
-    }
-    return size;
+    map_compact(data, m);
+    return m->size >> 1;
 }
 
 /*
@@ -1998,12 +1796,12 @@ unsigned short hashval;
     register unsigned short i;
 
     h = m->hashed;
-    if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->size) >= max_size) {
+    if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->sizemod) >= max_size)
+    {
 	map_compact(data, m);
 	if (m->size >> 1 >= max_size) {
 	    error("Mapping too large to grow");
 	}
-	h = (maphash *) NULL;
     }
 
     if (h == (maphash *) NULL) {
@@ -2013,6 +1811,7 @@ unsigned short hashval;
 	m->hashed = h = (maphash *)
 	    ALLOC(char, sizeof(maphash) + (MTABLE_SIZE - 1) * sizeof(mapelt*));
 	h->size = 0;
+	h->sizemod = 0;
 	h->tablesize = MTABLE_SIZE;
 	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
     } else if (h->size << 2 >= h->tablesize * 3) {
@@ -2026,6 +1825,7 @@ unsigned short hashval;
 	h = (maphash *) ALLOC(char,
 			      sizeof(maphash) + (i - 1) * sizeof(mapelt*));
 	h->size = m->hashed->size;
+	h->sizemod = m->hashed->sizemod;
 	h->tablesize = i;
 	memset(h->table, '\0', i * sizeof(mapelt*));
 	/*
@@ -2062,6 +1862,7 @@ unsigned short hashval;
 	e = &meltlist->e[meltchunksz++];
     }
     e->hashval = hashval;
+    e->add = FALSE;
     e->idx = nil_value;
     e->val = nil_value;
     i = hashval % h->tablesize;
@@ -2082,7 +1883,8 @@ register array *m;
 value *val, *elt;
 {
     register unsigned short i;
-    bool del;
+    register mapelt *e, **p;
+    bool del, add, hash;
 
     if (elt != (value *) NULL && VAL_NIL(elt)) {
 	elt = (value *) NULL;
@@ -2091,54 +1893,9 @@ value *val, *elt;
 	del = FALSE;
     }
 
-    if (m->hashed != (maphash *) NULL &&
+    if (m->hashmod &&
 	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
-	map_dehash(m);
-    }
-
-    if (m->size > 0) {
-	register int n;
-
-	n = search(val, d_get_elts(m), m->size, 2, FALSE);
-	if (n >= 0) {
-	    register value *v;
-
-	    /*
-	     * found in the array
-	     */
-	    v = &m->elts[n];
-	    if (elt != (value *) NULL) {
-		/*
-		 * change the element
-		 */
-		d_assign_elt(data, m, v + 1, elt);
-		if (val->type == T_OBJECT) {
-		    v->modified = TRUE;
-		    v->u.objcnt = val->u.objcnt;	/* refresh */
-		}
-	    } else if (del ||
-		       (val->type == T_OBJECT &&
-			val->u.objcnt != v->u.objcnt)) {
-		/*
-		 * delete the element
-		 */
-		d_assign_elt(m->primary->data, m, v, &nil_value);
-		d_assign_elt(m->primary->data, m, v + 1, &nil_value);
-
-		m->size -= 2;
-		if (m->size == 0) {
-		    /* last element removed */
-		    FREE(m->elts);
-		    m->elts = (value *) NULL;
-		} else {
-		    /* move tail */
-		    memcpy(v, v + 2, (m->size - n) * sizeof(value));
-		}
-		d_change_map(m);
-		return &nil_value;
-	    }
-	    return v + 1;
-	}
+	map_dehash(data, m, FALSE);
     }
 
     switch (val->type) {
@@ -2169,9 +1926,8 @@ value *val, *elt;
 	break;
     }
 
+    hash = FALSE;
     if (m->hashed != (maphash *) NULL) {
-	register mapelt *e, **p;
-
 	for (p = &m->hashed->table[i % m->hashed->tablesize];
 	     (e=*p) != (mapelt *) NULL; p = &e->next) {
 	    if (cmp(val, &e->idx) == 0 &&
@@ -2179,13 +1935,20 @@ value *val, *elt;
 		/*
 		 * found in the hashtable
 		 */
+		hash = TRUE;
 		if (elt != (value *) NULL) {
 		    /*
 		     * change element
 		     */
-		    d_assign_elt(data, m, &e->val, elt);
 		    if (val->type == T_OBJECT) {
 			e->idx.u.objcnt = val->u.objcnt;	/* refresh */
+		    }
+		    if (e->add) {
+			d_assign_elt(data, m, &e->val, elt);
+		    } else {
+			/* "real" assignment later in array part */
+			e->val = *elt;
+			break;
 		    }
 		} else if (del ||
 			   (val->type == T_OBJECT &&
@@ -2193,13 +1956,20 @@ value *val, *elt;
 		    /*
 		     * delete element
 		     */
-		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
-		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+		    add = e->add;
+		    if (add) {
+			d_assign_elt(data, m, &e->idx, &nil_value);
+			d_assign_elt(data, m, &e->val, &nil_value);
+		    }
 
 		    *p = e->next;
 		    e->next = fmelt;
 		    fmelt = e;
 		    m->hashed->size--;
+
+		    if (!add) {
+			break;		/* change array part also */
+		    }
 		    return &nil_value;
 		}
 		return &e->val;
@@ -2207,22 +1977,75 @@ value *val, *elt;
 	}
     }
 
-    if (elt != (value *) NULL) {
-	register mapelt *e;
+    add = TRUE;
+    if (m->size > 0) {
+	register int n;
+	register value *v;
 
+	n = search(val, d_get_elts(m), m->size, 2, FALSE);
+	if (n >= 0) {
+	    /*
+	     * found in the array
+	     */
+	    v = &m->elts[n];
+	    if (elt != (value *) NULL) {
+		/*
+		 * change the element
+		 */
+		d_assign_elt(data, m, v + 1, elt);
+		if (val->type == T_OBJECT) {
+		    v->modified = TRUE;
+		    v->u.objcnt = val->u.objcnt;	/* refresh */
+		}
+	    } else if (del ||
+		       (val->type == T_OBJECT &&
+			val->u.objcnt != v->u.objcnt)) {
+		/*
+		 * delete the element
+		 */
+		d_assign_elt(data, m, v, &nil_value);
+		d_assign_elt(data, m, v + 1, &nil_value);
+
+		m->size -= 2;
+		if (m->size == 0) {
+		    /* last element removed */
+		    FREE(m->elts);
+		    m->elts = (value *) NULL;
+		} else {
+		    /* move tail */
+		    memcpy(v, v + 2, (m->size - n) * sizeof(value));
+		}
+		d_change_map(m);
+		return &nil_value;
+	    }
+	    elt = v + 1;
+	    add = FALSE;
+	}
+    }
+
+    if (elt == (value *) NULL) {
+	return &nil_value;	/* not found */
+    }
+
+    if (!hash) {
 	/*
 	 * extend mapping
 	 */
 	e = map_grow(data, m, i);
-	d_assign_elt(data, m, &e->idx, val);
-	d_assign_elt(data, m, &e->val, elt);
-	d_change_map(m);
+	if (add) {
+	    e->add = TRUE;
+	    d_assign_elt(data, m, &e->idx, val);
+	    d_assign_elt(data, m, &e->val, elt);
+	    m->hashed->sizemod++;
+	    m->hashmod = TRUE;
+	    d_change_map(m);
+	} else {
+	    e->idx = *val;
+	    e->val = *elt;
+	}
     }
 
-    /*
-     * not found
-     */
-    return &nil_value;
+    return elt;
 }
 
 /*
