@@ -30,8 +30,8 @@ int num;
     tmpedfile = tmp;
     editors = ALLOC(editor, num);
     f = (editor *) NULL;
-    for (i = num, e = editors; i > 0; --i, e++) {
-	e->next = f;
+    for (i = num, e = editors + i; i > 0; --i) {
+	(--e)->next = f;
 	f = e;
     }
     flist = f;
