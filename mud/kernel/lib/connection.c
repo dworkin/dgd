@@ -15,6 +15,66 @@ static create(string type)
     conntype = type;
 }
 
+
+# ifdef __ICHAT__
+private int dedicated;		/* object created for execution */
+
+/*
+ * NAME:	execute_program()
+ * DESCRIPTION:	execute a program on the host
+ */
+execute_program(string cmdline)
+{
+    if (previous_program() == AUTO) {
+	::execute_program(cmdline);
+	if (!user) {
+	    user = previous_object();
+	    dedicated = TRUE;
+	}
+    }
+}
+
+/*
+ * NAME:	_program_terminated()
+ * DESCRIPTION:	internal version of program_terminated()
+ */
+private _program_terminated(mixed *tls)
+{
+    user->program_terminated();
+}
+
+/*
+ * NAME:	program_terminated()
+ * DESCRIPTION:	called when the executing program has terminated
+ */
+static program_terminated()
+{
+    _program_terminated(allocate(TLS_SIZE));
+    if (dedicated) {
+	destruct_object(this_object());
+    }
+}
+# endif	/* __ICHAT__ */
+
+
+# ifdef SYS_NETWORKING
+private int outbound;		/* outbound connection */
+
+/*
+ * NAME:	connect()
+ * DESCRIPTION:	establish an outbount connection
+ */
+connect(string destination, int port)
+{
+    if (previous_program() == AUTO) {
+	::connect(destination, port);
+	user = previous_object();
+	outbound = TRUE;
+    }
+}
+# endif
+
+
 /*
  * NAME:	open()
  * DESCRIPTION:	open the connection
@@ -41,6 +101,11 @@ static open(mixed *tls)
 	    send_message(banner);
 	}
     }
+# ifdef SYS_NETWORKING
+    else if (outbound) {
+	user->login();
+    }
+# endif
 }
 
 /*

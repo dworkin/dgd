@@ -100,13 +100,14 @@ int message(string str)
  * NAME:	datagram()
  * DESCRIPTION:	forward a datagram to the connection object
  */
-datagram(string str)
+int datagram(string str)
 {
     if (!str) {
 	error("Bad argument 1 for function datagram");
     }
     if (connection) {
-	connection->datagram(str);
+	return connection->datagram(str);
     }
+    return 0;
 }
 # endif

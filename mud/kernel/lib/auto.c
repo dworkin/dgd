@@ -240,8 +240,7 @@ static int destruct_object(mixed obj)
     oname = object_name(obj);
     lib = sscanf(oname, "%*s/lib/");
     oowner = (lib) ? driver->creator(oname) : obj->query_owner();
-    if ((sscanf(oname, "/kernel/%*s") != 0 && !lib &&
-	 sscanf(object_name(this_object()), "/kernel/%*s") == 0) ||
+    if ((sscanf(oname, "/kernel/%*s") != 0 && !lib && !KERNEL()) ||
 	(creator != "System" && owner != oowner)) {
 	error("Cannot destruct object: not owner");
     }
@@ -357,8 +356,7 @@ static varargs object clone_object(string path, string uid)
      */
     oname = object_name(this_object());
     path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
-    if ((sscanf(path, "/kernel/%*s") != 0 &&
-	 sscanf(oname, "/kernel/%*s") == 0) ||
+    if ((sscanf(path, "/kernel/%*s") != 0 && !KERNEL()) ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, READ_ACCESS))) {
 	/*
@@ -1294,10 +1292,34 @@ static varargs string editor(string cmd)
  */
 static execute_program(string cmdline)
 {
+    object conn;
+    int dedicated;
+
     CHECKARG(cmdline, 1, "execute_program");
 
     if (creator == "System" && this_object()) {
-	::execute_program(cmdline);
+	if (function_object("query_conn", this_object()) != LIB_USER) {
+	    error("Not a user object");
+	}
+	catch {
+	    rlimits (-1; -1) {
+		conn = this_object()->query_conn();
+		if (!conn) {
+		    conn = clone_object(BINARY_CONN);
+		    dedicated = TRUE;
+		} else {
+		    dedicated = FALSE;
+		}
+		conn->execute_program(cmdline);
+	    }
+	} : {
+	    rlimits (-1; -1) {
+		if (dedicated) {
+		    destruct_object(conn);
+		}
+	    }
+	    error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	}
     }
 }
 # endif
@@ -1310,10 +1332,25 @@ static execute_program(string cmdline)
  */
 static connect(string destination, int port)
 {
+    object conn;
+
     CHECKARG(destination, 1, "connect");
 
     if (creator == "System" && this_object()) {
-	::connect(destination, port);
+	if (function_object("query_conn", this_object()) != LIB_USER) {
+	    error("Not a user object");
+	}
+	catch {
+	    rlimits (-1; -1) {
+		conn = clone_object(BINARY_CONN);
+		conn->connect(destination, port);
+	    }
+	} : {
+	    rlimits (-1; -1) {
+		destruct_object(conn);
+	    }
+	    error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	}
     }
 }
 
