@@ -414,7 +414,7 @@ DGD 1.0.a5
    functions (only in untypechecked objects).
  - String hash table sizes are now powers of two.  They used to be primes,
    which is fairly pointless in this implementation.
- - Devided allocated memory into 'static' and 'dynamic' memory.  Static memory
+ - Divided allocated memory into 'static' and 'dynamic' memory.  Static memory
    is used for things which need to be kept when everything is swapped out,
    and dynamic memory is used for the rest.
  - Fixed a bug with escape sequences in the preprocessor, and a related bug in
@@ -439,3 +439,97 @@ DGD 1.0.a5
 	described in the automatically generated include file "status.h".
     * void swapout()
 	Swap out all objects.
+
+DGD 1.0.a6
+
+ - Fixed a problem in kfun/debug.c in case RUSAGE was defined, but DEBUG was
+   not.
+ - Included size of tables in O_PROGSIZE, as given by the status() kfun.
+ - Fixed an overflow problem in integer case ranges.
+ - Renamed config option "reserved_stack" to "reserved_cstack", and added
+   "reserved_vstack".
+ - Both the renaming of and the renaming to the auto object and the driver
+   object is now illegal.
+ - Repeated call_others to the same function are now faster on average.
+ - The control blocks of precompiled objects are swapped out no longer.
+ - Fixed a bug in the editor substitute command, which could mess up if
+   substitutions occurred and didn't occur on alternate lines.
+ - Fixed a possible memory leak in restore_array and restore_mapping, in
+   case the save file was faulty.
+ - Fixed a bug with global integer variables as lvalue arguments to sscanf()
+   in typechecked functions.
+ - Improved some compiler error messages.
+ - A new prototype for an inherited function won't replace the inherited
+   function anymore, if the prototypes are identical.
+ - Function calls with too few or too many arguments no longer cause runtime
+   errors.  It caught a lot of errors, but also broke some code which
+   shouldn't have.
+ - Fixed a bug in inheritance, which could fail if two inherited objects
+   defined the same function, and a third was unloaded.
+ - Fixed a bug in calls to functions for which an undefined prototype was
+   inherited, but which were redefined.
+ - Changed _time, _ctime, _opendir, _readdir, _closedir and _alarm into
+   P{_*} to make it work on HP systems.
+ - Telnet GA is now only sent after a (possibly empty) prompt, and not
+   after any finished output.
+ - Made BEL, BS, HT, LF, VT, FF and CR host-independent.  Moved the adding
+   of CR before LF back into comm.c (was in host/unix/connect.c in version
+   1.0.a5).
+ - State dumps:
+   swapout() and shutdown() now take a numeric argument.  If non-zero,
+   a state dump is created on the file specified by the dump_file config
+   parameter.  A state dump file can be used on startup (by specifying it
+   as the 2nd argument) to restore from.  After a successful restore,
+   driver->restored() is called, rather than driver->initialize().  User
+   objects and editor objects are not restored as such, and the driver
+   object should deal with them in restored().  This can be done by
+   registering those objects, just before the state dump occurs.
+ - Ellipsis can now be used to declare a function with arbitrary numbers
+   of arguments.  Example:
+
+	varargs string sprintf(string format, mixed args...);
+
+   args will have type mixed*, and will be an array with the additional
+   arguments.  Ellipsis can also be used in a call, to push all elements
+   of an array on the stack as arguments:
+
+	call_other("/some/thing", "foo", array_with_arguments...);
+
+ - Replaced time_t with long everywhere to make things portable.  If a time_t
+   doesn't fit in a long on a particular host, it will have to be truncated.
+ - Speeded up remove_call_out().  Removing a short-term call_out is now
+   reasonably fast.
+ - Added find_call_out().  I previously left it out because I considered
+   using it bad programming practice.  I still think so, but it might be
+   useful in some rare cases, and the current implementation is fairly fast.
+ - All of x[y .. z], x[y ..], x[.. y] and x[..] are now possible work, with
+   the obvious meanings.
+ - The swapfile and editor tmpfiles are now removed on a shutdown.
+ - Fixed a bug in the compiler, which would not always cast the result of
+   a function call to int when this was needed.
+ - Errors inside a catch are now logged on stderr as well.
+ - Fixed a problem which occurred when a catch was used in a conditional
+   context in LPC->C code.
+ - Fixed a problem in the compiler, which could produce a bad symbol table
+   for the auto object (which fortunately isn't normally used).
+ - If a clash between inherited functions occurs, only the clashing functions
+   will be listed, rather than all functions that are inherited more than
+   once.
+ - Better removal of unused call_out slots in objects.
+ - sscanf("foobar","foo%s") will result in an error.
+ - New kfun: call_trace().  It returns the call trace as an array (see the
+   doc for specifics).
+ - driver->log_error() is now called (locked) with two arguments, the error
+   string and a flag which indicates if the error is caught.  It should make
+   use of call_trace().  The driver itself no longer logs runtime errors.
+ - If an object is inherited that itself inherits an object that has been
+   destructed, call driver->recompile(obj).  The driver object must destruct
+   the object to force it to be recompiled, if this is desired.
+ - A missing #endif would not always give an error.
+ - Using a void value when typechecking now gives the error "void value not
+   ignored" always.
+ - Added mapping - array and mapping & array.
+ - Functions with a declared non-void type must return a value.
+ - Variables could erroneously be redeclared as private in the same object.
+ - Redeclaration of an inherited function or variable will now give the
+   inherited object in the errormessage.
