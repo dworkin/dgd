@@ -960,6 +960,9 @@ register value *newsp;
     register value *v, *w;
     register frame *f;
 
+    if (newsp == (value *) NULL) {
+	newsp = stack + MIN_STACK;
+    }
     v = sp;
     w = ilvp;
     for (f = cframe; f != NULL; f = f->prev) {

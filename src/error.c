@@ -8,7 +8,8 @@
 
 typedef struct {
     jmp_buf env;			/* error context */
-    value *sp;				/* stack pointer value */
+    frame *f;				/* frame context */
+    int offset;				/* sp offset */
     ec_ftn cleanup;			/* cleanup function */
 } context;
 
@@ -26,7 +27,10 @@ ec_ftn ftn;
     if (esp == stack + ERRSTACKSZ) {
 	error("Too many nested error contexts");
     }
-    esp->sp = sp;
+    esp->f = cframe;
+    if (esp->f != (frame *) NULL) {
+	esp->offset = cframe->fp - sp;
+    }
     esp->cleanup = ftn;
     return &(esp++)->env;
 }
@@ -68,7 +72,8 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 
     ec_pop();
     memcpy(&env, &esp->env, sizeof(jmp_buf));
-    oldsp = esp->sp;
+    oldsp = (esp->f != (frame *) NULL) ? esp->f->fp - esp->offset :
+					 (value *) NULL;
     if (esp->cleanup != (ec_ftn) NULL) {
 	(*(esp->cleanup))();
     }

@@ -49,6 +49,9 @@ lex.sub: $(LEXOBJ)
 ed.sub:	$(EDOBJ)
 	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
+comp/parser.h: comp/parser.y
+	cd comp; $(DMAKE) parser.h
+
 comp/a.out:
 	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			  'LIBS=$(LIBS)' a.out

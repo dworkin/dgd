@@ -384,10 +384,11 @@ int *size;
 	    }
 	}
 
-	for (i = maxusers, usr = users; i > 0; --i, usr++) {
+	for (i = nusers, usr = users; i > 0; usr++) {
 	    if (*usr == (user *) NULL) {
 		continue;	/* avoid even worse indentation */
 	    }
+	    --i;
 	    if ((*usr)->inbufsz != INBUF_SIZE) {
 		p = (*usr)->inbuf + (*usr)->inbufsz;
 		n = conn_read((*usr)->conn, p, INBUF_SIZE - (*usr)->inbufsz);
