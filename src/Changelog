@@ -915,3 +915,5 @@ DGD 1.1
  - Made ticks a more reasonable measure.  In many cases it just reflects what
    I think something should take -- or what I want to make expensive.
    Currently, the editor still takes no ticks.
+ - The object table wasn't properly prepared before including it in a state
+   dump.

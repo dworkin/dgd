@@ -324,7 +324,7 @@ void o_clean()
     }
     clean_obj = (object *) NULL;
 
-    for (o = dest_obj; o != (object *) NULL; o = o->u.master) {
+    for (o = dest_obj; o != (object *) NULL; o = next) {
 	/* free control block */
 	d_del_control(o_control(o));
 
@@ -336,6 +336,9 @@ void o_clean()
 	o->chain.next = (hte *) free_obj;
 	free_obj = o;
 	nfreeobjs++;
+
+	next = o->u.master;
+	o->u.ref = 0;
     }
     dest_obj = (object *) NULL;
 }
