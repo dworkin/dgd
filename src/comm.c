@@ -458,11 +458,10 @@ int prompt;
     flush = FALSE;
 
     for (usr = lastuser, i = nusers; i != 0; usr = usr->next, --i) {
-	if ((usr->flags & CF_TELNET) && usr->outbufsz != 0) {
-	    if (comm_write(usr, (string *) NULL, prompt) != 0) {
-		/* couldn't flush everything */
-		flush = TRUE;
-	    }
+	if (usr->outbufsz != 0 && comm_write(usr, (string *) NULL, prompt) != 0)
+	{
+	    /* couldn't flush everything */
+	    flush = TRUE;
 	}
     }
 }
@@ -832,7 +831,7 @@ object *obj;
     register user *usr;
 
     usr = &users[UCHAR(obj->etabi)];
-    if ((usr->flags & CF_TELNET) && usr->outbufsz != 0) {
+    if (usr->outbufsz != 0) {
 	/*
 	 * flush last bit of output
 	 */

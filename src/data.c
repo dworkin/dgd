@@ -393,7 +393,7 @@ object *obj;
     return ctrl;
 }
 
-static void d_upgrade_clone P((object*, object*));
+static void d_upgrade_clone P((dataspace*));
 
 /*
  * NAME:	data->load_dataspace()
@@ -405,7 +405,6 @@ object *obj;
     sdataspace header;
     register dataspace *data;
     register Uint size;
-    object *master;
 
     data = d_alloc_dataspace(obj);
     data->ctrl = o_control(obj);
@@ -447,9 +446,9 @@ object *obj;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
 
-    if (!(obj->flags & O_MASTER) &&
-	obj->update != (master = &otable[obj->u_master])->update) {
-	d_upgrade_clone(obj, master);
+    if (!(obj->flags & O_MASTER) && obj->update != otable[obj->u_master].update)
+    {
+	d_upgrade_clone(data);
     }
 
     return data;
@@ -2521,6 +2520,7 @@ object *old;
 	} else {
 	    *v = vars[*vmap];
 	    v->modified = TRUE;
+	    i_ref_value(v);
 	    ref_rhs(data, v++);
 	}
 	vmap++;
@@ -2530,7 +2530,8 @@ object *old;
     /* deref old values */
     v = data->variables;
     for (n = data->nvariables; n > 0; --n) {
-	del_lhs(data, v++);
+	del_lhs(data, v);
+	i_del_value(v++);
     }
 
     /* replace old with new */
@@ -2554,22 +2555,21 @@ object *old;
  * NAME:	data->upgrade_clone()
  * DESCRIPTION:	upgrade a clone object
  */
-static void d_upgrade_clone(clone, master)
-object *clone, *master;
+static void d_upgrade_clone(data)
+register dataspace *data;
 {
-    register dataspace *data;
-    register object *old;
+    register object *obj, *old;
     register unsigned short nvar, *vmap;
 
     /*
      * the program for the clone was upgraded since last swapin
      */
-    data = clone->data;
+    obj = data->obj;
+    old = &otable[otable[obj->u_master].prev];
     nvar = data->ctrl->nvariables + 1;
-    old = &otable[master->prev];
     vmap = o_control(old)->vmap;
 
-    if (old->update != clone->update) {
+    if (old->update != obj->update) {
 	register unsigned short *m1, *m2, n;
 
 	m1 = vmap;
@@ -2584,7 +2584,7 @@ object *clone, *master;
 	    n = nvar;
 	    vmap -= n;
 	    m1 = m2 - n;
-	} while (old->update != clone->update);
+	} while (old->update != obj->update);
     }
 
     d_upgrade(data, nvar, vmap, old);
@@ -3064,7 +3064,6 @@ Uint *counttab;
     register Uint size;
     register sector *s;
     register unsigned int n;
-    object *master;
 
     data = d_alloc_dataspace(obj);
 
@@ -3153,12 +3152,12 @@ Uint *counttab;
 
     AFREE(s);
 
-    if (!(obj->flags & O_MASTER) &&
-	obj->update != (master = &otable[obj->u_master])->update) {
+    if (!(obj->flags & O_MASTER) && obj->update != otable[obj->u_master].update)
+    {
 	/* handle object upgrading right away */
 	data->ctrl = o_control(obj);
 	data->ctrl->ndata++;
-	d_upgrade_clone(obj, master);
+	d_upgrade_clone(data);
     }
 
     d_save_dataspace(data);

@@ -1061,6 +1061,10 @@ DGD 1.1
  - Can't use \0 in kfun file name argument anymore.
  - Let status(obj) give updated information about objects recompiled during the
    current thread.
- - Make more of an efford to buffer telnet output if all of it could not be
+ - Make more of an effort to buffer telnet output if all of it could not be
    sent right away, making sure that no telnet escape sequences are sent only
    partially.
+ - Fixed a bug occurring when objects are upgraded and destructed in the
+   same thread.
+ - __FILE__ did not include a leading /.
+ - Some other upgrade-related bugs fixed.

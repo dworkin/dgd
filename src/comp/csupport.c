@@ -606,7 +606,7 @@ int fd;
 		/* get control block for precompiled object */
 		hash_add(obj, (uindex) i);
 		tmp.flags = O_MASTER | O_COMPILED;
-		tmp.index = i;
+		tmp.index = obj->index;
 		tmp.ctrl = (control *) NULL;
 		o_control(l->obj = &tmp);
 
@@ -626,6 +626,7 @@ int fd;
 		 */
 		l->obj = pc_obj(name, inherits + itab[i], l->ninherits);
 		hash_add(l->obj, (uindex) i);
+		o_control(l->obj);	/* make sure it's loaded */
 	    }
 	}
     }

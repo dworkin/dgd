@@ -143,6 +143,12 @@ register object *master;
 static void o_delete(o)
 register object *o;
 {
+    register control *ctrl;
+    register dinherit *inh;
+    register int i;
+
+    ctrl = (O_UPGRADING(o)) ? otable[o->prev].ctrl : o_control(o);
+
     /* put in deleted list */
     o->u_master = dest_obj;
     dest_obj = o - otable;
@@ -153,23 +159,18 @@ register object *o;
     sp->u.string->text[0] = '/';
     strcpy(sp->u.string->text + 1, o->chain.name);
     (--sp)->type = T_INT;
-    sp->u.number = o_control(o)->compiled;
+    sp->u.number = ctrl->compiled;
     if (i_call_critical("remove_program", 2, TRUE)) {
 	i_del_value(sp++);
     }
 
-    if (!O_UPGRADING(o)) {
-	register dinherit *inh;
-	register int i;
-
-	/* remove references to inherited objects too */
-	inh = o->ctrl->inherits;
-	i = o->ctrl->ninherits;
-	while (--i > 0) {
-	    o = (inh++)->obj;
-	    if (--(o->u_ref) == 0) {
-		o_delete(o);
-	    }
+    /* remove references to inherited objects too */
+    inh = ctrl->inherits;
+    i = ctrl->ninherits;
+    while (--i > 0) {
+	o = (inh++)->obj;
+	if (--(o->u_ref) == 0) {
+	    o_delete(o);
 	}
     }
 }

@@ -41,7 +41,7 @@ register char *name;
 	sprintf(buf, " %u ", tk_line());
 	return buf;
     } else if (strcmp(name, "__FILE__") == 0) {
-	sprintf(buf, "\"%s\"", tk_filename());
+	sprintf(buf, "\"/%s\"", tk_filename());
 	return buf;
     } else if (strcmp(name, "__DATE__") == 0) {
 	return datestr;
