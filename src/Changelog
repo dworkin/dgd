@@ -942,3 +942,5 @@ DGD 1.1
  - Made statedumps more efficient.
  - The static chunk size can now be 0, which has the effect of never causing
    an automatic swapout, at the cost of more memory fragmentation.
+ - Made sure ctime() works, even if the host implementation cannot handle
+   "negative" times.

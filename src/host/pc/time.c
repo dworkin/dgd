@@ -18,7 +18,29 @@ Uint P_time()
 char *P_ctime(t)
 Uint t;
 {
-    return ctime((time_t *) &t);
+    char *buf;
+    register int offset;
+
+    offset = 0;
+    for (offset = 0; (Int) t < 0; t -= 1009843200, offset += 32) ;
+    buf = ctime((time_t *) &t);
+    if (offset != 0) {
+	long year;
+
+	year = strtol(buf + 20, (char **) NULL, 10) + offset;
+	if (year >= 2100 && (buf[4] != 'J' || buf[5] != 'a') &&
+	    (buf[4] != 'F' || (buf[8] == '2' && buf[9] == '9'))) {
+	    /* 2100 is not a leap year */
+	    t += 86400;
+	    buf = ctime((time_t *) &t);
+	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
+	}
+	sprintf(buf + 20, "%ld\012", year);
+    }
+    if (buf[8] == '0') {
+	buf[8] = ' ';	/* MSDEV ctime weirdness */
+    }
+    return buf;
 }
 
 static struct _timeb timeout;

@@ -109,6 +109,7 @@ extern int P_chdir(char*);
 # include <setjmp.h>
 # include <stdio.h>
 
+# define STRUCT_AL	4		/* define this if align(struct) > 2 */
 # define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
 # define SCHAR(c)	((char) (c))		/* signed character */
 
