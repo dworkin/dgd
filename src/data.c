@@ -188,6 +188,7 @@ object *obj;
     data->eltsize = 0;
     data->alocal.arr = (array *) NULL;
     data->alocal.data = data;
+    data->alocal.index = 0;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -365,6 +366,7 @@ object *obj;
     data->eltsize = header.eltsize;
     data->alocal.arr = (array *) NULL;
     data->alocal.data = data;
+    data->alocal.index = 0;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -874,6 +876,10 @@ register value *rhs;
 	    /* in this object */
 	    if (arr->primary->ref++ == 0) {
 		data->achange--;	/* first reference restored */
+		if (arr->primary->index & ARR_MOD) {
+		    /* add extra reference */
+		    arr_ref(arr);
+		}
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -923,6 +929,10 @@ register value *lhs;
 	    /* in this object */
 	    if (--(arr->primary->ref) == 0) {
 		data->achange++;	/* last reference removed */
+		if (arr->primary->index & ARR_MOD) {
+		    /* remove extra reference */
+		    arr_del(arr);
+		}
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -1019,10 +1029,17 @@ register value *elt, *val;
 	/*
 	 * the array is in the loaded dataspace of some object
 	 */
-	arr->primary->index |= ARR_MOD;
+	if ((arr->primary->index & ARR_MOD) == 0) {
+	    /*
+	     * Swapped-in array changed for the first time.  Add an extra
+	     * reference so the changes are not lost.
+	     */
+	    arr->primary->index |= ARR_MOD;
+	    arr_ref(arr);
+	    data->modified |= M_ARRAY;
+	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
-	data->modified |= M_ARRAY;
     }
 
     i_ref_value(val);
@@ -1059,9 +1076,26 @@ string *str;
  * DESCRIPTION:	delete an array in a dataspace
  */
 void d_del_array(arr)
-array *arr;
+register array *arr;
 {
-    arr->primary->arr = (array *) NULL;
+    if (arr->primary->arr != (array *) NULL) {
+	register unsigned short n;
+	register value *v;
+	register dataspace *data;
+
+	if (arr->primary->ref == 0 && (n=arr->size) != 0 &&
+	    (v=arr->elts)[0].type != T_INVALID) {
+	    /*
+	     * Completely delete a swapped-in array.  Update the local
+	     * reference counts for all arrays referenced by it.
+	     */
+	    data = arr->primary->data;
+	    do {
+		del_lhs(data, v++);
+	    } while (--n != 0);
+	}
+	arr->primary->arr = (array *) NULL;
+    }
 }
 
 /*
@@ -1785,7 +1819,6 @@ register dataspace *data;
 	    a = data->arrays;
 	    for (n = data->narrays; n > 0; --n) {
 		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
-		    a->index &= ~ARR_MOD;
 		    d_put_values(&data->selts[a->index], a->arr->elts,
 				 a->arr->size);
 		    sw_writev((char *) &data->selts[a->index], data->sectors,
@@ -1793,6 +1826,8 @@ register dataspace *data;
 			      data->arroffset +
 				data->narrays * (long) sizeof(sarray) +
 				a->index * sizeof(svalue));
+		    a->index &= ~ARR_MOD;
+		    arr_del(a->arr);	/* remove extra reference */
 		}
 		a++;
 	    }
@@ -2186,6 +2221,7 @@ register unsigned short n;
 void d_export()
 {
     register dataspace *data;
+    register uindex n;
 
     if (ilist != (dataspace *) NULL) {
 	itab = ALLOC(array*, itabsz = 16);
@@ -2196,9 +2232,17 @@ void d_export()
 	    if (data->variables != (value *) NULL) {
 		d_import(data, data->variables, data->nvariables);
 	    }
+	    if (data->modified & M_ARRAY) {
+		register arrref *a;
+
+		for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
+		    if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
+			d_import(data, a->arr->elts, a->arr->size);
+		    }
+		}
+	    }
 	    if (data->callouts != (dcallout *) NULL) {
 		register dcallout *co;
-		register uindex n;
 
 		co = data->callouts;
 		for (n = data->ncallouts; n > 0; --n) {
@@ -2360,6 +2404,20 @@ register dataspace *data;
 
     /* free arrays */
     if (data->arrays != (arrref *) NULL) {
+	if (data->modified & M_ARRAY) {
+	    register arrref *a;
+
+	    /*
+	     * Modified arrays have gotten an extra reference.  Free them
+	     * now.
+	     */
+	    for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
+		if (a->arr != (array *) NULL) {
+		    arr_del(a->arr);
+		}
+	    }
+	}
+
 	if (data->selts != (svalue *) NULL) {
 	    FREE(data->selts);
 	}

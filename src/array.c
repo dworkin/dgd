@@ -146,6 +146,8 @@ register array *a;
 	register value *v;
 	register unsigned short i;
 
+	d_del_array(a);
+
 	if ((v=a->elts) != (value *) NULL) {
 	    if (v[0].type != T_INVALID) {
 		for (i = a->size; i > 0; --i) {
@@ -174,7 +176,6 @@ register array *a;
 	    FREE(a->hashed);
 	}
 
-	d_del_array(a);
 	a->primary = (arrref *) flist;
 	flist = a;
     }
