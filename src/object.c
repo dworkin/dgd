@@ -374,7 +374,10 @@ void o_commit_plane()
 			     * same name
 			     */
 			    FREE(op->obj.chain.name);
-			    op->obj.chain = obj->chain;
+			    op->obj.chain.name = obj->chain.name;
+			    if (op->obj.count != 0) {
+				op->obj.chain.next = obj->chain.next;
+			    }
 			}
 			if (op->obj.count == 0 && obj->count != 0) {
 			    /*
@@ -382,7 +385,6 @@ void o_commit_plane()
 			     */
 			    *ht_lookup(prev->htab, obj->chain.name, FALSE) =
 							(hte *) obj->chain.next;
-
 			}
 		    }
 		    if (obj->count != 0) {
