@@ -1359,3 +1359,29 @@ register frame *f;
     return 0;
 }
 # endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_pow", kf_asn_pow, pt_asn_pow)
+# else
+char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, T_STRING, 3, T_STRING,
+		      T_STRING, T_STRING };
+
+/*
+ * NAME:	kfun->asn_pow()
+ * DESCRIPTION:	power of an arbitrary precision number
+ */
+int kf_asn_pow(f)
+register frame *f;
+{
+    register string *str;
+
+    str = asn_pow(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str_del((f->sp++)->u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
