@@ -54,9 +54,12 @@ register control *ctrl;
 {
     register int i;
 
-    printf("\nstatic char *inherits[] = {\n");
+    printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("\"%s\",\n", o_name(ctrl->inherits[i].obj));
+	printf("\"%s\", %u, %u,\n",
+	       o_name(ctrl->inherits[i].obj),
+	       ctrl->inherits[i].funcoffset,
+	       ctrl->inherits[i].varoffset);
     }
     printf("};\n");
 }
@@ -84,17 +87,19 @@ static void dump_strings(ctrl)
 register control *ctrl;
 {
     register int i;
+    register long size;
 
     if (ctrl->nstrings != 0) {
-	printf("\nstatic char stext[] = {\n");
+	printf("\nstatic dstrconst sstrings[] = {\n");
+	size = 0;
+	for (i = 0; i < ctrl->nstrings; i++) {
+	    printf("{ %ld, %u },\n", size, ctrl->strings[i]->len);
+	    size += ctrl->strings[i]->len;
+	}
+	printf("};\n\nstatic char stext[] = {\n");
 	size = 0;
 	for (i = 0; i < ctrl->nstrings; i++) {
 	    dump_chars(ctrl->strings[i]->text, ctrl->strings[i]->len);
-	}
-	printf("\n};\n\nstatic unsigned short slength[] = {\n");
-	size = 0;
-	for (i = 0; i < ctrl->nstrings; i++) {
-	    dump(ctrl->strings[i]->len);
 	}
 	printf("\n};\n");
     }
@@ -132,8 +137,8 @@ register control *ctrl;
 	printf("\nstatic dfuncdef funcdefs[] = {\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
 	    printf("{ %d, %d, %u, %u },\n",
-		   UCHAR(ctrl->funcdefs[i].class),
-		   UCHAR(ctrl->funcdefs[i].inherit),
+		   ctrl->funcdefs[i].class,
+		   ctrl->funcdefs[i].inherit,
 		   ctrl->funcdefs[i].index,
 		   ctrl->funcdefs[i].offset);
 	}
@@ -154,8 +159,8 @@ register control *ctrl;
 	printf("\nstatic dvardef vardefs[] = {\n");
 	for (i = 0; i < ctrl->nvardefs; i++) {
 	    printf("{ %d, %d, %u, %u },\n",
-		   UCHAR(ctrl->vardefs[i].class),
-		   UCHAR(ctrl->vardefs[i].inherit),
+		   ctrl->vardefs[i].class,
+		   ctrl->vardefs[i].inherit,
 		   ctrl->vardefs[i].index,
 		   ctrl->vardefs[i].type);
 	}
@@ -170,14 +175,31 @@ register control *ctrl;
 static void dump_funcalls(ctrl)
 register control *ctrl;
 {
-    register unsigned short foffset;
-
-    foffset = ctrl->inherits[ctrl->ninherits - 1].funcoffset;
-    if (ctrl->nfuncalls != foffset) {
+    if (ctrl->nfuncalls > 0) {
 	printf("\nstatic char funcalls[] = {\n");
-	dump_chars(ctrl->funcalls + (foffset << 1),
-		   (ctrl->nfuncalls - foffset) << 1);
+	dump_chars(ctrl->funcalls, ctrl->nfuncalls << 1);
 	printf("\n};\n");
+    }
+}
+
+/*
+ * NAME:	dump_symbols()
+ * DESCRIPTION:	output the symbol table
+ */
+static void dump_symbols(ctrl)
+register control *ctrl;
+{
+    register uindex i;
+
+    if (ctrl->nsymbols != 0) {
+	printf("\nstatic dsymbol symbols[] = {\n");
+	for (i = 0; i < ctrl->nsymbols; i++) {
+	    printf("{ %d, %d, %u },\n",
+		   ctrl->symbols[i].inherit,
+		   ctrl->symbols[i].index,
+		   ctrl->symbols[i].next);
+	}
+	printf("};\n");
     }
 }
 
@@ -207,7 +229,7 @@ char *argv[];
 	host_finish();
 	return 2;
     }
-    conf_init(argv[1]);
+    conf_init(argv[1], (char *) NULL);
     ec_pop();
 
     len = strlen(file = path_resolve(argv[2]));
@@ -215,7 +237,7 @@ char *argv[];
 	file[len -= 2] = '\0';
     }
     sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
-	    (unsigned short) random());
+	    (unsigned short) P_random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
     printf("\n * DGD is copyright by Felix A. Croes.");
@@ -243,6 +265,7 @@ char *argv[];
     dump_funcdefs(ctrl);
     dump_vardefs(ctrl);
     dump_funcalls(ctrl);
+    dump_symbols(ctrl);
 
     printf("\nprecomp %s = {\n%d, inherits,\n", tag, ctrl->ninherits);
     if (ctrl->progsize == 0) {
@@ -253,7 +276,7 @@ char *argv[];
     if (ctrl->nstrings == 0) {
 	printf("0, 0, 0,\n");
     } else {
-	printf("%u, stext, slength,\n", ctrl->nstrings);
+	printf("%u, sstrings, stext,\n", ctrl->nstrings);
     }
     if (nfuncs == 0) {
 	printf("0, 0,\n");
@@ -270,11 +293,15 @@ char *argv[];
     } else {
 	printf("%u, vardefs,\n", ctrl->nvardefs);
     }
-    nfuncs = ctrl->nfuncalls - ctrl->inherits[ctrl->ninherits - 1].funcoffset;
-    if (nfuncs == 0) {
+    if (ctrl->nfuncalls == 0) {
+	printf("0, 0,\n");
+    } else {
+	printf("%u, funcalls,\n", ctrl->nfuncalls);
+    }
+    if (ctrl->nsymbols == 0) {
 	printf("0, 0\n");
     } else {
-	printf("%u, funcalls\n", nfuncs);
+	printf("%u, symbols\n", ctrl->nsymbols);
     }
     printf("};\n# endif\n");
 
@@ -305,17 +332,38 @@ int narg;
  * NAME:	swapout()
  * DESCRIPTION:	pretend to indicate that objects are to be swapped out
  */
-void swapout()
+void swapout(flag)
+bool flag;
+{
+}
+
+/*
+ * NAME:	finish()
+ * DESCRIPTION:	pretend to indicate that the program must finish
+ */
+void finish(flag)
+bool flag;
 {
 }
 
 pcfunc *pcfunctions;	/* dummy */
 
 /*
- * NAME:	preload()
+ * NAME:	pc_preload()
  * DESCRIPTION:	pretend to preload compiled objects
  */
-void preload()
+void pc_preload(auto_name, driver_name)
+char *auto_name, *driver_name;
+{
+}
+
+/*
+ * NAME:	pc_control()
+ * DESCRIPTION:	pretend to initialize the control block of a compiled object
+ */
+void pc_control(ctrl, obj)
+control *ctrl;
+object *obj;
 {
 }
 
@@ -389,11 +437,38 @@ uindex sw_count()
 }
 
 /*
+ * NAME:	swap->dump()
+ * DESCRIPTION:	pretend to dump swap file
+ */
+bool sw_dump(fd)
+int fd;
+{
+    return FALSE;
+}
+
+/*
+ * NAME:	swap->restore()
+ * DESCRIPTION:	pretend to restore swap file
+ */
+void sw_restore(fd)
+int fd;
+{
+}
+
+/*
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
 void comm_init(nusers, port_number)
 int nusers, port_number;
+{
+}
+
+/*
+ * NAME:	comm->finish()
+ * DESCRIPTION:	pretend terminate connections
+ */
+void comm_finish()
 {
 }
 
@@ -535,6 +610,17 @@ int nargs;
 }
 
 /*
+ * NAME:	call_out->find()
+ * DESCRIPTION:	pretend to find a call_out
+ */
+long co_find(obj, str)
+object *obj;
+string *str;
+{
+    return -1;
+}
+
+/*
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a call_out
  */
@@ -569,4 +655,24 @@ uindex co_count()
 long co_swaprate()
 {
     return 0;
+}
+
+/*
+ * NAME:	call_out->dump()
+ * DESCRIPTION:	pretend to dump call_out table
+ */
+bool co_dump(fd)
+int fd;
+{
+    return FALSE;
+}
+
+/*
+ * NAME:	call_out->restore()
+ * DESCRIPTION:	pretend to restore call_out table
+ */
+void co_restore(fd, t)
+int fd;
+long t;
+{
 }
