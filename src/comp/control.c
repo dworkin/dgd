@@ -1069,6 +1069,8 @@ register char *proto;
 	    if ((*l)->index == 0) {
 		nsymbs++;	/* previous functions all privately inherited */
 	    }
+	} else if ((*l)->ohash->priv != 0) {
+	    nsymbs++;		/* replace private function */
 	} else {
 	    ctrl = (*l)->ohash->obj->ctrl;
 	    proto2 = ctrl->prog + ctrl->funcdefs[(*l)->index].offset;
