@@ -190,6 +190,7 @@ control *d_new_control()
     ctrl->oindex = UINDEX_MAX;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
+    ctrl->compiled = 0;
     ctrl->progsize = 0;
     ctrl->prog = (char *) NULL;
     ctrl->nstrings = 0;

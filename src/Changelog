@@ -1621,3 +1621,4 @@ DGD 1.3
  - Make swapout(), dump_state() and shutdown() local to the atomic context.
  - Get the precompiler to work again.
  - Fixed a prototype conversion bug in the extension interface.
+ - Fixed a bug in comparing function prototypes that include object types.
