@@ -41,3 +41,14 @@ static object connection()
 {
     return call_other(userd, porttype + "_connection");
 }
+
+/*
+ * NAME:	close_port()
+ * DESCRIPTION:	close this port
+ */
+close_port()
+{
+    if (SYSTEM()) {
+	destruct_object(this_object());
+    }
+}
