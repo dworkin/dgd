@@ -1,8 +1,7 @@
 typedef void (*pcfunc)();
 
 typedef struct {
-    char ninherits;		/* # of inherits */
-    char nvirtuals;		/* # of virtual inherits */
+    short ninherits;		/* # of inherits */
     char **inherits;		/* inherits */
 
     unsigned short progsize;	/* program size */
@@ -15,10 +14,10 @@ typedef struct {
     unsigned short nfunctions;	/* # functions */
     pcfunc *functions;		/* functions */
 
-    unsigned short nfuncdefs;	/* # function definitions */
+    short nfuncdefs;		/* # function definitions */
     dfuncdef *funcdefs;		/* function definitions */
 
-    unsigned short nvardefs;	/* # variable definitions */
+    short nvardefs;		/* # variable definitions */
     dvardef *vardefs;		/* variable definitions */
 
     uindex nfuncalls;		/* # function calls */
@@ -27,7 +26,6 @@ typedef struct {
 
 extern precomp	*precompiled[];	/* table of precompiled objects */
 extern pcfunc	*pcfunctions;	/* table of precompiled functions */
-extern Int	 tv[];		/* tmpval table */
 
 
 void preload		P((void));
@@ -44,5 +42,7 @@ void check_int		P((value*));
 Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
 bool poptruthval	P((void));
+void pre_catch		P((void));
+void post_catch		P((void));
 int  switch_range	P((Int, Int*, int));
 int  switch_str		P((value*, char*, int));
