@@ -583,10 +583,11 @@ string *str;
  * NAME:	comm->echo()
  * DESCRIPTION:	pretend to turn on/off input echoing for a user
  */
-void comm_echo(obj, echo)
+bool comm_echo(obj, echo)
 object *obj;
 int echo;
 {
+    return FALSE;
 }
 
 /*
@@ -728,10 +729,11 @@ int frag;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new call_out
  */
-uindex co_new(obj, str, delay, f, nargs)
+uindex co_new(obj, str, delay, mdelay, f, nargs)
 object *obj;
 string *str;
 Int delay;
+unsigned int mdelay;
 frame *f;
 int nargs;
 {
