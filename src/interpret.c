@@ -1,9 +1,9 @@
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "fcontrol.h"
 # include "table.h"
 
@@ -35,6 +35,7 @@ static frame *maxframe;		/* max frame */
 static frame *maxmaxframe;	/* max locked frame */
 static long ticksleft;		/* interpreter ticks left */
 static long maxticks;		/* max ticks allowed */
+static unsigned short catch;	/* current catch level */
 static unsigned short lock;	/* current lock level */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
@@ -47,9 +48,8 @@ static value zero_value = { T_NUMBER, TRUE };
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(stacksize, maxdepth, reserved, maxcost, create)
+void i_init(stacksize, maxdepth, reserved, create)
 int stacksize, maxdepth, reserved;
-long maxcost;
 char *create;
 {
     stack = ALLOC(value, stacksize);
@@ -63,7 +63,6 @@ char *create;
     cframe = iframe - 1;
     maxframe = iframe + maxdepth;
     maxmaxframe = iframe + maxdepth + reserved;
-    maxticks = maxcost;
     creator = create;
 }
 
@@ -80,7 +79,7 @@ register value *v;
 	break;
 
     case T_OBJECT:
-	if (DESTRUCTED(v->u.object)) {
+	if (DESTRUCTED(v)) {
 	    *v = zero_value;
 	}
 	break;
@@ -136,7 +135,7 @@ register value *v;
 	break;
 
     case T_OBJECT:
-	if (DESTRUCTED(v->u.object)) {
+	if (DESTRUCTED(v)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
@@ -192,15 +191,15 @@ register int n;
  * NAME:	interpret->odest()
  * DESCRIPTION:	replace all occurrances of an object on the stack by 0
  */
-void i_odest(key)
-objkey *key;
+void i_odest(obj)
+object *obj;
 {
     register value *v;
-    register long count;
+    register Int count;
 
-    count = key->count;
+    count = obj->count;
     for (v = sp; v < stackend; v++) {
-	if (v->type == T_OBJECT && v->u.object.count == count) {
+	if (v->type == T_OBJECT && v->u.objcnt == count) {
 	    /*
 	     * wipe out destructed object on stack
 	     */
@@ -208,7 +207,7 @@ objkey *key;
 	}
     }
     for (v = stack; v < ilvp; v++) {
-	if (v->type == T_OBJECT && v->u.object.count == count) {
+	if (v->type == T_OBJECT && v->u.objcnt == count) {
 	    /*
 	     * wipe out destructed object on stack
 	     */
@@ -234,7 +233,7 @@ register value *aval, *ival;
 	    error("Non-numeric string index");
 	}
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
-						 ival->u.number)]);
+						 (long) ival->u.number)]);
 	str_del(aval->u.string);
 	aval->type = T_NUMBER;
 	aval->u.number = i;
@@ -245,7 +244,7 @@ register value *aval, *ival;
 	    error("Non-numeric array index");
 	}
 	val = &d_get_elts(aval->u.array)[arr_index(aval->u.array,
-						   ival->u.number)];
+						   (long) ival->u.number)];
 	break;
 
     case T_MAPPING:
@@ -263,7 +262,7 @@ register value *aval, *ival;
 	break;
 
     case T_OBJECT:
-	if (DESTRUCTED(val->u.object)) {
+	if (DESTRUCTED(val)) {
 	    val = &zero_value;
 	}
 	break;
@@ -297,7 +296,7 @@ register value *lval, *ival;
 	if (ival->type != T_NUMBER) {
 	    error("Non-numeric array index");
 	}
-	i = arr_index(lval->u.array, ival->u.number);
+	i = arr_index(lval->u.array, (long) ival->u.number);
 	ilvp->type = T_ARRAY;
 	(ilvp++)->u.array = lval->u.array;
 	lval->type = T_ALVALUE;
@@ -321,7 +320,8 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = lval->u.lval->u.string, ival->u.number);
+	    i = str_index(lvstr = lval->u.lval->u.string,
+			  (long) ival->u.number);
 	    ilvp->type = T_LVALUE;
 	    (ilvp++)->u.lval = lval->u.lval;
 	    /* indexed string lvalues are not referenced */
@@ -333,7 +333,7 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric array index");
 	    }
-	    i = arr_index(lval->u.lval->u.array, ival->u.number);
+	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
 	    ilvp->type = T_ARRAY;
 	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    lval->type = T_ALVALUE;
@@ -357,7 +357,7 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = val->u.string, ival->u.number);
+	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
 	    ilvp->type = T_NUMBER;
 	    (ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
@@ -368,7 +368,7 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric array index");
 	    }
-	    i = arr_index(val->u.array, ival->u.number);
+	    i = arr_index(val->u.array, (long) ival->u.number);
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
 	    ilvp[-1].u.array = val->u.array;
@@ -394,7 +394,7 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = val->u.string, ival->u.number);
+	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->u.number = i;
 	    return;
@@ -403,7 +403,7 @@ register value *lval, *ival;
 	    if (ival->type != T_NUMBER) {
 		error("Non-numeric array index");
 	    }
-	    i = arr_index(val->u.array, ival->u.number);
+	    i = arr_index(val->u.array, (long) ival->u.number);
 	    i_del_value(--ilvp);
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
@@ -525,10 +525,20 @@ register value *lval, *val;
 }
 
 /*
- * NAME:	interpret->add_ticks()
+ * NAME:	interpret->set_cost()
+ * DESCRIPTION:	set the maximum allowed execution cost
+ */
+void i_set_cost(cost)
+long cost;
+{
+    maxticks = cost;
+}
+
+/*
+ * NAME:	interpret->add_cost()
  * DESCRIPTION:	add some execution cost, used by costly kfuns
  */
-void i_add_ticks(extra)
+void i_add_cost(extra)
 int extra;
 {
     ticksleft -= extra;
@@ -589,7 +599,7 @@ register int n;
 	    return (object *) NULL;
 	}
     }
-    return (f->obj->key.count == 0) ? (object *) NULL : f->obj;
+    return (f->obj->count == 0) ? (object *) NULL : f->obj;
 }
 
 /*
@@ -649,6 +659,7 @@ int funci;
     register frame *f, *pf;
     register char *pc;
     register unsigned short n;
+    bool external;
     value val;
 
     f = pf = cframe;
@@ -662,6 +673,7 @@ int funci;
 	 * top level call
 	 */
 	ticksleft = maxticks;
+	external = TRUE;
 
 	f->obj = obj;
 	f->external = TRUE;
@@ -672,6 +684,7 @@ int funci;
 	/*
 	 * call_other
 	 */
+	external = TRUE;
 	f->obj = obj;
 	f->external = TRUE;
 	f->data = o_dataspace(obj);
@@ -681,6 +694,7 @@ int funci;
 	/*
 	 * local function call or labeled function call
 	 */
+	external = FALSE;
 	f->obj = pf->obj;
 	f->external = FALSE;
 	f->data = pf->data;
@@ -712,7 +726,7 @@ int funci;
     }
 
     pc = d_get_prog(f->p_ctrl) + f->func->offset;
-    if (nargs > 0 && (PROTO_CLASS(pc) & C_TYPECHECKED)) {
+    if (PROTO_CLASS(pc) & C_TYPECHECKED) {
 	/* typecheck arguments */
 	i_typecheck(d_get_strconst(f->p_ctrl, f->func->inherit,
 				   f->func->index)->text,
@@ -720,16 +734,27 @@ int funci;
     }
 
     /* handle arguments */
-    if (nargs > PROTO_NARGS(pc)) {
+    n = PROTO_NARGS(pc);
+    if (nargs > n) {
+	if (!external) {
+	    error("Too many arguments for function %s",
+		  d_get_strconst(f->p_ctrl, f->func->inherit,
+				 f->func->index)->text);
+	}
 	/* pop superfluous arguments */
-	i_pop(nargs - PROTO_NARGS(pc));
-	nargs = PROTO_NARGS(pc);
-    } else if (nargs < PROTO_NARGS(pc)) {
+	i_pop(nargs - n);
+	nargs = n;
+    } else if (nargs < n) {
+	if (!(PROTO_CLASS(pc) & C_VARARGS) && !external) {
+	    error("Too few arguments for function %s",
+		  d_get_strconst(f->p_ctrl, f->func->inherit,
+				 f->func->index)->text);
+	}
 	/* add missing arguments */
-	CHECKSP(PROTO_NARGS(pc) - nargs);
+	CHECKSP(n - nargs);
 	do {
 	    *--sp = zero_value;
-	} while (++nargs < PROTO_NARGS(pc));
+	} while (++nargs < n);
     }
     pc += PROTO_SIZE(pc);
 
@@ -999,7 +1024,7 @@ static void i_interpret(pc)
 register char *pc;
 {
     register unsigned short instr, u, u2, u3;
-    register long l;
+    register Int l;
     register frame *f;
     register char *p;
     register kfunc *kf;
@@ -1251,19 +1276,37 @@ register char *pc;
 	    break;
 
 	case I_CATCH:
+	    p = pc;
+	    p += FETCH2S(pc, u);
+	    catch++;
+	    u = lock;
+	    if (u != 0) {
+		/* temporarily turn off lock and reset exec cost */
+		l = maxticks - ticksleft;
+		ticksleft = maxticks;
+		lock = 0;
+	    }
+	    v = sp;
 	    if (!ec_push()) {
-		p = pc;
-		p += FETCH2S(pc, u);
-		u = lock;
-		v = sp;
 		i_interpret(pc);
-		pc = f->pc;
 		ec_pop();
+		lock = u;
+		if (u != 0) {
+		    /* correct value of ticksleft */
+		    ticksleft -= l;
+		}
+		--catch;
+		pc = f->pc;
 	    } else {
 		/* error */
+		lock = u;
+		if (u != 0) {
+		    /* correct value of ticksleft */
+		    ticksleft -= l;
+		}
+		--catch;
 		cframe = f;
 		f->pc = pc = p;
-		lock = u;
 		i_pop(v - sp);
 		CHECKSP(1);
 		p = errormesg();
@@ -1471,7 +1514,7 @@ FILE *fp;
 		d_get_strconst(f->p_ctrl, f->func->inherit,
 			       f->func->index)->text,
 		prog->chain.name);
-	if (f->obj->ctrl != f->p_ctrl) {
+	if (f->obj != f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj) {
 	    /*
 	     * Program and object are not the same; the object name must
 	     * be printed as well.
@@ -1480,9 +1523,10 @@ FILE *fp;
 	    p = o_name(f->obj);
 	    if (strncmp(prog->chain.name, p, len) == 0 && p[len] == '#') {
 		/* object is a clone */
-		p += len;
+		fprintf(fp, " (%s)", p + len);
+	    } else {
+		fprintf(fp, " (/%s)", p);
 	    }
-	    fprintf(fp, " (/%s)", p);
 	}
 	fputc('\n', fp);
     }
