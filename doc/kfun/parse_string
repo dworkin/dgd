@@ -1,0 +1,12 @@
+NAME
+	parse_string - parse a string
+
+SYNOPSIS
+	mixed *parse_string(string format, string str)
+
+
+DESCRIPTION
+	Not yet implemented.
+
+SEE ALSO
+	kfun/sscanf, kfun/explode, kfun/implode

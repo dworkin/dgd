@@ -15,4 +15,4 @@ ERRORS
 	defined in the include file <limits.h>, an error will result.
 
 SEE ALSO
-	kfun/implode, kfun/sscanf
+	kfun/implode, kfun/sscanf, kfun/parse_string
