@@ -1892,7 +1892,7 @@ int n;
     string *s;
     array *a;
     register value *v, *e1, *e2;
-    register int i, type, nonint;
+    register int i, type, vtype, nonint;
     register long size;
     register unsigned short len;
     register Int result;
@@ -1910,29 +1910,36 @@ int n;
 	if (v->u.number == -2) {
 	    /* simple term */
 	    v++;
-	    if (v->type == T_STRING) {
+	    vtype = v->type;
+	    if (vtype == T_STRING) {
 		size += v->u.string->len;
-	    } else if (v->type == T_ARRAY) {
+	    } else if (vtype == T_ARRAY) {
 		size += v->u.array->size;
 	    } else {
 		sprintf(buffer, "%ld", (long) v->u.number);
 		size += strlen(buffer);
 	    }
+	} else if (v->u.number < -2) {
+	    /* aggregate */
+	    size += -3 - v->u.number;
+	    v += -3 - v->u.number;
+	    vtype = T_ARRAY;
 	} else {
 	    /* subrange term */
 	    size += v->u.number - v[1].u.number + 1;
 	    v += 2;
+	    vtype = v->type;
 	}
 
-	if (v->type == T_STRING || v->type == T_ARRAY) {
+	if (vtype == T_STRING || vtype == T_ARRAY) {
 	    nonint = i;
 	    isize = size;
 	    if (type == 0) {
-		type = v->type;
-	    } else if (type != v->type) {
+		type = vtype;
+	    } else if (type != vtype) {
 		error("Bad argument 2 for kfun +");
 	    }
-	} else if (v->type != T_INT || type == T_ARRAY) {
+	} else if (vtype != T_INT || type == T_ARRAY) {
 	    error("Bad argument 2 for kfun +");
 	} else {
 	    result += v->u.number;
@@ -1969,6 +1976,7 @@ int n;
 		    result += v->u.number;
 		}
 	    } else {
+		/* subrange */
 		len = v->u.number - v[1].u.number + 1;
 		size -= len;
 		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
@@ -1988,26 +1996,38 @@ int n;
 	str_ref(sp->u.string = s);
     } else if (type == T_ARRAY) {
 	a = arr_new(size);
+	e1 = a->elts + size;
 	for (v = sp, i = n; --i >= 0; v++) {
 	    if (v->u.number == -2) {
 		/* simple term */
 		v++;
 		len = v->u.array->size;
 		e2 = d_get_elts(v->u.array) + len;
+	    } else if (v->u.number < -2) {
+		/* aggregate */
+		for (len = -3 - v->u.number; len > 0; --len) {
+		    *--e1 = *++v;
+		}
+		continue;
 	    } else {
+		/* subrange */
 		len = v->u.number - v[1].u.number + 1;
 		e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
 		v += 2;
 	    }
-	    for (e1 = a->elts + size, size -= len; len > 0; --len) {
+
+	    size -= len;
+	    while (len > 0) {
 		*--e1 = *--e2;
 		i_ref_value(e1);
+		--len;
 	    }
 	    arr_del(v->u.array);
 	}
 
 	sp = v - 1;
 	d_ref_imports(a);
+	sp->type = T_ARRAY;
 	arr_ref(sp->u.array = a);
     } else {
 	/* integers only */

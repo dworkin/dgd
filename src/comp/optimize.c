@@ -500,11 +500,25 @@ register node **m;
     xfloat f1, f2;
 
     n = *m;
+    if (n->type == N_ADD && n->r.right->type == N_ADD &&
+	n->l.left->mod == n->r.right->mod &&
+	(n->l.left->mod == T_STRING || n->l.left->mod == T_ARRAY)) {
+	/*
+	 * a + (b + c) --> (a + b) + c
+	 * the order in which these are added won't affect the final result
+	 */
+	t = n->l.left;
+	n->l.left = n->r.right;
+	n->r.right = n->l.left->r.right;
+	n->l.left->r.right = n->l.left->l.left;
+	n->l.left->l.left = t;
+    }
+
     d1 = opt_expr(&n->l.left, FALSE);
     d2 = opt_expr(&n->r.right, FALSE);
 
     if (n->type == N_ADD) {
-	if (n->mod == T_STRING && n->r.right->type == N_STR &&
+	if (n->r.right->type == N_STR &&
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
@@ -525,6 +539,20 @@ register node **m;
 	    case N_ADD:
 		n->l.left->type = N_SUM;
 		d1 += 2;			/* (-2) on both sides */
+		n->type = N_SUM;
+		d2++;				/* add (-2) */
+		if (n->r.right->type == N_RANGE) {
+		    d2 = max2(d2, 3);		/* at least 3 */
+		}
+		return d1 + d2;
+
+	    default:
+		if (n->r.right->type != N_RANGE && n->r.right->type != N_AGGR) {
+		    break;
+		}
+		/* fall through */
+	    case N_AGGR:
+		d1++;				/* add (-2) */
 		n->type = N_SUM;
 		d2++;				/* add (-2) */
 		if (n->r.right->type == N_RANGE) {
@@ -1118,9 +1146,15 @@ bool pop;
 	switch (n->r.right->type) {
 	case N_ADD:
 	    n->r.right->type = N_SUM;
+	    d2 += 2;				/* (-2) on both sides */
 	    n->type = N_SUM_EQ;
 	    d1++;				/* add (-2) */
-	    d2 += 2;				/* (-2) on both sides */
+	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+
+	case N_AGGR:
+	    d2++;				/* add (-2) */
+	    n->type = N_SUM_EQ;
+	    d1++;				/* add (-2) */
 	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
 
 	case N_RANGE:

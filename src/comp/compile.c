@@ -822,6 +822,7 @@ bool c_zero(n)
 register node *n;
 {
     if (n->type == N_COMMA) {
+	/* the parser always generates comma expressions as (a, b), c */
 	n = n->r.right;
     }
     return (n->type == N_INT && n->l.number == 0);
@@ -1334,9 +1335,11 @@ register node *n1, *n2;
 		n1->r.number = n1->l.number;
 		n1->l.number = n2->l.number;
 		n1->type = N_RANGE;
-	    } else if (n2->l.number != n1->l.number) {
+	    } else {
 		n1->r.number = n2->l.number;
-		n1->type = N_RANGE;
+		if (n1->l.number != n1->r.number) {
+		    n1->type = N_RANGE;
+		}
 	    }
 	}
 	/* compare type with other cases */

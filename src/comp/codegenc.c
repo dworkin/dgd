@@ -725,7 +725,7 @@ register node *n;
 static int cg_sumargs(n)
 register node *n;
 {
-    register int i;
+    int i;
 
     if (n->type == N_SUM) {
 	i = cg_sumargs(n->l.left);
@@ -734,7 +734,9 @@ register node *n;
 	i = 0;
     }
 
-    if (n->type == N_RANGE) {
+    if (n->type == N_AGGR) {
+	output("PUSH_NUMBER %d", -3 - cg_aggr(n->l.left));
+    } else if (n->type == N_RANGE) {
 	cg_expr(n->l.left, PUSH);
 	comma();
 	n = n->r.right;

@@ -1197,15 +1197,6 @@ char *name;
 	return node_str(str_add(n1->l.string, n2->l.string));
     }
 
-    if (op == N_ADD && n2->type == N_ADD && n1->mod == n2->mod &&
-	(n2->mod == T_STRING || n2->mod == T_ARRAY)) {
-	/*
-	 * a + (b + c) --> (a + b) + c
-	 * the order in which these are added won't affect the final result
-	 */
-	return add(N_ADD, add(N_ADD, n1, n2->l.left, "+"), n2->r.right, "+");
-    }
-
     type = c_tmatch(n1->mod, n2->mod);
     if (type == T_OBJECT || type == T_INVALID) {
 	type = T_MIXED;

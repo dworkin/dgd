@@ -1010,3 +1010,6 @@ DGD 1.1
  - Generate better C code for calls to builtin kfuns.
  - Generate summand operators in more cases.  Also fixed a crashing bug in
    case all operands of a summand are 0.
+ - Fixed a compiler bug which sometimes rejected x..x case label ranges.
+ - Generate summand operators in even more cases, where array aggregates
+   are now also included.
