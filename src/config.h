@@ -19,8 +19,6 @@ typedef uindex sector;
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1024	/* general array merge table size */
 # define OBJHASHSZ	256	/* # characters in object names to hash */
-# define PARSERULTABSZ	256	/* size of parse rule hash table */
-# define PARSERULHASHSZ	10	/* # characters in parse rule symbols to hash */
 # define COPATCHHTABSZ	64	/* callout patch hash table size */
 # define OBJPATCHHTABSZ	256	/* object patch hash table size */
 
@@ -28,6 +26,11 @@ typedef uindex sector;
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */
 # define EXTRA_STACK	32	/* extra space in stack frames */
+
+/* parser */
+# define MAX_AUTOMSZ	6	/* DFA/PDA storage size, in strings */
+# define PARSERULTABSZ	256	/* size of parse rule hash table */
+# define PARSERULHASHSZ	10	/* # characters in parse rule symbols to hash */
 
 /* editor */
 # define NR_EDBUFS	3	/* # buffers in editor cache (>= 3) */

@@ -184,9 +184,9 @@ int class;
 typedef struct {
     hte chain;			/* hash table chain */
     char *rgx;			/* regular expression this position is in */
-    short size;			/* size of position (length of string - 2) */
-    short nposn;		/* position number */
-    short ruleno;		/* the rule this position is in */
+    unsigned short size;	/* size of position (length of string - 2) */
+    unsigned short ruleno;	/* the rule this position is in */
+    Uint nposn;			/* position number */
     bool final;			/* final position? */
     bool alloc;			/* position allocated separately? */
 } rgxposn;
@@ -206,7 +206,8 @@ typedef struct _rpchunk_ {
 static rgxposn *rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final)
 hashtab *htab;
 char *posn, *rgx;
-int size, nposn, ruleno;
+unsigned short size, ruleno;
+Uint nposn;
 rpchunk **c;
 bool final;
 {
@@ -246,7 +247,8 @@ bool final;
 static rgxposn *rp_new(htab, posn, size, c, rgx, nposn, ruleno, final)
 hashtab *htab;
 char *posn, *rgx;
-int size, nposn, ruleno;
+unsigned short size, ruleno;
+Uint nposn;
 rpchunk **c;
 bool final;
 {
@@ -289,12 +291,12 @@ register rpchunk *c;
  */
 static bool rp_transposn(rgx, trans, buf, buflen)
 char *rgx, *trans, *buf;
-int *buflen;
+unsigned short *buflen;
 {
     char a[256], b[256], c[256], heap[256];
     register char *p, *q;
-    register int n, len, place;
-    register unsigned int i, j;
+    register int n, place;
+    register unsigned short i, j, len;
 
     memset(a, '\0', 256);
     heap[0] = len = 0;
@@ -407,7 +409,7 @@ static Uint bits[] = {
 
 /*
  * NAME:	rgxposn->cset()
- * DESCRIPTION:	create an input set for a position
+ * DESCRIPTION:	create input sets for a position
  */
 static void rp_cset(rp, cset)
 rgxposn *rp;
@@ -437,7 +439,7 @@ register Uint *cset;
 		c = UCHAR(*p++);
 		cset[c >> 5] |= 1 << (c & 31);
 		if (p[0] == '-' && p[1] != ']') {
-		    n = p[1] - c;
+		    n = UCHAR(p[1]) - c;
 		    if (n != 0) {
 			x = 32 - (++c & 31);
 			if (x > n) {
@@ -490,7 +492,7 @@ static bool rp_trans(rp, cset, posn, size)
 rgxposn *rp;
 Uint *cset;
 char *posn;
-int *size;
+unsigned short *size;
 {
     char trans[256];
     register char *p, *q;
@@ -520,7 +522,7 @@ int *size;
 		c = UCHAR(*p++);
 		found |= cset[c >> 5] & 1 << (c & 31);
 		if (p[0] == '-' && p[1] != ']') {
-		    n = p[1] - c;
+		    n = UCHAR(p[1]) - c;
 		    if (n != 0) {
 			x = 32 - (++c & 31);
 			if (x > n) {
@@ -576,12 +578,12 @@ int *size;
 static rgxposn *rp_load(htab, c, nposn, buf, grammar)
 hashtab *htab;
 rpchunk **c;
-int nposn;
+Uint nposn;
 register char *buf;
 char *grammar;
 {
     char *rgx;
-    unsigned int ruleno, size;
+    unsigned short ruleno, size;
     bool final;
 
     rgx = grammar + (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
@@ -607,7 +609,7 @@ register rgxposn *rp;
 register char *buf;
 char *grammar;
 {
-    unsigned int rgx;
+    unsigned short rgx;
 
     rgx = rp->rgx - grammar;
     *buf++ = rgx >> 8;
@@ -651,25 +653,24 @@ typedef struct {
  * NAME:	dfastate->hash()
  * DESCRIPTION:	put a new state in the hash table, or return an old one
  */
-static int ds_hash(htab, htabsize, states, idx)
-unsigned short *htab;
-int htabsize, idx;
+static unsigned short ds_hash(htab, htabsize, states, idx)
+unsigned short *htab, idx;
+Uint htabsize;
 dfastate *states;
 {
     register unsigned long x;
-    register int n;
     register rgxposn **posn;
-    register unsigned short *str;
+    register unsigned short n, *str;
     register dfastate *newstate, *ds;
     unsigned short *dds;
 
     /* hash on position and string pointers */
     newstate = &states[idx];
     x = newstate->len ^ newstate->final;
-    for (n = newstate->nposn, posn = POSNA(newstate); --n >= 0; ) {
+    for (n = newstate->nposn, posn = POSNA(newstate); n > 0; --n) {
 	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *posn++;
     }
-    for (n = newstate->nstr, str = STRA(newstate); --n >= 0; ) {
+    for (n = newstate->nstr, str = STRA(newstate); n > 0; --n) {
 	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *str++;
     }
 
@@ -682,7 +683,8 @@ dfastate *states;
 	if (newstate->len == ds->len && newstate->final == ds->final &&
 	    newstate->nposn == ds->nposn && newstate->nstr == ds->nstr &&
 	    memcmp(posn, POSNA(ds), newstate->nposn * sizeof(rgxposn*)) == 0 &&
-	    memcmp(str, STRA(ds), newstate->nstr * sizeof(short)) == 0) {
+	    memcmp(str, STRA(ds), newstate->nstr * sizeof(unsigned short)) == 0)
+	{
 	    /* state already exists */
 	    return *dds;
 	}
@@ -705,7 +707,7 @@ dfastate *states;
 static char *ds_load(state, buf, ntrans, zerotrans)
 register dfastate *state;
 register char *buf;
-register unsigned int ntrans;
+register unsigned short ntrans;
 char *zerotrans;
 {
     state->posn.a = (rgxposn **) NULL;
@@ -744,11 +746,10 @@ register char *sbuf;
 char *pbuf, *grammar;
 hashtab *htab;
 rpchunk **c;
-short *nposn;
+Uint *nposn;
 {
-    register int i;
     register rgxposn *rp, **rrp;
-    register unsigned short *s;
+    register unsigned short i, *s;
     char *posn;
 
     state->nposn = (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
@@ -762,9 +763,10 @@ short *nposn;
 	} else {
 	    rrp = &state->posn.e;
 	}
-	for (i = state->nposn; --i >= 0; ) {
-	    posn = pbuf + (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
-	    sbuf += 2;
+	for (i = state->nposn; i > 0; --i) {
+	    posn = pbuf + ((Uint) UCHAR(sbuf[0]) << 16) +
+		   (UCHAR(sbuf[1]) << 8) + UCHAR(sbuf[2]);
+	    sbuf += 3;
 	    rp = *rrp++ = rp_load(htab, c, *nposn, posn, grammar);
 	    if (rp->nposn == *nposn) {
 		(*nposn)++;
@@ -777,7 +779,7 @@ short *nposn;
 	} else {
 	    s = state->str.e;
 	}
-	for (i = state->nstr; --i >= 0; ) {
+	for (i = state->nstr; i > 0; --i) {
 	    *s++ = (UCHAR(sbuf[0]) << 8) + UCHAR(sbuf[1]);
 	    sbuf += 2;
 	}
@@ -818,12 +820,11 @@ static char *ds_savetmp(state, sbuf, pbuf, pbase, ptab, nposn, grammar)
 register dfastate *state;
 register char *sbuf;
 char **pbuf, *pbase, *grammar;
-short *ptab, *nposn;
+Uint *ptab, *nposn;
 {
     register rgxposn *rp, **rrp;
-    register int i;
-    register unsigned short *s;
-    unsigned short n;
+    register unsigned short i, *s;
+    Uint n;
 
     *sbuf++ = state->nposn >> 8;
     *sbuf++ = state->nposn;
@@ -832,19 +833,20 @@ short *ptab, *nposn;
     *sbuf++ = state->len;
 
     rrp = POSNA(state);
-    for (i = state->nposn; --i >= 0; ) {
+    for (i = state->nposn; i > 0; --i) {
 	rp = *rrp++;
 	if (rp->nposn == *nposn) {
-	    ptab[(*nposn)++] = *pbuf - pbase;
+	    ptab[(*nposn)++] = (long) *pbuf - (long) pbase;
 	    *pbuf = rp_save(rp, *pbuf, grammar);
 	}
 	n = ptab[rp->nposn];
+	*sbuf++ = n >> 16;
 	*sbuf++ = n >> 8;
 	*sbuf++ = n;
     }
 
     s = STRA(state);
-    for (i = state->nstr; --i >= 0; ) {
+    for (i = state->nstr; i > 0; --i) {
 	*sbuf++ = *s >> 8;
 	*sbuf++ = *s++;
     }
@@ -858,16 +860,16 @@ struct _dfa_ {
     char *strings;		/* offset of strings in grammar */
     bool whitespace;		/* true if token 0 is whitespace */
 
-    bool dfachanged;		/* dfa needs saving */
-    bool tmpchanged;		/* temporary data needs saving */
+    bool modified;		/* dfa modified */
+    bool allocated;		/* dfa strings allocated locally */
     Uint dfasize;		/* size of state machine */
     Uint tmpssize;		/* size of temporary state data */
     Uint tmppsize;		/* size of temporary posn data */
-    string *dfastr;		/* saved dfa */
-    string *tmpstr;		/* saved temporary data */
+    char *dfastr;		/* saved dfa */
+    char *tmpstr;		/* saved temporary data */
 
     unsigned short nregexp;	/* # regexps */
-    unsigned short nposn;	/* number of unique positions */
+    Uint nposn;			/* number of unique positions */
     rpchunk *rpc;		/* current rgxposn chunk */
     hashtab *posnhtab;		/* position hash table */
 
@@ -896,7 +898,7 @@ dfa *dfa_new(grammar)
 register char *grammar;
 {
     char posn[258];
-    unsigned int nstrings;
+    unsigned short nstrings;
     register dfa *fa;
     register dfastate *state;
     bool final;
@@ -911,13 +913,13 @@ register char *grammar;
     fa->whitespace = grammar[1];
 
     /* size info */
-    fa->dfachanged = TRUE;
-    fa->tmpchanged = TRUE;
-    fa->dfasize = 8 + 256 + 3;
-    fa->tmpssize = 3 + 1 + 5 + 5;
+    fa->modified = TRUE;
+    fa->allocated = FALSE;
+    fa->dfasize = 8 + 256 + 3;		/* header + eclasses + state 1 */
+    fa->tmpssize = 4 + 1 + 5;		/* header + ecsplit + state 1 */
     fa->tmppsize = 0;
-    fa->dfastr = (string *) NULL;
-    fa->tmpstr = (string *) NULL;
+    fa->dfastr = (char *) NULL;
+    fa->tmpstr = (char *) NULL;
 
     /* equivalence classes */
     fa->ecnum = 1;
@@ -971,10 +973,9 @@ register char *grammar;
 	fa->endstates++;
     } else {
 	register rgxposn **rrp;
-	register int i, j, n;
-	register unsigned short *s;
+	register unsigned short i, j, n, *s;
 	register char *rgx;
-	int size;
+	unsigned short size;
 
 	rrp = POSNA(state);
 	for (i = j = 0; i < fa->nregexp; i++) {
@@ -989,9 +990,9 @@ register char *grammar;
 		}
 		posn[0] = 1 + j / 255;
 		posn[1] = 1 + j % 255;
-		*rrp++ = rp_new(fa->posnhtab, posn, size, &fa->rpc, rgx, j++, i,
-				final);
-		fa->tmpssize += 2;
+		*rrp++ = rp_new(fa->posnhtab, posn, size, &fa->rpc, rgx,
+				(Uint) j++, i, final);
+		fa->tmpssize += 3;
 		fa->tmppsize += 8 + size + final;
 		rgx += UCHAR(rgx[0]) + 1;
 	    }
@@ -1019,13 +1020,10 @@ void dfa_del(fa)
 register dfa *fa;
 {
     register dfastate *state;
-    register int i;
+    register unsigned short i;
 
-    if (fa->dfastr != (string *) NULL) {
-	str_del(fa->dfastr);
-    }
-    if (fa->tmpstr != (string *) NULL) {
-	str_del(fa->tmpstr);
+    if (fa->allocated) {
+	FREE(fa->dfastr);
     }
     if (fa->ecsplit != (char *) NULL) {
 	FREE(fa->ecsplit);
@@ -1061,10 +1059,10 @@ register dfa *fa;
 static void dfa_extend(fa, state, limit)
 register dfa *fa;
 register dfastate *state;
-register int limit;
+register unsigned short limit;
 {
     register char *p, *q;
-    register unsigned int i;
+    register unsigned short i;
 
     /* extend transition table */
     if (!state->alloc) {
@@ -1088,8 +1086,9 @@ register int limit;
  * header	[0]	version number
  *		[x][y]	# states
  *		[x][y]	# expanded states
+ *		[x][y]	# end states
  *		[x]	# equivalence classes
- * eclass	[...]	256 equivalence classes
+ * eclass	[...]	1 - 256 equivalence classes
  *
  * state 	[x][y]	final				} ...
  *		[...]	optional: transitions		}
@@ -1104,11 +1103,11 @@ register int limit;
  * state	[x][y]	# positions			}
  *		[x][y]	# strings			}
  * 		[x]	len				} ...
- *		[...]   position data			}
+ *		[...]	position data			}
  *		[...]	string data			}
  *
- * position	[x][y]	regexp				}
- *		[x][y]	ruleno				}
+ * position	[x][y]	regexp			}
+ *		[x][y]	ruleno			}
  *		[0]	optional: final position	} ...
  *		[x]	size				}
  *		[...]	position data			}
@@ -1116,25 +1115,20 @@ register int limit;
 
 /*
  * NAME:	dfa->load()
- * DESCRIPTION:	load dfa from strings
+ * DESCRIPTION:	load dfa from string
  */
-dfa *dfa_load(grammar, s1, s2)
-char *grammar;
-string *s1, *s2;
+dfa *dfa_load(grammar, str, len)
+char *grammar, *str;
+Uint len;
 {
     register dfa *fa;
     register dfastate *state;
-    register int i;
+    register unsigned short i;
     register char *buf;
-    int nstrings;
+    unsigned short nstrings;
 
     fa = ALLOC(dfa, 1);
-    str_ref(fa->dfastr = s1);
-    fa->tmpstr = s2;
-    if (s2 != (string *) NULL) {
-	str_ref(s2);
-    }
-    buf = s1->text;
+    fa->dfastr = buf = str;
 
     /* grammar info */
     fa->grammar = grammar;
@@ -1158,7 +1152,7 @@ string *s1, *s2;
     fa->sthtab = (unsigned short *) NULL;
 
     /* equivalence classes */
-    fa->ecnum = UCHAR(buf[7]);
+    fa->ecnum = UCHAR(buf[7]) + 1;
     buf += 8;
     memcpy(fa->eclass, buf, 256);
     buf += 256;
@@ -1177,11 +1171,14 @@ string *s1, *s2;
 	buf = ds_load(state, buf, fa->ecnum, fa->zerotrans);
     }
 
+    /* temporary data */
+    fa->tmpstr = buf;
+
     /* size info */
+    fa->dfasize = (long) buf - (long) str;
     fa->tmpssize = 0;
-    fa->tmppsize = 0;
-    fa->dfasize = s1->len;
-    fa->dfachanged = fa->tmpchanged = FALSE;
+    fa->tmppsize = len - fa->dfasize;
+    fa->modified = fa->allocated = FALSE;
 
     /* zero transitions */
     memset(fa->zerotrans, '\0', 2 * 256);
@@ -1197,13 +1194,14 @@ static void dfa_loadtmp(fa)
 register dfa *fa;
 {
     register dfastate *state;
-    register int i, c;
+    register unsigned short i;
+    register int c;
     register char *buf;
-    int nposn;
 
-    buf = fa->tmpstr->text;
-    nposn = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
-    buf += 3;
+    buf = fa->tmpstr;
+    fa->nposn = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) +
+		UCHAR(buf[3]);
+    buf += 4;
 
     /* equivalence classes */
     fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
@@ -1213,7 +1211,7 @@ register dfa *fa;
     buf += fa->ecnum;
     memset(fa->ecmembers, '\0', 256);
     memset(fa->ecset, '\0', 32 * 256);
-    for (i = 256; --i >= 0; ) {
+    for (i = 256; i > 0; --i) {
 	c = UCHAR(fa->eclass[i]);
 	fa->ecmembers[c]++;
 	fa->ecset[(c << 3) + (i >> 5)] |= 1 << (i & 31);
@@ -1228,41 +1226,45 @@ register dfa *fa;
 
     fa->nposn = 0;
     for (i = 1, state = &fa->states[1]; i < fa->nstates; i++, state++) {
-	buf = ds_loadtmp(state, buf, fa->tmpstr->text, fa->posnhtab, &fa->rpc,
+	buf = ds_loadtmp(state, buf, fa->tmpstr, fa->posnhtab, &fa->rpc,
 			 &fa->nposn, fa->grammar);
 	ds_hash(fa->sthtab, fa->sthsize, fa->states, i);
     }
 
     /* size info */
-    fa->tmpssize = buf - fa->tmpstr->text;
-    fa->tmppsize = fa->tmpstr->len - fa->tmpssize;
+    fa->tmpssize = (long) buf - (long) fa->tmpstr;
+    fa->tmppsize -= fa->tmpssize;
 }
 
 /*
  * NAME:	dfa->save()
- * DESCRIPTION:	save dfa in strings
+ * DESCRIPTION:	save dfa to string
  */
-bool dfa_save(fa, s1, s2)
+bool dfa_save(fa, str, len)
 register dfa *fa;
-string **s1, **s2;
+char **str;
+Uint *len;
 {
-    register int i;
+    register unsigned short i;
     register char *buf;
     register dfastate *state;
     char *pbuf;
-    short *ptab, *nposn;
+    Uint *ptab, nposn;
 
-    if (!fa->dfachanged) {
-	*s1 = fa->dfastr;
-	*s2 = fa->tmpstr;
+    if (!fa->modified) {
+	*str = fa->dfastr;
+	*len = fa->dfasize + fa->tmpssize + fa->tmppsize;
 	return FALSE;
     }
 
-    if (fa->dfastr != (string *) NULL) {
-	str_del(fa->dfastr);
+    if (fa->nstates == fa->nexpanded + fa->endstates) {
+	fa->tmpssize = fa->tmppsize = 0;
     }
-    str_ref(fa->dfastr = *s1 = str_new((char *) NULL, (long) fa->dfasize));
-    buf = (*s1)->text;
+    if (fa->allocated) {
+	FREE(fa->dfastr);
+    }
+    fa->dfastr = buf = *str =
+		 ALLOC(char, *len = fa->dfasize + fa->tmpssize + fa->tmppsize);
     *buf++ = 0;
     *buf++ = fa->nstates >> 8;
     *buf++ = fa->nstates;
@@ -1270,7 +1272,7 @@ string **s1, **s2;
     *buf++ = fa->nexpanded;
     *buf++ = fa->endstates >> 8;
     *buf++ = fa->endstates;
-    *buf++ = fa->ecnum;
+    *buf++ = fa->ecnum - 1;
     memcpy(buf, fa->eclass, 256);
     buf += 256;
 
@@ -1281,43 +1283,29 @@ string **s1, **s2;
 	buf = ds_save(state, buf);
     }
 
-    fa->dfachanged = FALSE;
-    if (fa->nstates == fa->nexpanded + fa->endstates) {
+    fa->modified = FALSE;
+    fa->allocated = TRUE;
+    if (fa->tmpssize + fa->tmppsize == 0) {
 	/* no tmp data */
-	if (fa->tmpstr != (string *) NULL) {
-	    str_del(fa->tmpstr);
-	}
-	fa->tmpstr = *s2 = (string *) NULL;
-	return TRUE;
-    }
-    if (!fa->tmpchanged) {
-	/* no changes in tmp data */
-	*s2 = fa->tmpstr;
 	return TRUE;
     }
 
-    if (fa->tmpstr != (string *) NULL) {
-	str_del(fa->tmpstr);
-    }
-    str_ref(fa->tmpstr = *s2 = str_new((char *) NULL,
-				       (long) (fa->tmpssize + fa->tmppsize)));
-    buf = (*s2)->text;
+    fa->tmpstr = buf;
     pbuf = buf + fa->tmpssize;
     *buf++ = 0;
+    *buf++ = fa->nposn >> 16;
     *buf++ = fa->nposn >> 8;
     *buf++ = fa->nposn;
     memcpy(buf, fa->ecsplit, fa->ecnum);
     buf += fa->ecnum;
 
-    ptab = ALLOCA(short, fa->nposn);
+    ptab = ALLOCA(Uint, fa->nposn);
     nposn = 0;
     for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	buf = ds_savetmp(state, buf, &pbuf, (*s2)->text, ptab, &nposn,
+	buf = ds_savetmp(state, buf, &pbuf, fa->tmpstr, ptab, &nposn,
 			 fa->grammar);
     }
     AFREE(ptab);
-
-    fa->tmpchanged = FALSE;
 
     return TRUE;
 }
@@ -1329,11 +1317,11 @@ string **s1, **s2;
  */
 static void dfa_ecsplit(fa, iset, cset, ncset)
 register dfa *fa;
-Uint *iset, *cset;
-int ncset;
+Uint *iset, *cset, ncset;
 {
     Uint ec1[8], ec2[8];
-    register int i, n, c;
+    register Uint i;
+    register int n, c;
 
     for (c = cs_firstc(iset, 0); c >= 0; c = cs_firstc(iset, c + 1)) {
 	for (i = 0; i < ncset; i++) {
@@ -1370,17 +1358,17 @@ int ncset;
  * NAME:	dfa->newstate()
  * DESCRIPTION:	get the positions and strings for a new state
  */
-static int dfa_newstate(fa, state, newstate, ecset, cset)
+static unsigned short dfa_newstate(fa, state, newstate, ecset, cset)
 dfa *fa;
 register dfastate *state, *newstate;
 Uint *ecset, *cset;
 {
     char posn[130];
-    register int i, n;
+    register unsigned short i, n, *s;
     register rgxposn *rp, **rrp;
     register char *p;
-    register unsigned short *s;
-    int size, posnsize;
+    unsigned short size;
+    Uint posnsize;
     bool final;
 
     newstate->trans = (char *) NULL;
@@ -1391,7 +1379,7 @@ Uint *ecset, *cset;
     posnsize = 0;
 
     /* positions */
-    for (i = state->nposn, rrp = POSNA(state); --i >= 0; rrp++) {
+    for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	rp = *rrp;
 	for (n = rp->size; n > 0; --n) {
 	    if (cs_intersect(ecset, cset)) {
@@ -1419,7 +1407,7 @@ Uint *ecset, *cset;
     }
 
     /* strings */
-    for (i = state->nstr, s = STRA(state); --i >= 0; s++) {
+    for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
 	p = fa->strings + (*s << 1);
 	p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	n = UCHAR(p[newstate->len]);
@@ -1446,15 +1434,14 @@ dfa *fa;
 dfastate *state;
 {
     Uint iset[8];
-    register Uint *cset, *ecset;
+    register Uint *cset, *ecset, ncset;
     register rgxposn **rrp;
-    register int ncset, i, n;
+    register unsigned short i, n, *s;
     register char *p;
-    register unsigned short *s;
     dfastate *newstate;
     rgxposn **newposn;
     unsigned short *newstr;
-    int size;
+    Uint size;
 
     if (fa->posnhtab == (hashtab *) NULL) {
 	dfa_loadtmp(fa);	/* load tmp info */
@@ -1464,13 +1451,13 @@ dfastate *state;
 
     /* allocate character sets for strings and positions */
     ncset = state->nstr;
-    for (i = state->nposn, rrp = POSNA(state); --i >= 0; rrp++) {
+    for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	ncset += (*rrp)->size;
     }
     cset = ALLOCA(Uint, ncset << 3);
 
     /* construct character sets for all string chars */
-    for (i = state->nstr, s = STRA(state); --i >= 0; s++) {
+    for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
 	p = fa->strings + (*s << 1);
 	p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	n = UCHAR(p[1 + state->len]);
@@ -1481,9 +1468,9 @@ dfastate *state;
     }
 
     /* construct character sets for all positions */
-    for (i = state->nposn, rrp = POSNA(state); --i >= 0; rrp++) {
+    for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	rp_cset(*rrp, cset);
-	for (n = (*rrp)->size; --n >= 0; ) {
+	for (n = (*rrp)->size; n > 0; --n) {
 	    cs_or(iset, cset);		/* add to input set */
 	    cset += 8;
 	}
@@ -1507,8 +1494,8 @@ dfastate *state;
     p = state->trans = ALLOC(char, 2 * 256);
     state->ntrans = fa->ecnum;
     state->alloc = TRUE;
-    cset += state->nstr << 3;
-    for (i = fa->ecnum, ecset = fa->ecset; --i >= 0; ecset += 8) {
+    cset += (Uint) state->nstr << 3;
+    for (i = fa->ecnum, ecset = fa->ecset; i > 0; --i, ecset += 8) {
 	/* prepare new state */
 	newstate = &fa->states[fa->nstates];
 
@@ -1538,7 +1525,8 @@ dfastate *state;
 		}
 	    }
 
-	    n = ds_hash(fa->sthtab, fa->sthsize, fa->states, fa->nstates);
+	    n = ds_hash(fa->sthtab, fa->sthsize, fa->states,
+			(unsigned short) fa->nstates);
 	    if (n == fa->nstates) {
 		/*
 		 * genuinely new state
@@ -1559,7 +1547,7 @@ dfastate *state;
 		    fa->endstates++;
 		}
 		fa->dfasize += 3;
-		fa->tmpssize += 5 + ((newstate->nposn + newstate->nstr) << 1);
+		fa->tmpssize += 5 + newstate->nposn * 3 + newstate->nstr * 2;
 		fa->tmppsize += size;
 
 		if (++fa->nstates == fa->sttsize) {
@@ -1582,10 +1570,9 @@ dfastate *state;
     if (state->nposn != 0) {
 	AFREE(newposn);
     }
-    AFREE(cset - (state->nstr << 3));
+    AFREE(cset - ((Uint) state->nstr << 3));
 
-    fa->dfachanged = TRUE;
-    fa->tmpchanged = TRUE;
+    fa->modified = TRUE;
     fa->nexpanded++;
     fa->dfasize += fa->ecnum << 1;
     return state;
@@ -1599,17 +1586,17 @@ dfastate *state;
  *				-2	Invalid token
  *				-3	DFA too large (deallocate)
  */
-int dfa_scan(fa, str, strlen, token, len)
+short dfa_scan(fa, str, strlen, token, len)
 register dfa *fa;
 string *str;
-unsigned int *strlen, *len;
+unsigned short *strlen, *len;
 char **token;
 {
-    register unsigned int size, eclass;
+    register unsigned short size, eclass;
     register char *p, *q;
     register dfastate *state;
-    int final;
-    unsigned int fsize;
+    short final;
+    unsigned short fsize;
 
     size = *strlen;
 
@@ -1627,8 +1614,9 @@ char **token;
 			break;	/* stuck in state 0 */
 		    }
 		    state = dfa_expand(fa, state);
-		    if (fa->tmpssize + fa->tmppsize > USHRT_MAX) {
-			int save;
+		    if (fa->dfasize + fa->tmpssize + fa->tmppsize >
+					    (Uint) MAX_AUTOMSZ * USHRT_MAX) {
+			unsigned short save;
 
 			/*
 			 * too much temporary data: attempt to expand
@@ -1638,7 +1626,8 @@ char **token;
 			for (state = &fa->states[1];
 			     fa->nstates != fa->nexpanded + fa->endstates;
 			     state++) {
-			    if (fa->dfasize > USHRT_MAX) {
+			    if (fa->nstates > USHRT_MAX - 256 ||
+				fa->dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 				return DFA_TOOBIG;
 			    }
 			    if (state->ntrans == 0) {
@@ -1647,7 +1636,8 @@ char **token;
 			}
 			state = &fa->states[save];
 		    }
-		    if (fa->dfasize > USHRT_MAX) {
+		    if (fa->nstates > USHRT_MAX - 256 ||
+			fa->dfasize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 			return DFA_TOOBIG;
 		    }
 		    eclass = UCHAR(fa->eclass[UCHAR(*p)]);

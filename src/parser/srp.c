@@ -1,5 +1,4 @@
 # include "dgd.h"
-# include "str.h"
 # include "srp.h"
 
 typedef struct _item_ {
@@ -25,7 +24,7 @@ typedef struct _itchunk_ {
 static item *it_new(c, ref, ruleno, offset, next)
 register itchunk **c;
 char *ref;
-int ruleno, offset;
+unsigned short ruleno, offset;
 item *next;
 {
     register item *it;
@@ -95,8 +94,8 @@ static void it_add(c, ri, ref, ruleno, offset, sort)
 itchunk **c;
 register item **ri;
 register char *ref;
-int ruleno;
-register int offset;
+unsigned short ruleno;
+register unsigned short offset;
 bool sort;
 {
     /*
@@ -133,14 +132,14 @@ bool sort;
  */
 static item *it_load(c, n, buf, grammar)
 itchunk **c;
-int n;
+unsigned short n;
 char **buf, *grammar;
 {
     register char *p;
     register item **ri;
     item *it;
     char *ref;
-    int ruleno;
+    unsigned short ruleno;
 
     ri = &it;
     p = *buf;
@@ -166,7 +165,7 @@ register item *it;
 register char *buf;
 char *grammar;
 {
-    int offset;
+    unsigned short offset;
 
     while (it != (item *) NULL) {
 	offset = it->ref - grammar;
@@ -190,23 +189,24 @@ typedef struct {
     } reds;			/* reductions */
     unsigned short nitem;	/* # items */
     short nred;			/* # reductions, -1 if unexpanded */
-    short shoffset;		/* offset for shifts */
-    unsigned short shcheck;	/* shift offset check */
-    short gtoffset;		/* offset for gotos */
+    Int shoffset;		/* offset for shifts */
+    Int gtoffset;		/* offset for gotos */
     unsigned short next;	/* next in linked list */
     bool alloc;			/* reductions allocated? */
 } srpstate;
 
 # define REDA(state)   (((state)->nred == 1) ? \
 			(state)->reds.e : (state)->reds.a)
+# define UNEXPANDED	-1
+# define NOSHIFT	-1
 
 /*
  * NAME:	srpstate->hash()
  * DESCRIPTION:	put a new state in the hash table, or return an old one
  */
-static int ss_hash(htab, htabsize, states, idx)
-unsigned short *htab;
-int htabsize, idx;
+static unsigned short ss_hash(htab, htabsize, states, idx)
+unsigned short *htab, idx;
+Uint htabsize;
 srpstate *states;
 {
     register unsigned long h;
@@ -258,12 +258,12 @@ register srpstate *state;
     buf += 2;
     state->nred = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
     buf += 2;
-    state->shoffset = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
-    buf += 2;
-    state->shcheck = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
-    buf += 2;
-    state->gtoffset = (UCHAR(buf[0]) << 8) + UCHAR(buf[1]);
-    buf += 2;
+    state->shoffset = ((Int) SCHAR(buf[0]) << 16) + (UCHAR(buf[1]) << 8) +
+		      UCHAR(buf[2]);
+    buf += 3;
+    state->gtoffset = ((Int) SCHAR(buf[0]) << 16) + (UCHAR(buf[1]) << 8) +
+		      UCHAR(buf[2]);
+    buf += 3;
 
     if (state->nred > 0) {
 	if (state->nred == 1) {
@@ -290,10 +290,10 @@ register char *buf, **rbuf;
     *buf++ = state->nitem;
     *buf++ = state->nred >> 8;
     *buf++ = state->nred;
+    *buf++ = state->shoffset >> 16;
     *buf++ = state->shoffset >> 8;
     *buf++ = state->shoffset;
-    *buf++ = state->shcheck >> 8;
-    *buf++ = state->shcheck;
+    *buf++ = state->gtoffset >> 16;
     *buf++ = state->gtoffset >> 8;
     *buf++ = state->gtoffset;
 
@@ -329,23 +329,23 @@ Uint htabsize;
 register slchunk **c;
 char *shtab;
 register char *shifts;
-register int n;
+register Uint n;
 {
     register unsigned long h;
-    register int i;
+    register Uint i;
     register shlink **ssl, *sl;
 
     /* search in hash table */
-    shifts += 4;
-    n -= 4;
+    shifts += 3;
+    n -= 3;
     h = 0;
-    for (i = n; --i >= 0; ) {
-	h = (h >> 3) ^ (h << 29) ^ *shifts++;
+    for (i = n; i > 0; --i) {
+	h = (h >> 3) ^ (h << 29) ^ UCHAR(*shifts++);
     }
     shifts -= n;
     ssl = &htab[h % htabsize];
     while (*ssl != (shlink *) NULL) {
-	if (memcmp(shtab + (*ssl)->shifts + 4, shifts, n) == 0) {
+	if (memcmp(shtab + (*ssl)->shifts + 3, shifts, n) == 0) {
 	    /* seen this one before */
 	    return *ssl;
 	}
@@ -363,7 +363,7 @@ register int n;
     sl = &(*c)->sl[(*c)->chunksz++];
     sl->next = *ssl;
     *ssl = sl;
-    sl->shifts = -1;
+    sl->shifts = NOSHIFT;
 
     return sl;
 }
@@ -390,14 +390,14 @@ struct _srp_ {
     unsigned short ntoken;	/* # of tokens (regexp & string) */
     unsigned short nprod;	/* # of nonterminals */
 
-    unsigned short nred;	/* # of reductions */
-    unsigned short nitem;	/* # of items */
+    Uint nred;			/* # of reductions */
+    Uint nitem;			/* # of items */
     Uint srpsize;		/* size of shift/reduce parser */
     Uint tmpsize;		/* size of temporary data */
-    bool srpchanged;		/* srp needs saving */
-    bool tmpchanged;		/* tmp data needs saving */
-    string *srpstr;		/* srp string */
-    string *tmpstr;		/* tmp string */
+    bool modified;		/* srp needs saving */
+    bool allocated;		/* srp allocated */
+    char *srpstr;		/* srp string */
+    char *tmpstr;		/* tmp string */
 
     unsigned short nstates;	/* number of states */
     unsigned short nexpanded;	/* number of expanded states */
@@ -423,8 +423,6 @@ struct _srp_ {
     shlink **shhtab;		/* shift hash table */
 };
 
-# define NOSHIFT	((short) 0x8000)
-
 /*
  * NAME:	srp->new()
  * DESCRIPTION:	create new shift/reduce parser
@@ -446,12 +444,13 @@ char *grammar;
     nrule = (UCHAR(grammar[10]) << 8) + UCHAR(grammar[11]);
 
     /* sizes */
-    lr->srpstr = (string *) NULL;
-    lr->tmpstr = (string *) NULL;
+    lr->srpstr = (char *) NULL;
+    lr->tmpstr = (char *) NULL;
     lr->nred = lr->nitem = 0;
-    lr->srpsize = 11 + 10 + 4;	/* srp header + 1 state + data/check overhead */
-    lr->tmpsize = 5 + 5;	/* tmp header + 1 item */
-    lr->srpchanged = lr->tmpchanged = FALSE;
+    lr->srpsize = 14 + 10 + 4;	/* srp header + 1 state + data/check overhead */
+    lr->tmpsize = 7 + 5;	/* tmp header + 1 item */
+    lr->modified = TRUE;
+    lr->allocated = FALSE;
 
     /* states */
     lr->nstates = 1;
@@ -468,9 +467,8 @@ char *grammar;
     p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
     lr->states[0].items = it_new(&lr->itc, p + 2, lr->ntoken, 0, (item *) NULL);
     lr->states[0].nitem = 1;
-    lr->states[0].nred = -1;
+    lr->states[0].nred = UNEXPANDED;
     lr->states[0].shoffset = NOSHIFT;
-    lr->states[0].shcheck = 0;
     lr->states[0].gtoffset = 0;
     lr->states[0].alloc = FALSE;
 
@@ -502,20 +500,17 @@ char *grammar;
 void srp_del(lr)
 register srp *lr;
 {
-    register int i;
+    register unsigned short i;
     register srpstate *state;
 
-    if (lr->srpstr != (string *) NULL) {
-	str_del(lr->srpstr);
-    }
-    if (lr->tmpstr != (string *) NULL) {
-	str_del(lr->tmpstr);
+    if (lr->allocated) {
+	FREE(lr->srpstr);
     }
     it_clear(lr->itc);
     if (lr->sthtab != (unsigned short *) NULL) {
 	FREE(lr->sthtab);
     }
-    for (i = lr->nstates, state = lr->states; --i >= 0; state++) {
+    for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	if (state->alloc) {
 	    FREE(state->reds.a);
 	}
@@ -537,15 +532,15 @@ register srp *lr;
 
 /*
  * NAME:	srp->load()
- * DESCRIPTION:	load a shift/reduce parser from strings
+ * DESCRIPTION:	load a shift/reduce parser from string
  */
-srp *srp_load(grammar, s1, s2)
-char *grammar;
-string *s1, *s2;
+srp *srp_load(grammar, str, len)
+char *grammar, *str;
+Uint len;
 {
     register srp *lr;
     register char *buf;
-    register int i;
+    register Uint i;
     register srpstate *state;
     char *rbuf;
 
@@ -557,26 +552,18 @@ string *s1, *s2;
 		 UCHAR(grammar[3]) + UCHAR(grammar[7]);
     lr->nprod = (UCHAR(grammar[8]) << 8) + UCHAR(grammar[9]);
 
-    str_ref(lr->srpstr = s1);
-    lr->tmpstr = s2;
-    if (s2 != (string *) NULL) {
-	str_ref(s2);
-    }
-    buf = s1->text;
+    lr->srpstr = buf = str;
 
     /* header */
     lr->nstates = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
     lr->nexpanded = (UCHAR(buf[3]) << 8) + UCHAR(buf[4]);
-    lr->nred = (UCHAR(buf[5]) << 8) + UCHAR(buf[6]);
-    lr->gap = (UCHAR(buf[7]) << 8) + UCHAR(buf[8]);
-    lr->spread = (UCHAR(buf[9]) << 8) + UCHAR(buf[10]);
-    buf += 11;
-
-    /* sizes */
-    lr->nitem = 0;
-    lr->srpsize = s1->len;
-    lr->tmpsize = 0;
-    lr->srpchanged = lr->tmpchanged = FALSE;
+    lr->nred = ((Uint) UCHAR(buf[5]) << 16) + (UCHAR(buf[6]) << 8) +
+	       UCHAR(buf[7]);
+    lr->gap = ((Uint) UCHAR(buf[8]) << 16) + (UCHAR(buf[9]) << 8) +
+	      UCHAR(buf[10]);
+    lr->spread = ((Uint) UCHAR(buf[11]) << 16) + (UCHAR(buf[12]) << 8) +
+		 UCHAR(buf[13]);
+    buf += 14;
 
     /* states */
     lr->sttsize = lr->nstates + 1;
@@ -587,7 +574,7 @@ string *s1, *s2;
 
     /* load states */
     rbuf = buf + lr->nstates * 10;
-    for (i = lr->nstates, state = lr->states; --i >= 0; state++) {
+    for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	buf = ss_load(buf, &rbuf, state);
     }
     buf = rbuf;
@@ -597,7 +584,16 @@ string *s1, *s2;
     lr->data = buf;
     buf += lr->spread + 2;
     lr->check = buf;
+    buf += lr->spread + 2;
     lr->alloc = FALSE;
+
+    lr->tmpstr = buf;
+
+    /* sizes */
+    lr->nitem = 0;
+    lr->srpsize = (long) buf - (long) str;
+    lr->tmpsize = len - lr->srpsize;
+    lr->modified = lr->allocated = FALSE;
 
     /* shift hash table */
     lr->slc = (slchunk *) NULL;
@@ -617,7 +613,7 @@ string *s1, *s2;
 static void srp_loadtmp(lr)
 register srp *lr;
 {
-    register int i, n;
+    register Uint i, n;
     register srpstate *state;
     register char *p;
     Uint nrule;
@@ -625,10 +621,12 @@ register srp *lr;
 
     nrule = (UCHAR(lr->grammar[10]) << 8) + UCHAR(lr->grammar[11]);
 
-    buf = lr->tmpstr->text;
-    lr->nitem = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
-    lr->nshift = (UCHAR(buf[3]) << 8) + UCHAR(buf[4]);
-    buf += 5;
+    buf = lr->tmpstr;
+    lr->nitem = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) +
+		UCHAR(buf[3]);
+    lr->nshift = ((Uint) UCHAR(buf[4]) << 16) + (UCHAR(buf[5]) << 8) +
+		 UCHAR(buf[6]);
+    buf += 7;
 
     /* states */
     lr->sthsize = nrule << 2;
@@ -638,7 +636,7 @@ register srp *lr;
 	if (state->nitem != 0) {
 	    state->items = it_load(&lr->itc, state->nitem, &buf, lr->grammar);
 	}
-	ss_hash(lr->sthtab, lr->sthsize, lr->states, i);
+	ss_hash(lr->sthtab, lr->sthsize, lr->states, (unsigned short) i);
     }
 
     /* shifts */
@@ -649,38 +647,39 @@ register srp *lr;
     lr->shhtab = ALLOC(shlink*, lr->shhsize);
     memset(lr->shhtab, '\0', lr->shhsize * sizeof(shlink*));
     for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
-	n = 4 * ((UCHAR(p[4]) << 8) + UCHAR(p[5])) + 6;
+	n = (Uint) 4 * ((UCHAR(p[3]) << 8) + UCHAR(p[4])) + 5;
 	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
-								p - lr->shtab;
+						    (long) p - (long) lr->shtab;
     }
-
-    lr->tmpsize = lr->tmpstr->len;
 }
 
 /*
  * NAME:	srp->save()
- * DESCRIPTION:	save a shift/reduce parser to strings
+ * DESCRIPTION:	save a shift/reduce parser to string
  */
-bool srp_save(lr, s1, s2)
+bool srp_save(lr, str, len)
 register srp *lr;
-string **s1, **s2;
+char **str;
+Uint *len;
 {
     register char *buf;
-    register int i;
+    register unsigned short i;
     register srpstate *state;
     char *rbuf;
 
-    if (!lr->srpchanged) {
-	*s1 = lr->srpstr;
-	*s2 = lr->tmpstr;
+    if (!lr->modified) {
+	*str = lr->srpstr;
+	*len = lr->srpsize + lr->tmpsize;
 	return FALSE;
     }
 
-    if (lr->srpstr != (string *) NULL) {
-	str_del(lr->srpstr);
+    if (lr->nstates == lr->nexpanded) {
+	lr->tmpsize = 0;
     }
-    str_ref(lr->srpstr = *s1 = str_new((char *) NULL, (long) lr->srpsize));
-    buf = (*s1)->text;
+    if (lr->allocated) {
+	FREE(lr->srpstr);
+    }
+    lr->srpstr = buf = *str = ALLOC(char, *len = lr->srpsize + lr->tmpsize);
 
     /* header */
     *buf++ = 0;
@@ -688,16 +687,19 @@ string **s1, **s2;
     *buf++ = lr->nstates;
     *buf++ = lr->nexpanded >> 8;
     *buf++ = lr->nexpanded;
+    *buf++ = lr->nred >> 16;
     *buf++ = lr->nred >> 8;
     *buf++ = lr->nred;
+    *buf++ = lr->gap >> 16;
     *buf++ = lr->gap >> 8;
     *buf++ = lr->gap;
+    *buf++ = lr->spread >> 16;
     *buf++ = lr->spread >> 8;
     *buf++ = lr->spread;
 
     /* save states */
     rbuf = buf + lr->nstates * 10;
-    for (i = lr->nstates, state = lr->states; --i >= 0; state++) {
+    for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	buf = ss_save(state, buf, &rbuf);
     }
     buf = rbuf;
@@ -706,44 +708,33 @@ string **s1, **s2;
     memcpy(buf, lr->data, lr->spread + 2);
     buf += lr->spread + 2;
     memcpy(buf, lr->check, lr->spread + 2);
+    buf += lr->spread + 2;
 
-    lr->srpchanged = FALSE;
-    if (lr->nstates == lr->nexpanded) {
+    lr->modified = FALSE;
+    lr->allocated = TRUE;
+    if (lr->tmpsize == 0) {
 	/* no tmp data */
-	if (lr->tmpstr != (string *) NULL) {
-	    str_del(lr->tmpstr);
-	}
-	lr->tmpstr = *s2 = (string *) NULL;
-	return TRUE;
-    }
-    if (!lr->tmpchanged) {
-	/* no changes in tmp data */
-	*s2 = lr->tmpstr;
 	return TRUE;
     }
 
-    if (lr->tmpstr != (string *) NULL) {
-	str_del(lr->tmpstr);
-    }
-    str_ref(lr->tmpstr = *s2 = str_new((char *) NULL, (long) lr->tmpsize));
-    buf = (*s2)->text;
+    lr->tmpstr = buf;
 
     /* tmp header */
     *buf++ = 0;
+    *buf++ = lr->nitem >> 16;
     *buf++ = lr->nitem >> 8;
     *buf++ = lr->nitem;
+    *buf++ = lr->nshift >> 16;
     *buf++ = lr->nshift >> 8;
     *buf++ = lr->nshift;
 
     /* save items */
-    for (i = lr->nstates, state = lr->states; --i >= 0; state++) {
+    for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	buf = it_save(state->items, buf, lr->grammar);
     }
 
     /* shift data */
     memcpy(buf, lr->shtab, lr->nshift);
-
-    lr->tmpchanged = FALSE;
 
     return TRUE;
 }
@@ -752,24 +743,23 @@ string **s1, **s2;
  * NAME:	srp->pack()
  * DESCRIPTION:	add a new set of shifts and gotos to the packed mapping
  */
-static int srp_pack(lr, from, to, n, check)
+static Int srp_pack(lr, check, from, to, n)
 register srp *lr;
-short *from, *to;
-register int n;
-unsigned short *check;
+unsigned short check, *from, *to;
+register unsigned short n;
 {
-    register int i, j;
+    register Uint i, j;
     register char *p;
     char *shifts;
     shlink *sl;
-    Int *offstab;
-    int offset, range;
+    Uint range, *offstab;
+    Int offset;
 
     /*
      * check hash table
      */
-    shifts = ALLOCA(char, j = 4 * n + 6);
-    p = shifts + 4;
+    shifts = ALLOCA(char, j = (Uint) 4 * n + 5);
+    p = shifts + 3;
     *p++ = n >> 8;
     *p++ = n;
     for (i = 0; i < n; i++) {
@@ -779,12 +769,11 @@ unsigned short *check;
 	*p++ = to[i];
     }
     sl = sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, shifts, j);
-    if (sl->shifts >= 0) {
+    if (sl->shifts != NOSHIFT) {
 	/* same as before */
 	AFREE(shifts);
 	p = lr->shtab + sl->shifts;
-	*check = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-	return (short) ((UCHAR(p[2]) << 8) + UCHAR(p[3]));
+	return ((Int) SCHAR(p[0]) << 16) + ((UCHAR(p[1]) << 8) + UCHAR(p[2]));
     }
 
     /* not in hash table */
@@ -797,13 +786,12 @@ unsigned short *check;
     sl->shifts = lr->nshift;
     lr->nshift += j;
     lr->tmpsize += j;
-    lr->tmpchanged = TRUE;
     memcpy(lr->shtab + sl->shifts, shifts, j);
     AFREE(shifts);
 
     /* create offset table */
-    offstab = ALLOCA(Int, n);
-    for (i = n; --i >= 0; ) {
+    offstab = ALLOCA(Uint, n);
+    for (i = 0; i < n; i++) {
 	offstab[i] = from[i] * 2;
     }
     j = offset = offstab[0];
@@ -816,7 +804,9 @@ unsigned short *check;
     /*
      * add from/to pairs to packed mapping
      */
-    for (i = lr->gap, p = &lr->check[i]; UCHAR(p[0]) != 0xff; i += 2, p += 2) ;
+    for (i = lr->gap, p = &lr->check[i];
+	 UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff;
+	 i += 2, p += 2) ;
     lr->gap = i;
     for (;;) {
     next:
@@ -859,7 +849,6 @@ unsigned short *check;
 	/* free slots found: adjust spread */
 	if (i + range > lr->spread) {
 	    lr->srpsize += 2 * (i + range - lr->spread);
-	    lr->srpchanged = TRUE;
 	    lr->spread = i + range;
 	}
 
@@ -871,30 +860,28 @@ unsigned short *check;
 	    *p++ = to[n] >> 8;
 	    *p = to[n];
 	    p = &lr->check[j];
-	    *p++ = i >> 8;
-	    *p = i;
+	    *p++ = check >> 8;
+	    *p = check;
 	} while (n != 0);
 
 	p = lr->shtab + sl->shifts;
-	*p++ = i >> 8;
-	*p++ = i;
-	*check = i;
-	i = offset / 2;
-	*p++ = i >> 8;
-	*p = i;
-	return i;
+	offset /= 2;
+	*p++ = offset >> 16;
+	*p++ = offset >> 8;
+	*p = offset;
+	return offset;
     }
 }
 
 /*
  * NAME:	cmp()
- * DESCRIPTION:	compare two shorts
+ * DESCRIPTION:	compare two unsigned shorts
  */
 static int cmp(sh1, sh2)
 cvoid *sh1, *sh2;
 {
-    return (*(short *) sh1 < *(short *) sh2) ?
-	    -1 : (*(short *) sh1 == *(short *) sh2) ? 0 : 1;
+    return (*(unsigned short *) sh1 < *(unsigned short *) sh2) ?
+	    -1 : (*(unsigned short *) sh1 == *(unsigned short *) sh2) ? 0 : 1;
 }
 
 /*
@@ -905,18 +892,18 @@ static srpstate *srp_expand(lr, state)
 register srp *lr;
 srpstate *state;
 {
-    register int i, n;
+    register unsigned short i, n;
     register char *p;
     register item *it;
     item **itemtab, *next;
-    short *tokens, *symbols, *targets;
+    unsigned short *tokens, *symbols, *targets;
     srpstate *newstate;
-    int nred, nshift, ngoto;
+    unsigned short nred, nshift, ngoto;
 
+    lr->modified = TRUE;
     if (state - lr->states == 1) {
 	/* final state */
 	state->nred = 0;
-	lr->srpchanged = TRUE;
 	lr->nexpanded++;
 	return state;
     }
@@ -948,7 +935,7 @@ srpstate *state;
 	    if (n >= lr->ntoken) {
 		p = lr->grammar + 12 + (n << 1);
 		p = lr->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-		for (i = (UCHAR(p[0]) << 8) + UCHAR(p[1]), p += 2; --i >= 0; ) {
+		for (i = (UCHAR(p[0]) << 8) + UCHAR(p[1]), p += 2; i > 0; --i) {
 		    it_add(&lr->itc, &state->items, p, n, 0, FALSE);
 		    p += UCHAR(p[1]) + 2;
 		}
@@ -959,11 +946,11 @@ srpstate *state;
     state->nred = nred;
     if (nred != 0) {
 	if (nred > 1) {
-	    state->reds.a = ALLOC(char, (nred << 2));
+	    state->reds.a = ALLOC(char, (Uint) nred << 2);
 	    state->alloc = TRUE;
 	}
 	lr->nred += nred;
-	lr->srpsize += nred * 4;
+	lr->srpsize += (Uint) nred << 2;
 	nred = 0;
     }
 
@@ -978,7 +965,7 @@ srpstate *state;
 	if (it->offset == UCHAR(p[1])) {
 	    /* reduction */
 	    n = p - lr->grammar;
-	    p = &REDA(state)[nred++ << 2];
+	    p = &REDA(state)[(Uint) nred++ << 2];
 	    *p++ = n >> 8;
 	    *p++ = n;
 	    *p++ = it->ruleno >> 8;
@@ -1010,11 +997,11 @@ srpstate *state;
     /*
      * sort and merge token and goto tables
      */
-    qsort(symbols, ngoto, sizeof(short), cmp);
-    memcpy(symbols + ngoto, tokens, nshift * sizeof(short));
+    qsort(symbols, ngoto, sizeof(unsigned short), cmp);
+    memcpy(symbols + ngoto, tokens, nshift * sizeof(unsigned short));
     AFREE(tokens);
     tokens = symbols + ngoto;
-    qsort(tokens, nshift, sizeof(short), cmp);
+    qsort(tokens, nshift, sizeof(unsigned short), cmp);
 
     /*
      * create target table
@@ -1023,7 +1010,8 @@ srpstate *state;
 	newstate = &lr->states[lr->nstates];
 	newstate->items = itemtab[symbols[i]];
 
-	n = ss_hash(lr->sthtab, lr->sthsize, lr->states, lr->nstates);
+	n = ss_hash(lr->sthtab, lr->sthsize, lr->states,
+		    (unsigned short) lr->nstates);
 	targets[i] = n;
 	if (n == lr->nstates) {
 	    /*
@@ -1035,21 +1023,21 @@ srpstate *state;
 	    }
 	    lr->srpsize += 10;
 	    lr->nitem += n;
-	    lr->tmpsize += 5 * n;
-	    lr->tmpchanged = TRUE;
+	    lr->tmpsize += (Uint) 5 * n;
 	    newstate->nitem = n;
-	    newstate->nred = -1;
+	    newstate->nred = UNEXPANDED;
 	    newstate->shoffset = NOSHIFT;
-	    newstate->shcheck = 0;
 	    newstate->gtoffset = 0;
 	    newstate->alloc = FALSE;
 
 	    if (++lr->nstates == lr->sttsize) {
+		unsigned short save;
+
 		/* grow table */
-		n = state - lr->states;
+		save = state - lr->states;
 		lr->states = REALLOC(lr->states, srpstate, lr->nstates,
 				     lr->sttsize <<= 1);
-		state = lr->states + n;
+		state = lr->states + save;
 	    }
 	}
     }
@@ -1058,19 +1046,16 @@ srpstate *state;
      * add shifts and gotos to packed mapping
      */
     if (nshift != 0) {
-	state->shoffset = srp_pack(lr, tokens, targets + ngoto, nshift,
-				   &state->shcheck);
+	state->shoffset = srp_pack(lr, state - lr->states, tokens,
+				   targets + ngoto, nshift);
     }
     if (ngoto != 0) {
-	unsigned short dummy;
-
-	state->gtoffset = srp_pack(lr, symbols, targets, ngoto, &dummy);
+	state->gtoffset = srp_pack(lr, 0, symbols, targets, ngoto);
     }
     AFREE(targets);
     AFREE(symbols);
     AFREE(itemtab);
 
-    lr->srpchanged = TRUE;
     lr->nexpanded++;
     return state;
 }
@@ -1079,10 +1064,9 @@ srpstate *state;
  * NAME:	srp->check()
  * DESCRIPTION:	fetch reductions for a given state, possibly first expanding it
  */
-int srp_check(lr, num, nredp, redp)
+short srp_check(lr, num, nredp, redp)
 register srp *lr;
-int num;
-int *nredp;
+unsigned short num, *nredp;
 char **redp;
 {
     register srpstate *state;
@@ -1090,15 +1074,16 @@ char **redp;
     state = &lr->states[num];
     if (state->nred < 0) {
 	state = srp_expand(lr, state);
-	if (lr->tmpsize > USHRT_MAX) {
-	    int save;
+	if (lr->srpsize + lr->tmpsize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
+	    unsigned short save;
 
 	    /*
 	     * too much temporary data: attempt to expand all states
 	     */
 	    save = state - lr->states;
 	    for (state = lr->states; lr->nstates != lr->nexpanded; state++) {
-		if (lr->srpsize > USHRT_MAX) {
+		if (lr->nstates > SHRT_MAX ||
+		    lr->srpsize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 		    return -1;	/* too big */
 		}
 		if (state->nred < 0) {
@@ -1107,7 +1092,8 @@ char **redp;
 	    }
 	    state = &lr->states[save];
 	}
-	if (lr->srpsize > USHRT_MAX) {
+	if (lr->nstates > SHRT_MAX ||
+	    lr->srpsize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {
 	    return -1;	/* too big */
 	}
     }
@@ -1121,21 +1107,21 @@ char **redp;
  * NAME:	srp->shift()
  * DESCRIPTION:	shift to a new state, if possible
  */
-int srp_shift(lr, num, token)
+short srp_shift(lr, num, token)
 register srp *lr;
-int num, token;
+unsigned short num, token;
 {
-    register int n;
+    register Int n;
     register char *p;
     srpstate *state;
 
     state = &lr->states[num];
     n = state->shoffset;
     if (n != NOSHIFT) {
-	n = (n + token) * 2;
+	n = (n + (Int) token) * 2;
 	if (n >= 0 && n < lr->mapsize) {
 	    p = &lr->check[n];
-	    if ((UCHAR(p[0]) << 8) + UCHAR(p[1]) == state->shcheck) {
+	    if ((unsigned short) (UCHAR(p[0]) << 8) + UCHAR(p[1]) == num) {
 		/* shift works: return new state */
 		p = &lr->data[n];
 		return (UCHAR(p[0]) << 8) + UCHAR(p[1]);
@@ -1151,9 +1137,9 @@ int num, token;
  * NAME:	srp->goto()
  * DESCRIPTION:	goto a new state
  */
-int srp_goto(lr, num, symb)
+short srp_goto(lr, num, symb)
 register srp *lr;
-int num, symb;
+unsigned short num, symb;
 {
     register char *p;
 

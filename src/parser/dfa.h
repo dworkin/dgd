@@ -6,7 +6,7 @@ typedef struct _dfa_ dfa;
 
 extern dfa     *dfa_new		P((char*));
 extern void	dfa_del		P((dfa*));
-extern dfa     *dfa_load	P((char*, string*, string*));
-extern bool	dfa_save	P((dfa*, string**, string**));
-extern int	dfa_scan	P((dfa*, string*, unsigned int*, char**,
-				   unsigned int*));
+extern dfa     *dfa_load	P((char*, char*, Uint));
+extern bool	dfa_save	P((dfa*, char**, Uint*));
+extern short	dfa_scan	P((dfa*, string*, unsigned short*, char**,
+				   unsigned short*));

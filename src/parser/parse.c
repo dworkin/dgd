@@ -300,6 +300,8 @@ struct _parser_ {
 
     string *source;		/* grammar source */
     string *grammar;		/* preprocessed grammar */
+    char *fastr;		/* DFA string */
+    char *lrstr;		/* SRP string */
 
     dfa *fa;			/* (partial) DFA */
     srp *lr;			/* (partial) shift/reduce parser */
@@ -335,6 +337,8 @@ string *source, *grammar;
     ps->data->parser = ps;
     str_ref(ps->source = source);
     str_ref(ps->grammar = grammar);
+    ps->fastr = (char *) NULL;
+    ps->lrstr = (char *) NULL;
     ps->fa = dfa_new(grammar->text);
     ps->lr = srp_new(grammar->text);
 
@@ -362,6 +366,12 @@ register parser *ps;
     ps->data->parser = (parser *) NULL;
     str_del(ps->source);
     str_del(ps->grammar);
+    if (ps->fastr != (char *) NULL) {
+	FREE(ps->fastr);
+    }
+    if (ps->lrstr != (char *) NULL) {
+	FREE(ps->lrstr);
+    }
     dfa_del(ps->fa);
     srp_del(ps->lr);
     FREE(ps);
@@ -477,11 +487,10 @@ string *str;
 bool *toobig;
 {
     register snode *sn;
-    register int n;
+    register short n;
     snode *next;
     char *ttext;
-    unsigned int size, tlen;
-    int nred;
+    unsigned short size, nred, tlen;
     char *red;
 
     /* initialize */
@@ -513,12 +522,15 @@ bool *toobig;
 		return (pnode *) NULL;
 	    }
 	    if (n > ps->nstates) {
+		unsigned short stsize;
+
 		/* grow tables */
-		n <<= 1;
-		ps->states = REALLOC(ps->states, snode*, ps->nstates, n);
+		stsize = n;
+		stsize <<= 1;
+		ps->states = REALLOC(ps->states, snode*, ps->nstates, stsize);
 		memset(ps->states + ps->nstates, '\0',
-		       (n - ps->nstates) * sizeof(snode*));
-		ps->nstates = n;
+		       (stsize - ps->nstates) * sizeof(snode*));
+		ps->nstates = stsize;
 	    }
 	    for (n = 0; n < nred; n++) {
 		ps_reduce(ps, sn->pn, red);
@@ -786,20 +798,52 @@ register value *elts;
 {
     register parser *ps;
     register char *p;
-    register string *tmp;
+    register short i;
+    register Uint len;
+    short fasize, lrsize;
 
     ps = ALLOC(parser, 1);
     ps->frame = f;
     ps->data = f->data;
     ps->data->parser = ps;
+    fasize = elts->u.number >> 16;
+    lrsize = (elts++)->u.number & 0xffff;
     str_ref(ps->source = (elts++)->u.string);
     str_ref(ps->grammar = (elts++)->u.string);
 
-    tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
-    ps->fa = dfa_load(ps->grammar->text, elts[0].u.string, tmp);
-    elts += 2;
-    tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
-    ps->lr = srp_load(ps->grammar->text, elts[0].u.string, tmp);
+    if (fasize > 1) {
+	for (i = fasize, len = 0; --i >= 0; ) {
+	    len += elts[i].u.string->len;
+	}
+	p = ps->fastr = ALLOC(char, len);
+	for (i = fasize; --i >= 0; ) {
+	    memcpy(p, elts->u.string->text, elts->u.string->len);
+	    p += (elts++)->u.string->len;
+	}
+	p -= len;
+    } else {
+	p = elts->u.string->text;
+	len = (elts++)->u.string->len;
+	ps->fastr = (char *) NULL;
+    }
+    ps->fa = dfa_load(ps->grammar->text, p, len);
+
+    if (lrsize > 1) {
+	for (i = lrsize, len = 0; --i >= 0; ) {
+	    len += elts[i].u.string->len;
+	}
+	p = ps->lrstr = ALLOC(char, len);
+	for (i = lrsize; --i >= 0; ) {
+	    memcpy(p, elts->u.string->text, elts->u.string->len);
+	    p += (elts++)->u.string->len;
+	}
+	p -= len;
+    } else {
+	p = elts->u.string->text;
+	len = elts->u.string->len;
+	ps->lrstr = (char *) NULL;
+    }
+    ps->lr = srp_load(ps->grammar->text, p, len);
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
@@ -824,42 +868,55 @@ register parser *ps;
 {
     register value *v;
     register dataspace *data;
+    register Uint len;
     value val;
-    string *d1, *d2, *p1, *p2;
+    short fasize, lrsize;
+    char *fastr, *lrstr;
+    Uint falen, lrlen;
     bool save;
 
-    save = dfa_save(ps->fa, &d1, &d2);
-    save |= srp_save(ps->lr, &p1, &p2);
+    save = dfa_save(ps->fa, &fastr, &falen) | srp_save(ps->lr, &lrstr, &lrlen);
 
     if (save) {
 	data = ps->data;
-	PUT_ARRVAL_NOREF(&val, arr_new(data, 6L));
+	fasize = 1 + (falen - 1) / USHRT_MAX;
+	lrsize = 1 + (lrlen - 1) / USHRT_MAX;
+	PUT_ARRVAL_NOREF(&val, arr_new(data, 3L + fasize + lrsize));
 
 	/* grammar */
 	v = val.u.array->elts;
+	PUT_INTVAL(v, ((Int) fasize << 16) + lrsize);
+	v++;
 	PUT_STRVAL(v, ps->source);
 	v++;
 	PUT_STRVAL(v, ps->grammar);
 	v++;
 
 	/* dfa */
-	PUT_STRVAL(v, d1);
-	v++;
-	if (d2 != (string *) NULL) {
-	    PUT_STRVAL(v, d2);
-	} else {
-	    *v = nil_value;
+	if (ps->fastr != (char *) NULL && fastr != ps->fastr) {
+	    FREE(ps->fastr);
+	    ps->fastr = (char *) NULL;
 	}
-	v++;
+	do {
+	    len = (falen > USHRT_MAX) ? USHRT_MAX : falen;
+	    PUT_STRVAL(v, str_new(fastr, (long) len));
+	    v++;
+	    fastr += len;
+	    falen -= len;
+	} while (falen != 0);
 
 	/* srp */
-	PUT_STRVAL(v, p1);
-	v++;
-	if (p2 != (string *) NULL) {
-	    PUT_STRVAL(v, p2);
-	} else {
-	    *v = nil_value;
+	if (ps->lrstr != (char *) NULL && lrstr != ps->lrstr) {
+	    FREE(ps->lrstr);
+	    ps->lrstr = (char *) NULL;
 	}
+	do {
+	    len = (lrlen > USHRT_MAX) ? USHRT_MAX : lrlen;
+	    PUT_STRVAL(v, str_new(lrstr, (long) len));
+	    v++;
+	    lrstr += len;
+	    lrlen -= len;
+	} while (lrlen != 0);
 
 	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &val);
     }
@@ -893,8 +950,8 @@ Int maxalt;
 	same = (str_cmp(ps->source, source) == 0);
     } else {
 	val = d_get_variable(data, data->nvariables - 1);
-	if (val->type == T_ARRAY &&
-	    str_cmp(d_get_elts(val->u.array)->u.string, source) == 0) {
+	if (val->type == T_ARRAY && d_get_elts(val->u.array)->type == T_INT &&
+	    str_cmp(val->u.array->elts[1].u.string, source) == 0) {
 	    ps = ps_load(f, val->u.array->elts);
 	    same = TRUE;
 	} else {

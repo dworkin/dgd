@@ -22,7 +22,6 @@ clean:
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h
 grammar.o dfa.o: ../hash.h ../str.h
-srp.o: ../str.h
 parse.o: ../str.h ../array.h ../object.h ../interpret.h ../data.h
 
 grammar.o parse.o: grammar.h

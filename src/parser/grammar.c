@@ -596,9 +596,8 @@ register rlchunk *c;
  *		[x]	number of symbols in rule	}
  *		[x]	length of rule			}
  *		[...]	rule:				} ...
- *			[x][y]		token or rule	}
- *			[254][x]	( )		}
- *			[255][...]	function name	}
+ *			[x][y] 	token or rule ...	}
+ *			[...]	optional: function name	}
  */
 
 /*
