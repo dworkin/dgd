@@ -2583,7 +2583,7 @@ register unsigned short n;
 		    /*
 		     * first time encountered
 		     */
-		    if (val->type == T_MAPPING) {
+		    if (a->hashed != (struct _maphash_ *) NULL) {
 			map_compact(a);
 		    }
 
@@ -2604,15 +2604,31 @@ register unsigned short n;
 			 */
 			a = arr_alloc(a->size);
 			a->tag = val->u.array->tag;
-			a->odcount = odcount;
+			a->odcount = val->u.array->odcount;
 			a->primary = &data->alocal;
 
 			if (a->size > 0) {
+			    register value *v;
+
 			    /*
 			     * copy elements
 			     */
-			    arr_copy(a->elts = ALLOC(value, a->size),
-				     val->u.array);
+			    a->elts = v = ALLOC(value, j = a->size);
+			    memcpy(v, d_get_elts(val->u.array),
+				   j * sizeof(value));
+			    do {
+				switch (v->type) {
+				case T_STRING:
+				    str_ref(v->u.string);
+				    break;
+
+				case T_ARRAY:
+				case T_MAPPING:
+				    arr_ref(v->u.array);
+				    break;
+				}
+				v++;
+			    } while (--j != 0);
 			}
 
 			/*
