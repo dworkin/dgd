@@ -32,7 +32,7 @@ listen(string protocol, int port)
  * NAME:	open_connection()
  * DESCRIPTION:	don't return a user object, select it by first line of input
  */
-static object open_connection()
+static object open_connection(string ipaddr, int port)
 {
     return nil;
 }
