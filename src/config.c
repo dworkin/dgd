@@ -1115,6 +1115,7 @@ sector *fragment;
     /* initialize dumpfile header */
     conf_dumpinit();
 
+    m_static();				/* allocate error context statically */
     ec_push((ec_ftn) NULL);		/* guard error context */
     if (ec_push((ec_ftn) NULL)) {
 	message((char *) NULL);
@@ -1130,6 +1131,7 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
+    m_dynamic();
     if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */
 	call_driver_object(cframe, "initialize", 0);
