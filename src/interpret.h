@@ -135,7 +135,6 @@ extern object	       *i_prev_object	P((int));
 extern char	       *i_foffset	P((unsigned int));
 extern int		i_pindex	P((void));
 extern void		i_typecheck	P((char*, char*, char*, int, int));
-extern value	       *i_set_cleanup	P((value*));
 extern void		i_cleanup	P((void));
 extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, int, int));

@@ -1385,22 +1385,6 @@ register char *pc;
     return dflt;
 }
 
-static value *clean_sp;
-
-/*
- * NAME:	set_cleanup()
- * DESCRIPTION:	set the cleanup stack pointer, and return the old value
- */
-value *i_set_cleanup(v)
-value *v;
-{
-    value *r;
-
-    r = clean_sp;
-    clean_sp = v;
-    return r;
-}
-
 /*
  * NAME:	interpret->cleanup()
  * DESCRIPTION:	cleanup stack in case of an error
@@ -1408,7 +1392,6 @@ value *v;
 void i_cleanup()
 {
     i_runtime_error(TRUE);
-    i_set_sp(clean_sp);
 }
 
 /*
@@ -1640,8 +1623,6 @@ register char *pc;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
-	    v = clean_sp;
-	    clean_sp = sp;
 	    u = rli;
 	    if (!ec_push((ec_ftn) i_cleanup)) {
 		i_interpret(pc);
@@ -1655,7 +1636,6 @@ register char *pc;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
 		i_set_rllevel(u);
 	    }
-	    clean_sp = v;
 	    break;
 
 	case I_RLIMITS:
@@ -2154,7 +2134,6 @@ int flag;
  */
 void i_clear()
 {
-    i_set_sp(stack + MIN_STACK);
     nodepth = TRUE;
     noticks = TRUE;
     rli = 0;

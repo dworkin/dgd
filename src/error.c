@@ -3,12 +3,14 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "interpret.h"
 # include "comm.h"
 
 # define ERR_LOG_BUF_SZ		1024	/* extra error log buffer size */
 
 typedef struct {
     jmp_buf env;			/* error context */
+    value *sp;				/* stack pointer value */
     ec_ftn cleanup;			/* cleanup function */
 } context;
 
@@ -26,6 +28,7 @@ ec_ftn ftn;
     if (esp == stack + ERRSTACKSZ) {
 	error("Too many nested error contexts");
     }
+    esp->sp = sp;
     esp->cleanup = ftn;
     return &(esp++)->env;
 }
@@ -59,6 +62,7 @@ void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
 char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     jmp_buf env;
+    value *oldsp;
 
     if (format != (char *) NULL) {
 	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
@@ -66,9 +70,11 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 
     ec_pop();
     memcpy(&env, &esp->env, sizeof(jmp_buf));
+    oldsp = esp->sp;
     if (esp->cleanup != (ec_ftn) NULL) {
 	(*(esp->cleanup))();
     }
+    i_set_sp(oldsp);
     longjmp(env, 1);
 }
 

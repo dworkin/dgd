@@ -862,3 +862,4 @@ DGD 1.1
  - Fixed a bug in the new error cleanup code.
  - Fixed some rlimits bugs in the C code generator.
  - Fixed a nasty bug in the code generated for sscanf().
+ - And another one, and another one in the error cleanup code as well.

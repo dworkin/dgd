@@ -1614,7 +1614,7 @@ node *args;
 	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
 		(*arg)->mod = nargs-- - n;
 		/* KFCALL => KFCALL_LVAL, IKFCALL => IKFCALL_LVAL */
-		func->r.number += 1L << 24;
+		func->r.number |= 1L << 24;
 	    } else {
 		(*arg)->mod = (unsigned short) -1;
 	    }
@@ -1649,7 +1649,7 @@ node *args;
 	    }
 	    *arg = node_mon(N_LVALUE, (*arg)->mod, *arg);
 	    /* only kfuns can have lvalue parameters */
-	    func->r.number += 1L << 24;
+	    func->r.number |= 1L << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
 		   (!c_zero(*arg) || t == T_FLOAT) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {

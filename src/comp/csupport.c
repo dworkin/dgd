@@ -266,13 +266,8 @@ bool poptruthval()
     return TRUE;
 }
 
-typedef struct {
-    value *clean_sp;		/* old cleanup stack pointer */
-    int level;			/* rlimits stack level */
-} catchinfo;
-
-static catchinfo cstack[ERRSTACKSZ];	/* catch stack */
-static int csi;				/* catch stack index */
+static int cstack[ERRSTACKSZ];	/* catch stack */
+static int csi;			/* catch stack index */
 
 /*
  * NAME:	pre_catch()
@@ -283,8 +278,7 @@ void pre_catch()
     if (csi == ERRSTACKSZ) {
 	error("Too deep catch() nesting");
     }
-    cstack[csi].clean_sp = i_set_cleanup(sp);
-    cstack[csi++].level = i_get_rllevel();
+    cstack[csi++] = i_get_rllevel();
 }
 
 /*
@@ -293,8 +287,7 @@ void pre_catch()
  */
 void post_catch()
 {
-    i_set_cleanup(cstack[--csi].clean_sp);
-    i_set_rllevel(cstack[csi].level);
+    i_set_rllevel(cstack[csi]);
 }
 
 /*
