@@ -1422,3 +1422,8 @@ DGD 1.1
  - Fixed a memory leak in committing a mapping that has been reduced in size.
  - Fixed the comm code, which erroneously assumed that nothing new would be
    sent on a connection after the connection object was destructed.
+
+DGD 1.3
+
+ - Destructed objects in arrays were not always dealt with properly after the
+   introduction of atomic functions.

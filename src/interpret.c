@@ -99,10 +99,26 @@ void i_copy(v, w, len)
 register value *v, *w;
 register unsigned int len;
 {
-    while (len != 0) {
-	i_ref_value(w);
+    for ( ; len != 0; --len) {
+	switch (w->type) {
+	case T_STRING:
+	    str_ref(w->u.string);
+	    break;
+
+	case T_OBJECT:
+	    if (DESTRUCTED(w)) {
+		*v++ = nil_value;
+		w++;
+		continue;
+	    }
+	    break;
+
+	case T_ARRAY:
+	case T_MAPPING:
+	    arr_ref(w->u.array);
+	    break;
+	}
 	*v++ = *w++;
-	--len;
     }
 }
 
