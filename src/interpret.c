@@ -7,7 +7,6 @@
 # include "fcontrol.h"
 # include "table.h"
 
-# define DESTRUCTED(k)	(o_object(&(k)) == (object *) NULL)
 # define CHECKSP() if (sp <= ilvp + 2) error("Out of interpreter stack space")
 
 
@@ -17,21 +16,20 @@ typedef struct _frame_ {
     unsigned short lock;	/* lock level */
     dataspace *data;		/* dataspace of current object */
     control *v_ctrl;		/* virtual control block */
-    unsigned short v_voffset;	/* virtual variable offset */
+    unsigned short voffset;	/* virtual variable offset */
     control *p_ctrl;		/* program control block */
-    unsigned short p_foffset;	/* program function offset */
-    unsigned short p_voffset;	/* program variable offset */
+    unsigned short p_index;	/* program index */
+    unsigned short foffset;	/* program function offset */
     dfuncdef *func;		/* current function */
+    char *pc;			/* program counter */
     value *fp;			/* frame pointer (value stack) */
-    unsigned short firstline;	/* first line number of function */
-    unsigned short line;	/* current line number */
 } frame;
 
 
-static value *stack;		/* evaluator stack */
-static value *stackend;		/* evaluator stack end */
-value *sp;			/* evaluator stack pointer */
-static value *ilvp;		/* indexed lvalue stack pointer */
+static value *stack;		/* interpreter stack */
+static value *stackend;		/* interpreter stack end */
+value *sp;			/* interpreter stack pointer */
+value *ilvp;			/* indexed lvalue stack pointer */
 static frame *iframe;		/* stack frames */
 static frame *cframe;		/* current frame */
 static frame *maxframe;		/* max frame */
@@ -76,7 +74,7 @@ void i_clear()
 
 /*
  * NAME:	interpret->ref_value()
- * DESCRIPTION:	reference a value
+ * DESCRIPTION:	reference a value on the stack
  */
 void i_ref_value(v)
 register value *v;
@@ -101,7 +99,7 @@ register value *v;
 
 /*
  * NAME:	interpret->del_value()
- * DESCRIPTION:	delete a value (which can be an lvalue)
+ * DESCRIPTION:	delete a value on the stack
  */
 void i_del_value(v)
 register value *v;
@@ -135,6 +133,7 @@ void i_push_value(v)
 register value *v;
 {
     CHECKSP();
+    *--sp = *v;
     switch (v->type) {
     case T_STRING:
 	str_ref(v->u.string);
@@ -142,7 +141,11 @@ register value *v;
 
     case T_OBJECT:
 	if (DESTRUCTED(v->u.object)) {
-	    *v = zero_value;
+	    /*
+	     * can't wipe out the original, since it may be a value from a
+	     * mapping
+	     */
+	    *sp = zero_value;
 	}
 	break;
 
@@ -151,7 +154,6 @@ register value *v;
 	arr_ref(v->u.array);
 	break;
     }
-    *--sp = *v;
 }
 
 /*
@@ -198,11 +200,11 @@ void i_odest(key)
 register objkey *key;
 {
     register value *v;
+    register long count;
 
+    count = key->count;
     for (v = sp; v < stackend; v++) {
-	if (v->type == T_OBJECT &&
-	    key->index == v->u.object.index && key->count == v->u.object.count)
-	{
+	if (v->type == T_OBJECT && v->u.object.count == count) {
 	    /*
 	     * wipe out destructed object on stack
 	     */
@@ -210,9 +212,7 @@ register objkey *key;
 	}
     }
     for (v = stack; v < ilvp; v++) {
-	if (v->type == T_OBJECT &&
-	    key->index == v->u.object.index && key->count == v->u.object.count)
-	{
+	if (v->type == T_OBJECT && v->u.object.count == count) {
 	    /*
 	     * wipe out destructed object on stack
 	     */
@@ -223,7 +223,7 @@ register objkey *key;
 
 /*
  * NAME:	interpret->index()
- * DESCRIPTION:	index a value, REPLACING it by the indexed va
+ * DESCRIPTION:	index a value, REPLACING it by the indexed value
  */
 void i_index(aval, ival)
 register value *aval, *ival;
@@ -253,12 +253,7 @@ register value *aval, *ival;
 	break;
 
     case T_MAPPING:
-	i = map_index(aval->u.array, ival, FALSE);
-	if (i < 0) {
-	    val = &zero_value;
-	} else {
-	    val = &aval->u.array->elts[i];
-	}
+	val = map_index(aval->u.array, ival, (value *) NULL);
 	break;
 
     default:
@@ -296,7 +291,7 @@ register value *lval, *ival;
     register int i;
     register value *val;
 
-    CHECKSP();	/* not required in all cases... */
+    CHECKSP();	/* not actually required in all cases... */
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
@@ -316,8 +311,8 @@ register value *lval, *ival;
     case T_MAPPING:
 	ilvp->type = T_ARRAY;
 	(ilvp++)->u.array = lval->u.array;
-	i_ref_value(ival);
 	*ilvp++ = *ival;
+	i_ref_value(ival);
 	lval->type = T_MLVALUE;
 	return;
 
@@ -331,8 +326,9 @@ register value *lval, *ival;
 		error("Non-numeric string index");
 	    }
 	    i = str_index(lvstr = lval->u.lval->u.string, ival->u.number);
+	    ilvp->type = T_LVALUE;
 	    (ilvp++)->u.lval = lval->u.lval;
-	    /* indexed string lvalues are never referenced */
+	    /* indexed string lvalues are not referenced */
 	    lval->type = T_SLVALUE;
 	    lval->u.number = i;
 	    return;
@@ -343,16 +339,16 @@ register value *lval, *ival;
 	    }
 	    i = arr_index(lval->u.lval->u.array, ival->u.number);
 	    ilvp->type = T_ARRAY;
-	    (ilvp++)->u.array = lval->u.lval->u.array;
+	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    lval->type = T_ALVALUE;
 	    lval->u.number = i;
 	    return;
 
 	case T_MAPPING:
 	    ilvp->type = T_ARRAY;
-	    (ilvp++)->u.array = lval->u.lval->u.array;
-	    i_ref_value(ival);
+	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    *ilvp++ = *ival;
+	    i_ref_value(ival);
 	    lval->type = T_MLVALUE;
 	    return;
 	}
@@ -387,8 +383,8 @@ register value *lval, *ival;
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
 	    ilvp[-1].u.array = val->u.array;
-	    i_ref_value(ival);
 	    *ilvp++ = *ival;
+	    i_ref_value(ival);
 	    lval->type = T_MLVALUE;
 	    lval->u.number = i;
 	    return;
@@ -396,42 +392,39 @@ register value *lval, *ival;
 	break;
 
     case T_MLVALUE:
-	i = map_index(ilvp[-2].u.array, &ilvp[-1], FALSE);
-	if (i >= 0) {
-	    val = &ilvp[-2].u.array->elts[i];
-	    switch (val->type) {
-	    case T_STRING:
-		if (ival->type != T_NUMBER) {
-		    error("Non-numeric string index");
-		}
-		i = str_index(lvstr = val->u.string, ival->u.number);
-		lval->type = T_SMLVALUE;
-		lval->u.number = i;
-		return;
-
-	    case T_ARRAY:
-		if (ival->type != T_NUMBER) {
-		    error("Non-numeric array index");
-		}
-		i = arr_index(val->u.array, ival->u.number);
-		i_del_value(--ilvp);
-		arr_ref(val->u.array);		/* has to be first */
-		arr_del(ilvp[-1].u.array);	/* has to be second */
-		ilvp[-1].u.array = val->u.array;
-		lval->type = T_ALVALUE;
-		lval->u.number = i;
-		return;
-
-	    case T_MAPPING:
-		arr_ref(val->u.array);		/* has to be first */
-		arr_del(ilvp[-2].u.array);	/* has to be second */
-		ilvp[-2].u.array = val->u.array;
-		i_del_value(&ilvp[-1]);
-		i_ref_value(ival);
-		ilvp[-1] = *ival;
-		lval->u.number = i;
-		return;
+	val = map_index(ilvp[-2].u.array, &ilvp[-1], (value *) NULL);
+	switch (val->type) {
+	case T_STRING:
+	    if (ival->type != T_NUMBER) {
+		error("Non-numeric string index");
 	    }
+	    i = str_index(lvstr = val->u.string, ival->u.number);
+	    lval->type = T_SMLVALUE;
+	    lval->u.number = i;
+	    return;
+
+	case T_ARRAY:
+	    if (ival->type != T_NUMBER) {
+		error("Non-numeric array index");
+	    }
+	    i = arr_index(val->u.array, ival->u.number);
+	    i_del_value(--ilvp);
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(ilvp[-1].u.array);	/* has to be second */
+	    ilvp[-1].u.array = val->u.array;
+	    lval->type = T_ALVALUE;
+	    lval->u.number = i;
+	    return;
+
+	case T_MAPPING:
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(ilvp[-2].u.array);	/* has to be second */
+	    ilvp[-2].u.array = val->u.array;
+	    i_del_value(&ilvp[-1]);
+	    ilvp[-1] = *ival;
+	    i_ref_value(ival);
+	    lval->u.number = i;
+	    return;
 	}
 	break;
     }
@@ -491,15 +484,14 @@ register value *lval, *val;
 
     case T_ALVALUE:
 	a = (--ilvp)->u.array;
-	d_assign_elt(a, (unsigned short) lval->u.number, val);
+	d_assign_elt(a, &d_get_elts(a)[lval->u.number], val);
 	arr_del(a);
 	break;
 
     case T_MLVALUE:
-	i = map_index(a = ilvp[-2].u.array, &ilvp[-1], TRUE);
+	map_index(a = ilvp[-2].u.array, &ilvp[-1], val);
 	i_del_value(--ilvp);
 	--ilvp;
-	d_assign_elt(a, (unsigned short) lval->u.number, val);
 	arr_del(a);
 	break;
 
@@ -513,16 +505,14 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	--ilvp;
-	d_assign_elt(a, (unsigned short) ilvp->u.number,
-		     istr(v->u.string, i, val));
+	ilvp -= 2;
+	d_assign_elt(a, v, istr(v->u.string, i, val));
 	arr_del(a);
 	break;
 
     case T_SMLVALUE:
 	a = ilvp[-2].u.array;
-	i = map_index(a, &ilvp[-1], TRUE);
-	v = &a->elts[i];
+	v = map_index(a, &ilvp[-1], (value *) NULL);
 	if (v->type != T_STRING || lval->u.number >= v->u.string->len) {
 	    /*
 	     * The lvalue was changed.
@@ -531,7 +521,7 @@ register value *lval, *val;
 	}
 	i_del_value(--ilvp);
 	--ilvp;
-	d_assign_elt(a, i, istr(v->u.string,
+	d_assign_elt(a, v, istr(v->u.string,
 		     (unsigned short) lval->u.number, val));
 	arr_del(a);
 	break;
@@ -594,11 +584,41 @@ object *i_prev_object()
     return cframe->prevobj;
 }
 
+/*
+ * NAME:	interpret->typecheck()
+ * DESCRIPTION:	check the argument types given to a function
+ */
+static void i_typecheck(name, ftype, proto, nargs)
+char *name, *ftype;
+register char *proto;
+int nargs;
+{
+    register int n, i, ptype, atype;
+    register char *args;
+
+    i = nargs;
+    for (n = PROTO_NARGS(proto), args = PROTO_ARGS(proto); n > 0 && i > 0; --n)
+    {
+	--i;
+	ptype = UCHAR(*args++);
+	if (ptype != T_MIXED) {
+	    atype = sp[i].type;
+	    if (ptype != atype && (atype != T_NUMBER || sp[i].u.number != 0) &&
+		(atype != T_ARRAY || !(ptype & T_REF))) {
+		error("Bad argument %d for %s %s", nargs - i, ftype, name);
+	    }
+	}
+    }
+}
+
 # define FETCH1S(pc)	SCHAR(*(pc)++)
 # define FETCH1U(pc)	UCHAR(*(pc)++)
 # define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
 # define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
 					   v |= UCHAR(*(pc)++)))
+# define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
+				v |= UCHAR(*(pc)++), v <<= 8, \
+				v |= UCHAR(*(pc)++)))
 # define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
@@ -613,7 +633,8 @@ static void i_interpret P((char*));
  */
 void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
 register object *obj;
-register int v_ctrli, p_ctrli, funci, nargs;
+register int v_ctrli, p_ctrli, nargs;
+int funci;
 {
     register frame *f, *pf;
     register char *pc;
@@ -637,7 +658,7 @@ register int v_ctrli, p_ctrli, funci, nargs;
 	f->lock = 0;
 	f->data = o_dataspace(obj);
 	f->v_ctrl = obj->ctrl;
-	f->v_voffset = 0;
+	f->voffset = 0;
     } else if (obj != (object *) NULL) {
 	/*
 	 * call_other
@@ -647,7 +668,7 @@ register int v_ctrli, p_ctrli, funci, nargs;
 	f->lock = pf->lock;
 	f->data = o_dataspace(obj);
 	f->v_ctrl = obj->ctrl;
-	f->v_voffset = 0;
+	f->voffset = 0;
     } else {
 	/*
 	 * local function call or labeled function call
@@ -656,27 +677,24 @@ register int v_ctrli, p_ctrli, funci, nargs;
 	f->prevobj = pf->prevobj;
 	f->lock = pf->lock;
 	f->data = pf->data;
-	f->v_voffset = pf->v_voffset;
+	f->voffset = pf->voffset;
 	if (v_ctrli == 0) {
 	    /* local or virtually inherited function call */
 	    f->v_ctrl = pf->v_ctrl;
 	} else {
 	    /* labeled inherited function call */
-	    f->v_ctrl = pf->v_ctrl->inherits[v_ctrli].obj->ctrl;
-	    f->v_voffset += pf->v_ctrl->inherits[v_ctrli].varoffset;
+	    f->v_ctrl = o_control(pf->p_ctrl->inherits[v_ctrli].obj);
+	    f->voffset += pf->v_ctrl->inherits[pf->p_ctrl->nvirtuals +
+					       pf->p_index - 1].varoffset +
+			  pf->p_ctrl->inherits[v_ctrli].varoffset -
+			  pf->p_ctrl->inherits[1].varoffset;
 	}
     }
 
     /* set the program control block */
     f->p_ctrl = o_control(f->v_ctrl->inherits[p_ctrli].obj);
-    if (p_ctrli == 0) {
-	/* it's the auto object */
-	f->p_foffset = 0;
-	f->p_voffset = 0;
-    } else {
-	f->p_foffset = f->v_ctrl->inherits[p_ctrli].funcoffset;
-	f->p_voffset = f->v_voffset + f->v_ctrl->inherits[p_ctrli].varoffset;
-    }
+    f->foffset = f->v_ctrl->inherits[p_ctrli].funcoffset;
+    f->p_index = p_ctrli + 1 - f->p_ctrl->nvirtuals;
 
     /* get the function */
     f->func = &d_get_funcdefs(f->p_ctrl)[funci];
@@ -685,7 +703,14 @@ register int v_ctrli, p_ctrli, funci, nargs;
 	      d_get_strconst(f->p_ctrl, f->func->inherit,
 			     f->func->index)->text);
     }
+
     pc = d_get_prog(f->p_ctrl) + f->func->offset;
+    if (nargs > 0 && (PROTO_CLASS(pc) & C_TYPECHECKED)) {
+	/* typecheck arguments */
+	i_typecheck(d_get_strconst(f->p_ctrl, f->func->inherit,
+				   f->func->index)->text,
+		    "function", pc, nargs);
+    }
 
     /* handle arguments */
     if (nargs > PROTO_NARGS(pc)) {
@@ -703,12 +728,12 @@ register int v_ctrli, p_ctrli, funci, nargs;
     pc += PROTO_SIZE(pc);
 
     /* initialize local variables */
-    for (n = FETCH1U(pc); n > 0; --n) {
+    for (n = FETCH1U(pc), nargs += n; n > 0; --n) {
 	CHECKSP();
 	*--sp = zero_value;
     }
     f->fp = sp;
-    f->line = f->firstline = FETCH2U(pc, n);
+    pc += 2;
 
     /* interpret function code */
     ticksleft -= 5;
@@ -718,43 +743,8 @@ register int v_ctrli, p_ctrli, funci, nargs;
 
     /* clean up stack, move return value upwards */
     val = *sp++;
-    i_pop((f->fp - sp) + nargs);
+    i_pop(nargs);
     *--sp = val;
-}
-
-/*
- * NAME:	interpret->typecheck()
- * DESCRIPTION:	check the argument types given to a function
- */
-static void i_typecheck(name, ftype, proto, nargs, strict)
-char *name, *ftype;
-register char *proto;
-int nargs;
-bool strict;
-{
-    register int n, i, ptype, atype;
-    register char *args;
-
-    i = nargs;
-    for (n = PROTO_NARGS(proto), args = PROTO_ARGS(proto); n > 0; --n) {
-	if (i == 0) {
-	    if (!(PROTO_CLASS(proto) & C_VARARGS) && strict) {
-		error("Too few arguments for %s %s", ftype, name);
-	    }
-	    break;
-	}
-	--i;
-	ptype = UCHAR(*args++);
-	if (ptype != T_MIXED) {
-	    atype = sp[i].type;
-	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
-		error("Bad argument %d for %s %s", nargs - i, ftype, name);
-	    }
-	}
-    }
-    if (i != 0 && !(PROTO_CLASS(proto) & C_VARARGS) && strict) {
-	error("Too many arguments for %s %s", ftype, name);
-    }
 }
 
 /*
@@ -764,11 +754,12 @@ bool strict;
 static char *i_switch_int(pc)
 register char *pc;
 {
-    register unsigned short h, l, m;
+    register unsigned short h, l, m, sz;
     register Int num;
     register char *p, *dflt;
 
     FETCH2U(pc, h);
+    sz = FETCH1U(pc);
     p = pc;
     dflt = p + FETCH2S(pc, l);
     --h;
@@ -777,19 +768,72 @@ register char *pc;
     }
 
     l = 0;
-    while (l < h) {
-	m = (l + h) >> 1;
-	p = pc + 3 * m;
-	FETCH4S(p, num);
-	if (sp->u.number == num) {
-	    pc = p;
-	    return pc + FETCH2S(p, l);
-	} else if (sp->u.number < num) {
-	    h = m;	/* search in lower half */
-	} else {
-	    l = m + 1;	/* search in upper half */
+    switch (sz) {
+    case 1:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 3 * m;
+	    num = FETCH1S(p);
+	    if (sp->u.number == num) {
+		pc = p;
+		return pc + FETCH2S(p, l);
+	    } else if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
 	}
+	break;
+
+    case 2:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 4 * m;
+	    FETCH2S(p, num);
+	    if (sp->u.number == num) {
+		pc = p;
+		return pc + FETCH2S(p, l);
+	    } else if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 3:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 5 * m;
+	    FETCH3S(p, num);
+	    if (sp->u.number == num) {
+		pc = p;
+		return pc + FETCH2S(p, l);
+	    } else if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 4:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 6 * m;
+	    FETCH4S(p, num);
+	    if (sp->u.number == num) {
+		pc = p;
+		return pc + FETCH2S(p, l);
+	    } else if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
     }
+
     return dflt;
 }
 
@@ -800,11 +844,12 @@ register char *pc;
 static char *i_switch_range(pc)
 register char *pc;
 {
-    register unsigned short h, l, m;
+    register unsigned short h, l, m, sz;
     register Int num;
     register char *p, *dflt;
 
     FETCH2U(pc, h);
+    sz = FETCH1U(pc);
     p = pc;
     dflt = p + FETCH2S(pc, l);
     --h;
@@ -813,20 +858,78 @@ register char *pc;
     }
 
     l = 0;
-    while (l < h) {
-	m = (l + h) >> 1;
-	p = pc + 10 * m;
-	FETCH4S(p, num);
-	if (sp->u.number < num) {
-	    h = m;	/* search in lower half */
-	} else {
-	    FETCH4S(p, num);
-	    if (sp->u.number <= num) {
-		pc = p;
-		return pc + FETCH2S(p, l);
+    switch (sz) {
+    case 1:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 4 * m;
+	    num = FETCH1S(p);
+	    if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		num = FETCH1S(p);
+		if (sp->u.number <= num) {
+		    pc = p;
+		    return pc + FETCH2S(p, l);
+		}
+		l = m + 1;	/* search in upper half */
 	    }
-	    l = m + 1;	/* search in upper half */
 	}
+	break;
+
+    case 2:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 6 * m;
+	    FETCH2S(p, num);
+	    if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH2S(p, num);
+		if (sp->u.number <= num) {
+		    pc = p;
+		    return pc + FETCH2S(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 3:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 8 * m;
+	    FETCH3S(p, num);
+	    if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH3S(p, num);
+		if (sp->u.number <= num) {
+		    pc = p;
+		    return pc + FETCH2S(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
+
+    case 4:
+	while (l < h) {
+	    m = (l + h) >> 1;
+	    p = pc + 10 * m;
+	    FETCH4S(p, num);
+	    if (sp->u.number < num) {
+		h = m;	/* search in lower half */
+	    } else {
+		FETCH4S(p, num);
+		if (sp->u.number <= num) {
+		    pc = p;
+		    return pc + FETCH2S(p, l);
+		}
+		l = m + 1;	/* search in upper half */
+	    }
+	}
+	break;
     }
     return dflt;
 }
@@ -853,6 +956,7 @@ register char *pc;
 	if (sp->type == T_NUMBER && sp->u.number == 0) {
 	    return p;
 	}
+	--h;
     }
     if (sp->type != T_STRING) {
 	return dflt;
@@ -889,16 +993,18 @@ register char *pc;
     register frame *f;
     register char *p;
     register kfunc *kf;
-    value *oldsp;
+    value *v;
     array *a;
 
     f = cframe;
+
     for (;;) {
 	if (--ticksleft <= 0 && f->lock == 0) {
-	    error("Maximum execution cost exceeded %ld", maxticks - ticksleft);
+	    error("Maximum execution cost exceeded (%ld)",
+		  maxticks - ticksleft);
 	}
 	instr = FETCH1U(pc);
-	f->line += (instr >> I_LINE_SHIFT) - 1;
+	f->pc = pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
@@ -938,11 +1044,19 @@ register char *pc;
 						  FETCH1U(pc)));
 	    break;
 
-	case I_PUSH_FAR_STRING:
+	case I_PUSH_NEAR_STRING:
 	    CHECKSP();
 	    (--sp)->type = T_STRING;
 	    u = FETCH1U(pc);
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
+	    break;
+
+	case I_PUSH_FAR_STRING:
+	    CHECKSP();
+	    (--sp)->type = T_STRING;
+	    u = FETCH1U(pc);
+	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u,
+						  FETCH2U(pc, u2)));
 	    break;
 
 	case I_PUSH_LOCAL:
@@ -952,7 +1066,7 @@ register char *pc;
 	case I_PUSH_GLOBAL:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->p_voffset + f->p_ctrl->inherits[u].varoffset;
+		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
 	    ticksleft -= 3;
@@ -967,7 +1081,7 @@ register char *pc;
 	case I_PUSH_GLOBAL_LVALUE:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->p_voffset + f->p_ctrl->inherits[u].varoffset;
+		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    CHECKSP();
 	    (--sp)->type = T_LVALUE;
@@ -978,7 +1092,6 @@ register char *pc;
 	case I_INDEX:
 	    i_index(sp + 1, sp);
 	    i_del_value(sp++);
-	    i_ref_value(sp);
 	    break;
 
 	case I_INDEX_LVALUE:
@@ -1015,6 +1128,12 @@ register char *pc;
 	    arr_ref(sp->u.array = a);
 	    break;
 
+	case I_CHECK_INT:
+	    if (sp->type != T_NUMBER) {
+		error("Argument is not a number");
+	    }
+	    break;
+
 	case I_FETCH:
 	    switch (sp->type) {
 	    case T_LVALUE:
@@ -1026,8 +1145,8 @@ register char *pc;
 		break;
 
 	    case T_MLVALUE:
-		u = map_index(ilvp[-2].u.array, &ilvp[-1], TRUE);
-		i_push_value(ilvp[-2].u.array->elts + u);
+		i_push_value(map_index(ilvp[-2].u.array, &ilvp[-1],
+				       (value *) NULL));
 		break;
 
 	    default:
@@ -1052,7 +1171,8 @@ register char *pc;
 
 	case I_JUMP:
 	    p = pc;
-	    pc = p + FETCH2S(pc, u);
+	    p += FETCH2S(pc, u);
+	    pc = p;
 	    break;
 
 	case I_JUMP_ZERO:
@@ -1093,7 +1213,7 @@ register char *pc;
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(kf->name, "kfun", kf->proto, u, TRUE);
+		i_typecheck(kf->name, "kfun", kf->proto, u);
 	    }
 	    u = (*kf->func)(u);
 	    if (u != 0) {
@@ -1115,54 +1235,46 @@ register char *pc;
 	    break;
 
 	case I_CALL_FUNC:
-	    p = &f->v_ctrl->funcalls[2L * (f->p_foffset + FETCH2U(pc, u))];
+	    p = &f->v_ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
 	    i_funcall((object *) NULL, 0, UCHAR(p[0]), UCHAR(p[1]),
 		      FETCH1U(pc));
 	    break;
 
 	case I_CATCH:
-	    u = pc + FETCH2S(pc, u) - f->p_ctrl->prog;
-	    if (ec_push()) {
+	    if (!ec_push()) {
+		p = pc;
+		p += FETCH2S(pc, u);
+		u = f->lock;
+		v = sp;
+		i_interpret(pc);
+		pc = f->pc;
+		ec_pop();
+	    } else {
 		/* error */
-		pc = f->p_ctrl->prog + u;
-		f->lock = u2;
-		i_pop(oldsp - sp);
+		cframe = f;
+		f->pc = pc = p;
+		f->lock = u;
+		i_pop(v - sp);
 		CHECKSP();
 		p = errormesg();
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
-	    } else {
-		u2 = f->lock;
-		oldsp = sp;
-		i_interpret(pc);
-		ec_pop();
-		/* sp is back at oldsp */
-		CHECKSP();
-		(--sp)->type = T_NUMBER;
-		sp->u.number = 0;
 	    }
 	    break;
 
 	case I_LOCK:
 	    f->lock++;
 	    i_interpret(pc);
+	    pc = f->pc;
 	    f->lock--;
 	    break;
 
 	case I_RETURN:
 	    return;
-
-	case I_LINE:
-	    f->line = f->firstline + FETCH1U(pc);
-	    break;
-
-	case I_LINE2:
-	    f->line = FETCH2U(pc, u);
-	    break;
 	}
 
 	if (instr & I_POP_BIT) {
-	    /* pop the result of the last operation */
+	    /* pop the result of the last operation (never an lvalue) */
 	    i_del_value(sp++);
 	}
     }
@@ -1201,12 +1313,6 @@ int nargs;
 	return FALSE;
     }
 
-    /* check argument types, if needed */
-    if (f->class & C_TYPECHECKED) {
-	i_typecheck(func, "function", d_get_prog(ctrl) + f->offset, nargs,
-		    FALSE);
-    }
-
     /* call the function */
     i_funcall(obj, 0, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
 
@@ -1214,26 +1320,137 @@ int nargs;
 }
 
 /*
- * NAME:	dump_trace()
+ * NAME:	interpret->line()
+ * DESCRIPTION:	return the line number the program counter of the specified
+ *		frame is at
+ */
+static unsigned short i_line(f)
+register frame *f;
+{
+    register char *pc, *numbers;
+    register int instr;
+    register short offset;
+    register unsigned short line, u, sz;
+
+    line = 0;
+    pc = f->p_ctrl->prog + f->func->offset;
+    pc += PROTO_SIZE(pc) + 1;
+    FETCH2U(pc, u);
+    numbers = pc + u;
+
+    while (pc < f->pc) {
+	instr = FETCH1U(pc);
+
+	offset = instr >> I_LINE_SHIFT;
+	if (offset <= 2) {
+	    /* simple offset */
+	    line += offset;
+	} else {
+	    offset = FETCH1U(numbers);
+	    if (offset >= 128) {
+		/* one byte offset */
+		line += offset - 128 - 64;
+	    } else {
+		/* two byte offset */
+		line += ((offset << 8) | FETCH1U(numbers)) - 16384;
+	    }
+	}
+
+	switch (instr & I_INSTR_MASK) {
+	case I_PUSH_ZERO:
+	case I_PUSH_ONE:
+	case I_INDEX:
+	case I_INDEX_LVALUE:
+	case I_CHECK_INT:
+	case I_FETCH:
+	case I_STORE:
+	case I_LOCK:
+	case I_RETURN:
+	    break;
+
+	case I_PUSH_INT1:
+	case I_PUSH_STRING:
+	case I_PUSH_LOCAL:
+	case I_PUSH_LOCAL_LVALUE:
+	    pc++;
+	    break;
+
+	case I_PUSH_INT2:
+	case I_PUSH_NEAR_STRING:
+	case I_PUSH_GLOBAL:
+	case I_PUSH_GLOBAL_LVALUE:
+	case I_AGGREGATE:
+	case I_MAP_AGGREGATE:
+	case I_JUMP:
+	case I_JUMP_ZERO:
+	case I_JUMP_NONZERO:
+	case I_CATCH:
+	    pc += 2;
+	    break;
+
+	case I_PUSH_FAR_STRING:
+	case I_CALL_DFUNC:
+	case I_CALL_FUNC:
+	    pc += 3;
+	    break;
+
+	case I_PUSH_INT4:
+	case I_CALL_LFUNC:
+	    pc += 4;
+	    break;
+
+	case I_SWITCH_INT:
+	    FETCH2U(pc, u);
+	    sz = FETCH1U(pc);
+	    pc += 2 + (u - 1) * (sz + 2);
+	    break;
+
+	case I_SWITCH_RANGE:
+	    FETCH2U(pc, u);
+	    sz = FETCH1U(pc);
+	    pc += 2 + (u - 1) * (2 * sz + 2);
+	    break;
+
+	case I_SWITCH_STR:
+	    FETCH2U(pc, u);
+	    pc += 2;
+	    if (FETCH1U(pc) == 0) {
+		pc += 2;
+		--u;
+	    }
+	    pc += (u - 1) * 5;
+	    break;
+
+	case I_CALL_KFUNC:
+	    if (PROTO_CLASS(kftab[FETCH1U(pc)].proto) & C_VARARGS) {
+		pc++;
+	    }
+	    break;
+	}
+    }
+
+    return line;
+}
+
+/*
+ * NAME:	interpret->dump_trace()
  * DESCRIPTION:	dump the function call trace on stderr
  */
 void i_dump_trace(fp)
 register FILE *fp;
 {
     register frame *f;
+    register object *prog;
+    register int len;
+    char *p;
 
     for (f = iframe; f <= cframe; f++) {
-	register object *prog;
-
 	prog = f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj;
-	fprintf(fp, "%4u %-17s /%s", f->line,
+	fprintf(fp, "%4u %-17s /%s", i_line(f),
 		d_get_strconst(f->p_ctrl, f->func->inherit,
 			       f->func->index)->text,
 		prog->chain.name);
 	if (f->obj->ctrl != f->p_ctrl) {
-	    register int len;
-	    char *p;
-
 	    /*
 	     * Program and object are not the same; the object name must
 	     * be printed as well.
