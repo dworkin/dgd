@@ -1,0 +1,22 @@
+NAME
+	read_file - read a file
+
+SYNOPSIS
+	string read_file(string file)
+	string read_file(string file, int start)
+	string read_file(string file, int start, int size)
+
+
+DESCRIPTION
+	Read a file.  In the first form, the whole file is read from the
+	beginning.  In the second form, the file is read from the point start,
+	a byte offset from the beginning of the file if positive, or from the
+	end of the file if negative.  In the third form, the file is read from
+	the point start, and at most size characters are read.
+	If the file could not be read, 0 is returned.
+
+ERRORS
+	If the returned string would be too large, an error will result.
+
+SEE ALSO
+	kfun/editor, kfun/write_file

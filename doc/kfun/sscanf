@@ -1,0 +1,28 @@
+NAME
+	sscanf - simple string parser
+
+SYNOPSIS
+	int sscanf(string str, string fmt, ...)
+
+
+DESCRIPTION
+	Parse the string str, using the format string fmt.  The following
+	character sequences have a special meaning in the format string:
+
+	    %s	match a substring
+	    %*s	match a substring, without assignment
+	    %d	match a number
+	    %*d	match a number, without assignment
+	    %%	match single %
+
+	Other characters must be matched exactly.  Matched substrings and
+	numbers are assigned to the successive lvalue arguments following the
+	format string.  The number of matched substrings and numbers is
+	returned.
+
+ERRORS
+	An error is caused if the format string is malformed, or if too few
+	lvalue arguments were given.
+
+SEE ALSO
+	kfun/explode, kfun/implode

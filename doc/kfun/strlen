@@ -1,0 +1,12 @@
+NAME
+	strlen - get length of a string
+
+SYNOPSIS
+	int strlen(string str)
+
+
+DESCRIPTION
+	Return the length of string str.
+
+SEE ALSO
+	kfun/map_sizeof, kfun/sizeof

@@ -1,0 +1,9 @@
+NAME
+	shutdown - shutdown the system
+
+SYNOPSIS
+	void shutdown()
+
+
+DESCRIPTION
+	Shut down the system immediately.  shutdown() never returns.

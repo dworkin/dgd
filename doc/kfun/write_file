@@ -1,0 +1,17 @@
+NAME
+	write_file - write to a file
+
+SYNOPSIS
+	int write_file(string file, string str)
+	int write_file(string file, string str, int start)
+
+
+DESCRIPTION
+	Write a string to a file.  In the first form, the string is appended
+	to the file, if it exists; otherwise the file is created.  In the
+	second form, the file is written to from the point start, a byte offset
+	from the beginning if positive, or end of the file if negative.  1 is
+	returned if the file could be written to, or 0 otherwise.
+
+SEE ALSO
+	kfun/editor, kfun/read_file

@@ -1,0 +1,12 @@
+NAME
+	sizeof - get size of an array
+
+SYNOPSIS
+	int sizeof(mixed *arr)
+
+
+DESCRIPTION
+	Return the number of elements in array arr.
+
+SEE ALSO
+	kfun/map_sizeof, kfun/strlen

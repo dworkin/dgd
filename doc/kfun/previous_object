@@ -1,0 +1,15 @@
+NAME
+	previous_object - return the previous object
+
+SYNOPSIS
+	object previous_object()
+	object previous_object(int n)
+
+
+DESCRIPTION
+	Return the object n-1 (default: 1) steps back in the call_other chain.
+	If the object is destructed, or if the number of steps is larger than
+	the number of call_others involved, zero is returned.
+
+SEE ALSO
+	kfun/call_other, kfun/this_object

@@ -1,0 +1,22 @@
+NAME
+	call_out - call function with delay
+
+SYNOPSIS
+	void call_out(string function, int delay, ...)
+
+
+DESCRIPTION
+	Call a function in the current object with a delay.  The function to
+	be called must not be private.  The delay is specified in seconds.
+	The minimum delay is 1 second; if the given delay is less, it is
+	changed into 1 second.
+
+ERRORS
+	If the total number of active delayed calls in the system is equal to
+	the constant MAX_CALL_OUTS, defined in the include file <limits.h>,
+	attempting to add another one will result in an error.
+	If MAX_CALL_OUTS is set to 0, no delayed call will be added, and no
+	error be caused.
+
+SEE ALSO
+	kfun/remove_call_out
