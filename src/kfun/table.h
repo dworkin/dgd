@@ -4,7 +4,7 @@ typedef struct {
     char *proto;		/* prototype */
 } kfunc;
 
-kfunc kftab[];			/* kfun table */
+extern kfunc kftab[];		/* kfun table */
 
 extern void kf_init	P((void));
 extern int  kf_func	P((char*));
