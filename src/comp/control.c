@@ -667,6 +667,7 @@ int priv;
 		f->sp->u.objcnt = ocount = obj->count;
 		call_driver_object(f, "recompile", 1);
 		i_del_value(f->sp++);
+		obj = OBJR(obj->index);
 		if (obj->count != ocount) {
 		    return FALSE;	/* recompile this object */
 		}

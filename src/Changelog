@@ -1580,4 +1580,8 @@ DGD 1.3
  - Call_touch() didn't work very well in atomic code.
  - Moved the O_PENDIO flag into the user struct as CF_OUTPUT.
  - O_LWOBJ is now a proper object flag.
- - Destructing the driver object in atomic code could lead to trouble.
+ - Made sure that destructing the driver object in atomic code does not lead
+   to trouble.
+ - Fixed a problem with driver->recompile() in multi-level atomic code.
+ - Input blocking didn't work properly as of the previous release, and input
+   blocking for binary connections never worked at all.
