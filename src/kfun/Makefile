@@ -3,7 +3,7 @@
 #
 HOST=	SUN
 DEFINES=-D$(HOST)
-DEBUG=	-g
+DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 CC=	gcc

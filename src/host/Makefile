@@ -1,9 +1,9 @@
 #
-# Makefile for host dependent object files for Unix
+# Makefile for host dependent object files for SunOS 4.x
 #
 HOST=	SUN
 DEFINES=-D$(HOST)
-DEBUG=	-g
+DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc

@@ -3,7 +3,7 @@
 #
 HOST=	SUN
 DEFINES=-D$(HOST)
-DEBUG=	-g
+DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
 LDFLAGS=
@@ -52,7 +52,7 @@ parser.o compile.o: ../lex/ppcontrol.h
 
 control.o codegeni.o codegenc.o csupport.o: ../kfun/table.h
 
-($OBJ): comp.h
+$(OBJ): comp.h
 node.o parser.o compile.o codegeni.o codegenc.o comp.o: node.h
 control.o compile.o codegeni.o codegenc.o csupport.o: control.h
 compile.o codegeni.o codegenc.o: codegen.h

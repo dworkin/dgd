@@ -3,7 +3,7 @@
 #
 HOST=	SUN
 DEFINES=-D$(HOST)
-DEBUG=	-g
+DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Ikfun $(CCFLAGS)
 LDFLAGS=
