@@ -501,7 +501,7 @@ void o_clean()
 		 up->count == 0 || --(o->u_ref) != 0)) {
 		/* upgrade variables */
 		o->cref = o->index = up->index;
-		if (o->prev != SW_UNUSED) {
+		if (o->prev != OBJ_NONE) {
 		    otable[o->prev].cref = o - otable;
 		}
 		o->update = up->update;

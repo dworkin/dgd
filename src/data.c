@@ -2575,7 +2575,7 @@ register unsigned short n;
 		    /*
 		     * first time encountered
 		     */
-		    if (a->hashed != (struct _maphash_ *) NULL) {
+		    if (val->type == T_MAPPING) {
 			map_compact(a);
 		    }
 

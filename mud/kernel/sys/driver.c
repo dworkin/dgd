@@ -556,13 +556,17 @@ static string path_include(string from, string path)
 	/*
 	 * safe include: return immediately
 	 */
-	if (objectd) {
-	    objectd->include(from, path);
-	}
 	if (path[0] == '/') {
+	    if (objectd) {
+		objectd->include(from, path);
+	    }
 	    return path;
+	} else {
+	    if (objectd) {
+		objectd->include(from, normalize_path(path, from + "/..", 0));
+	    }
+	    return from + "/../" + path;
 	}
-	return from + "/../" + path;
     } else {
 	path = normalize_path(path, from + "/..", creator(from));
     }

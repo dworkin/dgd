@@ -976,6 +976,9 @@ register array *m;
 	    FREE(m->elts);
 	    m->elts = (value *) NULL;
 	}
+	if (size != m->size) {
+	    d_change_map(m);
+	}
 	m->size = size;
     }
 
