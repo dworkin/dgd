@@ -21,23 +21,21 @@ static create()
 link(object obj, string owner)
 {
     if (previous_program() == AUTO) {
-	rlimits (-1; -1) {
-	    object link, next;
+	object link, next;
 
-	    link = links[owner];
-	    if (!link) {
-		/* first object for this owner */
-		links[owner] = obj;
-		obj->_F_prev(obj);
-		obj->_F_next(obj);
-	    } else {
-		/* add to list */
-		next = link->_Q_next();
-		link->_F_next(obj);
-		next->_F_prev(obj);
-		obj->_F_prev(link);
-		obj->_F_next(next);
-	    }
+	link = links[owner];
+	if (!link) {
+	    /* first object for this owner */
+	    links[owner] = obj;
+	    obj->_F_prev(obj);
+	    obj->_F_next(obj);
+	} else {
+	    /* add to list */
+	    next = link->_Q_next();
+	    link->_F_next(obj);
+	    next->_F_prev(obj);
+	    obj->_F_prev(link);
+	    obj->_F_next(next);
 	}
     }
 }
@@ -49,19 +47,17 @@ link(object obj, string owner)
 unlink(object obj, string owner)
 {
     if (previous_program() == AUTO) {
-	rlimits (-1; -1) {
-	    object prev, next;
+	object prev, next;
 
-	    prev = obj->_Q_prev();
-	    if (prev == obj) {
-		links[owner] = 0;	/* no more objects left */
-	    } else {
-		next = obj->_Q_next();
-		prev->_F_next(next);
-		next->_F_prev(prev);
-		if (obj == links[owner]) {
-		    links[owner] = next;	/* replace reference object */
-		}
+	prev = obj->_Q_prev();
+	if (prev == obj) {
+	    links[owner] = 0;	/* no more objects left */
+	} else {
+	    next = obj->_Q_next();
+	    prev->_F_next(next);
+	    next->_F_prev(prev);
+	    if (obj == links[owner]) {
+		links[owner] = next;	/* replace reference object */
 	    }
 	}
     }
