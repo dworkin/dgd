@@ -452,7 +452,7 @@ static void initialize()
  */
 void prepare_reboot()
 {
-    if (previous_program() == AUTO) {
+    if (KERNEL()) {
 	if (initd) {
 	    initd->prepare_reboot();
 	}
@@ -779,7 +779,7 @@ private void _interrupt(mixed *tls)
     message("Interrupt.\n");
 
 # ifdef SYS_PERSISTENT
-    call_other(this_object(), "prepare_reboot");
+    prepare_reboot();
     dump_state();
 # endif
     shutdown();
