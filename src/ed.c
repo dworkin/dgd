@@ -2,7 +2,6 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
 # include "edcmd.h"
 # include "ed.h"
@@ -106,14 +105,15 @@ char *cmd;
     e = &editors[UCHAR(obj->eduser)];
     if (ec_push()) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
+	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;
 	output("%s\n", errormesg());
 	return;
     }
     recursion = TRUE;
     if (cb_command(e->ed, cmd)) {
-	recursion = FALSE;
 	lb_inact(e->ed->edbuf->lb);
+	recursion = FALSE;
     } else {
 	recursion = FALSE;
 	ed_del(obj);

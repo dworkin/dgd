@@ -3,8 +3,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 
 static object *otab;		/* object table */
 static int otabsize;		/* size of object table */
