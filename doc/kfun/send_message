@@ -12,6 +12,8 @@ DESCRIPTION
 	be turned off or on, the value of echo being zero or non-zero,
 	respectively.  If the current object is not associated with a user,
 	nothing will happen.
+	When used by the driver object, send_message() will echo the message
+	on stderr.
 
 SEE ALSO
 	kfun/query_ip_number, kfun/this_user, kfun/users
