@@ -23,6 +23,7 @@ extern node *c_default		P((void));
 extern node *c_break		P((void));
 extern node *c_continue		P((void));
 extern short c_ftype		P((void));
+extern short c_vtype		P((int));
 extern void  c_startcompound	P((void));
 extern node *c_endcompound	P((node*));
 extern node *c_flookup		P((node*, bool));
