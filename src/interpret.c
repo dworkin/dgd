@@ -964,7 +964,6 @@ register value *newsp;
     v = sp;
     w = ilvp;
     for (f = cframe; f != NULL; f = f->prev) {
-cframe = f;
 	for (;;) {
 	    if (v == newsp) {
 		sp = v;
@@ -1000,6 +999,7 @@ cframe = f;
 	}
 	v = f->argp;
 	w = f->ilvp;
+	cframe = f;
 
 	if (f->sos) {
 	    /* stack on stack */

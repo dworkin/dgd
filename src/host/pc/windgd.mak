@@ -110,11 +110,11 @@ CLEAN :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /c
-# ADD CPP /nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I "\proj\dgd\src" /I "\proj\dgd\src\comp" /I "\proj\dgd\src\lex" /I "\proj\dgd\src\ed" /I "\proj\dgd\src\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /c
+# ADD CPP /nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /c
 # SUBTRACT CPP /Ow /YX /Yc /Yu
 CPP_PROJ=/nologo /Zp4 /MT /W3 /GX /Ox /Ot /Og /Oi /Ob2 /Gf /Gy /I\
- "\proj\dgd\src" /I "\proj\dgd\src\comp" /I "\proj\dgd\src\lex" /I\
- "\proj\dgd\src\ed" /I "\proj\dgd\src\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"\
+ ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I\
+ ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "NDEBUG" /D "_WINDOWS"\
  /D "_MBCS" /Fo"$(INTDIR)/" /c 
 CPP_OBJS=.\Release/
 CPP_SBRS=
@@ -322,11 +322,11 @@ CLEAN :
     if not exist "$(OUTDIR)/$(NULL)" mkdir "$(OUTDIR)"
 
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /Zi /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /Yu"stdafx.h" /c
-# ADD CPP /nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I "\proj\dgd\src" /I "\proj\dgd\src\comp" /I "\proj\dgd\src\lex" /I "\proj\dgd\src\ed" /I "\proj\dgd\src\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR /c
+# ADD CPP /nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I ".\..\..\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR /c
 # SUBTRACT CPP /YX /Yc /Yu
-CPP_PROJ=/nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I "\proj\dgd\src" /I\
- "\proj\dgd\src\comp" /I "\proj\dgd\src\lex" /I "\proj\dgd\src\ed" /I\
- "\proj\dgd\src\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS"\
+CPP_PROJ=/nologo /Zp4 /MTd /W3 /Gm /GX /Zi /Od /I ".\..\.." /I\
+ ".\..\..\comp" /I ".\..\..\lex" /I ".\..\..\ed" /I\
+ ".\..\..\kfun" /D "WIN32" /D "DEBUG" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS"\
  /FR"$(INTDIR)/" /Fo"$(INTDIR)/" /Fd"$(INTDIR)/" /c 
 CPP_OBJS=.\Debug/
 CPP_SBRS=.\Debug/
@@ -500,9 +500,9 @@ DEP_CPP_WINDG=\
 	".\StdAfx.h"\
 	".\MainFrame.h"\
 	".\windgd.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -544,12 +544,12 @@ DEP_RSC_WINDGD=\
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\swap.c
+SOURCE=.\..\..\swap.c
 DEP_CPP_SWAP_=\
-	"\proj\dgd\src\dgd.h"\
+	".\..\..\dgd.h"\
 	".\..\..\swap.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -582,22 +582,22 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\array.c
+SOURCE=.\..\..\array.c
 DEP_CPP_ARRAY=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -627,22 +627,22 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\call_out.c
+SOURCE=.\..\..\call_out.c
 DEP_CPP_CALL_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\call_out.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -672,22 +672,22 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comm.c
+SOURCE=.\..\..\comm.c
 DEP_CPP_COMM_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\comm.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -717,35 +717,35 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\config.c
+SOURCE=.\..\..\config.c
 DEP_CPP_CONFI=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\comm.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\path.h"\
+	".\..\..\ed.h"\
+	".\..\..\call_out.h"\
+	".\..\..\comm.h"\
 	".\..\..\version.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\lex\ppcontrol.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\parser.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\csupport.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\lex\ppcontrol.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\parser.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\csupport.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -775,23 +775,23 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\data.c
+SOURCE=.\..\..\data.c
 DEP_CPP_DATA_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
 	".\..\..\swap.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\comp\csupport.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\data.h"\
+	".\..\..\comp\csupport.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -820,27 +820,27 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\dgd.c
+SOURCE=.\..\..\dgd.c
 DEP_CPP_DGD_C=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\ed.h"\
+	".\..\..\call_out.h"\
+	".\..\..\comm.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -870,22 +870,22 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed.c
+SOURCE=.\..\..\ed.c
 DEP_CPP_ED_C12=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\ed\edcmd.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\ed\edcmd.h"\
+	".\..\..\ed.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\ed\regexp.h"\
 	".\..\..\ed\buffer.h"\
@@ -919,21 +919,21 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\error.c
+SOURCE=.\..\..\error.c
 DEP_CPP_ERROR=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\comm.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -963,12 +963,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\hash.c
+SOURCE=.\..\..\hash.c
 DEP_CPP_HASH_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\hash.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\hash.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1001,25 +1001,25 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\interpret.c
+SOURCE=.\..\..\interpret.c
 DEP_CPP_INTER=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\comp\csupport.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\comp\csupport.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1049,21 +1049,21 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\object.c
+SOURCE=.\..\..\object.c
 DEP_CPP_OBJEC=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1093,25 +1093,25 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\path.c
+SOURCE=.\..\..\path.c
 DEP_CPP_PATH_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\path.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1141,16 +1141,16 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\str.c
+SOURCE=.\..\..\str.c
 DEP_CPP_STR_C=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\hash.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\hash.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1184,11 +1184,11 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\alloc.c
+SOURCE=.\..\..\alloc.c
 DEP_CPP_ALLOC=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1221,28 +1221,28 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\codegeni.c
+SOURCE=.\..\..\comp\codegeni.c
 DEP_CPP_CODEG=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\control.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
 	".\..\..\comp\codegen.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1272,32 +1272,32 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\compile.c
+SOURCE=.\..\..\comp\compile.c
 DEP_CPP_COMPI=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\lex\ppcontrol.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\control.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\path.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\lex\ppcontrol.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
 	".\..\..\comp\optimize.h"\
 	".\..\..\comp\codegen.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1327,23 +1327,23 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\control.c
+SOURCE=.\..\..\comp\control.c
 DEP_CPP_CONTR=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\hash.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\hash.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1377,26 +1377,26 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\csupport.c
+SOURCE=.\..\..\comp\csupport.c
 DEP_CPP_CSUPP=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\comp\csupport.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\comp\csupport.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1426,25 +1426,25 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\node.c
+SOURCE=.\..\..\comp\node.c
 DEP_CPP_NODE_=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1474,25 +1474,25 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\optimize.c
+SOURCE=.\..\..\comp\optimize.c
 DEP_CPP_OPTIM=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
 	".\..\..\comp\optimize.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1522,27 +1522,27 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\comp\parser.c
+SOURCE=.\..\..\comp\parser.c
 DEP_CPP_PARSE=\
 	".\..\..\comp\comp.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\lex\ppcontrol.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\lex\ppcontrol.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -1572,12 +1572,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\buffer.c
+SOURCE=.\..\..\ed\buffer.c
 DEP_CPP_BUFFE=\
 	".\..\..\ed\ed.h"\
 	".\..\..\ed\buffer.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1611,13 +1611,13 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\cmdsub.c
+SOURCE=.\..\..\ed\cmdsub.c
 DEP_CPP_CMDSU=\
 	".\..\..\ed\ed.h"\
-	"\proj\dgd\src\ed\edcmd.h"\
+	".\..\..\ed\edcmd.h"\
 	".\..\..\ed\fileio.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1654,12 +1654,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\edcmd.c
+SOURCE=.\..\..\ed\edcmd.c
 DEP_CPP_EDCMD=\
 	".\..\..\ed\ed.h"\
-	"\proj\dgd\src\ed\edcmd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\ed\edcmd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1696,14 +1696,14 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\fileio.c
+SOURCE=.\..\..\ed\fileio.c
 DEP_CPP_FILEI=\
 	".\..\..\ed\ed.h"\
 	".\..\..\ed\buffer.h"\
-	"\proj\dgd\src\path.h"\
+	".\..\..\path.h"\
 	".\..\..\ed\fileio.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1737,12 +1737,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\line.c
+SOURCE=.\..\..\ed\line.c
 DEP_CPP_LINE_=\
 	".\..\..\ed\ed.h"\
 	".\..\..\ed\line.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1775,12 +1775,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\regexp.c
+SOURCE=.\..\..\ed\regexp.c
 DEP_CPP_REGEX=\
 	".\..\..\ed\ed.h"\
 	".\..\..\ed\regexp.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1813,12 +1813,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\ed\vars.c
+SOURCE=.\..\..\ed\vars.c
 DEP_CPP_VARS_=\
 	".\..\..\ed\ed.h"\
 	".\..\..\ed\vars.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1851,12 +1851,12 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\host\simfloat.c
+SOURCE=.\..\simfloat.c
 DEP_CPP_SIMFL=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1889,11 +1889,11 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\host\crypt.c
+SOURCE=.\..\crypt.c
 DEP_CPP_CRYPT=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -1926,38 +1926,38 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\table.c
+SOURCE=.\..\..\kfun\table.c
 DEP_CPP_TABLE=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\kfun\table.h"\
+	".\..\..\kfun\table.h"\
 	".\..\..\kfun\builtin.c"\
 	".\..\..\kfun\std.c"\
 	".\..\..\kfun\file.c"\
 	".\..\..\kfun\math.c"\
 	".\..\..\kfun\extra.c"\
 	".\..\..\kfun\debug.c"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\comp\compile.h"\
+	".\..\..\path.h"\
+	".\..\..\comm.h"\
+	".\..\..\call_out.h"\
+	".\..\..\ed.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\comp\compile.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -1988,28 +1988,28 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\debug.c
+SOURCE=.\..\..\kfun\debug.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_DEBUG=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2021,18 +2021,18 @@ DEP_CPP_DEBUG=\
 
 DEP_CPP_DEBUG=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\kfun\table.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\kfun\table.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2056,26 +2056,26 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\extra.c
+SOURCE=.\..\..\kfun\extra.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_EXTRA=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2087,16 +2087,16 @@ DEP_CPP_EXTRA=\
 
 DEP_CPP_EXTRA=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2120,28 +2120,28 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\file.c
+SOURCE=.\..\..\kfun\file.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_FILE_=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\path.h"\
+	".\..\..\ed.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2153,18 +2153,18 @@ DEP_CPP_FILE_=\
 
 DEP_CPP_FILE_=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\path.h"\
+	".\..\..\ed.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2188,26 +2188,26 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\math.c
+SOURCE=.\..\..\kfun\math.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_MATH_=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2219,16 +2219,16 @@ DEP_CPP_MATH_=\
 
 DEP_CPP_MATH_=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2252,33 +2252,33 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\std.c
+SOURCE=.\..\..\kfun\std.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_STD_C=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\path.h"\
+	".\..\..\comm.h"\
+	".\..\..\call_out.h"\
+	".\..\..\ed.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2290,23 +2290,23 @@ DEP_CPP_STD_C=\
 
 DEP_CPP_STD_C=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\call_out.h"\
-	"\proj\dgd\src\ed.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\control.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\path.h"\
+	".\..\..\comm.h"\
+	".\..\..\call_out.h"\
+	".\..\..\ed.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\control.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2330,26 +2330,26 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\kfun\builtin.c
+SOURCE=.\..\..\kfun\builtin.c
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 DEP_CPP_BUILT=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2361,16 +2361,16 @@ DEP_CPP_BUILT=\
 
 DEP_CPP_BUILT=\
 	".\..\..\kfun\kfun.h"\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
@@ -2394,26 +2394,26 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lex\token.c
+SOURCE=.\..\..\lex\token.c
 DEP_CPP_TOKEN=\
 	".\..\..\lex\lex.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\lex\macro.h"\
+	".\..\..\path.h"\
+	".\..\..\lex\macro.h"\
 	".\..\..\lex\special.h"\
 	".\..\..\lex\ppstr.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\parser.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2442,27 +2442,27 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lex\ppcontrol.c
+SOURCE=.\..\..\lex\ppcontrol.c
 DEP_CPP_PPCON=\
 	".\..\..\lex\lex.h"\
-	"\proj\dgd\src\lex\macro.h"\
+	".\..\..\lex\macro.h"\
 	".\..\..\lex\special.h"\
 	".\..\..\lex\ppstr.h"\
-	"\proj\dgd\src\lex\token.h"\
-	"\proj\dgd\src\path.h"\
-	"\proj\dgd\src\lex\ppcontrol.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\parser.h"\
+	".\..\..\lex\token.h"\
+	".\..\..\path.h"\
+	".\..\..\lex\ppcontrol.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2491,17 +2491,17 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lex\ppstr.c
+SOURCE=.\..\..\lex\ppstr.c
 DEP_CPP_PPSTR=\
 	".\..\..\lex\lex.h"\
 	".\..\..\lex\ppstr.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\parser.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -2534,24 +2534,24 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lex\special.c
+SOURCE=.\..\..\lex\special.c
 DEP_CPP_SPECI=\
 	".\..\..\lex\lex.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\lex\token.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\lex\token.h"\
 	".\..\..\lex\special.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\parser.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2580,22 +2580,22 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lex\macro.c
+SOURCE=.\..\..\lex\macro.c
 DEP_CPP_MACRO=\
 	".\..\..\lex\lex.h"\
-	"\proj\dgd\src\lex\macro.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\xfloat.h"\
-	"\proj\dgd\src\comp\node.h"\
-	"\proj\dgd\src\comp\compile.h"\
-	"\proj\dgd\src\comp\parser.h"\
+	".\..\..\lex\macro.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
+	".\..\..\str.h"\
+	".\..\..\xfloat.h"\
+	".\..\..\comp\node.h"\
+	".\..\..\comp\compile.h"\
+	".\..\..\comp\parser.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	
 
 !IF  "$(CFG)" == "windgd - Win32 Release"
@@ -2624,23 +2624,23 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=\Proj\dgd\src\lpc\lpc.c
+SOURCE=.\..\..\lpc\lpc.c
 DEP_CPP_LPC_C=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\interpret.h"\
-	"\proj\dgd\src\data.h"\
-	"\proj\dgd\src\comp\csupport.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\interpret.h"\
+	".\..\..\data.h"\
+	".\..\..\comp\csupport.h"\
 	".\..\..\lpc\list"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 
@@ -2672,9 +2672,9 @@ BuildCmds= \
 
 SOURCE=.\time.c
 DEP_CPP_TIME_=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -2703,9 +2703,9 @@ DEP_CPP_TIME_=\
 
 SOURCE=.\dosfile.c
 DEP_CPP_DOSFI=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -2734,9 +2734,9 @@ DEP_CPP_DOSFI=\
 
 SOURCE=.\local.c
 DEP_CPP_LOCAL=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
@@ -2765,18 +2765,18 @@ DEP_CPP_LOCAL=\
 
 SOURCE=.\connect.c
 DEP_CPP_CONNE=\
-	"\proj\dgd\src\dgd.h"\
-	"\proj\dgd\src\str.h"\
-	"\proj\dgd\src\array.h"\
-	"\proj\dgd\src\object.h"\
-	"\proj\dgd\src\comm.h"\
-	"\proj\dgd\src\config.h"\
-	"\proj\dgd\src\alloc.h"\
+	".\..\..\dgd.h"\
+	".\..\..\str.h"\
+	".\..\..\array.h"\
+	".\..\..\object.h"\
+	".\..\..\comm.h"\
+	".\..\..\config.h"\
+	".\..\..\alloc.h"\
 	".\..\..\host.h"\
 	{$(INCLUDE)}"\sys\Types.h"\
 	{$(INCLUDE)}"\sys\Stat.h"\
 	".\..\telnet.h"\
-	"\proj\dgd\src\hash.h"\
+	".\..\..\hash.h"\
 	".\..\..\swap.h"\
 	
 

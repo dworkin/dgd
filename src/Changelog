@@ -937,3 +937,6 @@ DGD 1.1
  - Win32 version can now be started by double-clicking the config file.
  - Fixed a nasty error context bug.
  - Fixed a rare bug in string swapping.
+ - user->close() now takes an integer argument, 1 if the connection is closed
+   from the mudlib, 0 if it's due to linkdeath.
+ - Made statedumps more efficient.

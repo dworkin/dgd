@@ -130,11 +130,12 @@ driver, mostly to translate pathnames.
 
 	A connection has just been opened for this object.
 
-    void close()
+    void close(int flag)
 
 	The connection for this object has just been closed.  close() is
 	called when the user goes linkdead, or when the user object is
-	destructed.
+	destructed.  The flag argument is 1 if the object is destructed,
+	0 otherwise.
 
     void receive_message(string message)
 

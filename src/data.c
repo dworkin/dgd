@@ -704,15 +704,17 @@ register Uint idx;
 	    (strs++)->str = (string *) NULL;
 	}
 
-	/* load strings */
-	data->sstrings = ALLOC(sstring, data->nstrings);
-	sw_readv((char *) data->sstrings, data->sectors,
-		 data->nstrings * sizeof(sstring), data->stroffset);
-	if (data->strsize > 0) {
-	    /* load strings text */
-	    data->stext = ALLOC(char, data->strsize);
-	    sw_readv(data->stext, data->sectors, data->strsize,
-		     data->stroffset + data->nstrings * sizeof(sstring));
+	if (data->sstrings == (sstring *) NULL) {
+	    /* load strings */
+	    data->sstrings = ALLOC(sstring, data->nstrings);
+	    sw_readv((char *) data->sstrings, data->sectors,
+		     data->nstrings * sizeof(sstring), data->stroffset);
+	    if (data->strsize > 0) {
+		/* load strings text */
+		data->stext = ALLOC(char, data->strsize);
+		sw_readv(data->stext, data->sectors, data->strsize,
+			 data->stroffset + data->nstrings * sizeof(sstring));
+	    }
 	}
     }
 
@@ -749,10 +751,12 @@ register Uint idx;
 	    (a++)->arr = (array *) NULL;
 	}
 
-	/* load arrays */
-	data->sarrays = ALLOC(sarray, data->narrays);
-	sw_readv((char *) data->sarrays, data->sectors,
-		 data->narrays * (Uint) sizeof(sarray), data->arroffset);
+	if (data->sarrays == (sarray *) NULL) {
+	    /* load arrays */
+	    data->sarrays = ALLOC(sarray, data->narrays);
+	    sw_readv((char *) data->sarrays, data->sectors,
+		     data->narrays * (Uint) sizeof(sarray), data->arroffset);
+	}
     }
 
     if (data->arrays[idx].arr == (array *) NULL) {
@@ -890,10 +894,13 @@ register unsigned int idx;
 		(v++)->modified = FALSE;
 	    }
 
-	    /* load svalues */
-	    data->svariables = ALLOC(svalue, data->nvariables);
-	    sw_readv((char *) data->svariables, data->sectors,
-		     data->nvariables * (Uint) sizeof(svalue), data->varoffset);
+	    if (data->svariables == (svalue *) NULL) {
+		/* load svalues */
+		data->svariables = ALLOC(svalue, data->nvariables);
+		sw_readv((char *) data->svariables, data->sectors,
+			 data->nvariables * (Uint) sizeof(svalue),
+			 data->varoffset);
+	    }
 	}
     }
 
@@ -1880,12 +1887,89 @@ register unsigned short n;
 }
 
 /*
- * NAME:	data->save_dataspace()
- * DESCRIPTION:	Save all values in a dataspace block.  Return TRUE if the
- *		necessary changes were such that the dataspace block can
- *		continue to be used.
+ * NAME:	data->free_values()
+ * DESCRIPTION:	free values in a dataspace block
  */
-static bool d_save_dataspace(data)
+static void d_free_values(data)
+register dataspace *data;
+{
+    register Uint i;
+
+    /* free variables */
+    if (data->variables != (value *) NULL) {
+	register value *v;
+
+	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
+	    i_del_value(v);
+	}
+
+	FREE(data->variables);
+	data->variables = (value *) NULL;
+    }
+
+    /* free callouts */
+    if (data->callouts != (dcallout *) NULL) {
+	register dcallout *co;
+	register value *v;
+	register int j;
+
+	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
+	    v = co->val;
+	    if (v->type != T_INVALID) {
+		j = 1 + co->nargs;
+		if (j > 4) {
+		    j = 4;
+		}
+		do {
+		    i_del_value(v++);
+		} while (--j > 0);
+	    }
+	}
+
+	FREE(data->callouts);
+	data->callouts = (dcallout *) NULL;
+    }
+
+    /* free arrays */
+    if (data->arrays != (arrref *) NULL) {
+	if (data->modified & M_ARRAY) {
+	    register arrref *a;
+
+	    /*
+	     * Modified arrays have gotten an extra reference.  Free them
+	     * now.
+	     */
+	    for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
+		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
+		    arr_del(a->arr);
+		}
+	    }
+	}
+
+	FREE(data->arrays);
+	data->arrays = (arrref *) NULL;
+    }
+
+    /* free strings */
+    if (data->strings != (strref *) NULL) {
+	register strref *s;
+
+	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
+	    if (s->str != (string *) NULL) {
+		s->str->u.primary = (strref *) NULL;
+	    }
+	}
+
+	FREE(data->strings);
+	data->strings = (strref *) NULL;
+    }
+}
+
+/*
+ * NAME:	data->save_dataspace()
+ * DESCRIPTION:	save all values in a dataspace block
+ */
+static void d_save_dataspace(data)
 register dataspace *data;
 {
     sdataspace header;
@@ -2013,11 +2097,6 @@ register dataspace *data;
 		      data->cooffset);
 	    AFREE(scallouts);
 	}
-
-	/* the data block can remain in memory */
-	data->modified = 0;
-	return TRUE;
-
     } else {
 	scallout *scallouts;
 	register Uint size;
@@ -2108,16 +2187,64 @@ register dataspace *data;
 	 * put everything into a saveable form
 	 */
 	if (header.nstrings > 0) {
-	    sstrings = ALLOCA(sstring, header.nstrings);
+	    if (header.nstrings <= data->nstrings &&
+		data->sstrings != (sstring *) NULL) {
+		sstrings = data->sstrings;
+	    } else {
+		if (data->sstrings != (sstring *) NULL) {
+		    FREE(data->sstrings);
+		}
+		sstrings = data->sstrings = ALLOC(sstring, header.nstrings);
+	    }
 	    if (header.strsize > 0) {
-		stext = ALLOCA(char, header.strsize);
+		if (header.strsize <= data->strsize &&
+		    data->stext != (char *) NULL) {
+		    stext = data->stext;
+		} else {
+		    if (data->stext != (char *) NULL) {
+			FREE(data->stext);
+		    }
+		    stext = data->stext = ALLOC(char, header.strsize);
+		}
 	    }
 	}
+	if (header.nstrings == 0 && data->sstrings != (sstring *) NULL) {
+	    FREE(data->sstrings);
+	    data->sstrings = (sstring *) NULL;
+	}
+	if (header.strsize == 0 && data->stext != (char *) NULL) {
+	    FREE(data->stext);
+	    data->stext = (char *) NULL;
+	}
 	if (header.narrays > 0) {
-	    sarrays = ALLOCA(sarray, header.narrays);
-	    if (header.eltsize > 0) {
-		selts = ALLOCA(svalue, header.eltsize);
+	    if (header.narrays <= data->narrays &&
+		data->sarrays != (sarray *) NULL) {
+		sarrays = data->sarrays;
+	    } else {
+		if (data->sarrays != (sarray *) NULL) {
+		    FREE(data->sarrays);
+		}
+		sarrays = data->sarrays = ALLOC(sarray, header.narrays);
 	    }
+	    if (header.eltsize > 0) {
+		if (header.eltsize <= data->eltsize &&
+		    data->selts != (svalue *) NULL) {
+		    selts = data->selts;
+		} else {
+		    if (data->selts != (svalue *) NULL) {
+			FREE(data->selts);
+		    }
+		    selts = data->selts = ALLOC(svalue, header.eltsize);
+		}
+	    }
+	}
+	if (header.narrays == 0 && data->sarrays != (sarray *) NULL) {
+	    FREE(data->sarrays);
+	    data->sarrays = (sarray *) NULL;
+	}
+	if (header.eltsize == 0 && data->selts != (svalue *) NULL) {
+	    FREE(data->selts);
+	    data->selts = (svalue *) NULL;
 	}
 	narr = 0;
 	nstr = 0;
@@ -2207,9 +2334,7 @@ register dataspace *data;
 		sw_writev((char *) selts, data->sectors,
 			  header.eltsize * sizeof(svalue), size);
 		size += header.eltsize * sizeof(svalue);
-		AFREE(selts);
 	    }
-	    AFREE(sarrays);
 	}
 
 	/* save strings */
@@ -2220,9 +2345,7 @@ register dataspace *data;
 	    if (header.strsize > 0) {
 		sw_writev(stext, data->sectors, header.strsize, size);
 		size += header.strsize;
-		AFREE(stext);
 	    }
-	    AFREE(sstrings);
 	}
 
 	/* save callouts */
@@ -2232,9 +2355,15 @@ register dataspace *data;
 	    AFREE(scallouts);
 	}
 
-	/* the data block must be freed */
-	return FALSE;
+	d_free_values(data);
+
+	data->narrays = header.narrays;
+	data->eltsize = header.eltsize;
+	data->nstrings = header.nstrings;
+	data->strsize = header.strsize;
     }
+
+    data->modified = 0;
 }
 
 static array **itab;	/* imported array replacement table */
@@ -2505,101 +2634,39 @@ register control *ctrl;
 }
 
 /*
- * NAME:	data->free_values()
- * DESCRIPTION:	free values in a dataspace block
- */
-static void d_free_values(data)
-register dataspace *data;
-{
-    register Uint i;
-
-    /* free variables */
-    if (data->variables != (value *) NULL) {
-	register value *v;
-
-	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
-	    i_del_value(v);
-	}
-
-	if (data->svariables != (svalue *) NULL) {
-	    FREE(data->svariables);
-	}
-	FREE(data->variables);
-    }
-
-    /* free callouts */
-    if (data->callouts != (dcallout *) NULL) {
-	register dcallout *co;
-	register value *v;
-	register int j;
-
-	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
-	    v = co->val;
-	    if (v->type != T_INVALID) {
-		j = 1 + co->nargs;
-		if (j > 4) {
-		    j = 4;
-		}
-		do {
-		    i_del_value(v++);
-		} while (--j > 0);
-	    }
-	}
-
-	FREE(data->callouts);
-    }
-
-    /* free arrays */
-    if (data->arrays != (arrref *) NULL) {
-	if (data->modified & M_ARRAY) {
-	    register arrref *a;
-
-	    /*
-	     * Modified arrays have gotten an extra reference.  Free them
-	     * now.
-	     */
-	    for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
-		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
-		    arr_del(a->arr);
-		}
-	    }
-	}
-
-	if (data->selts != (svalue *) NULL) {
-	    FREE(data->selts);
-	}
-	FREE(data->sarrays);
-	FREE(data->arrays);
-    }
-
-    /* free strings */
-    if (data->strings != (strref *) NULL) {
-	register strref *s;
-
-	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
-	    if (s->str != (string *) NULL) {
-		s->str->u.primary = (strref *) NULL;
-	    }
-	}
-
-	if (data->stext != (char *) NULL) {
-	    FREE(data->stext);
-	}
-	FREE(data->sstrings);
-	FREE(data->strings);
-    }
-}
-
-/*
  * NAME:	data->free_dataspace()
  * DESCRIPTION:	remove the dataspace block from memory
  */
 static void d_free_dataspace(data)
 register dataspace *data;
 {
+    /* free values */
+    d_free_values(data);
+
     /* delete sectors */
     if (data->sectors != (sector *) NULL) {
 	FREE(data->sectors);
+    }
+
+    /* free sarrays */
+    if (data->sarrays != (sarray *) NULL) {
+	if (data->selts != (svalue *) NULL) {
+	    FREE(data->selts);
+	}
+	FREE(data->sarrays);
+    }
+
+    /* free sstrings */
+    if (data->sstrings != (sstring *) NULL) {
+	if (data->stext != (char *) NULL) {
+	    FREE(data->stext);
+	}
+	FREE(data->sstrings);
+    }
+
+    /* free svariables */
+    if (data->svariables != (svalue *) NULL) {
+	FREE(data->svariables);
     }
 
     data->obj->data = (dataspace *) NULL;
@@ -2650,7 +2717,6 @@ int frag;
 	    d_save_dataspace(dtail);
 	    count++;
 	}
-	d_free_values(dtail);
 	d_free_dataspace(dtail);
     }
     /* divide ref counts for leftover datablocks by 2 */
@@ -2709,13 +2775,8 @@ void d_swapsync()
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = next) {
 	next = data->prev;
-	if (data->modified != 0 && !d_save_dataspace(data)) {
-	    /*
-	     * the data block is not in proper shape for another sync; get
-	     * it from the swap device, next time
-	     */
-	    d_free_values(data);
-	    d_free_dataspace(data);
+	if (data->modified != 0) {
+	    d_save_dataspace(data);
 	}
     }
 }
@@ -2737,39 +2798,6 @@ long offset;
     sw_writev((char *) ctrl->inherits, ctrl->sectors,
 	      ctrl->ninherits * (Uint) sizeof(dinherit),
 	      sizeof(scontrol) + ctrl->nsectors * (Uint) sizeof(sector));
-}
-
-/*
- * NAME:	data->patch_callout()
- * DESCRIPTION:	patch call_outs in a data block
- */
-void d_patch_callout(data, offset)
-dataspace *data;
-long offset;
-{
-    if (data->ncallouts > 0) {
-	scallout *scallouts;
-	register scallout *sco;
-	register uindex n;
-	bool modified;
-
-	modified = FALSE;
-	scallouts = ALLOCA(scallout, data->ncallouts);
-	sw_readv((char *) scallouts, data->sectors,
-		 data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
-	for (n = data->ncallouts, sco = scallouts; n > 0; --n, sco++) {
-	    if (sco->val[0].type != T_INVALID) {
-		sco->time += offset;
-		modified = TRUE;
-	    }
-	}
-	if (modified) {
-	    sw_writev((char *) scallouts, data->sectors,
-		      data->ncallouts * (Uint) sizeof(scallout),
-		      data->cooffset);
-	}
-	AFREE(scallouts);
-    }
 }
 
 /*
@@ -2800,7 +2828,6 @@ register dataspace *data;
     register uindex i;
     register sector *s;
 
-    d_free_values(data);
     if (data->sectors != (sector *) NULL) {
 	for (i = data->nsectors, s = data->sectors + i; i > 0; --i) {
 	    sw_del(*--s);

@@ -129,8 +129,9 @@ bool telnet;
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
  */
-static void comm_del(usr)
+static void comm_del(usr, force)
 register user **usr;
+bool force;
 {
     object *obj, *olduser;
 
@@ -157,7 +158,9 @@ register user **usr;
 	}
 	error((char *) NULL);
     } else {
-	if (i_call(obj, "close", TRUE, 0)) {
+	(--sp)->type = T_INT;
+	sp->u.number = force;
+	if (i_call(obj, "close", TRUE, 1)) {
 	    i_del_value(sp++);
 	}
 	if (obj == olduser) {
@@ -412,7 +415,7 @@ int *size;
 		    /*
 		     * bad connection
 		     */
-		    comm_del(usr);
+		    comm_del(usr, FALSE);
 		    d_export();	/* this cannot be in comm_del() */
 		    continue;
 		} else if ((*usr)->flags & CF_TELNET) {
@@ -685,7 +688,7 @@ object *obj;
 	 */
 	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz, FALSE);
     }
-    comm_del(usr);
+    comm_del(usr, TRUE);
 }
 
 /*
