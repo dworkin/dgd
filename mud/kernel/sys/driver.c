@@ -515,12 +515,13 @@ static string path_include(string from, string path)
 	 * special object-dependant include file
 	 */
 	path = objectd->path_special(compiled);
-    } else if (strlen(path) != 0 && path[0] != '/' && path[0] != '~' &&
-	       sscanf(path, "%*s/../") != 0) {
+    } else if (strlen(path) != 0 && path[0] != '~' &&
+	       (sscanf(path, "/include/%*s") != 0 ||
+		sscanf(path, "%*s/") == 0) && sscanf(path, "%*s/../") == 0) {
 	/*
-	 * local includes: return immediately
+	 * safe include: return immediately
 	 */
-	return from + "/../" + path;
+	return (path[0] == '/') ? path : from + "/../" + path;
     } else {
 	path = normalize_path(path, from, creator(from));
     }
