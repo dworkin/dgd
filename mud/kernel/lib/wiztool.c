@@ -783,7 +783,7 @@ static mixed *expand(string files, int exist, int full)
 	    sz = 0;
 	    dir = ::get_dir(str);
 	    if (sizeof(dir) != 1 || dir[1][0] != -2) {
-		dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ 0 }) });
+		dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ nil }) });
 	    }
 	} else if ((sz=sizeof(strs=dir[0])) == 0) {
 	    if (exist > 0 || (exist == 0 && files)) {
@@ -791,7 +791,7 @@ static mixed *expand(string files, int exist, int full)
 		all[4]++;
 		continue;
 	    }
-	    dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ 0 }) });
+	    dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ nil }) });
 	}
 
 	for (i = 0; i < sz; i++) {

@@ -1,7 +1,7 @@
 #
 # Makefile for LPC precompiler, part of DGD.
 #
-HOST=	NETBSD
+HOST=	DARWIN
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)

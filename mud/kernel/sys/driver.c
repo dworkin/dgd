@@ -992,7 +992,7 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 	}
 	depth = status()[ST_STACKDEPTH];
 	if (depth >= 0 && maxdepth > depth + 1) {
-	    return FALSE;
+	    return SYSTEM();
 	}
     }
     if (maxticks != 0) {
@@ -1001,7 +1001,7 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 	}
 	ticks = status()[ST_TICKS];
 	if (ticks >= 0 && maxticks > ticks) {
-	    return FALSE;
+	    return SYSTEM();
 	}
     }
 

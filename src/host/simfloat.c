@@ -1047,6 +1047,7 @@ void flt_fmod(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b, c;
+    unsigned short sign;
 
     f_xftof(f2, &b);
     if (b.exp == 0) {
@@ -1057,9 +1058,9 @@ xfloat *f1, *f2;
 	return;
     }
 
-    c.sign = a.sign;
-    c.high = b.high;
-    c.low = b.low;
+    sign = a.sign;
+    a.sign = b.sign = 0;
+    c = b;
     while (f_cmp(&a, &b) >= 0) {
 	c.exp = a.exp;
 	if (f_cmp(&a, &c) < 0) {
@@ -1068,6 +1069,7 @@ xfloat *f1, *f2;
 	f_sub(&a, &c);
     }
 
+    a.sign = sign;
     f_ftoxf(&a, f1);
 }
 

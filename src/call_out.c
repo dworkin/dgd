@@ -772,7 +772,7 @@ uindex *n1, *n2;
  */
 Uint co_delay(rtime, rmtime, mtime)
 register Uint rtime;
-register unsigned short rmtime;
+register unsigned int rmtime;
 unsigned short *mtime;
 {
     Uint t;

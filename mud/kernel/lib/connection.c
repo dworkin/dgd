@@ -168,7 +168,7 @@ void set_user(object obj, string str)
  * NAME:	query_user()
  * DESCRIPTION:	return the associated user object
  */
-object query_user()
+nomask object query_user()
 {
     return user;
 }

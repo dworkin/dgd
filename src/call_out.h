@@ -11,7 +11,7 @@ extern void	co_list		P((array*));
 extern void	co_call		P((frame*));
 extern void	co_info    	P((uindex*, uindex*));
 extern Uint	co_time		P((unsigned short*));
-extern Uint	co_delay	P((Uint, unsigned short, unsigned short*));
+extern Uint	co_delay	P((Uint, unsigned int, unsigned short*));
 extern void	co_swapcount	P((unsigned int));
 extern long	co_swaprate1 	P((void));
 extern long	co_swaprate5 	P((void));

@@ -1,7 +1,7 @@
 #
 # Makefile for DGD, Dworkin's Generic Driver
 #
-HOST=	NETBSD
+HOST=	DARWIN
 DEFINES=-D$(HOST) #-DDUMP_FUNCS
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)

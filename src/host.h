@@ -97,6 +97,7 @@ typedef unsigned int Uint;
 
 # define FS_BLOCK_SIZE		2048
 
+# define Uuint			unsigned __int64
 # define bool			dgd_bool
 # define exit			dgd_exit
 # define abort			dgd_abort
@@ -170,7 +171,7 @@ typedef unsigned int Uint;
 # endif /* DECALPHA */
 
 
-# ifdef NETBSD
+# if defined(DARWIN) || defined(NETBSD) || defined(FREEBSD) || defined(OPENBSD)
 
 # ifdef __alpha__
 # define STRUCT_AL		8	/* define this if align(struct) > 2 */
@@ -182,7 +183,7 @@ typedef unsigned int Uint;
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
-# endif /* NETBSD */
+# endif /* DARWIN || NETBSD || FREEBSD || OPENBSD */
 
 
 # ifdef LINUX

@@ -843,11 +843,11 @@ register frame *f;
     if (d == 0) {
 	error("Modulus by zero");
     }
-    if ((i | d) < 0) {
-	Int r;
-
-	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
-	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
+    if (d < 0) {
+	d = -d;
+    }
+    if (i < 0) {
+	PUT_INT(&f->sp[1], - (Int) (((Uint) -i) % ((Uint) d)));
     } else {
 	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
     }
@@ -876,11 +876,11 @@ register frame *f;
     if (d == 0) {
 	error("Modulus by zero");
     }
-    if ((i | d) < 0) {
-	Int r;
-
-	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
-	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
+    if (d < 0) {
+	d = -d;
+    }
+    if (i < 0) {
+	PUT_INT(&f->sp[1], - (Int) (((Uint) -i) % ((Uint) d)));
     } else {
 	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
     }

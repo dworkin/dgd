@@ -1,7 +1,7 @@
 #
 # Makefile for LPC objects
 #
-HOST=	NETBSD
+HOST=	DARWIN
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)

@@ -1,6 +1,6 @@
 To compile DGD, you will have to set HOST in src/Makefile to the proper value:
 
-NETBSD		NetBSD.  Also works for MacOS X, FreeBSD, OpenBSD and Linux.
+DARWIN		Darwin/OS X.  Also works for NetBSD, FreeBSD, OpenBSD and Linux.
 LINUX		Older versions of Linux.  Copy src/host/Makefile.sysv to
 		src/host/Makefile.
 SUNOS4		SunOS 4.x.

@@ -31,8 +31,10 @@ static void disconnect()
  */
 static void connection(object conn)
 {
-    disconnect();
-    connection = conn;
+    if (function_object("query_user", conn) == LIB_CONN) {
+	disconnect();
+	connection = conn;
+    }
 }
 
 /*

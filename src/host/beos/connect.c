@@ -577,7 +577,7 @@ static connection *conn_accept(int portfd, int port)
 	return (connection *) NULL;
     }
     n = TRUE;
-    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &n, sizeof(on));
+    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &n, sizeof(n));
 
     conn = flist;
     flist = (connection *) conn->chain.next;

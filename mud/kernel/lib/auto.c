@@ -486,11 +486,10 @@ static object new_object(mixed obj, varargs string uid)
 	/*
 	 * check if object can be created
 	 */
-	if (!owner || !obj || sscanf(str, "%*s/data/") == 0 ||
+	if (!obj || sscanf(str, "%*s/data/") == 0 ||
 	    sscanf(str, "%*s/obj/") != 0 || sscanf(str, "%*s/lib/") != 0) {
 	    /*
-	     * no owner for new object, master object not compiled, or not path
-	     * of non-persistent object
+	     * master object not compiled, or not path of non-persistent object
 	     */
 	    error("Cannot create new instance of " + str);
 	}
