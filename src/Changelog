@@ -930,3 +930,8 @@ DGD 1.1
  - Precompiler brought up to date with latest change in error handling.
  - Send IAC GA to all users with a prompt, not just the current user.
  - Swapping in an object with more than 127 inherits might result in a crash.
+ - Precompiling still didn't work for objects with more than one level of
+   inheritance.
+ - Error recovery was incomplete in case of an error in sscanf() or in
+   user->close().
+ - Win32 version can now be started by double-clicking the config file.

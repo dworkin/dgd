@@ -8,6 +8,9 @@
 # else
 #  define P(proto)	()
 #  define cvoid		char
+#  ifndef volatile
+#   define volatile	static
+#  endif
 # endif
 
 typedef char bool;

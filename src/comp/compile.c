@@ -343,7 +343,6 @@ node *label;
 	    inheriting = FALSE;
 	    return FALSE;
 	}
-	return TRUE;
     } else {
 	ncomp = ncompiled;
 
@@ -383,7 +382,6 @@ node *label;
 		inheriting = FALSE;
 		return FALSE;
 	    }
-	    return TRUE;
 	}
     }
 

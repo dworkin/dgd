@@ -151,12 +151,13 @@ char **argv;
 	    conf_dump();
 	    dump = FALSE;
 	}
-	/* rebuild swapfile */
-	sw_copy();
 
 	if (stop) {
 	    break;
 	}
+
+	/* rebuild swapfile */
+	sw_copy();
 
 	/* interrupts */
 	if (intr) {

@@ -30,6 +30,9 @@ register int ninherits;
 	inh->funcoffset = pcinh->funcoffset;
 	(inh++)->varoffset = (pcinh++)->varoffset;
     }
+    if (o_find(pcinh->name) != (object *) NULL) {
+	fatal("object precompiled twice: /%s", pcinh->name);
+    }
     inh->funcoffset = pcinh->funcoffset;
     inh->varoffset = pcinh->varoffset;
 }

@@ -325,7 +325,7 @@ int nargs;
     register int flen, slen, size;
     register char *f, *x;
     value values[MAX_LOCALS];
-    static value *val;
+    volatile value *val;
     int fl, sl, matches;
     char *s;
     xfloat flt;
@@ -562,8 +562,9 @@ no_match:
 	i_pop(nargs);
     }
     while (val > values) {
-	i_store(sp, --val);
+	i_store(sp, val - 1);
 	sp++;
+	--val;
     }
     ec_pop();
 

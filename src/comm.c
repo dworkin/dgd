@@ -149,13 +149,22 @@ register user **usr;
 
     olduser = this_user;
     this_user = obj;
-    if (i_call(obj, "close", TRUE, 0)) {
-	i_del_value(sp++);
-    }
-    if (obj == olduser) {
-	this_user = (object *) NULL;
+    if (ec_push((ec_ftn) NULL)) {
+	if (obj == olduser) {
+	    this_user = (object *) NULL;
+	} else {
+	    this_user = olduser;
+	}
+	error((char *) NULL);
     } else {
-	this_user = olduser;
+	if (i_call(obj, "close", TRUE, 0)) {
+	    i_del_value(sp++);
+	}
+	if (obj == olduser) {
+	    this_user = (object *) NULL;
+	} else {
+	    this_user = olduser;
+	}
     }
 }
 
