@@ -613,6 +613,12 @@ static remove_program(string path, int timestamp, int index)
  */
 static recompile(object obj)
 {
+    if (objectd) {
+	string name;
+
+	name = object_name(obj);
+	objectd->destruct_lib(creator(name), name);
+    }
     destruct_object(obj);
 }
 

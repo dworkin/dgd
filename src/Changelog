@@ -1129,3 +1129,13 @@ DGD 1.1
  - Fixed a stack depth miscalculation bug.
  - Increased max string length in status() to 65535.
  - Fixed a line range bug in editor global commands.
+
+DGD 1.1 patchlevel 2
+
+ - Fixed a bug/typo in object upgrading.
+ - Fixed a bug in exporting mappings.
+
+DGD 1.1 patchlevel 3
+
+ - Clear update field in all objects after a restore.
+ - Compensated for a bug in ctime() on some unices.
