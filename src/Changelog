@@ -1149,3 +1149,5 @@ DGD 1.1
  - Zero unused sector parts to make swapfiles more compressible.
  - Sped up sector allocation and removal, and fixed a bug introduced in the
    partial sector write patch.
+ - The wrong stack depth was passed on to driver->runtime_error() if the
+   the server used an internal catch.

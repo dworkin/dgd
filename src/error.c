@@ -95,7 +95,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	if (e->handler != (ec_ftn) NULL) {
 	    handler = e->handler;
 	    e->handler = (ec_ftn) ec_handler;
-	    (*handler)(cframe, f->depth);
+	    (*handler)(cframe, e->f->depth);
 	    break;
 	}
     } while (--e >= stack);
