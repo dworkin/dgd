@@ -1617,3 +1617,4 @@ DGD 1.3
    in close().
  - Perform inheritance checks only for objects compiled in
    driver->inherit_program() itself, not in functions called therefrom.
+ - On Windows, random(n) would never be > 32767.

@@ -15,5 +15,5 @@ void P_srandom(long seed)
  */
 long P_random(void)
 {
-    return (long) rand();
+    return (long) (rand() ^ (rand() << 9) ^ (rand() << 16));
 }
