@@ -5,7 +5,7 @@ HOST=	NETBSD
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
+CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc
 
 OBJ=	grammar.o dfa.o srp.o parse.o

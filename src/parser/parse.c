@@ -13,7 +13,7 @@
 typedef struct _pnode_ {
     short symbol;		/* node symbol */
     unsigned short state;	/* state reached after this symbol */
-    unsigned short len;		/* token/reduction length */
+    Uint len;			/* token/reduction length or subtree size */
     union {
 	char *text;		/* token/reduction text */
 	string *str;		/* token string */
@@ -363,6 +363,7 @@ string *source, *grammar;
 void ps_del(ps)
 register parser *ps;
 {
+    ps->data->parser = (parser *) NULL;
     str_del(ps->source);
     str_del(ps->grammar);
     if (ps->dfastr != (string *) NULL) {
@@ -536,7 +537,7 @@ bool *toobig;
 	    }
 	}
 
-	i_add_ticks(ps->frame, 3);
+	i_add_ticks(ps->frame, 6);
 	if (ps->frame->ticks < 0) {
 	    if (ps->frame->noticks) {
 		ps->frame->ticks = 0x7fffffff;
@@ -608,7 +609,7 @@ register value *v;
 
 	case PN_ARRAY:
 	    v -= pn->len;
-	    i_copy(v, d_get_elts(pn->u.arr), pn->len);
+	    i_copy(v, d_get_elts(pn->u.arr), (unsigned int) pn->len);
 	    break;
 
 	case PN_BRANCH:
@@ -639,7 +640,7 @@ pnode *next;
 {
     register Int n;
     register pnode *sub;
-    register unsigned short len, i;
+    register Uint len, i;
     register value *v;
     array *a;
     bool call;
@@ -931,8 +932,8 @@ Int maxalt;
     }
     if (!same) {
 	/* new parser */
-	if (data->parser != (parser *) NULL) {
-	    ps_del(data->parser);
+	if (ps != (parser *) NULL) {
+	    ps_del(ps);
 	}
 	ps = ps_new(f, source, parse_grammar(source));
     }
