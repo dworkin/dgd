@@ -1296,6 +1296,30 @@ register value *val;
 }
 
 /*
+ * NAME:	data->wipe_extravar()
+ * DESCRIPTION:	wipe the value of the extra variable
+ */
+void d_wipe_extravar(data)
+register dataspace *data;
+{
+    register value *var;
+
+    var = d_get_variable(data, data->nvariables - 1);
+    del_lhs(data, var);
+    i_del_value(var);
+    *var = zero_value;
+    data->flags |= DATA_VARIABLE;
+
+    if (data->parser != (struct _parser_ *) NULL) {
+	/*
+	 * get rid of the parser, too
+	 */
+	ps_del(data->parser);
+	data->parser = (struct _parser_ *) NULL;
+    }
+}
+
+/*
  * NAME:	data->assign_elt()
  * DESCRIPTION:	assign a value to an array element
  */

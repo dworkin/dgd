@@ -468,6 +468,34 @@ register frame *f;
 
 
 # ifdef FUNCDEF
+FUNCDEF("query_ip_name", kf_query_ip_name, pt_query_ip_name)
+# else
+char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+
+/*
+ * NAME:	kfun->query_ip_name()
+ * DESCRIPTION:	return the ip name of a user
+ */
+int kf_query_ip_name(f)
+register frame *f;
+{
+    register object *obj;
+
+    obj = &otable[f->sp->oindex];
+    if (obj->flags & O_USER) {
+	f->sp->type = T_STRING;
+	str_ref(f->sp->u.string = comm_ip_name(obj));
+	return 0;
+    }
+
+    f->sp->type = T_INT;
+    f->sp->u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("users", kf_users, pt_users)
 # else
 char pt_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
@@ -724,6 +752,33 @@ register frame *f;
     if (f->sp->type == T_STRING) {
 	str_del(f->sp->u.string);
     }
+    f->sp->type = T_INT;
+    f->sp->u.number = num;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram)
+# else
+char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+
+/*
+ * NAME:	kfun->send_datagram()
+ * DESCRIPTION:	send a datagram to a user
+ */
+int kf_send_datagram(f)
+register frame *f;
+{
+    object *obj;
+    int num;
+
+    obj = f->obj;
+    if (obj->count != 0 && (obj->flags & O_USER)) {
+	num = comm_udpsend(obj, f->sp->u.string);
+    }
+    str_del(f->sp->u.string);
     f->sp->type = T_INT;
     f->sp->u.number = num;
     return 0;

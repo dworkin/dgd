@@ -169,3 +169,27 @@ static void message_done(mixed *tls)
 	user->message_done();
     }
 }
+
+# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	receive_datagram()
+ * DESCRIPTION:	forward a datagram to the user
+ */
+static void receive_datagram(mixed *tls, string str)
+{
+    if (user) {
+	user->receive_datagram(str);
+    }
+}
+
+/*
+ * NAME:	datagram()
+ * DESCRIPTION:	forward a datagram to the user
+ */
+int datagram(string str)
+{
+    if (previous_object() == user) {
+	return (send_datagram(str) == strlen(str));
+    }
+}
+# endif

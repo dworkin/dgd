@@ -955,6 +955,15 @@ int fd;
 
     m_static();
 
+    /* initialize communications */
+    if (!comm_init((int) conf[USERS].u.num,
+		   (unsigned int) conf[TELNET_PORT].u.num,
+		   (unsigned int) conf[BINARY_PORT].u.num)) {
+	comm_finish();
+	m_finish();
+	return FALSE;
+    }
+
     /* initialize strings */
     str_init();
 
@@ -993,18 +1002,7 @@ int fd;
 	   conf[INCLUDE_FILE].u.str,
 	   dirs);
 
-    /* initialize communications */
-    init = comm_init((int) conf[USERS].u.num,
-		     (unsigned int) conf[TELNET_PORT].u.num,
-		     (unsigned int) conf[BINARY_PORT].u.num);
-
     m_dynamic();
-
-    if (!init) {
-	comm_finish();
-	m_finish();
-	return FALSE;
-    }
 
     /* initialize memory manager */
     m_init((size_t) conf[STATIC_CHUNK].u.num,

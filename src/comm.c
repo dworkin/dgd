@@ -35,6 +35,8 @@ typedef struct _user_ {
 # define CF_SEENCR	0x08	/* just seen a CR */
 # define CF_NOPROMPT	0x10	/* no prompt in telnet output */
 # define CF_BLOCKED	0x20	/* binary connection blocked */
+# define CF_UDP		0x40	/* receive UDP datagrams on binary connection */
+# define CF_UDPDATA	0x80	/* UDP data received */
 
 /* state */
 # define TS_DATA	0
@@ -104,7 +106,7 @@ void comm_listen()
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static void comm_new(obj, conn, telnet)
+static user *comm_new(obj, conn, telnet)
 object *obj;
 connection *conn;
 bool telnet;
@@ -114,8 +116,9 @@ bool telnet;
     register user *usr;
 
     if (obj->flags & (O_USER | O_EDITOR)) {
-	error("user object is already used for user or editor");
+	error("User object is already used for user or editor");
     }
+    d_wipe_extravar(o_dataspace(obj));
 
     usr = freeuser;
     freeuser = usr->next;
@@ -151,6 +154,8 @@ bool telnet;
 	usr->outbufsz = 0;
     }
     nusers++;
+
+    return usr;
 }
 
 /*
@@ -163,7 +168,6 @@ register user *usr;
 bool force;
 {
     object *obj, *olduser;
-    dataspace *data;
 
     obj = usr->obj;
     conn_del(usr->conn);
@@ -174,9 +178,7 @@ bool force;
     }
     if ((obj->flags & O_PENDIO) && usr->osleft != 0) {
 	/* remove old buffer */
-	data = o_dataspace(obj);
-	d_assign_var(data, d_get_variable(data, data->nvariables - 1),
-		     &zero_value);
+	d_wipe_extravar(o_dataspace(obj));
     }
     obj->flags &= ~(O_USER | O_PENDIO);
 
@@ -249,8 +251,7 @@ int prompt;
 		 * binary connection: discard old data to make room for new
 		 */
 		usr->obj->flags &= ~O_PENDIO;
-		d_assign_var(data, d_get_variable(data, data->nvariables - 1),
-			     &zero_value);
+		d_wipe_extravar(data);
 	    }
 	}
 	len = str->len;
@@ -350,8 +351,7 @@ int prompt;
 	if (len == 0) {
 	    if (usr->osleft != 0) {
 		/* get rid of output buffer */
-		d_assign_var(data, d_get_variable(data, data->nvariables - 1),
-			     &zero_value);
+		d_wipe_extravar(data);
 	    }
 	    if (usr->outbufsz == 0) {
 		/* no more pending output */
@@ -400,6 +400,26 @@ string *str;
     } else {
 	return size;
     }
+}
+
+/*
+ * NAME:	comm->udpsend()
+ * DESCRIPTION:	send a message on the UDP channel of a binary connection
+ */
+int comm_udpsend(obj, str)
+object *obj;
+string *str;
+{
+    register user *usr;
+
+    usr = &users[UCHAR(obj->etabi)];
+    if (!(usr->flags & CF_UDP)) {
+	error("Object has no UDP channel");
+    }
+    if (!(usr->flags & CF_UDPDATA)) {
+	error("No datagrams received yet");
+    }
+    return conn_udpwrite(usr->conn, str->text, str->len);
 }
 
 /*
@@ -587,12 +607,20 @@ int poll;
 	o = &otable[f->sp->oindex];
 	f->sp++;
 	endthread();
-	comm_new(o, conn, FALSE);
+	usr = comm_new(o, conn, FALSE);
 	ec_pop();
 
 	this_user = o;
 	if (i_call(f, o, "open", 4, TRUE, 0)) {
-	    i_del_value(f->sp++);
+	    if (f->sp->type != T_INT || f->sp->u.number != 0) {
+		i_del_value(f->sp);
+		if (o->flags & O_USER) {
+		    /* open UDP channel */
+		    usr->flags |= CF_UDP;
+		    conn_udp(conn);
+		}
+	    }
+	    f->sp++;
 	    endthread();
 	    comm_flush(TRUE);
 	}
@@ -825,6 +853,25 @@ int poll;
 	    /*
 	     * binary connection
 	     */
+	    if (usr->flags & CF_UDP) {
+		n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
+		if (n != 0) {
+		    /*
+		     * received datagram
+		     */
+		    usr->flags |= CF_UDPDATA;
+		    (--f->sp)->type = T_STRING;
+		    str_ref(f->sp->u.string = str_new(buffer, (long) n));
+		    this_user = usr->obj;
+		    if (i_call(f, usr->obj, "receive_datagram", 16, TRUE, 1)) {
+			i_del_value(f->sp++);
+			endthread();
+			comm_flush(TRUE);
+		    }
+		    this_user = (object *) NULL;
+		}
+	    }
+
 	    n = conn_read(usr->conn, p = buffer, BINBUF_SIZE);
 	    if (n <= 0) {
 		if (n < 0) {
@@ -867,6 +914,19 @@ object *obj;
 
     ipnum = conn_ipnum(users[UCHAR(obj->etabi)].conn);
     return str_new(ipnum, (long) strlen(ipnum));
+}
+
+/*
+ * NAME:	comm->ip_name()
+ * DESCRIPTION:	return the ip name of a user
+ */
+string *comm_ip_name(obj)
+object *obj;
+{
+    char *ipname;
+
+    ipname = conn_ipname(users[UCHAR(obj->etabi)].conn);
+    return str_new(ipname, (long) strlen(ipname));
 }
 
 /*

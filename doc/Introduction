@@ -136,9 +136,16 @@ driver, mostly to translate pathnames.
  - in the user object (returned by driver->telnet_connect() or
    driver->binary_connect()):
 
-    void open()
+    int open()
 
 	A connection has just been opened for this object.
+	For a binary connection, if the return value of this function is
+	non-zero, a UDP channel will be opened for the same object.  UDP
+	datagrams can be received from the same host and port as the TCP
+	connection is on, and after at least one datagram has been
+	received, send_datagram() can be used to send datagrams to that
+	destination.
+	For a telnet connection, the return value will be ignored.
 
     void close(int flag)
 

@@ -175,6 +175,7 @@ extern value	       *d_get_elts	P((array*));
 
 extern void		d_ref_imports	P((array*));
 extern void		d_assign_var	P((dataspace*, value*, value*));
+extern void		d_wipe_extravar	P((dataspace*));
 extern void		d_assign_elt	P((array*, value*, value*));
 extern void		d_change_map	P((array*));
 extern void		d_del_array	P((array*));

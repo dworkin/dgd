@@ -23,4 +23,5 @@ DESCRIPTION
 	of the string sent.
 
 SEE ALSO
-	kfun/query_ip_number, kfun/this_user, kfun/users
+	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,
+	kfun/this_user, kfun/users

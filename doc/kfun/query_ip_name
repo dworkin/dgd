@@ -1,0 +1,15 @@
+NAME
+	query_ip_name - get the ip name of a user
+
+SYNOPSIS
+	string query_ip_name(object user)
+
+
+DESCRIPTION
+	Return the IP name of a user, as a string, or 0 if the given object
+	is not a user object.  If the IP name could not be resolved, the
+	IP number is returned, instead.
+
+SEE ALSO
+	kfun/query_ip_number, kfun/send_datagram, kfun/send_message,
+	kfun/this_user, kfun/users

@@ -93,3 +93,19 @@ message(string str)
 	connection->message(str);
     }
 }
+
+# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	datagram()
+ * DESCRIPTION:	forward a datagram to the connection object
+ */
+datagram(string str)
+{
+    if (!str) {
+	error("Bad argument 1 for function datagram");
+    }
+    if (connection) {
+	connection->datagram(str);
+    }
+}
+# endif

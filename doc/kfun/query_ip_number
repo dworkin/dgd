@@ -10,4 +10,5 @@ DESCRIPTION
 	is not a user object.
 
 SEE ALSO
-	kfun/send_message, kfun/this_user, kfun/users
+	kfun/query_ip_name, kfun/send_datagram, kfun/send_message,
+	kfun/this_user, kfun/users

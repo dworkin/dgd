@@ -24,9 +24,14 @@ static create(int clone)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static int open()
 {
     ::open(allocate(TLS_SIZE));
+# ifdef SYS_DATAGRAMS
+    return TRUE;
+# else
+    return FALSE;
+# endif
 }
 
 /*
@@ -80,6 +85,18 @@ static receive_message(string str)
 	}
     }
 }
+
+# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	receive_datagram()
+ * DESCRIPTION:	receive a datagram
+ */
+static void receive_datagram(string str)
+{
+    ::send_datagram("received: \"" + str + "\"\n");
+    ::receive_datagram(allocate(TLS_SIZE), str);
+}
+# endif
 
 /*
  * NAME:	message()
