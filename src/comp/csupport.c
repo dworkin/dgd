@@ -834,6 +834,7 @@ int fd;
 
 		d_del_control(ctrl);
 		obj->flags |= O_COMPILED;
+		obj->ctrl = (control *) NULL;
 	    } else {
 		/*
 		 * new precompiled object
