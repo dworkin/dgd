@@ -76,7 +76,7 @@ control *ctrl;
 	/* add reference to all inherited objects */
 	o->u.ref = 0;	/* increased to 1 in following loop */
 	inh = ctrl->inherits;
-	for (i = ctrl->ninherits - 1; i > 0; --i) {
+	for (i = ctrl->ninherits; i > 0; --i) {
 	    (inh++)->obj->u.ref++;
 	}
     } else {
@@ -115,7 +115,7 @@ register object *o;
 	}
 	/* remove references to inherited objects too */
 	inh = o->ctrl->inherits;
-	for (i = o->ctrl->ninherits - 1; i > 0; --i) {
+	for (i = o->ctrl->ninherits; i > 0; --i) {
 	    /*
 	     * NOTE: this will call o_delete for this object again,
 	     * but now the u.ref field will become -1
@@ -138,13 +138,13 @@ register object *o;
 void o_del(o)
 register object *o;
 {
-    if (o->flags & O_DESTRUCTED) {
+    if (o->key.count == 0) {
 	/* objects can only be destructed once */
 	error("Destructing destructed object");
     }
-    o->flags |= O_DESTRUCTED;	/* mark it as destructed */
+    o->key.count = 0;
 
-    if (o->flags & O_MASTER) {
+    if (o->chain.name != (char *) NULL) {
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name) = o->chain.next;
     }
@@ -161,8 +161,7 @@ register objkey *key;
     register object *o;
 
     o = &otab[key->index];
-    return (o->key.count == key->count && !(o->flags & O_DESTRUCTED)) ?
-	    o : (object *) NULL;
+    return (o->key.count == key->count) ? o : (object *) NULL;
 }
 
 /*
@@ -253,11 +252,11 @@ char *name;
 	} while (*p != '\0');
 
 	o = &otab[number];
-	if (o->key.count == 0 || (o->flags & (O_DESTRUCTED | O_MASTER)) ||
+	if (o->key.count == 0 || (o->flags & O_MASTER) ||
 	    strncmp(name, o->u.master->chain.name, hash - name) != 0 ||
 	    o->u.master->chain.name[hash - name] != '\0') {
 	    /*
-	     * no entry, not a clone, destructed, or object name doesn't match
+	     * no entry, not a clone, or object name doesn't match
 	     */
 	    return (object *) NULL;
 	}
@@ -272,16 +271,19 @@ char *name;
  * NAME:	object->control()
  * DESCRIPTION:	return the control block for an object
  */
-control *o_control(o)
-register object *o;
+control *o_control(obj)
+object *obj;
 {
+    register object *o;
+
+    o = obj;
     if (!(o->flags & O_MASTER)) {
 	o = o->u.master;	/* get control block of master object */
     }
     if (o->ctrl == (control *) NULL) {
 	o->ctrl = d_load_control(o->cfirst);	/* reload */
     }
-    return o->ctrl;
+    return obj->ctrl = o->ctrl;
 }
 
 /*
@@ -328,7 +330,6 @@ void o_clean()
 	}
 
 	next = o->u.master;
-	o->key.count = 0;	/* mark object as free */
 	o->u.master = free_obj;	/* put object in free list */
 	free_obj = o;
 	nfreeobjs++;
