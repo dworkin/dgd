@@ -1,5 +1,4 @@
 # ifndef FUNCDEF
-# define INCLUDE_TIME
 # include "kfun.h"
 # include <ctype.h>
 # endif
@@ -22,8 +21,10 @@ int nargs;
 	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     char salt[3], *p;
     
-    if (nargs < 1) {
-	error("Too few arguments to crypt()");
+    if (nargs == 0) {
+	return -1;
+    } else if (nargs > 2) {
+	return 3;
     }
 
     if (nargs == 2 && sp->u.string->len >= 2) {
@@ -32,8 +33,8 @@ int nargs;
 	salt[1] = sp->u.string->text[1];
     } else {
 	/* random salt */
-	salt[0] = salts[random() % 64];
-	salt[1] = salts[random() % 64];
+	salt[0] = salts[P_random() % 64];
+	salt[1] = salts[P_random() % 64];
     }
     salt[2] = '\0';
     if (nargs == 2) {
@@ -61,7 +62,7 @@ char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1,
 int kf_ctime()
 {
     sp->type = T_STRING;
-    str_ref(sp->u.string = str_new(_ctime((time_t) sp->u.number), 24L));
+    str_ref(sp->u.string = str_new(P_ctime((long) sp->u.number), 24L));
 
     return 0;
 }
@@ -247,7 +248,7 @@ char p_random[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
  */
 int kf_random()
 {
-    sp->u.number = (sp->u.number > 0) ? random() % sp->u.number : 0;
+    sp->u.number = (sp->u.number > 0) ? P_random() % sp->u.number : 0;
     return 0;
 }
 # endif
@@ -256,14 +257,8 @@ int kf_random()
 # ifdef FUNCDEF
 FUNCDEF("sscanf", kf_sscanf, p_sscanf)
 # else
-char p_sscanf[] = { C_STATIC | C_VARARGS | C_LOCAL, T_NUMBER, 32,
-		    T_STRING, T_STRING,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE,
-		    T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE, T_LVALUE };
+char p_sscanf[] = { C_STATIC | C_VARARGS | C_LOCAL, T_NUMBER, 3,
+		    T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->sscanf()
@@ -278,19 +273,21 @@ int nargs;
     int matches;
     char *p;
     bool skip;
-    value values[32 - 2];
+    value values[MAX_LOCALS - 2];
 
     if (nargs < 2) {
-	error("Too few arguments to sscanf()");
+	return -1;
+    } else if (nargs > MAX_LOCALS) {
+	return 4;
     }
     if (sp[nargs - 1].type != T_STRING) {
 	return 1;
     }
-    p = sp[nargs - 1].u.string->text;
-    len = sp[nargs - 1].u.string->len;
     if (sp[nargs - 2].type != T_STRING) {
 	return 2;
     }
+    p = sp[nargs - 1].u.string->text;
+    len = sp[nargs - 1].u.string->len;
     f = sp[nargs - 2].u.string->text;
     flen = sp[nargs - 2].u.string->len;
 
@@ -410,7 +407,7 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    break;
+		    error("No lvalue for %%s");
 		}
 		--nargs;
 		val->type = T_STRING;
@@ -433,7 +430,7 @@ int nargs;
 	    len -= p - pct;
 	    if (!skip) {
 		if (nargs == 0) {
-		    break;
+		    error("No lvalue for %%d");
 		}
 		--nargs;
 		val->type = T_NUMBER;
@@ -471,5 +468,22 @@ no_match:
     sp->type = T_NUMBER;
     sp->u.number = matches;
     return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("parse_string", kf_parse_string, p_parse_string)
+# else
+char p_parse_string[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
+			  T_MIXED | (1 << REFSHIFT), 2, T_STRING, T_STRING };
+
+/*
+ * NAME:	kfun->parse_string()
+ * DESCRIPTION:	parse a string
+ */
+int kf_parse_string()
+{
+    error("Not yet implemented");
 }
 # endif
