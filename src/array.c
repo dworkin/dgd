@@ -305,10 +305,11 @@ void arr_clear()
  * NAME:	backup()
  * DESCRIPTION:	add an array backup to the backup chunk
  */
-static void backup(ac, a, elts, plane)
+static void backup(ac, a, elts, size, plane)
 register abchunk **ac;
 register array *a;
 value *elts;
+unsigned int size;
 dataplane *plane;
 {
     register abchunk *c;
@@ -325,7 +326,7 @@ dataplane *plane;
 
     ab = &c->ab[c->chunksz++];
     ab->arr = a;
-    ab->size = a->size;
+    ab->size = size;
     ab->original = elts;
     ab->plane = plane;
 }
@@ -345,7 +346,7 @@ register array *a;
     } else {
 	elts = (value *) NULL;
     }
-    backup(ac, a, elts, a->primary->plane);
+    backup(ac, a, elts, a->size, a->primary->plane);
     arr_ref(a);
 }
 
@@ -373,7 +374,7 @@ int merge;
 	    if (merge) {
 		if (ac != (abchunk **) NULL) {
 		    /* backup on previous plane */
-		    backup(ac, ab->arr, ab->original, ab->plane);
+		    backup(ac, ab->arr, ab->original, ab->size, ab->plane);
 		} else {
 		    if (ab->original != (value *) NULL) {
 			register value *v;

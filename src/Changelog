@@ -1419,3 +1419,4 @@ DGD 1.1
    be re-requested as long as it was still in the cache.
  - Start with fixed window size on Windows.
  - Fixed a bug in committing plane n, and then discarding plane n-1.
+ - Fixed a memory leak in committing a mapping that has been reduced in size.
