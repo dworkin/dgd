@@ -11,8 +11,8 @@ DESCRIPTION
 	arguments.
 
 ERRORS
-	An error will result if the object is a light-weight object or did not
-	yet have its creator function called.
+	An error will result if the object did not yet have its creator
+	function called.
 
 SEE ALSO
 	kfun/call_other

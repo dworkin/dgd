@@ -1713,8 +1713,8 @@ object *obj;
     /* map variables */
     v = ALLOC(value, nvar + 2);
     *v++ = lwobj->elts[0];
-    PUT_INTVAL(v, update);
-    v++;
+    *v = lwobj->elts[1];
+    (v++)->u.objcnt = update;
 
     vars = lwobj->elts + 2;
     for (n = nvar; n > 0; --n) {

@@ -2104,11 +2104,31 @@ int nargs;
 
     if (lwobj != (array *) NULL) {
 	uindex oindex;
+	xfloat flt;
+	value val;
 
 	oindex = lwobj->elts[0].oindex;
 	obj = OBJR(oindex);
-	if (obj->update != lwobj->elts[1].u.number) {
+	GET_FLT(&lwobj->elts[1], flt);
+	if (obj->update != flt.low) {
 	    d_upgrade_lwobj(lwobj, obj);
+	}
+	if (flt.high != FALSE) {
+	    /*
+	     * touch the light-weight object
+	     */
+	    flt.high = FALSE;
+	    PUT_FLTVAL(&val, flt);
+	    d_assign_elt(f->data, lwobj, &lwobj->elts[1], &val);
+	    PUSH_LWOVAL(f, lwobj);
+	    PUSH_STRVAL(f, str_new(func, len));
+	    call_driver_object(f, "touch", 2);
+	    if (VAL_TRUE(f->sp)) {
+		/* preserve through call */
+		flt.high = TRUE;
+		PUT_FLT(&lwobj->elts[1], flt);
+	    }
+	    i_del_value(f->sp++);
 	}
     } else if (!(obj->flags & O_TOUCHED)) {
 	/*

@@ -175,15 +175,23 @@ char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 int kf_call_touch(register frame *f)
 {
     object *obj;
+    xfloat flt;
+    value val, *elts;
 
     if (f->sp->type == T_LWOBJECT) {
-	error("call_touch() on non-persistent object");
+	elts = d_get_elts(f->sp->u.array);
+	GET_FLT(&elts[1], flt);
+	flt.high = TRUE;
+	PUT_FLTVAL(&val, flt);
+	d_assign_elt(f->data, f->sp->u.array, &elts[1], &val);
+	arr_del(f->sp->u.array);
+    } else {
+	obj = OBJW(f->sp->oindex);
+	if (!O_HASDATA(obj)) {
+	    error("call_touch() on uninitialized object");
+	}
+	obj->flags &= ~O_TOUCHED;
     }
-    obj = OBJW(f->sp->oindex);
-    if (!O_HASDATA(obj)) {
-	error("call_touch() on uninitialized object");
-    }
-    obj->flags &= ~O_TOUCHED;
     *f->sp = nil_value;
     return 0;
 }

@@ -2177,13 +2177,16 @@ register object *obj;
 {
     register control *ctrl;
     register array *a;
+    xfloat flt;
 
     o_lwobj(obj);
     ctrl = o_control(obj);
     a = arr_alloc(ctrl->nvariables + 2);
     a->elts = ALLOC(value, ctrl->nvariables + 2);
     PUT_OBJVAL(&a->elts[0], obj);
-    PUT_INTVAL(&a->elts[1], obj->update);
+    flt.high = FALSE;
+    flt.low = obj->update;
+    PUT_FLTVAL(&a->elts[1], flt);
     d_new_variables(ctrl, a->elts + 2);
     a->tag = tag++;
     a->odcount = odcount;

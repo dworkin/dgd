@@ -1441,15 +1441,19 @@ register unsigned int n;
 	    } else {
 		count = obj->count;
 	    }
+	    if (elts[1].type == T_INT) {
+		/* convert to new LWO type */
+		elts[1].type = T_FLOAT;
+	    }
 	    if (elts->u.objcnt == count) {
 		if (arr_put(save->amerge, v->u.array, save->narr) == save->narr)
 		{
-		    if (elts[1].u.number != obj->update) {
+		    if (elts[1].u.objcnt != obj->update) {
 			d_upgrade_lwobj(v->u.array, obj);
 			elts = v->u.array->elts;
 		    }
 		    if (save->counttab != (Uint *) NULL) {
-			elts[1].u.number = 0;
+			elts[1].u.objcnt = 0;
 		    }
 		    d_arrcount(save, v->u.array);
 		}

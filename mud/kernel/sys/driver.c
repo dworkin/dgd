@@ -555,34 +555,38 @@ static object call_object(string path)
  * NAME:	_touch()
  * DESCRIPTION:	touch an object that has been flagged with call_touch()
  */
-private mixed _touch(mixed *tls, object obj, string function)
+private int _touch(mixed *tls, object obj, string function)
 {
-    if (KERNEL()) {
-	string prog;
-
-	prog = function_object(function, obj);
-	if (prog && sscanf(prog, "/kernel/%*s") != 0 &&
-	    status()[ST_STACKDEPTH] < 0) {
-	    /* protected kernel-to-kernel calls leave the object "untouched" */
-	    return TRUE;
-	}
-    }
-
-    return (objectd) ? objectd->touch(obj, function) : FALSE;
+    return objectd->touch(obj, function);
 }
 
 /*
  * NAME:	touch()
  * DESCRIPTION:	wrapper for _touch()
  */
-static mixed touch(object obj, string function)
+static int touch(object obj, string function)
 {
     mixed *tls;
+    string prog;
 
-    if (!previous_object()) {
-	tls = allocate(tls_size);
+    if (objectd) {
+	if (!previous_object()) {
+	    tls = allocate(tls_size);
+	} else if (KERNEL()) {
+	    prog = function_object(function, obj);
+	    if (prog && sscanf(prog, "/kernel/%*s") != 0 &&
+		status()[ST_STACKDEPTH] < 0) {
+		/*
+		 * protected kernel-to-kernel calls leave the object
+		 * "untouched"
+		 */
+		return TRUE;
+	    }
+	}
+
+	return _touch(tls, obj, function);
     }
-    return _touch(tls, obj, function);
+    return FALSE;
 }
 
 /*

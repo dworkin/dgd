@@ -1553,3 +1553,4 @@ DGD 1.3
  - New config file parameter: dump_interval, the expected time between two
    statedumps.  Rebuilding the swapfile is paced to this interval.
  - New kfun: call_touch().
+ - call_touch() now also works on light-weight objects.
