@@ -1,9 +1,9 @@
 # include "comp.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "fcontrol.h"
 # include "kfun.h"
 # include "node.h"
@@ -1761,6 +1761,17 @@ register node *n;
 	    }
 	}
     }
+}
+
+
+/*
+ * NAME:	codegen->compiled()
+ * DESCRIPTION:	return FALSE to signal that the code is interpreted, and not
+ *		compiled
+ */
+bool cg_compiled()
+{
+    return FALSE;
 }
 
 /*
