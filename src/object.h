@@ -26,10 +26,10 @@ struct _object_ {
 # define O_COMPILED		0x40
 # define O_RESERVED		0x80	/* reserved for add-on packages */
 
-extern void		   o_init	P((int));
+extern void		   o_init	P((unsigned int));
 extern object		  *o_new	P((char*, object*, struct _control_*));
 extern void		   o_del	P((object*));
-extern object		  *o_object	P((uindex, Int));
+extern object		  *o_object	P((unsigned int, Int));
 extern char		  *o_name	P((object*));
 extern void		   o_rename	P((object*, char*));
 extern object		  *o_find	P((char*));

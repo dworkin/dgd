@@ -449,8 +449,8 @@ control *ctrl;
  */
 string *d_get_strconst(ctrl, inherit, idx)
 register control *ctrl;
-register char inherit;
-unsigned short idx;
+register int inherit;
+unsigned int idx;
 {
     if (UCHAR(inherit) < ctrl->ninherits - 1) {
 	/* get the proper control block */
@@ -735,7 +735,7 @@ dataspace *data;
  */
 value *d_get_variable(data, idx)
 register dataspace *data;
-register unsigned short idx;
+register unsigned int idx;
 {
     if (data->variables == (value *) NULL) {
 	register value *v;
@@ -1105,7 +1105,7 @@ int nargs;
  */
 char *d_get_call_out(data, handle, t, nargs)
 dataspace *data;
-uindex handle;
+unsigned int handle;
 Uint *t;
 int *nargs;
 {
@@ -1188,10 +1188,11 @@ int *nargs;
  * NAME:	cmp()
  * DESCRIPTION:	compare two call_outs
  */
-static int cmp(v1, v2)
-value *v1, *v2;
+static int cmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
-    return v1->u.array->elts[2].u.number - v2->u.array->elts[2].u.number;
+    return ((value *) cv1)->u.array->elts[2].u.number -
+	   ((value *) cv2)->u.array->elts[2].u.number;
 }
 
 /*

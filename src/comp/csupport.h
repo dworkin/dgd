@@ -45,6 +45,8 @@ extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 void pc_preload		P((char*, char*));
 void pc_control		P((control*, object*));
+bool pc_dump		P((int));
+void pc_restore		P((int));
 
 # define PUSH_NUMBER	(--sp)->type = T_INT, sp->u.number =
 # define push_lvalue(v)	((--sp)->type = T_LVALUE, sp->u.lval = (v))
@@ -59,6 +61,6 @@ Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
 bool poptruthval	P((void));
 void pre_catch		P((void));
-void post_catch		P((bool));
+void post_catch		P((int));
 int  switch_range	P((Int, Int*, int));
 int  switch_str		P((value*, char*, int));

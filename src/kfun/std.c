@@ -678,6 +678,7 @@ int nargs;
     } else {
 	/* no call_out was started: pop all arguments */
 	i_pop(nargs - 1);
+	handle = 0;
     }
     str_del(sp->u.string);
     sp->type = T_INT;

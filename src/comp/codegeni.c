@@ -443,8 +443,8 @@ static void jump_clear()
 }
 
 
-static void cg_expr P((node*, bool));
-static void cg_cond P((node*, bool));
+static void cg_expr P((node*, int));
+static void cg_cond P((node*, int));
 static void cg_stmt P((node*));
 
 static int nvars;		/* number of local variables */
@@ -562,6 +562,20 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->cast()
+ * DESCRIPTION:	generate code for a cast
+ */
+static void cg_cast(type)
+unsigned short type;
+{
+    code_instr(I_CAST, 0);
+    if ((type & T_REF) != 0) {
+	type = T_ARRAY;
+    }
+    code_byte(type);
+}
+
+/*
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
@@ -600,6 +614,13 @@ register node *n;
 	    code_instr(I_INDEX_LVALUE, n->l.left->line);
 	    break;
 
+	case N_CAST:
+	    if (n->l.left->mod == T_STRING) {
+		cg_lvalue(n->l.left);
+		cg_cast(T_STRING);
+		break;
+	    }
+	    /* fall through */
 	default:
 	    cg_expr(n->l.left, FALSE);
 	    break;
@@ -608,20 +629,6 @@ register node *n;
 	code_instr(I_INDEX_LVALUE, n->line);
 	break;
     }
-}
-
-/*
- * NAME:	codegen->cast()
- * DESCRIPTION:	generate code for a cast
- */
-static void cg_cast(type)
-unsigned short type;
-{
-    code_instr(I_CAST, 0);
-    if ((type & T_REF) != 0) {
-	type = T_ARRAY;
-    }
-    code_byte(type);
 }
 
 /*
@@ -661,7 +668,7 @@ int op;
  */
 static void cg_expr(n, pop)
 register node *n;
-register bool pop;
+register int pop;
 {
     register jmplist *jlist, *j2list;
     register unsigned short i;
@@ -1365,7 +1372,7 @@ register bool pop;
  */
 static void cg_cond(n, jmptrue)
 register node *n;
-register bool jmptrue;
+register int jmptrue;
 {
     register jmplist *jlist;
 
@@ -1880,7 +1887,7 @@ static int nfuncs;		/* # functions generated */
  * DESCRIPTION:	initialize the code generator
  */
 void cg_init(inherited)
-bool inherited;
+int inherited;
 {
     nfuncs = 0;
 }
@@ -1903,7 +1910,8 @@ char *cg_function(fname, n, nvar, npar, depth, size)
 string *fname;
 node *n;
 int nvar, npar;
-unsigned short depth, *size;
+unsigned int depth;
+unsigned short *size;
 {
     char *prog;
 

@@ -122,13 +122,13 @@ extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
 
 extern char	       *d_get_prog	P((control*));
-extern string	       *d_get_strconst	P((control*, char, unsigned short));
+extern string	       *d_get_strconst	P((control*, int, unsigned int));
 extern dfuncdef        *d_get_funcdefs	P((control*));
 extern dvardef	       *d_get_vardefs	P((control*));
 extern char	       *d_get_funcalls	P((control*));
 extern dsymbol	       *d_get_symbols	P((control*));
 
-extern struct _value_  *d_get_variable	P((dataspace*, unsigned short));
+extern struct _value_  *d_get_variable	P((dataspace*, unsigned int));
 extern struct _value_  *d_get_elts	P((array*));
 
 extern void		d_assign_var	P((dataspace*, struct _value_*,
@@ -138,7 +138,8 @@ extern void		d_assign_elt	P((array*, struct _value_*,
 extern void		d_change_map	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Uint, int));
-extern char	       *d_get_call_out	P((dataspace*, uindex, Uint*, int*));
+extern char	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
+					   int*));
 extern array	       *d_list_callouts	P((dataspace*, Uint));
 
 extern uindex		d_swapout	P((int));

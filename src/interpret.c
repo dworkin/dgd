@@ -224,40 +224,11 @@ object *obj;
  * DESCRIPTION:	push a string constant on the stack
  */
 void i_string(inherit, index)
-char inherit;
-unsigned short index;
+int inherit;
+unsigned int index;
 {
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = d_get_strconst(cframe->p_ctrl, inherit, index));
-}
-
-/*
- * NAME:	interpret->global()
- * DESCRIPTION:	push a global value on the stack
- */
-void i_global(inherit, index)
-register int inherit, index;
-{
-    if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
-    }
-    i_push_value(d_get_variable(cframe->data, inherit + index));
-    exec_cost -= 3;
-}
-
-/*
- * NAME:	interpret->global_lvalue()
- * DESCRIPTION:	push a global lvalue on the stack
- */
-void i_global_lvalue(inherit, index)
-register int inherit, index;
-{
-    if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
-    }
-    (--sp)->type = T_LVALUE;
-    sp->u.lval = d_get_variable(cframe->data, inherit + index);
-    exec_cost -= 3;
 }
 
 /*
@@ -265,7 +236,7 @@ register int inherit, index;
  * DESCRIPTION:	create an array on the stack
  */
 void i_aggregate(size)
-register unsigned short size;
+register unsigned int size;
 {
     register array *a;
 
@@ -285,7 +256,7 @@ register unsigned short size;
  * DESCRIPTION:	create a mapping on the stack
  */
 void i_map_aggregate(size)
-register unsigned short size;
+register unsigned int size;
 {
     register array *a;
 
@@ -348,6 +319,35 @@ register int n;
 
     arr_del(a);
     return n - 1;
+}
+
+/*
+ * NAME:	interpret->global()
+ * DESCRIPTION:	push a global value on the stack
+ */
+void i_global(inherit, index)
+register int inherit, index;
+{
+    if (inherit != 0) {
+	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
+    }
+    i_push_value(d_get_variable(cframe->data, inherit + index));
+    exec_cost -= 3;
+}
+
+/*
+ * NAME:	interpret->global_lvalue()
+ * DESCRIPTION:	push a global lvalue on the stack
+ */
+void i_global_lvalue(inherit, index)
+register int inherit, index;
+{
+    if (inherit != 0) {
+	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
+    }
+    (--sp)->type = T_LVALUE;
+    sp->u.lval = d_get_variable(cframe->data, inherit + index);
+    exec_cost -= 3;
 }
 
 /*
@@ -574,7 +574,7 @@ void i_index_lvalue()
  * DESCRIPTION:	return the name of the argument type
  */
 char *i_typename(type)
-register unsigned short type;
+register unsigned int type;
 {
     static bool flag;
     static char buf1[8 + 8 + 1], buf2[8 + 8 + 1], *name[] = TYPENAMES;
@@ -609,10 +609,16 @@ register unsigned short type;
  */
 void i_cast(val, type)
 register value *val;
-register unsigned short type;
+register unsigned int type;
 {
     char *tname;
 
+    if (val->type == T_LVALUE) {
+	val = val->u.lval;
+    } else if (val->type == T_ALVALUE) {
+	val = &ilvp[-1].u.array->elts[val->u.number];
+    }
+    /* other lvalue types will not occur */
     if (val->type != type &&
 	(val->type != T_INT || val->u.number != 0 || type == T_FLOAT)) {
 	tname = i_typename(type);
@@ -797,7 +803,7 @@ void i_unlock()
  * DESCRIPTION:	set the current lock level
  */
 void i_set_lock(l)
-unsigned short l;
+unsigned int l;
 {
     lock = l;
 }
@@ -874,7 +880,7 @@ register int n;
  * DESCRIPTION:	return a pointer to function call offset
  */
 char *i_foffset(index)
-unsigned short index;
+unsigned int index;
 {
     return &cframe->ctrl->funcalls[2L * (cframe->foffset + index)];
 }
@@ -896,7 +902,7 @@ void i_typecheck(name, ftype, proto, nargs, strict)
 char *name, *ftype;
 register char *proto;
 int nargs;
-bool strict;
+int strict;
 {
     register int i, n, atype, ptype;
     register char *args;
@@ -1533,7 +1539,6 @@ int funci;
     }
 
     /* handle arguments */
-    f->nargs = nargs;
     n = PROTO_NARGS(pc);
     if (n > 0 && (PROTO_ARGS(pc)[n - 1] & T_ELLIPSIS)) {
 	register value *v;
@@ -1569,6 +1574,7 @@ int funci;
 	    *--sp = zero_value;
 	} while (++nargs < n);
     }
+    f->nargs = nargs;
     pc += PROTO_SIZE(pc);
 
     /* check stack depth */
@@ -1865,7 +1871,7 @@ array *i_call_trace()
  * DESCRIPTION:	log an error
  */
 void i_log_error(flag)
-bool flag;
+int flag;
 {
     char *err;
 

@@ -993,7 +993,7 @@ char *proto;
  */
 void ctrl_dprogram(prog, size)
 char *prog;
-unsigned short size;
+unsigned int size;
 {
     functions[fdef].prog = prog;
     functions[fdef].progsize = size;
@@ -1006,7 +1006,7 @@ unsigned short size;
  */
 void ctrl_dvar(str, class, type)
 string *str;
-unsigned short class, type;
+unsigned int class, type;
 {
     register vfh **h;
     register dvardef *var;
@@ -1131,7 +1131,7 @@ long *call;
 char *ctrl_fcall(str, call, typechecking)
 string *str;
 long *call;
-bool typechecking;
+int typechecking;
 {
     register vfh *h;
     char *proto;

@@ -171,6 +171,18 @@ object *obj;
     ctrl->nfloats = l->nfloats;
 }
 
+
+bool pc_dump(fd)
+int fd;
+{
+    return TRUE;
+}
+
+void pc_restore(fd)
+int fd;
+{
+}
+
 /*
  * NAME:	call_kfun()
  * DESCRIPTION:	call a kernel function
@@ -280,7 +292,7 @@ void pre_catch()
  * DESCRIPTION:	clean up after a catch
  */
 void post_catch(flag)
-bool flag;
+int flag;
 {
     if (flag) {
 	i_log_error(TRUE);

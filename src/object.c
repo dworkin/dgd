@@ -7,7 +7,7 @@
 # include "data.h"
 
 static object *otab;		/* object table */
-static int otabsize;		/* size of object table */
+static uindex otabsize;		/* size of object table */
 static hashtab *htab;		/* object name hash table */
 static object *clean_obj;	/* list of objects to clean */
 static object *dest_obj;	/* destructed object list */
@@ -21,7 +21,7 @@ static Uint count;		/* object creation count */
  * DESCRIPTION:	initialize the object tables
  */
 void o_init(n)
-int n;
+unsigned int n;
 {
     otab = ALLOC(object, otabsize = n);
     htab = ht_new(OBJTABSZ, OBJHASHSZ);
@@ -125,7 +125,7 @@ register object *o;
  * DESCRIPTION:	get an object, given index and count
  */
 object *o_object(idx, count)
-uindex idx;
+unsigned int idx;
 Int count;
 {
     register object *o;
@@ -442,8 +442,7 @@ long t;
     char buffer[CHUNKSZ];
 
     /*
-     * Free object names of precompiled objects.  The restored objects and
-     * names should be identical.
+     * Free object names of precompiled objects.
      */
     for (i = nobjects, o = otab; i > 0; --i, o++) {
 	*ht_lookup(htab, o->chain.name) = o->chain.next;
