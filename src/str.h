@@ -8,8 +8,8 @@ typedef struct _string_ {
     char text[1];	/* actual characters following this struct */
 } string;
 
-# define STR_CONST	((uindex) ((UINDEX_MAX + 1L) >> 1))
-# define STR_REF	(UINDEX_MAX - STR_CONST)
+# define STR_REF	((uindex) UINDEX_MAX / 2)
+# define STR_CONST	((uindex) (UINDEX_MAX - STR_REF))
 
 extern void		str_init	P((void));
 extern string	       *str_new		P((char*, long));

@@ -1,7 +1,7 @@
 typedef struct {
     char *name;		/* long variable name */
     char *sname;	/* short variable name */
-    long val;		/* value */
+    Int val;		/* value */
 } vars;
 
 # define IGNORECASE(v)	(v[0].val)

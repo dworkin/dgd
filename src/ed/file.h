@@ -1,10 +1,10 @@
 typedef struct {
-    long lines;	/* number of lines */
-    long chars;	/* number of characters */
-    long zero;	/* number of zeroes discarded */
-    long split;	/* number of splits of too long lines */
+    Int lines;	/* number of lines */
+    Int chars;	/* number of characters */
+    Int zero;	/* number of zeroes discarded */
+    Int split;	/* number of splits of too long lines */
     bool ill;	/* incomplete last line */
 } io;
 
-extern io *io_load P((editbuf*, char*, long));
-extern io *io_save P((editbuf*, char*, long, long, bool));
+extern io *io_load P((editbuf*, char*, Int));
+extern io *io_save P((editbuf*, char*, Int, Int, bool));

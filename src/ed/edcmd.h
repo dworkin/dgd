@@ -18,25 +18,25 @@ typedef struct {
     vars *vars;			/* variables */
 
     char flags;			/* status flags */
-    long edit;			/* number of edits on file */
+    Int edit;			/* number of edits on file */
 
-    long this;			/* current line number */
-    long othis;			/* current line number after last operation */
-    long first;			/* first line number of current range */
-    long last;			/* last line number of current range */
+    Int this;			/* current line number */
+    Int othis;			/* current line number after last operation */
+    Int first;			/* first line number of current range */
+    Int last;			/* last line number of current range */
 
-    long a_addr;		/* argument address */
+    Int a_addr;			/* argument address */
     char a_buffer;		/* argument buffer */
 
-    long mark[26];		/* line numbers of marks */
+    Int mark[26];		/* line numbers of marks */
     block buf;			/* default yank buffer */
     block zbuf[26];		/* named buffers */
 
     char fname[STRINGSZ];	/* current filename */
 
     block undo;			/* undo block */
-    long uthis;			/* current line number after undo */
-    long umark[26];		/* marks after undo */
+    Int uthis;			/* current line number after undo */
+    Int umark[26];		/* marks after undo */
 
     char search[STRINGSZ];	/* pattern to search for */
     char replace[STRINGSZ];	/* string to replace with */
@@ -49,5 +49,3 @@ extern cmdbuf *cb_new     P((char*));
 extern void    cb_del     P((cmdbuf*));
 extern bool    cb_command P((cmdbuf*, char*));
 extern int     cb_edit	  P((cmdbuf*));
-
-extern void    output();

@@ -15,3 +15,4 @@ extern int		 tk_expand	P((macro*));
 extern char *yytext;
 extern int yyleng;
 extern long yynumber;
+extern xfloat yyfloat;

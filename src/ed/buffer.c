@@ -53,14 +53,14 @@ register editbuf *eb;
  */
 void eb_add(eb, ln, getline)
 register editbuf *eb;
-register long ln;
+register Int ln;
 char *(*getline) P((void));
 {
     register block b;
 
     b = bk_new(eb->lb, getline);
     if (b != (block) 0) {
-	long size;
+	Int size;
 
 	size = bk_size(eb->lb, b);
 
@@ -89,10 +89,10 @@ char *(*getline) P((void));
  */
 block eb_delete(eb, first, last)
 register editbuf *eb;
-register long first, last;
+register Int first, last;
 {
     block head, mid, tail;
-    long size;
+    Int size;
 
     size = last - first + 1;
 
@@ -124,7 +124,7 @@ register long first, last;
  */
 void eb_change(eb, first, last, b)
 register editbuf *eb;
-register long first, last;
+register Int first, last;
 register block b;
 {
     block head, tail;
@@ -155,7 +155,11 @@ register block b;
 	}
     }
     eb->buffer = b;
-    eb->lines = bk_size(eb->lb, b);
+    if (b == (block) 0) {
+	eb->lines = 0;
+    } else {
+	eb->lines = bk_size(eb->lb, b);
+    }
 }
 
 /*
@@ -164,7 +168,7 @@ register block b;
  */
 block eb_yank(eb, first, last)
 register editbuf *eb;
-register long first, last;
+register Int first, last;
 {
     block head, mid, tail;
 
@@ -187,10 +191,10 @@ register long first, last;
  */
 void eb_put(eb, ln, b)
 register editbuf *eb;
-register long ln;
+register Int ln;
 register block b;
 {
-    long l;
+    Int l;
 
     l = bk_size(eb->lb, b);
 
@@ -219,7 +223,7 @@ register block b;
  */
 void eb_range(eb, first, last, putline, reverse)
 register editbuf *eb;
-long first, last;
+Int first, last;
 void (*putline) P((char*));
 bool reverse;
 {

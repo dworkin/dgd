@@ -26,26 +26,11 @@ unsigned short maxlen;
 
 /*
  * NAME:	hashtab->del()
- * DESCRIPTION:	delete a hash table, using the supplied function to delete
- *		hash table entries
+ * DESCRIPTION:	delete a hash table
  */
-void ht_del(ht, del)
-register hashtab *ht;
-void (*del) P((hte *));
+void ht_del(ht)
+hashtab *ht;
 {
-    register hte **e, *ent, *oldent;
-    register unsigned short i;
-
-    i = ht->size;
-    e = ht->table + i;
-    do {
-	ent = *--e;
-	while (ent != (hte *) NULL) {
-	    oldent = ent;
-	    ent = ent->next;
-	    (*del)(oldent);
-	}
-    } while (--i > 0);
     FREE(ht);
 }
 
