@@ -197,6 +197,9 @@ compiling(string path)
 	}
 	compiled = path;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(path);
+	}
     }
 }
 
@@ -519,6 +522,9 @@ static object inherit_program(string from, string path)
 	saved = compiled;
 	compiled = path;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(path);
+	}
 	obj = compile_object(path);
 	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
 	if (objectd) {
