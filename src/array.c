@@ -971,6 +971,10 @@ register array *m;
 		size += 2;
 	    }
 	}
+	if (size == 0) {
+	    FREE(m->elts);
+	    m->elts = (value *) NULL;
+	}
 	m->size = size;
     }
 
