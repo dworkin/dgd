@@ -698,8 +698,8 @@ long size;
 		n++;
 	    }
 	    if (r->func != (string *) NULL) {
-		memcpy(p, r->func->text, r->func->len + 1);
-		p += r->func->len + 1;
+		memcpy(p, r->func->text, r->func->len);
+		p += r->func->len;
 	    }
 	    *q++ = n;
 	    *q = p - q - 1;
@@ -957,7 +957,7 @@ string *gram;
 			goto err;
 		    }
 		    str_ref(rrl->func = str_new(buffer, (long) buflen));
-		    len += buflen + 1;
+		    len += buflen;
 
 		    token = gramtok(gram, &glen, buffer, &buflen);
 		    /* fall through */

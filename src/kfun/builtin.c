@@ -2140,13 +2140,10 @@ int nargs;
 		v += 2;
 	    }
 
-	    size -= len;
-	    while (len > 0) {
-		*--e1 = *--e2;
-		i_ref_value(e1);
-		--len;
-	    }
+	    e1 -= len;
+	    i_copy(e1, e2 - len, len);
 	    arr_del(v->u.array);
+	    size -= len;
 	}
 
 	f->sp = v - 1;

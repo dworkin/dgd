@@ -158,6 +158,7 @@ struct _frame_ {
 extern void		i_init		P((char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
+extern void		i_copy		P((value*, value*, unsigned int));
 extern void		i_grow_stack	P((frame*, int));
 extern void		i_push_value	P((frame*, value*));
 extern void		i_pop		P((frame*, int));

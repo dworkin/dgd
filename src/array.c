@@ -291,21 +291,6 @@ void arr_clear()
 }
 
 /*
- * NAME:	copy()
- * DESCRIPTION:	copy a number of values
- */
-static void copy(v1, v2, n)
-register value *v1, *v2;
-register unsigned short n;
-{
-    while (n > 0) {
-	i_ref_value(v2);
-	*v1++ = *v2++;
-	--n;
-    }
-}
-
-/*
  * NAME:	copytmp()
  * DESCRIPTION:	make temporary copies of values
  */
@@ -345,7 +330,7 @@ static void arr_copy(v, a)
 value *v;
 array *a;
 {
-    copy(v, d_get_elts(a), a->size);
+    i_copy(v, d_get_elts(a), a->size);
     a->odcount = odcount;
 }
 
@@ -709,8 +694,8 @@ array *a1, *a2;
     }
 
     a3 = arr_new(data, (long) size + n);
-    copy(a3->elts, a1->elts, size);
-    copy(a3->elts + size, v3, n);
+    i_copy(a3->elts, a1->elts, size);
+    i_copy(a3->elts + size, v3, n);
     AFREE(v3);
 
     d_ref_imports(a3);
@@ -800,8 +785,8 @@ array *a1, *a2;
     }
 
     a3 = arr_new(data, (long) num + n);
-    copy(a3->elts, v3, num);
-    copy(a3->elts + num, v2, n);
+    i_copy(a3->elts, v3, num);
+    i_copy(a3->elts + num, v2, n);
     AFREE(v3);
     AFREE(v2);
     AFREE(v1);
@@ -853,7 +838,7 @@ register long l1, l2;
     }
 
     range = arr_new(data, l2 - l1 + 1);
-    copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
+    i_copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
     d_ref_imports(range);
     return range;
 }
@@ -1229,11 +1214,11 @@ array *m1, *m2;
 	c = cmp(v1, v2);
 	if (c < 0) {
 	    /* the smaller element is in m1 */
-	    copy(v3, v1, 2);
+	    i_copy(v3, v1, 2);
 	    v1 += 2; v3 += 2; n1 -= 2;
 	} else {
 	    /* the smaller - or overriding - element is in m2 */
-	    copy(v3, v2, 2);
+	    i_copy(v3, v2, 2);
 	    v2 += 2; v3 += 2; n2 -= 2;
 	    if (c == 0) {
 		/* equal elements? */
@@ -1252,7 +1237,7 @@ array *m1, *m2;
 			if (n == 0 || !T_INDEXED(v->type) ||
 			    v->u.array->tag != v1->u.array->tag) {
 			    /* not in m2 */
-			    copy(v3, v1, 2);
+			    i_copy(v3, v1, 2);
 			    v3 += 2;
 			    break;
 			}
@@ -1269,10 +1254,10 @@ array *m1, *m2;
     }
 
     /* copy tail part of m1 */
-    copy(v3, v1, n1);
+    i_copy(v3, v1, n1);
     v3 += n1;
     /* copy tail part of m2 */
-    copy(v3, v2, n2);
+    i_copy(v3, v2, n2);
     v3 += n2;
 
     m3->size = v3 - m3->elts;
@@ -1321,7 +1306,7 @@ array *m1, *a2;
 	c = cmp(v1, v2);
 	if (c < 0) {
 	    /* the smaller element is in m1 */
-	    copy(v3, v1, 2);
+	    i_copy(v3, v1, 2);
 	    v1 += 2; v3 += 2; n1 -= 2;
 	} else if (c > 0) {
 	    /* the smaller element is in a2 */
@@ -1343,7 +1328,7 @@ array *m1, *a2;
 		    if (n == 0 || !T_INDEXED(v->type) ||
 			v->u.array->tag != v1->u.array->tag) {
 			/* not in a2 */
-			copy(v3, v1, 2);
+			i_copy(v3, v1, 2);
 			v3 += 2;
 			break;
 		    }
@@ -1360,7 +1345,7 @@ array *m1, *a2;
     AFREE(v2 - (size - n2));
 
     /* copy tail part of m1 */
-    copy(v3, v1, n1);
+    i_copy(v3, v1, n1);
     v3 += n1;
 
     m3->size = v3 - m3->elts;
@@ -1432,14 +1417,14 @@ array *m1, *a2;
 		    }
 		    if (v->u.array == v1->u.array) {
 			/* also in a2 */
-			copy(v3, v1, 2);
+			i_copy(v3, v1, 2);
 			v3 += 2; v1 += 2; n1 -= 2;
 			break;
 		    }
 		}
 	    } else {
 		/* equal */
-		copy(v3, v1, 2);
+		i_copy(v3, v1, 2);
 		v3 += 2; v1 += 2; n1 -= 2;
 	    }
 	    v2++; --n2;
@@ -1720,7 +1705,7 @@ register value *v1, *v2;
 
     /* copy subrange */
     range = map_new(data, (long) (to -= from));
-    copy(range->elts, m->elts + from, to);
+    i_copy(range->elts, m->elts + from, to);
 
     d_ref_imports(range);
     return range;

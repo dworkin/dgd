@@ -87,6 +87,21 @@ register value *v;
 }
 
 /*
+ * NAME:	interpret->copy()
+ * DESCRIPTION:	copy values from one place to another
+ */
+void i_copy(v, w, len)
+register value *v, *w;
+register unsigned int len;
+{
+    while (len != 0) {
+	i_ref_value(w);
+	*v++ = *w++;
+	--len;
+    }
+}
+
+/*
  * NAME:	interpret->grow_stack()
  * DESCRIPTION:	check if there is room on the stack for new values; if not,
  *		make space

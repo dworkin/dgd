@@ -514,7 +514,11 @@ typedef struct _pnode_ {
     unsigned short symbol;	/* node symbol */
     unsigned short state;	/* state reached after this symbol */
     unsigned short len;		/* token/reduction length */
-    char *text;			/* token/reduction text */
+    union {
+	char *text;		/* token/reduction text */
+	string *str;		/* token string */
+	array *arr;		/* rule array */
+    } u;
     struct _pnode_ *next;	/* next in linked list */
     struct _pnode_ *list;	/* list of nodes for reduction */
 } pnode;
@@ -552,7 +556,7 @@ pnode *next, *list;
     pn->symbol = symb;
     pn->state = state;
     pn->len = len;
-    pn->text = text;
+    pn->u.text = text;
     pn->next = next;
     pn->list = list;
 
@@ -637,7 +641,7 @@ snode *slist;
 
 /*
  * NAME:	snode->add()
- * DESCRIPTION:	add an existing node to the list with new values
+ * DESCRIPTION:	add an existing snode to a list
  */
 static snode *sn_add(list, sn, pn, slist)
 register snlist *list;
@@ -689,7 +693,106 @@ snlist *list;
 }
 
 
+# define STRCHUNKSZ	128
+
+typedef struct _strchunk_ {
+    string *str[STRCHUNKSZ];	/* strings */
+    int chunksz;		/* size of chunk */
+    struct _strchunk_ *next;	/* next in linked list */
+} strchunk;
+
+/*
+ * NAME:	strchunk->add()
+ * DESCRIPTION:	add a string to the current chunk
+ */
+static void sc_add(c, str)
+register strchunk **c;
+string *str;
+{
+    if (*c == (strchunk *) NULL || (*c)->chunksz == STRCHUNKSZ) {
+	strchunk *x;
+
+	x = ALLOC(strchunk, 1);
+	x->next = *c;
+	*c = x;
+	x->chunksz = 0;
+    }
+
+    str_ref((*c)->str[(*c)->chunksz++] = str);
+}
+
+/*
+ * NAME:	strchunk->clean()
+ * DESCRIPTION:	remove string chunks, and strings, from memory
+ */
+static void sc_clean(c)
+register strchunk *c;
+{
+    register strchunk *f;
+    register int i;
+
+    while (c != (strchunk *) NULL) {
+	for (i = c->chunksz; --i >= 0; ) {
+	    str_del(c->str[i]);
+	}
+	f = c;
+	c = c->next;
+	FREE(f);
+    }
+}
+
+
+# define ARRCHUNKSZ	128
+
+typedef struct _arrchunk_ {
+    array *arr[ARRCHUNKSZ];	/* arrays */
+    int chunksz;		/* size of chunk */
+    struct _arrchunk_ *next;	/* next in linked list */
+} arrchunk;
+
+/*
+ * NAME:	arrchunk->add()
+ * DESCRIPTION:	add an array to the current chunk
+ */
+static void ac_add(c, arr)
+arrchunk **c;
+array *arr;
+{
+    if (*c == (arrchunk *) NULL || (*c)->chunksz == ARRCHUNKSZ) {
+	arrchunk *x;
+
+	x = ALLOC(arrchunk, 1);
+	x->next = *c;
+	*c = x;
+	x->chunksz = 0;
+    }
+
+    arr_ref((*c)->arr[(*c)->chunksz++] = arr);
+}
+
+/*
+ * NAME:	arrchunk->clean()
+ * DESCRIPTION:	remove array chunks, and arrays, from memory
+ */
+static void ac_clean(c)
+register arrchunk *c;
+{
+    register arrchunk *f;
+    register int i;
+
+    while (c != (arrchunk *) NULL) {
+	for (i = c->chunksz; --i >= 0; ) {
+	    arr_del(c->arr[i]);
+	}
+	f = c;
+	c = c->next;
+	FREE(f);
+    }
+}
+
+
 typedef struct _parser_ {
+    frame *frame;		/* interpreter stack frame */
     string *source;		/* grammar source */
     string *grammar;		/* preprocessed grammar */
     dfa *fa;			/* (partial) DFA */
@@ -700,25 +803,39 @@ typedef struct _parser_ {
     unsigned short nstates;	/* state table size */
     snode **states;		/* state table */
     snlist list;		/* snode list */
+
+    strchunk *strc;		/* string chunk */
+    arrchunk *arrc;		/* array chunk */
+
+    short traverse;		/* traverse code (ntoken + nprod) */
+    Int maxalt;			/* max number of branches */
 } parser;
 
 /*
  * NAME:	parser->new()
  * DESCRIPTION:	create a new parser instance
  */
-static parser *ps_new(source, grammar)
+static parser *ps_new(f, source, grammar)
+frame *f;
 string *source, *grammar;
 {
     register parser *ps;
 
     ps = ALLOC(parser, 1);
+    ps->frame = f;
     str_ref(ps->source = source);
     str_ref(ps->grammar = grammar);
     ps->fa = dfa_new(grammar->text);
     ps->lr = srp_new(grammar->text);
+
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
     ps->list.first = ps->list.free = (snode *) NULL;
+
+    ps->strc = (strchunk *) NULL;
+    ps->arrc = (arrchunk *) NULL;
+
+    ps->traverse = ps->lr->ntoken + ps->lr->nprod;
 
     return ps;
 }
@@ -769,19 +886,19 @@ register char *p;
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
 	    register pnode **ppn;
 
-	    if (sn->pn->text != (char *) NULL) {
+	    if (sn->pn->u.text != (char *) NULL) {
 		/* first alternative */
-		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->text,
+		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->u.text,
 				      sn->pn->len, (pnode *) NULL,
 				      sn->pn->list);
-		sn->pn->text = (char *) NULL;
+		sn->pn->u.text = (char *) NULL;
 		sn->pn->len = 1;
 	    }
 
 	    /* add alternative */
 	    sn->pn->len++;
 	    for (ppn = &sn->pn->list;
-		 *ppn != (pnode *) NULL && (*ppn)->text < red;
+		 *ppn != (pnode *) NULL && (*ppn)->u.text < red;
 		 ppn = &(*ppn)->next) ;
 
 	    pn->next = *ppn;
@@ -912,19 +1029,182 @@ string *str;
     return (pnode *) NULL;
 }
 
-static void ps_flat()
+
+# define PN_STRING	0	/* string node */
+# define PN_ARRAY	1	/* array node */
+# define PN_RULE	2	/* rule node */
+# define PN_BRANCH	3	/* branch node */
+# define PN_BLOCKED	4	/* blocked branch */
+
+/*
+ * NAME:	parser->flatten()
+ * DESCRIPTION:	traverse parse tree, collecting values in a flat array
+ */
+static void ps_flatten(pn, traverse, v)
+register pnode *pn;
+register short traverse;
+register value *v;
 {
+    register pnode *next;
+
+    next = pn->next;
+    do {
+	switch (pn->symbol - traverse) {
+	case PN_STRING:
+	    (--v)->type = T_STRING;
+	    str_ref(v->u.string = pn->u.str);
+	    break;
+
+	case PN_ARRAY:
+	    v -= pn->len;
+	    i_copy(v, d_get_elts(pn->u.arr), pn->len);
+	    break;
+
+	case PN_BRANCH:
+	    (--v)->type = T_ARRAY;
+	    arr_ref(v->u.array = pn->u.arr);
+	    break;
+
+	case PN_RULE:
+	    if (pn->list != (pnode *) NULL) {
+		pn = pn->list;
+		continue;
+	    }
+	    break;
+	}
+
+	pn = pn->next;
+    } while (pn != next);
 }
 
 /*
  * NAME:	parser->traverse()
- * DESCRIPTION:	traverse the parse tree, turning it into an array
+ * DESCRIPTION:	traverse the parse tree, returning the size
  */
-static array *ps_traverse(pn, flat)
+static Int ps_traverse(ps, pn)
+register parser *ps;
 register pnode *pn;
-bool flat;
 {
+    register Int n;
+    register pnode *sub;
+    register unsigned short len, i;
+    register value *v;
+    array *a;
 
+    if (pn->symbol < ps->traverse) {
+	/*
+	 * node hasn't been traversed before
+	 */
+	if (pn->symbol < ps->lr->ntoken) {
+	    /*
+	     * token
+	     */
+	    pn->u.str = str_new(pn->u.text, (long) pn->len);
+	    sc_add(&ps->strc, pn->u.str);
+
+	    pn->symbol = ps->traverse + PN_STRING;
+	    return pn->len = 1;
+	} else if (pn->u.text != (char *) NULL) {
+	    /*
+	     * production rule
+	     */
+	    pn->symbol = ps->traverse + PN_BLOCKED;
+	    len = 0;
+	    for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next) {
+		n = ps_traverse(ps, sub);
+		if (n < 0) {
+		    return n;	/* blocked branch */
+		}
+		len += n;
+	    }
+	    pn->symbol = ps->traverse + PN_RULE;
+
+	    n = UCHAR(pn->u.text[0]) << 1;
+	    if (n == UCHAR(pn->u.text[1])) {
+		/* no ?func */
+		pn->len = len;
+	    } else {
+		/*
+		 * call LPC function to process subtree
+		 */
+		a = arr_new(ps->frame->data, (long) len);
+		ps_flatten(pn, ps->traverse, a->elts + len);
+		(--ps->frame->sp)->type = T_ARRAY;
+		arr_ref(ps->frame->sp->u.array = a);
+
+		if (!i_call(ps->frame, ps->frame->obj, pn->u.text + 2 + n,
+			    UCHAR(pn->u.text[1]) - n, TRUE, 1)) {
+		    return -1;	/* no function: block branch */
+		}
+		if (ps->frame->sp->type != T_ARRAY) {
+		    /*
+		     * wrong return type: block branch
+		     */
+		    i_del_value(ps->frame->sp++);
+		    return -1;
+		}
+
+		pn->symbol = ps->traverse + PN_ARRAY;
+		ac_add(&ps->arrc, pn->u.arr = (ps->frame->sp++)->u.array);
+		pn->len = pn->u.arr->size;
+	    }
+	    return pn->len;
+	} else {
+	    /*
+	     * branches
+	     */
+	    pn->symbol = ps->traverse + PN_BLOCKED;
+
+	    /* pass 1: count branches */
+	    n = 0;
+	    for (sub = pn->list; sub != (pnode *) NULL; sub = sub->next) {
+		if (ps_traverse(ps, sub) >= 0) {
+		    n++;
+		} else {
+		    sub->symbol = ps->traverse + PN_BLOCKED;
+		}
+	    }
+	    if (n == 0) {
+		return -1;	/* no unblocked branches */
+	    }
+	    if (n > ps->maxalt) {
+		n = ps->maxalt;
+	    }
+
+	    /* pass 2: create branch arrays */
+	    if (n != 1) {
+		ac_add(&ps->arrc, a = arr_new(ps->frame->data, (long) n));
+		v = a->elts;
+		memset(v, '\0', n * sizeof(value));
+	    }
+	    for (sub = pn->list, i = 0; i < n; sub = sub->next) {
+		if (sub->symbol != ps->traverse + PN_BLOCKED) {
+		    if (n == 1) {
+			/* sole branch */
+			*pn = *sub;
+			return pn->len;
+		    } else {
+			arr_ref(v->u.array = arr_new(ps->frame->data,
+				(long) pn->len));
+			v->type = T_ARRAY;
+			ps_flatten(pn, ps->traverse, (v++)->u.array->elts);
+			i++;
+		    }
+		}
+	    }
+	    pn->symbol = ps->traverse + PN_BRANCH;
+	    pn->u.arr = a;
+	    return pn->len = n;
+	}
+    } else {
+	/*
+	 * node has been traversed before
+	 */
+	if (pn->symbol == ps->traverse + PN_BLOCKED) {
+	    return -1;
+	}
+	return pn->len;
+    }
 }
 
 /*
@@ -991,15 +1271,21 @@ dataspace *data;
  * NAME:	parse_string()
  * DESCRIPTION:	parse a string
  */
-array *ps_parse_string(data, source, str)
-register dataspace *data;
+array *ps_parse_string(f, source, str, maxalt)
+frame *f;
 string *source;
 string *str;
+Int maxalt;
 {
+    register dataspace *data;
     register parser *ps;
     string *grammar;
     bool same;
+    pnode *pn;
+    array *a;
+    Int len;
 
+    data = f->data;
     if (data->parser != (parser *) NULL) {
 	ps = data->parser;
 	same = (str_cmp(ps->source, source) == 0);
@@ -1028,10 +1314,26 @@ string *str;
 	if (data->parser != (parser *) NULL) {
 	    ps_free(data);
 	}
-	ps = data->parser = ps_new(source, grammar);
+	ps = data->parser = ps_new(f, source, grammar);
     }
 
-    ps_parse(ps, str);
+    ps->maxalt = maxalt;
+    pn = ps_parse(ps, str);
+    sn_clear(&ps->list);
 
-    return (array *) NULL;
+    a = (array *) NULL;
+    if (pn != (pnode *) NULL) {
+	len = ps_traverse(ps, pn);
+	if (len >= 0) {
+	    a = arr_new(data, (long) len);
+	    ps_flatten(pn, ps->traverse, a->elts + len);
+	}
+
+	sc_clean(ps->strc);
+	ac_clean(ps->arrc);
+    }
+
+    pn_clear(ps->pnc);
+
+    return a;
 }

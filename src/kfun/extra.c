@@ -580,29 +580,47 @@ no_match:
 # ifdef FUNCDEF
 FUNCDEF("parse_string", kf_parse_string, pt_parse_string)
 # else
-char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
-			   2, T_STRING, T_STRING };
+char pt_parse_string[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
+			   T_MIXED | (1 << REFSHIFT), 3,
+			   T_STRING, T_STRING, T_INT };
 
 /*
  * NAME:	kfun->parse_string()
  * DESCRIPTION:	parse a string
  */
-int kf_parse_string(f)
+int kf_parse_string(f, nargs)
 register frame *f;
+int nargs;
 {
+    Int maxalt;
     array *a;
+
+    if (nargs < 2) {
+	return -1;
+    }
+    if (nargs > 2) {
+	maxalt = (f->sp++)->u.number + 1;
+	if (maxalt <= 0) {
+	    return 3;
+	}
+    } else {
+	maxalt = 1;	/* default: just one valid parsing */
+    }
 
     if (f->obj->flags & (O_USER | O_EDITOR)) {
 	error("parse_string() from editor or user object");
     }
-    a = ps_parse_string(f->data, f->sp[1].u.string, f->sp->u.string);
+
+    a = ps_parse_string(f, f->sp[1].u.string, f->sp->u.string, maxalt);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
 
     if (a != (array *) NULL) {
+	/* return parse tree */
 	f->sp->type = T_ARRAY;
 	arr_ref(f->sp->u.array = a);
     } else {
+	/* parsing failed */
 	f->sp->type = T_INT;
 	f->sp->u.number = 0;
     }
