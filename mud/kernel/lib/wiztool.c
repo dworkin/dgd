@@ -878,31 +878,48 @@ static cmd_compile(object user, string cmd, string str)
  */
 static cmd_clone(object user, string cmd, string str)
 {
-    mixed *files;
-    object obj;
+    int i;
+    mixed obj, *files;
 
     if (!str) {
-	message("Usage: " + cmd + " <obj>\n");
+	message("Usage: " + cmd + " <obj> | $<ident>\n");
 	return;
     }
 
-    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
-    if (files[4] != 1) {
-	message("Usage: " + cmd + " <obj>\n");
-	return;
-    }
-
-    if (sizeof(files[0]) == 1) {
-	str = files[0][0];
-	if (!find_object(str)) {
-	    message("No object: " + str + "\n");
-	} else if (sscanf(str, "%*s/obj/") == 0) {
-	    message("Not clonable: " + str + "\n");
-	} else {
-	    obj = clone_object(str);
-	    if (obj) {
-		store(user, obj);
+    if (sscanf(str, "$%s", str) != 0) {
+	if (sscanf(str, "%d%s", i, str) != 0) {
+	    if (i < 0 || i >= hmax || str != "") {
+		message("Usage: " + cmd + " <obj> | $<ident>\n");
+		return;
 	    }
+
+	    obj = history[i];
+	    if (typeof(obj) != T_OBJECT) {
+		message("Not an object.\n");
+		return;
+	    }
+	} else {
+	    obj = ident(str);
+	    if (!obj) {
+		message("Unknown $ident.\n");
+		return;
+	    }
+	}
+
+	str = (typeof(obj) == T_OBJECT) ? object_name(obj) : obj;
+    }
+
+    str = driver->normalize_path(str, directory, owner);
+    if (!find_object(str)) {
+	message("No object: " + str + "\n");
+    } else if (sscanf(str, "%*s/obj/") == 0) {
+	message("Not clonable: " + str + "\n");
+    } else {
+	str = catch(obj = clone_object(str));
+	if (str) {
+	    message(str + ".\n");
+	} else if (obj) {
+	    store(user, obj);
 	}
     }
 }
