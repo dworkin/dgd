@@ -21,5 +21,5 @@ extern void		str_clear	P((void));
 
 extern int		str_cmp		P((string*, string*));
 extern string	       *str_add		P((string*, string*));
-extern unsigned short	str_index	P((string*, Int));
-extern string	       *str_range	P((string*, Int, Int));
+extern unsigned short	str_index	P((string*, long));
+extern string	       *str_range	P((string*, long, long));
