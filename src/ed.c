@@ -6,13 +6,14 @@
 # include "edcmd.h"
 # include "ed.h"
 
-typedef union _editor_ {
+typedef struct _editor_ {
     cmdbuf *ed;			/* editor instance */
-    union _editor_ *next;	/* next in free list */
+    struct _editor_ *next;	/* next in free list */
 } editor;
 
 static editor *editors;		/* editor table */
 static editor *flist;		/* free list */
+static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
 static bool recursion;		/* recursion in editor command */
 
@@ -28,13 +29,30 @@ int num;
     register editor *e, *f;
 
     tmpedfile = tmp;
-    editors = ALLOC(editor, num);
+    editors = ALLOC(editor, neditors = num);
     f = (editor *) NULL;
     for (i = num, e = editors + i; i > 0; --i) {
-	(--e)->next = f;
+	(--e)->ed = (cmdbuf *) NULL;
+	e->next = f;
 	f = e;
     }
     flist = f;
+}
+
+/*
+ * NAME:	ed->finish()
+ * DESCRIPTION:	terminate all editor sessions
+ */
+void ed_finish()
+{
+    register int i;
+    register editor *e;
+
+    for (i = neditors, e = editors; i > 0; --i, e++) {
+	if (e->ed != (cmdbuf *) NULL) {
+	    cb_del(e->ed);
+	}
+    }
 }
 
 /*
@@ -83,6 +101,7 @@ object *obj;
     check_recursion();
     e = &editors[UCHAR(obj->eduser)];
     cb_del(e->ed);
+    e->ed = (cmdbuf *) NULL;
     e->next = flist;
     flist = e;
     obj->flags &= ~O_EDITOR;
@@ -99,7 +118,7 @@ char *cmd;
     register editor *e;
 
     check_recursion();
-    if (strchr(cmd, '\n') != (char *) NULL) {
+    if (strchr(cmd, LF) != (char *) NULL) {
 	error("Newline in editor command");
     }
     e = &editors[UCHAR(obj->eduser)];
@@ -107,7 +126,7 @@ char *cmd;
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;
-	output("%s\n", errormesg());
+	output("%s\012", errormesg());	/* LF */
 	return;
     }
     recursion = TRUE;
