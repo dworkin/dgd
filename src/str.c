@@ -10,7 +10,7 @@
 
 typedef struct _strh_ {
     hte chain;			/* hash table chain */
-    char *text;			/* string entry */
+    string *str;		/* string entry */
     long index;			/* building index */
     struct _strh_ **link;	/* next in list */
 } strh;
@@ -47,7 +47,7 @@ register long len;
 {
     register string *s;
 
-    if (len > USHRT_MAX - sizeof(string)) {
+    if (len > (unsigned long) USHRT_MAX - sizeof(string)) {
 	error("String too long");
     }
 
@@ -80,48 +80,58 @@ register string *s;
  * NAME:	string->put()
  * DESCRIPTION:	put a string in the string merge table
  */
-long str_put(text, n)
-register char *text;
+long str_put(str, n)
+register string *str;
 register long n;
 {
     register strh **h;
 
-    h = (strh **) ht_lookup(ht, text);
-    if (*h == (strh *) NULL) {
-	/*
-	 * Not in the hash table. Make a new entry.
-	 */
-	if (strhchunksz == STR_CHUNK) {
-	    register strhchunk *l;
+    h = (strh **) ht_lookup(ht, str->text);
+    for (;;) {
+	if (*h == (strh *) NULL || strcmp(str->text, (*h)->str->text) != 0) {
+	    register strh *s;
+	    hte *next;
 
-	    l = ALLOC(strhchunk, 1);
-	    l->next = shlist;
-	    shlist = l;
-	    strhchunksz = 0;
-	}
-	*h = &shlist->sh[strhchunksz++];
-	(*h)->chain.next = (hte *) NULL;
-	(*h)->chain.name = text;
-	(*h)->text = text;
-	(*h)->index = n;
-	(*h)->link = link;
-	link = h;
-
-	return n;
-    } else {
-	register long i;
-
-	i = (*h)->index;
-	if (n < i) {
 	    /*
-	     * It was in the hash table, but give it a new index anyway.
+	     * Not in the hash table. Make a new entry.
 	     */
-	    (*h)->index = n;
-	    if (n >= 0) {
-		return n;
+	    if (strhchunksz == STR_CHUNK) {
+		register strhchunk *l;
+
+		l = ALLOC(strhchunk, 1);
+		l->next = shlist;
+		shlist = l;
+		strhchunksz = 0;
 	    }
+	    next = (hte *) *h;
+	    s = *h = &shlist->sh[strhchunksz++];
+	    s->chain.next = next;
+	    s->chain.name = str->text;
+	    s->str = str;
+	    s->index = n;
+	    s->link = link;
+	    link = h;
+
+	    return n;
+	} else if (str_cmp(str, (*h)->str) == 0) {
+	    register long i;
+
+	    /*
+	     * found it
+	     */
+	    i = (*h)->index;
+	    if (n < i) {
+		/*
+		 * It was in the hash table, but give it a new index anyway.
+		 */
+		(*h)->index = n;
+		if (n >= 0) {
+		    return n;
+		}
+	    }
+	    return i;	/* return the previous index */
 	}
-	return i;	/* return the previous index */
+	h = (strh **) &(*h)->chain.next;
     }
 }
 
