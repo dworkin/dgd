@@ -9,20 +9,22 @@
 # include <status.h>
 # include <trace.h>
 
-object rsrcd;		/* resource manager object */
-object accessd;		/* access manager object */
-object userd;		/* user manager object */
-object initd;		/* init manager object */
-object objectd;		/* object manager object */
-object errord;		/* error manager object */
+static object rsrcd;		/* resource manager object */
+static object accessd;		/* access manager object */
+static object userd;		/* user manager object */
+static object initd;		/* init manager object */
+static object objectd;		/* object manager object */
+static object errord;		/* error manager object */
 # ifdef SYS_NETWORKING
-object telnet;		/* telnet port object */
-object binary;		/* binary port object */
+static object port_master;	/* port master object */
+static object telnet;		/* telnet port object */
+static object binary;		/* binary port object */
+int port;			/* emergency binary port number */
 # endif
-string file;		/* last file used in editor write operation */
-int size;		/* size of file used in editor write operation */
-string compiled;	/* object currently being compiled */
-string *inherited;	/* list of inherited objects */
+static string file;		/* last file used in editor write operation */
+static int size;		/* size of file used in ed write operation */
+static string compiled;		/* object currently being compiled */
+static string *inherited;	/* list of inherited objects */
 
 /*
  * NAME:	creator()
@@ -340,9 +342,6 @@ static initialize()
 {
     string *users;
     int i;
-# ifdef SYS_NETWORKING
-    object port;
-# endif
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
@@ -373,7 +372,7 @@ static initialize()
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
 # ifdef SYS_NETWORKING
-    call_other(port = load(PORT_OBJECT), "???");
+    call_other(port_master = load(PORT_OBJECT), "???");
 # endif
     if (file_size(USR + "/System/initd.c") != 0) {
 	catch {
@@ -400,8 +399,8 @@ static initialize()
 	call(initd, "???");
 # ifdef SYS_NETWORKING
     } else {
-	telnet = clone_object(port);
-	binary = clone_object(port);
+	telnet = clone_object(port_master);
+	binary = clone_object(port_master);
 	rsrcd->rsrc_incr("System", "objects", nil, 2, 1);
 
 	telnet->listen("telnet", TELNET_PORT);
@@ -438,7 +437,9 @@ static restored()
     rsrcd->reboot();
     userd->reboot();
     if (initd) {
-	call(initd, "reboot");
+	catch {
+	    call(initd, "reboot");
+	}
     }
 # ifdef SYS_NETWORKING
     if (telnet) {
@@ -446,6 +447,13 @@ static restored()
     }
     if (binary) {
 	binary->listen("tcp", BINARY_PORT);
+    }
+    if (restore_object("/kernel/data/binary_port")) {
+	object emergency;
+
+	emergency = clone_object(port_master);
+	rsrcd->rsrc_incr("System", "objects", nil, 1, 1);
+	emergency->listen("tcp", port);
     }
 # endif
 
@@ -554,7 +562,6 @@ static object inherit_program(string from, string path, int priv)
     obj = find_object(path);
     if (!obj) {
 	int *rsrc;
-	string saved;
 
 	creator = creator(path);
 	rsrc = rsrcd->rsrc_get(creator, "objects");
@@ -562,7 +569,6 @@ static object inherit_program(string from, string path, int priv)
 	    error("Too many objects");
 	}
 
-	saved = compiled;
 	compiled = path;
 	inherited = ({ });
 	if (objectd) {
@@ -573,8 +579,11 @@ static object inherit_program(string from, string path, int priv)
 	if (objectd) {
 	    objectd->compile_lib(creator, path, inherited...);
 	}
-	compiled = saved;
+	compiled = from;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(from);
+	}
     } else if (inherited) {
 	inherited += ({ path });
     }
