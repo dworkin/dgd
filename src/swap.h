@@ -1,9 +1,9 @@
 extern void	sw_init		P((char*, unsigned int, unsigned int,
 				   unsigned int));
 extern void	sw_finish	P((void));
-extern sector	sw_new		P((void));
-extern void	sw_wipe		P((unsigned int));
-extern void	sw_del		P((unsigned int));
+extern void	sw_newv		P((sector*, unsigned int));
+extern void	sw_wipev	P((sector*, unsigned int));
+extern void	sw_delv		P((sector*, unsigned int));
 extern void	sw_readv	P((char*, sector*, Uint, Uint));
 extern void	sw_writev	P((char*, sector*, Uint, Uint));
 extern void	sw_dreadv	P((char*, sector*, Uint, Uint));

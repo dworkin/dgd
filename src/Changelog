@@ -1147,3 +1147,5 @@ DGD 1.1
  - Improved Mac edit menu.
  - Avoid swapping in needlessly while writing partial sectors.
  - Zero unused sector parts to make swapfiles more compressible.
+ - Sped up sector allocation and removal, and fixed a bug introduced in the
+   partial sector write patch.

@@ -1729,46 +1729,26 @@ static sector d_swapalloc(size, nsectors, sectors)
 Uint size;
 register sector nsectors, **sectors;
 {
-    register sector n, i, *s;
+    register sector n, *s;
 
     n = sw_mapsize(size);
     if (nsectors == 0) {
 	/* no sectors yet */
-	*sectors = s = ALLOC(sector, nsectors = n);
-	while (n != 0) {
-	    *s++ = sw_new();
-	    --n;
-	}
+	sw_newv(*sectors = ALLOC(sector, n), n);
     } else if (nsectors < n) {
 	/* not enough sectors */
 	s = ALLOC(sector, n);
 	memcpy(s, *sectors, nsectors * sizeof(sector));
 	FREE(*sectors);
-	*sectors = s;
-	for (i = nsectors; i != 0; --i) {
-	    sw_wipe(*s++);
-	}
-	n -= nsectors;
-	nsectors += n;
-	while (n != 0) {
-	    *s++ = sw_new();
-	    --n;
-	}
+	sw_wipev(*sectors = s, nsectors);
+	sw_newv(s + nsectors, n - nsectors);
     } else if (nsectors > n) {
 	/* too many sectors */
-	s = *sectors + nsectors;
-	n = nsectors - n;
-	nsectors -= n;
-	while (n != 0) {
-	    sw_del(*--s);
-	    --n;
-	}
-	for (i = nsectors; i != 0; --i) {
-	    sw_wipe(*--s);
-	}
+	sw_wipev(s = *sectors, nsectors);
+	sw_delv(s + n, nsectors - n);
     }
 
-    return nsectors;
+    return n;
 }
 
 /*
@@ -3481,11 +3461,8 @@ void d_del_control(ctrl)
 register control *ctrl;
 {
     if (ctrl->sectors != (sector *) NULL) {
-	register sector i, *s;
-
-	for (i = ctrl->nsectors, s = ctrl->sectors + i; i > 0; --i) {
-	    sw_del(*--s);
-	}
+	sw_wipev(ctrl->sectors, ctrl->nsectors);
+	sw_delv(ctrl->sectors, ctrl->nsectors);
     }
     if (ctrl->obj != (object *) NULL) {
 	ctrl->obj->cfirst = SW_UNUSED;
@@ -3517,11 +3494,8 @@ register dataspace *data;
 	}
     }
     if (data->sectors != (sector *) NULL) {
-	register sector i, *s;
-
-	for (i = data->nsectors, s = data->sectors + i; i > 0; --i) {
-	    sw_del(*--s);
-	}
+	sw_wipev(data->sectors, data->nsectors);
+	sw_delv(data->sectors, data->nsectors);
     }
     data->obj->dfirst = SW_UNUSED;
     d_free_dataspace(data);

@@ -146,48 +146,59 @@ register sector sec, n;
 }
 
 /*
- * NAME:	swap->new()
- * DESCRIPTION:	return a newly created (empty) swap sector
+ * NAME:	swap->newv()
+ * DESCRIPTION:	initialize a new vector of sectors
  */
-sector sw_new()
+void sw_newv(vec, size)
+register sector *vec;
+register unsigned int size;
 {
-    register sector sec;
-
-    if (mfree != SW_UNUSED) {
+    while (mfree != SW_UNUSED) {
 	/* reuse a previously deleted sector */
-	sec = mfree;
+	if (size == 0) {
+	    return;
+	}
+	map[*vec++ = mfree] = SW_UNUSED;
 	mfree = map[mfree];
 	--nfree;
-    } else {
+	--size;
+    }
+
+    while (size > 0) {
 	/* allocate a new sector */
 	if (nsectors == swapsize) {
 	    fatal("out of sectors");
 	}
-	sec = nsectors++;
-	BCLR(bmap, sec);
+	BCLR(bmap, nsectors);
+	map[*vec++ = nsectors++] = SW_UNUSED;
+	--size;
     }
-    map[sec] = SW_UNUSED;	/* nothing in it yet */
-
-    return sec;
 }
 
 /*
- * NAME:	swap->wipe()
- * DESCRIPTION:	wipe a swap sector
+ * NAME:	swap->wipev()
+ * DESCRIPTION:	wipe a vector of sectors
  */
-void sw_wipe(sec)
-unsigned int sec;
+void sw_wipev(vec, size)
+register sector *vec;
+register unsigned int size;
 {
-    register sector i;
+    register sector sec, i;
     register header *h;
 
-    i = map[sec];
-    if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
-	i = h->swap;
-	h->swap = SW_UNUSED;
-    }
-    if (i != SW_UNUSED) {
-	if (dsectors > 0) {
+    while (dsectors > 0) {
+	if (size == 0) {
+	    return;
+	}
+	sec = *vec++;
+	i = map[sec];
+	if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	    i = h->swap;
+	    h->swap = SW_UNUSED;
+	} else {
+	    map[sec] = SW_UNUSED;
+	}
+	if (i != SW_UNUSED) {
 	    if (BTST(bmap, sec)) {
 		/*
 		 * free sector in dump file
@@ -200,84 +211,86 @@ unsigned int sec;
 		 */
 		copy(i, (sector) 1);
 	    }
+	}
+	--size;
+    }
+
+    vec += size;
+    while (size > 0) {
+	sec = *--vec;
+	i = map[sec];
+	if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	    i = h->swap;
+	    h->swap = SW_UNUSED;
 	} else {
+	    map[sec] = SW_UNUSED;
+	}
+	if (i != SW_UNUSED) {
 	    /*
 	     * free sector in swap file
 	     */
 	    smap[i] = sfree;
 	    sfree = i;
 	}
+	--size;
     }
 }
 
 /*
- * NAME:	swap->del()
- * DESCRIPTION:	delete a swap sector
+ * NAME:	swap->delv()
+ * DESCRIPTION:	delete a vector of swap sectors
  */
-void sw_del(sec)
-unsigned int sec;
+void sw_delv(vec, size)
+register sector *vec;
+register unsigned int size;
 {
-    register sector i;
+    register sector sec, i;
     register header *h;
-
-    i = map[sec];
-    if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
-	i = h->swap;
-	/*
-	 * remove the swap slot from the first-last list
-	 */
-	if (h != first) {
-	    h->prev->next = h->next;
-	} else {
-	    first = h->next;
-	    if (first != (header *) NULL) {
-		first->prev = (header *) NULL;
-	    }
-	}
-	if (h != last) {
-	    h->next->prev = h->prev;
-	} else {
-	    last = h->prev;
-	    if (last != (header *) NULL) {
-		last->next = (header *) NULL;
-	    }
-	}
-	/*
-	 * put the cache slot in the free cache slot list
-	 */
-	h->sec = SW_UNUSED;
-	h->next = lfree;
-	lfree = h;
-    }
-    if (i != SW_UNUSED) {
-	if (dsectors > 0) {
-	    if (BTST(bmap, sec)) {
-		/*
-		 * free sector in dump file
-		 */
-		BCLR(bmap, sec);
-		--dsectors;
-	    } else {
-		/*
-		 * replace by sector from dump file
-		 */
-		copy(i, (sector) 1);
-	    }
-	} else {
-	    /*
-	     * free sector in swap file
-	     */
-	    smap[i] = sfree;
-	    sfree = i;
-	}
-    }
 
     /*
-     * put sec in free sector list
+     * note: sectors must have been wiped before being deleted!
      */
-    map[sec] = mfree;
-    mfree = sec;
-    nfree++;
+    vec += size;
+    while (size > 0) {
+	sec = *--vec;
+	i = map[sec];
+	if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	    /*
+	     * remove the swap slot from the first-last list
+	     */
+	    if (h != first) {
+		h->prev->next = h->next;
+	    } else {
+		first = h->next;
+		if (first != (header *) NULL) {
+		    first->prev = (header *) NULL;
+		}
+	    }
+	    if (h != last) {
+		h->next->prev = h->prev;
+	    } else {
+		last = h->prev;
+		if (last != (header *) NULL) {
+		    last->next = (header *) NULL;
+		}
+	    }
+	    /*
+	     * put the cache slot in the free cache slot list
+	     */
+	    h->sec = SW_UNUSED;
+	    h->next = lfree;
+	    lfree = h;
+	}
+
+	/*
+	 * put sec in free sector list
+	 */
+	map[sec] = mfree;
+	mfree = sec;
+	nfree++;
+
+	--size;
+    }
 }
 
 /*

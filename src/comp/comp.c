@@ -420,20 +420,32 @@ unsigned int total, cache, secsize;
 }
 
 /*
- * NAME:	swap->new()
- * DESCRIPTION:	pretend to return a newly created (empty) swap sector
+ * NAME:	swap->newv()
+ * DESCRIPTION:	pretend to create a new vector of sectors
  */
-sector sw_new()
+void sw_newv(vec, size)
+sector *vec;
+unsigned int size;
 {
-    return (sector) 0;
 }
 
 /*
- * NAME:	swap->del()
- * DESCRIPTION:	pretend to delete a swap sector
+ * NAME:	swap->wipev()
+ * DESCRIPTION:	pretend to wipe a vector of sectors
  */
-void sw_del(sec)
-unsigned int sec;
+void sw_wipev(vec, size)
+sector *vec;
+unsigned int size;
+{
+}
+
+/*
+ * NAME:	swap->delv()
+ * DESCRIPTION:	pretend to delete a vector of sectors
+ */
+void sw_delv(vec, size)
+sector *vec;
+unsigned int size;
 {
 }
 
