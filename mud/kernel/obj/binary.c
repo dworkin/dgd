@@ -131,3 +131,12 @@ int message(string str)
     }
     return ::message(str);
 }
+
+/*
+ * NAME:	message_done()
+ * DESCRIPTION:	called when output is completed
+ */
+static message_done()
+{
+    ::message_done(allocate(TLS_SIZE));
+}
