@@ -465,15 +465,8 @@ static void do_include()
 	strcpy(file, yytext);
 	tk_skiptonl(TRUE);
 
-	/* first try to search in the directory of the current input file */
-	strcpy(buf, tk_filename());
-	slash = strrchr(buf, '/');
-	if (file[0] != '/' && slash != (char *) NULL) {
-	    strcpy(slash + 1, file);
-	} else {
-	    strcpy(buf, file);
-	}
-	if (tk_include(path_include(tk_filename(), buf))) {
+	/* first try the path direct */
+	if (tk_include(path_include(tk_filename(), file))) {
 	    return;
 	}
     } else if (token == INCL_CONST) {
@@ -726,8 +719,8 @@ int pp_gettok()
 	case LE: case GE: case EQ: case NE: case LAND: case LOR:
 	case PLUS_EQ: case MIN_EQ: case MULT_EQ: case DIV_EQ: case MOD_EQ:
 	case LSHIFT_EQ: case RSHIFT_EQ: case AND_EQ: case XOR_EQ: case OR_EQ:
-	case COLON_COLON: case DOT_DOT:
-	    /* legal operators */
+	case COLON_COLON: case DOT_DOT: case STRING_CONST:
+	    /* legal operators and constants */
 	    return token;
 
 	case INT_CONST:
@@ -735,21 +728,15 @@ int pp_gettok()
 	    yylval.number = yynumber;
 	    return token;
 
-	case STRING_CONST:
-	    /* string constant */
-	    yylval.string = yytext;
-	    return token;
-
 	case IDENTIFIER:
 	    mc = mc_lookup(yytext);
 	    if (mc != (macro *) NULL && tk_expand(mc) > 0) {
 		break;
 	    }
-	    token = tokenz(yytext, strlen(yytext));
+	    token = tokenz(yytext, yyleng);
 	    if (token > 0) {
 		return token + FIRST_KEYWORD - 1;
 	    }
-	    yylval.string = yytext;
 	    return IDENTIFIER;
 
 	default:
