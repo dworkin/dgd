@@ -57,13 +57,13 @@ int n;
 
 /*
  * NAME:	kfun_arg()
- * DESCRIPTION:	output a kfun call with a specified number of arguments
+ * DESCRIPTION:	output a kfun call with a specified argument
  */
-static void kfun_arg(n, nargs)
+static void kfun_arg(n, arg)
 int n;
-int nargs;
+char *arg;
 {
-    output("call_kfun_arg(%d/*%s*/, %d)", n, kftab[n].name, nargs);
+    output("call_kfun_arg(%d/*%s*/, %s)", n, kftab[n].name, arg);
 }
 
 /*
@@ -82,6 +82,9 @@ static void store()
 static void cg_lvalue(n)
 node *n;
 {
+    if (n->type == N_CAST) {
+	n = n->l.left;
+    }
     switch (n->type) {
     case N_LOCAL:
 	output("push_lvalue(fp + %d)", nvars - (int) n->r.number - 1);
@@ -576,22 +579,30 @@ register node *n;
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static int cg_funargs(n)
+static char *cg_funargs(n)
 register node *n;
 {
+    static char buffer[20];
     register int i;
 
     if (n == (node *) NULL) {
-	return 0;
+	return "0";
     }
     for (i = 1; n->type == N_COMMA; i++) {
 	cg_expr(n->l.left, PUSH);
 	comma();
 	n = n->r.right;
     }
-    cg_expr(n, PUSH);
-    comma();
-    return i;
+    if (n->type == N_SPREAD) {
+	cg_expr(n->l.left, PUSH);
+	comma();
+	sprintf(buffer, "%d + i_spread(%d)", i, (short) n->mod);
+    } else {
+	cg_expr(n, PUSH);
+	comma();
+	sprintf(buffer, "%d", i);
+    }
+    return buffer;
 }
 
 /*
@@ -627,6 +638,7 @@ register int state;
 {
     register int i;
     long l;
+    char *arg;
 
     switch (n->type) {
     case N_ADD_INT:
@@ -715,12 +727,7 @@ register int state;
 	    cg_iexpr(n->r.right);
 	    return;
 	}
-	if (n->l.left->type == N_CAST) {
-	    /* ignore cast */
-	    cg_lvalue(n->l.left->l.left);
-	} else {
-	    cg_lvalue(n->l.left);
-	}
+	cg_lvalue(n->l.left);
 	comma();
 	cg_expr(n->r.right, PUSH);
 	store();
@@ -747,14 +754,20 @@ register int state;
 	    output("(pre_catch(), !ec_push() ? (");
 	    cg_expr(n->l.left, POP);
 	    if (state == PUSH) {
-		output(", ec_pop(), post_catch(), PUSH_NUMBER 0) : (");
-		output("post_catch(), p=errormesg(), (--sp)->type = T_STRING,");
+		output(", ec_pop(), post_catch(FALSE), PUSH_NUMBER 0) : (");
+		output("post_catch(TRUE), p=errormesg(), ");
+		output("(--sp)->type = T_STRING, ");
 		output("str_ref(sp->u.string = str_new(p, (long)strlen(p)))))");
+		if (c_autodriver() == O_DRIVER) {
+		    output(", exec_cost = tv[%d], 0", i);
+		}
+	    } else if (c_autodriver() == O_DRIVER) {
+		output(", ec_pop(), post_catch(FALSE)");
+		output(", exec_cost = tv[%d], FALSE) :", i);
+		output(" (post_catch(TRUE), exec_cost = tv[%d], TRUE))", i);
 	    } else {
-		output(", ec_pop(), 0) : 0, post_catch(), 0)");
-	    }
-	    if (c_autodriver() == O_DRIVER) {
-		output(", exec_cost = tv[%d], 0", i);
+		output(", ec_pop(), post_catch(FALSE), FALSE) :");
+		output(" (post_catch(TRUE), TRUE))");
 	    }
 	}
 	return;
@@ -790,11 +803,11 @@ register int state;
 	break;
 
     case N_FUNC:
-	i = cg_funargs(n->l.left);
+	arg = cg_funargs(n->l.left);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	    if (PROTO_CLASS(kftab[(short) n->r.number].proto) & C_VARARGS) {
-		kfun_arg((short) n->r.number, i);
+		kfun_arg((short) n->r.number, arg);
 	    } else {
 		kfun((short) n->r.number);
 	    }
@@ -802,19 +815,19 @@ register int state;
 
 	case DFCALL:
 	    if (((n->r.number >> 8) & 0xff) == 0) {
-		output("i_funcall((object *) NULL, 0, %d, %d)",
-		       ((int) n->r.number) & 0xff, i);
+		output("i_funcall((object *) NULL, 0, %d, %s)",
+		       ((int) n->r.number) & 0xff, arg);
 	    } else {
-		output("i_funcall((object *) NULL, i_pindex() + %d, %d, %d)",
+		output("i_funcall((object *) NULL, i_pindex() + %d, %d, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
-		       ((int) n->r.number) & 0xff, i);
+		       ((int) n->r.number) & 0xff, arg);
 	    }
 	    break;
 
 	case FCALL:
 	    output("p = i_foffset(%u), ", (unsigned short) n->r.number);
-	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %d)",
-		   i);
+	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
+		   arg);
 	    break;
 	}
 	break;
@@ -1004,11 +1017,25 @@ register int state;
     case N_RANGE:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	cg_expr(n->r.right->l.left, PUSH);
-	comma();
-	cg_expr(n->r.right->r.right, PUSH);
-	comma();
-	kfun(KF_RANGE);
+	n = n->r.right;
+	if (n->l.left != (node *) NULL &&
+	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	    cg_expr(n->l.left, PUSH);
+	    comma();
+	    if (n->r.right != (node *) NULL) {
+		cg_expr(n->r.right, PUSH);
+		comma();
+		kfun(KF_RANGEFT);
+	    } else {
+		kfun(KF_RANGEF);
+	    }
+	} else if (n->r.right != (node *) NULL) {
+	    cg_expr(n->r.right, PUSH);
+	    comma();
+	    kfun(KF_RANGET);
+	} else {
+	    kfun(KF_RANGE);
+	}
 	break;
 
     case N_RSHIFT:

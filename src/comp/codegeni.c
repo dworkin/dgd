@@ -507,7 +507,13 @@ register node *n;
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
     }
-    cg_expr(n, FALSE);
+    if (n->type == N_SPREAD) {
+	cg_expr(n->l.left, FALSE);
+	code_instr(I_SPREAD, n->line);
+	code_byte(n->mod);
+    } else {
+	cg_expr(n, FALSE);
+    }
     return i;
 }
 
@@ -518,6 +524,9 @@ register node *n;
 static void cg_lvalue(n)
 register node *n;
 {
+    if (n->type == N_CAST) {
+	n = n->l.left;
+    }
     switch (n->type) {
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL_LVALUE, n->line);
@@ -667,12 +676,7 @@ register bool pop;
 	break;
 
     case N_ASSIGN:
-	if (n->l.left->type == N_CAST) {
-	    /* ignore cast */
-	    cg_lvalue(n->l.left->l.left);
-	} else {
-	    cg_lvalue(n->l.left);
-	}
+	cg_lvalue(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_STORE, n->line);
 	break;
@@ -692,8 +696,7 @@ register bool pop;
 	    jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH,
 			 (jmplist *) NULL, 0);
 	    cg_expr(n->l.left, TRUE);
-	    code_instr(I_PUSH_ZERO, n->line);
-	    code_instr(I_RETURN, 0);
+	    code_instr(I_RETURN_ZERO, n->line);
 	    jump_resolve(jlist, here);
 	}
 	return;
@@ -1075,9 +1078,22 @@ register bool pop;
 
     case N_RANGE:
 	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right->l.left, FALSE);
-	cg_expr(n->r.right->r.right, FALSE);
-	code_kfun(KF_RANGE, n->line);
+	n = n->r.right;
+	if (n->l.left != (node *) NULL &&
+	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	    cg_expr(n->l.left, FALSE);
+	    if (n->r.right != (node *) NULL) {
+		cg_expr(n->r.right, FALSE);
+		code_kfun(KF_RANGEFT, n->line);
+	    } else {
+		code_kfun(KF_RANGEF, n->line);
+	    }
+	} else if (n->r.right != (node *) NULL) {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_RANGET, n->line);
+	} else {
+	    code_kfun(KF_RANGE, n->line);
+	}
 	break;
 
     case N_RSHIFT:
@@ -1381,7 +1397,8 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_INT | I_POP_BIT, 0);
+    code_instr(I_SWITCH | I_POP_BIT, 0);
+    code_byte(0);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1461,7 +1478,8 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_RANGE | I_POP_BIT, 0);
+    code_instr(I_SWITCH | I_POP_BIT, 0);
+    code_byte(1);
     m = n->l.left;
     size = n->mod;
     sz = n->r.right->mod;
@@ -1558,7 +1576,8 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_STR | I_POP_BIT, 0);
+    code_instr(I_SWITCH | I_POP_BIT, 0);
+    code_byte(2);
     m = n->l.left;
     size = n->mod;
     if (m->l.left == (node *) NULL) {
@@ -1751,8 +1770,12 @@ register node *n;
 	    break;
 
 	case N_RETURN:
-	    cg_expr(m->l.left, FALSE);
-	    code_instr(I_RETURN, m->line);
+	    if (m->l.left->type == N_INT && m->l.left->l.number == 0) {
+		code_instr(I_RETURN_ZERO, m->line);
+	    } else {
+		cg_expr(m->l.left, FALSE);
+		code_instr(I_RETURN, m->line);
+	    }
 	    break;
 
 	case N_SWITCH_INT:
