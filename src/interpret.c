@@ -1394,9 +1394,9 @@ register int n;
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-void i_typecheck(f, ctrl, name, ftype, proto, nargs, strict)
+void i_typecheck(f, prog_f, name, ftype, proto, nargs, strict)
 register frame *f;
-control *ctrl;
+frame *prog_f;
 char *name, *ftype;
 register char *proto;
 int nargs;
@@ -1433,7 +1433,7 @@ int strict;
 
 		FETCH3U(args, class);
 		if (ptype == T_CLASS && atype == T_OBJECT) {
-		    if (!i_instanceof(f,
+		    if (!i_instanceof(prog_f,
 				      (f->sp[i].type == T_OBJECT) ?
 				       f->sp[i].oindex :
 				       d_get_elts(f->sp[i].u.array)->oindex,
@@ -1923,7 +1923,7 @@ register char *pc;
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    u = (*kf->func)(f, u, kf);
@@ -2096,7 +2096,7 @@ int funci;
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
     if (f.func->class & C_TYPECHECKED) {
 	/* typecheck arguments */
-	i_typecheck(prev_f, f.p_ctrl,
+	i_typecheck(prev_f, &f,
 		    d_get_strconst(f.p_ctrl, f.func->inherit,
 				   f.func->index)->text,
 		    "function", pc, nargs, FALSE);

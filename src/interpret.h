@@ -233,7 +233,7 @@ extern void	i_set_rlimits	P((frame*, rlinfo*));
 extern frame   *i_set_sp	P((frame*, value*));
 extern frame   *i_prev_object	P((frame*, int));
 extern char    *i_prev_program	P((frame*, int));
-extern void	i_typecheck	P((frame*, control*, char*, char*, char*, int,
+extern void	i_typecheck	P((frame*, frame*, char*, char*, char*, int,
 				   int));
 extern void	i_catcherr	P((frame*, Int));
 extern void	i_funcall	P((frame*, object*, array*, int, int, int));

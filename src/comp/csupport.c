@@ -868,7 +868,7 @@ register int n;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto,
+	i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto,
 		    PROTO_NARGS(kf->proto), TRUE);
     }
     n = (*kf->func)(f);
@@ -889,7 +889,7 @@ register int n, nargs;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto, nargs,
+	i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, nargs,
 		    TRUE);
     }
     n = (*kf->func)(f, nargs);
