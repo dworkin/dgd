@@ -362,7 +362,7 @@ node *label;
 		sp++;
 	    } else {
 		/* returned value not an object */
-		error("Cannot inherit %s", file);
+		error("Cannot inherit \"%s\"", file);
 	    }
 
 	    if (ncomp != ncompiled) {

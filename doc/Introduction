@@ -173,6 +173,10 @@ static_chunk	number	The size in bytes of a static or dynamic chunk
 dynamic_chunk	number	of memory.  Memory is divided into static memory
 			and dynamic memory; static memory is never freed.
 			Both are allocated in chunks of the specified size.
+			Setting the size of the static chunk to 0 will
+			cause the system never to swap out everything to
+			make more room for static memory, but will also
+			increase fragmentation.
 dump_file	string	The name of the state dump file.
 typechecking	number	If non-zero, all LPC objects must be typechecked.
 			If zero, only functions with a declared type are

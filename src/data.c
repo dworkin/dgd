@@ -2353,6 +2353,7 @@ register dataspace *data;
 	    sw_writev((char *) scallouts, data->sectors,
 		      header.ncallouts * (Uint) sizeof(scallout), size);
 	    AFREE(scallouts);
+	    data->cooffset = size;	/* might have to be reloaded */
 	}
 
 	d_free_values(data);
@@ -2364,6 +2365,8 @@ register dataspace *data;
     }
 
     data->modified = 0;
+    data->achange = 0;
+    data->schange = 0;
 }
 
 static array **itab;	/* imported array replacement table */

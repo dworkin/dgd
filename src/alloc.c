@@ -57,7 +57,7 @@ unsigned int size;
  * static memory manager
  */
 
-# define INIT_MEM	16384		/* initial static memory chunk */
+# define INIT_MEM	15360		/* initial static memory chunk */
 # define SLIMIT		(STRINGSZ + MOFFSET)
 # define SSMALL		(MOFFSET + STRINGSZ / 8)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
@@ -169,7 +169,8 @@ register unsigned int size;
     }
 
     /* try current chunk */
-    if (schunk == (chunk *) NULL || (schunk->size < size && schunksz != 0)) {
+    if (schunk == (chunk *) NULL ||
+	(schunk->size < size && (schunksz != 0 || size <= INIT_MEM))) {
 	/*
 	 * allocate default static memory block
 	 */
@@ -180,7 +181,7 @@ register unsigned int size;
 	schunk = (chunk *) newmem(INIT_MEM);
 	mstat.smemsize += schunk->size = INIT_MEM;
 	if (schunksz != 0) {
-	    /* memory has already been initialized */
+	    /* fragmentation matters */
 	    P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
 	}
     }
@@ -667,12 +668,14 @@ unsigned int ssz, dsz;
 {
     schunksz = ALIGN(ssz, STRUCT_AL);
     dchunksz = ALIGN(dsz, STRUCT_AL);
-    if (schunk != (chunk *) NULL) {
-	schunk->next = slist;
-	slist = schunk;
+    if (schunksz != 0) {
+	if (schunk != (chunk *) NULL) {
+	    schunk->next = slist;
+	    slist = schunk;
+	}
+	schunk = (chunk *) newmem(schunksz);
+	mstat.smemsize += schunk->size = schunksz;
     }
-    schunk = (chunk *) newmem(schunksz);
-    mstat.smemsize += schunk->size = schunksz;
 }
 
 
@@ -774,7 +777,7 @@ bool m_check()
     if (schunk == (chunk *) NULL) {
 	return FALSE;
     } else {
-	return (schunk->size >= schunksz);
+	return (schunksz == 0 || schunk->size >= schunksz);
     }
 }
 
@@ -825,8 +828,9 @@ void m_purge()
     }
     mstat.dmemsize = mstat.dmemused = 0;
 
-    if (schunk == (chunk *) NULL || schunk->size < schunksz ||
-	(mstat.smemsize - mstat.smemused) * 2 < schunksz * 3) {
+    if (schunksz != 0 &&
+	(schunk == (chunk *) NULL || schunk->size < schunksz ||
+	 (mstat.smemsize - mstat.smemused) * 2 < schunksz * 3)) {
 	/* expand static memory */
 	if (schunk != (chunk *) NULL) {
 	    schunk->next = slist;

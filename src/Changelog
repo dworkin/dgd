@@ -940,3 +940,5 @@ DGD 1.1
  - user->close() now takes an integer argument, 1 if the connection is closed
    from the mudlib, 0 if it's due to linkdeath.
  - Made statedumps more efficient.
+ - The static chunk size can now be 0, which has the effect of never causing
+   an automatic swapout, at the cost of more memory fragmentation.
