@@ -1454,3 +1454,5 @@ DGD 1.3
  - Arrays saved with save_object() should save object values as nil, not 0.
  - Fixed the too-many-callouts check, which has been completely wrong since the
    introduction of atomic functions.
+ - Fixed some more bugs in callouts, such as a possible crash when removing a
+   callout with millisecond delay.

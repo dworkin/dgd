@@ -136,6 +136,11 @@ unsigned short m;
     /*
      * create a free spot in the heap, and sift it upward
      */
+# ifdef DEBUG
+    if (queuebrk == cycbrk) {
+	fatal("callout table overflow");
+    }
+# endif
     i = ++queuebrk;
     l = cotab - 1;
     for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
@@ -174,7 +179,7 @@ register uindex i;
 	     i = j, j >>= 1) {
 	    l[i] = l[j];
 	}
-    } else {
+    } else if (i <= UINDEX_MAX / 2) {
 	/* sift downward */
 	for (j = i << 1; j < queuebrk; i = j, j <<= 1) {
 	    if (l[j].time > l[j + 1].time ||
@@ -208,6 +213,11 @@ Uint t;
 	flist = cotab[i].next;
     } else {
 	/* allocate new callout */
+# ifdef DEBUG
+	if (cycbrk == queuebrk || cycbrk == 1) {
+	    fatal("callout table overflow");
+	}
+# endif
 	i = --cycbrk;
     }
     nshort++;
@@ -509,7 +519,7 @@ register Uint t;
 	}
     } else {
 	/* encoded millisecond */
-	t = decode((Uint) t, &m);
+	t = decode(t, &m);
 	if (t > time || t == time && m > mtime) {
 	    return -2 - (t - time) * 1000 - m + mtime;
 	}
@@ -526,26 +536,28 @@ register unsigned int oindex, handle;
 Uint t;
 {
     register call_out *l;
+    unsigned short m;
 
     if (t >> 24 != 1) {
 	t += timediff;
-	if (t <= timestamp) {
-	    /*
-	     * possible immediate callout
-	     */
-	    if (rmshort(&immediate, oindex, handle, 0) ||
-		rmshort(&running, oindex, handle, 0)) {
-		return;
-	    }
-	}
-
-	if (t < timestamp + CYCBUF_SIZE) {
+	if (t > timestamp && t < timestamp + CYCBUF_SIZE) {
 	    /*
 	     * try to find the callout in the cyclic buffer
 	     */
 	    if (rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
 		return;
 	    }
+	}
+    } else {
+	t = decode(t, &m);
+    }
+    if (t <= timestamp) {
+	/*
+	 * possible immediate callout
+	 */
+	if (rmshort(&immediate, oindex, handle, 0) ||
+	    rmshort(&running, oindex, handle, 0)) {
+	    return;
 	}
     }
 
@@ -1032,9 +1044,5 @@ register Uint t;
     }
 
     /* restart callouts */
-    if (nshort != nzero) {
-	for (t = timestamp; cycbuf[t & CYCBUF_MASK].list == 0; t++) ;
-	timeout = t;
-    }
-    restart(timeout);
+    restart(timestamp);
 }
