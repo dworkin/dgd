@@ -222,18 +222,20 @@ int access;
 	    hte **h;
 
 	    /* copy object name to higher plane */
-	    if (oplane->htab == (hashtab *) NULL) {
-		oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
-	    }
 	    strcpy(name = ALLOC(char, strlen(obj->chain.name) + 1),
 		   obj->chain.name);
-	    h = ht_lookup(oplane->htab, obj->chain.name = name, FALSE);
-	    obj->chain.next = *h;
-	    *h = (hte *) obj;
+	    obj->chain.name = name;
+	    if (obj->count != 0) {
+		if (oplane->htab == (hashtab *) NULL) {
+		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
+		}
+		h = ht_lookup(oplane->htab, name, FALSE);
+		obj->chain.next = *h;
+		*h = (hte *) obj;
+	    }
 	}
 	return obj;
     }
-
 }
 
 /*
