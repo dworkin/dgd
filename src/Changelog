@@ -950,3 +950,6 @@ DGD 1.1
  - Merged in Mac compatibility fixes.
  - Discontinued support for MINIX_68K and ATARI_ST.
  - Fixed a bug in inherited function calls with very large function tables.
+ - Fixed a bug which could result in connections being closed immediately,
+   often occurring if connections were being opened and closed at a rapid
+   rate.

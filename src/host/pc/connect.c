@@ -196,6 +196,7 @@ void conn_del(connection *conn)
     if (conn->fd != INVALID_SOCKET) {
 	closesocket(conn->fd);
 	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &readfds);
 	FD_CLR(conn->fd, &wfds);
 	conn->fd = INVALID_SOCKET;
     }
@@ -251,6 +252,7 @@ int conn_write(connection *conn, char *buf, int len, int wait)
 	    WSAGetLastError() != WSAEWOULDBLOCK) {
 	    closesocket(conn->fd);
 	    FD_CLR(conn->fd, &fds);
+	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = INVALID_SOCKET;
 	} else if (wait && size != len) {
 	    /* waiting for wrdone */

@@ -190,6 +190,7 @@ register connection *conn;
     if (conn->fd >= 0) {
 	close(conn->fd);
 	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &readfds);
 	FD_CLR(conn->fd, &wfds);
 	conn->fd = -1;
     }
@@ -252,6 +253,7 @@ int wait;
 	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
+	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = -1;
 	} else if (wait && size != len) {
 	    /* waiting for wrdone */
