@@ -1,0 +1,15 @@
+NAME
+	async_event - broadcast asynchronous event to subscribers
+
+SYNOPSIS
+	varargs void async_event(string name, mixed args...)
+
+
+DESCRIPTION
+	The function "evt_" + name is called asynchronously in all objects
+	subscribed to this event, with as first argument the current object.
+	Each call is done using the tick and stack resources of the subscribed
+	object.
+
+SEE ALSO
+	efun/add_event, efun/event, efun/query_events, efun/remove_event

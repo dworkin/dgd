@@ -7,8 +7,8 @@ SYNOPSIS
 
 DESCRIPTION
 	The function "evt_" + name is called in all objects subscribed to
-	this event with the given arguments.  Each call is done using the
-	tick and stack resources of the subscribed object.
+	this event, with as first argument the current object.  Each call is
+	done using the tick and stack resources of the subscribed object.
 
 SEE ALSO
-	efun/add_event, efun/query_events, efun/remove_event
+	efun/add_event, efun/asyc_event, efun/query_events, efun/remove_event

@@ -851,6 +851,37 @@ static varargs event(string name, mixed args...)
 {
     object *objlist;
     string *names;
+    int dest, i, sz;
+
+    CHECKARG(name, 1, "event");
+    if (!events || !(objlist=events[name])) {
+	error("No such event");
+    }
+
+    name = "evt_" + name;
+    args = ({ this_object() }) + args;
+    dest = FALSE;
+    for (i = 0, sz = sizeof(objlist); i < sz; i++) {
+	if (objlist[i]) {
+	    objlist[i]->_F_call_limited(name, args);
+	} else {
+	    dest = TRUE;
+	}
+    }
+
+    if (dest && events[name]) {
+	events[name] -= ({ 0 });
+    }
+}
+
+/*
+ * NAME:	async_event()
+ * DESCRIPTION:	cause an asynchronous event
+ */
+static varargs async_event(string name, mixed args...)
+{
+    object *objlist;
+    string *names;
     int i, sz;
 
     CHECKARG(name, 1, "event");

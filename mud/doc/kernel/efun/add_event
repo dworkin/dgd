@@ -10,4 +10,4 @@ DESCRIPTION
 	is changed.
 
 SEE ALSO
-	efun/event, efun/query_events, efun/remove_event
+	efun/async_event, efun/event, efun/query_events, efun/remove_event
