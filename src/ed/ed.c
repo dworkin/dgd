@@ -45,7 +45,7 @@ char *argv[];
     }
 
     for (;;) {
-	printf((cb->flags & CB_INSERT) ? "*\b" : ":");
+	printf((cb->flags & CB_INSERT) ? "*\010" : ":");	/* BS */
 	if (gets(buffer) == (char *) NULL) {
 	    cb_del(cb);
 	    return 1;
@@ -57,8 +57,7 @@ char *argv[];
     }
 }
 
-void comm_flush(flag)
-book flag;
+void comm_finish()
 {
 }
 
