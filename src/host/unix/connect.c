@@ -20,7 +20,8 @@ struct _connection_ {
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
-static int tcpip;			/* TCP/IP socket descriptor */
+static int telnet;			/* telnet port socket descriptor */
+static int binary;			/* binary port socket descriptor */
 static fd_set fds;			/* file descriptor bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static int maxfd;			/* largest fd opened yet */
@@ -29,9 +30,9 @@ static int maxfd;			/* largest fd opened yet */
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
-void conn_init(maxusers, port)
+void conn_init(maxusers, telnet_port, binary_port)
 int maxusers;
-unsigned short port;
+unsigned short telnet_port, binary_port;
 {
     struct sockaddr_in sin;
     struct hostent *host;
@@ -47,33 +48,45 @@ unsigned short port;
 	exit(2);
     }
 
-    tcpip = socket(host->h_addrtype, SOCK_STREAM, 0);
-    if (tcpip < 0) {
+    telnet = socket(host->h_addrtype, SOCK_STREAM, 0);
+    binary = socket(host->h_addrtype, SOCK_STREAM, 0);
+    if (telnet < 0 || binary < 0) {
 	perror("socket");
 	exit(2);
     }
     on = 1;
-    if (setsockopt(tcpip, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+	perror("setsockopt");
+	exit(2);
+    }
+    on = 1;
+    if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 	perror("setsockopt");
 	exit(2);
     }
 
     memset(&sin, '\0', sizeof(sin));
     memcpy(&sin.sin_addr, host->h_addr, host->h_length);
-    sin.sin_port = htons(port);
+    sin.sin_port = htons(telnet_port);
     sin.sin_family = host->h_addrtype;
     sin.sin_addr.s_addr = INADDR_ANY;
-    if (bind(tcpip, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+    if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+	perror("bind");
+	exit(2);
+    }
+    sin.sin_port = htons(binary_port);
+    if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	perror("bind");
 	exit(2);
     }
 
-    if (listen(tcpip, 5) < 0) {
+    if (listen(telnet, 5) < 0 || listen(binary, 5) < 0) {
 	perror("listen");
 	exit(2);
     }
 
-    if (fcntl(tcpip, F_SETFL, FNDELAY) < 0) {
+    if (fcntl(telnet, F_SETFL, FNDELAY) < 0 ||
+	fcntl(binary, F_SETFL, FNDELAY) < 0) {
 	perror("fcntl");
 	exit(2);
     }
@@ -94,21 +107,50 @@ unsigned short port;
  */
 void conn_finish()
 {
-    close(tcpip);
+    close(telnet);
+    close(binary);
 }
 
 /*
- * NAME:	conn->new()
- * DESCRIPTION:	accept a new connection
+ * NAME:	conn->tnew()
+ * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_new()
+connection *conn_tnew()
 {
     int fd, len;
     struct sockaddr_in sin;
     register connection *conn;
 
     len = sizeof(sin);
-    fd = accept(tcpip, (struct sockaddr *) &sin, &len);
+    fd = accept(telnet, (struct sockaddr *) &sin, &len);
+    if (fd < 0) {
+	return (connection *) NULL;
+    }
+
+    conn = flist;
+    flist = conn->next;
+    conn->fd = fd;
+    memcpy(&conn->addr, (char *) &sin, len);
+    FD_SET(fd, &fds);
+    if (fd > maxfd) {
+	maxfd = fd;
+    }
+
+    return conn;
+}
+
+/*
+ * NAME:	conn->bnew()
+ * DESCRIPTION:	accept a new binary connection
+ */
+connection *conn_bnew()
+{
+    int fd, len;
+    struct sockaddr_in sin;
+    register connection *conn;
+
+    len = sizeof(sin);
+    fd = accept(binary, (struct sockaddr *) &sin, &len);
     if (fd < 0) {
 	return (connection *) NULL;
     }
@@ -188,6 +230,7 @@ register int size;
     if (conn->fd >= 0) {
 	if (write(conn->fd, buf, size) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
+	    FD_CLR(conn->fd, &fds);
 	    conn->fd = -1;
 	}
     }
