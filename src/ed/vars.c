@@ -67,6 +67,7 @@ register char *option;
 		if (i < 0 || val == p) {
 		    error("Bad numeric value for option \"%s\"", v->name);
 		}
+		v->val = i;
 	    }
 	    return;
 	}

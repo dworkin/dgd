@@ -1068,3 +1068,6 @@ DGD 1.1
    same thread.
  - __FILE__ did not include a leading /.
  - Some other upgrade-related bugs fixed.
+ - Fixed bug which would occur with foo() { return catch("bar"); }
+ - Setting a variable didn't work in the editor.
+ - Initial Mac port completed.

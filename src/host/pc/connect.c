@@ -90,7 +90,7 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	exit(2);
     }
 
-    if (listen(telnet, 255) != 0 || listen(binary, 255) != 0) {
+    if (listen(telnet, 64) != 0 || listen(binary, 64) != 0) {
 	P_message("listen() failed\n");
 	exit(2);
     }

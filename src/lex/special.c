@@ -35,7 +35,7 @@ void special_define()
 char *special_replace(name)
 register char *name;
 {
-    static char buf[STRINGSZ + 2];
+    static char buf[STRINGSZ + 3];
 
     if (strcmp(name, "__LINE__") == 0) {
 	sprintf(buf, " %u ", tk_line());

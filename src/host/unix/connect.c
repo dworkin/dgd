@@ -84,7 +84,7 @@ unsigned int telnet_port, binary_port;
 	exit(2);
     }
 
-    if (listen(telnet, 255) < 0 || listen(binary, 255) < 0) {
+    if (listen(telnet, 64) < 0 || listen(binary, 64) < 0) {
 	perror("listen");
 	exit(2);
     }

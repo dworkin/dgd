@@ -1232,6 +1232,7 @@ int pop;
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
 	    node_toint(n, (Int) 0);
+	    return !pop;
 	}
 	return d1;
 
