@@ -41,7 +41,6 @@ char *argv[];
 	    cb_del(cb);
 	    return 0;
 	}
-	lb_inact(cb->edbuf->lb);
     }
 }
 
