@@ -111,8 +111,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
 	fputc('\n', stderr);
 	fflush(stderr);
-	comm_flush(FALSE);
-	host_finish();
+	comm_finish();
     }
     abort();
 }
