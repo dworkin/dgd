@@ -5,7 +5,6 @@
 # include "object.h"
 # include "comm.h"
 
-# define ERRSTACKSZ		32	/* reasonable value */
 # define ERR_LOG_BUF_SZ		1024	/* extra error log buffer size */
 
 static jmp_buf stack[ERRSTACKSZ];	/* error context stack */
@@ -112,7 +111,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
 	fputc('\n', stderr);
 	fflush(stderr);
-	comm_flush();
+	comm_flush(FALSE);
 	host_finish();
     }
     abort();
