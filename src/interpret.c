@@ -883,9 +883,9 @@ void i_check_rlimits()
 typedef struct {
     Int depth;		/* stack depth */
     Int ticks;		/* ticks left */
+    Int nticks;		/* new number of ticks */
     bool nodepth;	/* no depth checking */
     bool noticks;	/* no ticks checking */
-    bool restore;	/* restore old ticks */
 } rlinfo;
 
 static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
@@ -917,15 +917,15 @@ Int depth, t;
     }
     if (t != 0) {
 	if (t < 0) {
-	    rlstack[rli].restore = TRUE;
+	    rlstack[rli].nticks = 0;
 	    noticks = TRUE;
 	} else {
-	    rlstack[rli].restore = (t > ticks);
+	    rlstack[rli].nticks = (t > ticks) ? 0 : t;
 	    ticks = t;
 	    noticks = FALSE;
 	}
     } else {
-	rlstack[rli].restore = FALSE;
+	rlstack[rli].nticks = ticks;
     }
 
     return rli++;
@@ -950,11 +950,16 @@ int n;
     if (n < 0) {
 	n += rli;
     }
+    if (ticks < 0) {
+	ticks = 0;
+    }
     while (rli > n) {
 	--rli;
 	maxdepth = rlstack[rli].depth;
-	if (rlstack[rli].restore) {
+	if (rlstack[rli].nticks == 0) {
 	    ticks = rlstack[rli].ticks;
+	} else {
+	    ticks += rlstack[rli].ticks - rlstack[rli].nticks;
 	}
 	nodepth = rlstack[rli].nodepth;
 	noticks = rlstack[rli].noticks;
@@ -974,12 +979,15 @@ register value *newsp;
     v = sp;
     w = ilvp;
     for (f = cframe; f != NULL; f = f->prev) {
-	while (v < f->fp) {
+	for (;;) {
 	    if (v == newsp) {
 		sp = v;
 		ilvp = w;
 		cframe = f;
 		return;
+	    }
+	    if (v == f->fp) {
+		break;
 	    }
 	    switch (v->type) {
 	    case T_STRING:

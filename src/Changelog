@@ -841,7 +841,7 @@ DGD 1.1
 
    This will execute code with reduced or increased stack depth and ticks.
    There are two new driver calls to handle it: at compile time, for each
-   rlimits construct, driver->compile_rlimits(filename) is called.  If this
+   rlimits construct, driver->compile_rlimits(objectname) is called.  If this
    function returns non-zero, the rlimits is allowed without futher ado.  If
    it returns 0, then at runtime there will be an additional check,
    driver->runtime_rlimits(obj, stack, ticks).  If zero is returned from this
@@ -859,3 +859,4 @@ DGD 1.1
  - Replaced driver->compile_log() with driver->compile_error(file, line, err).
    By default, DGD now writes nothing to stderr at all.
  - Renamed driver->log_error() to driver->runtime_error().
+ - Fixed a bug in the new error cleanup code.
