@@ -10,20 +10,23 @@
 # define SM_MAGIC	0xc5000000L	/* static mem */
 # define DM_MAGIC	0xc6000000L	/* dynamic mem */
 
+# define SIZESIZE	ALIGN(sizeof(Int), STRUCT_AL)
+# define UINTSIZE	ALIGN(sizeof(unsigned int), STRUCT_AL)
+
 # ifdef DEBUG
-# define OFFSET		sizeof(header)
+# define OFFSET		ALIGN(sizeof(header), STRUCT_AL)
 # else
-# define OFFSET		sizeof(chunk)
+# define OFFSET		SIZESIZE
 # endif
 
 typedef struct _chunk_ {
-    long size;			/* size of chunk */
+    Int size;			/* size of chunk */
     struct _chunk_ *next;	/* next chunk */
 } chunk;
 
 # ifdef DEBUG
 typedef struct _header_ {
-    long size;			/* size of chunk */
+    Int size;			/* size of chunk */
     char *file;			/* file it was allocated from */
     int line;			/* line it was allocated from */
     struct _header_ *prev;	/* previous in list */
@@ -31,6 +34,8 @@ typedef struct _header_ {
 } header;
 # endif
 
+
+static allocinfo mstat;		/* memory statistics */
 
 /*
  * NAME:	newmem()
@@ -47,7 +52,6 @@ unsigned int size;
     }
     return mem;
 }
-
 
 /*
  * static memory manager
@@ -71,11 +75,6 @@ static clist lchunks[LCHUNKS];		/* lists of large free chunks */
 static int nlc;				/* # elements in large chunk list */
 static chunk *slist;			/* list of small unused chunks */
 static int slevel;			/* static level */
-static long smemsize;			/* static memory size */
-
-# ifdef DEBUG
-static header *hlist;			/* list of all dynamic memory chunks */
-# endif
 
 /*
  * NAME:	lchunk()
@@ -179,11 +178,10 @@ register unsigned int size;
 	    slist = schunk;
 	}
 	schunk = (chunk *) newmem(INIT_MEM);
-	smemsize += schunk->size = INIT_MEM;
+	mstat.smemsize += schunk->size = INIT_MEM;
 	if (schunksz != 0) {
 	    /* memory has already been initialized */
-	    fprintf(stderr,
-		    "*** Ran out of static memory (increase static_chunk)\n");
+	    P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
 	}
     }
     if (schunk->size >= size) {
@@ -207,7 +205,7 @@ register unsigned int size;
 
     /* allocate static memory directly */
     c = (chunk *) newmem(size);
-    smemsize += c->size = size;
+    mstat.smemsize += c->size = size;
     return c;
 }
 
@@ -226,7 +224,7 @@ register chunk *c;
 	register chunk **lc;
 
 	/* large chunk */
-	lc = lchunk((unsigned int) c->size, TRUE);
+	lc = lchunk(c->size, TRUE);
 	c->next = *lc;
 	*lc = c;
     }
@@ -256,7 +254,7 @@ void mdynamic()
  */
 
 typedef struct _spnode_ {
-    long size;			/* size of chunk */
+    Int size;			/* size of chunk */
     struct _spnode_ *parent;	/* parent node */
     struct _spnode_ *left;	/* left child node */
     struct _spnode_ *right;	/* right child node */
@@ -274,7 +272,7 @@ chunk *c;
 {
     register spnode *n, *t;
     register spnode *l, *r;
-    register long size;
+    register Int size;
 
     n = dtree;
     dtree = t = (spnode *) c;
@@ -351,7 +349,7 @@ chunk *c;
  * DESCRIPTION:	find a chunk of the proper size in the splay tree
  */
 static chunk *seek(size)
-register long size;
+register Int size;
 {
     spnode dummy;
     register spnode *n, *t;
@@ -508,8 +506,6 @@ chunk *c;
 static char *dlist;		/* list of dynamic memory chunks */
 static chunk *dchunks[DCHUNKS];	/* list of free small chunks */
 static chunk *dchunk;		/* chunk of small chunks */
-static long dmemsize;		/* dynamic memory allocated */
-static long dmemused;		/* dynamic memory used */
 
 /*
  * NAME:	dalloc()
@@ -543,9 +539,8 @@ register unsigned int size;
 	if (dchunk == (chunk *) NULL) {
 	    /* get new chunks chunk */
 	    dchunk = dalloc(DCHUNKSZ);	/* cannot use alloc() here */
-	    p = (char *) dchunk + ALIGN(sizeof(long), STRUCT_AL);
-	    ((chunk *) p)->size = dchunk->size -
-				  ALIGN(sizeof(long), STRUCT_AL) - sizeof(long);
+	    p = (char *) dchunk + SIZESIZE;
+	    ((chunk *) p)->size = dchunk->size - SIZESIZE - UINTSIZE;
 	    dchunk->size |= DM_MAGIC;
 	    dchunk = (chunk *) p;
 	}
@@ -557,13 +552,14 @@ register unsigned int size;
 	    dchunk = (chunk *) ((char *) c + size);
 	    dchunk->size = sz;
 	} else {
+	    /* waste sz bytes of memory */
 	    dchunk = (chunk *) NULL;
 	}
 	return c;
     }
 
-    size += sizeof(long);
-    c = seek((long) size);
+    size += UINTSIZE;
+    c = seek((Int) size);
     if (c != (chunk *) NULL) {
 	/*
 	 * remove from free list
@@ -574,20 +570,21 @@ register unsigned int size;
 	 * get new dynamic chunk
 	 */
 	p = newmem(dchunksz);
-	dmemsize += dchunksz;
+	mstat.dmemsize += dchunksz;
 	*(char **) p = dlist;
 	dlist = p;
-	p += sizeof(char *);
+	p += ALIGN(sizeof(char *), STRUCT_AL);
 
 	/* no previous chunk */
-	*(long *) p = 0;
-	c = (chunk *) (p + sizeof(long));
+	*(unsigned int *) p = 0;
+	c = (chunk *) (p + UINTSIZE);
 	/* initialize chunk */
-	c->size = dchunksz - 2 * sizeof(long) - sizeof(char *);
+	c->size = dchunksz - ALIGN(sizeof(char *), STRUCT_AL) - UINTSIZE -
+		  SIZESIZE;
 	p += c->size;
-	*(long *) p = c->size;
+	*(unsigned int *) p = c->size;
 	/* no following chunk */
-	p += sizeof(long);
+	p += UINTSIZE;
 	((chunk *) p)->size = 0;
 
 	if (c->size < size) {
@@ -595,16 +592,16 @@ register unsigned int size;
 	}
     }
 
-    if ((sz=c->size - size) >= DLIMIT + sizeof(long)) {
+    if ((sz=c->size - size) >= DLIMIT + UINTSIZE) {
 	/*
 	 * split block, put second part in free list
 	 */
 	c->size = size;
-	p = (char *) c + size - sizeof(long);
-	*(long *) p = size;
-	p += sizeof(long);
+	p = (char *) c + size - UINTSIZE;
+	*(unsigned int *) p = size;
+	p += UINTSIZE;
 	((chunk *) p)->size = sz;
-	*((long *) (p + sz - sizeof(long))) = sz;
+	*((unsigned int *) (p + sz - UINTSIZE)) = sz;
 	insert((chunk *) p);	/* add to free list */
     }
     return c;
@@ -634,9 +631,9 @@ register chunk *c;
 	return;
     }
 
-    p = (char *) c - sizeof(long);
-    if (*(long *) p != 0) {
-	p -= *(long *) p - sizeof(long);
+    p = (char *) c - UINTSIZE;
+    if (*(unsigned int *) p != 0) {
+	p -= *(unsigned int *) p - UINTSIZE;
 	if ((((chunk *) p)->size & MAGIC_MASK) == 0) {
 	    /*
 	     * merge with previous block
@@ -644,17 +641,17 @@ register chunk *c;
 	    delete((chunk *) p);
 	    ((chunk *) p)->size += c->size;
 	    c = (chunk *) p;
-	    *((long *) (p + c->size - sizeof(long))) = c->size;
+	    *((unsigned int *) (p + c->size - UINTSIZE)) = c->size;
 	}
     }
     p = (char*) c + c->size;
-    if (*(long *) p != 0 && (((chunk *) p)->size & MAGIC_MASK) == 0) {
+    if (((chunk *) p)->size != 0 && (((chunk *) p)->size & MAGIC_MASK) == 0) {
 	/*
 	 * merge with next block
 	 */
 	delete((chunk *) p);
 	c->size += ((chunk *) p)->size;
-	*((long *) ((char *) c + c->size - sizeof(long))) = c->size;
+	*((unsigned int *) ((char *) c + c->size - UINTSIZE)) = c->size;
     }
 
     insert(c);	/* add to free list */
@@ -668,16 +665,20 @@ register chunk *c;
 void minit(ssz, dsz)
 unsigned int ssz, dsz;
 {
-    schunksz = ssz;
-    dchunksz = dsz;
+    schunksz = ALIGN(ssz, STRUCT_AL);
+    dchunksz = ALIGN(dsz, STRUCT_AL);
     if (schunk != (chunk *) NULL) {
 	schunk->next = slist;
 	slist = schunk;
     }
-    schunk = (chunk *) newmem(ssz);
-    smemsize += schunk->size = ssz;
+    schunk = (chunk *) newmem(schunksz);
+    mstat.smemsize += schunk->size = schunksz;
 }
 
+
+# ifdef DEBUG
+static header *hlist;			/* list of all dynamic memory chunks */
+# endif
 
 /*
  * NAME:	alloc()
@@ -702,16 +703,17 @@ register unsigned int size;
 # endif
     size = ALIGN(size + OFFSET, STRUCT_AL);
 # ifndef DEBUG
-    if (size < sizeof(chunk)) {
-	size = sizeof(chunk);
+    if (size < ALIGN(sizeof(chunk), STRUCT_AL)) {
+	size = ALIGN(sizeof(chunk), STRUCT_AL);
     }
 # endif
     if (slevel > 0) {
 	c = salloc(size);
+	mstat.smemused += c->size;
 	c->size |= SM_MAGIC;
     } else {
 	c = dalloc(size);
-	dmemused += c->size;
+	mstat.dmemused += c->size;
 	c->size |= DM_MAGIC;
 # ifdef DEBUG
 	((header *) c)->prev = (header *) NULL;
@@ -725,10 +727,8 @@ register unsigned int size;
 # ifdef DEBUG
     ((header *) c)->file = file;
     ((header *) c)->line = line;
-    return (char *) c + sizeof(header);
-# else
-    return (char *) c + sizeof(long);
 # endif
+    return (char *) c + OFFSET;
 }
 
 /*
@@ -740,17 +740,14 @@ char *mem;
 {
     register chunk *c;
 
-# ifdef DEBUG
-    c = (chunk *) (mem - sizeof(header));
-# else
-    c = (chunk *) (mem - sizeof(long));
-# endif
+    c = (chunk *) (mem - OFFSET);
     if ((c->size & MAGIC_MASK) == SM_MAGIC) {
 	c->size &= SIZE_MASK;
+	mstat.smemused -= c->size;
 	sfree(c);
     } else if ((c->size & MAGIC_MASK) == DM_MAGIC) {
 	c->size &= SIZE_MASK;
-	dmemused -= c->size;
+	mstat.dmemused -= c->size;
 # ifdef DEBUG
 	if (((header *) c)->next != (header *) NULL) {
 	    ((header *) c)->next->prev = ((header *) c)->prev;
@@ -791,27 +788,28 @@ void mpurge()
 
 # ifdef DEBUG
     while (hlist != (header *) NULL) {
-	register long n;
+	register unsigned int n;
 	register char *mem;
+	char buf[160];
 
-	n = (hlist->size & SIZE_MASK) - sizeof(header);
+	n = (hlist->size & SIZE_MASK) - OFFSET;
 	if (n >= DLIMIT) {
-	    n -= sizeof(long);
+	    n -= UINTSIZE;
 	}
-	fprintf(stderr, "FREE(%08X/%ld), %s line %d:\n", hlist + 1, n,
-		hlist->file, hlist->line);
+	sprintf(buf, "FREE(%08X/%u), %s line %u:\012", /* LF */
+		(unsigned long) (hlist + 1), n, hlist->file, hlist->line);
 	if (n > 26) {
 	    n = 26;
 	}
 	for (mem = (char *) (hlist + 1); n > 0; --n, mem++) {
 	    if (*mem >= ' ') {
-		fprintf(stderr, " '%c", *mem);
+		sprintf(buf + strlen(buf), " '%c", *mem);
 	    } else {
-		fprintf(stderr, " %02x", UCHAR(*mem));
+		sprintf(buf + strlen(buf), " %02x", UCHAR(*mem));
 	    }
 	}
-	fputc('\n', stderr);
-	fflush(stderr);
+	strcat(buf, "\012");	/* LF */
+	P_message(buf);
 	mfree((char *) (hlist + 1));
     }
 # endif
@@ -824,7 +822,7 @@ void mpurge()
 	dlist = *(char **) p;
 	free(p);
     }
-    dmemsize = dmemused = 0;
+    mstat.dmemsize = mstat.dmemused = 0;
 }
 
 /*
@@ -838,23 +836,15 @@ void mexpand()
 	slist = schunk;
     }
     schunk = (chunk *) newmem(schunksz);
-    smemsize += schunk->size = schunksz;
+    mstat.smemsize += schunk->size = schunksz;
 }
 
-/*
- * NAME:	memsize()
- * DESCRIPTION:	return the amount of memory allocated
- */
-long memsize()
-{
-    return smemsize + dmemsize;
-}
 
 /*
- * NAME:	memused()
- * DESCRIPTION:	return the amount of memory used
+ * NAME:	minfo()
+ * DESCRIPTION:	return informaton about memory usage
  */
-long memused()
+allocinfo *minfo()
 {
-    return smemsize + dmemused;
+    return &mstat;
 }

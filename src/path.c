@@ -2,8 +2,12 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
+# include "data.h"
 # include "path.h"
+# include "node.h"
+# include "compile.h"
 
 /*
  * NAME:	path->resolve()
@@ -63,19 +67,13 @@ char *file;
 char *path_ed_read(file)
 char *file;
 {
-    object *obj;
-
-    obj = i_this_object();
-    if (obj->flags & O_DRIVER) {
+    if (i_this_object()->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	i_check_stack(2);
-	(--sp)->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_ed_read", 2);
+	call_driver_object("path_ed_read", 1);
 	if (sp->type != T_STRING) {
 	    i_del_value(sp++);
 	    return (char *) NULL;
@@ -93,19 +91,13 @@ char *file;
 char *path_ed_write(file)
 char *file;
 {
-    object *obj;
-
-    obj = i_this_object();
-    if (obj->flags & O_DRIVER) {
+    if (i_this_object()->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	i_check_stack(2);
-	(--sp)->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_ed_write", 2);
+	call_driver_object("path_ed_write", 1);
 	if (sp->type != T_STRING) {
 	    i_del_value(sp++);
 	    return (char *) NULL;
@@ -123,24 +115,14 @@ char *file;
 char *path_object(file)
 char *file;
 {
-    object *obj;
-
-    obj = i_this_object();
-    if (obj->flags & O_DRIVER) {
+    if (i_this_program()->ninherits == 1) {
+	/* driver or auto object */
 	return path_file(path_resolve(file));
     } else {
-	i_check_stack(2);
-	if (obj->count == 0) {
-	    (--sp)->type = T_NUMBER;
-	    sp->u.number = 0;
-	} else {
-	    (--sp)->type = T_OBJECT;
-	    sp->oindex = obj->index;
-	    sp->u.objcnt = obj->count;
-	}
+	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_object", 2);
+	call_driver_object("path_object", 1);
 	if (sp->type != T_STRING) {
 	    i_del_value(sp++);
 	    return (char *) NULL;

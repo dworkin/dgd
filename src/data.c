@@ -5,6 +5,7 @@
 # include "interpret.h"
 # include "swap.h"
 # include "data.h"
+# include "csupport.h"
 
 /* bit values for dataspace->modified */
 # define M_VARIABLE		0x01
@@ -19,6 +20,7 @@
 typedef struct {
     uindex nsectors;		/* # sectors in part one */
     short ninherits;		/* # objects in inherit table */
+    Uint compiled;		/* time of compilation */
     unsigned short progsize;	/* size of program code */
     unsigned short nstrings;	/* # strings in string constant table */
     long strsize;		/* size of string constant table */
@@ -27,6 +29,8 @@ typedef struct {
     uindex nfuncalls;		/* # entries in function call table */
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
+    unsigned short nfloatdefs;	/* # float definitions */
+    unsigned short nfloats;	/* # float vars */
 } scontrol;
 
 typedef struct {
@@ -44,7 +48,7 @@ typedef struct _svalue_ {
     uindex oindex;		/* index in object table */
     union {
 	Int number;		/* number */
-	Int objcnt;		/* object creation count */
+	Uint objcnt;		/* object creation count */
 	struct {
 	    short inherit;
 	    uindex index;
@@ -52,6 +56,11 @@ typedef struct _svalue_ {
 	uindex array;		/* array */
     } u;
 } svalue;
+
+# define SFLT_GET(s, v)	((v)->oindex = (s)->oindex, \
+			 (v)->u.objcnt = (s)->u.objcnt)
+# define SFLT_PUT(s, v)	((s)->oindex = (v)->oindex, \
+			 (s)->u.objcnt = (v)->u.objcnt)
 
 typedef struct _sarray_ {
     long index;			/* index in array value table */
@@ -80,15 +89,15 @@ typedef struct _arrref_ {
 } arrref;
 
 typedef struct _dcallout_ {
-    unsigned long time;		/* time of call */
-    short nargs;		/* number of arguments */
-    value val[3];		/* function name, 2 direct arguments */
+    Uint time;			/* time of call */
+    unsigned short nargs;	/* number of arguments */
+    value val[4];		/* function name, 3 direct arguments */
 } dcallout;
 
 typedef struct {
-    unsigned long time;		/* time of call */
-    short nargs;		/* number of arguments */
-    svalue val[3];		/* function name, 2 direct arguments */
+    Uint time;			/* time of call */
+    unsigned short nargs;	/* number of arguments */
+    svalue val[4];		/* function name, 3 direct arguments */
 } scallout;
 
 # define co_prev	time
@@ -139,6 +148,8 @@ control *d_new_control()
     ctrl->nsymbols = 0;
     ctrl->symbols = (dsymbol *) NULL;
     ctrl->nvariables = 0;
+    ctrl->nfloatdefs = 0;
+    ctrl->nfloats = 0;
 
     return ctrl;
 }
@@ -249,6 +260,8 @@ object *obj;
 		 header.ninherits * (long) sizeof(dinherit), size);
 	size += header.ninherits * (long) sizeof(dinherit);
 
+	/* compile time */
+	ctrl->compiled = header.compiled;
 	/* program */
 	ctrl->progoffset = size;
 	ctrl->progsize = header.progsize;
@@ -289,6 +302,8 @@ object *obj;
 
 	/* # variables */
 	ctrl->nvariables = header.nvariables;
+	ctrl->nfloatdefs = header.nfloatdefs;
+	ctrl->nfloats = header.nfloats;
     }
 
     return ctrl;
@@ -384,6 +399,7 @@ register control *ctrl;
 	} else {
 	    ctail = ctrl->prev;
 	}
+	ctrl->prev = (control *) NULL;
 	ctrl->next = chead;
 	chead->prev = ctrl;
 	chead = ctrl;
@@ -404,6 +420,7 @@ register dataspace *data;
 	} else {
 	    dtail = data->prev;
 	}
+	data->prev = (dataspace *) NULL;
 	data->next = dhead;
 	dhead->prev = data;
 	dhead = data;
@@ -605,7 +622,7 @@ register uindex idx;
     if (data->arrays[idx].array == (array *) NULL) {
 	register array *a;
 
-	a = arr_new((long) data->sarrays[idx].size);
+	a = arr_alloc(data->sarrays[idx].size);
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->arrays[idx];
 	arr_ref(a->primary->array = a);
@@ -629,8 +646,12 @@ register int n;
     while (n > 0) {
 	v->modified = FALSE;
 	switch (v->type = sv->type) {
-	case T_NUMBER:
+	case T_INT:
 	    v->u.number = sv->u.number;
+	    break;
+
+	case T_FLOAT:
+	    SFLT_GET(sv, v);
 	    break;
 
 	case T_STRING:
@@ -657,6 +678,58 @@ register int n;
 }
 
 /*
+ * NAME:	data->new_variables()
+ * DESCRIPTION:	initialize variables in a dataspace block
+ */
+static void d_new_variables(data)
+dataspace *data;
+{
+    static value zero_int = { T_INT, TRUE };
+    static value zero_float = { T_FLOAT, TRUE };
+    register unsigned short nfdefs, nvars, nfloats;
+    register value *val;
+    register dvardef *var;
+    register control *ctrl;
+    register dinherit *inh;
+
+    /*
+     * initialize all variables to integer 0
+     */
+    for (val = data->variables, nvars = data->nvariables; nvars > 0; --nvars) {
+	*val++ = zero_int;
+    }
+
+    if (data->ctrl->nfloats != 0) {
+	/*
+	 * initialize float variables to 0.0
+	 */
+	nvars = 0;
+	for (nfloats = data->ctrl->nfloats, inh = data->ctrl->inherits;
+	     nfloats > 0; inh++) {
+	    if (inh->varoffset == nvars) {
+		ctrl = o_control(inh->obj);
+		if (ctrl->nfloatdefs != 0) {
+		    nfloats -= ctrl->nfloatdefs;
+		    for (nfdefs = ctrl->nfloatdefs, var = d_get_vardefs(ctrl);
+			 nfdefs > 0; var++) {
+			if (var->type == T_FLOAT) {
+			    data->variables[nvars] = zero_float;
+			    --nfdefs;
+			}
+			nvars++;
+		    }
+		} else {
+		    nvars += ctrl->nvardefs;
+		}
+	    }
+	}
+
+	/* don't do this again for the same object */
+	data->modified |= M_VARIABLE;
+    }
+}
+
+/*
  * NAME:	data->get_variable()
  * DESCRIPTION:	get a variable from the dataspace
  */
@@ -672,11 +745,7 @@ register unsigned short idx;
 	v = data->variables = ALLOC(value, data->nvariables);
 	if (data->nsectors == 0) {
 	    /* new datablock */
-	    for (i = data->nvariables; i > 0; --i) {
-		v->type = T_NUMBER;
-		v->modified = TRUE;
-		(v++)->u.number = 0;
-	    }
+	    d_new_variables(data);
 	} else {
 	    /* variables must be loaded from the swap */
 	    for (i = data->nvariables; i > 0; --i) {
@@ -925,7 +994,7 @@ register dataspace *data;
 	co->nargs = sco->nargs;
 	if (sco->val[0].type != T_INVALID) {
 	    d_get_values(data, sco->val, co->val,
-			 (sco->nargs > 2) ? 3 : sco->nargs + 1);
+			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
 	} else {
 	    co->val[0].type = T_INVALID;
 	}
@@ -943,11 +1012,12 @@ register dataspace *data;
 uindex d_new_call_out(data, func, t, nargs)
 register dataspace *data;
 string *func;
-unsigned long t;
+Uint t;
 int nargs;
 {
     register dcallout *co;
     register value *v;
+    register uindex n;
 
     if (data->ncallouts == 0) {
 	/*
@@ -961,12 +1031,23 @@ int nargs;
 	if (data->callouts == (dcallout *) NULL) {
 	    d_get_callouts(data);
 	}
-	if (data->fcallouts != 0) {
+	n = data->fcallouts;
+	if (n != 0) {
 	    /*
 	     * from free list
 	     */
-	    co = &data->callouts[data->fcallouts - 1];
-	    data->fcallouts = co->co_next;
+	    co = &data->callouts[n - 1];
+	    if (co->co_next == 0 || co->co_next > n) {
+		/* take 1st free callout */
+		data->fcallouts = co->co_next;
+	    } else {
+		/* take 2nd free callout */
+		co = &data->callouts[co->co_next - 1];
+		data->callouts[n - 1].co_next = co->co_next;
+		if (co->co_next != 0) {
+		    data->callouts[co->co_next - 1].co_prev = n;
+		}
+	    }
 	    data->modified |= M_CALLOUT;
 	} else {
 	    /*
@@ -989,6 +1070,9 @@ int nargs;
     ref_rhs(data, &v[0]);
 
     switch (nargs) {
+    case 3:
+	v[3] = sp[2];
+	ref_rhs(data, &v[3]);
     case 2:
 	v[2] = sp[1];
 	ref_rhs(data, &v[2]);
@@ -1001,10 +1085,13 @@ int nargs;
     default:
 	v[1] = *sp++;
 	ref_rhs(data, &v[1]);
-	v[2].type = T_ARRAY;
-	arr_ref(v[2].u.array = arr_new((long) --nargs));
-	memcpy(v[2].u.array->elts, sp, nargs * sizeof(value));
+	v[2] = *sp++;
 	ref_rhs(data, &v[2]);
+	v[3].type = T_ARRAY;
+	nargs -= 2;
+	arr_ref(v[3].u.array = arr_alloc((unsigned short) nargs));
+	memcpy(v[3].u.array->elts, sp, nargs * sizeof(value));
+	ref_rhs(data, &v[3]);
 	break;
     }
     sp += nargs;
@@ -1013,58 +1100,35 @@ int nargs;
 }
 
 /*
- * NAME:	data->find_call_out()
- * DESCRIPTION:	find a call_out
- */
-uindex d_find_call_out(data, func, t)
-dataspace *data;
-register string *func;
-unsigned long *t;
-{
-    register int i;
-    register dcallout *co, *found;
-
-    if (data->ncallouts > 0) {
-	if (data->callouts == (dcallout *) NULL) {
-	    d_get_callouts(data);
-	}
-	found = (dcallout *) NULL;
-	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
-	    if (co->val[0].type == T_STRING &&
-		strcmp(func->text, co->val[0].u.string->text) == 0) {
-		if (found == (dcallout *) NULL || found->time > co->time) {
-		    found = co;
-		}
-	    }
-	}
-	if (found != (dcallout *) NULL) {
-	    *t = found->time;
-	    return found - data->callouts + 1;
-	}
-    }
-    return 0;
-}
-
-/*
  * NAME:	data->get_call_out()
  * DESCRIPTION:	get a call_out
  */
-char *d_get_call_out(data, handle, nargs)
+char *d_get_call_out(data, handle, t, nargs)
 dataspace *data;
 uindex handle;
+Uint *t;
 int *nargs;
 {
     static char func[STRINGSZ];
     register dcallout *co;
     register value *v;
-    register uindex n, l;
+    register uindex n;
 
+    if (handle == 0 || handle > data->ncallouts) {
+	/* no such call_out */
+	return (char *) NULL;
+    }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
     }
 
     co = &data->callouts[handle - 1];
+    if (co->val[0].type == T_INVALID) {
+	/* invalid call_out */
+	return (char *) NULL;
+    }
     i_check_stack(*nargs = co->nargs);
+    *t = co->time;
     v = co->val;
 
     strncpy(func, v[0].u.string->text, STRINGSZ - 1);
@@ -1074,6 +1138,9 @@ int *nargs;
     v[0].type = T_INVALID;
 
     switch (co->nargs) {
+    case 3:
+	del_lhs(data, &v[3]);
+	*--sp = v[3];
     case 2:
 	del_lhs(data, &v[2]);
 	*--sp = v[2];
@@ -1084,13 +1151,15 @@ int *nargs;
 	break;
 
     default:
-	n = co->nargs - 1;
+	n = co->nargs - 2;
 	sp -= n;
-	memcpy(sp, d_get_elts(v[2].u.array), n * sizeof(value));
+	memcpy(sp, d_get_elts(v[3].u.array), n * sizeof(value));
+	del_lhs(data, &v[3]);
+	FREE(v[3].u.array->elts);
+	v[3].u.array->elts = (value *) NULL;
+	arr_del(v[3].u.array);
 	del_lhs(data, &v[2]);
-	FREE(v[2].u.array->elts);
-	v[2].u.array->elts = (value *) NULL;
-	arr_del(v[2].u.array);
+	*--sp = v[2];
 	del_lhs(data, &v[1]);
 	*--sp = v[1];
 	break;
@@ -1099,66 +1168,124 @@ int *nargs;
     /* wipe out destructed objects */
     for (n = co->nargs, v = sp; n > 0; --n, v++) {
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    v->type = T_NUMBER;
+	    v->type = T_INT;
 	    v->u.number = 0;
 	}
     }
 
     n = data->fcallouts;
-    if (n == 0) {
-	/* first free slot */
-	co->co_next = 0;
-	data->fcallouts = handle;
-    } else if (n > handle) {
-	/* first in free list */
+    if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;
-	co->co_next = n;
-	data->fcallouts = handle;
-    } else {
-	/* insert in free list */
-	for (;;) {
-	    l = n;
-	    n = data->callouts[n - 1].co_next;
-	    if (n == 0) {
-		/* last in list */
-		break;
-	    }
-	    if (n > handle) {
-		data->callouts[n - 1].co_prev = handle;
-		break;
-	    }
-	}
-	data->callouts[l - 1].co_next = handle;
-	co->co_prev = l;
-	co->co_next = n;
     }
+    co->co_next = n;
+    data->fcallouts = handle;
 
     data->modified |= M_CALLOUT;
     return func;
 }
 
 /*
- * NAME:	data->ncallouts()
- * DESCRIPTION:	return the number of call_outs in an object
+ * NAME:	cmp()
+ * DESCRIPTION:	compare two call_outs
  */
-uindex d_ncallouts(data)
-register dataspace *data;
+static int cmp(v1, v2)
+value *v1, *v2;
 {
-    register uindex l, count;
+    return v1->u.array->elts[2].u.number - v2->u.array->elts[2].u.number;
+}
+
+/*
+ * NAME:	data->list_callouts()
+ * DESCRIPTION:	list all call_outs in an object
+ */
+array *d_list_callouts(data, t)
+register dataspace *data;
+Uint t;
+{
+    register uindex n, count, size;
     register dcallout *co;
+    register value *v, *v2, *elts;
+    array *list, *a;
 
     if (data->ncallouts == 0) {
-	return 0;
+	return arr_alloc((unsigned short) 0);
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
     }
 
+    /* get the number of callouts in this object */
     count = data->ncallouts;
-    for (l = data->fcallouts; l != 0; l = data->callouts[l - 1].co_next) {
+    for (n = data->fcallouts; n != 0; n = data->callouts[n - 1].co_next) {
 	--count;
     }
-    return count;
+
+    list = arr_alloc((unsigned short) count);
+    elts = list->elts;
+    for (n = count, v = elts; n > 0; --n) {
+	(v++)->type = T_INVALID;
+    }
+
+    if (ec_push()) {
+	/*
+	 * Free the list of callouts.  Efficiency is not important here.
+	 */
+	arr_ref(list);
+	arr_del(list);
+	error((char *) NULL);	/* pass on error */
+    }
+    for (co = data->callouts; count > 0; co++) {
+	if (co->val[0].type != T_INVALID) {
+	    size = co->nargs;
+	    a = arr_new(size + 3L);
+	    v = a->elts;
+
+	    /* handle */
+	    v->type = T_INT;
+	    (v++)->u.number = co - data->callouts + 1;
+	    /* function */
+	    v->type = T_STRING;
+	    str_ref((v++)->u.string = co->val[0].u.string);
+	    /* time */
+	    v->type = T_INT;
+	    (v++)->u.number = co->time - t;
+
+	    /* copy arguments */
+	    switch (size) {
+	    case 3:
+		*v++ = co->val[3];
+	    case 2:
+		*v++ = co->val[2];
+	    case 1:
+		*v++ = co->val[1];
+	    case 0:
+		break;
+
+	    default:
+		n = size - 2;
+		for (v2 = d_get_elts(co->val[3].u.array) + n; n > 0; --n) {
+		    *v++ = *--v2;
+		}
+		*v++ = co->val[2];
+		*v++ = co->val[1];
+		break;
+	    }
+	    while (size > 0) {
+		i_ref_value(--v);
+		--size;
+	    }
+
+	    /* put in list */
+	    elts->type = T_ARRAY;
+	    arr_ref((elts++)->u.array = a);
+	    --count;
+	}
+    }
+    ec_pop();
+
+    /* sort by time */
+    qsort(list->elts, list->size, sizeof(value), cmp);
+    return list;
 }
 
 /*
@@ -1198,6 +1325,7 @@ register control *ctrl;
 
     /* create header */
     header.ninherits = ctrl->ninherits;
+    header.compiled = ctrl->compiled;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
     header.strsize = ctrl->strsize;
@@ -1206,6 +1334,8 @@ register control *ctrl;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
+    header.nfloatdefs = ctrl->nfloatdefs;
+    header.nfloats = ctrl->nfloats;
 
     /*
      * Copy everything to the swap device.
@@ -1357,11 +1487,10 @@ register unsigned short n;
     }
 }
 
-static dinherit *inherits;	/* the inherit list of the object being saved */
-static sarray *sarrays;		/* the arrays */
-static svalue *selts;		/* the array elements */
-static sstring *sstrings;	/* the strings */
-static char *stext;		/* the string texts */
+static sarray *sarrays;		/* save arrays */
+static svalue *selts;		/* save array elements */
+static sstring *sstrings;	/* save strings */
+static char *stext;		/* save string elements */
 
 /*
  * NAME:	data->save()
@@ -1376,13 +1505,12 @@ register unsigned short n;
 
     while (n > 0) {
 	switch (sv->type = v->type) {
-	case T_NUMBER:
+	case T_INT:
 	    sv->u.number = v->u.number;
 	    break;
 
-	case T_OBJECT:
-	    sv->oindex = v->oindex;
-	    sv->u.objcnt = v->u.objcnt;
+	case T_FLOAT:
+	    SFLT_PUT(sv, v);
 	    break;
 
 	case T_STRING:
@@ -1408,6 +1536,11 @@ register unsigned short n;
 		}
 		sstrings[i].ref++;
 	    }
+	    break;
+
+	case T_OBJECT:
+	    sv->oindex = v->oindex;
+	    sv->u.objcnt = v->u.objcnt;
 	    break;
 
 	case T_ARRAY:
@@ -1448,13 +1581,12 @@ register unsigned short n;
     while (n > 0) {
 	if (v->modified) {
 	    switch (sv->type = v->type) {
-	    case T_NUMBER:
+	    case T_INT:
 		sv->u.number = v->u.number;
 		break;
 
-	    case T_OBJECT:
-		sv->oindex = v->oindex;
-		sv->u.objcnt = v->u.objcnt;
+	    case T_FLOAT:
+		SFLT_PUT(sv, v);
 		break;
 
 	    case T_STRING:
@@ -1473,11 +1605,17 @@ register unsigned short n;
 		}
 		break;
 
+	    case T_OBJECT:
+		sv->oindex = v->oindex;
+		sv->u.objcnt = v->u.objcnt;
+		break;
+
 	    case T_ARRAY:
 	    case T_MAPPING:
 		sv->u.array = v->u.array->primary - sdata->arrays;
 		break;
 	    }
+	    v->modified = FALSE;
 	}
 	sv++;
 	v++;
@@ -1487,16 +1625,17 @@ register unsigned short n;
 
 /*
  * NAME:	data->save_dataspace()
- * DESCRIPTION:	save all values in a dataspace block
+ * DESCRIPTION:	Save all values in a dataspace block.  Return TRUE if the
+ *		necessary changes were such that the dataspace block can
+ *		continue to be used.
  */
-static void d_save_dataspace(data)
+static bool d_save_dataspace(data)
 register dataspace *data;
 {
     sdataspace header;
     register uindex n;
 
     sdata = data;
-    inherits = data->ctrl->inherits;
 
     if (!(data->nsectors == 0 && (data->modified & M_VARIABLE)) &&
 	data->achange == 0 && data->schange == 0 &&
@@ -1604,8 +1743,9 @@ register dataspace *data;
 		    co->val[0].modified = TRUE;
 		    co->val[1].modified = TRUE;
 		    co->val[2].modified = TRUE;
+		    co->val[3].modified = TRUE;
 		    d_put_values(sco->val, co->val,
-				 (co->nargs > 2) ? 3 : co->nargs + 1);
+				 (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
 		    sco->val[0].type = T_INVALID;
 		}
@@ -1618,6 +1758,11 @@ register dataspace *data;
 		      data->cooffset);
 	    AFREE(scallouts);
 	}
+
+	/* the data block can remain in memory */
+	data->modified = 0;
+	return TRUE;
+
     } else {
 	scallout *scallouts;
 	register long size;
@@ -1657,34 +1802,34 @@ register dataspace *data;
 	    if(data->callouts == (dcallout *) NULL) {
 		d_get_callouts(data);
 	    }
-	    /* remove empty call_outs at the end */
+	    /* remove empty callouts at the end */
 	    for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
 		if ((--co)->val[0].type != T_INVALID) {
 		    break;
 		}
 		if (data->fcallouts == n) {
 		    /* first call_out in the free list */
-		    data->fcallouts = 0;
+		    data->fcallouts = co->co_next;
 		} else {
 		    /* connect previous to next */
-		    data->callouts[co->co_prev - 1].co_next = co->nargs;
+		    data->callouts[co->co_prev - 1].co_next = co->co_next;
 		    if (co->co_next != 0) {
 			/* connect next to previous */
-			data->callouts[co->co_next - 1].co_next = co->co_prev;
+			data->callouts[co->co_next - 1].co_prev = co->co_prev;
 		    }
 		}
 	    }
 	    data->ncallouts = n;
 	    if (n == 0) {
-		/* all call_outs removed */
+		/* all callouts removed */
 		FREE(data->callouts);
 		data->callouts = (dcallout *) NULL;
 	    } else {
-		/* process call_outs */
+		/* process callouts */
 		scallouts = ALLOCA(scallout, n);
 		for (co = data->callouts; n > 0; --n, co++) {
 		    if (co->val[0].type != T_INVALID) {
-			d_count(co->val, (co->nargs > 2) ? 3 : co->nargs + 1);
+			d_count(co->val, (co->nargs > 3) ? 4 : co->nargs + 1);
 		    }
 		}
 	    }
@@ -1697,13 +1842,12 @@ register dataspace *data;
 	header.strsize = strsize;
 	header.ncallouts = data->ncallouts;
 	header.fcallouts = data->fcallouts;
-	header.nsectors =
-	  sw_mapsize(sizeof(sdataspace) +
-		     (data->nvariables + arrsize) * sizeof(svalue) +
-		     header.narrays * (long) sizeof(sarray) +
-		     header.nstrings * (long) sizeof(sstring) +
-		     header.strsize +
-		     header.ncallouts * (long) sizeof(scallout));
+	header.nsectors = sw_mapsize(sizeof(sdataspace) +
+			  (data->nvariables + header.eltsize) * sizeof(svalue) +
+			  header.narrays * (long) sizeof(sarray) +
+			  header.nstrings * (long) sizeof(sstring) +
+			  header.strsize +
+			  header.ncallouts * (long) sizeof(scallout));
 
 	/*
 	 * put everything into a saveable form
@@ -1737,7 +1881,7 @@ register dataspace *data;
 		sco->nargs = co->nargs;
 		if (co->val[0].type != T_INVALID) {
 		    d_save(sco->val, co->val,
-			   (co->nargs > 2) ? 3 : co->nargs + 1);
+			   (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
 		    sco->val[0].type = T_INVALID;
 		}
@@ -1832,6 +1976,9 @@ register dataspace *data;
 		      header.ncallouts * (long) sizeof(scallout), size);
 	    AFREE(scallouts);
 	}
+
+	/* the data block must be freed */
+	return FALSE;
     }
 }
 
@@ -1911,11 +2058,17 @@ register control *ctrl;
 	ctrl->prev->next = ctrl->next;
     } else {
 	chead = ctrl->next;
+	if (chead != (control *) NULL) {
+	    chead->prev = (control *) NULL;
+	}
     }
     if (ctrl != ctail) {
 	ctrl->next->prev = ctrl->prev;
     } else {
 	ctail = ctrl->prev;
+	if (ctail != (control *) NULL) {
+	    ctail->next = (control *) NULL;
+	}
     }
     --nctrl;
 
@@ -1955,8 +2108,8 @@ register dataspace *data;
 	    v = co->val;
 	    if (v->type != T_INVALID) {
 		j = 1 + co->nargs;
-		if (j > 3) {
-		    j = 3;
+		if (j > 4) {
+		    j = 4;
 		}
 		do {
 		    i_del_value(v++);
@@ -2039,17 +2192,96 @@ register dataspace *data;
 	data->prev->next = data->next;
     } else {
 	dhead = data->next;
+	if (dhead != (dataspace *) NULL) {
+	    dhead->prev = (dataspace *) NULL;
+	}
     }
     if (data != dtail) {
 	data->next->prev = data->prev;
     } else {
 	dtail = data->prev;
+	if (dtail != (dataspace *) NULL) {
+	    dtail->next = (dataspace *) NULL;
+	}
     }
     --ndata;
 
     FREE(data);
 }
 
+
+/*
+ * NAME:	data->swapout()
+ * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
+ *		memory.  Return the number of dataspace blocks swapped out.
+ */
+uindex d_swapout(frag)
+int frag;
+{
+    register uindex n, count;
+    register control *ctrl, *next;
+
+    count = 0;
+
+    /* swap out dataspace blocks */
+    for (n = ndata / frag; n > 0; --n) {
+	if (dtail->modified != 0) {
+	    d_save_dataspace(dtail);
+	    count++;
+	}
+	d_free_values(dtail);
+	d_free_dataspace(dtail);
+    }
+
+    /* swap out control blocks */
+    ctrl = ctail;
+    for (n = nctrl / frag; n > 0; --n) {
+	next = ctrl->prev;
+	if (ctrl->ndata == 0) {
+	    if (ctrl->sectors == (sector *) NULL &&
+		!(ctrl->inherits[ctrl->ninherits - 1].obj->flags & O_COMPILED))
+	    {
+		d_save_control(ctrl);
+	    }
+	    d_free_control(ctrl);
+	}
+	ctrl = next;
+    }
+
+    return count;
+}
+
+/*
+ * NAME:	data->swapsync()
+ * DESCRIPTION:	Synchronize the swap file with the state of memory, swapping
+ *		out as little as possible.
+ */
+void d_swapsync()
+{
+    register control *ctrl;
+    register dataspace *data, *next;
+
+    /* save control blocks */
+    for (ctrl = ctail; ctrl != (control *) NULL; ctrl = ctrl->prev) {
+	if (ctrl->sectors == (sector *) NULL &&
+	    !(ctrl->inherits[ctrl->ninherits - 1].obj->flags & O_COMPILED)) {
+	    d_save_control(ctrl);
+	}
+    }
+
+    /* save dataspace blocks */
+    for (data = dtail; data != (dataspace *) NULL; data = next) {
+	next = data->prev;
+	if (data->modified != 0 && !d_save_dataspace(data)) {
+	    /*
+	     * the data block is not in proper shape for another sync; get
+	     * it from the swap device, next time
+	     */
+	    d_free_values(data);
+	    d_free_dataspace(data);
+	}
+    }
+}
 
 /*
  * NAME:	data->patch_ctrl()
@@ -2101,47 +2333,6 @@ long offset;
 	}
 	AFREE(scallouts);
     }
-}
-
-/*
- * NAME:	data->swapout()
- * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
- *		memory.  Return the number of dataspace blocks swapped out.
- */
-uindex d_swapout(frag)
-int frag;
-{
-    register uindex n, count;
-    register control *ctrl, *next;
-
-    count = 0;
-
-    /* swap out dataspace blocks */
-    for (n = ndata / frag; n > 0; --n) {
-	if (dtail->modified != 0) {
-	    d_save_dataspace(dtail);
-	    count++;
-	}
-	d_free_values(dtail);
-	d_free_dataspace(dtail);
-    }
-
-    /* swap out control blocks */
-    ctrl = ctail;
-    for (n = nctrl / frag; n > 0; --n) {
-	next = ctrl->prev;
-	if (ctrl->ndata == 0) {
-	    if (ctrl->sectors == (sector *) NULL &&
-		!(ctrl->inherits[ctrl->ninherits - 1].obj->flags & O_COMPILED))
-	    {
-		d_save_control(ctrl);
-	    }
-	    d_free_control(ctrl);
-	}
-	ctrl = next;
-    }
-
-    return count;
 }
 
 /*

@@ -80,7 +80,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     if (format != (char *) NULL) {
 	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     }
-    message("%s\n", errbuf);
+    message("%s\012", errbuf);	/* LF */
 }
 
 /*
@@ -105,12 +105,14 @@ void fatal(format, arg1, arg2, arg3, arg4, arg5, arg6)
 char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     static short count;
+    char ebuf1[STRINGSZ], ebuf2[STRINGSZ];
 
     if (count++ == 0) {
-	fputs("Fatal error: ", stderr);
-	fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	fputc('\n', stderr);
-	fflush(stderr);
+	sprintf(ebuf1, format, arg1, arg2, arg3, arg4, arg5, arg6);
+	sprintf(ebuf2, "Fatal error: %s\012", ebuf1);	/* LF */
+
+	P_message(ebuf2);	/* show message */
+
 	comm_finish();
     }
     abort();
@@ -126,15 +128,14 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     char ebuf[4 * STRINGSZ];
 
     sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
-    fputs(ebuf, stderr);
-    fflush(stderr);
+    P_message(ebuf);	/* show message */
 
-    /* secondary error logging */
+    /* secondary error log */
     if (errlog != (char *) NULL) {
 	/*
 	 * open log
 	 */
-	fd = open(errlog, O_CREAT | O_APPEND | O_WRONLY, 0664);
+	fd = open(errlog, O_CREAT | O_APPEND | O_WRONLY | O_BINARY, 0664);
 	if (fd >= 0) {
 	    buffer = ALLOC(char, ERR_LOG_BUF_SZ);
 	    bufsz = 0;

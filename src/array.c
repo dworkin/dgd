@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 
@@ -60,7 +61,7 @@ static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
 static uindex idx;		/* current building index */
 
-static value zero_value = { T_NUMBER, TRUE };	/* the zero value */
+static value zero_value = { T_INT, TRUE };	/* the zero value */
 
 /*
  * NAME:	array->init()
@@ -81,7 +82,7 @@ int size;
  * NAME:	array->alloc()
  * DESCRIPTION:	create a new array
  */
-static array *arr_alloc(size)
+array *arr_alloc(size)
 unsigned short size;
 {
     register array *a;
@@ -146,7 +147,7 @@ unsigned short hashval;
 	if ((m->size >> 1) + h->size == max_size) {
 	    error("Mapping too large to grow");
 	}
-	if (h->size == h->tablesize >> 1) {
+	if (h->size << 2 >= h->tablesize * 3) {
 	    register mapelt *n, **t;
 	    register unsigned short j;
 
@@ -417,6 +418,7 @@ register value *v1, *v2;
 {
     register int i;
     register long l;
+    xfloat f1, f2;
 
     i = v1->type - v2->type;
     if (i != 0) {
@@ -428,15 +430,20 @@ register value *v1, *v2;
      * that should be done in advance.
      */
     switch (v1->type) {
-    case T_NUMBER:
+    case T_INT:
 	l = v1->u.number - v2->u.number;
 	break;
 
-    case T_OBJECT:
-	return v1->oindex - v2->oindex;
+    case T_FLOAT:
+	VFLT_GET(v1, f1);
+	VFLT_GET(v2, f2);
+	return flt_cmp(&f1, &f2);
 
     case T_STRING:
 	return str_cmp(v1->u.string, v2->u.string);
+
+    case T_OBJECT:
+	return v1->oindex - v2->oindex;
 
     case T_ARRAY:
     case T_MAPPING:
@@ -471,7 +478,7 @@ register int step;		/* 1 for arrays, 2 for mappings */
 	v3 = v2 + m;
 	c = cmp(v1, v3);
 	if (c == 0) {
-	    if (v1->type >= T_ARRAY && v1->u.array != v3->u.array) {
+	    if (T_INDEXED(v1->type) && v1->u.array != v3->u.array) {
 		/*
 		 * It is possible for one object to export an array, both
 		 * objects being swapped out after that, and the other object
@@ -487,7 +494,7 @@ register int step;		/* 1 for arrays, 2 for mappings */
 		for (;;) {
 		    m += step;
 		    v3 += step;
-		    if (m == h || v3->type < T_ARRAY) {
+		    if (m == h || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
 		    }
 		    if (v1->u.array == v3->u.array) {
@@ -503,7 +510,7 @@ register int step;		/* 1 for arrays, 2 for mappings */
 		for (;;) {
 		    m -= step;
 		    v3 -= step;
-		    if (m < l || v3->type < T_ARRAY) {
+		    if (m < l || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
 		    }
 		    if (v1->u.array == v3->u.array) {
@@ -709,7 +716,8 @@ value *v1, *v2;
     register int c;
 
     c = cmp(v1, v2);
-    if (c == 0 && (v1->type < T_ARRAY || v1->u.array == v2->u.array)) {
+    if (c == 0 && v1 != v2 && (!T_INDEXED(v1->type) ||
+	v1->u.array == v2->u.array)) {
 	error("Identical indices in mapping");
     }
     return c;
@@ -739,7 +747,7 @@ register array *m;
     register value *v, *w;
 
     for (i = m->size, sz = 0, v = w = m->elts; i > 0; i -= 2) {
-	if (v[1].type != T_NUMBER || v[1].u.number != 0) {
+	if (v[1].type != T_INT || v[1].u.number != 0) {
 	    *w++ = *v++;
 	    *w++ = *v++;
 	    sz += 2;
@@ -949,7 +957,7 @@ array *m1, *m2;
 	    v2 += 2; v3 += 2; n2 -= 2;
 	    if (c == 0) {
 		/* equal elements? */
-		if (v1->type >= T_ARRAY && v1->u.array != v2->u.array) {
+		if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
 		    register value *v;
 		    register unsigned short n;
 
@@ -961,7 +969,7 @@ array *m1, *m2;
 		    v = v2; n = n2;
 		    for (;;) {
 			v += 2; n -= 2;
-			if (n == 0 || v->type < T_ARRAY ||
+			if (n == 0 || !T_INDEXED(v->type) ||
 			    v->u.array->tag != v1->u.array->tag) {
 			    /* not in m2 */
 			    copy(v3, v1, 2);
@@ -1045,7 +1053,7 @@ array *m1, *a2;
 	    v2++; --n2;
 	} else {
 	    /* equal elements? */
-	    if (v1->type >= T_ARRAY && v1->u.array != v2->u.array) {
+	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
 		register value *v;
 		register unsigned short n;
 
@@ -1057,7 +1065,7 @@ array *m1, *a2;
 		v = v2; n = n2;
 		for (;;) {
 		    v++; --n;
-		    if (n == 0 || v->type < T_ARRAY ||
+		    if (n == 0 || !T_INDEXED(v->type) ||
 			v->u.array->tag != v1->u.array->tag) {
 			/* not in a2 */
 			copy(v3, v1, 2);
@@ -1136,7 +1144,7 @@ array *m1, *a2;
 	    v2++; --n2;
 	} else {
 	    /* equal elements? */
-	    if (v1->type >= T_ARRAY && v1->u.array != v2->u.array) {
+	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
 		register value *v;
 		register unsigned short n;
 
@@ -1148,7 +1156,7 @@ array *m1, *a2;
 		v = v2; n = n2;
 		for (;;) {
 		    v++; --n;
-		    if (n == 0 || v->type < T_ARRAY ||
+		    if (n == 0 || !T_INDEXED(v->type) ||
 			v->u.array->tag != v1->u.array->tag) {
 			/* not in a2 */
 			break;
@@ -1190,8 +1198,7 @@ value *val, *elt;
     register unsigned short i;
     bool del;
 
-    del = (elt != (value *) NULL && elt->type == T_NUMBER &&
-	   elt->u.number == 0);
+    del = (elt != (value *) NULL && elt->type == T_INT && elt->u.number == 0);
 
     if (m->size > 0) {
 	register int n;
@@ -1234,16 +1241,20 @@ value *val, *elt;
     }
 
     switch (val->type) {
-    case T_NUMBER:
+    case T_INT:
 	i = val->u.number;
 	break;
 
-    case T_OBJECT:
-	i = val->u.objcnt;
+    case T_FLOAT:
+	i = VFLT_HASH(val);
 	break;
 
     case T_STRING:
 	i = hashstr(val->u.string->text, STRMAPHASHSZ);
+	break;
+
+    case T_OBJECT:
+	i = val->u.objcnt;
 	break;
 
     case T_ARRAY:
@@ -1258,7 +1269,7 @@ value *val, *elt;
 	for (e = &m->hashed->table[i % m->hashed->tablesize];
 	     *e != (mapelt *) NULL; e = &(*e)->next) {
 	    if (cmp(val, &(*e)->idx) == 0 &&
-		(val->type < T_ARRAY || val->u.array == (*e)->idx.u.array)) {
+		(!T_INDEXED(val->type) || val->u.array == (*e)->idx.u.array)) {
 		/*
 		 * found in the hashtable
 		 */

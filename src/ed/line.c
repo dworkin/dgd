@@ -49,9 +49,9 @@
 
 typedef struct {
     block prev, next;		/* first and last */
-    long lines;			/* size of this block */
+    Int lines;			/* size of this block */
     union {
-	long u_index;		/* index from start of chain block */
+	Int u_index;		/* index from start of chain block */
 	struct {
 	    short u_index1;	/* index in first chain block */
 	    short u_index2;	/* index in last chain block */
@@ -121,7 +121,7 @@ char *filename;
     lb->txtsz = 0;
 
     /* create or truncate tmpfile */
-    lb->fd = open(lb->file, O_CREAT | O_TRUNC | O_RDWR, 0600);
+    lb->fd = open(lb->file, O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
     if (lb->fd < 0) {
 	fatal("cannot create editor tmpfile \"%s\"", lb->file);
     }
@@ -180,7 +180,7 @@ static void lb_act(lb)
 register linebuf *lb;
 {
     if (lb->fd < 0) {
-	lb->fd = open(lb->file, O_RDWR);
+	lb->fd = open(lb->file, O_RDWR | O_BINARY);
 	if (lb->fd < 0) {
 	    fatal("cannot reopen editor tmpfile \"%s\"", lb->file);
 	}
@@ -195,7 +195,7 @@ static void lb_write(lb)
 register linebuf *lb;
 {
     if (lb->blksz > 0) {
-	long offset;
+	Int offset;
 
 # ifdef TMPFILE_SIZE
 	if (lb->wb->offset >= TMPFILE_SIZE - BLOCK_SIZE) {
@@ -311,7 +311,7 @@ char *text;
     *bp2 = *bp;
     lb->blksz += blksz;
 
-    if (txtsz) {
+    if (txtsz != 0) {
 	/* store text */
 	bp2->prev = -1;
 	bp2->lines = 1;
@@ -345,7 +345,7 @@ char *text;
 
     /* flush write buffer if needed */
     if (lb->blksz + lb->txtsz + blksz + txtsz > BLOCK_SIZE) {
-	long offset;
+	Int offset;
 	block prev;
 
 	/* write full buffer */
@@ -417,7 +417,7 @@ char *(*getline) P((void));
  * NAME:	linebuf->size()
  * DESCRIPTION:	return the size of a block
  */
-long bk_size(lb, b)
+Int bk_size(lb, b)
 linebuf *lb;
 block b;
 {
@@ -431,10 +431,10 @@ block b;
  */
 static void bk_split1(bp, size)
 register blk *bp;
-register long size;
+register Int size;
 {
-    register long lines;
-    register long first, last;
+    register Int lines;
+    register Int first, last;
 
     if (bp->type == CAT) {
 	/* block consists of two concatenated blocks */
@@ -466,7 +466,7 @@ register long size;
 	}
     } else {
 	blk bb1, bb2;
-	register long offset, mid;
+	register Int offset, mid;
 
 	/* block is a (sub)range block */
 	lines = bp->lines;
@@ -533,7 +533,7 @@ register long size;
 void bk_split(lb, b, size, b1, b2)
 linebuf *lb;
 block b, *b1, *b2;
-long size;
+Int size;
 {
     l_lb = lb;
     l_b1 = b1;
@@ -570,9 +570,9 @@ block b1, b2;
  */
 static void bk_put1(bp, idx, size)
 register blk *bp;
-register long idx, size;
+register Int idx, size;
 {
-    register long lines, last;
+    register Int lines, last;
 
     lines = bp->lines;
 
@@ -600,7 +600,7 @@ register long idx, size;
 	    bk_put1(bk_load(l_lb, last), idx, size);
 	}
     } else {
-	register long first, offset, mid;
+	register Int first, offset, mid;
 
 	last = bp->llast + BLOCK_SIZE;
 	lines += bp->index1;
@@ -676,7 +676,7 @@ register long idx, size;
 void bk_put(lb, b, idx, size, putline, reverse)
 linebuf *lb;
 block b;
-long idx, size;
+Int idx, size;
 void (*putline) P((char*));
 bool reverse;
 {

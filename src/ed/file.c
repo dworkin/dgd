@@ -76,7 +76,7 @@ static char *getline()
  */
 io *io_load(eb, filename, l)
 editbuf *eb;
-long l;
+Int l;
 char *filename;
 {
     char b[MAX_LINE_SIZE];
@@ -87,7 +87,7 @@ char *filename;
     if (filename == (char *) NULL) {
 	return (io *) NULL;
     }
-    fd = open(filename, O_RDONLY);
+    fd = open(filename, O_RDONLY | O_BINARY);
     if (fd < 0) {
 	return (io *) NULL;
     }
@@ -154,7 +154,7 @@ register char *text;
 io *io_save(eb, filename, first, last, append)
 editbuf *eb;
 char *filename;
-long first, last;
+Int first, last;
 bool append;
 {
     int sz;
@@ -166,7 +166,9 @@ bool append;
     }
     /* create file */
     fd = open(filename,
-      (append) ? O_CREAT|O_APPEND|O_WRONLY : O_CREAT|O_TRUNC|O_WRONLY, 0664);
+	      (append) ? O_CREAT | O_APPEND | O_WRONLY | O_BINARY :
+		         O_CREAT | O_TRUNC | O_WRONLY | O_BINARY,
+	      0664);
     if (fd < 0) {
 	return (io *) NULL;
     }
