@@ -92,19 +92,6 @@
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
 			  "array", "mapping", "reserved", "mixed", "void" }
 
-struct _value_ {
-    char type;			/* value type */
-    bool modified;		/* dirty bit */
-    uindex oindex;		/* index in object table */
-    union {
-	Int number;		/* number */
-	Uint objcnt;		/* object creation count */
-	string *string;		/* string */
-	array *array;		/* array or mapping */
-	value *lval;		/* lvalue: variable */
-    } u;
-};
-
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
 # define VAL_TRUE(v)	((v)->u.number != 0 ||				\
 			 ((v)->type == T_FLOAT && (v)->oindex != 0))

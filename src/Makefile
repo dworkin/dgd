@@ -14,11 +14,11 @@ LD=	$(CC)
 DMAKE=	make
 BIN=	../bin
 
-SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c data.c path.c \
-	editor.c comm.c call_out.c interpret.c config.c dgd.c
-OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
-	editor.o comm.o call_out.o interpret.o config.o dgd.o
-COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
+SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
+	path.c editor.c comm.c call_out.c interpret.c config.c dgd.c
+OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
+	path.o editor.o comm.o call_out.o interpret.o config.o dgd.o
+COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o
 
 a.out:	$(OBJ) always
@@ -99,7 +99,8 @@ editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
 array.o call_out.o interpret.o path.o config.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
 interpret.o config.o dgd.o: interpret.h
-str.o array.o object.o data.o path.o comm.o call_out.o interpret.o: data.h
+error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h
+interpret.o: data.h
 config.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h

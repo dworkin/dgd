@@ -3,6 +3,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "data.h"
 # include "interpret.h"
 # include "comm.h"
 

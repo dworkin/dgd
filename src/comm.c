@@ -488,7 +488,7 @@ array *arr;
 	if (conn_wrdone(usr->conn)) {
 	    n = conn_write(usr->conn, v[1].u.string->text + usr->osdone,
 			   v[1].u.string->len - usr->osdone);
-	    if (n > 0) {
+	    if (n >= 0) {
 		n += usr->osdone;
 		if (n == v[1].u.string->len) {
 		    /* buffer fully drained */
@@ -498,7 +498,7 @@ array *arr;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
 		usr->osdone = n;
-	    } else if (n < 0) {
+	    } else {
 		/* wait for conn_read() to discover the problem */
 		obj->flags &= ~O_PENDIO;
 	    }

@@ -1101,7 +1101,7 @@ void o_clean()
 
 	    if (ctrl->ndata != 0) {
 		/* upgrade all dataspaces in memory */
-		d_upgrade_all(o, up);
+		d_upgrade_mem(o, up);
 	    }
 	}
     }

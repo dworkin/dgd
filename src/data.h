@@ -110,6 +110,28 @@ typedef struct _arrref_ {
     Uint ref;			/* # of refs */
 } arrref;
 
+struct _value_ {
+    char type;			/* value type */
+    bool modified;		/* dirty bit */
+    uindex oindex;		/* index in object table */
+    union {
+	Int number;		/* number */
+	Uint objcnt;		/* object creation count */
+	string *string;		/* string */
+	array *array;		/* array or mapping */
+	value *lval;		/* lvalue: variable */
+    } u;
+};
+
+typedef struct {
+    Uint time;			/* time of call */
+    unsigned short nargs;	/* number of arguments */
+    value val[4];		/* function name, 3 direct arguments */
+} dcallout;
+
+# define co_prev	time
+# define co_next	nargs
+
 struct _dataplane_ {
     Int level;			/* dataplane level */
 
@@ -161,7 +183,7 @@ struct _dataspace_ {
 
     uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
-    struct _dcallout_ *callouts;/* callouts */
+    dcallout *callouts;		/* callouts */
     Uint cooffset;		/* offset of callout table */
 
     dataplane base;		/* basic value plane */
@@ -173,27 +195,39 @@ struct _dataspace_ {
 # define THISPLANE(a)		((a)->plane == (a)->data->plane)
 # define SAMEPLANE(d1, d2)	((d1)->plane->level == (d2)->plane->level)
 
-extern void		d_init		P((bool));
-extern control	       *d_new_control	P((void));
-extern dataspace       *d_new_dataspace	P((object*));
-extern control	       *d_load_control	P((object*));
+/* sdata.c */
+
+extern void		d_init		 P((bool));
+
+extern control	       *d_new_control	 P((void));
+extern dataspace       *d_new_dataspace  P((object*));
+extern control	       *d_load_control	 P((object*));
 extern dataspace       *d_load_dataspace P((object*));
-extern void		d_ref_control	P((control*));
-extern void		d_ref_dataspace	P((dataspace*));
+extern void		d_ref_control	 P((control*));
+extern void		d_ref_dataspace  P((dataspace*));
 
-extern void		d_varmap	P((control*, unsigned int,
-					   unsigned short*));
+extern char	       *d_get_prog	 P((control*));
+extern string	       *d_get_strconst	 P((control*, int, unsigned int));
+extern dfuncdef        *d_get_funcdefs	 P((control*));
+extern dvardef	       *d_get_vardefs	 P((control*));
+extern char	       *d_get_funcalls	 P((control*));
+extern dsymbol	       *d_get_symbols	 P((control*));
+extern Uint		d_get_progsize	 P((control*));
 
-extern char	       *d_get_prog	P((control*));
-extern string	       *d_get_strconst	P((control*, int, unsigned int));
-extern dfuncdef        *d_get_funcdefs	P((control*));
-extern dvardef	       *d_get_vardefs	P((control*));
-extern char	       *d_get_funcalls	P((control*));
-extern dsymbol	       *d_get_symbols	P((control*));
-extern Uint		d_get_progsize	P((control*));
+extern value	       *d_get_variable	 P((dataspace*, unsigned int));
+extern value	       *d_get_elts	 P((array*));
+extern void		d_get_callouts	 P((dataspace*));
 
-extern value	       *d_get_variable	P((dataspace*, unsigned int));
-extern value	       *d_get_elts	P((array*));
+extern sector		d_swapout	 P((unsigned int));
+extern void		d_swapsync	 P((void));
+extern void		d_upgrade_mem	 P((object*, object*));
+extern void		d_conv_control	 P((unsigned int));
+extern void		d_conv_dataspace P((object*, Uint*));
+
+extern void		d_free_control	 P((control*));
+extern void		d_free_dataspace P((dataspace*));
+
+/* data.c */
 
 extern void		d_new_plane	P((dataspace*, Int));
 extern void		d_commit_plane	P((Int, value*));
@@ -217,11 +251,40 @@ extern string	       *d_get_call_out	P((dataspace*, unsigned int, frame*,
 extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_export	P((void));
-extern void		d_upgrade_all	P((object*, object*));
-extern sector		d_swapout	P((unsigned int));
-extern void		d_swapsync	P((void));
-extern void		d_conv_control	P((unsigned int));
-extern void		d_conv_dataspace P((object*, Uint*));
+extern void		d_varmap	P((control*, unsigned int,
+					   unsigned short*));
+extern void		d_upgrade	P((dataspace*, unsigned short,
+					   unsigned short*, object*));
 
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));
+
+
+/* bit values for ctrl->flags */
+# define CTRL_PROGCMP		0x03	/* program compressed */
+# define CTRL_STRCMP		0x0c	/* strings compressed */
+# define CTRL_COMPILED		0x10	/* precompiled control block */
+# define CTRL_VARMAP		0x20	/* varmap updated */
+
+/* bit values for dataspace->flags */
+# define DATA_STRCMP		0x03	/* strings compressed */
+
+/* bit values for dataspace->plane->flags */
+# define MOD_ALL		0x3f
+# define MOD_VARIABLE		0x01	/* variable changed */
+# define MOD_ARRAY		0x02	/* array element changed */
+# define MOD_ARRAYREF		0x04	/* array reference changed */
+# define MOD_STRINGREF		0x08	/* string reference changed */
+# define MOD_CALLOUT		0x10	/* callout changed */
+# define MOD_NEWCALLOUT		0x20	/* new callout added */
+# define PLANE_MERGE		0x40	/* merge planes on commit */
+
+/* data compression */
+# define CMP_TYPE		0x03
+# define CMP_NONE		0x00	/* no compression */
+# define CMP_PRED		0x01	/* predictor compression */
+
+# define ARR_MOD		0x80000000L	/* in arrref->ref */
+
+# define AR_UNCHANGED		0	/* mapping unchanged */
+# define AR_CHANGED		1	/* mapping changed */
