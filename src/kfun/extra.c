@@ -60,11 +60,8 @@ char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1,
  */
 int kf_ctime()
 {
-    time_t t;
-
-    t = sp->u.number;
     sp->type = T_STRING;
-    str_ref(sp->u.string = str_new(ctime(&t), 24L));
+    str_ref(sp->u.string = str_new(_ctime((time_t) sp->u.number), 24L));
 
     return 0;
 }
@@ -93,7 +90,12 @@ int kf_explode()
     s = sp->u.string->text;
     slen = sp->u.string->len;
 
-    if (slen == 0) {
+    if (len == 0) {
+	/*
+	 * exploding "" always gives an empty array
+	 */
+	a = arr_new(0L);
+    } else if (slen == 0) {
 	/*
 	 * the sepatator is ""; split string into single characters
 	 */
@@ -112,10 +114,6 @@ int kf_explode()
 	    /* skip leading separator */
 	    p += slen;
 	    len -= slen;
-	    if (len == 0) {
-		/* string is just a single separator; correct size */
-		size = 0;
-	    }
 	}
 	while (len > slen) {
 	    if (memcmp(p, s, slen) == 0) {
@@ -131,42 +129,40 @@ int kf_explode()
 	}
 
 	a = arr_new((long) size);
-	if (size > 0) {
-	    v = a->elts;
+	v = a->elts;
 
-	    p = sp[1].u.string->text;
-	    len = sp[1].u.string->len;
-	    size = 0;
-	    if (len > slen && memcmp(p, s, slen) == 0) {
-		/* skip leading separator */
+	p = sp[1].u.string->text;
+	len = sp[1].u.string->len;
+	size = 0;
+	if (len > slen && memcmp(p, s, slen) == 0) {
+	    /* skip leading separator */
+	    p += slen;
+	    len -= slen;
+	}
+	while (len > slen) {
+	    if (memcmp(p, s, slen) == 0) {
+		/* separator found */
+		v->type = T_STRING;
+		str_ref(v->u.string = str_new(p - size, (long) size));
+		v++;
 		p += slen;
 		len -= slen;
+		size = 0;
+	    } else {
+		/* next char */
+		p++;
+		--len;
+		size++;
 	    }
-	    while (len > slen) {
-		if (memcmp(p, s, slen) == 0) {
-		    /* separator found */
-		    v->type = T_STRING;
-		    str_ref(v->u.string = str_new(p - size, (long) size));
-		    v++;
-		    p += slen;
-		    len -= slen;
-		    size = 0;
-		} else {
-		    /* next char */
-		    p++;
-		    --len;
-		    size++;
-		}
-	    }
-	    if (len != slen || memcmp(p, s, slen) != 0) {
-		/* remainder isn't a sepatator */
-		size += len;
-		p += len;
-	    }
-	    /* final array element */
-	    v->type = T_STRING;
-	    str_ref(v->u.string = str_new(p - size, (long) size));
 	}
+	if (len != slen || memcmp(p, s, slen) != 0) {
+	    /* remainder isn't a sepatator */
+	    size += len;
+	    p += len;
+	}
+	/* final array element */
+	v->type = T_STRING;
+	str_ref(v->u.string = str_new(p - size, (long) size));
     }
 
     str_del((sp++)->u.string);
@@ -211,13 +207,8 @@ int kf_implode()
 	    }
 	    len += v->u.string->len;
 	}
-    } else {
-	/* zero size array gives zero size string */
-	len = 0;
-    }
+	str = str_new((char *) NULL, len);
 
-    str = str_new((char *) NULL, len);
-    if (len != 0) {
 	/* create the imploded string */
 	p = str->text;
 	for (i = sp[1].u.array->size, v -= i; i > 1; --i, v++) {
@@ -230,6 +221,9 @@ int kf_implode()
 	}
 	/* copy final array part */
 	memcpy(p, v->u.string->text, v->u.string->len);
+    } else {
+	/* zero size array gives zero size string */
+	str = str_new((char *) NULL, 0L);
     }
 
     str_del((sp++)->u.string);
@@ -253,11 +247,7 @@ char p_random[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
  */
 int kf_random()
 {
-    if (sp->u.number <= 0) {
-	return 1;
-    }
-
-    sp->u.number = random() % sp->u.number;
+    sp->u.number = (sp->u.number > 0) ? random() % sp->u.number : 0;
     return 0;
 }
 # endif
@@ -285,6 +275,7 @@ int nargs;
     register int len, flen, size, n, i;
     register char *f, *pct;
     register value *val;
+    int matches;
     char *p;
     bool skip;
     dataspace *data;
@@ -306,6 +297,7 @@ int nargs;
 
     nargs -= 2;
     val = values;
+    matches = 0;
 
     if (ec_push()) {
 	/*
@@ -320,7 +312,7 @@ int nargs;
 	error((char *) NULL);	/* pass on error */
     }
 
-    while (flen > 0 && nargs > 0) {
+    while (flen > 0) {
 	/*
 	 * find first %
 	 */
@@ -418,10 +410,13 @@ int nargs;
 	    }
 
 	    if (!skip) {
+		if (nargs == 0) {
+		    break;
+		}
+		--nargs;
 		val->type = T_STRING;
 		val->u.string = str_new(p, (long) size);
 		val++;
-		--nargs;
 	    }
 	    size += n;
 	    p += size;
@@ -438,9 +433,12 @@ int nargs;
 	    }
 	    len -= p - pct;
 	    if (!skip) {
+		if (nargs == 0) {
+		    break;
+		}
+		--nargs;
 		val->type = T_NUMBER;
 		val++;
-		--nargs;
 	    }
 	    break;
 
@@ -450,11 +448,12 @@ int nargs;
 		goto no_match;
 	    }
 	    --len;
-	    break;
+	    continue;
 
 	default:
 	    error("Bad sscanf format string");
 	}
+	matches++;
     }
 
 no_match:
@@ -463,7 +462,6 @@ no_match:
 	i_pop(nargs);
     }
     data = o_dataspace(i_this_object());
-    i = val - values;
     while (val > values) {
 	i_store(data, sp, --val);
 	sp++;
@@ -473,7 +471,7 @@ no_match:
     str_del((sp++)->u.string);
     str_del(sp->u.string);
     sp->type = T_NUMBER;
-    sp->u.number = i;
+    sp->u.number = matches;
     return 0;
 }
 # endif
