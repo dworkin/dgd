@@ -29,7 +29,9 @@ typedef struct {
     dfuncdef *funcdefs;		/* function definitions */
 
     short nvardefs;		/* # variable definitions */
+    short nclassvars;		/* # class variable definitions */
     dvardef *vardefs;		/* variable definitions */
+    char *classvars;		/* variable classes */
 
     uindex nfuncalls;		/* # function calls */
     char *funcalls;		/* function calls */
@@ -56,6 +58,8 @@ void   pc_restore	P((int));
 # define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =
 # define push_lvalue(v, t)	((--f->sp)->type = T_LVALUE, \
 				 f->sp->oindex = (t), f->sp->u.lval = (v))
+# define push_lvclass(l)	(f->lip->type = T_INT, \
+				 (f->lip++)->u.number = (l))
 # define store()		(i_store(f), f->sp[1] = f->sp[0], f->sp++)
 # define store_int()		(i_store(f), f->sp += 2, f->sp[-2].u.number)
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])

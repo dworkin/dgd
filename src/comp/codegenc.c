@@ -93,14 +93,21 @@ static void store()
  * NAME:	codegen->cast()
  * DESCRIPTION:	generate code for a cast
  */
-static void cg_cast(what, type)
+static void cg_cast(what, type, class)
 char *what;
 unsigned short type;
+string *class;
 {
+    long l;
+
     if ((type & T_REF) != 0) {
 	type = T_ARRAY;
     }
-    output("i_cast(%s, %u)", what, type);
+    l = 0;
+    if (type == T_CLASS) {
+	l = ctrl_dstring(class) & 0xffffffL;
+    }
+    output("i_cast(f, %s, %u, %ld)", what, type, l);
 }
 
 /*
@@ -108,13 +115,22 @@ unsigned short type;
  * DESCRIPTION:	generate code for an lvalue
  */
 static void cg_lvalue(n, type)
-register node *n;
-register int type;
+register node *n, *type;
 {
     register node *m;
+    register unsigned short t;
+    register long l;
 
-    if (type & T_REF) {
-	type = T_ARRAY;
+    t = 0;
+    l = 0;
+    if (type != (node *) NULL && type->mod != T_MIXED) {
+	t = type->mod;
+	if (t & T_REF) {
+	    t = T_ARRAY;
+	}
+	if (t == T_CLASS) {
+	    l = ctrl_dstring(type->class) & 0xffffffL;
+	}
     }
 
     if (n->type == N_CAST) {
@@ -122,13 +138,16 @@ register int type;
     }
     switch (n->type) {
     case N_LOCAL:
-	output("push_lvalue(%s, %d)", local((int) n->r.number), type);
+	output("push_lvalue(%s, %d)", local((int) n->r.number), t);
+	if (t == T_CLASS) {
+	    output(", push_lvclass(%ld)", l);
+	}
 	break;
 
     case N_GLOBAL:
-	output("i_global_lvalue(f, %d, %d/*%s*/, %d)",
+	output("i_global_lvalue(f, %d, %d/*%s*/, %d, %ld)",
 	       ((int) n->r.number >> 8) & 0xff, 
-	       ((int) n->r.number) & 0xff, n->l.left->l.string->text, type);
+	       ((int) n->r.number) & 0xff, n->l.left->l.string->text, t, l);
 	break;
 
     case N_INDEX:
@@ -142,7 +161,7 @@ register int type;
 	    break;
 
 	case N_GLOBAL:
-	    output("i_global_lvalue(f, %d, %d/*%s*/, 0)",
+	    output("i_global_lvalue(f, %d, %d/*%s*/, 0, 0L)",
 		   ((int) m->r.number >> 8) & 0xff, ((int) m->r.number) & 0xff,
 		   m->l.left->l.string->text);
 	    break;
@@ -151,7 +170,7 @@ register int type;
 	    cg_expr(m->l.left, PUSH);
 	    comma();
 	    cg_expr(m->r.right, PUSH);
-	    output(", i_index_lvalue(f, 0)");
+	    output(", i_index_lvalue(f, 0, 0L)");
 	    break;
 
 	default:
@@ -160,7 +179,7 @@ register int type;
 	}
 	comma();
 	cg_expr(n->r.right, PUSH);
-	output(", i_index_lvalue(f, %d)", type);
+	output(", i_index_lvalue(f, %d, %ld)", t, l);
 	break;
     }
 }
@@ -172,10 +191,10 @@ register int type;
 static void cg_fetch(n)
 node *n;
 {
-    cg_lvalue(n, 0);
+    cg_lvalue(n, (node *) NULL);
     output(", i_fetch(f), ");
     if (n->type == N_CAST) {
-	cg_cast("f->sp", n->mod);
+	cg_cast("f->sp", n->mod, n->class);
 	comma();
     }
 }
@@ -312,6 +331,7 @@ int direct;
     case N_GLOBAL:
     case N_GT:
     case N_INDEX:
+    case N_INSTANCEOF:
     case N_LE:
     case N_LSHIFT:
     case N_LSHIFT_EQ:
@@ -381,12 +401,12 @@ int direct;
 
     case N_CAST:
 	if (n->l.left->type == N_LOCAL) {
-	    cg_cast(local((int) n->l.left->r.number), T_INT);
+	    cg_cast(local((int) n->l.left->r.number), T_INT, (string *) NULL);
 	    output(", %s->u.number", local((int) n->l.left->r.number));
 	} else {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
-	    cg_cast("f->sp", T_INT);
+	    cg_cast("f->sp", T_INT, (string *) NULL);
 	    if (direct) {
 		output(", (f->sp++)->u.number");
 	    } else {
@@ -568,10 +588,6 @@ int direct;
 	}
 	break;
 
-    case N_UPLUS:
-	cg_iexpr(n->l.left, direct);
-	break;
-
     case N_XOR_INT:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
 	    output("~");
@@ -626,7 +642,7 @@ char *op;
 	comma();
 	kfun(op);
 	comma();
-	cg_cast("f->sp", T_INT);
+	cg_cast("f->sp", T_INT, (string *) NULL);
 	comma();
 	if (catch_level != 0) {
 	    output("%s->u.number = ", local((int) n->l.left->r.number));
@@ -759,13 +775,20 @@ bool lv;
     }
     if (n->type == N_SPREAD) {
 	int type;
+	long l;
 
 	if (!lv || (type=n->l.left->mod & ~(1 << REFSHIFT)) == T_MIXED) {
 	    type = 0;
 	}
+	if (type == T_CLASS) {
+	    l = ctrl_dstring(n->l.left->class) & 0xffffffL;
+	} else {
+	    l = 0;
+	}
 	cg_expr(n->l.left, PUSH);
 	comma();
-	sprintf(buffer, "%d + i_spread(f, %d, %d)", i, (short) n->mod, type);
+	sprintf(buffer, "%d + i_spread(f, %d, %d, %ld)", i, (short) n->mod,
+		type, l);
     } else {
 	cg_expr(n, PUSH);
 	comma();
@@ -940,10 +963,10 @@ register int state;
 	    return;
 	}
 	if (n->r.right->type == N_CAST) {
-	    cg_lvalue(n->l.left, n->r.right->mod);
+	    cg_lvalue(n->l.left, n->r.right);
 	    n->r.right = n->r.right->l.left;
 	} else {
-	    cg_lvalue(n->l.left, 0);
+	    cg_lvalue(n->l.left, (node *) NULL);
 	}
 	comma();
 	cg_expr(n->r.right, PUSH);
@@ -953,7 +976,7 @@ register int state;
     case N_CAST:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	cg_cast("f->sp", n->mod);
+	cg_cast("f->sp", n->mod, n->class);
 	break;
 
     case N_CATCH:
@@ -1038,15 +1061,15 @@ register int state;
 	    }
 	    /* fall through */
 	case KFCALL_LVAL:
-	    if (PROTO_NARGS(KFUN((short) n->r.number).proto) == 0) {
+	    if (PROTO_NARGS(KFUN((short) n->r.number).proto) +
+		PROTO_VARGS(KFUN((short) n->r.number).proto) == 0) {
 		/* kfun without arguments won't do argument checking */
 		kfun(KFUN((short) n->r.number).name);
 	    } else {
 		if (catch_level == 0 && ((n->r.number >> 24) & KFCALL_LVAL)) {
 		    cg_locals(n->l.left->r.right, TRUE);
 		}
-		if (PROTO_CLASS(KFUN((short) n->r.number).proto) &
-							    C_KFUN_VARARGS) {
+		if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
 		    output("call_kfun_arg(f, %d/*%s*/, %s)",
 			   &KFUN((short) n->r.number) - kftab,
 			   n->l.left->l.string->text, p);
@@ -1118,6 +1141,13 @@ register int state;
 	output("i_index(f)");
 	break;
 
+    case N_INSTANCEOF:
+	cg_expr(n->l.left, PUSH);
+	output(", PUSH_NUMBER %ld, ",
+	       ctrl_dstring(n->r.right->l.string) & 0xffffffL);
+	kfun("instanceof");
+	break;
+
     case N_INT:
 	if (state == PUSH) {
 	    output("PUSH_NUMBER ");
@@ -1183,7 +1213,7 @@ register int state;
 	break;
 
     case N_LVALUE:
-	cg_lvalue(n->l.left, (n->l.left->mod != T_MIXED) ? n->l.left->mod : 0);
+	cg_lvalue(n->l.left, n->l.left);
 	break;
 
     case N_MOD:
@@ -1390,10 +1420,6 @@ register int state;
 	comma();
 	kfun("tostring");
 	break;
-
-    case N_UPLUS:
-	cg_expr(n->l.left, state);
-	return;
 
     case N_XOR:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {

@@ -9,8 +9,7 @@
 # ifdef FUNCDEF
 FUNCDEF("editor", kf_editor, pt_editor)
 # else
-char pt_editor[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_VARARGS | C_STATIC,
-		     T_STRING, 1, T_STRING };
+char pt_editor[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->editor()
@@ -58,7 +57,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("query_editor", kf_query_editor, pt_query_editor)
 # else
-char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
+			   T_OBJECT };
 
 /*
  * NAME:	kfun->query_editor()
@@ -356,7 +356,8 @@ array *a;
     put(x, "])", 2);
 }
 
-char pt_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
+char pt_save_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
+			  T_STRING };
 
 /*
  * NAME:	kfun->save_object()
@@ -879,7 +880,8 @@ register value *val;
     }
 }
 
-char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
+			     T_STRING };
 
 /*
  * NAME:	kfun->restore_object()
@@ -1119,8 +1121,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("write_file", kf_write_file, pt_write_file)
 # else
-char pt_write_file[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_STATIC, T_INT, 3,
-			 T_STRING, T_STRING | T_VARARGS, T_INT };
+char pt_write_file[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_INT, T_STRING,
+			 T_STRING, T_INT };
 
 /*
  * NAME:	kfun->write_file()
@@ -1185,8 +1187,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("read_file", kf_read_file, pt_read_file)
 # else
-char pt_read_file[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_STATIC, T_STRING, 3,
-			T_STRING | T_VARARGS, T_INT, T_INT };
+char pt_read_file[] = { C_TYPECHECKED | C_STATIC, 1, 2, 0, 9, T_STRING,
+			T_STRING, T_INT, T_INT };
 
 /*
  * NAME:	kfun->read_file()
@@ -1278,7 +1280,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("rename_file", kf_rename_file, pt_rename_file)
 # else
-char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
+char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT,
 			  T_STRING, T_STRING };
 
 /*
@@ -1312,7 +1314,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("remove_file", kf_remove_file, pt_remove_file)
 # else
-char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
+			  T_STRING };
 
 /*
  * NAME:	kfun->remove_file()
@@ -1342,7 +1345,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("make_dir", kf_make_dir, pt_make_dir)
 # else
-char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->make_dir()
@@ -1372,7 +1375,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("remove_dir", kf_remove_dir, pt_remove_dir)
 # else
-char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
+			 T_STRING };
 
 /*
  * NAME:	kfun->remove_dir()
@@ -1551,8 +1555,8 @@ cvoid *cv1, *cv2;
 		  ((fileinfo *) cv2)->name->text);
 }
 
-char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
-		      T_STRING };
+char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+		      T_MIXED | (2 << REFSHIFT), T_STRING };
 
 # define FILEINFO_CHUNK	128
 

@@ -1,2 +1,2 @@
 # define OBJREGD	"/kernel/sys/objregd"
-# define API_OBJREG	"/kernel/lib/api/objreg"
+# define API_OBJREG	("/kernel" + INHERITABLE_SUBDIR + "api/objreg")

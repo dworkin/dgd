@@ -29,9 +29,9 @@ static void disconnect()
  * NAME:	connection()
  * DESCRIPTION:	establish connection
  */
-static void connection(object conn)
+static void connection(object LIB_CONN conn)
 {
-    if (function_object("query_user", conn) == LIB_CONN) {
+    if (conn) {
 	disconnect();
 	connection = conn;
     }
@@ -41,11 +41,11 @@ static void connection(object conn)
  * NAME:	redirect()
  * DESCRIPTION:	direct connection to a different user object
  */
-static void redirect(object user, string str)
+static void redirect(object LIB_USER user, string str)
 {
     object conn;
 
-    if (!connection || function_object("query_conn", user) != LIB_USER) {
+    if (!user || !connection) {
 	error("Bad redirect");
     }
     conn = connection;

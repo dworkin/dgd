@@ -30,6 +30,7 @@ typedef struct _bchunk_ {
 typedef struct {
     char *name;			/* variable name */
     short type;			/* variable type */
+    string *cvstr;		/* class name */
 } var;
 
 static bchunk *blist;			/* list of all block chunks */
@@ -110,16 +111,18 @@ char *name;
  * NAME:	block->pdef()
  * DESCRIPTION:	declare a function parameter
  */
-static void block_pdef(name, type)
+static void block_pdef(name, type, cvstr)
 char *name;
 short type;
+string *cvstr;
 {
     if (block_var(name) >= 0) {
 	c_error("redeclaration of parameter %s", name);
     } else {
 	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
-	variables[nparams++].type = type;
+	variables[nparams].type = type;
+	variables[nparams++].cvstr = cvstr;
 	nvars++;
     }
 }
@@ -128,9 +131,10 @@ short type;
  * NAME:	block->vdef()
  * DESCRIPTION:	declare a local variable
  */
-static void block_vdef(name, type)
+static void block_vdef(name, type, cvstr)
 char *name;
 short type;
+string *cvstr;
 {
     if (block_var(name) >= thisblock->vindex) {
 	c_error("redeclaration of local variable %s", name);
@@ -138,7 +142,8 @@ short type;
 	c_error("too many local variables");
     } else {
 	variables[nvars].name = name;
-	variables[nvars++].type = type;
+	variables[nvars].type = type;
+	variables[nvars++].cvstr = cvstr;
     }
 }
 
@@ -272,6 +277,7 @@ static bool stricttc;			/* strict typechecking */
 static bool typechecking;		/* is current function typechecked? */
 static bool seen_decls;			/* seen any declarations yet? */
 static short ftype;			/* current function type & class */
+static string *fclass;			/* function class string */
 static loop *thisloop;			/* current loop */
 static loop *switch_list;		/* list of nested switches */
 static node *case_list;			/* list of case labels */
@@ -624,98 +630,165 @@ register node *n;
 }
 
 /*
+ * NAME:	compile->objecttype()
+ * DESCRIPTION:	handle an object type
+ */
+string *c_objecttype(n)
+register node *n;
+{
+    char path[STRINGSZ];
+
+    if (!cg_compiled()) {
+	char *p;
+	register frame *f;
+
+	f = current->frame;
+	p = tk_filename();
+	PUSH_STRVAL(f, str_new((char *) NULL, strlen(p) + 1L));
+	f->sp->u.string->text[0] = '/';
+	strcpy(f->sp->u.string->text + 1, p);
+	PUSH_STRVAL(f, n->l.string);
+	call_driver_object(f, "object_type", 2);
+	if (f->sp->type != T_STRING) {
+	    c_error("invalid object type");
+	    p = n->l.string->text;
+	} else {
+	    p = f->sp->u.string->text;
+	}
+	path_resolve(path, p);
+	i_del_value(f->sp++);
+    } else {
+	path_resolve(path, n->l.string->text);
+    }
+
+    return str_new(path, (long) strlen(path));
+}
+
+/*
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
 static void c_decl_func(class, type, str, formals, function)
-unsigned short class, type;
+unsigned short class;
+register node *type, *formals;
 string *str;
-register node *formals;
 bool function;
 {
-    char proto[3 + MAX_LOCALS], tnbuf[17];
-    bool typechecked;
-    register char *args;
-    register int nargs;
+    char proto[5 + (MAX_LOCALS + 1) * 3];
+    char tnbuf[17];
+    register char *p, t;
+    register int nargs, vargs;
+    register long l;
+    bool typechecked, varargs;
+
+    varargs = FALSE;
 
     /* check for some errors */
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
 	c_error("private contradicts nomask");
     }
-    if ((class & C_VARARGS) && stricttc) {
-	c_error("varargs must be in parameter list");
+    if (class & C_VARARGS) {
+	if (stricttc) {
+	    c_error("varargs must be in parameter list");
+	}
+	class &= ~C_VARARGS;
+	varargs = TRUE;
     }
-    if ((type & T_TYPE) == T_NIL) {
+    t = type->mod;
+    if ((t & T_TYPE) == T_NIL) {
 	/* don't typecheck this function */
 	typechecked = FALSE;
-	type = T_MIXED;
+	t = T_MIXED;
     } else {
 	typechecked = TRUE;
-	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
+	if (t != T_VOID && (t & T_TYPE) == T_VOID) {
 	    c_error("invalid type for function %s (%s)", str->text,
-		    i_typename(tnbuf, type));
-	    type = T_MIXED;
+		    i_typename(tnbuf, t));
+	    t = T_MIXED;
 	}
     }
 
     /* handle function arguments */
-    args = PROTO_ARGS(proto);
-    nargs = 0;
-    if (formals != (node *) NULL && (formals->flags & F_VARARGS)) {
-	class |= C_VARARGS;
+    ftype = t;
+    fclass = type->class;
+    p = &PROTO_FTYPE(proto);
+    nargs = vargs = 0;
+
+    if (formals != (node *) NULL && (formals->flags & F_ELLIPSIS)) {
+	class |= C_ELLIPSIS;
     }
     formals = revert_list(formals);
-    while (formals != (node *) NULL) {
-	register node *arg;
-	register unsigned short t;
-
+    for (;;) {
+	*p++ = t;
+	if ((t & T_TYPE) == T_CLASS) {
+	    l = ctrl_dstring(type->class);
+	    *p++ = l >> 16;
+	    *p++ = l >> 8;
+	    *p++ = l;
+	}
+	if (formals == (node *) NULL) {
+	    break;
+	}
 	if (nargs == MAX_LOCALS) {
 	    c_error("too many parameters in function %s", str->text);
 	    break;
 	}
+
 	if (formals->type == N_PAIR) {
-	    arg = formals->l.left;
+	    type = formals->l.left;
 	    formals = formals->r.right;
 	} else {
-	    arg = formals;
+	    type = formals;
 	    formals = (node *) NULL;
 	}
-	t = arg->mod;
+	t = type->mod;
 	if ((t & T_TYPE) == T_NIL) {
 	    if (typechecked) {
-		c_error("missing type for parameter %s", arg->l.string->text);
+		c_error("missing type for parameter %s", type->l.string->text);
 	    }
-	    t = T_MIXED | (t & (T_VARARGS | T_ELLIPSIS));
+	    t = T_MIXED;
 	} else if ((t & T_TYPE) == T_VOID) {
-	    c_error("invalid type for parameter %s (%s)", arg->l.string->text,
-		    i_typename(tnbuf, t & ~(T_VARARGS | T_ELLIPSIS)));
-	    t = T_MIXED | (t & (T_VARARGS | T_ELLIPSIS));
-	} else if (typechecked && (t & ~(T_VARARGS | T_ELLIPSIS)) != T_MIXED) {
+	    c_error("invalid type for parameter %s (%s)", type->l.string->text,
+		    i_typename(tnbuf, t));
+	    t = T_MIXED;
+	} else if (typechecked && t != T_MIXED) {
 	    /* only bother to typecheck functions with non-mixed arguments */
 	    class |= C_TYPECHECKED;
 	}
-	*args++ = t;
-	nargs++;
-	if (t & (T_VARARGS | T_ELLIPSIS)) {
-	    t &= ~(T_VARARGS | T_ELLIPSIS);
-	    if (formals == (node *) NULL) {
-		/* ... */
-		t += 1 << REFSHIFT;
-		if ((t & T_REF) == 0) {
-		    c_error("too deep indirection for parameter %s",
-			    arg->l.string->text);
-		}
+	if (type->flags & F_VARARGS) {
+	    if (varargs) {
+		c_error("extra varargs for parameter %s", type->l.string->text);
 	    }
+	    varargs = TRUE;
+	}
+	if (formals == (node *) NULL && (class & C_ELLIPSIS)) {
+	    /* ... */
+	    varargs = TRUE;
+	    if (((t + (1 << REFSHIFT)) & T_REF) == 0) {
+		c_error("too deep indirection for parameter %s",
+			type->l.string->text);
+	    }
+	    if (function) {
+		block_pdef(type->l.string->text, t + (1 << REFSHIFT),
+			   type->class);
+	    }
+	} else if (function) {
+	    block_pdef(type->l.string->text, t, type->class);
 	}
 
-	if (function) {
-	    block_pdef(arg->l.string->text, t);
+	if (!varargs) {
+	    nargs++;
+	} else {
+	    vargs++;
 	}
     }
 
     PROTO_CLASS(proto) = class;
-    PROTO_FTYPE(proto) = type;
     PROTO_NARGS(proto) = nargs;
+    PROTO_VARGS(proto) = vargs;
+    nargs = p - proto;
+    PROTO_HSIZE(proto) = nargs >> 8;
+    PROTO_LSIZE(proto) = nargs;
 
     /* define prototype */
     if (function) {
@@ -723,11 +796,10 @@ bool function;
 	    /* LPC compiled to C */
 	    PROTO_CLASS(proto) |= C_COMPILED;
 	}
-	ftype = type;
-	ctrl_dfunc(str, proto);
+	ctrl_dfunc(str, proto, fclass);
     } else {
 	PROTO_CLASS(proto) |= C_UNDEFINED;
-	ctrl_dproto(str, proto);
+	ctrl_dproto(str, proto, fclass);
     }
 }
 
@@ -736,27 +808,28 @@ bool function;
  * DESCRIPTION:	declare a variable
  */
 static void c_decl_var(class, type, str, global)
-unsigned short class, type;
+unsigned short class;
+node *type;
 string *str;
 bool global;
 {
     char tnbuf[17];
 
-    if ((type & T_TYPE) == T_VOID) {
+    if ((type->mod & T_TYPE) == T_VOID) {
 	c_error("invalid type for variable %s (%s)", str->text,
-		i_typename(tnbuf, type));
-	type = T_MIXED;
+		i_typename(tnbuf, type->mod));
+	type->mod = T_MIXED;
     }
     if (global) {
 	if (class & (C_ATOMIC | C_NOMASK | C_VARARGS)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
-	ctrl_dvar(str, class, type);
+	ctrl_dvar(str, class, type->mod, type->class);
     } else {
 	if (class != 0) {
 	    c_error("invalid class for variable %s", str->text);
 	}
-	block_vdef(str->text, type);
+	block_vdef(str->text, type->mod, type->class);
     }
 }
 
@@ -765,8 +838,8 @@ bool global;
  * DESCRIPTION:	handle a list of declarations
  */
 static void c_decl_list(class, type, list, global)
-register unsigned short class, type;
-register node *list;
+register unsigned short class;
+register node *type, *list;
 bool global;
 {
     register node *n;
@@ -780,11 +853,11 @@ bool global;
 	    n = list;
 	    list = (node *) NULL;
 	}
+	type->mod = (type->mod & T_TYPE) | n->mod;
 	if (n->type == N_FUNC) {
-	    c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right,
-			FALSE);
+	    c_decl_func(class, type, n->l.left->l.string, n->r.right, FALSE);
 	} else {
-	    c_decl_var(class, type | n->mod, n->l.string, global);
+	    c_decl_var(class, type, n->l.string, global);
 	}
     }
 }
@@ -794,8 +867,8 @@ bool global;
  * DESCRIPTION:	handle a global declaration
  */
 void c_global(class, type, n)
-unsigned int class, type;
-node *n;
+unsigned int class;
+node *type, *n;
 {
     if (!seen_decls) {
 	ctrl_create();
@@ -812,15 +885,15 @@ static unsigned short fline;	/* first line of function */
  * DESCRIPTION:	create a function
  */
 void c_function(class, type, n)
-unsigned int class, type;
-register node *n;
+unsigned int class;
+register node *type, *n;
 {
     if (!seen_decls) {
 	ctrl_create();
 	seen_decls = TRUE;
     }
-    c_decl_func(class, type | n->mod, fname = n->l.left->l.string, n->r.right,
-		TRUE);
+    type->mod |= n->mod;
+    c_decl_func(class, type, fname = n->l.left->l.string, n->r.right, TRUE);
 }
 
 /*
@@ -914,8 +987,8 @@ register node *n;
  * DESCRIPTION:	handle local declarations
  */
 void c_local(class, type, n)
-unsigned int class, type;
-node *n;
+unsigned int class;
+node *type, *n;
 {
     c_decl_list(class, type, n, FALSE);
 }
@@ -1593,11 +1666,14 @@ int typechecked;
 	     */
 	    c_error("returned value doesn't match %s (%s)",
 		    i_typename(tnbuf1, ftype), i_typename(tnbuf2, n->mod));
-	} else if (ftype != T_MIXED && n->mod == T_MIXED) {
+	} else if ((ftype != T_MIXED && n->mod == T_MIXED) ||
+		   (ftype == T_CLASS &&
+		    (n->mod != T_CLASS || str_cmp(fclass, n->class) != 0))) {
 	    /*
 	     * typecheck at runtime
 	     */
 	    n = node_mon(N_CAST, ftype, n);
+	    n->class = fclass;
 	}
     }
 
@@ -1646,11 +1722,12 @@ register node *n;
 int typechecked;
 {
     char *proto;
+    string *class;
     long call;
 
-    proto = ctrl_fcall(n->l.string, &call, typechecked);
+    proto = ctrl_fcall(n->l.string, &class, &call, typechecked);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		  node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
+		  node_fcall(PROTO_FTYPE(proto), class, proto, (Int) call);
     return n;
 }
 
@@ -1662,13 +1739,14 @@ node *c_iflookup(n, label)
 node *n, *label;
 {
     char *proto;
+    string *class;
     long call;
 
     proto = ctrl_ifcall(n->l.string, (label != (node *) NULL) ?
 				     label->l.string->text : (char *) NULL,
-			&call);
+			&class, &call);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		  node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
+		  node_fcall(PROTO_FTYPE(proto), class, proto, (Int) call);
     return n;
 }
 
@@ -1696,14 +1774,17 @@ register node *n;
     if (i >= 0) {
 	/* local var */
 	n = node_mon(N_LOCAL, variables[i].type, n);
+	n->class = variables[i].cvstr;
 	n->r.number = i;
     } else {
+	string *class;
 	long ref;
 
 	/*
 	 * try a global variable
 	 */
-	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref), n);
+	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &class), n);
+	n->class = class;
 	n->r.number = ref;
     }
     return n;
@@ -1753,7 +1834,8 @@ node *call, *args;
     register int n, nargs, t;
     register node *func, **argv, **arg;
     char *argp, *proto, *fname;
-    bool typechecked, optional;
+    bool typechecked, ellipsis;
+    int spread;
 
     /* get info, prepare return value */
     fname = call->l.string->text;
@@ -1763,8 +1845,9 @@ node *call, *args;
 	return node_mon(N_FAKE, T_MIXED, (node *) NULL);
     }
     proto = func->l.ptr;
-    func->mod = (PROTO_FTYPE(proto) == T_IMPLICIT) ?
-		 T_MIXED : PROTO_FTYPE(proto);
+    if (func->mod == T_IMPLICIT) {
+	func->mod = T_MIXED;
+    }
     func->l.left = call;
     call->r.right = args;
     argv = &call->r.right;
@@ -1773,12 +1856,12 @@ node *call, *args;
      * check function arguments
      */
     typechecked = ((PROTO_CLASS(proto) & C_TYPECHECKED) != 0);
-    optional = ((PROTO_CLASS(proto) & C_VARARGS) != 0);
-    nargs = PROTO_NARGS(proto);
+    ellipsis = (PROTO_CLASS(proto) & C_ELLIPSIS);
+    nargs = PROTO_NARGS(proto) + PROTO_VARGS(proto);
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
-	    if (!optional && (n != nargs || !(UCHAR(*argp) & T_ELLIPSIS))) {
+	    if (n < PROTO_NARGS(proto)) {
 		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
@@ -1790,14 +1873,9 @@ node *call, *args;
 	    arg = argv;
 	    args = (node *) NULL;
 	}
-	t = UCHAR(*argp) & ~(T_VARARGS | T_ELLIPSIS);
+	t = UCHAR(*argp);
 
 	if ((*arg)->type == N_SPREAD) {
-	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
-		(*arg)->mod = nargs-- - n;
-		/* KFCALL => KFCALL_LVAL */
-		func->r.number |= (long) KFCALL_LVAL << 24;
-	    }
 	    t = (*arg)->l.left->mod;
 	    if (t != T_MIXED) {
 		if ((t & T_REF) == 0) {
@@ -1808,17 +1886,20 @@ node *call, *args;
 		}
 	    }
 
+	    spread = n;
 	    while (n <= nargs) {
-		if (typechecked &&
-		    c_tmatch(t, UCHAR(*argp) & ~(T_VARARGS | T_ELLIPSIS)) ==
-									T_NIL) {
+		if (*argp == T_LVALUE) {
+		    (*arg)->mod = n - spread;
+		    /* KFCALL => KFCALL_LVAL */
+		    func->r.number |= (long) KFCALL_LVAL << 24;
+		    break;
+		}
+		if (typechecked && c_tmatch(t, *argp) == T_NIL) {
 		    c_error("bad argument %d for function %s (needs %s)", n,
-			    fname,
-			    i_typename(tnbuf, UCHAR(*argp) &
-						    ~(T_VARARGS | T_ELLIPSIS)));
+			    fname, i_typename(tnbuf, *argp));
 		}
 		n++;
-		argp++;
+		argp += ((*argp & T_TYPE) == T_CLASS) ? 4 : 1;
 	    }
 	    break;
 	} else if (t == T_LVALUE) {
@@ -1836,17 +1917,10 @@ node *call, *args;
 		    i_typename(tnbuf, t));
 	}
 
-	if (UCHAR(*argp) & (T_VARARGS | T_ELLIPSIS)) {
-	    if (n == nargs) {
-		/* ... */
-		nargs++;
-	    } else {
-		/* varargs */
-		optional = TRUE;
-		argp++;
-	    }
+	if (n == nargs && ellipsis) {
+	    nargs++;
 	} else {
-	    argp++;
+	    argp += ((*argp & T_TYPE) == T_CLASS) ? 4 : 1;
 	}
     }
     if (args != (node *) NULL && PROTO_FTYPE(proto) != T_IMPLICIT) {
@@ -1883,6 +1957,25 @@ node *other, *func, *args;
 }
 
 /*
+ * NAME:	compile->instanceof()
+ * DESCRIPTION:	handle <-
+ */
+node *c_instanceof(n, prog)
+register node *n;
+register node *prog;
+{
+    string *str;
+
+    if (n->mod != T_MIXED && n->mod != T_OBJECT && n->mod != T_CLASS) {
+	c_error("bad argument 1 for function <- (needs object)");
+    }
+    str = c_objecttype(prog);
+    str_del(prog->l.string);
+    str_ref(prog->l.string = str);
+    return node_bin(N_INSTANCEOF, T_INT, n, prog);
+}
+
+/*
  * NAME:	compile->checkcall()
  * DESCRIPTION:	check return value of a system call
  */
@@ -1896,7 +1989,8 @@ int typechecked;
 		/*
 		 * make sure the return value is as it should be
 		 */
-		return node_mon(N_CAST, n->mod, n);
+		n = node_mon(N_CAST, n->mod, n);
+		n->class = n->l.left->class;
 	    }
 	} else {
 	    /* could be anything */
@@ -2083,8 +2177,16 @@ register unsigned int type1, type2;
 	return T_NIL;
     }
     if (type1 == type2) {
-	/* identical types */
-	return type1;
+	return type1;	/* identical types (including T_CLASS) */
+    }
+    if ((type1 & T_TYPE) == T_CLASS) {
+	type1 = (type1 & T_REF) | T_OBJECT;
+    }
+    if ((type2 & T_TYPE) == T_CLASS) {
+	type2 = (type2 & T_REF) | T_OBJECT;
+    }
+    if (type1 == type2) {
+	return type1;	/* identical types (excluding T_CLASS) */
     }
     if (type1 == T_VOID || type2 == T_VOID) {
 	/* void doesn't match with anything else, not even with mixed */

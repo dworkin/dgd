@@ -68,7 +68,8 @@
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
-# define T_LWOBJECT	0x07	/* internal only */
+# define T_LWOBJECT	0x07	/* runtime only */
+# define T_CLASS	0x07	/* typechecking only */
 # define T_MIXED	0x08	/* declaration type only */
 # define T_VOID		0x09	/* function return type only */
 # define T_LVALUE	0x0a	/* address of a value */
@@ -81,8 +82,8 @@
 # define T_VARARGS	0x10	/* or'ed with declaration type */
 # define T_ELLIPSIS	0x10	/* or'ed with declaration type */
 
-# define T_REF		0xe0	/* reference count mask */
-# define REFSHIFT	5
+# define T_REF		0xf0	/* reference count mask */
+# define REFSHIFT	4
 
 # define T_ARITHMETIC(t) ((t) <= T_FLOAT)
 # define T_ARITHSTR(t)	((t) <= T_STRING)
@@ -156,11 +157,11 @@
 # define C_PRIVATE	0x01
 # define C_STATIC	0x02
 # define C_NOMASK	0x04
+# define C_ELLIPSIS	0x08
 # define C_VARARGS	0x08
 # define C_ATOMIC	0x10
 # define C_TYPECHECKED	0x20
 # define C_COMPILED	0x40
-# define C_KFUN_VARARGS	0x40
 # define C_UNDEFINED	0x80
 
 
@@ -215,13 +216,14 @@ extern void	i_odest		P((frame*, object*));
 extern void	i_string	P((frame*, int, unsigned int));
 extern void	i_aggregate	P((frame*, unsigned int));
 extern void	i_map_aggregate	P((frame*, unsigned int));
-extern int	i_spread	P((frame*, int, int));
+extern int	i_spread	P((frame*, int, int, Uint));
 extern void	i_global	P((frame*, int, int));
-extern void	i_global_lvalue	P((frame*, int, int, int));
+extern void	i_global_lvalue	P((frame*, int, int, int, Uint));
 extern void	i_index		P((frame*));
-extern void	i_index_lvalue	P((frame*, int));
+extern void	i_index_lvalue	P((frame*, int, Uint));
 extern char    *i_typename	P((char*, unsigned int));
-extern void	i_cast		P((value*, unsigned int));
+extern bool	i_instanceof	P((frame*, unsigned int, Uint));
+extern void	i_cast		P((frame*, value*, unsigned int, Uint));
 extern void	i_fetch		P((frame*));
 extern void	i_store		P((frame*));
 extern Int	i_get_depth	P((frame*));
@@ -231,7 +233,8 @@ extern void	i_set_rlimits	P((frame*, rlinfo*));
 extern frame   *i_set_sp	P((frame*, value*));
 extern frame   *i_prev_object	P((frame*, int));
 extern char    *i_prev_program	P((frame*, int));
-extern void	i_typecheck	P((frame*, char*, char*, char*, int, int));
+extern void	i_typecheck	P((frame*, control*, char*, char*, char*, int,
+				   int));
 extern void	i_catcherr	P((frame*, Int));
 extern void	i_funcall	P((frame*, object*, array*, int, int, int));
 extern bool	i_call		P((frame*, object*, array*, char*, unsigned int,

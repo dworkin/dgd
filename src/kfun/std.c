@@ -13,7 +13,7 @@
 # ifdef FUNCDEF
 FUNCDEF("(compile_object)", kf_old_compile_object, pt_old_compile_object)
 # else
-char pt_old_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1,
+char pt_old_compile_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 				 T_STRING };
 
 /*
@@ -54,8 +54,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("compile_object", kf_compile_object, pt_compile_object)
 # else
-char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS,
-			     T_OBJECT, 2, T_STRING | T_VARARGS, T_STRING };
+char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_OBJECT,
+			     T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->compile_object()
@@ -102,8 +102,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("call_other", kf_call_other, pt_call_other)
 # else
-char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_MIXED, 3,
-			 T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
+char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+			 T_MIXED, T_MIXED, T_STRING, T_MIXED };
 
 /*
  * NAME:	kfun->call_other()
@@ -166,7 +166,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("call_touch", kf_call_touch, pt_call_touch)
 # else
-char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
+char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
+			 T_OBJECT };
 
 /*
  * NAME:	kfun->call_touch()
@@ -201,7 +202,7 @@ int kf_call_touch(register frame *f)
 # ifdef FUNCDEF
 FUNCDEF("this_object", kf_this_object, pt_this_object)
 # else
-char pt_this_object[] = { C_STATIC, T_OBJECT, 0 };
+char pt_this_object[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
 
 /*
  * NAME:	kfun->this_object()
@@ -231,9 +232,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("previous_object", kf_previous_object, pt_previous_object)
 # else
-char pt_previous_object[] =
-	{ C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS, T_OBJECT, 1,
-	  T_INT };
+char pt_previous_object[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_OBJECT,
+			      T_INT };
 
 /*
  * NAME:	kfun->previous_object()
@@ -274,9 +274,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("previous_program", kf_previous_program, pt_previous_program)
 # else
-char pt_previous_program[] =
-	{ C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS, T_STRING,
-	  1, T_INT };
+char pt_previous_program[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING,
+			       T_INT };
 
 /*
  * NAME:	kfun->previous_program()
@@ -311,7 +310,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("call_trace", kf_call_trace, pt_call_trace)
 # else
-char pt_call_trace[] = { C_STATIC, T_MIXED | (2 << REFSHIFT), 0 };
+char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
 
 /*
  * NAME:	kfun->call_trace()
@@ -329,7 +328,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("clone_object", kf_clone_object, pt_clone_object)
 # else
-char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_OBJECT };
+char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
+			   T_OBJECT };
 
 /*
  * NAME:	kfun->clone_object()
@@ -360,7 +360,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("destruct_object", kf_destruct_object, pt_destruct_object)
 # else
-char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
+char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
+			      T_OBJECT };
 
 /*
  * NAME:	kfun->destruct_object()
@@ -402,7 +403,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("new_object", kf_new_object, pt_new_object)
 # else
-char pt_new_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_OBJECT };
+char pt_new_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
+			 T_OBJECT };
 
 /*
  * NAME:	kfun->new_object()
@@ -437,7 +439,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("object_name", kf_object_name, pt_object_name)
 # else
-char pt_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_object_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
+			  T_OBJECT };
 
 /*
  * NAME:	kfun->object_name()
@@ -472,7 +475,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("find_object", kf_find_object, pt_find_object)
 # else
-char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+char pt_find_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
+			  T_STRING };
 
 /*
  * NAME:	kfun->find_object()
@@ -504,7 +508,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("function_object", kf_function_object, pt_function_object)
 # else
-char pt_function_object[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
+char pt_function_object[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 			      T_STRING, T_OBJECT };
 
 /*
@@ -557,7 +561,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("this_user", kf_this_user, pt_this_user)
 # else
-char pt_this_user[] = { C_STATIC, T_OBJECT, 0 };
+char pt_this_user[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
 
 /*
  * NAME:	kfun->this_user()
@@ -582,7 +586,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("query_ip_number", kf_query_ip_number, pt_query_ip_number)
 # else
-char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
+			      T_OBJECT };
 
 /*
  * NAME:	kfun->query_ip_number()
@@ -612,7 +617,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("query_ip_name", kf_query_ip_name, pt_query_ip_name)
 # else
-char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
+			    T_OBJECT };
 
 /*
  * NAME:	kfun->query_ip_name()
@@ -642,7 +648,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("users", kf_users, pt_users)
 # else
-char pt_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
+char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
 
 /*
  * NAME:	kfun->users()
@@ -661,7 +667,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("strlen", kf_strlen, pt_strlen)
 # else
-char pt_strlen[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->strlen()
@@ -683,8 +689,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("allocate", kf_allocate, pt_allocate)
 # else
-char pt_allocate[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
-		       T_INT };
+char pt_allocate[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+		       T_MIXED | (1 << REFSHIFT), T_INT };
 
 /*
  * NAME:	kfun->allocate()
@@ -712,8 +718,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("allocate_int", kf_allocate_int, pt_allocate_int)
 # else
-char pt_allocate_int[] = { C_TYPECHECKED | C_STATIC, T_INT | (1 << REFSHIFT), 1,
-			   T_INT };
+char pt_allocate_int[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+			   T_INT | (1 << REFSHIFT), T_INT };
 
 /*
  * NAME:	kfun->allocate_int()
@@ -741,8 +747,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("allocate_float", kf_allocate_float, pt_allocate_float)
 # else
-char pt_allocate_float[] = { C_TYPECHECKED | C_STATIC,
-			     T_FLOAT | (1 << REFSHIFT), 1, T_INT };
+char pt_allocate_float[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+			     T_FLOAT | (1 << REFSHIFT), T_INT };
 
 /*
  * NAME:	kfun->allocate_float()
@@ -770,7 +776,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sizeof", kf_sizeof, pt_sizeof)
 # else
-char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1,
+char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 		     T_MIXED | (1 << REFSHIFT) };
 
 /*
@@ -793,8 +799,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("map_indices", kf_map_indices, pt_map_indices)
 # else
-char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
-			  1, T_MAPPING };
+char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+			  T_MIXED | (1 << REFSHIFT), T_MAPPING };
 
 /*
  * NAME:	kfun->map_indices()
@@ -817,8 +823,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("map_values", kf_map_values, pt_map_values)
 # else
-char pt_map_values[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
-			 T_MAPPING };
+char pt_map_values[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+			 T_MIXED | (1 << REFSHIFT), T_MAPPING };
 
 /*
  * NAME:	kfun->map_values()
@@ -841,7 +847,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("map_sizeof", kf_map_sizeof, pt_map_sizeof)
 # else
-char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_MAPPING };
+char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
+			 T_MAPPING };
 
 /*
  * NAME:	kfun->map_sizeof()
@@ -864,7 +871,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("typeof", kf_typeof, pt_typeof)
 # else
-char pt_typeof[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_typeof[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
 /*
  * NAME:	kfun->typeof()
@@ -883,7 +890,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("error", kf_error, pt_error)
 # else
-char pt_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
+char pt_error[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_STRING };
 
 /*
  * NAME:	kfun->error()
@@ -901,7 +908,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("send_message", kf_send_message, pt_send_message)
 # else
-char pt_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_send_message[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
 /*
  * NAME:	kfun->send_message()
@@ -945,7 +952,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram)
 # else
-char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
+			    T_STRING };
 
 /*
  * NAME:	kfun->send_datagram()
@@ -974,7 +982,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("datagram_challenge", kf_datagram_challenge, pt_datagram_challenge)
 # else
-char pt_datagram_challenge[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1,
+char pt_datagram_challenge[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 				 T_STRING };
 
 /*
@@ -1002,7 +1010,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("block_input", kf_block_input, pt_block_input)
 # else
-char pt_block_input[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_INT };
+char pt_block_input[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_INT };
 
 /*
  * NAME:	kfun->block_input()
@@ -1028,7 +1036,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("time", kf_time, pt_time)
 # else
-char pt_time[] = { C_STATIC, T_INT, 0 };
+char pt_time[] = { C_STATIC, 0, 0, 0, 6, T_INT };
 
 /*
  * NAME:	kfun->time()
@@ -1046,7 +1054,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("millitime", kf_millitime, pt_millitime)
 # else
-char pt_millitime[] = { C_STATIC, T_MIXED | (1 << REFSHIFT), 0 };
+char pt_millitime[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (1 << REFSHIFT) };
 
 /*
  * NAME:	kfun->millitime()
@@ -1074,8 +1082,8 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, pt_call_out)
 # else
-char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_INT, 3,
-		       T_STRING, T_MIXED, T_MIXED | T_ELLIPSIS };
+char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
+		       T_STRING, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->call_out()
@@ -1136,7 +1144,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("remove_call_out", kf_remove_call_out, pt_remove_call_out)
 # else
-char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 1, T_INT };
+char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_MIXED,
+			      T_INT };
 
 /*
  * NAME:	kfun->remove_call_out()
@@ -1168,7 +1177,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("swapout", kf_swapout, pt_swapout)
 # else
-char pt_swapout[] = { C_STATIC, T_VOID, 0 };
+char pt_swapout[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
 
 /*
  * NAME:	kfun->swapout()
@@ -1188,7 +1197,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("dump_state", kf_dump_state, pt_dump_state)
 # else
-char pt_dump_state[] = { C_STATIC, T_VOID, 0 };
+char pt_dump_state[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
 
 /*
  * NAME:	kfun->dump_state()
@@ -1208,7 +1217,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("shutdown", kf_shutdown, pt_shutdown)
 # else
-char pt_shutdown[] = { C_STATIC, T_VOID, 0 };
+char pt_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
 
 /*
  * NAME:	kfun->shutdown()
@@ -1228,8 +1237,8 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("status", kf_status, pt_status)
 # else
-char pt_status[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS,
-		     T_MIXED | (1 << REFSHIFT), 1, T_OBJECT };
+char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
+		     T_MIXED | (1 << REFSHIFT), T_OBJECT };
 
 /*
  * NAME:	kfun->status()

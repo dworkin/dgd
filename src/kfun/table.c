@@ -70,31 +70,40 @@ static char *prototype(proto)
 char *proto;
 {
     register char *p, *q;
-    register int nargs;
+    register int nargs, vargs;
     int class, type;
+    bool varargs;
 
     class = C_STATIC;
     type = *proto++;
     p = proto;
-    nargs = 0;
+    nargs = vargs = 0;
+    varargs = FALSE;
 
     /* pass 1: check prototype */
     if (*p != T_VOID) {
-	if (*p == T_VARARGS) {
-	    /* all arguments are varargs */
-	    class |= C_KFUN_VARARGS | C_VARARGS;
-	    p++;
-	}
 	while (*p != '\0') {
 	    if (*p == T_VARARGS) {
 		/* varargs or ellipsis */
-		class |= C_KFUN_VARARGS;
+		if (p[1] == '\0') {
+		    class |= C_ELLIPSIS;
+		    if (!varargs) {
+			--nargs;
+			vargs++;
+		    }
+		    break;
+		}
+		varargs = TRUE;
 	    } else {
 		if (*p != T_MIXED) {
 		    /* non-mixed arguments: typecheck this function */
 		    class |= C_TYPECHECKED;
 		}
-		nargs++;
+		if (varargs) {
+		    nargs++;
+		} else {
+		    vargs++;
+		}
 	    }
 	    p++;
 	}
@@ -102,21 +111,19 @@ char *proto;
 
     /* allocate new prototype */
     p = proto;
-    q = proto = ALLOC(char, 3 + nargs);
+    q = proto = ALLOC(char, 6 + nargs + vargs);
     *q++ = class;
     *q++ = type;
     *q++ = nargs;
+    *q++ = vargs;
+    *q++ = 0;
+    *q++ = 6 + nargs + vargs;
+    *q++ = type;
 
     /* pass 2: fill in new prototype */
     if (*p != T_VOID) {
-	if (*p == T_VARARGS) {
-	    p++;
-	}
 	while (*p != '\0') {
-	    if (*p == T_VARARGS) {
-		/* varargs or ellipsis */
-		q[-1] |= T_VARARGS;
-	    } else {
+	    if (*p != T_VARARGS) {
 		*q++ = *p;
 	    }
 	    p++;

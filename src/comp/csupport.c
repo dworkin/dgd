@@ -821,6 +821,7 @@ int fd;
 		    ctrl->strsize != l->stringsz ||
 		    ctrl->nfuncdefs != l->nfuncdefs ||
 		    ctrl->nvardefs != l->nvardefs ||
+		    ctrl->nclassvars != l->nclassvars ||
 		    ctrl->nfuncalls != l->nfuncalls ||
 		    !inh2cmp(ctrl->inherits, inherits + itab[pc - precompiled],
 			     l->ninherits) ||
@@ -828,7 +829,10 @@ int fd;
 		    memcmp(ctrl->stext, l->stext, l->stringsz) != 0 ||
 		    !func2cmp(d_get_funcdefs(ctrl), l->funcdefs,
 			      d_get_prog(ctrl), l->program, l->nfuncdefs) ||
-		    !varcmp(d_get_vardefs(ctrl), l->vardefs, l->nvardefs) ||
+		    !varcmp(d_get_vardefs(ctrl), l->vardefs,
+			    l->nvardefs) ||
+		    memcmp(ctrl->classvars, l->classvars,
+			   l->nclassvars * 3) != 0 ||
 		    memcmp(d_get_funcalls(ctrl), l->funcalls,
 			   2 * l->nfuncalls) != 0) {
 		    /* not the same */
@@ -864,8 +868,8 @@ register int n;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(f, kf->name, "kfun", kf->proto, PROTO_NARGS(kf->proto),
-		    TRUE);
+	i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto,
+		    PROTO_NARGS(kf->proto), TRUE);
     }
     n = (*kf->func)(f);
     if (n != 0) {
@@ -885,7 +889,8 @@ register int n, nargs;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(f, kf->name, "kfun", kf->proto, nargs, TRUE);
+	i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto, nargs,
+		    TRUE);
     }
     n = (*kf->func)(f, nargs);
     if (n != 0) {

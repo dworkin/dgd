@@ -85,6 +85,7 @@ typedef struct _vfh_ {		/* variable/function hash table */
     hte chain;			/* hash table chain */
     string *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
+    string *cvstr;		/* class variable string */
     unsigned short ct;		/* function call, or variable type */
     short index;		/* definition table index */
 } vfh;
@@ -101,10 +102,11 @@ static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(str, ohash, ct, idx, addr)
+static void vfh_new(str, ohash, ct, cvstr, idx, addr)
 string *str;
 oh *ohash;
 unsigned short ct;
+string *cvstr;
 short idx;
 vfh **addr;
 {
@@ -124,6 +126,10 @@ vfh **addr;
     h->chain.name = str->text;
     str_ref(h->str = str);
     h->ohash = ohash;
+    h->cvstr = cvstr;
+    if (cvstr != (string *) NULL) {
+	str_ref(cvstr);
+    }
     h->ct = ct;
     h->index = idx;
 }
@@ -140,6 +146,9 @@ static void vfh_clear()
     for (l = vfhclist; l != (vfhchunk *) NULL; ) {
 	for (vf = l->vf; vfhchunksz != 0; vf++, --vfhchunksz) {
 	    str_del(vf->str);
+	    if (vf->cvstr != (string *) NULL) {
+		str_del(vf->cvstr);
+	    }
 	}
 	vfhchunksz = VFH_CHUNK;
 	f = l;
@@ -211,63 +220,6 @@ static void lab_clear()
 }
 
 
-/*
- * NAME:	cmp_proto()
- * DESCRIPTION:	Compare two prototypes. Return TRUE if equal.
- */
-static bool cmp_proto(prot1, prot2)
-register char *prot1, *prot2;
-{
-    register int i;
-    register char c1, c2;
-
-    /* check if either prototype is implicit */
-    if (PROTO_FTYPE(prot1) == T_IMPLICIT || PROTO_FTYPE(prot2) == T_IMPLICIT) {
-	return TRUE;
-    }
-
-    /* check if classes are compatible */
-    c1 = PROTO_CLASS(prot1);
-    c2 = PROTO_CLASS(prot2);
-    if ((c1 ^ c2) & (C_PRIVATE | C_VARARGS)) {
-	return FALSE;		/* must agree on this much */
-    } else if (c1 & c2 & C_UNDEFINED) {
-	if ((c1 ^ c2) & ~C_TYPECHECKED) {
-	    return FALSE;	/* 2 prototypes must be equal */
-	}
-    } else if (c1 & C_UNDEFINED) {
-	if ((c1 ^ (c1 & c2)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
-	    return FALSE;	/* everthing in prototype must be supported */
-	}
-    } else if (c2 & C_UNDEFINED) {
-	if ((c2 ^ (c2 & c1)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
-	    return FALSE;	/* everthing in prototype must be supported */
-	}
-    } else {
-	return FALSE;		/* not compatible */
-    }
-
-    /* compare return type */
-    if (PROTO_FTYPE(prot1) != PROTO_FTYPE(prot2)) {
-	return FALSE;
-    }
-
-    /* check if the number of arguments is equal */
-    if ((i=PROTO_NARGS(prot1)) != PROTO_NARGS(prot2)) {
-	return FALSE;
-    }
-
-    /* compare argument types */
-    for (prot1 = PROTO_ARGS(prot1), prot2 = PROTO_ARGS(prot2); i > 0; --i) {
-	if (*prot1++ != *prot2++) {
-	    return FALSE;
-	}
-    }
-
-    return TRUE;	/* equal */
-}
-
-
 # define MAX_INHERITS		255
 
 static oh *directs[MAX_INHERITS];	/* direct inherit table */
@@ -307,7 +259,7 @@ register control *ctrl;
 {
     register dvardef *v;
     register int n;
-    register string *str;
+    register string *str, *cvstr;
     register vfh **h;
 
     v = d_get_vardefs(ctrl);
@@ -321,7 +273,12 @@ register control *ctrl;
 	    h = (vfh **) ht_lookup(vtab, str->text, FALSE);
 	    if (*h == (vfh *) NULL) {
 		/* new variable */
-		vfh_new(str, ohash, v->type, n, h);
+		if (ctrl->nclassvars != 0) {
+		    cvstr = ctrl->cvstrings[n];
+		} else {
+		    cvstr = (string *) NULL;
+		}
+		vfh_new(str, ohash, v->type, cvstr, n, h);
 	    } else {
 	       /* duplicate variable */
 	       c_error("multiple inheritance of variable %s (/%s, /%s)",
@@ -330,6 +287,94 @@ register control *ctrl;
 	}
 	v++;
     }
+}
+
+/*
+ * NAME:	comp_class()
+ * DESCRIPTION:	compare two class strings
+ */
+static bool cmp_class(ctrl1, s1, ctrl2, s2)
+register control *ctrl1, *ctrl2;
+register Uint s1, s2;
+{
+    if (ctrl1 == ctrl2 && s1 == s2) {
+	return TRUE;	/* the same */
+    }
+    if (ctrl1->compiled == 0 && (s1 >> 16) == ninherits) {
+	return FALSE;	/* one is new, and therefore different */
+    }
+    if (ctrl2->compiled == 0 && (s2 >> 16) == ninherits) {
+	return FALSE;	/* one is new, and therefore different */
+    }
+    return !str_cmp(d_get_strconst(ctrl1, s1 >> 16, s1 & 0xffff),
+		    d_get_strconst(ctrl2, s2 >> 16, s2 & 0xffff));
+}
+
+/*
+ * NAME:	cmp_proto()
+ * DESCRIPTION:	Compare two prototypes. Return TRUE if equal.
+ */
+static bool cmp_proto(ctrl1, prot1, ctrl2, prot2)
+control *ctrl1, *ctrl2;
+register char *prot1, *prot2;
+{
+    register int i;
+    register char c1, c2;
+    register Uint s1, s2;
+
+    /* check if either prototype is implicit */
+    if (PROTO_FTYPE(prot1) == T_IMPLICIT || PROTO_FTYPE(prot2) == T_IMPLICIT) {
+	return TRUE;
+    }
+
+    /* check if classes are compatible */
+    c1 = *prot1++;
+    c2 = *prot2++;
+    if ((c1 ^ c2) & (C_PRIVATE | C_ELLIPSIS)) {
+	return FALSE;		/* must agree on this much */
+    } else if (c1 & c2 & C_UNDEFINED) {
+	if ((c1 ^ c2) & ~C_TYPECHECKED) {
+	    return FALSE;	/* 2 prototypes must be equal */
+	}
+    } else if (c1 & C_UNDEFINED) {
+	if ((c1 ^ (c1 & c2)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
+	    return FALSE;	/* everthing in prototype must be supported */
+	}
+    } else if (c2 & C_UNDEFINED) {
+	if ((c2 ^ (c2 & c1)) & (C_STATIC | C_NOMASK | C_ATOMIC)) {
+	    return FALSE;	/* everthing in prototype must be supported */
+	}
+    } else {
+	return FALSE;		/* not compatible */
+    }
+
+    /* check if the number of arguments is equal */
+    if ((i=UCHAR(*prot1++)) != UCHAR(*prot2++)) {
+	return FALSE;
+    }
+    if (*prot1 != *prot2) {
+	return FALSE;
+    }
+    i += UCHAR(*prot1);
+
+    /* compare return type & arguments */
+    prot1 += 3;
+    prot2 += 3;
+    do {
+	if (*prot1++ != *prot2) {
+	    return FALSE;
+	}
+	if ((*prot2++ & T_TYPE) == T_CLASS) {
+	    /* compare class strings */
+	    FETCH3U(prot1, s1);
+	    FETCH3U(prot2, s2);
+	    if (!cmp_class(ctrl1, s1, ctrl2, s2)) {
+		return FALSE;
+	    }
+	}
+    } while (--i >= 0);
+
+    return TRUE;	/* equal */
 }
 
 /*
@@ -362,7 +407,7 @@ oh *ohash;
 	/*
 	 * New function (-1: no calls to it yet)
 	 */
-	vfh_new(str, ohash, -1, idx, h);
+	vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	if (ohash->priv == 0 &&
 	    (ctrl->ninherits != 1 ||
 	     (f->class & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
@@ -487,7 +532,7 @@ oh *ohash;
 			return;
 		    }
 		    if (((f->class | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
-			!cmp_proto(prot1, prot2)) {
+			!cmp_proto(ohash->obj->ctrl, prot1, ctrl, prot2)) {
 			/*
 			 * prototype conflict
 			 */
@@ -521,7 +566,7 @@ oh *ohash;
 
 	if (inhflag) {
 	    /* insert new prototype at the beginning */
-	    vfh_new(str, ohash, -1, idx, h);
+	    vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	    h = (vfh **) &(*h)->chain.next;
 	} else if (!(PROTO_CLASS(prot1) & C_UNDEFINED)) {
 	    /* add the new prototype to the count */
@@ -556,7 +601,7 @@ oh *ohash;
 		}
 	    } else if (nfunc + npriv > 1) {
 		/* add new clash marker as first entry */
-		vfh_new(str, (oh *) NULL, 0, nfunc, h);
+		vfh_new(str, (oh *) NULL, 0, (string *) NULL, nfunc, h);
 		nfclash++;
 		h = (vfh **) &(*h)->chain.next;
 	    }
@@ -565,9 +610,9 @@ oh *ohash;
 	/* add new prototype, undefined at the end */
 	if (!inhflag) {
 	    if (PROTO_CLASS(prot1) & C_UNDEFINED) {
-		vfh_new(str, ohash, -1, idx, l);
+		vfh_new(str, ohash, -1, (string *) NULL, idx, l);
 	    } else {
-		vfh_new(str, ohash, -1, idx, h);
+		vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	    }
 	}
     }
@@ -809,6 +854,7 @@ typedef struct _cfunc_ {
     dfuncdef func;			/* function name/type */
     char *name;				/* function name */
     char *proto;			/* function prototype */
+    string *cfstr;			/* function class string */
     char *prog;				/* function program */
     unsigned short progsize;		/* function program size */
 } cfunc;
@@ -825,6 +871,9 @@ static cfunc *functions;		/* defined functions table */
 static int nfdefs, fdef;		/* # defined functions, current func */
 static Uint progsize;			/* size of all programs and protos */
 static dvardef *variables;		/* defined variables */
+static string **cvstrings;		/* variable class strings */
+static char *classvars;			/* class variables */
+static int nclassvars;			/* # classvars */
 static Uint nfcalls;			/* # function calls */
 
 /*
@@ -926,10 +975,13 @@ void ctrl_create()
      */
     functions = ALLOC(cfunc, 256);
     variables = ALLOC(dvardef, 256);
+    cvstrings = ALLOC(string*, 256 * sizeof(string*));
+    classvars = ALLOC(char, 256 * 3);
     progsize = 0;
     nstrs = 0;
     nfdefs = 0;
     nvars = 0;
+    nclassvars = 0;
     nfcalls = 0;
     nvinit = 0;
 }
@@ -972,9 +1024,10 @@ string *str;
  * NAME:	control->dproto()
  * DESCRIPTION:	define a new function prototype
  */
-void ctrl_dproto(str, proto)
+void ctrl_dproto(str, proto, class)
 register string *str;
 register char *proto;
+string *class;
 {
     register vfh **h, **l;
     register dfuncdef *func;
@@ -999,7 +1052,7 @@ register char *proto;
 		 * both prototypes are from functions
 		 */
 		c_error("multiple declaration of function %s", str->text);
-	    } else if (!cmp_proto(proto, proto2)) {
+	    } else if (!cmp_proto(newctrl, proto, newctrl, proto2)) {
 		if ((PROTO_CLASS(proto) ^ PROTO_CLASS(proto2)) & C_UNDEFINED) {
 		    /*
 		     * declaration does not match prototype
@@ -1027,6 +1080,7 @@ register char *proto;
 		functions[fdef = (*h)->index].proto =
 			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.class = PROTO_CLASS(proto);
+		functions[fdef].cfstr = class;
 	    }
 	    return;
 	}
@@ -1038,7 +1092,7 @@ register char *proto;
 	    ctrl = (*h)->ohash->obj->ctrl;
 	    proto2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
 	    if ((PROTO_CLASS(proto2) & C_UNDEFINED) &&
-		!cmp_proto(proto, proto2)) {
+		!cmp_proto(newctrl, proto, ctrl, proto2)) {
 		/*
 		 * declaration does not match inherited prototype
 		 */
@@ -1047,7 +1101,7 @@ register char *proto;
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
 		       (*h)->ohash->priv == 0 &&
 		       PROTO_FTYPE(proto2) != T_IMPLICIT &&
-		       cmp_proto(proto, proto2)) {
+		       cmp_proto(newctrl, proto, ctrl, proto2)) {
 		/*
 		 * there is no point in replacing an identical prototype
 		 */
@@ -1096,11 +1150,12 @@ register char *proto;
     /*
      * Actual definition.
      */
-    vfh_new(str, newohash, -1, nfdefs, h);
+    vfh_new(str, newohash, -1, (string *) NULL, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].name = str->text;
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
+    functions[nfdefs].cfstr = class;
     functions[nfdefs].progsize = 0;
     progsize += i;
     func = &functions[nfdefs++].func;
@@ -1113,12 +1168,12 @@ register char *proto;
  * NAME:	control->dfunc()
  * DESCRIPTION:	define a new function
  */
-void ctrl_dfunc(str, proto)
-string *str;
+void ctrl_dfunc(str, proto, class)
+string *str, *class;
 char *proto;
 {
     fdef = nfdefs;
-    ctrl_dproto(str, proto);
+    ctrl_dproto(str, proto, class);
 }
 
 /*
@@ -1138,12 +1193,13 @@ unsigned int size;
  * NAME:	control->dvar()
  * DESCRIPTION:	define a variable
  */
-void ctrl_dvar(str, class, type)
-string *str;
+void ctrl_dvar(str, class, type, cvstr)
+string *str, *cvstr;
 unsigned int class, type;
 {
     register vfh **h;
     register dvardef *var;
+    register char *p;
     register long s;
 
     h = (vfh **) ht_lookup(vtab, str->text, FALSE);
@@ -1165,13 +1221,22 @@ unsigned int class, type;
     }
 
     /* actually define the variable */
-    vfh_new(str, newohash, type, nvars, h);
+    vfh_new(str, newohash, type, cvstr, nvars, h);
     s = ctrl_dstring(str);
-    var = &variables[nvars++];
+    var = &variables[nvars];
     var->class = class;
     var->inherit = s >> 16;
     var->index = s;
     var->type = type;
+    cvstrings[nvars++] = cvstr;
+    if (cvstr != (string *) NULL) {
+	str_ref(cvstr);
+	s = ctrl_dstring(cvstr);
+	p = classvars + nclassvars++ * 3;
+	*p++ = s >> 16;
+	*p++ = s >> 8;
+	*p = s;
+    }
 
     if ((type == T_INT && countint) || type == T_FLOAT) {
 	nvinit++;
@@ -1182,8 +1247,8 @@ unsigned int class, type;
  * NAME:	control->ifcall()
  * DESCRIPTION:	call an inherited function
  */
-char *ctrl_ifcall(str, label, call)
-string *str;
+char *ctrl_ifcall(str, label, cfstr, call)
+string *str, **cfstr;
 char *label;
 long *call;
 {
@@ -1191,6 +1256,9 @@ long *call;
     register oh *ohash;
     register short index;
     short inherit;
+    char *proto;
+
+    *cfstr = (string *) NULL;
 
     if (label != (char *) NULL) {
 	register dsymbol *symb;
@@ -1257,24 +1325,36 @@ long *call;
     }
     inherit = (ohash->index == 0) ? 0 : ninherits + 1 - ohash->index;
     *call = ((long) DFCALL << 24) | ((long) inherit << 8) | index;
-    return ctrl->prog + ctrl->funcdefs[index].offset;
+    proto = ctrl->prog + ctrl->funcdefs[index].offset;
+
+    if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
+	register char *p;
+	register Uint class;
+ 
+	p = &PROTO_FTYPE(proto) + 1;
+	FETCH3U(p, class);
+	*cfstr = d_get_strconst(ctrl, class >> 16, class & 0xffff);
+    }
+    return proto;
 }
 
 /*
  * NAME:	control->fcall()
  * DESCRIPTION:	call a function
  */
-char *ctrl_fcall(str, call, typechecking)
-string *str;
+char *ctrl_fcall(str, cfstr, call, typechecking)
+string *str, **cfstr;
 long *call;
 int typechecking;
 {
     register vfh *h;
     char *proto;
 
+    *cfstr = (string *) NULL;
+
     h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     if (h == (vfh *) NULL) {
-	static char uproto[] = { (char) C_UNDEFINED, T_IMPLICIT, 0 };
+	static char uproto[] = { (char) C_UNDEFINED, 0, 0, 0, 6, T_IMPLICIT };
 	register short kf;
 
 	/*
@@ -1292,13 +1372,14 @@ int typechecking;
 	    c_error("too many undefined functions");
 	    return (char *) NULL;
 	}
-	ctrl_dproto(str, proto = uproto);
+	ctrl_dproto(str, proto = uproto, (string *) NULL);
 	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     } else if (h->ohash == newohash) {
 	/*
 	 * call to new function
 	 */
 	proto = functions[h->index].proto;
+	*cfstr = functions[h->index].cfstr;
     } else if (h->ohash == (oh *) NULL) {
 	/*
 	 * call to multiple inherited function
@@ -1306,13 +1387,20 @@ int typechecking;
 	c_error("ambiguous call to function %s", str->text);
 	return (char *) NULL;
     } else {
-	register control *ctrl;
+	control *ctrl;
+	register char *p;
+	register Uint class;
 
 	/*
 	 * call to inherited function
 	 */
 	ctrl = h->ohash->obj->ctrl;
 	proto = ctrl->prog + ctrl->funcdefs[h->index].offset;
+	if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
+	    p = &PROTO_FTYPE(proto) + 1;
+	    FETCH3U(p, class);
+	    *cfstr = d_get_strconst(ctrl, class >> 16, class & 0xffff);
+	}
     }
 
     if (typechecking && PROTO_FTYPE(proto) == T_IMPLICIT) {
@@ -1389,8 +1477,8 @@ long call;
  * NAME:	control->var()
  * DESCRIPTION:	handle a variable reference
  */
-unsigned short ctrl_var(str, ref)
-string *str;
+unsigned short ctrl_var(str, ref, cvstr)
+string *str, **cvstr;
 long *ref;
 {
     register vfh *h;
@@ -1401,7 +1489,7 @@ long *ref;
 	c_error("undeclared variable %s", str->text);
 	if (nvars < 255) {
 	    /* don't repeat this error */
-	    ctrl_dvar(str, 0, T_MIXED);
+	    ctrl_dvar(str, 0, T_MIXED, (string *) NULL);
 	}
 	return T_MIXED;
     }
@@ -1411,6 +1499,7 @@ long *ref;
     } else {
 	*ref = ((ninherits + 1L - h->ohash->index) << 8) | h->index;
     }
+    *cvstr = h->cvstr;
     return h->ct;	/* the variable type */
 }
 
@@ -1567,6 +1656,20 @@ static void ctrl_mkvars()
     if ((newctrl->nvardefs = nvars) != 0) {
 	newctrl->vardefs = ALLOC(dvardef, nvars);
 	memcpy(newctrl->vardefs, variables, nvars * sizeof(dvardef));
+	if ((newctrl->nclassvars = nclassvars) != 0) {
+	    register unsigned short i;
+	    register string **s;
+
+	    newctrl->cvstrings = ALLOC(string*, nvars * sizeof(string*));
+	    memcpy(newctrl->cvstrings, cvstrings, nvars * sizeof(string*));
+	    for (i = nvars, s = newctrl->cvstrings; i != 0; --i, s++) {
+		if (*s != (string *) NULL) {
+		    str_ref(*s);
+		}
+	    }
+	    newctrl->classvars = ALLOC(char, nclassvars * 3);
+	    memcpy(newctrl->classvars, classvars, nclassvars * 3);
+	}
     }
 }
 
@@ -1915,6 +2018,22 @@ void ctrl_clear()
 	FREE(variables);
 	variables = (dvardef *) NULL;
     }
+    if (cvstrings != (string **) NULL) {
+	register unsigned short i;
+	register string **s;
+
+	for (i = nvars, s = cvstrings; i != 0; --i, s++) {
+	    if (*s != (string *) NULL) {
+		str_del(*s);
+	    }
+	}
+	FREE(cvstrings);
+	cvstrings = (string **) NULL;
+    }
+    if (classvars != (char *) NULL) {
+	FREE(classvars);
+	classvars = (char *) NULL;
+    }
 }
 
 /*
@@ -1971,7 +2090,10 @@ register control *old, *new;
 	    n = str_put(merge, d_get_strconst(ctrl, v->inherit, v->index),
 			(Uint) 0);
 	    if (n != 0 &&
-		((n & 0xff) == v->type ||
+		(((n & 0xff) == v->type &&
+		  ((n & T_TYPE) != T_CLASS ||
+		   str_cmp(ctrl->cvstrings[k],
+			   ctrl2->cvstrings[n >> 8]) == 0)) ||
 		 ((v->type & T_REF) <= (n & T_REF) &&
 		  (v->type & T_TYPE) == T_MIXED))) {
 		*vmap = inh2->varoffset + (n >> 8);

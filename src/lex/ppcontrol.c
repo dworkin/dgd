@@ -741,8 +741,8 @@ int pp_gettok()
 	case '+': case ',': case '-': case '/': case ':': case ';':
 	case '<': case '=': case '>': case '?': case '[': case ']':
 	case '^': case '{': case '|': case '}': case '~':
-	case ARROW: case PLUS_PLUS: case MIN_MIN: case LSHIFT: case RSHIFT:
-	case LE: case GE: case EQ: case NE: case LAND: case LOR:
+	case LARROW: case RARROW: case PLUS_PLUS: case MIN_MIN: case LSHIFT:
+	case RSHIFT: case LE: case GE: case EQ: case NE: case LAND: case LOR:
 	case PLUS_EQ: case MIN_EQ: case MULT_EQ: case DIV_EQ: case MOD_EQ:
 	case LSHIFT_EQ: case RSHIFT_EQ: case AND_EQ: case XOR_EQ: case OR_EQ:
 	case COLON_COLON: case DOT_DOT: case ELLIPSIS: case STRING_CONST:

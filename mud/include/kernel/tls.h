@@ -1,1 +1,1 @@
-# define API_TLS	"/kernel/lib/api/tls"
+# define API_TLS	("/kernel" + INHERITABLE_SUBDIR + "api/tls")

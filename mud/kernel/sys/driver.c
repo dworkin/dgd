@@ -26,7 +26,7 @@ int mp_ready;		/* prepared for MP */
 string creator(string file)
 {
     return (sscanf(file, "/kernel/%*s") != 0) ? "System" :
-	    (sscanf(file, USR + "/%s/", file) != 0) ? file : nil;
+	    (sscanf(file, USR_DIR + "/%s/", file) != 0) ? file : nil;
 }
 
 /*
@@ -45,9 +45,9 @@ string normalize_path(string file, string dir, varargs string creator)
     case '~':
 	/* ~path */
 	if (creator && (strlen(file) == 1 || file[1] == '/')) {
-	    file = USR + "/" + creator + file[1 ..];
+	    file = USR_DIR + "/" + creator + file[1 ..];
 	} else {
-	    file = USR + "/" + file[1 ..];
+	    file = USR_DIR + "/" + file[1 ..];
 	}
 	/* fall through */
     case '/':
@@ -397,7 +397,8 @@ private void _initialize(mixed *tls)
     /* create initial resource owners */
     rsrcd->add_owner("System");
     rsrcd->rsrc_incr("System", "filequota", nil,
-		     dir_size("/kernel") + file_size(USR + "/System", TRUE));
+		     dir_size("/kernel") + file_size(USR_DIR + "/System",
+		     TRUE));
     rsrcd->add_owner(nil);	/* Ecru */
     rsrcd->rsrc_incr(nil, "filequota", nil,
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
@@ -407,9 +408,9 @@ private void _initialize(mixed *tls)
     call_other(accessd = load(ACCESSD), "???");
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
-    if (file_size(USR + "/System/initd.c") != 0) {
+    if (file_size(USR_DIR + "/System/initd.c") != 0) {
 	catch {
-	    initd = load(USR + "/System/initd");
+	    initd = load(USR_DIR + "/System/initd");
 	}
     }
 
@@ -418,7 +419,7 @@ private void _initialize(mixed *tls)
     for (i = sizeof(users); --i >= 0; ) {
 	rsrcd->add_owner(users[i]);
 	rsrcd->rsrc_incr(users[i], "filequota", nil,
-			 file_size(USR + "/" + users[i], TRUE));
+			 file_size(USR_DIR + "/" + users[i], TRUE));
     }
 
     /* correct object count */
@@ -552,11 +553,20 @@ static object call_object(string path)
 	oname = object_name(previous_object());
 	path = normalize_path(path, oname + "/..", creator(oname));
     }
-    if (sscanf(path, "%*s/lib/") != 0 ||
+    if (sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0 ||
 	(objectd && objectd->forbid_call(path))) {
 	error("Illegal use of call_other");
     }
     return find_object(path);
+}
+
+/*
+ * NAME:	object_type()
+ * DESCRIPTION:	return normalized object type
+ */
+static string object_type(string file, string type)
+{
+    return normalize_path(type, file + "/..", creator(file));
 }
 
 /*
@@ -611,7 +621,7 @@ static object inherit_program(string from, string path, int priv)
     object obj;
 
     path = normalize_path(path, from + "/..", creator = creator(from));
-    if (sscanf(path, "%*s/lib/") == 0 ||
+    if (sscanf(path, "%*s" + INHERITABLE_SUBDIR) == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
 	!accessd->access(from, path, READ_ACCESS) ||
 	(objectd && objectd->forbid_inherit(from, path, priv))) {

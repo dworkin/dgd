@@ -18,26 +18,54 @@ register short class;
     if (class & C_NOMASK) printf("nomask ");
 }
 
-static void show_proto(func, proto)
+static char *typename(ctrl, buffer, proto)
+control *ctrl;
+char *buffer;
+register char *proto;
+{
+    char tnbuf[17], *p;
+    Uint class;
+
+    if ((*proto & T_TYPE) == T_CLASS) {
+	p = strchr(i_typename(tnbuf, FETCH1U(proto)), ' ');
+	FETCH3U(proto, class);
+	sprintf(buffer, "object /%s", d_get_strconst(ctrl, class >> 16,
+						     class & 0xffff)->text);
+	if (p != (char *) NULL) {
+	    strcat(buffer, p);
+	}
+    } else {
+	i_typename(buffer, FETCH1U(proto));
+    }
+    return proto;
+}
+
+static void show_proto(ctrl, func, proto)
+control *ctrl;
 char *func, *proto;
 {
-    char tnbuf[17];
-    int i;
+    char buffer[STRINGSZ * 2];
+    int c, i, n, v;
 
-    showclass(PROTO_CLASS(proto));
-    printf("%s %s(", i_typename(tnbuf, PROTO_FTYPE(proto)), func);
-    if (PROTO_CLASS(proto) & C_VARARGS) {
-	printf("varargs ");
-    }
-    for (i = 0; i < PROTO_NARGS(proto) - 1; i++) {
-	if (PROTO_ARGS(proto)[i] & T_VARARGS) {
+    showclass(c = PROTO_CLASS(proto));
+    v = PROTO_NARGS(proto);
+    n = PROTO_VARGS(proto) + v;
+    proto = typename(ctrl, buffer, &PROTO_FTYPE(proto));
+    printf("%s %s(", buffer, func);
+    for (i = 0; i < n - 1; i++) {
+	if (i == v) {
 	    printf("varargs ");
 	}
-	printf("%s, ", i_typename(tnbuf, PROTO_ARGS(proto)[i] & ~T_VARARGS));
+	proto = typename(ctrl, buffer, proto);
+	printf("%s, ", buffer);
     }
-    if (i < PROTO_NARGS(proto)) {
-	printf("%s", i_typename(tnbuf, PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
-	if (PROTO_ARGS(proto)[i] & T_ELLIPSIS) {
+    if (i < n) {
+	if (i == v && !(c & C_ELLIPSIS)) {
+	    printf("varargs ");
+	}
+	proto = typename(ctrl, buffer, proto);
+	printf("%s", buffer);
+	if (c & C_ELLIPSIS) {
 	    printf("...");
 	}
     }
@@ -69,8 +97,8 @@ control *ctrl;
 	printf("function definitions:\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
 	    printf("%3u: %08lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
-	    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[i].inherit,
-				      ctrl->funcdefs[i].index)->text,
+	    show_proto(ctrl, d_get_strconst(ctrl, ctrl->funcdefs[i].inherit,
+					    ctrl->funcdefs[i].index)->text,
 		       d_get_prog(ctrl) + ctrl->funcdefs[i].offset);
 	    putchar('\n');
 	}
@@ -81,9 +109,21 @@ control *ctrl;
 	for (i = 0; i < ctrl->nvardefs; i++) {
 	    printf("%3u: ", i);
 	    showclass(ctrl->vardefs[i].class);
-	    printf("%s %s\n", i_typename(tnbuf, ctrl->vardefs[i].type),
-		   d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
-				  ctrl->vardefs[i].index)->text);
+	    if ((ctrl->vardefs[i].type & T_TYPE) == T_CLASS) {
+		char *p;
+
+		p = strchr(i_typename(tnbuf, ctrl->vardefs[i].type), ' ');
+		printf("object /%s", ctrl->cvstrings[i]->text);
+		if (p != (char *) NULL) {
+		    printf("%s", p);
+		}
+		printf(" %s\n", d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
+					       ctrl->vardefs[i].index)->text);
+	    } else {
+		printf("%s %s\n", i_typename(tnbuf, ctrl->vardefs[i].type),
+		       d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
+				      ctrl->vardefs[i].index)->text);
+	    }
 	}
     }
     if (ctrl->nfuncalls > 0) {
@@ -113,7 +153,7 @@ control *ctrl;
 	    c2 = o_control(OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex));
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
 	    name = d_get_strconst(c2, f->inherit, f->index)->text;
-	    show_proto(name, d_get_prog(c2) + f->offset);
+	    show_proto(c2, name, d_get_prog(c2) + f->offset);
 	    putchar('\n');
 	}
     }
@@ -124,7 +164,7 @@ control *ctrl;
 static unsigned short addr;
 static unsigned short line;
 static unsigned short newline;
-static char *code;
+static char *code, *pc;
 static bool pop;
 static int codesize;
 
@@ -188,7 +228,7 @@ void disasm(ctrl, func)
 control *ctrl;
 int func;
 {
-    char *pc, *end, *linenumbers, tnbuf[17], buffer[1000];
+    char *pc, *end, *linenumbers, tnbuf[STRINGSZ * 2], buffer[1000];
     control *cc;
     register unsigned short u, u2, u3;
     register unsigned long l;
@@ -198,8 +238,8 @@ int func;
     char fltbuf[18];
 
     pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
-    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
-			      ctrl->funcdefs[func].index)->text, pc);
+    show_proto(ctrl, d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
+				    ctrl->funcdefs[func].index)->text, pc);
     u2 = PROTO_CLASS(pc);
     if (u2 & C_UNDEFINED) {
 	putchar('\n');
@@ -299,7 +339,7 @@ int func;
 	case I_PUSH_GLOBAL:
 	    codesize = 2;
 	    u = FETCH1U(pc);
-	    d_get_vardefs(ctrl);
+	    d_get_vardefs(env, ctrl);
 	    sprintf(buffer, "PUSH_GLOBAL %s",
 		    d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
 				   ctrl->vardefs[u].index)->text);
@@ -321,52 +361,50 @@ int func;
 	case I_PUSH_LOCAL_LVAL:
 	    if (pop) {
 		pop = 0;
-		codesize = 3;
 		u = FETCH1S(pc);
-		sprintf(buffer, "PUSH_LOCAL_LVALUE %d (%s)", (short) u,
-			i_typename(tnbuf, FETCH1U(pc)));
+		pc = typename(ctrl, tnbuf, pc);
+		sprintf(buffer, "PUSH_LOCAL_LVALUE %d (%s)", (short) u, tnbuf);
 	    } else {
-		codesize = 2;
 		sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1S(pc));
 	    }
+	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
 	case I_PUSH_GLOBAL_LVAL:
 	    if (pop) {
 		pop = 0;
-		codesize = 3;
 		u = FETCH1U(pc);
 		d_get_vardefs(ctrl);
+		pc = typename(ctrl, tnbuf, pc);
 		sprintf(buffer, "PUSH_GLOBAL_LVALUE %s (%s)",
 			d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
 				       ctrl->vardefs[u].index)->text,
-			i_typename(tnbuf, FETCH1U(pc)));
+			tnbuf);
 	    } else {
-		codesize = 2;
 		u = FETCH1U(pc);
 		d_get_vardefs(ctrl);
 		sprintf(buffer, "PUSH_GLOBAL_LVALUE %s",
 			d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
 				       ctrl->vardefs[u].index)->text);
 	    }
+	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
 	case I_PUSH_FAR_GLOBAL_LVAL:
 	    if (pop) {
 		pop = 0;
-		codesize = 4;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
 		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
 		d_get_vardefs(cc);
+		pc = typename(ctrl, tnbuf, pc);
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s (%s)",
 			d_get_strconst(cc, cc->vardefs[u2].inherit,
 				       cc->vardefs[u2].index)->text,
-			i_typename(tnbuf, FETCH1U(pc)));
+			tnbuf);
 	    } else {
-		codesize = 3;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
 		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
@@ -375,6 +413,7 @@ int func;
 			d_get_strconst(cc, cc->vardefs[u2].inherit,
 				       cc->vardefs[u2].index)->text);
 	    }
+	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
@@ -386,9 +425,9 @@ int func;
 	case I_INDEX_LVAL:
 	    if (pop) {
 		pop = 0;
-		codesize = 2;
-		sprintf(buffer, "INDEX_LVALUE (%s)",
-			i_typename(tnbuf, FETCH1U(pc)));
+		pc = typename(env, ctrl, tnbuf, pc);
+		sprintf(buffer, "INDEX_LVALUE (%s)", tnbuf);
+		codesize = pc - code;
 		show_instr(buffer);
 	    } else {
 		codesize = 1;
@@ -407,20 +446,20 @@ int func;
 	case I_SPREAD:
 	    if (pop) {
 		pop = 0;
-		codesize = 3;
 		u = FETCH1S(pc);
-		sprintf(buffer, "SPREAD %u (%s)", u,
-			i_typename(tnbuf, FETCH1U(pc)));
+		pc = typename(env, ctrl, tnbuf, pc);
+		sprintf(buffer, "SPREAD %u (%s)", u, tnbuf);
 	    } else {
-		codesize = 2;
 		sprintf(buffer, "SPREAD %u", FETCH1S(pc));
 	    }
+	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
 	case I_CAST:
-	    codesize = 2;
-	    sprintf(buffer, "CAST %s", i_typename(tnbuf, FETCH1U(pc)));
+	    pc = typename(env, ctrl, tnbuf, pc);
+	    sprintf(buffer, "CAST %s", tnbuf);
+	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
@@ -562,7 +601,7 @@ int func;
 
 	case I_CALL_KFUNC:
 	    u = FETCH1U(pc);
-	    if (PROTO_CLASS(KFUN(u).proto) & C_KFUN_VARARGS) {
+	    if (PROTO_VARGS(KFUN(u).proto) != 0) {
 		codesize = 3;
 		u2 = FETCH1U(pc);
 	    } else {
@@ -649,7 +688,8 @@ int func;
 # ifdef FUNCDEF
 FUNCDEF("dump_object", kf_dump_object, pt_dump_object)
 # else
-char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
+char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
+			  T_OBJECT };
 
 int kf_dump_object(f)
 frame *f;
@@ -673,7 +713,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("dump_function", kf_dump_function, pt_dump_function)
 # else
-char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, T_VOID, 2,
+char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_VOID,
 			    T_OBJECT, T_STRING };
 
 int kf_dump_function(f)

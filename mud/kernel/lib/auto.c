@@ -109,7 +109,7 @@ nomask void _F_create()
 
 # ifdef CREATOR
 	    cname = function_object(CREATOR, this_object());
-	    if (cname && sscanf(cname, USR + "/System/%*s") != 0) {
+	    if (cname && sscanf(cname, USR_DIR + "/System/%*s") != 0) {
 		/* extra initialisation function */
 		if (call_other(this_object(), CREATOR, clone)) {
 		    return;
@@ -118,7 +118,8 @@ nomask void _F_create()
 # endif
 	}
 	/* call higher-level creator function */
-	if (sscanf(oname, "%*s/obj/") == 0 && sscanf(oname, "%*s/data/") == 0) {
+	if (sscanf(oname, "%*s" + CLONABLE_SUBDIR) == 0 &&
+	    sscanf(oname, "%*s" + LIGHTWEIGHT_SUBDIR) == 0) {
 	    create();
 	} else {
 	    create(clone);
@@ -206,7 +207,7 @@ static object find_object(string path)
 						 object_name(this_object()) +
 						 "/..",
 						 creator);
-    if (sscanf(path, "%*s/lib/") != 0) {
+    if (sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0) {
 	/*
 	 * It is not possible to find a lib object by name, or to call a
 	 * function in it.
@@ -253,7 +254,7 @@ static int destruct_object(mixed obj)
     if (sscanf(oname, "%*s#-1") != 0) {
 	error("Cannot destruct non-persistent object");
     }
-    lib = sscanf(oname, "%*s/lib/");
+    lib = sscanf(oname, "%*s" + INHERITABLE_SUBDIR);
     oowner = (lib) ? driver->creator(oname) : obj->query_owner();
     if ((sscanf(oname, "/kernel/%*s") != 0 && !lib && !KERNEL()) ||
 	(creator != "System" && owner != oowner)) {
@@ -293,7 +294,7 @@ static object compile_object(string path, varargs string source)
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
-    lib = sscanf(path, "%*s/lib/");
+    lib = sscanf(path, "%*s" + INHERITABLE_SUBDIR);
     uid = driver->creator(path);
     if (uid && creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path,
@@ -395,8 +396,10 @@ static object clone_object(string path, varargs string uid)
     /*
      * check if object can be cloned
      */
-    if (!owner || !(obj=::find_object(path)) || sscanf(path, "%*s/obj/") == 0 ||
-	sscanf(path, "%*s/data/") != 0 || sscanf(path, "%*s/lib/") != 0) {
+    if (!owner || !(obj=::find_object(path)) ||
+	sscanf(path, "%*s" + CLONABLE_SUBDIR) == 0 ||
+	sscanf(path, "%*s" + LIGHTWEIGHT_SUBDIR) != 0 ||
+	sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0) {
 	/*
 	 * no owner for clone, master object not compiled, or not path of
 	 * clonable
@@ -486,8 +489,9 @@ static object new_object(mixed obj, varargs string uid)
 	/*
 	 * check if object can be created
 	 */
-	if (!obj || sscanf(str, "%*s/data/") == 0 ||
-	    sscanf(str, "%*s/obj/") != 0 || sscanf(str, "%*s/lib/") != 0) {
+	if (!obj || sscanf(str, "%*s" + LIGHTWEIGHT_SUBDIR) == 0 ||
+	    sscanf(str, "%*s" + CLONABLE_SUBDIR) != 0 ||
+	    sscanf(str, "%*s" + INHERITABLE_SUBDIR) != 0) {
 	    /*
 	     * master object not compiled, or not path of non-persistent object
 	     */
@@ -622,7 +626,7 @@ static object this_user()
     object user;
 
     user = ::this_user();
-    while (user && function_object("query_user", user) == LIB_CONN) {
+    while (user && user <- LIB_CONN) {
 	user = user->query_user();
     }
     return user;
@@ -1270,7 +1274,7 @@ static mixed **get_dir(string path)
     dir = implode(names[.. sizeof(names) - 2], "/");
     names = list[0];
     olist = allocate(sz = sizeof(names));
-    if (sscanf(path, "%*s/lib/") != 0) {
+    if (sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0) {
 	/* lib objects */
 	for (i = sz; --i >= 0; ) {
 	    path = dir + "/" + names[i];
@@ -1341,7 +1345,7 @@ static mixed *file_info(string path)
     info = ({ info[1][i], info[2][i], nil });
     if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
 	(obj=::find_object(path[.. sz - 3]))) {
-	info[2] = (sscanf(path, "%*s/lib/") != 0) ? TRUE : obj;
+	info[2] = (sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0) ? TRUE : obj;
     }
     return info;
 }

@@ -452,14 +452,22 @@ static int nparams;		/* number of parameters */
  * NAME:	codegen->cast()
  * DESCRIPTION:	generate code for a cast
  */
-static void cg_cast(type)
-unsigned short type;
+static void cg_cast(n)
+register node *n;
 {
+    register long l;
+
     code_instr(I_CAST, 0);
-    if ((type & T_REF) != 0) {
-	type = T_ARRAY;
+    if ((n->mod & T_REF) != 0) {
+	n->mod = T_ARRAY;
     }
-    code_byte(type);
+    code_byte(n->mod);
+    if (n->mod == T_CLASS) {
+	l = ctrl_dstring(n->class);
+	code_byte(l >> 16);
+	code_byte(l >> 8);
+	code_byte(l);
+    }
 }
 
 /*
@@ -467,13 +475,12 @@ unsigned short type;
  * DESCRIPTION:	generate code for an lvalue
  */
 static void cg_lvalue(n, type)
-register node *n;
-int type;
+register node *n, *type;
 {
     register node *m;
     register int typeflag;
 
-    typeflag = (type != 0) ? I_TYPE_BIT : 0;
+    typeflag = (type != NULL && type->mod != T_MIXED) ? I_TYPE_BIT : 0;
 
     if (n->type == N_CAST) {
 	n = n->l.left;
@@ -531,7 +538,18 @@ int type;
     }
 
     if (typeflag != 0) {
-	code_byte((type & T_REF) ? T_ARRAY : type);
+	if ((type->mod & T_REF) != 0) {
+	    type->mod = T_ARRAY;
+	}
+	code_byte(type->mod);
+	if (type->mod == T_CLASS) {
+	    register long l;
+
+	    l = ctrl_dstring(type->class);
+	    code_byte(l >> 16);
+	    code_byte(l >> 8);
+	    code_byte(l);
+	}
     }
 }
 
@@ -542,10 +560,10 @@ int type;
 static void cg_fetch(n)
 node *n;
 {
-    cg_lvalue(n, 0);
+    cg_lvalue(n, (node *) NULL);
     code_instr(I_FETCH, 0);
     if (n->type == N_CAST) {
-	cg_cast(n->mod);
+	cg_cast(n);
     }
 }
 
@@ -672,6 +690,7 @@ bool lv;
     }
     if (n->type == N_SPREAD) {
 	register int type;
+	register long l;
 
 	cg_expr(n->l.left, FALSE);
 	type = n->l.left->mod & ~(1 << REFSHIFT);
@@ -680,6 +699,12 @@ bool lv;
 	    code_instr(I_SPREAD | I_TYPE_BIT, n->line);
 	    code_byte(n->mod);
 	    code_byte((type & T_REF) ? T_ARRAY : type);
+	    if (type == T_CLASS) {
+		l = ctrl_dstring(n->l.left->class);
+		code_byte(l >> 16);
+		code_byte(l >> 8);
+		code_byte(l);
+	    }
 	} else {
 	    code_instr(I_SPREAD, n->line);
 	    code_byte(n->mod);
@@ -790,10 +815,10 @@ register int pop;
 
     case N_ASSIGN:
 	if (n->r.right->type == N_CAST) {
-	    cg_lvalue(n->l.left, n->r.right->mod);
+	    cg_lvalue(n->l.left, n->r.right);
 	    cg_expr(n->r.right->l.left, FALSE);
 	} else {
-	    cg_lvalue(n->l.left, 0);
+	    cg_lvalue(n->l.left, (node *) NULL);
 	    cg_expr(n->r.right, FALSE);
 	}
 	code_instr(I_STORE, n->line);
@@ -801,7 +826,7 @@ register int pop;
 
     case N_CAST:
 	cg_expr(n->l.left, FALSE);
-	cg_cast(n->mod);
+	cg_cast(n);
 	break;
 
     case N_CATCH:
@@ -861,7 +886,7 @@ register int pop;
 	case KFCALL:
 	case KFCALL_LVAL:
 	    code_kfun((int) n->r.number, n->line);
-	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_KFUN_VARARGS) {
+	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
 		code_byte(i);
 	    }
 	    break;
@@ -924,6 +949,24 @@ register int pop;
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_INDEX, n->line);
+	break;
+
+    case N_INSTANCEOF:
+	cg_expr(n->l.left, FALSE);
+	l = ctrl_dstring(n->r.right->l.string) & 0xffffffL;
+	if (l == 0) {
+	    code_instr(I_PUSH_ZERO, n->line);
+	} else if (l == 1) {
+	    code_instr(I_PUSH_ONE, n->line);
+	} else if (l >= -128 && l <= 127) {
+	    code_instr(I_PUSH_INT1, n->line);
+	    code_byte(l);
+	} else {
+	    code_instr(I_PUSH_INT4, n->line);
+	    code_word(l >> 16);
+	    code_word(l);
+	}
+	code_kfun(KF_INSTANCEOF, n->line);
 	break;
 
     case N_INT:
@@ -1033,7 +1076,7 @@ register int pop;
 	break;
 
     case N_LVALUE:
-	cg_lvalue(n->l.left, (n->l.left->mod != T_MIXED) ? n->l.left->mod : 0);
+	cg_lvalue(n->l.left, n->l.left);
 	break;
 
     case N_MOD:
@@ -1298,10 +1341,6 @@ register int pop;
 	cg_expr(n->l.left, FALSE);
 	code_kfun((n->l.left->mod == T_INT) ? KF_TST_INT : KF_TST, n->line);
 	break;
-
-    case N_UPLUS:
-	cg_expr(n->l.left, pop);
-	return;
 
     case N_XOR:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {

@@ -55,7 +55,11 @@ unsigned int line;
     n = &list->n[chunksize++];
     n->type = N_INT;
     n->flags = 0;
+    n->mod = 0;
     n->line = line;
+    n->class = (string *) NULL;
+    n->l.number = 0;
+    n->r.number = 0;
     return n;
 }
 
@@ -132,11 +136,33 @@ string *str;
 }
 
 /*
+ * NAME:	node->type()
+ * DESCRIPTION:	create a type node
+ */
+node *node_type(type, class)
+int type;
+string *class;
+{
+    register node *n;
+
+    n = node_new(tk_line());
+    n->type = N_TYPE;
+    n->mod = type;
+    n->class = class;
+    if (class != (string *) NULL) {
+	str_ref(class);
+    }
+
+    return n;
+}
+
+/*
  * NAME:	node->fcall()
  * DESCRIPTION:	create a function call node
  */
-node *node_fcall(mod, func, call)
+node *node_fcall(mod, class, func, call)
 int mod;
+string *class;
 char *func;
 Int call;
 {
@@ -145,6 +171,7 @@ Int call;
     n = node_new(tk_line());
     n->type = N_FUNC;
     n->mod = mod;
+    n->class = class;
     n->l.ptr = func;
     n->r.number = call;
 
@@ -199,6 +226,8 @@ Int i;
 {
     if (n->type == N_STR) {
 	str_del(n->l.string);
+    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
+	str_del(n->class);
     }
     n->type = N_INT;
     n->flags = F_CONST;
@@ -216,6 +245,8 @@ string *str;
     str_ref(str);
     if (n->type == N_STR) {
 	str_del(n->l.string);
+    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
+	str_del(n->class);
     }
     n->type = N_STR;
     n->flags = F_CONST;
@@ -244,6 +275,8 @@ void node_free()
 		 * only strings are deleted here
 		 */
 		str_del(n->l.string);
+	    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
+		str_del(n->class);
 	    }
 	} while (--i > 0);
 	i = NODE_CHUNK;

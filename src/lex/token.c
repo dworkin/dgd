@@ -628,7 +628,7 @@ int tk_gettok()
 
     case '-':
 	*p++ = c = gc();
-	TEST('>', ARROW);
+	TEST('>', RARROW);
 	TEST('-', MIN_MIN);
 	TEST('=', MIN_EQ);
 	--p; uc(c);
@@ -759,6 +759,7 @@ int tk_gettok()
 	}
 	*p++ = c = gc();
 	TEST('=', LE);
+	TEST('-', LARROW);
 	if (c == '<') {
 	    CHECK('=', LSHIFT_EQ);
 	    c = LSHIFT;

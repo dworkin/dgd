@@ -101,10 +101,7 @@ object telnet_user(int port, string str)
 	if (!user) {
 	    user = telnet[port];
 	    if (user) {
-		user = user->select(str);
-		if (function_object("query_conn", user) != LIB_USER) {
-		    error("Invalid user object");
-		}
+		user = (object LIB_USER) user->select(str);
 	    } else {
 		user = clone_object(DEFAULT_USER);
 	    }
@@ -127,10 +124,7 @@ object binary_user(int port, string str)
 	if (!user) {
 	    user = binary[port];
 	    if (user && (str != "admin" || port != 0)) {
-		user = user->select(str);
-		if (function_object("query_conn", user) != LIB_USER) {
-		    error("Invalid user object");
-		}
+		user = (object LIB_USER) user->select(str);
 	    } else {
 		user = clone_object(DEFAULT_USER);
 	    }

@@ -39,6 +39,17 @@ static void close(int dest)
 }
 
 /*
+ * NAME:	add_to_buffer()
+ * DESCRIPTION:	do this where an error is allowed to happen
+ */
+private void add_to_buffer(mixed *tls, string str)
+{
+    catch {
+	buffer += str;
+    } : error("Binary connection buffer overflow");
+}
+
+/*
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
@@ -48,10 +59,7 @@ static void receive_message(string str)
     string head, pre;
     mixed *tls;
 
-    tls = allocate(driver->query_tls_size());
-    catch {
-	buffer += str;
-    } : error("Binary connection buffer overflow");
+    add_to_buffer(tls = allocate(driver->query_tls_size()), str);
 
     while (this_object() &&
 	   (mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {

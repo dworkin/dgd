@@ -6,11 +6,33 @@
 # include "data.h"
 # include "call_out.h"
 # include "parse.h"
+# include "control.h"
 # include "csupport.h"
 
 
 # define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 # define PRIV			0x8000	/* in sinherit->varoffset */
+
+typedef struct {
+    sector nsectors;		/* # sectors in part one */
+    char flags;			/* control flags: compression */
+    char ninherits;		/* # objects in inherit table */
+    Uint compiled;		/* time of compilation */
+    Uint progsize;		/* size of program code */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short nifdefs;	/* # int/float definitions */
+    unsigned short nvinit;	/* # variables requiring initialization */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+} scontrol;
+
+static char sc_layout[] = "dcciisicccusssss";
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -28,9 +50,9 @@ typedef struct {
     unsigned short nifdefs;	/* # int/float definitions */
     unsigned short nvinit;	/* # variables requiring initialization */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} scontrol;
+} oscontrol;
 
-static char sc_layout[] = "dcciisiccusssss";
+static char os_layout[] = "dcciisiccusssss";
 
 typedef struct {
     uindex oindex;		/* index in object table */
@@ -177,7 +199,10 @@ control *d_new_control()
     ctrl->nfuncdefs = 0;
     ctrl->funcdefs = (dfuncdef *) NULL;
     ctrl->nvardefs = 0;
+    ctrl->nclassvars = 0;
     ctrl->vardefs = (dvardef *) NULL;
+    ctrl->cvstrings = (string **) NULL;
+    ctrl->classvars = (char *) NULL;
     ctrl->nfuncalls = 0;
     ctrl->funcalls = (char *) NULL;
     ctrl->nsymbols = 0;
@@ -386,7 +411,9 @@ register object *obj;
 	/* variable definitions */
 	ctrl->vardoffset = size;
 	ctrl->nvardefs = UCHAR(header.nvardefs);
-	size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
+	ctrl->nclassvars = UCHAR(header.nclassvars);
+	size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef) +
+		UCHAR(header.nclassvars) * (Uint) 3;
 
 	/* function call table */
 	ctrl->funccoffset = size;
@@ -769,6 +796,28 @@ register control *ctrl;
 	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
 	sw_readv((char *) ctrl->vardefs, ctrl->sectors,
 		 ctrl->nvardefs * (Uint) sizeof(dvardef), ctrl->vardoffset);
+	if (ctrl->nclassvars != 0) {
+	    register char *p;
+	    register dvardef *vars;
+	    register string **strs;
+	    register unsigned short n, inherit, u;
+
+	    ctrl->classvars = ALLOC(char, ctrl->nclassvars * 3);
+	    sw_readv(ctrl->classvars, ctrl->sectors, ctrl->nclassvars * 3,
+		     ctrl->vardoffset + ctrl->nvardefs * sizeof(dvardef));
+	    ctrl->cvstrings = strs = ALLOC(string*, ctrl->nvardefs);
+	    memset(strs, '\0', ctrl->nvardefs * sizeof(string*));
+	    p = ctrl->classvars;
+	    for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++) {
+		if ((vars->type & T_TYPE) == T_CLASS) {
+		    inherit = FETCH1U(p);
+		    str_ref(*strs = d_get_strconst(ctrl, inherit,
+						   FETCH2U(p, u)));
+		    --n;
+		}
+		strs++;
+	    }
+	}
     }
     return ctrl->vardefs;
 }
@@ -825,6 +874,7 @@ register control *ctrl;
 	   ctrl->strsize +
 	   ctrl->nfuncdefs * sizeof(dfuncdef) +
 	   ctrl->nvardefs * sizeof(dvardef) +
+	   ctrl->nclassvars * (Uint) 3 +
 	   ctrl->nfuncalls * (Uint) 2 +
 	   ctrl->nsymbols * (Uint) sizeof(dsymbol);
 }
@@ -1193,6 +1243,7 @@ register control *ctrl;
     header.strsize = ctrl->strsize;
     header.nfuncdefs = ctrl->nfuncdefs;
     header.nvardefs = ctrl->nvardefs;
+    header.nclassvars = ctrl->nclassvars;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
@@ -1263,6 +1314,7 @@ register control *ctrl;
 	       header.strsize +
 	       UCHAR(header.nfuncdefs) * sizeof(dfuncdef) +
 	       UCHAR(header.nvardefs) * sizeof(dvardef) +
+	       UCHAR(header.nclassvars) * (Uint) 3 +
 	       header.nfuncalls * (Uint) 2 +
 	       header.nsymbols * (Uint) sizeof(dsymbol);
     }
@@ -1351,6 +1403,11 @@ register control *ctrl;
 	    sw_writev((char *) ctrl->vardefs, ctrl->sectors,
 		      UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
 	    size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
+	    if (UCHAR(header.nclassvars) > 0) {
+		sw_writev(ctrl->classvars, ctrl->sectors,
+			  UCHAR(header.nclassvars) * (Uint) 3, size);
+		size += UCHAR(header.nclassvars) * (Uint) 3;
+	    }
 	}
 
 	/* save function call table */
@@ -2179,11 +2236,66 @@ Uint n, idx;
 }
 
 /*
+ * NAME:	data->conv_proto()
+ * DESCRIPTION:	convert a prototype to the new standard
+ */
+static void d_conv_proto(old, new)
+char **old, **new;
+{
+    register char *p, *args;
+    register unsigned short i, n, type;
+    unsigned short class, nargs, vargs;
+    bool varargs;
+
+    p = *old;
+    class = UCHAR(*p++);
+    type = UCHAR(*p++);
+    n = UCHAR(*p++);
+
+    varargs = (class & C_VARARGS);
+    class &= ~C_VARARGS;
+    nargs = vargs = 0;
+    args = &PROTO_FTYPE(*new);
+    *args++ = (type & T_TYPE) | ((type >> 1) & T_REF);
+
+    for (i = 0; i < n; i++) {
+	if (varargs) {
+	    vargs++;
+	} else {
+	    nargs++;
+	}
+	type = UCHAR(*p++);
+	if (type & T_VARARGS) {
+	    if (i == n - 1) {
+		class |= C_ELLIPSIS;
+		if (!varargs) {
+		    --nargs;
+		    vargs++;
+		}
+	    }
+	    varargs = TRUE;
+	}
+	*args++ = (type & T_TYPE) | ((type >> 1) & T_REF);
+    }
+
+    *old = p;
+    p = *new;
+    *new = args;
+
+    PROTO_CLASS(p) = class;
+    PROTO_NARGS(p) = nargs;
+    PROTO_VARGS(p) = vargs;
+    PROTO_HSIZE(p) = (6 + n) >> 8;
+    PROTO_LSIZE(p) = 6 + n;
+}
+
+/*
  * NAME:	data->conv_control()
  * DESCRIPTION:	convert control block
  */
-void d_conv_control(oindex)
+void d_conv_control(oindex, conv)
 unsigned int oindex;
+int conv;
 {
     scontrol header;
     register control *ctrl;
@@ -2199,8 +2311,31 @@ unsigned int oindex;
     /*
      * restore from dump file
      */
-    size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
-		  (Uint) 0);
+    if (conv) {
+	oscontrol oheader;
+
+	size = d_conv((char *) &oheader, &obj->cfirst, os_layout, (Uint) 1,
+		      (Uint) 0);
+	header.nsectors = oheader.nsectors;
+	header.flags = oheader.flags;
+	header.ninherits = oheader.ninherits;
+	header.compiled = oheader.compiled;
+	header.progsize = oheader.progsize;
+	header.nstrings = oheader.nstrings;
+	header.strsize = oheader.strsize;
+	header.nfuncdefs = oheader.nfuncdefs;
+	header.nvardefs = oheader.nvardefs;
+	header.nclassvars = 0;
+	header.nfuncalls = oheader.nfuncalls;
+	header.nsymbols = oheader.nsymbols;
+	header.nvariables = oheader.nvariables;
+	header.nifdefs = oheader.nifdefs;
+	header.nvinit = oheader.nvinit;
+	header.vmapsize = oheader.vmapsize;
+    } else {
+	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
+		      (Uint) 0);
+    }
     if (header.nvariables >= PRIV) {
 	fatal("too many variables in restored object");
     }
@@ -2280,6 +2415,39 @@ unsigned int oindex;
 	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
 	    size += d_conv((char *) ctrl->funcdefs, s, DF_LAYOUT,
 			   (Uint) UCHAR(header.nfuncdefs), size);
+	    if (conv) {
+		char *prog, *old, *new;
+		Uint offset, funcsize;
+
+		/*
+		 * convert restored program to new prototype standard
+		 */
+		prog = ALLOC(char, ctrl->progsize + (Uint) 3 * ctrl->nfuncdefs);
+		new = prog;
+		for (n = 0; n < ctrl->nfuncdefs; n++) {
+		    /* convert prototype */
+		    old = ctrl->prog + ctrl->funcdefs[n].offset;
+		    ctrl->funcdefs[n].offset = new - prog;
+		    d_conv_proto(&old, &new);
+
+		    /* copy program */
+		    offset = old - ctrl->prog;
+		    if (n < ctrl->nfuncdefs - 1) {
+			funcsize = ctrl->funcdefs[n + 1].offset - offset;
+		    } else {
+			funcsize = ctrl->progsize - offset;
+		    }
+		    if (funcsize != 0) {
+			memcpy(new, old, funcsize);
+			new += funcsize;
+		    }
+		}
+
+		/* replace program */
+		FREE(ctrl->prog);
+		ctrl->prog = prog;
+		ctrl->progsize = new - prog;
+	    }
 	}
 
 	if (header.nvardefs != 0) {
@@ -2287,6 +2455,15 @@ unsigned int oindex;
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
 	    size += d_conv((char *) ctrl->vardefs, s, DV_LAYOUT,
 			   (Uint) UCHAR(header.nvardefs), size);
+	    if (conv) {
+		register unsigned short type;
+
+		for (n = 0; n < ctrl->nvardefs; n++) {
+		    type = ctrl->vardefs[n].type;
+		    ctrl->vardefs[n].type =
+					(type & T_TYPE) | ((type >> 1) & T_REF);
+		}
+	    }
 	}
 
 	if (header.nfuncalls != 0) {
@@ -2479,11 +2656,10 @@ void d_free_control(ctrl)
 register control *ctrl;
 {
     register string **strs;
+    register unsigned short i;
 
     /* delete strings */
     if (ctrl->strings != (string **) NULL) {
-	register unsigned short i;
-
 	strs = ctrl->strings;
 	for (i = ctrl->nstrings; i > 0; --i) {
 	    if (*strs != (string *) NULL) {
@@ -2492,6 +2668,16 @@ register control *ctrl;
 	    strs++;
 	}
 	FREE(ctrl->strings);
+    }
+    if (ctrl->cvstrings != (string **) NULL) {
+	strs = ctrl->cvstrings;
+	for (i = ctrl->nvardefs; i > 0; --i) {
+	    if (*strs != (string *) NULL) {
+		str_del(*strs);
+	    }
+	    strs++;
+	}
+	FREE(ctrl->cvstrings);
     }
 
     /* delete vmap */
@@ -2530,6 +2716,9 @@ register control *ctrl;
 	/* delete variable definitions */
 	if (ctrl->vardefs != (dvardef *) NULL) {
 	    FREE(ctrl->vardefs);
+	    if (ctrl->classvars != (char *) NULL) {
+		FREE(ctrl->classvars);
+	    }
 	}
 
 	/* delete function call table */

@@ -14,6 +14,12 @@
 # define EXTRA_STACK	0
 # endif
 
+typedef struct _inhash_ {
+    Uint ocount;		/* object count */
+    uindex iindex;		/* inherit index */
+    uindex coindex;		/* class name program reference */
+    Uint class;			/* class name string reference */
+} inhash;
 
 static value stack[MIN_STACK];	/* initial stack */
 static frame topframe;		/* top frame */
@@ -22,6 +28,7 @@ frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 static bool stricttc;		/* strict typechecking */
+static inhash ihash[INHASHSZ];	/* instanceof hashtable */
 
 int nil_type;			/* type of nil value */
 value zero_int = { T_INT, TRUE };
@@ -250,7 +257,16 @@ register int n;
 	    str_del(v->u.string);
 	    break;
 
+	case T_LVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
+	    break;
+
 	case T_ALVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
 	    --f->lip;
 	case T_ARRAY:
 	case T_MAPPING:
@@ -259,21 +275,33 @@ register int n;
 	    break;
 
 	case T_SLVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
 	    str_del((--f->lip)->u.string);
 	    break;
 
 	case T_MLVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
 	    i_del_value(--f->lip);
 	    arr_del(v->u.array);
 	    break;
 
 	case T_SALVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
 	    str_del((--f->lip)->u.string);
 	    --f->lip;
 	    arr_del(v->u.array);
 	    break;
 
 	case T_SMLVALUE:
+	    if (v->oindex == T_CLASS) {
+		--f->lip;
+	    }
 	    str_del((--f->lip)->u.string);
 	    i_del_value(--f->lip);
 	    arr_del(v->u.array);
@@ -292,7 +320,7 @@ frame *f;
 register int n;
 {
     value sp[MAX_LOCALS];
-    value lip[MAX_LOCALS];
+    value lip[3 * MAX_LOCALS];
     register value *v1, *v2, *w1, *w2;
 
     if (n > 1) {
@@ -308,17 +336,36 @@ register int n;
 
 	do {
 	    switch (v2->type) {
+	    case T_LVALUE:
+		if (v2->oindex == T_CLASS) {
+		    *w1++ = *--w2;
+		}
+		break;
+
 	    case T_SLVALUE:
 	    case T_ALVALUE:
 	    case T_MLVALUE:
-		*w1++ = *--w2;
+		if (v2->oindex == T_CLASS) {
+		    w2 -= 2;
+		    *w1++ = w2[0];
+		    *w1++ = w2[1];
+		} else {
+		    *w1++ = *--w2;
+		}
 		break;
 
 	    case T_SALVALUE:
 	    case T_SMLVALUE:
-		w2 -= 2;
-		*w1++ = w2[0];
-		*w1++ = w2[1];
+		if (v2->oindex == T_CLASS) {
+		    w2 -= 3;
+		    *w1++ = w2[0];
+		    *w1++ = w2[1];
+		    *w1++ = w2[2];
+		} else {
+		    w2 -= 2;
+		    *w1++ = w2[0];
+		    *w1++ = w2[1];
+		}
 		break;
 	    }
 
@@ -496,9 +543,10 @@ register unsigned int size;
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-int i_spread(f, n, vtype)
+int i_spread(f, n, vtype, class)
 register frame *f;
 register int n, vtype;
+Uint class;
 {
     register array *a;
     register int i;
@@ -530,6 +578,10 @@ register int n, vtype;
 	f->sp->u.array = a;
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = i;
+	if (vtype == T_CLASS) {
+	    f->lip->type = T_INT;
+	    (f->lip++)->u.number = class;
+	}
     }
 
     arr_del(a);
@@ -559,10 +611,11 @@ register int inherit, index;
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(f, inherit, index, vtype)
+void i_global_lvalue(f, inherit, index, vtype, class)
 register frame *f;
 register int inherit;
 int index, vtype;
+Uint class;
 {
     i_add_ticks(f, 4);
     if (inherit != 0) {
@@ -578,6 +631,11 @@ int index, vtype;
 	arr_ref(f->sp->u.array = f->lwobj);
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = 2 + inherit + index;
+    }
+
+    if (vtype == T_CLASS) {
+	f->lip->type = T_INT;
+	(f->lip++)->u.number = class;
     }
 }
 
@@ -658,9 +716,10 @@ register frame *f;
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(f, vtype)
+void i_index_lvalue(f, vtype, class)
 register frame *f;
 int vtype;
+Uint class;
 {
     register int i;
     register value *lval, *ival, *val;
@@ -684,13 +743,13 @@ int vtype;
 	lval->oindex = vtype;
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = i;
-	return;
+	break;
 
     case T_MAPPING:
 	lval->type = T_MLVALUE;
 	lval->oindex = vtype;
 	*f->lip++ = *ival;
-	return;
+	break;
 
     case T_LVALUE:
 	/*
@@ -708,7 +767,7 @@ int vtype;
 	    f->lip->type = T_STRING;
 	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = lval->u.lval->u.string);
-	    return;
+	    break;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
@@ -721,14 +780,18 @@ int vtype;
 	    arr_ref(lval->u.array = lval->u.lval->u.array);
 	    f->lip->type = T_INT;
 	    (f->lip++)->u.number = i;
-	    return;
+	    break;
 
 	case T_MAPPING:
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
 	    arr_ref(lval->u.array = lval->u.lval->u.array);
 	    *f->lip++ = *ival;
-	    return;
+	    break;
+
+	default:
+	    i_del_value(ival);
+	    error("Index on bad type");
 	}
 	break;
 
@@ -746,7 +809,7 @@ int vtype;
 	    f->lip->type = T_STRING;
 	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = val->u.string);
-	    return;
+	    break;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
@@ -759,7 +822,7 @@ int vtype;
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    f->lip[-1].u.number = i;
-	    return;
+	    break;
 
 	case T_MAPPING:
 	    arr_ref(val->u.array);	/* has to be first */
@@ -768,7 +831,11 @@ int vtype;
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    f->lip[-1] = *ival;
-	    return;
+	    break;
+
+	default:
+	    i_del_value(ival);
+	    error("Index on bad type");
 	}
 	break;
 
@@ -786,7 +853,7 @@ int vtype;
 	    f->lip->type = T_STRING;
 	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = val->u.string);
-	    return;
+	    break;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
@@ -802,7 +869,7 @@ int vtype;
 	    i_del_value(&f->lip[-1]);
 	    f->lip[-1].type = T_INT;
 	    f->lip[-1].u.number = i;
-	    return;
+	    break;
 
 	case T_MAPPING:
 	    arr_ref(val->u.array);	/* has to be first */
@@ -811,12 +878,19 @@ int vtype;
 	    lval->u.array = val->u.array;
 	    i_del_value(&f->lip[-1]);
 	    f->lip[-1] = *ival;
-	    return;
+	    break;
+
+	default:
+	    i_del_value(ival);
+	    error("Index on bad type");
 	}
 	break;
     }
-    i_del_value(ival);
-    error("Index on bad type");
+
+    if (vtype == T_CLASS) {
+	f->lip->type = T_INT;
+	(f->lip++)->u.number = class;
+    }
 }
 
 /*
@@ -829,6 +903,9 @@ register unsigned int type;
 {
     static char *name[] = TYPENAMES;
 
+    if ((type & T_TYPE) == T_CLASS) {
+	type = (type & T_REF) | T_OBJECT;
+    }
     strcpy(buf, name[type & T_TYPE]);
     type &= T_REF;
     type >>= REFSHIFT;
@@ -846,15 +923,78 @@ register unsigned int type;
 }
 
 /*
+ * NAME:	interpret->instanceof()
+ * DESCRIPTION:	is an object an instance of the named program?
+ */
+bool i_instanceof(f, oindex, class)
+register frame *f;
+unsigned int oindex;
+Uint class;
+{
+    register inhash *h;
+    register char *prog;
+    register unsigned short i;
+    register dinherit *inh;
+    object *obj;
+    control *ctrl;
+
+    /* first try hash table */
+    obj = OBJR(oindex);
+    ctrl = o_control(obj);
+    prog = d_get_strconst(f->p_ctrl, class >> 16, class & 0xffff)->text;
+    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ class) %
+								    INHASHSZ];
+    if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
+	h->class == class && h->iindex < ctrl->ninherits) {
+	oindex = ctrl->inherits[h->iindex].oindex;
+	if (strcmp(OBJR(oindex)->chain.name, prog) == 0) {
+	    return TRUE;	/* found it */
+	}
+    }
+
+    /* next, search for it the hard way */
+    for (i = ctrl->ninherits, inh = ctrl->inherits + i; i != 0; ) {
+	--i;
+	--inh;
+	i_add_ticks(f, 2);
+	if (strcmp(prog, OBJR(inh->oindex)->chain.name) == 0) {
+	    /* found it; update hashtable */
+	    h->ocount = obj->count;
+	    h->coindex = f->p_ctrl->oindex;
+	    h->class = class;
+	    h->iindex = i;
+	    return TRUE;
+	}
+    }
+    return FALSE;
+}
+
+/*
  * NAME:	interpret->cast()
  * DESCRIPTION:	cast a value to a type
  */
-void i_cast(val, type)
+void i_cast(f, val, type, class)
+frame *f;
 register value *val;
 register unsigned int type;
+Uint class;
 {
     char tnbuf[8];
 
+    if (type == T_CLASS) {
+	if (val->type == T_OBJECT || val->type == T_LWOBJECT) {
+	    if (!i_instanceof(f,
+			      (val->type == T_OBJECT) ?
+			       val->oindex : d_get_elts(val->u.array)->oindex,
+			       class)) {
+		error("Value is not of object type /%s",
+		      d_get_strconst(f->p_ctrl, class >> 16,
+				     class & 0xffff)->text);
+	    }
+	    return;
+	}
+	type = T_OBJECT;
+    }
     if (val->type != type && (val->type != T_LWOBJECT || type != T_OBJECT) &&
 	(!VAL_NIL(val) || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
@@ -922,14 +1062,21 @@ ssizet i;
 void i_store(f)
 register frame *f;
 {
-    value ival;
     register value *lval, *val;
     register array *a;
+    Uint class;
+    value ival;
 
     lval = f->sp + 1;
     val = f->sp;
     if (lval->oindex != 0) {
-	i_cast(val, lval->oindex);
+	if (lval->oindex == T_CLASS) {
+	    --f->lip;
+	    class = f->lip->u.number;
+	} else {
+	    class = 0;
+	}
+	i_cast(f, val, lval->oindex, class);
     }
 
     i_add_ticks(f, 1);
@@ -939,10 +1086,9 @@ register frame *f;
 	break;
 
     case T_SLVALUE:
-	--f->lip;
 	d_assign_var(f->data, lval->u.lval,
-		     istr(&ival, f->lip->u.string, f->lip->oindex, val));
-	str_del(f->lip->u.string);
+		     istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val));
+	str_del((--f->lip)->u.string);
 	break;
 
     case T_ALVALUE:
@@ -958,20 +1104,18 @@ register frame *f;
 	break;
 
     case T_SALVALUE:
-	--f->lip;
 	a = lval->u.array;
-	d_assign_elt(f->data, a, &a->elts[f->lip[-1].u.number],
-		     istr(&ival, f->lip->u.string, f->lip->oindex, val));
-	str_del(f->lip->u.string);
+	d_assign_elt(f->data, a, &a->elts[f->lip[-2].u.number],
+		     istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val));
+	str_del((--f->lip)->u.string);
 	--f->lip;
   	arr_del(a);
 	break;
 
     case T_SMLVALUE:
-	--f->lip;
-	map_index(f->data, a = lval->u.array, &f->lip[-1],
-		  istr(&ival, f->lip->u.string, f->lip->oindex, val));
-	str_del(f->lip->u.string);
+	map_index(f->data, a = lval->u.array, &f->lip[-2],
+		  istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val));
+	str_del((--f->lip)->u.string);
 	i_del_value(--f->lip);
 	arr_del(a);
 	break;
@@ -1136,11 +1280,23 @@ register value *sp;
 		str_del(v->u.string);
 		break;
 
+	    case T_LVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
+		break;
+
 	    case T_SLVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
 		str_del((--w)->u.string);
 		break;
 
 	    case T_ALVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
 		--w;
 	    case T_ARRAY:
 	    case T_MAPPING:
@@ -1149,17 +1305,26 @@ register value *sp;
 		break;
 
 	    case T_MLVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
 		i_del_value(--w);
 		arr_del(v->u.array);
 		break;
 
 	    case T_SALVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
 		str_del((--w)->u.string);
 		--w;
 		arr_del(v->u.array);
 		break;
 
 	    case T_SMLVALUE:
+		if (v->oindex == T_CLASS) {
+		    --w;
+		}
 		str_del((--w)->u.string);
 		i_del_value(--w);
 		arr_del(v->u.array);
@@ -1229,8 +1394,9 @@ register int n;
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-void i_typecheck(f, name, ftype, proto, nargs, strict)
+void i_typecheck(f, ctrl, name, ftype, proto, nargs, strict)
 register frame *f;
+control *ctrl;
 char *name, *ftype;
 register char *proto;
 int nargs;
@@ -1239,22 +1405,18 @@ int strict;
     char tnbuf[8];
     register int i, n, atype, ptype;
     register char *args;
+    bool ellipsis;
 
     i = nargs;
-    n = PROTO_NARGS(proto);
+    n = PROTO_NARGS(proto) + PROTO_VARGS(proto);
+    ellipsis = (PROTO_CLASS(proto) & C_ELLIPSIS);
     args = PROTO_ARGS(proto);
     while (n > 0 && i > 0) {
 	--i;
-	ptype = UCHAR(*args);
-	if (ptype & (T_VARARGS | T_ELLIPSIS)) {
-	    ptype &= ~(T_VARARGS | T_ELLIPSIS);
-	    if (n == 1) {
-		if (ptype == T_MIXED || ptype == T_LVALUE) {
-		    return;
-		}
-	    } else {
-		args++;
-		--n;
+	ptype = *args;
+	if (n == 1 && ellipsis) {
+	    if (ptype == T_MIXED || ptype == T_LVALUE) {
+		return;
 	    }
 	} else {
 	    args++;
@@ -1266,13 +1428,29 @@ int strict;
 	    if (atype == T_LWOBJECT) {
 		atype = T_OBJECT;
 	    }
+	    if ((ptype & T_TYPE) == T_CLASS) {
+		Uint class;
+
+		FETCH3U(args, class);
+		if (ptype == T_CLASS && atype == T_OBJECT) {
+		    if (!i_instanceof(f,
+				      (f->sp[i].type == T_OBJECT) ?
+				       f->sp[i].oindex :
+				       d_get_elts(f->sp[i].u.array)->oindex,
+				      class)) {
+			error("Bad object argument %d for function %s",
+			      nargs - i, name);
+		    }
+		    continue;
+		}
+	    }
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
 		if (!VAL_NIL(f->sp + i) || !T_POINTER(ptype)) {
 		    /* wrong type */
 		    error("Bad argument %d (%s) for %s %s", nargs - i,
 			  i_typename(tnbuf, atype), ftype, name);
 		} else if (strict) {
-		    /* zero argument */
+		    /* nil argument */
 		    error("Bad argument %d for %s %s", nargs - i, ftype, name);
 		}
 	    }
@@ -1602,20 +1780,46 @@ register char *pc;
 
 	case I_PUSH_LOCAL_LVAL:
 	    u = FETCH1S(pc);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		    f->lip->type = T_INT;
+		    (f->lip++)->u.number = l;
+		}
+	    } else {
+		instr = 0;
+	    }
 	    (--f->sp)->type = T_LVALUE;
-	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    f->sp->oindex = instr;
 	    f->sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
 	    continue;
 
 	case I_PUSH_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
-	    i_global_lvalue(f, 1, u, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_global_lvalue(f, 1, u, instr, l);
 	    continue;
 
 	case I_PUSH_FAR_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    i_global_lvalue(f, u, u2, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_global_lvalue(f, u, u2, instr, l);
 	    continue;
 
 	case I_INDEX:
@@ -1623,7 +1827,15 @@ register char *pc;
 	    break;
 
 	case I_INDEX_LVAL:
-	    i_index_lvalue(f, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_index_lvalue(f, instr, l);
 	    continue;
 
 	case I_AGGREGATE:
@@ -1636,12 +1848,23 @@ register char *pc;
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
-	    size = i_spread(f, (short) u,
-			    (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    size = i_spread(f, (short) u, instr, l);
 	    continue;
 
 	case I_CAST:
-	    i_cast(f->sp, FETCH1U(pc));
+	    u = FETCH1U(pc);
+	    if (u == T_CLASS) {
+		FETCH3U(pc, l);
+	    }
+	    i_cast(f, f->sp, u, l);
 	    break;
 
 	case I_FETCH:
@@ -1691,7 +1914,7 @@ register char *pc;
 
 	case I_CALL_KFUNC:
 	    kf = &KFUN(FETCH1U(pc));
-	    if (PROTO_CLASS(kf->proto) & C_KFUN_VARARGS) {
+	    if (PROTO_VARGS(kf->proto) != 0) {
 		/* variable # of arguments */
 		u = FETCH1U(pc) + size;
 		size = 0;
@@ -1700,7 +1923,8 @@ register char *pc;
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, kf->name, "kfun", kf->proto, u, TRUE);
+		i_typecheck(f, (control *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
 	    }
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
@@ -1802,6 +2026,7 @@ int funci;
     register char *pc;
     register unsigned short n;
     frame f;
+    bool ellipsis;
     value val;
 
     f.prev = prev_f;
@@ -1871,69 +2096,77 @@ int funci;
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
     if (f.func->class & C_TYPECHECKED) {
 	/* typecheck arguments */
-	i_typecheck(prev_f, d_get_strconst(f.p_ctrl, f.func->inherit,
-					   f.func->index)->text,
+	i_typecheck(prev_f, f.p_ctrl,
+		    d_get_strconst(f.p_ctrl, f.func->inherit,
+				   f.func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
 
     /* handle arguments */
-    n = PROTO_NARGS(pc);
-    pc = PROTO_ARGS(pc);
-    if (n > 0 && (UCHAR(pc[n - 1]) & T_ELLIPSIS)) {
+    ellipsis = (PROTO_CLASS(pc) & C_ELLIPSIS);
+    n = PROTO_NARGS(pc) + PROTO_VARGS(pc);
+    if (nargs < n) {
+	register int i;
+
+	/* if fewer actual than formal parameters, check for varargs */
+	if (nargs < PROTO_NARGS(pc) && stricttc) {
+	    error("Insufficient arguments for function %s",
+		  d_get_strconst(f.p_ctrl, f.func->inherit,
+				 f.func->index)->text);
+	}
+
+	/* add missing arguments */
+	i_grow_stack(prev_f, n - nargs);
+	if (ellipsis) {
+	    --n;
+	}
+
+	pc = &PROTO_FTYPE(pc);
+	i = nargs;
+	do {
+	    if ((FETCH1U(pc) & T_TYPE) == T_CLASS) {
+		pc += 3;
+	    }
+	} while (--i >= 0);
+	while (nargs < n) {
+	    switch (i=FETCH1U(pc)) {
+	    case T_INT:
+		*--prev_f->sp = zero_int;
+		break;
+
+	    case T_FLOAT:
+		*--prev_f->sp = zero_float;
+		    break;
+
+	    default:
+		if ((i & T_TYPE) == T_CLASS) {
+		    pc += 3;
+		}
+		*--prev_f->sp = nil_value;
+		break;
+	    }
+	    nargs++;
+	}
+	if (ellipsis) {
+	    PUSH_ARRVAL(prev_f, arr_new(f.data, 0));
+	    nargs++;
+	    pc++;
+	}
+    } else if (ellipsis) {
 	register value *v;
 	array *a;
 
-	if (nargs >= n) {
-	    /* put additional arguments in array */
-	    nargs -= n - 1;
-	    a = arr_new(f.data, (long) nargs);
-	    v = a->elts + nargs;
-	    do {
-		*--v = *prev_f->sp++;
-	    } while (--nargs > 0);
-	    d_ref_imports(a);
-	    nargs = n;
-	    pc += nargs;
-	} else {
-	    /* if fewer actual than formal parameters, check for varargs */
-	    if (nargs + 1 != n && stricttc && !(f.func->class & C_VARARGS)) {
-		register unsigned short i;
-
-		i = nargs;
-		do {
-		    if (i == 0) {
-			error("Insufficient arguments for function %s",
-			      d_get_strconst(f.p_ctrl, f.func->inherit,
-					     f.func->index)->text);
-		    }
-		    --i;
-		} while (!(FETCH1U(pc) & T_VARARGS));
-		pc += i;
-	    } else {
-		pc += nargs;
-	    }
-
-	    /* make empty arguments array, and optionally push zeros */
-	    i_grow_stack(prev_f, n - nargs);
-	    while (++nargs < n) {
-		switch (FETCH1U(pc)) {
-		case T_INT:
-		    *--prev_f->sp = zero_int;
-		    break;
-
-		case T_FLOAT:
-		    *--prev_f->sp = zero_float;
-		    break;
-
-		default:
-		    *--prev_f->sp = nil_value;
-		    break;
-		}
-	    }
-	    pc++;
-	    a = arr_new(f.data, 0L);
-	}
+	/* put additional arguments in array */
+	nargs -= n - 1;
+	a = arr_new(f.data, nargs);
+	v = a->elts + nargs;
+	do {
+	    *--v = *prev_f->sp++;
+	} while (--nargs > 0);
+	d_ref_imports(a);
 	PUSH_ARRVAL(prev_f, a);
+	nargs = n;
+	pc += PROTO_SIZE(pc);
     } else if (nargs > n) {
 	if (stricttc) {
 	    error("Too many arguments for function %s",
@@ -1944,45 +2177,9 @@ int funci;
 	/* pop superfluous arguments */
 	i_pop(prev_f, nargs - n);
 	nargs = n;
-	pc += nargs;
-    } else if (nargs < n) {
-	/* if fewer actual than formal parameters, check for varargs */
-	if (stricttc && !(f.func->class & C_VARARGS)) {
-	    register unsigned short i;
-
-	    i = nargs;
-	    do {
-		if (i == 0) {
-		    error("Insufficient arguments for function %s",
-			  d_get_strconst(f.p_ctrl, f.func->inherit,
-					 f.func->index)->text);
-		}
-		--i;
-	    } while (!(FETCH1U(pc) & T_VARARGS));
-	    pc += i;
-	} else {
-	    pc += nargs;
-	}
-
-	/* add missing arguments */
-	i_grow_stack(prev_f, n - nargs);
-	do {
-	    switch (FETCH1U(pc)) {
-	    case T_INT:
-		*--prev_f->sp = zero_int;
-		break;
-
-	    case T_FLOAT:
-		*--prev_f->sp = zero_float;
-		    break;
-
-	    default:
-		*--prev_f->sp = nil_value;
-		break;
-	    }
-	} while (++nargs < n);
+	pc += PROTO_SIZE(pc);
     } else {
-	pc += nargs;
+	pc += PROTO_SIZE(pc);
     }
     f.sp = prev_f->sp;
     f.nargs = nargs;
@@ -2220,8 +2417,8 @@ register frame *f;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_INDEX_LVAL:
-	    if (instr & I_TYPE_BIT) {
-		pc++;
+	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+		pc += 3;
 	    }
 	    /* fall through */
 	case I_PUSH_ZERO:
@@ -2235,22 +2432,27 @@ register frame *f;
 	case I_PUSH_LOCAL_LVAL:
 	case I_PUSH_GLOBAL_LVAL:
 	case I_SPREAD:
-	    if (instr & I_TYPE_BIT) {
-		pc++;
+	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+		pc += 3;
 	    }
 	    /* fall through */
 	case I_PUSH_INT1:
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
 	case I_PUSH_GLOBAL:
-	case I_CAST:
 	case I_RLIMITS:
 	    pc++;
 	    break;
 
+	case I_CAST:
+	    if (FETCH1U(pc) == T_CLASS) {
+		pc += 3;
+	    }
+	    break;
+
 	case I_PUSH_FAR_GLOBAL_LVAL:
-	    if (instr & I_TYPE_BIT) {
-		pc++;
+	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+		pc += 3;
 	    }
 	    /* fall through */
 	case I_PUSH_NEAR_STRING:
@@ -2305,7 +2507,7 @@ register frame *f;
 	    break;
 
 	case I_CALL_KFUNC:
-	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_KFUN_VARARGS) {
+	    if (PROTO_VARGS(KFUN(FETCH1U(pc)).proto) != 0) {
 		pc++;
 	    }
 	    break;

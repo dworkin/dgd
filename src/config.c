@@ -105,7 +105,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	4
+# define FORMAT_VERSION	5
 
 # define DUMP_VALID	0	/* valud dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -259,23 +259,26 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    bool conv_callouts, conv_lwos;
+    bool conv_callouts, conv_lwos, conv_ctrls;
     unsigned int secsize;
     long posn;
 
-    if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ) {
+    if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ ||
+	       rheader[DUMP_VERSION] < 2 ||
+	       rheader[DUMP_VERSION] > FORMAT_VERSION) {
 	error("Bad or incompatible restore file header");
     }
-    if (rheader[DUMP_VERSION] == 2) {
-	rheader[DUMP_VERSION] = FORMAT_VERSION;
-	conv_callouts = conv_lwos = TRUE;
-    } else if (rheader[DUMP_VERSION] == 3) {
-	rheader[DUMP_VERSION] = FORMAT_VERSION;
-	conv_callouts = FALSE;
-	conv_lwos = TRUE;
-    } else {
-	conv_callouts = conv_lwos = FALSE;
+    conv_callouts = conv_lwos = conv_ctrls = FALSE;
+    if (rheader[DUMP_VERSION] < 3) {
+	conv_callouts = TRUE;
     }
+    if (rheader[DUMP_VERSION] < 4) {
+	conv_lwos = TRUE;
+    }
+    if (rheader[DUMP_VERSION] < 5) {
+	conv_ctrls = TRUE;
+    }
+    rheader[DUMP_VERSION] = FORMAT_VERSION;
     if (memcmp(header, rheader, DUMP_TYPE) != 0) {
 	error("Bad or incompatible restore file header");
     }
@@ -325,7 +328,7 @@ int fd;
     o_restore(fd, (uindex) ((conv_lwos) ? 1 << (rusize * 8 - 1) : 0));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv(conv_callouts, conv_lwos);	/* convert all objects */
+    o_conv(conv_callouts, conv_lwos, conv_ctrls); /* convert all objects */
     P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
     pc_restore(fd);

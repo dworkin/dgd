@@ -27,11 +27,10 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
-static node *varargs	P((node*, node*));
 static void  t_void	P((node*));
 static bool  t_unary	P((node*, char*));
 static node *uassign	P((int, node*, char*));
-static node *cast	P((node*, unsigned int));
+static node *cast	P((node*, node*));
 static node *idx	P((node*, node*));
 static node *range	P((node*, node*, node*));
 static node *bini	P((int, node*, node*, char*));
@@ -68,7 +67,7 @@ static node *comma	P((node*, node*));
 /*
  * composite tokens
  */
-%token ARROW PLUS_PLUS MIN_MIN LSHIFT RSHIFT LE GE EQ NE LAND LOR
+%token LARROW RARROW PLUS_PLUS MIN_MIN LSHIFT RSHIFT LE GE EQ NE LAND LOR
        PLUS_EQ MIN_EQ MULT_EQ DIV_EQ MOD_EQ LSHIFT_EQ RSHIFT_EQ AND_EQ
        XOR_EQ OR_EQ COLON_COLON DOT_DOT ELLIPSIS STRING_CONST IDENTIFIER
 
@@ -94,17 +93,18 @@ static node *comma	P((node*, node*));
  * rule types
  */
 %type <type> class_specifier_list class_specifier_list2 class_specifier
-	     opt_private non_private type_specifier star_list
-%type <node> opt_inherit_label string inherit_string formals_declaration
-	     formal_declaration_list formal_declaration data_dcltr
-	     function_dcltr dcltr list_dcltr dcltr_or_stmt_list dcltr_or_stmt
-	     stmt compound_stmt opt_caught_stmt function_name primary_p1_exp
-	     primary_p2_exp postfix_exp prefix_exp cast_exp mult_oper_exp
-	     add_oper_exp shift_oper_exp rel_oper_exp equ_oper_exp
-	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
-	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
-	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
-	     assoc_arg_list opt_assoc_arg_list_comma ident
+	     opt_private non_private star_list
+%type <node> opt_inherit_label string composite_string formals_declaration
+	     formal_declaration_list varargs_formal_declaration
+	     formal_declaration type_specifier data_dcltr function_dcltr dcltr
+	     list_dcltr dcltr_or_stmt_list dcltr_or_stmt stmt compound_stmt
+	     opt_caught_stmt function_name primary_p1_exp primary_p2_exp
+	     postfix_exp prefix_exp cast_exp mult_oper_exp add_oper_exp
+	     shift_oper_exp rel_oper_exp equ_oper_exp bitand_oper_exp
+	     bitxor_oper_exp bitor_oper_exp and_oper_exp or_oper_exp cond_exp
+	     exp list_exp opt_list_exp f_list_exp f_opt_list_exp arg_list
+	     opt_arg_list opt_arg_list_comma assoc_exp assoc_arg_list
+	     opt_assoc_arg_list_comma ident
 
 %%
 
@@ -132,7 +132,7 @@ top_level_declarations
 	;
 
 top_level_declaration
-	: opt_private INHERIT opt_inherit_label inherit_string ';'
+	: opt_private INHERIT opt_inherit_label composite_string ';'
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
@@ -162,11 +162,11 @@ ident
 		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
 	;
 
-inherit_string
+composite_string
 	: string
-	| inherit_string '+' string
+	| composite_string '+' string
 		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
-	| '(' inherit_string ')'
+	| '(' composite_string ')'
 		{ $$ = $2; }
 	;
 
@@ -195,7 +195,8 @@ function_declaration
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
 		  typechecking = c_typechecking();
-		  c_function($1, (typechecking) ? T_VOID : T_NIL,
+		  c_function($1, node_type((typechecking) ? T_VOID : T_NIL,
+					   (string *) NULL),
 			     node_bin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
@@ -219,47 +220,31 @@ formals_declaration
 	| formal_declaration_list ELLIPSIS
 		{
 		  $$ = $1;
-		  if ($$->type == N_PAIR) {
-		      $$->r.right->mod |= T_ELLIPSIS;
-		  } else {
-		      $$->mod |= T_ELLIPSIS;
-		  }
-		}
-	| VARARGS formal_declaration_list
-		{
-		  $$ = $2;
-		  $$->flags |= F_VARARGS;
-		}
-	| VARARGS formal_declaration_list ELLIPSIS
-		{
-		  $$ = $2;
-		  $$->flags |= F_VARARGS;
-		  if ($$->type == N_PAIR) {
-		      $$->r.right->mod |= T_ELLIPSIS;
-		  } else {
-		      $$->mod |= T_ELLIPSIS;
-		  }
-		}
-	| formal_declaration_list ',' VARARGS formal_declaration_list
-		{ $$ = varargs($1, $4); }
-	| formal_declaration_list ',' VARARGS formal_declaration_list ELLIPSIS
-		{
-		  $$ = varargs($1, $4);
-		  $$->r.right->mod |= T_ELLIPSIS;
+		  $$->flags |= F_ELLIPSIS;
 		}
 	;
 
 formal_declaration_list
-	: formal_declaration
-	| formal_declaration_list ',' formal_declaration
+	: varargs_formal_declaration
+	| formal_declaration_list ',' varargs_formal_declaration
 		{ $$ = node_bin(N_PAIR, 0, $1, $3); }
+	;
+
+varargs_formal_declaration
+	: VARARGS formal_declaration
+		{
+		  $$ = $2;
+		  $$->flags |= F_VARARGS;
+		}
+	| formal_declaration
 	;
 
 formal_declaration
 	: type_specifier data_dcltr
 		{
 		  $$ = $2;
-		  $$->mod |= $1;
+		  $$->mod |= $1->mod;
+		  $$->class = $1->class;
 		}
 	| ident {
 		  $$ = $1;
@@ -305,16 +290,18 @@ non_private
 	;
 
 type_specifier
-	: INT	{ $$ = T_INT; }
-	| FLOAT	{ $$ = T_FLOAT; }
+	: INT	{ $$ = node_type(T_INT, (string *) NULL); }
+	| FLOAT	{ $$ = node_type(T_FLOAT, (string *) NULL); }
 	| STRING
-		{ $$ = T_STRING; }
+		{ $$ = node_type(T_STRING, (string *) NULL); }
 	| OBJECT
-		{ $$ = T_OBJECT; }
+		{ $$ = node_type(T_OBJECT, (string *) NULL); }
+	| OBJECT composite_string
+		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
 	| MAPPING
-		{ $$ = T_MAPPING; }
-	| MIXED	{ $$ = T_MIXED; }
-	| VOID	{ $$ = T_VOID; }
+		{ $$ = node_type(T_MAPPING, (string *) NULL); }
+	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
+	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
 	;
 
 star_list
@@ -517,6 +504,7 @@ primary_p1_exp
 			   * functions...
 			   */
 			  $$ = node_mon(N_CAST, $$->mod, $$);
+			  $$->class = $$->l.left->class;
 		      }
 		  } else {
 		      /* the variable could be anything */
@@ -529,11 +517,15 @@ primary_p1_exp
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
 	| CATCH '(' list_exp ')'
 		{ $$ = node_mon(N_CATCH, T_STRING, $3); }
-	| primary_p2_exp ARROW ident '(' opt_arg_list ')'
+	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
 		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
 		}
+	| primary_p2_exp LARROW string
+		{ $$ = c_instanceof($1, $3); }
+	| primary_p2_exp LARROW '(' composite_string ')'
+		{ $$ = c_instanceof($1, $4); }
 	;
 
 primary_p2_exp
@@ -561,7 +553,7 @@ prefix_exp
 	| '-' cast_exp
 		{ $$ = umin($2); }
 	| '+' cast_exp
-		{ $$ = node_mon(N_UPLUS, $2->mod, $2); }
+		{ $$ = $2; }
 	| '!' cast_exp
 		{
 		  t_void($2);
@@ -586,7 +578,10 @@ prefix_exp
 cast_exp
 	: prefix_exp
 	| '(' type_specifier star_list ')' cast_exp
-		{ $$ = cast($5, $2 | (($3 << REFSHIFT) & T_REF)); }
+		{
+		  $2->mod |= ($3 << REFSHIFT) & T_REF;
+		  $$ = cast($5, $2);
+		}
 	;
 
 mult_oper_exp
@@ -777,29 +772,6 @@ opt_assoc_arg_list_comma
 %%
 
 /*
- * NAME:	varargs()
- * DESCRIPTION:	deal with varargs in a formals declaration
- */
-static node *varargs(n1, n2)
-register node *n1, *n2;
-{
-    register node *n;
-
-    if (n1->type == N_PAIR) {
-	n1->r.right->mod |= T_VARARGS;
-    } else {
-	n1->mod |= T_VARARGS;
-    }
-    if (n2->type == N_PAIR) {
-	for (n = n2; n->l.left->type == N_PAIR; n = n->l.left) ;
-	n->l.left = node_bin(N_PAIR, 0, n1, n->l.left);
-	return n2;
-    } else {
-	return node_bin(N_PAIR, 0, n1, n2);
-    }
-}
-
-/*
  * NAME:	t_void()
  * DESCRIPTION:	if the argument is of type void, an error will result
  */
@@ -850,15 +822,14 @@ char *name;
  * DESCRIPTION:	cast an expression to a type
  */
 static node *cast(n, type)
-register node *n;
-register unsigned int type;
+register node *n, *type;
 {
     xfloat flt;
     Int i;
     char *p, buffer[18];
 
-    if (type != n->mod) {
-	switch (type) {
+    if (type->mod != n->mod) {
+	switch (type->mod) {
 	case T_INT:
 	    switch (n->type) {
 	    case N_FLOAT:
@@ -948,17 +919,36 @@ register unsigned int type;
 	    break;
 	}
 
-	if ((n->mod & T_TYPE) != T_MIXED) {
-	    c_error("cast of invalid type (%s)", i_typename(buffer, n->mod));
-	} else if ((type & T_TYPE) == T_VOID) {
-	    c_error("cannot cast to %s", i_typename(buffer, type));
+	if (type->mod == T_MIXED || (type->mod & T_TYPE) == T_VOID) {
+	    /* (mixed), (void), (void *) */
+	    c_error("cannot cast to %s", i_typename(buffer, type->mod));
 	    n->mod = T_MIXED;
-	} else if ((type & T_REF) < (n->mod & T_REF)) {
+	} else if ((type->mod & T_REF) < (n->mod & T_REF)) {
+	    /* (mixed *) of (mixed **) */
 	    c_error("illegal cast of array type (%s)",
 		    i_typename(buffer, n->mod));
-	} else if ((type & T_REF) == 0 || (n->mod & T_REF) == 0) {
-	    return node_mon(N_CAST, type, n);
+	} else if ((n->mod & T_TYPE) != T_MIXED &&
+		   ((type->mod & T_TYPE) != T_CLASS ||
+		    ((n->mod & T_TYPE) != T_OBJECT &&
+		     (n->mod & T_TYPE) != T_CLASS) ||
+		    (type->mod & T_REF) != (n->mod & T_REF))) {
+	    /* can only cast from mixed, or object/class to class */
+	    c_error("cast of invalid type (%s)", i_typename(buffer, n->mod));
+	} else {
+	    if ((type->mod & T_REF) == 0 || (n->mod & T_REF) == 0) {
+		/* runtime cast */
+		n = node_mon(N_CAST, type->mod, n);
+	    } else {
+		n->mod = type->mod;
+	    }
+	    n->class = type->class;
 	}
+    } else if (type->mod == T_CLASS && str_cmp(type->class, n->class) != 0) {
+	/*
+	 * cast to different object class
+	 */
+	n = node_mon(N_CAST, type->mod, n);
+	n->class = type->class;
     }
     return n;
 }
@@ -996,7 +986,9 @@ register node *n1, *n2;
 	    }
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
-		return node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
+		n2 = node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
+		n2->class = n1->class;
+		return n2;
 	    }
 	}
 	type = T_MIXED;
@@ -1245,12 +1237,12 @@ char *name;
     if (n1->mod == T_STRING) {
 	if (n2->mod == T_INT || n2->mod == T_FLOAT ||
 	    (n2->mod == T_MIXED && typechecking)) {
-	    n2 = cast(n2, T_STRING);
+	    n2 = cast(n2, node_type(T_STRING, (string *) NULL));
 	}
     } else if (n2->mod == T_STRING && op == N_ADD) {
 	if (n1->mod == T_INT || n1->mod == T_FLOAT ||
 	    (n1->mod == T_MIXED && typechecking)) {
-	    n1 = cast(n1, T_STRING);
+	    n1 = cast(n1, node_type(T_STRING, (string *) NULL));
 	}
     }
 
@@ -1273,7 +1265,7 @@ char *name;
     }
 
     type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_OBJECT || type == T_NIL) {
+    if (type == T_NIL || type == T_OBJECT || type == T_CLASS) {
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
@@ -1325,8 +1317,8 @@ char *name;
     }
 
     type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_STRING || type == T_OBJECT || type == T_MAPPING ||
-	type == T_NIL) {
+    if (type == T_NIL || type == T_STRING || type == T_OBJECT ||
+	type == T_CLASS || type == T_MAPPING) {
 	if ((type=n1->mod) != T_MAPPING ||
 	    (n2->mod != T_MIXED && (n2->mod & T_REF) == 0)) {
 	    type = T_MIXED;
@@ -1748,7 +1740,11 @@ register node *n1, *n2, *n3;
 	}
     }
 
-    return node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
+    n1 = node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
+    if ((type & T_TYPE) == T_CLASS && str_cmp(n2->class, n3->class) == 0) {
+	n1->class = n2->class;
+    }
+    return n1;
 }
 
 /*
@@ -1767,12 +1763,18 @@ register node *n1, *n2;
 	if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
 	    c_error("incompatible types for = (%s, %s)",
 		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
-	} else if (n1->mod != T_MIXED && n2->mod == T_MIXED) {
+	} else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
+		   (n1->mod == T_CLASS &&
+		    (n2->mod != T_CLASS || str_cmp(n1->class, n2->class) != 0)))
+	{
 	    n2 = node_mon(N_CAST, n1->mod, n2);
+	    n2->class = n1->class;
 	}
     }
 
-    return node_bin(N_ASSIGN, n1->mod, n1, n2);
+    n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
+    n2->class = n1->class;
+    return n2;
 }
 
 /*
@@ -1788,6 +1790,8 @@ register node *n1, *n2;
 	n2->l.left = comma(n1, n2->l.left);
 	return n2;
     } else {
-	return node_bin(N_COMMA, n2->mod, n1, n2);
+	n1 = node_bin(N_COMMA, n2->mod, n1, n2);
+	n1->class = n2->class;
+	return n1;
     }
 }

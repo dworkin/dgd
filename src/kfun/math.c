@@ -6,7 +6,7 @@
 # ifdef FUNCDEF
 FUNCDEF("fabs", kf_fabs, pt_fabs)
 # else
-char pt_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_fabs[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->fabs()
@@ -29,7 +29,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("floor", kf_floor, pt_floor)
 # else
-char pt_floor[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_floor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->floor()
@@ -52,7 +52,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("ceil", kf_ceil, pt_ceil)
 # else
-char pt_ceil[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_ceil[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->ceil()
@@ -75,7 +75,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("fmod", kf_fmod, pt_fmod)
 # else
-char pt_fmod[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_fmod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+		   T_FLOAT };
 
 /*
  * NAME:	kfun->fmod()
@@ -100,8 +101,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("frexp", kf_frexp, pt_frexp)
 # else
-char pt_frexp[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_MIXED, 1,
-		    T_FLOAT };
+char pt_frexp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+		    (1 << REFSHIFT) | T_MIXED, T_FLOAT };
 
 /*
  * NAME:	kfun->frexp()
@@ -130,7 +131,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("ldexp", kf_ldexp, pt_ldexp)
 # else
-char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_INT };
+char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+		    T_INT };
 
 /*
  * NAME:	kfun->ldexp()
@@ -154,8 +156,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("modf", kf_modf, pt_modf)
 # else
-char pt_modf[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_FLOAT, 1,
-		   T_FLOAT };
+char pt_modf[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
+		   (1 << REFSHIFT) | T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->modf()
@@ -183,7 +185,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("exp", kf_exp, pt_exp)
 # else
-char pt_exp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_exp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->exp()
@@ -206,7 +208,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("log", kf_log, pt_log)
 # else
-char pt_log[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_log[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->log()
@@ -229,7 +231,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("log10", kf_log10, pt_log10)
 # else
-char pt_log10[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_log10[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->log10()
@@ -252,7 +254,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("pow", kf_pow, pt_pow)
 # else
-char pt_pow[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_pow[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+		  T_FLOAT };
 
 /*
  * NAME:	kfun->pow()
@@ -277,7 +280,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sqrt", kf_sqrt, pt_sqrt)
 # else
-char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->sqrt()
@@ -300,7 +303,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("cos", kf_cos, pt_cos)
 # else
-char pt_cos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_cos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->cos()
@@ -323,7 +326,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sin", kf_sin, pt_sin)
 # else
-char pt_sin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->sin()
@@ -346,7 +349,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("tan", kf_tan, pt_tan)
 # else
-char pt_tan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_tan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->tan()
@@ -369,7 +372,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("acos", kf_acos, pt_acos)
 # else
-char pt_acos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_acos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->acos()
@@ -392,7 +395,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("asin", kf_asin, pt_asin)
 # else
-char pt_asin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_asin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->asin()
@@ -415,7 +418,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("atan", kf_atan, pt_atan)
 # else
-char pt_atan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_atan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->atan()
@@ -438,7 +441,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("atan2", kf_atan2, pt_atan2)
 # else
-char pt_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_atan2[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+		    T_FLOAT };
 
 /*
  * NAME:	kfun->atan2()
@@ -463,7 +467,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("cosh", kf_cosh, pt_cosh)
 # else
-char pt_cosh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_cosh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->cosh()
@@ -486,7 +490,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sinh", kf_sinh, pt_sinh)
 # else
-char pt_sinh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sinh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->sinh()
@@ -509,7 +513,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("tanh", kf_tanh, pt_tanh)
 # else
-char pt_tanh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_tanh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->tanh()

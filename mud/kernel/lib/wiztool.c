@@ -34,7 +34,7 @@ static void create(int size)
 
     history = allocate(hsize = size);
     hindex = hmax = 0;
-    directory = USR + "/" + owner;
+    directory = USR_DIR + "/" + owner;
 
     driver = find_object(DRIVER);
 }
@@ -213,7 +213,8 @@ static object compile_object(string path, varargs string code)
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path,
 		(sscanf(path, "/kernel/%*s") == 0 &&
-		 sscanf(path, "%*s/lib/") != 0) ? READ_ACCESS : WRITE_ACCESS)) {
+		 sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0) ?
+		 READ_ACCESS : WRITE_ACCESS)) {
 	message(path + ": Permission denied.\n");
 	return nil;
     }
@@ -246,7 +247,7 @@ static int destruct_object(mixed obj)
     switch (typeof(obj)) {
     case T_STRING:
 	path = obj = driver->normalize_path(obj, directory, owner);
-	lib = sscanf(path, "%*s/lib/");
+	lib = sscanf(path, "%*s" + INHERITABLE_SUBDIR);
 	if (lib) {
 	    oowner = driver->creator(path);
 	} else {
@@ -260,7 +261,7 @@ static int destruct_object(mixed obj)
 
     case T_OBJECT:
 	path = object_name(obj);
-	lib = sscanf(path, "%*s/lib/");
+	lib = sscanf(path, "%*s" + INHERITABLE_SUBDIR);
 	oowner = obj->query_owner();
 	break;
     }
@@ -272,6 +273,20 @@ static int destruct_object(mixed obj)
 	return -1;
     }
     return ::destruct_object(obj);
+}
+
+/*
+ * NAME:	new_object()
+ * DESCRIPTION:	new_object wrapper
+ */
+static object new_object(string path)
+{
+    path = driver->normalize_path(path, directory, owner);
+    if (sscanf(path, "/kernel/%*s") != 0 || !access(owner, path, READ_ACCESS)) {
+	message(path + ": Permission denied.\n");
+	return nil;
+    }
+    return ::new_object(path);
 }
 
 /*
@@ -826,7 +841,7 @@ static void cmd_code(object user, string cmd, string str)
     }
 
     parsed = parse_code(str);
-    name = USR + "/" + owner + "/_code";
+    name = USR_DIR + "/" + owner + "/_code";
     obj = find_object(name);
     if (obj) {
 	destruct_object(obj);
@@ -835,7 +850,7 @@ static void cmd_code(object user, string cmd, string str)
 	return;
     }
 
-    str = USR + "/" + owner + "/include/code.h";
+    str = USR_DIR + "/" + owner + "/include/code.h";
     if (file_info(str)) {
 	str = "# include \"~/include/code.h\"\n";
     } else {
@@ -961,7 +976,7 @@ static void cmd_clone(object user, string cmd, string str)
 	break;
     }
 	
-    if (sscanf(str, "%*s/obj/%*s#") != 1) {
+    if (sscanf(str, "%*s" + CLONABLE_SUBDIR + "%*s#") != 1) {
 	message("Not a master object.\n");
     } else if (!obj) {
 	message("No such object.\n");
@@ -1420,9 +1435,9 @@ static void cmd_access(object user, string cmd, string str)
     }
 
     if (str == "global") {
-	str = implode(query_global_access(), "\n " + USR + "/");
+	str = implode(query_global_access(), "\n " + USR_DIR + "/");
 	if (strlen(str) != 0) {
-	    message("Global read access:\n " + USR + "/" + str + "\n");
+	    message("Global read access:\n " + USR_DIR + "/" + str + "\n");
 	}
     } else if (sizeof(query_users() & ({ str })) != 0) {
 	access = query_user_access(str);
@@ -1509,8 +1524,9 @@ static void cmd_grant(object user, string cmd, string str)
 	/*
 	 * global access
 	 */
-	if (sscanf(str, USR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0) {
-	    message("Global read access is for directories under " + USR +
+	if (sscanf(str, USR_DIR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0)
+	{
+	    message("Global read access is for directories under " + USR_DIR +
 		    " only.\n");
 	} else if (sizeof(query_global_access() & ({ str })) != 0) {
 	    message("That global access already exists.\n");
@@ -1530,7 +1546,7 @@ static void cmd_grant(object user, string cmd, string str)
 	} else {
 	    ::add_user(who);
 	    ::add_owner(who);
-	    ::make_dir(USR + "/" + who);
+	    ::make_dir(USR_DIR + "/" + who);
 	}
     } else {
 	/*
@@ -1570,8 +1586,9 @@ static void cmd_ungrant(object user, string cmd, string str)
 	/*
 	 * global access
 	 */
-	if (sscanf(str, USR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0) {
-	    message("Global read access is for directories under " + USR +
+	if (sscanf(str, USR_DIR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0)
+	{
+	    message("Global read access is for directories under " + USR_DIR +
 		    " only.\n");
 	} else if (sizeof(query_global_access() & ({ str })) == 0) {
 	    message("That global access does not exist.\n");
@@ -1802,7 +1819,7 @@ static void cmd_people(object user, string cmd, string str)
     for (i = 0, sz = sizeof(users); i < sz; i++) {
 	usr = users[i];
 	name = usr->query_name();
-	while (function_object("query_conn", usr) == LIB_USER) {
+	while (usr <- LIB_USER) {
 	    usr = usr->query_conn();
 	}
 	str += query_ip_number(usr) + "\t" +

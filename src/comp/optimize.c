@@ -130,7 +130,7 @@ register node *n;
     }
     switch (n->type) {
     case N_GLOBAL:
-	return 2;
+	return 3;
 
     case N_INDEX:
 	m = n->l.left;
@@ -140,21 +140,21 @@ register node *n;
 	switch (m->type) {
 	case N_GLOBAL:
 	    /* global_strval[x] = 'c'; */
-	    return opt_expr(&n->r.right, FALSE) + 2;
+	    return opt_expr(&n->r.right, FALSE) + 3;
 
 	case N_INDEX:
 	    /* strarray[x][y] = 'c'; */
 	    return max3(opt_expr(&m->l.left, FALSE),
 			opt_expr(&m->r.right, FALSE) + 1,
-			opt_expr(&n->r.right, FALSE) + 3);
+			opt_expr(&n->r.right, FALSE) + 4);
 
 	default:
 	    return max2(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE) + 1);
+			opt_expr(&n->r.right, FALSE) + 2);
 	}
 
     default:
-	return 1;
+	return 2;
     }
 }
 
@@ -1309,7 +1309,6 @@ int pop;
 	/* fall through */
     case N_NOT:
     case N_TST:
-    case N_UPLUS:
 	if (pop) {
 	    *m = n->l.left;
 	    return opt_expr(m, TRUE);
@@ -1372,7 +1371,7 @@ int pop;
 	    m = &n->r.right;
 	    n = n->l.left;
 	    i += (n->type == N_LVALUE ||
-		  (n->type == N_COMMA && n->r.right->type == N_LVALUE)) ? 3 : 1;
+		  (n->type == N_COMMA && n->r.right->type == N_LVALUE)) ? 4 : 1;
 	    n = *m;
 	}
 	if (n->type == N_SPREAD) {
@@ -1381,6 +1380,9 @@ int pop;
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_expr(m, FALSE);
 	return max3(d1, i + d2, i + side_end(m, side, oldside, olddepth));
+
+    case N_INSTANCEOF:
+	return opt_expr(&n->l.left, FALSE) + 1;
 
     case N_GE:
     case N_GT:
@@ -1530,7 +1532,7 @@ int pop;
 
     case N_ASSIGN:
 	d1 = opt_lvalue(n->l.left);
-	return max2(d1, ((d1 < 3) ? d1 : 3) + opt_expr(&n->r.right, FALSE));
+	return max2(d1, ((d1 < 4) ? d1 : 4) + opt_expr(&n->r.right, FALSE));
 
     case N_COMMA:
 	side_add(m, opt_expr(&n->l.left, TRUE));

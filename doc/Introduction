@@ -109,6 +109,11 @@ driver, mostly to translate pathnames.
 	<ticks> specifies the amount of ticks left at the moment the error
 	occurred.
 
+    string object_type(string file, string type)
+
+	Called when <file> is compiled, to translate the object path <type>
+	used in a type declaration, cast or <- operator.
+
     int compile_rlimits(string objname)
 
 	An object uses the rlimits (stackdepth; ticks) { /* code */ }

@@ -149,6 +149,12 @@ register control *ctrl;
 		   ctrl->vardefs[i].type);
 	}
 	printf("};\n");
+	if (ctrl->nclassvars != 0) {
+	    printf("\nstatic char classvars[] = {\n");
+	    size = 0;
+	    dump_chars(ctrl->classvars, ctrl->nclassvars * 3);
+	    printf("\n};\n");
+	}
     }
 }
 
@@ -289,9 +295,14 @@ char *argv[];
 	printf("%u, funcdefs,\n", ctrl->nfuncdefs);
     }
     if (ctrl->nvardefs == 0) {
-	printf("0, 0,\n");
+	printf("0, 0, 0, 0,\n");
     } else {
-	printf("%u, vardefs,\n", ctrl->nvardefs);
+	printf("%u, %u, vardefs, ", ctrl->nvardefs, ctrl->nclassvars);
+	if (ctrl->nclassvars == 0) {
+	    printf("0,\n");
+	} else {
+	    printf("classvars,\n");
+	}
     }
     if (ctrl->nfuncalls == 0) {
 	printf("0, 0,\n");

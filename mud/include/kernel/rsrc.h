@@ -1,6 +1,6 @@
 # define RSRCD		"/kernel/sys/rsrcd"
-# define RSRCOBJ	"/kernel/obj/rsrc"
-# define API_RSRC	"/kernel/lib/api/rsrc"
+# define RSRCOBJ	("/kernel" + CLONABLE_SUBDIR + "rsrc")
+# define API_RSRC	("/kernel" + INHERITABLE_SUBDIR + "api/rsrc")
 
 # define RSRC_USAGE	0	/* resource usage */
 # define RSRC_MAX	1	/* resource limit */

@@ -74,7 +74,10 @@ struct _control_ {
     Uint funcdoffset;		/* o offset of function definition table */
 
     unsigned short nvardefs;	/* i/o # variable definitions */
+    unsigned short nclassvars;	/* i/o # class variable definitions */
     dvardef *vardefs;		/* i/o? variable definitions */
+    string **cvstrings;		/* variable class strings */
+    char *classvars;		/* variable classes */
     Uint vardoffset;		/* o offset of variable definition table */
 
     uindex nfuncalls;		/* i/o # function calls */
@@ -227,7 +230,7 @@ extern void		d_get_callouts	 P((dataspace*));
 extern sector		d_swapout	 P((unsigned int));
 extern void		d_swapsync	 P((void));
 extern void		d_upgrade_mem	 P((object*, object*));
-extern void		d_conv_control	 P((unsigned int));
+extern void		d_conv_control	 P((unsigned int, int));
 extern void		d_conv_dataspace P((object*, Uint*, int));
 
 extern void		d_free_control	 P((control*));

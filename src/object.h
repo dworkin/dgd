@@ -70,7 +70,7 @@ extern void	  o_clean		P((void));
 extern uindex	  o_count		P((void));
 extern bool	  o_dump		P((int));
 extern void	  o_restore		P((int, unsigned int));
-extern void	  o_conv		P((int, int));
+extern void	  o_conv		P((int, int, int));
 
 extern object    *otable;
 extern char	 *ocmap;
