@@ -201,6 +201,7 @@ char *argv[];
     register control *ctrl;
     register char *file;
     int nfuncs;
+    uindex fragment;
 
     file = argv[2];
     if ((argc != 3 && argc != 4) ||
@@ -217,7 +218,7 @@ char *argv[];
     }
 
     /* initialize */
-    if (!conf_init(argv[1], (char *) NULL)) {
+    if (!conf_init(argv[1], (char *) NULL, &fragment)) {
 	P_message("Initialization failed\012");	/* LF */
 	return 2;
     }
@@ -719,9 +720,8 @@ object *obj;
  * NAME:	call_out->init()
  * DESCRIPTION:	pretend to initialize call_out handling
  */
-void co_init(max, frag)
+void co_init(max)
 unsigned int max;
-int frag;
 {
 }
 
