@@ -171,7 +171,7 @@ char *file;
 	    if (include_level == 8) {
 		close(fd);
 		yyerror("#include nesting too deep");
-		return FALSE;
+		return TRUE;	/* no further errors */
 	    }
 	    include_level++;
 	    buffer = ALLOC(char, BUF_SIZE);
@@ -808,12 +808,14 @@ register macro *mc;
 
 	if (token != '(') {
 	    /* macro is function-like, and this is not an invocation */
+	    uc(token);
 	    return 0;
 	}
 
 	/* scan arguments */
 	narg = 0;
 	errcount = 0;
+	pp_level++;
 	s = pps_new(ppbuf, sizeof(ppbuf));
 	do {
 	    token = tk_gettok();
@@ -826,7 +828,6 @@ register macro *mc;
 	    paren = 0;
 	    seen_space = FALSE;
 	    seen_sep = FALSE;
-	    pp_level++;
 
 	    for (;;) {
 		if (token == EOF) {	/* sigh */
@@ -840,8 +841,7 @@ register macro *mc;
 			yyerror("macro argument too long");
 			errcount++;
 		    } else if (narg < mc->narg) {
-			args[narg] =
-			  strcpy(ALLOC(char, s->len + 1), ppbuf);
+			args[narg] = strcpy(ALLOCA(char, s->len + 1), ppbuf);
 		    }
 		    narg++;
 		    if (token == ')') {
@@ -883,8 +883,8 @@ register macro *mc;
 		    }
 		}
 	    }
-	    --pp_level;
 	}
+	--pp_level;
 
 	if (narg != mc->narg) {
 	    yyerror("macro argument mismatch");
@@ -896,7 +896,8 @@ register macro *mc;
 		narg = mc->narg;
 	    }
 	    while (narg > 0) {
-		FREE(args[--narg]);
+		--narg;
+		AFREE(args[narg]);
 	    }
 	    pps_del(s);
 	    return 1;	/* skip this macro */
@@ -989,7 +990,8 @@ register macro *mc;
 	    /* cleanup */
 	    narg = mc->narg;
 	    do {
-		FREE(args[--narg]);
+		--narg;
+		AFREE(args[narg]);
 	    } while (narg > 0);
 
 	    narg = s->len;	/* so s can be deleted before the push */
