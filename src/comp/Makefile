@@ -1,13 +1,14 @@
 #
 # Makefile for LPC compiler, part of DGD.
 #
-DEFINES=-DSUN
-DEBUG=	-g
-CCFLAGS=$(DEFINES) $(DEBUG)
+HOST=	MINIX_68K
+DEFINES=-D$(HOST)
+DEBUG=
+CCFLAGS=-O $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
-CC=	gcc
+CC=	cc
 LD=	$(CC)
 MAKE=	make
 YACC=	yacc
@@ -15,11 +16,13 @@ YACC=	yacc
 OBJ=	node.o parser.o control.o compile.o
 
 a.out:	$(OBJ) codegeni.o comp.o
+	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+			    host.a
 	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) -t 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	$(LD) $(LDFLAGS) $(OBJ) codegeni.o comp.o `cat ../comp.sub` \
-	`cat ../lex/comp` `cat ../kfun/comp` $(LIBS)
+	      `cat ../lex/comp` `cat ../kfun/comp` ../host/host.a $(LIBS)
 
 dgd:	$(OBJ) codegeni.o
 	@for i in $(OBJ) codegeni.o; do echo comp/$$i; done > dgd
