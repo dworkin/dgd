@@ -39,7 +39,6 @@
 
 # define AR_UNCHANGED		0	/* mapping unchanged */
 # define AR_CHANGED		1	/* mapping changed */
-# define AR_ALOCAL		2	/* array/mapping not swapped in */
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -298,10 +297,10 @@ object *obj;
     data->base.schange = 0;
     data->base.achange = 0;
     data->base.imports = 0;
-    data->base.alocal.plane = &data->base;
     data->base.alocal.arr = (array *) NULL;
+    data->base.alocal.plane = &data->base;
     data->base.alocal.data = data;
-    data->base.alocal.state = AR_ALOCAL;
+    data->base.alocal.state = AR_CHANGED;
     data->base.arrays = (arrref *) NULL;
     data->base.strings = (strref *) NULL;
     data->base.coptab = (coptable *) NULL;
@@ -1248,26 +1247,23 @@ register value *lhs;
 		/* swapped in */
 		data->plane->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
-		    /* last reference removed */
-		    arr->primary->arr = (array *) NULL;
-		    data->plane->achange++;
+		    register unsigned short n;
 
+		    /* last reference removed */
 		    if (arr->hashed != (struct _maphash_ *) NULL) {
 			map_compact(arr);
+		    } else {
+			d_get_elts(arr);
 		    }
-		    /*
-		     * If the array is not loaded, don't bother to load it now.
-		     */
-		    if ((lhs=arr->elts) != (value *) NULL) {
-			register unsigned short n;
+		    arr->primary->arr = (array *) NULL;
+		    arr->primary = &arr->primary->plane->alocal;
 
-			n = arr->size;
-			data = arr->primary->data;
-			do {
-			    del_lhs(data, lhs++);
-			} while (--n != 0);
+		    for (n = arr->size, lhs = arr->elts; n != 0; --n, lhs++) {
+			del_lhs(data, lhs);
 		    }
+
 		    arr_del(arr);
+		    data->plane->achange++;
 		}
 	    } else {
 		/* deref new array */
@@ -1662,10 +1658,10 @@ Int level;
 
     /* copy value information from previous plane */
     p->original = (value *) NULL;
-    p->alocal.plane = p;
     p->alocal.arr = (array *) NULL;
+    p->alocal.plane = p;
     p->alocal.data = data;
-    p->alocal.state = AR_ALOCAL;
+    p->alocal.state = AR_CHANGED;
     p->coptab = data->plane->coptab;
 
     if (data->plane->arrays != (arrref *) NULL) {
@@ -1723,7 +1719,7 @@ register Int level;
     while (n != 0) {
 	if (T_INDEXED(v->type)) {
 	    arr = v->u.array;
-	    if (arr->primary->state == AR_ALOCAL &&
+	    if (arr->primary->arr == (array *) NULL &&
 		arr->primary->plane->level > level) {
 		arr->primary = &arr->primary->plane->prev->alocal;
 		if (arr->hashed != (struct _maphash_ *) NULL) {
@@ -1894,10 +1890,10 @@ Int level;
 	    commit = ALLOC(dataplane, 1);
 	    commit->level = level - 1;
 	    commit->original = p->original;
-	    commit->alocal.plane = commit;
 	    commit->alocal.arr = (array *) NULL;
+	    commit->alocal.plane = commit;
 	    commit->alocal.data = p->alocal.data;
-	    commit->alocal.state = AR_ALOCAL;
+	    commit->alocal.state = AR_CHANGED;
 	    commit->arrays = p->arrays;
 	    commit->achunk = p->achunk;
 	    commit->strings = p->strings;
@@ -1960,6 +1956,9 @@ Int level;
 		/* remove old array refs */
 		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
 		    if (a->arr != (array *) NULL) {
+			if (a->arr->primary->arr == (array *) NULL) {
+			    a->arr->primary = &p->prev->alocal;
+			}
 			arr_del(a->arr);
 		    }
 		}
@@ -2129,7 +2128,7 @@ register array *arr;
 dataplane *prev, *old;
 {
     if (arr->primary->plane != prev) {
-	if (arr->primary->state == AR_ALOCAL) {
+	if (arr->primary->arr == (array *) NULL) {
 	    arr->primary = &prev->alocal;
 	} else {
 	    arr->primary->plane = prev;
@@ -2146,15 +2145,14 @@ dataplane *prev, *old;
 
 /*
  * NAME:	data->discard_arr()
- * DESCRIPTION:	restore array to previous state, if necessary
+ * DESCRIPTION:	restore array to previous plane
  */
 void d_discard_arr(arr, plane)
-register array *arr;
+array *arr;
 dataplane *plane;
 {
-    if (arr->primary->state == AR_ALOCAL) {
-	arr->primary = &plane->alocal;
-    }
+    /* swapped-in arrays will be fixed later */
+    arr->primary = &plane->alocal;
 }
 
 
@@ -2279,7 +2277,7 @@ register value *elt, *val;
 	 * backup array's current elements
 	 */
 	arr_backup(&data->plane->achunk, arr);
-	if (arr->primary->state != AR_ALOCAL) {
+	if (arr->primary->arr != (array *) NULL) {
 	    arr->primary->plane = data->plane;
 	} else {
 	    arr->primary = &data->plane->alocal;

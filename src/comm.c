@@ -38,10 +38,11 @@ typedef struct _user_ {
 # define CF_TELNET	0x01	/* telnet connection */
 # define  CF_ECHO	0x02	/* client echoes input */
 # define  CF_GA		0x04	/* send GA after prompt */
-# define  CF_PROMPT	0x08	/* prompt in telnet output */
-# define CF_BLOCKED	0x10	/* input blocked */
-# define CF_FLUSH	0x20	/* in flush list */
-# define CF_ODONE	0x40	/* output done */
+# define  CF_SEENCR	0x08	/* just seen a CR */
+# define  CF_PROMPT	0x10	/* prompt in telnet output */
+# define CF_BLOCKED	0x20	/* input blocked */
+# define CF_FLUSH	0x40	/* in flush list */
+# define CF_ODONE	0x80	/* output done */
 
 /* state */
 # define TS_DATA	0
@@ -456,7 +457,7 @@ int block;
     if (usr->flags & CF_TELNET) {
 	arr = d_get_extravar(data = obj->data)->u.array;
 	v = d_get_elts(arr);
-	if (block != (v->u.number & CF_BLOCKED) >> 4) {
+	if (block != (v->u.number & CF_BLOCKED) >> 5) {
 	    value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {
@@ -777,6 +778,10 @@ unsigned int mtime;
 		    switch (state) {
 		    case TS_DATA:
 			switch (UCHAR(*p)) {
+			case '\0':
+			    flags &= ~CF_SEENCR;
+			    break;
+
 			case IAC:
 			    state = TS_IAC;
 			    break;
@@ -786,23 +791,27 @@ unsigned int mtime;
 			    if (q[-1] != LF) {
 				--q;
 			    }
+			    flags &= ~CF_SEENCR;
+			    break;
+
+			case CR:
+			    nls++;
+			    newlines++;
+			    *q++ = LF;
+			    flags |= CF_SEENCR;
 			    break;
 
 			case LF:
+			    if ((flags & CF_SEENCR) != 0) {
+				flags &= ~CF_SEENCR;
+				break;
+			    }
 			    nls++;
 			    newlines++;
-			    if (q[-1] == CR || q[-1] == '\0') {
-				--q;
-			    }
-			    *q++ = *p;
-			    break;
-
+			    /* fall through */
 			default:
-			    if ((q[-1] == CR && q[-2] == LF && *p != CR) ||
-				q[-1] == '\0') {
-				--q;
-			    }
 			    *q++ = *p;
+			    flags &= ~CF_SEENCR;
 			    break;
 			}
 			break;

@@ -661,7 +661,7 @@ register srp *lr;
     for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
 	n = (Uint) 4 * ((UCHAR(p[5]) << 8) + UCHAR(p[6])) + 7;
 	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
-						    (long) p - (long) lr->shtab;
+							(long) p - (long) buf;
     }
 }
 

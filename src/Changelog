@@ -1378,3 +1378,7 @@ DGD 1.1
  - Remove the swapfile before creating it, to make sure that two drivers
    attempting to use the same swapfile won't mess it up for both of them.
  - Fixed yet another object undo bug.
+ - Undid some telnet input processing modifications, since any change in this
+   code will only further confuse client programs.
+ - Fixed a bug in atomic commit for exported arrays.
+ - Fixed a bug in restoring a parser state machine.
