@@ -243,8 +243,8 @@ register flt *a, *b;
 static void f_mult(a, b)
 register flt *a, *b;
 {
-    register Uint m, l;
-    register unsigned short al, am, ah, bl, bm, bh;
+    register Uint m, l, albl, ambm, ahbh;
+    register short al, am, ah, bl, bm, bh;
 
     if (a->exp == 0) {
 	/* a is 0 */
@@ -263,25 +263,28 @@ register flt *a, *b;
     ah = a->high;
     bh = b->high;
 
-    m = (Uint) al * bl;
+    albl = (Uint) al * bl;
+    ambm = (Uint) am * bm;
+    ahbh = (Uint) ah * bh;
+    m = albl;
     m >>= 15;
-    m += (Uint) al * bm + (Uint) am * bl;
+    m += albl + ambm + (Int) (al - am) * (bm - bl);
     m >>= 15;
-    m += (Uint) al * bh + (Uint) am * bm + (Uint) ah * bl;
+    m += albl + ambm + ahbh + (Int) (al - ah) * (bh - bl);
     m >>= 13;
     l = m & 0x03;
     m >>= 2;
-    m += (Uint) am * bh + (Uint) ah * bm;
+    m += ambm + ahbh + (Int) (am - ah) * (bh - bm);
     l |= (m & 0x7fff) << 2;
     m >>= 15;
-    m += (Uint) ah * bh;
+    m += ahbh;
     l |= m << 17;
     ah = m >> 14;
 
     a->sign ^= b->sign;
     a->exp += b->exp - BIAS;
-    if ((short) ah < 0) {
-	ah >>= 1;
+    if (ah < 0) {
+	ah = (unsigned short) ah >> 1;
 	l >>= 1;
 	a->exp++;
     }
@@ -290,8 +293,8 @@ register flt *a, *b;
     /*
      * rounding off
      */
-    if ((Int) (l += 2) < 0 && (short) ++ah < 0) {
-	ah >>= 1;
+    if ((Int) (l += 2) < 0 && ++ah < 0) {
+	ah = (unsigned short) ah >> 1;
 	a->exp++;
     }
     l &= 0x7ffffffcL;

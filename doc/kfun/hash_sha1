@@ -1,0 +1,13 @@
+NAME
+	hash_sha1 - SHA-1 message digest
+
+SYNOPSIS
+	string hash_sha1(string str, string extra...)
+
+
+DESCRIPTION
+	Compute the 160 bit SHA-1 message digest of the concatenation of all
+	string arguments.  The result is a string of 20 characters.
+
+SEE ALSO
+	kfun/hash_crc16, kfun/hash_crc32, kfun/hash_md5

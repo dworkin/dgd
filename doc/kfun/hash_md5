@@ -10,4 +10,4 @@ DESCRIPTION
 	string arguments.  The result is a string of 16 characters.
 
 SEE ALSO
-	kfun/hash_crc16
+	kfun/hash_crc16, kfun/hash_crc32, kfun/hash_sha1

@@ -9,9 +9,9 @@ CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
 
-SRC=	local.c lrand48.c dirent.c time.c connect.c xfloat.c
-OBJ=	local.o lrand48.o dirent.o time.o connect.o crypt.o xfloat.o
-SUBOBJ=	local.o lrand48.o dirent.o time.o crypt.o xfloat.o
+SRC=	local.c lrand48.c dirent.c time.c connect.c xfloat.c asn.c
+OBJ=	local.o lrand48.o dirent.o time.o connect.o crypt.o xfloat.o asn.o
+SUBOBJ=	local.o lrand48.o dirent.o time.o crypt.o xfloat.o asn.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd

@@ -835,9 +835,15 @@ static void cmd_code(object user, string cmd, string str)
 	return;
     }
 
+    str = USR + "/" + owner + "/include/code.h";
+    if (file_info(str)) {
+	str = "# include \"~/include/code.h\"\n";
+    } else {
+	str = "";
+    }
     str = "# include <float.h>\n# include <limits.h>\n" +
 	  "# include <status.h>\n# include <trace.h>\n" +
-	  "# include <type.h>\n\n" +
+	  "# include <type.h>\n" + str + "\n" +
 	  "mixed exec(object user, mixed argv...) {\n" +
 	  "    mixed a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
 	  "    " + parsed[0] + "\n}\n";
