@@ -111,7 +111,11 @@ nomask _F_create()
 # endif
 	}
 	/* call higher-level creator function */
-	this_object()->create(clone);
+	if (sscanf(oname, "%*s/obj/") == 0) {
+	    this_object()->create();
+	} else {
+	    this_object()->create(clone);
+	}
     }
 }
 
@@ -337,7 +341,7 @@ static object compile_object(string path)
  * NAME:	clone_object()
  * DESCRIPTION:	clone an object
  */
-static varargs object clone_object(string path, string uid)
+static object clone_object(string path, varargs string uid)
 {
     string oname, str;
     object rsrcd, obj;
@@ -444,7 +448,7 @@ static mixed **call_trace()
  * NAME:	status()
  * DESCRIPTION:	get information about an object
  */
-static varargs mixed *status(mixed obj)
+static mixed *status(varargs mixed obj)
 {
     object driver;
     string oname;
@@ -610,7 +614,7 @@ nomask mixed _F_call_limited(mixed arg1, mixed *args)
  * NAME:	call_limited()
  * DESCRIPTION:	call a function with the current object owner's resource limits
  */
-static varargs mixed call_limited(string function, mixed args...)
+static mixed call_limited(string function, mixed args...)
 {
     CHECKARG(function, 1, "call_limited");
 
@@ -621,7 +625,7 @@ static varargs mixed call_limited(string function, mixed args...)
  * NAME:	call_out()
  * DESCRIPTION:	start a callout
  */
-static varargs int call_out(string function, int delay, mixed args...)
+static int call_out(string function, int delay, mixed args...)
 {
     int handle;
 
@@ -673,7 +677,7 @@ static int remove_call_out(int handle)
  * NAME:	_F_callout()
  * DESCRIPTION:	callout gate
  */
-nomask varargs _F_callout(string function, int suspended, mixed *args)
+nomask _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
@@ -870,7 +874,7 @@ nomask _F_start_event(string name, mixed *args)
  * NAME:	event()
  * DESCRIPTION:	cause an event
  */
-static varargs event(string name, mixed args...)
+static event(string name, mixed args...)
 {
     object *objlist;
     string *names;
@@ -893,7 +897,7 @@ static varargs event(string name, mixed args...)
  * NAME:	read_file()
  * DESCRIPTION:	read a string from a file
  */
-static varargs string read_file(string path, int offset, int size)
+static string read_file(string path, varargs int offset, int size)
 {
     string oname;
 
@@ -916,7 +920,7 @@ static varargs string read_file(string path, int offset, int size)
  * NAME:	write_file()
  * DESCRIPTION:	write a string to a file
  */
-static varargs int write_file(string path, string str, int offset)
+static int write_file(string path, string str, varargs int offset)
 {
     string oname, fcreator;
     object driver, rsrcd;
@@ -1252,7 +1256,7 @@ static save_object(string path)
  * NAME:	editor()
  * DESCRIPTION:	pass a command to the editor
  */
-static varargs string editor(string cmd)
+static string editor(varargs string cmd)
 {
     object rsrcd, driver;
     string result;

@@ -47,7 +47,7 @@ private mapping filter_to_file(mapping access, string file)
     result = ([ ]);
     path = explode(file, "/");
     file = "";
-    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
+    for (i = 0, sz = sizeof(path); i < sz; i++) {
 	file += "/" + path[i];
 	result[file] = access[file];
     }
@@ -95,7 +95,7 @@ int access(string user, string file, int type)
 	 */
 	access = uaccess[user];
 	if (typeof(access) == T_MAPPING) {
-	    if (access["/"] >= type) {
+	    if (access["/"] && access["/"] >= type) {
 		return TRUE;
 	    }
 
@@ -103,7 +103,7 @@ int access(string user, string file, int type)
 	    file = "";
 	    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
 		file += "/" + path[i];
-		if (access[file] >= type) {
+		if (access[file] && access[file] >= type) {
 		    return TRUE;
 		}
 	    }

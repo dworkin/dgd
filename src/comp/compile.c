@@ -268,7 +268,7 @@ static char *auto_object;		/* auto object */
 static char *driver_object;		/* driver object */
 static char *include;			/* standard include file */
 static char **paths;			/* include paths */
-static bool nilisnot0;			/* nil is not 0 */
+static bool stricttc;			/* strict typechecking */
 static bool typechecking;		/* is current function typechecked? */
 static bool seen_decls;			/* seen any declarations yet? */
 static short ftype;			/* current function type & class */
@@ -285,8 +285,8 @@ void c_init(a, d, i, p, tc)
 char *a, *d, *i, **p;
 int tc;
 {
-    nilisnot0 = (tc == 2);
-    node_init(nilisnot0);
+    stricttc = (tc == 2);
+    node_init(stricttc);
     opt_init();
     auto_object = a;
     driver_object = d;
@@ -471,7 +471,7 @@ object *obj;
 	inheriting = FALSE;
 
 	if (c_autodriver() != 0) {
-	    ctrl_init(nilisnot0);
+	    ctrl_init(stricttc);
 	} else {
 	    object *aobj;
 
@@ -496,7 +496,7 @@ object *obj;
 	    if (O_UPGRADING(aobj)) {
 		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
-	    ctrl_init(nilisnot0);
+	    ctrl_init(stricttc);
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 
@@ -631,7 +631,10 @@ bool function;
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
 	c_error("private contradicts nomask");
     }
-    if ((type & T_TYPE) == T_INVALID) {
+    if ((class & C_VARARGS) && stricttc) {
+	c_error("varargs must be in parameter list");
+    }
+    if ((type & T_TYPE) == T_NIL) {
 	/* don't typecheck this function */
 	typechecked = FALSE;
 	type = T_MIXED;
@@ -647,6 +650,9 @@ bool function;
     /* handle function arguments */
     args = PROTO_ARGS(proto);
     nargs = 0;
+    if (formals != (node *) NULL && (formals->flags & F_VARARGS)) {
+	class |= C_VARARGS;
+    }
     formals = revert_list(formals);
     while (formals != (node *) NULL) {
 	register node *arg;
@@ -664,28 +670,30 @@ bool function;
 	    formals = (node *) NULL;
 	}
 	t = arg->mod;
-	if ((t & T_TYPE) == T_INVALID) {
+	if ((t & T_TYPE) == T_NIL) {
 	    if (typechecked) {
 		c_error("missing type for parameter %s", arg->l.string->text);
 	    }
-	    t = T_MIXED | (t & T_ELLIPSIS);
+	    t = T_MIXED | (t & (T_VARARGS | T_ELLIPSIS));
 	} else if ((t & T_TYPE) == T_VOID) {
 	    c_error("invalid type for parameter %s (%s)", arg->l.string->text,
-		    i_typename(tnbuf, t & ~T_ELLIPSIS));
-	    t = T_MIXED | (t & T_ELLIPSIS);
-	} else if (typechecked && (t & ~T_ELLIPSIS) != T_MIXED) {
+		    i_typename(tnbuf, t & ~(T_VARARGS | T_ELLIPSIS)));
+	    t = T_MIXED | (t & (T_VARARGS | T_ELLIPSIS));
+	} else if (typechecked && (t & ~(T_VARARGS | T_ELLIPSIS)) != T_MIXED) {
 	    /* only bother to typecheck functions with non-mixed arguments */
 	    class |= C_TYPECHECKED;
 	}
 	*args++ = t;
 	nargs++;
-	if (t & T_ELLIPSIS) {
-	    if (!(class & C_VARARGS)) {
-		c_error("ellipsis without varargs");
-	    }
-	    t = (t & ~T_ELLIPSIS) + (1 << REFSHIFT);
-	    if ((t & T_REF) == 0) {
-		t |= T_REF;
+	if (t & (T_VARARGS | T_ELLIPSIS)) {
+	    t &= ~(T_VARARGS | T_ELLIPSIS);
+	    if (formals == (node *) NULL) {
+		/* ... */
+		t += 1 << REFSHIFT;
+		if ((t & T_REF) == 0) {
+		    c_error("too deep indirection for parameter %s",
+			    arg->l.string->text);
+		}
 	    }
 	}
 
@@ -832,7 +840,7 @@ register node *n;
 	break;
     }
 
-    if (nilisnot0) {
+    if (stricttc) {
 	/*
 	 * initialize local ints to 0
 	 */
@@ -1170,7 +1178,7 @@ int typechecked;
     if (typechecked &&
 	n->mod != T_INT && n->mod != T_STRING && n->mod != T_MIXED) {
 	c_error("bad switch expression type (%s)", i_typename(tnbuf, n->mod));
-	switch_list->type = T_INVALID;
+	switch_list->type = T_NIL;
     }
     switch_list->dflt = FALSE;
     switch_list->ncase = 0;
@@ -1221,7 +1229,7 @@ node *expr, *stmt;
     short type, sz;
 
     n = (node *) NULL;
-    if (switch_list->type != T_INVALID) {
+    if (switch_list->type != T_NIL) {
 	if (stmt == (node *) NULL) {
 	    /* empty switch statement */
 	    n = c_exp_stmt(expr);
@@ -1401,7 +1409,7 @@ register node *n1, *n2;
 	c_error("illegal jump into rlimits or catch");
 	return (node *) NULL;
     }
-    if (switch_list->type == T_INVALID) {
+    if (switch_list->type == T_NIL) {
 	return (node *) NULL;
     }
 
@@ -1409,7 +1417,7 @@ register node *n1, *n2;
 	/* string */
 	if (n2 != (node *) NULL) {
 	    c_error("bad case range");
-	    switch_list->type = T_INVALID;
+	    switch_list->type = T_NIL;
 	    return (node *) NULL;
 	}
 	/* compare type with other cases */
@@ -1417,14 +1425,14 @@ register node *n1, *n2;
 	    switch_list->type = T_STRING;
 	} else if (switch_list->type != T_STRING) {
 	    c_error("multiple case types in switch");
-	    switch_list->type = T_INVALID;
+	    switch_list->type = T_NIL;
 	    return (node *) NULL;
 	}
     } else {
 	/* int */
 	if (n1->type != N_INT) {
 	    c_error("bad case expression");
-	    switch_list->type = T_INVALID;
+	    switch_list->type = T_NIL;
 	    return (node *) NULL;
 	}
 	if (n2 == (node *) NULL) {
@@ -1433,7 +1441,7 @@ register node *n1, *n2;
 	    /* range */
 	    if (n2->type != N_INT) {
 		c_error("bad case range");
-		switch_list->type = T_INVALID;
+		switch_list->type = T_NIL;
 		return (node *) NULL;
 	    }
 	    if (n2->l.number < n1->l.number) {
@@ -1449,12 +1457,12 @@ register node *n1, *n2;
 	    }
 	}
 	/* compare type with other cases */
-	if (n1->l.number != 0 || n2 != (node *) NULL) {
+	if (n1->l.number != 0 || n2 != (node *) NULL || nil_type != T_INT) {
 	    if (switch_list->type == T_MIXED) {
 		switch_list->type = T_INT;
 	    } else if (switch_list->type != T_INT) {
 		c_error("multiple case types in switch");
-		switch_list->type = T_INVALID;
+		switch_list->type = T_NIL;
 		return (node *) NULL;
 	    }
 	}
@@ -1480,7 +1488,7 @@ node *c_default()
 	c_error("default label not inside switch");
     } else if (switch_list->dflt) {
 	c_error("duplicate default label in switch");
-	switch_list->type = T_INVALID;
+	switch_list->type = T_NIL;
     } else if (switch_list->nesting != nesting) {
 	c_error("illegal jump into rlimits or catch");
     } else {
@@ -1561,7 +1569,7 @@ int typechecked;
 	     */
 	    c_error("value returned from void function");
 	} else if ((!c_nil(n) || !T_POINTER(ftype)) &&
-		   c_tmatch(n->mod, ftype) == T_INVALID) {
+		   c_tmatch(n->mod, ftype) == T_NIL) {
 	    /*
 	     * type error
 	     */
@@ -1725,9 +1733,10 @@ register node *func;
 node *args;
 {
     char tnbuf[17];
-    register int n, nargs, typechecked, t;
+    register int n, nargs, t;
     register node **argv, **arg;
     char *argp, *proto, *fname;
+    bool typechecked, optional;
 
     /* get info, prepare return value */
     fname = func->l.string->text;
@@ -1745,12 +1754,13 @@ node *args;
     /*
      * check function arguments
      */
-    typechecked = PROTO_CLASS(proto) & C_TYPECHECKED;
+    typechecked = ((PROTO_CLASS(proto) & C_TYPECHECKED) != 0);
+    optional = ((PROTO_CLASS(proto) & C_VARARGS) != 0);
     nargs = PROTO_NARGS(proto);
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
-	    if (!(PROTO_CLASS(proto) & C_VARARGS)) {
+	    if (!optional && (n != nargs || !(UCHAR(*argp) & T_ELLIPSIS))) {
 		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
@@ -1762,7 +1772,7 @@ node *args;
 	    arg = argv;
 	    args = (node *) NULL;
 	}
-	t = UCHAR(*argp) & ~T_ELLIPSIS;
+	t = UCHAR(*argp) & ~(T_VARARGS | T_ELLIPSIS);
 
 	if ((*arg)->type == N_SPREAD) {
 	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
@@ -1779,17 +1789,15 @@ node *args;
 		    t -= (1 << REFSHIFT);
 		}
 	    }
-	    if (!(PROTO_CLASS(proto) & C_VARARGS) &&
-		PROTO_FTYPE(proto) != T_IMPLICIT) {
-		c_error("ellipsis in call to non-varargs function");
-	    }
 
 	    while (n <= nargs) {
 		if (typechecked &&
-		    c_tmatch(t, UCHAR(*argp) & ~T_ELLIPSIS) == T_INVALID) {
+		    c_tmatch(t, UCHAR(*argp) & ~(T_VARARGS | T_ELLIPSIS)) ==
+									T_NIL) {
 		    c_error("bad argument %d for function %s (needs %s)", n,
 			    fname,
-			    i_typename(tnbuf, UCHAR(*argp) & ~T_ELLIPSIS));
+			    i_typename(tnbuf, UCHAR(*argp) &
+						    ~(T_VARARGS | T_ELLIPSIS)));
 		}
 		n++;
 		argp++;
@@ -1804,14 +1812,21 @@ node *args;
 	    /* only kfuns can have lvalue parameters */
 	    func->r.number |= (long) KFCALL_LVAL << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
-		   c_tmatch((*arg)->mod, t) == T_INVALID &&
+		   c_tmatch((*arg)->mod, t) == T_NIL &&
 		   (!c_nil(*arg) || !T_POINTER(t))) {
 	    c_error("bad argument %d for function %s (needs %s)", n, fname,
 		    i_typename(tnbuf, t));
 	}
 
-	if (UCHAR(*argp) & T_ELLIPSIS) {
-	    nargs++;
+	if (UCHAR(*argp) & (T_VARARGS | T_ELLIPSIS)) {
+	    if (n == nargs) {
+		/* ... */
+		nargs++;
+	    } else {
+		/* varargs */
+		optional = TRUE;
+		argp++;
+	    }
 	} else {
 	    argp++;
 	}
@@ -2040,14 +2055,14 @@ char *oper;
 /*
  * NAME:	compile->tmatch()
  * DESCRIPTION:	See if the two supplied types are compatible. If so, return the
- *		combined type. If not, return T_INVALID.
+ *		combined type. If not, return T_NIL.
  */
 unsigned short c_tmatch(type1, type2)
 register unsigned int type1, type2;
 {
     if (type1 == T_NIL || type2 == T_NIL) {
-	/* nil doesn't match with anything else, not even itself */
-	return T_INVALID;
+	/* nil doesn't match with anything else */
+	return T_NIL;
     }
     if (type1 == type2) {
 	/* identical types */
@@ -2055,7 +2070,7 @@ register unsigned int type1, type2;
     }
     if (type1 == T_VOID || type2 == T_VOID) {
 	/* void doesn't match with anything else, not even with mixed */
-	return T_INVALID;
+	return T_NIL;
     }
     if ((type1 & T_TYPE) == T_MIXED && (type1 & T_REF) <= (type2 & T_REF)) {
 	/* mixed <-> int,  mixed * <-> int *,  mixed * <-> int ** */
@@ -2071,7 +2086,7 @@ register unsigned int type1, type2;
 	}
 	return type2;
     }
-    return T_INVALID;
+    return T_NIL;
 }
 
 /*

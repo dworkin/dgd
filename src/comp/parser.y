@@ -27,6 +27,7 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
+static node *varargs	P((node*, node*));
 static void  t_void	P((node*));
 static bool  t_unary	P((node*, char*));
 static node *uassign	P((int, node*, char*));
@@ -194,7 +195,7 @@ function_declaration
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
 		  typechecking = c_typechecking();
-		  c_function($1, (typechecking) ? T_VOID : T_INVALID,
+		  c_function($1, (typechecking) ? T_VOID : T_NIL,
 			     node_bin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
@@ -224,6 +225,28 @@ formals_declaration
 		      $$->mod |= T_ELLIPSIS;
 		  }
 		}
+	| VARARGS formal_declaration_list
+		{
+		  $$ = $2;
+		  $$->flags |= F_VARARGS;
+		}
+	| VARARGS formal_declaration_list ELLIPSIS
+		{
+		  $$ = $2;
+		  $$->flags |= F_VARARGS;
+		  if ($$->type == N_PAIR) {
+		      $$->r.right->mod |= T_ELLIPSIS;
+		  } else {
+		      $$->mod |= T_ELLIPSIS;
+		  }
+		}
+	| formal_declaration_list ',' VARARGS formal_declaration_list
+		{ $$ = varargs($1, $4); }
+	| formal_declaration_list ',' VARARGS formal_declaration_list ELLIPSIS
+		{
+		  $$ = varargs($1, $4);
+		  $$->r.right->mod |= T_ELLIPSIS;
+		}
 	;
 
 formal_declaration_list
@@ -240,7 +263,7 @@ formal_declaration
 		}
 	| ident {
 		  $$ = $1;
-		  $$->mod = T_INVALID;	/* only if typechecking, though */
+		  $$->mod = T_NIL;	/* only if typechecking, though */
 		}
 	;
 
@@ -754,6 +777,29 @@ opt_assoc_arg_list_comma
 %%
 
 /*
+ * NAME:	varargs()
+ * DESCRIPTION:	deal with varargs in a formals declaration
+ */
+static node *varargs(n1, n2)
+register node *n1, *n2;
+{
+    register node *n;
+
+    if (n1->type == N_PAIR) {
+	n1->r.right->mod |= T_VARARGS;
+    } else {
+	n1->mod |= T_VARARGS;
+    }
+    if (n2->type == N_PAIR) {
+	for (n = n2; n->l.left->type == N_PAIR; n = n->l.left) ;
+	n->l.left = node_bin(N_PAIR, 0, n1, n->l.left);
+	return n2;
+    } else {
+	return node_bin(N_PAIR, 0, n1, n2);
+    }
+}
+
+/*
  * NAME:	t_void()
  * DESCRIPTION:	if the argument is of type void, an error will result
  */
@@ -1227,7 +1273,7 @@ char *name;
     }
 
     type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_OBJECT || type == T_INVALID) {
+    if (type == T_OBJECT || type == T_NIL) {
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
@@ -1280,7 +1326,7 @@ char *name;
 
     type = c_tmatch(n1->mod, n2->mod);
     if (type == T_STRING || type == T_OBJECT || type == T_MAPPING ||
-	type == T_INVALID) {
+	type == T_NIL) {
 	if ((type=n1->mod) != T_MAPPING ||
 	    (n2->mod != T_MIXED && (n2->mod & T_REF) == 0)) {
 	    type = T_MIXED;
@@ -1533,7 +1579,7 @@ char *name;
     }
     if ((((type=n1->mod) == T_MIXED || type == T_MAPPING) &&
 	 ((n2->mod & T_REF) != 0 || n2->mod == T_MIXED)) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array & array or mapping & array
 	 */
@@ -1559,7 +1605,7 @@ char *name;
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array ^ array
 	 */
@@ -1585,7 +1631,7 @@ char *name;
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_NIL) {
 	/*
 	 * possibly array | array
 	 */
@@ -1681,7 +1727,7 @@ register node *n1, *n2, *n3;
 	    type = T_VOID;
 	} else {
 	    type = c_tmatch(n2->mod, n3->mod);
-	    if (type == T_INVALID) {
+	    if (type == T_NIL) {
 		/* no typechecking here, just let the result be mixed */
 		type = T_MIXED;
 	    }
@@ -1704,7 +1750,7 @@ register node *n1, *n2;
 	/*
 	 * typechecked
 	 */
-	if (c_tmatch(n1->mod, n2->mod) == T_INVALID) {
+	if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
 	    c_error("incompatible types for = (%s, %s)",
 		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
 	} else if (n1->mod != T_MIXED && n2->mod == T_MIXED) {

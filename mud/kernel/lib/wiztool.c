@@ -183,8 +183,8 @@ static rsrc_set_limit(string rowner, string name, int max)
  * DESCRIPTION:	increment or decrement a resource, returning TRUE if succeeded,
  *		FALSE if failed
  */
-static varargs int rsrc_incr(string rowner, string name, mixed index, int incr,
-			     int force)
+static int rsrc_incr(string rowner, string name, mixed index, int incr,
+		     varargs int force)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -264,7 +264,7 @@ static int destruct_object(mixed obj)
  * NAME:	read_file()
  * DESCRIPTION:	read_file wrapper
  */
-static varargs mixed read_file(string path, int offset, int size)
+static mixed read_file(string path, varargs int offset, int size)
 {
     string result, err;
 
@@ -285,7 +285,7 @@ static varargs mixed read_file(string path, int offset, int size)
  * NAME:	write_file()
  * DESCRIPTION:	write_file wrapper
  */
-static varargs int write_file(string path, string str, int offset)
+static int write_file(string path, string str, varargs int offset)
 {
     int result;
     string err;
@@ -783,7 +783,7 @@ static cmd_code(object user, string cmd, string str)
 		   "# include <float.h>\n# include <limits.h>\n" +
 		   "# include <status.h>\n# include <trace.h>\n" +
 		   "# include <type.h>\n\n" +
-		   "varargs mixed exec(object user, mixed argv...) {\n" +
+		   "mixed exec(object user, mixed argv...) {\n" +
 		   "    mixed " +
 		   "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
 		   "    " + parsed[0] + "\n}\n") > 0) {
@@ -1339,6 +1339,9 @@ static cmd_ed(object user, string cmd, string str)
 	files = expand(str, -1, FALSE);
 	if (files[4] != 1) {
 	    message("Usage: " + cmd + " [<file>]\n");
+	    return;
+	}
+	if (sizeof(files[0]) == 0) {
 	    return;
 	}
 	str = editor("e " + files[0][0]);

@@ -916,6 +916,10 @@ bool poptruthval(f)
 register frame *f;
 {
     switch (f->sp->type) {
+    case T_NIL:
+	f->sp++;
+	return FALSE;
+
     case T_INT:
 	return (f->sp++)->u.number != 0;
 
@@ -931,10 +935,6 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
-
-    case T_NIL:
-	f->sp++;
-	return FALSE;
     }
     f->sp++;
     return TRUE;

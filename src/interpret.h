@@ -61,14 +61,14 @@
 
 
 # define T_TYPE		0x0f	/* type mask */
-# define T_INVALID	0x00
+# define T_NIL		0x00
 # define T_INT		0x01
 # define T_FLOAT	0x02
 # define T_STRING	0x03
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
-# define T_NIL		0x07
+# define T_RESERVED	0x07	/* reserved for add-on packages */
 # define T_MIXED	0x08	/* declaration type only */
 # define T_VOID		0x09	/* function return type only */
 # define T_LVALUE	0x0a	/* address of a value */
@@ -78,6 +78,7 @@
 # define T_SALVALUE	0x0e	/* indexed string indexed array lvalue */
 # define T_SMLVALUE	0x0f	/* indexed string indexed mapping lvalue */
 
+# define T_VARARGS	0x10	/* or'ed with declaration type */
 # define T_ELLIPSIS	0x10	/* or'ed with declaration type */
 
 # define T_REF		0xe0	/* reference count mask */
@@ -88,8 +89,8 @@
 # define T_POINTER(t)	((t) >= T_STRING)
 # define T_INDEXED(t)	((t) == T_ARRAY || (t) == T_MAPPING)
 
-# define TYPENAMES	{ "invalid", "int", "float", "string", "object", \
-			  "array", "mapping", "nil", "mixed", "void" }
+# define TYPENAMES	{ "nil", "int", "float", "string", "object", \
+			  "array", "mapping", "reserved", "mixed", "void" }
 
 struct _value_ {
     char type;			/* value type */

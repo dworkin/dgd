@@ -228,8 +228,8 @@ mixed *rsrc_get(string owner, string name)
  * DESCRIPTION:	increment or decrement a resource, returning TRUE if succeeded,
  *		FALSE if failed
  */
-varargs int rsrc_incr(string owner, string name, mixed index, int incr,
-		      int force)
+int rsrc_incr(string owner, string name, mixed index, int incr,
+	      varargs int force)
 {
     if (KERNEL()) {
 	object obj;
@@ -343,7 +343,8 @@ int suspended(object obj, string owner)
 	if (suspend != 0 && obj != suspender) {
 	    return TRUE;
 	}
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				 FALSE);
 	return FALSE;
     }
 }

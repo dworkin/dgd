@@ -1033,6 +1033,10 @@ register int n;
     while (n > 0) {
 	v->modified = FALSE;
 	switch (v->type = sv->type) {
+	case T_NIL:
+	    v->u.number = 0;
+	    break;
+
 	case T_INT:
 	    v->u.number = sv->u.number;
 	    break;
@@ -1053,10 +1057,6 @@ register int n;
 	case T_ARRAY:
 	case T_MAPPING:
 	    arr_ref(v->u.array = d_get_array(data, sv->u.array));
-	    break;
-
-	case T_NIL:
-	    v->u.number = 0;
 	    break;
 	}
 	sv++;
@@ -1468,11 +1468,11 @@ register dataspace *data;
     for (n = data->ncallouts; n > 0; --n) {
 	co->time = sco->time;
 	co->nargs = sco->nargs;
-	if (sco->val[0].type != T_INVALID) {
+	if (sco->val[0].type != T_NIL) {
 	    d_get_values(data, sco->val, co->val,
 			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
 	} else {
-	    co->val[0].type = T_INVALID;
+	    co->val[0].type = T_NIL;
 	}
 	sco++;
 	co++;
@@ -1603,7 +1603,7 @@ int *nargs;
     }
 
     co = &data->callouts[handle - 1];
-    if (co->val[0].type == T_INVALID) {
+    if (co->val[0].type == T_NIL) {
 	/* invalid callout */
 	return (string *) NULL;
     }
@@ -1670,7 +1670,7 @@ int *nargs;
 	}
     }
 
-    co->val[0].type = T_INVALID;
+    co->val[0].type = T_NIL;
     n = data->fcallouts;
     if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;
@@ -1715,7 +1715,7 @@ Uint t;
     max_args = conf_array_size() - 3;
 
     for (co = data->callouts; count > 0; co++) {
-	if (co->val[0].type != T_INVALID) {
+	if (co->val[0].type != T_NIL) {
 	    size = co->nargs;
 	    if (size > max_args) {
 		/* unlikely, but possible */
@@ -2061,6 +2061,11 @@ register unsigned short n;
 
     while (n > 0) {
 	switch (sv->type = v->type) {
+	case T_NIL:
+	    sv->oindex = 0;
+	    sv->u.number = 0;
+	    break;
+
 	case T_INT:
 	    sv->oindex = 0;
 	    sv->u.number = v->u.number;
@@ -2112,11 +2117,6 @@ register unsigned short n;
 	    }
 	    sarrays[i].ref++;
 	    break;
-
-	case T_NIL:
-	    sv->oindex = 0;
-	    sv->u.number = 0;
-	    break;
 	}
 	sv++;
 	v++;
@@ -2136,6 +2136,11 @@ register unsigned short n;
     while (n > 0) {
 	if (v->modified) {
 	    switch (sv->type = v->type) {
+	    case T_NIL:
+		sv->oindex = 0;
+		sv->u.number = 0;
+		break;
+
 	    case T_INT:
 		sv->oindex = 0;
 		sv->u.number = v->u.number;
@@ -2159,11 +2164,6 @@ register unsigned short n;
 	    case T_MAPPING:
 		sv->oindex = 0;
 		sv->u.array = v->u.array->primary - sdata->values->arrays;
-		break;
-
-	    case T_NIL:
-		sv->oindex = 0;
-		sv->u.number = 0;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -2210,7 +2210,7 @@ register dataspace *data;
 
 	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
 	    v = co->val;
-	    if (v->type != T_INVALID) {
+	    if (v->type != T_NIL) {
 		j = 1 + co->nargs;
 		if (j > 4) {
 		    j = 4;
@@ -2375,7 +2375,7 @@ register dataspace *data;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
 		sco->nargs = co->nargs;
-		if (co->val[0].type != T_INVALID) {
+		if (co->val[0].type != T_NIL) {
 		    co->val[0].modified = TRUE;
 		    co->val[1].modified = TRUE;
 		    co->val[2].modified = TRUE;
@@ -2383,7 +2383,7 @@ register dataspace *data;
 		    d_put_values(sco->val, co->val,
 				 (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
-		    sco->val[0].type = T_INVALID;
+		    sco->val[0].type = T_NIL;
 		}
 		sco++;
 		co++;
@@ -2422,7 +2422,7 @@ register dataspace *data;
 	    }
 	    /* remove empty callouts at the end */
 	    for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
-		if ((--co)->val[0].type != T_INVALID) {
+		if ((--co)->val[0].type != T_NIL) {
 		    break;
 		}
 		if (data->fcallouts == n) {
@@ -2446,7 +2446,7 @@ register dataspace *data;
 		/* process callouts */
 		scallouts = ALLOCA(scallout, n);
 		for (co = data->callouts; n > 0; --n, co++) {
-		    if (co->val[0].type != T_INVALID) {
+		    if (co->val[0].type != T_NIL) {
 			d_count(co->val, (co->nargs > 3) ? 4 : co->nargs + 1);
 		    }
 		}
@@ -2487,11 +2487,11 @@ register dataspace *data;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
 		sco->nargs = co->nargs;
-		if (co->val[0].type != T_INVALID) {
+		if (co->val[0].type != T_NIL) {
 		    d_save(sco->val, co->val,
 			   (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
-		    sco->val[0].type = T_INVALID;
+		    sco->val[0].type = T_NIL;
 		}
 		sco++;
 		co++;
@@ -2753,7 +2753,7 @@ void d_export()
 
 		    co = data->callouts;
 		    for (n = data->ncallouts; n > 0; --n) {
-			if (co->val[0].type != T_INVALID) {
+			if (co->val[0].type != T_NIL) {
 			    d_import(data, co->val,
 				     (co->nargs > 3) ? 4 : co->nargs + 1);
 			}
@@ -3433,7 +3433,7 @@ Uint *counttab;
 	for (n = data->ncallouts; n > 0; --n) {
 	    co->time = sco->time;
 	    co->nargs = sco->nargs;
-	    if (sco->val[0].type != T_INVALID) {
+	    if (sco->val[0].type != T_NIL) {
 		if (sco->nargs > 3) {
 		    d_fixobjs(sco->val, (Uint) 4, counttab);
 		    d_get_values(data, sco->val, co->val, 4);
@@ -3442,7 +3442,7 @@ Uint *counttab;
 		    d_get_values(data, sco->val, co->val, sco->nargs + 1);
 		}
 	    } else {
-		co->val[0].type = T_INVALID;
+		co->val[0].type = T_NIL;
 	    }
 	    sco++;
 	    co++;
@@ -3502,7 +3502,7 @@ register dataspace *data;
 	    d_get_callouts(data);
 	}
 	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
-	    if ((--co)->val[0].type != T_INVALID) {
+	    if ((--co)->val[0].type != T_NIL) {
 		co_del(data->obj, n);
 	    }
 	}

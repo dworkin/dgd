@@ -32,7 +32,7 @@ static object open_connection();
 
 /*
  * NAME:	_connection()
- * DESCRIPTION:	internal vercion of connection()
+ * DESCRIPTION:	internal version of connection()
  */
 private object _connection(mixed *tls)
 {

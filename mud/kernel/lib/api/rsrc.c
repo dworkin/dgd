@@ -117,8 +117,8 @@ static mixed *rsrc_get(string owner, string name)
  * DESCRIPTION:	increment or decrement a resource, returning 1 if succeeded,
  *		0 if failed
  */
-static varargs int rsrc_incr(string owner, string name, mixed index, int incr,
-			     int force)
+static int rsrc_incr(string owner, string name, mixed index, int incr,
+		     varargs int force)
 {
     if (!name) {
 	error("Bad arguments for rsrc_incr");

@@ -847,6 +847,8 @@ static bool conf_includes()
     cputs("/*\012 * This file gives definitions for the value returned ");
     cputs("by the\012 * typeof() kfun.  It is automatically generated ");
     cputs("by DGD on startup.\012 */\012\012");
+    sprintf(buffer, "# define T_NIL\t\t%d\012", T_NIL);
+    cputs(buffer);
     sprintf(buffer, "# define T_INT\t\t%d\012", T_INT);
     cputs(buffer);
     sprintf(buffer, "# define T_FLOAT\t%d\012", T_FLOAT);
@@ -858,8 +860,6 @@ static bool conf_includes()
     sprintf(buffer, "# define T_ARRAY\t%d\012", T_ARRAY);
     cputs(buffer);
     sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
-    cputs(buffer);
-    sprintf(buffer, "# define T_NIL\t\t%d\012", T_NIL);
     cputs(buffer);
     if (!cclose()) {
 	return FALSE;

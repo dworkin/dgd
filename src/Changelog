@@ -1237,3 +1237,16 @@ DGD 1.1
    and allocate_float() explicitly allocate arrays of those respective values.
  - In a further bit of type matching cleanup, integer 0 and floating point 0.0
    no longer test as equal.
+ - Merged T_NIL with T_INVALID internally.
+ - It is now possible to use varargs in a parameter list to specify that only
+   the following parameters are optional:
+
+	void foo(int a, varargs string b, object c)
+	{
+	}
+
+   In typechecking mode 2, this is the only way that varargs can be used.  It
+   is an error to call a function with too many or too few arguments, even when
+   using call_other() (typechecking mode 2 only).
+   Varargs is implied for the last parameter when using ellipsis, and need no
+   longer be specified explicitly.

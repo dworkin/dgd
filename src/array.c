@@ -368,6 +368,9 @@ cvoid *cv1, *cv2;
     }
 
     switch (v1->type) {
+    case T_NIL:
+	return 0;
+
     case T_INT:
 	return (v1->u.number <= v2->u.number) ?
 		(v1->u.number < v2->u.number) ? -1 : 0 :
@@ -391,9 +394,6 @@ cvoid *cv1, *cv2;
 	return (v1->u.array->tag <= v2->u.array->tag) ?
 		(v1->u.array->tag < v2->u.array->tag) ? -1 : 0 :
 		1;
-
-    case T_NIL:
-	return 0;
     }
 }
 
@@ -1569,6 +1569,10 @@ value *val, *elt;
     }
 
     switch (val->type) {
+    case T_NIL:
+	i = 4747;
+	break;
+
     case T_INT:
 	i = val->u.number;
 	break;
@@ -1588,10 +1592,6 @@ value *val, *elt;
     case T_ARRAY:
     case T_MAPPING:
 	i = (unsigned short) ((unsigned long) val->u.array >> 3);
-	break;
-
-    case T_NIL:
-	i = 4747;
 	break;
     }
 

@@ -20,6 +20,7 @@ static frame topframe;		/* top frame */
 frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
+static bool stricttc;		/* strict typechecking */
 
 int nil_type;			/* type of nil value */
 value zero_int = { T_INT, TRUE };
@@ -30,9 +31,9 @@ value nil_value = { T_NIL, TRUE };
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(create, nilisnot0)
+void i_init(create, flag)
 char *create;
-bool nilisnot0;
+bool flag;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.prev_lip = topframe.lip = stack;
@@ -42,8 +43,9 @@ bool nilisnot0;
 
     creator = create;
     clen = strlen(create);
+    stricttc = flag;
 
-    nil_value.type = nil_type = (nilisnot0) ? T_NIL : T_INT;
+    nil_value.type = nil_type = (stricttc) ? T_NIL : T_INT;
 }
 
 /*
@@ -1177,10 +1179,15 @@ int strict;
     while (n > 0 && i > 0) {
 	--i;
 	ptype = UCHAR(*args);
-	if (ptype & T_ELLIPSIS) {
-	    ptype &= ~T_ELLIPSIS;
-	    if (ptype == T_MIXED || ptype == T_LVALUE) {
-		return;
+	if (ptype & (T_VARARGS | T_ELLIPSIS)) {
+	    ptype &= ~(T_VARARGS | T_ELLIPSIS);
+	    if (n == 1) {
+		if (ptype == T_MIXED || ptype == T_LVALUE) {
+		    return;
+		}
+	    } else {
+		args++;
+		--n;
 	    }
 	} else {
 	    args++;
@@ -1834,9 +1841,24 @@ int funci;
 	    nargs = n;
 	    pc += nargs;
 	} else {
+	    /* if fewer actual than formal parameters, check for varargs */
+	    if (nargs + 1 != n && stricttc && !(f.func->class & C_VARARGS)) {
+		register unsigned short i;
+
+		i = nargs;
+		do {
+		    if (i == 0) {
+			error("Insufficient arguments for function");
+		    }
+		    --i;
+		} while (!(FETCH1U(pc) & T_VARARGS));
+		pc += i;
+	    } else {
+		pc += nargs;
+	    }
+
 	    /* make empty arguments array, and optionally push zeros */
 	    i_grow_stack(prev_f, n - nargs);
-	    pc += nargs;
 	    while (++nargs < n) {
 		switch (FETCH1U(pc)) {
 		case T_INT:
@@ -1858,31 +1880,50 @@ int funci;
 	(--prev_f->sp)->type = T_ARRAY;
 	arr_ref(prev_f->sp->u.array = a);
     } else if (nargs > n) {
+	if (stricttc) {
+	    error("Too many arguments for function");
+	}
+
 	/* pop superfluous arguments */
 	i_pop(prev_f, nargs - n);
 	nargs = n;
 	pc += nargs;
+    } else if (nargs < n) {
+	/* if fewer actual than formal parameters, check for varargs */
+	if (stricttc && !(f.func->class & C_VARARGS)) {
+	    register unsigned short i;
+
+	    i = nargs;
+	    do {
+		if (i == 0) {
+		    error("Insufficient arguments for function");
+		}
+		--i;
+	    } while (!(FETCH1U(pc) & T_VARARGS));
+	    pc += i;
+	} else {
+	    pc += nargs;
+	}
+
+	/* add missing arguments */
+	i_grow_stack(prev_f, n - nargs);
+	do {
+	    switch (FETCH1U(pc)) {
+	    case T_INT:
+		*--prev_f->sp = zero_int;
+		break;
+
+	    case T_FLOAT:
+		*--prev_f->sp = zero_float;
+		    break;
+
+	    default:
+		*--prev_f->sp = nil_value;
+		break;
+	    }
+	} while (++nargs < n);
     } else {
 	pc += nargs;
-	if (nargs < n) {
-	    /* add missing arguments */
-	    i_grow_stack(prev_f, n - nargs);
-	    do {
-		switch (FETCH1U(pc)) {
-		case T_INT:
-		    *--prev_f->sp = zero_int;
-		    break;
-
-		case T_FLOAT:
-		    *--prev_f->sp = zero_float;
-			break;
-
-		default:
-		    *--prev_f->sp = nil_value;
-		    break;
-		}
-	    } while (++nargs < n);
-	}
     }
     f.argp = prev_f->sp;
     cframe = &f;

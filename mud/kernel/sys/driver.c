@@ -125,7 +125,7 @@ private int dir_size(string file)
  * NAME:	file_size()
  * DESCRIPTION:	get the size of a file in K, or 0 if the file doesn't exist
  */
-varargs int file_size(string file, int dir)
+int file_size(string file, varargs int dir)
 {
     if (KERNEL() || SYSTEM()) {
 	mixed **info;
@@ -521,7 +521,7 @@ static object call_object(string path)
  * NAME:	inherit_program()
  * DESCRIPTION:	inherit a program, compiling it if needed
  */
-static object inherit_program(string from, string path)
+static object inherit_program(string from, string path, int priv)
 {
     string creator;
     object obj;

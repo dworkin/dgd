@@ -429,6 +429,12 @@ register frame *f;
     }
 
     switch (f->sp->type) {
+    case T_NIL:
+	f->sp++;
+	f->sp->type = T_INT;
+	f->sp->u.number = TRUE;
+	break;
+
     case T_INT:
 	f->sp[1].u.number = (f->sp[1].u.number == f->sp->u.number);
 	f->sp++;
@@ -467,12 +473,6 @@ register frame *f;
 	arr_del(f->sp->u.array);
 	f->sp->type = T_INT;
 	f->sp->u.number = flag;
-	break;
-
-    case T_NIL:
-	f->sp++;
-	f->sp->type = T_INT;
-	f->sp->u.number = TRUE;
 	break;
     }
 
@@ -973,6 +973,12 @@ register frame *f;
     }
 
     switch (f->sp->type) {
+    case T_NIL:
+	f->sp++;
+	f->sp->type = T_INT;
+	f->sp->u.number = FALSE;
+	break;
+
     case T_INT:
 	f->sp[1].u.number = (f->sp[1].u.number != f->sp->u.number);
 	f->sp++;
@@ -1011,12 +1017,6 @@ register frame *f;
 	arr_del(f->sp->u.array);
 	f->sp->type = T_INT;
 	f->sp->u.number = flag;
-	break;
-
-    case T_NIL:
-	f->sp++;
-	f->sp->type = T_INT;
-	f->sp->u.number = FALSE;
 	break;
     }
 
@@ -1096,6 +1096,11 @@ int kf_not(f)
 register frame *f;
 {
     switch (f->sp->type) {
+    case T_NIL:
+	f->sp->type = T_INT;
+	f->sp->u.number = TRUE;
+	return 0;
+
     case T_INT:
 	f->sp->u.number = !f->sp->u.number;
 	return 0;
@@ -1113,11 +1118,6 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
-
-    case T_NIL:
-	f->sp->type = T_INT;
-	f->sp->u.number = TRUE;
-	return 0;
     }
 
     f->sp->type = T_INT;
@@ -1705,6 +1705,11 @@ int kf_tst(f)
 register frame *f;
 {
     switch (f->sp->type) {
+    case T_NIL:
+	f->sp->type = T_INT;
+	f->sp->u.number = FALSE;
+	return 0;
+
     case T_INT:
 	f->sp->u.number = (f->sp->u.number != 0);
 	return 0;
@@ -1722,11 +1727,6 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
-
-    case T_NIL:
-	f->sp->type = T_INT;
-	f->sp->u.number = FALSE;
-	return 0;
     }
 
     f->sp->type = T_INT;
@@ -2026,7 +2026,7 @@ int nargs;
      * pass 1: check the types of everything and calculate the size
      */
     i_add_ticks(f, nargs);
-    type = T_INVALID;
+    type = T_NIL;
     isize = size = 0;
     nonint = nargs;
     result = 0;
@@ -2057,7 +2057,7 @@ int nargs;
 	if (vtype == T_STRING || vtype == T_ARRAY) {
 	    nonint = i;
 	    isize = size;
-	    if (type == T_INVALID && (vtype != T_ARRAY || i == nargs - 1)) {
+	    if (type == T_NIL && (vtype != T_ARRAY || i == nargs - 1)) {
 		type = vtype;
 	    } else if (type != vtype) {
 		error("Bad argument 2 for kfun +");

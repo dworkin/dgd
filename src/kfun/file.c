@@ -191,6 +191,10 @@ array *a;
     put(x, buf, strlen(buf));
     for (i = a->size, v = d_get_elts(a); i > 0; --i, v++) {
 	switch (v->type) {
+	case T_NIL:
+	    put(x, "nil", 3);
+	    break;
+
 	case T_INT:
 	    sprintf(buf, "%ld", (long) v->u.number);
 	    put(x, buf, strlen(buf));
@@ -218,10 +222,6 @@ array *a;
 
 	case T_MAPPING:
 	    save_mapping(x, v->u.array);
-	    break;
-
-	case T_NIL:
-	    put(x, "nil", 3);
 	    break;
 	}
 	put(x, ",", 1);
@@ -278,6 +278,10 @@ array *a;
 	    continue;
 	}
 	switch (v->type) {
+	case T_NIL:
+	    put(x, "nil", 3);
+	    break;
+
 	case T_INT:
 	    sprintf(buf, "%ld", (long) v->u.number);
 	    put(x, buf, strlen(buf));
@@ -301,10 +305,6 @@ array *a;
 
 	case T_MAPPING:
 	    save_mapping(x, v->u.array);
-	    break;
-
-	case T_NIL:
-	    put(x, "nil", 3);
 	    break;
 	}
 	put(x, ":", 1);
