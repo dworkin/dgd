@@ -1341,51 +1341,51 @@ unsigned short hashval;
     register mapelt *e;
     register unsigned short i;
 
-    if (m->hashed == (maphash *) NULL) {
+    h = m->hashed;
+    if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->size) >= max_size) {
+	map_compact(m);
+	if (m->size >> 1 >= max_size) {
+	    error("Mapping too large to grow");
+	}
+	h = (maphash *) NULL;
+    }
+
+    if (h == (maphash *) NULL) {
 	/*
 	 * add hash table to this mapping
 	 */
-	if (m->size >> 1 == max_size) {
-	    error("Mapping too large to grow");
-	}
 	m->hashed = h = (maphash *)
 	    ALLOC(char, sizeof(maphash) + (MTABLE_SIZE - 1) * sizeof(mapelt*));
 	h->size = 0;
 	h->tablesize = MTABLE_SIZE;
 	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
-    } else {
-	h = m->hashed;
-	if ((m->size >> 1) + h->size == max_size) {
-	    error("Mapping too large to grow");
-	}
-	if (h->size << 2 >= h->tablesize * 3) {
-	    register mapelt *n, **t;
-	    register unsigned short j;
+    } else if (h->size << 2 >= h->tablesize * 3) {
+	register mapelt *n, **t;
+	register unsigned short j;
 
-	    /*
-	     * extend hash table for this mapping
-	     */
-	    i = h->tablesize << 1;
-	    h = (maphash *) ALLOC(char,
-				  sizeof(maphash) + (i - 1) * sizeof(mapelt*));
-	    h->size = m->hashed->size;
-	    h->tablesize = i;
-	    memset(h->table, '\0', i * sizeof(mapelt*));
-	    /*
-	     * copy entries from old hashtable to new hashtable
-	     */
-	    for (j = h->size, t = m->hashed->table; j > 0; t++) {
-		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    n = e->next;
-		    i = e->hashval % h->tablesize;
-		    e->next = h->table[i];
-		    h->table[i] = e;
-		    --j;
-		}
+	/*
+	 * extend hash table for this mapping
+	 */
+	i = h->tablesize << 1;
+	h = (maphash *) ALLOC(char,
+			      sizeof(maphash) + (i - 1) * sizeof(mapelt*));
+	h->size = m->hashed->size;
+	h->tablesize = i;
+	memset(h->table, '\0', i * sizeof(mapelt*));
+	/*
+	 * copy entries from old hashtable to new hashtable
+	 */
+	for (j = h->size, t = m->hashed->table; j > 0; t++) {
+	    for (e = *t; e != (mapelt *) NULL; e = n) {
+		n = e->next;
+		i = e->hashval % h->tablesize;
+		e->next = h->table[i];
+		h->table[i] = e;
+		--j;
 	    }
-	    FREE(m->hashed);
-	    m->hashed = h;
 	}
+	FREE(m->hashed);
+	m->hashed = h;
     }
     h->size++;
 

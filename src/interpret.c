@@ -1048,6 +1048,25 @@ register int n;
 }
 
 /*
+ * NAME:	interpret->prev_program()
+ * DESCRIPTION:	return the nth previous program in the function call chain
+ */
+char *i_prev_program(n)
+register int n;
+{
+    register frame *f;
+
+    for (f = cframe; n >= 0; --n) {
+	f = f->prev;
+	if (f->obj == (object *) NULL) {
+	    return (char *) NULL;
+	}
+    }
+
+    return f->p_ctrl->obj->chain.name;
+}
+
+/*
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */

@@ -174,6 +174,7 @@ extern int		i_get_rllevel	P((void));
 extern void		i_set_rllevel	P((int));
 extern void		i_set_sp	P((value*));
 extern object	       *i_prev_object	P((int));
+extern char	       *i_prev_program	P((int));
 extern void		i_typecheck	P((char*, char*, char*, int, int));
 extern void		i_catcherr	P((void));
 extern void		i_funcall	P((object*, int, int, int));

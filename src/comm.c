@@ -234,15 +234,17 @@ string *str;
 		*q++ = (char) IAC;
 		size++;
 	    } else if (*p == LF) {
-		/*
-		 * insert CR before LF
-		 */
-		if (size == OUTBUF_SIZE) {
-		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
-		    size = 0;
+		if (size != 0 && q[-1] != CR) {
+		    /*
+		     * insert CR before LF
+		     */
+		    if (size == OUTBUF_SIZE) {
+			conn_write(usr->conn, q = usr->outbuf, size, FALSE);
+			size = 0;
+		    }
+		    *q++ = CR;
+		    size++;
 		}
-		*q++ = CR;
-		size++;
 	    } else if ((*p & 0x7f) < ' ' && *p != HT && *p != BEL && *p != BS) {
 		/*
 		 * illegal character

@@ -11,4 +11,5 @@ DESCRIPTION
 	the number of call_others involved, zero is returned.
 
 SEE ALSO
-	kfun/call_other, kfun/this_object, kfun/call_trace
+	kfun/call_other, kfun/previous_program, kfun/this_object,
+	kfun/call_trace

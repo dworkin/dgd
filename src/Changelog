@@ -1052,3 +1052,4 @@ DGD 1.1
    and ST_ATICKS.
  - Patterns in get_dir() accidentally matched almost anything.
  - Several mapping problems fixed.
+ - Added kfun previous_program().

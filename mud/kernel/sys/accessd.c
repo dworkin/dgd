@@ -50,7 +50,7 @@ int access(string user, string file, int type)
 # endif
 	 ))) {
 	/*
-	 * read access outside /usr, in /usr/*/open and in selected
+	 * read access outside /usr, in /usr/foo/open and in selected
 	 * other directories in /usr
 	 */
 	return 1;
@@ -155,7 +155,7 @@ private mapping filter_access(mapping access, string file)
  */
 set_access(string user, string file, int type)
 {
-    if (PRIV1()) {
+    if (SYSTEM()) {
 	if (user == 0 || file == 0 || type < 0 || type > FULL_ACCESS) {
 	    error("Bad argument to set_access");
 	}
@@ -209,9 +209,7 @@ set_access(string user, string file, int type)
 		    }
 		}
 	    }
-# ifndef SYS_CONTINUOUS
 	    save_object(ACCESSDATA);
-# endif
 	}
     }
 }
@@ -222,13 +220,11 @@ set_access(string user, string file, int type)
  */
 remove_user_access(string user)
 {
-    if (PRIV1()) {
+    if (SYSTEM()) {
 	if (uaccess[user] != 0) {
 	    rlimits (-1; -1) {
 		uaccess[user] = 0;
-# ifndef SYS_CONTINUOUS
 		save_object(ACCESSDATA);
-# endif
 	    }
 	}
     }
@@ -279,7 +275,7 @@ mapping get_file_access(string path)
  */
 set_global_access(string dir, int flag)
 {
-    if (PRIV1()) {
+    if (SYSTEM()) {
 	if (dir == 0 || (flag & ~1)) {
 	    error("Bad argument to set_global_access");
 	}

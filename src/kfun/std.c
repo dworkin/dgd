@@ -162,6 +162,8 @@ int nargs;
     if (nargs == 0) {
 	(--sp)->type = T_INT;
 	sp->u.number = 0;
+    } else if (sp->u.number < 0) {
+	return 1;
     }
 
     obj = i_prev_object((int) sp->u.number);
@@ -169,6 +171,44 @@ int nargs;
 	sp->type = T_OBJECT;
 	sp->oindex = obj->index;
 	sp->u.objcnt = obj->count;
+    } else {
+	sp->u.number = 0;
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("previous_program", kf_previous_program, pt_previous_program)
+# else
+char pt_previous_program[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING,
+			       1, T_INT };
+
+/*
+ * NAME:	kfun->previous_program()
+ * DESCRIPTION:	return the previous program in the function call chain
+ */
+int kf_previous_program(nargs)
+int nargs;
+{
+    char *prog;
+    register string *str;
+
+    if (nargs == 0) {
+	(--sp)->type = T_INT;
+	sp->u.number = 0;
+    } else if (sp->u.number < 0) {
+	return 1;
+    }
+
+    prog = i_prev_program((int) sp->u.number);
+    if (prog != (char *) NULL) {
+	sp->type = T_STRING;
+	str = str_new((char *) NULL, strlen(prog) + 1L);
+	str->text[0] = '/';
+	strcpy(str->text + 1, prog);
+	str_ref(sp->u.string = str);
     } else {
 	sp->u.number = 0;
     }

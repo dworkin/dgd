@@ -3,6 +3,7 @@
 
 object rsrcd;		/* resource daemon */
 mapping resources;	/* registered resources */
+string owner;		/* owner of these resources */
 
 /*
  * NAME:	create()
@@ -15,27 +16,14 @@ static create()
 }
 
 /*
- * NAME:	decay_rsrc()
- * DESCRIPTION:	decay a resource
+ * NAME:	set_owner()
+ * DESCRIPTION:	set the owner of this resource
  */
-private decay_rsrc(int *rsrc, int *xrsrc)
+set_owner(string name)
 {
-    int usage, decay, period, i, time;
-
-    usage = rsrc[RSRC_USAGE];
-    decay = 100 - xrsrc[RSRC_DECAY];
-    period = xrsrc[RSRC_PERIOD];
-    i = rsrc[RSRC_DECAYTIME];
-
-    time = time();
-    do {
-	usage = usage * decay / 100;
-	i += period;
-    } while (time - i >= period && usage != 0);
-
-    rsrc[RSRC_DECAYTIME] = i;
-    xrsrc[RSRC_USAGE] -= rsrc[RSRC_USAGE] - usage;
-    rsrc[RSRC_USAGE] = usage;
+    if (previous_object() == rsrcd) {
+	owner = name;
+    }
 }
 
 /*
@@ -59,11 +47,37 @@ rsrc_set_limit(string name, int max)
 	int *rsrc;
 
 	rsrc = resources[name];
-	if (rsrc != 0) {
+	if (rsrc) {
 	    rsrc[RSRC_MAX] = max;
 	} else {
-	    resources[name] = ({ 0, max, time() });
+	    resources[name] = ({ 0, max, 0 });
 	}
+    }
+}
+
+/*
+ * NAME:	decay_rsrc()
+ * DESCRIPTION:	decay a resource
+ */
+private decay_rsrc(int *rsrc, int *grsrc, int time)
+{
+    int usage, decay, period, i;
+
+    usage = rsrc[RSRC_USAGE];
+    decay = 100 - grsrc[RSRC_DECAY];
+    period = grsrc[RSRC_PERIOD];
+    time -= period;
+    i = rsrc[RSRC_DECAYTIME];
+
+    do {
+	usage = usage * decay / 100;
+	i += period;
+    } while (time >= i && usage != 0);
+
+    rlimits (-1; -1) {
+	rsrc[RSRC_DECAYTIME] = i;
+	grsrc[RSRC_USAGE] -= rsrc[RSRC_USAGE] - usage;
+	rsrc[RSRC_USAGE] = usage;
     }
 }
 
@@ -71,20 +85,31 @@ rsrc_set_limit(string name, int max)
  * NAME:	rsrc_get()
  * DESCRIPTION:	get individual resource usage
  */
-int *rsrc_get(string name, mixed *xrsrc)
+int *rsrc_get(string name, int *grsrc)
 {
     if (previous_object() == rsrcd) {
-	int *rsrc;
+	mixed *rsrc;
+	int time;
 
 	rsrc = resources[name];
-	if (rsrc == 0) {
-	    return resources[name] = ({ 0, -1, time() });
+	if (!rsrc) {
+	    return ({ 0, grsrc[RSRC_MAX], 0 }) +
+		   grsrc[RSRC_DECAY .. RSRC_PERIOD - 1];
+	} else {
+	    if (grsrc[RSRC_DECAY] != 0 &&
+		(time=time()) - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD]) {
+		/* decay resource */
+		decay_rsrc(rsrc, grsrc, time);
+	    }
+	    rsrc += grsrc[RSRC_DECAY .. RSRC_PERIOD - 1];
+	    if (rsrc[RSRC_MAX] < 0) {
+		rsrc[RSRC_MAX] = grsrc[RSRC_MAX];
+	    }
+	    if (typeof(rsrc[RSRC_INDEXED]) == T_MAPPING) {
+		rsrc[RSRC_INDEXED] += ([ ]);
+	    }
+	    return rsrc;
 	}
-	if (typeof(xrsrc[RSRC_DECAY]) == T_INT && xrsrc[RSRC_DECAY] != 0 &&
-	    time() - rsrc[RSRC_DECAYTIME] >= xrsrc[RSRC_PERIOD]) {
-	    decay_rsrc(rsrc, xrsrc);
-	}
-	return rsrc;
     }
 }
 
@@ -93,43 +118,56 @@ int *rsrc_get(string name, mixed *xrsrc)
  * DESCRIPTION:	increment or decrement a resource, return 1 if successful,
  *		0 if the maximum would be exceeded
  */
-int rsrc_incr(string name, mixed index, int incr, mixed *xrsrc, int force)
+int rsrc_incr(string name, mixed index, int incr, int *grsrc, int force)
 {
     if (previous_object() == rsrcd) {
 	mixed *rsrc;
-	int max;
+	int max, time;
 
 	rsrc = resources[name];
-	if (rsrc == 0) {
+	if (!rsrc) {
 	    /* new resource */
-	    rsrc = resources[name] = ({ 0, -1, time() });
-	    max = xrsrc[RSRC_MAX];
+	    rsrc = resources[name] = ({ 0, -1, 0 });
+	    max = grsrc[RSRC_MAX];
 	} else {
 	    /* existing resource */
-	    if (typeof(xrsrc[RSRC_DECAY]) == T_INT && xrsrc[RSRC_DECAY] != 0 &&
-		time() - rsrc[RSRC_DECAYTIME] >= xrsrc[RSRC_PERIOD]) {
-		decay_rsrc(rsrc, xrsrc);
+	    if (grsrc[RSRC_DECAY] != 0 &&
+		(time=time()) - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD]) {
+		/* decay resource */
+		decay_rsrc(rsrc, grsrc, time);
 	    }
-	    max = ((rsrc[RSRC_MAX] >= 0) ? rsrc : xrsrc)[RSRC_MAX];
+
+	    max = ((rsrc[RSRC_MAX] >= 0) ? rsrc : grsrc)[RSRC_MAX];
 	}
 
 	if (!force && max >= 0 && rsrc[RSRC_USAGE] + incr > max && incr > 0) {
 	    /* would exceed limit */
 	    return 0;
 	}
-	rsrc[RSRC_USAGE] += incr;
-	if (index != 0) {
-	    /* indexed resource */
-	    if (typeof(rsrc[RSRC_INDEXED]) != T_MAPPING) {
-		rsrc[RSRC_INDEXED] = ([ index : incr ]);
-	    } else {
-		rsrc[RSRC_INDEXED][index] += incr;
+
+	rlimits (-1; -1) {
+	    if (index) {
+		/*
+		 * indexed resource
+		 */
+		catch {
+		    if (typeof(index) == T_OBJECT) {
+			/* let object keep track */
+			index->_F_rsrc_incr(name, incr);
+		    } else if (typeof(rsrc[RSRC_INDEXED]) != T_MAPPING) {
+			rsrc[RSRC_INDEXED] = ([ index : incr ]);
+		    } else {
+			rsrc[RSRC_INDEXED][index] += incr;
+		    }
+		} : {
+		    return 0;	/* error: increment failed */
+		}
 	    }
-	    if (typeof(index) == T_OBJECT) {
-		/* let object keep track */
-		index->_F_rsrc_incr(name, incr);
-	    }
+	    rsrc[RSRC_USAGE] += incr;
+	    grsrc[RSRC_USAGE] += incr;
 	}
+
+TRACE(owner + ": " + name + " from " + (rsrc[RSRC_USAGE] - incr) + " to " + rsrc[RSRC_USAGE]);
 	return 1;
     }
 }

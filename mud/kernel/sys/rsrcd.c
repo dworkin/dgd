@@ -11,24 +11,23 @@ mapping owners;			/* resource owners */
  */
 static create()
 {
-    resources = ([ ]);		/* no resources yet */
-    owners = ([ ]);		/* and no resource owners */
-}
+    /* initial resources */
+    resources = ([
+      "objects" :		({ 0, -1, 0, 0, 0 }),
+      "events" :		({ 0, -1, 0, 0, 0 }),
+      "callouts" :		({ 0, -1, 0, 0, 0 }),
+      "stackdepth" :		({ 0, -1, 0, 0, 0 }),
+      "ticks" :			({ 0, -1, 0, 0, 0 }),
+      "tick usage" :		({ 0, -1, time(), 10, 3600 }),
+      "filequota" :		({ 0, -1, 0, 0, 0 }),
+      "editors" :		({ 0, -1, 0, 0, 0 }),
 
-/*
- * NAME:	robj()
- * DESCRIPTION:	get a resource owner object, making a new one if it doesn't
- *		exist yet
- */
-private object robj(string name)
-{
-    object owner;
+      /* reasonable starting values */
+      "create depth" :		({ 0, 5, 0, 0, 0 }),
+      "create ticks" :		({ 0, 5000, 0, 0, 0 }),
+    ]);
 
-    owner = owners[name];
-    if (owner == 0) {
-	return owners[name] = clone_object(RSRCOBJ);
-    }
-    return owner;
+    owners = ([ ]);		/* no resource owners yet */
 }
 
 /*
@@ -38,32 +37,58 @@ private object robj(string name)
  */
 set_rsrc(string name, int max, int decay, int period)
 {
-    if (PRIV0()) {
+    if (KERNEL()) {
+	int time;
 	mixed *rsrc;
 
+	time = (decay != 0) ? time() : 0;
 	rsrc = resources[name];
 	if (rsrc != 0) {
 	    /*
 	     * existing resource
 	     */
-	    rsrc[RSRC_MAX] = max;
-	    rsrc[RSRC_DECAY] = decay;
-	    rsrc[RSRC_PERIOD] = period;
+	    rlimits (-1; -1) {
+		rsrc[RSRC_DECAYTIME] = time;
+		rsrc[RSRC_MAX] = max;
+		rsrc[RSRC_DECAY] = decay;
+		rsrc[RSRC_PERIOD] = period;
+	    }
 	} else {
 	    /* new resource */
-	    resources[name] = ({ 0, max, 0, decay, period });
+	    resources[name] = ({ 0, max, time, decay, period });
+	}
+    }
+}
+
+/*
+ * NAME:	del_rsrc()
+ * DESCRIPTION:	delete a resource
+ */
+del_rsrc(string name)
+{
+    if (KERNEL()) {
+	object *objlist;
+	int i;
+
+	objlist = map_values(owners);
+	i = sizeof(objlist);
+	rlimits (-1; -1) {
+	    while (i != 0) {
+		objlist[--i]->del_rsrc(name);
+	    }
+	    resources[name] = 0;
 	}
     }
 }
 
 /*
  * NAME:	query_rsrc()
- * DESCRIPTION:	get resource usage
+ * DESCRIPTION:	get usage and limits of a resource
  */
 mixed *query_rsrc(string name)
 {
-    if (PRIV0()) {
-	return resources[name][ .. ];
+    if (SYSTEM()) {
+	return resources[name];
     }
 }
 
@@ -73,36 +98,11 @@ mixed *query_rsrc(string name)
  */
 string *query_rsrc_list()
 {
-    return map_indices(resources);
-}
-
-/*
- * NAME:	query_owner_list()
- * DESCRIPTION:	get a list of resources
- */
-string *query_owner_list()
-{
-    return map_indices(owners);
-}
-
-/*
- * NAME:	del_rsrc()
- * DESCRIPTION:	delete a resource
- */
-del_rsrc(string name)
-{
-    if (PRIV0()) {
-	object *robjs;
-	int i;
-
-	resources[name] = 0;
-	robjs = map_values(owners);
-	i = sizeof(robjs);
-	while (--i >= 0) {
-	    robjs[i]->del_rsrc(name);
-	}
+    if (SYSTEM()) {
+	return map_indices(resources);
     }
 }
+
 
 /*
  * NAME:	rsrc_set_limit()
@@ -110,8 +110,8 @@ del_rsrc(string name)
  */
 rsrc_set_limit(string owner, string name, int max)
 {
-    if (PRIV0()) {
-	robj(owner)->rsrc_set_limit(name, max);
+    if (SYSTEM()) {
+	owners[owner]->rsrc_set_limit(name, max);
     }
 }
 
@@ -119,18 +119,10 @@ rsrc_set_limit(string owner, string name, int max)
  * NAME:	rsrc_get()
  * DESCRIPTION:	get individual resource usage
  */
-int *rsrc_get(string owner, string name)
+mixed *rsrc_get(string owner, string name)
 {
-    if (PRIV0()) {
-	mixed *rsrc;
-
-	rsrc = robj(owner)->rsrc_get(name) +
-	       resources[name][RSRC_DECAY .. RSRC_PERIOD - 1];
-	if (typeof(rsrc[RSRC_INDEXED]) == T_MAPPING) {
-	    /* replace indexed resource by copy */
-	    rsrc[RSRC_INDEXED] += ([ ]);
-	}
-	return rsrc;
+    if (SYSTEM()) {
+	return owners[owner]->rsrc_get(name, resources[name]);
     }
 }
 
@@ -142,17 +134,45 @@ int *rsrc_get(string owner, string name)
 varargs int rsrc_incr(string owner, string name, mixed index, int incr,
 		      int force)
 {
-    if (PRIV0()) {
-	int *rsrc;
+    if (KERNEL()) {
+	return owners[owner]->rsrc_incr(name, index, incr, resources[name],
+					force);
+    }
+}
 
-	rsrc = resources[name];
-	if (robj(owner)->rsrc_incr(name, index, incr, rsrc, force)) {
-	    /* increment succeeded */
-	    rsrc[RSRC_USAGE] += incr;
-	    return 1;
-	} else {
-	    /* increment failed */
-	    return 0;
+
+/*
+ * NAME:	add_owner()
+ * DESCRIPTION:	add a (possibly already existing) resource owner
+ */
+add_owner(string owner)
+{
+    if (KERNEL() && !owners[owner]) {
+	object obj;
+
+	rlimits (-1; -1) {
+	    obj = clone_object(RSRCOBJ);
+	    catch {
+		owners[owner] = obj;
+		obj->set_owner("System");
+		rsrc_incr("System", "objects", 0, 1);
+	    } : {
+		destruct_object(obj);
+	    }
 	}
+	if (!obj) {
+	    error("Too many resource owners");
+	}
+    }
+}
+
+/*
+ * NAME:	query_owner_list()
+ * DESCRIPTION:	get a list of resource owners
+ */
+string *query_owner_list()
+{
+    if (SYSTEM()) {
+	return map_indices(owners);
     }
 }

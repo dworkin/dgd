@@ -32,10 +32,12 @@ private string reduce_path(string file, string dir, string creator)
 
     case '~':
 	/* ~path */
-	if (strlen(file) == 1 || file[1] == '/') {
-	    file = "/usr/" + creator + file[1 .. ];
-	} else {
-	    file = "/usr/" + file[1 .. ];
+	if (creator) {
+	    if (strlen(file) == 1 || file[1] == '/') {
+		file = "/usr/" + creator + file[1 .. ];
+	    } else {
+		file = "/usr/" + file[1 .. ];
+	    }
 	}
 	/* fall through */
     default:
@@ -134,5 +136,5 @@ private int file_size(string file)
     }
 
     i = info[1][i];
-    return (i < 0) ? dir_size(file) : (i + 1023) >> 10;
+    return (i < 0) ? i : (i + 1023) >> 10;
 }

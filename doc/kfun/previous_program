@@ -1,0 +1,14 @@
+NAME
+	previous_program - return the previous program
+
+SYNOPSIS
+	varargs object previous_program(int n)
+
+
+DESCRIPTION
+	Return the name of the object with the function n+1 (default: 1) steps
+	back in the function call chain.  If the number of steps is larger than
+	the number of function calls involved, zero is returned.
+
+SEE ALSO
+	kfun/previous_object, kfun/call_trace
