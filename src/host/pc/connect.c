@@ -18,7 +18,8 @@ static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static SOCKET telnet;			/* telnet port socket descriptor */
 static SOCKET binary;			/* binary port socket descriptor */
-static fd_set fds;			/* file descriptor bitmap */
+static fd_set infds;			/* file descriptor input bitmap */
+static fd_set outfds;			/* file descriptor output bitmap */
 static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
@@ -109,10 +110,11 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	flist = conn;
     }
 
-    FD_ZERO(&fds);
+    FD_ZERO(&infds);
+    FD_ZERO(&outfds);
     FD_ZERO(&waitfds);
-    FD_SET(telnet, &fds);
-    FD_SET(binary, &fds);
+    FD_SET(telnet, &infds);
+    FD_SET(binary, &infds);
 
     return TRUE;
 }
@@ -172,7 +174,8 @@ connection *conn_tnew(void)
     flist = conn->next;
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
-    FD_SET(fd, &fds);
+    FD_SET(fd, &infds);
+    FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
 
@@ -203,7 +206,8 @@ connection *conn_bnew(void)
     flist = conn->next;
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
-    FD_SET(fd, &fds);
+    FD_SET(fd, &infds);
+    FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
 
@@ -218,12 +222,31 @@ void conn_del(connection *conn)
 {
     if (conn->fd != INVALID_SOCKET) {
 	closesocket(conn->fd);
-	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &infds);
+	FD_CLR(conn->fd, &outfds);
 	FD_CLR(conn->fd, &waitfds);
 	conn->fd = INVALID_SOCKET;
     }
     conn->next = flist;
     flist = conn;
+}
+
+/*
+ * NAME:        conn->block()
+ * DESCRIPTION: block or unblock input from connection
+ */
+void conn_block(conn, flag)
+register connection *conn;
+int flag;
+{
+    if (conn->fd != INVALID_SOCKET) {
+	if (flag) {
+	    FD_CLR(conn->fd, &infds);
+	    FD_CLR(conn->fd, &readfds);
+	} else {
+	    FD_SET(conn->fd, &infds);
+	}
+    }
 }
 
 /*
@@ -239,7 +262,7 @@ int conn_select(int wait)
      * First, check readability and writability for binary sockets with pending
      * data only.
      */
-    memcpy(&readfds, &fds, sizeof(fd_set));
+    memcpy(&readfds, &infds, sizeof(fd_set));
     memcpy(&writefds, &waitfds, sizeof(fd_set));
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
@@ -247,7 +270,7 @@ int conn_select(int wait)
     /*
      * Now check writability for all sockets in a polling call.
      */
-    memcpy(&writefds, &fds, sizeof(fd_set));
+    memcpy(&writefds, &outfds, sizeof(fd_set));
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
     select(0, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
@@ -293,7 +316,8 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 	if ((size=send(conn->fd, buf, len, 0)) == SOCKET_ERROR &&
 	    WSAGetLastError() != WSAEWOULDBLOCK) {
 	    closesocket(conn->fd);
-	    FD_CLR(conn->fd, &fds);
+	    FD_CLR(conn->fd, &infds);
+	    FD_CLR(conn->fd, &outfds);
 	    conn->fd = INVALID_SOCKET;
 	} else if ((unsigned int) size != len) {
 	    /* waiting for wrdone */

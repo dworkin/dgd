@@ -330,9 +330,9 @@ int nargs;
 {
     register unsigned int flen, slen, size;
     register char *format, *x;
-    value values[MAX_LOCALS], *val;
+    value *lval, *val;
     unsigned int fl, sl;
-    int matches;
+    int matches, assignments;
     char *s;
     xfloat flt;
     bool skip;
@@ -346,11 +346,13 @@ int nargs;
     slen = f->sp[nargs - 1].u.string->len;
     format = f->sp[nargs - 2].u.string->text;
     flen = f->sp[nargs - 2].u.string->len;
+    lval = &f->sp[nargs - 2];
+    val = --(f->sp);	/* there's room for this */
+    val->type = T_INVALID;
 
     nargs -= 2;
     i_add_ticks(f, 8 * nargs);
-    val = values;
-    matches = 0;
+    matches = assignments = 0;
 
     while (flen > 0) {
 	if (format[0] != '%' || format[1] == '%') {
@@ -427,8 +429,7 @@ int nargs;
 		    break;
 
 		default:
-		    s = "Bad sscanf format string";
-		    goto err;
+		    error("Bad sscanf format string");
 		}
 	    } else {
 		/*
@@ -479,13 +480,15 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    s = "No lvalue for %%s";
-		    goto err;
+		    error("No lvalue for %%s");
 		}
 		--nargs;
 		val->type = T_STRING;
-		val->u.string = str_new(s, (long) size);
-		val++;
+		str_ref(val->u.string = str_new(s, (long) size));
+		i_store(f, --lval, val);
+		lval->type = T_INVALID;
+		val->u.string->ref--;
+		assignments++;
 	    }
 	    s = x;
 	    break;
@@ -501,12 +504,13 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    s = "No lvalue for %%d";
-		    goto err;
+		    error("No lvalue for %%d");
 		}
 		--nargs;
 		val->type = T_INT;
-		val++;
+		i_store(f, --lval, val);
+		lval->type = T_INVALID;
+		assignments++;
 	    }
 	    break;
 
@@ -520,13 +524,14 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    s = "No lvalue for %%f";
-		    goto err;
+		    error("No lvalue for %%f");
 		}
 		--nargs;
 		val->type = T_FLOAT;
 		VFLT_PUT(val, flt);
-		val++;
+		i_store(f, --lval, val);
+		lval->type = T_INVALID;
+		assignments++;
 	    }
 	    break;
 
@@ -537,53 +542,36 @@ int nargs;
 	    }
 	    if (!skip) {
 		if (nargs == 0) {
-		    s = "No lvalue for %%c";
-		    goto err;
+		    error("No lvalue for %%c");
 		}
 		--nargs;
 		val->type = T_INT;
 		val->u.number = UCHAR(*s);
-		val++;
+		i_store(f, --lval, val);
+		lval->type = T_INVALID;
+		assignments++;
 	    }
 	    s++;
 	    --slen;
 	    break;
 
 	default:
-	    s = "Bad sscanf format string";
-	    goto err;
+	    error("Bad sscanf format string");
 	}
 	matches++;
     }
 
 no_match:
+    f->sp++;			/* pop value */
     if (nargs > 0) {
-	/* pop superfluous arguments */
-	i_pop(f, nargs);
+	i_pop(f, nargs);	/* pop superfluous arguments */
     }
-    while (val > values) {
-	i_store(f, f->sp, (value *) val - 1);
-	f->sp++;
-	--val;
-    }
-
+    f->sp += assignments;	/* pop lvalues */
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
     f->sp->u.number = matches;
     return 0;
-
-err:
-    /*
-     * free any values left unassigned
-     */
-    while (val > values) {
-	if ((--val)->type == T_STRING) {
-	    str_ref(val->u.string);
-	    str_del(val->u.string);
-	}
-    }
-    error(s);
 }
 # endif
 

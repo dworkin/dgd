@@ -11,6 +11,7 @@ extern void	   conn_listen	P((void));
 extern connection *conn_tnew	P((void));
 extern connection *conn_bnew	P((void));
 extern void	   conn_del	P((connection*));
+extern void	   conn_block	P((connection*, int));
 extern int	   conn_select	P((int));
 extern int	   conn_read	P((connection*, char*, unsigned int));
 extern int	   conn_write	P((connection*, char*, unsigned int));

@@ -29,9 +29,10 @@ struct _connection_ {
 # define TCP_TERMINATED	0x02		/* terminated */
 # define TCP_OPEN	0x01		/* open */
 # define TCP_CLOSE	0x02		/* closing connection */
-# define TCP_SEND	0x04		/* writing data */
-# define TCP_WAIT	0x08		/* waiting for data to be written */
-# define TCP_RELEASED	0x10		/* (about to be) released */
+# define TCP_BLOCKED	0x04		/* input blocked */
+# define TCP_SEND	0x08		/* writing data */
+# define TCP_WAIT	0x10		/* waiting for data to be written */
+# define TCP_RELEASED	0x20		/* (about to be) released */
 
 static connection *connlist;		/* list of open connections */
 static QHdr flist;			/* free connection queue */
@@ -428,6 +429,19 @@ void conn_del(connection *conn)
 }
 
 /*
+ * NAME:	conn->block()
+ * DESCRIPTION:	block or unblock input from a connection
+ */
+void conn_block(connection *conn, int flag)
+{
+    if (flag) {
+	conn->sflags |= TCP_BLOCKED;
+    } else {
+	conn->sflags &= ~TCP_BLOCKED;
+    }
+}
+
+/*
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
@@ -448,7 +462,8 @@ int conn_select(int wait)
 	    	conn_del(conn);
 	    } else {
 		conn_flush(conn);
-		if (conn->dflag || conn->cflags ||
+		if ((conn->dflag && !(conn->sflags & TCP_BLOCKED)) ||
+		    conn->cflags ||
 		    ((conn->sflags & TCP_WAIT) &&
 		      conn->wds[0].length + conn->ssize != tcpbufsz)) {
 		    stop = TRUE;
@@ -483,7 +498,7 @@ int conn_read(connection *conn, char *buf, unsigned int len)
     if (conn->cflags) {
 	return -1;	/* terminated */
     }
-    if (!(conn->dflag)) {
+    if (!(conn->dflag) || (conn->sflags & TCP_BLOCKED)) {
 	return 0;	/* no data */
     }
     conn->dflag = 0;

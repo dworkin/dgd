@@ -17,10 +17,10 @@ int kfun, n;
  * NAME:	kfun->itoa()
  * DESCRIPTION:	convert an Int to a string
  */
-static char *kf_itoa(i)
+static char *kf_itoa(i, buffer)
 Int i;
+char *buffer;
 {
-    static char buffer[12];
     register Uint u;
     register char *p;
 
@@ -69,7 +69,7 @@ register frame *f;
 
 	case T_STRING:
 	    i_add_ticks(f, 2);
-	    num = kf_itoa(f->sp[1].u.number);
+	    num = kf_itoa(f->sp[1].u.number, buffer);
 	    str = str_new((char *) NULL,
 			  (l=(long) strlen(num)) + f->sp->u.string->len);
 	    strcpy(str->text, num);
@@ -113,7 +113,7 @@ register frame *f;
 	i_add_ticks(f, 2);
 	switch (f->sp->type) {
 	case T_INT:
-	    num = kf_itoa(f->sp->u.number);
+	    num = kf_itoa(f->sp->u.number, buffer);
 	    f->sp++;
 	    str = str_new((char *) NULL,
 			  f->sp->u.string->len + (long) strlen(num));
@@ -1883,7 +1883,7 @@ register frame *f;
     i_add_ticks(f, 2);
     if (f->sp->type == T_INT) {
 	/* from int */
-	num = kf_itoa(f->sp->u.number);
+	num = kf_itoa(f->sp->u.number, buffer);
     } else if (f->sp->type == T_FLOAT) {
 	/* from float */
 	i_add_ticks(f, 1);
@@ -2014,7 +2014,7 @@ int kf_sum(f, nargs)
 register frame *f;
 int nargs;
 {
-    char *num;
+    char buffer[12], *num;
     string *s;
     array *a;
     register value *v, *e1, *e2;
@@ -2042,7 +2042,7 @@ int nargs;
 	    } else if (vtype == T_ARRAY) {
 		size += v->u.array->size;
 	    } else {
-		size += strlen(kf_itoa(v->u.number));
+		size += strlen(kf_itoa(v->u.number, buffer));
 	    }
 	} else if (v->u.number < -2) {
 	    /* aggregate */
@@ -2071,7 +2071,7 @@ int nargs;
 	}
     }
     if (nonint > 1) {
-	size = isize + strlen(kf_itoa(result));
+	size = isize + strlen(kf_itoa(result, buffer));
     }
 
     /*
@@ -2091,7 +2091,7 @@ int nargs;
 		    str_del(v->u.string);
 		    result = 0;
 		} else if (nonint < i) {
-		    num = kf_itoa(v->u.number);
+		    num = kf_itoa(v->u.number, buffer);
 		    len = strlen(num);
 		    size -= len;
 		    memcpy(s->text + size, num, len);
@@ -2111,7 +2111,7 @@ int nargs;
 	    }
 	}
 	if (nonint > 0) {
-	    num = kf_itoa(result);
+	    num = kf_itoa(result, buffer);
 	    memcpy(s->text, num, strlen(num));
 	}
 

@@ -83,32 +83,35 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("save_object", kf_save_object, pt_save_object)
 # else
-static int fd;			/* save/restore file descriptor */
-static char *buffer;		/* save/restore buffer */
-static unsigned int bufsz;	/* size of save/restore buffer */
-static uindex narrays;		/* number of arrays/mappings encountered */
+typedef struct {
+    int fd;			/* save/restore file descriptor */
+    char *buffer;		/* save/restore buffer */
+    unsigned int bufsz;		/* size of save/restore buffer */
+    uindex narrays;		/* number of arrays/mappings encountered */
+} savecontext;
 
 /*
  * NAME:	put()
  * DESCRIPTION:	output a number of characters
  */
-static void put(buf, len)
+static void put(x, buf, len)
+register savecontext *x;
 register char *buf;
 register unsigned int len;
 {
     register unsigned int chunk;
 
-    while (bufsz + len > BUF_SIZE) {
-	chunk = BUF_SIZE - bufsz;
-	memcpy(buffer + bufsz, buf, chunk);
-	write(fd, buffer, BUF_SIZE);
+    while (x->bufsz + len > BUF_SIZE) {
+	chunk = BUF_SIZE - x->bufsz;
+	memcpy(x->buffer + x->bufsz, buf, chunk);
+	write(x->fd, x->buffer, BUF_SIZE);
 	buf += chunk;
 	len -= chunk;
-	bufsz = 0;
+	x->bufsz = 0;
     }
     if (len > 0) {
-	memcpy(buffer + bufsz, buf, len);
-	bufsz += len;
+	memcpy(x->buffer + x->bufsz, buf, len);
+	x->bufsz += len;
     }
 }
 
@@ -116,7 +119,8 @@ register unsigned int len;
  * NAME:	save_string()
  * DESCRIPTION:	save a string
  */
-static void save_string(str)
+static void save_string(x, str)
+savecontext *x;
 string *str;
 {
     char buf[STRINGSZ];
@@ -129,7 +133,7 @@ string *str;
     *q++ = '"';
     for (len = str->len, size = 1; len > 0; --len, size++) {
 	if (size >= STRINGSZ - 2) {
-	    put(q = buf, size);
+	    put(x, q = buf, size);
 	    size = 0;
 	}
 	switch (c = *p++) {
@@ -156,16 +160,17 @@ string *str;
 	*q++ = c;
     }
     *q++ = '"';
-    put(buf, size + 1);
+    put(x, buf, size + 1);
 }
 
-static void save_mapping	P((array*));
+static void save_mapping	P((savecontext*, array*));
 
 /*
  * NAME:	save_array()
  * DESCRIPTION:	save an array
  */
-static void save_array(a)
+static void save_array(x, a)
+register savecontext *x;
 array *a;
 {
     char buf[16];
@@ -174,57 +179,58 @@ array *a;
     xfloat flt;
 
     i = arr_put(a);
-    if (i < narrays) {
+    if (i < x->narrays) {
 	/* same as some previous array */
 	sprintf(buf, "#%u", i);
-	put(buf, strlen(buf));
+	put(x, buf, strlen(buf));
 	return;
     }
-    narrays++;
+    x->narrays++;
 
     sprintf(buf, "({%d|", a->size);
-    put(buf, strlen(buf));
+    put(x, buf, strlen(buf));
     for (i = a->size, v = d_get_elts(a); i > 0; --i, v++) {
 	switch (v->type) {
 	case T_INT:
 	    sprintf(buf, "%ld", (long) v->u.number);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    break;
 
 	case T_FLOAT:
 	    VFLT_GET(v, flt);
 	    flt_ftoa(&flt, buf);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(buf, 13);
+	    put(x, buf, 13);
 	    break;
 
 	case T_STRING:
-	    save_string(v->u.string);
+	    save_string(x, v->u.string);
 	    break;
 
 	case T_OBJECT:
-	    put("0", 1);
+	    put(x, "0", 1);
 	    break;
 
 	case T_ARRAY:
-	    save_array(v->u.array);
+	    save_array(x, v->u.array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(v->u.array);
+	    save_mapping(x, v->u.array);
 	    break;
 	}
-	put(",", 1);
+	put(x, ",", 1);
     }
-    put("})", 2);
+    put(x, "})", 2);
 }
 
 /*
  * NAME:	save_mapping()
  * DESCRIPTION:	save a mapping
  */
-static void save_mapping(a)
+static void save_mapping(x, a)
+register savecontext *x;
 array *a;
 {
     char buf[16];
@@ -233,13 +239,13 @@ array *a;
     xfloat flt;
 
     i = arr_put(a);
-    if (i < narrays) {
+    if (i < x->narrays) {
 	/* same as some previous mapping */
 	sprintf(buf, "@%u", i);
-	put(buf, strlen(buf));
+	put(x, buf, strlen(buf));
 	return;
     }
-    narrays++;
+    x->narrays++;
     map_compact(a);
 
     /*
@@ -260,7 +266,7 @@ array *a;
 	v++;
     }
     sprintf(buf, "([%d|", n);
-    put(buf, strlen(buf));
+    put(x, buf, strlen(buf));
 
     for (i = a->size >> 1, v = a->elts; i > 0; --i) {
 	if (v[0].type == T_OBJECT || v[1].type == T_OBJECT) {
@@ -270,61 +276,61 @@ array *a;
 	switch (v->type) {
 	case T_INT:
 	    sprintf(buf, "%ld", (long) v->u.number);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    break;
 
 	case T_FLOAT:
 	    VFLT_GET(v, flt);
 	    flt_ftoa(&flt, buf);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(buf, 13);
+	    put(x, buf, 13);
 	    break;
 
 	case T_STRING:
-	    save_string(v->u.string);
+	    save_string(x, v->u.string);
 	    break;
 
 	case T_ARRAY:
-	    save_array(v->u.array);
+	    save_array(x, v->u.array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(v->u.array);
+	    save_mapping(x, v->u.array);
 	    break;
 	}
-	put(":", 1);
+	put(x, ":", 1);
 	v++;
 	switch (v->type) {
 	case T_INT:
 	    sprintf(buf, "%ld", (long) v->u.number);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    break;
 
 	case T_FLOAT:
 	    VFLT_GET(v, flt);
 	    flt_ftoa(&flt, buf);
-	    put(buf, strlen(buf));
+	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-	    put(buf, 13);
+	    put(x, buf, 13);
 	    break;
 
 	case T_STRING:
-	    save_string(v->u.string);
+	    save_string(x, v->u.string);
 	    break;
 
 	case T_ARRAY:
-	    save_array(v->u.array);
+	    save_array(x, v->u.array);
 	    break;
 
 	case T_MAPPING:
-	    save_mapping(v->u.array);
+	    save_mapping(x, v->u.array);
 	    break;
 	}
-	put(",", 1);
+	put(x, ",", 1);
 	v++;
     }
-    put("])", 2);
+    put(x, "])", 2);
 }
 
 char pt_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
@@ -345,7 +351,7 @@ register frame *f;
     register dinherit *inh;
     register dataspace *data;
     char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
-    object *obj;
+    savecontext x;
     xfloat flt;
 
     _tmp = path_string(f->sp->u.string->text, f->sp->u.string->len);
@@ -367,17 +373,16 @@ register frame *f;
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
     _tmp = path_file(tmp);
-    fd = open(_tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
-    if (fd < 0) {
+    x.fd = open(_tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
+    if (x.fd < 0) {
 	error("Cannot create temporary save file \"/%s\"", tmp);
     }
-    buffer = ALLOCA(char, BUF_SIZE);
-    bufsz = 0;
+    x.buffer = ALLOCA(char, BUF_SIZE);
+    x.bufsz = 0;
 
-    obj = f->obj;
     ctrl = f->ctrl;
     data = f->data;
-    narrays = 0;
+    x.narrays = 0;
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	if (inh->varoffset == nvars) {
@@ -395,35 +400,35 @@ register frame *f;
 		     * don't save object values or 0
 		     */
 		    str = d_get_strconst(ctrl, v->inherit, v->index);
-		    put(str->text, str->len);
-		    put(" ", 1);
+		    put(&x, str->text, str->len);
+		    put(&x, " ", 1);
 		    switch (var->type) {
 		    case T_INT:
 			sprintf(buf, "%ld", (long) var->u.number);
-			put(buf, strlen(buf));
+			put(&x, buf, strlen(buf));
 			break;
 
 		    case T_FLOAT:
 			VFLT_GET(var, flt);
 			flt_ftoa(&flt, buf);
-			put(buf, strlen(buf));
+			put(&x, buf, strlen(buf));
 			sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
-			put(buf, 13);
+			put(&x, buf, 13);
 			break;
 
 		    case T_STRING:
-			save_string(var->u.string);
+			save_string(&x, var->u.string);
 			break;
 
 		    case T_ARRAY:
-			save_array(var->u.array);
+			save_array(&x, var->u.array);
 			break;
 
 		    case T_MAPPING:
-			save_mapping(var->u.array);
+			save_mapping(&x, var->u.array);
 			break;
 		    }
-		    put("\012", 1);	/* LF */
+		    put(&x, "\012", 1);	/* LF */
 		}
 		nvars++;
 	    }
@@ -431,14 +436,14 @@ register frame *f;
     }
 
     arr_clear();
-    if (bufsz > 0 && write(fd, buffer, bufsz) != bufsz) {
-	close(fd);
-	AFREE(buffer);
+    if (x.bufsz > 0 && write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
+	close(x.fd);
+	AFREE(x.buffer);
 	unlink(_tmp);
 	error("Cannot write to temporary save file \"/%s\"", tmp);
     }
-    close(fd);
-    AFREE(buffer);
+    close(x.fd);
+    AFREE(x.buffer);
 
     unlink(file);
     if (rename(_tmp, file) < 0) {
@@ -465,42 +470,50 @@ typedef struct _achunk_ {
     struct _achunk_ *next;	/* next in list */
 } achunk;
 
-static achunk *alist;		/* list of array chunks */
-static int achunksz = ACHUNKSZ;	/* size of current array chunk */
+typedef struct {
+    char *file;			/* current restore file */
+    int line;			/* current line number */
+    frame *f;			/* interpreter frame */
+    achunk *alist;		/* list of array chunks */
+    int achunksz;		/* size of current array chunk */
+    uindex narrays;		/* # of arrays/mappings */
+} restcontext;
 
 /*
  * NAME:	achunk->put()
  * DESCRIPTION:	put an array into the array chunks
  */
-static void ac_put(type, a)
+static void ac_put(x, type, a)
+register restcontext *x;
 short type;
 array *a;
 {
-    if (achunksz == ACHUNKSZ) {
+    if (x->achunksz == ACHUNKSZ) {
 	register achunk *l;
 
 	l = ALLOC(achunk, 1);
-	l->next = alist;
-	alist = l;
-	achunksz = 0;
+	l->next = x->alist;
+	x->alist = l;
+	x->achunksz = 0;
     }
-    alist->a[achunksz].type = type;
-    alist->a[achunksz++].u.array = a;
-    narrays++;
+    x->alist->a[x->achunksz].type = type;
+    x->alist->a[x->achunksz++].u.array = a;
+    x->narrays++;
 }
 
 /*
  * NAME:	achunk->get()
  * DESCRIPTION:	get an array from the array chunks
  */
-static value *ac_get(n)
+static value *ac_get(x, n)
+restcontext *x;
 register uindex n;
 {
     register uindex sz;
     register achunk *l;
 
-    n = narrays - n;
-    for (sz = achunksz, l = alist; n > sz; l = l->next, sz = ACHUNKSZ) {
+    n = x->narrays - n;
+    for (sz = x->achunksz, l = x->alist; n > sz; l = l->next, sz = ACHUNKSZ) {
 	n -= sz;
     }
     return &l->a[sz - n];
@@ -510,38 +523,36 @@ register uindex n;
  * NAME:	achunk->clear()
  * DESCRIPTION:	clear the array chunks
  */
-static void ac_clear()
+static void ac_clear(x)
+restcontext *x;
 {
     register achunk *l, *f;
 
-    for (l = alist; l != (achunk *) NULL; ) {
+    for (l = x->alist; l != (achunk *) NULL; ) {
 	f = l;
 	l = l->next;
 	FREE(f);
     }
-    alist = (achunk *) NULL;
-    achunksz = ACHUNKSZ;
 }
 
-
-static char *file;	/* current restore file */
-static int line;	/* current line number */
 
 /*
  * NAME:	restore_error()
  * DESCRIPTION:	handle an error while restoring
  */
-static void restore_error(err)
+static void restore_error(x, err)
+restcontext *x;
 char *err;
 {
-    error("Format error in \"/%s\", line %d: %s", file, line, err);
+    error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
 }
  
 /*
  * NAME:	restore_int()
  * DESCRIPTION:	restore an integer
  */
-static char *restore_int(buf, val)
+static char *restore_int(x, buf, val)
+restcontext *x;
 char *buf;
 value *val;
 {
@@ -549,7 +560,7 @@ value *val;
 
     val->u.number = strtol(buf, &p, 10);
     if (p == buf) {
-	restore_error("digit expected");
+	restore_error(x, "digit expected");
     }
 
     val->type = T_INT;
@@ -560,7 +571,8 @@ value *val;
  * NAME:	restore_number()
  * DESCRIPTION:	restore a number
  */
-static char *restore_number(buf, val)
+static char *restore_number(x, buf, val)
+register restcontext *x;
 char *buf;
 register value *val;
 {
@@ -572,7 +584,7 @@ register value *val;
 
     val->u.number = strtol(q = buf, &buf, 10);
     if (q == buf) {
-	restore_error("digit expected");
+	restore_error(x, "digit expected");
     }
 
     isfloat = FALSE;
@@ -588,14 +600,14 @@ register value *val;
 	    p++;
 	}
 	if (!isdigit(*p)) {
-	    restore_error("digit expected");
+	    restore_error(x, "digit expected");
 	}
 	while (isdigit(*++p)) ;
     }
     if (*p == '=') {
 	for (i = 4; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
-		restore_error("hexadecimal digit expected");
+		restore_error(x, "hexadecimal digit expected");
 	    }
 	    flt.high <<= 4;
 	    if (isdigit(*p)) {
@@ -605,11 +617,11 @@ register value *val;
 	    }
 	}
 	if ((flt.high & 0x7ff0) == 0x7ff0) {
-	    restore_error("illegal exponent");
+	    restore_error(x, "illegal exponent");
 	}
 	for (i = 8; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
-		restore_error("hexadecimal digit expected");
+		restore_error(x, "hexadecimal digit expected");
 	    }
 	    flt.low <<= 4;
 	    if (isdigit(*p)) {
@@ -624,7 +636,7 @@ register value *val;
 	return p + 1;
     } else if (isfloat) {
 	if (!flt_atof(&q, &flt)) {
-	    restore_error("float too large");
+	    restore_error(x, "float too large");
 	}
 	val->type = T_FLOAT;
 	VFLT_PUT(val, flt);
@@ -639,14 +651,15 @@ register value *val;
  * NAME:	restore_string()
  * DESCRIPTION:	restore a string
  */
-static char *restore_string(buf, val)
+static char *restore_string(x, buf, val)
+restcontext *x;
 register char *buf;
 value *val;
 {
     register char *p, *q;
 
     if (*buf++ != '"') {
-	restore_error("'\"' expected");
+	restore_error(x, "'\"' expected");
     }
     for (p = q = buf; *p != '"'; p++) {
 	if (*p == '\\') {
@@ -662,7 +675,7 @@ value *val;
 	    }
 	}
 	if (*p == '\0' || *p == LF) {
-	    restore_error("unterminated string");
+	    restore_error(x, "unterminated string");
 	}
 	*q++ = *p;
     }
@@ -672,15 +685,15 @@ value *val;
     return p + 1;
 }
 
-static char *restore_value	P((frame*, char*, value*));
-static char *restore_mapping	P((frame*, char*, value*));
+static char *restore_value	P((restcontext*, char*, value*));
+static char *restore_mapping	P((restcontext*, char*, value*));
 
 /*
  * NAME:	restore_array()
  * DESCRIPTION:	restore an array
  */
-static char *restore_array(f, buf, val)
-register frame *f;
+static char *restore_array(x, buf, val)
+register restcontext *x;
 register char *buf;
 value *val;
 {
@@ -690,15 +703,15 @@ value *val;
     
     /* match ({ */
     if (*buf++ != '(' || *buf++ != '{') {
-	restore_error("'({' expected");
+	restore_error(x, "'({' expected");
     }
     /* get array size */
-    buf = restore_int(buf, val);
+    buf = restore_int(x, buf, val);
     if (*buf++ != '|') {
-	restore_error("'|' expected");
+	restore_error(x, "'|' expected");
     }
 
-    ac_put(T_ARRAY, a = arr_new(f->data, (long) val->u.number));
+    ac_put(x, T_ARRAY, a = arr_new(x->f->data, (long) val->u.number));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	(v++)->type = T_INT;
     }
@@ -711,16 +724,16 @@ value *val;
     }
     /* restore the values */
     while (i > 0) {
-	buf = restore_value(f, buf, v);
+	buf = restore_value(x, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
-	    restore_error("',' expected");
+	    restore_error(x, "',' expected");
 	}
 	--i;
     }
     /* match }) */
     if (*buf++ != '}' || *buf++ != ')') {
-	restore_error("'})' expected");
+	restore_error(x, "'})' expected");
     }
     ec_pop();
 
@@ -733,8 +746,8 @@ value *val;
  * NAME:	restore_mapping()
  * DESCRIPTION:	restore a mapping
  */
-static char *restore_mapping(f, buf, val)
-register frame *f;
+static char *restore_mapping(x, buf, val)
+register restcontext *x;
 register char *buf;
 value *val;
 {
@@ -744,15 +757,15 @@ value *val;
     
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
-	restore_error("'([' expected");
+	restore_error(x, "'([' expected");
     }
     /* get mapping size */
-    buf = restore_int(buf, val);
+    buf = restore_int(x, buf, val);
     if (*buf++ != '|') {
-	restore_error("'|' expected");
+	restore_error(x, "'|' expected");
     }
 
-    ac_put(T_MAPPING, a = map_new(f->data, (long) val->u.number << 1));
+    ac_put(x, T_MAPPING, a = map_new(x->f->data, (long) val->u.number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	(v++)->type = T_INT;
     }
@@ -765,21 +778,21 @@ value *val;
     }
     /* restore the values */
     while (i > 0) {
-	buf = restore_value(f, buf, v);
+	buf = restore_value(x, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ':') {
-	    restore_error("':' expected");
+	    restore_error(x, "':' expected");
 	}
-	buf = restore_value(f, buf, v);
+	buf = restore_value(x, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
-	    restore_error("',' expected");
+	    restore_error(x, "',' expected");
 	}
 	i -= 2;
     }
     /* match ]) */
     if (*buf++ != ']' || *buf++ != ')') {
-	restore_error("'])' expected");
+	restore_error(x, "'])' expected");
     }
     map_sort(a);
     ec_pop();
@@ -793,46 +806,46 @@ value *val;
  * NAME:	restore_value()
  * DESCRIPTION:	restore a value
  */
-static char *restore_value(f, buf, val)
-register frame *f;
+static char *restore_value(x, buf, val)
+register restcontext *x;
 register char *buf;
 register value *val;
 {
     switch (*buf) {
     case '"':
-	return restore_string(buf, val);
+	return restore_string(x, buf, val);
 
     case '(':
 	if (buf[1] == '{') {
-	    return restore_array(f, buf, val);
+	    return restore_array(x, buf, val);
 	} else {
-	    return restore_mapping(f, buf, val);
+	    return restore_mapping(x, buf, val);
 	}
 
     case '#':
-	buf = restore_int(buf + 1, val);
-	if ((uindex) val->u.number >= narrays) {
-	    restore_error("bad array reference");
+	buf = restore_int(x, buf + 1, val);
+	if ((uindex) val->u.number >= x->narrays) {
+	    restore_error(x, "bad array reference");
 	}
-	*val = *ac_get((uindex) val->u.number);
+	*val = *ac_get(x, (uindex) val->u.number);
 	if (val->type != T_ARRAY) {
-	    restore_error("bad array reference");
+	    restore_error(x, "bad array reference");
 	}
 	return buf;
 
     case '@':
-	buf = restore_int(buf + 1, val);
-	if ((uindex) val->u.number >= narrays) {
-	    restore_error("bad mapping reference");
+	buf = restore_int(x, buf + 1, val);
+	if ((uindex) val->u.number >= x->narrays) {
+	    restore_error(x, "bad mapping reference");
 	}
-	*val = *ac_get((uindex) val->u.number);
+	*val = *ac_get(x, (uindex) val->u.number);
 	if (val->type != T_MAPPING) {
-	    restore_error("bad mapping reference");
+	    restore_error(x, "bad mapping reference");
 	}
 	return buf;
 
     default:
-	return restore_number(buf, val);
+	return restore_number(x, buf, val);
     }
 }
 
@@ -854,13 +867,16 @@ register frame *f;
     register control *ctrl;
     register dataspace *data;
     register dinherit *inh;
+    restcontext x;
     object *obj;
-    char *name;
+    int fd;
+    char *buffer, *name;
     bool pending;
 
     obj = f->obj;
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    x.file = path_file(path_string(f->sp->u.string->text,
+				   f->sp->u.string->len));
+    if (x.file == (char *) NULL) {
 	return 1;
     }
 
@@ -868,7 +884,7 @@ register frame *f;
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
     f->sp->u.number = 0;
-    fd = open(file, O_RDONLY | O_BINARY, 0);
+    fd = open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* restore failed */
 	return 0;
@@ -913,14 +929,17 @@ register frame *f;
 	}
     }
 
-    narrays = 0;
+    x.line = 1;
+    x.f = f;
+    x.alist = (achunk *) NULL;
+    x.achunksz = ACHUNKSZ;
+    x.narrays = 0;
     buf = buffer;
-    line = 1;
     pending = FALSE;
     if (ec_push((ec_ftn) NULL)) {
 	/* error; clean up */
 	arr_clear();
-	ac_clear();
+	ac_clear(&x);
 	AFREE(buffer);
 	error((char *) NULL);	/* pass on error */
     }
@@ -941,10 +960,10 @@ register frame *f;
 			 */
 			buf = strchr(buf, LF);
 			if (buf == (char *) NULL) {
-			    restore_error("'\\n' expected");
+			    restore_error(&x, "'\\n' expected");
 			}
 			buf++;
-			line++;
+			x.line++;
 			pending = FALSE;
 		    }
 		    if (!pending) {
@@ -955,10 +974,10 @@ register frame *f;
 			    /* skip comment */
 			    buf = strchr(buf, LF);
 			    if (buf == (char *) NULL) {
-				restore_error("'\\n' expected");
+				restore_error(&x, "'\\n' expected");
 			    }
 			    buf++;
-			    line++;
+			    x.line++;
 			}
 			if (*buf == '\0') {
 			    /* end of file */
@@ -967,13 +986,13 @@ register frame *f;
 
 			name = buf;
 			if (!isalpha(*buf) && *buf != '_') {
-			    restore_error("alphanumeric expected");
+			    restore_error(&x, "alphanumeric expected");
 			}
 			do {
 			    buf++;
 			} while (isalnum(*buf) || *buf == '_');
 			if (*buf != ' ') {
-			    restore_error("' ' expected");
+			    restore_error(&x, "' ' expected");
 			}
 
 			*buf++ = '\0';		/* terminate name */
@@ -989,7 +1008,7 @@ register frame *f;
 			/*
 			 * found the proper variable to restore
 			 */
-			buf = restore_value(f, buf, &tmp);
+			buf = restore_value(&x, buf, &tmp);
 			if (v->type != tmp.type && v->type != T_MIXED &&
 			    conf_typechecking() &&
 			    (tmp.type != T_INT || tmp.u.number != 0 ||
@@ -997,13 +1016,13 @@ register frame *f;
 			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
 			    i_ref_value(&tmp);
 			    i_del_value(&tmp);
-			    restore_error("value has wrong type");
+			    restore_error(&x, "value has wrong type");
 			}
 			d_assign_var(data, var, &tmp);
 			if (*buf++ != LF) {
-			    restore_error("'\\n' expected");
+			    restore_error(&x, "'\\n' expected");
 			}
-			line++;
+			x.line++;
 			pending = FALSE;
 		    }
 		    var++;
@@ -1015,7 +1034,7 @@ register frame *f;
 		     */
 		    ec_pop();
 		    arr_clear();
-		    ac_clear();
+		    ac_clear(&x);
 		    AFREE(buffer);
 		    f->sp->u.number = 1;
 		    return 0;

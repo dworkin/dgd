@@ -497,6 +497,7 @@ int flag;
     } else {
 	usr->flags &= ~CF_BLOCKED;
     }
+    conn_block(usr->conn, flag);
 }
 
 /*
@@ -629,13 +630,21 @@ int poll;
 		p = usr->inbuf + usr->inbufsz;
 		n = conn_read(usr->conn, p, INBUF_SIZE - usr->inbufsz);
 		if (n < 0) {
-		    /*
-		     * bad connection
-		     */
-		    comm_del(f, usr, FALSE);
-		    endthread();	/* this cannot be in comm_del() */
-		    comm_flush(FALSE);
-		    break;
+		    if (usr->inbufsz == 0) {
+			/*
+			 * empty buffer & no more input
+			 */
+			comm_del(f, usr, FALSE);
+			endthread();	/* this cannot be in comm_del() */
+			comm_flush(FALSE);
+			break;
+		    } else if (p[-1] != LF) {
+			/*
+			 * add a newline at the end
+			 */
+			*p = LF;
+			n = 1;
+		    }
 		}
 
 		flags = usr->flags;

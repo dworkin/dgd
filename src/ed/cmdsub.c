@@ -969,7 +969,7 @@ unsigned int size;
     if (cb->flags & CB_TLOWER) {	/* lowercase one letter */
 	*p++ = tolower(*q);
 	q++;
-	cb->flags & ~CB_TLOWER;
+	cb->flags &= ~CB_TLOWER;
 	--i;
     } else if (cb->flags & CB_TUPPER) {	/* uppercase one letter */
 	*p++ = toupper(*q);

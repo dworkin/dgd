@@ -1162,3 +1162,5 @@ DGD 1.1
  - Callouts with a delay of 0 seconds are now executed as soon as possible.
  - Sort callouts in status(obj) by handle rather than by delay, as no actual
    calling order for same-delay callouts can be guaranteed.
+ - Deal more efficiently with blocked connections.  Also don't close a
+   connection while there is still input to process.
