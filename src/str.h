@@ -6,6 +6,7 @@ struct _string_ {
 };
 
 extern void		str_init	P((void));
+extern string	       *str_alloc	P((char*, long));
 extern string	       *str_new		P((char*, long));
 # define str_ref(s)	((s)->ref++)
 extern void		str_del		P((string*));

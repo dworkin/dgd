@@ -38,8 +38,9 @@ typedef struct _pnchunk_ {
 static pnode *pn_new(c, symb, state, text, len, next, list)
 register pnchunk **c;
 short symb;
-unsigned short state, len;
+unsigned short state;
 char *text;
+ssizet len;
 pnode *next, *list;
 {
     register pnode *pn;
@@ -391,7 +392,7 @@ register char *p;
     register unsigned short n;
     register short symb;
     char *red;
-    unsigned short len;
+    ssizet len;
 
     /*
      * get rule to reduce by
@@ -459,7 +460,7 @@ register parser *ps;
 snode *sn;
 short token;
 char *text;
-unsigned short len;
+ssizet len;
 {
     register int n;
 
@@ -490,7 +491,8 @@ bool *toobig;
     register short n;
     snode *next;
     char *ttext;
-    unsigned short size, nred, tlen;
+    ssizet size, tlen;
+    unsigned short nred;
     char *red;
 
     /* initialize */
@@ -505,7 +507,7 @@ bool *toobig;
 
     /* state 0 */
     ps->states[0] = sn_new(&ps->list,
-			   pn_new(&ps->pnc, 0, 0, (char *) NULL, 0,
+			   pn_new(&ps->pnc, 0, 0, (char *) NULL, (ssizet) 0,
 				  (pnode *) NULL, (pnode *) NULL),
 			   (snode *) NULL);
 

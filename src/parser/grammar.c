@@ -136,15 +136,17 @@ int *lastp;
  */
 static int gramtok(str, strlen, buffer, buflen)
 string *str;
-unsigned int *strlen, *buflen;
+ssizet *strlen;
 register char *buffer;
+unsigned int *buflen;
 {
     rgxnode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
     int paren, thisnode, topnode, lastnode;
     register char *p;
     char *q;
-    register unsigned int size, len, n;
+    register ssizet size;
+    register unsigned int len, n;
 
     size = *strlen;
     p = str->text + str->len - size;
@@ -735,7 +737,8 @@ string *gram;
     rlchunk *rlchunks;
     rule *rgxlist, *strlist, *prodlist, *tmplist, *rr, *rrl;
     int token, ruleno, nrgx, nstr, nprod;
-    unsigned int buflen, glen;
+    ssizet glen;
+    unsigned int buflen;
     register rulesym **rs;
     register rule *rl, **r;
     register long size;

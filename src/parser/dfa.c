@@ -1589,14 +1589,15 @@ dfastate *state;
 short dfa_scan(fa, str, strlen, token, len)
 register dfa *fa;
 string *str;
-unsigned short *strlen, *len;
+ssizet *strlen, *len;
 char **token;
 {
-    register unsigned short size, eclass;
+    register ssizet size;
+    register unsigned short eclass;
     register char *p, *q;
     register dfastate *state;
     short final;
-    unsigned short fsize;
+    ssizet fsize;
 
     size = *strlen;
 

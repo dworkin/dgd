@@ -35,21 +35,16 @@ void str_init()
 }
 
 /*
- * NAME:	string->new()
- * DESCRIPTION:	create a new string. The text can be a NULL pointer, in which
+ * NAME:	string->alloc()
+ * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
  *		case it must be filled in later.
- *		Note that strings are not placed in the hash table by default.
  */
-string *str_new(text, len)
+string *str_alloc(text, len)
 char *text;
 register long len;
 {
     register string *s;
     string dummy;
-
-    if (len > (unsigned long) MAX_STRLEN) {
-	error("String too long");
-    }
 
     /* allocate string struct & text in one block */
     s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
@@ -61,6 +56,20 @@ register long len;
     s->primary = (strref *) NULL;
 
     return s;
+}
+
+/*
+ * NAME:	string->new()
+ * DESCRIPTION:	create a new string with size check
+ */
+string *str_new(text, len)
+char *text;
+long len;
+{
+    if (len > (unsigned long) MAX_STRLEN) {
+	error("String too long");
+    }
+    return str_alloc(text, len);
 }
 
 /*

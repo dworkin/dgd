@@ -790,8 +790,8 @@ unsigned int idx;
     if (ctrl->strings[idx] == (string *) NULL) {
 	register string *str;
 
-	str = str_new(ctrl->stext + ctrl->sstrings[idx].index,
-		      (long) ctrl->sstrings[idx].len);
+	str = str_alloc(ctrl->stext + ctrl->sstrings[idx].index,
+			(long) ctrl->sstrings[idx].len);
 	str_ref(ctrl->strings[idx] = str);
     }
 
@@ -929,8 +929,8 @@ register Uint idx;
     if (data->strings[idx].str == (string *) NULL) {
 	register string *s;
 
-	s = str_new(data->stext + data->sstrings[idx].index,
-		    (long) data->sstrings[idx].len);
+	s = str_alloc(data->stext + data->sstrings[idx].index,
+		      (long) data->sstrings[idx].len);
 	s->ref = 1;
 	s->primary = &data->strings[idx];
 	s->primary->str = s;

@@ -1361,5 +1361,6 @@ DGD 1.1
  - Fixed some more comm bugs.
  - Fixed a bug that could lead to random stack overflow errors.
  - Made room for another type of special object.
- - Made maximum sizes of arrays and strings more configurable.
+ - Made maximum sizes of strings more configurable.
  - Allow any string as an argument to error().
+ - Fixed some leftover short string holdouts.

@@ -8,5 +8,4 @@ extern dfa     *dfa_new		P((char*));
 extern void	dfa_del		P((dfa*));
 extern dfa     *dfa_load	P((char*, char*, Uint));
 extern bool	dfa_save	P((dfa*, char**, Uint*));
-extern short	dfa_scan	P((dfa*, string*, unsigned short*, char**,
-				   unsigned short*));
+extern short	dfa_scan	P((dfa*, string*, ssizet*, char**, ssizet*));
