@@ -135,7 +135,7 @@ string *str;
 	    break;
 	}
 	e = e->next;
-    } while (e != (context *) NULL);
+    } while (e != (context *) NULL && f->level == e->f->level);
 
     if (cframe->rlim != econtext->rlim) {
 	i_set_rlimits(cframe, econtext->rlim);

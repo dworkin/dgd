@@ -88,7 +88,7 @@ int login(string str)
 		access::create();
 		accinit = TRUE;
 	    }
-	    if (sizeof(access::query_users() & ({ str })) == 0) {
+	    if (str != "admin" && sizeof(query_users() & ({ str })) == 0) {
 		message("> ");
 		state[previous_object()] = STATE_NORMAL;
 		return MODE_ECHO;
@@ -190,7 +190,7 @@ int receive_message(string str)
 
 		case "tell":
 		    if (sscanf(str, "%*s %s %s", cmd, str) != 3 ||
-			!(user=user::find_user(cmd))) {
+			!(user=find_user(cmd))) {
 			message("Usage: tell <user> <text>\n");
 		    } else {
 			user->message(Name + " tells you: " + str + "\n");
@@ -247,7 +247,8 @@ int receive_message(string str)
 		access::create();
 		accinit = TRUE;
 	    }
-	    if (!wiztool && sizeof(access::query_users() & ({ name })) != 0) {
+	    if (!wiztool &&
+		(name == "admin" || sizeof(query_users() & ({ name })) != 0)) {
 		wiztool = clone_object(DEFAULT_WIZTOOL, name);
 	    }
 	    break;

@@ -37,7 +37,7 @@ typedef struct _node_ {
 # define F_END		(F_BREAK | F_CONTINUE | F_RETURN)
 # define F_FLOW		(F_ENTRY | F_REACH | F_END)
 
-extern void  node_init	P((bool));
+extern void  node_init	P((int));
 extern node *node_new	P((unsigned int));
 extern node *node_int	P((Int));
 extern node *node_float	P((xfloat*));

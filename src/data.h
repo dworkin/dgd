@@ -258,7 +258,7 @@ extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_set_varmap	P((control*, unsigned int,
 					   unsigned short*));
-extern void		d_upgrade_data	P((dataspace*, unsigned short,
+extern void		d_upgrade_data	P((dataspace*, unsigned int,
 					   unsigned short*, object*));
 extern void		d_upgrade_clone	P((dataspace*));
 extern object	       *d_upgrade_lwobj	P((array*, object*));

@@ -1609,7 +1609,8 @@ unsigned short *nvariables;
  */
 void d_upgrade_data(data, nvar, vmap, tmpl)
 register dataspace *data;
-register unsigned short nvar, *vmap;
+register unsigned int nvar;
+register unsigned short *vmap;
 object *tmpl;
 {
     register value *v;
