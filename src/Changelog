@@ -1608,3 +1608,5 @@ DGD 1.3
  - Fixed a string reference problem during compilation.
  - Disallow (int) " 123", but allow sscanf(" 123", "%f", f), making both
    operations consistent for int and float.
+ - Fixed a problem in object type function argument checking that could lead
+   to a crash.

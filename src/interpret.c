@@ -1406,6 +1406,7 @@ int strict;
     register int i, n, atype, ptype;
     register char *args;
     bool ellipsis;
+    Uint class;
 
     i = nargs;
     n = PROTO_NARGS(proto) + PROTO_VARGS(proto);
@@ -1413,13 +1414,20 @@ int strict;
     args = PROTO_ARGS(proto);
     while (n > 0 && i > 0) {
 	--i;
-	ptype = *args;
+	ptype = *args++;
+	if ((ptype & T_TYPE) == T_CLASS) {
+	    FETCH3U(args, class);
+	}
 	if (n == 1 && ellipsis) {
 	    if (ptype == T_MIXED || ptype == T_LVALUE) {
 		return;
 	    }
+	    if ((ptype & T_TYPE) == T_CLASS) {
+		args -= 4;
+	    } else {
+		--args;
+	    }
 	} else {
-	    args++;
 	    --n;
 	}
 
@@ -1428,21 +1436,17 @@ int strict;
 	    if (atype == T_LWOBJECT) {
 		atype = T_OBJECT;
 	    }
-	    if ((ptype & T_TYPE) == T_CLASS) {
-		Uint class;
-
-		FETCH3U(args, class);
-		if (ptype == T_CLASS && atype == T_OBJECT) {
-		    if (!i_instanceof(prog_f,
-				      (f->sp[i].type == T_OBJECT) ?
-				       f->sp[i].oindex :
-				       d_get_elts(f->sp[i].u.array)->oindex,
-				      class)) {
-			error("Bad object argument %d for function %s",
-			      nargs - i, name);
-		    }
-		    continue;
+	    if ((ptype & T_TYPE) == T_CLASS && ptype == T_CLASS &&
+		atype == T_OBJECT) {
+		if (!i_instanceof(prog_f,
+				  (f->sp[i].type == T_OBJECT) ?
+				   f->sp[i].oindex :
+				   d_get_elts(f->sp[i].u.array)->oindex,
+				  class)) {
+		    error("Bad object argument %d for function %s",
+			  nargs - i, name);
 		}
+		continue;
 	    }
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
 		if (!VAL_NIL(f->sp + i) || !T_POINTER(ptype)) {
