@@ -1325,11 +1325,11 @@ static cmd_ed(object user, string cmd, string str)
 private string list_access(mapping access)
 {
     string str, *files;
-    int i, sz, *values;
+    int i, *values;
 
     files = map_indices(access);
     values = map_values(access);
-    for (i = 0, sz = sizeof(files); i < sz; i++) {
+    for (i = sizeof(files); --i >= 0; ) {
 	switch (values[i]) {
 	case READ_ACCESS:
 	    files[i] += " [read-only]";
@@ -1559,11 +1559,11 @@ private string ralign(mixed num, int width)
  */
 private string list_resources(string name, string *names, mixed *resources)
 {
-    int i, sz, n;
+    int i, n;
     mixed *rsrc;
     string str, unit;
 
-    for (i = 0, sz = sizeof(names); i < sz; i++) {
+    for (i = sizeof(names); --i >= 0; ) {
 	rsrc = resources[i];
 	str = (names[i] + SPACE16)[.. 15] + ralign(rsrc[RSRC_USAGE], 13) +
 	      ralign(rsrc[RSRC_MAX], 13);
@@ -1608,7 +1608,7 @@ private string list_resources(string name, string *names, mixed *resources)
  */
 static cmd_quota(object user, string cmd, string str)
 {
-    int limit, i, sz;
+    int limit, i;
     string who, rsrc, *names;
     mixed **resources;
 
@@ -1663,9 +1663,8 @@ static cmd_quota(object user, string cmd, string str)
     }
 
     names = query_resources();
-    sz = sizeof(names);
-    resources = allocate(sz);
-    for (i = 0; i < sz; i++) {
+    resources = allocate(i = sizeof(names));
+    while (--i >= 0) {
 	resources[i] = rsrc_get(who, names[i]);
     }
     user->message(list_resources("resources", names, resources));
@@ -1683,8 +1682,8 @@ static cmd_rsrc(object user, string cmd, string str)
 
     if (!str) {
 	names = query_resources();
-	resources = allocate(sz = sizeof(names));
-	for (i = 0; i < sz; i++) {
+	resources = allocate(i = sizeof(names));
+	while (--i >= 0) {
 	    resources[i] = query_rsrc(names[i]);
 	}
 	user->message(list_resources("resources", names, resources));
@@ -1710,8 +1709,8 @@ static cmd_rsrc(object user, string cmd, string str)
 	    return;
 	}
 	names = query_owners();
-	resources = allocate(sz = sizeof(names));
-	for (i = 0; i < sz; i++) {
+	resources = allocate(i = sz = sizeof(names));
+	while (--i >= 0) {
 	    resources[i] = rsrc_get(names[i], str);
 	}
 	if (sz != 0 && !names[0]) {

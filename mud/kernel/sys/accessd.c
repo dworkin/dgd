@@ -287,7 +287,12 @@ mapping query_file_access(string file)
 set_global_access(string dir, int flag)
 {
     if (previous_program() == API_ACCESS) {
-	gaccess[dir] = flag;
+	rlimits (-1; -1) {
+	    gaccess[dir] = flag;
+# ifndef SYS_CONTINUOUS
+	    save_object(ACCESSDATA);
+# endif
+	}
     }
 }
 
