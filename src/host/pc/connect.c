@@ -107,16 +107,6 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
  */
 void conn_finish(void)
 {
-    int n;
-    connection *conn;
-
-    for (n = nusers, conn = connections; n > 0; --n, conn++) {
-	if (conn->fd != INVALID_SOCKET) {
-	    closesocket(conn->fd);
-	}
-    }
-    closesocket(telnet);
-    closesocket(binary);
     WSACleanup();
 }
 

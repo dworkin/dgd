@@ -907,7 +907,7 @@ register node **m;
 	    case N_SUB:
 		if (NFLT_ISZERO(n->r.right)) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 
@@ -918,7 +918,7 @@ register node **m;
 	    case N_XOR_INT:
 		if (n->r.right->l.number == 0) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 
@@ -929,7 +929,7 @@ register node **m;
 		}
 		if (n->r.right->l.number == -1) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 
@@ -942,7 +942,7 @@ register node **m;
 	    case N_DIV:
 		if (NFLT_ISONE(n->r.right)) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 
@@ -955,7 +955,7 @@ register node **m;
 	    case N_DIV_INT:
 		if (n->r.right->l.number == 1) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 
@@ -974,7 +974,7 @@ register node **m;
 		}
 		if (n->r.right->l.number == 0) {
 		    *m = n->l.left;
-		    --d;
+		    d = d1;
 		}
 		break;
 	    }

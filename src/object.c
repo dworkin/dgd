@@ -160,7 +160,9 @@ register object *o;
     strcpy(sp->u.string->text + 1, o->chain.name);
     (--sp)->type = T_INT;
     sp->u.number = ctrl->compiled;
-    if (i_call_critical("remove_program", 2, TRUE)) {
+    (--sp)->type = T_INT;
+    sp->u.number = o->index;
+    if (i_call_critical("remove_program", 3, TRUE)) {
 	i_del_value(sp++);
     }
 

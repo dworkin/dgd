@@ -1089,3 +1089,14 @@ DGD 1.1
    string, function definition, variable definition and function call tables.
    NOTE: the dumpfile format was slightly changed, but state dumps that do
    not contain precompiled objects are unaffected.
+ - Added a new status(obj) field, the "index" of the master object (the
+   object itself unless it's a clone).  This is a unique ID, and will help
+   distinguishing different issues of the same object, and linking clones
+   to a particular issue.
+ - Added third argument to driver->remove_program(), the "index" of the
+   object.
+ - Made DGD compile on SunOS 5.5, too.
+ - Fixed a bug in precompiled code generated for sscanf().
+ - Fixed a stack depth miscalculation bug in the optimizer.
+ - Removed >= 1024 limitation on telnet_port (makes no sense on non-unix
+   machines).

@@ -807,10 +807,11 @@ bool lv;
 
 /*
  * NAME:        codegen->locals()
- * DESCRIPTION: propagate assignments from local variables to ivars
+ * DESCRIPTION: propagate values between local variables and ivars
  */
-static void cg_locals(n)
+static void cg_locals(n, vtoi)
 register node *n;
+bool vtoi;
 {
     if (n != (node *) NULL) {
 	register node *m;
@@ -825,7 +826,11 @@ register node *n;
 	    m = n->l.left;
 	    if (m->l.left->type == N_LOCAL &&
 		vars[i = m->l.left->r.number] != 0) {
-		output(", ivar%d = %s->u.number", vars[i], local(i));
+		if (vtoi) {
+		    output("%s->u.number = ivar%d, ", local(i), vars[i]);
+		} else {
+		    output(", ivar%d = %s->u.number", vars[i], local(i));
+		}
 	    }
 	    n = n->r.right;
 	}
@@ -834,7 +839,11 @@ register node *n;
 	m = n->l.left;
 	if (n->type == N_LVALUE && m->type == N_LOCAL &&
 	    vars[i = m->r.number] != 0) {
-	    output(", ivar%d = %s->u.number", vars[i], local(i));
+	    if (vtoi) {
+		output("%s->u.number = ivar%d, ", local(i), vars[i]);
+	    } else {
+		output(", ivar%d = %s->u.number", vars[i], local(i));
+	    }
 	}
     }
 }
@@ -1049,18 +1058,22 @@ register int state;
 	    if (PROTO_NARGS(KFUN((short) n->r.number).proto) == 0) {
 		/* kfun without arguments won't do argument checking */
 		kfun(KFUN((short) n->r.number).name);
-	    } else if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS)
-	    {
-		output("call_kfun_arg(%d/*%s*/, %s)",
-		       &KFUN((short) n->r.number) - kftab,
-		       KFUN((short) n->r.number).name, p);
 	    } else {
-		output("call_kfun(%d/*%s*/)",
-		       &KFUN((short) n->r.number) - kftab,
-		       KFUN((short) n->r.number).name);
-	    }
-	    if ((n->r.number >> 24) & KFCALL_LVAL) {
-		cg_locals(n->l.left);
+		if ((n->r.number >> 24) & KFCALL_LVAL) {
+		    cg_locals(n->l.left, TRUE);
+		}
+		if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
+		    output("call_kfun_arg(%d/*%s*/, %s)",
+			   &KFUN((short) n->r.number) - kftab,
+			   KFUN((short) n->r.number).name, p);
+		} else {
+		    output("call_kfun(%d/*%s*/)",
+			   &KFUN((short) n->r.number) - kftab,
+			   KFUN((short) n->r.number).name);
+		}
+		if ((n->r.number >> 24) & KFCALL_LVAL) {
+		    cg_locals(n->l.left, FALSE);
+		}
 	    }
 	    break;
 

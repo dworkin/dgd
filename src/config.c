@@ -82,7 +82,7 @@ static config conf[] = {
 							1024, SW_UNUSED },
 # define TELNET_PORT	20
 				{ "telnet_port",	INT_CONST, FALSE,
-							1024, USHRT_MAX },
+							0, USHRT_MAX },
 # define TYPECHECKING	21
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 1 },
@@ -865,9 +865,10 @@ char *configfile, *dumpfile;
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
     cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
     cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
-    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012\012");
+    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
+    cputs("# define O_INDEX\t5\t/* unique number for master object */\012");
 
-    cputs("# define CO_HANDLE\t0\t/* callout handle */\012");
+    cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
     cputs("# define CO_DELAY\t2\t/* delay */\012");
     cputs("# define CO_FIRSTXARG\t3\t/* first extra argument */\012");
@@ -1119,7 +1120,7 @@ object *obj;
 	clist = arr_new(0L);
 	nsectors = 0;
     }
-    a = arr_new(5L);
+    a = arr_new(6L);
 
     v = a->elts;
     v->type = T_INT;
@@ -1142,7 +1143,9 @@ object *obj;
 	(v++)->u.number = nsectors;
     }
     v->type = T_ARRAY;
-    arr_ref(v->u.array = clist);
+    arr_ref((v++)->u.array = clist);
+    v->type = T_INT;
+    v->u.number = (obj->flags & O_MASTER) ? (Uint) obj->index : obj->u_master;
 
     return a;
 }

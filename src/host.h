@@ -112,6 +112,8 @@ typedef unsigned int Uint;
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
+# include <sys/file.h>		/* for FNDELAY */
+
 # endif	/* SOLARIS */
 
 
