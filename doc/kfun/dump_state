@@ -1,0 +1,12 @@
+NAME
+	dump_state - create a state dump
+
+SYNOPSIS
+	void dump_state()
+
+
+DESCRIPTION
+	Dump the state of the current system to file.
+
+SEE ALSO
+	kfun/swapout
