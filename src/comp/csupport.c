@@ -26,7 +26,7 @@ static char *driver_name;	/* name of driver object */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static void pc_inherits(inh, pcinh, ninherits, compiled)
+static bool pc_inherits(inh, pcinh, ninherits, compiled)
 register dinherit *inh;
 register pcinherit *pcinh;
 register int ninherits;
@@ -39,8 +39,9 @@ Uint compiled;
     while (--ninherits > 0) {
 	obj = o_find(pcinh->name, OACC_READ);
 	if (obj == (object *) NULL) {
-	    fatal("cannot inherit /%s from /%s", pcinh->name,
+	    message("Precompiled: cannot inherit /%s from /%s", pcinh->name,
 		  pcinh[ninherits].name);
+	    return FALSE;
 	}
 	inh->oindex = obj->index;
 	if (precompiled[inh->oindex]->compiled > cc) {
@@ -51,13 +52,17 @@ Uint compiled;
 	(inh++)->varoffset = (pcinh++)->varoffset;
     }
     if (cc > compiled) {
-	fatal("object out of date: /%s", pcinh->name);
+	message("Precompiled: object out of date: /%s", pcinh->name);
+	return FALSE;
     }
     if (o_find(pcinh->name, OACC_READ) != (object *) NULL) {
-	fatal("object precompiled twice: /%s", pcinh->name);
+	message("Precompiled: object precompiled twice: /%s", pcinh->name);
+	return FALSE;
     }
     inh->funcoffset = pcinh->funcoffset;
     inh->varoffset = pcinh->varoffset;
+
+    return TRUE;
 }
 
 /*
@@ -157,7 +162,7 @@ uindex oindex;
  * NAME:	precomp->preload()
  * DESCRIPTION:	preload compiled objects
  */
-void pc_preload(auto_obj, driver_obj)
+bool pc_preload(auto_obj, driver_obj)
 char *auto_obj, *driver_obj;
 {
     register precomp **pc, *l;
@@ -189,8 +194,10 @@ char *auto_obj, *driver_obj;
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
 
-	    pc_inherits(inherits + ninherits, l->inherits, l->ninherits,
-			l->compiled);
+	    if (!pc_inherits(inherits + ninherits, l->inherits, l->ninherits,
+			     l->compiled)) {
+		return FALSE;
+	    }
 	    itab[n] = ninherits;
 	    l->oindex = pc_obj(l->inherits[l->ninherits - 1].name,
 			       inherits + ninherits, l->ninherits);
@@ -205,6 +212,8 @@ char *auto_obj, *driver_obj;
 	    map[2 * n++ + 1] = nprecomps;
 	}
     }
+
+    return TRUE;
 }
 
 /*

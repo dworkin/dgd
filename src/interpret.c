@@ -1627,7 +1627,7 @@ register char *pc;
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 		i_typecheck(f, kf->name, "kfun", kf->proto, u, TRUE);
 	    }
-	    u = (*kf->func)(f, u);
+	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
 		    error("Too few arguments for kfun %s", kf->name);
@@ -1769,8 +1769,9 @@ int funci;
     }
 
     /* set the program control block */
+    obj = OBJR(f.ctrl->inherits[p_ctrli].oindex);
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
-    f.p_ctrl = o_control(OBJR(f.ctrl->inherits[p_ctrli].oindex));
+    f.p_ctrl = o_control(obj);
     f.p_index = p_ctrli + 1;
 
     /* get the function */
@@ -1896,9 +1897,9 @@ int funci;
     } else {
 	pc += nargs;
     }
-    f.argp = prev_f->sp;
-    cframe = &f;
+    f.sp = prev_f->sp;
     f.nargs = nargs;
+    cframe = &f;
 
     /* deal with atomic functions */
     f.level = prev_f->level;
@@ -1916,52 +1917,65 @@ int funci;
 	f.atomic = prev_f->atomic;
     }
 
-    /* create new local stack */
-    FETCH2U(pc, n);
-    f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
-    f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
-    f.sos = TRUE;
-
-    /* initialize local variables */
-    n = FETCH1U(pc);
-# ifdef DEBUG
-    nargs = n;
-# endif
-    if (n > 0) {
-	do {
-	    *--f.sp = nil_value;
-	} while (--n > 0);
-    }
-
-    /* execute code */
     i_add_ticks(&f, 10);
-    d_get_funcalls(f.ctrl);	/* make sure they are available */
-    if (f.func->class & C_COMPILED) {
-	Uint l;
 
-	/* compiled function */
-	(*pcfunctions[FETCH3U(pc, l)])(&f);
-    } else {
-	/* interpreted function */
-	f.prog = pc += 2;
-	i_interpret(&f, pc);
-    }
+    if ((obj->flags & O_SPECIAL) != O_SPECIAL ||
+	ext_funcall == (bool (*) P((frame*, int, value*, char*))) NULL ||
+	(*ext_funcall)(&f, nargs, &val,
+		       d_get_strconst(f.p_ctrl, f.func->inherit,
+				      f.func->index)->text) == FALSE) {
+	/*
+	 * ordinary function call
+	 */
 
-    /* clean up stack, move return value to outer stackframe */
-    val = *f.sp++;
+	/* create new local stack */
+	f.argp = f.sp;
+	FETCH2U(pc, n);
+	f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+	f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
+	f.sos = TRUE;
+
+	/* initialize local variables */
+	n = FETCH1U(pc);
 # ifdef DEBUG
-    if (f.sp != f.fp - nargs || f.lip != f.stack) {
-	fatal("bad stack pointer after function call");
-    }
+	nargs = n;
 # endif
-    i_pop(&f, f.fp - f.sp);
-    if (f.sos) {
-	/* still alloca'd */
-	AFREE(f.stack);
-    } else {
-	/* extended and malloced */
-	FREE(f.stack);
+	if (n > 0) {
+	    do {
+		*--f.sp = nil_value;
+	    } while (--n > 0);
+	}
+
+	/* execute code */
+	d_get_funcalls(f.ctrl);	/* make sure they are available */
+	if (f.func->class & C_COMPILED) {
+	    Uint l;
+
+	    /* compiled function */
+	    (*pcfunctions[FETCH3U(pc, l)])(&f);
+	} else {
+	    /* interpreted function */
+	    f.prog = pc += 2;
+	    i_interpret(&f, pc);
+	}
+
+	/* clean up stack, move return value to outer stackframe */
+	val = *f.sp++;
+# ifdef DEBUG
+	if (f.sp != f.fp - nargs || f.lip != f.stack) {
+	    fatal("bad stack pointer after function call");
+	}
+# endif
+	i_pop(&f, f.fp - f.sp);
+	if (f.sos) {
+		/* still alloca'd */
+	    AFREE(f.stack);
+	} else {
+	    /* extended and malloced */
+	    FREE(f.stack);
+	}
     }
+
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;

@@ -1360,13 +1360,19 @@ void o_conv()
 	}
 
 	/*
-	 * fix count and update fields of all objects
+	 * last pass over all objects:
+	 * fix count and update fields, handle special objects
 	 */
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++, counts++) {
 	    if (o->count != 0) {
 		o->count = *counts;
 	    }
 	    o->update = 0;
+	    if ((o->flags & O_SPECIAL) == O_SPECIAL &&
+		ext_restore != (void (*) P((object*))) NULL) {
+		(*ext_restore)(o);
+		d_swapout(1);
+	    }
 	}
 	AFREE(counts - baseplane.nobjects);
     }

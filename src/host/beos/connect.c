@@ -73,6 +73,7 @@ static bool ipa_init(int maxusers)
 	resume_thread(named);
     } else if (busy) {
 	char buf[MAXHOSTNAMELEN];
+	int32 code;
 
 	/* discard ip name */
 	read_port(port, &code, buf, MAXHOSTNAMELEN);

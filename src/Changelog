@@ -1399,3 +1399,9 @@ DGD 1.1
  - Fixed a minor memory leak in comm.c.
  - Runtime_error() would erroneously not be called on an error during mudlib
    initialization.
+ - Got the precompiler to work again.
+ - Got the editor to work properly on MacOS and Windows.
+ - Changed some fatal errors into configuration errors.
+ - Do not allow a restart after a fatal error.
+ - Removed support for stand-alone compilations of editor and lexical scanner.
+ - Implemented DGD runtime extension interface.

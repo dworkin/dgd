@@ -89,6 +89,9 @@ void finish()
 void endthread()
 {
     comm_flush();
+    if (ext_cleanup != (void (*) P((void))) NULL) {
+	(*ext_cleanup)();
+    }
     d_export();
     o_clean();
     i_clear();
@@ -100,6 +103,9 @@ void endthread()
     }
 
     if (stop) {
+	if (ext_finish != (void (*) P((void))) NULL) {
+	    (*ext_finish)();
+	}
 	comm_finish();
 	ed_finish();
 # ifdef DEBUG

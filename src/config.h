@@ -75,3 +75,15 @@ extern bool   conf_statusi	P((frame*, Int, value*));
 extern array *conf_status	P((frame*));
 extern bool   conf_objecti	P((dataspace*, object*, Int, value*));
 extern array *conf_object	P((dataspace*, object*));
+
+/* extension interface */
+extern void conf_ext_callback	P((void(*)(object*), void(*)(object*),
+				   void(*)(object*),
+				   bool(*)(frame*, int, value*, char*),
+				   void(*)(void), void(*)(void)));
+extern void (*ext_restore)	P((object*));
+extern void (*ext_swapout)	P((object*));
+extern void (*ext_destruct)	P((object*));
+extern bool (*ext_funcall)	P((frame*, int, value*, char*));
+extern void (*ext_cleanup)	P((void));
+extern void (*ext_finish)	P((void));

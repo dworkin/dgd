@@ -55,7 +55,7 @@ static Uint swaprate5;			/* swaprate per 5 minutes */
  * NAME:	call_out->init()
  * DESCRIPTION:	initialize callout handling
  */
-void co_init(max)
+bool co_init(max)
 unsigned int max;
 {
     if (max != 0) {
@@ -65,7 +65,8 @@ unsigned int max;
 	flist = 0;
 	/* only if callouts are enabled */
 	if (P_time() >> 24 <= 1) {
-	    fatal("bad time (early seventies)");
+	    message("Config error: bad time (early seventies)");
+	    return FALSE;
 	}
 	timestamp = timeout = 0;
 	atimeout = amtime = 0;
@@ -81,6 +82,8 @@ unsigned int max;
     memset(swapped1, '\0', sizeof(swapped1));
     memset(swapped5, '\0', sizeof(swapped5));
     swaprate1 = swaprate5 = 0;
+
+    return TRUE;
 }
 
 /*

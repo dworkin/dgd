@@ -1,7 +1,8 @@
 typedef struct {
     char *name;		/* function name */
-    int (*func)();	/* function address */
     char *proto;	/* prototype */
+    int (*func)();	/* function address */
+    short num;		/* kfun number */
 } kfunc;
 
 extern kfunc kftab[];	/* kfun table */
@@ -9,6 +10,15 @@ extern char  kfind[];	/* kfun indirection table */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
 
+typedef void (*extfunc) P((frame*, int, value*));
+typedef struct {
+    char *name;		/* added kfun name */
+    char *proto;	/* simplified prototype */
+    extfunc func;	/* function address */
+} extkfunc;
+
+extern void kf_clear	P((void));
+extern void kf_ext_kfun	P((extkfunc*, int));
 extern void kf_init	P((void));
 extern int  kf_func	P((char*));
 extern bool kf_dump	P((int));

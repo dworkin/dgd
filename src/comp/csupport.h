@@ -46,7 +46,7 @@ extern precomp	*precompiled[];	/* table of precompiled objects */
 extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 
-void   pc_preload	P((char*, char*));
+bool   pc_preload	P((char*, char*));
 array *pc_list		P((dataspace*));
 void   pc_control	P((control*, object*));
 bool   pc_dump		P((int));

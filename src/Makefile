@@ -15,8 +15,6 @@ BIN=	../bin
 
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
 	editor.o comm.o call_out.o interpret.o config.o dgd.o
-EDOBJ=	alloc.o error.o
-LEXOBJ=	alloc.o hash.o
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 

@@ -14,30 +14,20 @@ DMAKE=	make
 
 OBJ=	line.o buffer.o fileio.o regexp.o vars.o edcmd.o cmdsub.o
 
-a.out:	$(OBJ) ed.o always
-	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
-	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			     sub
-	$(LD) $(DEBUG) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` \
-	      `cat ../host/sub` $(LIBS)
-
-always:
-	@rm -f a.out
-
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd
 
 clean:
-	rm -f dgd a.out $(OBJ) ed.o
+	rm -f dgd $(OBJ)
 
 
-$(OBJ) ed.o: ../config.h ../host.h ../alloc.h ../error.h
+$(OBJ): ../config.h ../host.h ../alloc.h ../error.h
 fileio.o: ../path.h
 
-$(OBJ) ed.o: ed.h
-buffer.o fileio.o edcmd.o cmdsub.o ed.o: buffer.h
-edcmd.o cmdsub.o ed.o: edcmd.h
+$(OBJ): ed.h
+buffer.o fileio.o edcmd.o cmdsub.o: buffer.h
+edcmd.o cmdsub.o: edcmd.h
 cmdsub.o fileio.o: fileio.h
-line.o buffer.o fileio.o edcmd.o cmdsub.o ed.o: line.h
-regexp.o edcmd.o cmdsub.o ed.o: regexp.h
-vars.o edcmd.o cmdsub.o ed.o: vars.h
+line.o buffer.o fileio.o edcmd.o cmdsub.o: line.h
+regexp.o edcmd.o cmdsub.o: regexp.h
+vars.o edcmd.o cmdsub.o: vars.h

@@ -17,8 +17,8 @@
 /*
  * kernel function table
  */
-kfunc kftab[] = {
-# define FUNCDEF(name, func, proto)	{ name, func, proto },
+static kfunc kforig[] = {
+# define FUNCDEF(name, func, proto)	{ name, proto, func, 0 },
 # include "builtin.c"
 # include "std.c"
 # include "file.c"
@@ -28,10 +28,122 @@ kfunc kftab[] = {
 # undef FUNCDEF
 };
 
-char kfind[sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS + 128];	/* n -> index */
-static char kfx[sizeof(kftab) / sizeof(kfunc)];			/* index -> n */
+kfunc kftab[256];	/* kfun tab */
+char kfind[256];	/* n -> index */
+static char kfx[256];	/* index -> n */
+static int nkfun;	/* # kfuns */
+static extfunc *kfext;	/* additional kfun pointers */
 
-static int kf_cmp P((cvoid*, cvoid*));
+/*
+ * NAME:	kfun->clear()
+ * DESCRIPTION:	clear previously added kfuns from the table
+ */
+void kf_clear()
+{
+    nkfun = sizeof(kforig) / sizeof(kfunc);
+}
+
+/*
+ * NAME:	kfun->callgate()
+ * DESCRIPTION:	extra kfun call gate
+ */
+static int kf_callgate(f, nargs, kf)
+frame *f;
+int nargs;
+kfunc *kf;
+{
+    value val;
+
+    val = nil_value;
+    (*kfext[kf->num - sizeof(kforig) / sizeof(kfunc)])(f, nargs, &val);
+    i_pop(f, nargs);
+    *--f->sp = val;
+
+    return 0;
+}
+
+/*
+ * NAME:	prototype()
+ * DESCRIPTION:	construct proper prototype for new kfun
+ */
+static char *prototype(proto)
+char *proto;
+{
+    register char *p, *q;
+    register int nargs;
+    int class, type;
+
+    class = C_STATIC;
+    type = *proto++;
+    p = proto;
+    nargs = 0;
+
+    /* pass 1: check prototype */
+    if (*p == T_VARARGS) {
+	/* all arguments are varargs */
+	class |= C_KFUN_VARARGS | C_VARARGS;
+	p++;
+    }
+    while (*p != '\0') {
+	if (*p == T_VARARGS) {
+	    /* varargs or ellipsis */
+	    class |= C_KFUN_VARARGS;
+	} else {
+	    if (*p != T_MIXED) {
+		/* non-mixed arguments: typecheck this function */
+		class |= C_TYPECHECKED;
+	    }
+	    nargs++;
+	}
+	p++;
+    }
+
+    /* allocate new prototype */
+    p = proto;
+    q = proto = ALLOC(char, 3 + nargs);
+    *q++ = class;
+    *q++ = type;
+    *q++ = nargs;
+
+    /* pass 2: fill in new prototype */
+    if (*p == T_VARARGS) {
+	p++;
+    }
+    while (*p != '\0') {
+	if (*p == T_VARARGS) {
+	    /* varargs or ellipsis */
+	    q[-1] |= T_VARARGS;
+	} else {
+	    *q++ = *p;
+	}
+	p++;
+    }
+
+    return proto;
+}
+
+/*
+ * NAME:	kfun->ext_kfun()
+ * DESCRIPTION:	add new kfuns
+ */
+void kf_ext_kfun(kfadd, n)
+register extkfunc *kfadd;
+register int n;
+{
+    register kfunc *kf;
+
+    kfext = ALLOC(extfunc, n) + n;
+    kfadd += n;
+    nkfun += n;
+    kf = kftab + nkfun;
+    while (n != 0) {
+	(--kf)->name = (--kfadd)->name;
+	kf->proto = prototype(kfadd->proto);
+	kf->func = (int (*)()) &kf_callgate;
+	*--kfext = kfadd->func;
+	--n;
+    }
+}
 
 /*
  * NAME:	kfun->cmp()
@@ -52,9 +164,12 @@ void kf_init()
     register int i;
     register char *k1, *k2;
 
-    qsort(kftab + KF_BUILTINS, sizeof(kfx) - KF_BUILTINS, sizeof(kfunc),
-	  kf_cmp);
-    for (i = sizeof(kfx), k1 = kfind + sizeof(kfind), k2 = kfx + sizeof(kfx);
+    memcpy(kftab, kforig, sizeof(kforig));
+    for (i = 0; i < nkfun; i++) {
+	kftab[i].num = i;
+    }
+    qsort(kftab + KF_BUILTINS, nkfun - KF_BUILTINS, sizeof(kfunc), kf_cmp);
+    for (i = nkfun, k1 = kfind + nkfun + 128 - KF_BUILTINS, k2 = kfx + nkfun;
 	 i > KF_BUILTINS; ) {
 	*--k1 = --i;
 	*--k2 = i + 128 - KF_BUILTINS;
@@ -76,7 +191,7 @@ register char *name;
     register int c;
 
     l = KF_BUILTINS;
-    h = sizeof(kfx);
+    h = nkfun;
     do {
 	c = strcmp(name, kftab[m = (l + h) >> 1].name);
 	if (c == 0) {
@@ -118,7 +233,7 @@ int fd;
 
     /* prepare header */
     dh.nbuiltin = KF_BUILTINS;
-    dh.nkfun = sizeof(kfx) - KF_BUILTINS;
+    dh.nkfun = nkfun - KF_BUILTINS;
     dh.kfnamelen = 0;
     for (i = dh.nkfun, kf = kftab + KF_BUILTINS; i > 0; --i, kf++) {
 	dh.kfnamelen += strlen(kf->name) + 1;
@@ -176,13 +291,13 @@ int fd;
     }
     AFREE(buffer);
 
-    if (dh.nkfun < sizeof(kfx) - KF_BUILTINS) {
+    if (dh.nkfun < nkfun - KF_BUILTINS) {
 	/*
 	 * There are more kfuns in the current driver than in the driver
 	 * which created the dump file: deal with those new kfuns.
 	 */
 	n = dh.nkfun + 128;
-	for (i = KF_BUILTINS; i < sizeof(kfx); i++) {
+	for (i = KF_BUILTINS; i < nkfun; i++) {
 	    if (UCHAR(kfx[i]) >= dh.nkfun + 128 ||
 		UCHAR(kfind[UCHAR(kfx[i])]) != i) {
 		/* new kfun */

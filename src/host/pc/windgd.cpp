@@ -14,6 +14,7 @@ static CMainFrame      *mainframe;
 static int		argstart;	/* started with arguments */
 static int		menuquit;	/* quit from menu */
 static int		dgd_running;	/* now running */
+static int		dgd_fatal;	/* aborted with fatal error */
 static CString		dgd_config;
 static CString		dgd_restore;
 
@@ -52,7 +53,12 @@ void dgd_exit(int code)
 void dgd_abort()
 {
     dgd_running = FALSE;
-    _endthread();
+    dgd_fatal = TRUE;
+    if (!argstart) {
+	_endthread();
+    } else {
+	exit(1);
+    }
 }
 
 }
@@ -194,17 +200,17 @@ void CWindgdApp::OnAppExit()
 
 void CWindgdApp::OnUpdateDgdConfig(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_running);
+    pCmdUI->Enable(!dgd_running && !dgd_fatal);
 }
 
 void CWindgdApp::OnUpdateDgdStart(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_config.IsEmpty() && !dgd_running);
+    pCmdUI->Enable(!dgd_config.IsEmpty() && !dgd_running && !dgd_fatal);
 }
 
 void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_running);
+    pCmdUI->Enable(!dgd_running && !dgd_fatal);
     pCmdUI->SetCheck(!dgd_restore.IsEmpty());
 }
 

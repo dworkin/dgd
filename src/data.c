@@ -3974,6 +3974,10 @@ unsigned int frag;
 
 	prev = data->prev;
 	if (!(OBJ(data->oindex)->flags & O_PENDIO) || frag == 1) {
+	    if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
+		ext_swapout != (void (*) P((object*))) NULL) {
+		(*ext_swapout)(OBJ(data->oindex));
+	    }
 	    if (d_save_dataspace(data)) {
 		count++;
 	    }

@@ -79,6 +79,7 @@ linebuf *lb_new(lb, filename)
 register linebuf *lb;
 char *filename;
 {
+    char buf[STRINGSZ];
     register int i;
     register btbuf *bt;
 
@@ -113,7 +114,8 @@ char *filename;
     lb->txtsz = 0;
 
     /* create or truncate tmpfile */
-    lb->fd = P_open(lb->file, O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
+    lb->fd = P_open(path_native(buf, lb->file),
+		    O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
     if (lb->fd < 0) {
 	fatal("cannot create editor tmpfile \"%s\"", lb->file);
     }
@@ -128,6 +130,7 @@ char *filename;
 void lb_del(lb)
 register linebuf *lb;
 {
+    char buf[STRINGSZ];
     register int i;
     register btbuf *bt;
 
@@ -135,7 +138,7 @@ register linebuf *lb;
     lb_inact(lb);
 
     /* remove tmpfile */
-    P_unlink(lb->file);
+    P_unlink(path_native(buf, lb->file));
     FREE(lb->file);
 
     /* release memory */
@@ -171,8 +174,10 @@ register linebuf *lb;
 static void lb_act(lb)
 register linebuf *lb;
 {
+    char buf[STRINGSZ];
+
     if (lb->fd < 0) {
-	lb->fd = P_open(lb->file, O_RDWR | O_BINARY, 0);
+	lb->fd = P_open(path_native(buf, lb->file), O_RDWR | O_BINARY, 0);
 	if (lb->fd < 0) {
 	    fatal("cannot reopen editor tmpfile \"%s\"", lb->file);
 	}

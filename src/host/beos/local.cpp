@@ -17,8 +17,8 @@
 static int32 dgd_argc;		/* argument count */
 static char **dgd_argv;		/* arguments */
 static bool arg_started;	/* started with arguments? */
-static bool dgd_started;	/* driver started? */
 static bool dgd_running;	/* driver running? */
+static bool dgd_fatal;		/* aborted with fatal error */
 static BPath config_file;
 static BPath restore_file;
 
@@ -53,6 +53,7 @@ void dgd_exit(int code)
 void dgd_abort()
 {
     dgd_running = FALSE;
+    dgd_fatal = TRUE;
     exit_thread(2);
 }
 
@@ -275,7 +276,6 @@ void MainFrame::MessageReceived(BMessage *message)
 	break;
 
     case DGD_START:
-	dgd_started = true;
 	driver = spawn_thread(run_dgd, "driver", B_NORMAL_PRIORITY, NULL);
 	resume_thread(driver);
 	break;
@@ -395,10 +395,11 @@ bool MainFrame::QuitRequested(void)
 
 void MainFrame::MenusBeginning(void)
 {
-    config->SetEnabled(!dgd_running);
-    restore->SetEnabled(!dgd_running);
+    config->SetEnabled(!dgd_running && !dgd_fatal);
+    restore->SetEnabled(!dgd_running && !dgd_fatal);
     restore->SetMarked(restore_file.Path() != NULL);
-    start->SetEnabled(!dgd_running && config_file.Path() != NULL &&
+    start->SetEnabled(!dgd_running && !dgd_fatal &&
+		      config_file.Path() != NULL &&
 		      config_panel == NULL && restore_panel == NULL);
     copy->SetEnabled(log->selected);
     select->SetEnabled(lines != 0);
@@ -427,7 +428,6 @@ DGD::DGD() : BApplication("application/x-DGD")
 void DGD::ArgvReceived(int32 argc, char **argv)
 {
     arg_started = true;
-    dgd_started = true;
     driver = spawn_thread(run_dgd, "driver", B_NORMAL_PRIORITY, NULL);
     resume_thread(driver);
 }

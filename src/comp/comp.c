@@ -330,6 +330,16 @@ int narg;
 }
 
 /*
+ * NAME:	errhandler()
+ * DESCRIPTION:	pretend to have a default error handler
+ */
+void errhandler(f, depth)
+frame *f;
+Int depth;
+{
+}
+
+/*
  * NAME:	swapout()
  * DESCRIPTION:	pretend to indicate that objects are to be swapped out
  */
@@ -377,9 +387,10 @@ pcfunc *pcfunctions;	/* dummy */
  * NAME:	pc_preload()
  * DESCRIPTION:	pretend to preload compiled objects
  */
-void pc_preload(auto_name, driver_name)
+bool pc_preload(auto_name, driver_name)
 char *auto_name, *driver_name;
 {
+    return TRUE;
 }
 
 /*
@@ -723,9 +734,10 @@ object *obj;
  * NAME:	call_out->init()
  * DESCRIPTION:	pretend to initialize callout handling
  */
-void co_init(max)
+bool co_init(max)
 unsigned int max;
 {
+    return TRUE;
 }
 
 /*

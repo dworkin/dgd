@@ -469,7 +469,8 @@ static void do_include()
     tk_header(FALSE);
 
     if (idirs == (char **) NULL) {
-	fatal("illegal #include from config file");
+	error("illegal #include from config file");
+	return;
     }
     if (token == STRING_CONST) {
 	strcpy(file, yytext);
