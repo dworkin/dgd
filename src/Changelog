@@ -1537,3 +1537,4 @@ DGD 1.3
  - Fixed a bug with catch and atomic in precompiled code.
  - Fixed a recursion problem for an error in runtime_error().
  - Dumpfile format slightly changed; old dumpfiles are converted automatically.
+ - Better fix for the callout pause problem.
