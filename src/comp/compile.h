@@ -29,6 +29,7 @@ extern node *c_endcompound	P((node*));
 extern node *c_flookup		P((node*, bool));
 extern node *c_iflookup		P((node*, node*));
 extern node *c_variable		P((node*));
+extern node *c_lock		P((node*));
 extern node *c_funcall		P((node*, node*));
 extern node *c_arrow		P((node*, node*, node*));
 extern node *c_checklval	P((node*));
