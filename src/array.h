@@ -1,12 +1,11 @@
-typedef struct _array_ {
+struct _array_ {
     unsigned short size;		/* number of elements */
     uindex ref;				/* number of references */
     long tag;				/* used in sorting */
     struct _value_ *elts;		/* elements */
     struct _maphash_ *hashed;		/* hashed mapping elements */
     struct _arrref_ *primary;		/* primary reference */
-    struct _array_ *prev, *next;	/* double linked list of all arrays */
-} array;
+};
 
 extern void		arr_init	P((int));
 extern array	       *arr_new		P((long));

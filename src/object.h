@@ -1,7 +1,7 @@
 # include "hash.h"
 # include "swap.h"
 
-typedef struct _object_ {
+struct _object_ {
     hte chain;			/* object name hash table */
     char flags;			/* object status */
     char eduser;		/* index in user/editor array */
@@ -15,7 +15,7 @@ typedef struct _object_ {
     struct _dataspace_ *data;	/* dataspace block */
     sector cfirst;		/* first sector of control block */
     sector dfirst;		/* first sector of dataspace block */
-} object;
+};
 
 # define O_MASTER		0x01
 # define O_CREATED		0x02
