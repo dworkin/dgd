@@ -1137,3 +1137,4 @@ DGD 1.1
  - Fixed a line range bug in editor global commands.
  - Fixed a bug/typo in object upgrading.
  - Fixed a bug in exporting mappings.
+ - Made compression a bit faster.

@@ -608,24 +608,32 @@ register Uint size;
     cspace = size - 4;
 
     while (size != 0) {
-        if (htab[x] == *p) {
-            buf >>= 1;
-            bufsize += 1;
-        } else {
-            htab[x] = *p;
-            buf >>= 9;
-            buf += 0x0080 + (UCHAR(*p) << 8);
-            bufsize += 9;
-        }
+	if (htab[x] == *p) {
+	    buf >>= 1;
+	    bufsize += 1;
+	} else {
+	    htab[x] = *p;
+	    buf = (buf >> 9) + 0x0080 + (UCHAR(*p) << 8);
+	    bufsize += 9;
+	}
 	x = ((x << 3) & 0x3fff) ^ UCHAR(strhashtab[UCHAR(*p++)]);
 
-        while (bufsize >= 8) {
-	    if (--cspace == 0) {
-		return 0;	/* out of space */
+	if (bufsize >= 8) {
+	    if (bufsize == 16) {
+		if ((Int) (cspace-=2) <= 0) {
+		    return 0;	/* out of space */
+		}
+		*q++ = buf;
+		*q++ = buf >> 8;
+		bufsize = 0;
+	    } else {
+		if (--cspace == 0) {
+		    return 0;	/* out of space */
+		}
+		*q++ = buf >> (16 - bufsize);
+		bufsize -= 8;
 	    }
-	    *q++ = buf >> (16 - bufsize);
-	    bufsize -= 8;
-        }
+	}
 
 	--size;
     }

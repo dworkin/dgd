@@ -333,13 +333,21 @@ register flt *a, *b;
 	high += q * divh;
 
 	/* the estimated quotient may be 2 off; correct it if needed */
-	while (high >= numh && (high > numh || low > numl)) {
+	if (high >= numh && (high > numh || low > numl)) {
 	    high -= divh;
 	    if (low < divl) {
 		--high;
 	    }
 	    low -= divl;
 	    --q;
+	    if (high >= numh && (high > numh || low > numl)) {
+		high -= divh;
+		if (low < divl) {
+		    --high;
+		}
+		low -= divl;
+		--q;
+	    }
 	}
 
 	n[--i] = q;
