@@ -968,7 +968,7 @@ register int state;
 	cg_expr(n->l.left, POP);
 	--catch_level;
 	if (state == PUSH) {
-	    output(", ec_pop(), *--f->sp = nil_value) : (p = errormesg(), ");
+	    output(", ec_pop(), *--f->sp = nil_value, 0) : (p = errormesg(), ");
 	    output("PUSH_STRVAL(f, str_new(p, (long) strlen(p)))");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
@@ -977,7 +977,7 @@ register int state;
 		    }
 		}
 	    }
-	    output("))");
+	    output(", 0))");
 	} else {
 	    output(", ec_pop(), FALSE) : (");
 	    if (catch_level == 0) {
@@ -1656,6 +1656,11 @@ register node *n;
     Int *table;
 
     /*
+     * switch expression
+     */
+    cg_expr(n->r.right->l.left, PUSH);
+
+    /*
      * switch table
      */
     m = n->l.left;
@@ -1669,7 +1674,7 @@ register node *n;
     }
     table = switch_table;
     switch_table = ALLOCA(Int, size);
-    output("{\nstatic char swtab[] = {\n");
+    output(";\n{\nstatic char swtab[] = {\n");
     outcount = 0;
     i = 1;
     if (m->l.left->type == nil_node) {
@@ -1693,13 +1698,7 @@ register node *n;
 	outchar((char) l);
 	m = m->r.right;
     } while (++i < size);
-    output("\n};\n");
-
-    /*
-     * switch expression
-     */
-    cg_expr(n->r.right->l.left, PUSH);
-    output(";\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
+    output("\n};\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
 	   size - 1);
     switch_table[0] = 0;
 
@@ -1736,7 +1735,6 @@ register int n;
     do {
 	if (link->type == N_CATCH) {
 	    c++;
-	    r = 0;
 	} else {
 	    r++;
 	}
@@ -1744,7 +1742,7 @@ register int n;
     } while (--n != 0);
 
     while (c != 0) {
-	output("ec_pop();");
+	output("ec_pop();\n");
 	--c;
     }
     if (r != 0) {
@@ -1752,7 +1750,7 @@ register int n;
 	while (--r != 0) {
 	    output("->next");
 	}
-	output(");");
+	output(");\n");
     }
 }
 
