@@ -1432,8 +1432,7 @@ bool clean;
 	    }
 	} else {
 	    size = m->hashed->sizemod;
-	    if (size != 0) {
-		i = size;
+	    for (i = size; i > 0; ) {
 		for (e = *t++; e != (mapelt *) NULL; e = e->next) {
 		    if (e->add) {
 			e->add = FALSE;
