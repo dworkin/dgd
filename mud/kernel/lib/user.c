@@ -21,7 +21,7 @@ nomask object query_conn()
 static disconnect()
 {
     if (connection) {
-	destruct_object(connection);
+	connection->disconnect();
     }
 }
 

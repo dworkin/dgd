@@ -59,6 +59,17 @@ static close(int dest)
 }
 
 /*
+ * NAME:	disconnect()
+ * DESCRIPTION:	break connection
+ */
+disconnect()
+{
+    if (previous_program() == LIB_USER) {
+	destruct_object(this_object());
+    }
+}
+
+/*
  * NAME:	reboot()
  * DESCRIPTION:	destruct connection object after a reboot
  */
