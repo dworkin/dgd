@@ -1,21 +1,21 @@
-# define INCLUDE_TIME
 # include "dgd.h"
+# include <time.h>
 
 /*
- * NAME:	_time()
+ * NAME:	P->time()
  * DESCRIPTION:	return the current time
  */
-time_t _time()
+unsigned long P_time()
 {
-    return time((time_t *) NULL);
+    return (unsigned long) time((time_t *) NULL);
 }
 
 /*
- * NAME:	_ctime()
+ * NAME:	P->ctime()
  * DESCRIPTION:	convert the given time to a string
  */
-char *_ctime(t)
-time_t t;
+char *P_ctime(t)
+unsigned long t;
 {
     return ctime(&t);
 }
