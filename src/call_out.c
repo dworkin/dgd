@@ -696,7 +696,7 @@ frame *f;
 	}
 	while ((i=running.list) != 0) {
 	    handle = cotab[i].handle;
-	    obj = &otable[cotab[i].oindex];
+	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
 
 	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);

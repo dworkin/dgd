@@ -31,8 +31,8 @@ typedef struct _tbuf_ {
 } tbuf;
 
 typedef struct _tchunk_ {
-    tbuf t[TCHUNKSZ];		/* chunk of token buffers */
     struct _tchunk_ *next;	/* next in list */
+    tbuf t[TCHUNKSZ];		/* chunk of token buffers */
 } tchunk;
 
 char *yytext;			/* for strings and identifiers */

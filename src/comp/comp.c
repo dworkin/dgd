@@ -60,7 +60,7 @@ register control *ctrl;
     printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
 	printf("{ \"%s\", %u, %u },\n",
-	       otable[ctrl->inherits[i].oindex].chain.name,
+	       OBJ(ctrl->inherits[i].oindex)->chain.name,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
     }

@@ -9,7 +9,6 @@
  */
 
 typedef struct {
-    char filename[STRINGSZ];	/* file name */
     int fd;			/* read/write file descriptor */
     char *buffer;		/* file buffer */
     char *bufp;			/* buffer pointer */
@@ -17,6 +16,7 @@ typedef struct {
     char *lbuf;			/* line buffer */
     char *lbuflast;		/* end of line buffer */
     io *iostat;			/* I/O status */
+    char filename[STRINGSZ];	/* file name */
 } fiocontext;
 
 /*

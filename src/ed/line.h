@@ -18,14 +18,14 @@ typedef struct _btbuf_ {
 typedef struct {
     char *file;				/* tmpfile name */
     int fd;				/* tmpfile fd */
-    btbuf bt[NR_EDBUFS];		/* read & write buffers */
-    btbuf *wb;				/* write buffer */
     char *buf;				/* current low-level buffer */
     int blksz;				/* block size in write buffer */
     int txtsz;				/* text size in write buffer */
     void (*putline) P((char*, char*));	/* output line function */
     char *context;			/* context for putline */
     bool reverse;			/* for bk_put() */
+    btbuf *wb;				/* write buffer */
+    btbuf bt[NR_EDBUFS];		/* read & write buffers */
 } linebuf;
 
 extern linebuf *lb_new	  P((linebuf*, char*));

@@ -21,8 +21,8 @@ typedef struct _ifstate_ {
 } ifstate;
 
 typedef struct _ichunk_ {
-    ifstate i[ICHUNKSZ];	/* chunk of ifstates */
     struct _ichunk_ *next;	/* next in list */
+    ifstate i[ICHUNKSZ];	/* chunk of ifstates */
 } ichunk;
 
 static char **idirs;		/* include directory array */

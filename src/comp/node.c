@@ -11,8 +11,8 @@
 # define NODE_CHUNK	128
 
 typedef struct _nodelist_ {
-    node n[NODE_CHUNK];			/* node array */
     struct _nodelist_ *next;		/* next in linked list */
+    node n[NODE_CHUNK];			/* node array */
 } nodelist;
 
 static nodelist *list;			/* linked list of all node chunks */

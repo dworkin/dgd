@@ -8,8 +8,8 @@
 # define MCHUNKSZ	32
 
 typedef struct _mchunk_ {
-    macro m[MCHUNKSZ];		/* macros */
     struct _mchunk_ *next;	/* next in list */
+    macro m[MCHUNKSZ];		/* macros */
 } mchunk;
 
 static mchunk *mlist;		/* list of macro chunks */

@@ -37,7 +37,7 @@ char *create;
 int flag;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
-    topframe.stack = topframe.prev_lip = topframe.lip = stack;
+    topframe.stack = topframe.lip = stack;
     rlim.nodepth = TRUE;
     rlim.noticks = TRUE;
     topframe.rlim = &rlim;
@@ -295,37 +295,46 @@ register int n;
  * NAME:	interpret->odest()
  * DESCRIPTION:	replace all occurrances of an object on the stack by nil
  */
-void i_odest(ftop, obj)
-frame *ftop;
+void i_odest(prev, obj)
+register frame *prev;
 object *obj;
 {
+    register frame *f;
     register Uint count;
     register value *v;
-    register frame *f;
+    register unsigned short n;
 
     count = obj->count;
 
     /* wipe out objects in stack frames */
-    v = ftop->sp;
-    for (f = ftop; f != (frame *) NULL; f = f->prev) {
-	while (v < f->fp) {
+    for (;;) {
+	f = prev;
+	for (v = f->sp; v < f->fp; v++) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
 		*v = nil_value;
 	    }
-	    v++;
 	}
-	v = f->argp;
-    }
-    /* wipe out objects in lvalue index stack */
-    v = ftop->lip;
-    for (f = ftop; f != (frame *) NULL; f = f->prev) {
-	while (v >= f->stack) {
+	for (v = f->lip; --v >= f->stack; ) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
 		*v = nil_value;
 	    }
-	    --v;
 	}
-	v = f->prev_lip;
+
+	prev = f->prev;
+	if (prev == (frame *) NULL) {
+	    break;
+	}
+	if ((f->func->class & C_ATOMIC) && !prev->atomic) {
+	    /*
+	     * wipe out objects in arguments to atomic function call
+	     */
+	    for (n = f->nargs, v = prev->sp; n != 0; --n, v++) {
+		if (v->type == T_OBJECT && v->u.objcnt == count) {
+		    *v = nil_value;
+		}
+	    }
+	    break;
+	}
     }
 }
 
@@ -1022,9 +1031,9 @@ register value *sp;
     register value *v, *w;
     register frame *f;
 
-    v = ftop->sp;
-    w = ftop->lip;
-    for (f = ftop; f != NULL; f = f->prev) {
+    for (f = ftop; f != (frame *) NULL; f = f->prev) {
+	v = f->sp;
+	w = f->lip;
 	for (;;) {
 	    if (v == sp) {
 		f->sp = v;
@@ -1068,8 +1077,6 @@ register value *sp;
 	    }
 	    v++;
 	}
-	v = f->argp;
-	w = f->prev_lip;
 
 	if (f->sos) {
 	    /* stack on stack */
@@ -1122,7 +1129,7 @@ register int n;
 	--n;
     }
 
-    return OBJ(f->p_ctrl->oindex)->chain.name;
+    return OBJR(f->p_ctrl->oindex)->chain.name;
 }
 
 /*
@@ -1755,7 +1762,7 @@ int funci;
 
     /* set the program control block */
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
-    f.p_ctrl = o_control(OBJ(f.ctrl->inherits[p_ctrli].oindex));
+    f.p_ctrl = o_control(OBJR(f.ctrl->inherits[p_ctrli].oindex));
     f.p_index = p_ctrli + 1;
 
     /* get the function */
@@ -1888,6 +1895,7 @@ int funci;
     /* deal with atomic functions */
     f.level = prev_f->level;
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
+	o_new_plane();
 	d_new_plane(f.data, ++f.level);
 	f.atomic = TRUE;
 	if (!f.rlim->noticks) {
@@ -1901,7 +1909,6 @@ int funci;
     }
 
     /* create new local stack */
-    f.prev_lip = prev_f->lip;
     FETCH2U(pc, n);
     f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
     f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
@@ -1947,15 +1954,17 @@ int funci;
 	/* extended and malloced */
 	FREE(f.stack);
     }
+    cframe = prev_f;
+    i_pop(prev_f, f.nargs);
+    *--prev_f->sp = val;
+
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
 	d_commit_plane(f.level);
+	o_commit_plane();
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;
 	}
     }
-    cframe = prev_f;
-    i_pop(prev_f, f.nargs);
-    *--prev_f->sp = val;
 }
 
 /*
@@ -1994,7 +2003,7 @@ int nargs;
 	return FALSE;
     }
 
-    ctrl = OBJ(ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
+    ctrl = OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
@@ -2179,7 +2188,7 @@ dataspace *data;
     strcpy(str->text + 1, name);
 
     /* program name */
-    name = OBJ(f->p_ctrl->oindex)->chain.name;
+    name = OBJR(f->p_ctrl->oindex)->chain.name;
     PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';
@@ -2336,6 +2345,7 @@ Int level;
 	}
 	i_set_sp(ftop, f->sp);
 	d_discard_plane(ftop->level);
+	o_discard_plane();
     }
 
     return f;
@@ -2353,7 +2363,7 @@ void i_clear()
     if (f->stack != stack) {
 	FREE(f->stack);
 	f->fp = f->sp = stack + MIN_STACK;
-	f->stack = f->prev_lip = f->lip = stack;
+	f->stack = f->lip = stack;
     }
 
     f->rlim = &rlim;

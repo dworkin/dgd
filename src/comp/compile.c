@@ -23,8 +23,8 @@ typedef struct _block_ {
 } block;
 
 typedef struct _bchunk_ {
-    block b[BLOCK_CHUNK];	/* chunk of blocks */
     struct _bchunk_ *next;	/* next in block chunk list */
+    block b[BLOCK_CHUNK];	/* chunk of blocks */
 } bchunk;
 
 typedef struct {
@@ -181,8 +181,8 @@ typedef struct _loop_ {
 } loop;
 
 typedef struct _lchunk_ {
-    loop l[LOOP_CHUNK];		/* chunk of loops */
     struct _lchunk_ *next;	/* next in loop chunk list */
+    loop l[LOOP_CHUNK];		/* chunk of loops */
 } lchunk;
 
 static lchunk *llist;		/* list of all loop chunks */
@@ -353,7 +353,7 @@ int priv;
 	    c_error("illegal inherit from driver object");
 	    return FALSE;
 	}
-	obj = o_find(file);
+	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
 	    inheriting = TRUE;
 	    obj = c_compile(f, file, (object *) NULL);
@@ -376,7 +376,7 @@ int priv;
 	if (call_driver_object(f, "inherit_program", 3)) {
 	    inheriting = FALSE;
 	    if (f->sp->type == T_OBJECT) {
-		obj = OBJ(f->sp->oindex);
+		obj = OBJR(f->sp->oindex);
 		f->sp++;
 	    } else {
 		/* returned value not an object */
@@ -391,7 +391,7 @@ int priv;
 	    f->sp++;
 	    inheriting = FALSE;
 	    file = path_from(buf, current->file, file);
-	    obj = o_find(file);
+	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
 		obj = c_compile(f, file, (object *) NULL);
@@ -476,7 +476,8 @@ object *obj;
 	} else {
 	    object *aobj;
 
-	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
+	    if (!cg_compiled() &&
+		o_find(driver_object, OACC_READ) == (object *) NULL) {
 		/*
 		 * compile the driver object to do pathname translation
 		 */
@@ -485,7 +486,7 @@ object *obj;
 		current = &c;
 	    }
 
-	    aobj = o_find(auto_object);
+	    aobj = o_find(auto_object, OACC_READ);
 	    if (aobj == (object *) NULL) {
 		/*
 		 * compile auto object
@@ -2105,7 +2106,7 @@ char *format, *a1, *a2, *a3;
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
-	o_find(driver_object) != (object *) NULL) {
+	o_find(driver_object, OACC_READ) != (object *) NULL) {
 	register frame *f;
 
 	f = current->frame;

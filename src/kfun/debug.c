@@ -649,7 +649,7 @@ char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 int kf_dump_object(f)
 frame *f;
 {
-    showctrl(o_control(OBJ(f->sp->oindex)));
+    showctrl(o_control(OBJR(f->sp->oindex)));
     fflush(stdout);
     *f->sp = nil_value;
     return 0;
@@ -668,12 +668,12 @@ frame *f;
 {
     dsymbol *symb;
 
-    symb = ctrl_symb(o_control(OBJ(f->sp[1].oindex)),
+    symb = ctrl_symb(o_control(OBJR(f->sp[1].oindex)),
 		     f->sp->u.string->text, f->sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
 	control *ctrl;
 
-	ctrl = o_control(OBJ(f->sp[1].oindex));
+	ctrl = o_control(OBJR(f->sp[1].oindex));
 	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
 	       UCHAR(symb->index));
 	fflush(stdout);

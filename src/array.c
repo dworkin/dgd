@@ -9,8 +9,8 @@
 # define ARR_CHUNK	128
 
 typedef struct _arrchunk_ {
-    array a[ARR_CHUNK];		/* chunk of arrays */
     struct _arrchunk_ *next;	/* next in list */
+    array a[ARR_CHUNK];		/* chunk of arrays */
 } arrchunk;
 
 typedef struct _arrh_ {
@@ -21,8 +21,8 @@ typedef struct _arrh_ {
 } arrh;
 
 typedef struct _arrhchunk_ {
-    arrh ah[ARR_CHUNK];		/* chunk of arrh entries */
     struct _arrhchunk_ *next;	/* next in list */
+    arrh ah[ARR_CHUNK];		/* chunk of arrh entries */
 } arrhchunk;
 
 # define MELT_CHUNK	128
@@ -35,8 +35,8 @@ typedef struct _mapelt_ {
 } mapelt;
 
 typedef struct _meltchunk_ {
-    mapelt e[MELT_CHUNK];	/* chunk of mapelt entries */
     struct _meltchunk_ *next;	/* next in list */
+    mapelt e[MELT_CHUNK];	/* chunk of mapelt entries */
 } meltchunk;
 
 typedef struct _maphash_ {
@@ -57,9 +57,9 @@ typedef struct arrbak {
 } arrbak;
 
 struct _abchunk_ {
-    arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
     short chunksz;		/* size of this chunk */
     struct _abchunk_ *next;	/* next in linked list */
+    arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
 };
 
 static unsigned long max_size;	/* max. size of array and mapping */

@@ -194,9 +194,9 @@ typedef struct {
 # define RPCHUNKSZ	32
 
 typedef struct _rpchunk_ {
-    rgxposn rp[RPCHUNKSZ];	/* rgxposn chunk */
     int chunksz;		/* size of chunk */
     struct _rpchunk_ *next;	/* next in linked list */
+    rgxposn rp[RPCHUNKSZ];	/* rgxposn chunk */
 } rpchunk;
 
 /*

@@ -157,7 +157,7 @@ struct _value_ {
 # define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
 # define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
 
-# define DESTRUCTED(v)	(OBJ((v)->oindex)->count != (v)->u.objcnt)
+# define DESTRUCTED(v)	(OBJR((v)->oindex)->count != (v)->u.objcnt)
 
 
 # define C_PRIVATE	0x01
@@ -203,7 +203,6 @@ struct _frame_ {
     value *lip;			/* lvalue index pointer */
     value *argp;		/* argument pointer (previous sp) */
     value *fp;			/* frame pointer (at end of local stack) */
-    value *prev_lip;		/* previous lvalue index pointer */
     string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     rlinfo *rlim;		/* rlimits info */

@@ -8,8 +8,8 @@
 # define SCHUNKSZ	8
 
 typedef struct _schunk_ {
-    str s[SCHUNKSZ];		/* chunk of pp strings */
     struct _schunk_ *next;	/* next in list */
+    str s[SCHUNKSZ];		/* chunk of pp strings */
 } schunk;
 
 static schunk *slist;		/* list of pps string chunks */

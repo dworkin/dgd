@@ -448,15 +448,15 @@ typedef struct _rule_ {
 # define RLCHUNKSZ	32
 
 typedef struct _rschunk_ {
-    rulesym rs[RSCHUNKSZ];	/* rulesym chunk */
     int chunksz;		/* current chunk size */
     struct _rschunk_ *next;	/* next in list */
+    rulesym rs[RSCHUNKSZ];	/* rulesym chunk */
 } rschunk;
 
 typedef struct _rlchunk_ {
-    rule rl[RLCHUNKSZ];		/* rule chunk */
     int chunksz;		/* current chunk size */
     struct _rlchunk_ *next;	/* next in list */
+    rule rl[RLCHUNKSZ];		/* rule chunk */
 } rlchunk;
 
 # define RULE_UNKNOWN	0	/* unknown rule symbol */

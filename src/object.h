@@ -30,13 +30,21 @@ struct _object_ {
 
 # define OBJ_LAYOUT		"xccuuuiiippdd"
 
-# define OBJ(i)			(&otable[(i)])
+# define OBJ(i)			(&otable[i])
+# define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
+# define OBJW(i)		((!obase) ? o_owrite((i)) : &otable[i])
+# define OBJF(i)		OBJW(i)
 
 # define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 
+# define OACC_READ		0x00	/* read access */
+# define OACC_REFCHANGE		0x01	/* modify refcount */
+# define OACC_MODIFY		0x02	/* write access */
+
 extern void	  o_init		P((unsigned int));
-extern object	 *o_object		P((unsigned int));
+extern object	 *o_oread		P((unsigned int));
+extern object	 *o_owrite		P((unsigned int));
 extern void	  o_new_plane		P((void));
 extern void	  o_commit_plane	P((void));
 extern void	  o_discard_plane	P((void));
@@ -48,7 +56,7 @@ extern void	  o_upgraded		P((object*, object*));
 extern void	  o_del			P((object*, frame*));
 
 extern char	 *o_name		P((char*, object*));
-extern object	 *o_find		P((char*));
+extern object	 *o_find		P((char*, int));
 extern control   *o_control		P((object*));
 extern dataspace *o_dataspace		P((object*));
 
@@ -60,4 +68,5 @@ extern void	  o_conv		P((void));
 
 extern object    *otable;
 extern char	 *ocmap;
+extern bool	  obase;
 extern Uint	  odcount;

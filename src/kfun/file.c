@@ -67,7 +67,7 @@ register frame *f;
     object *obj;
     char *status;
 
-    obj = OBJ(f->sp->oindex);
+    obj = OBJR(f->sp->oindex);
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
 	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
@@ -395,7 +395,7 @@ register frame *f;
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
-	    ctrl = o_control(OBJ(inh->oindex));
+	    ctrl = o_control(OBJR(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
@@ -468,17 +468,17 @@ FUNCDEF("restore_object", kf_restore_object, pt_restore_object)
 # define ACHUNKSZ	16
 
 typedef struct _achunk_ {
-    value a[ACHUNKSZ];		/* chunk of arrays */
     struct _achunk_ *next;	/* next in list */
+    value a[ACHUNKSZ];		/* chunk of arrays */
 } achunk;
 
 typedef struct {
-    char file[STRINGSZ];	/* current restore file */
     int line;			/* current line number */
     frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
     int achunksz;		/* size of current array chunk */
     uindex narrays;		/* # of arrays/mappings */
+    char file[STRINGSZ];	/* current restore file */
 } restcontext;
 
 /*
@@ -928,7 +928,7 @@ register frame *f;
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
-	    ctrl = o_control(OBJ(inh->oindex));
+	    ctrl = o_control(OBJR(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
@@ -968,7 +968,7 @@ register frame *f;
 		/*
 		 * Restore non-static variables.
 		 */
-		ctrl = OBJ(inh->oindex)->ctrl;
+		ctrl = OBJR(inh->oindex)->ctrl;
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
 		    if (pending && nvars == checkpoint) {
 			/*

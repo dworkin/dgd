@@ -29,7 +29,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    obj = o_find(file);
+    obj = o_find(file, OACC_MODIFY);
     if (obj != (object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
 	    error("Cannot recompile cloned object");
@@ -40,9 +40,6 @@ register frame *f;
 	if (O_INHERITED(obj)) {
 	    error("Cannot recompile inherited object");
 	}
-    }
-    if (f->data->plane->level != 0) {
-	error("compile_object() within atomic function (cannot undo yet)");
     }
     obj = c_compile(f, file, obj);
     str_del(f->sp->u.string);
@@ -80,12 +77,12 @@ int nargs;
 	    i_del_value(f->sp++);
 	    return 1;
 	}
-	obj = OBJ(f->sp->oindex);
+	obj = OBJR(f->sp->oindex);
 	f->sp++;
 	break;
 
     case T_OBJECT:
-	obj = OBJ(val->oindex);
+	obj = OBJR(val->oindex);
 	break;
 
     default:
@@ -249,12 +246,9 @@ register frame *f;
 {
     register object *obj;
 
-    obj = OBJ(f->sp->oindex);
+    obj = OBJF(f->sp->oindex);
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
-    }
-    if (f->data->plane->level != 0) {
-	error("clone_object() within atomic function (cannot undo yet)");
     }
     obj = o_clone(obj);
     PUT_OBJ(f->sp, obj);
@@ -278,17 +272,19 @@ register frame *f;
 {
     register object *obj;
 
-    obj = OBJ(f->sp->oindex);
-    if (f->data->plane->level != 0) {
-	error("destruct_object() within atomic function (cannot undo yet)");
-    }
+    obj = OBJW(f->sp->oindex);
     if (obj->flags & O_USER) {
+	if (f->data->plane->level != 0) {
+	    error("User object destructed in atomic function (cannot undo yet)");
+	}
 	comm_close(f, obj);
     }
     if (obj->flags & O_EDITOR) {
+	if (f->data->plane->level != 0) {
+	    error("Editor object destructed in atomic function");
+	}
 	ed_del(obj);
     }
-    i_odest(f, obj);	/* wipe out occurrances on the stack */
     o_del(obj, f);
     return 0;
 }
@@ -309,7 +305,7 @@ register frame *f;
 {
     char buffer[STRINGSZ + 12], *name;
 
-    name = o_name(buffer, OBJ(f->sp->oindex));
+    name = o_name(buffer, OBJR(f->sp->oindex));
     PUT_STRVAL(f->sp, str_new((char *) NULL, strlen(name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, name);
@@ -338,7 +334,7 @@ register frame *f;
 	return 1;
     }
     i_add_ticks(f, 2);
-    obj = o_find(path);
+    obj = o_find(path, OACC_READ);
     str_del(f->sp->u.string);
     if (obj != (object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
@@ -368,7 +364,7 @@ register frame *f;
     char *name;
 
     i_add_ticks(f, 2);
-    obj = OBJ(f->sp->oindex);
+    obj = OBJR(f->sp->oindex);
     f->sp++;
     symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
 		     f->sp->u.string->len);
@@ -377,7 +373,7 @@ register frame *f;
     if (symb != (dsymbol *) NULL) {
 	object *o;
 
-	o = OBJ(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
+	o = OBJR(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
 	    obj == f->obj) {
 	    /*
@@ -435,7 +431,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = OBJ(f->sp->oindex);
+    obj = OBJR(f->sp->oindex);
     if (obj->flags & O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_number(obj));
     } else {
@@ -460,7 +456,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = OBJ(f->sp->oindex);
+    obj = OBJR(f->sp->oindex);
     if (obj->flags & O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_name(obj));
     } else {
@@ -762,6 +758,9 @@ register frame *f;
     obj = f->obj;
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
+	    if (f->data->plane->level != 0) {
+		error("send_message() within atomic function (cannot undo yet)");
+	    }
 	    if (f->sp->type == T_INT) {
 		num = comm_echo(obj, f->sp->u.number != 0);
 	    } else {
@@ -1043,7 +1042,7 @@ int nargs;
 	a = conf_status(f);
 	--f->sp;
     } else {
-	a = conf_object(f->data, OBJ(f->sp->oindex));
+	a = conf_object(f->data, OBJR(f->sp->oindex));
     }
     PUT_ARRVAL(f->sp, a);
     return 0;

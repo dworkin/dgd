@@ -661,7 +661,7 @@ static bool conf_config()
 		p[l] = '\0';
 	    }
 	    m_static();
-	    conf[m].u.str = strcpy(REALLOC(conf[m].u.str, char, 0, l + 1), p);
+	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
 	    m_dynamic();
 	    break;
 
@@ -681,8 +681,7 @@ static bool conf_config()
 		    return FALSE;
 		}
 		m_static();
-		dirs[l] = strcpy(REALLOC(dirs[l], char, 0, strlen(yytext) + 1),
-				 yytext);
+		dirs[l] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
 		l++;
 		m_dynamic();
 		if ((c=pp_gettok()) == '}') {
@@ -1272,8 +1271,8 @@ register value *v;
     register control *ctrl;
     object *prog;
 
-    prog = (obj->flags & O_MASTER) ? obj : OBJ(obj->u_master);
-    ctrl = (O_UPGRADING(prog)) ? OBJ(prog->prev)->ctrl : o_control(prog);
+    prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->u_master);
+    ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : o_control(prog);
 
     switch (idx) {
     case 0:	/* O_COMPILETIME */

@@ -26,9 +26,9 @@ typedef struct _pnode_ {
 # define PNCHUNKSZ	256
 
 typedef struct _pnchunk_ {
-    pnode pn[PNCHUNKSZ];	/* chunk of pnodes */
     int chunksz;		/* size of this chunk */
     struct _pnchunk_ *next;	/* next in linked list */
+    pnode pn[PNCHUNKSZ];	/* chunk of pnodes */
 } pnchunk;
 
 /*
@@ -89,9 +89,9 @@ typedef struct _snode_ {
 # define SNCHUNKSZ	32
 
 typedef struct _snchunk_ {
-    snode sn[SNCHUNKSZ];	/* chunk of snodes */
     int chunksz;		/* size of this chunk */
     struct _snchunk_ *next;	/* next in linked list */
+    snode sn[SNCHUNKSZ];	/* chunk of snodes */
 } snchunk;
 
 typedef struct {
@@ -199,9 +199,9 @@ register snlist *list;
 # define STRCHUNKSZ	256
 
 typedef struct _strchunk_ {
-    string *str[STRCHUNKSZ];	/* strings */
     int chunksz;		/* size of chunk */
     struct _strchunk_ *next;	/* next in linked list */
+    string *str[STRCHUNKSZ];	/* strings */
 } strchunk;
 
 /*
@@ -248,9 +248,9 @@ register strchunk *c;
 # define ARRCHUNKSZ	256
 
 typedef struct _arrchunk_ {
-    array *arr[ARRCHUNKSZ];	/* arrays */
     int chunksz;		/* size of chunk */
     struct _arrchunk_ *next;	/* next in linked list */
+    array *arr[ARRCHUNKSZ];	/* arrays */
 } arrchunk;
 
 /*

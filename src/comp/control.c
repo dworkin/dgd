@@ -90,8 +90,8 @@ typedef struct _vfh_ {		/* variable/function hash table */
 } vfh;
 
 typedef struct _vfhchunk_ {
-    vfh vf[VFH_CHUNK];		/* vfh chunk */
     struct _vfhchunk_ *next;	/* next in linked list */
+    vfh vf[VFH_CHUNK];		/* vfh chunk */
 } vfhchunk;
 
 static vfhchunk *vfhclist;	/* linked list of all vfh chunks */
@@ -425,7 +425,7 @@ oh *ohash;
 	}
 
 	/*
-	 * Now check if the function in the merge table is in
+	 * Now check if the functions in the merge table are in
 	 * an object inherited by the currently inherited object.
 	 */
 	inhflag = firstsym = TRUE;
@@ -446,6 +446,9 @@ oh *ohash;
 	    for (;;) {
 		if (--n >= 0) {
 		    if (o->index == (inh++)->oindex) {
+			/*
+			 * redefined inherited function
+			 */
 			if ((*l)->ohash != ohash && (*l)->ohash->priv == 0 &&
 			    (ctrl->ninherits != 1 ||
 			     (ctrl->funcdefs[(*l)->index].class &
@@ -466,16 +469,12 @@ oh *ohash;
 				break;
 			    }
 			}
-
-			/*
-			 * redefined inherited function
-			 */
 			*l = (vfh *) (*l)->chain.next;
 			break;
 		    }
 		} else {
 		    /*
-		     * check for prototype clashes
+		     * not inherited: check for prototype clashes
 		     */
 		    if (((f->class | PROTO_CLASS(prot2)) &
 					(C_NOMASK | C_UNDEFINED)) == C_NOMASK) {
@@ -637,7 +636,7 @@ int priv;
 	 */
 	ctrl = o_control(obj);
 	inh = ctrl->inherits;
-	if (ndirects != 0 && strcmp(OBJ(inh->oindex)->chain.name,
+	if (ndirects != 0 && strcmp(OBJR(inh->oindex)->chain.name,
 				    directs[0]->obj->chain.name) != 0) {
 	    c_error("inherited different auto objects");
 	}
@@ -646,7 +645,7 @@ int priv;
 	     * check all the objects inherited by the object now inherited
 	     */
 	    --inh;
-	    o = OBJ(inh->oindex);
+	    o = OBJR(inh->oindex);
 	    if (o->count == 0) {
 		Uint ocount;
 
@@ -707,13 +706,15 @@ int priv;
 		    ninherits -= o->ctrl->ninherits - 1;
 		}
 
-		if (!inh->priv && ohash->priv == 2) {
+		if (!inh->priv && ohash->priv > priv) {
 		    /*
-		     * previously indirectly privately inherited
+		     * add to function and variable table
 		     */
+		    if (ohash->priv == 2) {
+			ctrl_vardefs(ohash, o->ctrl);
+		    }
 		    ohash->priv = priv;
 		    ctrl_funcdefs(ohash, o->ctrl);
-		    ctrl_vardefs(ohash, o->ctrl);
 		}
 	    }
 	}
@@ -757,7 +758,7 @@ int priv;
 	    ctrl = o_control(obj);
 	    for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
 		--inh;
-		o = OBJ(inh->oindex);
+		o = OBJR(inh->oindex);
 		ohash = oh_new(o->chain.name);
 		if (!inh->priv && ohash->priv > priv) {
 		    /*
@@ -784,15 +785,15 @@ int priv;
 # define STRING_CHUNK	64
 
 typedef struct _strchunk_ {
-    string *s[STRING_CHUNK];		/* chunk of strings */
     struct _strchunk_ *next;		/* next in string chunk list */
+    string *s[STRING_CHUNK];		/* chunk of strings */
 } strchunk;
 
 # define FCALL_CHUNK	64
 
 typedef struct _fcchunk_ {
-    char *f[FCALL_CHUNK];		/* function reference */
     struct _fcchunk_ *next;		/* next in fcall chunk list */
+    char *f[FCALL_CHUNK];		/* function reference */
 } fcchunk;
 
 typedef struct _cfunc_ {
@@ -855,7 +856,7 @@ void ctrl_create()
 		 * do this ctrl->ninherits - 1 times, but at least once
 		 */
 		do {
-		    ohash = oh_new(OBJ(old->oindex)->chain.name);
+		    ohash = oh_new(OBJR(old->oindex)->chain.name);
 		    --old;
 		    (--new)->oindex = ohash->obj->index;
 		    ohash->index = --count;	/* may happen more than once */
@@ -869,7 +870,7 @@ void ctrl_create()
 	 * table.
 	 */
 	for (count = 0; count < ninherits; count++) {
-	    ohash = oh_new(OBJ(new->oindex)->chain.name);
+	    ohash = oh_new(OBJR(new->oindex)->chain.name);
 	    i = ohash->index;
 	    if (i == count) {
 		ctrl = ohash->obj->ctrl;
@@ -1205,7 +1206,7 @@ long *call;
 	    c_error("undefined function %s::%s", label, str->text);
 	    return (char *) NULL;
 	}
-	ohash = oh_new(OBJ(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
+	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
 	index = UCHAR(symb->index);
     } else {
 	register vfh *h;
@@ -1347,7 +1348,7 @@ long call;
 	control *ctrl;
 	dfuncdef *f;
 
-	ctrl = OBJ(newctrl->inherits[inherit].oindex)->ctrl;
+	ctrl = OBJR(newctrl->inherits[inherit].oindex)->ctrl;
 	f = ctrl->funcdefs + index;
 	name = d_get_strconst(ctrl, f->inherit, f->index)->text;
     }
@@ -1582,7 +1583,7 @@ static void ctrl_mkfcalls()
 	 * object, and fill in the function call table segment for each object
 	 * once.
 	 */
-	ohash = oh_new(OBJ(inh->oindex)->chain.name);
+	ohash = oh_new(OBJR(inh->oindex)->chain.name);
 	if (ohash->index == i) {
 	    register char *ofc;
 	    register dfuncdef *f;
@@ -1598,7 +1599,7 @@ static void ctrl_mkfcalls()
 	    ofc = d_get_funcalls(ctrl) + 2L * ctrl->inherits[j].funcoffset;
 	    for (n = ctrl->nfuncalls - ctrl->inherits[j].funcoffset; n > 0; --n)
 	    {
-		ctrl2 = OBJ(ctrl->inherits[UCHAR(ofc[0])].oindex)->ctrl;
+		ctrl2 = OBJR(ctrl->inherits[UCHAR(ofc[0])].oindex)->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
 		if (inh->priv || (f->class & C_PRIVATE) ||
 		    (f->class & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
@@ -1680,8 +1681,8 @@ static void ctrl_mksymbs()
 	if (i == ninherits) {
 	    ctrl = newctrl;
 	} else if (!inh->priv &&
-		   oh_new(OBJ(inh->oindex)->chain.name)->index == i) {
-	    ctrl = OBJ(inh->oindex)->ctrl;
+		   oh_new(OBJR(inh->oindex)->chain.name)->index == i) {
+	    ctrl = OBJR(inh->oindex)->ctrl;
 	} else {
 	    continue;
 	}
@@ -1782,7 +1783,7 @@ unsigned int len;
     symtab = d_get_symbols(ctrl);
     i = hashstr(func, VFMERGEHASHSZ) % i;
     symb1 = symb = &symtab[i];
-    ctrl = o_control(OBJ(inherits[UCHAR(symb->inherit)].oindex));
+    ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
     f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
     str = d_get_strconst(ctrl, f->inherit, f->index);
     if (len == str->len && memcmp(func, str->text, len) == 0) {
@@ -1791,7 +1792,7 @@ unsigned int len;
     }
     while (i != symb->next) {
 	symb = &symtab[i = symb->next];
-	ctrl = o_control(OBJ(inherits[UCHAR(symb->inherit)].oindex));
+	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
 	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	str = d_get_strconst(ctrl, f->inherit, f->index);
 	if (len == str->len && memcmp(func, str->text, len) == 0) {
@@ -1925,19 +1926,19 @@ register control *old, *new;
 
     voffset = 0;
     for (i = new->ninherits, inh = new->inherits; i > 0; --i, inh++) {
-	ctrl = (i == 1) ? new : OBJ(inh->oindex)->ctrl;
+	ctrl = (i == 1) ? new : OBJR(inh->oindex)->ctrl;
 	if (inh->varoffset < voffset || ctrl->nvardefs == 0) {
 	    continue;
 	}
 	voffset = inh->varoffset + ctrl->nvardefs;
 
 	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
-	    if (strcmp(OBJ(inh->oindex)->chain.name,
-		       OBJ(inh2->oindex)->chain.name) == 0) {
+	    if (strcmp(OBJR(inh->oindex)->chain.name,
+		       OBJR(inh2->oindex)->chain.name) == 0) {
 		/*
 		 * put var names from old control block in string merge table
 		 */
-		ctrl2 = o_control(OBJ(inh2->oindex));
+		ctrl2 = o_control(OBJR(inh2->oindex));
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
 		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),

@@ -15,8 +15,8 @@ typedef struct _strh_ {
 } strh;
 
 typedef struct _strhchunk_ {
-    strh sh[STR_CHUNK];		/* chunk of strh entries */
     struct _strhchunk_ *next;	/* next in list */
+    strh sh[STR_CHUNK];		/* chunk of strh entries */
 } strhchunk;
 
 static hashtab *ht;		/* string merge table */

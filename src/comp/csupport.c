@@ -37,7 +37,7 @@ Uint compiled;
 
     cc = 0;
     while (--ninherits > 0) {
-	obj = o_find(pcinh->name);
+	obj = o_find(pcinh->name, OACC_READ);
 	if (obj == (object *) NULL) {
 	    fatal("cannot inherit /%s from /%s", pcinh->name,
 		  pcinh[ninherits].name);
@@ -53,7 +53,7 @@ Uint compiled;
     if (cc > compiled) {
 	fatal("object out of date: /%s", pcinh->name);
     }
-    if (o_find(pcinh->name) != (object *) NULL) {
+    if (o_find(pcinh->name, OACC_READ) != (object *) NULL) {
 	fatal("object precompiled twice: /%s", pcinh->name);
     }
     inh->funcoffset = pcinh->funcoffset;
@@ -222,7 +222,8 @@ dataspace *data;
 
     for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->oindex != UINDEX_MAX &&
-	    (obj=OBJ((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED)) {
+	    (obj=OBJR((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED))
+	{
 	    n++;
 	}
     }
@@ -231,7 +232,8 @@ dataspace *data;
     v = a->elts;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->oindex != UINDEX_MAX &&
-	    (obj=OBJ((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED)) {
+	    (obj=OBJR((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED))
+	{
 	    v->type = T_OBJECT;
 	    v->oindex = obj->index;
 	    v->u.objcnt = obj->count;
@@ -784,7 +786,7 @@ int fd;
 	if (l->oindex == UINDEX_MAX) {
 	    register object *obj;
 
-	    obj = o_find(name = l->inherits[l->ninherits - 1].name);
+	    obj = o_find(name = l->inherits[l->ninherits - 1].name, OACC_READ);
 	    if (obj != (object *) NULL) {
 		register control *ctrl;
 

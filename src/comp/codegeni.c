@@ -14,8 +14,8 @@
 # define LINE_CHUNK	128
 
 typedef struct _linechunk_ {
-    char info[LINE_CHUNK];		/* chunk of line number info */
     struct _linechunk_ *next;		/* next in list */
+    char info[LINE_CHUNK];		/* chunk of line number info */
 } linechunk;
 
 static linechunk *lline, *tline;		/* line chunk list */
@@ -137,8 +137,8 @@ static void line_clear()
 # define CODE_CHUNK	128
 
 typedef struct _codechunk_ {
-    char code[CODE_CHUNK];		/* chunk of code */
     struct _codechunk_ *next;		/* next in list */
+    char code[CODE_CHUNK];		/* chunk of code */
 } codechunk;
 
 static codechunk *lcode, *tcode;		/* code chunk list */
@@ -286,8 +286,8 @@ typedef struct _jmplist_ {
 } jmplist;
 
 typedef struct _jmpchunk_ {
-    jmplist jump[JUMP_CHUNK];		/* chunk of jumps */
     struct _jmpchunk_ *next;		/* next in list */
+    jmplist jump[JUMP_CHUNK];		/* chunk of jumps */
 } jmpchunk;
 
 static jmpchunk *ljump;			/* list of jump chunks */

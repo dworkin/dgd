@@ -11,10 +11,10 @@ typedef struct _item_ {
 # define ITCHUNKSZ	32
 
 typedef struct _itchunk_ {
-    item it[ITCHUNKSZ];		/* chunk of items */
     int chunksz;		/* size of this chunk */
     item *flist;		/* list of free items */
     struct _itchunk_ *next;	/* next in linked list */
+    item it[ITCHUNKSZ];		/* chunk of items */
 } itchunk;
 
 /*
@@ -319,9 +319,9 @@ typedef struct _shlink_ {
 # define SLCHUNKSZ	64
 
 typedef struct _slchunk_ {
-    shlink sl[SLCHUNKSZ];	/* shlinks */
     int chunksz;		/* size of chunk */
     struct _slchunk_ *next;	/* next in linked list */
+    shlink sl[SLCHUNKSZ];	/* shlinks */
 } slchunk;
 
 /*

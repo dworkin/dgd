@@ -31,9 +31,9 @@ int narg;
     object *driver;
     char *driver_name;
 
-    if (dindex == UINDEX_MAX || dcount != (driver=OBJ(dindex))->count) {
+    if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count) {
 	driver_name = conf_driver();
-	driver = o_find(driver_name);
+	driver = o_find(driver_name, OACC_READ);
 	if (driver == (object *) NULL) {
 	    driver = c_compile(f, driver_name, (object *) NULL);
 	}

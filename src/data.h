@@ -114,6 +114,7 @@ struct _dataplane_ {
     Int level;			/* dataplane level */
 
     short flags;		/* modification flags */
+    long schange;		/* # string changes */
     long achange;		/* # array changes */
     long imports;		/* # array imports */
 
@@ -130,8 +131,8 @@ struct _dataplane_ {
 struct _dataspace_ {
     dataspace *prev, *next;
 
-    long schange;		/* # string changes */
-    dataspace *ilist;		/* import list */
+    dataspace *iprev;		/* previous in import list */
+    dataspace *inext;		/* next in import list */
 
     sector *sectors;		/* o vector of sectors */
     sector nsectors;		/* o # sectors */
@@ -163,7 +164,7 @@ struct _dataspace_ {
     struct _dcallout_ *callouts;/* callouts */
     Uint cooffset;		/* offset of callout table */
 
-    dataplane basic;		/* basic value plane */
+    dataplane base;		/* basic value plane */
     dataplane *plane;		/* current value plane */
 
     struct _parser_ *parser;	/* parse_string data */
@@ -175,7 +176,7 @@ struct _dataspace_ {
 extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
-extern control	       *d_load_control	P((unsigned int));
+extern control	       *d_load_control	P((object*));
 extern dataspace       *d_load_dataspace P((object*));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));

@@ -1343,3 +1343,11 @@ DGD 1.1
  - Fixed the Windows quit/interrupt bug.
  - Fixed a bug that was introduced into parse_string().
  - Undid an overeager optimization in parse_string().
+ - Fixed a string accounting bug in atomic code.
+ - Fixed several hard-to-trigger bugs in object upgrading.
+ - Fixed another private inheritance bug.
+ - Completed object undo (atomic functions).
+   WARNING: before starting to use 1.1.97 with a statedump from a previous
+   version, make sure there are no un-upgraded clones left in the statedump.
+   This can be done by rebooting an additional time with the previous driver
+   version, and immediately shutting down again with a statedump.
