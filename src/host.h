@@ -71,6 +71,63 @@ typedef unsigned int Uint;
 # endif	/* ATARI_ST */
 
 
+# ifdef WIN32
+
+# include <limits.h>
+# include <sys\types.h>
+# include <malloc.h>
+
+# ifdef INCLUDE_FILE_IO
+# include <io.h>
+# include <direct.h>
+# include <fcntl.h>
+# include <sys\stat.h>
+
+# define open			_open
+# define close			_close
+# define read			_read
+# define write			_write
+# define lseek			_lseek
+# define unlink			_unlink
+# define chdir			P_chdir
+# define mkdir(dir, mode)	_mkdir(dir)
+# define rmdir			_rmdir
+# define access			_access
+# define stat			_stat
+
+extern int P_chdir(char*);
+
+# define W_OK	2
+# endif
+
+# ifdef INCLUDE_TELNET
+# include "host\telnet.h"
+# endif
+
+# include <stdlib.h>
+# include <string.h>
+# include <setjmp.h>
+# include <stdio.h>
+
+# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+						 (unsigned int) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# define FS_BLOCK_SIZE		2048
+
+# define exit			dgd_exit
+
+extern void dgd_exit(int);
+
+# endif	/* WIN32 */
+
+
 # ifdef SUNOS4
 
 # define GENERIC_BSD

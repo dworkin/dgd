@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "comp.h"
 # include "str.h"
 # include "array.h"

@@ -586,7 +586,7 @@ char *configfile, *dumpfile;
 }
 
 /*
- * NAME:	config->basedir()
+ * NAME:	config->base_dir()
  * DESCRIPTION:	return the driver base directory
  */
 char *conf_base_dir()

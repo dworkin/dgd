@@ -731,9 +731,6 @@ int pp_gettok()
 	case ' ':
 	case HT:
 	case LF:
-	case VT:
-	case FF:
-	case CR:
 	    break;
 
 	case '!': case '%': case '&': case '(': case ')': case '*':

@@ -1,7 +1,7 @@
 # include "ed.h"
 # include <ctype.h>
 # include "edcmd.h"
-# include "file.h"
+# include "fileio.h"
 
 /*
  * This file defines the command subroutines for edcmd.c

@@ -2,7 +2,7 @@
 # include "ed.h"
 # include "buffer.h"
 # include "path.h"
-# include "file.h"
+# include "fileio.h"
 
 /*
  * The file I/O operations of the editor.

@@ -1953,7 +1953,8 @@ char *f, *a1, *a2, *a3;
 {
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
-    if (o_find(driver_object) != (object *) NULL) {
+    if (driver_object != (char *) NULL &&
+	o_find(driver_object) != (object *) NULL) {
 	fname = tk_filename();
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(NULL, (long) strlen(fname) + 1));

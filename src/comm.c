@@ -88,7 +88,8 @@ object *obj;
 connection *conn;
 bool telnet;
 {
-    static char init[] = { IAC, WONT, TELOPT_ECHO, IAC, DO, TELOPT_LINEMODE };
+    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
+			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
     register user **usr;
 
     if (obj->flags & (O_USER | O_EDITOR)) {

@@ -325,7 +325,7 @@ register array *a1, *a2;
  * NAME:	cmp()
  * DESCRIPTION:	compare two values
  */
-static int cmp(cv1, cv2)
+static Int cmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
     register value *v1, *v2;
@@ -354,11 +354,10 @@ cvoid *cv1, *cv2;
 	return str_cmp(v1->u.string, v2->u.string);
 
     case T_OBJECT:
-	/*
-	 * No special check for destructed objects is made here; if desired,
-	 * that should be done in advance.
-	 */
-	return v1->oindex - v2->oindex;
+	if (v1->oindex != v2->oindex) {
+	    return v1->oindex - v2->oindex;
+	}
+	return v1->u.objcnt - v2->u.objcnt;
 
     case T_ARRAY:
     case T_MAPPING:
@@ -378,7 +377,7 @@ register unsigned short h;
 register int step;		/* 1 for arrays, 2 for mappings */
 {
     register unsigned short l, m;
-    register int c;
+    register Int c;
     register value *v3;
     register unsigned short mask;
 
@@ -837,10 +836,10 @@ static bool ididx;	/* flag for identical indices */
  * NAME:	mapcmp()
  * DESCRIPTION:	compare two mapping indices
  */
-static int mapcmp(cv1, cv2)
+static Int mapcmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
-    register int c;
+    register Int c;
     register value *v1, *v2;
 
     c = cmp(cv1, cv2);
@@ -987,10 +986,10 @@ array *m;
 		    --i;
 		}
 	    }
-	    v2 -= hashsize;
 	    if (hashsize == 0) {
 		AFREE(v2);	/* nothing in the hash table */
 	    } else {
+		v2 -= hashsize;
 		qsort(v2, hashsize >> 1, 2 * sizeof(value), cmp);
 	    }
 	}
@@ -1066,7 +1065,7 @@ array *m1, *m2;
 {
     register value *v1, *v2, *v3;
     register unsigned short n1, n2;
-    register int c;
+    register Int c;
     array *m3;
 
     map_compact(m1);
@@ -1149,7 +1148,7 @@ array *m1, *a2;
 {
     register value *v1, *v2, *v3;
     register unsigned short n1, n2, size;
-    register int c;
+    register Int c;
     array *m3;
 
     map_compact(m1);
@@ -1245,7 +1244,7 @@ array *m1, *a2;
 {
     register value *v1, *v2, *v3;
     register unsigned short n1, n2, size;
-    register int c;
+    register Int c;
     array *m3;
 
     map_compact(m1);

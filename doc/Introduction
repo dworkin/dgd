@@ -94,7 +94,7 @@ driver, mostly to translate pathnames.
 	ticks.
 	During compilation, driver->compile_rlimits(objname) is called.  If
 	non-zero is returned, the object will be able to use rlimits at
-	runtime with no restructions.  If 0 is returned,
+	runtime with no restrictions.  If 0 is returned,
 	driver->runtime_rlimits() will be called at runtime to further
 	verify if an object is allowed to change its rlimits (resource
 	limits).

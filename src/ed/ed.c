@@ -47,6 +47,7 @@ char *argv[];
 
     for (;;) {
 	printf((cb->flags & CB_INSERT) ? "*\010" : ":");	/* BS */
+	fflush(stdout);
 	if (fgets(buffer, sizeof(buffer), stdin) == (char *) NULL) {
 	    cb_del(cb);
 	    return 1;

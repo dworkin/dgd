@@ -2,7 +2,7 @@
  * Global defines and typedefs.
  */
 
-# ifdef __STDC__
+# if defined(__STDC__) || defined(__cplusplus)
 #  define P(proto)	proto
 #  define cvoid		const void
 # else

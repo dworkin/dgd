@@ -370,7 +370,7 @@ static void comment()
 	/* skip following whitespace */
 	do {
 	    c = gc();
-	} while (c == ' ' || c == HT);
+	} while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
 
 	/* check if a new comment starts after this one */
 	if (c != '/') {
@@ -553,10 +553,14 @@ int tk_gettok()
 	}
 	/* fall through */
     case ' ':
+    case VT:
+    case FF:
+    case CR:
 	/* white space */
 	do {
 	    c = gc();
-	} while (c == ' ' || (c == HT && tbuffer == ibuffer));
+	} while (c == ' ' || (c == HT && tbuffer == ibuffer) || c == VT ||
+		 c == FF || c == CR);
 
 	/* check for comment after white space */
 	if (c == '/') {
