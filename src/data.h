@@ -11,7 +11,7 @@ typedef struct {
     unsigned short len;		/* string length */
 } dstrconst;
 
-typedef struct {
+typedef struct _dfuncdef_ {
     char class;			/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */

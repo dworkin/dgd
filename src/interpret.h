@@ -103,6 +103,28 @@ typedef struct _value_ {
 # define C_UNDEFINED	0x80
 
 
+typedef struct _frame_ {
+    struct _frame_ *prev;	/* previous stack frame */
+    object *obj;		/* current object */
+    struct _control_ *ctrl;	/* object control block */
+    struct _dataspace_ *data;	/* dataspace of current object */
+    struct _control_ *p_ctrl;	/* program control block */
+    unsigned short p_index;	/* program index */
+    Int depth;			/* stack depth */
+    bool external;		/* TRUE if it's an external call */
+    bool sos;			/* stack on stack */
+    uindex foffset;		/* program function offset */
+    struct _dfuncdef_ *func;	/* current function */
+    char *prog;			/* start of program */
+    char *pc;			/* program counter */
+    unsigned short nargs;	/* # arguments */
+    value *stack;		/* local value stack */
+    value *ilvp;		/* old indexed lvalue pointer */
+    value *argp;		/* argument pointer (old sp) */
+    value *fp;			/* frame pointer (at end of local stack) */
+} frame;
+
+
 extern void		i_init		P((char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
@@ -129,11 +151,7 @@ extern int		i_set_rlimits	P((Int, Int));
 extern int		i_get_rllevel	P((void));
 extern void		i_set_rllevel	P((int));
 extern void		i_set_sp	P((value*));
-extern struct _control_*i_this_program	P((void));
-extern object	       *i_this_object	P((void));
 extern object	       *i_prev_object	P((int));
-extern char	       *i_foffset	P((unsigned int));
-extern int		i_pindex	P((void));
 extern void		i_typecheck	P((char*, char*, char*, int, int));
 extern void		i_cleanup	P((void));
 extern void		i_funcall	P((object*, int, int, int));
@@ -142,6 +160,7 @@ extern array	       *i_call_trace	P((void));
 extern void		i_runtime_error	P((int));
 extern void		i_clear		P((void));
 
+extern frame *cframe;
 extern value *sp;
 extern Int ticks;
 

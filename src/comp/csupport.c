@@ -356,7 +356,7 @@ register int h;
     }
 
     s = v->u.string;
-    ctrl = i_this_program();
+    ctrl = cframe->p_ctrl;
     if (*tab++ == 0) {
 	tab -= 3;
 	l = 1;

@@ -130,7 +130,7 @@ long size;
     }
     a = arr_alloc((unsigned short) size);
     a->tag = tag++;
-    a->primary = &i_this_object()->data->alocal;
+    a->primary = &cframe->obj->data->alocal;
     return a;
 }
 
@@ -868,7 +868,7 @@ long size;
     }
     m = arr_alloc((unsigned short) size);
     m->tag = tag++;
-    m->primary = &i_this_object()->data->alocal;
+    m->primary = &cframe->obj->data->alocal;
     return m;
 }
 

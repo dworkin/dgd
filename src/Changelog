@@ -863,3 +863,6 @@ DGD 1.1
  - Fixed some rlimits bugs in the C code generator.
  - Fixed a nasty bug in the code generated for sscanf().
  - And another one, and another one in the error cleanup code as well.
+ - Made it possible to use ( ) in inherit string expressions.
+ - Fixed a bug in the C code generator; no check was made to see if the stack
+   had been reallocated after a kfun- or function call.

@@ -48,10 +48,11 @@ register int n;
 {
     static char buffer[14];
 
-    if (n >= nparam) {
-	sprintf(buffer, "(fp + %d)", nvars - n - 1);
+    n = nparam - n - 1;
+    if (n < 0) {
+	sprintf(buffer, "(f->fp - %d)", -n);
     } else {
-	sprintf(buffer, "(argp + %d)", nparam - n - 1);
+	sprintf(buffer, "(f->argp + %d)", n);
     }
     return buffer;
 }
@@ -1025,7 +1026,7 @@ register int state;
 		output("i_funcall((object *) NULL, 0, %d, %s)",
 		       ((int) n->r.number) & 0xff, arg);
 	    } else {
-		output("i_funcall((object *) NULL, i_pindex() + %d, %d, %s)",
+		output("i_funcall((object *) NULL, cframe->p_index+%d, %d, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
 		       ((int) n->r.number) & 0xff, arg);
 	    }
@@ -1825,9 +1826,8 @@ unsigned short *size;
 
     nvars = nvar;
     nparam = npar;
-    output("\nstatic void func%u(argp)\t/* %s */\nvalue *argp;\n{\n", nfuncs,
-	   fname->text);
-    output("value *fp = sp; char *p; Int tv[%d];\n", NTMPVAL);
+    output("\nstatic void func%u()\t/* %s */\n{\n", nfuncs, fname->text);
+    output("register frame *f = cframe; char *p; Int tv[%d];\n", NTMPVAL);
     j = 0;
     for (i = 0; i < nvar; i++) {
 	if (c_vtype(i) == T_INT) {

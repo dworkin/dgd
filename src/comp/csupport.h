@@ -4,7 +4,7 @@ typedef struct {
     unsigned short varoffset;	/* variable offset */
 } pcinherit;
 
-typedef void (*pcfunc) P((value*));
+typedef void (*pcfunc) P((void));
 
 typedef struct {
     short ninherits;		/* # of inherits */
@@ -57,6 +57,7 @@ void pc_restore		P((int));
 # define store_int()	(i_store(sp + 1, sp), sp += 2, sp[-2].u.number)
 # define truthval(v)	(((v)->type != T_INT || (v)->u.number != 0) && \
 			 ((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
+# define i_foffset(n)	(&cframe->ctrl->funcalls[2L * (cframe->foffset + (n))])
 
 void call_kfun		P((int));
 void call_kfun_arg	P((int, int));

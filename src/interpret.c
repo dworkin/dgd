@@ -15,32 +15,10 @@
 # endif
 
 
-typedef struct _frame_ {
-    struct _frame_ *prev;	/* previous stack frame */
-    object *obj;		/* current object */
-    control *ctrl;		/* object control block */
-    dataspace *data;		/* dataspace of current object */
-    control *p_ctrl;		/* program control block */
-    unsigned short p_index;	/* program index */
-    Int depth;			/* stack depth */
-    bool external;		/* TRUE if it's an external call */
-    bool sos;			/* stack on stack */
-    uindex foffset;		/* program function offset */
-    dfuncdef *func;		/* current function */
-    char *prog;			/* start of program */
-    char *pc;			/* program counter */
-    unsigned short nargs;	/* # arguments */
-    value *stack;		/* local value stack */
-    value *ilvp;		/* old indexed lvalue pointer */
-    value *argp;		/* argument pointer (old sp) */
-    value *fp;			/* frame pointer (at end of local stack) */
-} frame;
-
-
 static value stack[MIN_STACK];	/* initial stack */
 value *sp;			/* interpreter stack pointer */
 static value *ilvp;		/* indexed lvalue stack pointer */
-static frame *cframe;		/* current frame */
+frame *cframe;			/* current frame */
 static Int maxdepth;		/* max stack depth */
 Int ticks;			/* # ticks left */
 static bool nodepth;		/* no stack depth checking */
@@ -1049,24 +1027,6 @@ register value *newsp;
 }
 
 /*
- * NAME:	interpret->this_program()
- * DESCRIPTION:	return the current program
- */
-control *i_this_program()
-{
-    return cframe->p_ctrl;
-}
-
-/*
- * NAME:	interpret->this_object()
- * DESCRIPTION:	return the current object
- */
-object *i_this_object()
-{
-    return cframe->obj;
-}
-
-/*
  * NAME:	interpret->prev_object()
  * DESCRIPTION:	return the nth previous object in the call_other chain
  */
@@ -1085,25 +1045,6 @@ register int n;
 	}
     }
     return (f->obj->count == 0) ? (object *) NULL : f->obj;
-}
-
-/*
- * NAME:	interpret->foffset()
- * DESCRIPTION:	return a pointer to function call offset
- */
-char *i_foffset(index)
-unsigned int index;
-{
-    return &cframe->ctrl->funcalls[2L * (cframe->foffset + index)];
-}
-
-/*
- * NAME:	interpret->pindex()
- * DESCRIPTION:	return the current program index
- */
-int i_pindex()
-{
-    return cframe->p_index;
 }
 
 /*
@@ -1823,7 +1764,7 @@ int funci;
     ticks -= 5;
     if (f.func->class & C_COMPILED) {
 	/* compiled function */
-	(*pcfunctions[FETCH2U(pc, n)])(f.argp);
+	(*pcfunctions[FETCH2U(pc, n)])();
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;

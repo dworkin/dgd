@@ -67,7 +67,7 @@ char *file;
 char *path_ed_read(file)
 char *file;
 {
-    if (i_this_object()->flags & O_DRIVER) {
+    if (cframe->obj->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
 	(--sp)->type = T_STRING;
@@ -90,7 +90,7 @@ char *file;
 char *path_ed_write(file)
 char *file;
 {
-    if (i_this_object()->flags & O_DRIVER) {
+    if (cframe->obj->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
 	(--sp)->type = T_STRING;
@@ -113,7 +113,7 @@ char *file;
 char *path_object(file)
 char *file;
 {
-    if (i_this_program()->ninherits == 1) {
+    if (cframe->p_ctrl->ninherits == 1) {
 	/* driver or auto object */
 	return path_resolve(file);
     } else {

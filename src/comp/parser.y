@@ -163,6 +163,8 @@ inherit_string
 	: string
 	| inherit_string '+' string
 		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
+	| '(' inherit_string ')'
+		{ $$ = $2; }
 	;
 
 string

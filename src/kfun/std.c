@@ -59,7 +59,7 @@ int nargs;
     val->type = T_INT;
     val->u.number = 0;
     --val;
-    if (i_this_object()->count == 0) {
+    if (cframe->obj->count == 0) {
 	/*
 	 * cannot call_other from destructed object
 	 */
@@ -95,7 +95,7 @@ int kf_this_object()
     register object *obj;
 
     --sp;
-    obj = i_this_object();
+    obj = cframe->obj;
     if (obj->count != 0) {
 	sp->type = T_OBJECT;
 	sp->oindex = obj->index;
@@ -308,7 +308,7 @@ int kf_function_object()
 
 	o = obj->ctrl->inherits[UCHAR(symb->inherit)].obj;
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
-	    obj == i_this_object()) {
+	    obj == cframe->obj) {
 	    /*
 	     * function exists and is callable
 	     */
@@ -600,7 +600,7 @@ int kf_send_message()
 	return 1;
     }
 
-    obj = i_this_object();
+    obj = cframe->obj;
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
 	    if (sp->type == T_INT) {
@@ -660,7 +660,7 @@ int nargs;
 	return -1;
     }
 
-    obj = i_this_object();
+    obj = cframe->obj;
     if (obj->count != 0 &&
 	(handle=co_new(obj, sp[nargs - 1].u.string,
 		       (long) sp[nargs - 2].u.number, nargs - 2)) != 0) {
@@ -691,7 +691,7 @@ char p_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  */
 int kf_remove_call_out()
 {
-    sp->u.number = co_del(i_this_object(), (uindex) sp->u.number);
+    sp->u.number = co_del(cframe->obj, (uindex) sp->u.number);
     return 0;
 }
 # endif

@@ -22,7 +22,7 @@ int nargs;
     object *obj;
     string *str;
 
-    obj = i_this_object();
+    obj = cframe->obj;
     if (obj->count == 0) {
 	error("editor() from destructed object");
     }
@@ -345,7 +345,7 @@ int kf_save_object()
     object *obj;
     xfloat flt;
 
-    obj = i_this_object();
+    obj = cframe->obj;
     _tmp = path_resolve(sp->u.string->text);
     if (_tmp == (char *) NULL) {
 	return 1;
@@ -833,7 +833,7 @@ int kf_restore_object()
     static int line;
     bool pending;
 
-    obj = i_this_object();
+    obj = cframe->obj;
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
