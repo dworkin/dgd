@@ -14,5 +14,6 @@
 # define MODE_NOECHO		1	/* telnet */
 # define MODE_ECHO		2	/* telnet */
 # define MODE_RAW		3	/* binary */
+# define MODE_BLOCK		4	/* blocked */
 
 # define DEFAULT_TIMEOUT	120	/* two minutes */

@@ -4,6 +4,7 @@
 private object userd;		/* user daemon */
 private object user;		/* user object */
 private string conntype;	/* connection type */
+private int mode;		/* connection mode */
 
 /*
  * NAME:	create()
@@ -13,6 +14,7 @@ static create(string type)
 {
     userd = find_object(USERD);
     conntype = type;
+    mode = MODE_ECHO;
 }
 
 
@@ -191,18 +193,37 @@ static timeout()
  */
 static int receive_message(mixed *tls, string str)
 {
-    int result;
-
     if (!user) {
 	user = call_other(userd, conntype + "_user", str);
-	result = user->login(str);
+	mode = user->login(str);
     } else {
-	result = user->receive_message(str);
+	mode = user->receive_message(str);
     }
-    if (result == MODE_DISCONNECT && this_object()) {
+    if (mode == MODE_DISCONNECT && this_object()) {
 	destruct_object(this_object());
+    } else if (mode == MODE_BLOCK) {
+	::block_input(TRUE);
     }
-    return result;
+    return mode;
+}
+
+/*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the current connection mode
+ */
+static set_mode(int newmode)
+{
+    mode = newmode;
+    ::block_input(newmode == MODE_BLOCK);
+}
+
+/*
+ * NAME:	query_mode()
+ * DESCRIPTION:	return the current connection mode
+ */
+int query_mode()
+{
+    return mode;
 }
 
 /*
@@ -212,7 +233,7 @@ static int receive_message(mixed *tls, string str)
 block_input(int flag)
 {
     if (SYSTEM()) {
-	::block_input(flag);
+	::block_input(flag || mode == MODE_BLOCK);
     }
 }
 

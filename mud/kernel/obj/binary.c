@@ -4,7 +4,6 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
-int linemode;		/* process input and output line by line? */
 string buffer;		/* buffered input */
 
 /*
@@ -15,7 +14,6 @@ static create(int clone)
 {
     if (clone) {
 	::create("binary");
-	linemode = TRUE;
 	buffer = "";
     }
 }
@@ -49,12 +47,13 @@ static close(int dest)
  */
 static receive_message(string str)
 {
-    int len;
+    int mode, len;
     string head;
 
     buffer += str;
-    while (this_object()) {
-	if (linemode) {
+    mode = query_mode();
+    while (mode != MODE_BLOCK && mode != MODE_DISCONNECT) {
+	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
 		do {
@@ -72,16 +71,15 @@ static receive_message(string str)
 		    }
 		} while (sscanf(str, "%*s\b") != 0);
 
-		linemode = (::receive_message(allocate(TLS_SIZE),
-					      str) != MODE_RAW);
+		mode = ::receive_message(allocate(TLS_SIZE), str);
 	    } else {
 		break;
 	    }
 	} else {
 	    if (strlen(buffer) != 0) {
-		linemode = (::receive_message(allocate(TLS_SIZE),
-					      buffer) != MODE_RAW);
+		str = buffer;
 		buffer = "";
+		mode = ::receive_message(allocate(TLS_SIZE), str);
 	    }
 	    break;
 	}
@@ -100,17 +98,20 @@ static receive_datagram(string str)
 # endif
 
 /*
- * NAME:	set_linemode()
- * DESCRIPTION:	enable or disable line mode
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the connection mode
  */
-set_linemode(int mode)
+set_mode(int mode)
 {
+    string str;
+
     if (SYSTEM()) {
-	linemode = mode;
-	if (!mode && strlen(buffer) != 0) {
+	::set_mode(mode);
+	if (mode == MODE_RAW && strlen(buffer) != 0) {
 	    /* flush buffer */
-	    linemode = (::receive_message(0, buffer) != MODE_RAW);
+	    str = buffer;
 	    buffer = "";
+	    ::receive_message(0, str);
 	}
     }
 }
@@ -121,7 +122,7 @@ set_linemode(int mode)
  */
 int message(string str)
 {
-    if (linemode) {
+    if (query_mode() < MODE_RAW) {
 	str = implode(explode("\n" + str + "\n", "\n"), "\r\n");
     }
     return ::message(str);
