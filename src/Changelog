@@ -935,3 +935,4 @@ DGD 1.1
  - Error recovery was incomplete in case of an error in sscanf() or in
    user->close().
  - Win32 version can now be started by double-clicking the config file.
+ - Fixed a nasty error context bug.

@@ -165,6 +165,7 @@ register user **usr;
 	} else {
 	    this_user = olduser;
 	}
+	ec_pop();
     }
 }
 
