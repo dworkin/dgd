@@ -21,6 +21,10 @@ int nargs;
 {
     object *obj;
 
+    if (nargs > 1) {
+	return 2;
+    }
+
     obj = i_this_object();
     if (obj->count == 0) {
 	error("editor() from destructed object");
@@ -127,13 +131,13 @@ string *str;
 	}
 	switch (c = *p++) {
 	case '\0': c = '0'; break;
-	case '\007': c = 'a'; break;
-	case '\b': c = 'b'; break;
-	case '\t': c = 't'; break;
-	case '\n': c = 'n'; break;
-	case '\013': c = 'v'; break;
-	case '\014': c = 'f'; break;
-	case '\r': c = 'r'; break;
+	case BEL: c = 'a'; break;
+	case BS: c = 'b'; break;
+	case HT: c = 't'; break;
+	case LF: c = 'n'; break;
+	case VT: c = 'v'; break;
+	case FF: c = 'f'; break;
+	case CR: c = 'r'; break;
 	case '"':
 	case '\\':
 	    break;
@@ -374,7 +378,7 @@ int kf_save_object()
 			save_mapping(var->u.array);
 			break;
 		    }
-		    put("\n", 1);
+		    put("\012", 1);	/* LF */
 		}
 		nvars++;
 	    }
@@ -510,16 +514,16 @@ value *val;
 	if (*p == '\\') {
 	    switch (*++p) {
 	    case '0': *q++ = '\0'; continue;
-	    case 'a': *q++ = '\007'; continue;
-	    case 'b': *q++ = '\b'; continue;
-	    case 't': *q++ = '\t'; continue;
-	    case 'n': *q++ = '\n'; continue;
-	    case 'v': *q++ = '\013'; continue;
-	    case 'f': *q++ = '\014'; continue;
-	    case 'r': *q++ = '\r'; continue;
+	    case 'a': *q++ = BEL; continue;
+	    case 'b': *q++ = BS; continue;
+	    case 't': *q++ = HT; continue;
+	    case 'n': *q++ = LF; continue;
+	    case 'v': *q++ = VT; continue;
+	    case 'f': *q++ = FF; continue;
+	    case 'r': *q++ = CR; continue;
 	    }
 	}
-	if (*p == '\0' || *p == '\n') {
+	if (*p == '\0' || *p == LF) {
 	    error("unterminated string");
 	}
 	*q++ = *p;
@@ -556,15 +560,12 @@ value *val;
     }
 
     ac_put(T_ARRAY, a = arr_new((long) val->u.number));
+    for (i = a->size, v = a->elts; i > 0; --i) {
+	(v++)->type = T_NUMBER;
+    }
     i = a->size;
     v = a->elts;
     if (ec_push()) {
-	/* fill the remainder of the array with numbers */
-	while (i > 0) {
-	    v->type = T_NUMBER;
-	    v++;
-	    --i;
-	}
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -572,12 +573,11 @@ value *val;
     /* restore the values */
     while (i > 0) {
 	buf = restore_value(buf, v);
-	i_ref_value(v);
-	v++;
-	--i;
+	i_ref_value(v++);
 	if (*buf++ != ',') {
 	    error("',' expected");
 	}
+	--i;
     }
     /* match }) */
     if (*buf++ != '}' || *buf++ != ')') {
@@ -613,15 +613,12 @@ value *val;
     }
 
     ac_put(T_MAPPING, a = map_new(val->u.number << 1L));
+    for (i = a->size, v = a->elts; i > 0; --i) {
+	(v++)->type = T_NUMBER;
+    }
     i = a->size;
     v = a->elts;
     if (ec_push()) {
-	/* fill the remainder of the mapping with numbers */
-	while (i > 0) {
-	    v->type = T_NUMBER;
-	    v++;
-	    --i;
-	}
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -629,19 +626,16 @@ value *val;
     /* restore the values */
     while (i > 0) {
 	buf = restore_value(buf, v);
-	i_ref_value(v);
-	v++;
-	--i;
+	i_ref_value(v++);
 	if (*buf++ != ':') {
 	    error("':' expected");
 	}
 	buf = restore_value(buf, v);
-	i_ref_value(v);
-	v++;
-	--i;
+	i_ref_value(v++);
 	if (*buf++ != ',') {
 	    error("',' expected");
 	}
+	i -= 2;
     }
     /* match ]) */
     if (*buf++ != ']' || *buf++ != ')') {
@@ -721,7 +715,7 @@ int kf_restore_object()
     register dinherit *inh;
     object *obj;
     char *file, *name;
-    int line;
+    static int line;
     bool pending;
 
     obj = i_this_object();
@@ -808,7 +802,7 @@ int kf_restore_object()
 			 * The saved variable is not in this object.
 			 * Skip it.
 			 */
-			buf = strchr(buf, '\n');
+			buf = strchr(buf, LF);
 			if (buf == (char *) NULL) {
 			    error("'\\n' expected");
 			}
@@ -822,7 +816,7 @@ int kf_restore_object()
 			 */
 			while (*buf == '#') {
 			    /* skip comment */
-			    buf = strchr(buf, '\n');
+			    buf = strchr(buf, LF);
 			    if (buf == (char *) NULL) {
 				error("'\\n' expected");
 			    }
@@ -860,7 +854,7 @@ int kf_restore_object()
 			 */
 			buf = restore_value(buf, &tmp);
 			d_assign_var(data, var, &tmp);
-			if (*buf++ != '\n') {
+			if (*buf++ != LF) {
 			    error("'\\n' expected");
 			}
 			line++;
@@ -908,15 +902,18 @@ int nargs;
     switch (nargs) {
     case 0:
     case 1:
-	error("Too few arguments to write_file()");
+	return -1;
 
     case 2:
-	l = 1;	/* anything non-zero will do, it's only a flag */
+	l = 0;
 	break;
 
     case 3:
 	l = (sp++)->u.number;
 	break;
+
+    default:
+	return 4;
     }
     file = path_file(path_resolve(sp[1].u.string->text));
     if (file == (char *) NULL) {
@@ -933,24 +930,19 @@ int nargs;
 	return 0;
     }
 
-    if (l != 0) {
-	/*
-	 * seek in the file
-	 */
-	fstat(fd, &sbuf);
-	if (nargs == 2) {
-	    /* the default is to append to the file */
-	    l = sbuf.st_size;
-	} else if (l < 0) {
-	    /* offset from the end of the file */
-	    l += sbuf.st_size;
-	}
-	if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
-	    /* bad offset */
-	    close(fd);
-	    str_del((sp++)->u.string);
-	    return 0;
-	}
+    fstat(fd, &sbuf);
+    if (l == 0) {
+	/* the default is to append to the file */
+	l = sbuf.st_size;
+    } else if (l < 0) {
+	/* offset from the end of the file */
+	l += sbuf.st_size;
+    }
+    if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
+	/* bad offset */
+	close(fd);
+	str_del((sp++)->u.string);
+	return 0;
     }
 
     if (write(fd, sp->u.string->text, sp->u.string->len) == sp->u.string->len) {
@@ -990,10 +982,14 @@ int nargs;
 	size = (sp++)->u.number;
     case 2:
 	l = (sp++)->u.number;	/* offset in file */
+    case 1:
 	break;
 
     case 0:
-	error("Too few arguments to read_file()");
+	return -1;
+
+    default:
+	return 4;
     }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
@@ -1028,7 +1024,7 @@ int nargs;
 	    /* offset from end of file */
 	    l += sbuf.st_size;
 	}
-	if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
+	if (l < 0 || l >= sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
 	    /* bad seek */
 	    close(fd);
 	    return 0;
@@ -1036,7 +1032,7 @@ int nargs;
 	sbuf.st_size -= l;
     }
 
-    if (nargs < 3 || size > sbuf.st_size) {
+    if (size == 0 || size > sbuf.st_size) {
 	size = sbuf.st_size;
     }
     if (ec_push()) {
@@ -1366,20 +1362,20 @@ int kf_get_dir()
 	    *pat++ = '\0';
 	}
 	nfiles = 0;
-	if (strpbrk(pat, "?*[\\") != (char *) NULL && _opendir(path_file(dir)))
+	if (strpbrk(pat, "?*[\\") != (char *) NULL && P_opendir(path_file(dir)))
 	{
 	    /*
 	     * read files from directory
 	     */
 	    i = arr_maxsize();
-	    while (nfiles < i && (file=_readdir()) != (char *) NULL) {
+	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
 		if (match(pat, file)) {
 		    /* add file */
 		    sc_put(file);
 		    nfiles++;
 		}
 	    }
-	    _closedir();
+	    P_closedir();
 	}
     }
 
