@@ -1549,8 +1549,6 @@ unsigned short map_size(data, m)
 dataspace *data;
 register array *m;
 {
-    unsigned short size;
-
     map_compact(data, m);
     return m->size >> 1;
 }

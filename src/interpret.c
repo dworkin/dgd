@@ -1192,8 +1192,6 @@ frame *i_prev_object(f, n)
 register frame *f;
 register int n;
 {
-    object *obj;
-
     while (n >= 0) {
 	/* back to last external call */
 	while (!f->external) {

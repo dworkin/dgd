@@ -488,7 +488,7 @@ frame *f;
 string *mesg;
 string *keystr;
 {
-    register Uint L, R, T, X, *key;
+    register Uint L, R, T, *key;
     register char *p, *q;
     register int i;
     register ssizet len;

@@ -826,7 +826,7 @@ void conn_listen()
 
 # ifdef INET6
 /*
- * NAME:	conn->acept6()
+ * NAME:	conn->accept6()
  * DESCRIPTION:	accept a new ipv6 connection
  */
 static connection *conn_accept6(portfd, port)
@@ -1047,7 +1047,7 @@ register connection *conn;
 	if (conn->chain.name != (char *) NULL) {
 	    hash = (connection **) ht_lookup(chtab, conn->chain.name, FALSE);
 # ifdef INET6
-        } else if (conn->addr->ipnum.ipv6) {
+	} else if (conn->addr->ipnum.ipv6) {
 	    hash = &udphtab[(hashmem((char *) &conn->addr->ipnum,
 			sizeof(struct in6_addr)) ^ conn->uport) % udphtabsz];
 # endif

@@ -549,7 +549,6 @@ register unsigned int oindex, handle;
 Uint t;
 {
     register call_out *l;
-    unsigned short m;
 
     if (t >> 24 != 1) {
 	t += timediff;

@@ -1,8 +1,6 @@
-To compile DGD on Win32, you'll need Visual C++ 4.0 or newer.  Simply
-double-click the file windgd.mak to start.
+To compile DGD on Win32, you'll need Visual C++ 6.0 or later, with a recent
+platform SDK update.
 
-There are some caveats for compiling with Visual C++ 6.0 and later: first,
-you'll need the Professional edition.  Second, the safe optimizations
-selected for VC 4.0 are apparently translated into unsafe ones for VC 6.0.
-Either turn off optimization, or experiment with the settings until you
-find a good set.
+On my NT4 system, DGD has to be explicitly linked with a library called
+NAFXCW.LIB.  But using VC++ 6.0 on XP, this library is (apparently) linked
+with implicitly; you may have to remove it from the project configuration.

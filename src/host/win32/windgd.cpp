@@ -23,6 +23,8 @@ extern "C" {
 # include "dgd.h"
 # undef exit
 
+extern void conn_intr(void);
+
 /*
  * NAME:	P->message()
  * DESCRIPTION:	output a message
@@ -227,6 +229,7 @@ BOOL CWindgdApp::SaveAllModified()
     if ((argstart && !menuquit) || AfxMessageBox(
 		"Are you sure you want to\nterminate the running process?",
 		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
+	conn_intr();
 	interrupt();
     }
     menuquit = FALSE;

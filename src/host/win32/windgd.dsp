@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 nafxcw.lib /nologo /subsystem:windows /machine:I386 /out:".\Release\dgd.exe"
+# ADD LINK32 ws2_32.lib nafxcw.lib /nologo /subsystem:windows /machine:I386 /out:".\Release\dgd.exe"
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
@@ -81,7 +81,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386
-# ADD LINK32 /nologo /subsystem:windows /debug /machine:I386 /out:".\Debug\dgd.exe"
+# ADD LINK32 ws2_32.lib /nologo /subsystem:windows /debug /machine:I386 /out:".\Debug\dgd.exe"
 
 !ENDIF 
 
@@ -346,7 +346,15 @@ SOURCE=..\..\call_out.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\comp\codegen.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\comm.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\comp\comp.h
 # End Source File
 # Begin Source File
 
@@ -378,6 +386,10 @@ SOURCE=..\..\dgd.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\ed\ed.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\ed\edcmd.h
 # End Source File
 # Begin Source File
@@ -398,7 +410,19 @@ SOURCE=..\..\hash.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\host.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\interpret.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\kfun\kfun.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\lex\lex.h
 # End Source File
 # Begin Source File
 
@@ -478,6 +502,10 @@ SOURCE=..\..\kfun\table.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\telnet.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\lex\token.h
 # End Source File
 # Begin Source File
@@ -487,6 +515,10 @@ SOURCE=..\..\ed\vars.h
 # Begin Source File
 
 SOURCE=.\windgd.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\xfloat.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

@@ -1121,7 +1121,8 @@ srpstate *state;
  */
 short srp_check(lr, num, nredp, redp)
 register srp *lr;
-unsigned short num, *nredp;
+unsigned int num;
+unsigned short *nredp;
 char **redp;
 {
     register srpstate *state;
@@ -1164,7 +1165,7 @@ char **redp;
  */
 short srp_shift(lr, num, token)
 register srp *lr;
-unsigned short num, token;
+unsigned int num, token;
 {
     register Int n;
     register char *p;
@@ -1194,7 +1195,7 @@ unsigned short num, token;
  */
 short srp_goto(lr, num, symb)
 register srp *lr;
-unsigned short num, symb;
+unsigned int num, symb;
 {
     register char *p;
 

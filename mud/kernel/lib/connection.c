@@ -25,20 +25,24 @@ static void create(string type)
  * NAME:	set_mode()
  * DESCRIPTION:	set the current connection mode
  */
-static atomic void set_mode(int newmode)
+static void set_mode(int newmode)
 {
     if (newmode != mode && newmode != MODE_NOCHANGE) {
 	if (newmode == MODE_DISCONNECT) {
 	    destruct_object(this_object());
-	} else if (newmode >= MODE_UNBLOCK) {
-	    if (newmode - MODE_UNBLOCK != blocked) {
-		block_input(blocked = newmode - MODE_UNBLOCK);
-	    }
 	} else {
-	    if (blocked) {
-		block_input(blocked = FALSE);
+	    rlimits (-1; -1) {
+		if (newmode >= MODE_UNBLOCK) {
+		    if (newmode - MODE_UNBLOCK != blocked) {
+			block_input(blocked = newmode - MODE_UNBLOCK);
+		    }
+		} else {
+		    if (blocked) {
+			block_input(blocked = FALSE);
+		    }
+		    mode = newmode;
+		}
 	    }
-	    mode = newmode;
 	}
     }
 }
@@ -201,21 +205,23 @@ static int receive_message(mixed *tls, string str)
  * NAME:	message()
  * DESCRIPTION:	send a message across the connection
  */
-atomic int message(string str)
+int message(string str)
 {
     if (previous_object() == user) {
-	int len;
+	rlimits (-1; -1) {
+	    int len;
 
-	buffer = nil;
-	len = send_message(str);
-	if (len != strlen(str)) {
-	    /*
-	     * string couldn't be sent completely; buffer the remainder
-	     */
-	    buffer = str[len ..];
-	    return FALSE;
-	} else {
-	    return TRUE;
+	    buffer = nil;
+	    len = send_message(str);
+	    if (len != strlen(str)) {
+		/*
+		 * string couldn't be sent completely; buffer the remainder
+		 */
+		buffer = str[len ..];
+		return FALSE;
+	    } else {
+		return TRUE;
+	    }
 	}
     }
 }
