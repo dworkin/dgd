@@ -20,11 +20,11 @@ typedef struct {
 } fiocontext;
 
 /*
- * NAME:	getline()
+ * NAME:	get_line()
  * DESCRIPTION:	read a line from the input, return as '\0'-terminated string
  *		without '\n'
  */
-static char *getline(ptr)
+static char *get_line(ptr)
 char *ptr;
 {
     register fiocontext *x;
@@ -126,7 +126,7 @@ io *iobuf;
 	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_add(eb, l, getline, (char *) &x);
+    eb_add(eb, l, get_line, (char *) &x);
     ec_pop();
     P_close(x.fd);
 
@@ -134,10 +134,10 @@ io *iobuf;
 }
 
 /*
- * NAME:	putline()
+ * NAME:	put_line()
  * DESCRIPTION:	write a line to a file
  */
-static void putline(ptr, text)
+static void put_line(ptr, text)
 char *ptr;
 register char *text;
 {
@@ -212,7 +212,7 @@ io *iobuf;
 	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_range(eb, first, last, putline, (char *) &x, FALSE);
+    eb_range(eb, first, last, put_line, (char *) &x, FALSE);
     if (P_write(x.fd, x.buffer, x.inbuf) != x.inbuf) {
 	error("error while writing file \"/%s\"", x.filename);
     }

@@ -218,33 +218,42 @@ bool telnet;
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
  */
-static void comm_del(f, usr, obj, force)
+static void comm_del(f, usr, obj, destruct)
 register frame *f;
 register user *usr;
 object *obj;
-bool force;
+bool destruct;
 {
     dataspace *data;
     uindex olduser;
 
     data = o_dataspace(obj);
-    if (!(usr->flags & CF_FLUSH)) {
-	addtoflush(usr, d_get_extravar(data)->u.array);
+    if (!destruct) {
+	/* if not destructing, make sure the connection terminates */
+	if (!(usr->flags & CF_FLUSH)) {
+	    addtoflush(usr, d_get_extravar(data)->u.array);
+	}
+	obj->flags &= ~O_USER;
     }
-
-    obj->flags &= ~O_USER;
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
 	this_user = olduser;
 	error((char *) NULL);
     } else {
 	this_user = obj->index;
-	PUSH_INTVAL(f, force);
+	PUSH_INTVAL(f, destruct);
 	if (i_call(f, obj, (array *) NULL, "close", 5, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	}
 	this_user = olduser;
 	ec_pop();
+    }
+    if (destruct) {
+	/* if destructing, don't disconnect if there's an error in close() */
+	if (!(usr->flags & CF_FLUSH)) {
+	    addtoflush(usr, d_get_extravar(data)->u.array);
+	}
+	obj->flags &= ~O_USER;
     }
 }
 

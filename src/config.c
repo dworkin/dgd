@@ -1207,6 +1207,7 @@ sector *fragment;
 
     /* initialize call_outs */
     if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
+	sw_finish();
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1252,6 +1253,7 @@ sector *fragment;
      * create include files
      */
     if (!conf_includes()) {
+	sw_finish();
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1262,6 +1264,7 @@ sector *fragment;
 
     /* load precompiled objects */
     if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
+	sw_finish();
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1281,6 +1284,7 @@ sector *fragment;
 	message("Config error: initialization failed\012");	/* LF */
 	ec_pop();			/* remove guard */
 
+	sw_finish();
 	comm_finish();
 	ed_finish();
 	if (dumpfile != (char *) NULL) {

@@ -326,7 +326,6 @@ bool c_typechecking()
     return typechecking;
 }
 
-static bool inheriting;		/* inside inherit_program() */
 static long ncompiled;		/* # objects compiled */
 
 /*
@@ -361,9 +360,7 @@ int priv;
 	}
 	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
-	    inheriting = TRUE;
-	    obj = c_compile(f, file, (object *) NULL, (string *) NULL);
-	    inheriting = FALSE;
+	    obj = c_compile(f, file, (object *) NULL, (string *) NULL, TRUE);
 	    return FALSE;
 	}
     } else {
@@ -378,9 +375,7 @@ int priv;
 
 	strncpy(buf, file, STRINGSZ - 1);
 	buf[STRINGSZ - 1] = '\0';
-	inheriting = TRUE;
 	if (call_driver_object(f, "inherit_program", 3)) {
-	    inheriting = FALSE;
 	    if (f->sp->type == T_OBJECT) {
 		obj = OBJR(f->sp->oindex);
 		f->sp++;
@@ -395,13 +390,11 @@ int priv;
 	} else {
 	    /* precompiling */
 	    f->sp++;
-	    inheriting = FALSE;
 	    file = path_from(buf, current->file, file);
 	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
-		inheriting = TRUE;
-		obj = c_compile(f, file, (object *) NULL, (string *) NULL);
-		inheriting = FALSE;
+		obj = c_compile(f, file, (object *) NULL, (string *) NULL,
+				TRUE);
 		return FALSE;
 	    }
 	}
@@ -423,18 +416,17 @@ int priv;
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(f, file, obj, str)
+object *c_compile(f, file, obj, str, iflag)
 frame *f;
 register char *file;
 object *obj;
 string *str;
+int iflag;
 {
-    bool iflag;
     context c;
     char file_c[STRINGSZ + 2];
     extern int yyparse P((void));
 
-    iflag = inheriting;
     if (iflag) {
 	register context *cc;
 	register int n;
@@ -472,14 +464,11 @@ string *str;
 	pp_clear();
 	ctrl_clear();
 	c_clear();
-	inheriting = iflag;
 	current = c.prev;
 	error((char *) NULL);
     }
 
     for (;;) {
-	inheriting = FALSE;
-
 	if (c_autodriver() != 0) {
 	    ctrl_init(stricttc);
 	} else {
@@ -491,7 +480,8 @@ string *str;
 		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(f, driver_object, (object *) NULL, (string *) NULL);
+		c_compile(f, driver_object, (object *) NULL, (string *) NULL,
+			  FALSE);
 		current = &c;
 	    }
 
@@ -500,9 +490,8 @@ string *str;
 		/*
 		 * compile auto object
 		 */
-		inheriting = TRUE;
 		aobj = c_compile(f, auto_object, (object *) NULL,
-				 (string *) NULL);
+				 (string *) NULL, TRUE);
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
@@ -556,7 +545,6 @@ string *str;
 	    ctrl = ctrl_construct();
 	    ctrl_clear();
 	    c_clear();
-	    inheriting = iflag;
 	    current = c.prev;
 
 	    if (obj == (object *) NULL) {

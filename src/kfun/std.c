@@ -42,7 +42,11 @@ register frame *f;
 	    error("Cannot recompile inherited object");
 	}
     }
-    obj = c_compile(f, file, obj, (string *) NULL);
+    obj = c_compile(f, file, obj, (string *) NULL,
+		    (OBJR(f->oindex)->flags & O_DRIVER) &&
+		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
+					  f->func->index)->text,
+			   "inherit_program") == 0);
     str_del(f->sp->u.string);
     PUT_OBJVAL(f->sp, obj);
 
@@ -86,7 +90,11 @@ int nargs;
 	}
     }
     str = (nargs == 2) ? f->sp->u.string : (string *) NULL;
-    obj = c_compile(f, file, obj, str);
+    obj = c_compile(f, file, obj, str,
+		    (OBJR(f->oindex)->flags & O_DRIVER) &&
+		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
+					  f->func->index)->text,
+			   "inherit_program") == 0);
     if (str != (string *) NULL) {
 	str_del(str);
 	f->sp++;
