@@ -1002,10 +1002,8 @@ static void cmd_cd(object user, string cmd, string str)
 
     info = expand(str, -1, TRUE);	/* may not exist, full filenames */
     if (info[4] == 1) {
-	str = info[0][0];
-	if (!access(owner, str + "/.", READ_ACCESS)) {
-	    message(str + ": Access denied.\n");
-	} else {
+	if (sizeof(info[0]) == 1) {
+	    str = info[0][0];
 	    info = file_info(str);
 	    if (!info) {
 		message(str + ": No such file or directory.\n");
