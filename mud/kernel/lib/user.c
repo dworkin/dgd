@@ -84,9 +84,12 @@ string query_name()
  * NAME:	message()
  * DESCRIPTION:	forward a message to the connection object
  */
-message(string arg)
+message(string str)
 {
+    if (!str) {
+	error("Bad argument 1 for function message");
+    }
     if (connection) {
-	connection->message(arg);
+	connection->message(str);
     }
 }

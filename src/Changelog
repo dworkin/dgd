@@ -1146,3 +1146,19 @@ DGD 1.1 patchlevel 4
  - Improved Mac edit menu.
  - The wrong stack depth was passed on to driver->runtime_error() if the
    the server used an internal catch.
+
+DGD 1.1 patchlevel 5
+
+ - Read_file() was returning 0 in an error situation, and also when it
+   should return "".
+ - Sort callouts in status(obj) by handle rather than by delay, as no actual
+   calling order for same-delay callouts can be guaranteed.
+ - The value of integer arguments in precompiled functions would not always
+   be given correctly in call_trace().
+ - String range problems at compile time now result in a proper compile-time
+   error again.
+ - Fixed a severe bug in the code generator that could, under some
+   circumstances, lead to else statements also being executed when only
+   the if statement should have been.
+ - Fixed a bad bug in global float variable initialisation, reported by
+   Azhrarn@Flat Earth.

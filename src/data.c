@@ -855,9 +855,8 @@ dataspace *data;
 			}
 			nvars++;
 		    }
-		} else {
-		    nvars += ctrl->nvardefs;
 		}
+		nvars = inh->varoffset + ctrl->nvardefs;
 	    }
 	}
     }
@@ -1401,19 +1400,6 @@ int *nargs;
     return str;
 }
 
-static int cmp P((cvoid*, cvoid*));
-
-/*
- * NAME:	cmp()
- * DESCRIPTION:	compare two call_outs
- */
-static int cmp(cv1, cv2)
-cvoid *cv1, *cv2;
-{
-    return ((value *) cv1)->u.array->elts[2].u.number -
-	   ((value *) cv2)->u.array->elts[2].u.number;
-}
-
 /*
  * NAME:	data->list_callouts()
  * DESCRIPTION:	list all call_outs in an object
@@ -1498,8 +1484,6 @@ Uint t;
 	}
     }
 
-    /* sort by time */
-    qsort(list->elts, list->size, sizeof(value), cmp);
     return list;
 }
 

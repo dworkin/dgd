@@ -447,6 +447,7 @@ static mixed **call_trace()
 varargs mixed *status(mixed obj)
 {
     object driver;
+    string oname;
     mixed *status, **callouts, *co;
     int i;
 
@@ -454,18 +455,21 @@ varargs mixed *status(mixed obj)
 	return 0;
     }
     if (!obj) {
-	return ::status();
+	status = ::status();
+	if (status[ST_STACKDEPTH] >= 0) {
+	    status[ST_STACKDEPTH]++;
+	}
+	return status;
     }
 
     /*
      * check arguments
      */
     driver = ::find_object(DRIVER);
+    oname = object_name(this_object());
     if (typeof(obj) == T_STRING) {
 	/* get corresponding object */
-	obj = ::find_object(driver->normalize_path(obj,
-						   object_name(this_object()) +
-						   "/..",
+	obj = ::find_object(driver->normalize_path(obj, oname + "/..",
 						   creator));
 	if (!obj) {
 	    return 0;
@@ -476,8 +480,11 @@ varargs mixed *status(mixed obj)
     status = ::status(obj);
     callouts = status[O_CALLOUTS];
     if ((i=sizeof(callouts)) != 0) {
-	if (creator != "System" &&
-	    (!owner || owner != driver->creator(object_name(obj)))) {
+	if (sscanf(oname, "/kernel/%*s") != 0) {
+	    /* can't see callouts in kernel objects */
+	    status[O_CALLOUTS] = ({ });
+	} else if (creator != "System" &&
+		   (!owner || owner != driver->creator(object_name(obj)))) {
 	    /* remove arguments from callouts */
 	    do {
 		--i;
@@ -834,6 +841,7 @@ static varargs event(string name, mixed args...)
     }
 
     name = "evt_" + name;
+    args = ({ this_object() }) + args;
     dest = FALSE;
     for (i = 0, sz = sizeof(objlist); i < sz; i++) {
 	if (objlist[i]) {
@@ -1268,7 +1276,7 @@ static execute_program(string cmdline)
  */
 static string gethostbyname(string name)
 {
-    CHECKARG(name, 1, "name");
+    CHECKARG(name, 1, "gethostbyname");
 
     if (creator == "System" && this_object()) {
 	return ::gethostbyname(name);
@@ -1282,7 +1290,7 @@ static string gethostbyname(string name)
  */
 static string gethostbyaddr(string addr)
 {
-    CHECKARG(addr, 1, "addr");
+    CHECKARG(addr, 1, "gethostbyaddr");
 
     if (creator == "System" && this_object()) {
 	return ::gethostbyaddr(addr);

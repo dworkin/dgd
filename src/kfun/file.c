@@ -27,7 +27,7 @@ int nargs;
 	error("editor() from destructed object");
     }
     if (obj->flags & O_USER) {
-	error("editor() from interactive object");
+	error("editor() from user object");
     }
     if (!(obj->flags & O_EDITOR)) {
 	ed_new(obj);
@@ -1136,7 +1136,7 @@ int nargs;
 
     if (size < 0) {
 	/* size has to be >= 0 */
-	return 0;
+	return 3;
     }
     i_add_ticks(1000);
     fd = open(file, O_RDONLY | O_BINARY, 0);
@@ -1159,7 +1159,7 @@ int nargs;
 	    /* offset from end of file */
 	    l += sbuf.st_size;
 	}
-	if (l < 0 || l >= sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
+	if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
 	    /* bad seek */
 	    close(fd);
 	    return 0;

@@ -19,10 +19,19 @@ static create(int clone)
 }
 
 /*
+ * NAME:	message()
+ * DESCRIPTION:	pass on a message to the user
+ */
+static void message(string str)
+{
+    user->message(str);
+}
+
+/*
  * NAME:	evt_input()
  * DESCRIPTION:	handle an input event
  */
-static evt_input(string str)
+static evt_input(object user, string str)
 {
     string arg;
 
@@ -32,7 +41,7 @@ static evt_input(string str)
 	} else {
 	    str = editor(str);
 	    if (str) {
-		user->message(str);
+		message(str);
 	    }
 	    return;
 	}
@@ -78,7 +87,7 @@ static evt_input(string str)
 	break;
 
     default:
-	user->message("No command: " + str + "\n");
+	message("No command: " + str + "\n");
 	break;
     }
 }

@@ -19,7 +19,6 @@ object errord;		/* error manager object */
 object telnet;		/* telnet port object */
 object binary;		/* binary port object */
 # endif
-int auto;		/* handle implicit compile of auto object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string compiled;	/* object currently being compiled */
@@ -134,6 +133,9 @@ varargs int file_size(string file, int dir)
 	string *files, name;
 	int i, sz;
 
+	if (file == "/") {
+	    file = ".";
+	}
 	info = get_dir(file);
 	files = explode(file, "/");
 	name = files[sizeof(files) - 1];
@@ -190,16 +192,17 @@ set_error_manager(object obj)
 compiling(string path)
 {
     if (previous_program() == AUTO) {
-	if (auto) {
-	    auto = FALSE;
-	    if (path != AUTO || find_object(AUTO)) {
-		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
-	    }
-	}
 	compiled = path;
 	inherited = ({ });
 	if (objectd) {
 	    objectd->compiling(path);
+	}
+	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
+	    compile_object(AUTO);
+	    rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
+	    if (objectd) {
+		objectd->compile_lib("System", AUTO);
+	    }
 	}
     }
 }
@@ -265,12 +268,6 @@ destruct(object obj, string owner)
 destruct_lib(string path, string owner)
 {
     if (previous_program() == AUTO) {
-	if (path == AUTO) {
-	    if (auto) {
-		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
-	    }
-	    auto = TRUE;
-	}
 	if (objectd) {
 	    objectd->destruct_lib(owner, path);
 	}
@@ -786,8 +783,28 @@ static int compile_rlimits(string objname)
  * NAME:	runtime_rlimits()
  * DESCRIPTION:	runtime check on rlimits
  */
-static int runtime_rlimits(object obj, int depth, int ticks)
+static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 {
-    return (sscanf(object_name(obj), USR + "/System/%*s") != 0 &&
-	    depth == 0 && ticks < 0);
+    int depth, ticks;
+
+    if (maxdepth != 0) {
+	if (maxdepth < 0) {
+	    return 0;
+	}
+	depth = status()[ST_STACKDEPTH];
+	if (depth >= 0 && maxdepth > depth + 1) {
+	    return 0;
+	}
+    }
+    if (maxticks != 0) {
+	if (maxticks < 0) {
+	    return (sscanf(object_name(obj), USR + "/System/%*s"));
+	}
+	ticks = status()[ST_TICKS];
+	if (ticks >= 0 && maxticks > ticks) {
+	    return 0;
+	}
+    }
+
+    return 1;
 }
