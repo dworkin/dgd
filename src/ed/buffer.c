@@ -223,8 +223,7 @@ long first, last;
 void (*putline) P((char*));
 bool reverse;
 {
-    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline,
-      reverse);
+    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }
 
 /*
