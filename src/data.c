@@ -1995,14 +1995,7 @@ value *retval;
 
 	data->plane = p->prev;
     }
-    if (T_INDEXED(retval->type)) {
-	register array *arr;
-
-	arr = retval->u.array;
-	if (arr->primary->plane->level == level) {
-	    arr->primary = &arr->primary->plane->prev->alocal;
-	}
-    }
+    commit_values(retval, 1, level - 1);
 
     /*
      * pass 3: deallocate
