@@ -1,5 +1,14 @@
 # include "ed.h"
+# include <signal.h>
 # include "edcmd.h"
+
+cmdbuf *cb;
+
+void intr()
+{
+    cb_del(cb);
+    exit(2);
+}
 
 int main(argc, argv)
 int argc;
@@ -7,7 +16,10 @@ char *argv[];
 {
     char buffer[2048];
     char tmpfname[100], *tmp;
-    cmdbuf *cb;
+
+    signal(SIGHUP, intr);
+    signal(SIGINT, intr);
+    signal(SIGQUIT, intr);
 
     tmp = getenv("TMPDIR");
     if (tmp == (char *) NULL) {
@@ -35,6 +47,7 @@ char *argv[];
     for (;;) {
 	printf((cb->flags & CB_INSERT) ? "*\b" : ":");
 	if (gets(buffer) == (char *) NULL) {
+	    cb_del(cb);
 	    return 1;
 	}
 	if (!cb_command(cb, buffer)) {
@@ -44,7 +57,10 @@ char *argv[];
     }
 }
 
-void comm_flush() {}
+void comm_flush(flag)
+book flag;
+{
+}
 
 char *path_ed_read(file) char *file; { return file; }
 
