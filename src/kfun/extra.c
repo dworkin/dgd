@@ -1,6 +1,7 @@
 # ifndef FUNCDEF
 # define INCLUDE_CTYPE
 # include "kfun.h"
+# include "parse.h"
 # endif
 
 
@@ -586,8 +587,25 @@ char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
  * NAME:	kfun->parse_string()
  * DESCRIPTION:	parse a string
  */
-int kf_parse_string()
+int kf_parse_string(f)
+register frame *f;
 {
-    error("Not yet implemented");
+    array *a;
+
+    if (f->obj->flags & (O_USER | O_EDITOR)) {
+	error("parse_string() from editor or user object");
+    }
+    a = parse_string(f->data, f->sp[1].u.string, f->sp->u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+
+    if (a != (array *) NULL) {
+	f->sp->type = T_ARRAY;
+	arr_ref(f->sp->u.array = a);
+    } else {
+	f->sp->type = T_INT;
+	f->sp->u.number = 0;
+    }
+    return 0;
 }
 # endif

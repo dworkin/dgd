@@ -14,10 +14,10 @@ DMAKE=	make
 BIN=	../bin
 
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o data.o path.o \
-	editor.o comm.o call_out.o interpret.o config.o dgd.o
+	editor.o comm.o call_out.o parse.o interpret.o config.o dgd.o
 EDOBJ=	alloc.o error.o
 LEXOBJ=	alloc.o hash.o
-COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
+COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o parse.o \
 	interpret.o config.o
 
 a.out:	$(OBJ) always
@@ -79,15 +79,16 @@ interpret.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
+editor.o call_out.o parse.o interpret.o config.o dgd.o: str.h array.h object.h
 array.o interpret.o path.o config.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-interpret.o config.o dgd.o: interpret.h
-str.o array.o object.o data.o path.o comm.o call_out.o interpret.o: data.h
-config.o dgd.o: data.h
+parse.o interpret.o config.o dgd.o: interpret.h
+str.o array.o object.o data.o path.o comm.o call_out.o parse.o: data.h
+interpret.o config.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
+parse.o: parse.h
 editor.o config.o dgd.o: editor.h
 call_out.o config.o dgd.o: call_out.h
 error.o comm.o call_out.o config.o dgd.o: comm.h

@@ -38,6 +38,8 @@ typedef uindex sector;
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1024	/* general array merge table size */
 # define OBJHASHSZ	256	/* # characters in object names to hash */
+# define PARSERULTABSZ	256	/* size of parse rule hash table */
+# define PARSERULHASHSZ	10	/* # characters in parse rule symbols to hash */
 
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */

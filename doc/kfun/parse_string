@@ -2,11 +2,17 @@ NAME
 	parse_string - parse a string
 
 SYNOPSIS
-	mixed *parse_string(string format, string str)
+	mixed *parse_string(string grammar, string str)
 
 
 DESCRIPTION
-	Not yet implemented.
+	Parse a string as described by the grammar.  The format of the
+	grammar is described in the document called 'Parsing'.  If parsing
+	is successful, the parse tree is returned as an array.
+	parse_string() uses internal object storage to cache grammars and
+	generated automatons, which is not removed until the object is
+	destructed.
+	This function cannot be used from a user or editor object.
 
 SEE ALSO
 	kfun/sscanf, kfun/explode, kfun/implode
