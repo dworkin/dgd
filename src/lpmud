@@ -1,17 +1,22 @@
 port_number	= 6047;			/* TCP/IP port number */
-directory	= "/usr/home/clay/1.0.a4/dgd/2.4.5";	/* base directory (MUST be absolute) */
-typechecking	= 0;			/* global typechecking */
-
-swap_file	= "../tmp/swap";	/* swap file (not yet used) */
-swap_size	= 1024;			/* # sectors in swap file */
-swap_cache	= 100;			/* # sectors in swap cache */
+directory	= "/usr/local/mud";	/* base directory (MUST be absolute) */
+users		= 40;			/* max # of users */
+editors		= 41;			/* max # of editor sessions */
+ed_tmpfile	= "../tmp/ed";		/* proto editor tmpfile */
+swap_file	= "../tmp/swap";	/* swap file */
+swap_size	= 4096;			/* # sectors in swap file */
+swap_cache	= 1024;			/* # sectors in swap cache */
 swap_sector	= 512;			/* swap sector size */
+swap_fragment	= 128;			/* fragment to swap out */
+static_chunk	= 15360;		/* static memory chunk */
+dynamic_chunk	= 261120;		/* dynamic memory chunk */
 
-include_file	= "/dgd/include/std.h";	/* standard include file */
+typechecking	= 0;			/* global typechecking */
+include_file	= "/dgd/include/Std.h";	/* standard include file */
 include_dirs	= ({ "/dgd/include", "/room" }); /* directories to search */
 auto_object	= "/dgd/lib/auto";	/* auto inherited object */
 driver_object	= "/dgd/sys/driver";	/* driver object */
-create		= "create";		/* name of create function */
+create		= "_F_create";		/* name of create function */
 
 value_stack	= 1000;			/* value stack */
 call_stack	= 40;			/* function call stack */
@@ -20,7 +25,3 @@ max_cost	= 200000;		/* max execution cost */
 array_size	= 2000;			/* max array size */
 objects		= 800;			/* max # of objects */
 call_outs	= 1000;			/* max # of call_outs */
-
-users		= 40;			/* max # of users */
-editors		= 41;			/* max # of editor sessions */
-ed_tmpfile	= "../tmp/ed";		/* proto editor tmpfile */

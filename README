@@ -4,4 +4,14 @@ into the mudlib directory, apply the patches, and run the program in the src
 subdirectory as "a.out lpmud" (after changing the path to the mudlib directory
 in the lpmud file).
 
-   Regards, Dworkin
+   Version 1.0.a5 has the following differences with 1.0.a4, which will
+require changes to be made in any code depending on them:
+
+ - The behaviour of catch() and lock() has changed slightly.
+ - get_dir() now returns an array of the form ({ names, sizes, times }),
+   rather than ({ names, times, sizes }).
+ - Negative indices for strings and arrays are no longer allowed.  Adding
+   them was a mistake, since arr[0 .. -1], which was previously ({ }),
+   became the whole array.  It is now ({ }) again.
+ - Using a label with inheritance no longer specifies that a different
+   kind of inheritance is to be used.  See the file Changelog for details.
