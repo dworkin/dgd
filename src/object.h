@@ -6,7 +6,7 @@ struct _object_ {
     char flags;			/* object status */
     char eduser;		/* index in user/editor array */
     uindex index;		/* index in object table */
-    Int count;			/* object creation count */
+    Uint count;			/* object creation count */
     union {
 	long ref;		/* ref count (if master object) */
 	struct _object_ *master;/* pointer to master object */
@@ -18,9 +18,9 @@ struct _object_ {
 };
 
 # define O_MASTER		0x01
-# define O_CREATED		0x02
-# define O_AUTO			0x04
-# define O_DRIVER		0x08
+# define O_AUTO			0x02
+# define O_DRIVER		0x04
+# define O_CREATED		0x08
 # define O_USER			0x10
 # define O_EDITOR		0x20
 # define O_COMPILED		0x40
