@@ -2,27 +2,33 @@
 # include <signal.h>
 
 /*
- * NAME:	host->init()
- * DESCRIPTION:	host-specific initialisation
+ * NAME:	main()
+ * DESCRIPTION:	main program
  */
-void host_init()
+int main(argc, argv)
+int argc;
+char *argv[];
 {
     P_srandom(P_time());
     signal(SIGPIPE, SIG_IGN);
+    return dgd_main(argc, argv);
 }
 
 /*
- * NAME:	host->finish()
- * DESCRIPTION:	host specific tidying up
+ * NAME:	P->getevent()
+ * DESCRIPTION:	get an event (but there are none)
  */
-void host_finish()
+void P_getevent()
 {
 }
 
 /*
- * NAME:	host->error()
- * DESCRIPTION:	pass on error message to host
+ * NAME:	P->message()
+ * DESCRIPTION:	show message
  */
-void host_error()
+void P_message(mess)
+char *mess;
 {
+    fputs(mess, stderr);
+    fflush(stderr);
 }

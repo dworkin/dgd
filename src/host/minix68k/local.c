@@ -2,8 +2,6 @@
 # include <sgtty.h>
 # include <signal.h>
 
-extern long seed	P((long));
-
 static struct sgttyb tty;
 
 /*
@@ -13,38 +11,52 @@ static struct sgttyb tty;
 static void intr(arg)
 int arg;
 {
-    host_finish();
+    tty.sg_flags &= ~CBREAK;
+    ioctl(0, TIOCSETP, &tty);
+
     exit(1);
 }
 
 /*
- * NAME:	host->init()
- * DESCRIPTION:	host-specific initialisation
+ * NAME:	main()
+ * DESCRIPTION:	main program
  */
-void host_init()
+int main(argc, argv)
+int argc;
+char *argv[];
 {
-    seed(P_time());
+    int ret;
+
+    P_srandom(P_time());
     ioctl(0, TIOCGETP, &tty);
     tty.sg_flags |= CBREAK;
     ioctl(0, TIOCSETP, &tty);
     signal(SIGINT, intr);
     signal(SIGQUIT, intr);
-}
 
-/*
- * NAME:	host->finish()
- * DESCRIPTION:	host specific tidying up
- */
-void host_finish()
-{
+    ret = dgd_main(argc, argv);
+
     tty.sg_flags &= ~CBREAK;
     ioctl(0, TIOCSETP, &tty);
+
+    return ret;
 }
 
 /*
- * NAME:	host->error()
- * DESCRIPTION:	pass on error message to host
+ * NAME:	P->getevent()
+ * DESCRIPTION:	get an event (but there are none)
  */
-void host_error()
+void P_getevent()
 {
+}
+
+/*
+ * NAME:	P->message()
+ * DESCRIPTION:	pass on message to host
+ */
+void P_message(mess)
+char *mess;
+{
+    fputs(mess, stderr);
+    fflush(stderr);
 }

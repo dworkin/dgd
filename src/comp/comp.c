@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "path.h"
@@ -11,6 +12,7 @@
 # include "ed.h"
 # include "call_out.h"
 # include "node.h"
+# include "codegen.h"
 # include "compile.h"
 # include "csupport.h"
 
@@ -204,10 +206,10 @@ register control *ctrl;
 }
 
 /*
- * NAME:	main()
+ * NAME:	dgd_main()
  * DESCRIPTION:	main routine of the precompiler
  */
-int main(argc, argv)
+int dgd_main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -216,17 +218,13 @@ char *argv[];
     char *file, tag[9];
     int nfuncs;
 
-    host_init();
-
     if (argc != 3) {
-	fprintf(stderr, "usage: %s config_file file\n", argv[0]);
-	host_finish();
+	P_message("usage: precomp config_file file\012");	/* LF */
 	return 2;
     }
 
     if (ec_push()) {
-	fprintf(stderr, "error in initialization\n");
-	host_finish();
+	P_message("error in initialization\012");	/* LF */
 	return 2;
     }
     conf_init(argv[1], (char *) NULL);
@@ -248,11 +246,10 @@ char *argv[];
     printf("# include \"dgd.h\"\n# include \"str.h\"\n");
     printf("# include \"array.h\"\n# include \"object.h\"\n");
     printf("# include \"interpret.h\"\n# include \"data.h\"\n");
-    printf("# include \"csupport.h\"\n");
+    printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
 
     if (ec_push()) {
 	warning((char *) NULL);
-	host_finish();
 	return 1;
     }
     ctrl = c_compile(file)->ctrl;
@@ -268,6 +265,7 @@ char *argv[];
     dump_symbols(ctrl);
 
     printf("\nprecomp %s = {\n%d, inherits,\n", tag, ctrl->ninherits);
+    printf("%ldL,\n", ctrl->compiled);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
     } else {
@@ -299,13 +297,13 @@ char *argv[];
 	printf("%u, funcalls,\n", ctrl->nfuncalls);
     }
     if (ctrl->nsymbols == 0) {
-	printf("0, 0\n");
+	printf("0, 0,\n");
     } else {
-	printf("%u, symbols\n", ctrl->nsymbols);
+	printf("%u, symbols,\n", ctrl->nsymbols);
     }
+    printf("%u, %u, %u\n", ctrl->nvariables, ctrl->nfloatdefs, ctrl->nfloats);
     printf("};\n# endif\n");
 
-    host_finish();
     return 0;
 }
 
@@ -323,7 +321,7 @@ char *func;
 int narg;
 {
     i_pop(narg);
-    (--sp)->type = T_NUMBER;
+    (--sp)->type = T_INT;
     sp->u.number = 0;
     return FALSE;
 }
@@ -332,8 +330,23 @@ int narg;
  * NAME:	swapout()
  * DESCRIPTION:	pretend to indicate that objects are to be swapped out
  */
-void swapout(flag)
-bool flag;
+void swapout()
+{
+}
+
+/*
+ * NAME:	dump_state()
+ * DESCRIPTION:	pretend to indicate that the program must finish
+ */
+void dump_state()
+{
+}
+
+/*
+ * NAME:	interrupt()
+ * DESCRIPTION:	pretend to register an interrupt
+ */
+void interrupt()
 {
 }
 
@@ -341,8 +354,7 @@ bool flag;
  * NAME:	finish()
  * DESCRIPTION:	pretend to indicate that the program must finish
  */
-void finish(flag)
-bool flag;
+void finish()
 {
 }
 
@@ -437,21 +449,29 @@ uindex sw_count()
 }
 
 /*
+ * NAME:	swap->copy()
+ * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
+ */
+void sw_copy()
+{
+}
+
+/*
  * NAME:	swap->dump()
  * DESCRIPTION:	pretend to dump swap file
  */
-bool sw_dump(fd)
-int fd;
+int sw_dump(dumpfile)
+char *dumpfile;
 {
-    return FALSE;
+    return 0;
 }
 
 /*
  * NAME:	swap->restore()
  * DESCRIPTION:	pretend to restore swap file
  */
-void sw_restore(fd)
-int fd;
+void sw_restore(fd, secsize)
+int fd, secsize;
 {
 }
 
@@ -459,8 +479,8 @@ int fd;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-void comm_init(nusers, port_number)
-int nusers, port_number;
+void comm_init(nusers, telnet_port, binary_port)
+int nusers, telnet_port, binary_port;
 {
 }
 
@@ -570,10 +590,11 @@ object *obj;
  * NAME:	ed->command()
  * DESCRIPTION:	pretend to handle an editor command
  */
-void ed_command(obj, cmd)
+string *ed_command(obj, cmd)
 object *obj;
 char *cmd;
 {
+    return (string *) NULL;
 }
 
 /*
@@ -600,35 +621,34 @@ int frag;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new call_out
  */
-bool co_new(obj, str, delay, nargs)
+uindex co_new(obj, str, delay, nargs)
 object *obj;
 string *str;
-long delay;
+Int delay;
 int nargs;
 {
-    return FALSE;
-}
-
-/*
- * NAME:	call_out->find()
- * DESCRIPTION:	pretend to find a call_out
- */
-long co_find(obj, str)
-object *obj;
-string *str;
-{
-    return -1;
+    return 0;
 }
 
 /*
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a call_out
  */
-long co_del(obj, str)
+Int co_del(obj, handle)
 object *obj;
-string *str;
+uindex handle;
 {
     return -1;
+}
+
+/*
+ * NAME:	call_out->list()
+ * DESCRIPTION:	pretend to return a list of callouts
+ */
+array *co_list(obj)
+object *obj;
+{
+    return (array *) NULL;
 }
 
 /*
@@ -640,19 +660,28 @@ void co_call()
 }
 
 /*
- * NAME:	call_out->count()
- * DESCRIPTION:	pretend to return the number of call_outs
+ * NAME:	call_out->info()
+ * DESCRIPTION:	pretend to return information about callouts
  */
-uindex co_count()
+void co_info(n1, n2)
+uindex *n1, *n2;
+{
+}
+
+/*
+ * NAME:	call_out->swaprate1()
+ * DESCRIPTION:	pretend to return the number of objects swapped out per minute
+ */
+long co_swaprate1()
 {
     return 0;
 }
 
 /*
- * NAME:	call_out->swaprate()
- * DESCRIPTION:	pretend to return the number of objects swapped out per minute
+ * NAME:	call_out->swaprate5()
+ * DESCRIPTION:	pretend to return the number of objects swapped out per 5 mins
  */
-long co_swaprate()
+long co_swaprate5()
 {
     return 0;
 }
