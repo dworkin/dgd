@@ -1,7 +1,7 @@
 #
 # Makefile for kernel functions, part of DGD.
 #
-HOST=	SUN
+HOST=	SUNOS4
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
@@ -20,8 +20,8 @@ clean:
 	rm -f dgd comp table.o $(OBJ)
 
 
-$(OBJ): ../config.h ../alloc.h ../error.h ../str.h ../array.h ../object.h
-$(OBJ): ../data.h ../interpret.h
+$(OBJ): ../config.h ../host.h ../alloc.h ../error.h ../str.h ../array.h
+$(OBJ): ../object.h ../data.h ../interpret.h
 std.o file.o: ../path.h
 std.o: ../fcontrol.h ../comm.h ../call_out.h
 file.o: ../ed.h
