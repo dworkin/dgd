@@ -47,6 +47,11 @@ void set_object_manager(object objectd)	[System only]
 	this function is called so a file can be included that depends on
 	what file is currently being compiled.
 
+    * void include(string from, string path)
+
+	The file `path' (which might not exist) is about to be included by
+	`from'.
+
 
 void set_error_manager(object errord)	[System only]
 

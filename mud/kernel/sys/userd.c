@@ -187,7 +187,7 @@ string query_binary_banner()
 login(object user, string name)
 {
     if (previous_program() == LIB_USER) {
-	users |= ({ user });
+	users = (users - ({ 0 })) | ({ user });
 	names[name] = user;
     }
 }
@@ -215,7 +215,7 @@ object *query_users()
 	object *usr;
 	int i, changed;
 
-	usr = users[..];
+	usr = users - ({ 0 });
 	changed = FALSE;
 	for (i = sizeof(usr); --i >= 0; ) {
 	    if (!usr[i]->query_conn()) {

@@ -83,7 +83,7 @@ telnet.c: $(MUDLIB)/kernel/obj/telnet.c auto.c lib_connection.c
 binary.c: $(MUDLIB)/kernel/obj/binary.c auto.c lib_connection.c
 	$(PRECOMP) $(CONFIG) /kernel/obj/binary.c $@
 
-user.c: $(MUDLIB)/kernel/obj/user.c auto.c lib_user.c
+user.c: $(MUDLIB)/kernel/obj/user.c auto.c lib_user.c api_rsrc.c api_user.c
 	$(PRECOMP) $(CONFIG) /kernel/obj/user.c $@
 
 wiztool.c: $(MUDLIB)/kernel/obj/wiztool.c auto.c lib_wiztool.c

@@ -548,11 +548,24 @@ static string path_include(string from, string path)
 	/*
 	 * safe include: return immediately
 	 */
-	return (path[0] == '/') ? path : from + "/../" + path;
+	if (path[0] == '/') {
+	    return path;
+	}
+	if (objectd) {
+	    objectd->include(from, path);
+	}
+	return from + "/../" + path;
     } else {
 	path = normalize_path(path, from, creator(from));
     }
-    return (accessd->access(from, path, READ_ACCESS)) ? path : 0;
+
+    if (accessd->access(from, path, READ_ACCESS)) {
+	if (objectd) {
+	    objectd->include(from, path);
+	}
+	return path;
+    }
+    return 0;
 }
 
 /*
