@@ -525,6 +525,9 @@ object *obj;
 		    error("Object inherited during recompilation");
 		}
 	    }
+	    if (!o_space()) {
+		error("Too many objects");
+	    }
 
 	    /*
 	     * successfully compiled

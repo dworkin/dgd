@@ -257,6 +257,15 @@ unsigned int index;
 }
 
 /*
+ * NAME:	object->space()
+ * DESCRIPTION:	check if there's space for another object
+ */
+bool o_space()
+{
+    return (oplane->free != OBJ_NONE) ? TRUE : (oplane->nobjects != otabsize);
+}
+
+/*
  * NAME:	object->alloc()
  * DESCRIPTION:	allocate a new object
  */

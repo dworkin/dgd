@@ -477,11 +477,11 @@ static void initialize()
 void prepare_reboot()
 {
     if (KERNEL()) {
-	rsrcd->prepare_reboot();
-	userd->prepare_reboot();
 	if (initd) {
 	    initd->prepare_reboot();
 	}
+	rsrcd->prepare_reboot();
+	userd->prepare_reboot();
     }
 }
 

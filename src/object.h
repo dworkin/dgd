@@ -53,6 +53,7 @@ extern void	  o_new_plane		P((void));
 extern void	  o_commit_plane	P((void));
 extern void	  o_discard_plane	P((void));
 
+extern bool	  o_space		P((void));
 extern object	 *o_new			P((char*, control*));
 extern object	 *o_clone		P((object*));
 extern void	  o_upgrade		P((object*, control*, frame*));

@@ -1870,10 +1870,10 @@ bool merge;
 				break;
 			    }
 			}
+		    }
 
-			if (*c == cop) {
-			    c = &cop->next;
-			}
+		    if (*c == cop) {
+			c = &cop->next;
 		    }
 		}
 	    } while (c != next);
