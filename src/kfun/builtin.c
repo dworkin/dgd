@@ -2209,7 +2209,7 @@ register frame *f;
 	break;
 
     case T_LWOBJECT:
-	n = d_get_elts(f->sp[1].u.array)[0].oindex;
+	n = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
 	break;
 

@@ -1573,8 +1573,8 @@ unsigned short *nvariables;
 	/* in the middle of an upgrade */
 	tmpl = OBJ(tmpl->prev);
     }
-    nvar = o_control(*obj)->nvariables + 1;
     vmap = o_control(tmpl)->vmap;
+    nvar = tmpl->ctrl->vmapsize;
 
     if (tmpl->update != update) {
 	register unsigned short *m1, *m2, n;
@@ -1693,10 +1693,85 @@ dataspace *data;
  * NAME:	data->upgrade_lwobj()
  * DESCRIPTION:	upgrade a non-persistent object
  */
-void d_upgrade_lwobj(lwobj, obj)
-array *lwobj;
+object *d_upgrade_lwobj(lwobj, obj)
+register array *lwobj;
 object *obj;
 {
+    register arrref *a;
+    register unsigned short n;
+    register value *v;
+    Uint update;
+    unsigned short nvar, *vmap;
+    value *vars;
+
+    a = lwobj->primary;
+    update = obj->update;
+    vmap = d_get_varmap(&obj, (Uint) lwobj->elts[1].u.number, &nvar);
+    --nvar;
+
+    /* map variables */
+    v = ALLOC(value, nvar + 2);
+    *v++ = lwobj->elts[0];
+    PUT_INTVAL(v, update);
+    v++;
+
+    vars = lwobj->elts + 2;
+    for (n = nvar; n > 0; --n) {
+	switch (*vmap) {
+	case NEW_INT:
+	    *v++ = zero_int;
+	    break;
+
+	case NEW_FLOAT:
+	    *v++ = zero_float;
+	    break;
+
+	case NEW_POINTER:
+	    *v++ = nil_value;
+	    break;
+
+	default:
+	    *v = vars[*vmap];
+	    if (a->arr != (array *) NULL) {
+		ref_rhs(a->data, v);
+	    }
+	    i_ref_value(v);
+	    (v++)->modified = TRUE;
+	    break;
+	}
+	vmap++;
+    }
+    vars = v - (nvar + 2);
+
+    v = lwobj->elts + 2;
+    if (a->arr != (array *) NULL) {
+	/* swapped-in */
+	if (a->state == AR_UNCHANGED) {
+	    register dataplane *p;
+
+	    a->state = AR_CHANGED;
+	    for (p = a->data->plane; p != (dataplane *) NULL; p = p->prev) {
+		p->achange++;
+	    }
+	}
+
+	/* deref old values */
+	for (n = nvar; n > 0; --n) {
+	    del_lhs(a->data, v);
+	    i_del_value(v++);
+	}
+    } else {
+	/* deref old values */
+	for (n = nvar; n > 0; --n) {
+	    i_del_value(v++);
+	}
+    }
+
+    /* replace old with new */
+    FREE(lwobj->elts);
+    lwobj->elts = vars;
+
+    return obj;
 }
 
 /*

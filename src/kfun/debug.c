@@ -659,7 +659,7 @@ frame *f;
     if (f->sp->type == T_OBJECT) {
 	n = f->sp->oindex;
     } else {
-	n = d_get_elts(f->sp->u.array)[0].oindex;
+	n = f->sp->u.array->elts[0].oindex;
 	arr_del(f->sp->u.array);
     }
     showctrl(o_control(OBJR(n)));
@@ -686,7 +686,7 @@ frame *f;
     if (f->sp[1].type == T_OBJECT) {
 	n = f->sp[1].oindex;
     } else {
-	n = d_get_elts(f->sp[1].u.array)[0].oindex;
+	n = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
     }
     ctrl = o_control(OBJR(n));

@@ -49,3 +49,4 @@ extern array	       *map_indices	P((dataspace*, array*));
 extern array	       *map_values	P((dataspace*, array*));
 
 extern array	       *lwo_new		P((dataspace*, object*));
+extern array	       *lwo_copy	P((dataspace*, array*));

@@ -628,6 +628,9 @@ register object *master;
     register object *o;
 
     /* allocate object */
+    if ((master->cref & O_CLONE) >= O_CLONE - 2) {
+	error("Too many clones");
+    }
     o = o_alloc();
 
     o->chain.name = (char *) NULL;
@@ -643,6 +646,16 @@ register object *master;
     master->u_ref++;
 
     return o;
+}
+
+/*
+ * NAME:	object->lwobj()
+ * DESCRIPTION:	create light-weight instance of object
+ */
+void o_lwobj(obj)
+object *obj;
+{
+    obj->cref |= O_LWOBJ;
 }
 
 /*
@@ -1002,6 +1015,28 @@ static void o_clean_upgrades()
 }
 
 /*
+ * NAME:	object->purge_upgrades()
+ * DESCRIPTION:	purge the LW dross from upgrade templates
+ */
+static bool o_purge_upgrades(o)
+register object *o;
+{
+    bool purged;
+
+    purged = FALSE;
+    while (o->prev != OBJ_NONE && (o=OBJ(o->prev))->ref & O_LWOBJ) {
+	o->ref &= ~O_LWOBJ;
+	if (o->ref == 0) {
+	    o->cref = baseplane.destruct;
+	    baseplane.destruct = o->index;
+	    purged = TRUE;
+	}
+    }
+
+    return purged;
+}
+
+/*
  * NAME:	object->clean()
  * DESCRIPTION:	clean up the object table
  */
@@ -1022,7 +1057,12 @@ void o_clean()
 	    d_del_dataspace(o->data);
 	}
 
-	if (!(o->flags & O_MASTER)) {
+	if (o->flags & O_MASTER) {
+	    /* remove possible upgrade templates */
+	    if (o_purge_upgrades(o)) {
+		o->prev = OBJ_NONE;
+	    }
+	} else {
 	    register object *tmpl;
 
 	    /* check if clone still had to be upgraded */
@@ -1205,8 +1245,9 @@ int fd;
  * NAME:	object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(fd)
+void o_restore(fd, rlwobj)
 int fd;
+unsigned int rlwobj;
 {
     register uindex i;
     register object *o;
@@ -1262,9 +1303,16 @@ int fd;
 	    if (o->count != 0) {
 		register hte **h;
 
+		/* add name to lookup table */
 		h = ht_lookup(baseplane.htab, p, FALSE);
 		o->chain.next = *h;
 		*h = (hte *) o;
+
+		/* fix O_LWOBJ */
+		if (o->cref & rlwobj) {
+		    o->cref &= ~rlwobj;
+		    o->cref |= O_LWOBJ;
+		}
 	    }
 	    p += len;
 	    buflen -= len;
@@ -1365,6 +1413,16 @@ void o_conv()
 		d_conv_dataspace(o, counts);
 		o_clean_upgrades();
 		d_swapout(1);
+	    }
+	}
+
+	/*
+	 * clean up object upgrade templates
+	 */
+	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
+	    if (o->count != 0 && o->cfirst != SW_UNUSED &&
+		(o->cref & O_LWOBJ) && o_purge_upgrades(o)) {
+		o->prev = OBJ_NONE;
 	    }
 	}
 	o_clean();

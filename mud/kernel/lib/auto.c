@@ -113,7 +113,7 @@ nomask void _F_create()
 		/*
 		 * new non-persistent object
 		 */
-		prev = previous_object();
+		prev = driver;
 	    }
 
 # ifdef CREATOR
@@ -446,15 +446,33 @@ static object clone_object(string path, varargs string uid)
  * NAME:	new_object()
  * DESCRIPTION:	create a new non-persistent object
  */
-static object new_object(string path, varargs string uid)
+static object new_object(mixed obj, varargs string uid)
 {
-    string oname;
-    object rsrcd, obj;
-    int stack, ticks;
+    string str;
+    object rsrcd;
+    int new, stack, ticks;
 
-    CHECKARG(path, 1, "new_object");
+    switch (typeof(obj)) {
+    case T_STRING:
+	str = object_name(this_object());
+	str = ::find_object(DRIVER)->normalize_path(obj, str + "/..", creator);
+	obj = ::find_object(str);
+	new = TRUE;
+	break;
+
+    case T_OBJECT:
+	str = object_name(obj);
+	if (sscanf(str, "%*s#-1") == 0) {
+	    error("new_object() requires non-persistent object argument");
+	}
+	new = FALSE;
+	break;
+
+    default:
+	error("Bad argument 1 for function new_object");
+    }
     if (uid) {
-	CHECKARG(creator == "System", 1, "new_object");
+	CHECKARG(new && creator == "System", 1, "new_object");
     } else {
 	uid = owner;
     }
@@ -462,40 +480,41 @@ static object new_object(string path, varargs string uid)
 	error("Access denied");
     }
 
-    /*
-     * check if object can be created
-     */
-    oname = object_name(this_object());
-    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
-    if (!owner || !(obj=::find_object(path)) ||
-	sscanf(path, "%*s/data/") == 0 || sscanf(path, "%*s/obj/") != 0 ||
-	sscanf(path, "%*s/lib/") != 0) {
-	/*
-	 * no owner for new object, master object not compiled, or not path of
-	 * non-persistent object
-	 */
-	error("Cannot create new instance of " + path);
-    }
 
     /*
      * create the object
      */
-    rsrcd = ::find_object(RSRCD);
-    stack = ::status()[ST_STACKDEPTH];
-    ticks = ::status()[ST_TICKS];
-    catch {
-	rlimits (-1; -1) {
-	    if ((stack >= 0 &&
-		 stack - 2 < rsrcd->rsrc_get(uid, "create stack")[RSRC_MAX]) ||
-		(ticks >= 0 &&
-		 ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
-		error("Insufficient stack or ticks to create object");
-	    }
-	    if (uid != owner) {
-		owner = "/" + uid + "/" + owner;
-	    }
+    if (new) {
+	/*
+	 * check if object can be created
+	 */
+	if (!owner || !obj || sscanf(str, "%*s/data/") == 0 ||
+	    sscanf(str, "%*s/obj/") != 0 || sscanf(str, "%*s/lib/") != 0) {
+	    /*
+	     * no owner for new object, master object not compiled, or not path
+	     * of non-persistent object
+	     */
+	    error("Cannot create new instance of " + str);
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+
+	rsrcd = ::find_object(RSRCD);
+	stack = ::status()[ST_STACKDEPTH];
+	ticks = ::status()[ST_TICKS];
+	catch {
+	    rlimits (-1; -1) {
+		if ((stack >= 0 &&
+		     stack - 2 < rsrcd->rsrc_get(uid,
+						 "create stack")[RSRC_MAX]) ||
+		    (ticks >= 0 &&
+		     ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
+		    error("Insufficient stack or ticks to create object");
+		}
+		if (uid != owner) {
+		    owner = "/" + uid + "/" + owner;
+		}
+	    }
+	} : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    }
     return ::new_object(obj);
 }
 

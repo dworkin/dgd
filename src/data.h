@@ -216,7 +216,7 @@ extern char	       *d_get_funcalls	 P((control*));
 extern dsymbol	       *d_get_symbols	 P((control*));
 extern Uint		d_get_progsize	 P((control*));
 
-extern void		d_new_variables	P((control*, value*));
+extern void		d_new_variables	 P((control*, value*));
 extern value	       *d_get_variable	 P((dataspace*, unsigned int));
 extern value	       *d_get_elts	 P((array*));
 extern void		d_get_callouts	 P((dataspace*));
@@ -258,7 +258,7 @@ extern void		d_set_varmap	P((control*, unsigned int,
 extern void		d_upgrade_data	P((dataspace*, unsigned short,
 					   unsigned short*, object*));
 extern void		d_upgrade_clone	P((dataspace*));
-extern void		d_upgrade_lwobj	P((array*, object*));
+extern object	       *d_upgrade_lwobj	P((array*, object*));
 extern void		d_export	P((void));
 
 extern void		d_del_control	P((control*));

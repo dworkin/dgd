@@ -103,6 +103,7 @@ typedef struct {
     svalue *selts;			/* save array elements */
     sstring *sstrings;			/* save strings */
     char *stext;			/* save string elements */
+    Uint *counttab;			/* object count table */
 } savedata;
 
 static control *chead, *ctail;		/* list of control blocks */
@@ -980,7 +981,7 @@ register value *variables;
     /*
      * first, initialize all variables to nil
      */
-    for (nvars = ctrl->nvariables + 1, variables += nvars; nvars > 0; --nvars) {
+    for (nvars = ctrl->nvariables, variables += nvars; nvars > 0; --nvars) {
 	*--variables = nil_value;
     }
 
@@ -1026,6 +1027,7 @@ register unsigned int idx;
 	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
 	    d_new_variables(data->ctrl, data->variables);
+	    data->variables[data->nvariables - 1] = nil_value;	/* extra var */
 	} else {
 	    /*
 	     * variables must be loaded from the swap
@@ -1352,6 +1354,10 @@ register savedata *save;
 register value *v;
 register unsigned short n;
 {
+    register object *obj;
+    register value *elts;
+    Uint count;
+
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
@@ -1363,7 +1369,6 @@ register unsigned short n;
 
 	case T_ARRAY:
 	case T_MAPPING:
-	case T_LWOBJECT:
 	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
@@ -1371,6 +1376,33 @@ register unsigned short n;
 		save->narr++;
 		save->arrsize += v->u.array->size;
 		d_count(save, d_get_elts(v->u.array), v->u.array->size);
+	    }
+	    break;
+
+	case T_LWOBJECT:
+	    elts = d_get_elts(v->u.array);
+	    obj = OBJ(elts->oindex);
+	    if (save->counttab != (Uint *) NULL) {
+		count = save->counttab[elts->oindex];
+	    } else {
+		count = obj->count;
+	    }
+	    if (elts->u.objcnt == count) {
+		if (arr_put(save->amerge, v->u.array, save->narr) == save->narr)
+		{
+		    if (elts[1].u.number != obj->update) {
+			d_upgrade_lwobj(v->u.array, obj);
+			elts = v->u.array->elts;
+		    }
+		    if (save->counttab != (Uint *) NULL) {
+			elts[1].u.number = 0;
+		    }
+		    save->narr++;
+		    save->arrsize += v->u.array->size;
+		    d_count(save, elts, v->u.array->size);
+		}
+	    } else {
+		*v = nil_value;
 	    }
 	    break;
 	}
@@ -1588,8 +1620,9 @@ register dataspace *data;
  * NAME:	data->save_dataspace()
  * DESCRIPTION:	save all values in a dataspace block
  */
-static bool d_save_dataspace(data)
+static bool d_save_dataspace(data, counttab)
 register dataspace *data;
+Uint *counttab;
 {
     sdataspace header;
     register Uint n;
@@ -1738,6 +1771,7 @@ register dataspace *data;
 	save.nstr = 0;
 	save.arrsize = 0;
 	save.strsize = 0;
+	save.counttab = counttab;
 
 	d_get_variable(data, 0);
 	if (data->svariables == (svalue *) NULL) {
@@ -1951,7 +1985,7 @@ unsigned int frag;
 		ext_swapout != (void (*) P((object*))) NULL) {
 		(*ext_swapout)(OBJ(data->oindex));
 	    }
-	    if (d_save_dataspace(data)) {
+	    if (d_save_dataspace(data, (Uint *) NULL)) {
 		count++;
 	    }
 	    OBJ(data->oindex)->data = (dataspace *) NULL;
@@ -2005,7 +2039,7 @@ void d_swapsync()
 	    ext_swapout != (void (*) P((object*))) NULL) {
 	    (*ext_swapout)(OBJ(data->oindex));
 	}
-	d_save_dataspace(data);
+	d_save_dataspace(data, (Uint *) NULL);
     }
 }
 
@@ -2332,7 +2366,7 @@ Uint *counttab;
     }
 
     data->base.flags |= MOD_ALL;
-    d_save_dataspace(data);
+    d_save_dataspace(data, counttab);
     OBJ(data->oindex)->data = (dataspace *) NULL;
     d_free_dataspace(data);
 }

@@ -344,7 +344,7 @@ object *obj;
 {
     register frame *f;
     register Uint count;
-    register value *v, *o;
+    register value *v;
     register unsigned short n;
 
     count = obj->count;
@@ -361,8 +361,7 @@ object *obj;
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v->u.array);
-		if (o->u.objcnt == count) {
+		if (v->u.array->elts[0].u.objcnt == count) {
 		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
@@ -378,8 +377,7 @@ object *obj;
 		break;
 
 	    case T_LWOBJECT:
-		o = d_get_elts(v->u.array);
-		if (o->u.objcnt == count) {
+		if (v->u.array->elts[0].u.objcnt == count) {
 		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
@@ -404,8 +402,7 @@ object *obj;
 		    break;
 
 		case T_LWOBJECT:
-		    o = d_get_elts(v->u.array);
-		    if (o->u.objcnt == count) {
+		    if (v->u.array->elts[0].u.objcnt == count) {
 			arr_del(v->u.array);
 			*v = nil_value;
 		    }
@@ -553,7 +550,7 @@ register int inherit, index;
     if (f->lwobj == (array *) NULL) {
 	i_push_value(f, d_get_variable(f->data, inherit + index));
     } else {
-	i_push_value(f, &d_get_elts(f->lwobj)[2 + inherit + index]);
+	i_push_value(f, &f->lwobj->elts[2 + inherit + index]);
     }
 }
 
@@ -2126,7 +2123,7 @@ int nargs;
     if (lwobj != (array *) NULL) {
 	uindex oindex;
 
-	oindex = d_get_elts(lwobj)[0].oindex;
+	oindex = lwobj->elts[0].oindex;
 	obj = OBJR(oindex);
 	if (obj->update != lwobj->elts[1].u.number) {
 	    d_upgrade_lwobj(lwobj, obj);

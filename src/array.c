@@ -2233,14 +2233,34 @@ register object *obj;
     register control *ctrl;
     register array *a;
 
+    o_lwobj(obj);
     ctrl = o_control(obj);
-    a = arr_alloc(ctrl->nvariables + 3);
-    a->elts = ALLOC(value, ctrl->nvariables + 3);
+    a = arr_alloc(ctrl->nvariables + 2);
+    a->elts = ALLOC(value, ctrl->nvariables + 2);
     PUT_OBJVAL(&a->elts[0], obj);
     PUT_INTVAL(&a->elts[1], obj->update);
     d_new_variables(ctrl, a->elts + 2);
     a->tag = tag++;
-    a->odcount = (Uint) -1;
+    a->odcount = odcount;
     a->primary = &data->plane->alocal;
     return a;
+}
+
+/*
+ * NAME:	lwobject->copy()
+ * DESCRIPTION:	copy a light-weight object
+ */
+array *lwo_copy(data, a)
+dataspace *data;
+array *a;
+{
+    register array *copy;
+
+    copy = arr_alloc(a->size);
+    i_copy(copy->elts = ALLOC(value, a->size), a->elts, a->size);
+    copy->tag = tag++;
+    copy->odcount = odcount;
+    copy->primary = &data->plane->alocal;
+    d_ref_imports(copy);
+    return copy;
 }

@@ -328,16 +328,22 @@ int kf_new_object(f)
 register frame *f;
 {
     object *obj;
+    array *a;
 
-    if (f->sp->type != T_OBJECT ||
-	!((obj=OBJF(f->sp->oindex))->flags & O_MASTER)) {
-	error("Creating new instance from a non-master object");
-    }
+    if (f->sp->type == T_OBJECT) {
+	if (!((obj=OBJF(f->sp->oindex))->flags & O_MASTER)) {
+	    error("Creating new instance from a non-master object");
+	}
 
-    PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
-    if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, FALSE, 0))
-    {
-	i_del_value(f->sp++);
+	PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
+	if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, FALSE,
+		   0)) {
+	    i_del_value(f->sp++);
+	}
+    } else {
+	a = lwo_copy(f->data, f->sp->u.array);
+	arr_del(f->sp->u.array);
+	PUT_LWOVAL(f->sp, a);
     }
     return 0;
 }
@@ -366,7 +372,7 @@ register frame *f;
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
-	n = d_get_elts(f->sp->u.array)[0].oindex;
+	n = f->sp->u.array->elts[0].oindex;
 	arr_del(f->sp->u.array);
 	name = o_name(buffer, OBJR(n));
 	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 4L));
@@ -433,7 +439,7 @@ register frame *f;
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
     } else {
-	n = d_get_elts(f->sp->u.array)[0].oindex;
+	n = f->sp->u.array->elts[0].oindex;
 	arr_del(f->sp->u.array);
 	obj = OBJR(n);
     }
@@ -1133,7 +1139,7 @@ int nargs;
 	if (f->sp->type == T_OBJECT) {
 	    n = f->sp->oindex;
 	} else {
-	    n = d_get_elts(f->sp->u.array)[0].oindex;
+	    n = f->sp->u.array->elts[0].oindex;
 	    arr_del(f->sp->u.array);
 	}
 	a = conf_object(f->data, OBJR(n));

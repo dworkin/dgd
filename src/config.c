@@ -299,7 +299,7 @@ int fd;
 
     sw_restore(fd, secsize);
     kf_restore(fd);
-    o_restore(fd);
+    o_restore(fd, (uindex) 1 << (rusize * 8 - 1));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
     o_conv();				/* convert all objects */
