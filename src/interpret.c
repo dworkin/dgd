@@ -932,7 +932,7 @@ frame *f;
     if (rlim->noticks) {
 	return -1;
     } else {
-	return (rlim->ticks < 0) ? 0 : rlim->ticks * (f->level + 1);
+	return (rlim->ticks < 0) ? 0 : rlim->ticks << f->level;
     }
 }
 
@@ -984,6 +984,7 @@ Int depth, t;
 	if (t < 0) {
 	    rlim->noticks = TRUE;
 	} else {
+	    t >>= f->level;
 	    f->rlim->ticks -= t;
 	    rlim->ticks = t;
 	    rlim->noticks = FALSE;
@@ -1982,7 +1983,7 @@ int funci;
 	    f.plist = d_commit_plane(f.plist);
 	} while (f.plist != (dataspace *) NULL);
 	if (!f.rlim->noticks) {
-	    f.rlim->ticks <<= 1;
+	    f.rlim->ticks *= 2;
 	}
     } else {
 	prev_f->plist = f.plist;
@@ -2004,10 +2005,13 @@ Int level;
     register dataspace *data;
 
     for (f = ftop; f->level != level; f = f->prev) ;
-    if (f->rlim != ftop->rlim) {
-	i_set_rlimits(ftop, f->rlim);
-    }
     if (f != ftop) {
+	if (f->rlim != ftop->rlim) {
+	    i_set_rlimits(ftop, f->rlim);
+	}
+	if (!f->rlim->noticks) {
+	    f->rlim->ticks *= 2;
+	}
 	i_set_sp(ftop, f->sp);
 	data = ftop->plist;
 	do {

@@ -914,16 +914,12 @@ static array *d_get_array(data, idx)
 register dataspace *data;
 register Uint idx;
 {
-    register Uint i;
-
-    if (data->values->arrays == (arrref *) NULL) {
+    if (data->values->arrays == (arrref *) NULL ||
+	data->values->arrays[idx].arr == (array *) NULL) {
+	register array *arr;
 	register arrref *a;
-
-	/* create array pointers */
-	a = data->values->arrays = ALLOC(arrref, data->narrays);
-	for (i = data->narrays; i > 0; --i) {
-	    (a++)->arr = (array *) NULL;
-	}
+	register plane *p;
+	register Uint i;
 
 	if (data->sarrays == (sarray *) NULL) {
 	    /* load arrays */
@@ -931,21 +927,31 @@ register Uint idx;
 	    sw_readv((char *) data->sarrays, data->sectors,
 		     data->narrays * (Uint) sizeof(sarray), data->arroffset);
 	}
-    }
 
-    if (data->values->arrays[idx].arr == (array *) NULL) {
-	register array *a;
+	arr = arr_alloc(data->sarrays[idx].size);
+	arr->ref = 0;
+	arr->tag = data->sarrays[idx].tag;
+	p = data->values;
 
-	a = arr_alloc(data->sarrays[idx].size);
-	a->ref = 1;
-	a->tag = data->sarrays[idx].tag;
-	a->primary = &data->values->arrays[idx];
-	a->primary->arr = a;
-	a->primary->values = data->values;
-	a->primary->data = data;
-	a->primary->changed = FALSE;
-	a->primary->ref = data->sarrays[idx].ref;
-	return a;
+	do {
+	    if (p->arrays == (arrref *) NULL) {
+		/* create array pointers */
+		a = p->arrays = ALLOC(arrref, data->narrays);
+		for (i = data->narrays; i > 0; --i) {
+		    (a++)->arr = (array *) NULL;
+		}
+	    }
+	    a = &p->arrays[idx];
+	    arr_ref(a->arr = arr);
+	    a->values = &data->basic;
+	    a->data = data;
+	    a->changed = FALSE;
+	    a->ref = data->sarrays[idx].ref;
+	    p = p->prev;
+	} while (p != (plane *) NULL);
+
+	arr->primary = &data->values->arrays[idx];
+	return arr;
     }
     return data->values->arrays[idx].arr;
 }
@@ -1429,7 +1435,8 @@ dataspace *next;
 	     a++, b++, --i) {
 	    if (b->arr != (array *) NULL) {
 		*a = *b;
-		a->arr->primary = a;	/* let array point to new plane */
+		a->arr->primary = a;
+		arr_ref(a->arr);
 	    } else {
 		a->arr = (array *) NULL;
 	    }
@@ -1453,7 +1460,8 @@ register dataspace *data;
 {
     register plane *p;
     register value *v;
-    register unsigned short i;
+    register arrref *a;
+    register Uint i;
 
     p = data->values;
 
@@ -1469,19 +1477,22 @@ register dataspace *data;
 	FREE(p->original);
     }
 
-    if (p->arrays != (arrref *) NULL) {
-	/*
-	 * move array refs into previous plane
-	 */
-	if (p->prev->arrays != (arrref *) NULL) {
-	    memcpy(p->prev->arrays, p->arrays, data->narrays * sizeof(arrref));
-	} else {
-	    p->prev->arrays = p->arrays;
-	}
-    }
     arr_commit(&p->achunk);
-    if (p->arrays != (arrref *) NULL && p->arrays != p->prev->arrays) {
-	FREE(p->arrays);
+    if (p->arrays != (arrref *) NULL) {
+	/* delete old array refs */
+	for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
+	    if (a->arr != (array *) NULL) {
+		arr_del(a->arr);
+	    }
+	}
+	FREE(p->prev->arrays);
+	/* replace with new ones */
+	for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
+	    if (a->values == p) {
+		a->values = p->prev;
+	    }
+	}
+	p->prev->arrays = p->arrays;
     }
 
     data->values = p->prev;
@@ -1499,6 +1510,7 @@ register dataspace *data;
 {
     register plane *p;
     register value *v;
+    register arrref *a;
     register Uint i;
 
     p = data->values;
@@ -1512,32 +1524,21 @@ register dataspace *data;
 	FREE(p->original);
     }
 
-    if (p->arrays != (arrref *) NULL) {
-	register arrref *a, *b;
-	register sarray *s;
-
-	/*
-	 * copy unchanged arrref info back to previous plane if needed
-	 */
-	b = p->prev->arrays;
-	if (b == (arrref *) NULL) {
-	    b = p->prev->arrays = ALLOC(arrref, data->narrays);
-	    memset(b, '\0', data->narrays * sizeof(arrref));
-	}
-	for (a = p->arrays, s = data->sarrays, i = data->narrays; i > 0;
-	     a++, b++, s++, --i) {
-	    if (a->arr != (array *) NULL && b->arr == (array *) NULL) {
-		b->arr = a->arr;
-		b->values = p;	/* changed later */
-		b->data = data;
-		b->changed = FALSE;
-		b->ref = s->ref;
-	    }
-	}
-    }
     arr_restore(&p->achunk);
     if (p->arrays != (arrref *) NULL) {
+	/* delete new array refs */
+	for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
+	    if (a->arr != (array *) NULL) {
+		arr_del(a->arr);
+	    }
+	}
 	FREE(p->arrays);
+	/* fix old ones */
+	for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
+	    if (a->arr != (array *) NULL) {
+		a->arr->primary = a;
+	    }
+	}
     }
 
     data->values = p->prev;
@@ -1550,17 +1551,11 @@ register dataspace *data;
  * NAME:	data->revert_arr()
  * DESCRIPTION:	revert array back to previous plane
  */
-void d_revert_arr(a)
-register array *a;
+void d_revert_arr(arr)
+register array *arr;
 {
-    register arrref *r;
-
-    r = a->primary;
-    if (r->arr != (array *) NULL) {
-	a->primary = r->values->prev->arrays + (r - r->values->arrays);
-	a->primary->values = r->values->prev;
-    } else {
-	a->primary = &r->values->prev->alocal;
+    if (arr->primary->arr == (array *) NULL) {
+	arr->primary = &arr->primary->values->prev->alocal;
     }
 }
 
