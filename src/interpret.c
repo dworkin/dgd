@@ -2109,6 +2109,7 @@ register frame *f;
 
 	case I_PUSH_LOCAL_LVAL:
 	case I_PUSH_GLOBAL_LVAL:
+	case I_SPREAD:
 	    if (instr & I_TYPE_BIT) {
 		pc++;
 	    }
@@ -2117,7 +2118,6 @@ register frame *f;
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
 	case I_PUSH_GLOBAL:
-	case I_SPREAD:
 	case I_CAST:
 	case I_RLIMITS:
 	    pc++;
