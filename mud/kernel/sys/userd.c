@@ -273,5 +273,9 @@ void reboot()
 	for (i = sizeof(connections); --i >= 0; ) {
 	    connections[i]->reboot();
 	}
+
+	connections = nil;
+	users = ({ });
+	names = ([ ]);
     }
 }
