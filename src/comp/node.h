@@ -9,7 +9,7 @@ typedef struct _node_ {
 	struct _node_ *left;	/* left child */
     } l;
     union {
-	long number;		/* numeric value */
+	Int number;		/* numeric value */
 	struct _node_ *right;	/* right child */
     } r;
 } node;
