@@ -2,9 +2,9 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
-# include "lex.h"
+# include "macro.h"
+# include "token.h"
 # include "node.h"
 
 # define NODE_CHUNK	64

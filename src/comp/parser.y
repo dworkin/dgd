@@ -9,12 +9,13 @@
 %{
 
 # include "comp.h"
-# include "lex.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "macro.h"
+# include "token.h"
+# include "ppcontrol.h"
 # include "node.h"
 # include "compile.h"
 
