@@ -524,9 +524,9 @@ bool *toobig;
 		ps_reduce(ps, sn->pn, red);
 		red += 4;
 		i_add_ticks(ps->frame, 16);
-		if (ps->frame->ticks < 0) {
-		    if (ps->frame->noticks) {
-			ps->frame->ticks = 0x7fffffff;
+		if (ps->frame->rlim->ticks < 0) {
+		    if (ps->frame->rlim->noticks) {
+			ps->frame->rlim->ticks = 0x7fffffff;
 		    } else {
 			FREE(ps->states);
 			error("Out of ticks");

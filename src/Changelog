@@ -1290,3 +1290,4 @@ DGD 1.1
  - Return value of remove_call_out() was incorrect if callout didn't exist or
    had millisecond delay.
  - Slightly better indexing of mapping with string.
+ - Removed recursion limit on catch and rlimits.

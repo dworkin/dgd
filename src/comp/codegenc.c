@@ -955,7 +955,7 @@ register int state;
 	break;
 
     case N_CATCH:
-	output("(pre_catch(f), ");
+	output("(");
 	if (catch_level == 0) {
 	    for (i = nvars; i > 0; ) {
 		if (vars[--i] != 0) {
@@ -979,9 +979,9 @@ register int state;
 		    }
 		}
 	    }
-	    output("), post_catch(f, 0))");
+	    output("))");
 	} else {
-	    output(", ec_pop(), post_catch(f, 0), FALSE) : (");
+	    output(", ec_pop(), FALSE) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -989,7 +989,7 @@ register int state;
 		    }
 		}
 	    }
-	    output("post_catch(f, 0), TRUE))");
+	    output("TRUE))");
 	}
 	return;
 
@@ -1746,11 +1746,16 @@ register int n;
 	link = link->next;
     } while (--n != 0);
 
-    if (c != 0) {
-	output("post_catch(f, %d);", c);
+    while (c != 0) {
+	output("ec_pop();");
+	--c;
     }
     if (r != 0) {
-	output("i_set_rllevel(f, -%u);", r);
+	output("i_set_rlimits(f, f->rlim->next");
+	while (--r != 0) {
+	    output("->next");
+	}
+	output(");");
     }
 }
 
@@ -1863,10 +1868,10 @@ register node *n;
 	    rcstart.type = N_RLIMITS;
 	    rcstart.next = rclist;
 	    rclist = &rcstart;
-	    output(";\npre_rlimits(f);\n");
+	    output(";\nnew_rlimits(f);\n");
 	    cg_stmt(m->r.right);
 	    if (!(m->r.right->flags & F_END)) {
-		output("i_set_rllevel(f, -1);\n");
+		output("i_set_rlimits(f, f->rlim->next);\n");
 	    }
 	    rclist = rcstart.next;
 	    break;
@@ -1875,7 +1880,6 @@ register node *n;
 	    rcstart.type = N_CATCH;
 	    rcstart.next = rclist;
 	    rclist = &rcstart;
-	    output("pre_catch(f);\n");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1888,7 +1892,7 @@ register node *n;
 	    cg_stmt(m->l.left);
 	    --catch_level;
 	    if (!(m->l.left->flags & F_END)) {
-		output("ec_pop(); post_catch(f, 0);");
+		output("ec_pop();");
 	    }
 	    output("} else {\n");
 	    if (catch_level == 0) {
@@ -1898,7 +1902,6 @@ register node *n;
 		    }
 		}
 	    }
-	    output("post_catch(f, 0);\n");
 	    rclist = rcstart.next;
 	    if (m->r.right != (node *) NULL) {
 		cg_stmt(m->r.right);

@@ -433,11 +433,15 @@ object *obj;
     iflag = inheriting;
     if (iflag) {
 	register context *cc;
+	register int n;
 
-	for (cc = current; cc != (context *) NULL; cc = cc->prev) {
+	for (cc = current, n = 0; cc != (context *) NULL; cc = cc->prev, n++) {
 	    if (strcmp(file, cc->file) == 0) {
 		error("Cycle in inheritance from \"/%s.c\"", current->file);
 	    }
+	}
+	if (n >= 255) {
+	    error("Compilation nesting too deep");
 	}
 
 	pp_clear();

@@ -972,46 +972,11 @@ register frame *f;
     return TRUE;
 }
 
-static int cstack[ERRSTACKSZ];	/* catch stack */
-static int csi;			/* catch stack index */
-
 /*
- * NAME:	pre_catch()
- * DESCRIPTION:	prepare for a catch
+ * NAME:	new_rlimits()   
+ * DESCRIPTION:	handle rlimits
  */
-void pre_catch(f)
-frame *f;
-{
-    if (csi == ERRSTACKSZ) {
-	error("Too deep catch() nesting");
-    }
-    cstack[csi++] = i_get_rllevel(f);
-}
-
-/*
- * NAME:	post_catch()
- * DESCRIPTION:	clean up after a catch
- */
-void post_catch(f, n)
-frame *f;
-int n;
-{
-    if (n == 0) {
-	i_set_rllevel(f, cstack[--csi]);
-    } else {
-	/* break, continue, return out of catch */
-	i_set_rllevel(f, cstack[csi -= n]);
-	do {
-	    ec_pop();
-	} while (--n != 0);
-    }
-}
-
-/*
- * NAME:	pre_rlimits()
- * DESCRIPTION:	prepare for rlimits
- */
-int pre_rlimits(f)
+void new_rlimits(f)
 register frame *f;
 {
     if (f->sp[1].type != T_INT) {
@@ -1022,7 +987,7 @@ register frame *f;
     }
     f->sp += 2;
 
-    return i_set_rlimits(f, f->sp[-1].u.number, f->sp[-2].u.number);
+    i_new_rlimits(f, f->sp[-1].u.number, f->sp[-2].u.number);
 }
 
 /*

@@ -544,8 +544,9 @@ unsigned int mtime;
 	return;
     }
 
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push(errhandler)) {
 	this_user = (object *) NULL;
+	endthread();
 	error((char *) NULL);		/* pass on error */
     }
 
@@ -565,9 +566,9 @@ unsigned int mtime;
 	    }
 	    o = &otable[f->sp->oindex];
 	    f->sp++;
-	    endthread();
 	    comm_new(o, conn, TRUE);
 	    ec_pop();
+	    endthread();
 
 	    this_user = o;
 	    if (i_call(f, o, "open", 4, TRUE, 0)) {
@@ -598,9 +599,9 @@ unsigned int mtime;
 	}
 	o = &otable[f->sp->oindex];
 	f->sp++;
-	endthread();
 	usr = comm_new(o, conn, FALSE);
 	ec_pop();
+	endthread();
 
 	this_user = o;
 	if (i_call(f, o, "open", 4, TRUE, 0)) {

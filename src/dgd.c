@@ -165,18 +165,20 @@ char **argv;
 	return 2;	/* initialization failed */
     }
 
-    while (ec_push((ec_ftn) errhandler)) {
-	endthread();
-	comm_flush(FALSE);
-    }
     for (;;) {
 	/* interrupts */
 	if (intr) {
 	    intr = FALSE;
-	    call_driver_object(cframe, "interrupt", 0);
-	    i_del_value(cframe->sp++);
-	    endthread();
-	    comm_flush(FALSE);
+	    if (ec_push((ec_ftn) errhandler)) {
+		endthread();
+		comm_flush(FALSE);
+	    } else {
+		call_driver_object(cframe, "interrupt", 0);
+		i_del_value(cframe->sp++);
+		ec_pop();
+		endthread();
+		comm_flush(FALSE);
+	    }
 	}
 
 	/* rebuild swapfile */

@@ -17,6 +17,7 @@
 
 static value stack[MIN_STACK];	/* initial stack */
 static frame topframe;		/* top frame */
+static rlinfo rlim;		/* top rlimits info */
 frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
@@ -37,8 +38,9 @@ int flag;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.prev_lip = topframe.lip = stack;
-    topframe.nodepth = TRUE;
-    topframe.noticks = TRUE;
+    rlim.nodepth = TRUE;
+    rlim.noticks = TRUE;
+    topframe.rlim = &rlim;
     cframe = &topframe;
 
     creator = create;
@@ -904,26 +906,20 @@ register frame *f;
     }
 }
 
-typedef struct {
-    Int depth;		/* stack depth */
-    Int ticks;		/* ticks left */
-    bool nodepth;	/* no depth checking */
-    bool noticks;	/* no ticks checking */
-} rlinfo;
-
-static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
-
 /*
  * NAME:	interpret->get_depth()
  * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
 Int i_get_depth(f)
-register frame *f;
+frame *f;
 {
-    if (f->nodepth) {
+    register rlinfo *rlim;
+
+    rlim = f->rlim;
+    if (rlim->nodepth) {
 	return -1;
     }
-    return f->maxdepth - f->depth;
+    return rlim->maxdepth - f->depth;
 }
 
 /*
@@ -931,12 +927,15 @@ register frame *f;
  * DESCRIPTION:	get the remaining ticks (-1: infinite)
  */
 Int i_get_ticks(f)
-register frame *f;
+frame *f;
 {
-    if (f->noticks) {
+    register rlinfo *rlim;
+
+    rlim = f->rlim;
+    if (rlim->noticks) {
 	return -1;
     } else {
-	return (f->ticks < 0) ? 0 : f->ticks;
+	return (rlim->ticks < 0) ? 0 : rlim->ticks;
     }
 }
 
@@ -966,80 +965,65 @@ register frame *f;
 }
 
 /*
- * NAME:	interpret->set_rlimits()
- * DESCRIPTION:	set new rlimits.  Return an integer that can be used in
- *		restoring the old values
+ * NAME:	interpret->new_rlimits()
+ * DESCRIPTION:	create new rlimits scope
  */
-int i_set_rlimits(f, depth, t)
+void i_new_rlimits(f, depth, t)
 register frame *f;
 Int depth, t;
 {
-    if (f->rli == ERRSTACKSZ) {
-	error("Too deep rlimits nesting");
-    }
-    rlstack[f->rli].depth = f->maxdepth;
-    rlstack[f->rli].nodepth = f->nodepth;
-    rlstack[f->rli].noticks = f->noticks;
+    register rlinfo *rlim;
 
+    rlim = ALLOC(rlinfo, 1);
     if (depth != 0) {
 	if (depth < 0) {
-	    f->nodepth = TRUE;
+	    rlim->nodepth = TRUE;
 	} else {
-	    f->maxdepth = f->depth + depth;
-	    f->nodepth = FALSE;
+	    rlim->maxdepth = f->depth + depth;
+	    rlim->nodepth = FALSE;
 	}
     }
     if (t != 0) {
 	if (t < 0) {
-	    rlstack[f->rli].ticks = f->ticks;
-	    f->noticks = TRUE;
+	    rlim->noticks = TRUE;
 	} else {
-	    rlstack[f->rli].ticks = f->ticks - t;
-	    f->ticks = t;
-	    f->noticks = FALSE;
+	    f->rlim->ticks -= t;
+	    rlim->ticks = t;
+	    rlim->noticks = FALSE;
 	}
     } else {
-	rlstack[f->rli].ticks = 0;
+	rlim->noticks = f->rlim->noticks;
+	rlim->ticks = f->rlim->ticks;
+	f->rlim->ticks = 0;
     }
 
-    return f->rli++;
+    rlim->next = f->rlim;
+    f->rlim = rlim;
 }
 
 /*
- * NAME:	interpret->get_rllevel()
- * DESCRIPTION:	return the current rlimits stack level
+ * NAME:	interpret->set_rlimits()
+ * DESCRIPTION:	restore rlimits to an earlier state
  */
-int i_get_rllevel(f)
+void i_set_rlimits(f, rlim)
 frame *f;
+register rlinfo *rlim;
 {
-    return f->rli;
-}
+    register rlinfo *r, *next;
 
-/*
- * NAME:	interpret->set_rllevel()
- * DESCRIPTION:	restore rlimits to an earlier level
- */
-void i_set_rllevel(f, n)
-register frame *f;
-int n;
-{
-    if (n < 0) {
-	n += f->rli;
+    r = f->rlim;
+    if (r->ticks < 0) {
+	r->ticks = 0;
     }
-    if (f->ticks < 0) {
-	f->ticks = 0;
-    }
-    while (f->rli > n) {
-	--f->rli;
-	f->maxdepth = rlstack[f->rli].depth;
-	if (f->noticks) {
-	    f->ticks = rlstack[f->rli].ticks;
-	} else {
-	    f->ticks += rlstack[f->rli].ticks;
+    while (r != rlim) {
+	next = r->next;
+	if (!r->noticks) {
+	    next->ticks += r->ticks;
 	}
-	f->nodepth = rlstack[f->rli].nodepth;
-	f->noticks = rlstack[f->rli].noticks;
+	FREE(r);
+	r = next;
     }
+    f->rlim = rlim;
 }
 
 /*
@@ -1060,7 +1044,6 @@ register value *sp;
 	    if (v == sp) {
 		f->sp = v;
 		f->lip = w;
-		f->ticks = ftop->ticks;
 		return f;
 	    }
 	    if (v == f->fp) {
@@ -1113,7 +1096,6 @@ register value *sp;
 
     f->sp = v;
     f->lip = w;
-    f->ticks = ftop->ticks;
     return f;
 }
 
@@ -1469,9 +1451,9 @@ register char *pc;
 	    fatal("out of value stack");
 	}
 # endif
-	if (--f->ticks <= 0) {
-	    if (f->noticks) {
-		f->ticks = 0x7fffffff;
+	if (--f->rlim->ticks <= 0) {
+	    if (f->rlim->noticks) {
+		f->rlim->ticks = 0x7fffffff;
 	    } else {
 		error("Out of ticks");
 	    }
@@ -1691,7 +1673,6 @@ register char *pc;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
-	    u = f->rli;
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		i_interpret(f, pc);
 		ec_pop();
@@ -1703,7 +1684,6 @@ register char *pc;
 		p = errormesg();
 		(--f->sp)->type = T_STRING;
 		str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
-		i_set_rllevel(f, u);
 	    }
 	    break;
 
@@ -1724,10 +1704,10 @@ register char *pc;
 		f->sp += 2;
 	    }
 
-	    i_set_rlimits(f, newdepth, newticks);
+	    i_new_rlimits(f, newdepth, newticks);
 	    i_interpret(f, pc);
 	    pc = f->pc;
-	    i_set_rllevel(f, -1);
+	    i_set_rlimits(f, f->rlim->next);
 	    break;
 
 	case I_RETURN:
@@ -1786,21 +1766,17 @@ int funci;
 	f.depth = prev_f->depth + 1;
 	f.external = FALSE;
     }
-    f.maxdepth = prev_f->maxdepth;
-    f.nodepth = prev_f->nodepth;
-    if (f.depth >= f.maxdepth && !f.nodepth) {
+    f.rlim = prev_f->rlim;
+    if (f.depth >= f.rlim->maxdepth && !f.rlim->nodepth) {
 	error("Stack overflow");
     }
-    f.ticks = prev_f->ticks;
-    f.noticks = prev_f->noticks;
-    if (f.ticks < 100) {
-	if (f.noticks) {
-	    f.ticks = 0x7fffffff;
+    if (f.rlim->ticks < 100) {
+	if (f.rlim->noticks) {
+	    f.rlim->ticks = 0x7fffffff;
 	} else {
 	    error("Out of ticks");
 	}
     }
-    f.rli = prev_f->rli;
 
     /* set the program control block */
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
@@ -1982,7 +1958,6 @@ int funci;
 	/* extended and malloced */
 	FREE(f.stack);
     }
-    prev_f->ticks = f.ticks;
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
@@ -2303,15 +2278,9 @@ register frame *f;
 char *func;
 int narg, flag;
 {
-    bool xnodepth, xnoticks, ok;
-    Int xticks;
+    bool ok;
 
-    xnodepth = f->nodepth;
-    xnoticks = f->noticks;
-    xticks = f->ticks;
-    f->nodepth = TRUE;
-    f->noticks = TRUE;
-
+    i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
     if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
 	ok = FALSE;
@@ -2321,10 +2290,7 @@ int narg, flag;
 	ec_pop();
 	ok = TRUE;
     }
-
-    f->nodepth = xnodepth;
-    f->noticks = xnoticks;
-    f->ticks = xticks;
+    i_set_rlimits(f, f->rlim->next);
 
     return ok;
 }
@@ -2369,7 +2335,5 @@ void i_clear()
 	f->stack = f->prev_lip = f->lip = stack;
     }
 
-    f->nodepth = TRUE;
-    f->noticks = TRUE;
-    f->rli = 0;
+    f->rlim = &rlim;
 }

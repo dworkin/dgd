@@ -6,15 +6,17 @@
 # include "interpret.h"
 # include "comm.h"
 
-typedef struct {
+typedef struct _context_ {
     jmp_buf env;			/* error context */
     frame *f;				/* frame context */
-    int offset;				/* sp offset */
+    unsigned short offset;		/* sp offset */
+    rlinfo *rlim;			/* rlimits info */
     ec_ftn handler;			/* error handler */
+    struct _context_ *next;		/* next in linked list */
 } context;
 
-static context stack[ERRSTACKSZ];	/* error context stack */
-static context *esp = stack;		/* error context stack pointer */
+static context firstcontext;		/* bottom context */
+static context *econtext;		/* current error context */
 static char errbuf[4 * STRINGSZ];	/* current error message */
 
 /*
@@ -24,14 +26,21 @@ static char errbuf[4 * STRINGSZ];	/* current error message */
 jmp_buf *_ec_push_(handler)
 ec_ftn handler;
 {
-    if (esp == stack + ERRSTACKSZ) {
-	error("Too many nested error contexts");
-    }
-    esp->f = cframe;
-    esp->offset = cframe->fp - cframe->sp;
+    register context *e;
 
-    esp->handler = handler;
-    return &(esp++)->env;
+    if (econtext == (context *) NULL) {
+	e = &firstcontext;
+    } else {
+	e = ALLOC(context, 1);
+    }
+    e->f = cframe;
+    e->offset = cframe->fp - cframe->sp;
+    e->rlim = cframe->rlim;
+
+    e->handler = handler;
+    e->next = econtext;
+    econtext = e;
+    return &e->env;
 }
 
 /*
@@ -40,13 +49,18 @@ ec_ftn handler;
  */
 void ec_pop()
 {
+    register context *e;
+
+    e = econtext;
 # ifdef DEBUG
-    if (--esp < stack) {
+    if (e == (context *) NULL) {
 	fatal("pop empty error stack");
     }
-# else
-    --esp;
 # endif
+    econtext = e->next;
+    if (e != &firstcontext) {
+	FREE(e);
+    }
 }
 
 /*
@@ -85,8 +99,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
-    ec_pop();
-    e = esp;
+    e = econtext;
     f = e->f;
     offset = e->offset;
     memcpy(&env, &e->env, sizeof(jmp_buf));
@@ -98,9 +111,15 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	    (*handler)(cframe, e->f->depth);
 	    break;
 	}
-    } while (--e >= stack);
+	e = e->next;
+    } while (e != (context *) NULL);
 
+    if (cframe->rlim != econtext->rlim) {
+	i_set_rlimits(cframe, econtext->rlim);
+    }
     cframe = i_set_sp(cframe, f->fp - offset);
+    cframe->rlim = econtext->rlim;
+    ec_pop();
     longjmp(env, 1);
 }
 
