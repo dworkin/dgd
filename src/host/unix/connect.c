@@ -1,7 +1,6 @@
 # define INCLUDE_TELNET
 # include "dgd.h"
 # include <sgtty.h>
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
@@ -39,12 +38,11 @@ connection *conn_new()
     char buffer[100];
     static connection conn;
 
-    if (fgets(buffer, 100, stdin) == (char *) NULL) {
-	return (connection *) NULL;
-    } else {
+    if (read(0, buffer, 100) > 0) {
 	write(1, "<connected>\n", 12);
 	return &conn;
     }
+    return (connection *) NULL;
 }
 
 /*
@@ -54,6 +52,7 @@ connection *conn_new()
 void conn_del(conn)
 connection *conn;
 {
+    inbuf = 0;
     write(1, "<disconnected>\n", 15);
 }
 
@@ -64,14 +63,14 @@ connection *conn;
 int conn_select(wait)
 bool wait;
 {
-    if (!wait || inbuf == INBUF_SIZE) {
+    if (!wait || inbuf > 0) {
 	return 0;
     }
-    if (fgets(buffer, INBUF_SIZE + 1, stdin) == (char *) NULL) {
+    if ((inbuf=read(0, buffer, INBUF_SIZE)) < 0) {
+	inbuf = 0;
 	return -1;
     }
-    inbuf = strlen(buffer);
-    return (inbuf == 0) ? -1 : 0;
+    return 0;
 }
 
 /*
@@ -145,6 +144,7 @@ register int size;
     if (size > 0) {
 	write(1, buf, size);
     }
+    return 0;
 }
 
 /*
