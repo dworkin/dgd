@@ -979,6 +979,9 @@ Int depth, t;
 	    rlim->maxdepth = f->depth + depth;
 	    rlim->nodepth = FALSE;
 	}
+    } else {
+	rlim->maxdepth = f->rlim->maxdepth;
+	rlim->nodepth = f->rlim->nodepth;
     }
     if (t != 0) {
 	if (t < 0) {
@@ -990,9 +993,9 @@ Int depth, t;
 	    rlim->noticks = FALSE;
 	}
     } else {
-	rlim->noticks = f->rlim->noticks;
-	rlim->ticks = f->rlim->ticks;
 	f->rlim->ticks = 0;
+	rlim->ticks = f->rlim->ticks;
+	rlim->noticks = f->rlim->noticks;
     }
 
     rlim->next = f->rlim;

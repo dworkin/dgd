@@ -213,10 +213,10 @@ bool force;
 	     d_get_elts(d_get_variable(data, data->nvariables - 1)->u.array));
     }
 
+    obj->flags &= ~O_USER;
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
 	this_user = olduser;
-	obj->flags &= ~O_USER;
 	error((char *) NULL);
     } else {
 	this_user = obj->index;
@@ -225,7 +225,6 @@ bool force;
 	    i_del_value(f->sp++);
 	}
 	this_user = olduser;
-	obj->flags &= ~O_USER;
 	ec_pop();
     }
 }
@@ -461,7 +460,7 @@ int block;
 	data = obj->data;
 	arr = d_get_variable(data, data->nvariables - 1)->u.array;
 	v = d_get_elts(arr);
-	if (block != (v->u.number & CF_BLOCKED) >> 5) {
+	if (block != (v->u.number & CF_BLOCKED) >> 4) {
 	    value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {

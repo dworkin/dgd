@@ -1358,3 +1358,5 @@ DGD 1.1
    configurable.
  - Let the DNS thread be started only once, even for several driver process
    runs.
+ - Fixed some more comm bugs.
+ - Fixed a bug that could lead to random stack overflow errors.
