@@ -31,7 +31,8 @@ int kf_add()
 	    str = str_new((char *) NULL,
 			  (Int) strlen(buffer) + sp->u.string->len);
 	    strcpy(str->text, buffer);
-	    memcpy(str->text, sp->u.string->text, sp->u.string->len);
+	    memcpy(str->text + strlen(buffer), sp->u.string->text,
+		   sp->u.string->len);
 	    str_del(sp->u.string);
 	    sp++;
 	    sp->type = T_STRING;
@@ -95,13 +96,31 @@ int kf_add()
 
 
 # ifdef FUNCDEF
+FUNCDEF("+", kf_add_int, p_add_int)
+# else
+char p_add_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->add_int()
+ * DESCRIPTION:	int + int
+ */
+int kf_add_int()
+{
+    sp[1].u.number += sp->u.number;
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("&", kf_and, p_and)
 # else
 char p_and[] = { C_STATIC | C_LOCAL, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->and()
- * DESCRIPTION:	int & int
+ * DESCRIPTION:	value & value
  */
 int kf_and()
 {
@@ -137,6 +156,24 @@ int kf_and()
 
 
 # ifdef FUNCDEF
+FUNCDEF("&", kf_and_int, p_and_int)
+# else
+char p_and_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->and_int()
+ * DESCRIPTION:	int & int
+ */
+int kf_and_int()
+{
+    sp[1].u.number &= sp->u.number;
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("/", kf_div, p_div)
 # else
 char p_div[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 2,
@@ -155,6 +192,13 @@ int kf_div()
     sp++;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("/", kf_div, p_div_int)
+# else
+char p_div_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 # endif
 
 
@@ -190,7 +234,7 @@ int kf_eq()
 	break;
 
     case T_STRING:
-	flag = (str_cmp(sp[1].u.string, sp->u.string) != 0);
+	flag = (str_cmp(sp[1].u.string, sp->u.string) == 0);
 	str_del(sp->u.string);
 	sp++;
 	str_del(sp->u.string);
@@ -209,6 +253,24 @@ int kf_eq()
 	break;
     }
 
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("==", kf_eq_int, p_eq_int)
+# else
+char p_eq_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->eq_int()
+ * DESCRIPTION:	int == int
+ */
+int kf_eq_int()
+{
+    sp[1].u.number == (sp[1].u.number == sp->u.number);
+    sp++;
     return 0;
 }
 # endif
@@ -257,6 +319,24 @@ int kf_ge()
 
 
 # ifdef FUNCDEF
+FUNCDEF(">=", kf_ge_int, p_ge_int)
+# else
+char p_ge_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->ge_int()
+ * DESCRIPTION:	int >= int
+ */
+int kf_ge_int()
+{
+    sp[1].u.number = (sp[1].u.number >= sp->u.number);
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF(">", kf_gt, p_gt)
 # else
 char p_gt[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_MIXED, T_MIXED };
@@ -294,6 +374,24 @@ int kf_gt()
     }
 
     return 2;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF(">", kf_gt_int, p_gt_int)
+# else
+char p_gt_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->gt_int()
+ * DESCRIPTION:	int > int
+ */
+int kf_gt_int()
+{
+    sp[1].u.number = (sp[1].u.number > sp->u.number);
+    sp++;
+    return 0;
 }
 # endif
 
@@ -341,6 +439,24 @@ int kf_le()
 
 
 # ifdef FUNCDEF
+FUNCDEF("<=", kf_le_int, p_le_int)
+# else
+char p_le_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->gt_int()
+ * DESCRIPTION:	int <= int
+ */
+int kf_le_int()
+{
+    sp[1].u.number = (sp[1].u.number <= sp->u.number);
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("<<", kf_lshift, p_lshift)
 # else
 char p_lshift[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 2,
@@ -356,6 +472,13 @@ int kf_lshift()
     sp++;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("<<", kf_lshift, p_lshift_int)
+# else
+char p_lshift_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 # endif
 
 
@@ -402,6 +525,24 @@ int kf_lt()
 
 
 # ifdef FUNCDEF
+FUNCDEF("<", kf_lt_int, p_lt_int)
+# else
+char p_lt_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->lt_int()
+ * DESCRIPTION:	int < int
+ */
+int kf_lt_int()
+{
+    sp[1].u.number = (sp[1].u.number < sp->u.number);
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("%", kf_mod, p_mod)
 # else
 char p_mod[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 2,
@@ -424,6 +565,13 @@ int kf_mod()
 
 
 # ifdef FUNCDEF
+FUNCDEF("%", kf_mod, p_mod_int)
+# else
+char p_mod_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("*", kf_mult, p_mult)
 # else
 char p_mult[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 2,
@@ -439,6 +587,13 @@ int kf_mult()
     sp++;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("*", kf_mult, p_mult_int)
+# else
+char p_mult_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 # endif
 
 
@@ -474,7 +629,7 @@ int kf_ne()
 	break;
 
     case T_STRING:
-	flag = (str_cmp(sp[1].u.string, sp->u.string) == 0);
+	flag = (str_cmp(sp[1].u.string, sp->u.string) != 0);
 	str_del(sp->u.string);
 	sp++;
 	str_del(sp->u.string);
@@ -499,6 +654,24 @@ int kf_ne()
 
 
 # ifdef FUNCDEF
+FUNCDEF("!=", kf_ne_int, p_ne_int)
+# else
+char p_ne_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->ne_int()
+ * DESCRIPTION:	int != int
+ */
+int kf_ne_int()
+{
+    sp[1].u.number = (sp[1].u.number != sp->u.number);
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("~", kf_neg, p_neg)
 # else
 char p_neg[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1, T_NUMBER };
@@ -512,6 +685,13 @@ int kf_neg()
     sp->u.number = ~sp->u.number;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("~", kf_neg, p_neg_int)
+# else
+char p_neg_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_NUMBER };
 # endif
 
 
@@ -564,6 +744,13 @@ int kf_or()
     sp++;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("|", kf_or, p_or_int)
+# else
+char p_or_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 # endif
 
 
@@ -625,6 +812,13 @@ int kf_rshift()
 
 
 # ifdef FUNCDEF
+FUNCDEF(">>", kf_rshift, p_rshift_int)
+# else
+char p_rshift_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("-", kf_sub, p_sub)
 # else
 char p_sub[] = { C_STATIC | C_LOCAL, T_MIXED, 2, T_MIXED, T_MIXED };
@@ -662,6 +856,24 @@ int kf_sub()
     }
 
     return 2;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("-", kf_sub_int, p_sub_int)
+# else
+char p_sub_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
+
+/*
+ * NAME:	kfun->sub_int()
+ * DESCRIPTION:	int - int
+ */
+int kf_sub_int()
+{
+    sp[1].u.number -= sp->u.number;
+    sp++;
+    return 0;
 }
 # endif
 
@@ -719,6 +931,13 @@ int kf_umin()
 
 
 # ifdef FUNCDEF
+FUNCDEF("unary -", kf_umin, p_umin_int)
+# else
+char p_umin_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_NUMBER };
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("^", kf_xor, p_xor)
 # else
 char p_xor[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 2,
@@ -734,4 +953,11 @@ int kf_xor()
     sp++;
     return 0;
 }
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("^", kf_xor, p_xor_int)
+# else
+char p_xor_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 # endif
