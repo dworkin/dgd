@@ -609,9 +609,6 @@ bool function;
     register int nargs;
 
     /* check for some errors */
-    if (strcmp(str->text, "catch") == 0) {
-	c_error("cannot redeclare catch()");
-    }
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
 	c_error("private contradicts nomask");
     }

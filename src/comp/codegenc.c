@@ -1059,7 +1059,7 @@ register int state;
 		/* kfun without arguments won't do argument checking */
 		kfun(KFUN((short) n->r.number).name);
 	    } else {
-		if ((n->r.number >> 24) & KFCALL_LVAL) {
+		if (catch_level == 0 && ((n->r.number >> 24) & KFCALL_LVAL)) {
 		    cg_locals(n->l.left, TRUE);
 		}
 		if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {

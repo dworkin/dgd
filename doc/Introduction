@@ -73,6 +73,11 @@ driver, mostly to translate pathnames.
 
 	Return an object for a new connection on the binary port.
 
+    void interrupt()
+
+	Called if the driver receives a kill signal.  The function should
+	shut down the system, and possibly dump state.
+
     void compile_error(string file, int line, string err)
 
 	Handle a compile-time error; there can be several for the same
@@ -108,13 +113,16 @@ driver, mostly to translate pathnames.
 	Values for stack and ticks: < 0 = infinite, 0 = no change,
 	> 0 = set to specified amount.
 
-    void remove_program(string objname, int timestamp)
+    void remove_program(string objname, int timestamp, int index)
 
 	Called whenever the program of a master object is removed (because
 	the object has been destructed, and all clones and inheriting objects
 	have also been destructed).  As this function is called from code
 	that cannot be allowed to abort or fail, it is called with
 	rlimits (-1; -1) and a catch.
+	The "index" is a unique number for each master object, also
+	available with status(obj), which can help distinguishing between
+	different issues of the same object.
 
  - in every object:
 

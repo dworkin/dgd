@@ -380,8 +380,8 @@ char *text;
 		} else {
 		    c = tolower(*p);
 		    while (CCL(cclass, &, c)) {
-			c = tolower(*p);
 			p++;
+			c = tolower(*p);
 		    }
 		}
 		break;

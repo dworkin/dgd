@@ -29,7 +29,7 @@
 # define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
 # define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
-# define I_CATCH		29	/* 2 signed */
+# define I_CATCH		29	/* 2 unsigned */
 # define I_RLIMITS		30
 # define I_RETURN		31
 

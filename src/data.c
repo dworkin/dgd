@@ -2560,16 +2560,23 @@ register dataspace *data;
 {
     register object *obj, *old;
     register unsigned short nvar, *vmap;
+    register Uint update;
 
     /*
      * the program for the clone was upgraded since last swapin
      */
     obj = data->obj;
-    old = &otable[otable[obj->u_master].prev];
+    update = obj->update;
+    obj = &otable[obj->u_master];
+    old = &otable[obj->prev];
+    if (O_UPGRADING(obj)) {
+	/* in the middle of an upgrade */
+	old = &otable[old->prev];
+    }
     nvar = data->ctrl->nvariables + 1;
     vmap = o_control(old)->vmap;
 
-    if (old->update != obj->update) {
+    if (old->update != update) {
 	register unsigned short *m1, *m2, n;
 
 	m1 = vmap;
@@ -2584,7 +2591,7 @@ register dataspace *data;
 	    n = nvar;
 	    vmap -= n;
 	    m1 = m2 - n;
-	} while (old->update != obj->update);
+	} while (old->update != update);
     }
 
     d_upgrade(data, nvar, vmap, old);

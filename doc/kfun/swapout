@@ -2,7 +2,7 @@ NAME
 	swapout - swap out all objects
 
 SYNOPSIS
-	varargs void swapout()
+	void swapout()
 
 
 DESCRIPTION

@@ -2,7 +2,7 @@ NAME
 	previous_program - return the previous program
 
 SYNOPSIS
-	varargs object previous_program(int n)
+	varargs string previous_program(int n)
 
 
 DESCRIPTION

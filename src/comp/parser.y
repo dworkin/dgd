@@ -280,9 +280,9 @@ star_list
 		{ $$ = 0; }
 	| star_list '*'
 		{
-		  $$ = ($1 + (1 << REFSHIFT)) & T_REF;
-		  if ($$ == 0) {
-		      $$ = T_REF;
+		  $$ = $1 + 1;
+		  if ($$ == 1 << (8 - REFSHIFT)) {
+		      c_error("too deep indirection");
 		  }
 		}
 	;
@@ -291,13 +291,13 @@ data_dcltr
 	: star_list ident
 		{
 		  $$ = $2;
-		  $$->mod = $1;
+		  $$->mod = ($1 << REFSHIFT) & T_REF;
 		}
 	;
 
 function_dcltr
 	: star_list ident '(' formals_declaration ')'
-		{ $$ = node_bin(N_FUNC, $1, $2, $4); }
+		{ $$ = node_bin(N_FUNC, ($1 << REFSHIFT) & T_REF, $2, $4); }
 	;
 
 dcltr
@@ -554,7 +554,7 @@ prefix_exp
 cast_exp
 	: prefix_exp
 	| '(' type_specifier star_list ')' cast_exp
-		{ $$ = cast($5, $2 | $3); }
+		{ $$ = cast($5, $2 | (($3 << REFSHIFT) & T_REF)); }
 	;
 
 mult_oper_exp

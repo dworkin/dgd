@@ -542,7 +542,7 @@ register Uint t;
     offset = cotabsz - dh.cotabsz;
     cycbrk = dh.cycbrk + offset;
     if (queuebrk > cycbrk + offset || cycbrk == 0) {
-	fatal("cannot restore callouts");
+	fatal("restored too many callouts");
     }
 
     /* read tables */

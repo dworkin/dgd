@@ -640,6 +640,9 @@ int fd;
 
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    if (dh.nobjects > otabsize) {
+	fatal("too many objects in restore file");
+    }
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     free_obj = dh.free_obj;
     nobjects = dh.nobjects;

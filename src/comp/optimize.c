@@ -1448,31 +1448,26 @@ int pop;
 		return !pop;
 	    }
 	    /* true && x */
-	    *m = n->r.right;
+	    n->type = N_TST;
+	    n->l.left = n->r.right;
 	    return opt_expr(m, pop);
 	}
 
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
-	if (d2 == 0) {
-	    *m = n->l.left;
-	    if (pop) {
-		return opt_expr(m, pop);
-	    }
-	    return d1;
-	}
 	if (n->r.right->flags & F_CONST) {
+	    if (pop) {
+		*m = n->l.left;
+		return opt_expr(m, TRUE);
+	    }
 	    if (!opt_ctest(n->r.right)) {
 		/* x && false */
 		n->type = N_COMMA;
-		return opt_expr(m, pop);
+		return opt_expr(m, FALSE);
 	    }
 	    /* x && true */
-	    *m = n->l.left;
-	    if (pop) {
-		return opt_expr(m, pop);
-	    }
+	    n->type = N_TST;
 	    return d1;
 	}
 	if (n->r.right->type == N_COMMA) {
@@ -1496,31 +1491,26 @@ int pop;
 		return !pop;
 	    }
 	    /* false || x */
-	    *m = n->r.right;
+	    n->type = N_TST;
+	    n->l.left = n->r.right;
 	    return opt_expr(m, pop);
 	}
 
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
-	if (d2 == 0) {
-	    *m = n->l.left;
-	    if (pop) {
-		return opt_expr(m, pop);
-	    }
-	    return d1;
-	}
 	if (n->r.right->flags & F_CONST) {
+	    if (pop) {
+		*m = n->l.left;
+		return opt_expr(m, TRUE);
+	    }
 	    if (opt_ctest(n->r.right)) {
 		/* x || true */
 		n->type = N_COMMA;
-		return opt_expr(m, pop);
+		return opt_expr(m, FALSE);
 	    }
 	    /* x || false */
-	    *m = n->l.left;
-	    if (pop) {
-		return opt_expr(m, pop);
-	    }
+	    n->type = N_TST;
 	    return d1;
 	}
 	if (n->r.right->type == N_COMMA) {

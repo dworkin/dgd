@@ -768,7 +768,9 @@ int pp_gettok()
 	    token = '#';
 	    /* fall through */
 	default:
-	    error("illegal character: 0x%02x", token);
+	    error((token >= 32 && token < 127) ?
+		   "illegal character: '%c'" : "illegal character: 0x%02x",
+		  token);
 	    break;
 
 	case '#':

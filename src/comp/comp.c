@@ -492,7 +492,7 @@ Uint size, idx;
  * NAME:	swap->mapsize()
  * DESCRIPTION:	pretend to count the number of sectors required for size bytes
  */
-uindex sw_mapsize(size)
+sector sw_mapsize(size)
 Uint size;
 {
     return 0;
@@ -502,7 +502,7 @@ Uint size;
  * NAME:	swap->count()
  * DESCRIPTION:	pretend to return the number of sectors presently in use
  */
-uindex sw_count()
+sector sw_count()
 {
     return 0;
 }

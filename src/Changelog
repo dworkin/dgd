@@ -1100,3 +1100,9 @@ DGD 1.1
  - Fixed a stack depth miscalculation bug in the optimizer.
  - Removed >= 1024 limitation on telnet_port (makes no sense on non-unix
    machines).
+ - Error messages in restore_object() were accidentally too terse.
+ - Improved some other error messages.
+ - Using more than 7 indirection stars now results in an error.
+ - Optimize `1 && a' and `0 || a' to `!!a', rather than `a'.
+ - Fixed a bug in upgrading an old clone after doing a recompile on the object
+   earlier in the same thread.

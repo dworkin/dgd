@@ -675,7 +675,7 @@ unsigned int secsize;
     lseek(fd, (long) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
-	fatal("bad swap header in restore file");
+	fatal("wrong sector size or too many sectors in restore file");
     }
     restoresecsize = secsize;
 

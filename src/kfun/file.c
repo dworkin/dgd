@@ -521,6 +521,19 @@ static void ac_clear()
 }
 
 
+static char *file;	/* current restore file */
+static int line;	/* current line number */
+
+/*
+ * NAME:	restore_error()
+ * DESCRIPTION:	handle an error while restoring
+ */
+static void restore_error(err)
+char *err;
+{
+    error("Format error in \"/%s\", line %d: %s", file, line, err);
+}
+ 
 /*
  * NAME:	restore_int()
  * DESCRIPTION:	restore an integer
@@ -533,7 +546,7 @@ value *val;
 
     val->u.number = strtol(buf, &p, 10);
     if (p == buf) {
-	error("digit expected");
+	restore_error("digit expected");
     }
 
     val->type = T_INT;
@@ -555,7 +568,7 @@ register value *val;
 
     val->u.number = strtol(p = buf, &buf, 10);
     if (p == buf) {
-	error("digit expected");
+	restore_error("digit expected");
     }
 
     isfloat = FALSE;
@@ -571,14 +584,14 @@ register value *val;
 	    p++;
 	}
 	if (!isdigit(*p)) {
-	    error("digit expected");
+	    restore_error("digit expected");
 	}
 	while (isdigit(*++p)) ;
     }
     if (*p == '=') {
 	for (i = 4; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
-		error("hexadecimal digit expected");
+		restore_error("hexadecimal digit expected");
 	    }
 	    flt.high <<= 4;
 	    if (isdigit(*p)) {
@@ -588,11 +601,11 @@ register value *val;
 	    }
 	}
 	if ((flt.high & 0x7ff0) == 0x7ff0) {
-	    error("illegal exponent");
+	    restore_error("illegal exponent");
 	}
 	for (i = 8; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
-		error("hexadecimal digit expected");
+		restore_error("hexadecimal digit expected");
 	    }
 	    flt.low <<= 4;
 	    if (isdigit(*p)) {
@@ -607,7 +620,7 @@ register value *val;
 	return p + 1;
     } else if (isfloat) {
 	if (!flt_atof(&buf, &flt)) {
-	    error("float too large");
+	    restore_error("float too large");
 	}
 	val->type = T_FLOAT;
 	VFLT_PUT(val, flt);
@@ -629,7 +642,7 @@ value *val;
     register char *p, *q;
 
     if (*buf++ != '"') {
-	error("'\"' expected");
+	restore_error("'\"' expected");
     }
     for (p = q = buf; *p != '"'; p++) {
 	if (*p == '\\') {
@@ -645,7 +658,7 @@ value *val;
 	    }
 	}
 	if (*p == '\0' || *p == LF) {
-	    error("unterminated string");
+	    restore_error("unterminated string");
 	}
 	*q++ = *p;
     }
@@ -672,12 +685,12 @@ value *val;
     
     /* match ({ */
     if (*buf++ != '(' || *buf++ != '{') {
-	error("'({' expected");
+	restore_error("'({' expected");
     }
     /* get array size */
     buf = restore_int(buf, val);
     if (*buf++ != '|') {
-	error("'|' expected");
+	restore_error("'|' expected");
     }
 
     ac_put(T_ARRAY, a = arr_new((long) val->u.number));
@@ -696,13 +709,13 @@ value *val;
 	buf = restore_value(buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
-	    error("',' expected");
+	    restore_error("',' expected");
 	}
 	--i;
     }
     /* match }) */
     if (*buf++ != '}' || *buf++ != ')') {
-	error("'})' expected");
+	restore_error("'})' expected");
     }
     ec_pop();
 
@@ -725,12 +738,12 @@ value *val;
     
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
-	error("'([' expected");
+	restore_error("'([' expected");
     }
     /* get mapping size */
     buf = restore_int(buf, val);
     if (*buf++ != '|') {
-	error("'|' expected");
+	restore_error("'|' expected");
     }
 
     ac_put(T_MAPPING, a = map_new((long) val->u.number << 1));
@@ -749,18 +762,18 @@ value *val;
 	buf = restore_value(buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ':') {
-	    error("':' expected");
+	    restore_error("':' expected");
 	}
 	buf = restore_value(buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
-	    error("',' expected");
+	    restore_error("',' expected");
 	}
 	i -= 2;
     }
     /* match ]) */
     if (*buf++ != ']' || *buf++ != ')') {
-	error("'])' expected");
+	restore_error("'])' expected");
     }
     map_sort(a);
     ec_pop();
@@ -792,22 +805,22 @@ register value *val;
     case '#':
 	buf = restore_int(buf + 1, val);
 	if ((uindex) val->u.number >= narrays) {
-	    error("bad array reference");
+	    restore_error("bad array reference");
 	}
 	*val = *ac_get((uindex) val->u.number);
 	if (val->type != T_ARRAY) {
-	    error("bad array reference");
+	    restore_error("bad array reference");
 	}
 	return buf;
 
     case '@':
 	buf = restore_int(buf + 1, val);
 	if ((uindex) val->u.number >= narrays) {
-	    error("bad mapping reference");
+	    restore_error("bad mapping reference");
 	}
 	*val = *ac_get((uindex) val->u.number);
 	if (val->type != T_MAPPING) {
-	    error("bad mapping reference");
+	    restore_error("bad mapping reference");
 	}
 	return buf;
 
@@ -834,8 +847,7 @@ int kf_restore_object()
     register dataspace *data;
     register dinherit *inh;
     object *obj;
-    char *file, *name;
-    static int line;
+    char *name;
     bool pending;
 
     obj = cframe->obj;
@@ -898,14 +910,11 @@ int kf_restore_object()
     line = 1;
     pending = FALSE;
     if (ec_push((ec_ftn) NULL)) {
-	char err[32];
-
 	/* error; clean up */
 	arr_clear();
 	ac_clear();
 	AFREE(buffer);
-	strcpy(err, errormesg());
-	error("Format error in \"/%s\", line %d: %s", file, line, err);
+	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
 	var = data->variables;
@@ -924,7 +933,7 @@ int kf_restore_object()
 			 */
 			buf = strchr(buf, LF);
 			if (buf == (char *) NULL) {
-			    error("'\\n' expected");
+			    restore_error("'\\n' expected");
 			}
 			buf++;
 			line++;
@@ -938,7 +947,7 @@ int kf_restore_object()
 			    /* skip comment */
 			    buf = strchr(buf, LF);
 			    if (buf == (char *) NULL) {
-				error("'\\n' expected");
+				restore_error("'\\n' expected");
 			    }
 			    buf++;
 			    line++;
@@ -950,13 +959,13 @@ int kf_restore_object()
 
 			name = buf;
 			if (!isalpha(*buf) && *buf != '_') {
-			    error("alphanumeric expected");
+			    restore_error("alphanumeric expected");
 			}
 			do {
 			    buf++;
 			} while (isalnum(*buf) || *buf == '_');
 			if (*buf != ' ') {
-			    error("' ' expected");
+			    restore_error("' ' expected");
 			}
 
 			*buf++ = '\0';		/* terminate name */
@@ -980,11 +989,11 @@ int kf_restore_object()
 			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
 			    i_ref_value(&tmp);
 			    i_del_value(&tmp);
-			    error("value has wrong type");
+			    restore_error("value has wrong type");
 			}
 			d_assign_var(data, var, &tmp);
 			if (*buf++ != LF) {
-			    error("'\\n' expected");
+			    restore_error("'\\n' expected");
 			}
 			line++;
 			pending = FALSE;

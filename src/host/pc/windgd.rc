@@ -134,8 +134,8 @@ FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,14,21,20
     LTEXT           "DGD version 1.0.91",IDC_STATIC,40,10,75,8,SS_NOPREFIX
-    LTEXT           "© 1993, 1994, 1995, 1996 BeeHive Internet Technologies, Inc. All Rights Reserved.",
-                    IDC_STATIC,40,23,189,17
+    LTEXT           "© 1993 - 1997 BeeHive Internet Technologies, Inc. All Rights Reserved.",
+                    IDC_STATIC,40,23,164,17
     DEFPUSHBUTTON   "OK",IDOK,212,7,32,14,WS_GROUP
     LTEXT           "Permission is granted to copy the source and executables made therefrom, but any commercial distribution or use whatsoever is not allowed. Commercial distribution or use refers to any distribution or use from which",
                     IDC_STATIC,7,43,237,25

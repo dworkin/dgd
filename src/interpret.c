@@ -1097,11 +1097,15 @@ int strict;
 
 	if (ptype != T_MIXED) {
 	    atype = sp[i].type;
-	    if (ptype != atype &&
-		(strict || atype != T_INT || sp[i].u.number != 0 ||
-		 ptype == T_FLOAT) &&
-		(atype != T_ARRAY || !(ptype & T_REF))) {
-		error("Bad argument %d for %s %s", nargs - i, ftype, name);
+	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
+		if (atype != T_INT || sp[i].u.number != 0 || ptype == T_FLOAT) {
+		    /* wrong type */
+		    error("Bad argument %d (%s) for %s %s", nargs - i,
+			  i_typename(atype), ftype, name);
+		} else if (strict) {
+		    /* zero argument */
+		    error("Bad argument %d for %s %s", nargs - i, ftype, name);
+		}
 	    }
 	}
     }
