@@ -121,6 +121,7 @@ struct _plane_ {
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
+    struct _coptable_ *coptab;	/* callout patch table */
 
     plane *prev;		/* previous in per-dataspace linked list */
     plane *plist;		/* next in per-level linked list */

@@ -129,12 +129,45 @@ static char sco_layout[] = "is[sui][sui][sui][sui]";
 # define co_prev	time
 # define co_next	nargs
 
+# define COP_ADD	0	/* add callout patch */
+# define COP_REMOVE	1	/* remove callout patch */
+# define COP_REPLACE	2	/* replace callout patch */
+
+typedef struct _copatch_ {
+    short type;			/* add, remove, replace */
+    uindex handle;		/* callout handle */
+    plane *values;		/* plane */
+    Uint time;			/* start time */
+    unsigned short mtime;	/* start time millisec component */
+    cbuf *queue;		/* callout queue */
+    struct _copatch_ *next;	/* next in linked list */
+    dcallout aco;		/* added callout */
+    dcallout rco;		/* removed callout */
+} copatch;
+
+# define COPCHUNKSZ	32
+
+typedef struct _copchunk_ {
+    copatch cop[COPCHUNKSZ];	/* callout patches */
+    struct _copchunk_ *next;	/* next in linked list */
+} copchunk;
+
+# define COPHTABSZ	64
+
+typedef struct _coptable_ {
+    copatch *cop[COPHTABSZ];	/* hash table of callout patches */
+    copchunk *chunk;		/* callout patch chunk */
+    unsigned short chunksz;	/* size of callout patch chunk */
+    copatch *flist;		/* free list of callout patches */
+} coptable;
+
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static plane *plist;			/* list of planes */
 static uindex nctrl;			/* # control blocks */
 static uindex ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
+static uindex ncallout;			/*  # callouts added */
 
 
 /*
@@ -271,6 +304,7 @@ object *obj;
     data->basic.alocal.data = data;
     data->basic.alocal.state = AR_ALOCAL;
     data->basic.arrays = (arrref *) NULL;
+    data->basic.coptab = (coptable *) NULL;
     data->basic.prev = (plane *) NULL;
     data->basic.plist = (plane *) NULL;
     data->values = &data->basic;
@@ -1245,6 +1279,532 @@ register value *lhs;
 
 
 /*
+ * NAME:	data->get_callouts()
+ * DESCRIPTION:	load callouts from swap
+ */
+static void d_get_callouts(data)
+register dataspace *data;
+{
+    scallout *scallouts;
+    register scallout *sco;
+    register dcallout *co;
+    register uindex n;
+
+    co = data->callouts = ALLOC(dcallout, data->ncallouts);
+    sco = scallouts = ALLOCA(scallout, data->ncallouts);
+    sw_readv((char *) scallouts, data->sectors,
+	     data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
+
+    for (n = data->ncallouts; n > 0; --n) {
+	co->time = sco->time;
+	co->nargs = sco->nargs;
+	if (sco->val[0].type == T_STRING) {
+	    d_get_values(data, sco->val, co->val,
+			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
+	} else {
+	    co->val[0] = nil_value;
+	}
+	sco++;
+	co++;
+    }
+
+    AFREE(scallouts);
+}
+
+/*
+ * NAME:	data->alloc_call_out()
+ * DESCRIPTION:	allocate a new callout
+ */
+static uindex d_alloc_call_out(data, handle, time, nargs, v)
+register dataspace *data;
+register uindex handle;
+Uint time;
+int nargs;
+register value *v;
+{
+    register dcallout *co;
+
+    if (data->ncallouts == 0) {
+	/*
+	 * the first in this object
+	 */
+	co = data->callouts = ALLOC(dcallout, 1);
+	data->ncallouts = handle = 1;
+	data->values->flags |= MOD_NEWCALLOUT;
+    } else {
+	if (data->callouts == (dcallout *) NULL) {
+	    d_get_callouts(data);
+	}
+	if (handle != 0) {
+	    /*
+	     * get a specific callout from the free list
+	     */
+	    co = &data->callouts[handle - 1];
+	    if (handle == data->fcallouts) {
+		data->fcallouts = co->co_next;
+	    } else {
+		data->callouts[co->co_prev - 1].co_next = co->co_next;
+		if (co->co_next != 0) {
+		    data->callouts[co->co_next - 1].co_prev = co->co_prev;
+		}
+	    }
+	} else {
+	    handle = data->fcallouts;
+	    if (handle != 0) {
+		/*
+		 * from free list
+		 */
+		co = &data->callouts[handle - 1];
+		if (co->co_next == 0 || co->co_next > handle) {
+		    /* take 1st free callout */
+		    data->fcallouts = co->co_next;
+		} else {
+		    /* take 2nd free callout */
+		    co = &data->callouts[co->co_next - 1];
+		    data->callouts[handle - 1].co_next = co->co_next;
+		    if (co->co_next != 0) {
+			data->callouts[co->co_next - 1].co_prev = handle;
+		    }
+		    handle = co - data->callouts + 1;
+		}
+		data->values->flags |= MOD_CALLOUT;
+	    } else {
+		/*
+		 * add new callout
+		 */
+		handle = data->ncallouts;
+		co = data->callouts = REALLOC(data->callouts, dcallout, handle,
+					      handle + 1);
+		co += handle;
+		data->ncallouts = ++handle;
+		data->values->flags |= MOD_NEWCALLOUT;
+	    }
+	}
+    }
+
+    co->time = time;
+    co->nargs = nargs;
+    memcpy(co->val, v, sizeof(co->val));
+    switch (nargs) {
+    case 3:
+	ref_rhs(data, &v[3]);
+    case 2:
+	ref_rhs(data, &v[2]);
+    case 1:
+	ref_rhs(data, &v[1]);
+    case 0:
+	ref_rhs(data, &v[0]);
+	break;
+    }
+
+    return handle;
+}
+
+/*
+ * NAME:	data->free_call_out()
+ * DESCRIPTION:	freeove a callout
+ */
+static void d_free_call_out(data, handle)
+register dataspace *data;
+unsigned int handle;
+{
+    register dcallout *co;
+    register value *v;
+    uindex n;
+
+    co = &data->callouts[handle - 1];
+    v = co->val;
+    del_lhs(data, &v[0]);
+    str_del(v[0].u.string);
+    v[0] = nil_value;
+
+    switch (co->nargs) {
+    default:
+	del_lhs(data, &v[3]);
+	i_del_value(&v[3]);
+    case 2:
+	del_lhs(data, &v[2]);
+	i_del_value(&v[2]);
+    case 1:
+	del_lhs(data, &v[1]);
+	i_del_value(&v[1]);
+    case 0:
+	break;
+    }
+
+    n = data->fcallouts;
+    if (n != 0) {
+	data->callouts[n - 1].co_prev = handle;
+    }
+    co->co_next = n;
+    data->fcallouts = handle;
+
+    data->values->flags |= MOD_CALLOUT;
+}
+
+
+/*
+ * NAME:	copatch->init()
+ * DESCRIPTION:	initialize copatch table
+ */
+static void cop_init(values)
+plane *values;
+{
+    memset(values->coptab = ALLOC(coptable, 1), '\0', sizeof(coptable));
+}
+
+/*
+ * NAME:	copatch->clean()
+ * DESCRIPTION:	free copatch table
+ */
+static void cop_clean(values)
+plane *values;
+{
+    register copchunk *c, *f;
+
+    c = values->coptab->chunk;
+    while (c != (copchunk *) NULL) {
+	f = c;
+	c = c->next;
+	FREE(f);
+    }
+
+    FREE(values->coptab);
+    values->coptab = (coptable *) NULL;
+}
+
+/*
+ * NAME:	copatch->new()
+ * DESCRIPTION:	create a new callout patch
+ */
+static copatch *cop_new(values, c, type, handle, co, time, mtime, q)
+plane *values;
+copatch **c;
+int type;
+unsigned int handle, mtime;
+register dcallout *co;
+Uint time;
+cbuf *q;
+{
+    register coptable *tab;
+    register copatch *cop;
+    register int i;
+    register value *v;
+
+    /* allocate */
+    tab = values->coptab;
+    if (tab->flist != (copatch *) NULL) {
+	/* from free list */
+	cop = tab->flist;
+	tab->flist = cop->next;
+    } else {
+	/* newly allocated */
+	if (tab->chunk == (copchunk *) NULL || tab->chunksz == COPCHUNKSZ) {
+	    register copchunk *cc;
+
+	    /* create new chunk */
+	    cc = ALLOC(copchunk, 1);
+	    cc->next = tab->chunk;
+	    tab->chunk = cc;
+	    tab->chunksz = 0;
+	}
+
+	cop = &tab->chunk->cop[tab->chunksz++];
+    }
+
+    /* initialize */
+    cop->type = type;
+    cop->handle = handle;
+    if (type == COP_ADD) {
+	cop->aco = *co;
+    } else {
+	cop->rco = *co;
+    }
+    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i >= 0; --i) {
+	i_ref_value(v++);
+    }
+    cop->time = time;
+    cop->mtime = mtime;
+    cop->values = values;
+    cop->queue = q;
+
+    /* add to hash table */
+    cop->next = *c;
+    return *c = cop;
+}
+
+/*
+ * NAME:	copatch->del()
+ * DESCRIPTION:	delete a callout patch
+ */
+static void cop_del(values, c, del)
+plane *values;
+copatch **c;
+bool del;
+{
+    register copatch *cop;
+    register dcallout *co;
+    register int i;
+    register value *v;
+    coptable *tab;
+
+    /* remove from hash table */
+    cop = *c;
+    *c = cop->next;
+
+    if (del) {
+	/* free referenced callout */
+	co = (cop->type == COP_ADD) ? &cop->aco : &cop->rco;
+	v = co->val;
+	for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i >= 0; --i) {
+	    i_del_value(v++);
+	}
+    }
+
+    /* add to free list */
+    tab = values->coptab;
+    cop->next = tab->flist;
+    tab->flist = cop;
+}
+
+/*
+ * NAME:	copatch->replace()
+ * DESCRIPTION:	replace one callout patch with another
+ */
+static void cop_replace(cop, co, time, mtime, q)
+register copatch *cop;
+register dcallout *co;
+Uint time;
+unsigned int mtime;
+cbuf *q;
+{
+    register int i;
+    register value *v;
+
+    cop->type = COP_REPLACE;
+    cop->aco = *co;
+    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i >= 0; --i) {
+	i_ref_value(v++);
+    }
+    cop->time = time;
+    cop->mtime = mtime;
+    cop->queue = q;
+}
+
+/*
+ * NAME:	copatch->commit()
+ * DESCRIPTION:	commit a callout replacement
+ */
+static void cop_commit(cop)
+register copatch *cop;
+{
+    register int i;
+    register value *v;
+
+    cop->type = COP_ADD;
+    for (i = (cop->rco.nargs > 3) ? 4 : cop->rco.nargs + 1, v = cop->rco.val;
+	 i >= 0; --i) {
+	i_del_value(v++);
+    }
+}
+
+/*
+ * NAME:	copatch->release()
+ * DESCRIPTION:	remove a callout replacement
+ */
+static void cop_release(cop)
+register copatch *cop;
+{
+    register int i;
+    register value *v;
+
+    cop->type = COP_REMOVE;
+    for (i = (cop->aco.nargs > 3) ? 4 : cop->aco.nargs + 1, v = cop->aco.val;
+	 i >= 0; --i) {
+	i_del_value(v++);
+    }
+}
+
+/*
+ * NAME:	copatch->restore()
+ * DESCRIPTION:	undo replacement
+ */
+static void cop_restore(cop)
+copatch *cop;
+{
+    /* force unref of proper component later */
+    cop->type = COP_ADD;
+}
+
+
+/*
+ * NAME:	commit_callouts()
+ * DESCRIPTION:	commit callout patches to previous plane
+ */
+static void commit_callouts(values)
+register plane *values;
+{
+    register plane *prev;
+    register copatch **c, **n, *cop;
+    copatch **t, **next;
+    int i;
+
+    prev = values->prev;
+    for (i = COPHTABSZ, t = values->coptab->cop; --i >= 0; t++) {
+	if (*t != (copatch *) NULL && (*t)->values == values) {
+	    /*
+	     * find previous plane
+	     */
+	    next = t;
+	    do {
+		next = &(*next)->next;
+	    } while (*next != (copatch *) NULL && (*next)->values == values);
+
+	    c = t;
+	    do {
+		cop = *c;
+		if (prev->level == 0) {
+		    /*
+		     * commit to last plane
+		     */
+		    switch (cop->type) {
+		    case COP_ADD:
+			co_new(cop->handle, values->alocal.data->obj,
+			       cop->time, cop->mtime, cop->queue);
+			--ncallout;
+			break;
+
+		    case COP_REMOVE:
+			co_del(values->alocal.data->obj, cop->handle,
+			       cop->rco.time);
+			ncallout++;
+			break;
+
+		    case COP_REPLACE:
+			co_del(values->alocal.data->obj, cop->handle,
+			       cop->rco.time);
+			co_new(cop->handle, values->alocal.data->obj,
+			       cop->time, cop->mtime, cop->queue);
+			cop_commit(cop);
+			break;
+		    }
+
+		    if (next == &cop->next) {
+			next = c;
+		    }
+		    cop_del(values, c, TRUE);
+		} else {
+		    /*
+		     * commit to previous plane
+		     */
+		    for (n = next;
+			 *n != (copatch *) NULL && (*n)->values == prev;
+			 n = &(*n)->next) {
+			if (cop->handle == (*n)->handle) {
+			    switch (cop->type) {
+			    case COP_ADD:
+				/* turn old remove into replace, del new */
+				cop_replace(*n, &cop->aco, cop->time,
+					    cop->mtime, cop->queue);
+				if (next == &cop->next) {
+				    next = c;
+				}
+				cop_del(values, c, TRUE);
+				cop = (copatch *) NULL;
+				break;
+
+			    case COP_REMOVE:
+				if ((*n)->type == COP_REPLACE) {
+				    /* turn replace back into remove */
+				    cop_release(*n);
+				} else {
+				    /* del old */
+				    cop_del(values, n, TRUE);
+				}
+				/* del new */
+				if (next == &cop->next) {
+				    next = c;
+				}
+				cop_del(values, c, TRUE);
+				cop = (copatch *) NULL;
+				break;
+
+			    case COP_REPLACE:
+				if ((*n)->type == COP_REPLACE) {
+				    /* merge replaces into old, del new */
+				    cop_release(*n);
+				    cop_replace(*n, &cop->aco, cop->time,
+						cop->mtime, cop->queue);
+				    if (next == &cop->next) {
+					next = c;
+				    }
+				    cop_del(values, c, TRUE);
+				    cop = (copatch *) NULL;
+				} else {
+				    /* make replace into add, remove old */
+				    cop_del(values, n, TRUE);
+				    cop_commit(cop);
+				}
+				break;
+			    }
+			    break;
+			}
+		    }
+
+		    if (cop != (copatch *) NULL) {
+			cop->values = prev;
+			c = &cop->next;
+		    }
+		}
+	    } while (c != next);
+	}
+    }
+}
+
+/*
+ * NAME:	restore_callouts()
+ * DESCRIPTION:	discard callout patches on current plane, restoring old callouts
+ */
+static void restore_callouts(values)
+register plane *values;
+{
+    register copatch *cop, **c, **t;
+    register dataspace *data;
+    register int i;
+
+    data = values->alocal.data;
+    for (i = COPHTABSZ, t = values->coptab->cop; --i >= 0; t++) {
+	c = t;
+	while (*c != (copatch *) NULL && (*c)->values == values) {
+	    cop = *c;
+	    switch (cop->type) {
+	    case COP_ADD:
+		d_free_call_out(data, cop->handle);
+		cop_del(values, c, TRUE);
+		--ncallout;
+		break;
+
+	    case COP_REMOVE:
+		d_alloc_call_out(data, cop->handle, cop->rco.time,
+				 cop->rco.nargs, cop->rco.val);
+		cop_del(values, c, FALSE);
+		ncallout++;
+		break;
+
+	    case COP_REPLACE:
+		d_free_call_out(data, cop->handle);
+		d_alloc_call_out(data, cop->handle, cop->rco.time,
+				 cop->rco.nargs, cop->rco.val);
+		cop_restore(cop);
+		cop_del(values, c, TRUE);
+		break;
+	    }
+	}
+    }
+}
+
+
+/*
  * NAME:	data->new_plane()
  * DESCRIPTION:	create a new data plane
  */
@@ -1287,6 +1847,7 @@ Int level;
 	p->arrays = (arrref *) NULL;
     }
     p->achunk = (abchunk *) NULL;
+    p->coptab = data->values->coptab;
 
     p->prev = data->values;
     data->values = p;
@@ -1355,6 +1916,16 @@ Int level;
 		commit_values(data->variables, data->nvariables, p->prev);
 	    }
 
+	    if (p->coptab != (coptable *) NULL) {
+		/* commit callout changes */
+		commit_callouts(p);
+		if (p->level == 1) {
+		    cop_clean(p);
+		} else {
+		    p->prev->coptab = p->coptab;
+		}
+	    }
+
 	    arr_commit(&p->achunk, p->prev);
 	    if (p->arrays != (arrref *) NULL) {
 		/* replace old array refs */
@@ -1394,8 +1965,12 @@ Int level;
     register Uint i;
 
     for (p = plist; p != (plane *) NULL && p->level == level; p = p->plist) {
-	data = p->alocal.data;
+	/*
+	 * discard changes except for callout mods
+	 */
+	p->prev->flags |= p->flags & (MOD_CALLOUT | MOD_NEWCALLOUT);
 
+	data = p->alocal.data;
 	if (p->original != (value *) NULL) {
 	    /* restore original variable values */
 	    for (v = data->variables, i = data->nvariables; i != 0; --i, v++) {
@@ -1404,6 +1979,16 @@ Int level;
 	    memcpy(data->variables, p->original,
 		   data->nvariables * sizeof(value));
 	    FREE(p->original);
+	}
+
+	if (p->coptab != (coptable *) NULL) {
+	    /* undo callout changes */
+	    restore_callouts(p);
+	    if (p->level == 1) {
+		cop_clean(p);
+	    } else {
+		p->prev->coptab = p->coptab;
+	    }
 	}
 
 	arr_restore(&p->achunk);
@@ -1632,39 +2217,6 @@ array *map;
 
 
 /*
- * NAME:	data->get_callouts()
- * DESCRIPTION:	load callouts from swap
- */
-static void d_get_callouts(data)
-register dataspace *data;
-{
-    scallout *scallouts;
-    register scallout *sco;
-    register dcallout *co;
-    register uindex n;
-
-    co = data->callouts = ALLOC(dcallout, data->ncallouts);
-    sco = scallouts = ALLOCA(scallout, data->ncallouts);
-    sw_readv((char *) scallouts, data->sectors,
-	     data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
-
-    for (n = data->ncallouts; n > 0; --n) {
-	co->time = sco->time;
-	co->nargs = sco->nargs;
-	if (sco->val[0].type == T_STRING) {
-	    d_get_values(data, sco->val, co->val,
-			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
-	} else {
-	    co->val[0] = nil_value;
-	}
-	sco++;
-	co++;
-    }
-
-    AFREE(scallouts);
-}
-
-/*
  * NAME:	data->new_call_out()
  * DESCRIPTION:	add a new callout
  */
@@ -1676,98 +2228,86 @@ unsigned int mdelay;
 register frame *f;
 int nargs;
 {
-    register dcallout *co;
-    register value *v;
-    register uindex n;
     Uint ct, t;
     unsigned short m;
     cbuf *q;
+    value v[4];
+    uindex handle;
 
-    ct = co_check(0, delay, mdelay, &t, &m, &q);
+    ct = co_check(ncallout, delay, mdelay, &t, &m, &q);
     if (ct == 0 && q == (cbuf *) NULL) {
 	/* callouts are disabled */
 	return 0;
     }
-    if (data->ncallouts == 0) {
-	/*
-	 * the first in this object
-	 */
-	co = data->callouts = ALLOC(dcallout, 1);
-	data->ncallouts = n = 1;
-	data->values->flags |= MOD_NEWCALLOUT;
-    } else {
-	if (data->callouts == (dcallout *) NULL) {
-	    d_get_callouts(data);
-	}
-	n = data->fcallouts;
-	if (n != 0) {
-	    /*
-	     * from free list
-	     */
-	    co = &data->callouts[n - 1];
-	    if (co->co_next == 0 || co->co_next > n) {
-		/* take 1st free callout */
-		data->fcallouts = co->co_next;
-	    } else {
-		/* take 2nd free callout */
-		co = &data->callouts[co->co_next - 1];
-		data->callouts[n - 1].co_next = co->co_next;
-		if (co->co_next != 0) {
-		    data->callouts[co->co_next - 1].co_prev = n;
-		}
-		n = co - data->callouts + 1;
-	    }
-	    data->values->flags |= MOD_CALLOUT;
-	} else {
-	    /*
-	     * add new callout
-	     */
-	    if (data->ncallouts >= conf_array_size()) {
-		error("Too many callouts in object");
-	    }
-	    n = data->ncallouts;
-	    co = data->callouts = REALLOC(data->callouts, dcallout, n, n + 1);
-	    co += n;
-	    data->ncallouts = ++n;
-	    data->values->flags |= MOD_NEWCALLOUT;
-	}
+    if (data->ncallouts >= conf_array_size() && data->fcallouts == 0) {
+	error("Too many callouts in object");
     }
-    co_new(n, data->obj, t, m, q);
 
-    co->time = ct;
-    co->nargs = nargs;
-    v = co->val;
     PUT_STRVAL(&v[0], func);
-    ref_rhs(data, &v[0]);
-
     switch (nargs) {
     case 3:
 	v[3] = f->sp[2];
-	ref_rhs(data, &v[3]);
     case 2:
 	v[2] = f->sp[1];
-	ref_rhs(data, &v[2]);
     case 1:
 	v[1] = f->sp[0];
-	ref_rhs(data, &v[1]);
     case 0:
 	break;
 
     default:
 	v[1] = *f->sp++;
-	ref_rhs(data, &v[1]);
 	v[2] = *f->sp++;
-	ref_rhs(data, &v[2]);
-	nargs -= 2;
-	PUT_ARRVAL(&v[3], arr_new(data, (long) nargs));
-	memcpy(v[3].u.array->elts, f->sp, nargs * sizeof(value));
+	PUT_ARRVAL(&v[3], arr_new(data, nargs - 2L));
+	memcpy(v[3].u.array->elts, f->sp, (nargs - 2) * sizeof(value));
 	d_ref_imports(v[3].u.array);
-	ref_rhs(data, &v[3]);
 	break;
     }
     f->sp += nargs;
+    handle = d_alloc_call_out(data, 0, ct, nargs, v);
 
-    return n;
+    if (data->values->level == 0) {
+	/*
+	 * add normal callout
+	 */
+	co_new(handle, data->obj, t, m, q);
+    } else {
+	register plane *values;
+	register copatch **c, *cop;
+	dcallout *co;
+	uindex i;
+
+	/*
+	 * add callout patch
+	 */
+	values = data->values;
+	if (values->coptab == (coptable *) NULL) {
+	    cop_init(values);
+	}
+	co = &data->callouts[handle - 1];
+	i = handle % COPHTABSZ;
+	c = &values->coptab->cop[i];
+	for (;;) {
+	    cop = *c;
+	    if (cop == (copatch *) NULL || cop->values != values) {
+		/* add new */
+		cop_new(values, &values->coptab->cop[i], COP_ADD,
+			handle, co, t, m, q);
+		break;
+	    }
+
+	    if (cop->handle == handle) {
+		/* replace removed */
+		cop_replace(cop, co, t, m, q);
+		break;
+	    }
+
+	    c = &cop->next;
+	}
+
+	ncallout++;
+    }
+
+    return handle;
 }
 
 /*
@@ -1779,8 +2319,6 @@ dataspace *data;
 unsigned int handle;
 {
     register dcallout *co;
-    register value *v;
-    register uindex n;
     Int t;
 
     if (handle == 0 || handle > data->ncallouts) {
@@ -1798,34 +2336,46 @@ unsigned int handle;
     }
 
     t = co_remaining(co->time);
-    co_del(data->obj, handle, co->time);
-    v = co->val;
-    del_lhs(data, &v[0]);
-    str_del(v[0].u.string);
+    if (data->values->level == 0) {
+	/*
+	 * remove normal callout
+	 */
+	co_del(data->obj, handle, co->time);
+    } else {
+	register plane *values;
+	register copatch **c, *cop;
+	register value *v;
+	uindex i;
 
-    switch (co->nargs) {
-    default:
-	del_lhs(data, &v[3]);
-	i_del_value(&v[3]);
-    case 2:
-	del_lhs(data, &v[2]);
-	i_del_value(&v[2]);
-    case 1:
-	del_lhs(data, &v[1]);
-	i_del_value(&v[1]);
-    case 0:
-	break;
+	/*
+	 * add/remove callout patch
+	 */
+	--ncallout;
+
+	values = data->values;
+	if (values->coptab == (coptable *) NULL) {
+	    cop_init(values);
+	}
+	i = handle % COPHTABSZ;
+	c = &values->coptab->cop[i];
+	for (;;) {
+	    cop = *c;
+	    if (cop == (copatch *) NULL || cop->values != values) {
+		/* delete new */
+		cop_new(values, &values->coptab->cop[i], COP_REMOVE,
+			handle, co, (Uint) 0, 0, (cbuf *) NULL);
+		break;
+	    }
+	    if (cop->handle == handle) {
+		/* delete existing */
+		cop_del(values, c, TRUE);
+		break;
+	    }
+	    c = &cop->next;
+	}
     }
+    d_free_call_out(data, handle);
 
-    co->val[0] = nil_value;
-    n = data->fcallouts;
-    if (n != 0) {
-	data->callouts[n - 1].co_prev = handle;
-    }
-    co->co_next = n;
-    data->fcallouts = handle;
-
-    data->values->flags |= MOD_CALLOUT;
     return t;
 }
 

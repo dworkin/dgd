@@ -32,12 +32,12 @@ driver, mostly to translate pathnames.
 
     string path_read(string path)
 
-	Used to translate a path for an editor read command.  If 0 is
+	Used to translate a path for an editor read command.  If nil is
 	returned, the file cannot be read.
 
     string path_write(string path)
 
-	Used to translate a path for an editor write command.  If 0 is
+	Used to translate a path for an editor write command.  If nil is
 	returned, the file cannot be written to.
 
     object call_object(string objname)
@@ -54,7 +54,7 @@ driver, mostly to translate pathnames.
     string path_include(string file, string path)
 
 	Used to translate include path <path> upon compilation of the
-	object with filename <file>.  If 0 is returned, the file <path>
+	object with filename <file>.  If nil is returned, the file <path>
 	cannot be included.
 
     void recompile(object obj)

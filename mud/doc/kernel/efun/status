@@ -13,4 +13,4 @@ DESCRIPTION
 
 ACCESS
 	If the current object is not the owner of the argument object, if any,
-	callout arguments are ommitted in the returned status array.
+	callout arguments are omitted in the returned status array.

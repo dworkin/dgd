@@ -485,7 +485,7 @@ int index, vtype;
 
 /*
  * NAME:	interpret->index()
- * DESCRIPTION:	index a value, REPLACING it by the indexed value
+ * DESCRIPTION:	index a value, REPLACING it with the indexed value
  */
 void i_index(f)
 register frame *f;
