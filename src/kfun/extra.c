@@ -278,7 +278,6 @@ int nargs;
     int matches;
     char *p;
     bool skip;
-    dataspace *data;
     value values[32 - 2];
 
     if (nargs < 2) {
@@ -461,7 +460,6 @@ no_match:
 	/* pop superfluous arguments */
 	i_pop(nargs);
     }
-    data = o_dataspace(i_this_object());
     while (val > values) {
 	i_store(sp, --val);
 	sp++;
