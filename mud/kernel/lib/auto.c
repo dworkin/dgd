@@ -102,18 +102,13 @@ nomask _F_create()
 	    }
 # ifdef CREATOR
 	    oname = function_object(CREATOR, this_object());
-	    if (oname && sscanf(oname, USR + "/System/%*s") == 0) {
-		oname = 0;
+	    if (oname && sscanf(oname, USR + "/System/%*s") != 0) {
+		/* extra initialisation function */
+		call_other(this_object(), CREATOR, clone);
 	    }
 # endif
 	}
 	/* call higher-level creator function */
-# ifdef CREATOR
-	if (oname) {
-	    /* alternative creator function */
-	    call_other(this_object(), CREATOR, clone);
-	} else
-# endif
 	this_object()->create(clone);
     }
 }
