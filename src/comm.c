@@ -483,7 +483,7 @@ int prompt;
 
 /*
  * NAME:	comm->block()
- * DESCRIPTION:	suspend on release input for a connection
+ * DESCRIPTION:	suspend or release input from a user
  */
 void comm_block(obj, flag)
 object *obj;

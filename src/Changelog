@@ -1155,5 +1155,6 @@ DGD 1.1
  - Fixed a leftover bug in the swapping changes that made reclaiming of freed
    sectors unlikely, and a crash possible just after a successful state dump
    had been made.
- - Read_file() was returning return 0 in an error situation, and also when it
+ - Read_file() was returning 0 in an error situation, and also when it
    should return "".
+ - Fixed a memory leak introduced in the global variable rewrite.

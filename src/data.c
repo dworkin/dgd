@@ -1548,7 +1548,6 @@ int *nargs;
     v = co->val;
     del_lhs(data, &v[0]);
     str = v[0].u.string;
-    v[0].type = T_INVALID;
 
     if (f != (frame *) NULL) {
 	i_grow_stack(f, (*nargs = co->nargs) + 1);
@@ -1607,6 +1606,7 @@ int *nargs;
 	}
     }
 
+    v[0].type = T_INVALID;
     n = data->fcallouts;
     if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;

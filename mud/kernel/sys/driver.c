@@ -19,7 +19,6 @@ object errord;		/* error manager object */
 object telnet;		/* telnet port object */
 object binary;		/* binary port object */
 # endif
-int auto;		/* handle implicit compile of auto object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string compiled;	/* object currently being compiled */
@@ -190,16 +189,17 @@ set_error_manager(object obj)
 compiling(string path)
 {
     if (previous_program() == AUTO) {
-	if (auto) {
-	    auto = FALSE;
-	    if (path != AUTO || find_object(AUTO)) {
-		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
-	    }
-	}
 	compiled = path;
 	inherited = ({ });
 	if (objectd) {
 	    objectd->compiling(path);
+	}
+	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
+	    compile_object(AUTO);
+	    rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
+	    if (objectd) {
+		objectd->compile_lib("System", AUTO);
+	    }
 	}
     }
 }
@@ -265,12 +265,6 @@ destruct(object obj, string owner)
 destruct_lib(string path, string owner)
 {
     if (previous_program() == AUTO) {
-	if (path == AUTO) {
-	    if (auto) {
-		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
-	    }
-	    auto = TRUE;
-	}
 	if (objectd) {
 	    objectd->destruct_lib(owner, path);
 	}

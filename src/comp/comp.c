@@ -587,6 +587,16 @@ int flag;
 }
 
 /*
+ * NAME:	comm->block()
+ * DESCRIPTION:	pretend to suspend or release input from a user
+ */
+void comm_block(obj, flag)
+object *obj;
+int flag;
+{
+}
+
+/*
  * NAME:	comm->ip_number()
  * DESCRIPTION:	pretend to return the ip number of a user (as a string)
  */
