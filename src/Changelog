@@ -1596,3 +1596,4 @@ DGD 1.3
  - Changed default platform to DARWIN.
  - Fixed a bug in fmod(), and changed the behaviour for integer modulus with
    a negative second argument (the sign is now ignored).
+ - Regular expressions now work properly in a grammar string larger than 64K.

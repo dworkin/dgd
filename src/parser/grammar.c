@@ -24,7 +24,8 @@ typedef struct {
     unsigned short type;	/* node type */
     unsigned short left;	/* left child node or other info */
     unsigned short right;	/* right child node or other info */
-    unsigned short len;		/* length */
+    char offset;		/* high byte of offset */
+    char len;			/* length */
 } rgxnode;
 
 # define RGX_CHAR	0	/* single char */
@@ -50,7 +51,7 @@ int *lastp;
     while (thisnode >= 0) {
 	/* connect from previous */
 	while (last >= 0) {
-	    buffer[node[last].len] = len;
+	    buffer[UCHAR(node[last].len)] = len;
 	    last = (short) node[last].left;
 	}
 
@@ -60,8 +61,10 @@ int *lastp;
 	     * x_
 	     *  ->
 	     */
-	    memcpy(buffer + len, str + node[thisnode].left, node[thisnode].len);
-	    len += node[thisnode].len;
+	    memcpy(buffer + len, str + node[thisnode].left +
+				 (UCHAR(node[thisnode].offset) << 16),
+		   UCHAR(node[thisnode].len));
+	    len += UCHAR(node[thisnode].len);
 	    node[thisnode].len = len++;
 	    node[thisnode].left = last;
 	    last = thisnode;
@@ -88,7 +91,7 @@ int *lastp;
 			 &last);
 	    if (node[thisnode].right != '?') {
 		while (last >= 0) {
-		    buffer[node[last].len] = n;
+		    buffer[UCHAR(node[last].len)] = n;
 		    last = (short) node[last].left;
 		}
 	    }
@@ -143,6 +146,7 @@ unsigned int *buflen;
     rgxnode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
     int paren, thisnode, topnode, lastnode;
+    ssizet offset;
     register char *p;
     char *q;
     register ssizet size;
@@ -316,7 +320,9 @@ unsigned int *buflen;
 		    }
 
 		    node[thisnode].type = RGX_CHAR;
-		    node[thisnode].left = q - str->text;
+		    offset = q - str->text;
+		    node[thisnode].left = offset;
+		    node[thisnode].offset = offset >> 16;
 		    node[thisnode].right = -1;
 		    node[thisnode].len = p - q + 1;
 		    len += p - q + 2;
@@ -334,7 +340,7 @@ unsigned int *buflen;
 	    thisnode = -1;
 	    len = rgxtok(buffer, 0, str->text, node, topnode, &thisnode);
 	    while (thisnode >= 0) {
-		buffer[node[thisnode].len] = len - 1;
+		buffer[UCHAR(node[thisnode].len)] = len - 1;
 		thisnode = (short) node[thisnode].left;
 	    }
 	    buffer[len] = '\0';
@@ -747,6 +753,12 @@ string *gram;
     register rule *rl, **r;
     register long size;
     register unsigned int len;
+
+# if MAX_STRLEN > 0xffffffL
+    if (gram->len > 0xffffffL) {
+	error("Grammar string too large");
+    }
+# endif
 
     /* initialize */
     ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);

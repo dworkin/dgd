@@ -666,9 +666,12 @@ static string path_include(string from, string path)
     if (path == "AUTO" && from == "/include/std.h" && objectd &&
 	creator(compiled) != "System") {
 	/*
-	 * special object-dependant include file
+	 * special object-dependent include file
 	 */
 	path = objectd->path_special(compiled);
+	if (!path) {
+	    return nil;
+	}
     } else if (strlen(path) != 0 && path[0] != '~' &&
 	       (sscanf(path, "/include/%*s") != 0 ||
 		sscanf(path, "%*s/") == 0) && sscanf(path, "%*s/../") == 0) {
