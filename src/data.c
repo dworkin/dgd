@@ -3347,7 +3347,7 @@ Uint *counttab;
 	size += d_conv((char *) data->sstrings, s, ss_layout, header.nstrings,
 		       size);
 	if (header.strsize != 0) {
-	    if (header.flags & (CMP_TYPE << 2)) {
+	    if (header.flags & CMP_TYPE) {
 		data->stext = decompress(s, sw_dreadv, header.strsize, size,
 					 &data->strsize);
 	    } else {
