@@ -4,7 +4,6 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
-int linemode;		/* process input and output line by line? */
 string buffer;		/* buffered input */
 
 /*
@@ -15,9 +14,26 @@ static create(int clone)
 {
     if (clone) {
 	::create("binary");
-	linemode = TRUE;
 	buffer = "";
     }
+}
+
+/*
+ * NAME:	open()
+ * DESCRIPTION:	open the connection
+ */
+static open()
+{
+    ::open(allocate(TLS_SIZE));
+}
+
+/*
+ * NAME:	close()
+ * DESCRIPTION:	close the connection
+ */
+static close(int dest)
+{
+    ::close(allocate(TLS_SIZE), dest);
 }
 
 /*
@@ -26,19 +42,22 @@ static create(int clone)
  */
 static receive_message(string str)
 {
-    int len;
-    string head;
+    int mode, len;
+    string head, pre;
 
     buffer += str;
-    while (sscanf(buffer, "%*s\n") != 0 && this_object()) {
-	if (linemode) {
+    mode = query_mode();
+    while (mode != MODE_DISCONNECT) {
+	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
-		/*
-		 * might not work properly if both delete and backspace
-		 * are used
-		 */
 		while (sscanf(str, "%s\b%s", head, str) != 0) {
+		    while (sscanf(head, "%s\x7f%s", pre, head) != 0) {
+			len = strlen(pre);
+			if (len != 0) {
+			    head = pre[0 .. len - 2] + head;
+			}
+		    }
 		    len = strlen(head);
 		    if (len != 0) {
 			str = head[0 .. len - 2] + str;
@@ -51,12 +70,36 @@ static receive_message(string str)
 		    }
 		}
 
-		linemode = (::receive_message(str) != MODE_RAW);
+		mode = ::receive_message(allocate(TLS_SIZE), str);
+	    } else {
+		break;
 	    }
 	} else {
-	    linemode = (::receive_message(buffer) != MODE_RAW);
-	    buffer = "";
+	    if (strlen(buffer) != 0) {
+		str = buffer;
+		buffer = "";
+		::receive_message(allocate(TLS_SIZE), str);
+	    }
 	    break;
+	}
+    }
+}
+
+/*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the connection mode
+ */
+set_mode(int mode)
+{
+    string str;
+
+    if (SYSTEM()) {
+	::set_mode(mode);
+	if (mode == MODE_RAW && strlen(buffer) != 0) {
+	    /* flush buffer */
+	    str = buffer;
+	    buffer = "";
+	    ::receive_message(0, str);
 	}
     }
 }
@@ -67,7 +110,7 @@ static receive_message(string str)
  */
 int message(string str)
 {
-    if (linemode) {
+    if (query_mode() < MODE_RAW) {
 	str = implode(explode("\n" + str + "\n", "\n"), "\r\n");
     }
     return ::message(str);

@@ -155,6 +155,12 @@ driver, mostly to translate pathnames.
 	the other side of the connection saw fit to send, without any
 	filtering or processing.
 
+    void message_done()
+
+	This function is called when a buffered string that could not be
+	sent entirely when send_message was called, was fully transmitted.
+
+
    On startup, the system is configured with a configuration file, which
 must specify the following configuration parameters:
 

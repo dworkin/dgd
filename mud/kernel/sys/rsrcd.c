@@ -2,12 +2,6 @@
 # include <kernel/rsrc.h>
 # include <type.h>
 
-# define LIM_NEXT	0	/* next limits frame */
-# define LIM_OWNER	1	/* owner of this frame */
-# define LIM_MAXSTACK	2	/* max stack in frame */
-# define LIM_MAXTICKS	3	/* max ticks in frame */
-# define LIM_TICKS	4	/* current ticks in frame */
-
 # define CO_OBJ		0	/* callout object */
 # define CO_OWNER	1	/* owner */
 # define CO_HANDLE	2	/* handle in object */
@@ -18,7 +12,6 @@
 
 mapping resources;		/* registered resources */
 mapping owners;			/* resource owners */
-mixed *limits;			/* limits for current owner */
 int downtime;			/* shutdown time */
 mapping suspended;		/* suspended callouts */
 mixed *first_suspended;		/* first suspended callout */
@@ -34,16 +27,16 @@ static create()
 {
     /* initial resources */
     resources = ([
-      "objects" :	({   0, -1,  0,    0 }),
-      "events" :	({   0, -1,  0,    0 }),
-      "callouts" :	({   0, -1,  0,    0 }),
-      "stack" :		({   0, -1,  0,    0 }),
-      "ticks" :		({   0, -1,  0,    0 }),
-      "tick usage" :	({ 0.0, -1, 10, 3600 }),
-      "filequota" :	({   0, -1,  0,    0 }),
-      "editors" :	({   0, -1,  0,    0 }),
-      "create stack" :	({   0, -1,  0,    0 }),
-      "create ticks" :	({   0, -1,  0,    0 }),
+      "objects" :	({ -1,  0,    0 }),
+      "events" :	({ -1,  0,    0 }),
+      "callouts" :	({ -1,  0,    0 }),
+      "stack" :		({ -1,  0,    0 }),
+      "ticks" :		({ -1,  0,    0 }),
+      "tick usage" :	({ -1, 10, 3600 }),
+      "filequota" :	({ -1,  0,    0 }),
+      "editors" :	({ -1,  0,    0 }),
+      "create stack" :	({ -1,  0,    0 }),
+      "create ticks" :	({ -1,  0,    0 }),
     ]);
 
     owners = ([ ]);		/* no resource owners yet */
@@ -83,27 +76,20 @@ remove_owner(string owner)
 {
     object obj;
     string *names;
-    mixed **rsrcs, *rsrc, *usage;
-    int i, sz;
+    mixed **rsrcs, *rsrc;
+    int i;
 
     if (previous_program() == API_RSRC && (obj=owners[owner])) {
 	names = map_indices(resources);
 	rsrcs = map_values(resources);
-	usage = allocate(sz = sizeof(rsrcs));
-	for (i = sz; --i >= 0; ) {
+	for (i = sizeof(names); --i >= 0; ) {
 	    rsrc = obj->rsrc_get(names[i], rsrcs[i]);
 	    if (rsrc[RSRC_DECAY] == 0 && (int) rsrc[RSRC_USAGE] != 0) {
 		error("Removing owner with non-zero resources");
 	    }
-	    usage[i] = rsrc[RSRC_USAGE];
 	}
 
-	rlimits (-1; -1) {
-	    for (i = sz; --i >= 0; ) {
-		rsrcs[i][RSRC_USAGE] -= usage[i];
-	    }
-	    destruct_object(obj);
-	}
+	destruct_object(obj);
     }
 }
 
@@ -134,17 +120,17 @@ set_rsrc(string name, int max, int decay, int period)
 	    /*
 	     * existing resource
 	     */
-	    if ((rsrc[RSRC_DECAY - 1] == 0) != (decay == 0)) {
+	    if ((rsrc[GRSRC_DECAY] == 0) != (decay == 0)) {
 		error("Cannot change resource decay");
 	    }
 	    rlimits (-1; -1) {
-		rsrc[RSRC_MAX] = max;
-		rsrc[RSRC_DECAY - 1] = decay;
-		rsrc[RSRC_PERIOD - 1] = period;
+		rsrc[GRSRC_MAX] = max;
+		rsrc[GRSRC_DECAY] = decay;
+		rsrc[GRSRC_PERIOD] = period;
 	    }
 	} else {
 	    /* new resource */
-	    resources[name] = ({ (decay == 0) ? 0 : 0.0, max, decay, period });
+	    resources[name] = ({ max, decay, period });
 	}
     }
 }
@@ -159,10 +145,6 @@ remove_rsrc(string name)
     object *objects;
 
     if (previous_program() == API_RSRC && (rsrc=resources[name])) {
-	if (rsrc[RSRC_DECAY - 1] == 0 && (int) rsrc[RSRC_USAGE] != 0) {
-	    error("Removing non-zero resource");
-	}
-
 	objects = map_values(owners);
 	i = sizeof(objects);
 	rlimits (-1; -1) {
@@ -180,12 +162,20 @@ remove_rsrc(string name)
  */
 mixed *query_rsrc(string name)
 {
-    mixed *rsrc;
-
     if (previous_program() == API_RSRC) {
-	rsrc = resources[name];
-	return rsrc[RSRC_USAGE .. RSRC_MAX] + ({ 0 }) +
-	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
+	mixed *rsrc, usage;
+	object *objects;
+	int i;
+
+	rsrc = resources[name][..];
+	objects = map_values(owners);
+	usage = (rsrc[GRSRC_DECAY] == 0) ? 0 : 0.0;
+	for (i = sizeof(objects); --i >= 0; ) {
+	    usage += objects[i]->rsrc_get(name, resources[name])[RSRC_USAGE];
+	}
+
+	return ({ usage, rsrc[GRSRC_MAX], 0 }) +
+	       rsrc[GRSRC_DECAY .. GRSRC_PERIOD];
     }
 }
 
@@ -213,7 +203,7 @@ rsrc_set_limit(string owner, string name, int max)
 	if (!(obj=owners[owner])) {
 	    error("No such resource owner");
 	}
-	obj->rsrc_set_limit(name, max, resources[name][RSRC_DECAY - 1]);
+	obj->rsrc_set_limit(name, max, resources[name][GRSRC_DECAY]);
     }
 }
 
@@ -255,13 +245,13 @@ varargs int rsrc_incr(string owner, string name, mixed index, int incr,
  * NAME:	call_limits()
  * DESCRIPTION:	handle stack and tick limits for _F_call_limited
  */
-mixed *call_limits(string owner, mixed *status)
+mixed *call_limits(mixed *limits, string owner, int stack, int ticks)
 {
     if (previous_program() == AUTO) {
-	return limits = owners[owner]->call_limits(limits, status,
-						   resources["stack"],
-						   resources["ticks"],
-						   resources["tick usage"]);
+	return owners[owner]->call_limits(limits, stack, ticks,
+					  resources["stack"],
+					  resources["ticks"],
+					  resources["tick usage"]);
     }
 }
 
@@ -269,7 +259,7 @@ mixed *call_limits(string owner, mixed *status)
  * NAME:	update_ticks()
  * DESCRIPTION:	update ticks after execution
  */
-int update_ticks(int ticks)
+int update_ticks(mixed *limits, int ticks)
 {
     if (KERNEL()) {
 	if (limits[LIM_MAXTICKS] > 0 &&
@@ -277,11 +267,9 @@ int update_ticks(int ticks)
 	     limits[LIM_OWNER] != limits[LIM_NEXT][LIM_OWNER])) {
 	    owners[limits[LIM_OWNER]]->update_ticks(ticks = limits[LIM_MAXTICKS]
 								    - ticks);
-	    resources["tick usage"][RSRC_USAGE] += (float) ticks;
 	    ticks = (limits[LIM_TICKS] >= 0) ?
 		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}
-	limits = limits[LIM_NEXT];
 	return ticks;
     }
 }
@@ -355,7 +343,8 @@ int suspended(object obj, string owner)
 	if (suspend != 0 && obj != suspender) {
 	    return TRUE;
 	}
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				 FALSE);
 	return FALSE;
     }
 }
@@ -398,7 +387,8 @@ int remove_callout(object obj, string owner, int handle)
 	mapping callouts;
 	mixed *callout;
 
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				 FALSE);
 
 	if (suspended && (callouts=suspended[obj]) &&
 	    (callout=callouts[handle])) {
@@ -436,7 +426,8 @@ remove_callouts(object obj, string owner, int n)
 	mixed **callouts, *callout;
 	int i;
 
-	owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"],
+				 FALSE);
 
 	if (suspended && suspended[obj]) {
 	    callouts = map_values(suspended[obj]);

@@ -31,4 +31,5 @@ ERRORS
 	object will crash the system.
 
 SEE ALSO
-	efun/clone_object, efun/destruct_object, kfun/function_object
+	efun/call_limited, efun/clone_object, efun/destruct_object,
+	kfun/function_object

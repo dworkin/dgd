@@ -22,6 +22,7 @@ static void cg_iexpr P((node*, int));
 static void cg_expr P((node*, int));
 static void cg_stmt P((node*));
 
+static bool skip;		/* no output for current code? */
 static int vars[MAX_LOCALS];	/* local variable types */
 static int nvars;		/* number of local variables */
 static int nparam;		/* how many of those are arguments */
@@ -222,44 +223,6 @@ bool direct;
     } else {
 	cg_fetch(n->l.left);
 	cg_iasgn(n->r.right, op, -1, TRUE);
-	output(", store_int()");
-    }
-}
-
-/*
- * NAME:	codegen->uasgnop()
- * DESCRIPTION:	handle an unsigned integer assignment operator
- */
-static void cg_uasgnop(n, op, direct)
-register node *n;
-char *op;
-bool direct;
-{
-    register int i;
-
-    if (n->l.left->type == N_LOCAL) {
-	/*
-	 * local variable
-	 */
-	i = n->l.left->r.number;
-	n = n->r.right;
-	if (catch_level != 0) {
-	    output("%s->u.number = ", local(i));
-	}
-	output("ivar%d = ((Uint) ivar%d) %s ", vars[i], vars[i], op);
-	cg_iexpr(n, direct);
-    } else {
-	cg_fetch(n->l.left);
-	n = n->r.right;
-	if (n->type == N_INT) {
-	    output("sp->u.number = ((Uint) sp->u.number) %s ", op);
-	    cg_iexpr(n, TRUE);
-	} else {
-	    i = tmpval();
-	    output("tv[%d] = ", i);
-	    cg_iexpr(n, TRUE);
-	    output(", sp->u.number = ((Uint) sp->u.number) %s tv[%d]", op, i);
-	}
 	output(", store_int()");
     }
 }
@@ -487,12 +450,13 @@ int direct;
 	break;
 
     case N_LSHIFT_INT:
-	output("(Uint) (");
-	cg_ibinop(n, ") <<", direct);
+	output("xlshift(");
+	cg_ibinop(n, ",", direct);
+	output(")");
 	break;
 
     case N_LSHIFT_EQ_INT:
-	cg_uasgnop(n, "<<", direct);
+	cg_ifasgnop(n, "xlshift", direct);
 	break;
 
     case N_LT_INT:
@@ -558,12 +522,13 @@ int direct;
 	break;
 
     case N_RSHIFT_INT:
-	output("(Uint) (");
-	cg_ibinop(n, ") >>", direct);
+	output("xrshift(");
+	cg_ibinop(n, ",", direct);
+	output(")");
 	break;
 
     case N_RSHIFT_EQ_INT:
-	cg_uasgnop(n, ">>", direct);
+	cg_ifasgnop(n, "xrshift", direct);
 	break;
 
     case N_SUB_INT:
@@ -1165,7 +1130,7 @@ register int state;
 	    p = local((int) n->r.number);
 	    switch (n->mod) {
 	    case T_FLOAT:
-		output("VFLT_ISZERO(%s)", p);
+		output("!VFLT_ISZERO(%s)", p);
 		break;
 
 	    case T_STRING:
@@ -1499,7 +1464,7 @@ register int state;
 	    break;
 
 	case T_FLOAT:
-	    output(", sp++, VFLT_ISZERO(sp - 1)");
+	    output(", sp++, !VFLT_ISZERO(sp - 1)");
 	    break;
 
 	case T_OBJECT:
@@ -1844,6 +1809,14 @@ register node *n;
 	    break;
 
 	case N_FOR:
+	    /* hack: process in the same order as in codegeni.c */
+	    if (m->r.right != (node *) NULL) {
+		i = skip;
+		skip = TRUE;
+		cg_stmt(m->r.right);
+		skip = i;
+	    }
+
 	    output("for (;");
 	    cg_expr(m->l.left, TOPTRUTHVAL);
 	    output(";");
@@ -1970,17 +1943,16 @@ register node *n;
 }
 
 
-static bool inherited;
 static unsigned short nfuncs;
 
 /*
  * NAME:	codegen->init()
  * DESCRIPTION:	initialize the code generator
  */
-void cg_init(flag)
-bool flag;
+void cg_init(inherited)
+bool inherited;
 {
-    inherited = flag;
+    skip = inherited;
     nfuncs = 1;
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
     kf_call_other = ((long) KFCALL << 24) | kf_func("call_other");
@@ -2073,7 +2045,7 @@ void cg_clear()
 static void output(format, arg1, arg2, arg3, arg4)
 char *format, *arg1, *arg2, *arg3, *arg4;
 {
-    if (!inherited) {
+    if (!skip) {
 	printf(format, arg1, arg2, arg3, arg4);
     }
 }

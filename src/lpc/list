@@ -18,6 +18,7 @@
 # include "user.c"
 # include "wiztool.c"
 /*
+# include "lib_port.c"
 # include "port.c"
  */
 # endif

@@ -47,7 +47,7 @@ private mapping filter_to_file(mapping access, string file)
     result = ([ ]);
     path = explode(file, "/");
     file = "";
-    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
+    for (i = 0, sz = sizeof(path); i < sz; i++) {
 	file += "/" + path[i];
 	result[file] = access[file];
     }
@@ -215,7 +215,7 @@ set_access(string user, string file, int type)
 		/*
 		 * remove access
 		 */
-		if (access[file] == 0) {
+		if (!access[file]) {
 		    /* remove all subdir access */
 		    indices = map_indices(filter_from_file(access, file));
 		    for (i = sizeof(indices); --i >= 0; ) {

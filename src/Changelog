@@ -1176,3 +1176,15 @@ DGD 1.1 patchlevel 6
  - Turned off debug settings in Makefile and added optimization.
  - Avoided the nasty gethostbyname() problem on Windows 95.
  - And on BeOS as well.
+
+DGD 1.1 patchlevel 7
+
+ - Fixed a compiler typechecking bug for (mixed - array).
+ - Fixed a float testing bug in precompiled code.
+ - Process a for loop in the same order in codegenc.c as in codegeni.c (body
+   first, then condition), to ensure that tables are generated in the same
+   order by both.
+ - Made behaviour of << and >> uniform on all platforms: no negative shift
+   allowed, shifts >= 32 make the result 0.
+ - Check that a switch doesn't contain more than 32767 cases, and a function
+   doesn't need more than 32767 values on the stack.

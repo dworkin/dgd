@@ -1,6 +1,7 @@
 # define USR		"/usr"	/* default user directory */
 
 # undef SYS_CONTINUOUS		/* off by default */
+# define TLS_SIZE	2	/* thread local storage */
 
 # ifdef __ICHAT__
 #  define SYS_NETWORKING	/* ichat server has networking capabilities */

@@ -16,7 +16,7 @@ static create()
  * NAME:	first_link()
  * DESCRIPTION:	return first object in linked list
  */
-object first_link(string owner)
+static object first_link(string owner)
 {
     return objregd->first_link(owner);
 }
@@ -25,7 +25,7 @@ object first_link(string owner)
  * NAME:	prev_link()
  * DESCRIPTION:	return prev object in linked list
  */
-object prev_link(object obj)
+static object prev_link(object obj)
 {
     if (!obj) {
 	error("Bad argument for prev_link");
@@ -37,7 +37,7 @@ object prev_link(object obj)
  * NAME:	next_link()
  * DESCRIPTION:	return next object in linked list
  */
-object next_link(object obj)
+static object next_link(object obj)
 {
     if (!obj) {
 	error("Bad argument for next_link");

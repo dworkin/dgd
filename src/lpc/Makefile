@@ -16,13 +16,13 @@ MUDLIB=	../../mud
 #SRC=	driver.c auto.c objregd.c rsrcd.c accessd.c userd.c \
 #	api_objreg.c api_rsrc.c api_access.c api_user.c \
 #	lib_connection.c lib_user.c lib_wiztool.c \
-#	rsrc.c telnet.c binary.c user.c wiztool.c # port.c
+#	rsrc.c telnet.c binary.c user.c wiztool.c # lib_port.c port.c
 SRC=
 
 #OBJ=	driver.o auto.o objregd.o rsrcd.o accessd.o userd.o \
 #	api_objreg.o api_rsrc.o api_access.o api_user.o \
 #	lib_connection.o lib_user.o lib_wiztool.o \
-#	rsrc.o telnet.o binary.o user.o wiztool.o # port.o
+#	rsrc.o telnet.o binary.o user.o wiztool.o # lib_port.o port.o
 OBJ=
 
 dgd:	$(OBJ) lpc.o
@@ -89,7 +89,10 @@ user.c: $(MUDLIB)/kernel/obj/user.c auto.c lib_user.c api_rsrc.c api_user.c
 wiztool.c: $(MUDLIB)/kernel/obj/wiztool.c auto.c lib_wiztool.c
 	$(PRECOMP) $(CONFIG) /kernel/obj/wiztool.c $@
 
-port.c: $(MUDLIB)/kernel/obj/port.c auto.c
+lib_port.c: $(MUDLIB)/kernel/lib/port.c auto.c
+	$(PRECOMP) $(CONFIG) /kernel/lib/port.c $@
+
+port.c: $(MUDLIB)/kernel/obj/port.c auto.c lib_port.c
 	$(PRECOMP) $(CONFIG) /kernel/obj/port.c $@
 
 clean:

@@ -48,6 +48,15 @@ string query_directory()
     return directory;
 }
 
+/*
+ * NAME:	query_history()
+ * DESCRIPTION:	return the current value history
+ */
+static mixed *query_history()
+{
+    return history[..];
+}
+
 
 /*
  * NAME:	access()
@@ -480,8 +489,14 @@ static string dump_value(mixed value, mapping seen)
     mixed *indices, *values;
 
     switch (typeof(value)) {
-    case T_INT:
     case T_FLOAT:
+	str = (string) value;
+	if (sscanf(str, "%*s.") == 0 && sscanf(str, "%*se") == 0) {
+	    str += ".0";
+	}
+	return str;
+
+    case T_INT:
 	return (string) value;
 
     case T_STRING:
@@ -751,7 +766,7 @@ static mixed *expand(string files, int exist, int full)
 
 /*
  * NAME:	cmd_code()
- * DESCTIPTION:	implementation of the code command
+ * DESCRIPTION:	implementation of the code command
  */
 static cmd_code(object user, string cmd, string str)
 {
@@ -1166,7 +1181,7 @@ static cmd_cp(object user, string cmd, string str)
 	    do {
 		chunk = read_file(names[i], offset, 57344);
 		if (typeof(chunk) != T_STRING) {
-		    if (chunk == 0) {
+		    if (!chunk) {
 			message(names[i] + ": No such file or directory.\n");
 		    }
 		    return;
@@ -1334,6 +1349,9 @@ static cmd_ed(object user, string cmd, string str)
 	    message("Usage: " + cmd + " [<file>]\n");
 	    return;
 	}
+	if (sizeof(files[0]) == 0) {
+	    return;
+	}
 	str = editor("e " + files[0][0]);
     } else {
 	str = editor();
@@ -1487,7 +1505,9 @@ static cmd_grant(object user, string cmd, string str)
 	/*
 	 * file access
 	 */
-	if (sizeof(query_users() & ({ who })) != 0) {
+	if (sscanf(who, "%*s/") != 0) {
+	    message("Invalid user name.\n");
+	} else if (sizeof(query_users() & ({ who })) != 0) {
 	    message(who + " already has file access.\n");
 	} else if (!access(owner, "/", FULL_ACCESS)) {
 	    message("Insufficient access granting privileges.\n");
@@ -1947,7 +1967,7 @@ static cmd_statedump(object user, string cmd, string str)
 
 /*
  * NAME:	cmd_shutdown()
- * DESCTIPTION:	shut down the system
+ * DESCRIPTION:	shut down the system
  */
 static cmd_shutdown(object user, string cmd, string str)
 {
@@ -1961,7 +1981,7 @@ static cmd_shutdown(object user, string cmd, string str)
 
 /*
  * NAME:	cmd_reboot()
- * DESCTIPTION:	reboot system
+ * DESCRIPTION:	reboot system
  */
 static cmd_reboot(object user, string cmd, string str)
 {

@@ -1258,6 +1258,8 @@ char *name;
 	op++;
     } else if (type == T_MIXED) {
 	type = (n1->mod == T_MIXED) ? n2->mod : n1->mod;
+    } else if (n1->mod == T_MIXED && (n2->mod & T_REF)) {
+	type = T_MIXED;
     }
     return node_bin(op, type, n1, n2);
 }

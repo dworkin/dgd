@@ -4,8 +4,6 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
-int mode;		/* input mode */
-
 /*
  * NAME:	create()
  * DESCRIPTION:	initialize
@@ -14,8 +12,25 @@ static create(int clone)
 {
     if (clone) {
 	::create("telnet");
-	mode = MODE_ECHO;
     }
+}
+
+/*
+ * NAME:	open()
+ * DESCRIPTION:	open the connection
+ */
+static open()
+{
+    ::open(allocate(TLS_SIZE));
+}
+
+/*
+ * NAME:	close()
+ * DESCRIPTION:	close the connection
+ */
+static close(int dest)
+{
+    ::close(allocate(TLS_SIZE), dest);
 }
 
 /*
@@ -24,10 +39,29 @@ static create(int clone)
  */
 static receive_message(string str)
 {
-    int result;
+    int mode, newmode;
 
-    result = ::receive_message(str);
-    if (result != mode && (result == MODE_NOECHO || result == MODE_ECHO)) {
-	send_message((mode = result) - MODE_NOECHO);
+    mode = query_mode();
+    newmode = ::receive_message(allocate(TLS_SIZE), str);
+    if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO)) {
+	send_message(newmode - MODE_NOECHO);
+    }
+}
+
+/*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the connection mode
+ */
+set_mode(int newmode)
+{
+    int mode;
+
+    if (SYSTEM()) {
+	mode = query_mode();
+	::set_mode(newmode);
+	if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO))
+	{
+	    send_message(newmode - MODE_NOECHO);
+	}
     }
 }

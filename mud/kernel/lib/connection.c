@@ -4,6 +4,7 @@
 private object userd;		/* user daemon */
 private object user;		/* user object */
 private string conntype;	/* connection type */
+private int mode;		/* connection mode */
 
 /*
  * NAME:	create()
@@ -13,13 +14,71 @@ static create(string type)
 {
     userd = find_object(USERD);
     conntype = type;
+    mode = MODE_ECHO;
 }
+
+
+# ifdef __ICHAT__
+private int dedicated;		/* object created for execution */
+
+/*
+ * NAME:	execute_program()
+ * DESCRIPTION:	execute a program on the host
+ */
+execute_program(string cmdline)
+{
+    if (previous_program() == AUTO) {
+	::execute_program(cmdline);
+	if (!user) {
+	    user = previous_object();
+	    dedicated = TRUE;
+	}
+    }
+}
+
+/*
+ * NAME:	_program_terminated()
+ * DESCRIPTION:	internal version of program_terminated()
+ */
+private _program_terminated(mixed *tls)
+{
+    user->program_terminated();
+}
+
+/*
+ * NAME:	program_terminated()
+ * DESCRIPTION:	called when the executing program has terminated
+ */
+static program_terminated()
+{
+    _program_terminated(allocate(TLS_SIZE));
+    if (dedicated) {
+	destruct_object(this_object());
+    }
+}
+# endif	/* __ICHAT__ */
+
+
+# ifdef SYS_NETWORKING
+/*
+ * NAME:	connect()
+ * DESCRIPTION:	establish an outbount connection
+ */
+connect(string destination, int port)
+{
+    if (previous_program() == AUTO) {
+	::connect(destination, port);
+	user = previous_object();
+    }
+}
+# endif
+
 
 /*
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static open(mixed *tls)
 {
     int timeout;
     string banner;
@@ -30,21 +89,29 @@ static open()
 	destruct_object(this_object());
 	return;
     }
-    if (timeout != 0) {
-	call_out("timeout", timeout);
-    }
 
-    banner = call_other(userd, "query_" + conntype + "_banner");
-    if (banner) {
-	send_message(banner);
+    if (!user) {
+	if (timeout != 0) {
+	    call_out("timeout", timeout);
+	}
+
+	banner = call_other(userd, "query_" + conntype + "_banner");
+	if (banner) {
+	    send_message(banner);
+	}
     }
+# ifdef SYS_NETWORKING
+    else {
+	user->login(0);
+    }
+# endif
 }
 
 /*
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static close(mixed *tls, int dest)
 {
     rlimits (-1; -1) {
 	if (user) {
@@ -76,19 +143,26 @@ disconnect()
 reboot()
 {
     if (previous_object() == userd) {
-	close(0);
+	if (user) {
+	    catch {
+		user->logout(FALSE);
+	    }
+	}
+	destruct_object(this_object());
     }
 }
 
 /*
- * NAME:	change_user()
- * DESCRIPTION:	allow the current user to redirect the connection
+ * NAME:	set_user()
+ * DESCRIPTION:	set or change the user object directly
  */
-int change_user(object obj, string str)
+int set_user(object obj, string str)
 {
-    if (previous_program() == LIB_USER) {
+    if (KERNEL()) {
 	user = obj;
-	return obj->login(str);
+	if (query_ip_number(this_object())) {
+	    return obj->login(str);
+	}
     }
 }
 
@@ -116,20 +190,36 @@ static timeout()
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to user object
  */
-static int receive_message(string str)
+static int receive_message(mixed *tls, string str)
 {
-    int result;
-
     if (!user) {
 	user = call_other(userd, conntype + "_user", str);
-	result = user->login(str);
+	mode = user->login(str);
     } else {
-	result = user->receive_message(str);
+	mode = user->receive_message(str);
     }
-    if (result == MODE_DISCONNECT && this_object()) {
+    if (mode == MODE_DISCONNECT && this_object()) {
 	destruct_object(this_object());
     }
-    return result;
+    return mode;
+}
+
+/*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the current connection mode
+ */
+static set_mode(int newmode)
+{
+    mode = newmode;
+}
+
+/*
+ * NAME:	query_mode()
+ * DESCRIPTION:	return the current connection mode
+ */
+int query_mode()
+{
+    return mode;
 }
 
 /*
@@ -147,7 +237,7 @@ int message(string str)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static void message_done()
+static message_done(mixed *tls)
 {
     if (user) {
 	user->message_done();

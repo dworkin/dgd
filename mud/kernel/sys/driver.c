@@ -23,7 +23,6 @@ string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string compiled;	/* object currently being compiled */
 string *inherited;	/* list of inherited objects */
-string error;		/* last error */
 
 /*
  * NAME:	creator()
@@ -39,7 +38,7 @@ string creator(string file)
  * NAME:	normalize_path()
  * DESCRIPTION:	reduce a path to its minimal absolute form
  */
-string normalize_path(string file, string dir, string creator)
+varargs string normalize_path(string file, string dir, string creator)
 {
     string *path;
     int i, j, sz;
@@ -308,6 +307,20 @@ private object load(string path)
 }
 
 /*
+ * NAME:	call()
+ * DESCRIPTION:	call a function in an object from the top level, providing
+ *		thread local storage
+ */
+private mixed call(mixed what, string func)
+{
+    object obj;
+
+    obj = what;
+    what = allocate(TLS_SIZE);
+    return call_other(obj, func);
+}
+
+/*
  * NAME:	initialize()
  * DESCRIPTION:	called once at system startup
  */
@@ -350,8 +363,10 @@ static initialize()
 # ifdef SYS_NETWORKING
     call_other(port = load(PORT_OBJECT), "???");
 # endif
-    catch {
-	initd = load(USR + "/System/initd");
+    if (file_size(USR + "/System/initd.c") != 0) {
+	catch {
+	    initd = load(USR + "/System/initd");
+	}
     }
 
     /* initialize other users as resource owners */
@@ -370,7 +385,7 @@ static initialize()
 
     /* system-specific initialization */
     if (initd) {
-	call_other(initd, "???");
+	call(initd, "???");
 # ifdef SYS_NETWORKING
     } else {
 	telnet = clone_object(port);
@@ -411,7 +426,7 @@ static restored()
     rsrcd->reboot();
     userd->reboot();
     if (initd) {
-	initd->reboot();
+	call(initd, "reboot");
     }
 # ifdef SYS_NETWORKING
     if (telnet) {
@@ -575,7 +590,7 @@ static string path_include(string from, string path)
 	    return path;
 	} else {
 	    if (objectd) {
-		objectd->include(from, normalize_path(path, from + "/..", 0));
+		objectd->include(from, normalize_path(path, from + "/.."));
 	    }
 	    return from + "/../" + path;
 	}
@@ -658,48 +673,43 @@ static interrupt()
 }
 
 /*
- * NAME:	query_error()
- * DESCRIPTION:	return the last errormessage
- */
-string query_error()
-{
-    if (KERNEL() || SYSTEM()) {
-	return error;
-    }
-}
-
-/*
  * NAME:	runtime_error()
  * DESCRIPTION:	log a runtime error
  */
 static runtime_error(string str, int caught, int ticks)
 {
-    mixed **trace;
+    mixed **trace, tls;
     string line, function, progname, objname;
     int i, sz, len;
     object obj;
+
+    trace = call_trace();
+    tls = trace[1][TRACE_FIRSTARG];
 
     if (caught == 1) {
 	/* top-level catch: ignore */
 	caught = 0;
     } else if (caught != 0 && ticks < 0) {
-	error = str;
+	tls[1] = str;
 	return;
     }
 
-    trace = call_trace();
     i = sz = sizeof(trace) - 1;
 
     if (ticks >= 0) {
+	mixed *limits;
+
+	limits = tls[0];
 	while (--i >= caught) {
-	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited" &&
-		trace[i][TRACE_PROGNAME] == AUTO) {
-		ticks = rsrcd->update_ticks(ticks);
+	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited") {
+		ticks = rsrcd->update_ticks(limits, ticks);
 		if (ticks < 0) {
 		    break;
 		}
+		limits = limits[LIM_NEXT];
 	    }
 	}
+	tls[0] = limits;
     }
 
     if (errord) {
@@ -712,7 +722,7 @@ static runtime_error(string str, int caught, int ticks)
 
 	for (i = 0; i < sz; i++) {
 	    progname = trace[i][TRACE_PROGNAME];
-	    len      = trace[i][TRACE_LINE];
+	    len = trace[i][TRACE_LINE];
 	    if (len == 0) {
 		line = "    ";
 	    } else {
@@ -722,7 +732,7 @@ static runtime_error(string str, int caught, int ticks)
 
 	    function = trace[i][TRACE_FUNCTION];
 	    len = strlen(function);
-	    if (progname == AUTO && len > 3) {
+	    if (progname == AUTO && i != sz - 1 && len > 3) {
 		switch (function[.. 2]) {
 		case "bad":
 		case "_F_":
@@ -734,7 +744,7 @@ static runtime_error(string str, int caught, int ticks)
 		function += "                 "[len ..];
 	    }
 
-	    objname  = trace[i][TRACE_OBJNAME];
+	    objname = trace[i][TRACE_OBJNAME];
 	    if (progname != objname) {
 		len = strlen(progname);
 		if (len < strlen(objname) && progname == objname[.. len - 1] &&

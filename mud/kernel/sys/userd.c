@@ -2,7 +2,7 @@
 # include <kernel/user.h>
 # ifdef SYS_NETWORKING
 #  include <kernel/net.h>
-#  define PORT	PORT_OBJECT
+#  define PORT	LIB_PORT
 # else
 #  define PORT	DRIVER
 # endif
