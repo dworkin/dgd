@@ -93,7 +93,6 @@ static receive_message(string str)
  */
 static void receive_datagram(string str)
 {
-    ::send_datagram("received: \"" + str + "\"\n");
     ::receive_datagram(allocate(TLS_SIZE), str);
 }
 # endif

@@ -1191,3 +1191,4 @@ DGD 1.1
  - And a third.
  - New kfuns: query_ip_name(), send_datagram() (at present for Unix only).
  - DGD ported to BeOS.
+ - Fixed a crashing bug in alternative parse tree handling.

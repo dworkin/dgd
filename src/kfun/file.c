@@ -1449,11 +1449,11 @@ register char *pat, *text;
     }
 }
 
-typedef struct _finfo_ {
+typedef struct _fileinfo_ {
     string *name;		/* file name */
     Int size;			/* file size */
     Int time;			/* file time */
-} finfo;
+} fileinfo;
 
 /*
  * NAME:	getinfo()
@@ -1461,7 +1461,7 @@ typedef struct _finfo_ {
  */
 static bool getinfo(path, file, finf)
 char *path, *file;
-register finfo *finf;
+register fileinfo *finf;
 {
     struct stat sbuf;
 
@@ -1492,14 +1492,14 @@ static int cmp P((cvoid*, cvoid*));
 static int cmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
-    return strcmp(((finfo *) cv1)->name->text,
-		  ((finfo *) cv2)->name->text);
+    return strcmp(((fileinfo *) cv1)->name->text,
+		  ((fileinfo *) cv2)->name->text);
 }
 
 char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
 		      T_STRING };
 
-# define FINFO_CHUNK	128
+# define FILEINFO_CHUNK	128
 
 /*
  * NAME:	kfun->get_dir()
@@ -1509,9 +1509,9 @@ int kf_get_dir(f)
 frame *f;
 {
     register unsigned int i, nfiles, ftabsz;
-    register finfo *ftable;
+    register fileinfo *ftable;
     char *file, *dir, *pat, buf[STRINGSZ];
-    finfo finf;
+    fileinfo finf;
     array *a;
 
     file = path_string(f->sp->u.string->text, f->sp->u.string->len);
@@ -1530,7 +1530,7 @@ frame *f;
 	*pat++ = '\0';
     }
 
-    ftable = ALLOCA(finfo, ftabsz = FINFO_CHUNK);
+    ftable = ALLOCA(fileinfo, ftabsz = FILEINFO_CHUNK);
     nfiles = 0;
     if (strpbrk(pat, "?*[\\") == (char *) NULL &&
 	getinfo(file, pat, &ftable[0])) {
@@ -1549,11 +1549,11 @@ frame *f;
 		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
 		    /* add file */
 		    if (nfiles == ftabsz) {
-			finfo *tmp;
+			fileinfo *tmp;
 
-			tmp = ALLOCA(finfo, ftabsz + FINFO_CHUNK);
-			memcpy(tmp, ftable, ftabsz * sizeof(finfo));
-			ftabsz += FINFO_CHUNK;
+			tmp = ALLOCA(fileinfo, ftabsz + FILEINFO_CHUNK);
+			memcpy(tmp, ftable, ftabsz * sizeof(fileinfo));
+			ftabsz += FILEINFO_CHUNK;
 			AFREE(ftable);
 			ftable = tmp;
 		    }
@@ -1584,7 +1584,7 @@ frame *f;
     if (nfiles != 0) {
 	register value *n, *s, *t;
 
-	qsort(ftable, nfiles, sizeof(finfo), cmp);
+	qsort(ftable, nfiles, sizeof(fileinfo), cmp);
 	n = a->elts[0].u.array->elts;
 	s = a->elts[1].u.array->elts;
 	t = a->elts[2].u.array->elts;

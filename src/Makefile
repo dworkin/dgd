@@ -29,7 +29,7 @@ a.out:	$(OBJ) always
 	cd lpc; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			'LIBS=$(LIBS)' dgd
 	cd host; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	$(LD) $(DEBUG) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` \
+	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
 

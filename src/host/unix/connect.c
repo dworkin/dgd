@@ -202,7 +202,6 @@ struct in_addr *ipnum;
 	ipa = ALLOC(ipaddr, 1);
 	m_dynamic();
     }
-    fflush(stdout);
 
     /* put in hash table */
     ipa->link = *hash;

@@ -45,6 +45,16 @@ void dgd_exit(int code)
     }
 }
 
+/*
+ * NAME:	dgd_abort()
+ * DESCRIPTION:	exit the DGD thread
+ */
+void dgd_abort()
+{
+    dgd_running = FALSE;
+    _endthread();
+}
+
 }
 
 /*

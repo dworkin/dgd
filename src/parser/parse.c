@@ -672,7 +672,9 @@ pnode *next;
 		 * call LPC function to process subtree
 		 */
 		a = arr_new(ps->data, (long) len);
-		ps_flatten(pn, next, a->elts + len);
+		if (len != 0) {
+		    ps_flatten(pn, next, a->elts + len);
+		}
 		(--ps->frame->sp)->type = T_ARRAY;
 		arr_ref(ps->frame->sp->u.array = a);
 		ps->data->parser = (parser *) NULL;
@@ -753,8 +755,10 @@ pnode *next;
 			    arr_ref(v->u.array = arr_new(ps->data,
 							 (long) sub->len));
 			    v->type = T_ARRAY;
-			    ps_flatten(sub, next,
-				       (v++)->u.array->elts + sub->len);
+			    if (sub->len != 0) {
+				ps_flatten(sub, next,
+					   (v++)->u.array->elts + sub->len);
+			    }
 			}
 			i++;
 		    }
