@@ -42,7 +42,7 @@ static config conf[] = {
 							0, USHRT_MAX },
 # define CACHE_SIZE	3
 				{ "cache_size",		INT_CONST, FALSE,
-							1, UINDEX_MAX },
+							2, UINDEX_MAX },
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE,
 							0, UINDEX_MAX },
@@ -166,15 +166,10 @@ static void conf_dumpinit()
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
     header[DUMP_DRIVER] = 0;			/* vanilla DGD */
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
     header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
 
     starttime = boottime = P_time();
-    header[DUMP_BOOTTIME + 0] = boottime >> 24;
-    header[DUMP_BOOTTIME + 1] = boottime >> 16;
-    header[DUMP_BOOTTIME + 2] = boottime >> 8;
-    header[DUMP_BOOTTIME + 3] = boottime;
 
     s = 0x1234;
     i = 0x12345678L;
@@ -207,6 +202,10 @@ void conf_dump()
     Uint etime;
 
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    header[DUMP_BOOTTIME + 0] = boottime >> 24;
+    header[DUMP_BOOTTIME + 1] = boottime >> 16;
+    header[DUMP_BOOTTIME + 2] = boottime >> 8;
+    header[DUMP_BOOTTIME + 3] = boottime;
     etime = elapsed + P_time() - starttime;
     header[DUMP_ELAPSED + 0] = etime >> 24;
     header[DUMP_ELAPSED + 1] = etime >> 16;

@@ -1053,3 +1053,7 @@ DGD 1.1
  - Patterns in get_dir() accidentally matched almost anything.
  - Several mapping problems fixed.
  - Added kfun previous_program().
+ - The start time was not restored properly.
+ - Made callouts more accurate when time() is used for timing, at the cost of
+   an extra system call for each new callout.
+ - Fixed a bug in restoring a sector map that didn't fit in one sector.

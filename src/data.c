@@ -2923,6 +2923,7 @@ register object *obj;
     register control *ctrl;
     register Uint size;
     register sector *s;
+    register unsigned int n;
 
     ctrl = d_new_control();
     ctrl->obj = obj;
@@ -2949,14 +2950,15 @@ register object *obj;
     /* sectors */
     s = ALLOCA(sector, header.nsectors);
     s[0] = obj->cfirst;
-    size += d_conv((char *) s, s, "d", (Uint) header.nsectors, size);
+    for (n = 0; n < header.nsectors; n++) {
+	size += d_conv((char *) (s + n), s, "d", (Uint) 1, size);
+    }
 
     if (header.vmapsize != 0) {
 	/* only vmap */
 	ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
 	d_conv((char *) ctrl->vmap, s, "s", (Uint) header.vmapsize, size);
     } else {
-	register int n;
 	register dinherit *inherits;
 	register sinherit *sinherits;
 
@@ -3061,6 +3063,7 @@ Uint *counttab;
     register dataspace *data;
     register Uint size;
     register sector *s;
+    register unsigned int n;
     object *master;
 
     data = d_alloc_dataspace(obj);
@@ -3081,7 +3084,9 @@ Uint *counttab;
     /* sectors */
     s = ALLOCA(sector, header.nsectors);
     s[0] = obj->dfirst;
-    size += d_conv((char *) s, s, "d", (Uint) header.nsectors, size);
+    for (n = 0; n < header.nsectors; n++) {
+	size += d_conv((char *) (s + n), s, "d", (Uint) 1, size);
+    }
 
     /* variables */
     data->svariables = ALLOC(svalue, header.nvariables);
@@ -3118,7 +3123,6 @@ Uint *counttab;
 	scallout *scallouts;
 	register scallout *sco;
 	register dcallout *co;
-	register uindex n;
 
 	/* callouts */
 	co = data->callouts = ALLOC(dcallout, header.ncallouts);

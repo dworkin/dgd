@@ -27,6 +27,9 @@ int kf_compile_object()
     file = path_resolve(sp->u.string->text);
     obj = o_find(file);
     if (obj != (object *) NULL) {
+	if (!(obj->flags & O_MASTER)) {
+	    error("Cannot recompile cloned object");
+	}
 	if (O_UPGRADING(obj)) {
 	    error("Object is already being upgraded");
 	}

@@ -220,12 +220,16 @@ int nargs;
 	return 0;
     }
 
-    if (delay <= 0) {
-	delay = 1;
+    if (delay < 0) {
+	delay = 0;
     }
-    t = timeout + delay;
-    if (t < timeout) {
+    t = P_time();
+    if (t + delay < t) {
 	error("Too long delay");
+    }
+    t += delay;
+    if (t <= timeout) {
+	t = timeout + 1;
     }
 
     if (t < timestamp + CYCBUF_SIZE) {
