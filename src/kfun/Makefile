@@ -1,14 +1,14 @@
 #
 # Makefile for kernel functions, part of DGD.
 #
-DEFINES=-DMINIX_68K
-DEBUG=
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+DEFINES=-DSUN
+DEBUG=	-g
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=
 LIBS=
-CC=	cc
-LD=	cc
+CC=	gcc
+LD=	$(CC)
 MAKE=	make
 YACC=	yacc
 

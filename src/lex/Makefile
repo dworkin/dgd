@@ -1,14 +1,14 @@
 #
 # Makefile for lexical scanner, part of DGD.
 #
-DEFINES=-DMINIX_68K
-DEBUG=
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+DEFINES=-DSUN
+DEBUG=	-g
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=
 LIBS=
-CC=	cc
-LD=	cc
+CC=	gcc
+LD=	$(CC)
 MAKE=	make
 
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
@@ -31,6 +31,7 @@ clean:
 	cd ../comp; $(MAKE) parser.h
 
 $(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h ../comp/parser.h
+ppcontrol.o: ../version.h
 macro.o special.o token.o ppcontrol.o: ../hash.h
 token.o: ../path.h
 

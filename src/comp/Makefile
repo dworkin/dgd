@@ -1,14 +1,14 @@
 #
 # Makefile for LPC compiler, part of DGD.
 #
-DEFINES=-DMINIX_68K
-DEBUG=
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+DEFINES=-DSUN
+DEBUG=	-g
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
-LDFLAGS=-m200000
+LDFLAGS=
 LIBS=
-CC=	cc
-LD=	cc
+CC=	gcc
+LD=	$(CC)
 MAKE=	make
 YACC=	yacc
 
@@ -16,7 +16,7 @@ OBJ=	node.o parser.o control.o compile.o
 
 a.out:	$(OBJ) codegeni.o comp.o
 	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../lex; $(MAKE) -t 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	$(LD) $(LDFLAGS) $(OBJ) codegeni.o comp.o `cat ../comp.sub` \
 	`cat ../lex/comp` `cat ../kfun/comp` $(LIBS)

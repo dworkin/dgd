@@ -1,14 +1,14 @@
 #
 # Makefile for editor, part of DGD.
 #
-DEFINES=-DMINIX_68K
-DEBUG=
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+DEFINES=-DSUN
+DEBUG=	-g
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LDFLAGS=
 LIBS=
-CC=	cc
-LD=	cc
+CC=	gcc
+LD=	$(CC)
 MAKE=	make
 
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
