@@ -211,10 +211,8 @@ kf_destruct_object()
     if (obj->flags & O_EDITOR) {
 	ed_del(obj);
     }
+    i_odest(obj);	/* wipe out occurrances on the stack */
     o_del(obj);
-    i_odest(obj);		/* wipe out occurrances on the stack */
-    sp->type = T_NUMBER;
-    sp->u.number = 0;
     return 0;
 }
 # endif
@@ -326,7 +324,7 @@ int kf_this_user()
 {
     object *obj;
 
-    obj = this_user();
+    obj = comm_user();
     if (obj != (object *) NULL) {
 	(--sp)->type = T_OBJECT;
 	sp->oindex = obj->index;
@@ -721,6 +719,24 @@ int kf_time()
 
 
 # ifdef FUNCDEF
+FUNCDEF("get_exec_cost", kf_get_exec_cost, p_get_exec_cost)
+# else
+char p_get_exec_cost[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
+
+/*
+ * NAME:	kfun->get_exec_cost()
+ * DESCRIPTION:	return the allowed execution cost
+ */
+int kf_get_exec_cost()
+{
+    (--sp)->type = T_NUMBER;
+    sp->u.number = exec_cost;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, p_call_out)
 # else
 char p_call_out[] = { C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 32,
@@ -752,11 +768,11 @@ int nargs;
 
     obj = i_this_object();
     if (obj->count != 0 &&
-	co_new(obj, sp[nargs - 1].u.string, (long) sp[nargs - 2].u.number, sp,
+	co_new(obj, sp[nargs - 1].u.string, (long) sp[nargs - 2].u.number,
 	       nargs - 2)) {
-	sp += nargs - 1;
+	sp++;			/* pop duration */
     } else {
-	i_pop(nargs - 1);
+	i_pop(nargs - 1);	/* pop arguments manually */
     }
     str_del(sp->u.string);
     sp->type = T_NUMBER;
@@ -802,10 +818,55 @@ char p_shutdown[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
  */
 int kf_shutdown()
 {
-    comm_flush();
+    comm_flush(TRUE);
     host_finish();
     warning("Shutdown.");
     exit(0);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("swapout", kf_swapout, p_swapout)
+# else
+char p_swapout[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
+
+/*
+ * NAME:	kfun->swapout()
+ * DESCRIPTION:	swap out all objects
+ */
+int kf_swapout()
+{
+    swapout();
+    (--sp)->type = T_NUMBER;
+    sp->u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("status", kf_status, p_status)
+# else
+char p_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL,
+		    T_NUMBER | (1 << REFSHIFT), 1, T_OBJECT };
+
+/*
+ * NAME:	kfun->status()
+ * DESCRIPTION:	return an array with status information about the gamedriver
+ *		or an object
+ */
+int kf_status(nargs)
+int nargs;
+{
+    if (nargs == 0) {
+	(--sp)->u.array = conf_status();
+    } else {
+	sp->u.array = conf_object(o_object(sp->oindex, sp->u.objcnt));
+    }
+    sp->type = T_ARRAY;
+    arr_ref(sp->u.array);
     return 0;
 }
 # endif

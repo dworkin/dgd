@@ -57,7 +57,7 @@ Language:
  - Function prototypes are always inherited together with the function.
  - Function calls are typechecked if the called function is typechecked.  It
    is illegal to call a non-varargs function with the wrong number of
-   arguments from a typechecked function, even if the inherited function is
+   arguments from a typechecked function, even if the called function is
    not typechecked itself.
  - Kfuns are not treated differently from other inherited functions, so
    destruct(this_object(), this_object()); will not cause a compile-time
@@ -369,3 +369,73 @@ DGD 1.0.a4
  - Added LPC->C code generator.
  - Cleaned up Makefiles and including files a little bit (still far from
    perfect).
+
+DGD 1.0.a5
+
+ - Removed some redundant code from restore_string().
+ - this_user() was not always 0 in call_outs.
+ - call_other() to a function with the wrong number of arguments does not cause
+   an error, even if the function is typechecked.  This was already so for
+   version 1.0.a3, but slipped from the log.
+ - Fixed some typecasting errors in str_range() and arr_range().
+ - Instances of an object on the stack were not properly wiped out when the
+   object was destructed.
+ - Fixed a bug in the C code generator, which didn't remove errorcontexts
+   properly.
+ - catch() within lock() no longer turns off the lock.  If used by the driver
+   object, code within catch() will run with the execution cost reset.
+   initialize() in the driver object will no longer be called with a lock.
+ - Fixed a bug in remove_call_out, which could instead remove a similar
+   call_out in an object that was already destructed.
+ - It is now possible to redefine an inherited typechecked function as
+   untypechecked.
+ - Fixed a bad bug which caused the wrong inherited object to be used as the
+   program in a function call.
+ - map_sort() will now remove index/value pairs with the value set to 0.
+ - Check exec cost if a creator function is about to be called.  This prevents
+   half-initialized objects due to exec cost problems.
+ - Fixed a bug in the < <= > >= operators on strings.
+ - Max exec cost in call_outs is now 1/2 instead of 1/4.
+ - Fixed a bad memory leak in array.c .
+ - Exchanged the place in the array returned by get_dir() of the file sizes
+   and the file mod times; it is now ({ names, sizes, times }).  It used to be
+   different for compatibility with MudOS, but their doc turned out to be
+   faulty. :)
+ - Changed comm.c to handle INTR and DEL in telnet.
+ - Fixed a bug in restore_object(), which would get stuck in an infinite loop
+   when restoring an object without saveable variables.
+ - Swapping enabled.
+ - Fixed a bug that caused a bad program index in a function call to be
+   generated.
+ - Fixed a problem having to do with a full input buffer in comm.c .
+ - Fixed a bug in save_object and restore_object, where the offset of variables
+   in inherited objects was not properly calculated.
+ - Fixed a memory leak in the generation of prototypes by calling undefined
+   functions (only in untypechecked objects).
+ - String hash table sizes are now powers of two.  They used to be primes,
+   which is fairly pointless in this implementation.
+ - Devided allocated memory into 'static' and 'dynamic' memory.  Static memory
+   is used for things which need to be kept when everything is swapped out,
+   and dynamic memory is used for the rest.
+ - Fixed a bug with escape sequences in the preprocessor, and a related bug in
+   the parser.
+ - this_user() is now set during the call to open() in the user object.
+ - Fixed bugs in the C code generated for catch() and ?:.
+ - Inheritance with a label no longer specifies that a different type of
+   inheritance is required (!).  Functions may now be inherited more than once,
+   as long as the inheriting object redefines them.  A label can still be used
+   to specify which inherited instance of a function is to be called.
+ - Negative indexing has been removed.  Sorry, but I added them without
+   considering the arr[0 .. x-1], with x = 0 problem.  (If only indices
+   started at 1 instead of 0...)
+ - Fixed a memory leak in mappings with destructed objects for indices/values.
+ - Fixed a bug with destructed objects as arguments to call_outs.
+ - Fixed a cleanup problem in case an object could not be compiled.
+ - New kfuns:
+    * get_exec_cost()
+	Return the allowed execution cost that is remaining.
+    * varargs int *status(object)
+	Return status information.  The 'fields' of the returned array are
+	described in the automatically generated include file "status.h".
+    * void swapout()
+	Swap out all objects.
