@@ -187,6 +187,7 @@ static initialize()
 
     rsrcd->rsrc_incr("System", "objects", 0, 8);
 
+    rsrcd->add_owner(0);	/* Backbone */
     rsrcd->add_owner("admin");
     rsrcd->add_owner("dworkin");	/* XXX */
 }
@@ -217,11 +218,13 @@ static string path_read(string path)
 {
     string oname, creator;
 
-    creator = creator(oname = object_name(previous_object()));
-    path = normalize_path(path, oname, creator);
-    return (previous_object()->path_read(path) &&
-	    (creator == "System" ||
-	     accessd->access(oname, path, READ_ACCESS)) ? path : 0);
+    path = previous_object()->path_read(path);
+    if (path) {
+	creator = creator(oname = object_name(previous_object()));
+	path = normalize_path(path, oname, creator);
+	return ((creator == "System" ||
+		 accessd->access(oname, path, READ_ACCESS)) ? path : 0);
+    }
 }
 
 /*
@@ -232,16 +235,19 @@ static string path_write(string path)
 {
     string oname, creator;
 
-    creator = creator(oname = object_name(previous_object()));
-    path = normalize_path(path, oname, creator);
-    if (sscanf(path, "/kernel/%*s") == 0 &&
-	previous_object()->path_write(path) &&
-	(creator == "System" || accessd->access(oname, path, WRITE_ACCESS))) {
-	file = path;
-	size = file_size(path);
-	return path;
+    path = previous_object()->path_write(path);
+    if (path) {
+	creator = creator(oname = object_name(previous_object()));
+	path = normalize_path(path, oname, creator);
+	if (sscanf(path, "/kernel/%*s") == 0 &&
+	    sscanf(path, "/include/kernel/%*s") == 0 &&
+	    (creator == "System" || accessd->access(oname, path, WRITE_ACCESS)))
+	{
+	    file = path;
+	    size = file_size(path);
+	    return path;
+	}
     }
-    return 0;
 }
 
 /*

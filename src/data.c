@@ -2585,7 +2585,7 @@ register dataspace *data;
 	    }
 	    n = nvar;
 	    vmap -= n;
-	    m1 = m2 - n;
+	    m1 = vmap;
 	} while (old->update != update);
     }
 

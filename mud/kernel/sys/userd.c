@@ -126,9 +126,9 @@ set_name(string name, object conn)
     }
 }
 
-object *query_users()		{ return telnet_users + binary_users; }
-object *query_telnet_users()	{ return telnet_users[..]; }
-object *query_binary_users()	{ return binary_users[..]; }
+object *query_users()  { if (SYSTEM()) { return telnet_users + binary_users; } }
+object *query_telnet_users()	{ if (SYSTEM()) { return telnet_users[..]; } }
+object *query_binary_users()	{ if (SYSTEM()) { return binary_users[..]; } }
 
 /*
  * NAME:	query_user()

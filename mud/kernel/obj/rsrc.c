@@ -9,10 +9,12 @@ string owner;		/* owner of these resources */
  * NAME:	create()
  * DESCRIPTION:	initialize resource mapping
  */
-static create()
+static create(int clone)
 {
-    resources = ([ ]);		/* no resources yet */
-    rsrcd = find_object(RSRCD);
+    if (clone) {
+	resources = ([ ]);		/* no resources yet */
+	rsrcd = find_object(RSRCD);
+    }
 }
 
 /*

@@ -1,19 +1,25 @@
-inherit "/kernel/lib/wiztool";
+# include <kernel/kernel.h>
+# include <kernel/user.h>
+
+inherit LIB_WIZTOOL;
+
 
 private object user;		/* associated user object */
 
 /*
- * NAME:	init()
+ * NAME:	create()
  * DESCRIPTION:	initialize object
  */
-init()
+static create(int clone)
 {
-    if (!user) {
-	subscribe_event(user = previous_object(), "input");
+    if (clone) {
+	::create(200);
+	subscribe_event(user = this_user(), "input");
     }
 }
 
 object query_user() { return user; }
+
 
 /*
  * NAME:	evt_input()
@@ -23,6 +29,14 @@ static evt_input(string str)
 {
     string arg;
 
+    if (query_editor(this_object())) {
+	str = editor(str);
+	if (str) {
+	    user->message(str);
+	}
+	return;
+    }
+
     if (str == "") {
 	return;	/* fix later */
     }
@@ -31,6 +45,7 @@ static evt_input(string str)
 
     switch (str) {
     case "code":
+    case "history":
     case "clear":
     case "compile":
     case "clone":
@@ -45,6 +60,9 @@ static evt_input(string str)
     case "mkdir":
     case "rmdir":
     case "ed":
+
+    case "access":
+    case "grant":
 	call_other(this_object(), "cmd_" + str, user, str, arg);
 	break;
 

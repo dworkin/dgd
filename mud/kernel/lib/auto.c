@@ -82,15 +82,17 @@ nomask _F_rsrc_incr(string rsrc, int incr)
 nomask _F_create()
 {
     if (!creator) {
-	rlimits (-1; -1) {
-	    string oname;
+	string oname;
+	int clone;
 
+	rlimits (-1; -1) {
 	    /*
 	     * set creator and owner
 	     */
 	    oname = object_name(this_object());
 	    creator = ::find_object(DRIVER)->creator(oname);
-	    if (sscanf(oname, "%s#", oname) != 0) {
+	    clone = sscanf(oname, "%s#", oname);
+	    if (clone) {
 		owner = previous_object()->query_owner();
 	    } else {
 		owner = creator;
@@ -104,7 +106,7 @@ nomask _F_create()
 	    }
 	}
 	/* call higher-level creator function */
-	this_object()->create();
+	this_object()->create(clone);
     }
 }
 
@@ -195,9 +197,9 @@ static object find_object(string path)
 
 /*
  * NAME:	destruct_object()
- * DESCRIPTION:	destruct an object, if you can
+ * DESCRIPTION:	destruct an object
  */
-static destruct_object(mixed obj)
+static int destruct_object(mixed obj)
 {
     object driver;
     string oname;
@@ -212,6 +214,9 @@ static destruct_object(mixed obj)
 						   object_name(this_object()) +
 						   "/..",
 						   creator));
+	if (!obj) {
+	    return 0;
+	}
     }
     CHECKARG(typeof(obj) == T_OBJECT, 1, "destruct_object");
 
@@ -239,6 +244,7 @@ static destruct_object(mixed obj)
 	}
 	::destruct_object(obj);
     }
+    return 1;
 }
 
 /*
@@ -474,7 +480,7 @@ varargs mixed *status(mixed obj)
  */
 static object this_user()
 {
-    return (this_user()) ? this_user()->query_user() : 0;
+    return (::this_user()) ? ::this_user()->query_user() : 0;
 }
 
 /*
@@ -816,7 +822,8 @@ static varargs int write_file(string path, string str, int offset)
     sscanf(oname = object_name(this_object()), "%s#", oname);
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
-    if (sscanf(path, "/kernel/%*s", path) != 0 ||
+    if (sscanf(path, "/kernel/%*s") != 0 ||
+	sscanf(path, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
@@ -859,6 +866,7 @@ static int remove_file(string path)
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
     if (sscanf(path, "/kernel/%*s") != 0 ||
+	sscanf(path, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
@@ -896,7 +904,9 @@ static int rename_file(string from, string to)
     from = driver->normalize_path(from, oname + "/..", creator);
     to = driver->normalize_path(to, oname + "/..", creator);
     accessd = ::find_object(ACCESSD);
-    if (sscanf(from, "/kernel/%*s") != 0 || sscanf(to, "/kernel/%*s") != 0 ||
+    if (sscanf(from, "/kernel%*s") != 0 || sscanf(to, "/kernel/%*s") != 0 ||
+	sscanf(from, "/include/kernel%*s") != 0 || from == "/include" ||
+	sscanf(to, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 (!accessd->access(oname, from, WRITE_ACCESS) ||
 	  !accessd->access(oname, to, WRITE_ACCESS)))) {
@@ -992,6 +1002,7 @@ static int make_dir(string path)
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
     if (sscanf(path, "/kernel/%*s") != 0 ||
+	sscanf(path, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
@@ -1034,6 +1045,7 @@ static int remove_dir(string path)
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
     if (sscanf(path, "/kernel/%*s") != 0 ||
+	sscanf(path, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
@@ -1090,6 +1102,7 @@ static save_object(string path)
     path = driver->normalize_path(path, oname + "/..", creator);
     if ((sscanf(path, "/kernel/%*s") != 0 &&
 	 sscanf(path, "/kernel/data/%*s") == 0) ||
+	sscanf(path, "/include/kernel/%*s") != 0 ||
 	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
@@ -1120,14 +1133,13 @@ static save_object(string path)
  * NAME:	editor()
  * DESCRIPTION:	pass a command to the editor
  */
-static string editor(string cmd)
+static varargs string editor(string cmd)
 {
     object rsrcd, driver;
     string result;
     mixed *info;
 
     CHECKOBJ("editor");
-    CHECKARG(cmd, 1, "editor");
 
     catch {
 	rlimits (-1; -1) {
@@ -1138,7 +1150,7 @@ static string editor(string cmd)
 		error("Too many editors");
 	    }
 
-	    result = ::editor(cmd);
+	    result = (cmd) ? ::editor(cmd) : ::editor();
 
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);

@@ -16,9 +16,11 @@ string password;		/* user password */
 private object wiztool;		/* command handler */
 
 
-static create()
+static create(int clone)
 {
-    add_event("input");
+    if (clone) {
+	add_event("input");
+    }
 }
 
 int login(string str)
@@ -33,7 +35,6 @@ int login(string str)
 	    connect(previous_object());
 	    previous_object()->set_name(name);
 	    wiztool = clone_object(DEFAULT_WIZTOOL, name);
-	    wiztool->init();
 	    message("Pick a new password:");
 	    state = STATE_NEWPASSWD1;
 	}
@@ -46,17 +47,19 @@ int receive_message(string str)
     if (KERNEL()) {
 	switch (state) {
 	case STATE_NORMAL:
-	    /* check standard commands */
-	    switch (str) {
-	    case "password":
-		message("Old password:\n");
-		state = STATE_OLDPASSWD;
-		return MODE_NOECHO;
+	    if (!query_editor(wiztool)) {
+		/* check standard commands */
+		switch (str) {
+		case "password":
+		    message("Old password:\n");
+		    state = STATE_OLDPASSWD;
+		    return MODE_NOECHO;
 
-	    case "quit":
-		disconnect();
-		destruct_object(this_object());
-		return 0;
+		case "quit":
+		    disconnect();
+		    destruct_object(this_object());
+		    return 0;
+		}
 	    }
 
 	    /* try wiztool */
@@ -73,7 +76,6 @@ int receive_message(string str)
 		connect(previous_object());
 		previous_object()->set_name(name);
 		wiztool = clone_object(DEFAULT_WIZTOOL, name);
-		wiztool->init();
 	    }
 	    break;
 
@@ -104,14 +106,19 @@ int receive_message(string str)
 	}
 
 	state = STATE_NORMAL;
-	message((name == "admin") ? "# " : "> ");
+	str = query_editor(wiztool);
+	if (str) {
+	    message((str == "insert") ? "*\b" : ":");
+	} else {
+	    message((name == "admin") ? "# " : "> ");
+	}
 	return MODE_ECHO;
     }
 }
 
 string query_name() { return name; }
 
-int allow_subscribe_event(object obj, string name)
+int allow_subscribe_event(object obj, string event)
 {
-    return (obj == wiztool && name == "input");
+    return (event == "input" && obj->query_owner() == name);
 }

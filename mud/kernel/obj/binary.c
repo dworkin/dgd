@@ -10,11 +10,13 @@ string buffer;		/* buffered input */
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create()
+static create(int clone)
 {
-    ::create("binary");
-    linemode = 1;
-    buffer = "";
+    if (clone) {
+	::create("binary");
+	linemode = 1;
+	buffer = "";
+    }
 }
 
 /*

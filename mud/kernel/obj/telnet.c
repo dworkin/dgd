@@ -9,10 +9,12 @@ int mode;		/* input mode */
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create()
+static create(int clone)
 {
-    ::create("telnet");
-    mode = MODE_ECHO;
+    if (clone) {
+	::create("telnet");
+	mode = MODE_ECHO;
+    }
 }
 
 /*

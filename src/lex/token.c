@@ -172,9 +172,17 @@ char *file;
     if (file != (char *) NULL) {
 	fd = open(file, O_RDONLY | O_BINARY, 0);
 	if (fd >= 0) {
+	    struct stat sbuf;
 	    char *buffer;
 	    register unsigned int len;
 
+	    fstat(fd, &sbuf);
+	    if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
+		/* no source this */
+		close(fd);
+		return FALSE;
+	    }
+					     
 	    buffer = ALLOC(char, BUF_SIZE);
 	    buffer[0] = '\0';
 	    push((macro *) NULL, buffer, TRUE);

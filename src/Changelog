@@ -1111,3 +1111,5 @@ DGD 1.1
    a call from an untypechecked function.
  - Added mapping subranges.
  - Made dealing with destructed objects in arrays and mappings faster.
+ - Prevent the compiler from attempting to compile foo.c directories.
+ - Fixed a bug in multi-phase upgrading of an old clone.
