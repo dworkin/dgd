@@ -2,9 +2,10 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "fcontrol.h"
+# include "csupport.h"
 # include "table.h"
 
 # define CHECKSP(n) if (sp <= ilvp + (n) + 1) error("Stack overflow")
@@ -33,8 +34,8 @@ static frame *iframe;		/* stack frames */
 static frame *cframe;		/* current frame */
 static frame *maxframe;		/* max frame */
 static frame *maxmaxframe;	/* max locked frame */
-static long ticksleft;		/* interpreter ticks left */
-static long maxticks;		/* max ticks allowed */
+static long max_cost;		/* max exec cost allowed */
+long exec_cost;			/* interpreter ticks left */
 static unsigned short catch;	/* current catch level */
 static unsigned short lock;	/* current lock level */
 static string *lvstr;		/* the last indexed string */
@@ -127,7 +128,6 @@ int size;
 void i_push_value(v)
 register value *v;
 {
-    CHECKSP(1);
     *--sp = *v;
     switch (v->type) {
     case T_STRING:
@@ -217,16 +217,101 @@ object *obj;
 }
 
 /*
+ * NAME:	interpret->string()
+ * DESCRIPTION:	push a string constant on the stack
+ */
+void i_string(inherit, index)
+char inherit;
+unsigned short index;
+{
+    (--sp)->type = T_STRING;
+    str_ref(sp->u.string = d_get_strconst(cframe->p_ctrl, inherit, index));
+}
+
+/*
+ * NAME:	interpret->global()
+ * DESCRIPTION:	push a global value on the stack
+ */
+void i_global(inherit, index)
+register int inherit, index;
+{
+    if (inherit != 0) {
+	inherit = cframe->voffset +
+		  cframe->v_ctrl->inherits[cframe->p_index + inherit].varoffset;
+    }
+    i_push_value(d_get_variable(cframe->data, inherit + index));
+    exec_cost -= 3;
+}
+
+/*
+ * NAME:	interpret->global_lvalue()
+ * DESCRIPTION:	push a global lvalue on the stack
+ */
+void i_global_lvalue(inherit, index)
+register int inherit, index;
+{
+    if (inherit != 0) {
+	inherit = cframe->voffset +
+		  cframe->v_ctrl->inherits[cframe->p_index + inherit].varoffset;
+    }
+    (--sp)->type = T_LVALUE;
+    sp->u.lval = d_get_variable(cframe->data, inherit + index);
+    exec_cost -= 3;
+}
+
+/*
+ * NAME:	interpret->aggregate()
+ * DESCRIPTION:	create an array on the stack
+ */
+void i_aggregate(size)
+register unsigned short size;
+{
+    register array *a;
+
+    if (size == 0) {
+	a = arr_new(0L);
+    } else {
+	a = arr_new((long) size);
+	memcpy(a->elts, sp, size * sizeof(value));
+	sp += size;
+    }
+    (--sp)->type = T_ARRAY;
+    arr_ref(sp->u.array = a);
+}
+
+/*
+ * NAME:	interpret->map_aggregate()
+ * DESCRIPTION:	create a mapping on the stack
+ */
+void i_map_aggregate(size)
+register unsigned short size;
+{
+    register array *a;
+
+    if (size == 0) {
+	a = map_new(0L);
+    } else {
+	a = map_new((long) size);
+	memcpy(a->elts, sp, size * sizeof(value));
+	sp += size;
+	map_sort(a);
+    }
+    (--sp)->type = T_MAPPING;
+    arr_ref(sp->u.array = a);
+}
+
+/*
  * NAME:	interpret->index()
  * DESCRIPTION:	index a value, REPLACING it by the indexed value
  */
-void i_index(aval, ival)
-register value *aval, *ival;
+void i_index()
 {
     register int i;
-    register value *val;
+    register value *aval, *ival, *val;
     array *a;
 
+    ival = sp++;
+    aval = sp;
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_NUMBER) {
@@ -249,6 +334,7 @@ register value *aval, *ival;
 
     case T_MAPPING:
 	val = map_index(aval->u.array, ival, (value *) NULL);
+	i_del_value(ival);
 	break;
 
     default:
@@ -280,13 +366,13 @@ register value *aval, *ival;
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(lval, ival)
-register value *lval, *ival;
+void i_index_lvalue()
 {
     register int i;
-    register value *val;
+    register value *lval, *ival, *val;
 
-    CHECKSP(1);	/* not actually required in all cases... */
+    ival = sp++;
+    lval = sp;
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
@@ -307,7 +393,6 @@ register value *lval, *ival;
 	ilvp->type = T_ARRAY;
 	(ilvp++)->u.array = lval->u.array;
 	*ilvp++ = *ival;
-	i_ref_value(ival);
 	lval->type = T_MLVALUE;
 	return;
 
@@ -344,7 +429,6 @@ register value *lval, *ival;
 	    ilvp->type = T_ARRAY;
 	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    *ilvp++ = *ival;
-	    i_ref_value(ival);
 	    lval->type = T_MLVALUE;
 	    return;
 	}
@@ -380,9 +464,7 @@ register value *lval, *ival;
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
 	    ilvp[-1].u.array = val->u.array;
 	    *ilvp++ = *ival;
-	    i_ref_value(ival);
 	    lval->type = T_MLVALUE;
-	    lval->u.number = i;
 	    return;
 	}
 	break;
@@ -418,8 +500,6 @@ register value *lval, *ival;
 	    ilvp[-2].u.array = val->u.array;
 	    i_del_value(&ilvp[-1]);
 	    ilvp[-1] = *ival;
-	    i_ref_value(ival);
-	    lval->u.number = i;
 	    return;
 	}
 	break;
@@ -428,22 +508,52 @@ register value *lval, *ival;
 }
 
 /*
+ * NAME:	interpret->fetch()
+ * DESCRIPTION:	fetch the value of an lvalue
+ */
+void i_fetch()
+{
+    switch (sp->type) {
+    case T_LVALUE:
+	i_push_value(sp->u.lval);
+	break;
+
+    case T_ALVALUE:
+	i_push_value(d_get_elts(ilvp[-1].u.array) + sp->u.number);
+	break;
+
+    case T_MLVALUE:
+	i_push_value(map_index(ilvp[-2].u.array, &ilvp[-1], (value *) NULL));
+	break;
+
+    default:
+	/*
+	 * Indexed string.
+	 * The fetch is always done directly after an lvalue
+	 * constructor, so lvstr is valid.
+	 */
+	(--sp)->type = T_NUMBER;
+	sp->u.number = UCHAR(lvstr->text[sp[1].u.number]);
+	break;
+    }
+}
+
+/*
  * NAME:	istr()
  * DESCRIPTION:	create a copy of the argument string, with one char replaced
  */
 static value *istr(str, i, val)
-string *str;
+register string *str;
 unsigned short i;
 register value *val;
 {
     static value ret = { T_STRING };
-    char c;
 
     if (val->type != T_NUMBER) {
 	error("Non-numeric value in indexed string assignment");
     }
 
-    ret.u.string = str_new(str->text, (long) str->len);
+    ret.u.string = (str->ref == 1) ? str : str_new(str->text, (long) str->len);
     ret.u.string->text[i] = val->u.number;
     return &ret;
 }
@@ -452,8 +562,7 @@ register value *val;
  * NAME:	interpret->store()
  * DESCRIPTION:	Perform an assignment. This invalidates the lvalue.
  */
-void i_store(data, lval, val)
-dataspace *data;
+void i_store(lval, val)
 register value *lval, *val;
 {
     register value *v;
@@ -462,7 +571,7 @@ register value *lval, *val;
 
     switch (lval->type) {
     case T_LVALUE:
-	d_assign_var(data, lval->u.lval, val);
+	d_assign_var(cframe->data, lval->u.lval, val);
 	break;
 
     case T_SLVALUE:
@@ -475,7 +584,7 @@ register value *lval, *val;
 	    error("Lvalue disappeared!");
 	}
 	--ilvp;
-	d_assign_var(data, v, istr(v->u.string, i, val));
+	d_assign_var(cframe->data, v, istr(v->u.string, i, val));
 	break;
 
     case T_ALVALUE:
@@ -531,17 +640,7 @@ register value *lval, *val;
 void i_set_cost(cost)
 long cost;
 {
-    maxticks = cost;
-}
-
-/*
- * NAME:	interpret->add_cost()
- * DESCRIPTION:	add some execution cost, used by costly kfuns
- */
-void i_add_cost(extra)
-int extra;
-{
-    ticksleft -= extra;
+    max_cost = cost;
 }
 
 /*
@@ -561,15 +660,6 @@ void i_lock()
 void i_unlock()
 {
     --lock;
-}
-
-/*
- * NAME:	interpret->locklvl()
- * DESCRIPTION:	return the current lock level
- */
-unsigned short i_locklvl()
-{
-    return lock;
 }
 
 /*
@@ -603,10 +693,20 @@ register int n;
 }
 
 /*
+ * NAME:	interpret->foffset()
+ * DESCRIPTION:	return a pointer to function call offset
+ */
+char *i_foffset(index)
+unsigned short index;
+{
+    return &cframe->v_ctrl->funcalls[2L * (cframe->foffset + index)];
+}
+
+/*
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-static void i_typecheck(name, ftype, proto, nargs, strict)
+void i_typecheck(name, ftype, proto, nargs, strict)
 char *name, *ftype;
 register char *proto;
 int nargs;
@@ -651,7 +751,7 @@ static void i_interpret P((char*));
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-static void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
+void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
 register object *obj;
 register int v_ctrli, p_ctrli, nargs;
 int funci;
@@ -672,7 +772,7 @@ int funci;
 	/*
 	 * top level call
 	 */
-	ticksleft = maxticks;
+	exec_cost = max_cost;
 	external = TRUE;
 
 	f->obj = obj;
@@ -758,22 +858,29 @@ int funci;
     }
     pc += PROTO_SIZE(pc);
 
+    /* check stack depth */
+    CHECKSP(FETCH2U(pc, n));
+
     /* initialize local variables */
     n = FETCH1U(pc);
     if (n > 0) {
-	CHECKSP(n);
 	nargs += n;
 	do {
 	    *--sp = zero_value;
 	} while (--n > 0);
     }
     f->fp = sp;
-    pc += 2;
 
-    /* interpret function code */
-    ticksleft -= 5;
+    exec_cost -= 5;
     cframe++;
-    i_interpret(pc);
+    if (f->func->class & C_COMPILED) {
+	/* compiled function */
+	(*pcfunctions[FETCH2U(pc, n)])();
+    } else {
+	/* interpreted function */
+	pc += 2;
+	i_interpret(pc);
+    }
     --cframe;
 
     /* clean up stack, move return value upwards */
@@ -1034,45 +1141,39 @@ register char *pc;
     f = cframe;
 
     for (;;) {
-	if (--ticksleft <= 0 && lock == 0) {
+	if (--exec_cost <= 0 && lock == 0) {
 	    error("Maximum execution cost exceeded (%ld)",
-		  maxticks - ticksleft);
+		  max_cost - exec_cost);
 	}
 	instr = FETCH1U(pc);
 	f->pc = pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
-	    CHECKSP(1);
 	    *--sp = zero_value;
 	    break;
 
 	case I_PUSH_ONE:
-	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = 1;
 	    break;
 
 	case I_PUSH_INT1:
-	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH1S(pc);
 	    break;
 
 	case I_PUSH_INT2:
-	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH2S(pc, u);
 	    break;
 
 	case I_PUSH_INT4:
-	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH4S(pc, l);
 	    break;
 
 	case I_PUSH_STRING:
-	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl,
 						  f->p_ctrl->nvirtuals - 1,
@@ -1080,14 +1181,12 @@ register char *pc;
 	    break;
 
 	case I_PUSH_NEAR_STRING:
-	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    u = FETCH1U(pc);
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_FAR_STRING:
-	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    u = FETCH1U(pc);
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u,
@@ -1104,11 +1203,10 @@ register char *pc;
 		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
-	    ticksleft -= 3;
+	    exec_cost -= 3;
 	    break;
 
 	case I_PUSH_LOCAL_LVALUE:
-	    CHECKSP(1);
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = f->fp + FETCH1U(pc);
 	    break;
@@ -1118,49 +1216,25 @@ register char *pc;
 	    if (u != 0) {
 		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
 	    }
-	    CHECKSP(1);
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
-	    ticksleft -= 3;
+	    exec_cost -= 3;
 	    break;
 
 	case I_INDEX:
-	    i_index(sp + 1, sp);
-	    i_del_value(sp++);
+	    i_index();
 	    break;
 
 	case I_INDEX_LVALUE:
-	    i_index_lvalue(sp + 1, sp);
-	    i_del_value(sp++);
+	    i_index_lvalue();
 	    break;
 
 	case I_AGGREGATE:
-	    FETCH2U(pc, u);
-	    if (u == 0) {
-		CHECKSP(1);
-		a = arr_new(0L);
-	    } else {
-		a = arr_new((long) u);
-		memcpy(a->elts, sp, u * sizeof(value));
-		sp += u;
-	    }
-	    (--sp)->type = T_ARRAY;
-	    arr_ref(sp->u.array = a);
+	    i_aggregate(FETCH2U(pc, u));
 	    break;
 
 	case I_MAP_AGGREGATE:
-	    FETCH2U(pc, u);
-	    if (u == 0) {
-		CHECKSP(1);
-		a = map_new(0L);
-	    } else {
-		a = map_new((long) u);
-		memcpy(a->elts, sp, u * sizeof(value));
-		sp += u;
-		map_sort(a);
-	    }
-	    (--sp)->type = T_MAPPING;
-	    arr_ref(sp->u.array = a);
+	    i_map_aggregate(FETCH2U(pc, u));
 	    break;
 
 	case I_CHECK_INT:
@@ -1170,36 +1244,11 @@ register char *pc;
 	    break;
 
 	case I_FETCH:
-	    switch (sp->type) {
-	    case T_LVALUE:
-		i_push_value(sp->u.lval);
-		break;
-
-	    case T_ALVALUE:
-		i_push_value(d_get_elts(ilvp[-1].u.array) + sp->u.number);
-		break;
-
-	    case T_MLVALUE:
-		i_push_value(map_index(ilvp[-2].u.array, &ilvp[-1],
-				       (value *) NULL));
-		break;
-
-	    default:
-		/*
-		 * Indexed string.
-		 * The fetch is always done directly after an lvalue
-		 * constructor, so lvstr is valid.
-		 */
-		CHECKSP(1);
-		(--sp)->type = T_NUMBER;
-		sp->u.number = UCHAR(lvstr->text[sp[1].u.number]);
-		break;
-	    }
+	    i_fetch();
 	    break;
 
 	case I_STORE:
-	    i_store(f->data, sp + 1, sp);
-	    /* overwrite lvalue with value */
+	    i_store(sp + 1, sp);
 	    sp[1] = sp[0];
 	    sp++;
 	    break;
@@ -1282,8 +1331,8 @@ register char *pc;
 	    u = lock;
 	    if (u != 0) {
 		/* temporarily turn off lock and reset exec cost */
-		l = maxticks - ticksleft;
-		ticksleft = maxticks;
+		l = max_cost - exec_cost;
+		exec_cost = max_cost;
 		lock = 0;
 	    }
 	    v = sp;
@@ -1292,8 +1341,8 @@ register char *pc;
 		ec_pop();
 		lock = u;
 		if (u != 0) {
-		    /* correct value of ticksleft */
-		    ticksleft -= l;
+		    /* correct value of exec_cost */
+		    exec_cost -= l;
 		}
 		--catch;
 		pc = f->pc;
@@ -1301,14 +1350,13 @@ register char *pc;
 		/* error */
 		lock = u;
 		if (u != 0) {
-		    /* correct value of ticksleft */
-		    ticksleft -= l;
+		    /* correct value of exec_cost */
+		    exec_cost -= l;
 		}
 		--catch;
 		cframe = f;
 		f->pc = pc = p;
 		i_pop(v - sp);
-		CHECKSP(1);
 		p = errormesg();
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
@@ -1398,7 +1446,7 @@ register frame *f;
 
     line = 0;
     pc = f->p_ctrl->prog + f->func->offset;
-    pc += PROTO_SIZE(pc) + 1;
+    pc += PROTO_SIZE(pc) + 3;
     FETCH2U(pc, u);
     numbers = pc + u;
 
@@ -1510,7 +1558,12 @@ FILE *fp;
 
     for (f = iframe; f <= cframe; f++) {
 	prog = f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj;
-	fprintf(fp, "%4u %-17s /%s", i_line(f),
+	if (f->func->class & C_COMPILED) {
+	    fprintf(fp, "    ");
+	} else {
+	    fprintf(fp, "%4u", i_line(f));
+	}
+	fprintf(fp, " %-17s /%s",
 		d_get_strconst(f->p_ctrl, f->func->inherit,
 			       f->func->index)->text,
 		prog->chain.name);
@@ -1554,7 +1607,7 @@ void i_log_error()
 	sp->u.string->text[0] = '/';
 	strcpy(sp->u.string->text + 1, pname);
 	(--sp)->type = T_NUMBER;
-	sp->u.number = line;
+	sp->u.number = (line == (unsigned short) -1) ? 0 : line;
 	call_driver_object("log_error", 4);
 	i_del_value(sp++);
     }
@@ -1572,7 +1625,11 @@ void i_clear()
 	control *p_ctrl;
 
 	/* keep error context */
-	line = i_line(cframe);
+	if (cframe->func->class & C_COMPILED) {
+	    line = -1;
+	} else {
+	    line = i_line(cframe);
+	}
 	oname = o_name(cframe->obj);
 	p_ctrl = cframe->p_ctrl;
 	pname = o_name(p_ctrl->inherits[p_ctrl->nvirtuals - 1].obj);
