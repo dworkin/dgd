@@ -1,0 +1,15 @@
+NAME
+	asn_or - logical or of two arbitrary size numbers
+
+SYNOPSIS
+	string asn_or(string a, string b)
+
+
+DESCRIPTION
+	Compute the bit-wise logical or of a and b.
+
+ERRORS
+	An error will result unless the arguments are of equal length.
+
+SEE ALSO
+	kfun/asn_and, kfun/asn_lshift, kfun/asn_rshift, kfun/asn_xor

@@ -1,0 +1,15 @@
+NAME
+	asn_and - logical and of two arbitrary size numbers
+
+SYNOPSIS
+	string asn_and(string a, string b)
+
+
+DESCRIPTION
+	Compute the bit-wise logical and of a and b.
+
+ERRORS
+	An error will result unless the arguments are of equal length.
+
+SEE ALSO
+	kfun/asn_lshift, kfun/asn_or, kfun/asn_rshift, kfun/asn_xor

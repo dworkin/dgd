@@ -1,0 +1,15 @@
+NAME
+	asn_rshift - right shift an arbitrary size number
+
+SYNOPSIS
+	string asn_rshift(string a, int shift)
+
+
+DESCRIPTION
+	Right shift a by the given amount.
+
+ERRORS
+	An error will result if shift is less than zero.
+
+SEE ALSO
+	kfun/asn_and, kfun/asn_lshift, kfun/asn_or, kfun/asn_xor

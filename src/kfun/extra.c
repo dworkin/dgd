@@ -14,12 +14,13 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_STRING, 2,
 
 /*
  * NAME:	kfun->crypt()
- * DESCRIPTION:	encrypt a string
+ * DESCRIPTION:	encrypt a password string
  */
 int kf_crypt(f, nargs)
 register frame *f;
 int nargs;
 {
+    extern char *P_crypt P((char*, char*));
     static char salts[] =
 	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     char salt[3], *p;
@@ -38,10 +39,114 @@ int nargs;
 	str_del((f->sp++)->u.string);
     }
 
-    i_add_ticks(f, 400);
+    i_add_ticks(f, 900);
     p = P_crypt(f->sp->u.string->text, salt);
     str_del(f->sp->u.string);
     PUT_STR(f->sp, str_new(p, (long) strlen(p)));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("encrypt", kf_encrypt, pt_encrypt)
+# else
+char pt_encrypt[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_STRING, 3,
+		      T_STRING, T_STRING | T_VARARGS, T_STRING };
+
+/*
+ * NAME:	kfun->encrypt()
+ * DESCRIPTION:	encrypt a string
+ */
+int kf_encrypt(f, nargs)
+register frame *f;
+register int nargs;
+{
+    extern string *P_encrypt_des_key P((frame*, string*));
+    extern string *P_encrypt_des P((frame*, string*, string*));
+    string *str;
+
+    str = (string *) NULL;
+    if (nargs == 2) {
+	if (f->sp[1].u.string->len == 7 &&
+	    strcmp(f->sp[1].u.string->text, "DES key") == 0) {
+	    /*
+	     * prepare key for encryption
+	     */
+	    str = P_encrypt_des_key(f, f->sp->u.string);
+	}
+    } else if (nargs == 3) {
+	if (f->sp[2].u.string->len == 3 &&
+	    strcmp(f->sp[2].u.string->text, "DES") == 0) {
+	    /*
+	     * encrypt
+	     */
+	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+	}
+    }
+
+    while (--nargs != 0) {
+	str_del((f->sp++)->u.string);
+    }
+    str_del(f->sp->u.string);
+    if (str != (string *) NULL) {
+	PUT_STR(f->sp, str);
+    } else {
+	*f->sp = nil_value;
+    }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("decrypt", kf_decrypt, pt_decrypt)
+# else
+char pt_decrypt[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_STRING, 2,
+		      T_STRING, T_STRING | T_VARARGS, T_STRING };
+
+/*
+ * NAME:	kfun->decrypt()
+ * DESCRIPTION:	decrypt a string
+ */
+int kf_decrypt(f, nargs)
+register frame *f;
+register int nargs;
+{
+    extern string *P_decrypt_des_key P((frame*, string*));
+    extern string *P_encrypt_des P((frame*, string*, string*));
+    string *str;
+
+    str = (string *) NULL;
+    if (nargs == 2) {
+	if (f->sp[1].u.string->len == 7 &&
+	    strcmp(f->sp[1].u.string->text, "DES key") == 0) {
+	    /*
+	     * prepare key for decryption
+	     */
+	    str = P_decrypt_des_key(f, f->sp->u.string);
+	}
+    } else if (nargs == 3) {
+	if (f->sp[2].u.string->len == 3 &&
+	    strcmp(f->sp[2].u.string->text, "DES") == 0) {
+	    /*
+	     * decrypt
+	     */
+	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+	}
+    }
+
+    while (--nargs != 0) {
+	str_del((f->sp++)->u.string);
+    }
+    str_del(f->sp->u.string);
+    if (str != (string *) NULL) {
+	PUT_STR(f->sp, str);
+    } else {
+	*f->sp = nil_value;
+    }
+
     return 0;
 }
 # endif
@@ -1223,7 +1328,7 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_add(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_add(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1249,7 +1354,7 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_sub(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_sub(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1274,7 +1379,7 @@ register frame *f;
 {
     int cmp;
 
-    cmp = asn_cmp(f->sp[1].u.string, f->sp[0].u.string);
+    cmp = asn_cmp(f, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, cmp);
@@ -1299,7 +1404,7 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_mult(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_mult(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1325,7 +1430,7 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_div(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_div(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1351,7 +1456,7 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_mod(f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_mod(f, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     PUT_STR(f->sp, str);
@@ -1376,8 +1481,134 @@ register frame *f;
 {
     register string *str;
 
-    str = asn_pow(f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
+    str = asn_pow(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift)
+# else
+char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, T_STRING, 3, T_STRING, T_INT,
+			 T_STRING };
+
+/*
+ * NAME:	kfun->asn_lshift()
+ * DESCRIPTION:	left shift an arbitrary precision number
+ */
+int kf_asn_lshift(f)
+register frame *f;
+{
+    string *str;
+
+    str = asn_lshift(f, f->sp[2].u.string, f->sp[1].u.number, f->sp->u.string);
+    str_del(f->sp->u.string);
+    f->sp += 2;
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_rshift", kf_asn_rshift, pt_asn_rshift)
+# else
+char pt_asn_rshift[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2, T_STRING,
+			 T_INT };
+
+/*
+ * NAME:	kfun->asn_rshift()
+ * DESCRIPTION:	right shift of arbitrary precision number
+ */
+int kf_asn_rshift(f)
+register frame *f;
+{
+    string *str;
+
+    str = asn_rshift(f, f->sp[1].u.string, f->sp->u.number);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_and", kf_asn_and, pt_asn_and)
+# else
+char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2, T_STRING,
+		      T_STRING };
+
+/*
+ * NAME:	kfun->asn_and()
+ * DESCRIPTION:	logical and of arbitrary precision numbers
+ */
+int kf_asn_and(f)
+register frame *f;
+{
+    string *str;
+
+    str = asn_and(f, f->sp[1].u.string, f->sp->u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_or", kf_asn_or, pt_asn_or)
+# else
+char pt_asn_or[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2, T_STRING,
+		     T_STRING };
+
+/*
+ * NAME:	kfun->asn_or()
+ * DESCRIPTION:	logical or of arbitrary precision numbers
+ */
+int kf_asn_or(f)
+register frame *f;
+{
+    string *str;
+
+    str = asn_or(f, f->sp[1].u.string, f->sp->u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_xor", kf_asn_xor, pt_asn_xor)
+# else
+char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2, T_STRING,
+		      T_STRING };
+
+/*
+ * NAME:	kfun->asn_xor()
+ * DESCRIPTION:	logical xor of arbitrary precision numbers
+ */
+int kf_asn_xor(f)
+register frame *f;
+{
+    string *str;
+
+    str = asn_xor(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     PUT_STR(f->sp, str);

@@ -8,7 +8,7 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc
 
-SRC=	local.cpp random.c dirent.c time.c connect.c xfloat.c asn.c
+SRC=	local.cpp random.c dirent.c time.c connect.c xfloat.c
 OBJ=	local.o random.o dirent.o time.o connect.o crypt.o xfloat.o asn.o
 SUBOBJ=	local.o random.o dirent.o time.o crypt.o xfloat.o asn.o
 

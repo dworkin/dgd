@@ -1531,3 +1531,6 @@ DGD 1.3
  - Fixed some bugs, and implemented asn_cmp().
  - Fixed more bugs, and implemented asn_pow().
  - Fixed an annoying bug in multiplication.
+ - Implemented asn_lshift(), asn_rshift(), asn_and(), asn_or() and asn_xor().
+ - Implemented tick accounting for ASN functions.
+ - Implemented encrypt() and decrypt().

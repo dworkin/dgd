@@ -696,12 +696,32 @@ bool minus;
     return str;
 }
 
+  
+/*
+ * NAME:	asn->ticks()
+ * DESCRIPTION:	count ticks for operation, return TRUE if out of ticks
+ */
+static bool asn_ticks(f, ticks)
+register frame *f;
+Uint ticks;
+{
+    i_add_ticks(f, ticks);
+    if (f->rlim->ticks < 0) {
+	if (f->rlim->noticks) {
+	    f->rlim->ticks = 0x7fffffffL;
+	} else {
+	    return TRUE;
+	}
+    }
+    return FALSE;
+}
 
 /*
  * NAME:	asn->add()
  * DESCRIPTION:	add two ASIs
  */
-string *asn_add(s1, s2, s3)
+string *asn_add(f, s1, s2, s3)
+frame *f;
 string *s1, *s2, *s3;
 {
     register Uint *a, *b, *c;
@@ -720,6 +740,7 @@ string *s1, *s2, *s3;
     asi_strtonum(a, s1, &sizea, &minusa);
     b = ALLOCA(Uint, (s2->len >> 2) + 4);
     asi_strtonum(b, s2, &sizeb, &minusb);
+    i_add_ticks(f, 4 + ((sizea + sizeb + sizemod) >> 1));
 
     if (minusa != minusb) {
 	if (sizea > sizeb ||
@@ -755,6 +776,12 @@ string *s1, *s2, *s3;
 	if (asi_cmp(c, mod, sizec, sizemod) >= 0) {
 	    Uint *t;
 
+	    if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
+		AFREE(b);
+		AFREE(a);
+		AFREE(mod);
+		error("Out of ticks");
+	    }
 	    t = ALLOCA(Uint, (sizemod << 1) + 1);
 	    asi_div(c, t, c, mod, sizec, sizemod);
 	    sizec = sizemod;
@@ -772,7 +799,8 @@ string *s1, *s2, *s3;
  * NAME:	asn->sub()
  * DESCRIPTION:	subtract one ASI from another
  */
-string *asn_sub(s1, s2, s3)
+string *asn_sub(f, s1, s2, s3)
+frame *f;
 string *s1, *s2, *s3;
 {
     register Uint *a, *b, *c;
@@ -791,6 +819,7 @@ string *s1, *s2, *s3;
     asi_strtonum(a, s1, &sizea, &minusa);
     b = ALLOCA(Uint, (s2->len >> 2) + 4);
     asi_strtonum(b, s2, &sizeb, &minusb);
+    i_add_ticks(f, 4 + ((sizea + sizeb + sizemod) >> 1));
 
     if (minusa == minusb) {
 	if (sizea > sizeb ||
@@ -826,6 +855,12 @@ string *s1, *s2, *s3;
 	if (asi_cmp(c, mod, sizec, sizemod) >= 0) {
 	    Uint *t;
 
+	    if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
+		AFREE(b);
+		AFREE(a);
+		AFREE(mod);
+		error("Out of ticks");
+	    }
 	    t = ALLOCA(Uint, (sizemod << 1) + 1);
 	    asi_div(c, t, c, mod, sizec, sizemod);
 	    sizec = sizemod;
@@ -843,7 +878,8 @@ string *s1, *s2, *s3;
  * NAME:	asn->cmp()
  * DESCRIPTION:	compare one ASI with another
  */
-int asn_cmp(s1, s2)
+int asn_cmp(f, s1, s2)
+frame *f;
 string *s1, *s2;
 {
     Uint *a, *b, sizea, sizeb;
@@ -854,6 +890,7 @@ string *s1, *s2;
     asi_strtonum(a, s1, &sizea, &minusa);
     b = ALLOCA(Uint, (s2->len >> 2) + 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
+    i_add_ticks(f, 4 + ((sizea + sizeb) >> 1));
 
     if (minusa != minusb) {
 	if (minusa) {
@@ -885,7 +922,8 @@ string *s1, *s2;
  * NAME:	asn->mult()
  * DESCRIPTION:	multiply one ASI with another
  */
-string *asn_mult(s1, s2, s3)
+string *asn_mult(f, s1, s2, s3)
+frame *f;
 string *s1, *s2, *s3;
 {
     register Uint *a, *b, *c, *t1, *t2;
@@ -904,6 +942,12 @@ string *s1, *s2, *s3;
     asi_strtonum(a, s1, &sizea, &minusa);
     bb = b = ALLOCA(Uint, (s2->len >> 2) + 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
+    if (asn_ticks(f, 4 + sizea * sizeb)) {
+	AFREE(b);
+	AFREE(a);
+	AFREE(mod);
+	error("Out of ticks");
+    }
 
     sizec = sizea + sizeb;
     cc = c = ALLOCA(Uint, sizec);
@@ -935,6 +979,14 @@ string *s1, *s2, *s3;
     asi_add(c, t1, sizea + sizeb, sizea + sizeb);
 
     if (sizec >= sizemod && asi_cmp(cc, mod, sizec, sizemod) >= 0) {
+	if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
+	    AFREE(t1);
+	    AFREE(cc);
+	    AFREE(bb);
+	    AFREE(aa);
+	    AFREE(mod);
+	    error("Out of ticks");
+	}
 	asi_div(cc, t1, cc, mod, sizec, sizemod);
 	sizec = sizemod;
     }
@@ -952,7 +1004,8 @@ string *s1, *s2, *s3;
  * NAME:	asn->div()
  * DESCRIPTION:	divide one ASI by another
  */
-string *asn_div(s1, s2, s3)
+string *asn_div(f, s1, s2, s3)
+frame *f;
 string *s1, *s2, *s3;
 {
     register Uint *a, *b, *c, *d, *t;
@@ -976,13 +1029,30 @@ string *s1, *s2, *s3;
     }
     a = ALLOCA(Uint, (s1->len >> 2) + 2);
     asi_strtonum(a, s1, &sizea, &minusa);
+    i_add_ticks(f, 4 + ((sizea + sizeb) >> 1));
 
     c = ALLOCA(Uint, sizea + 2);
     t = ALLOCA(Uint, (sizeb + sizemod) << 1); /* more than enough */
     if (sizea >= sizeb && asi_cmp(a, b, sizea, sizeb) >= 0) {
+	if (asn_ticks(f, sizeb * (sizea - sizeb + 10))) {
+	    AFREE(t);
+	    AFREE(c);
+	    AFREE(a);
+	    AFREE(b);
+	    AFREE(mod);
+	    error("Out of ticks");
+	}
 	d = asi_div(c, t, a, b, sizea, sizeb);
 	sizea -= sizeb - 1;
 	if (sizea >= sizemod && asi_cmp(d, mod, sizea, sizemod) >= 0) {
+	    if (asn_ticks(f, sizemod * (sizea - sizemod + 10))) {
+		AFREE(t);
+		AFREE(c);
+		AFREE(a);
+		AFREE(b);
+		AFREE(mod);
+		error("Out of ticks");
+	    }
 	    asi_div(c, t, d, mod, sizea, sizemod);
 	    d = c;
 	    sizea = sizemod;
@@ -1006,7 +1076,8 @@ string *s1, *s2, *s3;
  * NAME:	asn->mod()
  * DESCRIPTION:	take the modulus of an ASI
  */
-string *asn_mod(s1, s2)
+string *asn_mod(f, s1, s2)
+frame *f;
 string *s1, *s2;
 {
     register Uint *a, *b, *c, *t;
@@ -1027,8 +1098,17 @@ string *s1, *s2;
     c = ALLOCA(Uint, sizea + 2);
     t = ALLOCA(Uint, (sizeb << 1) + 1);
     if (sizea >= sizeb && asi_cmp(a, b, sizea, sizeb) > 0) {
+	if (asn_ticks(f, sizeb * (sizea - sizeb + 10))) {
+	    AFREE(t);
+	    AFREE(c);
+	    AFREE(a);
+	    AFREE(b);
+	    AFREE(mod);
+	    error("Out of ticks");
+	}
 	asi_div(c, t, a, b, sizea, sizeb);
     } else {
+	i_add_ticks(f, 4 + sizea + (sizeb >> 1));
 	memcpy(c, a, sizea * sizeof(Uint));
 	sizeb = sizea;
     }
@@ -1036,8 +1116,8 @@ string *s1, *s2;
     AFREE(t);
     AFREE(c);
 
-    AFREE(b);
     AFREE(a);
+    AFREE(b);
     return str;
 }
 
@@ -1508,17 +1588,17 @@ Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
 	for (i = 0; !(mod[size] & (1 << i)); i++) ;
 
 	/* q = mod >> j */
+	memcpy(q, mod, sizemod * sizeof(Uint));
+	asi_rshift(q, sizemod, (size << 5) + i);
 	sizeq = sizemod - size;
-	memcpy(q, mod, sizeq * sizeof(Uint));
-	asi_rshift(q, sizeq, (size << 5) + i);
-	if (mod[sizeq - 1] == 0) {
+	if (q[sizeq - 1] == 0) {
 	    --sizeq;
 	}
 
 	/* size = number of words, i = mask */
+	size++;
 	if (i != 0) {
 	    i = 0xffffffffL >> (32 - i);
-	    size++;
 	} else {
 	    i = 0xffffffffL;
 	}
@@ -1585,11 +1665,12 @@ Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
  * NAME:	asn->pow()
  * DESCRIPTION:	compute a power of an ASI
  */
-string *asn_pow(s1, s2, s3)
+string *asn_pow(f, s1, s2, s3)
+frame *f;
 string *s1, *s2, *s3;
 {
     register Uint *a, *b, *c, *t;
-    Uint *mod, sizea, sizeb, sizemod;
+    Uint *mod, sizea, sizeb, sizemod, ticks1, ticks2;
     bool minusa, minusb;
     string *str;
 
@@ -1604,11 +1685,34 @@ string *s1, *s2, *s3;
     asi_strtonum(a, s1, &sizea, &minusa);
     b = ALLOCA(Uint, (s2->len >> 2) + 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
+    ticks1 = sizemod * sizemod;
+    ticks2 = ticks1 * sizeb;
+    if (ticks2 / sizeb != ticks1) {
+	AFREE(b);
+	AFREE(a);
+	AFREE(mod);
+	error("Out of ticks");
+    }
+    ticks1 = ticks2 << 5;
+    if (ticks1 >> 5 != ticks2 || (Int) ticks1 < 0 || asn_ticks(f, ticks1)) {
+	AFREE(b);
+	AFREE(a);
+	AFREE(mod);
+	error("Out of ticks");
+    }
 
     c = ALLOCA(Uint, sizemod);
     t = ALLOCA(Uint, (sizemod + 2) << 1);
     if (minusb) {
 	/* a ** -b = (a ** -1) ** b */
+	if (asn_ticks(f, sizea * (sizemod + 10))) {
+	    AFREE(t);
+	    AFREE(c);
+	    AFREE(b);
+	    AFREE(a);
+	    AFREE(mod);
+	    error("Out of ticks");
+	}
 	if (!asn_modinv(c, &sizea, a, mod, sizea, sizemod)) {
 	    AFREE(t);
 	    AFREE(c);
@@ -1628,5 +1732,197 @@ string *s1, *s2, *s3;
     AFREE(b);
     AFREE(a);
     AFREE(mod);
+    return str;
+}
+
+/*
+ * NAME:	asn->lshift()
+ * DESCRIPTION:	left shift an ASI
+ */
+string *asn_lshift(f, s1, shift, s2)
+frame *f;
+string *s1, *s2;
+Int shift;
+{
+    register Uint *a, *b, *c, *t, size;
+    Uint *mod, sizea, sizemod;
+    bool minusa;
+    string *str;
+
+    if (shift < 0) {
+	error("Negative left shift");
+    }
+    mod = ALLOCA(Uint, (s2->len >> 2) + 2);
+    asi_strtonum(mod, s2, &sizemod, &minusa);
+    if (minusa || (sizemod == 1 && mod[0] == 0)) {
+	AFREE(mod);
+	error("Invalid modulus");
+    }
+
+    size = (s1->len >> 2) + 2 + ((shift + 31) >> 5);
+    i_add_ticks(f, 4 + size + (sizemod >> 1));
+    if (size <= sizemod << 2) {
+	/*
+	 * perform actual left shift
+	 */
+	a = ALLOCA(Uint, size);
+	t = ALLOCA(Uint, (sizemod << 1) + 1);
+	asi_strtonum(a, s1, &sizea, &minusa);
+	if (shift != 0) {
+	    sizea += (shift + 31) >> 5;
+	    asi_lshift(a, sizea, shift);
+	}
+    } else {
+	/*
+	 * multiply with 2 ** shift
+	 */
+	size = (s1->len >> 2) + 4 + sizemod;
+	a = ALLOCA(Uint, size);
+	if (size < (sizemod + 2) << 1) {
+	    size = (sizemod + 2) << 1;
+	}
+	t = ALLOCA(Uint, size);
+	b = ALLOCA(Uint, sizemod);
+	c = ALLOCA(Uint, (s1->len >> 2) + 2);
+	asi_strtonum(c, s1, &sizea, &minusa);
+	a[0] = 2;
+	b[0] = shift;
+	asn_power(b, t, a, b, mod, 1, 1, sizemod);
+	if (sizea >= sizemod) {
+	    asi_mult(a, t, c, b, sizea, sizemod);
+	} else {
+	    asi_mult(a, t, b, c, sizemod, sizea);
+	}
+	sizea += sizemod;
+	AFREE(c);
+	AFREE(b);
+    }
+
+    if (sizea >= sizemod && asi_cmp(a, mod, sizea, sizemod) >= 0) {
+	if (asn_ticks(f, sizemod * (sizea - sizemod + 10))) {
+	    AFREE(t);
+	    AFREE(a);
+	    AFREE(mod);
+	    error("Out of ticks");
+	}
+	asi_div(a, t, a, mod, sizea, sizemod);
+    }
+    str = asi_numtostr(a, sizemod, minusa);
+    AFREE(t);
+    AFREE(a);
+    AFREE(mod);
+    return str;
+}
+
+/*
+ * NAME:	asn->rshift()
+ * DESCRIPTION:	right shift the ASI
+ */
+string *asn_rshift(f, s, shift)
+frame *f;
+string *s;
+Int shift;
+{
+    register Uint *a;
+    Uint sizea;
+    bool minusa;
+    string *str;
+
+    if (shift < 0) {
+	error("Negative right shift");
+    }
+    a = ALLOCA(Uint, (s->len >> 2) + 2);
+    asi_strtonum(a, s, &sizea, &minusa);
+    i_add_ticks(f, 4 + sizea);
+    if (shift >> 5 >= sizea) {
+	a[0] = 0;
+	sizea = 1;
+    } else if (shift != 0) {
+	asi_rshift(a, sizea, shift);
+    }
+    str = asi_numtostr(a, sizea, minusa);
+    AFREE(a);
+
+    return str;
+}
+
+/*
+ * NAME:	asn->and()
+ * DESCRIPTION:	logical and of two strings
+ */
+string *asn_and(f, s1, s2)
+frame *f;
+string *s1, *s2;
+{
+    register char *p, *q, *r;
+    register ssizet i;
+    string *str;
+
+    if (s1->len != s2->len) {
+	error("Unequal size arguments");
+    }
+    i_add_ticks(f, 4 + (s1->len >> 4));
+    str = str_new((char *) NULL, (long) s1->len);
+    p = str->text;
+    q = s1->text;
+    r = s2->text;
+    for (i = str->len; i != 0; --i) {
+	*p++ = *q++ & *r++;
+    }
+
+    return str;
+}
+
+/*
+ * NAME:	asn->or()
+ * DESCRIPTION:	logical or of two strings
+ */
+string *asn_or(f, s1, s2)
+frame *f;
+string *s1, *s2;
+{
+    register char *p, *q, *r;
+    register ssizet i;
+    string *str;
+
+    if (s1->len != s2->len) {
+	error("Unequal size arguments");
+    }
+    i_add_ticks(f, 4 + (s1->len >> 4));
+    str = str_new((char *) NULL, (long) s1->len);
+    p = str->text;
+    q = s1->text;
+    r = s2->text;
+    for (i = str->len; i != 0; --i) {
+	*p++ = *q++ | *r++;
+    }
+
+    return str;
+}
+
+/*
+ * NAME:	asn->xor()
+ * DESCRIPTION:	logical xor of two strings
+ */
+string *asn_xor(f, s1, s2)
+frame *f;
+string *s1, *s2;
+{
+    register char *p, *q, *r;
+    register ssizet i;
+    string *str;
+
+    if (s1->len != s2->len) {
+	error("Unequal size arguments");
+    }
+    i_add_ticks(f, 4 + (s1->len >> 4));
+    str = str_new((char *) NULL, (long) s1->len);
+    p = str->text;
+    q = s1->text;
+    r = s2->text;
+    for (i = str->len; i != 0; --i) {
+	*p++ = *q++ ^ *r++;
+    }
+
     return str;
 }

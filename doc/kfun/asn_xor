@@ -1,0 +1,15 @@
+NAME
+	asn_xor - logical xor of two arbitrary size numbers
+
+SYNOPSIS
+	string asn_xor(string a, string b)
+
+
+DESCRIPTION
+	Compute the bit-wise logical xor of a and b.
+
+ERRORS
+	An error will result unless the arguments are of equal length.
+
+SEE ALSO
+	kfun/asn_and, kfun/asn_lshift, kfun/asn_or, kfun/asn_rshift

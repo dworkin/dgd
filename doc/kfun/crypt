@@ -1,5 +1,5 @@
 NAME
-	crypt - encrypt a string
+	crypt - encrypt a password string
 
 SYNOPSIS
 	string crypt(string passwd, varargs string salt)
@@ -12,3 +12,6 @@ DESCRIPTION
 	without one, the encryption is perturbed randomly.  The returned
 	string is 13 characters long, the first two of which are equal to the
 	used salt.
+
+SEE ALSO
+	kfun/encrypt, kfun/decrypt

@@ -1,0 +1,16 @@
+NAME
+	encrypt - encrypt a string
+
+SYNOPSIS
+	string encrypt(string cipher, string mesg, string key...)
+
+
+DESCRIPTION
+	For any given cipher, encrypt("CIPHER key", key1, key2, ...) returns a
+	key prepared for encryption, and
+	encrypt("CIPHER", str, prepared_key, extra_key1, extra_key2, ...) 
+	encrypts a string.  For an unknown cipher, nil is returned.
+	The only currently defined cipher is DES.
+
+SEE ALSO
+	kfun/crypt, kfun/decrypt

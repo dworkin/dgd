@@ -353,8 +353,6 @@ extern char *P_ctime	P((char*, Uint));
 extern void  P_timer	P((Uint, unsigned int));
 extern bool  P_timeout	P((Uint*, unsigned short*));
 
-extern char *P_crypt	P((char*, char*));
-
 /* these must be the same on all hosts */
 # define BEL	'\007'
 # define BS	'\010'
