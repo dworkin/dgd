@@ -9,7 +9,6 @@
 # define CB_EXCL	0x10
 # define CB_NUMBER	0x20
 # define CB_LIST	0x40
-# define CB_RESTRICTED	0x80
 
 typedef struct {
     char *cmd;			/* command to do */

@@ -70,7 +70,6 @@ register Uint nfuncs;
     register char *p;
     register Uint index;
 
-    --nfuncs;
     while (nfuncdefs > 0) {
 	p = program + funcdefs->offset;
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
@@ -718,7 +717,7 @@ int fd;
 	    for (pc = precompiled; ; pc++) {
 		l = *pc;
 		if (l == (precomp *) NULL) {
-		    fatal("restored object not precompiled: /%s", name);
+		    error("Restored object not precompiled: /%s", name);
 		}
 		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
 		    hash_add(l->obj = obj, pc - precompiled);
@@ -739,7 +738,7 @@ int fd;
 			!varcmp(vardefs, l->vardefs, l->nvardefs) ||
 			memcmp(funcalls, l->funcalls, 2 * l->nfuncalls) != 0) {
 			/* not the same */
-			fatal("restored different precompiled object /%s",
+			error("Restored different precompiled object /%s",
 			      name);
 		    }
 		    break;
@@ -811,7 +810,7 @@ int fd;
 		    memcmp(d_get_funcalls(ctrl), l->funcalls,
 			   2 * l->nfuncalls) != 0) {
 		    /* not the same */
-		    fatal("precompiled object != restored object /%s", name);
+		    error("Precompiled object != restored object /%s", name);
 		}
 
 		d_del_control(ctrl);

@@ -167,7 +167,7 @@ int fd;
     for (i = 0; i < dh.nkfun; i++) {
 	n = kf_func(buffer + buflen);
 	if (n < 0) {
-	    fatal("restored unknown kfun: %s", buffer + buflen);
+	    error("Restored unknown kfun: %s", buffer + buflen);
 	}
 	n += KF_BUILTINS - 128;
 	kfind[i + 128] = n;

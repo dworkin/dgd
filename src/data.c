@@ -133,6 +133,17 @@ static uindex ndata;			/* # dataspace blocks */
 
 
 /*
+ * NAME:	data->init()
+ * DESCRIPTION:	initialize swapped data handling
+ */
+void d_init()
+{
+    chead = ctail = cone = (control *) NULL;
+    dhead = dtail = done = (dataspace *) NULL;
+    nctrl = ndata = 0;
+}
+
+/*
  * NAME:	data->new_control()
  * DESCRIPTION:	create a new control block
  */

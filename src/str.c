@@ -213,7 +213,7 @@ register string *s1, *s2;
  * DESCRIPTION:	index a string
  */
 unsigned short str_index(s, l)
-register string *s;
+string *s;
 register long l;
 {
     if (l < 0 || l >= (long) s->len) {

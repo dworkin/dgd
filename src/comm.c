@@ -58,22 +58,26 @@ static bool flush;		/* do telnet output buffers need flushing? */
  * NAME:	comm->init()
  * DESCRIPTION:	initialize communications
  */
-void comm_init(nusers, telnet_port, binary_port)
-int nusers;
+bool comm_init(n, telnet_port, binary_port)
+int n;
 unsigned int telnet_port, binary_port;
 {
     register int i;
     register user *usr;
 
-    conn_init(nusers, telnet_port, binary_port);
-    users = ALLOC(user, maxusers = nusers);
-    for (i = nusers, usr = users + i; i > 0; --i) {
+    users = ALLOC(user, maxusers = n);
+    for (i = n, usr = users + i; i > 0; --i) {
 	--usr;
 	usr->obj = (object *) NULL;
 	usr->next = usr + 1;
     }
-    users[nusers - 1].next = (user *) NULL;
+    users[n - 1].next = (user *) NULL;
     freeuser = usr;
+    lastuser = (user *) NULL;
+    nusers = newlines = 0;
+    flush = FALSE;
+
+    return conn_init(n, telnet_port, binary_port);
 }
 
 /*

@@ -5,7 +5,7 @@
 
 typedef struct _connection_ connection;
 
-extern void	   conn_init	P((int, unsigned int, unsigned int));
+extern bool	   conn_init	P((int, unsigned int, unsigned int));
 extern void	   conn_finish	P((void));
 extern void	   conn_listen	P((void));
 extern connection *conn_tnew	P((void));
@@ -17,7 +17,7 @@ extern int	   conn_write	P((connection*, char*, unsigned int));
 extern bool	   conn_wrdone	P((connection*));
 extern char	  *conn_ipnum	P((connection*));
 
-extern void	comm_init	P((int, unsigned int, unsigned int));
+extern bool	comm_init	P((int, unsigned int, unsigned int));
 extern void	comm_finish	P((void));
 extern void	comm_listen	P((void));
 extern int	comm_send	P((object*, string*));

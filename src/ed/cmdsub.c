@@ -1341,7 +1341,7 @@ char *buffer;
     }
 
     /* checks */
-    if (p == cb->cmd || (cb->flags & CB_RESTRICTED)) {
+    if (p == cb->cmd) {
 	return FALSE;
     }
     if (p - cb->cmd >= STRINGSZ) {
@@ -1370,12 +1370,10 @@ register cmdbuf *cb;
     }
 
     /* give statistics */
-    if (!(cb->flags & CB_RESTRICTED)) {
-	if (cb->fname[0] == '\0') {
-	    output("No file");
-	} else {
-	    output("\"%s\"", cb->fname);
-	}
+    if (cb->fname[0] == '\0') {
+	output("No file");
+    } else {
+	output("\"%s\"", cb->fname);
     }
     if (cb->flags & CB_NOIMAGE) {
 	output(" [Not edited]");
@@ -1435,16 +1433,12 @@ register cmdbuf *cb;
     }
 
     cb_do(cb, cb->first);
-    if (!(cb->flags & CB_RESTRICTED)) {
-	output("\"%s\" ", buffer);
-    }
+    output("\"%s\" ", buffer);
     iob = io_load(cb->edbuf, buffer, cb->first);
     if (iob == (io*) NULL) {
 	error("is unreadable");
     }
-    if (!(cb->flags & CB_RESTRICTED)) {
-	io_show(iob);
-    }
+    io_show(iob);
 
     cb->edit++;
     cb->this = cb->first + iob->lines;
@@ -1541,16 +1535,12 @@ register cmdbuf *cb;
 	}
     }
 
-    if (!(cb->flags & CB_RESTRICTED)) {
-	output("\"%s\" ", buffer);
-    }
+    output("\"%s\" ", buffer);
     iob = io_save(cb->edbuf, buffer, cb->first, cb->last, append);
     if (iob == (io *) NULL) {
 	error("write failed");
     }
-    if (!(cb->flags & CB_RESTRICTED)) {
-	io_show(iob);
-    }
+    io_show(iob);
 
     if (cb->first == 1 && cb->last == cb->edbuf->lines) {
 	/* file is now perfect image of editbuffer in memory */

@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -11,6 +12,13 @@
 # include "node.h"
 # include "compile.h"
 
+static object *driver;		/* driver object */
+static char *driver_name;	/* driver object name */
+static bool swap;		/* are objects to be swapped out? */
+static bool dump;		/* is the program to dump? */
+static bool intr;		/* received an interrupt? */
+static bool stop;		/* is the program to terminate? */
+
 /*
  * NAME:	call_driver_object()
  * DESCRIPTION:	call a function in the driver object
@@ -19,9 +27,7 @@ bool call_driver_object(func, narg)
 char *func;
 int narg;
 {
-    static object *driver;
     static Uint dcount;
-    static char *driver_name;
 
     if (driver == (object *) NULL || dcount != driver->count) {
 	if (driver_name == (char *) NULL) {
@@ -38,11 +44,6 @@ int narg;
     }
     return TRUE;
 }
-
-static bool swap;	/* are objects to be swapped out? */
-static bool dump;	/* is the program to dump? */
-static bool intr;	/* received an interrupt? */
-static bool stop;	/* is the program to terminate? */
 
 /*
  * NAME:	swapout()
@@ -119,6 +120,7 @@ void endthread()
 
     if (stop) {
 	sw_finish();
+	m_finish();
 	exit(0);
     }
 }
@@ -141,12 +143,34 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
+    int fd;
+    bool init;
+
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
     }
 
-    conf_init(argv[1], (argc == 2) ? (char *) NULL : argv[2]);
+    /* initialize */
+    driver = (object *) NULL;
+    driver_name = (char *) NULL;
+    swap = dump = intr = stop = FALSE;
+    if (argc == 3) {
+	fd = open(argv[2], O_RDONLY | O_BINARY, 0);
+	if (fd < 0) {
+	    P_message("Config error: cannot open restore file\012");	/* LF */
+	    return 2;
+	}
+    } else {
+	fd = -1;
+    }
+    init = conf_init(argv[1], fd);
+    if (fd >= 0) {
+	close(fd);
+    }
+    if (!init) {
+	return 2;	/* initialization failed */
+    }
 
     while (ec_push((ec_ftn) errhandler)) {
 	endthread();

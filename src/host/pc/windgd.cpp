@@ -13,7 +13,6 @@ static CWindgdApp	theApp;
 static CMainFrame      *frame;
 static int		argstart;	/* started with arguments */
 static int		menuquit;	/* quit from menu */
-static int		dgd_started;	/* started */
 static int		dgd_running;	/* now running */
 static CString		dgd_config;
 static CString		dgd_restore;
@@ -165,13 +164,15 @@ void CWindgdApp::OnDgdRestore()
     restore.m_ofn.lpstrTitle = "Restore File";
     if (restore.DoModal() == IDOK) {
 	dgd_restore = restore.GetPathName();
+    } else {
+	dgd_restore.Empty();
     }
 }
 
 void CWindgdApp::OnDgdStart()
 {
-    dgd_started = dgd_running = TRUE;
-    m_pMainWnd->SetWindowText("DGD - running");
+    dgd_running = TRUE;
+    m_pMainWnd->SetWindowText("DGD - " + dgd_config);
     _beginthread(run_dgd, 0, NULL);
 }
 
@@ -183,17 +184,18 @@ void CWindgdApp::OnAppExit()
 
 void CWindgdApp::OnUpdateDgdConfig(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_started);
+    pCmdUI->Enable(!dgd_running);
 }
 
 void CWindgdApp::OnUpdateDgdStart(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_config.IsEmpty() && !dgd_started);
+    pCmdUI->Enable(!dgd_config.IsEmpty() && !dgd_running);
 }
 
 void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 {
-    pCmdUI->Enable(!dgd_started);
+    pCmdUI->Enable(!dgd_running);
+    pCmdUI->SetCheck(!dgd_restore.IsEmpty());
 }
 
 BOOL CWindgdApp::SaveAllModified()

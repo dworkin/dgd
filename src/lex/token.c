@@ -282,20 +282,12 @@ int pp;
     pp_level = (int) pp;
 }
 
-/*
- * NAME:	uc()
- * DESCRIPTION:	unget a character on the input
- */
-static void uc(c)
-register int c;
-{
-    if (c != EOF) {	/* don't unget EOF */
-	if (c == LF && tbuffer == ibuffer) {
-	    ibuffer->line--;
-	}
-	*(tbuffer->up)++ = c;
-    }
-}
+# define uc(c)	do { \
+		    if ((c) != EOF) { \
+			if ((c) == LF && tbuffer == ibuffer) ibuffer->line--; \
+			*(tbuffer->up)++ = (c); \
+		    } \
+		} while (FALSE)
 
 /*
  * NAME:	gc()
@@ -341,15 +333,13 @@ static int gc()
 		return c;
 	    }
 	    backslash = FALSE;
+	} else if (backslash) {
+	    uc(c);
+	    return '\\';
+	} else if (c == '\\' && tb == ibuffer) {
+	    backslash = TRUE;
 	} else {
-	    if (backslash) {
-		uc(c);
-		return '\\';
-	    } else if (c == '\\' && tb == ibuffer) {
-		backslash = TRUE;
-	    } else {
-		return c;
-	    }
+	    return c;
 	}
     }
 }

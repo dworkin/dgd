@@ -15,14 +15,15 @@ typedef struct _header_ {	/* swap slot header */
 } header;
 
 static char *swapfile;			/* swap file name */
-static int swap = -1;			/* swap file descriptor */
-static int dump = -1;			/* dump file descriptor */
+static int swap;			/* swap file descriptor */
+static int dump;			/* dump file descriptor */
 static int restore;			/* restore file descriptor */
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap free map */
 static sector mfree, sfree;		/* free sector lists */
 static char *bmap;			/* sector bitmap */
 static char *cbuf;			/* sector buffer */
+static sector cached;			/* sector currently cached in cbuf */
 static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
@@ -57,11 +58,13 @@ unsigned int secsize;
     smap = ALLOC(sector, total);
     bmap = ALLOC(char, (total + 7) >> 3);
     cbuf = ALLOC(char, secsize);
+    cached = SW_UNUSED;
 
     /* 0 sectors allocated */
     nsectors = 0;
     ssectors = 0;
     nfree = 0;
+    dsectors = 0;
 
     /* init free sector maps */
     mfree = SW_UNUSED;
@@ -78,6 +81,8 @@ unsigned int secsize;
     /* no swap slots in use yet */
     first = (header *) NULL;
     last = (header *) NULL;
+
+    swap = dump = -1;
 }
 
 /*
@@ -420,7 +425,6 @@ register char *m;
 register sector *vec;
 register Uint size, idx;
 {
-    static sector cached = SW_UNUSED;
     register unsigned int len;
 
     vec += idx / restoresecsize;
@@ -675,7 +679,7 @@ unsigned int secsize;
     lseek(fd, (long) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
-	fatal("wrong sector size or too many sectors in restore file");
+	error("Wrong sector size or too many sectors in restore file");
     }
     restoresecsize = secsize;
 

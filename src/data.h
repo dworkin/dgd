@@ -150,6 +150,7 @@ typedef struct _dataspace_ {
     Uint cooffset;		/* offset of callout table */
 } dataspace;
 
+extern void		d_init		P((void));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
 extern control	       *d_load_control	P((object*));

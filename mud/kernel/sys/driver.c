@@ -393,6 +393,8 @@ prepare_reboot()
  */
 static restored()
 {
+    message("DGD " + status()[ST_VERSION] + "\n");
+
     rsrcd->reboot();
     userd->reboot();
     if (initd) {
@@ -618,11 +620,13 @@ static object binary_connect()
  */
 static interrupt()
 {
-    shutdown();
+    message("Interrupt.\n");
+
 # ifdef SYS_CONTINUOUS
     prepare_reboot();
     dump_state();
 # endif
+    shutdown();
 }
 
 /*

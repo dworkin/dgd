@@ -60,7 +60,7 @@ static config conf[] = {
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
 # define EDITORS	11
 				{ "editors",		INT_CONST, FALSE,
-							1, UCHAR_MAX },
+							0, UCHAR_MAX },
 # define INCLUDE_DIRS	12
 				{ "include_dirs",	'(', FALSE },
 # define INCLUDE_FILE	13
@@ -243,7 +243,7 @@ int fd;
 
     if (read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
 	memcmp(header, rheader, DUMP_TYPE) != 0) {
-	fatal("bad or incompatible restore file header");
+	error("Bad or incompatible restore file header");
     }
 
     boottime = (UCHAR(rheader[DUMP_BOOTTIME + 0]) << 24) |
@@ -257,12 +257,12 @@ int fd;
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
     rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
     if (usize < rusize || dsize < rdsize) {
-	fatal("cannot restore uindex or sector of greater width");
+	error("Cannot restore uindex or sector of greater width");
     }
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if (secsize > conf[SECTOR_SIZE].u.num) {
-	fatal("cannot decrease sector size");
+	error("Cannot restore bigger sector size");
     }
 
     sw_restore(fd, secsize);
@@ -575,6 +575,152 @@ register Uint n;
 }
 
 
+# define MAX_DIRS	32
+
+static char *dirs[MAX_DIRS];
+
+/*
+ * NAME:	conferr()
+ * DESCRIPTION:	error during the configuration phase
+ */
+static void conferr(err)
+char *err;
+{
+    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
+}
+
+/*
+ * NAME:	config->config()
+ * DESCRIPTION:	read config file
+ */
+static bool conf_config()
+{
+    register char *p;
+    register int h, l, m, c;
+
+    for (h = NR_OPTIONS; h > 0; ) {
+	conf[--h].u.num = 0;
+    }
+    memset(dirs, '\0', sizeof(dirs));
+
+    while ((c=pp_gettok()) != EOF) {
+	if (c != IDENTIFIER) {
+	    conferr("option expected");
+	    return FALSE;
+	}
+
+	l = 0;
+	h = NR_OPTIONS;
+	for (;;) {
+	    c = strcmp(yytext, conf[m = (l + h) >> 1].name);
+	    if (c == 0) {
+		break;	/* found */
+	    } else if (c < 0) {
+		h = m;	/* search in lower half */
+	    } else {
+		l = m + 1;	/* search in upper half */
+	    }
+	    if (l >= h) {
+		conferr("unknown option");
+		return FALSE;
+	    }
+	}
+
+	if (pp_gettok() != '=') {
+	    conferr("'=' expected");
+	    return FALSE;
+	}
+
+	if ((c=pp_gettok()) != conf[m].type) {
+	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
+		conferr("syntax error");
+		return FALSE;
+	    } else {
+		conferr("bad value type");
+		return FALSE;
+	    }
+	}
+
+	switch (c) {
+	case INT_CONST:
+	    if (yylval.number < conf[m].low ||
+		(conf[m].high != 0 && yylval.number > conf[m].high)) {
+		conferr("int value out of range");
+		return FALSE;
+	    }
+	    conf[m].u.num = yylval.number;
+	    break;
+
+	case STRING_CONST:
+	    p = (m == AUTO_OBJECT || m == DRIVER_OBJECT || m == INCLUDE_FILE) ?
+		 path_resolve(yytext) : yytext;
+	    if (conf[m].u.str != (char *) NULL) {
+		FREE(conf[m].u.str);
+	    }
+	    l = strlen(p);
+	    if (l >= STRINGSZ) {
+		l = STRINGSZ - 1;
+		p[l] = '\0';
+	    }
+	    m_static();
+	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
+	    m_dynamic();
+	    break;
+
+	case '(':
+	    if (pp_gettok() != '{') {
+		conferr("'{' expected");
+		return FALSE;
+	    }
+	    l = 0;
+	    for (;;) {
+		if (pp_gettok() != STRING_CONST) {
+		    conferr("string expected");
+		    return FALSE;
+		}
+		if (l == MAX_DIRS - 1) {
+		    conferr("too many include directories");
+		    return FALSE;
+		}
+		if (dirs[l] != (char *) NULL) {
+		    FREE(dirs[l]);
+		}
+		m_static();
+		dirs[l++] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
+		m_dynamic();
+		if ((c=pp_gettok()) == '}') {
+		    break;
+		}
+		if (c != ',') {
+		    conferr("',' expected");
+		    return FALSE;
+		}
+	    }
+	    if (pp_gettok() != ')') {
+		conferr("')' expected");
+		return FALSE;
+	    }
+	    dirs[l] = (char *) NULL;
+	    break;
+	}
+	conf[m].set = TRUE;
+	if (pp_gettok() != ';') {
+	    conferr("';' expected");
+	    return FALSE;
+	}
+    }
+
+    for (l = 0; l < NR_OPTIONS; l++) {
+	if (!conf[l].set) {
+	    char buffer[64];
+
+	    sprintf(buffer, "unspecified option %s", conf[l].name);
+	    conferr(buffer);
+	    return FALSE;
+	}
+    }
+}
+
 static char *fname;		/* file name */
 static int fd;			/* file descriptor */
 static char *obuf;		/* output buffer */
@@ -584,15 +730,17 @@ static unsigned int bufsz;	/* buffer size */
  * NAME:	config->open()
  * DESCRIPTION:	create a new file
  */
-static void copen(file)
+static bool copen(file)
 char *file;
 {
     if ((file=path_file(fname=path_resolve(file))) == (char *) NULL ||
 	(fd=open(file, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
 	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
-	exit(1);
+	return FALSE;
     }
     bufsz = 0;
+
+    return TRUE;
 }
 
 /*
@@ -623,215 +771,32 @@ register char *str;
  * NAME:	config->close()
  * DESCRIPTION:	close a file
  */
-static void cclose()
+static bool cclose()
 {
     if (bufsz > 0 && write(fd, obuf, bufsz) != bufsz) {
 	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
-	exit(1);
+	close(fd);
+	return FALSE;
     }
     close(fd);
+
+    return TRUE;
 }
 
 /*
- * NAME:	conferr()
- * DESCRIPTION:	error during the configuration phase
+ * NAME:	config->includes()
+ * DESCRIPTION:	create include files
  */
-static void conferr(err)
-char *err;
+static bool conf_includes()
 {
-    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
-    exit(1);
-}
-
-# define MAX_DIRS	32
-
-/*
- * NAME:	config->init()
- * DESCRIPTION:	initialize the driver
- */
-void conf_init(configfile, dumpfile)
-char *configfile, *dumpfile;
-{
-    static char *dirs[MAX_DIRS];
     char buf[BUF_SIZE], buffer[STRINGSZ];
-    register char *p;
-    register int h, l, m, c;
-    int fd;
-
-    if (!pp_init(configfile, (char **) NULL, 0)) {
-	message("Config error: cannot open config file\012");	/* LF */
-	exit(2);
-    }
-    while ((c=pp_gettok()) != EOF) {
-	if (c != IDENTIFIER) {
-	    conferr("option expected");
-	}
-
-	l = 0;
-	h = NR_OPTIONS;
-	for (;;) {
-	    c = strcmp(yytext, conf[m = (l + h) >> 1].name);
-	    if (c == 0) {
-		break;	/* found */
-	    } else if (c < 0) {
-		h = m;	/* search in lower half */
-	    } else {
-		l = m + 1;	/* search in upper half */
-	    }
-	    if (l >= h) {
-		conferr("unknown option");
-	    }
-	}
-
-	if (pp_gettok() != '=') {
-	    conferr("'=' expected");
-	}
-
-	if ((c=pp_gettok()) != conf[m].type) {
-	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
-		conferr("syntax error");
-	    } else {
-		conferr("bad value type");
-	    }
-	}
-
-	switch (c) {
-	case INT_CONST:
-	    if (yylval.number < conf[m].low ||
-		(conf[m].high != 0 && yylval.number > conf[m].high)) {
-		conferr("int value out of range");
-	    }
-	    conf[m].u.num = yylval.number;
-	    break;
-
-	case STRING_CONST:
-	    p = (m == AUTO_OBJECT || m == DRIVER_OBJECT || m == INCLUDE_FILE) ?
-		 path_resolve(yytext) : yytext;
-	    if (conf[m].u.str != (char *) NULL) {
-		FREE(conf[m].u.str);
-	    }
-	    l = strlen(p);
-	    if (l >= STRINGSZ) {
-		l = STRINGSZ - 1;
-		p[l] = '\0';
-	    }
-	    m_static();
-	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
-	    m_dynamic();
-	    break;
-
-	case '(':
-	    if (pp_gettok() != '{') {
-		conferr("'{' expected");
-	    }
-	    l = 0;
-	    for (;;) {
-		if (pp_gettok() != STRING_CONST) {
-		    conferr("string expected");
-		}
-		if (l == MAX_DIRS - 1) {
-		    conferr("too many include directories");
-		}
-		if (dirs[l] != (char *) NULL) {
-		    FREE(dirs[l]);
-		}
-		m_static();
-		dirs[l++] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
-		m_dynamic();
-		if ((c=pp_gettok()) == '}') {
-		    break;
-		}
-		if (c != ',') {
-		    conferr("',' expected");
-		}
-	    }
-	    if (pp_gettok() != ')') {
-		conferr("')' expected");
-	    }
-	    dirs[l] = (char *) NULL;
-	    break;
-	}
-	conf[m].set = TRUE;
-	if (pp_gettok() != ';') {
-	    conferr("';' expected");
-	}
-    }
-
-    for (l = 0; l < NR_OPTIONS; l++) {
-	if (!conf[l].set) {
-	    sprintf(buffer, "unspecified option %s", conf[l].name);
-	    conferr(buffer);
-	}
-    }
-    pp_clear();
-
-    if (dumpfile != (char *) NULL) {
-	fd = open(dumpfile, O_RDONLY | O_BINARY, 0);
-	if (fd < 0) {
-	    message("Config error: cannot open restore file\012");	/* LF */
-	    exit(2);
-	}
-    }
-
-    /* change directory */
-    if (chdir(conf[DIRECTORY].u.str) < 0) {
-	message("Config error: bad base directory \"%s\"\012",	/* LF */
-		conf[DIRECTORY].u.str);
-	exit(1);
-    }
-
-    m_static();
-
-    /* initialize strings */
-    str_init();
-
-    /* initialize arrays */
-    arr_init((int) conf[ARRAY_SIZE].u.num);
-
-    /* initialize objects */
-    o_init((uindex) conf[OBJECTS].u.num);
-
-    /* initialize swap device */
-    sw_init(conf[SWAP_FILE].u.str,
-	    (sector) conf[SWAP_SIZE].u.num,
-	    (sector) conf[CACHE_SIZE].u.num,
-	    (unsigned int) conf[SECTOR_SIZE].u.num);
-
-    /* initalize editor */
-    ed_init(conf[ED_TMPFILE].u.str,
-	    (int) conf[EDITORS].u.num);
-
-    /* initialize call_outs */
-    co_init((uindex) conf[CALL_OUTS].u.num,
-	    (int) conf[SWAP_FRAGMENT].u.num);
-
-    /* initialize kfuns */
-    kf_init();
-
-    /* initialize interpreter */
-    i_init(conf[CREATE].u.str);
-
-    /* initialize compiler */
-    c_init(conf[AUTO_OBJECT].u.str,
-	   conf[DRIVER_OBJECT].u.str,
-	   conf[INCLUDE_FILE].u.str,
-	   dirs);
-
-    /* initialize communications */
-    comm_init((int) conf[USERS].u.num,
-	      (unsigned int) conf[TELNET_PORT].u.num,
-	      (unsigned int) conf[BINARY_PORT].u.num);
-
-    m_dynamic();
-
-    /* initialize memory manager */
-    m_init((size_t) conf[STATIC_CHUNK].u.num,
-    	   (size_t) conf[DYNAMIC_CHUNK].u.num);
 
     /* create status.h file */
     obuf = buf;
     sprintf(buffer, "%s/status.h", dirs[0]);
-    copen(buffer);
+    if (!copen(buffer)) {
+	return FALSE;
+    }
     cputs("/*\012 * This file defines the fields of the array returned ");
     cputs("by the\012 * status() kfun.  It is automatically generated ");
     cputs("by DGD on startup.\012 */\012\012");
@@ -872,11 +837,15 @@ char *configfile, *dumpfile;
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
     cputs("# define CO_DELAY\t2\t/* delay */\012");
     cputs("# define CO_FIRSTXARG\t3\t/* first extra argument */\012");
-    cclose();
+    if (!cclose()) {
+	return FALSE;
+    }
 
     /* create type.h file */
     sprintf(buffer, "%s/type.h", dirs[0]);
-    copen(buffer);
+    if (!copen(buffer)) {
+	return FALSE;
+    }
     cputs("/*\012 * This file gives definitions for the value returned ");
     cputs("by the\012 * typeof() kfun.  It is automatically generated ");
     cputs("by DGD on startup.\012 */\012\012");
@@ -892,11 +861,15 @@ char *configfile, *dumpfile;
     cputs(buffer);
     sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
     cputs(buffer);
-    cclose();
+    if (!cclose()) {
+	return FALSE;
+    }
 
     /* create limits.h file */
     sprintf(buffer, "%s/limits.h", dirs[0]);
-    copen(buffer);
+    if (!copen(buffer)) {
+	return FALSE;
+    }
     cputs("/*\012 * This file defines some basic sizes of datatypes and ");
     cputs("resources.\012 * It is automatically generated by DGD on ");
     cputs("startup.\012 */\012\012");
@@ -908,11 +881,15 @@ char *configfile, *dumpfile;
     sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
 	    USHRT_MAX);
     cputs(buffer);
-    cclose();
+    if (!cclose()) {
+	return FALSE;
+    }
 
     /* create float.h file */
     sprintf(buffer, "%s/float.h", dirs[0]);
-    copen(buffer);
+    if (!copen(buffer)) {
+	return FALSE;
+    }
     cputs("/*\012 * This file describes the floating point type. It is ");
     cputs("automatically\012 * generated by DGD on startup.\012 */\012\012");
     cputs("# define FLT_RADIX\t2\t\t\t/* binary */\012");
@@ -926,11 +903,15 @@ char *configfile, *dumpfile;
     cputs("# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
     cputs("# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
     cputs("# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
-    cclose();
+    if (!cclose()) {
+	return FALSE;
+    }
 
     /* create trace.h file */
     sprintf(buffer, "%s/trace.h", dirs[0]);
-    copen(buffer);
+    if (!copen(buffer)) {
+	return FALSE;
+    }
     cputs("/*\012 * This file describes the fields of the array returned for ");
     cputs("every stack\012 * frame by the call_trace() function.  It is ");
     cputs("automatically generated by DGD\012 * on startup.\012 */\012\012");
@@ -940,7 +921,107 @@ char *configfile, *dumpfile;
     cputs("# define TRACE_LINE\t3\t/* line number */\012");
     cputs("# define TRACE_EXTERNAL\t4\t/* external call flag */\012");
     cputs("# define TRACE_FIRSTARG\t5\t/* first argument to function */\012");
-    cclose();
+    return cclose();
+}
+
+/*
+ * NAME:	config->init()
+ * DESCRIPTION:	initialize the driver
+ */
+bool conf_init(configfile, fd)
+char *configfile;
+int fd;
+{
+    bool init;
+
+    /*
+     * process config file
+     */
+    if (!pp_init(configfile, (char **) NULL, 0)) {
+	message("Config error: cannot open config file\012");	/* LF */
+	m_finish();
+	return FALSE;
+    }
+    init = conf_config();
+    pp_clear();
+    if (!init) {
+	m_finish();
+	return FALSE;
+    }
+
+    /* change directory */
+    if (chdir(conf[DIRECTORY].u.str) < 0) {
+	message("Config error: bad base directory \"%s\"\012",	/* LF */
+		conf[DIRECTORY].u.str);
+	m_finish();
+	return FALSE;
+    }
+
+    m_static();
+
+    /* initialize strings */
+    str_init();
+
+    /* initialize arrays */
+    arr_init((int) conf[ARRAY_SIZE].u.num);
+
+    /* initialize objects */
+    o_init((uindex) conf[OBJECTS].u.num);
+
+    /* initialize swap device */
+    sw_init(conf[SWAP_FILE].u.str,
+	    (sector) conf[SWAP_SIZE].u.num,
+	    (sector) conf[CACHE_SIZE].u.num,
+	    (unsigned int) conf[SECTOR_SIZE].u.num);
+
+    /* initialize swapped data handler */
+    d_init();
+
+    /* initalize editor */
+    ed_init(conf[ED_TMPFILE].u.str,
+	    (int) conf[EDITORS].u.num);
+
+    /* initialize call_outs */
+    co_init((uindex) conf[CALL_OUTS].u.num,
+	    (int) conf[SWAP_FRAGMENT].u.num);
+
+    /* initialize kfuns */
+    kf_init();
+
+    /* initialize interpreter */
+    i_init(conf[CREATE].u.str);
+
+    /* initialize compiler */
+    c_init(conf[AUTO_OBJECT].u.str,
+	   conf[DRIVER_OBJECT].u.str,
+	   conf[INCLUDE_FILE].u.str,
+	   dirs);
+
+    /* initialize communications */
+    init = comm_init((int) conf[USERS].u.num,
+		     (unsigned int) conf[TELNET_PORT].u.num,
+		     (unsigned int) conf[BINARY_PORT].u.num);
+
+    m_dynamic();
+
+    if (!init) {
+	comm_finish();
+	m_finish();
+	return FALSE;
+    }
+
+    /* initialize memory manager */
+    m_init((size_t) conf[STATIC_CHUNK].u.num,
+    	   (size_t) conf[DYNAMIC_CHUNK].u.num);
+
+    /*
+     * create include files
+     */
+    if (!conf_includes()) {
+	comm_finish();
+	m_finish();
+	return FALSE;
+    }
 
     /* preload compiled objects */
     pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str);
@@ -949,17 +1030,20 @@ char *configfile, *dumpfile;
     conf_dumpinit();
 
     if (ec_push((ec_ftn) NULL)) {
+	endthread();
 	message((char *) NULL);
 	message("Config error: initialization failed\012");	/* LF */
-	exit(1);
+	comm_finish();
+	ed_finish();
+	m_finish();
+	return FALSE;
     }
-    if (dumpfile == (char *) NULL) {
+    if (fd < 0) {
 	/* initialize mudlib */
 	call_driver_object("initialize", 0);
     } else {
 	/* restore dump file */
 	conf_restore(fd);
-	close(fd);
 
 	/* notify mudlib */
 	call_driver_object("restored", 0);
@@ -970,6 +1054,8 @@ char *configfile, *dumpfile;
 
     /* start accepting connections */
     comm_listen();
+
+    return TRUE;
 }
 
 /*
@@ -1082,7 +1168,7 @@ array *conf_status()
 
     /* limits */
     v->type = T_INT;
-    (v++)->u.number = USHRT_MAX - sizeof(string);
+    (v++)->u.number = USHRT_MAX;
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;

@@ -15,7 +15,8 @@
 # include "dgd.h"
 
 
-static bool running;
+static bool argstart, running;
+static jmp_buf env;
 static char config_buf[STRINGSZ], dump_buf[STRINGSZ];
 static char *config_file, *dump_file;
 
@@ -83,6 +84,10 @@ static void windowstart(void)
     GrafPtr port;
     EventRecord evt;
     Rect bounds;
+
+    if (mainframe != NULL) {
+	return;
+    }
 
     GetPort(&port);
     mainframe = GetNewWindow(MAINFRAME, NULL, (WindowPtr) -1);
@@ -271,11 +276,12 @@ static void setmenu(void)
 	} else {
 	    DisableItem(editmenu, SELECT);
 	}
-    } else if (editing) {
+    } else if (editing && mainframe == NULL) {
 	DisableItem(editmenu, 0);
 	DrawMenuBar();
 	editing = FALSE;
     }
+    CheckItem(filemenu, RESTORE, dump_file != NULL);
 }
 
 /*
@@ -317,10 +323,7 @@ static bool menuselect(long menuitem)
 
 	case RESTORE:
 	    /* filedialog to obtain restore file */
-	    file = getfile(dump_buf, 'TEXT');
-	    if (file != NULL) {
-		dump_file = file;
-	    }
+	    dump_file = getfile(dump_buf, 'TEXT');
 	    break;
 
 	case START:
@@ -374,6 +377,17 @@ static void menurun(void)
 	DrawMenuBar();
 	editing = TRUE;
     }
+}
+
+/*
+ * NAME:	menustop()
+ * DESCRIPTION:	change menus after stopping DGD
+ */
+static void menustop(void)
+{
+    EnableItem(filemenu, CONFIG);
+    EnableItem(filemenu, RESTORE);
+    EnableItem(filemenu, START);
 }
 
 
@@ -479,6 +493,7 @@ static bool getargs(void)
 	if (file.fType == 'pref') {
 	    if (config_file != NULL) {
 		/* 2 config files? */
+		SysBeep(47);
 		ExitToShell();
 	    }
 	    config_file = getpath(config_buf, file.vRefNum, file.fName);
@@ -521,14 +536,17 @@ int main(int argc, char *argv[])
 
     menuinit();
 
-    if (!getargs()) {
-	while (!getevent()) ;
-    }
-
     /* initialize DGD */
     fsinit('DGD ', 'TEXT');
     tminit();
     P_srandom((long) P_time());
+
+    if (getargs()) {
+	argstart = TRUE;
+    } else {
+	setjmp(env);
+	while (!getevent()) ;
+    }
 
     menurun();
     windowstart();
@@ -549,11 +567,9 @@ int main(int argc, char *argv[])
 void exit(int status)
 {
     running = FALSE;
-    if (status != 0) {
-	for (;;) {
-	    /* config error: loop until user quits */
-	    getevent();
-	}
+    if (status != 0 && !argstart) {
+	menustop();
+	longjmp(env, 1);
     }
     ExitToShell();
 }

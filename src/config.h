@@ -37,7 +37,7 @@ typedef uindex sector;
 # define STRMERGETABSZ	1024	/* general string merge table size */
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1024	/* general array merge table size */
-# define OBJHASHSZ	100	/* # characters in object names to hash */
+# define OBJHASHSZ	256	/* # characters in object names to hash */
 
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */
@@ -66,7 +66,7 @@ extern Uint   conf_dsize	P((char*));
 extern Uint   conf_dconv	P((char*, char*, char*, Uint));
 extern void   conf_dread	P((int, char*, char*, Uint));
 
-extern void		conf_init	P((char*, char*));
+extern bool		conf_init	P((char*, int));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
 extern bool		conf_typechecking P((void));

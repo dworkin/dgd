@@ -69,6 +69,7 @@ void arr_init(size)
 unsigned int size;
 {
     max_size = size;
+    tag = 0;
     ht = ALLOC(arrh*, ARRMERGETABSZ);
     memset(ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
     achunksz = ARR_CHUNK;

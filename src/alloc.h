@@ -21,6 +21,7 @@ extern void  m_dynamic	P((void));
 extern void  m_static	P((void));
 extern bool  m_check	P((void));
 extern void  m_purge	P((void));
+extern void  m_finish	P((void));
 
 typedef struct {
     Uint smemsize;	/* static memory size */

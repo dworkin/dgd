@@ -324,9 +324,7 @@ int nargs;
 {
     register unsigned int flen, slen, size;
     register char *f, *x;
-    value values[MAX_LOCALS];
-    value *oldval;
-    static value *val;
+    value values[MAX_LOCALS], *val;
     unsigned int fl, sl;
     int matches;
     char *s;
@@ -345,25 +343,8 @@ int nargs;
 
     nargs -= 2;
     i_add_ticks(8 * nargs);
-    oldval = (value *) val;
     val = values;
     matches = 0;
-
-    sp += nargs;	/* to get the error context right */
-    if (ec_push((ec_ftn) NULL)) {
-	/*
-	 * free any values left unassigned
-	 */
-	while (val > values) {
-	    if ((--val)->type == T_STRING) {
-		str_ref(val->u.string);
-		str_del(val->u.string);
-	    }
-	}
-	val = oldval;
-	error((char *) NULL);	/* pass on error */
-    }
-    sp -= nargs;
 
     while (flen > 0) {
 	if (f[0] != '%' || f[1] == '%') {
@@ -440,7 +421,8 @@ int nargs;
 		    break;
 
 		default:
-		    error("Bad sscanf format string");
+		    s = "Bad sscanf format string";
+		    goto err;
 		}
 	    } else {
 		/*
@@ -490,7 +472,8 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%s");
+		    s = "No lvalue for %%s";
+		    goto err;
 		}
 		--nargs;
 		val->type = T_STRING;
@@ -511,7 +494,8 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%d");
+		    s = "No lvalue for %%d";
+		    goto err;
 		}
 		--nargs;
 		val->type = T_INT;
@@ -529,7 +513,8 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%f");
+		    s = "No lvalue for %%f";
+		    goto err;
 		}
 		--nargs;
 		val->type = T_FLOAT;
@@ -545,7 +530,8 @@ int nargs;
 	    }
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%c");
+		    s = "No lvalue for %%c";
+		    goto err;
 		}
 		--nargs;
 		val->type = T_INT;
@@ -557,7 +543,8 @@ int nargs;
 	    break;
 
 	default:
-	    error("Bad sscanf format string");
+	    s = "Bad sscanf format string";
+	    goto err;
 	}
 	matches++;
     }
@@ -572,14 +559,24 @@ no_match:
 	sp++;
 	--val;
     }
-    val = oldval;
-    ec_pop();
 
     str_del((sp++)->u.string);
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = matches;
     return 0;
+
+err:
+    /*
+     * free any values left unassigned
+     */
+    while (val > values) {
+	if ((--val)->type == T_STRING) {
+	    str_ref(val->u.string);
+	    str_del(val->u.string);
+	}
+    }
+    error(s);
 }
 # endif
 

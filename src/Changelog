@@ -1128,3 +1128,9 @@ DGD 1.1
 
  - Added swapfile compression.
  - Fixed a stack depth miscalculation bug.
+ - Generate recognizable function names for precompiled functions.
+ - Speeded up a few functions highlighted by gprof.
+ - Removed some old compatibility code from the editor.
+ - Increased max string length in status() to 65535.
+ - Increased max editor output string length to 65535.
+ - Made DGD restartable.

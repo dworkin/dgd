@@ -12,6 +12,32 @@ int kfun, n;
 {
     error("Bad argument %d for kfun %s", n, kftab[kfun].name);
 }
+
+/*
+ * NAME:	kfun->itoa()
+ * DESCRIPTION:	convert an Int to a string
+ */
+static char *kf_itoa(i)
+Int i;
+{
+    static char buffer[12];
+    register Uint u;
+    register char *p;
+
+    u = (i >= 0) ? i : -i;
+
+    p = buffer + 11;
+    *p = '\0';
+    do {
+	*--p = '0' + u % 10;
+	u /= 10;
+    } while (u != 0);
+    if (i < 0) {
+	*--p = '-';
+    }
+
+    return p;
+}
 # endif
 
 
@@ -28,7 +54,7 @@ int kf_add()
 {
     register string *str;
     register array *a;
-    char buffer[18];
+    char *num, buffer[18];
     xfloat f1, f2;
     long l;
 
@@ -42,10 +68,10 @@ int kf_add()
 
 	case T_STRING:
 	    i_add_ticks(2);
-	    sprintf(buffer, "%ld", (long) sp[1].u.number);
+	    num = kf_itoa(sp[1].u.number);
 	    str = str_new((char *) NULL,
-			  (l=(long) strlen(buffer)) + sp->u.string->len);
-	    strcpy(str->text, buffer);
+			  (l=(long) strlen(num)) + sp->u.string->len);
+	    strcpy(str->text, num);
 	    memcpy(str->text + l, sp->u.string->text, sp->u.string->len);
 	    str_del(sp->u.string);
 	    sp++;
@@ -86,12 +112,12 @@ int kf_add()
 	i_add_ticks(2);
 	switch (sp->type) {
 	case T_INT:
-	    sprintf(buffer, "%ld", (long) sp->u.number);
+	    num = kf_itoa(sp->u.number);
 	    sp++;
 	    str = str_new((char *) NULL,
-			  sp->u.string->len + (long) strlen(buffer));
+			  sp->u.string->len + (long) strlen(num));
 	    memcpy(str->text, sp->u.string->text, sp->u.string->len);
-	    strcpy(str->text + sp->u.string->len, buffer);
+	    strcpy(str->text + sp->u.string->len, num);
 	    str_del(sp->u.string);
 	    str_ref(sp->u.string = str);
 	    return 0;
@@ -1799,18 +1825,18 @@ char pt_tostring[] = { C_STATIC, T_STRING, 1, T_MIXED };
  */
 int kf_tostring()
 {
-    char buffer[18];
+    char *num, buffer[18];
     xfloat flt;
 
     i_add_ticks(2);
     if (sp->type == T_INT) {
 	/* from int */
-	sprintf(buffer, "%ld", (long) sp->u.number);
+	num = kf_itoa(sp->u.number);
     } else if (sp->type == T_FLOAT) {
 	/* from float */
 	i_add_ticks(1);
 	VFLT_GET(sp, flt);
-	flt_ftoa(&flt, buffer);
+	flt_ftoa(&flt, num = buffer);
     } else if (sp->type == T_STRING) {
 	return 0;
     } else {
@@ -1818,7 +1844,7 @@ int kf_tostring()
     }
 
     sp->type = T_STRING;
-    str_ref(sp->u.string = str_new(buffer, (long) strlen(buffer)));
+    str_ref(sp->u.string = str_new(num, (long) strlen(num)));
     return 0;
 }
 # endif
@@ -1928,7 +1954,7 @@ char pt_sum[] = { C_VARARGS | C_STATIC, T_MIXED, 0 };
 int kf_sum(n)
 int n;
 {
-    char buffer[12];
+    char *num;
     string *s;
     array *a;
     register value *v, *e1, *e2;
@@ -1956,8 +1982,7 @@ int n;
 	    } else if (vtype == T_ARRAY) {
 		size += v->u.array->size;
 	    } else {
-		sprintf(buffer, "%ld", (long) v->u.number);
-		size += strlen(buffer);
+		size += strlen(kf_itoa(v->u.number));
 	    }
 	} else if (v->u.number < -2) {
 	    /* aggregate */
@@ -1986,8 +2011,7 @@ int n;
 	}
     }
     if (nonint > 1) {
-	sprintf(buffer, "%ld", (long) result);
-	size = isize + strlen(buffer);
+	size = isize + strlen(kf_itoa(result));
     }
 
     /*
@@ -2007,10 +2031,10 @@ int n;
 		    str_del(v->u.string);
 		    result = 0;
 		} else if (nonint < i) {
-		    sprintf(buffer, "%ld", (long) v->u.number);
-		    len = strlen(buffer);
+		    num = kf_itoa(v->u.number);
+		    len = strlen(num);
 		    size -= len;
-		    memcpy(s->text + size, buffer, len);
+		    memcpy(s->text + size, num, len);
 		    result = 0;
 		} else {
 		    result += v->u.number;
@@ -2027,8 +2051,8 @@ int n;
 	    }
 	}
 	if (nonint > 0) {
-	    sprintf(buffer, "%ld", (long) result);
-	    memcpy(s->text, buffer, strlen(buffer));
+	    num = kf_itoa(result);
+	    memcpy(s->text, num, strlen(num));
 	}
 
 	sp = v - 1;

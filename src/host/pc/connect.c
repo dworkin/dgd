@@ -27,7 +27,7 @@ static fd_set writefds;			/* file descriptor write map */
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
+bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
     WSADATA wsadata;
     struct sockaddr_in sin;
@@ -40,38 +40,38 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     /* initialize winsock */
     if (WSAStartup(MAKEWORD(1, 1), &wsadata) != 0) {
 	P_message("WSAStartup failed (no winsock?)\n");
-	exit(2);
+	return FALSE;
     }
     if (LOBYTE(wsadata.wVersion) != 1 || HIBYTE(wsadata.wVersion) != 1) {
 	WSACleanup();
 	P_message("Winsock 1.1 not supported\n");
-	exit(2);
+	return FALSE;
     }
 
     gethostname(buffer, sizeof(buffer));
     host = gethostbyname(buffer);
     if (host == (struct hostent *) NULL) {
 	P_message("gethostbyname() failed\n");
-	exit(2);
+	return FALSE;
     }
 
     telnet = socket(host->h_addrtype, SOCK_STREAM, 0);
     binary = socket(host->h_addrtype, SOCK_STREAM, 0);
     if (telnet == INVALID_SOCKET || binary == INVALID_SOCKET) {
 	P_message("socket() failed\n");
-	exit(2);
+	return FALSE;
     }
     on = 1;
     if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) != 0) {
 	P_message("setsockopt() failed\n");
-	exit(2);
+	return FALSE;
     }
     on = 1;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) != 0) {
 	P_message("setsockopt() failed\n");
-	exit(2);
+	return FALSE;
     }
 
     memset(&sin, '\0', sizeof(sin));
@@ -81,14 +81,15 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
 	P_message("telnet bind failed\n");
-	exit(2);
+	return FALSE;
     }
     sin.sin_port = htons((u_short) binary_port);
     if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
 	P_message("binary bind failed\n");
-	exit(2);
+	return FALSE;
     }
 
+    flist = (connection *) NULL;
     connections = ALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = INVALID_SOCKET;
@@ -97,8 +98,11 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
 
     FD_ZERO(&fds);
+    FD_ZERO(&waitfds);
     FD_SET(telnet, &fds);
     FD_SET(binary, &fds);
+
+    return TRUE;
 }
 
 /*

@@ -140,12 +140,17 @@ static void completion(struct TCPiopb *iobuf)
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
-void conn_init(int nusers, unsigned int t_port, unsigned int b_port)
+bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 {
     IOParam device;
     GetAddrParamBlock addr;
     UDPiopb iobuf;
     connection *conn;
+
+    connlist = NULL;
+    memset(&flist, '\0', sizeof(flist));
+    memset(&telnet, '\0', sizeof(telnet));
+    memset(&binary, '\0', sizeof(binary));
 
     /* initialize MacTCP */
     device.ioNamePtr = "\p.IPP";
@@ -155,21 +160,21 @@ void conn_init(int nusers, unsigned int t_port, unsigned int b_port)
     device.ioMisc = 0;
     if (PBOpenSync((ParmBlkPtr) &device) != noErr) {
 	P_message("Config error: cannot initialize MacTCP\012"); /* LF */
-	exit(1);
+	return FALSE;
     }
     mactcp = device.ioRefNum;
     addr.ioCRefNum = mactcp;
     addr.csCode = ipctlGetAddr;
     if (PBControlSync((ParmBlkPtr) &addr) != noErr) {
 	P_message("Config error: cannot get host address\012");	/* LF */
-	exit(1);
+	return FALSE;
     }
     iobuf.ioCRefNum = mactcp;
     iobuf.csCode = UDPMaxMTUSize;
     iobuf.csParam.mtu.remoteHost = addr.ourAddress;
     if (PBControlSync((ParmBlkPtr) &iobuf) != noErr) {
 	P_message("Config error: cannot get MTU size\012");	/* LF */
-	exit(1);
+	return FALSE;
     }
     tcpbufsz = 4 * iobuf.csParam.mtu.mtuSize + 1024;
     if (tcpbufsz < TCPBUFSZ) {
@@ -202,6 +207,8 @@ void conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 
     telnet_port = t_port;
     binary_port = b_port;
+
+    return TRUE;
 }
 
 /*

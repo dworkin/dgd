@@ -11,8 +11,6 @@ typedef struct _editor_ {
     struct _editor_ *next;	/* next in free list */
 } editor;
 
-# define EOUTBUFSZ	20480	/* 20 K */
-
 static editor *editors;		/* editor table */
 static editor *flist;		/* free list */
 static int neditors;		/* # of editors */
@@ -28,18 +26,21 @@ static bool internal;		/* flag editor internal error */
  */
 void ed_init(tmp, num)
 char *tmp;
-int num;
+register int num;
 {
-    register int i;
     register editor *e, *f;
 
     tmpedfile = tmp;
-    editors = ALLOC(editor, neditors = num);
     f = (editor *) NULL;
-    for (i = num, e = editors + i; i > 0; --i) {
-	(--e)->ed = (cmdbuf *) NULL;
-	e->next = f;
-	f = e;
+    neditors = num;
+    if (num != 0) {
+	outbuf = ALLOC(char, USHRT_MAX + 1);
+	editors = ALLOC(editor, num);
+	for (e = editors + num; num != 0; --num) {
+	    (--e)->ed = (cmdbuf *) NULL;
+	    e->next = f;
+	    f = e;
+	}
     }
     flist = f;
 }
@@ -134,7 +135,6 @@ object *obj;
 char *cmd;
 {
     register editor *e;
-    char buffer[EOUTBUFSZ];
     extern void output();
 
     check_recursion();
@@ -143,7 +143,6 @@ char *cmd;
     }
 
     e = &editors[UCHAR(obj->etabi)];
-    outbuf = buffer;
     outbufsz = 0;
     internal = FALSE;
     if (ec_push((ec_ftn) ed_handler)) {
@@ -195,7 +194,7 @@ char *f, *a1, *a2, *a3;
 
     sprintf(buf, f, a1, a2, a3);
     len = strlen(buf);
-    if (outbufsz + len > EOUTBUFSZ) {
+    if (outbufsz + len > USHRT_MAX) {
 	error("Editor output string too long");
     }
     memcpy(outbuf + outbufsz, buf, len);

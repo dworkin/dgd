@@ -42,6 +42,11 @@ static Uint timestamp;			/* cycbuf start time */
 static Uint timeout;			/* time the last alarm came */
 static Uint timediff;			/* stored/actual time difference */
 static int fragment;			/* swap fragment */
+static uindex swapped1[SWPERIOD];	/* swap info for last minute */
+static uindex swapped5[SWPERIOD];	/* swap info for last five minutes */
+static int swapidx1, swapidx5;		/* index in swap info arrays */
+static int incr5;			/* 5 second period counter */
+static uindex swaps5;			/* swapout info for last 5 seconds */
 static Uint swaprate1;			/* swaprate per minute */
 static Uint swaprate5;			/* swaprate per 5 minutes */
 
@@ -63,10 +68,17 @@ int frag;
 	timediff = 0;
 	P_alarm(1);
     }
+    memset(cycbuf, '\0', sizeof(cycbuf));
     cycbrk = cotabsz = max;
     queuebrk = 0;
+    nshort = nlong = 0;
 
     fragment = frag;
+    memset(swapped1, '\0', sizeof(swapped1));
+    memset(swapped5, '\0', sizeof(swapped5));
+    swapidx1 = swapidx5 = swaps5 = 0;
+    incr5 = 5;
+    swaprate1 = swaprate5 = 0;
 }
 
 /*
@@ -401,29 +413,24 @@ void co_call()
 		 * set the alarm for the next round
 		 */
 		if (fragment > 0) {
-		    static uindex swapped1[SWPERIOD], swapped5[SWPERIOD];
-		    static int swapcnt1, swapcnt5;
 		    uindex swaps1;
-		    static uindex swaps5;
-		    static int incr5 = 5;
 
 		    /*
 		     * swap out a fragment of all control and data blocks
 		     */
 		    swaps1 = d_swapout(fragment);
-		    swaprate1 += swaps1;
-		    swaprate1 -= swapped1[swapcnt1];
-		    swapped1[swapcnt1++] = swaps1;
-		    if (swapcnt1 == SWPERIOD) {
-			swapcnt1 = 0;
+		    swaprate1 += swaps1 - swapped1[swapidx1];
+		    swapped1[swapidx1++] = swaps1;
+		    if (swapidx1 == SWPERIOD) {
+			swapidx1 = 0;
 		    }
 		    swaps5 += swaps1;
+		    swaprate5 += swaps1;
 		    if (--incr5 == 0) {
-			swaprate5 += swaps5;
-			swaprate5 -= swapped5[swapcnt5];
-			swapped5[swapcnt5++] = swaps5;
-			if (swapcnt5 == SWPERIOD) {
-			    swapcnt5 = 0;
+			swaprate5 -= swapped5[swapidx5];
+			swapped5[swapidx5++] = swaps5;
+			if (swapidx5 == SWPERIOD) {
+			    swapidx5 = 0;
 			}
 			swaps5 = 0;
 			incr5 = 5;
@@ -542,7 +549,7 @@ register Uint t;
     offset = cotabsz - dh.cotabsz;
     cycbrk = dh.cycbrk + offset;
     if (queuebrk > cycbrk + offset || cycbrk == 0) {
-	fatal("restored too many callouts");
+	error("Restored too many callouts");
     }
 
     /* read tables */

@@ -32,7 +32,7 @@ static int maxfd;			/* largest fd opened yet */
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-void conn_init(maxusers, telnet_port, binary_port)
+bool conn_init(maxusers, telnet_port, binary_port)
 int maxusers;
 unsigned int telnet_port, binary_port;
 {
@@ -43,30 +43,32 @@ unsigned int telnet_port, binary_port;
     char buffer[256];
     int on;
 
+    nusers = 0;
+
     gethostname(buffer, sizeof(buffer));
     host = gethostbyname(buffer);
     if (host == (struct hostent *) NULL) {
 	perror("gethostbyname");
-	exit(2);
+	return FALSE;
     }
 
     telnet = socket(host->h_addrtype, SOCK_STREAM, 0);
     binary = socket(host->h_addrtype, SOCK_STREAM, 0);
     if (telnet < 0 || binary < 0) {
 	perror("socket");
-	exit(2);
+	return FALSE;
     }
     on = 1;
     if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
-	exit(2);
+	return FALSE;
     }
     on = 1;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
-	exit(2);
+	return FALSE;
     }
 
     memset(&sin, '\0', sizeof(sin));
@@ -76,14 +78,15 @@ unsigned int telnet_port, binary_port;
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	perror("telnet bind");
-	exit(2);
+	return FALSE;
     }
     sin.sin_port = htons(binary_port);
     if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	perror("binary bind");
-	exit(2);
+	return FALSE;
     }
 
+    flist = (connection *) NULL;
     connections = ALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = -1;
@@ -92,9 +95,12 @@ unsigned int telnet_port, binary_port;
     }
 
     FD_ZERO(&fds);
+    FD_ZERO(&waitfds);
     FD_SET(telnet, &fds);
     FD_SET(binary, &fds);
     maxfd = (telnet < binary) ? binary : telnet;
+
+    return TRUE;
 }
 
 /*

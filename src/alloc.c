@@ -41,14 +41,23 @@ static allocinfo mstat;		/* memory statistics */
  * NAME:	newmem()
  * DESCRIPTION:	allocate new memory
  */
-static char *newmem(size)
+static char *newmem(size, list)
 size_t size;
+char **list;
 {
     char *mem;
 
+    if (list != (char **) NULL) {
+	size += ALGN(sizeof(char *), STRUCT_AL);
+    }
     mem = (char *) malloc(size);
     if (mem == (char *) NULL) {
 	fatal("out of memory");
+    }
+    if (list != (char **) NULL) {
+	*((char **) mem) = *list;
+	*list = mem;
+	mem += ALGN(sizeof(char *), STRUCT_AL);
     }
     return mem;
 }
@@ -68,12 +77,13 @@ typedef struct {
     chunk *list;		/* list of chunks (possibly empty) */
 } clist;
 
+static char *slist;			/* list of static chunks */
 static chunk *schunk;			/* current chunk */
 static size_t schunksz;			/* size of current chunk */
 static chunk *schunks[SCHUNKS];		/* lists of small free chunks */
 static clist lchunks[LCHUNKS];		/* lists of large free chunks */
 static unsigned int nlc;		/* # elements in large chunk list */
-static chunk *slist;			/* list of small unused chunks */
+static chunk *sflist;			/* list of small unused chunks */
 static int slevel;			/* static level */
 
 /*
@@ -142,27 +152,27 @@ register size_t size;
     }
 
     /* try unused chunk list */
-    if (slist != (chunk *) NULL && slist->size >= size) {
-	if (slist->size - size <= MOFFSET) {
+    if (sflist != (chunk *) NULL && sflist->size >= size) {
+	if (sflist->size - size <= MOFFSET) {
 	    /* remainder is too small to put in free list */
-	    c = slist;
-	    slist = c->next;
+	    c = sflist;
+	    sflist = c->next;
 	} else {
 	    register chunk *n;
 
 	    /* split the chunk in two */
-	    c = slist;
-	    n = (chunk *) ((char *) slist + size);
+	    c = sflist;
+	    n = (chunk *) ((char *) sflist + size);
 	    n->size = c->size - size;
 	    if (n->size <= SSMALL) {
 		/* small chunk */
 		n->next = schunks[(n->size - MOFFSET) / STRUCT_AL - 1];
 		schunks[(n->size - MOFFSET) / STRUCT_AL - 1] = n;
-		slist = c->next;
+		sflist = c->next;
 	    } else {
 		/* large enough chunk */
 		n->next = c->next;
-		slist = n;
+		sflist = n;
 	    }
 	    c->size = size;
 	}
@@ -176,10 +186,10 @@ register size_t size;
 	 * allocate default static memory block
 	 */
 	if (schunk != (chunk *) NULL) {
-	    schunk->next = slist;
-	    slist = schunk;
+	    schunk->next = sflist;
+	    sflist = schunk;
 	}
-	schunk = (chunk *) newmem(INIT_MEM);
+	schunk = (chunk *) newmem(INIT_MEM, &slist);
 	mstat.smemsize += schunk->size = INIT_MEM;
 	if (schunksz != 0) {
 	    /* fragmentation matters */
@@ -206,7 +216,7 @@ register size_t size;
     }
 
     /* allocate static memory directly */
-    c = (chunk *) newmem(size);
+    c = (chunk *) newmem(size, &slist);
     mstat.smemsize += c->size = size;
     return c;
 }
@@ -500,10 +510,10 @@ chunk *c;
     }
 }
 
-# define DSMALL		48
+# define DSMALL		64
 # define DLIMIT		(DSMALL + MOFFSET)
 # define DCHUNKS	(DSMALL / STRUCT_AL - 1)
-# define DCHUNKSZ	16384
+# define DCHUNKSZ	32768
 
 static char *dlist;		/* list of dynamic memory chunks */
 static chunk *dchunks[DCHUNKS];	/* list of free small chunks */
@@ -524,7 +534,7 @@ register size_t size;
 	/*
 	 * memory manager hasn't been initialized yet
 	 */
-	c = (chunk *) newmem(size);
+	c = (chunk *) newmem(size, (char **) NULL);
 	c->size = size;
 	return c;
     }
@@ -571,20 +581,15 @@ register size_t size;
 	/*
 	 * get new dynamic chunk
 	 */
-	for (sz = dchunksz;
-	     sz < size + ALGN(sizeof(char *), STRUCT_AL) + SIZETSIZE + UINTSIZE;
-	     sz += dchunksz) ;
-	p = newmem(sz);
+	for (sz = dchunksz; sz < size + SIZETSIZE + UINTSIZE; sz += dchunksz) ;
+	p = newmem(sz, &dlist);
 	mstat.dmemsize += sz;
-	*(char **) p = dlist;
-	dlist = p;
-	p += ALGN(sizeof(char *), STRUCT_AL);
 
 	/* no previous chunk */
 	*(size_t *) p = 0;
 	c = (chunk *) (p + SIZETSIZE);
 	/* initialize chunk */
-	c->size = sz - ALGN(sizeof(char *), STRUCT_AL) - SIZETSIZE - UINTSIZE;
+	c->size = sz - SIZETSIZE - UINTSIZE;
 	p += c->size;
 	*(size_t *) p = c->size;
 	/* no following chunk */
@@ -669,10 +674,10 @@ size_t ssz, dsz;
     dchunksz = ALGN(dsz, STRUCT_AL);
     if (schunksz != 0) {
 	if (schunk != (chunk *) NULL) {
-	    schunk->next = slist;
-	    slist = schunk;
+	    schunk->next = sflist;
+	    sflist = schunk;
 	}
-	schunk = (chunk *) newmem(schunksz);
+	schunk = (chunk *) newmem(schunksz, &slist);
 	mstat.smemsize += schunk->size = schunksz;
     }
 }
@@ -700,7 +705,7 @@ register size_t size;
 
 # ifdef DEBUG
     if (size == 0) {
-	fatal("alloc(0)");
+	fatal("m_alloc(0)");
     }
 # endif
     size = ALGN(size + MOFFSET, STRUCT_AL);
@@ -790,9 +795,8 @@ void m_purge()
 
 # ifdef DEBUG
     while (hlist != (header *) NULL) {
-	register size_t n;
-	register char *mem;
 	char buf[160];
+	register size_t n;
 
 	n = (hlist->size & SIZE_MASK) - MOFFSET;
 	if (n >= DLIMIT) {
@@ -803,11 +807,11 @@ void m_purge()
 	if (n > 26) {
 	    n = 26;
 	}
-	for (mem = (char *) (hlist + 1); n > 0; --n, mem++) {
-	    if (*mem >= ' ') {
-		sprintf(buf + strlen(buf), " '%c", *mem);
+	for (p = (char *) (hlist + 1); n > 0; --n, p++) {
+	    if (*p >= ' ') {
+		sprintf(buf + strlen(buf), " '%c", *p);
 	    } else {
-		sprintf(buf + strlen(buf), " %02x", UCHAR(*mem));
+		sprintf(buf + strlen(buf), " %02x", UCHAR(*p));
 	    }
 	}
 	strcat(buf, "\012");	/* LF */
@@ -817,14 +821,14 @@ void m_purge()
 # endif
 
     /* purge dynamic memory */
-    memset(dchunks, '\0', sizeof(dchunks));
-    dchunk = (chunk *) NULL;
-    dtree = (spnode *) NULL;
     while (dlist != (char *) NULL) {
 	p = dlist;
 	dlist = *(char **) p;
 	free(p);
     }
+    memset(dchunks, '\0', sizeof(dchunks));
+    dchunk = (chunk *) NULL;
+    dtree = (spnode *) NULL;
     mstat.dmemsize = mstat.dmemused = 0;
 
     if (schunksz != 0 &&
@@ -832,14 +836,13 @@ void m_purge()
 	 (mstat.smemsize - mstat.smemused) * 2 < schunksz * 3)) {
 	/* expand static memory */
 	if (schunk != (chunk *) NULL) {
-	    schunk->next = slist;
-	    slist = schunk;
+	    schunk->next = sflist;
+	    sflist = schunk;
 	}
-	schunk = (chunk *) newmem(schunksz);
+	schunk = (chunk *) newmem(schunksz, &slist);
 	mstat.smemsize += schunk->size = schunksz;
     }
 }
-
 
 /*
  * NAME:	mem->info()
@@ -848,4 +851,34 @@ void m_purge()
 allocinfo *m_info()
 {
     return &mstat;
+}
+
+
+/*
+ * NAME:	mem->finish()
+ * DESCRIPTION:	finish up memory manager
+ */
+void m_finish()
+{
+    register char *p;
+
+    schunksz = 0;
+    dchunksz = 0;
+
+    /* purge dynamic memory */
+    m_purge();
+
+    /* purge static memory */
+    while (slist != (char *) NULL) {
+	p = slist;
+	slist = *(char **) p;
+	free(p);
+    }
+    memset(schunks, '\0', sizeof(schunks));
+    memset(lchunks, '\0', sizeof(lchunks));
+    nlc = 0;
+    schunk = (chunk *) NULL;
+    sflist = (chunk *) NULL;
+    slevel = 0;
+    mstat.smemsize = mstat.smemused = 0;
 }

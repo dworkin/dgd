@@ -332,11 +332,24 @@ register object *o;
 	return o->chain.name;
     } else {
 	static char name[STRINGSZ + 12];
+	char num[12];
+	register char *p;
+	register uindex n;
 
 	/*
 	 * return the name of the master object with the index appended
 	 */
-	sprintf(name, "%s#%u", otable[o->u_master].chain.name, o->index);
+	n = o->index;
+	p = num + 11;
+	*p = '\0';
+	do {
+	    *--p = '0' + n % 10;
+	    n /= 10;
+	} while (n != 0);
+	*--p = '#';
+
+	strcpy(name, otable[o->u_master].chain.name);
+	strcat(name, p);
 	return name;
     }
 }
@@ -643,7 +656,7 @@ int fd;
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.nobjects > otabsize) {
-	fatal("too many objects in restore file");
+	error("Too many objects in restore file");
     }
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     free_obj = dh.free_obj;

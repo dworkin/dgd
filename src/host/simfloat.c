@@ -842,41 +842,57 @@ char *buffer;
     i = a.exp - BIAS + 1 - 15;
     n = ((Uint) a.high << i) | (a.low >> (31 - i));
     if (n == 100000000L) {
-	p = digits;
+	p = digits + 7;
 	p[0] = '1';
 	p[1] = '\0';
 	i = 1;
 	e++;
     } else {
-	i = 8;
-	while (n % 10 == 0) {
+	while (n != 0 && n % 10 == 0) {
 	    n /= 10;
-	    --i;
 	}
-	p = digits + i;
+	p = digits + 8;
 	*p = '\0';
+	i = 0;
 	do {
-	    *--p = n % 10 + '0';
+	    i++;
+	    *--p = '0' + n % 10;
 	    n /= 10;
 	} while (n != 0);
     }
 
     if (e >= 8 || (e < -3 && i - e > 8)) {
-	if (i == 1) {
-	    sprintf(buffer, "%ce%s%d", digits[0], "+" + (e < 0), e);
-	} else {
-	    sprintf(buffer, "%c.%se%s%d", digits[0], digits + 1,
-		    "+" + (e < 0), e);
+	buffer[0] = *p;
+	if (i != 1) {
+	    buffer[1] = '.';
+	    memcpy(buffer + 2, p + 1, i - 1);
+	    i++;
 	}
+	buffer[i++] = 'e';
+	if (e >= 0) {
+	    buffer[i] = '+';
+	} else {
+	    buffer[i] = '-';
+	    e = -e;
+	}
+	p = digits + 8;
+	do {
+	    *--p = '0' + e % 10;
+	    e /= 10;
+	} while (e != 0);
+	strcpy(buffer + i + 1, p);
     } else if (e < 0) {
-	sprintf(buffer, "0.%s%s", "000000" + 7 + e, digits);
+	e = 1 - e;
+	memcpy(buffer, "0.000000", e);
+	strcpy(buffer + e, p);
     } else {
 	while (e >= 0) {
 	    *buffer++ = (*p == '\0') ? '0' : *p++;
 	    --e;
 	}
 	if (*p != '\0') {
-	    sprintf(buffer, ".%s", p);
+	    *buffer = '.';
+	    strcpy(buffer + 1, p);
 	} else {
 	    *buffer = '\0';
 	}

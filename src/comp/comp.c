@@ -109,24 +109,6 @@ register control *ctrl;
 }
 
 /*
- * NAME:	dump_functions()
- * DESCRIPTION:	output the function table
- */
-static void dump_functions(nfuncs)
-int nfuncs;
-{
-    register int i;
-
-    if (nfuncs != 0) {
-	printf("\nstatic pcfunc functions[] = {\n");
-	for (i = 1; i <= nfuncs; i++) {
-	    printf("func%d,\n", i);
-	}
-	printf("};\n");
-    }
-}
-
-/*
  * NAME:	dump_funcdefs()
  * DESCRIPTION:	output the function definitions
  */
@@ -234,7 +216,10 @@ char *argv[];
     }
 
     /* initialize */
-    conf_init(argv[1], (char *) NULL);
+    if (!conf_init(argv[1], -1)) {
+	P_message("Initialization failed\012");	/* LF */
+	return 2;
+    }
 
     len = strlen(file = path_resolve(file));
     file[len - 2] = '\0';
@@ -265,13 +250,13 @@ char *argv[];
 
     /* compile file */
     ctrl = c_compile(file, (object *) NULL)->ctrl;
+    nfuncs = cg_nfuncs();
     ec_pop();
 
     /* dump tables */
     dump_inherits(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
-    dump_functions(nfuncs = cg_nfuncs());
     dump_funcdefs(ctrl);
     dump_vardefs(ctrl);
     dump_funcalls(ctrl);
@@ -422,11 +407,6 @@ int fd;
 {
 }
 
-void pc_remap(from, to)
-object *from, *to;
-{
-}
-
 /*
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
@@ -539,10 +519,11 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-void comm_init(nusers, telnet_port, binary_port)
+bool comm_init(nusers, telnet_port, binary_port)
 int nusers;
 unsigned int telnet_port, binary_port;
 {
+    return TRUE;
 }
 
 /*
@@ -644,6 +625,14 @@ bool comm_active()
 void ed_init(tmp, num)
 char *tmp;
 int num;
+{
+}
+
+/*
+ * NAME:	ed->finish()
+ * DESCRIPTION:	pretend to terminate all editor sessions
+ */
+void ed_finish()
 {
 }
 

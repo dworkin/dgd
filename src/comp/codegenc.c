@@ -1947,6 +1947,7 @@ register node *n;
 
 static bool inherited;
 static unsigned short nfuncs;
+static string *funcnames[255];
 
 /*
  * NAME:	codegen->init()
@@ -1956,7 +1957,7 @@ void cg_init(flag)
 bool flag;
 {
     inherited = flag;
-    nfuncs = 1;
+    nfuncs = 0;
 }
 
 /*
@@ -1991,7 +1992,7 @@ unsigned short *size;
 
     nvars = nvar;
     nparam = npar;
-    output("\nstatic void func%u()\t/* %s */\n{\n", nfuncs, fname->text);
+    output("\nstatic void LPC_%s()\n{\n", (funcnames[nfuncs] = fname)->text);
     output("register frame *f = cframe; char *p; Int tv[%d];\n", NTMPVAL);
     j = 0;
     for (i = 0; i < nvar; i++) {
@@ -2026,7 +2027,7 @@ unsigned short *size;
  */
 int cg_nfuncs()
 {
-    return nfuncs - 1;
+    return nfuncs;
 }
 
 /*
@@ -2035,6 +2036,16 @@ int cg_nfuncs()
  */
 void cg_clear()
 {
+    if (!inherited && nfuncs != 0) {
+	register int i;
+	register string **f;
+
+	output("\nstatic pcfunc functions[] = {\n");
+	for (i = nfuncs, f = funcnames; i != 0; --i, f++) {
+	    output("LPC_%s,\n", (*f)->text);
+	}
+	output("};\n");
+    }
 }
 
 /*
