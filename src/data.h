@@ -127,7 +127,7 @@ struct _value_ {
 
 typedef struct {
     Uint time;			/* time of call */
-    unsigned short nargs;	/* number of arguments */
+    uindex nargs;		/* number of arguments */
     value val[4];		/* function name, 3 direct arguments */
 } dcallout;
 
@@ -228,7 +228,7 @@ extern sector		d_swapout	 P((unsigned int));
 extern void		d_swapsync	 P((void));
 extern void		d_upgrade_mem	 P((object*, object*));
 extern void		d_conv_control	 P((unsigned int));
-extern void		d_conv_dataspace P((object*, Uint*));
+extern void		d_conv_dataspace P((object*, Uint*, int));
 
 extern void		d_free_control	 P((control*));
 extern void		d_free_dataspace P((dataspace*));

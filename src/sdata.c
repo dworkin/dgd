@@ -86,11 +86,19 @@ static char ss_layout[] = "iti";
 
 typedef struct _scallout_ {
     Uint time;			/* time of call */
-    unsigned short nargs;	/* number of arguments */
+    uindex nargs;		/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
 } scallout;
 
-static char sco_layout[] = "is[sui][sui][sui][sui]";
+static char sco_layout[] = "iu[sui][sui][sui][sui]";
+
+typedef struct {
+    Uint time;			/* time of call */
+    unsigned short nargs;	/* number of arguments */
+    svalue val[4];		/* function name, 3 direct arguments */
+} oscallout;
+
+static char osc_layout[] = "is[sui][sui][sui][sui]";
 
 typedef struct {
     arrmerge *amerge;			/* array merge table */
@@ -2335,9 +2343,10 @@ register Uint n, *ctab;
  * NAME:	data->conv_dataspace()
  * DESCRIPTION:	convert dataspace
  */
-void d_conv_dataspace(obj, counttab)
+void d_conv_dataspace(obj, counttab, convert)
 object *obj;
 Uint *counttab;
+int convert;
 {
     sdataspace header;
     register dataspace *data;
@@ -2410,8 +2419,27 @@ Uint *counttab;
 	/* callouts */
 	co = data->callouts = ALLOC(dcallout, header.ncallouts);
 	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
-	d_conv((char *) data->scallouts, s, sco_layout, (Uint) header.ncallouts,
-	       size);
+	if (convert) {
+	    register oscallout *osc;
+
+	    /*
+	     * convert old format callouts
+	     */
+	    osc = ALLOCA(oscallout, header.ncallouts);
+	    d_conv((char *) osc, s, osc_layout, (Uint) header.ncallouts, size);
+	    for (n = data->ncallouts; n > 0; --n) {
+		sco->time = osc->time;
+		sco->nargs = osc->nargs;
+		memcpy(sco->val, osc->val, 4 * sizeof(svalue));
+		sco++;
+		osc++;
+	    }
+	    sco -= data->ncallouts;
+	    AFREE(osc - data->ncallouts);
+	} else {
+	    d_conv((char *) data->scallouts, s, sco_layout,
+		   (Uint) header.ncallouts, size);
+	}
 
 	for (n = data->ncallouts; n > 0; --n) {
 	    co->time = sco->time;

@@ -10,7 +10,6 @@
 typedef struct _objplane_ objplane;
 
 typedef struct _objpatch_ {
-    short access;			/* access flags */
     objplane *plane;			/* plane that patch is on */
     struct _objpatch_ *prev;		/* previous patch */
     struct _objpatch_ *next;		/* next in linked list */
@@ -112,11 +111,10 @@ objplane *plane;
  * NAME:	objpatch->new()
  * DESCRIPTION:	create a new object patch
  */
-static objpatch *op_new(plane, o, prev, obj, access)
+static objpatch *op_new(plane, o, prev, obj)
 objplane *plane;
 objpatch **o, *prev;
 object *obj;
-int access;
 {
     register optable *tab;
     register objpatch *op;
@@ -143,7 +141,6 @@ int access;
     }
 
     /* initialize */
-    op->access = access;
     op->plane = plane;
     op->prev = prev;
     op->obj = *obj;
@@ -192,16 +189,12 @@ int access;
 	 */
 	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
 	for (o = *oo; o->obj.index != index; o = o->next) ;
-	if (access == OACC_READ) {
-	    return &o->obj;
-	}
-	if (o->plane == oplane) {
-	    o->access |= access;
+	if (access == OACC_READ || o->plane == oplane) {
 	    return &o->obj;
 	}
 
 	/* create new patch on current plane */
-	return &op_new(oplane, oo, o, &o->obj, access)->obj;
+	return &op_new(oplane, oo, o, &o->obj)->obj;
     } else {
 	/*
 	 * first patch for object
@@ -211,7 +204,7 @@ int access;
 	    op_init(oplane);
 	}
 	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
-	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index), access)->obj;
+	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index))->obj;
 	if (obj->chain.name != (char *) NULL) {
 	    char *name;
 	    hte **h;
@@ -426,7 +419,6 @@ void o_commit_plane()
 			    *ht_lookup(oplane->htab, op->obj.chain.name, FALSE)
 								= (hte *) obj;
 			}
-			op->prev->access = op->access;
 			*obj = op->obj;
 			op_del(oplane, o);
 		    }
@@ -898,7 +890,7 @@ int access;
 	number = o->index;
     }
 
-    return (access == OACC_READ)? o : OBJW(number);
+    return (access == OACC_READ) ? o : OBJW(number);
 }
 
 /*
@@ -1332,7 +1324,8 @@ cvoid *cv1, *cv2;
  * NAME:	object->conv()
  * DESCRIPTION:	convert all objects, creating a new swap file
  */
-void o_conv()
+void o_conv(convert)
+int convert;
 {
     register Uint *counts, *sorted;
     register uindex i;
@@ -1379,7 +1372,7 @@ void o_conv()
 	 */
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
-		d_conv_dataspace(o, counts);
+		d_conv_dataspace(o, counts, convert);
 		o_clean_upgrades();
 		d_swapout(1);
 	    }
