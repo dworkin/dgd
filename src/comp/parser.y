@@ -70,8 +70,8 @@ static bool typechecking;	/* does the current function have it? */
 	     mult_oper_exp add_oper_exp shift_oper_exp rel_oper_exp
 	     equ_oper_exp bitand_oper_exp bitxor_oper_exp bitor_oper_exp
 	     and_oper_exp or_oper_exp cond_exp exp list_exp opt_list_exp
-	     f_list_exp opt_list_exp_comma assoc_exp list_assoc_exp
-	     opt_list_assoc_exp_comma ident
+	     f_list_exp f_opt_list_exp opt_list_exp_comma assoc_exp
+	     list_assoc_exp opt_list_assoc_exp_comma ident
 
 %%
 
@@ -97,8 +97,7 @@ top_level_declaration
 	: INHERIT opt_inherit_label exp ';'
 		{
 		  if (ndeclarations > 0) {
-		     yyerror("inherit statement must precede all declarations");
-		     YYABORT;
+		      yyerror("inherit must precede all declarations");
 		  } else if ($3->type != N_STR) {
 		      yyerror("inherit argument must be a string constant");
 		  } else if (!c_inherit($3->l.string->text, $2) && nerrors == 0)
@@ -126,12 +125,14 @@ opt_inherit_label
 data_declaration
 	: class_specifier_list type_specifier list_dcltr ';'
 		{ c_global($1, $2, $3); }
-	| error ';'
 	;
 
 function_declaration
 	: class_specifier_list type_specifier function_dcltr
-		{ c_function($1, $2, $3, typechecking = TRUE); }
+		{ 
+		  typechecking = TRUE;
+		  c_function($1, $2, $3);
+		}
 	  compound_stmt
 		{
 		  if (nerrors == 0) {
@@ -140,8 +141,8 @@ function_declaration
 		}
 	| class_specifier_list ident '(' formals_declaration ')'
 		{
-		  c_function($1, T_ERROR, node_bin(N_FUNC, 0, $2, $4),
-			     typechecking = c_typechecking());
+		  typechecking = FALSE;
+		  c_function($1, T_INVALID, node_bin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
 		{
@@ -153,7 +154,7 @@ function_declaration
 
 local_data_declaration
 	: class_specifier_list type_specifier list_dcltr ';'
-		{ c_local($1, $2, $3, typechecking); }
+		{ c_local($1, $2, $3); }
 	;
 
 formals_declaration
@@ -177,7 +178,7 @@ formal_declaration
 		}
 	| ident {
 		  $$ = $1;
-		  $$->mod = T_ERROR;	/* only if typechecking, though */
+		  $$->mod = T_INVALID;	/* only if typechecking, though */
 		}
 	;
 
@@ -195,6 +196,8 @@ class_specifier
 		{ $$ = C_STATIC; }
 	| NOMASK
 		{ $$ = C_NOMASK | C_LOCAL; }
+	| VARARGS
+		{ $$ = C_VARARGS; }
 	;
 
 type_specifier
@@ -214,7 +217,7 @@ star_list
 		{ $$ = 0; }
 	| star_list '*'
 		{
-		  $$ = ($1 | (1 << REFSHIFT)) & T_REF;
+		  $$ = ($1 + (1 << REFSHIFT)) & T_REF;
 		  if ($$ == 0) {
 		      $$ = T_REF;
 		  }
@@ -249,19 +252,20 @@ dcltr_or_stmt_list
 	: /* empty */
 		{ $$ = (node *) NULL; }
 	| dcltr_or_stmt_list dcltr_or_stmt
+		{ $$ = c_concat($1, $2); }
+	;
+
+dcltr_or_stmt
+	: local_data_declaration
 		{
-		  $$ = $1;
-		  if ($$ == (node *) NULL) {
-		      $$ = $2;
-		  } else if ($2 != (node *) NULL && ($2->type == N_CASE ||
-			     ($$->type != N_BREAK && $$->type != N_CONTINUE &&
-			      $$->type != N_RETURN && ($$->type != N_PAIR ||
-			      ($$->r.right->type != N_BREAK &&
-			       $$->r.right->type != N_CONTINUE &&
-			       $$->r.right->type != N_RETURN))))) {
-		      $$ = node_bin(N_PAIR, 0, $$, $2);
+		  if (nstatements > 0) {
+		      yyerror("declaration after statement");
 		  }
-		  /* doesn't handle { foo(); break; } bar(); properly */
+		  $$ = (node *) NULL;
+		}
+	| stmt	{
+		  nstatements++;
+		  $$ = $1;
 		}
 	| error ';'
 		{
@@ -272,40 +276,41 @@ dcltr_or_stmt_list
 		}
 	;
 
-dcltr_or_stmt
-	: local_data_declaration
-		{
-		  if (nstatements > 0) {
-		      yyerror("local declarations must precede all statements");
-		  }
-		  $$ = (node *) NULL;
-		}
-	| stmt	{
-		  nstatements++;
-		  $$ = $1;
-		}
-	;
-
 stmt
 	: f_list_exp ';'
 		{ $$ = c_exp_stmt($1); }
 	| compound_stmt
 	| IF '(' f_list_exp ')' stmt
-		{ $$ = c_if($3, $5, (node *) NULL); }
+		{
+		  t_void($3);
+		  $$ = c_if($3, $5, (node *) NULL);
+		}
 /* will cause shift/reduce conflict */
 	| IF '(' f_list_exp ')' stmt ELSE stmt
-		{ $$ = c_if($3, $5, $7); }
+		{
+		  t_void($3);
+		  $$ = c_if($3, $5, $7);
+		}
 	| DO	{ c_loop(); }
 	  stmt WHILE '(' f_list_exp ')' ';'
-		{ $$ = c_do($6, $3); }
+		{
+		  t_void($6);
+		  $$ = c_do($6, $3);
+		}
 	| WHILE '(' f_list_exp ')'
-		{ c_loop(); }
+		{
+		  t_void($3);
+		  c_loop();
+		}
 	  stmt	{ $$ = c_while($3, $6); }
-	| FOR '(' opt_list_exp ';' opt_list_exp ';' opt_list_exp ')'
-		{ c_loop(); }
+	| FOR '(' f_opt_list_exp ';' f_opt_list_exp ';' f_opt_list_exp ')'
+		{
+		  t_void($5);
+		  c_loop();
+		}
 	  stmt	{ $$ = c_for($3, $5, $7, $10); }
 	| SWITCH '(' f_list_exp ')'
-		{ c_startswitch($3); }
+		{ c_startswitch($3, typechecking); }
 	  compound_stmt
 		{ $$ = c_endswitch($3, $6); }
 	| CASE exp ':'
@@ -342,20 +347,34 @@ stmt
 		{ $$ = c_break(); }
 	| CONTINUE ';'
 		{ $$ = c_continue(); }
-	| RETURN ';'
-		{ $$ = node_mon(N_RETURN, 0, node_int((Int) 0)); }
-	| RETURN f_list_exp ';'
+	| RETURN f_opt_list_exp ';'
 		{
-		  if (typechecking &&
-		      ($2->type != N_INT || $2->l.number != 0) &&
-		      c_tmatch($2->mod, c_ftype()) == T_ERROR) {
+		  if ($2 == (node *) NULL) {
 		      /*
-		       * type error
+		       * always possible
 		       */
-		      yyerror("return type doesn't match %s (%s)",
-			      c_typename(c_ftype()), c_typename($2->mod));
+		      $$ = node_mon(N_RETURN, 0, node_int((Int) 0));
+		  } else {
+		      if (typechecking) {
+			  unsigned short type;
+
+			  type = c_ftype();
+			  if (type == T_VOID) {
+			      /*
+			       * can't return anything from a void function
+			       */
+			      yyerror("value returned from void function");
+			  } else if (($2->type != N_INT || $2->l.number != 0) &&
+				     c_tmatch($2->mod, type) == T_INVALID) {
+			      /*
+			       * type error
+			       */
+			      yyerror("returned type doesn't match %s (%s)",
+				      c_typename(type), c_typename($2->mod));
+			  }
+		      }
+		      $$ = node_mon(N_RETURN, 0, $2);
 		  }
-		  $$ = node_mon(N_RETURN, 0, $2);
 		}
 	| ';'	{ $$ = (node *) NULL; }
 	;
@@ -386,123 +405,119 @@ primary_p1_exp
 	| STRING_CONST
 		{ $$ = node_str(str_new($1, (long) strlen($1))); }
 	| '(' '{' opt_list_exp_comma '}' ')'
-		{ $$ = node_mon(N_AGGR, T_MIXED | 1, $3); }
+		{ $$ = node_mon(N_AGGR, T_MIXED | (1 << REFSHIFT), $3); }
 	| '(' '[' opt_list_assoc_exp_comma ']' ')'
 		{ $$ = node_mon(N_AGGR, T_MAPPING, $3); }
-	| ident	{ $$ = c_variable($1, typechecking); }
+	| ident	{
+		  $$ = c_variable($1);
+		  if (typechecking) {
+		      if ($$->type == N_GLOBAL && $$->mod == T_NUMBER) {
+			  /*
+			   * global vars might be modified by untypechecked
+			   * functions...
+			   */
+			  $$ = node_mon(N_CAST, T_NUMBER, $$);
+		      }
+		  } else {
+		      /* the variable could be anything */
+		      $$->mod = T_MIXED;
+		  }
+		}
 	| '(' f_list_exp ')'
 		{ $$ = $2; }
 	| function_name '(' opt_list_exp ')'
-		{ $$ = c_funcall($1, $3); }
+		{
+		  $$ = c_funcall($1, $3);
+		  if (!typechecking) {
+		      $$->mod = T_MIXED;	/* get rid of void */
+		  }
+		}
 	| primary_p2_exp ARROW ident '(' opt_list_exp ')'
-		{ $$ = c_arrow($1, $3, $5); }
+		{
+		  $$ = c_arrow($1, $3, $5);
+		  if (!typechecking) {
+		      $$->mod = T_MIXED;	/* get rid of void */
+		  }
+		}
 	;
 
 primary_p2_exp
 	: primary_p1_exp
 	| primary_p2_exp '[' f_list_exp ']'
-		{
-		  if ($1->type == N_STR && $3->type == N_INT) {
-		     $$ = $3;
-		     $$->l.number = str_index($1->l.string, (Int) $3->l.number);
-		  } else {
-		      $$ = tc_index($1, $3);
-		  }
-		}
+		{ $$ = idx($1, $3); }
 	| primary_p2_exp '[' f_list_exp DOT_DOT f_list_exp ']'
-		{
-		  if ($1->type == N_STR && $3->type == N_INT &&
-		      $5->type == N_INT) {
-		      $$ = node_str(str_range($1->l.string, (Int) $3->l.number,
-					      (Int) $5->l.number));
-		  } else {
-		      $$ = tc_range($1, $3, $5);
-		  }
-		}
+		{ $$ = range($1, $3, $5); }
 	;
 
 postfix_exp
 	: primary_p2_exp
 	| postfix_exp PLUS_PLUS
-		{ $$ = tc_moni(N_PLUS_PLUS, c_lvalue($1, "++"), "++"); }
+		{ $$ = assign_uni(N_PLUS_PLUS, $1, "++"); }
 	| postfix_exp MIN_MIN
-		{ $$ = tc_moni(N_MIN_MIN, c_lvalue($1, "--"), "--"); }
+		{ $$ = assign_uni(N_MIN_MIN, $1, "--"); }
 	;
 
 prefix_exp
 	: postfix_exp
 	| PLUS_PLUS cast_exp
 		{
-		  $$ = tc_moni(N_ADD_EQ, c_lvalue($2, "++"), "++");
+		  $$ = assign_uni(N_ADD_EQ, $2, "++");
 		  $$->r.right = node_int((Int) 1);  /* convert to binary op */
 		}
 	| MIN_MIN cast_exp
 		{
-		  $$ = tc_moni(N_MIN_EQ, c_lvalue($2, "--"), "--");
+		  $$ = assign_uni(N_SUB_EQ, $2, "--");
 		  $$->r.right = node_int((Int) 1);  /* convert to binary op */
 		}
 	| '-' cast_exp
 		{
-		  switch ($2->type) {
-		  case N_INT:
-		      $$ = $2;
-		      $$->l.number = -$2->l.number;
-		      break;
-
-		  case N_UMIN:
-		      if ($2->mod == T_NUMBER) {
-			  $$ = $2->l.left;
-			  break;
-		      }
-		  default:
-		      $$ = tc_moni(N_UMIN, $2, "unary -");
-		      break;
+		  $$ = $2;
+		  if (t_uni($$, "unary -")) {
+		      $$ = sub(N_SUB, node_int((Int) 0), $$, "-");
 		  }
 		}
 	| '+' cast_exp
 		{
 		  $$ = $2;
-		  if (typechecking && $$->mod != T_NUMBER) {
-		      yyerror("bad type for unary + (%s)", c_typename($$->mod));
-		  }
+		  t_uni($$, "unary +");
 		}
 	| '!' cast_exp
-		{ $$ = c_not($2); }
+		{
+		  t_void($2);
+		  $$ = c_not($2);
+		}
 	| '~' cast_exp
 		{
-		  switch ($2->type) {
-		  case N_INT:
-		      $$ = $2;
-		      $$->l.number = ~$$->l.number;
-		      break;
-
-		  case N_NEG:
-		      if ($$->mod == T_NUMBER) {
-			  $$ = $2->l.left;
-			  break;
-		      }
-		  default:
-		      $$ = tc_moni(N_NEG, $2, "~");
-		      break;
+		  $$ = $2;
+		  if (t_uni($$, "~")) {
+		      $$ = xor(N_XOR, $$, node_int((Int) -1), "^");
 		  }
 		}
 	;
 
 cast_exp
 	: prefix_exp
-	| '(' type_specifier star_list ')' prefix_exp
+	| '(' type_specifier star_list ')' cast_exp
 		{
 		  unsigned short type;
 
-		  type = $2 | ($3 & T_REF);
-		  if (typechecking && type != $5->mod) {
-		      if (($5->mod & T_TYPE) != T_MIXED) {
+		  type = $2 | $3;
+		  $$ = $5;
+		  if (type != $$->mod) {
+		      if (($$->mod & T_TYPE) != T_MIXED) {
 			  yyerror("cast of non-mixed type (%s)",
-				  c_typename($5->mod));
+				  c_typename($$->mod));
+		      } else if ($3 < ($$->mod & T_REF)) {
+			  yyerror("illegal cast of array type (%s)",
+				  c_typename($$->mod));
+		      } else if ($2 == T_VOID) {
+			  yyerror("cannot cast to %s", c_typename(type));
+			  type = T_MIXED;
+		      } else if (typechecking && type == T_NUMBER) {
+			  /* only casts to int are kept */
+			  $$ = node_mon(N_CAST, 0, $$);
 		      }
-		      $$ = node_mon(N_CAST, type, $5);
-		  } else {
-		      $$ = $5;	/* ignore cast */
+		      $$->mod = type;
 		  }
 		}
 	;
@@ -510,173 +525,19 @@ cast_exp
 mult_oper_exp
 	: cast_exp
 	| mult_oper_exp '*' cast_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number *= $3->l.number;
-		      } else if ($$->type == N_MULT &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number *= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_MULT, $$, $3, "*");
-		      }
-		  } else if ($$->type == N_INT) {
-		      $$ = tc_bini(N_MULT, $3, $$, "*");
-		  } else {
-		      $$ = tc_bini(N_MULT, $$, $3, "*");
-		  }
-		}
+		{ $$ = mult(N_MULT, $1, $3, "*"); }
 	| mult_oper_exp '/' cast_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  if ($3->l.number == 0) {
-			      yyerror("division by zero");
-			  } else {
-			      $$->l.number /= $3->l.number;
-			  }
-		      } else if ($$->type == N_DIV &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number *= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_DIV, $$, $3, "/");
-		      }
-		  } else {
-		      $$ = tc_bini(N_DIV, $$, $3, "/");
-		  }
-		}
+		{ $$ = mdiv(N_DIV, $1, $3, "/"); }
 	| mult_oper_exp '%' cast_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  if ($3->l.number == 0) {
-			      yyerror("modulus by zero");
-			  } else {
-			      $$->l.number %= $3->l.number;
-			  }
-		      } else if ($$->type == N_MOD &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number *= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_MOD, $$, $3, "%");
-		      }
-		  } else {
-		      $$ = tc_bini(N_MOD, $$, $3, "%");
-		  }
-		}
+		{ $$ = mod(N_MOD, $1, $3, "%"); }
 	;
 
 add_oper_exp
 	: mult_oper_exp
 	| add_oper_exp '+' mult_oper_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number += $3->l.number;
-		      } else if ($$->type == N_STR) {
-			  char buffer[12];
-
-			  sprintf(buffer, "%ld", (long) (Int) $3->l.number);
-			  $$ = node_str(str_new((char *) NULL,
-						$$->l.string->len +
-						(long) strlen(buffer)));
-			  strcpy($$->l.string->text, $$->l.string->text);
-			  strcat($$->l.string->text, buffer);
-		      } else if ($$->type == N_MIN &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number -= $3->l.number;
-		      } else if ($$->type == N_ADD &&
-				 $$->r.right->type == N_STR) {
-			  char buffer[12];
-			  register string *str;
-
-			  sprintf(buffer, "%ld", (long) (Int) $3->l.number);
-			  str = str_new((char *) NULL,
-					$$->r.right->l.string->len +
-					(long) strlen(buffer));
-			  strcpy(str->text, $$->r.right->l.string->text);
-			  strcat(str->text, buffer);
-			  $$->r.right = node_str(str);
-		      } else if ($$->mod == T_NUMBER) {
-			  if ($$->type == N_ADD && $$->r.right->type == N_INT) {
-			      $$->r.right->l.number += $3->l.number;
-			  } else {
-			      $$ = tc_add(N_ADD, $3, $$, "+");
-			  }
-		      } else {
-			  $$ = tc_add(N_ADD, $$, $3, "+");
-		      }
-		  } else if ($3->type == N_STR) {
-		      if ($$->type == N_INT) {
-			  char buffer[12];
-
-			  sprintf(buffer, "%ld", (long) (Int) $$->l.number);
-			  $$ = node_str(str_new((char *) NULL,
-						(long) strlen(buffer) +
-						$3->l.string->len));
-			  strcpy($$->l.string->text, buffer);
-			  strcat($$->l.string->text, $3->l.string->text);
-		      } else if ($$->type == N_STR) {
-			  if (ec_push()) {
-			      yyerror("string constant too long");
-			  } else {
-			     $$ = node_str(str_add($$->l.string, $3->l.string));
-			     ec_pop();
-			  }
-		      } else if ($$->type == N_ADD && $$->mod == T_STRING &&
-				 $$->r.right->type == N_INT) {
-			  char buffer[12];
-			  register string *str;
-
-			  sprintf(buffer, "%ld",
-				  (long) (Int) $$->r.right->l.number);
-			  str = str_new((char *) NULL, (long) strlen(buffer) +
-						       $3->l.string->len);
-			  strcpy(str->text, buffer);
-			  strcat(str->text, $3->l.string->text);
-			  $$->r.right = node_str(str);
-		      } else if ($$->type == N_ADD &&
-				 $$->r.right->type == N_STR) {
-			  if (ec_push()) {
-			      yyerror("string constant too long");
-			  } else {
-			   $$->r.right = node_str(str_add($$->r.right->l.string,
-							  $3->l.string));
-			   ec_pop();
-			  }
-		      } else {
-			  $$ = tc_add(N_ADD, $$, $3, "+");
-		      }
-		  } else if ($$->mod == T_NUMBER && $$->r.right->type == N_INT)
-		  {
-		      $$ = tc_add(N_ADD, $3, $$, "+");
-		  } else {
-		      $$ = tc_add(N_ADD, $$, $3, "+");
-		  }
-		}
+		{ $$ = add(N_ADD, $1, $3, "+"); }
 	| add_oper_exp '-' mult_oper_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number -= $3->l.number;
-		      } else if ($$->type == N_MIN &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number += $3->l.number;
-		      } else if ($$->type == N_ADD && $$->mod == T_NUMBER &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number -= $3->l.number;
-		      } else {
-			  $$ = tc_min(N_MIN, $$, $3, "-");
-		      }
-		  } else {
-		      $$ = tc_min(N_MIN, $$, $3, "-");
-		  }
-		}
+		{ $$ = sub(N_SUB, $1, $3, "-"); }
 	;
 
 shift_oper_exp
@@ -687,7 +548,7 @@ shift_oper_exp
 		  if ($$->type == N_INT && $3->type == N_INT) {
 		      $$->l.number <<= $3->l.number;
 		  } else {
-		      $$ = tc_bini(N_LSHIFT, $$, $3, "<<");
+		      $$ = bini(N_LSHIFT, $$, $3, "<<");
 		  }
 		}
 	| shift_oper_exp RSHIFT add_oper_exp
@@ -696,7 +557,7 @@ shift_oper_exp
 		  if ($$->type == N_INT && $3->type == N_INT) {
 		      $$->l.number >>= $3->l.number;
 		  } else {
-		      $$ = tc_bini(N_RSHIFT, $$, $3, ">>");
+		      $$ = bini(N_RSHIFT, $$, $3, ">>");
 		  }
 		}
 	;
@@ -712,7 +573,7 @@ rel_oper_exp
 		      $$ = node_int((Int) (strcmp($$->l.string->text,
 						  $3->l.string->text) < 0));
 		  } else {
-		      $$ = tc_rel(N_LT, $$, $3, "<");
+		      $$ = rel(N_LT, $$, $3, "<");
 		  }
 		}
 	| rel_oper_exp '>' shift_oper_exp
@@ -724,7 +585,7 @@ rel_oper_exp
 		      $$ = node_int((Int) (strcmp($$->l.string->text,
 						  $3->l.string->text) > 0));
 		  } else {
-		      $$ = tc_rel(N_GT, $$, $3, ">");
+		      $$ = rel(N_GT, $$, $3, ">");
 		  }
 		}
 	| rel_oper_exp LE shift_oper_exp
@@ -736,7 +597,7 @@ rel_oper_exp
 		      $$ = node_int((Int) (strcmp($$->l.string->text,
 						  $3->l.string->text) <= 0));
 		  } else {
-		      $$ = tc_rel(N_LE, $$, $3, "<=");
+		      $$ = rel(N_LE, $$, $3, "<=");
 		  }
 		}
 	| rel_oper_exp GE shift_oper_exp
@@ -748,7 +609,7 @@ rel_oper_exp
 		      $$ = node_int((Int) (strcmp($$->l.string->text,
 						  $3->l.string->text) >= 0));
 		  } else {
-		      $$ = tc_rel(N_GE, $$, $3, ">=");
+		      $$ = rel(N_GE, $$, $3, ">=");
 		  }
 		}
 	;
@@ -756,252 +617,97 @@ rel_oper_exp
 equ_oper_exp
 	: rel_oper_exp
 	| equ_oper_exp EQ rel_oper_exp
-		{
-		  $$ = (node *) NULL;
-		  switch ($1->type) {
-		  case N_INT:
-		      if ($3->type == N_INT) {
-			  $$ = $1;
-			  $$->l.number = ($$->l.number == $3->l.number);
-		      } else if ($1->l.number == 0) {
-			  if ($3->type == N_STR) {
-			      $$ = $1;	/* FALSE */
-			  } else {
-			      $$ = c_not($3);
-			  }
-		      }
-		      break;
-
-		  case N_STR:
-		      if ($3->type == N_STR) {
-			  $$ = node_int((Int) (strcmp($1->l.string->text,
-						     $3->l.string->text) == 0));
-		      } else if ($3->type == N_INT && $3->l.number == 0) {
-			  $$ = $3;	/* FALSE */
-		      }
-		      break;
-
-		  default:
-		      if ($3->type == N_INT && $3->l.number == 0) {
-			  $$ = c_not($1);
-		      }
-		      break;
-		  }
-		  if ($$ == (node *) NULL) {
-		      $$ = tc_equ(N_EQ, $1, $3, "==");
-		  }
-		}
+		{ $$ = eq($1, $3); }
 	| equ_oper_exp NE rel_oper_exp
-		{
-		  $$ = (node *) NULL;
-		  switch ($1->type) {
-		  case N_INT:
-		      if ($3->type == N_INT) {
-			  $$ = $1;
-			  $$->l.number = ($$->l.number != $3->l.number);
-		      } else if ($1->l.number == 0) {
-			  if ($3->type == N_STR) {
-			      $$ = $1;
-			      $$->l.number = TRUE;
-			  } else {
-			      $$ = c_tst($3);
-			  }
-		      }
-		      break;
-
-		  case N_STR:
-		      if ($3->type == N_STR) {
-			  $$ = node_int((Int) (strcmp($1->l.string->text,
-						     $3->l.string->text) != 0));
-		      } else if ($3->type == N_INT && $3->l.number == 0) {
-			  $$ = $3;
-			  $$->l.number = TRUE;
-		      }
-		      break;
-
-		  default:
-		      if ($3->type == N_INT && $3->l.number == 0) {
-			  $$ = c_tst($1);
-		      }
-		      break;
-		  }
-		  if ($$ == (node *) NULL) {
-		      $$ = tc_equ(N_NE, $1, $3, "!=");
-		  }
-		}
+		{ $$ = c_not(eq($1, $3)); }
 	;
 
 bitand_oper_exp
 	: equ_oper_exp
 	| bitand_oper_exp '&' equ_oper_exp
-		{
-		  unsigned short type;
-
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number &= $3->l.number;
-		      } else if ($$->type == N_AND &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number &= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_AND, $$, $3, "&");
-		      }
-		  } else if ($$->type == N_INT) {
-		      $$ = tc_bini(N_AND, $3, $$, "&");
-		  } else if ((($$->type | $3->type) & T_REF) != 0 &&
-			     (type=c_tmatch($$->type, $3->type)) != T_ERROR) {
-		      /*
-		       * array & array
-		       */
-		      $$ = node_bin(N_AND, type, $$, $3);
-		  } else {
-		      $$ = tc_bini(N_AND, $$, $3, "&");
-		  }
-		}
+		{ $$ = and(N_AND, $1, $3, "&"); }
 	;
 
 bitxor_oper_exp
 	: bitand_oper_exp
 	| bitxor_oper_exp '^' bitand_oper_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number ^= $3->l.number;
-		      } else if ($$->type == N_XOR &&
-				 $$->r.right->type == N_INT) {
-			  $$->r.right->l.number ^= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_XOR, $$, $3, "^");
-		      }
-		  } else if ($$->type == N_INT) {
-		      $$ = tc_bini(N_XOR, $3, $$, "^");
-		  } else {
-		      $$ = tc_bini(N_XOR, $$, $3, "^");
-		  }
-		}
+		{ $$ = xor(N_XOR, $1, $3, "^"); }
 	;
 
 bitor_oper_exp
 	: bitxor_oper_exp
 	| bitor_oper_exp '|' bitxor_oper_exp
-		{
-		  $$ = $1;
-		  if ($3->type == N_INT) {
-		      if ($$->type == N_INT) {
-			  $$->l.number |= $3->l.number;
-		      } else if ($$->type == N_OR &&
-				 $$->r.right->type == N_INT) {
-			  $$ = $$;
-			  $$->r.right->l.number |= $3->l.number;
-		      } else {
-			  $$ = tc_bini(N_OR, $$, $3, "|");
-		      }
-		  } else if ($$->type == N_INT) {
-		      $$ = tc_bini(N_OR, $3, $$, "|");
-		  } else {
-		      $$ = tc_bini(N_OR, $$, $3, "|");
-		  }
-		}
+		{ $$ = or(N_OR, $1, $3, "|"); }
 	;
 
 and_oper_exp
 	: bitor_oper_exp
 	| and_oper_exp LAND bitor_oper_exp
-		{
-		  if ($1->type == N_TST) {
-		      $1 = $1->l.left;
-		  }
-		  if ($3->type == N_TST) {
-		      $3 = $3->l.left;
-		  }
-		  if ($1->type == N_STR) {
-		      $$ = c_tst($3);
-		  } else if ($3->type == N_STR) {
-		      $$ = c_tst($1);
-		  } else if ($1->type == N_INT) {
-		      if ($1->l.number == 0) {
-			  $$ = $1;
-		      } else {
-			  $$ = c_tst($3);
-		      }
-		  } else if ($3->type == N_INT) {
-		      if ($3->l.number != 0) {
-			  $$ = c_tst($1);
-		      } else {
-			  $$ = node_bin(N_COMMA, T_NUMBER, $1, $3);
-		      } 
-		  } else {
-		      $$ = node_bin(N_LAND, T_NUMBER, $1, $3);
-		  }
-		}
+		{ $$ = land($1, $3); }
 	;
 
 or_oper_exp
 	: and_oper_exp
 	| or_oper_exp LOR and_oper_exp
-		{
-		  if ($1->type == N_TST) {
-		      $1 = $1->l.left;
-		  }
-		  if ($3->type == N_TST) {
-		      $3 = $3->l.left;
-		  }
-		  if ($1->type == N_STR) {
-		      $$ = node_int((Int) TRUE);
-		  } else if ($3->type == N_STR) {
-		      $$ = c_tst($1);
-		  } else if ($1->type == N_INT) {
-		      if ($1->l.number != 0) {
-			  $$ = $1;
-			  $$->l.number = TRUE;
-		      } else {
-			  $$ = c_tst($3);
-		      }
-		  } else if ($3->type == N_INT) {
-		      if ($3->l.number == 0) {
-			  $$ = c_tst($1);
-		      } else {
-			  $$ = node_bin(N_COMMA, T_NUMBER, $1, $3);
-			  $3->l.number = TRUE;
-		      }
-		  } else {
-		      $$ = node_bin(N_LAND, T_NUMBER, $1, $3);
-		  }
-		}
+		{ $$ = lor($1, $3); }
 	;
 
 cond_exp
 	: or_oper_exp
 	| or_oper_exp '?' f_list_exp ':' cond_exp
-		{ $$ = tc_quest($1, $3, $5); }
+		{
+		  $$ = c_quest($1, $3, $5);
+		  $$->mod = t_quest($1, $3, $5);
+		}
 	;
 
 exp
 	: cond_exp
 	| cond_exp '=' exp
-		{ $$ = tc_assign(c_lvalue($1, "assignment"), $3); }
+		{ $$ = assign(c_lvalue($1, "assignment"), asgnop($1, $3)); }
 	| cond_exp PLUS_EQ exp
-		{ $$ = tc_add(N_ADD_EQ, c_lvalue($1, "+="), $3, "+="); }
+		{
+		  $$ = add(N_ADD_EQ, c_lvalue($1, "+="), asgnop($1, $3), "+=");
+		}
 	| cond_exp MIN_EQ exp
-		{ $$ = tc_min(N_MIN_EQ, c_lvalue($1, "-="), $3, "-="); }
+		{
+		  $$ = sub(N_SUB_EQ, c_lvalue($1, "-="), asgnop($1, $3), "-=");
+		}
 	| cond_exp MULT_EQ exp
-		{ $$ = tc_bini(N_MULT_EQ, c_lvalue($1, "*="), $3, "*="); }
+		{
+		  $$ = mult(N_MULT_EQ, c_lvalue($1, "*="), asgnop($1, $3),
+			    "*=");
+		}
 	| cond_exp DIV_EQ exp
-		{ $$ = tc_bini(N_DIV_EQ, c_lvalue($1, "/="), $3, "/="); }
+		{
+		  $$ = mdiv(N_DIV_EQ, c_lvalue($1, "/="), asgnop($1, $3), "/=");
+		}
 	| cond_exp MOD_EQ exp
-		{ $$ = tc_bini(N_MOD_EQ, c_lvalue($1, "%="), $3, "%="); }
+		{
+		  $$ = mod(N_MOD_EQ, c_lvalue($1, "%="), asgnop($1, $3), "%=");
+		}
 	| cond_exp RSHIFT_EQ exp
-		{ $$ = tc_bini(N_RSHIFT_EQ, c_lvalue($1, ">>="), $3, ">>="); }
+		{
+		  $$ = bini(N_RSHIFT_EQ, c_lvalue($1, ">>="), asgnop($1, $3),
+			    ">>=");
+		}
 	| cond_exp LSHIFT_EQ exp
-		{ $$ = tc_bini(N_LSHIFT_EQ, c_lvalue($1, "<<="), $3, "<<="); }
+		{
+		  $$ = bini(N_LSHIFT_EQ, c_lvalue($1, "<<="), asgnop($1, $3),
+			    "<<=");
+		}
 	| cond_exp AND_EQ exp
-		{ $$ = tc_bini(N_AND_EQ, c_lvalue($1, "&="), $3, "&="); }
+		{
+		  $$ = and(N_AND_EQ, c_lvalue($1, "&="), asgnop($1, $3), "&=");
+		}
 	| cond_exp XOR_EQ exp
-		{ $$ = tc_bini(N_XOR_EQ, c_lvalue($1, "^="), $3, "^="); }
+		{
+		  $$ = xor(N_XOR_EQ, c_lvalue($1, "^="), asgnop($1, $3), "^=");
+		}
 	| cond_exp OR_EQ exp
-		{ $$ = tc_bini(N_OR_EQ, c_lvalue($1, "|="), $3, "|="); }
+		{
+		  $$ = or(N_OR_EQ, c_lvalue($1, "|="), asgnop($1, $3), "|=");
+		}
 	;
 
 list_exp
@@ -1033,7 +739,18 @@ opt_list_exp_comma
 
 f_list_exp
 	: list_exp
-		{ c_list_exp($$ = $1); }
+		{ $$ = c_list_exp($1); }
+	;
+
+f_opt_list_exp
+	: opt_list_exp
+		{
+		  $$ = $1;
+		  if ($$ != (node *) NULL) {
+		      $$ = c_list_exp($$);
+		  }
+		}
+	;
 
 assoc_exp
 	: exp ':' exp
@@ -1070,70 +787,123 @@ char *f, *a1, *a2, *a3;
 {
     char buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
-    sprintf(buf, "\"%s\", %u: ", tk_filename(), tk_line());
+    sprintf(buf, "\"/%s\", %u: ", tk_filename(), tk_line());
     sprintf(buf + strlen(buf), f, a1, a2, a3);
     warning("%s", buf);
     nerrors++;
 }
 
 /*
- * NAME:	tc_index()
- * DESCRIPTION:	create a proper node for the [ ] operator
+ * NAME:	t_void()
+ * DESCRIPTION:	if the argument is of type void, an error will result
  */
-static node *tc_index(n1, n2)
+static void t_void(n)
+register node *n;
+{
+    if (n != (node *) NULL && n->mod == T_VOID) {
+	yyerror("void value not ignored");
+	n->mod == T_MIXED;
+    }
+}
+
+/*
+ * NAME:	t_uni()
+ * DESCRIPTION:	typecheck the argument of a unary int operator
+ */
+static bool t_uni(n, name)
+register node *n;
+char *name;
+{
+    if (typechecking && n->mod != T_NUMBER && n->mod != T_MIXED) {
+	yyerror("bad argument type for %s (%s)", name, c_typename(n->mod));
+	n->mod = T_MIXED;
+	return FALSE;
+    }
+    return TRUE;
+}
+
+/*
+ * NAME:	override()
+ * DESCRIPTION:	handle n op m --> (n, m), n = m
+ */
+static node *override(n1, n2)
+register node *n1, *n2;
+{
+    if (n1->type == N_LVALUE) {
+	return node_bin(N_ASSIGN, n1->mod, n1, n2);
+    } else {
+	return c_list_exp(node_bin(N_COMMA, n1->mod, n1, n2));
+    }
+}
+
+/*
+ * NAME:	idx()
+ * DESCRIPTION:	handle the [ ] operator
+ */
+static node *idx(n1, n2)
 register node *n1, *n2;
 {
     register unsigned short type;
 
+    if (n1->type == N_STR && n2->type == N_INT) {
+	/* str [ int ] */
+	n2->l.number = UCHAR(n1->l.string->text[str_index(n1->l.string,
+							  n2->l.number)]);
+	return n2;
+    }
+
     type = T_MIXED;
     if (typechecking) {
-	if ((n1->mod & T_REF)) {
+	if ((n1->mod & T_REF) != 0) {
 	    /*
 	     * array
 	     */
 	    if (n2->mod != T_NUMBER && n2->mod != T_MIXED) {
-		yyerror("bad array index type (%s)", c_typename(n2->mod));
-		return node_mon(N_FAKE, T_MIXED, (node *) NULL);
+		yyerror("bad index type (%s)", c_typename(n2->mod));
 	    }
 	    type = n1->mod - (1 << REFSHIFT);
+	    if (type == T_NUMBER) {
+		/* you can't trust these arrays */
+		return node_mon(N_CAST, T_NUMBER,
+				node_bin(N_INDEX, T_NUMBER, n1, n2));
+	    }
 	} else if (n1->mod == T_STRING) {
 	    /*
 	     * string
 	     */
 	    if (n2->mod != T_NUMBER && n2->mod != T_MIXED) {
-		yyerror("bad string index type (%s)", c_typename(n2->mod));
-		return node_mon(N_FAKE, T_NUMBER, (node *) NULL);
+		yyerror("bad index type (%s)", c_typename(n2->mod));
 	    }
 	    type = T_NUMBER;
 	} else if (n1->mod != T_MAPPING && n1->mod != T_MIXED) {
 	    yyerror("bad indexed type (%s)", c_typename(n1->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 	}
     }
     return node_bin(N_INDEX, type, n1, n2);
 }
 
 /*
- * NAME:	tc_range()
- * DESCRIPTION:	create a proper node for the [ .. ] operator
+ * NAME:	range()
+ * DESCRIPTION:	handle the [ .. ] operator
  */
-static node *tc_range(n1, n2, n3)
+static node *range(n1, n2, n3)
 register node *n1, *n2, *n3;
 {
+    if (n1->type == N_STR && n2->type == N_INT && n3->type == N_INT) {
+	/* str [ int .. int ] */
+	return node_str(str_range(n1->l.string, n2->l.number,
+				  n3->l.number));
+    }
     if (typechecking) {
-	/* check index 1 */
-	if (n2->mod != T_NUMBER && n2->mod != T_MIXED) {
-	    yyerror("bad range type (%s)", c_typename(n2->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
+	/* indices */
+	if ((n2->mod != T_NUMBER && n2->mod != T_MIXED) ||
+	    (n3->mod != T_NUMBER && n3->mod != T_MIXED)) {
+	    yyerror("bad index type (%s)", c_typename(n2->mod));
 	}
-	/* check index 2 */
-	if (n3->mod != T_NUMBER && n3->mod != T_MIXED) {
-	    yyerror("bad range type (%s)", c_typename(n3->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
-	}
-	if (!(n1->mod & T_REF) && n1->mod != T_STRING && n1->mod != T_MIXED) {
+	/* range */
+	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)
+	{
 	    yyerror("bad indexed type (%s)", c_typename(n1->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 	}
     }
 
@@ -1141,214 +911,697 @@ register node *n1, *n2, *n3;
 }
 
 /*
- * NAME:	tc_moni()
- * DESCRIPTION:	create a proper node for a monadic int operator
+ * NAME:	assign_uni()
+ * DESCRIPTION:	handle a unary int assignment operator
  */
-static node *tc_moni(oper, n, op)
-int oper;
-register node *n;
-char *op;
+static node *assign_uni(op, n, name)
+int op;
+node *n;
+char *name;
 {
-    if (typechecking) {
-	if (n->mod == T_NUMBER || n->mod == T_MIXED) {
-	    return node_mon(oper, T_NUMBER, n);
-	} else {
-	    yyerror("bad type for %s (%s)", op, c_typename(n->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
-	}
-    } else {
-	/*
-	 * untypechecked
-	 */
-	return node_mon(oper, T_MIXED, n);
+    n = c_lvalue(n, name);
+    t_uni(n, name);
+    if (n->mod == T_NUMBER) {
+	op++;
     }
+    return node_mon(op, n->mod, n);
 }
 
 /*
- * NAME:	tc_bini()
- * DESCRIPTION:	create a proper node for a binary int operator
+ * NAME:	bini()
+ * DESCRIPTION:	handle a binary int operator
  */
-static node *tc_bini(oper, n1, n2, op)
-int oper;
-node *n1, *n2;
-char *op;
+static node *bini(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
 {
     if (typechecking) {
-	register node *n, *m;
+	if ((n1->mod != T_NUMBER && n1->mod != T_MIXED) ||
+	    (n2->mod != T_NUMBER && n2->mod != T_MIXED)) {
+	    yyerror("bad argument types for %s (%s, %s)", name,
+		    c_typename(n1->mod), c_typename(n2->mod));
+	}
+	if (n1->mod == T_NUMBER && n2->mod == T_NUMBER) {
+	    op++;
+	}
+    }
+    return node_bin(op, T_NUMBER, n1, n2);
+}
 
-	/* check left expression */
+
+/*
+ * NAME:	mult()
+ * DESCRIPTION:	handle the * operator
+ */
+static node *mult(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
+{
+    if (n1->type == N_INT) {
+	node *n;
+
+	/* int * foo --> foo * int */
 	n = n1;
-	if (n->mod != T_NUMBER && n->mod != T_MIXED) {
-	    yyerror("bad types for %s (%s, %s)", op, c_typename(n1->mod),
-		    c_typename(n2->mod));
-	}
-	/* check right expression */
-	m = n2;
-	if (m->mod != T_NUMBER && m->mod != T_MIXED) {
-	    yyerror("bad types for %s (%s, %s)", op, c_typename(n1->mod),
-		    c_typename(n2->mod));
-	}
-	return node_bin(oper, T_NUMBER, n, m);
-    } else {
-	/*
-	 * untypechecked
-	 */
-	return node_bin(oper, T_MIXED, n1, n2);
+	n1 = n2;
+	n2 = n;
     }
+
+    if (n2->type == N_INT) {
+	if (n2->l.number == 0 && n1->mod == T_NUMBER) {
+	    /* intfoo * 0 */
+	    return override(n1, n2);
+	}
+	if (n1->type == N_INT) {
+	    /* int * int */
+	    n1->l.number *= n2->l.number;
+	    return n1;
+	}
+	if ((n1->type == N_MULT || n1->type == N_MULT_INT) &&
+	    n1->r.right->type == N_INT) {
+	    /* (foo * int) * int */
+	    n1->r.right->l.number *= n2->l.number;
+	    return n1;
+	}
+    } else if ((n1->type == N_MULT || n1->type == N_MULT_INT) &&
+	       (n2->type == N_MULT || n2->type == N_MULT_INT) &&
+	       n1->r.right->type == N_INT && n2->r.right->type == N_INT) {
+	/* (foo * int) * (foo * int) */
+	n1->r.right->l.number *= n2->r.right->l.number;
+	return node_bin(N_MULT_INT, T_NUMBER,
+			mult(N_MULT, n1->l.left, n2->l.left, "*"), n1->r.right);
+    }
+
+    /* foo * int, foo * foo */
+    return bini(op, n1, n2, name);
 }
 
 /*
- * NAME:	tc_add()
- * DESCRIPTION:	create a proper node for the + or += operator
+ * NAME:	mdiv()
+ * DESCRIPTION:	handle the / operator
  */
-static node *tc_add(oper, n1, n2, op)
-int oper;
+static node *mdiv(op, n1, n2, name)
+int op;
 register node *n1, *n2;
-char *op;
+char *name;
 {
-    if (typechecking) {
-	register unsigned short type;
-
-	type = c_tmatch(n1->mod, n2->mod);
-	if (type == T_OBJECT ||	/* object + object not allowed */
-	    (type == T_ERROR &&	/* only if not adding int to string */
-	     ((n1->mod != T_NUMBER && n1->mod != T_STRING) ||
-	      (n2->mod != T_NUMBER && n2->mod != T_STRING) ||
-	      (n1->mod == T_NUMBER && oper == N_ADD_EQ)))) {
-	    yyerror("bad types for %s (%s, %s)", op, c_typename(n1->mod),
-		    c_typename(n2->mod));
-	    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
-	} else if (n1->mod == T_NUMBER) {
-	    return node_bin(oper, n2->mod, n1, n2);
-	} else if (n1->mod == T_STRING) {
-	    return node_bin(oper, T_STRING, n1, n2);
-	} else {
-	    return node_bin(oper, type, n1, n2);
+    if (n2->type == N_INT) {
+	if (n1->type == N_INT) {
+	    /* int / int */
+	    if (n2->l.number == 0) {
+		yyerror("division by zero in constant");
+	    } else {
+		n1->l.number /= n2->l.number;
+	    }
+	    return n1;
 	}
-    } else {
-	/*
-	 * untypechecked
-	 */
-	return node_bin(oper, T_MIXED, n1, n2);
+	if ((n1->type == N_DIV || n1->type == N_DIV_INT) &&
+	    n1->r.right->type == N_INT) {
+	    /* (foo / int) / int */
+	    n1->r.right->l.number *= n2->l.number;
+	    return n1;
+	}
     }
+    /* foo / int, foo / foo */
+    return bini(op, n1, n2, name);
 }
 
 /*
- * NAME:	tc_min()
- * DESCRIPTION:	create a proper node for the - or -= operator
+ * NAME:	mod()
+ * DESCRIPTION:	handle the % operator
  */
-static node *tc_min(oper, n1, n2, op)
-int oper;
+static node *mod(op, n1, n2, name)
+int op;
 register node *n1, *n2;
-char *op;
+char *name;
 {
-    if (typechecking) {
-	register unsigned short type;
-
-	type = c_tmatch(n1->mod, n2->mod);
-	if (type == T_STRING || type == T_OBJECT || type == T_ERROR) {
-	    yyerror("bad types for %s (%s, %s)", op, c_typename(n1->mod),
-		    c_typename(n2->mod));
-	    return node_mon(N_FAKE, type, (node *) NULL);
-	} else {
-	    return node_bin(oper, type, n1, n2);
+    if (n2->type == N_INT) {
+	if (n2->l.number == 1 && n1->mod == T_NUMBER) {
+	    /* intfoo % 1 */
+	    return override(n1, node_int((Int) 0));
 	}
-    } else {
-	/*
-	 * untypechecked
-	 */
-	return node_bin(oper, T_MIXED, n1, n2);
+	if (n1->type == N_INT) {
+	    /* int % int */
+	    if (n2->l.number == 0) {
+		yyerror("modulus by zero in constant");
+	    } else {
+		n1->l.number %= n2->l.number;
+	    }
+	    return n1;
+	}
     }
+    /* foo % foo */
+    return bini(op, n1, n2, name);
 }
 
 /*
- * NAME:	tc_rel()
- * DESCRIPTION:	create a proper node for the < > <= >= operators
+ * NAME:	add()
+ * DESCRIPTION:	handle the + operator
  */
-static node *tc_rel(oper, n1, n2, op)
-int oper;
+static node *add(op, n1, n2, name)
+int op;
 register node *n1, *n2;
-char *op;
+char *name;
+{
+    char buffer[12];
+    register string *str;
+    register unsigned short type;
+
+    if (n1->type == N_INT && n2->mod == T_NUMBER) {
+	node *n;
+
+	/* int + foo --> foo + int */
+	n = n1;
+	n1 = n2;
+	n2 = n;
+    }
+
+    if (n2->type == N_INT) {
+	if (n1->type == N_INT) {
+	    /* int + int */
+	    n1->l.number += n2->l.number;
+	    return n1;
+	}
+	if (n1->mod == T_STRING) {
+	    /* strfoo + int */
+	    sprintf(buffer, "%ld", (long) n2->l.number);
+	    n2 = node_str(str_new(buffer, (long) strlen(buffer)));
+	    if (n1->type == N_STR) {
+		/* str + int */
+		return node_str(str_add(n1->l.string, n2->l.string));
+	    }
+	} else if (n1->type == N_ADD_INT && n1->r.right->type == N_INT) {
+	    /* (intfoo + int) + int */
+	    n1->r.right->l.number += n2->l.number;
+	    return n1;
+	} else if (n1->type == N_ADD && n1->r.right->type == N_STR) {
+	    /* (foo + str) + int */
+	    sprintf(buffer, "%ld", (long) n2->l.number);
+	    str = str_new((char *) NULL, n1->r.right->l.string->len +
+					 (long) strlen(buffer));
+	    strcpy(str->text, n1->r.right->l.string->text);
+	    strcat(str->text, buffer);
+	    n1->r.right = node_str(str);
+	    return n1;
+	} else if ((n1->type == N_SUB || n1->type == N_SUB_INT) &&
+	    n1->l.left->type == N_INT) {
+	    /* (int - foo) + int */
+	    n1->l.left->l.number += n2->l.number;
+	    return n1;
+	}
+	/* foo + int */
+    } else if (n2->mod == T_STRING) {
+	if (n1->type == N_INT) {
+	    /* int + strfoo */
+	    sprintf(buffer, "%ld", (long) n1->l.number);
+	    n1 = node_str(str_new(buffer, (long) strlen(buffer)));
+	}
+	if (n2->type == N_STR) {
+	    if (n1->type == N_STR) {
+		/* str + str */
+		return node_str(str_add(n1->l.string, n2->l.string));
+	    }
+	    if (n1->type == N_ADD && n1->r.right->type == N_STR) {
+		/* (foo + str) + str */
+		n1->r.right = node_str(str_add(n1->r.right->l.string,
+					       n2->l.string));
+		return n1;
+	    }
+	}
+	/* foo + strfoo */
+    } else if (n1->type == N_ADD_INT && n1->r.right->type == N_INT &&
+	       n2->type == N_ADD_INT && n2->r.right->type == N_INT) {
+	/* (intfoo + int) + (intfoo + int) */
+	n1->r.right->l.number += n2->r.right->l.number;
+	return node_bin(N_ADD_INT, T_NUMBER,
+			node_bin(N_ADD_INT, T_NUMBER, n1->l.left, n2->l.left),
+			n1->r.right);
+    }
+
+    /* foo + int, foo + str, foo + foo */
+    if (typechecking) {
+	type = c_tmatch(n1->mod, n2->mod);
+	if (type == T_OBJECT || type == T_VOID ||
+	    (type == T_INVALID &&	/* only if not adding int to string */
+	     (((n1->mod != T_NUMBER || op == N_ADD_EQ) &&
+	       n1->mod != T_STRING) ||
+	       (n2->mod != T_NUMBER && n2->mod != T_STRING)))) {
+	    yyerror("bad argument types for %s (%s, %s)", name,
+		    c_typename(n1->mod), c_typename(n2->mod));
+	    type = T_MIXED;
+	} else if (type == T_INVALID) {
+	    type = T_STRING;
+	} else if (type == T_NUMBER) {
+	    op++;
+	}
+    } else {
+	type = T_MIXED;
+    }
+    return node_bin(op, type, n1, n2);
+}
+
+/*
+ * NAME:	sub()
+ * DESCRIPTION:	handle the - operator
+ */
+static node *sub(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
+{
+    register unsigned short type;
+
+    if (n2->type == N_INT) {
+	n2->l.number = -n2->l.number;
+	if (op == N_SUB) {
+	    /* - */
+	    return add(N_ADD, n1, n2, "+");
+	} else {
+	    /* -= */
+	    return add(N_ADD_EQ, n1, n2, "+=");
+	}
+    }
+    if (n1->type == N_INT) {
+	if ((n2->type == N_SUB || n2->type == N_SUB_INT) &&
+	    n2->l.left->type == N_INT) {
+	    /* int - (int - foo) */
+	    n1->l.number -= n2->l.left->l.number;
+	    return add(N_ADD, n2->r.right, n1, "+");
+	}
+	if (n2->type == N_ADD_INT && n2->r.right->type == N_INT) {
+	    /* int - (intfoo + int) */
+	    n1->l.number -= n2->r.right->l.number;
+	    return node_bin(N_SUB_INT, T_NUMBER, n1, n2->l.left);
+	}
+    } else if (n1->type == N_ADD_INT && n1->r.right->type == N_INT &&
+	       n2->type == N_ADD_INT && n2->r.right->type == N_INT) {
+	/* (intfoo + int) - (intfoo + int) */
+	n1->r.right->l.number -= n2->r.right->l.number;
+	return node_bin(N_ADD_INT, T_NUMBER,
+			node_bin(N_SUB_INT, T_NUMBER, n1->l.left, n2->l.left),
+			n1->r.right);
+    }
+
+    /* int - foo, foo - foo */
+    if (typechecking) {
+	type = c_tmatch(n1->mod, n2->mod);
+	if (type == T_STRING || type == T_OBJECT || type == T_VOID ||
+	    type == T_INVALID) {
+	    yyerror("bad argument types for %s (%s, %s)", name,
+		    c_typename(n1->mod), c_typename(n2->mod));
+	    type = T_MIXED;
+	} else if (type == T_NUMBER) {
+	    op++;
+	}
+    } else {
+	type = T_MIXED;
+    }
+    return node_bin(op, type, n1, n2);
+}
+
+/*
+ * NAME:	rel()
+ * DESCRIPTION:	handle the < > <= >= operators
+ */
+static node *rel(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
 {
     if (typechecking) {
 	register unsigned short type;
 
 	type = c_tmatch(n1->mod, n2->mod);
 	if (type != T_NUMBER && type != T_STRING && type != T_MIXED) {
-	    yyerror("bad types for %s (%s, %s)", op, c_typename(n1->mod),
-		    c_typename(n2->mod));
-	    return node_mon(N_FAKE, T_NUMBER, (node *) NULL);
+	    yyerror("bad argument types for %s (%s, %s)", name,
+		    c_typename(n1->mod), c_typename(n2->mod));
+	}
+	if (type == T_NUMBER) {
+	    op++;
 	}
     }
-    return node_bin(oper, T_NUMBER, n1, n2);
+    return node_bin(op, T_NUMBER, n1, n2);
 }
 
 /*
- * NAME:	tc_equ()
- * DESCRIPTION:	create a proper node for the == != operators
+ * NAME:	eq()
+ * DESCRIPTION:	handle the == operator
  */
-static node *tc_equ(oper, n1, n2, op)
-int oper;
+static node *eq(n1, n2)
 register node *n1, *n2;
-char *op;
 {
-    if (typechecking && n1->mod != n2->mod &&
-	(n1->type != N_INT || n1->l.number != 0) &&
-	(n2->type != N_INT || n2->l.number != 0)) {
-	yyerror("incompatible types for %s (%s, %s)", op,
-		c_typename(n1->mod), c_typename(n2->mod));
+    t_void(n1);
+    t_void(n2);
+
+    switch (n1->type) {
+    case N_INT:
+	if (n2->type == N_INT) {
+	    /* int == int */
+	    n1->l.number = (n1->l.number == n2->l.number);
+	    return n1;
+	}
+	if (n1->l.number == 0) {
+	    if (n2->type == N_STR) {
+		/* 0 == str */
+		return n1;	/* FALSE */
+	    }
+	    /* 0 == foo */
+	    return c_not(n2);
+	}
+	break;
+
+    case N_STR:
+	if (n2->type == N_STR) {
+	    /* str == str */
+	    return node_int((Int) (strcmp(n1->l.string->text,
+					  n2->l.string->text) == 0));
+	}
+	if (n2->type == N_INT && n2->l.number == 0) {
+	    /* str == 0 */
+	    return n2;	/* FALSE */
+	}
+	break;
+
+    default:
+	if (n2->type == N_INT && n2->l.number == 0) {
+	    /* foo == 0 */
+	    return c_not(n1);
+	}
+	break;
     }
-    return node_bin(oper, T_NUMBER, n1, n2);
+
+    /* foo == foo */
+    if (typechecking) {
+	if (n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED &&
+	    (n1->type != N_INT || n1->l.number != 0) &&
+	    (n2->type != N_INT || n2->l.number != 0)) {
+	    yyerror("incompatible types for comparision (%s, %s)",
+		    c_typename(n1->mod), c_typename(n2->mod));
+	}
+	if (n1->mod == T_NUMBER && n2->mod == T_NUMBER) {
+	    return node_bin(N_EQ_INT, T_NUMBER, n1, n2);
+	}
+    }
+    return node_bin(N_EQ, T_NUMBER, n1, n2);
 }
 
 /*
- * NAME:	tc_quest()
- * DESCRIPTION:	create a proper node for the ? : operator
+ * NAME:	and()
+ * DESCRIPTION:	handle the & &= operators
  */
-static node *tc_quest(n1, n2, n3)
+static node *and(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
+{
+    unsigned short type;
+
+    if (n1->type == N_INT) {
+	node *n;
+
+	/* int & foo --> foo & int */
+	n = n1;
+	n1 = n2;
+	n2 = n;
+    }
+
+    if (n2->type == N_INT) {
+	if (n2->l.number == 0 && n1->mod == T_NUMBER) {
+	    /* intfoo & 0 */
+	    return override(n1, n2);
+	}
+	if (n1->type == N_INT) {
+	    /* int & int */
+	    n1->l.number &= n2->l.number;
+	    return n1;
+	}
+	if ((n1->type == N_AND || n1->type == N_AND_INT) &&
+	    n1->r.right->type == N_INT) {
+	    /* (foo & int) & int */
+	    n1->r.right->l.number &= n2->l.number;
+	    if (n1->r.right->l.number == 0 && n1->l.left->mod == T_NUMBER) {
+		/* intfoo & 0 */
+		n1->type = N_COMMA;
+		n1 = c_list_exp(n1);
+	    }
+	    return n1;
+	}
+    } else if ((n1->mod == T_MIXED && (type=n2->mod) == T_MIXED) ||
+	       ((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	/*
+	 * possibly array & array
+	 */
+	return node_bin(op, type, n1, n2);
+    } else if ((n1->type == N_AND || n1->type == N_AND_INT) &&
+	       (n2->type == N_AND || n2->type == N_AND_INT) &&
+	       n1->r.right->type == N_INT && n2->r.right->type == N_INT) {
+	/* (foo & int) & (foo & int) */
+	n1->r.right->l.number &= n2->r.right->l.number;
+	n2 = and(N_AND, n1->l.left, n2->l.left, "&");
+	if (n1->r.right->l.number == 0) {
+	    /* (foo & foo) & 0 */
+	    op = N_COMMA;
+	} else if (n2->mod == T_NUMBER) {
+	    op++;
+	}
+	return node_bin(op, T_NUMBER, n2, n1->r.right);
+    }
+
+    /* foo & int, foo & foo */
+    return bini(op, n1, n2, name);
+}
+
+/*
+ * NAME:	xor()
+ * DESCRIPTION:	handle the ^ operator
+ */
+static node *xor(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
+{
+    if (n1->type == N_INT) {
+	node *n;
+
+	/* int ^ foo --> foo ^ int */
+	n = n1;
+	n1 = n2;
+	n2 = n;
+    }
+
+    if (n2->type == N_INT) {
+	if (n1->type == N_INT) {
+	    /* int ^ int */
+	    n1->l.number ^= n2->l.number;
+	    return n1;
+	}
+	if ((n1->type == N_XOR || n1->type == N_XOR_INT) &&
+	    n1->r.right->type == N_INT) {
+	    /* (foo ^ int) ^ int */
+	    n1->r.right->l.number ^= n2->l.number;
+	    return n1;
+	}
+    } else if ((n1->type == N_XOR || n1->type == N_XOR_INT) &&
+	       (n2->type == N_XOR || n2->type == N_XOR_INT) &&
+	       n1->r.right->type == N_INT && n2->r.right->type == N_INT) {
+	/* (foo ^ int) ^ (foo ^ int) */
+	n1->r.right->l.number ^= n2->r.right->l.number;
+	return node_bin(N_XOR_INT, T_NUMBER,
+			xor(N_XOR, n1->l.left, n2->l.left, "^"),
+			n1->r.right);
+    }
+
+    /* foo ^ int, foo ^ foo */
+    return bini(op, n1, n2, name);
+}
+
+/*
+ * NAME:	or()
+ * DESCRIPTION:	handle the | operator
+ */
+static node *or(op, n1, n2, name)
+int op;
+register node *n1, *n2;
+char *name;
+{
+    if (n1->type == N_INT) {
+	node *n;
+
+	/* int | foo --> foo | int */
+	n = n1;
+	n1 = n2;
+	n2 = n;
+    }
+
+    if (n2->type == N_INT) {
+	if (n2->l.number == -1 && n1->mod == T_NUMBER) {
+	    /* intfoo | -1 */
+	    return override(n1, n2);
+	}
+	if (n1->type == N_INT) {
+	    /* int | int */
+	    n1->l.number |= n2->l.number;
+	    return n1;
+	}
+	if ((n1->type == N_OR || n1->type == N_OR_INT) &&
+	    n1->r.right->type == N_INT) {
+	    /* (foo | int) | int */
+	    n1->r.right->l.number |= n2->l.number;
+	    if (n1->r.right->l.number == -1 && n1->l.left->mod == T_NUMBER) {
+		/* intfoo | -1 */
+		n1->type = N_COMMA;
+		n1 = c_list_exp(n1);
+	    }
+	    return n1;
+	}
+    } else if ((n1->type == N_OR || n1->type == N_OR_INT) &&
+	       (n2->type == N_OR || n2->type == N_OR_INT) &&
+	       n1->r.right->type == N_INT && n2->r.right->type == N_INT) {
+	/* (foo | int) | (foo | int) */
+	n1->r.right->l.number |= n2->r.right->l.number;
+	return node_bin((n1->r.right->l.number == -1) ? N_COMMA : N_OR_INT,
+			T_NUMBER, or(N_OR, n1->l.left, n2->l.left, "|"),
+			n1->r.right);
+    }
+
+    /* foo | int, foo | foo */
+    return bini(op, n1, n2, name);
+}
+
+/*
+ * NAME:	land()
+ * DESCRIPTION:	handle the && operator
+ */
+static node *land(n1, n2)
+register node *n1, *n2;
+{
+    t_void(n1);
+    t_void(n2);
+    if (n1->type == N_TST) {
+	n1 = n1->l.left;
+    }
+    if (n2->type == N_TST) {
+	n2 = n2->l.left;
+    }
+
+    if (n1->type == N_STR) {
+	/* str && foo */
+	return c_tst(n2);
+    }
+    if (n2->type == N_STR) {
+	/* foo && str */
+	return c_tst(n1);
+    }
+    if (n1->type == N_INT) {
+	if (n1->l.number == 0) {
+	    /* 0 && foo */
+	    return n1;
+	}
+	/* true && foo */
+	return c_tst(n2);
+    }
+    if (n2->type == N_INT) {
+	if (n2->l.number != 0) {
+	    /* foo && true */
+	    return c_tst(n1);
+	}
+	/* foo && 0 */
+	return c_list_exp(node_bin(N_COMMA, T_NUMBER, n1, n2));
+    }
+    /* foo && foo */
+    return node_bin(N_LAND, T_NUMBER, n1, n2);
+}
+
+/*
+ * NAME:	lor()
+ * DESCRIPTION:	handle the || operator
+ */
+static node *lor(n1, n2)
+register node *n1, *n2;
+{
+    t_void(n1);
+    t_void(n2);
+    if (n1->type == N_TST) {
+	n1 = n1->l.left;
+    }
+    if (n2->type == N_TST) {
+	n2 = n2->l.left;
+    }
+
+    if (n1->type == N_STR) {
+	/* str || foo */
+	return node_int((Int) TRUE);
+    }
+    if (n2->type == N_STR) {
+	/* foo || str */
+	return c_list_exp(node_bin(N_COMMA, T_NUMBER, n1, node_int((Int) 1)));
+    }
+    if (n1->type == N_INT) {
+	if (n1->l.number != 0) {
+	    /* true || foo */
+	    n1->l.number = TRUE;
+	    return n1;
+	}
+	/* 0 || foo */
+	return c_tst(n2);
+    }
+    if (n2->type == N_INT) {
+	if (n2->l.number == 0) {
+	    /* foo || 0 */
+	    return c_tst(n1);
+	}
+	/* foo || true */
+	n2->l.number = TRUE;
+	return c_list_exp(node_bin(N_COMMA, T_NUMBER, n1, n2));
+    }
+    /* foo || foo */
+    return node_bin(N_LOR, T_NUMBER, n1, n2);
+}
+
+/*
+ * NAME:	t_quest()
+ * DESCRIPTION:	typecheck the ? : operator
+ */
+static unsigned short t_quest(n1, n2, n3)
 register node *n1, *n2, *n3;
 {
-    register unsigned short type;
+    t_void(n1);
 
     if (n2->type == N_INT && n2->l.number == 0) {
 	/*
 	 * expr ? 0 : expr
 	 */
-	type = n3->mod;
-    } else if (n3->type == N_INT && n3->l.number == 0) {
+	return n3->mod;
+    }
+    if (n3->type == N_INT && n3->l.number == 0) {
 	/*
 	 * expr ? expr : 0;
 	 */
-	type = n2->mod;
-    } else if (typechecking) {
+	return n2->mod;
+    }
+    if (typechecking) {
+	unsigned short type;
+
 	/*
 	 * typechecked
 	 */
 	type = c_tmatch(n2->mod, n3->mod);
-	if (type == T_ERROR) {
+	if (type == T_INVALID) {
 	    yyerror("incompatible types for ? : (%s, %s)", c_typename(n2->mod),
 		    c_typename(n3->mod));
-	    type = T_MIXED;
+	    return T_MIXED;
 	}
-    } else {
-	/*
-	 * untypechecked
-	 */
-	type = T_MIXED;
+	return type;
     }
-    if (n1->type == N_INT) {
-	return (n1->l.number != 0) ? n2 : n3;
-    } else if (n1->type == N_STR) {
-	return n2;
-    }
-    return node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
+    return T_MIXED;
 }
 
 /*
- * NAME:	tc_assign()
- * DESCRIPTION:	create a proper node for the assignment operator
+ * NAME:	assign()
+ * DESCRIPTION:	handle the assignment operator
  */
-static node *tc_assign(n1, n2)
+static node *assign(n1, n2)
 register node *n1, *n2;
 {
     register unsigned short type;
@@ -1357,22 +1610,16 @@ register node *n1, *n2;
 	/*
 	 * can assign constant 0 to anything anytime
 	 */
-	type = T_NUMBER;
+	type = n1->mod;
     } else if (typechecking) {
 	/*
 	 * typechecked
 	 */
 	type = c_tmatch(n1->mod, n2->mod);
-	if (type == T_ERROR) {
-	    yyerror("incompatible types for = (%s, %s)", c_typename(n1->mod),
-		    c_typename(n2->mod));
-	    return node_bin(N_FAKE, T_MIXED, n1, n2);
-	} else if (n2->mod == T_MIXED) {
-	    if (n1->mod & T_REF) {
-		n2 = node_mon(N_CAST, T_ARRAY, n2);
-	    } else if (n1->mod != T_MIXED) {
-		n2 = node_mon(N_CAST, n1->mod, n2);
-	    }
+	if (type == T_INVALID) {
+	    yyerror("incompatible types for = (%s, %s)",
+		    c_typename(n1->mod), c_typename(n2->mod));
+	    type = T_MIXED;
 	}
     } else {
 	/*
@@ -1381,4 +1628,18 @@ register node *n1, *n2;
 	type = T_MIXED;
     }
     return node_bin(N_ASSIGN, type, n1, n2);
+}
+
+/*
+ * NAME:	asgnop()
+ * DESCRIPTION:	check the value of a binary int assignment operator
+ */
+static node *asgnop(n1, n2)
+node *n1, *n2;
+{
+    if (typechecking && n1->mod == T_NUMBER && n2->mod == T_MIXED) {
+	/* can only assign integer values to integer lvalues */
+	return node_mon(N_CAST, T_NUMBER, n2);
+    }
+    return n2;
 }

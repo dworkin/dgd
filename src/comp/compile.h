@@ -3,22 +3,20 @@ extern object	*c_compile	P((char*));
 extern bool	 c_autodriver	P((void));
 
 extern bool  c_inherit		P((char*, node*));
-extern void  c_global		P((unsigned short, unsigned short, node*,
-				   bool));
-extern void  c_function		P((unsigned short, unsigned short, node*,
-				   bool));
+extern void  c_global		P((unsigned short, unsigned short, node*));
+extern void  c_function		P((unsigned short, unsigned short, node*));
 extern void  c_funcbody		P((node*));
-extern bool  c_typechecking	P((void));
-extern void  c_local		P((unsigned short, unsigned short, node*,
-				   bool));
-extern void  c_list_exp		P((node*));
+extern void  c_local		P((unsigned short, unsigned short, node*));
+extern node *c_concat		P((node*, node*));
+extern node *c_list_exp		P((node*));
 extern node *c_exp_stmt		P((node*));
+extern node *c_quest		P((node*, node*, node*));
 extern node *c_if		P((node*, node*, node*));
 extern void  c_loop		P((void));
 extern node *c_do		P((node*, node*));
 extern node *c_while		P((node*, node*));
 extern node *c_for		P((node*, node*, node*, node*));
-extern void  c_startswitch	P((node*));
+extern void  c_startswitch	P((node*, bool));
 extern node *c_endswitch	P((node*, node*));
 extern node *c_case		P((node*, node*));
 extern node *c_default		P((void));
@@ -35,5 +33,5 @@ extern node *c_arrow		P((node*, node*, node*));
 extern node *c_tst		P((node*));
 extern node *c_not		P((node*));
 extern node *c_lvalue		P((node*, char*));
-extern short c_tmatch		P((unsigned short, unsigned short));
 extern char *c_typename		P((unsigned short));
+extern unsigned short c_tmatch	P((unsigned short, unsigned short));

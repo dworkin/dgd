@@ -333,7 +333,7 @@ register control *ctrl;
 	}
 	v++;
     }
-    nvars += n;
+    nvars += ctrl->nvariables - ctrl->inherits[ctrl->nvirtuals - 1].varoffset;
 }
 
 /*
@@ -578,7 +578,7 @@ string *label;
     }
 
     if (ninherits >= MAX_INHERITS) {
-	yyerror("inherited too many objects");
+	yyerror("too many objects inherited");
     }
 }
 
@@ -638,13 +638,13 @@ void ctrl_create()
     newctrl->nvirtuals = nvirtuals + 1;
     newctrl->ninherits = ++ninherits;
     new = newctrl->inherits = ALLOC(dinherit, ninherits);
-    new += nvirtuals;
+    count = nvirtuals;
+    new += count;
 
     if (nvirtuals > 0) {
 	/*
 	 * initialize the virtually inherited objects
 	 */
-	count = nvirtuals;
 	for (n = ndirects; n > 0; ) {
 	    register oh *ohash;
 	    register dinherit *old;
@@ -684,21 +684,6 @@ void ctrl_create()
 	    }
 	    new++;
 	}
-
-	/*
-	 * initialize the labeled inherited objects (won't exist for the
-	 * auto object)
-	 */
-	n = newctrl->inherits->obj->ctrl->nvardefs; /* # variables in auto */
-	for (l = labels; l != (lab *) NULL; l = l->next) {
-	    (++new)->obj = l->obj;
-	    new->funcoffset = 0;	/* not used */
-	    new->varoffset = nvars;
-	    nvars += new->obj->ctrl->nvariables - n;
-	    l->index = ++count;
-	}
-
-	new = newctrl->inherits + nvirtuals;
     }
 
     /*
@@ -707,6 +692,21 @@ void ctrl_create()
     new->obj = (object *) NULL;
     new->funcoffset = nfcalls;
     new->varoffset = nvars;
+
+    /*
+     * initialize the labeled inherited objects
+     */
+    n = newctrl->inherits[1].varoffset;	/* # variables in auto */
+    i = 0;
+    for (l = labels; l != (lab *) NULL; l = l->next) {
+	(++new)->obj = l->obj;
+	new->funcoffset = 0;	/* not used */
+	new->varoffset = i;
+	i += new->obj->ctrl->nvariables - n;
+	l->index = ++count;
+    }
+
+    newctrl->nvariables = nvars + i;
 
     /*
      * prepare for construction of a new control block
@@ -746,6 +746,8 @@ string *str;
 	}
 	str_ref(strlist->s[strchunksz++] = str);
 	nstrs++;
+    }
+    if (desc >> 16 == nvirtuals) {
 	desc |= 0x01000000L;	/* mark it as new */
     }
     return desc;
@@ -839,7 +841,7 @@ char *proto;
     }
 
     if (nfdefs == 256) {
-	yyerror("too many functions");
+	yyerror("too many functions declared");
 	return;
     }
 
@@ -909,7 +911,7 @@ unsigned short class, type;
 	return;
     }
     if (nvars == 256) {
-	yyerror("too many variables");
+	yyerror("too many variables declared");
 	return;
     }
 
@@ -1116,21 +1118,25 @@ long *ref;
  */
 static void ctrl_mkstrings()
 {
-    register strchunk *l;
     register string **s;
+    register strchunk *l, *f;
     register unsigned short i;
 
     if ((newctrl->nstrings = nstrs) != 0) {
 	newctrl->strings = ALLOC(string*, newctrl->nstrings);
-	l = strlist;
 	s = newctrl->strings + nstrs;
-	for (i = nstrs; i > 0; --i) {
-	    if (strchunksz == 0) {
-		l = l->next;
-		strchunksz = STRING_CHUNK;
+	i = strchunksz;
+	for (l = strlist; l != (strchunk *) NULL; ) {
+	    while (i > 0) {
+		*--s = l->s[--i];	/* already referenced */
 	    }
-	    str_ref(*--s = l->s[--strchunksz]);
+	    i = STRING_CHUNK;
+	    f = l;
+	    l = l->next;
+	    FREE(f);
 	}
+	strlist = (strchunk *) NULL;
+	strchunksz = i;
     }
 }
 
@@ -1255,9 +1261,6 @@ static void ctrl_mkfcalls()
     }
 }
 
-/* borrowed from hash.c */
-extern unsigned int hashstr	P((char*, unsigned short, unsigned short));
-
 /*
  * NAME:	control->mksymbs()
  * DESCRIPTION:	make the symbol table for the control block
@@ -1278,7 +1281,7 @@ static void ctrl_mksymbs()
 	symtab++;
     }
     symtab = newctrl->symbols;
-    coll = ALLOC(dsymbol, nsymbs);
+    coll = ALLOCA(dsymbol, nsymbs);
     ncoll = 0;
 
     /*
@@ -1354,7 +1357,7 @@ static void ctrl_mksymbs()
 	symtab[x].next = n++;	/* link to previous slot */
     }
 
-    FREE(coll);
+    AFREE(coll);
 }
 
 /*
@@ -1403,12 +1406,17 @@ char *func;
 control *ctrl_construct(name)
 char *name;
 {
-    control *ctrl;
+    register control *ctrl;
+    register int i;
 
     ctrl = newctrl;
-    o_new(name, (object *) NULL, ctrl);
-    ctrl->nvariables = ctrl->inherits[nvirtuals].varoffset + nvars;
+    for (i = ctrl->nvirtuals; i < ctrl->ninherits; i++) {
+	/* adjust varoffset of labeled inherits */
+	ctrl->inherits[i].varoffset += nvars;
+    }
+    ctrl->nvariables += nvars;
 
+    o_new(name, (object *) NULL, ctrl);
     oh_new(name)->index = nvirtuals;
     ctrl_mkstrings();
     ctrl_mkfuncs();

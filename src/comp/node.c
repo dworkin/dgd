@@ -55,7 +55,6 @@ Int num;
     n->type = N_INT;
     n->mod = T_NUMBER;
     n->l.number = num;
-    n->r.number = num;
 
     return n;
 }
@@ -85,7 +84,7 @@ string *str;
 node *node_fcall(mod, func, call)
 int mod;
 char *func;
-long call;
+Int call;
 {
     register node *n;
 
