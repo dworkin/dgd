@@ -669,6 +669,8 @@ string **s1, **s2;
     char *rbuf;
 
     if (!lr->srpchanged) {
+	*s1 = lr->srpstr;
+	*s2 = lr->tmpstr;
 	return FALSE;
     }
 

@@ -300,8 +300,6 @@ struct _parser_ {
 
     string *source;		/* grammar source */
     string *grammar;		/* preprocessed grammar */
-    string *dfastr;		/* saved DFA string */
-    string *srpstr;		/* saved shift/reduce parser string */
 
     dfa *fa;			/* (partial) DFA */
     srp *lr;			/* (partial) shift/reduce parser */
@@ -337,8 +335,6 @@ string *source, *grammar;
     ps->data->parser = ps;
     str_ref(ps->source = source);
     str_ref(ps->grammar = grammar);
-    ps->dfastr = (string *) NULL;
-    ps->srpstr = (string *) NULL;
     ps->fa = dfa_new(grammar->text);
     ps->lr = srp_new(grammar->text);
 
@@ -366,12 +362,6 @@ register parser *ps;
     ps->data->parser = (parser *) NULL;
     str_del(ps->source);
     str_del(ps->grammar);
-    if (ps->dfastr != (string *) NULL) {
-	str_del(ps->dfastr);
-    }
-    if (ps->srpstr != (string *) NULL) {
-	str_del(ps->srpstr);
-    }
     dfa_del(ps->fa);
     srp_del(ps->lr);
     FREE(ps);
@@ -804,11 +794,9 @@ register value *elts;
     str_ref(ps->source = (elts++)->u.string);
     str_ref(ps->grammar = (elts++)->u.string);
 
-    str_ref(ps->dfastr = elts->u.string);
     tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
     ps->fa = dfa_load(ps->grammar->text, elts[0].u.string, tmp);
     elts += 2;
-    str_ref(ps->srpstr = elts->u.string);
     tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
     ps->lr = srp_load(ps->grammar->text, elts[0].u.string, tmp);
 
@@ -839,20 +827,10 @@ register parser *ps;
     string *d1, *d2, *p1, *p2;
     bool save;
 
-    d1 = ps->dfastr;
-    d2 = (string *) NULL;
-    p1 = ps->srpstr;
-    p2 = (string *) NULL;
     save = dfa_save(ps->fa, &d1, &d2);
     save |= srp_save(ps->lr, &p1, &p2);
 
     if (save) {
-	if (ps->dfastr != (string *) NULL) {
-	    str_del(ps->dfastr);
-	}
-	if (ps->srpstr != (string *) NULL) {
-	    str_del(ps->srpstr);
-	}
 	data = ps->data;
 	val.type = T_ARRAY;
 	val.u.array = arr_new(data, 6L);
@@ -867,7 +845,6 @@ register parser *ps;
 	/* dfa */
 	v->type = T_STRING;
 	str_ref((v++)->u.string = d1);
-	str_ref(ps->dfastr = d1);
 	if (d2 != (string *) NULL) {
 	    v->type = T_STRING;
 	    str_ref(v->u.string = d2);
@@ -880,7 +857,6 @@ register parser *ps;
 	/* srp */
 	v->type = T_STRING;
 	str_ref((v++)->u.string = p1);
-	str_ref(ps->srpstr = p1);
 	if (p2 != (string *) NULL) {
 	    v->type = T_STRING;
 	    str_ref(v->u.string = p2);

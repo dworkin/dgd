@@ -1188,3 +1188,4 @@ DGD 1.1
  - Fixed a bug in REALLOC.
  - And some more.
  - Fixed two (crashing) bugs in parse_string.
+ - And a third.

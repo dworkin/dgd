@@ -1253,6 +1253,8 @@ string **s1, **s2;
     short *ptab, *nposn;
 
     if (!fa->dfachanged) {
+	*s1 = fa->dfastr;
+	*s2 = fa->tmpstr;
 	return FALSE;
     }
 
