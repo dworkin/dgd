@@ -5,9 +5,6 @@
 # include <errno.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
-# include "str.h"
-# include "array.h"
-# include "object.h"
 # include "comm.h"
 
 # define NFREE		32

@@ -1,14 +1,11 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # include <sys/time.h>
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <netdb.h>
 # include <errno.h>
-# include "str.h"
-# include "array.h"
-# include "object.h"
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 # include "comm.h"
 
 # ifndef MAXHOSTNAMELEN

@@ -872,7 +872,7 @@ void ctrl_create()
 	    ohash = oh_new(OBJ(new->oindex)->chain.name);
 	    i = ohash->index;
 	    if (i == count) {
-		ctrl = OBJ(new->oindex)->ctrl;
+		ctrl = ohash->obj->ctrl;
 		i = ctrl->ninherits - 1;
 		new->funcoffset = nifcalls;
 		n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
@@ -971,8 +971,6 @@ register char *proto;
     int i;
     long s;
 
-    i = -1;	/* default: no calls yet */
-
     /* first check if prototype exists already */
     h = l = (vfh **) ht_lookup(ftab, str->text, FALSE);
     if (*h != (vfh *) NULL) {
@@ -1051,9 +1049,7 @@ register char *proto;
 			str->text, (*h)->ohash->chain.name);
 	    }
 
-	    if ((*l)->ohash->priv == 0) {
-		i = (*h)->ct;	/* take old call index */
-	    } else {
+	    if ((*l)->ohash->priv != 0) {
 		l = (vfh **) &(*l)->chain.next;	/* skip private function */
 	    }
 	}
@@ -1088,7 +1084,7 @@ register char *proto;
     /*
      * Actual definition.
      */
-    vfh_new(str, newohash, i, nfdefs, h);
+    vfh_new(str, newohash, -1, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].name = str->text;
@@ -1573,6 +1569,7 @@ static void ctrl_mkfcalls()
     register vfh *h;
     register fcchunk *l;
     dinherit *inh;
+    oh *ohash;
 
     newctrl->nfuncalls = nifcalls + nfcalls;
     if (newctrl->nfuncalls == 0) {
@@ -1585,7 +1582,8 @@ static void ctrl_mkfcalls()
 	 * object, and fill in the function call table segment for each object
 	 * once.
 	 */
-	if (oh_new(OBJ(inh->oindex)->chain.name)->index == i) {
+	ohash = oh_new(OBJ(inh->oindex)->chain.name);
+	if (ohash->index == i) {
 	    register char *ofc;
 	    register dfuncdef *f;
 	    register control *ctrl, *ctrl2;
@@ -1595,7 +1593,7 @@ static void ctrl_mkfcalls()
 	     * build the function call segment, based on the function call
 	     * table of the inherited object
 	     */
-	    ctrl = OBJ(inh->oindex)->ctrl;
+	    ctrl = ohash->obj->ctrl;
 	    j = ctrl->ninherits - 1;
 	    ofc = d_get_funcalls(ctrl) + 2L * ctrl->inherits[j].funcoffset;
 	    for (n = ctrl->nfuncalls - ctrl->inherits[j].funcoffset; n > 0; --n)

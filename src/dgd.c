@@ -16,7 +16,7 @@ static Uint dcount;		/* driver object count */
 static uindex fragment;		/* swap fragment parameter */
 static bool swap;		/* are objects to be swapped out? */
 static bool dump;		/* is the program to dump? */
-static bool intr;		/* received an interrupt? */
+bool intr;			/* received an interrupt? */
 static bool stop;		/* is the program to terminate? */
 
 /*

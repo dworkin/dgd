@@ -1338,3 +1338,6 @@ DGD 1.1
  - Prevent a crash when space for the restoring of a huge save file cannot be
    allocated on the stack.
  - Fixed two more bugs in atomic commit code.
+ - Allow the internal state machines for parse_string() to become larger than
+   before.
+ - Fixed the Windows quit/interrupt bug.

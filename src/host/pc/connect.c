@@ -3,9 +3,6 @@
 # define FD_SETSIZE   1024
 # include <winsock.h>
 # include <process.h>
-# include "str.h"
-# include "array.h"
-# include "object.h"
 # include "comm.h"
 
 # define MAXHOSTNAMELEN	256
@@ -312,6 +309,18 @@ static fd_set writefds;			/* file descriptor write map */
 static int closed;			/* #fds closed in write */
 
 /*
+ * NAME:	hook()
+ * DESCRIPTION:	function called during blocking WSA calls
+ */
+static BOOL hook(void)
+{
+    if (intr) {
+	WSACancelBlockingCall();
+    }
+    return FALSE;
+}
+
+/*
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
@@ -332,6 +341,7 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	P_message("Winsock 1.1 not supported\n");
 	return FALSE;
     }
+    WSASetBlockingHook((FARPROC) &hook);
 
     telnet = socket(PF_INET, SOCK_STREAM, 0);
     binary = socket(PF_INET, SOCK_STREAM, 0);
@@ -426,6 +436,7 @@ void conn_finish(void)
 {
     ipa_finish();
 
+    WSAUnhookBlockingHook();
     WSACleanup();
 }
 
@@ -621,6 +632,10 @@ int conn_select(Uint t, unsigned int mtime)
     } else {    
 	retval = select(0, &readfds, &writefds, (fd_set *) NULL,
 			(struct timeval *) NULL);
+    }
+    if (retval == SOCKET_ERROR) {
+	FD_ZERO(&readfds);
+	retval = 0;
     }
     retval += closed;
 

@@ -7,10 +7,6 @@
 # include <MacTCP.h>
 # include <OSUtils.h>
 # include "dgd.h"
-# include "str.h"
-# include "array.h"
-# include "object.h"
-# include "data.h"
 # include "comm.h"
 
 # define OPENRESOLVER	1L

@@ -25,3 +25,5 @@ extern void finish		P((void));
 extern void endthread		P((void));
 extern void errhandler		P((frame*, Int));
 extern int  dgd_main		P((int, char**));
+
+extern bool intr;
