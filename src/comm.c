@@ -6,6 +6,12 @@
 # include "interpret.h"
 # include "comm.h"
 
+# ifndef TELOPT_LINEMODE
+# define TELOPT_LINEMODE	34	/* linemode option */
+# define LM_MODE		1
+# define MODE_EDIT		0x01
+# endif
+
 typedef struct _user_ {
     union {
 	object *obj;		/* associated object */
@@ -21,16 +27,21 @@ typedef struct _user_ {
     char outbuf[OUTBUF_SIZE];	/* output buffer */
 } user;
 
-# define CF_ECHO	0x01
-# define CF_TELNET	0x02
-# define CF_GA		0x04
-# define CF_SEENCR	0x08
+/* flags */
+# define CF_ECHO	0x01	/* client echoes input */
+# define CF_TELNET	0x02	/* telnet connection */
+# define CF_GA		0x04	/* send GA after prompt */
+# define CF_SEENCR	0x08	/* just seen a CR */
 
+/* state */
 # define TS_DATA	0
 # define TS_IAC		1
 # define TS_DO		2
 # define TS_DONT	3
-# define TS_IGNORE	4
+# define TS_WILL	4
+# define TS_WONT	5
+# define TS_SB		6
+# define TS_SE		7
 
 static user **users;		/* array of users */
 static int maxusers;		/* max # of users */
@@ -75,7 +86,7 @@ object *obj;
 connection *conn;
 bool telnet;
 {
-    static char echo_on[] = { IAC, WONT, TELOPT_ECHO };
+    static char init[] = { IAC, WONT, TELOPT_ECHO, IAC, DO, TELOPT_LINEMODE };
     register user **usr;
 
     if (obj->flags & (O_USER | O_EDITOR)) {
@@ -92,8 +103,8 @@ bool telnet;
     (*usr)->outbufsz = 0;
     (*usr)->conn = conn;
     if (telnet) {
-	/* start with echo on */
-	conn_write(conn, echo_on, 3);
+	/* initialize connection */
+	conn_write(conn, init, sizeof(init));
 	(*usr)->flags = CF_TELNET | CF_ECHO;
 	(*usr)->state = TS_DATA;
 	(*usr)->newlines = 0;
@@ -218,7 +229,7 @@ string *str;
  */
 void comm_echo(obj, echo)
 object *obj;
-bool echo;
+int echo;
 {
     register user *usr;
     char buf[3];
@@ -238,7 +249,7 @@ bool echo;
  * DESCRIPTION:	flush output to all users
  */
 void comm_flush(prompt)
-bool prompt;
+int prompt;
 {
     register user **usr;
     register int i, size;
@@ -342,11 +353,13 @@ int *size;
 	    return (object *) NULL;
 	}
     } else {
-	static char intr[] = { '\177' };
-	static char brk[] = { '\034' };
-	static char tm[] = { IAC, WILL, TELOPT_TM };
-	static char will_sga[] = { IAC, WILL, TELOPT_SGA };
-	static char wont_sga[] = { IAC, WONT, TELOPT_SGA };
+	static char intr[] =		{ '\177' };
+	static char brk[] =		{ '\034' };
+	static char tm[] =		{ IAC, WILL, TELOPT_TM };
+	static char will_sga[] =	{ IAC, WILL, TELOPT_SGA };
+	static char wont_sga[] =	{ IAC, WONT, TELOPT_SGA };
+	static char mode_edit[] =	{ IAC, SB, TELOPT_LINEMODE, LM_MODE,
+					  MODE_EDIT, IAC, SE };
 	register user **usr;
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {
@@ -420,8 +433,15 @@ int *size;
 				break;
 
 			    case WILL:
+				state = TS_WILL;
+				break;
+
 			    case WONT:
-				state = TS_IGNORE;
+				state = TS_WONT;
+				break;
+
+			    case SB:
+				state = TS_SB;
 				break;
 
 			    case IP:
@@ -435,6 +455,7 @@ int *size;
 				break;
 
 			    default:
+				/* let's hope it wasn't important */
 				state = TS_DATA;
 				break;
 			    }
@@ -455,9 +476,33 @@ int *size;
 				flags |= CF_GA;
 				conn_write((*usr)->conn, wont_sga, 3);
 			    }
-			    /* fall through */
-			case TS_IGNORE:
 			    state = TS_DATA;
+			    break;
+
+			case TS_WILL:
+			    if (UCHAR(*p) == TELOPT_LINEMODE) {
+				/* linemode confirmed; now request editing */
+				conn_write((*usr)->conn, mode_edit, 7);
+			    }
+			    /* fall through */
+			case TS_WONT:
+			    state = TS_DATA;
+			    break;
+
+			case TS_SB:
+			    /* skip to the end */
+			    if (UCHAR(*p) == IAC) {
+				state = TS_SE;
+			    }
+			    break;
+
+			case TS_SE:
+			    if (UCHAR(*p) == SE) {
+				/* end of subnegotiation */
+				state = TS_DATA;
+			    } else {
+				state = TS_SB;
+			    }
 			    break;
 			}
 			p++;
