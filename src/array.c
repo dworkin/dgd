@@ -346,6 +346,7 @@ register array *a;
 	elts = (value *) NULL;
     }
     backup(ac, a, elts, a->primary->plane);
+    arr_ref(a);
 }
 
 /*
@@ -373,14 +374,17 @@ int merge;
 		if (ac != (abchunk **) NULL) {
 		    /* backup on previous plane */
 		    backup(ac, ab->arr, ab->original, ab->plane);
-		} else if (ab->original != (value *) NULL) {
-		    register value *v;
-		    register unsigned short j;
+		} else {
+		    if (ab->original != (value *) NULL) {
+			register value *v;
+			register unsigned short j;
 
-		    for (v = ab->original, j = ab->size; j != 0; v++, --j) {
-			i_del_value(v);
+			for (v = ab->original, j = ab->size; j != 0; v++, --j) {
+			    i_del_value(v);
+			}
+			FREE(ab->original);
 		    }
-		    FREE(ab->original);
+		    arr_del(ab->arr);
 		}
 	    }
 	}
@@ -439,6 +443,7 @@ abchunk **ac;
 
 	    a->elts = ab->original;
 	    a->size = ab->size;
+	    arr_del(a);
 	}
 
 	n = c->next;

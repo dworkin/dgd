@@ -1382,3 +1382,4 @@ DGD 1.1
    code will only further confuse client programs.
  - Fixed a bug in atomic commit for exported arrays.
  - Fixed a bug in restoring a parser state machine.
+ - Fixed a reference counting problem in the atomic array code.
