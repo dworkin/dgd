@@ -1202,16 +1202,6 @@ array *map;
 }
 
 /*
- * NAME:	data->del_string()
- * DESCRIPTION:	delete a string in a dataspace
- */
-void d_del_string(str)
-string *str;
-{
-    str->u.primary->str = (string *) NULL;
-}
-
-/*
  * NAME:	data->del_array()
  * DESCRIPTION:	delete an array in a dataspace
  */
@@ -2276,6 +2266,9 @@ register unsigned short n;
 		    /*
 		     * make new array
 		     */
+		    if (val->u.array->hashed != (struct _maphash_ *) NULL) {
+			map_compact(val->u.array);
+		    }
 		    a = arr_alloc(val->u.array->size);
 		    a->tag = val->u.array->tag;
 		    a->primary = &data->alocal;
@@ -2334,14 +2327,18 @@ register unsigned short n;
 		    arr_del(val->u.array);
 		    arr_ref(val->u.array = a);
 		}
-	    } else if (val->u.array->size != 0 &&
-		       val->u.array->elts[0].type != T_INVALID &&
-		       arr_put(val->u.array) >= narr) {
+	    } else if (arr_put(val->u.array) >= narr) {
 		/*
-		 * not previously encountered non-empty array
+		 * not previously encountered mapping or array
 		 */
 		narr++;
-		d_import(data, val->u.array->elts, val->u.array->size);
+		if (val->u.array->hashed != (struct _maphash_ *) NULL) {
+		    map_compact(val->u.array);
+		    d_import(data, val->u.array->elts, val->u.array->size);
+		} else if (val->u.array->size != 0 &&
+			   val->u.array->elts[0].type != T_INVALID) {
+		    d_import(data, val->u.array->elts, val->u.array->size);
+		}
 	    }
 	}
 	val++;
@@ -2355,7 +2352,7 @@ register unsigned short n;
  */
 void d_export()
 {
-    register dataspace *data;
+    register dataspace *data, *next;
     register Uint n;
 
     if (ifirst != (dataspace *) NULL) {
@@ -2371,9 +2368,15 @@ void d_export()
 		    register arrref *a;
 
 		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
-			if (a->arr != (array *) NULL && a->arr->size != 0 &&
-			    a->arr->elts[0].type != T_INVALID) {
-			    d_import(data, a->arr->elts, a->arr->size);
+			if (a->arr != (array *) NULL) {
+			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
+				/* mapping */
+				map_compact(a->arr);
+				d_import(data, a->arr->elts, a->arr->size);
+			    } else if (a->arr->size != 0 &&
+				       a->arr->elts[0].type != T_INVALID) {
+				d_import(data, a->arr->elts, a->arr->size);
+			    }
 			}
 		    }
 		}
@@ -2393,8 +2396,9 @@ void d_export()
 	    }
 	}
 
-	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
+	for (data = ifirst; data != (dataspace *) NULL; data = next) {
 	    data->imports = 0;
+	    next = data->ilist;
 	    data->ilist = (dataspace *) NULL;
 	}
 	ifirst = ilast = (dataspace *) NULL;

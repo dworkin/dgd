@@ -74,7 +74,7 @@ register string *s;
     if ((--(s->ref) & STR_REF) == 0) {
 	/* this cannot be a string constant */
 	if (s->u.primary != (strref *) NULL) {
-	    d_del_string(s);
+	    s->u.primary->str = (string *) NULL;
 	}
 	FREE(s);
     }
