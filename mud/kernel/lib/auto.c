@@ -1144,8 +1144,12 @@ static mixed *file_info(string path)
     }
 
     info = ::get_dir(path);
-    files = explode(path, "/");
-    name = files[sizeof(files) - 1];
+    if (path == "/") {
+	name = ".";
+    } else {
+	files = explode(path, "/");
+	name = files[sizeof(files) - 1];
+    }
     files = info[0];
     sz = sizeof(files);
     if (sz <= 1) {
