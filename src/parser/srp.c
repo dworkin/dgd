@@ -307,7 +307,7 @@ register char *buf, **rbuf;
 
 
 typedef struct _shlink_ {
-    char *shifts;		/* offset in shift table */
+    Int shifts;			/* offset in shift table */
     struct _shlink_ *next;	/* next in linked list */
 } shlink;
 
@@ -323,10 +323,11 @@ typedef struct _slchunk_ {
  * NAME:	shlink->hash()
  * DESCRIPTION:	put a new shlink in the hash table, or return an old one
  */
-static shlink *sl_hash(htab, htabsize, c, shifts, n)
+static shlink *sl_hash(htab, htabsize, c, shtab, shifts, n)
 shlink **htab;
 Uint htabsize;
 register slchunk **c;
+char *shtab;
 register char *shifts;
 register int n;
 {
@@ -344,7 +345,7 @@ register int n;
     shifts -= n;
     ssl = &htab[h % htabsize];
     while (*ssl != (shlink *) NULL) {
-	if (memcmp((*ssl)->shifts + 4, shifts, n) == 0) {
+	if (memcmp(shtab + (*ssl)->shifts + 4, shifts, n) == 0) {
 	    /* seen this one before */
 	    return *ssl;
 	}
@@ -362,7 +363,7 @@ register int n;
     sl = &(*c)->sl[(*c)->chunksz++];
     sl->next = *ssl;
     *ssl = sl;
-    sl->shifts = (char *) NULL;
+    sl->shifts = -1;
 
     return sl;
 }
@@ -649,7 +650,8 @@ register srp *lr;
     memset(lr->shhtab, '\0', lr->shhsize * sizeof(shlink*));
     for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
 	n = 4 * ((UCHAR(p[4]) << 8) + UCHAR(p[5])) + 6;
-	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, p, n)->shifts = p;
+	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
+								p - lr->shtab;
     }
 
     lr->tmpsize = lr->tmpstr->len;
@@ -776,11 +778,11 @@ unsigned short *check;
 	*p++ = to[i] >> 8;
 	*p++ = to[i];
     }
-    sl = sl_hash(lr->shhtab, lr->shhsize, &lr->slc, shifts, j);
-    if (sl->shifts != (char *) NULL) {
+    sl = sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, shifts, j);
+    if (sl->shifts >= 0) {
 	/* same as before */
 	AFREE(shifts);
-	p = sl->shifts;
+	p = lr->shtab + sl->shifts;
 	*check = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	return (short) ((UCHAR(p[2]) << 8) + UCHAR(p[3]));
     }
@@ -792,11 +794,11 @@ unsigned short *check;
 	lr->shtab = REALLOC(lr->shtab, char, lr->shtsize, i);
 	lr->shtsize = i;
     }
-    sl->shifts = lr->shtab + lr->nshift;
+    sl->shifts = lr->nshift;
     lr->nshift += j;
     lr->tmpsize += j;
     lr->tmpchanged = TRUE;
-    memcpy(sl->shifts, shifts, j);
+    memcpy(lr->shtab + sl->shifts, shifts, j);
     AFREE(shifts);
 
     /* create offset table */
@@ -873,7 +875,7 @@ unsigned short *check;
 	    *p = i;
 	} while (n != 0);
 
-	p = sl->shifts;
+	p = lr->shtab + sl->shifts;
 	*p++ = i >> 8;
 	*p++ = i;
 	*check = i;

@@ -1193,3 +1193,6 @@ DGD 1.1
  - DGD ported to BeOS.
  - Fixed a crashing bug in alternative parse tree handling.
  - Get the precompiler to compile again (after the last kfun additions).
+ - Fixed a bug in parse_string() that prevented proper compression of the
+   shift/reduce parser, and could also lead to strings being erroneously
+   rejected.
