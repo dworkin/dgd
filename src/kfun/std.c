@@ -992,9 +992,10 @@ register frame *f;
 
     i_add_ticks(f, 10);
     delay = co_del(f->obj, (uindex) f->sp->u.number);
-    if (delay < 0) {
+    if (delay < -1) {
 	f->sp->type = T_FLOAT;
-	flt_itof((delay + 1) * -1000, &flt);
+	flt_itof(-2 - delay, &flt);
+	flt_mult(&flt, &thousandth);
 	VFLT_PUT(f->sp, flt);
     } else {
 	f->sp->u.number = delay;

@@ -487,6 +487,7 @@ static string path_read(string path)
 static string path_write(string path)
 {
     string oname, creator;
+    int *rsrc;
 
     catch {
 	path = previous_object()->path_write(path);
@@ -494,10 +495,12 @@ static string path_write(string path)
     if (path) {
 	creator = creator(oname = object_name(previous_object()));
 	path = normalize_path(path, oname, creator);
+	rsrc = rsrcd->rsrc_get(creator, "filequota");
 	if (sscanf(path, "/kernel/%*s") == 0 &&
 	    sscanf(path, "/include/kernel/%*s") == 0 &&
-	    (creator == "System" || accessd->access(oname, path, WRITE_ACCESS)))
-	{
+	    (creator == "System" ||
+	     (accessd->access(oname, path, WRITE_ACCESS) &&
+	      (rsrc[RSRC_USAGE] < rsrc[RSRC_MAX] || rsrc[RSRC_MAX] < 0)))) {
 	    size = file_size(file = path);
 	    return path;
 	}

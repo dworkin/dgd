@@ -1287,3 +1287,5 @@ DGD 1.1
  - Fixed a tricky bug in swapping out mappings with object indices that have
    been destructed and replaced by a new version with the same object index,
    that had eluded me for a long time.
+ - Return value of remove_call_out() was incorrect if callout didn't exist or
+   had millisecond delay.

@@ -529,6 +529,14 @@ register unsigned int handle;
 		return t - timestamp;
 	    }
 	}
+
+	t -= timestamp;
+    } else {
+	unsigned short m, mtime;
+
+	/* encoded millisecond */
+	t = decode((Uint) t, &m) - co_time(&mtime);
+	t = -2 - t * 1000 - m + mtime;
     }
 
     /*
@@ -538,7 +546,7 @@ register unsigned int handle;
     for (;;) {
 	if (l->oindex == i && l->handle == handle) {
 	    dequeue(l - cotab);
-	    return t - timestamp;
+	    return t;
 	}
 	l++;
 # ifdef DEBUG
@@ -574,10 +582,6 @@ object *obj;
 	case 1:
 	    /* encoded millisecond */
 	    t = decode((Uint) w->u.number, &m) - co_time(&mtime);
-	    if (m < mtime) {
-		m += 1000;
-		--t;
-	    }
 	    flt_itof((Int) t * 1000 + m - mtime, &flt);
 	    flt_mult(&flt, &thousandth);
 	    w->type = T_FLOAT;
