@@ -2,7 +2,7 @@ NAME
 	editor - handle an editor command
 
 SYNOPSIS
-	void editor(string command)
+	string editor(string command)
 
 
 DESCRIPTION
@@ -10,14 +10,13 @@ DESCRIPTION
 	command is the first for this object, an editor instance will be
 	created for it.  The editor instance will remain active until an
 	editor command is specified that terminates it, or until the object
-	is destructed.  Editor output will be sent to the function
-	receive_message() in the editor object.  The editor status of an
-	object can be queried with the kfun query_editor().
-	File paths for reading and writing will be translated by read_ed_path()
-	and write_ed_path(), respectively, in the driver object.
+	is destructed.  Editor output will be returned as a string.  The
+	editor status of an object can be queried with the kfun query_editor().
+	File paths for reading and writing will be translated by path_ed_read()
+	and path_ed_write(), respectively, in the driver object.
 
 ERRORS
-	If the editor() command is issued for an object without an active
+	If the editor() kfun is called for an object without an active
 	editor instance, and the number of editor instances in the system
 	is equal to the constant MAX_EDITORS, defined in the include file
 	<limits.h>, an error will result.
