@@ -508,7 +508,7 @@ register Int i, d;
 	Int r;
 
 	r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	return ((i | d) < 0) ? -r : r;
+	return ((i ^ d) < 0) ? -r : r;
     }
     return ((Uint) i) / ((Uint) d);
 }
@@ -527,7 +527,7 @@ register Int i, d;
 	Int r;
 
 	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
-	return ((i | d) < 0) ? -r : r;
+	return ((i ^ d) < 0) ? -r : r;
     }
     return ((Uint) i) % ((Uint) d);
 }

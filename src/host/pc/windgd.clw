@@ -38,7 +38,7 @@ VirtualFilter=dWC
 [DLG:IDD_ABOUTBOX]
 Type=1
 Class=CAboutDlg
-ControlCount=10
+ControlCount=11
 Control1=IDC_STATIC,static,1342177283
 Control2=IDC_STATIC,static,1342308480
 Control3=IDC_STATIC,static,1342308352
@@ -49,6 +49,7 @@ Control7=IDC_STATIC,static,1342308352
 Control8=IDC_STATIC,static,1342308352
 Control9=IDC_STATIC,static,1342308352
 Control10=IDC_STATIC,static,1342308352
+Control11=IDC_STATIC,static,1342308352
 
 [MNU:IDR_MAINFRAME]
 Type=1

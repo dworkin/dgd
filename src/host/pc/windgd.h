@@ -23,6 +23,7 @@ class CWindgdApp : public CWinApp {
 	afx_msg void OnUpdateDgdRestore(CCmdUI* pCmdUI);
 	afx_msg void OnDgdStart();
 	afx_msg void OnUpdateDgdStart(CCmdUI* pCmdUI);
+	afx_msg void OnAppExit();
 	//}}AFX_MSG
     DECLARE_MESSAGE_MAP()
 };

@@ -12,6 +12,7 @@ static char THIS_FILE[] = __FILE__;
 static CWindgdApp	theApp;
 static CMainFrame      *frame;
 static int		argstart;	/* started with arguments */
+static int		menuquit;	/* quit from menu */
 static int		dgd_started;	/* started */
 static int		dgd_running;	/* now running */
 static CString		dgd_config;
@@ -82,6 +83,7 @@ BEGIN_MESSAGE_MAP(CWindgdApp, CWinApp)
 	ON_UPDATE_COMMAND_UI(ID_DGD_RESTORE, OnUpdateDgdRestore)
 	ON_COMMAND(ID_DGD_START, OnDgdStart)
 	ON_UPDATE_COMMAND_UI(ID_DGD_START, OnUpdateDgdStart)
+	ON_COMMAND(ID_APP_EXIT, OnAppExit)
 	//}}AFX_MSG_MAP
     // Standard file based document commands
 END_MESSAGE_MAP()
@@ -173,6 +175,12 @@ void CWindgdApp::OnDgdStart()
     _beginthread(run_dgd, 0, NULL);
 }
 
+void CWindgdApp::OnAppExit() 
+{
+    menuquit = TRUE;
+    CWinApp::OnAppExit();
+}
+
 void CWindgdApp::OnUpdateDgdConfig(CCmdUI* pCmdUI)
 {
     pCmdUI->Enable(!dgd_started);
@@ -190,9 +198,10 @@ void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 
 BOOL CWindgdApp::SaveAllModified()
 {
-    if (!dgd_running) {
+    if (!dgd_running || (argstart && !menuquit)) {
 	return TRUE;
     }
+    menuquit = FALSE;
     if (AfxMessageBox(
 		"Are you sure you want to\nterminate the running process?",
 		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES) {

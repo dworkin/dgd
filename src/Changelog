@@ -982,3 +982,6 @@ DGD 1.1
  - Functions without declared type were accidentally untypechecked, even with
    global typechecking enabled.
  - Made hashtables faster in some cases.
+ - PC version: don't ask for confirmation if the program is stopped from the
+   outside and was started with an argument, making it easier to run it as
+   a service on NT.
