@@ -17,6 +17,7 @@ typedef struct _ifstate_ {
     bool active;		/* is this ifstate active? */
     bool skipping;		/* skipping this part? */
     bool expect_else;		/* expect #else or #endif? */
+    char level;			/* include level */
     struct _ifstate_ *prev;	/* previous ifstate */
 } ifstate;
 
@@ -28,10 +29,15 @@ typedef struct _ichunk_ {
 static char **idirs;		/* include directory array */
 static char pri[NR_TOKENS];	/* operator priority table */
 static bool init_pri;		/* has the priority table been initialized? */
+static int include_level;	/* current #include level */
 static ichunk *ilist;		/* list of ifstate chunks */
 static int ichunksz;		/* ifstate chunk size */
 static ifstate *flist;		/* free ifstate list */
 static ifstate *ifs;		/* current conditional inclusion state */
+
+static ifstate top = {		/* initial ifstate */
+    TRUE, FALSE, FALSE, 0, (ifstate *) NULL
+};
 
 # define UNARY	0x10
 
@@ -40,8 +46,9 @@ static ifstate *ifs;		/* current conditional inclusion state */
  * DESCRIPTION:	initialize preprocessor. Return TRUE if the input file could
  *		be opened.
  */
-bool pp_init(file, id)
+bool pp_init(file, id, level)
 char *file, **id;
+int level;
 {
     tk_init();
     if (!tk_include(file)) {
@@ -53,6 +60,8 @@ char *file, **id;
     mc_define("__DGD__", "\t1\t", -1);
     mc_define("__VERSION__", VERSION, -1);
     pps_init();
+    include_level = level;
+    ifs = &top;
     ilist = (ichunk *) NULL;
     ichunksz = ICHUNKSZ;
     flist = (ifstate *) NULL;
@@ -112,13 +121,10 @@ static void push()
 	}
 	s = &ilist->i[ichunksz++];
     }
-    if (ifs != (ifstate *) NULL) {
-	s->active = !ifs->skipping;
-    } else {
-	s->active = TRUE;
-    }
+    s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;
+    s->level = include_level;
     s->prev = ifs;
     ifs = s;
 }
@@ -147,7 +153,7 @@ void pp_clear()
     register ichunk *l, *f;
 
     pps_clear();
-    while (ifs != (ifstate *) NULL) {
+    while (ifs != &top) {
 	pop();
     }
     for (l = ilist; l != (ichunk *) NULL; ) {
@@ -457,6 +463,12 @@ static void do_include()
     register int token;
     register char **idir;
 
+    if (include_level == 8) {
+	yyerror("#include nesting too deep");
+	tk_skiptonl(FALSE);
+	return;
+    }
+
     tk_header(TRUE);
     token = wsmcgtok();
     tk_header(FALSE);
@@ -467,6 +479,7 @@ static void do_include()
 
 	/* first try the path direct */
 	if (tk_include(path_include(tk_filename(), file))) {
+	    include_level++;
 	    return;
 	}
     } else if (token == INCL_CONST) {
@@ -483,6 +496,7 @@ static void do_include()
 	strcat(buf, "/");
 	strcat(buf, file);
 	if (tk_include(path_include(tk_filename(), buf))) {
+	    include_level++;
 	    return;
 	}
     }
@@ -691,16 +705,21 @@ int pp_gettok()
 
     for (;;) {
 	token = tk_gettok();
-	if (ifs != (ifstate *) NULL) {
-	    if (token == EOF) {
-		yyerror("EOF in conditional inclusion");
-	    } else if (ifs->skipping && token != '#' && token != '\n') {
-		tk_skiptonl(FALSE);
-		continue;
-	    }
+	if (ifs->skipping && token != '#' && token != '\n' && token != EOF) {
+	    tk_skiptonl(FALSE);
+	    continue;
 	}
 	switch (token) {
 	case EOF:
+	    if (include_level > 0) {
+		--include_level;
+		while (ifs->level > include_level) {
+		    yyerror("missing #endif");
+		    pop();
+		}
+		tk_endinclude();
+		continue;
+	    }
 	    return token;
 
 	case ' ':
@@ -768,7 +787,7 @@ int pp_gettok()
 		    break;
 
 		case PP_ELIF:
-		    if (ifs == (ifstate *) NULL) {
+		    if (ifs == &top) {
 			yyerror("#elif without #if");
 			tk_skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
@@ -822,7 +841,7 @@ int pp_gettok()
 		    break;
 
 		case PP_ELSE:
-		    if (ifs == (ifstate *) NULL) {
+		    if (ifs == &top) {
 			yyerror("#else without #if");
 			tk_skiptonl(FALSE);
 		    } else if (!ifs->expect_else) {
@@ -836,7 +855,7 @@ int pp_gettok()
 		    break;
 
 		case PP_ENDIF:
-		    if (ifs == (ifstate *) NULL) {
+		    if (ifs == &top || ifs->level < include_level) {
 			yyerror("#endif without #if");
 			tk_skiptonl(FALSE);
 		    } else {
@@ -846,7 +865,7 @@ int pp_gettok()
 		    break;
 
 		case PP_ERROR:
-		    if (ifs == (ifstate *) NULL || !ifs->skipping) {
+		    if (!ifs->skipping) {
 			char buf[MAX_LINE_SIZE];
 			register str *s;
 
@@ -874,7 +893,7 @@ int pp_gettok()
 		    break;
 
 		case PP_LINE:
-		    if (ifs != (ifstate *) NULL && ifs->skipping) {
+		    if (ifs->skipping) {
 			tk_skiptonl(FALSE);
 			break;
 		    }
@@ -898,7 +917,7 @@ int pp_gettok()
 		    break;
 
 		case PP_INCLUDE:
-		    if (ifs != (ifstate *) NULL && ifs->skipping) {
+		    if (ifs->skipping) {
 			tk_skiptonl(FALSE);
 			break;
 		    }
@@ -906,7 +925,7 @@ int pp_gettok()
 		    break;
 
 		case PP_DEFINE:
-		    if (ifs != (ifstate *) NULL && ifs->skipping) {
+		    if (ifs->skipping) {
 			tk_skiptonl(FALSE);
 			break;
 		    }
@@ -914,7 +933,7 @@ int pp_gettok()
 		    break;
 
 		case PP_UNDEF:
-		    if (ifs != (ifstate *) NULL && ifs->skipping) {
+		    if (ifs->skipping) {
 			tk_skiptonl(FALSE);
 			break;
 		    }
