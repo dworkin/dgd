@@ -1275,3 +1275,4 @@ DGD 1.1
    end of each thread, especially with many objects in memory.
  - Show which function is actually being called with too many or too few
    arguments.
+ - Fixed a bug which could mess up the callout table when making a state dump.

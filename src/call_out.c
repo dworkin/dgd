@@ -827,7 +827,7 @@ int fd;
     register uindex n;
     register cbuf *cb;
     unsigned short m;
-    int ret;
+    bool ret;
 
     /* update timestamp */
     co_time(&m);
@@ -878,7 +878,7 @@ int fd;
 	    last = immediate.last;
 	}
 	cb = &cycbuf[timestamp & CYCBUF_MASK];
-	dc[last + n - cotabsz].next = cb->list;
+	last = dc[last + n - cotabsz].next = cb->list;
 	cb->list = list;
     }
 
@@ -889,6 +889,10 @@ int fd;
 
     if (n != 0) {
 	AFREE(dc);
+    }
+
+    if (nzero != 0) {
+	cb->list = last;
     }
 
     return ret;
