@@ -281,14 +281,17 @@ static object compile_object(string path)
     }
 
     /*
-     * check permission; compiling requires write access
+     * check permission; compiling requires access
      */
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
+    lib = sscanf(path, "%*s/lib/");
     uid = driver->creator(path);
     if (uid && creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+	!::find_object(ACCESSD)->access(oname, path,
+					(sscanf(path, "/kernel/%*s") == 0 &&
+					 lib) ? READ_ACCESS : WRITE_ACCESS)) {
 	error("Access denied");
     }
 
@@ -304,7 +307,6 @@ static object compile_object(string path)
     /*
      * do the compiling
      */
-    lib = sscanf(path, "%*s/lib/");
     new = !::find_object(path);
     stack = ::status()[ST_STACKDEPTH];
     ticks = ::status()[ST_TICKS];

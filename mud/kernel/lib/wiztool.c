@@ -211,7 +211,9 @@ static int rsrc_incr(string rowner, string name, mixed index, int incr,
 static object compile_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
-    if (!access(owner, path, WRITE_ACCESS)) {
+    if (!access(owner, path,
+		(sscanf(path, "/kernel/%*s") == 0 &&
+		 sscanf(path, "%*s/lib/") != 0) ? READ_ACCESS : WRITE_ACCESS)) {
 	message(path + ": Permission denied.\n");
 	return nil;
     }
@@ -239,11 +241,13 @@ static object clone_object(string path)
 static int destruct_object(mixed obj)
 {
     string path, oowner;
+    int lib;
 
     switch (typeof(obj)) {
     case T_STRING:
 	path = obj = driver->normalize_path(obj, directory, owner);
-	if (sscanf(path, "%*s/lib/") != 0) {
+	lib = sscanf(path, "%*s/lib/");
+	if (lib) {
 	    oowner = driver->creator(path);
 	} else {
 	    obj = find_object(path);
@@ -256,12 +260,13 @@ static int destruct_object(mixed obj)
 
     case T_OBJECT:
 	path = object_name(obj);
+	lib = sscanf(path, "%*s/lib/");
 	oowner = obj->query_owner();
 	break;
     }
 
     if (path && owner != oowner &&
-	((sscanf(path, "/kernel/%*s") != 0 && sscanf(path, "%*s/lib/") == 0) ||
+	((sscanf(path, "/kernel/%*s") != 0 && !lib) ||
 	 !access(owner, path, WRITE_ACCESS))) {
 	message(path + ": Permission denied.\n");
 	return -1;

@@ -195,15 +195,26 @@ compiling(string path)
     if (previous_program() == AUTO) {
 	compiled = path;
 	inherited = ({ });
-	if (objectd) {
-	    objectd->compiling(path);
-	}
 	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
-	    compile_object(AUTO);
+	    string err;
+
+	    if (objectd) {
+		objectd->compiling(AUTO);
+	    }
+	    err = catch(compile_object(AUTO));
+	    if (err) {
+		if (objectd) {
+		    objectd->compile_failed("System", AUTO);
+		}
+		error(err);
+	    }
 	    rsrcd->rsrc_incr("System", "objects", nil, 1, TRUE);
 	    if (objectd) {
 		objectd->compile_lib("System", AUTO);
 	    }
+	}
+	if (objectd) {
+	    objectd->compiling(path);
 	}
     }
 }
@@ -340,6 +351,7 @@ private mixed call(mixed what, string func)
  */
 static initialize()
 {
+    object rsrcobj;
     string *users;
     int i;
 
@@ -357,7 +369,7 @@ static initialize()
     rsrcd->set_rsrc("create stack",      5, 0, 0);
     rsrcd->set_rsrc("create ticks",  10000, 0, 0);
 
-    load(RSRCOBJ);
+    rsrcobj = load(RSRCOBJ);
 
     /* create initial resource owners */
     rsrcd->add_owner("System");
@@ -368,6 +380,7 @@ static initialize()
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
 
     /* load remainder of manager objects */
+    call_other(rsrcobj, "???");
     call_other(accessd = load(ACCESSD), "???");
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
@@ -554,17 +567,15 @@ static object inherit_program(string from, string path, int priv)
     path = normalize_path(path, from + "/..", creator = creator(from));
     if (sscanf(path, "%*s/lib/") == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
-	!accessd->access(from, path, READ_ACCESS)) {
-	return nil;
-    }
-
-    if (objectd && objectd->forbid_inherit(from, path, priv)) {
+	!accessd->access(from, path, READ_ACCESS) ||
+	(objectd && objectd->forbid_inherit(from, path, priv))) {
 	return nil;
     }
 
     obj = find_object(path);
     if (!obj) {
 	int *rsrc;
+	string err;
 
 	creator = creator(path);
 	rsrc = rsrcd->rsrc_get(creator, "objects");
@@ -577,7 +588,13 @@ static object inherit_program(string from, string path, int priv)
 	if (objectd) {
 	    objectd->compiling(path);
 	}
-	obj = compile_object(path);
+	err = catch(obj = compile_object(path));
+	if (err) {
+	    if (objectd) {
+		objectd->compile_failed(creator, path);
+	    }
+	    error(err);
+	}
 	rsrcd->rsrc_incr(creator, "objects", nil, 1, TRUE);
 	if (objectd) {
 	    objectd->compile_lib(creator, path, inherited...);
