@@ -78,7 +78,7 @@ static void set_mode(int newmode)
     if (newmode != mode && newmode != MODE_NOCHANGE) {
 	if (newmode == MODE_DISCONNECT) {
 	    destruct_object(this_object());
-	} else if (newmode >= MODE_BLOCK) {
+	} else if (newmode >= MODE_UNBLOCK) {
 	    if (newmode - MODE_UNBLOCK != blocked) {
 		block_input(blocked = newmode - MODE_UNBLOCK);
 	    }
