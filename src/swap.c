@@ -17,7 +17,7 @@ static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
 static int sectorsize;			/* size of sector */
-static uindex memsize, cachesize;	/* # of sectors in swap and cache */
+static uindex swapsize, cachesize;	/* # of sectors in swap and cache */
 static uindex nsectors;			/* total swap sectors */
 static uindex ssectors;			/* sectors actually in swap file */
 static int swap;			/* swap file descriptor */
@@ -26,16 +26,16 @@ static int swap;			/* swap file descriptor */
  * NAME:	swap->init()
  * DESCRIPTION:	initialize the swap device
  */
-void sw_init(file, cache, total, secsize)
+void sw_init(file, total, cache, secsize)
 char *file;
-register uindex cache, total;
+register uindex total, cache;
 uindex secsize;
 {
     register header *h;
     register sector i;
 
     /* allocate and initialize all tables */
-    memsize = total;
+    swapsize = total;
     cachesize = cache;
     sectorsize = secsize;
     slotsize = sizeof(header) + secsize;
@@ -86,7 +86,7 @@ sector sw_new()
 	mfree = map[mfree];
     } else {
 	/* allocate a new sector */
-	if (nsectors == memsize) {
+	if (nsectors == swapsize) {
 	    fatal("out of sectors");
 	}
 	sec = nsectors++;
