@@ -80,7 +80,7 @@ int login(string str)
 	    state[previous_object()] = STATE_LOGIN;
 	} else {
 	    /* no password; login immediately */
-	    connect(previous_object());
+	    connection(previous_object());
 	    tell_audience(Name + " logs in.\n");
 	    if (sizeof(rsrc::query_owners() & ({ str })) == 0) {
 		message("> ");
@@ -234,7 +234,7 @@ int receive_message(string str)
 		previous_object()->message("\nBad password.\n");
 		return MODE_DISCONNECT;
 	    }
-	    connect(previous_object());
+	    connection(previous_object());
 	    message("\n");
 	    tell_audience(Name + " logs in.\n");
 	    if (!wiztool && sizeof(rsrc::query_owners() & ({ name })) != 0) {

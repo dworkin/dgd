@@ -26,10 +26,10 @@ static void disconnect()
 }
 
 /*
- * NAME:	connect()
+ * NAME:	connection()
  * DESCRIPTION:	establish connection
  */
-static void connect(object conn)
+static void connection(object conn)
 {
     disconnect();
     connection = conn;
