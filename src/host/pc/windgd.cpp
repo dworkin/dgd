@@ -119,12 +119,12 @@ BOOL CWindgdApp::InitInstance()
 		    *p = '\0';
 		}
 	    }
-	    p = cmdline + strlen(cmdline);
-	    if (cmdline[0] == '"' && p[-1] == '"') {
-	    	/* remove quotes around argument */
-	    	cmdline++;
-	    	p[-1] = '\0';
-	    }
+	}
+	p = cmdline + strlen(cmdline);
+	if (cmdline[0] == '"' && p[-1] == '"') {
+	    /* remove quotes around argument */
+	    cmdline++;
+	    p[-1] = '\0';
 	}
 	dgd_config = cmdline;
 	OnDgdStart();

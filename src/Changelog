@@ -936,3 +936,4 @@ DGD 1.1
    user->close().
  - Win32 version can now be started by double-clicking the config file.
  - Fixed a nasty error context bug.
+ - Fixed a rare bug in string swapping.

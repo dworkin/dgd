@@ -562,7 +562,7 @@ no_match:
 	i_pop(nargs);
     }
     while (val > values) {
-	i_store(sp, val - 1);
+	i_store(sp, (value *) val - 1);
 	sp++;
 	--val;
     }
