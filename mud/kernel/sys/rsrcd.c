@@ -2,6 +2,20 @@
 # include <kernel/rsrc.h>
 # include <type.h>
 
+# define LIM_NEXT	0	/* next limits frame */
+# define LIM_OWNER	1	/* owner of this frame */
+# define LIM_MAXSTACK	2	/* max stack in frame */
+# define LIM_MAXTICKS	3	/* max ticks in frame */
+# define LIM_TICKS	4	/* current ticks in frame */
+
+# define CO_OBJ		0	/* callout object */
+# define CO_OWNER	1	/* owner */
+# define CO_HANDLE	2	/* handle in object */
+# define CO_RELHANDLE	3	/* release handle */
+# define CO_PREV	4	/* previous callout */
+# define CO_NEXT	5	/* next callout */
+
+
 mapping resources;		/* registered resources */
 mapping owners;			/* resource owners */
 mixed *limits;			/* limits for current owner */
@@ -10,7 +24,7 @@ mapping suspended;		/* suspended callouts */
 mixed *first_suspended;		/* first suspended callout */
 mixed *last_suspended;		/* last suspended callout */
 object suspender;		/* object that suspended callouts */
-int suspend;			/* releaser callout or -1 for suspending */
+int suspend;			/* callouts suspended */
 
 /*
  * NAME:	create()
@@ -258,12 +272,16 @@ mixed *call_limits(string owner, mixed *status)
 int update_ticks(int ticks)
 {
     if (KERNEL()) {
-	if (limits[3] > 0 && (!limits[0] || limits[1] != limits[0][1])) {
-	    owners[limits[1]]->update_ticks(ticks = limits[3] - ticks);
+	if (limits[LIM_MAXTICKS] > 0 &&
+	    (!limits[LIM_NEXT] ||
+	     limits[LIM_OWNER] != limits[LIM_NEXT][LIM_OWNER])) {
+	    owners[limits[LIM_OWNER]]->update_ticks(ticks = limits[LIM_MAXTICKS]
+								    - ticks);
 	    resources["tick usage"][RSRC_USAGE] += (float) ticks;
-	    ticks = (limits[4] >= 0) ? limits[0][3] -= ticks : -1;
+	    ticks = (limits[LIM_TICKS] >= 0) ?
+		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}
-	limits = limits[0];
+	limits = limits[LIM_NEXT];
 	return ticks;
     }
 }
@@ -276,14 +294,22 @@ int update_ticks(int ticks)
 suspend_callouts()
 {
     if (SYSTEM() && suspend >= 0) {
+	mixed *callout;
+
 	rlimits (-1; -1) {
-	    if (!suspended) {
+	    if (suspend > 0) {
+		callout = first_suspended;
+		do {
+		    if (callout[CO_RELHANDLE] != 0) {
+			remove_call_out(callout[CO_RELHANDLE]);
+			callout[CO_RELHANDLE] = 0;
+		    }
+		    callout = callout[CO_NEXT];
+		} while (callout);
+	    } else {
 		suspended = ([ ]);
 	    }
 	    suspender = previous_object();
-	    if (suspend != 0) {
-		remove_call_out(suspend);
-	    }
 	    suspend = -1;
 	}
     }
@@ -299,7 +325,16 @@ release_callouts()
 	rlimits (-1; -1) {
 	    suspender = 0;
 	    if (first_suspended) {
-		suspend = call_out("release", 0);
+		mixed *callout;
+
+		callout = first_suspended;
+		do {
+		    if (callout[CO_RELHANDLE] == 0) {
+			callout[CO_RELHANDLE] = call_out("release", 0);
+		    }
+		    callout = callout[CO_NEXT];
+		} while (callout);
+		suspend = 1;
 	    } else {
 		suspended = 0;
 		suspend = 0;
@@ -317,7 +352,7 @@ release_callouts()
 int suspended(object obj, string owner)
 {
     if (previous_program() == AUTO) {
-	if (suspend < 0 && obj != suspender) {
+	if (suspend != 0 && obj != suspender) {
 	    return TRUE;
 	}
 	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"]);
@@ -334,9 +369,12 @@ suspend(object obj, string owner, int handle)
     if (previous_program() == AUTO) {
 	mixed *callout;
 
-	callout = ({ obj, owner, handle, last_suspended, 0 });
+	callout = ({ obj, owner, handle, 0, last_suspended, 0 });
+	if (suspend > 0) {
+	    callout[CO_RELHANDLE] = call_out("release", 0);
+	}
 	if (last_suspended) {
-	    last_suspended[4] = callout;
+	    last_suspended[CO_NEXT] = callout;
 	} else {
 	    first_suspended = callout;
 	}
@@ -365,16 +403,22 @@ int remove_callout(object obj, string owner, int handle)
 	if (suspended && (callouts=suspended[obj]) &&
 	    (callout=callouts[handle])) {
 	    if (callout != first_suspended) {
-		callout[3][4] = callout[4];
+		callout[CO_PREV][CO_NEXT] = callout[CO_NEXT];
 	    } else {
-		first_suspended = callout[4];
+		first_suspended = callout[CO_NEXT];
 	    }
 	    if (callout != last_suspended) {
-		callout[4][3] = callout[3];
+		if (callout[CO_RELHANDLE] != 0) {
+		    remove_call_out(last_suspended[CO_RELHANDLE]);
+		    last_suspended[CO_RELHANDLE] = callout[CO_RELHANDLE];
+		}
+		callout[CO_NEXT][CO_PREV] = callout[CO_PREV];
 	    } else {
-		last_suspended = callout[3];
+		if (callout[CO_RELHANDLE] != 0) {
+		    remove_call_out(callout[CO_RELHANDLE]);
+		}
+		last_suspended = callout[CO_PREV];
 	    }
-	    callout[3] = callout[4] = 0;
 	    callouts[handle] = 0;
 	    return TRUE;	/* delayed call */
 	}
@@ -399,16 +443,22 @@ remove_callouts(object obj, string owner, int n)
 	    for (i = sizeof(callouts); --i >= 0; ) {
 		callout = callouts[i];
 		if (callout != first_suspended) {
-		    callout[3][4] = callout[4];
+		    callout[CO_PREV][CO_NEXT] = callout[CO_NEXT];
 		} else {
-		    first_suspended = callout[4];
+		    first_suspended = callout[CO_NEXT];
 		}
 		if (callout != last_suspended) {
-		    callout[4][3] = callout[3];
+		    if (callout[CO_RELHANDLE] != 0) {
+			remove_call_out(last_suspended[CO_RELHANDLE]);
+			last_suspended[CO_RELHANDLE] = callout[CO_RELHANDLE];
+		    }
+		    callout[CO_NEXT][CO_PREV] = callout[CO_PREV];
 		} else {
-		    last_suspended = callout[3];
+		    if (callout[CO_RELHANDLE] != 0) {
+			remove_call_out(callout[CO_RELHANDLE]);
+		    }
+		    last_suspended = callout[CO_PREV];
 		}
-		callout[3] = callout[4] = 0;
 	    }
 	    suspended[obj] = 0;
 	}
@@ -417,7 +467,7 @@ remove_callouts(object obj, string owner, int n)
 
 /*
  * NAME:	release()
- * DESCRIPTION:	release callouts
+ * DESCRIPTION:	release a callout
  */
 static release()
 {
@@ -425,29 +475,20 @@ static release()
     object obj;
     int handle;
 
-    suspend = 0;
-    while (first_suspended) {
-	callout = first_suspended;
-	if (!(first_suspended=callout[4])) {
-	    last_suspended = 0;
-	}
-	callout[3] = callout[4] = 0;
-	suspended[obj=callout[0]][handle=callout[2]] = 0;
-	owners[callout[1]]->rsrc_incr("callouts", obj, -1,
-				      resources["callouts"], FALSE);
-	catch {
-	    obj->_F_release(handle);
-	}
-	if (suspend != 0) {
-	    if (suspend > 0) {
-		remove_call_out(suspend);
-		suspend = 0;
-	    } else {
-		return;
-	    }
-	}
+    callout = first_suspended;
+    obj = callout[CO_OBJ];
+    handle = callout[CO_HANDLE];
+    if ((first_suspended=callout[CO_NEXT])) {
+	first_suspended[CO_PREV] = 0;
+	suspended[obj][handle] = 0;
+    } else {
+	last_suspended = 0;
+	suspended = 0;
+	suspend = 0;
     }
-    suspended = 0;
+    owners[callout[CO_OWNER]]->rsrc_incr("callouts", obj, -1,
+					 resources["callouts"], FALSE);
+    obj->_F_release(handle);
 }
 
 
