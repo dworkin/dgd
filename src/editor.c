@@ -4,7 +4,7 @@
 # include "object.h"
 # include "interpret.h"
 # include "edcmd.h"
-# include "ed.h"
+# include "editor.h"
 
 typedef struct _editor_ {
     cmdbuf *ed;			/* editor instance */

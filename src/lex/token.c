@@ -1,6 +1,6 @@
 # define INCLUDE_FILE_IO
+# define INCLUDE_CTYPE
 # include "lex.h"
-# include <ctype.h>
 # include "path.h"
 # include "macro.h"
 # include "special.h"
@@ -170,7 +170,7 @@ char *file;
     int fd;
 
     if (file != (char *) NULL) {
-	fd = open(file, O_RDONLY | O_BINARY);
+	fd = open(file, O_RDONLY | O_BINARY, 0);
 	if (fd >= 0) {
 	    char *buffer;
 	    register int len;

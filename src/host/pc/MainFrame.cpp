@@ -20,7 +20,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 END_MESSAGE_MAP()
 
 
-int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) 
+int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
     RECT rect;
 
@@ -40,7 +40,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     return 0;
 }
 
-void CMainFrame::OnSize(UINT nType, int cx, int cy) 
+void CMainFrame::OnSize(UINT nType, int cx, int cy)
 {
     RECT rect;
 
@@ -51,7 +51,7 @@ void CMainFrame::OnSize(UINT nType, int cx, int cy)
     }
 }
 
-void CMainFrame::OnDestroy() 
+void CMainFrame::OnDestroy()
 {
     CFrameWnd::OnDestroy();
     delete listbox;

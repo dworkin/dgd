@@ -1,5 +1,5 @@
+# define INCLUDE_CTYPE
 # include "ed.h"
-# include <ctype.h>
 # include "edcmd.h"
 # include "fileio.h"
 

@@ -264,7 +264,7 @@ int wait;
 
 /*
  * NAME:	conn->wrdone()
- * DESCRIPTION:	return true if a connection is ready for output
+ * DESCRIPTION:	return TRUE if a connection is ready for output
  */
 bool conn_wrdone(conn)
 connection *conn;

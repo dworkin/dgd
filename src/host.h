@@ -1,77 +1,11 @@
-# ifdef MINIX_68K
+# ifdef WIN32
 
-# include <limits.h>
-# include <sys/types.h>
-# include <unistd.h>
-
-# ifdef INCLUDE_FILE_IO
-# include <fcntl.h>
-# include <sys/stat.h>
-# endif
-
-# ifdef INCLUDE_TELNET
-# include "host/telnet.h"
-# endif
-
-# include <stdlib.h>
-# include <string.h>
-# include <setjmp.h>
-# include <stdio.h>
-
-/* # define UCHAR(c)	((char) (c))		      *//* unsigned character */
-# define UCHAR(c)	((int) ((c) & 0xff))		/* unsigned character */
-# define SCHAR(c)	((char) (c))			/* signed character */
-/* # define SCHAR(c)	((((char) (c)) - 128) ^ -128) *//* signed character */
-
-typedef long Int;
-typedef unsigned long Uint;
-
-# define ALLOCA(type, size)	ALLOC(type, size)
-# define AFREE(ptr)		FREE(ptr)
-
-# define FS_BLOCK_SIZE		1024
-
-extern int   rename		P((const char*, const char*));
-
-# endif	/* MINIX_68K */
-
-
-# ifdef ATARI_ST
-
-# include <limits.h>
-# include <sys/types.h>
-# include <unistd.h>
-
-# ifdef INCLUDE_FILE_IO
-# include <fcntl.h>
-# include <sys/stat.h>
-# endif
-
-# ifdef INCLUDE_TELNET
-# include "host/telnet.h"
-# endif
-
-# include <stdlib.h>
-# include <string.h>
-# include <setjmp.h>
-# include <stdio.h>
-
+# define STRUCT_AL	4		/* define this if align(struct) > 2 */
 # define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
 # define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
 typedef unsigned int Uint;
-
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
-# define AFREE(ptr)		/* on function return */
-
-# define FS_BLOCK_SIZE		512
-
-# endif	/* ATARI_ST */
-
-
-# ifdef WIN32
 
 # include <limits.h>
 # include <sys\types.h>
@@ -97,7 +31,13 @@ typedef unsigned int Uint;
 
 extern int P_chdir(char*);
 
+# define F_OK	0
+# define R_OK	4
 # define W_OK	2
+# endif
+
+# ifdef INCLUDE_CTYPE
+# include <ctype.h>
 # endif
 
 # ifdef INCLUDE_TELNET
@@ -108,13 +48,6 @@ extern int P_chdir(char*);
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
-
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
-typedef int Int;
-typedef unsigned int Uint;
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 						 (unsigned int) (size)))
@@ -127,6 +60,29 @@ typedef unsigned int Uint;
 extern void dgd_exit(int);
 
 # endif	/* WIN32 */
+
+
+# ifdef MACOS
+
+# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
+# include <limits.h>
+# include "macdgd.h"
+
+# ifdef INCLUDE_TELNET
+# include "telnet.h"
+# endif
+
+# define ALLOCA(type, size)	ALLOC(type, size)
+# define AFREE(ptr)		FREE(ptr)
+
+# define FS_BLOCK_SIZE		2048
+
+# endif	/* MACOS */
 
 
 # ifdef SUNOS4
@@ -165,6 +121,13 @@ extern void dgd_exit(int);
 
 # ifdef GENERIC_BSD
 
+# define STRUCT_AL	4		/* define this if align(struct) > 2 */
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -172,6 +135,10 @@ extern void dgd_exit(int);
 # ifdef INCLUDE_FILE_IO
 # include <fcntl.h>
 # include <sys/stat.h>
+# endif
+
+# ifdef INCLUDE_CTYPE
+# include <ctype.h>
 # endif
 
 # ifdef INCLUDE_TELNET
@@ -182,13 +149,6 @@ extern void dgd_exit(int);
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
-
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
-typedef int Int;
-typedef unsigned int Uint;
 
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)
@@ -202,6 +162,13 @@ typedef unsigned int Uint;
 
 # ifdef GENERIC_SYSV
 
+# define STRUCT_AL	4		/* define this if align(struct) > 2 */
+# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
+# define SCHAR(c)	((char) (c))		/* signed character */
+
+typedef int Int;
+typedef unsigned int Uint;
+
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -212,6 +179,10 @@ typedef unsigned int Uint;
 # define FNDELAY	O_NDELAY
 # endif
 
+# ifdef INCLUDE_CTYPE
+# include <ctype.h>
+# endif
+
 # ifdef INCLUDE_TELNET
 # include <arpa/telnet.h>
 # endif
@@ -220,13 +191,6 @@ typedef unsigned int Uint;
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
-
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
-typedef int Int;
-typedef unsigned int Uint;
 
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)

@@ -6,8 +6,8 @@
 
 %{
 
+# define INCLUDE_CTYPE
 # include "comp.h"
-# include <ctype.h>
 # include "str.h"
 # include "array.h"
 # include "object.h"

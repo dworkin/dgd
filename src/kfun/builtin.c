@@ -1,6 +1,6 @@
 # ifndef FUNCDEF
+# define INCLUDE_CTYPE
 # include "kfun.h"
-# include <ctype.h>
 # endif
 
 

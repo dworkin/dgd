@@ -89,7 +89,7 @@ Int l;
 	return (io *) NULL;
     }
 
-    fd = open(filename, O_RDONLY | O_BINARY);
+    fd = open(filename, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	return (io *) NULL;
     }

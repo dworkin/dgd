@@ -463,10 +463,12 @@ object *obj;
 void d_ref_control(ctrl)
 register control *ctrl;
 {
-    ctrl->refc++;
-    if (cone == ctrl) {
+    if (ctrl->refc == 0) {
+	cone = ctrl;
+    } else if (cone == ctrl) {
 	cone = ctrl->next;
     }
+    ctrl->refc++;
     if (ctrl != chead && ctrl->refc >= ctrl->prev->refc) {
 	register control *c;
 
@@ -509,10 +511,12 @@ register control *ctrl;
 void d_ref_dataspace(data)
 register dataspace *data;
 {
-    data->refc++;
-    if (done == data) {
+    if (data->refc == 0) {
+	done = data;
+    } else if (done == data) {
 	done = data->next;
     }
+    data->refc++;
     if (data != dhead && data->refc >= data->prev->refc) {
 	register dataspace *d;
 

@@ -256,7 +256,7 @@ int fd;
 	    dh.nvardefs += (*pc)->nvardefs;
 	}
     }
-    if (write(fd, &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+    if (write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	return FALSE;
     }
 
@@ -337,20 +337,20 @@ int fd;
 	funcdefs -= dh.nfuncdefs;
 	vardefs -= dh.nvardefs;
 
-	if (write(fd, dpc, dh.nprecomps * sizeof(dump_precomp)) !=
+	if (write(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
 					dh.nprecomps * sizeof(dump_precomp) ||
-	    write(fd, inh, dh.ninherits * sizeof(dump_inherit)) !=
+	    write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
 					dh.ninherits * sizeof(dump_inherit) ||
 	    (dh.nstrings != 0 &&
-	     write(fd, strings, dh.nstrings * sizeof(dstrconst)) !=
+	     write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
 					    dh.nstrings * sizeof(dstrconst)) ||
 	    (dh.stringsz != 0 &&
 	     write(fd, stext, dh.stringsz) != dh.stringsz) ||
 	    (dh.nfuncdefs != 0 &&
-	     write(fd, funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
+	     write(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
 					    dh.nfuncdefs * sizeof(dfuncdef)) ||
 	    (dh.nvardefs != 0 &&
-	     write(fd, vardefs, dh.nvardefs * sizeof(dvardef)) !=
+	     write(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
 					    dh.nvardefs * sizeof(dvardef))) {
 	    ok = FALSE;
 	}
@@ -383,7 +383,7 @@ int fd;
 {
     dump_header dh;
 
-    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
 	lseek(fd, dh.nprecomps * sizeof(dump_precomp) +
 		  dh.ninherits * sizeof(dump_inherit) +
 		  dh.nstrings * sizeof(dstrconst) +

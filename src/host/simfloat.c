@@ -1,5 +1,5 @@
+# define INCLUDE_CTYPE
 # include "dgd.h"
-# include <ctype.h>
 # include "xfloat.h"
 
 typedef struct {

@@ -67,9 +67,9 @@ CommandCount=9
 [ACL:IDR_MAINFRAME]
 Type=1
 Class=CMainFrame
-Command1=ID_FILE_NEW
-Command2=ID_FILE_OPEN
-Command3=ID_FILE_SAVE
+Command1=ID_DGD_CONFIG
+Command2=ID_DGD_RESTORE
+Command3=ID_DGD_START
 Command4=ID_EDIT_UNDO
 Command5=ID_EDIT_CUT
 Command6=ID_EDIT_COPY

@@ -1,6 +1,6 @@
+# define INCLUDE_CTYPE
 # include "lex.h"
 # undef error
-# include <ctype.h>
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"

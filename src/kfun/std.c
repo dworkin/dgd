@@ -3,7 +3,7 @@
 # include "path.h"
 # include "comm.h"
 # include "call_out.h"
-# include "ed.h"
+# include "editor.h"
 # include "node.h"
 # include "control.h"
 # include "compile.h"

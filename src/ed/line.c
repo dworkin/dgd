@@ -180,7 +180,7 @@ static void lb_act(lb)
 register linebuf *lb;
 {
     if (lb->fd < 0) {
-	lb->fd = open(lb->file, O_RDWR | O_BINARY);
+	lb->fd = open(lb->file, O_RDWR | O_BINARY, 0);
 	if (lb->fd < 0) {
 	    fatal("cannot reopen editor tmpfile \"%s\"", lb->file);
 	}

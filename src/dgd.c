@@ -5,7 +5,7 @@
 # include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
-# include "ed.h"
+# include "editor.h"
 # include "call_out.h"
 # include "comm.h"
 # include "node.h"

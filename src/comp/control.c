@@ -1089,7 +1089,7 @@ long *call;
 	    return (char *) NULL;
 	}
 	ohash = oh_new(ctrl->inherits[UCHAR(symb->inherit)].obj->chain.name);
-	index = symb->index;
+	index = UCHAR(symb->index);
     } else {
 	register vfh *h;
 
@@ -1264,7 +1264,7 @@ long *ref;
     /* check if the variable exists */
     h = *(vfh **) ht_lookup(vtab, str->text);
     if (h == (vfh *) NULL) {
-	c_error("undefined variable %s", str->text);
+	c_error("undeclared variable %s", str->text);
 	if (nvars < 255) {
 	    /* don't repeat this error */
 	    ctrl_dvar(str, 0, T_MIXED);

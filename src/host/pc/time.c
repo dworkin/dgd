@@ -32,6 +32,10 @@ Uint t;
 	    (buf[4] != 'F' || (buf[8] == '2' && buf[9] == '9'))) {
 	    /* 2100 is not a leap year */
 	    t += 86400;
+	    if (t < 0) {
+		t -= 1009843200;
+		offset += 32;
+	    }
 	    buf = ctime((time_t *) &t);
 	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
 	}

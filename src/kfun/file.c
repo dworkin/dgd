@@ -1,9 +1,9 @@
 # ifndef FUNCDEF
 # define INCLUDE_FILE_IO
+# define INCLUDE_CTYPE
 # include "kfun.h"
-# include <ctype.h>
 # include "path.h"
-# include "ed.h"
+# include "editor.h"
 # endif
 
 # ifdef FUNCDEF
@@ -844,7 +844,7 @@ int kf_restore_object()
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = 0;
-    fd = open(file, O_RDONLY | O_BINARY);
+    fd = open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* restore failed */
 	return 0;
@@ -1118,7 +1118,7 @@ int nargs;
 	return 0;
     }
     i_add_ticks(1000);
-    fd = open(file, O_RDONLY | O_BINARY);
+    fd = open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* cannot open file */
 	return 0;
@@ -1198,7 +1198,8 @@ int kf_rename_file()
     str_del((sp++)->u.string);
     str_del(sp->u.string);
     sp->type = T_INT;
-    sp->u.number = (access(buf, W_OK) >= 0 && rename(buf, file) >= 0);
+    sp->u.number = (access(buf, W_OK) >= 0 && access(file, F_OK) < 0 &&
+		    rename(buf, file) >= 0);
     return 0;
 }
 # endif

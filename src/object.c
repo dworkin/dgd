@@ -1,6 +1,6 @@
 # define INCLUDE_FILE_IO
+# define INCLUDE_CTYPE
 # include "dgd.h"
-# include <ctype.h>
 # include "str.h"
 # include "array.h"
 # include "object.h"

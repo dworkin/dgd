@@ -62,7 +62,7 @@ static void run_dgd(void *dummy)
 	argv[3] = (char *) NULL;
     }
 
-    dgd_exit(dgd_main(argc, argv));	
+    dgd_exit(dgd_main(argc, argv));
 }
 
 
@@ -134,7 +134,7 @@ BOOL CWindgdApp::InitInstance()
 }
 
 
-void CWindgdApp::OnDgdConfig() 
+void CWindgdApp::OnDgdConfig()
 {
     CFileDialog config(TRUE, NULL, "config.dgd",
     		       OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
@@ -146,7 +146,7 @@ void CWindgdApp::OnDgdConfig()
     }
 }
 
-void CWindgdApp::OnDgdRestore() 
+void CWindgdApp::OnDgdRestore()
 {
     CFileDialog restore(TRUE, NULL, NULL,
     			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
@@ -158,29 +158,29 @@ void CWindgdApp::OnDgdRestore()
     }
 }
 
-void CWindgdApp::OnDgdStart() 
+void CWindgdApp::OnDgdStart()
 {
     dgd_started = TRUE;
     m_pMainWnd->SetWindowText("DGD - running");
     _beginthread(run_dgd, 0, NULL);
 }
 
-void CWindgdApp::OnUpdateDgdConfig(CCmdUI* pCmdUI) 
+void CWindgdApp::OnUpdateDgdConfig(CCmdUI* pCmdUI)
 {
     pCmdUI->Enable(!dgd_started);
 }
 
-void CWindgdApp::OnUpdateDgdStart(CCmdUI* pCmdUI) 
+void CWindgdApp::OnUpdateDgdStart(CCmdUI* pCmdUI)
 {
     pCmdUI->Enable(!dgd_config.IsEmpty() && !dgd_started);
 }
 
-void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI) 
+void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 {
     pCmdUI->Enable(!dgd_started);
 }
 
-BOOL CWindgdApp::SaveAllModified() 
+BOOL CWindgdApp::SaveAllModified()
 {
     return (!dgd_started ||
 	    AfxMessageBox(

@@ -60,9 +60,13 @@ register char *option;
 	  strcmp(v->sname, option) == 0) {
 	    if (!val) {
 		v->val = 1;
-	    } else if ((v->val=atoi(val)) < 0) {
-		error("Bad numeric value for option \"%s\"",
-		  v->name);
+	    } else {
+		char *p;
+
+		i = strtol(val, &p, 10);
+		if (i < 0 || val == p) {
+		    error("Bad numeric value for option \"%s\"", v->name);
+		}
 	    }
 	    return;
 	}

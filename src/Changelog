@@ -946,3 +946,6 @@ DGD 1.1
    "negative" times.
  - Fixed a problem in the new statedump code, which might occur with frequent
    statedumps.
+ - The priority queue for to be swapped-out objects now works better.
+ - Merged in Mac compatibility fixes.
+ - Discontinued support for MINIX_68K and ATARI_ST.

@@ -7,7 +7,7 @@
 # include "interpret.h"
 # include "data.h"
 # include "path.h"
-# include "ed.h"
+# include "editor.h"
 # include "call_out.h"
 # include "comm.h"
 # include "version.h"
@@ -163,7 +163,7 @@ void conf_dump()
     }
 
     lseek(fd, 0L, SEEK_SET);
-    write(fd, &header, sizeof(dumpinfo));
+    write(fd, (char *) &header, sizeof(dumpinfo));
 }
 
 /*
@@ -175,7 +175,7 @@ int fd;
 {
     dumpinfo info;
 
-    if (read(fd, &info, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
+    if (read(fd, (char *) &info, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
 	memcmp(info.b, header.b, sizeof(info.b)) != 0) {
 	fatal("bad or incompatible restore file header");
     }
@@ -384,7 +384,7 @@ char *configfile, *dumpfile;
     pp_clear();
 
     if (dumpfile != (char *) NULL) {
-	fd = open(dumpfile, O_RDONLY | O_BINARY);
+	fd = open(dumpfile, O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    fatal("cannot open restore file");
 	}

@@ -545,7 +545,7 @@ char *dumpfile;
 	 * This will take a long, long while, so keep the swapfile and
 	 * dumpfile on the same file system if at all possible.
 	 */
-	swap = open(swapfile, O_RDWR | O_BINARY);
+	swap = open(swapfile, O_RDWR | O_BINARY, 0);
 	dump = open(dumpfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
 	if (swap < 0 || dump < 0) {
 	    fatal("cannot move swap file");
@@ -570,7 +570,7 @@ char *dumpfile;
 	/*
 	 * The rename succeeded; reopen the new dumpfile.
 	 */
-	dump = open(dumpfile, O_RDWR | O_BINARY);
+	dump = open(dumpfile, O_RDWR | O_BINARY, 0);
 	if (dump < 0) {
 	    fatal("cannot reopen dump file");
 	}

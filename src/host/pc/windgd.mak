@@ -88,7 +88,7 @@ CLEAN :
 	-@erase ".\Release\compile.obj"
 	-@erase ".\Release\optimize.obj"
 	-@erase ".\Release\path.obj"
-	-@erase ".\Release\ed.obj"
+	-@erase ".\Release\editor.obj"
 	-@erase ".\Release\dosfile.obj"
 	-@erase ".\Release\regexp.obj"
 	-@erase ".\Release\windgd.obj"
@@ -169,7 +169,7 @@ LINK32_OBJS= \
 	"$(INTDIR)/compile.obj" \
 	"$(INTDIR)/optimize.obj" \
 	"$(INTDIR)/path.obj" \
-	"$(INTDIR)/ed.obj" \
+	"$(INTDIR)/editor.obj" \
 	"$(INTDIR)/dosfile.obj" \
 	"$(INTDIR)/regexp.obj" \
 	"$(INTDIR)/windgd.obj" \
@@ -259,7 +259,7 @@ CLEAN :
 	-@erase ".\Debug\alloc.sbr"
 	-@erase ".\Debug\ppstr.sbr"
 	-@erase ".\Debug\table.sbr"
-	-@erase ".\Debug\ed.sbr"
+	-@erase ".\Debug\editor.sbr"
 	-@erase ".\Debug\builtin.sbr"
 	-@erase ".\Debug\lpc.sbr"
 	-@erase ".\Debug\compile.sbr"
@@ -274,7 +274,7 @@ CLEAN :
 	-@erase ".\Debug\alloc.obj"
 	-@erase ".\Debug\ppstr.obj"
 	-@erase ".\Debug\table.obj"
-	-@erase ".\Debug\ed.obj"
+	-@erase ".\Debug\editor.obj"
 	-@erase ".\Debug\builtin.obj"
 	-@erase ".\Debug\lpc.obj"
 	-@erase ".\Debug\compile.obj"
@@ -387,7 +387,7 @@ BSC32_SBRS= \
 	"$(INTDIR)/alloc.sbr" \
 	"$(INTDIR)/ppstr.sbr" \
 	"$(INTDIR)/table.sbr" \
-	"$(INTDIR)/ed.sbr" \
+	"$(INTDIR)/editor.sbr" \
 	"$(INTDIR)/builtin.sbr" \
 	"$(INTDIR)/lpc.sbr" \
 	"$(INTDIR)/compile.sbr"
@@ -413,7 +413,7 @@ LINK32_OBJS= \
 	"$(INTDIR)/alloc.obj" \
 	"$(INTDIR)/ppstr.obj" \
 	"$(INTDIR)/table.obj" \
-	"$(INTDIR)/ed.obj" \
+	"$(INTDIR)/editor.obj" \
 	"$(INTDIR)/builtin.obj" \
 	"$(INTDIR)/lpc.obj" \
 	"$(INTDIR)/compile.obj" \
@@ -727,7 +727,7 @@ DEP_CPP_CONFI=\
 	".\..\..\interpret.h"\
 	".\..\..\data.h"\
 	".\..\..\path.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\call_out.h"\
 	".\..\..\comm.h"\
 	".\..\..\version.h"\
@@ -829,7 +829,7 @@ DEP_CPP_DGD_C=\
 	".\..\..\xfloat.h"\
 	".\..\..\interpret.h"\
 	".\..\..\data.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\call_out.h"\
 	".\..\..\comm.h"\
 	".\..\..\comp\node.h"\
@@ -870,7 +870,7 @@ BuildCmds= \
 ################################################################################
 # Begin Source File
 
-SOURCE=.\..\..\ed.c
+SOURCE=.\..\..\editor.c
 DEP_CPP_ED_C12=\
 	".\..\..\dgd.h"\
 	".\..\..\str.h"\
@@ -878,7 +878,7 @@ DEP_CPP_ED_C12=\
 	".\..\..\object.h"\
 	".\..\..\interpret.h"\
 	".\..\..\ed\edcmd.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\config.h"\
 	".\..\..\alloc.h"\
 	".\..\..\host.h"\
@@ -896,7 +896,7 @@ DEP_CPP_ED_C12=\
 !IF  "$(CFG)" == "windgd - Win32 Release"
 
 
-"$(INTDIR)\ed.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
    $(CPP) $(CPP_PROJ) $(SOURCE)
 
 
@@ -907,10 +907,10 @@ BuildCmds= \
 	$(CPP) $(CPP_PROJ) $(SOURCE) \
 	
 
-"$(INTDIR)\ed.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.obj" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
    $(BuildCmds)
 
-"$(INTDIR)\ed.sbr" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
+"$(INTDIR)\editor.sbr" : $(SOURCE) $(DEP_CPP_ED_C12) "$(INTDIR)"
    $(BuildCmds)
 
 !ENDIF 
@@ -1954,7 +1954,7 @@ DEP_CPP_TABLE=\
 	".\..\..\path.h"\
 	".\..\..\comm.h"\
 	".\..\..\call_out.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\comp\node.h"\
 	".\..\..\comp\control.h"\
 	".\..\..\comp\compile.h"\
@@ -2127,7 +2127,7 @@ SOURCE=.\..\..\kfun\file.c
 DEP_CPP_FILE_=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\path.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\dgd.h"\
 	".\..\..\str.h"\
 	".\..\..\array.h"\
@@ -2154,7 +2154,7 @@ DEP_CPP_FILE_=\
 DEP_CPP_FILE_=\
 	".\..\..\kfun\kfun.h"\
 	".\..\..\path.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\dgd.h"\
 	".\..\..\str.h"\
 	".\..\..\array.h"\
@@ -2261,7 +2261,7 @@ DEP_CPP_STD_C=\
 	".\..\..\path.h"\
 	".\..\..\comm.h"\
 	".\..\..\call_out.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\comp\node.h"\
 	".\..\..\comp\control.h"\
 	".\..\..\comp\compile.h"\
@@ -2293,7 +2293,7 @@ DEP_CPP_STD_C=\
 	".\..\..\path.h"\
 	".\..\..\comm.h"\
 	".\..\..\call_out.h"\
-	".\..\..\ed.h"\
+	".\..\..\editor.h"\
 	".\..\..\comp\node.h"\
 	".\..\..\comp\control.h"\
 	".\..\..\comp\compile.h"\

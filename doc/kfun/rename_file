@@ -6,8 +6,8 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Rename a file.  1 is returned if the file could be renamed, 0
-	otherwise.
+	Rename a file.  The destination file must not yet exist.  1 is
+	returned if the file could be renamed, 0 otherwise.
 
 ERRORS
 	Moving a directory may not be possible if the host operating system
