@@ -13,6 +13,7 @@ typedef struct _abchunk_ abchunk;	/* array backup chunk */
 extern void		arr_init	P((unsigned int));
 extern array	       *arr_alloc	P((unsigned int));
 extern array	       *arr_new		P((dataspace*, long));
+extern array	       *arr_ext_new	P((dataspace*, long));
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		P((array*));
 extern void		arr_freeall	P((void));

@@ -1420,3 +1420,5 @@ DGD 1.1
  - Start with fixed window size on Windows.
  - Fixed a bug in committing plane n, and then discarding plane n-1.
  - Fixed a memory leak in committing a mapping that has been reduced in size.
+ - Fixed the comm code, which erroneously assumed that nothing new would be
+   sent on a connection after the connection object was destructed.

@@ -1,0 +1,295 @@
+			DGD extension interface
+
+1. Introduction
+
+DGD presents an interface for extending the driver with new kfuns and special
+object types.  To enable this interface, DGD should be compiled with the macro
+DGD_EXTENSION defined.  The driver will then call an external function at
+initialization time:
+
+    void extension_init();
+
+From this function, new kfuns may be added to the driver, and callback
+functions may be set.  The interface furthermore allows objects to be marked
+as `special', associating the object with some sort of user-defined external
+state.
+
+The extension code must be linked with DGD at compile time.  The include file
+`dgd_ext.h' defines the entire interface with the driver, using macros that
+all start with the prefix `DGD_'.  Compliant extensions should use these
+macros, only.  Some of these macros will evaluate their arguments several
+times; to be compatible with future releases, extensions should assume that
+all DGD_* macros with arguments may do so.
+
+
+2. Kernel functions
+
+Kernel functions may be added during the initialization phase by calling the
+following function:
+
+    void DGD_EXT_KFUN(DGD_EXTKFUN_T *kf, int n);
+
+where `kf' is an array of DGD_EXTFUN_T structs, and `n' the number of elements
+in that array.  DGD_EXT_KFUN() should be called only once, and must not
+redeclare any existing kfuns.
+
+The DGD_EXTKFUN_T struct has the following fields:
+
+    char *name;		/* kfun name */
+    char *proto;	/* kfun prototype */
+    func;		/* kfun function pointer */
+
+Here `func' is a pointer to a C function with the following prototype:
+
+    void func(DGD_FRAME_T f, int nargs, DGD_VALUE_T *retval);
+
+Calls to the kfun with name `name' will be routed to that C function.  The
+`f' argument contains the function context, `nargs' is the number of
+arguments on the stack, and `retval' is a pointer to the return value.  The
+function should not attempt to push or pop arguments; instead, arguments
+should be accessed using the relevant DGD_FRAME_* macros listed below, and the
+return value, if any, should be stored in the retval value using one of the
+DGD_RETVAL_* macros.  The default return value is nil.
+
+Kfuns can call DGD_ERROR() to indicate that an error happened.  Errors will
+interrupt the flow of execution, so DGD_ERROR() should be called before any
+LPC values are constructed or changed, including the return value of the
+kfun.  Note that at present, the extension interface does not define a way to
+call an LPC function from a kfun.
+
+    DGD_OBJECT_T DGD_FRAME_OBJECT(DGD_FRAME_T f);	/* current object */
+    DGD_OBJECT_T DGD_FRAME_PROGRAM(DGD_FRAME_T f);	/* current program */
+    DGD_DATA_T   DGD_FRAME_DATASPACE(DGD_FRAME_T f);	/* current dataspace */
+    DGD_VALUE_T  DGD_FRAME_ARG(DGD_FRAME_T f, int nargs, int n);/* argument n */
+    bool	 DGD_FRAME_ATOMIC(DGD_FRAME_T f);	/* atomic? */
+
+    void	 DGD_RETVAL_INT(DGD_VALUE_T *retval, DGD_INT_T num);
+    void	 DGD_RETVAL_FLT(DGD_VALUE_T *retval, DGD_FLOAT_T flt);
+    void	 DGD_RETVAL_STR(DGD_VALUE_T *retval, DGD_STRING_T str);
+    void	 DGD_RETVAL_OBJ(DGD_VALUE_T *retval, DGD_OBJECT_T obj);
+    void	 DGD_RETVAL_ARR(DGD_VALUE_T *retval, DGD_ARRAY_T arr);
+    void	 DGD_RETVAL_MAP(DGD_VALUE_T *retval, DGD_MAPPING_T map);
+
+    void	 DGD_ERROR(char *mesg);
+
+The `proto' field of the DGD_EXTKFUN_T struct is a prototype for the function,
+represented as a 0-terminated array of chars.  For example, the LPC prototypes
+
+    string lower_case(string str);
+    string concat(string str...);
+    int foo(int *a, varargs object **b);
+    void bar(void);
+    void gnu();
+
+would be represented as
+
+    char lower_case_proto[] = { DGD_TYPE_STRING, DGD_TYPE_STRING, 0 };
+    char concat_proto[] = { DGD_TYPE_STRING, DGD_TYPE_STRING,
+			    DGD_TYPE_ELLIPSIS, 0 };
+    char foo_proto[] = { DGD_TYPE_INT, DGD_TYPE_ARRAY_OF(DGD_TYPE_INT),
+			 DGD_TYPE_VARARGS,
+			 DGD_TYPE_ARRAY_OF(DGD_TYPE_ARRAY_OF(DGD_TYPE_OBJECT)),
+			 0 };
+    char bar_proto[] = { DGD_TYPE_VOID, DGD_TYPE_VOID, 0 };
+    char gnu_proto[] = { DGD_TYPE_VOID, 0 };
+
+Note that the prototypes of bar() and gnu() are effectively identical, just
+as they would be for LPC functions; also note that varargs must be specified
+in the new way, among the arguments of the prototype rather than in front of
+the return type.
+
+The building blocks for prototypes are:
+
+    DGD_TYPE_VOID
+    DGD_TYPE_INT
+    DGD_TYPE_FLOAT
+    DGD_TYPE_STRING
+    DGD_TYPE_OBJECT
+    DGD_TYPE_ARRAY_OF(dgd_type)
+    DGD_TYPE_MAPPING
+    DGD_TYPE_VARARGS
+    DGD_TYPE_ELLIPSIS
+
+
+3. Special objects
+
+DGD defines various types of special objects: user objects, editor objects
+and parser objects.  Extensions may define their own additional special
+object type.  Special objects have an associated DGD_EINDEX_T value (normally
+an 8-bit value), and an additional arbitrary LPC value.  Furthermore,
+user-defined special objects may have various callbacks defined for them, as
+explained in section 4.
+
+Objects should only be marked as special if they are not special already.
+If an object is to be unmarked, and a special LPC value has been set, it
+should be reset to DGD_NIL_VALUE first.
+
+    bool DGD_OBJECT_ISSPECIAL(DGD_OBJECT_T obj);	/* special object */
+    bool DGD_OBJECT_ISMARKED(DGD_OBJECT_T obj);		/* user-def special */
+    void DGD_OBJECT_MARK(DGD_OBJECT_T obj);		/* mark as special */
+    void DGD_OBJECT_UNMARK(DGD_OBJECT_T obj);		/* unmark as special */
+
+    DGD_EINDEX_T DGD_OBJECT_GET_EINDEX(DGD_OBJECT_T obj); /* get eindex value */
+    void         DGD_OBJECT_SET_EINDEX(DGD_OBJECT_T obj, DGD_EINDEX_T etabi);
+
+To retrieve or set the LPC value associated with a special object, first
+get the object's dataspace, and then manipulate the value.
+
+    DGD_DATASPACE_T DGD_OBJECT_DATASPACE(DGD_OBJECT_T obj);
+    DGD_VALUE_T     DGD_DATA_GET_VAL(DGD_DATASPACE_T data);
+    void	    DGD_DATA_SET_VAL(DGD_DATASPACE_T data, DGD_VALUE_T val);
+
+
+4. Callbacks
+
+Callbacks can be set with the following function:
+
+    void DGD_EXT_CALLBACK(restore, swapout, destruct, funcall, cleanup,
+			  finish);
+
+The arguments are pointers to C functions, which may be NULL if no function is
+to be called.  Each function pointer is explained below.
+
+    void restore(DGD_OBJECT_T obj);
+
+This function is called when a user-defined special object is restored from a
+state dump file.  At this point, the DGD_EINDEX_T value is no longer valid,
+but the associated LPC value is.
+
+    void swapout(DGD_OBJECT_T obj);
+
+This function is called when a user-defined special object is about to be
+swapped out (including any associated LPC value).
+
+    void destruct(DGD_OBJECT_T obj);
+
+This function is called when a user-defined special object is about to be
+destructed.  DGD_ERROR() may be called from here to prevent destruction.
+
+    bool funcall(DGD_FRAME_T f, int nargs, DGD_VALUE_T *retval, char *name);
+
+This function is called when the LPC function with name `name' is called,
+and that function is defined by a user-defined special object.  If you want
+to override this LPC function with one of your own, call that function and
+return TRUE.  Otherwise, return FALSE, and the normal LPC function will be
+called.
+
+    void cleanup(void);
+
+This function is called at the end of each LPC thread.
+
+    void finish(void);
+
+This function is called just before the driver is about to shut down.
+
+
+5. Operations on LPC values
+
+The type of an LPC value can be determined with
+
+    int DGD_TYPEOF(DGD_VALUE_T val);
+
+The types can be:
+
+    DGD_TYPE_NIL
+    DGD_TYPE_INT
+    DGD_TYPE_FLOAT
+    DGD_TYPE_STRING
+    DGD_TYPE_OBJECT
+    DGD_TYPE_ARRAY
+    DGD_TYPE_MAPPING
+
+Each type has its own set of macros.
+
+    DGD_NIL_VALUE		/* the nil value */
+
+    DGD_INT_T DGD_INT_GETVAL(DGD_VALUE_T val);
+    void      DGD_INT_PUTVAL(DGD_VALUE_T val, DGD_INT_T num);
+
+Floats consist of a 1-bit sign, a 11-bit exponent, and a 36-bit mantissa.
+
+    DGD_FLOAT_T DGD_FLOAT_GETVAL(DGD_VALUE_T val);
+    void	DGD_FLOAT_PUTVAL(DGD_VALUE_T val, DGD_FLOAT_T flt);
+    void	DGD_FLOAT_GET(DGD_FLOAT_T flt, int sign, int exp,
+			      int64 mantissa); /* assign to sign/exp/mantissa */
+    void	DGD_FLOAT_PUT(DGD_FLOAT_T flt, int sign, int exp,
+			      int64 mantissa);
+
+    DGD_STRING_T DGD_STRING_GETVAL(DGD_VALUE_T val);
+    void	 DGD_STRING_PUTVAL(DGD_VALUE_T val, DGD_STRING_T str);
+    DGD_STRING_T DGD_STRING_NEW(char *text, int len);
+    char	*DGD_STRING_TEXT(DGD_STRING_T str);
+    unsigned int DGD_STRING_LENGTH(DGD_STRING_T str);
+
+An object retrieved from an array or mapping element may be invalid.  Use
+DGD_OBJECT_CHECKVAL() to check the validity of such an object.
+
+    DGD_OBJECT_T DGD_OBJECT_GETVAL(DGD_VALUE_T val);
+    void	 DGD_OBJECT_PUTVAL(DGD_VALUE_T val, DGD_OBJECT_T obj);
+    bool	 DGD_OBJECT_CHECKVAL(DGD_VALUE_T val, DGD_OBJECT_T obj);
+    void	 DGD_OBJECT_NAME(char *buffer, DGD_OBJECT_T obj);
+
+    DGD_ARRAY_T	 DGD_ARRAY_GETVAL(DGD_VALUE_T val);
+    void	 DGD_ARRAY_PUTVAL(DGD_VALUE_T val, DGD_ARRAY_T arr);
+    DGD_ARRAY_T	 DGD_ARRAY_NEW(DGD_DATASPACE_T data, int size);
+    DGD_VALUE_T *DGD_ARRAY_ELTS(DGD_ARRAY_T arr);
+    DGD_VALUE_T	 DGD_ARRAY_INDEX(DGD_ARRAY_T arr, int i);
+    void	 DGD_ARRAY_ASSIGN(DGD_DATASPACE_T data, DGD_ARRAY_T arr,
+				  int index, DGD_VALUE_T val);
+
+The elements of a mapping may be retrieved as a sorted array of alternate
+index-value pairs with DGD_MAPPING_ELTS().
+
+    DGD_MAPPING_T DGD_MAPPING_GETVAL(DGD_VALUE_T val);
+    void	  DGD_MAPPING_PUTVAL(DGD_VALUE_T val, DGD_MAPPING_T map);
+    DGD_MAPPING_T DGD_MAPPING_NEW(DGD_DATASPACE_T data);
+    DGD_VALUE_T  *DGD_MAPPING_ELTS(DGD_MAPPING_T map);
+    DGD_VALUE_T   DGD_MAPPING_INDEX(DGD_MAPPING_T map, DGD_VALUE_T index);
+    void	  DGD_MAPPING_ASSIGN(DGD_DATASPACE_T data, DGD_MAPPING_T map,
+				     DGD_VALUE_T index, DGD_VALUE_T val);
+
+
+6. Example
+
+The following code implements a lower_case() kfun.
+
+# include "dgd_ext.h"
+
+static void lower_case(DGD_FRAME_T f, int nargs, DGD_VALUE_T *retval)
+{
+    DGD_VALUE_T val;
+    DGD_STRING_T str;
+    char *p;
+    unsigned int i;
+
+    /* fetch the argument string */
+    val = DGD_FRAME_ARG(f, nargs, 0);
+    str = DGD_STRING_GETVAL(val);
+
+    /* make a copy */
+    str = DGD_STRING_NEW(DGD_STRING_TEXT(str), DGD_STRING_LENGTH(str));
+
+    /* turn to lowercase */
+    p = DGD_STRING_TEXT(str);
+    for (i = DGD_STRING_LENGTH(str); i != 0; --i) {
+	if (*p >= 'A' && *p <= 'Z') {
+	    *p += 'a' - 'A';
+	}
+	p++;
+    }
+
+    /* put result in return value */
+    DGD_RETVAL_STR(retval, str);
+}
+
+static char lower_case_proto[] = { DGD_TYPE_STRING, DGD_TYPE_STRING, 0 };
+static DGD_EXTKFUN_T kf[1] = {
+    "lower_case",
+    lower_case_proto,
+    &lower_case
+};
+
+void extension_init(void)
+{
+    DGD_EXT_KFUN(kf, 1);
+}

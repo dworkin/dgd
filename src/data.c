@@ -4031,6 +4031,10 @@ void d_swapsync()
 
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
+	if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
+	    ext_swapout != (void (*) P((object*))) NULL) {
+	    (*ext_swapout)(OBJ(data->oindex));
+	}
 	d_save_dataspace(data);
     }
 }

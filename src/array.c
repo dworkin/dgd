@@ -150,6 +150,26 @@ register long size;
 }
 
 /*
+ * NAME:	array->ext_new()
+ * DESCRIPTION:	return an array, initialized for the benefit of the extension
+ *		interface
+ */
+array *arr_ext_new(data, size)
+dataspace *data;
+long size;
+{
+    register int i;
+    register value *v;
+    array *a;
+
+    a = arr_new(data, size);
+    for (i = size, v = a->elts; i != 0; --i, v++) {
+	*v = nil_value;
+    }
+    return a;
+}
+
+/*
  * NAME:	array->del()
  * DESCRIPTION:	remove a reference from an array or mapping.  If none are
  *		left, the array/mapping is removed.

@@ -1921,9 +1921,9 @@ int funci;
 
     if ((obj->flags & O_SPECIAL) != O_SPECIAL ||
 	ext_funcall == (bool (*) P((frame*, int, value*, char*))) NULL ||
-	(*ext_funcall)(&f, nargs, &val,
-		       d_get_strconst(f.p_ctrl, f.func->inherit,
-				      f.func->index)->text) == FALSE) {
+	!(*ext_funcall)(&f, nargs, &val,
+		        d_get_strconst(f.p_ctrl, f.func->inherit,
+				       f.func->index)->text)) {
 	/*
 	 * ordinary function call
 	 */

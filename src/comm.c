@@ -214,7 +214,6 @@ bool force;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, d_get_extravar(data)->u.array);
     }
-    d_wipe_extravar(data);
 
     obj->flags &= ~O_USER;
     olduser = this_user;
@@ -582,6 +581,7 @@ void comm_flush()
 	 * disconnect
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
+	    d_wipe_extravar(obj->data);
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;

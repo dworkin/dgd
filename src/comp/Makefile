@@ -3,7 +3,7 @@
 #
 HOST=	NETBSD
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
+DEBUG=	-O2
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 LDFLAGS=

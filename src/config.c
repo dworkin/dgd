@@ -994,6 +994,10 @@ static bool conf_includes()
 }
 
 
+# ifdef DGD_EXTENSION
+extern void extension_init	P((void));
+# endif
+
 void (*ext_restore)	P((object*));
 void (*ext_swapout)	P((object*));
 void (*ext_destruct)	P((object*));
@@ -1103,8 +1107,8 @@ sector *fragment;
     /* remove previously added kfuns */
     kf_clear();
 
-# ifdef DGD_MODULES
-    module_init();
+# ifdef DGD_EXTENSION
+    extension_init();
 # endif
 
     /* initialize kfuns */
