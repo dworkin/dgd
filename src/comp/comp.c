@@ -20,10 +20,10 @@
 static int size;		/* current size of the dumped line */
 
 /*
- * NAME:	dump()
+ * NAME:	dump_int()
  * DESCRIPTION:	output a number
  */
-static void dump(n)
+static void dump_int(n)
 int n;
 {
     if (size == 16) {
@@ -43,7 +43,7 @@ register char *p;
 register unsigned int n;
 {
     while (n > 0) {
-	dump(*p++);
+	dump_int(*p++);
 	--n;
     }
 }
@@ -257,7 +257,8 @@ char *argv[];
     }
 
     /* compile file */
-    ctrl = c_compile(cframe, file, (object *) NULL, (string *) NULL)->ctrl;
+    ctrl = c_compile(cframe, file, (object *) NULL, (string *) NULL,
+		     FALSE)->ctrl;
     nfuncs = cg_nfuncs();
     ec_pop();
 
@@ -351,34 +352,10 @@ Int depth;
 }
 
 /*
- * NAME:	swapout()
- * DESCRIPTION:	pretend to indicate that objects are to be swapped out
- */
-void swapout()
-{
-}
-
-/*
- * NAME:	dump_state()
- * DESCRIPTION:	pretend to indicate that the program must finish
- */
-void dump_state()
-{
-}
-
-/*
  * NAME:	interrupt()
  * DESCRIPTION:	pretend to register an interrupt
  */
 void interrupt()
-{
-}
-
-/*
- * NAME:	finish()
- * DESCRIPTION:	pretend to indicate that the program must finish
- */
-void finish()
 {
 }
 
@@ -445,6 +422,14 @@ void sw_init(file, total, cache, secsize, interval)
 char *file;
 unsigned int total, cache, secsize;
 Uint interval;
+{
+}
+
+/*
+ * NAME:	swap->finish()
+ * DESCRIPTION:	pretend to finish swapping
+ */
+void sw_finish()
 {
 }
 

@@ -1618,3 +1618,5 @@ DGD 1.3
  - Perform inheritance checks only for objects compiled in
    driver->inherit_program() itself, not in functions called therefrom.
  - On Windows, random(n) would never be > 32767.
+ - Make swapout(), dump_state() and shutdown() local to the atomic context.
+ - Get the precompiler to work again.

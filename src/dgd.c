@@ -14,11 +14,8 @@
 static uindex dindex;		/* driver object index */
 static Uint dcount;		/* driver object count */
 static sector fragment;		/* swap fragment parameter */
-static bool swap;		/* are objects to be swapped out? */
-static bool dump;		/* is the program to dump? */
 static bool rebuild;		/* rebuild swapfile? */
 bool intr;			/* received an interrupt? */
-static bool stop;		/* is the program to terminate? */
 
 /*
  * NAME:	call_driver_object()
@@ -50,39 +47,12 @@ int narg;
 }
 
 /*
- * NAME:	swapout()
- * DESCRIPTION:	indicate that objects are to be swapped out
- */
-void swapout()
-{
-    swap = TRUE;
-}
-
-/*
- * NAME:	dump_state()
- * DESCRIPTION:	indicate that the state must be dumped
- */
-void dump_state()
-{
-    dump = rebuild = TRUE;
-}
-
-/*
  * NAME:	interrupt()
  * DESCRIPTION:	register an interrupt
  */
 void interrupt()
 {
     intr = TRUE;
-}
-
-/*
- * NAME:	finish()
- * DESCRIPTION:	indicate that the program must finish
- */
-void finish()
-{
-    stop = TRUE;
 }
 
 /*
@@ -131,6 +101,7 @@ void endthread()
 	d_swapsync();
 	conf_dump();
 	dump = FALSE;
+	rebuild = TRUE;
     }
 
     if (stop) {

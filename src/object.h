@@ -72,7 +72,11 @@ extern bool	  o_dump		P((int));
 extern void	  o_restore		P((int, unsigned int));
 extern void	  o_conv		P((int, int, int));
 
+extern void	  swapout		P((void));
+extern void	  dump_state		P((void));
+extern void	  finish		P((void));
+
 extern object    *otable;
 extern char	 *ocmap;
-extern bool	  obase;
+extern bool	  obase, swap, dump, stop;
 extern Uint	  odcount;

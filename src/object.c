@@ -40,12 +40,14 @@ struct _objplane_ {
     uindex nobjects;		/* number of objects in object table */
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
+    bool swap, dump, stop;	/* state vars */
     struct _objplane_ *prev;	/* previous object plane */
 };
 
 object *otable;			/* object table */
 char *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
+bool swap, dump, stop;		/* global state vars */
 static uindex otabsize;		/* size of object table */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
@@ -71,6 +73,7 @@ register unsigned int n;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
     baseplane.ocount = 1;
+    baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
     oplane = &baseplane;
     upgraded = (object *) NULL;
     odcount = 1;
@@ -315,6 +318,9 @@ void o_new_plane()
     p->nobjects = oplane->nobjects;
     p->nfreeobjs = oplane->nfreeobjs;
     p->ocount = oplane->ocount;
+    p->swap = oplane->swap;
+    p->dump = oplane->dump;
+    p->stop = oplane->stop;
     p->prev = oplane;
     oplane = p;
 
@@ -445,6 +451,9 @@ void o_commit_plane()
     prev->nobjects = oplane->nobjects;
     prev->nfreeobjs = oplane->nfreeobjs;
     prev->ocount = oplane->ocount;
+    prev->swap = oplane->swap;
+    prev->dump = oplane->dump;
+    prev->stop = oplane->stop;
     FREE(oplane);
     oplane = prev;
 
@@ -1124,6 +1133,11 @@ void o_clean()
 	baseplane.free = o->index;
 	baseplane.nfreeobjs++;
     }
+
+    swap = baseplane.swap;
+    dump = baseplane.dump;
+    stop = baseplane.stop;
+    baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
 }
 
 /*
@@ -1405,4 +1419,31 @@ int conv_callouts, conv_lwos, conv_ctrls;
 	}
 	AFREE(counts - baseplane.nobjects);
     }
+}
+
+/*
+ * NAME:	swapout()
+ * DESCRIPTION:	indicate that objects are to be swapped out
+ */
+void swapout()
+{
+    oplane->swap = TRUE;
+}
+
+/*
+ * NAME:	dump_state()
+ * DESCRIPTION:	indicate that the state must be dumped
+ */
+void dump_state()
+{
+    oplane->dump = TRUE;
+}
+
+/*
+ * NAME:	finish()
+ * DESCRIPTION:	indicate that the program must finish
+ */
+void finish()
+{
+    oplane->stop = TRUE;
 }
