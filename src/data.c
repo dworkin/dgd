@@ -2371,14 +2371,22 @@ register dataspace *data;
 		sstrings = data->sstrings = ALLOC(sstring, header.nstrings);
 	    }
 	    if (header.strsize > 0) {
-		stext = ALLOCA(char, header.strsize);
+		if (header.strsize <= data->strsize &&
+		    data->stext != (char *) NULL) {
+		    stext = data->stext;
+		} else {
+		    if (data->stext != (char *) NULL) {
+			FREE(data->stext);
+		    }
+		    stext = data->stext = ALLOC(char, header.strsize);
+		}
 	    }
 	}
 	if (header.nstrings == 0 && data->sstrings != (sstring *) NULL) {
 	    FREE(data->sstrings);
 	    data->sstrings = (sstring *) NULL;
 	}
-	if (data->stext != (char *) NULL) {
+	if (header.strsize == 0 && data->stext != (char *) NULL) {
 	    FREE(data->stext);
 	    data->stext = (char *) NULL;
 	}
@@ -2504,7 +2512,6 @@ register dataspace *data;
 		if (text != stext) {
 		    AFREE(text);
 		}
-		AFREE(stext);
 	    }
 	}
 
@@ -2521,7 +2528,7 @@ register dataspace *data;
 	data->narrays = header.narrays;
 	data->eltsize = header.eltsize;
 	data->nstrings = header.nstrings;
-	data->strsize = header.strsize;
+	data->strsize = strsize;
 
 	data->achange = 0;
 	data->schange = 0;
