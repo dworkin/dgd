@@ -104,6 +104,8 @@ typedef struct {
     sstring *sstrings;			/* save strings */
     char *stext;			/* save string elements */
     Uint *counttab;			/* object count table */
+    bool counting;			/* currently counting */
+    array alist;			/* linked list sentinel */
 } savedata;
 
 static control *chead, *ctail;		/* list of control blocks */
@@ -1359,14 +1361,41 @@ register control *ctrl;
 }
 
 
+static void d_count P((savedata*, value*, unsigned int));
+
+/*
+ * NAME:	data->arrcount()
+ * DESCRIPTION:	count the number of arrays and strings in an array
+ */
+static void d_arrcount(register savedata *save, register array *arr)
+{
+    arr->prev->next = arr->next;
+    arr->next->prev = arr->prev;
+    arr->prev = &save->alist;
+    arr->next = save->alist.next;
+    arr->next->prev = arr;
+    save->alist.next = arr;
+    save->narr++;
+
+    if (!save->counting) {
+	save->counting = TRUE;
+	do {
+	    save->arrsize += arr->size;
+	    d_count(save, d_get_elts(arr), arr->size);
+	    arr = arr->prev;
+	} while (arr != &save->alist);
+	save->counting = FALSE;
+    }
+}
+
 /*
  * NAME:	data->count()
- * DESCRIPTION:	recursively count the number of arrays and strings in an object
+ * DESCRIPTION:	count the number of arrays and strings in an object
  */
 static void d_count(save, v, n)
 register savedata *save;
 register value *v;
-register unsigned short n;
+register unsigned int n;
 {
     register object *obj;
     register value *elts;
@@ -1382,14 +1411,17 @@ register unsigned short n;
 	    break;
 
 	case T_ARRAY:
+	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
+		d_arrcount(save, v->u.array);
+	    }
+	    break;
+
 	case T_MAPPING:
 	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
 		}
-		save->narr++;
-		save->arrsize += v->u.array->size;
-		d_count(save, d_get_elts(v->u.array), v->u.array->size);
+		d_arrcount(save, v->u.array);
 	    }
 	    break;
 
@@ -1411,9 +1443,7 @@ register unsigned short n;
 		    if (save->counttab != (Uint *) NULL) {
 			elts[1].u.number = 0;
 		    }
-		    save->narr++;
-		    save->arrsize += v->u.array->size;
-		    d_count(save, elts, v->u.array->size);
+		    d_arrcount(save, v->u.array);
 		}
 	    } else {
 		arr_del(v->u.array);
@@ -1455,17 +1485,14 @@ register unsigned short n;
 	    i = str_put(save->smerge, v->u.string, save->nstr);
 	    sv->oindex = 0;
 	    sv->u.string = i;
-	    if (i == save->nstr) {
+	    if (save->sstrings[i].ref++ == 0) {
 		/* new string value */
 		save->sstrings[i].index = save->strsize;
 		save->sstrings[i].len = v->u.string->len;
-		save->sstrings[i].ref = 0;
 		memcpy(save->stext + save->strsize, v->u.string->text,
 		       v->u.string->len);
 		save->strsize += v->u.string->len;
-		save->nstr++;
 	    }
-	    save->sstrings[i].ref++;
 	    break;
 
 	case T_FLOAT:
@@ -1480,19 +1507,6 @@ register unsigned short n;
 	    i = arr_put(save->amerge, v->u.array, save->narr);
 	    sv->oindex = 0;
 	    sv->u.array = i;
-	    if (i == save->narr) {
-		svalue *tmp;
-
-		/* new array */
-		save->sarrays[i].index = save->arrsize;
-		save->sarrays[i].size = v->u.array->size;
-		save->sarrays[i].ref = 0;
-		save->sarrays[i].tag = v->u.array->tag;
-		tmp = save->selts + save->arrsize;
-		save->arrsize += v->u.array->size;
-		save->narr++;
-		d_save(save, tmp, v->u.array->elts, v->u.array->size);
-	    }
 	    save->sarrays[i].ref++;
 	    break;
 	}
@@ -1790,6 +1804,8 @@ Uint *counttab;
 	savedata save;
 	char *text;
 	register Uint size;
+	register array *arr;
+	register sarray *sarr;
 
 	/*
 	 * count the number and sizes of strings and arrays
@@ -1801,6 +1817,8 @@ Uint *counttab;
 	save.arrsize = 0;
 	save.strsize = 0;
 	save.counttab = counttab;
+	save.counting = FALSE;
+	save.alist.prev = save.alist.next = &save.alist;
 
 	d_get_variable(data, 0);
 	if (data->svariables == (svalue *) NULL) {
@@ -1862,10 +1880,12 @@ Uint *counttab;
 	 */
 	save.sstrings = data->sstrings =
 			REALLOC(data->sstrings, sstring, 0, header.nstrings);
+	memset(save.sstrings, '\0', save.nstr * sizeof(sstring));
 	save.stext = data->stext =
 		     REALLOC(data->stext, char, 0, header.strsize);
 	save.sarrays = data->sarrays =
 		       REALLOC(data->sarrays, sarray, 0, header.narrays);
+	memset(save.sarrays, '\0', save.narr * sizeof(sarray));
 	save.selts = data->selts =
 		     REALLOC(data->selts, svalue, 0, header.eltsize);
 	save.narr = 0;
@@ -1894,6 +1914,20 @@ Uint *counttab;
 		sco++;
 		co++;
 	    }
+	}
+	for (arr = save.alist.prev, sarr = save.sarrays; arr != &save.alist;
+	     arr = arr->prev, sarr++) {
+	    sarr->index = save.arrsize;
+	    sarr->size = arr->size;
+	    sarr->tag = arr->tag;
+	    d_save(&save, save.selts + save.arrsize, arr->elts, arr->size);
+	    save.arrsize += arr->size;
+	}
+	if (arr->next != &save.alist) {
+	    data->alist.next->prev = arr->prev;
+	    arr->prev->next = data->alist.next;
+	    data->alist.next = arr->next;
+	    arr->next->prev = &data->alist;
 	}
 
 	/* clear merge tables */
