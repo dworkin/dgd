@@ -1168,3 +1168,6 @@ DGD 1.1
    status(obj)[i], call_trace()[i].
  - The value of integer arguments in precompiled functions would not always
    be given correctly in call_trace().
+ - String range problems at compile time now result in a proper compile-time
+   error again.
+ - Make a = ({ "asd" }); a[0][1] |= 7; work correctly again.

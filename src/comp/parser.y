@@ -946,13 +946,16 @@ register node *n1, *n2, *n3;
 {
     if (n1->type == N_STR && (n2 == (node *) NULL || n2->type == N_INT) &&
 	(n3 == (node *) NULL || n3->type == N_INT)) {
+	Int from, to;
+
 	/* str [ int .. int ] */
-	return node_str(str_range(n1->l.string,
-				  (long) ((n2 == (node *) NULL) ?
-					   0 : n2->l.number),
-				  (long) ((n3 == (node *) NULL) ?
-					  n1->l.string->len - 1 :
-					  n3->l.number)));
+	from = (n2 == (node *) NULL) ? 0 : n2->l.number;
+	to = (n3 == (node *) NULL) ? n1->l.string->len - 1 : n3->l.number;
+	if (from < 0 || from > to + 1 || to >= n1->l.string->len) {
+	    c_error("invalid string range");
+	} else {
+	    return node_str(str_range(n1->l.string, (long) from, (long) to));
+	}
     }
 
     if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {

@@ -148,11 +148,14 @@ char *pattern;
 		    return "Unmatched [";
 		}
 		CCL(cclass, |=, *p);
-		if (p[1] == '-') {	/* subrange */
+		if (p[1] == '-' && p[2] != ']') {	/* subrange */
 		    c = *p;
 		    p += 2;
 		    if (*p == '\0') {
 			return "Unmatched [";
+		    }
+		    if (UCHAR(c) > UCHAR(*p)) {
+			return "Invalid character class";
 		    }
 		    while (UCHAR(c) <= UCHAR(*p)) {
 			/* this could be done more efficiently. */

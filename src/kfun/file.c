@@ -28,7 +28,7 @@ int nargs;
 	error("editor() from destructed object");
     }
     if (obj->flags & O_USER) {
-	error("editor() from interactive object");
+	error("editor() from user object");
     }
     if (!(obj->flags & O_EDITOR)) {
 	ed_new(obj);

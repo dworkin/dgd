@@ -531,7 +531,8 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lval->u.lval->u.string, (long) ival->u.number);
+	    i = str_index(f->lvstr = lval->u.lval->u.string,
+			  (long) ival->u.number);
 	    f->ilvp->type = T_LVALUE;
 	    (f->ilvp++)->u.lval = lval->u.lval;
 	    /* indexed string lvalues are not referenced */
@@ -571,7 +572,7 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(val->u.string, (long) ival->u.number);
+	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
 	    f->ilvp->type = T_INT;
 	    (f->ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
@@ -611,7 +612,7 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(val->u.string, (long) ival->u.number);
+	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
@@ -724,9 +725,13 @@ register frame *f;
 	break;
 
     default:
+	/*
+         * Indexed string.
+         * The fetch is always done directly after an lvalue
+         * constructor, so lvstr is valid.
+         */
 	(--f->sp)->type = T_INT;
-	f->sp->u.number =
-		UCHAR(f->ilvp[-1].u.lval->u.string->text[f->sp[1].u.number]);
+	f->sp->u.number = UCHAR(f->lvstr->text[f->sp[1].u.number]);
 	break;
     }
 }

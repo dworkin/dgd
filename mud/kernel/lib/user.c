@@ -86,7 +86,10 @@ string query_name()
  */
 message(string str)
 {
-    if (connection && str) {
+    if (!str) {
+	error("Bad argument 1 for function message");
+    }
+    if (connection) {
 	connection->message(str);
     }
 }

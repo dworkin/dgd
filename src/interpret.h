@@ -145,6 +145,7 @@ struct _frame_ {
     value *argp;		/* argument pointer (previous sp) */
     value *fp;			/* frame pointer (at end of local stack) */
     value *prev_ilvp;		/* previous indexed lvalue pointer */
+    string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     Int maxdepth;		/* max stack depth */
     Int ticks;			/* ticks left */
