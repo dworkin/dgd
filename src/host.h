@@ -83,6 +83,11 @@ typedef int Int;
 
 # define ALIGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
+# ifdef INCLUDE_TIME
+extern time_t _time		P((void));
+extern char  *_ctime		P((time_t));
+# endif
+
 extern void  host_init		P((void));
 extern void  host_finish	P((void));
 extern void  host_message	P((char*));
@@ -92,7 +97,7 @@ extern bool  _opendir		P((char*));
 extern char *_readdir		P((void));
 extern void  _closedir		P((void));
 
-extern void  _alarm		P((long));
+extern void  _alarm		P((unsigned int));
 
 extern long  random		P((void));
 extern char *crypt		P((char*, char*));
