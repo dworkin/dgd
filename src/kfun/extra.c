@@ -39,6 +39,7 @@ int nargs;
 	str_del((sp++)->u.string);
     }
 
+    i_add_ticks(400);
     p = P_crypt(sp->u.string->text, salt);
     str_del(sp->u.string);
     str_ref(sp->u.string = str_new(p, (long) strlen(p)));
@@ -58,6 +59,7 @@ char pt_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
  */
 int kf_ctime()
 {
+    i_add_ticks(5);
     sp->type = T_STRING;
     str_ref(sp->u.string = str_new(P_ctime((Uint) sp->u.number), 24L));
 
@@ -167,6 +169,7 @@ int kf_explode()
     str_del(sp->u.string);
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);
+    i_add_ticks((Int) 2 * a->size);
 
     return 0;
 }
@@ -196,6 +199,7 @@ int kf_implode()
 
     /* first, determine the size of the imploded string */
     i = sp[1].u.array->size;
+    i_add_ticks(i);
     if (i != 0) {
 	len = --i * (long) slen;	/* size of all separators */
 	for (v = d_get_elts(sp[1].u.array); i >= 0; v++, --i) {
@@ -244,6 +248,7 @@ char pt_random[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  */
 int kf_random()
 {
+    i_add_ticks(1);
     sp->u.number = (sp->u.number > 0) ? P_random() % sp->u.number : 0;
     return 0;
 }
@@ -337,6 +342,7 @@ int nargs;
     flen = sp[nargs - 2].u.string->len;
 
     nargs -= 2;
+    i_add_ticks(8 * nargs);
     val = values;
     matches = 0;
 

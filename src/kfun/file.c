@@ -357,6 +357,7 @@ int kf_save_object()
      * First save in a different file in the same directory, so a possibly
      * existing old instance will not be lost if something goes wrong.
      */
+    i_add_ticks(2000);	/* arbitrary */
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
@@ -839,6 +840,7 @@ int kf_restore_object()
 	return 1;
     }
 
+    i_add_ticks(2000);	/* arbitrary */
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = 0;
@@ -1033,6 +1035,7 @@ int nargs;
 	return 1;
     }
 
+    i_add_ticks(1000 + (Int) 2 * sp->u.string->len);
     str_del(sp[1].u.string);
     sp[1].type = T_INT;
     sp[1].u.number = 0;
@@ -1114,6 +1117,7 @@ int nargs;
 	/* size has to be >= 0 */
 	return 0;
     }
+    i_add_ticks(1000);
     fd = open(file, O_RDONLY | O_BINARY);
     if (fd < 0) {
 	/* cannot open file */
@@ -1159,6 +1163,7 @@ int nargs;
 	error("Read failed in read_file()");
     }
     close(fd);
+    i_add_ticks(2 * size);
 
     return 0;
 }
@@ -1189,6 +1194,7 @@ int kf_rename_file()
 	return 2;
     }
 
+    i_add_ticks(1000);
     str_del((sp++)->u.string);
     str_del(sp->u.string);
     sp->type = T_INT;
@@ -1216,6 +1222,7 @@ int kf_remove_file()
 	return 1;
     }
 
+    i_add_ticks(1000);
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = (access(file, W_OK) >= 0 && unlink(file) >= 0);
@@ -1242,6 +1249,7 @@ int kf_make_dir()
 	return 1;
     }
 
+    i_add_ticks(1000);
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = (mkdir(file, 0775) >= 0);
@@ -1268,6 +1276,7 @@ int kf_remove_dir()
 	return 1;
     }
 
+    i_add_ticks(1000);
     str_del(sp->u.string);
     sp->type = T_INT;
     sp->u.number = (rmdir(file) >= 0);
@@ -1509,6 +1518,7 @@ int kf_get_dir()
     arr_ref(a->elts[2].u.array = arr_new((long) nfiles));
     t = a->elts[2].u.array->elts;
 
+    i_add_ticks(1000 + 5 * nfiles);
     if (nfiles == 0) {
 	/* stop here */
 	return 0;

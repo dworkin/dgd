@@ -14,6 +14,7 @@ char pt_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  */
 int kf_fabs()
 {
+    i_add_ticks(1);
     VFLT_ABS(sp);
     return 0;
 }
@@ -33,6 +34,7 @@ int kf_floor()
 {
     xfloat flt;
 
+    i_add_ticks(1);
     VFLT_GET(sp, flt);
     flt_floor(&flt);
     VFLT_PUT(sp, flt);
@@ -54,6 +56,7 @@ int kf_ceil()
 {
     xfloat flt;
 
+    i_add_ticks(1);
     VFLT_GET(sp, flt);
     flt_ceil(&flt);
     VFLT_PUT(sp, flt);
@@ -75,6 +78,7 @@ int kf_fmod()
 {
     xfloat f1, f2;
 
+    i_add_ticks(1);
     VFLT_GET(sp, f2);
     sp++;
     VFLT_GET(sp, f1);
@@ -101,6 +105,7 @@ int kf_frexp()
     Int num;
     array *a;
 
+    i_add_ticks(2);
     VFLT_GET(sp, flt);
     num = flt_frexp(&flt);
     a = arr_new(2L);
@@ -129,6 +134,7 @@ int kf_ldexp()
 {
     xfloat flt;
 
+    i_add_ticks(1);
     VFLT_GET(sp + 1, flt);
     flt_ldexp(&flt, sp->u.number);
     sp++;
@@ -153,6 +159,7 @@ int kf_modf()
     xfloat f1, f2;
     array *a;
 
+    i_add_ticks(2);
     VFLT_GET(sp, f1);
     flt_modf(&f1, &f2);
     a = arr_new(2L);

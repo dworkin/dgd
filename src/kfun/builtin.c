@@ -30,6 +30,7 @@ int kf_add()
 	    return 0;
 
 	case T_STRING:
+	    i_add_ticks(2);
 	    sprintf(buffer, "%ld", (long) sp[1].u.number);
 	    str = str_new((char *) NULL,
 			  (l=(long) strlen(buffer)) + sp->u.string->len);
@@ -44,6 +45,7 @@ int kf_add()
 	break;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	switch (sp->type) {
 	case T_FLOAT:
 	    VFLT_GET(sp, f2);
@@ -54,6 +56,7 @@ int kf_add()
 	    return 0;
 
 	case T_STRING:
+	    i_add_ticks(2);
 	    VFLT_GET(sp + 1, f1);
 	    flt_ftoa(&f1, buffer);
 	    str = str_new((char *) NULL,
@@ -69,6 +72,7 @@ int kf_add()
 	break;
 
     case T_STRING:
+	i_add_ticks(2);
 	switch (sp->type) {
 	case T_INT:
 	    sprintf(buffer, "%ld", (long) sp->u.number);
@@ -82,6 +86,7 @@ int kf_add()
 	    return 0;
 
 	case T_FLOAT:
+	    i_add_ticks(1);
 	    VFLT_GET(sp, f2);
 	    flt_ftoa(&f2, buffer);
 	    sp++;
@@ -105,6 +110,7 @@ int kf_add()
 
     case T_ARRAY:
 	if (sp->type == T_ARRAY) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = arr_add(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -116,6 +122,7 @@ int kf_add()
 
     case T_MAPPING:
 	if (sp->type == T_MAPPING) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = map_add(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -168,6 +175,7 @@ int kf_add1()
     if (sp->type == T_INT) {
 	sp->u.number++;
     } else if (sp->type == T_FLOAT) {
+	i_add_ticks(1);
 	VFLT_GET(sp, f1);
 	FLT_ONE(f2.high, f2.low);
 	flt_add(&f1, &f2);
@@ -221,6 +229,7 @@ int kf_and()
 
     case T_ARRAY:
 	if (sp->type == T_ARRAY) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = arr_intersect(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -232,6 +241,7 @@ int kf_and()
 
     case T_MAPPING:
 	if (sp->type == T_ARRAY) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = map_intersect(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -294,6 +304,7 @@ int kf_div()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -346,6 +357,7 @@ int kf_eq()
     if (sp[1].type != sp->type) {
 	if (sp->type + sp[1].type == T_INT + T_FLOAT) {
 	    /* int == float */
+	    i_add_ticks(1);
 	    if (sp->type == T_INT) {
 		flag = (sp->u.number == 0 && VFLT_ISZERO(sp + 1));
 		sp[1].type = T_INT;
@@ -368,6 +380,7 @@ int kf_eq()
 	break;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -376,6 +389,7 @@ int kf_eq()
 	break;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) == 0);
 	str_del(sp->u.string);
 	sp++;
@@ -448,6 +462,7 @@ int kf_ge()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -456,6 +471,7 @@ int kf_ge()
 	return 0;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) >= 0);
 	str_del(sp->u.string);
 	sp++;
@@ -513,6 +529,7 @@ int kf_gt()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -521,6 +538,7 @@ int kf_gt()
 	return 0;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) > 0);
 	str_del(sp->u.string);
 	sp++;
@@ -578,6 +596,7 @@ int kf_le()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -586,6 +605,7 @@ int kf_le()
 	return 0;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) <= 0);
 	str_del(sp->u.string);
 	sp++;
@@ -668,6 +688,7 @@ int kf_lt()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -676,6 +697,7 @@ int kf_lt()
 	return 0;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) < 0);
 	str_del(sp->u.string);
 	sp++;
@@ -760,6 +782,7 @@ int kf_mult()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -809,6 +832,7 @@ int kf_ne()
     if (sp[1].type != sp->type) {
 	if (sp->type + sp[1].type == T_INT + T_FLOAT) {
 	    /* int != float */
+	    i_add_ticks(1);
 	    if (sp->type == T_INT) {
 		flag = (sp->u.number != 0 || !VFLT_ISZERO(sp + 1));
 		sp[1].type = T_INT;
@@ -831,6 +855,7 @@ int kf_ne()
 	break;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	VFLT_GET(sp, f2);
 	sp++;
 	VFLT_GET(sp, f1);
@@ -839,6 +864,7 @@ int kf_ne()
 	break;
 
     case T_STRING:
+	i_add_ticks(2);
 	flag = (str_cmp(sp[1].u.string, sp->u.string) != 0);
 	str_del(sp->u.string);
 	sp++;
@@ -1036,6 +1062,7 @@ int kf_or()
 
     case T_ARRAY:
 	if (sp->type == T_ARRAY) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = arr_setadd(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -1088,6 +1115,7 @@ int kf_rangeft()
 
     switch (sp[2].type) {
     case T_STRING:
+	i_add_ticks(2);
 	str = str_range(sp[2].u.string, (long) sp[1].u.number,
 			(long) sp->u.number);
 	sp += 2;
@@ -1098,6 +1126,7 @@ int kf_rangeft()
     case T_ARRAY:
 	a = arr_range(sp[2].u.array, (long) sp[1].u.number,
 		      (long) sp->u.number);
+	i_add_ticks(a->size);
 	sp += 2;
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
@@ -1128,6 +1157,7 @@ int kf_rangef()
 
     switch (sp[1].type) {
     case T_STRING:
+	i_add_ticks(2);
 	str = str_range(sp[1].u.string, (long) sp->u.number,
 			sp[1].u.string->len - 1L);
 	sp++;
@@ -1138,6 +1168,7 @@ int kf_rangef()
     case T_ARRAY:
 	a = arr_range(sp[1].u.array, (long) sp->u.number,
 		      sp[1].u.array->size - 1L);
+	i_add_ticks(a->size);
 	sp++;
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
@@ -1168,6 +1199,7 @@ int kf_ranget()
 
     switch (sp[1].type) {
     case T_STRING:
+	i_add_ticks(2);
 	str = str_range(sp[1].u.string, 0L, (long) sp->u.number);
 	sp++;
 	str_del(sp->u.string);
@@ -1176,6 +1208,7 @@ int kf_ranget()
 
     case T_ARRAY:
 	a = arr_range(sp[1].u.array, 0L, (long) sp->u.number);
+	i_add_ticks(a->size);
 	sp++;
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
@@ -1206,6 +1239,7 @@ int kf_range()
 
     switch (sp->type) {
     case T_STRING:
+	i_add_ticks(2);
 	str = str_range(sp->u.string, 0L, sp->u.string->len - 1L);
 	str_del(sp->u.string);
 	str_ref(sp->u.string = str);
@@ -1213,6 +1247,7 @@ int kf_range()
 
     case T_ARRAY:
 	a = arr_range(sp->u.array, 0L, sp->u.array->size - 1L);
+	i_add_ticks(a->size);
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
 	break;
@@ -1275,6 +1310,7 @@ int kf_sub()
 
     case T_FLOAT:
 	if (sp->type == T_FLOAT) {
+	    i_add_ticks(1);
 	    VFLT_GET(sp, f2);
 	    sp++;
 	    VFLT_GET(sp, f1);
@@ -1288,6 +1324,7 @@ int kf_sub()
 	if (sp->type == T_ARRAY) {
 	    array *a;
 
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = arr_sub(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -1301,6 +1338,7 @@ int kf_sub()
 	if (sp->type == T_ARRAY) {
 	    array *a;
 
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = map_sub(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -1353,6 +1391,7 @@ int kf_sub1()
     if (sp->type == T_INT) {
 	sp->u.number--;
     } else if (sp->type == T_FLOAT) {
+	i_add_ticks(1);
 	VFLT_GET(sp, f1);
 	FLT_ONE(f2.high, f2.low);
 	flt_sub(&f1, &f2);
@@ -1395,6 +1434,7 @@ int kf_tofloat()
 {
     xfloat flt;
 
+    i_add_ticks(1);
     if (sp->type == T_INT) {
 	/* from int */
 	flt_itof(sp->u.number, &flt);
@@ -1437,6 +1477,7 @@ int kf_toint()
 
     if (sp->type == T_FLOAT) {
 	/* from float */
+	i_add_ticks(1);
 	VFLT_GET(sp, flt);
 	sp->type = T_INT;
 	sp->u.number = flt_ftoi(&flt);
@@ -1581,6 +1622,7 @@ int kf_umin()
 	return 0;
 
     case T_FLOAT:
+	i_add_ticks(1);
 	if (!VFLT_ISZERO(sp)) {
 	    VFLT_NEG(sp);
 	}
@@ -1633,6 +1675,7 @@ int kf_xor()
 
     case T_ARRAY:
 	if (sp->type == T_ARRAY) {
+	    i_add_ticks((Int) sp[1].u.array->size + sp->u.array->size);
 	    a = arr_setxadd(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
@@ -1687,11 +1730,13 @@ int kf_tostring()
     char buffer[18];
     xfloat flt;
 
+    i_add_ticks(2);
     if (sp->type == T_INT) {
 	/* from int */
 	sprintf(buffer, "%ld", (long) sp->u.number);
     } else if (sp->type == T_FLOAT) {
 	/* from float */
+	i_add_ticks(1);
 	VFLT_GET(sp, flt);
 	flt_ftoa(&flt, buffer);
     } else if (sp->type == T_STRING) {
@@ -1813,6 +1858,7 @@ int n;
     /*
      * pass 1: check the types of everything and calculate the size
      */
+    i_add_ticks(n);
     type = 0;
     isize = size = 0;
     nonint = n;

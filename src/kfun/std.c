@@ -277,6 +277,7 @@ int kf_find_object()
 {
     object *obj;
 
+    i_add_ticks(2);
     obj = o_find(path_resolve(sp->u.string->text));
     str_del(sp->u.string);
     if (obj != (object *) NULL) {
@@ -308,6 +309,7 @@ int kf_function_object()
     dsymbol *symb;
     char *name;
 
+    i_add_ticks(2);
     obj = o_object(sp->oindex, sp->u.objcnt);
     sp++;
     symb = ctrl_symb(o_control(obj), sp->u.string->text);
@@ -402,6 +404,7 @@ int kf_users()
 {
     (--sp)->type = T_ARRAY;
     arr_ref(sp->u.array = comm_users());
+    i_add_ticks(sp->u.array->size);
     return 0;
 }
 # endif
@@ -444,6 +447,10 @@ int kf_allocate()
     register int i;
     register value *v;
 
+    if (sp->u.number < 0) {
+	return 1;
+    }
+    i_add_ticks(sp->u.number);
     arr_ref(sp->u.array = arr_new((long) sp->u.number));
     sp->type = T_ARRAY;
     for (i = sp->u.array->size, v = sp->u.array->elts; i > 0; --i, v++) {
@@ -493,6 +500,7 @@ int kf_map_indices()
     array *a;
 
     a = map_indices(sp->u.array);
+    i_add_ticks(a->size);
     arr_del(sp->u.array);
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);
@@ -516,6 +524,7 @@ int kf_map_values()
     array *a;
 
     a = map_values(sp->u.array);
+    i_add_ticks(a->size);
     arr_del(sp->u.array);
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);
@@ -537,6 +546,7 @@ int kf_map_sizeof()
 {
     unsigned short size;
 
+    i_add_ticks(sp->u.array->size);
     size = map_size(sp->u.array);
     arr_del(sp->u.array);
     sp->type = T_INT;
@@ -670,6 +680,7 @@ int nargs;
 	return -1;
     }
 
+    i_add_ticks(nargs);
     obj = cframe->obj;
     if (obj->count != 0 &&
 	(handle=co_new(obj, sp[nargs - 1].u.string,
@@ -701,6 +712,7 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  */
 int kf_remove_call_out()
 {
+    i_add_ticks(10);
     sp->u.number = co_del(cframe->obj, (uindex) sp->u.number);
     return 0;
 }
@@ -787,6 +799,7 @@ int nargs;
     }
     sp->type = T_ARRAY;
     arr_ref(sp->u.array);
+    i_add_ticks(100 + sp->u.array->size);
     return 0;
 }
 # endif

@@ -559,6 +559,8 @@ string *label;
 	     */
 	    o = (inh++)->obj;
 	    if (o->count == 0) {
+		Uint ocount;
+
 		if (strcmp(o->chain.name, from) == 0) {
 		    /*
 		     * inheriting old instance of the same object
@@ -573,10 +575,10 @@ string *label;
 		 */
 		(--sp)->type = T_OBJECT;
 		sp->oindex = obj->index;
-		sp->u.objcnt = obj->count;
+		sp->u.objcnt = ocount = obj->count;
 		call_driver_object("recompile", 1);
 		i_del_value(sp++);
-		if (obj->count == 0) {
+		if (obj->count != ocount) {
 		    return FALSE;	/* recompile this object */
 		}
 	    }

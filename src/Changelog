@@ -912,3 +912,6 @@ DGD 1.1
    yet on restore).
  - 1.1 DUMPFILE FORMAT REACHED.  Up to the next major release, version 1.1,
    the dumpfile format will not change.
+ - Made ticks a more reasonable measure.  In many cases it just reflects what
+   I think something should take -- or what I want to make expensive.
+   Currently, the editor still takes no ticks.

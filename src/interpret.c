@@ -284,6 +284,7 @@ register unsigned int size;
     } else {
 	register value *v, *elts;
 
+	i_add_ticks(size);
 	a = arr_new((long) size);
 	elts = a->elts + size;
 	v = sp;
@@ -311,6 +312,7 @@ register unsigned int size;
     } else {
 	register value *v, *elts;
 
+	i_add_ticks(size);
 	a = map_new((long) size);
 	elts = a->elts + size;
 	v = sp;
@@ -353,6 +355,7 @@ register int n;
 	n = a->size;
     }
     if (a->size > 0) {
+	i_add_ticks(a->size);
 	i_grow_stack((a->size << 1) - n - 1);
 	a->ref += a->size - n;
     }
@@ -381,11 +384,11 @@ register int n;
 void i_global(inherit, index)
 register int inherit, index;
 {
+    i_add_ticks(4);
     if (inherit != 0) {
 	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     i_push_value(d_get_variable(cframe->data, inherit + index));
-    ticks -= 3;
 }
 
 /*
@@ -395,12 +398,12 @@ register int inherit, index;
 void i_global_lvalue(inherit, index)
 register int inherit, index;
 {
+    i_add_ticks(4);
     if (inherit != 0) {
 	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     (--sp)->type = T_LVALUE;
     sp->u.lval = d_get_variable(cframe->data, inherit + index);
-    ticks -= 3;
 }
 
 /*
@@ -413,6 +416,7 @@ void i_index()
     register value *aval, *ival, *val;
     array *a;
 
+    i_add_ticks(2);
     ival = sp++;
     aval = sp;
     switch (aval->type) {
@@ -477,6 +481,7 @@ void i_index_lvalue()
     register int i;
     register value *lval, *ival, *val;
 
+    i_add_ticks(2);
     ival = sp++;
     lval = sp;
     switch (lval->type) {
@@ -745,6 +750,7 @@ register value *lval, *val;
     register unsigned short i;
     register array *a;
 
+    i_add_ticks(1);
     switch (lval->type) {
     case T_LVALUE:
 	d_assign_var(cframe->data, lval->u.lval, val);
@@ -1430,7 +1436,6 @@ register char *pc;
 		u = f->ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
-	    ticks -= 3;
 	    break;
 
 	case I_PUSH_LOCAL_LVALUE:
@@ -1446,7 +1451,6 @@ register char *pc;
 	    }
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
-	    ticks -= 3;
 	    break;
 
 	case I_INDEX:
@@ -1766,8 +1770,8 @@ int funci;
     }
 
     /* execute code */
+    i_add_ticks(10);
     d_get_funcalls(f.ctrl);	/* make sure they are available */
-    ticks -= 5;
     if (f.func->class & C_COMPILED) {
 	/* compiled function */
 	(*pcfunctions[FETCH2U(pc, n)])();
@@ -1990,6 +1994,7 @@ array *i_call_trace()
     int max_args;
 
     for (f = cframe, n = 0; f != (frame *) NULL; f = f->prev, n++) ;
+    i_add_ticks(10 * n);
     a = arr_new((long) n);
     max_args = conf_array_size() - 5;
     for (f = cframe, elts = a->elts + n; f != (frame *) NULL; f = f->prev) {
