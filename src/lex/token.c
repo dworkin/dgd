@@ -44,7 +44,6 @@ static tbuf *flist;		/* free token buffer list */
 static tbuf *tbuffer;		/* current token buffer */
 static tbuf *ibuffer;		/* current input buffer */
 static int pp_level;		/* the recursive preprocesing level */
-static int include_level;	/* the nested include level */
 static bool do_include;		/* treat < and strings specially */
 static bool seen_nl;		/* just seen a newline */
 
@@ -62,7 +61,6 @@ void tk_init()
     tbuffer = (tbuf *) NULL;
     ibuffer = (tbuf *) NULL;
     pp_level = 0;
-    include_level = 0;
     do_include = FALSE;
 }
 
@@ -123,7 +121,6 @@ static void pop()
 	}
     } else {
 	close(tb->fd);
-	--include_level;
 	ibuffer = tbuffer->prev;
 	FREE(tb->u.filename);
 	FREE(tb->buffer);
@@ -169,15 +166,9 @@ char *file;
 	    char *buffer;
 	    register int len;
 
-	    if (include_level == 8) {
-		close(fd);
-		yyerror("#include nesting too deep");
-		return TRUE;	/* no further errors */
-	    }
-	    include_level++;
 	    buffer = ALLOC(char, BUF_SIZE);
 	    buffer[0] = '\0';
-	    push((macro *) NULL, buffer, (tbuffer == (tbuf *) NULL));
+	    push((macro *) NULL, buffer, TRUE);
 	    ibuffer = tbuffer;
 	    ibuffer->fd = fd;
 	    len = strlen(file);
@@ -194,6 +185,16 @@ char *file;
     }
 
     return FALSE;
+}
+
+/*
+ * NAME:	token->endinclude()
+ * DESCRIPTION:	end an #inclusion
+ */
+void tk_endinclude()
+{
+    pop();
+    seen_nl = TRUE;
 }
 
 /*
@@ -874,7 +875,10 @@ register macro *mc;
 	char *args[MAX_NARG], ppbuf[MAX_REPL_SIZE];
 	register int narg;
 	register str *s;
+	unsigned short startline, line;
 	int errcount;
+
+	startline = ibuffer->line;
 
 	do {
 	    token = gc();
@@ -915,14 +919,20 @@ register macro *mc;
 
 	    for (;;) {
 		if (token == EOF) {	/* sigh */
+		    line = ibuffer->line;
+		    ibuffer->line = startline;
 		    yyerror("EOF in macro call");
+		    ibuffer->line = line;
 		    errcount++;
 		    break;
 		}
 
 		if ((token == ',' || token == ')') && paren == 0) {
 		    if (s->len < 0) {
+			line = ibuffer->line;
+			ibuffer->line = startline;
 			yyerror("macro argument too long");
+			ibuffer->line = line;
 			errcount++;
 		    } else if (narg < mc->narg) {
 			args[narg] = strcpy(ALLOCA(char, s->len + 1), ppbuf);
@@ -970,8 +980,8 @@ register macro *mc;
 	}
 	--pp_level;
 
-	if (narg != mc->narg) {
-	    yyerror("macro argument mismatch");
+	if (errcount == 0 && narg != mc->narg) {
+	    yyerror("macro argument count mismatch");
 	    errcount++;
 	}
 
