@@ -8,14 +8,18 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LDFLAGS=
 LIBS=
+LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
-DMAKE=	make
 
+SRC=	line.c buffer.c fileio.c regexp.c vars.c edcmd.c cmdsub.c
 OBJ=	line.o buffer.o fileio.o regexp.o vars.o edcmd.o cmdsub.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
 
 clean:
 	rm -f dgd $(OBJ)

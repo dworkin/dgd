@@ -6,6 +6,7 @@ DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
+LINTFLAGS=-abcehpruz
 CC=	gcc
 
 SRC=	local.c lrand48.c dirent.c time.c connect.c xfloat.c
@@ -14,6 +15,9 @@ SUBOBJ=	local.o lrand48.o dirent.o time.o crypt.o xfloat.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC) crypt.c
 
 sub:	$(SUBOBJ)
 	@for i in $(SUBOBJ); do echo ../host/$$i; done > sub

@@ -7,6 +7,7 @@ DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LIBS=
+LINTFLAGS=-abcehpruz
 CC=	gcc
 DMAKE=	make
 PRECOMP=../comp/a.out
@@ -27,6 +28,9 @@ OBJ=
 
 dgd:	$(OBJ) lpc.o
 	@for i in $(OBJ) lpc.o; do echo lpc/$$i; done > dgd
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) lpc.c
 
 #$(SRC):	$(PRECOMP)
 

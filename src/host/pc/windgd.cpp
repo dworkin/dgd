@@ -106,6 +106,7 @@ END_MESSAGE_MAP()
 BOOL CWindgdApp::InitInstance()
 {
     char *cmdline, *p;
+    RECT rect;
 
 # ifdef _AFXDLL
     Enable3dControls();
@@ -126,6 +127,10 @@ BOOL CWindgdApp::InitInstance()
 	return FALSE;
     }
     m_pMainWnd = mainframe;
+    mainframe->GetWindowRect(&rect);
+    rect.right = rect.left + 640;
+    rect.bottom = rect.top + 460;
+    mainframe->MoveWindow(&rect, FALSE);
     mainframe->ShowWindow(m_nCmdShow);
     mainframe->UpdateWindow();
 

@@ -6,8 +6,10 @@ DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
+LINTFLAGS=-abcehpruz
 CC=	gcc
 
+SRC=	grammar.c dfa.c srp.c parse.c
 OBJ=	grammar.o dfa.o srp.o parse.o
 
 dgd:	$(OBJ)
@@ -15,6 +17,9 @@ dgd:	$(OBJ)
 
 comp:	$(OBJ)
 	@for i in $(OBJ); do echo ../parser/$$i; done > comp
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
 
 clean:
 	rm -f dgd comp $(OBJ)

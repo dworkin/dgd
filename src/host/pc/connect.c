@@ -147,6 +147,25 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
 		--nfree;
 	    }
 	    ipa->ref++;
+
+	    if (ipa->name[0] == '\0' && ipa != lastreq &&
+		ipa->prev == (ipaddr *) NULL && ipa != qhead) {
+		if (!busy) {
+		    /* send query to name resolver */
+		    send(in, (char *) ipnum, sizeof(struct in_addr), 0);
+		    lastreq = ipa;
+		    busy = TRUE;
+		} else {
+		    /* put in request queue */
+		    ipa->prev = qtail;
+		    if (qtail == (ipaddr *) NULL) {
+			qhead = ipa;
+		    } else {
+			qtail->next = ipa;
+		    }
+		    qtail = ipa;
+		}
+	    }
 	    return ipa;
 	}
 	hash = &ipa->link;
@@ -194,11 +213,11 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
     ipa->ref = 1;
     ipa->ipnum = *ipnum;
     ipa->name[0] = '\0';
+    ipa->prev = ipa->next = (ipaddr *) NULL;
 
     if (!busy) {
 	/* send query to name resolver */
 	send(in, (char *) ipnum, sizeof(struct in_addr), 0);
-	ipa->prev = ipa->next = (ipaddr *) NULL;
 	lastreq = ipa;
 	busy = TRUE;
     } else {
@@ -210,7 +229,6 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
 	    qtail->next = ipa;
 	}
 	qtail = ipa;
-	ipa->next = (ipaddr *) NULL;
     }
 
     return ipa;

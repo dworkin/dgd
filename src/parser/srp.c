@@ -821,71 +821,70 @@ register unsigned short n;
 	 UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff;
 	 i += 2, p += 2) ;
     lr->gap = i;
-    for (;;) {
-    next:
-	if (i + range >= lr->mapsize) {
-	    /* grow tables */
-	    j = (i + range) << 1;
-	    if (lr->alloc) {
-		lr->data = REALLOC(lr->data, char, lr->mapsize, j);
-		lr->check = REALLOC(lr->check, char, lr->mapsize, j);
-	    } else {
-		char *table;
 
-		table = ALLOC(char, j);
-		memcpy(table, lr->data, lr->mapsize);
-		lr->data = table;
-		table = ALLOC(char, j);
-		memcpy(table, lr->check, lr->mapsize);
-		lr->check = table;
-		lr->alloc = TRUE;
-	    }
-	    memset(lr->data + lr->mapsize, '\0', j - lr->mapsize);
-	    memset(lr->check + lr->mapsize, '\xff', j - lr->mapsize);
-	    lr->mapsize = j;
+next:
+    if (i + range >= lr->mapsize) {
+	/* grow tables */
+	j = (i + range) << 1;
+	if (lr->alloc) {
+	    lr->data = REALLOC(lr->data, char, lr->mapsize, j);
+	    lr->check = REALLOC(lr->check, char, lr->mapsize, j);
+	} else {
+	    char *table;
+
+	    table = ALLOC(char, j);
+	    memcpy(table, lr->data, lr->mapsize);
+	    lr->data = table;
+	    table = ALLOC(char, j);
+	    memcpy(table, lr->check, lr->mapsize);
+	    lr->check = table;
+	    lr->alloc = TRUE;
 	}
-
-	/* match each symbol with free slot */
-	for (j = 1; j < n; j++) {
-	    p += offstab[j];
-	    if (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff) {
-		p = &lr->check[i];
-		do {
-		    i += 2;
-		    p += 2;
-		} while (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff);
-		goto next;
-	    }
-	}
-	AFREE(offstab);
-
-	/* free slots found: adjust spread */
-	if (i + range > lr->spread) {
-	    lr->srpsize += 2 * (i + range - lr->spread);
-	    lr->spread = i + range;
-	}
-
-	/* add to packed mapping */
-	offset = i - offset;
-	do {
-	    j = from[--n] * 2 + offset;
-	    p = &lr->data[j];
-	    *p++ = to[n] >> 8;
-	    *p = to[n];
-	    p = &lr->check[j];
-	    *p++ = *check >> 8;
-	    *p = *check;
-	} while (n != 0);
-
-	p = lr->shtab + sl->shifts;
-	offset /= 2;
-	*p++ = *check >> 8;
-	*p++ = *check;
-	*p++ = offset >> 16;
-	*p++ = offset >> 8;
-	*p = offset;
-	return offset;
+	memset(lr->data + lr->mapsize, '\0', j - lr->mapsize);
+	memset(lr->check + lr->mapsize, '\xff', j - lr->mapsize);
+	lr->mapsize = j;
     }
+
+    /* match each symbol with free slot */
+    for (j = 1; j < n; j++) {
+	p += offstab[j];
+	if (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff) {
+	    p = &lr->check[i];
+	    do {
+		i += 2;
+		p += 2;
+	    } while (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff);
+	    goto next;
+	}
+    }
+    AFREE(offstab);
+
+    /* free slots found: adjust spread */
+    if (i + range > lr->spread) {
+	lr->srpsize += 2 * (i + range - lr->spread);
+	lr->spread = i + range;
+    }
+
+    /* add to packed mapping */
+    offset = i - offset;
+    do {
+	j = from[--n] * 2 + offset;
+	p = &lr->data[j];
+	*p++ = to[n] >> 8;
+	*p = to[n];
+	p = &lr->check[j];
+	*p++ = *check >> 8;
+	*p = *check;
+    } while (n != 0);
+
+    p = lr->shtab + sl->shifts;
+    offset /= 2;
+    *p++ = *check >> 8;
+    *p++ = *check;
+    *p++ = offset >> 16;
+    *p++ = offset >> 8;
+    *p = offset;
+    return offset;
 }
 
 /*

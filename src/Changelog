@@ -1415,3 +1415,6 @@ DGD 1.1
  - Finally fixed the DST time-jumping problem on Windows.
  - Get the Mac version to compile with OLDROUTINENAMES=0.
  - Some more Mac fixes.
+ - If an IP name query for an IP number failed once, it would erroneously not
+   be re-requested as long as it was still in the cache.
+ - Start with fixed window size on Windows.

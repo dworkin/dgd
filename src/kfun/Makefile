@@ -6,8 +6,10 @@ DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
+LINTFLAGS=-abcehpruz
 CC=	gcc
 
+SRC=	builtin.c std.c file.c math.c extra.c debug.c
 OBJ=	builtin.o std.o file.o math.o extra.o debug.o
 
 dgd:	table.o $(OBJ)
@@ -15,6 +17,9 @@ dgd:	table.o $(OBJ)
 
 comp:	table.o $(OBJ)
 	@for i in table.o $(OBJ); do echo ../kfun/$$i; done > comp
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
 
 clean:
 	rm -f dgd comp table.o $(OBJ)

@@ -8,10 +8,11 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=
 LIBS=
+LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
-DMAKE=	make
 
+SRC=	macro.c ppstr.c token.c special.c ppcontrol.c
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
 dgd:	$(OBJ)
@@ -19,6 +20,9 @@ dgd:	$(OBJ)
 
 comp:	$(OBJ)
 	@for i in $(OBJ); do echo ../lex/$$i; done > comp
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
 
 clean:
 	rm -f dgd comp $(OBJ)

@@ -172,6 +172,10 @@ typedef unsigned int Uint;
 
 # if defined(NETBSD) || defined(BSD386)
 
+# ifdef __alpha__
+# define STRUCT_AL		8	/* define this if align(struct) > 2 */
+# endif
+
 # define GENERIC_BSD
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \

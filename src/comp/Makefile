@@ -8,11 +8,14 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
+LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
 DMAKE=	make
 YACC=	yacc
 
+SRC=	node.c parser.c control.c optimize.c codegeni.c compile.c csupport.c \
+	codegenc.c comp.c
 OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o \
 	codegenc.o comp.o
 DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
@@ -31,6 +34,9 @@ a.out:	$(COMPOBJ) always
 
 always:
 	@rm -f a.out
+
+lint:
+	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
 
 dgd:	$(DGDOBJ)
 	@for i in $(DGDOBJ); do echo comp/$$i; done > dgd
