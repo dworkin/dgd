@@ -1,0 +1,12 @@
+NAME
+	arrayp - check if a value is an array
+
+SYNOPSIS
+	int arrayp(mixed value)
+
+
+DESCRIPTION
+	Return 1 if the argument is an array, or 0 otherwise.
+
+SEE ALSO
+	kfun/intp, kfun/objectp, kfun/stringp, kfun/mappingp
