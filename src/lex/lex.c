@@ -17,7 +17,7 @@ register char *s;
     }
 }
 
-main(argc, argv)
+int main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -28,7 +28,7 @@ char *argv[];
     while ((c=pp_gettok()) != EOF) {
 	switch (c) {
 	case STRING_CONST:
-	    printf(" \"%s\"", yylval.string);
+	    printf(" \"%s\"", yytext);
 	    break;
 
 	case INT_CONST:
@@ -36,7 +36,7 @@ char *argv[];
 	    break;
 
 	case IDENTIFIER:
-	    printf(" %s", yylval.string);
+	    printf(" %s", yytext);
 	    break;
 
 	default:
