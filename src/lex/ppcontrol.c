@@ -57,7 +57,7 @@ int level;
     }
     mc_init();
     special_define();
-    mc_define("__DGD__", "\t1\t", -1);
+    mc_define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
     mc_define("__VERSION__", VERSION, -1);
     pps_init();
     include_level = level;
@@ -124,7 +124,7 @@ static void push()
     s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;
-    s->level = include_level;
+    s->level = include_level + 1;
     s->prev = ifs;
     ifs = s;
 }
@@ -211,7 +211,7 @@ static int wsmcgtok()
 
     do {
 	token = mcgtok();
-    } while (token == ' ' || token == '\t');
+    } while (token == ' ' || token == HT);
 
     return token;
 }
@@ -303,7 +303,7 @@ int priority;
 	expr = yynumber;
     } else {
 	/* bad token */
-	if (token == '\n') {
+	if (token == LF) {
 	    yyerror("missing expression in conditional control");
 	}
 	expr_unget(token);
@@ -408,7 +408,7 @@ register int len;
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..22 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..24 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
@@ -417,19 +417,20 @@ register char *key;
 register int len;
 {
     static char *keyword[] = {
-      "for", "void", "mixed", "inherit", "int", "mapping", "nomask",
-      "static", "string", "case", "return", "do", "break", "continue",
-      "default", "private", "if", "varargs", "while", "else", "switch",
-      "object"
+      "for", "void", "lock", "nomask", "catch", "case", "inherit",
+      "mapping", "continue", "break", "int", "do", "else", "varargs",
+      "static", "mixed", "if", "object", "string", "switch", "private",
+      "return", "while", "default"
     };
+
     static char value[] = {
-      3, 4, 17, 11, 1, 15, 14, 5, 1, 0, 0, 13, 0,
-      2, 0, 0, 0, 9, 6, 6, 13, 0, 3, 0, 0, 0
+      2, 15, 2, 11, 14, 15, 11, 13, 1, 0, 0, 9, 0,
+      5, 0, 0, 0, 7, 3, 13, 8, 0, 17, 0, 0, 0
     };
 
     if (len >= 2) {
 	len = value[key[1] - 'a'] + value[key[len - 2] - 'a'] + 1;
-	if (len >= 1 && len <= 22 && strcmp(keyword[len - 1], key) == 0) {
+	if (len >= 1 && len <= 24 && strcmp(keyword[len - 1], key) == 0) {
 	    return len;
 	}
     }
@@ -445,7 +446,7 @@ static void unexpected(token, wanted, directive)
 int token;
 char *wanted, *directive;
 {
-    if (token == '\n') {
+    if (token == LF) {
 	yyerror("missing %s in #%s", wanted, directive);
     } else {
 	yyerror("unexpected token in #%s", directive);
@@ -549,7 +550,7 @@ static void do_define()
 	token = wsgettok();
 	if (token != ')') {
 	    for (;;) {
-		if (token == '\n' || token == EOF) {
+		if (token == LF || token == EOF) {
 		    yyerror("unterminated macro definition");
 		    errcount++;
 		    break;
@@ -573,7 +574,7 @@ static void do_define()
 		if (token == ')') {
 		    break;
 		}
-		if (token == '\n' || token == EOF) {
+		if (token == LF || token == EOF) {
 		    yyerror("unterminated macro definition");
 		    errcount++;
 		    break;
@@ -605,11 +606,11 @@ static void do_define()
     }
 
     s = pps_new(buf, sizeof(buf));
-    pps_ccat(s, '\t');
+    pps_ccat(s, HT);
     seen_space = FALSE;
 
     /* scan replacement list */
-    while (token != '\n' && token != EOF) {
+    while (token != LF && token != EOF) {
 	if (token == ' ') {
 	    seen_space = TRUE;
 	} else {
@@ -618,9 +619,9 @@ static void do_define()
 		token = wsgettok();
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_scat(s, "\t\n");
+		    pps_scat(s, "\011\012");	/* HT LF */
 		    pps_ccat(s, (i | MA_TAG | MA_STRING));
-		    pps_ccat(s, '\t');
+		    pps_ccat(s, HT);
 		} else {
 		    yyerror("# must be followed by parameter");
 		    errcount++;
@@ -636,12 +637,12 @@ static void do_define()
 		    break;
 		}
 		token = wsgettok();
-		if (token == '\n' || token == EOF) {
+		if (token == LF || token == EOF) {
 		    yyerror("## at end of macro replacement list");
 		    errcount++;
 		    break;
 		}
-		if (s->len >= 3 && buf[s->len - 3] == '\n') {
+		if (s->len >= 3 && buf[s->len - 3] == LF) {
 		    /* previous token was a parameter: mark it "noexpand"
 		       (this has no effect if it is a string) */
 		    s->len--;
@@ -649,18 +650,18 @@ static void do_define()
 		}
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_ccat(s, '\n');
+		    pps_ccat(s, LF);
 		    pps_ccat(s, (i | MA_TAG | MA_NOEXPAND));
-		    pps_ccat(s, '\t');
+		    pps_ccat(s, HT);
 		} else {
 		    pps_scat(s, yytext);
 		}
 	    } else {
 		i = argnum(args, narg, token);
 		if (i >= 0) {
-		    pps_scat(s, "\t\n");
+		    pps_scat(s, "\011\012");	/* HT LF */
 		    pps_ccat(s, (i | MA_TAG));
-		    pps_ccat(s, '\t');
+		    pps_ccat(s, HT);
 		} else {
 		    if (seen_space) {
 			pps_ccat(s, ' ');
@@ -672,7 +673,7 @@ static void do_define()
 	}
 	token = tk_gettok();
     }
-    pps_ccat(s, '\t');
+    pps_ccat(s, HT);
     tk_setpp(FALSE);
 
     for (i = narg; i > 0; ) {
@@ -705,29 +706,29 @@ int pp_gettok()
 
     for (;;) {
 	token = tk_gettok();
-	if (ifs->skipping && token != '#' && token != '\n' && token != EOF) {
+	if (ifs->skipping && token != '#' && token != LF && token != EOF) {
 	    tk_skiptonl(FALSE);
 	    continue;
 	}
 	switch (token) {
 	case EOF:
+	    while (ifs->level > include_level) {
+		yyerror("missing #endif");
+		pop();
+	    }
 	    if (include_level > 0) {
 		--include_level;
-		while (ifs->level > include_level) {
-		    yyerror("missing #endif");
-		    pop();
-		}
 		tk_endinclude();
 		continue;
 	    }
 	    return token;
 
 	case ' ':
-	case '\t':
-	case '\f':
-	case '\13':	/* nope, not all compilers have \v */
-	case '\r':
-	case '\n':
+	case HT:
+	case LF:
+	case VT:
+	case FF:
+	case CR:
 	    break;
 
 	case '!': case '%': case '&': case '(': case ')': case '*':
@@ -738,7 +739,7 @@ int pp_gettok()
 	case LE: case GE: case EQ: case NE: case LAND: case LOR:
 	case PLUS_EQ: case MIN_EQ: case MULT_EQ: case DIV_EQ: case MOD_EQ:
 	case LSHIFT_EQ: case RSHIFT_EQ: case AND_EQ: case XOR_EQ: case OR_EQ:
-	case COLON_COLON: case DOT_DOT: case STRING_CONST:
+	case COLON_COLON: case DOT_DOT: case ELLIPSIS: case STRING_CONST:
 	    /* legal operators and constants */
 	    return token;
 
@@ -783,7 +784,7 @@ int pp_gettok()
 		    /* get #if expression */
 		    expr_unclr();
 		    ifs->skipping = (eval_expr(0) == 0);
-		    if (expr_get() != '\n') {
+		    if (expr_get() != LF) {
 			tk_skiptonl(TRUE);
 		    }
 		    break;
@@ -804,7 +805,7 @@ int pp_gettok()
 			/* get #elif expression */
 			expr_unclr();
 			ifs->skipping = (eval_expr(0) == 0);
-			if (expr_get() != '\n') {
+			if (expr_get() != LF) {
 			    tk_skiptonl(TRUE);
 			}
 		    }
@@ -857,7 +858,7 @@ int pp_gettok()
 		    break;
 
 		case PP_ENDIF:
-		    if (ifs == &top || ifs->level < include_level) {
+		    if (ifs->level <= include_level) {
 			yyerror("#endif without #if");
 			tk_skiptonl(FALSE);
 		    } else {
@@ -875,10 +876,10 @@ int pp_gettok()
 			tk_setpp(TRUE);
 			for (;;) {
 			    token = mcgtok();
-			    if (token == '\n' || token == EOF) {
+			    if (token == LF || token == EOF) {
 				break;
 			    }
-			    if (token != '\t') {
+			    if (token != HT) {
 				pps_scat(s, yytext);
 			    }
 			}
@@ -912,7 +913,7 @@ int pp_gettok()
 			tk_setfilename(yytext);
 			token = wsmcgtok();
 		    }
-		    if (token != '\n') {
+		    if (token != LF) {
 			unexpected(token, "number", "line");
 			/* the "number" is fake, it's never used */
 		    }
@@ -962,7 +963,7 @@ int pp_gettok()
 		    tk_skiptonl(FALSE);
 		    break;
 		}
-	    } else if (token != '\n') {
+	    } else if (token != LF) {
 		yyerror("undefined control");
 		tk_skiptonl(FALSE);
 	    }
