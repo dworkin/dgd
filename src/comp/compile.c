@@ -485,7 +485,7 @@ register char *file;
 	}
 
 	cg_init(c.prev != (context *) NULL);
-	if (yyparse() == 0 && ctrl_chkfuncs(c.file)) {
+	if (yyparse() == 0 && ctrl_chkfuncs()) {
 	    control *ctrl;
 
 	    /*

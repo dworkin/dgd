@@ -35,7 +35,12 @@ static value zero_value = { T_INT, TRUE };
 void i_init(create)
 char *create;
 {
-    sp = stack + MIN_STACK;
+    static frame topframe;
+
+    topframe.fp = sp = stack + MIN_STACK;
+    topframe.stack = topframe.ilvp = ilvp = stack;
+    cframe = &topframe;
+
     nodepth = TRUE;
     noticks = TRUE;
     creator = create;
@@ -95,7 +100,7 @@ int size;
 {
     if (sp < ilvp + size + MIN_STACK) {
 	register int spsize, ilsize;
-	register value *v, *stack;
+	register value *v, *stk;
 	register long offset;
 
 	/*
@@ -104,13 +109,13 @@ int size;
 	spsize = cframe->fp - sp;
 	ilsize = ilvp - cframe->stack;
 	size = ALIGN(spsize + ilsize + size + MIN_STACK, 8);
-	stack = ALLOC(value, size);
-	offset = (long) (stack + size) - (long) cframe->fp;
+	stk = ALLOC(value, size);
+	offset = (long) (stk + size) - (long) cframe->fp;
 
 	/* copy indexed lvalue stack values */
-	v = stack;
+	v = stk;
 	if (ilsize > 0) {
-	    memcpy(stack, cframe->stack, ilsize * sizeof(value));
+	    memcpy(stk, cframe->stack, ilsize * sizeof(value));
 	    do {
 		if (v->type == T_LVALUE && v->u.lval >= sp &&
 		    v->u.lval < cframe->fp) {
@@ -122,7 +127,7 @@ int size;
 	ilvp = v;
 
 	/* copy stack values */
-	v = stack + size;
+	v = stk + size;
 	if (spsize > 0) {
 	    memcpy(v - spsize, sp, spsize * sizeof(value));
 	    do {
@@ -140,11 +145,11 @@ int size;
 	    /* stack on stack: alloca'd */
 	    AFREE(cframe->stack);
 	    cframe->sos = FALSE;
-	} else {
+	} else if (cframe->stack != stack) {
 	    FREE(cframe->stack);
 	}
-	cframe->stack = stack;
-	cframe->fp = stack + size;
+	cframe->stack = stk;
+	cframe->fp = stk + size;
     }
 }
 
@@ -237,13 +242,6 @@ object *obj;
 	    v++;
 	}
 	v = f->argp;
-    }
-    /* wipe out objects in initial stack */
-    while (v < stack + MIN_STACK) {
-	if (v->type == T_OBJECT && v->u.objcnt == count) {
-	    *v = zero_value;
-	}
-	v++;
     }
     /* wipe out objects in indexed lvalue stack */
     v = ilvp;
@@ -960,17 +958,14 @@ register value *newsp;
     register value *v, *w;
     register frame *f;
 
-    if (newsp == (value *) NULL) {
-	newsp = stack + MIN_STACK;
-    }
     v = sp;
     w = ilvp;
     for (f = cframe; f != NULL; f = f->prev) {
+cframe = f;
 	for (;;) {
 	    if (v == newsp) {
 		sp = v;
 		ilvp = w;
-		cframe = f;
 		return;
 	    }
 	    if (v == f->fp) {
@@ -1006,40 +1001,13 @@ register value *newsp;
 	if (f->sos) {
 	    /* stack on stack */
 	    AFREE(f->stack);
-	} else {
+	} else if (f->obj != (object *) NULL) {
 	    FREE(f->stack);
 	}
     }
 
-    while (v < newsp) {
-	switch (v->type) {
-	case T_STRING:
-	    str_del(v->u.string);
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	    arr_del(v->u.array);
-	    break;
-
-	case T_SALVALUE:
-	    --w;
-	case T_ALVALUE:
-	    arr_del((--w)->u.array);
-	    break;
-
-	case T_MLVALUE:
-	case T_SMLVALUE:
-	    i_del_value(--w);
-	    arr_del((--w)->u.array);
-	    break;
-	}
-	v++;
-    }
-
     sp = v;
     ilvp = w;
-    cframe = f;
 }
 
 /*
@@ -1056,7 +1024,8 @@ register int n;
 	while (!f->external) {
 	    f = f->prev;
 	}
-	if ((f=f->prev) == (frame *) NULL) {
+	f = f->prev;
+	if (f->obj == (object *) NULL) {
 	    return (object *) NULL;
 	}
     }
@@ -1647,7 +1616,7 @@ int funci;
     value val;
 
     f.prev = cframe;
-    if (cframe == (frame *) NULL) {
+    if (cframe->obj == (object *) NULL) {
 	/*
 	 * top level call
 	 */
@@ -1725,11 +1694,9 @@ int funci;
 	    nargs = n;
 	} else {
 	    /* make empty arguments array, and optionally push zeroes */
-	    if (++nargs < n) {
-		i_grow_stack(n - nargs + 1);
-		do {
-		    *--sp = zero_value;
-		} while (++nargs < n);
+	    i_grow_stack(n - nargs);
+	    while (++nargs < n) {
+		*--sp = zero_value;
 	    }
 	    cframe = &f;
 	    a = arr_new(0L);
@@ -1844,8 +1811,7 @@ int nargs;
     f = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
-    if (!call_static && (f->class & C_STATIC) &&
-	(cframe == (frame *) NULL || cframe->obj != obj)) {
+    if (!call_static && (f->class & C_STATIC) && cframe->obj != obj) {
 	i_pop(nargs);
 	return FALSE;
     }
@@ -1996,11 +1962,12 @@ array *i_call_trace()
     value *elts;
     int max_args;
 
-    for (f = cframe, n = 0; f != (frame *) NULL; f = f->prev, n++) ;
+    for (f = cframe, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
     i_add_ticks(10 * n);
     a = arr_new((long) n);
     max_args = conf_array_size() - 5;
-    for (f = cframe, elts = a->elts + n; f != (frame *) NULL; f = f->prev) {
+    for (f = cframe, elts = a->elts + n; f->obj != (object *) NULL; f = f->prev)
+    {
 	(--elts)->type = T_ARRAY;
 	n = f->nargs;
 	args = f->argp + n;
@@ -2117,10 +2084,16 @@ int flag;
 
 /*
  * NAME:	interpret->clear()
- * DESCRIPTION:	clear the interpreter stack
+ * DESCRIPTION:	clean up the interpreter state
  */
 void i_clear()
 {
+    if (cframe->stack != stack) {
+	FREE(cframe->stack);
+	cframe->fp = sp = stack + MIN_STACK;
+	cframe->stack = cframe->ilvp = ilvp = stack;
+    }
+
     nodepth = TRUE;
     noticks = TRUE;
     rli = 0;

@@ -11,7 +11,7 @@ extern char		*ctrl_ifcall	P((string*, char*, long*));
 extern char		*ctrl_fcall	P((string*, long*, int));
 extern unsigned short	 ctrl_gencall	P((long));
 extern unsigned short	 ctrl_var	P((string*, long*));
-extern bool		 ctrl_chkfuncs	P((char*));
+extern bool		 ctrl_chkfuncs	P((void));
 extern dsymbol		*ctrl_symb	P((control*, char*));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));

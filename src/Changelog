@@ -924,3 +924,5 @@ DGD 1.1
  - The driver object can inherit the auto object again, and the auto object
    can use the rlimits statement without limitations.
  - If an error is caught internally, the proper error handler is called again.
+ - Ported DGD to Windows 95/NT.  Left to do: starting by double-clicking a
+   config file, program icons.

@@ -1,15 +1,21 @@
-   As long as you don't use DGD commercially, you can treat it as free
-software.  Commercial use is defined as making money using DGD, e.g.
-a mud that charges players for playing or for certain privileges (even
-if those privileges can also be obtained in another way) is commercial,
-as well as a mud which advertises for commercial products; using DGD
-for a mud on a machine which provides internet access need not be
-commercial as long as the mud can also be reached on the same terms by
-non-paying players.  Other cases where DGD can be used freely are muds
-which ask for voluntary contributions to buy new hardware, or forms of
-distribution of the source or binaries which do not charge extra for
-DGD specifically (bulletin boards, the FreeBSD CDROM).
+As of January 9th 1996, exclusive worldwide commercial rights for using DGD as
+a server are held by ichat, Inc.
 
-   If you do use DGD commercially, you'll need my permission.  For a
-commercial mud, permission will be granted for a fee of $100 per month.
-Contact me for details (email: dworkin@hippolytos.cd.chalmers.se).
+
+Motivation:
+
+DGD has been available on the Internet since August 1993.  Before January 9th
+1996, a license for a commercial MUD could be obtained for $100 per month.
+Noone has ever obtained such a license.  Only one company ever tried to get
+one, when it became apparent that it was already too late.
+
+Given this lack of interest, I have decided to give an exclusive license to
+ichat.  This license does not affect non-commercial use of DGD in any way.
+
+For commercial use, a sub-license must be obtained from ichat.  For those who
+are using, or want to use DGD to develop commercial products, this means that
+the $100/month deal is off (or maybe not, depending on ichat).  On the other
+hand, the potential market has become considerably larger.
+
+I will continue to develop and improve DGD for both commercial and non-
+commercial use.

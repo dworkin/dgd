@@ -120,7 +120,7 @@ string *str;
     char buf[STRINGSZ];
     register char *p, *q, c;
     register unsigned short len;
-    register int size;
+    register unsigned int size;
 
     p = str->text;
     q = buf;

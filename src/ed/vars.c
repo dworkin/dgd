@@ -78,6 +78,6 @@ void va_show(v)
 register vars *v;
 {
     output("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
-    output("shiftwidth=%ld\011", (v++)->val);			/* HT */
-    output("window=%ld\012",     (v++)->val);			/* LF */
+    output("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
+    output("window=%ld\012",     (long) (v++)->val);		/* LF */
 }

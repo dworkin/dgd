@@ -1,16 +1,20 @@
-   This program, Dworkin's Generic Driver, is copyright 1993-1995 by
-Felix A. Croes, The Netherlands, email dworkin@hippolytos.cd.chalmers.se.
-All rights reserved.
+Copyright 1993, 1994, 1995, 1996 BeeHive Internet Technologies, Inc.
+All Rights Reserved.
 
-   Permission is granted to copy and distribute the source and executables
-made therefrom, but any commercial use whatsoever is not allowed, other than
-by prior written permission from the author.
+Permission is granted to copy the source and executables made therefrom, but
+any commercial distribution or use whatsoever is not allowed.  Commercial
+distribution or use refers to any distribution or use from which any form of
+income is received regardless of profit therefrom.  Use of the source and
+executables made therefrom to promote or support a commercial venture is
+included in this restriction.  Exclusive worldwide rights to this program for
+use as a server are held by ichat, Inc.  If you wish to purchase a commercial
+license, please send email to sales@ichat.com.  For more information please
+look at the ichat web site which can be found at http://www.ichat.com.
 
-				- - - -
-
-   Any modifications of this program without explicit copyright message are
-automatically included in the copyright above.  Any explicit copyrights
-should not contradict the terms stated above, but may put further restrictions
-(for instance, prohibiting commercial use entirely); modifications should be
-made in such a way that it is clear which copyright message applies where, and
-in such a way that it is possible to regain the unmodified source.
+Any modifications of this program lacking an implicit copyright notice are
+subject to the copyright stated herein.  Any explicit copyright notices added
+to this program shall not contradict the terms stated herein, but may further
+restrict distribution or use.  Any modifications should be made in such a way
+that it is clear that this copyright notice applies to the source, executables
+made therefrom and any derivatives thereof and in such a way that it is
+possible to regain the unmodified source.

@@ -206,7 +206,7 @@ register cmdbuf *cb;
 	break;
 
     case '.':	/* middle */
-	offset = 1 - window / 2;
+	offset = 1 - (window + 1) / 2;
 	break;
     }
 
@@ -239,7 +239,8 @@ register cmdbuf *cb;
 int cb_assign(cb)
 register cmdbuf *cb;
 {
-    output("%ld\012", (cb->first < 0) ? cb->edbuf->lines : cb->first);	/* LF */
+    output("%ld\012",
+	   (long) (cb->first < 0) ? cb->edbuf->lines : cb->first);	/* LF */
     return 0;
 }
 
@@ -1382,8 +1383,10 @@ register cmdbuf *cb;
     if (cb->edit > 0) {
 	output(" [Modified]");
     }
-    output(" line %ld of %ld --%d%%--\012", cb->this, cb->edbuf->lines,	/* LF */
-      (cb->edbuf->lines == 0) ? 0 : (int)((100 * cb->this) / cb->edbuf->lines));
+    output(" line %ld of %ld --%d%%--\012", /* LF */
+	   (long) cb->this, (long) cb->edbuf->lines,
+	   (cb->edbuf->lines == 0) ? 0 :
+				(int) ((100 * cb->this) / cb->edbuf->lines));
 
     return 0;
 }
@@ -1397,13 +1400,13 @@ static io* iob;	/* local pointer for file read/write statistics */
 static void io_show(iob)
 register io *iob;
 {
-    output("%ld lines, %ld characters", iob->lines,
-	   iob->chars + iob->zero - iob->split - iob->ill);
+    output("%ld lines, %ld characters", (long) iob->lines,
+	   (long) (iob->chars + iob->zero - iob->split - iob->ill));
     if (iob->zero > 0) {
-	output(" [%ld zero]", iob->zero);
+	output(" [%ld zero]", (long) iob->zero);
     }
     if (iob->split > 0) {
-	output(" [%ld split]", iob->split);
+	output(" [%ld split]", (long) iob->split);
     }
     if (iob->ill) {
 	output(" [incomplete last line]");

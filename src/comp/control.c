@@ -1290,16 +1290,10 @@ static void vfh_lclear()
 	*h = t = (vfh *) f->chain.next;
 	if (f->ohash == (oh *) NULL) {
 	    /*
-	     * list a clash
+	     * list a clash (only the first two)
 	     */
-	    message("  %s (/%s", f->chain.name, t->ohash->chain.name);
-	    while ((t=(vfh *) t->chain.next) != (vfh *) NULL &&
-		   strcmp(t->str->text, f->str->text) == 0 &&
-		   !(t->ohash->obj->ctrl->funcdefs[t->index].class &
-		     C_UNDEFINED)) {
-		message(", /%s", t->ohash->chain.name);
-	    }
-	    message(")\012");	/* LF */
+	    c_error("  %s (/%s, %s)", f->chain.name, t->ohash->chain.name,
+		    ((vfh *) t->chain.next)->ohash->chain.name);
 	} else if (t != (vfh *) NULL && t->ohash == (oh *) NULL &&
 		   strcmp(t->str->text, f->str->text) == 0 &&
 		   !(PROTO_CLASS(functions[f->index].proto) & C_PRIVATE)) {
@@ -1317,12 +1311,10 @@ static void vfh_lclear()
  * NAME:	control->chkfuncs()
  * DESCRIPTION:
  */
-bool ctrl_chkfuncs(file)
-char *file;
+bool ctrl_chkfuncs()
 {
     if (nfclash != 0) {
-	message("\"/%s.c\": inherited multiple instances of:\012",	/* LF */
-		file);
+	c_error("inherited multiple instances of:");
 	vfh_lclear();
 	return FALSE;
     }

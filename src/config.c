@@ -564,6 +564,10 @@ char *configfile, *dumpfile;
     header.b[17] = sizeof(align);			     /* struct align */
 
     starttime = boottime = P_time();
+    if (ec_push((ec_ftn) NULL)) {
+	message((char *) NULL);
+	fatal("error during initialization");
+    }
     if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */
 	call_driver_object("initialize", 0);
@@ -576,6 +580,8 @@ char *configfile, *dumpfile;
 	call_driver_object("restored", 0);
     }
     i_del_value(sp++);
+    ec_pop();
+    d_export();
 
     /* initialize communications */
     m_static();

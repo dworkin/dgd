@@ -1152,6 +1152,7 @@ int pop;
     case N_OR:
     case N_RSHIFT:
     case N_SUB:
+    case N_SUM:
     case N_XOR:
 	d1 = opt_binop(m);
 	return (d1 == 1) ? !pop : d1;

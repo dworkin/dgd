@@ -106,20 +106,13 @@ char **argv;
 	return 2;
     }
 
-    if (ec_push((ec_ftn) NULL)) {
-	message((char *) NULL);
-	fatal("error during initialization");
-    }
     if (argc == 2) {
 	conf_init(argv[1], (char *) NULL);
     } else {
 	conf_init(argv[1], argv[2]);
     }
-    ec_pop();
-    d_export();
 
     while (ec_push((ec_ftn) errhandler)) {
-	i_clear();
 	d_export();
 	comm_flush(TRUE);
     }
@@ -127,6 +120,7 @@ char **argv;
     for (;;) {
 	P_getevent();
 
+	i_clear();
 	o_clean();
 
 # ifdef DEBUG

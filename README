@@ -1,20 +1,3 @@
-This is DGD 1.0.29, an experimental version.  It is <not> the promised 1.1
-release.  I release it because 1.1 will be dumpfile-compatible with 1.0.29,
-and because the last official release was almost a year ago.
-
-Many things have changed in the auto object and driver object: most notably,
-lock() has been replaced by a more general scheme, and compiling of objects
-from LPC files no longer happens automatically.  It is still possible, with
-some adjustments, to run anything that previously ran on 1.0.9.
-
-This release is not for the faint of heart: it is not dumpfile-compatible
-with 1.0.9, some new features are only documented in the Changelog, and
-the 2.4.5 simulation won't run on it out of the box.  Version 1.0.9 has
-shown to be very stable; if you're running a MUD on 1.0.9 or 1.0.9.1,
-upgrading may not be worth the efford at this moment.  If your MUD uses
-state dumps, it may not even be possible (yet).
-
-If, on the other hand, you are creating a new mudlib for DGD, and you have
-to keep an eye on the Changelog anyhow -- you should consider upgrading
-now.  The dumpfile format won't change again, and the changed feature set
-offers better support for continuous MUDs.
+Once again, this is not the promised version 1.1, but a release made because
+the status of DGD has changed.  Read the files Copyright and doc/Commercial
+for details.

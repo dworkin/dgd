@@ -305,7 +305,7 @@ char *argv[];
     } else {
 	printf("%d, iinherits,\n", ctrl->niinherits);
     }
-    printf("%ldL,\n", ctrl->compiled);
+    printf("%ldL,\n", (long) ctrl->compiled);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
     } else {
@@ -314,7 +314,8 @@ char *argv[];
     if (ctrl->nstrings == 0) {
 	printf("0, 0, 0, 0,\n");
     } else {
-	printf("%u, sstrings, stext, %luL,\n", ctrl->nstrings, ctrl->strsize);
+	printf("%u, sstrings, stext, %luL,\n", ctrl->nstrings,
+	       (unsigned long) ctrl->strsize);
     }
     if (nfuncs == 0) {
 	printf("0, 0,\n");

@@ -28,9 +28,7 @@ ec_ftn handler;
 	error("Too many nested error contexts");
     }
     esp->f = cframe;
-    if (esp->f != (frame *) NULL) {
-	esp->offset = cframe->fp - sp;
-    }
+    esp->offset = cframe->fp - sp;
 
     esp->handler = handler;
     return &(esp++)->env;
@@ -72,8 +70,9 @@ void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
 char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     jmp_buf env;
-    value *oldsp;
     register context *e;
+    frame *f;
+    int offset;
     ec_ftn handler;
 
     if (format != (char *) NULL) {
@@ -82,8 +81,9 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 
     ec_pop();
     e = esp;
+    f = e->f;
+    offset = e->offset;
     memcpy(&env, &e->env, sizeof(jmp_buf));
-    oldsp = (e->f != (frame *) NULL) ? e->f->fp - e->offset : (value *) NULL;
 
     do {
 	if (e->handler != (ec_ftn) NULL) {
@@ -94,7 +94,7 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	}
     } while (--e >= stack);
 
-    i_set_sp(oldsp);
+    i_set_sp(f->fp - offset);
     longjmp(env, 1);
 }
 
