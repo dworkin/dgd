@@ -304,6 +304,7 @@ int kf_ge()
 	    str_del(sp->u.string);
 	    sp++;
 	    str_del(sp->u.string);
+	    sp->type = T_NUMBER;
 	    sp->u.number = flag;
 	    return 0;
 	}
@@ -364,6 +365,7 @@ int kf_gt()
 	    str_del(sp->u.string);
 	    sp++;
 	    str_del(sp->u.string);
+	    sp->type = T_NUMBER;
 	    sp->u.number = flag;
 	    return 0;
 	}
@@ -424,6 +426,7 @@ int kf_le()
 	    str_del(sp->u.string);
 	    sp++;
 	    str_del(sp->u.string);
+	    sp->type = T_NUMBER;
 	    sp->u.number = flag;
 	    return 0;
 	}
@@ -510,6 +513,7 @@ int kf_lt()
 	    str_del(sp->u.string);
 	    sp++;
 	    str_del(sp->u.string);
+	    sp->type = T_NUMBER;
 	    sp->u.number = flag;
 	    return 0;
 	}
