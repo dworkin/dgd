@@ -105,7 +105,7 @@ static open(mixed *tls)
     }
 # ifdef SYS_NETWORKING
     else if (outbound) {
-	user->login();
+	user->login(nil);
     }
 # endif
 }
