@@ -1,0 +1,26 @@
+port_number	= 2000;			/* TCP/IP port number (not yet used) */
+directory	= "/usr/home/clay/dgd/2.4.5";	/* base directory (MUST be absolute) */
+typechecking	= 0;			/* global typechecking */
+
+swap_file	= "../tmp/swap";	/* swap file (not yet used) */
+swap_size	= 1024;			/* # sectors in swap file */
+swap_cache	= 100;			/* # sectors in swap cache */
+swap_sector	= 512;			/* swap sector size */
+
+include_file	= "/dgd/include/std.h";	/* standard include file */
+include_dirs	= ({ "/dgd/include", "/room" }); /* directories to search */
+auto_object	= "/dgd/lib/auto";	/* auto inherited object */
+driver_object	= "/dgd/sys/driver";	/* driver object */
+create		= "create";		/* name of create function */
+
+value_stack	= 1000;			/* value stack */
+call_stack	= 40;			/* function call stack */
+reserved_stack	= 10;			/* reserved function call stack */
+max_cost	= 200000;		/* max execution cost */
+array_size	= 1000;			/* max array size */
+objects		= 800;			/* max # of objects */
+call_outs	= 1000;			/* max # of call_outs */
+
+users		= 1;			/* max # of users */
+editors		= 2;			/* max # of editor sessions */
+ed_tmpfile	= "../tmp/ed";		/* proto editor tmpfile */
