@@ -155,11 +155,11 @@ void conf_dump()
     if (!o_dump(fd)) {
 	fatal("failed to dump object table");
     }
-    if (!pc_dump(fd)) {
-	fatal("failed to dump precompiled objects");
-    }
     if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
+    }
+    if (!pc_dump(fd)) {
+	fatal("failed to dump precompiled objects");
     }
 
     lseek(fd, 0L, SEEK_SET);
@@ -185,9 +185,9 @@ int fd;
     sw_restore(fd, (int) info.sectorsz);
     kf_restore(fd);
     o_restore(fd);
-    pc_restore(fd);
     starttime = P_time();
     co_restore(fd, starttime);
+    pc_restore(fd);
 }
 
 /*
@@ -437,8 +437,7 @@ char *configfile, *dumpfile;
     c_init(conf[AUTO_OBJECT].u.str,
 	   conf[DRIVER_OBJECT].u.str,
 	   conf[INCLUDE_FILE].u.str,
-	   dirs,
-	   (int) conf[TYPECHECKING].u.num);
+	   dirs);
 
     m_dynamic();
 
@@ -555,7 +554,7 @@ char *configfile, *dumpfile;
     s = 0x1234;
     i = 0x12345678L;
     header.b[0] = 1;				/* valid dump flag */
-    header.b[1] = 1;				/* dump file version number */
+    header.b[1] = 2;				/* dump file version number */
     header.b[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
     header.b[3] = sizeof(uindex);		/* sizeof uindex */
     header.b[4] = sizeof(long);			/* sizeof long */
@@ -618,6 +617,15 @@ char *conf_base_dir()
 char *conf_driver()
 {
     return conf[DRIVER_OBJECT].u.str;
+}
+
+/*
+ * NAME:	config->typechecking()
+ * DESCRIPTION:	return the global typechecking flag
+ */
+bool conf_typechecking()
+{
+    return (bool) conf[TYPECHECKING].u.num;
 }
 
 /*

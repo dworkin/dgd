@@ -382,7 +382,8 @@ int kf_save_object()
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
-		    (var->type != T_INT || var->u.number != 0)) {
+		    (var->type != T_INT || var->u.number != 0) &&
+		    (var->type != T_FLOAT || !VFLT_ISZERO(var))) {
 		    /*
 		     * don't save object values or 0
 		     */
@@ -879,9 +880,9 @@ int kf_restore_object()
 	    ctrl = o_control(inh->obj);
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
-		if (!(v->class & C_STATIC) && v->type != T_FLOAT &&
-		    var->type != T_OBJECT) {
-		    d_assign_var(data, var, &zero_value);
+		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
+		    d_assign_var(data, var, (v->type == T_FLOAT) ?
+					     &zero_float : &zero_value);
 		}
 		nvars++;
 	    }
@@ -968,6 +969,15 @@ int kf_restore_object()
 			 * found the proper variable to restore
 			 */
 			buf = restore_value(buf, &tmp);
+			if (v->type != tmp.type && v->type != T_MIXED &&
+			    conf_typechecking() &&
+			    (tmp.type != T_INT || tmp.u.number != 0 ||
+			     v->type == T_FLOAT) &&
+			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
+			    i_ref_value(&tmp);
+			    i_del_value(&tmp);
+			    error("value has wrong type");
+			}
 			d_assign_var(data, var, &tmp);
 			if (*buf++ != LF) {
 			    error("'\\n' expected");

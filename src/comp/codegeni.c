@@ -538,8 +538,9 @@ register node *n;
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static int cg_funargs(n)
+static int cg_funargs(n, lv)
 register node *n;
+bool lv;
 {
     register int i;
 
@@ -551,9 +552,19 @@ register node *n;
 	n = n->r.right;
     }
     if (n->type == N_SPREAD) {
+	register int type;
+
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_SPREAD, n->line);
-	code_byte(n->mod);
+	type = n->l.left->mod & ~(1 << REFSHIFT);
+	if (lv && type != T_MIXED) {
+	    /* typechecked lvalues */
+	    code_instr(I_SPREAD | I_TYPE_BIT, n->line);
+	    code_byte(n->mod);
+	    code_byte((type & T_REF) ? T_ARRAY : type);
+	} else {
+	    code_instr(I_SPREAD, n->line);
+	    code_byte(n->mod);
+	}
     } else {
 	cg_expr(n, FALSE);
     }
@@ -578,55 +589,62 @@ unsigned short type;
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
-static void cg_lvalue(n)
+static void cg_lvalue(n, type)
 register node *n;
+int type;
 {
+    register node *m;
+    register int typeflag;
+
+    typeflag = (type != 0) ? I_TYPE_BIT : 0;
+
     if (n->type == N_CAST) {
 	n = n->l.left;
     }
     switch (n->type) {
     case N_LOCAL:
-	code_instr(I_PUSH_LOCAL_LVALUE, n->line);
+	code_instr(I_PUSH_LOCAL_LVALUE | typeflag, n->line);
 	code_byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_GLOBAL:
-	code_instr(I_PUSH_GLOBAL_LVALUE, n->line);
+	code_instr(I_PUSH_GLOBAL_LVALUE | typeflag, n->line);
 	code_word((int) n->r.number);
 	break;
 
     case N_INDEX:
-	switch (n->l.left->type) {
+	m = n->l.left;
+	if (m->type == N_CAST) {
+	    m = m->l.left;
+	}
+	switch (m->type) {
 	case N_LOCAL:
-	    code_instr(I_PUSH_LOCAL_LVALUE, n->l.left->line);
-	    code_byte(nparams - (int) n->l.left->r.number - 1);
+	    code_instr(I_PUSH_LOCAL_LVALUE, m->line);
+	    code_byte(nparams - (int) m->r.number - 1);
 	    break;
 
 	case N_GLOBAL:
-	    code_instr(I_PUSH_GLOBAL_LVALUE, n->l.left->line);
-	    code_word((int) n->l.left->r.number);
+	    code_instr(I_PUSH_GLOBAL_LVALUE, m->line);
+	    code_word((int) m->r.number);
 	    break;
 
 	case N_INDEX:
-	    cg_expr(n->l.left->l.left, FALSE);
-	    cg_expr(n->l.left->r.right, FALSE);
-	    code_instr(I_INDEX_LVALUE, n->l.left->line);
+	    cg_expr(m->l.left, FALSE);
+	    cg_expr(m->r.right, FALSE);
+	    code_instr(I_INDEX_LVALUE, m->line);
 	    break;
 
-	case N_CAST:
-	    if (n->l.left->mod == T_STRING) {
-		cg_lvalue(n->l.left);
-		cg_cast(T_STRING);
-		break;
-	    }
-	    /* fall through */
 	default:
-	    cg_expr(n->l.left, FALSE);
+	    cg_expr(m, FALSE);
 	    break;
 	}
 	cg_expr(n->r.right, FALSE);
-	code_instr(I_INDEX_LVALUE, n->line);
+	code_instr(I_INDEX_LVALUE | typeflag, n->line);
 	break;
+    }
+
+    if (typeflag != 0) {
+	code_byte((type & T_REF) ? T_ARRAY : type);
     }
 }
 
@@ -634,10 +652,11 @@ register node *n;
  * NAME:	codegen->fetch()
  * DESCRIPTION:	generate code for a fetched lvalue
  */
-static void cg_fetch(n)
+static void cg_fetch(n, type)
 node *n;
+int type;
 {
-    cg_lvalue(n);
+    cg_lvalue(n, type);
     code_instr(I_FETCH, 0);
     if (n->type == N_CAST) {
 	cg_cast(n->mod);
@@ -652,12 +671,13 @@ static void cg_asgnop(n, op)
 register node *n;
 int op;
 {
-    cg_fetch(n->l.left);
+    if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
+	cg_fetch(n->l.left, n->l.left->mod);
+    } else {
+	cg_fetch(n->l.left, 0);
+    }
     cg_expr(n->r.right, FALSE);
     code_kfun(op, n->line);
-    if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
-	cg_cast(n->l.left->mod);
-    }
     code_instr(I_STORE, 0);
 }
 
@@ -715,13 +735,13 @@ register int pop;
 	break;
 
     case N_ADD_EQ_1:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
 	break;
 
     case N_ADD_EQ_1_INT:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
@@ -758,7 +778,12 @@ register int pop;
 	break;
 
     case N_ASSIGN:
-	cg_lvalue(n->l.left);
+	if (n->r.right->type == N_CAST) {
+	    cg_lvalue(n->l.left, n->r.right->mod);
+	    n->r.right = n->r.right->l.left;
+	} else {
+	    cg_lvalue(n->l.left, 0);
+	}
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_STORE, n->line);
 	break;
@@ -821,7 +846,7 @@ register int pop;
 	break;
 
     case N_FUNC:
-	i = cg_funargs(n->l.left);
+	i = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
@@ -1004,7 +1029,7 @@ register int pop;
 	break;
 
     case N_LVALUE:
-	cg_lvalue(n->l.left);
+	cg_lvalue(n->l.left, (n->l.left->mod != T_MIXED) ? n->l.left->mod : 0);
 	break;
 
     case N_MOD:
@@ -1093,11 +1118,6 @@ register int pop;
     case N_OR_EQ_INT:
 	cg_asgnop(n, KF_OR_INT);
 	break;
-
-    case N_PAIR:
-	cg_expr(n->l.left, pop);
-	cg_expr(n->r.right, TRUE);
-	return;
 
     case N_QUEST:
 	if (n->r.right->l.left != (node *) NULL) {
@@ -1235,13 +1255,13 @@ register int pop;
 	break;
 
     case N_SUB_EQ_1:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
 	break;
 
     case N_SUB_EQ_1_INT:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
@@ -1310,7 +1330,7 @@ register int pop;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    code_kfun(KF_NEG, 0);
 	    code_instr(I_STORE, 0);
 	} else {
@@ -1320,7 +1340,7 @@ register int pop;
 
     case N_XOR_EQ_INT:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    code_kfun(KF_NEG_INT, 0);
 	    code_instr(I_STORE, 0);
 	} else {
@@ -1329,28 +1349,28 @@ register int pop;
 	break;
 
     case N_MIN_MIN:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
 	code_kfun((n->mod == T_INT) ? KF_ADD1_INT : KF_ADD1, 0);
 	break;
 
     case N_MIN_MIN_INT:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
 	code_kfun(KF_ADD1_INT, 0);
 	break;
 
     case N_PLUS_PLUS:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
 	code_kfun((n->mod == T_INT) ? KF_SUB1_INT : KF_SUB1, 0);
 	break;
 
     case N_PLUS_PLUS_INT:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	code_kfun(KF_SUB1_INT, 0);

@@ -1,4 +1,4 @@
-extern void	 c_init		P((char*, char*, char*, char**, int));
+extern void	 c_init		P((char*, char*, char*, char**));
 extern object	*c_compile	P((char*));
 extern int	 c_autodriver	P((void));
 extern void 	 c_error	();

@@ -1201,21 +1201,6 @@ int pop;
 	side_add(m, opt_expr(&n->l.left, TRUE));
 	return opt_expr(m, pop);
 
-    case N_PAIR:
-	d1 = opt_expr(&n->l.left, pop);
-	oldside = side_start(&side, &olddepth);
-	d2 = opt_expr(&n->r.right, FALSE);
-	d1 = max3(d1, d2, side_end(&n->r.right, side, oldside, olddepth));
-	n = n->r.right;
-	if (n->type == N_COMMA) {
-	    node *t;
-
-	    t = n->l.left;
-	    n->l.left = n->r.right;
-	    n->r.right = t;
-	}
-	return d1;
-
     case N_LAND:
 	if (n->l.left->type == N_TST || n->l.left->type == N_TSTF ||
 	    n->l.left->type == N_TSTI) {

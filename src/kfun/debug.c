@@ -312,20 +312,41 @@ int func;
 	    break;
 
 	case I_PUSH_LOCAL_LVALUE:
-	    codesize = 2;
-	    sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1S(pc));
+	    if (pop) {
+		pop = 0;
+		codesize = 3;
+		u = FETCH1S(pc);
+		sprintf(buffer, "PUSH_LOCAL_LVALUE %d %s", (short) u,
+			i_typename(FETCH1U(pc)));
+	    } else {
+		codesize = 2;
+		sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1S(pc));
+	    }
 	    show_instr(buffer);
 	    break;
 
 	case I_PUSH_GLOBAL_LVALUE:
-	    codesize = 3;
-	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    cc = ctrl->inherits[u].obj->ctrl;
-	    d_get_vardefs(cc);
-	    sprintf(buffer, "PUSH_GLOBAL_LVALUE %d %d (%s)", u, u2,
-		    d_get_strconst(cc, cc->vardefs[u2].inherit,
-				   cc->vardefs[u2].index)->text);
+	    if (pop) {
+		pop = 0;
+		codesize = 4;
+		u = FETCH1U(pc);
+		u2 = FETCH1U(pc);
+		cc = ctrl->inherits[u].obj->ctrl;
+		d_get_vardefs(cc);
+		sprintf(buffer, "PUSH_GLOBAL_LVALUE %d %d (%s) %s", u, u2,
+			d_get_strconst(cc, cc->vardefs[u2].inherit,
+				       cc->vardefs[u2].index)->text,
+			i_typename(FETCH1U(pc)));
+	    } else {
+		codesize = 3;
+		u = FETCH1U(pc);
+		u2 = FETCH1U(pc);
+		cc = ctrl->inherits[u].obj->ctrl;
+		d_get_vardefs(cc);
+		sprintf(buffer, "PUSH_GLOBAL_LVALUE %d %d (%s)", u, u2,
+			d_get_strconst(cc, cc->vardefs[u2].inherit,
+				       cc->vardefs[u2].index)->text);
+	    }
 	    show_instr(buffer);
 	    break;
 
@@ -335,8 +356,15 @@ int func;
 	    break;
 
 	case I_INDEX_LVALUE:
-	    codesize = 1;
-	    show_instr("INDEX_LVALUE");
+	    if (pop) {
+		pop = 0;
+		codesize = 2;
+		sprintf(buffer, "INDEX_LVALUE %s", i_typename(FETCH1U(pc)));
+		show_instr(buffer);
+	    } else {
+		codesize = 1;
+		show_instr("INDEX_LVALUE");
+	    }
 	    break;
 
 	case I_AGGREGATE:
@@ -352,8 +380,15 @@ int func;
 	    break;
 
 	case I_SPREAD:
-	    codesize = 2;
-	    sprintf(buffer, "SPREAD %d", FETCH1S(pc));
+	    if (pop) {
+		pop = 0;
+		codesize = 3;
+		u = FETCH1S(pc);
+		sprintf(buffer, "SPREAD %d %s", u, i_typename(FETCH1U(pc)));
+	    } else {
+		codesize = 2;
+		sprintf(buffer, "SPREAD %d", FETCH1S(pc));
+	    }
 	    show_instr(buffer);
 	    break;
 

@@ -992,3 +992,9 @@ DGD 1.1
    the next callout never to be started.
  - Fixed a bad memory fragmentation problem in case a block of memory was
    allocated that was larger than the dynamic chunk.
+ - DUMPFILE FORMAT CHANGED AGAIN.  This unfortunately became necessary because
+   of missing information for dumped precompiled objects.  When the dumpfile
+   format stabilizes again, it will be marked in this file.
+ - restore_object() now does typechecking, if global typechecking is enabled.
+ - Faster code with global typechecking.
+ - Re-introduced keyword "atomic".

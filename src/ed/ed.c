@@ -90,3 +90,7 @@ void i_set_sp(newsp)
 struct _value_ *newsp;
 {
 }
+
+void interrupt()
+{
+}

@@ -35,6 +35,7 @@
 
 # define I_LINE_MASK		0xc0	/* line add bits */
 # define I_POP_BIT		0x20	/* pop 1 after instruction */
+# define I_TYPE_BIT		I_POP_BIT /* lvalue typechecks assignment */
 # define I_LINE_SHIFT		6
 
 
@@ -97,7 +98,7 @@ typedef struct _value_ {
 # define C_STATIC	0x02
 # define C_NOMASK	0x04
 # define C_VARARGS	0x08
-# define C_RESERVED	0x10		/* reserved for add-on packages */
+# define C_ATOMIC	0x10
 # define C_TYPECHECKED	0x20
 # define C_COMPILED	0x40
 # define C_UNDEFINED	0x80
@@ -135,11 +136,11 @@ extern void		i_odest		P((object*));
 extern void		i_string	P((int, unsigned int));
 extern void		i_aggregate	P((unsigned int));
 extern void		i_map_aggregate	P((unsigned int));
-extern int		i_spread	P((int));
+extern int		i_spread	P((int, int));
 extern void		i_global	P((int, int));
-extern void		i_global_lvalue	P((int, int));
+extern void		i_global_lvalue	P((int, int, int));
 extern void		i_index		P((void));
-extern void		i_index_lvalue	P((void));
+extern void		i_index_lvalue	P((int));
 extern char	       *i_typename	P((unsigned int));
 extern void		i_cast		P((value*, unsigned int));
 extern void		i_fetch		P((void));
@@ -163,7 +164,7 @@ extern void		i_runtime_error	P((int));
 extern void		i_clear		P((void));
 
 extern frame *cframe;
-extern value *sp, zero_value;
+extern value *sp, zero_value, zero_float;
 extern Int ticks;
 
 # define i_add_ticks(e)	(ticks -= (e))

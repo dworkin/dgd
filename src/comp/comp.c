@@ -251,7 +251,7 @@ char *argv[];
     /* initialize */
     conf_init(argv[1], (char *) NULL);
 
-    len = strlen(file = path_resolve(argv[2]));
+    len = strlen(file = path_resolve(file));
     file[len - 2] = '\0';
     sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
 	    (unsigned short) P_random());
@@ -432,6 +432,11 @@ int fd;
 
 void pc_restore(fd)
 int fd;
+{
+}
+
+void pc_remap(from, to)
+object *from, *to;
 {
 }
 

@@ -54,14 +54,17 @@ array *pc_list		P((void));
 void   pc_control	P((control*, object*));
 bool   pc_dump		P((int));
 void   pc_restore	P((int));
+void   pc_remap		P((object*, object*));
 
-# define PUSH_NUMBER	(--sp)->type = T_INT, sp->u.number =
-# define push_lvalue(v)	((--sp)->type = T_LVALUE, sp->u.lval = (v))
-# define store()	(i_store(sp + 1, sp), sp[1] = sp[0], sp++)
-# define store_int()	(i_store(sp + 1, sp), sp += 2, sp[-2].u.number)
-# define truthval(v)	(((v)->type != T_INT || (v)->u.number != 0) && \
-			 ((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
-# define i_foffset(n)	(&cframe->ctrl->funcalls[2L * (cframe->foffset + (n))])
+# define PUSH_NUMBER		(--sp)->type = T_INT, sp->u.number =
+# define push_lvalue(v, t)	((--sp)->type = T_LVALUE, sp->oindex = (t), \
+				 sp->u.lval = (v))
+# define store()		(i_store(sp + 1, sp), sp[1] = sp[0], sp++)
+# define store_int()		(i_store(sp + 1, sp), sp += 2, sp[-2].u.number)
+# define truthval(v)		(((v)->type != T_INT || (v)->u.number != 0) && \
+			 	((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
+# define i_foffset(n)		(&cframe->ctrl->funcalls \
+						[2L * (cframe->foffset + (n))])
 
 void call_kfun		P((int));
 void call_kfun_arg	P((int, int));

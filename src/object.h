@@ -30,6 +30,7 @@ extern void		   o_init	P((unsigned int));
 extern object		  *o_new	P((char*, object*, struct _control_*));
 extern void		   o_del	P((object*));
 extern object		  *o_object	P((unsigned int, Uint));
+extern object		  *o_objref	P((unsigned int));
 extern char		  *o_name	P((object*));
 extern object		  *o_find	P((char*));
 extern struct _control_	  *o_control	P((object*));

@@ -28,6 +28,7 @@ static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 
 value zero_value = { T_INT, TRUE };
+value zero_float = { T_FLOAT, TRUE };
 
 /*
  * NAME:	interpret->init()
@@ -339,8 +340,8 @@ register unsigned int size;
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-int i_spread(n)
-register int n;
+int i_spread(n, vtype)
+register int n, vtype;
 {
     register array *a;
     register int i;
@@ -370,6 +371,7 @@ register int n;
 	ilvp->type = T_ARRAY;
 	(ilvp++)->u.array = a;
 	(--sp)->type = T_ALVALUE;
+	sp->oindex = vtype;
 	sp->u.number = i;
     }
 
@@ -395,14 +397,16 @@ register int inherit, index;
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(inherit, index)
-register int inherit, index;
+void i_global_lvalue(inherit, index, vtype)
+register int inherit;
+int index, vtype;
 {
     i_add_ticks(4);
     if (inherit != 0) {
 	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     (--sp)->type = T_LVALUE;
+    sp->oindex = vtype;
     sp->u.lval = d_get_variable(cframe->data, inherit + index);
 }
 
@@ -476,7 +480,8 @@ void i_index()
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue()
+void i_index_lvalue(vtype)
+int vtype;
 {
     register int i;
     register value *lval, *ival, *val;
@@ -499,6 +504,7 @@ void i_index_lvalue()
 	ilvp->type = T_ARRAY;
 	(ilvp++)->u.array = lval->u.array;
 	lval->type = T_ALVALUE;
+	lval->oindex = vtype;
 	lval->u.number = i;
 	return;
 
@@ -507,6 +513,7 @@ void i_index_lvalue()
 	(ilvp++)->u.array = lval->u.array;
 	*ilvp++ = *ival;
 	lval->type = T_MLVALUE;
+	lval->oindex = vtype;
 	return;
 
     case T_LVALUE:
@@ -525,6 +532,7 @@ void i_index_lvalue()
 	    (ilvp++)->u.lval = lval->u.lval;
 	    /* indexed string lvalues are not referenced */
 	    lval->type = T_SLVALUE;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -537,6 +545,7 @@ void i_index_lvalue()
 	    ilvp->type = T_ARRAY;
 	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    lval->type = T_ALVALUE;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -545,6 +554,7 @@ void i_index_lvalue()
 	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
 	    *ilvp++ = *ival;
 	    lval->type = T_MLVALUE;
+	    lval->oindex = vtype;
 	    return;
 	}
 	break;
@@ -561,6 +571,7 @@ void i_index_lvalue()
 	    ilvp->type = T_INT;
 	    (ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -573,6 +584,7 @@ void i_index_lvalue()
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
 	    ilvp[-1].u.array = val->u.array;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -582,6 +594,7 @@ void i_index_lvalue()
 	    ilvp[-1].u.array = val->u.array;
 	    *ilvp++ = *ival;
 	    lval->type = T_MLVALUE;
+	    lval->oindex = vtype;
 	    return;
 	}
 	break;
@@ -596,6 +609,7 @@ void i_index_lvalue()
 	    }
 	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -610,6 +624,7 @@ void i_index_lvalue()
 	    arr_del(ilvp[-1].u.array);	/* has to be second */
 	    ilvp[-1].u.array = val->u.array;
 	    lval->type = T_ALVALUE;
+	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
@@ -619,6 +634,7 @@ void i_index_lvalue()
 	    ilvp[-2].u.array = val->u.array;
 	    i_del_value(&ilvp[-1]);
 	    ilvp[-1] = *ival;
+	    lval->oindex = vtype;
 	    return;
 	}
 	break;
@@ -671,12 +687,6 @@ register unsigned int type;
 {
     char *tname;
 
-    if (val->type == T_LVALUE) {
-	val = val->u.lval;
-    } else if (val->type == T_ALVALUE) {
-	val = &ilvp[-1].u.array->elts[val->u.number];
-    }
-    /* other lvalue types will not occur */
     if (val->type != type &&
 	(val->type != T_INT || val->u.number != 0 || type == T_FLOAT)) {
 	tname = i_typename(type);
@@ -749,6 +759,10 @@ register value *lval, *val;
     register value *v;
     register unsigned short i;
     register array *a;
+
+    if (lval->oindex != 0) {
+	i_cast(val, lval->oindex);
+    }
 
     i_add_ticks(1);
     switch (lval->type) {
@@ -1362,6 +1376,11 @@ register char *pc;
     size = 0;
 
     for (;;) {
+# ifdef DEBUG
+	if (sp < ilvp + MIN_STACK) {
+	    fatal("out of value stack");
+	}
+# endif
 	if (--ticks <= 0) {
 	    if (noticks) {
 		ticks = 0x7fffffff;
@@ -1435,25 +1454,28 @@ register char *pc;
 	case I_PUSH_LOCAL_LVALUE:
 	    (--sp)->type = T_LVALUE;
 	    u = FETCH1S(pc);
+	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
 	    sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
-	    break;
+	    continue;
 
 	case I_PUSH_GLOBAL_LVALUE:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
 		u = f->ctrl->inherits[f->p_index + u].varoffset;
 	    }
+	    u += FETCH1U(pc);
 	    (--sp)->type = T_LVALUE;
-	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
-	    break;
+	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    sp->u.lval = d_get_variable(f->data, u);
+	    continue;
 
 	case I_INDEX:
 	    i_index();
 	    break;
 
 	case I_INDEX_LVALUE:
-	    i_index_lvalue();
-	    break;
+	    i_index_lvalue((instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    continue;
 
 	case I_AGGREGATE:
 	    i_aggregate(FETCH2U(pc, u));
@@ -1464,8 +1486,9 @@ register char *pc;
 	    break;
 
 	case I_SPREAD:
-	    size = i_spread(FETCH1S(pc));
-	    break;
+	    u = FETCH1S(pc);
+	    size = i_spread((short) u, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    continue;
 
 	case I_CAST:
 	    i_cast(sp, FETCH1U(pc));
@@ -1610,11 +1633,6 @@ register char *pc;
 	    return;
 	}
 
-# ifdef DEBUG
-	if (sp < ilvp + MIN_STACK) {
-	    fatal("out of value stack");
-	}
-# endif
 	if (instr & I_POP_BIT) {
 	    /* pop the result of the last operation (never an lvalue) */
 	    i_del_value(sp++);

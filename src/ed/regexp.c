@@ -466,7 +466,7 @@ int ic;
 		    register char *q;
 
 		    q = strchr(text + idx, toupper(rx->firstc));
-		    if (q != (char*)NULL && (p == (char *) NULL || p > q)) {
+		    if (q != (char*) NULL && (p == (char *) NULL || p > q)) {
 			p = q;
 		    }
 		}

@@ -114,56 +114,59 @@ unsigned short type;
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
-static void cg_lvalue(n)
+static void cg_lvalue(n, type)
 register node *n;
+register int type;
 {
+    register node *m;
+
+    if (type & T_REF) {
+	type = T_ARRAY;
+    }
+
     if (n->type == N_CAST) {
 	n = n->l.left;
     }
     switch (n->type) {
     case N_LOCAL:
-	output("push_lvalue(%s)", local((int) n->r.number));
+	output("push_lvalue(%s, %d)", local((int) n->r.number), type);
 	break;
 
     case N_GLOBAL:
-	output("i_global_lvalue(%d, %d)", ((int) n->r.number >> 8) & 0xff, 
-	       ((int) n->r.number) & 0xff);
+	output("i_global_lvalue(%d, %d, %d)", ((int) n->r.number >> 8) & 0xff, 
+	       ((int) n->r.number) & 0xff, type);
 	break;
 
     case N_INDEX:
-	switch (n->l.left->type) {
+	m = n->l.left;
+	if (m->type == N_CAST) {
+	    m = m->l.left;
+	}
+	switch (m->type) {
 	case N_LOCAL:
-	    output("push_lvalue(%s)", local((int) n->l.left->r.number));
+	    output("push_lvalue(%s, 0)", local((int) m->r.number));
 	    break;
 
 	case N_GLOBAL:
-	    output("i_global_lvalue(%d, %d)",
-		   ((int) n->l.left->r.number >> 8) & 0xff,
-		   ((int) n->l.left->r.number) & 0xff);
+	    output("i_global_lvalue(%d, %d, 0)",
+		   ((int) m->r.number >> 8) & 0xff,
+		   ((int) m->r.number) & 0xff);
 	    break;
 
 	case N_INDEX:
-	    cg_expr(n->l.left->l.left, PUSH);
+	    cg_expr(m->l.left, PUSH);
 	    comma();
-	    cg_expr(n->l.left->r.right, PUSH);
-	    output(", i_index_lvalue()");
+	    cg_expr(m->r.right, PUSH);
+	    output(", i_index_lvalue(0)");
 	    break;
 
-	case N_CAST:
-	    if (n->l.left->mod == T_STRING) {
-		cg_lvalue(n->l.left);
-		comma();
-		cg_cast("sp", T_STRING);
-		break;
-	    }
-	    /* fall through */
 	default:
-	    cg_expr(n->l.left, PUSH);
+	    cg_expr(m, PUSH);
 	    break;
 	}
 	comma();
 	cg_expr(n->r.right, PUSH);
-	output(", i_index_lvalue()");
+	output(", i_index_lvalue(%d)", type);
 	break;
     }
 }
@@ -172,10 +175,11 @@ register node *n;
  * NAME:	codegen->fetch()
  * DESCRIPTION:	generate code for a fetched lvalue
  */
-static void cg_fetch(n)
+static void cg_fetch(n, type)
 node *n;
+int type;
 {
-    cg_lvalue(n);
+    cg_lvalue(n, type);
     output(", i_fetch(), ");
     if (n->type == N_CAST) {
 	cg_cast("sp", n->mod);
@@ -227,7 +231,7 @@ char *op;
     if (n->l.left->type == N_LOCAL) {
 	cg_iasgn(n->r.right, op, (int) n->l.left->r.number);
     } else {
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	cg_iasgn(n->r.right, op, -1);
 	output(", store_int()");
     }
@@ -258,7 +262,7 @@ char *op;
 	    output(", %s->u.number = ivar%d", local(i), vars[i]);
 	}
     } else {
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	n = n->r.right;
 	if (n->type == N_INT) {
 	    output("sp->u.number = ((Uint) sp->u.number) %s ", op);
@@ -295,7 +299,7 @@ char *op;
 	    output(", %s->u.number = ivar%d", local(i), vars[i]);
 	}
     } else {
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	n = n->r.right;
 	if (n->type == N_INT) {
 	    output("sp->u.number = %s(sp->u.number, ", op);
@@ -351,7 +355,6 @@ register node *n;
     case N_NOTF:
     case N_OR:
     case N_OR_EQ:
-    case N_PAIR:
     case N_RANGE:
     case N_RSHIFT:
     case N_RSHIFT_EQ:
@@ -392,7 +395,7 @@ register node *n;
 		output("++%s->u.number", local((int) n->l.left->r.number));
 	    }
 	} else {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    output("++sp->u.number, store_int()");
 	}
 	break;
@@ -607,7 +610,7 @@ register node *n;
 		output("--%s->u.number", local((int) n->l.left->r.number));
 	    }
 	} else {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    output("--sp->u.number, store_int()");
 	}
 	break;
@@ -648,7 +651,7 @@ register node *n;
 		output("%s->u.number--", local((int) n->l.left->r.number));
 	    }
 	} else {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    output("sp->u.number--, store_int() + 1");
 	}
 	break;
@@ -661,7 +664,7 @@ register node *n;
 		output("%s->u.number++", local((int) n->l.left->r.number));
 	    }
 	} else {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    output("sp->u.number++, store_int() - 1");
 	}
 	break;
@@ -697,14 +700,14 @@ int op;
 		   local((int) n->l.left->r.number));
 	}
     } else {
-	cg_fetch(n->l.left);
+	if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
+	    cg_fetch(n->l.left, n->l.left->mod);
+	} else {
+	    cg_fetch(n->l.left, 0);
+	}
 	cg_expr(n->r.right, PUSH);
 	comma();
 	kfun(op);
-	if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
-	    comma();
-	    cg_cast("sp", n->l.left->mod);
-	}
 	store();
     }
 }
@@ -808,8 +811,9 @@ register node *n;
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static char *cg_funargs(n)
+static char *cg_funargs(n, lv)
 register node *n;
+bool lv;
 {
     static char buffer[20];
     register int i;
@@ -823,9 +827,14 @@ register node *n;
 	n = n->r.right;
     }
     if (n->type == N_SPREAD) {
+	int type;
+
+	if (!lv || (type=n->l.left->mod & ~(1 << REFSHIFT)) == T_MIXED) {
+	    type = 0;
+	}
 	cg_expr(n->l.left, PUSH);
 	comma();
-	sprintf(buffer, "%d + i_spread(%d)", i, (short) n->mod);
+	sprintf(buffer, "%d + i_spread(%d, %d)", i, (short) n->mod, type);
     } else {
 	cg_expr(n, PUSH);
 	comma();
@@ -835,27 +844,35 @@ register node *n;
 }
 
 /*
- * NAME:	codegen->locals()
- * DESCRIPTION:	generate code to check assignments to local variables
+ * NAME:        codegen->locals()
+ * DESCRIPTION: propagate assignments from local variables to ivars
  */
 static void cg_locals(n)
 register node *n;
 {
-    register node *m;
+    if (n != (node *) NULL) {
+	register node *m;
+	register int i;
 
-    while (n != (node *) NULL) {
-	if (n->type == N_COMMA) {
-	    m = n->l.left->l.left;
+	/* skip non-lvalue arguments */
+	while (n->type == N_PAIR && n->l.left->type != N_LVALUE) {
 	    n = n->r.right;
-	} else {
-	    m = n->l.left;
-	    n = (node *) NULL;
 	}
-	comma();
-	cg_cast(local((int) m->r.number), m->mod);
-	if (vars[m->r.number] != 0 && catch_level == 0) {
-	    output(", ivar%d = %s->u.number", vars[m->r.number],
-		   local((int) m->r.number));
+
+	while (n->type == N_PAIR) {
+	    m = n->l.left;
+	    if (m->l.left->type == N_LOCAL &&
+		vars[i = m->l.left->r.number] != 0) {
+		output(", ivar%d = %s->u.number", vars[i], local(i));
+	    }
+	    n = n->r.right;
+	}
+
+	/* last one can be lvalue or spread array */
+	m = n->l.left;
+	if (n->type == N_LVALUE && m->type == N_LOCAL &&
+	    vars[i = m->r.number] != 0) {
+	    output(", ivar%d = %s->u.number", vars[i], local(i));
 	}
     }
 }
@@ -941,7 +958,7 @@ register int state;
 	break;
 
     case N_ADD_EQ_1:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	kfun(KF_ADD1);
 	store();
 	break;
@@ -979,7 +996,12 @@ register int state;
 	    }
 	    return;
 	}
-	cg_lvalue(n->l.left);
+	if (n->r.right->type == N_CAST) {
+	    cg_lvalue(n->l.left, n->r.right->mod);
+	    n->r.right = n->r.right->l.left;
+	} else {
+	    cg_lvalue(n->l.left, 0);
+	}
 	comma();
 	cg_expr(n->r.right, PUSH);
 	store();
@@ -1069,7 +1091,7 @@ register int state;
 	break;
 
     case N_FUNC:
-	arg = cg_funargs(n->l.left);
+	arg = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
@@ -1079,6 +1101,9 @@ register int state;
 		kfun_arg((short) n->r.number, arg);
 	    } else {
 		kfun((short) n->r.number);
+	    }
+	    if (((n->r.number >> 24) & KFCALL_LVAL) && catch_level == 0) {
+		cg_locals(n->l.left);
 	    }
 	    break;
 
@@ -1185,7 +1210,7 @@ register int state;
 	break;
 
     case N_LVALUE:
-	cg_lvalue(n->l.left);
+	cg_lvalue(n->l.left, (n->l.left->mod != T_MIXED) ? n->l.left->mod : 0);
 	break;
 
     case N_MOD:
@@ -1248,11 +1273,6 @@ register int state;
 
     case N_OR_EQ:
 	cg_asgnop(n, KF_OR);
-	break;
-
-    case N_PAIR:
-	cg_expr(n->l.left, PUSH);
-	cg_locals(n->r.right);
 	break;
 
     case N_QUEST:
@@ -1347,7 +1367,7 @@ register int state;
 	break;
 
     case N_SUB_EQ_1:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	kfun(KF_SUB1);
 	store();
 	break;
@@ -1411,7 +1431,7 @@ register int state;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left);
+	    cg_fetch(n->l.left, 0);
 	    kfun(KF_NEG);
 	    store();
 	} else {
@@ -1420,7 +1440,7 @@ register int state;
 	break;
 
     case N_MIN_MIN:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	kfun(KF_SUB1);
 	store();
 	comma();
@@ -1432,7 +1452,7 @@ register int state;
 	break;
 
     case N_PLUS_PLUS:
-	cg_fetch(n->l.left);
+	cg_fetch(n->l.left, 0);
 	kfun(KF_ADD1);
 	store();
 	comma();

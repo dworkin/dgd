@@ -325,7 +325,7 @@ int nargs;
     register int flen, slen, size;
     register char *f, *x;
     value values[MAX_LOCALS];
-    volatile value *val;
+    static volatile value *val;
     int fl, sl, matches;
     char *s;
     xfloat flt;

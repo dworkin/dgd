@@ -403,37 +403,31 @@ register int len;
     return len;
 }
 
-# define FIRST_KEYWORD	FOR
+# define FIRST_KEYWORD	STRING
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..25 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..26 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
 static int tokenz(key, len)
 register char *key;
-register int len;
+register unsigned int len;
 {
     static char *keyword[] = {
-      "for", "break", "varargs", "mapping", "int", "float", "void", "do",
-      "inherit", "nomask", "case", "catch", "private", "else", "string",
-      "return", "rlimits", "continue", "static", "default", "while",
-      "mixed", "if", "switch", "object"
+      "string", "nomask", "do", "break", "else", "case", "object",
+      "default", "static", "continue", "int", "rlimits", "float", "for",
+      "inherit", "while", "if", "catch", "switch", "mapping", "private",
+      "void", "atomic", "return", "mixed", "varargs"
     };
-
     static char value[] = {
-      1, 14, 10, 7, 15, 16, 1, 16, 6, 0, 0, 4, 0,
-      2, 0, 0, 0, 0, 9, 12, 17, 0, 13, 0, 0, 0
+      15, 17,  1,  0,  0,  7, 19, 11,  7,  0,  7,  0, 19,
+      14,  0, 13,  0,  3,  1,  0,  0, 17, 10,  0,  0,  0
     };
 
-    if (len >= 2) {
-	len = value[key[1] - 'a'] + value[key[len - 2] - 'a'] + 1;
-	if (len >= 1 && len <= 25 && strcmp(keyword[len - 1], key) == 0) {
-	    return len;
-	}
-    }
-    return 0;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 26;
+    return (strcmp(keyword[len], key) == 0) ? len + 1 : 0;
 }
 
 /*

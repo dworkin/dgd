@@ -280,15 +280,14 @@ extern int nerrors;			/* # of errors during parsing */
  * NAME:	compile->init()
  * DESCRIPTION:	initialize the compiler
  */
-void c_init(a, d, i, p, flag)
+void c_init(a, d, i, p)
 char *a, *d, *i, **p;
-int flag;
 {
     auto_object = a;
     driver_object = d;
     include = i;
     paths = p;
-    typechecking = flag | cg_compiled();
+    typechecking = conf_typechecking() | cg_compiled();
 }
 
 /*
@@ -680,7 +679,7 @@ bool global;
 	type = T_MIXED;
     }
     if (global) {
-	if (class & (C_NOMASK | C_VARARGS)) {
+	if (class & (C_ATOMIC | C_NOMASK | C_VARARGS)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);
@@ -1621,7 +1620,7 @@ node *args;
 	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
 		(*arg)->mod = nargs-- - n;
 		/* KFCALL => KFCALL_LVAL, IKFCALL => IKFCALL_LVAL */
-		func->r.number |= 1L << 24;
+		func->r.number |= (long) KFCALL_LVAL << 24;
 	    } else {
 		(*arg)->mod = (unsigned short) -1;
 	    }
@@ -1656,7 +1655,7 @@ node *args;
 	    }
 	    *arg = node_mon(N_LVALUE, (*arg)->mod, *arg);
 	    /* only kfuns can have lvalue parameters */
-	    func->r.number |= 1L << 24;
+	    func->r.number |= (long) KFCALL_LVAL << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
 		   (!c_zero(*arg) || t == T_FLOAT) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {
@@ -1705,55 +1704,17 @@ node *other, *func, *args;
 
 /*
  * NAME:	compile->checkcall()
- * DESCRIPTION:	check assignments in a function call, as well as the
- *		returned value
+ * DESCRIPTION:	check return value of a system call
  */
 node *c_checkcall(n)
-node *n;
+register node *n;
 {
-    register node *t, *a, *l;
-
-    if (n->type == N_FUNC) {
-	if ((n->r.number >> 24) == KFCALL_LVAL ||
-	    (n->r.number >> 24) == IKFCALL_LVAL) {
-	    /*
-	     * the function has lvalue parameters
-	     */
-	    l = (node *) NULL;
-	    a = n->l.left;
-	    while (a != (node *) NULL) {
-		if (a->type == N_PAIR) {
-		    t = a->l.left;
-		    a = a->r.right;
-		} else {
-		    t = a;
-		    a = (node *) NULL;
-		}
-		if (t->type == N_LVALUE && t->l.left->type == N_LOCAL &&
-		    t->mod != T_MIXED) {
-		    /*
-		     * check the assignment
-		     */
-		    t = node_mon(N_CAST, t->mod, t->l.left);
-		    l = (l == (node *) NULL) ? t : node_bin(N_COMMA, 0, t, l);
-		}
-	    }
-
-	    if (l != (node *) NULL) {
-		/*
-		 * append checks for assignments to function call
-		 */
-		return node_bin(N_PAIR, n->mod, n, l);
-	    }
-	}
-
-	if ((n->r.number >> 24) == FCALL &&
-	    n->mod != T_MIXED && n->mod != T_VOID) {
-	    /*
-	     * make sure the return value is as it should be
-	     */
-	    n = node_mon(N_CAST, n->mod, n);
-	}
+    if (n->type == N_FUNC && (n->r.number >> 24) == FCALL &&
+	n->mod != T_MIXED && n->mod != T_VOID) {
+	/*
+	 * make sure the return value is as it should be
+	 */
+	return node_mon(N_CAST, n->mod, n);
     }
 
     return n;

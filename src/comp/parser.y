@@ -60,9 +60,9 @@ static node *comma	P((node*, node*));
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token FOR BREAK VARARGS MAPPING INT FLOAT VOID DO INHERIT NOMASK CASE CATCH
-       PRIVATE ELSE STRING RETURN RLIMITS CONTINUE STATIC DEFAULT WHILE MIXED
-       IF SWITCH OBJECT
+%token STRING NOMASK DO BREAK ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT
+       RLIMITS FLOAT FOR INHERIT WHILE IF CATCH SWITCH MAPPING PRIVATE VOID
+       ATOMIC RETURN MIXED VARARGS
 
 /*
  * composite tokens
@@ -254,6 +254,8 @@ class_specifier
 		{ $$ = C_STATIC | C_PRIVATE; }
 	| STATIC
 		{ $$ = C_STATIC; }
+	| ATOMIC
+		{ $$ = C_ATOMIC; }
 	| NOMASK
 		{ $$ = C_NOMASK; }
 	| VARARGS
@@ -460,7 +462,8 @@ primary_p1_exp
 	| ident	{
 		  $$ = c_variable($1);
 		  if (typechecking) {
-		      if ($$->type == N_GLOBAL && $$->mod != T_MIXED) {
+		      if ($$->type == N_GLOBAL && $$->mod != T_MIXED &&
+			  !conf_typechecking()) {
 			  /*
 			   * global vars might be modified by untypechecked
 			   * functions...

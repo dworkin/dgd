@@ -181,6 +181,16 @@ Uint count;
 }
 
 /*
+ * NAME:	object->objref()
+ * DESCRIPTION:	get a (possibly destructed) object, given the object index only
+ */
+object *o_objref(idx)
+unsigned int idx;
+{
+    return &otab[idx];
+}
+
+/*
  * NAME:	object->name()
  * DESCRIPTION:	return the name of an object
  */
@@ -506,15 +516,9 @@ int fd;
 
 	o->ctrl = (control *) NULL;
 	o->data = (dataspace *) NULL;
-	if (offset != 0 && !(o->flags & O_COMPILED)) {
-	    if (o->flags & O_MASTER) {
-		/* patch inherits */
-		d_patch_ctrl(o->ctrl = d_load_control(o), offset);
-		d_swapout(1);
-	    } else {
-		/* patch master object reference */
-		o->u.master = (object *) ((char *) o->u.master + offset);
-	    }
+	if (offset != 0 && !(o->flags & O_MASTER)) {
+	    /* patch master object reference */
+	    o->u.master = (object *) ((char *) o->u.master + offset);
 	}
 
 	/* check memory */

@@ -172,8 +172,6 @@ extern void		d_export	P((void));
 
 extern uindex		d_swapout	P((int));
 extern void		d_swapsync	P((void));
-extern void		d_patch_ctrl	P((control*, long));
-extern void		d_patch_callout	P((dataspace*, long));
 
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));

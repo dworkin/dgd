@@ -17,9 +17,10 @@
 # define F_CALLOUT		0x20
 # define F_EXTRAVAR		0x40
 
-/* fuzzy bitflags */
+/* bit values for sdataspace->flags */
+# define S_EXTRAVAR		0x01
+
 # define ARR_MOD		0x80000000L	/* in array->index */
-# define EXTRAVAR		0x80000000L	/* in sdata->narrays */
 
 typedef struct {
     uindex nsectors;		/* # sectors in part one */
@@ -39,6 +40,13 @@ typedef struct {
 } scontrol;
 
 typedef struct {
+    uindex oindex;		/* index in object table */
+    uindex funcoffset;		/* function call offset */
+    unsigned short varoffset;	/* variable offset */
+} sinherit;
+
+typedef struct {
+    short flags;		/* dataspace flags */
     uindex nsectors;		/* number of sectors in data space */
     Uint narrays;		/* number of array values */
     Uint eltsize;		/* total size of array elements */
@@ -286,6 +294,9 @@ object *obj;
     } else {
 	scontrol header;
 	register Uint size;
+	register int n;
+	register dinherit *inherits;
+	register sinherit *sinherits;
 
 	/* header */
 	sw_readv((char *) &header, &obj->cfirst, (Uint) sizeof(scontrol),
@@ -301,11 +312,19 @@ object *obj;
 	size += sizeof(scontrol);
 
 	/* inherits */
-	ctrl->ninherits = UCHAR(header.ninherits); /* there is at least one */
-	ctrl->inherits = ALLOC(dinherit, UCHAR(header.ninherits));
-	sw_readv((char *) ctrl->inherits, ctrl->sectors,
-		 UCHAR(header.ninherits) * (Uint) sizeof(dinherit), size);
-	size += UCHAR(header.ninherits) * sizeof(dinherit);
+	ctrl->ninherits = n = UCHAR(header.ninherits); /* at least one */
+	ctrl->inherits = inherits = ALLOC(dinherit, n);
+	sinherits = ALLOCA(sinherit, n);
+	sw_readv((char *) sinherits, ctrl->sectors, n * (Uint) sizeof(sinherit),
+		 size);
+	size += n * sizeof(sinherit);
+	do {
+	    inherits->obj = o_objref(sinherits->oindex);
+	    inherits->funcoffset = sinherits->funcoffset;
+	    (inherits++)->varoffset = (sinherits++)->varoffset;
+	} while (--n > 0);
+	AFREE(sinherits - UCHAR(header.ninherits));
+
 	/* immediate inherits */
 	ctrl->iinhoffset = size;
 	ctrl->niinherits = UCHAR(header.niinherits);
@@ -427,10 +446,9 @@ int extra;
     /* variables */
     data->varoffset = size;
     data->nvariables = data->ctrl->nvariables;
-    if (header.narrays & EXTRAVAR) {
+    if (header.flags & S_EXTRAVAR) {
 	data->flags |= F_EXTRAVAR;
 	data->nvariables++;
-	header.narrays &= ~EXTRAVAR;
     }
     data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
@@ -841,7 +859,6 @@ register int n;
 static void d_new_variables(data)
 dataspace *data;
 {
-    static value zero_float = { T_FLOAT, TRUE };
     register unsigned short nfdefs, nvars, nfloats;
     register value *val;
     register dvardef *var;
@@ -1614,6 +1631,8 @@ register control *ctrl;
     register Uint size;
     register uindex i;
     register sector *v;
+    register sinherit *sinherits;
+    register dinherit *inherits;
 
     /*
      * Save a control block. This is only done once for each control block.
@@ -1621,7 +1640,7 @@ register control *ctrl;
 
     /* calculate the size of the control block */
     size = sizeof(scontrol) +
-           ctrl->ninherits * sizeof(dinherit) +
+	   ctrl->ninherits * sizeof(sinherit) +
 	   ctrl->niinherits +
     	   ctrl->progsize +
     	   ctrl->nstrings * (Uint) sizeof(dstrconst) +
@@ -1669,9 +1688,19 @@ register control *ctrl;
     size += header.nsectors * (Uint) sizeof(sector);
 
     /* save inherits */
-    sw_writev((char *) ctrl->inherits, ctrl->sectors,
-	      UCHAR(header.ninherits) * (Uint) sizeof(dinherit), size);
-    size += UCHAR(header.ninherits) * sizeof(dinherit);
+    inherits = ctrl->inherits;
+    sinherits = ALLOCA(sinherit, i = UCHAR(header.ninherits));
+    do {
+	sinherits->oindex = inherits->obj->index;
+	sinherits->funcoffset = inherits->funcoffset;
+	(sinherits++)->varoffset = (inherits++)->varoffset;
+    } while (--i > 0);
+    sinherits -= UCHAR(header.ninherits);
+    sw_writev((char *) sinherits, ctrl->sectors,
+	      UCHAR(header.ninherits) * (Uint) sizeof(sinherit), size);
+    size += UCHAR(header.ninherits) * sizeof(sinherit);
+    AFREE(sinherits);
+
     /* save immediate inherits */
     if (ctrl->niinherits > 0) {
 	sw_writev(ctrl->iinherits, ctrl->sectors,
@@ -2223,6 +2252,10 @@ register dataspace *data;
 	}
 
 	/* fill in header */
+	header.flags = 0;
+	if (data->flags & F_EXTRAVAR) {
+	    header.flags |= S_EXTRAVAR;
+	}
 	header.narrays = narr;
 	header.eltsize = arrsize;
 	header.nstrings = nstr - cstr;
@@ -2366,11 +2399,7 @@ register dataspace *data;
 
 	/* save header */
 	size = sizeof(sdataspace);
-	if (data->flags & F_EXTRAVAR) {
-	    header.narrays |= EXTRAVAR;
-	}
 	sw_writev((char *) &header, data->sectors, size, (Uint) 0);
-	header.narrays &= ~EXTRAVAR;
 	sw_writev((char *) data->sectors, data->sectors,
 		  header.nsectors * (Uint) sizeof(sector), size);
 	size += header.nsectors * (Uint) sizeof(sector);
@@ -2851,25 +2880,6 @@ void d_swapsync()
 	    d_save_dataspace(data);
 	}
     }
-}
-
-/*
- * NAME:	data->patch_ctrl()
- * DESCRIPTION:	patch a control block
- */
-void d_patch_ctrl(ctrl, offset)
-register control *ctrl;
-long offset;
-{
-    register int i;
-    register dinherit *inh;
-
-    for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	inh->obj = (object *) ((char *) inh->obj + offset);
-    }
-    sw_writev((char *) ctrl->inherits, ctrl->sectors,
-	      ctrl->ninherits * (Uint) sizeof(dinherit),
-	      sizeof(scontrol) + ctrl->nsectors * (Uint) sizeof(sector));
 }
 
 /*
