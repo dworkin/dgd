@@ -15,6 +15,7 @@ typedef struct _oh_ {		/* object hash table */
     hte chain;			/* hash table chain */
     object *obj;		/* object */
     short index;		/* -1: direct; 0: new; 1: indirect */
+    short priv;			/* 1: direct private, 2: indirect private */
     struct _oh_ **next;		/* next in linked list */
 } oh;
 
@@ -48,6 +49,7 @@ char *name;
 	(*h)->chain.next = (hte *) NULL;
 	(*h)->chain.name = name;
 	(*h)->index = 0;		/* new object */
+	(*h)->priv = 0;
 	(*h)->next = olist;
 	olist = h;
     }
@@ -255,6 +257,7 @@ register char *prot1, *prot2;
 static oh *directs[MAX_INHERITS];	/* direct inherit table */
 static int ndirects;			/* # directly inh. objects */
 static int ninherits;			/* # inherited objects */
+static bool privinherit;		/* TRUE if private inheritance used */
 static hashtab *vtab;			/* variable merge table */
 static hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
@@ -290,9 +293,6 @@ register control *ctrl;
 
     v = d_get_vardefs(ctrl);
     for (n = 0; n < ctrl->nvardefs; n++) {
-	if (v->type == T_FLOAT) {
-	    nfloats++;	/* inherited float variable */
-	}
 	/*
 	 * Add only non-private variables, and check if a variable with the
 	 * same name hasn't been inherited already.
@@ -329,150 +329,229 @@ oh *ohash;
 
     f = &ctrl->funcdefs[idx];
     str = d_get_strconst(ctrl, f->inherit, f->index);
+    if (ohash->priv != 0 && (f->class & C_NOMASK)) {
+	/*
+	 * privately inherited nomask function is not allowed
+	 */
+	c_error("private inherit of nomask function %s (/%s)", str->text, 
+		ohash->chain.name);
+	return;
+    }
+
     h = (vfh **) ht_lookup(ftab, str->text, FALSE);
     if (*h == (vfh *) NULL) {
 	/*
 	 * New function (-1: no calls to it yet)
 	 */
 	vfh_new(str, ohash, -1, idx, h);
-	if (ctrl->ninherits != 1 ||
-	    (f->class & (C_STATIC | C_UNDEFINED)) != C_STATIC) {
-	    /* don't count static functions from the auto object */
+	if (ohash->priv == 0 &&
+	    (ctrl->ninherits != 1 ||
+	     (f->class & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
+	    /*
+	     * don't count privately inherited functions, or static functions
+	     * from the auto object
+	     */
 	    nsymbs++;
 	}
-    } else if ((*h)->ohash != ohash) {
+    } else {
 	register dinherit *inh;
 	register int n;
 	object *o;
 	char *prot1, *prot2;
-	vfh **marker;
+	bool privflag, inhflag, firstsym;
+	int nfunc, npriv;
 
 	/*
-	 * Different prototypes.
+	 * prototype already exists
 	 */
-	if ((*h)->ohash == (oh *) NULL) {
-	    /*
-	     * Skip old clash marker.
-	     */
-	    marker = h;
-	    h = (vfh **) &(*h)->chain.next;
-	} else {
-	    marker = (vfh **) NULL;
-	}
-
 	prot1 = ctrl->prog + f->offset;
+
 	/*
-	 * compare with the other prototypes
+	 * First check if the new function's object is inherited by the
+	 * object that defines the function in the merge table.
 	 */
+	privflag = FALSE;
+	o = ohash->obj;
 	for (l = h;
 	     *l != (vfh *) NULL && strcmp((*l)->chain.name, str->text) == 0;
 	     l = (vfh **) &(*l)->chain.next) {
-	    /*
-	     * First check if the function in the merge table is in
-	     * an object inherited by the currently inherited object.
-	     */
+	    if ((*l)->ohash == (oh *) NULL) {
+		continue;
+	    }
+
+	    ctrl = (*l)->ohash->obj->ctrl;
+	    inh = ctrl->inherits;
+	    n = ctrl->ninherits;
+	    ctrl = ohash->obj->ctrl;
+	    while (--n != 0) {
+		if (o == inh->obj) {
+		    if (ohash->priv == 0 && (*l)->ohash->priv != 0 &&
+			(ctrl->ninherits != 1 ||
+			 (ctrl->funcdefs[idx].class &
+				       (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
+			/*
+			 * private masks nonprivate function that isn't a
+			 * static function in the auto object
+			 */
+			if (l == h) {
+			    privflag = TRUE;
+			}
+			break;
+		    } else {
+			return;	/* no change */
+		    }
+		}
+		inh++;
+	    }
+	}
+
+	/*
+	 * Now check if the function in the merge table is in
+	 * an object inherited by the currently inherited object.
+	 */
+	inhflag = firstsym = TRUE;
+	nfunc = npriv = 0;
+	l = h;
+	while (*l != (vfh *) NULL && strcmp((*l)->chain.name, str->text) == 0) {
+	    if ((*l)->ohash == (oh *) NULL) {
+		l = (vfh **) &(*l)->chain.next;
+		continue;
+	    }
+
 	    o = (*l)->ohash->obj;
 	    ctrl = ohash->obj->ctrl;
 	    inh = ctrl->inherits;
 	    n = ctrl->ninherits;
 	    ctrl = o->ctrl;
-	    while (--n != 0) {
-		if (o == inh->obj) {
-		    /*
-		     * redefined inherited function
-		     */
-		    if (marker == (vfh **) NULL && ctrl->ninherits == 1 &&
-			(ctrl->funcdefs[(*l)->index].class &
-				  (C_STATIC | C_UNDEFINED)) == C_STATIC) {
-			/*
-			 * redefine static function in auto object
-			 */
-			nsymbs++;
-		    }
-		    (*l)->ohash = ohash;
-		    (*l)->index = idx;
-		    return;
-		}
-		inh++;
-	    }
-
-	    /*
-	     * Now check if the function in the currently inherited object is
-	     * inherited by the object that defines the function in the merge
-	     * table.
-	     */
-	    o = inh->obj;
-	    inh = ctrl->inherits;
-	    n = ctrl->ninherits;
-	    while (--n != 0) {
-		if (o == inh->obj) {
-		    /*
-		     * previously inherited, and redefined function
-		     */
-		    return;
-		}
-		inh++;
-	    }
-
-	    /*
-	     * Check for clashes between the prototypes.
-	     */
 	    prot2 = ctrl->prog + ctrl->funcdefs[(*l)->index].offset;
-	    if (((f->class | PROTO_CLASS(prot2)) & (C_NOMASK | C_UNDEFINED)) ==
-								    C_NOMASK) {
-		/*
-		 * a nomask function is inherited more than once
-		 */
-		c_error("multiple inheritance of nomask function %s (/%s, /%s)",
-			str->text, (*l)->ohash->chain.name, ohash->chain.name);
-		return;
+	    for (;;) {
+		if (--n >= 0) {
+		    if (o == (inh++)->obj) {
+			if ((*l)->ohash != ohash && (*l)->ohash->priv == 0 &&
+			    (ctrl->ninherits != 1 ||
+			     (ctrl->funcdefs[(*l)->index].class &
+				       (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
+			    /*
+			     * function in merge table is nonprivate and is
+			     * not a static function in the auto object
+			     */
+			    firstsym = FALSE;
+			    if (ohash->priv != 0) {
+				/*
+				 * masked by private function: leave it
+				 */
+				if (!(PROTO_CLASS(prot2) & C_UNDEFINED)) {
+				    nfunc++;
+				}
+				l = (vfh **) &(*l)->chain.next;
+				break;
+			    }
+			}
+
+			/*
+			 * redefined inherited function
+			 */
+			*l = (vfh *) (*l)->chain.next;
+			break;
+		    }
+		} else {
+		    /*
+		     * check for prototype clashes
+		     */
+		    if (((f->class | PROTO_CLASS(prot2)) &
+					(C_NOMASK | C_UNDEFINED)) == C_NOMASK) {
+			/*
+			 * a nomask function is inherited more than once
+			 */
+			c_error("multiple inheritance of nomask function %s (/%s, /%s)",
+				str->text, (*l)->ohash->chain.name,
+				ohash->chain.name);
+			return;
+		    }
+		    if (((f->class | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
+			!cmp_proto(prot1, prot2)) {
+			/*
+			 * prototype conflict
+			 */
+			c_error("unequal prototypes for function %s (/%s, /%s)",
+				str->text, (*l)->ohash->chain.name,
+				ohash->chain.name);
+			return;
+		    }
+
+		    if (!(PROTO_CLASS(prot2) & C_UNDEFINED)) {
+			inhflag = FALSE;
+			if ((*l)->ohash->priv == 0) {
+			    nfunc++;
+			} else {
+			    npriv++;
+			}
+		    }
+
+		    if ((*l)->ohash->priv == 0) {
+			firstsym = FALSE;
+		    }
+		    l = (vfh **) &(*l)->chain.next;
+		    break;
+		}
 	    }
-	    if (((f->class | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
-		!cmp_proto(prot1, prot2)) {
-		/*
-		 * prototype conflict
-		 */
-		c_error("unequal prototypes for function %s (/%s, /%s)",
-			str->text, (*l)->ohash->chain.name, ohash->chain.name);
-		return;
+	}
+
+	if (firstsym && ohash->priv == 0) {
+	    nsymbs++;	/* first symbol */
+	}
+
+	if (inhflag) {
+	    /* insert new prototype at the beginning */
+	    vfh_new(str, ohash, -1, idx, h);
+	    h = (vfh **) &(*h)->chain.next;
+	} else if (!(PROTO_CLASS(prot1) & C_UNDEFINED)) {
+	    /* add the new prototype to the count */
+	    if (ohash->priv == 0) {
+		nfunc++;
+	    } else {
+		npriv++;
 	    }
 	}
 
-	ctrl = (*h)->ohash->obj->ctrl;
-	prot2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
-	if (PROTO_CLASS(prot2) & C_UNDEFINED) {
-	    /*
-	     * replace undefined function
-	     */
-	    vfh_new(str, ohash, -1, idx, h);
-	    return;
-	}
-	if (f->class & C_UNDEFINED) {
-	    /*
-	     * add undefined prototype at the end
-	     */
-	    vfh_new(str, ohash, -1, idx, l);
-	    return;
+	if (privflag) {
+	    /* skip private function at the start */
+	    h = (vfh **) &(*h)->chain.next;
 	}
 
-	if (marker != (vfh **) NULL) {
+	/* add/remove clash markers */
+	if (*h != (vfh *) NULL &&
+	    strcmp((*h)->chain.name, str->text) == 0) {
 	    /*
-	     * replace clash marker with function
+	     * there are other prototypes
 	     */
-	    h = marker;
-	    (*h)->ohash = ohash;
-	    (*h)->ct = -1;
-	    (*h)->index = idx;
-	} else {
-	    /*
-	     * first clash: insert before old prototype
-	     */
-	    nfclash++;
-	    vfh_new(str, ohash, -1, idx, h);
+	    if ((*h)->ohash == (oh *) NULL) {
+		/* first entry is clash marker */
+		if (nfunc + npriv <= 1) {
+		    /* remove it */
+		    *h = (vfh *) (*h)->chain.next;
+		    --nfclash;
+		} else {
+		    /* adjust it */
+		    (*h)->index = nfunc;
+		    h = (vfh **) &(*h)->chain.next;
+		}
+	    } else if (nfunc + npriv > 1) {
+		/* add new clash marker as first entry */
+		vfh_new(str, (oh *) NULL, 0, nfunc, h);
+		nfclash++;
+		h = (vfh **) &(*h)->chain.next;
+	    }
 	}
 
-	/* insert new clash marker */
-	vfh_new(str, (oh *) NULL, 0, 0, h);
+	/* add new prototype, undefined at the end */
+	if (!inhflag) {
+	    if (PROTO_CLASS(prot1) & C_UNDEFINED) {
+		vfh_new(str, ohash, -1, idx, l);
+	    } else {
+		vfh_new(str, ohash, -1, idx, h);
+	    }
+	}
     }
 }
 
@@ -481,20 +560,18 @@ oh *ohash;
  * DESCRIPTION:	put function definitions from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdefs(ctrl)
+static void ctrl_funcdefs(ohash, ctrl)
+register oh *ohash;
 register control *ctrl;
 {
-    register unsigned short n;
-    register object *o;
-    register dsymbol *symb;
+    register short n;
+    register dfuncdef *f;
 
-    /*
-     * The symbol table rather than the function definition table is
-     * used here.
-     */
-    for (n = ctrl->nsymbols, symb = d_get_symbols(ctrl); n > 0; --n, symb++) {
-	o = ctrl->inherits[UCHAR(symb->inherit)].obj;
-	ctrl_funcdef(o->ctrl, UCHAR(symb->index), oh_new(o->chain.name));
+    d_get_prog(ctrl);
+    for (n = 0, f = d_get_funcdefs(ctrl); n < ctrl->nfuncdefs; n++, f++) {
+	if (!(f->class & C_PRIVATE)) {
+	    ctrl_funcdef(ctrl, n, ohash);
+	}
     }
 }
 
@@ -502,13 +579,18 @@ register control *ctrl;
  * NAME:	control->inherit()
  * DESCRIPTION:	inherit an object
  */
-bool ctrl_inherit(f, from, obj, label)
+bool ctrl_inherit(f, from, obj, label, priv)
 register frame *f;
 char *from;
 object *obj;
 string *label;
+int priv;
 {
     register oh *ohash;
+    register control *ctrl;
+    dinherit *inh;
+    register int i;
+    register object *o;
 
     if (!(obj->flags & O_MASTER)) {
 	c_error("cannot inherit cloned object");
@@ -531,25 +613,20 @@ string *label;
     }
 
     if (ohash->index == 0) {
-	register control *ctrl;
-	register object *o;
-	dinherit *inh;
-	register int i, n;
-
 	/*
 	 * new inherited object
 	 */
 	ctrl = o_control(obj);
 	inh = ctrl->inherits;
-	if (ndirects != 0 && strcmp(inh->obj->chain.name,
-				    directs[0]->obj->chain.name) != 0) {
+	if (ndirects != 0 &&
+	    strcmp(inh->obj->chain.name, directs[0]->obj->chain.name) != 0) {
 	    c_error("inherited different auto objects");
 	}
-	for (i = ctrl->ninherits; i > 0; --i) {
+	for (i = ctrl->ninherits, inh += i; i > 0; --i) {
 	    /*
 	     * check all the objects inherited by the object now inherited
 	     */
-	    o = (inh++)->obj;
+	    o = (--inh)->obj;
 	    if (o->count == 0) {
 		Uint ocount;
 
@@ -582,62 +659,97 @@ string *label;
 		 */
 		ohash->obj = o;
 		ohash->index = 2;	/* indirect */
-		ctrl = o_control(o);
-
-		/*
-		 * put variables in variable merge table
-		 */
-		ctrl_vardefs(ohash, ctrl);
-		/*
-		 * ensure that relevant parts are loaded
-		 */
-		d_get_prog(ctrl);
-		d_get_funcdefs(ctrl);
+		nfloats += o_control(o)->nfloatdefs;
+		if (inh->priv) {
+		    ohash->priv = 2;	/* indirect private */
+		} else {
+		    ohash->priv = priv;
+		    /*
+		     * add functions and variables from this object
+		     */
+		    ctrl_funcdefs(ohash, o->ctrl);
+		    ctrl_vardefs(ohash, o->ctrl);
+		}
 	    } else if (ohash->obj != o) {
 		/*
 		 * inherited two different objects with same name
 		 */
-		c_error("inherited different instances of /%s",
-			o->chain.name);
+		c_error("inherited different instances of /%s", o->chain.name);
 		return TRUE;
-	    } else if (ohash->index < 0 && !(ohash->obj->flags & O_AUTO)) {
-		/*
-		 * Inherit an object which previously was inherited
-		 * directly (but is not the auto object). Mark it as
-		 * indirect now.
-		 */
-		ohash->index = 1;	/* indirect, but immediate */
-		n = ohash->obj->ctrl->ninherits - 1;
-		ninherits -= n;
+	    } else {
+		if (ohash->index < 0 && !(o->flags & O_AUTO)) {
+		    /*
+		     * Inherit an object which previously was inherited
+		     * directly (but is not the auto object). Mark it as
+		     * indirect now.
+		     */
+		    ohash->index = 1;	/* indirect, but immediate */
+		    ninherits -= o->ctrl->ninherits - 1;
+		}
+
+		if (!inh->priv && ohash->priv == 2) {
+		    /*
+		     * previously indirectly privately inherited
+		     */
+		    ohash->priv = priv;
+		    ctrl_funcdefs(ohash, o->ctrl);
+		    ctrl_vardefs(ohash, o->ctrl);
+		}
 	    }
 	}
 
-	n = ctrl->ninherits;
-	if (n > 1) {
+	i = ctrl->ninherits;
+	if (i > 1) {
 	    /*
 	     * Don't count the auto object, unless it is the auto object
 	     * only.
 	     */
-	    --n;
+	    --i;
 	}
-	ninherits += n;
+	ninherits += i;
+	ohash = oh_new(obj->chain.name);
 	directs[ndirects++] = ohash;
 	ohash->index = -1;	/* direct */
-
-	/*
-	 * put functions in function merge table
-	 */
-	ctrl_funcdefs(ctrl);
+	ohash->priv = priv;
+	if (priv) {
+	    privinherit = TRUE;
+	}
 
     } else if (ohash->obj != obj) {
 	/*
 	 * inherited two objects with same name
 	 */
 	c_error("inherited different instances of /%s", obj->chain.name);
-    } else if (ohash->index == 2) {
-	/* not inherited directly before */
-	directs[ndirects++] = ohash;
-	ohash->index = 1;	/* indirect, but immediate */
+    } else {
+	if (ohash->index == 2) {
+	    /*
+	     * not inherited directly before
+	     */
+	    directs[ndirects++] = ohash;
+	    ohash->index = 1;	/* indirect, but immediate */
+	}
+
+	if (ohash->priv > priv) {
+	    /*
+	     * previously inherited with greater privateness; process all
+	     * objects inherited by this object
+	     */
+	    ctrl = o_control(obj);
+	    for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
+		o = (--inh)->obj;
+		ohash = oh_new(o->chain.name);
+		if (!inh->priv && ohash->priv > priv) {
+		    /*
+		     * add to function and variable table
+		     */
+		    if (ohash->priv == 2) {
+			ctrl_vardefs(ohash, o->ctrl);
+		    }
+		    ohash->priv = priv;
+		    ctrl_funcdefs(ohash, o->ctrl);
+		}
+	    }
+	}
     }
 
     if (ninherits >= MAX_INHERITS || ndirects == MAX_INHERITS) {
@@ -705,11 +817,12 @@ void ctrl_create()
     nvars = 0;
 
     if (ninherits > 0) {
+	register oh *ohash;
+
 	/*
 	 * initialize the virtually inherited objects
 	 */
 	for (n = ndirects; n > 0; ) {
-	    register oh *ohash;
 	    register dinherit *old;
 
 	    ohash = directs[--n];
@@ -735,7 +848,8 @@ void ctrl_create()
 	 * table.
 	 */
 	for (count = 0; count < ninherits; count++) {
-	    i = oh_new(new->obj->chain.name)->index;
+	    ohash = oh_new(new->obj->chain.name);
+	    i = ohash->index;
 	    if (i == count) {
 		ctrl = new->obj->ctrl;
 		i = ctrl->ninherits - 1;
@@ -747,6 +861,9 @@ void ctrl_create()
 		}
 		new->varoffset = nvars;
 		nvars += ctrl->nvardefs;
+		if (nvars > 32767 && nvars - ctrl->nvardefs <= 32767) {
+		    c_error("inherited too many variables");
+		}
 
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
@@ -757,6 +874,7 @@ void ctrl_create()
 		new->funcoffset = newctrl->inherits[i].funcoffset;
 		new->varoffset = newctrl->inherits[i].varoffset;
 	    }
+	    new->priv = (ohash->priv != 0);
 	    new++;
 	}
     }
@@ -767,6 +885,7 @@ void ctrl_create()
     new->obj = (object *) NULL;
     new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
+    new->priv = FALSE;
     newctrl->nfloats = nfloats;
 
     /*
@@ -824,19 +943,18 @@ void ctrl_dproto(str, proto)
 register string *str;
 register char *proto;
 {
-    register vfh **h;
+    register vfh **h, **l;
     register dfuncdef *func;
-    register int i;
+    register char *proto2;
+    register control *ctrl;
+    int i;
     long s;
 
     i = -1;	/* default: no calls yet */
 
     /* first check if prototype exists already */
-    h = (vfh **) ht_lookup(ftab, str->text, FALSE);
+    h = l = (vfh **) ht_lookup(ftab, str->text, FALSE);
     if (*h != (vfh *) NULL) {
-	register char *proto2;
-	register control *ctrl;
-
 	/*
 	 * redefinition
 	 */
@@ -885,14 +1003,7 @@ register char *proto;
 	/*
 	 * redefinition of inherited function
 	 */
-	if ((*h)->ohash == (oh *) NULL) {
-	    if (!(PROTO_CLASS(proto) & C_PRIVATE)) {
-		/*
-		 * mask inherited functions
-		 */
-		--nfclash;
-	    }
-	} else {
+	if ((*h)->ohash != (oh *) NULL) {
 	    ctrl = (*h)->ohash->obj->ctrl;
 	    proto2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
 	    if ((PROTO_CLASS(proto2) & C_UNDEFINED) &&
@@ -903,6 +1014,7 @@ register char *proto;
 		c_error("inherited different prototype for %s (/%s)",
 			str->text, (*h)->ohash->chain.name);
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
+		       (*h)->ohash->priv == 0 &&
 		       PROTO_FTYPE(proto2) != T_IMPLICIT &&
 		       cmp_proto(proto, proto2)) {
 		/*
@@ -918,24 +1030,32 @@ register char *proto;
 			str->text, (*h)->ohash->chain.name);
 	    }
 
-	    if (!(PROTO_CLASS(proto) & C_PRIVATE) && ctrl->ninherits == 1 &&
-		(PROTO_CLASS(proto2) & (C_STATIC | C_UNDEFINED)) == C_STATIC) {
-		/*
-		 * replace static function in auto object by non-private
-		 * function
-		 */
-		nsymbs++;
-	    }
 	    i = (*h)->ct;	/* take old call index */
+
+	    if ((*l)->ohash->priv != 0) {
+		l = (vfh **) &(*l)->chain.next;	/* skip private function */
+	    }
 	}
+    }
+
+    if (!(PROTO_CLASS(proto) & C_PRIVATE)) {
 	/*
-	 * insert the definition before the old one in the hash table
+	 * may be a new symbol
 	 */
-    } else if (!(PROTO_CLASS(proto) & C_PRIVATE)) {
-	/*
-	 * add new prototype to symbol table
-	 */
-	nsymbs++;
+	if (*l == (vfh *) NULL || strcmp((*l)->chain.name, str->text) != 0) {
+	    nsymbs++;		/* no previous symbol */
+	} else if ((*l)->ohash == (oh *) NULL) {
+	    if ((*l)->index == 0) {
+		nsymbs++;	/* previous functions all privately inherited */
+	    }
+	} else {
+	    ctrl = (*l)->ohash->obj->ctrl;
+	    proto2 = ctrl->prog + ctrl->funcdefs[(*l)->index].offset;
+	    if (ctrl->ninherits == 1 &&
+		(PROTO_CLASS(proto2) & (C_STATIC | C_UNDEFINED)) == C_STATIC) {
+		nsymbs++;	/* mask static function in auto object */
+	    }
+	}
     }
 
     if (nfdefs == 255) {
@@ -1010,7 +1130,7 @@ unsigned int class, type;
 	    return;
 	}
     }
-    if (nvars == 255) {
+    if (nvars == 255 || newctrl->nvariables + nvars == 32767) {
 	c_error("too many variables declared");
 	return;
     }
@@ -1057,7 +1177,7 @@ long *call;
 	if (symb == (dsymbol *) NULL) {
 	    /*
 	     * It may seem strange to allow label::kfun, but remember that they
-	     * are supposed to be inherited in the auto object.
+	     * are supposed to be inherited by the auto object.
 	     */
 	    index = kf_func(str->text);
 	    if (index >= 0) {
@@ -1172,7 +1292,7 @@ int typechecking;
 	return (char *) NULL;
     }
 
-    if ((PROTO_CLASS(proto) & C_PRIVATE) ||
+    if (h->ohash->priv != 0 || (PROTO_CLASS(proto) & C_PRIVATE) ||
 	(PROTO_CLASS(proto) & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
 	((PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 	 h->ohash->index == 0)) {
@@ -1272,37 +1392,74 @@ long *ref;
  */
 bool ctrl_chkfuncs()
 {
-    if (nfclash != 0) {
+    if (nfclash != 0 || privinherit) {
 	register hte **t;
 	register unsigned short sz;
-	register vfh *f, *n;
+	register vfh **f, **n;
+	bool clash;
 
-	c_error("inherited multiple instances of:");
-	for (t = ftab->table, sz = ftab->size; nfclash > 0 && sz > 0; t++, --sz)
-	{
-	    for (f = (vfh *) *t; f != NULL; f = n) {
-		n = (vfh *) f->chain.next;
-		if (f->ohash == (oh *) NULL) {
+	clash = FALSE;
+	for (t = ftab->table, sz = ftab->size; sz > 0; t++, --sz) {
+	    for (f = (vfh **) t; *f != (vfh *) NULL; ) {
+		if ((*f)->ohash == (oh *) NULL) {
 		    /*
-		     * list a clash (only the first two)
+		     * clash marker found
 		     */
-		    c_error("  %s (/%s, %s)", f->chain.name,
-			    n->ohash->chain.name,
-			    ((vfh *) n->chain.next)->ohash->chain.name);
-		    --nfclash;
-		} else if (n != (vfh *) NULL && n->ohash == (oh *) NULL &&
-			   strcmp(n->str->text, f->str->text) == 0 &&
-			   !(PROTO_CLASS(functions[f->index].proto) &C_PRIVATE))
-		{
+		    if ((*f)->index <= 1) {
+			/*
+			 * erase clash which involves at most one function
+			 * that isn't privately inherited
+			 */
+			*f = (vfh *) (*f)->chain.next;
+		    } else {
+			/*
+			 * list a clash (only the first two)
+			 */
+			if (!clash) {
+			    clash = TRUE;
+			    c_error("inherited multiple instances of:");
+			}
+			f = (vfh **) &(*f)->chain.next;
+			while ((*f)->ohash->priv != 0) {
+			    f = (vfh **) &(*f)->chain.next;
+			}
+			n = (vfh **) &(*f)->chain.next;
+			while ((*n)->ohash->priv != 0) {
+			    n = (vfh **) &(*n)->chain.next;
+			}
+			c_error("  %s (/%s, /%s)", (*f)->chain.name,
+				(*f)->ohash->chain.name,
+				(*n)->ohash->chain.name);
+			f = (vfh **) &(*n)->chain.next;
+		    }
+		} else if ((*f)->ohash->priv != 0) {
 		    /*
-		     * this function was redefined, and must not be listed
+		     * skip privately inherited function
 		     */
-		    n = (vfh *) n->chain.next;
+		    f = (vfh **) &(*f)->chain.next;
+		} else {
+		    n = (vfh **) &(*f)->chain.next;
+		    if (*n != (vfh *) NULL && (*n)->ohash != (oh *) NULL &&
+			(*n)->ohash->priv != 0) {
+			/* skip privately inherited function */
+			n = (vfh **) &(*n)->chain.next;
+		    }
+		    if (*n != (vfh *) NULL && (*n)->ohash == (oh *) NULL &&
+			strcmp((*n)->str->text, (*f)->str->text) == 0 &&
+			!(PROTO_CLASS(functions[(*f)->index].proto) &C_PRIVATE))
+		    {
+			/*
+			 * this function was redefined, skip the clash marker
+			 */
+			n = (vfh **) &(*n)->chain.next;
+		    }
+		    f = n;
 		}
 	    }
 	}
-	return FALSE;
+	return !clash;
     }
+
     return TRUE;
 }
 
@@ -1394,19 +1551,20 @@ static void ctrl_mkfcalls()
     register int i;
     register vfh *h;
     register fcchunk *l;
+    dinherit *inh;
 
     newctrl->nfuncalls = nifcalls + nfcalls;
     if (newctrl->nfuncalls == 0) {
 	return;
     }
     fc = newctrl->funcalls = ALLOC(char, 2 * newctrl->nfuncalls);
-    for (i = 0; i < ninherits; i++) {
+    for (i = 0, inh = newctrl->inherits; i < ninherits; i++, inh++) {
 	/*
 	 * Walk through the list of inherited objects, starting with the auto
 	 * object, and fill in the function call table segment for each object
 	 * once.
 	 */
-	if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
+	if (oh_new(inh->obj->chain.name)->index == i) {
 	    register char *ofc;
 	    register dfuncdef *f;
 	    register control *ctrl, *ctrl2;
@@ -1416,14 +1574,14 @@ static void ctrl_mkfcalls()
 	     * build the function call segment, based on the function call
 	     * table of the inherited object
 	     */
-	    ctrl = newctrl->inherits[i].obj->ctrl;
+	    ctrl = inh->obj->ctrl;
 	    j = ctrl->ninherits - 1;
 	    ofc = d_get_funcalls(ctrl) + 2L * ctrl->inherits[j].funcoffset;
 	    for (n = ctrl->nfuncalls - ctrl->inherits[j].funcoffset; n > 0; --n)
 	    {
 		ctrl2 = ctrl->inherits[UCHAR(ofc[0])].obj->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
-		if ((f->class & C_PRIVATE) ||
+		if (inh->priv || (f->class & C_PRIVATE) ||
 		    (f->class & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
 		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 		     ofc[0] == 0)) {
@@ -1476,6 +1634,7 @@ static void ctrl_mksymbs()
 {
     register unsigned short i, n, x, ncoll;
     register dsymbol *symtab, *coll;
+    dinherit *inh;
 
     if ((newctrl->nsymbols = nsymbs) == 0) {
 	return;
@@ -1495,14 +1654,14 @@ static void ctrl_mksymbs()
      * Go down the list of inherited objects, adding the functions of each
      * object once.
      */
-    for (i = 0; i <= ninherits; i++) {
+    for (i = 0, inh = newctrl->inherits; i <= ninherits; i++, inh++) {
 	register dfuncdef *f;
 	register control *ctrl;
 
 	if (i == ninherits) {
 	    ctrl = newctrl;
-	} else if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
-	    ctrl = newctrl->inherits[i].obj->ctrl;
+	} else if (!inh->priv && oh_new(inh->obj->chain.name)->index == i) {
+	    ctrl = inh->obj->ctrl;
 	} else {
 	    continue;
 	}
@@ -1514,8 +1673,7 @@ static void ctrl_mksymbs()
 	    if ((f->class & C_PRIVATE) ||
 		(i == 0 && ninherits != 0 &&
 		 (f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC)) {
-		/* not in symbol table */
-		continue;
+		continue;	/* not in symbol table */
 	    }
 	    name = d_get_strconst(ctrl, f->inherit, f->index)->text;
 	    h = *(vfh **) ht_lookup(ftab, name, FALSE);
@@ -1524,6 +1682,12 @@ static void ctrl_mksymbs()
 		/*
 		 * private redefinition of inherited function:
 		 * use inherited function
+		 */
+		h = (vfh *) h->chain.next;
+	    }
+	    while (h->ohash->priv != 0) {
+		/*
+		 * skip privately inherited function
 		 */
 		h = (vfh *) h->chain.next;
 	    }
@@ -1667,6 +1831,7 @@ void ctrl_clear()
 
     ndirects = 0;
     ninherits = 0;
+    privinherit = FALSE;
     nfloats = 0;
     nsymbs = 0;
     nfclash = 0;

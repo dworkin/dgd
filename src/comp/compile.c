@@ -324,9 +324,10 @@ static long ncompiled;		/* # objects compiled */
  * DESCRIPTION:	Inherit an object in the object currently being compiled.
  *		Return TRUE if compilation can continue, or FALSE otherwise.
  */
-bool c_inherit(file, label)
+bool c_inherit(file, label, priv)
 register char *file;
 node *label;
+int priv;
 {
     char buf[STRINGSZ];
     register object *obj;
@@ -365,11 +366,13 @@ node *label;
 	strcpy(f->sp->u.string->text + 1, current->file);
 	(--f->sp)->type = T_STRING;
 	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = priv;
 
 	strncpy(buf, file, STRINGSZ - 1);
 	buf[STRINGSZ - 1] = '\0';
 	inheriting = TRUE;
-	if (call_driver_object(f, "inherit_program", 2)) {
+	if (call_driver_object(f, "inherit_program", 3)) {
 	    inheriting = FALSE;
 	    if (f->sp->type == T_OBJECT) {
 		obj = &otable[f->sp->oindex];
@@ -405,7 +408,8 @@ node *label;
 
     return ctrl_inherit(current->frame, current->file, obj,
 			(label == (node *) NULL) ?
-			 (string *) NULL : label->l.string);
+			 (string *) NULL : label->l.string,
+			priv);
 }
 
 /*
@@ -489,7 +493,7 @@ object *obj;
 		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
 	    ctrl_init();
-	    ctrl_inherit(c.frame, file, aobj, (string *) NULL);
+	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 
 	if (!pp_init(file_c, paths, 1)) {

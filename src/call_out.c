@@ -233,6 +233,15 @@ int nargs;
 	return 0;
     }
 
+    if (obj->data->ncallouts >= conf_array_size()) {
+	/*
+	 * A secondary effect of the max array size.  This is not very neat,
+	 * but an error here is better than when listing the callouts in
+	 * the object.
+	 */
+	error("Too many callouts in object");
+    }
+
     if (delay == 0) {
 	/*
 	 * immediate callout
@@ -288,7 +297,7 @@ int nargs;
 	t -= timediff;
     }
 
-    co->handle = d_new_call_out(o_dataspace(obj), str, t, f, nargs);
+    co->handle = d_new_call_out(obj->data, str, t, f, nargs);
     co->oindex = obj->index;
 
     return co->handle;
@@ -359,7 +368,7 @@ register unsigned int handle;
     /*
      * get the callout
      */
-    if (d_get_call_out(o_dataspace(obj), handle, &t, (frame *) NULL, &nargs) ==
+    if (d_get_call_out(obj->data, handle, &t, (frame *) NULL, &nargs) ==
 							    (string *) NULL) {
 	/* no such callout */
 	return -1;

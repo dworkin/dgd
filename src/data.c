@@ -32,6 +32,7 @@
 # define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 
 # define ARR_MOD		0x80000000L	/* in arrref->ref */
+# define PRIV			0x8000		/* in sinherit->varoffset */
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -56,7 +57,7 @@ static char sc_layout[] = "dcciisiccusssss";
 typedef struct {
     uindex oindex;		/* index in object table */
     uindex funcoffset;		/* function call offset */
-    unsigned short varoffset;	/* variable offset */
+    unsigned short varoffset;	/* variable offset + private bit */
 } sinherit;
 
 static char si_layout[] = "uus";
@@ -248,9 +249,6 @@ object *obj;
     done = data;
     ndata++;
 
-    data->achange = 0;
-    data->schange = 0;
-    data->imports = 0;
     data->ilist = (dataspace *) NULL;
     data->flags = 0;
 
@@ -263,7 +261,6 @@ object *obj;
 
     /* variables */
     data->nvariables = 0;
-    data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
 
     /* arrays */
@@ -271,14 +268,12 @@ object *obj;
     data->eltsize = 0;
     data->alocal.arr = (array *) NULL;
     data->alocal.data = data;
-    data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
 
     /* strings */
     data->nstrings = 0;
     data->strsize = 0;
-    data->strings = (strref *) NULL;
     data->sstrings = (sstring *) NULL;
     data->stext = (char *) NULL;
 
@@ -286,6 +281,15 @@ object *obj;
     data->ncallouts = 0;
     data->fcallouts = 0;
     data->callouts = (dcallout *) NULL;
+
+    /* values */
+    data->basic.achange = 0;
+    data->basic.schange = 0;
+    data->basic.imports = 0;
+    data->basic.variables = (value *) NULL;
+    data->basic.arrays = (arrref *) NULL;
+    data->basic.strings = (strref *) NULL;
+    data->values = &data->basic;
 
     /* parse_string data */
     data->parser = (struct _parser_ *) NULL;
@@ -373,7 +377,8 @@ object *obj;
 	    do {
 		inherits->obj = &otable[sinherits->oindex];
 		inherits->funcoffset = sinherits->funcoffset;
-		(inherits++)->varoffset = (sinherits++)->varoffset;
+		inherits->varoffset = sinherits->varoffset & ~PRIV;
+		(inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
 	    } while (--n > 0);
 	    AFREE(sinherits - UCHAR(header.ninherits));
 	}
@@ -922,12 +927,12 @@ static string *d_get_string(data, idx)
 register dataspace *data;
 register Uint idx;
 {
-    if (data->strings == (strref *) NULL) {
+    if (data->values->strings == (strref *) NULL) {
 	register strref *strs;
 	register Uint i;
 
 	/* initialize string pointers */
-	strs = data->strings = ALLOC(strref, data->nstrings);
+	strs = data->values->strings = ALLOC(strref, data->nstrings);
 	for (i = data->nstrings; i > 0; --i) {
 	    (strs++)->str = (string *) NULL;
 	}
@@ -955,19 +960,19 @@ register Uint idx;
 	}
     }
 
-    if (data->strings[idx].str == (string *) NULL) {
+    if (data->values->strings[idx].str == (string *) NULL) {
 	register string *s;
 
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
 	s->ref = 1;
-	s->primary = &data->strings[idx];
+	s->primary = &data->values->strings[idx];
 	s->primary->str = s;
 	s->primary->data = data;
 	s->primary->ref = data->sstrings[idx].ref;
 	return s;
     }
-    return data->strings[idx].str;
+    return data->values->strings[idx].str;
 }
 
 /*
@@ -980,11 +985,11 @@ register Uint idx;
 {
     register Uint i;
 
-    if (data->arrays == (arrref *) NULL) {
+    if (data->values->arrays == (arrref *) NULL) {
 	register arrref *a;
 
 	/* create array pointers */
-	a = data->arrays = ALLOC(arrref, data->narrays);
+	a = data->values->arrays = ALLOC(arrref, data->narrays);
 	for (i = data->narrays; i > 0; --i) {
 	    (a++)->arr = (array *) NULL;
 	}
@@ -997,19 +1002,19 @@ register Uint idx;
 	}
     }
 
-    if (data->arrays[idx].arr == (array *) NULL) {
+    if (data->values->arrays[idx].arr == (array *) NULL) {
 	register array *a;
 
 	a = arr_alloc(data->sarrays[idx].size);
 	a->ref = 1;
 	a->tag = data->sarrays[idx].tag;
-	a->primary = &data->arrays[idx];
+	a->primary = &data->values->arrays[idx];
 	a->primary->arr = a;
 	a->primary->data = data;
 	a->primary->ref = data->sarrays[idx].ref;
 	return a;
     }
-    return data->arrays[idx].arr;
+    return data->values->arrays[idx].arr;
 }
 
 /*
@@ -1069,7 +1074,8 @@ dataspace *data;
     /*
      * initialize all variables to integer 0
      */
-    for (val = data->variables, nvars = data->nvariables; nvars > 0; --nvars) {
+    for (val = data->values->variables, nvars = data->nvariables; nvars > 0;
+	 --nvars) {
 	*val++ = zero_value;
     }
 
@@ -1087,7 +1093,7 @@ dataspace *data;
 		    for (nfdefs = ctrl->nfloatdefs, var = d_get_vardefs(ctrl);
 			 nfdefs > 0; var++) {
 			if (var->type == T_FLOAT) {
-			    data->variables[nvars] = zero_float;
+			    data->values->variables[nvars] = zero_float;
 			    --nfdefs;
 			}
 			nvars++;
@@ -1107,9 +1113,9 @@ value *d_get_variable(data, idx)
 register dataspace *data;
 register unsigned int idx;
 {
-    if (data->variables == (value *) NULL) {
+    if (data->values->variables == (value *) NULL) {
 	/* create room for variables */
-	data->variables = ALLOC(value, data->nvariables);
+	data->values->variables = ALLOC(value, data->nvariables);
 	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
 	    d_new_variables(data);
@@ -1124,12 +1130,12 @@ register unsigned int idx;
 			 data->nvariables * (Uint) sizeof(svalue),
 			 data->varoffset);
 	    }
-	    d_get_values(data, data->svariables, data->variables,
+	    d_get_values(data, data->svariables, data->values->variables,
 			 data->nvariables);
 	}
     }
 
-    return &data->variables[idx];
+    return &data->values->variables[idx];
 }
 
 /*
@@ -1155,7 +1161,7 @@ register array *arr;
 		     data->arroffset + data->narrays * sizeof(sarray));
 	}
 	v = arr->elts = ALLOC(value, arr->size);
-	idx = data->sarrays[arr->primary - data->arrays].index;
+	idx = data->sarrays[arr->primary - data->values->arrays].index;
 	d_get_values(data, &data->selts[idx], v, arr->size);
     }
 
@@ -1179,8 +1185,8 @@ array *arr;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
 	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
-		ilast != data) {
+	    if (data->values->imports++ == 0 &&
+		data->ilist == (dataspace *) NULL && ilast != data) {
 		/* add to imports list */
 		if (ifirst == (dataspace *) NULL) {
 		    ifirst = data;
@@ -1214,7 +1220,7 @@ register value *rhs;
 	    data->flags |= DATA_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
-	    data->schange++;
+	    data->values->schange++;
 	}
 	break;
 
@@ -1229,11 +1235,12 @@ register value *rhs;
 		data->flags |= DATA_ARRAYREF;
 	    } else {
 		/* ref new array */
-		data->achange++;
+		data->values->achange++;
 	    }
 	} else {
 	    /* not in this object: ref imported array */
-	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
+	    if (data->values->imports++ == 0 &&
+		data->ilist == (dataspace *) NULL &&
 		ilast != data) {
 		/* add to imports list */
 		if (ifirst == (dataspace *) NULL) {
@@ -1244,7 +1251,7 @@ register value *rhs;
 		ilast = data;
 		data->ilist = (dataspace *) NULL;
 	    }
-	    data->achange++;
+	    data->values->achange++;
 	}
 	break;
     }
@@ -1270,12 +1277,12 @@ register value *lhs;
 		str->primary->str = (string *) NULL;
 		str->primary = (strref *) NULL;
 		str_del(str);
-		data->schange++;	/* last reference removed */
+		data->values->schange++;	/* last reference removed */
 	    }
 	    data->flags |= DATA_STRINGREF;
 	} else {
 	    /* not in this object: deref imported string */
-	    data->schange--;
+	    data->values->schange--;
 	}
 	break;
 
@@ -1290,7 +1297,7 @@ register value *lhs;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
 		    /* last reference removed */
 		    arr->primary->arr = (array *) NULL;
-		    data->achange++;
+		    data->values->achange++;
 
 		    if (arr->hashed != (struct _maphash_ *) NULL) {
 			map_compact(arr);
@@ -1311,12 +1318,12 @@ register value *lhs;
 		}
 	    } else {
 		/* deref new array */
-		data->achange--;
+		data->values->achange--;
 	    }
 	} else {
 	    /* not in this object: deref imported array */
-	    data->imports--;
-	    data->achange--;
+	    data->values->imports--;
+	    data->values->achange--;
 	}
 	break;
     }
@@ -1331,7 +1338,8 @@ register dataspace *data;
 register value *var;
 register value *val;
 {
-    if (var >= data->variables && var < data->variables + data->nvariables) {
+    if (var >= data->values->variables &&
+	var < data->values->variables + data->nvariables) {
 	ref_rhs(data, val);
 	del_lhs(data, var);
 	data->flags |= DATA_VARIABLE;
@@ -1392,7 +1400,8 @@ register value *elt, *val;
     } else {
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
+	    if (data->values->imports++ == 0 &&
+		data->ilist == (dataspace *) NULL &&
 		ilast != data) {
 		/* add to imports list */
 		if (ifirst == (dataspace *) NULL) {
@@ -1406,7 +1415,7 @@ register value *elt, *val;
 	}
 	if (T_INDEXED(elt->type) && data != elt->u.array->primary->data) {
 	    /* mark as unimported */
-	    data->imports--;
+	    data->values->imports--;
 	}
     }
 
@@ -1425,7 +1434,7 @@ void d_change_map(map)
 array *map;
 {
     if (map->primary->arr != (array *) NULL) {
-	map->primary->data->achange++;
+	map->primary->data->values->achange++;
     }
 }
 
@@ -1913,7 +1922,12 @@ register control *ctrl;
 	do {
 	    sinherits->oindex = inherits->obj->index;
 	    sinherits->funcoffset = inherits->funcoffset;
-	    (sinherits++)->varoffset = (inherits++)->varoffset;
+	    sinherits->varoffset = inherits->varoffset;
+	    if (inherits->priv) {
+		sinherits->varoffset |= PRIV;
+	    }
+	    inherits++;
+	    sinherits++;
 	} while (--i > 0);
 	sinherits -= UCHAR(header.ninherits);
 	sw_writev((char *) sinherits, ctrl->sectors,
@@ -2118,7 +2132,7 @@ register unsigned short n;
 
 	    case T_STRING:
 		sv->oindex = 0;
-		sv->u.string = v->u.string->primary - sdata->strings;
+		sv->u.string = v->u.string->primary - sdata->values->strings;
 		break;
 
 	    case T_OBJECT:
@@ -2129,7 +2143,7 @@ register unsigned short n;
 	    case T_ARRAY:
 	    case T_MAPPING:
 		sv->oindex = 0;
-		sv->u.array = v->u.array->primary - sdata->arrays;
+		sv->u.array = v->u.array->primary - sdata->values->arrays;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -2156,15 +2170,16 @@ register dataspace *data;
     }
 
     /* free variables */
-    if (data->variables != (value *) NULL) {
+    if (data->values->variables != (value *) NULL) {
 	register value *v;
 
-	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
+	for (i = data->nvariables, v = data->values->variables; i > 0; --i, v++)
+	{
 	    i_del_value(v);
 	}
 
-	FREE(data->variables);
-	data->variables = (value *) NULL;
+	FREE(data->values->variables);
+	data->values->variables = (value *) NULL;
     }
 
     /* free callouts */
@@ -2191,32 +2206,32 @@ register dataspace *data;
     }
 
     /* free arrays */
-    if (data->arrays != (arrref *) NULL) {
+    if (data->values->arrays != (arrref *) NULL) {
 	register arrref *a;
 
-	for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
+	for (i = data->narrays, a = data->values->arrays; i > 0; --i, a++) {
 	    if (a->arr != (array *) NULL) {
 		arr_del(a->arr);
 	    }
 	}
 
-	FREE(data->arrays);
-	data->arrays = (arrref *) NULL;
+	FREE(data->values->arrays);
+	data->values->arrays = (arrref *) NULL;
     }
 
     /* free strings */
-    if (data->strings != (strref *) NULL) {
+    if (data->values->strings != (strref *) NULL) {
 	register strref *s;
 
-	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
+	for (i = data->nstrings, s = data->values->strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
 		s->str->primary = (strref *) NULL;
 		str_del(s->str);
 	    }
 	}
 
-	FREE(data->strings);
-	data->strings = (strref *) NULL;
+	FREE(data->values->strings);
+	data->values->strings = (strref *) NULL;
     }
 }
 
@@ -2238,8 +2253,8 @@ register dataspace *data;
 	return FALSE;
     }
 
-    if (data->nsectors != 0 && data->achange == 0 && data->schange == 0 &&
-	!(data->flags & DATA_NEWCALLOUT)) {
+    if (data->nsectors != 0 && data->values->achange == 0 &&
+	data->values->schange == 0 && !(data->flags & DATA_NEWCALLOUT)) {
 	bool mod;
 
 	/*
@@ -2250,7 +2265,8 @@ register dataspace *data;
 	    /*
 	     * variables changed
 	     */
-	    d_put_values(data->svariables, data->variables, data->nvariables);
+	    d_put_values(data->svariables, data->values->variables,
+			 data->nvariables);
 	    sw_writev((char *) data->svariables, data->sectors,
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
@@ -2263,7 +2279,7 @@ register dataspace *data;
 	     * references to arrays changed
 	     */
 	    sa = data->sarrays;
-	    a = data->arrays;
+	    a = data->values->arrays;
 	    mod = FALSE;
 	    for (n = data->narrays; n > 0; --n) {
 		if (a->arr != (array *) NULL && sa->ref != (a->ref & ~ARR_MOD))
@@ -2286,7 +2302,7 @@ register dataspace *data;
 	    /*
 	     * array elements changed
 	     */
-	    a = data->arrays;
+	    a = data->values->arrays;
 	    for (n = 0; n < data->narrays; n++) {
 		if (a->arr != (array *) NULL && (a->ref & ARR_MOD)) {
 		    a->ref &= ~ARR_MOD;
@@ -2308,7 +2324,7 @@ register dataspace *data;
 	     * string references changed
 	     */
 	    ss = data->sstrings;
-	    s = data->strings;
+	    s = data->values->strings;
 	    mod = FALSE;
 	    for (n = data->nstrings; n > 0; --n) {
 		if (s->str != (string *) NULL && ss->ref != s->ref) {
@@ -2376,7 +2392,7 @@ register dataspace *data;
 	if (data->svariables == (svalue *) NULL) {
 	    data->svariables = ALLOC(svalue, data->nvariables);
 	}
-	d_count(data->variables, data->nvariables);
+	d_count(data->values->variables, data->nvariables);
 
 	if (data->ncallouts > 0) {
 	    register dcallout *co;
@@ -2441,7 +2457,7 @@ register dataspace *data;
 	arrsize = 0;
 	strsize = 0;
 
-	d_save(data->svariables, data->variables, data->nvariables);
+	d_save(data->svariables, data->values->variables, data->nvariables);
 	if (header.ncallouts > 0) {
 	    register scallout *sco;
 	    register dcallout *co;
@@ -2546,8 +2562,8 @@ register dataspace *data;
 	data->nstrings = header.nstrings;
 	data->strsize = strsize;
 
-	data->achange = 0;
-	data->schange = 0;
+	data->values->achange = 0;
+	data->values->schange = 0;
     }
 
     data->flags &= ~DATA_MODIFIED;
@@ -2690,15 +2706,16 @@ void d_export()
 	itab = ALLOC(array*, itabsz = 16);
 
 	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
-	    if (data->imports != 0) {
+	    if (data->values->imports != 0) {
 		narr = 0;
-		if (data->variables != (value *) NULL) {
-		    d_import(data, data->variables, data->nvariables);
+		if (data->values->variables != (value *) NULL) {
+		    d_import(data, data->values->variables, data->nvariables);
 		}
-		if (data->arrays != (arrref *) NULL) {
+		if (data->values->arrays != (arrref *) NULL) {
 		    register arrref *a;
 
-		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
+		    for (n = data->narrays, a = data->values->arrays; n > 0;
+			 --n, a++) {
 			if (a->arr != (array *) NULL) {
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
@@ -2727,7 +2744,7 @@ void d_export()
 	}
 
 	for (data = ifirst; data != (dataspace *) NULL; data = next) {
-	    data->imports = 0;
+	    data->values->imports = 0;
 	    next = data->ilist;
 	    data->ilist = (dataspace *) NULL;
 	}
@@ -2768,15 +2785,15 @@ object *old;
     vars = v - nvar;
 
     /* deref old values */
-    v = data->variables;
+    v = data->values->variables;
     for (n = data->nvariables; n > 0; --n) {
 	del_lhs(data, v);
 	i_del_value(v++);
     }
 
     /* replace old with new */
-    FREE(data->variables);
-    data->variables = vars;
+    FREE(data->values->variables);
+    data->values->variables = vars;
 
     data->flags |= DATA_VARIABLE;
     if (data->nvariables != nvar) {
@@ -2785,7 +2802,7 @@ object *old;
 	    data->svariables = (svalue *) NULL;
 	}
 	data->nvariables = nvar;
-	data->achange++;	/* force rebuild on swapout */
+	data->values->achange++;	/* force rebuild on swapout */
     }
 
     o_upgraded(old, data->obj);
@@ -3177,6 +3194,9 @@ register object *obj;
      */
     size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
 		  (Uint) 0);
+    if (header.nvariables >= PRIV) {
+	fatal("too many variables in restored object");
+    }
     ctrl->ninherits = UCHAR(header.ninherits);
     ctrl->compiled = header.compiled;
     ctrl->progsize = header.progsize;
@@ -3214,7 +3234,8 @@ register object *obj;
 	do {
 	    inherits->obj = &otable[sinherits->oindex];
 	    inherits->funcoffset = sinherits->funcoffset;
-	    (inherits++)->varoffset = (sinherits++)->varoffset;
+	    inherits->varoffset = sinherits->varoffset & ~PRIV;
+	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
 	} while (--n > 0);
 	AFREE(sinherits - UCHAR(header.ninherits));
 

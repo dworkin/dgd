@@ -5,7 +5,7 @@ extern int	 c_autodriver	P((void));
 extern void 	 c_error	();
 
 extern bool	 c_typechecking	P((void));
-extern bool	 c_inherit	P((char*, node*));
+extern bool	 c_inherit	P((char*, node*, int));
 extern void	 c_global	P((unsigned int, unsigned int, node*));
 extern void	 c_function	P((unsigned int, unsigned int, node*));
 extern void	 c_funcbody	P((node*));

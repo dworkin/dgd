@@ -380,7 +380,7 @@ register frame *f;
     x.narrays = 0;
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars) {
+	if (inh->varoffset == nvars && !inh->priv) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
@@ -907,7 +907,7 @@ register frame *f;
     data = o_dataspace(obj);
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars) {
+	if (inh->varoffset == nvars && !inh->priv) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
@@ -938,10 +938,10 @@ register frame *f;
 	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
-	var = data->variables;
+	var = data->values->variables;
 	nvars = 0;
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	    if (inh->varoffset == nvars) {
+	    if (inh->varoffset == nvars && !inh->priv) {
 		/*
 		 * Restore non-static variables.
 		 */

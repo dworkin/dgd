@@ -312,11 +312,8 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
     WSADATA wsadata;
     struct sockaddr_in sin;
-    struct hostent *host;
-    int n;
+    int on, n;
     connection *conn;
-    char buffer[MAXHOSTNAMELEN];
-    int on;
 
     /* initialize winsock */
     if (WSAStartup(MAKEWORD(1, 1), &wsadata) != 0) {
@@ -326,13 +323,6 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     if (LOBYTE(wsadata.wVersion) != 1 || HIBYTE(wsadata.wVersion) != 1) {
 	WSACleanup();
 	P_message("Winsock 1.1 not supported\n");
-	return FALSE;
-    }
-
-    gethostname(buffer, MAXHOSTNAMELEN);
-    host = gethostbyname(buffer);
-    if (host == (struct hostent *) NULL) {
-	P_message("gethostbyname() failed\n");
 	return FALSE;
     }
 
@@ -376,9 +366,8 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
 
     memset(&sin, '\0', sizeof(sin));
-    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
     sin.sin_port = htons((u_short) telnet_port);
-    sin.sin_family = host->h_addrtype;
+    sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
 	P_message("telnet bind failed\n");

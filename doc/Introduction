@@ -45,9 +45,10 @@ driver, mostly to translate pathnames.
 	Get the object named by objname as the first argument of a call_other().
 	compile_object() may be called from here.
 
-    object inherit_program(string file, string program)
+    object inherit_program(string file, string program, int priv)
 
-	Get the object named by program as an object to inherit.
+	Get the object named by program as an object to inherit.  The third
+	argument is 1 for private inheritance, 0 otherwise.
 	compile_object() may be called from here.
 
     string path_include(string file, string path)

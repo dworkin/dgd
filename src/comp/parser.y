@@ -92,7 +92,8 @@ static node *comma	P((node*, node*));
 /*
  * rule types
  */
-%type <type> class_specifier_list class_specifier type_specifier star_list
+%type <type> class_specifier_list class_specifier_list2 class_specifier
+	     opt_private non_private type_specifier star_list
 %type <node> opt_inherit_label string inherit_string formals_declaration
 	     formal_declaration_list formal_declaration data_dcltr
 	     function_dcltr dcltr list_dcltr dcltr_or_stmt_list dcltr_or_stmt
@@ -130,12 +131,12 @@ top_level_declarations
 	;
 
 top_level_declaration
-	: INHERIT opt_inherit_label inherit_string ';'
+	: opt_private INHERIT opt_inherit_label inherit_string ';'
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
-		  } else if (nerrors > 0 || !c_inherit($3->l.string->text, $2))
-		  {
+		  } else if (nerrors > 0 ||
+			     !c_inherit($4->l.string->text, $3, $1 != 0)) {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.
@@ -244,16 +245,33 @@ formal_declaration
 	;
 
 class_specifier_list
-	: /* empty */
-		{ $$ = 0; }
-	| class_specifier_list class_specifier
+	: opt_private
+	| non_private
+	| class_specifier class_specifier_list2
+		{ $$ = $1 | $2; }
+	;
+
+class_specifier_list2
+	: class_specifier
+	| class_specifier_list2 class_specifier
 		{ $$ = $1 | $2; }
 	;
 
 class_specifier
 	: PRIVATE
 		{ $$ = C_STATIC | C_PRIVATE; }
-	| STATIC
+	| non_private
+	;
+
+opt_private
+	: /* empty */
+		{ $$ = 0; }
+	| PRIVATE
+		{ $$ = C_STATIC | C_PRIVATE; }
+	;
+
+non_private
+	: STATIC
 		{ $$ = C_STATIC; }
 	| ATOMIC
 		{ $$ = C_ATOMIC; }
@@ -1275,6 +1293,8 @@ char *name;
 	op++;
     } else if (type == T_MIXED) {
 	type = (n1->mod == T_MIXED) ? n2->mod : n1->mod;
+    } else if (n1->mod == T_MIXED && (n2->mod & T_REF)) {
+	type = T_MIXED;
     }
     return node_bin(op, type, n1, n2);
 }

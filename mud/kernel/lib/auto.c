@@ -444,7 +444,7 @@ static mixed **call_trace()
  * NAME:	status()
  * DESCRIPTION:	get information about an object
  */
-varargs mixed *status(mixed obj)
+static varargs mixed *status(mixed obj)
 {
     object driver;
     string oname;

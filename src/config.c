@@ -1274,6 +1274,7 @@ register value *v;
 {
     register control *ctrl;
     object *prog;
+    array *a;
 
     prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
     ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
@@ -1303,9 +1304,9 @@ register value *v;
 	break;
 
     case 4:	/* O_CALLOUTS */
+	a = (obj->flags & O_CREATED) ? co_list(data, obj) : arr_new(data, 0L);
 	v->type = T_ARRAY;
-	arr_ref(v->u.array = (obj->flags & O_CREATED) ?
-			      co_list(data, obj) : arr_new(data, 0L));
+	arr_ref(v->u.array = a);
 	break;
 
     case 5:	/* O_INDEX */

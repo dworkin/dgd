@@ -48,7 +48,7 @@ expression, with the following syntax:
 	    `/'
     [set]   a single character in the given set, which is constructed of
 	    single characters such as `a' and/or character ranges such as
-	    `a-z'.  `\' may be used to escape the characters `]', `^', `-'
+	    `a-z'.  `\' may be used to escape the characters `]', `^', `-', `\'
     [^set]  a single character not in the given set
 
 and, with regular expressions "a" and "b":

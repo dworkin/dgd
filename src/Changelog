@@ -1212,3 +1212,9 @@ DGD 1.1
  - Code cleanup made assignments slightly faster, at the cost of somewhat slower
    swapping.
  - Fixed a bug that could cause wrong assignments to indexed arrays in sscanf().
+ - Avoided the nasty gethostbyname() problem on Windows 95.
+ - Fixed a compiler typechecking bug for (mixed - array).
+ - Fixed a crashing bug that occurs when an object has more callouts than
+   the maximum array size.
+ - Fixed a spurious inherited function clash in multiple inheritance.
+ - Added private inheritance.
