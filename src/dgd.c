@@ -36,29 +36,29 @@ int narg;
     return TRUE;
 }
 
-static object *usr;
+static bool swap;	/* are objects to be swapped out? */
 
 /*
- * NAME:	this_user()
- * DESCRIPTION:	return the current user object
+ * NAME:	swapout()
+ * DESCRIPTION:	indicate that objects are to be swapped out
  */
-object *this_user()
+void swapout()
 {
-    return (usr != (object *) NULL && usr->count != 0) ?
-	    usr : (object *) NULL;
+    swap = TRUE;
 }
 
 /*
  * NAME:	main()
- * DESCRIPTION:	the main function of DGD
+ * DESCRIPTION:	the main loop of DGD
  */
 int main(argc, argv)
 int argc;
 char *argv[];
 {
     char buf[INBUF_SIZE];
-    long max_cost;
+    Int max_cost;
     int size;
+    object *usr;
 
     host_init();
 
@@ -91,11 +91,11 @@ char *argv[];
 	    i_log_error();
 	    ec_pop();
 	}
-	comm_flush();
+	comm_flush(TRUE);
     }
 
     for (;;) {
-	i_set_cost(max_cost >> 2);
+	i_set_cost(max_cost >> 1);
 	co_call();
 
 	i_set_cost(max_cost);
@@ -108,7 +108,19 @@ char *argv[];
 	    }
 	}
 
-	comm_flush();
+	comm_flush(TRUE);
 	o_clean();
+
+	if (!mcheck()) {
+	    d_swapout(1);
+	    arr_freeall();
+	    mpurge();
+	    mexpand();
+	} else if (swap) {
+	    d_swapout(1);
+	    arr_freeall();
+	    mpurge();
+	}
+	swap = FALSE;
     }
 }

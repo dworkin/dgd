@@ -28,6 +28,7 @@ static user **users;		/* array of users */
 static int maxusers;		/* max # of users */
 static int nusers;		/* current # of users */
 static int newlines;		/* current # of newlines in all input buffers */
+static object *this_user;	/* current user */
 
 /*
  * NAME:	comm->init()
@@ -57,11 +58,13 @@ connection *conn;
     static char echo_on[] = { IAC, WONT, TELOPT_ECHO };
     register user **usr;
 
-    if (obj->flags & O_EDITOR) {
-	error("user is editor object");
+    if (obj->flags & (O_USER | O_EDITOR)) {
+	fatal("user object is already in use by user or editor");
     }
     for (usr = users; *usr != (user *) NULL; usr++) ;
+    mstatic();
     *usr = ALLOC(user, 1);
+    mdynamic();
     (*usr)->u.obj = obj;
     obj->flags |= O_USER;
     obj->eduser = usr - users;
@@ -73,6 +76,7 @@ connection *conn;
     (*usr)->echo = TRUE;
     (*usr)->conn = conn;
     nusers++;
+    this_user = obj;
 }
 
 /*
@@ -103,6 +107,9 @@ register user **usr;
     if (i_call(obj, "close", TRUE, 0)) {
 	i_del_value(sp++);
     }
+    if (obj == this_user) {
+	this_user = (object *) NULL;
+    }
 }
 
 /*
@@ -121,21 +128,11 @@ string *str;
     size = usr->outbufsz;
     q = usr->outbuf + size;
     for (p = str->text, len = str->len; len != 0; p++, --len) {
-	if (*p == '\n') {
-	    /*
-	     * replace \n by \r\n
-	     */
-	    if (size == OUTBUF_SIZE) {
-		conn_write(usr->conn, q = usr->outbuf, size);
-		size = 0;
-	    }
-	    *q++ = '\r';
-	    size++;
-	} else if (UCHAR(*p) == IAC) {
+	if (UCHAR(*p) == IAC) {
 	    /*
 	     * double the telnet IAC character
 	     */
-	    if (size == OUTBUF_SIZE) {
+	    if (size >= OUTBUF_SIZE - 1) {
 		conn_write(usr->conn, q = usr->outbuf, size);
 		size = 0;
 	    }
@@ -167,8 +164,6 @@ object *obj;
 bool echo;
 {
     register user *usr;
-    register char *p, *q;
-    register unsigned short len, size;
     char buf[3];
 
     usr = users[UCHAR(obj->eduser)];
@@ -177,17 +172,11 @@ bool echo;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
 
-	size = usr->outbufsz;
-	q = usr->outbuf + size;
-	for (p = buf, len = 3; len != 0; p++, --len) {
-	    if (size == OUTBUF_SIZE) {
-		conn_write(usr->conn, q = usr->outbuf, size);
-		size = 0;
-	    }
-	    *q++ = *p;
-	    size++;
+	if (usr->outbufsz > 0) {
+	    conn_write(usr->conn, usr->outbuf, usr->outbufsz);
+	    usr->outbufsz = 0;
 	}
-	usr->outbufsz = size;
+	conn_write(usr->conn, buf, 3);
 	usr->echo = echo;
     }
 }
@@ -196,7 +185,8 @@ bool echo;
  * NAME:	comm->flush()
  * DESCRIPTION:	flush output to all users
  */
-void comm_flush()
+void comm_flush(clr)
+bool clr;
 {
     register user **usr;
     register int i, size;
@@ -219,6 +209,10 @@ void comm_flush()
 	    conn_write((*usr)->conn, (*usr)->outbuf, size);
 	    (*usr)->outbufsz = 0;
 	}
+    }
+    if (clr) {
+	/* no current user */
+	this_user = (object *) NULL;
     }
 }
 
@@ -257,13 +251,14 @@ int *size;
 	    if (i_call(o, "open", TRUE, 0)) {
 		i_del_value(sp++);
 	    }
-	    comm_flush();
+	    comm_flush(FALSE);
 	}
     }
 
     /*
      * read input from users
      */
+    this_user = (object *) NULL;
     n = conn_select(newlines == 0);
     if (n <= 0) {
 	/*
@@ -273,6 +268,8 @@ int *size;
 	    return (object *) NULL;
 	}
     } else {
+	static char intr[] = { '\177', IAC, WILL, TELOPT_TM };
+	static char brk[] = { '\34', IAC, WILL, TELOPT_TM };
 	register user **usr;
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {
@@ -322,6 +319,14 @@ int *size;
 			    state = TS_IGNORE;
 			    break;
 
+			case IP:
+			    conn_write((*usr)->conn, intr, 4);
+			    break;
+
+			case BREAK:
+			    conn_write((*usr)->conn, brk, 4);
+			    break;
+
 			default:
 			    state = TS_DATA;
 			    break;
@@ -363,17 +368,21 @@ int *size;
 		    n++;	/* skip \n */
 		    usr->inbufsz -= n;
 		    if (usr->inbufsz != 0) {
-			memcpy(usr->inbuf, usr->inbuf + n, usr->inbufsz);
+			/* can't rely on memcpy */
+			for (p = usr->inbuf, q = p + n, n = usr->inbufsz; n > 0;
+			     --n) {
+			    *p++ = *q++;
+			}
 		    }
-		    return usr->u.obj;
+		    return this_user = usr->u.obj;
 		} else if (usr->inbufsz == INBUF_SIZE) {
 		    /*
 		     * input buffer full
 		     */
 		    lastuser = n;
-		    *size = INBUF_SIZE;
+		    memcpy(buf, usr->inbuf, *size = INBUF_SIZE);
 		    usr->inbufsz = 0;
-		    return usr->u.obj;
+		    return this_user = usr->u.obj;
 		}
 	    }
 	    if (n == lastuser) {
@@ -415,6 +424,15 @@ object *obj;
 	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz);
     }
     comm_del(usr);
+}
+
+/*
+ * NAME:	comm->user()
+ * DESCRIPTION:	return the current user
+ */
+object *comm_user()
+{
+    return this_user;
 }
 
 /*
