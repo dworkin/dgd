@@ -1494,7 +1494,9 @@ static cmd_grant(object user, string cmd, string str)
 	/*
 	 * file access
 	 */
-	if (sizeof(query_users() & ({ who })) != 0) {
+	if (sscanf(who, "%*s/") != 0) {
+	    message("Invalid user name.\n");
+	} else if (sizeof(query_users() & ({ who })) != 0) {
 	    message(who + " already has file access.\n");
 	} else if (!access(owner, "/", FULL_ACCESS)) {
 	    message("Insufficient access granting privileges.\n");
