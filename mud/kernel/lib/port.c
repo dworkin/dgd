@@ -21,7 +21,7 @@ static int open_port(string protocol, int port)
 {
     catch {
 	::open_port(protocol, port);
-	porttype = protocol;
+	porttype = (protocol == "telnet") ? "telnet" : "binary";
 	return 1;
     } : {
 	return 0;
