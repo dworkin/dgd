@@ -26,8 +26,8 @@ Language:
  - Inheritance is completely different.  There are two kinds of inheritance,
    virtual and labeled.
    Virtual inheritance is the default.  If A is inherited by B and C, and D
-   inherits A, then the variables of A are in D only once.  It is illegal to
-   inherit two different functions with the same name, unless function F1 is
+   inherits B and C, then the variables of A are in D only once.  It is illegal
+   to inherit two different functions with the same name, unless function F1 is
    inherited in the object that defines function F2, or if at least one of
    F1 and F2 is private.  It is illegal to inherit two different variables
    with the same name, unless at least one of them is private.  It is
@@ -356,3 +356,16 @@ DGD 1.0.a3
  - Destructing a destructed object gives an error, rather than a fatal error.
  - call_other() from a destructed object no longer results in an error, but
    is simply ignored, like in LPmud.
+
+DGD 1.0.a4
+
+ - TCP/IP support added.
+ - Reduced the amount of runtime stack checking, by computing in advance (an
+   estimate of) the maximum stack depth of a function, which is checked when
+   the function is called.  This takes two bytes extra per function.
+ - Indexed string assignments will not make a copy of the string, if the string
+   is not a constant and has reference count 1.
+ - Fixed several bugs in the interpreted code generator.
+ - Added LPC->C code generator.
+ - Cleaned up Makefiles and including files a little bit (still far from
+   perfect).
