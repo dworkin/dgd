@@ -277,7 +277,9 @@ object find_user(string name)
 void prepare_reboot()
 {
     if (previous_program() == DRIVER) {
-	connections = users();
+	catch {
+	    connections = users();
+	}
     }
 }
 
@@ -290,11 +292,13 @@ void reboot()
     if (previous_program() == DRIVER) {
 	int i;
 
-	for (i = sizeof(connections); --i >= 0; ) {
-	    connections[i]->reboot();
+	if (connections) {
+	    for (i = sizeof(connections); --i >= 0; ) {
+		connections[i]->reboot();
+	    }
+	    connections = nil;
 	}
 
-	connections = nil;
 	users = ({ });
 	names = ([ ]);
     }

@@ -12,6 +12,7 @@
 
 mapping resources;		/* registered resources */
 mapping owners;			/* resource owners */
+mapping olimits;		/* resource limit per owner */
 int downtime;			/* shutdown time */
 mapping suspended;		/* suspended callouts */
 mixed *first_suspended;		/* first suspended callout */
@@ -44,6 +45,7 @@ static void create()
     }
 
     owners = ([ ]);		/* no resource owners yet */
+    olimits = ([ ]);
 }
 
 /*
@@ -91,6 +93,7 @@ void add_owner(string owner)
 		obj->set_owner(owner);
 		owners["System"]->rsrc_incr("objects", nil, 1,
 					    resources["objects"], TRUE);
+		olimits[owner] = ({ -1, -1, 0 });
 	    } : {
 		destruct_object(obj);
 	    }
@@ -122,7 +125,10 @@ void remove_owner(string owner)
 	    }
 	}
 
-	destruct_object(obj);
+	rlimits (-1; -1) {
+	    destruct_object(obj);
+	    olimits[owner] = nil;
+	}
     }
 }
 
@@ -281,13 +287,74 @@ int rsrc_incr(string owner, string name, mixed index, int incr,
  * NAME:	call_limits()
  * DESCRIPTION:	handle stack and tick limits for _F_call_limited
  */
-mixed *call_limits(mixed *limits, string owner, int stack, int ticks)
+mixed *call_limits(mixed *previous, string owner, int stack, int ticks)
 {
     if (previous_program() == AUTO) {
-	return owners[owner]->call_limits(limits, stack, ticks,
-					  resources["stack"],
-					  resources["ticks"],
-					  resources["tick usage"]);
+	int maxstack, maxticks, time, *limits;
+
+	if (!olimits) {
+	    int i, max, *rsrc;
+	    object *objects;
+
+	    olimits = ([ ]);
+	    rsrc = resources["stack"];
+	    maxstack = rsrc[GRSRC_MAX];
+	    objects = map_values(owners);
+	    for (i = sizeof(objects); --i >= 0; ) {
+		max = objects[i]->rsrc_get("stack", rsrc)[RSRC_MAX];
+		if (max == maxstack) {
+		    max = -1;
+		}
+		objects[i]->rsrc_set_limit("stack", max, 0);
+	    }
+	}
+	limits = olimits[owner];
+
+	/* determine available stack */
+	maxstack = limits[LIM_MAX_STACK];
+	if (maxstack < 0) {
+	    maxstack = resources["stack"][GRSRC_MAX];
+	}
+	if (maxstack > stack && stack >= 0) {
+	    maxstack = stack;
+	}
+	if (maxstack >= 0) {
+	    maxstack++;
+	}
+
+	/* determine available ticks */
+	maxticks = limits[LIM_MAX_TICKS];
+	if (maxticks < 0) {
+	    maxticks = resources["ticks"][GRSRC_MAX];
+	} else {
+	    int *usage;
+
+	    usage = resources["tick usage"];
+	    if ((time=time()) - limits[LIM_MAX_TIME] >= usage[GRSRC_PERIOD]) {
+		/* decay ticks */
+		owners[owner]->decay_ticks(limits, time, usage);
+		maxticks = limits[LIM_MAX_TICKS];
+	    }
+	}
+	if (maxticks > ticks - 25 && ticks >= 0) {
+	    maxticks = ticks - 25;
+	    if (maxticks <= 0) {
+		maxticks = 1;
+	    }
+	}
+
+	return ({ previous, owner, maxstack, maxticks, ticks });
+    }
+}
+
+/*
+ * NAME:	set_rlimits()
+ * DESCRIPTION:	set limits for call_limited
+ */
+void set_rlimits(string owner, int *limits)
+{
+    if (previous_program() == RSRCOBJ) {
+    	olimits[owner] = limits;
     }
 }
 
@@ -301,8 +368,9 @@ int update_ticks(mixed *limits, int ticks)
 	if (limits[LIM_MAXTICKS] > 0 &&
 	    (!limits[LIM_NEXT] ||
 	     limits[LIM_OWNER] != limits[LIM_NEXT][LIM_OWNER])) {
-	    owners[limits[LIM_OWNER]]->update_ticks(ticks =
-						limits[LIM_MAXTICKS] - ticks);
+	    ticks = limits[LIM_MAXTICKS] - ticks;
+	    owners[limits[LIM_OWNER]]->update_ticks(ticks,
+						    resources["tick usage"]);
 	    ticks = (limits[LIM_TICKS] >= 0) ?
 		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}

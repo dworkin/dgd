@@ -70,6 +70,7 @@ register unsigned int n;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
+    baseplane.ocount = 1;
     oplane = &baseplane;
     upgraded = (object *) NULL;
     odcount = 1;

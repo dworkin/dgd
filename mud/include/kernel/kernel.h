@@ -6,5 +6,5 @@
 /*
  * privilege levels
  */
-# define KERNEL()	(sscanf(previous_program(), "/kernel/%*s") != 0)
-# define SYSTEM()	(sscanf(previous_program(), USR + "/System/%*s") != 0)
+# define KERNEL()	sscanf(previous_program(), "/kernel/%*s")
+# define SYSTEM()	sscanf(previous_program(), USR + "/System/%*s")

@@ -118,7 +118,7 @@ void disconnect()
  */
 void reboot()
 {
-    if (previous_object() == userd) {
+    if (previous_object() == userd || SYSTEM()) {
 	if (user) {
 	    catch {
 		user->logout(FALSE);

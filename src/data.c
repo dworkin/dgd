@@ -1477,6 +1477,9 @@ register dataspace *data;
     for (n = data->fcallouts; n != 0; n = data->callouts[n - 1].co_next) {
 	--count;
     }
+    if (count > conf_array_size()) {
+	return (array *) NULL;
+    }
 
     list = arr_new(host, (long) count);
     elts = list->elts;

@@ -1573,3 +1573,5 @@ DGD 1.3
  - Make sure that a callout handle is not truncated to 16 bits before an
    attempt is made to remove it.
  - Include system files before DGD files on Windows.
+ - Rather than causing an error, let the callout and precompiled object lists
+   returned by status() be nil if they would not fit in an array.

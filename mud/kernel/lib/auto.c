@@ -284,11 +284,11 @@ static object compile_object(string path, varargs string source)
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     /*
-     * check permission; compiling requires access
+     * check access
      */
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
@@ -374,11 +374,11 @@ static object clone_object(string path, varargs string uid)
 	uid = owner;
     }
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     /*
-     * check permissions
+     * check access
      */
     oname = object_name(this_object());
     path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
@@ -413,6 +413,9 @@ static object clone_object(string path, varargs string uid)
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("Too many objects");
 	}
+    }
+    if (::status()[ST_NOBJECTS] == ::status()[ST_OTABSIZE]) {
+	error("Too many objects");
     }
 
     /*
@@ -557,8 +560,11 @@ static mixed *status(varargs mixed obj)
 	if (status[ST_STACKDEPTH] >= 0) {
 	    status[ST_STACKDEPTH]++;
 	}
-	for (i = sizeof(precompiled = status[ST_PRECOMPILED]); --i >= 0; ) {
-	    precompiled[i] = object_name(precompiled[i]);
+	precompiled = status[ST_PRECOMPILED];
+	if (precompiled) {
+	    for (i = sizeof(precompiled); --i >= 0; ) {
+		precompiled[i] = object_name(precompiled[i]);
+	    }
 	}
 	return status;
     }
@@ -581,7 +587,7 @@ static mixed *status(varargs mixed obj)
 
     status = ::status(obj);
     callouts = status[O_CALLOUTS];
-    if ((i=sizeof(callouts)) != 0) {
+    if (callouts && (i=sizeof(callouts)) != 0) {
 	oname = object_name(obj);
 	if (sscanf(oname, "/kernel/%*s") != 0) {
 	    /* can't see callouts in kernel objects */
@@ -748,6 +754,7 @@ static mixed call_limited(string function, mixed args...)
 static int call_out(string function, mixed delay, mixed args...)
 {
     int handle;
+    string oname;
 
     CHECKARG(function, 1, "call_out");
     handle = typeof(delay);
@@ -758,14 +765,15 @@ static int call_out(string function, mixed delay, mixed args...)
     CHECKARG(function_object(function, this_object()) != AUTO ||
 							 function == "create",
 	     1, "call_out");
-    if (!next) {
+    oname = object_name(this_object());
+    if (sscanf(oname, "%*s#-1") != 0) {
 	error("Callout in non-persistent object");
     }
 
     /*
      * add callout
      */
-    if (sscanf(object_name(this_object()), "/kernel/%*s/rsrc") != 0) {
+    if (sscanf(oname, "/kernel/%*s/rsrc") != 0) {
 	/* direct callouts for resource management objects */
 	return ::call_out(function, delay, args...);
     }
@@ -986,7 +994,7 @@ static object *query_subscribed_event(string name)
     sz = sizeof(objlist);
     objlist -= ({ nil });
     if (sz != sizeof(objlist)) {
-	events[name] = objlist;
+	events[name] = objlist[..];
     }
     return objlist;
 }
@@ -1079,7 +1087,7 @@ static string read_file(string path, varargs int offset, int size)
 
     CHECKARG(path, 1, "read_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1105,7 +1113,7 @@ static int write_file(string path, string str, varargs int offset)
     CHECKARG(path, 1, "write_file");
     CHECKARG(str, 2, "write_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1151,7 +1159,7 @@ static int remove_file(string path)
 
     CHECKARG(path, 1, "remove_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1190,7 +1198,7 @@ static int rename_file(string from, string to)
     CHECKARG(from, 1, "rename_file");
     CHECKARG(to, 2, "rename_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1242,7 +1250,7 @@ static mixed **get_dir(string path)
 
     CHECKARG(path, 1, "get_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1294,7 +1302,7 @@ static mixed *file_info(string path)
 
     CHECKARG(path, 1, "file_info");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     name = object_name(this_object());
@@ -1345,7 +1353,7 @@ static int make_dir(string path)
 
     CHECKARG(path, 1, "make_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1389,7 +1397,7 @@ static int remove_dir(string path)
 
     CHECKARG(path, 1, "remove_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1424,7 +1432,7 @@ static int restore_object(string path)
 
     CHECKARG(path, 1, "restore_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1449,7 +1457,7 @@ static void save_object(string path)
 
     CHECKARG(path, 1, "save_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());

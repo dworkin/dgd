@@ -236,6 +236,9 @@ dataspace *data;
 	    n++;
 	}
     }
+    if (n > conf_array_size()) {
+	return (array *) NULL;
+    }
 
     a = arr_new(data, (long) n);
     v = a->elts;

@@ -181,8 +181,8 @@ driver, mostly to translate pathnames.
 
     void message_done()
 
-	This function is called when a buffered string that could not be
-	sent entirely when send_message was called, was fully transmitted.
+	This function is called when a string sent by send_message was
+	fully transmitted.
 
     void open_datagram()
 

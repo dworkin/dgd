@@ -18,3 +18,7 @@
 # define LIM_MAXSTACK	2	/* max stack in frame */
 # define LIM_MAXTICKS	3	/* max ticks in frame */
 # define LIM_TICKS	4	/* current ticks in frame */
+
+# define LIM_MAX_STACK	0	/* max stack */
+# define LIM_MAX_TICKS	1	/* max ticks */
+# define LIM_MAX_TIME	2	/* tick usage decay time */

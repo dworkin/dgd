@@ -1484,7 +1484,12 @@ register value *v;
 	break;
 
     case 24:	/* ST_PRECOMPILED */
-	PUT_ARRVAL(v, pc_list(f->data));
+	a = pc_list(f->data);
+	if (a != (array *) NULL) {
+	    PUT_ARRVAL(v, a);
+	} else {
+	    *v = nil_value;
+	}
 	break;
 
     case 25:	/* ST_TELNETPORTS */
@@ -1540,6 +1545,7 @@ register value *v;
 {
     register control *ctrl;
     object *prog;
+    array *a;
 
     prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->u_master);
     ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : o_control(prog);
@@ -1565,9 +1571,16 @@ register value *v;
 	break;
 
     case 4:	/* O_CALLOUTS */
-	PUT_ARRVAL(v, (O_HASDATA(obj)) ?
-		       d_list_callouts(data, o_dataspace(obj)) :
-		       arr_new(data, 0L));
+	if (O_HASDATA(obj)) {
+	    a = d_list_callouts(data, o_dataspace(obj));
+	    if (a != (array *) NULL) {
+		PUT_ARRVAL(v, a);
+	    } else {
+		*v = nil_value;
+	    }
+	} else {
+	    PUT_ARRVAL(v, arr_new(data, 0L));
+	}
 	break;
 
     case 5:	/* O_INDEX */

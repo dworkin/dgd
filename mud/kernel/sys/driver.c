@@ -301,6 +301,7 @@ void set_tls_size(int size)
 {
     if (previous_program() == API_TLS) {
 	tls_size = size + 3;
+	mp_ready = TRUE;
     }
 }
 
@@ -310,6 +311,10 @@ void set_tls_size(int size)
  */
 int query_tls_size()
 {
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
     return tls_size;
 }
 
@@ -375,7 +380,6 @@ private void _initialize(mixed *tls)
 
     message(status()[ST_VERSION] + "\n");
     message("Initializing...\n");
-    mp_ready = TRUE;
 
     /* load initial objects */
     load(AUTO);
@@ -437,6 +441,7 @@ private void _initialize(mixed *tls)
  */
 static void initialize()
 {
+    mp_ready = TRUE;
     _initialize(allocate(tls_size = 3));
 }
 
@@ -446,7 +451,7 @@ static void initialize()
  */
 void prepare_reboot()
 {
-    if (KERNEL()) {
+    if (previous_program() == AUTO) {
 	if (initd) {
 	    initd->prepare_reboot();
 	}
@@ -462,10 +467,6 @@ void prepare_reboot()
 private void _restored(mixed *tls)
 {
     message(status()[ST_VERSION] + "\n");
-    if (!mp_ready) {
-	tls_size++;
-	mp_ready = TRUE;
-    }
 
     rsrcd->reboot();
     call_other(userd, "reboot");
@@ -484,6 +485,10 @@ private void _restored(mixed *tls)
  */
 static void restored()
 {
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
     _restored(allocate(tls_size));
 }
 
@@ -574,6 +579,10 @@ static int touch(object obj, string function)
 
     if (objectd) {
 	if (!previous_object()) {
+	    if (!mp_ready) {
+		tls_size++;
+		mp_ready = TRUE;
+	    }
 	    tls = allocate(tls_size);
 	} else if (KERNEL()) {
 	    prog = function_object(function, obj);
@@ -728,6 +737,10 @@ static void recompile(object obj)
  */
 static object telnet_connect(int port)
 {
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
     return userd->telnet_connection(allocate(tls_size), port);
 }
 
@@ -737,6 +750,10 @@ static object telnet_connect(int port)
  */
 static object binary_connect(int port)
 {
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
     return userd->binary_connection(allocate(tls_size), port);
 }
 
@@ -761,6 +778,10 @@ private void _interrupt(mixed *tls)
  */
 static void interrupt()
 {
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
     _interrupt(allocate(tls_size));
 }
 
@@ -797,7 +818,8 @@ static void runtime_error(string str, int caught, int ticks)
 
 	limits = tls[0];
 	while (--i >= caught) {
-	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited") {
+	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited" &&
+		trace[i][TRACE_PROGNAME] == AUTO) {
 		ticks = rsrcd->update_ticks(limits, ticks);
 		if (ticks < 0) {
 		    break;
@@ -969,7 +991,7 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
     }
     if (maxticks != 0) {
 	if (maxticks < 0) {
-	    return (sscanf(previous_program(), USR + "/System/%*s"));
+	    return SYSTEM();
 	}
 	ticks = status()[ST_TICKS];
 	if (ticks >= 0 && maxticks > ticks) {
