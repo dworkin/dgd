@@ -70,6 +70,18 @@ reboot()
 }
 
 /*
+ * NAME:	change_user()
+ * DESCRIPTION:	allow the current user to redirect the connection
+ */
+int change_user(object obj, string str)
+{
+    if (previous_program() == LIB_USER) {
+	user = obj;
+	return obj->login(str);
+    }
+}
+
+/*
  * NAME:	query_user()
  * DESCRIPTION:	return the associated user object
  */

@@ -116,7 +116,6 @@ nomask _F_destruct()
 	object rsrcd;
 	int i, j;
 
-	::find_object(DRIVER)->destruct(this_object(), owner);
 	::find_object(OBJREGD)->unlink(this_object(), owner);
 
 	rsrcd = ::find_object(RSRCD);
@@ -233,17 +232,19 @@ static int destruct_object(mixed obj)
      */
     oname = object_name(obj);
     lib = sscanf(oname, "%*s/lib/");
+    oowner = (lib) ? driver->creator(oname) : obj->query_owner();
     if ((sscanf(oname, "/kernel/%*s") != 0 && !lib &&
 	 sscanf(object_name(this_object()), "/kernel/%*s") == 0) ||
-	(creator != "System" &&
-	 (oowner=(lib) ? driver->creator(oname) : obj->query_owner()) &&
-	 owner != oowner)) {
+	(creator != "System" && oowner && owner != oowner)) {
 	error("Cannot destruct object: not owner");
     }
 
     rlimits (-1; -1) {
 	if (!lib) {
+	    driver->destruct(obj, oowner);
 	    obj->_F_destruct();
+	} else {
+	    driver->destruct_lib(object_name(obj), oowner);
 	}
 	::destruct_object(obj);
     }
@@ -1261,6 +1262,34 @@ static execute_program(string cmdline)
 
     if (creator == "System" && this_object()) {
 	::execute_program(cmdline);
+    }
+}
+
+/*
+ * NAME:	gethostbyname()
+ * DESCRIPTION:	get host ip number from host name, blocking the server during
+ *		the call
+ */
+static string gethostbyname(string name)
+{
+    CHECKARG(name, 1, "name");
+
+    if (creator == "System" && this_object()) {
+	return ::gethostbyname(name);
+    }
+}
+
+/*
+ * NAME:	gethostbyaddr()
+ * DESCRIPTION:	get host name from host ip number, blocking the server during
+ *		the call
+ */
+static string gethostbyaddr(string addr)
+{
+    CHECKARG(addr, 1, "addr");
+
+    if (creator == "System" && this_object()) {
+	return ::gethostbyaddr(addr);
     }
 }
 # endif

@@ -87,14 +87,14 @@ object telnet_user(string str)
     if (previous_program() == LIB_CONN) {
 	object user;
 
-	if (telnet_manager) {
-	    user = telnet_manager->select(str);
-	    if (function_object("query_conn", user) != LIB_USER) {
-		error("Invalid user object");
-	    }
-	} else {
-	    user = names[str];
-	    if (!user) {
+	user = names[str];
+	if (!user) {
+	    if (telnet_manager) {
+		user = telnet_manager->select(str);
+		if (function_object("query_conn", user) != LIB_USER) {
+		    error("Invalid user object");
+		}
+	    } else {
 		user = clone_object(DEFAULT_USER);
 	    }
 	}
@@ -112,14 +112,14 @@ object binary_user(string str)
     if (previous_program() == LIB_CONN) {
 	object user;
 
-	if (binary_manager && str != "admin") {
-	    user = binary_manager->select(str);
-	    if (function_object("query_conn", user) != LIB_USER) {
-		error("Invalid user object");
-	    }
-	} else {
-	    user = names[str];
-	    if (!user) {
+	user = names[str];
+	if (!user) {
+	    if (binary_manager && str != "admin") {
+		user = binary_manager->select(str);
+		if (function_object("query_conn", user) != LIB_USER) {
+		    error("Invalid user object");
+		}
+	    } else {
 		user = clone_object(DEFAULT_USER);
 	    }
 	}

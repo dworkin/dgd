@@ -36,6 +36,22 @@ static connect(object conn)
 }
 
 /*
+ * NAME:	redirect()
+ * DESCRIPTION:	direct connection to a different user object
+ */
+static int redirect(object user, string str)
+{
+    object conn;
+
+    if (!connection || function_object("query_conn", user) != LIB_USER) {
+	error("Bad redirect");
+    }
+    conn = connection;
+    connection = 0;
+    return conn->change_user(user, str);
+}
+
+/*
  * NAME:	login()
  * DESCRIPTION:	log this user in
  */

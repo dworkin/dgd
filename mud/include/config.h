@@ -7,6 +7,6 @@
 # endif
 
 # ifdef SYS_NETWORKING
-#  define TELNET_PORT	6027	/* default telnet port */
-#  define BINARY_PORT	6028	/* default binary port */
+#  define TELNET_PORT	6047	/* default telnet port */
+#  define BINARY_PORT	6048	/* default binary port */
 # endif

@@ -18,6 +18,7 @@ object errord;		/* error manager object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string compiled;	/* object currently being compiled */
+string *inherited;	/* list of inherited objects */
 string error;		/* last error */
 
 /*
@@ -155,10 +156,10 @@ varargs int file_size(string file, int dir)
 }
 
 /*
- * NAME:	set_objectd()
+ * NAME:	set_object_manager()
  * DESCRIPTION:	set the object manager
  */
-set_objectd(object obj)
+set_object_manager(object obj)
 {
     if (SYSTEM()) {
 	objectd = obj;
@@ -166,10 +167,10 @@ set_objectd(object obj)
 }
 
 /*
- * NAME:	set_errord()
+ * NAME:	set_error_manager()
  * DESCRIPTION:	set the error manager
  */
-set_errord(object obj)
+set_error_manager(object obj)
 {
     if (SYSTEM()) {
 	errord = obj;
@@ -184,6 +185,7 @@ compiling(string path)
 {
     if (previous_program() == AUTO) {
 	compiled = path;
+	inherited = ({ });
     }
 }
 
@@ -194,7 +196,12 @@ compiling(string path)
 compile(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
-	objectd->compile(obj, owner);
+	if (inherited) {
+	    objectd->compile(owner, obj, inherited...);
+	    inherited = 0;
+	} else {
+	    objectd->compile(owner, obj);
+	}
     }
 }
 
@@ -205,7 +212,12 @@ compile(object obj, string owner)
 compile_lib(string path, string owner)
 {
     if (objectd && previous_program() == AUTO) {
-	objectd->compile_lib(path, owner);
+	if (inherited) {
+	    objectd->compile_lib(owner, path, inherited...);
+	    inherited = 0;
+	} else {
+	    objectd->compile_lib(owner, path);
+	}
     }
 }
 
@@ -216,18 +228,29 @@ compile_lib(string path, string owner)
 clone(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
-	objectd->clone(obj, owner);
+	objectd->clone(owner, obj);
     }
 }
 
 /*
  * NAME:	destruct()
- * DESCRIPTION:	object destructed
+ * DESCRIPTION:	object about to be destructed
  */
 destruct(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
-	objectd->destruct(obj, owner);
+	objectd->destruct(owner, obj);
+    }
+}
+
+/*
+ * NAME:	destruct_lib()
+ * DESCRIPTION:	inherited object about to be destructed
+ */
+destruct_lib(string path, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->destruct_lib(owner, path);
     }
 }
 
@@ -240,6 +263,17 @@ string query_owner()
     return "System";
 }
 
+
+/*
+ * NAME:	message()
+ * DESCRIPTION:	show message
+ */
+message(string str)
+{
+    if (KERNEL() || SYSTEM()) {
+	send_message(ctime(time())[4 .. 18] + " ** " + str);
+    }
+}
 
 /*
  * NAME:	load()
@@ -261,7 +295,8 @@ static initialize()
 {
     object port, telnet, binary;
 
-    send_message(ctime(time())[4 .. 18] + " ** Initializing...\n");
+    message("DGD " + status()[ST_VERSION] + "\n");
+    message("Initializing...\n");
 
     /* load initial objects */
     load(AUTO);
@@ -315,7 +350,7 @@ static initialize()
 # endif
     }
 
-    send_message(ctime(time())[4 .. 18] + " ** Initialization complete.\n");
+    message("Initialization complete.\n\n");
 }
 
 /*
@@ -340,7 +375,7 @@ prepare_reboot()
 halt()
 {
     if (previous_program() == AUTO) {
-	send_message(ctime(time())[4 .. 18] + " ** System halted.\n");
+	message("System halted.\n");
     }
 }
 
@@ -356,7 +391,7 @@ static restored()
 	initd->reboot();
     }
 
-    send_message(ctime(time())[4 .. 18] + " ** State restored.\n");
+    message("State restored.\n");
 }
 
 /*
@@ -445,7 +480,7 @@ static object inherit_program(string from, string path)
     string creator;
     object obj;
 
-    path = normalize_path(path, from, creator = creator(from));
+    path = normalize_path(path, from + "/..", creator = creator(from));
     if (sscanf(path, "%*s/lib/") == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
 	!accessd->access(from, path, READ_ACCESS)) {
@@ -465,12 +500,16 @@ static object inherit_program(string from, string path)
 
 	saved = compiled;
 	compiled = path;
+	inherited = ({ });
 	obj = compile_object(path);
-	compiled = saved;
 	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
 	if (objectd) {
-	    objectd->compile_lib(path, creator);
+	    objectd->compile_lib(creator, path, inherited...);
 	}
+	compiled = saved;
+	inherited = ({ });
+    } else if (inherited) {
+	inherited += ({ path });
     }
     return obj;
 }
@@ -504,11 +543,12 @@ static remove_program(string path, int timestamp, int index)
 {
     string creator;
 
+    creator = creator(path);
     if (path != RSRCOBJ) {
-	rsrcd->rsrc_incr(creator=creator(path), "objects", 0, -1);
+	rsrcd->rsrc_incr(creator, "objects", 0, -1);
     }
     if (objectd) {
-	objectd->remove_program(path, timestamp, index, creator);
+	objectd->remove_program(creator, path, timestamp, index);
     }
 }
 
@@ -569,9 +609,9 @@ string query_error()
  */
 static runtime_error(string str, int caught, int ticks)
 {
-    mixed **trace, *what;
+    mixed **trace;
     string line, function, progname, objname;
-    int i, sz, spent, len;
+    int i, sz, len;
     object obj;
 
     if (caught == 1) {
@@ -579,7 +619,7 @@ static runtime_error(string str, int caught, int ticks)
 	caught = 0;
     } else if (caught != 0 && ticks < 0) {
 	error = str;
-	return;
+	/* return; */
     }
 
     trace = call_trace();
@@ -603,7 +643,7 @@ static runtime_error(string str, int caught, int ticks)
 	if (caught != 0) {
 	    str += " [caught]";
 	}
-	str = ctime(time())[4 .. 18] + " ** " + str + "\n";
+	str += "\n";
 
 	for (i = 0; i < sz; i++) {
 	    progname = trace[i][TRACE_PROGNAME];
@@ -617,9 +657,13 @@ static runtime_error(string str, int caught, int ticks)
 
 	    function = trace[i][TRACE_FUNCTION];
 	    len = strlen(function);
-	    if (len > 3 && progname == AUTO &&
-		(function[.. 2] == "_F_" || function[.. 2] == "_Q_")) {
-		continue;
+	    if (progname == AUTO && len > 3) {
+		switch (function[.. 2]) {
+		case "bad":
+		case "_F_":
+		case "_Q_":
+		    continue;
+		}
 	    }
 	    if (len < 17) {
 		function += "                 "[len ..];
@@ -639,7 +683,7 @@ static runtime_error(string str, int caught, int ticks)
 	    }
 	}
 
-	send_message(str);
+	message(str);
 	if (caught == 0 && this_user() && (obj=this_user()->query_user())) {
 	    obj->message(str);
 	}
@@ -682,15 +726,4 @@ static int runtime_rlimits(object obj, int depth, int ticks)
 {
     return (sscanf(object_name(obj), USR + "/System/%*s") != 0 &&
 	    depth == 0 && ticks < 0);
-}
-
-/*
- * NAME:	message()
- * DESCRIPTION:	show message
- */
-message(string str)
-{
-    if (SYSTEM() || KERNEL()) {
-	send_message(ctime(time())[4 .. 18] + " ** " + str);
-    }
 }

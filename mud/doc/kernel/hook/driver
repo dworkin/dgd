@@ -14,30 +14,30 @@ int file_size(string file, int dirflag)	[System only]
     of directory.
 
 
-void set_objectd(object objectd)	[System only]
+void set_object_manager(object objectd)	[System only]
 
     Install an object manager, in which the following functions will be called
     afterwards:
 
-    * void compile(object obj, string owner)
+    * void compile(string owner, object obj, string inherited...)
 
 	The given object has just been compiled.  Called just before the object
 	is initialized with create(0).
 
-    * void compile_lib(string path, string owner)
+    * void compile_lib(string owner, string path, string inherited...)
 
 	The given inheritable object has just been compiled.
 
-    * void clone(object obj, string owner)
+    * void clone(string owner, object obj)
 
 	The given object has just been cloned.  Called just before the object
 	is initialized with create(1).
 
-    * void destruct(object obj, string owner)
+    * void destruct(string owner, object obj)
 
 	The given object is about to be destructed.
 
-    * void remove_program(string path, int timestamp, int index)
+    * void remove_program(string owner, string path, int timestamp, int index)
 
 	The last reference to the given program has been removed.
 
@@ -48,7 +48,7 @@ void set_objectd(object objectd)	[System only]
 	what file is currently being compiled.
 
 
-void set_errord(object errord)	[System only]
+void set_error_manager(object errord)	[System only]
 
     Install an error manager, in which the following functions can be called
     afterwards:
