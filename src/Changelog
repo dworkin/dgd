@@ -1522,3 +1522,4 @@ DGD 1.3
    account.
  - Fixed several bugs which could, in rare cases, cause nil to turn up in
    mappings that had been accessed from atomically executed code.
+ - Fixed a bug in error recovery for compiling switch statements.

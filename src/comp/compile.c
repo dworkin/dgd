@@ -1242,7 +1242,7 @@ node *expr, *stmt;
     register unsigned long cnt;
     short type, sz;
 
-    n = (node *) NULL;
+    n = stmt;
     if (switch_list->type != T_NIL) {
 	if (stmt == (node *) NULL) {
 	    /* empty switch statement */

@@ -183,10 +183,10 @@ must specify the following configuration parameters:
 param		type	meaning
 --------------------------------------------------------------------------
 telnet_port	number	The port number on which the driver will accept
-			telnet connections.
+			telnet connections, or an array of such ports.
 binary_port	number	The port number on which the driver will accept
-			binary connections.  Communication on the binary
-			port is raw TCP/IP without additional protocol.
+			binary connections, or an array of such ports.
+			Communication on the binary port is plain TCP/IP.
 directory	string	The base directory for the system.
 users		number	The maximum number of active telnet and binary
 			connections.

@@ -748,7 +748,7 @@ static int call_out(string function, mixed delay, mixed args...)
     }
     catch {
 	rlimits (-1; -1) {
-	    handle = ::call_out("_F_callout", delay, function, FALSE, args...);
+	    handle = ::call_out("_F_callout", delay, function, FALSE, args);
 	    if (::find_object(RSRCD)->rsrc_incr(owner, "callouts",
 						this_object(), 1)) {
 		return handle;
@@ -784,7 +784,7 @@ static mixed remove_call_out(int handle)
  * NAME:	_F_callout()
  * DESCRIPTION:	callout gate
  */
-nomask void _F_callout(string function, int suspended, mixed args...)
+nomask void _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
@@ -793,8 +793,7 @@ nomask void _F_callout(string function, int suspended, mixed args...)
 	    !::find_object(RSRCD)->suspended(this_object(), owner)) {
 	    _F_call_limited(function, args);
 	} else {
-	    handle = ::call_out("_F_callout", LONG_TIME, function, TRUE,
-				args...);
+	    handle = ::call_out("_F_callout", LONG_TIME, function, TRUE, args);
 	    if (!suspended) {
 		::find_object(RSRCD)->suspend(this_object(), owner, handle);
 	    }
@@ -980,7 +979,7 @@ nomask void _F_start_event(string name, mixed *args)
 	    rlimits (-1; -1) {
 		int handle;
 
-		handle = ::call_out("_F_callout", 0, name, FALSE, args...);
+		handle = ::call_out("_F_callout", 0, name, FALSE, args);
 		if (!::find_object(RSRCD)->rsrc_incr(owner, "callouts",
 						     this_object(), 1)) {
 		    ::remove_call_out(handle);
