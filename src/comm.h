@@ -3,12 +3,12 @@
 
 typedef struct _connection_ connection;
 
-extern void	   conn_init	P((int, unsigned short, unsigned short));
+extern void	   conn_init	P((int, unsigned int, unsigned int));
 extern void	   conn_finish	P((void));
 extern connection *conn_tnew	P((void));
 extern connection *conn_bnew	P((void));
 extern void	   conn_del	P((connection*));
-extern int	   conn_select	P((bool));
+extern int	   conn_select	P((int));
 extern int	   conn_read	P((connection*, char*, int));
 extern void	   conn_write	P((connection*, char*, int));
 extern char	  *conn_ipnum	P((connection*));
@@ -16,8 +16,8 @@ extern char	  *conn_ipnum	P((connection*));
 extern void	comm_init	P((int, int, int));
 extern void	comm_finish	P((void));
 extern void	comm_send	P((object*, string*));
-extern void	comm_echo	P((object*, bool));
-extern void	comm_flush	P((bool));
+extern void	comm_echo	P((object*, int));
+extern void	comm_flush	P((int));
 extern object  *comm_receive	P((char*, int*));
 extern string  *comm_ip_number	P((object*));
 extern void	comm_close	P((object*));
