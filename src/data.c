@@ -3604,7 +3604,8 @@ register dataspace *data;
     /*
      * the program for the clone was upgraded since last swapin
      */
-    update = OBJ(data->oindex)->update;
+    obj = OBJ(data->oindex);
+    update = obj->update;
     obj = OBJ(obj->u_master);
     old = OBJ(obj->prev);
     if (O_UPGRADING(obj)) {

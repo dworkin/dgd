@@ -1330,3 +1330,4 @@ DGD 1.1
  - Fixed yet another bug in the name lookup code.
  - Fixed a old and very rare bug in mapping addition.
  - New kfuns hash_crc16(), hash_md5().
+ - Fix a recently-introduced bug in clone upgrading.

@@ -1249,7 +1249,6 @@ static int remove_dir(string path)
     return result;
 }
 
-# ifndef __SKOTOS__
 /*
  * NAME:	restore_object()
  * DESCRIPTION:	restore the state of an object
@@ -1317,7 +1316,6 @@ static void save_object(string path)
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 }
-# endif /* __SKOTOS__ */
 
 /*
  * NAME:	editor()
@@ -1366,7 +1364,6 @@ static string editor(varargs string cmd)
 static void execute_program(string cmdline)
 {
     object conn;
-    int dedicated;
 
     CHECKARG(cmdline, 1, "execute_program");
 
@@ -1374,22 +1371,17 @@ static void execute_program(string cmdline)
 	if (function_object("query_conn", this_object()) != LIB_USER) {
 	    error("Not a user object");
 	}
+	if (this_object()->query_conn()) {
+	    error("Already connected");
+	}
 	catch {
 	    rlimits (-1; -1) {
-		conn = this_object()->query_conn();
-		if (!conn) {
-		    conn = clone_object(BINARY_CONN);
-		    dedicated = TRUE;
-		} else {
-		    dedicated = FALSE;
-		}
+		conn = clone_object(BINARY_CONN);
 		conn->execute_program(cmdline);
 	    }
 	} : {
 	    rlimits (-1; -1) {
-		if (dedicated) {
-		    destruct_object(conn);
-		}
+		destruct_object(conn);
 	    }
 	    error(::call_trace()[1][TRACE_FIRSTARG][1]);
 	}

@@ -20,8 +20,6 @@ static void create(string type)
 
 
 # ifdef __SKOTOS__
-private int dedicated;		/* object created for execution */
-
 /*
  * NAME:	execute_program()
  * DESCRIPTION:	execute a program on the host
@@ -29,11 +27,8 @@ private int dedicated;		/* object created for execution */
 void execute_program(string cmdline)
 {
     if (previous_program() == AUTO) {
+	user = previous_object();
 	::execute_program(cmdline);
-	if (!user) {
-	    user = previous_object();
-	    dedicated = TRUE;
-	}
     }
 }
 
@@ -44,6 +39,7 @@ void execute_program(string cmdline)
 private void _program_terminated(mixed *tls)
 {
     user->program_terminated();
+    destruct_object(this_object());
 }
 
 /*
@@ -53,9 +49,6 @@ private void _program_terminated(mixed *tls)
 static void program_terminated()
 {
     _program_terminated(allocate(DRIVER->query_tls_size()));
-    if (dedicated) {
-	destruct_object(this_object());
-    }
 }
 # endif	/* __SKOTOS__ */
 
