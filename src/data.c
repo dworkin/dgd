@@ -1729,13 +1729,13 @@ static sector d_swapalloc(size, nsectors, sectors)
 Uint size;
 register sector nsectors, **sectors;
 {
-    register sector n, *s;
+    register sector n, i, *s;
 
     n = sw_mapsize(size);
     if (nsectors == 0) {
 	/* no sectors yet */
 	*sectors = s = ALLOC(sector, nsectors = n);
-	while (n > 0) {
+	while (n != 0) {
 	    *s++ = sw_new();
 	    --n;
 	}
@@ -1745,10 +1745,12 @@ register sector nsectors, **sectors;
 	memcpy(s, *sectors, nsectors * sizeof(sector));
 	FREE(*sectors);
 	*sectors = s;
-	s += nsectors;
+	for (i = nsectors; i != 0; --i) {
+	    sw_wipe(*s++);
+	}
 	n -= nsectors;
 	nsectors += n;
-	while (n > 0) {
+	while (n != 0) {
 	    *s++ = sw_new();
 	    --n;
 	}
@@ -1757,9 +1759,12 @@ register sector nsectors, **sectors;
 	s = *sectors + nsectors;
 	n = nsectors - n;
 	nsectors -= n;
-	while (n > 0) {
+	while (n != 0) {
 	    sw_del(*--s);
 	    --n;
+	}
+	for (i = nsectors; i != 0; --i) {
+	    sw_wipe(*--s);
 	}
     }
 
@@ -2023,6 +2028,7 @@ register unsigned short n;
     while (n > 0) {
 	switch (sv->type = v->type) {
 	case T_INT:
+	    sv->oindex = 0;
 	    sv->u.number = v->u.number;
 	    break;
 
@@ -2032,6 +2038,7 @@ register unsigned short n;
 
 	case T_STRING:
 	    i = str_put(v->u.string, nstr);
+	    sv->oindex = 0;
 	    sv->u.string = i;
 	    if (i >= nstr) {
 		/* new string value */
@@ -2054,6 +2061,7 @@ register unsigned short n;
 	case T_ARRAY:
 	case T_MAPPING:
 	    i = arr_put(v->u.array);
+	    sv->oindex = 0;
 	    sv->u.array = i;
 	    if (i >= narr) {
 		svalue *tmp;
@@ -2090,6 +2098,7 @@ register unsigned short n;
 	if (v->modified) {
 	    switch (sv->type = v->type) {
 	    case T_INT:
+		sv->oindex = 0;
 		sv->u.number = v->u.number;
 		break;
 
@@ -2098,6 +2107,7 @@ register unsigned short n;
 		break;
 
 	    case T_STRING:
+		sv->oindex = 0;
 		sv->u.string = v->u.string->primary - sdata->strings;
 		break;
 
@@ -2108,6 +2118,7 @@ register unsigned short n;
 
 	    case T_ARRAY:
 	    case T_MAPPING:
+		sv->oindex = 0;
 		sv->u.array = v->u.array->primary - sdata->arrays;
 		break;
 	    }

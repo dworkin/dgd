@@ -106,7 +106,7 @@ void sw_finish()
  */
 static void sw_create()
 {
-    cbuf[0] = 0;
+    memset(cbuf, '\0', sectorsize);
     swap = open(swapfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
     if (swap < 0 || write(swap, cbuf, sectorsize) < 0) {
 	fatal("cannot create swap file \"%s\"", swapfile);
@@ -169,6 +169,45 @@ sector sw_new()
     map[sec] = SW_UNUSED;	/* nothing in it yet */
 
     return sec;
+}
+
+/*
+ * NAME:	swap->wipe()
+ * DESCRIPTION:	wipe a swap sector
+ */
+void sw_wipe(sec)
+unsigned int sec;
+{
+    register sector i;
+    register header *h;
+
+    i = map[sec];
+    if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	i = h->swap;
+	h->swap = SW_UNUSED;
+    }
+    if (i != SW_UNUSED) {
+	if (dsectors > 0) {
+	    if (BTST(bmap, sec)) {
+		/*
+		 * free sector in dump file
+		 */
+		BCLR(bmap, sec);
+		--dsectors;
+	    } else {
+		/*
+		 * replace by sector from dump file
+		 */
+		copy(i, (sector) 1);
+	    }
+	} else {
+	    /*
+	     * free sector in swap file
+	     */
+	    smap[i] = sfree;
+	    sfree = i;
+	}
+    }
 }
 
 /*
@@ -337,6 +376,9 @@ bool fill;
 		    fatal("cannot read swap file");
 		}
 	    }
+	} else if (fill) {
+	    /* zero-fill new sector */
+	    memset(h + 1, '\0', sectorsize);
 	}
     } else {
 	/*

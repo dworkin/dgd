@@ -718,7 +718,8 @@ unsigned int handle;
  * NAME:	call_out->list()
  * DESCRIPTION:	pretend to return a list of callouts
  */
-array *co_list(obj)
+array *co_list(data, obj)
+dataspace *data;
 object *obj;
 {
     return (array *) NULL;

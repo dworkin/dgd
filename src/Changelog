@@ -1145,3 +1145,5 @@ DGD 1.1
  - Removed many references to global variables.
  - Removed some code from the upgrading procedure that was unreachable.
  - Improved Mac edit menu.
+ - Avoid swapping in needlessly while writing partial sectors.
+ - Zero unused sector parts to make swapfiles more compressible.
