@@ -4,7 +4,7 @@
 typedef struct _object_ {
     hte chain;			/* object name hash table */
     char flags;			/* object status */
-    char connection;		/* index in connection array (if any) */
+    char eduser;		/* index in user/editor array */
     objkey key;			/* object key */
     union {
 	long ref;		/* ref count (if master object) */
@@ -17,8 +17,10 @@ typedef struct _object_ {
 } object;
 
 # define O_MASTER		0x01
-# define O_DESTRUCTED		0x02
-# define O_CONNECTED		0x04
+# define O_CREATED		0x02
+# define O_USER			0x04
+# define O_EDITOR		0x08
+# define O_DRIVER		0x10
 
 extern void		   o_init	P((int));
 extern object		  *o_new	P((char*, object*, struct _control_*));
