@@ -41,6 +41,9 @@ register frame *f;
 	    error("Cannot recompile inherited object");
 	}
     }
+    if (f->data->values->level != 0) {
+	error("compile_object() within atomic function (cannot undo yet)");
+    }
     obj = c_compile(f, file, obj);
     str_del(f->sp->u.string);
     f->sp->type = T_OBJECT;
@@ -268,6 +271,9 @@ register frame *f;
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
+    if (f->data->values->level != 0) {
+	error("clone_object() within atomic function (cannot undo yet)");
+    }
     obj = o_clone(obj);
     f->sp->oindex = obj->index;
     f->sp->u.objcnt = obj->count;
@@ -292,6 +298,9 @@ register frame *f;
     register object *obj;
 
     obj = &otable[f->sp->oindex];
+    if (f->data->values->level != 0) {
+	error("destruct_object() within atomic function (cannot undo yet)");
+    }
     if (obj->flags & O_USER) {
 	comm_close(f, obj);
     }
@@ -953,6 +962,9 @@ int nargs;
 	return 2;
     }
 
+    if (f->data->values->level != 0) {
+	error("call_out() within atomic function (cannot undo yet)");
+    }
     i_add_ticks(f, nargs);
     if (f->obj->count != 0 &&
 	(handle=d_new_call_out(f->data, f->sp[nargs - 1].u.string, delay,
@@ -988,6 +1000,9 @@ register frame *f;
     Int delay;
     xfloat flt;
 
+    if (f->data->values->level != 0) {
+	error("remove_call_out() within atomic function (cannot undo yet)");
+    }
     i_add_ticks(f, 10);
     delay = d_del_call_out(f->data, (uindex) f->sp->u.number);
     if (delay < -1) {

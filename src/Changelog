@@ -1306,3 +1306,6 @@ DGD 1.1
  - ctime() didn't give the proper weekday for times > 0x7fffffff.
  - If there is no more input on a connection, make sure there is no pending
    output before closing it.
+ - Temporarily disable compile_object(), clone_object(), destruct_object(),
+   call_out() and remove_call_out() from within atomic code, making atomic safe
+   to use.
