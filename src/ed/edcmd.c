@@ -48,11 +48,14 @@ char *tmpfile;
 {
     register cmdbuf *cb;
 
+    mstatic();
     cb = ALLOC(cmdbuf, 1);
     memset(cb, '\0', sizeof(cmdbuf));
     cb->edbuf = eb_new(tmpfile);
     cb->regexp = rx_new();
     cb->vars = va_new();
+    mdynamic();
+
     cb->this = 0;
     cb->undo = (block) -1;	/* not 0! */
     return cb;
@@ -676,9 +679,9 @@ register cmdbuf *cb;
      * A local error context is created, so the regular expression buffer
      * can be deallocated in case of an error.
      */
+    rx = rx_new();
     if (!ec_push()) {
 	/* compile regexp */
-	rx = rx_new();
 	p = rx_comp(rx, buffer);
 	if (p != (char *) NULL) {
 	    rx_del(rx);

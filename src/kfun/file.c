@@ -310,6 +310,7 @@ int kf_save_object()
     register control *ctrl;
     register string *str;
     register dinherit *inh;
+    register dataspace *data;
     char tmp[STRINGSZ + 8], buf[12], *file, *_tmp;
     object *obj;
 
@@ -335,17 +336,18 @@ int kf_save_object()
     bufsz = 0;
 
     ctrl = o_control(obj);
-    var = o_dataspace(obj)->variables;
+    data = o_dataspace(obj);
     narrays = 0;
     nvars = 0;
-    for (i = ctrl->nvirtuals, inh = ctrl->inherits; i > 0; --i, inh++) {
+    for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
 	    ctrl = o_control(inh->obj);
-	    for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
+	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
+		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    (var->type != T_NUMBER || var->u.number != 0)) {
 		    /*
@@ -374,7 +376,6 @@ int kf_save_object()
 		    }
 		    put("\n", 1);
 		}
-		var++;
 		nvars++;
 	    }
 	}
@@ -501,14 +502,12 @@ register char *buf;
 value *val;
 {
     register char *p, *q;
-    register int exceptions = 0;
 
     if (*buf++ != '"') {
 	error("'\"' expected");
     }
     for (p = q = buf; *p != '"'; p++) {
 	if (*p == '\\') {
-	    exceptions++;
 	    switch (*++p) {
 	    case '0': *q++ = '\0'; continue;
 	    case 'a': *q++ = '\007'; continue;
@@ -526,7 +525,7 @@ value *val;
 	*q++ = *p;
     }
 
-    val->u.string = str_new(buf, (long) p - (long) buf - exceptions);
+    val->u.string = str_new(buf, (long) q - (long) buf);
     val->type = T_STRING;
     return p + 1;
 }
@@ -557,6 +556,8 @@ value *val;
     }
 
     ac_put(T_ARRAY, a = arr_new((long) val->u.number));
+    i = a->size;
+    v = a->elts;
     if (ec_push()) {
 	/* fill the remainder of the array with numbers */
 	while (i > 0) {
@@ -569,8 +570,6 @@ value *val;
 	error((char *) NULL);	/* pass on the error */
     }
     /* restore the values */
-    i = a->size;
-    v = a->elts;
     while (i > 0) {
 	buf = restore_value(buf, v);
 	i_ref_value(v);
@@ -614,6 +613,8 @@ value *val;
     }
 
     ac_put(T_MAPPING, a = map_new(val->u.number << 1L));
+    i = a->size;
+    v = a->elts;
     if (ec_push()) {
 	/* fill the remainder of the mapping with numbers */
 	while (i > 0) {
@@ -626,8 +627,6 @@ value *val;
 	error((char *) NULL);	/* pass on the error */
     }
     /* restore the values */
-    i = a->size;
-    v = a->elts;
     while (i > 0) {
 	buf = restore_value(buf, v);
 	i_ref_value(v);
@@ -762,20 +761,19 @@ int kf_restore_object()
     ctrl = o_control(obj);
     data = o_dataspace(obj);
     nvars = 0;
-    var = data->variables;
-    for (i = ctrl->nvirtuals, inh = ctrl->inherits; i > 0; --i, inh++) {
+    for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
 	    ctrl = o_control(inh->obj);
-	    for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
+	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
+		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
 		    static value zero_value = { T_NUMBER };
 
 		    d_assign_var(data, var, &zero_value);
 		}
-		var++;
 		nvars++;
 	    }
 	}
@@ -796,81 +794,77 @@ int kf_restore_object()
 	error("Format error in \"/%s\", line %d: %s", file, line, err);
     }
     for (;;) {
-	var -= nvars;
+	var = data->variables;
 	nvars = 0;
-	for (i = ctrl->nvirtuals, inh = ctrl->inherits; i > 0; --i, inh++) {
+	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	    if (inh->varoffset == nvars) {
 		/*
 		 * Restore non-static variables.
 		 */
 		ctrl = inh->obj->ctrl;
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
-		    if (!(v->class & C_STATIC)) {
-			if (pending && nvars == checkpoint) {
-			    /*
-			     * The saved variable is not in this object.
-			     * Skip it.
-			     */
+		    if (pending && nvars == checkpoint) {
+			/*
+			 * The saved variable is not in this object.
+			 * Skip it.
+			 */
+			buf = strchr(buf, '\n');
+			if (buf == (char *) NULL) {
+			    error("'\\n' expected");
+			}
+			buf++;
+			line++;
+			pending = FALSE;
+		    }
+		    if (!pending) {
+			/*
+			 * get a new variable name from the save file
+			 */
+			while (*buf == '#') {
+			    /* skip comment */
 			    buf = strchr(buf, '\n');
 			    if (buf == (char *) NULL) {
 				error("'\\n' expected");
 			    }
 			    buf++;
 			    line++;
-			    pending = FALSE;
 			}
-			if (!pending) {
-			    /*
-			     * get a new variable name from the save file
-			     */
-			    while (*buf == '#') {
-				/* skip comment */
-				buf = strchr(buf, '\n');
-				if (buf == (char *) NULL) {
-				    error("'\\n' expected");
-				}
-				buf++;
-				line++;
-			    }
-			    if (*buf == '\0') {
-				/* end of file */
-				break;
-			    }
-
-			    name = buf;
-			    if (!isalpha(*buf) && *buf != '_') {
-				error("alphanumeric expected");
-			    }
-			    do {
-				buf++;
-			    } while (isalnum(*buf) || *buf == '_');
-			    if (*buf != ' ') {
-				error("' ' expected");
-			    }
-
-			    *buf++ = '\0';	/* terminate name */
-			    pending = TRUE;	/* start checking variables */
-			    checkpoint = nvars;	/* from here */
+			if (*buf == '\0') {
+			    /* end of file */
+			    break;
 			}
+
+			name = buf;
+			if (!isalpha(*buf) && *buf != '_') {
+			    error("alphanumeric expected");
+			}
+			do {
+			    buf++;
+			} while (isalnum(*buf) || *buf == '_');
+			if (*buf != ' ') {
+			    error("' ' expected");
+			}
+
+			*buf++ = '\0';		/* terminate name */
+			pending = TRUE;		/* start checking variables */
+			checkpoint = nvars;	/* from here */
+		    }
+
+		    if (!(v->class & C_STATIC) &&
+			strcmp(name, d_get_strconst(ctrl, v->inherit,
+						    v->index)->text) == 0) {
+			value tmp;
 
 			/*
-			 * check a variable
+			 * found the proper variable to restore
 			 */
-			if (strcmp(name, d_get_strconst(ctrl, v->inherit,
-							v->index)->text) == 0) {
-			    value tmp;
-
-			    /*
-			     * found the proper variable to restore
-			     */
-			    buf = restore_value(buf, &tmp);
-			    d_assign_var(data, var, &tmp);
-			    if (*buf++ != '\n') {
-				error("'\\n' expected");
-			    }
-			    line++;
-			    pending = FALSE;
+			buf = restore_value(buf, &tmp);
+			d_assign_var(data, var, &tmp);
+			if (*buf++ != '\n') {
+			    error("'\\n' expected");
 			}
+			line++;
+			pending = FALSE;
 		    }
 		    var++;
 		    nvars++;
@@ -1345,7 +1339,7 @@ int kf_get_dir()
 {
     struct stat sbuf;
     register int nfiles, i;
-    register value *f, *o, *t, *s;
+    register value *f, *o, *s, *t;
     register string *str;
     char *file, *dir, *pat, buf[2 * STRINGSZ];
     array *a;
@@ -1398,10 +1392,10 @@ int kf_get_dir()
     f = a->elts[0].u.array->elts;
     a->elts[1].type = T_ARRAY;
     arr_ref(a->elts[1].u.array = arr_new((long) nfiles));
-    t = a->elts[1].u.array->elts;
+    s = a->elts[1].u.array->elts;
     a->elts[2].type = T_ARRAY;
     arr_ref(a->elts[2].u.array = arr_new((long) nfiles));
-    s = a->elts[2].u.array->elts;
+    t = a->elts[2].u.array->elts;
 
     if (nfiles == 0) {
 	/* stop here */
@@ -1429,15 +1423,15 @@ int kf_get_dir()
 	}
 	f->type = T_STRING;
 	f->u.string = str;
-	t->type = T_NUMBER;
-	t->u.number = sbuf.st_mtime;
 	s->type = T_NUMBER;
 	if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
 	    s->u.number = -2;	/* special value for directory */
 	} else {
 	    s->u.number = sbuf.st_size;
 	}
-	f++, t++, s++;
+	t->type = T_NUMBER;
+	t->u.number = sbuf.st_mtime;
+	f++, s++, t++;
     }
 
     /* adjust array sizes */
