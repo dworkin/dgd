@@ -1,0 +1,12 @@
+NAME
+	ceil - round a float towards infinity
+
+SYNOPSIS
+	float ceil(float x)
+
+
+DESCRIPTION
+	Round the argument towards positive infinity.
+
+SEE ALSO
+	kfun/floor, kfun/fmod
