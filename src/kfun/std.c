@@ -41,7 +41,7 @@ register frame *f;
 	    error("Cannot recompile inherited object");
 	}
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("compile_object() within atomic function (cannot undo yet)");
     }
     obj = c_compile(f, file, obj);
@@ -253,7 +253,7 @@ register frame *f;
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("clone_object() within atomic function (cannot undo yet)");
     }
     obj = o_clone(obj);
@@ -279,7 +279,7 @@ register frame *f;
     register object *obj;
 
     obj = OBJ(f->sp->oindex);
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("destruct_object() within atomic function (cannot undo yet)");
     }
     if (obj->flags & O_USER) {

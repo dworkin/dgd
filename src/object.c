@@ -161,7 +161,10 @@ register frame *f;
     strcpy(f->sp->u.string->text + 1, o->chain.name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, o->index);
-    if (i_call_critical(f, "remove_program", 3, TRUE)) {
+    if (!i_call_critical(f, "remove_program", 3, TRUE)) {
+	message("Error within remove_program:\012");	/* LF */
+	message((char *) NULL);
+    } else {
 	i_del_value(f->sp++);
     }
 

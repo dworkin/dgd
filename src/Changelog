@@ -1333,3 +1333,8 @@ DGD 1.1
  - Fix a recently-introduced bug in clone upgrading.
  - Fix a bug in callouts with more than 3 extra arguments, introduced with
    callout undo.
+ - Fixed a bug in compiling an object that redefined a privately inherited
+   function.
+ - Prevent a crash when space for the restoring of a huge save file cannot be
+   allocated on the stack.
+ - Fixed two more bugs in atomic commit code.

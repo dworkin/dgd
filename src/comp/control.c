@@ -1051,9 +1051,9 @@ register char *proto;
 			str->text, (*h)->ohash->chain.name);
 	    }
 
-	    i = (*h)->ct;	/* take old call index */
-
-	    if ((*l)->ohash->priv != 0) {
+	    if ((*l)->ohash->priv == 0) {
+		i = (*h)->ct;	/* take old call index */
+	    } else {
 		l = (vfh **) &(*l)->chain.next;	/* skip private function */
 	    }
 	}
@@ -1083,7 +1083,6 @@ register char *proto;
 
     if (nfdefs == 255) {
 	c_error("too many functions declared");
-	return;
     }
 
     /*
@@ -1155,7 +1154,6 @@ unsigned int class, type;
     }
     if (nvars == 255 || newctrl->nvariables + nvars == 32767) {
 	c_error("too many variables declared");
-	return;
     }
 
     /* actually define the variable */
@@ -1580,7 +1578,7 @@ static void ctrl_mkfcalls()
     if (newctrl->nfuncalls == 0) {
 	return;
     }
-    fc = newctrl->funcalls = ALLOC(char, 2 * newctrl->nfuncalls);
+    fc = newctrl->funcalls = ALLOC(char, 2L * newctrl->nfuncalls);
     for (i = 0, inh = newctrl->inherits; i < ninherits; i++, inh++) {
 	/*
 	 * Walk through the list of inherited objects, starting with the auto

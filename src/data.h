@@ -104,7 +104,7 @@ typedef struct _strref_ {
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
-    dataplane *values;		/* value plane this array is in */
+    dataplane *plane;		/* value plane this array is in */
     dataspace *data;		/* dataspace this array is in */
     short state;		/* state of mapping */
     Uint ref;			/* # of refs */
@@ -164,13 +164,13 @@ struct _dataspace_ {
     Uint cooffset;		/* offset of callout table */
 
     dataplane basic;		/* basic value plane */
-    dataplane *values;		/* current value plane */
+    dataplane *plane;		/* current value plane */
 
     struct _parser_ *parser;	/* parse_string data */
 };
 
-# define THISPLANE(a)		((a)->values == (a)->data->values)
-# define SAMEPLANE(d1, d2)	((d1)->values->level == (d2)->values->level)
+# define THISPLANE(a)		((a)->plane == (a)->data->plane)
+# define SAMEPLANE(d1, d2)	((d1)->plane->level == (d2)->plane->level)
 
 extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));

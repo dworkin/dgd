@@ -145,7 +145,7 @@ register long size;
     }
     a->tag = tag++;
     a->odcount = odcount;
-    a->primary = &data->values->alocal;
+    a->primary = &data->plane->alocal;
     return a;
 }
 
@@ -334,10 +334,9 @@ dataplane *plane;
  * NAME:	array->backup()
  * DESCRIPTION:	make a backup of the current elements of an array or mapping
  */
-void arr_backup(ac, a, plane)
+void arr_backup(ac, a)
 abchunk **ac;
-array *a;
-dataplane *plane;
+register array *a;
 {
     value *elts;
 
@@ -346,39 +345,51 @@ dataplane *plane;
     } else {
 	elts = (value *) NULL;
     }
-    backup(ac, a, elts, plane);
+    backup(ac, a, elts, a->primary->plane);
 }
 
 /*
  * NAME:	array->commit()
  * DESCRIPTION:	commit current array values and discard originals
  */
-void arr_commit(ac, plane)
+void arr_commit(ac, plane, merge)
 abchunk **ac;
 dataplane *plane;
+int merge;
 {
     register abchunk *c, *n;
     register arrbak *ab;
     register short i;
 
-    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
+    c = *ac;
+    if (merge) {
+	*ac = (abchunk *) NULL;
+    }
+
+    while (c != (abchunk *) NULL) {
 	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
 	    ac = d_commit_arr(ab->arr, plane, ab->plane);
-	    if (ac != (abchunk **) NULL) {
-		backup(ac, ab->arr, ab->original, ab->plane);
-	    } else if (ab->original != (value *) NULL) {
-		register value *v;
-		register unsigned short j;
+	    if (merge) {
+		if (ac != (abchunk **) NULL) {
+		    /* backup on previous plane */
+		    backup(ac, ab->arr, ab->original, ab->plane);
+		} else if (ab->original != (value *) NULL) {
+		    register value *v;
+		    register unsigned short j;
 
-		for (v = ab->original, j = ab->size; j != 0; v++, --j) {
-		    i_del_value(v);
+		    for (v = ab->original, j = ab->size; j != 0; v++, --j) {
+			i_del_value(v);
+		    }
+		    FREE(ab->original);
 		}
-		FREE(ab->original);
 	    }
 	}
 
 	n = c->next;
-	FREE(c);
+	if (merge) {
+	    FREE(c);
+	}
+	c = n;
     }
 }
 
@@ -1000,7 +1011,7 @@ register long size;
     }
     m->tag = tag++;
     m->odcount = odcount;
-    m->primary = &data->values->alocal;
+    m->primary = &data->plane->alocal;
     return m;
 }
 

@@ -4,7 +4,7 @@
 # undef SYS_DATAGRAMS		/* off by default */
 
 # ifdef __SKOTOS__
-#  define SYS_NETWORKING	/* ichat server has networking capabilities */
+#  define SYS_NETWORKING	/* Skotos server has networking capabilities */
 # endif
 
 # ifdef SYS_NETWORKING

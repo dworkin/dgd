@@ -30,7 +30,7 @@ int nargs;
     if (obj->flags & O_USER) {
 	error("editor() from user object");
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("editor() within atomic function");
     }
     if (!(obj->flags & O_EDITOR)) {
@@ -365,7 +365,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("save_object() within atomic function");
     }
 
@@ -875,7 +875,7 @@ register frame *f;
     object *obj;
     int fd;
     char *buffer, *name;
-    bool pending;
+    bool onstack, pending;
 
     obj = f->obj;
     if (path_string(x.file, f->sp->u.string->text,
@@ -898,10 +898,20 @@ register frame *f;
 	return 0;
     }
     buffer = ALLOCA(char, sbuf.st_size + 1);
+    if (buffer == (char *) NULL) {
+	buffer = ALLOC(char, sbuf.st_size + 1);
+	onstack = FALSE;
+    } else {
+	onstack = TRUE;
+    }
     if (P_read(fd, buffer, (unsigned int) sbuf.st_size) != sbuf.st_size) {
 	/* read failed (should never happen, but...) */
         P_close(fd);
-	AFREE(buffer);
+	if (onstack) {
+	    AFREE(buffer);
+	} else {
+	    FREE(buffer);
+	}
 	return 0;
     }
     buffer[sbuf.st_size] = '\0';
@@ -943,7 +953,11 @@ register frame *f;
 	/* error; clean up */
 	arr_clear();
 	ac_clear(&x);
-	AFREE(buffer);
+	if (onstack) {
+	    AFREE(buffer);
+	} else {
+	    FREE(buffer);
+	}
 	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
@@ -1037,7 +1051,11 @@ register frame *f;
 		    ec_pop();
 		    arr_clear();
 		    ac_clear(&x);
-		    AFREE(buffer);
+		    if (onstack) {
+			AFREE(buffer);
+		    } else {
+			FREE(buffer);
+		    }
 		    f->sp->u.number = 1;
 		    return 0;
 		}
@@ -1072,7 +1090,7 @@ int nargs;
 		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("write_file() within atomic function");
     }
 
@@ -1259,7 +1277,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("remove_file() within atomic function");
     }
 
@@ -1289,7 +1307,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("make_dir() within atomic function");
     }
 
@@ -1319,7 +1337,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->values->level != 0) {
+    if (f->data->plane->level != 0) {
 	error("remove_dir() within atomic function");
     }
 

@@ -20,8 +20,8 @@ extern void		arr_freeall	P((void));
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
 
-extern void		arr_backup	P((abchunk**, array*, dataplane*));
-extern void		arr_commit	P((abchunk**, dataplane*));
+extern void		arr_backup	P((abchunk**, array*));
+extern void		arr_commit	P((abchunk**, dataplane*, int));
 extern void		arr_discard	P((abchunk**));
 
 extern array	       *arr_add		P((dataspace*, array*, array*));

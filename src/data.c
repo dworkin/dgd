@@ -17,7 +17,7 @@
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */
 
-/* bit values for dataspace->values->flags */
+/* bit values for dataspace->plane->flags */
 # define MOD_ALL		0x3f
 # define MOD_VARIABLE		0x01	/* variable changed */
 # define MOD_ARRAY		0x02	/* array element changed */
@@ -25,6 +25,7 @@
 # define MOD_STRINGREF		0x08	/* string reference changed */
 # define MOD_CALLOUT		0x10	/* callout changed */
 # define MOD_NEWCALLOUT		0x20	/* new callout added */
+# define PLANE_MERGE		0x40	/* merge planes on commit */
 
 /* data compression */
 # define CMP_TYPE		0x03
@@ -297,7 +298,7 @@ object *obj;
     data->basic.flags = 0;
     data->basic.achange = 0;
     data->basic.imports = 0;
-    data->basic.alocal.values = &data->basic;
+    data->basic.alocal.plane = &data->basic;
     data->basic.alocal.arr = (array *) NULL;
     data->basic.alocal.data = data;
     data->basic.alocal.state = AR_ALOCAL;
@@ -305,7 +306,7 @@ object *obj;
     data->basic.coptab = (coptable *) NULL;
     data->basic.prev = (dataplane *) NULL;
     data->basic.plist = (dataplane *) NULL;
-    data->values = &data->basic;
+    data->plane = &data->basic;
 
     /* parse_string data */
     data->parser = (struct _parser_ *) NULL;
@@ -323,7 +324,7 @@ object *obj;
     register dataspace *data;
 
     data = d_alloc_dataspace(obj);
-    data->values->flags = MOD_VARIABLE;
+    data->plane->flags = MOD_VARIABLE;
     data->ctrl = o_control(obj);
     data->ctrl->ndata++;
     data->nvariables = data->ctrl->nvariables + 1;
@@ -835,7 +836,7 @@ char *d_get_funcalls(ctrl)
 register control *ctrl;
 {
     if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls != 0) {
-	ctrl->funcalls = ALLOC(char, 2 * ctrl->nfuncalls);
+	ctrl->funcalls = ALLOC(char, 2L * ctrl->nfuncalls);
 	sw_readv((char *) ctrl->funcalls, ctrl->sectors,
 		 ctrl->nfuncalls * (Uint) 2, ctrl->funccoffset);
     }
@@ -948,8 +949,8 @@ static array *d_get_array(data, idx)
 register dataspace *data;
 register Uint idx;
 {
-    if (data->values->arrays == (arrref *) NULL ||
-	data->values->arrays[idx].arr == (array *) NULL) {
+    if (data->plane->arrays == (arrref *) NULL ||
+	data->plane->arrays[idx].arr == (array *) NULL) {
 	register array *arr;
 	register arrref *a;
 	register dataplane *p;
@@ -965,7 +966,7 @@ register Uint idx;
 	arr = arr_alloc(data->sarrays[idx].size);
 	arr->ref = 0;
 	arr->tag = data->sarrays[idx].tag;
-	p = data->values;
+	p = data->plane;
 
 	do {
 	    if (p->arrays == (arrref *) NULL) {
@@ -977,17 +978,17 @@ register Uint idx;
 	    }
 	    a = &p->arrays[idx];
 	    arr_ref(a->arr = arr);
-	    a->values = &data->basic;
+	    a->plane = &data->basic;
 	    a->data = data;
 	    a->state = AR_UNCHANGED;
 	    a->ref = data->sarrays[idx].ref;
 	    p = p->prev;
 	} while (p != (dataplane *) NULL);
 
-	arr->primary = &data->values->arrays[idx];
+	arr->primary = &data->plane->arrays[idx];
 	return arr;
     }
-    return data->values->arrays[idx].arr;
+    return data->plane->arrays[idx].arr;
 }
 
 /*
@@ -1137,7 +1138,7 @@ register array *arr;
 		     data->arroffset + data->narrays * sizeof(sarray));
 	}
 	v = arr->elts = ALLOC(value, arr->size);
-	idx = data->sarrays[arr->primary - data->values->arrays].index;
+	idx = data->sarrays[arr->primary - data->plane->arrays].index;
 	d_get_values(data, &data->selts[idx], v, arr->size);
     }
 
@@ -1164,7 +1165,7 @@ register value *rhs;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    str->primary->ref++;
-	    data->values->flags |= MOD_STRINGREF;
+	    data->plane->flags |= MOD_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
 	    data->schange++;
@@ -1179,14 +1180,14 @@ register value *rhs;
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
 		arr->primary->ref++;
-		data->values->flags |= MOD_ARRAYREF;
+		data->plane->flags |= MOD_ARRAYREF;
 	    } else {
 		/* ref new array */
-		data->values->achange++;
+		data->plane->achange++;
 	    }
 	} else {
 	    /* not in this object: ref imported array */
-	    if (data->values->imports++ == 0 &&
+	    if (data->plane->imports++ == 0 &&
 		data->ilist == (dataspace *) NULL &&
 		ilast != data) {
 		/* add to imports list */
@@ -1198,7 +1199,7 @@ register value *rhs;
 		ilast = data;
 		data->ilist = (dataspace *) NULL;
 	    }
-	    data->values->achange++;
+	    data->plane->achange++;
 	}
 	break;
     }
@@ -1226,7 +1227,7 @@ register value *lhs;
 		str_del(str);
 		data->schange++;	/* last reference removed */
 	    }
-	    data->values->flags |= MOD_STRINGREF;
+	    data->plane->flags |= MOD_STRINGREF;
 	} else {
 	    /* not in this object: deref imported string */
 	    data->schange--;
@@ -1240,11 +1241,11 @@ register value *lhs;
 	    /* in this object */
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
-		data->values->flags |= MOD_ARRAYREF;
+		data->plane->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
 		    /* last reference removed */
 		    arr->primary->arr = (array *) NULL;
-		    data->values->achange++;
+		    data->plane->achange++;
 
 		    if (arr->hashed != (struct _maphash_ *) NULL) {
 			map_compact(arr);
@@ -1265,12 +1266,12 @@ register value *lhs;
 		}
 	    } else {
 		/* deref new array */
-		data->values->achange--;
+		data->plane->achange--;
 	    }
 	} else {
 	    /* not in this object: deref imported array */
-	    data->values->imports--;
-	    data->values->achange--;
+	    data->plane->imports--;
+	    data->plane->achange--;
 	}
 	break;
     }
@@ -1329,7 +1330,7 @@ register value *v;
 	 */
 	co = data->callouts = ALLOC(dcallout, 1);
 	data->ncallouts = handle = 1;
-	data->values->flags |= MOD_NEWCALLOUT;
+	data->plane->flags |= MOD_NEWCALLOUT;
     } else {
 	if (data->callouts == (dcallout *) NULL) {
 	    d_get_callouts(data);
@@ -1366,7 +1367,7 @@ register value *v;
 		    }
 		    handle = co - data->callouts + 1;
 		}
-		data->values->flags |= MOD_CALLOUT;
+		data->plane->flags |= MOD_CALLOUT;
 	    } else {
 		/*
 		 * add new callout
@@ -1376,7 +1377,7 @@ register value *v;
 					      handle + 1);
 		co += handle;
 		data->ncallouts = ++handle;
-		data->values->flags |= MOD_NEWCALLOUT;
+		data->plane->flags |= MOD_NEWCALLOUT;
 	    }
 	}
     }
@@ -1437,7 +1438,7 @@ unsigned int handle;
     co->co_next = n;
     data->fcallouts = handle;
 
-    data->values->flags |= MOD_CALLOUT;
+    data->plane->flags |= MOD_CALLOUT;
 }
 
 
@@ -1636,11 +1637,92 @@ copatch *cop;
 
 
 /*
+ * NAME:	data->new_plane()
+ * DESCRIPTION:	create a new dataplane
+ */
+void d_new_plane(data, level)
+register dataspace *data;
+Int level;
+{
+    register dataplane *p;
+
+    p = ALLOC(dataplane, 1);
+
+    p->level = level;
+    p->flags = data->plane->flags;
+    p->achange = data->plane->achange;
+    p->imports = data->plane->imports;
+
+    /* copy value information from previous plane */
+    p->original = (value *) NULL;
+    p->alocal.plane = p;
+    p->alocal.arr = (array *) NULL;
+    p->alocal.data = data;
+    p->alocal.state = AR_ALOCAL;
+    p->coptab = data->plane->coptab;
+
+    if (data->plane->arrays != (arrref *) NULL) {
+	register arrref *a, *b;
+	register Uint i;
+
+	p->arrays = ALLOC(arrref, i = data->narrays);
+	for (a = p->arrays, b = data->plane->arrays, i = data->narrays; i != 0;
+	     a++, b++, --i) {
+	    if (b->arr != (array *) NULL) {
+		*a = *b;
+		a->arr->primary = a;
+		arr_ref(a->arr);
+	    } else {
+		a->arr = (array *) NULL;
+	    }
+	}
+    } else {
+	p->arrays = (arrref *) NULL;
+    }
+    p->achunk = (abchunk *) NULL;
+
+    p->prev = data->plane;
+    data->plane = p;
+    p->plist = plist;
+    plist = p;
+}
+
+/*
+ * NAME:	commit_values()
+ * DESCRIPTION:	commit non-swapped arrays among the values
+ */
+static void commit_values(v, n, level)
+register value *v;
+register unsigned int n;
+register Int level;
+{
+    register array *arr;
+
+    while (n != 0) {
+	if (T_INDEXED(v->type)) {
+	    arr = v->u.array;
+	    if (arr->primary->state == AR_ALOCAL &&
+		arr->primary->plane->level > level) {
+		arr->primary = &arr->primary->plane->prev->alocal;
+		if (arr->hashed != (struct _maphash_ *) NULL) {
+		    map_compact(arr);
+		}
+		commit_values(arr->elts, arr->size, level);
+	    }
+
+	}
+	v++;
+	--n;
+    }
+}
+
+/*
  * NAME:	commit_callouts()
  * DESCRIPTION:	commit callout patches to previous plane
  */
-static void commit_callouts(plane)
+static void commit_callouts(plane, merge)
 register dataplane *plane;
+bool merge;
 {
     register dataplane *prev;
     register copatch **c, **n, *cop;
@@ -1651,7 +1733,7 @@ register dataplane *plane;
     for (i = COPATCHHTABSZ, t = plane->coptab->cop; --i >= 0; t++) {
 	if (*t != (copatch *) NULL && (*t)->plane == plane) {
 	    /*
-	     * find previous plane
+	     * find previous plane in hash chain
 	     */
 	    next = t;
 	    do {
@@ -1695,67 +1777,178 @@ register dataplane *plane;
 		    /*
 		     * commit to previous plane
 		     */
-		    for (n = next;
-			 *n != (copatch *) NULL && (*n)->plane == prev;
-			 n = &(*n)->next) {
-			if (cop->handle == (*n)->handle) {
-			    switch (cop->type) {
-			    case COP_ADD:
-				/* turn old remove into replace, del new */
-				cop_replace(*n, &cop->aco, cop->time,
-					    cop->mtime, cop->queue);
-				if (next == &cop->next) {
-				    next = c;
-				}
-				cop_del(plane, c, TRUE);
-				cop = (copatch *) NULL;
-				break;
+		    if (cop->type != COP_REMOVE) {
+			commit_values(cop->aco.val + 1,
+				      (cop->aco.nargs > 3) ?
+				       3 : cop->aco.nargs,
+				      prev->level);
+		    }
+		    cop->plane = prev;
 
-			    case COP_REMOVE:
-				if ((*n)->type == COP_REPLACE) {
-				    /* turn replace back into remove */
-				    cop_release(*n);
-				} else {
-				    /* del old */
-				    cop_del(plane, n, TRUE);
-				}
-				/* del new */
-				if (next == &cop->next) {
-				    next = c;
-				}
-				cop_del(plane, c, TRUE);
-				cop = (copatch *) NULL;
-				break;
-
-			    case COP_REPLACE:
-				if ((*n)->type == COP_REPLACE) {
-				    /* merge replaces into old, del new */
-				    cop_release(*n);
+		    if (merge) {
+			for (n = next;
+			     *n != (copatch *) NULL && (*n)->plane == prev;
+			     n = &(*n)->next) {
+			    if (cop->handle == (*n)->handle) {
+				switch (cop->type) {
+				case COP_ADD:
+				    /* turn old remove into replace, del new */
 				    cop_replace(*n, &cop->aco, cop->time,
 						cop->mtime, cop->queue);
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(plane, c, TRUE);
-				    cop = (copatch *) NULL;
-				} else {
-				    /* make replace into add, remove old */
-				    cop_del(plane, n, TRUE);
-				    cop_commit(cop);
+				    cop_del(prev, c, TRUE);
+				    break;
+
+				case COP_REMOVE:
+				    if ((*n)->type == COP_REPLACE) {
+					/* turn replace back into remove */
+					cop_release(*n);
+				    } else {
+					/* del old */
+					cop_del(prev, n, TRUE);
+				    }
+				    /* del new */
+				    if (next == &cop->next) {
+					next = c;
+				    }
+				    cop_del(prev, c, TRUE);
+				    break;
+
+				case COP_REPLACE:
+				    if ((*n)->type == COP_REPLACE) {
+					/* merge replaces into old, del new */
+					cop_release(*n);
+					cop_replace(*n, &cop->aco, cop->time,
+						    cop->mtime, cop->queue);
+					if (next == &cop->next) {
+					    next = c;
+					}
+					cop_del(prev, c, TRUE);
+				    } else {
+					/* make replace into add, remove old */
+					cop_del(prev, n, TRUE);
+					cop_commit(cop);
+				    }
+				    break;
 				}
 				break;
 			    }
-			    break;
 			}
-		    }
 
-		    if (cop != (copatch *) NULL) {
-			cop->plane = prev;
-			c = &cop->next;
+			if (*c == cop) {
+			    c = &cop->next;
+			}
 		    }
 		}
 	    } while (c != next);
 	}
+    }
+}
+
+/*
+ * NAME:	data->commit_plane()
+ * DESCRIPTION:	commit the current data plane
+ */
+void d_commit_plane(level)
+Int level;
+{
+    register dataplane *p, *commit, **r, **cr;
+    register dataspace *data;
+    register value *v;
+    register arrref *a;
+    register Uint i;
+    dataplane *clist;
+
+    /*
+     * pass 1: construct commit planes
+     */
+    clist = (dataplane *) NULL;
+    cr = &clist;
+    for (r = &plist, p = *r; p != (dataplane *) NULL && p->level == level;
+	 r = &p->plist, p = *r) {
+	if (p->prev->level != level - 1) {
+	    /* insert commit plane */
+	    commit = ALLOC(dataplane, 1);
+	    commit->level = level - 1;
+	    commit->original = p->original;
+	    commit->alocal.plane = commit;
+	    commit->alocal.arr = (array *) NULL;
+	    commit->alocal.data = p->alocal.data;
+	    commit->alocal.state = AR_ALOCAL;
+	    commit->arrays = p->arrays;
+	    commit->achunk = p->achunk;
+	    commit->coptab = p->coptab;
+	    commit->prev = p->prev;
+	    *cr = commit;
+	    cr = &commit->plist;
+
+	    p->prev = commit;
+	} else {
+	    p->flags |= PLANE_MERGE;
+	}
+    }
+    if (clist != (dataplane *) NULL) {
+	*cr = p;
+	*r = clist;
+    }
+    clist = *r;	/* sentinel */
+
+    /*
+     * pass 2: commit
+     */
+    for (p = plist; p != clist; p = p->plist) {
+	/*
+	 * commit changes to previous plane
+	 */
+	p->prev->flags = p->flags & MOD_ALL;
+	p->prev->achange = p->achange;
+	p->prev->imports = p->imports;
+
+	data = p->alocal.data;
+	if (p->original != (value *) NULL) {
+	    if (p->flags & PLANE_MERGE) {
+		/* free backed-up variable values */
+		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
+		    i_del_value(v);
+		}
+		FREE(p->original);
+	    }
+	    commit_values(data->variables, data->nvariables, level - 1);
+	}
+
+	if (p->coptab != (coptable *) NULL) {
+	    /* commit callout changes */
+	    commit_callouts(p, p->flags & PLANE_MERGE);
+	    if (p->level == 1) {
+		cop_clean(p);
+	    } else {
+		p->prev->coptab = p->coptab;
+	    }
+	}
+
+	arr_commit(&p->achunk, p->prev, p->flags & PLANE_MERGE);
+	if ((p->flags & PLANE_MERGE) && p->arrays != (arrref *) NULL) {
+	    /* replace old array refs */
+	    for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
+		if (a->arr != (array *) NULL) {
+		    arr_del(a->arr);
+		}
+	    }
+	    FREE(p->prev->arrays);
+	    p->prev->arrays = p->arrays;
+	}
+
+	data->plane = p->prev;
+    }
+
+    /*
+     * pass 3: deallocate
+     */
+    for (p = plist; p != clist; p = plist) {
+	plist = p->plist;
+	FREE(p);
     }
 }
 
@@ -1797,155 +1990,6 @@ register dataplane *plane;
 		cop_del(plane, c, TRUE);
 		break;
 	    }
-	}
-    }
-}
-
-
-/*
- * NAME:	data->new_plane()
- * DESCRIPTION:	create a new dataplane
- */
-void d_new_plane(data, level)
-register dataspace *data;
-Int level;
-{
-    register dataplane *p;
-
-    p = ALLOC(dataplane, 1);
-
-    p->level = level;
-    p->flags = data->values->flags;
-    p->achange = data->values->achange;
-    p->imports = data->values->imports;
-
-    /* copy value information from previous plane */
-    p->original = (value *) NULL;
-    p->alocal.values = p;
-    p->alocal.arr = (array *) NULL;
-    p->alocal.data = data;
-    p->alocal.state = AR_ALOCAL;
-    p->coptab = data->values->coptab;
-
-    if (data->values->arrays != (arrref *) NULL) {
-	register arrref *a, *b;
-	register Uint i;
-
-	p->arrays = ALLOC(arrref, i = data->narrays);
-	for (a = p->arrays, b = data->values->arrays, i = data->narrays; i != 0;
-	     a++, b++, --i) {
-	    if (b->arr != (array *) NULL) {
-		*a = *b;
-		a->arr->primary = a;
-		arr_ref(a->arr);
-	    } else {
-		a->arr = (array *) NULL;
-	    }
-	}
-    } else {
-	p->arrays = (arrref *) NULL;
-    }
-    p->achunk = (abchunk *) NULL;
-
-    p->prev = data->values;
-    data->values = p;
-    p->plist = plist;
-    plist = p;
-}
-
-/*
- * NAME:	commit_values()
- * DESCRIPTION:	commit non-swapped arrays among the values
- */
-static void commit_values(v, n, plane)
-register value *v;
-register unsigned int n;
-dataplane *plane;
-{
-    register array *arr;
-
-    while (n != 0) {
-	if (T_INDEXED(v->type)) {
-	    arr = v->u.array;
-	    if (arr->primary->state == AR_ALOCAL &&
-		arr->primary->values != plane) {
-		arr->primary = &plane->alocal;
-		if (arr->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(arr);
-		}
-		commit_values(arr->elts, arr->size, plane);
-	    }
-
-	}
-	v++;
-	--n;
-    }
-}
-
-/*
- * NAME:	data->commit_plane()
- * DESCRIPTION:	commit the current data plane
- */
-void d_commit_plane(level)
-Int level;
-{
-    register dataplane *p, **r;
-    register dataspace *data;
-    register value *v;
-    register arrref *a;
-    register Uint i;
-
-    for (r = &plist, p = *r; p != (dataplane *) NULL && p->level == level;
-	 p = *r) {
-	if (p->prev->level == level - 1) {
-	    /*
-	     * commit changes to previous plane
-	     */
-	    p->prev->flags = p->flags;
-	    p->prev->achange = p->achange;
-	    p->prev->imports = p->imports;
-
-	    data = p->alocal.data;
-	    if (p->original != (value *) NULL) {
-		/* free backed-up variable values */
-		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
-		    i_del_value(v);
-		}
-		FREE(p->original);
-		commit_values(data->variables, data->nvariables, p->prev);
-	    }
-
-	    if (p->coptab != (coptable *) NULL) {
-		/* commit callout changes */
-		commit_callouts(p);
-		if (p->level == 1) {
-		    cop_clean(p);
-		} else {
-		    p->prev->coptab = p->coptab;
-		}
-	    }
-
-	    arr_commit(&p->achunk, p->prev);
-	    if (p->arrays != (arrref *) NULL) {
-		/* replace old array refs */
-		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
-		    if (a->arr != (array *) NULL) {
-			arr_del(a->arr);
-		    }
-		}
-		FREE(p->prev->arrays);
-		p->prev->arrays = p->arrays;
-	    }
-
-	    data->values = p->prev;
-	    *r = p->plist;
-	    FREE(p);
-	} else {
-	    /*
-	     * move plane to previous level
-	     */
-	    p->level--;
-	    r = &p->plist;
 	}
     }
 }
@@ -2008,11 +2052,12 @@ Int level;
 	    }
 	}
 
-	data->values = p->prev;
+	data->plane = p->prev;
 	plist = p->plist;
 	FREE(p);
     }
 }
+
 
 /*
  * NAME:	data->commit_arr()
@@ -2022,17 +2067,17 @@ abchunk **d_commit_arr(arr, prev, old)
 register array *arr;
 dataplane *prev, *old;
 {
-    if (arr->primary->values != prev) {
+    if (arr->primary->plane != prev) {
 	if (arr->primary->state == AR_ALOCAL) {
 	    arr->primary = &prev->alocal;
 	} else {
-	    arr->primary->values = prev;
+	    arr->primary->plane = prev;
 	}
 
 	if (arr->hashed != (struct _maphash_ *) NULL) {
 	    map_compact(arr);
 	}
-	commit_values(arr->elts, arr->size, prev);
+	commit_values(arr->elts, arr->size, prev->level);
     }
 
     return (prev == old) ? (abchunk **) NULL : &prev->achunk;
@@ -2067,7 +2112,7 @@ array *arr;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
 	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->values->imports++ == 0 &&
+	    if (data->plane->imports++ == 0 &&
 		data->ilist == (dataspace *) NULL && ilast != data) {
 		/* add to imports list */
 		if (ifirst == (dataspace *) NULL) {
@@ -2092,17 +2137,17 @@ register value *var;
 register value *val;
 {
     if (var >= data->variables && var < data->variables + data->nvariables) {
-	if (data->values->level != 0 &&
-	    data->values->original == (value *) NULL) {
+	if (data->plane->level != 0 &&
+	    data->plane->original == (value *) NULL) {
 	    /*
 	     * back up variables
 	     */
-	    i_copy(data->values->original = ALLOC(value, data->nvariables),
+	    i_copy(data->plane->original = ALLOC(value, data->nvariables),
 		   data->variables, data->nvariables);
 	}
 	ref_rhs(data, val);
 	del_lhs(data, var);
-	data->values->flags |= MOD_VARIABLE;
+	data->plane->flags |= MOD_VARIABLE;
     }
 
     i_ref_value(val);
@@ -2140,23 +2185,23 @@ register array *arr;
 register value *elt, *val;
 {
 
-    if (data->values->level != arr->primary->data->values->level) {
+    if (data->plane->level != arr->primary->data->plane->level) {
 	/*
 	 * bring dataspace of imported array up to the current plane level
 	 */
-	d_new_plane(arr->primary->data, data->values->level);
+	d_new_plane(arr->primary->data, data->plane->level);
     }
 
     data = arr->primary->data;
-    if (arr->primary->values != data->values) {
+    if (arr->primary->plane != data->plane) {
 	/*
 	 * backup array's current elements
 	 */
-	arr_backup(&data->values->achunk, arr, arr->primary->values);
+	arr_backup(&data->plane->achunk, arr);
 	if (arr->primary->state != AR_ALOCAL) {
-	    arr->primary->values = data->values;
+	    arr->primary->plane = data->plane;
 	} else {
-	    arr->primary = &data->values->alocal;
+	    arr->primary = &data->plane->alocal;
 	}
     }
 
@@ -2166,14 +2211,14 @@ register value *elt, *val;
 	 */
 	if ((arr->primary->ref & ARR_MOD) == 0) {
 	    arr->primary->ref |= ARR_MOD;
-	    data->values->flags |= MOD_ARRAY;
+	    data->plane->flags |= MOD_ARRAY;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
     } else {
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->values->imports++ == 0 &&
+	    if (data->plane->imports++ == 0 &&
 		data->ilist == (dataspace *) NULL &&
 		ilast != data) {
 		/* add to imports list */
@@ -2188,7 +2233,7 @@ register value *elt, *val;
 	}
 	if (T_INDEXED(elt->type) && data != elt->u.array->primary->data) {
 	    /* mark as unimported */
-	    data->values->imports--;
+	    data->plane->imports--;
 	}
     }
 
@@ -2210,7 +2255,7 @@ array *map;
 
     a = map->primary;
     if (a->state == AR_UNCHANGED) {
-	a->values->achange++;
+	a->plane->achange++;
 	a->state = AR_CHANGED;
     }
 }
@@ -2265,7 +2310,7 @@ int nargs;
     f->sp += nargs;
     handle = d_alloc_call_out(data, 0, ct, nargs, v);
 
-    if (data->values->level == 0) {
+    if (data->plane->level == 0) {
 	/*
 	 * add normal callout
 	 */
@@ -2279,7 +2324,7 @@ int nargs;
 	/*
 	 * add callout patch
 	 */
-	plane = data->values;
+	plane = data->plane;
 	if (plane->coptab == (coptable *) NULL) {
 	    cop_init(plane);
 	}
@@ -2336,7 +2381,7 @@ unsigned int handle;
     }
 
     t = co_remaining(co->time);
-    if (data->values->level == 0) {
+    if (data->plane->level == 0) {
 	/*
 	 * remove normal callout
 	 */
@@ -2352,7 +2397,7 @@ unsigned int handle;
 	 */
 	--ncallout;
 
-	plane = data->values;
+	plane = data->plane;
 	if (plane->coptab == (coptable *) NULL) {
 	    cop_init(plane);
 	}
@@ -2449,7 +2494,7 @@ int *nargs;
     co->co_next = n;
     data->fcallouts = handle;
 
-    data->values->flags |= MOD_CALLOUT;
+    data->plane->flags |= MOD_CALLOUT;
     return str;
 }
 
@@ -2928,7 +2973,7 @@ register unsigned short n;
 	    case T_ARRAY:
 	    case T_MAPPING:
 		sv->oindex = 0;
-		sv->u.array = v->u.array->primary - sdata->values->arrays;
+		sv->u.array = v->u.array->primary - sdata->plane->arrays;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -2990,17 +3035,17 @@ register dataspace *data;
     }
 
     /* free arrays */
-    if (data->values->arrays != (arrref *) NULL) {
+    if (data->plane->arrays != (arrref *) NULL) {
 	register arrref *a;
 
-	for (i = data->narrays, a = data->values->arrays; i > 0; --i, a++) {
+	for (i = data->narrays, a = data->plane->arrays; i > 0; --i, a++) {
 	    if (a->arr != (array *) NULL) {
 		arr_del(a->arr);
 	    }
 	}
 
-	FREE(data->values->arrays);
-	data->values->arrays = (arrref *) NULL;
+	FREE(data->plane->arrays);
+	data->plane->arrays = (arrref *) NULL;
     }
 
     /* free strings */
@@ -3033,19 +3078,19 @@ register dataspace *data;
     if (data->parser != (struct _parser_ *) NULL) {
 	ps_save(data->parser);
     }
-    if (data->values->flags == 0) {
+    if (data->plane->flags == 0) {
 	return FALSE;
     }
 
-    if (data->nsectors != 0 && data->values->achange == 0 &&
-	data->schange == 0 && !(data->values->flags & MOD_NEWCALLOUT)) {
+    if (data->nsectors != 0 && data->plane->achange == 0 &&
+	data->schange == 0 && !(data->plane->flags & MOD_NEWCALLOUT)) {
 	bool mod;
 
 	/*
 	 * No strings/arrays added or deleted. Check individual variables and
 	 * array elements.
 	 */
-	if (data->values->flags & MOD_VARIABLE) {
+	if (data->plane->flags & MOD_VARIABLE) {
 	    /*
 	     * variables changed
 	     */
@@ -3054,7 +3099,7 @@ register dataspace *data;
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
 	}
-	if (data->values->flags & MOD_ARRAYREF) {
+	if (data->plane->flags & MOD_ARRAYREF) {
 	    register sarray *sa;
 	    register arrref *a;
 
@@ -3062,7 +3107,7 @@ register dataspace *data;
 	     * references to arrays changed
 	     */
 	    sa = data->sarrays;
-	    a = data->values->arrays;
+	    a = data->plane->arrays;
 	    mod = FALSE;
 	    for (n = data->narrays; n > 0; --n) {
 		if (a->arr != (array *) NULL && sa->ref != (a->ref & ~ARR_MOD))
@@ -3078,14 +3123,14 @@ register dataspace *data;
 			  data->narrays * sizeof(sarray), data->arroffset);
 	    }
 	}
-	if (data->values->flags & MOD_ARRAY) {
+	if (data->plane->flags & MOD_ARRAY) {
 	    register arrref *a;
 	    Uint idx;
 
 	    /*
 	     * array elements changed
 	     */
-	    a = data->values->arrays;
+	    a = data->plane->arrays;
 	    for (n = 0; n < data->narrays; n++) {
 		if (a->arr != (array *) NULL && (a->ref & ARR_MOD)) {
 		    a->ref &= ~ARR_MOD;
@@ -3099,7 +3144,7 @@ register dataspace *data;
 		a++;
 	    }
 	}
-	if (data->values->flags & MOD_STRINGREF) {
+	if (data->plane->flags & MOD_STRINGREF) {
 	    register sstring *ss;
 	    register strref *s;
 
@@ -3123,7 +3168,7 @@ register dataspace *data;
 			  data->stroffset);
 	    }
 	}
-	if (data->values->flags & MOD_CALLOUT) {
+	if (data->plane->flags & MOD_CALLOUT) {
 	    scallout *scallouts;
 	    register scallout *sco;
 	    register dcallout *co;
@@ -3347,10 +3392,10 @@ register dataspace *data;
 	data->strsize = strsize;
 
 	data->schange = 0;
-	data->values->achange = 0;
+	data->plane->achange = 0;
     }
 
-    data->values->flags = 0;
+    data->plane->flags = 0;
     return TRUE;
 }
 
@@ -3390,7 +3435,7 @@ register unsigned short n;
 			 * move array to new dataspace
 			 */
 			d_get_elts(a);
-			a->primary = &data->values->alocal;
+			a->primary = &data->plane->alocal;
 		    } else {
 			/*
 			 * make new array
@@ -3398,7 +3443,7 @@ register unsigned short n;
 			a = arr_alloc(a->size);
 			a->tag = val->u.array->tag;
 			a->odcount = val->u.array->odcount;
-			a->primary = &data->values->alocal;
+			a->primary = &data->plane->alocal;
 
 			if (a->size > 0) {
 			    /*
@@ -3475,15 +3520,15 @@ void d_export()
 	itab = ALLOC(array*, itabsz = 16);
 
 	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
-	    if (data->values->imports != 0) {
+	    if (data->plane->imports != 0) {
 		narr = 0;
 		if (data->variables != (value *) NULL) {
 		    d_import(data, data->variables, data->nvariables);
 		}
-		if (data->values->arrays != (arrref *) NULL) {
+		if (data->plane->arrays != (arrref *) NULL) {
 		    register arrref *a;
 
-		    for (n = data->narrays, a = data->values->arrays; n > 0;
+		    for (n = data->narrays, a = data->plane->arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (array *) NULL) {
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
@@ -3513,7 +3558,7 @@ void d_export()
 	}
 
 	for (data = ifirst; data != (dataspace *) NULL; data = next) {
-	    data->values->imports = 0;
+	    data->plane->imports = 0;
 	    next = data->ilist;
 	    data->ilist = (dataspace *) NULL;
 	}
@@ -3576,14 +3621,14 @@ object *old;
     FREE(data->variables);
     data->variables = vars;
 
-    data->values->flags |= MOD_VARIABLE;
+    data->plane->flags |= MOD_VARIABLE;
     if (data->nvariables != nvar) {
 	if (data->svariables != (svalue *) NULL) {
 	    FREE(data->svariables);
 	    data->svariables = (svalue *) NULL;
 	}
 	data->nvariables = nvar;
-	data->values->achange++;	/* force rebuild on swapout */
+	data->plane->achange++;	/* force rebuild on swapout */
     }
 
     o_upgraded(old, OBJ(data->oindex));
@@ -4201,7 +4246,7 @@ Uint *counttab;
 	d_upgrade_clone(data);
     }
 
-    data->values->flags |= MOD_ALL;
+    data->plane->flags |= MOD_ALL;
     d_save_dataspace(data);
     d_free_dataspace(data);
 }

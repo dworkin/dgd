@@ -1894,7 +1894,7 @@ int funci;
 	    f.rlim->ticks >>= 1;
 	}
     } else {
-	if (f.level != f.data->values->level) {
+	if (f.level != f.data->plane->level) {
 	    d_new_plane(f.data, f.level);
 	}
 	f.atomic = prev_f->atomic;
