@@ -1,1 +1,1 @@
-# define VERSION	"DGD 1.2.60"
+# define VERSION	"DGD 1.2.61"

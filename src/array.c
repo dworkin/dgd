@@ -2017,6 +2017,7 @@ value *val, *elt;
 		d_change_map(m);
 		return &nil_value;
 	    }
+	    val = v;
 	    elt = v + 1;
 	    add = FALSE;
 	}

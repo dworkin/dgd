@@ -1541,3 +1541,4 @@ DGD 1.3
  - Even mappings without modifications can now have a hashtable; some bugs
    fixed for deleting mapping elements in atomic code.
  - Fixed a bug in the above.
+ - And another one.
