@@ -42,14 +42,13 @@ driver, mostly to translate pathnames.
 
     object call_object(string objname)
 
-	Used to replace a string by an object for the first argument of
-	call_other().
+	Get the object named by objname as the first argument of a call_other().
+	compile_object() may be called from here.
 
-    string path_inherit(string file, string path)
+    object inherit_program(string file, string program)
 
-	Used to translate inheritance path <path> upon compilation of
-	the object with filename <file>.  If 0 is returned, the object
-	for <path> cannot be inherited.
+	Get the object named by program as an object to inherit.
+	compile_object() may be called from here.
 
     string path_include(string file, string path)
 

@@ -151,8 +151,13 @@ void tk_clear()
 	l = l->next;
 	FREE(f);
     }
-    FREE(yytext2);
-    FREE(yytext1);
+    tlist = (tchunk *) NULL;
+    if (yytext1 != (char *) NULL) {
+	FREE(yytext2);
+	FREE(yytext1);
+	yytext1 = (char *) NULL;
+	yytext2 = (char *) NULL;
+    }
 }
 
 /*

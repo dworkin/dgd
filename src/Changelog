@@ -900,3 +900,5 @@ DGD 1.1
  - The object free list wasn't properly maintained anymore.
  - A cloned object erroneously didn't have its creator function called right
    away.
+ - Replaced driver->path_inherit() by driver->inherit_program(), which must
+   return an object (which may be compiled inside the function).

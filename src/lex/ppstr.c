@@ -40,6 +40,7 @@ void pps_clear()
 	l = l->next;
 	FREE(f);
     }
+    slist = (schunk *) NULL;
 }
 
 /*

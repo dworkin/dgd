@@ -136,8 +136,8 @@ top_level_declaration
 		      c_error("inherit must precede all declarations");
 		  } else if (!c_inherit($3->l.string->text, $2)) {
 		      /*
-		       * The object to be inherited is unloaded. Load it first,
-		       * then recompile.
+		       * The object to be inherited may have been compiled;
+		       * abort this compilation and possibly restart later.
 		       */
 		      YYABORT;
 		  }

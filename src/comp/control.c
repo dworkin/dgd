@@ -70,7 +70,10 @@ static void oh_clear()
     }
     olist = (oh **) NULL;
 
-    ht_del(otab);
+    if (otab != (hashtab *) NULL) {
+	ht_del(otab);
+	otab = (hashtab *) NULL;
+    }
 }
 
 
@@ -1681,8 +1684,12 @@ void ctrl_clear()
 {
     oh_clear();
     vfh_clear();
-    ht_del(vtab);
-    ht_del(ftab);
+    if (vtab != (hashtab *) NULL) {
+	ht_del(vtab);
+	ht_del(ftab);
+	vtab = (hashtab *) NULL;
+	ftab = (hashtab *) NULL;
+    }
     lab_clear();
 
     ndirects = 0;

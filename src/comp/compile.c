@@ -274,6 +274,7 @@ static short ftype;			/* current function type & class */
 static loop *thisloop;			/* current loop */
 static loop *switch_list;		/* list of nested switches */
 static node *case_list;			/* list of case labels */
+extern int nerrors;			/* # of errors during parsing */
 
 /*
  * NAME:	compile->init()
@@ -306,89 +307,127 @@ static void c_clear()
     rlimits = 0;
 }
 
+static bool inheriting;		/* inside inherit_program() */
+static long ncompiled;		/* # objects compiled */
+
 /*
  * NAME:	compile->inherit()
  * DESCRIPTION:	Inherit an object in the object currently being compiled.
- *		Return TRUE if the object is loaded or if an error occurred,
- *		FALSE otherwise.
+ *		Return TRUE if compilation can continue, or FALSE otherwise.
  */
 bool c_inherit(file, label)
-register char *file;
+char *file;
 node *label;
 {
-    register context *c;
-    register object *o;
+    register object *obj;
+    long ncomp;
 
     if (strcmp(current->file, auto_object) == 0) {
 	c_error("cannot inherit from auto object");
-	return TRUE;
-    }
-    if (file != auto_object) {
-	file = path_inherit(current->file, file);
-	if (file == (char *) NULL || file[0] == '\0') {
-	    c_error("illegal inherit path");
-	    return TRUE;
-	}
-	if (strcmp(file, driver_object) == 0) {
-	    /* would mess up too many things */
-	    c_error("illegal to inherit driver object");
-	    return TRUE;
-	}
-	if (strcmp(current->file, driver_object) == 0 &&
-	    strcmp(file, auto_object) != 0) {
-	    /* driver object can only inherit the auto object */
-	    c_error("illegal inherit from driver object");
-	}
-	for (c = current; c != (context *) NULL; c = c->prev) {
-	    if (strcmp(file, c->file) == 0) {
-		c_error("cycle in inheritance");
-		return TRUE;
-	    }
-	}
-    }
-
-    o = o_find(file);
-    if (o == (object *) NULL ||
-	!ctrl_inherit(current->file, o, (label == (node *) NULL) ?
-					 (string *) NULL : label->l.string)) {
-	/* object is unloaded */
-	strncpy(current->inherit, file, STRINGSZ);
-	current->inherit[STRINGSZ - 1] = '\0';
 	return FALSE;
     }
 
-    return TRUE;
+    ncomp = ncompiled;
+
+    /* get associated object */
+    (--sp)->type = T_STRING;
+    str_ref(sp->u.string = str_new(NULL, strlen(current->file) + 1L));
+    sp->u.string->text[0] = '/';
+    strcpy(sp->u.string->text + 1, current->file);
+    (--sp)->type = T_STRING;
+    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+
+    inheriting = TRUE;
+    if (call_driver_object("inherit_program", 2)) {
+	if (sp->type == T_OBJECT) {
+	    obj = o_object(sp->oindex, sp->u.objcnt);
+	    sp++;
+	} else {
+	    /* returned value not an object */
+	    i_del_value(sp++);
+	    c_error("cannot inherit %s", file);
+	    inheriting = FALSE;
+	    return FALSE;
+	}
+    } else {
+	/* precompiling */
+	sp++;
+	obj = c_compile(path_resolve(file));
+    }
+    inheriting = FALSE;
+
+    if (obj->flags & O_DRIVER) {
+	/* would mess up too many things */
+	c_error("illegal to inherit driver object");
+	return FALSE;
+    }
+    if (strcmp(current->file, driver_object) == 0 && !(obj->flags & O_AUTO)) {
+	/* driver object can only inherit the auto object */
+	c_error("illegal inherit from driver object");
+	return FALSE;
+    }
+    if (ncomp != ncompiled) {
+	return FALSE;	/* objects compiled inside inherit_program() */
+    }
+
+    return ctrl_inherit(current->file, obj, (label == (node *) NULL) ?
+					     (string *) NULL : label->l.string);
 }
 
 /*
- * NAME:	compile()
+ * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-static object *compile(file)
+object *c_compile(file)
 register char *file;
 {
-    static bool recursion;
     context c;
     char file_c[STRINGSZ + 2];
     char errlog[STRINGSZ];
+    bool iflag;
     extern int yyparse P((void));
 
-    if (recursion) {
+    iflag = inheriting;
+    if (iflag) {
+	register context *cc;
+
+	for (cc = current; cc != (context *) NULL; cc = cc->prev) {
+	    if (strcmp(file, cc->file) == 0) {
+		c_error("cycle in inheritance");
+		error("Failed to compile \"/%s.c\"", file);
+	    }
+	}
+
+	pp_clear();
+	ctrl_clear();
+	c_clear();
+    } else if (current != (context *) NULL) {
 	error("Compilation within compilation");
     }
 
     strcpy(c.file, file);
-    c.prev = current;
-    current = &c;
-
     if (strchr(c.file, '#') != (char *) NULL ||
 	(file=path_file(c.file)) == (char *) NULL) {
-	error("Illegal file name \"/%s\"", c.file);
+	error("Illegal object name \"/%s\"", c.file);
     }
     strcpy(file_c, file);
     strcat(file_c, ".c");
+    c.prev = current;
+    current = &c;
+    ncompiled++;
+
+    if (ec_push((ec_ftn) NULL)) {
+	pp_clear();
+	ctrl_clear();
+	c_clear();
+	inheriting = iflag;
+	current = c.prev;
+	error((char *) NULL);
+    }
 
     for (;;) {
+	inheriting = FALSE;
+
 	if (c_autodriver() != 0) {
 	    ctrl_init(auto_object, driver_object);
 	} else {
@@ -397,7 +436,7 @@ register char *file;
 		 * (re)compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		compile(driver_object);
+		c_compile(driver_object);
 		current = &c;
 	    }
 	    ctrl_init(auto_object, driver_object);
@@ -406,37 +445,28 @@ register char *file;
 		 * (re)compile auto object and inherit it
 		 */
 		ctrl_clear();
-		compile(auto_object);
+		current = (context *) NULL;
+		c_compile(auto_object);
+		current = &c;
 		ctrl_init(auto_object, driver_object);
 		c_inherit(auto_object, (node *) NULL);
 	    }
 	}
 
 	if (!pp_init(file_c, paths, 1)) {
-	    ctrl_clear();
 	    error("Could not compile \"/%s.c\"", c.file);
 	}
 	if (!tk_include(path_file(include))) {
-	    pp_clear();
-	    ctrl_clear();
 	    error("Could not include \"/%s\"", include);
 	}
 
 	cg_init(c.prev != (context *) NULL);
-	if (ec_push((ec_ftn) NULL)) {
-	    recursion = FALSE;
-	    pp_clear();
-	    ctrl_clear();
-	    c_clear();
-	    error((char *) NULL);
-	}
-
-	c.inherit[0] = '\0';
-	recursion = TRUE;
 	if (yyparse() == 0 && ctrl_chkfuncs(c.file)) {
 	    control *ctrl;
 
-	    recursion = FALSE;
+	    /*
+	     * successfully compiled
+	     */
 	    ec_pop();
 	    pp_clear();
 
@@ -449,32 +479,19 @@ register char *file;
 	    ctrl = ctrl_construct();
 	    ctrl_clear();
 	    c_clear();
+	    inheriting = iflag;
 	    current = c.prev;
 	    return ctrl->inherits[ctrl->ninherits - 1].obj;
-	} else {
-	    recursion = FALSE;
-	    ec_pop();
+	} else if (nerrors == 0) {
+	    /* another try */
 	    pp_clear();
 	    ctrl_clear();
 	    c_clear();
-
-	    if (c.inherit[0] == '\0') {
-		error("Failed to compile \"/%s.c\"", c.file);
-	    }
-	    compile(c.inherit);
+	} else {
+	    /* compilation failed */
+	    error("Failed to compile \"/%s.c\"", c.file);
 	}
     }
-}
-
-/*
- * NAME:	compile->compile()
- * DESCRIPTION:	compile an LPC file
- */
-object *c_compile(file)
-char *file;
-{
-    current = (context *) NULL;	/* initial context */
-    return compile(file);
 }
 
 /*
@@ -1930,7 +1947,6 @@ void c_error(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
-    extern int nerrors;
 
     if (o_find(driver_object) != (object *) NULL) {
 	fname = tk_filename();

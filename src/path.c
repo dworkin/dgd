@@ -123,35 +123,6 @@ register char *from, *file;
 }
 
 /*
- * NAME:	path->inherit()
- * DESCRIPTION:	resolve an inherit path
- */
-char *path_inherit(from, file)
-char *from, *file;
-{
-    if (c_autodriver()) {
-	return path_from(from, file);
-    }
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
-    sp->u.string->text[0] = '/';
-    strcpy(sp->u.string->text + 1, from);
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    if (!call_driver_object("path_inherit", 2)) {
-	sp++;
-	return path_from(from, file);
-    }
-    if (sp->type != T_STRING) {
-	i_del_value(sp++);
-	return (char *) NULL;
-    }
-    file = path_resolve(sp->u.string->text);
-    str_del((sp++)->u.string);
-    return file;
-}
-
-/*
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */

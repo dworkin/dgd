@@ -39,21 +39,25 @@ void mc_clear()
     register macro *m;
     register mchunk *l, *f;
 
-    ht_del(mt);
+    if (mt != (hashtab *) NULL) {
+	ht_del(mt);
+	mt = (hashtab *) NULL;
 
-    for (l = mlist; l != (mchunk *) NULL; ) {
-	for (m = l->m; mchunksz > 0; m++, --mchunksz) {
-	    if (m->chain.name != (char *) NULL) {
-		FREE(m->chain.name);
-		if (m->replace != (char *) NULL) {
-		    FREE(m->replace);
+	for (l = mlist; l != (mchunk *) NULL; ) {
+	    for (m = l->m; mchunksz > 0; m++, --mchunksz) {
+		if (m->chain.name != (char *) NULL) {
+		    FREE(m->chain.name);
+		    if (m->replace != (char *) NULL) {
+			FREE(m->replace);
+		    }
 		}
 	    }
+	    mchunksz = MCHUNKSZ;
+	    f = l;
+	    l = l->next;
+	    FREE(f);
 	}
-	mchunksz = MCHUNKSZ;
-	f = l;
-	l = l->next;
-	FREE(f);
+	mlist = (mchunk *) NULL;
     }
 }
 

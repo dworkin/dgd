@@ -257,28 +257,82 @@ char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
 		     T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
+ * NAME:	match
+ * DESCRIPTION:	match a string possibly including %%, up to the next %[sdfc] or
+ *		the end of the string
+ */
+static bool match(f, s, flenp, slenp)
+register char *f, *s;
+int *flenp, *slenp;
+{
+    register char *p;
+    register int flen, slen;
+
+    flen = *flenp;
+    slen = *slenp;
+
+    while (flen > 0) {
+	/* look for first % */
+	p = memchr(f, '%', flen);
+
+	if (p == (char *) NULL) {
+	    /* no remaining % */
+	    if (memcmp(f, s, flen) == 0) {
+		*slenp -= slen - flen;
+		return TRUE;
+	    } else {
+		return FALSE;	/* no match */
+	    }
+	}
+
+	if (p[1] == '%') {
+	    /* %% */
+	    if (memcmp(f, s, ++p - f) == 0) {
+		/* matched up to and including the first % */
+		s += p - f;
+		slen -= p - f;
+		flen -= ++p - f;
+		f = p;
+	    } else {
+		return FALSE;	/* no match */
+	    }
+	} else if (memcmp(f, s, p - f) == 0) {
+	    /* matched up to the first % */
+	    *flenp -= flen - (p - f);
+	    *slenp -= slen - (p - f);
+	    return TRUE;
+	} else {
+	    return FALSE;	/* no match */
+	}
+    }
+
+    *slenp -= slen;
+    return TRUE;
+}
+
+/*
  * NAME:	kfun->sscanf()
  * DESCRIPTION:	scan a string
  */
 int kf_sscanf(nargs)
 int nargs;
 {
-    register int len, flen, size, n;
-    register char *f, *pct;
-    value values[MAX_LOCALS - 2];
+    register int flen, slen, size;
+    register char *f, *x;
+    value values[MAX_LOCALS];
     static value *val;
-    char *p, *q;
+    int fl, sl, matches;
+    char *s;
     xfloat flt;
-    int matches;
     bool skip;
 
     if (nargs < 2) {
 	return -1;
-    } else if (nargs > MAX_LOCALS) {
+    } else if (nargs > MAX_LOCALS + 2) {
 	return 4;
     }
-    p = sp[nargs - 1].u.string->text;
-    len = sp[nargs - 1].u.string->len;
+    s = sp[nargs - 1].u.string->text;
+    slen = sp[nargs - 1].u.string->len;
     f = sp[nargs - 2].u.string->text;
     flen = sp[nargs - 2].u.string->len;
 
@@ -299,28 +353,21 @@ int nargs;
 	error((char *) NULL);	/* pass on error */
     }
 
+    /* match initial part */
+    fl = flen;
+    sl = slen;
+    if (!match(f, s, &fl, &sl)) {
+	goto no_match;
+    }
+    f += fl;
+    flen -= fl;
+    s += sl;
+    slen -= sl;
+
     while (flen > 0) {
-	/*
-	 * find first %
-	 */
-	pct = (char *) memchr(f, '%', flen);
-	if (pct == (char *) NULL) {
-	    /* nothing else to match */
-	    break;
-	}
-	if ((size=pct - f) != 0) {
-	    /*
-	     * compare part before the first %
-	     */
-	    if (memcmp(f, p, size) != 0) {
-		/* no match */
-		break;
-	    }
-	    p += size;
-	    len -= size;
-	}
-	f += ++size;
-	flen -= size + 1;
+	/* skip first % */
+	f++;
+	--flen;
 
 	/*
 	 * check for %*
@@ -334,86 +381,96 @@ int nargs;
 	    skip = FALSE;
 	}
 
+	--flen;
 	switch (*f++) {
 	case 's':
 	    /* %s */
-	    pct = (char *) memchr(f, '%', flen);
-	    if (pct == f) {
-		/*
-		 * %s%
-		 */
-		if (*++pct == '%') {
+	    if (f[0] == '%' && f[1] != '%') {
+		switch ((f[1] == '*') ? f[2] : f[1]) {
+		case 'd':
 		    /*
-		     * %s%%
+		     * %s%d
 		     */
-		    pct++;
-		    flen -= 2;
-		    f = (char *) memchr(p, '%', len);
-		    if (f == (char *) NULL) {
-			goto no_match;
-		    }
-		    n = 1;
-		} else {
-		    if (*pct == '*') {
-			pct++;
-		    }
-		    if (*pct == 'd') {
-			/*
-			 * %s%d
-			 */
-			pct = f;
-			for (f = p, size = len; *f != '-' && !isdigit(*f); f++)
-			{
-			    if (--size <= 0) {
-				goto no_match;
-			    }
+		    size = slen;
+		    x = s;
+		    while (!isdigit(*x)) {
+			if (slen == 0) {
+			    goto no_match;
 			}
-		    } else if (*pct == 'f') {
-			/*
-			 * %s%f
-			 */
-			pct = f;
-			for (f = p, size = len; *f != '-' && !isdigit(*f); f++)
-			{
-			    if (f[0] == '.' && isdigit(f[1])) {
-				break;
-			    }
-			    if (--size <= 0) {
-				goto no_match;
-			    }
+			if (x[0] == '-' && isdigit(x[1])) {
+			    break;
 			}
-		    } else {
-			error("Bad sscanf format string");
+			x++;
+			--slen;
 		    }
-		    n = 0;
+		    size -= slen;
+		    break;
+
+		case 'f':
+		    /*
+		     * %s%f
+		     */
+		    size = slen;
+		    x = s;
+		    while (!isdigit(*x)) {
+			if (slen == 0) {
+			    goto no_match;
+			}
+			if ((x[0] == '-' || x[0] == '.') && isdigit(x[1])) {
+			    break;
+			}
+			x++;
+			--slen;
+		    }
+		    size -= slen;
+		    break;
+
+		default:
+		    error("Bad sscanf format string");
 		}
-		size = f - p;
 	    } else {
 		/*
 		 * %s followed by non-%
 		 */
-		if (pct == (char *) NULL) {
-		    /* end of format string */
-		    pct = f + flen;
-		}
-		n = pct - f;
-
-		if (n == 0) {
-		    /* all the rest in one string */
-		    size = len;
+		if (flen == 0) {
+		    /* match whole string */
+		    size = slen;
+		    x = s + slen;
+		    slen = 0;
 		} else {
-		    size = -1;
-		    do {
-			if (len < ++size + n) {
+		    /* get # of chars to match after string */
+		    for (x = f, size = 0; (x - f) != flen; x++, size++) {
+			x = memchr(x, '%', flen - (x - f));
+			if (x == (char *) NULL) {
+			    x = f + flen;
+			    break;
+			} else if (x[1] != '%') {
+			    break;
+			}
+		    }
+		    size = (x - f) - size;
+
+		    x = s;
+		    for (;;) {
+			if (slen - (x - s) < size) {
 			    goto no_match;
 			}
-			q = (char *) memchr(p + size, f[0], len - n - size + 1);
-			if (q == (char *) NULL) {
+			x = (char *) memchr(x, f[0], slen - (x - s) - size + 1);
+			if (x == (char *) NULL) {
 			    goto no_match;
 			}
-			size = q - p;
-		    } while (memcmp(q, f, n) != 0);
-		    flen -= n;
+			fl = flen;
+			sl = slen - (x - s);
+			if (match(f, x, &fl, &sl)) {
+			    f += fl;
+			    flen -= fl;
+			    size = x - s;
+			    x += sl;
+			    slen -= size + sl;
+			    break;
+			}
+			x++;
+		    }
 		}
 	    }
 
@@ -423,23 +480,21 @@ int nargs;
 		}
 		--nargs;
 		val->type = T_STRING;
-		val->u.string = str_new(p, (long) size);
+		val->u.string = str_new(s, (long) size);
 		val++;
 	    }
-	    size += n;
-	    p += size;
-	    len -= size;
-	    f = pct;
+	    s = x;
 	    break;
 
 	case 'd':
 	    /* %d */
-	    pct = p;
-	    val->u.number = strtol(p, &p, 10);
-	    if (p == pct) {
+	    x = s;
+	    val->u.number = strtol(s, &s, 10);
+	    if (s == x) {
 		goto no_match;
 	    }
-	    len -= p - pct;
+	    slen -= (s - x);
+
 	    if (!skip) {
 		if (nargs == 0) {
 		    error("No lvalue for %%d");
@@ -452,10 +507,12 @@ int nargs;
 
 	case 'f':
 	    /* %f */
-	    pct = p;
-	    if (!flt_atof(&p, &flt)) {
+	    x = s;
+	    if (!flt_atof(&s, &flt)) {
 		goto no_match;
 	    }
+	    slen -= (s - x);
+
 	    if (!skip) {
 		if (nargs == 0) {
 		    error("No lvalue for %%f");
@@ -465,12 +522,11 @@ int nargs;
 		VFLT_PUT(val, flt);
 		val++;
 	    }
-	    len -= p - pct;
 	    break;
 
 	case 'c':
 	    /* %c */
-	    if (len == 0) {
+	    if (slen == 0) {
 		goto no_match;
 	    }
 	    if (!skip) {
@@ -479,20 +535,12 @@ int nargs;
 		}
 		--nargs;
 		val->type = T_INT;
-		val->u.number = UCHAR(*p);
+		val->u.number = UCHAR(*s);
 		val++;
 	    }
-	    p++;
-	    --len;
+	    s++;
+	    --slen;
 	    break;
-
-	case '%':
-	    /* %% */
-	    if (*p++ != '%') {
-		goto no_match;
-	    }
-	    --len;
-	    continue;
 
 	default:
 	    error("Bad sscanf format string");
