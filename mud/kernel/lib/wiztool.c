@@ -973,6 +973,7 @@ static cmd_cd(object user, string cmd, string str)
 		    str = "";
 		}
 		directory = str;
+		user->message(((str == "") ? "/" : str) + "\n");
 	    } else {
 		user->message(str + ": Not a directory.\n");
 	    }
@@ -1013,7 +1014,7 @@ static cmd_ls(object user, string cmd, string str)
 	if (str == "l") {
 	    str = ".";
 	} else if (sscanf(str, "l %s", str) == 0) {
-	    user->message("Usage: " + cmd + " [<file> ...]\n");
+	    user->message("Usage: " + cmd + " [-l] [<file> ...]\n");
 	    return;
 	}
     }
