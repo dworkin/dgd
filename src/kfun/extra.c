@@ -1202,7 +1202,7 @@ int nargs;
 	buffer[bufsz + 3] = digest[i];
     }
     f->sp += nargs - 1;
-    PUT_STR(f->sp, str_new(buffer, 20));
+    PUT_STR(f->sp, str_new(buffer, 20L));
     return 0;
 }
 # endif
@@ -1227,7 +1227,7 @@ register frame *f;
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str);
+    PUT_STR(f->sp, str);
 
     return 0;
 }
@@ -1253,7 +1253,31 @@ register frame *f;
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str);
+    PUT_STR(f->sp, str);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("asn_cmp", kf_asn_cmp, pt_asn_cmp)
+# else
+char pt_asn_cmp[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_STRING, T_STRING };
+
+/*
+ * NAME:	kfun->asn_cmp()
+ * DESCRIPTION:	subtract arbitrary precision numbers
+ */
+int kf_asn_cmp(f)
+register frame *f;
+{
+    int cmp;
+
+    cmp = asn_cmp(f->sp[1].u.string, f->sp[0].u.string);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, cmp);
 
     return 0;
 }
@@ -1279,7 +1303,7 @@ register frame *f;
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str);
+    PUT_STR(f->sp, str);
 
     return 0;
 }
@@ -1305,7 +1329,7 @@ register frame *f;
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str);
+    PUT_STR(f->sp, str);
 
     return 0;
 }
@@ -1330,7 +1354,7 @@ register frame *f;
     str = asn_mod(f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str);
+    PUT_STR(f->sp, str);
 
     return 0;
 }

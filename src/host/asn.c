@@ -68,8 +68,12 @@ register Uint *a, lshift, size;
     size -= offset;
 
     if (lshift == 0) {
+	a += size;
+	for (tmp = size; tmp > 0; --tmp) {
+	    --a;
+	    a[offset] = *a;
+	}
 	bits = 0;
-	memmove(a + offset, a, size);
     } else {
 	rshift = 32 - lshift;
 	a += size;
@@ -103,8 +107,12 @@ register Uint *a, rshift, size;
     size -= offset;
 
     if (rshift == 0) {
+	for (tmp = size; tmp > 0; --tmp) {
+	    *a = a[offset];
+	    a++;
+	}
+	a -= size;
 	bits = 0;
-	memmove(a, a + offset, size);
     } else {
 	lshift = 32 - rshift;
 	bits = a[offset - 1] >> rshift;
@@ -609,7 +617,7 @@ string *s1, *s2, *s3;
     bool minusa, minusb, minusc;
     string *str;
 
-    mod = ALLOCA(Uint, (s3->len + 3L) >> 2);
+    mod = ALLOCA(Uint, (s3->len + 7L) >> 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
     if (minusa || (sizemod == 1 && mod[0] == 0)) {
 	AFREE(mod);
@@ -677,7 +685,7 @@ string *s1, *s2, *s3;
     bool minusa, minusb, minusc;
     string *str;
 
-    mod = ALLOCA(Uint, (s3->len + 3L) >> 2);
+    mod = ALLOCA(Uint, (s3->len + 7L) >> 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
     if (minusa || (sizemod == 1 && mod[0] == 0)) {
 	AFREE(mod);
@@ -734,6 +742,48 @@ string *s1, *s2, *s3;
 }
 
 /*
+ * NAME:	asn->cmp()
+ * DESCRIPTION:	compare one ASI with another
+ */
+int asn_cmp(s1, s2)
+string *s1, *s2;
+{
+    Uint *a, *b, sizea, sizeb;
+    bool minusa, minusb;
+    int cmp;
+
+    a = ALLOCA(Uint, (s1->len + 7L) >> 2);
+    asi_strtonum(a, s1, &sizea, &minusa);
+    b = ALLOCA(Uint, (s2->len + 7L) >> 2);
+    asi_strtonum(b, s2, &sizeb, &minusb);
+
+    if (minusa != minusb) {
+	if (minusa) {
+	    cmp = -1;
+	} else {
+	    cmp = 1;
+	}
+    } else {
+	if (sizea != sizeb) {
+	    if (sizea < sizeb) {
+		cmp = -1;
+	    } else {
+		cmp = 1;
+	    }
+	} else {
+	    cmp = asi_cmp(a, b, sizea, sizeb);
+	}
+	if (minusa) {
+	    cmp = -cmp;
+	}
+    }
+
+    AFREE(b);
+    AFREE(a);
+    return cmp;
+}
+
+/*
  * NAME:	asn->mult()
  * DESCRIPTION:	multiply one ASI with another
  */
@@ -745,16 +795,16 @@ string *s1, *s2, *s3;
     bool minusa, minusb;
     string *str;
 
-    mod = ALLOCA(Uint, (s3->len + 3L) >> 2);
+    mod = ALLOCA(Uint, (s3->len + 7L) >> 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
     if (minusa || (sizemod == 1 && mod[0] == 0)) {
 	AFREE(mod);
 	error("Invalid modulus");
     }
 
-    aa = a = ALLOCA(Uint, (s1->len + 3L) >> 2);
+    aa = a = ALLOCA(Uint, (s1->len + 7L) >> 2);
     asi_strtonum(a, s1, &sizea, &minusa);
-    bb = b = ALLOCA(Uint, (s2->len + 3L) >> 2);
+    bb = b = ALLOCA(Uint, (s2->len + 7L) >> 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
 
     sizec = sizea + sizeb;
@@ -812,21 +862,21 @@ string *s1, *s2, *s3;
     bool minusa, minusb;
     string *str;
 
-    mod = ALLOCA(Uint, (s3->len + 3L) >> 2);
+    mod = ALLOCA(Uint, (s3->len + 7L) >> 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
     if (minusa || (sizemod == 1 && mod[0] == 0)) {
 	AFREE(mod);
 	error("Invalid modulus");
     }
 
-    b = ALLOCA(Uint, (s2->len + 3L) >> 2);
+    b = ALLOCA(Uint, (s2->len + 7L) >> 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
     if (sizeb == 1 && b[0] == 0) {
 	AFREE(b);
 	AFREE(mod);
 	error("Division by zero");
     }
-    a = ALLOCA(Uint, (s1->len + 3L) >> 2);
+    a = ALLOCA(Uint, (s1->len + 7L) >> 2);
     asi_strtonum(a, s1, &sizea, &minusa);
 
     c = ALLOCA(Uint, sizea + 2);
@@ -866,14 +916,14 @@ string *s1, *s2;
     bool minusa, minusb;
     string *str;
 
-    b = ALLOCA(Uint, (s2->len + 3L) >> 2);
+    b = ALLOCA(Uint, (s2->len + 7L) >> 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
     if (minusb || (sizeb == 1 && b[0] == 0)) {
 	AFREE(b);
 	AFREE(mod);
 	error("Invalid modulus");
     }
-    a = ALLOCA(Uint, (s1->len + 3L) >> 2);
+    a = ALLOCA(Uint, (s1->len + 7L) >> 2);
     asi_strtonum(a, s1, &sizea, &minusa);
 
     c = ALLOCA(Uint, sizea + 2);
