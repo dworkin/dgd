@@ -551,9 +551,9 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-bool comm_init(nusers, telnet_port, binary_port)
-int nusers;
-unsigned int telnet_port, binary_port;
+bool comm_init(n, tports, bports, ntelnet, nbinary)
+int n, ntelnet, nbinary;
+unsigned short *tports, *bports;
 {
     return TRUE;
 }

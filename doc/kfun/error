@@ -8,9 +8,3 @@ SYNOPSIS
 DESCRIPTION
 	Cause an error, which will stop execution.  If the error is caught,
 	execution will continue after the catch.
-
-ERRORS
-	The errormessage string may not contain newlines.
-
-SEE ALSO
-	kfun/catch

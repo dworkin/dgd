@@ -1517,3 +1517,4 @@ DGD 1.3
    destructed.
  - Avoid recursion when deleting a deep tree of arrays/mappings/LWOs.
  - Avoid recursion while saving to swap, also.
+ - Fixed a bug in handling some regular expressions.
