@@ -591,8 +591,8 @@ register rlchunk *c;
  * header	[0]	version number
  *		[x]	0: no whitespace, 1: first token rule is whitespace
  *		[x][y]	# regexp rules
+ *		[x][y]	# total regexp rules (+ alternatives)
  *		[x][y]	# string rules
- *		[x][y]	# total regexp rules (+ alternatives) and string rules
  *		[x][y]	# production rules (first is starting rule)
  *
  * rgx offset	[x][y]	regexp rule offsets
@@ -601,7 +601,7 @@ register rlchunk *c;
  * str offset	[x][y]	string rule offsets
  *		...
  *
- * prod offset	[x][y]	producton rule offsets
+ * prod offset	[x][y]	production rule offsets
  *		...
  *
  * regexp rule	[x][y]	number of alternatives
@@ -638,8 +638,8 @@ long size;
     /* header */
     p = gram->text;
     STORE2(p, 0); p += 2;	/* version number & whitespace */
-    STORE2(p, nrgx); p += 2;	/* # regular expression rules */
-    STORE2(p, nstr); p += 4;	/* # string rules */
+    STORE2(p, nrgx); p += 4;	/* # regular expression rules */
+    STORE2(p, nstr); p += 2;	/* # string rules */
     STORE2(p, nprod);		/* # production rules */
     q = p + 2 + 2 * (nrgx + nstr + nprod);
     p = gram->text + size;
@@ -684,8 +684,7 @@ long size;
 	    nrgx++;
 	}
     }
-    p = gram->text + 6;
-    nrgx += nstr;
+    p = gram->text + 4;
     STORE2(p, nrgx);
 
     /* fill in production rules */
@@ -1116,9 +1115,40 @@ register Uint *cs1, *cs2;
     cs1[7] |= cs2[7];
 }
 
+/*
+ * NAME:	charset->firstc()
+ * DESCRIPTION:	find the first char in a charset
+ */
+static int cs_firstc(cset, c)
+register Uint *cset;
+register int c;
+{
+    register Uint x;
+
+    while (c < 256) {
+	if ((x=(cset[c >> 5] >> (c & 31)) != 0) {
+	    while ((x & 0xff) == 0) {
+		x >>= 8;
+		c += 8;
+	    }
+	    while ((x & 1) == 0) {
+		x >>= 1;
+		c++;
+	    }
+	    return c;
+	}
+	c += 32;
+	c &= ~31;
+    }
+
+    /* not found */
+    return -1;
+}
+
 
 typedef struct {
     hte chain;			/* hash table chain */
+    char *rgx;			/* regular expression this position is in */
     short len;			/* length of position string */
     short nposn;		/* position number */
     short ruleno;		/* the rule this position is in */
@@ -1155,6 +1185,8 @@ lexposn **next;
 	*c = x;
 	x->chunksz = 0;
     }
+
+/* add rgx */
 
     lp = &(*c)->lp[(*c)->chunksz++];
     lp->chain.next = (hte *) *next;
@@ -1323,9 +1355,8 @@ static Uint bits[] = {
  * NAME:	lexposn->cset()
  * DESCRIPTION:	create an input set for a position
  */
-static void lp_cset(lp, rgx, cset)
+static void lp_cset(lp, cset)
 lexposn *lp;
-char *rgx;
 register Uint *cset;
 {
     register char *p, *q;
@@ -1334,8 +1365,8 @@ register Uint *cset;
 
     for (q = lp->chain.name + 2; *q != '\0'; q++) {
 	memset(cset, '\0', 32);
-	if (*q != rgx[0]) {
-	    p = rgx + UCHAR(*q);
+	if (*q != lp->rgx[0]) {
+	    p = lp->rgx + UCHAR(*q);
 	    switch (*p) {
 	    case '[':
 		/* character class */
@@ -1403,9 +1434,9 @@ register Uint *cset;
  * NAME:	lexposn->trans()
  * DESCRIPTION:	perform a transition on a position, given an input set
  */
-static bool lp_trans(lp, rgx, cset, buf, buflen)
+static bool lp_trans(lp, cset, buf, buflen)
 lexposn *lp;
-char *rgx, *buf;
+char *buf;
 Uint *cset;
 int *buflen;
 {
@@ -1418,8 +1449,8 @@ int *buflen;
 
     t = trans;
     for (q = lp->chain.name + 2; *q != '\0'; q++) {
-	if (*q != rgx[0]) {
-	    p = rgx + UCHAR(*q);
+	if (*q != lp->rgx[0]) {
+	    p = lp->rgx + UCHAR(*q);
 	    found = 0;
 	    switch (*p) {
 	    case '[':
@@ -1479,32 +1510,27 @@ int *buflen;
 		break;
 	    }
 	    if (found != 0) {
-		*t++ = p - rgx + 1;
+		*t++ = p - lp->rgx + 1;
 	    }
 	}
     }
     *t = '\0';
 
-    return lp_transposn(rgx, trans, buf, buflen);
+    return lp_transposn(lp->rgx, trans, buf, buflen);
 }
 
 
 typedef struct {
-    lexposn **posn;		/* positions associated with state */
+    lexposn **posn;		/* regexp positions */
+    char *str;			/* strings */
+    char *trans;		/* transitions */
     short nposn;		/* number of positions */
-    short final;		/* -2: unresolved, -1: not final */
+    short nstr;			/* number of string positions */
     short ntrans;		/* number of transitions */
-    char *trans;		/* state transitions */
-    string *storage;		/* storage for transitions */
+    short final;		/* -2: unresolved, -1: not final */
+    string *strstorage;		/* storage for strings */
+    string *transstorage;	/* storage for transitions */
 } lexstate;
-
-# if 0
-
-typedef struct {
-    ...
-} lextrans;
-
-# endif
 
 typedef struct {
     string *grammar;		/* reference grammar */
@@ -1530,8 +1556,7 @@ typedef struct {
 
     int ecnum;			/* number of equivalence classes */
     char eclass[256];		/* equivalence classes */
-    char ecmembers[256];	/* # members per equivalence class */
-    char ecstart[256];		/* start of equivalence class lists */
+    char ecmembers[256];	/* members per equivalence class */
     Uint ecset[8][256];		/* equivalence class sets */
 } lexer;
 
@@ -1539,23 +1564,54 @@ typedef struct {
  * NAME:	lexer->expand()
  * DESCRIPTION:	expand a state
  */
-static void lx_expand(lx, state)
+static void lx_expand(lx, state, len)
 lexer *lx;
 lexstate *state;
+unsigned int len;
 {
-    /* count positions */
-    /* construct charsets for all posns */
-    /* construct input set by orring all charsets */
+    Uint ec[256][8];
+    bool ecflag[256];
+    Uint iset[8];
+
+    memset(ec, '\0', sizeof(ec));
+    memset(ecflag, '\0', sizeof(ecflag));
+    memset(iset, '\0', sizeof(iset));
+
+    /* allocate character sets for strings and positions */
+    ncset = state->nstr;
+    for (i = 0; i < state->nposn; i++) {
+	ncset += state->posn[i]->len;	/* XXX -2? */
+    }
+    cset = ALLOCA(Uint, 8 * ncset);
+
+    /* construct character sets for all string chars */
+    for (i = 0; i < state->nstr; i++) {
+	p = state->str + 2 * i;
+	p = lx->grammar->text + 256 * UCHAR(p[0]) + UCHAR(p[1]);
+	c = UCHAR(p[1 + len]);
+	memset(cset, '\0', 32);
+	cset[c >> 5] |= 1 << (c & 31);
+	iset[c >> 5] |= 1 << (c & 31));	/* also add to input set */
+	cset += 8;
+    }
+
+    /* construct character sets for all posns */
+    for (i = 0; i < state->nposn; i++) {
+	lp_cset(state->posn[i], csets);
+	cs_or(iset, cset);			/* also add to input set */
+	cset += 8 * state->posn[i]->len;	/* XXX -2? */
+    }
+    cset -= 8 * ncset;
+
     /*
-     * starting with \0, and [\0-\377] with all charsets that match the
-     * testchar, and obtain the equivalence class for the testchar; repeat
-     * until all equivalence classes known
-     */
-    /*
-     * adjust global equivalence classes
-     */
-    /*
-     * create new states with new positions for every equivalence class
+     * Check and adjust the equivalence classes as follows:
+     * - for the first char in the input set, get the equivalence class
+     * - compare with original input set, if no overlap skip to next;
+     * - match will all character classes, possibly breaking up the ec;
+     *   always keep the ec that contains the first char; stop when down
+     *   to 1;
+     * - remove resulting ec from input set and repeat for next first char,
+     *   until the input set is empty
      */
 }
 
@@ -1590,7 +1646,7 @@ unsigned int *strlen;
 		if (state == lx->states) {
 		    break;	/* stuck in state 0 */
 		}
-		lx_expand(lx, state);
+		lx_expand(lx, state, len);
 	    }
 
 	    if (size == 0) {

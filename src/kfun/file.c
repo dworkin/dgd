@@ -605,6 +605,7 @@ register value *val;
 	while (isdigit(*++p)) ;
     }
     if (*p == '=') {
+	flt.high = flt.low = 0;
 	for (i = 4; i > 0; --i) {
 	    if (!isxdigit(*++p)) {
 		restore_error(x, "hexadecimal digit expected");
