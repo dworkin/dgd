@@ -52,7 +52,8 @@ typedef struct _maphash_ {
 typedef struct arrbak {
     array *arr;			/* array backed up */
     unsigned short size;	/* original size (of mapping) */
-    value *original;		/* original values */
+    value *original;		/* original elements */
+    plane *values;		/* original plane */
 } arrbak;
 
 struct _abchunk_ {
@@ -301,12 +302,14 @@ void arr_clear()
 
 
 /*
- * NAME:	array->backup()
- * DESCRIPTION:	make a backup of the current elements of an array or mapping
+ * NAME:	backup()
+ * DESCRIPTION:	add an array backup to the backup chunk
  */
-void arr_backup(ac, a)
+static void backup(ac, a, elts, values)
 register abchunk **ac;
 register array *a;
+value *elts;
+plane *values;
 {
     register abchunk *c;
     register arrbak *ab;
@@ -323,27 +326,47 @@ register array *a;
     ab = &c->ab[c->chunksz++];
     ab->arr = a;
     ab->size = a->size;
-    if (ab->size != 0) {
-	i_copy(ab->original = ALLOC(value, a->size), a->elts, a->size);
+    ab->original = elts;
+    ab->values = values;
+}
+
+/*
+ * NAME:	array->backup()
+ * DESCRIPTION:	make a backup of the current elements of an array or mapping
+ */
+void arr_backup(ac, a, values)
+abchunk **ac;
+array *a;
+plane *values;
+{
+    value *elts;
+
+    if (a->size != 0) {
+	i_copy(elts = ALLOC(value, a->size), a->elts, a->size);
     } else {
-	ab->original = (value *) NULL;
+	elts = (value *) NULL;
     }
+    backup(ac, a, elts, values);
 }
 
 /*
  * NAME:	array->commit()
  * DESCRIPTION:	commit current array values and discard originals
  */
-void arr_commit(ac)
+void arr_commit(ac, values)
 abchunk **ac;
+plane *values;
 {
     register abchunk *c, *n;
     register arrbak *ab;
     register short i;
 
-    for (c = *ac; c != (abchunk *) NULL; c = n) {
+    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
 	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
-	    if (ab->original != (value *) NULL) {
+	    ac = d_commit_arr(ab->arr, values, ab->values);
+	    if (ac != (abchunk **) NULL) {
+		backup(ac, ab->arr, ab->original, ab->values);
+	    } else if (ab->original != (value *) NULL) {
 		register value *v;
 		register unsigned short j;
 
@@ -352,15 +375,11 @@ abchunk **ac;
 		}
 		FREE(ab->original);
 	    }
-
-	    d_revert_arr(ab->arr);
 	}
 
 	n = c->next;
 	FREE(c);
     }
-
-    *ac = (abchunk *) NULL;
 }
 
 /*
@@ -376,9 +395,11 @@ abchunk **ac;
     register array *a;
     register unsigned short j;
 
-    for (c = *ac; c != (abchunk *) NULL; c = n) {
+    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
 	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
 	    a = ab->arr;
+	    d_restore_arr(a, ab->values);
+
 	    if (a->elts != (value *) NULL) {
 		register value *v;
 
@@ -407,14 +428,11 @@ abchunk **ac;
 
 	    a->elts = ab->original;
 	    a->size = ab->size;
-	    d_revert_arr(a);
 	}
 
 	n = c->next;
 	FREE(c);
     }
-
-    *ac = (abchunk *) NULL;
 }
 
 
@@ -443,7 +461,7 @@ register array *a;
 	a->odcount = odcount;
 	for (n = a->size; n != 0; --n) {
 	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		d_assign_elt(a, v2, &nil_value);
+		d_assign_elt(a->primary->data, a, v2, &nil_value);
 	    }
 	    *v1++ = *v2++;
 	}
@@ -650,7 +668,7 @@ array *a1, *a2;
 	for (n = a1->size; n > 0; --n) {
 	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 		/* replace destructed object by nil */
-		d_assign_elt(a1, v1, &nil_value);
+		d_assign_elt(a1->primary->data, a1, v1, &nil_value);
 	    }
 	    if (search(v1, v2, size, 1, FALSE) < 0) {
 		/*
@@ -717,7 +735,7 @@ array *a1, *a2;
 	for (n = a1->size; n > 0; --n) {
 	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 		/* replace destructed object by nil */
-		d_assign_elt(a1, v1, &nil_value);
+		d_assign_elt(a1->primary->data, a1, v1, &nil_value);
 	    }
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -793,7 +811,7 @@ array *a1, *a2;
 	for (n = a2->size; n > 0; --n) {
 	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
 		/* replace destructed object by nil */
-		d_assign_elt(a2, v2, &nil_value);
+		d_assign_elt(a2->primary->data, a2, v2, &nil_value);
 	    }
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -1122,13 +1140,13 @@ register array *m;
 		/*
 		 * index is destructed object
 		 */
-		d_assign_elt(m, v2 + 1, &nil_value);
+		d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
 		v2 += 2;
 	    } else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
 		/*
 		 * value is destructed object
 		 */
-		d_assign_elt(m, v2, &nil_value);
+		d_assign_elt(m->primary->data, m, v2, &nil_value);
 		v2 += 2;
 	    } else {
 		*v1++ = *v2++;
@@ -1160,12 +1178,12 @@ register array *m;
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(m, &e->val, &nil_value);
+		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
 		} else if (e->val.type == T_OBJECT && DESTRUCTED(&e->val)) {
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(m, &e->idx, &nil_value);
+		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
 		} else {
 		    size++;
 		    p = &e->next;
@@ -1215,13 +1233,13 @@ register array *m;
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(m, v2 + 1, &nil_value);
+		    d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
 		    v2 += 2;
 		} else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(m, v2, &nil_value);
+		    d_assign_elt(m->primary->data, m, v2, &nil_value);
 		    v2 += 2;
 		} else {
 		    *v1++ = *v2++;
@@ -1262,13 +1280,15 @@ register array *m;
 			    /*
 			     * index is destructed object
 			     */
-			    d_assign_elt(m, &e->val, &nil_value);
+			    d_assign_elt(m->primary->data, m, &e->val,
+					 &nil_value);
 			} else if (e->val.type == T_OBJECT &&
 				   DESTRUCTED(&e->val)) {
 			    /*
 			     * value is destructed object
 			     */
-			    d_assign_elt(m, &e->idx, &nil_value);
+			    d_assign_elt(m->primary->data, m, &e->idx,
+					 &nil_value);
 			} else {
 			    /*
 			     * copy to array
@@ -1708,7 +1728,8 @@ unsigned short hashval;
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
  *		perform an assignment; otherwise return the indexed value.
  */
-value *map_index(m, val, elt)
+value *map_index(data, m, val, elt)
+dataspace *data;
 register array *m;
 value *val, *elt;
 {
@@ -1722,7 +1743,8 @@ value *val, *elt;
 	del = FALSE;
     }
 
-    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+    if (m->hashed != (maphash *) NULL &&
+	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
 	map_dehash(m);
     }
 
@@ -1741,7 +1763,7 @@ value *val, *elt;
 		/*
 		 * change the element
 		 */
-		d_assign_elt(m, v + 1, elt);
+		d_assign_elt(data, m, v + 1, elt);
 		if (val->type == T_OBJECT) {
 		    v->modified = TRUE;
 		    v->u.objcnt = val->u.objcnt;	/* refresh */
@@ -1752,8 +1774,8 @@ value *val, *elt;
 		/*
 		 * delete the element
 		 */
-		d_assign_elt(m, v, &nil_value);
-		d_assign_elt(m, v + 1, &nil_value);
+		d_assign_elt(m->primary->data, m, v, &nil_value);
+		d_assign_elt(m->primary->data, m, v + 1, &nil_value);
 
 		m->size -= 2;
 		if (m->size == 0) {
@@ -1812,7 +1834,7 @@ value *val, *elt;
 		    /*
 		     * change element
 		     */
-		    d_assign_elt(m, &e->val, elt);
+		    d_assign_elt(data, m, &e->val, elt);
 		    if (val->type == T_OBJECT) {
 			e->idx.u.objcnt = val->u.objcnt;	/* refresh */
 		    }
@@ -1822,8 +1844,8 @@ value *val, *elt;
 		    /*
 		     * delete element
 		     */
-		    d_assign_elt(m, &e->idx, &nil_value);
-		    d_assign_elt(m, &e->val, &nil_value);
+		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
+		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
 
 		    *p = e->next;
 		    e->next = fmelt;
@@ -1845,8 +1867,8 @@ value *val, *elt;
 	e = map_grow(m, i);
 	d_change_map(m);
 
-	d_assign_elt(m, &e->idx, val);
-	d_assign_elt(m, &e->val, elt);
+	d_assign_elt(data, m, &e->idx, val);
+	d_assign_elt(data, m, &e->val, elt);
     }
 
     /*

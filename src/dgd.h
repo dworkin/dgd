@@ -5,6 +5,7 @@ typedef struct _array_ array;
 typedef struct _object_ object;
 typedef struct _value_ value;
 typedef struct _control_ control;
+typedef struct _plane_ plane;
 typedef struct _dataspace_ dataspace;
 typedef struct _frame_ frame;
 

@@ -30,6 +30,9 @@ int nargs;
     if (obj->flags & O_USER) {
 	error("editor() from user object");
     }
+    if (f->data->values->level != 0) {
+	error("editor() within atomic function");
+    }
     if (!(obj->flags & O_EDITOR)) {
 	ed_new(obj);
     }
@@ -365,6 +368,9 @@ register frame *f;
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
+    }
+    if (f->data->values->level != 0) {
+	error("save_object() within atomic function");
     }
 
     /*
@@ -1079,6 +1085,9 @@ int nargs;
 		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
     }
+    if (f->data->values->level != 0) {
+	error("write_file() within atomic function");
+    }
 
     i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
     str_del(f->sp[1].u.string);
@@ -1267,6 +1276,9 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
+    if (f->data->values->level != 0) {
+	error("remove_file() within atomic function");
+    }
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
@@ -1295,6 +1307,9 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
+    if (f->data->values->level != 0) {
+	error("make_dir() within atomic function");
+    }
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
@@ -1322,6 +1337,9 @@ register frame *f;
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
+    }
+    if (f->data->values->level != 0) {
+	error("remove_dir() within atomic function");
     }
 
     i_add_ticks(f, 1000);

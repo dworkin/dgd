@@ -104,13 +104,13 @@ typedef struct _strref_ {
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
-    struct _plane_ *values;	/* value plane this array is in */
+    plane *values;		/* value plane this array is in */
     dataspace *data;		/* dataspace this array is in */
-    bool changed;		/* mapping has changed in size */
+    short state;		/* state of mapping */
     Uint ref;			/* # of refs */
 } arrref;
 
-typedef struct _plane_ {
+struct _plane_ {
     Int level;			/* plane level */
 
     short flags;		/* modification flags */
@@ -122,9 +122,9 @@ typedef struct _plane_ {
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
 
-    struct _plane_ *prev;	/* previous in per-dataspace linked list */
-    dataspace *next;		/* next in per-level linked list */
-} plane;
+    plane *prev;		/* previous in per-dataspace linked list */
+    plane *plist;		/* next in per-level linked list */
+};
 
 struct _dataspace_ {
     dataspace *prev, *next;
@@ -169,6 +169,7 @@ struct _dataspace_ {
 };
 
 # define THISPLANE(a)		((a)->values == (a)->data->values)
+# define SAMEPLANE(d1, d2)	((d1)->values->level == (d2)->values->level)
 
 extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));
@@ -196,16 +197,17 @@ extern Uint		d_get_progsize	P((control*));
 extern value	       *d_get_variable	P((dataspace*, unsigned int));
 extern value	       *d_get_elts	P((array*));
 
+extern void		d_new_plane	P((dataspace*, Int));
+extern void		d_commit_plane	P((Int));
+extern void		d_del_plane	P((Int));
+extern abchunk	      **d_commit_arr	P((array*, plane*, plane*));
+extern void		d_restore_arr	P((array*, plane*));
+
 extern void		d_ref_imports	P((array*));
 extern void		d_assign_var	P((dataspace*, value*, value*));
 extern void		d_wipe_extravar	P((dataspace*));
-extern void		d_assign_elt	P((array*, value*, value*));
+extern void		d_assign_elt	P((dataspace*, array*, value*, value*));
 extern void		d_change_map	P((array*));
-
-extern void		d_new_plane	P((dataspace*, Int, dataspace*));
-extern dataspace       *d_commit_plane	P((dataspace*));
-extern dataspace       *d_del_plane	P((dataspace*));
-extern void		d_revert_arr	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
 					   int));

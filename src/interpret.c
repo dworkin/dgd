@@ -41,7 +41,6 @@ int flag;
     rlim.nodepth = TRUE;
     rlim.noticks = TRUE;
     topframe.rlim = &rlim;
-    topframe.plist = (dataspace *) NULL;
     topframe.level = 0;
     topframe.atomic = FALSE;
     cframe = &topframe;
@@ -524,7 +523,7 @@ register frame *f;
 	break;
 
     case T_MAPPING:
-	val = map_index(aval->u.array, ival, (value *) NULL);
+	val = map_index(f->data, aval->u.array, ival, (value *) NULL);
 	i_del_value(ival);
 	break;
 
@@ -673,7 +672,7 @@ int vtype;
 	break;
 
     case T_MLVALUE:
-	val = map_index(lval->u.array, &f->lip[-1], (value *) NULL);
+	val = map_index(f->data, lval->u.array, &f->lip[-1], (value *) NULL);
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
@@ -781,7 +780,7 @@ register frame *f;
 	break;
 
     case T_MLVALUE:
-	i_push_value(f, map_index(f->sp->u.array, &f->lip[-1],
+	i_push_value(f, map_index(f->data, f->sp->u.array, &f->lip[-1],
 				  (value *) NULL));
 	break;
 
@@ -860,12 +859,12 @@ register frame *f;
 
     case T_ALVALUE:
 	a = lval->u.array;
-	d_assign_elt(a, &d_get_elts(a)[(--f->lip)->u.number], val);
+	d_assign_elt(f->data, a, &d_get_elts(a)[(--f->lip)->u.number], val);
 	arr_del(a);
 	break;
 
     case T_MLVALUE:
-	map_index(a = lval->u.array, &f->lip[-1], val);
+	map_index(f->data, a = lval->u.array, &f->lip[-1], val);
 	i_del_value(--f->lip);
 	arr_del(a);
 	break;
@@ -880,14 +879,14 @@ register frame *f;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(&ival, v->u.string, i, val));
+	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
 	f->lip -= 2;
 	arr_del(a);
 	break;
 
     case T_SMLVALUE:
 	a = lval->u.array;
-	v = map_index(a, &f->lip[-2], (value *) NULL);
+	v = map_index(f->data, a, &f->lip[-2], (value *) NULL);
 	i = f->lip[-1].u.number;
 	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
@@ -895,7 +894,7 @@ register frame *f;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(&ival, v->u.string, i, val));
+	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
 	f->lip -= 2;
 	i_del_value(f->lip);
 	arr_del(a);
@@ -1914,19 +1913,16 @@ int funci;
     f.nargs = nargs;
 
     /* deal with atomic functions */
-    f.plist = prev_f->plist;
     f.level = prev_f->level;
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
-	d_new_plane(f.data, ++f.level, (dataspace *) NULL);
-	f.plist = f.data;
+	d_new_plane(f.data, ++f.level);
 	f.atomic = TRUE;
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks >>= 1;
 	}
     } else {
 	if (f.level != f.data->values->level) {
-	    d_new_plane(f.data, f.level, f.plist);
-	    f.plist = f.data;
+	    d_new_plane(f.data, f.level);
 	}
 	f.atomic = prev_f->atomic;
     }
@@ -1979,14 +1975,10 @@ int funci;
 	FREE(f.stack);
     }
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
-	do {
-	    f.plist = d_commit_plane(f.plist);
-	} while (f.plist != (dataspace *) NULL);
+	d_commit_plane(f.level);
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;
 	}
-    } else {
-	prev_f->plist = f.plist;
     }
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
@@ -2002,7 +1994,6 @@ frame *ftop;
 Int level;
 {
     register frame *f;
-    register dataspace *data;
 
     for (f = ftop; f->level != level; f = f->prev) ;
     if (f != ftop) {
@@ -2013,10 +2004,7 @@ Int level;
 	    f->rlim->ticks *= 2;
 	}
 	i_set_sp(ftop, f->sp);
-	data = ftop->plist;
-	do {
-	    data = d_del_plane(data);
-	} while (data != (dataspace *) NULL);
+	d_del_plane(ftop->level);
     }
 
     return f;

@@ -168,7 +168,6 @@ struct _frame_ {
     string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     rlinfo *rlim;		/* rlimits info */
-    dataspace *plist;		/* linked list of planes on current level */
     Int level;			/* plane level */
     bool atomic;		/* within uncaught atomic code */
 };

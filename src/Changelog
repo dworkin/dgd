@@ -1298,3 +1298,5 @@ DGD 1.1
    However, if any of these are specified, they must also be present in the
    actual function declaration.
  - Partial implementation of atomic functions.
+ - Forbid file changes in atomically executed code.
+ - Fixed a slew of bugs in atomic functions.

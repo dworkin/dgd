@@ -20,8 +20,8 @@ extern void		arr_freeall	P((void));
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
 
-extern void		arr_backup	P((abchunk**, array*));
-extern void		arr_commit	P((abchunk**));
+extern void		arr_backup	P((abchunk**, array*, plane*));
+extern void		arr_commit	P((abchunk**, plane*));
 extern void		arr_restore	P((abchunk**));
 
 extern array	       *arr_add		P((dataspace*, array*, array*));
@@ -40,7 +40,7 @@ extern unsigned short	map_size	P((array*));
 extern array	       *map_add		P((dataspace*, array*, array*));
 extern array	       *map_sub		P((dataspace*, array*, array*));
 extern array	       *map_intersect	P((dataspace*, array*, array*));
-extern value	       *map_index	P((array*, value*, value*));
+extern value	       *map_index	P((dataspace*, array*, value*, value*));
 extern array	       *map_range	P((dataspace*, array*, value*, value*));
 extern array	       *map_indices	P((dataspace*, array*));
 extern array	       *map_values	P((dataspace*, array*));
