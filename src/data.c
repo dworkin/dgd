@@ -1900,6 +1900,7 @@ Int level;
 	    commit->alocal.state = AR_ALOCAL;
 	    commit->arrays = p->arrays;
 	    commit->achunk = p->achunk;
+	    commit->strings = p->strings;
 	    commit->coptab = p->coptab;
 	    commit->prev = p->prev;
 	    *cr = commit;

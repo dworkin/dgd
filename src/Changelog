@@ -1369,3 +1369,4 @@ DGD 1.1
  - Make sure the error context is cleared at the proper time.
  - Fixed another object undo bug.
  - Completed the string accounting bug fix; the earlier fix was only partial.
+ - Fixed the above for the case of multi-level atomic calls.
