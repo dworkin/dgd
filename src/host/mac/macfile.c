@@ -107,7 +107,6 @@ char *getpath(char *buf, short vref, unsigned char *fname)
 {
     Str255 str;
     DirInfo dir;
-    VolumeParam vol;
 
     buf += STRINGSZ - 1;
     buf[0] = '\0';
@@ -214,7 +213,6 @@ bool P_opendir(char *path)
  */
 char *P_readdir(void)
 {
-    HFileInfo buf;
     Str255 str;
     static char path[34];
 

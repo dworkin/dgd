@@ -1625,7 +1625,7 @@ value *val, *elt;
 
     case T_ARRAY:
     case T_MAPPING:
-	i = (unsigned short) (long) val->u.array;
+	i = (unsigned short) ((unsigned long) val->u.array >> 3);
 	break;
     }
 

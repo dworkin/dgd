@@ -362,8 +362,6 @@ static initialize()
     call_other(load(DEFAULT_WIZTOOL), "???");
 # ifdef SYS_NETWORKING
     call_other(port = load(PORT_OBJECT), "???");
-    telnet = clone_object(port);
-    binary = clone_object(port);
 # endif
     catch {
 	initd = load(USR + "/System/initd");
@@ -388,6 +386,10 @@ static initialize()
 	call(initd, "???");
 # ifdef SYS_NETWORKING
     } else {
+	telnet = clone_object(port);
+	binary = clone_object(port);
+	rsrcd->rsrc_incr("System", "objects", 0, 2, 1);
+
 	telnet->listen("telnet", TELNET_PORT);
 	binary->listen("tcp", BINARY_PORT);
 # endif
@@ -503,10 +505,12 @@ mixed *query_wfile()
  */
 static object call_object(string path)
 {
-    string oname;
+    if (path[0] != '/') {
+	string oname;
 
-    oname = object_name(previous_object());
-    path = normalize_path(path, oname + "/..", creator(oname));
+	oname = object_name(previous_object());
+	path = normalize_path(path, oname + "/..", creator(oname));
+    }
     if (sscanf(path, "%*s/lib/") != 0) {
 	error("Illegal use of call_other");
     }

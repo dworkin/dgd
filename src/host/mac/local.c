@@ -3,10 +3,10 @@
 # include <Fonts.h>
 # include <Windows.h>
 # include <Menus.h>
+# include <Devices.h>
 # include <Events.h>
 # include <TextEdit.h>
 # include <Dialogs.h>
-# include <Desk.h>
 # include <Scrap.h>
 # include <ToolUtils.h>
 # include <SegLoad.h>
@@ -401,7 +401,6 @@ int getevent(void)
     WindowPtr window;
     Rect limits;
     GrafPtr port;
-    long offset;
 
     HiliteMenu(0);
     SystemTask();

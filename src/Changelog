@@ -1176,3 +1176,5 @@ DGD 1.1
    the if statement should have been.
  - Fixed a bad bug in global float variable initialisation, reported by
    Azhrarn@Flat Earth.
+ - In case of an error during inheritance, the name of the relevant object
+   was not properly saved.

@@ -356,6 +356,8 @@ node *label;
 	    return FALSE;
 	}
     } else {
+	char buf[STRINGSZ];
+
 	ncomp = ncompiled;
 
 	/* get associated object */
@@ -366,6 +368,8 @@ node *label;
 	(--f->sp)->type = T_STRING;
 	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
 
+	strncpy(buf, file, STRINGSZ - 1);
+	buf[STRINGSZ - 1] = '\0';
 	inheriting = TRUE;
 	if (call_driver_object(f, "inherit_program", 2)) {
 	    inheriting = FALSE;
@@ -374,7 +378,7 @@ node *label;
 		f->sp++;
 	    } else {
 		/* returned value not an object */
-		error("Cannot inherit \"%s\"", file);
+		error("Cannot inherit \"%s\"", buf);
 	    }
 
 	    if (ncomp != ncompiled) {
