@@ -224,7 +224,7 @@ int receive_message(string str)
 	    if (str) {
 		if (wiztool) {
 		    event("input", str);
-		} else {
+		} else if (strlen(str) != 0) {
 		    message("No command: " + str + "\n");
 		}
 	    }
