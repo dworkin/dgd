@@ -1331,3 +1331,5 @@ DGD 1.1
  - Fixed a old and very rare bug in mapping addition.
  - New kfuns hash_crc16(), hash_md5().
  - Fix a recently-introduced bug in clone upgrading.
+ - Fix a bug in callouts with more than 3 extra arguments, introduced with
+   callout undo.

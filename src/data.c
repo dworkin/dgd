@@ -1385,7 +1385,7 @@ register value *v;
     co->nargs = nargs;
     memcpy(co->val, v, sizeof(co->val));
     switch (nargs) {
-    case 3:
+    default:
 	ref_rhs(data, &v[3]);
     case 2:
 	ref_rhs(data, &v[2]);
@@ -1413,10 +1413,6 @@ unsigned int handle;
 
     co = &data->callouts[handle - 1];
     v = co->val;
-    del_lhs(data, &v[0]);
-    str_del(v[0].u.string);
-    v[0] = nil_value;
-
     switch (co->nargs) {
     default:
 	del_lhs(data, &v[3]);
@@ -1428,8 +1424,11 @@ unsigned int handle;
 	del_lhs(data, &v[1]);
 	i_del_value(&v[1]);
     case 0:
+	del_lhs(data, &v[0]);
+	str_del(v[0].u.string);
 	break;
     }
+    v[0] = nil_value;
 
     n = data->fcallouts;
     if (n != 0) {
@@ -2256,10 +2255,10 @@ int nargs;
 	break;
 
     default:
-	v[1] = *f->sp++;
-	v[2] = *f->sp++;
+	v[1] = f->sp[0];
+	v[2] = f->sp[1];
 	PUT_ARRVAL(&v[3], arr_new(data, nargs - 2L));
-	memcpy(v[3].u.array->elts, f->sp, (nargs - 2) * sizeof(value));
+	memcpy(v[3].u.array->elts, f->sp + 2, (nargs - 2) * sizeof(value));
 	d_ref_imports(v[3].u.array);
 	break;
     }

@@ -39,7 +39,7 @@ char *P_ctime(char *buf, Uint t)
 	long year;
 
 	year = strtol(buf + 20, (char **) NULL, 10) + offset;
-	if ((year > 2100 ||
+	if (year > 2100 ||
 	    (year == 2100 && (buf[4] != 'J' || buf[5] != 'a') &&
 	     (buf[4] != 'F' || (buf[8] == '2' && buf[9] == '9')))) {
 	    /* 2100 is not a leap year */
