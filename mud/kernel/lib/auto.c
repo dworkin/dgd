@@ -1301,34 +1301,6 @@ static execute_program(string cmdline)
 	::execute_program(cmdline);
     }
 }
-
-/*
- * NAME:	gethostbyname()
- * DESCRIPTION:	get host ip number from host name, blocking the server during
- *		the call
- */
-static string gethostbyname(string name)
-{
-    CHECKARG(name, 1, "gethostbyname");
-
-    if (creator == "System" && this_object()) {
-	return ::gethostbyname(name);
-    }
-}
-
-/*
- * NAME:	gethostbyaddr()
- * DESCRIPTION:	get host name from host ip number, blocking the server during
- *		the call
- */
-static string gethostbyaddr(string addr)
-{
-    CHECKARG(addr, 1, "gethostbyaddr");
-
-    if (creator == "System" && this_object()) {
-	return ::gethostbyaddr(addr);
-    }
-}
 # endif
 
 
