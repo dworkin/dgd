@@ -614,7 +614,8 @@ int *size;
 			(*usr)->osoffset += n;
 			(*usr)->outbufsz -= n;
 		    }
-		} else {
+		}
+		if ((*usr)->outbufsz == 0) {
 		    /* remove buffer */
 		    (*usr)->u.obj->flags &= ~O_PENDIO;
 		    (*usr)->osoffset = -1;
