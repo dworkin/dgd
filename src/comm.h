@@ -4,6 +4,7 @@
 typedef struct _connection_ connection;
 
 extern void	   conn_init	P((int, unsigned short));
+extern void	   conn_finish	P((void));
 extern connection *conn_new	P((void));
 extern void	   conn_del	P((connection*));
 extern int	   conn_select	P((bool));
@@ -12,6 +13,7 @@ extern void	   conn_write	P((connection*, char*, int));
 extern char	  *conn_ipnum	P((connection*));
 
 extern void	comm_init	P((int, int));
+extern void	comm_finish	P((void));
 extern void	comm_send	P((object*, string*));
 extern void	comm_echo	P((object*, bool));
 extern void	comm_flush	P((bool));
