@@ -1606,7 +1606,7 @@ int *nargs;
 	}
     }
 
-    v[0].type = T_INVALID;
+    co->val[0].type = T_INVALID;
     n = data->fcallouts;
     if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;
