@@ -51,13 +51,13 @@ register long len;
     }
 
     /* allocate string struct & text in one block */
-    s = (string *) ALLOC(char, sizeof(string) + len);
+    s = (string *) ALLOC(char, s->text - (char *) &s->len + 1 + len);
     if (text != (char *) NULL && len > 0) {
 	memcpy(s->text, text, (unsigned int) len);
     }
     s->text[s->len = len] = '\0';
     s->ref = 0;
-    s->u.primary = (strref *) NULL;
+    s->u.primary = (struct _strref_ *) NULL;
 
     return s;
 }
@@ -219,10 +219,7 @@ unsigned short str_index(s, l)
 register string *s;
 register long l;
 {
-    if (l < 0) {
-	l += s->len;
-    }
-    if (l < 0 || l >= s->len) {
+    if (l < 0 || l >= (long) s->len) {
 	error("String index out of range");
     }
 
@@ -237,13 +234,7 @@ string *str_range(s, l1, l2)
 register string *s;
 register long l1, l2;
 {
-    if (l1 < 0) {
-	l1 += s->len;
-    }
-    if (l2 < 0) {
-	l2 += s->len;
-    }
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= s->len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
 	error("Invalid string range");
     }
 
