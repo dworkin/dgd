@@ -48,7 +48,6 @@ typedef struct _maphash_ {
 
 static unsigned long max_size;	/* max. size of array and mapping */
 static long tag;		/* current array tag */
-static array *list;		/* linked list of all arrays */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
 static array *flist;		/* free arrays */
@@ -90,7 +89,7 @@ unsigned short size;
     if (flist != (array *) NULL) {
 	/* from free list */
 	a = flist;
-	flist = a->next;
+	flist = (array *) a->primary;
     } else {
 	if (achunksz == ARR_CHUNK) {
 	    register arrchunk *l;
@@ -106,20 +105,16 @@ unsigned short size;
     a->size = size;
     if (size > 0) {
 	a->elts = ALLOC(value, size);
+	a->elts[0].type = T_INVALID;
     } else {
 	a->elts = (value *) NULL;
     }
     a->hashed = (maphash *) NULL;	/* only used for mappings */
     a->ref = 0;
     a->tag = tag++;
-    a->primary = (arrref *) NULL;
-    a->prev = (array *) NULL;
-    a->next = list;
-    if (list != (array *) NULL) {
-	list->prev = a;
-    }
+    a->primary = (struct _arrref_ *) NULL;
 
-    return list = a;
+    return a;
 }
 
 /*
@@ -138,7 +133,7 @@ unsigned short hashval;
 	/*
 	 * add hash table to this mapping
 	 */
-	if (m->size == 2 * max_size) {
+	if (m->size >> 1 == max_size) {
 	    error("Mapping too large to grow");
 	}
 	m->hashed = h = (maphash *)
@@ -148,7 +143,7 @@ unsigned short hashval;
 	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
     } else {
 	h = m->hashed;
-	if (m->size + (h->size << 1) == 2 * max_size) {
+	if ((m->size >> 1) + h->size == max_size) {
 	    error("Mapping too large to grow");
 	}
 	if (h->size == h->tablesize >> 1) {
@@ -233,22 +228,12 @@ register array *a;
 	register value *v;
 	register unsigned short i;
 
-	v = a->elts;
-	for (i = a->size; i > 0; --i) {
-	    switch (v->type) {
-	    case T_STRING:
-		str_del(v->u.string);
-		break;
-
-	    case T_ARRAY:
-	    case T_MAPPING:
-		arr_del(v->u.array);
-		break;
+	if ((v=a->elts) != (value *) NULL) {
+	    if (v[0].type != T_INVALID) {
+		for (i = a->size; i > 0; --i) {
+		    i_del_value(v++);
+		}
 	    }
-	    v++;
-	}
-
-	if (a->elts != (value *) NULL) {
 	    FREE(a->elts);
 	}
 
@@ -260,109 +245,34 @@ register array *a;
 	     */
 	    for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
 		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    switch (e->idx.type) {
-		    case T_STRING:
-			str_del(e->idx.u.string);
-			break;
-
-		    case T_ARRAY:
-		    case T_MAPPING:
-			arr_del(e->idx.u.array);
-			break;
-		    }
-		    switch (e->val.type) {
-		    case T_STRING:
-			str_del(e->val.u.string);
-			break;
-
-		    case T_ARRAY:
-		    case T_MAPPING:
-			arr_del(e->val.u.array);
-			break;
-		    }
+		    i_del_value(&e->idx);
+		    i_del_value(&e->val);
 		    n = e->next;
 		    e->next = fmelt;
 		    fmelt = e;
 		    --i;
 		}
 	    }
+	    FREE(a->hashed);
 	}
 
-	if (a == list) {
-	    list = a->next;
-	} else {
-	    a->prev->next = a->next;
-	}
-	if (a->next != (array *) NULL) {
-	    a->next->prev = a->prev;
-	}
-
-	a->next = flist;
+	a->primary = (struct _arrref_ *) flist;
 	flist = a;
     }
 }
 
 /*
  * NAME:	array->freeall()
- * DESCRIPTION:	free all arrays still left. This can be used to free arrays
- *		with circular references that have no outside reference
- *		left.
+ * DESCRIPTION:	free all array chunks and mapping element chunks
  */
 void arr_freeall()
 {
-    register array *a;
     register arrchunk *ac;
     register meltchunk *mc;
 
-    for (a = list; a != (array *) NULL; ) {
-	register value *v;
-	register unsigned short i;
-
-	if ((v=a->elts) != (value *) NULL) {
-	    for (i = a->size; i > 0; --i) {
-		/*
-		 * Can't use arr_del() here, because a recursive deletion
-		 * would delete this array again, etc. Therefore delete the
-		 * arrays without regard of reference count.
-		 */
-		if (v->type == T_STRING) {
-		    str_del(v->u.string);
-		}
-		v++;
-	    }
-	    FREE(a->elts);
-	}
-	if (a->hashed != (maphash *) NULL) {
-	    register mapelt *e, *n, **t;
-
-	    /*
-	     * delete a mapping hashtable
-	     */
-	    for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
-		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    /*
-		     * Can't use arr_del() here, because a recursive deletion
-		     * would delete this array again, etc. Therefore delete the
-		     * arrays without regard of reference count.
-		     */
-		    if (e->idx.type == T_STRING) {
-			str_del(e->idx.u.string);
-		    }
-		    if (e->val.type == T_STRING) {
-			str_del(e->val.u.string);
-		    }
-		    n = e->next;
-		    e->next = fmelt;
-		    fmelt = e;
-		    --i;
-		}
-	    }
-	}
-	a = a->next;
-    }
-    list = (array *) NULL;
     flist = (array *) NULL;
 
+# ifdef DEBUG
     /* free array chunks */
     for (ac = aclist; ac != (arrchunk *) NULL; ) {
 	register arrchunk *f;
@@ -371,9 +281,11 @@ void arr_freeall()
 	ac = ac->next;
 	FREE(f);
     }
+# endif
     aclist = (arrchunk *) NULL;
     achunksz = ARR_CHUNK;
 
+# ifdef DEBUG
     /* free mapping element chunks */
     for (mc = meltlist; mc != (meltchunk *) NULL; ) {
 	register meltchunk *f;
@@ -382,6 +294,7 @@ void arr_freeall()
 	mc = mc->next;
 	FREE(f);
     }
+# endif
     meltlist = (meltchunk *) NULL;
     meltchunksz = MELT_CHUNK;
     fmelt = (mapelt *) NULL;
@@ -473,19 +386,7 @@ register value *v1, *v2;
 register unsigned short n;
 {
     while (n > 0) {
-	/*
-	 * No check for destructed objects is made here.
-	 */
-	switch (v2->type) {
-	case T_STRING:
-	    str_ref(v2->u.string);
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	    arr_ref(v2->u.array);
-	    break;
-	}
+	i_ref_value(v2);
 	*v1++ = *v2++;
 	--n;
     }
@@ -500,9 +401,6 @@ register array *a1, *a2;
 {
     register array *a;
 
-    /*
-     * Any destructed objects in a1 and a2 will be copied to the result array.
-     */
     a = arr_new((long) a1->size + a2->size);
     copy(a->elts, d_get_elts(a1), a1->size);
     copy(a->elts + a1->size, d_get_elts(a2), a2->size);
@@ -670,7 +568,7 @@ array *a1, *a2;
     for (n = size; n > 0; --n) {
 	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
-	    d_assign_elt(a2, v1, &zero_value);
+	    *v1 = zero_value;
 	}
 	*v2++ = *v1++;
     }
@@ -682,22 +580,13 @@ array *a1, *a2;
     for (n = a1->size; n > 0; --n) {
 	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
-	    d_assign_elt(a1, v1, &zero_value);
+	    *v1 = zero_value;
 	}
 	if (search(v1, v2, size, 1) < 0) {
 	    /*
 	     * not found in subtrahend: copy to result array
 	     */
-	    switch (v1->type) {
-	    case T_STRING:
-		str_ref(v1->u.string);
-		break;
-
-	    case T_ARRAY:
-	    case T_MAPPING:
-		arr_ref(v1->u.array);
-		break;
-	    }
+	    i_ref_value(v1);
 	    *v3++ = *v1;
 	}
 	v1++;
@@ -743,7 +632,7 @@ array *a1, *a2;
     for (n = size; n > 0; --n) {
 	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
-	    d_assign_elt(a2, v1, &zero_value);
+	    *v1 = zero_value;
 	}
 	*v2++ = *v1++;
     }
@@ -755,22 +644,13 @@ array *a1, *a2;
     for (n = a1->size; n > 0; --n) {
 	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
-	    d_assign_elt(a1, v1, &zero_value);
+	    *v1 = zero_value;
 	}
 	if (search(v1, v2, a2->size, 1) >= 0) {
 	    /*
 	     * element is in both arrays: copy to result array
 	     */
-	    switch (v1->type) {
-	    case T_STRING:
-		str_ref(v1->u.string);
-		break;
-
-	    case T_ARRAY:
-	    case T_MAPPING:
-		arr_ref(v1->u.array);
-		break;
-	    }
+	    i_ref_value(v1);
 	    *v3++ = *v1;
 	}
 	v1++;
@@ -793,10 +673,7 @@ unsigned short arr_index(a, l)
 register array *a;
 register long l;
 {
-    if (l < 0) {
-	l += a->size;
-    }
-    if (l < 0 || l >= a->size) {
+    if (l < 0 || l >= (long) a->size) {
 	error("Array index out of range");
     }
     return l;
@@ -812,19 +689,10 @@ register long l1, l2;
 {
     register array *range;
 
-    if (l1 < 0) {
-	l1 += a->size;
-    }
-    if (l2 < 0) {
-	l2 += a->size;
-    }
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= a->size) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
     }
 
-    /*
-     * No attempt is made to replace destructed objects by 0.
-     */
     range = arr_alloc((unsigned short) (l2 - l1 + 1));
     copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
     return range;
@@ -862,12 +730,33 @@ long size;
 
 /*
  * NAME:	mapping->sort()
- * DESCRIPTION:	sort a mapping
+ * DESCRIPTION:	prune and sort a mapping
  */
 void map_sort(m)
-array *m;
+register array *m;
 {
-    qsort(m->elts, m->size >> 1, 2 * sizeof(value), mapcmp);
+    register unsigned short i, sz;
+    register value *v, *w;
+
+    for (i = m->size, sz = 0, v = w = m->elts; i > 0; i -= 2) {
+	if (v[1].type != T_NUMBER || v[1].u.number != 0) {
+	    *w++ = *v++;
+	    *w++ = *v++;
+	    sz += 2;
+	} else {
+	    /* delete index and skip zero value */
+	    i_del_value(v);
+	    v += 2;
+	}
+    }
+
+    if (sz != 0) {
+	qsort(m->elts, sz >> 1, 2 * sizeof(value), mapcmp);
+    } else if (m->size > 0) {
+	FREE(m->elts);
+	m->elts = (value *) NULL;
+    }
+    m->size = sz;
 }
 
 /*
@@ -1171,7 +1060,7 @@ value *val, *elt;
 	break;
 
     case T_STRING:
-	i = hashstr(val->u.string->text, STRMAPHASHSZ, USHRT_MAX);
+	i = hashstr(val->u.string->text, STRMAPHASHSZ);
 	break;
 
     case T_ARRAY:
@@ -1257,16 +1146,7 @@ array *m;
     indices = arr_alloc(n = m->size >> 1);
     v1 = indices->elts;
     for (v2 = m->elts; n > 0; v2 += 2, --n) {
-	switch (v2->type) {
-	case T_STRING:
-	    str_ref(v2->u.string);
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	    arr_ref(v2->u.array);
-	    break;
-	}
+	i_ref_value(v2);
 	*v1++ = *v2;
     }
 
@@ -1288,16 +1168,7 @@ array *m;
     values = arr_alloc(n = m->size >> 1);
     v1 = values->elts;
     for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {
-	switch (v2->type) {
-	case T_STRING:
-	    str_ref(v2->u.string);
-	    break;
-
-	case T_ARRAY:
-	case T_MAPPING:
-	    arr_ref(v2->u.array);
-	    break;
-	}
+	i_ref_value(v2);
 	*v1++ = *v2;
     }
 
