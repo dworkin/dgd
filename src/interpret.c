@@ -1822,9 +1822,8 @@ array *i_call_trace()
     int max_args;
 
     a = arr_new(cframe - iframe + 1L);
-    elts = a->elts;
     max_args = conf_array_size() - 5;
-    for (f = iframe; f <= cframe; f++) {
+    for (f = iframe, elts = a->elts; f <= cframe; f++, elts++) {
 	elts->type = T_ARRAY;
 	n = f->nargs;
 	args = f->fp + n + f->nvars;
@@ -1875,10 +1874,9 @@ array *i_call_trace()
 	    i_ref_value(args);
 	    --n;
 	}
-	elts++;
+	d_ref_imports(elts->u.array);
     }
 
-    d_ref_imports(a);
     return a;
 }
 

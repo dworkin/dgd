@@ -790,3 +790,5 @@ DGD 1.1
  - Fixed some bugs in the array exporting code.
  - And some more.
  - And some in the memory reduction changes as well.
+ - get_dir(foo) will always treat foo as a pattern, even if there is a file
+   with that name.

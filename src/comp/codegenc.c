@@ -1508,7 +1508,7 @@ register node *n;
 
     output("}\n");
     if (switch_table[0] > 0) {
-	output("sw%d:\n", (int) switch_table[0]);
+	output("sw%d: ;\n", (int) switch_table[0]);
     }
     AFREE(switch_table);
     switch_table = table;
@@ -1574,7 +1574,7 @@ register node *n;
 
     output("}\n}\n");
     if (switch_table[0] > 0) {
-	output("sw%d:\n", (int) switch_table[0]);
+	output("sw%d: ;\n", (int) switch_table[0]);
     }
     AFREE(switch_table);
     switch_table = table;
@@ -1678,7 +1678,7 @@ register node *n;
 	case N_CASE:
 	    if (m->mod == 0) {
 		if (switch_table[0] > 0) {
-		    output("sw%d:\n", (int) switch_table[0]);
+		    output("sw%d: ;\n", (int) switch_table[0]);
 		    switch_table[0] = 0;
 		}
 		output("default:\n");

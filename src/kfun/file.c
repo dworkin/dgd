@@ -1456,31 +1456,23 @@ int kf_get_dir()
     }
 
     file = strcpy(buf + STRINGSZ, file);
-    if (stat(path_file(file), &sbuf) >= 0) {
-	/* the file is not considered to be a pattern */
-	pat = strrchr(file, '/');
-	if (pat == (char *) NULL) {
-	    dir = ".";
-	    sc_put(file);
-	} else {
-	    dir = file;
-	    *pat++ = '\0';
-	    sc_put(pat);
-	}
+    pat = strrchr(file, '/');
+    if (pat == (char *) NULL) {
+	dir = ".";
+	pat = file;
+    } else {
+	/* separate directory and pattern */
+	dir = file;
+	*pat++ = '\0';
+    }
+
+    if (strpbrk(pat, "?*[\\") == (char *) NULL) {
+	/* single file */
+	sc_put(pat);
 	nfiles = 1;
     } else {
-	pat = strrchr(file, '/');
-	if (pat == (char *) NULL) {
-	    dir = ".";
-	    pat = file;
-	} else {
-	    /* separate directory and pattern */
-	    dir = file;
-	    *pat++ = '\0';
-	}
 	nfiles = 0;
-	if (strpbrk(pat, "?*[\\") != (char *) NULL && P_opendir(path_file(dir)))
-	{
+	if (P_opendir(path_file(dir))) {
 	    /*
 	     * read files from directory
 	     */
@@ -1522,30 +1514,33 @@ int kf_get_dir()
     }
     qsort(f -= nfiles, nfiles, sizeof(value), cmp);
 
-    if (strcmp(dir, ".") != 0 && chdir(path_file(dir)) < 0) {
-	fatal("cannot change directory to \"%s\"", dir);
-    }
-    for (i = nfiles, o = f; i > 0; o++, --i) {
-	str = o->u.string;
-	if (stat(path_file(str->text), &sbuf) < 0) {
-	    /*
-	     * the file disappeared
-	     */
-	    str_del(str);
-	    --nfiles;
-	    continue;
+    if (strcmp(dir, ".") == 0 || chdir(path_file(dir)) >= 0) {
+	for (i = nfiles, o = f; i > 0; o++, --i) {
+	    str = o->u.string;
+	    if (stat(path_file(str->text), &sbuf) < 0) {
+		/*
+		 * the file does not exist
+		 */
+		str_del(str);
+		--nfiles;
+		continue;
+	    }
+	    f->type = T_STRING;
+	    f->u.string = str;
+	    s->type = T_INT;
+	    if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
+		s->u.number = -2;	/* special value for directory */
+	    } else {
+		s->u.number = sbuf.st_size;
+	    }
+	    t->type = T_INT;
+	    t->u.number = sbuf.st_mtime;
+	    f++, s++, t++;
 	}
-	f->type = T_STRING;
-	f->u.string = str;
-	s->type = T_INT;
-	if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
-	    s->u.number = -2;	/* special value for directory */
-	} else {
-	    s->u.number = sbuf.st_size;
+
+	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
+	    fatal("cannot chdir back to base dir");
 	}
-	t->type = T_INT;
-	t->u.number = sbuf.st_mtime;
-	f++, s++, t++;
     }
 
     /* adjust array sizes */
@@ -1561,12 +1556,6 @@ int kf_get_dir()
 	a->elts[2].u.array->elts = (value *) NULL;
     }
 
-    if (strcmp(dir, ".") != 0) {
-	/* change directory back to base dir */
-	if (chdir(conf_base_dir()) < 0) {
-	    fatal("cannot chdir back to base dir");
-	}
-    }
     return 0;
 }
 # endif
