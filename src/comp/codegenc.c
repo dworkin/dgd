@@ -1641,7 +1641,6 @@ static void cg_stmt(n)
 register node *n;
 {
     register node *m;
-    int i;
 
     while (n != (node *) NULL) {
 	if (n->type == N_PAIR) {
@@ -1728,10 +1727,9 @@ register node *n;
 	    cg_expr(m->l.left->l.left, PUSH);
 	    comma();
 	    cg_expr(m->l.left->r.right, PUSH);
-	    i = tmpval();
-	    output(";\ntv[%d] = pre_rlimits();\n", i);
+	    output(";\npre_rlimits();\n");
 	    cg_stmt(m->r.right);
-	    output("i_set_rllevel(tv[%d]);\n", i);
+	    output("i_set_rllevel(-1);\n");
 	    break;
 
 	case N_IF:

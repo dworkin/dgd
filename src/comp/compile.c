@@ -1649,7 +1649,7 @@ node *args;
 	    }
 	    *arg = node_mon(N_LVALUE, (*arg)->mod, *arg);
 	    /* only kfuns can have lvalue parameters */
-	    func->r.number |= 1L << 16;
+	    func->r.number += 1L << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
 		   (!c_zero(*arg) || t == T_FLOAT) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {

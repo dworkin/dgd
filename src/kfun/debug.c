@@ -196,7 +196,7 @@ void disasm(ctrl, func)
 control *ctrl;
 int func;
 {
-    char *pc, *end, *linenumbers, buffer[100];
+    char *pc, *end, *linenumbers, buffer[1000];
     control *cc;
     register unsigned short u, u2, u3;
     register unsigned long l;

@@ -1675,10 +1675,10 @@ register char *pc;
 		sp += 2;
 	    }
 
-	    u = i_set_rlimits(newdepth, newticks);
+	    i_set_rlimits(newdepth, newticks);
 	    i_interpret(pc);
 	    pc = f->pc;
-	    i_set_rllevel(u);
+	    i_set_rllevel(-1);
 	    break;
 
 	case I_RETURN:

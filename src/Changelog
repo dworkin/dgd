@@ -860,3 +860,5 @@ DGD 1.1
    By default, DGD now writes nothing to stderr at all.
  - Renamed driver->log_error() to driver->runtime_error().
  - Fixed a bug in the new error cleanup code.
+ - Fixed some rlimits bugs in the C code generator.
+ - Fixed a nasty bug in the code generated for sscanf().

@@ -111,19 +111,25 @@ register node *n;
 	n = n->l.left;
     }
     if (n->type == N_INDEX) {
-	switch (n->l.left->type) {
+	register node *m;
+
+	m = n->l.left;
+	if (m->type == N_CAST) {
+	    m = m->l.left;
+	}
+	switch (m->type) {
 	case N_LOCAL:
 	case N_GLOBAL:
-	    return 2;
+	    return 3;
 
 	case N_INDEX:
-	    return max3(max2(opt_expr(&n->l.left->l.left, FALSE),
-			     opt_expr(&n->l.left->r.right, FALSE)),
-			opt_expr(&n->r.right, FALSE), 3);
+	    return max3(opt_expr(&m->l.left, FALSE),
+			opt_expr(&m->r.right, FALSE) + 1,
+			opt_expr(&n->r.right, FALSE) + 3);
 
 	default:
 	    return max3(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE), 2);
+			opt_expr(&n->r.right, FALSE) + 1, 3);
 	}
     } else {
 	return 1;
