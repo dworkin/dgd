@@ -102,7 +102,7 @@ nomask _F_create()
 	    }
 	}
 	/* call higher-level creator function */
-	this_object()->create(clone);
+	call_other(this_object(), CREATOR, clone);
     }
 }
 
