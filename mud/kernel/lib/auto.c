@@ -558,9 +558,14 @@ static mixed *status(varargs mixed obj)
 	return nil;
     }
     if (!obj) {
+	mixed *precompiled;
+
 	status = ::status();
 	if (status[ST_STACKDEPTH] >= 0) {
 	    status[ST_STACKDEPTH]++;
+	}
+	for (i = sizeof(precompiled = status[ST_PRECOMPILED]); --i >= 0; ) {
+	    precompiled[i] = object_name(precompiled[i]);
 	}
 	return status;
     }

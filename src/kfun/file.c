@@ -372,7 +372,6 @@ register frame *f;
     register control *ctrl;
     register string *str;
     register dinherit *inh;
-    register dataspace *data;
     char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     xfloat flt;
@@ -402,9 +401,13 @@ register frame *f;
     x.bufsz = 0;
 
     ctrl = f->ctrl;
-    data = f->data;
     x.merge = arr_merge();
     x.narrays = 0;
+    if (f->lwobj != (array *) NULL) {
+	var = &f->lwobj->elts[2];
+    } else {
+	var = d_get_variable(f->data, 0);
+    }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	if (inh->varoffset == nvars && !inh->priv) {
@@ -414,7 +417,6 @@ register frame *f;
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
-		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
 		    /*
@@ -451,6 +453,7 @@ register frame *f;
 		    }
 		    put(&x, "\012", 1);	/* LF */
 		}
+		var++;
 		nvars++;
 	    }
 	}
@@ -939,6 +942,11 @@ register frame *f;
      */
     ctrl = o_control(obj);
     data = o_dataspace(obj);
+    if (f->lwobj != (array *) NULL) {
+	var = &f->lwobj->elts[2];
+    } else {
+	var = d_get_variable(data, 0);
+    }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	if (inh->varoffset == nvars && !inh->priv) {
@@ -947,7 +955,6 @@ register frame *f;
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
-		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
 		    d_assign_var(data, var,
@@ -955,6 +962,7 @@ register frame *f;
 				  &zero_int : (v->type == T_FLOAT) ?
 					       &zero_float : &nil_value);
 		}
+		var++;
 		nvars++;
 	    }
 	}
@@ -978,7 +986,11 @@ register frame *f;
 	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
-	var = data->variables;
+	if (f->lwobj != (array *) NULL) {
+	    var = &f->lwobj->elts[2];
+	} else {
+	    var = data->variables;
+	}
 	nvars = 0;
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	    if (inh->varoffset == nvars && !inh->priv) {
@@ -1051,7 +1063,11 @@ register frame *f;
 			    i_del_value(&tmp);
 			    restore_error(&x, "value has wrong type");
 			}
-			d_assign_var(data, var, &tmp);
+			if (f->lwobj != (array *) NULL) {
+			    d_assign_elt(data, f->lwobj, var, &tmp);
+			} else {
+			    d_assign_var(data, var, &tmp);
+			}
 			if (*buf++ != LF) {
 			    restore_error(&x, "'\\n' expected");
 			}

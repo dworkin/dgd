@@ -130,30 +130,28 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 251, 199
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 251, 175
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About DGD"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,14,21,20
     LTEXT           "DGD version 1.2",IDC_STATIC,40,10,75,8,SS_NOPREFIX
-    LTEXT           "© 1993 - 2000 BeeHive Internet Technologies, Inc. All Rights Reserved.",
+    LTEXT           "© 1993 - 2001 BeeHive Internet Technologies, Inc. All Rights Reserved.",
                     IDC_STATIC,40,23,164,17
     DEFPUSHBUTTON   "OK",IDOK,212,7,32,14,WS_GROUP
     LTEXT           "Permission is granted to copy the source and executables made therefrom, but any commercial distribution or use whatsoever is not allowed. Commercial distribution or use refers to any distribution or use from which",
                     IDC_STATIC,7,43,237,25
     LTEXT           "any form of income is received regardless of profit therefrom, or from which any revenue or promotional value is received, as well as any distribution to or use in a corporate environment. Use of the source or executables made",
                     IDC_STATIC,7,67,237,25
-    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction. Exclusive worldwide rights to this program for use as a server are held by Acuity Corporation. If you wish to purchase a commercial license,",
-                    IDC_STATIC,7,91,237,25
-    LTEXT           "please send email to sales@acuity.com. For more information please look at the Acuity web site which can be found at http://www.acuity.com.",
-                    IDC_STATIC,7,115,237,17
+    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction.",
+                    IDC_STATIC,7,91,237,17
     LTEXT           "Any modifications of this program lacking an explicit copyright notice are subject to the copyright notice stated herein. Any explicit copyright notices added to this program shall not contradict the terms stated herein, but may",
-                    IDC_STATIC,7,136,237,25
+                    IDC_STATIC,7,112,237,25
     LTEXT           "further restrict distribution or use. Any modifications should be made in such a way that it is clear that this copyright notice applies to the source, executables made therefrom and any derivatives thereof and in such a way",
-                    IDC_STATIC,7,160,237,25
+                    IDC_STATIC,7,136,237,25
     LTEXT           "that it is possible to regain the unmodified source.",
-                    IDC_STATIC,7,184,237,9
+                    IDC_STATIC,7,160,237,9
 END
 
 
@@ -184,7 +182,7 @@ BEGIN
             VALUE "FileDescription", "DGD Application\0"
             VALUE "FileVersion", "1.2\0"
             VALUE "InternalName", "DGD\0"
-            VALUE "LegalCopyright", "© 1993 - 2000 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
+            VALUE "LegalCopyright", "© 1993 - 2001 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
             VALUE "OriginalFilename", "DGD.EXE\0"
             VALUE "ProductName", "DGD Application\0"
             VALUE "ProductVersion", "1.2\0"
@@ -212,7 +210,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 244
         TOPMARGIN, 7
-        BOTTOMMARGIN, 192
+        BOTTOMMARGIN, 168
     END
 END
 #endif    // APSTUDIO_INVOKED

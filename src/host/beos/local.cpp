@@ -105,7 +105,7 @@ enum {
     ABOUT_LEFT =	80,
     ABOUT_TOP =		80,
     ABOUT_WIDTH =	480,
-    ABOUT_HEIGHT =	340,
+    ABOUT_HEIGHT =	310,
     ABOUT_INDENT =	80,
 
     ABOUT_GRAY =	220
@@ -463,7 +463,7 @@ void DGD::AboutRequested(void)
     view->SetFontAndColor(&font);
     about->AddChild(view);
     sprintf(buf, "\
-DGD %s\n© 1993 - 2000 BeeHive Internet Technologies, Inc. \
+DGD %s\n© 1993 - 2001 BeeHive Internet Technologies, Inc. \
 All Rights Reserved.", VERSION);
     view->SetText(buf);
     view = new BTextView(BRect(0, ABOUT_INDENT, ABOUT_WIDTH, ABOUT_HEIGHT),
@@ -482,18 +482,14 @@ distribution or use refers to any distribution or use from which any form of \
 income is received regardless of profit therefrom, or from which any revenue \
 or promotional value is received, as well as any distribution to or use in a \
 corporate environment. Use of the source or executables made therefrom to \
-promote or support a commercial venture is included in this restriction. \
-Exclusive worldwide rights to this program for use as a server are held by \
-Acuity Corporation. If you wish to purchase a commercial license, please send \
-email to sales@acuity.com. For more information please look at the Acuity web \
-site which can be found at http://www.acuity.com.\n\nAny modifications of this \
-program lacking an explicit copyright notice are subject to the copyright \
-notice stated herein. Any explicit copyright notices added to this program \
-shall not contradict the terms stated herein, but may further restrict \
-distribution or use. Any modifications should be made in such a way that it \
-is clear that this copyright notice applies to the source, executables made \
-therefrom and any derivatives thereof and in such a way that it is possible \
-to regain the unmodified source.");
+promote or support a commercial venture is included in this restriction.\n\n\
+Any modifications of this program lacking an explicit copyright notice are \
+subject to the copyright notice stated herein. Any explicit copyright \
+notices added to this program shall not contradict the terms stated herein, \
+but may further restrict distribution or use. Any modifications should be \
+made in such a way that it is clear that this copyright notice applies to \
+the source, executables made therefrom and any derivatives thereof and in \
+such a way that it is possible to regain the unmodified source.");
     button = new BButton(BRect(ABOUT_WIDTH / 2 - 30,
 			 ABOUT_HEIGHT - ABOUT_INDENT - 40, ABOUT_WIDTH / 2 + 30,
 			 ABOUT_HEIGHT - ABOUT_INDENT - 20),
