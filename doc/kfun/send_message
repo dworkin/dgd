@@ -8,18 +8,16 @@ SYNOPSIS
 
 DESCRIPTION
 	In the first form, send a message to the user associated with the
-	current object, returning the number of bytes that could be sent
-	immediately.  When used by the driver object, the string will be
-	written to stderr.  In the second form, user input echoing will be
-	turned off or on, depending on the value of the argument being zero or
-	non-zero, respectively; the return value is 1 if input echoing could be
-	turned on, or 0 otherwise.
-	If only part of the string could be sent right away, the remainder of
-	the string is buffered, and message_done() will be called in the user
-	object when all data in the buffer has been sent.
-	If send_message() is used to send a new string before all of the
-	buffered data from a previous call has been sent, the buffered data is
-	discarded.
+	current object, returning the number of bytes that could be sent.
+	When used by the driver object, the string will be written to stderr.
+	In the second form, user input echoing will be turned off or on,
+	depending on the value of the argument being zero or non-zero,
+	respectively; the return value is 1 if input echoing could be set, or 0
+	otherwise.
+	When the output buffer has emptied, message_done() will be called in
+	the user object.  If send_message() is called again before the output
+	buffer has fully drained, message_done() will not be called before the
+	output buffer has emptied completely.
 
 SEE ALSO
 	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,

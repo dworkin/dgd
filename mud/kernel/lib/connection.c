@@ -6,6 +6,7 @@ private object user;		/* user object */
 private string conntype;	/* connection type */
 private int mode;		/* connection mode */
 private int blocked;		/* connection blocked? */
+private string buffer;		/* buffered output string */
 
 /*
  * NAME:	create()
@@ -233,7 +234,19 @@ static void receive_message(mixed *tls, string str)
 int message(string str)
 {
     if (previous_object() == user) {
-	return (send_message(str) == strlen(str));
+	int len;
+
+	buffer = nil;
+	len = send_message(str);
+	if (len != strlen(str)) {
+	    /*
+	     * string couldn't be sent completely; buffer the remainder
+	     */
+	    buffer = str[len ..];
+	    return FALSE;
+	} else {
+	    return TRUE;
+	}
     }
 }
 
@@ -243,7 +256,10 @@ int message(string str)
  */
 static void message_done(mixed *tls)
 {
-    if (user) {
+    if (buffer) {
+	send_message(buffer);
+	buffer = nil;
+    } else if (user) {
 	set_mode(user->message_done());
     }
 }

@@ -1,6 +1,5 @@
 # define INBUF_SIZE	2048
-# define OUTBUF_SIZE	2048
-# define TELBUF_SIZE	128
+# define OUTBUF_SIZE	8192
 # define BINBUF_SIZE	8192
 
 typedef struct _connection_ connection;
@@ -28,7 +27,7 @@ extern void	comm_listen	P((void));
 extern int	comm_send	P((object*, string*));
 extern int	comm_udpsend	P((object*, string*));
 extern bool	comm_echo	P((object*, int));
-extern void	comm_flush	P((int));
+extern void	comm_flush	P((void));
 extern void	comm_block	P((object*, int));
 extern void	comm_receive	P((frame*, Uint, unsigned int));
 extern string  *comm_ip_number	P((object*));

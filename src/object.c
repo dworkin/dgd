@@ -7,8 +7,6 @@
 # include "interpret.h"
 # include "data.h"
 
-# define OBJ_NONE		UINDEX_MAX
-
 typedef struct _objplane_ objplane;
 
 typedef struct _objpatch_ {

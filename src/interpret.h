@@ -186,7 +186,7 @@ typedef struct _rlinfo_ {
 
 struct _frame_ {
     frame *prev;		/* previous stack frame */
-    object *obj;		/* current object */
+    uindex oindex;		/* current object index */
     control *ctrl;		/* object control block */
     dataspace *data;		/* dataspace of current object */
     control *p_ctrl;		/* program control block */

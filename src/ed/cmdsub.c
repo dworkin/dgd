@@ -84,7 +84,7 @@ register char *text;
     }
 
     while (*text != '\0') {
-	if (*text < ' ') {
+	if (UCHAR(*text) < ' ') {
 	    /* control character */
 	    if (*text == HT && !(cb->flags & CB_LIST)) {
 		*p++ = HT;

@@ -99,7 +99,7 @@ char *buf, *file;
     register frame *f;
 
     f = cframe;
-    if (f->obj->flags & O_DRIVER) {
+    if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
@@ -124,7 +124,7 @@ char *buf, *file;
     register frame *f;
 
     f = cframe;
-    if (f->obj->flags & O_DRIVER) {
+    if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
 	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));

@@ -6,11 +6,12 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Send a message on the datagram channel of a binary connection object.
-	At least one message must have been received on the same channel
-	before this function can be used.
-	The return value is the length of the datagram sent if no error
-	occurred, or 0 otherwise.
+	Send a message on the datagram channel of a binary user object.  At
+	least one message must have been received on the same channel before
+	this function can be used.  The return value is the length of the
+	message if it could be sent, or 0 otherwise.
+	No more than one datagram can be sent per user object during each
+	thread.
 
 ERRORS
 	An error will result if the current object has no datagram channel.

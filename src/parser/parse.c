@@ -697,7 +697,8 @@ pnode *next;
 		    error((char *) NULL);	/* pass on error */
 		} else {
 		    PUSH_ARRVAL(ps->frame, a);
-		    call = i_call(ps->frame, ps->frame->obj, pn->u.text + 2 + n,
+		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
+				  pn->u.text + 2 + n,
 				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
 		    ec_pop();
 		}

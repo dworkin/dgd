@@ -42,6 +42,8 @@ struct _object_ {
 # define OACC_REFCHANGE		0x01	/* modify refcount */
 # define OACC_MODIFY		0x02	/* write access */
 
+# define OBJ_NONE		UINDEX_MAX
+
 extern void	  o_init		P((unsigned int));
 extern object	 *o_oread		P((unsigned int));
 extern object	 *o_owrite		P((unsigned int));

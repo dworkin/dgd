@@ -1351,3 +1351,5 @@ DGD 1.1
    version, make sure there are no un-upgraded clones left in the statedump.
    This can be done by rebooting an additional time with the previous driver
    version, and immediately shutting down again with a statedump.
+ - Fixed an object undo bug.
+ - Completed comm undo -- and the implementation of atomic functions.

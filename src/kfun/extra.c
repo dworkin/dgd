@@ -583,7 +583,7 @@ int nargs;
 	maxalt = 1;	/* default: just one valid parse tree */
     }
 
-    if (f->obj->flags & (O_USER | O_EDITOR)) {
+    if (OBJR(f->oindex)->flags & (O_USER | O_EDITOR)) {
 	error("parse_string() from editor or user object");
     }
 

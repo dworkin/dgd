@@ -94,7 +94,7 @@ int nargs;
     *val = nil_value;
     --val;
 
-    if (f->obj->count == 0) {
+    if (OBJR(f->oindex)->count == 0) {
 	/*
 	 * call from destructed object
 	 */
@@ -132,7 +132,7 @@ register frame *f;
     register object *obj;
 
     --f->sp;
-    obj = f->obj;
+    obj = OBJR(f->oindex);
     if (obj->count != 0) {
 	PUT_OBJVAL(f->sp, obj);
     } else {
@@ -274,9 +274,6 @@ register frame *f;
 
     obj = OBJW(f->sp->oindex);
     if (obj->flags & O_USER) {
-	if (f->data->plane->level != 0) {
-	    error("User object destructed in atomic function (cannot undo yet)");
-	}
 	comm_close(f, obj);
     }
     if (obj->flags & O_EDITOR) {
@@ -375,7 +372,7 @@ register frame *f;
 
 	o = OBJR(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
-	    obj == f->obj) {
+	    obj->index == f->oindex) {
 	    /*
 	     * function exists and is callable
 	     */
@@ -720,13 +717,16 @@ char pt_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
 int kf_error(f)
 register frame *f;
 {
-    if (strchr(f->sp->u.string->text, LF) != (char *) NULL) {
-	error("'\\n' in error string");
-    }
-    if (f->sp->u.string->len >= 4 * STRINGSZ) {
+    string *str;
+
+    str = f->sp->u.string;
+    if (strlen(str->text) >= 4 * STRINGSZ) {
 	error("Error string too long");
     }
-    error("%s", f->sp->u.string->text);
+    if (strchr(str->text, LF) != (char *) NULL) {
+	error("'\\n' in error string");
+    }
+    error("%s", str->text);
     return 0;
 }
 # endif
@@ -755,16 +755,13 @@ register frame *f;
 	return 1;
     }
 
-    obj = f->obj;
+    obj = OBJR(f->oindex);
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
-	    if (f->data->plane->level != 0) {
-		error("send_message() within atomic function (cannot undo yet)");
-	    }
 	    if (f->sp->type == T_INT) {
 		num = comm_echo(obj, f->sp->u.number != 0);
 	    } else {
-		num = comm_send(obj, f->sp->u.string);
+		num = comm_send(OBJW(obj->index), f->sp->u.string);
 	    }
 	} else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
 	    P_message(f->sp->u.string->text);
@@ -791,13 +788,12 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_send_datagram(f)
 register frame *f;
 {
+    object *obj;
     int num;
 
-    if (f->obj->count != 0 && (f->obj->flags & O_USER)) {
-	if (f->data->plane->level != 0) {
-	    error("send_datagram() within atomic function (cannot undo yet)");
-	}
-	num = comm_udpsend(f->obj, f->sp->u.string);
+    obj = OBJW(f->oindex);
+    if ((obj->flags & O_USER) && obj->count != 0) {
+	num = comm_udpsend(obj, f->sp->u.string);
     }
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, num);
@@ -818,8 +814,11 @@ char pt_block_input[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_INT };
 int kf_block_input(f)
 register frame *f;
 {
-    if (f->obj->flags & O_USER) {
-	comm_block(f->obj, f->sp->u.number != 0);
+    object *obj;
+
+    obj = OBJR(f->oindex);
+    if (obj->flags & O_USER) {
+	comm_block(obj, f->sp->u.number != 0);
     }
     *f->sp = nil_value;
     return 0;
@@ -914,7 +913,7 @@ int nargs;
     }
 
     i_add_ticks(f, nargs);
-    if (f->obj->count != 0 &&
+    if (OBJR(f->oindex)->count != 0 &&
 	(handle=d_new_call_out(f->data, f->sp[nargs - 1].u.string, delay,
 			       mdelay, f, nargs - 2)) != 0) {
 	/* pop duration */

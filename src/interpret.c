@@ -26,7 +26,7 @@ static bool stricttc;		/* strict typechecking */
 int nil_type;			/* type of nil value */
 value zero_int = { T_INT, TRUE };
 value zero_float = { T_FLOAT, TRUE };
-value nil_value = { T_NIL, FALSE };
+value nil_value = { T_NIL, TRUE };
 
 /*
  * NAME:	interpret->init()
@@ -36,6 +36,7 @@ void i_init(create, flag)
 char *create;
 int flag;
 {
+    topframe.oindex = OBJ_NONE;
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.lip = stack;
     rlim.nodepth = TRUE;
@@ -941,13 +942,16 @@ frame *f;
 static void i_check_rlimits(f)
 register frame *f;
 {
-    if (f->obj->count == 0) {
+    object *obj;
+
+    obj = OBJR(f->oindex);
+    if (obj->count == 0) {
 	error("Illegal use of rlimits");
     }
     --f->sp;
     f->sp[0] = f->sp[1];
     f->sp[1] = f->sp[2];
-    PUT_OBJVAL(&f->sp[2], f->obj);
+    PUT_OBJVAL(&f->sp[2], obj);
     /* obj, stack, ticks */
     call_driver_object(f, "runtime_rlimits", 3);
 
@@ -1081,7 +1085,7 @@ register value *sp;
 	if (f->sos) {
 	    /* stack on stack */
 	    AFREE(f->stack);
-	} else if (f->obj != (object *) NULL) {
+	} else if (f->oindex != OBJ_NONE) {
 	    FREE(f->stack);
 	}
     }
@@ -1099,18 +1103,21 @@ object *i_prev_object(f, n)
 register frame *f;
 register int n;
 {
+    object *obj;
+
     while (n >= 0) {
 	/* back to last external call */
 	while (!f->external) {
 	    f = f->prev;
 	}
 	f = f->prev;
-	if (f->obj == (object *) NULL) {
+	if (f->oindex == OBJ_NONE) {
 	    return (object *) NULL;
 	}
 	--n;
     }
-    return (f->obj->count == 0) ? (object *) NULL : f->obj;
+    obj = OBJR(f->oindex);
+    return (obj->count != 0) ? obj : (object *) NULL;
 }
 
 /*
@@ -1123,7 +1130,7 @@ register int n;
 {
     while (n >= 0) {
 	f = f->prev;
-	if (f->obj == (object *) NULL) {
+	if (f->oindex == OBJ_NONE) {
 	    return (char *) NULL;
 	}
 	--n;
@@ -1722,11 +1729,11 @@ int funci;
     value val;
 
     f.prev = prev_f;
-    if (prev_f->obj == (object *) NULL) {
+    if (prev_f->oindex == OBJ_NONE) {
 	/*
 	 * top level call
 	 */
-	f.obj = obj;
+	f.oindex = obj->index;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
@@ -1734,7 +1741,7 @@ int funci;
 	/*
 	 * call_other
 	 */
-	f.obj = obj;
+	f.oindex = obj->index;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
@@ -1742,7 +1749,7 @@ int funci;
 	/*
 	 * local function call
 	 */
-	f.obj = prev_f->obj;
+	f.oindex = prev_f->oindex;
 	f.ctrl = prev_f->ctrl;
 	f.data = prev_f->data;
 	f.external = FALSE;
@@ -2007,7 +2014,7 @@ int nargs;
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
-    if (!call_static && (fdef->class & C_STATIC) && f->obj != obj) {
+    if (!call_static && (fdef->class & C_STATIC) && f->oindex != obj->index) {
 	i_pop(f, nargs);
 	return FALSE;
     }
@@ -2181,7 +2188,7 @@ dataspace *data;
     v = a->elts;
 
     /* object name */
-    name = o_name(buffer, f->obj);
+    name = o_name(buffer, OBJR(f->oindex));
     PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';
@@ -2229,7 +2236,7 @@ value *v;
     register frame *f;
     register unsigned short n;
 
-    for (f = ftop, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
+    for (f = ftop, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
     if (idx < 0 || idx >= n) {
 	return FALSE;
     }
@@ -2251,10 +2258,10 @@ register frame *ftop;
     register unsigned short n;
     array *a;
 
-    for (f = ftop, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
+    for (f = ftop, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
     a = arr_new(ftop->data, (long) n);
     i_add_ticks(ftop, 10 * n);
-    for (f = ftop, v = a->elts + n; f->obj != (object *) NULL; f = f->prev) {
+    for (f = ftop, v = a->elts + n; f->oindex != OBJ_NONE; f = f->prev) {
 	--v;
 	PUT_ARRVAL(v, i_func_trace(f, ftop->data));
     }

@@ -88,6 +88,7 @@ void finish()
  */
 void endthread()
 {
+    comm_flush();
     d_export();
     o_clean();
     i_clear();
@@ -170,13 +171,11 @@ char **argv;
 	    intr = FALSE;
 	    if (ec_push((ec_ftn) errhandler)) {
 		endthread();
-		comm_flush(FALSE);
 	    } else {
 		call_driver_object(cframe, "interrupt", 0);
 		i_del_value(cframe->sp++);
 		ec_pop();
 		endthread();
-		comm_flush(FALSE);
 	    }
 	}
 
@@ -189,6 +188,5 @@ char **argv;
 
 	/* callouts */
 	co_call(cframe);
-	comm_flush(FALSE);
     }
 }

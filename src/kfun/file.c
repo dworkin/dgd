@@ -23,7 +23,7 @@ int nargs;
     object *obj;
     string *str;
 
-    obj = f->obj;
+    obj = OBJW(f->oindex);
     if (obj->count == 0) {
 	error("editor() from destructed object");
     }
@@ -877,7 +877,7 @@ register frame *f;
     char *buffer, *name;
     bool onstack, pending;
 
-    obj = f->obj;
+    obj = OBJR(f->oindex);
     if (path_string(x.file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
