@@ -1,4 +1,4 @@
-   DGD, which stands for Dworkin's Game Driver, is a mud server that
+   DGD, which stands for Dworkin's Generic Driver, is a mud server that
 uses the same overall design as the LP server made by Lars Pensjö.
 However, there are several important differences: DGD uses less memory
 because it is disk-based; it can dump state and later restart from a
@@ -104,7 +104,9 @@ driver, mostly to translate pathnames.
 
 	Called in an object which has just been cloned, or if it is not a
 	clone, just before a function is called in it for the first time.
-	The actual name of this function is configurable.
+	The actual name of this function is configurable.  Note that the
+	driver can call this function even if it is static and in the auto
+	object.
 
  - in the user object (returned by driver->telnet_connect() or
    driver->binary_connect()):
@@ -118,6 +120,14 @@ driver, mostly to translate pathnames.
 	The connection for this object has just been closed.  close() is
 	called when the user goes linkdead, or when the user object is
 	destructed.
+
+    void receive_message(string message)
+
+	This function is called with the text the user typed.  For telnet
+	connections, this is always an entire line, with the newline at
+	the end filtered out.  For binary connections, this is whatever
+	the other side of the connection saw fit to send, without any
+	filtering or processing.
 
    On startup, the system is configured with a configuration file, which
 must specify the following configuration parameters:

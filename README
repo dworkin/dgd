@@ -1,23 +1,9 @@
-   This is release 1.0.8 of DGD.  Differences with the previous release:
-
- - The 'a' (meaning alpha) from the version number has been removed, and
-   I decided to skip the beta stage.  DGD is stable.
- - The dump file format has been changed.  It will change again, but I
-   guarantee that from now on, changes will be backward compatible.
- - A cast between string, int and float values will attempt to convert
-   a string to a number and vice versa.  Important: (string) 0 now
-   results in "0".
- - Some bugs were fixed and some code is better optimized.
- - My email address has changed.
-
-   No changes are needed in the 2.4.5 simulation mudlib.
-
-   Once again, I didn't have the time to do all the things I wanted to do,
-but I decided to release this version because the dump file format is now
-fixed, and because my email address changed.  The following remains to be
-done for DGD:
- - A general string parsing kfun.
- - ANSI C math functions.
- - Porting the driver to more platforms, especially PC and Mac.
- - A small standard mudlib.
- - Documentation of gamedriver internals and LPC programming language.
+   This is release 1.0.9 of DGD.  There are no major differences with 1.0.8;
+1.0.9 is essentially 1.0.8.8 + bugfixes (mostly for LPMOO).  The reason for
+this release is that there are versions later than 1.0.8.8 around, which
+are part of a large rewrite I at present don't have the time to finish.
+Those versions are quite unstable, and hence this release, which combines
+the stability of 1.0.8.8 with the bugfixes incorporated in later versions.
+   I decided to let DGD stand for "Dworkin's Generic Driver" from now on.
+   The next release of DGD will be 1.1.  I want to put everything in it
+that has been planned for a long time, so don't expect it soon.
