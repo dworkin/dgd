@@ -689,7 +689,6 @@ register cmdbuf *cb;
 	/* compile regexp */
 	p = rx_comp(rx, buffer);
 	if (p != (char *) NULL) {
-	    rx_del(rx);
 	    error(p);
 	}
 
