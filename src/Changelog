@@ -1478,3 +1478,5 @@ DGD 1.3
  - Fixed a minor bug in restoring the parser state machine.
  - The wrong data was used for save_object() and restore_object() in
    lightweight objects.
+ - Upgrading a lightweight object went wrong if the number of variables was
+   increased or reduced.

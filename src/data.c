@@ -1768,6 +1768,7 @@ object *obj;
     }
 
     /* replace old with new */
+    lwobj->size = nvar + 2;
     FREE(lwobj->elts);
     lwobj->elts = vars;
 
