@@ -8,6 +8,7 @@ struct _array_ {
 };
 
 extern void		arr_init	P((int));
+extern array	       *arr_alloc	P((unsigned short));
 extern array	       *arr_new		P((long));
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		P((array*));
