@@ -9,7 +9,7 @@ DESCRIPTION
 	Get information about a file or files in a directory.  The return
 	value is of the form
 
-	    ({ ({ file names }), ({ file mod times }), ({ file sizes }) })
+	    ({ ({ file names }), ({ file sizes }), ({ file mod times }) })
 
 	If a file is a directory, the file size will be given as -2.
 	If the last path component of the specified file can be interpreted
