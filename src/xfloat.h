@@ -39,7 +39,7 @@ extern void	flt_tan		P((xfloat*));
 extern void	flt_acos	P((xfloat*));
 extern void	flt_asin	P((xfloat*));
 extern void	flt_atan	P((xfloat*));
-extern void	flt_atan2	P((xfloat*));
+extern void	flt_atan2	P((xfloat*, xfloat*));
 extern void	flt_cosh	P((xfloat*));
 extern void	flt_sinh	P((xfloat*));
 extern void	flt_tanh	P((xfloat*));

@@ -405,7 +405,7 @@ int kf_atan()
 # ifdef FUNCDEF
 FUNCDEF("atan2", kf_atan2, p_atan2)
 # else
-char p_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char p_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->atan2()
@@ -413,11 +413,13 @@ char p_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  */
 int kf_atan2()
 {
-    xfloat flt;
+    xfloat f1, f2;
 
-    VFLT_GET(sp, flt);
-    flt_atan2(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_GET(sp, f2);
+    sp++;
+    VFLT_GET(sp, f1);
+    flt_atan2(&f1, &f2);
+    VFLT_PUT(sp, f1);
     return 0;
 }
 # endif

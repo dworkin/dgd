@@ -821,6 +821,7 @@ static dataspace *ilist;	/* list of dataspaces with imports */
 void d_ref_imports(arr)
 array *arr;
 {
+# if 0
     register dataspace *data;
     register unsigned short n;
     register value *v;
@@ -840,6 +841,7 @@ array *arr;
 	    }
 	}
     }
+# endif
 }
 
 /*
@@ -916,6 +918,7 @@ register value *rhs;
 	    }
 	} else {
 	    /* not in this object: ref imported array */
+# if 0
 	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
 		ilist != data) {
 		/* add to imports list */
@@ -925,6 +928,7 @@ register value *rhs;
 		}
 		ilist = data;
 	    }
+# endif
 	    data->achange++;
 	}
 	break;
@@ -984,7 +988,9 @@ register value *lhs;
 	    }
 	} else {
 	    /* not in this object: deref imported array */
+# if 0
 	    data->imports--;
+# endif
 	    data->achange--;
 	}
 	break;
@@ -1039,6 +1045,7 @@ register value *elt, *val;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
+# if 0
     } else {
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
@@ -1056,6 +1063,7 @@ register value *elt, *val;
 	    /* mark as unimported */
 	    data->imports--;
 	}
+# endif
     }
 
     i_ref_value(val);
@@ -2126,6 +2134,7 @@ register dataspace *data;
     }
 }
 
+# if 0
 static array **itab;	/* imported array replacement table */
 static Uint itabsz;	/* size of table */
 
@@ -2225,6 +2234,7 @@ register unsigned short n;
 	--n;
     }
 }
+# endif
 
 /*
  * NAME:	data->export()
@@ -2232,6 +2242,7 @@ register unsigned short n;
  */
 void d_export()
 {
+# if 0
     register dataspace *data;
     register Uint n;
 
@@ -2277,6 +2288,7 @@ void d_export()
 	FREE(itab);
 	ilist = (dataspace *) NULL;
     }
+# endif
 }
 
 /*

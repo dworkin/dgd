@@ -546,11 +546,11 @@ void comm_finish()
  * NAME:	comm->send()
  * DESCRIPTION:	pretend to send a message to a user
  */
-bool comm_send(obj, str)
+int comm_send(obj, str)
 object *obj;
 string *str;
 {
-    return FALSE;
+    return 0;
 }
 
 /*
