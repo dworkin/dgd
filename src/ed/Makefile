@@ -1,10 +1,10 @@
 #
 # Makefile for editor, part of DGD.
 #
-HOST=	MINIX_68K
+HOST=	SUN
 DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -27,7 +27,7 @@ clean:
 	rm -f dgd a.out $(OBJ) ed.o
 
 
-$(OBJ) ed.o: ed.h ../config.h ../host.h ../alloc.h ../error.h
+$(OBJ) ed.o: ed.h ../config.h ../alloc.h ../error.h
 file.o: ../path.h
 
 edcmd.o cmdsub.o file.o buffer.o: buffer.h

@@ -4,7 +4,7 @@
 HOST=	SUN
 DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -30,7 +30,7 @@ clean:
 	rm -f dgd comp a.out $(OBJ) lex.o
 
 
-$(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h ../comp/parser.h
+$(OBJ) lex.o: lex.h ../config.h ../alloc.h
 ppcontrol.o: ../version.h
 macro.o special.o token.o ppcontrol.o: ../hash.h
 token.o: ../path.h

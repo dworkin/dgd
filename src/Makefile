@@ -4,7 +4,7 @@
 HOST=	SUN
 DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -21,11 +21,11 @@ COMPOBJ=alloc.o error.o hash.o path.o swap.o str.o array.o object.o data.o \
 	comm.o ed.o call_out.o interpret.o
 
 a.out:	$(OBJ)
-	cd host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' host.a
 	cd comp; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lex; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd kfun; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' host.a
 	$(LD) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` `cat ed/dgd` \
 	      `cat kfun/dgd` host/host.a $(LIBS)
 
@@ -52,8 +52,8 @@ comp/a.out:
 
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
-	cd host; $(MAKE) clean
 	cd comp; $(MAKE) clean
 	cd lex; $(MAKE) clean
 	cd ed; $(MAKE) clean
 	cd kfun; $(MAKE) clean
+	cd host; $(MAKE) clean

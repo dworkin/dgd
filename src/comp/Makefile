@@ -1,27 +1,27 @@
 #
 # Makefile for LPC compiler, part of DGD.
 #
-HOST=	MINIX_68K
+HOST=	SUN
 DEFINES=-D$(HOST)
-DEBUG=
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+DEBUG=	-g
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../kfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
-CC=	cc
+CC=	gcc
 LD=	$(CC)
 MAKE=	make
 YACC=	yacc
 
 OBJ=	node.o parser.o control.o compile.o
 
-a.out:	$(OBJ) codegeni.o comp.o
+a.out:	$(OBJ) codegenc.o comp.o
 	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			    host.a
 	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
 	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	$(LD) $(LDFLAGS) $(OBJ) codegeni.o comp.o `cat ../comp.sub` \
+	$(LD) $(LDFLAGS) $(OBJ) codegenc.o comp.o `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../kfun/comp` ../host/host.a $(LIBS)
 
 dgd:	$(OBJ) codegeni.o
@@ -37,9 +37,8 @@ parser.c parser.h: parser.y parser.proto
 	mv y.tab.h parser.h
 	cat parser.proto >> parser.h
 
-$(OBJ) codegeni.o codegenc.o comp.o: comp.h ../config.h ../host.h ../alloc.h
-$(OBJ) codegeni.o codegenc.o comp.o: ../error.h ../interpret.h ../str.h
-$(OBJ) codegeni.o codegenc.o comp.o: ../array.h
+$(OBJ) codegeni.o codegenc.o comp.o: comp.h ../config.h ../alloc.h ../error.h
+$(OBJ) codegeni.o codegenc.o comp.o: ../str.h ../interpret.h
 parser.o control.o compile.o codegeni.o codegenc.o comp.o: ../object.h ../data.h
 node.o parser.o compile.o: ../lex.h ../lex/token.h ../lex/ppcontrol.h
 control.o codegeni.o codegenc.o comp.o: ../kfun.h ../kfun/table.h

@@ -4,16 +4,15 @@
 HOST=	SUN
 DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
-CC=	gcc
-AR=	ar
+CC=	cc
+AR=	ar cr
 MAKE=	make
 
 host.a:
 	cd unix; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' host
-	$(AR) cr $@ unix/*.o
-	ranlib $@
+	$(AR) $@ unix/*.o; ranlib $@
 
 
 clean:

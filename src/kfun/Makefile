@@ -4,7 +4,7 @@
 HOST=	SUN
 DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=-O $(DEFINES) $(DEBUG)
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -25,6 +25,6 @@ clean:
 	rm -f dgd comp table.o $(OBJ)
 
 
-$(OBJ): ../config.h ../host.h ../alloc.h ../error.h ../interpret.h
-$(OBJ): ../str.h ../array.h ../object.h ../data.h
-table.o: $(OBJ)
+$(OBJ): ../config.h ../alloc.h ../error.h ../str.h ../array.h ../object.h
+$(OBJ): ../data.h ../interpret.h
+table.o: table.h $(OBJ)
