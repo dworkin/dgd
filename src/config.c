@@ -123,10 +123,17 @@ typedef struct {	/* struct align */
 } align;
 
 
-static char header[18];	/* dump file header */
-static Uint starttime;	/* start time */
-static Uint elapsed;	/* elapsed time */
+typedef struct {
+    char b[18];		/* various things */
+    Int sectorsz;	/* sector size */
+    Uint btime;		/* boot time */
+    Uint etime;		/* elapsed time */
+} dumpinfo;
+
+static dumpinfo header;	/* dumpfile header */
 static Uint boottime;	/* boot time */
+static Uint elapsed;	/* elapsed time */
+static Uint starttime;	/* start time */
 
 /*
  * NAME:	conf->dump()
@@ -134,8 +141,12 @@ static Uint boottime;	/* boot time */
  */
 void conf_dump()
 {
-    Uint t[4];
     int fd;
+
+    header.b[2] = conf[TYPECHECKING].u.num;
+    header.sectorsz = conf[SECTOR_SIZE].u.num;
+    header.btime = boottime;
+    header.etime = elapsed + P_time() - starttime;
 
     fd = sw_dump(conf[DUMP_FILE].u.str);
     if (!kf_dump(fd)) {
@@ -144,47 +155,38 @@ void conf_dump()
     if (!o_dump(fd)) {
 	fatal("failed to dump object table");
     }
-    if (!co_dump(fd)) {
-	fatal("failed to dump callout table");
-    }
     if (!pc_dump(fd)) {
 	fatal("failed to dump precompiled objects");
     }
-
-    header[2] = conf[TYPECHECKING].u.num;
-    t[0] = conf[SECTOR_SIZE].u.num;
-    t[1] = P_time();
-    t[2] = starttime;
-    t[3] = elapsed + t[1] - boottime;
+    if (!co_dump(fd)) {
+	fatal("failed to dump callout table");
+    }
 
     lseek(fd, 0L, SEEK_SET);
-    write(fd, header, sizeof(header));
-    write(fd, (char *) t, sizeof(t));
+    write(fd, &header, sizeof(dumpinfo));
 }
 
 /*
  * NAME:	conf->restore()
- * DESCRIPTION:	restore system stare from file
+ * DESCRIPTION:	restore system state from file
  */
 static void conf_restore(fd)
 int fd;
 {
-    char buffer[sizeof(header)];
-    Uint t[4];
+    dumpinfo info;
 
-    if (read(fd, buffer, sizeof(header)) != sizeof(header) ||
-	memcmp(buffer, header, sizeof(header)) != 0 ||
-	read(fd, (char *) t, sizeof(t)) != sizeof(t)) {
+    if (read(fd, &info, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
+	memcmp(info.b, header.b, sizeof(info.b)) != 0) {
 	fatal("bad or incompatible restore file header");
     }
-    t[1] = P_time() - t[1];
-    starttime = t[2];
-    elapsed = t[3];
-    sw_restore(fd, (int) t[0]);
+    boottime = info.btime;
+    elapsed = info.etime;
+    sw_restore(fd, (int) info.sectorsz);
     kf_restore(fd);
-    o_restore(fd, t[1]);
-    co_restore(fd, t[1]);
+    o_restore(fd);
     pc_restore(fd);
+    starttime = P_time();
+    co_restore(fd, starttime);
 }
 
 /*
@@ -421,15 +423,15 @@ char *configfile, *dumpfile;
     /* initialize kfuns */
     kf_init();
 
+    /* initialize interpreter */
+    i_init(conf[CREATE].u.str);
+
     /* initialize compiler */
     c_init(conf[AUTO_OBJECT].u.str,
 	   conf[DRIVER_OBJECT].u.str,
 	   conf[INCLUDE_FILE].u.str,
 	   dirs,
 	   (int) conf[TYPECHECKING].u.num);
-
-    /* initialize interpreter */
-    i_init(conf[CREATE].u.str);
 
     m_dynamic();
 
@@ -542,37 +544,35 @@ char *configfile, *dumpfile;
     /* initialize dumpfile header */
     s = 0x1234;
     i = 0x12345678L;
-    header[0] = 1;				/* valid dump flag */
-    header[1] = 0;				/* dump file version number */
-    header[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
-    header[3] = sizeof(uindex);			/* sizeof uindex */
-    header[4] = sizeof(long);			/* sizeof long */
-    header[5] = sizeof(char *);			/* sizeof char* */
-    header[6] = ((char *) &s)[0];		/* 1 of 2 */
-    header[7] = ((char *) &s)[1];		/* 2 of 2 */
-    header[8] = ((char *) &i)[0];		/* 1 of 4 */
-    header[9] = ((char *) &i)[1];		/* 2 of 4 */
-    header[10] = ((char *) &i)[2];		/* 3 of 4 */
-    header[11] = ((char *) &i)[3];		/* 4 of 4 */
-    header[12] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
-    header[13] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
-    header[14] = (char *) &idummy.i - (char *) &idummy.fill; /* int align */
-    header[15] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
-    header[16] = (char *) &pdummy.p - (char *) &pdummy.fill; /* pointer align */
-    header[17] = sizeof(align);				     /* struct align */
+    header.b[0] = 1;				/* valid dump flag */
+    header.b[1] = 1;				/* dump file version number */
+    header.b[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
+    header.b[3] = sizeof(uindex);		/* sizeof uindex */
+    header.b[4] = sizeof(long);			/* sizeof long */
+    header.b[5] = sizeof(char *);		/* sizeof char* */
+    header.b[6] = ((char *) &s)[0];		/* 1 of 2 */
+    header.b[7] = ((char *) &s)[1];		/* 2 of 2 */
+    header.b[8] = ((char *) &i)[0];		/* 1 of 4 */
+    header.b[9] = ((char *) &i)[1];		/* 2 of 4 */
+    header.b[10] = ((char *) &i)[2];		/* 3 of 4 */
+    header.b[11] = ((char *) &i)[3];		/* 4 of 4 */
+    header.b[12] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
+    header.b[13] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
+    header.b[14] = (char *) &idummy.i - (char *) &idummy.fill; /* int align */
+    header.b[15] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
+    header.b[16] = (char *) &pdummy.p - (char *) &pdummy.fill; /* ptr align */
+    header.b[17] = sizeof(align);			     /* struct align */
 
     starttime = boottime = P_time();
     if (dumpfile == (char *) NULL) {
-	/*
-	 * initialize mudlib
-	 */
+	/* initialize mudlib */
 	call_driver_object("initialize", 0);
     } else {
-	/*
-	 * restore dump file
-	 */
+	/* restore dump file */
 	conf_restore(fd);
 	close(fd);
+
+	/* notify mudlib */
 	call_driver_object("restored", 0);
     }
     i_del_value(sp++);
@@ -634,11 +634,11 @@ array *conf_status()
 
     /* uptime */
     v->type = T_INT;
-    (v++)->u.number = starttime;
-    v->type = T_INT;
     (v++)->u.number = boottime;
     v->type = T_INT;
-    (v++)->u.number = elapsed + P_time() - boottime;
+    (v++)->u.number = starttime;
+    v->type = T_INT;
+    (v++)->u.number = elapsed + P_time() - starttime;
 
     /* swap */
     v->type = T_INT;

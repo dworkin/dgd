@@ -179,12 +179,7 @@ object *obj;
     ctrl->strings = (string **) NULL;
     ctrl->sstrings = l->sstrings;
     ctrl->stext = l->stext;
-    if (ctrl->nstrings == 0) {
-	ctrl->strsize = 0;
-    } else {
-	ctrl->strsize = ctrl->sstrings[ctrl->nstrings - 1].index +
-			ctrl->sstrings[ctrl->nstrings - 1].len;
-    }
+    ctrl->strsize = l->stringsz;
 
     ctrl->nfuncdefs = l->nfuncdefs;
     ctrl->funcdefs = l->funcdefs;
@@ -204,15 +199,195 @@ object *obj;
 }
 
 
+typedef struct {
+    uindex nprecomps;		/* # precompiled objects */
+    Uint ninherits;		/* total # inherits */
+    Uint nstrings;		/* total # strings */
+    Uint stringsz;		/* total strings size */
+    Uint nfuncdefs;		/* total # funcdefs */
+    Uint nvardefs;		/* total # vardefs */
+} dump_header;
+
+typedef struct {
+    short ninherits;		/* # inherits */
+    unsigned short nstrings;	/* # strings */
+    Uint stringsz;		/* strings size */
+    short nfuncdefs;		/* # funcdefs */
+    short nvardefs;		/* # vardefs */
+    short nvariables;		/* # variables */
+} dump_precomp;
+
+typedef struct {
+    uindex oindex;		/* object index */
+    Uint ocount;		/* object count */
+    uindex funcoffset;		/* function offset */
+    unsigned short varoffset;	/* variable offset */
+} dump_inherit;
+
+/*
+ * NAME:	precomp->dump()
+ * DESCRIPTION:	dump precompiled objects
+ */
 bool pc_dump(fd)
 int fd;
 {
-    return TRUE;
+    dump_header dh;
+    register precomp **pc;
+    bool ok;
+
+    dh.nprecomps = 0;
+    dh.ninherits = 0;
+    dh.nstrings = 0;
+    dh.stringsz = 0;
+    dh.nfuncdefs = 0;
+    dh.nvardefs = 0;
+
+    for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u.ref != 0) {
+	    dh.nprecomps++;
+	    dh.ninherits += (*pc)->ninherits;
+	    dh.nstrings += (*pc)->nstrings;
+	    dh.stringsz += (*pc)->stringsz;
+	    dh.nfuncdefs += (*pc)->nfuncdefs;
+	    dh.nvardefs += (*pc)->nvardefs;
+	}
+    }
+    if (write(fd, &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+	return FALSE;
+    }
+
+    ok = TRUE;
+
+    if (dh.nprecomps != 0) {
+	register dump_precomp *dpc;
+	register int i;
+	dump_inherit *inh;
+	dinherit *inh2;
+	dstrconst *strings;
+	char *stext;
+	dfuncdef *funcdefs;
+	dvardef *vardefs;
+
+	dpc = ALLOCA(dump_precomp, dh.nprecomps);
+	inh = ALLOCA(dump_inherit, dh.ninherits);
+	if (dh.nstrings != 0) {
+	    strings = ALLOCA(dstrconst, dh.nstrings);
+	    if (dh.stringsz != 0) {
+		stext = ALLOCA(char, dh.stringsz);
+	    }
+	}
+	if (dh.nfuncdefs != 0) {
+	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
+	}
+	if (dh.nvardefs != 0) {
+	    vardefs = ALLOCA(dvardef, dh.nvardefs);
+	}
+
+	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	    if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u.ref != 0) {
+		dpc->ninherits = (*pc)->ninherits;
+		dpc->nstrings = (*pc)->nstrings;
+		dpc->stringsz = (*pc)->stringsz;
+		dpc->nfuncdefs = (*pc)->nfuncdefs;
+		dpc->nvardefs = (*pc)->nvardefs;
+		dpc->nvariables = (*pc)->nvariables;
+
+		inh2 = inherits + itab[(*pc)->obj->index];
+		for (i = dpc->ninherits; i > 0; --i) {
+		    inh->oindex = inh2->obj->index;
+		    inh->ocount = inh2->obj->count;
+		    inh->funcoffset = inh2->funcoffset;
+		    (inh++)->varoffset = (inh2++)->varoffset;
+		}
+
+		if (dpc->nstrings > 0) {
+		    memcpy(strings, (*pc)->sstrings,
+			   dpc->nstrings * sizeof(dstrconst));
+		    strings += dpc->nstrings;
+		    if (dpc->stringsz > 0) {
+			memcpy(stext, (*pc)->stext, dpc->stringsz);
+			stext += dpc->stringsz;
+		    }
+		}
+
+		if (dpc->nfuncdefs > 0) {
+		    memcpy(funcdefs, (*pc)->funcdefs,
+			   dpc->nfuncdefs * sizeof(dfuncdef));
+		    funcdefs += dpc->nfuncdefs;
+		}
+
+		if (dpc->nvardefs > 0) {
+		    memcpy(vardefs, (*pc)->vardefs,
+			   dpc->nvardefs * sizeof(dvardef));
+		    vardefs += dpc->nvardefs;
+		}
+
+		dpc++;
+	    }
+	}
+
+	dpc -= dh.nprecomps;
+	inh -= dh.ninherits;
+	strings -= dh.nstrings;
+	stext -= dh.stringsz;
+	funcdefs -= dh.nfuncdefs;
+	vardefs -= dh.nvardefs;
+
+	if (write(fd, dpc, dh.nprecomps * sizeof(dump_precomp)) !=
+					dh.nprecomps * sizeof(dump_precomp) ||
+	    write(fd, inh, dh.ninherits * sizeof(dump_inherit)) !=
+					dh.ninherits * sizeof(dump_inherit) ||
+	    (dh.nstrings != 0 &&
+	     write(fd, strings, dh.nstrings * sizeof(dstrconst)) !=
+					    dh.nstrings * sizeof(dstrconst)) ||
+	    (dh.stringsz != 0 &&
+	     write(fd, stext, dh.stringsz) != dh.stringsz) ||
+	    (dh.nfuncdefs != 0 &&
+	     write(fd, funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
+					    dh.nfuncdefs * sizeof(dfuncdef)) ||
+	    (dh.nvardefs != 0 &&
+	     write(fd, vardefs, dh.nvardefs * sizeof(dvardef)) !=
+					    dh.nvardefs * sizeof(dvardef))) {
+	    ok = FALSE;
+	}
+
+	AFREE(dpc);
+	AFREE(inh);
+	if (dh.nstrings != 0) {
+	    AFREE(strings);
+	    if (dh.stringsz != 0) {
+		AFREE(stext);
+	    }
+	}
+	if (dh.nfuncdefs != 0) {
+	    AFREE(funcdefs);
+	}
+	if (dh.nvardefs != 0) {
+	    AFREE(vardefs);
+	}
+    }
+
+    return ok;
 }
 
+/*
+ * NAME:	precomp->restore()
+ * DESCRIPTION:	restore precompiled objects (not yet)
+ */
 void pc_restore(fd)
 int fd;
 {
+    dump_header dh;
+
+    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+	lseek(fd, dh.nprecomps * sizeof(dump_precomp) +
+		  dh.ninherits * sizeof(dump_inherit) +
+		  dh.nstrings * sizeof(dstrconst) +
+		  dh.stringsz +
+		  dh.nfuncdefs * sizeof(dfuncdef) +
+		  dh.nvardefs * sizeof(dvardef), SEEK_CUR) < 0) {
+	fatal("cannot restore precompiled objects");
+    }
 }
 
 /*

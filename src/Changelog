@@ -906,3 +906,9 @@ DGD 1.1
    the auto object, too.
  - Added '^' to filename pattern matching (as in csh).
  - Fixed a problem with precompiling objects that inherited the auto object.
+ - When restoring from a state dump, callouts in objects no longer need to
+   be patched.
+ - Added precompiled objects to the dumpfile (though nothing is done with them
+   yet on restore).
+ - 1.1 DUMPFILE FORMAT REACHED.  Up to the next major release, version 1.1,
+   the dumpfile format will not change.

@@ -45,7 +45,7 @@ typedef struct {
 } sdataspace;
 
 typedef struct _svalue_ {
-    char type;			/* object, number, string, array */
+    short type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
     union {
 	Int number;		/* number */

@@ -7,4 +7,4 @@ extern void	co_info    	P((uindex*, uindex*));
 extern long	co_swaprate1 	P((void));
 extern long	co_swaprate5 	P((void));
 extern bool	co_dump		P((int));
-extern void	co_restore	P((int, long));
+extern void	co_restore	P((int, Uint));

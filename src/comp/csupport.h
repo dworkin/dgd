@@ -23,6 +23,7 @@ typedef struct {
     unsigned short nstrings;	/* # of strings */
     dstrconst* sstrings;	/* string constants */
     char *stext;		/* string text */
+    Uint stringsz;		/* string size */
 
     unsigned short nfunctions;	/* # functions */
     pcfunc *functions;		/* functions */

@@ -312,9 +312,9 @@ char *argv[];
 	printf("%u, program,\n", ctrl->progsize);
     }
     if (ctrl->nstrings == 0) {
-	printf("0, 0, 0,\n");
+	printf("0, 0, 0, 0,\n");
     } else {
-	printf("%u, sstrings, stext,\n", ctrl->nstrings);
+	printf("%u, sstrings, stext, %luL,\n", ctrl->nstrings, ctrl->strsize);
     }
     if (nfuncs == 0) {
 	printf("0, 0,\n");
@@ -763,6 +763,6 @@ int fd;
  */
 void co_restore(fd, t)
 int fd;
-long t;
+Uint t;
 {
 }

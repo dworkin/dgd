@@ -29,7 +29,7 @@ struct _object_ {
 extern void		   o_init	P((unsigned int));
 extern object		  *o_new	P((char*, object*, struct _control_*));
 extern void		   o_del	P((object*));
-extern object		  *o_object	P((unsigned int, Int));
+extern object		  *o_object	P((unsigned int, Uint));
 extern char		  *o_name	P((object*));
 extern object		  *o_find	P((char*));
 extern struct _control_	  *o_control	P((object*));
@@ -37,4 +37,4 @@ extern struct _dataspace_ *o_dataspace	P((object*));
 extern void		   o_clean	P((void));
 extern uindex		   o_count	P((void));
 extern bool		   o_dump	P((int));
-extern void		   o_restore	P((int, long));
+extern void		   o_restore	P((int));

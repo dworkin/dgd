@@ -119,9 +119,9 @@ register object *o;
     str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1));
     sp->u.string->text[0] = '/';
     strcpy(sp->u.string->text + 1, o->chain.name);
-    if (i_call_critical("remove_program", 1)) {
+    if (i_call_critical("remove_program", 1, TRUE)) {
 	i_del_value(sp++);
-    } /* else error: ignore */
+    }
 
     /* remove references to inherited objects too */
     if (o->ctrl == (control *) NULL) {
@@ -171,7 +171,7 @@ register object *o;
  */
 object *o_object(idx, count)
 unsigned int idx;
-Int count;
+Uint count;
 {
     register object *o;
 
@@ -415,9 +415,8 @@ int fd;
  * NAME:	object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(fd, t)
+void o_restore(fd)
 int fd;
-long t;
 {
     register uindex i;
     register object *o;
@@ -502,6 +501,7 @@ long t;
 	}
 
 	o->ctrl = (control *) NULL;
+	o->data = (dataspace *) NULL;
 	if (offset != 0 && !(o->flags & O_COMPILED)) {
 	    if (o->flags & O_MASTER) {
 		/* patch inherits */
@@ -516,18 +516,6 @@ long t;
 	/* check memory */
 	if (!m_check()) {
 	    m_purge();
-	}
-    }
-
-    /* patch all data blocks */
-    for (i = nobjects, o = otab; i > 0; --i, o++) {
-	if (o->count != 0) {
-	    o->data = (dataspace *) NULL;
-	    if (o->dfirst != SW_UNUSED) {
-		/* patch call_outs */
-		d_patch_callout(o->data = d_load_dataspace(o), t);
-		d_swapout(1);
-	    }
 	}
     }
 }

@@ -36,6 +36,7 @@ static uindex nlong;			/* # long-term callouts */
 static cbuf cycbuf[CYCBUF_SIZE];	/* cyclic buffer of callout lists */
 static Uint timestamp;			/* cycbuf start time */
 static Uint timeout;			/* time the last alarm came */
+static Uint timediff;			/* stored/actual time difference */
 static int fragment;			/* swap fragment */
 static Uint swaprate1;			/* swaprate per minute */
 static Uint swaprate5;			/* swaprate per 5 minutes */
@@ -55,6 +56,7 @@ int frag;
 	flist = 0;
 	/* only if callout are enabled */
 	timeout = timestamp = P_time();
+	timediff = 0;
 	P_alarm(1);
     }
     cycbrk = cotabsz = max;
@@ -244,7 +246,7 @@ int nargs;
 	co->time = t;
     }
 
-    co->handle = d_new_call_out(o_dataspace(obj), str, t, nargs);
+    co->handle = d_new_call_out(o_dataspace(obj), str, t - timediff, nargs);
     co->oindex = obj->index;
     co->objcnt = obj->count;
 
@@ -272,6 +274,7 @@ register unsigned int handle;
 	/* no such callout */
 	return -1;
     }
+    t += timediff;
     if (nargs > 0) {
 	i_pop(nargs);
     }
@@ -346,7 +349,7 @@ register unsigned int handle;
 array *co_list(obj)
 object *obj;
 {
-    return d_list_callouts(o_dataspace(obj), timeout);
+    return d_list_callouts(o_dataspace(obj), timeout - timediff);
 }
 
 /*
@@ -477,6 +480,7 @@ typedef struct {
     uindex nshort;		/* # of short-term callouts */
     uindex nlong;		/* # of long-term callouts */
     Uint timestamp;		/* time the last alarm came */
+    Uint timediff;		/* accumulated time difference */
 } dump_header;
 
 /*
@@ -496,6 +500,7 @@ int fd;
     dh.nshort = nshort;
     dh.nlong = nlong;
     dh.timestamp = timestamp;
+    dh.timediff = timediff;
 
     /* write header and callouts */
     return (write(fd, (char *) &dh, sizeof(dump_header)) >= 0 &&
@@ -513,7 +518,7 @@ int fd;
  */
 void co_restore(fd, t)
 int fd;
-register long t;
+register Uint t;
 {
     register uindex i, offset;
     register call_out *co;
@@ -541,13 +546,16 @@ register long t;
     nshort = dh.nshort;
     nlong = dh.nlong;
 
+    timestamp = t;
+    t -= dh.timestamp;
+    timediff = dh.timediff + t;
+
     /* patch callouts in queue */
     for (i = queuebrk, co = cotab; i > 0; --i, co++) {
 	co->time += t;
     }
 
     /* cycle around cyclic buffer */
-    timestamp = dh.timestamp + t;
     t &= CYCBUF_MASK;
     memcpy(cycbuf + t, buffer, (unsigned int) (CYCBUF_SIZE - t) * sizeof(cbuf));
     memcpy(cycbuf, buffer + CYCBUF_SIZE - t, (unsigned int) t * sizeof(cbuf));

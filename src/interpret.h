@@ -157,7 +157,7 @@ extern void		i_cleanup	P((void));
 extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, int, int));
 extern array	       *i_call_trace	P((void));
-extern bool		i_call_critical	P((char*, int));
+extern bool		i_call_critical	P((char*, int, int));
 extern void		i_runtime_error	P((int));
 extern void		i_clear		P((void));
 

@@ -2050,14 +2050,23 @@ array *i_call_trace()
 }
 
 /*
+ * NAME:	criterr()
+ * DESCRIPTION:	handle error in critical section
+ */
+static void criterr()
+{
+    i_runtime_error(TRUE);
+}
+
+/*
  * NAME:	interpret->call_critical()
  * DESCRIPTION:	Call a function in the driver object at a critical moment.
  *		The function is called with rlimits (-1; -1) and errors
  *		caught.
  */
-bool i_call_critical(func, narg)
+bool i_call_critical(func, narg, flag)
 char *func;
-int narg;
+int narg, flag;
 {
     bool xnodepth, xnoticks, ok;
     Int xticks;
@@ -2069,7 +2078,7 @@ int narg;
     noticks = TRUE;
 
     sp += narg;		/* so the error context knows what to pop */
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push((flag) ? (ec_ftn) criterr : (ec_ftn) NULL)) {
 	ok = FALSE;
     } else {
 	sp -= narg;	/* recover arguments */
@@ -2099,7 +2108,7 @@ int flag;
     str_ref(sp->u.string = str_new(err, (long) strlen(err)));
     (--sp)->type = T_INT;
     sp->u.number = flag;
-    if (!i_call_critical("runtime_error", 2)) {
+    if (!i_call_critical("runtime_error", 2, FALSE)) {
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
