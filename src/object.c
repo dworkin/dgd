@@ -1333,6 +1333,7 @@ void o_conv()
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
 		d_conv_dataspace(o, counts);
+		o_clean();
 		d_swapout(1);
 	    }
 	}
@@ -1347,6 +1348,5 @@ void o_conv()
 	    o->update = 0;
 	}
 	AFREE(counts - baseplane.nobjects);
-	o_clean();
     }
 }
