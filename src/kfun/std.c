@@ -1,5 +1,6 @@
 # ifndef FUNCDEF
 # include "kfun.h"
+# include "path.h"
 # include "comp.h"
 # include "comm.h"
 # endif
@@ -37,6 +38,7 @@ int nargs;
 	if (o == (object *) NULL) {
 	    o = c_compile(val->u.string->text);
 	}
+	str_del(val->u.string);
 	break;
 
     case T_OBJECT:
@@ -47,10 +49,17 @@ int nargs;
 	return 1;
     }
 
-    if (i_apply(o, val[1].u.string->text, FALSE, nargs - 2)) {
+    val->type = T_NUMBER;
+    val->u.number = 0;
+    --val;
+    if (val->type != T_STRING) {
+	return 2;
+    }
+
+    if (i_apply(o, val->u.string->text, FALSE, nargs - 2)) {
 	val = sp++;
-	i_pop(2);
-	*--sp = *val;
+	str_del((sp++)->u.string);
+	*sp = *val;
     } else if (nargs > 2) {
 	/*
 	 * Hmm...
@@ -67,7 +76,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("this_object", kf_this_object, p_this_object)
 # else
-char p_this_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_OBJECT, 0 };
+char p_this_object[] = { C_STATIC | C_LOCAL, T_OBJECT, 0 };
 
 /*
  * NAME:	kfun->this_object()
@@ -80,8 +89,7 @@ int kf_this_object()
 
     obj = i_this_object();
     val.type = T_OBJECT;
-    val.u.object.index = obj->key.index;
-    val.u.object.count = obj->key.count;
+    val.u.object = obj->key;
     i_push_value(&val);
     return 0;
 }
@@ -91,7 +99,7 @@ int kf_this_object()
 # ifdef FUNCDEF
 FUNCDEF("previous_object", kf_previous_object, p_previous_object)
 # else
-char p_previous_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_OBJECT, 0 };
+char p_previous_object[] = { C_STATIC | C_LOCAL, T_OBJECT, 0 };
 
 /*
  * NAME:	kfun->previous_object()
@@ -104,8 +112,7 @@ int kf_previous_object()
 
     obj = i_prev_object();
     val.type = T_OBJECT;
-    val.u.object.index = obj->key.index;
-    val.u.object.count = obj->key.count;
+    val.u.object = obj->key;
     i_push_value(&val);
     return 0;
 }
@@ -146,8 +153,57 @@ int kf_send_message()
 }
 # endif
 
+
+# ifdef FUNCDEF
+FUNCDEF("allocate", kf_allocate, p_allocate)
+# else
+char p_allocate[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
+		      T_MIXED | (1 << REFSHIFT), 1, T_NUMBER };
+
 /*
-allocate()
+ * NAME:	kfun->allocate()
+ * DESCRIPTION:
+ */
+int kf_allocate()
+{
+    register int i;
+    register value *val;
+
+    arr_ref(sp->u.array = arr_new((long) sp->u.number));
+    for (i = sp->u.array->size, val = sp->u.array->elts; i > 0; --i, val++) {
+	val->type = T_NUMBER;
+	val->u.number = 0;
+    }
+    sp->type = T_ARRAY;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("sizeof", kf_sizeof, p_sizeof)
+# else
+char p_sizeof[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
+		    T_MIXED | (1 << REFSHIFT) };
+
+/*
+ * NAME:	kfun->sizeof()
+ * DESCRIPTION:
+ */
+int kf_sizeof()
+{
+    int i;
+
+    i = sp->u.array->size;
+    arr_del(sp->u.array);
+    sp->type = T_NUMBER;
+    sp->u.number = i;
+    return 0;
+}
+# endif
+
+
+/*
 arrayp()
 clone_object()
 destruct()
@@ -155,13 +211,15 @@ file_name()
 find_object()
 function_exists()
 intp()
+m_indices()
+m_sizeof()
+m_values()
+mappingp()
 objectp()
-previous_object()
 query_ip_number()
-sizeof()
+shutdown()
 stringp()
 strlen()
-this_object()
 this_user()
 time()
 users()

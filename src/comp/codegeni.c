@@ -10,6 +10,129 @@
 # include "control.h"
 # include "codegen.h"
 
+# define LINE_CHUNK	128
+
+typedef struct _linechunk_ {
+    char info[LINE_CHUNK];		/* chunk of line number info */
+    struct _linechunk_ *next;		/* next in list */
+} linechunk;
+
+static linechunk *lline, *tline;	/* line chunk list */
+static linechunk *fline;		/* free line chunk list */
+static int lchunksz = LINE_CHUNK;	/* line chunk size */
+static unsigned short line;		/* current line number */
+static int line_info_size;		/* size of all line info */
+
+/*
+ * NAME:	line->byte()
+ * DESCRIPTION:	output a line description byte
+ */
+static void line_byte(byte)
+int byte;
+{
+    if (lchunksz == LINE_CHUNK) {
+	register linechunk *l;
+
+	/* new chunk */
+	if (fline != (linechunk *) NULL) {
+	    /* from free list */
+	    l = fline;
+	    fline = l->next;
+	} else {
+	    l = ALLOC(linechunk, 1);
+	}
+	l->next = (linechunk *) NULL;
+	if (tline != (linechunk *) NULL) {
+	    tline->next = l;
+	} else {
+	    lline = l;
+	}
+	tline = l;
+	lchunksz = 0;
+    }
+
+    tline->info[lchunksz++] = byte;
+    line_info_size++;
+}
+
+/*
+ * NAME:	line->fix()
+ * DESCRIPTION:	Fix the new line number.  Return 0 .. 2 for simple offsets,
+ *		3 for special ones.
+ */
+static int line_fix(newline)
+register unsigned short newline;
+{
+    register short offset;
+
+    if (newline == 0) {
+	/* nothing changes */
+	return 0;
+    }
+    offset = newline - line;
+    if (line != 0 && offset >= 0 && offset <= 2) {
+	/* simple offset */
+	line = newline;
+	return offset;
+    }
+
+    if (offset >= -64 && offset <= 63) {
+	/* one byte offset */
+	line_byte(offset + 128 + 64);
+    } else {
+	/* two byte offset */
+	offset += 16384;
+	line_byte((offset >> 8) & 127);
+	line_byte(offset);
+    }
+    line = newline;
+    return 3;
+}
+
+/*
+ * NAME:	line->make()
+ * DESCRIPTION:	put line number info after the function
+ */
+static void line_make(buf)
+register char *buf;
+{
+    register linechunk *l;
+
+    /* collect all line blocks in one large block */
+    for (l = lline; l != tline; l = l->next) {
+	memcpy(buf, l->info, LINE_CHUNK);
+	buf += LINE_CHUNK;
+    }
+    memcpy(buf, l->info, lchunksz);
+
+    /* add blocks to free list */
+    tline->next = fline;
+    fline = lline;
+    /* clear blocks */
+    lline = (linechunk *) NULL;
+    tline = (linechunk *) NULL;
+    lchunksz = LINE_CHUNK;
+    line = 0;
+    line_info_size = 0;
+}
+
+/*
+ * NAME:	line->clear()
+ * DESCRIPTION:	clean up line number info chunks
+ */
+static void line_clear()
+{
+    register linechunk *l, *f;
+
+    for (l = fline; l != (linechunk *) NULL; ) {
+	f = l;
+	l = l->next;
+	FREE(f);
+    }
+    fline = (linechunk *) NULL;
+}
+
+
 # define CODE_CHUNK	128
 
 typedef struct _codechunk_ {
@@ -20,10 +143,7 @@ typedef struct _codechunk_ {
 static codechunk *lcode, *tcode;	/* code chunk list */
 static codechunk *fcode;		/* free code chunk list */
 static int cchunksz = CODE_CHUNK;	/* code chunk size */
-static unsigned short here = 3;		/* current offset */
-static unsigned short firstline;	/* first line in function */
-static unsigned short thisline;		/* current line number */
-static bool linefix;			/* fix the next instruction */
+static unsigned short here;		/* current offset */
 static char *last_instruction;		/* address of last instruction */
 
 /*
@@ -69,25 +189,6 @@ unsigned short word;
 }
 
 /*
- * NAME:	code->line()
- * DESCRIPTION:	generate a line instruction before the next instruction
- */
-static void code_line()
-{
-    linefix = TRUE;
-}
-
-/*
-/*
- * NAME:	code->noline()
- * DESCRIPTION:	turn off line number generation before the next instruction
- */
-static void code_noline()
-{
-    linefix = FALSE;
-}
-
-/*
  * NAME:	code->instr()
  * DESCRIPTION:	generate an instruction code
  */
@@ -95,28 +196,7 @@ static void code_instr(i, line)
 register int i;
 register unsigned short line;
 {
-    if (firstline == 0) {
-	/* first instruction in function */
-	firstline = line;
-	i |= 1 << I_LINE_SHIFT;
-    } else if (!linefix && line >= thisline - 1 && line <= thisline + 2) {
-	/* small offset */
-	i |= (line + 1 - thisline) << I_LINE_SHIFT;
-    } else if (line >= firstline && line <= firstline + 255) {
-	/* 1 byte line offset */
-	code_byte(I_LINE);
-	code_byte(line - firstline);
-	i |= 1 << I_LINE_SHIFT;
-    } else {
-	/* 2 bytes absolute line */
-	code_byte(I_LINE2);
-	code_word(line);
-	i |= 1 << I_LINE_SHIFT;
-    }
-    thisline = line;
-    linefix = FALSE;
-
-    code_byte(i);
+    code_byte(i | (line_fix(line) << I_LINE_SHIFT));
     last_instruction = &tcode->code[cchunksz - 1];
 }
 
@@ -133,33 +213,20 @@ unsigned short line;
 }
 
 /*
- * NAME:	code->kfun2()
- * DESCRIPTION:	generate code for a kfun with variable # of arguments
- */
-static void code_kfun2(kf, nargs, line)
-int kf;
-int nargs;
-unsigned short line;
-{
-    code_instr(I_CALL_KFUNC, line);
-    code_byte(kf);
-    code_byte(nargs);
-}
-
-/*
  * NAME:	code->make()
  * DESCRIPTION:	create function code block
  */
-static char *code_make(nlocals)
+static char *code_make(nlocals, size)
 int nlocals;
+unsigned short *size;
 {
     register codechunk *l;
     register char *code;
 
-    code = ALLOC(char, here + 3);
+    code = ALLOC(char, *size = 3 + here + line_info_size);
     *code++ = nlocals;
-    *code++ = firstline >> 8;
-    *code++ = firstline;
+    *code++ = here >> 8;
+    *code++ = here;
 
     /* collect all code blocks in one large block */
     for (l = lcode; l != tcode; l = l->next) {
@@ -167,7 +234,9 @@ int nlocals;
 	code += CODE_CHUNK;
     }
     memcpy(code, l->code, cchunksz);
-    code -= here - cchunksz;
+    code += cchunksz;
+    line_make(code);
+    code -= 3 + here;
 
     /* add blocks to free list */
     tcode->next = fcode;
@@ -176,10 +245,8 @@ int nlocals;
     lcode = (codechunk *) NULL;
     tcode = (codechunk *) NULL;
     cchunksz = CODE_CHUNK;
-    firstline = 0;
-    linefix = FALSE;
 
-    here = 3;
+    here = 0;
     return code;
 }
 
@@ -197,29 +264,31 @@ static void code_clear()
 	FREE(f);
     }
     fcode = (codechunk *) NULL;
+
+    line_clear();
 }
 
 
 # define JUMP_CHUNK	128
 
 typedef struct _jmplist_ {
-    unsigned short where;	/* where to jump from */
-    short offset;		/* where to jump to */
-    struct _jmplist_ *next;	/* next in list */
+    unsigned short where;		/* where to jump from */
+    short offset;			/* where to jump to */
+    struct _jmplist_ *next;		/* next in list */
 } jmplist;
 
 typedef struct _jmpchunk_ {
-    jmplist jump[JUMP_CHUNK];	/* chunk of jumps */
-    struct _jmpchunk_ *next;	/* next in list */
+    jmplist jump[JUMP_CHUNK];		/* chunk of jumps */
+    struct _jmpchunk_ *next;		/* next in list */
 } jmpchunk;
 
-static jmpchunk *ljump;		/* list of jump chunks */
-static jmpchunk *fjump;		/* list of free jump chunks */
-static int jchunksz;		/* size of jump chunk */
-static jmplist *true_list;	/* list of true jumps */
-static jmplist *false_list;	/* list of false jumps */
-static jmplist *break_list;	/* list of break jumps */
-static jmplist *continue_list;	/* list of continue jumps */
+static jmpchunk *ljump;			/* list of jump chunks */
+static jmpchunk *fjump;			/* list of free jump chunks */
+static int jchunksz = JUMP_CHUNK;	/* size of jump chunk */
+static jmplist *true_list;		/* list of true jumps */
+static jmplist *false_list;		/* list of false jumps */
+static jmplist *break_list;		/* list of break jumps */
+static jmplist *continue_list;		/* list of continue jumps */
 
 /*
  * NAME:	jump->offset()
@@ -263,17 +332,8 @@ jmplist *list;
 unsigned short line;
 {
     register jmplist *j;
-    bool fix;
 
-    if (firstline == 0) {
-	firstline = thisline = line;
-    }
-    fix = linefix;
-    linefix = FALSE;
-    code_instr(i, thisline);
-    if (fix && i != I_JUMP) {
-	linefix = TRUE;
-    }
+    code_instr(i, line);
     return jump_offset(list);
 }
 
@@ -452,6 +512,69 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->lvalue()
+ * DESCRIPTION:	generate code for an lvalue
+ */
+static void cg_lvalue(n)
+node *n;
+{
+    switch (n->type) {
+    case N_LOCAL:
+	code_instr(I_PUSH_LOCAL_LVALUE, n->line);
+	code_byte(nvars - (int) n->r.number - 1);
+	break;
+
+    case N_GLOBAL:
+	code_instr(I_PUSH_GLOBAL_LVALUE, n->line);
+	code_word((int) n->r.number);
+	break;
+
+    case N_INDEX:
+	switch (n->l.left->type) {
+	case N_LOCAL:
+	    code_instr(I_PUSH_LOCAL_LVALUE, n->l.left->line);
+	    code_byte(nvars - (int) n->l.left->r.number - 1);
+	    break;
+
+	case N_GLOBAL:
+	    code_instr(I_PUSH_GLOBAL_LVALUE, n->l.left->line);
+	    code_word((int) n->l.left->r.number);
+	    break;
+
+	case N_INDEX:
+	    cg_expr(n->l.left->l.left, FALSE);
+	    cg_expr(n->l.left->r.right, FALSE);
+	    code_instr(I_INDEX_LVALUE, n->l.left->line);
+	    break;
+
+	default:
+	    cg_expr(n->l.left, FALSE);
+	    break;
+	}
+	cg_expr(n->r.right, FALSE);
+	code_instr(I_INDEX_LVALUE, n->line);
+	break;
+    }
+}
+
+/*
+ * NAME:	codegen->fetch()
+ * DESCRIPTION:	generate code for a fetched lvalue
+ */
+static void cg_fetch(n)
+node *n;
+{
+    if (n->l.left->type == N_CAST) {
+	cg_lvalue(n->l.left->l.left);
+	code_instr(I_FETCH, 0);
+	code_instr(I_CHECK_INT, 0);
+    } else {
+	cg_lvalue(n->l.left);
+	code_instr(I_FETCH, 0);
+    }
+}
+
+/*
  * NAME:	codegen->expr()
  * DESCRIPTION:	generate code for an expression
  */
@@ -470,23 +593,43 @@ register bool pop;
 	code_kfun(KF_ADD, n->line);
 	break;
 
-    case N_ADD_EQ:
+    case N_ADD_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_ADD_INT, n->line);
+	break;
+
+    case N_ADD_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_ADD, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_ADD_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_ADD_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
 	    i = cg_map_aggr(n->l.left);
-	    code_instr(I_MAP_AGGREGATE, n->l.left->line);
+	    code_instr(I_MAP_AGGREGATE, n->line);
 	} else {
 	    i = cg_aggr(n->l.left);
-	    code_instr(I_AGGREGATE, n->l.left->line);
+	    code_instr(I_AGGREGATE, n->line);
 	}
-	code_word(i, n->line);
+	code_word(i);
 	break;
 
     case N_AND:
@@ -495,35 +638,65 @@ register bool pop;
 	code_kfun(KF_AND, n->line);
 	break;
 
-    case N_AND_EQ:
+    case N_AND_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_AND_INT, n->line);
+	break;
+
+    case N_AND_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_AND, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_AND_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_AND_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_ASSIGN:
-	cg_expr(n->l.left, FALSE);
+	if (n->l.left->l.left->type == N_CAST) {
+	    /* ignore cast */
+	    cg_lvalue(n->l.left->l.left->l.left);
+	} else {
+	    cg_lvalue(n->l.left->l.left);
+	}
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_STORE, n->line);
 	break;
 
     case N_CAST:
-	cg_expr(n->l.left, pop);
-	return;
+	cg_expr(n->l.left, FALSE);
+	code_instr(I_CHECK_INT, 0);	/* always cast to int */
+	break;
 
     case N_CATCH:
-	i = I_CATCH;
-	if (pop) {
-	    i |= I_POP_BIT;
+	if (n->l.left == (node *) NULL) {
+	    /* nothing to catch */
+	    if (!pop) {
+		code_instr(I_PUSH_ZERO, n->line);
+	    }
+	    return;
 	}
-	jlist = jump(i, (jmplist *) NULL, n->l.left->line);
+	jlist = jump(I_CATCH, (jmplist *) NULL, 0);
 	cg_expr(n->l.left, TRUE);
-	code_noline();
+	if (!pop) {
+	    code_instr(I_PUSH_ZERO, n->line);
+	}
 	code_instr(I_RETURN, n->line);
 	jump_resolve(jlist, here);
-	code_line();
 	return;
 
     case N_COMMA:
@@ -537,12 +710,32 @@ register bool pop;
 	code_kfun(KF_DIV, n->line);
 	break;
 
-    case N_DIV_EQ:
+    case N_DIV_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_DIV_INT, n->line);
+	break;
+
+    case N_DIV_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_DIV, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_DIV_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_DIV_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_EQ:
@@ -551,14 +744,19 @@ register bool pop;
 	code_kfun(KF_EQ, n->line);
 	break;
 
+    case N_EQ_INT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_EQ_INT, n->line);
+	break;
+
     case N_FUNC:
 	i = cg_funargs(n->l.left);
 	switch (n->r.number >> 24) {
 	case KFCALL:
+	    code_kfun((int) n->r.number, n->line);
 	    if (PROTO_CLASS(kftab[n->r.number].proto) & C_VARARGS) {
-		code_kfun2((int) n->r.number, i, n->line);
-	    } else {
-		code_kfun((int) n->r.number, n->line);
+		code_byte(i);
 	    }
 	    break;
 
@@ -589,13 +787,17 @@ register bool pop;
 	code_kfun(KF_GE, n->line);
 	break;
 
-    case N_GLOBAL:
-	code_instr(I_PUSH_GLOBAL, n->line);
-	code_word((int) n->r.number);
+    case N_GE_INT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_GE_INT, n->line);
 	break;
 
-    case N_GLOBAL_LVALUE:
-	code_instr(I_PUSH_GLOBAL_LVALUE, n->line);
+    case N_GLOBAL:
+	if (pop) {
+	    return;
+	}
+	code_instr(I_PUSH_GLOBAL, n->line);
 	code_word((int) n->r.number);
 	break;
 
@@ -605,19 +807,22 @@ register bool pop;
 	code_kfun(KF_GT, n->line);
 	break;
 
+    case N_GT_INT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_GT_INT, n->line);
+	break;
+
     case N_INDEX:
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_INDEX, n->line);
 	break;
 
-    case N_INDEX_LVALUE:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_instr(I_INDEX_LVALUE, n->line);
-	break;
-
     case N_INT:
+	if (pop) {
+	    return;
+	}
 	if (n->l.number == 0) {
 	    code_instr(I_PUSH_ZERO, n->line);
 	} else if (n->l.number == 1) {
@@ -636,16 +841,19 @@ register bool pop;
 	break;
 
     case N_LAND:
-	cg_expr(n->l.left, FALSE);
-	jlist = false_list;
-	false_list = jump(I_JUMP_ZERO, (jmplist *) NULL, 0);
-	if (pop) {
-	    *last_instruction |= I_POP_BIT;
+	jlist = true_list;
+	true_list = (jmplist *) NULL;
+	cg_cond(n, TRUE);
+	if (!pop) {
+	    code_instr(I_PUSH_ZERO, 0);
+	    j2list = jump(I_JUMP, (jmplist *) NULL, 0);
 	}
-	cg_expr(n->r.right, pop);
-	jump_resolve(false_list, here);
-	code_line();
-	false_list = jlist;
+	jump_resolve(true_list, here);
+	true_list = jlist;
+	if (!pop) {
+	    code_instr(I_PUSH_ONE, 0);
+	    jump_resolve(j2list, here);
+	}
 	return;
 
     case N_LE:
@@ -654,34 +862,40 @@ register bool pop;
 	code_kfun(KF_LE, n->line);
 	break;
 
+    case N_LE_INT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_LE_INT, n->line);
+	break;
+
     case N_LOCAL:
+	if (pop) {
+	    return;
+	}
 	code_instr(I_PUSH_LOCAL, n->line);
 	code_byte(nvars - (int) n->r.number - 1);
 	break;
 
-    case N_LOCAL_LVALUE:
-	code_instr(I_PUSH_LOCAL_LVALUE, n->line);
-	code_byte(nvars - (int) n->r.number - 1);
-	break;
-
     case N_LOCK:
-	code_instr(I_LOCK, n->l.left->line);
+	code_instr(I_LOCK, 0);
 	cg_expr(n->l.left, pop);
-	code_noline();
-	code_instr(I_RETURN, n->line);
+	code_instr(I_RETURN, 0);
 	return;
 
     case N_LOR:
-	cg_expr(n->l.left, FALSE);
-	jlist = true_list;
-	true_list = jump(I_JUMP_NONZERO, (jmplist *) NULL, 0);
-	if (pop) {
-	    *last_instruction |= I_POP_BIT;
+	jlist = false_list;
+	false_list = (jmplist *) NULL;
+	cg_cond(n, FALSE);
+	if (!pop) {
+	    code_instr(I_PUSH_ONE, 0);
+	    j2list = jump(I_JUMP, (jmplist *) NULL, 0);
 	}
-	cg_expr(n->r.right, pop);
-	jump_resolve(true_list, here);
-	code_line();
-	true_list = jlist;
+	jump_resolve(false_list, here);
+	false_list = jlist;
+	if (!pop) {
+	    code_instr(I_PUSH_ZERO, 0);
+	    jump_resolve(j2list, here);
+	}
 	return;
 
     case N_LSHIFT:
@@ -690,12 +904,32 @@ register bool pop;
 	code_kfun(KF_LSHIFT, n->line);
 	break;
 
-    case N_LSHIFT_EQ:
+    case N_LSHIFT_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_LSHIFT_INT, n->line);
+	break;
+
+    case N_LSHIFT_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LSHIFT, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_LSHIFT_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_LSHIFT_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_LT:
@@ -704,18 +938,10 @@ register bool pop;
 	code_kfun(KF_LT, n->line);
 	break;
 
-    case N_MIN:
+    case N_LT_INT:
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_SUB, n->line);
-	break;
-
-    case N_MIN_EQ:
-	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_SUB, n->line);
-	code_instr(I_STORE, n->line);
+	code_kfun(KF_LT_INT, n->line);
 	break;
 
     case N_MOD:
@@ -724,12 +950,24 @@ register bool pop;
 	code_kfun(KF_MOD, n->line);
 	break;
 
-    case N_MOD_EQ:
+    case N_MOD_INT:
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_MOD_INT, n->line);
+	break;
+
+    case N_MOD_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_MOD, n->line);
-	code_kfun(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_MOD_EQ_INT:
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_MOD_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_MULT:
@@ -738,12 +976,32 @@ register bool pop;
 	code_kfun(KF_MULT, n->line);
 	break;
 
-    case N_MULT_EQ:
+    case N_MULT_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_MULT_INT, n->line);
+	break;
+
+    case N_MULT_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_MULT, n->line);
-	code_kfun(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_MULT_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_MULT_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_NE:
@@ -752,9 +1010,10 @@ register bool pop;
 	code_kfun(KF_NE, n->line);
 	break;
 
-    case N_NEG:
+    case N_NE_INT:
 	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_NEG, n->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_NE_INT, n->line);
 	break;
 
     case N_NOT:
@@ -768,30 +1027,44 @@ register bool pop;
 	code_kfun(KF_OR, n->line);
 	break;
 
-    case N_OR_EQ:
+    case N_OR_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_OR_INT, n->line);
+	break;
+
+    case N_OR_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_OR, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_OR_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_OR_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_QUEST:
-	jlist = true_list;
-	j2list = false_list;
-	true_list = (jmplist *) NULL;
+	jlist = false_list;
 	false_list = (jmplist *) NULL;
 	cg_cond(n->l.left, FALSE);
-	jump_resolve(true_list, here);
 	cg_expr(n->r.right->l.left, pop);
-	true_list = jump(I_JUMP, (jmplist *) NULL, 0);
+	j2list = jump(I_JUMP, (jmplist *) NULL, 0);
 	jump_resolve(false_list, here);
-	code_line();
-	false_list = j2list;
+	false_list = jlist;
 	cg_expr(n->r.right->r.right, pop);
-	jump_resolve(true_list, here);
-	code_line();
-	true_list = jlist;
+	jump_resolve(j2list, here);
 	return;
 
     case N_RANGE:
@@ -807,18 +1080,45 @@ register bool pop;
 	code_kfun(KF_RSHIFT, n->line);
 	break;
 
-    case N_RSHIFT_EQ:
+    case N_RSHIFT_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_RSHIFT_INT, n->line);
+	break;
+
+    case N_RSHIFT_EQ:
+	cg_fetch(n->l.left);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_RSHIFT, n->line);
-	code_instr(I_STORE, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_RSHIFT_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_RSHIFT_INT, n->line);
+	code_instr(I_STORE, 0);
 	break;
 
     case N_STR:
+	if (pop) {
+	    return;
+	}
 	l = ctrl_dstring(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
 	    code_instr(I_PUSH_STRING, n->line);
+	    code_byte((int) l);
+	} else if ((unsigned short) l < 256) {
+	    code_instr(I_PUSH_NEAR_STRING, n->line);
+	    code_byte((int) (l >> 16));
 	    code_byte((int) l);
 	} else {
 	    code_instr(I_PUSH_FAR_STRING, n->line);
@@ -827,51 +1127,140 @@ register bool pop;
 	}
 	break;
 
+    case N_SUB:
+	if (n->l.left->type == N_INT && n->l.left->l.number == 0) {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_UMIN, n->line);
+	} else {
+	    cg_expr(n->l.left, FALSE);
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_SUB, n->line);
+	}
+	break;
+
+    case N_SUB_INT:
+	if (n->l.left->type == N_INT && n->l.left->l.number == 0) {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_UMIN_INT, n->line);
+	} else {
+	    cg_expr(n->l.left, FALSE);
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_SUB_INT, n->line);
+	}
+	break;
+
+    case N_SUB_EQ:
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_SUB, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_SUB_EQ_INT:
+	cg_fetch(n->l.left);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_SUB_INT, n->line);
+	code_instr(I_STORE, 0);
+	break;
+
     case N_TST:
 	cg_expr(n->l.left, FALSE);
 	code_kfun(KF_TST, n->line);
 	break;
 
-    case N_UMIN:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_UMIN, n->line);
+    case N_XOR:
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_expr(n->l.left, FALSE);
+	    code_kfun(KF_NEG, n->line);
+	} else {
+	    cg_expr(n->l.left, FALSE);
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_XOR, n->line);
+	}
 	break;
 
-    case N_XOR:
-	cg_expr(n->l.left, FALSE);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_XOR, n->line);
+    case N_XOR_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left, pop);
+	    return;
+	}
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_expr(n->l.left, FALSE);
+	    code_kfun(KF_NEG_INT, n->line);
+	} else {
+	    cg_expr(n->l.left, FALSE);
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_XOR_INT, n->line);
+	}
 	break;
 
     case N_XOR_EQ:
-	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->l.left->line);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_XOR, n->line);
-	code_instr(I_STORE, n->line);
+	cg_fetch(n->l.left);
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    code_kfun(KF_NEG, 0);
+	} else {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_XOR, n->line);
+	}
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_XOR_EQ_INT:
+	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
+	    cg_expr(n->l.left->l.left, pop);
+	    return;
+	}
+	cg_fetch(n->l.left);
+	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    code_kfun(KF_NEG_INT, 0);
+	} else {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_XOR_INT, n->line);
+	}
+	code_instr(I_STORE, 0);
 	break;
 
     case N_MIN_MIN:
-	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->line);
-	code_instr(I_PUSH_ONE, n->line);
-	code_kfun(KF_SUB, n->line);
-	code_instr(I_STORE, n->line);
+	cg_fetch(n->l.left);
+	code_instr(I_PUSH_ONE, 0);
+	code_kfun(KF_SUB, 0);
+	code_instr(I_STORE, 0);
 	if (!pop) {
-	    code_instr(I_PUSH_ONE, n->line);
-	    code_kfun(KF_ADD, n->line);
+	    code_instr(I_PUSH_ONE, 0);
+	    code_kfun(KF_ADD_INT, 0);	/* safe */
+	}
+	break;
+
+    case N_MIN_MIN_INT:
+	cg_fetch(n->l.left);
+	code_instr(I_PUSH_ONE, 0);
+	code_kfun(KF_SUB_INT, 0);
+	code_instr(I_STORE, 0);
+	if (!pop) {
+	    code_instr(I_PUSH_ONE, 0);
+	    code_kfun(KF_ADD_INT, 0);
 	}
 	break;
 
     case N_PLUS_PLUS:
-	cg_expr(n->l.left, FALSE);
-	code_instr(I_FETCH, n->line);
-	code_instr(I_PUSH_ONE, n->line);
-	code_kfun(KF_ADD, n->line);
-	code_instr(I_STORE, n->line);
+	cg_fetch(n->l.left);
+	code_instr(I_PUSH_ONE, 0);
+	code_kfun(KF_ADD, 0);
+	code_instr(I_STORE, 0);
 	if (!pop) {
-	    code_instr(I_PUSH_ONE, n->line);
-	    code_kfun(KF_SUB, n->line);
+	    code_instr(I_PUSH_ONE, 0);
+	    code_kfun(KF_SUB_INT, 0);	/* safe */
+	}
+	break;
+
+    case N_PLUS_PLUS_INT:
+	cg_fetch(n->l.left);
+	code_instr(I_PUSH_ONE, 0);
+	code_kfun(KF_ADD_INT, 0);
+	code_instr(I_STORE, 0);
+	if (!pop) {
+	    code_instr(I_PUSH_ONE, 0);
+	    code_kfun(KF_SUB_INT, 0);
 	}
 	break;
     }
@@ -894,34 +1283,38 @@ register bool jmptrue;
 	switch (n->type) {
 	case N_INT:
 	    if (jmptrue == (n->l.number != 0)) {
-		true_list = jump(I_JUMP, true_list, 0);
+		true_list = jump(I_JUMP, true_list, n->line);
 	    } else {
-		false_list = jump(I_JUMP, false_list, 0);
+		false_list = jump(I_JUMP, false_list, n->line);
 	    }
 	    break;
 
 	case N_LAND:
-	    jlist = true_list;
-	    true_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, FALSE);
-	    if (true_list != (jmplist *) NULL) {
-		jump_resolve(true_list, here);
-		code_line();
+	    if (jmptrue) {
+		jlist = false_list;
+		false_list = (jmplist *) NULL;
+		cg_cond(n->l.left, FALSE);
+		cg_cond(n->r.right, TRUE);
+		jump_resolve(false_list, here);
+		false_list = jlist;
+	    } else {
+		cg_cond(n->l.left, FALSE);
+		cg_cond(n->r.right, FALSE);
 	    }
-	    true_list = jlist;
-	    cg_cond(n->r.right, jmptrue);
 	    break;
 
 	case N_LOR:
-	    jlist = false_list;
-	    false_list = (jmplist *) NULL;
-	    cg_cond(n->l.left, TRUE);
-	    if (false_list != (jmplist *) NULL) {
-		jump_resolve(false_list, here);
-		code_line();
+	    if (!jmptrue) {
+		jlist = true_list;
+		true_list = (jmplist *) NULL;
+		cg_cond(n->l.left, TRUE);
+		cg_cond(n->r.right, FALSE);
+		jump_resolve(true_list, here);
+		true_list = jlist;
+	    } else {
+		cg_cond(n->l.left, TRUE);
+		cg_cond(n->r.right, TRUE);
 	    }
-	    false_list = jlist;
-	    cg_cond(n->r.right, jmptrue);
 	    break;
 
 	case N_NOT:
@@ -936,6 +1329,11 @@ register bool jmptrue;
 
 	case N_TST:
 	    n = n->l.left;
+	    continue;
+
+	case N_COMMA:
+	    cg_expr(n->l.left, TRUE);
+	    n = n->r.right;
 	    continue;
 
 	default:
@@ -966,7 +1364,7 @@ static void cg_switch_int(n)
 register node *n;
 {
     register node *m;
-    register int i, size;
+    register int i, size, sz;
     case_label *table;
 
     /*
@@ -977,10 +1375,10 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_INT | I_POP_BIT, thisline);
-    table = switch_table;
+    code_instr(I_SWITCH_INT | I_POP_BIT, 0);
     m = n->l.left;
     size = n->mod;
+    sz = n->r.right->mod;
     if (m->l.left == (node *) NULL) {
 	/* explicit default */
 	m = m->r.right;
@@ -989,16 +1387,32 @@ register node *n;
 	size++;
     }
     code_word(size);
+    code_byte(sz);
 
-    switch_table = ALLOC(case_label, size);
+    table = switch_table;
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_offset((jmplist *) NULL);
     i = 1;
     do {
 	register long l;
 
 	l = m->l.left->l.number;
-	code_word((int) (l >> 16));
-	code_word((int) l);
+	switch (sz) {
+	case 4:
+	    code_word((int) (l >> 16));
+	case 2:
+	    code_word((int) l);
+	    break;
+
+	case 3:
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
+	    break;
+
+	case 1:
+	    code_byte((int) l);
+	    break;
+	}
 	switch_table[i++].jump = jump_offset((jmplist *) NULL);
 	m = m->r.right;
     } while (i < size);
@@ -1014,11 +1428,11 @@ register node *n;
     if (size > n->mod) {
 	/* default: across switch */
 	switch_table[0].where = here;
-	code_line();
     }
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1030,7 +1444,7 @@ static void cg_switch_range(n)
 register node *n;
 {
     register node *m;
-    register int i, size;
+    register int i, size, sz;
     case_label *table;
 
     /*
@@ -1041,10 +1455,10 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_RANGE | I_POP_BIT, thisline);
-    table = switch_table;
+    code_instr(I_SWITCH_RANGE | I_POP_BIT, 0);
     m = n->l.left;
     size = n->mod;
+    sz = n->r.right->mod;
     if (m->l.left == (node *) NULL) {
 	/* explicit default */
 	m = m->r.right;
@@ -1053,22 +1467,52 @@ register node *n;
 	size++;
     }
     code_word(size);
+    code_byte(sz);
 
-    switch_table = ALLOC(case_label, size);
+    table = switch_table;
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_offset((jmplist *) NULL);
     i = 1;
     do {
 	register long l;
 
 	l = m->l.left->l.number;
-	code_word((int) (l >> 16));
-	code_word((int) l);
+	switch (sz) {
+	case 4:
+	    code_word((int) (l >> 16));
+	case 2:
+	    code_word((int) l);
+	    break;
+
+	case 3:
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
+	    break;
+
+	case 1:
+	    code_byte((int) l);
+	    break;
+	}
 	l = m->l.left->r.number;
-	code_word((int) (l >> 16));
-	code_word((int) l);
+	switch (sz) {
+	case 4:
+	    code_word((int) (l >> 16));
+	case 2:
+	    code_word((int) l);
+	    break;
+
+	case 3:
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
+	    break;
+
+	case 1:
+	    code_byte((int) l);
+	    break;
+	}
 	switch_table[i++].jump = jump_offset((jmplist *) NULL);
 	m = m->r.right;
-    } while (i < n->mod);
+    } while (i < size);
 
     /*
      * generate code for body
@@ -1081,11 +1525,11 @@ register node *n;
     if (size > n->mod) {
 	/* default: across switch */
 	switch_table[0].where = here;
-	code_line();
     }
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1108,8 +1552,7 @@ register node *n;
     /*
      * switch table
      */
-    code_instr(I_SWITCH_STR | I_POP_BIT, thisline);
-    table = switch_table;
+    code_instr(I_SWITCH_STR | I_POP_BIT, 0);
     m = n->l.left;
     size = n->mod;
     if (m->l.left == (node *) NULL) {
@@ -1121,7 +1564,8 @@ register node *n;
     }
     code_word(size);
 
-    switch_table = ALLOC(case_label, size);
+    table = switch_table;
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_offset((jmplist *) NULL);
     i = 1;
     if (m->l.left->type == N_INT) {
@@ -1131,6 +1575,9 @@ register node *n;
 	code_byte(0);
 	switch_table[i++].jump = jump_offset((jmplist *) NULL);
 	m = m->r.right;
+    } else {
+	/* no 0 case */
+	code_byte(1);
     }
     while (i < size) {
 	register long l;
@@ -1153,11 +1600,11 @@ register node *n;
     if (size > n->mod) {
 	/* default: across switch */
 	switch_table[0].where = here;
-	code_line();
     }
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1189,7 +1636,6 @@ register node *n;
 		    cg_stmt(m->l.left);
 		    if (break_list != (jmplist *) NULL) {
 			jump_resolve(break_list, here);
-			code_line();
 		    }
 		    break_list = jlist;
 		} else {
@@ -1198,7 +1644,6 @@ register node *n;
 		    cg_stmt(m->l.left);
 		    if (continue_list != (jmplist *) NULL) {
 			jump_resolve(continue_list, here);
-			code_line();
 		    }
 		    continue_list = jlist;
 		}
@@ -1210,7 +1655,6 @@ register node *n;
 
 	    case N_CASE:
 		switch_table[m->mod].where = here;
-		code_line();
 		cg_stmt(m->l.left);
 		break;
 
@@ -1220,79 +1664,76 @@ register node *n;
 
 	    case N_DO:
 		offset = here;
-		code_line();
 		cg_stmt(m->r.right);
 		jlist = true_list;
-		j2list = false_list;
 		true_list = (jmplist *) NULL;
-		false_list = (jmplist *) NULL;
 		cg_cond(m->l.left, TRUE);
 		jump_resolve(true_list, offset);
-		if (false_list != (jmplist *) NULL) {
-		    jump_resolve(false_list, here);
-		    code_line();
-		}
 		true_list = jlist;
-		false_list = j2list;
 		break;
 
 	    case N_FOR:
 	    case N_WHILE:
-		offset = here;
-		jlist = true_list;
-		j2list = false_list;
-		true_list = (jmplist *) NULL;
-		false_list = (jmplist *) NULL;
-		code_line();
-		cg_cond(m->l.left, FALSE);
-		if (true_list != (jmplist *) NULL) {
-		    jump_resolve(true_list, here);
-		    code_line();
+		if (m->r.right != (node *) NULL) {
+		    jlist = jump(I_JUMP, (jmplist *) NULL, 0);
+		    offset = here;
+		    cg_stmt(m->r.right);
+		    jump_resolve(jlist, here);
+		} else {
+		    /* empty loop body */
+		    offset = here;
 		}
+		jlist = true_list;
+		true_list = (jmplist *) NULL;
+		cg_cond(m->l.left, TRUE);
+		jump_resolve(true_list, offset);
 		true_list = jlist;
-		cg_stmt(m->r.right);
-		jump_resolve(jump(I_JUMP, (jmplist *) NULL, 0), offset);
-		jump_resolve(false_list, here);
-		code_line();
-		false_list = j2list;
 		break;
 
 	    case N_FOREVER:
 		offset = here;
-		code_line();
 		cg_stmt(m->l.left);
 		jump_resolve(jump(I_JUMP, (jmplist *) NULL, m->line), offset);
 		break;
 
 	    case N_IF:
-		jlist = true_list;
-		j2list = false_list;
-		true_list = (jmplist *) NULL;
-		false_list = (jmplist *) NULL;
-		cg_cond(m->l.left, FALSE);
-		if (true_list != (jmplist *) NULL) {
-		    jump_resolve(true_list, here);
-		    code_line();
-		    true_list = (jmplist *) NULL;
-		}
-		cg_stmt(m->r.right->l.left);
-		if (m->r.right->r.right != (node *) NULL) {
-		    true_list = jump(I_JUMP, (jmplist *) NULL, 0);
-		    if (false_list != (jmplist *) NULL) {
-			jump_resolve(false_list, here);
-			code_line();
-			false_list = (jmplist *) NULL;
+		if (m->r.right->l.left->type == N_BREAK) {
+		    jlist = true_list;
+		    true_list = break_list;
+		    cg_cond(m->l.left, TRUE);
+		    break_list = true_list;
+		    true_list = jlist;
+		    if (m->r.right->r.right != (node *) NULL) {
+			/* else */
+			cg_stmt(m->r.right->r.right);
 		    }
-		    cg_stmt(m->r.right->r.right);
-		    if (true_list != (jmplist *) NULL) {
-			jump_resolve(true_list, here);
-			code_line();
-			true_list = (jmplist *) NULL;
+		} else if (m->r.right->l.left->type == N_CONTINUE) {
+		    jlist = true_list;
+		    true_list = continue_list;
+		    cg_cond(m->l.left, TRUE);
+		    continue_list = true_list;
+		    true_list = jlist;
+		    if (m->r.right->r.right != (node *) NULL) {
+			/* else */
+			cg_stmt(m->r.right->r.right);
 		    }
-		} else if (false_list != (jmplist *) NULL) {
-		    jump_resolve(false_list, here);
-		    code_line();
+		} else {
+		    jlist = false_list;
 		    false_list = (jmplist *) NULL;
+		    cg_cond(m->l.left, FALSE);
+		    cg_stmt(m->r.right->l.left);
+		    if (m->r.right->r.right != (node *) NULL) {
+			/* else */
+			j2list = jump(I_JUMP, (jmplist *) NULL, 0);
+			jump_resolve(false_list, here);
+			false_list = jlist;
+			cg_stmt(m->r.right->r.right);
+			jump_resolve(j2list, here);
+		    } else {
+			/* no else */
+			jump_resolve(false_list, here);
+			false_list = jlist;
+		    }
 		}
 		break;
 
@@ -1306,7 +1747,6 @@ register node *n;
 
 	    case N_RETURN:
 		cg_expr(m->l.left, FALSE);
-		code_noline();
 		code_instr(I_RETURN, m->line);
 		break;
 
@@ -1339,12 +1779,8 @@ unsigned short *size;
 
     nvars = nvar;
     cg_stmt(n);
-    code_noline();
-    code_instr(I_PUSH_ZERO, thisline);
-    code_instr(I_RETURN, thisline);
-    *size = here;
-    prog = code_make(nvar - npar);
-    jump_make(prog);
+    prog = code_make(nvar - npar, size);
+    jump_make(prog + 3);
 
     return prog;
 }

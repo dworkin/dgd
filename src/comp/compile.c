@@ -95,8 +95,8 @@ char *name;
 {
     register int i;
 
-    for (i = 0; i < nvars; i++) {
-	if (strcmp(variables[i].name, name) == 0) {
+    for (i = nvars; i > 0; ) {
+	if (strcmp(variables[--i].name, name) == 0) {
 	    return i;
 	}
     }
@@ -112,8 +112,9 @@ char *name;
 short type;
 {
     if (block_var(name) >= 0) {
-	yyerror("redeclaration of function parameter %s", name);
+	yyerror("redeclaration of parameter %s", name);
     } else {
+	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
 	variables[nparams++].type = type;
 	nvars++;
@@ -172,6 +173,7 @@ typedef struct _loop_ {
     short ncase;		/* number of case labels */
     node *case_list;		/* previous list of case nodes */
     struct _loop_ *prev;	/* previous loop or switch */
+    struct _loop_ *env;		/* enclosing loop */
 } loop;
 
 typedef struct _lchunk_ {
@@ -312,7 +314,7 @@ node *label;
     register object *o;
 
     if (strcmp(current->file, auto_object) == 0) {
-	yyerror("may not inherit from auto object");
+	yyerror("cannot inherit from auto object");
 	return TRUE;
     }
     file = path_inherit(current->file, file);
@@ -340,8 +342,6 @@ node *label;
     return TRUE;
 }
 
-static int recursion;		/* recursive compilation level */
-
 /*
  * NAME:	compile()
  * DESCRIPTION:	compile an LPC file
@@ -351,6 +351,12 @@ char *file;
 {
     context c;
     char file_c[STRINGSZ + 2];
+    static int recursion;
+
+    if (recursion > 0) {
+	recursion = 0;
+	error("Compilation within compilation");
+    }
 
     strncpy(c.file, file, STRINGSZ);
     c.file[STRINGSZ - 1] = '\0';
@@ -371,11 +377,11 @@ char *file;
 	    c_inherit(auto_object, (node *) NULL);
 	}
 	if (strchr(c.file, '#') != (char *) NULL || !pp_init(file_c, paths)) {
-	    error("Could not compile \"%s\"", file_c);
+	    error("Could not compile \"/%s\"", file_c);
 	}
 	if (!tk_include(include)) {
 	    pp_clear();
-	    error("Could not include \"%s\"", include);
+	    error("Could not include \"/%s\"", include);
 	}
 	c.inherit[0] = '\0';
 
@@ -384,16 +390,17 @@ char *file;
 	    pp_clear();
 	    ctrl_clear();
 	    c_clear();
+	    yyerror("error while compiling:");
 	    error((char *) NULL);
 	}
 	recursion++;
-	if (yyparse()) {
+	if (yyparse() != 0) {
 	    recursion = 0;
 	    ec_pop();
 	    pp_clear();
 	    ctrl_clear();
 	    c_clear();
-	    error("Failed to compile \"%s\"", file_c);
+	    error("Failed to compile \"/%s\"", file_c);
 	}
 	--recursion;
 	ec_pop();
@@ -404,7 +411,7 @@ char *file;
 
 	    if (!seen_decls) {
 		/*
-		 * object with inherit statements only
+		 * object with inherit statements only (or nothing at all)
 		 */
 		ctrl_create();
 	    }
@@ -429,9 +436,6 @@ char *file;
 {
     control *ctrl;
 
-    if (recursion > 0) {
-	error("Compilation within compilation");
-    }
     ctrl = compile(path_resolve(file));
     return ctrl->inherits[ctrl->nvirtuals - 1].obj;
 }
@@ -475,32 +479,41 @@ register short sep;
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(class, type, str, formals, function, typechecking)
+static void c_decl_func(class, type, str, formals, function)
 unsigned short class, type;
 string *str;
 register node *formals;
 bool function;
-bool typechecking;
 {
     char proto[3 + MAX_LOCALS];
+    bool typechecked;
     register char *args;
     register int nargs;
 
     /* check for some errors */
     if (strcmp(str->text, "catch") == 0 || strcmp(str->text, "lock") == 0) {
-	yyerror("cannot redefine %s()\n", str->text);
-    } else if (type == T_ERROR) {
-	if (typechecking) {
-	    yyerror("no type specified for function %s", str->text);
-	}
-	type = T_MIXED;
+	yyerror("cannot redeclare %s()\n", str->text);
+	return;
     }
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
-	yyerror("class private contradicts class nomask");
+	yyerror("private contradicts nomask");
+    }
+    if ((type & T_TYPE) == T_INVALID) {
+	typechecked = FALSE;
+	type = T_MIXED;
+	if (typechecking) {
+	    yyerror("missing type for function %s", str->text);
+	}
+    } else {
+	typechecked = TRUE;
+	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
+	    yyerror("invalid type for function %s (%s)", str->text,
+		    c_typename(type));
+	}
     }
 
     /* handle function class and return type */
-    if (typechecking) {
+    if (typechecked) {
 	class |= C_TYPECHECKED;
     }
     PROTO_CLASS(proto) = class;
@@ -524,11 +537,14 @@ bool typechecking;
 	    arg = formals;
 	    formals = (node *) NULL;
 	}
-	if (arg->mod == T_ERROR) {
-	    if (typechecking) {
-		yyerror("no type specified for parameter %s",
-			arg->l.string->text);
+	if (arg->mod == T_INVALID) {
+	    if (typechecked) {
+		yyerror("missing type for parameter %s", arg->l.string->text);
 	    }
+	    arg->mod = T_MIXED;
+	} else if ((arg->mod & T_TYPE) == T_VOID) {
+	    yyerror("invalid type for parameter %s (%s)", arg->l.string->text,
+		    c_typename(arg->mod));
 	    arg->mod = T_MIXED;
 	}
 	*args++ = arg->mod;
@@ -558,14 +574,19 @@ unsigned short class, type;
 string *str;
 bool global;
 {
+    if ((type & T_TYPE) == T_VOID) {
+	yyerror("invalid type for variable %s (%s)", str->text,
+		c_typename(type));
+	type = T_MIXED;
+    }
     if (global) {
 	if (class & C_NOMASK) {
-	    yyerror("invalid class nomask for variable %s", str->text);
+	    yyerror("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);
     } else {
 	if (class != 0) {
-	    yyerror("invalid class specifier for variable %s", str->text);
+	    yyerror("invalid class for variable %s", str->text);
 	}
 	block_vdef(str->text, type);
     }
@@ -575,10 +596,10 @@ bool global;
  * NAME:	compile->decl_list()
  * DESCRIPTION:	handle a list of declarations
  */
-static void c_decl_list(class, type, list, typechecking, global)
+static void c_decl_list(class, type, list, global)
 register unsigned short class, type;
 register node *list;
-bool typechecking, global;
+bool global;
 {
     register node *n;
 
@@ -592,10 +613,10 @@ bool typechecking, global;
 	    list = (node *) NULL;
 	}
 	if (n->type == N_FUNC) {
-	    c_decl_func(class, type | (n->mod & T_REF), n->l.left->l.string,
-			n->r.right, FALSE, typechecking);
+	    c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right,
+			FALSE);
 	} else {
-	    c_decl_var(class, type | (n->mod & T_REF), n->l.string, global);
+	    c_decl_var(class, type | n->mod, n->l.string, global);
 	}
     }
 }
@@ -604,33 +625,30 @@ bool typechecking, global;
  * NAME:	compile->global()
  * DESCRIPTION:	handle a global declaration
  */
-void c_global(class, type, n, typechecking)
+void c_global(class, type, n)
 unsigned short class, type;
 node *n;
-bool typechecking;
 {
     if (!seen_decls) {
 	ctrl_create();
 	seen_decls = TRUE;
     }
-    c_decl_list(class, type, n, typechecking, TRUE);
+    c_decl_list(class, type, n, TRUE);
 }
 
 /*
  * NAME:	compile->function()
  * DESCRIPTION:	create a function
  */
-void c_function(class, type, n, typechecking)
+void c_function(class, type, n)
 unsigned short class, type;
 register node *n;
-bool typechecking;
 {
     if (!seen_decls) {
 	ctrl_create();
 	seen_decls = TRUE;
     }
-    c_decl_func(class, type | (n->mod & T_REF), n->l.left->l.string, n->r.right,
-		TRUE, typechecking);
+    c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right, TRUE);
 }
 
 /*
@@ -643,7 +661,8 @@ node *n;
     char *prog;
     unsigned short size;
 
-    prog = cg_function(n, nvars, nparams, &size);
+    prog = cg_function(c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0))),
+		       nvars, nparams, &size);
     ctrl_dprogram(prog, size);
     node_free();
     nvars = 0;
@@ -651,56 +670,74 @@ node *n;
 }
 
 /*
- * NAME:	compile->typechecking()
- * DESCRIPTION:	return TRUE if strict typing is turned on
- */
-bool c_typechecking()
-{
-    return typechecking;
-}
-
-/*
  * NAME:	compile->local()
  * DESCRIPTION:	handle local declarations
  */
-void c_local(class, type, n, typechecking)
-short class, type;
+void c_local(class, type, n)
+unsigned short class, type;
 node *n;
-bool typechecking;
 {
-    c_decl_list(class, type, n, typechecking, FALSE);
+    c_decl_list(class, type, n, FALSE);
 }
 
+
+/*
+ * NAME:	compile->concat()
+ * DESCRIPTION:	concatenate two statements
+ */
+node *c_concat(n1, n2)
+register node *n1, *n2;
+{
+    if (n1 == (node *) NULL) {
+	return n2;
+    } else if (n2 == (node *) NULL ||
+	       (n2->type != N_CASE &&
+		(n1->type == N_BREAK ||
+		 n1->type == N_CONTINUE ||
+		 n1->type == N_RETURN ||
+		 (n1->type == N_PAIR &&
+		  (n1->r.right->type == N_BREAK ||
+		   n1->r.right->type == N_CONTINUE ||
+		   n1->r.right->type == N_RETURN))))) {
+	/*
+	 * doesn't handle { foo(); bar(); return; } gnu(); properly
+	 */
+	return n1;
+    }
+    return node_bin(N_PAIR, 0, n1, n2);
+}
 
 /*
  * NAME:	compile->list_exp()
  * DESCRIPTION:	purge a list of expressions
  */
-void c_list_exp(n)
-register node *n;
+node *c_list_exp(exp)
+node *exp;
 {
-    register node *m;
+    register node **n, *m;
 
-    if (n->type == N_COMMA) {
-	while ((m=n->l.left)->type == N_COMMA) {
+    n = &exp;
+    if ((*n)->type == N_COMMA) {
+	while ((m=(*n)->l.left)->type == N_COMMA) {
 	    if (m->r.right->type == N_INT || m->r.right->type == N_STR ||
 		m->r.right->type == N_LOCAL || m->r.right->type == N_GLOBAL) {
 		/*
 		 * ((a, b), c) -> (a, c)
 		 */
-		n->l.left = m->l.left;
+		(*n)->l.left = m->l.left;
 	    } else {
-		n = m;
+		n = &(*n)->l.left;
 	    }
 	}
-	if (n->l.left->type == N_INT || n->l.left->type == N_STR ||
-	    n->l.left->type == N_LOCAL || n->l.left->type == N_GLOBAL) {
+	if (m->type == N_INT || m->type == N_STR ||
+	    m->type == N_LOCAL || m->type == N_GLOBAL) {
 	    /*
 	     * (a, b) -> b
 	     */
-	    n = n->r.right;
+	    (*n) = (*n)->r.right;
 	}
     }
+    return exp;
 }
 
 /*
@@ -725,15 +762,8 @@ register node *n;
     case N_NOT:
 	return c_minimize_exp_stmt(n->l.left);
 
-    case N_LOR:
-    case N_LAND:
-	n->l.left = c_minimize_exp_stmt(n->l.left);
-	n->r.right = c_minimize_exp_stmt(n->r.right);
-	if (n->r.right == (node *) NULL) {
-	    return n->l.left;
-	}
-	break;
-
+    case N_EQ:
+    case N_NE:
     case N_COMMA:
 	n->l.left = c_minimize_exp_stmt(n->l.left);
 	n->r.right = c_minimize_exp_stmt(n->r.right);
@@ -751,75 +781,115 @@ register node *n;
 
 /*
  * NAME:	compile->exp_stmt()
- * DESCRIPTION:	reduce an expression as a statement
+ * DESCRIPTION:	reduce an expression to a statement
  */
 node *c_exp_stmt(n)
 node *n;
 {
     n = c_minimize_exp_stmt(n);
     if (n != (node *) NULL) {
-	n = node_mon(N_POP, 0, n);
+	if (n->type == N_QUEST) {
+	    /* special case for ? : */
+	    return c_if(n->l.left, c_exp_stmt(n->r.right->l.left),
+			c_exp_stmt(n->r.right->r.right));
+	} else {
+	    return node_mon(N_POP, 0, n);
+	}
     }
+    return n;
 }
+
+# define COND_QUEST	0
+# define COND_FIRST	1
+# define COND_LAST	2
 
 /*
  * NAME:	compile->cond()
- * DESCRIPTION:	handle a condition
+ * DESCRIPTION:	Handle a condition.  Return 0 if it is a normal condition;
+ *		return 1 or 2 if it is fixed on a certain alternative, and
+ *		condition and alternative have been combined.
  */
-static node *c_cond(n1, n2, n3, head)
+static int c_cond(n1, n2, n3, n4, op)
 register node *n1, *n2;
-node *n3;
-bool head;
+node *n3, **n4;
+int op;
 {
+    int alt;
+
     if (n1 == (node *) NULL) {
 	/* always */
-	return n2;
+	*n4 = n2;
+	return 1;	/* 1st alternative */
     }
 
     switch (n1->type) {
     case N_INT:
-	/* always/never */
-	return (n1->l.number != 0) ? n2 : n3;
+	if (n1->l.number != 0) {
+	    /* always */
+	    *n4 = n2;
+	    return 1;	/* 1st alternative */
+	} else {
+	    /* never */
+	    *n4 = n3;
+	    return 2;	/* 2nd alternative */
+	}
 
     case N_STR:
 	/* always */
-	return n2;
+	*n4 = n2;
+	return 1;	/* 1st alternative */
 
     case N_COMMA:
 	if (n1->r.right->type == N_STR) {
 	    /* always */
+	    alt = 1;
 	    break;
 	} else if (n1->r.right->type == N_INT) {
 	    /* always ... */
+	    alt = 1;
 	    if (n1->r.right->l.number == 0) {
 		/* ... no, never ... */
 		n2 = n3;
+		alt = 2;
 	    }
 	    /* ... with side effect */
 	    break;
 	}
     default:
-	return n1;
+	return 0;	/* normal case */
     }
 
     /*
-     * add "condition" as statement (preserving side effects)
+     * add "condition" as statement or expression (preserving side effects)
      */
-    n1 = c_exp_stmt(n1->l.left);
-    if (n1 == (node *) NULL) {
-	/* condition reduced to nothing */
-	return n2;
+    switch (op) {
+    case COND_QUEST:
+	*n4 = node_bin(N_COMMA, n2->mod, n1, n2);
+	break;
+
+    case COND_FIRST:
+	*n4 = c_concat(c_exp_stmt(n1->l.left), n2);
+	break;
+	
+    case COND_LAST:
+	*n4 = c_concat(n2, c_exp_stmt(n1->l.left));
+	break;
     }
-    if (n2 != (node *) NULL) {
-	if (head) {
-	    /* add before */
-	    n1 = node_bin(N_PAIR, 0, n1, n2);
-	} else {
-	    /* add after */
-	    n1 = node_bin(N_PAIR, 0, n2, n1);
-	}
+    return alt;
+}
+
+/*
+ * NAME:	compile->quest()
+ * DESCRIPTION:	handle ? :
+ */
+node *c_quest(n1, n2, n3)
+node *n1, *n2, *n3;
+{
+    if (c_cond(n1, n2, n3, &n1, COND_QUEST) != 0) {
+	/* fixed condition */
+	return n1;
     }
-    return n1;
+    return node_bin(N_QUEST, 0, n1, node_bin(N_PAIR, 0, n2, n3));
 }
 
 /*
@@ -827,20 +897,24 @@ bool head;
  * DESCRIPTION:	handle an if statement
  */
 node *c_if(n1, n2, n3)
-node *n1, *n2, *n3;
+register node *n1, *n2;
+node *n3;
 {
-    register node *n;
-
-    if (n2 == (node *) NULL && n3 == (node *) NULL) {
-	return c_exp_stmt(n1);
-    } else {
-	n = c_cond(n1, n2, n3, TRUE);
-	if (n != n1) {
-	    /* fixed condition */
-	    return n;
+    if (n2 == (node *) NULL) {
+	if (n3 == (node *) NULL) {
+	    /* no statements at all */
+	    return c_exp_stmt(n1);
 	}
-	return node_bin(N_IF, 0, n, node_bin(N_ELSE, 0, n2, n3));
+	/* reverse condition */
+	n1 = c_not(n1);
+	n2 = n3;
+	n3 = (node *) NULL;
     }
+    if (c_cond(n1, n2, n3, &n3, COND_FIRST) != 0) {
+	/* fixed condition */
+	return n3;
+    }
+    return node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
 }
 
 /*
@@ -854,7 +928,7 @@ void c_loop()
 
 /*
  * NAME:	compile->reloop()
- * DESCRIPTION:	reloop a loop
+ * DESCRIPTION:	loop back a loop
  */
 static node *c_reloop(n)
 register node *n;
@@ -886,27 +960,33 @@ register node *n;
 node *c_do(n1, n2)
 register node *n1, *n2;
 {
-    register node *n;
-    node dummy;
+    node *n;
 
     n2 = c_reloop(n2);
-    n = c_cond(n1, n2, &dummy, FALSE);
-    if (n == n1) {
+    switch (c_cond(n1, n2, n2, &n, COND_LAST)) {
+    case 0:
 	/* regular do loop */
-	n = node_bin(N_DO, 0, n, n2);
-    } else if (n != &dummy) {
+	n1 = node_bin(N_DO, 0, n1, n2);
+	break;
+
+    case 1:
 	/* always true */
-	n = node_mon(N_FOREVER, 0, n);
-    } else if (n2 != (node *) NULL && (thisloop->brk || thisloop->cont)) {
-	/* never true, but there is a break or continue statement */
-	n2 = node_bin(N_PAIR, 0, n2, node_mon(N_BREAK, 0, (node *) NULL));
-	thisloop->brk = TRUE;
-	n = node_mon(N_FOREVER, 0, n2);	/* but done at most once */
-    } else {
-	/* never true: just once */
-	n = n2;
+	n1 = node_mon(N_FOREVER, 0, n);
+	break;
+
+    case 2:
+	if (thisloop->brk || thisloop->cont) {
+	    /* never true, but there is a break or continue statement */
+	    n1 = node_mon(N_FOREVER, 0,
+			  c_concat(n, node_mon(N_BREAK, 0, (node *) NULL)));
+	    thisloop->brk = TRUE;
+	} else {
+	    /* never true: just once */
+	    n1 = n;
+	}
+	break;
     }
-    return c_endloop(n);
+    return c_endloop(n1);
 }
 
 /*
@@ -916,22 +996,26 @@ register node *n1, *n2;
 node *c_while(n1, n2)
 register node *n1, *n2;
 {
-    register node *n;
-    node dummy;
+    node *n;
 
     n2 = c_reloop(n2);
-    n = c_cond(n1, n2, &dummy, TRUE);
-    if (n == n1) {
+    switch (c_cond(n1, n2, (node *) NULL, &n, COND_FIRST)) {
+    case 0:
 	/* regular while loop */
-	n = node_bin(N_WHILE, 0, n, n2);
-    } else if (n != &dummy) {
+	n1 = node_bin(N_WHILE, 0, n1, n2);
+	break;
+
+    case 1:
 	/* always true */
-	n = node_mon(N_FOREVER, 0, n);
-    } else {
+	n1 = node_mon(N_FOREVER, 0, n);
+	break;
+
+    case 2:
 	/* never true */
-	n = (node *) NULL;
+	n1 = n;
+	break;
     }
-    return c_endloop(n);
+    return c_endloop(n1);
 }
 
 /*
@@ -941,67 +1025,56 @@ register node *n1, *n2;
 node *c_for(n1, n2, n3, n4)
 register node *n1, *n2, *n3, *n4;
 {
-    node dummy;
+    node *n;
 
-    if (n1 != (node *) NULL) {
-	c_list_exp(n1);
-    }
-    if (n2 != (node *) NULL) {
-	c_list_exp(n2);
-    }
     n4 = c_reloop(n4);
     if (n3 != (node *) NULL) {
-	c_list_exp(n3);
-	n3 = c_exp_stmt(n3);
-	if (n3 != (node *) NULL) {
-	    if (n4 == (node *) NULL) {
-		/* empty */
-		n4 = n3;
-	    } else {
-		/* append */
-		n4 = node_bin(N_PAIR, 0, n4, n3);
-	    }
-	}
+	n4 = c_concat(n4, c_exp_stmt(n3));
     }
 
-    n3 = c_cond(n2, n4, &dummy, TRUE);
-    if (n3 == n2) {
+    switch (c_cond(n2, n4, (node *) NULL, &n, COND_FIRST)) {
+    case 0:
 	/* regular for loop */
 	n3 = node_bin(N_FOR, 0, n2, n4);
-    } else if (n3 != &dummy) {
+	break;
+
+    case 1:
 	/* always true */
-	n3 = node_mon(N_FOREVER, 0, n3);
-    } else {
+	n3 = node_mon(N_FOREVER, 0, n);
+	break;
+
+    case 2:
 	/* never true */
-	n3 = (node *) NULL;
+	n3 = n;
+	break;
     }
 
-    n3 = c_endloop(n3);
-    if (n1 != (node *) NULL && (n1=c_exp_stmt(n1)) != (node *) NULL) {
-	/* prefix */
-	n3 = node_bin(N_PAIR, 0, n1, n3);
-    }
-    return n3;
+    return c_concat(c_exp_stmt(n1), c_endloop(n3));
 }
 
 /*
  * NAME:	compile->startswitch()
  * DESCRIPTION:	start a switch statement
  */
-void c_startswitch(n)
+void c_startswitch(n, typechecking)
 register node *n;
+bool typechecking;
 {
+    switch_list = loop_new(switch_list);
+    switch_list->type = T_MIXED;
     if (n->type == N_INT || n->type == N_STR) {
 	yyerror("switch expression is constant");
-    } else if (n->mod != T_NUMBER && n->mod != T_STRING && n->mod != T_MIXED) {
+	switch_list->type = T_INVALID;
+    } else if (typechecking && n->mod != T_NUMBER && n->mod != T_STRING &&
+	       n->mod != T_MIXED) {
 	yyerror("bad switch expression type (%s)", c_typename(n->mod));
+	switch_list->type = T_INVALID;
     }
-    switch_list = loop_new(switch_list);
-    switch_list->type = (typechecking) ? n->mod : T_MIXED;
     switch_list->dflt = FALSE;
     switch_list->ncase = 0;
     switch_list->case_list = case_list;
     case_list = (node *) NULL;
+    switch_list->env = thisloop;
 }
 
 /*
@@ -1034,10 +1107,11 @@ node *expr, *stmt;
 {
     register node **v, **w, *n;
     register short i, size;
-    short type;
+    register long l, cnt;
+    short type, sz;
 
     n = (node *) NULL;
-    if (switch_list->type != (char) T_ERROR) {
+    if (switch_list->type != T_INVALID) {
 	if (stmt == (node *) NULL) {
 	    yyerror("no statements in switch");
 	} else if (stmt->type != N_CASE &&
@@ -1045,11 +1119,14 @@ node *expr, *stmt;
 	    yyerror("unlabeled statements in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
 	    yyerror("only default label in switch");
+	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
+		   switch_list->type != T_MIXED) {
+	    yyerror("wrong switch expression type (%s)", c_typename(expr->mod));
 	} else {
 	    /*
 	     * get the labels in an array, and sort them
 	     */
-	    v = ALLOC(node*, size);
+	    v = ALLOCA(node*, size);
 	    for (i = size, n = case_list; i > 0; n = n->l.left) {
 		if (n->r.right->l.left != (node *) NULL) {
 		    *v++ = n->r.right;
@@ -1075,24 +1152,17 @@ node *expr, *stmt;
 			}
 		    }
 		}
+		sz = 0;
 	    } else {
-		register long l, h;
-
 		type = N_SWITCH_INT;
 		/*
 		 * check for duplicate cases
 		 */
 		i = size;
-		l = LONG_MAX;
-		h = LONG_MIN;
+		cnt = 0;
 		w = v;
 		for (;;) {
-		    if (l > w[0]->l.left->l.number) {
-			l = w[0]->l.left->l.number;
-		    }
-		    if (h < w[0]->l.left->r.number) {
-			h = w[0]->l.left->r.number;
-		    }
+		    cnt += w[0]->l.left->r.number - w[0]->l.left->l.number + 1;
 		    if (--i == 0) {
 			break;
 		    }
@@ -1107,11 +1177,28 @@ node *expr, *stmt;
 		    w++;
 		}
 
-		h -= l - 1;
-		if (i == 0 && h > size) {
-		    if (3L * h > 5L * size) {
+		/* determine the number of bytes per case */
+		l = v[0]->l.left->l.number;
+		if (l < 0) {
+		    l = 1 - l;
+		}
+		if (l < w[0]->l.left->r.number) {
+		    l = w[0]->l.left->r.number;
+		}
+		if (l <= 127) {
+		    sz = 1;
+		} else if (l <= 32767) {
+		    sz = 2;
+		} else if (l <= 8388607L) {
+		    sz = 3;
+		} else {
+		    sz = 4;
+		}
+
+		if (i == 0 && cnt > size) {
+		    if ((sz + 2L) * cnt > (2 * sz + 2L) * size) {
 			/*
-			 * range
+			 * no point in changing the type of switch
 			 */
 			type = N_SWITCH_RANGE;
 		    } else {
@@ -1119,20 +1206,21 @@ node *expr, *stmt;
 			 * convert range label switch to int label switch
 			 * by adding new labels
 			 */
-			w = ALLOC(node*, h);
+			w = ALLOCA(node*, cnt);
 			for (i = size; i > 0; --i) {
 			    *w++ = *v;
 			    for (l = v[0]->l.left->l.number;
-				 l < v[0]->l.left->r.number; l++) {
+				 l < v[0]->l.left->r.number; ) {
 				/* insert N_CASE in statement */
 				n = node_mon(N_CASE, 0, v[0]->r.right->l.left);
 				v[0]->r.right->l.left = n;
+				l++;
 				*w++ = node_bin(N_PAIR, 0, node_int((Int)l), n);
 			    }
-			    (*v++)->l.left->l.number = l;
+			    v++;
 			}
-			FREE(v - size);
-			size = h;
+			AFREE(v - size);
+			size = cnt;
 			v = w - size;
 		    }
 		}
@@ -1148,7 +1236,7 @@ node *expr, *stmt;
 		(*--v)->r.right->mod = i;
 		n = node_bin(N_PAIR, 0, v[0]->l.left, n);
 	    } while (--i > 0);
-	    FREE(v);
+	    AFREE(v);
 	    if (switch_list->dflt) {
 		/* add default case */
 		n = node_bin(N_PAIR, 0, (node *) NULL, n);
@@ -1158,7 +1246,7 @@ node *expr, *stmt;
 	    if (switch_list->brk) {
 		stmt = node_mon(N_BLOCK, N_BREAK, stmt);
 	    }
-	    n = node_bin(type, size, n, node_bin(N_PAIR, 0, expr, stmt));
+	    n = node_bin(type, size, n, node_bin(N_PAIR, sz, expr, stmt));
 	}
     }
 
@@ -1179,26 +1267,29 @@ register node *n1, *n2;
 	yyerror("case label not inside switch");
 	return (node *) NULL;
     }
-    if (switch_list->type == (char) T_ERROR) {
+    if (switch_list->type == T_INVALID) {
 	return (node *) NULL;
     }
 
     if (n1->type == N_INT) {
 	/* int */
-	if (n2 != (node *) NULL) {
+	if (n2 == (node *) NULL) {
+	    n1->r.number = n1->l.number;
+	} else {
 	    /* range */
 	    if (n2->type != N_INT) {
-		yyerror("non-integer constant case range in switch");
-		switch_list->type = T_ERROR;
+		yyerror("bad case range in switch");
+		switch_list->type = T_INVALID;
 		return (node *) NULL;
 	    }
 	    if (n2->l.number < n1->l.number) {
-		yyerror("inverted case range in switch");
-		switch_list->type = T_ERROR;
-		return (node *) NULL;
-	    } else if (n2->l.number != n1->l.number) {
+		/* inverted range */
+		n1->r.number = n1->l.number;
+		n1->l.number = n2->l.number;
 		n1->type = N_RANGE;
+	    } else if (n2->l.number != n1->l.number) {
 		n1->r.number = n2->l.number;
+		n1->type = N_RANGE;
 	    }
 	}
 	/* compare type with other cases */
@@ -1207,20 +1298,20 @@ register node *n1, *n2;
 		switch_list->type = T_NUMBER;
 	    } else if (switch_list->type != T_NUMBER) {
 		yyerror("multiple case types in switch");
-		switch_list->type = T_ERROR;
+		switch_list->type = T_INVALID;
 		return (node *) NULL;
 	    }
 	}
     } else {
 	/* string */
 	if (n2 != (node *) NULL) {
-	    yyerror("non-integer constant case in switch");
-	    switch_list->type = T_ERROR;
+	    yyerror("bad case range in switch");
+	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
 	if (n1->type != N_STR) {
 	    yyerror("non-constant case in switch");
-	    switch_list->type = T_ERROR;
+	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
 	/* compare type with other cases */
@@ -1228,7 +1319,7 @@ register node *n1, *n2;
 	    switch_list->type = T_STRING;
 	} else if (switch_list->type != T_STRING) {
 	    yyerror("multiple case types in switch");
-	    switch_list->type = T_ERROR;
+	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
     }
@@ -1250,10 +1341,9 @@ node *c_default()
     n = (node *) NULL;
     if (switch_list == (loop *) NULL) {
 	yyerror("default label not inside switch");
-	switch_list->type = T_ERROR;
     } else if (switch_list->dflt) {
 	yyerror("duplicate default label in switch");
-	switch_list->type = T_ERROR;
+	switch_list->type = T_INVALID;
     } else {
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
@@ -1272,9 +1362,10 @@ node *c_break()
 {
     register loop *l;
 
-    l = thisloop;
-    if (l == (loop *) NULL) {
-	l = switch_list;
+    l = switch_list;
+    if (l == (loop *) NULL || switch_list->env != thisloop) {
+	/* no switch, or loop inside switch */
+	l = thisloop;
     }
     if (l == (loop *) NULL) {
 	yyerror("break statement not inside loop or switch");
@@ -1336,10 +1427,10 @@ register node *n;
 bool typechecking;
 {
     if (strcmp(n->l.string->text, "catch") == 0) {
-	return node_mon(N_CATCH, 0, n);
+	return node_mon(N_CATCH, T_STRING, n);
     } else if (strcmp(n->l.string->text, "lock") == 0) {
 	if (strcmp(current->file, auto_object) != 0) {
-	    yyerror("lock() can only be used in auto object");
+	    yyerror("only auto object can use lock()");
 	}
 	return node_mon(N_LOCK, 0, n);
     } else {
@@ -1348,7 +1439,7 @@ bool typechecking;
 
 	proto = ctrl_fcall(n->l.string, &call, typechecking);
 	n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		      node_fcall(PROTO_FTYPE(proto), proto, call);
+		      node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
 	return n;
     }
 }
@@ -1367,7 +1458,7 @@ node *n, *label;
 	    ctrl_lfcall(n->l.string, label->l.string->text, &call) :
 	    ctrl_ifcall(n->l.string, &call);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		  node_fcall(PROTO_FTYPE(proto), proto, call);
+		  node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
     return n;
 }
 
@@ -1398,14 +1489,45 @@ register node *n;
 }
 
 /*
+ * NAME:	lvalue()
+ * DESCRIPTION:	Convert a value into an lvalue.  Return the converted argument
+ *		or NULL.
+ */
+static node *lvalue(n)
+register node *n;
+{
+    switch (n->type) {
+    case N_LOCAL:
+    case N_GLOBAL:
+    case N_INDEX:
+    case N_FAKE:
+	break;
+
+    case N_CAST:
+	switch (n->l.left->type) {
+	case N_LOCAL:
+	case N_GLOBAL:
+	case N_INDEX:
+	case N_FAKE:
+	    return node_mon(N_LVALUE, T_NUMBER, n);
+	}
+    default:
+	return (node *) NULL;
+    }
+
+    return node_mon(N_LVALUE, n->mod, n);
+}
+
+/*
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
 static node *funcall(func, args)
-register node *func, *args;
+register node *func;
+node *args;
 {
     register int n, nargs, typechecked;
-    register node *arg;
+    register node **argv, **arg;
     char *argp, *proto, *fname;
 
     /* get info, prepare return value */
@@ -1418,6 +1540,7 @@ register node *func, *args;
     proto = func->l.ptr;
     func->mod = PROTO_FTYPE(proto);
     func->l.left = args;
+    argv = &func->l.left;
 
     /*
      * check function arguments
@@ -1426,58 +1549,32 @@ register node *func, *args;
     typechecked = PROTO_CLASS(proto) & C_TYPECHECKED;
     for (n = 1, argp = PROTO_ARGS(proto); n <= nargs; n++, argp++) {
 	if (args == (node *) NULL) {
-	    if (typechecked && !(PROTO_CLASS(proto) & C_VARARGS)) {
+	    if (!(PROTO_CLASS(proto) & C_VARARGS)) {
 		yyerror("too few arguments for function %s", fname);
 	    }
 	    return func;
 	}
-	if (args->type == N_COMMA) {
-	    arg = args->l.left;
-	    args = args->r.right;
+	if ((*argv)->type == N_COMMA) {
+	    arg = &(*argv)->l.left;
+	    argv = &(*argv)->r.right;
 	} else {
-	    arg = args;
+	    arg = argv;
 	    args = (node *) NULL;
 	}
 	if (UCHAR(*argp) == T_LVALUE) {
-	    switch (arg->type) {
-	    case N_GLOBAL:
-		arg->type = N_GLOBAL_LVALUE;
-		break;
-
-	    case N_LOCAL:
-		arg->type = N_LOCAL_LVALUE;
-		break;
-
-	    case N_INDEX:
-		switch (arg->l.left->type) {
-		case N_LOCAL:
-		    arg->l.left->type = N_LOCAL_LVALUE;
-		    break;
-
-		case N_GLOBAL:
-		    arg->l.left->type = N_GLOBAL_LVALUE;
-		    break;
-
-		case N_INDEX:
-		    arg->l.left->type = N_INDEX_LVALUE;
-		    break;
-		}
-		arg->type = N_INDEX_LVALUE;
-		break;
-
-	    default:
+	    *arg = lvalue(*arg);
+	    if (*arg == (node *) NULL) {
 		yyerror("bad argument %d for function %s (needs lvalue)",
 			n, fname);
-		break;
 	    }
-	} else if (typechecked && c_tmatch(arg->mod, UCHAR(*argp)) == T_ERROR &&
-		   (arg->type != N_INT || arg->l.number != 0)) {
+	} else if ((typechecked || (*arg)->mod == T_VOID) &&
+		   ((*arg)->type != N_INT || (*arg)->l.number != 0) &&
+		   c_tmatch((*arg)->mod, UCHAR(*argp)) == T_INVALID) {
 	    yyerror("bad argument %d for function %s (needs %s)", n, fname,
 		    c_typename(UCHAR(*argp)));
 	}
     }
-    if (typechecked && args != (node *) NULL &&
-	!(PROTO_CLASS(proto) & C_VARARGS)) {
+    if (args != (node *) NULL && !(PROTO_CLASS(proto) & C_VARARGS)) {
 	yyerror("too many arguments for function %s", fname);
     }
 
@@ -1500,8 +1597,15 @@ register node *func, *args;
 		    func->l.left->l.string->text);
 	    func->mod = T_MIXED;
 	} else {
-	    func->mod = args->mod;
-	    c_list_exp(args);
+	    if (func->type == N_LOCK) {
+		func->mod = args->mod;
+		args = c_list_exp(args);
+	    } else {
+		args = c_exp_stmt(args);
+		if (args != (node *) NULL) {
+		    args = args->l.left;
+		}
+	    }
 	    func->l.left = args;
 	}
 	return func;
@@ -1517,10 +1621,13 @@ register node *func, *args;
 node *c_arrow(other, func, args)
 node *other, *func, *args;
 {
-    return funcall(c_flookup(node_str(str_new("call_other", 10L))),
-		   node_bin(N_COMMA, 0, other,
-			    node_bin(N_COMMA, 0, func,
-				     revert_list(args, N_COMMA))));
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_COMMA, 0, func, revert_list(args, N_COMMA));
+    }
+    return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
+		   node_bin(N_COMMA, 0, other, args));
 }
 
 /*
@@ -1542,18 +1649,23 @@ register node *n;
     case N_NOT:
     case N_LAND:
     case N_EQ:
+    case N_EQ_INT:
     case N_NE:
+    case N_NE_INT:
     case N_GT:
+    case N_GT_INT:
     case N_GE:
+    case N_GE_INT:
     case N_LT:
+    case N_LT_INT:
     case N_LE:
+    case N_LE_INT:
 	return n;
 
-    case N_UMIN:
-	if (n->l.left->mod == T_NUMBER) {
-	    n = n->l.left;
-	}
-	break;
+    case N_COMMA:
+	n->type = T_NUMBER;
+	n->r.right = c_tst(n->r.right);
+	return n;
     }
 
     return node_mon(N_TST, T_NUMBER, n);
@@ -1574,6 +1686,18 @@ register node *n;
     case N_STR:
 	return node_int((Int) FALSE);
 
+    case N_LAND:
+	n->type = N_LOR;
+	n->l.left = c_not(n->l.left);
+	n->r.right = c_not(n->r.right);
+	return n;
+
+    case N_LOR:
+	n->type = N_LAND;
+	n->l.left = c_not(n->l.left);
+	n->r.right = c_not(n->r.right);
+	return n;
+
     case N_TST:
 	n->type = N_NOT;
 	return n;
@@ -1586,31 +1710,54 @@ register node *n;
 	n->type = N_NE;
 	return n;
 
+    case N_EQ_INT:
+	n->type = N_NE_INT;
+	return n;
+
     case N_NE:
 	n->type = N_EQ;
+	return n;
+
+    case N_NE_INT:
+	n->type = N_EQ_INT;
 	return n;
 
     case N_GT:
 	n->type = N_LE;
 	return n;
 
+    case N_GT_INT:
+	n->type = N_LE_INT;
+	return n;
+
     case N_GE:
 	n->type = N_LT;
+	return n;
+
+    case N_GE_INT:
+	n->type = N_LT_INT;
 	return n;
 
     case N_LT:
 	n->type = N_GE;
 	return n;
 
+    case N_LT_INT:
+	n->type = N_GE_INT;
+	return n;
+
     case N_LE:
 	n->type = N_GT;
 	return n;
 
-    case N_UMIN:
-	if (n->l.left->mod == T_NUMBER) {
-	    n = n->l.left;
-	}
-	break;
+    case N_LE_INT:
+	n->type = N_GT_INT;
+	return n;
+
+    case N_COMMA:
+	n->type = T_NUMBER;
+	n->r.right = c_not(n->r.right);
+	return n;
     }
 
     return node_mon(N_NOT, T_NUMBER, n);
@@ -1621,80 +1768,15 @@ register node *n;
  * DESCRIPTION:	handle an lvalue
  */
 node *c_lvalue(n, oper)
-register node *n;
+node *n;
 char *oper;
 {
-    switch (n->type) {
-    case N_GLOBAL:
-	n->type = N_GLOBAL_LVALUE;
-	break;
-
-    case N_LOCAL:
-	n->type = N_LOCAL_LVALUE;
-	break;
-
-    case N_INDEX:
-	switch (n->l.left->type) {
-	case N_LOCAL:
-	    n->l.left->type = N_LOCAL_LVALUE;
-	    break;
-
-	case N_GLOBAL:
-	    n->l.left->type = N_GLOBAL_LVALUE;
-	    break;
-
-	case N_INDEX:
-	    n->l.left->type = N_INDEX_LVALUE;
-	    break;
-	}
-	n->type = N_INDEX_LVALUE;
-	break;
-
-    case N_FAKE:
-	break;
-
-    default:
+    n = lvalue(n);
+    if (n == (node *) NULL) {
 	yyerror("bad lvalue for %s", oper);
-	break;
+	return node_mon(N_FAKE, T_MIXED, (node *) NULL);
     }
     return n;
-}
-
-/*
- * NAME:	compile->match()
- * DESCRIPTION:	See if the two supplied types are compatible. If so, return the
- *		combined type. If not, return T_ERROR.
- */
-short c_tmatch(type1, type2)
-register unsigned short type1, type2;
-{
-    if (type1 == type2) {
-	/* identical types */
-	return type1;
-    }
-    if ((type1 & T_TYPE) == T_MIXED && (type1 & T_REF) <= (type2 & T_REF)) {
-	/* mixed <-> int,  mixed * <-> int *,  mixed * <-> int ** */
-	if (type1 == T_MIXED) {
-	    if (type2 & T_REF) {
-		return T_MIXED | (1 << REFSHIFT);	/* mixed <-> int * */
-	    } else {
-		return type2;		/* mixed <-> int */
-	    }
-	}
-	return type1;
-    }
-    if ((type2 & T_TYPE) == T_MIXED && (type1 & T_REF) >= (type2 & T_REF)) {
-	/* int <-> midex,  int * <-> mixed *,  int ** <-> mixed * */
-	if (type2 == T_MIXED && (type1 & T_REF)) {
-	    if (type1 & T_REF) {
-		return T_MIXED | (1 << REFSHIFT);	/* int * <-> mixed */
-	    } else {
-		return type1;		/* int <-> mixed */
-	    }
-	}
-	return type2;
-    }
-    return T_ERROR;
 }
 
 /*
@@ -1729,4 +1811,37 @@ register unsigned short type;
 	*p = '\0';
     }
     return buf;
+}
+
+/*
+ * NAME:	compile->tmatch()
+ * DESCRIPTION:	See if the two supplied types are compatible. If so, return the
+ *		combined type. If not, return T_INVALID.
+ */
+unsigned short c_tmatch(type1, type2)
+register unsigned short type1, type2;
+{
+    if (type1 == type2) {
+	/* identical types */
+	return type1;
+    }
+    if (type1 == T_VOID || type2 == T_VOID) {
+	/* void doesn't match with anything else, not even with mixed */
+	return T_INVALID;
+    }
+    if ((type1 & T_TYPE) == T_MIXED && (type1 & T_REF) <= (type2 & T_REF)) {
+	/* mixed <-> int,  mixed * <-> int *,  mixed * <-> int ** */
+	if (type1 == T_MIXED && (type2 & T_REF)) {
+	    type1 |= 1 << REFSHIFT;	/* mixed <-> int * */
+	}
+	return type1;
+    }
+    if ((type2 & T_TYPE) == T_MIXED && (type2 & T_REF) <= (type1 & T_REF)) {
+	/* int <-> mixed,  int * <-> mixed *,  int ** <-> mixed * */
+	if (type2 == T_MIXED && (type1 & T_REF)) {
+	    type2 |= 1 << REFSHIFT;	/* int * <-> mixed */
+	}
+	return type2;
+    }
+    return T_INVALID;
 }
