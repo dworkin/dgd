@@ -1622,3 +1622,5 @@ DGD 1.3
  - Get the precompiler to work again.
  - Fixed a prototype conversion bug in the extension interface.
  - Fixed a bug in comparing function prototypes that include object types.
+ - Forbid having undefined private functions.
+ - Add a list of undefined functions to status(obj).

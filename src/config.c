@@ -17,6 +17,7 @@
 # include "node.h"
 # include "parser.h"
 # include "compile.h"
+# include "control.h"
 # include "csupport.h"
 # include "table.h"
 
@@ -1017,6 +1018,7 @@ static bool conf_includes()
     cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
     cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
+    cputs("# define O_UNDEFINED\t6\t/* undefined functions */\012");
 
     cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -1537,10 +1539,17 @@ register frame *f;
     register Int i;
     array *a;
 
-    a = arr_new(f->data, 27L);
+    if (ec_push((ec_ftn) NULL)) {
+	arr_ref(a);
+	arr_del(a);
+	error((char *) NULL);
+    }
+    a = arr_ext_new(f->data, 27L);
     for (i = 0, v = a->elts; i < 27; i++, v++) {
 	conf_statusi(f, i, v);
     }
+    ec_pop();
+
     return a;
 }
 
@@ -1599,6 +1608,13 @@ register value *v;
 		       (Uint) obj->index : obj->u_master);
 	break;
 
+    case 6:	/* O_UNDEFINED */
+	if (ctrl->flags & CTRL_UNDEFINED) {
+	    PUT_MAPVAL(v, ctrl_undefined(data, ctrl));
+	} else {
+	    *v = nil_value;
+	}
+	break;
 
     default:
 	return FALSE;
@@ -1616,19 +1632,19 @@ register dataspace *data;
 register object *obj;
 {
     register value *v;
+    register Int i;
     array *a;
-    value val;
 
-    conf_objecti(data, obj, 4, &val);
-
-    a = arr_new(data, 6L);
-    v = a->elts;
-    conf_objecti(data, obj, 0, v++);
-    conf_objecti(data, obj, 1, v++);
-    conf_objecti(data, obj, 2, v++);
-    conf_objecti(data, obj, 3, v++);
-    *v++ = val;
-    conf_objecti(data, obj, 5, v);
+    a = arr_ext_new(data, 7L);
+    if (ec_push((ec_ftn) NULL)) {
+	arr_ref(a);
+	arr_del(a);
+	error((char *) NULL);
+    }
+    for (i = 0, v = a->elts; i < 7; i++, v++) {
+	conf_objecti(data, obj, i, v);
+    }
+    ec_pop();
 
     return a;
 }

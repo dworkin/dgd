@@ -84,7 +84,7 @@ clean:
 path.o config.o dgd.o: comp/node.h comp/compile.h
 config.o data.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
-sdata.o interpret.o: comp/control.h
+config.o sdata.o interpret.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 

@@ -274,8 +274,9 @@ extern void		d_del_dataspace	P((dataspace*));
 /* bit values for ctrl->flags */
 # define CTRL_PROGCMP		0x03	/* program compressed */
 # define CTRL_STRCMP		0x0c	/* strings compressed */
-# define CTRL_COMPILED		0x10	/* precompiled control block */
-# define CTRL_VARMAP		0x20	/* varmap updated */
+# define CTRL_UNDEFINED		0x10	/* has undefined functions */
+# define CTRL_COMPILED		0x20	/* precompiled control block */
+# define CTRL_VARMAP		0x40	/* varmap updated */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */

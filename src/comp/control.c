@@ -869,6 +869,7 @@ static fcchunk *fclist;			/* list of fcall chunks */
 static int fcchunksz = FCALL_CHUNK;	/* size of current fcall chunk */
 static cfunc *functions;		/* defined functions table */
 static int nfdefs, fdef;		/* # defined functions, current func */
+static int nundefs;			/* # private undefined prototypes */
 static Uint progsize;			/* size of all programs and protos */
 static dvardef *variables;		/* defined variables */
 static string **cvstrings;		/* variable class strings */
@@ -980,6 +981,7 @@ void ctrl_create()
     progsize = 0;
     nstrs = 0;
     nfdefs = 0;
+    nundefs = 0;
     nvars = 0;
     nclassvars = 0;
     nfcalls = 0;
@@ -1075,6 +1077,12 @@ string *class;
 		    /* private function replaces implicit prototype */
 		    --nsymbs;
 		}
+		if ((PROTO_CLASS(proto2) & C_PRIVATE) &&
+		    !(PROTO_CLASS(proto) & C_UNDEFINED)) {
+		    /* replace private undefined prototype by declaration */
+		    --nundefs;
+		}
+
 		i = PROTO_SIZE(proto);
 		progsize += i - PROTO_SIZE(proto2);
 		functions[fdef = (*h)->index].proto =
@@ -1147,6 +1155,8 @@ string *class;
 		nsymbs++;	/* mask static function in auto object */
 	    }
 	}
+    } else if (PROTO_CLASS(proto) & C_UNDEFINED) {
+	nundefs++;		/* private undefined prototype */
     }
 
     if (nfdefs == 255) {
@@ -1515,10 +1525,28 @@ long *ref;
 
 /*
  * NAME:	control->chkfuncs()
- * DESCRIPTION:	check for multiple function definitions
+ * DESCRIPTION:	check function definitions
  */
 bool ctrl_chkfuncs()
 {
+    if (nundefs != 0) {
+	register cfunc *f;
+	register unsigned short i;
+
+	/*
+	 * private undefined prototypes
+	 */
+	c_error("undefined private functions:");
+	for (f = functions, i = nundefs; i != 0; f++) {
+	    if ((f->func.class & (C_PRIVATE | C_UNDEFINED)) ==
+						    (C_PRIVATE | C_UNDEFINED)) {
+		c_error("  %s", f->name);
+		--i;
+	    }
+	}
+	return FALSE;
+    }
+
     if (nfclash != 0 || privinherit) {
 	register hte **t;
 	register unsigned short sz;
@@ -1855,6 +1883,9 @@ static void ctrl_mksymbs()
 		    coll[ncoll].index = n;
 		    coll[ncoll++].next = x;
 		}
+		if (f->class & C_UNDEFINED) {
+		    newctrl->flags |= CTRL_UNDEFINED;
+		}
 	    }
 	}
     }
@@ -2145,4 +2176,83 @@ register control *old, *new;
     /* no variable remapping needed */
     FREE(vmap);
     return (unsigned short *) NULL;
+}
+
+/*
+ * NAME:	control->undefined()
+ * DESCRIPTION:	list the undefined functions in a program
+ */
+array *ctrl_undefined(data, ctrl)
+register dataspace *data;
+register control *ctrl;
+{
+    typedef struct {
+	short count;		/* number of undefined functions */
+	short index;		/* index in inherits list */
+    } ulist;
+    register ulist *u, *list;
+    register short i;
+    register dsymbol *symb;
+    register dfuncdef *f;
+    register value *v;
+    register object *obj;
+    dinherit *inherits;
+    dsymbol *symtab;
+    unsigned short nsymbols;
+    long size;
+    array *m;
+
+    list = ALLOCA(ulist, ctrl->ninherits);
+    memset(list, '\0', ctrl->ninherits * sizeof(ulist));
+    inherits = ctrl->inherits;
+    symtab = d_get_symbols(ctrl);
+    nsymbols = ctrl->nsymbols;
+    size = 0;
+
+    /*
+     * count the number of undefined functions per program
+     */
+    for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
+	ctrl = o_control(OBJR(inherits[symb->inherit].oindex));
+	if ((d_get_funcdefs(ctrl)[symb->index].class & C_UNDEFINED) &&
+	    list[symb->inherit].count++ == 0) {
+	    list[symb->inherit].index = size;
+	    size += 2;
+	}
+    }
+
+    m = (array *) NULL;
+    if (ec_push((ec_ftn) NULL)) {
+	if (m != (array *) NULL) {
+	    /* discard mapping */
+	    arr_ref(m);
+	    arr_del(m);
+	}
+	AFREE(list);
+	error((char *) NULL);	/* pass on error */
+    }
+    m = map_new(data, size);
+    memset(m->elts, '\0', size * sizeof(value));
+    for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
+	obj = OBJR(inherits[symb->inherit].oindex);
+	ctrl = o_control(obj);
+	f = d_get_funcdefs(ctrl) + symb->index;
+	if (f->class & C_UNDEFINED) {
+	    u = &list[symb->inherit];
+	    v = &m->elts[u->index];
+	    if (v->u.string == (string *) NULL) {
+		PUT_STRVAL(v, str_new(obj->chain.name,
+				      strlen(obj->chain.name)));
+		PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
+		u->count = 0;
+	    }
+	    v = &v[1].u.array->elts[u->count++];
+	    PUT_STRVAL(v, d_get_strconst(ctrl, f->inherit, f->index));
+	}
+    }
+    ec_pop();
+    AFREE(list);
+
+    map_sort(m);
+    return m;
 }

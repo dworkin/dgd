@@ -17,6 +17,7 @@ extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));
 extern unsigned short	*ctrl_varmap	P((control*, control*));
+extern array		*ctrl_undefined	P((dataspace*, control*));
 
 # define PROTO_CLASS(prot)	((prot)[0])
 # define PROTO_NARGS(prot)	((prot)[1])

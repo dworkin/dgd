@@ -1236,7 +1236,7 @@ register control *ctrl;
      */
 
     /* create header */
-    header.flags = 0;
+    header.flags = ctrl->flags & CTRL_UNDEFINED;
     header.ninherits = ctrl->ninherits;
     header.compiled = ctrl->compiled;
     header.progsize = ctrl->progsize;
