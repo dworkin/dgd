@@ -61,7 +61,7 @@ static void block_new()
 	}
 	b = &blist->b[bchunksz++];
     }
-    b->vindex = nvars;
+    b->vindex = (thisblock == (block *) NULL) ? 0 : nvars;
     b->prev = thisblock;
     thisblock = b;
 }
@@ -321,7 +321,7 @@ node *label;
     }
     if (file != auto_object) {
 	file = path_inherit(current->file, file);
-	if (file == (char *) NULL) {
+	if (file == (char *) NULL || file[0] == '\0') {
 	    yyerror("illegal inherit path");
 	    return TRUE;
 	}
@@ -339,15 +339,15 @@ node *label;
     }
 
     o = o_find(file);
-    if (o == (object *) NULL || !(o->flags & O_MASTER)) {
+    if (o == (object *) NULL || !(o->flags & O_MASTER) ||
+	!ctrl_inherit(o, (label == (node *) NULL) ?
+			  (string *) NULL : label->l.string)) {
 	/* object is unloaded */
 	strncpy(current->inherit, file, STRINGSZ);
 	current->inherit[STRINGSZ - 1] = '\0';
 	return FALSE;
     }
 
-    ctrl_inherit(o, (label == (node *) NULL) ?
-		     (string *) NULL : label->l.string);
     return TRUE;
 }
 
@@ -411,16 +411,16 @@ register char *file;
 		strcpy(sp->u.string->text + 1, c.file);
 		call_driver_object("compile_object", 1);
 		if (sp->type == T_OBJECT) {
-		    object *o;
-		    char *name;
+		    register object *o;
 
 		    o = o_object(sp->oindex, sp->u.objcnt);
 		    sp++;
-		    name = o_name(o);
-		    if (strcmp(name, auto_object) == 0) {
+		    if ((o->flags & O_AUTO) || strcmp(c.file, auto_object) == 0)
+		    {
 			error("Illegal rename of auto object");
 		    }
-		    if (strcmp(name, driver_object) == 0) {
+		    if ((o->flags & O_DRIVER) ||
+			strcmp(c.file, driver_object) == 0) {
 			error("Illegal rename of driver object");
 		    }
 		    /*
@@ -441,7 +441,6 @@ register char *file;
 	    pp_clear();
 	    error("Could not include \"/%s\"", include);
 	}
-	c.inherit[0] = '\0';
 
 	cg_init(c.prev != (context *) NULL);
 	if (ec_push()) {
@@ -472,23 +471,16 @@ register char *file;
 	    }
 	    i_del_value(sp++);
 	}
+
+	c.inherit[0] = '\0';
 	recursion = TRUE;
-	if (yyparse() != 0 || !ctrl_chkfuncs(c.file)) {
+	if (yyparse() == 0 && ctrl_chkfuncs(c.file)) {
+	    control *ctrl;
+
 	    recursion = FALSE;
 	    errorlog((char *) NULL);
 	    ec_pop();
 	    pp_clear();
-	    ctrl_clear();
-	    c_clear();
-	    error("Failed to compile \"/%s.c\"", c.file);
-	}
-	recursion = FALSE;
-	errorlog((char *) NULL);
-	ec_pop();
-	pp_clear();
-
-	if (c.inherit[0] == '\0') {
-	    control *ctrl;
 
 	    if (!seen_decls) {
 		/*
@@ -501,10 +493,19 @@ register char *file;
 	    c_clear();
 	    current = c.prev;
 	    return ctrl->inherits[ctrl->ninherits - 1].obj;
+	} else {
+	    recursion = FALSE;
+	    errorlog((char *) NULL);
+	    ec_pop();
+	    pp_clear();
+	    ctrl_clear();
+	    c_clear();
+
+	    if (c.inherit[0] == '\0') {
+		error("Failed to compile \"/%s.c\"", c.file);
+	    }
+	    compile(c.inherit);
 	}
-	ctrl_clear();
-	c_clear();
-	compile(c.inherit);
     }
 }
 
@@ -609,6 +610,7 @@ bool function;
     formals = revert_list(formals, N_PAIR);
     while (formals != (node *) NULL) {
 	register node *arg;
+	register unsigned short t;
 
 	if (nargs == MAX_LOCALS) {
 	    yyerror("too many parameters in function %s", str->text);
@@ -621,20 +623,31 @@ bool function;
 	    arg = formals;
 	    formals = (node *) NULL;
 	}
-	if (arg->mod == T_INVALID) {
+	t = arg->mod;
+	if ((t & T_TYPE) == T_INVALID) {
 	    if (typechecked) {
 		yyerror("missing type for parameter %s", arg->l.string->text);
 	    }
-	    arg->mod = T_MIXED;
-	} else if ((arg->mod & T_TYPE) == T_VOID) {
+	    t = T_MIXED | (t & T_ELLIPSIS);
+	} else if ((t & T_TYPE) == T_VOID) {
 	    yyerror("invalid type for parameter %s (%s)", arg->l.string->text,
-		    c_typename(arg->mod));
-	    arg->mod = T_MIXED;
+		    c_typename(t & ~T_ELLIPSIS));
+	    t = T_MIXED | (t & T_ELLIPSIS);
 	}
-	*args++ = arg->mod;
+	*args++ = t;
 	nargs++;
+	if (t & T_ELLIPSIS) {
+	    if (!(class & C_VARARGS)) {
+		yyerror("ellipsis without varargs");
+	    }
+	    t = (t & ~T_ELLIPSIS) + (1 << REFSHIFT);
+	    if ((t & T_REF) == 0) {
+		t |= T_REF;
+	    }
+	}
+
 	if (function) {
-	    block_pdef(arg->l.string->text, arg->mod);
+	    block_pdef(arg->l.string->text, t);
 	}
     }
     PROTO_NARGS(proto) = nargs;
@@ -771,6 +784,9 @@ static unsigned short d_expr P((node*));
 static unsigned short d_lvalue(n)
 register node *n;
 {
+    if (n->type == N_CAST) {
+	n = n->l.left;
+    }
     switch (n->type) {
     case N_LOCAL:
     case N_GLOBAL:
@@ -924,10 +940,13 @@ register node *n;
 
 	d = 0;
 	for (i = 0; n->type == N_COMMA; i++) {
-	    d = max2(d, i + d_expr(n->l.left));
+	    d = max2(d, i + 2 + d_expr(n->l.left));
 	    n = n->r.right;
 	}
-	return max2(d, i + 1 + d_expr(n));
+	if (n->type == N_SPREAD) {
+	    n = n->l.left;
+	}
+	return max2(d, i + 2 + d_expr(n));
 
     case N_GLOBAL:
     case N_INT:
@@ -944,9 +963,17 @@ register node *n;
 		    d_expr(n->r.right->r.right));
 
     case N_RANGE:
-	return max3(d_expr(n->l.left),
-		    1 + d_expr(n->r.right->l.left),
-		    2 + d_expr(n->r.right->r.right));
+	d = d_expr(n->l.left);
+	n = n->r.right;
+	if (n->l.left != (node *) NULL) {
+	    d = max2(d, 1 + d_expr(n->l.left));
+	    if (n->r.right != (node *) NULL) {
+		d = max2(d, 2 + d_expr(n->r.right));
+	    }
+	} else if (n->r.right != (node *) NULL) {
+	    d = max2(d, 1 + d_expr(n->r.right));
+	}
+	return d;
 
     case N_MIN_MIN:
     case N_MIN_MIN_INT:
@@ -1346,6 +1373,7 @@ int op;
 node *c_quest(n1, n2, n3)
 node *n1, *n2, *n3;
 {
+    n2 = c_list_exp(n2);
     if (c_cond(n1, n2, n3, &n1, COND_QUEST) != 0) {
 	/* fixed condition */
 	return n1;
@@ -1567,8 +1595,9 @@ node *c_endswitch(expr, stmt)
 node *expr, *stmt;
 {
     register node **v, **w, *n;
-    register short i, size;
-    register long l, cnt;
+    register unsigned short i, size;
+    register long l;
+    register unsigned long cnt;
     short type, sz;
 
     n = (node *) NULL;
@@ -1657,7 +1686,8 @@ node *expr, *stmt;
 		}
 
 		if (i == 0 && cnt > size) {
-		    if ((sz + 2L) * cnt > (2 * sz + 2L) * size) {
+		    if (cnt > ULONG_MAX / 6L ||
+			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch
 			 */
@@ -1980,13 +2010,31 @@ register node *n;
 	case N_GLOBAL:
 	case N_INDEX:
 	case N_FAKE:
-	    return node_mon(N_LVALUE, T_NUMBER, n);
+	    break;
+
+	default:
+	    return (node *) NULL;
 	}
+	break;
+
     default:
 	return (node *) NULL;
     }
 
     return node_mon(N_LVALUE, n->mod, n);
+}
+
+/*
+ * NAME:	compile->lock()
+ * DESCRIPTION:	handle lock
+ */
+node *c_lock(n)
+node *n;
+{
+    if (strcmp(current->file, auto_object) != 0) {
+	yyerror("only auto object can use lock()");
+    }
+    return node_mon(N_LOCK, n->mod, n);
 }
 
 /*
@@ -1997,7 +2045,7 @@ static node *funcall(func, args)
 register node *func;
 node *args;
 {
-    register int n, nargs, typechecked;
+    register int n, nargs, typechecked, t;
     register node **argv, **arg;
     char *argp, *proto, *fname;
 
@@ -2017,14 +2065,15 @@ node *args;
     /*
      * check function arguments
      */
-    nargs = PROTO_NARGS(proto);
     typechecked = PROTO_CLASS(proto) & C_TYPECHECKED;
-    for (n = 1, argp = PROTO_ARGS(proto); n <= nargs; n++, argp++) {
+    nargs = PROTO_NARGS(proto);
+    argp = PROTO_ARGS(proto);
+    for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
 	    if (!(PROTO_CLASS(proto) & C_VARARGS)) {
 		yyerror("too few arguments for function %s", fname);
 	    }
-	    return func;
+	    break;
 	}
 	if ((*argv)->type == N_COMMA) {
 	    arg = &(*argv)->l.left;
@@ -2033,7 +2082,41 @@ node *args;
 	    arg = argv;
 	    args = (node *) NULL;
 	}
-	if (UCHAR(*argp) == T_LVALUE) {
+	t = UCHAR(*argp) & ~T_ELLIPSIS;
+
+	if ((*arg)->type == N_SPREAD) {
+	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
+		(*arg)->mod = nargs-- - n;
+		/* only kfuns can have lvalue parameters */
+		func->r.number |= 1L << 16;
+	    } else {
+		(*arg)->mod = (unsigned short) -1;
+	    }
+	    t = (*arg)->l.left->mod;
+	    if (t != T_MIXED) {
+		if ((t & T_REF) == 0) {
+		    yyerror("ellipsis requires array");
+		    t = T_MIXED;
+		} else {
+		    t -= (1 << REFSHIFT);
+		}
+	    }
+	    if (!(PROTO_CLASS(proto) & C_VARARGS) &&
+		PROTO_FTYPE(proto) != T_IMPLICIT) {
+		yyerror("ellipsis in call to non-varargs function");
+	    }
+
+	    while (n <= nargs) {
+		if ((typechecked || t == T_VOID) &&
+		    c_tmatch(t, UCHAR(*argp) & ~T_ELLIPSIS) == T_INVALID) {
+		    yyerror("bad argument %d for function %s (needs %s)", n,
+			    fname, c_typename(UCHAR(*argp) & ~T_ELLIPSIS));
+		}
+		n++;
+		argp++;
+	    }
+	    break;
+	} else if (t == T_LVALUE) {
 	    *arg = lvalue(*arg);
 	    if (*arg == (node *) NULL) {
 		yyerror("bad argument %d for function %s (needs lvalue)",
@@ -2043,12 +2126,18 @@ node *args;
 	    func->r.number |= 1L << 16;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
 		   ((*arg)->type != N_INT || (*arg)->l.number != 0) &&
-		   c_tmatch((*arg)->mod, UCHAR(*argp)) == T_INVALID) {
+		   c_tmatch((*arg)->mod, t) == T_INVALID) {
 	    yyerror("bad argument %d for function %s (needs %s)", n, fname,
-		    c_typename(UCHAR(*argp)));
+		    c_typename(t));
+	}
+
+	if (UCHAR(*argp) & T_ELLIPSIS) {
+	    nargs++;
+	} else {
+	    argp++;
 	}
     }
-    if (args != (node *) NULL && !(PROTO_CLASS(proto) & C_UNDEFINED)) {
+    if (args != (node *) NULL && PROTO_FTYPE(proto) != T_IMPLICIT) {
 	yyerror("too many arguments for function %s", fname);
     }
 
@@ -2064,26 +2153,9 @@ node *args;
  * DESCRIPTION:	handle a function call
  */
 node *c_funcall(func, args)
-register node *func, *args;
+node *func, *args;
 {
-    if (func->type != N_STR) {
-	/*
-	 * catch() or lock()
-	 */
-	if (args == (node *) NULL) {
-	    yyerror("%s() needs expression argument",
-		    func->l.left->l.string->text);
-	    func->mod = T_MIXED;
-	} else {
-	    if (func->type == N_LOCK) {
-		func->mod = args->mod;
-	    }
-	    func->l.left = args;
-	}
-	return func;
-    } else {
-	return funcall(func, revert_list(args, N_COMMA));
-    }
+    return funcall(func, revert_list(args, N_COMMA));
 }
 
 /*
