@@ -1284,18 +1284,20 @@ node *expr, *stmt;
 
 	    if (switch_list->type == T_STRING) {
 		type = N_SWITCH_STR;
-		/*
-		 * check for duplicate cases
-		 */
-		if (size >= 2 && v[1]->l.left->type == nil_node) {
-		    c_error("duplicate case labels in switch");
-		} else {
-		    i = (v[0]->l.left->type == nil_node);
-		    for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
-			if (str_cmp(w[0]->l.left->l.string,
-				    w[1]->l.left->l.string) == 0) {
-			    c_error("duplicate case labels in switch");
-			    break;
+		if (size >= 2) {
+		    /*
+		     * check for duplicate cases
+		     */
+		    if (v[1]->l.left->type == nil_node) {
+			c_error("duplicate case labels in switch");
+		    } else {
+			i = (v[0]->l.left->type == nil_node);
+			for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
+			    if (str_cmp(w[0]->l.left->l.string,
+					w[1]->l.left->l.string) == 0) {
+				c_error("duplicate case labels in switch");
+				break;
+			    }
 			}
 		    }
 		}

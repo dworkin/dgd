@@ -213,7 +213,11 @@ array *a;
 	    break;
 
 	case T_OBJECT:
-	    put(x, "0", 1);
+	    if (conf_typechecking() >= 2) {
+		put(x, "nil", 3);
+	    } else {
+		put(x, "0", 1);
+	    }
 	    break;
 
 	case T_ARRAY:
