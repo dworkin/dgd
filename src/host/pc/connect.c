@@ -19,7 +19,7 @@ static connection *flist;		/* list of free connections */
 static SOCKET telnet;			/* telnet port socket descriptor */
 static SOCKET binary;			/* binary port socket descriptor */
 static fd_set fds;			/* file descriptor bitmap */
-static fd_set waitfds;			/* file descriptor w bitmap */
+static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
 
@@ -154,7 +154,6 @@ connection *conn_tnew(void)
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
-    FD_CLR(fd, &waitfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
 
@@ -186,7 +185,6 @@ connection *conn_bnew(void)
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
-    FD_CLR(fd, &waitfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
 
@@ -202,6 +200,7 @@ void conn_del(connection *conn)
     if (conn->fd != INVALID_SOCKET) {
 	closesocket(conn->fd);
 	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &waitfds);
 	conn->fd = INVALID_SOCKET;
     }
     conn->next = flist;
@@ -225,14 +224,14 @@ int conn_select(int wait)
     memcpy(&writefds, &waitfds, sizeof(fd_set));
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
-    retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
+    retval = select(0, &readfds, &writefds, (fd_set *) NULL, &timeout);
     /*
      * Now check writability for all sockets in a polling call.
      */
     memcpy(&writefds, &fds, sizeof(fd_set));
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    select(maxfd + 1, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
+    select(0, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
     return retval;
 }
 
@@ -273,7 +272,6 @@ int conn_write(connection *conn, char *buf, int len, int wait)
 	    WSAGetLastError() != WSAEWOULDBLOCK) {
 	    closesocket(conn->fd);
 	    FD_CLR(conn->fd, &fds);
-	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = INVALID_SOCKET;
 	} else if (size != len) {
 	    if (wait) {
@@ -281,7 +279,7 @@ int conn_write(connection *conn, char *buf, int len, int wait)
 		FD_SET(conn->fd, &waitfds);
 	    }
 	    FD_CLR(conn->fd, &writefds);
-        }
+	}
 	return size;
     }
     return 0;

@@ -8,3 +8,5 @@
 
 # define error		c_error
 # define warning	c_error
+
+extern void fatal();

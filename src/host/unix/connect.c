@@ -142,7 +142,6 @@ connection *conn_tnew()
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
-    FD_CLR(fd, &waitfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
     if (fd > maxfd) {
@@ -176,7 +175,6 @@ connection *conn_bnew()
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
-    FD_CLR(fd, &waitfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
     if (fd > maxfd) {
@@ -196,6 +194,7 @@ register connection *conn;
     if (conn->fd >= 0) {
 	close(conn->fd);
 	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &waitfds);
 	conn->fd = -1;
     }
     conn->next = flist;
@@ -274,7 +273,6 @@ int wait;
 	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
-	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = -1;
 	} else if (size != len) {
 	    if (wait) {

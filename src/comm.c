@@ -399,7 +399,7 @@ int *size;
 	    }
 	}
 
-	for (i = 5; i > 0 && nusers < maxusers; --i) {
+	while (nusers < maxusers) {
 	    /*
 	     * accept new binary connection
 	     */

@@ -341,7 +341,7 @@ int kf_save_object()
     register string *str;
     register dinherit *inh;
     register dataspace *data;
-    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp, *path;
+    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
     object *obj;
     xfloat flt;
 
