@@ -244,6 +244,9 @@ Uint t;
 	i = --cycbrk;
     }
     nshort++;
+    if (t == 0) {
+	nzero++;
+    }
 
     co = &cotab[i];
     if (list->list == 0) {
@@ -275,6 +278,11 @@ register uindex j, i;
 register Uint t;
 {
     register call_out *l;
+
+    --nshort;
+    if (t == 0) {
+	--nzero;
+    }
 
     l = cotab;
     if (i == j) {
@@ -324,8 +332,6 @@ register Uint t;
 	l->next = flist;
 	flist = i;
     }
-
-    --nshort;
 }
 
 /*
@@ -397,8 +403,6 @@ int nargs;
 	 * immediate callout
 	 */
 	co = newcallout(&immediate, 0);
-	nzero++;
-
 	t = 0;
 	m = 0;
     } else {
@@ -520,7 +524,6 @@ register unsigned int handle;
 	     */
 	    if (rmshort(&immediate, i, handle, 0) ||
 		rmshort(&running, i, handle, 0)) {
-		--nzero;
 		return 0;
 	    }
 	}
@@ -625,7 +628,6 @@ static void co_expire()
 		co = newcallout(&immediate, 0);
 		co->handle = handle;
 		co->oindex = oindex;
-		nzero++;
 	    }
 
 	    /*
@@ -659,7 +661,6 @@ static void co_expire()
 	    co = newcallout(&immediate, 0);
 	    co->handle = handle;
 	    co->oindex = oindex;
-	    nzero++;
 	}
 
 	restart(t);
@@ -694,7 +695,6 @@ frame *f;
 	    handle = cotab[i].handle;
 	    obj = &otable[cotab[i].oindex];
 	    freecallout(&running, i, i, 0);
-	    --nzero;
 
 	    str = d_get_call_out(o_dataspace(obj), handle, &t, f, &nargs);
 	    if (i_call(f, obj, str->text, str->len, TRUE, nargs)) {
