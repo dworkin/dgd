@@ -781,6 +781,7 @@ static cmd_code(object user, string cmd, string str)
 		   "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
 		   "    " + parsed[0] + "\n}\n") > 0) {
 	err = catch(obj = compile_object(str),
+		    remove_file(str + ".c"),
 		    result = obj->exec(user, parsed[1 ..]...));
 	if (err) {
 	    message("Error: " + err + ".\n");
@@ -791,7 +792,6 @@ static cmd_code(object user, string cmd, string str)
 	if (obj) {
 	    destruct_object(obj);
 	}
-	remove_file(str + ".c");
     }
 }
 

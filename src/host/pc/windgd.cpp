@@ -10,7 +10,7 @@ static char THIS_FILE[] = __FILE__;
 # endif
 
 static CWindgdApp	theApp;
-static CMainFrame      *frame;
+static CMainFrame      *mainframe;
 static int		argstart;	/* started with arguments */
 static int		menuquit;	/* quit from menu */
 static int		dgd_running;	/* now running */
@@ -28,7 +28,7 @@ extern "C" {
  */
 void P_message(char *mesg)
 {
-    frame->addmessage(mesg);
+    mainframe->addmessage(mesg);
 }
 
 /*
@@ -104,14 +104,14 @@ BOOL CWindgdApp::InitInstance()
     EnableShellOpen();
     RegisterShellFileTypes(TRUE);
 
-    /* Create frame window */
-    frame = new CMainFrame;
-    if (!frame->LoadFrame(IDR_MAINFRAME)) {
+    /* Create mainframe window */
+    mainframe = new CMainFrame;
+    if (!mainframe->LoadFrame(IDR_MAINFRAME)) {
 	return FALSE;
     }
-    m_pMainWnd = frame;
-    frame->ShowWindow(m_nCmdShow);
-    frame->UpdateWindow();
+    m_pMainWnd = mainframe;
+    mainframe->ShowWindow(m_nCmdShow);
+    mainframe->UpdateWindow();
 
     /* parse command line */
     CString copy = m_lpCmdLine;

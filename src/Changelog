@@ -1178,3 +1178,6 @@ DGD 1.1
    Azhrarn@Flat Earth.
  - In case of an error during inheritance, the name of the relevant object
    was not properly saved.
+ - Compensate for the latest (post 5.0) Visual C++ problem.
+ - Partial parse_string implementation.  Currently only does lexical scanning,
+   and returns an array of tokens.  Only Unix makefiles have been adjusted yet.
