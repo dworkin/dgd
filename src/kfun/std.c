@@ -34,9 +34,6 @@ int nargs;
     if (nargs < 2) {
 	error("Too few arguments to call_other()");
     }
-    if (i_this_object()->key.count == 0) {
-	error("call_other() from destructed object");
-    }
 
     val = &sp[nargs - 1];
     switch (val->type) {
@@ -54,7 +51,7 @@ int nargs;
 	break;
 
     case T_OBJECT:
-	obj = o_object(&val->u.object);
+	obj = o_object(val->oindex, val->u.objcnt);
 	break;
 
     default:
@@ -69,6 +66,13 @@ int nargs;
     if (val->type != T_STRING) {
 	/* bad arg 2 */
 	return 2;
+    }
+    if (i_this_object()->count == 0) {
+	/*
+	 * cannot call_other from destructed object
+	 */
+	i_pop(nargs - 1);
+	return 0;
     }
 
     if (i_call(obj, val->u.string->text, FALSE, nargs - 2)) {
@@ -100,9 +104,10 @@ int kf_this_object()
     value val;
 
     obj = i_this_object();
-    if (obj->key.count != 0) {
+    if (obj->count != 0) {
 	val.type = T_OBJECT;
-	val.u.object = obj->key;
+	val.oindex = obj->index;
+	val.u.objcnt = obj->count;
     } else {
 	val.type = T_NUMBER;
 	val.u.number = 0;
@@ -137,7 +142,8 @@ int nargs;
     obj = i_prev_object((int) sp->u.number);
     if (obj != (object *) NULL) {
 	sp->type = T_OBJECT;
-	sp->u.object = obj->key;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
     } else {
 	sp->u.number = 0;
     }
@@ -161,9 +167,6 @@ kf_clone_object()
     register object *obj;
     char *file;
 
-    if (i_this_object()->key.count == 0) {
-	error("clone_object() from destructed object");
-    }
     file = path_object(sp->u.string->text);
     if (file == (char *) NULL) {
 	return 1;
@@ -179,7 +182,8 @@ kf_clone_object()
     str_del(sp->u.string);
     sp->type = T_OBJECT;
     obj = o_new((char *) NULL, obj, (control *) NULL);
-    sp->u.object = obj->key;
+    sp->oindex = obj->index;
+    sp->u.objcnt = obj->count;
     i_call(obj, "", FALSE, 0);	/* cause creator to be called */
     return 0;
 }
@@ -200,7 +204,7 @@ kf_destruct_object()
 {
     register object *obj;
 
-    obj = o_object(&sp->u.object);
+    obj = o_object(sp->oindex, sp->u.objcnt);
     if (obj->flags & O_USER) {
 	comm_close(obj);
     }
@@ -208,7 +212,7 @@ kf_destruct_object()
 	ed_del(obj);
     }
     o_del(obj);
-    i_odest(&obj->key);		/* wipe out occurrances on the stack */
+    i_odest(obj);		/* wipe out occurrances on the stack */
     sp->type = T_NUMBER;
     sp->u.number = 0;
     return 0;
@@ -230,7 +234,7 @@ int kf_object_name()
 {
     char *name;
 
-    name = o_name(o_object(&sp->u.object));
+    name = o_name(o_object(sp->oindex, sp->u.objcnt));
     sp->type = T_STRING;
     str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
     sp->u.string->text[0] = '/';
@@ -255,9 +259,6 @@ kf_find_object()
     char *name;
     object *obj;
 
-    if (i_this_object()->key.count == 0) {
-	error("find_object() from destructed object");
-    }
     name = path_object(sp->u.string->text);
     if (name == (char *) NULL) {
 	return 1;
@@ -267,7 +268,8 @@ kf_find_object()
     obj = o_find(name);
     if (obj != (object *) NULL) {
 	sp->type = T_OBJECT;
-	sp->u.object = obj->key;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
     } else {
 	sp->type = T_NUMBER;
 	sp->u.number = 0;
@@ -293,7 +295,8 @@ kf_function_object()
     dsymbol *symb;
     char *name;
 
-    obj = o_object(&(sp++)->u.object);
+    obj = o_object(sp->oindex, sp->u.objcnt);
+    sp++;
     symb = ctrl_symb(o_control(obj), sp->u.string->text);
     str_del(sp->u.string);
     if (symb != (dsymbol *) NULL) {
@@ -327,7 +330,8 @@ int kf_this_user()
     obj = this_user();
     if (obj != (object *) NULL) {
 	(--sp)->type = T_OBJECT;
-	sp->u.object = obj->key;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
     } else {
 	(--sp)->type = T_NUMBER;
 	sp->u.number = 0;
@@ -351,7 +355,7 @@ int kf_query_ip_number()
 {
     register object *obj;
 
-    obj = o_object(&sp->u.object);
+    obj = o_object(sp->oindex, sp->u.objcnt);
     if (obj->flags & O_USER) {
 	sp->type = T_STRING;
 	str_ref(sp->u.string = comm_ip_number(obj));
@@ -652,6 +656,9 @@ char p_error[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1, T_STRING };
  */
 int kf_error()
 {
+    if (strchr(sp->u.string->text, '\n') != (char *) NULL) {
+	error("'\\n' in error string");
+    }
     error("%s", sp->u.string->text);
     return 0;
 }
@@ -676,13 +683,19 @@ int kf_send_message()
     }
 
     obj = i_this_object();
-    if (obj->key.count != 0 && (obj->flags & O_USER)) {
-	if (sp->type == T_NUMBER) {
-	    comm_echo(obj, sp->u.number != 0);
-	} else {
-	    comm_send(obj, sp->u.string);
-	    str_del(sp->u.string);
+    if (obj->count != 0) {
+	if (obj->flags & O_USER) {
+	    if (sp->type == T_NUMBER) {
+		comm_echo(obj, sp->u.number != 0);
+	    } else {
+		comm_send(obj, sp->u.string);
+	    }
+	} else if ((obj->flags & O_DRIVER) && sp->type == T_STRING) {
+	    message(sp->u.string->text);
 	}
+    }
+    if (sp->type == T_STRING) {
+	str_del(sp->u.string);
     }
     sp->type = T_NUMBER;
     sp->u.number = 0;
@@ -702,12 +715,8 @@ char p_time[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
  */
 int kf_time()
 {
-    time_t t;
-
-    i_check_stack(1);
-    time(&t);
     (--sp)->type = T_NUMBER;
-    sp->u.number = t;
+    sp->u.number = _time();
     return 0;
 }
 # endif
@@ -731,6 +740,8 @@ char p_call_out[] = { C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 32,
 int kf_call_out(nargs)
 int nargs;
 {
+    object *obj;
+
     if (nargs < 2) {
 	error("Too few arguments to function call_out()");
     }
@@ -741,9 +752,14 @@ int nargs;
 	return 2;
     }
 
-    co_new(i_this_object(), sp[nargs - 1].u.string,
-	   (long) sp[nargs - 2].u.number, sp, nargs - 2);
-    sp += nargs - 1;
+    obj = i_this_object();
+    if (obj->count != 0 &&
+	co_new(obj, sp[nargs - 1].u.string, (long) sp[nargs - 2].u.number, sp,
+	       nargs - 2)) {
+	sp += nargs - 1;
+    } else {
+	i_pop(nargs - 1);
+    }
     str_del(sp->u.string);
     sp->type = T_NUMBER;
     sp->u.number = 0;
