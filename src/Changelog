@@ -990,3 +990,5 @@ DGD 1.1
  - Fixed a rare problem with arrays as mapping indices.
  - If the time was set back during callout processing, it was possible for
    the next callout never to be started.
+ - Fixed a bad memory fragmentation problem in case a block of memory was
+   allocated that was larger than the dynamic chunk.

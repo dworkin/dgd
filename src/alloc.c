@@ -134,7 +134,8 @@ register unsigned int size;
 	    *lc = c->next;
 	    return c;
 	}
-    } else if ((c=schunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
+    } else if ((c=schunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL)
+    {
 	/* small chunk */
 	schunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
 	return c;
@@ -195,7 +196,7 @@ register unsigned int size;
 	    schunk = (chunk *) ((char *) schunk + size);
 	    if ((schunk->size=c->size - size) <= SSMALL) {
 		/* small chunk */
-		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1];
+		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
 		schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
 		schunk = (chunk *) NULL;
 	    }
@@ -570,11 +571,9 @@ register unsigned int size;
 	/*
 	 * get new dynamic chunk
 	 */
-	sz = size + ALIGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
-	if (sz < dchunksz) {
-	    /* extend to standard chunk size */
-	    sz = dchunksz;
-	}
+	for (sz = dchunksz;
+	     sz < size + ALIGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
+	     sz += dchunksz) ;
 	p = newmem(sz);
 	mstat.dmemsize += sz;
 	*(char **) p = dlist;
