@@ -24,7 +24,8 @@ static char state;				/* current output state */
  * DESCRIPTION:	initialize connections
  */
 void conn_init(nusers, port_number)
-int nusers, port_number;
+int nusers;
+unsigned short port_number;
 {
     ioctl(1, TIOCGETP, &tty);
 }
@@ -38,8 +39,9 @@ connection *conn_new()
     char buffer[100];
     static connection conn;
 
-    if (read(0, buffer, 100) > 0) {
+    if (inbuf > 0 || read(0, buffer, 100) > 0) {
 	write(1, "<connected>\n", 12);
+	inbuf = 0;
 	return &conn;
     }
     return (connection *) NULL;
@@ -64,13 +66,13 @@ int conn_select(wait)
 bool wait;
 {
     if (!wait || inbuf > 0) {
-	return 0;
+	return 1;
     }
     if ((inbuf=read(0, buffer, INBUF_SIZE)) < 0) {
 	inbuf = 0;
-	return -1;
+	return 0;
     }
-    return 0;
+    return 1;
 }
 
 /*
@@ -100,7 +102,7 @@ int size;
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection
  */
-int conn_write(conn, buf, size)
+void conn_write(conn, buf, size)
 connection *conn;
 char *buf;
 register int size;
@@ -125,7 +127,7 @@ register int size;
 		if (UCHAR(*p) == GA) {
 		    state = TS_DATA;
 		    break;
-		} else if (UCHAR(*p) == WILL) {
+		} else if (UCHAR(*p) == WONT) {
 		    tty.sg_flags |= ECHO;
 		} else {
 		    tty.sg_flags &= ~ECHO;
@@ -144,7 +146,6 @@ register int size;
     if (size > 0) {
 	write(1, buf, size);
     }
-    return 0;
 }
 
 /*
