@@ -107,10 +107,12 @@ char **argv;
 	conf_init(argv[1], argv[2]);
     }
     ec_pop();
+    d_export();
 
     while (ec_push()) {
 	i_log_error(FALSE);
 	i_clear();
+	d_export();
     }
 
     do {
@@ -119,6 +121,7 @@ char **argv;
 	    intr = FALSE;
 	    call_driver_object("interrupt", 0);
 	    i_del_value(sp++);
+	    d_export();
 	}
 
 	co_call();
@@ -131,19 +134,26 @@ char **argv;
 		str_ref(sp->u.string = str_new(buf, (long) size));
 		if (i_call(usr, "receive_message", TRUE, 1)) {
 		    i_del_value(sp++);
+		    comm_flush(TRUE);
+		    d_export();
 		}
-		comm_flush(TRUE);
 	    }
 	}
 
 	o_clean();
 
 	if (!mcheck()) {
+	    /*
+	     * Swap out everything and extend the static memory area.
+	     */
 	    d_swapout(1);
 	    arr_freeall();
 	    mpurge();
 	    mexpand();
 	} else if (swap) {
+	    /*
+	     * swap out everything
+	     */
 	    d_swapout(1);
 	    arr_freeall();
 	    mpurge();
@@ -151,6 +161,9 @@ char **argv;
 	swap = FALSE;
 
 	if (dump) {
+	    /*
+	     * create a state dump
+	     */
 	    d_swapsync();
 	    conf_dump();
 	    dump = FALSE;

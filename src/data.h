@@ -80,11 +80,26 @@ typedef struct _control_ {
     uindex ndata;		/* # of data blocks using this control block */
 } control;
 
+typedef struct _strref_ {
+    string *str;		/* string value */
+    struct _dataspace_ *data;	/* dataspace this string is in */
+    uindex ref;			/* # of refs */
+} strref;
+
+typedef struct _arrref_ {
+    array *arr;			/* array value */
+    struct _dataspace_ *data;	/* dataspace this array is in */
+    long index;			/* selts index */
+    uindex ref;			/* # of refs */
+} arrref;
+
 typedef struct _dataspace_ {
     struct _dataspace_ *prev, *next;
 
     long achange;		/* # array changes */
     long schange;		/* # string changes */
+    long imports;		/* # array imports */
+    struct _dataspace_ *iprev, *inext;	/* prev & next in import list */
     char modified;		/* has a variable or array elt been modified */
 
     object *obj;		/* object this dataspace belongs to */
@@ -100,7 +115,8 @@ typedef struct _dataspace_ {
 
     uindex narrays;		/* i/o # arrays */
     long eltsize;		/* o total size of array elements */
-    struct _arrref_ *arrays;	/* i/o? arrays */
+    arrref alocal;		/* primary of new local arrays */
+    arrref *arrays;		/* i/o? arrays */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
     long arroffset;		/* o offset of array table in data space */
@@ -148,6 +164,8 @@ extern uindex		d_new_call_out	P((dataspace*, string*, Uint, int));
 extern char	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
 					   int*));
 extern array	       *d_list_callouts	P((dataspace*, Uint));
+
+extern void		d_export	P((void));
 
 extern uindex		d_swapout	P((int));
 extern void		d_swapsync	P((void));

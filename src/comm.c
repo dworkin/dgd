@@ -4,6 +4,7 @@
 # include "array.h"
 # include "object.h"
 # include "interpret.h"
+# include "data.h"
 # include "comm.h"
 
 # ifndef TELOPT_LINEMODE
@@ -307,10 +308,12 @@ int *size;
 	    if (sp->type != T_OBJECT) {
 		fatal("driver->telnet_connect() did not return an object");
 	    }
+	    d_export();
 	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
 	    sp++;
 	    if (i_call(o, "open", TRUE, 0)) {
 		i_del_value(sp++);
+		d_export();
 	    }
 	    comm_flush(TRUE);
 	}
@@ -331,10 +334,12 @@ int *size;
 	    if (sp->type != T_OBJECT) {
 		fatal("driver->binary_connect() did not return an object");
 	    }
+	    d_export();
 	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
 	    sp++;
 	    if (i_call(o, "open", TRUE, 0)) {
 		i_del_value(sp++);
+		d_export();
 	    }
 	    comm_flush(TRUE);
 	}
@@ -372,6 +377,7 @@ int *size;
 		     * bad connection
 		     */
 		    comm_del(usr);
+		    d_export();	/* this cannot be in comm_del() */
 		} else if ((*usr)->flags & CF_TELNET) {
 		    /*
 		     * telnet mode

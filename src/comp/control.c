@@ -1172,7 +1172,8 @@ int typechecking;
 	return (char *) NULL;
     }
 
-    if ((PROTO_CLASS(proto) & (C_PRIVATE | C_NOMASK)) ||
+    if ((PROTO_CLASS(proto) & C_PRIVATE) ||
+	(PROTO_CLASS(proto) & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
 	((PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 	 h->ohash->index == 0)) {
 	/* direct call */
@@ -1424,7 +1425,8 @@ static void ctrl_mkfcalls()
 	    {
 		ctrl2 = ctrl->inherits[UCHAR(ofc[0])].obj->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
-		if ((f->class & (C_PRIVATE | C_NOMASK)) ||
+		if ((f->class & C_PRIVATE) ||
+		    (f->class & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
 		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 		     ofc[0] == 0)) {
 		    /*

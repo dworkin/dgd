@@ -51,7 +51,8 @@ static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
-static array *flist;		/* free arrays */
+static array *flist;		/* free array list */
+static array *hlist;		/* alternate free array list */
 static arrh **ht;		/* array merge table */
 static arrh **alink;		/* linked list of merged arrays */
 static arrhchunk *ahlist;	/* linked list of all arrh chunks */
@@ -110,10 +111,8 @@ unsigned int size;
     } else {
 	a->elts = (value *) NULL;
     }
-    a->hashed = (maphash *) NULL;	/* only used for mappings */
     a->ref = 0;
-    a->tag = tag++;
-    a->primary = (struct _arrref_ *) NULL;
+    a->hashed = (maphash *) NULL;	/* only used for mappings */
 
     return a;
 }
@@ -125,10 +124,15 @@ unsigned int size;
 array *arr_new(size)
 long size;
 {
+    register array *a;
+
     if (size > max_size) {
 	error("Array too large");
     }
-    return arr_alloc((unsigned short) size);
+    a = arr_alloc((unsigned short) size);
+    a->tag = tag++;
+    a->primary = &i_this_object()->data->alocal;
+    return a;
 }
 
 /*
@@ -171,11 +175,15 @@ register array *a;
 	    FREE(a->hashed);
 	}
 
-	if (a->primary != (struct _arrref_ *) NULL) {
-	    d_del_array(a);
+	d_del_array(a);
+	if (idx == 0) {
+	    a->primary = (arrref *) flist;
+	    flist = a;
+	} else {
+	    /* alternate free list if merge table is being used */
+	    a->primary = (arrref *) hlist;
+	    hlist = a;
 	}
-	a->primary = (struct _arrref_ *) flist;
-	flist = a;
     }
 }
 
@@ -284,6 +292,17 @@ void arr_clear()
     }
     ahlist = (arrhchunk *) NULL;
     ahchunksz = ARR_CHUNK;
+
+    /* copy hlist to flist */
+    if (hlist != (array *) NULL) {
+	register array *f;
+
+	for (f = hlist; f->primary != (arrref *) NULL; f = (array *) f->primary)
+	    ;
+	f->primary = (arrref *) flist;
+	flist = hlist;
+	hlist = (array *) NULL;
+    }
 }
 
 /*
@@ -458,7 +477,7 @@ array *a1, *a2;
 	 * array - ({ })
 	 * Return a copy of the first array.
 	 */
-	a3 = arr_alloc(a1->size);
+	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a1->size);
 	return a3;
     }
@@ -469,7 +488,7 @@ array *a1, *a2;
      */
 
     /* create new array */
-    a3 = arr_alloc(a1->size);
+    a3 = arr_new((long) a1->size);
     if (a3->size == 0) {
 	/* subtract from empty array */
 	return a3;
@@ -528,11 +547,11 @@ array *a1, *a2;
 
     if (a1->size == 0 || a2->size == 0) {
 	/* array & ({ }) */
-	return arr_alloc(0);
+	return arr_new(0L);
     }
 
     /* create new array */
-    a3 = arr_alloc(a1->size);
+    a3 = arr_new((long) a1->size);
     size = a2->size;
 
     /*
@@ -593,13 +612,13 @@ array *a1, *a2;
 
     if (a1->size == 0) {
 	/* ({ }) | array */
-	a3 = arr_alloc(a2->size);
+	a3 = arr_new((long) a2->size);
 	copy(a3->elts, d_get_elts(a2), a3->size);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
-	a3 = arr_alloc(a1->size);
+	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a3->size);
 	return a3;
     }
@@ -648,7 +667,7 @@ array *a1, *a2;
 	error("Array too large");
     }
 
-    a3 = arr_alloc(size + n);
+    a3 = arr_new((long) size + n);
     copy(a3->elts, a1->elts, size);
     copy(a3->elts + size, v3, n);
     AFREE(v3);
@@ -671,13 +690,13 @@ array *a1, *a2;
 
     if (a1->size == 0) {
 	/* ({ }) ^ array */
-	a3 = arr_alloc(a2->size);
+	a3 = arr_new((long) a2->size);
 	copy(a3->elts, d_get_elts(a2), a3->size);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
-	a3 = arr_alloc(a1->size);
+	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a3->size);
 	return a3;
     }
@@ -757,7 +776,7 @@ array *a1, *a2;
 	error("Array too large");
     }
 
-    a3 = arr_alloc(num + n);
+    a3 = arr_new((long) num + n);
     copy(a3->elts, v3, num);
     copy(a3->elts + num, v2, n);
     AFREE(v3);
@@ -807,7 +826,7 @@ register long l1, l2;
 	error("Invalid array range");
     }
 
-    range = arr_alloc((unsigned short) (l2 - l1 + 1));
+    range = arr_new(l2 - l1 + 1);
     copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
     return range;
 }
@@ -843,10 +862,15 @@ cvoid *cv1, *cv2;
 array *map_new(size)
 long size;
 {
+    array *m;
+
     if (size > 2 * max_size) {
 	error("Mapping too large");
     }
-    return arr_alloc((unsigned short) size);
+    m = arr_alloc((unsigned short) size);
+    m->tag = tag++;
+    m->primary = &i_this_object()->data->alocal;
+    return m;
 }
 
 /*
@@ -1128,7 +1152,7 @@ array *m1, *a2;
     array *m3;
 
     map_compact(m1);
-    m3 = arr_alloc(m1->size);
+    m3 = map_new((long) m1->size);
     if (m1->size == 0) {
 	/* subtract from empty mapping */
 	return m3;
@@ -1223,9 +1247,9 @@ array *m1, *a2;
     map_compact(m1);
     if ((size=a2->size) == 0) {
 	/* intersect with empty array */
-	return arr_alloc(0);
+	return map_new(0L);
     }
-    m3 = arr_alloc(m1->size);
+    m3 = map_new((long) m1->size);
     if (m1->size == 0) {
 	/* intersect with empty mapping */
 	return m3;
@@ -1535,7 +1559,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    indices = arr_alloc(n = m->size >> 1);
+    indices = map_new((long) (n = m->size >> 1));
     v1 = indices->elts;
     for (v2 = m->elts; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);
@@ -1557,7 +1581,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    values = arr_alloc(n = m->size >> 1);
+    values = map_new((long) (n = m->size >> 1));
     v1 = values->elts;
     for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);

@@ -430,6 +430,7 @@ void co_call()
 		func = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
 		if (i_call(obj, func, TRUE, nargs)) {
 		    i_del_value(sp++);
+		    d_export();
 		}
 	    }
 	}

@@ -58,7 +58,7 @@ register long len;
     }
     s->text[s->len = len] = '\0';
     s->ref = 0;
-    s->u.primary = (struct _strref_ *) NULL;
+    s->u.primary = (strref *) NULL;
 
     return s;
 }
@@ -72,7 +72,8 @@ void str_del(s)
 register string *s;
 {
     if ((--(s->ref) & STR_REF) == 0) {
-	if (s->u.primary != (struct _strref_ *) NULL) {
+	/* this cannot be a string constant */
+	if (s->u.primary != (strref *) NULL) {
 	    d_del_string(s);
 	}
 	FREE(s);

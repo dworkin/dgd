@@ -68,7 +68,7 @@ char *create;
 
 /*
  * NAME:	interpret->ref_value()
- * DESCRIPTION:	reference a value on the stack
+ * DESCRIPTION:	reference a value
  */
 void i_ref_value(v)
 register value *v;
@@ -93,7 +93,7 @@ register value *v;
 
 /*
  * NAME:	interpret->del_value()
- * DESCRIPTION:	delete a value on the stack
+ * DESCRIPTION:	dereference a value
  */
 void i_del_value(v)
 register value *v;
@@ -1549,6 +1549,7 @@ int funci;
 				   f->func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
+    cframe++;
 
     /* handle arguments */
     n = PROTO_NARGS(pc);
@@ -1605,7 +1606,6 @@ int funci;
 
     d_get_funcalls(f->ctrl);	/* make sure they are available */
     exec_cost -= 5;
-    cframe++;
 # ifdef DEBUG
     keep = sp;
 # endif

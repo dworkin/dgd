@@ -782,3 +782,6 @@ DGD 1.1
  - Reduced memory usage, at the cost of slightly slower string and array
    deletes.
  - Speeded up swapping of objects with a tangle of arrays and mappings.
+ - Arrays that are shared between objects are now made unique in each object
+   immediately after execution has completed, rather than at the moment when
+   one of the objects is swapped out.

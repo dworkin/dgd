@@ -14,7 +14,6 @@
 # define M_STRINGREF		0x08
 # define M_NEWCALLOUT		0x10
 # define M_CALLOUT		0x20
-# define M_EXPORTING		0x40
 
 # define ARR_MOD		0x80000000L
 
@@ -76,19 +75,6 @@ typedef struct _sstring_ {
     unsigned short len;		/* length of string */
     uindex ref;			/* refcount */
 } sstring;
-
-typedef struct _strref_ {
-    string *str;		/* string value */
-    struct _dataspace_ *data;	/* dataspace this string is in */
-    uindex ref;			/* # of refs */
-} strref;
-
-typedef struct _arrref_ {
-    array *arr;			/* array value */
-    struct _dataspace_ *data;	/* dataspace this array is in */
-    long index;			/* selts index */
-    uindex ref;			/* # of refs */
-} arrref;
 
 typedef struct _dcallout_ {
     Uint time;			/* time of call */
@@ -180,11 +166,13 @@ object *obj;
 
     data->achange = 0;
     data->schange = 0;
+    data->imports = 0;
+    data->iprev = data->inext = 0;
+    data->modified = 0;
+
     data->obj = obj;
     data->ctrl = o_control(obj);
     data->ctrl->ndata++;
-
-    data->modified = 0;
 
     /* sectors */
     data->nsectors = 0;			/* nothing on swap device yet */
@@ -198,6 +186,8 @@ object *obj;
     /* arrays */
     data->narrays = 0;
     data->eltsize = 0;
+    data->alocal.arr = (array *) NULL;
+    data->alocal.data = data;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -343,6 +333,8 @@ object *obj;
 
     data->achange = 0;
     data->schange = 0;
+    data->imports = 0;
+    data->iprev = data->inext = 0;
     data->modified = 0;
 
     /* header */
@@ -371,6 +363,8 @@ object *obj;
     data->arroffset = size;
     data->narrays = header.narrays;
     data->eltsize = header.eltsize;
+    data->alocal.arr = (array *) NULL;
+    data->alocal.data = data;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -612,9 +606,9 @@ register uindex idx;
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
 	s->u.primary = &data->strings[idx];
+	s->u.primary->str = s;
 	s->u.primary->data = data;
 	s->u.primary->ref = data->sstrings[idx].ref;
-	str_ref(s->u.primary->str = s);
 	return s;
     }
     return data->strings[idx].str;
@@ -651,15 +645,10 @@ register uindex idx;
 	a = arr_alloc(data->sarrays[idx].size);
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->arrays[idx];
+	a->primary->arr = a;
 	a->primary->data = data;
 	a->primary->index = data->sarrays[idx].index;
 	a->primary->ref = data->sarrays[idx].ref;
-	if (data->modified & M_EXPORTING) {
-	    /* exporting: get the elements as well */
-	    d_get_elts(a);
-	} else {
-	    arr_ref(a->primary->arr = a);
-	}
 	return a;
     }
     return data->arrays[idx].arr;
@@ -871,7 +860,6 @@ register value *rhs;
 	    /* in this object */
 	    if (str->u.primary->ref++ == 0) {
 		/* first reference restored */
-		str_ref(str);
 		data->schange--;
 	    }
 	    data->modified |= M_STRINGREF;
@@ -884,16 +872,10 @@ register value *rhs;
     case T_ARRAY:
     case T_MAPPING:
 	arr = rhs->u.array;
-	if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
+	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (arr->primary->ref++ == 0) {
 		/* first reference restored */
-		if ((n=arr->size) != 0 && (rhs=arr->elts)->type != T_INVALID) {
-		    do {
-			ref_rhs(data, rhs++);
-		    } while (--n > 0);
-		}
-		arr_ref(arr);
 		data->achange--;
 	    }
 	    data->modified |= M_ARRAYREF;
@@ -930,7 +912,6 @@ register value *lhs;
 	    /* in this object */
 	    if (--(str->u.primary->ref) == 0) {
 		/* last reference removed */
-		str_del(str);
 		data->schange++;
 	    }
 	    data->modified |= M_STRINGREF;
@@ -943,16 +924,10 @@ register value *lhs;
     case T_ARRAY:
     case T_MAPPING:
 	arr = lhs->u.array;
-	if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
+	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (--(arr->primary->ref) == 0) {
 		/* last reference removed */
-		if ((n=arr->size) != 0 && (lhs=arr->elts)->type != T_INVALID) {
-		    do {
-			del_lhs(data, lhs++);
-		    } while (--n > 0);
-		}
-		arr_del(arr);
 		data->achange++;
 	    }
 	    data->modified |= M_ARRAYREF;
@@ -961,6 +936,52 @@ register value *lhs;
 	    data->achange--;
 	}
 	break;
+    }
+}
+
+static dataspace *ilist;	/* list of dataspaces with imports */
+
+/*
+ * NAME:	check_imports()
+ * DESCRIPTION:	check if importing arrays from other objects
+ */
+static void check_imports(data, var, val)
+register dataspace *data;
+register value *var, *val;
+{
+    register long imports;
+
+    imports = data->imports;
+    if (T_INDEXED(var->type) && data != var->u.array->primary->data) {
+	/* deref imported object */
+	imports--;
+    }
+    if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
+	/* ref imported object */
+	imports++;
+    }
+
+    if (imports != data->imports) {
+	if (data->imports == 0) {
+	    /* add to imports list */
+	    data->iprev = (dataspace *) NULL;
+	    data->inext = ilist;
+	    if (ilist != (dataspace *) NULL) {
+		ilist->iprev = data;
+	    }
+	    ilist = data;
+	} else if (imports == 0) {
+	    /* remove from imports list */
+	    if (data->iprev != (dataspace *) NULL) {
+		data->iprev->inext = data->inext;
+	    } else {
+		ilist = data->inext;
+	    }
+	    if (data->inext != (dataspace *) NULL) {
+		data->inext->iprev = data->iprev;
+	    }
+	}
+	data->imports = imports;
     }
 }
 
@@ -974,6 +995,7 @@ register value *var;
 register value *val;
 {
     if (var >= data->variables && var < data->variables + data->nvariables) {
+	check_imports(data, var, val);
 	ref_rhs(data, val);
 	del_lhs(data, var);
 	data->modified |= M_VARIABLE;
@@ -992,14 +1014,18 @@ register value *val;
  */
 void d_assign_elt(arr, elt, val)
 register array *arr;
-value *elt, *val;
+register value *elt, *val;
 {
+    long imports;
     register dataspace *data;
 
-    if (arr->primary != (arrref *) NULL && arr->primary->ref != 0) {
-	/* the array is in the dataspace of some object */
+    data = arr->primary->data;
+    check_imports(data, elt, val);
+    if (arr->primary->arr != (array *) NULL) {
+	/*
+	 * the array is in the loaded dataspace of some object
+	 */
 	arr->primary->index |= ARR_MOD;
-	data = arr->primary->data;
 	ref_rhs(data, val);
 	del_lhs(data, elt);
 	data->modified |= M_ARRAY;
@@ -1019,7 +1045,7 @@ value *elt, *val;
 void d_change_map(map)
 array *map;
 {
-    if (map->primary != (arrref *) NULL) {
+    if (map->primary->arr != (array *) NULL) {
 	map->primary->data->achange++;
     }
 }
@@ -1161,7 +1187,7 @@ int nargs;
 	ref_rhs(data, &v[2]);
 	v[3].type = T_ARRAY;
 	nargs -= 2;
-	arr_ref(v[3].u.array = arr_alloc((unsigned short) nargs));
+	arr_ref(v[3].u.array = arr_new((long) nargs));
 	memcpy(v[3].u.array->elts, sp, nargs * sizeof(value));
 	ref_rhs(data, &v[3]);
 	break;
@@ -1281,7 +1307,7 @@ Uint t;
     int max_args;
 
     if (data->ncallouts == 0) {
-	return arr_alloc((unsigned short) 0);
+	return arr_new(0L);
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
@@ -1293,7 +1319,7 @@ Uint t;
 	--count;
     }
 
-    list = arr_alloc((unsigned short) count);
+    list = arr_new((long) count);
     elts = list->elts;
     for (n = count, v = elts; n > 0; --n) {
 	(v++)->type = T_INVALID;
@@ -2059,6 +2085,141 @@ register dataspace *data;
     }
 }
 
+static array **itab;	/* imported array replacement table */
+static int itabsz;	/* size of table */
+
+/*
+ * NAME:	data->import()
+ * DESCRIPTION:	copy imported arrays to current dataspace
+ */
+static void d_import(data, val, n)
+register dataspace *data;
+register value *val;
+register unsigned short n;
+{
+    while (n > 0) {
+	if (T_INDEXED(val->type)) {
+	    if (val->u.array->primary->data != data) {
+		register uindex i;
+		register array *a;
+
+		/*
+		 * imported array
+		 */
+		i = arr_put(val->u.array);
+		if (i >= narr) {
+		    /*
+		     * make new array
+		     */
+		    a = arr_alloc(val->u.array->size);
+		    a->tag = val->u.array->tag;
+		    a->primary = &data->alocal;
+
+		    /*
+		     * store in itab
+		     */
+		    if (i > itabsz) {
+			array **tmp;
+
+			/*
+			 * double size of itab
+			 */
+			tmp = ALLOC(array*, itabsz += itabsz);
+			memcpy(tmp, itab, itabsz * sizeof(array*) / 2);
+			FREE(itabsz);
+			itab = tmp;
+		    }
+		    arr_put(itab[i] = a);
+		    narr += 2;	/* 1 old, 1 new */
+
+		    if (val->u.array->size > 0) {
+			register value *v, *w;
+
+			/*
+			 * copy elements
+			 */
+			v = a->elts;
+			w = d_get_elts(val->u.array);
+			for (i = val->u.array->size; i > 0; --i) {
+			    i_ref_value(w);
+			    *v++ = *w++;
+			}
+		    }
+
+		    /*
+		     * replace
+		     */
+		    arr_del(val->u.array);
+		    arr_ref(val->u.array = a);
+
+		    if (a->size > 0) {
+			/*
+			 * import elements too
+			 */
+			d_import(data, a->elts, a->size);
+		    }
+		} else {
+		    /*
+		     * array was previously replaced
+		     */
+		    a = itab[i];
+		    arr_del(val->u.array);
+		    arr_ref(val->u.array = a);
+		}
+	    } else if (val->u.array->size != 0 &&
+		       val->u.array->elts[0].type != T_INVALID) {
+		if (arr_put(val->u.array) >= narr) {
+		    /*
+		     * not previously encountered non-empty array
+		     */
+		    narr++;
+		    d_import(data, val->u.array->elts, val->u.array->size);
+		}
+	    }
+	}
+	val++;
+	--n;
+    }
+}
+
+/*
+ * NAME:	data->export()
+ * DESCRIPTION:	handle exporting of arrays shared by more than one object
+ */
+void d_export()
+{
+    register dataspace *data;
+
+    if (ilist != (dataspace *) NULL) {
+	itab = ALLOC(array*, itabsz = 16);
+
+	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
+	    data->imports = 0;
+	    narr = 0;
+	    if (data->variables != (value *) NULL) {
+		d_import(data, data->variables, data->nvariables);
+	    }
+	    if (data->callouts != (dcallout *) NULL) {
+		register dcallout *co;
+		register uindex n;
+
+		co = data->callouts;
+		for (n = data->ncallouts; n > 0; --n) {
+		    if (co->val[0].type != T_INVALID) {
+			d_import(data, co->val,
+				 (co->nargs > 3) ? 4 : co->nargs + 1);
+		    }
+		    co++;
+		}
+	    }
+	    arr_clear();	/* clear hash table */
+	}
+
+	FREE(itab);
+	ilist = (dataspace *) NULL;
+    }
+}
+
 /*
  * NAME:	data->free_control()
  * DESCRIPTION:	remove the control block from memory
@@ -2081,7 +2242,7 @@ register control *ctrl;
 	for (i = ctrl->nstrings; i > 0; --i) {
 	    if (*strs != (string *) NULL) {
 		(*strs)->ref &= ~STR_CONST;
-		(*strs)->u.primary = (strref *) NULL;
+		(*strs)->u.strconst = (string **) NULL;
 		str_del(*strs);
 	    }
 	    strs++;
@@ -2200,33 +2361,8 @@ register dataspace *data;
 	FREE(data->callouts);
     }
 
+    /* free arrays */
     if (data->arrays != (arrref *) NULL) {
-	register array *a;
-	register arrref *aa;
-	bool fetch;
-
-	/* free arrays */
-	for (i = data->narrays, aa = data->arrays; i > 0; --i, aa++) {
-	    a = aa->arr;
-	    if (a != (array *) NULL) {
-		if (aa->ref != 0) {
-		    arr_del(a);
-		}
-	    }
-	}
-
-	/* export arrays which are left */
-	data->modified |= M_EXPORTING;
-	for (i = data->narrays, aa = data->arrays; i > 0; --i, aa++) {
-	    a = aa->arr;
-	    if (a != (array *) NULL) {
-		if (a->size != 0 && a->elts[0].type == T_INVALID) {
-		    d_get_elts(a);
-		}
-		a->primary = (arrref *) NULL;
-	    }
-	}
-
 	if (data->selts != (svalue *) NULL) {
 	    FREE(data->selts);
 	}
@@ -2241,9 +2377,6 @@ register dataspace *data;
 	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
 		s->str->u.primary = (strref *) NULL;
-		if (s->ref != 0) {
-		    str_del(s->str);
-		}
 	    }
 	}
 
