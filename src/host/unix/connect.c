@@ -866,6 +866,17 @@ unsigned int mtime;
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
+    if (flist == (connection *) NULL) {
+	/* can't accept new connections, so don't check for them */
+	for (n = ntdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(tdescs[n], &readfds);
+	}
+	for (n = nbdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(bdescs[n], &readfds);
+	}
+    }
     memcpy(&writefds, &waitfds, sizeof(fd_set));
     if (npackets + closed != 0) {
 	t = 0;

@@ -114,6 +114,9 @@ static void ipa_start(SOCKET sock)
  */
 static void ipa_finish(void)
 {
+    close(in);
+    in = INVALID_SOCKET;
+    out = INVALID_SOCKET;
 }
 
 /*
@@ -827,6 +830,17 @@ int conn_select(Uint t, unsigned int mtime)
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
+    if (flist == (connection *) NULL) {
+	/* can't accept new connections, so don't check for them */
+	for (n = ntdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(tdescs[n], &readfds);
+	}
+	for (n = nbdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(bdescs[n], &readfds);
+	}
+    }
     memcpy(&writefds, &waitfds, sizeof(fd_set));
     if (npackets + closed != 0) {
 	t = 0;
