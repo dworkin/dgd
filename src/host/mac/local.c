@@ -87,6 +87,7 @@ static void windowstart(void)
 {
     GrafPtr port;
     EventRecord evt;
+    short id;
     Rect bounds;
 
     if (mainframe != NULL) {
@@ -98,7 +99,8 @@ static void windowstart(void)
     GetNextEvent(nullEvent, &evt);
     ShowWindow(mainframe);
     SetPort(mainframe);
-    TextFont(monaco);
+    GetFNum("\pmonaco", &id);
+    TextFont(id);
     TextSize(9);
     bounds.top = bounds.left = 2;
     bounds.right = 2 + WIDTH * CHARWIDTH;

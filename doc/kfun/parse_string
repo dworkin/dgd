@@ -14,7 +14,7 @@ DESCRIPTION
 	parse_string() uses internal object storage to cache generated
 	automatons between calls, which is not removed until the object is
 	destructed.
-	This function cannot be used from a user or editor object.
+	This function cannot be used from a special object.
 
 SEE ALSO
 	kfun/explode, kfun/implode, kfun/sscanf

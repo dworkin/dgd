@@ -45,27 +45,26 @@ void fsinit(long fcrea, long ftype)
 char *getpath(char *buf, short vref, unsigned char *fname)
 {
     Str255 str;
-    DirInfo dir;
+    CInfoPBRec dir;
 
     buf += STRINGSZ - 1;
     buf[0] = '\0';
     memcpy(str, fname, fname[0] + 1);
-    memcpy(buf -= fname[0], fname + 1, fname[0]);
 
-    dir.ioNamePtr = str;
-    dir.ioCompletion = NULL;
-    dir.ioFDirIndex = 0;
-    dir.ioVRefNum = vref;
-    dir.ioDrDirID = 0;
+    dir.dirInfo.ioNamePtr = str;
+    dir.dirInfo.ioCompletion = NULL;
+    dir.dirInfo.ioFDirIndex = 0;
+    dir.dirInfo.ioVRefNum = vref;
+    dir.dirInfo.ioDrDirID = 0;
     for (;;) {
-	PBGetCatInfoSync((CInfoPBPtr) &dir);
+	PBGetCatInfoSync(&dir);
 	memcpy(buf -= str[0], str + 1, str[0]);
-	if (dir.ioDrDirID == 2) {
+	if (dir.dirInfo.ioDrDirID == 2) {
 	    return buf;
 	}
 	*--buf = ':';
-	dir.ioFDirIndex = -1;
-	dir.ioDrDirID = dir.ioDrParID;
+	dir.dirInfo.ioFDirIndex = -1;
+	dir.dirInfo.ioDrDirID = dir.dirInfo.ioDrParID;
     }
 }
 
@@ -174,7 +173,7 @@ static char *path_unfile(char *to, const unsigned char *from)
 
 static long sdirid;		/* scan directory ID */
 static short sdiridx;		/* scan directory index */
-static HFileInfo sdirbuf;	/* scan dir file info */
+static CInfoPBRec sdirbuf;	/* scan dir file info */
 
 /*
  * NAME:	P->opendir()
@@ -182,18 +181,18 @@ static HFileInfo sdirbuf;	/* scan dir file info */
  */
 bool P_opendir(char *path)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = path_file(str, path);
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	(buf.ioFlAttrib & ioDirMask) == 0) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = path_file(str, path);
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr ||
+	(buf.hFileInfo.ioFlAttrib & ioDirMask) == 0) {
 	return FALSE;
     }
-    sdirid = buf.ioDirID;
+    sdirid = buf.hFileInfo.ioDirID;
     sdiridx = 1;
     return TRUE;
 }
@@ -207,11 +206,11 @@ char *P_readdir(void)
     Str255 str;
     static char path[34];
 
-    sdirbuf.ioVRefNum = vref;
-    sdirbuf.ioFDirIndex = sdiridx++;
-    sdirbuf.ioNamePtr = str;
-    sdirbuf.ioDirID = sdirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &sdirbuf) != noErr) {
+    sdirbuf.hFileInfo.ioVRefNum = vref;
+    sdirbuf.hFileInfo.ioFDirIndex = sdiridx++;
+    sdirbuf.hFileInfo.ioNamePtr = str;
+    sdirbuf.hFileInfo.ioDirID = sdirid;
+    if (PBGetCatInfoSync(&sdirbuf) != noErr) {
 	return NULL;
     }
 
@@ -287,7 +286,7 @@ int P_close(int fd)
  * NAME:	P->read()
  * DESCRIPTION:	read from a file
  */
-int P_read(int fd, void *buf, int nbytes)
+int P_read(int fd, char *buf, int nbytes)
 {
     long count;
 
@@ -306,7 +305,7 @@ int P_read(int fd, void *buf, int nbytes)
  * NAME:	P->write()
  * DESCRIPTION:	write to a file
  */
-int P_write(int fd, const void *buf, int nbytes)
+int P_write(int fd, char *buf, int nbytes)
 {
     long count;
 
@@ -361,24 +360,24 @@ long P_lseek(int fd, long offset, int whence)
  */
 int P_stat(char *path, struct stat *sb)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
     if (sdiridx != 0) {
 	buf = sdirbuf;
     } else {
-	buf.ioVRefNum = vref;
-	buf.ioFDirIndex = 0;
-	buf.ioNamePtr = path_file(str, path);
-	buf.ioDirID = dirid;
-	if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
+	buf.hFileInfo.ioVRefNum = vref;
+	buf.hFileInfo.ioFDirIndex = 0;
+	buf.hFileInfo.ioNamePtr = path_file(str, path);
+	buf.hFileInfo.ioDirID = dirid;
+	if (PBGetCatInfoSync(&buf) != noErr) {
 	    return -1;
 	}
     }
 
-    sb->st_mode = (buf.ioFlAttrib & ioDirMask) ? S_IFDIR : S_IFREG;
-    sb->st_size = buf.ioFlLgLen;
-    sb->st_mtime = (long) m2utime(buf.ioFlMdDat);
+    sb->st_mode = (buf.hFileInfo.ioFlAttrib & ioDirMask) ? S_IFDIR : S_IFREG;
+    sb->st_size = buf.hFileInfo.ioFlLgLen;
+    sb->st_mtime = (long) m2utime(buf.hFileInfo.ioFlMdDat);
 
     return 0;
 }
@@ -389,19 +388,19 @@ int P_stat(char *path, struct stat *sb)
  */
 int P_fstat(int fd, struct stat *sb)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = fdtab[fd].fname;
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = fdtab[fd].fname;
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr) {
 	return -1;
     }
 
-    sb->st_mode = (buf.ioFlAttrib & ioDirMask) ? S_IFDIR : S_IFREG;
-    sb->st_size = buf.ioFlLgLen;
-    sb->st_mtime = (long) m2utime(buf.ioFlMdDat);
+    sb->st_mode = (buf.hFileInfo.ioFlAttrib & ioDirMask) ? S_IFDIR : S_IFREG;
+    sb->st_size = buf.hFileInfo.ioFlLgLen;
+    sb->st_mtime = (long) m2utime(buf.hFileInfo.ioFlMdDat);
 
     return 0;
 }
@@ -412,15 +411,15 @@ int P_fstat(int fd, struct stat *sb)
  */
 int P_unlink(char *path)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = path_file(str, path);
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	(buf.ioFlAttrib & ioDirMask)) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = path_file(str, path);
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr ||
+	(buf.hFileInfo.ioFlAttrib & ioDirMask)) {
 	return -1;
     }
     return (HDelete(vref, dirid, str) == noErr) ? 0 : -1;
@@ -434,7 +433,7 @@ int P_rename(char *from, char *to)
 {
     char *p, *q;
     Str255 dir1, dir2, file1, file2;
-    HFileInfo buf;
+    CInfoPBRec buf;
     long xdirid;
 
     p = strrchr(from, '/');
@@ -459,22 +458,22 @@ int P_rename(char *from, char *to)
     path_file(file2, q);
 
     /* source directory must exist */
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = dir1;
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	(buf.ioFlAttrib & ioDirMask) == 0) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = dir1;
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr ||
+	(buf.hFileInfo.ioFlAttrib & ioDirMask) == 0) {
 	return -1;
     }
-    xdirid = buf.ioDirID;
+    xdirid = buf.hFileInfo.ioDirID;
 
     /* source file must exist */
-    buf.ioNamePtr = file1;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
+    buf.hFileInfo.ioNamePtr = file1;
+    if (PBGetCatInfoSync(&buf) != noErr) {
 	return -1;
     }
-    if (buf.ioFlAttrib & ioDirMask) {
+    if (buf.hFileInfo.ioFlAttrib & ioDirMask) {
 	file1[++(file1[0])] = ':';
 	file2[++(file2[0])] = ':';
     }
@@ -487,17 +486,17 @@ int P_rename(char *from, char *to)
 	 */
 
 	/* destination directory must exist */
-	buf.ioNamePtr = dir2;
-	buf.ioDirID = dirid;
-	if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	    (buf.ioFlAttrib & ioDirMask) == 0) {
+	buf.hFileInfo.ioNamePtr = dir2;
+	buf.hFileInfo.ioDirID = dirid;
+	if (PBGetCatInfoSync(&buf) != noErr ||
+	    (buf.hFileInfo.ioFlAttrib & ioDirMask) == 0) {
 	    return -1;
 	}
-	move.ioNewDirID = buf.ioDirID;
+	move.ioNewDirID = buf.hFileInfo.ioDirID;
 
 	/* destination must not already exist */
-	buf.ioNamePtr = file2;
-	if (PBGetCatInfoSync((CInfoPBPtr) &buf) == noErr) {
+	buf.hFileInfo.ioNamePtr = file2;
+	if (PBGetCatInfoSync(&buf) == noErr) {
 	    return -1;
 	}
 
@@ -511,9 +510,9 @@ int P_rename(char *from, char *to)
 		count = 0;
 	    }
 	    sprintf((char *) file1 + 6, "%04d", ++count);
-	    buf.ioNamePtr = file1;
-	    buf.ioDirID = xdirid;
-	} while (PBGetCatInfoSync((CInfoPBPtr) &buf) == noErr);
+	    buf.hFileInfo.ioNamePtr = file1;
+	    buf.hFileInfo.ioDirID = xdirid;
+	} while (PBGetCatInfoSync(&buf) == noErr);
 	if (dir1[dir1[0]] == ':') {
 	    file1[++(file1[0])] = ':';
 	}
@@ -544,19 +543,19 @@ int P_rename(char *from, char *to)
  */
 int P_access(char *path, int mode)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = path_file(str, path);
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = path_file(str, path);
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr) {
 	return -1;
     }
 
     if (mode == W_OK) {
-	return (buf.ioFlAttrib & 0x01) ? -1 : 0;
+	return (buf.hFileInfo.ioFlAttrib & 0x01) ? -1 : 0;
     }
     return 0;
 }
@@ -583,15 +582,15 @@ int P_mkdir(char *path, int mode)
  */
 int P_rmdir(char *path)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = path_file(str, path);
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	(buf.ioFlAttrib & ioDirMask) == 0) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = path_file(str, path);
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr ||
+	(buf.hFileInfo.ioFlAttrib & ioDirMask) == 0) {
 	return -1;
     }
     return (HDelete(vref, dirid, str) == noErr) ? 0  : -1;
@@ -603,17 +602,17 @@ int P_rmdir(char *path)
  */
 int P_chdir(char *path)
 {
-    HFileInfo buf;
+    CInfoPBRec buf;
     Str255 str;
 
-    buf.ioVRefNum = vref;
-    buf.ioFDirIndex = 0;
-    buf.ioNamePtr = path_file(str, path);
-    buf.ioDirID = dirid;
-    if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr ||
-	(buf.ioFlAttrib & ioDirMask) == 0) {
+    buf.hFileInfo.ioVRefNum = vref;
+    buf.hFileInfo.ioFDirIndex = 0;
+    buf.hFileInfo.ioNamePtr = path_file(str, path);
+    buf.hFileInfo.ioDirID = dirid;
+    if (PBGetCatInfoSync(&buf) != noErr ||
+	(buf.hFileInfo.ioFlAttrib & ioDirMask) == 0) {
 	return -1;
     }
-    dirid = buf.ioDirID;
+    dirid = buf.hFileInfo.ioDirID;
     return 0;
 }
