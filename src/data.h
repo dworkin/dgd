@@ -40,6 +40,10 @@ typedef struct _control_ {
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
 
+    short niinherits;		/* i/o # immediately inherited object indices */
+    char *iinherits;		/* i/o immediately inherited object indices */
+    long iinhoffset;		/* o iinherits offset */
+
     Uint compiled;		/* time of compilation */
 
     char *prog;			/* i program text */
@@ -121,6 +125,7 @@ extern dataspace       *d_load_dataspace P((object*));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
 
+extern char	       *d_get_iinherits	P((control*));
 extern char	       *d_get_prog	P((control*));
 extern string	       *d_get_strconst	P((control*, int, unsigned int));
 extern dfuncdef        *d_get_funcdefs	P((control*));

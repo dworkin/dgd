@@ -243,9 +243,15 @@ register unsigned int size;
     if (size == 0) {
 	a = arr_new(0L);
     } else {
+	register value *v, *elts;
+
 	a = arr_new((long) size);
-	memcpy(a->elts, sp, size * sizeof(value));
-	sp += size;
+	elts = a->elts + size;
+	v = sp;
+	do {
+	    *--elts = *v++;
+	} while (--size != 0);
+	sp = v;
     }
     (--sp)->type = T_ARRAY;
     arr_ref(sp->u.array = a);
@@ -263,9 +269,15 @@ register unsigned int size;
     if (size == 0) {
 	a = map_new(0L);
     } else {
+	register value *v, *elts;
+
 	a = map_new((long) size);
-	memcpy(a->elts, sp, size * sizeof(value));
-	sp += size;
+	elts = a->elts + size;
+	v = sp;
+	do {
+	    *--elts = *v++;
+	} while (--size != 0);
+	sp = v;
 	if (ec_push()) {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);

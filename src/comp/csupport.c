@@ -138,6 +138,9 @@ object *obj;
     ctrl->ninherits = itab[i + 1] - itab[i];
     ctrl->inherits = inherits + itab[i];
 
+    ctrl->niinherits = l->niinherits;
+    ctrl->iinherits = l->iinherits;
+
     ctrl->compiled = l->compiled;
 
     ctrl->progsize = l->progsize;

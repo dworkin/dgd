@@ -759,3 +759,18 @@ DGD 1.1
  - Made sure that mappings are compacted before the size is checked.
  - Fixed a bug that might occur while restoring object filenames in a state
    dump.
+ - DUMPFILE COMPATIBILITY ABANDONED.  All following pre-1.1 versions won't be
+   dumpfile compatible with 1.0.9 and probably not with eachother, either.
+   I'll make a dumpfile converter for 1.0.9->1.1.
+ - The evaluation order of array and mapping aggregates is now left to right,
+   because this is more intuitive.  From now on I'll consider the evalution
+   order of aggregates and function arguments to be fixed, rather than
+   undefined.
+ - Added list of directly inherited objects to the control block.
+ - Won't cause a fatal error on too small dynamic chunk anymore (just allocate
+   the larger chunk).
+ - Some Mac compatibility fixes.
+ - Added T_RESERVED type for add-on packages.
+ - Fixed character initializer tables.
+ - Added keyword "atomic".
+ - Got rid of C_LOCAL.

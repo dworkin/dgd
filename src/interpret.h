@@ -46,14 +46,15 @@
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
-# define T_MIXED	0x07	/* declaration type only */
-# define T_VOID		0x08	/* function return type only */
-# define T_LVALUE	0x09	/* address of a value */
-# define T_SLVALUE	0x0a	/* indexed string lvalue */
-# define T_ALVALUE	0x0b	/* indexed array lvalue */
-# define T_MLVALUE	0x0c	/* indexed mapping lvalue */
-# define T_SALVALUE	0x0d	/* indexed string indexed array lvalue */
-# define T_SMLVALUE	0x0e	/* indexed string indexed mapping lvalue */
+# define T_RESERVED	0x07	/* reserved for add-on packages */
+# define T_MIXED	0x08	/* declaration type only */
+# define T_VOID		0x09	/* function return type only */
+# define T_LVALUE	0x0a	/* address of a value */
+# define T_SLVALUE	0x0b	/* indexed string lvalue */
+# define T_ALVALUE	0x0c	/* indexed array lvalue */
+# define T_MLVALUE	0x0d	/* indexed mapping lvalue */
+# define T_SALVALUE	0x0e	/* indexed string indexed array lvalue */
+# define T_SMLVALUE	0x0f	/* indexed string indexed mapping lvalue */
 
 # define T_ELLIPSIS	0x10	/* or'ed with declaration type */
 
@@ -65,7 +66,7 @@
 # define T_INDEXED(t)	((t) >= T_ARRAY)	/* only T_ARRAY and T_MAPPING */
 
 # define TYPENAMES	{ "invalid", "int", "float", "string", "object", \
-			  "array", "mapping", "mixed", "void" }
+			  "array", "mapping", "reserved", "mixed", "void" }
 
 typedef struct _value_ {
     char type;			/* value type */
@@ -73,7 +74,7 @@ typedef struct _value_ {
     uindex oindex;		/* index in object table */
     union {
 	Int number;		/* number */
-	Int objcnt;		/* object creation count */
+	Uint objcnt;		/* object creation count */
 	string *string;		/* string */
 	array *array;		/* array or mapping */
 	struct _value_ *lval;	/* lvalue: variable */
@@ -94,7 +95,7 @@ typedef struct _value_ {
 
 # define C_PRIVATE	0x01
 # define C_STATIC	0x02
-# define C_LOCAL	0x04
+# define C_ATOMIC	0x04
 # define C_NOMASK	0x08
 # define C_VARARGS	0x10
 # define C_TYPECHECKED	0x20

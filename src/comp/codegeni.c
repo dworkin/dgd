@@ -462,8 +462,8 @@ register node *n;
 	return 0;
     }
     for (i = 1; n->type == N_PAIR; i++) {
-	cg_expr(n->r.right, FALSE);
-	n = n->l.left;
+	cg_expr(n->l.left, FALSE);
+	n = n->r.right;
     }
     cg_expr(n, FALSE);
     return i;
@@ -482,12 +482,12 @@ register node *n;
 	return 0;
     }
     for (i = 2; n->type == N_PAIR; i += 2) {
-	cg_expr(n->r.right->r.right, FALSE);
-	cg_expr(n->r.right->l.left, FALSE);
-	n = n->l.left;
+	cg_expr(n->l.left->l.left, FALSE);
+	cg_expr(n->l.left->r.right, FALSE);
+	n = n->r.right;
     }
-    cg_expr(n->r.right, FALSE);
     cg_expr(n->l.left, FALSE);
+    cg_expr(n->r.right, FALSE);
     return i;
 }
 
@@ -849,7 +849,7 @@ register int pop;
 
 	case FCALL:
 	    code_instr(I_CALL_FUNC, n->line);
-	    code_word((int) n->r.number);
+	    code_word(ctrl_gencall((long) n->r.number));
 	    code_byte(i);
 	    break;
 	}

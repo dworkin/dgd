@@ -7,7 +7,7 @@
 # ifdef FUNCDEF
 FUNCDEF("crypt", kf_crypt, p_crypt)
 # else
-char p_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_STRING, 2,
+char p_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING, 2,
 		   T_STRING, T_STRING };
 
 /*
@@ -50,7 +50,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("ctime", kf_ctime, p_ctime)
 # else
-char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1, T_INT };
+char p_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
 
 /*
  * NAME:	kfun->ctime()
@@ -69,8 +69,8 @@ int kf_ctime()
 # ifdef FUNCDEF
 FUNCDEF("explode", kf_explode, p_explode)
 # else
-char p_explode[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
-		     T_STRING | (1 << REFSHIFT), 2, T_STRING, T_STRING };
+char p_explode[] = { C_TYPECHECKED | C_STATIC, T_STRING | (1 << REFSHIFT), 2,
+		     T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->explode()
@@ -176,7 +176,7 @@ int kf_explode()
 # ifdef FUNCDEF
 FUNCDEF("implode", kf_implode, p_implode)
 # else
-char p_implode[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 2,
+char p_implode[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
 		     T_STRING | (1 << REFSHIFT), T_STRING };
 
 /*
@@ -236,7 +236,7 @@ int kf_implode()
 # ifdef FUNCDEF
 FUNCDEF("random", kf_random, p_random)
 # else
-char p_random[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1, T_INT };
+char p_random[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->random()
@@ -253,7 +253,7 @@ int kf_random()
 # ifdef FUNCDEF
 FUNCDEF("sscanf", kf_sscanf, p_sscanf)
 # else
-char p_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_INT, 3,
+char p_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
 		    T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
@@ -548,8 +548,8 @@ no_match:
 # ifdef FUNCDEF
 FUNCDEF("parse_string", kf_parse_string, p_parse_string)
 # else
-char p_parse_string[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
-			  T_MIXED | (1 << REFSHIFT), 2, T_STRING, T_STRING };
+char p_parse_string[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
+			  2, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->parse_string()

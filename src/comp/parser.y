@@ -58,11 +58,11 @@ static node *comma	P((node*, node*));
 
 
 /*
- * keywords. The order is determined in tokenz() in the lexical scanner.
+ * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token FOR VOID DO CONTINUE INHERIT MAPPING INT LOCK NOMASK CATCH CASE FLOAT
-       BREAK MIXED STATIC VARARGS STRING ELSE IF WHILE SWITCH DEFAULT RETURN
-       PRIVATE OBJECT
+%token RETURN LOCK DO FOR ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT FLOAT
+       PRIVATE WHILE INHERIT IF CATCH SWITCH MAPPING VOID ATOMIC NOMASK BREAK
+       VARARGS STRING MIXED
 
 /*
  * composite tokens
@@ -251,6 +251,8 @@ class_specifier
 		{ $$ = C_STATIC | C_PRIVATE; }
 	| STATIC
 		{ $$ = C_STATIC; }
+	| ATOMIC
+		{ $$ = C_ATOMIC; }
 	| NOMASK
 		{ $$ = C_NOMASK; }
 	| VARARGS
@@ -426,9 +428,9 @@ primary_p1_exp
 		{ $$ = node_float(&$1); }
 	| string
 	| '(' '{' opt_arg_list_comma '}' ')'
-		{ $$ = node_mon(N_AGGR, T_MIXED | (1 << REFSHIFT), $3); }
+		{ $$ = c_aggregate($3, T_MIXED | (1 << REFSHIFT)); }
 	| '(' '[' opt_assoc_arg_list_comma ']' ')'
-		{ $$ = node_mon(N_AGGR, T_MAPPING, $3); }
+		{ $$ = c_aggregate($3, T_MAPPING); }
 	| ident	{
 		  $$ = c_variable($1);
 		  if (typechecking) {

@@ -346,8 +346,8 @@ node *label;
 
     o = o_find(file);
     if (o == (object *) NULL || !(o->flags & O_MASTER) ||
-	!ctrl_inherit(o, (label == (node *) NULL) ?
-			  (string *) NULL : label->l.string)) {
+	!ctrl_inherit(current->file, o, (label == (node *) NULL) ?
+					 (string *) NULL : label->l.string)) {
 	/* object is unloaded */
 	strncpy(current->inherit, file, STRINGSZ);
 	current->inherit[STRINGSZ - 1] = '\0';
@@ -611,9 +611,6 @@ bool function;
     }
 
     /* handle function class and return type */
-    if (class & C_PRIVATE) {
-	class |= C_LOCAL;	/* private implies local */
-    }
     if (typechecked) {
 	class |= C_TYPECHECKED;
     }
@@ -697,7 +694,7 @@ bool global;
 	type = T_MIXED;
     }
     if (global) {
-	if (class & C_NOMASK) {
+	if (class & (C_ATOMIC | C_NOMASK)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);
@@ -767,9 +764,6 @@ register node *n;
     if (!seen_decls) {
 	ctrl_create(current->file);
 	seen_decls = TRUE;
-    }
-    if (class & C_NOMASK) {
-	class |= C_LOCAL;	/* nomask implies local */
     }
     c_decl_func(class, type | n->mod, fname = n->l.left->l.string, n->r.right,
 		TRUE);
@@ -1470,6 +1464,17 @@ node *n, *label;
 }
 
 /*
+ * NAME:	compile->aggregate()
+ * DESCRIPTION:	create an aggregate
+ */
+node *c_aggregate(n, type)
+node *n;
+unsigned int type;
+{
+    return node_mon(N_AGGR, type, revert_list(n));
+}
+
+/*
  * NAME:	compile->variable()
  * DESCRIPTION:	create a reference to a variable
  */
@@ -1950,7 +1955,7 @@ char *f, *a1, *a2, *a3;
     char buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
     extern int nerrors;
 
-    sprintf(buf, "/%s, %u: ", path_unfile(tk_filename()), tk_line());
+    sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
     sprintf(buf + strlen(buf), f, a1, a2, a3);
     message("%s\012", buf);	/* LF */
     nerrors++;

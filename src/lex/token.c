@@ -1,6 +1,7 @@
 # define INCLUDE_FILE_IO
 # include "lex.h"
 # include <ctype.h>
+# include "path.h"
 # include "macro.h"
 # include "special.h"
 # include "ppstr.h"
@@ -215,7 +216,7 @@ unsigned short tk_line()
  */
 char *tk_filename()
 {
-    return ibuffer->u.filename;
+    return path_unfile(ibuffer->u.filename);
 }
 
 /*

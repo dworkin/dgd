@@ -236,7 +236,7 @@ register char *prot1, *prot2;
 
     /* check if classes are equal */
     if ((PROTO_CLASS(prot1) ^ PROTO_CLASS(prot2)) &
-	UCHAR(~(C_COMPILED | C_LOCAL | C_UNDEFINED))) {
+	UCHAR(~(C_COMPILED | C_UNDEFINED))) {
 	return FALSE;
     }
 
@@ -501,37 +501,16 @@ static void ctrl_funcdefs(ctrl)
 register control *ctrl;
 {
     register unsigned short n;
+    register object *o;
+    register dsymbol *symb;
 
-    if (ctrl->ninherits == 1) {
-	register dfuncdef *f;
-	register oh *ohash;
-
-	/*
-	 * For the auto object, add non-private functions from the function
-	 * definition table.
-	 */
-	f = ctrl->funcdefs;
-	ohash = oh_new(ctrl->inherits->obj->chain.name);
-	for (n = ctrl->nfuncdefs, f = ctrl->funcdefs + n; n > 0; ) {
-	    --n;
-	    --f;
-	    if (!(f->class & C_PRIVATE)) {
-		ctrl_funcdef(ctrl, n, ohash);
-	    }
-	}
-    } else {
-	register object *o;
-	register dsymbol *symb;
-
-	/*
-	 * The symbol table rather than the function definition table is
-	 * used here.
-	 */
-	for (n = ctrl->nsymbols, symb = d_get_symbols(ctrl); n > 0; --n, symb++)
-	{
-	    o = ctrl->inherits[UCHAR(symb->inherit)].obj;
-	    ctrl_funcdef(o->ctrl, UCHAR(symb->index), oh_new(o->chain.name));
-	}
+    /*
+     * The symbol table rather than the function definition table is
+     * used here.
+     */
+    for (n = ctrl->nsymbols, symb = d_get_symbols(ctrl); n > 0; --n, symb++) {
+	o = ctrl->inherits[UCHAR(symb->inherit)].obj;
+	ctrl_funcdef(o->ctrl, UCHAR(symb->index), oh_new(o->chain.name));
     }
 }
 
@@ -539,7 +518,8 @@ register control *ctrl;
  * NAME:	control->inherit()
  * DESCRIPTION:	inherit an object
  */
-bool ctrl_inherit(obj, label)
+bool ctrl_inherit(from, obj, label)
+char *from;
 object *obj;
 string *label;
 {
@@ -572,6 +552,14 @@ string *label;
 	     */
 	    o = (inh++)->obj;
 	    if (o->count == 0) {
+		if (strcmp(o->chain.name, from) == 0) {
+		    /*
+		     * inheriting old instance of the same object
+		     */
+		    c_error("cycle in inheritance");
+		    return TRUE;
+		}
+
 		/*
 		 * This object inherits an object that has been destructed.
 		 * Give the driver object a chance to destruct it.
@@ -593,7 +581,7 @@ string *label;
 		 * inherit a new object
 		 */
 		ohash->obj = o;
-		ohash->index = 1;
+		ohash->index = 2;	/* indirect */
 		ctrl = o_control(o);
 
 		/*
@@ -612,13 +600,13 @@ string *label;
 		c_error("inherited different instances of /%s",
 			o->chain.name);
 		return TRUE;
-	    } else if (ohash->index < 0 && ohash->obj->ctrl->ninherits > 1) {
+	    } else if (ohash->index < 0 && !(ohash->obj->flags & O_AUTO)) {
 		/*
 		 * Inherit an object which previously was inherited
 		 * directly (but is not the auto object). Mark it as
 		 * indirect now.
 		 */
-		ohash->index = 1;
+		ohash->index = 1;	/* indirect, but immediate */
 		n = ohash->obj->ctrl->ninherits - 1;
 		ninherits -= n;
 	    }
@@ -646,9 +634,13 @@ string *label;
 	 * inherited two objects with same name
 	 */
 	c_error("inherited different instances of /%s", obj->chain.name);
+    } else if (ohash->index == 2) {
+	/* not inherited directly before */
+	directs[ndirects++] = ohash;
+	ohash->index = 1;	/* indirect, but immediate */
     }
 
-    if (ninherits >= MAX_INHERITS) {
+    if (ninherits >= MAX_INHERITS || ndirects == MAX_INHERITS) {
 	c_error("too many objects inherited");
     }
 
@@ -672,13 +664,13 @@ typedef struct _fcchunk_ {
 
 typedef struct _cfunc_ {
     dfuncdef func;			/* function name/type */
+    char *name;				/* function name */
     char *proto;			/* function prototype */
-    char *prog;				/* fuction program */
-    unsigned short progsize;		/* fuction program size */
+    char *prog;				/* function program */
+    unsigned short progsize;		/* function program size */
 } cfunc;
 
 static char *name;			/* name of object compiled */
-static bool is_auto;			/* true if compiling the auto object */
 static control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *strlist;		/* list of string chunks */
@@ -704,7 +696,6 @@ char *file;
     register int i, count;
 
     name = file;
-    is_auto = (strcmp(file, auto_name) == 0);
 
     /*
      * create a new control block
@@ -740,6 +731,13 @@ char *file;
 		    ohash->index = --count;	/* may happen more than once */
 		} while (--i > 0);
 	    }
+	}
+	if (ndirects > 1) {
+	    /* indices of immediately inherited objects in inherit list */
+	    newctrl->iinherits = ALLOC(char, newctrl->niinherits = --ndirects);
+	    do {
+		newctrl->iinherits[n] = directs[n + 1]->index;
+	    } while (++n < ndirects);
 	}
 
 	/*
@@ -874,14 +872,8 @@ register char *proto;
 		/*
 		 * replace undefined prototype
 		 */
-		if (is_auto &&
-		    (PROTO_CLASS(proto) & (C_STATIC | C_PRIVATE | C_UNDEFINED))
-								== C_STATIC) {
-		    /* static function in auto object replaces prototype */
-		    PROTO_CLASS(proto) |= C_LOCAL;
-		    --nsymbs;
-		} else if (PROTO_FTYPE(proto2) == T_IMPLICIT &&
-			   (PROTO_CLASS(proto) & C_PRIVATE)) {
+		if (PROTO_FTYPE(proto2) == T_IMPLICIT &&
+		    (PROTO_CLASS(proto) & C_PRIVATE)) {
 		    /* private function replaces implicit prototype */
 		    --nsymbs;
 		}
@@ -944,15 +936,11 @@ register char *proto;
 	/*
 	 * insert the definition before the old one in the hash table
 	 */
-    } else if (!(PROTO_CLASS(proto) & C_PRIVATE) && (!is_auto ||
-	        (PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
+    } else if (!(PROTO_CLASS(proto) & C_PRIVATE)) {
 	/*
 	 * add new prototype to symbol table
 	 */
 	nsymbs++;
-    } else {
-	/* won't hurt for private functions */
-	PROTO_CLASS(proto) |= C_LOCAL;
     }
 
     if (nfdefs == 256) {
@@ -966,6 +954,7 @@ register char *proto;
     vfh_new(str, newohash, i, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
+    functions[nfdefs].name = str->text;
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].progsize = 0;
     progsize += i;
@@ -1067,7 +1056,7 @@ long *call;
 	    c_error("undefined label %s", label);
 	    return (char *) NULL;
 	}
-	symb = ctrl_symb(ohash->obj->ctrl, str->text);
+	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text);
 	if (symb == (dsymbol *) NULL) {
 	    /*
 	     * It may seem strange to allow label::kfun, but remember that they
@@ -1082,7 +1071,6 @@ long *call;
 	    c_error("undefined function %s::%s", label, str->text);
 	    return (char *) NULL;
 	}
-	ctrl = ohash->obj->ctrl;
 	ohash = oh_new(ctrl->inherits[UCHAR(symb->inherit)].obj->chain.name);
 	index = symb->index;
     } else {
@@ -1108,7 +1096,7 @@ long *call;
 	    /*
 	     * call to multiple inherited function
 	     */
-	    c_error("ambiguous function ::%s", str->text);
+	    c_error("ambiguous call to function ::%s", str->text);
 	    return (char *) NULL;
 	}
 	index = h->index;
@@ -1151,7 +1139,7 @@ int typechecking;
 	    return KFUN(kf).proto;
 	}
 
-	/* created an undefined prototype for the function */
+	/* create an undefined prototype for the function */
 	if (nfcalls == 256) {
 	    c_error("too many undefined functions");
 	    return (char *) NULL;
@@ -1167,7 +1155,7 @@ int typechecking;
 	/*
 	 * call to multiple inherited function
 	 */
-	c_error("ambiguous function %s", str->text);
+	c_error("ambiguous call to function %s", str->text);
 	return (char *) NULL;
     } else {
 	register control *ctrl;
@@ -1185,30 +1173,59 @@ int typechecking;
 	return (char *) NULL;
     }
 
-    if (PROTO_CLASS(proto) & C_LOCAL) {
+    if ((PROTO_CLASS(proto) & (C_PRIVATE | C_NOMASK)) ||
+	((PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
+	 h->ohash->index == 0)) {
 	/* direct call */
 	*call = ((long) DFCALL << 24) | ((long) h->ohash->index << 8) |
 		h->index;
     } else {
 	/* ordinary function call */
-	if (h->ct == (unsigned short) -1) {
-	    /*
-	     * add to function call table
-	     */
-	    if (fcchunksz == FCALL_CHUNK) {
-		register fcchunk *l;
-
-		l = ALLOC(fcchunk, 1);
-		l->next = fclist;
-		fclist = l;
-		fcchunksz = 0;
-	    }
-	    fclist->f[fcchunksz++] = h->chain.name;
-	    h->ct = nfcalls++;
-	}
-	*call = ((long) FCALL << 24) | h->ct;
+	*call = ((long) FCALL << 24) | ((long) h->ohash->index << 8) | h->index;
     }
     return proto;
+}
+
+/*
+ * NAME:	control->gencall()
+ * DESCRIPTION:	generate a function call
+ */
+unsigned short ctrl_gencall(call)
+long call;
+{
+    register vfh *h;
+    char *name;
+    short inherit, index;
+
+    inherit = (call >> 8) & 0xff;
+    index = call & 0xff;
+    if (inherit == ninherits) {
+	name = functions[index].name;
+    } else {
+	control *ctrl;
+	dfuncdef *f;
+
+	ctrl = newctrl->inherits[inherit].obj->ctrl;
+	f = ctrl->funcdefs + index;
+	name = d_get_strconst(ctrl, f->inherit, f->index)->text;
+    }
+    h = *(vfh **) ht_lookup(ftab, name);
+    if (h->ct == (unsigned short) -1) {
+	/*
+	 * add to function call table
+	 */
+	if (fcchunksz == FCALL_CHUNK) {
+	    register fcchunk *l;
+
+	    l = ALLOC(fcchunk, 1);
+	    l->next = fclist;
+	    fclist = l;
+	    fcchunksz = 0;
+	}
+	fclist->f[fcchunksz++] = name;
+	h->ct = nfcalls++;
+    }
+    return h->ct;
 }
 
 /*
@@ -1387,8 +1404,9 @@ static void ctrl_mkfcalls()
     fc = newctrl->funcalls = ALLOC(char, 2 * newctrl->nfuncalls);
     for (i = 0; i < ninherits; i++) {
 	/*
-	 * Go down the inherited objects, starting with the ai object, and
-	 * fill in the function call table segment for each object once.
+	 * Walk through the list of inherited objects, starting with the ai
+	 * object, and fill in the function call table segment for each object
+	 * once.
 	 */
 	if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
 	    register char *ofc;
@@ -1407,7 +1425,9 @@ static void ctrl_mkfcalls()
 	    {
 		ctrl2 = ctrl->inherits[UCHAR(ofc[0])].obj->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
-		if (f->class & C_LOCAL) {
+		if ((f->class & (C_PRIVATE | C_NOMASK)) ||
+		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
+		     ofc[0] == 0)) {
 		    /*
 		     * keep old call
 		     */
@@ -1472,8 +1492,8 @@ static void ctrl_mksymbs()
     ncoll = 0;
 
     /*
-     * Go down the inherited objects, adding the functions of each object
-     * once.
+     * Go down the list of inherited objects, adding the functions of each
+     * object once.
      */
     for (i = 0; i <= ninherits; i++) {
 	if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
@@ -1486,9 +1506,9 @@ static void ctrl_mksymbs()
 		register char *name;
 
 		if ((f->class & C_PRIVATE) ||
-		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
-		     ctrl->ninherits == 1 &&
-		     (is_auto || (ctrl->inherits->obj->flags & O_AUTO)))) {
+		    (i == 0 && ninherits != 0 &&
+		     (f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC)) {
+		    /* not in symbol table */
 		    continue;
 		}
 		name = d_get_strconst(ctrl, f->inherit, f->index)->text;
@@ -1624,7 +1644,7 @@ control *ctrl_construct()
 	 * this is the driver object
 	 */
 	obj->flags |= O_DRIVER;
-    } else if (is_auto) {
+    } else if (strcmp(name, auto_name) == 0) {
 	/*
 	 * this is the auto object
 	 */

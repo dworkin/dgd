@@ -9,7 +9,7 @@
 # ifdef FUNCDEF
 FUNCDEF("editor", kf_editor, p_editor)
 # else
-char p_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC | C_LOCAL, T_STRING,
+char p_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING,
 		    1, T_STRING };
 
 /*
@@ -53,8 +53,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("query_editor", kf_query_editor, p_query_editor)
 # else
-char p_query_editor[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1,
-			  T_OBJECT };
+char p_query_editor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->query_editor()
@@ -326,8 +325,7 @@ array *a;
     put("])", 2);
 }
 
-char p_save_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1,
-			 T_STRING };
+char p_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
 
 /*
  * NAME:	kfun->save_object()
@@ -343,27 +341,29 @@ int kf_save_object()
     register string *str;
     register dinherit *inh;
     register dataspace *data;
-    char tmp[STRINGSZ + 8], buf[16], *file, *_tmp;
+    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
     object *obj;
     xfloat flt;
 
     obj = i_this_object();
-    file = path_file(path_resolve(sp->u.string->text));
-    if (file == (char *) NULL) {
+    _tmp = path_resolve(sp->u.string->text);
+    if (_tmp == (char *) NULL) {
 	return 1;
     }
+    strcpy(file, path_file(_tmp));
+    strcpy(tmp, _tmp);
 
     /*
      * First save in a different file in the same directory, so a possibly
      * existing old instance will not be lost if something goes wrong.
      */
-    strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
-    fd = open(tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
+    _tmp = path_file(tmp);
+    fd = open(_tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	error("Cannot create temporary save file \"%s\"", tmp);
+	error("Cannot create temporary save file /%s", tmp);
     }
     buffer = ALLOCA(char, BUF_SIZE);
     bufsz = 0;
@@ -426,16 +426,16 @@ int kf_save_object()
     if (bufsz > 0 && write(fd, buffer, bufsz) != bufsz) {
 	close(fd);
 	AFREE(buffer);
-	unlink(tmp);
-	error("Cannot write to temporary save file \"%s\"", tmp);
+	unlink(_tmp);
+	error("Cannot write to temporary save file /%s", tmp);
     }
     close(fd);
     AFREE(buffer);
 
     unlink(file);
-    if (rename(tmp, file) < 0) {
-	unlink(tmp);
-	error("Cannot rename temporary save file to \"%s\"", file);
+    if (rename(_tmp, file) < 0) {
+	unlink(_tmp);
+	error("Cannot rename temporary save file to /%s", path_unfile(file));
     }
 
     str_del(sp->u.string);
@@ -810,8 +810,7 @@ register value *val;
     }
 }
 
-char p_restore_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
-			    T_STRING };
+char p_restore_object[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->restore_object()
@@ -901,7 +900,7 @@ int kf_restore_object()
 	ac_clear();
 	AFREE(buffer);
 	strcpy(err, errormesg());
-	error("Format error in \"/%s\", line %d: %s", file, line, err);
+	error("Format error in /%s, line %d: %s", file, line, err);
     }
     for (;;) {
 	var = data->variables;
@@ -1000,8 +999,8 @@ int kf_restore_object()
 # ifdef FUNCDEF
 FUNCDEF("write_file", kf_write_file, p_write_file)
 # else
-char p_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC | C_LOCAL,
-			T_INT, 3, T_STRING, T_STRING, T_INT };
+char p_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_INT, 3,
+			T_STRING, T_STRING, T_INT };
 
 /*
  * NAME:	kfun->write_file()
@@ -1073,8 +1072,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("read_file", kf_read_file, p_read_file)
 # else
-char p_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC | C_LOCAL,
-		       T_STRING, 3, T_STRING, T_INT, T_INT };
+char p_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING, 3,
+		       T_STRING, T_INT, T_INT };
 
 /*
  * NAME:	kfun->read_file()
@@ -1168,7 +1167,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("rename_file", kf_rename_file, p_rename_file)
 # else
-char p_rename_file[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 2,
+char p_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
 			 T_STRING, T_STRING };
 
 /*
@@ -1201,8 +1200,7 @@ int kf_rename_file()
 # ifdef FUNCDEF
 FUNCDEF("remove_file", kf_remove_file, p_remove_file)
 # else
-char p_remove_file[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
-			 T_STRING };
+char p_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->remove_file()
@@ -1228,8 +1226,7 @@ int kf_remove_file()
 # ifdef FUNCDEF
 FUNCDEF("make_dir", kf_make_dir, p_make_dir)
 # else
-char p_make_dir[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
-		      T_STRING };
+char p_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->make_dir()
@@ -1255,8 +1252,7 @@ int kf_make_dir()
 # ifdef FUNCDEF
 FUNCDEF("remove_dir", kf_remove_dir, p_remove_dir)
 # else
-char p_remove_dir[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
-			T_STRING };
+char p_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->remove_dir()
@@ -1437,8 +1433,8 @@ cvoid *cv1, *cv2;
 		  ((value *) cv2)->u.string->text);
 }
 
-char p_get_dir[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
-		     T_MIXED | (2 << REFSHIFT), 1, T_STRING };
+char p_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
+		     T_STRING };
 
 /*
  * NAME:	kfun->get_dir()

@@ -651,9 +651,9 @@ register node *n;
 	return 0;
     }
     for (i = 1; n->type == N_PAIR; i++) {
-	cg_expr(n->r.right, PUSH);
+	cg_expr(n->l.left, PUSH);
 	comma();
-	n = n->l.left;
+	n = n->r.right;
     }
     cg_expr(n, PUSH);
     comma();
@@ -673,15 +673,15 @@ register node *n;
 	return 0;
     }
     for (i = 2; n->type == N_PAIR; i += 2) {
-	cg_expr(n->r.right->r.right, PUSH);
+	cg_expr(n->l.left->l.left, PUSH);
 	comma();
-	cg_expr(n->r.right->l.left, PUSH);
+	cg_expr(n->l.left->r.right, PUSH);
 	comma();
-	n = n->l.left;
+	n = n->r.right;
     }
-    cg_expr(n->r.right, PUSH);
-    comma();
     cg_expr(n->l.left, PUSH);
+    comma();
+    cg_expr(n->r.right, PUSH);
     comma();
     return i;
 }
@@ -1036,7 +1036,7 @@ register int state;
 	    break;
 
 	case FCALL:
-	    output("p = i_foffset(%u), ", (unsigned short) n->r.number);
+	    output("p = i_foffset(%u), ", ctrl_gencall((long) n->r.number));
 	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
 		   arg);
 	    break;
@@ -1667,111 +1667,109 @@ register node *n;
 	    n = (node *) NULL;
 	}
 	tvc = 0;
-	if (m != (node *) NULL) {
-	    switch (m->type) {
-	    case N_BLOCK:
-		cg_stmt(m->l.left);
-		break;
+	switch (m->type) {
+	case N_BLOCK:
+	    cg_stmt(m->l.left);
+	    break;
 
-	    case N_BREAK:
-		output("break;\n");
-		break;
+	case N_BREAK:
+	    output("break;\n");
+	    break;
 
-	    case N_CASE:
-		if (m->mod == 0) {
-		    if (switch_table[0] > 0) {
-			output("sw%d:\n", (int) switch_table[0]);
-			switch_table[0] = 0;
-		    }
-		    output("default:\n");
-		} else {
-		    output("case %ld:\n", (long) switch_table[m->mod]);
+	case N_CASE:
+	    if (m->mod == 0) {
+		if (switch_table[0] > 0) {
+		    output("sw%d:\n", (int) switch_table[0]);
+		    switch_table[0] = 0;
 		}
-		cg_stmt(m->l.left);
-		break;
+		output("default:\n");
+	    } else {
+		output("case %ld:\n", (long) switch_table[m->mod]);
+	    }
+	    cg_stmt(m->l.left);
+	    break;
 
-	    case N_CONTINUE:
-		output("continue;\n");
-		break;
+	case N_CONTINUE:
+	    output("continue;\n");
+	    break;
 
-	    case N_DO:
-		output("do {\ni_add_cost(1);\n");
-		cg_stmt(m->r.right);
-		output("} while (");
-		tvc = 0;
-		cg_expr(m->l.left, TRUTHVAL);
-		output(");\n");
-		break;
+	case N_DO:
+	    output("do {\ni_add_cost(1);\n");
+	    cg_stmt(m->r.right);
+	    output("} while (");
+	    tvc = 0;
+	    cg_expr(m->l.left, TRUTHVAL);
+	    output(");\n");
+	    break;
 
-	    case N_FOR:
-		output("for (;");
-		cg_expr(m->l.left, TRUTHVAL);
-		output(";");
-		m = m->r.right;
-		if (m != (node *) NULL) {
-		    if (m->type == N_PAIR && m->l.left->type == N_BLOCK &&
-			m->l.left->mod == N_CONTINUE) {
-			cg_expr(m->r.right->l.left, POP);
-			output(") {\ni_add_cost(1);\n");
-			cg_stmt(m->l.left->l.left);
-		    } else {
-			output(") {\ni_add_cost(1);\n");
-			cg_stmt(m);
-		    }
+	case N_FOR:
+	    output("for (;");
+	    cg_expr(m->l.left, TRUTHVAL);
+	    output(";");
+	    m = m->r.right;
+	    if (m != (node *) NULL) {
+		if (m->type == N_PAIR && m->l.left->type == N_BLOCK &&
+		    m->l.left->mod == N_CONTINUE) {
+		    cg_expr(m->r.right->l.left, POP);
+		    output(") {\ni_add_cost(1);\n");
+		    cg_stmt(m->l.left->l.left);
 		} else {
 		    output(") {\ni_add_cost(1);\n");
+		    cg_stmt(m);
 		}
-		output("}\n");
-		break;
-
-	    case N_FOREVER:
-		output("for (");
-		if (m->l.left != (node *) NULL) {
-		    cg_expr(m->l.left, POP);
-		}
-		output(";;) {\ni_add_cost(1);\n");
-		cg_stmt(m->r.right);
-		output("}\n");
-		break;
-
-	    case N_IF:
-		output("if (");
-		cg_expr(m->l.left, TRUTHVAL);
-		output(") {\n");
-		cg_stmt(m->r.right->l.left);
-		if (m->r.right->r.right != (node *) NULL) {
-		    output("} else {\n");
-		    cg_stmt(m->r.right->r.right);
-		}
-		output("}\n");
-		break;
-
-	    case N_PAIR:
-		cg_stmt(m);
-		break;
-
-	    case N_POP:
-		cg_expr(m->l.left, POP);
-		output(";\n");
-		break;
-
-	    case N_RETURN:
-		cg_expr(m->l.left, PUSH);
-		output(";\nreturn;\n");
-		break;
-
-	    case N_SWITCH_INT:
-		cg_switch_int(m);
-		break;
-
-	    case N_SWITCH_RANGE:
-		cg_switch_range(m);
-		break;
-
-	    case N_SWITCH_STR:
-		cg_switch_str(m);
-		break;
+	    } else {
+		output(") {\ni_add_cost(1);\n");
 	    }
+	    output("}\n");
+	    break;
+
+	case N_FOREVER:
+	    output("for (");
+	    if (m->l.left != (node *) NULL) {
+		cg_expr(m->l.left, POP);
+	    }
+	    output(";;) {\ni_add_cost(1);\n");
+	    cg_stmt(m->r.right);
+	    output("}\n");
+	    break;
+
+	case N_IF:
+	    output("if (");
+	    cg_expr(m->l.left, TRUTHVAL);
+	    output(") {\n");
+	    cg_stmt(m->r.right->l.left);
+	    if (m->r.right->r.right != (node *) NULL) {
+		output("} else {\n");
+		cg_stmt(m->r.right->r.right);
+	    }
+	    output("}\n");
+	    break;
+
+	case N_PAIR:
+	    cg_stmt(m);
+	    break;
+
+	case N_POP:
+	    cg_expr(m->l.left, POP);
+	    output(";\n");
+	    break;
+
+	case N_RETURN:
+	    cg_expr(m->l.left, PUSH);
+	    output(";\nreturn;\n");
+	    break;
+
+	case N_SWITCH_INT:
+	    cg_switch_int(m);
+	    break;
+
+	case N_SWITCH_RANGE:
+	    cg_switch_range(m);
+	    break;
+
+	case N_SWITCH_STR:
+	    cg_switch_str(m);
+	    break;
 	}
     }
 }

@@ -27,6 +27,7 @@ extern void  c_startcompound	P((void));
 extern node *c_endcompound	P((node*));
 extern node *c_flookup		P((node*, int));
 extern node *c_iflookup		P((node*, node*));
+extern node *c_aggregate	P((node*, unsigned int));
 extern node *c_variable		P((node*));
 extern short c_vtype		P((int));
 extern node *c_lock		P((node*));

@@ -14,7 +14,7 @@ register short class;
     if (class & C_VARARGS) printf("varargs ");
     if (class & C_PRIVATE) printf("private ");
     if (class & C_STATIC) printf("static ");
-    if (class & C_LOCAL) printf("local ");
+    if (class & C_ATOMIC) printf("atomic ");
     if (class & C_NOMASK) printf("nomask ");
 }
 
@@ -597,8 +597,7 @@ int func;
 # ifdef FUNCDEF
 FUNCDEF("dump_object", kf_dump_object, p_dump_object)
 # else
-char p_dump_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1,
-			 T_OBJECT };
+char p_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 
 int kf_dump_object()
 {
@@ -612,7 +611,7 @@ int kf_dump_object()
 # ifdef FUNCDEF
 FUNCDEF("dump_function", kf_dump_function, p_dump_function)
 # else
-char p_dump_function[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 2,
+char p_dump_function[] = { C_TYPECHECKED | C_STATIC, T_VOID, 2,
 			   T_OBJECT, T_STRING };
 
 int kf_dump_function()
@@ -652,7 +651,7 @@ extern int getrusage P((int, struct rusage *));
 #define RUSAGE_SELF	0
 #endif
 
-char p_rusage[] = { C_STATIC | C_LOCAL, T_INT | (1 << REFSHIFT), 0 };
+char p_rusage[] = { C_STATIC, T_INT | (1 << REFSHIFT), 0 };
 
 #if !defined(sun) || !defined(__svr4__)
 #define RUSAGE_TIME(t) (t).tv_sec * 1000 + (t).tv_usec / 1000;

@@ -6,7 +6,7 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Dump the state of the current system to file.
+	Dump the current state of the system to file.
 
 SEE ALSO
 	kfun/swapout

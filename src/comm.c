@@ -353,13 +353,14 @@ int *size;
 	    return (object *) NULL;
 	}
     } else {
-	static char intr[] =		{ '\177' };
-	static char brk[] =		{ '\034' };
-	static char tm[] =		{ IAC, WILL, TELOPT_TM };
-	static char will_sga[] =	{ IAC, WILL, TELOPT_SGA };
-	static char wont_sga[] =	{ IAC, WONT, TELOPT_SGA };
-	static char mode_edit[] =	{ IAC, SB, TELOPT_LINEMODE, LM_MODE,
-					  MODE_EDIT, IAC, SE };
+	static char intr[] =	 { '\177' };
+	static char brk[] =	 { '\034' };
+	static char tm[] =	 { (char) IAC, (char) WILL, (char) TELOPT_TM };
+	static char will_sga[] = { (char) IAC, (char) WILL, (char) TELOPT_SGA };
+	static char wont_sga[] = { (char) IAC, (char) WONT, (char) TELOPT_SGA };
+	static char mode_edit[]= { (char) IAC, (char) SB,
+				   (char) TELOPT_LINEMODE, (char) LM_MODE,
+				   (char) MODE_EDIT, (char) IAC, (char) SE };
 	register user **usr;
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {

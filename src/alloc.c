@@ -569,8 +569,13 @@ register unsigned int size;
 	/*
 	 * get new dynamic chunk
 	 */
-	p = newmem(dchunksz);
-	mstat.dmemsize += dchunksz;
+	sz = size + ALIGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
+	if (sz < dchunksz) {
+	    /* extend to standard chunk size */
+	    sz = dchunksz;
+	}
+	p = newmem(sz);
+	mstat.dmemsize += sz;
 	*(char **) p = dlist;
 	dlist = p;
 	p += ALIGN(sizeof(char *), STRUCT_AL);
@@ -579,17 +584,12 @@ register unsigned int size;
 	*(unsigned int *) p = 0;
 	c = (chunk *) (p + UINTSIZE);
 	/* initialize chunk */
-	c->size = dchunksz - ALIGN(sizeof(char *), STRUCT_AL) - UINTSIZE -
-		  SIZESIZE;
+	c->size = sz - ALIGN(sizeof(char *), STRUCT_AL) - UINTSIZE - SIZESIZE;
 	p += c->size;
 	*(unsigned int *) p = c->size;
 	/* no following chunk */
 	p += UINTSIZE;
 	((chunk *) p)->size = 0;
-
-	if (c->size < size) {
-	    fatal("too small dynamic_chunk");
-	}
     }
 
     if ((sz=c->size - size) >= DLIMIT + UINTSIZE) {

@@ -203,7 +203,7 @@ char *name;
 	 * decimal representation of the index in the object table.
 	 */
 	p = hash + 1;
-	if (*p == '\0' || (*p == '0' && p[1] != '\0')) {
+	if (*p == '\0' || (p[0] == '0' && p[1] != '\0')) {
 	    /* don't accept "filename#" or "filename#01" */
 	    return (object *) NULL;
 	}
@@ -438,7 +438,7 @@ long t;
     register int len, buflen;
     register char *p;
     dump_header dh;
-    long offset, onamelen;
+    long offset;
     char buffer[CHUNKSZ];
 
     /*
@@ -465,11 +465,9 @@ long t;
     nobjects = dh.nobjects;
     nfreeobjs = dh.nfreeobjs;
     count = dh.count;
-    onamelen = dh.onamelen;
 
     /* read object names, and patch all objects and control blocks */
     buflen = 0;
-    p = buffer;
     for (i = nobjects, o = otab; i > 0; --i, o++) {
 	if (o->chain.name != (char *) NULL) {
 	    /*
@@ -478,13 +476,15 @@ long t;
 	    if (buflen == 0 ||
 		(char *) memchr(p, '\0', buflen) == (char *) NULL) {
 		/* move remainder to beginning, and refill buffer */
-		memcpy(buffer, p, buflen);
-		len = (onamelen > CHUNKSZ - buflen) ?
-		       CHUNKSZ - buflen : onamelen;
+		if (buflen != 0) {
+		    memcpy(buffer, p, buflen);
+		}
+		len = (dh.onamelen > CHUNKSZ - buflen) ?
+		       CHUNKSZ - buflen : dh.onamelen;
 		if (read(fd, buffer + buflen, len) != len) {
 		    fatal("cannot restore object names");
 		}
-		onamelen -= len;
+		dh.onamelen -= len;
 		buflen += len;
 		p = buffer;
 	    }

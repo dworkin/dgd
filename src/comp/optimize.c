@@ -1396,24 +1396,24 @@ int pop;
 	    d1 = 0;
 	    for (i = 0; n->type == N_PAIR; i += 2) {
 		oldside = side_start(&side, &olddepth);
-		d2 = opt_expr(&n->r.right->r.right, FALSE);
-		d1 = max3(d1, i + d2, i + side_end(&n->r.right->r.right,
+		d2 = opt_expr(&n->l.left->l.left, FALSE);
+		d1 = max3(d1, i + d2, i + side_end(&n->l.left->l.left,
 						   side, oldside, olddepth));
 		oldside = side_start(&side, &olddepth);
-		d2 = opt_expr(&n->r.right->l.left, FALSE);
+		d2 = opt_expr(&n->l.left->r.right, FALSE);
 		d1 = max3(d1, i + 1 + d2,
-			  i + 1 + side_end(&n->r.right->l.left, side, oldside,
+			  i + 1 + side_end(&n->l.left->r.right, side, oldside,
 					   olddepth));
-		n = n->l.left;
+		n = n->r.right;
 	    }
 	    oldside = side_start(&side, &olddepth);
-	    d2 = opt_expr(&n->r.right, FALSE);
-	    d1 = max3(d1, i + d2,
-		      i + side_end(&n->r.right, side, oldside, olddepth));
-	    oldside = side_start(&side, &olddepth);
 	    d2 = opt_expr(&n->l.left, FALSE);
+	    d1 = max3(d1, i + d2,
+		      i + side_end(&n->l.left, side, oldside, olddepth));
+	    oldside = side_start(&side, &olddepth);
+	    d2 = opt_expr(&n->r.right, FALSE);
 	    return max3(d1, i + 1 + d2,
-			i + 1 + side_end(&n->l.left, side, oldside, olddepth));
+			i + 1 + side_end(&n->r.right, side, oldside, olddepth));
 	} else {
 	    m = &n->l.left;
 	    n = n->l.left;
@@ -1424,11 +1424,11 @@ int pop;
 	    d1 = 0;
 	    for (i = 0; n->type == N_PAIR; i++) {
 		oldside = side_start(&side, &olddepth);
-		d2 = opt_expr(&n->r.right, FALSE);
+		d2 = opt_expr(&n->l.left, FALSE);
 		d1 = max3(d1, i + d2,
-			  i + side_end(&n->r.right, side, oldside, olddepth));
-		m = &n->l.left;
-		n = n->l.left;
+			  i + side_end(&n->l.left, side, oldside, olddepth));
+		m = &n->r.right;
+		n = n->r.right;
 	    }
 	    oldside = side_start(&side, &olddepth);
 	    d2 = opt_expr(m, FALSE);

@@ -36,7 +36,7 @@ clean:
 
 $(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h ../str.h ../xfloat.h
 macro.o special.o token.o ppcontrol.o lex.o: ../hash.h
-ppcontrol.o: ../path.h
+token.o ppcontrol.o: ../path.h
 
 $(OBJ) lex.o: ../comp/node.h ../comp/compile.h ../comp/parser.h
 

@@ -19,7 +19,8 @@
 
 typedef struct {
     uindex nsectors;		/* # sectors in part one */
-    short ninherits;		/* # objects in inherit table */
+    char ninherits;		/* # objects in inherit table */
+    char niinherits;		/* # immediately inherited objects */
     Uint compiled;		/* time of compilation */
     unsigned short progsize;	/* size of program code */
     unsigned short nstrings;	/* # strings in string constant table */
@@ -104,8 +105,8 @@ typedef struct {
 # define co_next	nargs
 
 static control *chead, *ctail;	/* list of control blocks */
-static uindex nctrl;		/* # control blocks */
 static dataspace *dhead, *dtail;/* list of dataspace blocks */
+static uindex nctrl;		/* # control blocks */
 static uindex ndata;		/* # dataspace blocks */
 
 
@@ -133,6 +134,8 @@ control *d_new_control()
     ctrl->sectors = (sector *) NULL;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
+    ctrl->niinherits = 0;
+    ctrl->iinherits = (char *) NULL;
     ctrl->progsize = 0;
     ctrl->prog = (char *) NULL;
     ctrl->nstrings = 0;
@@ -254,14 +257,20 @@ object *obj;
 	size += sizeof(scontrol);
 
 	/* inherits */
-	ctrl->ninherits = header.ninherits; /* there is at least one */
+	ctrl->ninherits = UCHAR(header.ninherits); /* there is at least one */
 	ctrl->inherits = ALLOC(dinherit, header.ninherits);
 	sw_readv((char *) ctrl->inherits, ctrl->sectors,
-		 header.ninherits * (long) sizeof(dinherit), size);
-	size += header.ninherits * (long) sizeof(dinherit);
+		 UCHAR(header.ninherits) * (long) sizeof(dinherit), size);
+	size += UCHAR(header.ninherits) * sizeof(dinherit);
+	/* immediate inherits */
+	ctrl->iinhoffset = size;
+	ctrl->niinherits = UCHAR(header.niinherits);
+	ctrl->iinherits = (char *) NULL;
+	size += UCHAR(header.niinherits);
 
 	/* compile time */
 	ctrl->compiled = header.compiled;
+
 	/* program */
 	ctrl->progoffset = size;
 	ctrl->progsize = header.progsize;
@@ -429,11 +438,26 @@ register dataspace *data;
 
 
 /*
+ * NAME:	data->get_iinherits()
+ * DESCRIPTION:	get the immediately inherited object indices
+ */
+char *d_get_iinherits(ctrl)
+register control *ctrl;
+{
+    if (ctrl->iinherits == (char *) NULL && ctrl->niinherits > 0) {
+	ctrl->iinherits = ALLOC(char, ctrl->niinherits);
+	sw_readv(ctrl->iinherits, ctrl->sectors, (long) ctrl->niinherits,
+		 (long) ctrl->iinhoffset);
+    }
+    return ctrl->iinherits;
+}
+
+/*
  * NAME:	data->get_prog()
  * DESCRIPTION:	get the program
  */
 char *d_get_prog(ctrl)
-control *ctrl;
+register control *ctrl;
 {
     if (ctrl->prog == (char *) NULL && ctrl->progsize > 0) {
 	ctrl->prog = ALLOC(char, ctrl->progsize);
@@ -1305,6 +1329,7 @@ register control *ctrl;
     /* calculate the size of the control block */
     size = sizeof(scontrol) +
            ctrl->ninherits * sizeof(dinherit) +
+	   ctrl->niinherits +
     	   ctrl->progsize +
     	   ctrl->nstrings * (long) sizeof(dstrconst) +
     	   ctrl->strsize +
@@ -1323,6 +1348,7 @@ register control *ctrl;
 
     /* create header */
     header.ninherits = ctrl->ninherits;
+    header.niinherits = ctrl->niinherits;
     header.compiled = ctrl->compiled;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
@@ -1350,8 +1376,14 @@ register control *ctrl;
 
     /* save inherits */
     sw_writev((char *) ctrl->inherits, ctrl->sectors,
-	      header.ninherits * (long) sizeof(dinherit), size);
-    size += header.ninherits * (long) sizeof(dinherit);
+	      UCHAR(header.ninherits) * (long) sizeof(dinherit), size);
+    size += UCHAR(header.ninherits) * sizeof(dinherit);
+    /* save immediate inherits */
+    if (ctrl->niinherits > 0) {
+	sw_writev(ctrl->iinherits, ctrl->sectors,
+		  (long) UCHAR(header.niinherits), size);
+	size += UCHAR(header.niinherits);
+    }
 
     /* save program */
     if (header.progsize > 0) {
@@ -2018,6 +2050,9 @@ register control *ctrl;
 
 	/* delete inherits */
 	FREE(ctrl->inherits);
+	if (ctrl->iinherits != (char *) NULL) {
+	    FREE(ctrl->iinherits);
+	}
 
 	if (ctrl->prog != (char *) NULL) {
 	    FREE(ctrl->prog);

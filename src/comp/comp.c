@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "comp.h"
 # include "str.h"
 # include "array.h"
@@ -64,6 +65,21 @@ register control *ctrl;
 	       ctrl->inherits[i].varoffset);
     }
     printf("};\n");
+}
+
+/*
+ * NAME:	dump_iinherits()
+ * DESCRIPTION:	output the immediately inherited objects
+ */
+static void dump_iinherits(ctrl)
+control *ctrl;
+{
+    if (ctrl->niinherits != 0) {
+	printf("\nstatic char iinherits[] = {\n");
+	size = 0;
+	dump_chars(ctrl->iinherits, ctrl->niinherits);
+	printf("\n};\n");
+    }
 }
 
 /*
@@ -273,6 +289,7 @@ char *argv[];
 
     /* dump tables */
     dump_inherits(ctrl);
+    dump_iinherits(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
     dump_functions(ctrl, nfuncs = cg_nfuncs());
@@ -282,6 +299,11 @@ char *argv[];
     dump_symbols(ctrl);
 
     printf("\nprecomp %s = {\n%d, inherits,\n", tag, ctrl->ninherits);
+    if (ctrl->niinherits == 0) {
+	printf("0, 0,\n");
+    } else {
+	printf("%d, iinherits,\n", ctrl->niinherits);
+    }
     printf("%ldL,\n", ctrl->compiled);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
