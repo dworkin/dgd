@@ -5,9 +5,9 @@
  * NAME:	P->time()
  * DESCRIPTION:	return the current time
  */
-unsigned long P_time()
+Uint P_time()
 {
-    return (unsigned long) time((time_t *) NULL);
+    return (Uint) time((time_t *) NULL);
 }
 
 /*
@@ -15,7 +15,7 @@ unsigned long P_time()
  * DESCRIPTION:	convert the given time to a string
  */
 char *P_ctime(t)
-unsigned long t;
+Uint t;
 {
-    return ctime(&t);
+    return ctime((long *) &t);
 }
