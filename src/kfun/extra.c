@@ -608,7 +608,7 @@ int nargs;
 	arr_ref(f->sp->u.array = a);
     } else {
 	/* parsing failed */
-	f->sp->type = T_INT;
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
