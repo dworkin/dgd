@@ -166,7 +166,7 @@ bool append;
     }
     /* create file */
     fd = open(filename,
-      (append) ? O_CREAT|O_APPEND|O_WRONLY : O_CREAT|O_TRUNC|O_WRONLY, 0644);
+      (append) ? O_CREAT|O_APPEND|O_WRONLY : O_CREAT|O_TRUNC|O_WRONLY, 0664);
     if (fd < 0) {
 	return (io *) NULL;
     }
