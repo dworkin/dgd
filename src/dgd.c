@@ -120,6 +120,15 @@ char **argv;
 	comm_flush(FALSE);
     }
     for (;;) {
+	/* interrupts */
+	if (intr) {
+	    intr = FALSE;
+	    call_driver_object("interrupt", 0);
+	    i_del_value(sp++);
+	    endthread();
+	    comm_flush(FALSE);
+	}
+
 # ifdef DEBUG
 	swap |= stop;
 # endif
@@ -155,19 +164,6 @@ char **argv;
 
 	/* rebuild swapfile */
 	sw_copy();
-
-	/* interrupts */
-	if (intr) {
-	    intr = FALSE;
-	    call_driver_object("interrupt", 0);
-	    i_del_value(sp++);
-	    endthread();
-	    if (stop) {
-		/* stop immediately */
-		comm_flush(FALSE);
-		break;
-	    }
-	}
 
 	/* handle user input */
 	comm_receive();

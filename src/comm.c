@@ -51,6 +51,7 @@ static int nusers;		/* # of users */
 static int newlines;		/* # of newlines in all input buffers */
 static long binchars;		/* # characters in binary buffers */
 static object *this_user;	/* current user */
+static bool flush;		/* do telnet output buffers need flushing? */
 
 /*
  * NAME:	comm->init()
@@ -113,6 +114,7 @@ bool telnet;
 	(*usr)->outbuf = ALLOC(char, OUTBUF_SIZE);
 	m_dynamic();
 	memcpy((*usr)->outbuf, init, (*usr)->outbufsz = sizeof(init));
+	flush = TRUE;
     } else {
 	(*usr)->flags = 0;
 	m_static();
@@ -236,6 +238,7 @@ string *str;
 	    size++;
 	}
 	usr->outbufsz = size;
+	flush = TRUE;
 	return str->len;	/* always */
     } else {
 	dataspace *data;
@@ -289,6 +292,7 @@ register int size;
     }
     memcpy(usr->outbuf + usr->outbufsz, buf, size);
     usr->outbufsz += size;
+    flush = TRUE;
 }
 
 /*
@@ -323,12 +327,17 @@ int prompt;
     register int i, size;
     register char *p;
 
+    if (!flush) {
+	return;
+    }
+    flush = FALSE;
+
     for (usr = users, i = nusers; i > 0; usr++) {
 	if (*usr != (user *) NULL) {
 	    if (((*usr)->flags & CF_TELNET) && (size=(*usr)->outbufsz) > 0) {
 		if (prompt && ((*usr)->flags & CF_GA) &&
 		    ((*usr)->u.obj == this_user ||
-		     (*usr)->outbuf[size - 1] == LF)) {
+		     (*usr)->outbuf[size - 1] != LF)) {
 		    if (size > OUTBUF_SIZE - 2) {
 			conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 			size = 0;
@@ -408,10 +417,10 @@ void comm_receive()
 		if (i_call(o, "open", 4, TRUE, 0)) {
 		    i_del_value(sp++);
 		    endthread();
+		    comm_flush(TRUE);
 		}
 		this_user = (object *) NULL;
 		ec_pop();
-		comm_flush(TRUE);
 	    }
 	}
 
@@ -445,10 +454,10 @@ void comm_receive()
 	    if (i_call(o, "open", 4, TRUE, 0)) {
 		i_del_value(sp++);
 		endthread();
+		comm_flush(TRUE);
 	    }
 	    this_user = (object *) NULL;
 	    ec_pop();
-	    comm_flush(TRUE);
 	}
 
 	for (i = nusers, usr = users; i > 0; usr++) {
@@ -466,6 +475,7 @@ void comm_receive()
 		     */
 		    comm_del(usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */
+		    comm_flush(FALSE);
 		    continue;
 		} else if ((*usr)->flags & CF_TELNET) {
 		    /*
@@ -656,6 +666,7 @@ void comm_receive()
 			if (i_call(this_user, "message_done", 12, TRUE, 0)) {
 			    i_del_value(sp++);
 			    endthread();
+			    comm_flush(TRUE);
 			}
 			this_user = (object *) NULL;
 			ec_pop();
@@ -721,6 +732,7 @@ void comm_receive()
 		    if (i_call(usr->u.obj, "receive_message", 15, TRUE, 1)) {
 			i_del_value(sp++);
 			endthread();
+			comm_flush(TRUE);
 		    }
 		    this_user = (object *) NULL;
 		    ec_pop();

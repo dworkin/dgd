@@ -1026,3 +1026,5 @@ DGD 1.1
    initialized to 0.
  - Brought dump_function() up to date.
  - Fixed a nasty bug in the runtime support for precompiled code.
+ - Some fixes for the order of events in the main loop, and telnet buffer
+   flushing in comm.c.
