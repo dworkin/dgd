@@ -350,6 +350,7 @@ static void ipa_del(ipaddr *ipa)
 	if (flast != (ipaddr *) NULL) {
 	    flast->next = ipa;
 	    ipa->prev = flast;
+	    flast = ipa;
 	} else {
 	    ffirst = flast = ipa;
 	    ipa->prev = (ipaddr *) NULL;
