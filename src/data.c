@@ -1810,8 +1810,8 @@ register unsigned short n;
 		    /*
 		     * first time encountered
 		     */
-		    if (a->hashmod) {
-			map_compact(a->primary->data, a);
+		    if (a->hashed != (struct _maphash_ *) NULL) {
+			map_rmhash(a);
 		    }
 
 		    if (a->ref == 2) {	/* + 1 for array merge table */
@@ -1882,8 +1882,8 @@ register unsigned short n;
 		 * not previously encountered mapping or array
 		 */
 		imp->narr++;
-		if (a->hashmod) {
-		    map_compact(data, a);
+		if (a->hashed != (struct _maphash_ *) NULL) {
+		    map_rmhash(a);
 		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (value *) NULL) {
 		    d_import(imp, data, a->elts, a->size);
@@ -1923,9 +1923,9 @@ void d_export()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (array *) NULL) {
-			    if (a->arr->hashmod) {
+			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
-				map_compact(data, a->arr);
+				map_rmhash(a->arr);
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
 			    } else if (a->arr->elts != (value *) NULL) {

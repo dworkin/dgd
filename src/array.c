@@ -1491,6 +1491,33 @@ bool clean;
 }
 
 /*
+ * NAME:	map->rmhash()
+ * DESCRIPTION:	delete hash table of mapping
+ */
+void map_rmhash(m)
+register array *m;
+{
+    if (m->hashed != (maphash *) NULL) {
+	register unsigned short i;
+	register mapelt *e, *n, **t;
+
+	if (m->hashmod) {
+	    map_dehash(m->primary->data, m, FALSE);
+	}
+	for (i = m->hashed->size, t = m->hashed->table; i > 0; t++) {
+	    for (e = *t; e != (mapelt *) NULL; e = n) {
+		n = e->next;
+		e->next = fmelt;
+		fmelt = e;
+		--i;
+	    }
+	}
+	FREE(m->hashed);
+	m->hashed = (maphash *) NULL;
+    }
+}
+
+/*
  * NAME:	mapping->compact()
  * DESCRIPTION:	compact a mapping: copy new elements from the hash table into
  *		the array, and remove destructed objects
