@@ -813,3 +813,12 @@ array *comm_users()
     }
     return a;
 }
+
+/*
+ * NAME:	comm->active()
+ * DESCRIPTION:	return TRUE if there is any pending comm activity
+ */
+bool comm_active()
+{
+    return (newlines != 0 || binchars != 0 || conn_select(0) > 0);
+}

@@ -858,7 +858,7 @@ register long size;
 {
     array *m;
 
-    if (size > 2 * max_size) {
+    if (size > max_size) {
 	error("Mapping too large");
     }
     m = arr_alloc((unsigned short) size);

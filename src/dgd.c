@@ -86,9 +86,9 @@ void finish()
  */
 void endthread()
 {
-    i_clear();
     d_export();
     o_clean();
+    i_clear();
 }
 
 /*

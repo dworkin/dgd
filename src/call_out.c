@@ -5,6 +5,7 @@
 # include "object.h"
 # include "interpret.h"
 # include "data.h"
+# include "comm.h"
 # include "call_out.h"
 
 # define CYCBUF_SIZE	128		/* cyclic buffer size, power of 2 */
@@ -427,7 +428,7 @@ void co_call()
 
 		/* allow as much time for non-callouts as for callouts */
 		t = P_time();
-		P_alarm((t <= timeout) ? 1 : t - timeout);
+		P_alarm((t <= timeout || !comm_active()) ? 1 : t - timeout);
 		return;
 	    }
 
@@ -436,11 +437,11 @@ void co_call()
 		/* function exists */
 		i_del_value(sp++);
 		str_del((sp++)->u.string);
-		endthread();
 	    } else {
 		/* function doesn't exist */
 		str_del((sp++)->u.string);
 	    }
+	    endthread();
 	}
     }
 }

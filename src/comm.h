@@ -25,3 +25,4 @@ extern string  *comm_ip_number	P((object*));
 extern void	comm_close	P((object*));
 extern object  *comm_user	P((void));
 extern array   *comm_users	P((void));
+extern bool	comm_active	P((void));
