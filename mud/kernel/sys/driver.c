@@ -15,6 +15,11 @@ object userd;		/* user manager object */
 object initd;		/* init manager object */
 object objectd;		/* object manager object */
 object errord;		/* error manager object */
+# ifdef SYS_NETWORKING
+object telnet;		/* telnet port object */
+object binary;		/* binary port object */
+# endif
+int auto;		/* handle implicit compile of auto object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string compiled;	/* object currently being compiled */
@@ -184,6 +189,12 @@ set_error_manager(object obj)
 compiling(string path)
 {
     if (previous_program() == AUTO) {
+	if (auto) {
+	    auto = FALSE;
+	    if (path != AUTO || find_object(AUTO)) {
+		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
+	    }
+	}
 	compiled = path;
 	inherited = ({ });
     }
@@ -249,8 +260,16 @@ destruct(object obj, string owner)
  */
 destruct_lib(string path, string owner)
 {
-    if (objectd && previous_program() == AUTO) {
-	objectd->destruct_lib(owner, path);
+    if (previous_program() == AUTO) {
+	if (path == AUTO) {
+	    if (auto) {
+		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
+	    }
+	    auto = TRUE;
+	}
+	if (objectd) {
+	    objectd->destruct_lib(owner, path);
+	}
     }
 }
 
@@ -293,7 +312,7 @@ private object load(string path)
  */
 static initialize()
 {
-    object port, telnet, binary;
+    object port;
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
@@ -379,6 +398,14 @@ static restored()
     if (initd) {
 	initd->reboot();
     }
+# ifdef SYS_NETWORKING
+    if (telnet) {
+	telnet->listen("telnet", TELNET_PORT);
+    }
+    if (binary) {
+	binary->listen("tcp", BINARY_PORT);
+    }
+# endif
 
     message("State restored.\n");
 }

@@ -259,7 +259,7 @@ static object compile_object(string path)
 {
     string oname, uid;
     object driver, rsrcd, obj;
-    int *rsrc, *status, lib, init;
+    int *rsrc, *status, lib, new;
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
@@ -290,13 +290,13 @@ static object compile_object(string path)
      * do the compiling
      */
     lib = sscanf(path, "%*s/lib/");
-    init = !(lib || ::find_object(path));
-    if (init) {
+    new = !::find_object(path);
+    if (new && !lib) {
 	status = ::status();
     }
     catch {
 	rlimits (-1; -1) {
-	    if (init) {
+	    if (new && !lib) {
 		int stack, ticks;
 
 		stack = status[ST_STACKDEPTH];
@@ -311,7 +311,7 @@ static object compile_object(string path)
 	    }
 	    driver->compiling(path);
 	    obj = ::compile_object(path);
-	    if (init) {
+	    if (new) {
 		rsrcd->rsrc_incr(uid, "objects", 0, 1, TRUE);
 	    }
 	    if (lib) {
@@ -321,7 +321,7 @@ static object compile_object(string path)
 	    }
 	}
     } : error(driver->query_error());
-    if (init) {
+    if (new && !lib) {
 	call_other(obj, "???");	/* initialize & register */
     }
 
