@@ -10,12 +10,13 @@ DESCRIPTION
 	character sequences have a special meaning in the format string:
 
 	    %s	match a substring
-	    %*s	match a substring, without assignment
 	    %d	match a number
-	    %*d	match a number, without assignment
+	    %f	match a floating-point number
+	    %c	match a character
 	    %%	match single %
 
-	Other characters must be matched exactly.  Matched substrings and
+	Other characters must be matched exactly.  %*s, %*d, %*f and %*c
+	can be used to match without assignment.  Matched substrings and
 	numbers are assigned to the successive lvalue arguments following the
 	format string.  The number of matched substrings and numbers is
 	returned.
