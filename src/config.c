@@ -654,16 +654,13 @@ static bool conf_config()
 	case STRING_CONST:
 	    p = (m == AUTO_OBJECT || m == DRIVER_OBJECT || m == INCLUDE_FILE) ?
 		 path_resolve(yytext) : yytext;
-	    if (conf[m].u.str != (char *) NULL) {
-		FREE(conf[m].u.str);
-	    }
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
 		p[l] = '\0';
 	    }
 	    m_static();
-	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
+	    conf[m].u.str = strcpy(REALLOC(conf[m].u.str, char, 0, l + 1), p);
 	    m_dynamic();
 	    break;
 
@@ -682,11 +679,10 @@ static bool conf_config()
 		    conferr("too many include directories");
 		    return FALSE;
 		}
-		if (dirs[l] != (char *) NULL) {
-		    FREE(dirs[l]);
-		}
 		m_static();
-		dirs[l++] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
+		dirs[l] = strcpy(REALLOC(dirs[l], char, 0, strlen(yytext) + 1),
+				 yytext);
+		l++;
 		m_dynamic();
 		if ((c=pp_gettok()) == '}') {
 		    break;

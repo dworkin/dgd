@@ -767,8 +767,103 @@ char *mem;
 # endif
 	dfree(c);
     } else {
-	fatal("bad pointer in mfree");
+	fatal("bad pointer in m_free");
     }
+}
+
+/*
+ * NAME:	mem->realloc()
+ * DESCRIPTION:	reallocate memory
+ */
+# ifdef DEBUG
+char *m_realloc(mem, size1, size2, file, line)
+char *mem, *file;
+register size_t size1, size2;
+int line;
+# else
+char *m_realloc(mem, size1, size2)
+char *mem;
+register size_t size1, size2;
+# endif
+{
+    register chunk *c1, *c2;
+
+    if (mem == (char *) NULL) {
+	if (size2 == 0) {
+	    return (char *) NULL;
+	}
+# ifdef DEBUG
+	return m_alloc(size2, file, line);
+# else
+	return m_alloc(size2);
+# endif
+    }
+    if (size2 == 0) {
+	m_free(mem);
+	return (char *) NULL;
+    }
+
+    size2 = ALGN(size2 + MOFFSET, STRUCT_AL);
+# ifndef DEBUG
+    if (size2 < ALGN(sizeof(chunk), STRUCT_AL)) {
+	size2 = ALGN(sizeof(chunk), STRUCT_AL);
+    }
+# endif
+    c1 = (chunk *) (mem - MOFFSET);
+    if ((c1->size & MAGIC_MASK) == SM_MAGIC) {
+# ifdef DEBUG
+	if (size1 > (c1->size & SIZE_MASK)) {
+	    fatal("bad size1 in m_realloc");
+	}
+# endif
+	if ((c1->size & SIZE_MASK) < size2) {
+	    c2 = salloc(size2);
+	    if (size1 != 0) {
+		memcpy((char *) c2 + MOFFSET, mem, size1);
+	    }
+	    c1->size &= SIZE_MASK;
+	    mstat.smemused += c2->size - c1->size;
+	    c2->size |= SM_MAGIC;
+	    sfree(c1);
+	    c1 = c2;
+	}
+    } else if ((c1->size & MAGIC_MASK) == DM_MAGIC) {
+# ifdef DEBUG
+	if (size1 > (c1->size & SIZE_MASK)) {
+	    fatal("bad size1 in m_realloc");
+	}
+# endif
+	if ((c1->size & SIZE_MASK) < size2) {
+	    c2 = dalloc(size2);
+	    if (size1 != 0) {
+		memcpy((char *) c2 + MOFFSET, mem, size1);
+	    }
+	    c1->size &= SIZE_MASK;
+	    mstat.dmemused += c2->size - c1->size;
+	    c2->size |= DM_MAGIC;
+# ifdef DEBUG
+	    ((header *) c2)->next = ((header *) c1)->next;
+	    if (((header *) c1)->next != (header *) NULL) {
+		((header *) c2)->next->prev = (header *) c2;
+	    }
+	    ((header *) c2)->prev = ((header *) c1)->prev;
+	    if (((header *) c1) == hlist) {
+		hlist = (header *) c2;
+	    } else {
+		((header *) c2)->prev->next = (header *) c2;
+	    }
+# endif
+	    dfree(c1);
+	    c1 = c2;
+	}
+    } else {
+	fatal("bad pointer in m_realloc");
+    }
+# ifdef DEBUG
+    ((header *) c1)->file = file;
+    ((header *) c1)->line = line;
+# endif
+    return (char *) c1 + MOFFSET;
 }
 
 /*

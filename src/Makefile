@@ -63,6 +63,7 @@ clean:
 	cd comp; $(DMAKE) clean
 	cd lex; $(DMAKE) clean
 	cd ed; $(DMAKE) clean
+	cd parser; $(DMAKE) clean
 	cd kfun; $(DMAKE) clean
 	cd lpc; $(DMAKE) clean
 	cd host; $(DMAKE) clean

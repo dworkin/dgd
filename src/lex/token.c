@@ -251,12 +251,12 @@ char *file;
 {
     register unsigned int len;
 
-    FREE(ibuffer->u.filename);
     len = strlen(file);
     if (len >= STRINGSZ) {
 	len = STRINGSZ - 1;
     }
-    ibuffer->u.filename = strncpy(ALLOC(char, len + 1), file, len);
+    ibuffer->u.filename = memcpy(REALLOC(ibuffer->u.filename, char, 0, len + 1),
+				 file, len);
     ibuffer->u.filename[len] = '\0';
 }
 

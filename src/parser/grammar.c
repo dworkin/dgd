@@ -6,26 +6,19 @@
 
 # define STORE2(p, n)	((p)[0] = (n) >> 8, (p)[1] = (n))
 
-# define PROD_LPAREN	253
-# define PROD_RPAREN	254
-# define PROD_QUEST	255
-
-
 # define TOK_NULL	0	/* nothing */
 # define TOK_REGEXP	1	/* regular expression */
 # define TOK_STRING	2	/* string */
 # define TOK_PRODSYM	3	/* left hand of production rule */
 # define TOK_TOKSYM	4	/* left hand of token rule */
 # define TOK_SYMBOL	5	/* symbol in rhs of production rule */
-# define TOK_LPAREN	6	/* left parenthesis */
-# define TOK_RPAREN	7	/* right parenthesis */
-# define TOK_QUEST	8	/* question mark */
-# define TOK_ERROR	9	/* bad token */
-# define TOK_BADREGEXP 10	/* malformed regular expression */
-# define TOK_TOOBIGRGX 11	/* too big regular expression */
-# define TOK_BADSTRING 12	/* malformed string constant */
-# define TOK_TOOBIGSTR 13	/* string constant too long */
-# define TOK_TOOBIGSYM 14	/* symbol too long */
+# define TOK_QUEST	6	/* question mark */
+# define TOK_ERROR	7	/* bad token */
+# define TOK_BADREGEXP  8	/* malformed regular expression */
+# define TOK_TOOBIGRGX  9	/* too big regular expression */
+# define TOK_BADSTRING 10	/* malformed string constant */
+# define TOK_TOOBIGSTR 11	/* string constant too long */
+# define TOK_TOOBIGSYM 12	/* symbol too long */
 
 typedef struct {
     unsigned short type;	/* node type */
@@ -163,14 +156,6 @@ register char *buffer;
 	case LF:
 	    /* whitespace */
 	    break;
-
-	case '(':
-	    *strlen = size;
-	    return TOK_LPAREN;
-
-	case ')':
-	    *strlen = size;
-	    return TOK_RPAREN;
 
 	case '?':
 	    *strlen = size;
@@ -440,7 +425,6 @@ register char *buffer;
 
 
 typedef struct _rulesym_ {
-    short type;			/* symbol, (, ) */
     struct _rule_ *rule;	/* symbol */
     struct _rulesym_ *next;	/* next in rule */
 } rulesym;
@@ -449,8 +433,8 @@ typedef struct _rule_ {
     hte chain;			/* hash table chain */
     string *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
-    unsigned short num;		/* various things */
-    unsigned short len;		/* length of rule */
+    unsigned short num;		/* number of alternatives, or symbol number */
+    unsigned short len;		/* length of rule, or offset in grammar */
     union {
 	string *rgx;		/* regular expression */
 	rulesym *syms;		/* linked list of rule elements */
@@ -475,10 +459,6 @@ typedef struct _rlchunk_ {
     struct _rlchunk_ *next;	/* next in list */
 } rlchunk;
 
-# define RS_SYMBOL	0	/* symbol in rule */
-# define RS_LPAREN	1	/* left parenthesis */
-# define RS_RPAREN	2	/* right parenthesis */
-
 # define RULE_UNKNOWN	0	/* unknown rule symbol */
 # define RULE_REGEXP	1	/* regular expression rule */
 # define RULE_STRING	2	/* string rule */
@@ -488,9 +468,8 @@ typedef struct _rlchunk_ {
  * NAME:	rulesym->new()
  * DESCRIPTION:	allocate a new rulesym
  */
-static rulesym *rs_new(c, type, rl)
+static rulesym *rs_new(c, rl)
 register rschunk **c;
-int type;
 rule *rl;
 {
     register rulesym *rs;
@@ -505,7 +484,6 @@ rule *rl;
     }
 
     rs = &(*c)->rs[(*c)->chunksz++];
-    rs->type = type;
     rs->rule = rl;
     rs->next = (rulesym *) NULL;
     return rs;
@@ -596,6 +574,7 @@ register rlchunk *c;
  *		[x][y]	# total regexp rules (+ alternatives)
  *		[x][y]	# string rules
  *		[x][y]	# production rules (first is starting rule)
+ *		[x][y]	# total production rules (+ altrnatives)
  *
  * rgx offset	[x][y]	regexp rule offsets
  *		...
@@ -614,10 +593,11 @@ register rlchunk *c;
  *		[...]	string				}
  *
  * prod rule	[x][y]	number of alternatives
+ *		[x]	number of symbols in rule	}
  *		[x]	length of rule			}
- *		[...]	rule:				}
- *			[253]		(		} ...
- *			[254]		)		}
+ *		[...]	rule:				} ...
+ *			[x][y]		token or rule	}
+ *			[254][x]	( )		}
  *			[255][...]	function name	}
  */
 
@@ -630,10 +610,12 @@ rule *rgxlist, *strlist, *prodlist;
 int nrgx, nstr, nprod;
 long size;
 {
+    int start, prod1;
     string *gram;
     register char *p, *q;
     register rule *rl, *r;
     register rulesym *rs;
+    register int n;
 
     gram = str_new((char *) NULL, size);
 
@@ -642,25 +624,36 @@ long size;
     STORE2(p, 0); p += 2;	/* version number & whitespace */
     STORE2(p, nrgx); p += 4;	/* # regular expression rules */
     STORE2(p, nstr); p += 2;	/* # string rules */
+    nprod++;			/* +1 for start rule */
     STORE2(p, nprod);		/* # production rules */
-    q = p + 2 + 2 * (nrgx + nstr + nprod);
+    n = nrgx + nstr + nprod;
+    prod1 = nrgx + nstr + 1;
+    q = p + 4 + (n << 1);
     p = gram->text + size;
 
     /* determine production rule offsets */
     for (rl = prodlist; rl != (rule *) NULL; rl = rl->next) {
-	size -= rl->num + rl->len + 2;
-	p -= rl->num + rl->len + 2;
+	size -= (rl->num << 1) + rl->len + 2;
+	p -= (rl->num << 1) + rl->len + 2;
 	q -= 2; STORE2(q, size);
 	STORE2(p, rl->num);
-	rl->num = size;
+	rl->num = --n;
+	rl->len = size;
     }
+
+    /* start rule offset */
+    size -= 6;
+    p -= 6;
+    q -= 2; STORE2(q, size);
+    --n;
+    start = size;
 
     /* deal with strings */
     for (rl = strlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= rl->symb->len + 1;
 	p -= rl->symb->len + 1;
 	q -= 2; STORE2(q, size);
-	rl->num = size;
+	rl->num = --n;
 	*p = rl->symb->len;
 	memcpy(p + 1, rl->symb->text, rl->symb->len);
     }
@@ -671,14 +664,18 @@ long size;
 	size -= rl->num + rl->len + 2;
 	if (strcmp(rl->symb->text, "whitespace") == 0) {
 	    gram->text[1] = 1;
-	    p = gram->text + 10;
+	    p = gram->text + 12;
 	    STORE2(p, size);
+	    p = gram->text + size;
+	    STORE2(p, rl->num);
+	    rl->num = 0;
 	} else {
 	    q -= 2; STORE2(q, size);
+	    p = gram->text + size;
+	    STORE2(p, rl->num);
+	    rl->num = --n;
 	}
-	p = gram->text + size;
-	STORE2(p, rl->num); p += 2;
-	rl->num = size;
+	p += 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
 	    *p++ = r->u.rgx->len;
 	    memcpy(p, r->u.rgx->text, r->u.rgx->len);
@@ -690,34 +687,38 @@ long size;
     STORE2(p, nrgx);
 
     /* fill in production rules */
+    nprod = 1;
     for (rl = prodlist; rl != (rule *) NULL; rl = rl->next) {
-	q = gram->text + rl->num + 2;
+	q = gram->text + rl->len + 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
-	    p = q + 1;
+	    p = q + 2;
+	    n = 0;
 	    for (rs = r->u.syms; rs != (rulesym *) NULL; rs = rs->next) {
-		switch (rs->type) {
-		case RS_SYMBOL:
-		    STORE2(p, rs->rule->num); p += 2;
-		    break;
-
-		case RS_LPAREN:
-		    *p++ = PROD_LPAREN;
-		    break;
-
-		case RS_RPAREN:
-		    *p++ = PROD_RPAREN;
-		    break;
-		}
+		STORE2(p, rs->rule->num); p += 2;
+		n++;
 	    }
 	    if (r->func != (string *) NULL) {
-		*p++ = PROD_QUEST;
 		memcpy(p, r->func->text, r->func->len + 1);
 		p += r->func->len + 1;
 	    }
+	    *q++ = n;
 	    *q = p - q - 1;
 	    q = p;
+	    nprod++;
 	}
     }
+
+    /* start rule */
+    p = gram->text + start;
+    *p++ = 0;
+    *p++ = 1;
+    *p++ = 1;
+    *p++ = 2;
+    *p++ = prod1 >> 8;
+    *p   = prod1;
+
+    p = gram->text + 10;
+    STORE2(p, nprod);
 
     return gram;
 }
@@ -739,7 +740,7 @@ string *gram;
     register rulesym **rs;
     register rule *rl, **r;
     register long size;
-    register unsigned int len, paren;
+    register unsigned int len;
 
     /* initialize */
     ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ);
@@ -748,7 +749,7 @@ string *gram;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = prodlist = tmplist = (rule *) NULL;
     nrgx = nstr = nprod = 0;
-    size = 10;	/* size of header */
+    size = 12 + 8;	/* size of header + start rule */
     glen = gram->len;
 
     token = gramtok(gram, &glen, buffer, &buflen);
@@ -775,6 +776,7 @@ string *gram;
 		    if (rl->next != (rule *) NULL) {
 			rl->next->alt = rl->alt;
 		    }
+		    rl->alt = (rule *) NULL;
 		    rl->next = rgxlist;
 		    rgxlist = rl;
 		} else if ((*r)->type == RULE_REGEXP) {
@@ -851,6 +853,7 @@ string *gram;
 		    if (rl->next != (rule *) NULL) {
 			rl->next->alt = rl->alt;
 		    }
+		    rl->alt = (rule *) NULL;
 		    rl->next = prodlist;
 		    prodlist = rl;
 		} else if ((*r)->type == RULE_PROD) {
@@ -882,7 +885,6 @@ string *gram;
 	    rrl = rl;
 	    rs = &rl->u.syms;
 	    len = 0;
-	    paren = 0;
 	    for (;;) {
 		switch (token = gramtok(gram, &glen, buffer, &buflen)) {
 		case TOK_SYMBOL:
@@ -907,7 +909,7 @@ string *gram;
 			/* previously known rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(&rschunks, RS_SYMBOL, rl);
+		    *rs = rs_new(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
 		    continue;
@@ -940,34 +942,9 @@ string *gram;
 			/* existing string rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(&rschunks, RS_SYMBOL, rl);
+		    *rs = rs_new(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
-		    continue;
-
-		case TOK_LPAREN:
-		    /*
-		     * left parenthesis
-		     */
-		    paren++;
-		    *rs = rs_new(&rschunks, RS_LPAREN, (rule *) NULL);
-		    rs = &(*rs)->next;
-		    len++;
-		    continue;
-
-		case TOK_RPAREN:
-		    /*
-		     * right parenthesis
-		     */
-		    if (paren == 0) {
-			sprintf(buffer, "Rule %d: unbalanced parenthesis",
-				ruleno);
-			goto err;
-		    }
-		    --paren;
-		    *rs = rs_new(&rschunks, RS_RPAREN, (rule *) NULL);
-		    rs = &(*rs)->next;
-		    len++;
 		    continue;
 
 		case TOK_QUEST:
@@ -980,7 +957,7 @@ string *gram;
 			goto err;
 		    }
 		    str_ref(rrl->func = str_new(buffer, (long) buflen));
-		    len += buflen + 2;
+		    len += buflen + 1;
 
 		    token = gramtok(gram, &glen, buffer, &buflen);
 		    /* fall through */
@@ -990,17 +967,13 @@ string *gram;
 		break;
 	    }
 
-	    if (paren != 0) {
-		sprintf(buffer, "Rule %d: unbalanced parenthesis", ruleno);
-		goto err;
-	    }
 	    if (len > 255) {
 		sprintf(buffer, "Rule %d is too long", ruleno);
 		goto err;
 	    }
 	    rr->num++;
 	    rr->len += len;
-	    size += len + 1;
+	    size += len + 2;
 	    break;
 
 	case TOK_NULL:
@@ -1011,12 +984,16 @@ string *gram;
 		sprintf(buffer, "Undefined symbol %s", tmplist->symb->text);
 		goto err;
 	    }
+	    if (rgxlist == (rule *) NULL) {
+		strcpy(buffer, "No tokens");
+		goto err;
+	    }
 	    if (prodlist == (rule *) NULL) {
 		strcpy(buffer, "No starting rule");
 		goto err;
 	    }
 	    if (size > (long) USHRT_MAX) {
-		strcpy(buffer, "Grammar too long");
+		strcpy(buffer, "Grammar too large");
 		goto err;
 	    }
 	    gram = make_grammar(rgxlist, strlist, prodlist, nrgx, nstr, nprod,

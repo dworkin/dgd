@@ -1470,10 +1470,8 @@ int nargs;
 	    if (data->ncallouts == UINDEX_MAX) {
 		error("Too many callouts");
 	    }
-	    co = ALLOC(dcallout, data->ncallouts + 1);
-	    memcpy(co, data->callouts, data->ncallouts * sizeof(dcallout));
-	    FREE(data->callouts);
-	    data->callouts = co;
+	    co = data->callouts = REALLOC(data->callouts, dcallout,
+					  data->ncallouts, data->ncallouts + 1);
 	    co += data->ncallouts++;
 	    data->flags |= DATA_NEWCALLOUT;
 	}
@@ -1720,19 +1718,16 @@ register sector nsectors, **sectors;
     register sector n, *s;
 
     n = sw_mapsize(size);
-    if (nsectors == 0) {
-	/* no sectors yet */
-	sw_newv(*sectors = ALLOC(sector, n), n);
-    } else if (nsectors < n) {
+    s = *sectors = REALLOC(*sectors, sector, nsectors, n);
+    if (nsectors != 0) {
+	/* wipe old sectors */
+	sw_wipev(s, nsectors);
+    }
+    if (nsectors < n) {
 	/* not enough sectors */
-	s = ALLOC(sector, n);
-	memcpy(s, *sectors, nsectors * sizeof(sector));
-	FREE(*sectors);
-	sw_wipev(*sectors = s, nsectors);
 	sw_newv(s + nsectors, n - nsectors);
     } else if (nsectors > n) {
 	/* too many sectors */
-	sw_wipev(s = *sectors, nsectors);
 	sw_delv(s + n, nsectors - n);
     }
 
@@ -2382,68 +2377,14 @@ register dataspace *data;
 	header.fcallouts = data->fcallouts;
 
 	/*
-	 * put everything into a saveable form
+	 * put everything in a saveable form
 	 */
-	if (header.nstrings > 0) {
-	    if (header.nstrings <= data->nstrings &&
-		data->sstrings != (sstring *) NULL) {
-		sstrings = data->sstrings;
-	    } else {
-		if (data->sstrings != (sstring *) NULL) {
-		    FREE(data->sstrings);
-		}
-		sstrings = data->sstrings = ALLOC(sstring, header.nstrings);
-	    }
-	    if (header.strsize > 0) {
-		if (header.strsize <= data->strsize &&
-		    data->stext != (char *) NULL) {
-		    stext = data->stext;
-		} else {
-		    if (data->stext != (char *) NULL) {
-			FREE(data->stext);
-		    }
-		    stext = data->stext = ALLOC(char, header.strsize);
-		}
-	    }
-	}
-	if (header.nstrings == 0 && data->sstrings != (sstring *) NULL) {
-	    FREE(data->sstrings);
-	    data->sstrings = (sstring *) NULL;
-	}
-	if (header.strsize == 0 && data->stext != (char *) NULL) {
-	    FREE(data->stext);
-	    data->stext = (char *) NULL;
-	}
-	if (header.narrays > 0) {
-	    if (header.narrays <= data->narrays &&
-		data->sarrays != (sarray *) NULL) {
-		sarrays = data->sarrays;
-	    } else {
-		if (data->sarrays != (sarray *) NULL) {
-		    FREE(data->sarrays);
-		}
-		sarrays = data->sarrays = ALLOC(sarray, header.narrays);
-	    }
-	    if (header.eltsize > 0) {
-		if (header.eltsize <= data->eltsize &&
-		    data->selts != (svalue *) NULL) {
-		    selts = data->selts;
-		} else {
-		    if (data->selts != (svalue *) NULL) {
-			FREE(data->selts);
-		    }
-		    selts = data->selts = ALLOC(svalue, header.eltsize);
-		}
-	    }
-	}
-	if (header.narrays == 0 && data->sarrays != (sarray *) NULL) {
-	    FREE(data->sarrays);
-	    data->sarrays = (sarray *) NULL;
-	}
-	if (header.eltsize == 0 && data->selts != (svalue *) NULL) {
-	    FREE(data->selts);
-	    data->selts = (svalue *) NULL;
-	}
+	sstrings = data->sstrings =
+		   REALLOC(data->sstrings, sstring, 0, header.nstrings);
+	stext = data->stext = REALLOC(data->stext, char, 0, header.strsize);
+	sarrays = data->sarrays =
+		  REALLOC(data->sarrays, sarray, 0, header.narrays);
+	selts = data->selts = REALLOC(data->selts, svalue, 0, header.eltsize);
 	narr = 0;
 	nstr = 0;
 	arrsize = 0;
@@ -2648,16 +2589,11 @@ register unsigned short n;
 		     * store in itab
 		     */
 		    if (i >= itabsz) {
-			array **tmp;
-
 			/*
 			 * increase size of itab
 			 */
 			for (j = itabsz; j <= i; j += j) ;
-			tmp = ALLOC(array*, j);
-			memcpy(tmp, itab, itabsz * sizeof(array*));
-			FREE(itab);
-			itab = tmp;
+			itab = REALLOC(itab, array*, itabsz, j);
 			itabsz = j;
 		    }
 		    arr_put(itab[i] = a);

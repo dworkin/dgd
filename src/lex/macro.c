@@ -74,11 +74,9 @@ int narg;
     m = (macro **) ht_lookup(mt, name, FALSE);
     if (*m != (macro *) NULL) {
 	/* the macro already exists. */
-	if ((*m)->replace != (char *) NULL) {
-	    if ((*m)->narg != narg || strcmp((*m)->replace, replace) != 0) {
-		warning("macro %s redefined", name);
-	    }
-	    FREE((*m)->replace);
+	if ((*m)->replace != (char *) NULL &&
+	    ((*m)->narg != narg || strcmp((*m)->replace, replace) != 0)) {
+	    warning("macro %s redefined", name);
 	}
     } else {
 	if (flist != (macro *) NULL) {
@@ -99,10 +97,13 @@ int narg;
 	}
 	(*m)->chain.next = (hte *) NULL;
 	(*m)->chain.name = strcpy(ALLOC(char, strlen(name) + 1), name);
+	(*m)->replace = (char *) NULL;
     }
     /* fill in macro */
     if (replace != (char *) NULL) {
-	(*m)->replace = strcpy(ALLOC(char, strlen(replace) + 1), replace);
+	(*m)->replace = strcpy(REALLOC((*m)->replace, char, 0,
+				       strlen(replace) + 1),
+			       replace);
     } else {
 	(*m)->replace = (char *) NULL;
     }

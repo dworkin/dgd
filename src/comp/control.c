@@ -873,13 +873,11 @@ register char *proto;
 		    /* private function replaces implicit prototype */
 		    --nsymbs;
 		}
-		progsize -= PROTO_SIZE(proto2);
-		FREE(proto2);
 		i = PROTO_SIZE(proto);
+		progsize += i - PROTO_SIZE(proto2);
 		functions[fdef = (*h)->index].proto =
-				    (char *) memcpy(ALLOC(char, i), proto, i);
+			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.class = PROTO_CLASS(proto);
-		progsize += PROTO_SIZE(proto);
 	    }
 	    return;
 	}

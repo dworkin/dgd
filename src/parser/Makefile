@@ -8,7 +8,7 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 CC=	gcc
 
-OBJ=	grammar.o dfa.o pda.o parse.o
+OBJ=	grammar.o dfa.o parse.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo parser/$$i; done > dgd
@@ -22,8 +22,8 @@ clean:
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../str.h
 grammar.o dfa.o: ../hash.h
-parse.o: ../data.h
+parse.o: ../array.h ../object.h ../interpret.h ../data.h
 
 grammar.o parse.o: grammar.h
 dfa.o parse.o: dfa.h
-pda.o parse.o: pda.h
+parse.o: parse.h

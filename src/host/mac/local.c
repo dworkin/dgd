@@ -285,10 +285,10 @@ static void setmenu(void)
 }
 
 /*
- * NANE:	menuselect()
+ * NANE:	menusel()
  * DESCRIPTION:	handle a menu command
  */
-static bool menuselect(long menuitem)
+static bool menusel(long menuitem)
 {
     int menu, item;
     Str255 name;
@@ -415,7 +415,7 @@ int getevent(void)
 		break;
 
 	    case inMenuBar:
-		return menuselect(MenuSelect(evt.where));
+		return menusel(MenuSelect(evt.where));
 
 	    case inDrag:
 		/* handle window drag */
@@ -447,7 +447,7 @@ int getevent(void)
 
 	case keyDown:
 	    if (evt.modifiers & cmdKey) {
-		return menuselect(MenuKey((char) (evt.message & charCodeMask)));
+		return menusel(MenuKey((char) (evt.message & charCodeMask)));
 	    }
 	    break;
 
