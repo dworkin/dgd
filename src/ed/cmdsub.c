@@ -1524,12 +1524,14 @@ register cmdbuf *cb;
 	}
 	strcpy(buffer, cb->fname);
     }
-    if ((cb->flags & (CB_NOIMAGE|CB_EXCL)) == CB_NOIMAGE) {
-	error("File is changed (use w! to override)");
-    }
-    if ((cb->first != 1 || cb->last != cb->edbuf->lines) &&
-      strcmp(buffer, cb->fname) == 0 && !(cb->flags & CB_EXCL)) {
-	error("Use w! to write partial buffer");
+    if (strcmp(buffer, cb->fname) == 0) {
+	if (cb->first == 1 && cb->last == cb->edbuf->lines) {
+	    if ((cb->flags & (CB_NOIMAGE|CB_EXCL)) == CB_NOIMAGE) {
+		error("File is changed (use w! to override)");
+	    }
+	} else if (!(cb->flags & CB_EXCL)) {
+	    error("Use w! to write partial buffer");
+	}
     }
 
     if (!(cb->flags & CB_RESTRICTED)) {
