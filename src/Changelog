@@ -821,3 +821,5 @@ DGD 1.1
  - Ignore NUL characters in telnet input.
  - Fixed another array exporting bug.
  - foo() = bar; could crash the system.
+ - An incomplete recovery from a syntax error during compilation of a switch
+   statement could result in a crash.

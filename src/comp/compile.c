@@ -1057,19 +1057,25 @@ node *expr, *stmt;
 	} else if (!(stmt->flags & F_ENTRY)) {
 	    c_error("unreachable code in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
-	    /* only a default label: erase N_CASE */
-	    n = case_list->r.right->r.right->l.left;
-	    *(case_list->r.right->r.right) = *n;
-	    n->type = N_FAKE;
-	    if (switch_list->brk) {
-		/*
-		 * enclose the break statement with a proper block
-		 */
-		stmt = c_concat(stmt, node_mon(N_BREAK, 0, (node *) NULL));
-		stmt = node_mon(N_BLOCK, N_BREAK,
-				node_bin(N_FOREVER, 0, (node *) NULL, stmt));
+	    if (switch_list->ncase == 0) {
+		/* can happen when recovering from syntax error */
+		n = c_exp_stmt(expr);
+	    } else {
+		/* only a default label: erase N_CASE */
+		n = case_list->r.right->r.right->l.left;
+		*(case_list->r.right->r.right) = *n;
+		n->type = N_FAKE;
+		if (switch_list->brk) {
+		    /*
+		     * enclose the break statement with a proper block
+		     */
+		    stmt = c_concat(stmt, node_mon(N_BREAK, 0, (node *) NULL));
+		    stmt = node_mon(N_BLOCK, N_BREAK,
+				    node_bin(N_FOREVER, 0, (node *) NULL,
+					     stmt));
+		}
+		n = c_concat(c_exp_stmt(expr), stmt);
 	    }
-	    n = c_concat(c_exp_stmt(expr), stmt);
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
 		   switch_list->type != T_MIXED) {
 	    c_error("wrong switch expression type (%s)", i_typename(expr->mod));
