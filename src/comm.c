@@ -60,6 +60,7 @@ static user *freeuser;		/* linked list of free users */
 static user *flush;		/* flush list */
 static int maxusers;		/* max # of users */
 static int nusers;		/* # of users */
+static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
 static uindex this_user;	/* current user */
 
@@ -84,7 +85,7 @@ unsigned int telnet_port, binary_port;
     freeuser = usr;
     lastuser = (user *) NULL;
     flush = (user *) NULL;
-    nusers = newlines = 0;
+    nusers = odone = newlines = 0;
     this_user = OBJ_NONE;
 
     return conn_init(n, telnet_port, binary_port);
@@ -245,7 +246,7 @@ unsigned int len;
     dataspace *data;
     array *arr;
     register value *v;
-    register ssizet odone, olen;
+    register ssizet osdone, olen;
     value val;
 
     arr = d_get_extravar(data = o_dataspace(obj))->u.array;
@@ -256,8 +257,8 @@ unsigned int len;
     v = arr->elts + 1;
     if (v->type == T_STRING) {
 	/* append to existing buffer */
-	odone = (usr->outbuf == v->u.string) ? usr->osdone : 0;
-	olen = v->u.string->len - odone;
+	osdone = (usr->outbuf == v->u.string) ? usr->osdone : 0;
+	olen = v->u.string->len - osdone;
 	if (olen + len > MAX_STRLEN) {
 	    len = MAX_STRLEN - olen;
 	    if (len == 0 ||
@@ -267,11 +268,14 @@ unsigned int len;
 	    }
 	}
 	str = str_new((char *) NULL, (long) olen + len);
-	memcpy(str->text, v->u.string->text + odone, olen);
+	memcpy(str->text, v->u.string->text + osdone, olen);
 	memcpy(str->text + olen, text, len);
     } else {
 	/* create new buffer */
-	usr->flags &= ~CF_ODONE;
+	if (usr->flags & CF_ODONE) {
+	    usr->flags &= ~CF_ODONE;
+	    --odone;
+	}
 	obj->flags |= O_PENDIO;
 	if (str == (string *) NULL) {
 	    str = str_new(text, (long) len);
@@ -494,6 +498,7 @@ array *arr;
 		    /* buffer fully drained */
 		    n = 0;
 		    usr->flags |= CF_ODONE;
+		    odone++;
 		    obj->flags &= ~O_PENDIO;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
@@ -587,6 +592,9 @@ void comm_flush()
 		newlines -= usr->newlines;
 		FREE(usr->inbuf - 1);
 	    }
+	    if (usr->flags & CF_ODONE) {
+		--odone;
+	    }
 
 	    usr->oindex = OBJ_NONE;
 	    if (usr->next == usr) {
@@ -633,11 +641,11 @@ unsigned int mtime;
     register int n, i, state, nls;
     register char *p, *q;
 
-    if (newlines != 0) {
+    if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
     }
     n = conn_select(timeout, mtime);
-    if (n <= 0 && newlines == 0) {
+    if (n <= 0 && newlines == 0 && odone == 0) {
 	/*
 	 * call_out to do, or timeout
 	 */
@@ -734,6 +742,7 @@ unsigned int mtime;
 	if (usr->flags & CF_ODONE) {
 	    /* callback */
 	    usr->flags &= ~CF_ODONE;
+	    --odone;
 	    this_user = obj->index;
 	    if (i_call(f, obj, "message_done", 12, TRUE, 0)) {
 		i_del_value(f->sp++);
