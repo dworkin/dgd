@@ -298,10 +298,10 @@ static jmplist *break_list;		/* list of break jumps */
 static jmplist *continue_list;		/* list of continue jumps */
 
 /*
- * NAME:	jump->offset()
- * DESCRIPTION:	generate a jump offset slot
+ * NAME:	jump->addr()
+ * DESCRIPTION:	generate a jump
  */
-static jmplist *jump_offset(list)
+static jmplist *jump_addr(list)
 jmplist *list;
 {
     register jmplist *j;
@@ -338,7 +338,7 @@ int i;
 jmplist *list;
 {
     code_instr(i, 0);
-    return jump_offset(list);
+    return jump_addr(list);
 }
 
 /*
@@ -1489,7 +1489,7 @@ register node *n;
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_offset((jmplist *) NULL);
+    switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
 	register long l;
@@ -1511,7 +1511,7 @@ register node *n;
 	    code_byte((int) l);
 	    break;
 	}
-	switch_table[i++].jump = jump_offset((jmplist *) NULL);
+	switch_table[i++].jump = jump_addr((jmplist *) NULL);
 	m = m->r.right;
     } while (i < size);
 
@@ -1570,7 +1570,7 @@ register node *n;
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_offset((jmplist *) NULL);
+    switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
 	register long l;
@@ -1609,7 +1609,7 @@ register node *n;
 	    code_byte((int) l);
 	    break;
 	}
-	switch_table[i++].jump = jump_offset((jmplist *) NULL);
+	switch_table[i++].jump = jump_addr((jmplist *) NULL);
 	m = m->r.right;
     } while (i < size);
 
@@ -1666,14 +1666,14 @@ register node *n;
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
-    switch_table[0].jump = jump_offset((jmplist *) NULL);
+    switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     if (m->l.left->type == N_INT) {
 	/*
 	 * 0
 	 */
 	code_byte(0);
-	switch_table[i++].jump = jump_offset((jmplist *) NULL);
+	switch_table[i++].jump = jump_addr((jmplist *) NULL);
 	m = m->r.right;
     } else {
 	/* no 0 case */
@@ -1685,7 +1685,7 @@ register node *n;
 	l = ctrl_dstring(m->l.left->l.string);
 	code_byte((int) (l >> 16));
 	code_word((int) l);
-	switch_table[i++].jump = jump_offset((jmplist *) NULL);
+	switch_table[i++].jump = jump_addr((jmplist *) NULL);
 	m = m->r.right;
     }
 
@@ -1717,7 +1717,7 @@ register node *n;
 {
     register node *m;
     register jmplist *jlist, *j2list;
-    register short offset;
+    register Uint where;
 
     while (n != (node *) NULL) {
 	if (n->type == N_PAIR) {
@@ -1762,39 +1762,39 @@ register node *n;
 	    break;
 
 	case N_DO:
-	    offset = here;
+	    where = here;
 	    cg_stmt(m->r.right);
 	    jlist = true_list;
 	    true_list = (jmplist *) NULL;
 	    cg_cond(m->l.left, TRUE);
-	    jump_resolve(true_list, offset);
+	    jump_resolve(true_list, where);
 	    true_list = jlist;
 	    break;
 
 	case N_FOR:
 	    if (m->r.right != (node *) NULL) {
 		jlist = jump(I_JUMP, (jmplist *) NULL);
-		offset = here;
+		where = here;
 		cg_stmt(m->r.right);
 		jump_resolve(jlist, here);
 	    } else {
 		/* empty loop body */
-		offset = here;
+		where = here;
 	    }
 	    jlist = true_list;
 	    true_list = (jmplist *) NULL;
 	    cg_cond(m->l.left, TRUE);
-	    jump_resolve(true_list, offset);
+	    jump_resolve(true_list, where);
 	    true_list = jlist;
 	    break;
 
 	case N_FOREVER:
-	    offset = here;
+	    where = here;
 	    if (m->l.left != (node *) NULL) {
 		cg_expr(m->l.left, TRUE);
 	    }
 	    cg_stmt(m->r.right);
-	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), offset);
+	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
 	    break;
 
 	case N_IF:

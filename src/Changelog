@@ -801,3 +801,5 @@ DGD 1.1
  - Binary connections don't buffer anymore.  send_message() returns 1 if the
    write succeeded (always 1 for telnet connections), and 0 if the write
    failed.
+ - Fixed a bug in the compiler that was exposed by the changes in the code
+   generator.

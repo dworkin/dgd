@@ -855,7 +855,7 @@ register node *n1, *n2;
 	return n2;
     } else if (n2 == (node *) NULL ||
 	       ((n1->flags & (F_BREAK | F_CONT | F_RETURN)) &&
-	        !(n2->flags & F_ENTRY))) {
+	        !(n2->flags & F_REACH))) {
 	return n1;
     }
 
@@ -890,13 +890,13 @@ register node *n1, *n2, *n3;
     n1 = node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
     if (n2 != (node *) NULL) {
 	flags1 = n2->flags & (F_BREAK | F_CONT | F_RETURN);
-	n1->flags |= n2->flags & (F_ENTRY | F_REACH);
+	n1->flags |= n2->flags & F_REACH;
     } else {
 	flags1 = 0;
     }
     if (n3 != (node *) NULL) {
 	flags2 = n3->flags & (F_BREAK | F_CONT | F_RETURN);
-	n1->flags |= n3->flags & (F_ENTRY | F_REACH);
+	n1->flags |= n3->flags & F_REACH;
     } else {
 	flags2 = 0;
     }
