@@ -2118,7 +2118,7 @@ register unsigned short n;
 		    /*
 		     * store in itab
 		     */
-		    if (i > itabsz) {
+		    if (i >= itabsz) {
 			array **tmp;
 
 			/*

@@ -52,7 +52,6 @@ static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
 static array *flist;		/* free array list */
-static array *hlist;		/* alternate free array list */
 static arrh **ht;		/* array merge table */
 static arrh **alink;		/* linked list of merged arrays */
 static arrhchunk *ahlist;	/* linked list of all arrh chunks */
@@ -176,14 +175,8 @@ register array *a;
 	}
 
 	d_del_array(a);
-	if (idx == 0) {
-	    a->primary = (arrref *) flist;
-	    flist = a;
-	} else {
-	    /* alternate free list if merge table is being used */
-	    a->primary = (arrref *) hlist;
-	    hlist = a;
-	}
+	a->primary = (arrref *) flist;
+	flist = a;
     }
 }
 
@@ -254,7 +247,7 @@ register array *a;
     }
     *h = &ahlist->ah[ahchunksz++];
     (*h)->next = (arrh *) NULL;
-    (*h)->arr = a;
+    arr_ref((*h)->arr = a);
     (*h)->index = idx;
     (*h)->link = alink;
     alink = h;
@@ -277,6 +270,7 @@ void arr_clear()
 
 	f = *h;
 	*h = (arrh *) NULL;
+	arr_del(f->arr);
 	h = f->link;
     }
     alink = (arrh **) NULL;
@@ -292,17 +286,6 @@ void arr_clear()
     }
     ahlist = (arrhchunk *) NULL;
     ahchunksz = ARR_CHUNK;
-
-    /* copy hlist to flist */
-    if (hlist != (array *) NULL) {
-	register array *f;
-
-	for (f = hlist; f->primary != (arrref *) NULL; f = (array *) f->primary)
-	    ;
-	f->primary = (arrref *) flist;
-	flist = hlist;
-	hlist = (array *) NULL;
-    }
 }
 
 /*

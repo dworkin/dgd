@@ -785,3 +785,6 @@ DGD 1.1
  - Arrays that are shared between objects are now made unique in each object
    immediately after execution has completed, rather than at the moment when
    one of the objects is swapped out.
+ - Fixed some remaining ANSI C incompatible prototypes <-> function
+   declarations in the editor.
+ - Fixed some bugs in the array exporting code.
