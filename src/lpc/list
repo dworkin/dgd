@@ -1,1 +1,6 @@
-
+# include "auto.c"
+# include "driver.c"
+# include "global.c"
+# include "user.c"
+# include "editor.c"
+# include "cindent.c"
