@@ -3,8 +3,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "comm.h"
 
 # ifndef TELOPT_LINEMODE
@@ -23,7 +23,7 @@ typedef struct _user_ {
     char flags;			/* connection flags */
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
-    connection *conn;		/* connection */
+    struct _connection_ *conn;	/* connection */
     char *inbuf;		/* input buffer */
     array *extra;		/* object's extra value */
     string *outbuf;		/* output buffer string */
@@ -62,7 +62,6 @@ static int maxusers;		/* max # of users */
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
-static uindex this_user;	/* current user */
 
 /*
  * NAME:	comm->init()
@@ -75,7 +74,7 @@ unsigned int telnet_port, binary_port;
     register int i;
     register user *usr;
 
-    users = ALLOC(user, maxusers = n);
+    users = SALLOC(user, maxusers = n);
     for (i = n, usr = users + i; i > 0; --i) {
 	--usr;
 	usr->oindex = OBJ_NONE;
@@ -86,7 +85,6 @@ unsigned int telnet_port, binary_port;
     lastuser = (user *) NULL;
     flush = (user *) NULL;
     nusers = odone = newlines = 0;
-    this_user = OBJ_NONE;
 
     return conn_init(n, telnet_port, binary_port);
 }
@@ -132,9 +130,10 @@ register array *arr;
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static user *comm_new(obj, conn, telnet)
+static user *comm_new(env, obj, conn, telnet)
+lpcenv *env;
 object *obj;
-connection *conn;
+struct _connection_ *conn;
 bool telnet;
 {
     static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
@@ -145,7 +144,7 @@ bool telnet;
     value val;
 
     if (obj->flags & O_SPECIAL) {
-	error("User object is already special purpose");
+	error(env, "User object is already special purpose");
     }
 
     usr = freeuser;
@@ -161,7 +160,7 @@ bool telnet;
 	lastuser = usr;
     }
 
-    d_wipe_extravar(data = o_dataspace(obj));
+    d_wipe_extravar(data = o_dataspace(env, obj));
     arr = arr_new(data, 3L);
     arr->elts[0] = zero_int;
     arr->elts[1] = arr->elts[2] = nil_value;
@@ -180,14 +179,12 @@ bool telnet;
 	usr->state = TS_DATA;
 	usr->newlines = 0;
 	usr->inbufsz = 0;
-	m_static();
-	usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
+	usr->inbuf = SALLOC(char, INBUF_SIZE + 1);
 	*usr->inbuf++ = LF;	/* sentinel */
-	m_dynamic();
 	addtoflush(usr, arr);
 
 	arr->elts[0].u.number = CF_ECHO;
-	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
+	PUT_STRVAL_NOREF(&val, str_new(env, init, (long) sizeof(init)));
 	d_assign_elt(data, arr, &arr->elts[1], &val);
 	obj->flags |= O_PENDIO;
     } else {
@@ -211,24 +208,24 @@ bool force;
     dataspace *data;
     uindex olduser;
 
-    data = o_dataspace(obj);
+    data = o_dataspace(f->env, obj);
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, d_get_extravar(data)->u.array);
     }
 
     obj->flags &= ~O_USER;
-    olduser = this_user;
-    if (ec_push((ec_ftn) NULL)) {
-	this_user = olduser;
-	error((char *) NULL);
+    olduser = f->env->this_user;
+    if (ec_push(f->env, (ec_ftn) NULL)) {
+	f->env->this_user = olduser;
+	error(f->env, (char *) NULL);
     } else {
-	this_user = obj->index;
+	f->env->this_user = obj->index;
 	PUSH_INTVAL(f, force);
 	if (i_call(f, obj, (array *) NULL, "close", 5, TRUE, 1)) {
-	    i_del_value(f->sp++);
+	    i_del_value(f->env, f->sp++);
 	}
-	this_user = olduser;
-	ec_pop();
+	f->env->this_user = olduser;
+	ec_pop(f->env);
     }
 }
 
@@ -249,7 +246,7 @@ unsigned int len;
     register ssizet osdone, olen;
     value val;
 
-    arr = d_get_extravar(data = o_dataspace(obj))->u.array;
+    arr = d_get_extravar(data = o_dataspace(sch_env(), obj))->u.array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -267,7 +264,7 @@ unsigned int len;
 		return 0;
 	    }
 	}
-	str = str_new((char *) NULL, (long) olen + len);
+	str = str_new(sch_env(), (char *) NULL, (long) olen + len);
 	memcpy(str->text, v->u.string->text + osdone, olen);
 	memcpy(str->text + olen, text, len);
     } else {
@@ -278,7 +275,7 @@ unsigned int len;
 	}
 	obj->flags |= O_PENDIO;
 	if (str == (string *) NULL) {
-	    str = str_new(text, (long) len);
+	    str = str_new(sch_env(), text, (long) len);
 	}
     }
 
@@ -301,7 +298,7 @@ string *str;
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	register char *p, *q;
-	register unsigned int len, size, n, length;
+	register unsigned int len, size, n;
 
 	/*
 	 * telnet connection
@@ -310,7 +307,6 @@ string *str;
 	len = str->len;
 	q = outbuf;
 	size = 0;
-	length = 0;
 	for (;;) {
 	    if (len == 0 || size >= OUTBUF_SIZE - 1 || UCHAR(*p) == IAC) {
 		n = comm_write(usr, obj, (string *) NULL, outbuf, size);
@@ -389,10 +385,10 @@ string *str;
 
     usr = &users[EINDEX(obj->etabi)];
     if ((usr->flags & (CF_TELNET | CF_UDP)) != CF_UDP) {
-	error("Object has no UDP channel");
+	error(sch_env(), "Object has no UDP channel");
     }
     if (!(usr->flags & CF_UDPDATA)) {
-	error("No datagrams received yet");
+	error(sch_env(), "No datagrams received yet");
     }
 
     arr = d_get_extravar(data = obj->data)->u.array;
@@ -575,7 +571,7 @@ void comm_flush()
 	    if (usr->outbuf != v[1].u.string) {
 		usr->osdone = 0;	/* new mesg before buffer drained */
 	    }
-	    str_del(usr->outbuf);
+	    str_del(sch_env(), usr->outbuf);
 	    usr->outbuf = (string *) NULL;
 	}
 	if (obj->flags & O_PENDIO) {
@@ -590,7 +586,7 @@ void comm_flush()
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;
-		FREE(usr->inbuf - 1);
+		SFREE(usr->inbuf - 1);
 	    }
 	    if (usr->flags & CF_ODONE) {
 		--odone;
@@ -611,7 +607,7 @@ void comm_flush()
 	    --nusers;
 	}
 
-	arr_del(arr);
+	arr_del(sch_env(), arr);
 	usr->flags &= ~CF_FLUSH;
     }
 }
@@ -635,7 +631,7 @@ unsigned int mtime;
 				  (char) TELOPT_LINEMODE, (char) LM_MODE,
 				  (char) MODE_EDIT, (char) IAC, (char) SE };
     char buffer[BINBUF_SIZE];
-    connection *conn;
+    struct _connection_ *conn;
     object *obj;
     register user *usr;
     register int n, i, state, nls;
@@ -652,9 +648,9 @@ unsigned int mtime;
 	return;
     }
 
-    if (ec_push(errhandler)) {
+    if (ec_push(f->env, errhandler)) {
 	endthread();
-	this_user = OBJ_NONE;
+	f->env->this_user = OBJ_NONE;
 	return;
     }
 
@@ -663,10 +659,10 @@ unsigned int mtime;
 	 * accept new telnet connection
 	 */
 	conn = conn_tnew();
-	if (conn != (connection *) NULL) {
-	    if (ec_push((ec_ftn) NULL)) {
+	if (conn != (struct _connection_ *) NULL) {
+	    if (ec_push(f->env, (ec_ftn) NULL)) {
 		conn_del(conn);		/* delete connection */
-		error((char *) NULL);	/* pass on error */
+		error(f->env, (char *) NULL);	/* pass on error */
 	    }
 	    call_driver_object(f, "telnet_connect", 0);
 	    if (f->sp->type != T_OBJECT) {
@@ -674,18 +670,18 @@ unsigned int mtime;
 	    }
 	    obj = OBJ(f->sp->oindex);
 	    f->sp++;
-	    usr = comm_new(obj, conn, TRUE);
-	    ec_pop();
+	    usr = comm_new(f->env, obj, conn, TRUE);
+	    ec_pop(f->env);
 	    endthread();
 
 	    usr->flags |= CF_PROMPT;
-	    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
-	    this_user = obj->index;
+	    addtoflush(usr, d_get_extravar(o_dataspace(f->env, obj))->u.array);
+	    f->env->this_user = obj->index;
 	    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-		i_del_value(f->sp++);
+		i_del_value(f->env, f->sp++);
 		endthread();
 	    }
-	    this_user = OBJ_NONE;
+	    f->env->this_user = OBJ_NONE;
 	}
     }
 
@@ -694,13 +690,13 @@ unsigned int mtime;
 	 * accept new binary connection
 	 */
 	conn = conn_bnew();
-	if (conn == (connection *) NULL) {
+	if (conn == (struct _connection_ *) NULL) {
 	    break;
 	}
 
-	if (ec_push((ec_ftn) NULL)) {
+	if (ec_push(f->env, (ec_ftn) NULL)) {
 	    conn_del(conn);		/* delete connection */
-	    error((char *) NULL);	/* pass on error */
+	    error(f->env, (char *) NULL);	/* pass on error */
 	}
 	call_driver_object(f, "binary_connect", 0);
 	if (f->sp->type != T_OBJECT) {
@@ -708,14 +704,14 @@ unsigned int mtime;
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
-	usr = comm_new(obj, conn, FALSE);
-	ec_pop();
+	usr = comm_new(f->env, obj, conn, FALSE);
+	ec_pop(f->env);
 	endthread();
 
-	this_user = obj->index;
+	f->env->this_user = obj->index;
 	if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 	    if (VAL_TRUE(f->sp)) {
-		i_del_value(f->sp);
+		i_del_value(f->env, f->sp);
 		if ((obj->flags & O_SPECIAL) == O_USER) {
 		    /* open UDP channel */
 		    usr->flags |= CF_UDP;
@@ -725,7 +721,7 @@ unsigned int mtime;
 	    f->sp++;
 	    endthread();
 	}
-	this_user = OBJ_NONE;
+	f->env->this_user = OBJ_NONE;
     }
 
     for (i = nusers; i > 0; --i) {
@@ -736,19 +732,19 @@ unsigned int mtime;
 	if (obj->flags & O_PENDIO) {
 	    dataspace *data;
 
-	    data = o_dataspace(obj);
+	    data = o_dataspace(f->env, obj);
 	    comm_uflush(usr, obj, data, d_get_extravar(data)->u.array);
 	}
 	if (usr->flags & CF_ODONE) {
 	    /* callback */
 	    usr->flags &= ~CF_ODONE;
 	    --odone;
-	    this_user = obj->index;
+	    f->env->this_user = obj->index;
 	    if (i_call(f, obj, (array *) NULL, "message_done", 12, TRUE, 0)) {
-		i_del_value(f->sp++);
+		i_del_value(f->env, f->sp++);
 		endthread();
 	    }
-	    this_user = OBJ_NONE;
+	    f->env->this_user = OBJ_NONE;
 	    if (obj->count == 0) {
 		break;	/* continue, unless the connection was closed */
 	    }
@@ -949,7 +945,7 @@ unsigned int mtime;
 		p++;			/* skip \n */
 		usr->inbufsz -= n + 1;
 
-		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
+		PUSH_STRVAL(f, str_new(f->env, usr->inbuf, (long) n));
 		for (n = usr->inbufsz; n != 0; --n) {
 		    *q++ = *p++;
 		}
@@ -959,11 +955,12 @@ unsigned int mtime;
 		 */
 		n = usr->inbufsz;
 		usr->inbufsz = 0;
-		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
+		PUSH_STRVAL(f, str_new(f->env, usr->inbuf, (long) n));
 	    }
 	    usr->flags |= CF_PROMPT;
 	    if (!(usr->flags & CF_FLUSH)) {
-		addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		addtoflush(usr, d_get_extravar(o_dataspace(f->env,
+							   obj))->u.array);
 	    }
 	} else {
 	    /*
@@ -976,14 +973,14 @@ unsigned int mtime;
 		     * received datagram
 		     */
 		    usr->flags |= CF_UDPDATA;
-		    PUSH_STRVAL(f, str_new(buffer, (long) n));
-		    this_user = obj->index;
+		    PUSH_STRVAL(f, str_new(f->env, buffer, (long) n));
+		    f->env->this_user = obj->index;
 		    if (i_call(f, obj, (array *) NULL, "receive_datagram", 16,
 			       TRUE, 1)) {
-			i_del_value(f->sp++);
+			i_del_value(f->env, f->sp++);
 			endthread();
 		    }
-		    this_user = OBJ_NONE;
+		    f->env->this_user = OBJ_NONE;
 		}
 	    }
 
@@ -1000,19 +997,19 @@ unsigned int mtime;
 		continue;
 	    }
 
-	    PUSH_STRVAL(f, str_new(buffer, (long) n));
+	    PUSH_STRVAL(f, str_new(f->env, buffer, (long) n));
 	}
 
-	this_user = obj->index;
+	f->env->this_user = obj->index;
 	if (i_call(f, obj, (array *) NULL, "receive_message", 15, TRUE, 1)) {
-	    i_del_value(f->sp++);
+	    i_del_value(f->env, f->sp++);
 	    endthread();
 	}
-	this_user = OBJ_NONE;
+	f->env->this_user = OBJ_NONE;
 	break;
     }
 
-    ec_pop();
+    ec_pop(f->env);
     comm_flush();
 }
 
@@ -1020,26 +1017,28 @@ unsigned int mtime;
  * NAME:	comm->ip_number()
  * DESCRIPTION:	return the ip number of a user (as a string)
  */
-string *comm_ip_number(obj)
+string *comm_ip_number(env, obj)
+lpcenv *env;
 object *obj;
 {
     char *ipnum;
 
     ipnum = conn_ipnum(users[EINDEX(obj->etabi)].conn);
-    return str_new(ipnum, (long) strlen(ipnum));
+    return str_new(env, ipnum, (long) strlen(ipnum));
 }
 
 /*
  * NAME:	comm->ip_name()
  * DESCRIPTION:	return the ip name of a user
  */
-string *comm_ip_name(obj)
+string *comm_ip_name(env, obj)
+lpcenv *env;
 object *obj;
 {
     char *ipname;
 
     ipname = conn_ipname(users[EINDEX(obj->etabi)].conn);
-    return str_new(ipname, (long) strlen(ipname));
+    return str_new(env, ipname, (long) strlen(ipname));
 }
 
 /*
@@ -1054,23 +1053,11 @@ object *obj;
 }
 
 /*
- * NAME:	comm->user()
- * DESCRIPTION:	return the current user
- */
-object *comm_user()
-{
-    object *obj;
-
-    return (this_user != OBJ_NONE && (obj=OBJR(this_user))->count != 0) ?
-	    obj : (object *) NULL;
-}
-
-/*
  * NAME:	comm->users()
  * DESCRIPTION:	return an array with all user objects
  */
 array *comm_users(data)
-dataspace *data;
+register dataspace *data;
 {
     array *a;
     register int i, n;
@@ -1082,7 +1069,7 @@ dataspace *data;
     for (i = nusers, usr = users; i > 0; usr++) {
 	if (usr->oindex != OBJ_NONE) {
 	    --i;
-	    if (OBJR(usr->oindex)->count != 0) {
+	    if (OBJR(data->env, usr->oindex)->count != 0) {
 		n++;
 	    }
 	}
@@ -1091,7 +1078,8 @@ dataspace *data;
     a = arr_new(data, (long) n);
     v = a->elts;
     for (usr = users; n > 0; usr++) {
-	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
+	if (usr->oindex != OBJ_NONE &&
+	    (obj=OBJR(data->env, usr->oindex))->count != 0) {
 	    PUT_OBJVAL(v, obj);
 	    v++;
 	    --n;

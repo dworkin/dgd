@@ -2,8 +2,8 @@
 # define H_HASH
 
 typedef struct _hte_ {
-    struct _hte_ *next;	/* next entry in hash table */
-    char *name;		/* string to use in hashing */
+    struct _hte_ *next;		/* next entry in hash table */
+    char *name;			/* string to use in hashing */
 } hte;
 
 typedef struct {
@@ -15,8 +15,9 @@ typedef struct {
 extern char		strhashtab[];
 extern unsigned short	hashstr		P((char*, unsigned int));
 
-extern hashtab	       *ht_new		P((unsigned int, unsigned int));
-extern void		ht_del		P((hashtab*));
+extern hashtab	       *ht_new		P((struct _mempool_*, unsigned int,
+					   unsigned int));
+extern void		ht_del		P((struct _mempool_*, hashtab*));
 extern hte	      **ht_lookup	P((hashtab*, char*, int));
 
 # endif /* H_HASH */

@@ -3,6 +3,7 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
+# include "data.h"
 # include "interpret.h"
 # include "macro.h"
 # include "token.h"
@@ -46,7 +47,7 @@ unsigned int line;
 	    l = flist;
 	    flist = l->next;
 	} else {
-	    l = ALLOC(nodelist, 1);
+	    l = CALLOC(nodelist, 1);
 	}
 	l->next = list;
 	list = l;
@@ -198,7 +199,7 @@ register node *n;
 Int i;
 {
     if (n->type == N_STR) {
-	str_del(n->l.string);
+	str_del(compenv, n->l.string);
     }
     n->type = N_INT;
     n->flags = F_CONST;
@@ -215,7 +216,7 @@ string *str;
 {
     str_ref(str);
     if (n->type == N_STR) {
-	str_del(n->l.string);
+	str_del(compenv, n->l.string);
     }
     n->type = N_STR;
     n->flags = F_CONST;
@@ -243,7 +244,7 @@ void node_free()
 		/*
 		 * only strings are deleted here
 		 */
-		str_del(n->l.string);
+		str_del(compenv, n->l.string);
 	    }
 	} while (--i > 0);
 	i = NODE_CHUNK;
@@ -270,7 +271,7 @@ void node_clear()
 
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     flist = (nodelist *) NULL;
 }

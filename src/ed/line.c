@@ -2,6 +2,57 @@
 # include "ed.h"
 # include "line.h"
 
+# define BLOCK_SIZE	(2 * (MAX_LINE_SIZE))
+# define BLOCK_MASK	(~(BLOCK_SIZE-1))
+# define CAT		-1
+
+# define BLOCK(lb, blk)	\
+	(block) ((lb)->wb->offset + (long) (blk) - (long) (lb)->wb->buf)
+
+# define EDFULLTREE	0x8000
+# define EDDEPTH	0x7fff
+# define EDMAXDEPTH	10000
+
+typedef struct {
+    block prev, next;		/* first and last */
+    Int lines;			/* size of this block */
+    union {
+	Int u_index;		/* index from start of chain block */
+	struct {
+	    short u_index1;	/* index in first chain block */
+	    short u_index2;	/* index in last chain block */
+	} s;
+    } u;
+} blk;
+
+# define lfirst	prev
+# define llast	next
+# define type	u.s.u_index1
+# define depth	u.s.u_index2
+# define lindex	u.u_index
+# define index1	u.s.u_index1
+# define index2	u.s.u_index2
+
+typedef struct _btbuf_ {
+    long offset;			/* offset in tmpfile */
+    struct _btbuf_ *prev;		/* prev in linked list */
+    struct _btbuf_ *next;		/* next in linked list */
+    char *buf;				/* buffer with blocks and text */
+} btbuf;
+
+typedef struct _linebuf_ {
+    char *file;				/* tmpfile name */
+    int fd;				/* tmpfile fd */
+    char *buf;				/* current low-level buffer */
+    int blksz;				/* block size in write buffer */
+    int txtsz;				/* text size in write buffer */
+    void (*putline) P((char*, char*));	/* output line function */
+    char *context;			/* context for putline */
+    bool reverse;			/* for bk_put() */
+    btbuf *wb;				/* write buffer */
+    btbuf bt[NR_EDBUFS];		/* read & write buffers */
+} linebuf;
+
 /*
  *   The blocks in a line buffer are written in a temporary file, and read back
  * if needed. There are at least 3 temporary file buffers: a write buffer and 
@@ -37,36 +88,6 @@
  * a whole new tree of CAT blocks, if needed.
  */
 
-# define BLOCK_SIZE	(2 * (MAX_LINE_SIZE))
-# define BLOCK_MASK	(~(BLOCK_SIZE-1))
-# define CAT		-1
-
-typedef struct {
-    block prev, next;		/* first and last */
-    Int lines;			/* size of this block */
-    union {
-	Int u_index;		/* index from start of chain block */
-	struct {
-	    short u_index1;	/* index in first chain block */
-	    short u_index2;	/* index in last chain block */
-	} s;
-    } u;
-} blk;
-
-# define lfirst	prev
-# define llast	next
-# define type	u.s.u_index1
-# define depth	u.s.u_index2
-# define lindex	u.u_index
-# define index1	u.s.u_index1
-# define index2	u.s.u_index2
-
-# define BLOCK(lb, blk)	\
-	(block) ((lb)->wb->offset + (long) (blk) - (long) (lb)->wb->buf)
-
-# define EDFULLTREE	0x8000
-# define EDDEPTH	0x7fff
-# define EDMAXDEPTH	10000
 
 /*
  * NAME:	linebuf->new()
@@ -88,15 +109,15 @@ char *filename;
 	lb_inact(lb);
     } else {
 	/* allocate new line buffer */
-	lb = ALLOC(linebuf, 1);
+	lb = SALLOC(linebuf, 1);
 
-	lb->file = strcpy(ALLOC(char, strlen(filename) + 1), filename);
+	lb->file = strcpy(SALLOC(char, strlen(filename) + 1), filename);
 
 	bt = lb->bt;
 	for (i = NR_EDBUFS; i > 0; --i) {
 	    bt->prev = bt - 1;
 	    bt->next = bt + 1;
-	    bt->buf = ALLOC(char, BLOCK_SIZE);
+	    bt->buf = SALLOC(char, BLOCK_SIZE);
 	    bt++;
 	}
 	--bt;
@@ -139,15 +160,15 @@ register linebuf *lb;
 
     /* remove tmpfile */
     P_unlink(path_native(buf, lb->file));
-    FREE(lb->file);
+    SFREE(lb->file);
 
     /* release memory */
     bt = lb->bt;
     for (i = NR_EDBUFS; i > 0; --i) {
-	FREE(bt->buf);
+	SFREE(bt->buf);
 	bt++;
     }
-    FREE(lb);
+    SFREE(lb);
 }
 
 /*

@@ -13,7 +13,7 @@
 # define DGD_EXT_KFUN(ekf, n)	kf_ext_kfun((ekf), (n))
 # define DGD_EXT_CALLBACK(r, s, d, f, c, e) \
 				conf_ext_callback((r), (s), (d), (f), (c), (e))
-# define DGD_ERROR(m)		error((m))
+# define DGD_ERROR(m)		error(sch_env(), (m))
 
 /*
  * types
@@ -52,9 +52,9 @@
 /*
  * frame
  */
-# define DGD_FRAME_OBJECT(f)	OBJW((f)->oindex)
+# define DGD_FRAME_OBJECT(f)	OBJW((f)->env, (f)->oindex)
 # define DGD_FRAME_LWOBJ(f)	((f)->lwobj)
-# define DGD_FRAME_PROGRAM(f)	OBJW((f)->p_ctrl->oindex)
+# define DGD_FRAME_PROGRAM(f)	OBJW((f)->env, (f)->p_ctrl->oindex)
 # define DGD_FRAME_DATASPACE(f)	((f)->data)
 # define DGD_FRAME_ARG(f, n, i)	(*((f)->sp + (n) - ((i) + 1)))
 # define DGD_FRAME_ATOMIC(f)	((f)->level != 0)
@@ -111,18 +111,18 @@
  */
 # define DGD_STRING_GETVAL(v)		((v).u.string)
 # define DGD_STRING_PUTVAL(v, s)	PUT_STRVAL_NOREF(&(v), (s))
-# define DGD_STRING_NEW(t, n)		str_new((t), (long) (n))
+# define DGD_STRING_NEW(t, n)		str_new(sch_env(), (t), (long) (n))
 # define DGD_STRING_TEXT(s)		((s)->text)
 # define DGD_STRING_LENGTH(s)		((s)->len)
 
 /*
  * object
  */
-# define DGD_OBJECT_GETVAL(v)		OBJW((v).oindex)
+# define DGD_OBJECT_GETVAL(v)		OBJW(sch_env(), (v).oindex)
 # define DGD_OBJECT_PUTVAL(v, o)	PUT_OBJVAL(&(v), (o))
 # define DGD_OBJECT_CHECKVAL(v, o)	((v).u.objcnt == (o)->count)
-# define DGD_OBJECT_DATASPACE(o)	o_data((o))
-# define DGD_OBJECT_NAME(buf, o)	o_name((buf), (o))
+# define DGD_OBJECT_DATASPACE(o)	o_dataspace(sch_env(), (o))
+# define DGD_OBJECT_NAME(buf, o)	o_name(sch_env(), (buf), (o))
 # define DGD_OBJECT_ISSPECIAL(o)	(((o)->flags & O_SPECIAL) != 0)
 # define DGD_OBJECT_ISMARKED(o)		(((o)->flags & O_SPECIAL) == O_SPECIAL)
 # define DGD_OBJECT_MARK(o)		((o)->flags |= O_SPECIAL)

@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "table.h"
 # include "node.h"
 # include "control.h"
@@ -268,14 +268,14 @@ node **m;
 
 	switch (n->type) {
 	case N_ADD:
-	    flt_add(&f1, &f2);
+	    flt_add(compenv, &f1, &f2);
 	    break;
 
 	case N_DIV:
 	    if (NFLT_ISZERO(n->r.right)) {
 		return 2;	/* runtime error: division by 0.0 */
 	    }
-	    flt_div(&f1, &f2);
+	    flt_div(compenv, &f1, &f2);
 	    break;
 
 	case N_EQ:
@@ -299,7 +299,7 @@ node **m;
 	    break;
 
 	case N_MULT:
-	    flt_mult(&f1, &f2);
+	    flt_mult(compenv, &f1, &f2);
 	    break;
 
 	case N_NE:
@@ -307,7 +307,7 @@ node **m;
 	    break;
 
 	case N_SUB:
-	    flt_sub(&f1, &f2);
+	    flt_sub(compenv, &f1, &f2);
 	    break;
 
 	default:
@@ -322,7 +322,8 @@ node **m;
     case N_STR:
 	switch (n->type) {
 	case N_ADD:
-	    node_tostr(n, str_add(n->l.left->l.string, n->r.right->l.string));
+	    node_tostr(n, str_add(compenv, n->l.left->l.string,
+				  n->r.right->l.string));
 	    return 1;
 
 	case N_EQ:
@@ -576,7 +577,8 @@ register node **m;
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
-	    node_tostr(n->r.right, str_add(n->l.left->r.right->l.string,
+	    node_tostr(n->r.right, str_add(compenv,
+					   n->l.left->r.right->l.string,
 					   n->r.right->l.string));
 	    n->l.left = n->l.left->l.left;
 	    return d1;
@@ -704,7 +706,7 @@ register node **m;
 		case N_SUB:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    flt_add(&f1, &f2);
+		    flt_add(compenv, &f1, &f2);
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -729,7 +731,7 @@ register node **m;
 		case N_MULT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    flt_mult(&f1, &f2);
+		    flt_mult(compenv, &f1, &f2);
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -762,7 +764,7 @@ register node **m;
 			    /* (c1 - x) + c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_add(&f1, &f2);
+			    flt_add(compenv, &f1, &f2);
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
@@ -771,7 +773,7 @@ register node **m;
 			    /* (x - c1) + c2 */
 			    NFLT_GET(n->l.left->r.right, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_sub(&f1, &f2);
+			    flt_sub(compenv, &f1, &f2);
 			    NFLT_PUT(n->l.left->r.right, f1);
 			    *m = n->l.left;
 			    d = d1;
@@ -805,7 +807,7 @@ register node **m;
 			/* (x * c1) / c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			flt_div(&f1, &f2);
+			flt_div(compenv, &f1, &f2);
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -818,7 +820,7 @@ register node **m;
 			    /* (c1 / x) * c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_mult(&f1, &f2);
+			    flt_mult(compenv, &f1, &f2);
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
@@ -828,7 +830,7 @@ register node **m;
 			    /* (x / c1) * c2 */
 			    NFLT_GET(n->r.right, f1);
 			    NFLT_GET(n->l.left->r.right, f2);
-			    flt_div(&f1, &f2);
+			    flt_div(compenv, &f1, &f2);
 			    NFLT_PUT(n->r.right, f1);
 			    n->l.left = n->l.left->l.left;
 			    d = d1;
@@ -842,7 +844,7 @@ register node **m;
 			/* (x + c1) - c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			flt_sub(&f1, &f2);
+			flt_sub(compenv, &f1, &f2);
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -869,7 +871,7 @@ register node **m;
 			/* c1 - (c2 - x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			flt_sub(&f1, &f2);
+			flt_sub(compenv, &f1, &f2);
 			n->type = N_ADD;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -879,7 +881,7 @@ register node **m;
 			/* c1 - (x - c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			flt_add(&f1, &f2);
+			flt_add(compenv, &f1, &f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
@@ -889,7 +891,7 @@ register node **m;
 		    /* c1 - (x + c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    flt_sub(&f1, &f2);
+		    flt_sub(compenv, &f1, &f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;
@@ -930,7 +932,7 @@ register node **m;
 			/* c1 / (c2 / x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			flt_div(&f1, &f2);
+			flt_div(compenv, &f1, &f2);
 			n->type = N_MULT;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -940,7 +942,7 @@ register node **m;
 			/* c1 / (x / c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			flt_mult(&f1, &f2);
+			flt_mult(compenv, &f1, &f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
@@ -951,7 +953,7 @@ register node **m;
 		    /* c1 / (x * c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    flt_div(&f1, &f2);
+		    flt_div(compenv, &f1, &f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;
@@ -1466,7 +1468,7 @@ int pop;
 		n->r.right->l.number >= (long) n->l.left->l.string->len) {
 		return 2;
 	    }
-	    node_toint(n, (Int) str_index(n->l.left->l.string,
+	    node_toint(n, (Int) str_index(compenv, n->l.left->l.string,
 					  (long) n->r.right->l.number));
 	    return !pop;
 	}
@@ -1699,7 +1701,8 @@ int pop;
 	    }
 	    if (from >= 0 && from <= to + 1 &&
 		to < (long) n->l.left->l.string->len) {
-		node_tostr(n, str_range(n->l.left->l.string, from, to));
+		node_tostr(n, str_range(compenv, n->l.left->l.string, from,
+					to));
 		return !pop;
 	    }
 	}

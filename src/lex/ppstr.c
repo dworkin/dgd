@@ -38,7 +38,7 @@ void pps_clear()
     for (l = slist; l != (schunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	LFREE(f);
     }
     slist = (schunk *) NULL;
 }
@@ -62,7 +62,7 @@ int sz;
 	if (schunksz == SCHUNKSZ) {
 	    register schunk *l;
 
-	    l = ALLOC(schunk, 1);
+	    l = LALLOC(schunk, 1);
 	    l->next = slist;
 	    slist = l;
 	    schunksz = 0;

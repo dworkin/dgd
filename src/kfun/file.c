@@ -24,26 +24,26 @@ int nargs;
     string *str;
 
     if (f->lwobj != (array *) NULL) {
-	error("editor() in non-persistent object");
+	error(f->env, "editor() in non-persistent object");
     }
-    obj = OBJW(f->oindex);
+    obj = OBJW(f->env, f->oindex);
     if (obj->count == 0) {
-	error("editor() in destructed object");
+	error(f->env, "editor() in destructed object");
     }
     if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
-	error("editor() in special purpose object");
+	error(f->env, "editor() in special purpose object");
     }
     if (f->level != 0) {
-	error("editor() within atomic function");
+	error(f->env, "editor() within atomic function");
     }
     if (!(obj->flags & O_EDITOR)) {
-	ed_new(obj);
+	ed_new(obj, f->env);
     }
     if (nargs == 0) {
 	*--f->sp = nil_value;
     } else {
-	str = ed_command(obj, f->sp->u.string->text);
-	str_del(f->sp->u.string);
+	str = ed_command(obj, f->env, f->sp->u.string->text);
+	str_del(f->env, f->sp->u.string);
 	if (str != (string *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
@@ -71,14 +71,14 @@ register frame *f;
     char *status;
 
     if (f->sp->type == T_OBJECT) {
-	obj = OBJR(f->sp->oindex);
+	obj = OBJR(f->env, f->sp->oindex);
 	if ((obj->flags & O_SPECIAL) == O_EDITOR) {
 	    status = ed_status(obj);
-	    PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
+	    PUT_STRVAL(f->sp, str_new(f->env, status, (long) strlen(status)));
 	    return 0;
 	}
     } else {
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
     }
 
     *f->sp = nil_value;
@@ -91,10 +91,11 @@ register frame *f;
 FUNCDEF("save_object", kf_save_object, pt_save_object)
 # else
 typedef struct {
+    lpcenv *env;		/* LPC execution environment */
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
-    arrmerge *merge;		/* array merge table */
+    struct _arrmerge_ *merge;	/* array merge table */
     Uint narrays;		/* number of arrays/mappings encountered */
 } savecontext;
 
@@ -186,7 +187,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->merge, a, x->narrays);
+    i = arr_put(x->env, x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
 	sprintf(buf, "#%lu", (unsigned long) i);
@@ -256,7 +257,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->merge, a, x->narrays);
+    i = arr_put(x->env, x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
 	sprintf(buf, "@%lu", (unsigned long) i);
@@ -381,7 +382,7 @@ register frame *f;
 	return 1;
     }
     if (f->level != 0) {
-	error("save_object() within atomic function");
+	error(f->env, "save_object() within atomic function");
     }
 
     /*
@@ -389,19 +390,20 @@ register frame *f;
      * existing old instance will not be lost if something goes wrong.
      */
     i_add_ticks(f, 2000);	/* arbitrary */
+    x.env = f->env;
     strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
     x.fd = P_open(tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (x.fd < 0) {
-	error("Cannot create temporary save file \"/%s\"", tmp);
+	error(f->env, "Cannot create temporary save file \"/%s\"", tmp);
     }
     x.buffer = ALLOCA(char, BUF_SIZE);
     x.bufsz = 0;
 
     ctrl = f->ctrl;
-    x.merge = arr_merge();
+    x.merge = arr_merge(f->env);
     x.narrays = 0;
     if (f->lwobj != (array *) NULL) {
 	var = &f->lwobj->elts[2];
@@ -415,14 +417,14 @@ register frame *f;
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
-	    ctrl = o_control(OBJR(inh->oindex));
+	    ctrl = o_control(f->env, OBJR(f->env, inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
 		    /*
 		     * don't save object values, nil or 0
 		     */
-		    str = d_get_strconst(ctrl, v->inherit, v->index);
+		    str = d_get_strconst(f->env, ctrl, v->inherit, v->index);
 		    put(&x, str->text, str->len);
 		    put(&x, " ", 1);
 		    switch (var->type) {
@@ -459,12 +461,12 @@ register frame *f;
 	}
     }
 
-    arr_clear(x.merge);
+    arr_clear(f->env, x.merge);
     if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
 	AFREE(x.buffer);
 	P_unlink(tmp);
-	error("Cannot write to temporary save file \"/%s\"", tmp);
+	error(f->env, "Cannot write to temporary save file \"/%s\"", tmp);
     }
     P_close(x.fd);
     AFREE(x.buffer);
@@ -472,10 +474,10 @@ register frame *f;
     P_unlink(file);
     if (P_rename(tmp, file) < 0) {
 	P_unlink(tmp);
-	error("Cannot rename temporary save file to \"/%s\"", file);
+	error(f->env, "Cannot rename temporary save file to \"/%s\"", file);
     }
 
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     *f->sp = nil_value;
     return 0;
 }
@@ -513,7 +515,7 @@ array *a;
     if (x->achunksz == ACHUNKSZ) {
 	register achunk *l;
 
-	l = ALLOC(achunk, 1);
+	l = IALLOC(x->f->env, achunk, 1);
 	l->next = x->alist;
 	x->alist = l;
 	x->achunksz = 0;
@@ -553,7 +555,7 @@ restcontext *x;
     for (l = x->alist; l != (achunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	IFREE(x->f->env, f);
     }
 }
 
@@ -566,7 +568,8 @@ static void restore_error(x, err)
 restcontext *x;
 char *err;
 {
-    error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
+    error(x->f->env, "Format error in \"/%s\", line %d: %s", x->file, x->line,
+	  err);
 }
  
 /*
@@ -656,7 +659,7 @@ register value *val;
 	PUT_FLTVAL(val, flt);
 	return p + 1;
     } else if (isfloat) {
-	if (!flt_atof(&q, &flt)) {
+	if (!flt_atof(x->f->env, &q, &flt)) {
 	    restore_error(x, "float too large");
 	}
 	PUT_FLTVAL(val, flt);
@@ -699,7 +702,7 @@ value *val;
 	*q++ = *p;
     }
 
-    PUT_STRVAL_NOREF(val, str_new(buf, (long) q - (long) buf));
+    PUT_STRVAL_NOREF(val, str_new(x->f->env, buf, (long) q - (long) buf));
     return p + 1;
 }
 
@@ -735,10 +738,10 @@ value *val;
     }
     i = a->size;
     v = a->elts;
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push(x->f->env, (ec_ftn) NULL)) {
 	arr_ref(a);
-	arr_del(a);
-	error((char *) NULL);	/* pass on the error */
+	arr_del(x->f->env, a);
+	error(x->f->env, (char *) NULL);	/* pass on the error */
     }
     /* restore the values */
     while (i > 0) {
@@ -753,7 +756,7 @@ value *val;
     if (*buf++ != '}' || *buf++ != ')') {
 	restore_error(x, "'})' expected");
     }
-    ec_pop();
+    ec_pop(x->f->env);
 
     PUT_ARRVAL_NOREF(val, a);
     return buf;
@@ -788,10 +791,10 @@ value *val;
     }
     i = a->size;
     v = a->elts;
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push(x->f->env, (ec_ftn) NULL)) {
 	arr_ref(a);
-	arr_del(a);
-	error((char *) NULL);	/* pass on the error */
+	arr_del(x->f->env, a);
+	error(x->f->env, (char *) NULL);	/* pass on the error */
     }
     /* restore the values */
     while (i > 0) {
@@ -811,8 +814,8 @@ value *val;
     if (*buf++ != ']' || *buf++ != ')') {
 	restore_error(x, "'])' expected");
     }
-    map_sort(a);
-    ec_pop();
+    map_sort(x->f->env, a);
+    ec_pop(x->f->env);
 
     PUT_MAPVAL_NOREF(val, a);
     return buf;
@@ -897,14 +900,14 @@ register frame *f;
     char *buffer, *name;
     bool onstack, pending;
 
-    obj = OBJR(f->oindex);
+    obj = OBJR(f->env, f->oindex);
     if (path_string(x.file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
     i_add_ticks(f, 2000);	/* arbitrary */
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, 0);
     fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
@@ -919,7 +922,7 @@ register frame *f;
     }
     buffer = ALLOCA(char, sbuf.st_size + 1);
     if (buffer == (char *) NULL) {
-	buffer = ALLOC(char, sbuf.st_size + 1);
+	buffer = IALLOC(f->env, char, sbuf.st_size + 1);
 	onstack = FALSE;
     } else {
 	onstack = TRUE;
@@ -930,7 +933,7 @@ register frame *f;
 	if (onstack) {
 	    AFREE(buffer);
 	} else {
-	    FREE(buffer);
+	    IFREE(f->env, buffer);
 	}
 	return 0;
     }
@@ -940,8 +943,8 @@ register frame *f;
     /*
      * First, reset all non-static variables that do not hold object values.
      */
-    ctrl = o_control(obj);
-    data = o_dataspace(obj);
+    ctrl = o_control(f->env, obj);
+    data = o_dataspace(f->env, obj);
     if (f->lwobj != (array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
@@ -953,7 +956,7 @@ register frame *f;
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
-	    ctrl = o_control(OBJR(inh->oindex));
+	    ctrl = o_control(f->env, OBJR(f->env, inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
@@ -975,15 +978,15 @@ register frame *f;
     x.narrays = 0;
     buf = buffer;
     pending = FALSE;
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push(f->env, (ec_ftn) NULL)) {
 	/* error; clean up */
 	ac_clear(&x);
 	if (onstack) {
 	    AFREE(buffer);
 	} else {
-	    FREE(buffer);
+	    IFREE(f->env, buffer);
 	}
-	error((char *) NULL);	/* pass on error */
+	error(f->env, (char *) NULL);	/* pass on error */
     }
     for (;;) {
 	if (f->lwobj != (array *) NULL) {
@@ -997,7 +1000,7 @@ register frame *f;
 		/*
 		 * Restore non-static variables.
 		 */
-		ctrl = OBJR(inh->oindex)->ctrl;
+		ctrl = OBJR(f->env, inh->oindex)->ctrl;
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
 		    if (pending && nvars == checkpoint) {
 			/*
@@ -1047,7 +1050,7 @@ register frame *f;
 		    }
 
 		    if (!(v->class & C_STATIC) &&
-			strcmp(name, d_get_strconst(ctrl, v->inherit,
+			strcmp(name, d_get_strconst(f->env, ctrl, v->inherit,
 						    v->index)->text) == 0) {
 			value tmp;
 
@@ -1060,7 +1063,7 @@ register frame *f;
 			    (!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
 			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
 			    i_ref_value(&tmp);
-			    i_del_value(&tmp);
+			    i_del_value(f->env, &tmp);
 			    restore_error(&x, "value has wrong type");
 			}
 			if (f->lwobj != (array *) NULL) {
@@ -1081,12 +1084,12 @@ register frame *f;
 		    /*
 		     * finished restoring
 		     */
-		    ec_pop();
+		    ec_pop(f->env);
 		    ac_clear(&x);
 		    if (onstack) {
 			AFREE(buffer);
 		    } else {
-			FREE(buffer);
+			IFREE(f->env, buffer);
 		    }
 		    f->sp->u.number = 1;
 		    return 0;
@@ -1123,16 +1126,16 @@ int nargs;
 	return 1;
     }
     if (f->level != 0) {
-	error("write_file() within atomic function");
+	error(f->env, "write_file() within atomic function");
     }
 
     i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
-    str_del(f->sp[1].u.string);
+    str_del(f->env, f->sp[1].u.string);
     PUT_INTVAL(&f->sp[1], 0);
 
     fd = P_open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	str_del((f->sp++)->u.string);
+	str_del(f->env, (f->sp++)->u.string);
 	return 0;
     }
 
@@ -1147,7 +1150,7 @@ int nargs;
     if (l < 0 || l > sbuf.st_size || P_lseek(fd, l, SEEK_SET) < 0) {
 	/* bad offset */
 	P_close(fd);
-	str_del((f->sp++)->u.string);
+	str_del(f->env, (f->sp++)->u.string);
 	return 0;
     }
 
@@ -1158,7 +1161,7 @@ int nargs;
     }
     P_close(fd);
 
-    str_del((f->sp++)->u.string);
+    str_del(f->env, (f->sp++)->u.string);
     return 0;
 }
 # endif
@@ -1197,7 +1200,7 @@ int nargs;
 	return 1;
     }
 
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     *f->sp = nil_value;
 
     if (size < 0) {
@@ -1236,18 +1239,18 @@ int nargs;
     if (size == 0 || size > sbuf.st_size) {
 	size = sbuf.st_size;
     }
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push(f->env, (ec_ftn) NULL)) {
 	P_close(fd);
-	error((char *) NULL);	/* pass on error */
+	error(f->env, (char *) NULL);	/* pass on error */
     } else {
-	PUT_STRVAL(f->sp, str_new((char *) NULL, size));
-	ec_pop();
+	PUT_STRVAL(f->sp, str_new(f->env, (char *) NULL, size));
+	ec_pop(f->env);
     }
     if (size > 0 &&
 	P_read(fd, f->sp->u.string->text, (unsigned int) size) != size) {
 	/* read failed (should never happen, but...) */
 	P_close(fd);
-	error("Read failed in read_file()");
+	error(f->env, "Read failed in read_file()");
     }
     P_close(fd);
     i_add_ticks(f, 2 * size);
@@ -1282,8 +1285,8 @@ register frame *f;
     }
 
     i_add_ticks(f, 1000);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    str_del(f->env, (f->sp++)->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
 		       P_rename(from, to) >= 0));
     return 0;
@@ -1310,11 +1313,11 @@ register frame *f;
 	return 1;
     }
     if (f->level != 0) {
-	error("remove_file() within atomic function");
+	error(f->env, "remove_file() within atomic function");
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0));
     return 0;
 }
@@ -1340,11 +1343,11 @@ register frame *f;
 	return 1;
     }
     if (f->level != 0) {
-	error("make_dir() within atomic function");
+	error(f->env, "make_dir() within atomic function");
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, (P_mkdir(file, 0775) >= 0));
     return 0;
 }
@@ -1370,11 +1373,11 @@ register frame *f;
 	return 1;
     }
     if (f->level != 0) {
-	error("remove_dir() within atomic function");
+	error(f->env, "remove_dir() within atomic function");
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, (P_rmdir(file) >= 0));
     return 0;
 }
@@ -1496,7 +1499,8 @@ typedef struct _fileinfo_ {
  * NAME:	getinfo()
  * DESCRIPTION:	get info about a file
  */
-static bool getinfo(path, file, finf)
+static bool getinfo(env, path, file, finf)
+lpcenv *env;
 char *path, *file;
 register fileinfo *finf;
 {
@@ -1509,7 +1513,7 @@ register fileinfo *finf;
 	return FALSE;
     }
 
-    str_ref(finf->name = str_new(file, (long) strlen(file)));
+    str_ref(finf->name = str_new(env, file, (long) strlen(file)));
     if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
 	finf->size = -2;	/* special value for directory */
     } else {
@@ -1543,7 +1547,7 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
  * DESCRIPTION:	get directory filelist + info
  */
 int kf_get_dir(f)
-frame *f;
+register frame *f;
 {
     register unsigned int i, nfiles, ftabsz;
     register fileinfo *ftable;
@@ -1567,7 +1571,7 @@ frame *f;
     ftable = ALLOCA(fileinfo, ftabsz = FILEINFO_CHUNK);
     nfiles = 0;
     if (strpbrk(pat, "?*[\\") == (char *) NULL &&
-	getinfo(file, pat, &ftable[0])) {
+	getinfo(f->env, file, pat, &ftable[0])) {
 	/*
 	 * single file
 	 */
@@ -1579,7 +1583,8 @@ frame *f;
 	     */
 	    i = conf_array_size();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
-		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
+		if (match(pat, file) > 0 && getinfo(f->env, file, file, &finf))
+		{
 		    /* add file */
 		    if (nfiles == ftabsz) {
 			fileinfo *tmp;
@@ -1603,7 +1608,7 @@ frame *f;
     }
 
     /* prepare return value */
-    str_del(f->sp->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_ARRVAL(f->sp, a = arr_new(f->data, 3L));
     PUT_ARRVAL(&a->elts[0], arr_new(f->data, (long) nfiles));
     PUT_ARRVAL(&a->elts[1], arr_new(f->data, (long) nfiles));

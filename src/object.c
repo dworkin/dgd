@@ -4,14 +4,12 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "interpret.h"
 # include "data.h"
-
-typedef struct _objplane_ objplane;
+# include "interpret.h"
 
 typedef struct _objpatch_ {
     short access;			/* access flags */
-    objplane *plane;			/* plane that patch is on */
+    struct _objplane_ *plane;		/* plane that patch is on */
     struct _objpatch_ *prev;		/* previous patch */
     struct _objpatch_ *next;		/* next in linked list */
     uindex ref;				/* old ref count */
@@ -19,7 +17,7 @@ typedef struct _objpatch_ {
     object obj;				/* new object value */
 } objpatch;
 
-# define OPCHUNKSZ		32
+# define OPCHUNKSZ	32
 
 typedef struct _opchunk_ {
     struct _opchunk_ *next;		/* next in linked list */
@@ -33,28 +31,24 @@ typedef struct {
     objpatch *op[OBJPATCHHTABSZ];	/* hash table of object patches */
 } optable;
 
-struct _objplane_ {
-    hashtab *htab;		/* object name hash table */
-    optable *optab;		/* object patch table */
-    unsigned long clean;	/* list of objects to clean */
-    unsigned long upgrade;	/* list of upgrade objects */
-    uindex destruct;		/* destructed object list */
-    uindex free;		/* free object list */
-    uindex nobjects;		/* number of objects in object table */
-    uindex nfreeobjs;		/* number of objects in free list */
-    Uint ocount;		/* object creation count */
-    Uint odcount;		/* previous objects destructed count */
-    struct _objplane_ *prev;	/* previous object plane */
-};
+typedef struct _objplane_ {
+    hashtab *htab;			/* object name hash table */
+    optable *optab;			/* object patch table */
+    unsigned long clean;		/* list of objects to clean */
+    unsigned long upgrade;		/* list of upgrade objects */
+    uindex destruct;			/* destructed object list */
+    uindex free;			/* free object list */
+    uindex nobjects;			/* number of objects in object table */
+    uindex nfreeobjs;			/* number of objects in free list */
+    Uint ocount;			/* object creation count */
+    Uint odcount;			/* previous objects destructed count */
+    struct _objplane_ *prev;		/* previous object plane */
+} objplane;
 
-object *otable;			/* object table */
-char *ocmap;			/* object change map */
-bool obase;			/* object base plane flag */
-static uindex otabsize;		/* size of object table */
-static objplane baseplane;	/* base object plane */
-static objplane *oplane;	/* current object plane */
-static object *upgraded;	/* list of upgraded objects */
-Uint odcount;			/* objects destructed count */
+object *otable;				/* object table */
+static uindex otabsize;			/* size of object table */
+static objplane baseplane;		/* base object plane */
+static object *upgraded;		/* list of upgraded objects */
 
 /*
  * NAME:	object->init()
@@ -63,21 +57,35 @@ Uint odcount;			/* objects destructed count */
 void o_init(n)
 register unsigned int n;
 {
-    otable = ALLOC(object, otabsize = n);
+    otable = SALLOC(object, otabsize = n);
     memset(otable, '\0', n * sizeof(object));
-    ocmap = ALLOC(char, (n + 7) >> 3);
-    memset(ocmap, '\0', (n + 7) >> 3);
     for (n = 4; n < otabsize; n <<= 1) ;
-    baseplane.htab = ht_new(n >> 2, OBJHASHSZ);
+    baseplane.htab = ht_new((struct _mempool_ *) NULL, n >> 2, OBJHASHSZ);
     baseplane.optab = (optable *) NULL;
     baseplane.upgrade = baseplane.clean = OBJ_NONE;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
-    baseplane.ocount = odcount = 1;
-    oplane = &baseplane;
+    baseplane.ocount = 1;
     upgraded = (object *) NULL;
-    obase = TRUE;
+}
+
+/*
+ * NAME:	object->new_env()
+ * DESCRIPTION:	create a new object environment
+ */
+objenv *o_new_env()
+{
+    register objenv *oe;
+
+    oe = SALLOC(objenv, 1);
+    oe->plane = &baseplane;
+    oe->ocmap = SALLOC(char, (otabsize + 7) >> 3);
+    memset(oe->ocmap, '\0', (otabsize + 7) >> 3);
+    oe->obase = TRUE;
+    oe->odcount = 1;
+
+    return oe;
 }
 
 
@@ -85,17 +93,19 @@ register unsigned int n;
  * NAME:	objpatch->init()
  * DESCRIPTION:	initialize objpatch table
  */
-static void op_init(plane)
+static void op_init(env, plane)
+lpcenv *env;
 objplane *plane;
 {
-    memset(plane->optab = ALLOC(optable, 1), '\0', sizeof(optable));
+    memset(plane->optab = IALLOC(env, optable, 1), '\0', sizeof(optable));
 }
 
 /*
  * NAME:	objpatch->clean()
  * DESCRIPTION:	free objpatch table
  */
-static void op_clean(plane)
+static void op_clean(env, plane)
+register lpcenv *env;
 objplane *plane;
 {
     register opchunk *c, *f;
@@ -104,10 +114,10 @@ objplane *plane;
     while (c != (opchunk *) NULL) {
 	f = c;
 	c = c->next;
-	FREE(f);
+	IFREE(env, f);
     }
 
-    FREE(plane->optab);
+    IFREE(env, plane->optab);
     plane->optab = (optable *) NULL;
 }
 
@@ -115,7 +125,8 @@ objplane *plane;
  * NAME:	objpatch->new()
  * DESCRIPTION:	create a new object patch
  */
-static objpatch *op_new(plane, o, prev, obj, access)
+static objpatch *op_new(env, plane, o, prev, obj, access)
+lpcenv *env;
 objplane *plane;
 objpatch **o, *prev;
 object *obj;
@@ -136,7 +147,7 @@ int access;
 	    register opchunk *cc;
 
 	    /* create new chunk */
-	    cc = ALLOC(opchunk, 1);
+	    cc = IALLOC(env, opchunk, 1);
 	    cc->next = tab->chunk;
 	    tab->chunk = cc;
 	    tab->chunksz = 0;
@@ -184,52 +195,55 @@ register objpatch **o;
  * NAME:	object->oaccess()
  * DESCRIPTION:	access to object from atomic code
  */
-static object *o_oaccess(index, access)
+static object *o_oaccess(env, index, access)
+register lpcenv *env;
 register unsigned int index;
 int access;
 {
     register objpatch *o, **oo;
     register object *obj;
 
-    if (BTST(ocmap, index)) {
+    if (BTST(env->oe->ocmap, index)) {
 	/*
 	 * object already patched
 	 */
-	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
+	oo = &env->oe->plane->optab->op[index % OBJPATCHHTABSZ];
 	for (o = *oo; o->obj.index != index; o = o->next) ;
 	if (access == OACC_READ) {
 	    return &o->obj;
 	}
-	if (o->plane == oplane) {
+	if (o->plane == env->oe->plane) {
 	    o->access |= access;
 	    return &o->obj;
 	}
 
 	/* create new patch on current plane */
-	return &op_new(oplane, oo, o, &o->obj, access)->obj;
+	return &op_new(env, env->oe->plane, oo, o, &o->obj, access)->obj;
     } else {
 	/*
 	 * first patch for object
 	 */
-	BSET(ocmap, index);
-	if (oplane->optab == (optable *) NULL) {
-	    op_init(oplane);
+	BSET(env->oe->ocmap, index);
+	if (env->oe->plane->optab == (optable *) NULL) {
+	    op_init(env, env->oe->plane);
 	}
-	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
-	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index), access)->obj;
+	oo = &env->oe->plane->optab->op[index % OBJPATCHHTABSZ];
+	obj = &op_new(env, env->oe->plane, oo, (objpatch *) NULL, OBJ(index),
+		      access)->obj;
 	if (obj->chain.name != (char *) NULL) {
 	    char *name;
 	    hte **h;
 
 	    /* copy object name to higher plane */
-	    strcpy(name = ALLOC(char, strlen(obj->chain.name) + 1),
+	    strcpy(name = IALLOC(env, char, strlen(obj->chain.name) + 1),
 		   obj->chain.name);
 	    obj->chain.name = name;
 	    if (obj->count != 0) {
-		if (oplane->htab == (hashtab *) NULL) {
-		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
+		if (env->oe->plane->htab == (hashtab *) NULL) {
+		    env->oe->plane->htab = ht_new(env->mp, OBJPATCHHTABSZ,
+						  OBJHASHSZ);
 		}
-		h = ht_lookup(oplane->htab, name, FALSE);
+		h = ht_lookup(env->oe->plane->htab, name, FALSE);
 		obj->chain.next = *h;
 		*h = (hte *) obj;
 	    }
@@ -242,53 +256,58 @@ int access;
  * NAME:	object->oread()
  * DESCRIPTION:	read access to object in patch table
  */
-object *o_oread(index)
+object *o_oread(env, index)
+lpcenv *env;
 unsigned int index;
 {
-    return o_oaccess(index, OACC_READ);
+    return o_oaccess(env, index, OACC_READ);
 }
 
 /*
  * NAME:	object->owrite()
  * DESCRIPTION:	write access to object in atomic code
  */
-object *o_owrite(index)
+object *o_owrite(env, index)
+lpcenv *env;
 unsigned int index;
 {
-    return o_oaccess(index, OACC_MODIFY);
+    return o_oaccess(env, index, OACC_MODIFY);
 }
 
 /*
  * NAME:	object->space()
  * DESCRIPTION:	check if there's space for another object
  */
-bool o_space()
+bool o_space(env)
+lpcenv *env;
 {
-    return (oplane->free != OBJ_NONE) ? TRUE : (oplane->nobjects != otabsize);
+    return (env->oe->plane->free != OBJ_NONE) ?
+	    TRUE : (env->oe->plane->nobjects != otabsize);
 }
 
 /*
  * NAME:	object->alloc()
  * DESCRIPTION:	allocate a new object
  */
-static object *o_alloc()
+static object *o_alloc(env)
+register lpcenv *env;
 {
     register uindex n;
     register object *obj;
 
-    if (oplane->free != OBJ_NONE) {
+    if (env->oe->plane->free != OBJ_NONE) {
 	/* get space from free object list */
-	n = oplane->free;
-	obj = OBJW(n);
-	oplane->free = obj->prev;
-	--oplane->nfreeobjs;
+	n = env->oe->plane->free;
+	obj = OBJW(env, n);
+	env->oe->plane->free = obj->prev;
+	--env->oe->plane->nfreeobjs;
     } else {
 	/* use new space in object table */
-	if (oplane->nobjects == otabsize) {
-	    error("Too many objects");
+	if (env->oe->plane->nobjects == otabsize) {
+	    error(env, "Too many objects");
 	}
-	n = oplane->nobjects++;
-	obj = OBJW(n);
+	n = env->oe->plane->nobjects++;
+	obj = OBJW(env, n);
     }
 
     OBJ(n)->index = OBJ_NONE;
@@ -306,38 +325,39 @@ static object *o_alloc()
  * NAME:	object->new_plane()
  * DESCRIPTION:	create a new object plane
  */
-void o_new_plane()
+void o_new_plane(env)
+register lpcenv *env;
 {
     register objplane *p;
 
-    p = ALLOC(objplane, 1);
+    p = IALLOC(env, objplane, 1);
 
-    if (oplane->optab == (optable *) NULL) {
+    if (env->oe->plane->optab == (optable *) NULL) {
 	p->htab = (hashtab *) NULL;
 	p->optab = (optable *) NULL;
     } else {
-	p->htab = oplane->htab;
-	p->optab = oplane->optab;
+	p->htab = env->oe->plane->htab;
+	p->optab = env->oe->plane->optab;
     }
-    p->clean = oplane->clean;
-    p->upgrade = oplane->upgrade;
-    p->destruct = oplane->destruct;
-    p->free = oplane->free;
-    p->nobjects = oplane->nobjects;
-    p->nfreeobjs = oplane->nfreeobjs;
-    p->ocount = oplane->ocount;
-    p->odcount = odcount;
-    p->prev = oplane;
-    oplane = p;
-
-    obase = FALSE;
+    p->clean = env->oe->plane->clean;
+    p->upgrade = env->oe->plane->upgrade;
+    p->destruct = env->oe->plane->destruct;
+    p->free = env->oe->plane->free;
+    p->nobjects = env->oe->plane->nobjects;
+    p->nfreeobjs = env->oe->plane->nfreeobjs;
+    p->ocount = env->oe->plane->ocount;
+    p->odcount = env->oe->odcount;
+    p->prev = env->oe->plane;
+    env->oe->plane = p;
+    env->oe->obase = FALSE;
 }
 
 /*
  * NAME:	object->commit_plane()
  * DESCRIPTION:	commit the current object plane
  */
-void o_commit_plane()
+void o_commit_plane(env)
+register lpcenv *env;
 {
     register objplane *prev;
     register objpatch **t, **o, *op;
@@ -345,11 +365,11 @@ void o_commit_plane()
     register object *obj;
 
 
-    prev = oplane->prev;
-    if (oplane->optab != (optable *) NULL) {
-	for (i = OBJPATCHHTABSZ, t = oplane->optab->op; --i >= 0; t++) {
+    prev = env->oe->plane->prev;
+    if (env->oe->plane->optab != (optable *) NULL) {
+	for (i = OBJPATCHHTABSZ, t = env->oe->plane->optab->op; --i >= 0; t++) {
 	    o = t;
-	    while (*o != (objpatch *) NULL && (*o)->plane == oplane) {
+	    while (*o != (objpatch *) NULL && (*o)->plane == env->oe->plane) {
 		op = *o;
 		if (op->prev != (objpatch *) NULL) {
 		    obj = &op->prev->obj;
@@ -358,7 +378,7 @@ void o_commit_plane()
 		}
 		if (op->obj.count == 0 && obj->count != 0) {
 		    /* remove object from stackframe above atomic function */
-		    i_odest(cframe, obj);
+		    i_odest(env->ie->cframe, obj);
 		}
 
 		if (prev == &baseplane) {
@@ -374,11 +394,9 @@ void o_commit_plane()
 			    /*
 			     * make object name static
 			     */
-			    m_static();
-			    name = ALLOC(char, strlen(op->obj.chain.name) + 1);
-			    m_dynamic();
+			    name = SALLOC(char, strlen(op->obj.chain.name) + 1);
 			    strcpy(name, op->obj.chain.name);
-			    FREE(op->obj.chain.name);
+			    IFREE(env, op->obj.chain.name);
 			    op->obj.chain.name = name;
 			    if (op->obj.count != 0) {
 				/* put name in static hash table */
@@ -390,7 +408,7 @@ void o_commit_plane()
 			    /*
 			     * same name
 			     */
-			    FREE(op->obj.chain.name);
+			    IFREE(env, op->obj.chain.name);
 			    op->obj.chain.name = obj->chain.name;
 			    if (op->obj.count != 0) {
 				/* keep this name */
@@ -410,9 +428,9 @@ void o_commit_plane()
 		    if (obj->count != 0) {
 			op->obj.update = obj->update;
 		    }
-		    BCLR(ocmap, op->obj.index);
+		    BCLR(env->oe->ocmap, op->obj.index);
 		    *obj = op->obj;
-		    op_del(oplane, o);
+		    op_del(env->oe->plane, o);
 		} else {
 		    /*
 		     * commit to previous plane
@@ -429,61 +447,61 @@ void o_commit_plane()
 			if (op->obj.chain.name != (char *) NULL &&
 			    op->obj.count != 0) {
 			    /* move name to previous plane */
-			    *ht_lookup(oplane->htab, op->obj.chain.name, FALSE)
-								= (hte *) obj;
+			    *ht_lookup(env->oe->plane->htab,
+				       op->obj.chain.name, FALSE) = (hte *) obj;
 			}
 			op->prev->access = op->access;
 			*obj = op->obj;
-			op_del(oplane, o);
+			op_del(env->oe->plane, o);
 		    }
 		}
 	    }
 	}
 
 	if (prev != &baseplane) {
-	    prev->htab = oplane->htab;
-	    prev->optab = oplane->optab;
+	    prev->htab = env->oe->plane->htab;
+	    prev->optab = env->oe->plane->optab;
 	} else {
-	    if (oplane->htab != (hashtab *) NULL) {
-		ht_del(oplane->htab);
+	    if (env->oe->plane->htab != (hashtab *) NULL) {
+		ht_del(env->mp, env->oe->plane->htab);
 	    }
-	    op_clean(oplane);
+	    op_clean(env, env->oe->plane);
 	}
     }
 
-    prev->clean = oplane->clean;
-    prev->upgrade = oplane->upgrade;
-    prev->destruct = oplane->destruct;
-    prev->free = oplane->free;
-    prev->nobjects = oplane->nobjects;
-    prev->nfreeobjs = oplane->nfreeobjs;
-    prev->ocount = oplane->ocount;
-    FREE(oplane);
-    oplane = prev;
-
-    obase = (prev == &baseplane);
+    prev->clean = env->oe->plane->clean;
+    prev->upgrade = env->oe->plane->upgrade;
+    prev->destruct = env->oe->plane->destruct;
+    prev->free = env->oe->plane->free;
+    prev->nobjects = env->oe->plane->nobjects;
+    prev->nfreeobjs = env->oe->plane->nfreeobjs;
+    prev->ocount = env->oe->plane->ocount;
+    IFREE(env, env->oe->plane);
+    env->oe->plane = prev;
+    env->oe->obase = (prev == &baseplane);
 }
 
 /*
  * NAME:	object->discard_plane()
  * DESCRIPTION:	discard the current object plane without committing it
  */
-void o_discard_plane()
+void o_discard_plane(env)
+register lpcenv *env;
 {
     register objpatch **o, *op;
     register int i;
     register object *obj, *clist;
     register objplane *p;
 
-    if (oplane->optab != (optable *) NULL) {
+    if (env->oe->plane->optab != (optable *) NULL) {
 	clist = (object *) NULL;
-	for (i = OBJPATCHHTABSZ, o = oplane->optab->op; --i >= 0; o++) {
-	    while (*o != (objpatch *) NULL && (*o)->plane == oplane) {
+	for (i = OBJPATCHHTABSZ, o = env->oe->plane->optab->op; --i >= 0; o++) {
+	    while (*o != (objpatch *) NULL && (*o)->plane == env->oe->plane) {
 		op = *o;
 		if (op->prev != (objpatch *) NULL) {
 		    obj = &op->prev->obj;
 		} else {
-		    BCLR(ocmap, op->obj.index);
+		    BCLR(env->oe->ocmap, op->obj.index);
 		    obj = OBJ(op->obj.index);
 		}
 
@@ -495,10 +513,11 @@ void o_discard_plane()
 			 */
 			if (op->obj.count != 0) {
 			    /* remove from hash table */
-			    *ht_lookup(oplane->htab, op->obj.chain.name, FALSE)
-							= op->obj.chain.next;
+			    *ht_lookup(env->oe->plane->htab,
+				       op->obj.chain.name, FALSE) =
+							    op->obj.chain.next;
 			}
-			FREE(op->obj.chain.name);
+			IFREE(env, op->obj.chain.name);
 		    } else {
 			hte **h;
 
@@ -506,14 +525,16 @@ void o_discard_plane()
 			    /*
 			     * move name to previous plane
 			     */
-			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
+			    h = ht_lookup(env->oe->plane->htab, obj->chain.name,
+					  FALSE);
 			    obj->chain.next = op->obj.chain.next;
 			    *h = (hte *) obj;
 			} else if (obj->count != 0) {
 			    /*
 			     * put name back in hashtable
 			     */
-			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
+			    h = ht_lookup(env->oe->plane->htab, obj->chain.name,
+					  FALSE);
 			    obj->chain.next = *h;
 			    *h = (hte *) obj;
 			}
@@ -538,7 +559,7 @@ void o_discard_plane()
 		    obj->ctrl = op->obj.ctrl;
 		    obj->data = op->obj.data;
 		}
-		op_del(oplane, o);
+		op_del(env->oe->plane, o);
 	    }
 	}
 
@@ -546,27 +567,27 @@ void o_discard_plane()
 	while (clist != (object *) NULL) {
 	    obj = clist;
 	    clist = (object *) obj->chain.next;
-	    d_del_control(obj->ctrl);
+	    d_del_control(env, obj->ctrl);
 	}
     }
 
-    odcount = oplane->odcount;
-    p = oplane;
-    oplane = p->prev;
+    env->oe->odcount = env->oe->plane->odcount;
+    p = env->oe->plane;
+    env->oe->plane = p->prev;
     if (p->optab != (optable *) NULL) {
-	if (oplane != &baseplane) {
-	    oplane->htab = p->htab;
-	    oplane->optab = p->optab;
+	if (env->oe->plane != &baseplane) {
+	    env->oe->plane->htab = p->htab;
+	    env->oe->plane->optab = p->optab;
 	} else {
 	    if (p->htab != (hashtab *) NULL) {
-		ht_del(p->htab);
+		ht_del(env->mp, p->htab);
 	    }
-	    op_clean(p);
+	    op_clean(env, p);
 	}
     }
-    FREE(p);
+    IFREE(env, p);
 
-    obase = (oplane == &baseplane);
+    env->oe->obase = (env->oe->plane == &baseplane);
 }
 
 
@@ -574,7 +595,8 @@ void o_discard_plane()
  * NAME:	object->new()
  * DESCRIPTION:	create a new object
  */
-object *o_new(name, ctrl)
+object *o_new(env, name, ctrl)
+register lpcenv *env;
 char *name;
 register control *ctrl;
 {
@@ -584,26 +606,26 @@ register control *ctrl;
     hte **h;
 
     /* allocate object */
-    o = o_alloc();
+    o = o_alloc(env);
 
     /* put object in object name hash table */
-    if (obase) {
-	m_static();
+    if (env->oe->obase) {
+	o->chain.name = SALLOC(char, strlen(name) + 1);
+    } else {
+	if (env->oe->plane->htab == (hashtab *) NULL) {
+	    env->oe->plane->htab = ht_new(env->mp, OBJPATCHHTABSZ, OBJHASHSZ);
+	}
+	o->chain.name = IALLOC(env, char, strlen(name) + 1);
     }
-    strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
-    if (obase) {
-	m_dynamic();
-    } else if (oplane->htab == (hashtab *) NULL) {
-	oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
-    }
-    h = ht_lookup(oplane->htab, name, FALSE);
+    strcpy(o->chain.name, name);
+    h = ht_lookup(env->oe->plane->htab, name, FALSE);
     o->chain.next = *h;
     *h = (hte *) o;
 
     o->flags = O_MASTER;
     o->cref = 0;
     o->prev = OBJ_NONE;
-    o->count = ++oplane->ocount;
+    o->count = ++env->oe->plane->ocount;
     o->update = 0;
     o->ctrl = ctrl;
     ctrl->inherits[ctrl->ninherits - 1].oindex = ctrl->oindex = o->index;
@@ -612,7 +634,7 @@ register control *ctrl;
     o->u_ref = 0;	/* increased to 1 in following loop */
     inh = ctrl->inherits;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	OBJF(inh->oindex)->u_ref++;
+	OBJF(env, inh->oindex)->u_ref++;
     }
 
     return o;
@@ -622,24 +644,25 @@ register control *ctrl;
  * NAME:	object->clone()
  * DESCRIPTION:	clone an object
  */
-object *o_clone(master)
+object *o_clone(env, master)
+lpcenv *env;
 register object *master;
 {
     register object *o;
 
     /* allocate object */
     if ((master->cref & O_CLONE) >= O_CLONE - 2) {
-	error("Too many clones");
+	error(env, "Too many clones");
     }
-    o = o_alloc();
+    o = o_alloc(env);
 
     o->chain.name = (char *) NULL;
     o->flags = 0;
-    o->count = ++oplane->ocount;
+    o->count = ++env->oe->plane->ocount;
     o->update = master->update;
     o->u_master = master->index;
     o->ctrl = (control *) NULL;
-    o->data = d_new_dataspace(o);	/* clones always have a dataspace */
+    o->data = d_new_dataspace(env, o);	/* clones always have a dataspace */
 
     /* add reference to master object */
     master->cref++;
@@ -670,30 +693,32 @@ register frame *f;
     register dinherit *inh;
     register int i;
 
-    ctrl = (O_UPGRADING(o)) ? OBJR(o->prev)->ctrl : o_control(o);
+    ctrl = (O_UPGRADING(o)) ?
+	    OBJR(f->env, o->prev)->ctrl : o_control(f->env, o);
 
     /* put in deleted list */
-    o->cref = oplane->destruct;
-    oplane->destruct = o->index;
+    o->cref = f->env->oe->plane->destruct;
+    f->env->oe->plane->destruct = o->index;
 
     /* callback to the system */
-    PUSH_STRVAL(f, str_new(NULL, strlen(o->chain.name) + 1L));
+    PUSH_STRVAL(f, str_new(f->env, NULL, strlen(o->chain.name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, o->chain.name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, o->index);
     if (!i_call_critical(f, "remove_program", 3, TRUE)) {
-	message("Error within remove_program:\012");	/* LF */
-	message((char *) NULL);
+	P_message("Error within remove_program:\012");	/* LF */
+	P_message(errorstr(f->env)->text);
+	P_message("\012");				/* LF */
     } else {
-	i_del_value(f->sp++);
+	i_del_value(f->env, f->sp++);
     }
 
     /* remove references to inherited objects too */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	o = OBJF(inh->oindex);
+	o = OBJF(f->env, inh->oindex);
 	if (--(o->u_ref) == 0) {
-	    o_delete(OBJW(inh->oindex), f);
+	    o_delete(OBJW(f->env, inh->oindex), f);
 	}
     }
 }
@@ -712,7 +737,7 @@ register frame *f;
     register int i;
 
     /* allocate upgrade object */
-    tmpl = o_alloc();
+    tmpl = o_alloc(f->env);
     tmpl->chain.name = (char *) NULL;
     tmpl->flags = O_MASTER;
     tmpl->count = 0;
@@ -722,12 +747,12 @@ register frame *f;
 
     /* add reference to inherited objects */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	OBJF(inh->oindex)->u_ref++;
+	OBJF(f->env, inh->oindex)->u_ref++;
     }
 
     /* add to upgrades list */
-    tmpl->chain.next = (hte *) oplane->upgrade;
-    oplane->upgrade = tmpl->index;
+    tmpl->chain.next = (hte *) f->env->oe->plane->upgrade;
+    f->env->oe->plane->upgrade = tmpl->index;
 
     /* mark as upgrading */
     obj->cref += 2;
@@ -735,11 +760,11 @@ register frame *f;
     obj->prev = tmpl->index;
 
     /* remove references to old inherited objects */
-    ctrl = o_control(obj);
+    ctrl = o_control(f->env, obj);
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	obj = OBJF(inh->oindex);
+	obj = OBJF(f->env, inh->oindex);
 	if (--(obj->u_ref) == 0) {
-	    o_delete(OBJW(inh->oindex), f);
+	    o_delete(OBJW(f->env, inh->oindex), f);
 	}
     }
 }
@@ -772,19 +797,20 @@ register object *tmpl, *new;
  */
 void o_del(obj, f)
 register object *obj;
-frame *f;
+register frame *f;
 {
     if (obj->count == 0) {
 	/* can happen if object selfdestructs in close()-on-destruct */
-	error("Destructing destructed object");
+	error(f->env, "Destructing destructed object");
     }
     i_odest(f, obj);	/* wipe out occurrances on the stack */
     obj->count = 0;
-    odcount++;
+    f->env->oe->odcount++;
 
     if (obj->flags & O_MASTER) {
 	/* remove from object name hash table */
-	*ht_lookup(oplane->htab, obj->chain.name, FALSE) = obj->chain.next;
+	*ht_lookup(f->env->oe->plane->htab, obj->chain.name, FALSE)
+							    = obj->chain.next;
 
 	if (--(obj->u_ref) == 0) {
 	    o_delete(obj, f);
@@ -792,16 +818,16 @@ frame *f;
     } else {
 	object *master;
 
-	master = OBJF(obj->u_master);
+	master = OBJF(f->env, obj->u_master);
 	master->cref--;
 	if (--(master->u_ref) == 0) {
-	    o_delete(OBJW(master->index), f);
+	    o_delete(OBJW(f->env, master->index), f);
 	}
     }
 
     /* put in clean list */
-    obj->chain.next = (hte *) oplane->clean;
-    oplane->clean = obj->index;
+    obj->chain.next = (hte *) f->env->oe->plane->clean;
+    f->env->oe->plane->clean = obj->index;
 }
 
 
@@ -809,7 +835,8 @@ frame *f;
  * NAME:	object->name()
  * DESCRIPTION:	return the name of an object
  */
-char *o_name(name, o)
+char *o_name(env, name, o)
+lpcenv *env;
 char *name;
 register object *o;
 {
@@ -832,7 +859,7 @@ register object *o;
 	} while (n != 0);
 	*--p = '#';
 
-	strcpy(name, OBJR(o->u_master)->chain.name);
+	strcpy(name, OBJR(env, o->u_master)->chain.name);
 	strcat(name, p);
 	return name;
     }
@@ -842,7 +869,8 @@ register object *o;
  * NAME:	object->find()
  * DESCRIPTION:	find an object by name
  */
-object *o_find(name, access)
+object *o_find(env, name, access)
+register lpcenv *env;
 char *name;
 int access;
 {
@@ -874,14 +902,15 @@ int access;
 		return (object *) NULL;
 	    }
 	    number = number * 10 + *p++ - '0';
-	    if (number >= oplane->nobjects) {
+	    if (number >= env->oe->plane->nobjects) {
 		return (object *) NULL;
 	    }
 	} while (*p != '\0');
 
-	o = OBJR(number);
+	o = OBJR(env, number);
 	if (o->count == 0 || (o->flags & O_MASTER) ||
-	    strncmp(name, (m=OBJR(o->u_master))->chain.name, hash-name) != 0 ||
+	    strncmp(name,
+		    (m=OBJR(env, o->u_master))->chain.name, hash-name) != 0 ||
 	    m->chain.name[hash - name] != '\0') {
 	    /*
 	     * no entry, not a clone, or object name doesn't match
@@ -890,24 +919,24 @@ int access;
 	}
     } else {
 	/* look it up in the hash table */
-	if (oplane->htab == (hashtab *) NULL ||
-	    (o = (object *) *ht_lookup(oplane->htab, name, TRUE)) ==
+	if (env->oe->plane->htab == (hashtab *) NULL ||
+	    (o = (object *) *ht_lookup(env->oe->plane->htab, name, TRUE)) ==
 							    (object *) NULL) {
-	    if (oplane != &baseplane) {
+	    if (env->oe->plane != &baseplane) {
 		o = (object *) *ht_lookup(baseplane.htab, name, FALSE);
 		if (o != (object *) NULL) {
 		    number = o->index;
 		    switch (access) {
 		    case OACC_READ:
-			o = OBJR(number);
+			o = OBJR(env, number);
 			break;
 
 		    case OACC_REFCHANGE:
-			o = OBJF(number);
+			o = OBJF(env, number);
 			break;
 
 		    case OACC_MODIFY:
-			o = OBJW(number);
+			o = OBJW(env, number);
 			break;
 		    }
 		    if (o->count != 0) {
@@ -925,10 +954,10 @@ int access;
 	return o;
 
     case OACC_REFCHANGE:
-	return OBJF(number);
+	return OBJF(env, number);
 
     case OACC_MODIFY:
-	return OBJW(number);
+	return OBJW(env, number);
     }
 }
 
@@ -936,7 +965,8 @@ int access;
  * NAME:	object->control()
  * DESCRIPTION:	return the control block for an object
  */
-control *o_control(obj)
+control *o_control(env, obj)
+lpcenv *env;
 object *obj;
 {
     register object *o;
@@ -944,10 +974,10 @@ object *obj;
     o = obj;
     if (!(o->flags & O_MASTER)) {
 	/* get control block of master object */
-	o = OBJR(o->u_master);
+	o = OBJR(env, o->u_master);
     }
     if (o->ctrl == (control *) NULL) {
-	o->ctrl = d_load_control(o);	/* reload */
+	o->ctrl = d_load_control(env, o);	/* reload */
     } else {
 	d_ref_control(o->ctrl);
     }
@@ -958,16 +988,17 @@ object *obj;
  * NAME:	object->dataspace()
  * DESCRIPTION:	return the dataspace block for an object
  */
-dataspace *o_dataspace(o)
+dataspace *o_dataspace(env, o)
+lpcenv *env;
 register object *o;
 {
     if (o->data == (dataspace *) NULL) {
 	if (o->dfirst == SW_UNUSED) {
 	    /* create new dataspace block */
-	    o->data = d_new_dataspace(o);
+	    o->data = d_new_dataspace(env, o);
 	} else {
 	    /* load dataspace block */
-	    o->data = d_load_dataspace(o);
+	    o->data = d_load_dataspace(env, o);
 	}
     } else {
 	d_ref_dataspace(o->data);
@@ -1051,7 +1082,7 @@ void o_clean()
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
-	    o->data = d_load_dataspace(o);
+	    o->data = d_load_dataspace(sch_env(), o);
 	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
@@ -1066,11 +1097,11 @@ void o_clean()
 	    register object *tmpl;
 
 	    /* check if clone still had to be upgraded */
-	    tmpl = OBJF(o->u_master);
+	    tmpl = OBJ(o->u_master);
 	    if (tmpl->update != o->update) {
 		/* non-upgraded clone of old issue */
 		do {
-		    tmpl = OBJF(tmpl->prev);
+		    tmpl = OBJ(tmpl->prev);
 		} while (tmpl->update != o->update);
 
 		if (tmpl->count == 0) {
@@ -1125,7 +1156,7 @@ void o_clean()
 		if (up->count != 0 && up->data == (dataspace *) NULL &&
 		    up->dfirst != SW_UNUSED) {
 		    /* load dataspace (with old control block) */
-		    up->data = d_load_dataspace(up);
+		    up->data = d_load_dataspace(sch_env(), up);
 		}
 	    } else {
 		/* no variable upgrading */
@@ -1156,11 +1187,11 @@ void o_clean()
 	baseplane.destruct = o->cref;
 
 	/* free control block */
-	d_del_control(o_control(o));
+	d_del_control(sch_env(), o_control(sch_env(), o));
 
 	if (o->chain.name != (char *) NULL) {
 	    /* free object name */
-	    FREE(o->chain.name);
+	    SFREE(o->chain.name);
 	    o->chain.name = (char *) NULL;
 	}
 	o->u_ref = 0;
@@ -1176,9 +1207,10 @@ void o_clean()
  * NAME:	object->count()
  * DESCRIPTION:	return the number of objects in use
  */
-uindex o_count()
+uindex o_count(env)
+lpcenv *env;
 {
-    return oplane->nobjects - oplane->nfreeobjs;
+    return env->oe->plane->nobjects - env->oe->plane->nfreeobjs;
 }
 
 
@@ -1245,7 +1277,8 @@ int fd;
  * NAME:	object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(fd, rlwobj)
+void o_restore(env, fd, rlwobj)
+lpcenv *env;
 int fd;
 unsigned int rlwobj;
 {
@@ -1261,13 +1294,13 @@ unsigned int rlwobj;
      */
     for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	*ht_lookup(baseplane.htab, o->chain.name, FALSE) = o->chain.next;
-	FREE(o->chain.name);
+	SFREE(o->chain.name);
     }
 
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.nobjects > otabsize) {
-	error("Too many objects in restore file");
+	error(env, "Too many objects in restore file");
     }
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     baseplane.free = dh.free;
@@ -1296,9 +1329,7 @@ unsigned int rlwobj;
 		buflen += len;
 		p = buffer;
 	    }
-	    m_static();
-	    strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
-	    m_dynamic();
+	    strcpy(o->chain.name = SALLOC(char, len = strlen(p) + 1), p);
 
 	    if (o->count != 0) {
 		register hte **h;

@@ -78,7 +78,7 @@ static bool ipa_init(int maxusers)
 	recv(in, buf, MAXHOSTNAMELEN, 0);
     }
 
-    ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
+    ipahtab = SALLOC(ipaddr*, ipahtabsz = maxusers);
     memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
     qhead = qtail = ffirst = flast = lastreq = (ipaddr *) NULL;
     nfree = 0;
@@ -201,9 +201,7 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	m_static();
-	ipa = ALLOC(ipaddr, 1);
-	m_dynamic();
+	ipa = SALLOC(ipaddr, 1);
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -306,14 +304,14 @@ static void ipa_lookup(void)
     }
 }
 
-struct _connection_ {
+typedef struct _connection_ {
     SOCKET fd;				/* file descriptor */
     int bufsz;				/* # bytes in buffer */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* port of connection */
     struct _connection_ *next;		/* next in list */
-};
+} connection;
 
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */
@@ -427,14 +425,14 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
 
     flist = (connection *) NULL;
-    connections = ALLOC(connection, nusers = maxusers);
+    connections = SALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = INVALID_SOCKET;
 	conn->next = flist;
 	flist = conn;
     }
 
-    udphtab = ALLOC(connection*, udphtabsz = maxusers);
+    udphtab = SALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
 
     FD_ZERO(&infds);
@@ -571,9 +569,7 @@ void conn_udp(connection *conn)
 {
     connection **hash;
 
-    m_static();
-    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
-    m_dynamic();
+    conn->udpbuf = SALLOC(char, BINBUF_SIZE);
     conn->bufsz = -1;
 
     hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) % udphtabsz];
@@ -599,7 +595,7 @@ void conn_del(connection *conn)
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
-	FREE(conn->udpbuf);
+	SFREE(conn->udpbuf);
 
 	for (hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) %
 			     udphtabsz];

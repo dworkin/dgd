@@ -4,8 +4,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "path.h"
 # include "hash.h"
 # include "swap.h"
@@ -202,24 +202,25 @@ char *argv[];
     register char *file;
     int nfuncs;
     sector fragment;
+    lpcenv *env;
 
     file = argv[2];
     if ((argc != 3 && argc != 4) ||
 	(len=strlen(file)) < 2 || file[len - 2] != '.' || file[len - 1] != 'c')
     {
-	P_message("usage: precomp config_file lpc_file [c_file]\012");	/* LF */
+	message("usage: precomp config_file lpc_file [c_file]\012");	/* LF */
 	return 2;
     }
 
     /* open output file */
     if (argc == 4 && freopen(argv[3], "w", stdout) == (FILE *) NULL) {
-	P_message("cannot open output file\012");	/* LF */
+	message("cannot open output file\012");	/* LF */
 	return 2;
     }
 
     /* initialize */
     if (!conf_init(argv[1], (char *) NULL, &fragment)) {
-	P_message("Initialization failed\012");	/* LF */
+	message("Initialization failed\012");	/* LF */
 	return 2;
     }
 
@@ -236,10 +237,11 @@ char *argv[];
     printf("\n# ifdef TAG\nTAG(%s)\n# else\n", tag);
     printf("# include \"dgd.h\"\n# include \"str.h\"\n");
     printf("# include \"array.h\"\n# include \"object.h\"\n");
-    printf("# include \"interpret.h\"\n# include \"data.h\"\n");
+    printf("# include \"data.h\"\n# include \"interpret.h\"\n");
     printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
 
-    if (ec_push((ec_ftn) NULL)) {
+    env = sch_env();
+    if (ec_push(env, (ec_ftn) NULL)) {
 	message("Failed to compile \"%s.c\"\012", file);	/* LF */
 	printf("\n# error Error while compiling\n");
 	fclose(stdout);
@@ -251,9 +253,10 @@ char *argv[];
     }
 
     /* compile file */
-    ctrl = c_compile(cframe, file, (object *) NULL, (string *) NULL)->ctrl;
+    ctrl = c_compile(env->ie->cframe, file, (object *) NULL,
+		     (string *) NULL)->ctrl;
     nfuncs = cg_nfuncs();
-    ec_pop();
+    ec_pop(env);
 
     /* dump tables */
     dump_inherits(ctrl);
@@ -387,7 +390,8 @@ pcfunc *pcfunctions;	/* dummy */
  * NAME:	pc_preload()
  * DESCRIPTION:	pretend to preload compiled objects
  */
-bool pc_preload(auto_name, driver_name)
+bool pc_preload(env, auto_name, driver_name)
+lpcenv *env;
 char *auto_name, *driver_name;
 {
     return TRUE;
@@ -419,7 +423,8 @@ int fd;
     return TRUE;
 }
 
-void pc_restore(fd)
+void pc_restore(env, fd)
+lpcenv *env;
 int fd;
 {
 }
@@ -541,7 +546,8 @@ char *dumpfile;
  * NAME:	swap->restore()
  * DESCRIPTION:	pretend to restore swap file
  */
-void sw_restore(fd, secsize)
+void sw_restore(env, fd, secsize)
+lpcenv *env;
 int fd;
 unsigned int secsize;
 {
@@ -629,7 +635,8 @@ int flag;
  * NAME:	comm->ip_number()
  * DESCRIPTION:	pretend to return the ip number of a user (as a string)
  */
-string *comm_ip_number(obj)
+string *comm_ip_number(env, obj)
+lpcenv *env;
 object *obj;
 {
     return (string *) NULL;
@@ -639,7 +646,8 @@ object *obj;
  * NAME:	comm->ip_name()
  * DESCRIPTION:	pretend to return the ip name of a user
  */
-string *comm_ip_name(obj)
+string *comm_ip_name(env, obj)
+lpcenv *env;
 object *obj;
 {
     return (string *) NULL;
@@ -696,8 +704,9 @@ void ed_finish()
  * NAME:	ed->new()
  * DESCRIPTION:	pretend to start a new editor
  */
-void ed_new(obj)
+void ed_new(obj, env)
 object *obj;
+lpcenv *env;
 {
 }
 
@@ -705,8 +714,9 @@ object *obj;
  * NAME:	ed->del()
  * DESCRIPTION:	pretend to delete an editor instance
  */
-void ed_del(obj)
+void ed_del(obj, env)
 object *obj;
+lpcenv *env;
 {
 }
 
@@ -714,8 +724,9 @@ object *obj;
  * NAME:	ed->command()
  * DESCRIPTION:	pretend to handle an editor command
  */
-string *ed_command(obj, cmd)
+string *ed_command(obj, env, cmd)
 object *obj;
+lpcenv *env;
 char *cmd;
 {
     return (string *) NULL;
@@ -745,12 +756,13 @@ unsigned int max;
  * NAME:	call_out->check()
  * DESCRIPTION:	pretend to check a new callout
  */
-Uint co_check(n, delay, mdelay, tp, mp, qp)
+Uint co_check(env, n, delay, mdelay, tp, mp, qp)
+lpcenv *env;
 unsigned int n, mdelay;
 Int delay;
 Uint *tp;
 unsigned short *mp;
-cbuf **qp;
+struct _cbuf_ **qp;
 {
     return 0;
 }
@@ -762,7 +774,7 @@ cbuf **qp;
 void co_new(oindex, handle, t, m, q)
 unsigned int oindex, handle, m;
 Uint t;
-cbuf *q;
+struct _cbuf_ *q;
 {
 }
 
@@ -790,7 +802,8 @@ Uint t;
  * NAME:	call_out->list()
  * DESCRIPTION:	pretend to adjust callout delays in an array
  */
-void co_list(a)
+void co_list(env, a)
+lpcenv *env;
 array *a;
 {
 }
@@ -845,7 +858,8 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	pretend to restore callout table
  */
-void co_restore(fd, t)
+void co_restore(env, fd, t)
+lpcenv *env;
 int fd;
 Uint t;
 {

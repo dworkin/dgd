@@ -34,13 +34,13 @@ int nargs;
     }
     salt[2] = '\0';
     if (nargs == 2) {
-	str_del((f->sp++)->u.string);
+	str_del(f->env, (f->sp++)->u.string);
     }
 
     i_add_ticks(f, 400);
     p = P_crypt(f->sp->u.string->text, salt);
-    str_del(f->sp->u.string);
-    PUT_STR(f->sp, str_new(p, (long) strlen(p)));
+    str_del(f->env, f->sp->u.string);
+    PUT_STR(f->sp, str_new(f->env, p, (long) strlen(p)));
     return 0;
 }
 # endif
@@ -62,7 +62,7 @@ frame *f;
 
     i_add_ticks(f, 5);
     P_ctime(buf, f->sp->u.number);
-    PUT_STRVAL(f->sp, str_new(buf, 24L));
+    PUT_STRVAL(f->sp, str_new(f->env, buf, 24L));
 
     return 0;
 }
@@ -103,7 +103,7 @@ register frame *f;
 	 */
 	a = arr_new(f->data, (long) len);
 	for (v = a->elts; len > 0; v++, --len) {
-	    PUT_STRVAL(v, str_new(p, 1L));
+	    PUT_STRVAL(v, str_new(f->env, p, 1L));
 	    p++;
 	}
     } else {
@@ -143,7 +143,7 @@ register frame *f;
 	while (len > slen) {
 	    if (memcmp(p, s, slen) == 0) {
 		/* separator found */
-		PUT_STRVAL(v, str_new(p - size, (long) size));
+		PUT_STRVAL(v, str_new(f->env, p - size, (long) size));
 		v++;
 		p += slen;
 		len -= slen;
@@ -161,11 +161,11 @@ register frame *f;
 	    p += len;
 	}
 	/* final array element */
-	PUT_STRVAL(v, str_new(p - size, (long) size));
+	PUT_STRVAL(v, str_new(f->env, p - size, (long) size));
     }
 
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    str_del(f->env, (f->sp++)->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_ARRVAL(f->sp, a);
     i_add_ticks(f, (Int) 2 * a->size);
 
@@ -208,7 +208,7 @@ register frame *f;
 	    }
 	    len += v->u.string->len;
 	}
-	str = str_new((char *) NULL, len);
+	str = str_new(f->env, (char *) NULL, len);
 
 	/* create the imploded string */
 	p = str->text;
@@ -224,11 +224,11 @@ register frame *f;
 	memcpy(p, v->u.string->text, v->u.string->len);
     } else {
 	/* zero size array gives zero size string */
-	str = str_new((char *) NULL, 0L);
+	str = str_new(f->env, (char *) NULL, 0L);
     }
 
-    str_del((f->sp++)->u.string);
-    arr_del(f->sp->u.array);
+    str_del(f->env, (f->sp++)->u.string);
+    arr_del(f->env, f->sp->u.array);
     PUT_STRVAL(f->sp, str);
     return 0;
 }
@@ -419,7 +419,7 @@ int nargs;
 		    break;
 
 		default:
-		    error("Bad sscanf format string");
+		    error(f->env, "Bad sscanf format string");
 		}
 	    } else {
 		/*
@@ -470,10 +470,10 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%s");
+		    error(f->env, "No lvalue for %%s");
 		}
 		--nargs;
-		PUSH_STRVAL(f, str_new(s, (long) size));
+		PUSH_STRVAL(f, str_new(f->env, s, (long) size));
 		i_store(f);
 		f->sp->u.string->ref--;
 		f->sp += 2;
@@ -492,7 +492,7 @@ int nargs;
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%d");
+		    error(f->env, "No lvalue for %%d");
 		}
 		--nargs;
 		PUSH_INTVAL(f, i);
@@ -504,14 +504,14 @@ int nargs;
 	case 'f':
 	    /* %f */
 	    x = s;
-	    if (!flt_atof(&s, &flt) || s == x) {
+	    if (!flt_atof(f->env, &s, &flt) || s == x) {
 		goto no_match;
 	    }
 	    slen -= (s - x);
 
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%f");
+		    error(f->env, "No lvalue for %%f");
 		}
 		--nargs;
 		PUSH_FLTVAL(f, flt);
@@ -527,7 +527,7 @@ int nargs;
 	    }
 	    if (!skip) {
 		if (nargs == 0) {
-		    error("No lvalue for %%c");
+		    error(f->env, "No lvalue for %%c");
 		}
 		--nargs;
 		PUSH_INTVAL(f, UCHAR(*s));
@@ -539,7 +539,7 @@ int nargs;
 	    break;
 
 	default:
-	    error("Bad sscanf format string");
+	    error(f->env, "Bad sscanf format string");
 	}
 	matches++;
     }
@@ -548,8 +548,8 @@ no_match:
     if (nargs > 0) {
 	i_pop(f, nargs);	/* pop superfluous arguments */
     }
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    str_del(f->env, (f->sp++)->u.string);
+    str_del(f->env, f->sp->u.string);
     PUT_INTVAL(f->sp, matches);
     return 0;
 }
@@ -583,13 +583,13 @@ int nargs;
 	maxalt = 1;	/* default: just one valid parse tree */
     }
 
-    if (OBJR(f->oindex)->flags & O_SPECIAL) {
-	error("parse_string() from special purpose object");
+    if (OBJR(f->env, f->oindex)->flags & O_SPECIAL) {
+	error(f->env, "parse_string() from special purpose object");
     }
 
     a = ps_parse_string(f, f->sp[1].u.string, f->sp->u.string, maxalt);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    str_del(f->env, (f->sp++)->u.string);
+    str_del(f->env, f->sp->u.string);
 
     if (a != (array *) NULL) {
 	/* return parse tree */
@@ -675,7 +675,7 @@ int nargs;
     cost = 3 * nargs + (cost >> 2);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	error("Out of ticks");
+	error(f->env, "Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -685,7 +685,7 @@ int nargs;
 	for (len = f->sp[i].u.string->len; len != 0; --len) {
 	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
 	}
-	str_del(f->sp[i].u.string);
+	str_del(f->env, f->sp[i].u.string);
     }
     crc = (crc >> 8) + (crc << 8);
 
@@ -832,7 +832,7 @@ int nargs;
     }
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
-	error("Out of ticks");
+	error(f->env, "Out of ticks");
     }
     i_add_ticks(f, cost);
 
@@ -883,7 +883,7 @@ int nargs;
 		memcpy(buffer, p, bufsz = len);
 	    }
 	}
-	str_del(f->sp[i].u.string);
+	str_del(f->env, f->sp[i].u.string);
     }
 
     /* append padding and digest final block(s) */
@@ -908,7 +908,7 @@ int nargs;
 	buffer[bufsz + 3] = cv[i] >> 24;
     }
     f->sp += nargs - 1;
-    PUT_STR(f->sp, str_new(buffer, 16L));
+    PUT_STR(f->sp, str_new(f->env, buffer, 16L));
     return 0;
 }
 # endif

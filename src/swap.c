@@ -49,11 +49,11 @@ unsigned int secsize;
     cachesize = cache;
     sectorsize = secsize;
     slotsize = sizeof(header) + secsize;
-    mem = ALLOC(char, slotsize * cache);
-    map = ALLOC(sector, total);
-    smap = ALLOC(sector, total);
-    bmap = ALLOC(char, (total + 7) >> 3);
-    cbuf = ALLOC(char, secsize);
+    mem = SALLOC(char, slotsize * cache);
+    map = SALLOC(sector, total);
+    smap = SALLOC(sector, total);
+    bmap = SALLOC(char, (total + 7) >> 3);
+    cbuf = SALLOC(char, secsize);
     cached = SW_UNUSED;
 
     /* 0 sectors allocated */
@@ -730,7 +730,8 @@ char *dumpfile;
  * NAME:	swap->restore()
  * DESCRIPTION:	restore dump file
  */
-void sw_restore(fd, secsize)
+void sw_restore(env, fd, secsize)
+lpcenv *env;
 int fd;
 unsigned int secsize;
 {
@@ -740,7 +741,7 @@ unsigned int secsize;
     P_lseek(fd, (long) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
-	error("Wrong sector size or too many sectors in restore file");
+	error(env, "Wrong sector size or too many sectors in restore file");
     }
     restoresecsize = secsize;
 

@@ -1489,3 +1489,4 @@ DGD 1.3
  - Grammars may now contain a "nomatch" token rule.
  - The editor could erroneously allocate dynamic instead of static memory.
  - Static creator functions were not called in clones or light-weight objects.
+ - Removed even more global variables.

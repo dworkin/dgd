@@ -28,20 +28,11 @@ static kfunc kforig[] = {
 # undef FUNCDEF
 };
 
-kfunc kftab[256];	/* kfun tab */
-char kfind[256];	/* n -> index */
-static char kfx[256];	/* index -> n */
-static int nkfun;	/* # kfuns */
-static extfunc *kfext;	/* additional kfun pointers */
-
-/*
- * NAME:	kfun->clear()
- * DESCRIPTION:	clear previously added kfuns from the table
- */
-void kf_clear()
-{
-    nkfun = sizeof(kforig) / sizeof(kfunc);
-}
+kfunc kftab[256];					/* kfun tab */
+char kfind[256];					/* n -> index */
+static char kfx[256];					/* index -> n */
+static int nkfun = sizeof(kforig) / sizeof(kfunc);	/* # kfuns */
+static extfunc *kfext;					/* xtra kfun pointers */
 
 /*
  * NAME:	kfun->callgate()
@@ -102,7 +93,7 @@ char *proto;
 
     /* allocate new prototype */
     p = proto;
-    q = proto = ALLOC(char, 3 + nargs);
+    q = proto = SALLOC(char, 3 + nargs);
     *q++ = class;
     *q++ = type;
     *q++ = nargs;
@@ -136,7 +127,7 @@ register int n;
 {
     register kfunc *kf;
 
-    kfext = ALLOC(extfunc, n) + n;
+    kfext = SALLOC(extfunc, n) + n;
     kfadd += n;
     nkfun += n;
     kf = kftab + nkfun;
@@ -182,6 +173,15 @@ void kf_init()
 	*--k1 = --i;
 	*--k2 = i;
     }
+}
+
+/*
+ * NAME:	kfun->finish()
+ * DESCRIPTION:	clear any previously added kfuns from the table
+ */
+void kf_finish()
+{
+    nkfun = sizeof(kforig) / sizeof(kfunc);
 }
 
 /*
@@ -267,7 +267,8 @@ int fd;
  * NAME:	kfun->restore()
  * DESCRIPTION:	restore the kfun table
  */
-void kf_restore(fd)
+void kf_restore(env, fd)
+lpcenv *env;
 int fd;
 {
     register int i, n, buflen;
@@ -288,7 +289,7 @@ int fd;
     for (i = 0; i < dh.nkfun; i++) {
 	n = kf_func(buffer + buflen);
 	if (n < 0) {
-	    error("Restored unknown kfun: %s", buffer + buflen);
+	    error(env, "Restored unknown kfun: %s", buffer + buflen);
 	}
 	n += KF_BUILTINS - 128;
 	if (kftab[n].func == kf_old_compile_object) {

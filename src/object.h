@@ -1,6 +1,24 @@
 # include "hash.h"
 # include "swap.h"
 
+# define OBJ(i)			(&otable[i])
+# define OBJR(env, i)		((BTST((env)->oe->ocmap, (i))) ? o_oread((env), (i)) : &otable[i])
+# define OBJW(env, i)		((!(env)->oe->obase) ? o_owrite((env), (i)) : &otable[i])
+# define OBJF(env, i)		OBJW((env), i)
+
+# define O_CLONE		(UINDEX_MAX >> 1)
+# define O_LWOBJ		(O_CLONE + 1)
+
+# define O_UPGRADING(o)		(((o)->cref & O_CLONE) > (o)->u_ref)
+# define O_INHERITED(o)		((o)->u_ref - 1 != ((o)->cref & O_CLONE))
+
+# define OACC_READ		0x00	/* read access */
+# define OACC_REFCHANGE		0x01	/* modify refcount */
+# define OACC_MODIFY		0x02	/* write access */
+
+# define OBJ_NONE		UINDEX_MAX
+
+
 struct _object_ {
     hte chain;			/* object name hash table */
     char flags;			/* object status */
@@ -19,9 +37,6 @@ struct _object_ {
 # define u_ref			ref
 # define u_master		ref
 
-# define O_CLONE		(UINDEX_MAX >> 1)
-# define O_LWOBJ		(O_CLONE + 1)
-
 # define O_MASTER		0x01
 # define O_AUTO			0x02
 # define O_DRIVER		0x04
@@ -35,47 +50,39 @@ struct _object_ {
 
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
-# define OBJ(i)			(&otable[i])
-# define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
-# define OBJW(i)		((!obase) ? o_owrite((i)) : &otable[i])
-# define OBJF(i)		OBJW(i)
+typedef struct _objenv_ {
+    struct _objplane_ *plane;	/* current object plane */
+    char *ocmap;		/* object change map */
+    bool obase;			/* object base plane flag */
+    Uint odcount;		/* objects destructed count */
+} objenv;
 
-# define O_UPGRADING(o)		(((o)->cref & O_CLONE) > (o)->u_ref)
-# define O_INHERITED(o)		((o)->u_ref - 1 != ((o)->cref & O_CLONE))
-
-# define OACC_READ		0x00	/* read access */
-# define OACC_REFCHANGE		0x01	/* modify refcount */
-# define OACC_MODIFY		0x02	/* write access */
-
-# define OBJ_NONE		UINDEX_MAX
 
 extern void	  o_init		P((unsigned int));
-extern object	 *o_oread		P((unsigned int));
-extern object	 *o_owrite		P((unsigned int));
-extern void	  o_new_plane		P((void));
-extern void	  o_commit_plane	P((void));
-extern void	  o_discard_plane	P((void));
+extern objenv	 *o_new_env		P((void));
+extern object	 *o_oread		P((lpcenv*, unsigned int));
+extern object	 *o_owrite		P((lpcenv*, unsigned int));
+extern void	  o_new_plane		P((lpcenv*));
+extern void	  o_commit_plane	P((lpcenv*));
+extern void	  o_discard_plane	P((lpcenv*));
 
-extern bool	  o_space		P((void));
-extern object	 *o_new			P((char*, control*));
-extern object	 *o_clone		P((object*));
+extern bool	  o_space		P((lpcenv*));
+extern object	 *o_new			P((lpcenv*, char*, control*));
+extern object	 *o_clone		P((lpcenv*, object*));
 extern void	  o_lwobj		P((object*));
 extern void	  o_upgrade		P((object*, control*, frame*));
 extern void	  o_upgraded		P((object*, object*));
 extern void	  o_del			P((object*, frame*));
 
-extern char	 *o_name		P((char*, object*));
-extern object	 *o_find		P((char*, int));
-extern control   *o_control		P((object*));
-extern dataspace *o_dataspace		P((object*));
+extern char	 *o_name		P((lpcenv*, char*, object*));
+extern object	 *o_find		P((lpcenv*, char*, int));
+extern control   *o_control		P((lpcenv*, object*));
+extern dataspace *o_dataspace		P((lpcenv*, object*));
 
 extern void	  o_clean		P((void));
-extern uindex	  o_count		P((void));
+extern uindex	  o_count		P((lpcenv*));
 extern bool	  o_dump		P((int));
-extern void	  o_restore		P((int, unsigned int));
+extern void	  o_restore		P((lpcenv*, int, unsigned int));
 extern void	  o_conv		P((void));
 
 extern object    *otable;
-extern char	 *ocmap;
-extern bool	  obase;
-extern Uint	  odcount;

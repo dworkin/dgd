@@ -21,7 +21,8 @@ typedef struct _itchunk_ {
  * NAME:	item->new()
  * DESCRIPTION:	create a new item
  */
-static item *it_new(c, ref, ruleno, offset, next)
+static item *it_new(env, c, ref, ruleno, offset, next)
+lpcenv *env;
 register itchunk **c;
 char *ref;
 unsigned short ruleno, offset;
@@ -33,7 +34,7 @@ item *next;
 	((*c)->flist == (item *) NULL && (*c)->chunksz == ITCHUNKSZ)) {
 	register itchunk *x;
 
-	x = ALLOC(itchunk, 1);
+	x = IALLOC(env, itchunk, 1);
 	x->flist = (*c != (itchunk *) NULL) ? (*c)->flist : (item *) NULL;
 	x->next = *c;
 	*c = x;
@@ -74,7 +75,8 @@ register item *it;
  * NAME:	item->clear()
  * DESCRIPTION:	free all items in memory
  */
-static void it_clear(c)
+static void it_clear(env, c)
+register lpcenv *env;
 register itchunk *c;
 {
     register itchunk *f;
@@ -82,7 +84,7 @@ register itchunk *c;
     while (c != (itchunk *) NULL) {
 	f = c;
 	c = c->next;
-	FREE(f);
+	IFREE(env, f);
     }
 }
 
@@ -90,7 +92,8 @@ register itchunk *c;
  * NAME:	item->add()
  * DESCRIPTION:	add an item to a set
  */
-static void it_add(c, ri, ref, ruleno, offset, sort)
+static void it_add(env, c, ri, ref, ruleno, offset, sort)
+lpcenv *env;
 itchunk **c;
 register item **ri;
 register char *ref;
@@ -123,15 +126,16 @@ bool sort;
 	}
     }
 
-    *ri = it_new(c, ref, ruleno, offset, *ri);
+    *ri = it_new(env, c, ref, ruleno, offset, *ri);
 }
 
 /*
  * NAME:	item->load()
  * DESCRIPTION:	load an item
  */
-static item *it_load(c, n, buf, grammar)
-itchunk **c;
+static item *it_load(env, c, n, buf, grammar)
+register lpcenv *env;
+register itchunk **c;
 unsigned short n;
 char **buf, *grammar;
 {
@@ -148,7 +152,7 @@ char **buf, *grammar;
 	p += 2;
 	ruleno = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	p += 2;
-	*ri = it_new(c, ref, ruleno, UCHAR(*p++), (item *) NULL);
+	*ri = it_new(env, c, ref, ruleno, UCHAR(*p++), (item *) NULL);
 	ri = &(*ri)->next;
     } while (--n != 0);
     *buf = p;
@@ -328,7 +332,8 @@ typedef struct _slchunk_ {
  * NAME:	shlink->hash()
  * DESCRIPTION:	put a new shlink in the hash table, or return an old one
  */
-static shlink *sl_hash(htab, htabsize, c, shtab, shifts, n)
+static shlink *sl_hash(env, htab, htabsize, c, shtab, shifts, n)
+lpcenv *env;
 shlink **htab;
 Uint htabsize;
 register slchunk **c;
@@ -360,7 +365,7 @@ register Uint n;
     if (*c == (slchunk *) NULL || (*c)->chunksz == SLCHUNKSZ) {
 	register slchunk *x;
 
-	x = ALLOC(slchunk, 1);
+	x = IALLOC(env, slchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -377,7 +382,8 @@ register Uint n;
  * NAME:	shlink->clear()
  * DESCRIPTION:	clean up shlinks
  */
-static void sl_clear(c)
+static void sl_clear(env, c)
+register lpcenv *env;
 register slchunk *c;
 {
     register slchunk *f;
@@ -385,12 +391,14 @@ register slchunk *c;
     while (c != (slchunk *) NULL) {
 	f = c;
 	c = c->next;
-	FREE(f);
+	IFREE(env, f);
     }
 }
 
 
-struct _srp_ {
+typedef struct _srp_ {
+    lpcenv *env;		/* environment */
+
     char *grammar;		/* grammar */
     unsigned short ntoken;	/* # of tokens (regexp & string) */
     unsigned short nprod;	/* # of nonterminals */
@@ -426,7 +434,7 @@ struct _srp_ {
     Uint shhsize;		/* shift hash table size */
     char *shtab;		/* shift (from/to) table */
     shlink **shhtab;		/* shift hash table */
-};
+} srp;
 
 # define SRP_VERSION	1
 
@@ -434,14 +442,16 @@ struct _srp_ {
  * NAME:	srp->new()
  * DESCRIPTION:	create new shift/reduce parser
  */
-srp *srp_new(grammar)
+srp *srp_new(env, grammar)
+register lpcenv *env;
 char *grammar;
 {
     register srp *lr;
     register char *p;
     Uint nrule;
 
-    lr = ALLOC(srp, 1);
+    lr = IALLOC(env, srp, 1);
+    lr->env = env;
 
     /* grammar info */
     lr->grammar = grammar;
@@ -464,15 +474,15 @@ char *grammar;
     lr->nexpanded = 0;
     lr->sttsize = nrule << 1;
     lr->sthsize = nrule << 2;
-    lr->states = ALLOC(srpstate, lr->sttsize);
-    lr->sthtab = ALLOC(unsigned short, lr->sthsize);
+    lr->states = IALLOC(env, srpstate, lr->sttsize);
+    lr->sthtab = IALLOC(env, unsigned short, lr->sthsize);
     memset(lr->sthtab, '\0', lr->sthsize * sizeof(unsigned short));
     lr->itc = (itchunk *) NULL;
 
     /* state 0 */
     p = grammar + 15 + (lr->ntoken << 1);
     p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-    lr->states[0].items = it_new(&lr->itc, p + 2, lr->ntoken, 0, (item *) NULL);
+    lr->states[0].items = it_new(env, &lr->itc, p + 2, lr->ntoken, 0, (item *) NULL);
     lr->states[0].nitem = 1;
     lr->states[0].nred = UNEXPANDED;
     lr->states[0].shoffset = NOSHIFT;
@@ -483,9 +493,9 @@ char *grammar;
     /* packed mapping for shift */
     lr->gap = lr->spread = 0;
     lr->mapsize = (Uint) (lr->ntoken + lr->nprod) << 2;
-    lr->data = ALLOC(char, lr->mapsize);
+    lr->data = IALLOC(env, char, lr->mapsize);
     memset(lr->data, '\0', lr->mapsize);
-    lr->check = ALLOC(char, lr->mapsize);
+    lr->check = IALLOC(env, char, lr->mapsize);
     memset(lr->check, '\xff', lr->mapsize);
     lr->alloc = TRUE;
 
@@ -494,8 +504,8 @@ char *grammar;
     lr->nshift = 0;
     lr->shtsize = lr->mapsize;
     lr->shhsize = nrule << 2;
-    lr->shtab = ALLOC(char, lr->shtsize);
-    lr->shhtab = ALLOC(shlink*, lr->shhsize);
+    lr->shtab = IALLOC(env, char, lr->shtsize);
+    lr->shhtab = IALLOC(env, shlink*, lr->shhsize);
     memset(lr->shhtab, '\0', lr->shhsize * sizeof(shlink*));
 
     return lr;
@@ -512,30 +522,30 @@ register srp *lr;
     register srpstate *state;
 
     if (lr->allocated) {
-	FREE(lr->srpstr);
+	IFREE(lr->env, lr->srpstr);
     }
-    it_clear(lr->itc);
+    it_clear(lr->env, lr->itc);
     if (lr->sthtab != (unsigned short *) NULL) {
-	FREE(lr->sthtab);
+	IFREE(lr->env, lr->sthtab);
     }
     for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
 	if (state->alloc) {
-	    FREE(state->reds.a);
+	    IFREE(lr->env, state->reds.a);
 	}
     }
-    FREE(lr->states);
+    IFREE(lr->env, lr->states);
     if (lr->alloc) {
-	FREE(lr->data);
-	FREE(lr->check);
+	IFREE(lr->env, lr->data);
+	IFREE(lr->env, lr->check);
     }
-    sl_clear(lr->slc);
+    sl_clear(lr->env, lr->slc);
     if (lr->shtab != (char *) NULL) {
-	FREE(lr->shtab);
+	IFREE(lr->env, lr->shtab);
     }
     if (lr->shhtab != (shlink **) NULL) {
-	FREE(lr->shhtab);
+	IFREE(lr->env, lr->shhtab);
     }
-    FREE(lr);
+    IFREE(lr->env, lr);
 }
 
 /*
@@ -578,7 +588,8 @@ register srp *lr;
  * NAME:	srp->load()
  * DESCRIPTION:	load a shift/reduce parser from string
  */
-srp *srp_load(grammar, str, len)
+srp *srp_load(env, grammar, str, len)
+lpcenv *env;
 char *grammar, *str;
 Uint len;
 {
@@ -589,10 +600,11 @@ Uint len;
     char *rbuf;
 
     if (UCHAR(str[0]) != SRP_VERSION) {
-	return srp_new(grammar);
+	return srp_new(env, grammar);
     }
 
-    lr = ALLOC(srp, 1);
+    lr = IALLOC(env, srp, 1);
+    lr->env = env;
 
     /* grammar info */
     lr->grammar = grammar;
@@ -616,7 +628,7 @@ Uint len;
     /* states */
     lr->sttsize = lr->nstates + 1;
     lr->sthsize = 0;
-    lr->states = ALLOC(srpstate, lr->sttsize);
+    lr->states = IALLOC(env, srpstate, lr->sttsize);
     lr->sthtab = (unsigned short *) NULL;
     lr->itc = (itchunk *) NULL;
 
@@ -678,11 +690,12 @@ register srp *lr;
 
     /* states */
     lr->sthsize = nrule << 2;
-    lr->sthtab = ALLOC(unsigned short, lr->sthsize);
+    lr->sthtab = IALLOC(lr->env, unsigned short, lr->sthsize);
     memset(lr->sthtab, '\0', lr->sthsize * sizeof(unsigned short));
     for (i = 0, state = lr->states; i < lr->nstates; i++, state++) {
 	if (state->nitem != 0) {
-	    state->items = it_load(&lr->itc, state->nitem, &buf, lr->grammar);
+	    state->items = it_load(lr->env, &lr->itc, state->nitem, &buf,
+				   lr->grammar);
 	}
 	ss_hash(lr->sthtab, lr->sthsize, lr->states, (unsigned short) i);
     }
@@ -690,14 +703,14 @@ register srp *lr;
     /* shifts */
     lr->shtsize = lr->nshift * 2;
     lr->shhsize = nrule << 2;
-    lr->shtab = ALLOC(char, lr->shtsize);
+    lr->shtab = IALLOC(lr->env, char, lr->shtsize);
     memcpy(lr->shtab, buf, lr->nshift);
-    lr->shhtab = ALLOC(shlink*, lr->shhsize);
+    lr->shhtab = IALLOC(lr->env, shlink*, lr->shhsize);
     memset(lr->shhtab, '\0', lr->shhsize * sizeof(shlink*));
     for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
 	n = (Uint) 4 * ((UCHAR(p[5]) << 8) + UCHAR(p[6])) + 7;
-	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
-							(long) p - (long) buf;
+	sl_hash(lr->env, lr->shhtab, lr->shhsize,
+		    &lr->slc, lr->shtab, p, n)->shifts = (long) p - (long) buf;
     }
 }
 
@@ -725,9 +738,10 @@ Uint *len;
 	lr->tmpsize = 0;
     }
     if (lr->allocated) {
-	FREE(lr->srpstr);
+	IFREE(lr->env, lr->srpstr);
     }
-    lr->srpstr = buf = *str = ALLOC(char, *len = lr->srpsize + lr->tmpsize);
+    lr->srpstr = buf = *str = IALLOC(lr->env, char,
+				     *len = lr->srpsize + lr->tmpsize);
 
     /* header */
     *buf++ = SRP_VERSION;
@@ -816,7 +830,8 @@ register unsigned short n;
 	*p++ = to[i] >> 8;
 	*p++ = to[i];
     }
-    sl = sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, shifts, j);
+    sl = sl_hash(lr->env, lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, shifts,
+		 j);
     if (sl->shifts != NOSHIFT) {
 	/* same as before */
 	AFREE(shifts);
@@ -829,7 +844,7 @@ register unsigned short n;
     if (lr->nshift + j > lr->shtsize) {
 	/* grow shift table */
 	i = (lr->nshift + j) * 2;
-	lr->shtab = REALLOC(lr->shtab, char, lr->shtsize, i);
+	lr->shtab = IREALLOC(lr->env, lr->shtab, char, lr->shtsize, i);
 	lr->shtsize = i;
     }
     sl->shifts = lr->nshift;
@@ -863,15 +878,15 @@ next:
 	/* grow tables */
 	j = (i + range) << 1;
 	if (lr->alloc) {
-	    lr->data = REALLOC(lr->data, char, lr->mapsize, j);
-	    lr->check = REALLOC(lr->check, char, lr->mapsize, j);
+	    lr->data = IREALLOC(lr->env, lr->data, char, lr->mapsize, j);
+	    lr->check = IREALLOC(lr->env, lr->check, char, lr->mapsize, j);
 	} else {
 	    char *table;
 
-	    table = ALLOC(char, j);
+	    table = IALLOC(lr->env, char, j);
 	    memcpy(table, lr->data, lr->mapsize);
 	    lr->data = table;
-	    table = ALLOC(char, j);
+	    table = IALLOC(lr->env, char, j);
 	    memcpy(table, lr->check, lr->mapsize);
 	    lr->check = table;
 	    lr->alloc = TRUE;
@@ -986,7 +1001,7 @@ srpstate *state;
 		p = lr->grammar + 15 + (n << 1);
 		p = lr->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 		for (i = (UCHAR(p[0]) << 8) + UCHAR(p[1]), p += 2; i > 0; --i) {
-		    it_add(&lr->itc, &state->items, p, n, 0, FALSE);
+		    it_add(lr->env, &lr->itc, &state->items, p, n, 0, FALSE);
 		    p += UCHAR(p[1]) + 2;
 		}
 	    }
@@ -996,7 +1011,7 @@ srpstate *state;
     state->nred = nred;
     if (nred != 0) {
 	if (nred > 1) {
-	    state->reds.a = ALLOC(char, (Uint) nred << 2);
+	    state->reds.a = IALLOC(lr->env, char, (Uint) nred << 2);
 	    state->alloc = TRUE;
 	}
 	lr->nred += nred;
@@ -1031,8 +1046,8 @@ srpstate *state;
 		    symbols[ngoto++] = n;
 		}
 	    }
-	    it_add(&lr->itc, &itemtab[n], it->ref, it->ruleno, it->offset + 2,
-		   TRUE);
+	    it_add(lr->env, &lr->itc, &itemtab[n], it->ref, it->ruleno,
+		   it->offset + 2, TRUE);
 	}
     }
 
@@ -1086,8 +1101,8 @@ srpstate *state;
 
 		/* grow table */
 		save = state - lr->states;
-		lr->states = REALLOC(lr->states, srpstate, lr->nstates,
-				     lr->sttsize <<= 1);
+		lr->states = IREALLOC(lr->env, lr->states, srpstate,
+				      lr->nstates, lr->sttsize <<= 1);
 		state = lr->states + save;
 	    }
 	}

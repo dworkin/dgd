@@ -33,7 +33,7 @@ char *ptr, *text;
 
     cb = (cmdbuf *) ptr;
     if (rx_exec(cb->regexp, text, 0, cb->ignorecase) > 0) {
-	longjmp(cb->env, TRUE);
+	longjmp(cb->jump, TRUE);
     }
     cb->lineno++;
 }
@@ -48,7 +48,7 @@ cmdbuf *cb;
 Int first, last;
 int reverse;
 {
-    if (setjmp(cb->env)) {
+    if (setjmp(cb->jump)) {
 	/* found */
 	return (reverse) ? last - cb->lineno : first + cb->lineno;
     }
@@ -1415,7 +1415,7 @@ register cmdbuf *cb;
 
     cb_do(cb, cb->first);
     output("\"%s\" ", buffer);
-    if (!io_load(cb->edbuf, buffer, cb->first, &iob)) {
+    if (!io_load(cb->edbuf, cb->env, buffer, cb->first, &iob)) {
 	error("is unreadable");
     }
     io_show(&iob);
@@ -1446,9 +1446,7 @@ register cmdbuf *cb;
 	error("No current filename");
     }
 
-    m_static();
     eb_clear(cb->edbuf);
-    m_dynamic();
     cb->flags &= ~CB_NOIMAGE;
     cb->edit = 0;
     cb->first = cb->this = 0;
@@ -1458,7 +1456,7 @@ register cmdbuf *cb;
     cb->undo = (block) -1;	/* not 0! */
 
     output("\"%s\" ", cb->fname);
-    if (!io_load(cb->edbuf, cb->fname, cb->first, &iob)) {
+    if (!io_load(cb->edbuf, cb->env, cb->fname, cb->first, &iob)) {
 	error("is unreadable");
     }
     io_show(&iob);
@@ -1526,7 +1524,8 @@ register cmdbuf *cb;
     }
 
     output("\"%s\" ", buffer);
-    if (!io_save(cb->edbuf, buffer, cb->first, cb->last, append, &iob)) {
+    if (!io_save(cb->edbuf, cb->env, buffer, cb->first, cb->last, append, &iob))
+    {
 	error("write failed");
     }
     io_show(&iob);

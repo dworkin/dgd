@@ -24,7 +24,7 @@ static hashtab *mt;		/* macro hash table */
  */
 void mc_init()
 {
-    mt = ht_new(MACTABSZ, MACHASHSZ);
+    mt = ht_new(comppool, MACTABSZ, MACHASHSZ);
     mlist = (mchunk *) NULL;
     mchunksz = MCHUNKSZ;
     flist = (macro *) NULL;
@@ -40,22 +40,22 @@ void mc_clear()
     register mchunk *l, *f;
 
     if (mt != (hashtab *) NULL) {
-	ht_del(mt);
+	ht_del(comppool, mt);
 	mt = (hashtab *) NULL;
 
 	for (l = mlist; l != (mchunk *) NULL; ) {
 	    for (m = l->m; mchunksz > 0; m++, --mchunksz) {
 		if (m->chain.name != (char *) NULL) {
-		    FREE(m->chain.name);
+		    LFREE(m->chain.name);
 		    if (m->replace != (char *) NULL) {
-			FREE(m->replace);
+			LFREE(m->replace);
 		    }
 		}
 	    }
 	    mchunksz = MCHUNKSZ;
 	    f = l;
 	    l = l->next;
-	    FREE(f);
+	    LFREE(f);
 	}
 	mlist = (mchunk *) NULL;
     }
@@ -88,7 +88,7 @@ int narg;
 	    if (mchunksz == MCHUNKSZ) {
 		register mchunk *l;
 
-		l = ALLOC(mchunk, 1);
+		l = LALLOC(mchunk, 1);
 		l->next = mlist;
 		mlist = l;
 		mchunksz = 0;
@@ -96,13 +96,13 @@ int narg;
 	    *m = &mlist->m[mchunksz++];
 	}
 	(*m)->chain.next = (hte *) NULL;
-	(*m)->chain.name = strcpy(ALLOC(char, strlen(name) + 1), name);
+	(*m)->chain.name = strcpy(LALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
     }
     /* fill in macro */
     if (replace != (char *) NULL) {
-	(*m)->replace = strcpy(REALLOC((*m)->replace, char, 0,
-				       strlen(replace) + 1),
+	(*m)->replace = strcpy(LREALLOC((*m)->replace, char, 0,
+					strlen(replace) + 1),
 			       replace);
     } else {
 	(*m)->replace = (char *) NULL;
@@ -123,10 +123,10 @@ char *name;
     if (*m != (macro *) NULL) {
 	/* it really exists. */
 	mac = *m;
-	FREE(mac->chain.name);
+	LFREE(mac->chain.name);
 	mac->chain.name = (char *) NULL;
 	if (mac->replace != (char *) NULL) {
-	    FREE(mac->replace);
+	    LFREE(mac->replace);
 	    mac->replace = (char *) NULL;
 	}
 	*m = (macro *) mac->chain.next;

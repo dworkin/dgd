@@ -5,19 +5,18 @@ struct _string_ {
     char text[1];		/* actual characters following this struct */
 };
 
-typedef struct _strmerge_ strmerge;	/* string merge table */
+extern string	        *str_alloc	P((lpcenv*, char*, long));
+extern string	        *str_new	P((lpcenv*, char*, long));
+# define str_ref(s)	 ((s)->ref++)
+extern void		 str_del	P((lpcenv*, string*));
 
-extern string	       *str_alloc	P((char*, long));
-extern string	       *str_new		P((char*, long));
-# define str_ref(s)	((s)->ref++)
-extern void		str_del		P((string*));
+extern struct _strmerge_*str_merge	P((lpcenv*));
+extern Uint		 str_put	P((lpcenv*, struct _strmerge_*, string*,
+					   Uint));
+extern void		 str_clear	P((lpcenv*, struct _strmerge_*));
 
-extern strmerge	       *str_merge	P((void));
-extern Uint		str_put		P((strmerge*, string*, Uint));
-extern void		str_clear	P((strmerge*));
-
-extern int		str_cmp		P((string*, string*));
-extern string	       *str_add		P((string*, string*));
-extern ssizet		str_index	P((string*, long));
-extern void		str_ckrange	P((string*, long, long));
-extern string	       *str_range	P((string*, long, long));
+extern int		 str_cmp	P((string*, string*));
+extern string	        *str_add	P((lpcenv*, string*, string*));
+extern ssizet		 str_index	P((lpcenv*, string*, long));
+extern void		 str_ckrange	P((lpcenv*, string*, long, long));
+extern string	        *str_range	P((lpcenv*, string*, long, long));

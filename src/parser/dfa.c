@@ -186,7 +186,8 @@ typedef struct _rpchunk_ {
  * NAME:	rgxposn->alloc()
  * DESCRIPTION:	allocate a new rgxposn (or return an old one)
  */
-static rgxposn *rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final)
+static rgxposn *rp_alloc(env, htab, posn, size, c, rgx, nposn, ruleno, final)
+lpcenv *env;
 hashtab *htab;
 char *posn, *rgx;
 unsigned short size, ruleno;
@@ -204,7 +205,7 @@ bool final;
     if (*c == (rpchunk *) NULL || (*c)->chunksz == RPCHUNKSZ) {
 	register rpchunk *x;
 
-	x = ALLOC(rpchunk, 1);
+	x = IALLOC(env, rpchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -227,7 +228,8 @@ bool final;
  * NAME:	rgxposn->new()
  * DESCRIPTION:	create a new rgxposn
  */
-static rgxposn *rp_new(htab, posn, size, c, rgx, nposn, ruleno, final)
+static rgxposn *rp_new(env, htab, posn, size, c, rgx, nposn, ruleno, final)
+lpcenv *env;
 hashtab *htab;
 char *posn, *rgx;
 unsigned short size, ruleno;
@@ -237,9 +239,9 @@ bool final;
 {
     register rgxposn *rp;
 
-    rp = rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
+    rp = rp_alloc(env, htab, posn, size, c, rgx, nposn, ruleno, final);
     if (rp->nposn == nposn) {
-	strcpy(rp->chain.name = ALLOC(char, size + 3), posn);
+	strcpy(rp->chain.name = IALLOC(env, char, size + 3), posn);
 	rp->alloc = TRUE;
     }
     return rp;
@@ -249,7 +251,8 @@ bool final;
  * NAME:	rgxposn->clear()
  * DESCRIPTION:	free all rgxposns
  */
-static void rp_clear(c)
+static void rp_clear(env, c)
+register lpcenv *env;
 register rpchunk *c;
 {
     register rpchunk *f;
@@ -259,12 +262,12 @@ register rpchunk *c;
     while (c != (rpchunk *) NULL) {
 	for (rp = c->rp, i = c->chunksz; i != 0; rp++, --i) {
 	    if (rp->alloc) {
-		FREE(rp->chain.name);
+		IFREE(env, rp->chain.name);
 	    }
 	}
 	f = c;
 	c = c->next;
-	FREE(f);
+	IFREE(env, f);
     }
 }
 
@@ -558,7 +561,8 @@ unsigned short *size;
  * NAME:	rgxposn->load()
  * DESCRIPTION:	load a rgxposn from a buffer
  */
-static rgxposn *rp_load(htab, c, nposn, buf, grammar)
+static rgxposn *rp_load(env, htab, c, nposn, buf, grammar)
+lpcenv *env;
 hashtab *htab;
 rpchunk **c;
 Uint nposn;
@@ -580,7 +584,7 @@ char *grammar;
     }
     size = UCHAR(*buf++);
 
-    return rp_alloc(htab, buf, size, c, rgx, nposn, ruleno, final);
+    return rp_alloc(env, htab, buf, size, c, rgx, nposn, ruleno, final);
 }
 
 /*
@@ -723,7 +727,8 @@ char *zerotrans;
  * NAME:	dfastate->loadtmp()
  * DESCRIPTION:	load dfastate temporary data from a buffer
  */
-static char *ds_loadtmp(state, sbuf, pbuf, htab, c, nposn, grammar)
+static char *ds_loadtmp(env, state, sbuf, pbuf, htab, c, nposn, grammar)
+register lpcenv *env;
 register dfastate *state;
 register char *sbuf;
 char *pbuf, *grammar;
@@ -742,7 +747,7 @@ Uint *nposn;
 
     if (state->nposn != 0) {
 	if (state->nposn != 1) {
-	    rrp = state->posn.a = ALLOC(rgxposn*, state->nposn);
+	    rrp = state->posn.a = IALLOC(env, rgxposn*, state->nposn);
 	} else {
 	    rrp = &state->posn.e;
 	}
@@ -750,7 +755,7 @@ Uint *nposn;
 	    posn = pbuf + ((Uint) UCHAR(sbuf[0]) << 16) +
 		   (UCHAR(sbuf[1]) << 8) + UCHAR(sbuf[2]);
 	    sbuf += 3;
-	    rp = *rrp++ = rp_load(htab, c, *nposn, posn, grammar);
+	    rp = *rrp++ = rp_load(env, htab, c, *nposn, posn, grammar);
 	    if (rp->nposn == *nposn) {
 		(*nposn)++;
 	    }
@@ -758,7 +763,7 @@ Uint *nposn;
     }
     if (state->nstr != 0) {
 	if (state->nstr > 2) {
-	    s = state->str.a = ALLOC(unsigned short, state->nstr);
+	    s = state->str.a = IALLOC(env, unsigned short, state->nstr);
 	} else {
 	    s = state->str.e;
 	}
@@ -838,7 +843,9 @@ Uint *ptab, *nposn;
 }
 
 
-struct _dfa_ {
+typedef struct _dfa_ {
+    lpcenv *env;		/* environment */
+
     char *grammar;		/* reference grammar */
     char *strings;		/* offset of strings in grammar */
     short whitespace;		/* whitespace rule or -1 */
@@ -872,13 +879,14 @@ struct _dfa_ {
     char eclass[256];		/* equivalence classes */
 
     char zerotrans[2 * 256];	/* shared zero transitions */
-};
+} dfa;
 
 /*
  * NAME:	dfa->new()
  * DESCRIPTION:	create new dfa instance
  */
-dfa *dfa_new(grammar)
+dfa *dfa_new(env, grammar)
+register lpcenv *env;
 register char *grammar;
 {
     char posn[258];
@@ -887,7 +895,8 @@ register char *grammar;
     register dfastate *state;
     bool final;
 
-    fa = ALLOC(dfa, 1);
+    fa = IALLOC(env, dfa, 1);
+    fa->env = env;
 
     /* grammar info */
     fa->grammar = grammar;
@@ -908,7 +917,7 @@ register char *grammar;
 
     /* equivalence classes */
     fa->ecnum = 1;
-    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    fa->ecsplit = IALLOC(env, char, 256 + 256 + 32 * 256);
     fa->ecmembers = fa->ecsplit + 256;
     fa->ecset = (Uint *) (fa->ecmembers + 256);
     memset(fa->eclass, '\0', 256);
@@ -919,7 +928,7 @@ register char *grammar;
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
+    fa->posnhtab = ht_new(env->mp, (fa->nposn + 1) << 2, 257);
 
     /* states */
     fa->nstates = 2;
@@ -927,8 +936,8 @@ register char *grammar;
     fa->sthsize = (Uint) fa->sttsize << 1;
     fa->nexpanded = 0;
     fa->endstates = 1;
-    fa->states = ALLOC(dfastate, fa->sttsize);
-    fa->sthtab = ALLOC(unsigned short, fa->sthsize);
+    fa->states = IALLOC(env, dfastate, fa->sttsize);
+    fa->sthtab = IALLOC(env, unsigned short, fa->sthsize);
     memset(fa->sthtab, '\0', sizeof(unsigned short) * fa->sthsize);
 
     /* initial states */
@@ -940,9 +949,10 @@ register char *grammar;
     state->ntrans = state->len = 0;
     (state++)->final = -1;
     state->posn.a = (fa->nposn > 1) ?
-		     ALLOC(rgxposn*, fa->nposn) : (rgxposn **) NULL;
+		     IALLOC(env, rgxposn*, fa->nposn) : (rgxposn **) NULL;
     state->str.a = (nstrings > 2) ?
-		    ALLOC(unsigned short, nstrings) : (unsigned short *) NULL;
+		    IALLOC(env, unsigned short, nstrings) :
+		    (unsigned short *) NULL;
     state->trans = (char *) NULL;
     state->nposn = fa->nposn;
     state->nstr = nstrings;
@@ -975,7 +985,7 @@ register char *grammar;
 		}
 		posn[0] = 1 + j / 255;
 		posn[1] = 1 + j % 255;
-		*rrp++ = rp_new(fa->posnhtab, posn, size, &fa->rpc, rgx,
+		*rrp++ = rp_new(env, fa->posnhtab, posn, size, &fa->rpc, rgx,
 				(Uint) j++, i, final);
 		fa->tmpssize += 3;
 		fa->tmppsize += 8 + size + final;
@@ -1008,33 +1018,33 @@ register dfa *fa;
     register unsigned short i;
 
     if (fa->allocated) {
-	FREE(fa->dfastr);
+	IFREE(fa->env, fa->dfastr);
     }
     if (fa->ecsplit != (char *) NULL) {
-	FREE(fa->ecsplit);
+	IFREE(fa->env, fa->ecsplit);
     }
     if (fa->rpc != (rpchunk *) NULL) {
-	rp_clear(fa->rpc);
+	rp_clear(fa->env, fa->rpc);
     }
     if (fa->posnhtab != (hashtab *) NULL) {
-	ht_del(fa->posnhtab);
+	ht_del(fa->env->mp, fa->posnhtab);
     }
     for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
 	if (state->nposn > 1) {
-	    FREE(state->posn.a);
+	    IFREE(fa->env, state->posn.a);
 	}
 	if (state->nstr > 2) {
-	    FREE(state->str.a);
+	    IFREE(fa->env, state->str.a);
 	}
 	if (state->alloc) {
-	    FREE(state->trans);
+	    IFREE(fa->env, state->trans);
 	}
     }
-    FREE(fa->states);
+    IFREE(fa->env, fa->states);
     if (fa->sthtab != (unsigned short *) NULL) {
-	FREE(fa->sthtab);
+	IFREE(fa->env, fa->sthtab);
     }
-    FREE(fa);
+    IFREE(fa->env, fa);
 }
 
 /*
@@ -1051,7 +1061,7 @@ register unsigned short limit;
 
     /* extend transition table */
     if (!state->alloc) {
-	p = ALLOC(char, 2 * 256);
+	p = IALLOC(fa->env, char, 2 * 256);
 	memcpy(p, state->trans, state->ntrans << 1);
 	state->trans = p;
 	state->alloc = TRUE;
@@ -1102,7 +1112,8 @@ register unsigned short limit;
  * NAME:	dfa->load()
  * DESCRIPTION:	load dfa from string
  */
-dfa *dfa_load(grammar, str, len)
+dfa *dfa_load(env, grammar, str, len)
+lpcenv *env;
 char *grammar, *str;
 Uint len;
 {
@@ -1112,7 +1123,8 @@ Uint len;
     register char *buf;
     unsigned short nstrings;
 
-    fa = ALLOC(dfa, 1);
+    fa = IALLOC(env, dfa, 1);
+    fa->env = env;
     fa->dfastr = buf = str;
 
     /* grammar info */
@@ -1134,7 +1146,7 @@ Uint len;
     fa->endstates = (UCHAR(buf[5]) << 8) + UCHAR(buf[6]);
     fa->sttsize = fa->nstates + 1;
     fa->sthsize = (Uint) (fa->nposn + nstrings + 1) << 2;
-    fa->states = ALLOC(dfastate, fa->sttsize);
+    fa->states = IALLOC(env, dfastate, fa->sttsize);
     fa->sthtab = (unsigned short *) NULL;
 
     /* equivalence classes */
@@ -1190,7 +1202,7 @@ register dfa *fa;
     buf += 4;
 
     /* equivalence classes */
-    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    fa->ecsplit = IALLOC(fa->env, char, 256 + 256 + 32 * 256);
     fa->ecmembers = fa->ecsplit + 256;
     fa->ecset = (Uint *) (fa->ecmembers + 256);
     memcpy(fa->ecsplit, buf, fa->ecnum);
@@ -1205,16 +1217,16 @@ register dfa *fa;
     }
 
     /* positions */
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
+    fa->posnhtab = ht_new(fa->env->mp, (fa->nposn + 1) << 2, 257);
 
     /* states */
-    fa->sthtab = ALLOC(unsigned short, fa->sthsize);
+    fa->sthtab = IALLOC(fa->env, unsigned short, fa->sthsize);
     memset(fa->sthtab, '\0', sizeof(unsigned short) * fa->sthsize);
 
     fa->nposn = 0;
     for (i = 1, state = &fa->states[1]; i < fa->nstates; i++, state++) {
-	buf = ds_loadtmp(state, buf, fa->tmpstr, fa->posnhtab, &fa->rpc,
-			 &fa->nposn, fa->grammar);
+	buf = ds_loadtmp(fa->env, state, buf, fa->tmpstr, fa->posnhtab,
+			 &fa->rpc, &fa->nposn, fa->grammar);
 	ds_hash(fa->sthtab, fa->sthsize, fa->states, i);
     }
 
@@ -1248,10 +1260,11 @@ Uint *len;
 	fa->tmpssize = fa->tmppsize = 0;
     }
     if (fa->allocated) {
-	FREE(fa->dfastr);
+	IFREE(fa->env, fa->dfastr);
     }
     fa->dfastr = buf = *str =
-		 ALLOC(char, *len = fa->dfasize + fa->tmpssize + fa->tmppsize);
+		 IALLOC(fa->env, char,
+			*len = fa->dfasize + fa->tmpssize + fa->tmppsize);
     *buf++ = 0;
     *buf++ = fa->nstates >> 8;
     *buf++ = fa->nstates;
@@ -1346,7 +1359,7 @@ Uint *iset, *cset, ncset;
  * DESCRIPTION:	get the positions and strings for a new state
  */
 static unsigned short dfa_newstate(fa, state, newstate, ecset, cset)
-dfa *fa;
+register dfa *fa;
 register dfastate *state, *newstate;
 Uint *ecset, *cset;
 {
@@ -1374,8 +1387,8 @@ Uint *ecset, *cset;
 		if (size != 0) {
 		    posn[0] = rp->chain.name[0];
 		    posn[1] = rp->chain.name[1];
-		    rp = rp_new(fa->posnhtab, posn, size, &fa->rpc, rp->rgx,
-				fa->nposn, rp->ruleno, final);
+		    rp = rp_new(fa->env, fa->posnhtab, posn, size, &fa->rpc,
+				rp->rgx, fa->nposn, rp->ruleno, final);
 		    if (rp->nposn == fa->nposn) {
 			/* new position */
 			fa->nposn++;
@@ -1478,7 +1491,7 @@ dfastate *state;
     if (state->nstr != 0) {
 	newstr = ALLOCA(unsigned short, state->nstr);
     }
-    p = state->trans = ALLOC(char, 2 * 256);
+    p = state->trans = IALLOC(fa->env, char, 2 * 256);
     state->ntrans = fa->ecnum;
     state->alloc = TRUE;
     cset += (Uint) state->nstr << 3;
@@ -1519,12 +1532,14 @@ dfastate *state;
 		 * genuinely new state
 		 */
 		if (newstate->nposn > 1) {
-		    newstate->posn.a = ALLOC(rgxposn*, newstate->nposn);
+		    newstate->posn.a = IALLOC(fa->env, rgxposn*,
+					      newstate->nposn);
 		    memcpy(newstate->posn.a, newposn,
 			   newstate->nposn * sizeof(rgxposn*));
 		}
 		if (newstate->nstr > 2) {
-		    newstate->str.a = ALLOC(unsigned short, newstate->nstr);
+		    newstate->str.a = IALLOC(fa->env, unsigned short,
+					     newstate->nstr);
 		    memcpy(newstate->str.a, newstr,
 			   newstate->nstr * sizeof(unsigned short));
 		}
@@ -1540,8 +1555,8 @@ dfastate *state;
 		if (++fa->nstates == fa->sttsize) {
 		    /* grow table */
 		    size = state - fa->states;
-		    fa->states = REALLOC(fa->states, dfastate, fa->nstates,
-					 fa->sttsize <<= 1);
+		    fa->states = IREALLOC(fa->env, fa->states, dfastate,
+					  fa->nstates, fa->sttsize <<= 1);
 		    state = fa->states + size;
 		}
 	    }

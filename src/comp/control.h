@@ -13,10 +13,11 @@ extern char		*ctrl_fcall	P((string*, long*, int));
 extern unsigned short	 ctrl_gencall	P((long));
 extern unsigned short	 ctrl_var	P((string*, long*));
 extern bool		 ctrl_chkfuncs	P((void));
-extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));
 extern unsigned short	*ctrl_varmap	P((control*, control*));
+extern dsymbol		*ctrl_symb	P((control*, lpcenv*, char*,
+					   unsigned int));
 
 # define PROTO_CLASS(prot)	((prot)[0])
 # define PROTO_FTYPE(prot)	((prot)[1])

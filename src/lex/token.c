@@ -57,8 +57,8 @@ static bool seen_nl;		/* just seen a newline */
  */
 void tk_init()
 {
-    yytext1 = ALLOC(char, MAX_LINE_SIZE);
-    yytext2 = ALLOC(char, MAX_LINE_SIZE);
+    yytext1 = LALLOC(char, MAX_LINE_SIZE);
+    yytext2 = LALLOC(char, MAX_LINE_SIZE);
     tlist = (tchunk *) NULL;
     tchunksz = TCHUNKSZ;
     flist = (tbuf *) NULL;
@@ -90,7 +90,7 @@ bool eof;
 	if (tchunksz == TCHUNKSZ) {
 	    register tchunk *l;
 
-	    l = ALLOC(tchunk, 1);
+	    l = LALLOC(tchunk, 1);
 	    l->next = tlist;
 	    tlist = l;
 	    tchunksz = 0;
@@ -121,16 +121,16 @@ static void pop()
 	if (tb->u.mc != (macro *) NULL) {
 	    if (tb->u.mc->narg > 0) {
 		/* in the buffer a function-like macro has been expanded */
-		FREE(tb->buffer);
+		LFREE(tb->buffer);
 	    }
 	}
     } else {
 	if (tb->fd >= 0) {
 	    P_close(tb->fd);
-	    FREE(tb->buffer);
+	    LFREE(tb->buffer);
 	}
 	ibuffer = tbuffer->prev;
-	FREE(tb->u.filename);
+	LFREE(tb->u.filename);
     }
     tbuffer = tb->prev;
 
@@ -152,12 +152,12 @@ void tk_clear()
     for (l = tlist; l != (tchunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	LFREE(f);
     }
     tlist = (tchunk *) NULL;
     if (yytext1 != (char *) NULL) {
-	FREE(yytext2);
-	FREE(yytext1);
+	LFREE(yytext2);
+	LFREE(yytext1);
 	yytext1 = (char *) NULL;
 	yytext2 = (char *) NULL;
     }
@@ -190,7 +190,7 @@ register unsigned int len;
 		return FALSE;
 	    }
 					 
-	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
+	    push((macro *) NULL, LALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
 	    /* read from string */
 	    fd = -1;
@@ -203,7 +203,7 @@ register unsigned int len;
 	if (len >= STRINGSZ) {
 	    len = STRINGSZ - 1;
 	}
-	ibuffer->u.filename = strncpy(ALLOC(char, len + 1), file, len);
+	ibuffer->u.filename = strncpy(LALLOC(char, len + 1), file, len);
 	ibuffer->u.filename[len] = '\0';
 	ibuffer->line = 1;
 	seen_nl = TRUE;
@@ -265,7 +265,8 @@ char *file;
     if (len >= STRINGSZ) {
 	len = STRINGSZ - 1;
     }
-    ibuffer->u.filename = memcpy(REALLOC(ibuffer->u.filename, char, 0, len + 1),
+    ibuffer->u.filename = memcpy(LREALLOC(ibuffer->u.filename, char, 0,
+					  len + 1),
 				 file, len);
     ibuffer->u.filename[len] = '\0';
 }
@@ -704,7 +705,7 @@ int tk_gettok()
 
 			*p = '\0';
 			buf = yytext;
-			if (!flt_atof(&buf, &yyfloat)) {
+			if (!flt_atof(lexenv, &buf, &yyfloat)) {
 			    error("overflow in floating point constant");
 			}
 		    }
@@ -1273,7 +1274,7 @@ register macro *mc;
 	    if (narg < 0) {
 		error("macro expansion too large");
 	    } else {
-		push(mc, strcpy(ALLOC(char, narg + 1), ppbuf), narg, FALSE);
+		push(mc, strcpy(LALLOC(char, narg + 1), ppbuf), narg, FALSE);
 	    }
 	    return 1;
 	}

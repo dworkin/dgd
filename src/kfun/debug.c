@@ -44,7 +44,8 @@ char *func, *proto;
     putchar(')');
 }
 
-static void showctrl(ctrl)
+static void showctrl(env, ctrl)
+lpcenv *env;
 control *ctrl;
 {
     char tnbuf[17];
@@ -52,7 +53,8 @@ control *ctrl;
 
     printf("inherits:\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("  /%s (%u, %u)\n", OBJR(ctrl->inherits[i].oindex)->chain.name,
+	printf("  /%s (%u, %u)\n",
+	       OBJR(env, ctrl->inherits[i].oindex)->chain.name,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
     }
@@ -61,7 +63,7 @@ control *ctrl;
 	printf("string constants:\n");
 	for (i = 0; i < ctrl->nstrings; i++) {
 	    printf("%3u: \"%s\"\n", i,
-		   d_get_strconst(ctrl, ctrl->ninherits - 1, i)->text);
+		   d_get_strconst(env, ctrl, ctrl->ninherits - 1, i)->text);
 	}
     }
     if (ctrl->nfuncdefs > 0) {
@@ -69,7 +71,7 @@ control *ctrl;
 	printf("function definitions:\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
 	    printf("%3u: %08lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
-	    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[i].inherit,
+	    show_proto(d_get_strconst(env, ctrl, ctrl->funcdefs[i].inherit,
 				      ctrl->funcdefs[i].index)->text,
 		       d_get_prog(ctrl) + ctrl->funcdefs[i].offset);
 	    putchar('\n');
@@ -82,7 +84,7 @@ control *ctrl;
 	    printf("%3u: ", i);
 	    showclass(ctrl->vardefs[i].class);
 	    printf("%s %s\n", i_typename(tnbuf, ctrl->vardefs[i].type),
-		   d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
+		   d_get_strconst(env, ctrl, ctrl->vardefs[i].inherit,
 				  ctrl->vardefs[i].index)->text);
 	}
     }
@@ -93,10 +95,10 @@ control *ctrl;
 	    control *c2;
 	    dfuncdef *f;
 
-	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex)->ctrl;
+	    c2 = OBJR(env, ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex)->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->funcalls[2 * i + 1]);
 	    printf("%3u: %s(%d, %d)\n", i,
-		   d_get_strconst(c2, f->inherit, f->index)->text,
+		   d_get_strconst(env, c2, f->inherit, f->index)->text,
 		   UCHAR(ctrl->funcalls[2 * i]),
 		   UCHAR(ctrl->funcalls[2 * i + 1]));
 	}
@@ -110,9 +112,9 @@ control *ctrl;
 	    char *name;
 
 	    printf("%3u: (%u) ", i, ctrl->symbols[i].next);
-	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex)->ctrl;
+	    c2 = OBJR(env, ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex)->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
-	    name = d_get_strconst(c2, f->inherit, f->index)->text;
+	    name = d_get_strconst(env, c2, f->inherit, f->index)->text;
 	    show_proto(name, d_get_prog(c2) + f->offset);
 	    putchar('\n');
 	}
@@ -184,7 +186,8 @@ char *s;
     fflush(stdout);
 }
 
-void disasm(ctrl, func)
+void disasm(env, ctrl, func)
+lpcenv *env;
 control *ctrl;
 int func;
 {
@@ -198,7 +201,7 @@ int func;
     char fltbuf[18];
 
     pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
-    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
+    show_proto(d_get_strconst(env, ctrl, ctrl->funcdefs[func].inherit,
 			      ctrl->funcdefs[func].index)->text, pc);
     u2 = PROTO_CLASS(pc);
     if (u2 & C_UNDEFINED) {
@@ -268,7 +271,7 @@ int func;
 	    codesize = 2;
 	    u = FETCH1U(pc);
 	    sprintf(buffer, "PUSH_STRING \"%s\"",
-		    d_get_strconst(ctrl, ctrl->ninherits - 1, u)->text);
+		    d_get_strconst(env, ctrl, ctrl->ninherits - 1, u)->text);
 	    show_instr(buffer);
 	    break;
 
@@ -277,7 +280,7 @@ int func;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    sprintf(buffer, "PUSH_NEAR_STRING \"%s\"",
-		    d_get_strconst(ctrl, u, u2)->text);
+		    d_get_strconst(env, ctrl, u, u2)->text);
 	    show_instr(buffer);
 	    break;
 
@@ -286,7 +289,7 @@ int func;
 	    u = FETCH1U(pc);
 	    FETCH2U(pc, u2);
 	    sprintf(buffer, "PUSH_FAR_STRING \"%s\"",
-		    d_get_strconst(ctrl, u, u2)->text);
+		    d_get_strconst(env, ctrl, u, u2)->text);
 	    show_instr(buffer);
 	    break;
 
@@ -301,7 +304,7 @@ int func;
 	    u = FETCH1U(pc);
 	    d_get_vardefs(ctrl);
 	    sprintf(buffer, "PUSH_GLOBAL %s",
-		    d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
+		    d_get_strconst(env, ctrl, ctrl->vardefs[u].inherit,
 				   ctrl->vardefs[u].index)->text);
 	    show_instr(buffer);
 	    break;
@@ -310,10 +313,10 @@ int func;
 	    codesize = 3;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
+	    cc = OBJR(env, ctrl->inherits[u].oindex)->ctrl;
 	    d_get_vardefs(cc);
 	    sprintf(buffer, "PUSH_FAR_GLOBAL %s",
-		    d_get_strconst(cc, cc->vardefs[u2].inherit,
+		    d_get_strconst(env, cc, cc->vardefs[u2].inherit,
 				   cc->vardefs[u2].index)->text);
 	    show_instr(buffer);
 	    break;
@@ -339,7 +342,7 @@ int func;
 		u = FETCH1U(pc);
 		d_get_vardefs(ctrl);
 		sprintf(buffer, "PUSH_GLOBAL_LVALUE %s (%s)",
-			d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
+			d_get_strconst(env, ctrl, ctrl->vardefs[u].inherit,
 				       ctrl->vardefs[u].index)->text,
 			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
@@ -347,7 +350,7 @@ int func;
 		u = FETCH1U(pc);
 		d_get_vardefs(ctrl);
 		sprintf(buffer, "PUSH_GLOBAL_LVALUE %s",
-			d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
+			d_get_strconst(env, ctrl, ctrl->vardefs[u].inherit,
 				       ctrl->vardefs[u].index)->text);
 	    }
 	    show_instr(buffer);
@@ -359,20 +362,20 @@ int func;
 		codesize = 4;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
-		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
+		cc = OBJR(env, ctrl->inherits[u].oindex)->ctrl;
 		d_get_vardefs(cc);
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s (%s)",
-			d_get_strconst(cc, cc->vardefs[u2].inherit,
+			d_get_strconst(env, cc, cc->vardefs[u2].inherit,
 				       cc->vardefs[u2].index)->text,
 			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
 		codesize = 3;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
-		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
+		cc = OBJR(env, ctrl->inherits[u].oindex)->ctrl;
 		d_get_vardefs(cc);
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s",
-			d_get_strconst(cc, cc->vardefs[u2].inherit,
+			d_get_strconst(env, cc, cc->vardefs[u2].inherit,
 				       cc->vardefs[u2].index)->text);
 	    }
 	    show_instr(buffer);
@@ -549,7 +552,7 @@ int func;
 		    int i;
 
 		    i = FETCH1U(pc);
-		    str = d_get_strconst(ctrl, i, FETCH2S(pc, u2));
+		    str = d_get_strconst(env, ctrl, i, FETCH2S(pc, u2));
 		    sprintf(buffer, " CASE \"%s\": %04x", str->text,
 			    FETCH2U(pc, u2));
 		    show_instr(buffer);
@@ -578,10 +581,10 @@ int func;
 	case I_CALL_AFUNC:
 	    codesize = 3;
 	    u = FETCH1U(pc);
-	    cc = OBJR(ctrl->inherits[0].oindex)->ctrl;
+	    cc = OBJR(env, ctrl->inherits[0].oindex)->ctrl;
 	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_AFUNC %s %u",
-		    d_get_strconst(cc, cc->funcdefs[u].inherit,
+		    d_get_strconst(env, cc, cc->funcdefs[u].inherit,
 				   cc->funcdefs[u].index)->text,
 		    FETCH1U(pc));
 	    show_instr(buffer);
@@ -591,10 +594,10 @@ int func;
 	    codesize = 4;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
+	    cc = OBJR(env, ctrl->inherits[u].oindex)->ctrl;
 	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_DFUNC %s %u",
-		    d_get_strconst(cc, cc->funcdefs[u2].inherit,
+		    d_get_strconst(env, cc, cc->funcdefs[u2].inherit,
 				   cc->funcdefs[u2].index)->text,
 		    FETCH1U(pc));
 	    show_instr(buffer);
@@ -606,10 +609,10 @@ int func;
 	    u += ctrl->inherits[ctrl->ninherits - 1].funcoffset;
 	    u2 = UCHAR(d_get_funcalls(ctrl)[2 * u]);
 	    u3 = UCHAR(ctrl->funcalls[2 * u + 1]);
-	    cc = OBJR(ctrl->inherits[u2].oindex)->ctrl;
+	    cc = OBJR(env, ctrl->inherits[u2].oindex)->ctrl;
 	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_FUNC [%u, %u] %s %u", u2, u3,
-		    d_get_strconst(cc, cc->funcdefs[u3].inherit,
+		    d_get_strconst(env, cc, cc->funcdefs[u3].inherit,
 				   cc->funcdefs[u3].index)->text,
 		    FETCH1U(pc));
 	    show_instr(buffer);
@@ -660,9 +663,9 @@ frame *f;
 	n = f->sp->oindex;
     } else {
 	n = f->sp->u.array->elts[0].oindex;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
     }
-    showctrl(o_control(OBJR(n)));
+    showctrl(f->env, o_control(f->env, OBJR(f->env, n)));
     fflush(stdout);
     *f->sp = nil_value;
     return 0;
@@ -687,12 +690,15 @@ frame *f;
 	n = f->sp[1].oindex;
     } else {
 	n = f->sp[1].u.array->elts[0].oindex;
-	arr_del(f->sp[1].u.array);
+	arr_del(f->env, f->sp[1].u.array);
     }
-    ctrl = o_control(OBJR(n));
-    symb = ctrl_symb(ctrl, f->sp->u.string->text, f->sp->u.string->len);
+    ctrl = o_control(f->env, OBJR(f->env, n));
+    symb = ctrl_symb(ctrl, f->env, f->sp->u.string->text, f->sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
-	disasm(o_control(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)),
+	disasm(f->env,
+	       o_control(f->env,
+			 OBJR(f->env,
+			      ctrl->inherits[UCHAR(symb->inherit)].oindex)),
 	       UCHAR(symb->index));
 	fflush(stdout);
     }

@@ -1,7 +1,7 @@
 # include "line.h"
 
 typedef struct {
-    linebuf *lb;		/* line buffer */
+    struct _linebuf_ *lb;	/* line buffer */
     block buffer;		/* the actual edit buffer */
     Int lines;			/* # lines in edit buffer */
 

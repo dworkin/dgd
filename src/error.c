@@ -8,7 +8,7 @@
 # include "comm.h"
 
 typedef struct _context_ {
-    jmp_buf env;			/* error context */
+    jmp_buf jump;			/* error context */
     frame *f;				/* frame context */
     unsigned short offset;		/* sp offset */
     rlinfo *rlim;			/* rlimits info */
@@ -16,19 +16,38 @@ typedef struct _context_ {
     struct _context_ *next;		/* next in linked list */
 } context;
 
-static context firstcontext;		/* bottom context */
-static context *econtext;		/* current error context */
-static string *errstr;			/* current error string */
+typedef struct _errenv_ {
+    context firstcontext;		/* bottom context */
+    context *econtext;			/* current error context */
+    string *errstr;			/* current error string */
+} errenv;
+
+
+/*
+ * NAME:	errcontext->new_env()
+ * DESCRIPTION:	create a new error environment
+ */
+errenv *ec_new_env()
+{
+    register errenv *ee;
+
+    ee = SALLOC(errenv, 1);
+    ee->econtext = (context *) NULL;
+    ee->errstr = (string *) NULL;
+
+    return ee;
+}
 
 /*
  * NAME:	errcontext->clear()
  * DESCRIPTION:	clear the error context string
  */
-void ec_clear()
+void ec_clear(env)
+register lpcenv *env;
 {
-    if (errstr != (string *) NULL) {
-	str_del(errstr);
-	errstr = (string *) NULL;
+    if (env->ee->errstr != (string *) NULL) {
+	str_del(env, env->ee->errstr);
+	env->ee->errstr = (string *) NULL;
     }
 }
 
@@ -36,45 +55,47 @@ void ec_clear()
  * NAME:	errcontext->_push_()
  * DESCRIPTION:	push and return the current errorcontext
  */
-jmp_buf *_ec_push_(handler)
+jmp_buf *_ec_push_(env, handler)
+register lpcenv *env;
 ec_ftn handler;
 {
     register context *e;
 
-    if (econtext == (context *) NULL) {
-	e = &firstcontext;
+    if (env->ee->econtext == (context *) NULL) {
+	e = &env->ee->firstcontext;
     } else {
-	e = ALLOC(context, 1);
+	e = IALLOC(env, context, 1);
     }
-    e->f = cframe;
-    e->offset = cframe->fp - cframe->sp;
-    e->rlim = cframe->rlim;
+    e->f = env->ie->cframe;
+    e->offset = env->ie->cframe->fp - env->ie->cframe->sp;
+    e->rlim = env->ie->cframe->rlim;
 
     e->handler = handler;
-    e->next = econtext;
-    econtext = e;
-    return &e->env;
+    e->next = env->ee->econtext;
+    env->ee->econtext = e;
+    return &e->jump;
 }
 
 /*
  * NAME:	errcontext->pop()
  * DESCRIPTION:	pop the current errorcontext
  */
-void ec_pop()
+void ec_pop(env)
+register lpcenv *env;
 {
     register context *e;
 
-    e = econtext;
+    e = env->ee->econtext;
 # ifdef DEBUG
     if (e == (context *) NULL) {
 	fatal("pop empty error stack");
     }
 # endif
-    econtext = e->next;
-    if (e != &firstcontext) {
-	FREE(e);
+    env->ee->econtext = e->next;
+    if (e != &env->ee->firstcontext) {
+	IFREE(env, e);
     } else {
-	ec_clear();
+	ec_clear(env);
     }
 }
 
@@ -92,74 +113,85 @@ Int depth;
  * NAME:	errorstr()
  * DESCRIPTION:	return the current error string
  */
-string *errorstr()
+string *errorstr(env)
+lpcenv *env;
 {
-    return errstr;
+    return env->ee->errstr;
 }
 
 /*
  * NAME:	serror()
  * DESCRIPTION:	cause an error, with a string argument
  */
-void serror(str)
+void serror(env, str)
+register lpcenv *env;
 string *str;
 {
-    jmp_buf env;
+    jmp_buf jump;
     register context *e;
     frame *f;
     int offset;
     ec_ftn handler;
 
     if (str != (string *) NULL) {
-	if (errstr != (string *) NULL) {
-	    str_del(errstr);
+	if (env->ee->errstr != (string *) NULL) {
+	    str_del(env, env->ee->errstr);
 	}
-	str_ref(errstr = str);
+	str_ref(env->ee->errstr = str);
 # ifdef DEBUG
-    } else if (errstr == (string *) NULL) {
+    } else if (env->ee->errstr == (string *) NULL) {
 	fatal("no error string");
 # endif
     }
 
-    e = econtext;
+    e = env->ee->econtext;
     f = e->f;
     offset = e->offset;
-    memcpy(&env, &e->env, sizeof(jmp_buf));
+    memcpy(&jump, &e->jump, sizeof(jmp_buf));
 
-    cframe = i_restore(cframe, f->level);
-    do {
+    env->ie->cframe = i_restore(env->ie->cframe, f->level);
+    for (;;) {
 	if (e->handler != (ec_ftn) NULL) {
 	    handler = e->handler;
 	    e->handler = (ec_ftn) ec_handler;
-	    (*handler)(cframe, e->f->depth);
+	    (*handler)(env->ie->cframe, e->f->depth);
 	    break;
 	}
 	e = e->next;
-    } while (e != (context *) NULL);
-
-    if (cframe->rlim != econtext->rlim) {
-	i_set_rlimits(cframe, econtext->rlim);
+	if (e == (context *) NULL) {
+	    /*
+	     * default error handler: print message on stdout
+	     */
+	    P_message(env->ee->errstr->text);
+	    P_message("\012");			/* LF */
+	    break;
+	}
     }
-    cframe = i_set_sp(cframe, f->fp - offset);
-    cframe->rlim = econtext->rlim;
-    ec_pop();
-    longjmp(env, 1);
+
+    if (env->ie->cframe->rlim != env->ee->econtext->rlim) {
+	i_set_rlimits(env->ie->cframe, env->ee->econtext->rlim);
+    }
+    env->ie->cframe = i_set_sp(env->ie->cframe, f->fp - offset);
+    env->ie->cframe->rlim = env->ee->econtext->rlim;
+    ec_pop(env);
+    longjmp(jump, 1);
 }
 
 /*
  * NAME:	error()
  * DESCRIPTION:	cause an error
  */
-void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
+void error(env, format, arg1, arg2, arg3, arg4, arg5, arg6)
+register lpcenv *env;
 char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     char ebuf[4 * STRINGSZ];
-
+	    
     if (format != (char *) NULL) {
 	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	serror(str_new(ebuf, (long) strlen(ebuf)));
+	serror(env, str_new(env, ebuf, (long) strlen(ebuf)));
     } else {
-	serror((string *) NULL);
+	serror(env, (string *) NULL);
     }
 }
 
@@ -194,19 +226,6 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     char ebuf[4 * STRINGSZ];
 
-    if (format == (char *) NULL) {
-# ifdef DEBUG
-	if (errstr == (string *) NULL) {
-	    fatal("no error string");
-	}
-# endif
-	if (errstr->len <= sizeof(ebuf) - 2) {
-	    sprintf(ebuf, "%s\012", errstr->text);
-	} else {
-	    strcpy(ebuf, "[too long error string]\012");
-	}
-    } else {
-	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
-    }
+    sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     P_message(ebuf);	/* show message */
 }

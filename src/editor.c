@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "data.h"
 # include "interpret.h"
 # include "edcmd.h"
 # include "editor.h"
@@ -20,6 +21,7 @@ static Uint outbufsz;		/* chars in output buffer */
 static eindex newed;		/* new editor in current thread */
 static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
+static lpcenv *edenv;		/* editor environment */
 
 /*
  * NAME:	ed->init()
@@ -35,8 +37,8 @@ register int num;
     f = (editor *) NULL;
     neditors = num;
     if (num != 0) {
-	outbuf = ALLOC(char, USHRT_MAX + 1);
-	editors = ALLOC(editor, num);
+	outbuf = SALLOC(char, USHRT_MAX + 1);
+	editors = SALLOC(editor, num);
 	for (e = editors + num; num != 0; --num) {
 	    (--e)->ed = (cmdbuf *) NULL;
 	    e->next = f;
@@ -76,10 +78,11 @@ void ed_clear()
  * NAME:	check_recursion()
  * DESCRIPTION:	check for recursion in editor commands
  */
-static void check_recursion()
+static void check_recursion(env)
+lpcenv *env;
 {
     if (recursion) {
-	error("Recursion in editor command");
+	error(env, "Recursion in editor command");
     }
 }
 
@@ -87,19 +90,20 @@ static void check_recursion()
  * NAME:	ed->new()
  * DESCRIPTION:	start a new editor
  */
-void ed_new(obj)
+void ed_new(obj, env)
 object *obj;
+lpcenv *env;
 {
     char tmp[STRINGSZ + 3];
     register editor *e;
 
-    check_recursion();
+    check_recursion(env);
     if (EINDEX(newed) != EINDEX_MAX) {
-	error("Too many simultaneous editors started");
+	error(env, "Too many simultaneous editors started");
     }
     e = flist;
     if (e == (editor *) NULL) {
-	error("Too many editor instances");
+	error(env, "Too many editor instances");
     }
     flist = e->next;
     obj->etabi = newed = e - editors;
@@ -113,12 +117,13 @@ object *obj;
  * NAME:	ed->del()
  * DESCRIPTION:	delete an editor instance
  */
-void ed_del(obj)
+void ed_del(obj, env)
 object *obj;
+lpcenv *env;
 {
     register editor *e;
 
-    check_recursion();
+    check_recursion(env);
     e = &editors[EINDEX(obj->etabi)];
     cb_del(e->ed);
     if (obj->etabi == newed) {
@@ -148,45 +153,47 @@ Int depth;
  * NAME:	ed->command()
  * DESCRIPTION:	handle an editor command
  */
-string *ed_command(obj, cmd)
+string *ed_command(obj, env, cmd)
 object *obj;
+lpcenv *env;
 char *cmd;
 {
     register editor *e;
     extern void output();
 
-    check_recursion();
+    check_recursion(env);
     if (strchr(cmd, LF) != (char *) NULL) {
-	error("Newline in editor command");
+	error(env, "Newline in editor command");
     }
 
     e = &editors[EINDEX(obj->etabi)];
     outbufsz = 0;
     internal = FALSE;
-    if (ec_push((ec_ftn) ed_handler)) {
+    if (ec_push(env, (ec_ftn) ed_handler)) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;
 	if (!internal) {
-	    error((char *) NULL);	/* pass on error */
+	    error(env, (char *) NULL);	/* pass on error */
 	}
-	output("%s\012", errorstr()->text);	/* LF */
+	output("%s\012", errorstr(env)->text);	/* LF */
     } else {
+	edenv = env;
 	recursion = TRUE;
-	if (cb_command(e->ed, cmd)) {
+	if (cb_command(e->ed, env, cmd)) {
 	    lb_inact(e->ed->edbuf->lb);
 	    recursion = FALSE;
 	} else {
 	    recursion = FALSE;
-	    ed_del(obj);
+	    ed_del(obj, env);
 	}
-	ec_pop();
+	ec_pop(env);
     }
 
     if (outbufsz == 0) {
 	return (string *) NULL;
     }
-    return str_new(outbuf, (long) outbufsz);
+    return str_new(env, outbuf, (long) outbufsz);
 }
 
 /*
@@ -213,7 +220,7 @@ char *f, *a1, *a2, *a3;
     sprintf(buf, f, a1, a2, a3);
     len = strlen(buf);
     if (outbufsz + len > USHRT_MAX) {
-	error("Editor output string too long");
+	error(edenv, "Editor output string too long");
     }
     memcpy(outbuf + outbufsz, buf, len);
     outbufsz += len;
@@ -229,5 +236,5 @@ char *f, *a1, *a2, *a3;
     if (f != (char *) NULL) {
 	internal = TRUE;
     }
-    error(f, a1,a2, a3);
+    error(edenv, f, a1,a2, a3);
 }

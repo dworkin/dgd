@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "hash.h"
 # include "table.h"
 # include "node.h"
@@ -28,7 +28,7 @@ static oh **olist;		/* list of all object hash table entries */
  */
 static void oh_init()
 {
-    otab = ht_new(OMERGETABSZ, OBJHASHSZ);
+    otab = ht_new(comppool, OMERGETABSZ, OBJHASHSZ);
 }
 
 /*
@@ -45,7 +45,7 @@ char *name;
 	/*
 	 * new object
 	 */
-	*h = ALLOC(oh, 1);
+	*h = CALLOC(oh, 1);
 	(*h)->chain.next = (hte *) NULL;
 	(*h)->chain.name = name;
 	(*h)->index = 0;		/* new object */
@@ -68,12 +68,12 @@ static void oh_clear()
     for (h = olist; h != (oh **) NULL; ) {
 	f = *h;
 	h = f->next;
-	FREE(f);
+	CFREE(f);
     }
     olist = (oh **) NULL;
 
     if (otab != (hashtab *) NULL) {
-	ht_del(otab);
+	ht_del(comppool, otab);
 	otab = (hashtab *) NULL;
     }
 }
@@ -113,7 +113,7 @@ vfh **addr;
     if (vfhchunksz == VFH_CHUNK) {
 	register vfhchunk *l;
 
-	l = ALLOC(vfhchunk, 1);
+	l = CALLOC(vfhchunk, 1);
 	l->next = vfhclist;
 	vfhclist = l;
 	vfhchunksz = 0;
@@ -139,12 +139,12 @@ static void vfh_clear()
 
     for (l = vfhclist; l != (vfhchunk *) NULL; ) {
 	for (vf = l->vf; vfhchunksz != 0; vf++, --vfhchunksz) {
-	    str_del(vf->str);
+	    str_del(compenv, vf->str);
 	}
 	vfhchunksz = VFH_CHUNK;
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     vfhclist = (vfhchunk *) NULL;
 }
@@ -168,7 +168,7 @@ oh *ohash;
 {
     register lab *l;
 
-    l = ALLOC(lab, 1);
+    l = CALLOC(lab, 1);
     str_ref(l->str = str);
     l->ohash = ohash;
     l->next = labels;
@@ -202,10 +202,10 @@ static void lab_clear()
 
     l = labels;
     while (l != (lab *) NULL) {
-	str_del(l->str);
+	str_del(compenv, l->str);
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     labels = (lab *) NULL;
 }
@@ -291,8 +291,8 @@ void ctrl_init(flag)
 bool flag;
 {
     oh_init();
-    vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
-    ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
+    vtab = ht_new(comppool, VFMERGETABSZ, VFMERGEHASHSZ);
+    ftab = ht_new(comppool, VFMERGETABSZ, VFMERGEHASHSZ);
     countint = flag;
 }
 
@@ -317,7 +317,7 @@ register control *ctrl;
 	 * same name hasn't been inherited already.
 	 */
 	if (!(v->class & C_PRIVATE)) {
-	    str = d_get_strconst(ctrl, v->inherit, v->index);
+	    str = d_get_strconst(compenv, ctrl, v->inherit, v->index);
 	    h = (vfh **) ht_lookup(vtab, str->text, FALSE);
 	    if (*h == (vfh *) NULL) {
 		/* new variable */
@@ -347,7 +347,7 @@ oh *ohash;
     string *str;
 
     f = &ctrl->funcdefs[idx];
-    str = d_get_strconst(ctrl, f->inherit, f->index);
+    str = d_get_strconst(compenv, ctrl, f->inherit, f->index);
     if (ohash->priv != 0 && (f->class & C_NOMASK)) {
 	/*
 	 * privately inherited nomask function is not allowed
@@ -634,9 +634,9 @@ int priv;
 	/*
 	 * new inherited object
 	 */
-	ctrl = o_control(obj);
+	ctrl = o_control(compenv, obj);
 	inh = ctrl->inherits;
-	if (ndirects != 0 && strcmp(OBJR(inh->oindex)->chain.name,
+	if (ndirects != 0 && strcmp(OBJR(compenv, inh->oindex)->chain.name,
 				    directs[0]->obj->chain.name) != 0) {
 	    c_error("inherited different auto objects");
 	}
@@ -646,7 +646,7 @@ int priv;
 	     * check if object inherits destructed objects
 	     */
 	    --inh;
-	    o = OBJR(inh->oindex);
+	    o = OBJR(compenv, inh->oindex);
 	    if (o->count == 0) {
 		Uint ocount;
 
@@ -666,7 +666,7 @@ int priv;
 		f->sp->oindex = obj->index;
 		f->sp->u.objcnt = ocount = obj->count;
 		call_driver_object(f, "recompile", 1);
-		i_del_value(f->sp++);
+		i_del_value(f->env, f->sp++);
 		if (obj->count != ocount) {
 		    return FALSE;	/* recompile this object */
 		}
@@ -678,7 +678,7 @@ int priv;
 	     * check if inherited objects have been inherited before
 	     */
 	    --inh;
-	    o = OBJR(inh->oindex);
+	    o = OBJR(compenv, inh->oindex);
 	    ohash = oh_new(o->chain.name);
 	    if (ohash->index == 0) {
 		/*
@@ -686,7 +686,7 @@ int priv;
 		 */
 		ohash->obj = o;
 		ohash->index = 2;	/* indirect */
-		nvinit += o_control(o)->nifdefs;
+		nvinit += o_control(compenv, o)->nifdefs;
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
@@ -763,10 +763,10 @@ int priv;
 	     * previously inherited with greater privateness; process all
 	     * objects inherited by this object
 	     */
-	    ctrl = o_control(obj);
+	    ctrl = o_control(compenv, obj);
 	    for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
 		--inh;
-		o = OBJR(inh->oindex);
+		o = OBJR(compenv, inh->oindex);
 		ohash = oh_new(o->chain.name);
 		if (!inh->priv && ohash->priv > priv) {
 		    /*
@@ -817,7 +817,7 @@ static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *str_list;		/* list of string chunks */
 static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
 static Uint nstrs;			/* # of strings in all string chunks */
-static strmerge *smerge;		/* string merge table */
+static struct _strmerge_ *smerge;	/* string merge table */
 static fcchunk *fclist;			/* list of fcall chunks */
 static int fcchunksz = FCALL_CHUNK;	/* size of current fcall chunk */
 static cfunc *functions;		/* defined functions table */
@@ -842,11 +842,11 @@ void ctrl_create()
      */
     newohash = oh_new("/");		/* unique name */
     newohash->index = count = ninherits;
-    newctrl = d_new_control();
-    new = newctrl->inherits = ALLOC(dinherit, newctrl->ninherits = count + 1);
+    newctrl = d_new_control(compenv);
+    new = newctrl->inherits = CALLOC(dinherit, newctrl->ninherits = count + 1);
     new += count;
     nvars = 0;
-    smerge = str_merge();
+    smerge = str_merge(compenv);
 
     if (ninherits > 0) {
 	register oh *ohash;
@@ -866,7 +866,7 @@ void ctrl_create()
 		 * do this ctrl->ninherits - 1 times, but at least once
 		 */
 		do {
-		    ohash = oh_new(OBJR(old->oindex)->chain.name);
+		    ohash = oh_new(OBJR(compenv, old->oindex)->chain.name);
 		    --old;
 		    (--new)->oindex = ohash->obj->index;
 		    ohash->index = --count;	/* may happen more than once */
@@ -880,7 +880,7 @@ void ctrl_create()
 	 * table.
 	 */
 	for (count = 0; count < ninherits; count++) {
-	    ohash = oh_new(OBJR(new->oindex)->chain.name);
+	    ohash = oh_new(OBJR(compenv, new->oindex)->chain.name);
 	    i = ohash->index;
 	    if (i == count) {
 		ctrl = ohash->obj->ctrl;
@@ -899,7 +899,8 @@ void ctrl_create()
 
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
-		    str_put(smerge, d_get_strconst(ctrl, i, n),
+		    str_put(compenv, smerge,
+			    d_get_strconst(compenv, ctrl, i, n),
 			    ((Uint) count << 16) | n);
 		}
 	    } else {
@@ -923,8 +924,8 @@ void ctrl_create()
     /*
      * prepare for construction of a new control block
      */
-    functions = ALLOC(cfunc, 256);
-    variables = ALLOC(dvardef, 256);
+    functions = CALLOC(cfunc, 256);
+    variables = CALLOC(dvardef, 256);
     progsize = 0;
     nstrs = 0;
     nfdefs = 0;
@@ -942,7 +943,8 @@ string *str;
 {
     register Uint desc, new;
 
-    desc = str_put(smerge, str, new = ((Uint) ninherits << 16) | nstrs);
+    desc = str_put(compenv, smerge, str,
+		   new = ((Uint) ninherits << 16) | nstrs);
     if (desc == new) {
 	/*
 	 * it is really a new string
@@ -950,7 +952,7 @@ string *str;
 	if (strchunksz == STRING_CHUNK) {
 	    register strchunk *l;
 
-	    l = ALLOC(strchunk, 1);
+	    l = CALLOC(strchunk, 1);
 	    l->next = str_list;
 	    str_list = l;
 	    strchunksz = 0;
@@ -1024,7 +1026,7 @@ register char *proto;
 		i = PROTO_SIZE(proto);
 		progsize += i - PROTO_SIZE(proto2);
 		functions[fdef = (*h)->index].proto =
-			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
+			(char *) memcpy(CREALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.class = PROTO_CLASS(proto);
 	    }
 	    return;
@@ -1099,7 +1101,7 @@ register char *proto;
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].name = str->text;
-    functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
+    functions[nfdefs].proto = (char *) memcpy(CALLOC(char, i), proto, i);
     functions[nfdefs].progsize = 0;
     progsize += i;
     func = &functions[nfdefs++].func;
@@ -1201,7 +1203,7 @@ long *call;
 	    return (char *) NULL;
 	}
 	inherit = ohash->index;
-	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
+	symb = ctrl_symb(ctrl = ohash->obj->ctrl, compenv, str->text, str->len);
 	if (symb == (dsymbol *) NULL) {
 	    /*
 	     * It may seem strange to allow label::kfun, but remember that they
@@ -1216,7 +1218,7 @@ long *call;
 	    c_error("undefined function %s::%s", label, str->text);
 	    return (char *) NULL;
 	}
-	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
+	ohash = oh_new(OBJR(compenv, ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
 	index = UCHAR(symb->index);
     } else {
 	register vfh *h;
@@ -1358,9 +1360,9 @@ long call;
 	control *ctrl;
 	dfuncdef *f;
 
-	ctrl = OBJR(newctrl->inherits[inherit].oindex)->ctrl;
+	ctrl = OBJR(compenv, newctrl->inherits[inherit].oindex)->ctrl;
 	f = ctrl->funcdefs + index;
-	name = d_get_strconst(ctrl, f->inherit, f->index)->text;
+	name = d_get_strconst(compenv, ctrl, f->inherit, f->index)->text;
     }
     h = *(vfh **) ht_lookup(ftab, name, FALSE);
     if (h->ct == (unsigned short) -1) {
@@ -1370,7 +1372,7 @@ long call;
 	if (fcchunksz == FCALL_CHUNK) {
 	    register fcchunk *l;
 
-	    l = ALLOC(fcchunk, 1);
+	    l = CALLOC(fcchunk, 1);
 	    l->next = fclist;
 	    fclist = l;
 	    fcchunksz = 0;
@@ -1505,7 +1507,7 @@ static void ctrl_mkstrings()
 
     strsize = 0;
     if ((newctrl->nstrings = nstrs) != 0) {
-	newctrl->strings = ALLOC(string*, newctrl->nstrings);
+	newctrl->strings = CALLOC(string*, newctrl->nstrings);
 	s = newctrl->strings + nstrs;
 	i = strchunksz;
 	for (l = str_list; l != (strchunk *) NULL; ) {
@@ -1516,7 +1518,7 @@ static void ctrl_mkstrings()
 	    i = STRING_CHUNK;
 	    f = l;
 	    l = l->next;
-	    FREE(f);
+	    CFREE(f);
 	}
 	str_list = (strchunk *) NULL;
 	strchunksz = i;
@@ -1538,8 +1540,8 @@ static void ctrl_mkfuncs()
 
     newctrl->progsize = progsize;
     if ((newctrl->nfuncdefs = nfdefs) != 0) {
-	p = newctrl->prog = ALLOC(char, progsize);
-	d = newctrl->funcdefs = ALLOC(dfuncdef, nfdefs);
+	p = newctrl->prog = CALLOC(char, progsize);
+	d = newctrl->funcdefs = CALLOC(dfuncdef, nfdefs);
 	f = functions;
 	for (i = nfdefs; i > 0; --i) {
 	    *d = f->func;
@@ -1564,7 +1566,7 @@ static void ctrl_mkfuncs()
 static void ctrl_mkvars()
 {
     if ((newctrl->nvardefs = nvars) != 0) {
-	newctrl->vardefs = ALLOC(dvardef, nvars);
+	newctrl->vardefs = CALLOC(dvardef, nvars);
 	memcpy(newctrl->vardefs, variables, nvars * sizeof(dvardef));
     }
 }
@@ -1586,14 +1588,14 @@ static void ctrl_mkfcalls()
     if (newctrl->nfuncalls == 0) {
 	return;
     }
-    fc = newctrl->funcalls = ALLOC(char, 2L * newctrl->nfuncalls);
+    fc = newctrl->funcalls = CALLOC(char, 2L * newctrl->nfuncalls);
     for (i = 0, inh = newctrl->inherits; i < ninherits; i++, inh++) {
 	/*
 	 * Walk through the list of inherited objects, starting with the auto
 	 * object, and fill in the function call table segment for each object
 	 * once.
 	 */
-	ohash = oh_new(OBJR(inh->oindex)->chain.name);
+	ohash = oh_new(OBJR(compenv, inh->oindex)->chain.name);
 	if (ohash->index == i) {
 	    register char *ofc;
 	    register dfuncdef *f;
@@ -1609,7 +1611,8 @@ static void ctrl_mkfcalls()
 	    ofc = d_get_funcalls(ctrl) + 2L * ctrl->inherits[j].funcoffset;
 	    for (n = ctrl->nfuncalls - ctrl->inherits[j].funcoffset; n > 0; --n)
 	    {
-		ctrl2 = OBJR(ctrl->inherits[UCHAR(ofc[0])].oindex)->ctrl;
+		ctrl2 = OBJR(compenv,
+			     ctrl->inherits[UCHAR(ofc[0])].oindex)->ctrl;
 		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
 		if (inh->priv || (f->class & C_PRIVATE) ||
 		    (f->class & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
@@ -1622,7 +1625,8 @@ static void ctrl_mkfcalls()
 		    *fc++ = ofc[1];
 		} else {
 		    h = *(vfh **) ht_lookup(ftab,
-					    d_get_strconst(ctrl2, f->inherit,
+					    d_get_strconst(compenv, ctrl2,
+							   f->inherit,
 							   f->index)->text,
 					    FALSE);
 		    if (h->ohash->index == ninherits &&
@@ -1671,7 +1675,7 @@ static void ctrl_mksymbs()
     }
 
     /* initialize */
-    symtab = newctrl->symbols = ALLOC(dsymbol, nsymbs);
+    symtab = newctrl->symbols = CALLOC(dsymbol, nsymbs);
     for (i = nsymbs; i > 0; --i) {
 	symtab->next = -1;	/* mark as unused */
 	symtab++;
@@ -1691,8 +1695,8 @@ static void ctrl_mksymbs()
 	if (i == ninherits) {
 	    ctrl = newctrl;
 	} else if (!inh->priv &&
-		   oh_new(OBJR(inh->oindex)->chain.name)->index == i) {
-	    ctrl = OBJR(inh->oindex)->ctrl;
+		   oh_new(OBJR(compenv, inh->oindex)->chain.name)->index == i) {
+	    ctrl = OBJR(compenv, inh->oindex)->ctrl;
 	} else {
 	    continue;
 	}
@@ -1706,7 +1710,7 @@ static void ctrl_mksymbs()
 		 (f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC)) {
 		continue;	/* not in symbol table */
 	    }
-	    name = d_get_strconst(ctrl, f->inherit, f->index)->text;
+	    name = d_get_strconst(compenv, ctrl, f->inherit, f->index)->text;
 	    h = *(vfh **) ht_lookup(ftab, name, FALSE);
 	    if (h->ohash->index == ninherits &&
 		(functions[h->index].func.class & C_PRIVATE)) {
@@ -1770,56 +1774,6 @@ static void ctrl_mksymbs()
 }
 
 /*
- * NAME:	control->symb()
- * DESCRIPTION:	return the entry in the symbol table for func, or NULL
- */
-dsymbol *ctrl_symb(ctrl, func, len)
-register control *ctrl;
-char *func;
-unsigned int len;
-{
-    register dsymbol *symb;
-    register dfuncdef *f;
-    register unsigned int i, j;
-    register string *str;
-    dsymbol *symtab, *symb1;
-    dinherit *inherits;
-
-    if ((i=ctrl->nsymbols) == 0) {
-	return (dsymbol *) NULL;
-    }
-
-    inherits = ctrl->inherits;
-    symtab = d_get_symbols(ctrl);
-    i = hashstr(func, VFMERGEHASHSZ) % i;
-    symb1 = symb = &symtab[i];
-    ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
-    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
-    str = d_get_strconst(ctrl, f->inherit, f->index);
-    if (len == str->len && memcmp(func, str->text, len) == 0) {
-	/* found it */
-	return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
-    }
-    while (i != symb->next) {
-	symb = &symtab[i = symb->next];
-	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
-	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
-	str = d_get_strconst(ctrl, f->inherit, f->index);
-	if (len == str->len && memcmp(func, str->text, len) == 0) {
-	    /* found it: put symbol first in linked list */
-	    i = symb1->inherit;
-	    j = symb1->index;
-	    symb1->inherit = symb->inherit;
-	    symb1->index = symb->index;
-	    symb->inherit = i;
-	    symb->index = j;
-	    return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
-	}
-    }
-    return (dsymbol *) NULL;
-}
-
-/*
  * NAME:	control->construct()
  * DESCRIPTION:	construct and return a control block for the object just
  *		compiled
@@ -1853,8 +1807,8 @@ void ctrl_clear()
     oh_clear();
     vfh_clear();
     if (vtab != (hashtab *) NULL) {
-	ht_del(vtab);
-	ht_del(ftab);
+	ht_del(comppool, vtab);
+	ht_del(comppool, ftab);
 	vtab = (hashtab *) NULL;
 	ftab = (hashtab *) NULL;
     }
@@ -1869,12 +1823,12 @@ void ctrl_clear()
     nifcalls = 0;
 
     if (newctrl != (control *) NULL) {
-	d_del_control(newctrl);
+	d_free_control(compenv, newctrl);
 	newctrl = (control *) NULL;
     }
-    if (smerge != (strmerge *) NULL) {
-	str_clear(smerge);
-	smerge = (strmerge *) NULL;
+    if (smerge != (struct _strmerge_ *) NULL) {
+	str_clear(compenv, smerge);
+	smerge = (struct _strmerge_ *) NULL;
     }
     while (str_list != (strchunk *) NULL) {
 	register strchunk *l;
@@ -1883,18 +1837,18 @@ void ctrl_clear()
 	l = str_list;
 	s = &l->s[strchunksz];
 	while (--strchunksz >= 0) {
-	    str_del(*--s);
+	    str_del(compenv, *--s);
 	}
 	strchunksz = STRING_CHUNK;
 	str_list = l->next;
-	FREE(l);
+	CFREE(l);
     }
     while (fclist != (fcchunk *) NULL) {
 	register fcchunk *l;
 
 	l = fclist;
 	fclist = l->next;
-	FREE(l);
+	CFREE(l);
     }
     fcchunksz = FCALL_CHUNK;
     if (functions != (cfunc *) NULL) {
@@ -1902,16 +1856,16 @@ void ctrl_clear()
 	register cfunc *f;
 
 	for (i = nfdefs, f = functions; i > 0; --i, f++) {
-	    FREE(f->proto);
+	    CFREE(f->proto);
 	    if (f->progsize != 0) {
-		FREE(f->prog);
+		CFREE(f->prog);
 	    }
 	}
-	FREE(functions);
+	CFREE(functions);
 	functions = (cfunc *) NULL;
     }
     if (variables != (dvardef *) NULL) {
-	FREE(variables);
+	CFREE(variables);
 	variables = (dvardef *) NULL;
     }
 }
@@ -1926,7 +1880,7 @@ register control *old, *new;
     register unsigned short j, k;
     register dvardef *v;
     register long n;
-    register strmerge *merge;
+    register struct _strmerge_ *merge;
     register unsigned short *vmap;
     register dinherit *inh, *inh2;
     register control *ctrl, *ctrl2;
@@ -1936,27 +1890,29 @@ register control *old, *new;
      * make variable mapping from old to new, with new just compiled
      */
 
-    vmap = ALLOC(unsigned short, new->nvariables + 1);
+    vmap = CALLOC(unsigned short, new->nvariables + 1);
 
     voffset = 0;
     for (i = new->ninherits, inh = new->inherits; i > 0; --i, inh++) {
-	ctrl = (i == 1) ? new : OBJR(inh->oindex)->ctrl;
+	ctrl = (i == 1) ? new : OBJR(compenv, inh->oindex)->ctrl;
 	if (inh->varoffset < voffset || ctrl->nvardefs == 0) {
 	    continue;
 	}
 	voffset = inh->varoffset + ctrl->nvardefs;
 
-	merge = str_merge();
+	merge = str_merge(compenv);
 	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
-	    if (strcmp(OBJR(inh->oindex)->chain.name,
-		       OBJR(inh2->oindex)->chain.name) == 0) {
+	    if (strcmp(OBJR(compenv, inh->oindex)->chain.name,
+		       OBJR(compenv, inh2->oindex)->chain.name) == 0) {
 		/*
 		 * put var names from old control block in string merge table
 		 */
-		ctrl2 = o_control(OBJR(inh2->oindex));
+		ctrl2 = o_control(compenv, OBJR(compenv, inh2->oindex));
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
-		    str_put(merge, d_get_strconst(ctrl2, v->inherit, v->index),
+		    str_put(compenv, merge, d_get_strconst(compenv, ctrl2,
+							   v->inherit,
+							   v->index),
 			    ((Uint) k << 8) | v->type);
 		}
 		break;
@@ -1967,7 +1923,8 @@ register control *old, *new;
 	 * map new variables to old ones
 	 */
 	for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
-	    n = str_put(merge, d_get_strconst(ctrl, v->inherit, v->index),
+	    n = str_put(compenv, merge, d_get_strconst(compenv, ctrl,
+						       v->inherit, v->index),
 			(Uint) 0);
 	    if (n != 0 &&
 		((n & 0xff) == v->type ||
@@ -1991,7 +1948,7 @@ register control *old, *new;
 	    }
 	    vmap++;
 	}
-	str_clear(merge);
+	str_clear(compenv, merge);
     }
 
     /*
@@ -2008,6 +1965,57 @@ register control *old, *new;
 	}
     }
     /* no variable remapping needed */
-    FREE(vmap);
+    CFREE(vmap);
     return (unsigned short *) NULL;
+}
+
+/*
+ * NAME:	control->symb()
+ * DESCRIPTION:	return the entry in the symbol table for func, or NULL
+ */
+dsymbol *ctrl_symb(ctrl, env, func, len)
+register control *ctrl;
+register lpcenv *env;
+char *func;
+unsigned int len;
+{
+    register dsymbol *symb;
+    register dfuncdef *f;
+    register unsigned int i, j;
+    register string *str;
+    dsymbol *symtab, *symb1;
+    dinherit *inherits;
+
+    if ((i=ctrl->nsymbols) == 0) {
+	return (dsymbol *) NULL;
+    }
+
+    inherits = ctrl->inherits;
+    symtab = d_get_symbols(ctrl);
+    i = hashstr(func, VFMERGEHASHSZ) % i;
+    symb1 = symb = &symtab[i];
+    ctrl = o_control(env, OBJR(env, inherits[UCHAR(symb->inherit)].oindex));
+    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+    str = d_get_strconst(env, ctrl, f->inherit, f->index);
+    if (len == str->len && memcmp(func, str->text, len) == 0) {
+	/* found it */
+	return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
+    }
+    while (i != symb->next) {
+	symb = &symtab[i = symb->next];
+	ctrl = o_control(env, OBJR(env, inherits[UCHAR(symb->inherit)].oindex));
+	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+	str = d_get_strconst(env, ctrl, f->inherit, f->index);
+	if (len == str->len && memcmp(func, str->text, len) == 0) {
+	    /* found it: put symbol first in linked list */
+	    i = symb1->inherit;
+	    j = symb1->index;
+	    symb1->inherit = symb->inherit;
+	    symb1->index = symb->index;
+	    symb->inherit = i;
+	    symb->index = j;
+	    return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
+	}
+    }
+    return (dsymbol *) NULL;
 }

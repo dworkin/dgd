@@ -35,8 +35,6 @@ typedef struct _header_ {
 # endif
 
 
-static allocinfo mstat;		/* memory statistics */
-
 /*
  * NAME:	newmem()
  * DESCRIPTION:	allocate new memory
@@ -66,7 +64,7 @@ char **list;
  * static memory manager
  */
 
-# define INIT_MEM	15360		/* initial static memory chunk */
+# define INIT_MEM	15360	/* initial static memory chunk */
 # define SLIMIT		(STRINGSZ + MOFFSET)
 # define SSMALL		(MOFFSET + STRINGSZ / 8)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
@@ -77,14 +75,15 @@ typedef struct {
     chunk *list;		/* list of chunks (possibly empty) */
 } clist;
 
-static char *slist;			/* list of static chunks */
-static chunk *schunk;			/* current chunk */
-static size_t schunksz;			/* size of current chunk */
-static chunk *schunks[SCHUNKS];		/* lists of small free chunks */
-static clist lchunks[LCHUNKS];		/* lists of large free chunks */
-static unsigned int nlc;		/* # elements in large chunk list */
-static chunk *sflist;			/* list of small unused chunks */
-static int slevel;			/* static level */
+static char *slist;		/* list of static chunks */
+static chunk *schunk;		/* current chunk */
+static size_t schunksz;		/* size of current chunk */
+static chunk *schunks[SCHUNKS];	/* lists of small free chunks */
+static clist lchunks[LCHUNKS];	/* lists of large free chunks */
+static unsigned int nlc;	/* # elements in large chunk list */
+static chunk *sflist;		/* list of small unused chunks */
+static Uint smemsize;		/* static memory size */
+static Uint smemused;		/* static memory used */
 
 /*
  * NAME:	lchunk()
@@ -190,10 +189,10 @@ register size_t size;
 	    sflist = schunk;
 	}
 	schunk = (chunk *) newmem(INIT_MEM, &slist);
-	mstat.smemsize += schunk->size = INIT_MEM;
+	smemsize += schunk->size = INIT_MEM;
 	if (schunksz != 0) {
 	    /* fragmentation matters */
-	    P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
+	    message("*** Ran out of static memory (increase static_chunk)\012");
 	}
     }
     if (schunk->size >= size) {
@@ -217,7 +216,7 @@ register size_t size;
 
     /* allocate static memory directly */
     c = (chunk *) newmem(size, &slist);
-    mstat.smemsize += c->size = size;
+    smemsize += c->size = size;
     return c;
 }
 
@@ -242,24 +241,6 @@ register chunk *c;
     }
 }
 
-/*
- * NAME:	mstatic()
- * DESCRIPTION:	enter static mode
- */
-void m_static()
-{
-    slevel++;
-}
-
-/*
- * NAME:	mdynamic()
- * DESCRIPTION:	reenter dynamic mode
- */
-void m_dynamic()
-{
-    --slevel;
-}
-
 
 /*
  * dynamic memory manager
@@ -272,14 +253,12 @@ typedef struct _spnode_ {
     struct _spnode_ *right;	/* right child node */
 } spnode;
 
-static size_t dchunksz;		/* dynamic chunk size */
-static spnode *dtree;		/* splay tree of large dynamic free chunks */
-
 /*
  * NAME:	insert()
  * DESCRIPTION:	insert a chunk in the splay tree
  */
-static void insert(c)
+static spnode *insert(dtree, c)
+spnode *dtree;
 chunk *c;
 {
     register spnode *n, *t;
@@ -354,20 +333,23 @@ chunk *c;
 	n->left = n->right;
 	n->right = t;
     }
+
+    return dtree;
 }
 
 /*
  * NAME:	seek()
  * DESCRIPTION:	find a chunk of the proper size in the splay tree
  */
-static chunk *seek(size)
+static chunk *seek(dtree, size)
+spnode **dtree;
 register Uint size;
 {
     spnode dummy;
     register spnode *n, *t;
     register spnode *l, *r;
 
-    if ((n=dtree) == (spnode *) NULL) {
+    if ((n=*dtree) == (spnode *) NULL) {
 	/* empty splay tree */
 	return (chunk *) NULL;
     } else {
@@ -379,8 +361,8 @@ register Uint size;
 		    l->right = n; n->parent = l;
 		    if (r == &dummy) {
 			/* all chunks are too small */
-			dtree = dummy.right;
-			dtree->parent = (spnode *) NULL;
+			*dtree = dummy.right;
+			(*dtree)->parent = (spnode *) NULL;
 			return (chunk *) NULL;
 		    }
 		    if ((r->parent->left=r->right) != (spnode *) NULL) {
@@ -403,8 +385,8 @@ register Uint size;
 		    if ((n=t->right) == (spnode *) NULL) {
 			if (r == &dummy) {
 			    /* all chunks are too small */
-			    dtree = dummy.right;
-			    dtree->parent = (spnode *) NULL;
+			    *dtree = dummy.right;
+			    (*dtree)->parent = (spnode *) NULL;
 			    return (chunk *) NULL;
 			}
 			if ((r->parent->left=r->right) != (spnode *) NULL) {
@@ -454,7 +436,7 @@ register Uint size;
 	    dummy.right->parent = n;
 	}
 
-	return (chunk *) (dtree = n);
+	return (chunk *) (*dtree = n);
     }
 }
 
@@ -462,7 +444,8 @@ register Uint size;
  * NAME:	delete()
  * DESCRIPTION:	delete a chunk from the splay tree
  */
-static void delete(c)
+static spnode *delete(dtree, c)
+spnode *dtree;
 chunk *c;
 {
     register spnode *t, *r;
@@ -508,6 +491,8 @@ chunk *c;
 	    t->right->parent = t;
 	}
     }
+
+    return dtree;
 }
 
 # define DSMALL		64
@@ -515,15 +500,28 @@ chunk *c;
 # define DCHUNKS	(DSMALL / STRUCT_AL - 1)
 # define DCHUNKSZ	32768
 
+typedef struct _mempool_ {
+    struct _mempool_ *next;	/* next in linked list */
+    chunk *dchunks[DCHUNKS];	/* list of free small chunks */
+    chunk *dchunk;		/* chunk of small chunks */
+    spnode *dtree;		/* splay tree of large dynamic free chunks */
+# ifdef DEBUG
+    header *hlist;		/* list of all dynamic memory chunks */
+# endif
+    Uint memsize;		/* memory allocated */
+    Uint memused;		/* memory used */
+} mempool;
+
 static char *dlist;		/* list of dynamic memory chunks */
-static chunk *dchunks[DCHUNKS];	/* list of free small chunks */
-static chunk *dchunk;		/* chunk of small chunks */
+static size_t dchunksz;		/* dynamic chunk size */
+static mempool *plist;		/* list of memory pools */
 
 /*
  * NAME:	dalloc()
  * DESCRIPTION:	allocate dynamic memory
  */
-static chunk *dalloc(size)
+static chunk *dalloc(pool, size)
+register mempool *pool;
 register size_t size;
 {
     register chunk *c;
@@ -543,47 +541,48 @@ register size_t size;
 	/*
 	 * small chunk
 	 */
-	if ((c=dchunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
+	c = pool->dchunks[(size - MOFFSET) / STRUCT_AL - 1];
+	if (c != (chunk *) NULL) {
 	    /* small chunk from free list */
-	    dchunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
+	    pool->dchunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
 	    return c;
 	}
-	if (dchunk == (chunk *) NULL) {
+	if (pool->dchunk == (chunk *) NULL) {
 	    /* get new chunks chunk */
-	    dchunk = dalloc(DCHUNKSZ);	/* cannot use alloc() here */
-	    p = (char *) dchunk + UINTSIZE;
-	    ((chunk *) p)->size = dchunk->size - UINTSIZE - SIZETSIZE;
-	    dchunk->size |= DM_MAGIC;
-	    dchunk = (chunk *) p;
+	    pool->dchunk = dalloc(pool, DCHUNKSZ); /* cannot use alloc() here */
+	    p = (char *) pool->dchunk + UINTSIZE;
+	    ((chunk *) p)->size = pool->dchunk->size - UINTSIZE - SIZETSIZE;
+	    pool->dchunk->size |= DM_MAGIC;
+	    pool->dchunk = (chunk *) p;
 	}
-	sz = dchunk->size - size;
-	c = dchunk;
+	sz = pool->dchunk->size - size;
+	c = pool->dchunk;
 	c->size = size;
 	if (sz >= DLIMIT - STRUCT_AL) {
 	    /* enough is left for another small chunk */
-	    dchunk = (chunk *) ((char *) c + size);
-	    dchunk->size = sz;
+	    pool->dchunk = (chunk *) ((char *) c + size);
+	    pool->dchunk->size = sz;
 	} else {
 	    /* waste sz bytes of memory */
-	    dchunk = (chunk *) NULL;
+	    pool->dchunk = (chunk *) NULL;
 	}
 	return c;
     }
 
     size += SIZETSIZE;
-    c = seek((Uint) size);
+    c = seek(&pool->dtree, (Uint) size);
     if (c != (chunk *) NULL) {
 	/*
 	 * remove from free list
 	 */
-	delete(c);
+	pool->dtree = delete(pool->dtree, c);
     } else {
 	/*
 	 * get new dynamic chunk
 	 */
 	for (sz = dchunksz; sz < size + SIZETSIZE + UINTSIZE; sz += dchunksz) ;
 	p = newmem(sz, &dlist);
-	mstat.dmemsize += sz;
+	pool->memsize += sz;
 
 	/* no previous chunk */
 	*(size_t *) p = 0;
@@ -607,7 +606,7 @@ register size_t size;
 	p += SIZETSIZE;
 	((chunk *) p)->size = sz;
 	*((size_t *) (p + sz - SIZETSIZE)) = sz;
-	insert((chunk *) p);	/* add to free list */
+	pool->dtree = insert(pool->dtree, (chunk *) p);	/* add to free list */
     }
     return c;
 }
@@ -616,7 +615,8 @@ register size_t size;
  * NAME:	dfree()
  * DESCRIPTION:	free dynamic memory
  */
-static void dfree(c)
+static void dfree(pool, c)
+register mempool *pool;
 register chunk *c;
 {
     register char *p;
@@ -631,8 +631,8 @@ register chunk *c;
 
     if (c->size < DLIMIT) {
 	/* small chunk */
-	c->next = dchunks[(c->size - MOFFSET) / STRUCT_AL - 1];
-	dchunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
+	c->next = pool->dchunks[(c->size - MOFFSET) / STRUCT_AL - 1];
+	pool->dchunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
 	return;
     }
 
@@ -648,7 +648,7 @@ register chunk *c;
 		fatal("corrupted memory chunk");
 	    }
 # endif
-	    delete((chunk *) p);
+	    pool->dtree = delete(pool->dtree, (chunk *) p);
 	    ((chunk *) p)->size += c->size;
 	    c = (chunk *) p;
 	    *((size_t *) (p + c->size - SIZETSIZE)) = c->size;
@@ -665,12 +665,12 @@ register chunk *c;
 	    fatal("corrupted memory chunk");
 	}
 # endif
-	delete((chunk *) p);
+	pool->dtree = delete(pool->dtree, (chunk *) p);
 	c->size += ((chunk *) p)->size;
 	*((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;
     }
 
-    insert(c);	/* add to free list */
+    pool->dtree = insert(pool->dtree, c);	/* add to free list */
 }
 
 
@@ -689,26 +689,39 @@ size_t ssz, dsz;
 	    sflist = schunk;
 	}
 	schunk = (chunk *) newmem(schunksz, &slist);
-	mstat.smemsize += schunk->size = schunksz;
+	smemsize += schunk->size = schunksz;
     }
 }
 
+/*
+ * NAME:	mem->new_pool()
+ * DESCRIPTION:	allocate a new memory pool
+ */
+mempool *m_new_pool()
+{
+    register mempool *pool;
 
-# ifdef DEBUG
-static header *hlist;			/* list of all dynamic memory chunks */
-# endif
+    pool = SALLOC(mempool, 1);
+    memset(pool, '\0', sizeof(mempool));
+    pool->next = plist;
+    plist = pool;
+
+    return pool;
+}
 
 /*
  * NAME:	mem->alloc()
  * DESCRIPTION:	allocate memory
  */
 # ifdef DEBUG
-char *m_alloc(size, file, line)
+char *m_alloc(pool, size, file, line)
+mempool *pool;
 register size_t size;
 char *file;
 int line;
 # else
-char *m_alloc(size)
+char *m_alloc(pool, size)
+mempool *pool;
 register size_t size;
 # endif
 {
@@ -725,21 +738,21 @@ register size_t size;
 	size = ALGN(sizeof(chunk), STRUCT_AL);
     }
 # endif
-    if (slevel > 0) {
+    if (pool == (mempool *) NULL) {
 	c = salloc(size);
-	mstat.smemused += c->size;
+	smemused += c->size;
 	c->size |= SM_MAGIC;
     } else {
-	c = dalloc(size);
-	mstat.dmemused += c->size;
+	c = dalloc(pool, size);
+	pool->memused += c->size;
 	c->size |= DM_MAGIC;
 # ifdef DEBUG
 	((header *) c)->prev = (header *) NULL;
-	((header *) c)->next = hlist;
-	if (hlist != (header *) NULL) {
-	    hlist->prev = (header *) c;
+	((header *) c)->next = pool->hlist;
+	if (pool->hlist != (header *) NULL) {
+	    pool->hlist->prev = (header *) c;
 	}
-	hlist = (header *) c;
+	pool->hlist = (header *) c;
 # endif
     }
 # ifdef DEBUG
@@ -753,30 +766,41 @@ register size_t size;
  * NAME:	mem->free()
  * DESCRIPTION:	free memory
  */
-void m_free(mem)
+void m_free(pool, mem)
+mempool *pool;
 char *mem;
 {
     register chunk *c;
 
     c = (chunk *) (mem - MOFFSET);
     if ((c->size & MAGIC_MASK) == SM_MAGIC) {
+# ifdef DEBUG
+	if (pool != (mempool *) NULL) {
+	    fatal("static memory freed in memory pool");
+	}
+# endif
 	c->size &= SIZE_MASK;
-	mstat.smemused -= c->size;
+	smemused -= c->size;
 	sfree(c);
     } else if ((c->size & MAGIC_MASK) == DM_MAGIC) {
+# ifdef DEBUG
+	if (pool == (mempool *) NULL) {
+	    fatal("dynamic memory freed without memory pool");
+	}
+# endif
 	c->size &= SIZE_MASK;
-	mstat.dmemused -= c->size;
+	pool->memused -= c->size;
 # ifdef DEBUG
 	if (((header *) c)->next != (header *) NULL) {
 	    ((header *) c)->next->prev = ((header *) c)->prev;
 	}
-	if (((header *) c) == hlist) {
-	    hlist = ((header *) c)->next;
+	if (((header *) c) == pool->hlist) {
+	    pool->hlist = ((header *) c)->next;
 	} else {
 	    ((header *) c)->prev->next = ((header *) c)->next;
 	}
 # endif
-	dfree(c);
+	dfree(pool, c);
     } else {
 	fatal("bad pointer in m_free");
     }
@@ -787,12 +811,14 @@ char *mem;
  * DESCRIPTION:	reallocate memory
  */
 # ifdef DEBUG
-char *m_realloc(mem, size1, size2, file, line)
+char *m_realloc(pool, mem, size1, size2, file, line)
+mempool *pool;
 char *mem, *file;
 register size_t size1, size2;
 int line;
 # else
-char *m_realloc(mem, size1, size2)
+char *m_realloc(pool, mem, size1, size2)
+mempool *pool;
 char *mem;
 register size_t size1, size2;
 # endif
@@ -804,13 +830,13 @@ register size_t size1, size2;
 	    return (char *) NULL;
 	}
 # ifdef DEBUG
-	return m_alloc(size2, file, line);
+	return m_alloc(pool, size2, file, line);
 # else
-	return m_alloc(size2);
+	return m_alloc(pool, size2);
 # endif
     }
     if (size2 == 0) {
-	m_free(mem);
+	m_free(pool, mem);
 	return (char *) NULL;
     }
 
@@ -821,37 +847,23 @@ register size_t size1, size2;
     }
 # endif
     c1 = (chunk *) (mem - MOFFSET);
-    if ((c1->size & MAGIC_MASK) == SM_MAGIC) {
+    if ((c1->size & MAGIC_MASK) == DM_MAGIC) {
 # ifdef DEBUG
-	if (size1 > (c1->size & SIZE_MASK)) {
-	    fatal("bad size1 in m_realloc");
+	if (pool == (mempool *) NULL) {
+	    fatal("dynamic memory reallocated without memory pool");
 	}
-# endif
-	if ((c1->size & SIZE_MASK) < size2) {
-	    c2 = salloc(size2);
-	    if (size1 != 0) {
-		memcpy((char *) c2 + MOFFSET, mem, size1);
-	    }
-	    c1->size &= SIZE_MASK;
-	    mstat.smemused += c2->size - c1->size;
-	    c2->size |= SM_MAGIC;
-	    sfree(c1);
-	    c1 = c2;
-	}
-    } else if ((c1->size & MAGIC_MASK) == DM_MAGIC) {
-# ifdef DEBUG
 	if (size1 > (c1->size & SIZE_MASK)) {
 	    fatal("bad size1 in m_realloc");
 	}
 # endif
 	if ((c1->size & SIZE_MASK) < ((size2 < DLIMIT) ?
 				       size2 : size2 + SIZETSIZE)) {
-	    c2 = dalloc(size2);
+	    c2 = dalloc(pool, size2);
 	    if (size1 != 0) {
 		memcpy((char *) c2 + MOFFSET, mem, size1);
 	    }
 	    c1->size &= SIZE_MASK;
-	    mstat.dmemused += c2->size - c1->size;
+	    pool->memused += c2->size - c1->size;
 	    c2->size |= DM_MAGIC;
 # ifdef DEBUG
 	    ((header *) c2)->next = ((header *) c1)->next;
@@ -859,13 +871,13 @@ register size_t size1, size2;
 		((header *) c2)->next->prev = (header *) c2;
 	    }
 	    ((header *) c2)->prev = ((header *) c1)->prev;
-	    if (((header *) c1) == hlist) {
-		hlist = (header *) c2;
+	    if (((header *) c1) == pool->hlist) {
+		pool->hlist = (header *) c2;
 	    } else {
 		((header *) c2)->prev->next = (header *) c2;
 	    }
 # endif
-	    dfree(c1);
+	    dfree(pool, c1);
 	    c1 = c2;
 	}
     } else {
@@ -899,33 +911,40 @@ bool m_check()
 void m_purge()
 {
     register char *p;
+    register mempool *pool;
 
+    for (pool = plist; pool != (mempool *) NULL; pool = pool->next) {
 # ifdef DEBUG
-    while (hlist != (header *) NULL) {
-	char buf[160];
-	register size_t n;
+	while (pool->hlist != (header *) NULL) {
+	    char buf[160];
+	    register size_t n;
 
-	n = (hlist->size & SIZE_MASK) - MOFFSET;
-	if (n >= DLIMIT) {
-	    n -= SIZETSIZE;
-	}
-	sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
-		(unsigned long) (hlist + 1), n, hlist->file, hlist->line);
-	if (n > 26) {
-	    n = 26;
-	}
-	for (p = (char *) (hlist + 1); n > 0; --n, p++) {
-	    if (*p >= ' ') {
-		sprintf(buf + strlen(buf), " '%c", *p);
-	    } else {
-		sprintf(buf + strlen(buf), " %02x", UCHAR(*p));
+	    n = (pool->hlist->size & SIZE_MASK) - MOFFSET;
+	    if (n >= DLIMIT) {
+		n -= SIZETSIZE;
 	    }
+	    sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
+		    (unsigned long) (plist->hlist + 1), n, pool->hlist->file,
+		    pool->hlist->line);
+	    if (n > 26) {
+		n = 26;
+	    }
+	    for (p = (char *) (pool->hlist + 1); n > 0; --n, p++) {
+		if (*p >= ' ') {
+		    sprintf(buf + strlen(buf), " '%c", *p);
+		} else {
+		    sprintf(buf + strlen(buf), " %02x", UCHAR(*p));
+		}
+	    }
+	    message("%s\012", buf);	/* LF */
+	    m_free(pool, (char *) (pool->hlist + 1));
 	}
-	strcat(buf, "\012");	/* LF */
-	P_message(buf);
-	m_free((char *) (hlist + 1));
-    }
 # endif
+	memset(pool->dchunks, '\0', sizeof(pool->dchunks));
+	pool->dchunk = (chunk *) NULL;
+	pool->dtree = (spnode *) NULL;
+	pool->memsize = pool->memused = 0;
+    }
 
     /* purge dynamic memory */
     while (dlist != (char *) NULL) {
@@ -933,21 +952,17 @@ void m_purge()
 	dlist = *(char **) p;
 	free(p);
     }
-    memset(dchunks, '\0', sizeof(dchunks));
-    dchunk = (chunk *) NULL;
-    dtree = (spnode *) NULL;
-    mstat.dmemsize = mstat.dmemused = 0;
 
     if (schunksz != 0 &&
 	(schunk == (chunk *) NULL || schunk->size < schunksz ||
-	 (mstat.smemsize - mstat.smemused) * 2 < schunksz * 3)) {
+	 (smemsize - smemused) * 2 < schunksz * 3)) {
 	/* expand static memory */
 	if (schunk != (chunk *) NULL) {
 	    schunk->next = sflist;
 	    sflist = schunk;
 	}
 	schunk = (chunk *) newmem(schunksz, &slist);
-	mstat.smemsize += schunk->size = schunksz;
+	smemsize += schunk->size = schunksz;
     }
 }
 
@@ -955,9 +970,19 @@ void m_purge()
  * NAME:	mem->info()
  * DESCRIPTION:	return informaton about memory usage
  */
-allocinfo *m_info()
+void m_info(sms, smu, dms, dmu)
+Uint *sms, *smu, *dms, *dmu;
 {
-    return &mstat;
+    register mempool *pool;
+
+    *sms = smemsize;
+    *smu = smemused;
+    *dms = 0;
+    *dmu = 0;
+    for (pool = plist; pool != (mempool *) NULL; pool = pool->next) {
+	*dms += pool->memsize;
+	*dmu += pool->memused;
+    }
 }
 
 
@@ -969,14 +994,9 @@ void m_finish()
 {
     register char *p;
 
-    schunksz = 0;
-    dchunksz = 0;
-
     /* purge dynamic memory */
-# ifdef DEBUG
-    hlist = (header *) NULL;
-# endif
     m_purge();
+    plist = (mempool *) NULL;
 
     /* purge static memory */
     while (slist != (char *) NULL) {
@@ -989,6 +1009,8 @@ void m_finish()
     nlc = 0;
     schunk = (chunk *) NULL;
     sflist = (chunk *) NULL;
-    slevel = 0;
-    mstat.smemsize = mstat.smemused = 0;
+    smemsize = smemused = 0;
+
+    schunksz = 0;
+    dchunksz = 0;
 }

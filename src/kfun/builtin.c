@@ -7,10 +7,11 @@
  * NAME:	kfun->argerror()
  * DESCRIPTION:	handle an argument error in a builtin kfun
  */
-static void kf_argerror(kfun, n)
+static void kf_argerror(env, kfun, n)
+lpcenv *env;
 int kfun, n;
 {
-    error("Bad argument %d for kfun %s", n, kftab[kfun].name);
+    error(env, "Bad argument %d for kfun %s", n, kftab[kfun].name);
 }
 
 /*
@@ -70,11 +71,11 @@ register frame *f;
 	case T_STRING:
 	    i_add_ticks(f, 2);
 	    num = kf_itoa(f->sp[1].u.number, buffer);
-	    str = str_new((char *) NULL,
+	    str = str_new(f->env, (char *) NULL,
 			  (l=(long) strlen(num)) + f->sp->u.string->len);
 	    strcpy(str->text, num);
 	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-	    str_del(f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    f->sp++;
 	    PUT_STRVAL(f->sp, str);
 	    return 0;
@@ -88,7 +89,7 @@ register frame *f;
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    flt_add(&f1, &f2);
+	    flt_add(f->env, &f1, &f2);
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 
@@ -96,11 +97,11 @@ register frame *f;
 	    i_add_ticks(f, 2);
 	    GET_FLT(&f->sp[1], f1);
 	    flt_ftoa(&f1, buffer);
-	    str = str_new((char *) NULL,
+	    str = str_new(f->env, (char *) NULL,
 			  (l=(long) strlen(buffer)) + f->sp->u.string->len);
 	    strcpy(str->text, buffer);
 	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
-	    str_del(f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    f->sp++;
 	    PUT_STRVAL(f->sp, str);
 	    return 0;
@@ -113,11 +114,11 @@ register frame *f;
 	case T_INT:
 	    num = kf_itoa(f->sp->u.number, buffer);
 	    f->sp++;
-	    str = str_new((char *) NULL,
+	    str = str_new(f->env, (char *) NULL,
 			  f->sp->u.string->len + (long) strlen(num));
 	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
 	    strcpy(str->text + f->sp->u.string->len, num);
-	    str_del(f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    PUT_STR(f->sp, str);
 	    return 0;
 
@@ -126,19 +127,19 @@ register frame *f;
 	    GET_FLT(f->sp, f2);
 	    flt_ftoa(&f2, buffer);
 	    f->sp++;
-	    str = str_new((char *) NULL,
+	    str = str_new(f->env, (char *) NULL,
 			  f->sp->u.string->len + (long) strlen(buffer));
 	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
 	    strcpy(str->text + f->sp->u.string->len, buffer);
-	    str_del(f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    PUT_STR(f->sp, str);
 	    return 0;
 
 	case T_STRING:
-	    str = str_add(f->sp[1].u.string, f->sp->u.string);
-	    str_del(f->sp->u.string);
+	    str = str_add(f->env, f->sp[1].u.string, f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    f->sp++;
-	    str_del(f->sp->u.string);
+	    str_del(f->env, f->sp->u.string);
 	    PUT_STR(f->sp, str);
 	    return 0;
 	}
@@ -148,9 +149,9 @@ register frame *f;
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = arr_add(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -160,19 +161,19 @@ register frame *f;
 	if (f->sp->type == T_MAPPING) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = map_add(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
 
     default:
-	kf_argerror(KF_ADD, 1);
+	kf_argerror(f->env, KF_ADD, 1);
     }
 
-    kf_argerror(KF_ADD, 2);
+    kf_argerror(f->env, KF_ADD, 2);
 }
 # endif
 
@@ -216,10 +217,10 @@ register frame *f;
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
 	FLT_ONE(f2.high, f2.low);
-	flt_add(&f1, &f2);
+	flt_add(f->env, &f1, &f2);
 	PUT_FLT(f->sp, f1);
     } else {
-	kf_argerror(KF_ADD1, 1);
+	kf_argerror(f->env, KF_ADD1, 1);
     }
     return 0;
 }
@@ -271,9 +272,9 @@ register frame *f;
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = arr_intersect(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -283,7 +284,7 @@ register frame *f;
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = map_intersect(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
 	    PUT_MAP(f->sp, a);
 	    return 0;
@@ -291,10 +292,10 @@ register frame *f;
 	break;
 
     default:
-	kf_argerror(KF_AND, 1);
+	kf_argerror(f->env, KF_AND, 1);
     }
 
-    kf_argerror(KF_AND, 2);
+    kf_argerror(f->env, KF_AND, 2);
 }
 # endif
 
@@ -334,14 +335,14 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_DIV, 2);
+	kf_argerror(f->env, KF_DIV, 2);
     }
     switch (f->sp->type) {
     case T_INT:
 	i = f->sp[1].u.number;
 	d = f->sp->u.number;
 	if (d == 0) {
-	    error("Division by zero");
+	    error(f->env, "Division by zero");
 	}
 	if ((i | d) < 0) {
 	    Int r;
@@ -359,12 +360,12 @@ register frame *f;
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	flt_div(&f1, &f2);
+	flt_div(f->env, &f1, &f2);
 	PUT_FLT(f->sp, f1);
 	return 0;
 
     default:
-	kf_argerror(KF_DIV, 1);
+	kf_argerror(f->env, KF_DIV, 1);
     }
 }
 # endif
@@ -387,7 +388,7 @@ register frame *f;
     i = f->sp[1].u.number;
     d = f->sp->u.number;
     if (d == 0) {
-	error("Division by zero");
+	error(f->env, "Division by zero");
     }
     if ((i | d) < 0) {
 	Int r;
@@ -446,9 +447,9 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) == 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	break;
 
@@ -461,9 +462,9 @@ register frame *f;
     case T_MAPPING:
     case T_LWOBJECT:
 	flag = (f->sp[1].u.array == f->sp->u.array);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -508,7 +509,7 @@ register frame *f;
     bool flag;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_GE, 2);
+	kf_argerror(f->env, KF_GE, 2);
     }
     switch (f->sp->type) {
     case T_INT:
@@ -527,14 +528,14 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) >= 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
-	kf_argerror(KF_GE, 1);
+	kf_argerror(f->env, KF_GE, 1);
     }
 }
 # endif
@@ -575,7 +576,7 @@ register frame *f;
     bool flag;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_GT, 2);
+	kf_argerror(f->env, KF_GT, 2);
     }
     switch (f->sp->type) {
     case T_INT:
@@ -594,14 +595,14 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) > 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
-	kf_argerror(KF_GT, 1);
+	kf_argerror(f->env, KF_GT, 1);
     }
 }
 # endif
@@ -642,7 +643,7 @@ register frame *f;
     bool flag;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_LE, 2);
+	kf_argerror(f->env, KF_LE, 2);
     }
     switch (f->sp->type) {
     case T_INT:
@@ -661,14 +662,14 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) <= 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
-	kf_argerror(KF_LE, 1);
+	kf_argerror(f->env, KF_LE, 1);
     }
 }
 # endif
@@ -706,14 +707,14 @@ int kf_lshift(f)
 register frame *f;
 {
     if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_LSHIFT, 1);
+	kf_argerror(f->env, KF_LSHIFT, 1);
     }
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_LSHIFT, 2);
+	kf_argerror(f->env, KF_LSHIFT, 2);
     }
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
-	    error("Negative left shift");
+	    error(f->env, "Negative left shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
@@ -739,7 +740,7 @@ register frame *f;
 {
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
-	    error("Negative left shift");
+	    error(f->env, "Negative left shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
@@ -767,7 +768,7 @@ register frame *f;
     bool flag;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_LT, 2);
+	kf_argerror(f->env, KF_LT, 2);
     }
     switch (f->sp->type) {
     case T_INT:
@@ -786,14 +787,14 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) < 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
-	kf_argerror(KF_LT, 1);
+	kf_argerror(f->env, KF_LT, 1);
     }
 }
 # endif
@@ -833,15 +834,15 @@ register frame *f;
     register Int i, d;
 
     if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_MOD, 1);
+	kf_argerror(f->env, KF_MOD, 1);
     }
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_MOD, 2);
+	kf_argerror(f->env, KF_MOD, 2);
     }
     i = f->sp[1].u.number;
     d = f->sp->u.number;
     if (d == 0) {
-	error("Modulus by zero");
+	error(f->env, "Modulus by zero");
     }
     if ((i | d) < 0) {
 	Int r;
@@ -874,7 +875,7 @@ register frame *f;
     i = f->sp[1].u.number;
     d = f->sp->u.number;
     if (d == 0) {
-	error("Modulus by zero");
+	error(f->env, "Modulus by zero");
     }
     if ((i | d) < 0) {
 	Int r;
@@ -905,7 +906,7 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_MULT, 2);
+	kf_argerror(f->env, KF_MULT, 2);
     }
     switch (f->sp->type) {
     case T_INT:
@@ -918,12 +919,12 @@ register frame *f;
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	flt_mult(&f1, &f2);
+	flt_mult(f->env, &f1, &f2);
 	PUT_FLT(f->sp, f1);
 	return 0;
 
     default:
-	kf_argerror(KF_MULT, 1);
+	kf_argerror(f->env, KF_MULT, 1);
     }
 }
 # endif
@@ -991,9 +992,9 @@ register frame *f;
     case T_STRING:
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) != 0);
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, flag);
 	break;
 
@@ -1006,9 +1007,9 @@ register frame *f;
     case T_MAPPING:
     case T_LWOBJECT:
 	flag = (f->sp[1].u.array != f->sp->u.array);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_INTVAL(f->sp, flag);
 	break;
     }
@@ -1050,7 +1051,7 @@ int kf_neg(f)
 register frame *f;
 {
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_NEG, 1);
+	kf_argerror(f->env, KF_NEG, 1);
     }
     PUT_INT(f->sp, ~f->sp->u.number);
     return 0;
@@ -1102,13 +1103,13 @@ register frame *f;
 	return 0;
 
     case T_STRING:
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	break;
     }
 
@@ -1161,19 +1162,19 @@ register frame *f;
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = arr_setadd(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
 
     default:
-	kf_argerror(KF_OR, 1);
+	kf_argerror(f->env, KF_OR, 1);
     }
 
-    kf_argerror(KF_OR, 2);
+    kf_argerror(f->env, KF_OR, 2);
 }
 # endif
 
@@ -1213,28 +1214,28 @@ register frame *f;
 
     if (f->sp[2].type == T_MAPPING) {
 	a = map_range(f->data, f->sp[2].u.array, &f->sp[1], f->sp);
-	i_del_value(f->sp++);
-	i_del_value(f->sp++);
+	i_del_value(f->env, f->sp++);
+	i_del_value(f->env, f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_ARR(f->sp, a);
 
 	return 0;
     }
 
     if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_RANGEFT, 2);
+	kf_argerror(f->env, KF_RANGEFT, 2);
     }
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGEFT, 3);
+	kf_argerror(f->env, KF_RANGEFT, 3);
     }
     switch (f->sp[2].type) {
     case T_STRING:
 	i_add_ticks(f, 2);
-	str = str_range(f->sp[2].u.string, (long) f->sp[1].u.number,
+	str = str_range(f->env, f->sp[2].u.string, (long) f->sp[1].u.number,
 			(long) f->sp->u.number);
 	f->sp += 2;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1243,12 +1244,12 @@ register frame *f;
 		      (long) f->sp->u.number);
 	i_add_ticks(f, a->size);
 	f->sp += 2;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_ARR(f->sp, a);
 	break;
 
     default:
-	kf_argerror(KF_RANGEFT, 1);
+	kf_argerror(f->env, KF_RANGEFT, 1);
     }
 
     return 0;
@@ -1273,24 +1274,24 @@ register frame *f;
 
     if (f->sp[1].type == T_MAPPING) {
 	a = map_range(f->data, f->sp[1].u.array, f->sp, (value *) NULL);
-	i_del_value(f->sp++);
+	i_del_value(f->env, f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_MAP(f->sp, a);
 
 	return 0;
     }
 
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGEF, 2);
+	kf_argerror(f->env, KF_RANGEF, 2);
     }
     switch (f->sp[1].type) {
     case T_STRING:
 	i_add_ticks(f, 2);
-	str = str_range(f->sp[1].u.string, (long) f->sp->u.number,
+	str = str_range(f->env, f->sp[1].u.string, (long) f->sp->u.number,
 			f->sp[1].u.string->len - 1L);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1299,12 +1300,12 @@ register frame *f;
 		      f->sp[1].u.array->size - 1L);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_ARR(f->sp, a);
 	break;
 
     default:
-	kf_argerror(KF_RANGEF, 1);
+	kf_argerror(f->env, KF_RANGEF, 1);
     }
 
     return 0;
@@ -1329,23 +1330,23 @@ register frame *f;
 
     if (f->sp[1].type == T_MAPPING) {
 	a = map_range(f->data, f->sp[1].u.array, (value *) NULL, f->sp);
-	i_del_value(f->sp++);
+	i_del_value(f->env, f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_MAP(f->sp, a);
 
 	return 0;
     }
 
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGET, 2);
+	kf_argerror(f->env, KF_RANGET, 2);
     }
     switch (f->sp[1].type) {
     case T_STRING:
 	i_add_ticks(f, 2);
-	str = str_range(f->sp[1].u.string, 0L, (long) f->sp->u.number);
+	str = str_range(f->env, f->sp[1].u.string, 0L, (long) f->sp->u.number);
 	f->sp++;
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_STR(f->sp, str);
 	break;
 
@@ -1353,12 +1354,12 @@ register frame *f;
 	a = arr_range(f->data, f->sp[1].u.array, 0L, (long) f->sp->u.number);
 	i_add_ticks(f, a->size);
 	f->sp++;
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_ARR(f->sp, a);
 	break;
 
     default:
-	kf_argerror(KF_RANGET, 1);
+	kf_argerror(f->env, KF_RANGET, 1);
     }
 
     return 0;
@@ -1384,7 +1385,7 @@ register frame *f;
     if (f->sp->type == T_MAPPING) {
 	a = map_range(f->data, f->sp->u.array, (value *) NULL, (value *) NULL);
 	i_add_ticks(f, f->sp->u.array->size);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_MAP(f->sp, a);
 
 	return 0;
@@ -1393,20 +1394,20 @@ register frame *f;
     switch (f->sp->type) {
     case T_STRING:
 	i_add_ticks(f, 2);
-	str = str_range(f->sp->u.string, 0L, f->sp->u.string->len - 1L);
-	str_del(f->sp->u.string);
+	str = str_range(f->env, f->sp->u.string, 0L, f->sp->u.string->len - 1L);
+	str_del(f->env, f->sp->u.string);
 	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
 	a = arr_range(f->data, f->sp->u.array, 0L, f->sp->u.array->size - 1L);
 	i_add_ticks(f, a->size);
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	PUT_ARR(f->sp, a);
 	break;
 
     default:
-	kf_argerror(KF_RANGE, 1);
+	kf_argerror(f->env, KF_RANGE, 1);
     }
 
     return 0;
@@ -1427,14 +1428,14 @@ int kf_rshift(f)
 register frame *f;
 {
     if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_RSHIFT, 1);
+	kf_argerror(f->env, KF_RSHIFT, 1);
     }
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_RSHIFT, 2);
+	kf_argerror(f->env, KF_RSHIFT, 2);
     }
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
-	    error("Negative right shift");
+	    error(f->env, "Negative right shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
@@ -1460,7 +1461,7 @@ register frame *f;
 {
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
-	    error("Negative right shift");
+	    error(f->env, "Negative right shift");
 	}
 	PUT_INT(&f->sp[1], 0);
     } else {
@@ -1501,7 +1502,7 @@ register frame *f;
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    flt_sub(&f1, &f2);
+	    flt_sub(f->env, &f1, &f2);
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 	}
@@ -1513,9 +1514,9 @@ register frame *f;
 
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = arr_sub(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
@@ -1527,19 +1528,19 @@ register frame *f;
 
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = map_sub(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
 
     default:
-	kf_argerror(KF_SUB, 1);
+	kf_argerror(f->env, KF_SUB, 1);
     }
 
-    kf_argerror(KF_SUB, 2);
+    kf_argerror(f->env, KF_SUB, 2);
 }
 # endif
 
@@ -1583,10 +1584,10 @@ register frame *f;
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
 	FLT_ONE(f2.high, f2.low);
-	flt_sub(&f1, &f2);
+	flt_sub(f->env, &f1, &f2);
 	PUT_FLT(f->sp, f1);
     } else {
-	kf_argerror(KF_SUB1, 1);
+	kf_argerror(f->env, KF_SUB1, 1);
     }
     return 0;
 }
@@ -1628,7 +1629,7 @@ register frame *f;
     i_add_ticks(f, 1);
     if (f->sp->type == T_INT) {
 	/* from int */
-	flt_itof(f->sp->u.number, &flt);
+	flt_itof(f->env, f->sp->u.number, &flt);
 	PUT_FLTVAL(f->sp, flt);
 	return 0;
     } else if (f->sp->type == T_STRING) {
@@ -1636,17 +1637,17 @@ register frame *f;
 
 	/* from string */
 	p = f->sp->u.string->text;
-	if (!flt_atof(&p, &flt) ||
+	if (!flt_atof(f->env, &p, &flt) ||
 	    p != f->sp->u.string->text + f->sp->u.string->len) {
-	    error("String cannot be converted to float");
+	    error(f->env, "String cannot be converted to float");
 	}
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_FLTVAL(f->sp, flt);
 	return 0;
     }
 
     if (f->sp->type != T_FLOAT) {
-	error("Value is not a float");
+	error(f->env, "Value is not a float");
     }
     return 0;
 }
@@ -1671,7 +1672,7 @@ register frame *f;
 	/* from float */
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, flt);
-	PUT_INTVAL(f->sp, flt_ftoi(&flt));
+	PUT_INTVAL(f->sp, flt_ftoi(f->env, &flt));
 	return 0;
     } else if (f->sp->type == T_STRING) {
 	char *p;
@@ -1680,15 +1681,15 @@ register frame *f;
 	/* from string */
 	i = strtol(f->sp->u.string->text, &p, 10);
 	if (p != f->sp->u.string->text + f->sp->u.string->len) {
-	    error("String cannot be converted to int");
+	    error(f->env, "String cannot be converted to int");
 	}
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	PUT_INTVAL(f->sp, i);
 	return 0;
     }
 
     if (f->sp->type != T_INT) {
-	error("Value is not an int");
+	error(f->env, "Value is not an int");
     }
     return 0;
 }
@@ -1721,13 +1722,13 @@ register frame *f;
 	return 0;
 
     case T_STRING:
-	str_del(f->sp->u.string);
+	str_del(f->env, f->sp->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(f->sp->u.array);
+	arr_del(f->env, f->sp->u.array);
 	break;
     }
 
@@ -1782,7 +1783,7 @@ register frame *f;
 	return 0;
     }
 
-    kf_argerror(KF_UMIN, 1);
+    kf_argerror(f->env, KF_UMIN, 1);
 }
 # endif
 
@@ -1832,19 +1833,19 @@ register frame *f;
 	if (f->sp->type == T_ARRAY) {
 	    i_add_ticks(f, (Int) f->sp[1].u.array->size + f->sp->u.array->size);
 	    a = arr_setxadd(f->data, f->sp[1].u.array, f->sp->u.array);
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
+	    arr_del(f->env, f->sp->u.array);
 	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
 
     default:
-	kf_argerror(KF_XOR, 1);
+	kf_argerror(f->env, KF_XOR, 1);
     }
 
-    kf_argerror(KF_XOR, 2);
+    kf_argerror(f->env, KF_XOR, 2);
 }
 # endif
 
@@ -1895,10 +1896,10 @@ register frame *f;
     } else if (f->sp->type == T_STRING) {
 	return 0;
     } else {
-	error("Value is not a string");
+	error(f->env, "Value is not a string");
     }
 
-    PUT_STRVAL(f->sp, str_new(num, (long) strlen(num)));
+    PUT_STRVAL(f->sp, str_new(f->env, num, (long) strlen(num)));
     return 0;
 }
 # endif
@@ -1918,19 +1919,19 @@ int kf_ckrangeft(f)
 register frame *f;
 {
     if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_CKRANGEFT, 2);
+	kf_argerror(f->env, KF_CKRANGEFT, 2);
     }
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_CKRANGEFT, 3);
+	kf_argerror(f->env, KF_CKRANGEFT, 3);
     }
     if (f->sp[2].type == T_STRING) {
-	str_ckrange(f->sp[2].u.string, (long) f->sp[1].u.number,
+	str_ckrange(f->env, f->sp[2].u.string, (long) f->sp[1].u.number,
 		    (long) f->sp->u.number);
     } else if (f->sp[2].type == T_ARRAY) {
-	arr_ckrange(f->sp[2].u.array, (long) f->sp[1].u.number,
+	arr_ckrange(f->env, f->sp[2].u.array, (long) f->sp[1].u.number,
 		    (long) f->sp->u.number);
     } else {
-	kf_argerror(KF_CKRANGEFT, 1);
+	kf_argerror(f->env, KF_CKRANGEFT, 1);
     }
     return 0;
 }
@@ -1951,20 +1952,20 @@ int kf_ckrangef(f)
 register frame *f;
 {
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_CKRANGEF, 2);
+	kf_argerror(f->env, KF_CKRANGEF, 2);
     }
     if (f->sp[1].type == T_STRING) {
 	(--f->sp)->type = T_INT;
 	f->sp->u.number = (Int) f->sp[2].u.string->len - 1;
-	str_ckrange(f->sp[2].u.string, (long) f->sp[1].u.number,
+	str_ckrange(f->env, f->sp[2].u.string, (long) f->sp[1].u.number,
 		    (long) f->sp->u.number);
     } else if (f->sp[1].type == T_ARRAY) {
 	(--f->sp)->type = T_INT;
 	f->sp->u.number = (Int) f->sp[2].u.array->size - 1;
-	arr_ckrange(f->sp[2].u.array, (long) f->sp[1].u.number,
+	arr_ckrange(f->env, f->sp[2].u.array, (long) f->sp[1].u.number,
 		    (long) f->sp->u.number);
     } else {
-	kf_argerror(KF_CKRANGEF, 1);
+	kf_argerror(f->env, KF_CKRANGEF, 1);
     }
     return 0;
 }
@@ -1985,14 +1986,14 @@ int kf_ckranget(f)
 register frame *f;
 {
     if (f->sp->type != T_INT) {
-	kf_argerror(KF_CKRANGET, 2);
+	kf_argerror(f->env, KF_CKRANGET, 2);
     }
     if (f->sp[1].type == T_STRING) {
-	str_ckrange(f->sp[1].u.string, 0L, (long) f->sp->u.number);
+	str_ckrange(f->env, f->sp[1].u.string, 0L, (long) f->sp->u.number);
     } else if (f->sp[1].type == T_ARRAY) {
-	arr_ckrange(f->sp[1].u.array, 0L, (long) f->sp->u.number);
+	arr_ckrange(f->env, f->sp[1].u.array, 0L, (long) f->sp->u.number);
     } else {
-	kf_argerror(KF_CKRANGET, 1);
+	kf_argerror(f->env, KF_CKRANGET, 1);
     }
 
     --f->sp;
@@ -2064,10 +2065,11 @@ int nargs;
 	    if (type == T_NIL && (vtype != T_ARRAY || i == nargs - 1)) {
 		type = vtype;
 	    } else if (type != vtype) {
-		error("Bad argument 2 for kfun +");
+		error(f->env, "Bad argument 2 for kfun +");
 	    }
 	} else if (vtype != T_INT || type == T_ARRAY) {
-	    error("Bad argument %d for kfun +", (i == nargs - 1) ? 1 : 2);
+	    error(f->env, "Bad argument %d for kfun +",
+		  (i == nargs - 1) ? 1 : 2);
 	} else {
 	    result += v->u.number;
 	}
@@ -2081,7 +2083,7 @@ int nargs;
      */
     result = 0;
     if (type == T_STRING) {
-	s = str_new((char *) NULL, size);
+	s = str_new(f->env, (char *) NULL, size);
 	s->text[size] = '\0';
 	for (v = f->sp, i = nargs; --i >= 0; v++) {
 	    if (v->u.number == -2) {
@@ -2090,7 +2092,7 @@ int nargs;
 		if (v->type == T_STRING) {
 		    size -= v->u.string->len;
 		    memcpy(s->text + size, v->u.string->text, v->u.string->len);
-		    str_del(v->u.string);
+		    str_del(f->env, v->u.string);
 		    result = 0;
 		} else if (nonint < i) {
 		    num = kf_itoa(v->u.number, buffer);
@@ -2108,7 +2110,7 @@ int nargs;
 		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
 		       len);
 		v += 2;
-		str_del(v->u.string);
+		str_del(f->env, v->u.string);
 		result = 0;
 	    }
 	}
@@ -2142,8 +2144,8 @@ int nargs;
 	    }
 
 	    e1 -= len;
-	    i_copy(e1, e2 - len, len);
-	    arr_del(v->u.array);
+	    i_copy(f->env, e1, e2 - len, len);
+	    arr_del(f->env, v->u.array);
 	    size -= len;
 	}
 
@@ -2178,11 +2180,11 @@ int kf_status_idx(f)
 register frame *f;
 {
     if (f->sp->type != T_INT) {
-	error("Non-numeric array index");
+	error(f->env, "Non-numeric array index");
     }
     i_add_ticks(f, 6);
     if (!conf_statusi(f, f->sp->u.number, f->sp)) {
-	error("Index out of range");
+	error(f->env, "Index out of range");
     }
     return 0;
 }
@@ -2210,18 +2212,18 @@ register frame *f;
 
     case T_LWOBJECT:
 	n = f->sp[1].u.array->elts[0].oindex;
-	arr_del(f->sp[1].u.array);
+	arr_del(f->env, f->sp[1].u.array);
 	break;
 
     default:
 	return 1;
     }
     if (f->sp->type != T_INT) {
-	error("Non-numeric array index");
+	error(f->env, "Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_objecti(f->data, OBJR(n), f->sp->u.number, &f->sp[1])) {
-	error("Index out of range");
+    if (!conf_objecti(f->data, OBJR(f->env, n), f->sp->u.number, &f->sp[1])) {
+	error(f->env, "Index out of range");
     }
     f->sp++;
     return 0;
@@ -2242,11 +2244,11 @@ int kf_calltr_idx(f)
 register frame *f;
 {
     if (f->sp->type != T_INT) {
-	error("Non-numeric array index");
+	error(f->env, "Non-numeric array index");
     }
     i_add_ticks(f, 10);
     if (!i_call_tracei(f, f->sp->u.number, f->sp)) {
-	error("Index out of range");
+	error(f->env, "Index out of range");
     }
     return 0;
 }

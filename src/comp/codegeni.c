@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "interpret.h"
 # include "data.h"
+# include "interpret.h"
 # include "table.h"
 # include "node.h"
 # include "control.h"
@@ -40,7 +40,7 @@ int byte;
 	    l = fline;
 	    fline = l->next;
 	} else {
-	    l = ALLOC(linechunk, 1);
+	    l = CALLOC(linechunk, 1);
 	}
 	l->next = (linechunk *) NULL;
 	if (tline != (linechunk *) NULL) {
@@ -128,7 +128,7 @@ static void line_clear()
     for (l = fline; l != (linechunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     fline = (linechunk *) NULL;
 }
@@ -163,7 +163,7 @@ char byte;
 	    l = fcode;
 	    fcode = l->next;
 	} else {
-	    l = ALLOC(codechunk, 1);
+	    l = CALLOC(codechunk, 1);
 	}
 	l->next = (codechunk *) NULL;
 	if (tcode != (codechunk *) NULL) {
@@ -229,7 +229,7 @@ int nlocals;
     if (sz > USHRT_MAX) {
 	c_error("function too large");
     }
-    code = ALLOC(char, sz);
+    code = CALLOC(char, sz);
     *code++ = depth >> 8;
     *code++ = depth;
     *code++ = nlocals;
@@ -269,7 +269,7 @@ static void code_clear()
     for (l = fcode; l != (codechunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     fcode = (codechunk *) NULL;
 
@@ -316,7 +316,7 @@ jmplist *list;
 	    l = fjump;
 	    fjump = l->next;
 	} else {
-	    l = ALLOC(jmpchunk, 1);
+	    l = CALLOC(jmpchunk, 1);
 	}
 	l->next = ljump;
 	ljump = l;
@@ -436,7 +436,7 @@ static void jump_clear()
     for (l = fjump; l != (jmpchunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	FREE(f);
+	CFREE(f);
     }
     fjump = (jmpchunk *) NULL;
 }

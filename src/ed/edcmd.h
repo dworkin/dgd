@@ -26,11 +26,13 @@
 # define CB_TLOWER	0x2000
 
 typedef struct {
+    lpcenv *env;		/* LPC execution environment */
+
     char *cmd;			/* command to do */
     editbuf *edbuf;		/* edit buffer */
     rxbuf *regexp;		/* current regular expression */
     vars *vars;			/* variables */
-    jmp_buf env;		/* environment to jump back to after search */
+    jmp_buf jump;		/* environment to jump back to after search */
     bool reverse;		/* reverse search */
     bool ignorecase;		/* ignore case */
 
@@ -83,5 +85,5 @@ typedef struct {
 
 extern cmdbuf *cb_new     P((char*));
 extern void    cb_del     P((cmdbuf*));
-extern bool    cb_command P((cmdbuf*, char*));
+extern bool    cb_command P((cmdbuf*, lpcenv*, char*));
 extern int     cb_edit	  P((cmdbuf*));

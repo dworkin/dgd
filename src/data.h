@@ -1,7 +1,5 @@
 # include "swap.h"
 
-typedef struct _svalue_ svalue;
-
 typedef struct {
     uindex oindex;		/* inherited object */
     uindex funcoffset;		/* function call offset */
@@ -145,7 +143,7 @@ struct _dataplane_ {
     value *original;		/* original variables */
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
-    abchunk *achunk;		/* chunk of array backup info */
+    struct _abchunk_ *achunk;	/* chunk of array backup info */
     strref *strings;		/* i/o? string constant table */
     struct _coptable_ *coptab;	/* callout patch table */
 
@@ -157,6 +155,7 @@ struct _dataspace_ {
     dataspace *prev, *next;	/* swap list */
     dataspace *gcprev, *gcnext;	/* garbage collection list */
 
+    lpcenv *env;		/* LPC execution environment */
     dataspace *iprev;		/* previous in import list */
     dataspace *inext;		/* next in import list */
 
@@ -204,22 +203,22 @@ struct _dataspace_ {
 
 extern void		d_init		 P((bool));
 
-extern control	       *d_new_control	 P((void));
-extern dataspace       *d_new_dataspace  P((object*));
-extern control	       *d_load_control	 P((object*));
-extern dataspace       *d_load_dataspace P((object*));
+extern control	       *d_new_control	 P((lpcenv*));
+extern dataspace       *d_new_dataspace  P((lpcenv*, object*));
+extern control	       *d_load_control	 P((lpcenv*, object*));
+extern dataspace       *d_load_dataspace P((lpcenv*, object*));
 extern void		d_ref_control	 P((control*));
 extern void		d_ref_dataspace  P((dataspace*));
 
 extern char	       *d_get_prog	 P((control*));
-extern string	       *d_get_strconst	 P((control*, int, unsigned int));
+extern string	       *d_get_strconst	 P((lpcenv*, control*, int, unsigned int));
 extern dfuncdef        *d_get_funcdefs	 P((control*));
 extern dvardef	       *d_get_vardefs	 P((control*));
 extern char	       *d_get_funcalls	 P((control*));
 extern dsymbol	       *d_get_symbols	 P((control*));
 extern Uint		d_get_progsize	 P((control*));
 
-extern void		d_new_variables	 P((control*, value*));
+extern void		d_new_variables	 P((lpcenv*, control*, value*));
 extern value	       *d_get_variable	 P((dataspace*, unsigned int));
 extern value	       *d_get_elts	 P((array*));
 extern void		d_get_callouts	 P((dataspace*));
@@ -230,15 +229,17 @@ extern void		d_upgrade_mem	 P((object*, object*));
 extern void		d_conv_control	 P((unsigned int));
 extern void		d_conv_dataspace P((object*, Uint*));
 
-extern void		d_free_control	 P((control*));
+extern void		d_free_control	 P((lpcenv*, control*));
 extern void		d_free_dataspace P((dataspace*));
 
 /* data.c */
 
+extern struct _dataenv_*d_new_env	P((void));
+
 extern void		d_new_plane	P((dataspace*, Int));
-extern void		d_commit_plane	P((Int, value*));
-extern void		d_discard_plane	P((Int));
-extern abchunk	      **d_commit_arr	P((array*, dataplane*, dataplane*));
+extern void		d_commit_plane	P((lpcenv*, Int, value*));
+extern void		d_discard_plane	P((lpcenv*, Int));
+extern struct _abchunk_**d_commit_arr	P((array*, dataplane*, dataplane*));
 extern void		d_discard_arr	P((array*, dataplane*));
 
 extern void		d_ref_imports	P((array*));
@@ -261,10 +262,10 @@ extern void		d_set_varmap	P((control*, unsigned int,
 extern void		d_upgrade_data	P((dataspace*, unsigned short,
 					   unsigned short*, object*));
 extern void		d_upgrade_clone	P((dataspace*));
-extern object	       *d_upgrade_lwobj	P((array*, object*));
-extern void		d_export	P((void));
+extern object	       *d_upgrade_lwobj	P((lpcenv*, array*, object*));
+extern void		d_export	P((lpcenv*));
 
-extern void		d_del_control	P((control*));
+extern void		d_del_control	P((lpcenv*, control*));
 extern void		d_del_dataspace	P((dataspace*));
 
 

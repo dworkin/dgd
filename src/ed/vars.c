@@ -18,7 +18,7 @@ vars *va_new()
     };
     register vars *v;
 
-    v = ALLOC(vars, NUMBER_OF_VARS);
+    v = SALLOC(vars, NUMBER_OF_VARS);
     memcpy(v, dflt, sizeof(dflt));
 
     return v;
@@ -31,7 +31,7 @@ vars *va_new()
 void va_del(v)
 vars *v;
 {
-    FREE(v);
+    SFREE(v);
 }
 
 /*
