@@ -1,4 +1,4 @@
-   DGD was written by Felix A. Croes (dworkin@cd.chalmers.se)
+   DGD was written by Felix A. Croes (dworkin@hippolytos.cd.chalmers.se)
 
    DGD != LPmud, but without LPmud DGD could not have existed.  My effusive
 thanks to Lars Pensjö for putting me on the right track.
@@ -9,3 +9,6 @@ builtin inventories or actions.
 
    Richard Braakman showed me in practise that using hashing for object symbol
 tables is very worthwhile.
+
+   Many bugs were reported, and suggestions made by Thomas Bopp, Adam David,
+Kris Van Hees, Robert Leslie and Haijo Schipper.
