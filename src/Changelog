@@ -1271,3 +1271,5 @@ DGD 1.1
    at the end of each thread, rather than each second.  This means that to get
    the same memory usage, the swap_fragment parameter should get a
    considerably larger value.
+ - Simplified the automatic object swapping; too much was happening at the
+   end of each thread, especially with many objects in memory.

@@ -42,7 +42,6 @@ typedef struct {
 
 struct _control_ {
     control *prev, *next;
-    Uint refc;
     uindex ndata;		/* # of data blocks using this control block */
 
     sector nsectors;		/* o # of sectors */
@@ -128,7 +127,6 @@ typedef struct _plane_ {
 
 struct _dataspace_ {
     dataspace *prev, *next;
-    Uint refc;
 
     dataspace *ilist;		/* import list */
 

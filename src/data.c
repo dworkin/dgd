@@ -128,8 +128,8 @@ static char sco_layout[] = "is[sui][sui][sui][sui]";
 # define co_prev	time
 # define co_next	nargs
 
-static control *chead, *ctail, *cone;	/* list of control blocks */
-static dataspace *dhead, *dtail, *done;	/* list of dataspace blocks */
+static control *chead, *ctail;		/* list of control blocks */
+static dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static uindex nctrl;			/* # control blocks */
 static uindex ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
@@ -142,8 +142,8 @@ static bool nilisnot0;			/* nil != int 0 */
 void d_init(flag)
 bool flag;
 {
-    chead = ctail = cone = (control *) NULL;
-    dhead = dtail = done = (dataspace *) NULL;
+    chead = ctail = (control *) NULL;
+    dhead = dtail = (dataspace *) NULL;
     nctrl = ndata = 0;
     nilisnot0 = flag;
 }
@@ -157,32 +157,18 @@ control *d_new_control()
     register control *ctrl;
 
     ctrl = ALLOC(control, 1);
-    if (cone != (control *) NULL) {
-	/* insert before first 1 */
-	if (chead != cone) {
-	    ctrl->prev = cone->prev;
-	    ctrl->prev->next = ctrl;
-	} else {
-	    /* at beginning */
-	    chead = ctrl;
-	    ctrl->prev = (control *) NULL;
-	}
-	cone->prev = ctrl;
-	ctrl->next = cone;
-    } else if (ctail != (control *) NULL) {
-	/* append at end of list */
-	ctail->next = ctrl;
-	ctrl->prev = ctail;
-	ctrl->next = (control *) NULL;
-	ctail = ctrl;
+    if (chead != (control *) NULL) {
+	/* insert at beginning of list */
+	chead->prev = ctrl;
+	ctrl->prev = (control *) NULL;
+	ctrl->next = chead;
+	chead = ctrl;
     } else {
 	/* list was empty */
 	ctrl->prev = ctrl->next = (control *) NULL;
 	chead = ctail = ctrl;
     }
-    ctrl->refc = 1;
     ctrl->ndata = 0;
-    cone = ctrl;
     nctrl++;
 
     ctrl->flags = 0;
@@ -225,31 +211,17 @@ object *obj;
     register dataspace *data;
 
     data = ALLOC(dataspace, 1);
-    if (done != (dataspace *) NULL) {
-	/* insert before first 1 */
-	if (dhead != done) {
-	    data->prev = done->prev;
-	    data->prev->next = data;
-	} else {
-	    /* at beginning */
-	    dhead = data;
-	    data->prev = (dataspace *) NULL;
-	}
-	done->prev = data;
-	data->next = done;
-    } else if (dtail != (dataspace *) NULL) {
-	/* append at end of list */
-	dtail->next = data;
-	data->prev = dtail;
-	data->next = (dataspace *) NULL;
-	dtail = data;
+    if (dhead != (dataspace *) NULL) {
+	/* insert at beginning of list */
+	dhead->prev = data;
+	data->prev = (dataspace *) NULL;
+	data->next = dhead;
+	dhead = data;
     } else {
 	/* list was empty */
 	data->prev = data->next = (dataspace *) NULL;
 	dhead = dtail = data;
     }
-    data->refc = 1;
-    done = data;
     ndata++;
 
     data->ilist = (dataspace *) NULL;
@@ -498,44 +470,18 @@ object *obj;
 void d_ref_control(ctrl)
 register control *ctrl;
 {
-    if (ctrl->refc == 0) {
-	cone = ctrl;
-    } else if (cone == ctrl) {
-	cone = ctrl->next;
-    }
-    ctrl->refc++;
-    if (ctrl != chead && ctrl->refc >= ctrl->prev->refc) {
-	register control *c;
-
-	/* remove from linked list */
+    if (ctrl != chead) {
+	/* move to head of list */
 	ctrl->prev->next = ctrl->next;
-	if (ctrl != ctail) {
+	if (ctrl->next != (control *) NULL) {
 	    ctrl->next->prev = ctrl->prev;
 	} else {
 	    ctail = ctrl->prev;
 	}
-
-	/* insert in proper place */
-	c = ctrl->prev;
-	for (;;) {
-	    if (c == chead) {
-		/* at beginning */
-		ctrl->prev = (control *) NULL;
-		ctrl->next = c;
-		chead = ctrl;
-		c->prev = ctrl;
-		break;
-	    }
-	    if (c->prev->refc > ctrl->refc) {
-		/* insert */
-		ctrl->prev = c->prev;
-		ctrl->next = c;
-		c->prev->next = ctrl;
-		c->prev = ctrl;
-		break;
-	    }
-	    c = c->prev;
-	}
+	ctrl->prev = (control *) NULL;
+	ctrl->next = chead;
+	chead->prev = ctrl;
+	chead = ctrl;
     }
 }
 
@@ -546,44 +492,18 @@ register control *ctrl;
 void d_ref_dataspace(data)
 register dataspace *data;
 {
-    if (data->refc == 0) {
-	done = data;
-    } else if (done == data) {
-	done = data->next;
-    }
-    data->refc++;
-    if (data != dhead && data->refc >= data->prev->refc) {
-	register dataspace *d;
-
-	/* remove from linked list */
+    if (data != dhead) {
+	/* move to head of list */
 	data->prev->next = data->next;
-	if (data != dtail) {
+	if (data->next != (dataspace *) NULL) {
 	    data->next->prev = data->prev;
 	} else {
 	    dtail = data->prev;
 	}
-
-	/* insert in proper place */
-	d = data->prev;
-	for (;;) {
-	    if (d == dhead) {
-		/* at beginning */
-		data->prev = (dataspace *) NULL;
-		data->next = d;
-		dhead = data;
-		d->prev = data;
-		break;
-	    }
-	    if (d->prev->refc > data->refc) {
-		/* insert */
-		data->prev = d->prev;
-		data->next = d;
-		d->prev->next = data;
-		d->prev = data;
-		break;
-	    }
-	    d = d->prev;
-	}
+	data->prev = (dataspace *) NULL;
+	data->next = dhead;
+	dhead->prev = data;
+	dhead = data;
     }
 }
 
@@ -3021,9 +2941,6 @@ register control *ctrl;
 	    ctail->next = (control *) NULL;
 	}
     }
-    if (ctrl == cone) {
-	cone = ctrl->next;
-    }
     --nctrl;
 
     FREE(ctrl);
@@ -3086,9 +3003,6 @@ register dataspace *data;
 	    dtail->next = (dataspace *) NULL;
 	}
     }
-    if (data == done) {
-	done = data->next;
-    }
     --ndata;
 
     FREE(data);
@@ -3123,14 +3037,6 @@ unsigned int frag;
 	}
 	data = prev;
     }
-    /* multiply ref counts for leftover datablocks by 3/4 */
-    done = (dataspace *) NULL;
-    for (data = dtail; data != dhead; data = data->prev) {
-	data->refc = data->refc * 3 / 4;
-	if (data->refc <= 1) {
-	    done = data;
-	}
-    }
 
     /* swap out control blocks */
     ctrl = ctail;
@@ -3147,14 +3053,6 @@ unsigned int frag;
 	    d_free_control(ctrl);
 	}
 	ctrl = prev;
-    }
-    /* multiply ref counts for leftover control blocks by 3/4 */
-    cone = (control *) NULL;
-    for (ctrl = ctail; ctrl != chead; ctrl = ctrl->prev) {
-	ctrl->refc = ctrl->refc * 3 / 4;
-	if (ctrl->refc <= 1) {
-	    cone = ctrl;
-	}
     }
 
     return count;
