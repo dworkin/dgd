@@ -1575,3 +1575,9 @@ DGD 1.3
  - Include system files before DGD files on Windows.
  - Rather than causing an error, let the callout and precompiled object lists
    returned by status() be nil if they would not fit in an array.
+ - The swapout callback function in the DGD extension interface is no longer
+   used.
+ - Call_touch() didn't work very well in atomic code.
+ - Moved the O_PENDIO flag into the user struct as CF_OUTPUT.
+ - O_LWOBJ is now a proper object flag.
+ - Destructing the driver object in atomic code could lead to trouble.

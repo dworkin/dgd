@@ -2071,17 +2071,11 @@ unsigned int frag;
 	    register dataspace *prev;
 
 	    prev = data->prev;
-	    if (!(OBJ(data->oindex)->flags & O_PENDIO) || frag == 1) {
-		if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
-		    ext_swapout != (void (*) P((object*))) NULL) {
-		    (*ext_swapout)(OBJ(data->oindex));
-		}
-		if (d_save_dataspace(data, TRUE, (Uint *) NULL)) {
-		    count++;
-		}
-		OBJ(data->oindex)->data = (dataspace *) NULL;
-		d_free_dataspace(data);
+	    if (d_save_dataspace(data, TRUE, (Uint *) NULL)) {
+		count++;
 	    }
+	    OBJ(data->oindex)->data = (dataspace *) NULL;
+	    d_free_dataspace(data);
 	    data = prev;
 	}
 
@@ -2127,10 +2121,6 @@ void d_swapsync()
 
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
-	    ext_swapout != (void (*) P((object*))) NULL) {
-	    (*ext_swapout)(OBJ(data->oindex));
-	}
 	d_save_dataspace(data, TRUE, (Uint *) NULL);
     }
 }

@@ -19,9 +19,6 @@ struct _object_ {
 # define u_ref			ref
 # define u_master		ref
 
-# define O_CLONE		(UINDEX_MAX >> 1)
-# define O_LWOBJ		(O_CLONE + 1)
-
 # define O_MASTER		0x01
 # define O_AUTO			0x02
 # define O_DRIVER		0x04
@@ -29,7 +26,7 @@ struct _object_ {
 # define O_USER			0x10
 # define O_EDITOR		0x20
 # define O_COMPILED		0x40
-# define O_PENDIO		0x80
+# define O_LWOBJ		0x80
 
 # define O_SPECIAL		0x30
 
@@ -39,8 +36,8 @@ struct _object_ {
 # define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
 # define OBJW(i)		((!obase) ? o_owrite((i)) : &otable[i])
 
-# define O_UPGRADING(o)		(((o)->cref & O_CLONE) > (o)->u_ref)
-# define O_INHERITED(o)		((o)->u_ref - 1 != ((o)->cref & O_CLONE))
+# define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
+# define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 # define O_HASDATA(o)		((o)->data != (dataspace *) NULL || \
 				 (o)->dfirst != SW_UNUSED)
 
@@ -73,7 +70,7 @@ extern void	  o_clean		P((void));
 extern uindex	  o_count		P((void));
 extern bool	  o_dump		P((int));
 extern void	  o_restore		P((int, unsigned int));
-extern void	  o_conv		P((int));
+extern void	  o_conv		P((int, int));
 
 extern object    *otable;
 extern char	 *ocmap;

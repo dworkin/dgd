@@ -105,7 +105,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	3
+# define FORMAT_VERSION	4
 
 # define DUMP_VALID	0	/* valud dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -259,7 +259,7 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    bool convert;
+    bool conv_callouts, conv_lwos;
     unsigned int secsize;
     long posn;
 
@@ -268,9 +268,13 @@ int fd;
     }
     if (rheader[DUMP_VERSION] == 2) {
 	rheader[DUMP_VERSION] = FORMAT_VERSION;
-	convert = TRUE;
+	conv_callouts = conv_lwos = TRUE;
+    } else if (rheader[DUMP_VERSION] == 3) {
+	rheader[DUMP_VERSION] = FORMAT_VERSION;
+	conv_callouts = FALSE;
+	conv_lwos = TRUE;
     } else {
-	convert = FALSE;
+	conv_callouts = conv_lwos = FALSE;
     }
     if (memcmp(header, rheader, DUMP_TYPE) != 0) {
 	error("Bad or incompatible restore file header");
@@ -318,10 +322,10 @@ int fd;
 
     sw_restore(fd, secsize);
     kf_restore(fd);
-    o_restore(fd, (uindex) 1 << (rusize * 8 - 1));
+    o_restore(fd, (uindex) ((conv_lwos) ? 1 << (rusize * 8 - 1) : 0));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv(convert);			/* convert all objects */
+    o_conv(conv_callouts, conv_lwos);	/* convert all objects */
     P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
     pc_restore(fd);

@@ -159,8 +159,7 @@ but the associated LPC value is.
 
     void swapout(DGD_OBJECT_T obj);
 
-This function is called when a user-defined special object is about to be
-swapped out (including any associated LPC value).
+This function is no longer used.  NULL should be supplied instead.
 
     void destruct(DGD_OBJECT_T obj);
 

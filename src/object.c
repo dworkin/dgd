@@ -614,11 +614,7 @@ register object *master;
     register object *o;
 
     /* allocate object */
-    if ((master->cref & O_CLONE) >= O_CLONE - 2) {
-	error("Too many clones");
-    }
     o = o_alloc();
-
     o->chain.name = (char *) NULL;
     o->flags = 0;
     o->count = ++oplane->ocount;
@@ -639,7 +635,8 @@ register object *master;
 void o_lwobj(obj)
 object *obj;
 {
-    obj->cref |= O_LWOBJ;
+    obj->flags |= O_LWOBJ;
+    obj->cref++;
 }
 
 /*
@@ -979,9 +976,9 @@ register object *o;
     bool purged;
 
     purged = FALSE;
-    while (o->prev != OBJ_NONE && (o=OBJ(o->prev))->ref & O_LWOBJ) {
-	o->ref &= ~O_LWOBJ;
-	if (o->ref == 0) {
+    while (o->prev != OBJ_NONE && ((o=OBJ(o->prev))->flags & O_LWOBJ)) {
+	o->flags &= ~O_LWOBJ;
+	if (--o->ref == 0) {
 	    o->cref = baseplane.destruct;
 	    baseplane.destruct = o->index;
 	    purged = TRUE;
@@ -1061,6 +1058,10 @@ void o_clean()
 	    up->flags &= ~O_COMPILED;
 	    up->cref -= 2;
 	    o->u_ref = up->cref;
+	    if (up->flags & O_LWOBJ) {
+		o->flags |= O_LWOBJ;
+		o->u_ref++;
+	    }
 	    if (up->count != 0 && O_HASDATA(up)) {
 		o->u_ref++;
 	    }
@@ -1231,6 +1232,9 @@ unsigned int rlwobj;
     /* read object names, and patch all objects and control blocks */
     buflen = 0;
     for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
+	if (rlwobj != 0) {
+	    o->flags &= ~O_LWOBJ;
+	}
 	if (o->chain.name != (char *) NULL) {
 	    /*
 	     * restore name
@@ -1264,12 +1268,16 @@ unsigned int rlwobj;
 
 		/* fix O_LWOBJ */
 		if (o->cref & rlwobj) {
+		    o->flags |= O_LWOBJ;
 		    o->cref &= ~rlwobj;
-		    o->cref |= O_LWOBJ;
 		}
 	    }
 	    p += len;
 	    buflen -= len;
+	} else if (o->ref & rlwobj) {
+	    o->flags |= O_LWOBJ;
+	    o->ref &= ~rlwobj;
+	    o->ref++;
 	}
 
 	if (o->count != 0) {
@@ -1277,7 +1285,6 @@ unsigned int rlwobj;
 	    if ((o->flags & O_SPECIAL) != O_SPECIAL) {
 		o->flags &= ~O_SPECIAL;
 	    }
-	    o->flags &= ~O_PENDIO;
 	}
 
 	/* check memory */
@@ -1317,8 +1324,8 @@ cvoid *cv1, *cv2;
  * NAME:	object->conv()
  * DESCRIPTION:	convert all objects, creating a new swap file
  */
-void o_conv(convert)
-int convert;
+void o_conv(conv_callouts, conv_lwos)
+int conv_callouts, conv_lwos;
 {
     register Uint *counts, *sorted;
     register uindex i;
@@ -1365,7 +1372,7 @@ int convert;
 	 */
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
-		d_conv_dataspace(o, counts, convert);
+		d_conv_dataspace(o, counts, conv_callouts);
 		o_clean_upgrades();
 		d_swapout(1);
 	    }
@@ -1376,7 +1383,7 @@ int convert;
 	 */
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->cfirst != SW_UNUSED &&
-		(o->cref & O_LWOBJ) && o_purge_upgrades(o)) {
+		(o->flags & O_LWOBJ) && o_purge_upgrades(o)) {
 		o->prev = OBJ_NONE;
 	    }
 	}

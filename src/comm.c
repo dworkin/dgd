@@ -39,21 +39,22 @@ typedef struct _user_ {
 # define CF_TELNET	0x01	/* telnet connection */
 # define  CF_ECHO	0x02	/* client echoes input */
 # define  CF_GA		0x04	/* send GA after prompt */
-# define  CF_SEENCR	0x08	/* just seen a CR */
-# define  CF_PROMPT	0x10	/* prompt in telnet output */
-# define CF_BLOCKED	0x20	/* input blocked */
-# define CF_FLUSH	0x40	/* in flush list */
+# define  CF_PROMPT	0x08	/* prompt in telnet output */
+# define CF_BLOCKED	0x10	/* input blocked */
+# define CF_FLUSH	0x20	/* in flush list */
+# define CF_OUTPUT	0x40	/* pending output */
 # define CF_ODONE	0x80	/* output done */
 
 /* state */
 # define TS_DATA	0
-# define TS_IAC		1
-# define TS_DO		2
-# define TS_DONT	3
-# define TS_WILL	4
-# define TS_WONT	5
-# define TS_SB		6
-# define TS_SE		7
+# define TS_CRDATA	1
+# define TS_IAC		2
+# define TS_DO		3
+# define TS_DONT	4
+# define TS_WILL	5
+# define TS_WONT	6
+# define TS_SB		7
+# define TS_SE		8
 
 static user *users;		/* array of users */
 static user *lastuser;		/* last user checked */
@@ -192,7 +193,7 @@ bool telnet;
     usr->osdone = 0;
     if (telnet) {
 	/* initialize connection */
-	usr->flags = CF_TELNET | CF_ECHO;
+	usr->flags = CF_TELNET | CF_ECHO | CF_OUTPUT;
 	usr->state = TS_DATA;
 	usr->newlines = 0;
 	usr->inbufsz = 0;
@@ -205,7 +206,6 @@ bool telnet;
 	arr->elts[0].u.number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
 	d_assign_elt(data, arr, &arr->elts[1], &val);
-	obj->flags |= O_PENDIO;
     } else {
 	usr->flags = 0;
     }
@@ -275,7 +275,7 @@ string *str;
     if ((usr->flags & CF_UDP) || v->type == T_STRING) {
 	error("Datagram challenge already set");
     }
-    obj->flags |= O_PENDIO;
+    usr->flags |= CF_OUTPUT;
     PUT_STRVAL_NOREF(&val, str);
     d_assign_elt(data, arr, v, &val);
 }
@@ -324,7 +324,7 @@ unsigned int len;
 	    usr->flags &= ~CF_ODONE;
 	    --odone;
 	}
-	obj->flags |= O_PENDIO;
+	usr->flags |= CF_OUTPUT;
 	if (str == (string *) NULL) {
 	    str = str_new(text, (long) len);
 	}
@@ -452,7 +452,7 @@ string *str;
     if (v->type == T_STRING) {
 	return 0;	/* datagram queued already */
     }
-    obj->flags |= O_PENDIO;
+    usr->flags |= CF_OUTPUT;
     PUT_STRVAL_NOREF(&val, str);
     d_assign_elt(data, arr, v, &val);
 
@@ -545,20 +545,20 @@ array *arr;
 		if (n == v[1].u.string->len) {
 		    /* buffer fully drained */
 		    n = 0;
+		    usr->flags &= ~CF_OUTPUT;
 		    usr->flags |= CF_ODONE;
 		    odone++;
-		    obj->flags &= ~O_PENDIO;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
 		usr->osdone = n;
 	    } else {
 		/* wait for conn_read() to discover the problem */
-		obj->flags &= ~O_PENDIO;
+		usr->flags &= ~CF_OUTPUT;
 	    }
 	}
     } else {
 	/* just a datagram */
-	obj->flags &= ~O_PENDIO;
+	usr->flags &= ~CF_OUTPUT;
     }
 
     if (v[2].type == T_STRING) {
@@ -631,7 +631,7 @@ void comm_flush()
 	    str_del(usr->outbuf);
 	    usr->outbuf = (string *) NULL;
 	}
-	if (obj->flags & O_PENDIO) {
+	if (usr->flags & CF_OUTPUT) {
 	    comm_uflush(usr, obj, obj->data, arr);
 	}
 
@@ -812,7 +812,7 @@ unsigned int mtime;
 	lastuser = usr->next;
 
 	obj = OBJ(usr->oindex);
-	if (obj->flags & O_PENDIO) {
+	if (usr->flags & CF_OUTPUT) {
 	    dataspace *data;
 
 	    data = o_dataspace(obj);
@@ -853,7 +853,7 @@ unsigned int mtime;
 			    *p = LF;
 			    n = 1;
 			}
-		    } else if (!(obj->flags & O_PENDIO)) {
+		    } else if (!(usr->flags & CF_OUTPUT)) {
 			/*
 			 * empty buffer, no more input, no pending output
 			 */
@@ -870,10 +870,6 @@ unsigned int mtime;
 		    switch (state) {
 		    case TS_DATA:
 			switch (UCHAR(*p)) {
-			case '\0':
-			    usr->flags &= ~CF_SEENCR;
-			    break;
-
 			case IAC:
 			    state = TS_IAC;
 			    break;
@@ -883,27 +879,47 @@ unsigned int mtime;
 			    if (q[-1] != LF) {
 				--q;
 			    }
-			    usr->flags &= ~CF_SEENCR;
 			    break;
 
 			case CR:
 			    nls++;
 			    newlines++;
 			    *q++ = LF;
-			    usr->flags |= CF_SEENCR;
+			    state = TS_CRDATA;
 			    break;
 
 			case LF:
-			    if ((usr->flags & CF_SEENCR) != 0) {
-				usr->flags &= ~CF_SEENCR;
-				break;
-			    }
 			    nls++;
 			    newlines++;
 			    /* fall through */
 			default:
 			    *q++ = *p;
-			    usr->flags &= ~CF_SEENCR;
+			    /* fall through */
+			case '\0':
+			    break;
+			}
+			break;
+
+		    case TS_CRDATA:
+			switch (UCHAR(*p)) {
+			case IAC:
+			    state = TS_IAC;
+			    break;
+
+			case CR:
+			    nls++;
+			    newlines++;
+			    *q++ = LF;
+			    break;
+
+			default:
+			    *q++ = *p;
+			    /* fall through */
+			case '\0':
+			case LF:
+			case BS:
+			case 0x7f:
+			    state = TS_DATA;
 			    break;
 			}
 			break;
@@ -1078,7 +1094,7 @@ unsigned int mtime;
 
 	    n = conn_read(usr->conn, p = buffer, BINBUF_SIZE);
 	    if (n <= 0) {
-		if (n < 0 && !(obj->flags & O_PENDIO)) {
+		if (n < 0 && !(usr->flags & CF_OUTPUT)) {
 		    /*
 		     * no more input and no pending output
 		     */

@@ -2134,6 +2134,7 @@ int nargs;
 	/*
 	 * initialize/touch the object
 	 */
+	obj = OBJW(obj->index);
 	obj->flags |= O_TOUCHED;
 	if (O_HASDATA(obj)) {
 	    PUSH_OBJVAL(f, obj);

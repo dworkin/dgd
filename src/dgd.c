@@ -32,7 +32,8 @@ int narg;
     object *driver;
     char *driver_name;
 
-    if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count) {
+    if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count ||
+	!(driver->flags & O_DRIVER)) {
 	driver_name = conf_driver();
 	driver = o_find(driver_name, OACC_READ);
 	if (driver == (object *) NULL) {
