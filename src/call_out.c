@@ -401,6 +401,9 @@ cbuf **qp;
 	/*
 	 * immediate callout
 	 */
+	if (nshort == 0 && queuebrk == 0 && n == 0) {
+	    co_time(mp);	/* initialize timestamp */
+	}
 	*qp = &immediate;
 	*tp = t = 0;
 	*mp = 0;
@@ -639,9 +642,6 @@ static void co_expire()
     unsigned short m;
 
     if (P_timeout(&t, &m)) {
-	if (timestamp < atimeout) {
-	    timestamp = atimeout - 1;
-	}
 	while (timestamp < t) {
 	    timestamp++;
 

@@ -964,13 +964,16 @@ register int state;
 		}
 	    }
 	}
+	i = tmpval();
+	output("tv[%d] = f->atomic, f->atomic = FALSE, ", i);
 	output("!ec_push((ec_ftn) i_catcherr) ? (");
 	catch_level++;
 	cg_expr(n->l.left, POP);
 	--catch_level;
+	output(", ec_pop(), f->atomic = tv[%d], ", i);
 	if (state == PUSH) {
-	    output(", ec_pop(), *--f->sp = nil_value, 0) : ");
-	    output("(PUSH_STRVAL(f, errorstr())");
+	    output("*--f->sp = nil_value, 0) : (f->atomic = tv[%d], ", i);
+	    output("PUSH_STRVAL(f, errorstr())");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -980,7 +983,7 @@ register int state;
 	    }
 	    output(", 0))");
 	} else {
-	    output(", ec_pop(), FALSE) : (");
+	    output("FALSE) : (f->atomic = tv[%d], ", i);
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {

@@ -839,8 +839,10 @@ static void cmd_code(object user, string cmd, string str)
     if (write_file(str + ".c",
 		   "# include <float.h>\n# include <limits.h>\n" +
 		   "# include <status.h>\n# include <trace.h>\n" +
-		   "# include <type.h>\n\n" +
-		   "mixed exec(object user, mixed argv...) {\n" +
+		   "# include <type.h>\n" +
+		   ((file_info(USR + "/" + owner + "/include/code.h")) ?
+		     "# include \"~/include/code.h\"\n" : "") +
+		   "\nmixed exec(object user, mixed argv...) {\n" +
 		   "    mixed " +
 		   "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
 		   "    " + parsed[0] + "\n}\n") > 0) {

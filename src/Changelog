@@ -1483,3 +1483,11 @@ DGD 1.2p2
  - Fixed several bugs which could, in rare cases, cause nil to turn up in
    mappings that had been accessed from atomically executed code.
  - Fixed a bug in error recovery for compiling switch statements.
+
+DGD 1.2p3
+
+ - Fixed a bug that could occur when upgrading an interpreted object to
+   precompiled.
+ - Fixed a bug with catch and atomic in precompiled code.
+ - Fixed a recursion problem for an error in runtime_error().
+ - Better fix for the callout pause problem.

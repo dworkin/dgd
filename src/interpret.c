@@ -2301,6 +2301,16 @@ register frame *ftop;
 }
 
 /*
+ * NAME:	emptyhandler()
+ * DESCRIPTION:	fake error handler
+ */
+static void emptyhandler(f, depth)
+frame *f;
+Int depth;
+{
+}
+
+/*
  * NAME:	interpret->call_critical()
  * DESCRIPTION:	Call a function in the driver object at a critical moment.
  *		The function is called with rlimits (-1; -1) and errors
@@ -2315,7 +2325,7 @@ int narg, flag;
 
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
-    if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
+    if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) emptyhandler)) {
 	ok = FALSE;
     } else {
 	f->sp -= narg;	/* recover arguments */

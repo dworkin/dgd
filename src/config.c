@@ -46,7 +46,7 @@ static config conf[] = {
 							2, UINDEX_MAX },
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE, FALSE,
-							0, UINDEX_MAX },
+							0, UINDEX_MAX - 1 },
 # define CREATE		5
 				{ "create",		STRING_CONST, FALSE },
 # define DIRECTORY	6
