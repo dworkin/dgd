@@ -369,6 +369,8 @@ void endthread()
 {
 }
 
+# ifndef PRECOMPILER_PRECOMPILED
+
 pcfunc *pcfunctions;	/* dummy */
 
 /*
@@ -410,6 +412,8 @@ void pc_restore(fd)
 int fd;
 {
 }
+
+# endif	/* PRECOMPILER_PRECOMPILED */
 
 /*
  * NAME:	swap->init()
