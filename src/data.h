@@ -9,10 +9,10 @@ typedef struct {
 
 typedef struct {
     Uint index;			/* index in control block */
-    unsigned short len;		/* string length */
+    ssizet len;			/* string length */
 } dstrconst;
 
-# define DSTR_LAYOUT	"is"
+# define DSTR_LAYOUT	"it"
 
 typedef struct _dfuncdef_ {
     char class;			/* function class */
