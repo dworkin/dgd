@@ -43,6 +43,7 @@ typedef unsigned int Uint;
 # define FS_BLOCK_SIZE		8192
 
 # define bool			dgd_bool
+# define string			dgd_string
 # define exit			dgd_exit
 # define abort			dgd_abort
 
