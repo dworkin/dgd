@@ -41,6 +41,7 @@
 # define DGD_TYPE_OBJECT	T_OBJECT
 # define DGD_TYPE_ARRAY		T_ARRAY
 # define DGD_TYPE_MAPPING	T_MAPPING
+# define DGD_TYPE_MIXED		T_MIXED
 
 # define DGD_TYPE_ARRAY_OF(t)	((t) + (1 << REFSHIFT))
 # define DGD_TYPE_VARARGS	T_VARARGS
@@ -89,19 +90,24 @@
  */
 # define DGD_FLOAT_GETVAL(v, f)		GET_FLT(&(v), (f))
 # define DGD_FLOAT_PUTVAL(v, f)		PUT_FLTVAL(&(v), (f))
-# define DGD_FLOAT_GET(f, s, e, m)	((s) = (f).high >> 15, \
-					 (e) = ((f).high >> 4) & 0xfff, \
-					 (m) = (f).high & 0xf, (m) <<= 32, \
-					 (m) |= (f).low)
-# define DGD_FLOAT_PUT(f, s, e, m)	((f).high = ((s) << 15) | ((e) << 4) | \
-						    ((m) >> 32), \
+# define DGD_FLOAT_GET(f, s, e, m)	((((f).high | (f).low) == 0) ? \
+					  ((s) = 0, (e) = 0, (m) = 0) : \
+					  ((s) = (f).high >> 15, \
+					   (e) = (((f).high >> 4) & 0x7ff) - \
+						 1023, \
+					   (m) = 0x10 | ((f).high & 0xf), \
+					   (m) <<= 32, (m) |= (f).low))
+# define DGD_FLOAT_PUT(f, s, e, m)	((f).high = (((m) == 0) ? 0 : \
+						      ((s) << 15) | \
+						      (((e) + 1023) << 4) | \
+						      (((m) >> 32) & 0xf)), \
 					 (f).low = (m))
 
 /*
  * string
  */
 # define DGD_STRING_GETVAL(v)		((v).u.string)
-# define DGD_STRING_PUTVAL(v, s)	PUT_STRVAL(&(v), (s))
+# define DGD_STRING_PUTVAL(v, s)	PUT_STRVAL_NOREF(&(v), (s))
 # define DGD_STRING_NEW(t, n)		str_new((t), (long) (n))
 # define DGD_STRING_TEXT(s)		((s)->text)
 # define DGD_STRING_LENGTH(s)		((s)->len)
@@ -125,20 +131,21 @@
  * array
  */
 # define DGD_ARRAY_GETVAL(v)		((v).u.array)
-# define DGD_ARRAY_PUTVAL(v, a)		PUT_ARRVAL(&(v), (a))
+# define DGD_ARRAY_PUTVAL(v, a)		PUT_ARRVAL_NOREF(&(v), (a))
 # define DGD_ARRAY_NEW(d, n)		arr_ext_new((d), (long) (n))
 # define DGD_ARRAY_ELTS(a)		d_get_elts((a))
+# define DGD_ARRAY_SIZE(a)		((a)->size)
 # define DGD_ARRAY_INDEX(a, i)		(d_get_elts((a))[(i)])
 # define DGD_ARRAY_ASSIGN(d, a, i, v)	d_assign_elt((d), (a), \
 						    &d_get_elts((a))[(i)], &(v))
-
 /*
  * mapping
  */
 # define DGD_MAPPING_GETVAL(v)		((v).u.array)
-# define DGD_MAPPING_PUTVAL(v, m)	PUT_MAPVAL(&(v), (m))
+# define DGD_MAPPING_PUTVAL(v, m)	PUT_MAPVAL_NOREF(&(v), (m))
 # define DGD_MAPPING_NEW(d)		map_new((d), 0L)
 # define DGD_MAPPING_ELTS(m)		(map_compact((m)), d_get_elts((m)))
+# define DGD_MAPPING_SIZE(m)		map_size((m))
 # define DGD_MAPPING_INDEX(m, i)	(*map_index((m)->primary->data, (m), \
 						    &(i), (value *) NULL))
 # define DGD_MAPPING_ASSIGN(d, m, i, v)	map_index((d), (m), &(i), &(v))

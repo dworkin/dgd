@@ -590,6 +590,9 @@ register node **m;
 	    case N_ADD:
 		n->l.left->type = N_SUM;
 		d1 += 2;			/* (-2) on both sides */
+		if (n->l.left->l.left->type == N_RANGE) {
+		    d1++;
+		}
 		n->type = N_SUM;
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
@@ -1204,6 +1207,9 @@ bool pop;
 	case N_ADD:
 	    n->r.right->type = N_SUM;
 	    d2 += 2;				/* (-2) on both sides */
+	    if (n->r.right->l.left->type == N_RANGE) {
+		d1++;
+	    }
 	    n->type = N_SUM_EQ;
 	    d1++;				/* add (-2) */
 	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);

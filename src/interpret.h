@@ -106,7 +106,7 @@ struct _value_ {
 };
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
-# define VAL_TRUE(v)	((v)->u.number != 0 ||				\
+# define VAL_TRUE(v)	((v)->u.number != 0 || (v)->type > T_FLOAT ||	\
 			 ((v)->type == T_FLOAT && (v)->oindex != 0))
 
 # define PUSH_INTVAL(f, i)	((--(f)->sp)->u.number = (i),		\

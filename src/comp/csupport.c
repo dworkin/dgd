@@ -839,8 +839,8 @@ int fd;
 		/*
 		 * new precompiled object
 		 */
-		l->oindex = pc_obj(name, inherits + itab[i], l->ninherits);
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
+		l->oindex = pc_obj(name, inherits + itab[i], l->ninherits);
 	    }
 	    hash_add(l->oindex, (uindex) i);
 	}

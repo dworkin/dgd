@@ -1460,3 +1460,7 @@ DGD 1.2p1
  - %f in a sscanf format strimg would match the empty string.
  - Fixed a bug in the pow() function.
  - Fixed a bug in calculating line numbers in a stack trace.
+ - Fixed a stack depth miscalculation bug for subranges.
+ - Fixed some bugs in the extension interface.
+ - Fixed a precompiled object restoring bug.
+ - Fixed a minor bug in restoring the parser state machine.
