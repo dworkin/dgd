@@ -1,0 +1,11 @@
+   DGD was written by Felix A. Croes (croes@swi.psy.uva.nl)
+
+   DGD != LPmud, but without LPmud DGD could not have existed.  My effusive
+thanks to Lars Pensjö for putting me on the right track.
+
+   Many valuable suggestions were provided by Johan Andersson, Jacob Hallen
+and especially Pär Winzell, who convinced me that objects do not require
+builtin inventories or actions.
+
+   Richard Braakman showed me in practise that using hashing for object symbol
+tables is very worthwhile.
