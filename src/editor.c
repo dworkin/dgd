@@ -34,7 +34,7 @@ register int num;
     f = (editor *) NULL;
     neditors = num;
     if (num != 0) {
-	outbuf = ALLOC(char, MAX_STRLEN + 1);
+	outbuf = ALLOC(char, USHRT_MAX + 1);
 	editors = ALLOC(editor, num);
 	for (e = editors + num; num != 0; --num) {
 	    (--e)->ed = (cmdbuf *) NULL;
@@ -195,7 +195,7 @@ char *f, *a1, *a2, *a3;
 
     sprintf(buf, f, a1, a2, a3);
     len = strlen(buf);
-    if (outbufsz + len > MAX_STRLEN) {
+    if (outbufsz + len > USHRT_MAX) {
 	error("Editor output string too long");
     }
     memcpy(outbuf + outbufsz, buf, len);

@@ -20,6 +20,18 @@ static context *econtext;		/* current error context */
 static string *errstr;			/* current error string */
 
 /*
+ * NAME:	errcontext->clear()
+ * DESCRIPTION:	clear the error context string
+ */
+void ec_clear()
+{
+    if (errstr != (string *) NULL) {
+	str_del(errstr);
+	errstr = (string *) NULL;
+    }
+}
+
+/*
  * NAME:	errcontext->_push_()
  * DESCRIPTION:	push and return the current errorcontext
  */
@@ -60,9 +72,8 @@ void ec_pop()
     econtext = e->next;
     if (e != &firstcontext) {
 	FREE(e);
-    } else if (errstr != (string *) NULL) {
-	str_del(errstr);
-	errstr = (string *) NULL;
+    } else {
+	ec_clear();
     }
 }
 

@@ -92,6 +92,7 @@ void endthread()
     d_export();
     o_clean();
     i_clear();
+    ec_clear();
 
     if (fragment != 0) {
 	co_swapcount(d_swapout(fragment));

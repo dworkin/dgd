@@ -1115,10 +1115,13 @@ sector *fragment;
     /* initialize dumpfile header */
     conf_dumpinit();
 
+    ec_push((ec_ftn) NULL);		/* guard error context */
     if (ec_push((ec_ftn) NULL)) {
-	endthread();
 	message((char *) NULL);
+	endthread();
 	message("Config error: initialization failed\012");	/* LF */
+	ec_pop();			/* remove guard */
+
 	comm_finish();
 	ed_finish();
 	if (dumpfile != (char *) NULL) {
@@ -1141,6 +1144,7 @@ sector *fragment;
     ec_pop();
     i_del_value(cframe->sp++);
     endthread();
+    ec_pop();				/* remove guard */
 
     /* start accepting connections */
     comm_listen();

@@ -2,6 +2,7 @@
 
 typedef void  (*ec_ftn)		P((frame*, Int));
 
+extern void	ec_clear	P((void));
 extern jmp_buf *_ec_push_	P((ec_ftn));
 extern void	ec_pop		P((void));
 

@@ -667,6 +667,7 @@ unsigned int mtime;
 	    endthread();
 
 	    usr->flags |= CF_PROMPT;
+	    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
 	    this_user = obj->index;
 	    if (i_call(f, obj, "open", 4, TRUE, 0)) {
 		i_del_value(f->sp++);
@@ -932,6 +933,9 @@ unsigned int mtime;
 		    *q++ = *p++;
 		}
 		usr->flags |= CF_PROMPT;
+		if (!(usr->flags & CF_FLUSH)) {
+		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		}
 	    } else {
 		/*
 		 * input buffer full
