@@ -15,9 +15,9 @@ MAKE=	make
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
 a.out:	$(OBJ) lex.o
+	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
 	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			    host.a
-	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
 	$(LD) $(LDFLAGS) $(OBJ) lex.o `cat ../lex.sub` ../host/host.a $(LIBS)
 
 dgd:	$(OBJ)
@@ -30,12 +30,15 @@ clean:
 	rm -f dgd comp a.out $(OBJ) lex.o
 
 
-$(OBJ) lex.o: lex.h ../config.h ../alloc.h
-ppcontrol.o: ../version.h
+$(OBJ) lex.o: lex.h ../config.h ../host.h ../alloc.h
 macro.o special.o token.o ppcontrol.o: ../hash.h
 token.o: ../path.h
+ppcontrol.o: ../version.h
 
-macro.o special.o token.o ppcontrol.o: macro.h
+$(OBJ) lex.o: ../comp/parser.h
+
+$(OBJ) lex.o: lex.h
+macro.o special.o token.o ppcontrol.o lex.o: macro.h
 ppstr.o token.o ppcontrol.o: ppstr.h
 special.o token.o ppcontrol.o: special.h
 token.o ppcontrol.o lex.o: token.h

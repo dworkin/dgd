@@ -6,12 +6,7 @@ DEFINES=-D$(HOST)
 DEBUG=	-g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
-LDFLAGS=
-LIBS=
 CC=	gcc
-LD=	$(CC)
-MAKE=	make
-YACC=	yacc
 
 OBJ=	builtin.o std.o file.o extra.o debug.o
 
@@ -27,4 +22,11 @@ clean:
 
 $(OBJ): ../config.h ../alloc.h ../error.h ../str.h ../array.h ../object.h
 $(OBJ): ../data.h ../interpret.h
+std.o file.o: ../path.h
+std.o: ../fcontrol.h ../comm.h ../call_out.h
+file.o: ../ed.h
+
+std.o: ../comp/node.h ../comp/compile.h
+
+$(OBJ): kfun.h
 table.o: table.h $(OBJ)

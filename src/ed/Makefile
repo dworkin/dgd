@@ -15,9 +15,9 @@ MAKE=	make
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
 
 a.out:	$(OBJ) ed.o
+	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
 	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			    host.a
-	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
 	$(LD) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` ../host/host.a $(LIBS)
 
 dgd:	$(OBJ)
@@ -27,9 +27,10 @@ clean:
 	rm -f dgd a.out $(OBJ) ed.o
 
 
-$(OBJ) ed.o: ed.h ../config.h ../alloc.h ../error.h
+$(OBJ) ed.o: ../config.h ../host.h ../alloc.h ../error.h
 file.o: ../path.h
 
+$(OBJ) ed.o: ed.h
 edcmd.o cmdsub.o file.o buffer.o: buffer.h
 ed.o edcmd.o cmdsub.o: edcmd.h
 cmdsub.o file.o: file.h
