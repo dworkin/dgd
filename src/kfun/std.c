@@ -22,11 +22,11 @@ char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 int kf_compile_object(f)
 register frame *f;
 {
-    char *file;
+    char file[STRINGSZ];
     register object *obj;
 
-    file = path_string(f->sp->u.string->text, f->sp->u.string->len);
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
     obj = o_find(file);
@@ -317,9 +317,9 @@ char pt_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 int kf_object_name(f)
 register frame *f;
 {
-    char *name;
+    char buffer[STRINGSZ + 12], *name;
 
-    name = o_name(&otable[f->sp->oindex]);
+    name = o_name(buffer, &otable[f->sp->oindex]);
     f->sp->type = T_STRING;
     str_ref(f->sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
     f->sp->u.string->text[0] = '/';
@@ -341,11 +341,11 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 int kf_find_object(f)
 register frame *f;
 {
-    char *path;
+    char path[STRINGSZ];
     object *obj;
 
-    path = path_string(f->sp->u.string->text, f->sp->u.string->len);
-    if (path == (char *) NULL) {
+    if (path_string(path, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
     i_add_ticks(f, 2);

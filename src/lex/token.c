@@ -124,7 +124,7 @@ static void pop()
 	    }
 	}
     } else {
-	close(tb->fd);
+	P_close(tb->fd);
 	ibuffer = tbuffer->prev;
 	FREE(tb->u.filename);
 	FREE(tb->buffer);
@@ -170,16 +170,16 @@ char *file;
     int fd;
 
     if (file != (char *) NULL) {
-	fd = open(file, O_RDONLY | O_BINARY, 0);
+	fd = P_open(file, O_RDONLY | O_BINARY, 0);
 	if (fd >= 0) {
 	    struct stat sbuf;
 	    char *buffer;
 	    register unsigned int len;
 
-	    fstat(fd, &sbuf);
+	    P_fstat(fd, &sbuf);
 	    if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
 		/* no source this */
-		close(fd);
+		P_close(fd);
 		return FALSE;
 	    }
 					     
@@ -229,7 +229,7 @@ unsigned short tk_line()
  */
 char *tk_filename()
 {
-    return path_unfile(ibuffer->u.filename);
+    return ibuffer->u.filename;
 }
 
 /*
@@ -310,7 +310,7 @@ static int gc()
 	    if (tb->inbuf <= 0) {
 		/* Current input buffer is empty. Try a refill. */
 		if (tb->fd >= 0 &&
-		    (tb->inbuf = read(tb->fd, tb->buffer, BUF_SIZE)) > 0) {
+		    (tb->inbuf = P_read(tb->fd, tb->buffer, BUF_SIZE)) > 0) {
 		    tb->p = tb->buffer;
 		} else if (backslash) {
 		    return '\\';

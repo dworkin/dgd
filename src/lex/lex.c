@@ -79,8 +79,8 @@ char *f, *a1, *a2;
     abort();
 }
 
-char *path_include(f, file)
-char *f, *file;
+char *path_include(buf, f, file)
+char *buf, *f, *file;
 {
     return file;
 }

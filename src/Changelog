@@ -1207,3 +1207,5 @@ DGD 1.1
  - Improved tick counting and check for overflows in parse_string().
  - Max number of function parameters + local variables reduced to 127, the
    interpreter cannot actually handle more than that many.
+ - Removed static variables from all over.  Only the unix versions will
+   compile at present.

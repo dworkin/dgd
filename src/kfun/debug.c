@@ -21,15 +21,16 @@ register short class;
 static void show_proto(func, proto)
 char *func, *proto;
 {
+    char tnbuf[17];
     int i;
 
     showclass(PROTO_CLASS(proto));
-    printf("%s %s(", i_typename(PROTO_FTYPE(proto)), func);
+    printf("%s %s(", i_typename(tnbuf, PROTO_FTYPE(proto)), func);
     for (i = 0; i < PROTO_NARGS(proto) - 1; i++) {
-	printf("%s, ", i_typename(PROTO_ARGS(proto)[i]));
+	printf("%s, ", i_typename(tnbuf, PROTO_ARGS(proto)[i]));
     }
     if (i < PROTO_NARGS(proto)) {
-	printf("%s", i_typename(PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
+	printf("%s", i_typename(tnbuf, PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
 	if (PROTO_ARGS(proto)[i] & T_ELLIPSIS) {
 	    printf("...");
 	}
@@ -40,6 +41,7 @@ char *func, *proto;
 static void showctrl(ctrl)
 control *ctrl;
 {
+    char tnbuf[17];
     register unsigned short i;
 
     printf("inherits:\n");
@@ -73,7 +75,7 @@ control *ctrl;
 	for (i = 0; i < ctrl->nvardefs; i++) {
 	    printf("%3u: ", i);
 	    showclass(ctrl->vardefs[i].class);
-	    printf("%s %s\n", i_typename(ctrl->vardefs[i].type),
+	    printf("%s %s\n", i_typename(tnbuf, ctrl->vardefs[i].type),
 		   d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
 				  ctrl->vardefs[i].index)->text);
 	}
@@ -180,7 +182,7 @@ void disasm(ctrl, func)
 control *ctrl;
 int func;
 {
-    char *pc, *end, *linenumbers, buffer[1000];
+    char *pc, *end, *linenumbers, tnbuf[17], buffer[1000];
     control *cc;
     register unsigned short u, u2, u3;
     register unsigned long l;
@@ -312,7 +314,7 @@ int func;
 		codesize = 3;
 		u = FETCH1S(pc);
 		sprintf(buffer, "PUSH_LOCAL_LVALUE %d (%s)", (short) u,
-			i_typename(FETCH1U(pc)));
+			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
 		codesize = 2;
 		sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1S(pc));
@@ -329,7 +331,7 @@ int func;
 		sprintf(buffer, "PUSH_GLOBAL_LVALUE %s (%s)",
 			d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
 				       ctrl->vardefs[u].index)->text,
-			i_typename(FETCH1U(pc)));
+			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
 		codesize = 2;
 		u = FETCH1U(pc);
@@ -352,7 +354,7 @@ int func;
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s (%s)",
 			d_get_strconst(cc, cc->vardefs[u2].inherit,
 				       cc->vardefs[u2].index)->text,
-			i_typename(FETCH1U(pc)));
+			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
 		codesize = 3;
 		u = FETCH1U(pc);
@@ -375,7 +377,8 @@ int func;
 	    if (pop) {
 		pop = 0;
 		codesize = 2;
-		sprintf(buffer, "INDEX_LVALUE (%s)", i_typename(FETCH1U(pc)));
+		sprintf(buffer, "INDEX_LVALUE (%s)",
+			i_typename(tnbuf, FETCH1U(pc)));
 		show_instr(buffer);
 	    } else {
 		codesize = 1;
@@ -396,7 +399,8 @@ int func;
 		pop = 0;
 		codesize = 3;
 		u = FETCH1S(pc);
-		sprintf(buffer, "SPREAD %u (%s)", u, i_typename(FETCH1U(pc)));
+		sprintf(buffer, "SPREAD %u (%s)", u,
+			i_typename(tnbuf, FETCH1U(pc)));
 	    } else {
 		codesize = 2;
 		sprintf(buffer, "SPREAD %u", FETCH1S(pc));
@@ -406,7 +410,7 @@ int func;
 
 	case I_CAST:
 	    codesize = 2;
-	    sprintf(buffer, "CAST %s", i_typename(FETCH1U(pc)));
+	    sprintf(buffer, "CAST %s", i_typename(tnbuf, FETCH1U(pc)));
 	    show_instr(buffer);
 	    break;
 

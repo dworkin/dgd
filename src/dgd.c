@@ -158,7 +158,7 @@ char **argv;
     driver_name = (char *) NULL;
     swap = dump = intr = stop = FALSE;
     if (argc == 3) {
-	fd = open(argv[2], O_RDONLY | O_BINARY, 0);
+	fd = P_open(argv[2], O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    P_message("Config error: cannot open restore file\012");	/* LF */
 	    return 2;
@@ -168,7 +168,7 @@ char **argv;
     }
     init = conf_init(argv[1], fd);
     if (fd >= 0) {
-	close(fd);
+	P_close(fd);
     }
     if (!init) {
 	return 2;	/* initialization failed */

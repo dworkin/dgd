@@ -104,7 +104,7 @@ register unsigned int len;
     while (x->bufsz + len > BUF_SIZE) {
 	chunk = BUF_SIZE - x->bufsz;
 	memcpy(x->buffer + x->bufsz, buf, chunk);
-	write(x->fd, x->buffer, BUF_SIZE);
+	P_write(x->fd, x->buffer, BUF_SIZE);
 	buf += chunk;
 	len -= chunk;
 	x->bufsz = 0;
@@ -354,26 +354,21 @@ register frame *f;
     savecontext x;
     xfloat flt;
 
-    _tmp = path_string(f->sp->u.string->text, f->sp->u.string->len);
-    if (_tmp == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    strcpy(tmp, _tmp);
-    if ((_tmp=path_file(tmp)) == (char *) NULL) {
-	return 1;
-    }
-    strcpy(file, _tmp);
 
     /*
      * First save in a different file in the same directory, so a possibly
      * existing old instance will not be lost if something goes wrong.
      */
     i_add_ticks(f, 2000);	/* arbitrary */
+    strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
-    _tmp = path_file(tmp);
-    x.fd = open(_tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
+    x.fd = P_open(tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (x.fd < 0) {
 	error("Cannot create temporary save file \"/%s\"", tmp);
     }
@@ -436,20 +431,19 @@ register frame *f;
     }
 
     arr_clear();
-    if (x.bufsz > 0 && write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
-	close(x.fd);
+    if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
+	P_close(x.fd);
 	AFREE(x.buffer);
-	unlink(_tmp);
+	P_unlink(tmp);
 	error("Cannot write to temporary save file \"/%s\"", tmp);
     }
-    close(x.fd);
+    P_close(x.fd);
     AFREE(x.buffer);
 
-    unlink(file);
-    if (rename(_tmp, file) < 0) {
-	unlink(_tmp);
-	error("Cannot rename temporary save file to \"/%s\"",
-	      path_unfile(file));
+    P_unlink(file);
+    if (P_rename(tmp, file) < 0) {
+	P_unlink(tmp);
+	error("Cannot rename temporary save file to \"/%s\"", file);
     }
 
     str_del(f->sp->u.string);
@@ -471,7 +465,7 @@ typedef struct _achunk_ {
 } achunk;
 
 typedef struct {
-    char *file;			/* current restore file */
+    char file[STRINGSZ];	/* current restore file */
     int line;			/* current line number */
     frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
@@ -875,9 +869,8 @@ register frame *f;
     bool pending;
 
     obj = f->obj;
-    x.file = path_file(path_string(f->sp->u.string->text,
-				   f->sp->u.string->len));
-    if (x.file == (char *) NULL) {
+    if (path_string(x.file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
@@ -885,26 +878,26 @@ register frame *f;
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
     f->sp->u.number = 0;
-    fd = open(x.file, O_RDONLY | O_BINARY, 0);
+    fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* restore failed */
 	return 0;
     }
-    fstat(fd, &sbuf);
+    P_fstat(fd, &sbuf);
     if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
 	/* not a save file */
-	close(fd);
+	P_close(fd);
 	return 0;
     }
     buffer = ALLOCA(char, sbuf.st_size + 1);
-    if (read(fd, buffer, (unsigned int) sbuf.st_size) != sbuf.st_size) {
+    if (P_read(fd, buffer, (unsigned int) sbuf.st_size) != sbuf.st_size) {
 	/* read failed (should never happen, but...) */
-        close(fd);
+        P_close(fd);
 	AFREE(buffer);
 	return 0;
     }
     buffer[sbuf.st_size] = '\0';
-    close(fd);
+    P_close(fd);
 
     /*
      * First, initialize all non-static variables that do not hold object
@@ -1061,9 +1054,9 @@ int kf_write_file(f, nargs)
 register frame *f;
 int nargs;
 {
+    char file[STRINGSZ];
     struct stat sbuf;
     register Int l;
-    char *file;
     int fd;
 
     switch (nargs) {
@@ -1079,9 +1072,8 @@ int nargs;
 	l = (f->sp++)->u.number;
 	break;
     }
-    file = path_file(path_string(f->sp[1].u.string->text,
-				 f->sp[1].u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp[1].u.string->text,
+		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
     }
 
@@ -1090,13 +1082,13 @@ int nargs;
     f->sp[1].type = T_INT;
     f->sp[1].u.number = 0;
 
-    fd = open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
+    fd = P_open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
 	str_del((f->sp++)->u.string);
 	return 0;
     }
 
-    fstat(fd, &sbuf);
+    P_fstat(fd, &sbuf);
     if (l == 0) {
 	/* the default is to append to the file */
 	l = sbuf.st_size;
@@ -1104,19 +1096,19 @@ int nargs;
 	/* offset from the end of the file */
 	l += sbuf.st_size;
     }
-    if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
+    if (l < 0 || l > sbuf.st_size || P_lseek(fd, l, SEEK_SET) < 0) {
 	/* bad offset */
-	close(fd);
+	P_close(fd);
 	str_del((f->sp++)->u.string);
 	return 0;
     }
 
-    if (write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
+    if (P_write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
 							f->sp->u.string->len) {
 	/* succesful write */
 	f->sp[1].u.number = 1;
     }
-    close(fd);
+    P_close(fd);
 
     str_del((f->sp++)->u.string);
     return 0;
@@ -1138,9 +1130,9 @@ int kf_read_file(f, nargs)
 register frame *f;
 int nargs;
 {
+    char file[STRINGSZ];
     struct stat sbuf;
     register Int l, size;
-    char *file;
     int fd;
 
     l = 0;
@@ -1156,8 +1148,8 @@ int nargs;
     case 0:
 	return -1;
     }
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
@@ -1170,15 +1162,15 @@ int nargs;
 	return 3;
     }
     i_add_ticks(f, 1000);
-    fd = open(file, O_RDONLY | O_BINARY, 0);
+    fd = P_open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* cannot open file */
 	return 0;
     }
-    fstat(fd, &sbuf);
+    P_fstat(fd, &sbuf);
     if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
 	/* not a plain file */
-	close(fd);
+	P_close(fd);
 	return 0;
     }
 
@@ -1190,9 +1182,9 @@ int nargs;
 	    /* offset from end of file */
 	    l += sbuf.st_size;
 	}
-	if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
+	if (l < 0 || l > sbuf.st_size || P_lseek(fd, l, SEEK_SET) < 0) {
 	    /* bad seek */
-	    close(fd);
+	    P_close(fd);
 	    return 0;
 	}
 	sbuf.st_size -= l;
@@ -1202,7 +1194,7 @@ int nargs;
 	size = sbuf.st_size;
     }
     if (ec_push((ec_ftn) NULL)) {
-	close(fd);
+	P_close(fd);
 	error((char *) NULL);	/* pass on error */
     } else {
 	str_ref(f->sp->u.string = str_new((char *) NULL, size));
@@ -1210,12 +1202,12 @@ int nargs;
 	ec_pop();
     }
     if (size > 0 &&
-	read(fd, f->sp->u.string->text, (unsigned int) size) != size) {
+	P_read(fd, f->sp->u.string->text, (unsigned int) size) != size) {
 	/* read failed (should never happen, but...) */
-	close(fd);
+	P_close(fd);
 	error("Read failed in read_file()");
     }
-    close(fd);
+    P_close(fd);
     i_add_ticks(f, 2 * size);
 
     return 0;
@@ -1236,16 +1228,14 @@ char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
 int kf_rename_file(f)
 register frame *f;
 {
-    char buf[STRINGSZ], *file;
+    char from[STRINGSZ], to[STRINGSZ];
 
-    file = path_file(path_string(f->sp[1].u.string->text,
-				 f->sp[1].u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(from, f->sp[1].u.string->text,
+		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
     }
-    strcpy(buf, file);
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(to, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 2;
     }
 
@@ -1253,8 +1243,8 @@ register frame *f;
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
-    f->sp->u.number = (access(buf, W_OK) >= 0 && access(file, F_OK) < 0 &&
-		    rename(buf, file) >= 0);
+    f->sp->u.number = (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
+		       P_rename(from, to) >= 0);
     return 0;
 }
 # endif
@@ -1272,17 +1262,17 @@ char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_remove_file(f)
 register frame *f;
 {
-    char *file;
+    char file[STRINGSZ];
 
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
-    f->sp->u.number = (access(file, W_OK) >= 0 && unlink(file) >= 0);
+    f->sp->u.number = (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0);
     return 0;
 }
 # endif
@@ -1300,17 +1290,17 @@ char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_make_dir(f)
 register frame *f;
 {
-    char *file;
+    char file[STRINGSZ];
 
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
-    f->sp->u.number = (mkdir(file, 0775) >= 0);
+    f->sp->u.number = (P_mkdir(file, 0775) >= 0);
     return 0;
 }
 # endif
@@ -1328,17 +1318,17 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_remove_dir(f)
 register frame *f;
 {
-    char *file;
+    char file[STRINGSZ];
 
-    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
-    if (file == (char *) NULL) {
+    if (path_string(file, f->sp->u.string->text,
+		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
-    f->sp->u.number = (rmdir(file) >= 0);
+    f->sp->u.number = (P_rmdir(file) >= 0);
     return 0;
 }
 # endif
@@ -1465,7 +1455,7 @@ register fileinfo *finf;
 {
     struct stat sbuf;
 
-    if (stat(path_file(path), &sbuf) < 0) {
+    if (P_stat(path, &sbuf) < 0) {
 	/*
 	 * the file does not exist
 	 */
@@ -1510,23 +1500,20 @@ frame *f;
 {
     register unsigned int i, nfiles, ftabsz;
     register fileinfo *ftable;
-    char *file, *dir, *pat, buf[STRINGSZ];
+    char *file, *dir, *pat, buf[STRINGSZ], dirbuf[STRINGSZ];
     fileinfo finf;
     array *a;
 
-    file = path_string(f->sp->u.string->text, f->sp->u.string->len);
-    if (path_file(file) == (char *) NULL) {
-	return 1;
-    }
+    file = path_string(buf, f->sp->u.string->text, f->sp->u.string->len);
 
-    strcpy(buf, file);
-    pat = strrchr(buf, '/');
+    strcpy(dirbuf, buf);
+    pat = strrchr(dirbuf, '/');
     if (pat == (char *) NULL) {
 	dir = ".";
-	pat = buf;
+	pat = dirbuf;
     } else {
 	/* separate directory and pattern */
-	dir = buf;
+	dir = dirbuf;
 	*pat++ = '\0';
     }
 
@@ -1538,14 +1525,13 @@ frame *f;
 	 * single file
 	 */
 	nfiles++;
-    } else if (strcmp(dir, ".") == 0 || chdir(path_file(dir)) >= 0) {
-	if (P_opendir(path_file("."))) {
+    } else if (strcmp(dir, ".") == 0 || chdir(dir) >= 0) {
+	if (P_opendir(".")) {
 	    /*
 	     * read files from directory
 	     */
 	    i = conf_array_size();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
-		file = path_unfile(file);
 		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
 		    /* add file */
 		    if (nfiles == ftabsz) {

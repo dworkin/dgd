@@ -16,6 +16,7 @@
 
 
 static value stack[MIN_STACK];	/* initial stack */
+static frame topframe;		/* top frame */
 frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
@@ -30,8 +31,6 @@ value zero_float = { T_FLOAT, TRUE };
 void i_init(create)
 char *create;
 {
-    static frame topframe;
-
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.prev_ilvp = topframe.ilvp = stack;
     topframe.nodepth = TRUE;
@@ -667,20 +666,12 @@ int vtype;
  * NAME:	interpret->typename()
  * DESCRIPTION:	return the name of the argument type
  */
-char *i_typename(type)
+char *i_typename(buf, type)
+register char *buf;
 register unsigned int type;
 {
-    static bool flag;
-    static char buf1[8 + 8 + 1], buf2[8 + 8 + 1], *name[] = TYPENAMES;
-    register char *buf;
+    static char *name[] = TYPENAMES;
 
-    if (flag) {
-	buf = buf1;
-	flag = FALSE;
-    } else {
-	buf = buf2;
-	flag = TRUE;
-    }
     strcpy(buf, name[type & T_TYPE]);
     type &= T_REF;
     type >>= REFSHIFT;
@@ -705,15 +696,15 @@ void i_cast(val, type)
 register value *val;
 register unsigned int type;
 {
-    char *tname;
+    char tnbuf[8];
 
     if (val->type != type &&
 	(val->type != T_INT || val->u.number != 0 || type == T_FLOAT)) {
-	tname = i_typename(type);
-	if (strchr("aeiuoy", tname[0]) != (char *) NULL) {
-	    error("Value is not an %s", tname);
+	i_typename(tnbuf, type);
+	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
+	    error("Value is not an %s", tnbuf);
 	} else {
-	    error("Value is not a %s", tname);
+	    error("Value is not a %s", tnbuf);
 	}
     }
 }
@@ -755,25 +746,24 @@ register frame *f;
  * NAME:	istr()
  * DESCRIPTION:	create a copy of the argument string, with one char replaced
  */
-static value *istr(str, i, val)
+static value *istr(val, str, i, v)
+register value *val, *v;
 register string *str;
 unsigned short i;
-register value *val;
 {
-    static value ret = { T_STRING };
-
-    if (val->type != T_INT) {
+    if (v->type != T_INT) {
 	error("Non-numeric value in indexed string assignment");
     }
 
+    val->type = T_STRING;
     if (str->primary == (strref *) NULL && str->ref == 1) {
 	/* only reference to this string: don't copy */
-	ret.u.string = str;
+	val->u.string = str;
     } else {
-	ret.u.string = str_new(str->text, (long) str->len);
+	val->u.string = str_new(str->text, (long) str->len);
     }
-    ret.u.string->text[i] = val->u.number;
-    return &ret;
+    val->u.string->text[i] = v->u.number;
+    return val;
 }
 
 /*
@@ -784,6 +774,7 @@ void i_store(f, lval, val)
 register frame *f;
 register value *lval, *val;
 {
+    value ival;
     register value *v;
     register unsigned short i;
     register array *a;
@@ -808,7 +799,7 @@ register value *lval, *val;
 	    error("Lvalue disappeared!");
 	}
 	--f->ilvp;
-	d_assign_var(f->data, v, istr(v->u.string, i, val));
+	d_assign_var(f->data, v, istr(&ival, v->u.string, i, val));
 	break;
 
     case T_ALVALUE:
@@ -834,7 +825,7 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(v->u.string, i, val));
+	d_assign_elt(a, v, istr(&ival, v->u.string, i, val));
 	f->ilvp -= 2;
 	arr_del(a);
 	break;
@@ -848,8 +839,8 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(v->u.string, (unsigned short) lval->u.number,
-				val));
+	d_assign_elt(a, v, istr(&ival, v->u.string,
+				(unsigned short) lval->u.number, val));
 	i_del_value(--f->ilvp);
 	--f->ilvp;
 	arr_del(a);
@@ -1113,6 +1104,7 @@ register char *proto;
 int nargs;
 int strict;
 {
+    char tnbuf[8];
     register int i, n, atype, ptype;
     register char *args;
 
@@ -1139,7 +1131,7 @@ int strict;
 		    ptype == T_FLOAT) {
 		    /* wrong type */
 		    error("Bad argument %d (%s) for %s %s", nargs - i,
-			  i_typename(atype), ftype, name);
+			  i_typename(tnbuf, atype), ftype, name);
 		} else if (strict) {
 		    /* zero argument */
 		    error("Bad argument %d for %s %s", nargs - i, ftype, name);
@@ -2053,6 +2045,7 @@ static array *i_func_trace(f, data)
 register frame *f;
 dataspace *data;
 {
+    char buffer[STRINGSZ + 12];
     register value *v;
     register string *str;
     register char *name;
@@ -2073,7 +2066,7 @@ dataspace *data;
     v = a->elts;
 
     /* object name */
-    name = o_name(f->obj);
+    name = o_name(buffer, f->obj);
     v[0].type = T_STRING;
     str = str_new((char *) NULL, strlen(name) + 1L);
     str->text[0] = '/';

@@ -227,8 +227,8 @@ void conf_dump()
 	fatal("failed to dump callout table");
     }
 
-    lseek(fd, 0L, SEEK_SET);
-    write(fd, header, sizeof(dumpinfo));
+    P_lseek(fd, 0L, SEEK_SET);
+    P_write(fd, header, sizeof(dumpinfo));
 }
 
 /*
@@ -241,7 +241,7 @@ int fd;
     unsigned int secsize;
     long posn;
 
-    if (read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
+    if (P_read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
 	memcmp(header, rheader, DUMP_TYPE) != 0) {
 	error("Bad or incompatible restore file header");
     }
@@ -269,9 +269,9 @@ int fd;
     kf_restore(fd);
     o_restore(fd);
 
-    posn = lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
+    posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
     o_conv();				/* convert all objects */
-    lseek(fd, posn, SEEK_SET);		/* restore file position */
+    P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
     pc_restore(fd);
     boottime = P_time();
@@ -565,7 +565,7 @@ register Uint n;
 	if (i > n) {
 	    i = n;
 	}
-	if (read(fd, buffer, i * rsize) != i * rsize) {
+	if (P_read(fd, buffer, i * rsize) != i * rsize) {
 	    fatal("cannot read from dump file");
 	}
 	conf_dconv(buf, buffer, layout, (Uint) i);
@@ -595,6 +595,7 @@ char *err;
  */
 static bool conf_config()
 {
+    char buf[STRINGSZ];
     register char *p;
     register int h, l, m, c;
 
@@ -653,7 +654,7 @@ static bool conf_config()
 
 	case STRING_CONST:
 	    p = (m == AUTO_OBJECT || m == DRIVER_OBJECT || m == INCLUDE_FILE) ?
-		 path_resolve(yytext) : yytext;
+		 path_resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
@@ -729,8 +730,10 @@ static unsigned int bufsz;	/* buffer size */
 static bool copen(file)
 char *file;
 {
-    if ((file=path_file(fname=path_resolve(file))) == (char *) NULL ||
-	(fd=open(file, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
+    char fname[STRINGSZ];
+
+    path_resolve(fname, file);
+    if ((fd=P_open(fname, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
 	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
 	return FALSE;
     }
@@ -752,7 +755,7 @@ register char *str;
     while (bufsz + len > BUF_SIZE) {
 	chunk = BUF_SIZE - bufsz;
 	memcpy(obuf + bufsz, str, chunk);
-	write(fd, obuf, BUF_SIZE);
+	P_write(fd, obuf, BUF_SIZE);
 	str += chunk;
 	len -= chunk;
 	bufsz = 0;
@@ -769,12 +772,12 @@ register char *str;
  */
 static bool cclose()
 {
-    if (bufsz > 0 && write(fd, obuf, bufsz) != bufsz) {
+    if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
 	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
-	close(fd);
+	P_close(fd);
 	return FALSE;
     }
-    close(fd);
+    P_close(fd);
 
     return TRUE;
 }

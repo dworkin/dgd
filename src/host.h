@@ -301,6 +301,38 @@ extern void  P_message	P((char*));
 # define O_BINARY	0
 # endif
 
+# ifdef INCLUDE_FILE_IO
+# if defined(GENERIC_BSD) || defined(GENERIC_SYSV) || defined(BEOS)
+# define P_open		open
+# define P_close	close
+# define P_read		read
+# define P_write	write
+# define P_lseek	lseek
+# define P_fstat	fstat
+# define P_stat		stat
+# define P_access	access
+# define P_unlink	unlink
+# define P_rename	rename
+# define P_mkdir	mkdir
+# define P_rmdir	rmdir
+# define P_chdir	chdir
+# else
+extern int P_open	P((char*, int, int));
+extern int P_close	P((int));
+extern int P_read	P((int, char*, int));
+extern int P_write	P((int, char*, int));
+extern int P_lseek	P((int, unsigned long, int));
+extern int P_fstat	P((int, struct stat*));
+extern int P_stat	P((char*, struct stat*));
+extern int P_access	P((char*, int));
+extern int P_unlink	P((char*));
+extern int P_rename	P((char*, char*));
+extern int P_mkdir	P((char*, int));
+extern int P_rmdir	P((char*));
+extern int P_chdir	P((char*));
+# endif
+# endif	/* INCLUDE_FILE_IO */
+
 extern bool  P_opendir	P((char*));
 extern char *P_readdir	P((void));
 extern void  P_closedir	P((void));
@@ -309,7 +341,7 @@ extern void  P_srandom	P((long));
 extern long  P_random	P((void));
 
 extern Uint  P_time	P((void));
-extern char *P_ctime	P((Uint));
+extern char *P_ctime	P((char*, Uint));
 
 extern void  P_alarm	P((unsigned int));
 extern bool  P_timeout	P((void));

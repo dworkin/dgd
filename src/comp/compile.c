@@ -258,8 +258,7 @@ static void loop_clear()
 
 
 typedef struct _context_ {
-    char file[STRINGSZ];		/* file to compile */
-    char inherit[STRINGSZ];		/* file to inherit */
+    char *file;				/* file to compile */
     frame *frame;			/* current interpreter stack frame */
     struct _context_ *prev;		/* previous context */
 } context;
@@ -326,9 +325,10 @@ static long ncompiled;		/* # objects compiled */
  *		Return TRUE if compilation can continue, or FALSE otherwise.
  */
 bool c_inherit(file, label)
-char *file;
+register char *file;
 node *label;
 {
+    char buf[STRINGSZ];
     register object *obj;
     register frame *f;
     long ncomp;
@@ -343,7 +343,7 @@ node *label;
 	/*
 	 * the driver object can only inherit the auto object
 	 */
-	file = path_resolve(file);
+	file = path_resolve(buf, file);
 	if (!strcmp(file, auto_object) == 0) {
 	    c_error("illegal inherit from driver object");
 	    return FALSE;
@@ -356,8 +356,6 @@ node *label;
 	    return FALSE;
 	}
     } else {
-	char buf[STRINGSZ];
-
 	ncomp = ncompiled;
 
 	/* get associated object */
@@ -388,7 +386,7 @@ node *label;
 	    /* precompiling */
 	    f->sp++;
 	    inheriting = FALSE;
-	    file = path_from(current->file, file);
+	    file = path_from(buf, current->file, file);
 	    obj = o_find(file);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
@@ -441,10 +439,9 @@ object *obj;
 	error("Compilation within compilation");
     }
 
-    strcpy(c.file, file);
-    if (strchr(c.file, '#') != (char *) NULL ||
-	(file=path_file(c.file)) == (char *) NULL) {
-	error("Illegal object name \"/%s\"", c.file);
+    c.file = file;
+    if (strchr(file, '#') != (char *) NULL) {
+	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
     strcat(file_c, ".c");
@@ -489,16 +486,16 @@ object *obj;
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
-		error("Upgraded auto object while compiling \"/%s.c\"", c.file);
+		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
 	    ctrl_init();
-	    ctrl_inherit(c.frame, c.file, aobj, (string *) NULL);
+	    ctrl_inherit(c.frame, file, aobj, (string *) NULL);
 	}
 
 	if (!pp_init(file_c, paths, 1)) {
-	    error("Could not compile \"/%s.c\"", c.file);
+	    error("Could not compile \"/%s\"", file_c);
 	}
-	if ((file=path_file(include)) == (char *) NULL || !tk_include(file)) {
+	if (!tk_include(include)) {
 	    error("Could not include \"/%s\"", include);
 	}
 
@@ -539,10 +536,10 @@ object *obj;
 
 	    if (obj == (object *) NULL) {
 		/* new object */
-		obj = o_new(c.file, ctrl);
-		if (strcmp(c.file, driver_object) == 0) {
+		obj = o_new(file, ctrl);
+		if (strcmp(file, driver_object) == 0) {
 		    obj->flags |= O_DRIVER;
-		} else if (strcmp(c.file, auto_object) == 0) {
+		} else if (strcmp(file, auto_object) == 0) {
 		    obj->flags |= O_AUTO;
 		}
 	    } else {
@@ -563,7 +560,7 @@ object *obj;
 	    c_clear();
 	} else {
 	    /* compilation failed */
-	    error("Failed to compile \"/%s.c\"", c.file);
+	    error("Failed to compile \"/%s\"", file_c);
 	}
     }
 }
@@ -617,7 +614,7 @@ string *str;
 register node *formals;
 bool function;
 {
-    char proto[3 + MAX_LOCALS];
+    char proto[3 + MAX_LOCALS], tnbuf[17];
     bool typechecked;
     register char *args;
     register int nargs;
@@ -634,7 +631,7 @@ bool function;
 	typechecked = TRUE;
 	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
 	    c_error("invalid type for function %s (%s)", str->text,
-		    i_typename(type));
+		    i_typename(tnbuf, type));
 	    type = T_MIXED;
 	}
     }
@@ -666,7 +663,7 @@ bool function;
 	    t = T_MIXED | (t & T_ELLIPSIS);
 	} else if ((t & T_TYPE) == T_VOID) {
 	    c_error("invalid type for parameter %s (%s)", arg->l.string->text,
-		    i_typename(t & ~T_ELLIPSIS));
+		    i_typename(tnbuf, t & ~T_ELLIPSIS));
 	    t = T_MIXED | (t & T_ELLIPSIS);
 	} else if (typechecked && (t & ~T_ELLIPSIS) != T_MIXED) {
 	    /* only bother to typecheck functions with non-mixed arguments */
@@ -716,9 +713,11 @@ unsigned short class, type;
 string *str;
 bool global;
 {
+    char tnbuf[17];
+
     if ((type & T_TYPE) == T_VOID) {
 	c_error("invalid type for variable %s (%s)", str->text,
-		i_typename(type));
+		i_typename(tnbuf, type));
 	type = T_MIXED;
     }
     if (global) {
@@ -1128,11 +1127,13 @@ void c_startswitch(n, typechecked)
 register node *n;
 int typechecked;
 {
+    char tnbuf[17];
+
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
     if (typechecked &&
 	n->mod != T_INT && n->mod != T_STRING && n->mod != T_MIXED) {
-	c_error("bad switch expression type (%s)", i_typename(n->mod));
+	c_error("bad switch expression type (%s)", i_typename(tnbuf, n->mod));
 	switch_list->type = T_INVALID;
     }
     switch_list->dflt = FALSE;
@@ -1176,6 +1177,7 @@ cvoid *cv1, *cv2;
 node *c_endswitch(expr, stmt)
 node *expr, *stmt;
 {
+    char tnbuf[17];
     register node **v, **w, *n;
     register unsigned short i, size;
     register long l;
@@ -1211,7 +1213,8 @@ node *expr, *stmt;
 	    }
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
 		   switch_list->type != T_MIXED) {
-	    c_error("wrong switch expression type (%s)", i_typename(expr->mod));
+	    c_error("wrong switch expression type (%s)",
+		    i_typename(tnbuf, expr->mod));
 	} else {
 	    /*
 	     * get the labels in an array, and sort them
@@ -1508,6 +1511,8 @@ node *c_return(n, typechecked)
 register node *n;
 int typechecked;
 {
+    char tnbuf1[17], tnbuf2[17];
+
     if (n == (node *) NULL) {
 	if (typechecked && ftype != T_VOID) {
 	    c_error("function must return value");
@@ -1525,7 +1530,7 @@ int typechecked;
 	     * type error
 	     */
 	    c_error("returned value doesn't match %s (%s)",
-		    i_typename(ftype), i_typename(n->mod));
+		    i_typename(tnbuf1, ftype), i_typename(tnbuf2, n->mod));
 	} else if (ftype != T_MIXED && n->mod == T_MIXED) {
 	    /*
 	     * typecheck at runtime
@@ -1683,6 +1688,7 @@ static node *funcall(func, args)
 register node *func;
 node *args;
 {
+    char tnbuf[17];
     register int n, nargs, typechecked, t;
     register node **argv, **arg;
     char *argp, *proto, *fname;
@@ -1746,7 +1752,8 @@ node *args;
 		if (typechecked &&
 		    c_tmatch(t, UCHAR(*argp) & ~T_ELLIPSIS) == T_INVALID) {
 		    c_error("bad argument %d for function %s (needs %s)", n,
-			    fname, i_typename(UCHAR(*argp) & ~T_ELLIPSIS));
+			    fname,
+			    i_typename(tnbuf, UCHAR(*argp) & ~T_ELLIPSIS));
 		}
 		n++;
 		argp++;
@@ -1764,7 +1771,7 @@ node *args;
 		   (!c_zero(*arg) || t == T_FLOAT) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {
 	    c_error("bad argument %d for function %s (needs %s)", n, fname,
-		    i_typename(t));
+		    i_typename(tnbuf, t));
 	}
 
 	if (UCHAR(*argp) & T_ELLIPSIS) {

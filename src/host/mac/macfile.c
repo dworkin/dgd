@@ -39,67 +39,6 @@ void fsinit(long fcrea, long ftype)
 
 
 /*
- * NAME:	path_file()
- * DESCRIPTION:	convert a path to host format
- */
-char *path_file(char *path)
-{
-    static char buf[STRINGSZ];
-    char *p;
-
-    if (path == (char *) NULL || strlen(path) >= STRINGSZ) {
-	return (char *) NULL;
-    }
-    buf[0] = ':';
-    if (path[0] == '.' && path[1] == '\0') {
-	buf[1] = '\0';
-	return buf;
-    }
-    strncpy(buf + 1, path, STRINGSZ - 1);
-    buf[STRINGSZ - 1] = '\0';
-
-    for (p = buf + 1; *p != '\0'; p++) {
-	if (*p == '/') {
-	    *p = ':';
-	} else if (*p == ':') {
-	    *p = '/';
-	}
-    }
-
-    return buf;
-}
-
-/*
- * NAME:	path_unfile()
- * DESCRIPTION:	convert a path from host format
- */
-char *path_unfile(char *path)
-{
-    static char buf[STRINGSZ];
-    char *p;
-
-    /* must start with : */
-    if (path[1] == '\0') {
-	buf[0] = '.';
-	buf[1] = '\0';
-	return buf;
-    }
-    strncpy(buf, path + 1, STRINGSZ - 1);
-    buf[STRINGSZ - 1] = '\0';
-
-    for (p = buf; *p != '\0'; p++) {
-	if (*p == '/') {
-	    *p = ':';
-	} else if (*p == ':') {
-	    *p = '/';
-	}
-    }
-
-    return buf;
-}
-
-
-/*
  * NAME:	getpath()
  * DESCRIPTION:	get the full path of a file
  */
@@ -107,6 +46,7 @@ char *getpath(char *buf, short vref, unsigned char *fname)
 {
     Str255 str;
     DirInfo dir;
+    char buf2
 
     buf += STRINGSZ - 1;
     buf[0] = '\0';
@@ -121,12 +61,12 @@ char *getpath(char *buf, short vref, unsigned char *fname)
     for (;;) {
 	PBGetCatInfoSync((CInfoPBPtr) &dir);
 	memcpy(buf -= str[0], str + 1, str[0]);
+	*--buf = '/';
 	if (dir.ioDrDirID == 2) {
 	    return buf;
 	}
 	dir.ioFDirIndex = -1;
 	dir.ioDrDirID = dir.ioDrParID;
-	*--buf = ':';
     }
 }
 
@@ -158,24 +98,59 @@ char *getfile(char *buf, long type)
  */
 static unsigned char *filename(unsigned char *to, const char *from)
 {
+    char *p, *q;
     int n;
 
-    n = strlen(from);
+    p = (char *) to + 1;
+    q = from;
+    n = 0;
+    if (*q != '/') {
+	/* relative */
+	*p++ = ':';
+	if (*q == '.' && q[1] == '\0') {
+	    *p = '\0';
+	    to[0] = 1;
+	    return to;
+	}
+	n++;
+    } else {
+	q++;	/* absolute */
+    }
+
+    while (n < 255 && *q != '\0') {
+	if (*q == '/') {
+	    *p = ':';
+	} else if (*q == ':') {
+	    *p = '/';
+	} else {
+	    *p = *q;
+	}
+	p++;
+	q++;
+	n++;
+    }
     to[0] = n;
-    memcpy(to + 1, from, n);
 
     return to;
 }
 
 /*
  * NAME:	pathname()
- * DESCRIPTION:	translate a pascal string to a path
+ * DESCRIPTION:	translate a pascal filename to a path
  */
 static char *pathname(char *to, const unsigned char *from)
 {
-    memcpy(to, from, from[0] + 1);
-    to[0] = ':';
-    to[from[0] + 1] = '\0';
+    char *p, *q;
+    int n;
+
+    for (p = to, q = (char *) from + 1, n = from[0]; n != 0; p++, q++, --n) {
+	if (*q == '/') {
+	    *p = ':';
+	} else {
+	    *p = *q;
+	}
+    }
+    *p = '\0';
 
     return to;
 }
@@ -238,10 +213,10 @@ void P_closedir(void)
 
 
 /*
- * NAME:	open()
+ * NAME:	P->open()
  * DESCRIPTION:	open a file
  */
-int open(const char *path, int flags, int mode)
+int P_open(char *path, int flags, int mode)
 {
     int fd;
     short fref;
@@ -281,10 +256,10 @@ int open(const char *path, int flags, int mode)
 }
 
 /*
- * NAME:	close()
+ * NAME:	P->close()
  * DESCRIPTION:	close a file
  */
-int close(int fd)
+int P_close(int fd)
 {
     FSClose(fdtab[fd].fref);
     fdtab[fd].fref = 0;
@@ -293,10 +268,10 @@ int close(int fd)
 }
 
 /*
- * NAME:	read()
+ * NAME:	P->read()
  * DESCRIPTION:	read from a file
  */
-int read(int fd, void *buf, int nbytes)
+int P_read(int fd, void *buf, int nbytes)
 {
     long count;
 
@@ -312,10 +287,10 @@ int read(int fd, void *buf, int nbytes)
 }
 
 /*
- * NAME:	write()
+ * NAME:	P->write()
  * DESCRIPTION:	write to a file
  */
-int write(int fd, const void *buf, int nbytes)
+int P_write(int fd, const void *buf, int nbytes)
 {
     long count;
 
@@ -331,10 +306,10 @@ int write(int fd, const void *buf, int nbytes)
 }
 
 /*
- * NAME:	lseek()
+ * NAME:	P->lseek()
  * DESCRIPTION:	seek on a file
  */
-long lseek(int fd, long offset, int whence)
+long P_lseek(int fd, long offset, int whence)
 {
     short mode;
 
@@ -365,10 +340,10 @@ long lseek(int fd, long offset, int whence)
 }
 
 /*
- * NAME:	stat()
+ * NAME:	P->stat()
  * DESCRIPTION:	get information about a file
  */
-int stat(const char *path, struct stat *sb)
+int P_stat(char *path, struct stat *sb)
 {
     HFileInfo buf;
     Str255 str;
@@ -393,10 +368,10 @@ int stat(const char *path, struct stat *sb)
 }
 
 /*
- * NAME:	fstat()
+ * NAME:	P->fstat()
  * DESCRIPTION:	get information about an open file
  */
-int fstat(int fd, struct stat *sb)
+int P_fstat(int fd, struct stat *sb)
 {
     HFileInfo buf;
 
@@ -416,10 +391,10 @@ int fstat(int fd, struct stat *sb)
 }
 
 /*
- * NAME:	unlink()
+ * NAME:	P->unlink()
  * DESCRIPTION:	remove a file (but not a directory)
  */
-int unlink(const char *path)
+int P_unlink(char *path)
 {
     HFileInfo buf;
     Str255 str;
@@ -436,10 +411,10 @@ int unlink(const char *path)
 }
 
 /*
- * NAME:	rename()
+ * NAME:	P->rename()
  * DESCRIPTION:	rename a file
  */
-int rename(const char *from, const char *to)
+int P_rename(char *from, char *to)
 {
     char *p, *q;
     Str255 dir1, dir2, file1, file2;
@@ -543,10 +518,10 @@ int rename(const char *from, const char *to)
 }
 
 /*
- * NAME:	access()
+ * NAME:	P->access()
  * DESCRIPTION:	check access on a file
  */
-int access(const char *path, int mode)
+int P_access(char *path, int mode)
 {
     HFileInfo buf;
     Str255 str;
@@ -566,10 +541,10 @@ int access(const char *path, int mode)
 }
 
 /*
- * NAME:	mkdir()
+ * NAME:	P->mkdir()
  * DESCRIPTION:	create a directory
  */
-int mkdir(const char *path, int mode)
+int P_mkdir(char *path, int mode)
 {
     Str255 str;
     long newdir;
@@ -582,10 +557,10 @@ int mkdir(const char *path, int mode)
 }
 
 /*
- * NAME:	rmdir()
+ * NAME:	P->rmdir()
  * DESCRIPTION:	remove an empty directory
  */
-int rmdir(const char *path)
+int P_rmdir(char *path)
 {
     HFileInfo buf;
     Str255 str;
@@ -602,10 +577,10 @@ int rmdir(const char *path)
 }
 
 /*
- * NAME:	chdir()
+ * NAME:	P->chdir()
  * DESCRIPTION:	change the current directory
  */
-int chdir(const char *path)
+int P_chdir(char *path)
 {
     HFileInfo buf;
     Str255 str;

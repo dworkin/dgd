@@ -72,9 +72,9 @@ void comm_finish()
 {
 }
 
-char *path_ed_read(file) char *file; { return file; }
+char *path_ed_read(buf, file) char *buf, *file; { return file; }
 
-char *path_ed_write(file) char *file; { return file; }
+char *path_ed_write(buf, file) char *buf, *file; { return file; }
 
 void output(f, a1, a2, a3, a4)
 char *f, *a1, *a2, *a3, *a4;

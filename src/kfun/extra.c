@@ -62,9 +62,12 @@ char pt_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
 int kf_ctime(f)
 frame *f;
 {
+    char buf[26];
+
     i_add_ticks(f, 5);
+    P_ctime(buf, f->sp->u.number);
     f->sp->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(P_ctime((Uint) f->sp->u.number), 24L));
+    str_ref(f->sp->u.string = str_new(buf, 24L));
 
     return 0;
 }

@@ -326,13 +326,13 @@ frame *f;
  * NAME:	object->name()
  * DESCRIPTION:	return the name of an object
  */
-char *o_name(o)
+char *o_name(name, o)
+char *name;
 register object *o;
 {
     if (o->chain.name != (char *) NULL) {
 	return o->chain.name;
     } else {
-	static char name[STRINGSZ + 12];
 	char num[12];
 	register char *p;
 	register uindex n;

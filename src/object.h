@@ -39,7 +39,7 @@ extern object	 *o_clone	P((object*));
 extern void	  o_upgrade	P((object*, control*, frame*));
 extern void	  o_upgraded	P((object*, object*));
 extern void	  o_del		P((object*, frame*));
-extern char	 *o_name	P((object*));
+extern char	 *o_name	P((char*, object*));
 extern object	 *o_find	P((char*));
 extern control   *o_control	P((object*));
 extern dataspace *o_dataspace	P((object*));

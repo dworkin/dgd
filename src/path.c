@@ -13,10 +13,9 @@
  * NAME:	path->resolve()
  * DESCRIPTION:	resolve a path
  */
-char *path_resolve(file)
-char *file;
+char *path_resolve(buf, file)
+char *buf, *file;
 {
-    static char buf[STRINGSZ];
     register char *p, *q, *d;
 
     strncpy(buf, file, STRINGSZ - 1);
@@ -64,44 +63,44 @@ char *file;
  * NAME:	path_string()
  * DESCRIPTION:	check and resolve a string path
  */
-char *path_string(file, len)
-char *file;
+char *path_string(buf, file, len)
+char *buf, *file;
 unsigned int len;
 {
     if (len >= STRINGSZ || strlen(file) != len) {
 	return (char *) NULL;
     }
-    return path_resolve(file);
+    return path_resolve(buf, file);
 }
 
 /*
  * NAME:	path->from()
  * DESCRIPTION:	resolve a (possibly relative) path
  */
-char *path_from(from, file)
-register char *from, *file;
+char *path_from(buf, from, file)
+register char *buf, *from, *file;
 {
-    char buf[STRINGSZ];
+    char buf2[STRINGSZ];
 
     if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
-	sprintf(buf, "%s/../%s", from, file);
-	return path_resolve(buf);
+	sprintf(buf2, "%s/../%s", from, file);
+	file = buf2;
     }
-    return path_resolve(file);
+    return path_resolve(buf, file);
 }
 
 /*
  * NAME:	path->ed_read()
  * DESCRIPTION:	resolve an editor read file path
  */
-char *path_ed_read(file)
-char *file;
+char *path_ed_read(buf, file)
+char *buf, *file;
 {
     register frame *f;
 
     f = cframe;
     if (f->obj->flags & O_DRIVER) {
-	return path_file(path_resolve(file));
+	return path_resolve(buf, file);
     } else {
 	(--f->sp)->type = T_STRING;
 	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
@@ -110,9 +109,9 @@ char *file;
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	file = path_file(path_resolve(f->sp->u.string->text));
+	path_resolve(buf, f->sp->u.string->text);
 	str_del((f->sp++)->u.string);
-	return file;
+	return buf;
     }
 }
 
@@ -120,14 +119,14 @@ char *file;
  * NAME:	path->ed_write()
  * DESCRIPTION:	resolve an editor write file path
  */
-char *path_ed_write(file)
-char *file;
+char *path_ed_write(buf, file)
+char *buf, *file;
 {
     register frame *f;
 
     f = cframe;
     if (f->obj->flags & O_DRIVER) {
-	return path_file(path_resolve(file));
+	return path_resolve(buf, file);
     } else {
 	(--f->sp)->type = T_STRING;
 	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
@@ -136,9 +135,9 @@ char *file;
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	file = path_file(path_resolve(f->sp->u.string->text));
+	path_resolve(buf, f->sp->u.string->text);
 	str_del((f->sp++)->u.string);
-	return file;
+	return buf;
     }
 }
 
@@ -146,13 +145,13 @@ char *file;
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */
-char *path_include(from, file)
-char *from, *file;
+char *path_include(buf, from, file)
+char *buf, *from, *file;
 {
     register frame *f;
 
     if (c_autodriver()) {
-	return path_file(path_from(from, file));
+	return path_from(buf, from, file);
     }
     f = cframe;
     (--f->sp)->type = T_STRING;
@@ -163,13 +162,13 @@ char *from, *file;
     str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
     if (!call_driver_object(f, "path_include", 2)) {
 	f->sp++;
-	return path_file(path_from(from, file));
+	return path_from(buf, from, file);
     }
     if (f->sp->type != T_STRING) {
 	i_del_value(f->sp++);
 	return (char *) NULL;
     }
-    file = path_file(path_resolve(f->sp->u.string->text));
+    path_resolve(buf, f->sp->u.string->text);
     str_del((f->sp++)->u.string);
-    return file;
+    return buf;
 }

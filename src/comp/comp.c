@@ -196,9 +196,10 @@ int dgd_main(argc, argv)
 int argc;
 char *argv[];
 {
+    char buf[STRINGSZ], tag[9];
     register unsigned int len;
     register control *ctrl;
-    char *file, tag[9];
+    register char *file;
     int nfuncs;
 
     file = argv[2];
@@ -221,7 +222,7 @@ char *argv[];
 	return 2;
     }
 
-    len = strlen(file = path_resolve(file));
+    len = strlen(file = path_resolve(buf, file));
     file[len - 2] = '\0';
     sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
 	    (unsigned short) P_random());

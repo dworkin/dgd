@@ -844,30 +844,6 @@ register long l1, l2;
 }
 
 
-static int mapcmp P((cvoid*, cvoid*));
-static bool ididx;	/* flag for identical indices */
-
-/*
- * NAME:	mapcmp()
- * DESCRIPTION:	compare two mapping indices
- */
-static int mapcmp(cv1, cv2)
-cvoid *cv1, *cv2;
-{
-    register int c;
-    register value *v1, *v2;
-
-    c = cmp(cv1, cv2);
-    v1 = (value *) cv1;
-    v2 = (value *) cv2;
-    if (c == 0 && v1 != v2 && (!T_INDEXED(v1->type) ||
-	v1->u.array == v2->u.array)) {
-	/* jumping out of qsort might leave the mapping in a bad state */
-	ididx = TRUE;
-    }
-    return c;
-}
-
 /*
  * NAME:	mapping->new()
  * DESCRIPTION:	create a new mapping
@@ -914,10 +890,13 @@ register array *m;
     }
 
     if (sz != 0) {
-	ididx = FALSE;
-	qsort(m->elts, sz >> 1, 2 * sizeof(value), mapcmp);
-	if (ididx) {
-	    error("Identical indices in mapping");
+	qsort(v = m->elts, i = sz >> 1, 2 * sizeof(value), cmp);
+	while (--i != 0) {
+	    if (cmp((cvoid *) v, (cvoid *) &v[2]) == 0 &&
+		(!T_INDEXED(v->type) || v->u.array == v[2].u.array)) {
+		error("Identical indices in mapping");
+	    }
+	    v += 2;
 	}
     } else if (m->size > 0) {
 	FREE(m->elts);

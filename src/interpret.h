@@ -171,7 +171,7 @@ extern void		i_global	P((frame*, int, int));
 extern void		i_global_lvalue	P((frame*, int, int, int));
 extern void		i_index		P((frame*));
 extern void		i_index_lvalue	P((frame*, int));
-extern char	       *i_typename	P((unsigned int));
+extern char	       *i_typename	P((char*, unsigned int));
 extern void		i_cast		P((value*, unsigned int));
 extern void		i_fetch		P((frame*));
 extern void		i_store		P((frame*, value*, value*));

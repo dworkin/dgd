@@ -361,13 +361,15 @@ stmt
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
 		  if (typechecking) {
+		      char tnbuf[17];
+
 		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
 			  c_error("bad type for stack rlimit (%s)",
-				  i_typename($3->mod));
+				  i_typename(tnbuf, $3->mod));
 		      }
 		      if ($5->mod != T_INT && $5->mod != T_MIXED) {
 			  c_error("bad type for ticks rlimit (%s)",
-				  i_typename($5->mod));
+				  i_typename(tnbuf, $5->mod));
 		      }
 		  }
 		  c_startrlimits();
@@ -528,8 +530,10 @@ prefix_exp
 		  $$ = $2;
 		  t_void($$);
 		  if (typechecking && $$->mod != T_INT && $$->mod != T_MIXED) {
+		      char tnbuf[17];
+
 		      c_error("bad argument type for ~ (%s)",
-			      i_typename($$->mod));
+			      i_typename(tnbuf, $$->mod));
 		      $$->mod = T_MIXED;
 		  } else {
 		      $$ = xor(N_XOR, $$, node_int((Int) -1), "^");
@@ -751,9 +755,12 @@ static bool t_unary(n, name)
 register node *n;
 char *name;
 {
+    char tnbuf[17];
+
     t_void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
-	c_error("bad argument type for %s (%s)", name, i_typename(n->mod));
+	c_error("bad argument type for %s (%s)", name,
+		i_typename(tnbuf, n->mod));
 	n->mod = T_MIXED;
 	return FALSE;
     }
@@ -877,12 +884,13 @@ register unsigned int type;
 	}
 
 	if ((n->mod & T_TYPE) != T_MIXED) {
-	    c_error("cast of invalid type (%s)", i_typename(n->mod));
+	    c_error("cast of invalid type (%s)", i_typename(buffer, n->mod));
 	} else if ((type & T_TYPE) == T_VOID) {
-	    c_error("cannot cast to %s", i_typename(type));
+	    c_error("cannot cast to %s", i_typename(buffer, type));
 	    n->mod = T_MIXED;
 	} else if ((type & T_REF) < (n->mod & T_REF)) {
-	    c_error("illegal cast of array type (%s)", i_typename(n->mod));
+	    c_error("illegal cast of array type (%s)",
+		    i_typename(buffer, n->mod));
 	} else if ((type & T_REF) == 0 || (n->mod & T_REF) == 0) {
 	    return node_mon(N_CAST, type, n);
 	}
@@ -897,6 +905,7 @@ register unsigned int type;
 static node *idx(n1, n2)
 register node *n1, *n2;
 {
+    char tnbuf[17];
     register unsigned short type;
 
     if (n1->type == N_STR && n2->type == N_INT) {
@@ -918,7 +927,7 @@ register node *n1, *n2;
 	if (typechecking) {
 	    type = n1->mod - (1 << REFSHIFT);
 	    if (n2->mod != T_INT && n2->mod != T_MIXED) {
-		c_error("bad index type (%s)", i_typename(n2->mod));
+		c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
 	    }
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
@@ -931,12 +940,12 @@ register node *n1, *n2;
 	 * string
 	 */
 	if (typechecking && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(n2->mod));
+	    c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
 	}
 	type = T_INT;
     } else {
 	if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
-	    c_error("bad indexed type (%s)", i_typename(n1->mod));
+	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
 	}
 	type = T_MIXED;
     }
@@ -965,16 +974,18 @@ register node *n1, *n2, *n3;
     }
 
     if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
+	char tnbuf[17];
+
 	/* indices */
 	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(n2->mod));
+	    c_error("bad index type (%s)", i_typename(tnbuf, n2->mod));
 	}
 	if (n3 != (node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
-	    c_error("bad index type (%s)", i_typename(n3->mod));
+	    c_error("bad index type (%s)", i_typename(tnbuf, n3->mod));
 	}
 	/* range */
 	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING) {
-	    c_error("bad indexed type (%s)", i_typename(n1->mod));
+	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
 	}
     }
 
@@ -990,6 +1001,8 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    char tnbuf1[17], tnbuf2[17];
+
     t_void(n1);
     t_void(n2);
 
@@ -997,7 +1010,7 @@ char *name;
 	((n1->mod != T_INT && n1->mod != T_MIXED) ||
 	 (n2->mod != T_INT && n2->mod != T_MIXED))) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(n1->mod), i_typename(n2->mod));
+		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
     }
     if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1014,6 +1027,7 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    char tnbuf1[17], tnbuf2[17];
     register unsigned short type;
 
     t_void(n1);
@@ -1025,7 +1039,7 @@ char *name;
 	 (!T_ARITHMETIC(n1->mod) && n1->mod != T_MIXED) ||
 	 (!T_ARITHMETIC(n2->mod) && n2->mod != T_MIXED))) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(n1->mod), i_typename(n2->mod));
+		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
     } else if (n1->mod == T_INT || n2->mod == T_INT) {
 	if (n1->mod == T_INT && n2->mod == T_INT) {
 	    op++;
@@ -1156,6 +1170,7 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
     register unsigned short type;
 
@@ -1197,7 +1212,7 @@ char *name;
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
-		    i_typename(n1->mod), i_typename(n2->mod));
+		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
 	}
     } else if (type == T_INT) {
 	op++;
@@ -1223,6 +1238,7 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
     register unsigned short type;
 
@@ -1251,7 +1267,8 @@ char *name;
 	    type = T_MIXED;
 	    if (typechecking) {
 		c_error("bad argument types for %s (%s, %s)", name,
-			i_typename(n1->mod), i_typename(n2->mod));
+			i_typename(tnbuf1, n1->mod),
+			i_typename(tnbuf2, n2->mod));
 	    }
 	}
     } else if (type == T_INT) {
@@ -1327,6 +1344,8 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    char tnbuf1[17], tnbuf2[17];
+
     t_void(n1);
     t_void(n2);
 
@@ -1395,7 +1414,7 @@ char *name;
 	 (!T_ARITHSTR(n1->mod) && n1->mod != T_MIXED) ||
 	 (!T_ARITHSTR(n2->mod) && n2->mod != T_MIXED))) {
 	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(n1->mod), i_typename(n2->mod));
+		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
@@ -1409,6 +1428,7 @@ char *name;
 static node *eq(n1, n2)
 register node *n1, *n2;
 {
+    char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
     int op;
 
@@ -1467,7 +1487,7 @@ register node *n1, *n2;
 	(!c_zero(n2) || n1->mod == T_FLOAT)) {
 	if (typechecking) {
 	    c_error("incompatible types for equality (%s, %s)",
-		    i_typename(n1->mod), i_typename(n2->mod));
+		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
 	}
     } else if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
@@ -1655,13 +1675,15 @@ register node *n1, *n2, *n3;
 static node *assign(n1, n2)
 register node *n1, *n2;
 {
+    char tnbuf1[17], tnbuf2[17];
+
     if (typechecking && (!c_zero(n2) || n1->mod == T_FLOAT)) {
 	/*
 	 * typechecked
 	 */
 	if (c_tmatch(n1->mod, n2->mod) == T_INVALID) {
 	    c_error("incompatible types for = (%s, %s)",
-		    i_typename(n1->mod), i_typename(n2->mod));
+		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
 	} else if (n1->mod != T_MIXED && n2->mod == T_MIXED) {
 	    n2 = node_mon(N_CAST, n1->mod, n2);
 	}

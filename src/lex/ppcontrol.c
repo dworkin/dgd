@@ -454,7 +454,7 @@ char *wanted, *directive;
  */
 static void do_include()
 {
-    char file[MAX_LINE_SIZE], buf[STRINGSZ + MAX_LINE_SIZE];
+    char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
     register int token;
     register char **idir;
 
@@ -476,7 +476,7 @@ static void do_include()
 	tk_skiptonl(TRUE);
 
 	/* first try the path direct */
-	if (tk_include(path_include(tk_filename(), file))) {
+	if (tk_include(path_include(buf, tk_filename(), file))) {
 	    include_level++;
 	    return;
 	}
@@ -490,10 +490,10 @@ static void do_include()
 
     /* search in standard directories */
     for (idir = idirs; *idir != (char *) NULL; idir++) {
-	strcpy(buf, *idir);
-	strcat(buf, "/");
-	strcat(buf, file);
-	if (tk_include(path_include(tk_filename(), buf))) {
+	strcpy(path, *idir);
+	strcat(path, "/");
+	strcat(path, file);
+	if (tk_include(path_include(buf, tk_filename(), path))) {
 	    include_level++;
 	    return;
 	}

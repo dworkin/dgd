@@ -9,14 +9,14 @@
  */
 
 typedef struct {
-    char *filename;	/* file name */
-    int fd;		/* read/write file descriptor */
-    char *buffer;	/* file buffer */
-    char *bufp;		/* buffer pointer */
-    unsigned int inbuf;	/* # bytes in buffer */
-    char *lbuf;		/* line buffer */
-    char *lbuflast;	/* end of line buffer */
-    io *iostat;		/* I/O status */
+    char filename[STRINGSZ];	/* file name */
+    int fd;			/* read/write file descriptor */
+    char *buffer;		/* file buffer */
+    char *bufp;			/* buffer pointer */
+    unsigned int inbuf;		/* # bytes in buffer */
+    char *lbuf;			/* line buffer */
+    char *lbuflast;		/* end of line buffer */
+    io *iostat;			/* I/O status */
 } fiocontext;
 
 /*
@@ -43,7 +43,7 @@ char *ptr;
     i = x->inbuf;
     do {
 	if (i == 0) {	/* buffer empty */
-	    i = read(x->fd, x->buffer, BUF_SIZE);
+	    i = P_read(x->fd, x->buffer, BUF_SIZE);
 	    if (i <= 0) {
 		/* eof or error */
 		if (i < 0) {
@@ -97,13 +97,12 @@ io *iobuf;
     fiocontext x;
 
     /* open file */
-    x.filename = path_ed_read(filename);
-    if (x.filename == (char *) NULL || stat(x.filename, &sbuf) < 0 ||
-	(sbuf.st_mode & S_IFMT) != S_IFREG) {
+    if (path_ed_read(x.filename, filename) == (char *) NULL ||
+	P_stat(x.filename, &sbuf) < 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
 	return FALSE;
     }
 
-    x.fd = open(x.filename, O_RDONLY | O_BINARY, 0);
+    x.fd = P_open(x.filename, O_RDONLY | O_BINARY, 0);
     if (x.fd < 0) {
 	return FALSE;
     }
@@ -124,12 +123,12 @@ io *iobuf;
 
     /* add the block to the edit buffer */
     if (ec_push((ec_ftn) NULL)) {
-	close(x.fd);
+	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
     eb_add(eb, l, getline, (char *) &x);
     ec_pop();
-    close(x.fd);
+    P_close(x.fd);
 
     return TRUE;
 }
@@ -158,7 +157,7 @@ register char *text;
 	    text += chunk;
 	    len -= chunk;
 	}
-	if (write(x->fd, x->buffer, BUF_SIZE) != BUF_SIZE) {
+	if (P_write(x->fd, x->buffer, BUF_SIZE) != BUF_SIZE) {
 	    error("error while writing file \"/%s\"", x->filename);
 	}
 	x->inbuf = 0;
@@ -184,14 +183,13 @@ io *iobuf;
     char buf[BUF_SIZE];
     fiocontext x;
 
-    x.filename = path_ed_write(filename);
-    if (x.filename == (char *) NULL) {
+    if (path_ed_write(x.filename, filename) == (char *) NULL) {
 	return FALSE;
     }
     /* create file */
-    x.fd = open(x.filename,
-		(append) ? O_CREAT | O_APPEND | O_WRONLY | O_BINARY :
-			   O_CREAT | O_TRUNC | O_WRONLY | O_BINARY,
+    x.fd = P_open(x.filename,
+		  (append) ? O_CREAT | O_APPEND | O_WRONLY | O_BINARY :
+			     O_CREAT | O_TRUNC | O_WRONLY | O_BINARY,
 	      0664);
     if (x.fd < 0) {
 	return FALSE;
@@ -211,15 +209,15 @@ io *iobuf;
 
     /* write range */
     if (ec_push((ec_ftn) NULL)) {
-	close(x.fd);
+	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
     eb_range(eb, first, last, putline, (char *) &x, FALSE);
-    if (write(x.fd, x.buffer, x.inbuf) != x.inbuf) {
+    if (P_write(x.fd, x.buffer, x.inbuf) != x.inbuf) {
 	error("error while writing file \"/%s\"", x.filename);
     }
     ec_pop();
-    close(x.fd);
+    P_close(x.fd);
 
     return TRUE;
 }

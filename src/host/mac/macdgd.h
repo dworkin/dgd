@@ -38,7 +38,7 @@ extern char ctype[];
 extern int	tolower(int c);
 extern int	toupper(int c);
 
-# endif
+# endif	/* INCLUDE_CTYPE */
 
 
 # ifdef INCLUDE_FILE_IO
@@ -76,25 +76,10 @@ struct stat {
 # define W_OK		2
 
 extern void	fsinit(long fcrea, long ftype);
-extern char	*path_file(char *path);
-extern char	*path_unfile(char *path);
 extern char	*getpath(char *buf, short vref, unsigned char *fname);
 extern char	*getfile(char *buf, long type);
-extern int	open(const char *path, int flags, int mode);
-extern int	close(int fd);
-extern int	read(int fd, void *buf, int nbytes);
-extern int	write(int fd, const void *buf, int nbytes);
-extern long	lseek(int fd, long offset, int whence);
-extern int	stat(const char *path, struct stat *sb);
-extern int	fstat(int fd, struct stat *sb);
-extern int	unlink(const char *path);
-extern int	rename(const char *from, const char *to);
-extern int	access(const char *path, int mode);
-extern int	mkdir(const char *path, int mode);
-extern int	rmdir(const char *path);
-extern int	chdir(const char *path);
 
-# endif
+# endif	/* INCLUDE_FILE_IO */
 
 
 extern int	memcmp(const void *b1, const void *b2, size_t len);

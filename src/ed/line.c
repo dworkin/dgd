@@ -113,7 +113,7 @@ char *filename;
     lb->txtsz = 0;
 
     /* create or truncate tmpfile */
-    lb->fd = open(lb->file, O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
+    lb->fd = P_open(lb->file, O_CREAT | O_TRUNC | O_RDWR | O_BINARY, 0600);
     if (lb->fd < 0) {
 	fatal("cannot create editor tmpfile \"%s\"", lb->file);
     }
@@ -135,7 +135,7 @@ register linebuf *lb;
     lb_inact(lb);
 
     /* remove tmpfile */
-    unlink(lb->file);
+    P_unlink(lb->file);
     FREE(lb->file);
 
     /* release memory */
@@ -158,7 +158,7 @@ register linebuf *lb;
 {
     /* close tmpfile, to save descriptors */
     if (lb->fd >= 0) {
-	close(lb->fd);
+	P_close(lb->fd);
 	lb->fd = -1;
     }
 }
@@ -172,7 +172,7 @@ static void lb_act(lb)
 register linebuf *lb;
 {
     if (lb->fd < 0) {
-	lb->fd = open(lb->file, O_RDWR | O_BINARY, 0);
+	lb->fd = P_open(lb->file, O_RDWR | O_BINARY, 0);
 	if (lb->fd < 0) {
 	    fatal("cannot reopen editor tmpfile \"%s\"", lb->file);
 	}
@@ -199,8 +199,8 @@ register linebuf *lb;
 	lb_act(lb);
 
 	/* write in tmpfile */
-	lseek(lb->fd, offset = lb->wb->offset, SEEK_SET);	/* EOF */
-	if (write(lb->fd, lb->wb->buf, BLOCK_SIZE) < 0) {
+	P_lseek(lb->fd, offset = lb->wb->offset, SEEK_SET);	/* EOF */
+	if (P_write(lb->fd, lb->wb->buf, BLOCK_SIZE) < 0) {
 	    error("Failed to write editor tmpfile");
 	}
 	/* cycle buffers */
@@ -236,8 +236,8 @@ block b;
 		 */
 		lb_act(lb);
 		bt = bt->prev;
-		lseek(lb->fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
-		if (read(lb->fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
+		P_lseek(lb->fd, bt->offset = b - (b % BLOCK_SIZE), SEEK_SET);
+		if (P_read(lb->fd, bt->buf, BLOCK_SIZE) != BLOCK_SIZE) {
 		    fatal("cannot read editor tmpfile \"%s\"", lb->file);
 		}
 	    }

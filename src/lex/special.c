@@ -16,16 +16,16 @@ static char timestr[11];
  */
 void special_define()
 {
-    register char *ts;
+    char buf[26];
 
     mc_define("__LINE__", (char *) NULL, -1);
     mc_define("__FILE__", (char *) NULL, -1);
     mc_define("__DATE__", (char *) NULL, -1);
     mc_define("__TIME__", (char *) NULL, -1);
 
-    ts = P_ctime(P_time());
-    sprintf(datestr, "\"%.6s %.4s\"", ts + 4, ts + 20);
-    sprintf(timestr, "\"%.8s\"", ts + 11);
+    P_ctime(buf, P_time());
+    sprintf(datestr, "\"%.6s %.4s\"", buf + 4, buf + 20);
+    sprintf(timestr, "\"%.8s\"", buf + 11);
 }
 
 /*
