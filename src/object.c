@@ -208,6 +208,8 @@ control *ctrl;
 
     /* mark as upgrading */
     obj->cref += 2;
+    o->prev = obj->prev;
+    obj->prev = o - otable;
 
     /* remove references to old inherited objects */
     ctrl = o_control(obj);
@@ -268,11 +270,10 @@ register object *old, *new;
 void o_del(o)
 register object *o;
 {
-# ifdef DEBUG
     if (o->count == 0) {
-	fatal("destructing destructed object");
+	/* can happen if object selfdestructs in close()-on-destruct */
+	error("Destructing destructed object");
     }
-# endif
     o->count = 0;
 
     if (o->flags & O_MASTER) {
@@ -465,6 +466,7 @@ void o_clean()
 
 	up = &otable[o->u_master];
 	up->cref -= 2;
+	up->prev = o->prev;
 
 	if (up->count == 0 && up->cref == 0) {
 	    /* also remove upgrader */
@@ -481,7 +483,6 @@ void o_clean()
 		 up->count == 0 || --(o->u_ref) != 0)) {
 		/* upgrade variables */
 		o->cref = o->index = up->index;
-		o->prev = up->prev;
 		if (o->prev != SW_UNUSED) {
 		    otable[o->prev].cref = o - otable;
 		}

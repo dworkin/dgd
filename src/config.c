@@ -1104,10 +1104,12 @@ object *obj;
 {
     register control *ctrl;
     register value *v;
+    object *prog;
     array *clist, *a;
     sector nsectors;
 
-    ctrl = o_control(obj);
+    prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
+    ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
     if (obj->flags & O_CREATED) {
 	clist = co_list(obj);
 	nsectors = obj->data->nsectors;

@@ -24,7 +24,10 @@ int kf_compile_object()
     char *file;
     register object *obj;
 
-    file = path_resolve(sp->u.string->text);
+    file = path_string(sp->u.string->text, sp->u.string->len);
+    if (file == (char *) NULL) {
+	return 1;
+    }
     obj = o_find(file);
     if (obj != (object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
@@ -328,10 +331,15 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
  */
 int kf_find_object()
 {
+    char *path;
     object *obj;
 
+    path = path_string(sp->u.string->text, sp->u.string->len);
+    if (path == (char *) NULL) {
+	return 1;
+    }
     i_add_ticks(2);
-    obj = o_find(path_resolve(sp->u.string->text));
+    obj = o_find(path);
     str_del(sp->u.string);
     if (obj != (object *) NULL) {
 	sp->type = T_OBJECT;

@@ -61,6 +61,20 @@ char *file;
 }
 
 /*
+ * NAME:	path_string()
+ * DESCRIPTION:	check and resolve a string path
+ */
+char *path_string(file, len)
+char *file;
+unsigned int len;
+{
+    if (len >= STRINGSZ || strlen(file) != len) {
+	return (char *) NULL;
+    }
+    return path_resolve(file);
+}
+
+/*
  * NAME:	path->from()
  * DESCRIPTION:	resolve a (possibly relative) path
  */

@@ -322,40 +322,41 @@ int priority;
 	    if (expr2 == 0) {
 		if (token == '/') {
 		    error("division by zero in conditional control");
+		    continue;
 		} else if (token == '%') {
 		    error("modulus by zero in conditional control");
+		    continue;
 		}
-	    } else {
-		switch (token) {
-		case '/':	expr /= expr2;		break;
-		case '%':	expr %= expr2;		break;
-		case '*':	expr *= expr2;		break;
-		case '+':	expr += expr2;		break;
-		case '-':	expr -= expr2;		break;
-		case LSHIFT:	expr <<= expr2;		break;
-		case RSHIFT:	expr >>= expr2;		break;
-		case '<':	expr = expr < expr2;	break;
-		case '>':	expr = expr > expr2;	break;
-		case LE:	expr = expr <= expr2;	break;
-		case GE:	expr = expr >= expr2;	break;
-		case EQ:	expr = expr == expr2;	break;
-		case NE:	expr = expr != expr2;	break;
-		case '&':	expr &= expr2;		break;
-		case '^':	expr ^= expr2;		break;
-		case '|':	expr |= expr2;		break;
-		case LAND:	expr = expr && expr2;	break;
-		case LOR:	expr = expr || expr2;	break;
-		case '?':
-		    token = expr_get();
-		    if (token != ':') {
-			error("? without : in conditional control");
-			expr_unget(token);
-		    } else if (expr == 0) {
-			expr = eval_expr(0);
-		    } else {
-			eval_expr(0);
-			expr = expr2;
-		    }
+	    }
+	    switch (token) {
+	    case '/':		expr /= expr2;		break;
+	    case '%':		expr %= expr2;		break;
+	    case '*':		expr *= expr2;		break;
+	    case '+':		expr += expr2;		break;
+	    case '-':		expr -= expr2;		break;
+	    case LSHIFT:	expr <<= expr2;		break;
+	    case RSHIFT:	expr >>= expr2;		break;
+	    case '<':		expr = expr < expr2;	break;
+	    case '>':		expr = expr > expr2;	break;
+	    case LE:		expr = expr <= expr2;	break;
+	    case GE:		expr = expr >= expr2;	break;
+	    case EQ:		expr = expr == expr2;	break;
+	    case NE:		expr = expr != expr2;	break;
+	    case '&':		expr &= expr2;		break;
+	    case '^':		expr ^= expr2;		break;
+	    case '|':		expr |= expr2;		break;
+	    case LAND:		expr = expr && expr2;	break;
+	    case LOR:		expr = expr || expr2;	break;
+	    case '?':
+		token = expr_get();
+		if (token != ':') {
+		    error("? without : in conditional control");
+		    expr_unget(token);
+		} else if (expr == 0) {
+		    expr = eval_expr(0);
+		} else {
+		    eval_expr(0);
+		    expr = expr2;
 		}
 	    }
 	}

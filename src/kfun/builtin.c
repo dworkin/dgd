@@ -1934,7 +1934,7 @@ int n;
 	if (vtype == T_STRING || vtype == T_ARRAY) {
 	    nonint = i;
 	    isize = size;
-	    if (type == 0) {
+	    if (type == 0 && (vtype != T_ARRAY || i == n - 1)) {
 		type = vtype;
 	    } else if (type != vtype) {
 		error("Bad argument 2 for kfun +");

@@ -1057,3 +1057,10 @@ DGD 1.1
  - Made callouts more accurate when time() is used for timing, at the cost of
    an extra system call for each new callout.
  - Fixed a bug in restoring a sector map that didn't fit in one sector.
+ - Fixed an ancient bug in #if expressions.
+ - Can't use \0 in kfun file name argument anymore.
+ - Let status(obj) give updated information about objects recompiled during the
+   current thread.
+ - Make more of an efford to buffer telnet output if all of it could not be
+   sent right away, making sure that no telnet escape sequences are sent only
+   partially.

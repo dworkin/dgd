@@ -345,7 +345,11 @@ int kf_save_object()
     object *obj;
     xfloat flt;
 
-    strcpy(tmp, path_resolve(sp->u.string->text));
+    _tmp = path_string(sp->u.string->text, sp->u.string->len);
+    if (_tmp == (char *) NULL) {
+	return 1;
+    }
+    strcpy(tmp, _tmp);
     if ((_tmp=path_file(tmp)) == (char *) NULL) {
 	return 1;
     }
@@ -835,7 +839,7 @@ int kf_restore_object()
     bool pending;
 
     obj = cframe->obj;
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1037,7 +1041,7 @@ int nargs;
 	l = (sp++)->u.number;
 	break;
     }
-    file = path_file(path_resolve(sp[1].u.string->text));
+    file = path_file(path_string(sp[1].u.string->text, sp[1].u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1111,7 +1115,7 @@ int nargs;
     case 0:
 	return -1;
     }
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1191,12 +1195,12 @@ int kf_rename_file()
 {
     char buf[STRINGSZ], *file;
 
-    file = path_file(path_resolve(sp[1].u.string->text));
+    file = path_file(path_string(sp[1].u.string->text, sp[1].u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
     strcpy(buf, file);
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 2;
     }
@@ -1225,7 +1229,7 @@ int kf_remove_file()
 {
     char *file;
 
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1252,7 +1256,7 @@ int kf_make_dir()
 {
     char *file;
 
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1279,7 +1283,7 @@ int kf_remove_dir()
 {
     char *file;
 
-    file = path_file(path_resolve(sp->u.string->text));
+    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -1462,7 +1466,7 @@ int kf_get_dir()
     finfo finf;
     array *a;
 
-    file = path_resolve(sp->u.string->text);
+    file = path_string(sp->u.string->text, sp->u.string->len);
     if (path_file(file) == (char *) NULL) {
 	return 1;
     }

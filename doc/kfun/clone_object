@@ -7,7 +7,7 @@ SYNOPSIS
 
 DESCRIPTION
 	Create a clone of the specified object with an unique name of the form
-	"object_name#1234".  The cloned object must not inself be a clone.  The
+	"object_name#1234".  The cloned object must not itself be a clone.  The
 	new object is returned.  The creator function will be called in the
 	cloned object immediately.
 

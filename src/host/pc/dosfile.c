@@ -11,7 +11,8 @@ char *path_file(char *path)
 {
     static char file[_MAX_PATH];
 
-    if (strpbrk(path, ":\\") != (char *) NULL || strlen(path) >= _MAX_PATH) {
+    if (path == (char *) NULL || strpbrk(path, ":\\") != (char *) NULL ||
+	strlen(path) >= _MAX_PATH) {
 	return (char *) NULL;
     }
     strcpy(file, path);

@@ -2,7 +2,7 @@ NAME
 	editor - handle an editor command
 
 SYNOPSIS
-	string editor(string command)
+	varargs string editor(string command)
 
 
 DESCRIPTION
@@ -12,11 +12,11 @@ DESCRIPTION
 	editor command is specified that terminates it, or until the object
 	is destructed.  Editor output will be returned as a string.  The
 	editor status of an object can be queried with the kfun query_editor().
-	File paths for reading and writing will be translated by path_ed_read()
-	and path_ed_write(), respectively, in the driver object.
+	File paths for reading and writing will be translated by path_read()
+	and path_write(), respectively, in the driver object.
 
 ERRORS
-	If the number of adtive editor instances is equal to the value of the
+	If the number of active editor instances is equal to the value of the
 	ST_ETABSIZE field of the array returned by status(), where ST_ETABSIZE
 	is defined in the include file <status.h>, attempting to add another
 	one will result in an error.
