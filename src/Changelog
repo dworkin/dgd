@@ -1610,3 +1610,4 @@ DGD 1.3
    operations consistent for int and float.
  - Fixed a problem in object type function argument checking that could lead
    to a crash.
+ - And another one in a similar situation.

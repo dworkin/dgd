@@ -2154,7 +2154,9 @@ int funci;
 	if (ellipsis) {
 	    PUSH_ARRVAL(prev_f, arr_new(f.data, 0));
 	    nargs++;
-	    pc++;
+	    if ((FETCH1U(pc) & T_TYPE) == T_CLASS) {
+		pc += 3;
+	    }
 	}
     } else if (ellipsis) {
 	register value *v;
