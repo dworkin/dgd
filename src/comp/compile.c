@@ -1236,7 +1236,7 @@ node *expr, *stmt;
     register unsigned long cnt;
     short type, sz;
 
-    n = (node *) NULL;
+    n = stmt;
     if (switch_list->type != T_NIL) {
 	if (stmt == (node *) NULL) {
 	    /* empty switch statement */
@@ -1625,7 +1625,7 @@ register node *n;
     if (n != (node *) NULL && n->type == N_PAIR) {
 	flags = n->flags & (F_REACH | F_END);
 	n = revert_list(n);
-	n->flags |= flags | (n->l.left->flags & F_ENTRY);
+	n->flags = (n->flags & ~F_END) | flags;
     }
 
     return n;

@@ -411,7 +411,7 @@ static int remove_dir(string path)
     string err;
 
     path = driver->normalize_path(path, directory, owner);
-    if (!access(owner, path, READ_ACCESS)) {
+    if (!access(owner, path, WRITE_ACCESS)) {
 	message(path + ": Access denied.\n");
 	return -1;
     }

@@ -30,7 +30,7 @@ static int access(string user, string file, int type)
  */
 static void add_user(string user)
 {
-    if (!user) {
+    if (!user || sscanf(user, "/%*s") != 0) {
 	error("Bad argument for add_user");
     }
     accessd->add_user(user);

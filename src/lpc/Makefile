@@ -10,6 +10,7 @@ LIBS=
 LINTFLAGS=-abcehpruz
 CC=	gcc
 DMAKE=	make
+YACC=	yacc
 PRECOMP=../comp/a.out
 CONFIG=	../../mud.dgd
 MUDLIB=	../../mud
@@ -36,7 +37,7 @@ lint:
 
 $(PRECOMP):
 	cd ../comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			     'LIBS=$(LIBS)' a.out
+			     'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 driver.c: $(MUDLIB)/kernel/sys/driver.c
 	$(PRECOMP) $(CONFIG) /kernel/sys/driver.c $@

@@ -1464,3 +1464,22 @@ DGD 1.2p1
  - Fixed some bugs in the extension interface.
  - Fixed a precompiled object restoring bug.
  - Fixed a minor bug in restoring the parser state machine.
+
+DGD 1.2p2
+
+ - The editor could erroneously allocate dynamic instead of static memory.
+ - Fixed a spurious pause that would occur if the first callout started after a
+   cold boot had a delay of 0.
+ - Fixed a problem with repeatedly adding and removing callouts in atomically
+   executed code.
+ - Fixed several bugs in error handling.
+ - A better fix for errors in atomic code, in combination with multi-level
+   catches.
+ - Fixed a config file reading bug that could occur if the server was restarted.
+ - Fixed a bug in saving/restoring variables in an object that privately
+   inherited another.
+ - Prevent code from being erroneously optimized away in rare cases.
+ - Fixed a bug in handling some regular expressions.
+ - Fixed several bugs which could, in rare cases, cause nil to turn up in
+   mappings that had been accessed from atomically executed code.
+ - Fixed a bug in error recovery for compiling switch statements.

@@ -12,6 +12,7 @@ LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
 DMAKE=	make
+YACC=	yacc
 BIN=	../bin
 
 SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c data.c path.c \
@@ -22,13 +23,13 @@ COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 
 a.out:	$(OBJ) always
-	cd comp; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd comp; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
 	cd lex; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd parser; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			 'LIBS=$(LIBS)' dgd
+			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
 	cd host; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
@@ -63,11 +64,11 @@ ed.sub:	$(EDOBJ)
 	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
 comp/parser.h: comp/parser.y
-	cd comp; $(DMAKE) parser.h
+	cd comp; $(DMAKE) 'YACC=$(YACC)' parser.h
 
 comp/a.out:
 	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			  'LIBS=$(LIBS)' a.out
+			  'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub

@@ -254,7 +254,7 @@ array *a;
 	return;
     }
     x->narrays++;
-    map_compact(a);
+    map_compact(a->primary->data, a);
 
     /*
      * skip index/value pairs of which either is an object
@@ -395,12 +395,18 @@ register frame *f;
     x.narrays = 0;
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars && !inh->priv) {
+	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
+	    if (inh->priv) {
+		/* skip privately inherited variables */
+		var += ctrl->nvardefs;
+		nvars += ctrl->nvardefs;
+		continue;
+	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
@@ -929,11 +935,17 @@ register frame *f;
     data = o_dataspace(obj);
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars && !inh->priv) {
+	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
+	    if (inh->priv) {
+		/* skip privately inherited variables */
+		var += ctrl->nvardefs;
+		nvars += ctrl->nvardefs;
+		continue;
+	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
@@ -969,11 +981,17 @@ register frame *f;
 	var = data->variables;
 	nvars = 0;
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	    if (inh->varoffset == nvars && !inh->priv) {
+	    if (inh->varoffset == nvars) {
 		/*
 		 * Restore non-static variables.
 		 */
 		ctrl = OBJR(inh->oindex)->ctrl;
+		if (inh->priv) {
+		    /* skip privately inherited variables */
+		    var += ctrl->nvardefs;
+		    nvars += ctrl->nvardefs;
+		    continue;
+		}
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
 		    if (pending && nvars == checkpoint) {
 			/*

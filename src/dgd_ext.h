@@ -118,7 +118,7 @@
 # define DGD_OBJECT_GETVAL(v)		OBJW((v).oindex)
 # define DGD_OBJECT_PUTVAL(v, o)	PUT_OBJVAL(&(v), (o))
 # define DGD_OBJECT_CHECKVAL(v, o)	((v).u.objcnt == (o)->count)
-# define DGD_OBJECT_DATASPACE(o)	o_data((o))
+# define DGD_OBJECT_DATASPACE(o)	o_dataspace((o))
 # define DGD_OBJECT_NAME(buf, o)	o_name((buf), (o))
 # define DGD_OBJECT_ISSPECIAL(o)	(((o)->flags & O_SPECIAL) != 0)
 # define DGD_OBJECT_ISMARKED(o)		(((o)->flags & O_SPECIAL) == O_SPECIAL)

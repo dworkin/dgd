@@ -23,6 +23,7 @@
 typedef struct {
     char *name;		/* name of the option */
     short type;		/* option type */
+    bool resolv;	/* TRUE if path name must be resolved */
     bool set;		/* TRUE if option is set */
     Uint low, high;	/* lower and higher bound, for numeric values */
     union {
@@ -33,18 +34,18 @@ typedef struct {
 
 static config conf[] = {
 # define ARRAY_SIZE	0
-				{ "array_size",		INT_CONST, FALSE,
+				{ "array_size",		INT_CONST, FALSE, FALSE,
 							1, USHRT_MAX / 2 },
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, TRUE },
 # define BINARY_PORT	2
-				{ "binary_port",	INT_CONST, FALSE,
+				{ "binary_port",	INT_CONST, FALSE, FALSE,
 							0, USHRT_MAX },
 # define CACHE_SIZE	3
-				{ "cache_size",		INT_CONST, FALSE,
+				{ "cache_size",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
 # define CALL_OUTS	4
-				{ "call_outs",		INT_CONST, FALSE,
+				{ "call_outs",		INT_CONST, FALSE, FALSE,
 							0, UINDEX_MAX },
 # define CREATE		5
 				{ "create",		STRING_CONST, FALSE },
@@ -59,36 +60,36 @@ static config conf[] = {
 # define ED_TMPFILE	10
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
 # define EDITORS	11
-				{ "editors",		INT_CONST, FALSE,
+				{ "editors",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
 # define INCLUDE_DIRS	12
 				{ "include_dirs",	'(', FALSE },
 # define INCLUDE_FILE	13
 				{ "include_file",	STRING_CONST, TRUE },
 # define OBJECTS	14
-				{ "objects",		INT_CONST, FALSE,
+				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
 # define SECTOR_SIZE	15
-				{ "sector_size",	INT_CONST, FALSE,
+				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 8192 },
 # define STATIC_CHUNK	16
 				{ "static_chunk",	INT_CONST, FALSE },
 # define SWAP_FILE	17
 				{ "swap_file",		STRING_CONST, FALSE },
 # define SWAP_FRAGMENT	18
-				{ "swap_fragment",	INT_CONST, FALSE,
+				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
 # define SWAP_SIZE	19
-				{ "swap_size",		INT_CONST, FALSE,
+				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
 # define TELNET_PORT	20
-				{ "telnet_port",	INT_CONST, FALSE,
+				{ "telnet_port",	INT_CONST, FALSE, FALSE,
 							0, USHRT_MAX },
 # define TYPECHECKING	21
-				{ "typechecking",	INT_CONST, FALSE,
+				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
 # define USERS		22
-				{ "users",		INT_CONST, FALSE,
+				{ "users",		INT_CONST, FALSE, FALSE,
 							1, EINDEX_MAX },
 # define NR_OPTIONS	23
 };
@@ -668,7 +669,7 @@ static bool conf_config()
     register int h, l, m, c;
 
     for (h = NR_OPTIONS; h > 0; ) {
-	conf[--h].u.num = 0;
+	conf[--h].set = FALSE;
     }
     memset(dirs, '\0', sizeof(dirs));
 
@@ -721,7 +722,7 @@ static bool conf_config()
 	    break;
 
 	case STRING_CONST:
-	    p = (conf[m].set) ? path_resolve(buf, yytext) : yytext;
+	    p = (conf[m].resolv) ? path_resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;

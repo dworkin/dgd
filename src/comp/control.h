@@ -1,4 +1,4 @@
-extern void		 ctrl_init	P((bool));
+extern void		 ctrl_init	P((int));
 extern bool		 ctrl_inherit	P((frame*, char*, object*, string*,
 					   int));
 extern void		 ctrl_create	P((void));

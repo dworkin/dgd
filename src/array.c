@@ -359,10 +359,25 @@ void arr_backup(ac, a)
 abchunk **ac;
 register array *a;
 {
-    value *elts;
+    register value *elts;
+    register unsigned short i;
 
     if (a->size != 0) {
-	i_copy(elts = ALLOC(value, a->size), a->elts, a->size);
+	memcpy(elts = ALLOC(value, a->size), a->elts, a->size * sizeof(value));
+	for (i = a->size; i != 0; --i) {
+	    switch (elts->type) {
+	    case T_STRING:
+		str_ref(elts->u.string);
+		break;
+
+	    case T_ARRAY:
+	    case T_MAPPING:
+		arr_ref(elts->u.array);
+		break;
+	    }
+	    elts++;
+	}
+	elts -= a->size;
     } else {
 	elts = (value *) NULL;
     }
@@ -477,7 +492,8 @@ abchunk **ac;
  * NAME:	copytmp()
  * DESCRIPTION:	make temporary copies of values
  */
-static void copytmp(v1, a)
+static void copytmp(data, v1, a)
+register dataspace *data;
 register value *v1;
 register array *a;
 {
@@ -498,7 +514,7 @@ register array *a;
 	a->odcount = odcount;
 	for (n = a->size; n != 0; --n) {
 	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		d_assign_elt(a->primary->data, a, v2, &nil_value);
+		d_assign_elt(data, a, v2, &nil_value);
 	    }
 	    *v1++ = *v2++;
 	}
@@ -684,7 +700,7 @@ array *a1, *a2;
     size = a2->size;
 
     /* copy and sort values of subtrahend */
-    copytmp(v2 = ALLOCA(value, size), a2);
+    copytmp(data, v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
@@ -751,7 +767,7 @@ array *a1, *a2;
     size = a2->size;
 
     /* copy and sort values of 2nd array */
-    copytmp(v2 = ALLOCA(value, size), a2);
+    copytmp(data, v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
@@ -828,7 +844,7 @@ array *a1, *a2;
     v3 = ALLOCA(value, a2->size);
 
     /* copy and sort values of 1st array */
-    copytmp(v1 = ALLOCA(value, size = a1->size), a1);
+    copytmp(data, v1 = ALLOCA(value, size = a1->size), a1);
     qsort(v1, size, sizeof(value), cmp);
 
     v = v3;
@@ -907,10 +923,10 @@ array *a1, *a2;
     }
 
     /* copy values of 1st array */
-    copytmp(v1 = ALLOCA(value, size = a1->size), a1);
+    copytmp(data, v1 = ALLOCA(value, size = a1->size), a1);
 
     /* copy and sort values of 2nd array */
-    copytmp(v2 = ALLOCA(value, size = a2->size), a2);
+    copytmp(data, v2 = ALLOCA(value, size = a2->size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     /* room for first half of result */
@@ -1152,7 +1168,8 @@ register array *m;
  * NAME:	mapping->clean()
  * DESCRIPTION:	remove destructed objects from mapping
  */
-static void map_clean(m)
+static void map_clean(data, m)
+register dataspace *data;
 register array *m;
 {
     register value *v1, *v2;
@@ -1162,7 +1179,8 @@ register array *m;
 	return;	/* no destructed objects */
     }
 
-    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+    if (m->hashed != (maphash *) NULL &&
+	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
 	map_dehash(m);
     }
 
@@ -1177,13 +1195,13 @@ register array *m;
 		/*
 		 * index is destructed object
 		 */
-		d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
+		d_assign_elt(data, m, v2 + 1, &nil_value);
 		v2 += 2;
 	    } else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
 		/*
 		 * value is destructed object
 		 */
-		d_assign_elt(m->primary->data, m, v2, &nil_value);
+		d_assign_elt(data, m, v2, &nil_value);
 		v2 += 2;
 	    } else {
 		*v1++ = *v2++;
@@ -1215,12 +1233,12 @@ register array *m;
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+		    d_assign_elt(data, m, &e->val, &nil_value);
 		} else if (e->val.type == T_OBJECT && DESTRUCTED(&e->val)) {
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
+		    d_assign_elt(data, m, &e->idx, &nil_value);
 		} else {
 		    size++;
 		    p = &e->next;
@@ -1242,7 +1260,8 @@ register array *m;
  * DESCRIPTION:	compact a mapping: put elements from the hash table into
  *		the array, and remove destructed objects
  */
-void map_compact(m)
+void map_compact(data, m)
+register dataspace *data;
 register array *m;
 {
     register value *v1, *v2;
@@ -1254,7 +1273,8 @@ register array *m;
 	return;
     }
 
-    if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
+    if (m->hashed != (maphash *) NULL &&
+	(!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
 	map_dehash(m);
     }
 
@@ -1270,13 +1290,13 @@ register array *m;
 		    /*
 		     * index is destructed object
 		     */
-		    d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
+		    d_assign_elt(data, m, v2 + 1, &nil_value);
 		    v2 += 2;
 		} else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
 		    /*
 		     * value is destructed object
 		     */
-		    d_assign_elt(m->primary->data, m, v2, &nil_value);
+		    d_assign_elt(data, m, v2, &nil_value);
 		    v2 += 2;
 		} else {
 		    *v1++ = *v2++;
@@ -1317,15 +1337,13 @@ register array *m;
 			    /*
 			     * index is destructed object
 			     */
-			    d_assign_elt(m->primary->data, m, &e->val,
-					 &nil_value);
+			    d_assign_elt(data, m, &e->val, &nil_value);
 			} else if (e->val.type == T_OBJECT &&
 				   DESTRUCTED(&e->val)) {
 			    /*
 			     * value is destructed object
 			     */
-			    d_assign_elt(m->primary->data, m, &e->idx,
-					 &nil_value);
+			    d_assign_elt(data, m, &e->idx, &nil_value);
 			} else {
 			    /*
 			     * copy to array
@@ -1405,12 +1423,13 @@ register array *m;
  * NAME:	mapping->size()
  * DESCRIPTION:	return the size of a mapping
  */
-unsigned short map_size(m)
+unsigned short map_size(data, m)
+dataspace *data;
 register array *m;
 {
     unsigned short size;
 
-    map_clean(m);
+    map_clean(data, m);
     size = m->size >> 1;
     if (m->hashed != (maphash *) NULL) {
 	size += m->hashed->size;
@@ -1431,8 +1450,8 @@ array *m1, *m2;
     register Int c;
     array *m3;
 
-    map_compact(m1);
-    map_compact(m2);
+    map_compact(data, m1);
+    map_compact(data, m2);
     m3 = map_new(data, (long) m1->size + m2->size);
     if (m3->size == 0) {
 	/* add two empty mappings */
@@ -1516,7 +1535,7 @@ array *m1, *a2;
     register Int c;
     array *m3;
 
-    map_compact(m1);
+    map_compact(data, m1);
     m3 = map_new(data, (long) m1->size);
     if (m1->size == 0) {
 	/* subtract from empty mapping */
@@ -1530,7 +1549,7 @@ array *m1, *a2;
     }
 
     /* copy and sort values of array */
-    copytmp(v2 = ALLOCA(value, size), a2);
+    copytmp(data, v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
@@ -1604,7 +1623,7 @@ array *m1, *a2;
     register Int c;
     array *m3;
 
-    map_compact(m1);
+    map_compact(data, m1);
     if ((size=a2->size) == 0) {
 	/* intersect with empty array */
 	return map_new(data, 0L);
@@ -1616,7 +1635,7 @@ array *m1, *a2;
     }
 
     /* copy and sort values of array */
-    copytmp(v2 = ALLOCA(value, size), a2);
+    copytmp(data, v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
@@ -1679,7 +1698,8 @@ array *m1, *a2;
  * NAME:	mapping->grow()
  * DESCRIPTION:	add an element to a mapping
  */
-static mapelt *map_grow(m, hashval)
+static mapelt *map_grow(data, m, hashval)
+dataspace *data;
 register array *m;
 unsigned short hashval;
 {
@@ -1689,7 +1709,7 @@ unsigned short hashval;
 
     h = m->hashed;
     if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->size) >= max_size) {
-	map_compact(m);
+	map_compact(data, m);
 	if (m->size >> 1 >= max_size) {
 	    error("Mapping too large to grow");
 	}
@@ -1902,7 +1922,7 @@ value *val, *elt;
 	/*
 	 * extend mapping
 	 */
-	e = map_grow(m, i);
+	e = map_grow(data, m, i);
 	d_assign_elt(data, m, &e->idx, val);
 	d_assign_elt(data, m, &e->val, elt);
 	d_change_map(m);
@@ -1926,7 +1946,7 @@ register value *v1, *v2;
     register unsigned short from, to;
     register array *range;
 
-    map_compact(m);
+    map_compact(data, m);
 
     /* determine subrange */
     from = (v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
@@ -1966,7 +1986,7 @@ array *m;
     register value *v1, *v2;
     register unsigned short n;
 
-    map_compact(m);
+    map_compact(data, m);
     indices = arr_new(data, (long) (n = m->size >> 1));
     v1 = indices->elts;
     for (v2 = m->elts; n > 0; v2 += 2, --n) {
@@ -1990,7 +2010,7 @@ array *m;
     register value *v1, *v2;
     register unsigned short n;
 
-    map_compact(m);
+    map_compact(data, m);
     values = arr_new(data, (long) (n = m->size >> 1));
     v1 = values->elts;
     for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {

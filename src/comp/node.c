@@ -25,7 +25,7 @@ int nil_node;				/* N_NIL or N_INT */
  * DESCRIPTION:	initialize node handling
  */
 void node_init(flag)
-bool flag;
+int flag;
 {
     nil_node = (flag) ? N_NIL : N_INT;
 }

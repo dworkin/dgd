@@ -25,7 +25,7 @@ static void create()
 private mapping filter_from_file(mapping access, string file)
 {
     if (file == "/") {
-	return access[..];
+	return access;
     }
     return access[file .. file] +
 	   (access[file + "/" .. file + "0"] - ({ file + "0" }));
@@ -70,8 +70,7 @@ int access(string user, string file, int type)
 
 	sscanf(file, USR + "/%s/%s/", dir, str);
 	if (type == READ_ACCESS && (!dir || gaccess[dir] || str == "open") &&
-	    sscanf(file, "/kernel/data/%*s") == 0 &&
-	    sscanf(file, "/save/%*s") == 0) {
+	    sscanf(file, "/kernel/data/%*s") == 0) {
 	    /*
 	     * read access outside /usr, in /usr/foo/open and in selected
 	     * other directories in /usr

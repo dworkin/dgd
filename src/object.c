@@ -14,8 +14,6 @@ typedef struct _objpatch_ {
     objplane *plane;			/* plane that patch is on */
     struct _objpatch_ *prev;		/* previous patch */
     struct _objpatch_ *next;		/* next in linked list */
-    uindex ref;				/* old ref count */
-    uindex cref;			/* old clone refcount */
     object obj;				/* new object value */
 } objpatch;
 
@@ -43,7 +41,6 @@ struct _objplane_ {
     uindex nobjects;		/* number of objects in object table */
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
-    Uint odcount;		/* previous objects destructed count */
     struct _objplane_ *prev;	/* previous object plane */
 };
 
@@ -74,9 +71,9 @@ register unsigned int n;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
-    baseplane.ocount = odcount = 1;
     oplane = &baseplane;
     upgraded = (object *) NULL;
+    odcount = 1;
     obase = TRUE;
 }
 
@@ -149,8 +146,6 @@ int access;
     op->access = access;
     op->plane = plane;
     op->prev = prev;
-    op->ref = obj->u_ref;
-    op->cref = obj->cref;
     op->obj = *obj;
 
     /* add to hash table */
@@ -326,7 +321,6 @@ void o_new_plane()
     p->nobjects = oplane->nobjects;
     p->nfreeobjs = oplane->nfreeobjs;
     p->ocount = oplane->ocount;
-    p->odcount = odcount;
     p->prev = oplane;
     oplane = p;
 
@@ -550,7 +544,6 @@ void o_discard_plane()
 	}
     }
 
-    odcount = oplane->odcount;
     p = oplane;
     oplane = p->prev;
     if (p->optab != (optable *) NULL) {
@@ -669,10 +662,7 @@ register frame *f;
     strcpy(f->sp->u.string->text + 1, o->chain.name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, o->index);
-    if (!i_call_critical(f, "remove_program", 3, TRUE)) {
-	message("Error within remove_program:\012");	/* LF */
-	message((char *) NULL);
-    } else {
+    if (i_call_critical(f, "remove_program", 3, TRUE)) {
 	i_del_value(f->sp++);
     }
 

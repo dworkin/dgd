@@ -687,7 +687,7 @@ register frame *f;
     unsigned short size;
 
     i_add_ticks(f, f->sp->u.array->size);
-    size = map_size(f->sp->u.array);
+    size = map_size(f->data, f->sp->u.array);
     arr_del(f->sp->u.array);
     PUT_INTVAL(f->sp, size);
     return 0;
@@ -895,14 +895,14 @@ int nargs;
 	delay = f->sp[nargs - 2].u.number;
 	if (delay < 0) {
 	    /* delay less than 0 */
-	    return -2;
+	    return 2;
 	}
 	mdelay = 0xffff;
     } else if (f->sp[nargs - 2].type == T_FLOAT) {
 	GET_FLT(&f->sp[nargs - 2], flt1);
 	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &sixty) > 0) {
 	    /* delay < 0.0 or delay > 60.0 */
-	    return -2;
+	    return 2;
 	}
 	flt_modf(&flt1, &flt2);
 	delay = flt_ftoi(&flt2);

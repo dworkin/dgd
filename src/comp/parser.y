@@ -1717,7 +1717,7 @@ register node *n1, *n2, *n3;
 	    return n2;
 
 	case N_NIL:
-	    return n1;
+	    return n3;
 	}
     }
 

@@ -1446,7 +1446,9 @@ register cmdbuf *cb;
 	error("No current filename");
     }
 
+    m_static();
     eb_clear(cb->edbuf);
+    m_dynamic();
     cb->flags &= ~CB_NOIMAGE;
     cb->edit = 0;
     cb->first = cb->this = 0;

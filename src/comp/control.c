@@ -288,7 +288,7 @@ static Uint nifcalls;			/* # inherited function calls */
  * DESCRIPTION:	initialize control block construction
  */
 void ctrl_init(flag)
-bool flag;
+int flag;
 {
     oh_init();
     vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);

@@ -22,8 +22,6 @@ static object telnet;		/* telnet port object */
 static object binary;		/* binary port object */
 int port;			/* emergency binary port number */
 # endif
-static string file;		/* last file used in editor write operation */
-static int size;		/* size of file used in ed write operation */
 static int tls_size;		/* thread local storage size */
 static string compiled;		/* object currently being compiled */
 static string *inherited;	/* list of inherited objects */
@@ -195,29 +193,31 @@ void set_error_manager(object obj)
 void compiling(string path)
 {
     if (previous_program() == AUTO) {
-	compiled = path;
-	inherited = ({ });
 	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
 	    string err;
 
 	    if (objectd) {
 		objectd->compiling(AUTO);
 	    }
+	    compiled = AUTO;
 	    err = catch(compile_object(AUTO));
 	    if (err) {
 		if (objectd) {
 		    objectd->compile_failed("System", AUTO);
 		}
+		compiled = nil;
 		error(err);
 	    }
 	    rsrcd->rsrc_incr("System", "objects", nil, 1, TRUE);
 	    if (objectd) {
-		objectd->compile_lib("System", AUTO);
+		objectd->compile_lib("System", AUTO, nil);
 	    }
 	}
 	if (objectd) {
 	    objectd->compiling(path);
 	}
+	compiled = path;
+	inherited = ({ });
     }
 }
 
@@ -227,13 +227,12 @@ void compiling(string path)
  */
 void compile(object obj, string owner)
 {
-    if (objectd && previous_program() == AUTO) {
-	if (inherited) {
+    if (previous_program() == AUTO) {
+	if (objectd) {
 	    objectd->compile(owner, obj, inherited...);
-	    inherited = nil;
-	} else {
-	    objectd->compile(owner, obj);
 	}
+	compiled = nil;
+	inherited = nil;
     }
 }
 
@@ -243,13 +242,12 @@ void compile(object obj, string owner)
  */
 void compile_lib(string path, string owner)
 {
-    if (objectd && previous_program() == AUTO) {
-	if (inherited) {
+    if (previous_program() == AUTO) {
+	if (objectd) {
 	    objectd->compile_lib(owner, path, inherited...);
-	    inherited = nil;
-	} else {
-	    objectd->compile_lib(owner, path);
 	}
+	compiled = nil;
+	inherited = nil;
     }
 }
 
@@ -259,8 +257,11 @@ void compile_lib(string path, string owner)
  */
 void compile_failed(string path, string owner)
 {
-    if (objectd && previous_program() == AUTO) {
-	objectd->compile_failed(owner, path);
+    if (previous_program() == AUTO) {
+	if (objectd) {
+	    objectd->compile_failed(owner, path);
+	}
+	compiled = nil;
 	inherited = nil;
     }
 }
@@ -293,10 +294,8 @@ void destruct(object obj, string owner)
  */
 void destruct_lib(string path, string owner)
 {
-    if (previous_program() == AUTO) {
-	if (objectd) {
-	    objectd->destruct_lib(owner, path);
-	}
+    if (objectd && previous_program() == AUTO) {
+	objectd->destruct_lib(owner, path);
     }
 }
 
@@ -376,24 +375,10 @@ private object load(string path)
 }
 
 /*
- * NAME:	call()
- * DESCRIPTION:	call a function in an object from the top level, providing
- *		thread local storage
+ * NAME:	_initialize()
+ * DESCRIPTION:	initialize system, with proper TLS on the stack
  */
-private mixed call(mixed what, string func)
-{
-    object obj;
-
-    obj = what;
-    what = allocate(tls_size);
-    return call_other(obj, func);
-}
-
-/*
- * NAME:	initialize()
- * DESCRIPTION:	called once at system startup
- */
-static void initialize()
+private void _initialize(mixed *tls)
 {
     object rsrcobj;
     string *users;
@@ -401,8 +386,6 @@ static void initialize()
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
-
-    tls_size = 2;	/* two variables used by kernel */
 
     /* load initial objects */
     load(AUTO);
@@ -455,7 +438,7 @@ static void initialize()
 
     /* system-specific initialization */
     if (initd) {
-	call(initd, "???");
+	call_other(initd, "???");
 # ifdef SYS_NETWORKING
     } else {
 	telnet = clone_object(port_master);
@@ -468,6 +451,15 @@ static void initialize()
     }
 
     message("Initialization complete.\n\n");
+}
+
+/*
+ * NAME:	initialize()
+ * DESCRIPTION:	first function called at system startup
+ */
+static void initialize()
+{
+    _initialize(allocate(tls_size = 2));
 }
 
 /*
@@ -486,18 +478,18 @@ void prepare_reboot()
 }
 
 /*
- * NAME:	restored()
- * DESCRIPTION:	re-initialize the system after a restore
+ * NAME:	_restored()
+ * DESCRIPTION:	re-initialize the system, with proper TLS on the stack
  */
-static void restored()
+private void _restored(mixed *tls)
 {
     message("DGD " + status()[ST_VERSION] + "\n");
 
     rsrcd->reboot();
-    call(userd, "reboot");
+    call_other(userd, "reboot");
     if (initd) {
 	catch {
-	    call(initd, "reboot");
+	    call_other(initd, "reboot");
 	}
     }
 # ifdef SYS_NETWORKING
@@ -517,6 +509,15 @@ static void restored()
 # endif
 
     message("State restored.\n\n");
+}
+
+/*
+ * NAME:	restored()
+ * DESCRIPTION:	re-initialize system after a restore
+ */
+static void restored()
+{
+    _restored(allocate(tls_size));
 }
 
 /*
@@ -546,7 +547,7 @@ static string path_read(string path)
 static string path_write(string path)
 {
     string oname, creator;
-    int *rsrc;
+    int *rsrc, size;
 
     catch {
 	path = previous_object()->path_write(path);
@@ -560,25 +561,9 @@ static string path_write(string path)
 	    (creator == "System" ||
 	     (accessd->access(oname, path, WRITE_ACCESS) &&
 	      (rsrc[RSRC_USAGE] < rsrc[RSRC_MAX] || rsrc[RSRC_MAX] < 0)))) {
-	    size = file_size(file = path);
+	    call_trace()[1][TRACE_FIRSTARG][1] = ({ path, file_size(path) });
 	    return path;
 	}
-    }
-    return nil;
-}
-
-/*
- * NAME:	query_wfile()
- * DESCRIPTION:	get information about the editor file last written
- */
-mixed *query_wfile()
-{
-    mixed *info;
-
-    if (file) {
-	info = ({ file, size });
-	file = nil;
-	return info;
     }
     return nil;
 }
@@ -640,11 +625,13 @@ static object inherit_program(string from, string path, int priv)
 	    if (objectd) {
 		objectd->compile_failed(creator, path);
 	    }
+	    compiled = nil;
+	    inherited = nil;
 	    error(err);
 	}
 	rsrcd->rsrc_incr(creator, "objects", nil, 1, TRUE);
 	if (objectd) {
-	    objectd->compile_lib(creator, path, inherited...);
+	    objectd->compile_lib(creator, path, nil, inherited...);
 	}
 	compiled = from;
 	inherited = ({ });
@@ -737,7 +724,7 @@ static void recompile(object obj)
  */
 static object telnet_connect()
 {
-    return userd->telnet_connection();
+    return userd->telnet_connection(allocate(tls_size));
 }
 
 /*
@@ -746,22 +733,31 @@ static object telnet_connect()
  */
 static object binary_connect()
 {
-    return userd->binary_connection();
+    return userd->binary_connection(allocate(tls_size));
 }
 
 /*
- * NAME:	interrupt
- * DESCRIPTION:	called when a kill signal is sent to the server
+ * NAME:	_interrupt()
+ * DESCRIPTION:	handle interrupt signal, with proper TLS on the stack
  */
-static void interrupt()
+private void _interrupt(mixed *tls)
 {
     message("Interrupt.\n");
 
 # ifdef SYS_PERSISTENT
-    call(this_object(), "prepare_reboot");
+    call_other(this_object(), "prepare_reboot");
     dump_state();
 # endif
     shutdown();
+}
+
+/*
+ * NAME:	interrupt()
+ * DESCRIPTION:	called when a kill signal is sent to the server
+ */
+static void interrupt()
+{
+    _interrupt(allocate(tls_size));
 }
 
 /*
@@ -782,7 +778,10 @@ static void runtime_error(string str, int caught, int ticks)
 	/* top-level catch: ignore */
 	caught = 0;
     } else if (caught != 0 && ticks < 0 &&
-	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%*s") != 0) {
+	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%s",
+		      objname) != 0 &&
+	       (objname != "lib/auto" ||
+		trace[caught - 1][TRACE_FUNCTION] != "destruct_object")) {
 	tls[1] = str;
 	return;
     }

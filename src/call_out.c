@@ -65,7 +65,7 @@ unsigned int max;
 	cotab++;
 	flist = 0;
 	if (P_time() >> 24 <= 1) {
-	    message("Config error: bad time (early seventies)");
+	    message("Config error: bad time (early seventies)\012");	/* LF */
 	    return FALSE;
 	}
 	timestamp = timeout = 0;
@@ -520,7 +520,7 @@ register Uint t;
     } else {
 	/* encoded millisecond */
 	t = decode(t, &m);
-	if (t > time || t == time && m > mtime) {
+	if (t > time || (t == time && m > mtime)) {
 	    return -2 - (t - time) * 1000 - m + mtime;
 	}
     }
@@ -604,7 +604,7 @@ array *a;
 	case 1:
 	    /* encoded millisecond */
 	    t = decode((Uint) w->u.number, &m);
-	    if (t > time || t == time && m > mtime) {
+	    if (t > time || (t == time && m > mtime)) {
 		flt_itof((Int) (t - time) * 1000 + m - mtime, &flt);
 		flt_mult(&flt, &thousandth);
 		PUT_FLTVAL(w, flt);
@@ -639,6 +639,9 @@ static void co_expire()
     unsigned short m;
 
     if (P_timeout(&t, &m)) {
+	if (timestamp < atimeout) {
+	    timestamp = atimeout - 1;
+	}
 	while (timestamp < t) {
 	    timestamp++;
 

@@ -291,34 +291,38 @@ unsigned short *buflen;
     } else {
 	n = 0;
 	for (p = trans; *p != '\0'; p++) {
-	    place = rgx[UCHAR(*p)] + 1;
-	    if (!a[place]) {
-		a[place] = TRUE;
-		if (place != UCHAR(rgx[0])) {
-		    switch (rgx[place]) {
-		    case '|':
-			/* branch */
-			b[n++] = place + 2;
-			b[n++] = UCHAR(rgx[place + 1]) + 1;
-			continue;
+	    for (i = UCHAR(*p); ; i = place + 1) {
+		place = UCHAR(rgx[i]) + 1;
+		if (!a[place]) {
+		    a[place] = TRUE;
+		    if (place != UCHAR(rgx[0])) {
+			switch (rgx[place]) {
+			case '|':
+			    /* branch */
+			    b[n++] = place + 2;
+			    continue;
 
-		    case '+':
-			/* pattern+ */
-			b[n++] = place + 2;
-			if (place < UCHAR(*p)) {
-			    b[n++] = UCHAR(rgx[place + 1]) + 1;
+			case '+':
+			    /* pattern+ */
+			    b[n++] = place + 2;
+			    if (place < i) {
+				continue;
+			    }
+			    break;
+
+			default:
+			    /* add to heap */
+			    for (i = ++len, j = i >> 1;
+				 UCHAR(heap[j]) > place;
+				 i = j, j >>= 1) {
+				heap[i] = heap[j];
+			    }
+			    heap[i] = place;
+			    break;
 			}
-			continue;
 		    }
-
-		    /* add to heap */
-		    for (i = ++len, j = i >> 1;
-			 UCHAR(heap[j]) > place;
-			 i = j, j >>= 1) {
-			heap[i] = heap[j];
-		    }
-		    heap[i] = place;
 		}
+		break;
 	    }
 	}
     }
@@ -873,6 +877,8 @@ struct _dfa_ {
     char zerotrans[2 * 256];	/* shared zero transitions */
 };
 
+# define DFA_VERSION	1
+
 /*
  * NAME:	dfa->new()
  * DESCRIPTION:	create new dfa instance
@@ -1110,6 +1116,10 @@ Uint len;
     register char *buf;
     unsigned short nstrings;
 
+    if (str[0] != DFA_VERSION) {
+	return dfa_new(grammar);
+    }
+
     fa = ALLOC(dfa, 1);
     fa->dfastr = buf = str;
 
@@ -1249,7 +1259,7 @@ Uint *len;
     }
     fa->dfastr = buf = *str =
 		 ALLOC(char, *len = fa->dfasize + fa->tmpssize + fa->tmppsize);
-    *buf++ = 0;
+    *buf++ = DFA_VERSION;
     *buf++ = fa->nstates >> 8;
     *buf++ = fa->nstates;
     *buf++ = fa->nexpanded >> 8;

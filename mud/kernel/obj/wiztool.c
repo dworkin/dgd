@@ -63,6 +63,9 @@ static void process(string str)
     }
 
     sscanf(str, "%s %s", str, arg);
+    if (arg == "") {
+	arg = nil;
+    }
 
     switch (str) {
     case "code":

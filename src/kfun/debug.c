@@ -93,7 +93,7 @@ control *ctrl;
 	    control *c2;
 	    dfuncdef *f;
 
-	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex)->ctrl;
+	    c2 = o_control(OBJR(ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex));
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->funcalls[2 * i + 1]);
 	    printf("%3u: %s(%d, %d)\n", i,
 		   d_get_strconst(c2, f->inherit, f->index)->text,
@@ -110,7 +110,7 @@ control *ctrl;
 	    char *name;
 
 	    printf("%3u: (%u) ", i, ctrl->symbols[i].next);
-	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex)->ctrl;
+	    c2 = o_control(OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex));
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
 	    name = d_get_strconst(c2, f->inherit, f->index)->text;
 	    show_proto(name, d_get_prog(c2) + f->offset);

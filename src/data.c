@@ -190,7 +190,7 @@ static uindex ncallout;			/*  # callouts added */
  * DESCRIPTION:	initialize swapped data handling
  */
 void d_init(flag)
-bool flag;
+int flag;
 {
     chead = ctail = (control *) NULL;
     dhead = dtail = (dataspace *) NULL;
@@ -1268,7 +1268,7 @@ register value *lhs;
 
 		    /* last reference removed */
 		    if (arr->hashed != (struct _maphash_ *) NULL) {
-			map_compact(arr);
+			map_compact(data, arr);
 		    } else {
 			d_get_elts(arr);
 		    }
@@ -1420,7 +1420,7 @@ register value *v;
 
 /*
  * NAME:	data->free_call_out()
- * DESCRIPTION:	freeove a callout
+ * DESCRIPTION:	free a callout
  */
 static void d_free_call_out(data, handle)
 register dataspace *data;
@@ -1739,7 +1739,7 @@ register Int level;
 	    if (arr->primary->arr == (array *) NULL &&
 		arr->primary->plane->level > level) {
 		if (arr->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(arr);
+		    map_compact(arr->primary->data, arr);
 		}
 		arr->primary = &arr->primary->plane->prev->alocal;
 		commit_values(arr->elts, arr->size, level);
@@ -2149,7 +2149,7 @@ dataplane *prev, *old;
 {
     if (arr->primary->plane != prev) {
 	if (arr->hashed != (struct _maphash_ *) NULL) {
-	    map_compact(arr);
+	    map_compact(arr->primary->data, arr);
 	}
 
 	if (arr->primary->arr == (array *) NULL) {
@@ -2505,7 +2505,11 @@ unsigned int handle;
 	    }
 	    if (cop->handle == handle) {
 		/* delete existing */
-		cop_del(plane, c, TRUE);
+		if (cop->type == COP_REPLACE) {
+		    cop_release(cop);
+		} else {
+		    cop_del(plane, c, TRUE);
+		}
 		break;
 	    }
 	    c = &cop->next;
@@ -2934,7 +2938,7 @@ register unsigned short n;
 	case T_MAPPING:
 	    if (arr_put(v->u.array) >= save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(v->u.array);
+		    map_compact(v->u.array->primary->data, v->u.array);
 		}
 		save->narr++;
 		save->arrsize += v->u.array->size;
@@ -3515,7 +3519,7 @@ register unsigned short n;
 		     * first time encountered
 		     */
 		    if (a->hashed != (struct _maphash_ *) NULL) {
-			map_compact(a);
+			map_compact(a->primary->data, a);
 		    }
 
 		    if (a->ref == 2) {	/* + 1 for array merge table */
@@ -3582,7 +3586,7 @@ register unsigned short n;
 		 */
 		imp->narr++;
 		if (a->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(a);
+		    map_compact(data, a);
 		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (value *) NULL) {
 		    d_import(imp, data, a->elts, a->size);
@@ -3622,7 +3626,7 @@ void d_export()
 			if (a->arr != (array *) NULL) {
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
-				map_compact(a->arr);
+				map_compact(data, a->arr);
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
 			    } else if (a->arr->elts != (value *) NULL) {

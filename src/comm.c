@@ -301,7 +301,7 @@ string *str;
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	register char *p, *q;
-	register unsigned int len, size, n, length;
+	register unsigned int len, size, n;
 
 	/*
 	 * telnet connection
@@ -310,7 +310,6 @@ string *str;
 	len = str->len;
 	q = outbuf;
 	size = 0;
-	length = 0;
 	for (;;) {
 	    if (len == 0 || size >= OUTBUF_SIZE - 1 || UCHAR(*p) == IAC) {
 		n = comm_write(usr, obj, (string *) NULL, outbuf, size);

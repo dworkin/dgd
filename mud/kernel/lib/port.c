@@ -67,7 +67,7 @@ private object _connection(mixed *tls, string host, int port)
 {
     object conn, user;
 
-    conn = call_other(userd, porttype + "_connection");
+    conn = call_other(userd, porttype + "_connection", tls);
     if (udpport) {
 	conn->set_udpchannel(udpport, host, port);
     }

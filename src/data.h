@@ -173,7 +173,7 @@ struct _dataspace_ {
 # define THISPLANE(a)		((a)->plane == (a)->data->plane)
 # define SAMEPLANE(d1, d2)	((d1)->plane->level == (d2)->plane->level)
 
-extern void		d_init		P((bool));
+extern void		d_init		P((int));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
 extern control	       *d_load_control	P((object*));

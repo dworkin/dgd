@@ -34,7 +34,7 @@ static void create()
  * NAME:	telnet_connection()
  * DESCRIPTION:	return a new telnet connection object
  */
-object telnet_connection()
+object telnet_connection(mixed *tls)
 {
     if (previous_program() == PORT) {
 	return clone_object(TELNET_CONN);
@@ -45,7 +45,7 @@ object telnet_connection()
  * NAME:	binary_connection()
  * DESCRIPTION:	return a new binary connection object
  */
-object binary_connection()
+object binary_connection(mixed *tls)
 {
     if (previous_program() == PORT) {
 	return clone_object(BINARY_CONN);
