@@ -1296,54 +1296,6 @@ int kf_remove_dir()
 # ifdef FUNCDEF
 FUNCDEF("get_dir", kf_get_dir, pt_get_dir)
 # else
-# define SCHUNK_SIZE	64
-
-typedef struct _schunk_ {
-    string *s[SCHUNK_SIZE];	/* chunk of string pointers */
-    struct _schunk_ *next;	/* next in list */
-} schunk;
-
-static schunk *slist;		/* list of string chunks */
-static int schunksz = SCHUNK_SIZE;	/* size of current chunk */
-
-/*
- * NAME:	schunk->put()
- * DESCRIPTION:	put a new string in the string chunks
- */
-static void sc_put(text)
-char *text;
-{
-    if (schunksz == SCHUNK_SIZE) {
-	register schunk *l;
-
-	l = ALLOC(schunk, 1);
-	l->next = slist;
-	slist = l;
-	schunksz = 0;
-    }
-    str_ref(slist->s[schunksz++] = str_new(text, (long) strlen(text)));
-}
-
-/*
- * NAME:	schunk->get()
- * DESCRIPTION:	get a string back from the string chunks
- */
-static string *sc_get()
-{
-    string *str;
-
-    str = slist->s[--schunksz];
-    if (schunksz == 0) {
-	register schunk *f;
-
-	f = slist;
-	slist = f->next;
-	FREE(f);
-	schunksz = SCHUNK_SIZE;
-    }
-    return str;
-}
-
 /*
  * NAME:	match()
  * DESCRIPTION:	match a regular expression
@@ -1446,19 +1398,57 @@ register char *pat, *text;
     }
 }
 
+typedef struct _finfo_ {
+    string *name;		/* file name */
+    Int size;			/* file size */
+    Int time;			/* file time */
+} finfo;
+
+/*
+ * NAME:	getinfo()
+ * DESCRIPTION:	get info about a file
+ */
+static bool getinfo(path, file, f)
+char *path, *file;
+register finfo *f;
+{
+    struct stat sbuf;
+
+    if (stat(path_file(path), &sbuf) < 0) {
+	/*
+	 * the file does not exist
+	 */
+	return FALSE;
+    }
+
+    str_ref(f->name = str_new(file, (long) strlen(file)));
+    if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
+	f->size = -2;	/* special value for directory */
+    } else {
+	f->size = sbuf.st_size;
+    }
+    f->time = sbuf.st_mtime;
+
+    return TRUE;
+}
+
+static int cmp P((cvoid*, cvoid*));
+
 /*
  * NAME:	cmp()
- * DESCRIPTION:	compare two string values
+ * DESCRIPTION:	compare two file info structs
  */
 static int cmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
-    return strcmp(((value *) cv1)->u.string->text,
-		  ((value *) cv2)->u.string->text);
+    return strcmp(((finfo *) cv1)->name->text,
+		  ((finfo *) cv2)->name->text);
 }
 
 char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
 		      T_STRING };
+
+# define FINFO_CHUNK	128
 
 /*
  * NAME:	kfun->get_dir()
@@ -1466,11 +1456,10 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
  */
 int kf_get_dir()
 {
-    struct stat sbuf;
-    register unsigned int nfiles, i;
-    register value *f, *o, *s, *t;
-    register string *str;
-    char *file, *dir, *pat, buf[2 * STRINGSZ];
+    register unsigned int i, nfiles, ftabsz;
+    register finfo *ftable;
+    char *file, *dir, *pat, buf[STRINGSZ];
+    finfo finf;
     array *a;
 
     file = path_resolve(sp->u.string->text);
@@ -1478,37 +1467,56 @@ int kf_get_dir()
 	return 1;
     }
 
-    file = strcpy(buf + STRINGSZ, file);
-    pat = strrchr(file, '/');
+    strcpy(buf, file);
+    pat = strrchr(buf, '/');
     if (pat == (char *) NULL) {
 	dir = ".";
-	pat = file;
+	pat = buf;
     } else {
 	/* separate directory and pattern */
-	dir = file;
+	dir = buf;
 	*pat++ = '\0';
     }
 
-    if (strpbrk(pat, "?*[\\") == (char *) NULL) {
-	/* single file */
-	sc_put(pat);
-	nfiles = 1;
-    } else {
-	nfiles = 0;
-	if (P_opendir(path_file(dir))) {
+    ftable = ALLOCA(finfo, ftabsz = FINFO_CHUNK);
+    nfiles = 0;
+    if (strpbrk(pat, "?*[\\") == (char *) NULL &&
+	getinfo(file, pat, &ftable[0])) {
+	/*
+	 * single file
+	 */
+	nfiles++;
+    } else if (strcmp(dir, ".") == 0 || chdir(path_file(dir)) >= 0) {
+	if (P_opendir(path_file("."))) {
 	    /*
 	     * read files from directory
 	     */
 	    i = conf_array_size();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
 		file = path_unfile(file);
-		if (match(pat, file) == 1) {
+		if (match(pat, file) && getinfo(file, file, &finf)) {
 		    /* add file */
-		    sc_put(file);
-		    nfiles++;
+		    if (nfiles == ftabsz) {
+			finfo *tmp;
+
+			tmp = ALLOCA(finfo, ftabsz + FINFO_CHUNK);
+			memcpy(tmp, ftable, ftabsz * sizeof(finfo));
+			ftabsz += FINFO_CHUNK;
+			AFREE(ftable);
+			ftable = tmp;
+		    }
+		    ftable[nfiles++] = finf;
 		}
 	    }
 	    P_closedir();
+
+	    if (nfiles == 0) {
+		AFREE(ftable);
+	    }
+	}
+
+	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
+	    fatal("cannot chdir back to base dir");
 	}
     }
 
@@ -1518,72 +1526,30 @@ int kf_get_dir()
     arr_ref(sp->u.array = a = arr_new(3L));
     a->elts[0].type = T_ARRAY;
     arr_ref(a->elts[0].u.array = arr_new((long) nfiles));
-    f = a->elts[0].u.array->elts;
     a->elts[1].type = T_ARRAY;
     arr_ref(a->elts[1].u.array = arr_new((long) nfiles));
-    s = a->elts[1].u.array->elts;
     a->elts[2].type = T_ARRAY;
     arr_ref(a->elts[2].u.array = arr_new((long) nfiles));
-    t = a->elts[2].u.array->elts;
 
     i_add_ticks(1000 + 5 * nfiles);
-    if (nfiles == 0) {
-	/* stop here */
-	return 0;
-    }
 
-    for (i = nfiles; i > 0; --i) {
-	f->u.string = sc_get();
-	f++;
-    }
-    qsort(f -= nfiles, nfiles, sizeof(value), cmp);
+    if (nfiles != 0) {
+	register value *n, *s, *t;
 
-    if (strcmp(dir, ".") == 0 || chdir(path_file(dir)) >= 0) {
-	for (i = nfiles, o = f; i > 0; o++, --i) {
-	    str = o->u.string;
-	    if (stat(path_file(str->text), &sbuf) < 0) {
-		/*
-		 * the file does not exist
-		 */
-		str_del(str);
-		--nfiles;
-		continue;
-	    }
-	    f->type = T_STRING;
-	    f->u.string = str;
+	qsort(ftable, nfiles, sizeof(finfo), cmp);
+	n = a->elts[0].u.array->elts;
+	s = a->elts[1].u.array->elts;
+	t = a->elts[2].u.array->elts;
+	for (i = nfiles; i > 0; --i, ftable++) {
+	    n->type = T_STRING;
+	    n->u.string = ftable->name;
 	    s->type = T_INT;
-	    if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
-		s->u.number = -2;	/* special value for directory */
-	    } else {
-		s->u.number = sbuf.st_size;
-	    }
+	    s->u.number = ftable->size;
 	    t->type = T_INT;
-	    t->u.number = sbuf.st_mtime;
-	    f++, s++, t++;
+	    t->u.number = ftable->time;
+	    n++, s++, t++;
 	}
-
-	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
-	    fatal("cannot chdir back to base dir");
-	}
-    } else {
-	/* free strings again */
-	while (nfiles > 0) {
-	    str_del((f++)->u.string);
-	    --nfiles;
-	}
-    }
-
-    /* adjust array sizes */
-    a->elts[0].u.array->size = nfiles;
-    a->elts[1].u.array->size = nfiles;
-    a->elts[2].u.array->size = nfiles;
-    if (nfiles == 0) {
-	FREE(a->elts[0].u.array->elts);
-	a->elts[0].u.array->elts = (value *) NULL;
-	FREE(a->elts[1].u.array->elts);
-	a->elts[1].u.array->elts = (value *) NULL;
-	FREE(a->elts[2].u.array->elts);
-	a->elts[2].u.array->elts = (value *) NULL;
+	AFREE(ftable - nfiles);
     }
 
     return 0;

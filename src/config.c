@@ -220,11 +220,11 @@ void conf_dump()
     if (!o_dump(fd)) {
 	fatal("failed to dump object table");
     }
-    if (!co_dump(fd)) {
-	fatal("failed to dump callout table");
-    }
     if (!pc_dump(fd)) {
 	fatal("failed to dump precompiled objects");
+    }
+    if (!co_dump(fd)) {
+	fatal("failed to dump callout table");
     }
 
     lseek(fd, 0L, SEEK_SET);
@@ -238,7 +238,7 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    int secsize;
+    unsigned int secsize;
     long posn;
 
     if (read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
@@ -273,9 +273,9 @@ int fd;
     o_conv();				/* convert all objects */
     lseek(fd, posn, SEEK_SET);		/* restore file position */
 
+    pc_restore(fd);
     starttime = P_time();
     co_restore(fd, starttime);
-    pc_restore(fd);
 }
 
 /*
@@ -1004,7 +1004,7 @@ bool conf_typechecking()
  * NAME:	config->array_size()
  * DESCRIPTION:	return the maximum array size
  */
-int conf_array_size()
+unsigned short conf_array_size()
 {
     return conf[ARRAY_SIZE].u.num;
 }

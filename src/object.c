@@ -691,6 +691,8 @@ int fd;
     }
 }
 
+static int cmp P((cvoid*, cvoid*));
+
 /*
  * NAME:	cmp()
  * DESCRIPTION:	compare two objects

@@ -278,7 +278,7 @@ unsigned int *flenp, *slenp;
 
     while (flen > 0) {
 	/* look for first % */
-	p = memchr(f, '%', flen);
+	p = (char *) memchr(f, '%', flen);
 
 	if (p == (char *) NULL) {
 	    /* no remaining % */
@@ -454,7 +454,7 @@ int nargs;
 		} else {
 		    /* get # of chars to match after string */
 		    for (x = f, size = 0; (x - f) != flen; x++, size++) {
-			x = memchr(x, '%', flen - (x - f));
+			x = (char *) memchr(x, '%', flen - (x - f));
 			if (x == (char *) NULL) {
 			    x = f + flen;
 			    break;

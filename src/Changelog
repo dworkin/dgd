@@ -1040,3 +1040,5 @@ DGD 1.1
  - Brought precompilation up to date with latest changes.
  - General code cleanup.
  - Fixed a nasty crasher in endthread() with the help of Sieni@Muhveli.
+ - Fixed a problem with destructed objects as mapping indices.
+ - Optimized communications handling and get_dir().

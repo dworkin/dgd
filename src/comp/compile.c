@@ -1130,6 +1130,8 @@ int typechecked;
     switch_list->env = thisloop;
 }
 
+static int cmp P((cvoid*, cvoid*));
+
 /*
  * NAME:	cmp()
  * DESCRIPTION:	compare two case label nodes

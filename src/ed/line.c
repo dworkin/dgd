@@ -195,7 +195,7 @@ static void lb_write(lb)
 register linebuf *lb;
 {
     if (lb->blksz > 0) {
-	Int offset;
+	long offset;
 
 # ifdef TMPFILE_SIZE
 	if (lb->wb->offset >= TMPFILE_SIZE - BLOCK_SIZE) {

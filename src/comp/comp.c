@@ -620,6 +620,15 @@ array *comm_users()
 }
 
 /*
+ * NAME:	comm->active()
+ * DESCRIPTION:	pretend to return TRUE if there is any pending comm activity
+ */
+bool comm_active()
+{
+    return FALSE;
+}
+
+/*
  * NAME:	ed->init()
  * DESCRIPTION:	pretend to initialize editor handling
  */

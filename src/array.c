@@ -16,7 +16,7 @@ typedef struct _arrchunk_ {
 typedef struct _arrh_ {
     struct _arrh_ *next;	/* next in hash table chain */
     array *arr;			/* array entry */
-    int index;			/* building index */
+    uindex index;		/* building index */
     struct _arrh_ **link;	/* next in list */
 } arrh;
 
@@ -66,7 +66,7 @@ static uindex idx;		/* current building index */
  * DESCRIPTION:	initialize array handling
  */
 void arr_init(size)
-int size;
+unsigned int size;
 {
     max_size = size;
     ht = ALLOC(arrh*, ARRMERGETABSZ);
@@ -317,6 +317,8 @@ register array *a1, *a2;
 
     return a;
 }
+
+static int cmp P((cvoid*, cvoid*));
 
 /*
  * NAME:	cmp()
@@ -826,6 +828,7 @@ register long l1, l2;
 }
 
 
+static int mapcmp P((cvoid*, cvoid*));
 static bool ididx;	/* flag for identical indices */
 
 /*
@@ -1431,38 +1434,39 @@ value *val, *elt;
 
 	n = search(val, d_get_elts(m), m->size, 2);
 	if (n >= 0) {
+	    value *v;
+
 	    /*
 	     * found in the array
 	     */
-	    val = &m->elts[n];
-	    if (elt != (value *) NULL) {
-		if (del) {
-		    /*
-		     * delete the element
-		     */
-		    d_assign_elt(m, val, &zero_value);
-		    d_assign_elt(m, val + 1, &zero_value);
+	    v = &m->elts[n];
+	    if (del ||
+		(elt != (value *) NULL && val->type == T_OBJECT &&
+		 val->u.objcnt != v->u.objcnt)) {
+		/*
+		 * delete the element
+		 */
+		d_assign_elt(m, v, &zero_value);
+		d_assign_elt(m, v + 1, &zero_value);
 
-		    m->size -= 2;
-		    if (m->size == 0) {
-			/* last element removed */
-			FREE(m->elts);
-			m->elts = (value *) NULL;
-		    } else {
-			/* move tail */
-			memcpy(val, val + 2, (m->size - n) * sizeof(value));
-		    }
-		    d_change_map(m);
+		m->size -= 2;
+		if (m->size == 0) {
+		    /* last element removed */
+		    FREE(m->elts);
+		    m->elts = (value *) NULL;
 		} else {
-		    /*
-		     * change the element
-		     */
-		    d_assign_elt(m, val + 1, elt);
+		    /* move tail */
+		    memcpy(v, v + 2, (m->size - n) * sizeof(value));
 		}
-
+		d_change_map(m);
 		return (value *) NULL;
+	    } else if (elt != (value *) NULL) {
+		/*
+		 * change the element
+		 */
+		d_assign_elt(m, v + 1, elt);
 	    }
-	    return val + 1;
+	    return v + 1;
 	}
     }
 

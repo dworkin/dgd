@@ -2004,11 +2004,11 @@ array *i_call_trace()
     register value *v;
     register string *str;
     register char *name;
-    register int n;
+    register unsigned short n;
     register value *args;
     array *a;
     value *elts;
-    int max_args;
+    unsigned short max_args;
 
     for (f = cframe, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
     a = arr_new((long) n);

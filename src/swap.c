@@ -666,12 +666,13 @@ char *dumpfile;
  * DESCRIPTION:	restore dump file
  */
 void sw_restore(fd, secsize)
-int fd, secsize;
+int fd;
+unsigned int secsize;
 {
     dump_header dh;
 
     /* restore swap header */
-    lseek(fd, secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
+    lseek(fd, (long) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
 	fatal("bad swap header in restore file");

@@ -195,10 +195,10 @@ control *d_new_control()
 }
 
 /*
- * NAME:	data->new_dataspace()
- * DESCRIPTION:	create a new dataspace block
+ * NAME:	d_alloc_dataspace()
+ * DESCRIPTION:	allocate a new dataspace block
  */
-dataspace *d_new_dataspace(obj)
+static dataspace *d_alloc_dataspace(obj)
 object *obj;
 {
     register dataspace *data;
@@ -235,18 +235,17 @@ object *obj;
     data->schange = 0;
     data->imports = 0;
     data->ilist = (dataspace *) NULL;
-    data->flags = DATA_VARIABLE;
+    data->flags = 0;
 
     data->obj = obj;
-    data->ctrl = o_control(obj);
-    data->ctrl->ndata++;
+    data->ctrl = (control *) NULL;
 
     /* sectors */
-    data->nsectors = 0;			/* nothing on swap device yet */
+    data->nsectors = 0;
     data->sectors = (sector *) NULL;
 
     /* variables */
-    data->nvariables = data->ctrl->nvariables + 1;
+    data->nvariables = 0;
     data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
 
@@ -270,6 +269,24 @@ object *obj;
     data->ncallouts = 0;
     data->fcallouts = 0;
     data->callouts = (dcallout *) NULL;
+
+    return data;
+}
+
+/*
+ * NAME:	data->new_dataspace()
+ * DESCRIPTION:	create a new dataspace block
+ */
+dataspace *d_new_dataspace(obj)
+object *obj;
+{
+    register dataspace *data;
+
+    data = d_alloc_dataspace(obj);
+    data->flags = DATA_VARIABLE;
+    data->ctrl = o_control(obj);
+    data->ctrl->ndata++;
+    data->nvariables = data->ctrl->nvariables + 1;
 
     return data;
 }
@@ -395,8 +412,9 @@ object *obj;
     register Uint size;
     object *master;
 
-    data = d_new_dataspace(obj);
-    data->flags = 0;
+    data = d_alloc_dataspace(obj);
+    data->ctrl = o_control(obj);
+    data->ctrl->ndata++;
 
     /* header */
     sw_readv((char *) &header, &obj->dfirst, (Uint) sizeof(sdataspace),
@@ -435,7 +453,7 @@ object *obj;
     data->fcallouts = header.fcallouts;
 
     if (!(obj->flags & O_MASTER) &&
-	obj->update != (master=&otable[obj->u_master])->update) {
+	obj->update != (master = &otable[obj->u_master])->update) {
 	d_upgrade_clone(obj, master);
     }
 
@@ -1389,6 +1407,8 @@ int *nargs;
     return str;
 }
 
+static int cmp P((cvoid*, cvoid*));
+
 /*
  * NAME:	cmp()
  * DESCRIPTION:	compare two call_outs
@@ -1412,7 +1432,7 @@ Uint t;
     register dcallout *co;
     register value *v, *v2, *elts;
     array *list, *a;
-    int max_args;
+    uindex max_args;
 
     if (data->ncallouts == 0) {
 	return arr_new(0L);
@@ -1949,8 +1969,7 @@ register dataspace *data;
 
     sdata = data;
 
-    if (!(data->nsectors == 0 && (data->flags & DATA_VARIABLE)) &&
-	data->achange == 0 && data->schange == 0 &&
+    if (data->nsectors != 0 && data->achange == 0 && data->schange == 0 &&
 	!(data->flags & DATA_NEWCALLOUT)) {
 	bool mod;
 
@@ -2756,7 +2775,9 @@ register dataspace *data;
     }
 
     data->obj->data = (dataspace *) NULL;
-    data->ctrl->ndata--;
+    if (data->ctrl != (control *) NULL) {
+	data->ctrl->ndata--;
+    }
 
     if (data != dhead) {
 	data->prev->next = data->next;
@@ -3047,7 +3068,7 @@ Uint *counttab;
     register sector *s;
     object *master;
 
-    data = d_new_dataspace(obj);
+    data = d_alloc_dataspace(obj);
 
     /*
      * restore from dump file
@@ -3134,8 +3155,10 @@ Uint *counttab;
     AFREE(s);
 
     if (!(obj->flags & O_MASTER) &&
-	obj->update != (master=&otable[obj->u_master])->update) {
+	obj->update != (master = &otable[obj->u_master])->update) {
 	/* handle object upgrading right away */
+	data->ctrl = o_control(obj);
+	data->ctrl->ndata++;
 	d_upgrade_clone(obj, master);
     }
 

@@ -7,7 +7,7 @@ struct _array_ {
     struct _arrref_ *primary;		/* primary reference */
 };
 
-extern void		arr_init	P((int));
+extern void		arr_init	P((unsigned int));
 extern array	       *arr_alloc	P((unsigned int));
 extern array	       *arr_new		P((long));
 # define arr_ref(a)	((a)->ref++)

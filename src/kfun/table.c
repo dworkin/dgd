@@ -31,6 +31,8 @@ kfunc kftab[] = {
 char kfind[sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS + 128];	/* n -> index */
 static char kfx[sizeof(kftab) / sizeof(kfunc)];			/* index -> n */
 
+static int kf_cmp P((cvoid*, cvoid*));
+
 /*
  * NAME:	kfun->cmp()
  * DESCRIPTION:	compare two kftable entries

@@ -275,7 +275,7 @@ int conn_write(connection *conn, char *buf, unsigned int len, int wait)
 	    closesocket(conn->fd);
 	    FD_CLR(conn->fd, &fds);
 	    conn->fd = INVALID_SOCKET;
-	} else if (size != len) {
+	} else if ((unsigned int) size != len) {
 	    if (wait) {
 		/* waiting for wrdone */
 		FD_SET(conn->fd, &waitfds);

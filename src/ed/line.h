@@ -9,7 +9,7 @@
 typedef Int block;
 
 typedef struct _btbuf_ {
-    Int offset;			/* offset in tmpfile */
+    long offset;		/* offset in tmpfile */
     struct _btbuf_ *prev;	/* prev in linked list */
     struct _btbuf_ *next;	/* next in linked list */
     char *buf;			/* buffer with blocks and text */

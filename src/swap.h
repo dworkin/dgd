@@ -10,4 +10,4 @@ extern sector	sw_mapsize	P((unsigned int));
 extern sector	sw_count	P((void));
 extern void	sw_copy		P((void));
 extern int	sw_dump		P((char*));
-extern void	sw_restore	P((int, int));
+extern void	sw_restore	P((int, unsigned int));
