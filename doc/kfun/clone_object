@@ -1,0 +1,23 @@
+NAME
+	clone_object - clone an object
+
+SYNOPSIS
+	object clone_object(string obj)
+
+
+DESCRIPTION
+	Call path_object() in the driver object to translate the string
+	argument into an object path, and create a copy of the specified
+	object with an unique name of the form "object_path#1234".  If the
+	specified object is unloaded, it is compiled first.  The new object
+	is returned.
+
+ERRORS
+	If the number of existing objects is equal to the constant MAX_OBJECTS,
+	defined in the include file <limits.h>, attempting to clone a new
+	object will crash the system.
+	Calling clone_object() with the name of a clone as an argument will
+	result in an error.
+
+SEE ALSO
+	kfun/call_other, kfun/destruct_object
