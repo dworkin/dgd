@@ -1,0 +1,15 @@
+   The platform must meet the following requirements:
+
+ - Shorts should be 2 bytes wide.
+ - Integers should be either 2 or 4 bytes wide.
+ - Longs should be at least 4 bytes wide.
+ - Two's complement should be used to represent negative numbers.
+ - The value of NULL must be 0.
+
+   Machine dependent stuff should be restricted to the host.h file and
+possibly additional files in the host subdirectory.  At present, I only
+have definitions for MINIX_68K (Minix 1.5 for 68000 computers, probably
+works for Minix 1.6 as well) and SUN.  Porting to other platforms shouldn't
+be too difficult.
+
+   I will port the driver to Mac, PC, Atari ST and Sinclair QL myself.
