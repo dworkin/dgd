@@ -23,7 +23,7 @@ int suspend;			/* callouts suspended */
  * NAME:	create()
  * DESCRIPTION:	initialize resource mappings
  */
-static create()
+static void create()
 {
     /* initial resources */
     resources = ([
@@ -46,7 +46,7 @@ static create()
  * NAME:	add_owner()
  * DESCRIPTION:	add a new resource owner
  */
-add_owner(string owner)
+void add_owner(string owner)
 {
     if (KERNEL() && !owners[owner]) {
 	object obj;
@@ -72,7 +72,7 @@ add_owner(string owner)
  * NAME:	remove_owner()
  * DESCRIPTION:	remove a resource owner
  */
-remove_owner(string owner)
+void remove_owner(string owner)
 {
     object obj;
     string *names;
@@ -110,7 +110,7 @@ string *query_owners()
  * DESCRIPTION:	set the maximum, decay percentage and decay period of a
  *		resource
  */
-set_rsrc(string name, int max, int decay, int period)
+void set_rsrc(string name, int max, int decay, int period)
 {
     if (KERNEL()) {
 	mixed *rsrc;
@@ -139,7 +139,7 @@ set_rsrc(string name, int max, int decay, int period)
  * NAME:	remove_rsrc()
  * DESCRIPTION:	remove a resource
  */
-remove_rsrc(string name)
+void remove_rsrc(string name)
 {
     int *rsrc, i;
     object *objects;
@@ -195,7 +195,7 @@ string *query_resources()
  * NAME:	rsrc_set_limit()
  * DESCRIPTION:	set individual resource limit
  */
-rsrc_set_limit(string owner, string name, int max)
+void rsrc_set_limit(string owner, string name, int max)
 {
     if (previous_program() == API_RSRC) {
 	object obj;
@@ -279,7 +279,7 @@ int update_ticks(mixed *limits, int ticks)
  * NAME:	suspend_callouts()
  * DESCRIPTION:	suspend all callouts
  */
-suspend_callouts()
+void suspend_callouts()
 {
     if (SYSTEM() && suspend >= 0) {
 	mixed *callout;
@@ -307,7 +307,7 @@ suspend_callouts()
  * NAME:	release_callouts()
  * DESCRIPTION:	release suspended callouts
  */
-release_callouts()
+void release_callouts()
 {
     if (SYSTEM() && suspend < 0) {
 	rlimits (-1; -1) {
@@ -353,7 +353,7 @@ int suspended(object obj, string owner)
  * NAME:	suspend()
  * DESCRIPTION:	suspend a callout
  */
-suspend(object obj, string owner, int handle)
+void suspend(object obj, string owner, int handle)
 {
     if (previous_program() == AUTO) {
 	mixed *callout;
@@ -420,7 +420,7 @@ int remove_callout(object obj, string owner, int handle)
  * NAME:	remove_callouts()
  * DESCRIPTION:	remove callouts from an object about to be destructed
  */
-remove_callouts(object obj, string owner, int n)
+void remove_callouts(object obj, string owner, int n)
 {
     if (previous_program() == AUTO) {
 	mixed **callouts, *callout;
@@ -460,7 +460,7 @@ remove_callouts(object obj, string owner, int n)
  * NAME:	release()
  * DESCRIPTION:	release a callout
  */
-static release()
+static void release()
 {
     mixed *callout;
     object obj;
@@ -487,7 +487,7 @@ static release()
  * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a reboot
  */
-prepare_reboot()
+void prepare_reboot()
 {
     if (previous_program() == DRIVER) {
 	downtime = time();
@@ -498,7 +498,7 @@ prepare_reboot()
  * NAME:	reboot()
  * DESCRIPTION:	recover from a reboot
  */
-reboot()
+void reboot()
 {
     if (previous_program() == DRIVER) {
 	object *objects;

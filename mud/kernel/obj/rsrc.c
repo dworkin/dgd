@@ -11,7 +11,7 @@ string owner;		/* owner of these resources */
  * NAME:	create()
  * DESCRIPTION:	initialize resource mapping
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	resources = ([
@@ -27,7 +27,7 @@ static create(int clone)
  * NAME:	set_owner()
  * DESCRIPTION:	set the owner of this resource
  */
-set_owner(string name)
+void set_owner(string name)
 {
     if (previous_object() == rsrcd) {
 	owner = name;
@@ -38,7 +38,7 @@ set_owner(string name)
  * NAME:	remove_rsrc()
  * DESCRIPTION:	remove a resource
  */
-remove_rsrc(string name)
+void remove_rsrc(string name)
 {
     if (previous_object() == rsrcd) {
 	resources[name] = nil;
@@ -49,7 +49,7 @@ remove_rsrc(string name)
  * NAME:	rsrc_set_limit()
  * DESCRIPTION:	set individual resource limit
  */
-rsrc_set_limit(string name, int max, int decay)
+void rsrc_set_limit(string name, int max, int decay)
 {
     if (previous_object() == rsrcd) {
 	mixed *rsrc;
@@ -66,7 +66,7 @@ rsrc_set_limit(string name, int max, int decay)
  * NAME:	decay_rsrc()
  * DESCRIPTION:	decay a resource
  */
-private decay_rsrc(mixed *rsrc, mixed *grsrc, int time)
+private void decay_rsrc(mixed *rsrc, mixed *grsrc, int time)
 {
     float usage, decay;
     int period, t;
@@ -205,7 +205,7 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
  * NAME:	rsrc_update()
  * DESCRIPTION:	update a decaying resource
  */
-static rsrc_update(float *rsrc, int incr)
+static void rsrc_update(float *rsrc, int incr)
 {
     rsrc[RSRC_USAGE] += (float) incr;
 }
@@ -272,7 +272,7 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
  * NAME:	update_ticks()
  * DESCRIPTION:	update ticks for the current owner
  */
-update_ticks(int ticks)
+void update_ticks(int ticks)
 {
     if (previous_object() == rsrcd) {
 	call_out("rsrc_update", 0, resources["tick usage"], ticks);
@@ -284,7 +284,7 @@ update_ticks(int ticks)
  * NAME:	reboot()
  * DESCRIPTION:	recover from a reboot
  */
-reboot(int downtime)
+void reboot(int downtime)
 {
     if (previous_object() == rsrcd) {
 	mixed **rsrcs, *rsrc;

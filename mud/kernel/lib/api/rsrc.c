@@ -7,7 +7,7 @@ private object rsrcd;		/* resource manager */
  * NAME:	create()
  * DESCRIPTION:	initialize API
  */
-static create()
+static void create()
 {
     rsrcd = find_object(RSRCD);
 }
@@ -16,7 +16,7 @@ static create()
  * NAME:	add_owner()
  * DESCRIPTION:	add a new resource owner
  */
-static add_owner(string owner)
+static void add_owner(string owner)
 {
     rsrcd->add_owner(owner);
 }
@@ -25,7 +25,7 @@ static add_owner(string owner)
  * NAME:	remove_owner()
  * DESCRIPTION:	remove a resource owner
  */
-static remove_owner(string owner)
+static void remove_owner(string owner)
 {
     rsrcd->remove_owner(owner);
 }
@@ -45,7 +45,7 @@ static string *query_owners()
  * DESCRIPTION:	set the maximum, decay percentage and decay period of a
  *		resource
  */
-static set_rsrc(string name, int max, int decay, int period)
+static void set_rsrc(string name, int max, int decay, int period)
 {
     if (!name || max < -1 || decay < 0 || decay > 100 || period < 0 ||
 	!decay != !period) {
@@ -58,7 +58,7 @@ static set_rsrc(string name, int max, int decay, int period)
  * NAME:	remove_rsrc()
  * DESCRIPTION:	remove a resource
  */
-static remove_rsrc(string name)
+static void remove_rsrc(string name)
 {
     if (!name) {
 	error("Bad argument for remove_rsrc");
@@ -92,7 +92,7 @@ static string *query_resources()
  * NAME:	rsrc_set_limit()
  * DESCRIPTION:	set individual resource limit
  */
-static rsrc_set_limit(string owner, string name, int max)
+static void rsrc_set_limit(string owner, string name, int max)
 {
     if (!name || max < -1) {
 	error("Bad arguments for rsrc_set_limit");

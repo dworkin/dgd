@@ -18,7 +18,7 @@ nomask object query_conn()
  * NAME:	disconnect()
  * DESCRIPTION:	terminate the connection
  */
-static disconnect()
+static void disconnect()
 {
     if (connection) {
 	connection->disconnect();
@@ -29,7 +29,7 @@ static disconnect()
  * NAME:	connect()
  * DESCRIPTION:	establish connection
  */
-static connect(object conn)
+static void connect(object conn)
 {
     disconnect();
     connection = conn;
@@ -39,7 +39,7 @@ static connect(object conn)
  * NAME:	redirect()
  * DESCRIPTION:	direct connection to a different user object
  */
-static redirect(object user, string str)
+static void redirect(object user, string str)
 {
     object conn;
 
@@ -55,7 +55,7 @@ static redirect(object user, string str)
  * NAME:	login()
  * DESCRIPTION:	log this user in
  */
-static login(string str)
+static void login(string str)
 {
     if (!name || name == str) {
 	USERD->login(this_object(), name = str);
@@ -66,7 +66,7 @@ static login(string str)
  * NAME:	logout()
  * DESCRIPTION:	logout this user
  */
-static logout()
+static void logout()
 {
     USERD->logout(this_object(), name);
 }

@@ -7,7 +7,7 @@ private object objregd;
  * NAME:	create()
  * DESCRIPTION:	initialize API
  */
-static create()
+static void create()
 {
     objregd = find_object(OBJREGD);
 }

@@ -9,7 +9,7 @@ mapping gaccess;		/* read access under /usr for everyone */
  * NAME:	create()
  * DESCRIPTION:	initialize the access daemon
  */
-static create()
+static void create()
 {
     uaccess = ([ ]);
     gaccess = ([ ]);
@@ -116,7 +116,7 @@ int access(string user, string file, int type)
  * NAME:	add_user()
  * DESCRIPTION:	add a new user
  */
-add_user(string user)
+void add_user(string user)
 {
     if (previous_program() == API_ACCESS && !uaccess[user]) {
 	rlimits (-1; -1) {
@@ -132,7 +132,7 @@ add_user(string user)
  * NAME:	remove_user()
  * DESCRIPTION:	remove a user
  */
-remove_user(string user)
+void remove_user(string user)
 {
     if (previous_program() == API_ACCESS) {
 	if (uaccess[user]) {
@@ -177,7 +177,7 @@ string *query_users()
  * NAME:	set_access()
  * DESCRIPTION:	set access
  */
-set_access(string user, string file, int type)
+void set_access(string user, string file, int type)
 {
     if (previous_program() == API_ACCESS) {
 	mixed access, *indices;
@@ -282,7 +282,7 @@ mapping query_file_access(string file)
  * NAME:	set_global_access()
  * DESCRIPTION:	set global read access for a directory
  */
-set_global_access(string dir, int flag)
+void set_global_access(string dir, int flag)
 {
     if (previous_program() == API_ACCESS) {
 	rlimits (-1; -1) {

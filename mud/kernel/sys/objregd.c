@@ -7,7 +7,7 @@ mapping links;		/* owner : first object */
  * NAME:	create()
  * DESCRIPTION:	initialize global vars
  */
-static create()
+static void create()
 {
     links = ([ "System" : this_object() ]);
     _F_prev(this_object());
@@ -18,7 +18,7 @@ static create()
  * NAME:	link()
  * DESCRIPTION:	link in a new object in per-owner linked list
  */
-link(object obj, string owner)
+void link(object obj, string owner)
 {
     if (previous_program() == AUTO) {
 	object link, next;
@@ -44,7 +44,7 @@ link(object obj, string owner)
  * NAME:	unlink()
  * DESCRIPTION:	remove object from per-owner linked list
  */
-unlink(object obj, string owner)
+void unlink(object obj, string owner)
 {
     if (previous_program() == AUTO) {
 	object prev, next;

@@ -11,7 +11,7 @@ string buffer;		/* buffered input */
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create("binary");
@@ -38,7 +38,7 @@ static int open()
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static void close(int dest)
 {
     ::close(allocate(driver->query_tls_size()), dest);
 }
@@ -47,7 +47,7 @@ static close(int dest)
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
-static receive_message(string str)
+static void receive_message(string str)
 {
     int mode, len;
     string head, pre;
@@ -98,7 +98,7 @@ static receive_message(string str)
  * NAME:	receive_datagram()
  * DESCRIPTION:	receive a datagram
  */
-static receive_datagram(string str)
+static void receive_datagram(string str)
 {
     ::receive_datagram(allocate(driver->query_tls_size()), str);
 }
@@ -108,7 +108,7 @@ static receive_datagram(string str)
  * NAME:	set_mode()
  * DESCRIPTION:	set the connection mode
  */
-set_mode(int mode)
+void set_mode(int mode)
 {
     string str;
 
@@ -139,7 +139,7 @@ int message(string str)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static message_done()
+static void message_done()
 {
     ::message_done(allocate(driver->query_tls_size()));
 }

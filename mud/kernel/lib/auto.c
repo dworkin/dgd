@@ -14,7 +14,7 @@
  * NAME:	badarg()
  * DESCRIPTION:	called when an argument check failed
  */
-private badarg(int n, string func)
+private void badarg(int n, string func)
 {
     error("Bad argument " + n + " for function " + func);
 }
@@ -25,8 +25,10 @@ private string creator, owner;	/* creator and owner of this object */
 private mapping resources;	/* resources associated with this object */
 private mapping events;		/* events for this object */
 
-nomask _F_prev(object obj)  { if (previous_program() == OBJREGD) prev = obj; }
-nomask _F_next(object obj)  { if (previous_program() == OBJREGD) next = obj; }
+nomask void _F_prev(object obj)
+			    { if (previous_program() == OBJREGD) prev = obj; }
+nomask void _F_next(object obj)
+			    { if (previous_program() == OBJREGD) next = obj; }
 nomask object _Q_prev()	    { if (previous_program() == OBJREGD) return prev; }
 nomask object _Q_next()	    { if (previous_program() == OBJREGD) return next; }
 
@@ -53,7 +55,7 @@ nomask string query_owner()
  * NAME:	_F_rsrc_incr()
  * DESCRIPTION:	increase/decrease a resource associated with this object
  */
-nomask _F_rsrc_incr(string rsrc, int incr)
+nomask void _F_rsrc_incr(string rsrc, int incr)
 {
     if (previous_program() == RSRCOBJ) {
 	if (!resources) {
@@ -70,7 +72,7 @@ nomask _F_rsrc_incr(string rsrc, int incr)
  * NAME:	_F_create()
  * DESCRIPTION:	kernel creator function
  */
-nomask _F_create()
+nomask void _F_create()
 {
     if (!prev) {
 	string oname;
@@ -125,7 +127,7 @@ nomask _F_create()
  * NAME:	_F_destruct()
  * DESCRIPTION:	prepare object for being destructed
  */
-nomask _F_destruct()
+nomask void _F_destruct()
 {
     if (previous_program() == AUTO) {
 	object rsrcd;
@@ -548,7 +550,7 @@ static object *users()
  * NAME:	swapout()
  * DESCRIPTION:	swap out all objects
  */
-static swapout()
+static void swapout()
 {
     if (creator == "System" && this_object()) {
 	::swapout();
@@ -559,7 +561,7 @@ static swapout()
  * NAME:	dump_state()
  * DESCRIPTION:	create state dump
  */
-static dump_state()
+static void dump_state()
 {
     if (creator == "System" && this_object()) {
 	rlimits (-1; -1) {
@@ -573,7 +575,7 @@ static dump_state()
  * NAME:	shutdown()
  * DESCRIPTION:	shutdown the system
  */
-static shutdown()
+static void shutdown()
 {
     if (creator == "System" && this_object()) {
 	::find_object(DRIVER)->message("System halted.\n");
@@ -689,7 +691,7 @@ static mixed remove_call_out(int handle)
  * NAME:	_F_callout()
  * DESCRIPTION:	callout gate
  */
-nomask _F_callout(string function, int suspended, mixed *args)
+nomask void _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
@@ -710,7 +712,7 @@ nomask _F_callout(string function, int suspended, mixed *args)
  * NAME:	_F_release()
  * DESCRIPTION:	release a suspended callout
  */
-nomask _F_release(mixed handle)
+nomask void _F_release(mixed handle)
 {
     if (previous_program() == RSRCD) {
 	int i;
@@ -729,7 +731,7 @@ nomask _F_release(mixed handle)
  * NAME:	add_event()
  * DESCRIPTION:	add a new event type
  */
-static add_event(string name)
+static void add_event(string name)
 {
     CHECKARG(name, 1, "add_event");
 
@@ -745,7 +747,7 @@ static add_event(string name)
  * NAME:	remove_event()
  * DESCRIPTION:	remove an event type
  */
-static remove_event(string name)
+static void remove_event(string name)
 {
     object *objlist, rsrcd;
     int i;
@@ -782,7 +784,8 @@ static string *query_events()
  * NAME:	_F_subscribe_event()
  * DESCRIPTION:	subscribe to an event
  */
-nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
+nomask void
+_F_subscribe_event(object obj, string oowner, string name, int subscribe)
 {
     if (previous_program() == AUTO) {
 	object *objlist, rsrcd;
@@ -821,7 +824,7 @@ nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
  * NAME:	subscribe_event()
  * DESCRIPTION:	subscribe to an event
  */
-static subscribe_event(object obj, string name)
+static void subscribe_event(object obj, string name)
 {
     CHECKARG(obj, 1, "subscribe_event");
     CHECKARG(name, 2, "subscribe_event");
@@ -836,7 +839,7 @@ static subscribe_event(object obj, string name)
  * NAME:	unsubscribe_event()
  * DESCRIPTION:	unsubscribe from an event
  */
-static unsubscribe_event(object obj, string name)
+static void unsubscribe_event(object obj, string name)
 {
     CHECKARG(obj, 1, "unsubscribe_event");
     CHECKARG(name, 2, "unsubscribe_event");
@@ -864,7 +867,7 @@ static object *query_subscribed(string name)
  * NAME:	_F_start_event()
  * DESCRIPTION:	start an event in this object
  */
-nomask _F_start_event(string name, mixed *args)
+nomask void _F_start_event(string name, mixed *args)
 {
     if (previous_program() == AUTO) {
 	catch {
@@ -886,7 +889,7 @@ nomask _F_start_event(string name, mixed *args)
  * NAME:	event()
  * DESCRIPTION:	cause an event
  */
-static event(string name, mixed args...)
+static void event(string name, mixed args...)
 {
     object *objlist;
     string *names;
@@ -1276,7 +1279,7 @@ static int restore_object(string path)
  * NAME:	save_object()
  * DESCRIPTION:	save the state of an object
  */
-static save_object(string path)
+static void save_object(string path)
 {
     string oname, fcreator;
     object driver, rsrcd;
@@ -1362,7 +1365,7 @@ static string editor(varargs string cmd)
  * NAME:	execute_program()
  * DESCRIPTION:	execute external program
  */
-static execute_program(string cmdline)
+static void execute_program(string cmdline)
 {
     object conn;
     int dedicated;
@@ -1402,7 +1405,7 @@ static execute_program(string cmdline)
  * NAME:	connect()
  * DESCRIPTION:	open an outbound connection
  */
-static connect(string destination, int port)
+static void connect(string destination, int port)
 {
     object conn;
 
@@ -1430,7 +1433,7 @@ static connect(string destination, int port)
  * NAME:	open_port()
  * DESCRIPTION:	open a port to listen on
  */
-static open_port(string protocol, int port)
+static void open_port(string protocol, int port)
 {
     CHECKARG(protocol, 1, "open_port");
 

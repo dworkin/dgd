@@ -170,7 +170,7 @@ int file_size(string file, varargs int dir)
  * NAME:	set_object_manager()
  * DESCRIPTION:	set the object manager
  */
-set_object_manager(object obj)
+void set_object_manager(object obj)
 {
     if (SYSTEM()) {
 	objectd = obj;
@@ -181,7 +181,7 @@ set_object_manager(object obj)
  * NAME:	set_error_manager()
  * DESCRIPTION:	set the error manager
  */
-set_error_manager(object obj)
+void set_error_manager(object obj)
 {
     if (SYSTEM()) {
 	errord = obj;
@@ -192,7 +192,7 @@ set_error_manager(object obj)
  * NAME:	compiling()
  * DESCRIPTION:	object being compiled
  */
-compiling(string path)
+void compiling(string path)
 {
     if (previous_program() == AUTO) {
 	compiled = path;
@@ -225,7 +225,7 @@ compiling(string path)
  * NAME:	compile()
  * DESCRIPTION:	object compiled
  */
-compile(object obj, string owner)
+void compile(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
@@ -241,7 +241,7 @@ compile(object obj, string owner)
  * NAME:	compile_lib()
  * DESCRIPTION:	inherited object compiled
  */
-compile_lib(string path, string owner)
+void compile_lib(string path, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
@@ -257,7 +257,7 @@ compile_lib(string path, string owner)
  * NAME:	compile_failed()
  * DESCRIPTION:	object couldn't be compiled
  */
-compile_failed(string path, string owner)
+void compile_failed(string path, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	objectd->compile_failed(owner, path);
@@ -269,7 +269,7 @@ compile_failed(string path, string owner)
  * NAME:	clone()
  * DESCRIPTION:	object cloned
  */
-clone(object obj, string owner)
+void clone(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	objectd->clone(owner, obj);
@@ -280,7 +280,7 @@ clone(object obj, string owner)
  * NAME:	destruct()
  * DESCRIPTION:	object about to be destructed
  */
-destruct(object obj, string owner)
+void destruct(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	objectd->destruct(owner, obj);
@@ -291,7 +291,7 @@ destruct(object obj, string owner)
  * NAME:	destruct_lib()
  * DESCRIPTION:	inherited object about to be destructed
  */
-destruct_lib(string path, string owner)
+void destruct_lib(string path, string owner)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {
@@ -313,7 +313,7 @@ string query_owner()
  * NAME:	set_tls_size()
  * DESCRIPTION:	set the thread local storage size
  */
-set_tls_size(int size)
+void set_tls_size(int size)
 {
     if (previous_program() == API_TLS) {
 	tls_size = size + 2;
@@ -356,7 +356,7 @@ void set_tlvar(int index, mixed value)
  * NAME:	message()
  * DESCRIPTION:	show message
  */
-message(string str)
+void message(string str)
 {
     if (KERNEL() || SYSTEM()) {
 	send_message(ctime(time())[4 .. 18] + " ** " + str);
@@ -393,7 +393,7 @@ private mixed call(mixed what, string func)
  * NAME:	initialize()
  * DESCRIPTION:	called once at system startup
  */
-static initialize()
+static void initialize()
 {
     object rsrcobj;
     string *users;
@@ -474,7 +474,7 @@ static initialize()
  * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a state dump
  */
-prepare_reboot()
+void prepare_reboot()
 {
     if (KERNEL()) {
 	rsrcd->prepare_reboot();
@@ -489,7 +489,7 @@ prepare_reboot()
  * NAME:	restored()
  * DESCRIPTION:	re-initialize the system after a restore
  */
-static restored()
+static void restored()
 {
     message("DGD " + status()[ST_VERSION] + "\n");
 
@@ -702,7 +702,7 @@ static string path_include(string from, string path)
  * NAME:	remove_program()
  * DESCRIPTION:	the last reference to a program is removed
  */
-static remove_program(string path, int timestamp, int index)
+static void remove_program(string path, int timestamp, int index)
 {
     string creator;
 
@@ -719,7 +719,7 @@ static remove_program(string path, int timestamp, int index)
  * NAME:	recompile()
  * DESCRIPTION:	recompile an inherited object
  */
-static recompile(object obj)
+static void recompile(object obj)
 {
     if (objectd) {
 	string name;
@@ -752,7 +752,7 @@ static object binary_connect()
  * NAME:	interrupt
  * DESCRIPTION:	called when a kill signal is sent to the server
  */
-static interrupt()
+static void interrupt()
 {
     message("Interrupt.\n");
 
@@ -767,7 +767,7 @@ static interrupt()
  * NAME:	runtime_error()
  * DESCRIPTION:	log a runtime error
  */
-static runtime_error(string str, int caught, int ticks)
+static void runtime_error(string str, int caught, int ticks)
 {
     mixed **trace, tls;
     string line, function, progname, objname;
@@ -860,7 +860,7 @@ static runtime_error(string str, int caught, int ticks)
  * NAME:	atomic_error()
  * DESCRIPTION:	log a runtime error in atomic code
  */
-static atomic_error(string str, int atom, int ticks)
+static void atomic_error(string str, int atom, int ticks)
 {
     mixed **trace;
     string line, function, progname, objname;
@@ -921,7 +921,7 @@ static atomic_error(string str, int atom, int ticks)
  * NAME:	compile_error()
  * DESCRIPTION:	deal with a compilation error
  */
-static compile_error(string file, int line, string err)
+static void compile_error(string file, int line, string err)
 {
     object obj;
 

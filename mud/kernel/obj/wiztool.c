@@ -10,7 +10,7 @@ private object user;		/* associated user object */
  * NAME:	create()
  * DESCRIPTION:	initialize object
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create(200);

@@ -10,7 +10,7 @@ object driver;		/* driver object */
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create("telnet");
@@ -32,7 +32,7 @@ static int open()
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static void close(int dest)
 {
     ::close(allocate(driver->query_tls_size()), dest);
 }
@@ -41,7 +41,7 @@ static close(int dest)
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
-static receive_message(string str)
+static void receive_message(string str)
 {
     ::receive_message(allocate(driver->query_tls_size()), str);
 }
@@ -50,7 +50,7 @@ static receive_message(string str)
  * NAME:	set_mode()
  * DESCRIPTION:	set the connection mode
  */
-set_mode(int newmode)
+void set_mode(int newmode)
 {
     int mode;
 
@@ -68,7 +68,7 @@ set_mode(int newmode)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static message_done()
+static void message_done()
 {
     ::message_done(allocate(driver->query_tls_size()));
 }

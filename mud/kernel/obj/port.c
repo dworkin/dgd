@@ -7,7 +7,7 @@ inherit LIB_PORT;
  * NAME:	create()
  * DESCRIPTION:	initialize port object
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create();
@@ -18,7 +18,7 @@ static create(int clone)
  * NAME:	listen()
  * DESCRIPTION:	start listening on a port
  */
-listen(string protocol, int port)
+void listen(string protocol, int port)
 {
     if (previous_program() == DRIVER) {
 	if (!open_port(protocol, port)) {

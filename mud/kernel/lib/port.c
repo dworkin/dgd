@@ -8,7 +8,7 @@ private string porttype;	/* telnet or binary */
  * NAME:	create()
  * DESCRIPTION:	initialize port object
  */
-static create()
+static void create()
 {
     userd = find_object(USERD);
 }

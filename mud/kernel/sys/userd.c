@@ -18,7 +18,7 @@ object *connections;			/* saved connections */
  * NAME:	create()
  * DESCRIPTION:	initialize object
  */
-static create()
+static void create()
 {
     /* load essential objects */
     if (!find_object(TELNET_CONN)) { compile_object(TELNET_CONN); }
@@ -57,7 +57,7 @@ object binary_connection()
  * DESCRIPTION:	set the telnet manager object, which determines what the
  *		user object is, based on the first line of input
  */
-set_telnet_manager(object manager)
+void set_telnet_manager(object manager)
 {
     if (SYSTEM()) {
 	telnet_manager = manager;
@@ -69,7 +69,7 @@ set_telnet_manager(object manager)
  * DESCRIPTION:	set the binary manager object, which determines what the
  *		user object is, based on the first line of input
  */
-set_binary_manager(object manager)
+void set_binary_manager(object manager)
 {
     if (SYSTEM()) {
 	binary_manager = manager;
@@ -184,7 +184,7 @@ string query_binary_banner()
  * NAME:	login()
  * DESCRIPTION:	login user
  */
-login(object user, string name)
+void login(object user, string name)
 {
     if (previous_program() == LIB_USER) {
 	users = (users - ({ nil })) | ({ user });
@@ -196,7 +196,7 @@ login(object user, string name)
  * NAME:	logout()
  * DESCRIPTION:	log user out
  */
-logout(object user, string name)
+void logout(object user, string name)
 {
     if (previous_program() == LIB_USER) {
 	users -= ({ user });
@@ -254,7 +254,7 @@ object find_user(string name)
  * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a reboot
  */
-prepare_reboot()
+void prepare_reboot()
 {
     if (previous_program() == DRIVER) {
 	connections = users();
@@ -265,7 +265,7 @@ prepare_reboot()
  * NAME:	reboot()
  * DESCRIPTION:	handle a reboot
  */
-reboot()
+void reboot()
 {
     if (previous_program() == DRIVER) {
 	int i;
