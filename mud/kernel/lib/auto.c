@@ -915,6 +915,7 @@ static void event(string name, mixed args...)
     objlist -= ({ nil });
     if (sz != sizeof(objlist)) {
 	events[name] = objlist;
+	sz = sizeof(objlist);
     }
     for (i = 0; i < sz; i++) {
 	objlist[i]->_F_start_event(name, args);
