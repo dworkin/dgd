@@ -42,9 +42,8 @@ nomask string query_owner()
 	/*
 	 * temporary owner for cloned object
 	 */
-	str = owner;
-	owner = "System";
-	return str[1 ..];
+	sscanf(owner, "/%s/%s", str, owner);
+	return str;
     } else {
 	return owner;
     }
@@ -353,7 +352,7 @@ static object clone_object(string path, varargs string uid)
 
     CHECKARG(path, 1, "clone_object");
     if (uid) {
-	CHECKARG(owner == "System", 1, "clone_object");
+	CHECKARG(creator == "System", 1, "clone_object");
     } else {
 	uid = owner;
     }
@@ -416,7 +415,7 @@ static object clone_object(string path, varargs string uid)
 		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
 	    if (uid != owner) {
-		owner = "/" + uid;
+		owner = "/" + uid + "/" + owner;
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
