@@ -2,7 +2,7 @@ NAME
 	rename_file - rename a file
 
 SYNOPSIS
-	int rename_file(string file)
+	int rename_file(string from, string to)
 
 
 DESCRIPTION

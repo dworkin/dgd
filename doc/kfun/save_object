@@ -6,12 +6,11 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Save all global variables in an object that are not private, static
-	or inherited through labelled inheritance, to a file.  Only non-zero
-	and non-object values are actually saved.
+	Save all global variables in an object that are not private or static
+	to a file.  Only non-zero and non-object values are actually saved.
 
 ERRORS
-	An error will result if the variables could not be saved.
+	An error will result if the save file could not be created.
 
 SEE ALSO
 	kfun/save_object
