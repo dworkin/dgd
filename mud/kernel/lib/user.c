@@ -84,9 +84,9 @@ string query_name()
  * NAME:	message()
  * DESCRIPTION:	forward a message to the connection object
  */
-message(string arg)
+message(string str)
 {
-    if (connection) {
-	connection->message(arg);
+    if (connection && str) {
+	connection->message(str);
     }
 }
