@@ -2,8 +2,9 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "swap.h"
+# include "data.h"
 
 /* bit values for dataspace->modified */
 # define M_VARIABLE		0x01
@@ -391,7 +392,6 @@ unsigned short idx;
     }
 
     if (ctrl->strings[idx] == (string *) NULL) {
-	sstrconst strcon;
 	register string *str;
 
 	str = str_new(ctrl->stext + ctrl->sstrings[idx].index,
@@ -533,7 +533,6 @@ register uindex idx;
 
     if (data->arrays[idx].array == (array *) NULL) {
 	register array *a;
-	register value *v;
 
 	a = arr_new((long) (i = data->sarrays[idx].size));
 	if (i > 0) {
@@ -690,49 +689,6 @@ register value *old, *new;
     register string *str;
     register array *arr;
 
-    switch (old->type) {
-    case T_STRING:
-	str = old->u.string;
-	if (data != (dataspace *) NULL) {
-	    if (str->ref & STR_CONST) {	/* a constant */
-		if (strconst_obj(data, str) < 0) {
-		    /* not in this object: deref imported string const */
-		    data->schange--;
-		}
-	    } else if (str->u.primary != (strref *) NULL &&
-		       str->u.primary->data == data) {
-		/* in this object */
-		if (--(str->u.primary->ref) == 0) {
-		    data->schange++;	/* last reference removed */
-		}
-		data->modified |= M_STRINGREF;
-	    } else {
-		/* not in this object: deref imported string */
-		data->schange--;
-	    }
-	}
-	str_del(str);
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr = old->u.array;
-	if (data != (dataspace *) NULL) {
-	    if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
-		/* in this object */
-		if (--(arr->primary->ref) == 0) {
-		    data->achange++;	/* last reference removed */
-		}
-		data->modified |= M_ARRAYREF;
-	    } else {
-		/* not in this object: deref imported array */
-		data->achange--;
-	    }
-	}
-	arr_del(arr);
-	break;
-    }
-
     switch (new->type) {
     case T_STRING:
 	str = new->u.string;
@@ -773,6 +729,49 @@ register value *old, *new;
 	    }
 	}
 	arr_ref(arr);
+	break;
+    }
+
+    switch (old->type) {
+    case T_STRING:
+	str = old->u.string;
+	if (data != (dataspace *) NULL) {
+	    if (str->ref & STR_CONST) {	/* a constant */
+		if (strconst_obj(data, str) < 0) {
+		    /* not in this object: deref imported string const */
+		    data->schange--;
+		}
+	    } else if (str->u.primary != (strref *) NULL &&
+		       str->u.primary->data == data) {
+		/* in this object */
+		if (--(str->u.primary->ref) == 0) {
+		    data->schange++;	/* last reference removed */
+		}
+		data->modified |= M_STRINGREF;
+	    } else {
+		/* not in this object: deref imported string */
+		data->schange--;
+	    }
+	}
+	str_del(str);
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+	arr = old->u.array;
+	if (data != (dataspace *) NULL) {
+	    if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
+		/* in this object */
+		if (--(arr->primary->ref) == 0) {
+		    data->achange++;	/* last reference removed */
+		}
+		data->modified |= M_ARRAYREF;
+	    } else {
+		/* not in this object: deref imported array */
+		data->achange--;
+	    }
+	}
+	arr_del(arr);
 	break;
     }
 
@@ -1416,7 +1415,7 @@ register dataspace *data;
 	arrsize = 0;
 	strsize = 0;
 
-	d_count(data, data->variables, data->varoffset, data->nvariables);
+	d_count(data->variables, data->nvariables, data, data->svariables);
 
 	/* fill in header */
 	header.narrays = narr;
