@@ -1,0 +1,10 @@
+NAME
+	get_exec_cost - return allowed execution cost
+
+SYNOPSIS
+	int get_exec_cost()
+
+
+DESCRIPTION
+	Return the allowed execution cost that remains.  The maximum execution
+	cost, MAX_EXEC_COST, is defined in the include file <limits.h>.
