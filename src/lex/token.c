@@ -476,8 +476,6 @@ char quote;
 	    }
 	    break;
 	} else if (c == '\\') {
-	    int res;
-
 	    if (pp_level > 0 || do_include) {
 		/* recognize, but do not translate escape sequence */
 		*p++ = c;
@@ -626,12 +624,12 @@ int tk_gettok()
 	     */
 	fraction:
 	    is_float = TRUE;
-	    do {
+	    while (isdigit(c)) {
 		if (p < yyend) {
 		    *p++ = c;
 		}
 		c = gc();
-	    } while (isdigit(c));
+	    }
 	    if (c == 'e' || c == 'E') {
 		char *q, exp, sign;
 

@@ -654,3 +654,56 @@ DGD 1.0.a7
  - Makefiles brought up to date.
  - (int) 0.0 yielded a wrong value.
  - Max execution cost is no longer halved during a callout.
+
+DGD 1.0.8
+
+ - Fixed a problem with catch(x, y) and lock(x, y).
+ - Fixed file descriptor leak in swap.c.
+ - Fixed a bug in swap.c which could cause confusion between sectors just
+   after a state dump.
+ - Removed "*** State dumped." message after a state dump.
+ - Fixed a bug in the editor which could result in an infinite loop.
+ - Changed the default return value of float functions to 0.0.
+ - SunOS 4.x appears to have a problem: sometimes an alarm will interrupt
+   a read or write on a file, even though this is supposed to be impossible
+   and SV_INTERRUPT is not set.  As a workaround, a new timeout handler is
+   provided that doesn't use alarms.
+ - Fixed a bug in the C code generated for ++ and -- of non-integer variables.
+ - Using memcmp() in str_cmp() was unwise, because the lexical ordering of
+   characters may differ per host, and on a NeXT memcmp() is buggy.  Replaced
+   with explicit code that compares unsigned characters.  This may invalidate
+   old dump files for hosts with signed character compare in memcmp() !
+ - If the swap file cannot be renamed to the dump file, attempt to copy it
+   instead.
+ - Cleaned up host.h a bit.  GENERIC_* no longer uses alloca() to make it
+   more generic.
+ - Fixed a bug in the editor which in extremely rare cases might wipe out
+   a line.
+ - Added newline-in-input optimisation as per Dark's networking package.
+ - Made it impossible for the editor to read a directory.
+ - A file can only be removed or renamed if the host system permits write
+   access.
+ - Avoided some typecast warnings.
+ - Fixed the following bug:  int i, string s; i = 2; s = s + i;
+   This used to give the integer value 2 to s.  Now s gets the value "02".
+   As a corollary, casting from int/float to string and from string to
+   int/float is now possible.
+ - Fixed a bug which occurred if a function for which an implicit undefined
+   prototype was created was defined as private in the same object.
+ - Fixed a bug that prevented restoring a state dump made by a driver with
+   fewer builtin kfuns.  Unfortunately, the bugfix affects state dumps too,
+   and old state dumps can no longer be used. (!)
+ - Added a summand operator to transparently compute expressions of the form
+
+    x1[a .. b] + x2[.. c] + x3[d ..] + x4 + .. + xn[..]
+
+   without intermediate results, as suggested by Aedil.
+ - Discarded the 'a' in the version number; DGD is beyond the alpha stage.
+ - call_trace() now also includes the function arguments.  It is the
+   responsibility of the mudlib programmer to make sure that this doesn't
+   cause security problems (this also applies to status(obj)[O_CALLOUTS]).
+ - Fixed a bug which in some cases prevented proper removal of unreachable code.
+ - Fixed an optimisation which was skipped in conjunction with the summand
+   operator.
+ - Fixed a bug which caused <digits>. to be rejected as a valid floating point
+   constant.
