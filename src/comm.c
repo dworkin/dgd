@@ -404,9 +404,10 @@ void comm_receive()
 		if (sp->type != T_OBJECT) {
 		    fatal("driver->telnet_connect() did not return an object");
 		}
-		endthread();
-		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
+		o = o_object(sp->oindex, sp->u.objcnt);
 		sp++;
+		endthread();
+		comm_new(o, conn, TRUE);
 		ec_pop();
 
 		if (ec_push((ec_ftn) NULL)) {
@@ -441,9 +442,10 @@ void comm_receive()
 	    if (sp->type != T_OBJECT) {
 		fatal("driver->binary_connect() did not return an object");
 	    }
-	    endthread();
-	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
+	    o = o_object(sp->oindex, sp->u.objcnt);
 	    sp++;
+	    endthread();
+	    comm_new(o, conn, FALSE);
 	    ec_pop();
 
 	    if (ec_push((ec_ftn) NULL)) {

@@ -348,6 +348,7 @@ int nargs;
     val = values;
     matches = 0;
 
+    sp += nargs;	/* to get the error context right */
     if (ec_push((ec_ftn) NULL)) {
 	/*
 	 * free any values left unassigned
@@ -361,6 +362,7 @@ int nargs;
 	val = oldval;
 	error((char *) NULL);	/* pass on error */
     }
+    sp -= nargs;
 
     while (flen > 0) {
 	if (f[0] != '%' || f[1] == '%') {

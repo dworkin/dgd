@@ -1029,3 +1029,4 @@ DGD 1.1
  - Some fixes for the order of events in the main loop, and telnet buffer
    flushing in comm.c.
  - Several bugs fixed in the recompiling code.
+ - And some related ones.
