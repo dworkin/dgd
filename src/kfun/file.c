@@ -9,18 +9,20 @@
 # ifdef FUNCDEF
 FUNCDEF("editor", kf_editor, p_editor)
 # else
-char p_editor[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1, T_STRING };
+char p_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC | C_LOCAL, T_VOID, 1,
+		    T_STRING };
 
 /*
  * NAME:	kfun->editor()
  * DESCRIPTION:	handle an editor command
  */
-int kf_editor()
+int kf_editor(nargs)
+int nargs;
 {
     object *obj;
 
     obj = i_this_object();
-    if (obj->key.count == 0) {
+    if (obj->count == 0) {
 	error("editor() from destructed object");
     }
     if (obj->flags & O_USER) {
@@ -29,8 +31,13 @@ int kf_editor()
     if (!(obj->flags & O_EDITOR)) {
 	ed_new(obj);
     }
-    ed_command(obj, sp->u.string->text);
-    str_del(sp->u.string);
+    if (nargs == 0) {
+	i_check_stack(1);
+	--sp;
+    } else {
+	ed_command(obj, sp->u.string->text);
+	str_del(sp->u.string);
+    }
     sp->type = T_NUMBER;
     sp->u.number = 0;
     return 0;
@@ -53,7 +60,7 @@ int kf_query_editor()
     object *obj;
     char *status;
 
-    obj = o_object(&sp->u.object);
+    obj = o_object(sp->oindex, sp->u.objcnt);
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
 	sp->type = T_STRING;
@@ -308,9 +315,6 @@ int kf_save_object()
     object *obj;
 
     obj = i_this_object();
-    if (obj->key.count == 0) {
-	error("save_object() from destructed object");
-    }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -386,6 +390,8 @@ int kf_save_object()
     }
     close(fd);
     AFREE(buffer);
+
+    unlink(file);
     if (rename(tmp, file) < 0) {
 	unlink(tmp);
 	error("Cannot rename temporary save file to \"/%s\"", file);
@@ -721,9 +727,6 @@ int kf_restore_object()
     bool pending;
 
     obj = i_this_object();
-    if (obj->key.count == 0) {
-	error("restore_object() from destructed object");
-    }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -905,13 +908,10 @@ int kf_write_file(nargs)
 int nargs;
 {
     struct stat sbuf;
-    register long l;
+    register Int l;
     char *file;
     int fd;
 
-    if (i_this_object()->key.count == 0) {
-	error("write_file() from destructed object");
-    }
     switch (nargs) {
     case 0:
     case 1:
@@ -986,13 +986,10 @@ int kf_read_file(nargs)
 int nargs;
 {
     struct stat sbuf;
-    register long l, size;
+    register Int l, size;
     char *file;
     int fd;
 
-    if (i_this_object()->key.count == 0) {
-	error("read_file() from destructed object");
-    }
     l = 0;
     size = 0;
     switch (nargs) {
@@ -1083,9 +1080,6 @@ kf_rename_file()
 {
     char buf[STRINGSZ], *file;
 
-    if (i_this_object()->key.count == 0) {
-	error("rename_file() from destructed object");
-    }
     file = path_file(path_resolve(sp[1].u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -1119,9 +1113,6 @@ kf_remove_file()
 {
     char *file;
 
-    if (i_this_object()->key.count == 0) {
-	error("remove_file() from destructed object");
-    }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -1149,9 +1140,6 @@ kf_make_dir()
 {
     char *file;
 
-    if (i_this_object()->key.count == 0) {
-	error("make_dir() from destructed object");
-    }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -1179,9 +1167,6 @@ kf_remove_dir()
 {
     char *file;
 
-    if (i_this_object()->key.count == 0) {
-	error("remove_dir() from destructed object");
-    }
     file = path_file(path_resolve(sp->u.string->text));
     if (file == (char *) NULL) {
 	return 1;
@@ -1366,11 +1351,8 @@ int kf_get_dir()
     char *file, *dir, *pat, buf[2 * STRINGSZ];
     array *a;
 
-    if (i_this_object()->key.count == 0) {
-	error("get_dir() from destructed object");
-    }
     file = path_resolve(sp->u.string->text);
-    if (file == (char *) NULL) {
+    if (path_file(file) == (char *) NULL) {
 	return 1;
     }
 
@@ -1382,7 +1364,7 @@ int kf_get_dir()
 	nfiles = 1;
     } else {
 	dir = file;
-	pat = strchr(dir, '/');
+	pat = strrchr(dir, '/');
 	if (pat == (char *) NULL) {
 	    pat = dir;
 	    dir = ".";
@@ -1473,13 +1455,9 @@ int kf_get_dir()
     }
 
     if (strcmp(dir, ".") != 0) {
-	/* change directory back to old dir */
-	strcpy(buf, "..");
-	while ((dir=strchr(dir, '/')) != (char *) NULL) {
-	    strcat(buf, "/..");
-	}
-	if (chdir(path_file(buf)) < 0) {
-	    fatal("cannot chdir back to top");
+	/* change directory back to base dir */
+	if (chdir(base_dir()) < 0) {
+	    fatal("cannot chdir back to base dir");
 	}
     }
     return 0;
