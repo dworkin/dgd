@@ -627,7 +627,7 @@ unsigned int mtime;
     connection *conn;
     object *obj;
     register user *usr;
-    register int n, i, state, flags, nls;
+    register int n, i, state, nls;
     register char *p, *q;
 
     if (newlines != 0) {
@@ -770,7 +770,6 @@ unsigned int mtime;
 		    }
 		}
 
-		flags = usr->flags;
 		state = usr->state;
 		nls = usr->newlines;
 		q = p;
@@ -779,7 +778,7 @@ unsigned int mtime;
 		    case TS_DATA:
 			switch (UCHAR(*p)) {
 			case '\0':
-			    flags &= ~CF_SEENCR;
+			    usr->flags &= ~CF_SEENCR;
 			    break;
 
 			case IAC:
@@ -791,19 +790,19 @@ unsigned int mtime;
 			    if (q[-1] != LF) {
 				--q;
 			    }
-			    flags &= ~CF_SEENCR;
+			    usr->flags &= ~CF_SEENCR;
 			    break;
 
 			case CR:
 			    nls++;
 			    newlines++;
 			    *q++ = LF;
-			    flags |= CF_SEENCR;
+			    usr->flags |= CF_SEENCR;
 			    break;
 
 			case LF:
-			    if ((flags & CF_SEENCR) != 0) {
-				flags &= ~CF_SEENCR;
+			    if ((usr->flags & CF_SEENCR) != 0) {
+				usr->flags &= ~CF_SEENCR;
 				break;
 			    }
 			    nls++;
@@ -811,7 +810,7 @@ unsigned int mtime;
 			    /* fall through */
 			default:
 			    *q++ = *p;
-			    flags &= ~CF_SEENCR;
+			    usr->flags &= ~CF_SEENCR;
 			    break;
 			}
 			break;
@@ -873,7 +872,7 @@ unsigned int mtime;
 			    comm_write(usr, obj, (string *) NULL, tm,
 				       sizeof(tm));
 			} else if (UCHAR(*p) == TELOPT_SGA) {
-			    flags &= ~CF_GA;
+			    usr->flags &= ~CF_GA;
 			    comm_write(usr, obj, (string *) NULL, will_sga,
 				       sizeof(will_sga));
 			}
@@ -882,7 +881,7 @@ unsigned int mtime;
 
 		    case TS_DONT:
 			if (UCHAR(*p) == TELOPT_SGA) {
-			    flags |= CF_GA;
+			    usr->flags |= CF_GA;
 			    comm_write(usr, obj, (string *) NULL, wont_sga,
 				       sizeof(wont_sga));
 			}
@@ -919,7 +918,6 @@ unsigned int mtime;
 		    p++;
 		    --n;
 		}
-		usr->flags = flags;
 		usr->state = state;
 		usr->newlines = nls;
 		usr->inbufsz = q - usr->inbuf;
