@@ -65,13 +65,15 @@ control *ctrl;
 	hte **h;
 
 	/* put object in object name hash table */
+	mstatic();
 	strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
+	mdynamic();
 	h = ht_lookup(htab, name);
 	o->chain.next = *h;
 	*h = (hte *) o;
 	o->flags = O_MASTER;
 	o->ctrl = ctrl;
-	ctrl->inherits[ctrl->nvirtuals - 1].obj = o;
+	ctrl->inherits[ctrl->ninherits - 1].obj = o;
 
 	/* add reference to all inherited objects */
 	o->u.ref = 0;	/* increased to 1 in following loop */
@@ -207,7 +209,9 @@ char *name;
 	FREE(o->chain.name);
     }
     /* put new name in object name hash table */
+    mstatic();
     strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
+    mdynamic();
     h = ht_lookup(htab, name);
     o->chain.next = *h;
     *h = (hte *) o;
@@ -283,6 +287,8 @@ object *obj;
     }
     if (o->ctrl == (control *) NULL) {
 	o->ctrl = d_load_control(o->cfirst);	/* reload */
+    } else {
+	d_ref_control(o->ctrl);
     }
     return obj->ctrl = o->ctrl;
 }
@@ -302,6 +308,8 @@ register object *o;
 	    /* load dataspace block */
 	    o->data = d_load_dataspace(o, o->dfirst);
 	}
+    } else {
+	d_ref_dataspace(o->data);
     }
     return o->data;
 }
