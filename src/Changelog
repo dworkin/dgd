@@ -1221,3 +1221,5 @@ DGD 1.1
  - Avoided the use of gethostbyname() on BeOS for similar reasons as on Win95.
  - Non-unix versions compile again.
  - Fixed a float testing bug in precompiled code.
+ - Fixed a bug in array exporting, introduced in the last assignment/swapping
+   rewrite.

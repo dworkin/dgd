@@ -6,7 +6,7 @@ DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
-CC=	mwcc
+CC=	gcc
 
 SRC=	local.cpp random.c dirent.c time.c alarm.c connect.c xfloat.c
 OBJ=	local.o random.o dirent.o time.o alarm.o connect.o crypt.o \

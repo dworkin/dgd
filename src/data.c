@@ -2605,6 +2605,7 @@ register unsigned short n;
 			/*
 			 * move array to new dataspace
 			 */
+			d_get_elts(a);
 			a->primary = &data->alocal;
 		    } else {
 			/*
@@ -2665,7 +2666,7 @@ register unsigned short n;
 			/*
 			 * import elements too
 			 */
-			d_import(data, d_get_elts(a), a->size);
+			d_import(data, a, a->size);
 		    }
 		} else {
 		    /*
