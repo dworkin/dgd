@@ -1311,3 +1311,5 @@ DGD 1.1
    to use.
  - Connections with pending output that failed in a write would never get
    closed.
+ - Newly added mixed variables would get the value of the old variable in the
+   same slot during upgrading.
