@@ -1127,3 +1127,4 @@ DGD 1.1
  DGD 1.2
 
  - Added swapfile compression.
+ - Fixed a stack depth miscalculation bug.
