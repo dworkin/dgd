@@ -59,11 +59,11 @@ bool co_init(max)
 unsigned int max;
 {
     if (max != 0) {
+	/* only if callouts are enabled */
 	cotab = ALLOC(call_out, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
 	cotab++;
 	flist = 0;
-	/* only if callouts are enabled */
 	if (P_time() >> 24 <= 1) {
 	    message("Config error: bad time (early seventies)");
 	    return FALSE;
@@ -353,10 +353,19 @@ unsigned short *mtime;
 	/* clock turned back? */
 	t = timestamp;
 	*mtime = 0;
-    } else if (t > timestamp + 60) {
-	/* lot of lag? */
-	t = timestamp + 60;
-	*mtime = 0;
+    } else if (timestamp < t) {
+	if (running.list == 0 && immediate.list == 0) {
+	    if (atimeout == 0 || atimeout > t) {
+		timestamp = t;
+	    } else if (timestamp < atimeout - 1) {
+		timestamp = atimeout - 1;
+	    }
+	}
+	if (t > timestamp + 60) {
+	    /* lot of lag? */
+	    t = timestamp + 60;
+	    *mtime = 0;
+	}
     }
 
     return t;
