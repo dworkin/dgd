@@ -504,7 +504,7 @@ int nargs;
 	case 'f':
 	    /* %f */
 	    x = s;
-	    if (!flt_atof(&s, &flt)) {
+	    if (!flt_atof(&s, &flt) || s == x) {
 		goto no_match;
 	    }
 	    slen -= (s - x);

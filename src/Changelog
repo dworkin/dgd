@@ -1462,3 +1462,6 @@ DGD 1.3
  - Made a minor change to the code optimizer, in preparation for light-weight
    objects.
  - Partial implementation of light-weight objects.
+ - More helpful errormessages when casting a string to float or int fails.
+ - %f in a sscanf format strimg would match the empty string.
+ - Fixed a bug in the pow() function.

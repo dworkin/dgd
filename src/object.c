@@ -1057,8 +1057,6 @@ void o_clean()
 	baseplane.upgrade = (unsigned long) o->chain.next;
 
 	up = OBJ(o->dfirst);
-	up->cref -= 2;
-
 	if (up->u_ref == 0) {
 	    /* no more instances of object around */
 	    o->cref = baseplane.destruct;
@@ -1066,12 +1064,15 @@ void o_clean()
 	} else {
 	    /* upgrade objects */
 	    up->flags &= ~O_COMPILED;
-	    o->u_ref = up->u_ref;
+	    up->cref -= 2;
+	    o->u_ref = up->cref;
+	    if (up->count != 0 &&
+		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED)) {
+		o->u_ref++;
+	    }
 	    ctrl = up->ctrl;
 
-	    if (ctrl->vmapsize != 0 &&
-		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED ||
-		 up->count == 0 || --(o->u_ref) != 0)) {
+	    if (ctrl->vmapsize != 0 && o->u_ref != 0) {
 		/*
 		 * upgrade variables
 		 */
