@@ -1516,24 +1516,20 @@ int i;
 static bool lvalue(n)
 register node *n;
 {
+    if (n->type == N_CAST && n->mod == n->l.left->mod) {
+	/* only an implicit cast is allowed */
+	n = n->l.left;
+    }
     switch (n->type) {
     case N_LOCAL:
     case N_GLOBAL:
     case N_INDEX:
     case N_FAKE:
-	break;
+	return TRUE;
 
-    case N_CAST:
-	if (n->mod == n->l.left->mod) {
-	    /* only an implicit cast is allowed */
-	    break;
-	}
-	/* fall through */
     default:
 	return FALSE;
     }
-
-    return TRUE;
 }
 
 /*

@@ -104,9 +104,7 @@ driver, mostly to translate pathnames.
 
 	Called in an object which has just been cloned, or if it is not a
 	clone, just before a function is called in it for the first time.
-	The actual name of this function is configurable.  Note that the
-	driver can call this function even if it is static and in the auto
-	object.
+	The actual name of this function is configurable.
 
  - in the user object (returned by driver->telnet_connect() or
    driver->binary_connect()):

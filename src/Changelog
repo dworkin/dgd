@@ -820,3 +820,4 @@ DGD 1.1
    result in user command starvation.
  - Ignore NUL characters in telnet input.
  - Fixed another array exporting bug.
+ - foo() = bar; could crash the system.

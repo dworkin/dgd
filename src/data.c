@@ -1483,12 +1483,9 @@ Uint t;
 
     list = arr_new((long) count);
     elts = list->elts;
-    for (n = count, v = elts; n > 0; --n) {
-	(v++)->type = T_INVALID;
-    }
-
     max_args = conf_array_size() - 3;
-    for (co = data->callouts; count > 0; co++) {
+
+    for (co = data->callouts; count > 0; co++, --count) {
 	if (co->val[0].type != T_INVALID) {
 	    size = co->nargs;
 	    if (size > max_args) {
@@ -1537,7 +1534,6 @@ Uint t;
 	    /* put in list */
 	    elts->type = T_ARRAY;
 	    arr_ref((elts++)->u.array = a);
-	    --count;
 	}
     }
 

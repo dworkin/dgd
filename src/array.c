@@ -316,6 +316,7 @@ register array *a1, *a2;
     a = arr_new((long) a1->size + a2->size);
     copy(a->elts, d_get_elts(a1), a1->size);
     copy(a->elts + a1->size, d_get_elts(a2), a2->size);
+    d_ref_imports(a);
 
     return a;
 }
@@ -463,6 +464,7 @@ array *a1, *a2;
 	 */
 	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a1->size);
+	d_ref_imports(a3);
 	return a3;
     }
 
@@ -515,6 +517,8 @@ array *a1, *a2;
 	FREE(a3->elts);
 	a3->elts = (value *) NULL;
     }
+
+    d_ref_imports(a3);
     return a3;
 }
 
@@ -579,6 +583,8 @@ array *a1, *a2;
 	FREE(a3->elts);
 	a3->elts = (value *) NULL;
     }
+
+    d_ref_imports(a3);
     return a3;
 }
 
@@ -598,12 +604,14 @@ array *a1, *a2;
 	/* ({ }) | array */
 	a3 = arr_new((long) a2->size);
 	copy(a3->elts, d_get_elts(a2), a3->size);
+	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
 	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a3->size);
+	d_ref_imports(a3);
 	return a3;
     }
 
@@ -655,6 +663,8 @@ array *a1, *a2;
     copy(a3->elts, a1->elts, size);
     copy(a3->elts + size, v3, n);
     AFREE(v3);
+
+    d_ref_imports(a3);
     return a3;
 }
 
@@ -676,12 +686,14 @@ array *a1, *a2;
 	/* ({ }) ^ array */
 	a3 = arr_new((long) a2->size);
 	copy(a3->elts, d_get_elts(a2), a3->size);
+	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
 	a3 = arr_new((long) a1->size);
 	copy(a3->elts, d_get_elts(a1), a3->size);
+	d_ref_imports(a3);
 	return a3;
     }
 
@@ -766,6 +778,8 @@ array *a1, *a2;
     AFREE(v3);
     AFREE(v2);
     AFREE(v1);
+
+    d_ref_imports(a3);
     return a3;
 }
 
@@ -812,6 +826,7 @@ register long l1, l2;
 
     range = arr_new(l2 - l1 + 1);
     copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
+    d_ref_imports(range);
     return range;
 }
 
@@ -1120,6 +1135,8 @@ array *m1, *m2;
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
     }
+
+    d_ref_imports(m3);
     return m3;
 }
 
@@ -1144,6 +1161,7 @@ array *m1, *a2;
     if ((size=a2->size) == 0) {
 	/* subtract empty array */
 	copy(m3->elts, m1->elts, m1->size);
+	d_ref_imports(m3);
 	return m3;
     }
 
@@ -1213,6 +1231,8 @@ array *m1, *a2;
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
     }
+
+    d_ref_imports(m3);
     return m3;
 }
 
@@ -1303,6 +1323,8 @@ array *m1, *a2;
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
     }
+
+    d_ref_imports(m3);
     return m3;
 }
 
@@ -1550,6 +1572,7 @@ array *m;
 	*v1++ = *v2;
     }
 
+    d_ref_imports(indices);
     return indices;
 }
 
@@ -1572,5 +1595,6 @@ array *m;
 	*v1++ = *v2;
     }
 
+    d_ref_imports(values);
     return values;
 }
