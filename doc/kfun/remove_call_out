@@ -11,4 +11,4 @@ DESCRIPTION
 	scheduled call to function in the current object, return -1.
 
 SEE ALSO
-	kfun/call_out, kfun/find_call_out
+	kfun/call_out
