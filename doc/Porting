@@ -1,15 +1,35 @@
-   The platform must meet the following requirements:
+   To compile DGD, you will have to set HOST in src/Makefile to the
+proper value:
+SUNOS4		SunOS 4.x, the default.  Should compile immediately with gcc.
+MINIX_68K	Minix 1.5 for 68K computers, probably works with Minix 1.6
+		as well.  Copy src/host/minix68k/Makefile to src/host.
+ATARI_ST	Atari ST with MiNT and gcc.  See src/host/atarist/README.
+GENERIC_BSD	BSD Unix.  Copy src/host/Makefile.bsd to src/host/Makefile.
+GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
+BSD386		The same as GENERIC_BSD; set LIBS to -lcrypt.
+LINUX		The same as GENERIC_SYSV.
 
- - Shorts should be 2 bytes wide.
- - Integers should be either 2 or 4 bytes wide.
- - Longs should be at least 4 bytes wide.
- - Two's complement should be used to represent negative numbers.
- - The value of NULL must be 0.
+   For other platforms, you can either try to use the closest of the above,
+or add your own host support to the src/host.h file.  There are some systems
+which I don't support directly yet, but for which porting is easy:
+NeXT	use GENERIC_BSD, but in host/Makefile replace dirent.* by direct.*
+Solaris	use GENERIC_SYSV, set LIBS to -lsocket -lnsl
+ULTRIX	use GENERIC_BSD, but define ALLOCA as ALLOC and AFREE as FREE
+AIX	use GENERIC_SYSV, but change the definitions of UCHAR and SCHAR to
+	the outcommented versions in the MINIX_68K entry (AIX characters
+	are unsigned), also add #include <sys/select.h> to host/unix/connect.c
 
-   Machine dependent stuff should be restricted to the host.h file and
-possibly additional files in the host subdirectory.  At present, I only
-have definitions for MINIX_68K (Minix 1.5 for 68000 computers, probably
-works for Minix 1.6 as well) and SUN.  Porting to other platforms shouldn't
-be too difficult.
-
-   I will port the driver to Mac, PC, Atari ST and Sinclair QL myself.
+   Things may become more difficult if you want to port DGD to a different
+type of host.  I planned a port to the Mac and MSDOS myself, but so far
+haven't been able to do this because I don't have those machines; I do
+have an XT but DGD is now too big to fit in 640K, alas (this also means that
+I won't do the planned port to the Sinclair QL).  If you want to do your own
+port and you need some advice, contact me.
+   In general, platforms must meet the following requirements:
+ - shorts should be 2 bytes wide
+ - integers should be either 2 or 4 bytes wide
+ - longs should be at least as wide as pointers
+ - two's complement should be used to represent negative numbers
+ - the value of NULL must be 0.
+For each port, one should only have to modify src/host.h, the makefiles and
+the files in the src/host directory.
