@@ -30,7 +30,7 @@ static receive_message(string str)
     string head;
 
     buffer += str;
-    while (buffer != "" && this_object()) {
+    while (sscanf(buffer, "%*s\n") != 0 && this_object()) {
 	if (linemode) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {

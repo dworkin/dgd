@@ -15,6 +15,10 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_WM_CREATE()
 	ON_WM_SIZE()
 	ON_WM_DESTROY()
+	ON_COMMAND(ID_EDIT_COPY, OnEditCopy)
+	ON_COMMAND(ID_EDIT_SELECT_ALL, OnEditSelectAll)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_COPY, OnUpdateEditCopy)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_SELECT_ALL, OnUpdateEditSelectAll)
 	//}}AFX_MSG_MAP
     ON_COMMAND(ID_DGD_MESG, AddMessage)
 END_MESSAGE_MAP()
@@ -30,9 +34,9 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
     GetClientRect(&rect);
     listbox = new CListBox();
-    listbox->Create(LBS_NOINTEGRALHEIGHT | LBS_USETABSTOPS | WS_HSCROLL |
-		    WS_VSCROLL,
+    listbox->Create(LBS_EXTENDEDSEL | LBS_NOINTEGRALHEIGHT | LBS_USETABSTOPS | WS_VSCROLL,
 		    rect, this, 0);
+    listbox->InitStorage(MAXITEMS, MAXITEMS * 100);
     listbox->SetFont(CFont::FromHandle((HFONT) GetStockObject(ANSI_FIXED_FONT)));
     listbox->ShowWindow(SW_SHOW);
     lsize = 0;
@@ -58,6 +62,50 @@ void CMainFrame::OnDestroy()
     delete listbox;
 }
 
+void CMainFrame::OnEditCopy()
+{
+    int n, i, items[MAXITEMS];
+    CString str, tmp;
+    HGLOBAL data;
+    LPVOID mem;
+
+    if (!OpenClipboard() || !EmptyClipboard()) {
+	return;
+    }
+
+    n = listbox->GetSelItems(MAXITEMS, items);
+    str = "";
+    for (i = 0; i < n; i++) {
+	listbox->GetText(items[i], tmp);
+	str += tmp + "\r\n";
+    }
+
+    data = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, str.GetLength() + 1);
+    mem = GlobalLock(data);
+    strcpy((char *) mem, str);
+    GlobalUnlock(data);
+
+    if (SetClipboardData(CF_TEXT, data) == (HANDLE) NULL) {
+	GlobalFree(data);
+    }
+    CloseClipboard();
+}
+
+void CMainFrame::OnEditSelectAll()
+{
+    listbox->SetSel(-1);
+}
+
+void CMainFrame::OnUpdateEditCopy(CCmdUI* pCmdUI)
+{
+    pCmdUI->Enable(listbox->GetSelCount() != 0);
+}
+
+void CMainFrame::OnUpdateEditSelectAll(CCmdUI* pCmdUI)
+{
+    pCmdUI->Enable(lsize != 0);
+}
+
 void CMainFrame::AddMessage()
 {
     char *mesg, *p;
@@ -79,7 +127,7 @@ void CMainFrame::AddMessage()
 	}
 	lldone = (p != NULL);
 
-	while (listbox->AddString(mesg) == LB_ERRSPACE) {
+	while (lsize == MAXITEMS || listbox->AddString(mesg) == LB_ERRSPACE) {
 	    listbox->DeleteString(0);
 	    --lsize;
 	}
@@ -88,7 +136,6 @@ void CMainFrame::AddMessage()
 	mesg = p;
     }
 
-    listbox->SetCurSel(-1);
     listbox->SetTopIndex(lsize - 1);
 }
 

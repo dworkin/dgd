@@ -1,3 +1,101 @@
-This release of DGD, is intended to be the last public release before 1.1,
-which will add no major new features.  It includes a partially completed
-kernel lib which will be completed for 1.1.
+DGD (which stands for "Dworkin's Generic Driver") is a rewrite from scratch
+of the popular LPMud server.  It runs on Unix, Mac and Win32.  A minimal
+development library is included with DGD.
+
+The latest version of DGD can be found at
+ftp://ftp.lysator.liu.se/pub/lpmud/drivers/dgd/
+
+---
+
+Most important changes since 1.0.9:
+
+ - lock() has been replaced with a new LPC construct, rlimits.
+
+    rlimits (stackdepth; ticks) { code; }
+
+   The code between the curly brackets is executed with the specified limits
+   on function call depth and ticks (= execution cost).  The value 0 can
+   be used to mean "no change", and -1 means unlimited.  All calls are
+   started without limits, so be sure to use rlimits in the proper top-level
+   functions (see doc/Introduction for a list of functions called by the
+   driver).
+ - DGD has been ported to Win32 (95, NT) and MacOS.
+ - It is now possible to recompile an object without first destructing it,
+   as long as the object is not inherited.  This has the effect of replacing
+   the program for the object as soon has the current thread has finished.
+   Variables are preserved if they keep the same name and type.
+ - A kernel LPC library has been added.  See doc/mud/kernel/overview for
+   an introduction.
+ - The commercial status of DGD has changed.  See doc/Commercial for details.
+
+---
+
+List of incompatibilities between 1.0.9 and 1.1:
+
+ - The config parameters `call_stack', `value_stack', `reserved_cstack',
+   `reserved_vstack' and `exec_cost' are obsolete and have been removed.
+ - driver->path_ed_read() and driver->path_ed_write() have been renamed to
+   driver->path_read() and driver->path_write(), respectively.
+ - driver->log_error() has been renamed to driver->runtime_error().  A
+   third argument has been added to runtime_error(), the number of ticks
+   left at the time the error occurred.
+ - driver->compile_log() has been replaced with
+   driver->compile_error(string file, int line, string error).
+ - When the last instance of a program is removed, the function
+   remove_program(string program, int timestamp, int index) is called in
+   the driver object.
+ - driver->path_object() has been replaced by call_object(), which returns
+   an object.
+ - driver->path_inherit() has been replaced by inherit_program(), which
+   returns an object.
+ - driver->compile_object() has been removed.  You can do your own object
+   renaming by redefining find_object() and adjusting driver->call_object().
+ - driver->interrupt() is called if the server process is terminated from
+   the outside.
+ - lock() has been replaced with rlimits.  Replace
+
+    lock(code)
+
+   with
+
+    rlimits (-1; -1) { code; }
+
+ - The functions driver->compile_rlimits() and driver->runtime_rlimits()
+   have been added to compile access to rlimits at compile time and runtime,
+   respectively.
+ - catch() doesn't behave differently anymore when used by the driver object.
+   The old special behaviour can be simulated with catch + rlimits.
+ - Objects are no longer automatically compiled on first reference.  In
+   driver->call_object(), use compile_object() to load the object if needed.
+ - find_object() doesn't call driver->path_object() to translate the path,
+   anymore.
+ - STRING->function() from the auto object now also calls driver->call_object()
+   to get the object named by STRING.  Replace such calls in the auto object
+   by
+
+    ::find_object(STRING)->function();
+
+ - function_object() doesn't find static functions in other objects anymore.
+ - clone_object() now takes an object as argument.  Redefine it in the auto
+   object:
+
+    object clone_object(string path)
+    {
+	object obj;
+
+	obj = ::find_object(path);
+	if (!obj) {
+	    obj = compile_object(path);
+	}
+	return ::clone_object(obj);
+    }
+
+ - The kfun get_exec_cost() has been removed.  Use status()[ST_TICKS] instead.
+ - MAX_ARRAY_SIZE and MAX_MAPPING_SIZE are no longer defined in limits.h.
+   Use status()[ST_ARRAYSIZE] instead.
+ - send_message() now returns the number of bytes that could be sent in
+   one call.  If this is less than the length of the string sent, the
+   remainder is buffered and sent later.  Once the last bit of buffered
+   data has been sent, message_done() is called in the sending object.
+ - State dumps made by DGD 1.0.9 cannot be restored by DGD 1.1.  If you
+   depend on a state dump made by DGD 1.0.9, contact me (felix@simplex.nl).

@@ -11,11 +11,11 @@ LastPage=0
 ClassCount=3
 Class1=CWindgdApp
 Class2=CAboutDlg
+Class3=CMainFrame
 
 ResourceCount=2
-Resource1=IDD_ABOUTBOX
-Class3=CMainFrame
-Resource2=IDR_MAINFRAME
+Resource1=IDR_MAINFRAME
+Resource2=IDD_ABOUTBOX
 
 [CLS:CWindgdApp]
 Type=0
@@ -62,26 +62,28 @@ Command5=ID_EDIT_UNDO
 Command6=ID_EDIT_CUT
 Command7=ID_EDIT_COPY
 Command8=ID_EDIT_PASTE
-Command9=ID_APP_ABOUT
-CommandCount=9
+Command9=ID_EDIT_SELECT_ALL
+Command10=ID_APP_ABOUT
+CommandCount=10
 
 [ACL:IDR_MAINFRAME]
 Type=1
 Class=CMainFrame
-Command1=ID_DGD_CONFIG
-Command2=ID_DGD_RESTORE
-Command3=ID_DGD_START
-Command4=ID_EDIT_UNDO
-Command5=ID_EDIT_CUT
-Command6=ID_EDIT_COPY
-Command7=ID_EDIT_PASTE
-Command8=ID_EDIT_UNDO
-Command9=ID_EDIT_CUT
-Command10=ID_EDIT_COPY
-Command11=ID_EDIT_PASTE
-Command12=ID_NEXT_PANE
-Command13=ID_PREV_PANE
-CommandCount=13
+Command1=ID_EDIT_SELECT_ALL
+Command2=ID_EDIT_COPY
+Command3=ID_DGD_CONFIG
+Command4=ID_DGD_RESTORE
+Command5=ID_DGD_START
+Command6=ID_EDIT_PASTE
+Command7=ID_EDIT_UNDO
+Command8=ID_EDIT_CUT
+Command9=ID_NEXT_PANE
+Command10=ID_PREV_PANE
+Command11=ID_EDIT_COPY
+Command12=ID_EDIT_PASTE
+Command13=ID_EDIT_CUT
+Command14=ID_EDIT_UNDO
+CommandCount=14
 
 [CLS:CMainFrame]
 Type=0

@@ -1,0 +1,2 @@
+To compile DGD on Win32, you'll need Visual C++ 4.0 or newer.  Simply
+double-click the file windgd.mak to start.

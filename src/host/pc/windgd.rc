@@ -91,6 +91,8 @@ BEGIN
         MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
         MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
         MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "Select &All\tCtrl+A",         ID_EDIT_SELECT_ALL
     END
     POPUP "&Help"
     BEGIN
@@ -106,19 +108,20 @@ END
 
 IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE 
 BEGIN
-    "O",            ID_DGD_CONFIG,          VIRTKEY, CONTROL
-    "R",            ID_DGD_RESTORE,         VIRTKEY, CONTROL
-    "S",            ID_DGD_START,           VIRTKEY, CONTROL
-    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL
-    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL
-    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
-    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL
-    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT
-    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT
-    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL
-    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT
-    VK_F6,          ID_NEXT_PANE,           VIRTKEY 
-    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT
+    "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_DGD_CONFIG,          VIRTKEY, CONTROL, NOINVERT
+    "R",            ID_DGD_RESTORE,         VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_DGD_START,           VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
 END
 
 
@@ -133,7 +136,7 @@ CAPTION "About DGD"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,14,21,20
-    LTEXT           "DGD version 1.0.91",IDC_STATIC,40,10,75,8,SS_NOPREFIX
+    LTEXT           "DGD version 1.1",IDC_STATIC,40,10,75,8,SS_NOPREFIX
     LTEXT           "© 1993 - 1997 BeeHive Internet Technologies, Inc. All Rights Reserved.",
                     IDC_STATIC,40,23,164,17
     DEFPUSHBUTTON   "OK",IDOK,212,7,32,14,WS_GROUP
@@ -161,8 +164,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,91,0
- PRODUCTVERSION 1,0,91,0
+ FILEVERSION 1,1,0,0
+ PRODUCTVERSION 1,1,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -179,12 +182,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "BeeHive Internet Technologies, Inc.\0"
             VALUE "FileDescription", "DGD Application\0"
-            VALUE "FileVersion", "1.0.91\0"
+            VALUE "FileVersion", "1.1\0"
             VALUE "InternalName", "DGD\0"
-            VALUE "LegalCopyright", "© 1993, 1994, 1995, 1996 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
+            VALUE "LegalCopyright", "© 1993 - 1997 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
             VALUE "OriginalFilename", "DGD.EXE\0"
             VALUE "ProductName", "DGD Application\0"
-            VALUE "ProductVersion", "1.0.91\0"
+            VALUE "ProductVersion", "1.1\0"
         END
     END
     BLOCK "VarFileInfo"

@@ -1122,3 +1122,4 @@ DGD 1.1
  - Fixed a <very> rare bug that might occur when objects are used as mapping
    indices.
  - Made map_sizeof() a cheaper operation.
+ - PC version: enabled the edit menu.
