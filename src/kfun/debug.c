@@ -1,11 +1,13 @@
-# ifdef DEBUG
 # ifndef FUNCDEF
 # include "kfun.h"
 # include "fcontrol.h"
 # include "node.h"
 # include "compile.h"
 # include "table.h"
+# endif
 
+# ifdef DUMP_FUNCS
+# ifndef FUNCDEF
 static void showclass(class)
 register short class;
 {
@@ -29,7 +31,10 @@ char *func, *proto;
 	printf("%s, ", c_typename(PROTO_ARGS(proto)[i]));
     }
     if (i < PROTO_NARGS(proto)) {
-	printf("%s", c_typename(PROTO_ARGS(proto)[i]));
+	printf("%s", c_typename(PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
+	if (PROTO_ARGS(proto)[i] & T_ELLIPSIS) {
+	    printf("...");
+	}
     }
     putchar(')');
 }
@@ -103,10 +108,6 @@ control *ctrl;
 	    c2 = ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].obj->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
 	    name = d_get_strconst(c2, f->inherit, f->index)->text;
-	    if (!(f->class & C_UNDEFINED) &&
-		ctrl_symb(ctrl, name) != &ctrl->symbols[i]) {
-		printf("[LOOKUP FAILED] ");
-	    }
 	    show_proto(name, d_get_prog(c2) + f->offset);
 	    putchar('\n');
 	}
@@ -344,6 +345,12 @@ int func;
 	    show_instr(buffer);
 	    break;
 
+	case I_SPREAD:
+	    codesize = 2;
+	    sprintf(buffer, "SPREAD %d", FETCH1S(pc));
+	    show_instr(buffer);
+	    break;
+
 	case I_CHECK_INT:
 	    codesize = 1;
 	    show_instr("CHECK_INT");
@@ -377,107 +384,111 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_SWITCH_INT:
-	    codesize = 4;
-	    FETCH2U(pc, u);
-	    sz = FETCH1U(pc);
-	    sprintf(buffer, "SWITCH_INT %u", u);
-	    show_instr(buffer);
-	    codesize = --u * (sz + 2) + 2;
-	    a = addr;
-	    sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
-	    show_instr(buffer);
-	    a += 2;
-	    while (u > 0) {
-		long l;
-
-		switch (sz) {
-		case 4:
-		    FETCH4S(pc, l); break;
-		case 3:
-		    FETCH3S(pc, l); break;
-		case 2:
-		    FETCH2S(pc, l); break;
-		case 1:
-		    l = FETCH1S(pc); break;
-		}
-		sprintf(buffer, " CASE %ld: %04x", l, a + FETCH2S(pc, u2) + sz);
+	case I_SWITCH:
+	    switch (FETCH1U(pc)) {
+	    case 0:
+		codesize = 4;
+		FETCH2U(pc, u);
+		sz = FETCH1U(pc);
+		sprintf(buffer, "SWITCH INT %u", u);
 		show_instr(buffer);
-		a += 2 + sz;
-		--u;
-	    }
-	    break;
-
-	case I_SWITCH_RANGE:
-	    codesize = 4;
-	    FETCH2U(pc, u);
-	    sz = FETCH1U(pc);
-	    sprintf(buffer, "SWITCH_RANGE %u", u);
-	    show_instr(buffer);
-	    codesize = --u * (2 * sz + 2) + 2;
-	    a = addr;
-	    sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
-	    show_instr(buffer);
-	    a += 2;
-	    while (u > 0) {
-		register long h;
-
-		switch (sz) {
-		case 4:
-		    FETCH4S(pc, l); break;
-		case 3:
-		    FETCH3S(pc, l); break;
-		case 2:
-		    FETCH2S(pc, l); break;
-		case 1:
-		    l = FETCH1S(pc); break;
-		}
-		switch (sz) {
-		case 4:
-		    FETCH4S(pc, h); break;
-		case 3:
-		    FETCH3S(pc, h); break;
-		case 2:
-		    FETCH2S(pc, h); break;
-		case 1:
-		    h = FETCH1S(pc); break;
-		}
-		sprintf(buffer, " CASE %ld .. %ld: %04x", l, h,
-			a + FETCH2U(pc, u2) + 2 * sz);
-		show_instr(buffer);
-		a += 2 + sz * 2;
-		--u;
-	    }
-	    break;
-
-	case I_SWITCH_STR:
-	    codesize = 4;
-	    FETCH2U(pc, u);
-	    sprintf(buffer, "SWITCH_STR %u", u);
-	    show_instr(buffer);
-	    codesize = --u * 5 + 2;
-	    a = addr - 1;
-	    sprintf(buffer, " DEFAULT: %04x", a + FETCH2U(pc, u2));
-	    show_instr(buffer);
-	    a += 3;
-	    if (FETCH1U(pc) == 0) {
-		codesize -= 3;
-		sprintf(buffer, " CASE 0: %04x", a + FETCH2S(pc, u2));
+		codesize = --u * (sz + 2) + 3;
+		a = addr + 1;
+		sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
 		show_instr(buffer);
 		a += 2;
-		--u;
-	    }
-	    while (u > 0) {
-		string *str;
-		int i;
+		while (u > 0) {
+		    long l;
 
-		i = FETCH1U(pc);
-		str = d_get_strconst(ctrl, i, FETCH2S(pc, u2));
-		sprintf(buffer, " CASE \"%s\": %04x", str->text,
-			a + FETCH2U(pc, u2) + 3);
+		    switch (sz) {
+		    case 4:
+			FETCH4S(pc, l); break;
+		    case 3:
+			FETCH3S(pc, l); break;
+		    case 2:
+			FETCH2S(pc, l); break;
+		    case 1:
+			l = FETCH1S(pc); break;
+		    }
+		    sprintf(buffer, " CASE %ld: %04x", l, a + FETCH2S(pc, u2) + sz);
+		    show_instr(buffer);
+		    a += 2 + sz;
+		    --u;
+		}
+		break;
+
+	    case 1:
+		codesize = 4;
+		FETCH2U(pc, u);
+		sz = FETCH1U(pc);
+		sprintf(buffer, "SWITCH RANGE %u", u);
 		show_instr(buffer);
-		a += 5;
-		--u;
+		codesize = --u * (2 * sz + 2) + 3;
+		a = addr + 1;
+		sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
+		show_instr(buffer);
+		a += 2;
+		while (u > 0) {
+		    register long h;
+
+		    switch (sz) {
+		    case 4:
+			FETCH4S(pc, l); break;
+		    case 3:
+			FETCH3S(pc, l); break;
+		    case 2:
+			FETCH2S(pc, l); break;
+		    case 1:
+			l = FETCH1S(pc); break;
+		    }
+		    switch (sz) {
+		    case 4:
+			FETCH4S(pc, h); break;
+		    case 3:
+			FETCH3S(pc, h); break;
+		    case 2:
+			FETCH2S(pc, h); break;
+		    case 1:
+			h = FETCH1S(pc); break;
+		    }
+		    sprintf(buffer, " CASE %ld .. %ld: %04x", l, h,
+			    a + FETCH2U(pc, u2) + 2 * sz);
+		    show_instr(buffer);
+		    a += 2 + sz * 2;
+		    --u;
+		}
+		break;
+
+	    case 2:
+		codesize = 4;
+		FETCH2U(pc, u);
+		sprintf(buffer, "SWITCH STR %u", u);
+		show_instr(buffer);
+		codesize = --u * 5 + 3;
+		a = addr;
+		sprintf(buffer, " DEFAULT: %04x", a + FETCH2U(pc, u2));
+		show_instr(buffer);
+		a += 3;
+		if (FETCH1U(pc) == 0) {
+		    codesize -= 3;
+		    sprintf(buffer, " CASE 0: %04x", a + FETCH2S(pc, u2));
+		    show_instr(buffer);
+		    a += 2;
+		    --u;
+		}
+		while (u > 0) {
+		    string *str;
+		    int i;
+
+		    i = FETCH1U(pc);
+		    str = d_get_strconst(ctrl, i, FETCH2S(pc, u2));
+		    sprintf(buffer, " CASE \"%s\": %04x", str->text,
+			    a + FETCH2U(pc, u2) + 3);
+		    show_instr(buffer);
+		    a += 5;
+		    --u;
+		}
+		break;
 	    }
 	    break;
 
@@ -547,6 +558,11 @@ int func;
 	    show_instr("LOCK");
 	    break;
 
+	case I_RETURN_ZERO:
+	    codesize = 1;
+	    show_instr("RETURN_ZERO");
+	    break;
+
 	case I_RETURN:
 	    codesize = 1;
 	    show_instr("RETURN");
@@ -605,7 +621,7 @@ int kf_dump_function()
     return 0;
 }
 # endif
-# endif /* DEBUG */
+# endif /* DUMP_FUNCS */
 
 
 /* the rusage code is borrowed from Amylaar's 3.2@ driver */
