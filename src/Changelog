@@ -880,3 +880,15 @@ DGD 1.1
  - Run callouts less often if they take more than half of the available time.
    May be useful for muds on extremely heavily loaded hosts.
  - After runtime_error() was called, no resource limits would be set.
+ - Renamed path_ed_read() and path_ed_write() to path_read() and path_write(),
+   respectively.
+ - When the last reference to a program is removed, call
+   driver->remove_program(objname).  The call is done with rlimits -1; -1 and
+   errors will be caught and ignored.
+ - Removed driver->path_object() and driver->compile_object().
+ - Added kfun compile_object(name): compile the named object, which must not
+   already exist.
+ - clone_object() now takes a (master) object as an argument.
+ - find_object() no longer calls driver->path_object() to translate a path.
+ - call_other() now calls driver->call_object() to translate a string to an
+   object.

@@ -99,6 +99,50 @@ control *ctrl;
 }
 
 /*
+ * NAME:	object->delete()
+ * DESCRIPTION:	delete a reference to an object, and put it in the deleted
+ *		list if it was the last reference
+ */
+static void o_delete(o)
+register object *o;
+{
+    register int i;
+    register dinherit *inh;
+
+    if (--(o->u.ref) != 0) {
+	/* last reference not removed yet */
+	return;
+    }
+
+    /* callback to the system */
+    (--sp)->type = T_STRING;
+    str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1));
+    sp->u.string->text[0] = '/';
+    strcpy(sp->u.string->text + 1, o->chain.name);
+    if (i_call_critical("remove_program", 1)) {
+	i_del_value(sp++);
+    } /* else error: ignore */
+
+    /* free object name */
+    FREE(o->chain.name);
+    o->chain.name = (char *) NULL;
+
+    /* remove references to inherited objects too */
+    if (o->ctrl == (control *) NULL) {
+	o->ctrl = d_load_control(o);
+    }
+    inh = o->ctrl->inherits;
+    i = o->ctrl->ninherits;
+    while (--i > 0) {
+	o_delete((inh++)->obj);
+    }
+
+    /* put in deleted list */
+    o->u.master = dest_obj;
+    dest_obj = o;
+}
+
+/*
  * NAME:	object->del()
  * DESCRIPTION:	delete an object
  */
@@ -111,9 +155,19 @@ register object *o;
     }
     o->count = 0;
 
-    if (o->chain.name != (char *) NULL) {
+    if (o->flags & O_MASTER) {
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name) = o->chain.next;
+
+	o_delete(o);
+    } else {
+	o_delete(o->u.master);
+	o->u.ref = 0;
+
+	/* put clones in free list right away */
+	o->chain.next = (hte *) free_obj;
+	free_obj = o;
+	nfreeobjs++;
     }
 
     /* put in clean list */
@@ -153,33 +207,6 @@ register object *o;
 	sprintf(name, "%s#%u", o->u.master->chain.name, o->index);
 	return name;
     }
-}
-
-/*
- * NAME:	object->rename()
- * DESCRIPTION:	rename an object
- */
-void o_rename(o, name)
-register object *o;
-char *name;
-{
-    hte **h;
-
-    if (o_find(name) != (object *) NULL) {
-	error("Rename to existing object");
-    }
-    if (o->chain.name != (char *) NULL) {
-	/* remove from object name hash table */
-	*ht_lookup(htab, o->chain.name) = o->chain.next;
-	FREE(o->chain.name);
-    }
-    /* put new name in object name hash table */
-    m_static();
-    strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
-    m_dynamic();
-    h = ht_lookup(htab, name);
-    o->chain.next = *h;
-    *h = (hte *) o;
 }
 
 /*
@@ -280,48 +307,14 @@ register object *o;
 }
 
 /*
- * NAME:	object->delete()
- * DESCRIPTION:	delete a reference to an object, and put it in the deleted
- *		list if it was the last reference
- */
-static void o_delete(o)
-register object *o;
-{
-    if (o->flags & O_MASTER) {
-	register int i;
-	register dinherit *inh;
-
-	if (--(o->u.ref) != 0) {
-	    /* last reference not removed yet */
-	    return;
-	}
-	if (o->ctrl == (control *) NULL) {
-	    o->ctrl = d_load_control(o);
-	}
-	/* remove references to inherited objects too */
-	inh = o->ctrl->inherits;
-	i = o->ctrl->ninherits;
-	while (--i > 0) {
-	    o_delete((inh++)->obj);
-	}
-    } else {
-	o_delete(o->u.master);
-    }
-
-    /* put in deleted list */
-    o->chain.next = (hte *) dest_obj;
-    dest_obj = o;
-}
-
-/*
  * NAME:	object->clean()
  * DESCRIPTION:	deal with destructed objects
  */
 void o_clean()
 {
-    register object *o, *next;
+    register object *o;
 
-    for (o = clean_obj; o != (object *) NULL; o = next) {
+    for (o = clean_obj; o != (object *) NULL; o = (object *) o->chain.next) {
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
@@ -330,25 +323,15 @@ void o_clean()
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
 	}
-
-	next = (object *) o->chain.next;
-	o_delete(o);
     }
     clean_obj = (object *) NULL;
 
-    for (o = dest_obj; o != (object *) NULL; o = next) {
-	/* free control block (if it exists) */
-	if (o->flags & O_MASTER) {
-	    d_del_control(o_control(o));
-	}
+    for (o = dest_obj; o != (object *) NULL; o = o->u.master) {
+	/* free control block */
+	d_del_control(o_control(o));
 
-	if (o->chain.name != (char *) NULL) {
-	    FREE(o->chain.name);		/* free object name */
-	    o->chain.name = (char *) NULL;
-	}
-
-	next = (object *) o->chain.next;
-	o->chain.next = (hte *) free_obj;	/* put object in free list */
+	/* put object in free list */
+	o->chain.next = (hte *) free_obj;
 	free_obj = o;
 	nfreeobjs++;
     }

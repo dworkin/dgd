@@ -31,7 +31,6 @@ extern object		  *o_new	P((char*, object*, struct _control_*));
 extern void		   o_del	P((object*));
 extern object		  *o_object	P((unsigned int, Int));
 extern char		  *o_name	P((object*));
-extern void		   o_rename	P((object*, char*));
 extern object		  *o_find	P((char*));
 extern struct _control_	  *o_control	P((object*));
 extern struct _dataspace_ *o_dataspace	P((object*));

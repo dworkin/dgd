@@ -11,6 +11,35 @@
 
 
 # ifdef FUNCDEF
+FUNCDEF("compile_object", kf_compile_object, pt_compile_object)
+# else
+char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+
+/*
+ * NAME:	kfun->compile_object()
+ * DESCRIPTION:	compile an object
+ */
+int kf_compile_object()
+{
+    char *file;
+    object *obj;
+
+    file = path_resolve(sp->u.string->text);
+    if (o_find(file) != (object *) NULL) {
+	error("/%s already exists", file);
+    }
+    obj = c_compile(file);
+    str_del(sp->u.string);
+    sp->type = T_OBJECT;
+    sp->oindex = obj->index;
+    sp->u.objcnt = obj->count;
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("call_other", kf_call_other, pt_call_other)
 # else
 char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_MIXED, 3,
@@ -34,16 +63,15 @@ int nargs;
     val = &sp[nargs - 1];
     switch (val->type) {
     case T_STRING:
-	file = path_object(val->u.string->text);
-	if (file == (char *) NULL) {
+	*--sp = *val;
+	val->type = T_INT;	/* erase old copy */
+	call_driver_object("call_object", 1);
+	if (sp->type != T_OBJECT) {
+	    i_del_value(sp++);
 	    return 1;
 	}
-	obj = o_find(file);
-	if (obj == (object *) NULL) {
-	    /* object isn't loaded: compile it */
-	    obj = c_compile(file);
-	}
-	str_del(val->u.string);
+	obj = o_object(sp->oindex, sp->u.objcnt);
+	sp++;
 	break;
 
     case T_OBJECT:
@@ -164,7 +192,7 @@ int kf_call_trace()
 # ifdef FUNCDEF
 FUNCDEF("clone_object", kf_clone_object, pt_clone_object)
 # else
-char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->clone_object()
@@ -173,26 +201,14 @@ char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 int kf_clone_object()
 {
     register object *obj;
-    char *file;
 
-    file = path_object(sp->u.string->text);
-    if (file == (char *) NULL) {
-	return 1;
-    }
-
-    obj = o_find(file);
-    if (obj == (object *) NULL) {
-	obj = c_compile(file);
-    }
+    obj = o_object(sp->oindex, sp->u.objcnt);
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
-    str_del(sp->u.string);
-    sp->type = T_OBJECT;
     obj = o_new((char *) NULL, obj, (control *) NULL);
     sp->oindex = obj->index;
     sp->u.objcnt = obj->count;
-    i_call(obj, "", FALSE, 0);	/* cause creator to be called */
     return 0;
 }
 # endif
@@ -259,16 +275,10 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
  */
 int kf_find_object()
 {
-    char *name;
     object *obj;
 
-    name = path_object(sp->u.string->text);
-    if (name == (char *) NULL) {
-	return 1;
-    }
-
+    obj = o_find(path_resolve(sp->u.string->text));
     str_del(sp->u.string);
-    obj = o_find(name);
     if (obj != (object *) NULL) {
 	sp->type = T_OBJECT;
 	sp->oindex = obj->index;

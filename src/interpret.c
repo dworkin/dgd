@@ -2051,6 +2051,42 @@ array *i_call_trace()
 }
 
 /*
+ * NAME:	interpret->call_critical()
+ * DESCRIPTION:	Call a function in the driver object at a critical moment.
+ *		The function is called with rlimits (-1; -1) and errors
+ *		caught.
+ */
+bool i_call_critical(func, narg)
+char *func;
+int narg;
+{
+    bool xnodepth, xnoticks, ok;
+    Int xticks;
+
+    xnodepth = nodepth;
+    xnoticks = noticks;
+    xticks = ticks;
+    nodepth = TRUE;
+    noticks = TRUE;
+
+    sp += narg;		/* so the error context knows what to pop */
+    if (ec_push((ec_ftn) NULL)) {
+	ok = FALSE;
+    } else {
+	sp -= narg;	/* recover arguments */
+	call_driver_object(func, narg);
+	ec_pop();
+	ok = TRUE;
+    }
+
+    nodepth = xnodepth;
+    noticks = xnoticks;
+    ticks = xticks;
+
+    return ok;
+}
+
+/*
  * NAME:	interpret->runtime_error()
  * DESCRIPTION:	handle a runtime error
  */
@@ -2059,31 +2095,16 @@ int flag;
 {
     char *err;
 
-    if (ec_push((ec_ftn) NULL)) {
+    err = errormesg();
+    (--sp)->type = T_STRING;
+    str_ref(sp->u.string = str_new(err, (long) strlen(err)));
+    (--sp)->type = T_INT;
+    sp->u.number = flag;
+    if (!i_call_critical("runtime_error", 2)) {
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
-	bool xnodepth, xnoticks;
-	Int xticks;
-
-	xnodepth = nodepth;
-	xnoticks = noticks;
-	xticks = ticks;
-
-	nodepth = TRUE;
-	noticks = TRUE;
-	err = errormesg();
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(err, (long) strlen(err)));
-	(--sp)->type = T_INT;
-	sp->u.number = flag;
-	call_driver_object("runtime_error", 2);
 	i_del_value(sp++);
-	ec_pop();
-
-	nodepth = xnodepth;
-	noticks = xnoticks;
-	ticks = xticks;
     }
 }
 

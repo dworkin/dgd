@@ -414,42 +414,6 @@ register char *file;
 
 	if (!pp_init(file_c, paths, 1)) {
 	    ctrl_clear();
-	    if (c_autodriver() == 0) {
-		/*
-		 * Object can't be loaded.  Ask the driver object for
-		 * a replacement.
-		 */
-		(--sp)->type = T_STRING;
-		str_ref(sp->u.string = str_new((char *) NULL,
-					       strlen(c.file) + 1L));
-		sp->u.string->text[0] = '/';
-		strcpy(sp->u.string->text + 1, c.file);
-		call_driver_object("compile_object", 1);
-		if (sp->type == T_OBJECT) {
-		    register object *o;
-
-		    o = o_object(sp->oindex, sp->u.objcnt);
-		    sp++;
-		    if ((o->flags & O_AUTO) ||
-			strcmp(c.file, auto_object) == 0) {
-			error("Illegal rename of auto object");
-		    }
-		    if ((o->flags & O_DRIVER) ||
-			strcmp(c.file, driver_object) == 0) {
-			error("Illegal rename of driver object");
-		    }
-		    /*
-		     * Driver object supplied alternative.  Rename it and
-		     * return it.
-		     */
-		    o_rename(o, c.file);
-		    return o;
-		}
-		/*
-		 * not an alternative
-		 */
-		i_del_value(sp++);
-	    }
 	    error("Could not compile \"/%s.c\"", c.file);
 	}
 	if (!tk_include(path_file(include))) {
@@ -460,7 +424,6 @@ register char *file;
 
 	cg_init(c.prev != (context *) NULL);
 	if (ec_push((ec_ftn) NULL)) {
-	    c_error("error while compiling:");
 	    recursion = FALSE;
 	    pp_clear();
 	    ctrl_clear();

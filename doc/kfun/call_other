@@ -7,9 +7,8 @@ SYNOPSIS
 
 DESCRIPTION
 	Call a function in an object.  The first argument must be either an
-	object or a string.  If it is a string, path_object() will be called
-	in the driver object to translate it into an object path, and the
-	specified object will be compiled if it is not yet loaded.
+	object or a string.  If it is a string, call_object() will be called
+	in the driver object to get the corresponding object.
 	Only non-private functions can be called with call_other().  If the
 	function is static, the object in which the function is called must
 	be the same as the object from which the function is called, or the

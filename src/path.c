@@ -72,7 +72,7 @@ char *file;
     } else {
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_ed_read", 1);
+	call_driver_object("path_read", 1);
 	if (sp->type != T_STRING) {
 	    i_del_value(sp++);
 	    return (char *) NULL;
@@ -95,36 +95,12 @@ char *file;
     } else {
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_ed_write", 1);
+	call_driver_object("path_write", 1);
 	if (sp->type != T_STRING) {
 	    i_del_value(sp++);
 	    return (char *) NULL;
 	}
 	file = path_file(path_resolve(sp->u.string->text));
-	str_del((sp++)->u.string);
-	return file;
-    }
-}
-
-/*
- * NAME:	path->object()
- * DESCRIPTION:	resolve an object path
- */
-char *path_object(file)
-char *file;
-{
-    if (cframe->p_ctrl->ninherits == 1) {
-	/* driver or auto object */
-	return path_resolve(file);
-    } else {
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_object", 1);
-	if (sp->type != T_STRING) {
-	    i_del_value(sp++);
-	    return (char *) NULL;
-	}
-	file = path_resolve(sp->u.string->text);
 	str_del((sp++)->u.string);
 	return file;
     }

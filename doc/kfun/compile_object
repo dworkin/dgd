@@ -1,0 +1,14 @@
+NAME
+	compile_object - compile an object
+
+SYNOPSIS
+	object compile_object(string file)
+
+
+DESCRIPTION
+	Compile an object from a LPC file, specified by the argument string
+	with ".c" appended.  The returned object will have the argument string
+	as name.  It is an error to compile an object which already exists.
+
+SEE ALSO
+	kfun/object_name

@@ -30,23 +30,20 @@ driver, mostly to translate pathnames.
 
 	Called after the system has restarted from a state dump.
 
-    string path_ed_read(string path)
+    string path_read(string path)
 
 	Used to translate a path for an editor read command.  If 0 is
 	returned, the file cannot be read.
 
-    string path_ed_write(string path)
+    string path_write(string path)
 
 	Used to translate a path for an editor write command.  If 0 is
 	returned, the file cannot be written to.
 
-    string path_object(string path)
+    object call_object(string objname)
 
-	Used to translate a path for call_other(), clone_object() or
-	find_object().  If 0 is returned, the object cannot be used.
-	This function is only called if call_other(), clone_object()
-	or find_object() is not used by the driver object, and not
-	used from a function that is defined in the auto object.
+	Used to replace a string by an object for the first argument of
+	call_other().
 
     string path_inherit(string file, string path)
 
@@ -59,13 +56,6 @@ driver, mostly to translate pathnames.
 	Used to translate include path <path> upon compilation of the
 	object with filename <file>.  If 0 is returned, the file <path>
 	cannot be included.
-
-    object compile_object(string file)
-
-	If there is no LPC .c file for an object to be compiled from
-	<file>, this function is called; if it returns an object, this
-	object will be substituted for the object to be loaded (renaming
-	the object).
 
     void recompile(object obj)
 
