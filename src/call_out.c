@@ -353,19 +353,10 @@ unsigned short *mtime;
 	/* clock turned back? */
 	t = timestamp;
 	*mtime = 0;
-    } else if (timestamp < t) {
-	if (atimeout == 0 || atimeout > t) {
-	    timestamp = t;
-	} else {
-	    if (timestamp < atimeout - 1) {
-		timestamp = atimeout - 1;
-	    }
-	    if (t > timestamp + 60) {
-		/* lot of lag? */
-		t = timestamp + 60;
-		*mtime = 0;
-	    }
-	}
+    } else if (t > timestamp + 60) {
+	/* lot of lag? */
+	t = timestamp + 60;
+	*mtime = 0;
     }
 
     return t;
@@ -540,13 +531,12 @@ Uint t;
 
     if (t >> 24 != 1) {
 	t += timediff;
-	if (t > timestamp && t < timestamp + CYCBUF_SIZE) {
-	    /*
-	     * try to find the callout in the cyclic buffer
-	     */
-	    if (rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
-		return;
-	    }
+	/*
+	 * try to find the callout in the cyclic buffer
+	 */
+	if (t > timestamp && t < timestamp + CYCBUF_SIZE &&
+	    rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
+	    return;
 	}
     } else {
 	t = decode(t, &m);

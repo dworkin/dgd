@@ -643,6 +643,11 @@ register chunk *c;
 	    /*
 	     * merge with previous block
 	     */
+# ifdef DEBUG
+	    if (((chunk *) p)->size != *(size_t *) ((char *) c - SIZETSIZE)) {
+		fatal("corrupted memory chunk");
+	    }
+# endif
 	    delete((chunk *) p);
 	    ((chunk *) p)->size += c->size;
 	    c = (chunk *) p;
@@ -654,6 +659,12 @@ register chunk *c;
 	/*
 	 * merge with next block
 	 */
+# ifdef DEBUG
+	if (((chunk *) p)->size !=
+			    *(size_t *) (p + ((chunk *) p)->size - SIZETSIZE)) {
+	    fatal("corrupted memory chunk");
+	}
+# endif
 	delete((chunk *) p);
 	c->size += ((chunk *) p)->size;
 	*((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;

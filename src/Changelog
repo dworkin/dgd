@@ -1456,3 +1456,4 @@ DGD 1.3
    introduction of atomic functions.
  - Fixed some more bugs in callouts, such as a possible crash when removing a
    callout with millisecond delay.
+ - Fixed a tricky left-over version of the aforementioned bug.
