@@ -48,6 +48,16 @@ int nusers, port_number;
 }
 
 /*
+ * NAME:	comm->finish()
+ * DESCRIPTION:	terminate connections
+ */
+void comm_finish()
+{
+    comm_flush(FALSE);
+    conn_finish();
+}
+
+/*
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
@@ -93,7 +103,7 @@ register user **usr;
     conn_del((*usr)->conn);
     p = (*usr)->inbuf;
     n = (*usr)->inbufsz;
-    while (n > 0 && (q=(char *) memchr(p, '\n', n)) != (char *) NULL) {
+    while (n > 0 && (q=(char *) memchr(p, LF, n)) != (char *) NULL) {
 	--newlines;
 	q++;
 	n -= q - p;
@@ -138,8 +148,17 @@ string *str;
 	    }
 	    *q++ = IAC;
 	    size++;
-	} else if ((*p & 0x7f) < ' ' && *p != '\b' && *p != '\007' &&
-		   *p != '\t' && *p != '\n') {
+	} else if (*p == LF) {
+	    /*
+	     * insert CR before LF
+	     */
+	    if (size >= OUTBUF_SIZE - 1) {
+		conn_write(usr->conn, q = usr->outbuf, size);
+		size = 0;
+	    }
+	    *q++ = CR;
+	    size++;
+	} else if ((*p & 0x7f) < ' ' && *p != HT && *p != BEL && *p != BS) {
 	    /*
 	     * illegal character
 	     */
@@ -171,11 +190,6 @@ bool echo;
 	buf[0] = IAC;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
-
-	if (usr->outbufsz > 0) {
-	    conn_write(usr->conn, usr->outbuf, usr->outbufsz);
-	    usr->outbufsz = 0;
-	}
 	conn_write(usr->conn, buf, 3);
 	usr->echo = echo;
     }
@@ -185,35 +199,33 @@ bool echo;
  * NAME:	comm->flush()
  * DESCRIPTION:	flush output to all users
  */
-void comm_flush(clr)
-bool clr;
+void comm_flush(prompt)
+bool prompt;
 {
     register user **usr;
     register int i, size;
     register char *p;
 
     for (usr = users, i = maxusers; i > 0; usr++, --i) {
-	if (*usr != (user *) NULL && (*usr)->outbufsz > 0) {
-	    /*
-	     * append "go ahead" to indicate that the prompt has been sent
-	     */
-	    size = (*usr)->outbufsz;
-	    if (size >= OUTBUF_SIZE - 1) {
-		conn_write((*usr)->conn, (*usr)->outbuf, size);
-		size = 0;
+	if (*usr != (user *) NULL && (size=(*usr)->outbufsz) > 0) {
+	    if (prompt && (*usr)->u.obj == this_user) {
+		/*
+		 * append "go ahead" to indicate that the prompt has been sent
+		 */
+		if (size >= OUTBUF_SIZE - 1) {
+		    conn_write((*usr)->conn, (*usr)->outbuf, size);
+		    size = 0;
+		}
+		p = (*usr)->outbuf + size;
+		*p++ = IAC;
+		*p++ = GA;
+		size += 2;
 	    }
-	    p = (*usr)->outbuf + size;
-	    *p++ = IAC;
-	    *p++ = GA;
-	    size += 2;
 	    conn_write((*usr)->conn, (*usr)->outbuf, size);
 	    (*usr)->outbufsz = 0;
 	}
     }
-    if (clr) {
-	/* no current user */
-	this_user = (object *) NULL;
-    }
+    this_user = (object *) NULL;
 }
 
 /*
@@ -251,7 +263,7 @@ int *size;
 	    if (i_call(o, "open", TRUE, 0)) {
 		i_del_value(sp++);
 	    }
-	    comm_flush(FALSE);
+	    comm_flush(TRUE);
 	}
     }
 
@@ -269,7 +281,7 @@ int *size;
 	}
     } else {
 	static char intr[] = { '\177', IAC, WILL, TELOPT_TM };
-	static char brk[] = { '\34', IAC, WILL, TELOPT_TM };
+	static char brk[] = { '\034', IAC, WILL, TELOPT_TM };
 	register user **usr;
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {
@@ -289,15 +301,15 @@ int *size;
 			    state = TS_IAC;
 			    break;
 
-			case '\b':
+			case BS:
 			case 0x7f:
-			    if (q != (*usr)->inbuf && q[-1] != '\n') {
+			    if (q != (*usr)->inbuf && q[-1] != LF) {
 				--q;
 			    }
 			    break;
 
-			case '\n':
-			    if (q != (*usr)->inbuf && q[-1] == '\r') {
+			case LF:
+			    if (q != (*usr)->inbuf && q[-1] == CR) {
 				--q;
 			    }
 			    newlines++;
@@ -354,7 +366,7 @@ int *size;
 	    n = (n + 1) % maxusers;
 	    usr = users[n];
 	    if (usr != (user *) NULL && usr->inbufsz != 0) {
-		p = (char *) memchr(usr->inbuf, '\n', usr->inbufsz);
+		p = (char *) memchr(usr->inbuf, LF, usr->inbufsz);
 		if (p != (char *) NULL) {
 		    /*
 		     * input terminated by \n
