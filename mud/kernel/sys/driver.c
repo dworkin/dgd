@@ -4,6 +4,7 @@
 # include <kernel/access.h>
 # include <kernel/timer.h>
 # include <kernel/user.h>
+# include <config.h>
 # include <status.h>
 # include <trace.h>
 
@@ -13,6 +14,141 @@ object timerd;		/* time daemon object */
 object userd;		/* user daemon object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
+string error;		/* last error */
+
+/*
+ * NAME:	creator()
+ * DESCRIPTION:	get creator of file
+ */
+string creator(string file)
+{
+    return (sscanf(file, "/kernel/%*s") != 0) ? "System" :
+	    (sscanf(file, USR + "/%s/", file) != 0) ? file : 0;
+}
+
+/*
+ * NAME:	normalize_path()
+ * DESCRIPTION:	reduce a path to its minimal absolute form
+ */
+string normalize_path(string file, string dir, string creator)
+{
+    string *path;
+    int i, j, sz;
+
+    if (strlen(file) == 0) {
+	file = dir;
+    }
+    switch (file[0]) {
+    case '~':
+	/* ~path */
+	if (creator && (strlen(file) == 1 || file[1] == '/')) {
+	    file = USR + "/" + creator + file[1 ..];
+	} else {
+	    file = USR + "/" + file[1 ..];
+	}
+	/* fall through */
+    case '/':
+	/* absolute path */
+	if (sscanf(file, "%*s//") == 0 && sscanf(file, "%*s/.") == 0) {
+	    return file;	/* no changes */
+	}
+	path = explode(file, "/");
+	break;
+
+    default:
+	/* relative path */
+	if (sscanf(file, "%*s//") == 0 && sscanf(file, "%*s/.") == 0 &&
+	    sscanf(dir, "%*s/..") == 0) {
+	    /*
+	     * simple relative path
+	     */
+	    return dir + "/" + file;
+	}
+	/* fall through */
+    case '.':
+	/*
+	 * complex relative path
+	 */
+	path = explode(dir + "/" + file, "/");
+	break;
+    }
+
+    for (i = 0, j = -1, sz = sizeof(path); i < sz; i++) {
+	switch (path[i]) {
+	case "..":
+	    if (j >= 0) {
+		--j;
+	    }
+	    /* fall through */
+	case "":
+	case ".":
+	    continue;
+	}
+	path[++j] = path[i];
+    }
+
+    return "/" + implode(path[.. j], "/");
+}
+
+/*
+ * NAME:	dir_size()
+ * DESCRIPTION:	get the size of all files in a directory
+ */
+private int dir_size(string file)
+{
+    mixed **info;
+    int *sizes, size, i;
+
+    info = get_dir(file + "/*");
+    sizes = info[1];
+    size = 1;		/* 1K for directory itself */
+    i = sizeof(sizes);
+    while (--i >= 0) {
+	size += (sizes[i] < 0) ?
+		 dir_size(file + "/" + info[0][i]) :
+		 (sizes[i] + 1023) >> 10;
+    }
+
+    return size;
+}
+
+/*
+ * NAME:	file_size()
+ * DESCRIPTION:	get the size of a file in K, or 0 if the file doesn't exist
+ */
+varargs int file_size(string file, int dir)
+{
+    if (SYSTEM()) {
+	mixed **info;
+	string *files, name;
+	int i, sz;
+
+	info = get_dir(file);
+	files = explode(file, "/");
+	name = files[sizeof(files) - 1];
+	files = info[0];
+	i = 0;
+	sz = sizeof(files);
+
+	if (sz <= 1) {
+	    if (sz == 0 || files[0] != name) {
+		return 0;	/* file does not exist */
+	    }
+	} else {
+	    /* name is a pattern: find in file list */
+	    while (name != files[i]) {
+		if (++i == sz) {
+		    return 0;	/* file does not exist */
+		}
+	    }
+	}
+
+	i = info[1][i];
+	return (i > 0) ?
+		(i + 1023) >> 10 :
+		(i == 0) ? 1 : (i == -2 && dir) ? dir_size(file) : 0;
+    }
+}
 
 /*
  * NAME:	query_owner()
@@ -24,39 +160,35 @@ string query_owner()
 }
 
 
-# include "/kernel/lib/file.c"
-
-
 /*
  * NAME:	initialize()
  * DESCRIPTION:	called once at system startup
  */
 static initialize()
 {
-    /* object registry daemon */
-    call_other(compile_object(OBJREGD), "???");
-send_message("objregd\n");
+    compile_object(AUTO);
 
-    /* resource daemon */
+    call_other(compile_object(OBJREGD), "???");
     call_other(rsrcd = compile_object(RSRCD), "???");
-send_message("rsrcd\n");
+
+    rsrcd->set_rsrc("stack",	        50,  0,    0);
+    rsrcd->set_rsrc("ticks",	    500000,  0,    0);
+    rsrcd->set_rsrc("tick usage",       -1, 10, 3600);
+    rsrcd->set_rsrc("create stack",      5,  0,    0);
+    rsrcd->set_rsrc("create ticks",  10000,  0,    0);
 
     compile_object(RSRCOBJ);
     rsrcd->add_owner("System");
-    rsrcd->rsrc_incr("System", "objects", 0, 3);
-send_message("rsrcd2\n");
 
-    /* access daemon */
     call_other(accessd = compile_object(ACCESSD), "???");
-send_message("accessd\n");
-
-    /* timer daemon */
     call_other(timerd = compile_object(TIMERD), "???");
-send_message("timerd\n");
-
-    /* user daemon */
     call_other(userd = compile_object(USERD), "???");
-send_message("userd\n");
+    call_other(compile_object(DEFAULT_WIZTOOL), "???");
+
+    rsrcd->rsrc_incr("System", "objects", 0, 8);
+
+    rsrcd->add_owner("admin");
+    rsrcd->add_owner("dworkin");	/* XXX */
 }
 
 /*
@@ -85,11 +217,11 @@ static string path_read(string path)
 {
     string oname, creator;
 
-    oname = object_name(previous_object());
-    creator = creator(oname);
-    path = reduce_path(path, oname, creator);
-    return (creator == "System" ||
-	    accessd->access(oname, path, READ_ACCESS)) ? path : 0;
+    creator = creator(oname = object_name(previous_object()));
+    path = normalize_path(path, oname, creator);
+    return (previous_object()->path_read(path) &&
+	    (creator == "System" ||
+	     accessd->access(oname, path, READ_ACCESS)) ? path : 0);
 }
 
 /*
@@ -100,10 +232,11 @@ static string path_write(string path)
 {
     string oname, creator;
 
-    oname = object_name(previous_object());
-    creator = creator(oname);
-    path = reduce_path(path, oname, creator);
-    if (creator == "System" || accessd->access(oname, path, WRITE_ACCESS)) {
+    creator = creator(oname = object_name(previous_object()));
+    path = normalize_path(path, oname, creator);
+    if (sscanf(path, "/kernel/%*s") == 0 &&
+	previous_object()->path_write(path) &&
+	(creator == "System" || accessd->access(oname, path, WRITE_ACCESS))) {
 	file = path;
 	size = file_size(path);
 	return path;
@@ -124,7 +257,6 @@ mixed *query_wfile()
 
 	info = ({ file, size });
 	file = 0;
-	info = 0;
 	return info;
     }
 }
@@ -138,7 +270,7 @@ static object call_object(string path)
     string oname;
 
     oname = object_name(previous_object());
-    path = reduce_path(path, oname, creator(oname));
+    path = normalize_path(path, oname, creator(oname));
     if (sscanf(path, "%*s/lib/") != 0) {
 	error("Illegal use of call_other");
     }
@@ -154,8 +286,7 @@ static object inherit_program(string from, string path)
     string creator;
     object obj;
 
-    creator = creator(from);
-    path = reduce_path(path, from, creator);
+    path = normalize_path(path, from, creator = creator(from));
     if (sscanf(path, "%*s/lib/") == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
 	!accessd->access(from, path, READ_ACCESS)) {
@@ -174,9 +305,9 @@ static object inherit_program(string from, string path)
 	catch {
 	    rlimits (-1; -1) {
 		obj = compile_object(path);
-		rsrcd->rsrc_incr(creator, "objects", path, 1, 1);
+		rsrcd->rsrc_incr(creator, "objects", 0, 1, 1);
 	    }
-	} : error("");
+	} : error(error);
     }
     return obj;
 }
@@ -194,7 +325,7 @@ static string path_include(string from, string path)
 	path[0] != '~') {
 	return (path[0] == '/') ? path : from + "/../" + path;
     }
-    path = reduce_path(path, from, creator);
+    path = normalize_path(path, from, creator);
     return (accessd->access(from, path, READ_ACCESS)) ? path : 0;
 }
 
@@ -202,12 +333,10 @@ static string path_include(string from, string path)
  * NAME:	remove_program()
  * DESCRIPTION:	the last reference to a program is removed
  */
-static remove_program(string path, int timestamp)
+static remove_program(string path, int timestamp, int index)
 {
     if (path != RSRCOBJ) {
-	rsrcd->rsrc_incr(creator(path), "objects",
-			 (sscanf(path, "%*s/lib/") != 0) ? path : 0,
-			 -1);
+	rsrcd->rsrc_incr(creator(path), "objects", 0, -1);
     }
 }
 
@@ -226,7 +355,7 @@ static recompile(object obj)
  */
 static object telnet_connect()
 {
-    return userd->new_telnet_user();
+    return userd->telnet_connection();
 }
 
 /*
@@ -235,7 +364,7 @@ static object telnet_connect()
  */
 static object binary_connect()
 {
-    return userd->new_binary_user();
+    return userd->binary_connection();
 }
 
 /*
@@ -247,7 +376,16 @@ static interrupt()
     shutdown();
 }
 
-string last_error;
+/*
+ * NAME:	query_error()
+ * DESCRIPTION:	return the last errormessage
+ */
+string query_error()
+{
+    if (SYSTEM()) {
+	return error;
+    }
+}
 
 /*
  * NAME:	runtime_error()
@@ -260,21 +398,16 @@ static runtime_error(string str, int caught, int ticks)
     int i, sz, spent, len;
 
     if (caught && ticks < 0) {
-	last_error = str;
+	error = str;
 	return;
     }
-    if (str == "") {
-	str = last_error;
-    }
-
-    str = ctime(time())[4 .. 18] + " ** " + str + "\n";
 
     trace = call_trace();
     i = sz = sizeof(trace) - 1;
 
     if (ticks >= 0) {
 	while (--i >= 0) {
-	    if (trace[i][TRACE_FUNCTION] == "call_limited" &&
+	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited" &&
 		trace[i][TRACE_PROGNAME] == AUTO) {
 		what = trace[i][TRACE_FIRSTARG];
 		spent = what[2] - ticks;
@@ -287,6 +420,8 @@ static runtime_error(string str, int caught, int ticks)
 	    }
 	}
     }
+
+    str = ctime(time())[4 .. 18] + " ** " + str + "\n";
 
     for (i = 0; i < sz; i++) {
 	progname = trace[i][TRACE_PROGNAME];
@@ -326,7 +461,7 @@ static runtime_error(string str, int caught, int ticks)
  * NAME:	compile_error()
  * DESCRIPTION:	deal with a compilation error
  */
-compile_error(string file, int line, string err)
+static compile_error(string file, int line, string err)
 {
     send_message(file + ", " + line + ": " + err + "\n");
 }
@@ -347,7 +482,7 @@ static int compile_rlimits(string objname)
  */
 static int runtime_rlimits(object obj, int depth, int ticks)
 {
-    return (sscanf(object_name(obj), "/usr/System/%*s") != 0 &&
+    return (sscanf(object_name(obj), USR + "/System/%*s") != 0 &&
 	    depth == 0 && ticks < 0);
 }
 

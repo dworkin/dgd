@@ -1,19 +1,7 @@
 # include <kernel/kernel.h>
-# include <kernel/config.h>
 # include <kernel/access.h>
+# include <config.h>
 # include <type.h>
-
-/*
- * Interface:
- *
- *	int	access(string user, string file, int type);
- *		set_access(string user, string file, int type);
- *		remove_user_access(string user);
- *	mapping	get_user_access(string user);
- *	mapping	get_file_access(string file);
- *		set_global_access(string dir, int flag);
- *	string *get_global_access();
- */
 
 mapping uaccess;		/* user access */
 mapping gaccess;		/* read access under /usr for everyone */
@@ -24,7 +12,7 @@ mapping gaccess;		/* read access under /usr for everyone */
  */
 static create()
 {
-    uaccess = ([ "admin" : ([ "/" : FULL_ACCESS ]) ]);
+    uaccess = ([ ]);
     gaccess = ([ "System" : 1 ]);
 # ifndef SYS_CONTINUOUS
     restore_object(ACCESSDATA);
@@ -41,30 +29,25 @@ int access(string user, string file, int type)
     mixed access;
     int i, sz;
 
-    if (type == READ_ACCESS &&
-	((sscanf(file, "/usr/%s/%s/", dir, str) == 2 &&
-	  (gaccess[dir] || str == "open")) ||
-	 (sscanf(file, "/usr/%*s") == 0
-# ifndef SYS_CONTINUOUS
-	  && sscanf(file, "/data/%*s") == 0	/* no access in /data */
-# endif
-	 ))) {
+    sscanf(file, USR + "/%s/%s/", dir, str);
+    if (type == READ_ACCESS && (!dir || gaccess[dir] || str == "open") &&
+	sscanf(file, "/kernel/data/%*s") == 0 && sscanf(file, "/save/%*s") == 0)
+    {
 	/*
 	 * read access outside /usr, in /usr/foo/open and in selected
 	 * other directories in /usr
 	 */
 	return 1;
-    } else if (sscanf(user, "/usr/%s/", str) != 0 &&
-	       strlen(file) >= strlen(str) + 6 &&
-	       file[0 .. strlen(str) + 5] == "/usr/" + str + "/") {
+    }
+    if (user == dir || (sscanf(user, USR + "/%s/", str) != 0 && str == dir)) {
 	/*
-	 * full access to owner directory
+	 * full access to own/owner directory
 	 */
 	return 1;
-    } else if (strlen(file) >= strlen(user) + 6 &&
-	       file[0 .. strlen(user) + 5] == "/usr/" + user + "/") {
+    }
+    if (user == "admin") {
 	/*
-	 * full access to own directory
+	 * admin always has access (hardcoded)
 	 */
 	return 1;
     }
@@ -98,55 +81,11 @@ int access(string user, string file, int type)
  */
 private mapping filter_access(mapping access, string file)
 {
-    mapping filtered;
-    string fileslash, *indices, str;
-    int *values, len, i, l, h;
-
     if (file == "/") {
-	return access + ([ ]);
+	return access[..];
     }
-    filtered = ([ ]);
-    indices = map_indices(access);
-    values = map_values(access);
-
-    /*
-     * find file in mapping
-     */
-    fileslash = file + "/";
-    len = strlen(file);
-    l = 0;
-    h = sizeof(indices);
-    while (l < h) {
-	i = (l + h) / 2;
-	str = indices[i];
-	if (str < file) {
-	    l = i + 1;	/* try again in upper half */
-	} else if (str == file ||
-		   (strlen(str) > len && str[0 .. len] == fileslash)) {
-	    /*
-	     * Found it.
-	     * Now search forwards and backwards for files with the same
-	     * initial path.
-	     */
-	    l = i;
-	    h = sizeof(indices);
-	    do {
-		filtered[str] = values[l];
-	    } while (++l < h && strlen(str=indices[l]) > len &&
-		     str[0 .. len] == fileslash);
-
-	    while (--i >= 0 &&
-		   ((str=indices[i]) == file ||
-		    (strlen(str) > len && str[0 .. len] == fileslash))) {
-		filtered[str] = values[i];
-	    }
-	    break;
-	} else {
-	    h = i;	/* try again in lower half */
-	}
-    }
-
-    return filtered;
+    return access[file .. file] +
+	   (access[file + "/" .. file + "0"] - ({ file + "0" }));
 }
 
 /*
@@ -209,7 +148,9 @@ set_access(string user, string file, int type)
 		    }
 		}
 	    }
+# ifndef SYS_CONTINUOUS
 	    save_object(ACCESSDATA);
+# endif
 	}
     }
 }
@@ -224,7 +165,9 @@ remove_user_access(string user)
 	if (uaccess[user] != 0) {
 	    rlimits (-1; -1) {
 		uaccess[user] = 0;
+# ifndef SYS_CONTINUOUS
 		save_object(ACCESSDATA);
+# endif
 	    }
 	}
     }
@@ -242,7 +185,7 @@ mapping get_user_access(string user)
     if (access == 0) {
 	return ([ ]);
     } else {
-	return access + ([ ]);
+	return access[..];
     }
 }
 
@@ -252,7 +195,7 @@ mapping get_user_access(string user)
  */
 mapping get_file_access(string path)
 {
-    mapping access, filtered, *values;
+    mapping access, *values;
     string *indices;
     int i, sz;
 
@@ -260,10 +203,7 @@ mapping get_file_access(string path)
     indices = map_indices(uaccess);
     values = map_values(uaccess);
     for (i = 0, sz = sizeof(indices); i < sz; i++) {
-	filtered = filter_access(values[i], path);
-	if (map_sizeof(filtered) != 0) {
-	    access[indices[i]] = filtered;
-	}
+	access[indices[i]] = filter_access(values[i], path);
     }
 
     return access;

@@ -1,1 +1,0 @@
-# define SYS_CONTINUOUS	1

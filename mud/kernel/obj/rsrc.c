@@ -64,15 +64,19 @@ private decay_rsrc(int *rsrc, int *grsrc, int time)
     int usage, decay, period, i;
 
     usage = rsrc[RSRC_USAGE];
-    decay = 100 - grsrc[RSRC_DECAY];
-    period = grsrc[RSRC_PERIOD];
+    decay = 100 - grsrc[RSRC_DECAY - 1];
+    period = grsrc[RSRC_PERIOD - 1];
     time -= period;
     i = rsrc[RSRC_DECAYTIME];
 
     do {
 	usage = usage * decay / 100;
+	if (usage == 0) {
+	    i = time;
+	    break;
+	}
 	i += period;
-    } while (time >= i && usage != 0);
+    } while (time >= i);
 
     rlimits (-1; -1) {
 	rsrc[RSRC_DECAYTIME] = i;
@@ -94,19 +98,20 @@ int *rsrc_get(string name, int *grsrc)
 	rsrc = resources[name];
 	if (!rsrc) {
 	    return ({ 0, grsrc[RSRC_MAX], 0 }) +
-		   grsrc[RSRC_DECAY .. RSRC_PERIOD - 1];
+		   grsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 2];
 	} else {
-	    if (grsrc[RSRC_DECAY] != 0 &&
-		(time=time()) - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD]) {
+	    if (grsrc[RSRC_DECAY - 1] != 0 &&
+		(time=time()) - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD - 1])
+	    {
 		/* decay resource */
 		decay_rsrc(rsrc, grsrc, time);
 	    }
-	    rsrc += grsrc[RSRC_DECAY .. RSRC_PERIOD - 1];
+	    rsrc += grsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 2];
 	    if (rsrc[RSRC_MAX] < 0) {
 		rsrc[RSRC_MAX] = grsrc[RSRC_MAX];
 	    }
 	    if (typeof(rsrc[RSRC_INDEXED]) == T_MAPPING) {
-		rsrc[RSRC_INDEXED] += ([ ]);
+		rsrc[RSRC_INDEXED] = rsrc[RSRC_INDEXED][..];
 	    }
 	    return rsrc;
 	}
@@ -122,17 +127,21 @@ int rsrc_incr(string name, mixed index, int incr, int *grsrc, int force)
 {
     if (previous_object() == rsrcd) {
 	mixed *rsrc;
-	int max, time;
+	int time, max;
 
 	rsrc = resources[name];
+	time = time();
 	if (!rsrc) {
 	    /* new resource */
 	    rsrc = resources[name] = ({ 0, -1, 0 });
+	    if (grsrc[RSRC_DECAY - 1] != 0) {
+		rsrc[RSRC_DECAYTIME] = time;
+	    }
 	    max = grsrc[RSRC_MAX];
 	} else {
 	    /* existing resource */
-	    if (grsrc[RSRC_DECAY] != 0 &&
-		(time=time()) - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD]) {
+	    if (grsrc[RSRC_DECAY - 1] != 0 &&
+		time - rsrc[RSRC_DECAYTIME] >= grsrc[RSRC_PERIOD - 1]) {
 		/* decay resource */
 		decay_rsrc(rsrc, grsrc, time);
 	    }

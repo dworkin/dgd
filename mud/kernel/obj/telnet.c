@@ -1,23 +1,30 @@
+# include <kernel/kernel.h>
 # include <kernel/user.h>
-# include <status.h>
 
-inherit LIB_USER;
+inherit LIB_CONN;	/* basic connection object */
 
-static evt_login()
+int mode;		/* input mode */
+
+/*
+ * NAME:	create()
+ * DESCRIPTION:	initialize
+ */
+static create()
 {
-    message("\nDGD " + status()[ST_VERSION] + " (telnet)\n\nlogin: ");
+    ::create("telnet");
+    mode = MODE_ECHO;
 }
 
-static evt_logout()
+/*
+ * NAME:	receive_message()
+ * DESCRIPTION:	forward a message to listeners
+ */
+static receive_message(string str)
 {
-    message("Goodbye.\n");
-}
+    int result;
 
-static evt_message(string str)
-{
-    message("You typed: " + str + "\n> ");
-    if (str == "@quit") {
-	message("Disconnecting...\n");
-	disconnect();
+    result = ::receive_message(str);
+    if (result != mode && result != 0 && result != MODE_RAW) {
+	send_message((mode = result) - 1);
     }
 }

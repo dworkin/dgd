@@ -1,20 +1,16 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
 
-private object connection;
+private object connection;	/* associated connection object */
+
 
 /*
- * NAME:	set_conn()
- * DESCRIPTION:	set the associated connection for this user object
+ * NAME:	query_conn()
+ * DESCRIPTION:	query the associated connection
  */
-nomask set_conn(object conn)
+nomask object query_conn()
 {
-    if (KERNEL()) {
-	connection = conn;
-	subscribe_event(conn, "login");
-	subscribe_event(conn, "logout");
-	subscribe_event(conn, "message");
-    }
+    return connection;
 }
 
 /*
@@ -23,14 +19,26 @@ nomask set_conn(object conn)
  */
 static disconnect()
 {
-    destruct_object(connection);
+    if (connection) {
+	destruct_object(connection);
+    }
+}
+
+/*
+ * NAME:	connect()
+ * DESCRIPTION:	establish a connection
+ */
+static connect(object conn)
+{
+    disconnect();
+    connection = conn;
 }
 
 /*
  * NAME:	message()
  * DESCRIPTION:	forward a message to the connection object
  */
-message(mixed arg)
+message(string arg)
 {
     if (connection) {
 	connection->message(arg);

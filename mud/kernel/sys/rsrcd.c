@@ -13,18 +13,17 @@ static create()
 {
     /* initial resources */
     resources = ([
-      "objects" :		({ 0, -1, 0, 0, 0 }),
-      "events" :		({ 0, -1, 0, 0, 0 }),
-      "callouts" :		({ 0, -1, 0, 0, 0 }),
-      "stackdepth" :		({ 0, -1, 0, 0, 0 }),
-      "ticks" :			({ 0, -1, 0, 0, 0 }),
-      "tick usage" :		({ 0, -1, time(), 10, 3600 }),
-      "filequota" :		({ 0, -1, 0, 0, 0 }),
-      "editors" :		({ 0, -1, 0, 0, 0 }),
-
-      /* reasonable starting values */
-      "create depth" :		({ 0, 5, 0, 0, 0 }),
-      "create ticks" :		({ 0, 5000, 0, 0, 0 }),
+      "objects" :		({ 0, -1, 0, 0 }),
+      "events" :		({ 0, -1, 0, 0 }),
+      "callouts" :		({ 0, -1, 0, 0 }),
+      "timers" :		({ 0, -1, 0, 0 }),
+      "stack" :			({ 0, -1, 0, 0 }),
+      "ticks" :			({ 0, -1, 0, 0 }),
+      "tick usage" :		({ 0, -1, 0, 0 }),
+      "filequota" :		({ 0, -1, 0, 0 }),
+      "editors" :		({ 0, -1, 0, 0 }),
+      "create stack" :		({ 0, -1, 0, 0 }),
+      "create ticks" :		({ 0, -1, 0, 0 }),
     ]);
 
     owners = ([ ]);		/* no resource owners yet */
@@ -38,24 +37,21 @@ static create()
 set_rsrc(string name, int max, int decay, int period)
 {
     if (KERNEL()) {
-	int time;
-	mixed *rsrc;
+	int *rsrc;
 
-	time = (decay != 0) ? time() : 0;
 	rsrc = resources[name];
 	if (rsrc != 0) {
 	    /*
 	     * existing resource
 	     */
 	    rlimits (-1; -1) {
-		rsrc[RSRC_DECAYTIME] = time;
 		rsrc[RSRC_MAX] = max;
-		rsrc[RSRC_DECAY] = decay;
-		rsrc[RSRC_PERIOD] = period;
+		rsrc[RSRC_DECAY - 1] = decay;
+		rsrc[RSRC_PERIOD - 1] = period;
 	    }
 	} else {
 	    /* new resource */
-	    resources[name] = ({ 0, max, time, decay, period });
+	    resources[name] = ({ 0, max, decay, period });
 	}
     }
 }
@@ -87,8 +83,12 @@ del_rsrc(string name)
  */
 mixed *query_rsrc(string name)
 {
-    if (SYSTEM()) {
-	return resources[name];
+    int *rsrc;
+
+    if (KERNEL()) {
+	rsrc = resources[name];
+	return rsrc[RSRC_USAGE .. RSRC_MAX - 1] + ({ 0 }) +
+	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD];
     }
 }
 
@@ -98,7 +98,7 @@ mixed *query_rsrc(string name)
  */
 string *query_rsrc_list()
 {
-    if (SYSTEM()) {
+    if (KERNEL()) {
 	return map_indices(resources);
     }
 }
@@ -110,7 +110,7 @@ string *query_rsrc_list()
  */
 rsrc_set_limit(string owner, string name, int max)
 {
-    if (SYSTEM()) {
+    if (KERNEL()) {
 	owners[owner]->rsrc_set_limit(name, max);
     }
 }
@@ -121,7 +121,7 @@ rsrc_set_limit(string owner, string name, int max)
  */
 mixed *rsrc_get(string owner, string name)
 {
-    if (SYSTEM()) {
+    if (KERNEL()) {
 	return owners[owner]->rsrc_get(name, resources[name]);
     }
 }
@@ -154,7 +154,7 @@ add_owner(string owner)
 	    obj = clone_object(RSRCOBJ);
 	    catch {
 		owners[owner] = obj;
-		obj->set_owner("System");
+		obj->set_owner(owner);
 		rsrc_incr("System", "objects", 0, 1);
 	    } : {
 		destruct_object(obj);

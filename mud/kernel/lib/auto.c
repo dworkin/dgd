@@ -3,11 +3,32 @@
 # include <kernel/access.h>
 # include <kernel/rsrc.h>
 # include <kernel/user.h>
+# include <kernel/timer.h>
+# include <config.h>
 # include <type.h>
 # include <trace.h>
 
-# define BADARG(n, func)	error("bad argument " + (n) + \
-				      " for function " + #func)
+# define CHECKARG(arg, n, func)	if (!(arg)) badarg((n), (func))
+# define CHECKOBJ(func)		if (!this_object()) badobj((func))
+
+/*
+ * NAME:	badarg()
+ * DESCRIPTION:	called when an argument check failed
+ */
+private badarg(int n, string func)
+{
+    error("Bad argument " + n + " for function " + func);
+}
+
+/*
+ * NAME:	badobj()
+ * DESCRIPTION:	called when the current object is destructed
+ */
+private badobj(string func)
+{
+    error("Function " + func + " called from destructed object");
+}
+
 
 private object prev, next;	/* previous and next in linked list */
 private string creator, owner;	/* creator and owner of this object */
@@ -55,6 +76,39 @@ nomask _F_rsrc_incr(string rsrc, int incr)
 }
 
 /*
+ * NAME:	_F_create()
+ * DESCRIPTION:	kernel creator function
+ */
+nomask _F_create()
+{
+    if (!creator) {
+	rlimits (-1; -1) {
+	    string oname;
+
+	    /*
+	     * set creator and owner
+	     */
+	    oname = object_name(this_object());
+	    creator = ::find_object(DRIVER)->creator(oname);
+	    if (sscanf(oname, "%s#", oname) != 0) {
+		owner = previous_object()->query_owner();
+	    } else {
+		owner = creator;
+	    }
+
+	    /*
+	     * register object
+	     */
+	    if (oname != OBJREGD) {
+		::find_object(OBJREGD)->link(this_object(), owner);
+	    }
+	}
+	/* call higher-level creator function */
+	this_object()->create();
+    }
+}
+
+/*
  * NAME:	_F_destruct()
  * DESCRIPTION:	prepare object for being destructed
  */
@@ -64,7 +118,10 @@ nomask _F_destruct()
 	object rsrcd;
 	int i, j;
 
+	::find_object(OBJREGD)->unlink(this_object(), owner);
+
 	rsrcd = ::find_object(RSRCD);
+
 	if (events) {
 	    object **evtlist, *objlist, obj;
 
@@ -88,6 +145,10 @@ nomask _F_destruct()
 	    string *names;
 	    int *values;
 
+	    if (resources["timers"]) {
+		::find_object(TIMERD)->remove_timers(this_object());
+	    }
+
 	    /*
 	     * decrease resources associated with object
 	     */
@@ -100,48 +161,14 @@ nomask _F_destruct()
 	}
 
 	if (sscanf(object_name(this_object()), "%*s#") != 0) {
-	    /* non-clones are handled by driver->remove_program() */
+	    /*
+	     * non-clones are handled by driver->remove_program()
+	     */
 	    rsrcd->rsrc_incr(owner, "objects", 0, -1);
 	}
     }
 }
 
-
-# include "file.c"
-
-
-/*
- * NAME:	_F_create()
- * DESCRIPTION:	kernel creator function
- */
-nomask _F_create()
-{
-    if (!creator) {
-	rlimits (-1; -1) {
-	    string oname;
-
-	    /*
-	     * set creator and owner
-	     */
-	    oname = object_name(this_object());
-	    creator = creator(oname);
-	    if (!creator || sscanf(oname, "%s#", oname) != 0) {
-		owner = previous_object()->query_owner();
-	    } else {
-		owner = creator;
-	    }
-
-	    /*
-	     * register object
-	     */
-	    if (oname != OBJREGD) {
-		::find_object(OBJREGD)->link(this_object(), owner);
-	    }
-	}
-	/* call higher-level creator function */
-	this_object()->create();
-    }
-}
 
 /*
  * NAME:	find_object()
@@ -149,13 +176,19 @@ nomask _F_create()
  */
 static object find_object(string path)
 {
-    if (!path) {
-	BADARG(1, find_object);
-    }
+    CHECKOBJ("find_object");
+    CHECKARG(path, 1, "find_object");
 
-    path = reduce_path(path, object_name(this_object()), creator);
+    path = ::find_object(DRIVER)->normalize_path(path,
+						 object_name(this_object()) +
+						 "/..",
+						 creator);
     if (sscanf(path, "%*s/lib/") != 0) {
-	return 0;	/* library object */
+	/*
+	 * It is not possible to find a lib object by name, or to call a
+	 * function in it.
+	 */
+	return 0;
     }
     return ::find_object(path);
 }
@@ -166,30 +199,36 @@ static object find_object(string path)
  */
 static destruct_object(mixed obj)
 {
-    string ocreator, oname;
+    object driver;
+    string oname;
     int lib;
 
+    CHECKOBJ("destruct_object");
+
+    /* check and translate argument */
+    driver = ::find_object(DRIVER);
     if (typeof(obj) == T_STRING) {
-	obj = find_object(reduce_path(obj, object_name(this_object()),
-				      creator));
+	obj = ::find_object(driver->normalize_path(obj,
+						   object_name(this_object()) +
+						   "/..",
+						   creator));
     }
-    if (typeof(obj) != T_OBJECT) {
-	BADARG(1, destruct_object);
-    }
+    CHECKARG(typeof(obj) == T_OBJECT, 1, "destruct_object");
 
     /*
      * check privileges
      */
-    ocreator = creator(object_name(obj));
     oname = object_name(obj);
     lib = sscanf(oname, "%*s/lib/");
-    if ((sscanf(oname, "/kernel/%*s") != 0) ?
-	 ((lib) ?
-	   creator != "System" :
-	   sscanf(object_name(this_object()), "/kernel/%*s") == 0) :
-	 ocreator && owner != ((lib) ? ocreator : obj->query_owner())) {
+    if ((sscanf(oname, "/kernel/%*s") != 0 && !lib &&
+	 sscanf(object_name(this_object()), "/kernel/%*s") == 0) ||
+	owner != ((lib) ? driver->creator(oname) : obj->query_owner())) {
 	/*
-	 * kernel objects can only be destructed by kernel objects
+	 * kernel:
+	 *  - non-lib objects can only be destructed by kernel objects
+	 * other: owner of this object must be equal to
+	 *  - lib objects: creator of object
+	 *  - other objects: owner of object
 	 */
 	error("Cannot destruct object: not owner");
     }
@@ -197,9 +236,6 @@ static destruct_object(mixed obj)
     rlimits (-1; -1) {
 	if (!lib) {
 	    obj->_F_destruct();
-	    if (oname != OBJREGD) {
-		::find_object(OBJREGD)->unlink(obj, owner);
-	    }
 	}
 	::destruct_object(obj);
     }
@@ -212,19 +248,18 @@ static destruct_object(mixed obj)
 static object compile_object(string path)
 {
     string oname, uid;
-    object rsrcd, obj;
+    object driver, rsrcd, obj;
     int *rsrc, *status, lib, init;
 
-    if (!path) {
-	BADARG(1, compile_object);
-    }
+    CHECKOBJ("compile_object");
+    CHECKARG(path, 1, "compile_object");
 
     /*
-     * check permission
+     * check permission; compiling requires write access
      */
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
 	error("Access denied");
@@ -233,43 +268,38 @@ static object compile_object(string path)
     /*
      * check resource usage
      */
-    uid = creator(path);
-    if (!uid) {
-	uid = owner;
-    }
     rsrcd = ::find_object(RSRCD);
-    rsrc = rsrcd->rsrc_get(uid, "objects");
+    rsrc = rsrcd->rsrc_get(uid = driver->creator(path), "objects");
     if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	error("Too many objects");
     }
 
+    /*
+     * do the compiling
+     */
     lib = sscanf(path, "%*s/lib/");
-    init = !lib && !::find_object(path);
+    init = !(lib || ::find_object(path));
     if (init) {
 	status = ::status();
     }
     catch {
 	rlimits (-1; -1) {
 	    if (init) {
-		int depth, ticks;
+		int stack, ticks;
 
-		depth = status[ST_STACKDEPTH];
+		stack = status[ST_STACKDEPTH];
 		ticks = status[ST_TICKS];
-		if ((depth >= 0 &&
-		     depth < rsrcd->rsrc_get(uid, "create depth")[RSRC_MAX]) ||
+		if ((stack >= 0 &&
+		     stack < rsrcd->rsrc_get(uid, "create stack")[RSRC_MAX]) ||
 		    (ticks >= 0 &&
 		     ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
 		    error("Insufficient stack or ticks to create object");
 		}
 	    }
 	    obj = ::compile_object(path);
-	    if (!rsrcd->rsrc_incr(uid, "objects", (lib) ? path : 0, 1, 1)) {
-		/* will only happen to lib objects */
-		::destruct_object(obj);
-		error("Out of resources");
-	    }
+	    rsrcd->rsrc_incr(uid, "objects", 0, 1, 1);
 	}
-    } : error("");
+    } : error(driver->query_error());
     if (init) {
 	call_other(obj, "???");	/* initialize & register */
     }
@@ -284,35 +314,47 @@ static object compile_object(string path)
 static varargs object clone_object(string path, string uid)
 {
     string oname, str;
-    object rsrcd, obj;
+    object driver, rsrcd, obj;
     int *rsrc, *status;
 
-    if (!path) {
-	BADARG(1, clone_object);
-    }
-    if (owner != "System" || !uid) {
+    CHECKOBJ("clone_object");
+    CHECKARG(path, 1, "clone_object");
+    if (uid) {
+	CHECKARG(owner == "System", 1, "clone_object");
+    } else {
 	uid = owner;
     }
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
 
-    if (sscanf(path, "%*s/obj/") == 0 || sscanf(path, "%*s/lib/") != 0) {
-	error("Cannot clone " + path);	/* not path of clonable */
-    }
-
-    if (creator != "System" &&
-	(sscanf(path, "/kernel/%*s") != 0 ||
+    /*
+     * check permissions
+     */
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if ((sscanf(path, "/kernel/%*s") != 0 &&
+	 sscanf(oname, "/kernel/%*s") == 0) ||
+	(creator != "System" &&
 	 !::find_object(ACCESSD)->access(oname, path, READ_ACCESS))) {
+	/*
+	 * kernel objects can only be cloned by kernel objects, and cloning
+	 * in general requires read access
+	 */
 	error("Access denied");
     }
 
+    /*
+     * check if object can be cloned
+     */
     obj = ::find_object(path);
-    if (!obj) {
-	/* master object not compiled */
-	error("No such object");
+    if (!obj || sscanf(path, "%*s/obj/") == 0 || sscanf(path, "%*s/lib/") != 0)
+    {
+	/* master object not compiled, or not path of clonable */
+	error("Cannot clone " + path);	/* not path of clonable */
     }
 
+    /*
+     * check resource usage
+     */
     rsrcd = ::find_object(RSRCD);
     if (path != RSRCOBJ) {
 	rsrc = rsrcd->rsrc_get(uid, "objects");
@@ -321,27 +363,30 @@ static varargs object clone_object(string path, string uid)
 	}
     }
 
+    /*
+     * do the cloning
+     */
     status = ::status();
     catch {
 	rlimits (-1; -1) {
-	    int depth, ticks;
+	    int stack, ticks;
 
-	    depth = status[ST_STACKDEPTH];
+	    stack = status[ST_STACKDEPTH];
 	    ticks = status[ST_TICKS];
-	    if ((depth >= 0 &&
-		 depth < rsrcd->rsrc_get(uid, "create depth")[RSRC_MAX]) ||
+	    if ((stack >= 0 &&
+		 stack < rsrcd->rsrc_get(uid, "create stack")[RSRC_MAX]) ||
 		(ticks >= 0 &&
 		 ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
 		error("Insufficient stack or ticks to create object");
 	    }
-	    if (path != RSRCOBJ && !rsrcd->rsrc_incr(uid, "objects", 0, 1, 1)) {
-		error("Out of resources");
+	    if (path != RSRCOBJ) {
+		rsrcd->rsrc_incr(uid, "objects", 0, 1, 1);
 	    }
 	    if (uid != owner) {
 		owner = "/" + uid;
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return ::clone_object(obj);
 }
 
@@ -354,13 +399,15 @@ static mixed **call_trace()
     mixed **trace;
     int i, sz;
     mixed *call;
+    object driver;
 
     trace = ::call_trace();
     trace = trace[.. sizeof(trace) - 2];	/* skip last */
-    if (creator != "System") {
+    if (owner != "System") {
+	driver = ::find_object(DRIVER);
 	for (i = 0, sz = sizeof(trace); i < sz; i++) {
 	    if (sizeof(call = trace[i]) > TRACE_FIRSTARG &&
-		owner != creator(call[TRACE_PROGNAME])) {
+		owner != driver->creator(call[TRACE_PROGNAME])) {
 		/* remove arguments */
 		trace[i] = call[.. TRACE_FIRSTARG - 1];
 	    }
@@ -376,6 +423,8 @@ static mixed **call_trace()
  */
 varargs mixed *status(mixed obj)
 {
+    string oname;
+    object driver;
     mixed *status, **callouts, *co;
     int i;
 
@@ -383,19 +432,23 @@ varargs mixed *status(mixed obj)
 	return ::status();
     }
 
+    /*
+     * check arguments
+     */
+    CHECKOBJ("status");
+    oname = object_name(this_object());
+    driver = ::find_object(DRIVER);
     if (typeof(obj) == T_STRING) {
 	/* get corresponding object */
-	obj = ::find_object(reduce_path(obj, object_name(this_object()),
-					creator));
+	obj = ::find_object(driver->normalize_path(obj, oname + "/..",
+						   creator));
     }
-    if (typeof(obj) != T_OBJECT) {
-	BADARG(1, status);
-    }
+    CHECKARG(typeof(obj) == T_OBJECT, 1, "status");
 
     status = ::status(obj);
     callouts = status[O_CALLOUTS];
-    if ((i=sizeof(callouts)) != 0) {
-	if (creator != "System" && owner != obj->query_owner()) {
+    if ((i=sizeof(callouts)) != 0 && oname != TIMERD) {
+	if (owner != "System" && owner != driver->creator(obj)) {
 	    /* remove arguments from callouts */
 	    do {
 		--i;
@@ -433,26 +486,13 @@ static object *users()
     return ::find_object(USERD)->query_users();
 }
 
-static string query_ip_number(object user)
-{
-    if (!user || function_object("query_conn", user) != CONNECTION) {
-	BADARG(1, query_ip_number());
-    }
-    user = user->query_conn();
-    if (!user) {
-	BADARG(1, query_ip_number());
-    }
-
-    return ::query_ip_number(user);
-}
-
 /*
  * NAME:	dump_state()
  * DESCRIPTION:	create state dump
  */
 static dump_state()
 {
-    if (SYSTEM()) {
+    if (creator == "System") {
 	::find_object(DRIVER)->prepare_statedump();
 	::dump_state();
     }
@@ -464,7 +504,11 @@ static dump_state()
  */
 static shutdown()
 {
-    if (SYSTEM()) {
+    if (creator == "System") {
+# ifdef SYS_CONTINUOUS
+	::find_object(DRIVER)->prepare_statedump();
+	::dump_state();
+# endif
 	::shutdown();
     }
 }
@@ -476,25 +520,20 @@ static shutdown()
  */
 nomask _F_call_limited(mixed what, string function, mixed *args)
 {
-    if (previous_program() == AUTO) {
+    if (KERNEL()) {
 	object obj, rsrcd;
-	int *status, depth, rdepth, ticks, rticks;
+	int *status, stack, rstack, ticks, rticks;
 	string prev;
-
-	if (owner == what) {
-	    call_other(this_object(), function, args...);
-	    return;
-	}
 
 	status = ::status();
 	rlimits (-1; -1) {
 	    rsrcd = ::find_object(RSRCD);
 
 	    /* determine available stack */
-	    depth = status[ST_STACKDEPTH];
-	    rdepth = rsrcd->rsrc_get(owner, "stackdepth")[RSRC_MAX];
-	    if (rdepth > depth && depth >= 0) {
-		rdepth = depth;
+	    stack = status[ST_STACKDEPTH];
+	    rstack = rsrcd->rsrc_get(owner, "stack")[RSRC_MAX];
+	    if (rstack > stack && stack >= 0) {
+		rstack = stack;
 	    }
 
 	    /* determine available ticks */
@@ -520,7 +559,7 @@ nomask _F_call_limited(mixed what, string function, mixed *args)
 	    what = ({ owner, ticks, rticks });
 	}
 
-	rlimits (rdepth; rticks) {
+	rlimits (rstack; rticks) {
 	    call_other(this_object(), function, args...);
 
 	    status = ::status();
@@ -547,10 +586,16 @@ static varargs int call_out(string function, int delay, mixed args...)
     object rsrcd;
     int handle;
 
-    if (!function || function_object(function, this_object()) == AUTO) {
-	BADARG(1, call_out);
-    }
+    CHECKOBJ("call_out");
+    CHECKARG(function && function_object(function, this_object()) != AUTO,
+	     1, "call_out");
 
+    /*
+     * add callout
+     */
+    if (object_name(this_object()) == TIMERD) {
+	return ::call_out(function, delay, args...);
+    }
     rsrcd = ::find_object(RSRCD);
     catch {
 	rlimits (-1; -1) {
@@ -561,7 +606,7 @@ static varargs int call_out(string function, int delay, mixed args...)
 	    ::remove_call_out(handle);
 	    error("Too many callouts");
 	}
-    } : error("");
+    } : error(::find_object(DRIVER)->query_error());
 }
 
 /*
@@ -572,7 +617,8 @@ static int remove_call_out(int handle)
 {
     rlimits (-1; -1) {
 	handle = ::remove_call_out(handle);
-	if (handle >= 0) {
+	if (handle >= 0 && this_object() &&
+	    object_name(this_object()) != TIMERD) {
 	    ::find_object(RSRCD)->rsrc_incr(owner, "callouts", this_object(),
 					    -1);
 	}
@@ -586,7 +632,8 @@ static int remove_call_out(int handle)
  */
 nomask varargs _F_callout(string function, mixed args...)
 {
-    if (!previous_program()) {
+    if ((!previous_program() || previous_program() == TIMERD) &&
+	!::find_object(TIMERD)->suspended(function, args)) {
 	::find_object(RSRCD)->rsrc_incr(owner, "callouts", this_object(), -1);
 	_F_call_limited(owner, function, args);
     }
@@ -598,9 +645,7 @@ nomask varargs _F_callout(string function, mixed args...)
  */
 static add_event(string name)
 {
-    if (!name) {
-	BADARG(1, new_event);
-    }
+    CHECKARG(name, 1, "add_event");
 
     if (!events) {
 	events = ([ ]);
@@ -619,9 +664,7 @@ static remove_event(string name)
     object *objlist, rsrcd;
     int i;
 
-    if (!name) {
-	BADARG(1, remove_event);
-    }
+    CHECKARG(name, 1, "remove_event");
 
     if (events && (objlist=events[name])) {
 	rsrcd = ::find_object(RSRCD);
@@ -640,7 +683,7 @@ static remove_event(string name)
  * NAME:	_F_subscribe_event()
  * DESCRIPTION:	subscribe to an event
  */
-nomask _F_subscribe_event(string name, int subscribe)
+nomask _F_subscribe_event(string name, string oowner, int subscribe)
 {
     if (KERNEL()) {
 	object *objlist, obj, rsrcd;
@@ -658,19 +701,18 @@ nomask _F_subscribe_event(string name, int subscribe)
 	    objlist = objlist - ({ 0 }) + ({ obj });
 	    catch {
 		rlimits (-1; -1) {
-		    if (!rsrcd->rsrc_incr(obj->query_owner(), "events", obj, 1))
-		    {
+		    if (!rsrcd->rsrc_incr(oowner, "events", obj, 1)) {
 			error("Too many events");
 		    }
 		    events[name] = objlist;
 		}
-	    } : error("");
+	    } : error(::find_object(DRIVER)->query_error());
 	} else {
 	    if (!sizeof(objlist & ({ obj }))) {
 		error("Not subscribed to event");
 	    }
 	    rlimits (-1; -1) {
-		rsrcd->rsrc_incr(obj->query_owner(), "events", obj, -1);
+		rsrcd->rsrc_incr(oowner, "events", obj, -1);
 		events[name] -= ({ 0, obj });
 	    }
 	}
@@ -683,17 +725,14 @@ nomask _F_subscribe_event(string name, int subscribe)
  */
 static subscribe_event(object obj, string name)
 {
-    if (!obj) {
-	BADARG(1, subscribe_event);
-    }
-    if (!name) {
-	BADARG(2, subscribe_event);
-    }
+    CHECKOBJ("subscribe_event");
+    CHECKARG(obj, 1, "subscribe_event");
+    CHECKARG(name, 2, "subscribe_event");
 
     if (!obj->allow_subscribe_event(this_object(), name) || !obj) {
 	error("Cannot subscribe to event");
     }
-    obj->_F_subscribe_event(name, 1);
+    obj->_F_subscribe_event(name, owner, 1);
 }
 
 /*
@@ -702,14 +741,10 @@ static subscribe_event(object obj, string name)
  */
 static unsubscribe_event(object obj, string name)
 {
-    if (!obj) {
-	BADARG(1, unsubscribe_event);
-    }
-    if (!name) {
-	BADARG(2, unsubscribe_event);
-    }
+    CHECKARG(obj, 1, "unsubscribe_event");
+    CHECKARG(name, 2, "unsubscribe_event");
 
-    obj->_F_subscribe_event(name, 0);
+    obj->_F_subscribe_event(name, owner, 0);
 }
 
 /*
@@ -722,13 +757,14 @@ static varargs int event(string name, mixed args...)
     string *names;
     int i, sz, recipients;
 
-    if (!name) {
-	BADARG(1, call_event);
-    }
-
+    CHECKARG(name, 1, "event");
     if (!events || !(objlist=events[name])) {
 	error("No such event");
     }
+    if (!this_object()) {
+	return 0;
+    }
+
     name = "evt_" + name;
     recipients = 0;
     for (i = 0, sz = sizeof(objlist); i < sz; i++) {
@@ -743,24 +779,6 @@ static varargs int event(string name, mixed args...)
 
 
 /*
- * NAME:	resolve_path()
- * DESCRIPTION:	resolve a file path
- */
-static string resolve_path(string path, string dir, string creator)
-{
-    if (!path) {
-	BADARG(1, resolve_path);
-    }
-    if (!dir) {
-	BADARG(2, resolve_path);
-    }
-    if (!creator) {
-	BADARG(3, resolve_path);
-    }
-    return reduce_path(path, dir, creator);
-}
-
-/*
  * NAME:	read_file()
  * DESCRIPTION:	read a string from a file
  */
@@ -768,17 +786,16 @@ static varargs string read_file(string path, int offset, int size)
 {
     string oname;
 
-    if (!path) {
-	BADARG(1, read_file);
-    }
+    CHECKOBJ("read_file");
+    CHECKARG(path, 1, "read_file");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
     }
+
     return ::read_file(path, offset, size);
 }
 
@@ -789,40 +806,38 @@ static varargs string read_file(string path, int offset, int size)
 static varargs int write_file(string path, string str, int offset)
 {
     string oname, fcreator;
-    object rsrcd;
+    object driver, rsrcd;
     int *rsrc, size, result;
 
-    if (!path) {
-	BADARG(1, write_file);
-    }
-    if (!str) {
-	BADARG(2, write_file);
-    }
+    CHECKOBJ("write_file");
+    CHECKARG(path, 1, "write_file");
+    CHECKARG(str, 2, "write_file");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
-    if (creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if (sscanf(path, "/kernel/%*s", path) != 0 ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
     }
-    fcreator = creator(path);
+
+    fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
-    if (creator != "System") {
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
+    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
-    size = file_size(path);
+
+    size = driver->file_size(path);
     catch {
 	rlimits (-1; -1) {
 	    result = ::write_file(path, str, offset);
-	    if (result != 0 && (size=file_size(path) - size) != 0) {
+	    if (result != 0 && (size=driver->file_size(path) - size) != 0) {
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, 1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
 
     return result;
 }
@@ -834,29 +849,31 @@ static varargs int write_file(string path, string str, int offset)
 static int remove_file(string path)
 {
     string oname;
+    object driver;
     int size, result;
 
-    if (!path) {
-	BADARG(1, remove_file);
-    }
+    CHECKOBJ("remove_file");
+    CHECKARG(path, 1, "remove_file");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
-    if (creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if (sscanf(path, "/kernel/%*s") != 0 ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
     }
-    size = file_size(path);
+
+    size = driver->file_size(path);
     catch {
 	rlimits (-1; -1) {
 	    result = ::remove_file(path);
 	    if (result != 0 && size != 0) {
-		::find_object(RSRCD)->rsrc_incr(creator(path), "filequota", 0,
-						-size);
+		::find_object(RSRCD)->rsrc_incr(driver->creator(path),
+						"filequota", 0, -size);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return result;
 }
 
@@ -867,36 +884,36 @@ static int remove_file(string path)
 static int rename_file(string from, string to)
 {
     string oname, fcreator, tcreator;
-    object accessd, rsrcd;
+    object driver, accessd, rsrcd;
     int size, *rsrc, result;
 
-    if (!from) {
-	BADARG(1, rename_file);
-    }
-    if (!to) {
-	BADARG(2, rename_file);
-    }
+    CHECKOBJ("rename_file");
+    CHECKARG(from, 1, "rename_file");
+    CHECKARG(to, 2, "rename_file");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    from = reduce_path(from, oname, creator);
-    to = reduce_path(to, oname, creator);
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    from = driver->normalize_path(from, oname + "/..", creator);
+    to = driver->normalize_path(to, oname + "/..", creator);
     accessd = ::find_object(ACCESSD);
-    if (creator != "System" &&
-	(!accessd->access(oname, from, WRITE_ACCESS) ||
-	 !accessd->access(oname, to, WRITE_ACCESS))) {
+    if (sscanf(from, "/kernel/%*s") != 0 || sscanf(to, "/kernel/%*s") != 0 ||
+	(creator != "System" &&
+	 (!accessd->access(oname, from, WRITE_ACCESS) ||
+	  !accessd->access(oname, to, WRITE_ACCESS)))) {
 	error("Access denied");
     }
-    fcreator = creator(from);
-    tcreator = creator(to);
-    size = file_size(from);
+
+    fcreator = driver->creator(from);
+    tcreator = driver->creator(to);
+    size = driver->file_size(from, 1);
     rsrcd = ::find_object(RSRCD);
-    if (creator != "System" && size != 0 && fcreator != tcreator) {
+    if (size != 0 && fcreator != tcreator) {
 	rsrc = rsrcd->rsrc_get(tcreator, "filequota");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}
     }
+
     catch {
 	rlimits (-1; -1) {
 	    result = ::rename_file(from, to);
@@ -905,7 +922,7 @@ static int rename_file(string from, string to)
 		rsrcd->rsrc_incr(tcreator, "filequota", 0, size, 1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return result;
 }
 
@@ -919,19 +936,17 @@ static mixed **get_dir(string path)
     mixed **list, *olist;
     int i, sz, len;
 
-    if (!path) {
-	BADARG(1, get_dir);
-    }
+    CHECKOBJ("get_dir");
+    CHECKARG(path, 1, "get_dir");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
     }
-    list = ::get_dir(path);
 
+    list = ::get_dir(path);
     names = explode(path, "/");
     dir = implode(names[.. sizeof(names) - 2], "/");
     names = list[0];
@@ -967,21 +982,22 @@ static mixed **get_dir(string path)
 static int make_dir(string path)
 {
     string oname, fcreator;
-    object rsrcd;
+    object driver, rsrcd;
     int *rsrc, result;
 
-    if (!path) {
-	BADARG(1, make_dir);
-    }
+    CHECKOBJ("make_dir");
+    CHECKARG(path, 1, "make_dir");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
-    if (creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if (sscanf(path, "/kernel/%*s") != 0 ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
     }
-    fcreator = creator(path);
+
+    fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     if (creator != "System") {
 	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
@@ -989,6 +1005,7 @@ static int make_dir(string path)
 	    error("File quota exceeded");
 	}
     }
+
     catch {
 	rlimits (-1; -1) {
 	    result = ::make_dir(path);
@@ -996,7 +1013,7 @@ static int make_dir(string path)
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, 1, 1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return result;
 }
 
@@ -1007,28 +1024,30 @@ static int make_dir(string path)
 static int remove_dir(string path)
 {
     string oname;
+    object driver;
     int result;
 
-    if (!path) {
-	BADARG(1, remove_dir);
-    }
+    CHECKOBJ("remove_dir");
+    CHECKARG(path, 1, "remove_dir");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
-    if (creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if (sscanf(path, "/kernel/%*s") != 0 ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
     }
+
     catch {
 	rlimits (-1; -1) {
 	    result = ::remove_dir(path);
 	    if (result != 0) {
-		::find_object(RSRCD)->rsrc_incr(creator(path), "filequota", 0,
-						-1);
+		::find_object(RSRCD)->rsrc_incr(driver->creator(path),
+						"filequota", 0, -1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return result;
 }
 
@@ -1040,17 +1059,16 @@ static int restore_object(string path)
 {
     string oname;
 
-    if (!path) {
-	BADARG(1, restore_object);
-    }
+    CHECKOBJ("restore_object");
+    CHECKARG(path, 1, "restore_object");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
     if (creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path, READ_ACCESS)) {
 	error("Access denied");
     }
+
     return ::restore_object(path);
 }
 
@@ -1061,21 +1079,23 @@ static int restore_object(string path)
 static save_object(string path)
 {
     string oname, fcreator;
-    object rsrcd;
+    object driver, rsrcd;
     int size, *rsrc;
 
-    if (!path) {
-	BADARG(1, save_object);
-    }
+    CHECKOBJ("save_object");
+    CHECKARG(path, 1, "save_object");
 
-    oname = object_name(this_object());
-    sscanf(oname, "%s#", oname);
-    path = reduce_path(path, oname, creator);
-    if (creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+    sscanf(oname = object_name(this_object()), "%s#", oname);
+    driver = ::find_object(DRIVER);
+    path = driver->normalize_path(path, oname + "/..", creator);
+    if ((sscanf(path, "/kernel/%*s") != 0 &&
+	 sscanf(path, "/kernel/data/%*s") == 0) ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS))) {
 	error("Access denied");
     }
-    fcreator = creator(path);
+
+    fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     if (creator != "System") {
 	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
@@ -1083,16 +1103,17 @@ static save_object(string path)
 	    error("File quota exceeded");
 	}
     }
-    size = file_size(path);
+
+    size = driver->file_size(path);
     catch {
 	rlimits (-1; -1) {
 	    ::save_object(path);
-	    size = file_size(path) - size;
+	    size = driver->file_size(path) - size;
 	    if (size != 0) {
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, 1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
 }
 
 /*
@@ -1101,31 +1122,33 @@ static save_object(string path)
  */
 static string editor(string cmd)
 {
-    object rsrcd;
+    object rsrcd, driver;
     string result;
     mixed *info;
 
-    if (!cmd) {
-	BADARG(1, editor);
-    }
+    CHECKOBJ("editor");
+    CHECKARG(cmd, 1, "editor");
 
     catch {
 	rlimits (-1; -1) {
+	    driver = ::find_object(DRIVER);
 	    rsrcd = ::find_object(RSRCD);
 	    if (!query_editor(this_object()) &&
 		!rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
 		error("Too many editors");
 	    }
+
 	    result = ::editor(cmd);
+
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
 	    }
-	    info = ::find_object(DRIVER)->query_wfile();
+	    info = driver->query_wfile();
 	    if (info) {
-		rsrcd->rsrc_incr(creator(info[0]), "filequota", 0,
-				 file_size(info[0]) - info[1], 1);
+		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", 0,
+				 driver->file_size(info[0]) - info[1], 1);
 	    }
 	}
-    } : error("");
+    } : error(driver->query_error());
     return result;
 }
