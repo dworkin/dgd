@@ -229,9 +229,20 @@ register Uint *c, *t, *a, *b, sizea1, sizeb1;
 	    asi_sub(t2, a, sizet2, sizeab0);
 	    minus = TRUE;
 	}
-	if ((sizeab0 <= sizeb1) ?
-	     asi_cmp(b + sizeab0, b, sizeb1, sizeab0) >= 0 :
-	     asi_cmp(b, b + sizeab0, sizeab0, sizeb1) <= 0) {
+	if (sizeab0 <= sizeb1) {
+	     if (asi_cmp(b + sizeab0, b, sizeb1, sizeab0) >= 0) {
+		/* b1 - b0 */
+		sizet3 = sizeb1;
+		memcpy(t2 + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
+		asi_sub(t2 + sizet2, b, sizet3, sizeab0);
+	    } else {
+		/* -(b0 - b1) */
+		sizet3 = sizeab0;
+		memcpy(t2 + sizet2, b, sizet3 * sizeof(Uint));
+		asi_sub(t2 + sizet2, b + sizeab0, sizet3, sizet3);
+		minus ^= TRUE;
+	    }
+	} else if (asi_cmp(b, b + sizeab0, sizeab0, sizeb1) <= 0) {
 	    /* b1 - b0 */
 	    sizet3 = sizeb1;
 	    memcpy(t2 + sizet2, b + sizeab0, sizet3 * sizeof(Uint));
@@ -240,7 +251,7 @@ register Uint *c, *t, *a, *b, sizea1, sizeb1;
 	    /* -(b0 - b1) */
 	    sizet3 = sizeab0;
 	    memcpy(t2 + sizet2, b, sizet3 * sizeof(Uint));
-	    asi_sub(t2 + sizet2, b + sizeab0, sizet3, sizet3);
+	    asi_sub(t2 + sizet2, b + sizeab0, sizet3, sizeb1);
 	    minus ^= TRUE;
 	}
 
