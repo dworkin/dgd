@@ -95,11 +95,6 @@ typedef struct _svalue_ {
 
 static char sv_layout[] = "sui";
 
-# define SFLT_GET(s, v)	((v)->oindex = (s)->oindex, \
-			 (v)->u.objcnt = (s)->u.objcnt)
-# define SFLT_PUT(s, v)	((s)->oindex = (v)->oindex, \
-			 (s)->u.objcnt = (v)->u.objcnt)
-
 typedef struct _sarray_ {
     Uint index;			/* index in array value table */
     unsigned short size;	/* size of array */
@@ -983,14 +978,11 @@ register int n;
 	    v->u.number = sv->u.number;
 	    break;
 
-	case T_FLOAT:
-	    SFLT_GET(sv, v);
-	    break;
-
 	case T_STRING:
 	    str_ref(v->u.string = d_get_string(data, sv->u.string));
 	    break;
 
+	case T_FLOAT:
 	case T_OBJECT:
 	    v->oindex = sv->oindex;
 	    v->u.objcnt = sv->u.objcnt;
@@ -1659,11 +1651,11 @@ register dataspace *data;
     for (n = data->ncallouts; n > 0; --n) {
 	co->time = sco->time;
 	co->nargs = sco->nargs;
-	if (sco->val[0].type != T_NIL) {
+	if (sco->val[0].type == T_STRING) {
 	    d_get_values(data, sco->val, co->val,
 			 (sco->nargs > 3) ? 4 : sco->nargs + 1);
 	} else {
-	    co->val[0].type = T_NIL;
+	    co->val[0] = nil_value;
 	}
 	sco++;
 	co++;
@@ -1745,8 +1737,7 @@ int nargs;
     co->time = ct;
     co->nargs = nargs;
     v = co->val;
-    v[0].type = T_STRING;
-    str_ref(v[0].u.string = func);
+    PUT_STRVAL(&v[0], func);
     ref_rhs(data, &v[0]);
 
     switch (nargs) {
@@ -1767,9 +1758,8 @@ int nargs;
 	ref_rhs(data, &v[1]);
 	v[2] = *f->sp++;
 	ref_rhs(data, &v[2]);
-	v[3].type = T_ARRAY;
 	nargs -= 2;
-	arr_ref(v[3].u.array = arr_new(data, (long) nargs));
+	PUT_ARRVAL(&v[3], arr_new(data, (long) nargs));
 	memcpy(v[3].u.array->elts, f->sp, nargs * sizeof(value));
 	d_ref_imports(v[3].u.array);
 	ref_rhs(data, &v[3]);
@@ -1802,7 +1792,7 @@ unsigned int handle;
     }
 
     co = &data->callouts[handle - 1];
-    if (co->val[0].type == T_NIL) {
+    if (co->val[0].type != T_STRING) {
 	/* invalid callout */
 	return -1;
     }
@@ -1827,7 +1817,7 @@ unsigned int handle;
 	break;
     }
 
-    co->val[0].type = T_NIL;
+    co->val[0] = nil_value;
     n = data->fcallouts;
     if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;
@@ -1897,12 +1887,11 @@ int *nargs;
     /* wipe out destructed objects */
     for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    v->type = nil_type;
-	    v->u.number = 0;
+	    *v = nil_value;
 	}
     }
 
-    co->val[0].type = T_NIL;
+    co->val[0] = nil_value;
     n = data->fcallouts;
     if (n != 0) {
 	data->callouts[n - 1].co_prev = handle;
@@ -1946,7 +1935,7 @@ register dataspace *data;
     max_args = conf_array_size() - 3;
 
     for (co = data->callouts; count > 0; co++) {
-	if (co->val[0].type != T_NIL) {
+	if (co->val[0].type == T_STRING) {
 	    size = co->nargs;
 	    if (size > max_args) {
 		/* unlikely, but possible */
@@ -1956,14 +1945,14 @@ register dataspace *data;
 	    v = a->elts;
 
 	    /* handle */
-	    v->type = T_INT;
-	    (v++)->u.number = co - data->callouts + 1;
+	    PUT_INTVAL(v, co - data->callouts + 1);
+	    v++;
 	    /* function */
-	    v->type = T_STRING;
-	    str_ref((v++)->u.string = co->val[0].u.string);
+	    PUT_STRVAL(v, co->val[0].u.string);
+	    v++;
 	    /* time */
-	    v->type = T_INT;
-	    (v++)->u.number = co->time;
+	    PUT_INTVAL(v, co->time);
+	    v++;
 
 	    /* copy arguments */
 	    switch (size) {
@@ -1992,8 +1981,8 @@ register dataspace *data;
 	    d_ref_imports(a);
 
 	    /* put in list */
-	    elts->type = T_ARRAY;
-	    arr_ref((elts++)->u.array = a);
+	    PUT_ARRVAL(elts, a);
+	    elts++;
 	    --count;
 	}
     }
@@ -2303,10 +2292,6 @@ register unsigned short n;
 	    sv->u.number = v->u.number;
 	    break;
 
-	case T_FLOAT:
-	    SFLT_PUT(sv, v);
-	    break;
-
 	case T_STRING:
 	    i = str_put(v->u.string, nstr);
 	    sv->oindex = 0;
@@ -2324,6 +2309,7 @@ register unsigned short n;
 	    sstrings[i].ref++;
 	    break;
 
+	case T_FLOAT:
 	case T_OBJECT:
 	    sv->oindex = v->oindex;
 	    sv->u.objcnt = v->u.objcnt;
@@ -2378,15 +2364,12 @@ register unsigned short n;
 		sv->u.number = v->u.number;
 		break;
 
-	    case T_FLOAT:
-		SFLT_PUT(sv, v);
-		break;
-
 	    case T_STRING:
 		sv->oindex = 0;
 		sv->u.string = v->u.string->primary - sdata->strings;
 		break;
 
+	    case T_FLOAT:
 	    case T_OBJECT:
 		sv->oindex = v->oindex;
 		sv->u.objcnt = v->u.objcnt;
@@ -2441,7 +2424,7 @@ register dataspace *data;
 
 	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
 	    v = co->val;
-	    if (v->type != T_NIL) {
+	    if (v->type == T_STRING) {
 		j = 1 + co->nargs;
 		if (j > 4) {
 		    j = 4;
@@ -2605,7 +2588,7 @@ register dataspace *data;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
 		sco->nargs = co->nargs;
-		if (co->val[0].type != T_NIL) {
+		if (co->val[0].type == T_STRING) {
 		    co->val[0].modified = TRUE;
 		    co->val[1].modified = TRUE;
 		    co->val[2].modified = TRUE;
@@ -2652,7 +2635,7 @@ register dataspace *data;
 	    }
 	    /* remove empty callouts at the end */
 	    for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
-		if ((--co)->val[0].type != T_NIL) {
+		if ((--co)->val[0].type == T_STRING) {
 		    break;
 		}
 		if (data->fcallouts == n) {
@@ -2676,7 +2659,7 @@ register dataspace *data;
 		/* process callouts */
 		scallouts = ALLOCA(scallout, n);
 		for (co = data->callouts; n > 0; --n, co++) {
-		    if (co->val[0].type != T_NIL) {
+		    if (co->val[0].type == T_STRING) {
 			d_count(co->val, (co->nargs > 3) ? 4 : co->nargs + 1);
 		    }
 		}
@@ -2717,7 +2700,7 @@ register dataspace *data;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
 		sco->nargs = co->nargs;
-		if (co->val[0].type != T_NIL) {
+		if (co->val[0].type == T_STRING) {
 		    d_save(sco->val, co->val,
 			   (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
@@ -2968,7 +2951,7 @@ void d_export()
 
 		    co = data->callouts;
 		    for (n = data->ncallouts; n > 0; --n) {
-			if (co->val[0].type != T_NIL) {
+			if (co->val[0].type == T_STRING) {
 			    d_import(data, co->val,
 				     (co->nargs > 3) ? 4 : co->nargs + 1);
 			}
@@ -3638,7 +3621,7 @@ Uint *counttab;
 	for (n = data->ncallouts; n > 0; --n) {
 	    co->time = sco->time;
 	    co->nargs = sco->nargs;
-	    if (sco->val[0].type != T_NIL) {
+	    if (sco->val[0].type == T_STRING) {
 		if (sco->nargs > 3) {
 		    d_fixobjs(sco->val, (Uint) 4, counttab);
 		    d_get_values(data, sco->val, co->val, 4);
@@ -3647,7 +3630,7 @@ Uint *counttab;
 		    d_get_values(data, sco->val, co->val, sco->nargs + 1);
 		}
 	    } else {
-		co->val[0].type = T_NIL;
+		co->val[0] = nil_value;
 	    }
 	    sco++;
 	    co++;
@@ -3707,7 +3690,7 @@ register dataspace *data;
 	    d_get_callouts(data);
 	}
 	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
-	    if ((--co)->val[0].type != T_NIL) {
+	    if ((--co)->val[0].type == T_STRING) {
 		d_del_call_out(data, n);
 	    }
 	}

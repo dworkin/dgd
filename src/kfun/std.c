@@ -46,9 +46,7 @@ register frame *f;
     }
     obj = c_compile(f, file, obj);
     str_del(f->sp->u.string);
-    f->sp->type = T_OBJECT;
-    f->sp->oindex = obj->index;
-    f->sp->u.objcnt = obj->count;
+    PUT_OBJVAL(f->sp, obj);
 
     return 0;
 }
@@ -76,7 +74,7 @@ int nargs;
     switch (val->type) {
     case T_STRING:
 	*--f->sp = *val;
-	val->type = T_INT;	/* erase old copy */
+	*val = nil_value;	/* erase old copy */
 	call_driver_object(f, "call_object", 1);
 	if (f->sp->type != T_OBJECT) {
 	    i_del_value(f->sp++);
@@ -96,8 +94,7 @@ int nargs;
     }
 
     /* default return value */
-    val->type = nil_type;
-    val->u.number = 0;
+    *val = nil_value;
     --val;
 
     if (f->obj->count == 0) {
@@ -140,12 +137,9 @@ register frame *f;
     --f->sp;
     obj = f->obj;
     if (obj->count != 0) {
-	f->sp->type = T_OBJECT;
-	f->sp->oindex = obj->index;
-	f->sp->u.objcnt = obj->count;
+	PUT_OBJVAL(f->sp, obj);
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -170,20 +164,16 @@ int nargs;
     register object *obj;
 
     if (nargs == 0) {
-	(--f->sp)->type = nil_type;
-	f->sp->u.number = 0;
+	*--f->sp = nil_value;
     } else if (f->sp->u.number < 0) {
 	return 1;
     }
 
     obj = i_prev_object(f, (int) f->sp->u.number);
     if (obj != (object *) NULL) {
-	f->sp->type = T_OBJECT;
-	f->sp->oindex = obj->index;
-	f->sp->u.objcnt = obj->count;
+	PUT_OBJVAL(f->sp, obj);
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -209,22 +199,18 @@ int nargs;
     register string *str;
 
     if (nargs == 0) {
-	(--f->sp)->type = nil_type;
-	f->sp->u.number = 0;
+	*--f->sp = nil_value;
     } else if (f->sp->u.number < 0) {
 	return 1;
     }
 
     prog = i_prev_program(f, (int) f->sp->u.number);
     if (prog != (char *) NULL) {
-	f->sp->type = T_STRING;
-	str = str_new((char *) NULL, strlen(prog) + 1L);
+	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(prog) + 1L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, prog);
-	str_ref(f->sp->u.string = str);
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -243,11 +229,7 @@ char pt_call_trace[] = { C_STATIC, T_MIXED | (2 << REFSHIFT), 0 };
 int kf_call_trace(f)
 register frame *f;
 {
-    array *a;
-
-    a = i_call_trace(f);
-    (--f->sp)->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUSH_ARRVAL(f, i_call_trace(f));
     return 0;
 }
 # endif
@@ -275,8 +257,7 @@ register frame *f;
 	error("clone_object() within atomic function (cannot undo yet)");
     }
     obj = o_clone(obj);
-    f->sp->oindex = obj->index;
-    f->sp->u.objcnt = obj->count;
+    PUT_OBJ(f->sp, obj);
     i_call(f, obj, "", 0, FALSE, 0);	/* cause creator to be called */
     return 0;
 }
@@ -329,8 +310,7 @@ register frame *f;
     char buffer[STRINGSZ + 12], *name;
 
     name = o_name(buffer, &otable[f->sp->oindex]);
-    f->sp->type = T_STRING;
-    str_ref(f->sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
+    PUT_STRVAL(f->sp, str_new((char *) NULL, strlen(name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, name);
     return 0;
@@ -361,12 +341,9 @@ register frame *f;
     obj = o_find(path);
     str_del(f->sp->u.string);
     if (obj != (object *) NULL) {
-	f->sp->type = T_OBJECT;
-	f->sp->oindex = obj->index;
-	f->sp->u.objcnt = obj->count;
+	PUT_OBJVAL(f->sp, obj);
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -407,15 +384,13 @@ register frame *f;
 	     * function exists and is callable
 	     */
 	    name = o->chain.name;
-	    str_ref(f->sp->u.string = str_new((char *) NULL,
-					      strlen(name) + 1L));
+	    PUT_STR(f->sp, str_new((char *) NULL, strlen(name) + 1L));
 	    f->sp->u.string->text[0] = '/';
 	    strcpy(f->sp->u.string->text + 1, name);
 	    return 0;
 	}
     }
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -437,12 +412,9 @@ register frame *f;
 
     obj = comm_user();
     if (obj != (object *) NULL) {
-	(--f->sp)->type = T_OBJECT;
-	f->sp->oindex = obj->index;
-	f->sp->u.objcnt = obj->count;
+	PUSH_OBJVAL(f, obj);
     } else {
-	(--f->sp)->type = nil_type;
-	f->sp->u.number = 0;
+	*--f->sp = nil_value;
     }
     return 0;
 }
@@ -465,11 +437,9 @@ register frame *f;
 
     obj = &otable[f->sp->oindex];
     if (obj->flags & O_USER) {
-	f->sp->type = T_STRING;
-	str_ref(f->sp->u.string = comm_ip_number(obj));
+	PUT_STRVAL(f->sp, comm_ip_number(obj));
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -492,11 +462,9 @@ register frame *f;
 
     obj = &otable[f->sp->oindex];
     if (obj->flags & O_USER) {
-	f->sp->type = T_STRING;
-	str_ref(f->sp->u.string = comm_ip_name(obj));
+	PUT_STRVAL(f->sp, comm_ip_name(obj));
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -515,8 +483,7 @@ char pt_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
 int kf_users(f)
 register frame *f;
 {
-    (--f->sp)->type = T_ARRAY;
-    arr_ref(f->sp->u.array = comm_users(f->data));
+    PUSH_ARRVAL(f, comm_users(f->data));
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
 }
@@ -539,8 +506,7 @@ register frame *f;
 
     len = f->sp->u.string->len;
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = len;
+    PUT_INTVAL(f->sp, len);
     return 0;
 }
 # endif
@@ -566,8 +532,7 @@ register frame *f;
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
-    f->sp->type = T_ARRAY;
+    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = nil_value;
     }
@@ -596,8 +561,7 @@ register frame *f;
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
-    f->sp->type = T_ARRAY;
+    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = zero_int;
     }
@@ -626,8 +590,7 @@ register frame *f;
 	return 1;
     }
     i_add_ticks(f, f->sp->u.number);
-    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
-    f->sp->type = T_ARRAY;
+    PUT_ARRVAL(f->sp, arr_new(f->data, (long) f->sp->u.number));
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	*v = zero_float;
     }
@@ -653,8 +616,7 @@ register frame *f;
 
     size = f->sp->u.array->size;
     arr_del(f->sp->u.array);
-    f->sp->type = T_INT;
-    f->sp->u.number = size;
+    PUT_INTVAL(f->sp, size);
     return 0;
 }
 # endif
@@ -678,8 +640,7 @@ register frame *f;
     a = map_indices(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
     arr_del(f->sp->u.array);
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_ARRVAL(f->sp, a);
     return 0;
 }
 # endif
@@ -703,8 +664,7 @@ register frame *f;
     a = map_values(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
     arr_del(f->sp->u.array);
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_ARRVAL(f->sp, a);
     return 0;
 }
 # endif
@@ -727,8 +687,7 @@ register frame *f;
     i_add_ticks(f, f->sp->u.array->size);
     size = map_size(f->sp->u.array);
     arr_del(f->sp->u.array);
-    f->sp->type = T_INT;
-    f->sp->u.number = size;
+    PUT_INTVAL(f->sp, size);
     return 0;
 }
 # endif
@@ -747,8 +706,7 @@ int kf_typeof(f)
 register frame *f;
 {
     i_del_value(f->sp);
-    f->sp->u.number = f->sp->type;
-    f->sp->type = T_INT;
+    PUT_INTVAL(f->sp, f->sp->type);
     return 0;
 }
 # endif
@@ -815,9 +773,8 @@ register frame *f;
     }
     if (f->sp->type == T_STRING) {
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
     }
-    f->sp->u.number = num;
+    PUT_INTVAL(f->sp, num);
     return 0;
 }
 # endif
@@ -843,8 +800,7 @@ register frame *f;
 	num = comm_udpsend(obj, f->sp->u.string);
     }
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = num;
+    PUT_INTVAL(f->sp, num);
     return 0;
 }
 # endif
@@ -865,8 +821,7 @@ register frame *f;
     if (f->obj->flags & O_USER) {
 	comm_block(f->obj, f->sp->u.number != 0);
     }
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -884,8 +839,7 @@ char pt_time[] = { C_STATIC, T_INT, 0 };
 int kf_time(f)
 frame *f;
 {
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = P_time();
+    PUSH_INTVAL(f, P_time());
     return 0;
 }
 # endif
@@ -909,14 +863,11 @@ frame *f;
 
     i_add_ticks(f, 2);
     a = arr_new(f->data, 2L);
-    a->elts[0].type = T_INT;
-    a->elts[0].u.number = P_mtime(&milli);
+    PUT_INTVAL(&a->elts[0], P_mtime(&milli));
     flt_itof((Int) milli, &flt);
     flt_mult(&flt, &thousandth);
-    a->elts[1].type = T_FLOAT;
-    VFLT_PUT(a->elts + 1, flt);
-    (--f->sp)->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_FLTVAL(&a->elts[1], flt);
+    PUSH_ARRVAL(f, a);
     return 0;
 }
 # endif
@@ -949,7 +900,7 @@ int nargs;
 	}
 	mdelay = 0xffff;
     } else if (f->sp[nargs - 2].type == T_FLOAT) {
-	VFLT_GET(&f->sp[nargs - 2], flt1);
+	GET_FLT(&f->sp[nargs - 2], flt1);
 	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &sixty) > 0) {
 	    /* delay < 0.0 or delay > 60.0 */
 	    return -2;
@@ -974,8 +925,7 @@ int nargs;
 	handle = 0;
     }
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = handle;
+    PUT_INTVAL(f->sp, handle);
 
     return 0;
 }
@@ -1000,12 +950,11 @@ register frame *f;
     i_add_ticks(f, 10);
     delay = d_del_call_out(f->data, (uindex) f->sp->u.number);
     if (delay < -1) {
-	f->sp->type = T_FLOAT;
 	flt_itof(-2 - delay, &flt);
 	flt_mult(&flt, &thousandth);
-	VFLT_PUT(f->sp, flt);
+	PUT_FLTVAL(f->sp, flt);
     } else {
-	f->sp->u.number = delay;
+	PUT_INT(f->sp, delay);
     }
     return 0;
 }
@@ -1026,8 +975,7 @@ frame *f;
 {
     swapout();
 
-    (--f->sp)->type = nil_type;
-    f->sp->u.number = 0;
+    *--f->sp = nil_value;
     return 0;
 }
 # endif
@@ -1046,8 +994,8 @@ int kf_dump_state(f)
 frame *f;
 {
     dump_state();
-    (--f->sp)->type = nil_type;
-    f->sp->u.number = 0;
+
+    *--f->sp = nil_value;
     return 0;
 }
 # endif
@@ -1067,8 +1015,7 @@ frame *f;
 {
     finish();
 
-    (--f->sp)->type = nil_type;
-    f->sp->u.number = 0;
+    *--f->sp = nil_value;
     return 0;
 }
 # endif
@@ -1098,8 +1045,7 @@ int nargs;
     } else {
 	a = conf_object(f->data, &otable[f->sp->oindex]);
     }
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_ARRVAL(f->sp, a);
     return 0;
 }
 # endif

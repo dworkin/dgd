@@ -26,7 +26,7 @@ static bool stricttc;		/* strict typechecking */
 int nil_type;			/* type of nil value */
 value zero_int = { T_INT, TRUE };
 value zero_float = { T_FLOAT, TRUE };
-value nil_value = { T_NIL, TRUE };
+value nil_value = { T_NIL, FALSE };
 
 /*
  * NAME:	interpret->init()
@@ -293,7 +293,7 @@ register int n;
 
 /*
  * NAME:	interpret->odest()
- * DESCRIPTION:	replace all occurrances of an object on the stack by 0
+ * DESCRIPTION:	replace all occurrances of an object on the stack by nil
  */
 void i_odest(ftop, obj)
 frame *ftop;
@@ -338,8 +338,7 @@ frame *f;
 int inherit;
 unsigned int index;
 {
-    (--f->sp)->type = T_STRING;
-    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, inherit, index));
+    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, inherit, index));
 }
 
 /*
@@ -367,8 +366,7 @@ register unsigned int size;
 	d_ref_imports(a);
 	f->sp = v;
     }
-    (--f->sp)->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUSH_ARRVAL(f, a);
 }
 
 /*
@@ -404,8 +402,7 @@ register unsigned int size;
 	ec_pop();
 	d_ref_imports(a);
     }
-    (--f->sp)->type = T_MAPPING;
-    arr_ref(f->sp->u.array = a);
+    PUSH_MAPVAL(f, a);
 }
 
 /*
@@ -509,8 +506,7 @@ register frame *f;
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
 						 (long) ival->u.number)]);
 	str_del(aval->u.string);
-	aval->type = T_INT;
-	aval->u.number = i;
+	PUT_INTVAL(aval, i);
 	return;
 
     case T_ARRAY:
@@ -790,8 +786,7 @@ register frame *f;
          * The fetch is always done directly after an lvalue
          * constructor, so lvstr is valid.
          */
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = UCHAR(f->lvstr->text[f->lip[-1].u.number]);
+	PUSH_INTVAL(f, UCHAR(f->lvstr->text[f->lip[-1].u.number]));
 	break;
     }
 }
@@ -809,13 +804,8 @@ unsigned short i;
 	error("Non-numeric value in indexed string assignment");
     }
 
-    val->type = T_STRING;
-    if (str->primary == (strref *) NULL && str->ref == 1) {
-	/* only reference to this string: don't copy */
-	val->u.string = str;
-    } else {
-	val->u.string = str_new(str->text, (long) str->len);
-    }
+    PUT_STRVAL_NOREF(val, (str->primary == (strref *) NULL && str->ref == 1) ?
+			   str : str_new(str->text, (long) str->len));
     val->u.string->text[i] = v->u.number;
     return val;
 }
@@ -948,9 +938,7 @@ register frame *f;
     --f->sp;
     f->sp[0] = f->sp[1];
     f->sp[1] = f->sp[2];
-    f->sp[2].type = T_OBJECT;
-    f->sp[2].oindex = f->obj->index;
-    f->sp[2].u.objcnt = f->obj->count;
+    PUT_OBJVAL(&f->sp[2], f->obj);
     /* obj, stack, ticks */
     call_driver_object(f, "runtime_rlimits", 3);
 
@@ -1436,7 +1424,6 @@ register char *pc;
     register Uint l;
     register char *p;
     register kfunc *kf;
-    xfloat flt;
     int size;
     Int newdepth, newticks;
     bool atomic;
@@ -1461,50 +1448,39 @@ register char *pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
-	    *--f->sp = zero_int;
+	    PUSH_INTVAL(f, 0);
 	    break;
 
 	case I_PUSH_ONE:
-	    (--f->sp)->type = T_INT;
-	    f->sp->u.number = 1;
+	    PUSH_INTVAL(f, 1);
 	    break;
 
 	case I_PUSH_INT1:
-	    (--f->sp)->type = T_INT;
-	    f->sp->u.number = FETCH1S(pc);
+	    PUSH_INTVAL(f, FETCH1S(pc));
 	    break;
 
 	case I_PUSH_INT4:
-	    (--f->sp)->type = T_INT;
-	    f->sp->u.number = FETCH4S(pc, l);
+	    PUSH_INTVAL(f, FETCH4S(pc, l));
 	    break;
 
 	case I_PUSH_FLOAT:
-	    (--f->sp)->type = T_FLOAT;
-	    flt.high = FETCH2U(pc, u);
-	    flt.low = FETCH4U(pc, l);
-	    VFLT_PUT(f->sp, flt);
+	    FETCH2U(pc, u);
+	    PUSH_FLTCONST(f, u, FETCH4U(pc, l));
 	    break;
 
 	case I_PUSH_STRING:
-	    (--f->sp)->type = T_STRING;
-	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl,
-						     f->p_ctrl->ninherits - 1,
-						     FETCH1U(pc)));
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, f->p_ctrl->ninherits - 1,
+					  FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_NEAR_STRING:
-	    (--f->sp)->type = T_STRING;
 	    u = FETCH1U(pc);
-	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, u,
-						     FETCH1U(pc)));
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_FAR_STRING:
-	    (--f->sp)->type = T_STRING;
 	    u = FETCH1U(pc);
-	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, u,
-						     FETCH2U(pc, u2)));
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH2U(pc, u2)));
 	    break;
 
 	case I_PUSH_LOCAL:
@@ -1526,8 +1502,8 @@ register char *pc;
 	    break;
 
 	case I_PUSH_LOCAL_LVAL:
-	    (--f->sp)->type = T_LVALUE;
 	    u = FETCH1S(pc);
+	    (--f->sp)->type = T_LVALUE;
 	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
 	    f->sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
 	    continue;
@@ -1854,8 +1830,7 @@ int funci;
 	    pc++;
 	    a = arr_new(f.data, 0L);
 	}
-	(--prev_f->sp)->type = T_ARRAY;
-	arr_ref(prev_f->sp->u.array = a);
+	PUSH_ARRVAL(prev_f, a);
     } else if (nargs > n) {
 	if (stricttc) {
 	    error("Too many arguments for function %s",
@@ -2198,39 +2173,31 @@ dataspace *data;
 
     /* object name */
     name = o_name(buffer, f->obj);
-    v[0].type = T_STRING;
-    str = str_new((char *) NULL, strlen(name) + 1L);
+    PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
+    v++;
     str->text[0] = '/';
     strcpy(str->text + 1, name);
-    str_ref(v[0].u.string = str);
 
     /* program name */
     name = f->p_ctrl->obj->chain.name;
-    v[1].type = T_STRING;
-    str = str_new((char *) NULL, strlen(name) + 1L);
+    PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
+    v++;
     str->text[0] = '/';
     strcpy(str->text + 1, name);
-    str_ref(v[1].u.string = str);
 
     /* function name */
-    v[2].type = T_STRING;
-    str_ref(v[2].u.string = d_get_strconst(f->p_ctrl, f->func->inherit,
-					   f->func->index));
+    PUT_STRVAL(v, d_get_strconst(f->p_ctrl, f->func->inherit, f->func->index));
+    v++;
 
     /* line number */
-    v[3].type = T_INT;
-    if (f->func->class & C_COMPILED) {
-	v[3].u.number = 0;
-    } else {
-	v[3].u.number = i_line(f);
-    }
+    PUT_INTVAL(v, (f->func->class & C_COMPILED) ? 0 : i_line(f));
+    v++;
 
     /* external flag */
-    v[4].type = T_INT;
-    v[4].u.number = f->external;
+    PUT_INTVAL(v, f->external);
+    v++;
 
     /* arguments */
-    v += 5;
     while (n > 0) {
 	*v++ = *--args;
 	i_ref_value(args);
@@ -2259,8 +2226,7 @@ value *v;
     }
 
     for (f = ftop, n -= idx + 1; n != 0; f = f->prev, --n) ;
-    v->type = T_ARRAY;
-    arr_ref(v->u.array = i_func_trace(f, ftop->data));
+    PUT_ARRVAL(v, i_func_trace(f, ftop->data));
     return TRUE;
 }
 
@@ -2280,8 +2246,8 @@ register frame *ftop;
     a = arr_new(ftop->data, (long) n);
     i_add_ticks(ftop, 10 * n);
     for (f = ftop, v = a->elts + n; f->obj != (object *) NULL; f = f->prev) {
-	(--v)->type = T_ARRAY;
-	arr_ref(v->u.array = i_func_trace(f, ftop->data));
+	--v;
+	PUT_ARRVAL(v, i_func_trace(f, ftop->data));
     }
 
     return a;
@@ -2326,12 +2292,9 @@ Int depth;
     char *err;
 
     err = errormesg();
-    (--f->sp)->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(err, (long) strlen(err)));
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = depth;
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = i_get_ticks(f);
+    PUSH_STRVAL(f, str_new(err, (long) strlen(err)));
+    PUSH_INTVAL(f, depth);
+    PUSH_INTVAL(f, i_get_ticks(f));
     if (!i_call_critical(f, "runtime_error", 3, FALSE)) {
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
@@ -2355,12 +2318,9 @@ Int level;
 	char *err;
 
 	err = errormesg();
-	(--ftop->sp)->type = T_STRING;
-	str_ref(ftop->sp->u.string = str_new(err, (long) strlen(err)));
-	(--ftop->sp)->type = T_INT;
-	ftop->sp->u.number = f->depth;
-	(--ftop->sp)->type = T_INT;
-	ftop->sp->u.number = i_get_ticks(ftop);
+	PUSH_STRVAL(ftop, str_new(err, (long) strlen(err)));
+	PUSH_INTVAL(ftop, f->depth);
+	PUSH_INTVAL(ftop, i_get_ticks(ftop));
 	if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
 	    message("Error within atomic_error:\012");	/* LF */
 	    message((char *) NULL);

@@ -516,8 +516,8 @@ cvoid *cv1, *cv2;
 		1;
 
     case T_FLOAT:
-	VFLT_GET(v1, f1);
-	VFLT_GET(v2, f2);
+	GET_FLT(v1, f1);
+	GET_FLT(v2, f2);
 	return flt_cmp(&f1, &f2);
 
     case T_STRING:

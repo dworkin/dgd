@@ -1319,3 +1319,7 @@ DGD 1.1
  - Use a Windows font that displays properly on foreign language systems.
  - Only commit changes to a previous plane if there <is> a previous plane.
  - Fixed a bug in atomic code when swapout is involved.
+ - The editor now shows characters in range 0x80 - 0x9f normally.
+ - Fixed some more bugs in the name lookup code.
+ - Encapsulate creation of values with macros, making it easier to extend the
+   value struct.

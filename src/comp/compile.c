@@ -364,14 +364,11 @@ int priv;
 	ncomp = ncompiled;
 
 	/* get associated object */
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(NULL, strlen(current->file) + 1L));
+	PUSH_STRVAL(f, str_new(NULL, strlen(current->file) + 1L));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = priv;
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
+	PUSH_INTVAL(f, priv);
 
 	strncpy(buf, file, STRINGSZ - 1);
 	buf[STRINGSZ - 1] = '\0';
@@ -1109,9 +1106,7 @@ node *n1, *n2, *n3;
 	register frame *f;
 
 	f = current->frame;
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new((char *) NULL,
-					  strlen(current->file) + 1L));
+	PUSH_STRVAL(f, str_new((char *) NULL, strlen(current->file) + 1L));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
@@ -2115,15 +2110,12 @@ char *format, *a1, *a2, *a3;
 
 	f = current->frame;
 	fname = tk_filename();
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(NULL, strlen(fname) + 1L));
+	PUSH_STRVAL(f, str_new(NULL, strlen(fname) + 1L));
 	strcpy(f->sp->u.string->text + 1, fname);
 	f->sp->u.string->text[0] = '/';
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = tk_line();
+	PUSH_INTVAL(f, tk_line());
 	sprintf(buf, format, a1, a2, a3);
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(buf, (long) strlen(buf)));
+	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
 	i_del_value(f->sp++);

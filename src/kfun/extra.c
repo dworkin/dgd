@@ -40,7 +40,7 @@ int nargs;
     i_add_ticks(f, 400);
     p = P_crypt(f->sp->u.string->text, salt);
     str_del(f->sp->u.string);
-    str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
+    PUT_STR(f->sp, str_new(p, (long) strlen(p)));
     return 0;
 }
 # endif
@@ -62,8 +62,7 @@ frame *f;
 
     i_add_ticks(f, 5);
     P_ctime(buf, f->sp->u.number);
-    f->sp->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(buf, 24L));
+    PUT_STRVAL(f->sp, str_new(buf, 24L));
 
     return 0;
 }
@@ -104,8 +103,7 @@ register frame *f;
 	 */
 	a = arr_new(f->data, (long) len);
 	for (v = a->elts; len > 0; v++, --len) {
-	    v->type = T_STRING;
-	    str_ref(v->u.string = str_new(p, 1L));
+	    PUT_STRVAL(v, str_new(p, 1L));
 	    p++;
 	}
     } else {
@@ -145,8 +143,7 @@ register frame *f;
 	while (len > slen) {
 	    if (memcmp(p, s, slen) == 0) {
 		/* separator found */
-		v->type = T_STRING;
-		str_ref(v->u.string = str_new(p - size, (long) size));
+		PUT_STRVAL(v, str_new(p - size, (long) size));
 		v++;
 		p += slen;
 		len -= slen;
@@ -164,14 +161,12 @@ register frame *f;
 	    p += len;
 	}
 	/* final array element */
-	v->type = T_STRING;
-	str_ref(v->u.string = str_new(p - size, (long) size));
+	PUT_STRVAL(v, str_new(p - size, (long) size));
     }
 
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_ARRVAL(f->sp, a);
     i_add_ticks(f, (Int) 2 * a->size);
 
     return 0;
@@ -234,8 +229,7 @@ register frame *f;
 
     str_del((f->sp++)->u.string);
     arr_del(f->sp->u.array);
-    f->sp->type = T_STRING;
-    str_ref(f->sp->u.string = str);
+    PUT_STRVAL(f->sp, str);
     return 0;
 }
 # endif
@@ -254,7 +248,7 @@ int kf_random(f)
 register frame *f;
 {
     i_add_ticks(f, 1);
-    f->sp->u.number = (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0;
+    PUT_INT(f->sp, (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0);
     return 0;
 }
 # endif
@@ -479,8 +473,7 @@ int nargs;
 		    error("No lvalue for %%s");
 		}
 		--nargs;
-		(--f->sp)->type = T_STRING;
-		str_ref(f->sp->u.string = str_new(s, (long) size));
+		PUSH_STRVAL(f, str_new(s, (long) size));
 		i_store(f);
 		f->sp->u.string->ref--;
 		f->sp += 2;
@@ -502,8 +495,7 @@ int nargs;
 		    error("No lvalue for %%d");
 		}
 		--nargs;
-		(--f->sp)->type = T_INT;
-		f->sp->u.number = i;
+		PUSH_INTVAL(f, i);
 		i_store(f);
 		f->sp += 2;
 	    }
@@ -522,8 +514,7 @@ int nargs;
 		    error("No lvalue for %%f");
 		}
 		--nargs;
-		(--f->sp)->type = T_FLOAT;
-		VFLT_PUT(f->sp, flt);
+		PUSH_FLTVAL(f, flt);
 		i_store(f);
 		f->sp += 2;
 	    }
@@ -539,8 +530,7 @@ int nargs;
 		    error("No lvalue for %%c");
 		}
 		--nargs;
-		(--f->sp)->type = T_INT;
-		f->sp->u.number = UCHAR(*s);
+		PUSH_INTVAL(f, UCHAR(*s));
 		i_store(f);
 		f->sp += 2;
 	    }
@@ -560,8 +550,7 @@ no_match:
     }
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = matches;
+    PUT_INTVAL(f->sp, matches);
     return 0;
 }
 # endif
@@ -604,12 +593,10 @@ int nargs;
 
     if (a != (array *) NULL) {
 	/* return parse tree */
-	f->sp->type = T_ARRAY;
-	arr_ref(f->sp->u.array = a);
+	PUT_ARRVAL(f->sp, a);
     } else {
 	/* parsing failed */
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }

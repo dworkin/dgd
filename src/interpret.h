@@ -109,13 +109,57 @@ struct _value_ {
 # define VAL_TRUE(v)	((v)->u.number != 0 ||				\
 			 ((v)->type == T_FLOAT && (v)->oindex != 0))
 
-# define VFLT_GET(v, f)	((f).high = (v)->oindex, (f).low = (v)->u.objcnt)
-# define VFLT_PUT(v, f)	((v)->oindex = (f).high, (v)->u.objcnt = (f).low)
+# define PUSH_INTVAL(f, i)	((--(f)->sp)->u.number = (i),		\
+				 (f)->sp->type = T_INT)
+# define PUT_INTVAL(v, i)	((v)->u.number = (i), (v)->type = T_INT)
+# define PUT_INT(v, i)		((v)->u.number = (i))
+# define PUSH_FLTVAL(f, fl)	((--(f)->sp)->oindex = (fl).high,	\
+				 (f)->sp->u.objcnt = (fl).low,		\
+				 (f)->sp->type = T_FLOAT)
+# define PUSH_FLTCONST(f, h, l)	((--(f)->sp)->oindex = (h),		\
+				 (f)->sp->u.objcnt = (l),		\
+				 (f)->sp->type = T_FLOAT)
+# define PUT_FLTVAL(v, fl)	((v)->oindex = (fl).high,		\
+				 (v)->u.objcnt = (fl).low,		\
+				 (v)->type = T_FLOAT)
+# define PUT_FLT(v, fl)		((v)->oindex = (fl).high,		\
+				 (v)->u.objcnt = (fl).low)
+# define GET_FLT(v, fl)		((fl).high = (v)->oindex,		\
+				 (fl).low = (v)->u.objcnt)
+# define PUSH_STRVAL(f, s)	(str_ref((--(f)->sp)->u.string = (s)),	\
+				 (f)->sp->type = T_STRING)
+# define PUT_STRVAL(v, s)	(str_ref((v)->u.string = (s)),		\
+				 (v)->type = T_STRING)
+# define PUT_STRVAL_NOREF(v, s)	((v)->u.string = (s), (v)->type = T_STRING)
+# define PUT_STR(v, s)		(str_ref((v)->u.string = (s)))
+# define PUSH_OBJVAL(f, o)	((--(f)->sp)->oindex = (o)->index,	\
+				 (f)->sp->u.objcnt = (o)->count,	\
+				 (f)->sp->type = T_OBJECT)
+# define PUT_OBJVAL(v, o)	((v)->oindex = (o)->index,		\
+				 (v)->u.objcnt = (o)->count,		\
+				 (v)->type = T_OBJECT)
+# define PUT_OBJ(v, o)		((v)->oindex = (o)->index,		\
+				 (v)->u.objcnt = (o)->count)
+# define PUSH_ARRVAL(f, a)	(arr_ref((--(f)->sp)->u.array = (a)),	\
+				 (f)->sp->type = T_ARRAY)
+# define PUT_ARRVAL(v, a)	(arr_ref((v)->u.array = (a)),		\
+				 (v)->type = T_ARRAY)
+# define PUT_ARRVAL_NOREF(v, a)	((v)->u.array = (a), (v)->type = T_ARRAY)
+# define PUT_ARR(v, a)		(arr_ref((v)->u.array = (a)))
+# define PUSH_MAPVAL(f, m)	(arr_ref((--(f)->sp)->u.array = (m)),	\
+				 (f)->sp->type = T_MAPPING)
+# define PUT_MAPVAL(v, m)	(arr_ref((v)->u.array = (m)),		\
+				 (v)->type = T_MAPPING)
+# define PUT_MAPVAL_NOREF(v, m)	((v)->u.array = (m), (v)->type = T_MAPPING)
+# define PUT_MAP(v, m)		(arr_ref((v)->u.array = (m)))
+
+# define VFLT_GET(v, f) ((f).high = (v)->oindex, (f).low = (v)->u.objcnt)
+# define VFLT_PUT(v, f) ((v)->oindex = (f).high, (v)->u.objcnt = (f).low)
+# define VFLT_ABS(v)    FLT_ABS((v)->oindex, (v)->u.objcnt)
+# define VFLT_NEG(v)    FLT_NEG((v)->oindex, (v)->u.objcnt)
+
 # define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)
 # define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
-# define VFLT_ONE(v)	FLT_ONE((v)->oindex, (v)->u.objcnt)
-# define VFLT_ABS(v)	FLT_ABS((v)->oindex, (v)->u.objcnt)
-# define VFLT_NEG(v)	FLT_NEG((v)->oindex, (v)->u.objcnt)
 # define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
 
 # define DESTRUCTED(v)	(otable[(v)->oindex].count != (v)->u.objcnt)

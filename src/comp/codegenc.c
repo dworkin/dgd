@@ -968,10 +968,8 @@ register int state;
 	cg_expr(n->l.left, POP);
 	--catch_level;
 	if (state == PUSH) {
-	    output(", ec_pop(), (--f->sp)->type = nil_type, ");
-	    output("f->sp->u.number = 0) : (p = errormesg(), ");
-	    output("(--f->sp)->type = T_STRING, str_ref(f->sp->u.string = ");
-	    output("str_new(p, (long) strlen(p)))");
+	    output(", ec_pop(), *--f->sp = nil_value) : (p = errormesg(), ");
+	    output("PUSH_STRVAL(f, str_new(p, (long) strlen(p)))");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1014,9 +1012,8 @@ register int state;
 	break;
 
     case N_FLOAT:
-	output("(--f->sp)->type = T_FLOAT, f->sp->oindex = 0x%04x, ",
-	       n->l.fhigh);
-	output("f->sp->u.objcnt = 0x%08XL", (long) n->r.flow);
+	output("PUSH_FLTCONST(f, 0x%04x, 0x%08xL)", n->l.fhigh,
+	       (long) n->r.flow);
 	break;
 
     case N_FUNC:

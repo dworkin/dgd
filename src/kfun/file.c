@@ -37,16 +37,14 @@ int nargs;
 	ed_new(obj);
     }
     if (nargs == 0) {
-	(--f->sp)->type = nil_type;
-	f->sp->u.number = 0;
+	*--f->sp = nil_value;
     } else {
 	str = ed_command(obj, f->sp->u.string->text);
 	str_del(f->sp->u.string);
 	if (str != (string *) NULL) {
-	    str_ref(f->sp->u.string = str);
+	    PUT_STR(f->sp, str);
 	} else {
-	    f->sp->type = nil_type;
-	    f->sp->u.number = 0;
+	    *f->sp = nil_value;
 	}
     }
     return 0;
@@ -72,11 +70,9 @@ register frame *f;
     obj = &otable[f->sp->oindex];
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
-	f->sp->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(status, (long) strlen(status)));
+	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
     } else {
-	f->sp->type = nil_type;
-	f->sp->u.number = 0;
+	*f->sp = nil_value;
     }
     return 0;
 }
@@ -204,7 +200,7 @@ array *a;
 	    break;
 
 	case T_FLOAT:
-	    VFLT_GET(v, flt);
+	    GET_FLT(v, flt);
 	    flt_ftoa(&flt, buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
@@ -291,7 +287,7 @@ array *a;
 	    break;
 
 	case T_FLOAT:
-	    VFLT_GET(v, flt);
+	    GET_FLT(v, flt);
 	    flt_ftoa(&flt, buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
@@ -319,7 +315,7 @@ array *a;
 	    break;
 
 	case T_FLOAT:
-	    VFLT_GET(v, flt);
+	    GET_FLT(v, flt);
 	    flt_ftoa(&flt, buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
@@ -417,7 +413,7 @@ register frame *f;
 			break;
 
 		    case T_FLOAT:
-			VFLT_GET(var, flt);
+			GET_FLT(var, flt);
 			flt_ftoa(&flt, buf);
 			put(&x, buf, strlen(buf));
 			sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
@@ -460,8 +456,7 @@ register frame *f;
     }
 
     str_del(f->sp->u.string);
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -565,12 +560,11 @@ value *val;
 {
     char *p;
 
-    val->u.number = strtol(buf, &p, 10);
+    PUT_INTVAL(val, strtol(buf, &p, 10));
     if (p == buf) {
 	restore_error(x, "digit expected");
     }
 
-    val->type = T_INT;
     return p;
 }
 
@@ -589,7 +583,7 @@ register value *val;
     xfloat flt;
     bool isfloat;
 
-    val->u.number = strtol(q = buf, &buf, 10);
+    PUT_INTVAL(val, strtol(q = buf, &buf, 10));
     if (q == buf) {
 	restore_error(x, "digit expected");
     }
@@ -639,19 +633,16 @@ register value *val;
 	    }
 	}
 
-	val->type = T_FLOAT;
-	VFLT_PUT(val, flt);
+	PUT_FLTVAL(val, flt);
 	return p + 1;
     } else if (isfloat) {
 	if (!flt_atof(&q, &flt)) {
 	    restore_error(x, "float too large");
 	}
-	val->type = T_FLOAT;
-	VFLT_PUT(val, flt);
+	PUT_FLTVAL(val, flt);
 	return p;
     }
 
-    val->type = T_INT;
     return p;
 }
 
@@ -688,8 +679,7 @@ value *val;
 	*q++ = *p;
     }
 
-    val->u.string = str_new(buf, (long) q - (long) buf);
-    val->type = T_STRING;
+    PUT_STRVAL_NOREF(val, str_new(buf, (long) q - (long) buf));
     return p + 1;
 }
 
@@ -721,7 +711,7 @@ value *val;
 
     ac_put(x, T_ARRAY, a = arr_new(x->f->data, (long) val->u.number));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	(v++)->type = T_INT;
+	*v++ = nil_value;
     }
     i = a->size;
     v = a->elts;
@@ -745,8 +735,7 @@ value *val;
     }
     ec_pop();
 
-    val->type = T_ARRAY;
-    val->u.array = a;
+    PUT_ARRVAL_NOREF(val, a);
     return buf;
 }
 
@@ -775,7 +764,7 @@ value *val;
 
     ac_put(x, T_MAPPING, a = map_new(x->f->data, (long) val->u.number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
-	(v++)->type = T_INT;
+	*v++ = nil_value;
     }
     i = a->size;
     v = a->elts;
@@ -805,8 +794,7 @@ value *val;
     map_sort(a);
     ec_pop();
 
-    val->type = T_MAPPING;
-    val->u.array = a;
+    PUT_MAPVAL_NOREF(val, a);
     return buf;
 }
 
@@ -897,8 +885,7 @@ register frame *f;
 
     i_add_ticks(f, 2000);	/* arbitrary */
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = 0;
+    PUT_INTVAL(f->sp, 0);
     fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* restore failed */
@@ -1091,8 +1078,7 @@ int nargs;
 
     i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
     str_del(f->sp[1].u.string);
-    f->sp[1].type = T_INT;
-    f->sp[1].u.number = 0;
+    PUT_INTVAL(&f->sp[1], 0);
 
     fd = P_open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
@@ -1118,7 +1104,7 @@ int nargs;
     if (P_write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
 							f->sp->u.string->len) {
 	/* succesful write */
-	f->sp[1].u.number = 1;
+	PUT_INT(&f->sp[1], 1);
     }
     P_close(fd);
 
@@ -1162,8 +1148,7 @@ int nargs;
     }
 
     str_del(f->sp->u.string);
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
 
     if (size < 0) {
 	/* size has to be >= 0 */
@@ -1205,8 +1190,7 @@ int nargs;
 	P_close(fd);
 	error((char *) NULL);	/* pass on error */
     } else {
-	str_ref(f->sp->u.string = str_new((char *) NULL, size));
-	f->sp->type = T_STRING;
+	PUT_STRVAL(f->sp, str_new((char *) NULL, size));
 	ec_pop();
     }
     if (size > 0 &&
@@ -1250,9 +1234,8 @@ register frame *f;
     i_add_ticks(f, 1000);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
-		       P_rename(from, to) >= 0);
+    PUT_INTVAL(f->sp, (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
+		       P_rename(from, to) >= 0));
     return 0;
 }
 # endif
@@ -1282,8 +1265,7 @@ register frame *f;
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0);
+    PUT_INTVAL(f->sp, (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0));
     return 0;
 }
 # endif
@@ -1313,8 +1295,7 @@ register frame *f;
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = (P_mkdir(file, 0775) >= 0);
+    PUT_INTVAL(f->sp, (P_mkdir(file, 0775) >= 0));
     return 0;
 }
 # endif
@@ -1344,8 +1325,7 @@ register frame *f;
 
     i_add_ticks(f, 1000);
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
-    f->sp->u.number = (P_rmdir(file) >= 0);
+    PUT_INTVAL(f->sp, (P_rmdir(file) >= 0));
     return 0;
 }
 # endif
@@ -1574,14 +1554,10 @@ frame *f;
 
     /* prepare return value */
     str_del(f->sp->u.string);
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a = arr_new(f->data, 3L));
-    a->elts[0].type = T_ARRAY;
-    arr_ref(a->elts[0].u.array = arr_new(f->data, (long) nfiles));
-    a->elts[1].type = T_ARRAY;
-    arr_ref(a->elts[1].u.array = arr_new(f->data, (long) nfiles));
-    a->elts[2].type = T_ARRAY;
-    arr_ref(a->elts[2].u.array = arr_new(f->data, (long) nfiles));
+    PUT_ARRVAL(f->sp, a = arr_new(f->data, 3L));
+    PUT_ARRVAL(&a->elts[0], arr_new(f->data, (long) nfiles));
+    PUT_ARRVAL(&a->elts[1], arr_new(f->data, (long) nfiles));
+    PUT_ARRVAL(&a->elts[2], arr_new(f->data, (long) nfiles));
 
     i_add_ticks(f, 1000 + 5 * nfiles);
 
@@ -1593,12 +1569,9 @@ frame *f;
 	s = a->elts[1].u.array->elts;
 	t = a->elts[2].u.array->elts;
 	for (i = nfiles; i > 0; --i, ftable++) {
-	    n->type = T_STRING;
-	    n->u.string = ftable->name;
-	    s->type = T_INT;
-	    s->u.number = ftable->size;
-	    t->type = T_INT;
-	    t->u.number = ftable->time;
+	    PUT_STRVAL_NOREF(n, ftable->name);
+	    PUT_INTVAL(s, ftable->size);
+	    PUT_INTVAL(t, ftable->time);
 	    n++, s++, t++;
 	}
 	ftable -= nfiles;

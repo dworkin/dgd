@@ -156,14 +156,11 @@ register frame *f;
     dest_obj = o - otable;
 
     /* callback to the system */
-    (--f->sp)->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(NULL, strlen(o->chain.name) + 1L));
+    PUSH_STRVAL(f, str_new(NULL, strlen(o->chain.name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, o->chain.name);
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = ctrl->compiled;
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = o->index;
+    PUSH_INTVAL(f, ctrl->compiled);
+    PUSH_INTVAL(f, o->index);
     if (i_call_critical(f, "remove_program", 3, TRUE)) {
 	i_del_value(f->sp++);
     }

@@ -651,8 +651,7 @@ frame *f;
 {
     showctrl(o_control(&otable[f->sp->oindex]));
     fflush(stdout);
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -680,8 +679,7 @@ frame *f;
 	fflush(stdout);
     }
     str_del((f->sp++)->u.string);
-    f->sp->type = nil_type;
-    f->sp->u.number = 0;
+    *f->sp = nil_value;
     return 0;
 }
 # endif

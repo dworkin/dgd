@@ -63,7 +63,7 @@ register frame *f;
     case T_INT:
 	switch (f->sp->type) {
 	case T_INT:
-	    f->sp[1].u.number += f->sp->u.number;
+	    PUT_INT(&f->sp[1], f->sp[1].u.number + f->sp->u.number);
 	    f->sp++;
 	    return 0;
 
@@ -76,8 +76,7 @@ register frame *f;
 	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
 	    str_del(f->sp->u.string);
 	    f->sp++;
-	    f->sp->type = T_STRING;
-	    str_ref(f->sp->u.string = str);
+	    PUT_STRVAL(f->sp, str);
 	    return 0;
 	}
 	break;
@@ -86,16 +85,16 @@ register frame *f;
 	i_add_ticks(f, 1);
 	switch (f->sp->type) {
 	case T_FLOAT:
-	    VFLT_GET(f->sp, f2);
+	    GET_FLT(f->sp, f2);
 	    f->sp++;
-	    VFLT_GET(f->sp, f1);
+	    GET_FLT(f->sp, f1);
 	    flt_add(&f1, &f2);
-	    VFLT_PUT(f->sp, f1);
+	    PUT_FLT(f->sp, f1);
 	    return 0;
 
 	case T_STRING:
 	    i_add_ticks(f, 2);
-	    VFLT_GET(f->sp + 1, f1);
+	    GET_FLT(&f->sp[1], f1);
 	    flt_ftoa(&f1, buffer);
 	    str = str_new((char *) NULL,
 			  (l=(long) strlen(buffer)) + f->sp->u.string->len);
@@ -103,8 +102,7 @@ register frame *f;
 	    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
 	    str_del(f->sp->u.string);
 	    f->sp++;
-	    f->sp->type = T_STRING;
-	    str_ref(f->sp->u.string = str);
+	    PUT_STRVAL(f->sp, str);
 	    return 0;
 	}
 	break;
@@ -120,12 +118,12 @@ register frame *f;
 	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
 	    strcpy(str->text + f->sp->u.string->len, num);
 	    str_del(f->sp->u.string);
-	    str_ref(f->sp->u.string = str);
+	    PUT_STR(f->sp, str);
 	    return 0;
 
 	case T_FLOAT:
 	    i_add_ticks(f, 1);
-	    VFLT_GET(f->sp, f2);
+	    GET_FLT(f->sp, f2);
 	    flt_ftoa(&f2, buffer);
 	    f->sp++;
 	    str = str_new((char *) NULL,
@@ -133,7 +131,7 @@ register frame *f;
 	    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
 	    strcpy(str->text + f->sp->u.string->len, buffer);
 	    str_del(f->sp->u.string);
-	    str_ref(f->sp->u.string = str);
+	    PUT_STR(f->sp, str);
 	    return 0;
 
 	case T_STRING:
@@ -141,7 +139,7 @@ register frame *f;
 	    str_del(f->sp->u.string);
 	    f->sp++;
 	    str_del(f->sp->u.string);
-	    str_ref(f->sp->u.string = str);
+	    PUT_STR(f->sp, str);
 	    return 0;
 	}
 	break;
@@ -153,7 +151,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -165,7 +163,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -191,7 +189,7 @@ char pt_add_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_add_int(f)
 register frame *f;
 {
-    f->sp[1].u.number += f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number + f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -213,13 +211,13 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp->type == T_INT) {
-	f->sp->u.number++;
+	PUT_INT(f->sp, f->sp->u.number + 1);
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f1);
+	GET_FLT(f->sp, f1);
 	FLT_ONE(f2.high, f2.low);
 	flt_add(&f1, &f2);
-	VFLT_PUT(f->sp, f1);
+	PUT_FLT(f->sp, f1);
     } else {
 	kf_argerror(KF_ADD1, 1);
     }
@@ -240,7 +238,7 @@ char pt_add1_int[] = { C_STATIC, T_INT, 1, T_INT };
 int kf_add1_int(f)
 frame *f;
 {
-    f->sp->u.number++;
+    PUT_INT(f->sp, f->sp->u.number + 1);
     return 0;
 }
 # endif
@@ -263,7 +261,7 @@ register frame *f;
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    f->sp[1].u.number &= f->sp->u.number;
+	    PUT_INT(&f->sp[1], f->sp[1].u.number & f->sp->u.number);
 	    f->sp++;
 	    return 0;
 	}
@@ -276,7 +274,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -287,8 +285,7 @@ register frame *f;
 	    a = map_intersect(f->data, f->sp[1].u.array, f->sp->u.array);
 	    arr_del(f->sp->u.array);
 	    f->sp++;
-	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -314,7 +311,7 @@ char pt_and_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_and_int(f)
 register frame *f;
 {
-    f->sp[1].u.number &= f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number & f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -350,20 +347,20 @@ register frame *f;
 	    Int r;
 
 	    r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	    f->sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+	    PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
 	} else {
-	    f->sp[1].u.number = ((Uint) i) / ((Uint) d);
+	    PUT_INT(&f->sp[1], ((Uint) i) / ((Uint) d));
 	}
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
+	GET_FLT(f->sp, f1);
 	flt_div(&f1, &f2);
-	VFLT_PUT(f->sp, f1);
+	PUT_FLT(f->sp, f1);
 	return 0;
 
     default:
@@ -396,9 +393,9 @@ register frame *f;
 	Int r;
 
 	r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	f->sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
     } else {
-	f->sp[1].u.number = ((Uint) i) / ((Uint) d);
+	PUT_INT(&f->sp[1], ((Uint) i) / ((Uint) d));
     }
     f->sp++;
     return 0;
@@ -423,30 +420,27 @@ register frame *f;
 
     if (f->sp[1].type != f->sp->type) {
 	i_pop(f, 2);
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = FALSE;
+	PUSH_INTVAL(f, FALSE);
 	return 0;
     }
 
     switch (f->sp->type) {
     case T_NIL:
 	f->sp++;
-	f->sp->type = T_INT;
-	f->sp->u.number = TRUE;
+	PUT_INTVAL(f->sp, TRUE);
 	break;
 
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number == f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number == f->sp->u.number));
 	f->sp++;
 	break;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) == 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) == 0));
 	break;
 
     case T_STRING:
@@ -455,13 +449,11 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	break;
 
     case T_OBJECT:
-	f->sp[1].type = T_INT;
-	f->sp[1].u.number = (f->sp[1].oindex == f->sp->oindex);
+	PUT_INTVAL(&f->sp[1], (f->sp[1].oindex == f->sp->oindex));
 	f->sp++;
 	break;
 
@@ -471,8 +463,7 @@ register frame *f;
 	arr_del(f->sp->u.array);
 	f->sp++;
 	arr_del(f->sp->u.array);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	break;
     }
 
@@ -493,7 +484,7 @@ char pt_eq_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_eq_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number == f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number == f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -520,17 +511,16 @@ register frame *f;
     }
     switch (f->sp->type) {
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number >= f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) >= 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) >= 0));
 	return 0;
 
     case T_STRING:
@@ -539,8 +529,7 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
@@ -562,7 +551,7 @@ char pt_ge_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_ge_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number >= f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -589,17 +578,16 @@ register frame *f;
     }
     switch (f->sp->type) {
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number > f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) > 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) > 0));
 	return 0;
 
     case T_STRING:
@@ -608,8 +596,7 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
@@ -631,7 +618,7 @@ char pt_gt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_gt_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number > f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -658,17 +645,16 @@ register frame *f;
     }
     switch (f->sp->type) {
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number <= f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) <= 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) <= 0));
 	return 0;
 
     case T_STRING:
@@ -677,8 +663,7 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
@@ -700,7 +685,7 @@ char pt_le_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_le_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number <= f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -729,9 +714,9 @@ register frame *f;
 	if (f->sp->u.number < 0) {
 	    error("Negative left shift");
 	}
-	f->sp[1].u.number = 0;
+	PUT_INT(&f->sp[1], 0);
     } else {
-	f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number << f->sp->u.number);
     }
     f->sp++;
     return 0;
@@ -755,9 +740,9 @@ register frame *f;
 	if (f->sp->u.number < 0) {
 	    error("Negative left shift");
 	}
-	f->sp[1].u.number = 0;
+	PUT_INT(&f->sp[1], 0);
     } else {
-	f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number << f->sp->u.number);
     }
     f->sp++;
     return 0;
@@ -785,17 +770,16 @@ register frame *f;
     }
     switch (f->sp->type) {
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number < f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) < 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) < 0));
 	return 0;
 
     case T_STRING:
@@ -804,8 +788,7 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	return 0;
 
     default:
@@ -827,7 +810,7 @@ char pt_lt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_lt_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number < f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -863,9 +846,9 @@ register frame *f;
 	Int r;
 
 	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
-	f->sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
     } else {
-	f->sp[1].u.number = ((Uint) i) % ((Uint) d);
+	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
     }
     f->sp++;
     return 0;
@@ -896,9 +879,9 @@ register frame *f;
 	Int r;
 
 	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
-	f->sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
     } else {
-	f->sp[1].u.number = ((Uint) i) % ((Uint) d);
+	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
     }
     f->sp++;
     return 0;
@@ -925,17 +908,17 @@ register frame *f;
     }
     switch (f->sp->type) {
     case T_INT:
-	f->sp[1].u.number *= f->sp->u.number;
+	PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
+	GET_FLT(f->sp, f1);
 	flt_mult(&f1, &f2);
-	VFLT_PUT(f->sp, f1);
+	PUT_FLT(f->sp, f1);
 	return 0;
 
     default:
@@ -957,7 +940,7 @@ char pt_mult_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_mult_int(f)
 register frame *f;
 {
-    f->sp[1].u.number *= f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -981,30 +964,27 @@ register frame *f;
 
     if (f->sp[1].type != f->sp->type) {
 	i_pop(f, 2);
-	(--f->sp)->type = T_INT;
-	f->sp->u.number = TRUE;
+	PUSH_INTVAL(f, TRUE);
 	return 0;
     }
 
     switch (f->sp->type) {
     case T_NIL:
 	f->sp++;
-	f->sp->type = T_INT;
-	f->sp->u.number = FALSE;
+	PUT_INTVAL(f->sp, FALSE);
 	break;
 
     case T_INT:
-	f->sp[1].u.number = (f->sp[1].u.number != f->sp->u.number);
+	PUT_INT(&f->sp[1], (f->sp[1].u.number != f->sp->u.number));
 	f->sp++;
 	break;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f2);
+	GET_FLT(f->sp, f2);
 	f->sp++;
-	VFLT_GET(f->sp, f1);
-	f->sp->type = T_INT;
-	f->sp->u.number = (flt_cmp(&f1, &f2) != 0);
+	GET_FLT(f->sp, f1);
+	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) != 0));
 	break;
 
     case T_STRING:
@@ -1013,13 +993,11 @@ register frame *f;
 	str_del(f->sp->u.string);
 	f->sp++;
 	str_del(f->sp->u.string);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	break;
 
     case T_OBJECT:
-	f->sp[1].type = T_INT;
-	f->sp[1].u.number = (f->sp[1].oindex != f->sp->oindex);
+	PUT_INTVAL(&f->sp[1], (f->sp[1].oindex != f->sp->oindex));
 	f->sp++;
 	break;
 
@@ -1029,8 +1007,7 @@ register frame *f;
 	arr_del(f->sp->u.array);
 	f->sp++;
 	arr_del(f->sp->u.array);
-	f->sp->type = T_INT;
-	f->sp->u.number = flag;
+	PUT_INTVAL(f->sp, flag);
 	break;
     }
 
@@ -1051,7 +1028,7 @@ char pt_ne_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_ne_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (f->sp[1].u.number != f->sp->u.number);
+    PUT_INT(&f->sp[1], (f->sp[1].u.number != f->sp->u.number));
     f->sp++;
     return 0;
 }
@@ -1073,7 +1050,7 @@ register frame *f;
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_NEG, 1);
     }
-    f->sp->u.number = ~f->sp->u.number;
+    PUT_INT(f->sp, ~f->sp->u.number);
     return 0;
 }
 # endif
@@ -1091,7 +1068,7 @@ char pt_neg_int[] = { C_STATIC, T_INT, 1, T_INT };
 int kf_neg_int(f)
 frame *f;
 {
-    f->sp->u.number = ~f->sp->u.number;
+    PUT_INT(f->sp, ~f->sp->u.number);
     return 0;
 }
 # endif
@@ -1111,17 +1088,15 @@ register frame *f;
 {
     switch (f->sp->type) {
     case T_NIL:
-	f->sp->type = T_INT;
-	f->sp->u.number = TRUE;
+	PUT_INTVAL(f->sp, TRUE);
 	return 0;
 
     case T_INT:
-	f->sp->u.number = !f->sp->u.number;
+	PUT_INT(f->sp, !f->sp->u.number);
 	return 0;
 
     case T_FLOAT:
-	f->sp->type = T_INT;
-	f->sp->u.number = VFLT_ISZERO(f->sp);
+	PUT_INTVAL(f->sp, VFLT_ISZERO(f->sp));
 	return 0;
 
     case T_STRING:
@@ -1134,8 +1109,7 @@ register frame *f;
 	break;
     }
 
-    f->sp->type = T_INT;
-    f->sp->u.number = FALSE;
+    PUT_INTVAL(f->sp, FALSE);
     return 0;
 }
 # endif
@@ -1151,7 +1125,7 @@ FUNCDEF("!", kf_not_int, pt_not)
 int kf_not_int(f)
 frame *f;
 {
-    f->sp->u.number = !f->sp->u.number;
+    PUT_INT(f->sp, !f->sp->u.number);
     return 0;
 }
 # endif
@@ -1174,7 +1148,7 @@ register frame *f;
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    f->sp[1].u.number |= f->sp->u.number;
+	    PUT_INT(&f->sp[1], f->sp[1].u.number | f->sp->u.number);
 	    f->sp++;
 	    return 0;
 	}
@@ -1187,7 +1161,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -1213,7 +1187,7 @@ char pt_or_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_or_int(f)
 register frame *f;
 {
-    f->sp[1].u.number |= f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number | f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -1240,7 +1214,7 @@ register frame *f;
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_ARR(f->sp, a);
 
 	return 0;
     }
@@ -1258,7 +1232,7 @@ register frame *f;
 			(long) f->sp->u.number);
 	f->sp += 2;
 	str_del(f->sp->u.string);
-	str_ref(f->sp->u.string = str);
+	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
@@ -1267,7 +1241,7 @@ register frame *f;
 	i_add_ticks(f, a->size);
 	f->sp += 2;
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_ARR(f->sp, a);
 	break;
 
     default:
@@ -1299,7 +1273,7 @@ register frame *f;
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_MAP(f->sp, a);
 
 	return 0;
     }
@@ -1314,7 +1288,7 @@ register frame *f;
 			f->sp[1].u.string->len - 1L);
 	f->sp++;
 	str_del(f->sp->u.string);
-	str_ref(f->sp->u.string = str);
+	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
@@ -1323,7 +1297,7 @@ register frame *f;
 	i_add_ticks(f, a->size);
 	f->sp++;
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_ARR(f->sp, a);
 	break;
 
     default:
@@ -1355,7 +1329,7 @@ register frame *f;
 	i_del_value(f->sp++);
 	i_add_ticks(f, f->sp->u.array->size);
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_MAP(f->sp, a);
 
 	return 0;
     }
@@ -1369,7 +1343,7 @@ register frame *f;
 	str = str_range(f->sp[1].u.string, 0L, (long) f->sp->u.number);
 	f->sp++;
 	str_del(f->sp->u.string);
-	str_ref(f->sp->u.string = str);
+	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
@@ -1377,7 +1351,7 @@ register frame *f;
 	i_add_ticks(f, a->size);
 	f->sp++;
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_ARR(f->sp, a);
 	break;
 
     default:
@@ -1408,7 +1382,7 @@ register frame *f;
 	a = map_range(f->data, f->sp->u.array, (value *) NULL, (value *) NULL);
 	i_add_ticks(f, f->sp->u.array->size);
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_MAP(f->sp, a);
 
 	return 0;
     }
@@ -1418,14 +1392,14 @@ register frame *f;
 	i_add_ticks(f, 2);
 	str = str_range(f->sp->u.string, 0L, f->sp->u.string->len - 1L);
 	str_del(f->sp->u.string);
-	str_ref(f->sp->u.string = str);
+	PUT_STR(f->sp, str);
 	break;
 
     case T_ARRAY:
 	a = arr_range(f->data, f->sp->u.array, 0L, f->sp->u.array->size - 1L);
 	i_add_ticks(f, a->size);
 	arr_del(f->sp->u.array);
-	arr_ref(f->sp->u.array = a);
+	PUT_ARR(f->sp, a);
 	break;
 
     default:
@@ -1459,9 +1433,9 @@ register frame *f;
 	if (f->sp->u.number < 0) {
 	    error("Negative right shift");
 	}
-	f->sp[1].u.number = 0;
+	PUT_INT(&f->sp[1], 0);
     } else {
-	f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number >> f->sp->u.number);
     }
     f->sp++;
     return 0;
@@ -1485,9 +1459,9 @@ register frame *f;
 	if (f->sp->u.number < 0) {
 	    error("Negative right shift");
 	}
-	f->sp[1].u.number = 0;
+	PUT_INT(&f->sp[1], 0);
     } else {
-	f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+	PUT_INT(&f->sp[1], (Uint) f->sp[1].u.number >> f->sp->u.number);
     }
     f->sp++;
     return 0;
@@ -1512,7 +1486,7 @@ register frame *f;
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    f->sp[1].u.number -= f->sp->u.number;
+	    PUT_INT(&f->sp[1], f->sp[1].u.number - f->sp->u.number);
 	    f->sp++;
 	    return 0;
 	}
@@ -1521,11 +1495,11 @@ register frame *f;
     case T_FLOAT:
 	if (f->sp->type == T_FLOAT) {
 	    i_add_ticks(f, 1);
-	    VFLT_GET(f->sp, f2);
+	    GET_FLT(f->sp, f2);
 	    f->sp++;
-	    VFLT_GET(f->sp, f1);
+	    GET_FLT(f->sp, f1);
 	    flt_sub(&f1, &f2);
-	    VFLT_PUT(f->sp, f1);
+	    PUT_FLT(f->sp, f1);
 	    return 0;
 	}
 	break;
@@ -1539,7 +1513,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -1553,7 +1527,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_MAP(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -1579,7 +1553,7 @@ char pt_sub_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_sub_int(f)
 register frame *f;
 {
-    f->sp[1].u.number -= f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number - f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -1601,13 +1575,13 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp->type == T_INT) {
-	f->sp->u.number--;
+	PUT_INT(f->sp, f->sp->u.number - 1);
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, f1);
+	GET_FLT(f->sp, f1);
 	FLT_ONE(f2.high, f2.low);
 	flt_sub(&f1, &f2);
-	VFLT_PUT(f->sp, f1);
+	PUT_FLT(f->sp, f1);
     } else {
 	kf_argerror(KF_SUB1, 1);
     }
@@ -1628,7 +1602,7 @@ char pt_sub1_int[] = { C_STATIC, T_INT, 1, T_INT };
 int kf_sub1_int(f)
 frame *f;
 {
-    f->sp->u.number--;
+    PUT_INT(f->sp, f->sp->u.number - 1);
     return 0;
 }
 # endif
@@ -1652,8 +1626,7 @@ register frame *f;
     if (f->sp->type == T_INT) {
 	/* from int */
 	flt_itof(f->sp->u.number, &flt);
-	f->sp->type = T_FLOAT;
-	VFLT_PUT(f->sp, flt);
+	PUT_FLTVAL(f->sp, flt);
 	return 0;
     } else if (f->sp->type == T_STRING) {
 	char *p;
@@ -1663,8 +1636,7 @@ register frame *f;
 	    p == f->sp->u.string->text + f->sp->u.string->len) {
 	    /* from string */
 	    str_del(f->sp->u.string);
-	    f->sp->type = T_FLOAT;
-	    VFLT_PUT(f->sp, flt);
+	    PUT_FLTVAL(f->sp, flt);
 	    return 0;
 	}
     }
@@ -1694,9 +1666,8 @@ register frame *f;
     if (f->sp->type == T_FLOAT) {
 	/* from float */
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, flt);
-	f->sp->type = T_INT;
-	f->sp->u.number = flt_ftoi(&flt);
+	GET_FLT(f->sp, flt);
+	PUT_INTVAL(f->sp, flt_ftoi(&flt));
 	return 0;
     } else if (f->sp->type == T_STRING) {
 	char *p;
@@ -1706,8 +1677,7 @@ register frame *f;
 	if (p == f->sp->u.string->text + f->sp->u.string->len) {
 	    /* from string */
 	    str_del(f->sp->u.string);
-	    f->sp->type = T_INT;
-	    f->sp->u.number = i;
+	    PUT_INTVAL(f->sp, i);
 	    return 0;
 	}
     }
@@ -1734,17 +1704,15 @@ register frame *f;
 {
     switch (f->sp->type) {
     case T_NIL:
-	f->sp->type = T_INT;
-	f->sp->u.number = FALSE;
+	PUT_INTVAL(f->sp, FALSE);
 	return 0;
 
     case T_INT:
-	f->sp->u.number = (f->sp->u.number != 0);
+	PUT_INT(f->sp, (f->sp->u.number != 0));
 	return 0;
 
     case T_FLOAT:
-	f->sp->type = T_INT;
-	f->sp->u.number = !VFLT_ISZERO(f->sp);
+	PUT_INTVAL(f->sp, !VFLT_ISZERO(f->sp));
 	return 0;
 
     case T_STRING:
@@ -1757,8 +1725,7 @@ register frame *f;
 	break;
     }
 
-    f->sp->type = T_INT;
-    f->sp->u.number = TRUE;
+    PUT_INTVAL(f->sp, TRUE);
     return 0;
 }
 # endif
@@ -1774,7 +1741,7 @@ FUNCDEF("!!", kf_tst_int, pt_tst)
 int kf_tst_int(f)
 frame *f;
 {
-    f->sp->u.number = (f->sp->u.number != 0);
+    PUT_INT(f->sp, (f->sp->u.number != 0));
     return 0;
 }
 # endif
@@ -1792,15 +1759,19 @@ char pt_umin[] = { C_STATIC, T_MIXED, 1, T_MIXED };
 int kf_umin(f)
 register frame *f;
 {
+    xfloat flt;
+
     switch (f->sp->type) {
     case T_INT:
-	f->sp->u.number = -f->sp->u.number;
+	PUT_INT(f->sp, -f->sp->u.number);
 	return 0;
 
     case T_FLOAT:
 	i_add_ticks(f, 1);
 	if (!VFLT_ISZERO(f->sp)) {
-	    VFLT_NEG(f->sp);
+	    GET_FLT(f->sp, flt);
+	    FLT_NEG(flt.high, flt.low);
+	    PUT_FLT(f->sp, flt);
 	}
 	return 0;
     }
@@ -1822,7 +1793,7 @@ char pt_umin_int[] = { C_STATIC, T_INT, 1, T_INT };
 int kf_umin_int(f)
 frame *f;
 {
-    f->sp->u.number = -f->sp->u.number;
+    PUT_INT(f->sp, -f->sp->u.number);
     return 0;
 }
 # endif
@@ -1845,7 +1816,7 @@ register frame *f;
     switch (f->sp[1].type) {
     case T_INT:
 	if (f->sp->type == T_INT) {
-	    f->sp[1].u.number ^= f->sp->u.number;
+	    PUT_INT(&f->sp[1], f->sp[1].u.number ^ f->sp->u.number);
 	    f->sp++;
 	    return 0;
 	}
@@ -1858,7 +1829,7 @@ register frame *f;
 	    arr_del(f->sp->u.array);
 	    f->sp++;
 	    arr_del(f->sp->u.array);
-	    arr_ref(f->sp->u.array = a);
+	    PUT_ARR(f->sp, a);
 	    return 0;
 	}
 	break;
@@ -1884,7 +1855,7 @@ char pt_xor_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_xor_int(f)
 register frame *f;
 {
-    f->sp[1].u.number ^= f->sp->u.number;
+    PUT_INT(&f->sp[1], f->sp[1].u.number ^ f->sp->u.number);
     f->sp++;
     return 0;
 }
@@ -1913,7 +1884,7 @@ register frame *f;
     } else if (f->sp->type == T_FLOAT) {
 	/* from float */
 	i_add_ticks(f, 1);
-	VFLT_GET(f->sp, flt);
+	GET_FLT(f->sp, flt);
 	flt_ftoa(&flt, num = buffer);
     } else if (f->sp->type == T_STRING) {
 	return 0;
@@ -1921,8 +1892,7 @@ register frame *f;
 	error("Value is not a string");
     }
 
-    f->sp->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(num, (long) strlen(num)));
+    PUT_STRVAL(f->sp, str_new(num, (long) strlen(num)));
     return 0;
 }
 # endif
@@ -2021,7 +1991,7 @@ register frame *f;
 
     --f->sp;
     f->sp[0] = f->sp[1];
-    f->sp[1].u.number = 0;
+    PUT_INT(&f->sp[1], 0);
     return 0;
 }
 # endif
@@ -2142,8 +2112,7 @@ int nargs;
 	}
 
 	f->sp = v - 1;
-	f->sp->type = T_STRING;
-	str_ref(f->sp->u.string = s);
+	PUT_STRVAL(f->sp, s);
     } else if (type == T_ARRAY) {
 	a = arr_new(f->data, size);
 	e1 = a->elts + size;
@@ -2174,8 +2143,7 @@ int nargs;
 
 	f->sp = v - 1;
 	d_ref_imports(a);
-	f->sp->type = T_ARRAY;
-	arr_ref(f->sp->u.array = a);
+	PUT_ARRVAL(f->sp, a);
     } else {
 	/* integers only */
 	for (v = f->sp, i = nargs; --i > 0; v += 2) {
@@ -2280,8 +2248,7 @@ char pt_nil[] = { C_STATIC, T_NIL, 0 };
 int kf_nil(f)
 register frame *f;
 {
-    (--f->sp)->type = T_NIL;
-    f->sp->u.number = 0;
+    *--f->sp = nil_value;
     return 0;
 }
 # endif

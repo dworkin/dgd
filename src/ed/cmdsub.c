@@ -84,12 +84,12 @@ register char *text;
     }
 
     while (*text != '\0') {
-	if ((*text & 0x7f) < ' ') {
+	if (*text < ' ') {
 	    /* control character */
 	    if (*text == HT && !(cb->flags & CB_LIST)) {
 		*p++ = HT;
 	    } else {
-		*p++ = '^'; *p++ = (*text & 0x9f) + '@';
+		*p++ = '^'; *p++ = (*text & 0x1f) + '@';
 	    }
 	} else if (*text == 0x7f) {
 	    /* DEL */

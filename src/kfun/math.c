@@ -15,8 +15,12 @@ char pt_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 int kf_fabs(f)
 frame *f;
 {
+    xfloat flt;
+
     i_add_ticks(f, 1);
-    VFLT_ABS(f->sp);
+    GET_FLT(f->sp, flt);
+    FLT_ABS(flt.high, flt.low);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -37,9 +41,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 1);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_floor(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -60,9 +64,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 1);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_ceil(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -83,11 +87,11 @@ register frame *f;
     xfloat f1, f2;
 
     i_add_ticks(f, 1);
-    VFLT_GET(f->sp, f2);
+    GET_FLT(f->sp, f2);
     f->sp++;
-    VFLT_GET(f->sp, f1);
+    GET_FLT(f->sp, f1);
     flt_fmod(&f1, &f2);
-    VFLT_PUT(f->sp, f1);
+    PUT_FLT(f->sp, f1);
     return 0;
 }
 # endif
@@ -111,15 +115,12 @@ register frame *f;
     array *a;
 
     i_add_ticks(f, 2);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     num = flt_frexp(&flt);
     a = arr_new(f->data, 2L);
-    a->elts[0].type = T_FLOAT;
-    VFLT_PUT(a->elts, flt);
-    a->elts[1].type = T_INT;
-    a->elts[1].u.number = num;
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_FLTVAL(&a->elts[0], flt);
+    PUT_INTVAL(&a->elts[1], num);
+    PUT_ARRVAL(f->sp, a);
 
     return 0;
 }
@@ -141,10 +142,10 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 1);
-    VFLT_GET(f->sp + 1, flt);
+    GET_FLT(f->sp + 1, flt);
     flt_ldexp(&flt, f->sp->u.number);
     f->sp++;
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -167,15 +168,12 @@ register frame *f;
     array *a;
 
     i_add_ticks(f, 2);
-    VFLT_GET(f->sp, f1);
+    GET_FLT(f->sp, f1);
     flt_modf(&f1, &f2);
     a = arr_new(f->data, 2L);
-    a->elts[0].type = T_FLOAT;
-    VFLT_PUT(a->elts, f1);
-    a->elts[1].type = T_FLOAT;
-    VFLT_PUT(a->elts + 1, f2);
-    f->sp->type = T_ARRAY;
-    arr_ref(f->sp->u.array = a);
+    PUT_FLTVAL(&a->elts[0], f1);
+    PUT_FLTVAL(&a->elts[1], f2);
+    PUT_ARRVAL(f->sp, a);
 
     return 0;
 }
@@ -197,9 +195,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 21);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_exp(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -220,9 +218,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 35);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_log(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -243,9 +241,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 41);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_log10(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -266,11 +264,11 @@ register frame *f;
     xfloat f1, f2;
 
     i_add_ticks(f, 48);
-    VFLT_GET(f->sp, f2);
+    GET_FLT(f->sp, f2);
     f->sp++;
-    VFLT_GET(f->sp, f1);
+    GET_FLT(f->sp, f1);
     flt_pow(&f1, &f2);
-    VFLT_PUT(f->sp, f1);
+    PUT_FLT(f->sp, f1);
     return 0;
 }
 # endif
@@ -291,9 +289,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 11);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_sqrt(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -314,9 +312,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 25);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_cos(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -337,9 +335,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 25);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_sin(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -360,9 +358,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 31);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_tan(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -383,9 +381,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_acos(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -406,9 +404,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_asin(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -429,9 +427,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_atan(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -452,11 +450,11 @@ register frame *f;
     xfloat f1, f2;
 
     i_add_ticks(f, 27);
-    VFLT_GET(f->sp, f2);
+    GET_FLT(f->sp, f2);
     f->sp++;
-    VFLT_GET(f->sp, f1);
+    GET_FLT(f->sp, f1);
     flt_atan2(&f1, &f2);
-    VFLT_PUT(f->sp, f1);
+    PUT_FLT(f->sp, f1);
     return 0;
 }
 # endif
@@ -477,9 +475,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_cosh(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -500,9 +498,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_sinh(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif
@@ -523,9 +521,9 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 24);
-    VFLT_GET(f->sp, flt);
+    GET_FLT(f->sp, flt);
     flt_tanh(&flt);
-    VFLT_PUT(f->sp, flt);
+    PUT_FLT(f->sp, flt);
     return 0;
 }
 # endif

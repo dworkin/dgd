@@ -587,8 +587,7 @@ array *a;
 	    t = decode((Uint) w->u.number, &m) - co_time(&mtime);
 	    flt_itof((Int) t * 1000 + m - mtime, &flt);
 	    flt_mult(&flt, &thousandth);
-	    w->type = T_FLOAT;
-	    VFLT_PUT(w, flt);
+	    PUT_FLTVAL(w, flt);
 	    break;
 
 	default:

@@ -102,8 +102,7 @@ char *buf, *file;
     if (f->obj->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
 	call_driver_object(f, "path_read", 1);
 	if (f->sp->type != T_STRING) {
 	    i_del_value(f->sp++);
@@ -128,8 +127,7 @@ char *buf, *file;
     if (f->obj->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	(--f->sp)->type = T_STRING;
-	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
 	call_driver_object(f, "path_write", 1);
 	if (f->sp->type != T_STRING) {
 	    i_del_value(f->sp++);
@@ -154,12 +152,10 @@ char *buf, *from, *file;
 	return path_from(buf, from, file);
     }
     f = cframe;
-    (--f->sp)->type = T_STRING;
-    str_ref(f->sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
+    PUSH_STRVAL(f, str_new((char *) NULL, strlen(from) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, from);
-    (--f->sp)->type = T_STRING;
-    str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+    PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
     if (!call_driver_object(f, "path_include", 2)) {
 	f->sp++;
 	return path_from(buf, from, file);

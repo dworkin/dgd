@@ -1128,140 +1128,110 @@ Int idx;
 register value *v;
 {
     char *version;
-    allocinfo *mstat;
     uindex ncoshort, ncolong;
 
     switch (idx) {
     case 0:	/* ST_VERSION */
-	v->type = T_STRING;
 	version = VERSION;
-	str_ref(v->u.string = str_new(version, (long) strlen(version)));
+	PUT_STRVAL(v, str_new(version, (long) strlen(version)));
 	break;
 
     case 1:	/* ST_STARTTIME */
-	v->type = T_INT;
-	v->u.number = starttime;
+	PUT_INTVAL(v, starttime);
 	break;
 
     case 2:	/* ST_BOOTTIME */
-	v->type = T_INT;
-	v->u.number = boottime;
+	PUT_INTVAL(v, boottime);
 	break;
 
     case 3:	/* ST_UPTIME */
-	v->type = T_INT;
-	v->u.number = elapsed + P_time() - boottime;
+	PUT_INTVAL(v, elapsed + P_time() - boottime);
 	break;
 
     case 4:	/* ST_SWAPSIZE */
-	v->type = T_INT;
-	v->u.number = conf[SWAP_SIZE].u.num;
+	PUT_INTVAL(v, conf[SWAP_SIZE].u.num);
 	break;
 
     case 5:	/* ST_SWAPUSED */
-	v->type = T_INT;
-	v->u.number = sw_count();
+	PUT_INTVAL(v, sw_count());
 	break;
 
     case 6:	/* ST_SECTORSIZE */
-	v->type = T_INT;
-	v->u.number = conf[SECTOR_SIZE].u.num;
+	PUT_INTVAL(v, conf[SECTOR_SIZE].u.num);
 	break;
 
     case 7:	/* ST_SWAPRATE1 */
-	v->type = T_INT;
-	v->u.number = co_swaprate1();
+	PUT_INTVAL(v, co_swaprate1());
 	break;
 
     case 8:	/* ST_SWAPRATE5 */
-	v->type = T_INT;
-	v->u.number = co_swaprate5();
+	PUT_INTVAL(v, co_swaprate5());
 	break;
 
     case 9:	/* ST_SMEMSIZE */
-	mstat = m_info();
-	v->type = T_INT;
-	v->u.number = mstat->smemsize;
+	PUT_INTVAL(v, m_info()->smemsize);
 	break;
 
     case 10:	/* ST_SMEMUSED */
-	mstat = m_info();
-	v->type = T_INT;
-	v->u.number = mstat->smemused;
+	PUT_INTVAL(v, m_info()->smemused);
 	break;
 
     case 11:	/* ST_DMEMSIZE */
-	mstat = m_info();
-	v->type = T_INT;
-	v->u.number = mstat->dmemsize;
+	PUT_INTVAL(v, m_info()->dmemsize);
 	break;
 
     case 12:	/* ST_DMEMUSED */
-	mstat = m_info();
-	v->type = T_INT;
-	v->u.number = mstat->dmemused;
+	PUT_INTVAL(v, m_info()->dmemused);
 	break;
 
     case 13:	/* ST_OTABSIZE */
-	v->type = T_INT;
-	v->u.number = conf[OBJECTS].u.num;
+	PUT_INTVAL(v, conf[OBJECTS].u.num);
 	break;
 
     case 14:	/* ST_NOBJECTS */
-	v->type = T_INT;
-	v->u.number = o_count();
+	PUT_INTVAL(v, o_count());
 	break;
 
     case 15:	/* ST_COTABSIZE */
-	v->type = T_INT;
-	v->u.number = conf[CALL_OUTS].u.num;
+	PUT_INTVAL(v, conf[CALL_OUTS].u.num);
 	break;
 
     case 16:	/* ST_NCOSHORT */
 	co_info(&ncoshort, &ncolong);
-	v->type = T_INT;
-	v->u.number = ncoshort;
+	PUT_INTVAL(v, ncoshort);
 	break;
 
     case 17:	/* ST_NCOLONG */
 	co_info(&ncoshort, &ncolong);
-	v->type = T_INT;
-	v->u.number = ncolong;
+	PUT_INTVAL(v, ncolong);
 	break;
 
     case 18:	/* ST_UTABSIZE */
-	v->type = T_INT;
-	v->u.number = conf[USERS].u.num;
+	PUT_INTVAL(v, conf[USERS].u.num);
 	break;
 
     case 19:	/* ST_ETABSIZE */
-	v->type = T_INT;
-	v->u.number = conf[EDITORS].u.num;
+	PUT_INTVAL(v, conf[EDITORS].u.num);
 	break;
 
     case 20:	/* ST_STRSIZE */
-	v->type = T_INT;
-	v->u.number = USHRT_MAX;
+	PUT_INTVAL(v, USHRT_MAX);
 	break;
 
     case 21:	/* ST_ARRAYSIZE */
-	v->type = T_INT;
-	v->u.number = conf[ARRAY_SIZE].u.num;
+	PUT_INTVAL(v, conf[ARRAY_SIZE].u.num);
 	break;
 
     case 22:	/* ST_STACKDEPTH */
-	v->type = T_INT;
-	v->u.number = i_get_depth(f);
+	PUT_INTVAL(v, i_get_depth(f));
 	break;
 
     case 23:	/* ST_TICKS */
-	v->type = T_INT;
-	v->u.number = i_get_ticks(f);
+	PUT_INTVAL(v, i_get_ticks(f));
 	break;
 
     case 24:	/* ST_PRECOMPILED */
-	v->type = T_ARRAY;
-	arr_ref(v->u.array = pc_list(f->data));
+	PUT_ARRVAL(v, pc_list(f->data));
 	break;
 
     default:
@@ -1301,46 +1271,40 @@ register value *v;
 {
     register control *ctrl;
     object *prog;
-    array *a;
 
     prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
     ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
 
     switch (idx) {
     case 0:	/* O_COMPILETIME */
-	v->type = T_INT;
-	v->u.number = ctrl->compiled;
+	PUT_INTVAL(v, ctrl->compiled);
 	break;
 
     case 1:	/* O_PROGSIZE */
-	v->type = T_INT;
-	v->u.number = d_get_progsize(ctrl);
+	PUT_INTVAL(v, d_get_progsize(ctrl));
 	break;
 
     case 2:	/* O_DATASIZE */
-	v->type = T_INT;
-	v->u.number = ctrl->nvariables;
+	PUT_INTVAL(v, ctrl->nvariables);
 	break;
 
     case 3:	/* O_NSECTORS */
-	v->type = T_INT;
-	v->u.number = (obj->flags & O_CREATED) ? o_dataspace(obj)->nsectors : 0;
+	PUT_INTVAL(v, (obj->flags & O_CREATED) ?
+		       o_dataspace(obj)->nsectors : 0);
 	if (obj->flags & O_MASTER) {
 	    v->u.number += ctrl->nsectors;
 	}
 	break;
 
     case 4:	/* O_CALLOUTS */
-	a = (obj->flags & O_CREATED) ?
-	     d_list_callouts(data, o_dataspace(obj)) : arr_new(data, 0L);
-	v->type = T_ARRAY;
-	arr_ref(v->u.array = a);
+	PUT_ARRVAL(v, (obj->flags & O_CREATED) ?
+		       d_list_callouts(data, o_dataspace(obj)) :
+		       arr_new(data, 0L));
 	break;
 
     case 5:	/* O_INDEX */
-	v->type = T_INT;
-	v->u.number = (obj->flags & O_MASTER) ?
-		       (Uint) obj->index : obj->u_master;
+	PUT_INTVAL(v, (obj->flags & O_MASTER) ?
+		       (Uint) obj->index : obj->u_master);
 	break;
 
 

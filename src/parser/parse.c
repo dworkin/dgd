@@ -592,8 +592,8 @@ register value *v;
     do {
 	switch (pn->symbol) {
 	case PN_STRING:
-	    (--v)->type = T_STRING;
-	    str_ref(v->u.string = pn->u.str);
+	    --v;
+	    PUT_STRVAL(v, pn->u.str);
 	    break;
 
 	case PN_ARRAY:
@@ -602,8 +602,8 @@ register value *v;
 	    break;
 
 	case PN_BRANCH:
-	    (--v)->type = T_ARRAY;
-	    arr_ref(v->u.array = pn->u.arr);
+	    --v;
+	    PUT_ARRVAL(v, pn->u.arr);
 	    break;
 
 	case PN_RULE:
@@ -674,8 +674,6 @@ pnode *next;
 		if (len != 0) {
 		    ps_flatten(pn, next, a->elts + len);
 		}
-		(--ps->frame->sp)->type = T_ARRAY;
-		arr_ref(ps->frame->sp->u.array = a);
 		ps->data->parser = (parser *) NULL;
 
 		if (ec_push((ec_ftn) NULL)) {
@@ -686,6 +684,7 @@ pnode *next;
 		    ps->data->parser = ps;
 		    error((char *) NULL);	/* pass on error */
 		} else {
+		    PUSH_ARRVAL(ps->frame, a);
 		    call = i_call(ps->frame, ps->frame->obj, pn->u.text + 2 + n,
 				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
 		    ec_pop();
@@ -740,7 +739,7 @@ pnode *next;
 		v = a->elts;
 		memset(v, '\0', n * sizeof(value));
 	    }
-	    for (sub = pn->list, i = 0; i < n; sub = sub->next) {
+	    for (sub = pn->list, i = n; i != 0; sub = sub->next) {
 		if (sub->symbol != PN_BLOCKED) {
 		    if (n == 1) {
 			/* sole branch */
@@ -749,18 +748,16 @@ pnode *next;
 			return pn->len;
 		    } else {
 			if (sub->symbol == PN_ARRAY) {
-			    arr_ref(v->u.array = sub->u.arr);
-			    (v++)->type = T_ARRAY;
+			    PUT_ARRVAL(v, sub->u.arr);
 			} else {
-			    arr_ref(v->u.array = arr_new(ps->data,
-							 (long) sub->len));
-			    v->type = T_ARRAY;
+			    PUT_ARRVAL(v, arr_new(ps->data, (long) sub->len));
 			    if (sub->len != 0) {
 				ps_flatten(sub, next,
-					   (v++)->u.array->elts + sub->len);
+					   v->u.array->elts + sub->len);
 			    }
 			}
-			i++;
+			v++;
+			--i;
 		    }
 		}
 	    }
@@ -836,37 +833,32 @@ register parser *ps;
 
     if (save) {
 	data = ps->data;
-	val.type = T_ARRAY;
-	val.u.array = arr_new(data, 6L);
+	PUT_ARRVAL_NOREF(&val, arr_new(data, 6L));
 
 	/* grammar */
 	v = val.u.array->elts;
-	v->type = T_STRING;
-	str_ref((v++)->u.string = ps->source);
-	v->type = T_STRING;
-	str_ref((v++)->u.string = ps->grammar);
+	PUT_STRVAL(v, ps->source);
+	v++;
+	PUT_STRVAL(v, ps->grammar);
+	v++;
 
 	/* dfa */
-	v->type = T_STRING;
-	str_ref((v++)->u.string = d1);
+	PUT_STRVAL(v, d1);
+	v++;
 	if (d2 != (string *) NULL) {
-	    v->type = T_STRING;
-	    str_ref(v->u.string = d2);
+	    PUT_STRVAL(v, d2);
 	} else {
-	    v->type = T_INT;
-	    v->u.number = 0;
+	    *v = nil_value;
 	}
 	v++;
 
 	/* srp */
-	v->type = T_STRING;
-	str_ref((v++)->u.string = p1);
+	PUT_STRVAL(v, p1);
+	v++;
 	if (p2 != (string *) NULL) {
-	    v->type = T_STRING;
-	    str_ref(v->u.string = p2);
+	    PUT_STRVAL(v, p2);
 	} else {
-	    v->type = T_INT;
-	    v->u.number = 0;
+	    *v = nil_value;
 	}
 
 	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &val);
