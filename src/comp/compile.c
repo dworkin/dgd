@@ -362,9 +362,7 @@ node *label;
 		sp++;
 	    } else {
 		/* returned value not an object */
-		i_del_value(sp++);
-		c_error("cannot inherit %s", file);
-		return FALSE;
+		error("Cannot inherit %s", file);
 	    }
 
 	    if (ncomp != ncompiled) {
