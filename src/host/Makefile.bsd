@@ -8,9 +8,8 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc
 
-SRC=	local.c random.c dirent.c time.c alarm.c connect.c xfloat.c
-OBJ=	local.o random.o dirent.o time.o alarm.o connect.o crypt.o \
-	xfloat.o
+SRC=	local.c random.c dirent.c time.c connect.c xfloat.c
+OBJ=	local.o random.o dirent.o time.o connect.o crypt.o xfloat.o
 SUBOBJ=	local.o random.o dirent.o time.o crypt.o xfloat.o
 
 dgd:	$(OBJ)
@@ -23,11 +22,23 @@ clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
 
-local.c random.c dirent.c time.c alarm.c connect.c: unix/$@
+local.c: unix/local.c
+	cp unix/$@ $@
+
+random.c: unix/random.c
+	cp unix/$@ $@
+
+dirent.c: unix/dirent.c
+	cp unix/$@ $@
+
+time.c: unix/time.c
+	cp unix/$@ $@
+
+connect.c: unix/connect.c
 	cp unix/$@ $@
 
 xfloat.c: simfloat.c
-	cp simfloat.c xfloat.c
+	cp simfloat.c $@
 
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
 connect.o: ../str.h ../array.h ../object.h ../comm.h

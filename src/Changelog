@@ -1256,3 +1256,4 @@ DGD 1.1
    than nil.
  - Let send_message() and message_done() behave in the same way for telnet and
    binary connections.  send_message() now never returns -1.
+ - Allow callouts with millisecond delays (floating point delay argument).

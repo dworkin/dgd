@@ -883,10 +883,41 @@ frame *f;
 
 
 # ifdef FUNCDEF
+FUNCDEF("millitime", kf_millitime, pt_millitime)
+# else
+char pt_millitime[] = { C_STATIC, T_MIXED | (1 << REFSHIFT), 0 };
+
+/*
+ * NAME:	kfun->millitime()
+ * DESCRIPTION:	return the current time in milliseconds
+ */
+int kf_millitime(f)
+frame *f;
+{
+    array *a;
+    unsigned short milli;
+    xfloat flt;
+
+    i_add_ticks(f, 2);
+    a = arr_new(f->data, 2L);
+    a->elts[0].type = T_INT;
+    a->elts[0].u.number = P_mtime(&milli);
+    flt_itof((Int) milli, &flt);
+    flt_mult(&flt, &thousandth);
+    a->elts[1].type = T_FLOAT;
+    VFLT_PUT(a->elts + 1, flt);
+    (--f->sp)->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, pt_call_out)
 # else
 char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_INT, 3,
-		       T_STRING, T_INT, T_MIXED | T_ELLIPSIS };
+		       T_STRING, T_MIXED, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_out()
@@ -896,18 +927,38 @@ int kf_call_out(f, nargs)
 register frame *f;
 int nargs;
 {
+    Int delay;
+    unsigned short mdelay;
+    xfloat flt1, flt2;
     object *obj;
     uindex handle;
 
-    if (f->sp[nargs - 2].u.number < 0) {
+    if (f->sp[nargs - 2].type == T_INT) {
+	delay = f->sp[nargs - 2].u.number;
+	if (delay < 0) {
+	    /* delay less than 0 */
+	    return -2;
+	}
+	mdelay = 0xffff;
+    } else if (f->sp[nargs - 2].type == T_FLOAT) {
+	VFLT_GET(&f->sp[nargs - 2], flt1);
+	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &sixty) > 0) {
+	    /* delay < 0.0 or delay > 60.0 */
+	    return -2;
+	}
+	flt_modf(&flt1, &flt2);
+	delay = flt_ftoi(&flt2);
+	flt_mult(&flt1, &thousand);
+	mdelay = flt_ftoi(&flt1);
+    } else {
 	return 2;
     }
 
     i_add_ticks(f, nargs);
     obj = f->obj;
     if (obj->count != 0 &&
-	(handle=co_new(obj, f->sp[nargs - 1].u.string,
-		       f->sp[nargs - 2].u.number, f, nargs - 2)) != 0) {
+	(handle=co_new(obj, f->sp[nargs - 1].u.string, delay, mdelay, f,
+		       nargs - 2)) != 0) {
 	/* pop duration */
 	f->sp++;
     } else {
@@ -927,7 +978,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("remove_call_out", kf_remove_call_out, pt_remove_call_out)
 # else
-char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
+char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 1, T_INT };
 
 /*
  * NAME:	kfun->remove_call_out()
@@ -936,8 +987,18 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
 int kf_remove_call_out(f)
 register frame *f;
 {
+    Int delay;
+    xfloat flt;
+
     i_add_ticks(f, 10);
-    f->sp->u.number = co_del(f->obj, (uindex) f->sp->u.number);
+    delay = co_del(f->obj, (uindex) f->sp->u.number);
+    if (delay < 0) {
+	f->sp->type = T_FLOAT;
+	flt_itof((delay + 1) * -1000, &flt);
+	VFLT_PUT(f->sp, flt);
+    } else {
+	f->sp->u.number = delay;
+    }
     return 0;
 }
 # endif

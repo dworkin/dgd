@@ -85,7 +85,7 @@ interpret.o: kfun/table.h
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
 editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
-array.o interpret.o path.o config.o dgd.o: xfloat.h
+array.o call_out.o interpret.o path.o config.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
 interpret.o config.o dgd.o: interpret.h
 str.o array.o object.o data.o path.o comm.o call_out.o interpret.o: data.h

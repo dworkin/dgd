@@ -2,7 +2,7 @@ NAME
 	ctime - convert a time integer into a string
 
 SYNOPSIS
-	string ctime(int clock)
+	string ctime(int time)
 
 
 DESCRIPTION
@@ -11,4 +11,4 @@ DESCRIPTION
 	"Tue Aug  3 14:40:18 1993".
 
 SEE ALSO
-	kfun/time
+	kfun/millitime, kfun/time

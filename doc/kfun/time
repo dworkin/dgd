@@ -10,4 +10,4 @@ DESCRIPTION
 	into a string with the kfun ctime().
 
 SEE ALSO
-	kfun/ctime
+	kfun/ctime, kfun/millitime

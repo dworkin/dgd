@@ -1686,10 +1686,9 @@ int *nargs;
  * NAME:	data->list_callouts()
  * DESCRIPTION:	list all call_outs in an object
  */
-array *d_list_callouts(host, data, t)
+array *d_list_callouts(host, data)
 dataspace *host;
 register dataspace *data;
-Uint t;
 {
     register uindex n, count, size;
     register dcallout *co;
@@ -1732,7 +1731,7 @@ Uint t;
 	    str_ref((v++)->u.string = co->val[0].u.string);
 	    /* time */
 	    v->type = T_INT;
-	    (v++)->u.number = (co->time == 0) ? 0 : co->time - t;
+	    (v++)->u.number = co->time;
 
 	    /* copy arguments */
 	    switch (size) {

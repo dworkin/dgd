@@ -4,6 +4,7 @@ typedef struct {
 } xfloat;			/* 1 sign, 11 exponent, 36 mantissa */
 
 # define FLT_ISZERO(h, l)	((h) == 0)
+# define FLT_ISNEG(h, l)	((h) & 0x8000)
 # define FLT_ISONE(h, l)	((h) == 0x3ff0 && (l) == 0L)
 # define FLT_ISMONE(h, l)	((h) == 0xbff0 && (l) == 0L)
 # define FLT_ZERO(h, l)		((h) = 0, (l) = 0L)
@@ -43,3 +44,5 @@ extern void	flt_atan2	P((xfloat*, xfloat*));
 extern void	flt_cosh	P((xfloat*));
 extern void	flt_sinh	P((xfloat*));
 extern void	flt_tanh	P((xfloat*));
+
+extern xfloat sixty, thousand, thousandth;

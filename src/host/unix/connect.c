@@ -640,8 +640,9 @@ int flag;
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
-int conn_select(wait)
-int wait;
+int conn_select(t, mtime)
+Uint t;
+unsigned int mtime;
 {
     struct timeval timeout;
     int retval;
@@ -652,9 +653,15 @@ int wait;
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
     memcpy(&writefds, &waitfds, sizeof(fd_set));
-    timeout.tv_sec = (int) wait;
-    timeout.tv_usec = 0;
-    retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
+    if (mtime != 0xffff) {
+	timeout.tv_sec = t;
+	timeout.tv_usec = mtime * 1000L;
+	retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL,
+			&timeout);
+    } else {
+	retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL,
+			(struct timeval *) NULL);
+    }
     if (retval < 0) {
 	FD_ZERO(&readfds);
     }

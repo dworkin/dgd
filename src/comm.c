@@ -379,10 +379,7 @@ int comm_send(obj, str)
 object *obj;
 string *str;
 {
-    user *usr;
-
-    usr = &users[UCHAR(obj->etabi)];
-    return comm_write(usr, str, FALSE, FALSE);
+    return comm_write(&users[UCHAR(obj->etabi)], str, FALSE, FALSE);
 }
 
 /*
@@ -515,9 +512,10 @@ int flag;
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-void comm_receive(f, poll)
+void comm_receive(f, timeout, mtime)
 register frame *f;
-int poll;
+Uint timeout;
+unsigned int mtime;
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
@@ -535,7 +533,10 @@ int poll;
     register int n, i, state, flags, nls;
     register char *p, *q;
 
-    n = conn_select(!poll && newlines == 0);
+    if (newlines != 0) {
+	timeout = mtime = 0;
+    }
+    n = conn_select(timeout, mtime);
     if (n <= 0 && newlines == 0) {
 	/*
 	 * call_out to do, or timeout
@@ -974,13 +975,4 @@ dataspace *data;
 	}
     }
     return a;
-}
-
-/*
- * NAME:	comm->active()
- * DESCRIPTION:	return TRUE if there is any pending comm activity
- */
-bool comm_active()
-{
-    return (newlines != 0 || conn_select(0) > 0);
 }

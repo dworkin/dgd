@@ -203,7 +203,7 @@ extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
 					   int));
 extern string	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
 					   frame*, int*));
-extern array	       *d_list_callouts	P((dataspace*, dataspace*, Uint));
+extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));

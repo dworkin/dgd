@@ -630,11 +630,13 @@ static mixed call_limited(string function, mixed args...)
  * NAME:	call_out()
  * DESCRIPTION:	start a callout
  */
-static int call_out(string function, int delay, mixed args...)
+static int call_out(string function, mixed delay, mixed args...)
 {
     int handle;
 
     CHECKARG(function, 1, "call_out");
+    handle = typeof(delay);
+    CHECKARG(handle == T_INT || handle == T_FLOAT, 2, "call_out");
     if (!this_object()) {
 	return 0;
     }
@@ -664,12 +666,12 @@ static int call_out(string function, int delay, mixed args...)
  * NAME:	remove_call_out()
  * DESCRIPTION:	remove a callout
  */
-static int remove_call_out(int handle)
+static mixed remove_call_out(int handle)
 {
     rlimits (-1; -1) {
-	int delay;
+	mixed delay;
 
-	if ((delay=::remove_call_out(handle)) >= 0 &&
+	if ((delay=::remove_call_out(handle)) != -1 &&
 	    ::find_object(RSRCD)->remove_callout(this_object(), owner, handle))
 	{
 	    return 0;

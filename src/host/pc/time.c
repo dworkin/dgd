@@ -12,6 +12,19 @@ Uint P_time(void)
 }
 
 /*
+ * NAME:	P->mtime()
+ * DESCRIPTION:	return the time in seconds since Jan 1, 1970 in milliseconds
+ */
+Uint P_mtime(unsigned short *milli)
+{
+    struct _timeb t;
+
+    _ftime(&t);
+    *milli = t.millitm;
+    return (Uint) t.time;
+}
+
+/*
  * NAME:	P->ctime()
  * DESCRIPTION:	return time as string
  */

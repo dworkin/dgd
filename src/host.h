@@ -344,9 +344,10 @@ extern void  P_srandom	P((long));
 extern long  P_random	P((void));
 
 extern Uint  P_time	P((void));
+extern Uint  P_mtime	P((unsigned short*));
 extern char *P_ctime	P((char*, Uint));
 
-extern void  P_alarm	P((unsigned int));
+extern void  P_timer	P((Uint, unsigned int));
 extern bool  P_timeout	P((void));
 
 extern char *P_crypt	P((char*, char*));

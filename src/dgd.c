@@ -144,6 +144,9 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
+    Uint timeout;
+    unsigned short mtime;
+
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
@@ -175,7 +178,8 @@ char **argv;
 	sw_copy();
 
 	/* handle user input */
-	comm_receive(cframe, co_ready());
+	timeout = co_delay(&mtime);
+	comm_receive(cframe, timeout, mtime);
 
 	/* callouts */
 	co_call(cframe);

@@ -3,6 +3,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "comm.h"
@@ -16,12 +17,12 @@ typedef struct {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
+    uindex mtime;	/* when to call in milliseconds */
 } call_out;
 
 # define prev		oindex
 # define next		time
-
-static char co_layout[] = "uui";
+# define count		mtime
 
 typedef struct {
     uindex list;	/* list */
@@ -37,10 +38,13 @@ static uindex cycbrk;			/* cyclic buffer brk */
 static uindex flist;			/* free list index */
 static uindex nzero;			/* # immediate callouts */
 static uindex nshort;			/* # short-term callouts, incl. nzero */
-static cbuf c0first, c0next;		/* immediate callouts */
+static cbuf running;			/* running callouts */
+static cbuf immediate;			/* immediate callouts */
 static cbuf cycbuf[CYCBUF_SIZE];	/* cyclic buffer of callout lists */
 static Uint timestamp;			/* cycbuf start time */
-static Uint timeout;			/* time the last alarm came */
+static Uint timeout;			/* time of first callout in cycbuf */
+static Uint atimeout;			/* alarm time in seconds */
+static unsigned short amtime;		/* alarm time in milliseconds */
 static Uint timediff;			/* stored/actual time difference */
 static int fragment;			/* swap fragment */
 static uindex swapped1[SWPERIOD];	/* swap info for last minute */
@@ -65,11 +69,14 @@ int frag;
 	cotab++;
 	flist = 0;
 	/* only if callouts are enabled */
-	timeout = timestamp = P_time();
+	if (P_time() >> 24 <= 1) {
+	    fatal("bad time (early seventies)");
+	}
+	timestamp = timeout = 0;
+	atimeout = amtime = 0;
 	timediff = 0;
-	P_alarm(1);
     }
-    c0first.list = c0next.list = 0;
+    running.list = immediate.list = 0;
     memset(cycbuf, '\0', sizeof(cycbuf));
     cycbrk = cotabsz = max;
     queuebrk = 0;
@@ -87,8 +94,9 @@ int frag;
  * NAME:	enqueue()
  * DESCRIPTION:	put a callout in the queue
  */
-static uindex enqueue(t)
+static call_out *enqueue(t, m)
 register Uint t;
+unsigned short m;
 {
     register uindex i, j;
     register call_out *l;
@@ -102,11 +110,12 @@ register Uint t;
      */
     i = ++queuebrk;
     l = cotab - 1;
-    for (j = i >> 1; l[j].time > t; i = j, j >>= 1) {
+    for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
+	 i = j, j >>= 1) {
 	l[i] = l[j];
     }
-    /* return index of free spot */
-    return i - 1;
+    /* return free spot */
+    return &l[i];
 }
 
 /*
@@ -117,24 +126,28 @@ static void dequeue(i)
 register uindex i;
 {
     register Uint t;
+    register short m;
     register uindex j;
     register call_out *l;
 
     l = cotab - 1;
     i++;
     t = l[queuebrk].time;
+    m = l[queuebrk].mtime;
     if (t < l[i].time) {
 	/* sift upward */
-	for (j = i >> 1; l[j].time > t; i = j, j >>= 1) {
+	for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
+	     i = j, j >>= 1) {
 	    l[i] = l[j];
 	}
     } else {
 	/* sift downward */
 	for (j = i << 1; j < queuebrk; i = j, j <<= 1) {
-	    if (l[j].time > l[j + 1].time) {
+	    if (l[j].time > l[j + 1].time ||
+		(l[j].time == l[j + 1].time && l[j].mtime > l[j + 1].mtime)) {
 		j++;
 	    }
-	    if (t <= l[j].time) {
+	    if (t < l[j].time || (t == l[j].time && m <= l[j].mtime)) {
 		break;
 	    }
 	    l[i] = l[j];
@@ -145,12 +158,79 @@ register uindex i;
 }
 
 /*
- * NAME:	newcallout()
- * DESCRIPTION:	get a new callout for the cyclic buffer
+ * NAME:	encode()
+ * DESCRIPTION:	encode millisecond time
  */
-static uindex newcallout()
+static Uint encode(time, mtime)
+Uint time;
+uindex mtime;
+{
+    return 0x01000000L + (((time - timediff) & 0xff) << 16) + mtime;
+}
+
+/*
+ * NAME:	decode()
+ * DESCRIPTION:	decode millisecond time
+ */
+static Uint decode(time, mtime)
+register Uint time;
+uindex *mtime;
+{
+    *mtime = time & 0xffff;
+    time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff) +
+	   timediff;
+    if (time < timestamp) {
+	time += 0x100;
+    }
+    return time;
+}
+
+/*
+ * NAME:	restart()
+ * DESCRIPTION:	possibly restart timeout
+ */
+static void restart(t)
+register Uint t;
+{
+    register unsigned short m;
+
+    if (t != 0) {
+	if (nshort != nzero) {
+	    /* look for next callout */
+	    while (cycbuf[t & CYCBUF_MASK].list == 0) {
+		t++;
+	    }
+	    timeout = t;
+	} else {
+	    /* no callouts left */
+	    timeout = 0;
+	}
+    }
+
+    t = timeout;
+    m = 0;
+    if (queuebrk != 0 &&
+	(t == 0 || cotab[0].time < t ||
+	 (cotab[0].time == t && cotab[0].mtime < m))) {
+	t = cotab[0].time;
+	m = cotab[0].mtime;
+    }
+
+    if (t != atimeout || m != amtime) {
+	P_timer(atimeout = t, amtime = m);
+    }
+}
+
+/*
+ * NAME:	newcallout()
+ * DESCRIPTION:	allocate a new callout for the cyclic buffer
+ */
+static call_out *newcallout(list, t)
+register cbuf *list;
+Uint t;
 {
     register uindex i;
+    register call_out *co;
 
     if (flist != 0) {
 	/* get callout from free list */
@@ -163,21 +243,58 @@ static uindex newcallout()
 	}
 	i = --cycbrk;
     }
-
     nshort++;
-    return i;
+
+    co = &cotab[i];
+    if (list->list == 0) {
+	/* first one in list */
+	list->list = i;
+	co->count = 1;
+
+	if (t != 0 && (timeout == 0 || t < timeout)) {
+	    restart(t);
+	}
+    } else {
+	/* add to list */
+	cotab[list->list].count++;
+	cotab[list->last].next = i;
+    }
+    list->last = i;
+    co->next = 0;
+
+    return co;
 }
 
 /*
  * NAME:	freecallout()
  * DESCRIPTION:	remove a callout from the cyclic buffer
  */
-static void freecallout(i)
-register uindex i;
+static void freecallout(cyc, j, i, t)
+register cbuf *cyc;
+register uindex j, i;
+register Uint t;
 {
     register call_out *l;
 
-    l = &cotab[i];
+    l = cotab;
+    if (i == j) {
+	cyc->list = l[i].next;
+	if (cyc->list != 0) {
+	    l[cyc->list].count = l[i].count - 1;
+	} else if (t != 0 && t == timeout) {
+	    restart(t);
+	}
+    } else {
+	if (i == cyc->last) {
+	    /* last element of the list */
+	    l[cyc->last = j].next = 0;
+	} else {
+	    /* connect previous to next */
+	    l[j].next = l[i].next;
+	}
+	--l[cyc->list].count;
+    }
+    l += i;
     l->handle = 0;	/* mark as unused */
     if (i == cycbrk) {
 	/*
@@ -212,18 +329,51 @@ register uindex i;
 }
 
 /*
+ * NAME:	call_out->time()
+ * DESCRIPTION:	get the current (adjusted) time
+ */
+static Uint co_time(mtime)
+uindex *mtime;
+{
+    Uint t;
+
+    t = P_mtime(mtime);
+    if (t < timestamp) {
+	/* clock turned back? */
+	t = timestamp;
+	*mtime = 0;
+    } else if (timestamp < t) {
+	if (atimeout == 0 || atimeout > t) {
+	    timestamp = t;
+	} else {
+	    if (timestamp < atimeout - 1) {
+		timestamp = atimeout - 1;
+	    }
+	    if (t > timestamp + 60) {
+		/* lot of lag? */
+		t = timestamp + 60;
+		*mtime = 0;
+	    }
+	}
+    }
+
+    return t;
+}
+
+/*
  * NAME:	call_out->new()
  * DESCRIPTION:	add a new callout
  */
-uindex co_new(obj, str, delay, f, nargs)
+uindex co_new(obj, str, delay, mdelay, f, nargs)
 object *obj;
 string *str;
 Int delay;
+unsigned int mdelay;
 frame *f;
 int nargs;
 {
     Uint t;
-    uindex i;
+    uindex m;
     register call_out *co;
 
     if (cotabsz == 0) {
@@ -242,59 +392,53 @@ int nargs;
 	error("Too many callouts in object");
     }
 
-    if (delay == 0) {
+    if (delay == 0 && (mdelay == 0 || mdelay == 0xffff)) {
 	/*
 	 * immediate callout
 	 */
-	i = newcallout();
-	if (c0next.list == 0) {
-	    /* first one in list */
-	    c0next.list = i;
-	} else {
-	    /* add to list */
-	    cotab[c0next.last].next = i;
-	}
-	co = &cotab[c0next.last = i];
-	co->next = 0;
+	co = newcallout(&immediate, 0);
 	nzero++;
 
 	t = 0;
+	m = 0;
     } else {
 	/*
 	 * delayed callout
 	 */
-	t = P_time();
-	if (t + delay < t) {
+	t = co_time(&m);
+	if (t + delay + 1 <= t) {
 	    error("Too long delay");
 	}
 	t += delay;
-	if (t <= timeout) {
-	    t = timeout + 1;
+	if (mdelay != 0xffff) {
+	    m += mdelay;
+	    if (m >= 1000) {
+		m -= 1000;
+		t++;
+	    }
+	} else {
+	    m = 0;
 	}
 
-	if (t < timestamp + CYCBUF_SIZE) {
-	    register cbuf *cyc;
-
+	if (mdelay == 0xffff && t < timestamp + CYCBUF_SIZE) {
 	    /* add to cyclic buffer */
-	    i = newcallout();
-	    cyc = &cycbuf[t & CYCBUF_MASK];
-	    if (cyc->list == 0) {
-		/* first one in list */
-		cyc->list = i;
-	    } else {
-		/* add to list */
-		cotab[cyc->last].next = i;
-	    }
-	    co = &cotab[cyc->last = i];
-	    co->next = 0;
+	    co = newcallout(&cycbuf[t & CYCBUF_MASK], t);
 	} else {
 	    /* put in queue */
-	    i = enqueue(t);
-	    co = &cotab[i];
+	    co = enqueue(t, m);
 	    co->time = t;
+	    co->mtime = m;
+	    if (atimeout == 0 || t < atimeout || (t == atimeout && m < amtime))
+	    {
+		restart((Uint) 0);
+	    }
 	}
 
-	t -= timediff;
+	if (mdelay == 0xffff) {
+	    t -= timediff;
+	} else {
+	    t = encode(t, m);
+	}
     }
 
     co->handle = d_new_call_out(obj->data, str, t, f, nargs);
@@ -307,9 +451,10 @@ int nargs;
  * NAME:	rmshort()
  * DESCRIPTION:	remove a short-term callout
  */
-bool rmshort(cyc, i, handle)
+static bool rmshort(cyc, i, handle, t)
 register cbuf *cyc;
 register uindex i, handle;
+Uint t;
 {
     register uindex j, k;
     register call_out *l;
@@ -322,8 +467,7 @@ register uindex i, handle;
 	l = cotab;
 	if (l[k].oindex == i && l[k].handle == handle) {
 	    /* first element in list */
-	    cyc->list = l[k].next;
-	    freecallout(k);
+	    freecallout(cyc, k, k, t);
 	    return TRUE;
 	}
 	if (k != cyc->last) {
@@ -335,14 +479,7 @@ register uindex i, handle;
 	    do {
 		if (l[k].oindex == i && l[k].handle == handle) {
 		    /* found it */
-		    if (k == cyc->last) {
-			/* last element of the list */
-			l[cyc->last = j].next = 0;
-		    } else {
-			/* connect previous to next */
-			l[j].next = l[k].next;
-		    }
-		    freecallout(k);
+		    freecallout(cyc, j, k, t);
 		    return TRUE;
 		}
 		j = k;
@@ -375,22 +512,26 @@ register unsigned int handle;
     }
 
     i = obj->index;
-    if (t == 0) {
-	/*
-	 * immediate callout
-	 */
-	rmshort(&c0first, i, handle) || rmshort(&c0next, i, handle);
-	--nzero;
-	return 0;
-    }
+    if (t >> 24 != 1) {
+	t += timediff;
+	if (t <= timestamp) {
+	    /*
+	     * possible immediate callout
+	     */
+	    if (rmshort(&immediate, i, handle, 0) ||
+		rmshort(&running, i, handle, 0)) {
+		--nzero;
+		return 0;
+	    }
+	}
 
-    t += timediff;
-    if (t < timestamp + CYCBUF_SIZE) {
-	/*
-	 * try to find the callout in the cyclic buffer
-	 */
-	if (rmshort(&cycbuf[t & CYCBUF_MASK], i, handle)) {
-	    return t - timeout;
+	if (t < timestamp + CYCBUF_SIZE) {
+	    /*
+	     * try to find the callout in the cyclic buffer
+	     */
+	    if (rmshort(&cycbuf[t & CYCBUF_MASK], i, handle, t)) {
+		return t - timestamp;
+	    }
 	}
     }
 
@@ -401,7 +542,7 @@ register unsigned int handle;
     for (;;) {
 	if (l->oindex == i && l->handle == handle) {
 	    dequeue(l - cotab);
-	    return t - timeout;
+	    return t - timestamp;
 	}
 	l++;
 # ifdef DEBUG
@@ -420,7 +561,109 @@ array *co_list(data, obj)
 dataspace *data;
 object *obj;
 {
-    return d_list_callouts(data, o_dataspace(obj), timeout - timediff);
+    array *a;
+    value *v, *w;
+    uindex i, mtime, m;
+    Uint t;
+    xfloat flt;
+
+    a = d_list_callouts(data, o_dataspace(obj));
+    for (i = a->size, v = a->elts; i != 0; --i, v++) {
+	w = &v->u.array->elts[2];
+	switch ((Uint) w->u.number >> 24) {
+	case 0:
+	    /* immediate */
+	    break;
+
+	case 1:
+	    /* encoded millisecond */
+	    t = decode((Uint) w->u.number, &m) - co_time(&mtime);
+	    if (m < mtime) {
+		m += 1000;
+		--t;
+	    }
+	    flt_itof((Int) t * 1000 + m - mtime, &flt);
+	    flt_mult(&flt, &thousandth);
+	    w->type = T_FLOAT;
+	    VFLT_PUT(w, flt);
+	    break;
+
+	default:
+	    /* normal */
+	    w->u.number -= timestamp - timediff;
+	    break;
+	}
+    }
+
+    return a;
+}
+
+/*
+ * NAME:	call_out->expire()
+ * DESCRIPTION:	collect callouts to run next
+ */
+static void co_expire()
+{
+    register call_out *co;
+    register uindex handle, oindex, i;
+    register cbuf *cyc;
+    Uint t;
+    uindex m;
+
+    if (P_timeout()) {
+	t = co_time(&m);
+	while (timestamp < t) {
+	    timestamp++;
+
+	    /*
+	     * from queue
+	     */
+	    while (queuebrk != 0 && cotab[0].time < timestamp) {
+		handle = cotab[0].handle;
+		oindex = cotab[0].oindex;
+		dequeue(0);
+		co = newcallout(&immediate, 0);
+		co->handle = handle;
+		co->oindex = oindex;
+		nzero++;
+	    }
+
+	    /*
+	     * from cyclic buffer list
+	     */
+	    cyc = &cycbuf[timestamp & CYCBUF_MASK];
+	    i = cyc->list;
+	    if (i != 0) {
+		cyc->list = 0;
+		if (immediate.list == 0) {
+		    immediate.list = i;
+		} else {
+		    cotab[immediate.last].next = i;
+		}
+		immediate.last = cyc->last;
+		i = cotab[i].count;
+		cotab[immediate.list].count += i;
+		nzero += i;
+	    }
+	}
+
+	/*
+	 * from queue
+	 */
+	while (queuebrk != 0 &&
+	       (cotab[0].time < t ||
+		(cotab[0].time == t && cotab[0].mtime <= m))) {
+	    handle = cotab[0].handle;
+	    oindex = cotab[0].oindex;
+	    dequeue(0);
+	    co = newcallout(&immediate, 0);
+	    co->handle = handle;
+	    co->oindex = oindex;
+	    nzero++;
+	}
+
+	restart(t);
+    }
 }
 
 /*
@@ -436,107 +679,22 @@ frame *f;
     Uint t;
     int nargs;
 
-    if (c0first.list == 0) {
-	c0first = c0next;
-	c0next.list = 0;
-    }
-    if (c0first.list != 0) {
+    co_expire();
+    running = immediate;
+    immediate.list = 0;
+
+    if (running.list != 0) {
 	/*
-	 * immediate callouts
+	 * callouts to do
 	 */
 	while (ec_push((ec_ftn) errhandler)) {
 	    endthread();
 	}
-	while ((i=c0first.list) != 0) {
-	    c0first.list = cotab[i].next;
+	while ((i=running.list) != 0) {
 	    handle = cotab[i].handle;
 	    obj = &otable[cotab[i].oindex];
-	    freecallout(i);
+	    freecallout(&running, i, i, 0);
 	    --nzero;
-
-	    str = d_get_call_out(o_dataspace(obj), handle, &t, f, &nargs);
-	    if (i_call(f, obj, str->text, str->len, TRUE, nargs)) {
-		/* function exists */
-		i_del_value(f->sp++);
-		str_del((f->sp++)->u.string);
-	    } else {
-		/* function doesn't exist */
-		str_del((f->sp++)->u.string);
-	    }
-	    endthread();
-	}
-	ec_pop();
-    }
-
-    if (P_timeout()) {
-	/*
-	 * delayed callouts
-	 */
-	if ((t=P_time()) <= timeout) {
-	    return;
-	}
-	timeout = t;
-	while (ec_push((ec_ftn) errhandler)) {
-	    endthread();
-	}
-	for (;;) {
-	    if (queuebrk > 0 && cotab[0].time <= timeout) {
-		/*
-		 * queued callout
-		 */
-		handle = cotab[0].handle;
-		obj = &otable[cotab[0].oindex];
-		dequeue(0);
-	    } else if (timestamp <= timeout &&
-		(i=cycbuf[timestamp & CYCBUF_MASK].list) != 0) {
-		/*
-		 * next from cyclic buffer list
-		 */
-		cycbuf[timestamp & CYCBUF_MASK].list = cotab[i].next;
-		handle = cotab[i].handle;
-		obj = &otable[cotab[i].oindex];
-		freecallout(i);
-	    } else if (timestamp < timeout) {
-		/*
-		 * check next list
-		 */
-		timestamp++;
-		continue;
-	    } else {
-		/*
-		 * no more callouts to do:
-		 * set the alarm for the next round
-		 */
-		if (fragment > 0) {
-		    uindex swaps1;
-
-		    /*
-		     * swap out a fragment of all control and data blocks
-		     */
-		    swaps1 = d_swapout(fragment);
-		    swaprate1 += swaps1 - swapped1[swapidx1];
-		    swapped1[swapidx1++] = swaps1;
-		    if (swapidx1 == SWPERIOD) {
-			swapidx1 = 0;
-		    }
-		    swaps5 += swaps1;
-		    swaprate5 += swaps1;
-		    if (--incr5 == 0) {
-			swaprate5 -= swapped5[swapidx5];
-			swapped5[swapidx5++] = swaps5;
-			if (swapidx5 == SWPERIOD) {
-			    swapidx5 = 0;
-			}
-			swaps5 = 0;
-			incr5 = 5;
-		    }
-		}
-
-		/* allow as much time for non-callouts as for callouts */
-		t = P_time();
-		P_alarm((t <= timeout || !comm_active()) ? 1 : t - timeout);
-		break;
-	    }
 
 	    str = d_get_call_out(o_dataspace(obj), handle, &t, f, &nargs);
 	    if (i_call(f, obj, str->text, str->len, TRUE, nargs)) {
@@ -565,16 +723,42 @@ uindex *n1, *n2;
 }
 
 /*
- * NAME:	call_out->ready()
- * DESCRIPTION:	return TRUE if callouts are ready to run
+ * NAME:	call_out->delay()
+ * DESCRIPTION:	return the time until the next timeout
  */
-bool co_ready()
+Uint co_delay(mtime)
+unsigned short *mtime;
 {
-    return (nzero != 0);
+    Uint t;
+    uindex m;
+
+    if (nzero != 0) {
+	/* immediate */
+	*mtime = 0;
+	return 0;
+    }
+    if (atimeout == 0) {
+	/* infinite */
+	*mtime = 0xffff;
+	return 0;
+    }
+
+    t = co_time(&m);
+    if (t > atimeout || (t == atimeout && m >= amtime)) {
+	/* immediate */
+	*mtime = 0;
+	return 0;
+    }
+    if (m > amtime) {
+	m -= 1000;
+	t++;
+    }
+    *mtime = amtime - m;
+    return atimeout - t;
 }
 
 /*
- * NAME:	call_out->swaprate1
+ * NAME:	call_out->swaprate1()
  * DESCRIPTION:	return the number of objects swapped out per minute
  */
 long co_swaprate1()
@@ -583,7 +767,7 @@ long co_swaprate1()
 }
 
 /*
- * NAME:	call_out->swaprate5
+ * NAME:	call_out->swaprate5()
  * DESCRIPTION:	return the number of objects swapped out per 5 minutes
  */
 long co_swaprate5()
@@ -605,8 +789,16 @@ typedef struct {
 
 static char dh_layout[] = "uuuuuuii";
 
+typedef struct {
+    uindex handle;	/* callout handle */
+    uindex oindex;	/* index in object table */
+    Uint time;		/* when to call */
+} dump_callout;
+
+static char dco_layout[] = "uui";
+
 /*
- * NAME:	call_out->dump
+ * NAME:	call_out->dump()
  * DESCRIPTION:	dump callout table
  */
 bool co_dump(fd)
@@ -614,8 +806,15 @@ int fd;
 {
     dump_header dh;
     register uindex list, last;
+    register dump_callout *dc;
+    register call_out *co;
+    register uindex n;
     register cbuf *cb;
+    uindex m;
     int ret;
+
+    /* update timestamp */
+    co_time(&m);
 
     /* fill in header */
     dh.cotabsz = cotabsz;
@@ -627,57 +826,68 @@ int fd;
     dh.timestamp = timestamp;
     dh.timediff = timediff;
 
+    /* copy callouts */
+    n = queuebrk + cotabsz - cycbrk;
+    if (n != 0) {
+	dc = ALLOCA(dump_callout, n);
+	for (co = cotab, n = queuebrk; n != 0; co++, --n) {
+	    dc->handle = co->handle;
+	    dc->oindex = co->oindex;
+	    dc->time = (co->mtime != 0) ?
+			encode(co->time, co->mtime) : co->time;
+	    dc++;
+	}
+	for (co = cotab + cycbrk, n = cotabsz - cycbrk; n != 0; co++, --n) {
+	    dc->handle = co->handle;
+	    dc->oindex = co->oindex;
+	    dc->time = co->time;
+	    dc++;
+	}
+	n = queuebrk + cotabsz - cycbrk;
+	dc -= n;
+    }
+
     /* deal with immediate callouts */
     if (nzero != 0) {
-	if (c0first.list != 0) {
-	    list = c0first.list;
-	    if (c0next.list != 0) {
-		cotab[c0first.last].next = c0next.list;
-		last = c0next.last;
+	if (running.list != 0) {
+	    list = running.list;
+	    if (immediate.list != 0) {
+		dc[running.last + n - cotabsz].next = immediate.list;
+		last = immediate.last;
 	    } else {
-		last = c0first.last;
+		last = running.last;
 	    }
 	} else {
-	    list = c0next.list;
-	    last = c0next.last;
+	    list = immediate.list;
+	    last = immediate.last;
 	}
 	cb = &cycbuf[timestamp & CYCBUF_MASK];
-	cotab[last].next = cb->list;
+	dc[last + n - cotabsz].next = cb->list;
 	cb->list = list;
     }
 
     /* write header and callouts */
     ret = (P_write(fd, (char *) &dh, sizeof(dump_header)) > 0 &&
-	   (queuebrk == 0 ||
-	    P_write(fd, (char *) cotab, queuebrk * sizeof(call_out)) > 0) &&
-	   (cycbrk == cotabsz ||
-	    P_write(fd, (char *) (cotab + cycbrk),
-		    (cotabsz - cycbrk) * sizeof(call_out)) > 0) &&
+	   (n == 0 || P_write(fd, (char *) dc, n * sizeof(dump_callout)) > 0) &&
 	   P_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 
-    /* fix up immediate callouts */
-    if (nzero != 0) {
-	cb->list = cotab[last].next;
-	if (c0first.list != 0) {
-	    cotab[c0first.last].next = 0;
-	}
-	if (c0next.list != 0) {
-	    cotab[c0next.last].next = 0;
-	}
+    if (n != 0) {
+	AFREE(dc);
     }
 
     return ret;
 }
 
 /*
- * NAME:	call_out->restore
+ * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
 void co_restore(fd, t)
 int fd;
 register Uint t;
 {
-    register uindex i, offset, last;
+    register uindex n, i, offset, last;
+    register dump_callout *dc;
     register call_out *co;
     register cbuf *cb;
     dump_header dh;
@@ -693,9 +903,11 @@ register Uint t;
     }
 
     /* read tables */
-    conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
-    conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
-	       (Uint) cotabsz - cycbrk);
+    n = queuebrk + cotabsz - cycbrk;
+    if (n != 0) {
+	dc = ALLOCA(dump_callout, n);
+	conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
+    }
     conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
 
     flist = dh.flist;
@@ -705,9 +917,23 @@ register Uint t;
     t -= dh.timestamp;
     timediff = dh.timediff + t;
 
-    /* patch callouts in queue */
-    for (i = queuebrk, co = cotab; i > 0; --i, co++) {
-	co->time += t;
+    /* copy callouts */
+    if (n != 0) {
+	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
+	    co->handle = dc->handle;
+	    co->oindex = dc->oindex;
+	    co->time = (dc->time >> 24 == 1) ?
+			decode(dc->time, &co->mtime) : dc->time + t;
+	    dc++;
+	}
+	for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
+	    co->handle = dc->handle;
+	    co->oindex = dc->oindex;
+	    co->time = dc->time;
+	    dc++;
+	}
+	dc -= n;
+	AFREE(dc);
     }
 
     /* cycle around cyclic buffer */
@@ -739,11 +965,33 @@ register Uint t;
     /* fix up immediate callouts */
     if (nzero != 0) {
 	cb = &cycbuf[timestamp & CYCBUF_MASK];
-	c0next.list = cb->list;
+	immediate.list = cb->list;
 	for (i = nzero - 1, last = cb->list; i != 0; --i) {
 	    last = cotab[last].next;
 	}
+	immediate.last = last;
+	cotab[immediate.list].count = nzero;
 	cb->list = cotab[last].next;
 	cotab[last].next = 0;
     }
+
+    /* add counts */
+    for (i = CYCBUF_SIZE, cb = cycbuf; i != 0; --i, cb++) {
+	if (cb->list != 0) {
+	    n = 0;
+	    last = cb->list;
+	    do {
+		last = cotab[last].next;
+		n++;
+	    } while (last != 0);
+	    cotab[cb->list].count = n;
+	}
+    }
+
+    /* restart callouts */
+    if (nshort != nzero) {
+	for (t = timestamp; cycbuf[t & CYCBUF_MASK].list == 0; t++) ;
+	timeout = t;
+    }
+    restart(timeout);
 }

@@ -15,6 +15,10 @@ typedef struct {
 
 /* constants */
 
+xfloat sixty =	    { 0x404e, 0x00000000 };	/* 60 */
+xfloat thousand =   { 0x408f, 0x40000000 };	/* 1e3 */
+xfloat thousandth = { 0x3f50, 0x624dd2f2 };	/* 1e-3 */
+
 static flt half =   { 0x0000, 0x7ffe, 0x4000, 0x00000000L }; /* .5 */
 static flt one =    { 0x0000, 0x7fff, 0x4000, 0x00000000L }; /* 1 */
 
