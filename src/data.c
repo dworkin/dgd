@@ -14,6 +14,9 @@
 # define COP_REMOVE	1	/* remove callout patch */
 # define COP_REPLACE	2	/* replace callout patch */
 
+# define AR_UNCHANGED	0	/* mapping unchanged */
+# define AR_CHANGED	1	/* mapping changed */
+
 typedef struct _copatch_ {
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
@@ -645,7 +648,7 @@ register dataspace *data;
 	    data->variables[data->nvariables - 1] = nil_value;	/* extra var */
 	} else {
 	    /*
-	     * variables must be loaded from the swap
+	     * variables must be loaded from swap
 	     */
 	    d_get_values(data, sd_get_svariables(data->sdata), data->variables,
 			 data->nvariables);
@@ -902,7 +905,7 @@ register value *v;
 
 /*
  * NAME:	data->free_call_out()
- * DESCRIPTION:	freeove a callout
+ * DESCRIPTION:	free a callout
  */
 static void d_free_call_out(data, handle)
 register dataspace *data;
@@ -2007,7 +2010,11 @@ unsigned int handle;
 	    }
 	    if (cop->handle == handle) {
 		/* delete existing */
-		cop_del(data->env, plane, c, TRUE);
+		if (cop->type == COP_REPLACE) {
+		    cop_release(data->env, cop);
+		} else {
+		    cop_del(data->env, plane, c, TRUE);
+		}
 		break;
 	    }
 	    c = &cop->next;
@@ -2638,6 +2645,44 @@ lpcenv *env;
 
 
 /*
+ * NAME:	data->clean()
+ * DESCRIPTION:	free all control blocks and data blocks in memory
+ */
+void d_clean(env)
+lpcenv *env;
+{
+    register dataspace *data;
+    register control *ctrl;
+
+    /* free data blocks */
+    data = env->de->dtail;
+    while (data != (dataspace *) NULL) {
+	register dataspace *prev;
+
+	prev = data->prev;
+	if (!(OBJ(data->oindex)->flags & O_PENDIO) &&
+	    (OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
+	    ext_swapout != (void (*) P((object*))) NULL) {
+	    (*ext_swapout)(OBJ(data->oindex));
+	}
+	OBJ(data->oindex)->data = (dataspace *) NULL;
+	d_free_dataspace(data);
+	data = prev;
+    }
+
+    /* free control blocks */
+    ctrl = env->de->ctail;
+    while (ctrl != (control *) NULL) {
+	register control *prev;
+
+	prev = ctrl->prev;
+	OBJ(ctrl->oindex)->ctrl = (control *) NULL;
+	d_free_control(env, ctrl);
+	ctrl = prev;
+    }
+}
+
+/*
  * NAME:	data->swapout()
  * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
  *		memory.  Return the number of dataspace blocks swapped out.
@@ -2715,12 +2760,9 @@ register lpcenv *env;
 {
     register control *ctrl;
     register dataspace *data;
-    dataenv *de;
-
-    de = env->de;
 
     /* save control blocks */
-    for (ctrl = de->ctail; ctrl != (control *) NULL; ctrl = ctrl->prev) {
+    for (ctrl = env->de->ctail; ctrl != (control *) NULL; ctrl = ctrl->prev) {
 	if ((ctrl->sctrl == (struct _scontrol_ *) NULL &&
 	     !(ctrl->flags & CTRL_COMPILED)) || (ctrl->flags & CTRL_VARMAP)) {
 	    sd_save_control(env, ctrl);
@@ -2728,7 +2770,7 @@ register lpcenv *env;
     }
 
     /* save dataspace blocks */
-    for (data = de->dtail; data != (dataspace *) NULL; data = data->prev) {
+    for (data = env->de->dtail; data != (dataspace *) NULL; data = data->prev) {
 	if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
 	    ext_swapout != (void (*) P((object*))) NULL) {
 	    (*ext_swapout)(OBJ(data->oindex));

@@ -1493,3 +1493,6 @@ DGD 1.3
  - And yet more.
  - Fixed a spurious pause that would occur if the first callout started after a
    cold boot had a delay of 0.
+ - Fixed a memory leak for when an error occurred during configuration.
+ - Fixed a problem with repeatedly adding and removing callouts in atomically
+   executed code.

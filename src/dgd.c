@@ -115,6 +115,9 @@ void endthread()
 	kf_finish();
 # ifdef DEBUG
 	swap = 1;
+# else
+	d_clean(env);
+	arr_freeall(env);
 # endif
     }
 

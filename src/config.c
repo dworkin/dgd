@@ -1159,6 +1159,8 @@ sector *fragment;
 
     if (ec_push(env, (ec_ftn) NULL)) {
 	endthread();
+	d_clean(env);
+	arr_freeall(env);
 	message("Config error: initialization failed\012");	/* LF */
 
 	kf_finish();
@@ -1439,8 +1441,8 @@ register value *v;
 		v->u.number += sd_get_dsize(data->sdata);
 	    }
 	}
-	if ((obj->flags & O_MASTER) && ctrl->sctrl != (struct _scontrol *) NULL)
-	{
+	if ((obj->flags & O_MASTER) &&
+	    ctrl->sctrl != (struct _scontrol_ *) NULL) {
 	    v->u.number += sd_get_csize(ctrl->sctrl);
 	}
 	break;

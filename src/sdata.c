@@ -15,6 +15,20 @@
 # define DFREE(mem)		FREE(datapool, mem)
 # define DFREEA(mem)		FREEA(datapool, mem)
 
+/* bit values for sctrl->flags */
+# define CTRL_PROGCMP		0x0003	/* program compressed */
+# define CTRL_STRCMP		0x000c	/* strings compressed */
+# define CTRL_MODIFIED		0x0010	/* modified since last saved */
+
+/* bit values for sdataspace->flags */
+# define DATA_STRCMP		0x0003	/* strings compressed */
+# define DATA_MODIFIED		0x0004	/* modified since last saved */
+
+/* data compression */
+# define CMP_TYPE		0x03
+# define CMP_NONE		0x00	/* no compression */
+# define CMP_PRED		0x01	/* predictor compression */
+
 # define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 # define PRIV			0x8000	/* in sinherit->varoffset */
 

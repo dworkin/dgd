@@ -238,6 +238,7 @@ extern object	        *d_upgrade_lwobj	P((lpcenv*, array*, object*));
 extern void		 d_upgrade_mem		P((lpcenv*, object*, object*));
 extern void		 d_export		P((lpcenv*));
 
+extern void		 d_clean		P((lpcenv*));
 extern sector		 d_swapout		P((lpcenv*, unsigned int));
 extern void		 d_swapsync		P((lpcenv*));
 
@@ -248,13 +249,8 @@ extern void		 d_del_dataspace	P((dataspace*));
 
 
 /* bit values for ctrl->flags */
-# define CTRL_PROGCMP		0x03	/* program compressed */
-# define CTRL_STRCMP		0x0c	/* strings compressed */
 # define CTRL_COMPILED		0x10	/* precompiled control block */
 # define CTRL_VARMAP		0x20	/* varmap updated */
-
-/* bit values for dataspace->flags */
-# define DATA_STRCMP		0x03	/* strings compressed */
 
 /* bit values for dataspace->plane->flags */
 # define MOD_ALL		0x3f
@@ -266,12 +262,4 @@ extern void		 d_del_dataspace	P((dataspace*));
 # define MOD_NEWCALLOUT		0x20	/* new callout added */
 # define PLANE_MERGE		0x40	/* merge planes on commit */
 
-/* data compression */
-# define CMP_TYPE		0x03
-# define CMP_NONE		0x00	/* no compression */
-# define CMP_PRED		0x01	/* predictor compression */
-
 # define ARR_MOD		0x80000000L	/* in arrref->ref */
-
-# define AR_UNCHANGED		0	/* mapping unchanged */
-# define AR_CHANGED		1	/* mapping changed */
