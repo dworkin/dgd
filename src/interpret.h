@@ -162,7 +162,7 @@ extern void		i_runtime_error	P((int));
 extern void		i_clear		P((void));
 
 extern frame *cframe;
-extern value *sp;
+extern value *sp, zero_value;
 extern Int ticks;
 
 # define i_add_ticks(e)	(ticks -= (e))

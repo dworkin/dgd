@@ -26,7 +26,7 @@ static bool noticks;		/* no ticks checking */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
 
-static value zero_value = { T_INT, TRUE };
+value zero_value = { T_INT, TRUE };
 
 /*
  * NAME:	interpret->init()
@@ -1963,8 +1963,8 @@ array *i_call_trace()
     int max_args;
 
     for (f = cframe, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
-    i_add_ticks(10 * n);
     a = arr_new((long) n);
+    i_add_ticks(10 * n);
     max_args = conf_array_size() - 5;
     for (f = cframe, elts = a->elts + n; f->obj != (object *) NULL; f = f->prev)
     {

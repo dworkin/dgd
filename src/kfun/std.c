@@ -86,9 +86,11 @@ int nargs;
     val->type = T_INT;
     val->u.number = 0;
     --val;
-    if (cframe->obj->count == 0) {
+
+    if (strlen(val->u.string->text) != val->u.string->len ||
+	cframe->obj->count == 0) {
 	/*
-	 * cannot call_other from destructed object
+	 * embedded \0 in function, or call from destructed object
 	 */
 	i_pop(nargs - 1);
 	return 0;
@@ -181,8 +183,11 @@ char pt_call_trace[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT),
  */
 int kf_call_trace()
 {
+    array *a;
+
+    a = i_call_trace();
     (--sp)->type = T_ARRAY;
-    arr_ref(sp->u.array = i_call_trace());
+    arr_ref(sp->u.array = a);
     return 0;
 }
 # endif
@@ -591,6 +596,9 @@ int kf_error()
 {
     if (strchr(sp->u.string->text, LF) != (char *) NULL) {
 	error("'\\n' in error string");
+    }
+    if (sp->u.string->len >= 4 * STRINGSZ) {
+	error("Error string too long");
     }
     error("%s", sp->u.string->text);
     return 0;

@@ -24,7 +24,7 @@ struct _object_ {
 # define O_USER			0x10
 # define O_EDITOR		0x20
 # define O_COMPILED		0x40
-# define O_RESERVED		0x80	/* reserved for add-on packages */
+# define O_PENDIO		0x80
 
 extern void		   o_init	P((unsigned int));
 extern object		  *o_new	P((char*, object*, struct _control_*));

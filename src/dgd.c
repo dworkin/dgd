@@ -97,7 +97,7 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
-    char buf[INBUF_SIZE];
+    char buf[BINBUF_SIZE];
     int size;
     object *usr;
 

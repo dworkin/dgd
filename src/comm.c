@@ -24,9 +24,9 @@ typedef struct _user_ {
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
-    char inbuf[INBUF_SIZE];	/* input buffer */
+    char *inbuf;		/* input buffer */
     char *outbuf;		/* output buffer */
-    char *outbufp;		/* output buffer pointer */
+    int osoffset;		/* offset in output string */
 } user;
 
 /* flags */
@@ -112,15 +112,17 @@ bool telnet;
 	(*usr)->state = TS_DATA;
 	(*usr)->newlines = 0;
 	m_static();
+	(*usr)->inbuf = ALLOC(char, INBUF_SIZE);
 	(*usr)->outbuf = ALLOC(char, OUTBUF_SIZE);
 	m_dynamic();
     } else {
 	(*usr)->flags = 0;
 	m_static();
-	(*usr)->outbuf = ALLOC(char, BOUTBUF_SIZE);
+	(*usr)->inbuf = ALLOC(char, BINBUF_SIZE);
 	m_dynamic();
     }
-    (*usr)->outbufp = (char *) NULL;
+    (*usr)->osoffset = -1;
+    d_extravar(o_dataspace(obj), TRUE);	/* add space for output buffer */
     nusers++;
     this_user = obj;
 }
@@ -138,12 +140,14 @@ bool force;
     conn_del((*usr)->conn);
     if ((*usr)->flags & CF_TELNET) {
 	newlines -= (*usr)->newlines;
+	FREE((*usr)->outbuf);
     } else {
 	binchars -= (*usr)->inbufsz;
     }
+    FREE((*usr)->inbuf);
     obj = (*usr)->u.obj;
-    obj->flags &= ~O_USER;
-    FREE((*usr)->outbuf);
+    obj->flags &= ~(O_USER | O_PENDIO);
+    d_extravar(o_dataspace(obj), FALSE);	/* remove output buffer */
     FREE(*usr);
     *usr = (user *) NULL;
     --nusers;
@@ -233,20 +237,33 @@ string *str;
 	usr->outbufsz = size;
 	return str->len;	/* always */
     } else {
+	dataspace *data;
+
 	/*
 	 * binary connection: initially, no buffering
 	 */
-	usr->outbufp = (char *) NULL;
+	if (usr->osoffset >= 0) {
+	    /* remove old buffer */
+	    obj->flags &= ~O_PENDIO;
+	    usr->osoffset = -1;
+	    data = o_dataspace(obj);
+	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
+			 &zero_value);
+	}
 	size = conn_write(usr->conn, p, len, TRUE);
-	if (size != len) {
+	if (size != len && size >= 0) {
+	    value v;
+
 	    /*
 	     * buffer the remainder of the string
 	     */
-	    if (size > 0) {
-		p += size;
-		len -= size;
-	    }
-	    memcpy(usr->outbufp = usr->outbuf, p, usr->outbufsz = len);
+	    usr->osoffset = size;
+	    usr->outbufsz = len - size;
+	    obj->flags |= O_PENDIO;
+	    v.type = T_STRING;
+	    v.u.string = str;
+	    data = o_dataspace(obj);
+	    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &v);
 	}
 	return size;
     }
@@ -408,9 +425,10 @@ int *size;
 		continue;	/* avoid even worse indentation */
 	    }
 	    --i;
-	    if ((*usr)->inbufsz != INBUF_SIZE) {
+	    n = ((*usr)->flags & CF_TELNET) ? INBUF_SIZE : BINBUF_SIZE;
+	    if ((*usr)->inbufsz != n) {
 		p = (*usr)->inbuf + (*usr)->inbufsz;
-		n = conn_read((*usr)->conn, p, INBUF_SIZE - (*usr)->inbufsz);
+		n = conn_read((*usr)->conn, p, n - (*usr)->inbufsz);
 		if (n < 0) {
 		    /*
 		     * bad connection
@@ -576,18 +594,27 @@ int *size;
 		    binchars += n;
 		}
 	    }
-	    if ((*usr)->outbufp != (char *) NULL && conn_wrdone((*usr)->conn)) {
+	    if ((*usr)->osoffset >= 0 && conn_wrdone((*usr)->conn)) {
+		dataspace *data;
+		value *v;
+
 		/* write next chunk */
-		n = conn_write((*usr)->conn, (*usr)->outbufp, (*usr)->outbufsz,
-			       TRUE);
+		data = o_dataspace((*usr)->u.obj);
+		v = d_get_variable(data, data->nvariables - 1);
+		n = conn_write((*usr)->conn,
+			       v->u.string->text + (*usr)->osoffset,
+			       (*usr)->outbufsz, TRUE);
 		if (n != (*usr)->outbufsz) {
 		    if (n > 0) {
-			(*usr)->outbufp += n;
+			(*usr)->osoffset += n;
 			(*usr)->outbufsz -= n;
 		    }
 		} else {
+		    /* remove buffer */
+		    (*usr)->u.obj->flags &= ~O_PENDIO;
+		    (*usr)->osoffset = -1;
+		    d_assign_var(data, v, &zero_value);
 		    /* callback */
-		    (*usr)->outbufp = (char *) NULL;
 		    this_user = (*usr)->u.obj;
 		    if (i_call(this_user, "message_done", TRUE, 0)) {
 			i_del_value(sp++);

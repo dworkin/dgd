@@ -61,8 +61,6 @@ static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
 static uindex idx;		/* current building index */
 
-static value zero_value = { T_INT, TRUE };	/* the zero value */
-
 /*
  * NAME:	array->init()
  * DESCRIPTION:	initialize array handling

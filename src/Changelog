@@ -957,3 +957,14 @@ DGD 1.1
    function must exist and should minimally consist of
 
     void interrupt() { shutdown(); }
+
+ - Fixed a problem with %% in a sscanf format string.
+ - Fixed a potential crash if the stack array created in call_trace() was
+   too big.
+ - call_other(obj, "foo\0bar") could be used to call the function foo.
+ - Binary connections now have output buffering in the user object, instead
+   of a 64K static buffer.  User objects that are buffering will not
+   normally be swapped out.  The input buffer size for a binary connection
+   has been increased to 8K.
+ - Made often-used objects less likely to be swapped out during a lull in
+   activity.

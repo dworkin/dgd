@@ -102,7 +102,7 @@ typedef struct _dataspace_ {
     long schange;		/* # string changes */
     long imports;		/* # array imports */
     struct _dataspace_ *ilist;	/* import list */
-    char modified;		/* has a variable or array elt been modified */
+    char flags;			/* various bitflags */
 
     object *obj;		/* object this dataspace belongs to */
     control *ctrl;		/* control block */
@@ -139,7 +139,7 @@ typedef struct _dataspace_ {
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
 extern control	       *d_load_control	P((object*));
-extern dataspace       *d_load_dataspace P((object*));
+extern dataspace       *d_load_dataspace P((object*, int));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
 
@@ -152,6 +152,7 @@ extern char	       *d_get_funcalls	P((control*));
 extern dsymbol	       *d_get_symbols	P((control*));
 
 extern struct _value_  *d_get_variable	P((dataspace*, unsigned int));
+extern void 		d_extravar	P((dataspace*, int));
 extern struct _value_  *d_get_elts	P((array*));
 
 extern void		d_ref_imports	P((array*));

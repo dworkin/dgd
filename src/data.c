@@ -7,15 +7,19 @@
 # include "data.h"
 # include "csupport.h"
 
-/* bit values for dataspace->modified */
-# define M_VARIABLE		0x01
-# define M_ARRAY		0x02
-# define M_ARRAYREF		0x04
-# define M_STRINGREF		0x08
-# define M_NEWCALLOUT		0x10
-# define M_CALLOUT		0x20
+/* bit values for dataspace->flags */
+# define F_MODIFIED		0x3f
+# define F_VARIABLE		0x01
+# define F_ARRAY		0x02
+# define F_ARRAYREF		0x04
+# define F_STRINGREF		0x08
+# define F_NEWCALLOUT		0x10
+# define F_CALLOUT		0x20
+# define F_EXTRAVAR		0x40
 
-# define ARR_MOD		0x80000000L
+/* fuzzy bitflags */
+# define ARR_MOD		0x80000000L	/* in array->index */
+# define EXTRAVAR		0x80000000L	/* in sdata->narrays */
 
 typedef struct {
     uindex nsectors;		/* # sectors in part one */
@@ -199,7 +203,7 @@ object *obj;
     data->schange = 0;
     data->imports = 0;
     data->ilist = (dataspace *) NULL;
-    data->modified = 0;
+    data->flags = 0;
 
     data->obj = obj;
     data->ctrl = o_control(obj);
@@ -362,8 +366,9 @@ object *obj;
  * NAME:	data->load_dataspace()
  * DESCRIPTION:	load the dataspace header block of an object from the swap
  */
-dataspace *d_load_dataspace(obj)
+dataspace *d_load_dataspace(obj, extra)
 object *obj;
+int extra;
 {
     sdataspace header;
     register dataspace *data;
@@ -401,7 +406,7 @@ object *obj;
     data->schange = 0;
     data->imports = 0;
     data->ilist = (dataspace *) NULL;
-    data->modified = 0;
+    data->flags = 0;
 
     /* header */
     sw_readv((char *) &header, &obj->dfirst, (Uint) sizeof(sdataspace),
@@ -422,6 +427,11 @@ object *obj;
     /* variables */
     data->varoffset = size;
     data->nvariables = data->ctrl->nvariables;
+    if (header.narrays & EXTRAVAR) {
+	data->flags |= F_EXTRAVAR;
+	data->nvariables++;
+	header.narrays &= ~EXTRAVAR;
+    }
     data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
     size += data->nvariables * (Uint) sizeof(svalue);
@@ -452,6 +462,8 @@ object *obj;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
     data->callouts = (dcallout *) NULL;
+
+    d_extravar(data, extra);
 
     return data;
 }
@@ -829,7 +841,6 @@ register int n;
 static void d_new_variables(data)
 dataspace *data;
 {
-    static value zero_int = { T_INT, TRUE };
     static value zero_float = { T_FLOAT, TRUE };
     register unsigned short nfdefs, nvars, nfloats;
     register value *val;
@@ -841,7 +852,7 @@ dataspace *data;
      * initialize all variables to integer 0
      */
     for (val = data->variables, nvars = data->nvariables; nvars > 0; --nvars) {
-	*val++ = zero_int;
+	*val++ = zero_value;
     }
 
     if (data->ctrl->nfloats != 0) {
@@ -870,7 +881,7 @@ dataspace *data;
 	}
 
 	/* don't do this again for the same object */
-	data->modified |= M_VARIABLE;
+	data->flags |= F_VARIABLE;
     }
 }
 
@@ -912,6 +923,44 @@ register unsigned int idx;
 	d_get_values(data, &data->svariables[idx], &data->variables[idx], 1);
     }
     return &data->variables[idx];
+}
+
+/*
+ * NAME:	data->extravar()
+ * DESCRIPTION:	reserve, obtain or remove extra variable in object
+ */
+void d_extravar(data, extra)
+register dataspace *data;
+int extra;
+{
+    if (extra) {
+	if (!(data->flags & F_EXTRAVAR)) {
+	    register value *variables;
+
+	    /* this should not happen while executing LPC code in the object */
+	    if (data->variables == (value *) NULL && data->nvariables > 0) {
+		/* load or initialize variables */
+		d_get_variable(data, 0);
+	    }
+	    variables = ALLOC(value, data->nvariables + 1);
+	    if (data->nvariables > 0) {
+		/* copy old to new */
+		memcpy(variables, data->variables,
+		       data->nvariables * sizeof(value));
+		FREE(data->variables);
+	    }
+	    data->variables = variables;
+	    variables[data->nvariables++] = zero_value;
+	    data->flags |= F_EXTRAVAR | F_ARRAY;
+	    data->achange++;	/* force swapspace rebuild for this object */
+	}
+    } else {
+	if (data->flags & F_EXTRAVAR) {
+	    d_assign_var(data, d_get_variable(data, --(data->nvariables)),
+			 &zero_value);
+	    data->flags &= ~F_EXTRAVAR;
+	}
+    }
 }
 
 /*
@@ -1019,7 +1068,7 @@ register value *rhs;
 	    if (str->u.primary->ref++ == 0) {
 		data->schange--;	/* first reference restored */
 	    }
-	    data->modified |= M_STRINGREF;
+	    data->flags |= F_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
 	    data->schange++;
@@ -1040,7 +1089,7 @@ register value *rhs;
 			arr_ref(arr);
 		    }
 		}
-		data->modified |= M_ARRAYREF;
+		data->flags |= F_ARRAYREF;
 	    } else {
 		/* ref new array */
 		data->achange++;
@@ -1089,7 +1138,7 @@ register value *lhs;
 	    if (--(str->u.primary->ref) == 0) {
 		data->schange++;	/* last reference removed */
 	    }
-	    data->modified |= M_STRINGREF;
+	    data->flags |= F_STRINGREF;
 	} else {
 	    /* not in this object: deref imported string */
 	    data->schange--;
@@ -1110,7 +1159,7 @@ register value *lhs;
 			arr_del(arr);
 		    }
 		}
-		data->modified |= M_ARRAYREF;
+		data->flags |= F_ARRAYREF;
 	    } else {
 		/* deref new array */
 		data->achange--;
@@ -1136,7 +1185,7 @@ register value *val;
     if (var >= data->variables && var < data->variables + data->nvariables) {
 	ref_rhs(data, val);
 	del_lhs(data, var);
-	data->modified |= M_VARIABLE;
+	data->flags |= F_VARIABLE;
     }
 
     i_ref_value(val);
@@ -1168,7 +1217,7 @@ register value *elt, *val;
 	     */
 	    arr->primary->index |= ARR_MOD;
 	    arr_ref(arr);
-	    data->modified |= M_ARRAY;
+	    data->flags |= F_ARRAY;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
@@ -1293,7 +1342,7 @@ int nargs;
 	data->callouts = ALLOC(dcallout, 1);
 	data->ncallouts = 1;
 	co = data->callouts;
-	data->modified |= M_NEWCALLOUT;
+	data->flags |= F_NEWCALLOUT;
     } else {
 	if (data->callouts == (dcallout *) NULL) {
 	    d_get_callouts(data);
@@ -1315,7 +1364,7 @@ int nargs;
 		    data->callouts[co->co_next - 1].co_prev = n;
 		}
 	    }
-	    data->modified |= M_CALLOUT;
+	    data->flags |= F_CALLOUT;
 	} else {
 	    /*
 	     * add new callout
@@ -1328,7 +1377,7 @@ int nargs;
 	    FREE(data->callouts);
 	    data->callouts = co;
 	    co += data->ncallouts++;
-	    data->modified |= M_NEWCALLOUT;
+	    data->flags |= F_NEWCALLOUT;
 	}
     }
 
@@ -1404,6 +1453,9 @@ int *nargs;
 
     strncpy(func, v[0].u.string->text, STRINGSZ - 1);
     func[STRINGSZ - 1] = '\0';
+    if (strlen(func) != v[0].u.string->len) {
+	func[0] = '?';	/* make function name unusable */
+    }
     del_lhs(data, &v[0]);
     str_del(v[0].u.string);
     v[0].type = T_INVALID;
@@ -1450,7 +1502,7 @@ int *nargs;
     co->co_next = n;
     data->fcallouts = handle;
 
-    data->modified |= M_CALLOUT;
+    data->flags |= F_CALLOUT;
     return func;
 }
 
@@ -1936,7 +1988,7 @@ register dataspace *data;
 
     /* free arrays */
     if (data->arrays != (arrref *) NULL) {
-	if (data->modified & M_ARRAY) {
+	if (data->flags & F_ARRAY) {
 	    register arrref *a;
 
 	    /*
@@ -1981,16 +2033,16 @@ register dataspace *data;
 
     sdata = data;
 
-    if (!(data->nsectors == 0 && (data->modified & M_VARIABLE)) &&
+    if (!(data->nsectors == 0 && (data->flags & F_VARIABLE)) &&
 	data->achange == 0 && data->schange == 0 &&
-	!(data->modified & M_NEWCALLOUT)) {
+	!(data->flags & F_NEWCALLOUT)) {
 	bool mod;
 
 	/*
 	 * No strings/arrays added or deleted. Check individual variables and
 	 * array elements.
 	 */
-	if (data->modified & M_VARIABLE) {
+	if (data->flags & F_VARIABLE) {
 	    /*
 	     * variables changed
 	     */
@@ -1999,7 +2051,7 @@ register dataspace *data;
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
 	}
-	if (data->modified & M_ARRAYREF) {
+	if (data->flags & F_ARRAYREF) {
 	    register sarray *sa;
 	    register arrref *a;
 
@@ -2022,7 +2074,7 @@ register dataspace *data;
 			  data->narrays * sizeof(sarray), data->arroffset);
 	    }
 	}
-	if (data->modified & M_ARRAY) {
+	if (data->flags & F_ARRAY) {
 	    register arrref *a;
 
 	    /*
@@ -2043,7 +2095,7 @@ register dataspace *data;
 		a++;
 	    }
 	}
-	if (data->modified & M_STRINGREF) {
+	if (data->flags & F_STRINGREF) {
 	    register sstring *ss;
 	    register strref *s;
 
@@ -2067,7 +2119,7 @@ register dataspace *data;
 			  data->stroffset);
 	    }
 	}
-	if (data->modified & M_CALLOUT) {
+	if (data->flags & F_CALLOUT) {
 	    scallout *scallouts;
 	    register scallout *sco;
 	    register dcallout *co;
@@ -2317,7 +2369,11 @@ register dataspace *data;
 
 	/* save header */
 	size = sizeof(sdataspace);
+	if (data->flags & F_EXTRAVAR) {
+	    header.narrays |= EXTRAVAR;
+	}
 	sw_writev((char *) &header, data->sectors, size, (Uint) 0);
+	header.narrays &= ~EXTRAVAR;
 	sw_writev((char *) data->sectors, data->sectors,
 		  header.nsectors * (Uint) sizeof(sector), size);
 	size += header.nsectors * (Uint) sizeof(sector);
@@ -2374,7 +2430,7 @@ register dataspace *data;
 	data->schange = 0;
     }
 
-    data->modified = 0;
+    data->flags &= ~F_MODIFIED;
 }
 
 static array **itab;	/* imported array replacement table */
@@ -2718,22 +2774,29 @@ int frag;
 {
     register uindex n, count;
     register dataspace *data;
-    register control *ctrl, *prev;
+    register control *ctrl;
 
     count = 0;
 
     /* swap out dataspace blocks */
+    data = dtail;
     for (n = ndata / frag; n > 0; --n) {
-	if (dtail->modified != 0) {
-	    d_save_dataspace(dtail);
-	    count++;
+	register dataspace *prev;
+
+	prev = data->prev;
+	if (!(data->obj->flags & O_PENDIO) || frag == 1) {
+	    if (data->flags & F_MODIFIED) {
+		d_save_dataspace(data);
+		count++;
+	    }
+	    d_free_dataspace(data);
 	}
-	d_free_dataspace(dtail);
+	data = prev;
     }
-    /* divide ref counts for leftover datablocks by 2 */
+    /* multiply ref counts for leftover datablocks by 3/4 */
     done = (dataspace *) NULL;
     for (data = dtail; data != dhead; data = data->prev) {
-	data->refc >>= 1;
+	data->refc = data->refc * 3 / 4;
 	if (data->refc <= 1) {
 	    done = data;
 	}
@@ -2742,6 +2805,8 @@ int frag;
     /* swap out control blocks */
     ctrl = ctail;
     for (n = nctrl / frag; n > 0; --n) {
+	register control *prev;
+
 	prev = ctrl->prev;
 	if (ctrl->ndata == 0) {
 	    if (ctrl->sectors == (sector *) NULL &&
@@ -2753,10 +2818,10 @@ int frag;
 	}
 	ctrl = prev;
     }
-    /* divide ref counts for leftover control blocks by 2 */
+    /* multiply ref counts for leftover control blocks by 3/4 */
     cone = (control *) NULL;
     for (ctrl = ctail; ctrl != chead; ctrl = ctrl->prev) {
-	ctrl->refc >>= 1;
+	ctrl->refc = ctrl->refc * 3 / 4;
 	if (ctrl->refc <= 1) {
 	    cone = ctrl;
 	}
@@ -2785,7 +2850,7 @@ void d_swapsync()
 
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if (data->modified != 0) {
+	if (data->flags & F_MODIFIED) {
 	    d_save_dataspace(data);
 	}
     }

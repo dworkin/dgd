@@ -882,8 +882,6 @@ int kf_restore_object()
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && v->type != T_FLOAT &&
 		    var->type != T_OBJECT) {
-		    static value zero_value = { T_INT };
-
 		    d_assign_var(data, var, &zero_value);
 		}
 		nvars++;

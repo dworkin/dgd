@@ -288,7 +288,7 @@ register object *o;
 	    o->data = d_new_dataspace(o);
 	} else {
 	    /* load dataspace block */
-	    o->data = d_load_dataspace(o);
+	    o->data = d_load_dataspace(o, (o->flags & O_USER));
 	}
     } else {
 	d_ref_dataspace(o->data);
@@ -308,7 +308,7 @@ void o_clean()
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
-	    o->data = d_load_dataspace(o);
+	    o->data = d_load_dataspace(o, FALSE);
 	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
@@ -493,7 +493,7 @@ int fd;
 
 	if (o->count != 0) {
 	    /* there are no user or editor objects after a restore */
-	    o->flags &= ~(O_USER | O_EDITOR);
+	    o->flags &= ~(O_USER | O_EDITOR | O_PENDIO);
 	} else if (!(o->flags & O_MASTER) || o->u.ref == 0) {
 	    /* free object slot */
 	    if (offset != 0 && o->chain.next != (hte *) NULL) {
