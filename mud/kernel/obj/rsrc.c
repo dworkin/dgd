@@ -163,33 +163,37 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 	    return FALSE;	/* would exceed limit */
 	}
 
-	rlimits (-1; -1) {
-	    if (index) {
-		/*
-		 * indexed resource
-		 */
-		catch {
-		    if (typeof(index) == T_OBJECT) {
-			/* let object keep track */
-			index->_F_rsrc_incr(name, incr);
-		    } else if (typeof(rsrc[RSRC_INDEXED]) != T_MAPPING) {
-			rsrc[RSRC_INDEXED] = ([ index : incr ]);
-		    } else {
-			rsrc[RSRC_INDEXED][index] += incr;
+	if (incr != 0) {
+	    rlimits (-1; -1) {
+		if (index) {
+		    /*
+		     * indexed resource
+		     */
+		    catch {
+			if (typeof(index) == T_OBJECT) {
+			    /* let object keep track */
+			    index->_F_rsrc_incr(name, incr);
+			} else if (typeof(rsrc[RSRC_INDEXED]) != T_MAPPING) {
+			    rsrc[RSRC_INDEXED] = ([ index : incr ]);
+			} else if (!rsrc[RSRC_INDEXED][index]) {
+			    rsrc[RSRC_INDEXED][index] = incr;
+			} else if (!(rsrc[RSRC_INDEXED][index] += incr)) {
+			    rsrc[RSRC_INDEXED][index] = nil;
+			}
+		    } : {
+			return FALSE;	/* error: increment failed */
 		    }
-		} : {
-		    return FALSE;	/* error: increment failed */
 		}
-	    }
-	    if (typeof(rsrc[RSRC_USAGE]) == T_INT) {
-		/* normal resource */
-		rsrc[RSRC_USAGE] += incr;
-	    } else {
-		/*
-		 * decaying resources are expected to be updated frequently,
-		 * so handle it with a callout
-		 */
-		call_out("rsrc_update", 0, rsrc, incr);
+		if (typeof(rsrc[RSRC_USAGE]) == T_INT) {
+		    /* normal resource */
+		    rsrc[RSRC_USAGE] += incr;
+		} else {
+		    /*
+		     * decaying resources are expected to be updated frequently,
+		     * so handle it with a callout
+		     */
+		    call_out("rsrc_update", 0, rsrc, incr);
+		}
 	    }
 	}
 

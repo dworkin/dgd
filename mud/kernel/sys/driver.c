@@ -198,7 +198,7 @@ compiling(string path)
 	}
 	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
 	    compile_object(AUTO);
-	    rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
+	    rsrcd->rsrc_incr("System", "objects", nil, 1, TRUE);
 	    if (objectd) {
 		objectd->compile_lib("System", AUTO);
 	    }
@@ -350,10 +350,10 @@ static initialize()
 
     /* create initial resource owners */
     rsrcd->add_owner("System");
-    rsrcd->rsrc_incr("System", "filequota", 0,
+    rsrcd->rsrc_incr("System", "filequota", nil,
 		     dir_size("/kernel") + file_size(USR + "/System", TRUE));
     rsrcd->add_owner(nil);	/* Ecru */
-    rsrcd->rsrc_incr(nil, "filequota", 0,
+    rsrcd->rsrc_incr(nil, "filequota", nil,
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
 
     /* load remainder of manager objects */
@@ -371,12 +371,12 @@ static initialize()
     users = (accessd->query_users() - ({ "System" })) | ({ "admin" });
     for (i = sizeof(users); --i >= 0; ) {
 	rsrcd->add_owner(users[i]);
-	rsrcd->rsrc_incr(users[i], "filequota", 0,
+	rsrcd->rsrc_incr(users[i], "filequota", nil,
 			 file_size(USR + "/" + users[i], TRUE));
     }
 
     /* correct object count */
-    rsrcd->rsrc_incr("System", "objects", 0,
+    rsrcd->rsrc_incr("System", "objects", nil,
 		     status()[ST_NOBJECTS] -
 			     rsrcd->rsrc_get("System", "objects")[RSRC_USAGE],
 		     1);
@@ -388,7 +388,7 @@ static initialize()
     } else {
 	telnet = clone_object(port);
 	binary = clone_object(port);
-	rsrcd->rsrc_incr("System", "objects", 0, 2, 1);
+	rsrcd->rsrc_incr("System", "objects", nil, 2, 1);
 
 	telnet->listen("telnet", TELNET_PORT);
 	binary->listen("tcp", BINARY_PORT);
@@ -551,7 +551,7 @@ static object inherit_program(string from, string path)
 	    objectd->compiling(path);
 	}
 	obj = compile_object(path);
-	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
+	rsrcd->rsrc_incr(creator, "objects", nil, 1, TRUE);
 	if (objectd) {
 	    objectd->compile_lib(creator, path, inherited...);
 	}
@@ -615,7 +615,7 @@ static remove_program(string path, int timestamp, int index)
 
     creator = creator(path);
     if (path != RSRCOBJ) {
-	rsrcd->rsrc_incr(creator, "objects", 0, -1);
+	rsrcd->rsrc_incr(creator, "objects", nil, -1);
     }
     if (objectd) {
 	objectd->remove_program(creator, path, timestamp, index);

@@ -56,7 +56,7 @@ add_owner(string owner)
 	    catch {
 		owners[owner] = obj;
 		obj->set_owner(owner);
-		owners["System"]->rsrc_incr("objects", 0, 1,
+		owners["System"]->rsrc_incr("objects", nil, 1,
 					    resources["objects"], TRUE);
 	    } : {
 		destruct_object(obj);
@@ -357,7 +357,7 @@ suspend(object obj, string owner, int handle)
     if (previous_program() == AUTO) {
 	mixed *callout;
 
-	callout = ({ obj, owner, handle, 0, last_suspended, 0 });
+	callout = ({ obj, owner, handle, 0, last_suspended, nil });
 	if (suspend > 0) {
 	    callout[CO_RELHANDLE] = call_out("release", 0);
 	}
@@ -407,7 +407,7 @@ int remove_callout(object obj, string owner, int handle)
 		}
 		last_suspended = callout[CO_PREV];
 	    }
-	    callouts[handle] = 0;
+	    callouts[handle] = nil;
 	    return TRUE;	/* delayed call */
 	}
     }
@@ -467,8 +467,8 @@ static release()
     obj = callout[CO_OBJ];
     handle = callout[CO_HANDLE];
     if ((first_suspended=callout[CO_NEXT])) {
-	first_suspended[CO_PREV] = 0;
-	suspended[obj][handle] = 0;
+	first_suspended[CO_PREV] = nil;
+	suspended[obj][handle] = nil;
     } else {
 	last_suspended = nil;
 	suspended = nil;

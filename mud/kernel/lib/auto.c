@@ -59,8 +59,10 @@ nomask _F_rsrc_incr(string rsrc, int incr)
     if (previous_program() == RSRCOBJ) {
 	if (!resources) {
 	    resources = ([ rsrc : incr ]);
-	} else {
-	    resources[rsrc] += incr;
+	} else if (!resources[rsrc]) {
+	    resources[rsrc] = incr;
+	} else if (!(resources[rsrc] += incr)) {
+	    resources[rsrc] = nil;
 	}
     }
 }
@@ -150,7 +152,7 @@ nomask _F_destruct()
 	    string *names;
 	    int *values;
 
-	    if (resources["callouts"] != 0) {
+	    if (resources["callouts"]) {
 		/*
 		 * remove callouts
 		 */
@@ -173,7 +175,7 @@ nomask _F_destruct()
 	    /*
 	     * non-clones are handled by driver->remove_program()
 	     */
-	    rsrcd->rsrc_incr(owner, "objects", 0, -1);
+	    rsrcd->rsrc_incr(owner, "objects", nil, -1);
 	}
     }
 }
@@ -315,7 +317,7 @@ static object compile_object(string path)
 	    driver->compiling(path);
 	    obj = ::compile_object(path);
 	    if (new) {
-		rsrcd->rsrc_incr(uid, "objects", 0, 1, TRUE);
+		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
 	    if (lib) {
 		driver->compile_lib(path, uid);
@@ -403,7 +405,7 @@ static varargs object clone_object(string path, string uid)
 		error("Insufficient stack or ticks to create object");
 	    }
 	    if (path != RSRCOBJ) {
-		rsrcd->rsrc_incr(uid, "objects", 0, 1, TRUE);
+		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
 	    if (uid != owner) {
 		owner = "/" + uid;
@@ -488,14 +490,14 @@ static varargs mixed *status(mixed obj)
 		--i;
 		co = callouts[i];
 		callouts[i] = ({ co[CO_HANDLE], co[CO_FIRSTXARG],
-				 co[CO_FIRSTXARG + 1] ? 0 : co[CO_DELAY] });
+				 (co[CO_FIRSTXARG + 1]) ? 0 : co[CO_DELAY] });
 	    } while (i != 0);
 	} else {
 	    do {
 		--i;
 		co = callouts[i];
 		callouts[i] = ({ co[CO_HANDLE], co[CO_FIRSTXARG],
-				 co[CO_FIRSTXARG + 1] ? 0 : co[CO_DELAY] }) +
+				 (co[CO_FIRSTXARG + 1]) ? 0 : co[CO_DELAY] }) +
 			      co[CO_FIRSTXARG + 2];
 	    } while (i != 0);
 	}
@@ -881,7 +883,7 @@ static varargs event(string name, mixed args...)
 
     name = "evt_" + name;
     args = ({ this_object() }) + args;
-    for (i = 0, sz = sizeof(objlist -= ({ 0 })); i < sz; i++) {
+    for (i = 0, sz = sizeof(objlist -= ({ nil })); i < sz; i++) {
 	objlist[i]->_F_start_event(name, args);
     }
 }
@@ -948,7 +950,7 @@ static varargs int write_file(string path, string str, int offset)
 	rlimits (-1; -1) {
 	    result = ::write_file(path, str, offset);
 	    if (result != 0 && (size=driver->file_size(path) - size) != 0) {
-		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, TRUE);
+		rsrcd->rsrc_incr(fcreator, "filequota", nil, size, TRUE);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -987,7 +989,7 @@ static int remove_file(string path)
 	    result = ::remove_file(path);
 	    if (result != 0 && size != 0) {
 		::find_object(RSRCD)->rsrc_incr(driver->creator(path),
-						"filequota", 0, -size);
+						"filequota", nil, -size);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -1040,8 +1042,8 @@ static int rename_file(string from, string to)
 	rlimits (-1; -1) {
 	    result = ::rename_file(from, to);
 	    if (result != 0 && fcreator != tcreator) {
-		rsrcd->rsrc_incr(tcreator, "filequota", 0, size, TRUE);
-		rsrcd->rsrc_incr(fcreator, "filequota", 0, -size);
+		rsrcd->rsrc_incr(tcreator, "filequota", nil, size, TRUE);
+		rsrcd->rsrc_incr(fcreator, "filequota", nil, -size);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -1135,7 +1137,7 @@ static int make_dir(string path)
 	rlimits (-1; -1) {
 	    result = ::make_dir(path);
 	    if (result != 0) {
-		rsrcd->rsrc_incr(fcreator, "filequota", 0, 1, TRUE);
+		rsrcd->rsrc_incr(fcreator, "filequota", nil, 1, TRUE);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -1172,7 +1174,7 @@ static int remove_dir(string path)
 	    result = ::remove_dir(path);
 	    if (result != 0) {
 		::find_object(RSRCD)->rsrc_incr(driver->creator(path + "/"),
-						"filequota", 0, -1);
+						"filequota", nil, -1);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -1240,7 +1242,7 @@ static save_object(string path)
 	rlimits (-1; -1) {
 	    ::save_object(path);
 	    if ((size=driver->file_size(path) - size) != 0) {
-		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, TRUE);
+		rsrcd->rsrc_incr(fcreator, "filequota", nil, size, TRUE);
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -1276,7 +1278,7 @@ static varargs string editor(string cmd)
 	    }
 	    info = driver->query_wfile();
 	    if (info) {
-		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", 0,
+		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", nil,
 				 driver->file_size(info[0]) - info[1], TRUE);
 	    }
 	}

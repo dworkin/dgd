@@ -480,8 +480,12 @@ static string dump_value(mixed value, mapping seen)
     mixed *indices, *values;
 
     switch (typeof(value)) {
-    case T_INT:
     case T_FLOAT:
+	if (value == 0.0) {
+	    return "0.0";
+	}
+	/* fall through */
+    case T_INT:
 	return (string) value;
 
     case T_STRING:
@@ -595,7 +599,7 @@ static mixed *parse(object user, string str)
     int argc, len, i, c;
     string result, head, tail, tmp;
 
-    argv = ({ 0 });
+    argv = ({ nil });
     argc = 0;
     result = "";
 
@@ -640,7 +644,7 @@ static mixed *parse(object user, string str)
 	     * $ not enclosed in quotes: interpret it
 	     */
 	    result += head + "(argv[" + argc + "])";
-	    argv += ({ 0 });
+	    argv += ({ nil });
 	    argc++;
 
 	    if (sscanf(str, "%d%s", i, str) != 0) {
@@ -1169,7 +1173,7 @@ static cmd_cp(object user, string cmd, string str)
 	    do {
 		chunk = read_file(names[i], offset, 57344);
 		if (typeof(chunk) != T_STRING) {
-		    if (chunk == 0) {
+		    if (!chunk) {
 			message(names[i] + ": No such file or directory.\n");
 		    }
 		    return;

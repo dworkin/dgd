@@ -141,7 +141,7 @@ remove_user(string user)
 		mixed *values, access;
 		int i;
 
-		uaccess[user] = 0;
+		uaccess[user] = nil;
 		users = map_indices(uaccess);
 		values = map_values(uaccess);
 		user = USR + "/" + user;
@@ -205,21 +205,21 @@ set_access(string user, string file, int type)
 		    indices = map_indices(filter_from_file(access, file));
 		    for (i = sizeof(indices); --i >= 0; ) {
 			if (access[indices[i]] <= type) {
-			    access[indices[i]] = 0;
+			    access[indices[i]] = nil;
 			}
 		    }
 		    /* set access */
-		    access[file] = type;
+		    access[file] = (type != 0) ? type : nil;
 		}
 	    } else if (typeof(access) == T_MAPPING) {
 		/*
 		 * remove access
 		 */
-		if (access[file] == 0) {
+		if (!access[file]) {
 		    /* remove all subdir access */
 		    indices = map_indices(filter_from_file(access, file));
 		    for (i = sizeof(indices); --i >= 0; ) {
-			access[indices[i]] = 0;
+			access[indices[i]] = nil;
 		    }
 		} else {
 		    /* remove specific access */
@@ -286,7 +286,7 @@ set_global_access(string dir, int flag)
 {
     if (previous_program() == API_ACCESS) {
 	rlimits (-1; -1) {
-	    gaccess[dir] = flag;
+	    gaccess[dir] = (flag != 0) ? flag : nil;
 # ifndef SYS_CONTINUOUS
 	    save_object(ACCESSDATA);
 # endif
