@@ -184,14 +184,17 @@ static void timeout()
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to user object
  */
-static void receive_message(mixed *tls, string str)
+static int receive_message(mixed *tls, string str)
 {
+    int mode;
+
     if (!user) {
 	user = call_other(userd, conntype + "_user", port, str);
-	set_mode(user->login(str));
+	set_mode(mode = user->login(str));
     } else {
-	set_mode(user->receive_message(str));
+	set_mode(mode = user->receive_message(str));
     }
+    return mode;
 }
 
 /*

@@ -1802,7 +1802,10 @@ static void cmd_people(object user, string cmd, string str)
     for (i = 0, sz = sizeof(users); i < sz; i++) {
 	usr = users[i];
 	name = usr->query_name();
-	str += (query_ip_number(usr->query_conn()) + SPACE16)[.. 15] +
+	while (function_object("query_conn", usr) == LIB_USER) {
+	    usr = usr->query_conn();
+	}
+	str += (query_ip_number(usr) + SPACE16)[.. 15] +
 	       ((sizeof(owners & ({ name })) == 0) ? " " : "*") +
 	       name + "\n";
     }
