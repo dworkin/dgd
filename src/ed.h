@@ -1,4 +1,5 @@
 extern void	ed_init		P((char*, int));
+extern void	ed_finish	P((void));
 extern void	ed_new		P((object*));
 extern void	ed_del		P((object*));
 extern void	ed_command	P((object*, char*));
