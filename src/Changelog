@@ -953,3 +953,7 @@ DGD 1.1
  - Fixed a bug which could result in connections being closed immediately,
    often occurring if connections were being opened and closed at a rapid
    rate.
+ - Process termination is now done through driver->interrupt().  This
+   function must exist and should minimally consist of
+
+    void interrupt() { shutdown(); }

@@ -137,7 +137,7 @@ BOOL CWindgdApp::InitInstance()
 void CWindgdApp::OnDgdConfig()
 {
     CFileDialog config(TRUE, NULL, "config.dgd",
-    		       OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+		       OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
 		       "Config Files (*.dgd)|*.dgd|All Files (*.*)|*.*||");
 
     config.m_ofn.lpstrTitle = "Config File";
@@ -149,8 +149,8 @@ void CWindgdApp::OnDgdConfig()
 void CWindgdApp::OnDgdRestore()
 {
     CFileDialog restore(TRUE, NULL, NULL,
-    			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
-    			"All Files (*.*)|*.*||");
+			OFN_FILEMUSTEXIST | OFN_HIDEREADONLY,
+			"All Files (*.*)|*.*||");
 
     restore.m_ofn.lpstrTitle = "Restore File";
     if (restore.DoModal() == IDOK) {
@@ -182,10 +182,15 @@ void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 
 BOOL CWindgdApp::SaveAllModified()
 {
-    return (!dgd_started ||
-	    AfxMessageBox(
+    if (!dgd_started) {
+	return TRUE;
+    }
+    if (AfxMessageBox(
 		"Are you sure you want to\nterminate the running process?",
-		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES);
+		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES)) {
+	interrupt();
+    }
+    return FALSE;
 }
 
 

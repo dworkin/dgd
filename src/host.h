@@ -202,7 +202,6 @@ typedef unsigned int Uint;
 # endif	/* GENERIC_SYSV */
 
 
-extern void  P_getevent	P((void));
 extern void  P_message	P((char*));
 
 # ifndef O_BINARY

@@ -46,7 +46,7 @@ $(OBJ) comp.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h
 $(OBJ) comp.o: ../str.h ../array.h ../xfloat.h ../interpret.h
 control.o codegeni.o codegenc.o compile.o csupport.o comp.o: ../data.h
 control.o comp.o: ../hash.h ../path.h
-comp.o: ../swap.h ../comm.h ../ed.h ../call_out.h
+comp.o: ../swap.h ../comm.h ../editor.h ../call_out.h
 
 node.o parser.o compile.o: ../lex/macro.h ../lex/token.h
 parser.o compile.o: ../lex/ppcontrol.h

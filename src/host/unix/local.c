@@ -2,6 +2,16 @@
 # include <signal.h>
 
 /*
+ * NAME:	term()
+ * DESCRIPTION:	catch SIGTERM
+ */
+static void term()
+{
+    signal(SIGTERM, term);
+    interrupt();
+}
+
+/*
  * NAME:	main()
  * DESCRIPTION:	main program
  */
@@ -11,15 +21,8 @@ char *argv[];
 {
     P_srandom(P_time());
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGTERM, term);
     return dgd_main(argc, argv);
-}
-
-/*
- * NAME:	P->getevent()
- * DESCRIPTION:	get an event (but there are none)
- */
-void P_getevent()
-{
 }
 
 /*

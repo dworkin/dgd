@@ -10,7 +10,7 @@
 # include "hash.h"
 # include "swap.h"
 # include "comm.h"
-# include "ed.h"
+# include "editor.h"
 # include "call_out.h"
 # include "node.h"
 # include "codegen.h"

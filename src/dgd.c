@@ -118,8 +118,6 @@ char **argv;
     }
 
     for (;;) {
-	P_getevent();
-
 	i_clear();
 	o_clean();
 

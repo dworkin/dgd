@@ -1,14 +1,6 @@
 # include "dgd.h"
 
 /*
- * NAME:	P->getevent()
- * DESCRIPTION:	(don't) get the next event
- */
-void P_getevent(void)
-{
-}
-
-/*
  * NAME:	P->srandom()
  * DESCRIPTION:	set random seed
  */
