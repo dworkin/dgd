@@ -1167,7 +1167,7 @@ register int state;
 	    p = local((int) n->r.number);
 	    switch (n->mod) {
 	    case T_FLOAT:
-		output("VFLT_ISZERO(%s)", p);
+		output("!VFLT_ISZERO(%s)", p);
 		break;
 
 	    case T_STRING:
@@ -1501,7 +1501,7 @@ register int state;
 	    break;
 
 	case T_FLOAT:
-	    output(", f->sp++, VFLT_ISZERO(f->sp - 1)");
+	    output(", f->sp++, !VFLT_ISZERO(f->sp - 1)");
 	    break;
 
 	case T_OBJECT:

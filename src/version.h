@@ -1,1 +1,1 @@
-# define VERSION	"1.1.48"
+# define VERSION	"1.1.49"
