@@ -668,6 +668,74 @@ void comm_flush()
 }
 
 /*
+ * NAME:	comm->taccept()
+ * DESCRIPTION:	accept a telnet connection
+ */
+static void comm_taccept(f, conn)
+register frame *f;
+struct _connection_ *conn;
+{
+    user *usr;
+    object *obj;
+
+    if (ec_push((ec_ftn) NULL)) {
+	conn_del(conn);		/* delete connection */
+	error((char *) NULL);	/* pass on error */
+    }
+    call_driver_object(f, "telnet_connect", 1);
+    if (f->sp->type != T_OBJECT) {
+	fatal("driver->telnet_connect() did not return a persistent object");
+    }
+    obj = OBJ(f->sp->oindex);
+    f->sp++;
+    usr = comm_new(f, obj, conn, TRUE);
+    ec_pop();
+    endthread();
+
+    usr->flags |= CF_PROMPT;
+    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+    this_user = obj->index;
+    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+	i_del_value(f->sp++);
+	endthread();
+    }
+    this_user = OBJ_NONE;
+}
+
+/*
+ * NAME:	comm->baccept()
+ * DESCRIPTION:	accept a binary connection
+ */
+static void comm_baccept(f, conn)
+register frame *f;
+struct _connection_ *conn;
+{
+    user *usr;
+    object *obj;
+
+    if (ec_push((ec_ftn) NULL)) {
+	conn_del(conn);		/* delete connection */
+	error((char *) NULL);	/* pass on error */
+    }
+    call_driver_object(f, "binary_connect", 1);
+    if (f->sp->type != T_OBJECT) {
+	fatal("driver->binary_connect() did not return a persistent object");
+    }
+    obj = OBJ(f->sp->oindex);
+    f->sp++;
+    usr = comm_new(f, obj, conn, FALSE);
+    ec_pop();
+    endthread();
+
+    this_user = obj->index;
+    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+	i_del_value(f->sp++);
+	endthread();
+    }
+    this_user = OBJ_NONE;
+}
+
+/*
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
@@ -708,101 +776,55 @@ unsigned int mtime;
 	return;
     }
 
-    if (nusers < maxusers) {
+    if (ntport != 0 &&nusers < maxusers) {
 	n = nexttport;
 	do {
 	    /*
 	     * accept new telnet connection
 	     */
-	    conn = conn_tnew(n);
+	    conn = conn_tnew6(n);
 	    if (conn != (connection *) NULL) {
-		nexttport = n + 1;
-		if (nexttport == ntport) {
-		    nexttport = 0;
-		}
-
-		if (ec_push((ec_ftn) NULL)) {
-		    conn_del(conn);		/* delete connection */
-		    error((char *) NULL);	/* pass on error */
-		}
 		PUSH_INTVAL(f, n);
-		call_driver_object(f, "telnet_connect", 1);
-		if (f->sp->type != T_OBJECT) {
-		    fatal("driver->telnet_connect() did not return a persistent object");
+		comm_taccept(f, conn);
+		nexttport = (n + 1) % ntport;
+	    }
+	    if (nusers < maxusers) {
+		conn = conn_tnew(n);
+		if (conn != (connection *) NULL) {
+		    PUSH_INTVAL(f, n);
+		    comm_taccept(f, conn);
+		    nexttport = (n + 1) % ntport;
 		}
-		obj = OBJ(f->sp->oindex);
-		f->sp++;
-		usr = comm_new(f, obj, conn, TRUE);
-		ec_pop();
-		endthread();
-
-		usr->flags |= CF_PROMPT;
-		addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
-		this_user = obj->index;
-		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-		    i_del_value(f->sp++);
-		    endthread();
-		}
-		this_user = OBJ_NONE;
-
-		break;
 	    }
 
-	    n++;
-	    if (n == ntport) {
-		n = 0;
-	    }
+	    n = (n + 1) % ntport;
 	} while (n != nexttport);
     }
 
-    if (nusers < maxusers) {
+    if (nbport != 0 && nusers < maxusers) {
 	n = nextbport;
-	for (;;) {
+	do {
 	    /*
 	     * accept new binary connection
 	     */
-	    conn = conn_bnew(n);
-	    if (conn == (connection *) NULL) {
-		n++;
-		if (n == nbport) {
-		    n = 0;
-		}
-		if (n == nextbport) {
-		    break;
-		}
-	    } else {
-		if (ec_push((ec_ftn) NULL)) {
-		    conn_del(conn);		/* delete connection */
-		    error((char *) NULL);	/* pass on error */
-		}
+	    conn = conn_bnew6(n);
+	    if (conn != (connection *) NULL) {
 		PUSH_INTVAL(f, n);
-		call_driver_object(f, "binary_connect", 1);
-		if (f->sp->type != T_OBJECT) {
-		    fatal("driver->binary_connect() did not return a persistent object");
-		}
-		obj = OBJ(f->sp->oindex);
-		f->sp++;
-		usr = comm_new(f, obj, conn, FALSE);
-		ec_pop();
-		endthread();
-
-		this_user = obj->index;
-		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-		    i_del_value(f->sp++);
-		    endthread();
-		}
-		this_user = OBJ_NONE;
-
-		n++;
-		if (n == nbport) {
-		    n = 0;
-		}
-		nextbport = n;
-		if (nusers == maxusers) {
-		    break;
+		comm_baccept(f, conn);
+	    }
+	    if (nusers < maxusers) {
+		conn = conn_bnew(n);
+		if (conn != (connection *) NULL) {
+		    PUSH_INTVAL(f, n);
+		    comm_baccept(f, conn);
 		}
 	    }
-	}
+	    n = (n + 1) % nbport;
+	    if (nusers == maxusers) {
+		nextbport = n;
+		break;
+	    }
+	} while (n != nextbport);
     }
 
     for (i = nusers; i > 0; --i) {
@@ -1126,9 +1148,9 @@ unsigned int mtime;
 string *comm_ip_number(obj)
 object *obj;
 {
-    char *ipnum;
+    char ipnum[40];
 
-    ipnum = conn_ipnum(users[EINDEX(obj->etabi)].conn);
+    conn_ipnum(users[EINDEX(obj->etabi)].conn, ipnum);
     return str_new(ipnum, (long) strlen(ipnum));
 }
 
@@ -1139,9 +1161,9 @@ object *obj;
 string *comm_ip_name(obj)
 object *obj;
 {
-    char *ipname;
+    char ipname[1024];
 
-    ipname = conn_ipname(users[EINDEX(obj->etabi)].conn);
+    conn_ipname(users[EINDEX(obj->etabi)].conn, ipname);
     return str_new(ipname, (long) strlen(ipname));
 }
 

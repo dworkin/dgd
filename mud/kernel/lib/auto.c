@@ -1513,9 +1513,11 @@ static string editor(varargs string cmd)
     catch {
 	rlimits (-1; -1) {
 	    rsrcd = ::find_object(RSRCD);
-	    if (!query_editor(this_object()) &&
-		!rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
-		error("Too many editors");
+	    if (!query_editor(this_object())) {
+		if (!rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
+		    error("Too many editors");
+		}
+		::find_object(OBJREGD)->add_editor(this_object());
 	    }
 	    driver = ::find_object(DRIVER);
 
@@ -1524,6 +1526,7 @@ static string editor(varargs string cmd)
 
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
+		::find_object(OBJREGD)->remove_editor(this_object());
 	    }
 	    if (info) {
 		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", nil,

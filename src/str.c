@@ -87,7 +87,7 @@ strmerge *str_merge()
     register strmerge *merge;
 
     merge = ALLOC(strmerge, 1);
-    merge->ht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ);
+    merge->ht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
     merge->slink = (strh **) NULL;
     merge->shlist = (strhchunk *) NULL;
     merge->strhchunksz = STR_CHUNK;

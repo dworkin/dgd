@@ -1,7 +1,9 @@
 # include <kernel/kernel.h>
 # include <kernel/objreg.h>
+# include <kernel/rsrc.h>
 
 mapping links;		/* owner : first object */
+mapping editors;	/* editor : TRUE */
 
 /*
  * NAME:	create()
@@ -10,6 +12,7 @@ mapping links;		/* owner : first object */
 static void create()
 {
     links = ([ "System" : this_object() ]);
+    editors = ([ ]);
     _F_prev(this_object());
     _F_next(this_object());
 }
@@ -63,6 +66,42 @@ void unlink(object obj, string owner)
     }
 }
 
+/*
+ * NAME:	add_editor()
+ * DESCRIPTION:	register an editor object
+ */
+void add_editor(object obj)
+{
+    if (previous_program() == AUTO) {
+	editors[obj] = TRUE;
+    }
+}
+
+/*
+ * NAME:	remove_editor()
+ * DESCRIPTION:	unregister an editor object
+ */
+void remove_editor(object obj)
+{
+    if (previous_program() == AUTO) {
+	editors[obj] = nil;
+    }
+}
+
+/*
+ * NAME:	remove_editors()
+ * DESCRIPTION:	unregister all editor objects, and return them in an array
+ */
+object *remove_editors()
+{
+    if (previous_program() == RSRCD) {
+	object *objects;
+
+	objects = map_indices(editors);
+	editors = ([ ]);
+	return objects;
+    }
+}
 
 /*
  * NAME:	first_link()

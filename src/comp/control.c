@@ -28,7 +28,7 @@ static oh **olist;		/* list of all object hash table entries */
  */
 static void oh_init()
 {
-    otab = ht_new(OMERGETABSZ, OBJHASHSZ);
+    otab = ht_new(OMERGETABSZ, OBJHASHSZ, FALSE);
 }
 
 /*
@@ -291,8 +291,8 @@ void ctrl_init(flag)
 int flag;
 {
     oh_init();
-    vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
-    ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
+    vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
     countint = flag;
 }
 

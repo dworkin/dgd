@@ -398,7 +398,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
     }
     nbdescs = nbports;
     if (nbports != 0) {
-	bdescs = ALLOC(SOCKET, nbdescs = nbports);
+	bdescs = ALLOC(SOCKET, nbports);
 	udescs = ALLOC(SOCKET, nbports);
 	for (n = 0; n < nbdescs; n++) {
 	    bdescs[n] = INVALID_SOCKET;
@@ -505,7 +505,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
-    chtab = ht_new(NULL, maxusers, UDPHASHSZ);
+    chtab = ht_new(maxusers, UDPHASHSZ, TRUE);
 
     return TRUE;
 }
@@ -550,6 +550,24 @@ void conn_listen(void)
 	}
     }
     ipa_start(bdescs[0]);
+}
+
+/*
+ * NAME:	conn->tnew6()
+ * DESCRIPTION:	don't accept IPv6 connections yet
+ */
+connection *conn_tnew6(int port)
+{
+    return (connection *) NULL;
+}
+ 
+/*
+ * NAME:	conn->bnew6()
+ * DESCRIPTION:	don't accept IPv6 connections yet
+ */
+connection *conn_bnew6(int port)
+{
+    return (connection *) NULL;
 }
 
 /*
@@ -631,45 +649,28 @@ connection *conn_bnew(int port)
 }
 
 /*
- * NAME:	conn->hashudp()
- * DESCRIPTION:	prepare a UDP challenge for hashing
- */
-static void conn_udphash(register char *buf, register char *str,
-			 register unsigned int len)
-{
-    /* replace \0 characters in the challenge */
-    if (len > UDPHASHSZ) {
-	len = UDPHASHSZ;
-    }
-    while (len != 0) {
-	if ((*buf=*str++) == '\0') {
-	    *buf = len;
-	}
-	buf++;
-	--len;
-    }
-    *buf = '\0';
-}
-
-/*
  * NAME:	conn->udp()
  * DESCRIPTION:	set the challenge for attaching a UDP channel
  */
 bool conn_udp(register connection *conn, char *challenge,
 	      register unsigned int len)
 {
-    char buffer[UDPHASHSZ + 1];
+    char buffer[UDPHASHSZ];
     register connection **hash;
 
-    if (len == 0 || len > BINBUF_SIZE - UDPHASHSZ - 1 ||
-	conn->udpbuf != (char *) NULL) {
+    if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
 	return FALSE;	/* invalid challenge */
     }
 
-    conn_udphash(buffer, challenge, len);
+    if (len >= UDPHASHSZ) {
+	memcpy(buffer, challenge, UDPHASHSZ);
+    } else {
+	memset(buffer, '\0', UDPHASHSZ);
+	memcpy(buffer, challenge, len);
+    }
     hash = (connection **) ht_lookup(chtab, buffer, FALSE);
     while (*hash != (connection *) NULL &&
-	   strcmp((*hash)->chain.name, buffer) == 0) {
+	   memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
 	if ((*hash)->bufsz == len &&
 	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
 	    return FALSE;	/* duplicate challenge */
@@ -682,8 +683,8 @@ bool conn_udp(register connection *conn, char *challenge,
     m_static();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
-    memcpy(conn->udpbuf, challenge, conn->bufsz = len);
-    strcpy(conn->chain.name = conn->udpbuf + len, buffer);
+    memset(conn->udpbuf, '\0', UDPHASHSZ);
+    memcpy(conn->chain.name = conn->udpbuf, challenge, conn->bufsz = len);
 
     return TRUE;
 }
@@ -746,7 +747,7 @@ void conn_block(connection *conn, int flag)
  */
 static void conn_udprecv(int n)
 {
-    char chash[UDPHASHSZ + 1];
+    char chash[UDPHASHSZ];
     char buffer[BINBUF_SIZE];
     struct sockaddr_in from;
     int fromlen;
@@ -755,6 +756,7 @@ static void conn_udprecv(int n)
     register char *p;
 
     for (;;) {
+	memset(buffer, '\0', UDPHASHSZ);
 	fromlen = sizeof(struct sockaddr_in);
 	size = recvfrom(udescs[n], buffer, BINBUF_SIZE, 0,
 			(struct sockaddr *) &from, &fromlen);
@@ -770,11 +772,12 @@ static void conn_udprecv(int n)
 		/*
 		 * see if the packet matches an outstanding challenge
 		 */
-		conn_udphash(chash, buffer, size);
 		hash = (connection **) ht_lookup(chtab, chash, FALSE);
 		while ((conn=*hash) != (connection *) NULL &&
-		       strcmp((*hash)->chain.name, chash) == 0) {
-		    if (memcmp(conn->udpbuf, buffer, size) == 0) {
+		       memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
+		    if (conn->bufsz == size &&
+			memcmp(conn->udpbuf, buffer, size) == 0 &&
+			conn->addr->ipnum.s_addr == from.sin_addr.s_addr) {
 			/*
 			 * attach new UDP channel
 			 */
@@ -782,7 +785,7 @@ static void conn_udprecv(int n)
 			conn->chain.name = (char *) NULL;
 			conn->bufsz = 0;
 			conn->uport = from.sin_port;
-			hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^
+			hash = &udphtab[((Uint) from.sin_addr.s_addr ^
 						    conn->uport) % udphtabsz];
 			conn->chain.next = (hte *) *hash;
 			*hash = conn;
@@ -1021,17 +1024,20 @@ bool conn_wrdone(connection *conn)
  * NAME:	conn->ipnum()
  * DESCRIPTION:	return the ip number of a connection
  */
-char *conn_ipnum(connection *conn)
+void conn_ipnum(connection *conn, char *buf)
 {
-    return inet_ntoa(conn->addr->ipnum);
+    strcpy(buf, inet_ntoa(conn->addr->ipnum));
 }
 
 /*
  * NAME:	conn->ipname()
  * DESCRIPTION:	return the ip name of a connection
  */
-char *conn_ipname(connection *conn)
+void conn_ipname(connection *conn, char *buf)
 {
-    return (conn->addr->name[0] != '\0') ?
-	    conn->addr->name : inet_ntoa(conn->addr->ipnum);
+    if (conn->addr->name[0] != '\0') {
+	strcpy(buf, conn->addr->name);
+    } else {
+	conn_ipnum(conn, buf);
+    }
 }

@@ -64,7 +64,7 @@ register unsigned int n;
     ocmap = ALLOC(char, (n + 7) >> 3);
     memset(ocmap, '\0', (n + 7) >> 3);
     for (n = 4; n < otabsize; n <<= 1) ;
-    baseplane.htab = ht_new(n >> 2, OBJHASHSZ);
+    baseplane.htab = ht_new(n >> 2, OBJHASHSZ, FALSE);
     baseplane.optab = (optable *) NULL;
     baseplane.upgrade = baseplane.clean = OBJ_NONE;
     baseplane.destruct = baseplane.free = OBJ_NONE;
@@ -216,7 +216,7 @@ int access;
 	    obj->chain.name = name;
 	    if (obj->count != 0) {
 		if (oplane->htab == (hashtab *) NULL) {
-		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
+		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
 		}
 		h = ht_lookup(oplane->htab, name, FALSE);
 		obj->chain.next = *h;
@@ -580,7 +580,7 @@ register control *ctrl;
     if (obase) {
 	m_dynamic();
     } else if (oplane->htab == (hashtab *) NULL) {
-	oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
+	oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
     h = ht_lookup(oplane->htab, name, FALSE);
     o->chain.next = *h;

@@ -4,7 +4,9 @@ extern bool	   conn_init	 P((int, char**, char**, unsigned short*,
 				    unsigned short*, int, int));
 extern void	   conn_finish	 P((void));
 extern void	   conn_listen	 P((void));
+extern connection *conn_tnew6	 P((int));
 extern connection *conn_tnew	 P((int));
+extern connection *conn_bnew6	 P((int));
 extern connection *conn_bnew	 P((int));
 extern bool	   conn_udp	 P((connection*, char*, unsigned int));
 extern void	   conn_del	 P((connection*));
@@ -16,8 +18,8 @@ extern int	   conn_udpread	 P((connection*, char*, unsigned int));
 extern int	   conn_write	 P((connection*, char*, unsigned int));
 extern int	   conn_udpwrite P((connection*, char*, unsigned int));
 extern bool	   conn_wrdone	 P((connection*));
-extern char	  *conn_ipnum	 P((connection*));
-extern char	  *conn_ipname	 P((connection*));
+extern void	   conn_ipnum	 P((connection*, char*));
+extern void	   conn_ipname	 P((connection*, char*));
 
 extern bool	comm_init	P((int, char**, char**, unsigned short*,
 				   unsigned short*, int, int));

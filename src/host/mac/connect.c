@@ -7,6 +7,7 @@
 # include <MacTCP.h>
 # include <OSUtils.h>
 # include "dgd.h"
+# include "hash.h"
 # include "comm.h"
 
 # define OPENRESOLVER	1L
@@ -230,7 +231,7 @@ static void ipa_finish(void)
  */
 static ipaddr *ipa_new(unsigned long ipnum)
 {
-    register ipaddr *ipa, **hash;
+    ipaddr *ipa, **hash;
 
     /* check hash table */
     hash = &ipahtab[ipnum % ipahtabsz];
@@ -285,7 +286,7 @@ static ipaddr *ipa_new(unsigned long ipnum)
     }
 
     if (nfree >= NFREE) {
-	register ipaddr **h;
+	ipaddr **h;
 
 	/*
 	 * use first ipaddr in free list
@@ -435,15 +436,17 @@ static void ipa_lookup()
 # define TCPBUFSZ	8192
 
 struct _connection_ {
-    connection *next;			/* next in list */
+    connection *next;			/* next in queue/list */
     short qType;			/* queue type */
     connection *prev;			/* prev in list */
     connection *hash;			/* next in hashed list */
     char dflag;				/* data arrival flag */
     char cflags;			/* closing/closed flags */
     char sflags;			/* status flags */
+    char binary;			/* telnet or binary */
     ipaddr *addr;			/* internet address of connection */
-    unsigned short port;		/* port of connection */
+    unsigned short uport;		/* UDP port of connection */
+    unsigned short at;			/* port index */
     int ssize;				/* send size */
     int bufsz;				/* UDP buffer size */
     char *udpbuf;			/* UDP read buffer */
@@ -463,14 +466,16 @@ struct _connection_ {
 
 static connection *connlist;		/* list of open connections */
 static QHdr flist;			/* free connection queue */
-static QHdr telnet;			/* telnet accept queue */
-static QHdr binary;			/* binary accept queue */
+static QHdr *telnet;			/* telnet accept queues */
+static QHdr *binary;			/* binary accept queues */
 static int tcpbufsz;			/* TCP buffer size */
+static connection **chtab;		/* UDP challenge hash table */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
-static unsigned int telnet_port;	/* telnet port number */
-static unsigned int binary_port;	/* binary port number */
-static UDPiopb udpbuf;			/* UDP I/O buffer */
+static unsigned short *tports;		/* telnet port numbers */
+static unsigned short *bports;		/* binary port numbers */
+static int ntports, nbports;		/* # telnet, binary ports */
+static UDPiopb *udpbuf;			/* UDP I/O buffers */
 static bool udpdata;			/* UDP data ready */
 
 
@@ -508,7 +513,7 @@ static pascal void asr(StreamPtr stream, unsigned short event, Ptr userdata,
  * NAME:	conn->start()
  * DESCRIPTION:	start listening on  a TCP stream
  */
-static void conn_start(connection *conn, unsigned int port)
+static void conn_start(connection *conn, unsigned short port)
 {
     conn->dflag = 0;
     conn->cflags = 0;
@@ -543,6 +548,8 @@ static void conn_start(connection *conn, unsigned int port)
 static void tcpcompletion(struct TCPiopb *iobuf)
 {
     connection *conn;
+    char type;
+    int port;
     QHdr *queue;
 
     conn = (connection *) iobuf->csParam.open.userDataPtr;
@@ -550,16 +557,19 @@ static void tcpcompletion(struct TCPiopb *iobuf)
 	return;
     }
     if (iobuf->ioResult == noErr) {
-	queue = (iobuf->csParam.open.localPort == telnet_port) ?
-		 &telnet : &binary;
+	type = conn->binary;
+	port = conn->at;
+	queue = (type) ? &binary[port] : &telnet[port];
 	conn->sflags = TCP_OPEN;	/* opened */
 	if (flist.qHead == NULL) {
-	    /* cannot start listening on another one right away, alas */
+	    /* cannot start listening for another one right away, alas */
 	    queue->qFlags = FALSE;
 	    return;
 	}
 	conn = (connection *) flist.qHead;
 	Dequeue((QElemPtr) conn, &flist);
+	conn->binary = type;
+	conn->at = port;
 	Enqueue((QElemPtr) conn, queue);
     }
 
@@ -580,25 +590,56 @@ static void udpcompletion(struct UDPiopb *iobuf)
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
-bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
+bool conn_init(int nusers, char **thosts, char **bhosts, unsigned short *tp,
+	       unsigned short *bp, int ntp, int nbp)
 {
     IOParam device;
     GetAddrParamBlock addr;
+    UDPiopb udp;
+    int n;
     connection *conn;
 
     connlist = NULL;
     memset(&flist, '\0', sizeof(flist));
-    memset(&telnet, '\0', sizeof(telnet));
-    memset(&binary, '\0', sizeof(binary));
+    ntports = ntp;
+    if (ntp != 0) {
+	for (n = 0; n < ntp; n++) {
+	    if (thosts[n] != (char *) NULL) {
+		P_message("Config error: cannot bind to address\012");	/* LF */
+		return FALSE;
+	    }
+	}
+	telnet = ALLOC(QHdr, ntp);
+	memset(telnet, '\0', ntp * sizeof(QHdr));
+	tports = tp;
+    }
+    nbports = nbp;
+    if (nbp != 0) {
+	for (n = 0; n < nbp; n++) {
+	    if (bhosts[n] != (char *) NULL) {
+		P_message("Config error: cannot bind to address\012");	/* LF */
+		return FALSE;
+	    }
+	}
+	binary = ALLOC(QHdr, nbp);
+	memset(binary, '\0', nbp * sizeof(QHdr));
+	bports = bp;
+	udpbuf = ALLOC(UDPiopb, nbp);
+    }
+    if (ntp + nbp == 0) {
+	return TRUE;	/* don't initialize MacTCP unless it's actually used */
+    }
 
-    /* initialize MacTCP */
+    /*
+     * initialize MacTCP
+     */
     device.ioNamePtr = "\p.IPP";
     device.ioVRefNum = 0;
     device.ioVersNum = 0;
     device.ioPermssn = fsCurPerm;
     device.ioMisc = 0;
     if (PBOpenSync((ParmBlkPtr) &device) != noErr) {
-	P_message("Config error: cannot initialize MacTCP\012"); /* LF */
+	P_message("Config error: cannot initialize MacTCP\012");	/* LF */
 	return FALSE;
     }
     if (!ipa_init(nusers)) {
@@ -611,35 +652,42 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	P_message("Config error: cannot get host address\012");	/* LF */
 	return FALSE;
     }
-    udpbuf.ioCRefNum = device.ioRefNum;
-    udpbuf.csCode = UDPMaxMTUSize;
-    udpbuf.csParam.mtu.remoteHost = addr.ourAddress;
-    if (PBControlSync((ParmBlkPtr) &udpbuf) != noErr) {
+    udp.ioCRefNum = device.ioRefNum;
+    udp.csCode = UDPMaxMTUSize;
+    udp.csParam.mtu.remoteHost = addr.ourAddress;
+    if (PBControlSync((ParmBlkPtr) &udp) != noErr) {
 	P_message("Config error: cannot get MTU size\012");	/* LF */
 	return FALSE;
     }
-    tcpbufsz = 4 * udpbuf.csParam.mtu.mtuSize + 1024;
+    tcpbufsz = 4 * udp.csParam.mtu.mtuSize + 1024;
     if (tcpbufsz < TCPBUFSZ) {
 	tcpbufsz = TCPBUFSZ;
     }
-    udpbuf.csCode = UDPCreate;
-    udpbuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, 32768);
-    udpbuf.csParam.create.rcvBuffLen = 32768;
-    udpbuf.csParam.create.notifyProc = NULL;
-    udpbuf.csParam.create.localPort = b_port;
-    if (PBControlSync((ParmBlkPtr) &udpbuf) != noErr) {
-	P_message("Config error: cannot open UDP port\012");	/* LF */
-	return FALSE;
+
+    /* open UDP ports */
+    for (n = 0; n < nbp; n++) {
+	udpbuf[n].ioCRefNum = device.ioRefNum;
+	udpbuf[n].csCode = UDPCreate;
+	udpbuf[n].csParam.create.rcvBuff = (Ptr) ALLOC(char, 32768);
+	udpbuf[n].csParam.create.rcvBuffLen = 32768;
+	udpbuf[n].csParam.create.notifyProc = NULL;
+	udpbuf[n].csParam.create.localPort = bp[n];
+	if (PBControlSync((ParmBlkPtr) &udpbuf[n]) != noErr) {
+	    P_message("Config error: cannot open UDP port\012");	/* LF */
+	    return FALSE;
+	}
     }
     udphtab = ALLOC(connection*, udphtabsz = nusers);
-    memset(udphtab, '\0', udphtabsz * sizeof(connection*));
+    memset(udphtab, '\0', nusers * sizeof(connection*));
+    chtab = ALLOC(connection*, nusers);
+    memset(chtab, '\0', nusers * sizeof(connection*));
 
     /* initialize TCP streams */
-    if (nusers < 2) {
-	nusers = 2;
+    if (nusers < ntp + nbp) {
+	nusers = ntp + nbp;
     }
     conn = ALLOC(connection, nusers);
-    while (--nusers >= 0) {
+    for (n = 0; n < nusers; n++) {
 	/* open TCP stream */
 	conn->iobuf.ioCRefNum = device.ioRefNum;
 	conn->iobuf.csCode = TCPCreate;
@@ -650,6 +698,10 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	if (PBControlSync((ParmBlkPtr) &conn->iobuf) != noErr) {
 	    /* failed (too many TCP streams?) */
 	    FREE(conn->iobuf.csParam.create.rcvBuff);
+	    if (n < ntp + nbp) {
+		P_message("Config error: cannot open TCP port\012");	/* LF */
+		return FALSE;
+	    }
 	    break;
 	}
 	conn->iobuf.ioCompletion = tcpcompletion;
@@ -657,9 +709,6 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	Enqueue((QElemPtr) conn, &flist);
 	conn++;
     }
-
-    telnet_port = t_port;
-    binary_port = b_port;
 
     return TRUE;
 }
@@ -687,20 +736,25 @@ static void conn_release(connection *conn)
  */
 void conn_finish(void)
 {
-    UDPiopb iobuf;
+    if (ntports + nbports != 0) {
+	UDPiopb iobuf;
+	int n;
 
-    /* remove all existing connections */
-    conn_release(connlist);
-    conn_release((connection *) telnet.qHead);
-    conn_release((connection *) binary.qHead);
-    conn_release((connection *) flist.qHead);
+	/* remove all existing connections */
+	conn_release(connlist);
+	for (n = 0; n < ntports; n++) {
+	    conn_release((connection *) telnet[n].qHead);
+	}
+	for (n = 0; n < nbports; n++) {
+	    conn_release((connection *) binary[n].qHead);
+	    iobuf = udpbuf[n];
+	    iobuf.csCode = UDPRelease;
+	    PBControlSync((ParmBlkPtr) &iobuf);
+	}
+	conn_release((connection *) flist.qHead);
 
-    /* close UDP port */
-    iobuf = udpbuf;
-    iobuf.csCode = UDPRelease;
-    PBControlSync((ParmBlkPtr) &iobuf);
-
-    ipa_finish();
+	ipa_finish();
+    }
 }
 
 /*
@@ -709,37 +763,45 @@ void conn_finish(void)
  */
 void conn_listen(void)
 {
-    connection *tconn, *bconn;
+    connection *conn;
+    int n;
 
-    tconn = (connection *) flist.qHead;
-    Dequeue((QElemPtr) tconn, &flist);
-    bconn = (connection *) flist.qHead;
-    Dequeue((QElemPtr) bconn, &flist);
+    for (n = 0; n < ntports; n++) {
+	/* start listening on telnet port */
+	conn = (connection *) flist.qHead;
+	Dequeue((QElemPtr) conn, &flist);
+	telnet[n].qFlags = TRUE;
+	conn->binary = FALSE;
+	conn->at = n;
+	Enqueue((QElemPtr) conn, &telnet[n]);
+	conn_start(conn, tports[n]);
+    }
 
-    /* start listening on telnet port */
-    Enqueue((QElemPtr) tconn, &telnet);
-    telnet.qFlags = TRUE;
-    conn_start(tconn, telnet_port);
-
-    /* start listening on binary port */
-    Enqueue((QElemPtr) bconn, &binary);
-    binary.qFlags = TRUE;
-    conn_start(bconn, binary_port);
-
-    /* start reading on UDP port */
     udpdata = FALSE;
-    udpbuf.ioCompletion = udpcompletion;
-    udpbuf.csCode = UDPRead;
-    udpbuf.csParam.receive.timeOut = 0;
-    udpbuf.csParam.receive.secondTimeStamp = 0;
-    PBControlAsync((ParmBlkPtr) &udpbuf);
+    for (n = 0; n < nbports; n++) {
+	/* start listening on binary port */
+	conn = (connection *) flist.qHead;
+	Dequeue((QElemPtr) conn, &flist);
+	binary[n].qFlags = TRUE;
+	conn->binary = TRUE;
+	conn->at = n;
+	Enqueue((QElemPtr) conn, &binary[n]);
+	conn_start(conn, bports[n]);
+
+	/* start reading on UDP port */
+	udpbuf[n].ioCompletion = udpcompletion;
+	udpbuf[n].csCode = UDPRead;
+	udpbuf[n].csParam.receive.timeOut = 0;
+	udpbuf[n].csParam.receive.secondTimeStamp = 0;
+	PBControlAsync((ParmBlkPtr) &udpbuf[n]);
+    }
 }
 
 /*
  * NAME:	conn->accept()
  * DESCRIPTION:	accept a new connection on a port
  */
-static connection *conn_accept(QHdr *queue, unsigned int portno)
+static connection *conn_accept(QHdr *queue)
 {
     connection *conn;
 
@@ -756,7 +818,7 @@ static connection *conn_accept(QHdr *queue, unsigned int portno)
 	/* fully initialize connection struct */
 	conn->iobuf.ioCompletion = NULL;
 	conn->addr = ipa_new(conn->iobuf.csParam.open.remoteHost);
-	conn->port = conn->iobuf.csParam.open.remotePort;
+	conn->uport = 0;
 	conn->ssize = 0;
 	conn->udpbuf = (char *) NULL;
 	conn->wds[0].length = 0;
@@ -772,39 +834,78 @@ static connection *conn_accept(QHdr *queue, unsigned int portno)
 }
 
 /*
+ * NAME:	conn->tnew6()
+ * DESCRIPTION:	can't accept an IPv6 connection
+ */
+connection *conn_tnew6(int n)
+{
+    return NULL;
+}
+
+/*
+ * NAME:	conn->bnew6()
+ * DESCRIPTION:	can't accept an IPv6 connection
+ */
+connection *conn_bnew6(int n)
+{
+    return NULL;
+}
+
+/*
  * NAME:	conn->tnew()
  * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_tnew(void)
+connection *conn_tnew(int n)
 {
-    return conn_accept(&telnet, telnet_port);
+    return conn_accept(&telnet[n]);
 }
 
 /*
  * NAME:	conn->bnew()
  * DESCRIPTION:	accept a new binary connection
  */
-connection *conn_bnew(void)
+connection *conn_bnew(int n)
 {
-    return conn_accept(&binary, binary_port);
+    return conn_accept(&binary[n]);
 }
 
 /*
  * NAME:        conn->udp()
  * DESCRIPTION: enable the UDP channel of a binary connection
  */
-void conn_udp(connection *conn)
+bool conn_udp(connection *conn, char *challenge, unsigned int len)
 {
+    char buffer[UDPHASHSZ];
     connection **hash;
 
+    if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
+	return FALSE;   /* invalid challenge */
+    }
+
+    if (len >= UDPHASHSZ) {
+	memcpy(buffer, challenge, UDPHASHSZ);
+    } else {
+	memset(buffer, '\0', UDPHASHSZ);
+	memcpy(buffer, challenge, len);
+    }
+    hash = &chtab[hashmem(buffer, UDPHASHSZ) % udphtabsz];
+    while (*hash != (connection *) NULL) {
+	if ((*hash)->bufsz == len &&
+	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
+	    return FALSE;       /* duplicate challenge */
+	}
+    }
+
+    conn->hash = *hash;
+    *hash = conn;
     m_static();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
-    conn->bufsz = -1;
+    memset(conn->udpbuf, '\0', UDPHASHSZ);
+    memcpy(conn->udpbuf, challenge, conn->bufsz = len);
+    conn->binary++;
 
-    hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
-    conn->hash = *hash;
-    *hash = conn;
+    return TRUE;
 }
 
 /*
@@ -858,6 +959,7 @@ static bool conn_flush(connection *conn)
 void conn_del(connection *conn)
 {
     connection **hash;
+    int n;
 
     conn->sflags |= TCP_CLOSE;
     if (!(conn->cflags & TCP_TERMINATED)) {
@@ -887,18 +989,18 @@ void conn_del(connection *conn)
     FREE(conn->wds[0].ptr);
     conn->iobuf.ioCompletion = tcpcompletion;
     if (conn->udpbuf != (char *) NULL) {
-	FREE(conn->udpbuf);
-
-	for (hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
-	     *hash != conn;
-	     hash = &(*hash)->hash) ;
+	if (conn->binary > TRUE) {
+	    hash = (connection **) &chtab[hashmem(conn->udpbuf,
+						  UDPHASHSZ) % udphtabsz];
+	} else {
+	    hash = &udphtab[(conn->addr->ipnum ^ conn->uport) % udphtabsz];
+	}       
+	while (*hash != conn) {
+	    hash = &(*hash)->hash;
+	}
 	*hash = conn->hash;
+	FREE(conn->udpbuf);
     }
-    ipa_del(conn->addr);
-
-    /*
-     * put in free list
-     */
     if (conn->prev != NULL) {
 	conn->prev->next = conn->next;
     } else {
@@ -907,24 +1009,36 @@ void conn_del(connection *conn)
     if (conn->next != NULL) {
 	conn->next->prev = conn->prev;
     }
-    Enqueue((QElemPtr) conn, &flist);
+    ipa_del(conn->addr);
 
     /*
      * see if connection can be re-used right away
      */
-    if (!telnet.qFlags) {
-	if (Dequeue((QElemPtr) conn, &flist) == noErr) {
-	    telnet.qFlags = TRUE;
-	    Enqueue((QElemPtr) conn, &telnet);
-	    conn_start(conn, telnet_port);
-	}
-    } else if (!binary.qFlags) {
-	 if (Dequeue((QElemPtr) conn, &flist) == noErr) {
-	    binary.qFlags = TRUE;
-	    Enqueue((QElemPtr) conn, &binary);
-	    conn_start(conn, binary_port);
+    for (n = 0; n < nbports; n++) {
+	if (!binary[n].qFlags) {
+	    binary[n].qFlags = TRUE;
+	    conn->binary = TRUE;
+	    conn->at = n;
+	    Enqueue((QElemPtr) conn, &binary[n]);
+	    conn_start(conn, bports[n]);
+	    return;
 	}
     }
+    for (n = 0; n < ntports; n++) {
+	if (!telnet[n].qFlags) {
+	    telnet[n].qFlags = TRUE;
+	    conn->binary = FALSE;
+	    conn->at = n;
+	    Enqueue((QElemPtr) conn, &telnet[n]);
+	    conn_start(conn, tports[n]);
+	    return;
+	}
+    }
+
+    /*
+     * put in free list
+     */
+    Enqueue((QElemPtr) conn, &flist);
 }
 
 /*
@@ -941,6 +1055,89 @@ void conn_block(connection *conn, int flag)
 }
 
 /*
+ * NAME:	conn->udprecv()
+ * DESCRIPTION:	receive UDP packets
+ */
+static bool conn_udprecv(int n)
+{
+    char buffer[UDPHASHSZ];
+    UDPiopb *udp;
+    bool stop;
+    unsigned int size;
+    connection **hash, *conn;
+    char *p;
+
+    stop = FALSE;
+    udp = &udpbuf[n];
+    size = udp->csParam.receive.rcvBuffLen;
+    hash = &udphtab[(udp->csParam.receive.remoteHost ^
+			    udp->csParam.receive.remotePort) % udphtabsz];
+    for (;;) {
+	conn = *hash;
+	if (conn == (connection *) NULL) {
+	    if (size >= UDPHASHSZ) {
+		memcpy(buffer, udp->csParam.receive.rcvBuff, UDPHASHSZ);
+	    } else {
+		memset(buffer, '\0', UDPHASHSZ);
+		memcpy(buffer, udp->csParam.receive.rcvBuff, size);
+	    }
+	    hash = (connection **) &chtab[hashmem(buffer, UDPHASHSZ) %
+								udphtabsz];
+	    while ((conn=*hash) != (connection *) NULL) {
+		if (conn->bufsz == size &&
+		    memcmp(conn->udpbuf, udp->csParam.receive.rcvBuff,
+			   size) == 0 &&
+		    conn->addr->ipnum == udp->csParam.receive.remoteHost) {
+		    /*
+		     * attach new UDP channel
+		     */
+		    *hash = conn->hash;
+		    --conn->binary;
+		    conn->bufsz = 0;
+		    conn->uport = udp->csParam.receive.remotePort;
+		    hash = &udphtab[(udp->csParam.receive.remoteHost ^
+						conn->uport) % udphtabsz];
+		    conn->hash = *hash;
+		    *hash = conn;
+
+		    stop = TRUE;
+		    break;
+		}
+		hash = &conn->hash;
+	    }
+	    break;
+	}
+    
+	if (conn->at == n &&
+	    conn->addr->ipnum == udp->csParam.receive.remoteHost &&
+	    conn->uport == udp->csParam.receive.remotePort) {
+	    /*
+	     * packet from known correspondent
+	     */
+	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+		p = conn->udpbuf + conn->bufsz;
+		*p++ = size >> 8;
+		*p++ = size;
+		memcpy(p, udp->csParam.receive.rcvBuff, size);
+		conn->bufsz += size + 2;
+		stop = TRUE;
+	    }
+	    break;
+	}
+	hash = &conn->hash;
+    }
+    /* else from unknown source: ignore */
+    
+    udp->csCode = UDPBfrReturn;
+    PBControlSync((ParmBlkPtr) udp);
+    udp->ioCompletion = udpcompletion;
+    udp->csCode = UDPRead;
+    PBControlAsync((ParmBlkPtr) udp);
+
+    return stop;
+}
+
+/*
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
@@ -948,6 +1145,7 @@ int conn_select(Uint t, unsigned int mtime)
 {
     long ticks;
     bool stop;
+    int n;
     connection *conn, *next, **hash;
 
     if (mtime != 0xffffL) {
@@ -962,31 +1160,11 @@ int conn_select(Uint t, unsigned int mtime)
 	    ipa_lookup();
 	}
 	if (udpdata) {
-	    hash = &udphtab[(udpbuf.csParam.receive.remoteHost ^
-			     udpbuf.csParam.receive.remotePort) % udphtabsz];
-	    while (*hash != (connection *) NULL) {
-		if ((*hash)->addr->ipnum == udpbuf.csParam.receive.remoteHost &&
-		    (*hash)->port == udpbuf.csParam.receive.remotePort) {
-		    /*
-		     * copy to connection's buffer
-		     */
-		    memcpy((*hash)->udpbuf, udpbuf.csParam.receive.rcvBuff,
-			   (*hash)->bufsz = udpbuf.csParam.receive.rcvBuffLen);
-		    break;
-		}
-		hash = &(*hash)->hash;
-	    }
-	    /* else from unknown source: ignore */
-
 	    udpdata = FALSE;
-	    udpbuf.csCode = UDPBfrReturn;
-	    PBControlSync((ParmBlkPtr) &udpbuf);
-	    udpbuf.ioCompletion = udpcompletion;
-	    udpbuf.csCode = UDPRead;
-	    PBControlAsync((ParmBlkPtr) &udpbuf);
-	    stop = TRUE;
+	    for (n = 0; n < nbports; n++) {
+		stop |= conn_udprecv(n);
+	    }
 	}
-
 	for (conn = connlist; conn != NULL; conn = next) {
 	    next = conn->next;
 	    if (conn->sflags & TCP_CLOSE) {
@@ -1005,17 +1183,30 @@ int conn_select(Uint t, unsigned int mtime)
 	    return 1;
 	}
 
-	conn = (connection *) telnet.qHead;
-	if (conn != NULL && conn->sflags == TCP_OPEN) {
-	    return 1;	/* new telnet connection */
+	for (n = 0; n < ntports; n++) {
+	    conn = (connection *) telnet[n].qHead;
+	    if (conn != NULL && conn->sflags == TCP_OPEN) {
+		return 1;	/* new telnet connection */
+	    }
 	}
-	conn = (connection *) binary.qHead;
-	if (conn != NULL && conn->sflags == TCP_OPEN) {
-	    return 1;	/* new binary connection */
+	for (n = 0; n < nbports; n++) {
+	    conn = (connection *) binary[n].qHead;
+	    if (conn != NULL && conn->sflags == TCP_OPEN) {
+		return 1;	/* new binary connection */
+	    }
 	}
     } while (ticks - (long) TickCount() > 0 && !intr);
 
     return 0;
+}
+
+/*
+ * NAME:	conn->udpcheck()
+ * DESCRIPTION:	check if UDP challenge met
+ */
+bool conn_udpcheck(connection *conn)
+{
+    return (conn->binary == TRUE);
 }
 
 /*
@@ -1062,15 +1253,21 @@ int conn_read(connection *conn, char *buf, unsigned int len)
  */
 int conn_udpread(connection *conn, char *buf, unsigned int len)
 {
-    if (conn->bufsz >= 0) {
+    unsigned short size;
+    char *p, *q;
+
+    while (conn->bufsz != 0) {  
 	/* udp buffer is not empty */
-	if (conn->bufsz <= len) {
-	    memcpy(buf, conn->udpbuf, len = conn->bufsz);
-	} else {
-	    len = 0;
+	size = ((unsigned char) conn->udpbuf[0] << 8) |
+		(unsigned char) conn->udpbuf[1];
+	if (size <= len) {
+	    memcpy(buf, conn->udpbuf + 2, len = size);
 	}
-	conn->bufsz = -1;
-	return len;
+	conn->bufsz -= size + 2;
+	memcpy(conn->udpbuf, conn->udpbuf + size + 2, conn->bufsz);
+	if (len == size) {     
+	    return len;
+	}
     }
     return -1;
 }
@@ -1122,10 +1319,10 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
     wds[0].length = len;
     wds[1].ptr = NULL;
     wds[1].length = 0;
-    iobuf = udpbuf;
+    iobuf = udpbuf[conn->at];
     iobuf.csCode = UDPWrite;
     iobuf.csParam.send.remoteHost = conn->addr->ipnum;
-    iobuf.csParam.send.remotePort = conn->port;
+    iobuf.csParam.send.remotePort = conn->uport;
     iobuf.csParam.send.wdsPtr = (Ptr) wds;
     iobuf.csParam.send.checkSum = 1;
     iobuf.csParam.send.sendLength = 0;
@@ -1152,23 +1349,25 @@ bool conn_wrdone(connection *conn)
  * NAME:	conn->ipnum()
  * DESCRIPTION:	return the ip number of a connection
  */
-char *conn_ipnum(connection *conn)
+void conn_ipnum(connection *conn, char *buf)
 {
-    static char buf[16];
     unsigned long ipnum;
 
     ipnum = conn->addr->ipnum;
-    sprintf(buf, "%d.%d.%d.%d", UCHAR(ipnum >> 24), UCHAR(ipnum >> 16),
-	    UCHAR(ipnum >> 8), UCHAR(ipnum));
-    return buf;
+    sprintf(buf, "%d.%d.%d.%d", (unsigned char) (ipnum >> 24),
+	    (unsigned char) (ipnum >> 16), (unsigned char) (ipnum >> 8),
+	    (unsigned char) (ipnum));
 }
 
 /*
  * NAME:	conn->ipname()
  * DESCRIPTION:	return the ip name of a connection
  */
-char *conn_ipname(connection *conn)
+void conn_ipname(connection *conn, char *buf)
 {
-    return (conn->addr->name[0] != '\0') ?
-	    conn->addr->name : conn_ipnum(conn);
+    if (conn->addr->name[0] != '\0') {
+	strcpy(buf, conn->addr->name);
+    } else {
+	conn_ipnum(conn, buf);
+    }
 }

@@ -45,15 +45,17 @@ char strhashtab[] = {
  * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
  *		of each string are significant
  */
-hashtab *ht_new(size, maxlen)
+hashtab *ht_new(size, maxlen, mem)
 register unsigned int size;
 unsigned int maxlen;
+int mem;
 {
     register hashtab *ht;
 
     ht = (hashtab *) ALLOC(char, sizeof(hashtab) + sizeof(hte*) * (size - 1));
     ht->size = size;
     ht->maxlen = maxlen;
+    ht->mem = mem;
     memset(ht->table, '\0', size * sizeof(hte*));
 
     return ht;
@@ -91,6 +93,25 @@ register unsigned int len;
 }
 
 /*
+ * NAME:	hashmem()
+ * DESCRIPTION:	hash memory
+ */
+unsigned short hashmem(s, len)
+register char *s;
+register unsigned int len;
+{
+    register char h, l;
+
+    h = l = 0;
+    while (len > 0) {
+	h = l;
+	l = strhashtab[UCHAR(l ^ *s++)];
+	--len;
+    }
+    return (unsigned short) ((UCHAR(h) << 8) | UCHAR(l));
+}
+
+/*
  * NAME:	hashtab->lookup()
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
@@ -102,20 +123,38 @@ int move;
 {
     register hte **first, **e, *next;
 
-    first = e = &(ht->table[hashstr(name, ht->maxlen) & (ht->size - 1)]);
-    while (*e != (hte *) NULL) {
-	if (strcmp((*e)->name, name) == 0) {
-	    if (move && e != first) {
-		/* move to first position */
-		next = (*e)->next;
-		(*e)->next = *first;
-		*first = *e;
-		*e = next;
-		return first;
+    if (ht->mem) {
+	first = e = &(ht->table[hashmem(name, ht->maxlen) % ht->size]);
+	while (*e != (hte *) NULL) {
+	    if (memcmp((*e)->name, name, ht->maxlen) == 0) {
+		if (move && e != first) {
+		    /* move to first position */
+		    next = (*e)->next;
+		    (*e)->next = *first;
+		    *first = *e;
+		    *e = next;
+		    return first;
+		}
+		break;
 	    }
-	    break;
+	    e = &((*e)->next);
 	}
-	e = &((*e)->next);
+    } else {
+	first = e = &(ht->table[hashstr(name, ht->maxlen) % ht->size]);
+	while (*e != (hte *) NULL) {
+	    if (strcmp((*e)->name, name) == 0) {
+		if (move && e != first) {
+		    /* move to first position */
+		    next = (*e)->next;
+		    (*e)->next = *first;
+		    *first = *e;
+		    *e = next;
+		    return first;
+		}
+		break;
+	    }
+	    e = &((*e)->next);
+	}
     }
     return e;
 }

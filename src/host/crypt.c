@@ -323,10 +323,10 @@ register char *k;
 char *P_crypt(passwd, salt)
 char *passwd, *salt;
 {
-    static unsigned char result[14];
+    static char result[14];
     register Uint L, R, T, X, *key;
     register int i, j;
-    register unsigned char *p;
+    register char *p;
     Uint keys[32], E[2];
 
     /* fetch password data */
@@ -489,7 +489,7 @@ string *mesg;
 string *keystr;
 {
     register Uint L, R, T, X, *key;
-    register unsigned char *p, *q;
+    register char *p, *q;
     register int i;
     register ssizet len;
     Uint keys[32];
@@ -511,10 +511,10 @@ string *keystr;
     p = keystr->text;
     key = keys;
     for (i = 31; i >= 0; --i) {
-	T  = *p++; T <<= 8;
-	T |= *p++; T <<= 8;
-	T |= *p++; T <<= 8;
-	T |= *p++;
+	T  = UCHAR(*p++); T <<= 8;
+	T |= UCHAR(*p++); T <<= 8;
+	T |= UCHAR(*p++); T <<= 8;
+	T |= UCHAR(*p++);
 	*key++ = T;
     }
 
@@ -522,14 +522,14 @@ string *keystr;
     q = str->text;
 
     for (len = mesg->len; len >= 8; len -= 8) {
-	L  = *p++; L <<= 8;
-	L |= *p++; L <<= 8;
-	L |= *p++; L <<= 8;
-	L |= *p++;
-	R  = *p++; R <<= 8;
-	R |= *p++; R <<= 8;
-	R |= *p++; R <<= 8;
-	R |= *p++;
+	L  = UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++);
+	R  = UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++);
 
 	/* IP */
 	EXG2(L, R, T,  4, 0x0f0f0f0fL);
@@ -590,14 +590,14 @@ string *keystr;
 	memcpy(buffer, p, len);
 	p = buffer;
 
-	L  = *p++; L <<= 8;
-	L |= *p++; L <<= 8;
-	L |= *p++; L <<= 8;
-	L |= *p++;
-	R  = *p++; R <<= 8;
-	R |= *p++; R <<= 8;
-	R |= *p++; R <<= 8;
-	R |= *p++;
+	L  = UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++); L <<= 8;
+	L |= UCHAR(*p++);
+	R  = UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++); R <<= 8;
+	R |= UCHAR(*p++);
 
 	/* IP */
 	EXG2(L, R, T,  4, 0x0f0f0f0fL);

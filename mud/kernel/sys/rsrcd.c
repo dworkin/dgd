@@ -1,5 +1,6 @@
 # include <kernel/kernel.h>
 # include <kernel/rsrc.h>
+# include <kernel/objreg.h>
 # include <type.h>
 
 # define CO_OBJ		0	/* callout object */
@@ -615,6 +616,14 @@ void reboot()
     if (previous_program() == DRIVER) {
 	object *objects;
 	int i;
+
+	objects = OBJREGD->remove_editors();
+	for (i = sizeof(objects); --i >= 0; ) {
+	    owners[objects[i]->query_owner()]->rsrc_incr("editors", objects[i],
+							 -1,
+							 resources["editors"],
+							 TRUE);
+	}
 
 	downtime = time() - downtime;
 	objects = map_values(owners);

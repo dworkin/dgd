@@ -749,8 +749,8 @@ string *gram;
     register unsigned int len;
 
     /* initialize */
-    ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ);
-    strtab = ht_new(PARSERULTABSZ, PARSERULHASHSZ);
+    ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    strtab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     rschunks = (rschunk *) NULL;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = prodlist = tmplist = (rule *) NULL;

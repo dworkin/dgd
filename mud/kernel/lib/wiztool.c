@@ -1805,7 +1805,7 @@ static void cmd_people(object user, string cmd, string str)
 	while (function_object("query_conn", usr) == LIB_USER) {
 	    usr = usr->query_conn();
 	}
-	str += (query_ip_number(usr) + SPACE16)[.. 15] +
+	str += query_ip_number(usr) + "\t" +
 	       ((sizeof(owners & ({ name })) == 0) ? " " : "*") +
 	       name + "\n";
     }

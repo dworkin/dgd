@@ -5,6 +5,7 @@
 # include <errno.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
+# include "hash.h"
 # include "comm.h"
 
 # define NFREE		32
@@ -318,12 +319,14 @@ static void ipa_lookup()
 
 
 struct _connection_ {
+    hte chain;				/* UDP challenge hash chain */
     int fd;				/* file descriptor */
+    int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
-    unsigned short port;		/* port of connection */
-    struct _connection_ *next;		/* next in list */
+    unsigned short uport;		/* UDP port of connection */
+    unsigned short at;			/* port connection was accepted at */
 };
 
 static int nusers;			/* # of users */
@@ -331,104 +334,142 @@ static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
-static int telnet;			/* telnet port socket descriptor */
-static int binary;			/* binary port socket descriptor */
-static int udp;				/* UDP port socket descriptor */
+static hashtab *chtab;			/* challenge hash table */
+static int *tdescs, *bdescs;		/* telnet & binary descriptor arrays */
+static int ntdescs, nbdescs;		/* # telnet & binary ports */
+static int *udescs;			/* UDP port descriptor array */
 static fd_set infds;			/* file descriptor input bitmap */
 static fd_set outfds;			/* file descriptor output bitmap */
 static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
+static int npackets;			/* # packets buffered */
 static int closed;			/* #fds closed in write */
+
+/*
+ * NAME:	conn->port()
+ * DESCRIPTION:	open an IPv4 port
+ */
+static int conn_port(int *fd, int type, struct sockaddr_in *sin,
+		     unsigned short port)
+{
+    int on;
+
+    if ((*fd=socket(AF_INET, type, 0)) < 0) {
+	perror("socket");
+	return FALSE;
+    }
+    if (*fd > maxfd) {
+	maxfd = *fd;
+    }
+    on = TRUE;
+    if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
+    {
+	perror("setsockopt");
+	return FALSE;
+    }
+    sin->sin_port = htons(port);
+    if (bind(*fd, (struct sockaddr *) sin, sizeof(struct sockaddr_in)) < 0) {
+	perror("bind");
+	return FALSE;
+    }
+
+    FD_SET(*fd, &infds);
+    return TRUE;
+}
 
 /*
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
+bool conn_init(int maxusers, char **thosts, char **bhosts,
+	       unsigned short *tports, unsigned short *bports, int ntports,
+	       int nbports)
 {
     struct sockaddr_in sin;
+    struct hostent *host;
     connection *conn;
-    int n, on;
+    int n;
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
     }
 
     nusers = 0;
+    maxfd = 0;
+    FD_ZERO(&infds);
+    FD_ZERO(&outfds);
+    FD_ZERO(&waitfds);
+    FD_SET(in, &infds);
+    npackets = 0;
+    closed = 0;
 
-    telnet = socket(AF_INET, SOCK_STREAM, 0);
-    binary = socket(AF_INET, SOCK_STREAM, 0);
-    udp = socket(AF_INET, SOCK_DGRAM, 0);
-    if (telnet < 0 || binary < 0 || udp < 0) {
-	perror("socket");
-	return FALSE;
+    ntdescs = ntports;
+    if (ntports != 0) {
+	tdescs = ALLOC(int, ntports);
+	memset(tdescs, -1, ntports * sizeof(int));
     }
-    on = TRUE;
-    if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	return FALSE;
-    }
-    on = TRUE;
-    if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	return FALSE;
-    }
-    on = TRUE;
-    if (setsockopt(udp, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
-    {
-	perror("setsockopt");
-	return FALSE;
+    nbdescs = nbports;
+    if (nbports != 0) {
+	bdescs = ALLOC(int, nbports);
+	memset(bdescs, -1, nbports * sizeof(int));
+	udescs = ALLOC(int, nbports);
+	memset(udescs, -1, nbports * sizeof(int));
     }
 
     memset(&sin, '\0', sizeof(sin));
-    sin.sin_port = htons(telnet_port);
     sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	perror("telnet bind");
-	return FALSE;
+
+    for (n = 0; n < ntdescs; n++) {
+	/* telnet ports */
+	if (thosts[n] == (char *) NULL) {
+	    sin.sin_addr.s_addr = INADDR_ANY;
+	} else if ((sin.sin_addr.s_addr=inet_addr(thosts[n])) == 0xffffffff) {
+	    host = gethostbyname(thosts[n]);
+	    if (host == (struct hostent *) NULL) {
+		message("unknown host %s\n", thosts[n]);
+		return FALSE;
+	    }
+	    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
+	}
+
+	if (!conn_port(&tdescs[n], SOCK_STREAM, &sin, tports[n])) {
+	    return FALSE;
+	}
     }
-    sin.sin_port = htons(binary_port);
-    if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	perror("binary bind");
-	return FALSE;
-    }
-    if (bind(udp, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	perror("udp bind");
-	return FALSE;
+
+    for (n = 0; n < nbdescs; n++) {
+	/* binary ports */
+	if (bhosts[n] == (char *) NULL) {
+	    sin.sin_addr.s_addr = INADDR_ANY;
+	} else if ((sin.sin_addr.s_addr=inet_addr(bhosts[n])) == 0xffffffff) {
+	    host = gethostbyname(bhosts[n]);
+	    if (host == (struct hostent *) NULL) {
+		message("unknown host %s\n", bhosts[n]);
+		return FALSE;
+	    }
+	    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
+	}
+	if (!conn_port(&bdescs[n], SOCK_STREAM, &sin, bports[n])) {
+	    return FALSE;
+	}
+	if (!conn_port(&udescs[n], SOCK_DGRAM, &sin, bports[n])) {
+	    return FALSE;
+	}
     }
 
     flist = (connection *) NULL;
     connections = ALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = -1;
-	conn->next = flist;
+	conn->chain.next = (hte *) flist;
 	flist = conn;
     }
 
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
-
-    FD_ZERO(&infds);
-    FD_ZERO(&outfds);
-    FD_ZERO(&waitfds);
-    FD_SET(telnet, &infds);
-    FD_SET(binary, &infds);
-    FD_SET(udp, &infds);
-    FD_SET(in, &infds);
-    maxfd = (telnet < binary) ? binary : telnet;
-    if (maxfd < udp) {
-	maxfd = udp;
-    }
-    if (maxfd < in) {
-	maxfd = in;
-    }
-
-    closed = 0;
+    chtab = ht_new(maxusers, UDPHASHSZ, TRUE);
 
     return TRUE;
 }
@@ -447,9 +488,13 @@ void conn_finish()
 	    closesocket(conn->fd);
 	}
     }
-    closesocket(telnet);
-    closesocket(binary);
-    closesocket(udp);
+    for (n = 0; n < ntdescs; n++) {
+	close(tdescs[n]);
+    }
+    for (n = 0; n < nbdescs; n++) {
+	close(bdescs[n]);
+	close(udescs[n]);
+    }
 
     ipa_finish();
 }
@@ -460,120 +505,154 @@ void conn_finish()
  */
 void conn_listen()
 {
-    int on;
+    int n, on;
 
-    if (listen(telnet, 64) < 0 || listen(binary, 64) < 0) {
-	perror("listen");
-	fatal("conn_listen failed");
+    for (n = 0; n < ntdescs; n++) {
+	if (listen(tdescs[n], 64) < 0) {
+	    perror("listen");
+	    fatal("listen failed");
+	}
+	on = TRUE;
+	if (setsockopt(tdescs[n], SOL_SOCKET, SO_NONBLOCK, (char *) &on,
+		       sizeof(on)) < 0) {
+	    perror("setsockopt");
+	    fatal("setsockopt failed");
+	}
     }
-    ipa_start(binary);
+    for (n = 0; n < nbdescs; n++) {
+	if (listen(bdescs[n], 64) < 0) {
+	    perror("listen");
+	    fatal("listen failed");
+	}
+	on = TRUE;
+	if (setsockopt(bdescs[n], SOL_SOCKET, SO_NONBLOCK, (char *) &on,
+		       sizeof(on)) < 0) {
+	    perror("setsockopt");
+	    fatal("setsockopt failed");
+	}
+    }
 
-    on = TRUE;
-    if (setsockopt(telnet, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	fatal("setsockopt failed");
+    if (ntdescs != 0) {
+	ipa_start(tdescs[0]);
+    } else if (nbdescs != 0) {
+	ipa_start(bdescs[0]);
     }
-    on = TRUE;
-    if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	fatal("setsockopt failed");
+}
+
+/*
+ * NAME:	conn->accept()
+ * DESCRIPTION:	accept a new connection
+ */
+static connection *conn_accept(int portfd, int port)
+{
+    int fd, n;
+    struct sockaddr_in sin;
+    connection *conn;
+
+    if (!FD_ISSET(portfd, &readfds)) {
+	return (connection *) NULL;
     }
+    n = sizeof(sin);
+    fd = accept(portfd, (struct sockaddr *) &sin, &n);
+    if (fd < 0) {
+	FD_CLR(portfd, &readfds);
+	return (connection *) NULL;
+    }
+    n = TRUE;
+    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &n, sizeof(on));
+
+    conn = flist;
+    flist = (connection *) conn->chain.next;
+    conn->chain.name = (char *) NULL;
+    conn->fd = fd;
+    conn->udpbuf = (char *) NULL;
+    conn->addr = ipa_new(&sin.sin_addr);
+    conn->at = port;
+    FD_SET(fd, &infds);
+    FD_SET(fd, &outfds);
+    FD_CLR(fd, &readfds);
+    FD_SET(fd, &writefds);
+    if (fd > maxfd) {
+	maxfd = fd;
+    }
+
+    return conn;
+}
+
+/*
+ * NAME:	conn->tnew6()
+ * DESCRIPTION:	don't accept IPv6 connections
+ */
+connection *conn_tnew6(int port)
+{
+    return (connection *) NULL;
+}
+
+/*
+ * NAME:	conn->bnew6()
+ * DESCRIPTION:	don't accept IPv6 connections
+ */
+connection *conn_bnew6(int port)
+{
+    return (connection *) NULL;
 }
 
 /*
  * NAME:	conn->tnew()
  * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_tnew()
+connection *conn_tnew(int port)
 {
-    int fd, len, on;
-    struct sockaddr_in sin;
-    connection *conn;
-
-    if (!FD_ISSET(telnet, &readfds)) {
-	return (connection *) NULL;
-    }
-    len = sizeof(sin);
-    fd = accept(telnet, (struct sockaddr *) &sin, &len);
-    if (fd < 0) {
-	return (connection *) NULL;
-    }
-    on = TRUE;
-    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &on, sizeof(on));
-
-    conn = flist;
-    flist = conn->next;
-    conn->fd = fd;
-    conn->udpbuf = (char *) NULL;
-    conn->addr = ipa_new(&sin.sin_addr);
-    conn->port = sin.sin_port;
-    FD_SET(fd, &infds);
-    FD_SET(fd, &outfds);
-    FD_CLR(fd, &readfds);
-    FD_SET(fd, &writefds);
-    if (fd > maxfd) {
-	maxfd = fd;
-    }
-
-    return conn;
+    return conn_accept(tdescs[port], port);
 }
 
 /*
  * NAME:	conn->bnew()
  * DESCRIPTION:	accept a new binary connection
  */
-connection *conn_bnew()
+connection *conn_bnew(int port)
 {
-    int fd, len, on;
-    struct sockaddr_in sin;
-    connection *conn;
-
-    if (!FD_ISSET(binary, &readfds)) {
-	return (connection *) NULL;
-    }
-    len = sizeof(sin);
-    fd = accept(binary, (struct sockaddr *) &sin, &len);
-    if (fd < 0) {
-	return (connection *) NULL;
-    }
-    on = TRUE;
-    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &on, sizeof(on));
-
-    conn = flist;
-    flist = conn->next;
-    conn->fd = fd;
-    conn->udpbuf = (char *) NULL;
-    conn->addr = ipa_new(&sin.sin_addr);
-    conn->port = sin.sin_port;
-    FD_SET(fd, &infds);
-    FD_SET(fd, &outfds);
-    FD_CLR(fd, &readfds);
-    FD_SET(fd, &writefds);
-    if (fd > maxfd) {
-	maxfd = fd;
-    }
-
-    return conn;
+    return conn_accept(bdescs[port], port);
 }
 
 /*
  * NAME:	conn->udp()
- * DESCRIPTION:	enable the UDP channel of a binary connection
+ * DESCRIPTION:	set the challenge for attaching a UDP channel
  */
-void conn_udp(connection *conn)
+bool conn_udp(connection *conn, char *challenge, unsigned int len)
 {
+    char buffer[UDPHASHSZ];
     connection **hash;
 
+    if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
+	return FALSE;	/* invalid challenge */
+    }
+
+    if (len >= UDPHASHSZ) {
+	memcpy(buffer, challenge, UDPHASHSZ);
+    } else {
+	memset(buffer, '\0', UDPHASHSZ);
+	memcpy(buffer, challenge, len);
+    }
+    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+    while (*hash != (connection *) NULL &&
+	   memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
+	if ((*hash)->bufsz == len &&
+	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
+	    return FALSE;	/* duplicate challenge */
+	}
+    }
+
+    conn->chain.next = (hte *) *hash;
+    *hash = conn;
+    conn->npkts = 0;
     m_static();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
-    conn->bufsz = 0;
+    memset(conn->udpbuf, '\0', UDPHASHSZ);
+    memcpy(conn->chain.name = conn->udpbuf, challenge, conn->bufsz = len);
 
-    hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) % udphtabsz];
-    conn->next = *hash;
-    *hash = conn;
+    return TRUE;
 }
 
 /*
@@ -594,16 +673,21 @@ void conn_del(connection *conn)
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
+	if (conn->chain.name != (char *) NULL) {
+	    hash = (connection **) ht_lookup(chtab, conn->chain.name, FALSE);
+	} else {
+	    hash = &udphtab[(((Uint) conn->addr->ipnum.s_addr) ^
+						    conn->uport) % udphtabsz];
+	}
+	while (*hash != conn) {
+	    hash = (connection **) &(*hash)->chain.next;
+	}
+	*hash = (connection *) conn->chain.next;
+	npackets -= conn->npkts;
 	FREE(conn->udpbuf);
-
-	for (hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) %
-			     udphtabsz];
-	     *hash != conn;
-	     hash = &(*hash)->next) ;
-	*hash = conn->next;
     }
     ipa_del(conn->addr);
-    conn->next = flist;
+    conn->chain.next = (hte *) flist;
     flist = conn;
 }
 
@@ -636,6 +720,83 @@ void conn_intr(void)
 }
 
 /*
+ * NAME:	conn->udprecv()
+ * DESCRIPTION:	receive an UDP packet
+ */
+static void conn_udprecv(int n)
+{
+    char buffer[BINBUF_SIZE];
+    struct sockaddr_in from;
+    int fromlen;
+    int size;
+    connection **hash, *conn;
+    char *p;
+
+    for (;;) {
+	memset(buffer, '\0', UDPHASHSZ);
+	fromlen = sizeof(struct sockaddr_in);
+	size = recvfrom(udescs[n], buffer, BINBUF_SIZE, 0,
+			(struct sockaddr *) &from, &fromlen);
+	if (size < 0) {
+	    return;
+	}
+
+	hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
+								    udphtabsz];
+	for (;;) {
+	    conn = *hash;
+	    if (conn == (connection *) NULL) {
+		/*
+		 * see if the packet matches an outstanding challenge
+		 */
+		hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+		while ((conn=*hash) != (connection *) NULL &&
+		       memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
+		    if (conn->bufsz == size &&
+			memcmp(conn->udpbuf, buffer, size) == 0 &&
+			conn->addr->ipnum.s_addr == from.sin_addr.s_addr) {
+			/*
+			 * attach new UDP channel
+			 */
+			*hash = (connection *) conn->chain.next;
+			conn->chain.name = (char *) NULL;
+			conn->bufsz = 0;
+			conn->uport = from.sin_port;
+			hash = &udphtab[((Uint) from.sin_addr.s_addr ^
+						    conn->uport) % udphtabsz];
+			conn->chain.next = (hte *) *hash;
+			*hash = conn;
+
+			break;
+		    }
+		    hash = (connection **) &conn->chain.next;
+		}
+		break;
+	    }
+
+	    if (conn->at == n &&
+		conn->addr->ipnum.s_addr == from.sin_addr.s_addr &&
+		conn->uport == from.sin_port) {
+		/*
+		 * packet from known correspondent
+		 */
+		if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+		    p = conn->udpbuf + conn->bufsz;
+		    *p++ = size >> 8;
+		    *p++ = size;
+		    memcpy(p, buffer, size);
+		    conn->bufsz += size + 2;
+		    conn->npkts++;
+		    npackets++;
+		}
+		break;
+	    }
+	    hash = (connection **) &conn->chain.next;
+	}
+    }
+}
+
+/*
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
@@ -643,14 +804,26 @@ int conn_select(Uint t, unsigned int mtime)
 {
     struct timeval timeout;
     int retval;
+    int n;
 
     /*
      * First, check readability and writability for binary sockets with pending
      * data only.
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
+    if (flist == (connection *) NULL) {
+	/* can't accept new connections, so don't check for them */
+	for (n = ntdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(tdescs[n], &readfds);
+	}
+	for (n = nbdescs; n != 0; ) {
+	    --n;
+	    FD_CLR(bdescs[n], &readfds);
+	}
+    }
     memcpy(&writefds, &waitfds, sizeof(fd_set));
-    if (closed != 0) {
+    if (npackets + closed != 0) {
 	t = 0;
 	mtime = 0;
     }
@@ -667,7 +840,14 @@ int conn_select(Uint t, unsigned int mtime)
 	FD_ZERO(&readfds);
 	retval = 0;
     }
-    retval += closed;
+
+    /* check for UDP packets */
+    for (n = 0; n < nbdescs; n++) {
+	if (FD_ISSET(udescs[n], &readfds)) {
+	    conn_udprecv(n);
+	}
+    }
+    retval += npackets + closed;
 
     /*
      * Now check writability for all sockets in a polling call.
@@ -677,39 +857,20 @@ int conn_select(Uint t, unsigned int mtime)
     timeout.tv_usec = 0;
     select(maxfd + 1, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
 
-    /* check for UDP packet */
-    if (FD_ISSET(udp, &readfds)) {
-	char buffer[BINBUF_SIZE];
-	struct sockaddr_in from;
-	int fromlen, size;
-	connection **hash;
-
-	fromlen = sizeof(struct sockaddr_in);
-	size = recvfrom(udp, buffer, BINBUF_SIZE, 0, (struct sockaddr *) &from,
-			&fromlen);
-	if (size > 0) {
-	    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
-			    udphtabsz];
-	    while (*hash != (connection *) NULL) {
-		if ((*hash)->addr->ipnum.s_addr == from.sin_addr.s_addr &&
-		    (*hash)->port == from.sin_port) {
-		    /*
-		     * copy to connection's buffer
-		     */
-		    memcpy((*hash)->udpbuf, buffer, (*hash)->bufsz = size);
-		    break;
-		}
-		hash = &(*hash)->next;
-	    }
-	    /* else from unknown source: ignore */
-	}
-    }
-
     /* handle ip name lookup */
     if (FD_ISSET(in, &readfds)) {
 	ipa_lookup();
     }
     return retval;
+}
+
+/*
+ * NAME:	conn->udpcheck()
+ * DESCRIPTION:	check if UDP challenge met
+ */
+bool conn_udpcheck(connection *conn)
+{
+    return (conn->chain.name == (char *) NULL);
 }
 
 /*
@@ -744,17 +905,27 @@ int conn_read(connection *conn, char *buf, unsigned int len)
  */
 int conn_udpread(connection *conn, char *buf, unsigned int len)
 {
-    if (conn->bufsz != 0) {
+    unsigned short size, n;
+    char *p, *q;
+
+    while (conn->bufsz != 0) {
 	/* udp buffer is not empty */
-	if (conn->bufsz <= len) {
-	    memcpy(buf, conn->udpbuf, len = conn->bufsz);
-	} else {
-	    len = 0;
+	size = ((unsigned char) conn->udpbuf[0] << 8) |
+	       (unsigned char) conn->udpbuf[1];
+	if (size <= len) {
+	    memcpy(buf, conn->udpbuf + 2, len = size);
 	}
-	conn->bufsz = 0;
-	return len;
+	--conn->npkts;
+	--npackets;
+	conn->bufsz -= size + 2;
+	for (p = conn->udpbuf, q = p + size + 2, n = conn->bufsz; n != 0; --n) {
+	    *p++ = *q++;
+	}
+	if (len == size) {
+	    return len;
+	}
     }
-    return 0;
+    return -1;
 }
 
 /*
@@ -804,8 +975,8 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
     if (conn->fd >= 0) {
 	to.sin_family = AF_INET;
 	to.sin_addr.s_addr = conn->addr->ipnum.s_addr;
-	to.sin_port = conn->port;
-	return sendto(udp, buf, len, 0, (struct sockaddr *) &to,
+	to.sin_port = conn->uport;
+	return sendto(udescs[conn->at], buf, len, 0, (struct sockaddr *) &to,
 		      sizeof(struct sockaddr_in));
     }
     return 0;
@@ -831,17 +1002,20 @@ bool conn_wrdone(connection *conn)
  * NAME:	conn->ipnum()
  * DESCRIPTION:	return the ip number of a connection
  */
-char *conn_ipnum(connection *conn)
+void conn_ipnum(connection *conn, char *buf)
 {
-    return inet_ntoa(conn->addr->ipnum);
+    strcpy(buf, inet_ntoa(conn->addr->ipnum));
 }
 
 /*
  * NAME:	conn->ipname()
  * DESCRIPTION:	return the ip name of a connection
  */
-char *conn_ipname(connection *conn)
+void conn_ipname(connection *conn, char *buf)
 {
-    return (conn->addr->name[0] != '\0') ?
-	    conn->addr->name : inet_ntoa(conn->addr->ipnum);
+    if (conn->addr->name[0] != '\0') {
+	strcpy(buf, conn->addr->name);
+    } else {
+	conn_ipnum(conn, buf);
+    }
 }

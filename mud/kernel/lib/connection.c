@@ -25,7 +25,7 @@ static void create(string type)
  * NAME:	set_mode()
  * DESCRIPTION:	set the current connection mode
  */
-static void set_mode(int newmode)
+static atomic void set_mode(int newmode)
 {
     if (newmode != mode && newmode != MODE_NOCHANGE) {
 	if (newmode == MODE_DISCONNECT) {
@@ -201,7 +201,7 @@ static int receive_message(mixed *tls, string str)
  * NAME:	message()
  * DESCRIPTION:	send a message across the connection
  */
-int message(string str)
+atomic int message(string str)
 {
     if (previous_object() == user) {
 	int len;

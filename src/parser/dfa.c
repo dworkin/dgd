@@ -925,7 +925,7 @@ register char *grammar;
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
+    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->nstates = 2;
@@ -1215,7 +1215,7 @@ register dfa *fa;
     }
 
     /* positions */
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
+    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->sthtab = ALLOC(unsigned short, fa->sthsize);

@@ -24,7 +24,7 @@ static hashtab *mt;		/* macro hash table */
  */
 void mc_init()
 {
-    mt = ht_new(MACTABSZ, MACHASHSZ);
+    mt = ht_new(MACTABSZ, MACHASHSZ, FALSE);
     mlist = (mchunk *) NULL;
     mchunksz = MCHUNKSZ;
     flist = (macro *) NULL;
