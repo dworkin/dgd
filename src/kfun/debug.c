@@ -1,3 +1,4 @@
+# ifdef DEBUG
 # ifndef FUNCDEF
 # include "kfun.h"
 # include "fcontrol.h"
@@ -38,30 +39,23 @@ control *ctrl;
 {
     register unsigned short i;
 
-    printf("virtual inherits:");
-    for (i = 0; i < UCHAR(ctrl->nvirtuals); i++) {
+    printf("inherits:");
+    for (i = 0; i < ctrl->ninherits; i++) {
 	printf(" %s(%u %u)", o_name(ctrl->inherits[i].obj),
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
     }
     putchar('\n');
-    if (i < UCHAR(ctrl->ninherits)) {
-	printf("labeled inherits:");
-	for ( ; i < UCHAR(ctrl->ninherits); i++) {
-	    printf(" %s(%u %u)", o_name(ctrl->inherits[i].obj),
-		   ctrl->inherits[i].funcoffset,
-		   ctrl->inherits[i].varoffset);
-	}
-	putchar('\n');
-    }
     printf("progsize: %u\n", ctrl->progsize);
     if (ctrl->nstrings > 0) {
 	printf("string constants:\n");
 	for (i = 0; i < ctrl->nstrings; i++) {
-	    printf(" %u: %s\n", i, ctrl->strings[i]->text);
+	    printf(" %u: %s\n", i, d_get_strconst(ctrl, ctrl->ninherits - 1,
+						  i)->text);
 	}
     }
     if (ctrl->nfuncdefs > 0) {
+	d_get_funcdefs(ctrl);
 	printf("function definitions:\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
 	    printf(" %u: %04x ", i, ctrl->funcdefs[i].offset);
@@ -72,6 +66,7 @@ control *ctrl;
 	}
     }
     if (ctrl->nvardefs > 0) {
+	d_get_vardefs(ctrl);
 	printf("variable definitions:\n");
 	for (i = 0; i < ctrl->nvardefs; i++) {
 	    printf(" %u: ", i);
@@ -82,6 +77,7 @@ control *ctrl;
 	}
     }
     if (ctrl->nfuncalls > 0) {
+	d_get_funcalls(ctrl);
 	printf("funcalls:\n");
 	for (i = 0; i < ctrl->nfuncalls; i++) {
 	    control *c2;
@@ -96,20 +92,22 @@ control *ctrl;
 	}
     }
     if (ctrl->nsymbols > 0) {
+	d_get_symbols(ctrl);
 	printf("symbols:\n");
 	for (i = 0; i < ctrl->nsymbols; i++) {
 	    control *c2;
 	    dfuncdef *f;
 	    char *name;
 
+	    printf(" %u: (%u) ", i, ctrl->symbols[i].next);
 	    c2 = ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].obj->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
 	    name = d_get_strconst(c2, f->inherit, f->index)->text;
-	    printf(" %u: %s(%u)", i, name, ctrl->symbols[i].next);
 	    if (!(f->class & C_UNDEFINED) &&
 		ctrl_symb(ctrl, name) != &ctrl->symbols[i]) {
-		printf(" LOOKUP FAILED!");
+		printf("[LOOKUP FAILED] ");
 	    }
+	    show_proto(name, d_get_prog(c2) + f->offset);
 	    putchar('\n');
 	}
     }
@@ -203,7 +201,7 @@ int func;
     unsigned short a, progsize;
     int sz;
 
-    pc = d_get_prog(ctrl) + ctrl->funcdefs[func].offset;
+    pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
     show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
 			      ctrl->funcdefs[func].index)->text, pc);
     u2 = PROTO_CLASS(pc) & C_COMPILED;
@@ -266,7 +264,7 @@ int func;
 	    codesize = 2;
 	    u = FETCH1U(pc);
 	    sprintf(buffer, "PUSH_STRING %d \"%s\"", u,
-		    d_get_strconst(ctrl, ctrl->nvirtuals - 1, u)->text);
+		    d_get_strconst(ctrl, ctrl->ninherits - 1, u)->text);
 	    show_instr(buffer);
 	    break;
 
@@ -299,6 +297,7 @@ int func;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    cc = ctrl->inherits[u].obj->ctrl;
+	    d_get_vardefs(cc);
 	    sprintf(buffer, "PUSH_GLOBAL %d %d (%s)", u, u2,
 		    d_get_strconst(cc, cc->vardefs[u2].inherit,
 				   cc->vardefs[u2].index)->text);
@@ -316,6 +315,7 @@ int func;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    cc = ctrl->inherits[u].obj->ctrl;
+	    d_get_vardefs(cc);
 	    sprintf(buffer, "PUSH_GLOBAL_LVALUE %d %d (%s)", u, u2,
 		    d_get_strconst(cc, cc->vardefs[u2].inherit,
 				   cc->vardefs[u2].index)->text);
@@ -496,15 +496,14 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_CALL_LFUNC:
-	    codesize = 5;
+	case I_CALL_AFUNC:
+	    codesize = 3;
 	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    u3 = FETCH1U(pc);
-	    cc = ctrl->inherits[u].obj->ctrl->inherits[u2].obj->ctrl;
-	    sprintf(buffer, "CALL_LFUNC %d %d %d (%s) %d", u, u2, u3,
-		    d_get_strconst(cc, cc->funcdefs[u3].inherit,
-				   cc->funcdefs[u3].index)->text,
+	    cc = ctrl->inherits[0].obj->ctrl;
+	    d_get_funcdefs(cc);
+	    sprintf(buffer, "CALL_AFUNC %d (%s) %d", u,
+		    d_get_strconst(cc, cc->funcdefs[u].inherit,
+				   cc->funcdefs[u].index)->text,
 		    FETCH1U(pc));
 	    show_instr(buffer);
 	    break;
@@ -514,6 +513,7 @@ int func;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    cc = ctrl->inherits[u].obj->ctrl;
+	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_DFUNC %d %d (%s) %d", u, u2,
 		    d_get_strconst(cc, cc->funcdefs[u2].inherit,
 				   cc->funcdefs[u2].index)->text,
@@ -524,9 +524,11 @@ int func;
 	case I_CALL_FUNC:
 	    codesize = 4;
 	    FETCH2U(pc, u);
-	    u2 = ctrl->funcalls[2 * u];
+	    u += ctrl->inherits[ctrl->ninherits - 1].funcoffset;
+	    u2 = d_get_funcalls(ctrl)[2 * u];
 	    u3 = ctrl->funcalls[2 * u + 1];
 	    cc = ctrl->inherits[u2].obj->ctrl;
+	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_FUNC %u (%s) %d", u,
 		    d_get_strconst(cc, cc->funcdefs[u3].inherit,
 				   cc->funcdefs[u3].index)->text,
@@ -603,6 +605,7 @@ int kf_dump_function()
     return 0;
 }
 # endif
+# endif /* DEBUG */
 
 
 /* the rusage code is borrowed from Amylaar's 3.2@ driver */
