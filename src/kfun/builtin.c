@@ -146,6 +146,17 @@ int kf_and()
 	}
 	break;
 
+    case T_MAPPING:
+	if (sp->type == T_ARRAY) {
+	    a = map_intersect(sp[1].u.array, sp->u.array);
+	    arr_del(sp->u.array);
+	    sp++;
+	    arr_del(sp->u.array);
+	    arr_ref(sp->u.array = a);
+	    return 0;
+	}
+	break;
+
     default:
 	return 1;
     }
@@ -759,15 +770,15 @@ char p_or_int[] = { C_STATIC | C_LOCAL, T_NUMBER, 2, T_NUMBER, T_NUMBER };
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_range, p_range)
+FUNCDEF("[]", kf_rangeft, p_rangeft)
 # else
-char p_range[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_MIXED, 3,
-		   T_MIXED, T_NUMBER, T_NUMBER };
+char p_rangeft[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_MIXED, 3,
+		     T_MIXED, T_NUMBER, T_NUMBER };
 /*
- * NAME:	kfun->range()
+ * NAME:	kfun->rangeft()
  * DESCRIPTION:	value [ int .. int ]
  */
-int kf_range()
+int kf_rangeft()
 {
     string *str;
     array *a;
@@ -785,6 +796,122 @@ int kf_range()
 	a = arr_range(sp[2].u.array, (long) sp[1].u.number,
 		      (long) sp->u.number);
 	sp += 2;
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+	break;
+
+    default:
+	return 1;
+    }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_rangef, p_rangef)
+# else
+char p_rangef[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_MIXED, 2,
+		    T_MIXED, T_NUMBER };
+
+/*
+ * NAME:	kfun->rangef()
+ * DESCRIPTION:	value [ int .. ]
+ */
+int kf_rangef()
+{
+    string *str;
+    array *a;
+
+    switch (sp[1].type) {
+    case T_STRING:
+	str = str_range(sp[1].u.string, (long) sp->u.number,
+			sp[1].u.string->len - 1L);
+	sp++;
+	str_del(sp->u.string);
+	str_ref(sp->u.string = str);
+	break;
+
+    case T_ARRAY:
+	a = arr_range(sp[1].u.array, (long) sp->u.number,
+		      sp[1].u.array->size - 1L);
+	sp++;
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+	break;
+
+    default:
+	return 1;
+    }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_ranget, p_ranget)
+# else
+char p_ranget[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_MIXED, 2,
+		    T_MIXED, T_NUMBER };
+
+/*
+ * NAME:	kfun->ranget()
+ * DESCRIPTION:	value [ .. int ]
+ */
+int kf_ranget()
+{
+    string *str;
+    array *a;
+
+    switch (sp[1].type) {
+    case T_STRING:
+	str = str_range(sp[1].u.string, 0L, (long) sp->u.number);
+	sp++;
+	str_del(sp->u.string);
+	str_ref(sp->u.string = str);
+	break;
+
+    case T_ARRAY:
+	a = arr_range(sp[1].u.array, 0L, (long) sp->u.number);
+	sp++;
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+	break;
+
+    default:
+	return 1;
+    }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_range, p_range)
+# else
+char p_range[] = { C_STATIC | C_LOCAL, T_MIXED, 1, T_MIXED };
+
+/*
+ * NAME:	kfun->range()
+ * DESCRIPTION:	value [ .. ]
+ */
+int kf_range()
+{
+    string *str;
+    array *a;
+
+    switch (sp->type) {
+    case T_STRING:
+	str = str_range(sp->u.string, 0L, sp->u.string->len - 1L);
+	str_del(sp->u.string);
+	str_ref(sp->u.string = str);
+	break;
+
+    case T_ARRAY:
+	a = arr_range(sp->u.array, 0L, sp->u.array->size - 1L);
 	arr_del(sp->u.array);
 	arr_ref(sp->u.array = a);
 	break;
@@ -849,6 +976,19 @@ int kf_sub()
 	    array *a;
 
 	    a = arr_sub(sp[1].u.array, sp->u.array);
+	    arr_del(sp->u.array);
+	    sp++;
+	    arr_del(sp->u.array);
+	    arr_ref(sp->u.array = a);
+	    return 0;
+	}
+	break;
+
+    case T_MAPPING:
+	if (sp->type == T_ARRAY) {
+	    array *a;
+
+	    a = map_sub(sp[1].u.array, sp->u.array);
 	    arr_del(sp->u.array);
 	    sp++;
 	    arr_del(sp->u.array);
