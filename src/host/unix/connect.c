@@ -23,7 +23,7 @@ static connection *flist;		/* list of free connections */
 static int telnet;			/* telnet port socket descriptor */
 static int binary;			/* binary port socket descriptor */
 static fd_set fds;			/* file descriptor bitmap */
-static fd_set wfds;			/* file descriptor w bitmap */
+static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
@@ -142,6 +142,9 @@ connection *conn_tnew()
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
+    FD_CLR(fd, &waitfds);
+    FD_CLR(fd, &readfds);
+    FD_SET(fd, &writefds);
     if (fd > maxfd) {
 	maxfd = fd;
     }
@@ -173,6 +176,9 @@ connection *conn_bnew()
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
     FD_SET(fd, &fds);
+    FD_CLR(fd, &waitfds);
+    FD_CLR(fd, &readfds);
+    FD_SET(fd, &writefds);
     if (fd > maxfd) {
 	maxfd = fd;
     }
@@ -190,8 +196,6 @@ register connection *conn;
     if (conn->fd >= 0) {
 	close(conn->fd);
 	FD_CLR(conn->fd, &fds);
-	FD_CLR(conn->fd, &readfds);
-	FD_CLR(conn->fd, &wfds);
 	conn->fd = -1;
     }
     conn->next = flist;
@@ -206,12 +210,25 @@ int conn_select(wait)
 int wait;
 {
     struct timeval timeout;
+    int retval;
 
+    /*
+     * First, check readability and writability for binary sockets with pending
+     * data only.
+     */
     memcpy(&readfds, &fds, sizeof(fd_set));
-    memcpy(&writefds, &wfds, sizeof(fd_set));
+    memcpy(&writefds, &waitfds, sizeof(fd_set));
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
-    return select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
+    retval = select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
+    /*
+     * Now check writability for all sockets in a polling call.
+     */
+    memcpy(&writefds, &fds, sizeof(fd_set));
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    select(maxfd + 1, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
+    return retval;
 }
 
 /*
@@ -246,18 +263,25 @@ int wait;
     int size;
 
     if (conn->fd >= 0) {
-	FD_CLR(conn->fd, &wfds);
+	FD_CLR(conn->fd, &waitfds);
 	if (len == 0) {
 	    return 0;	/* send_message("") can be used to flush buffer */
+	}
+	if (!FD_ISSET(conn->fd, &writefds)) {
+	    /* the write would fail */
+	    return -1;
 	}
 	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
 	    FD_CLR(conn->fd, &readfds);
 	    conn->fd = -1;
-	} else if (size != len && wait) {
-	    /* waiting for wrdone */
-	    FD_SET(conn->fd, &wfds);
+	} else if (size != len) {
+	    if (wait) {
+		/* waiting for wrdone */
+		FD_SET(conn->fd, &waitfds);
+	    }
+	    FD_CLR(conn->fd, &writefds);
 	}
 	return size;
     }
@@ -271,12 +295,11 @@ int wait;
 bool conn_wrdone(conn)
 connection *conn;
 {
-    if (conn->fd < 0 || !FD_ISSET(conn->fd, &wfds)) {
+    if (conn->fd < 0 || !FD_ISSET(conn->fd, &waitfds)) {
 	return TRUE;
     }
     if (FD_ISSET(conn->fd, &writefds)) {
-	FD_CLR(conn->fd, &wfds);
-	FD_CLR(conn->fd, &writefds);
+	FD_CLR(conn->fd, &waitfds);
 	return TRUE;
     }
     return FALSE;

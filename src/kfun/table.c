@@ -150,8 +150,7 @@ int fd;
     char *buffer;
 
     /* deal with header */
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	dh.nbuiltin > KF_BUILTINS || dh.nkfun > sizeof(kfx) - KF_BUILTINS) {
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	fatal("cannot restore kfun table");
     }
 

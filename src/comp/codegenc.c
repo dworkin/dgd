@@ -1214,8 +1214,8 @@ register int state;
 	break;
 
     case N_QUEST:
-	if (state == INTVAL) {
-	    cg_iexpr(n, TRUE);
+	if (state != PUSH) {
+	    cg_iexpr(n, (state != TRUTHVAL));
 	} else {
 	    output("(");
 	    cg_expr(n->l.left, TOPTRUTHVAL);

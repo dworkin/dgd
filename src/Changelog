@@ -1005,3 +1005,5 @@ DGD 1.1
  - Fixed a problem with ellipsis in calls to functions without prototype.
  - Improved dead code removal.
  - Tweaked the last tweaks in generated C code optimization.
+ - Bugfix in C code generated for ?:.
+ - Attempt to avoid Linux bug in socket writes.
