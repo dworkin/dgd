@@ -72,47 +72,6 @@ char *f;
 }
 
 /*
- * NAME:	message()
- * DESCRIPTION:	issue a message on stderr (and possibly errlog)
- */
-void message(format, arg1, arg2, arg3, arg4, arg5, arg6)
-{
-    fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
-    fflush(stderr);
-
-    /* secondary error logging */
-    if (errlog != (char *) NULL) {
-	/*
-	 * open log
-	 */
-	fd = open(errlog, O_CREAT | O_APPEND | O_WRONLY, 0664);
-	if (fd >= 0) {
-	    buffer = ALLOC(char, ERR_LOG_BUF_SZ);
-	    bufsz = 0;
-	}
-	errlog = (char *) NULL;
-    }
-    if (fd >= 0) {
-	register int len, chunk;
-	register char *buf;
-
-	len = strlen(buf = errbuf);
-	while (bufsz + len >= ERR_LOG_BUF_SZ) {
-	    chunk = ERR_LOG_BUF_SZ - bufsz;
-	    memcpy(buffer + bufsz, buf, chunk);
-	    write(fd, buffer, ERR_LOG_BUF_SZ);
-	    buf += chunk;
-	    len -= chunk;
-	    bufsz = 0;
-	}
-	if (len > 0) {
-	    memcpy(buffer + bufsz, buf, len);
-	    bufsz += len;
-	}
-    }
-}
-
-/*
  * NAME:	warning()
  * DESCRIPTION:	issue a warning message on stderr (and possibly errlog)
  */
@@ -157,4 +116,49 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	host_finish();
     }
     abort();
+}
+
+/*
+ * NAME:	message()
+ * DESCRIPTION:	issue a message on stderr (and possibly errlog)
+ */
+void message(format, arg1, arg2, arg3, arg4, arg5, arg6)
+char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+{
+    char ebuf[4 * STRINGSZ];
+
+    sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+    fputs(ebuf, stderr);
+    fflush(stderr);
+
+    /* secondary error logging */
+    if (errlog != (char *) NULL) {
+	/*
+	 * open log
+	 */
+	fd = open(errlog, O_CREAT | O_APPEND | O_WRONLY, 0664);
+	if (fd >= 0) {
+	    buffer = ALLOC(char, ERR_LOG_BUF_SZ);
+	    bufsz = 0;
+	}
+	errlog = (char *) NULL;
+    }
+    if (fd >= 0) {
+	register int len, chunk;
+	register char *buf;
+
+	len = strlen(buf = ebuf);
+	while (bufsz + len >= ERR_LOG_BUF_SZ) {
+	    chunk = ERR_LOG_BUF_SZ - bufsz;
+	    memcpy(buffer + bufsz, buf, chunk);
+	    write(fd, buffer, ERR_LOG_BUF_SZ);
+	    buf += chunk;
+	    len -= chunk;
+	    bufsz = 0;
+	}
+	if (len > 0) {
+	    memcpy(buffer + bufsz, buf, len);
+	    bufsz += len;
+	}
+    }
 }
