@@ -198,7 +198,7 @@ typedef struct {
 # define REDA(state)   (((state)->nred == 1) ? \
 			(state)->reds.e : (state)->reds.a)
 # define UNEXPANDED	-1
-# define NOSHIFT	-1
+# define NOSHIFT	((Int) 0xff800000L)
 
 /*
  * NAME:	srpstate->hash()
@@ -835,12 +835,12 @@ register unsigned short n;
 	/* match each symbol with free slot */
 	for (j = 1; j < n; j++) {
 	    p += offstab[j];
-	    if (UCHAR(p[0]) != 0xff) {
+	    if (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff) {
 		p = &lr->check[i];
 		do {
 		    i += 2;
 		    p += 2;
-		} while (UCHAR(p[0]) != 0xff);
+		} while (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff);
 		goto next;
 	    }
 	}
@@ -1050,7 +1050,7 @@ srpstate *state;
 				   targets + ngoto, nshift);
     }
     if (ngoto != 0) {
-	state->gtoffset = srp_pack(lr, 0, symbols, targets, ngoto);
+	state->gtoffset = srp_pack(lr, -258, symbols, targets, ngoto);
     }
     AFREE(targets);
     AFREE(symbols);

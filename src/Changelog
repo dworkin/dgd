@@ -1341,3 +1341,4 @@ DGD 1.1
  - Allow the internal state machines for parse_string() to become larger than
    before.
  - Fixed the Windows quit/interrupt bug.
+ - Fixed a bug that was introduced into parse_string().
