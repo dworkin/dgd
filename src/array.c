@@ -1,9 +1,9 @@
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 
 # define ARR_CHUNK	128
 
@@ -59,7 +59,7 @@ static int ahchunksz;		/* size of current arrh chunk */
 static mapelt *fmelt;		/* free mapelt list */
 static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
-static uindex index;		/* current building index */
+static uindex idx;		/* current building index */
 
 static value zero_value = { T_NUMBER, TRUE };	/* the zero value */
 
@@ -426,11 +426,11 @@ register array *a;
     *h = &ahlist->ah[ahchunksz++];
     (*h)->next = (arrh *) NULL;
     (*h)->arr = a;
-    (*h)->index = index;
+    (*h)->index = idx;
     (*h)->link = link;
     link = h;
 
-    return index++;
+    return idx++;
 }
 
 /*
@@ -451,7 +451,7 @@ void arr_clear()
 	h = f->link;
     }
     link = (arrh **) NULL;
-    index = 0;
+    idx = 0;
 
     /* free array hash chunks */
     for (l = ahlist; l != (arrhchunk *) NULL; ) {
@@ -536,7 +536,7 @@ register value *v1, *v2;
 	break;
 
     case T_OBJECT:
-	return v1->u.object.index - v2->u.object.index;
+	return v1->oindex - v2->oindex;
 
     case T_STRING:
 	return str_cmp(v1->u.string, v2->u.string);
@@ -669,7 +669,7 @@ array *a1, *a2;
     v1 = d_get_elts(a2);
     v2 = ALLOCA(value, size);
     for (n = size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1->u.object)) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
 	    d_assign_elt(a2, v1, &zero_value);
 	}
@@ -681,7 +681,7 @@ array *a1, *a2;
     v1 = d_get_elts(a1);
     v3 = a3->elts;
     for (n = a1->size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1->u.object)) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
 	    d_assign_elt(a1, v1, &zero_value);
 	}
@@ -742,7 +742,7 @@ array *a1, *a2;
     v1 = d_get_elts(a2);
     v2 = ALLOCA(value, size);
     for (n = size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1->u.object)) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
 	    d_assign_elt(a2, v1, &zero_value);
 	}
@@ -754,7 +754,7 @@ array *a1, *a2;
     v1 = d_get_elts(a1);
     v3 = a3->elts;
     for (n = a1->size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1->u.object)) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 	    /* replace destructed object by 0 */
 	    d_assign_elt(a1, v1, &zero_value);
 	}
@@ -792,7 +792,7 @@ array *a1, *a2;
  */
 unsigned short arr_index(a, l)
 register array *a;
-register Int l;
+register long l;
 {
     if (l < 0) {
 	l += a->size;
@@ -809,7 +809,7 @@ register Int l;
  */
 array *arr_range(a, l1, l2)
 register array *a;
-register Int l1, l2;
+register long l1, l2;
 {
     register array *range;
 
@@ -819,7 +819,7 @@ register Int l1, l2;
     if (l2 < 0) {
 	l2 += a->size;
     }
-    if (l1 < 0 || l1 > l2 || l2 >= a->size) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= a->size) {
 	error("Invalid array range");
     }
 
@@ -911,13 +911,13 @@ array *m;
     if (m->size > 0) {
 	v1 = v2 = d_get_elts(m);
 	for (i = m->size; i > 0; i -= 2) {
-	    if (v2->type == T_OBJECT && DESTRUCTED(v2->u.object)) {
+	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
 		/*
 		 * index is destructed object
 		 */
 		d_assign_elt(m, v2 + 1, &zero_value);
 		v2 += 2;
-	    } else if (v2[1].type == T_OBJECT && DESTRUCTED(v2[1].u.object)) {
+	    } else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
 		/*
 		 * value is destructed object
 		 */
@@ -943,14 +943,12 @@ array *m;
 	    t = m->hashed->table;
 	    for (i = m->hashed->size; i > 0; ) {
 		for (e = *t++; e != (mapelt *) NULL; e = n) {
-		    if (e->idx.type == T_OBJECT &&
-			DESTRUCTED(e->idx.u.object)) {
+		    if (e->idx.type == T_OBJECT && DESTRUCTED(&e->idx)) {
 			/*
 			 * index is destructed object
 			 */
 			d_assign_elt(m, &e->val, &zero_value);
-		    } else if (e->val.type == T_OBJECT &&
-			       DESTRUCTED(e->val.u.object)) {
+		    } else if (e->val.type == T_OBJECT && DESTRUCTED(&e->val)) {
 			/*
 			 * value is destructed object
 			 */
@@ -1170,7 +1168,7 @@ value *val, *elt;
 	break;
 
     case T_OBJECT:
-	i = val->u.object.count;
+	i = val->u.objcnt;
 	break;
 
     case T_STRING:

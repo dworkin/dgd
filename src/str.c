@@ -1,6 +1,5 @@
 # include "dgd.h"
 # include "hash.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
@@ -218,7 +217,7 @@ register string *s1, *s2;
  */
 unsigned short str_index(s, l)
 register string *s;
-register Int l;
+register long l;
 {
     if (l < 0) {
 	l += s->len;
@@ -236,7 +235,7 @@ register Int l;
  */
 string *str_range(s, l1, l2)
 register string *s;
-register Int l1, l2;
+register long l1, l2;
 {
     if (l1 < 0) {
 	l1 += s->len;
@@ -244,9 +243,9 @@ register Int l1, l2;
     if (l2 < 0) {
 	l2 += s->len;
     }
-    if (l1 < 0 || l1 > l2 || l2 >= s->len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= s->len) {
 	error("Invalid string range");
     }
 
-    return str_new(s->text + l1, (long) l2 - l1 + 1);
+    return str_new(s->text + l1, l2 - l1 + 1);
 }
