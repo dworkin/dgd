@@ -1,0 +1,162 @@
+DGD 1.0.a0
+
+Differences with LPmud 3.1.2:
+
+Language:
+
+ - No keywords "protected", "public" and "status".
+ - Mappings, as in the mappings package that I made for LPmud, with one
+   difference: there is no m_delete(), and the normal way to remove an
+   index/value pair from a mapping is to set the value to 0.
+ - Typechecking is more strict.  As in LPmud 3.1.2, functions are not
+   typechecked if they have no declared type, but it is possible to enforce
+   typechecking in all objects.
+ - call_other() does not require a cast.  If the type is not clear from the
+   context, a cast is recommended.
+ - Types such as int**, string***** are possible.
+ - Initializers are not supported.
+ - Indexing out of range is not allowed on arrays and strings.  Negative
+   indices can be used to offset from the end of the array/string (-1 last,
+   -2 last but one, etc).
+ - Indexed string assignments such as foo = "bar"; foo[0] = 'B'; are possible.
+ - The zero size array and zero size mapping are not globally shared, and
+   comparisions such as array == ({ }) will fail.
+ - It is illegal to declare any functions, function prototypes or variables
+   before inheriting.
+ - Inheritance is completely different.  There are two kinds of inheritance,
+   virtual and labeled.
+   Virtual inheritance is the default.  If A is inherited by B and C, and D
+   inherits A, then the variables of A are in D only once.  It is illegal to
+   inherit two different functions with the same name, unless function F1 is
+   inherited in the object that defines function F2, or if at least one of
+   F1 and F2 is private.  It is illegal to inherit two different variables
+   with the same name, unless at least one of them is private.  It is
+   illegal to redeclare a non-private variable.  Private functions are
+   private in the program that defines them, and cannot be used from inherited
+   objects.  Private functions do not mask inherited functions, except in
+   the program in which they are defined.  It is illegal to inherit two
+   different instances from an object.
+   Labeled inheritance uses the syntax inherit label "file"; Functions in
+   labeled inherited objects can be accessed with  label::function();
+   Variables in labeled inherited objects cannot be accessed from the
+   current program at all.  Functions and variables need not be unique
+   between labeled inherited objects.  It is possible to inherit the same
+   object with labeled inheritance twice; the different instances will not
+   share their variables.
+ - There is an object that is automatically (virtually) inherited in all other
+   objects, called the auto object for short.  The auto object is shared
+   even between virtual inherits and labeled inherits.
+ - Predefined functions are called kfuns (kernel functions); the kfuns and
+   the non-private functions declared in the auto object together are called
+   efuns.  Kfuns are assumed to be static functions inherited in the auto
+   object, with the added limitation that they cannot be called with
+   this_object()->kfun().  All static functions declared in the auto object
+   share this limitation.
+ - There is no class_specifier inherit "file"; This did not work in 3.1.2
+   anyhow.
+ - Function prototypes are always inherited together with the function.
+ - Function calls are typechecked if the called function is typechecked.  It
+   is illegal to call a non-varargs function with the wrong number of
+   arguments from a typechecked function, even if the inherited function is
+   not typechecked itself.
+ - Kfuns are not treated differently from other inherited functions, so
+   destruct(this_object(), this_object()); will not cause a compile-time
+   error in an untypechecked function.
+ - Inherited functions may be redeclared with a different prototype.  If
+   an inherited function is redeclared with a prototype only, and the function
+   itself is not declared in the same program, then all calls to the function
+   from that program will call an undefined function, which will result in a
+   runtime error.
+ - If object A declares function F, and B has only a prototype for function
+   F, calls to F from B will call function F in A if A and B are inherited
+   in the same object.
+ - It is illegal to inherit a function and a prototype for the same function
+   if the prototypes do not match.
+ - A call to an undeclared function from an untypechecked function implicitly
+   declares a prototype for the undeclared function that matches anything.
+ - this_object()->function(); can be used to call static functions, but not
+   private ones.
+ - foo->bar(gnu); is merely an alias for call_other(foo, bar, gnu);  It is
+   therefore possible to redefine call_other() entirely.
+ - lock(expr); will evaluate expr without regard of execution cost, and with
+   extra space on the function call stack.  It can only be used by the auto
+   object to ensure that execution does not halt inside a critical function.
+ - Any kfun can be redefined, just as ordinary inherited functions can.
+   catch() and lock() are not considered to be kfuns (they are not true
+   functions because catch(foo, bar) does not "call catch with two arguments").
+
+Compiler:
+
+ - The built-in preprocessor conforms to the ANSI standard, except for the
+   following:
+    - No trigraphs.
+    - Successive string constants are not concatenated (use the + operator
+      instead).
+    - The suffixes U and L are not allowed on integer constants.
+    - No floating point constants.
+ - There is a standard include file which is included automatically.
+ - All #pragma directives are ignored.
+ - All integer constants may be in decimal (starting with 1-9), octal (starting
+   with 0), hexadecimal (starting with 0x) or a character constant 'x'.  The
+   only escaped characters that are translated into something else in
+   character constants and string constants are \t and \n.
+ - The compiler is two-pass.  In the first pass, the function is typechecked
+   and a parse tree is constructed.  Constant folding and removal of dead
+   code is done.  In the second pass, code for a virtual stackmachine is
+   generated.  Jumps to jumps are optimized.  Optionally, the second pass
+   may generate C code (not yet implemented).
+
+Interpreter:
+
+ - The interpreter has only 32 instructions.  Kfuns are not part of the
+   interpreter proper.
+ - Objects are pure programs.  They do not have inventories, environments,
+   are not alive, do not have actions (all of this can be simulated).
+ - Pathnames without a leading slash are considered to be relative to the
+   directory of the current object (i.e. /foo for the object compiled from
+   /foo/bar.c).
+ - create() is called if a function in an object is called for the first
+   time.  It is not called if an object is loaded because it is inherited.
+   If it is desired that reset(0) is called instead, add the following to
+   the auto object:
+
+	void reset(int arg) { }
+
+	nomask void create()
+	{
+	    reset(0);
+	}
+
+ - reset() is never called by the driver.  Both reset on reference and reset
+   after a fixed period are easily simulated.
+ - clean_up() is never called by the driver.
+ - Text typed by a user is passed on by calling receive_message(text) in the
+   interactive object.  The kfun send_message(text) can be used in interactive
+   objects to send text back to the user.
+ - There is no "master object" as in LPmud 3.1.2, but a "driver object"
+   instead (there is nothing masterly about it in DGD).  It is used only to
+   translate pathnames for #include and inherit, and to supply the object
+   that is used for interactive connections.  It does not inherit the
+   auto object, unless this is done explicitly.
+ - There is no shadowing.
+ - The default state of an object is swapped out.  Strings and arrays are
+   only shared inside objects.  If an array is exported from one object to
+   another, it will become a different array as soon as the object is swapped
+   out (this is guaranteed never to happen during execution).
+ - Self-referential datastructures will be deallocated when no more outside
+   references exist, because they do not belong in any object.
+
+Kfuns: DGD has about half of the kfuns of LPmud 3.1.2:
+ - No kfuns such as environment(), this_player(), add_action().  Simulate them
+   if you want them.
+ - There is no exec(), heart_beat(), wizlist() (simulate them).
+ - No parse_command().  It cannot be simulated, so people might want to port
+   it to DGD, but it will never become part of "pure" DGD.
+ - No alist kfuns.  I prefer mappings, even if alists are more powerful.
+ - All file kfuns are unprotected.  To get either native or compat mode
+   security, make the proper redefinitions in the auto object.
+ - The built-in editor uses a temporary file and is very close to ex.
+ - call_other() is typechecked if the called function is typechecked.  Calling
+   a function that does not exist results in an error if the call has
+   arguments (I still have to think about this).
+ - There are no optional flag arguments to any kfun.
