@@ -1,8 +1,5 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
-# ifdef SYS_NETWORKING
-#  include <kernel/net.h>
-# endif
 
 private object userd;		/* user daemon */
 private object user;		/* user object */
@@ -34,10 +31,7 @@ static open(mixed *tls)
 	return;
     }
 
-    if (user) {
-	/* user object already set */
-	user->login();
-    } else {
+    if (!user) {
 	if (timeout != 0) {
 	    call_out("timeout", timeout);
 	}
@@ -95,16 +89,14 @@ reboot()
 }
 
 /*
- * NAME:	change_user()
- * DESCRIPTION:	allow the current user to redirect the connection
+ * NAME:	set_user()
+ * DESCRIPTION:	set or change the user object directly
  */
-int change_user(object obj, string str)
+int set_user(object obj, string str)
 {
-    if (previous_program() == LIB_USER) {
+    if (KERNEL()) {
 	user = obj;
-	if (str) {
-	    return obj->login(str);
-	}
+	return obj->login(str);
     }
 }
 
@@ -180,19 +172,6 @@ static message_done(mixed *tls)
 	user->message_done();
     }
 }
-
-# ifdef SYS_NETWORKING
-/*
- * NAME:	set_user()
- * DESCRIPTION:	directly set the user from the port object
- */
-set_user(object obj)
-{
-    if (previous_program() == LIB_PORT) {
-	user = obj;
-    }
-}
-# endif
 
 # ifdef SYS_DATAGRAMS
 /*

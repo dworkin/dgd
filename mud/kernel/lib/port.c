@@ -19,9 +19,9 @@ static create()
  */
 static int open_port(string protocol, int port)
 {
-    porttype = (protocol == "telnet") ? "telnet" : "binary";
     catch {
 	::open_port(protocol, port);
+	porttype = protocol;
 	return 1;
     } : {
 	return 0;
@@ -31,19 +31,31 @@ static int open_port(string protocol, int port)
 static object open_connection();
 
 /*
+ * NAME:	_connection()
+ * DESCRIPTION:	internal vercion of connection()
+ */
+private object _connection(mixed *tls)
+{
+    object conn, user;
+
+    conn = call_other(userd, porttype + "_connection");
+    user = open_connection();
+    if (user) {
+	if (function_object("query_conn", user) != LIB_USER) {
+	    error("Invalid user object");
+	}
+	conn->set_user(user);
+    }
+    return conn;
+}
+
+/*
  * NAME:	connection()
  * DESCRIPTION:	return an appropriate connection object
  */
 static nomask object connection()
 {
     if (!previous_program()) {
-	object conn, user;
-
-	conn = call_other(userd, porttype + "_connection");
-	user = open_connection();
-	if (user) {
-	    conn->set_user(user);
-	}
-	return conn;
+	return _connection(allocate(TLS_SIZE));
     }
 }

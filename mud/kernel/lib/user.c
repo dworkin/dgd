@@ -48,7 +48,7 @@ static int redirect(object user, string str)
     }
     conn = connection;
     connection = 0;
-    return conn->change_user(user, str);
+    return conn->set_user(user, str);
 }
 
 /*
@@ -84,14 +84,15 @@ string query_name()
  * NAME:	message()
  * DESCRIPTION:	forward a message to the connection object
  */
-message(string str)
+int message(string str)
 {
     if (!str) {
 	error("Bad argument 1 for function message");
     }
     if (connection) {
-	connection->message(str);
+	return connection->message(str);
     }
+    return 0;
 }
 
 # ifdef SYS_DATAGRAMS

@@ -53,29 +53,29 @@ static receive_message(string str)
     string head;
 
     buffer += str;
-    while (sscanf(buffer, "%*s\n") != 0 && this_object()) {
+    while (this_object()) {
 	if (linemode) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
-		/*
-		 * might not work properly if both delete and backspace
-		 * are used
-		 */
-		while (sscanf(str, "%s\b%s", head, str) != 0) {
-		    len = strlen(head);
-		    if (len != 0) {
-			str = head[0 .. len - 2] + str;
+		do {
+		    while (sscanf(str, "%s\b%s", head, str) != 0) {
+			len = strlen(head);
+			if (len != 0) {
+			    str = head[0 .. len - 2] + str;
+			}
 		    }
-		}
-		while (sscanf(str, "%s\x7f%s", head, str) != 0) {
-		    len = strlen(head);
-		    if (len != 0) {
-			str = head[0 .. len - 2] + str;
+		    while (sscanf(str, "%s\x7f%s", head, str) != 0) {
+			len = strlen(head);
+			if (len != 0) {
+			    str = head[0 .. len - 2] + str;
+			}
 		    }
-		}
+		} while (sscanf(str, "%*s\b") != 0);
 
 		linemode = (::receive_message(allocate(TLS_SIZE),
 					      str) != MODE_RAW);
+	    } else {
+		break;
 	    }
 	} else {
 	    linemode = (::receive_message(allocate(TLS_SIZE),
