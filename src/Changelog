@@ -1282,3 +1282,4 @@ DGD 1.1
  - When upgrading, don't wipe out variables that change type to mixed.
  - Make extra-sure that sockets under Windows and BeOS are non-blocking.
  - Fix a bug in calling LPC code from the string parser.
+ - parse_string() traversed alternatives even when it didn't have to.

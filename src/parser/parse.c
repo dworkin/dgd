@@ -724,7 +724,7 @@ pnode *next;
 	    /* pass 1: count branches */
 	    n = 0;
 	    for (sub = pn->list; sub != (pnode *) NULL; sub = sub->next) {
-		if (ps_traverse(ps, sub, next) >= 0 && n < ps->maxalt) {
+		if (n < ps->maxalt && ps_traverse(ps, sub, next) >= 0) {
 		    n++;
 		} else {
 		    sub->symbol = PN_BLOCKED;
