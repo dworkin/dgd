@@ -6,7 +6,7 @@
  * NAME:	P->time()
  * DESCRIPTION:	return the time in seconds since Jan 1, 1970
  */
-Uint P_time()
+Uint P_time(void)
 {
     return (Uint) time((time_t *) NULL);
 }
@@ -15,11 +15,10 @@ Uint P_time()
  * NAME:	P->ctime()
  * DESCRIPTION:	return time as string
  */
-char *P_ctime(t)
-Uint t;
+char *P_ctime(Uint t)
 {
     char *buf;
-    register int offset;
+    int offset;
 
     offset = 0;
     for (offset = 0; (Int) t < 0; t -= 1009843200, offset += 32) ;
@@ -53,8 +52,7 @@ static struct _timeb timeout;
  * NAME:        P->alarm()
  * DESCRIPTION: set the timeout to <delay> seconds in the future
  */
-void P_alarm(delay)
-unsigned int delay;
+void P_alarm(unsigned int delay)
 {
     _ftime(&timeout);
     timeout.time += delay;
@@ -64,7 +62,7 @@ unsigned int delay;
  * NAME:        P->timeout()
  * DESCRIPTION: return TRUE if there is a timeout, FALSE otherwise
  */
-bool P_timeout()
+bool P_timeout(void)
 {
     struct _timeb t;
 

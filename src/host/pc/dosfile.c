@@ -7,8 +7,7 @@
  * NAME:	path->file()
  * DESCRIPTION:	translate a path into a local file name
  */
-char *path_file(path)
-register char *path;
+char *path_file(char *path)
 {
     static char file[_MAX_PATH];
 
@@ -28,8 +27,7 @@ register char *path;
  * NAME:	path->unfile()
  * DESCRIPTION:	translate a local file name into a path
  */
-char *path_unfile(file)
-register char *file;
+char *path_unfile(char *file)
 {
     static char path[STRINGSZ];
 
@@ -46,8 +44,7 @@ register char *file;
  * NAME:	P->chdir()
  * DESCRIPTION:	change the current directory (and drive)
  */
-int P_chdir(dir)
-char *dir;
+int P_chdir(char *dir)
 {
     if (_chdir(dir) < 0) {
 	return -1;
@@ -65,8 +62,7 @@ static struct _finddata_t fdata;
  * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-char P_opendir(dir)
-char *dir;
+char P_opendir(char *dir)
 {
     char path[_MAX_PATH + 2];
 
@@ -80,7 +76,7 @@ char *dir;
  * NAME:	P->readdir()
  * DESCRIPTION:	read a directory
  */
-char *P_readdir()
+char *P_readdir(void)
 {
     static struct _finddata_t fd;
 
@@ -102,7 +98,7 @@ char *P_readdir()
  * NAME:	P->closedir()
  * DESCRIPTION:	close a directory
  */
-void P_closedir()
+void P_closedir(void)
 {
     _findclose(d);
 }

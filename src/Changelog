@@ -949,3 +949,4 @@ DGD 1.1
  - The priority queue for to be swapped-out objects now works better.
  - Merged in Mac compatibility fixes.
  - Discontinued support for MINIX_68K and ATARI_ST.
+ - Fixed a bug in inherited function calls with very large function tables.

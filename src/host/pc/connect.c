@@ -27,14 +27,12 @@ static fd_set writefds;			/* file descriptor write map */
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
-void conn_init(maxusers, telnet_port, binary_port)
-int maxusers;
-unsigned int telnet_port, binary_port;
+void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
     struct sockaddr_in sin;
     struct hostent *host;
-    register int n;
-    register connection *conn;
+    int n;
+    connection *conn;
     char buffer[256];
     int on;
     WSADATA wsadata;
@@ -124,7 +122,7 @@ unsigned int telnet_port, binary_port;
  * NAME:	conn->finish()
  * DESCRIPTION:	terminate connections
  */
-void conn_finish()
+void conn_finish(void)
 {
     closesocket(telnet);
     closesocket(binary);
@@ -135,12 +133,12 @@ void conn_finish()
  * NAME:	conn->tnew()
  * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_tnew()
+connection *conn_tnew(void)
 {
     SOCKET fd;
     int len;
     struct sockaddr_in sin;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(telnet, &readfds)) {
 	return (connection *) NULL;
@@ -164,12 +162,12 @@ connection *conn_tnew()
  * NAME:	conn->bnew()
  * DESCRIPTION:	accept a new binary connection
  */
-connection *conn_bnew()
+connection *conn_bnew(void)
 {
     SOCKET fd;
     int len;
     struct sockaddr_in sin;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(binary, &readfds)) {
 	return (connection *) NULL;
@@ -193,8 +191,7 @@ connection *conn_bnew()
  * NAME:	conn->del()
  * DESCRIPTION:	delete a connection
  */
-void conn_del(conn)
-register connection *conn;
+void conn_del(connection *conn)
 {
     if (conn->fd != INVALID_SOCKET) {
 	closesocket(conn->fd);
@@ -210,8 +207,7 @@ register connection *conn;
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
-int conn_select(wait)
-int wait;
+int conn_select(int wait)
 {
     struct timeval timeout;
 
@@ -226,10 +222,7 @@ int wait;
  * NAME:	conn->read()
  * DESCRIPTION:	read from a connection
  */
-int conn_read(conn, buf, size)
-connection *conn;
-char *buf;
-int size;
+int conn_read(connection *conn, char *buf, int size)
 {
     if (conn->fd == INVALID_SOCKET) {
 	return -1;
@@ -245,11 +238,7 @@ int size;
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-int conn_write(conn, buf, len, wait)
-register connection *conn;
-char *buf;
-int len;
-int wait;
+int conn_write(connection *conn, char *buf, int len, int wait)
 {
     int size;
 
@@ -276,8 +265,7 @@ int wait;
  * NAME:	conn->wrdone()
  * DESCRIPTION:	return TRUE if a connection is ready for output
  */
-bool conn_wrdone(conn)
-connection *conn;
+bool conn_wrdone(connection *conn)
 {
     if (conn->fd == INVALID_SOCKET) {
 	return TRUE;
@@ -294,8 +282,7 @@ connection *conn;
  * NAME:	conn->ipnum()
  * DESCRIPTION:	return the ip number of a connection
  */
-char *conn_ipnum(conn)
-connection *conn;
+char *conn_ipnum(connection *conn)
 {
     return inet_ntoa(conn->addr.sin_addr);
 }
