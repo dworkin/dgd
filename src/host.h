@@ -291,6 +291,9 @@ typedef char bool;
 # define FALSE		0
 # endif
 
+# if defined(__GNUC__) && __GNUC__ >= 2
+# define Uuint unsigned long long
+# endif
 
 extern void  P_message	P((char*));
 
