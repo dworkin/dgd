@@ -503,8 +503,9 @@ int flag;
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-void comm_receive(f)
+void comm_receive(f, poll)
 register frame *f;
+int poll;
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
@@ -522,7 +523,7 @@ register frame *f;
     register int n, i, state, flags, nls;
     register char *p, *q;
 
-    n = conn_select(newlines == 0);
+    n = conn_select(!poll && newlines == 0);
     if (n <= 0 && newlines == 0) {
 	/*
 	 * call_out to do, or timeout

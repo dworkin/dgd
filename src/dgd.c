@@ -128,9 +128,9 @@ void endthread()
 
 /*
  * NAME:	errhandler()
- * DESCRIPTION:	handle an error
+ * DESCRIPTION:	default error handler
  */
-static void errhandler(f, depth)
+void errhandler(f, depth)
 frame *f;
 Int depth;
 {
@@ -192,7 +192,7 @@ char **argv;
 	sw_copy();
 
 	/* handle user input */
-	comm_receive(cframe);
+	comm_receive(cframe, co_ready());
 
 	/* callouts */
 	co_call(cframe);

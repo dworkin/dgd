@@ -133,6 +133,9 @@ varargs int file_size(string file, int dir)
 	string *files, name;
 	int i, sz;
 
+	if (file == "/") {
+	    file = ".";
+	}
 	info = get_dir(file);
 	files = explode(file, "/");
 	name = files[sizeof(files) - 1];

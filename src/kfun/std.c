@@ -791,6 +791,9 @@ int nargs;
     if (nargs < 2) {
 	return -1;
     }
+    if (f->sp[nargs - 2].u.number < 0) {
+	return 2;
+    }
 
     i_add_ticks(f, nargs);
     obj = f->obj;

@@ -1454,13 +1454,18 @@ register cmdbuf *cb;
     cb->buf = 0;
     memset(cb->zbuf, '\0', sizeof(cb->zbuf));
     cb->undo = (block) -1;	/* not 0! */
-    cb_read(cb);
+
+    output("\"%s\" ", cb->fname);
+    if (!io_load(cb->edbuf, cb->fname, cb->first, &iob)) {
+	error("is unreadable");
+    }
+    io_show(&iob);
     if (iob.zero > 0 || iob.split > 0 || iob.ill) {
 	/* the editbuffer in memory is not a perfect image of the file read */
 	cb->flags |= CB_NOIMAGE;
     }
-    cb->edit = 0;
-    cb->undo = (block) -1;	/* again after read */
+
+    cb->this = iob.lines;
 
     return 0;
 }

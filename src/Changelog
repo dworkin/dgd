@@ -1159,3 +1159,6 @@ DGD 1.1
    should return "".
  - Fixed a memory leak introduced in the global variable rewrite.
  - Made editor code reentrant.
+ - Callouts with a delay of 0 seconds are now executed as soon as possible.
+ - Sort callouts in status(obj) by handle rather than by delay, as no actual
+   calling order for same-delay callouts can be guaranteed.
