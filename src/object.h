@@ -23,6 +23,7 @@ struct _object_ {
 # define O_DRIVER		0x08
 # define O_USER			0x10
 # define O_EDITOR		0x20
+# define O_COMPILED		0x40
 
 extern void		   o_init	P((int));
 extern object		  *o_new	P((char*, object*, struct _control_*));
@@ -35,3 +36,5 @@ extern struct _control_	  *o_control	P((object*));
 extern struct _dataspace_ *o_dataspace	P((object*));
 extern void		   o_clean	P((void));
 extern uindex		   o_count	P((void));
+extern bool		   o_dump	P((int));
+extern void		   o_restore	P((int, long));
