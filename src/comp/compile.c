@@ -999,7 +999,7 @@ register node *n1, *n2;
 node *c_while(n1, n2)
 register node *n1, *n2;
 {
-    n1 = node_bin(N_FOR, 0, n1, c_reloop(n2));
+    n1 = node_bin(N_FOR, 0, n1, n2 = c_reloop(n2));
     if (n2 != (node *) NULL) {
 	n1->flags |= n2->flags & F_FLOW & ~(F_ENTRY | F_RETURN);
     }
@@ -1014,9 +1014,7 @@ node *c_for(n1, n2, n3, n4)
 register node *n2, *n4;
 node *n1, *n3;
 {
-    if (n4 != (node *) NULL) {
-	n4 = c_reloop(n4);
-    }
+    n4 = c_reloop(n4);
     n2 = node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
 		  0, n2, c_concat(n4, n3));
     if (n4 != (node *) NULL) {

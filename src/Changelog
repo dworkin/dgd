@@ -1171,3 +1171,6 @@ DGD 1.1
  - String range problems at compile time now result in a proper compile-time
    error again.
  - Make a = ({ "asd" }); a[0][1] |= 7; work correctly again.
+ - Fixed a severe bug in the code generator that could, under some
+   circumstances, lead to else statements also being executed when only
+   the if statement should have been.
