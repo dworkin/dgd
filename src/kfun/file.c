@@ -1494,7 +1494,7 @@ int kf_get_dir()
 	    i = conf_array_size();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
 		file = path_unfile(file);
-		if (match(pat, file) && getinfo(file, file, &finf)) {
+		if (match(pat, file) > 0 && getinfo(file, file, &finf)) {
 		    /* add file */
 		    if (nfiles == ftabsz) {
 			finfo *tmp;
