@@ -640,9 +640,10 @@ int priv;
 				    directs[0]->obj->chain.name) != 0) {
 	    c_error("inherited different auto objects");
 	}
-	for (i = ctrl->ninherits, inh += i; i > 0; --i) {
+
+	for (i = ctrl->ninherits - 1, inh += i; i > 0; --i) {
 	    /*
-	     * check all the objects inherited by the object now inherited
+	     * check if object inherits destructed objects
 	     */
 	    --inh;
 	    o = OBJR(inh->oindex);
@@ -670,7 +671,14 @@ int priv;
 		    return FALSE;	/* recompile this object */
 		}
 	    }
+	}
 
+	for (i = ctrl->ninherits, inh += i; i > 0; --i) {
+	    /*
+	     * check if inherited objects have been inherited before
+	     */
+	    --inh;
+	    o = OBJR(inh->oindex);
 	    ohash = oh_new(o->chain.name);
 	    if (ohash->index == 0) {
 		/*

@@ -1391,3 +1391,8 @@ DGD 1.1
  - Made the number of swap sectors to be reconstructed in the main loop
    configurable.
  - Exported arrays could be committed to the wrong plane.
+ - Inheritance of objects that inherit destructed objects was not always
+   checked at the right time.
+ - Make sure that a disconnected socket with pending output is closed.
+ - Fixed an object undo bug that could happen if an object was created and
+   destructed on the same discarded plane.

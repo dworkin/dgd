@@ -780,30 +780,32 @@ unsigned int len;
 {
     int size;
 
-    if (conn->fd >= 0) {
-	FD_CLR(conn->fd, &waitfds);
-	if (len == 0) {
-	    return 0;	/* send_message("") can be used to flush buffer */
-	}
-	if (!FD_ISSET(conn->fd, &writefds)) {
-	    /* the write would fail */
-	    FD_SET(conn->fd, &waitfds);
-	    return -1;
-	}
-	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
-	    close(conn->fd);
-	    FD_CLR(conn->fd, &infds);
-	    FD_CLR(conn->fd, &outfds);
-	    conn->fd = -1;
-	    closed++;
-	} else if (size != len) {
-	    /* waiting for wrdone */
-	    FD_SET(conn->fd, &waitfds);
-	    FD_CLR(conn->fd, &writefds);
-	}
-	return size;
+    if (conn->fd < 0) {
+	return -1;
     }
-    return len;
+    if (len == 0) {
+	return 0;
+    }
+    if (!FD_ISSET(conn->fd, &writefds)) {
+	/* the write would fail */
+	FD_SET(conn->fd, &waitfds);
+	return 0;
+    }
+    if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
+	close(conn->fd);
+	FD_CLR(conn->fd, &infds);
+	FD_CLR(conn->fd, &outfds);
+	conn->fd = -1;
+	closed++;
+    } else if (size != len) {
+	/* waiting for wrdone */
+	FD_SET(conn->fd, &waitfds);
+	FD_CLR(conn->fd, &writefds);
+	if (size < 0) {
+	    return 0;
+	}
+    }
+    return size;
 }
 
 /*

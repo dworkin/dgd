@@ -289,6 +289,7 @@ static object *o_alloc()
 	obj = OBJW(n);
     }
 
+    OBJ(n)->index = OBJ_NONE;
     obj->index = n;
     obj->ctrl = (control *) NULL;
     obj->data = (dataspace *) NULL;
@@ -511,7 +512,7 @@ void o_discard_plane()
 		    }
 		}
 
-		if (op->obj.count != 0 && obj->count == 0) {
+		if (obj->index == OBJ_NONE) {
 		    /*
 		     * discard newly created object
 		     */

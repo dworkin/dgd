@@ -1062,16 +1062,15 @@ int conn_write(connection *conn, char *buf, unsigned int len)
     int size;
 
     if (conn->cflags) {
-	return len;
+	return -1;
     }
-    conn->sflags &= ~TCP_WAIT;
     if (len == 0) {
-	return 0;	/* send_message("") can be used to flush buffer */
+	return 0;
     }
     size = tcpbufsz - (conn->wds[0].length + conn->ssize);
     if (size == 0) {
 	conn->sflags |= TCP_WAIT;
-	return -1;
+	return 0;
     }
 
     if (len > size) {

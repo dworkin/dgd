@@ -506,6 +506,9 @@ array *arr;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
 		usr->osdone = n;
+	    } else if (n < 0) {
+		/* wait for conn_read() to discover the problem */
+		obj->flags &= ~O_PENDIO;
 	    }
 	}
     } else {
@@ -579,6 +582,9 @@ void comm_flush()
 	 * disconnect
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
+	    if (usr->outbuf != (string *) NULL) {
+		str_del(usr->outbuf);
+	    }
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;
@@ -737,7 +743,9 @@ unsigned int mtime;
 		endthread();
 	    }
 	    this_user = OBJ_NONE;
-	    break;
+	    if (obj->count == 0) {
+		break;	/* continue, unless the connection was closed */
+	    }
 	}
 
 	if (usr->flags & CF_BLOCKED) {
