@@ -1051,9 +1051,8 @@ dataspace *data;
 			}
 			nvars++;
 		    }
-		} else {
-		    nvars += ctrl->nvardefs;
 		}
+		nvars = inh->varoffset + ctrl->nvardefs;
 	    }
 	}
     }

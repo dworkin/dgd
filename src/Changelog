@@ -1174,3 +1174,5 @@ DGD 1.1
  - Fixed a severe bug in the code generator that could, under some
    circumstances, lead to else statements also being executed when only
    the if statement should have been.
+ - Fixed a bad bug in global float variable initialisation, reported by
+   Azhrarn@Flat Earth.
