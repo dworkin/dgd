@@ -327,51 +327,70 @@ node *label;
 	return FALSE;
     }
 
-    ncomp = ncompiled;
-
-    /* get associated object */
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(NULL, strlen(current->file) + 1L));
-    sp->u.string->text[0] = '/';
-    strcpy(sp->u.string->text + 1, current->file);
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-
-    inheriting = TRUE;
-    if (call_driver_object("inherit_program", 2)) {
-	if (sp->type == T_OBJECT) {
-	    obj = o_object(sp->oindex, sp->u.objcnt);
-	    sp++;
-	} else {
-	    /* returned value not an object */
-	    i_del_value(sp++);
-	    c_error("cannot inherit %s", file);
+    if (strcmp(current->file, driver_object) == 0) {
+	/*
+	 * the driver object can only inherit the auto object
+	 */
+	file = path_resolve(file);
+	if (!strcmp(file, auto_object) == 0) {
+	    c_error("illegal inherit from driver object");
+	    return FALSE;
+	}
+	obj = o_find(file);
+	if (obj == (object *) NULL) {
+	    inheriting = TRUE;
+	    obj = c_compile(file);
 	    inheriting = FALSE;
 	    return FALSE;
 	}
+	return TRUE;
     } else {
-	/* precompiling */
-	sp++;
-	file = path_resolve(file);
-	obj = o_find(file);
-	if (obj == (object *) NULL) {
-	    obj = c_compile(file);
+	ncomp = ncompiled;
+
+	/* get associated object */
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(NULL, strlen(current->file) + 1L));
+	sp->u.string->text[0] = '/';
+	strcpy(sp->u.string->text + 1, current->file);
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+
+	inheriting = TRUE;
+	if (call_driver_object("inherit_program", 2)) {
+	    inheriting = FALSE;
+	    if (sp->type == T_OBJECT) {
+		obj = o_object(sp->oindex, sp->u.objcnt);
+		sp++;
+	    } else {
+		/* returned value not an object */
+		i_del_value(sp++);
+		c_error("cannot inherit %s", file);
+		return FALSE;
+	    }
+
+	    if (ncomp != ncompiled) {
+		return FALSE;	/* objects compiled inside inherit_program() */
+	    }
+	} else {
+	    /* precompiling */
+	    sp++;
+	    inheriting = FALSE;
+	    file = path_resolve(file);
+	    obj = o_find(file);
+	    if (obj == (object *) NULL) {
+		inheriting = TRUE;
+		obj = c_compile(file);
+		inheriting = FALSE;
+		return FALSE;
+	    }
+	    return TRUE;
 	}
     }
-    inheriting = FALSE;
 
     if (obj->flags & O_DRIVER) {
 	/* would mess up too many things */
 	c_error("illegal to inherit driver object");
 	return FALSE;
-    }
-    if (strcmp(current->file, driver_object) == 0 && !(obj->flags & O_AUTO)) {
-	/* driver object can only inherit the auto object */
-	c_error("illegal inherit from driver object");
-	return FALSE;
-    }
-    if (ncomp != ncompiled) {
-	return FALSE;	/* objects compiled inside inherit_program() */
     }
 
     return ctrl_inherit(current->file, obj, (label == (node *) NULL) ?
@@ -977,7 +996,8 @@ node *n1, *n2, *n3;
 	return (node *) NULL;
     }
 
-    if (strcmp(current->file, driver_object) == 0) {
+    if (strcmp(current->file, driver_object) == 0 ||
+	strcmp(current->file, auto_object) == 0) {
 	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
     } else {
 	(--sp)->type = T_STRING;

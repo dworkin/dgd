@@ -10,7 +10,7 @@ typedef struct {
     jmp_buf env;			/* error context */
     frame *f;				/* frame context */
     int offset;				/* sp offset */
-    ec_ftn cleanup;			/* cleanup function */
+    ec_ftn handler;			/* error handler */
 } context;
 
 static context stack[ERRSTACKSZ];	/* error context stack */
@@ -21,8 +21,8 @@ static char errbuf[4 * STRINGSZ];	/* current error message */
  * NAME:	errcontext->_push_()
  * DESCRIPTION:	push and return the current errorcontext
  */
-jmp_buf *_ec_push_(ftn)
-ec_ftn ftn;
+jmp_buf *_ec_push_(handler)
+ec_ftn handler;
 {
     if (esp == stack + ERRSTACKSZ) {
 	error("Too many nested error contexts");
@@ -31,7 +31,8 @@ ec_ftn ftn;
     if (esp->f != (frame *) NULL) {
 	esp->offset = cframe->fp - sp;
     }
-    esp->cleanup = ftn;
+
+    esp->handler = handler;
     return &(esp++)->env;
 }
 
@@ -46,6 +47,13 @@ void ec_pop()
     }
 }
 
+/*
+ * NAME:	errorcontext->handler()
+ * DESCRIPTION:	dummy handler for previously handled error
+ */
+static void ec_handler()
+{
+}
 
 /*
  * NAME:	errormesg()
@@ -65,18 +73,27 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 {
     jmp_buf env;
     value *oldsp;
+    register context *e;
+    ec_ftn handler;
 
     if (format != (char *) NULL) {
 	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
     ec_pop();
-    memcpy(&env, &esp->env, sizeof(jmp_buf));
-    oldsp = (esp->f != (frame *) NULL) ? esp->f->fp - esp->offset :
-					 (value *) NULL;
-    if (esp->cleanup != (ec_ftn) NULL) {
-	(*(esp->cleanup))();
-    }
+    e = esp;
+    memcpy(&env, &e->env, sizeof(jmp_buf));
+    oldsp = (e->f != (frame *) NULL) ? e->f->fp - e->offset : (value *) NULL;
+
+    do {
+	if (e->handler != (ec_ftn) NULL) {
+	    handler = e->handler;
+	    e->handler = (ec_ftn) ec_handler;
+	    (*handler)();
+	    break;
+	}
+    } while (--e >= stack);
+
     i_set_sp(oldsp);
     longjmp(env, 1);
 }

@@ -921,3 +921,6 @@ DGD 1.1
  - Fixed some bugs in the new catch code.
  - Fixed a long-standing but never before discovered problem with destructed
    objects as mapping indices.
+ - The driver object can inherit the auto object again, and the auto object
+   can use the rlimits statement without limitations.
+ - If an error is caught internally, the proper error handler is called again.

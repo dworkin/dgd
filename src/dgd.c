@@ -81,13 +81,12 @@ void finish()
 }
 
 /*
- * NAME:	cleanup()
- * DESCRIPTION:	clean up in case of an error
+ * NAME:	errhandler()
+ * DESCRIPTION:	handle an error
  */
-static void cleanup()
+static void errhandler()
 {
     i_runtime_error(FALSE);
-    i_clear();
 }
 
 /*
@@ -119,7 +118,8 @@ char **argv;
     ec_pop();
     d_export();
 
-    while (ec_push((ec_ftn) cleanup)) {
+    while (ec_push((ec_ftn) errhandler)) {
+	i_clear();
 	d_export();
 	comm_flush(TRUE);
     }

@@ -110,7 +110,7 @@ register char *text;
     register char *p;
 
     if (flags & CB_NUMBER) {
-	sprintf(buffer, "%6ld  ", lineno++);
+	sprintf(buffer, "%6ld  ", (long) lineno++);
 	p = buffer + 8;
     } else {
 	p = buffer;

@@ -974,7 +974,7 @@ register int state;
 		}
 	    }
 	}
-	output("pre_catch(), !ec_push((ec_ftn) i_cleanup) ? (");
+	output("pre_catch(), !ec_push((ec_ftn) i_catcherr) ? (");
 	catch_level++;
 	cg_expr(n->l.left, POP);
 	--catch_level;
@@ -1788,7 +1788,7 @@ register node *n;
 		}
 	    }
 	    output("pre_catch();\n");
-	    output("if (ec_push((ec_ftn) i_cleanup)) ec_pop(); else {\n");
+	    output("if (ec_push((ec_ftn) i_catcherr)) ec_pop(); else {\n");
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;

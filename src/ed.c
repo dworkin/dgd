@@ -113,6 +113,18 @@ object *obj;
 }
 
 /*
+ * NAME:	ed->handler()
+ * DESCRIPTION:	fake error handler
+ */
+static void ed_handler()
+{
+    /*
+     * This function just exists to prevent the higher level error handler
+     * from being called.
+     */
+}
+
+/*
  * NAME:	ed->command()
  * DESCRIPTION:	handle an editor command
  */
@@ -133,7 +145,7 @@ char *cmd;
     outbuf = buffer;
     outbufsz = 0;
     internal = FALSE;
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) ed_handler)) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;

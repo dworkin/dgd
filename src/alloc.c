@@ -796,7 +796,7 @@ void m_purge()
 	if (n >= DLIMIT) {
 	    n -= UINTSIZE;
 	}
-	sprintf(buf, "FREE(%08X/%u), %s line %u:\012", /* LF */
+	sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
 		(unsigned long) (hlist + 1), n, hlist->file, hlist->line);
 	if (n > 26) {
 	    n = 26;

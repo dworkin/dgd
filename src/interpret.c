@@ -1343,10 +1343,10 @@ register char *pc;
 }
 
 /*
- * NAME:	interpret->cleanup()
- * DESCRIPTION:	cleanup stack in case of an error
+ * NAME:	interpret->catcherr()
+ * DESCRIPTION:	handle caught error
  */
-void i_cleanup()
+void i_catcherr()
 {
     i_runtime_error(TRUE);
 }
@@ -1578,7 +1578,7 @@ register char *pc;
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
 	    u = rli;
-	    if (!ec_push((ec_ftn) i_cleanup)) {
+	    if (!ec_push((ec_ftn) i_catcherr)) {
 		i_interpret(pc);
 		ec_pop();
 		pc = f->pc;
@@ -2058,15 +2058,6 @@ array *i_call_trace()
 }
 
 /*
- * NAME:	criterr()
- * DESCRIPTION:	handle error in critical section
- */
-static void criterr()
-{
-    i_runtime_error(TRUE);
-}
-
-/*
  * NAME:	interpret->call_critical()
  * DESCRIPTION:	Call a function in the driver object at a critical moment.
  *		The function is called with rlimits (-1; -1) and errors
@@ -2086,7 +2077,7 @@ int narg, flag;
     noticks = TRUE;
 
     sp += narg;		/* so the error context knows what to pop */
-    if (ec_push((flag) ? (ec_ftn) criterr : (ec_ftn) NULL)) {
+    if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
 	ok = FALSE;
     } else {
 	sp -= narg;	/* recover arguments */
