@@ -2,5 +2,6 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"

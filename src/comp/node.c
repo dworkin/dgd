@@ -2,12 +2,13 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "macro.h"
 # include "token.h"
 # include "node.h"
 
-# define NODE_CHUNK	64
+# define NODE_CHUNK	128
 
 typedef struct _nodelist_ {
     node n[NODE_CHUNK];			/* node array */
@@ -40,6 +41,7 @@ static node *node_new()
 	chunksize = 0;
     }
     n = &list->n[chunksize++];
+    n->flags = 0;
     n->line = tk_line();
     return n;
 }
@@ -55,8 +57,27 @@ Int num;
 
     n = node_new();
     n->type = N_INT;
-    n->mod = T_NUMBER;
+    n->flags |= F_CONST;
+    n->mod = T_INT;
     n->l.number = num;
+
+    return n;
+}
+
+/*
+ * NAME:	node->float()
+ * DESCRIPTION:	create a float node
+ */
+node *node_float(flt)
+xfloat *flt;
+{
+    register node *n;
+
+    n = node_new();
+    n->type = N_FLOAT;
+    n->flags |= F_CONST;
+    n->mod = T_FLOAT;
+    NFLT_PUT(n, *flt);
 
     return n;
 }
@@ -72,6 +93,7 @@ string *str;
 
     n = node_new();
     n->type = N_STR;
+    n->flags |= F_CONST;
     n->mod = T_STRING;
     str_ref(n->l.string = str);
     n->r.right = (node *) NULL;
