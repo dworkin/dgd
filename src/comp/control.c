@@ -1935,7 +1935,9 @@ register control *old, *new;
 	    for (k = 0, v = ctrl->vardefs; k < ctrl->nvardefs; k++, v++) {
 		n = str_put(d_get_strconst(ctrl, v->inherit, v->index),
 			    (Uint) 0);
-		if ((n & 0xff) == v->type) {
+		if ((n & 0xff) == v->type ||
+		    ((v->type & T_REF) <= (n & T_REF) &&
+		     (v->type & T_TYPE) == T_MIXED)) {
 		    *vmap = inh2->varoffset + (n >> 8);
 		} else {
 		    switch (v->type) {

@@ -315,37 +315,37 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	perror("socket");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(telnet, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(udp, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
     {
 	perror("setsockopt");
 	return FALSE;
     }
-    on = 1;
+    on = TRUE;
     if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
@@ -434,7 +434,7 @@ void conn_listen()
  */
 connection *conn_tnew()
 {
-    int fd, len;
+    int fd, len, on;
     struct sockaddr_in sin;
     connection *conn;
 
@@ -446,6 +446,8 @@ connection *conn_tnew()
     if (fd < 0) {
 	return (connection *) NULL;
     }
+    on = TRUE;
+    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &on, sizeof(on));
 
     conn = flist;
     flist = conn->next;
@@ -470,7 +472,7 @@ connection *conn_tnew()
  */
 connection *conn_bnew()
 {
-    int fd, len;
+    int fd, len, on;
     struct sockaddr_in sin;
     connection *conn;
 
@@ -482,6 +484,8 @@ connection *conn_bnew()
     if (fd < 0) {
 	return (connection *) NULL;
     }
+    on = TRUE;
+    setsockopt(fd, SOL_SOCKET, SO_NONBLOCK, (char *) &on, sizeof(on));
 
     conn = flist;
     flist = conn->next;

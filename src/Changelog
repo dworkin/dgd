@@ -1279,3 +1279,5 @@ DGD 1.1
  - Fixed a bug in the configuration phase which mysteriously escaped notice
    until now.
  - Guard against too deep recursion in the editor.
+ - When upgrading, don't wipe out variables that change type to mixed.
+ - Make extra-sure that sockets under Windows and BeOS are non-blocking.

@@ -457,6 +457,7 @@ connection *conn_tnew(void)
     int len;
     struct sockaddr_in sin;
     connection *conn;
+    unsigned long nonblock;
 
     if (!FD_ISSET(telnet, &readfds)) {
 	return (connection *) NULL;
@@ -466,6 +467,8 @@ connection *conn_tnew(void)
     if (fd == INVALID_SOCKET) {
 	return (connection *) NULL;
     }
+    nonblock = TRUE;
+    ioctlsocket(fd, FIONBIO, &nonblock);
 
     conn = flist;
     flist = conn->next;
@@ -491,6 +494,7 @@ connection *conn_bnew(void)
     int len;
     struct sockaddr_in sin;
     connection *conn;
+    unsigned long nonblock;
 
     if (!FD_ISSET(binary, &readfds)) {
 	return (connection *) NULL;
@@ -500,6 +504,8 @@ connection *conn_bnew(void)
     if (fd == INVALID_SOCKET) {
 	return (connection *) NULL;
     }
+    nonblock = TRUE;
+    ioctlsocket(fd, FIONBIO, &nonblock);
 
     conn = flist;
     flist = conn->next;
@@ -566,9 +572,7 @@ void conn_del(connection *conn)
  * NAME:        conn->block()
  * DESCRIPTION: block or unblock input from connection
  */
-void conn_block(conn, flag)
-register connection *conn;
-int flag;
+void conn_block(connection *conn, int flag)
 {
     if (conn->fd != INVALID_SOCKET) {
 	if (flag) {
@@ -617,7 +621,7 @@ int conn_select(Uint t, unsigned int mtime)
 	char buffer[BINBUF_SIZE];
 	struct sockaddr_in from;
 	int fromlen, size;
-	register connection **hash;
+	connection **hash;
 
 	fromlen = sizeof(struct sockaddr_in);
 	size = recvfrom(udp, buffer, BINBUF_SIZE, 0, (struct sockaddr *) &from,
