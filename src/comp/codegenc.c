@@ -1992,8 +1992,11 @@ unsigned short *size;
 
     nvars = nvar;
     nparam = npar;
-    output("\nstatic void LPC_%s()\n{\n", (funcnames[nfuncs] = fname)->text);
-    output("register frame *f = cframe; char *p; Int tv[%d];\n", NTMPVAL);
+    if (!inherited) {
+	str_ref(funcnames[nfuncs] = fname);
+	output("\nstatic void LPC_%s()\n{\n", fname->text);
+	output("register frame *f = cframe; char *p; Int tv[%d];\n", NTMPVAL);
+    }
     j = 0;
     for (i = 0; i < nvar; i++) {
 	if (c_vtype(i) == T_INT) {
@@ -2043,6 +2046,7 @@ void cg_clear()
 	output("\nstatic pcfunc functions[] = {\n");
 	for (i = nfuncs, f = funcnames; i != 0; --i, f++) {
 	    output("LPC_%s,\n", (*f)->text);
+	    str_del(*f);
 	}
 	output("};\n");
     }
