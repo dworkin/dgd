@@ -841,7 +841,8 @@ Uint *ptab, *nposn;
 struct _dfa_ {
     char *grammar;		/* reference grammar */
     char *strings;		/* offset of strings in grammar */
-    bool whitespace;		/* true if token 0 is whitespace */
+    short whitespace;		/* whitespace rule or -1 */
+    short nomatch;		/* nomatch rule or -1 */
 
     bool modified;		/* dfa modified */
     bool allocated;		/* dfa strings allocated locally */
@@ -890,10 +891,11 @@ register char *grammar;
 
     /* grammar info */
     fa->grammar = grammar;
-    fa->nregexp = (UCHAR(grammar[2]) << 8) + UCHAR(grammar[3]);
-    nstrings = (UCHAR(grammar[6]) << 8) + UCHAR(grammar[7]);
-    fa->strings = grammar + 12 + (fa->nregexp << 1);
-    fa->whitespace = grammar[1];
+    fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
+    fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
+    fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
+    nstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    fa->strings = grammar + 15 + (fa->nregexp << 1);
 
     /* size info */
     fa->modified = TRUE;
@@ -915,7 +917,7 @@ register char *grammar;
     memset(fa->ecset + 8, '\0', 32 * 255);
 
     /* positions */
-    fa->nposn = (UCHAR(grammar[4]) << 8) + UCHAR(grammar[5]);
+    fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
     fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
 
@@ -947,7 +949,7 @@ register char *grammar;
     state->ntrans = state->len = 0;
     state->final = -1;
     state->alloc = FALSE;
-    grammar += 12;
+    grammar += 15;
     /* initial positions */
     if (state->nposn == 0 && state->nstr == 0) {
 	/* no valid transitions from initial state */
@@ -1115,13 +1117,14 @@ Uint len;
 
     /* grammar info */
     fa->grammar = grammar;
-    fa->nregexp = (UCHAR(grammar[2]) << 8) + UCHAR(grammar[3]);
-    nstrings = (UCHAR(grammar[6]) << 8) + UCHAR(grammar[7]);
-    fa->strings = grammar + 12 + (fa->nregexp << 1);
-    fa->whitespace = grammar[1];
+    fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
+    fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
+    fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
+    nstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    fa->strings = grammar + 15 + (fa->nregexp << 1);
 
     /* positions */
-    fa->nposn = (UCHAR(grammar[4]) << 8) + UCHAR(grammar[5]);
+    fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
     fa->posnhtab = (hashtab *) NULL;
 
@@ -1581,14 +1584,16 @@ char **token;
     register char *p, *q;
     register dfastate *state;
     short final;
-    ssizet fsize;
+    ssizet fsize, nomatch;
 
+    nomatch = 0;
     size = *strlen;
+    *token = str->text + str->len - size;
 
     while (size != 0) {
 	state = &fa->states[1];
 	final = -1;
-	p = *token = str->text + str->len - size;
+	p = str->text + str->len - size;
 
 	while (size != 0) {
 	    eclass = UCHAR(fa->eclass[UCHAR(*p)]);
@@ -1646,18 +1651,36 @@ char **token;
 	}
 
 	if (final >= 0) {
+	    if (nomatch != 0) {
+		if (fa->nomatch != fa->whitespace) {
+		    *len = nomatch;
+		    return fa->nomatch;
+		}
+		*token += nomatch;
+		nomatch = 0;
+	    }
+
 	    /* in a final state */
 	    size = fsize;
-	    if (final != 0 || !fa->whitespace) {
+	    if (final != fa->whitespace) {
 		*len = *strlen - size;
 		*strlen = size;
 		return final;
 	    }
 	    /* else whitespace: continue */
+	    *token = p - 1;
 	    *strlen = size;
+	} else if (fa->nomatch >= 0) {
+	    nomatch++;
+	    size = --*strlen;
 	} else {
 	    return DFA_REJECT;
 	}
+    }
+
+    if (nomatch != 0 && fa->nomatch != fa->whitespace) {
+	*len = nomatch;
+	return fa->nomatch;
     }
 
     return DFA_EOS;

@@ -35,7 +35,7 @@ production rule.
 
 2.1 Token rules
 
-A token rule has the following format:
+A normal token rule has the following format:
 
     token = /regexp/
 
@@ -68,6 +68,14 @@ whitespace.
 If a string matches more than token, the token for which the rule appears first
 in the grammar is selected.  If a string does not match any token, it is
 rejected and parsing fails.
+
+A special token rule may be defined which matches anything not matched by
+other rules:
+
+    token = nomatch
+
+where "nomatch" is literal text.  Nomatch rules can be very inefficient, and
+their use should be avoided if possible.
 
 
 2.2 Production rules

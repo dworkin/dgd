@@ -570,13 +570,14 @@ register rlchunk *c;
 /*
  * Internal grammar string description:
  *
- * header	[0]	version number
- *		[x]	0: no whitespace, 1: first token rule is whitespace
+ * header	[1]	version number
+ *		[x][y]	whitespace rule or -1
+ *		[x][y]	nomatch rule or -1
  *		[x][y]	# regexp rules
  *		[x][y]	# total regexp rules (+ alternatives)
  *		[x][y]	# string rules
  *		[x][y]	# production rules (first is starting rule)
- *		[x][y]	# total production rules (+ altrnatives)
+ *		[x][y]	# total production rules (+ alternatives)
  *
  * rgx offset	[x][y]	regexp rule offsets
  *		...
@@ -622,7 +623,9 @@ long size;
 
     /* header */
     p = gram->text;
-    STORE2(p, 0); p += 2;	/* version number & whitespace */
+    *p++ = GRAM_VERSION;	/* version number */
+    STORE2(p, -1); p += 2;	/* whitespace rule */
+    STORE2(p, -1); p += 2;	/* nomatch rule */
     STORE2(p, nrgx); p += 4;	/* # regular expression rules */
     STORE2(p, nstr); p += 2;	/* # string rules */
     nprod++;			/* +1 for start rule */
@@ -663,29 +666,29 @@ long size;
     nrgx = 0;
     for (rl = rgxlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= rl->num + rl->len + 2;
-	if (strcmp(rl->symb->text, "whitespace") == 0) {
-	    gram->text[1] = 1;
-	    p = gram->text + 12;
-	    STORE2(p, size);
-	    p = gram->text + size;
-	    STORE2(p, rl->num);
-	    rl->num = 0;
-	} else {
-	    q -= 2; STORE2(q, size);
-	    p = gram->text + size;
-	    STORE2(p, rl->num);
-	    rl->num = --n;
-	}
+	q -= 2; STORE2(q, size);
+	p = gram->text + size;
+	STORE2(p, rl->num);
+	rl->num = --n;
 	p += 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
-	    *p++ = r->u.rgx->len;
-	    memcpy(p, r->u.rgx->text, r->u.rgx->len);
-	    p += r->u.rgx->len;
-	    nrgx++;
+	    if (r->u.rgx != (string *) NULL) {
+		*p++ = r->u.rgx->len;
+		memcpy(p, r->u.rgx->text, r->u.rgx->len);
+		p += r->u.rgx->len;
+		nrgx++;
+	    } else {
+		/* nomatch */
+		STORE2(gram->text + 3, n);
+	    }
+	}
+	if (rl->symb->len == 10 && strcmp(rl->symb->text, "whitespace") == 0) {
+	    p = gram->text + 1;
+	    STORE2(p, n);
 	}
     }
-    p = gram->text + 4;
-    STORE2(p, nrgx);
+    p = gram->text + 7;
+    STORE2(p, nrgx);		/* total regular expressions */
 
     /* fill in production rules */
     nprod = 1;
@@ -718,7 +721,7 @@ long size;
     *p++ = prod1 >> 8;
     *p   = prod1;
 
-    p = gram->text + 10;
+    p = gram->text + 13;
     STORE2(p, nprod);
 
     return gram;
@@ -739,6 +742,7 @@ string *gram;
     int token, ruleno, nrgx, nstr, nprod;
     ssizet glen;
     unsigned int buflen;
+    bool nomatch;
     register rulesym **rs;
     register rule *rl, **r;
     register long size;
@@ -751,8 +755,9 @@ string *gram;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = prodlist = tmplist = (rule *) NULL;
     nrgx = nstr = nprod = 0;
-    size = 12 + 8;	/* size of header + start rule */
+    size = 15 + 8;	/* size of header + start rule */
     glen = gram->len;
+    nomatch = FALSE;
 
     token = gramtok(gram, &glen, buffer, &buflen);
     for (ruleno = 1; ; ruleno++) {
@@ -809,6 +814,10 @@ string *gram;
 
 	    switch (gramtok(gram, &glen, buffer, &buflen)) {
 	    case TOK_REGEXP:
+		str_ref(rl->u.rgx = str_new(buffer, (long) buflen));
+		(*r)->num++;
+		(*r)->len += buflen;
+		size += buflen + 1;
 		break;
 
 	    case TOK_BADREGEXP:
@@ -821,14 +830,21 @@ string *gram;
 			ruleno);
 		goto err;
 
+	    case TOK_SYMBOL:
+		if (buflen == 7 && strcmp(buffer, "nomatch") == 0) {
+		    if (nomatch) {
+			sprintf(buffer, "Rule %d: extra nomatch rule", ruleno);
+			goto err;
+		    }
+		    nomatch = TRUE;
+		    rl->u.rgx = (string *) NULL;
+		    break;
+		}
+		/* fall through */
 	    default:
 		sprintf(buffer, "Rule %d: regular expression expected", ruleno);
 		goto err;
 	    }
-	    str_ref(rl->u.rgx = str_new(buffer, (long) buflen));
-	    (*r)->num++;
-	    (*r)->len += buflen;
-	    size += buflen + 1;
 
 	    /* next token */
 	    token = gramtok(gram, &glen, buffer, &buflen);
@@ -1023,11 +1039,11 @@ string *gram;
 	    goto err;
 
 	case TOK_TOOBIGSTR:
-	    sprintf(buffer, "Rule %d: string too large", ruleno);
+	    sprintf(buffer, "Rule %d: string too long", ruleno);
 	    goto err;
 
 	case TOK_TOOBIGSYM:
-	    sprintf(buffer, "Rule %d: symbol too large", ruleno);
+	    sprintf(buffer, "Rule %d: symbol too long", ruleno);
 	    goto err;
 
 	default:

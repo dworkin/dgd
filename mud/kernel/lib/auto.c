@@ -306,7 +306,8 @@ static object compile_object(string path, varargs string source)
     if (uid && creator != "System" &&
 	!::find_object(ACCESSD)->access(oname, path,
 					(sscanf(path, "/kernel/%*s") == 0 &&
-					 lib) ? READ_ACCESS : WRITE_ACCESS)) {
+					 lib && !source) ?
+					 READ_ACCESS : WRITE_ACCESS)) {
 	error("Access denied");
     }
 

@@ -445,10 +445,10 @@ char *grammar;
 
     /* grammar info */
     lr->grammar = grammar;
-    lr->ntoken = ((UCHAR(grammar[2]) + UCHAR(grammar[6])) << 8) +
-		 UCHAR(grammar[3]) + UCHAR(grammar[7]);
-    lr->nprod = (UCHAR(grammar[8]) << 8) + UCHAR(grammar[9]);
-    nrule = (UCHAR(grammar[10]) << 8) + UCHAR(grammar[11]);
+    lr->ntoken = ((UCHAR(grammar[5]) + UCHAR(grammar[9])) << 8) +
+		 UCHAR(grammar[6]) + UCHAR(grammar[10]);
+    lr->nprod = (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
+    nrule = (UCHAR(grammar[13]) << 8) + UCHAR(grammar[14]);
 
     /* sizes */
     lr->srpstr = (char *) NULL;
@@ -470,7 +470,7 @@ char *grammar;
     lr->itc = (itchunk *) NULL;
 
     /* state 0 */
-    p = grammar + 12 + (lr->ntoken << 1);
+    p = grammar + 15 + (lr->ntoken << 1);
     p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
     lr->states[0].items = it_new(&lr->itc, p + 2, lr->ntoken, 0, (item *) NULL);
     lr->states[0].nitem = 1;
@@ -539,6 +539,42 @@ register srp *lr;
 }
 
 /*
+ * format of SRP permanent data:
+ *
+ * header	[1]		version number
+ *		[x][y]		# states
+ *		[x][y]		# expanded states
+ *		[x][y][z]	# reductions
+ *		[x][y][z]	initial gap in packed mapping
+ *		[x][y][z]	max spread of packed mapping
+ *
+ * state	[x][y]		# items				}
+ *		[x][y]		# reductions			}
+ *		[x][y][z]	shift offset in packed mapping	} ...
+ *		[x][y][z]	goto offset in packed mapping	}
+ *		[x][y]		shift check			}
+ *
+ * reduction	[x][y]		rule offset in grammar		} ...
+ *		[x][y]		rule number			}
+ *
+ * mapping	[...]		data table (spread + 2)
+ *		[...]		check table (spread + 2)
+ *
+ *
+ * format of SRP temporary data:
+ *
+ * header	[0]		version number
+ *		[x][y][z]	# items
+ *		[x][y][z]	shift table size
+ *
+ * item		[x][y]		rule offset in grammar		}
+ *		[x][y]		rule number			} ...
+ *		[x]		offset in rule			}
+ *
+ * shift 	[...]		shift table
+ */
+
+/*
  * NAME:	srp->load()
  * DESCRIPTION:	load a shift/reduce parser from string
  */
@@ -560,9 +596,9 @@ Uint len;
 
     /* grammar info */
     lr->grammar = grammar;
-    lr->ntoken = ((UCHAR(grammar[2]) + UCHAR(grammar[6])) << 8) +
-		 UCHAR(grammar[3]) + UCHAR(grammar[7]);
-    lr->nprod = (UCHAR(grammar[8]) << 8) + UCHAR(grammar[9]);
+    lr->ntoken = ((UCHAR(grammar[5]) + UCHAR(grammar[9])) << 8) +
+		 UCHAR(grammar[6]) + UCHAR(grammar[10]);
+    lr->nprod = (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
 
     lr->srpstr = buf = str;
 
@@ -631,7 +667,7 @@ register srp *lr;
     Uint nrule;
     char *buf;
 
-    nrule = (UCHAR(lr->grammar[10]) << 8) + UCHAR(lr->grammar[11]);
+    nrule = (UCHAR(lr->grammar[13]) << 8) + UCHAR(lr->grammar[14]);
 
     buf = lr->tmpstr;
     lr->nitem = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) +
@@ -947,7 +983,7 @@ srpstate *state;
 	    p += i;
 	    n = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	    if (n >= lr->ntoken) {
-		p = lr->grammar + 12 + (n << 1);
+		p = lr->grammar + 15 + (n << 1);
 		p = lr->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 		for (i = (UCHAR(p[0]) << 8) + UCHAR(p[1]), p += 2; i > 0; --i) {
 		    it_add(&lr->itc, &state->items, p, n, 0, FALSE);

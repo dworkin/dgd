@@ -351,8 +351,9 @@ string *source, *grammar;
     ps->arrc = (arrchunk *) NULL;
 
     p = grammar->text;
-    ps->ntoken = ((UCHAR(p[2]) + UCHAR(p[6])) << 8) + UCHAR(p[3]) + UCHAR(p[7]);
-    ps->nprod = (UCHAR(p[8]) << 8) + UCHAR(p[9]);
+    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9])) << 8) + UCHAR(p[6]) +
+		 UCHAR(p[10]);
+    ps->nprod = (UCHAR(p[11]) << 8) + UCHAR(p[12]);
 
     return ps;
 }
@@ -856,8 +857,9 @@ register value *elts;
     ps->arrc = (arrchunk *) NULL;
 
     p = ps->grammar->text;
-    ps->ntoken = ((UCHAR(p[2]) + UCHAR(p[6])) << 8) + UCHAR(p[3]) + UCHAR(p[7]);
-    ps->nprod = (UCHAR(p[8]) << 8) + UCHAR(p[9]);
+    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9])) << 8) + UCHAR(p[6]) +
+		 UCHAR(p[10]);
+    ps->nprod = (UCHAR(p[11]) << 8) + UCHAR(p[12]);
 
     return ps;
 }
@@ -954,7 +956,8 @@ Int maxalt;
     } else {
 	val = d_get_extravar(data);
 	if (val->type == T_ARRAY && d_get_elts(val->u.array)->type == T_INT &&
-	    str_cmp(val->u.array->elts[1].u.string, source) == 0) {
+	    str_cmp(val->u.array->elts[1].u.string, source) == 0 &&
+	    val->u.array->elts[2].u.string->text[0] == GRAM_VERSION) {
 	    ps = ps_load(f, val->u.array->elts);
 	    same = TRUE;
 	} else {
