@@ -369,17 +369,6 @@ prepare_reboot()
 }
 
 /*
- * NAME:	halt()
- * DESCRIPTION:	show shutdown message
- */
-halt()
-{
-    if (previous_program() == AUTO) {
-	message("System halted.\n");
-    }
-}
-
-/*
  * NAME:	restored()
  * DESCRIPTION:	re-initialize the system after a restore
  */
@@ -520,17 +509,20 @@ static object inherit_program(string from, string path)
  */
 static string path_include(string from, string path)
 {
-    string creator;
-
-    creator = creator(from);
-    if ((sscanf(from, "/include/%*s") != 0 || creator == "System") &&
-	path[0] != '~') {
-	return (path[0] == '/') ? path : from + "/../" + path;
-    }
-    if (path == "SPECIAL" && from == "/include/std.h" && objectd) {
+    if (path == "AUTO" && from == "/include/std.h" && objectd &&
+	creator(compiled) != "System") {
+	/*
+	 * special object-dependant include file
+	 */
 	path = objectd->path_special(compiled);
+    } else if (strlen(path) != 0 && path[0] != '/' && path[0] != '~' &&
+	       sscanf(path, "%*s/../") != 0) {
+	/*
+	 * local includes: return immediately
+	 */
+	return from + "/../" + path;
     } else {
-	path = normalize_path(path, from, creator);
+	path = normalize_path(path, from, creator(from));
     }
     return (accessd->access(from, path, READ_ACCESS)) ? path : 0;
 }
@@ -619,7 +611,7 @@ static runtime_error(string str, int caught, int ticks)
 	caught = 0;
     } else if (caught != 0 && ticks < 0) {
 	error = str;
-	/* return; */
+	return;
     }
 
     trace = call_trace();

@@ -43,7 +43,7 @@ void set_object_manager(object objectd)	[System only]
 
     * string path_special(string compiled)
 
-	If the standard include file contains the line `# include "SPECIAL"',
+	If the standard include file contains the line `# include "AUTO"',
 	this function is called so a file can be included that depends on
 	what file is currently being compiled.
 

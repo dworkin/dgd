@@ -555,7 +555,7 @@ static dump_state()
 static shutdown()
 {
     if (creator == "System" && this_object()) {
-	::find_object(DRIVER)->halt();
+	::find_object(DRIVER)->message("System halted.\n");
 	::shutdown();
     }
 }
@@ -1088,11 +1088,9 @@ static int make_dir(string path)
 
     fcreator = driver->creator(path + "/");
     rsrcd = ::find_object(RSRCD);
-    if (creator != "System") {
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
+    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     catch {
@@ -1194,11 +1192,9 @@ static save_object(string path)
 
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
-    if (creator != "System") {
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	    error("File quota exceeded");
-	}
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
+    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	error("File quota exceeded");
     }
 
     size = driver->file_size(path);
