@@ -7,6 +7,11 @@ typedef struct {
 } dinherit;
 
 typedef struct {
+    long index;			/* index in control block */
+    unsigned short len;		/* string length */
+} dstrconst;
+
+typedef struct {
     char class;			/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */
@@ -41,7 +46,7 @@ typedef struct _control_ {
 
     unsigned short nstrings;	/* i/o # strings */
     string **strings;		/* i/o? string table */
-    struct _sstrconst_ *sstrings;/* o sstrings */
+    dstrconst *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     long strsize;		/* o sstrings text size */
     long stroffset;		/* o offset of string index table */
@@ -107,8 +112,8 @@ typedef struct _dataspace_ {
 
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
-extern control	       *d_load_control	P((sector));
-extern dataspace       *d_load_dataspace P((object*, sector));
+extern control	       *d_load_control	P((object*));
+extern dataspace       *d_load_dataspace P((object*));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
 
@@ -130,10 +135,14 @@ extern void		d_change_map	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, unsigned long,
 					   int));
-extern uindex		d_find_call_out	P((dataspace*, string*));
+extern uindex		d_find_call_out	P((dataspace*, string*,
+					   unsigned long*));
 extern char	       *d_get_call_out	P((dataspace*, uindex, int*));
 extern uindex		d_ncallouts	P((dataspace*));
 
+extern void		d_patch_ctrl	P((control*, long));
+extern void		d_patch_callout	P((dataspace*, long));
 extern uindex		d_swapout	P((int));
+
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));
