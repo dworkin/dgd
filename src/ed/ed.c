@@ -1,7 +1,7 @@
 # include "ed.h"
 # include "edcmd.h"
 
-main(argc, argv)
+int main(argc, argv)
 int argc;
 char *argv[];
 {
@@ -44,6 +44,8 @@ char *argv[];
 	lb_inact(cb->edbuf->lb);
     }
 }
+
+void comm_flush() {}
 
 char *path_ed_read(file) char *file; { return file; }
 
