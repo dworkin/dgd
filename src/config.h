@@ -56,7 +56,7 @@ typedef uindex sector;
 /* compiler */
 # define YYMAXDEPTH	500	/* parser stack size */
 # define MAX_ERRORS	5	/* max. number of errors during compilation */
-# define MAX_LOCALS	255	/* max. number of parameters + local vars */
+# define MAX_LOCALS	127	/* max. number of parameters + local vars */
 # define OMERGETABSZ	128	/* inherit object merge table size */
 # define VFMERGETABSZ	256	/* variable/function merge table sizes */
 # define VFMERGEHASHSZ	10	/* # characters in function/variables to hash */
