@@ -1,9 +1,10 @@
-void dump_object()
+varargs void dump(string function)
 {
-    ::dump_object(this_object());
+    if (function) {
+	dump_function(this_object(), function);
+    } else {
+	dump_object(this_object());
+    }
 }
 
-void dump_function()
-{
-    ::dump_function(this_object(), "foo");
-}
+void iyy() {}
