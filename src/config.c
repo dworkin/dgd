@@ -5,6 +5,7 @@
 # include "object.h"
 # include "xfloat.h"
 # include "data.h"
+# include "sdata.h"
 # include "interpret.h"
 # include "path.h"
 # include "editor.h"
@@ -229,16 +230,16 @@ void conf_dump()
     header[DUMP_ELAPSED + 3] = etime;
 
     fd = sw_dump(conf[DUMP_FILE].u.str);
-    if (!kf_dump(fd)) {
+    if (!kf_dump(sch_env(), fd)) {
 	fatal("failed to dump kfun table");
     }
     if (!o_dump(fd)) {
 	fatal("failed to dump object table");
     }
-    if (!pc_dump(fd)) {
+    if (!pc_dump(sch_env(), fd)) {
 	fatal("failed to dump precompiled objects");
     }
-    if (!co_dump(fd)) {
+    if (!co_dump(sch_env(), fd)) {
 	fatal("failed to dump callout table");
     }
 
@@ -303,7 +304,7 @@ int fd;
     o_restore(env, fd, (uindex) 1 << (rusize * 8 - 1));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv();				/* convert all objects */
+    o_conv(env);			/* convert all objects */
     P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
     pc_restore(env, fd);
@@ -1011,15 +1012,15 @@ char *configfile, *dumpfile;
 sector *fragment;
 {
     char buf[STRINGSZ];
+    struct _mempool_ *pool;
     int fd;
     bool init;
-    extern struct _mempool_ *comppool;
     register lpcenv *env;
 
     /*
      * process config file
      */
-    comppool = m_new_pool();
+    c_pool(pool = m_new_pool());
     if (!pp_init(path_native(buf, configfile), (char **) NULL, (char *) NULL,
 		 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
@@ -1077,6 +1078,7 @@ sector *fragment;
 
     /* initialize swapped data handler */
     d_init(conf[TYPECHECKING].u.num == 2);
+    sd_init(pool);
     *fragment = conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
@@ -1430,10 +1432,16 @@ register value *v;
 	break;
 
     case 3:	/* O_NSECTORS */
-	PUT_INTVAL(v, (obj->flags & O_CREATED) ?
-		       o_dataspace(data->env, obj)->nsectors : 0);
-	if (obj->flags & O_MASTER) {
-	    v->u.number += ctrl->nsectors;
+	PUT_INTVAL(v, 0);
+	if (obj->flags & O_CREATED) {
+	    data = o_dataspace(data->env, obj);
+	    if (data->sdata != (struct _sdataspace_ *) NULL) {
+		v->u.number += sd_get_dsize(data->sdata);
+	    }
+	}
+	if ((obj->flags & O_MASTER) && ctrl->sctrl != (struct _scontrol *) NULL)
+	{
+	    v->u.number += sd_get_csize(ctrl->sctrl);
 	}
 	break;
 

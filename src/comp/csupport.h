@@ -49,7 +49,7 @@ extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 bool   pc_preload	P((lpcenv*, char*, char*));
 array *pc_list		P((dataspace*));
 void   pc_control	P((control*, object*));
-bool   pc_dump		P((int));
+bool   pc_dump		P((lpcenv*, int));
 void   pc_restore	P((lpcenv*, int));
 
 

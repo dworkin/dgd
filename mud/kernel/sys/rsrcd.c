@@ -201,7 +201,7 @@ void rsrc_set_limit(string owner, string name, int max)
 	object obj;
 
 	if (!(obj=owners[owner])) {
-	    error("No such resource owner");
+	    error("No such resource owner: " + owner);
 	}
 	obj->rsrc_set_limit(name, max, resources[name][GRSRC_DECAY]);
     }
@@ -217,7 +217,7 @@ mixed *rsrc_get(string owner, string name)
 	object obj;
 
 	if (!(obj=owners[owner])) {
-	    error("No such resource owner");
+	    error("No such resource owner: " + owner);
 	}
 	return obj->rsrc_get(name, resources[name]);
     }
@@ -235,7 +235,7 @@ int rsrc_incr(string owner, string name, mixed index, int incr,
 	object obj;
 
 	if (!(obj=owners[owner])) {
-	    error("No such resource owner");
+	    error("No such resource owner: " + owner);
 	}
 	return obj->rsrc_incr(name, index, incr, resources[name], force);
     }

@@ -899,8 +899,7 @@ void ctrl_create()
 
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
-		    str_put(compenv, smerge,
-			    d_get_strconst(compenv, ctrl, i, n),
+		    str_put(smerge, d_get_strconst(compenv, ctrl, i, n),
 			    ((Uint) count << 16) | n);
 		}
 	    } else {
@@ -943,8 +942,7 @@ string *str;
 {
     register Uint desc, new;
 
-    desc = str_put(compenv, smerge, str,
-		   new = ((Uint) ninherits << 16) | nstrs);
+    desc = str_put(smerge, str, new = ((Uint) ninherits << 16) | nstrs);
     if (desc == new) {
 	/*
 	 * it is really a new string
@@ -1681,7 +1679,7 @@ static void ctrl_mksymbs()
 	symtab++;
     }
     symtab = newctrl->symbols;
-    coll = ALLOCA(dsymbol, nsymbs);
+    coll = CALLOCA(dsymbol, nsymbs);
     ncoll = 0;
 
     /*
@@ -1770,7 +1768,7 @@ static void ctrl_mksymbs()
 	symtab[x].next = n++;	/* link to previous slot */
     }
 
-    AFREE(coll);
+    CFREEA(coll);
 }
 
 /*
@@ -1827,7 +1825,7 @@ void ctrl_clear()
 	newctrl = (control *) NULL;
     }
     if (smerge != (struct _strmerge_ *) NULL) {
-	str_clear(compenv, smerge);
+	str_clear(smerge);
 	smerge = (struct _strmerge_ *) NULL;
     }
     while (str_list != (strchunk *) NULL) {
@@ -1910,9 +1908,8 @@ register control *old, *new;
 		ctrl2 = o_control(compenv, OBJR(compenv, inh2->oindex));
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
-		    str_put(compenv, merge, d_get_strconst(compenv, ctrl2,
-							   v->inherit,
-							   v->index),
+		    str_put(merge, d_get_strconst(compenv, ctrl2, v->inherit,
+						  v->index),
 			    ((Uint) k << 8) | v->type);
 		}
 		break;
@@ -1923,8 +1920,8 @@ register control *old, *new;
 	 * map new variables to old ones
 	 */
 	for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
-	    n = str_put(compenv, merge, d_get_strconst(compenv, ctrl,
-						       v->inherit, v->index),
+	    n = str_put(merge, d_get_strconst(compenv, ctrl, v->inherit,
+					      v->index),
 			(Uint) 0);
 	    if (n != 0 &&
 		((n & 0xff) == v->type ||
@@ -1948,7 +1945,7 @@ register control *old, *new;
 	    }
 	    vmap++;
 	}
-	str_clear(compenv, merge);
+	str_clear(merge);
     }
 
     /*

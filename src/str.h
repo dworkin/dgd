@@ -11,9 +11,8 @@ extern string	        *str_new	P((lpcenv*, char*, long));
 extern void		 str_del	P((lpcenv*, string*));
 
 extern struct _strmerge_*str_merge	P((lpcenv*));
-extern Uint		 str_put	P((lpcenv*, struct _strmerge_*, string*,
-					   Uint));
-extern void		 str_clear	P((lpcenv*, struct _strmerge_*));
+extern Uint		 str_put	P((struct _strmerge_*, string*, Uint));
+extern void		 str_clear	P((struct _strmerge_*));
 
 extern int		 str_cmp	P((string*, string*));
 extern string	        *str_add	P((lpcenv*, string*, string*));

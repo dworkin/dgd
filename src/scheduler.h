@@ -11,7 +11,9 @@ struct _lpcenv_ {
 extern void	sch_init	P((void));
 extern lpcenv  *sch_env 	P((void));
 
-# define IALLOC(env, type, size) ALLOC((env)->mp, type, size)
-# define IREALLOC(env, mem, type, size1, size2) \
-				REALLOC((env)->mp, mem, type, size1, size2)
+# define IALLOC(env, type, sz)	ALLOC((env)->mp, type, sz)
+# define IALLOCA(env, type, sz)	ALLOCA((env)->mp, type, sz)
+# define IREALLOC(env, mem, type, sz1, sz2) \
+				REALLOC((env)->mp, mem, type, sz1, sz2)
 # define IFREE(env, mem)	FREE((env)->mp, mem)
+# define IFREEA(env, mem)	FREEA((env)->mp, mem)

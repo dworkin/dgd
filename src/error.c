@@ -56,24 +56,27 @@ register lpcenv *env;
  * DESCRIPTION:	push and return the current errorcontext
  */
 jmp_buf *_ec_push_(env, handler)
-register lpcenv *env;
+lpcenv *env;
 ec_ftn handler;
 {
-    register context *e;
+    register errenv *ee;
+    register context *ec;
+    register frame *f;
 
-    if (env->ee->econtext == (context *) NULL) {
-	e = &env->ee->firstcontext;
+    ee = env->ee;
+    if (ee->econtext == (context *) NULL) {
+	ec = &ee->firstcontext;
     } else {
-	e = IALLOC(env, context, 1);
+	ec = IALLOC(env, context, 1);
     }
-    e->f = env->ie->cframe;
-    e->offset = env->ie->cframe->fp - env->ie->cframe->sp;
-    e->rlim = env->ie->cframe->rlim;
+    ec->f = f = env->ie->cframe;
+    ec->offset = f->fp - f->sp;
+    ec->rlim = f->rlim;
 
-    e->handler = handler;
-    e->next = env->ee->econtext;
-    env->ee->econtext = e;
-    return &e->jump;
+    ec->handler = handler;
+    ec->next = ee->econtext;
+    ee->econtext = ec;
+    return &ec->jump;
 }
 
 /*
@@ -83,17 +86,17 @@ ec_ftn handler;
 void ec_pop(env)
 register lpcenv *env;
 {
-    register context *e;
+    register context *ec;
 
-    e = env->ee->econtext;
+    ec = env->ee->econtext;
 # ifdef DEBUG
-    if (e == (context *) NULL) {
+    if (ec == (context *) NULL) {
 	fatal("pop empty error stack");
     }
 # endif
-    env->ee->econtext = e->next;
-    if (e != &env->ee->firstcontext) {
-	IFREE(env, e);
+    env->ee->econtext = ec->next;
+    if (ec != &env->ee->firstcontext) {
+	IFREE(env, ec);
     } else {
 	ec_clear(env);
     }
@@ -128,51 +131,56 @@ register lpcenv *env;
 string *str;
 {
     jmp_buf jump;
-    register context *e;
-    frame *f;
+    register errenv *ee;
+    register context *ec;
+    register frame *f;
     int offset;
     ec_ftn handler;
 
+    ee = env->ee;
     if (str != (string *) NULL) {
-	if (env->ee->errstr != (string *) NULL) {
-	    str_del(env, env->ee->errstr);
+	if (ee->errstr != (string *) NULL) {
+	    str_del(env, ee->errstr);
 	}
-	str_ref(env->ee->errstr = str);
+	str_ref(ee->errstr = str);
 # ifdef DEBUG
-    } else if (env->ee->errstr == (string *) NULL) {
+    } else if (ee->errstr == (string *) NULL) {
 	fatal("no error string");
 # endif
     }
+    ec = ee->econtext;
+    offset = ec->offset;
+    memcpy(&jump, &ec->jump, sizeof(jmp_buf));
 
-    e = env->ee->econtext;
-    f = e->f;
-    offset = e->offset;
-    memcpy(&jump, &e->jump, sizeof(jmp_buf));
+    /* restore to atomic entry point */
+    env->ie->cframe = f = i_restore(env->ie->cframe, ec->f->level);
 
-    env->ie->cframe = i_restore(env->ie->cframe, f->level);
+    /* handle error */
     for (;;) {
-	if (e->handler != (ec_ftn) NULL) {
-	    handler = e->handler;
-	    e->handler = (ec_ftn) ec_handler;
-	    (*handler)(env->ie->cframe, e->f->depth);
+	if (ec->handler != (ec_ftn) NULL) {
+	    handler = ec->handler;
+	    ec->handler = (ec_ftn) ec_handler;
+	    (*handler)(f, ec->f->depth);
 	    break;
 	}
-	e = e->next;
-	if (e == (context *) NULL) {
+	ec = ec->next;
+	if (ec == (context *) NULL) {
 	    /*
 	     * default error handler: print message on stdout
 	     */
-	    P_message(env->ee->errstr->text);
+	    P_message(ee->errstr->text);
 	    P_message("\012");			/* LF */
 	    break;
 	}
     }
 
-    if (env->ie->cframe->rlim != env->ee->econtext->rlim) {
-	i_set_rlimits(env->ie->cframe, env->ee->econtext->rlim);
+    /* restore to catch */
+    ec = ee->econtext;
+    if (f->rlim != ec->rlim) {
+	i_set_rlimits(f, ec->rlim);
     }
-    env->ie->cframe = i_set_sp(env->ie->cframe, f->fp - offset);
-    env->ie->cframe->rlim = env->ee->econtext->rlim;
+    env->ie->cframe = f = i_set_sp(f, ec->f->fp - offset);
+    f->rlim = ec->rlim;
     ec_pop(env);
     longjmp(jump, 1);
 }

@@ -335,7 +335,8 @@ static char di_layout[] = "uus";
  * NAME:	precomp->dump()
  * DESCRIPTION:	dump precompiled objects
  */
-bool pc_dump(fd)
+bool pc_dump(env, fd)
+lpcenv *env;
 int fd;
 {
     dump_header dh;
@@ -385,22 +386,22 @@ int fd;
 	/*
 	 * Save only the necessary information.
 	 */
-	dpc = ALLOCA(dump_precomp, dh.nprecomps);
-	inh = ALLOCA(dump_inherit, dh.ninherits);
+	dpc = IALLOCA(env, dump_precomp, dh.nprecomps);
+	inh = IALLOCA(env, dump_inherit, dh.ninherits);
 	if (dh.nstrings != 0) {
-	    strings = ALLOCA(dstrconst, dh.nstrings);
+	    strings = IALLOCA(env, dstrconst, dh.nstrings);
 	    if (dh.stringsz != 0) {
-		stext = ALLOCA(char, dh.stringsz);
+		stext = IALLOCA(env, char, dh.stringsz);
 	    }
 	}
 	if (dh.nfuncdefs != 0) {
-	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
+	    funcdefs = IALLOCA(env, dfuncdef, dh.nfuncdefs);
 	}
 	if (dh.nvardefs != 0) {
-	    vardefs = ALLOCA(dvardef, dh.nvardefs);
+	    vardefs = IALLOCA(env, dvardef, dh.nvardefs);
 	}
 	if (dh.nfuncalls != 0) {
-	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
+	    funcalls = IALLOCA(env, char, 2 * dh.nfuncalls);
 	}
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
@@ -488,22 +489,22 @@ int fd;
 	}
 
 	if (dh.nfuncalls != 0) {
-	    AFREE(funcalls);
+	    IFREEA(env, funcalls);
 	}
 	if (dh.nvardefs != 0) {
-	    AFREE(vardefs);
+	    IFREEA(env, vardefs);
 	}
 	if (dh.nfuncdefs != 0) {
-	    AFREE(funcdefs);
+	    IFREEA(env, funcdefs);
 	}
 	if (dh.nstrings != 0) {
 	    if (dh.stringsz != 0) {
-		AFREE(stext);
+		IFREEA(env, stext);
 	    }
-	    AFREE(strings);
+	    IFREEA(env, strings);
 	}
-	AFREE(inh);
-	AFREE(dpc);
+	IFREEA(env, inh);
+	IFREEA(env, dpc);
     }
 
     return ok;
@@ -700,30 +701,30 @@ int fd;
 	/*
 	 * Restore old precompiled objects.
 	 */
-	dpc = ALLOCA(dump_precomp, dh.nprecomps);
+	dpc = IALLOCA(env, dump_precomp, dh.nprecomps);
 	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
-	dinh = ALLOCA(dump_inherit, dh.ninherits);
+	dinh = IALLOCA(env, dump_inherit, dh.ninherits);
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
 	if (dh.nstrings != 0) {
-	    strings = ALLOCA(dstrconst, dh.nstrings);
+	    strings = IALLOCA(env, dstrconst, dh.nstrings);
 	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
 	    if (dh.stringsz != 0) {
-		stext = ALLOCA(char, dh.stringsz);
+		stext = IALLOCA(env, char, dh.stringsz);
 		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
 		    fatal("cannot read from dump file");
 		}
 	    }
 	}
 	if (dh.nfuncdefs != 0) {
-	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
+	    funcdefs = IALLOCA(env, dfuncdef, dh.nfuncdefs);
 	    conf_dread(fd, (char *) funcdefs, DF_LAYOUT, dh.nfuncdefs);
 	}
 	if (dh.nvardefs != 0) {
-	    vardefs = ALLOCA(dvardef, dh.nvardefs);
+	    vardefs = IALLOCA(env, dvardef, dh.nvardefs);
 	    conf_dread(fd, (char *) vardefs, DV_LAYOUT, dh.nvardefs);
 	}
 	if (dh.nfuncalls != 0) {
-	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
+	    funcalls = IALLOCA(env, char, 2 * dh.nfuncalls);
 	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
 		fatal("cannot read from dump file");
 	    }
@@ -774,22 +775,22 @@ int fd;
 	}
 
 	if (dh.nfuncalls != 0) {
-	    AFREE(funcalls - dh.nfuncalls);
+	    IFREEA(env, funcalls - dh.nfuncalls);
 	}
 	if (dh.nvardefs != 0) {
-	    AFREE(vardefs - dh.nvardefs);
+	    IFREEA(env, vardefs - dh.nvardefs);
 	}
 	if (dh.nfuncdefs != 0) {
-	    AFREE(funcdefs - dh.nfuncdefs);
+	    IFREEA(env, funcdefs - dh.nfuncdefs);
 	}
 	if (dh.nstrings != 0) {
 	    if (dh.stringsz != 0) {
-		AFREE(stext - dh.stringsz);
+		IFREEA(env, stext - dh.stringsz);
 	    }
-	    AFREE(strings - dh.nstrings);
+	    IFREEA(env, strings - dh.nstrings);
 	}
-	AFREE(dinh - dh.ninherits);
-	AFREE(dpc - dh.nprecomps);
+	IFREEA(env, dinh - dh.ninherits);
+	IFREEA(env, dpc - dh.nprecomps);
     }
 
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {

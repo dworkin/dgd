@@ -26,6 +26,7 @@ typedef struct _arrhchunk_ {
 } arrhchunk;
 
 typedef struct _arrmerge_ {
+    lpcenv *env;		/* LPC environment */
     arrh **ht;			/* array merge table */
     arrh **alink;		/* linked list of merged arrays */
     arrhchunk *ahlist;		/* linked list of all arrh chunks */
@@ -74,9 +75,9 @@ typedef struct _arrenv_ {
     arrchunk *aclist;		/* linked list of all array chunks */
     int achunksz;		/* size of current array chunk */
     array *flist;		/* free array list */
-    mapelt *fmelt;		/* free mapelt list */
     meltchunk *meltlist;	/* linked list of all mapelt chunks */
     int meltchunksz;		/* size of current mapelt chunk */
+    mapelt *fmelt;		/* free mapelt list */
 } arrenv;
 
 static unsigned long max_size;	/* max. size of array and mapping */
@@ -105,9 +106,9 @@ arrenv *arr_new_env()
     ae->aclist = (arrchunk *) NULL;
     ae->achunksz = ARR_CHUNK;
     ae->flist = (array *) NULL;
-    ae->fmelt = (mapelt *) NULL;
     ae->meltlist = (meltchunk *) NULL;
     ae->meltchunksz = MELT_CHUNK;
+    ae->fmelt = (mapelt *) NULL;
 
     return ae;
 }
@@ -117,26 +118,28 @@ arrenv *arr_new_env()
  * DESCRIPTION:	create a new array
  */
 array *arr_alloc(env, size)
-register lpcenv *env;
+lpcenv *env;
 unsigned int size;
 {
+    register arrenv *ae;
     register array *a;
 
-    if (env->ae->flist != (array *) NULL) {
+    ae = env->ae;
+    if (ae->flist != (array *) NULL) {
 	/* from free list */
-	a = env->ae->flist;
-	env->ae->flist = a->next;
+	a = ae->flist;
+	ae->flist = a->next;
     } else {
-	if (env->ae->achunksz == ARR_CHUNK) {
+	if (ae->achunksz == ARR_CHUNK) {
 	    register arrchunk *l;
 
 	    /* new chunk */
 	    l = IALLOC(env, arrchunk, 1);
-	    l->next = env->ae->aclist;
-	    env->ae->aclist = l;
-	    env->ae->achunksz = 0;
+	    l->next = ae->aclist;
+	    ae->aclist = l;
+	    ae->achunksz = 0;
 	}
-	a = &env->ae->aclist->a[env->ae->achunksz++];
+	a = &ae->aclist->a[ae->achunksz++];
     }
     a->size = size;
     a->elts = (value *) NULL;
@@ -207,6 +210,7 @@ register array *a;
     if (--(a->ref) == 0) {
 	register value *v;
 	register unsigned short i;
+	register arrenv *ae;
 
 	if ((v=a->elts) != (value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
@@ -215,6 +219,7 @@ register array *a;
 	    IFREE(env, a->elts);
 	}
 
+	ae = env->ae;
 	if (a->hashed != (maphash *) NULL) {
 	    register mapelt *e, *n, **t;
 
@@ -226,8 +231,8 @@ register array *a;
 		    i_del_value(env, &e->idx);
 		    i_del_value(env, &e->val);
 		    n = e->next;
-		    e->next = env->ae->fmelt;
-		    env->ae->fmelt = e;
+		    e->next = ae->fmelt;
+		    ae->fmelt = e;
 		    --i;
 		}
 	    }
@@ -236,8 +241,8 @@ register array *a;
 
 	a->prev->next = a->next;
 	a->next->prev = a->prev;
-	a->next = env->ae->flist;
-	env->ae->flist = a;
+	a->next = ae->flist;
+	ae->flist = a;
     }
 }
 
@@ -253,8 +258,10 @@ array *alist;
     register value *v;
     register unsigned short i;
     register mapelt *e, *n, **t;
+    register arrenv *ae;
 
     a = alist;
+    ae = env->ae;
     do {
 	if ((v=a->elts) != (value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
@@ -279,16 +286,16 @@ array *alist;
 			str_del(env, e->val.u.string);
 		    }
 		    n = e->next;
-		    e->next = env->ae->fmelt;
-		    env->ae->fmelt = e;
+		    e->next = ae->fmelt;
+		    ae->fmelt = e;
 		    --i;
 		}
 	    }
 	    IFREE(env, a->hashed);
 	}
 
-	a->next = env->ae->flist;
-	env->ae->flist = a;
+	a->next = ae->flist;
+	ae->flist = a;
 	a = a->prev;
     } while (a != alist);
 }
@@ -300,27 +307,25 @@ array *alist;
 void arr_freeall(env)
 register lpcenv *env;
 {
+    register arrenv *ae;
 # ifdef DEBUG
     register arrchunk *ac;
     register meltchunk *mc;
+# endif
 
+    ae = env->ae;
+# ifdef DEBUG
     /* free array chunks */
-    for (ac = env->ae->aclist; ac != (arrchunk *) NULL; ) {
+    for (ac = ae->aclist; ac != (arrchunk *) NULL; ) {
 	register arrchunk *f;
 
 	f = ac;
 	ac = ac->next;
 	IFREE(env, f);
     }
-# endif
-    env->ae->aclist = (arrchunk *) NULL;
-    env->ae->achunksz = ARR_CHUNK;
 
-    env->ae->flist = (array *) NULL;
-
-# ifdef DEBUG
     /* free mapping element chunks */
-    for (mc = env->ae->meltlist; mc != (meltchunk *) NULL; ) {
+    for (mc = ae->meltlist; mc != (meltchunk *) NULL; ) {
 	register meltchunk *f;
 
 	f = mc;
@@ -328,9 +333,13 @@ register lpcenv *env;
 	IFREE(env, f);
     }
 # endif
-    env->ae->meltlist = (meltchunk *) NULL;
-    env->ae->meltchunksz = MELT_CHUNK;
-    env->ae->fmelt = (mapelt *) NULL;
+
+    ae->aclist = (arrchunk *) NULL;
+    ae->achunksz = ARR_CHUNK;
+    ae->flist = (array *) NULL;
+    ae->meltlist = (meltchunk *) NULL;
+    ae->meltchunksz = MELT_CHUNK;
+    ae->fmelt = (mapelt *) NULL;
 }
 
 /*
@@ -343,6 +352,7 @@ lpcenv *env;
     register arrmerge *merge;
 
     merge = IALLOC(env, arrmerge, 1);
+    merge->env = env;
     merge->ht = IALLOC(env, arrh*, ARRMERGETABSZ);
     memset(merge->ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
     merge->alink = (arrh **) NULL;
@@ -356,8 +366,7 @@ lpcenv *env;
  * NAME:	array->put()
  * DESCRIPTION:	Put an array in a merge table, and return its "index".
  */
-Uint arr_put(env, merge, a, idx)
-lpcenv *env;
+Uint arr_put(merge, a, idx)
 register arrmerge *merge;
 register array *a;
 Uint idx;
@@ -376,7 +385,7 @@ Uint idx;
     if (merge->ahchunksz == ARR_CHUNK) {
 	register arrhchunk *l;
 
-	l = IALLOC(env, arrhchunk, 1);
+	l = IALLOC(merge->env, arrhchunk, 1);
 	l->next = merge->ahlist;
 	merge->ahlist = l;
 	merge->ahchunksz = 0;
@@ -395,8 +404,7 @@ Uint idx;
  * NAME:	array->clear()
  * DESCRIPTION:	clear an array merge table
  */
-void arr_clear(env, merge)
-register lpcenv *env;
+void arr_clear(merge)
 register arrmerge *merge;
 {
     register arrh **h;
@@ -408,10 +416,10 @@ register arrmerge *merge;
 
 	f = *h;
 	*h = (arrh *) NULL;
-	arr_del(env, f->arr);
+	arr_del(merge->env, f->arr);
 	h = f->link;
     }
-    IFREE(env, merge->ht);
+    IFREE(merge->env, merge->ht);
 
     /* free array hash chunks */
     for (l = merge->ahlist; l != (arrhchunk *) NULL; ) {
@@ -419,10 +427,10 @@ register arrmerge *merge;
 
 	f = l;
 	l = l->next;
-	IFREE(env, f);
+	IFREE(merge->env, f);
     }
 
-    IFREE(env, merge);
+    IFREE(merge->env, merge);
 }
 
 
@@ -590,6 +598,7 @@ register value *v1;
 register array *a;
 {
     register value *v2, *o;
+    register dataspace *data;
     register unsigned short n;
 
     v2 = d_get_elts(a);
@@ -604,18 +613,19 @@ register array *a;
 	 * found, they will be replaced by nil in the original array.
 	 */
 	a->odcount = env->oe->odcount;
+	data = a->primary->data;
 	for (n = a->size; n != 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(env, v2)) {
-		    d_assign_elt(a->primary->data, a, v2, &nil_value);
+		    d_assign_elt(data, a, v2, &nil_value);
 		}
 		break;
 
 	    case T_LWOBJECT:
 		o = d_get_elts(v2->u.array);
 		if (DESTRUCTED(env, o)) {
-		    d_assign_elt(a->primary->data, a, v2, &nil_value);
+		    d_assign_elt(data, a, v2, &nil_value);
 		}
 		break;
 	    }
@@ -804,7 +814,7 @@ array *a1, *a2;
     size = a2->size;
 
     /* copy and sort values of subtrahend */
-    copytmp(data->env, v2 = ALLOCA(value, size), a2);
+    copytmp(data->env, v2 = IALLOCA(data->env, value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
@@ -822,12 +832,13 @@ array *a1, *a2;
 	}
     } else {
 	a1->odcount = data->env->oe->odcount;
+	data = a1->primary->data;
 	for (n = a1->size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(data->env, v1)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		    d_assign_elt(data, a1, v1, &nil_value);
 		}
 		break;
 
@@ -835,7 +846,7 @@ array *a1, *a2;
 		o = d_get_elts(v1->u.array);
 		if (DESTRUCTED(data->env, o)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		    d_assign_elt(data, a1, v1, &nil_value);
 		}
 		break;
 	    }
@@ -849,7 +860,7 @@ array *a1, *a2;
 	    v1++;
 	}
     }
-    AFREE(v2);	/* free copy of values of subtrahend */
+    IFREEA(data->env, v2);	/* free copy of values of subtrahend */
 
     a3->size = v3 - a3->elts;
     if (a3->size == 0) {
@@ -883,7 +894,7 @@ array *a1, *a2;
     size = a2->size;
 
     /* copy and sort values of 2nd array */
-    copytmp(data->env, v2 = ALLOCA(value, size), a2);
+    copytmp(data->env, v2 = IALLOCA(data->env, value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
@@ -901,12 +912,13 @@ array *a1, *a2;
 	}
     } else {
 	a1->odcount = data->env->oe->odcount;
+	data = a1->primary->data;
 	for (n = a1->size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
 		if (DESTRUCTED(data->env, v1)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		    d_assign_elt(data, a1, v1, &nil_value);
 		}
 		break;
 
@@ -914,7 +926,7 @@ array *a1, *a2;
 		o = d_get_elts(v1->u.array);
 		if (DESTRUCTED(data->env, o)) {
 		    /* replace destructed object by nil */
-		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		    d_assign_elt(data, a1, v1, &nil_value);
 		}
 		break;
 	    }
@@ -928,7 +940,7 @@ array *a1, *a2;
 	    v1++;
 	}
     }
-    AFREE(v2);	/* free copy of values of 2nd array */
+    IFREEA(data->env, v2);	/* free copy of values of 2nd array */
 
     a3->size = v3 - a3->elts;
     if (a3->size == 0) {
@@ -969,10 +981,10 @@ array *a1, *a2;
     }
 
     /* make room for elements to add */
-    v3 = ALLOCA(value, a2->size);
+    v3 = IALLOCA(data->env, value, a2->size);
 
     /* copy and sort values of 1st array */
-    copytmp(data->env, v1 = ALLOCA(value, size = a1->size), a1);
+    copytmp(data->env, v1 = IALLOCA(data->env, value, size = a1->size), a1);
     qsort(v1, size, sizeof(value), cmp);
 
     v = v3;
@@ -1015,18 +1027,18 @@ array *a1, *a2;
 	    v2++;
 	}
     }
-    AFREE(v1);	/* free copy of values of 1st array */
+    IFREEA(data->env, v1);	/* free copy of values of 1st array */
 
     n = v - v3;
     if ((long) size + n > max_size) {
-	AFREE(v3);
+	IFREEA(data->env, v3);
 	error(data->env, "Array too large");
     }
 
     a3 = arr_new(data, (long) size + n);
     i_copy(data->env, a3->elts, a1->elts, size);
     i_copy(data->env, a3->elts + size, v3, n);
-    AFREE(v3);
+    IFREEA(data->env, v3);
 
     d_ref_imports(a3);
     return a3;
@@ -1063,14 +1075,14 @@ array *a1, *a2;
     }
 
     /* copy values of 1st array */
-    copytmp(data->env, v1 = ALLOCA(value, size = a1->size), a1);
+    copytmp(data->env, v1 = IALLOCA(data->env, value, size = a1->size), a1);
 
     /* copy and sort values of 2nd array */
-    copytmp(data->env, v2 = ALLOCA(value, size = a2->size), a2);
+    copytmp(data->env, v2 = IALLOCA(data->env, value, size = a2->size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     /* room for first half of result */
-    v3 = ALLOCA(value, a1->size);
+    v3 = IALLOCA(data->env, value, a1->size);
 
     v = v3;
     w = v1;
@@ -1108,18 +1120,18 @@ array *a1, *a2;
 
     n = v - v2;
     if ((long) num + n > max_size) {
-	AFREE(v3);
-	AFREE(v2);
-	AFREE(v1);
+	IFREEA(data->env, v3);
+	IFREEA(data->env, v2);
+	IFREEA(data->env, v1);
 	error(data->env, "Array too large");
     }
 
     a3 = arr_new(data, (long) num + n);
     i_copy(data->env, a3->elts, v3, num);
     i_copy(data->env, a3->elts + num, v2, n);
-    AFREE(v3);
-    AFREE(v2);
-    AFREE(v1);
+    IFREEA(data->env, v3);
+    IFREEA(data->env, v2);
+    IFREEA(data->env, v1);
 
     d_ref_imports(a3);
     return a3;
@@ -1249,7 +1261,7 @@ register array *m;
  * DESCRIPTION:	merge hashtable component with array part of mapping
  */
 static void map_dehash(env, m)
-register lpcenv *env;
+lpcenv *env;
 register array *m;
 {
     register unsigned short hashsize;
@@ -1259,19 +1271,21 @@ register array *m;
      */
     hashsize = m->hashed->size << 1;
     if (hashsize != 0) {
+	register arrenv *ae;
 	register value *v1, *v2, *v3;
 	register unsigned short i, j;
 	register mapelt *e, *n, **t;
 
-	v2 = ALLOCA(value, m->hashed->size << 1);
+	ae = env->ae;
+	v2 = IALLOCA(env, value, m->hashed->size << 1);
 	t = m->hashed->table;
 	for (i = m->hashed->size; i > 0; ) {
 	    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
 		*v2++ = e->idx;
 		*v2++ = e->val;
 		n = e->next;
-		e->next = env->ae->fmelt;
-		env->ae->fmelt = e;
+		e->next = ae->fmelt;
+		ae->fmelt = e;
 	    }
 	}
 	v2 -= hashsize;
@@ -1302,7 +1316,7 @@ register array *m;
 	memcpy(v3, v2, j * sizeof(value));
 	v3 += j;
 
-	AFREE(v2 - (hashsize - j));
+	IFREEA(env, v2 - (hashsize - j));
 	if (m->size > 0) {
 	    IFREE(env, m->elts);
 	}
@@ -1327,6 +1341,7 @@ register array *m;
     if (m->odcount == data->env->oe->odcount) {
 	return;	/* no destructed objects */
     }
+    m->odcount = data->env->oe->odcount;
 
     if (m->hashed != (maphash *) NULL && !THISPLANE(m->primary)) {
 	map_dehash(data->env, m);
@@ -1408,9 +1423,11 @@ register array *m;
      * remove destructed objects in the hash table
      */
     if (m->hashed != (maphash *) NULL && m->hashed->size != 0) {
+	register arrenv *ae;
 	register mapelt *e, **p, **t;
 	register value *o;
 
+	ae = data->env->ae;
 	size = 0;
 	t = m->hashed->table;
 	for (i = m->hashed->size; i > 0; ) {
@@ -1423,8 +1440,8 @@ register array *m;
 			 */
 			d_assign_elt(data, m, &e->val, &nil_value);
 			*p = e->next;
-			e->next = data->env->ae->fmelt;
-			data->env->ae->fmelt = e;
+			e->next = ae->fmelt;
+			ae->fmelt = e;
 			continue;
 		    }
 		    break;
@@ -1438,8 +1455,8 @@ register array *m;
 			d_assign_elt(data, m, &e->idx, &nil_value);
 			d_assign_elt(data, m, &e->val, &nil_value);
 			*p = e->next;
-			e->next = data->env->ae->fmelt;
-			data->env->ae->fmelt = e;
+			e->next = ae->fmelt;
+			ae->fmelt = e;
 			continue;
 		    }
 		    break;
@@ -1452,8 +1469,8 @@ register array *m;
 			 */
 			d_assign_elt(data, m, &e->idx, &nil_value);
 			*p = e->next;
-			e->next = data->env->ae->fmelt;
-			data->env->ae->fmelt = e;
+			e->next = ae->fmelt;
+			ae->fmelt = e;
 			continue;
 		    }
 		    break;
@@ -1467,8 +1484,8 @@ register array *m;
 			d_assign_elt(data, m, &e->idx, &nil_value);
 			d_assign_elt(data, m, &e->val, &nil_value);
 			*p = e->next;
-			e->next = data->env->ae->fmelt;
-			data->env->ae->fmelt = e;
+			e->next = ae->fmelt;
+			ae->fmelt = e;
 			continue;
 		    }
 		    break;
@@ -1480,8 +1497,6 @@ register array *m;
 	}
 	m->hashed->size = size;
     }
-
-    m->odcount = data->env->oe->odcount;	/* update */
 }
 
 /*
@@ -1579,8 +1594,11 @@ register array *m;
     hashsize = 0;
     if (m->hashed != (maphash *) NULL) {
 	if (m->hashed->size != 0) {
+	    register arrenv *ae;
 	    register mapelt *e, *n, **t;
-	    v2 = ALLOCA(value, m->hashed->size << 1);
+
+	    ae = data->env->ae;
+	    v2 = IALLOCA(data->env, value, m->hashed->size << 1);
 	    t = m->hashed->table;
 	    if (m->odcount == data->env->oe->odcount) {
 		for (i = m->hashed->size; i > 0; ) {
@@ -1588,16 +1606,16 @@ register array *m;
 			*v2++ = e->idx;
 			*v2++ = e->val;
 			n = e->next;
-			e->next = data->env->ae->fmelt;
-			data->env->ae->fmelt = e;
+			e->next = ae->fmelt;
+			ae->fmelt = e;
 		    }
 		}
 		hashsize = m->hashed->size << 1;
 	    } else {
 		for (i = m->hashed->size; i > 0; ) {
 		    for (e = *t++; e != (mapelt *) NULL;
-			 --i, n = e->next, e->next = data->env->ae->fmelt,
-			 data->env->ae->fmelt = e, e = n) {
+			 --i, n = e->next, e->next = ae->fmelt, ae->fmelt = e,
+			 e = n) {
 			switch (e->idx.type) {
 			case T_OBJECT:
 			    if (DESTRUCTED(data->env, &e->idx)) {
@@ -1655,7 +1673,7 @@ register array *m;
 		}
 	    }
 	    if (hashsize == 0) {
-		AFREE(v2);	/* nothing in the hash table */
+		IFREEA(data->env, v2);	/* nothing in the hash table */
 	    } else {
 		v2 -= hashsize;
 		qsort(v2, hashsize >> 1, 2 * sizeof(value), cmp);
@@ -1696,7 +1714,7 @@ register array *m;
 	memcpy(v3, v2, j * sizeof(value));
 	v3 += j;
 
-	AFREE(v2 - (hashsize - j));
+	IFREEA(data->env, v2 - (hashsize - j));
 	if (m->size > 0) {
 	    IFREE(data->env, m->elts);
 	}
@@ -1844,7 +1862,7 @@ array *m1, *a2;
     }
 
     /* copy and sort values of array */
-    copytmp(data->env, v2 = ALLOCA(value, size), a2);
+    copytmp(data->env, v2 = IALLOCA(data->env, value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
@@ -1889,7 +1907,7 @@ array *m1, *a2;
 	    v1 += 2; n1 -= 2;
 	}
     }
-    AFREE(v2 - (size - n2));
+    IFREEA(data->env, v2 - (size - n2));
 
     /* copy tail part of m1 */
     i_copy(data->env, v3, v1, n1);
@@ -1930,7 +1948,7 @@ array *m1, *a2;
     }
 
     /* copy and sort values of array */
-    copytmp(data->env, v2 = ALLOCA(value, size), a2);
+    copytmp(data->env, v2 = IALLOCA(data->env, value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
@@ -1977,7 +1995,7 @@ array *m1, *a2;
 	    v2++; --n2;
 	}
     }
-    AFREE(v2 - (size - n2));
+    IFREEA(data->env, v2 - (size - n2));
 
     m3->size = v3 - m3->elts;
     if (m3->size == 0) {
@@ -2001,6 +2019,7 @@ unsigned short hashval;
     register maphash *h;
     register mapelt *e;
     register unsigned short i;
+    register arrenv *ae;
 
     h = m->hashed;
     if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->size) >= max_size) {
@@ -2051,21 +2070,22 @@ unsigned short hashval;
     }
     h->size++;
 
-    if (env->ae->fmelt != (mapelt *) NULL) {
+    ae = env->ae;
+    if (ae->fmelt != (mapelt *) NULL) {
 	/* from free list */
-	e = env->ae->fmelt;
-	env->ae->fmelt = e->next;
+	e = ae->fmelt;
+	ae->fmelt = e->next;
     } else {
-	if (env->ae->meltchunksz == MELT_CHUNK) {
+	if (ae->meltchunksz == MELT_CHUNK) {
 	    register meltchunk *l;
 
 	    /* new chunk */
 	    l = IALLOC(env, meltchunk, 1);
-	    l->next = env->ae->meltlist;
-	    env->ae->meltlist = l;
-	    env->ae->meltchunksz = 0;
+	    l->next = ae->meltlist;
+	    ae->meltlist = l;
+	    ae->meltchunksz = 0;
 	}
-	e = &env->ae->meltlist->e[env->ae->meltchunksz++];
+	e = &ae->meltlist->e[ae->meltchunksz++];
     }
     e->hashval = hashval;
     e->idx = nil_value;
@@ -2128,8 +2148,9 @@ value *val, *elt;
 		/*
 		 * delete the element
 		 */
-		d_assign_elt(m->primary->data, m, v, &nil_value);
-		d_assign_elt(m->primary->data, m, v + 1, &nil_value);
+		data = m->primary->data;
+		d_assign_elt(data, m, v, &nil_value);
+		d_assign_elt(data, m, v + 1, &nil_value);
 
 		m->size -= 2;
 		if (m->size == 0) {
@@ -2199,8 +2220,9 @@ value *val, *elt;
 		    /*
 		     * delete element
 		     */
-		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
-		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+		    data = m->primary->data;
+		    d_assign_elt(data, m, &e->idx, &nil_value);
+		    d_assign_elt(data, m, &e->val, &nil_value);
 
 		    *p = e->next;
 		    e->next = data->env->ae->fmelt;

@@ -225,7 +225,8 @@ static char dh_layout[] = "sss";
  * NAME:	kfun->dump()
  * DESCRIPTION:	dump the kfun table
  */
-bool kf_dump(fd)
+bool kf_dump(env, fd)
+lpcenv *env;
 int fd;
 {
     register int i;
@@ -249,7 +250,7 @@ int fd;
     }
 
     /* write kfun names */
-    buffer = ALLOCA(char, dh.kfnamelen);
+    buffer = IALLOCA(env, char, dh.kfnamelen);
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
 	kf = &KFUN(i + 128);
@@ -258,7 +259,7 @@ int fd;
 	buflen += len;
     }
     flag = (P_write(fd, buffer, buflen) >= 0);
-    AFREE(buffer);
+    IFREEA(env, buffer);
 
     return flag;
 }
@@ -280,7 +281,7 @@ int fd;
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 
     /* fix kfuns */
-    buffer = ALLOCA(char, dh.kfnamelen);
+    buffer = IALLOCA(env, char, dh.kfnamelen);
     if (P_read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
 	fatal("cannot restore kfun names");
     }
@@ -302,7 +303,7 @@ int fd;
 	kfx[n] = i + 128;
 	buflen += strlen(buffer + buflen) + 1;
     }
-    AFREE(buffer);
+    IFREEA(env, buffer);
 
     if (dh.nkfun < nkfun - KF_BUILTINS) {
 	/*

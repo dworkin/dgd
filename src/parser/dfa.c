@@ -1299,13 +1299,13 @@ Uint *len;
     memcpy(buf, fa->ecsplit, fa->ecnum);
     buf += fa->ecnum;
 
-    ptab = ALLOCA(Uint, fa->nposn);
+    ptab = IALLOCA(fa->env, Uint, fa->nposn);
     nposn = 0;
     for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
 	buf = ds_savetmp(state, buf, &pbuf, fa->tmpstr, ptab, &nposn,
 			 fa->grammar);
     }
-    AFREE(ptab);
+    IFREEA(fa->env, ptab);
 
     return TRUE;
 }
@@ -1454,7 +1454,7 @@ dfastate *state;
     for (i = state->nposn, rrp = POSNA(state); i > 0; --i, rrp++) {
 	ncset += (*rrp)->size;
     }
-    cset = ALLOCA(Uint, ncset << 3);
+    cset = IALLOCA(fa->env, Uint, ncset << 3);
 
     /* construct character sets for all string chars */
     for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
@@ -1486,10 +1486,10 @@ dfastate *state;
      * for all equivalence classes, compute transition states
      */
     if (state->nposn != 0) {
-	newposn = ALLOCA(rgxposn*, state->nposn);
+	newposn = IALLOCA(fa->env, rgxposn*, state->nposn);
     }
     if (state->nstr != 0) {
-	newstr = ALLOCA(unsigned short, state->nstr);
+	newstr = IALLOCA(fa->env, unsigned short, state->nstr);
     }
     p = state->trans = IALLOC(fa->env, char, 2 * 256);
     state->ntrans = fa->ecnum;
@@ -1567,12 +1567,12 @@ dfastate *state;
     }
 
     if (state->nstr != 0) {
-	AFREE(newstr);
+	IFREEA(fa->env, newstr);
     }
     if (state->nposn != 0) {
-	AFREE(newposn);
+	IFREEA(fa->env, newposn);
     }
-    AFREE(cset - ((Uint) state->nstr << 3));
+    IFREEA(fa->env, cset - ((Uint) state->nstr << 3));
 
     fa->modified = TRUE;
     fa->nexpanded++;

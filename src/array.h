@@ -20,9 +20,8 @@ extern void		arr_freelist	P((lpcenv*, array*));
 extern void		arr_freeall	P((lpcenv*));
 
 extern struct _arrmerge_ *arr_merge	P((lpcenv*));
-extern Uint		arr_put		P((lpcenv*, struct _arrmerge_*, array*,
-					   Uint));
-extern void		arr_clear	P((lpcenv*, struct _arrmerge_*));
+extern Uint		arr_put		P((struct _arrmerge_*, array*, Uint));
+extern void		arr_clear	P((struct _arrmerge_*));
 
 extern struct _abchunk_*arr_backup	P((lpcenv*, struct _abchunk_*, array*));
 extern void		arr_commit	P((lpcenv*, struct _abchunk_*,

@@ -193,7 +193,7 @@ int size;
 	/* replace old stack */
 	if (f->sos) {
 	    /* stack on stack: alloca'd */
-	    AFREE(f->stack);
+	    IFREEA(f->env, f->stack);
 	    f->sos = FALSE;
 	} else if (f->stack != f->env->ie->stack) {
 	    IFREE(f->env, f->stack);
@@ -561,7 +561,7 @@ register int inherit, index;
 	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
     if (f->lwobj == (array *) NULL) {
-	i_push_value(f, d_get_variable(f->data, inherit + index));
+	i_push_value(f, &d_get_variables(f->data)[inherit + index]);
     } else {
 	i_push_value(f, &f->lwobj->elts[2 + inherit + index]);
     }
@@ -583,7 +583,7 @@ int index, vtype;
     if (f->lwobj == (array *) NULL) {
 	(--f->sp)->type = T_LVALUE;
 	f->sp->oindex = vtype;
-	f->sp->u.lval = d_get_variable(f->data, inherit + index);
+	f->sp->u.lval = &d_get_variables(f->data)[inherit + index];
     } else {
 	(--f->sp)->type = T_ALVALUE;
 	f->sp->oindex = vtype;
@@ -1208,7 +1208,7 @@ register value *sp;
 	}
 	if (f->sos) {
 	    /* stack on stack */
-	    AFREE(f->stack);
+	    IFREEA(f->env, f->stack);
 	} else if (f->oindex != OBJ_NONE) {
 	    IFREE(f->env, f->stack);
 	}
@@ -2058,7 +2058,7 @@ int funci;
 	/* create new local stack */
 	f.argp = f.sp;
 	FETCH2U(pc, n);
-	f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+	f.stack = f.lip = IALLOCA(f.env, value, n + MIN_STACK + EXTRA_STACK);
 	f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
 	f.sos = TRUE;
 
@@ -2096,7 +2096,7 @@ int funci;
 	i_pop(&f, f.fp - f.sp);
 	if (f.sos) {
 		/* still alloca'd */
-	    AFREE(f.stack);
+	    IFREEA(f.env, f.stack);
 	} else {
 	    /* extended and malloced */
 	    IFREE(f.env, f.stack);
@@ -2536,9 +2536,7 @@ register lpcenv *env;
     f = env->ie->cframe;
     if (f->stack != env->ie->stack) {
 	IFREE(env, f->stack);
-	f->fp = f->sp = env->ie->stack + MIN_STACK;
 	f->stack = f->lip = env->ie->stack;
+	f->fp = f->sp = f->stack + MIN_STACK;
     }
-
-    f->rlim = &env->ie->rlim;
 }

@@ -1548,7 +1548,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = ALLOCA(Int, size);
+    switch_table = CALLOCA(Int, size);
     i = 1;
     do {
 	switch_table[i++] = m->l.left->l.number;
@@ -1580,7 +1580,7 @@ register node *n;
     if (switch_table[0] > 0) {
 	output("sw%d: ;\n", (int) switch_table[0]);
     }
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 
@@ -1608,7 +1608,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = ALLOCA(Int, size);
+    switch_table = CALLOCA(Int, size);
     output("{\nstatic Int swtab[] = {\n");
     outcount = 0;
     i = 1;
@@ -1646,7 +1646,7 @@ register node *n;
     if (switch_table[0] > 0) {
 	output("sw%d: ;\n", (int) switch_table[0]);
     }
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 
@@ -1679,7 +1679,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = ALLOCA(Int, size);
+    switch_table = CALLOCA(Int, size);
     output(";\n{\nstatic char swtab[] = {\n");
     outcount = 0;
     i = 1;
@@ -1715,7 +1715,7 @@ register node *n;
     cg_stmt(n->r.right->r.right);
 
     output("}\n}\n");
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 

@@ -94,18 +94,18 @@ data.o: parser/parse.h
 interpret.o config.o dgd.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h scheduler.h
-error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
+error.o str.o array.o object.o sdata.o data.o path.o: str.h array.h object.h
+comm.o editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
 array.o call_out.o interpret.o path.o config.o dgd.o: xfloat.h
-error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-interpret.o config.o dgd.o: interpret.h
-error.o str.o array.o object.o data.o path.o editor.o comm.o call_out.o: data.h
-interpret.o: data.h
-config.o dgd.o: data.h
+error.o array.o object.o sdata.o data.o path.o editor.o comm.o: interpret.h
+call_out.o interpret.o config.o dgd.o: interpret.h
+error.o str.o array.o object.o sdata.o data.o path.o editor.o comm.o: data.h
+call_out.o interpret.o config.o dgd.o: data.h
+object.o sdata.o data.o config.o: sdata.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
 editor.o config.o dgd.o: editor.h
-call_out.o config.o dgd.o: call_out.h
+data.o call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o dgd.o: comm.h
 config.o: version.h

@@ -91,7 +91,6 @@ register frame *f;
 FUNCDEF("save_object", kf_save_object, pt_save_object)
 # else
 typedef struct {
-    lpcenv *env;		/* LPC execution environment */
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
@@ -187,7 +186,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->env, x->merge, a, x->narrays);
+    i = arr_put(x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
 	sprintf(buf, "#%lu", (unsigned long) i);
@@ -257,7 +256,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->env, x->merge, a, x->narrays);
+    i = arr_put(x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
 	sprintf(buf, "@%lu", (unsigned long) i);
@@ -390,7 +389,6 @@ register frame *f;
      * existing old instance will not be lost if something goes wrong.
      */
     i_add_ticks(f, 2000);	/* arbitrary */
-    x.env = f->env;
     strcpy(tmp, file);
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
@@ -399,7 +397,7 @@ register frame *f;
     if (x.fd < 0) {
 	error(f->env, "Cannot create temporary save file \"/%s\"", tmp);
     }
-    x.buffer = ALLOCA(char, BUF_SIZE);
+    x.buffer = IALLOCA(f->env, char, BUF_SIZE);
     x.bufsz = 0;
 
     ctrl = f->ctrl;
@@ -408,7 +406,7 @@ register frame *f;
     if (f->lwobj != (array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
-	var = d_get_variable(f->data, 0);
+	var = d_get_variables(f->data);
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -461,15 +459,15 @@ register frame *f;
 	}
     }
 
-    arr_clear(f->env, x.merge);
+    arr_clear(x.merge);
     if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
-	AFREE(x.buffer);
+	IFREEA(f->env, x.buffer);
 	P_unlink(tmp);
 	error(f->env, "Cannot write to temporary save file \"/%s\"", tmp);
     }
     P_close(x.fd);
-    AFREE(x.buffer);
+    IFREEA(f->env, x.buffer);
 
     P_unlink(file);
     if (P_rename(tmp, file) < 0) {
@@ -920,7 +918,7 @@ register frame *f;
 	P_close(fd);
 	return 0;
     }
-    buffer = ALLOCA(char, sbuf.st_size + 1);
+    buffer = IALLOCA(f->env, char, sbuf.st_size + 1);
     if (buffer == (char *) NULL) {
 	buffer = IALLOC(f->env, char, sbuf.st_size + 1);
 	onstack = FALSE;
@@ -931,7 +929,7 @@ register frame *f;
 	/* read failed (should never happen, but...) */
         P_close(fd);
 	if (onstack) {
-	    AFREE(buffer);
+	    IFREEA(f->env, buffer);
 	} else {
 	    IFREE(f->env, buffer);
 	}
@@ -948,7 +946,7 @@ register frame *f;
     if (f->lwobj != (array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
-	var = d_get_variable(data, 0);
+	var = d_get_variables(data);
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -982,7 +980,7 @@ register frame *f;
 	/* error; clean up */
 	ac_clear(&x);
 	if (onstack) {
-	    AFREE(buffer);
+	    IFREEA(f->env, buffer);
 	} else {
 	    IFREE(f->env, buffer);
 	}
@@ -1087,7 +1085,7 @@ register frame *f;
 		    ec_pop(f->env);
 		    ac_clear(&x);
 		    if (onstack) {
-			AFREE(buffer);
+			IFREEA(f->env, buffer);
 		    } else {
 			IFREE(f->env, buffer);
 		    }
@@ -1568,7 +1566,7 @@ register frame *f;
 	*pat++ = '\0';
     }
 
-    ftable = ALLOCA(fileinfo, ftabsz = FILEINFO_CHUNK);
+    ftable = IALLOCA(f->env, fileinfo, ftabsz = FILEINFO_CHUNK);
     nfiles = 0;
     if (strpbrk(pat, "?*[\\") == (char *) NULL &&
 	getinfo(f->env, file, pat, &ftable[0])) {
@@ -1589,10 +1587,11 @@ register frame *f;
 		    if (nfiles == ftabsz) {
 			fileinfo *tmp;
 
-			tmp = ALLOCA(fileinfo, ftabsz + FILEINFO_CHUNK);
+			tmp = IALLOCA(f->env, fileinfo,
+				      ftabsz + FILEINFO_CHUNK);
 			memcpy(tmp, ftable, ftabsz * sizeof(fileinfo));
 			ftabsz += FILEINFO_CHUNK;
-			AFREE(ftable);
+			IFREEA(f->env, ftable);
 			ftable = tmp;
 		    }
 		    ftable[nfiles++] = finf;
@@ -1631,7 +1630,7 @@ register frame *f;
 	}
 	ftable -= nfiles;
     }
-    AFREE(ftable);
+    IFREEA(f->env, ftable);
 
     return 0;
 }

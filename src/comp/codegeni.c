@@ -1504,7 +1504,7 @@ register node *n;
     code_byte(sz);
 
     table = switch_table;
-    switch_table = ALLOCA(case_label, size);
+    switch_table = CALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
@@ -1546,7 +1546,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 
@@ -1585,7 +1585,7 @@ register node *n;
     code_byte(sz);
 
     table = switch_table;
-    switch_table = ALLOCA(case_label, size);
+    switch_table = CALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
@@ -1644,7 +1644,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 
@@ -1681,7 +1681,7 @@ register node *n;
     code_word(size);
 
     table = switch_table;
-    switch_table = ALLOCA(case_label, size);
+    switch_table = CALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     if (m->l.left->type == nil_node) {
@@ -1720,7 +1720,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    AFREE(switch_table);
+    CFREEA(switch_table);
     switch_table = table;
 }
 

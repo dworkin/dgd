@@ -32,7 +32,6 @@ typedef struct {
     short type;			/* variable type */
 } var;
 
-struct _mempool_ *comppool;		/* compiler memory pool */
 static bchunk *blist;			/* list of all block chunks */
 static block *fblist;			/* list of free statement blocks */
 static block *thisblock;		/* current statement block */
@@ -264,6 +263,7 @@ typedef struct _context_ {
     struct _context_ *prev;		/* previous context */
 } context;
 
+struct _mempool_ *comppool;		/* compiler memory pool */
 static context *current;		/* current context */
 static char *auto_object;		/* auto object */
 static char *driver_object;		/* driver object */
@@ -278,6 +278,16 @@ static loop *switch_list;		/* list of nested switches */
 static node *case_list;			/* list of case labels */
 lpcenv *compenv;			/* compiler LPC environment */
 extern int nerrors;			/* # of errors during parsing */
+
+/*
+ * NAME:	compile->pool()
+ * DESCRIPTION:	set compiler memory pool
+ */
+void c_pool(pool)
+struct _mempool_ *pool;
+{
+    comppool = pool;
+}
 
 /*
  * NAME:	compile->init()
@@ -1286,7 +1296,7 @@ node *expr, *stmt;
 	    /*
 	     * get the labels in an array, and sort them
 	     */
-	    v = ALLOCA(node*, size);
+	    v = CALLOCA(node*, size);
 	    for (i = size, n = case_list; i > 0; n = n->l.left) {
 		if (n->r.right->l.left != (node *) NULL) {
 		    *v++ = n->r.right;
@@ -1369,7 +1379,7 @@ node *expr, *stmt;
 			 * convert range label switch to int label switch
 			 * by adding new labels
 			 */
-			w = ALLOCA(node*, cnt);
+			w = CALLOCA(node*, cnt);
 			for (i = size; i > 0; --i) {
 			    *w++ = *v;
 			    for (l = v[0]->l.left->l.number;
@@ -1382,7 +1392,7 @@ node *expr, *stmt;
 			    }
 			    v++;
 			}
-			AFREE(v - size);
+			CFREEA(v - size);
 			size = cnt;
 			v = w - size;
 		    }
@@ -1399,7 +1409,7 @@ node *expr, *stmt;
 		(*--v)->r.right->mod = i;
 		n = node_bin(N_PAIR, 0, v[0]->l.left, n);
 	    } while (--i > 0);
-	    AFREE(v);
+	    CFREEA(v);
 	    if (switch_list->dflt) {
 		/* add default case */
 		n = node_bin(N_PAIR, 0, (node *) NULL, n);

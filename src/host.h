@@ -40,9 +40,8 @@ typedef unsigned int Uint;
 # include <alloca.h>
 
 # define STRUCT_AL		4	/* define this if align(struct) > 2 */
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # define FS_BLOCK_SIZE		8192
 
@@ -91,9 +90,8 @@ typedef unsigned int Uint;
 # include <stdio.h>
 
 # define STRUCT_AL		4	/* define this if align(struct) > 2 */
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # define FS_BLOCK_SIZE		2048
 
@@ -122,8 +120,8 @@ typedef unsigned int Uint;
 # include "telnet.h"
 # endif
 
-# define ALLOCA(type, size)	ALLOC(type, size)
-# define AFREE(ptr)		FREE(ptr)
+# define ALLOCA(pool, type, sz)	ALLOC(pool, type, sz)
+# define FREEA(pool, mem)	FREE(pool, mem)
 
 # define FS_BLOCK_SIZE		2048
 
@@ -135,9 +133,8 @@ typedef unsigned int Uint;
 # define GENERIC_BSD
 
 # include <alloca.h>
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # endif	/* SUNOS4 */
 
@@ -147,9 +144,8 @@ typedef unsigned int Uint;
 # define GENERIC_SYSV
 
 # include <alloca.h>
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # include <sys/file.h>		/* for FNDELAY */
 
@@ -163,9 +159,8 @@ typedef unsigned int Uint;
 # define STRUCT_AL		8	/* define this if align(struct) > 2 */
 
 # include <alloca.h>
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # endif /* DECALPHA */
 
@@ -178,9 +173,8 @@ typedef unsigned int Uint;
 
 # define GENERIC_BSD
 
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # endif /* NETBSD || BSD386 */
 
@@ -189,9 +183,8 @@ typedef unsigned int Uint;
 
 # define GENERIC_SYSV
 
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
+# define ALLOCA(pool, type, sz)	((type *) alloca(sizeof(type) * (size_t) (sz)))
+# define FREEA(pool, mem)	/* on function return */
 
 # endif /* LINUX */
 
@@ -230,8 +223,8 @@ typedef unsigned int Uint;
 # define STRUCT_AL		4	/* define this if align(struct) > 2 */
 # endif
 # ifndef ALLOCA
-# define ALLOCA(type, size)	ALLOC(type, size)
-# define AFREE(ptr)		FREE(ptr)
+# define ALLOCA(pool, type, sz)	ALLOC(pool, type, sz)
+# define FREEA(pool, mem)	FREE(pool, mem)
 # endif
 
 # define FS_BLOCK_SIZE		8192
@@ -276,8 +269,8 @@ typedef unsigned int Uint;
 # define STRUCT_AL		4	/* define this if align(struct) > 2 */
 # endif
 # ifndef ALLOCA
-# define ALLOCA(type, size)	ALLOC(type, size)
-# define AFREE(ptr)		FREE(ptr)
+# define ALLOCA(pool, type, sz)	ALLOC(pool, type, sz)
+# define FREEA(pool, mem)	FREE(pool, mem)
 # endif
 
 # define FS_BLOCK_SIZE		8192

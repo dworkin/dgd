@@ -565,7 +565,7 @@ static void do_define()
 		    break;
 		}
 		if (narg < MAX_NARG) {
-		    arg = ALLOCA(char, strlen(yytext) + 1);
+		    arg = LALLOCA(char, strlen(yytext) + 1);
 		    args[narg++] = strcpy(arg, yytext);
 		} else {
 		    error("too many parameters in macro definition");
@@ -594,7 +594,7 @@ static void do_define()
 		tk_setpp(FALSE);
 		while (narg > 0) {
 		    --narg;
-		    AFREE(args[narg]);
+		    LFREEA(args[narg]);
 		}
 		return;
 	    }
@@ -681,7 +681,7 @@ static void do_define()
 
     for (i = narg; i > 0; ) {
 	--i;
-	AFREE(args[i]);
+	LFREEA(args[i]);
     }
     i = s->len;
     pps_del(s);

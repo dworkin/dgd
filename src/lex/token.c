@@ -1106,7 +1106,7 @@ register macro *mc;
 			ibuffer->line = line;
 			errcount++;
 		    } else if (narg < mc->narg) {
-			arg = ALLOCA(char, s->len + 1);
+			arg = LALLOCA(char, s->len + 1);
 			args[narg] = strcpy(arg, ppbuf);
 		    }
 		    narg++;
@@ -1163,7 +1163,7 @@ register macro *mc;
 	    }
 	    while (narg > 0) {
 		--narg;
-		AFREE(args[narg]);
+		LFREEA(args[narg]);
 	    }
 	    pps_del(s);
 	    return 1;	/* skip this macro */
@@ -1266,7 +1266,7 @@ register macro *mc;
 	    narg = mc->narg;
 	    do {
 		--narg;
-		AFREE(args[narg]);
+		LFREEA(args[narg]);
 	    } while (narg > 0);
 
 	    narg = s->len;	/* so s can be deleted before the push */

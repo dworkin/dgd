@@ -20,6 +20,7 @@ typedef struct _strhchunk_ {
 } strhchunk;
 
 typedef struct _strmerge_ {
+    lpcenv *env;		/* LPC environment */
     hashtab *ht;		/* string merge table */
     strh **slink;		/* linked list of merged strings */
     strhchunk *shlist;		/* list of all strh chunks */
@@ -91,6 +92,7 @@ lpcenv *env;
     register strmerge *merge;
 
     merge = IALLOC(env, strmerge, 1);
+    merge->env = env;
     merge->ht = ht_new(env->mp, STRMERGETABSZ, STRMERGEHASHSZ);
     merge->slink = (strh **) NULL;
     merge->shlist = (strhchunk *) NULL;
@@ -103,8 +105,7 @@ lpcenv *env;
  * NAME:	string->put()
  * DESCRIPTION:	put a string in a string merge table
  */
-Uint str_put(env, merge, str, n)
-lpcenv *env;
+Uint str_put(merge, str, n)
 register strmerge *merge;
 register string *str;
 register Uint n;
@@ -127,7 +128,7 @@ register Uint n;
 	    if (merge->strhchunksz == STR_CHUNK) {
 		register strhchunk *l;
 
-		l = IALLOC(env, strhchunk, 1);
+		l = IALLOC(merge->env, strhchunk, 1);
 		l->next = merge->shlist;
 		merge->shlist = l;
 		merge->strhchunksz = 0;
@@ -153,8 +154,7 @@ register Uint n;
  * NAME:	string->clear()
  * DESCRIPTION:	clear a string merge table
  */
-void str_clear(env, merge)
-register lpcenv *env;
+void str_clear(merge)
 strmerge *merge;
 {
     register strh **h;
@@ -167,17 +167,17 @@ strmerge *merge;
 	*h = (strh *) NULL;
 	h = f->link;
     }
-    ht_del(env->mp, merge->ht);
+    ht_del(merge->env->mp, merge->ht);
 
     for (l = merge->shlist; l != (strhchunk *) NULL; ) {
 	register strhchunk *f;
 
 	f = l;
 	l = l->next;
-	IFREE(env, f);
+	IFREE(merge->env, f);
     }
 
-    IFREE(env, merge);
+    IFREE(merge->env, merge);
 }
 
 

@@ -83,6 +83,6 @@ extern void	  o_clean		P((void));
 extern uindex	  o_count		P((lpcenv*));
 extern bool	  o_dump		P((int));
 extern void	  o_restore		P((lpcenv*, int, unsigned int));
-extern void	  o_conv		P((void));
+extern void	  o_conv		P((lpcenv*));
 
 extern object    *otable;

@@ -820,7 +820,7 @@ register unsigned short n;
     /*
      * check hash table
      */
-    shifts = ALLOCA(char, j = (Uint) 4 * n + 7);
+    shifts = IALLOCA(lr->env, char, j = (Uint) 4 * n + 7);
     p = shifts + 5;
     *p++ = n >> 8;
     *p++ = n;
@@ -834,7 +834,7 @@ register unsigned short n;
 		 j);
     if (sl->shifts != NOSHIFT) {
 	/* same as before */
-	AFREE(shifts);
+	IFREEA(lr->env, shifts);
 	p = lr->shtab + sl->shifts;
 	*check = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	return ((Int) SCHAR(p[2]) << 16) + ((UCHAR(p[3]) << 8) + UCHAR(p[4]));
@@ -851,10 +851,10 @@ register unsigned short n;
     lr->nshift += j;
     lr->tmpsize += j;
     memcpy(lr->shtab + sl->shifts, shifts, j);
-    AFREE(shifts);
+    IFREEA(lr->env, shifts);
 
     /* create offset table */
-    offstab = ALLOCA(Uint, n);
+    offstab = IALLOCA(lr->env, Uint, n);
     for (i = 0; i < n; i++) {
 	offstab[i] = from[i] * 2;
     }
@@ -908,7 +908,7 @@ next:
 	    goto next;
 	}
     }
-    AFREE(offstab);
+    IFREEA(lr->env, offstab);
 
     /* free slots found: adjust spread */
     if (i + range > lr->spread) {
@@ -978,11 +978,11 @@ srpstate *state;
     }
 
     n = lr->ntoken + lr->nprod;
-    itemtab = ALLOCA(item*, n);
+    itemtab = IALLOCA(lr->env, item*, n);
     memset(itemtab, '\0', n * sizeof(item*));
-    symbols = ALLOCA(unsigned short, n);
-    targets = ALLOCA(unsigned short, n);
-    tokens = ALLOCA(unsigned short, lr->ntoken);
+    symbols = IALLOCA(lr->env, unsigned short, n);
+    targets = IALLOCA(lr->env, unsigned short, n);
+    tokens = IALLOCA(lr->env, unsigned short, lr->ntoken);
     nred = nshift = ngoto = 0;
 
     /*
@@ -1064,7 +1064,7 @@ srpstate *state;
      */
     qsort(symbols, ngoto, sizeof(unsigned short), cmp);
     memcpy(symbols + ngoto, tokens, nshift * sizeof(unsigned short));
-    AFREE(tokens);
+    IFREEA(lr->env, tokens);
     tokens = symbols + ngoto;
     qsort(tokens, nshift, sizeof(unsigned short), cmp);
 
@@ -1122,9 +1122,9 @@ srpstate *state;
 	dummy = -258;
 	state->gtoffset = srp_pack(lr, &dummy, symbols, targets, ngoto);
     }
-    AFREE(targets);
-    AFREE(symbols);
-    AFREE(itemtab);
+    IFREEA(lr->env, targets);
+    IFREEA(lr->env, symbols);
+    IFREEA(lr->env, itemtab);
 
     lr->nexpanded++;
     return state;

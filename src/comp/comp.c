@@ -417,7 +417,8 @@ object *obj;
 {
 }
 
-bool pc_dump(fd)
+bool pc_dump(env, fd)
+lpcenv *env;
 int fd;
 {
     return TRUE;
@@ -848,7 +849,8 @@ long co_swaprate5()
  * NAME:	call_out->dump()
  * DESCRIPTION:	pretend to dump callout table
  */
-bool co_dump(fd)
+bool co_dump(env, fd)
+lpcenv *env;
 int fd;
 {
     return FALSE;

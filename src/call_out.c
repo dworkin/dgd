@@ -64,7 +64,7 @@ unsigned int max;
 	cotab[0].time = 0;	/* sentinel for the heap */
 	cotab++;
 	flist = 0;
-	if (P_time() >> 24 <= 1) {
+	if ((P_time() >> 24) <= 1) {
 	    message("Config error: bad time (early seventies)\012");	/* LF */
 	    return FALSE;
 	}
@@ -641,6 +641,9 @@ static void co_expire()
     unsigned short m;
 
     if (P_timeout(&t, &m)) {
+	if (timestamp < atimeout) {
+	    timestamp = atimeout - 1;
+	}
 	while (timestamp < t) {
 	    timestamp++;
 
@@ -851,7 +854,8 @@ static char dco_layout[] = "uui";
  * NAME:	call_out->dump()
  * DESCRIPTION:	dump callout table
  */
-bool co_dump(fd)
+bool co_dump(env, fd)
+lpcenv *env;
 int fd;
 {
     dump_header dh;
@@ -879,7 +883,7 @@ int fd;
     /* copy callouts */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	dc = ALLOCA(dump_callout, n);
+	dc = IALLOCA(env, dump_callout, n);
 	for (co = cotab, n = queuebrk; n != 0; co++, --n) {
 	    dc->handle = co->handle;
 	    dc->oindex = co->oindex;
@@ -922,7 +926,7 @@ int fd;
 	   P_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 
     if (n != 0) {
-	AFREE(dc);
+	IFREEA(env, dc);
     }
 
     if (nzero != 0) {
@@ -961,7 +965,7 @@ register Uint t;
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	dc = ALLOCA(dump_callout, n);
+	dc = IALLOCA(env, dump_callout, n);
 	conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
     }
     conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
@@ -993,7 +997,7 @@ register Uint t;
 	    dc++;
 	}
 	dc -= n;
-	AFREE(dc);
+	IFREEA(env, dc);
     }
 
     /* cycle around cyclic buffer */

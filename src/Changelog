@@ -1490,3 +1490,6 @@ DGD 1.3
  - The editor could erroneously allocate dynamic instead of static memory.
  - Static creator functions were not called in clones or light-weight objects.
  - Removed even more global variables.
+ - And yet more.
+ - Fixed a spurious pause that would occur if the first callout started after a
+   cold boot had a delay of 0.

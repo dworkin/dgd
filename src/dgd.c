@@ -104,7 +104,7 @@ void endthread()
     ed_clear();
     ec_clear(env);
 
-    co_swapcount(d_swapout(fragment));
+    co_swapcount(d_swapout(sch_env(), fragment));
 
     if (stop) {
 	if (ext_finish != (void (*) P((void))) NULL) {
@@ -122,7 +122,7 @@ void endthread()
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
-	d_swapout(1);
+	d_swapout(sch_env(), 1);
 	arr_freeall(env);
 	m_purge();
 	swap = FALSE;
@@ -132,7 +132,7 @@ void endthread()
 	/*
 	 * create a state dump
 	 */
-	d_swapsync();
+	d_swapsync(sch_env());
 	conf_dump();
 	dump = FALSE;
     }

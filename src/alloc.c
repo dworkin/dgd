@@ -924,7 +924,7 @@ void m_purge()
 		n -= SIZETSIZE;
 	    }
 	    sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
-		    (unsigned long) (plist->hlist + 1), n, pool->hlist->file,
+		    (unsigned long) (pool->hlist + 1), n, pool->hlist->file,
 		    pool->hlist->line);
 	    if (n > 26) {
 		n = 26;
