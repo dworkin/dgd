@@ -249,7 +249,8 @@ int len;
 	if (len == 0) {
 	    return 0;	/* send_message("") can be used to flush buffer */
 	}
-	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
+	while ((size=write(conn->fd, buf, len)) < 0 && errno == EINTR) ;
+	if (size < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
 	    FD_CLR(conn->fd, &readfds);

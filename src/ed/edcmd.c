@@ -999,7 +999,8 @@ char *command;
 		}
 		break;
 	    }
-	    if (cb->last > cb->edbuf->lines || cb->a_addr > cb->edbuf->lines) {
+	    if (cb->first > cb->edbuf->lines || cb->last > cb->edbuf->lines ||
+		cb->a_addr > cb->edbuf->lines) {
 		error("Not that many lines in buffer");
 	    }
 	    if (cb->last >= 0 && cb->last < cb->first) {
