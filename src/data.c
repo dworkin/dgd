@@ -2316,7 +2316,7 @@ register unsigned short n;
     while (n > 0) {
 	if (T_INDEXED(val->type)) {
 	    register array *a;
-	    register Uint i;
+	    register Uint i, j;
 
 	    a = val->u.array;
 	    if (a->primary->data != data) {
@@ -2359,7 +2359,7 @@ register unsigned short n;
 			     */
 			    v = a->elts = ALLOC(value, a->size);
 			    w = d_get_elts(val->u.array);
-			    for (i = a->size; i > 0; --i) {
+			    for (j = a->size; j > 0; --j) {
 				i_ref_value(w);
 				*v++ = *w++;
 			    }
@@ -2370,6 +2370,7 @@ register unsigned short n;
 			 */
 			arr_del(val->u.array);
 			arr_ref(val->u.array = a);
+			narr++;
 		    }
 
 		    /*
@@ -2377,7 +2378,6 @@ register unsigned short n;
 		     */
 		    if (i >= itabsz) {
 			array **tmp;
-			register Uint j;
 
 			/*
 			 * increase size of itab
@@ -2390,7 +2390,7 @@ register unsigned short n;
 			itabsz = j;
 		    }
 		    arr_put(itab[i] = a);
-		    narr += 2;	/* 1 old, 1 new */
+		    narr++;
 
 		    if (a->size > 0) {
 			/*
