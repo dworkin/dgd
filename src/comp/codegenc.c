@@ -25,6 +25,18 @@ static int nvars;		/* number of local variables */
 static int tvc;			/* tmpval count */
 
 /*
+ * NAME:	tmpval()
+ * DESCRIPTION:	return a new temporary value index
+ */
+static int tmpval()
+{
+    if (tvc == NTMPVAL - 1) {
+	yyerror("out of temporary values (%d)", NTMPVAL);
+    }
+    return tvc++;
+}
+
+/*
  * NAME:	comma()
  * DESCRIPTION:	output a comma
  */
@@ -125,18 +137,6 @@ node *n;
 	cg_lvalue(n);
 	output(", i_fetch(), ");
     }
-}
-
-/*
- * NAME:	tmpval()
- * DESCRIPTION:	return a new temporary value index
- */
-static int tmpval()
-{
-    if (tvc == NTMPVAL - 1) {
-	yyerror("too many temporary values (%d)", tvc + 1);
-    }
-    return tvc++;
 }
 
 /*
@@ -740,14 +740,21 @@ register int state;
 		output("0");
 	    }
 	} else {
-	    output("(!ec_push() ? (");
+	    if (c_autodriver() == O_DRIVER) {
+		i = tmpval();
+		output("tv[%d] = i_reset_cost(), ", i);
+	    }
+	    output("(pre_catch(), !ec_push() ? (");
 	    cg_expr(n->l.left, POP);
 	    if (state == PUSH) {
-		output(", PUSH_NUMBER 0) : ");
-		output("(p = errormesg(), (--sp)->type = T_STRING, ");
+		output(", ec_pop(), post_catch(), PUSH_NUMBER 0) : (");
+		output("post_catch(), p=errormesg(), (--sp)->type = T_STRING,");
 		output("str_ref(sp->u.string = str_new(p, (long)strlen(p)))))");
 	    } else {
-		output(", 0) : 0)");
+		output(", ec_pop(), 0) : 0, post_catch(), 0)");
+	    }
+	    if (c_autodriver() == O_DRIVER) {
+		output(", exec_cost = tv[%d], 0", i);
 	    }
 	}
 	return;
@@ -793,23 +800,21 @@ register int state;
 	    }
 	    break;
 
-	case LFCALL:
-	    output("i_funcall((object *) NULL, %d, %d, %d, %d)",
-		   ((int) n->r.number >> 16) & 0xff,
-		   ((int) n->r.number >> 8) & 0xff,
-		   ((int) n->r.number) & 0xff, i);
-	    break;
-
 	case DFCALL:
-	    output("i_funcall((object *) NULL, 0, %d, %d, %d)",
-		   ((int) n->r.number >> 8) & 0xff,
-		   ((int) n->r.number) & 0xff, i);
+	    if (((n->r.number >> 8) & 0xff) == 0) {
+		output("i_funcall((object *) NULL, 0, %d, %d)",
+		       ((int) n->r.number) & 0xff, i);
+	    } else {
+		output("i_funcall((object *) NULL, i_pindex() + %d, %d, %d)",
+		       ((int) n->r.number >> 8) & 0xff,
+		       ((int) n->r.number) & 0xff, i);
+	    }
 	    break;
 
 	case FCALL:
 	    output("p = i_foffset(%u), ", (unsigned short) n->r.number);
-	    output("i_funcall((object *) NULL, 0, UCHAR(p[0]), UCHAR(p[1]),");
-	    output(" %d)", i);
+	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %d)",
+		   i);
 	    break;
 	}
 	break;
@@ -983,13 +988,17 @@ register int state;
 	break;
 
     case N_QUEST:
-	output("(");
-	cg_expr(n->l.left, TRUTHVAL);
-	output(") ? (");
-	cg_expr(n->r.right->l.left, state);
-	output(", 0) : (");
-	cg_expr(n->r.right->r.right, state);
-	output(", 0)");
+	if (state == INTVAL || state == TRUTHVAL) {
+	    cg_iexpr(n);
+	} else {
+	    output("(");
+	    cg_expr(n->l.left, TRUTHVAL);
+	    output(") ? (");
+	    cg_expr(n->r.right->l.left, state);
+	    output(", 0) : (");
+	    cg_expr(n->r.right->r.right, state);
+	    output(", 0)");
+	}
 	return;
 
     case N_RANGE:
@@ -1161,7 +1170,7 @@ char c;
 	output("\n");
 	outcount = 0;
     }
-    output("%d, ", UCHAR(c));
+    output("%d, ", c);
     outcount++;
 }
 
@@ -1335,9 +1344,9 @@ register node *n;
 
 	switch_table[i] = i;
 	l = ctrl_dstring(m->l.left->l.string);
-	outchar((int) (l >> 16));
-	outchar((int) (l >> 8));
-	outchar((int) l);
+	outchar((char) (l >> 16));
+	outchar((char) (l >> 8));
+	outchar((char) l);
 	m = m->r.right;
     } while (++i < size);
     output("\n};\n");
@@ -1535,8 +1544,8 @@ unsigned short depth, *size;
     prog[3] = 0;
     prog[4] = 0;
 
-    output("\nstatic void func%u()\n{\nvalue *fp = sp;\nchar *p;\n",
-	   nfuncs, nvar);
+    output("\nstatic void func%u()\n{\nvalue *fp = sp; char *p; Int tv[%d];\n",
+	   nfuncs, NTMPVAL);
     j = 0;
     for (i = 0; i < nvar; i++) {
 	if (c_vtype(i) == T_NUMBER) {
