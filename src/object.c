@@ -113,15 +113,12 @@ register object *o;
 	    return;
 	}
 	if (o->ctrl == (control *) NULL) {
-	    o->ctrl = d_load_control(o->cfirst);
+	    o->ctrl = d_load_control(o);
 	}
 	/* remove references to inherited objects too */
 	inh = o->ctrl->inherits;
-	for (i = o->ctrl->ninherits; i > 0; --i) {
-	    /*
-	     * NOTE: this will call o_delete for this object again,
-	     * but now the u.ref field will become -1
-	     */
+	i = o->ctrl->ninherits;
+	while (--i > 0) {
 	    o_delete((inh++)->obj);
 	}
     } else {
@@ -197,9 +194,6 @@ char *name;
 {
     hte **h;
 
-    if (strchr(name, '#') != (char *) NULL) {
-	error("Illegal object name");
-    }
     if (o_find(name) != (object *) NULL) {
 	error("Rename to existing object");
     }
@@ -286,7 +280,7 @@ object *obj;
 	o = o->u.master;	/* get control block of master object */
     }
     if (o->ctrl == (control *) NULL) {
-	o->ctrl = d_load_control(o->cfirst);	/* reload */
+	o->ctrl = d_load_control(o);	/* reload */
     } else {
 	d_ref_control(o->ctrl);
     }
@@ -306,7 +300,7 @@ register object *o;
 	    o->data = d_new_dataspace(o);
 	} else {
 	    /* load dataspace block */
-	    o->data = d_load_dataspace(o, o->dfirst);
+	    o->data = d_load_dataspace(o);
 	}
     } else {
 	d_ref_dataspace(o->data);
@@ -326,7 +320,7 @@ void o_clean()
 	/* free dataspace and control block (if they exist) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
-	    o->data = d_load_dataspace(o, o->dfirst);
+	    o->data = d_load_dataspace(o);
 	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
@@ -353,4 +347,182 @@ void o_clean()
 uindex o_count()
 {
     return nobjects - nfreeobjs;
+}
+
+
+typedef struct {
+    object *otab;	/* object table pointer */
+    object *free_obj;	/* free object list */
+    uindex nobjects;	/* # objects */
+    uindex nfreeobjs;	/* # free objects */
+    Int count;		/* object count */
+    long onamelen;	/* length of all object names */
+} dump_header;
+
+# define CHUNKSZ	16384
+
+/*
+ * NAME:	object->dump()
+ * DESCRIPTION:	dump the object table
+ */
+bool o_dump(fd)
+int fd;
+{
+    register uindex i;
+    register object *o;
+    register int len, buflen;
+    dump_header dh;
+    char buffer[CHUNKSZ];
+
+    /* prepare header */
+    dh.otab = otab;
+    dh.free_obj = free_obj;
+    dh.nobjects = nobjects;
+    dh.nfreeobjs = nfreeobjs;
+    dh.count = count;
+    dh.onamelen = 0;
+    for (i = nobjects, o = otab; i > 0; --i, o++) {
+	if (o->count != 0 && o->chain.name != (char *) NULL) {
+	    dh.onamelen += strlen(o->chain.name) + 1;
+	}
+    }
+
+    /* write header and objects */
+    if (write(fd, &dh, sizeof(dump_header)) < 0 ||
+	write(fd, otab, nobjects * sizeof(object)) < 0) {
+	return FALSE;
+    }
+
+    /* write object names */
+    buflen = 0;
+    for (i = nobjects, o = otab; i > 0; --i, o++) {
+	if (o->count != 0 && o->chain.name != (char *) NULL) {
+	    len = strlen(o->chain.name) + 1;
+	    if (buflen + len > CHUNKSZ) {
+		if (write(fd, buffer, buflen) < 0) {
+		    return FALSE;
+		}
+		buflen = 0;
+	    }
+	    memcpy(buffer + buflen, o->chain.name, len);
+	    buflen += len;
+	}
+    }
+    return (buflen == 0 || write(fd, buffer, buflen) >= 0);
+}
+
+/*
+ * NAME:	object->restore()
+ * DESCRIPTION:	restore the object table
+ */
+void o_restore(fd, t)
+int fd;
+long t;
+{
+    register uindex i;
+    register object *o;
+    register int len, buflen;
+    register char *p;
+    register hte **h;
+    dump_header dh;
+    long offset, onamelen;
+    char buffer[CHUNKSZ];
+
+    /*
+     * Free object names of precompiled objects.  The restored objects and
+     * names should be identical.
+     */
+    for (i = nobjects, o = otab; i > 0; --i, o++) {
+	*ht_lookup(htab, o->chain.name) = o->chain.next;
+	FREE(o->chain.name);
+    }
+
+    /* deal with header */
+    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+	dh.nobjects > otabsize ||
+	read(fd, otab, dh.nobjects * sizeof(object)) !=
+						dh.nobjects * sizeof(object)) {
+	fatal("cannot restore objects");
+    }
+    offset = (long) otab - (long) dh.otab;
+    if (dh.free_obj == (object *) NULL) {
+	free_obj = (object *) NULL;
+    } else {
+	free_obj = (object *) ((char *) dh.free_obj + offset);
+    }
+    nobjects = dh.nobjects;
+    nfreeobjs = dh.nfreeobjs;
+    count = dh.count;
+    onamelen = dh.onamelen;
+
+    /* read object names, and patch all objects and control blocks */
+    buflen = 0;
+    p = buffer;
+    for (i = nobjects, o = otab; i > 0; --i, o++) {
+	if (o->count != 0) {
+	    if (o->chain.name != (char *) NULL) {
+		/*
+		 * restore name
+		 */
+		if (buflen == 0 ||
+		    (char *) memchr(p, '\0', buflen) == (char *) NULL) {
+		    /* move remainder to beginning, and refill buffer */
+		    memcpy(buffer, p, buflen);
+		    p = buffer + buflen;
+		    buflen = ((onamelen > CHUNKSZ) ? CHUNKSZ : onamelen) -
+			     buflen;
+		    if (read(fd, p, buflen) != buflen) {
+			fatal("cannot restore object names");
+		    }
+		    onamelen -= buflen;
+		}
+		mstatic();
+		strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
+		mdynamic();
+		h = ht_lookup(htab, p);
+		o->chain.next = *h;
+		*h = (hte *) o;
+		p += len;
+		buflen -= len;
+	    }
+
+	    /* there are no user or editor objects after a restore */
+	    o->flags &= ~(O_USER | O_EDITOR);
+	} else if (!(o->flags & O_MASTER) || o->u.ref == 0) {
+	    /* free object slot */
+	    if (offset != 0 && o->chain.next != (hte *) NULL) {
+		/* patch free object list pointer */
+		o->chain.next = (hte *) ((char *) o->chain.next + offset);
+	    }
+	    continue;
+	}
+
+	if (offset != 0 && !(o->flags & O_COMPILED)) {
+	    if (o->flags & O_MASTER) {
+		/* patch inherits */
+		d_patch_ctrl(o->ctrl = d_load_control(o), offset);
+		d_swapout(1);
+	    } else {
+		/* patch master object reference */
+		o->u.master = (object *) ((char *) o->u.master + offset);
+	    }
+	}
+
+	/* check memory */
+	if (!mcheck()) {
+	    mpurge();
+	    mexpand();
+	}
+    }
+
+    /* patch all data blocks */
+    for (i = nobjects, o = otab; i > 0; --i, o++) {
+	if (o->count != 0) {
+	    if (o->dfirst != SW_UNUSED) {
+		/* patch call_outs */
+		d_patch_callout(o->data = d_load_dataspace(o), t);
+		d_swapout(1);
+	    }
+	}
+    }
 }
