@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "path.h"
@@ -11,6 +12,7 @@
 # include "ppcontrol.h"
 # include "node.h"
 # include "control.h"
+# include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
 
@@ -114,7 +116,7 @@ char *name;
 short type;
 {
     if (block_var(name) >= 0) {
-	yyerror("redeclaration of parameter %s", name);
+	c_error("redeclaration of parameter %s", name);
     } else {
 	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
@@ -132,9 +134,9 @@ char *name;
 short type;
 {
     if (block_var(name) >= thisblock->vindex) {
-	yyerror("redeclaration of local variable %s", name);
+	c_error("redeclaration of local variable %s", name);
     } else if (nvars == MAX_LOCALS) {
-	yyerror("too many local variables");
+	c_error("too many local variables");
     } else {
 	variables[nvars].name = name;
 	variables[nvars++].type = type;
@@ -284,7 +286,6 @@ bool flag;
     include = i;
     paths = p;
     typechecking = flag | cg_compiled();
-    ctrl_init(a, d);
 }
 
 /*
@@ -316,23 +317,28 @@ node *label;
     register object *o;
 
     if (strcmp(current->file, auto_object) == 0) {
-	yyerror("cannot inherit from auto object");
+	c_error("cannot inherit from auto object");
 	return TRUE;
     }
     if (file != auto_object) {
 	file = path_inherit(current->file, file);
 	if (file == (char *) NULL || file[0] == '\0') {
-	    yyerror("illegal inherit path");
+	    c_error("illegal inherit path");
 	    return TRUE;
 	}
 	if (strcmp(file, driver_object) == 0) {
 	    /* would mess up too many things */
-	    yyerror("illegal to inherit driver object");
+	    c_error("illegal to inherit driver object");
 	    return TRUE;
+	}
+	if (strcmp(current->file, driver_object) == 0 &&
+	    strcmp(file, auto_object) != 0) {
+	    /* driver object can only inherit the auto object */
+	    c_error("illegal inherit from driver object");
 	}
 	for (c = current; c != (context *) NULL; c = c->prev) {
 	    if (strcmp(file, c->file) == 0) {
-		yyerror("cycle in inheritance");
+		c_error("cycle in inheritance");
 		return TRUE;
 	    }
 	}
@@ -362,6 +368,7 @@ register char *file;
     context c;
     char file_c[STRINGSZ + 2];
     char errlog[STRINGSZ];
+    extern int yyparse P((void));
 
     if (recursion) {
 	error("Compilation within compilation");
@@ -379,7 +386,9 @@ register char *file;
     strcat(file_c, ".c");
 
     for (;;) {
-	if (c_autodriver() == 0) {
+	if (c_autodriver() != 0) {
+	    ctrl_init(auto_object, driver_object);
+	} else {
 	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
 		/*
 		 * (re)compile the driver object to do pathname translation
@@ -388,14 +397,18 @@ register char *file;
 		compile(driver_object);
 		current = &c;
 	    }
+	    ctrl_init(auto_object, driver_object);
 	    if (!c_inherit(auto_object, (node *) NULL)) {
 		/*
 		 * (re)compile auto object and inherit it
 		 */
+		ctrl_clear();
 		compile(auto_object);
+		ctrl_init(auto_object, driver_object);
 		c_inherit(auto_object, (node *) NULL);
 	    }
 	}
+
 	if (!pp_init(file_c, paths, 1)) {
 	    ctrl_clear();
 	    if (c_autodriver() == 0) {
@@ -415,8 +428,8 @@ register char *file;
 
 		    o = o_object(sp->oindex, sp->u.objcnt);
 		    sp++;
-		    if ((o->flags & O_AUTO) || strcmp(c.file, auto_object) == 0)
-		    {
+		    if ((o->flags & O_AUTO) ||
+			strcmp(c.file, auto_object) == 0) {
 			error("Illegal rename of auto object");
 		    }
 		    if ((o->flags & O_DRIVER) ||
@@ -439,12 +452,13 @@ register char *file;
 	}
 	if (!tk_include(include)) {
 	    pp_clear();
+	    ctrl_clear();
 	    error("Could not include \"/%s\"", include);
 	}
 
 	cg_init(c.prev != (context *) NULL);
 	if (ec_push()) {
-	    yyerror("error while compiling:");
+	    c_error("error while compiling:");
 	    recursion = FALSE;
 	    errorlog((char *) NULL);
 	    pp_clear();
@@ -541,14 +555,13 @@ int c_autodriver()
  * NAME:	revert_list()
  * DESCRIPTION:	revert a "linked list" of nodes
  */
-static node *revert_list(n, sep)
+static node *revert_list(n)
 register node *n;
-register short sep;
 {
     register node *m;
 
-    if (n != (node *) NULL && n->type == sep) {
-	while ((m=n->l.left)->type == sep) {
+    if (n != (node *) NULL && n->type == N_PAIR) {
+	while ((m=n->l.left)->type == N_PAIR) {
 	    /*
 	     * ((a, b), c) -> (a, (b, c))
 	     */
@@ -577,27 +590,30 @@ bool function;
 
     /* check for some errors */
     if (strcmp(str->text, "catch") == 0 || strcmp(str->text, "lock") == 0) {
-	yyerror("cannot redeclare %s()", str->text);
+	c_error("cannot redeclare %s()", str->text);
     }
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
-	yyerror("private contradicts nomask");
+	c_error("private contradicts nomask");
     }
     if ((type & T_TYPE) == T_INVALID) {
 	typechecked = FALSE;
 	type = T_MIXED;
 	if (typechecking) {
-	    yyerror("missing type for function %s", str->text);
+	    c_error("missing type for function %s", str->text);
 	}
     } else {
 	typechecked = TRUE;
 	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
-	    yyerror("invalid type for function %s (%s)", str->text,
-		    c_typename(type));
+	    c_error("invalid type for function %s (%s)", str->text,
+		    i_typename(type));
 	    type = T_MIXED;
 	}
     }
 
     /* handle function class and return type */
+    if (class & C_PRIVATE) {
+	class |= C_LOCAL;	/* private implies local */
+    }
     if (typechecked) {
 	class |= C_TYPECHECKED;
     }
@@ -607,13 +623,13 @@ bool function;
     /* handle function arguments */
     args = PROTO_ARGS(proto);
     nargs = 0;
-    formals = revert_list(formals, N_PAIR);
+    formals = revert_list(formals);
     while (formals != (node *) NULL) {
 	register node *arg;
 	register unsigned short t;
 
 	if (nargs == MAX_LOCALS) {
-	    yyerror("too many parameters in function %s", str->text);
+	    c_error("too many parameters in function %s", str->text);
 	    break;
 	}
 	if (formals->type == N_PAIR) {
@@ -626,19 +642,19 @@ bool function;
 	t = arg->mod;
 	if ((t & T_TYPE) == T_INVALID) {
 	    if (typechecked) {
-		yyerror("missing type for parameter %s", arg->l.string->text);
+		c_error("missing type for parameter %s", arg->l.string->text);
 	    }
 	    t = T_MIXED | (t & T_ELLIPSIS);
 	} else if ((t & T_TYPE) == T_VOID) {
-	    yyerror("invalid type for parameter %s (%s)", arg->l.string->text,
-		    c_typename(t & ~T_ELLIPSIS));
+	    c_error("invalid type for parameter %s (%s)", arg->l.string->text,
+		    i_typename(t & ~T_ELLIPSIS));
 	    t = T_MIXED | (t & T_ELLIPSIS);
 	}
 	*args++ = t;
 	nargs++;
 	if (t & T_ELLIPSIS) {
 	    if (!(class & C_VARARGS)) {
-		yyerror("ellipsis without varargs");
+		c_error("ellipsis without varargs");
 	    }
 	    t = (t & ~T_ELLIPSIS) + (1 << REFSHIFT);
 	    if ((t & T_REF) == 0) {
@@ -676,18 +692,18 @@ string *str;
 bool global;
 {
     if ((type & T_TYPE) == T_VOID) {
-	yyerror("invalid type for variable %s (%s)", str->text,
-		c_typename(type));
+	c_error("invalid type for variable %s (%s)", str->text,
+		i_typename(type));
 	type = T_MIXED;
     }
     if (global) {
 	if (class & C_NOMASK) {
-	    yyerror("invalid class for variable %s", str->text);
+	    c_error("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);
     } else {
 	if (class != 0) {
-	    yyerror("invalid class for variable %s", str->text);
+	    c_error("invalid class for variable %s", str->text);
 	}
 	block_vdef(str->text, type);
     }
@@ -704,7 +720,7 @@ bool global;
 {
     register node *n;
 
-    list = revert_list(list, N_PAIR);	/* for proper order of err mesgs */
+    list = revert_list(list);	/* for proper order of err mesgs */
     while (list != (node *) NULL) {
 	if (list->type == N_PAIR) {
 	    n = list->l.left;
@@ -737,6 +753,9 @@ node *n;
     c_decl_list(class, type, n, TRUE);
 }
 
+static string *fname;		/* name of current function */
+static unsigned short fline;	/* first line of function */
+
 /*
  * NAME:	compile->function()
  * DESCRIPTION:	create a function
@@ -749,299 +768,11 @@ register node *n;
 	ctrl_create(current->file);
 	seen_decls = TRUE;
     }
-    if (type & C_NOMASK) {
-	type |= C_LOCAL;
+    if (class & C_NOMASK) {
+	class |= C_LOCAL;	/* nomask implies local */
     }
-    c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right, TRUE);
-}
-
-/*
- * NAME:	max2()
- * DESCRIPTION:	return the maximum of two numbers
- */
-static unsigned short max2(a, b)
-unsigned short a, b;
-{
-    return (a > b) ? a : b;
-}
-
-/*
- * NAME:	max3()
- * DESCRIPTION:	return the maximum of three numbers
- */
-static unsigned short max3(a, b, c)
-register unsigned short a, b, c;
-{
-    return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
-}
-
-static unsigned short d_expr P((node*));
-
-/*
- * NAME:	depth->lvalue()
- * DESCRIPTION:	return the stack depth of an lvalue
- */
-static unsigned short d_lvalue(n)
-register node *n;
-{
-    if (n->type == N_CAST) {
-	n = n->l.left;
-    }
-    switch (n->type) {
-    case N_LOCAL:
-    case N_GLOBAL:
-	return 1;
-
-    case N_INDEX:
-	switch (n->l.left->type) {
-	case N_LOCAL:
-	case N_GLOBAL:
-	    return 1 + d_expr(n->r.right);
-
-	case N_INDEX:
-	    return max3(d_expr(n->l.left->l.left),
-			1 + d_expr(n->l.left->r.right),
-			2 + d_expr(n->r.right));
-
-	default:
-	    return max2(d_expr(n->l.left), 1 + d_expr(n->r.right));
-	}
-    }
-}
-
-/*
- * NAME:	depth->expr()
- * DESCRIPTION:	return the stack depth of an expression
- */
-static unsigned short d_expr(n)
-register node *n;
-{
-    register unsigned short d, i;
-
-    switch (n->type) {
-    case N_ADD:
-    case N_ADD_INT:
-    case N_AND:
-    case N_AND_INT:
-    case N_DIV:
-    case N_DIV_INT:
-    case N_EQ:
-    case N_EQ_INT:
-    case N_GE:
-    case N_GE_INT:
-    case N_GT:
-    case N_GT_INT:
-    case N_INDEX:
-    case N_LE:
-    case N_LE_INT:
-    case N_LSHIFT:
-    case N_LSHIFT_INT:
-    case N_LT:
-    case N_LT_INT:
-    case N_MOD:
-    case N_MOD_INT:
-    case N_MULT:
-    case N_MULT_INT:
-    case N_NE:
-    case N_NE_INT:
-    case N_OR:
-    case N_OR_INT:
-    case N_PAIR:
-    case N_RSHIFT:
-    case N_RSHIFT_INT:
-    case N_SUB:
-    case N_SUB_INT:
-    case N_XOR:
-    case N_XOR_INT:
-	return max2(d_expr(n->l.left), 1 + d_expr(n->r.right));
-
-    case N_ADD_EQ:
-    case N_ADD_EQ_INT:
-    case N_AND_EQ:
-    case N_AND_EQ_INT:
-    case N_DIV_EQ:
-    case N_DIV_EQ_INT:
-    case N_LSHIFT_EQ:
-    case N_LSHIFT_EQ_INT:
-    case N_MOD_EQ:
-    case N_MOD_EQ_INT:
-    case N_MULT_EQ:
-    case N_MULT_EQ_INT:
-    case N_OR_EQ:
-    case N_OR_EQ_INT:
-    case N_SUB_EQ:
-    case N_SUB_EQ_INT:
-    case N_XOR_EQ:
-    case N_XOR_EQ_INT:
-    case N_RSHIFT_EQ:
-    case N_RSHIFT_EQ_INT:
-	d = 4 + d_expr(n->r.right);
-	n = n->l.left;
-	if (n->type == N_CAST) {
-	    n = n->l.left;
-	}
-	return max2(d, 1 + d_lvalue(n));
-
-    case N_AGGR:
-	if (n->mod == T_MAPPING) {
-	    n = n->l.left;
-	    if (n == (node *) NULL) {
-		return 1;
-	    }
-
-	    d = 0;
-	    for (i = 0; n->type == N_COMMA; i += 2) {
-		d = max3(d, i + d_expr(n->r.right->r.right),
-			 i + 1 + d_expr(n->r.right->l.left));
-		n = n->l.left;
-	    }
-	    return max3(d, i + d_expr(n->r.right), i + 1 + d_expr(n->l.left));
-	} else {
-	    n = n->l.left;
-	    if (n == (node *) NULL) {
-		return 1;
-	    }
-
-	    d = 0;
-	    for (i = 0; n->type == N_COMMA; i++) {
-		d = max2(d, i + d_expr(n->r.right));
-		n = n->l.left;
-	    }
-	    return max2(d, i + d_expr(n));
-	}
-
-    case N_ASSIGN:
-	d = 3 + d_expr(n->r.right);
-	if (n->l.left->type == N_CAST) {
-	    n = n->l.left;
-	}
-	return max2(d, d_lvalue(n->l.left));
-
-    case N_CATCH:
-	if (n->l.left == (node *) NULL) {
-	    return 1;
-	}
-    case N_CAST:
-    case N_LOCK:
-    case N_NOT:
-    case N_TST:
-	return d_expr(n->l.left);
-
-    case N_COMMA:
-    case N_LAND:
-    case N_LOR:
-	return max2(d_expr(n->l.left), d_expr(n->r.right));
-
-    case N_FUNC:
-	n = n->l.left;
-	if (n == (node *) NULL) {
-	    return 1;
-	}
-
-	d = 0;
-	for (i = 0; n->type == N_COMMA; i++) {
-	    d = max2(d, i + 2 + d_expr(n->l.left));
-	    n = n->r.right;
-	}
-	if (n->type == N_SPREAD) {
-	    n = n->l.left;
-	}
-	return max2(d, i + 2 + d_expr(n));
-
-    case N_GLOBAL:
-    case N_INT:
-    case N_LOCAL:
-    case N_STR:
-	return 1;
-
-    case N_LVALUE:
-	return d_lvalue(n->l.left);
-
-    case N_QUEST:
-	return max3(d_expr(n->l.left),
-		    d_expr(n->r.right->l.left),
-		    d_expr(n->r.right->r.right));
-
-    case N_RANGE:
-	d = d_expr(n->l.left);
-	n = n->r.right;
-	if (n->l.left != (node *) NULL) {
-	    d = max2(d, 1 + d_expr(n->l.left));
-	    if (n->r.right != (node *) NULL) {
-		d = max2(d, 2 + d_expr(n->r.right));
-	    }
-	} else if (n->r.right != (node *) NULL) {
-	    d = max2(d, 1 + d_expr(n->r.right));
-	}
-	return d;
-
-    case N_MIN_MIN:
-    case N_MIN_MIN_INT:
-    case N_PLUS_PLUS:
-    case N_PLUS_PLUS_INT:
-	n = n->l.left;
-	if (n->type == N_CAST) {
-	    n = n->l.left;
-	}
-	return 2 + d_lvalue(n);
-    }
-}
-
-/*
- * NAME:	depth->stmt()
- * DESCRIPTION:	return the stack depth of a statement
- */
-static unsigned short d_stmt(n)
-register node *n;
-{
-    register unsigned short d;
-    register node *m;
-
-    d = 0;
-    while (n != (node *) NULL) {
-	if (n->type == N_PAIR) {
-	    m = n->l.left;
-	    n = n->r.right;
-	} else {
-	    m = n;
-	    n = (node *) NULL;
-	}
-	switch (m->type) {
-	case N_BLOCK:
-	case N_CASE:
-	case N_FOREVER:
-	    d = max2(d, d_stmt(m->l.left));
-	    break;
-
-	case N_DO:
-	case N_FOR:
-	case N_WHILE:
-	    d = max3(d, d_expr(m->l.left), d_stmt(m->r.right));
-	    break;
-
-	case N_IF:
-	    d = max3(d, d_expr(m->l.left),
-		     max2(d_stmt(m->r.right->l.left),
-			  d_stmt(m->r.right->r.right)));
-	    break;
-
-	case N_PAIR:
-	    d = max2(d, d_stmt(m));
-	    break;
-
-	case N_POP:
-	case N_RETURN:
-	    d = max2(d, d_expr(m->l.left));
-	    break;
-
-	case N_SWITCH_INT:
-	case N_SWITCH_RANGE:
-	case N_SWITCH_STR:
-	    d = max2(d, d_expr(m->r.right->l.left));
-	    break;
-	}
-    }
-    return d;
+    c_decl_func(class, type | n->mod, fname = n->l.left->l.string, n->r.right,
+		TRUE);
 }
 
 /*
@@ -1049,13 +780,43 @@ register node *n;
  * DESCRIPTION:	create a function body
  */
 void c_funcbody(n)
-node *n;
+register node *n;
 {
+    register unsigned short i;
+    register node *v, *zero;
     char *prog;
     unsigned short size;
 
-    n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
-    prog = cg_function(n, nvars, nparams, d_stmt(n), &size);
+    if (n == (node *) NULL || !(n->flags & F_RETURN)) {
+	n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
+    }
+
+    /*
+     * initialize local floats to 0.0
+     */
+    zero = (node *) NULL;
+    for (i = nvars; i > nparams; ) {
+	if (variables[--i].type == T_FLOAT) {
+	    v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
+	    v->line = fline;
+	    v->r.number = i;
+	    if (zero == (node *) NULL) {
+		xfloat flt;
+
+		FLT_ZERO(flt.high, flt.low);
+		zero = node_float(&flt);
+		zero->line = fline;
+	    }
+	    zero = node_bin(N_ASSIGN, T_FLOAT, v, zero);
+	    zero->line = fline;
+	}
+    }
+    if (zero != (node *) NULL) {
+	n = c_concat(c_exp_stmt(zero), n);
+    }
+
+    opt_stmt(n, &size);
+    prog = cg_function(fname, n, nvars, nparams, size, &size);
     ctrl_dprogram(prog, size);
     node_free();
     nvars = 0;
@@ -1075,196 +836,38 @@ node *n;
 
 
 /*
+ * NAME:	compile->zero()
+ * DESCRIPTION:	check if an expression has the value integer 0
+ */
+bool c_zero(n)
+register node *n;
+{
+    if (n->type == N_COMMA) {
+	n = n->r.right;
+    }
+    return (n->type == N_INT && n->l.number == 0);
+}
+
+/*
  * NAME:	compile->concat()
  * DESCRIPTION:	concatenate two statements
  */
 node *c_concat(n1, n2)
 register node *n1, *n2;
 {
+    node *n;
+
     if (n1 == (node *) NULL) {
 	return n2;
     } else if (n2 == (node *) NULL ||
-	       (n2->type != N_CASE &&
-		(n1->type == N_BREAK ||
-		 n1->type == N_CONTINUE ||
-		 n1->type == N_RETURN ||
-		 (n1->type == N_PAIR &&
-		  (n1->r.right->type == N_BREAK ||
-		   n1->r.right->type == N_CONTINUE ||
-		   n1->r.right->type == N_RETURN))))) {
-	/*
-	 * doesn't handle { foo(); bar(); return; } gnu(); properly
-	 */
+	       ((n1->flags & (F_BREAK | F_CONT | F_RETURN)) &&
+	        !(n2->flags & F_ENTRY))) {
 	return n1;
     }
-    return node_bin(N_PAIR, 0, n1, n2);
-}
 
-/*
- * NAME:	compile->minimize_exp()
- * DESCRIPTION:	Minimize an expression.  The 2nd argument is a flag that
- *		indicates if the final result is to be kept.
- */
-static node *c_minimize_exp(n, keep)
-register node *n;
-register bool keep;
-{
-    if (n == (node *) NULL) {
-	return (node *) NULL;
-    }
-
-    switch (n->type) {
-    case N_GLOBAL:
-    case N_INT:
-    case N_LOCAL:
-    case N_STR:
-	if (!keep) {
-	    return (node *) NULL;
-	}
-	break;
-
-    case N_NOT:
-    case N_TST:
-	n->l.left = c_minimize_exp(n->l.left, keep);
-	if (n->l.left == (node *) NULL) {
-	    return (node *) NULL;
-	}
-	break;
-
-    case N_CATCH:
-	n->l.left = c_minimize_exp(n->l.left, FALSE);
-	break;
-
-    case N_LOCK:
-	n->l.left = c_minimize_exp(n->l.left, keep);
-	if (n->l.left == (node *) NULL) {
-	    return (node *) NULL;
-	}
-	break;
-
-    case N_LVALUE:
-	n = c_minimize_exp(n->l.left, keep);
-	break;
-
-    case N_CAST:
-    case N_MIN_MIN:
-    case N_MIN_MIN_INT:
-    case N_PLUS_PLUS:
-    case N_PLUS_PLUS_INT:
-	n->l.left = c_minimize_exp(n->l.left, TRUE);
-	break;
-
-    case N_COMMA:
-	n->l.left = c_minimize_exp(n->l.left, FALSE);
-	n->r.right = c_minimize_exp(n->r.right, keep);
-	if (n->l.left == (node *) NULL) {
-	    return n->r.right;
-	}
-	if (n->r.right == (node *) NULL) {
-	    return n->l.left;
-	}
-	break;
-
-    case N_PAIR:
-	n->l.left = c_minimize_exp(n->l.left, keep);
-	n->r.right = c_minimize_exp(n->r.right, FALSE);
-	if (n->l.left == (node *) NULL) {
-	    return n->r.right;
-	}
-	if (n->r.right == (node *) NULL) {
-	    return n->l.left;
-	}
-	break;
-
-    case N_ADD_INT:
-    case N_AND_INT:
-    case N_DIV_INT:
-    case N_EQ:
-    case N_EQ_INT:
-    case N_GE_INT:
-    case N_GT_INT:
-    case N_LE_INT:
-    case N_LSHIFT_INT:
-    case N_LT_INT:
-    case N_MOD_INT:
-    case N_MULT_INT:
-    case N_NE:
-    case N_NE_INT:
-    case N_OR_INT:
-    case N_RSHIFT_INT:
-    case N_SUB_INT:
-    case N_XOR_INT:
-	n->l.left = c_minimize_exp(n->l.left, keep);
-	n->r.right = c_minimize_exp(n->r.right, keep);
-	if (n->l.left == (node *) NULL) {
-	    return n->r.right;
-	}
-	if (n->r.right == (node *) NULL) {
-	    return n->l.left;
-	}
-	break;
-
-    case N_ADD:
-    case N_ADD_EQ:
-    case N_ADD_EQ_INT:
-    case N_AND:
-    case N_AND_EQ:
-    case N_AND_EQ_INT:
-    case N_ASSIGN:
-    case N_DIV:
-    case N_DIV_EQ:
-    case N_DIV_EQ_INT:
-    case N_GE:
-    case N_GT:
-    case N_INDEX:
-    case N_LAND:
-    case N_LE:
-    case N_LOR:
-    case N_LSHIFT:
-    case N_LSHIFT_EQ:
-    case N_LSHIFT_EQ_INT:
-    case N_LT:
-    case N_MOD:
-    case N_MOD_EQ:
-    case N_MOD_EQ_INT:
-    case N_MULT:
-    case N_MULT_EQ:
-    case N_MULT_EQ_INT:
-    case N_OR:
-    case N_OR_EQ:
-    case N_OR_EQ_INT:
-    case N_RSHIFT:
-    case N_RSHIFT_EQ:
-    case N_RSHIFT_EQ_INT:
-    case N_SUB:
-    case N_SUB_EQ:
-    case N_SUB_EQ_INT:
-    case N_XOR:
-    case N_XOR_EQ:
-    case N_XOR_EQ_INT:
-	n->l.left = c_minimize_exp(n->l.left, TRUE);
-	n->r.right = c_minimize_exp(n->r.right, TRUE);
-	break;
-
-    case N_QUEST:
-    case N_RANGE:
-	n->l.left = c_minimize_exp(n->l.left, TRUE);
-	n->r.right->l.left = c_minimize_exp(n->r.right->l.left, TRUE);
-	n->r.right->r.right = c_minimize_exp(n->r.right->r.right, TRUE);
-	break;
-    }
-
+    n = node_bin(N_PAIR, 0, n1, n2);
+    n->flags |= (n1->flags | n2->flags) & F_REACH;
     return n;
-}
-
-/*
- * NAME:	compile->list_exp()
- * DESCRIPTION:	minimize a list of expressions
- */
-node *c_list_exp(n)
-node *n;
-{
-    return c_minimize_exp(n, TRUE);
 }
 
 /*
@@ -1274,111 +877,10 @@ node *n;
 node *c_exp_stmt(n)
 node *n;
 {
-    n = c_minimize_exp(n, FALSE);
     if (n != (node *) NULL) {
-	if (n->type == N_QUEST) {
-	    /* special case for ? : */
-	    return c_if(n->l.left, c_exp_stmt(n->r.right->l.left),
-			c_exp_stmt(n->r.right->r.right));
-	} else {
-	    return node_mon(N_POP, 0, n);
-	}
+	return node_mon(N_POP, 0, n);
     }
     return n;
-}
-
-# define COND_QUEST	0
-# define COND_FIRST	1
-# define COND_LAST	2
-
-/*
- * NAME:	compile->cond()
- * DESCRIPTION:	Handle a condition.  Return 0 if it is a normal condition;
- *		return 1 or 2 if it is fixed on a certain alternative, and
- *		condition and alternative have been combined.
- */
-static int c_cond(n1, n2, n3, n4, op)
-register node *n1, *n2;
-node *n3, **n4;
-int op;
-{
-    int alt;
-
-    if (n1 == (node *) NULL) {
-	/* always */
-	*n4 = n2;
-	return 1;	/* 1st alternative */
-    }
-
-    switch (n1->type) {
-    case N_INT:
-	if (n1->l.number != 0) {
-	    /* always */
-	    *n4 = n2;
-	    return 1;	/* 1st alternative */
-	} else {
-	    /* never */
-	    *n4 = n3;
-	    return 2;	/* 2nd alternative */
-	}
-
-    case N_STR:
-	/* always */
-	*n4 = n2;
-	return 1;	/* 1st alternative */
-
-    case N_COMMA:
-	if (n1->r.right->type == N_STR) {
-	    /* always */
-	    alt = 1;
-	    break;
-	} else if (n1->r.right->type == N_INT) {
-	    /* always ... */
-	    alt = 1;
-	    if (n1->r.right->l.number == 0) {
-		/* ... no, never ... */
-		n2 = n3;
-		alt = 2;
-	    }
-	    /* ... with side effect */
-	    break;
-	}
-    default:
-	return 0;	/* normal case */
-    }
-
-    /*
-     * add "condition" as statement or expression (preserving side effects)
-     */
-    switch (op) {
-    case COND_QUEST:
-	*n4 = node_bin(N_COMMA, n2->mod, n1, n2);
-	break;
-
-    case COND_FIRST:
-	*n4 = c_concat(c_exp_stmt(n1->l.left), n2);
-	break;
-	
-    case COND_LAST:
-	*n4 = c_concat(n2, c_exp_stmt(n1->l.left));
-	break;
-    }
-    return alt;
-}
-
-/*
- * NAME:	compile->quest()
- * DESCRIPTION:	handle ? :
- */
-node *c_quest(n1, n2, n3)
-node *n1, *n2, *n3;
-{
-    n2 = c_list_exp(n2);
-    if (c_cond(n1, n2, n3, &n1, COND_QUEST) != 0) {
-	/* fixed condition */
-	return n1;
-    }
-    return node_bin(N_QUEST, 0, n1, node_bin(N_PAIR, 0, n2, n3));
 }
 
 /*
@@ -1386,24 +888,26 @@ node *n1, *n2, *n3;
  * DESCRIPTION:	handle an if statement
  */
 node *c_if(n1, n2, n3)
-register node *n1, *n2;
-node *n3;
+register node *n1, *n2, *n3;
 {
-    if (n2 == (node *) NULL) {
-	if (n3 == (node *) NULL) {
-	    /* no statements at all */
-	    return c_exp_stmt(n1);
-	}
-	/* reverse condition */
-	n1 = c_not(n1);
-	n2 = n3;
-	n3 = (node *) NULL;
+    register int flags1, flags2;
+
+    n1 = node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
+    if (n2 != (node *) NULL) {
+	flags1 = n2->flags & (F_BREAK | F_CONT | F_RETURN);
+	n1->flags |= n2->flags & F_REACH;
+    } else {
+	flags1 = 0;
     }
-    if (c_cond(n1, n2, n3, &n3, COND_FIRST) != 0) {
-	/* fixed condition */
-	return n3;
+    if (n3 != (node *) NULL) {
+	flags2 = n3->flags & (F_BREAK | F_CONT | F_RETURN);
+	n1->flags |= n3->flags & F_REACH;
+    } else {
+	flags2 = 0;
     }
-    return node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
+
+    n1->flags |= (flags1 < flags2) ? flags1 : flags2;
+    return n1;
 }
 
 /*
@@ -1420,9 +924,9 @@ void c_loop()
  * DESCRIPTION:	loop back a loop
  */
 static node *c_reloop(n)
-register node *n;
+node *n;
 {
-    if (thisloop->cont && n != (node *) NULL) {
+    if (thisloop->cont) {
 	n = node_mon(N_BLOCK, N_CONTINUE, n);
     }
     return n;
@@ -1433,9 +937,9 @@ register node *n;
  * DESCRIPTION:	end a loop
  */
 static node *c_endloop(n)
-register node *n;
+node *n;
 {
-    if (thisloop->brk && n != (node *) NULL) {
+    if (thisloop->brk) {
 	n = node_mon(N_BLOCK, N_BREAK, n);
     }
     thisloop = loop_del(thisloop);
@@ -1449,33 +953,11 @@ register node *n;
 node *c_do(n1, n2)
 register node *n1, *n2;
 {
-    node *n;
-
-    n2 = c_reloop(n2);
-    switch (c_cond(n1, n2, n2, &n, COND_LAST)) {
-    case 0:
-	/* regular do loop */
-	n1 = node_bin(N_DO, 0, n1, n2);
-	break;
-
-    case 1:
-	/* always true */
-	n1 = node_mon(N_FOREVER, 0, n);
-	break;
-
-    case 2:
-	if (thisloop->brk || thisloop->cont) {
-	    /* never true, but there is a break or continue statement */
-	    n1 = node_mon(N_FOREVER, 0,
-			  c_concat(n, node_mon(N_BREAK, 0, (node *) NULL)));
-	    thisloop->brk = TRUE;
-	} else {
-	    /* never true: just once */
-	    n1 = n;
-	}
-	break;
+    n1 = c_endloop(node_bin(N_DO, 0, n1, c_reloop(n2)));
+    if (n2 != (node *) NULL) {
+	n1->flags |= n2->flags & (F_ENTRY | F_REACH);
     }
-    return c_endloop(n1);
+    return n1;
 }
 
 /*
@@ -1485,26 +967,11 @@ register node *n1, *n2;
 node *c_while(n1, n2)
 register node *n1, *n2;
 {
-    node *n;
-
-    n2 = c_reloop(n2);
-    switch (c_cond(n1, n2, (node *) NULL, &n, COND_FIRST)) {
-    case 0:
-	/* regular while loop */
-	n1 = node_bin(N_WHILE, 0, n1, n2);
-	break;
-
-    case 1:
-	/* always true */
-	n1 = node_mon(N_FOREVER, 0, n);
-	break;
-
-    case 2:
-	/* never true */
-	n1 = n;
-	break;
+    n1 = c_endloop(node_bin(N_FOR, 0, n1, c_reloop(n2)));
+    if (n2 != (node *) NULL) {
+	n1->flags |= n2->flags & F_REACH;
     }
-    return c_endloop(n1);
+    return n1;
 }
 
 /*
@@ -1512,33 +979,22 @@ register node *n1, *n2;
  * DESCRIPTION:	end a for loop
  */
 node *c_for(n1, n2, n3, n4)
-register node *n1, *n2, *n3, *n4;
+register node *n2, *n4;
+node *n1, *n3;
 {
-    node *n;
-
-    n4 = c_reloop(n4);
-    if (n3 != (node *) NULL) {
-	n4 = c_concat(n4, c_exp_stmt(n3));
+    if (n4 != (node *) NULL) {
+	n4 = c_reloop(n4);
+	if (n4->type == N_BLOCK) {
+	    n4->flags |= n4->l.left->flags & (F_REACH | F_BREAK | F_RETURN);
+	}
     }
-
-    switch (c_cond(n2, n4, (node *) NULL, &n, COND_FIRST)) {
-    case 0:
-	/* regular for loop */
-	n3 = node_bin(N_FOR, 0, n2, n4);
-	break;
-
-    case 1:
-	/* always true */
-	n3 = node_mon(N_FOREVER, 0, n);
-	break;
-
-    case 2:
-	/* never true */
-	n3 = n;
-	break;
+    n2 = c_concat(n1,
+		  c_endloop(node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
+			    0, n2, c_concat(n4, n3))));
+    if (n4 != (node *) NULL) {
+	n2->flags = n4->flags & F_REACH;
     }
-
-    return c_concat(c_exp_stmt(n1), c_endloop(n3));
+    return n2;
 }
 
 /*
@@ -1551,12 +1007,9 @@ bool typechecking;
 {
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
-    if (n->type == N_INT || n->type == N_STR) {
-	yyerror("switch expression is constant");
-	switch_list->type = T_INVALID;
-    } else if (typechecking && n->mod != T_NUMBER && n->mod != T_STRING &&
-	       n->mod != T_MIXED) {
-	yyerror("bad switch expression type (%s)", c_typename(n->mod));
+    if (typechecking &&
+	n->mod != T_INT && n->mod != T_STRING && n->mod != T_MIXED) {
+	c_error("bad switch expression type (%s)", i_typename(n->mod));
 	switch_list->type = T_INVALID;
     }
     switch_list->dflt = FALSE;
@@ -1603,15 +1056,16 @@ node *expr, *stmt;
     n = (node *) NULL;
     if (switch_list->type != T_INVALID) {
 	if (stmt == (node *) NULL) {
-	    yyerror("no statements in switch");
-	} else if (stmt->type != N_CASE &&
-		   (stmt->type != N_PAIR || stmt->l.left->type != N_CASE)) {
-	    yyerror("unlabeled statements in switch");
+	    /* empty switch statement */
+	    n = c_exp_stmt(expr);
+	} else if (!(stmt->flags & F_ENTRY)) {
+	    c_error("unreachable statement(s) in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
-	    yyerror("only default label in switch");
+	    /* only a default label */
+	    n = c_concat(c_exp_stmt(expr), stmt->l.left);
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
 		   switch_list->type != T_MIXED) {
-	    yyerror("wrong switch expression type (%s)", c_typename(expr->mod));
+	    c_error("wrong switch expression type (%s)", i_typename(expr->mod));
 	} else {
 	    /*
 	     * get the labels in an array, and sort them
@@ -1631,13 +1085,13 @@ node *expr, *stmt;
 		 * check for duplicate cases
 		 */
 		if (size >= 2 && v[1]->l.left->type == N_INT) {
-		    yyerror("duplicate case labels in switch");
+		    c_error("duplicate case labels in switch");
 		} else {
 		    i = (v[0]->l.left->type == N_INT);
 		    for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
 			if (strcmp(w[0]->l.left->l.string->text,
 				   w[1]->l.left->l.string->text) == 0) {
-			    yyerror("duplicate case labels in switch");
+			    c_error("duplicate case labels in switch");
 			    break;
 			}
 		    }
@@ -1658,9 +1112,9 @@ node *expr, *stmt;
 		    }
 		    if (w[0]->l.left->r.number >= w[1]->l.left->l.number) {
 			if (w[0]->l.left->l.number == w[1]->l.left->r.number) {
-			    yyerror("duplicate case labels in switch");
+			    c_error("duplicate case labels in switch");
 			} else {
-			    yyerror("overlapping case label ranges in switch");
+			    c_error("overlapping case label ranges in switch");
 			}
 			break;
 		    }
@@ -1755,7 +1209,7 @@ node *c_case(n1, n2)
 register node *n1, *n2;
 {
     if (switch_list == (loop *) NULL) {
-	yyerror("case label not inside switch");
+	c_error("case label not inside switch");
 	return (node *) NULL;
     }
     if (switch_list->type == T_INVALID) {
@@ -1769,7 +1223,7 @@ register node *n1, *n2;
 	} else {
 	    /* range */
 	    if (n2->type != N_INT) {
-		yyerror("bad case range in switch");
+		c_error("bad case range");
 		switch_list->type = T_INVALID;
 		return (node *) NULL;
 	    }
@@ -1786,9 +1240,9 @@ register node *n1, *n2;
 	/* compare type with other cases */
 	if (n1->l.number != 0 || n2 != (node *) NULL) {
 	    if (switch_list->type == T_MIXED) {
-		switch_list->type = T_NUMBER;
-	    } else if (switch_list->type != T_NUMBER) {
-		yyerror("multiple case types in switch");
+		switch_list->type = T_INT;
+	    } else if (switch_list->type != T_INT) {
+		c_error("multiple case types in switch");
 		switch_list->type = T_INVALID;
 		return (node *) NULL;
 	    }
@@ -1796,12 +1250,12 @@ register node *n1, *n2;
     } else {
 	/* string */
 	if (n2 != (node *) NULL) {
-	    yyerror("bad case range in switch");
+	    c_error("bad case range");
 	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
 	if (n1->type != N_STR) {
-	    yyerror("non-constant case in switch");
+	    c_error("bad case expression");
 	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
@@ -1809,7 +1263,7 @@ register node *n1, *n2;
 	if (switch_list->type == T_MIXED) {
 	    switch_list->type = T_STRING;
 	} else if (switch_list->type != T_STRING) {
-	    yyerror("multiple case types in switch");
+	    c_error("multiple case types in switch");
 	    switch_list->type = T_INVALID;
 	    return (node *) NULL;
 	}
@@ -1817,6 +1271,7 @@ register node *n1, *n2;
 
     switch_list->ncase++;
     n2 = node_mon(N_CASE, 0, (node *) NULL);
+    n2->flags |= F_ENTRY | F_REACH;
     case_list = node_bin(N_PAIR, 0, case_list, node_bin(N_PAIR, 0, n1, n2));
     return n2;
 }
@@ -1831,17 +1286,19 @@ node *c_default()
 
     n = (node *) NULL;
     if (switch_list == (loop *) NULL) {
-	yyerror("default label not inside switch");
+	c_error("default label not inside switch");
     } else if (switch_list->dflt) {
-	yyerror("duplicate default label in switch");
+	c_error("duplicate default label in switch");
 	switch_list->type = T_INVALID;
     } else {
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
 	n = node_mon(N_CASE, 0, (node *) NULL);
+	n->flags |= F_ENTRY | F_REACH;
 	case_list = node_bin(N_PAIR, 0, case_list,
 			     node_bin(N_PAIR, 0, (node *) NULL, n));
     }
+
     return n;
 }
 
@@ -1852,6 +1309,7 @@ node *c_default()
 node *c_break()
 {
     register loop *l;
+    node *n;
 
     l = switch_list;
     if (l == (loop *) NULL || switch_list->env != thisloop) {
@@ -1859,11 +1317,14 @@ node *c_break()
 	l = thisloop;
     }
     if (l == (loop *) NULL) {
-	yyerror("break statement not inside loop or switch");
+	c_error("break statement not inside loop or switch");
 	return (node *) NULL;
     }
     l->brk = TRUE;
-    return node_mon(N_BREAK, 0, (node *) NULL);
+
+    n = node_mon(N_BREAK, 0, (node *) NULL);
+    n->flags |= F_BREAK;
+    return n;
 }
 
 /*
@@ -1872,31 +1333,51 @@ node *c_break()
  */
 node *c_continue()
 {
+    node *n;
+
     if (thisloop == (loop *) NULL) {
-	yyerror("continue statement not inside loop");
+	c_error("continue statement not inside loop");
 	return (node *) NULL;
     }
     thisloop->cont = TRUE;
-    return node_mon(N_CONTINUE, 0, (node *) NULL);
+
+    n = node_mon(N_CONTINUE, 0, (node *) NULL);
+    n->flags |= F_CONT;
+    return n;
 }
 
 /*
- * NAME:	compile->ftype()
- * DESCRIPTION:	return the type of the current function
+ * NAME:	compile->return()
+ * DESCRIPTION:	handle a return statement
  */
-short c_ftype()
+node *c_return(n, typechecking)
+register node *n;
+bool typechecking;
 {
-    return ftype;
-}
+    if (n == (node *) NULL) {
+	if (typechecking && ftype != T_VOID) {
+	    c_error("function must return value");
+	}
+	n = node_int((Int) 0);
+    } else if (typechecking) {
+	if (ftype == T_VOID) {
+	    /*
+	     * can't return anything from a void function
+	     */
+	    c_error("value returned from void function");
+	} else if ((!c_zero(n) || ftype == T_FLOAT) &&
+		   c_tmatch(n->mod, ftype) == T_INVALID) {
+	    /*
+	     * type error
+	     */
+	    c_error("returned value doesn't match %s (%s)",
+		    i_typename(ftype), i_typename(n->mod));
+	}
+    }
 
-/*
- * NAME:	compile->vtype()
- * DESCRIPTION:	return the type of a variable
- */
-short c_vtype(i)
-int i;
-{
-    return variables[i].type;
+    n = node_mon(N_RETURN, 0, n);
+    n->flags |= F_RETURN;
+    return n;
 }
 
 /*
@@ -1905,6 +1386,9 @@ int i;
  */
 void c_startcompound()
 {
+    if (thisblock == (block *) NULL) {
+	fline = tk_line();
+    }
     block_new();
 }
 
@@ -1913,10 +1397,18 @@ void c_startcompound()
  * DESCRIPTION:	end a compound statement
  */
 node *c_endcompound(n)
-node *n;
+register node *n;
 {
+    register int flags;
+
     block_del();
-    return revert_list(n, N_PAIR);
+    if (n != (node *) NULL && n->type == N_PAIR) {
+	flags = n->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
+	n = revert_list(n);
+	n->flags |= flags | (n->l.left->flags & F_ENTRY);
+    }
+
+    return n;
 }
 
 /*
@@ -1931,7 +1423,7 @@ bool typechecking;
 	return node_mon(N_CATCH, T_STRING, n);
     } else if (strcmp(n->l.string->text, "lock") == 0) {
 	if (strcmp(current->file, auto_object) != 0) {
-	    yyerror("only auto object can use lock()");
+	    c_error("only auto object can use lock()");
 	}
 	return node_mon(N_LOCK, 0, n);
     } else {
@@ -1990,11 +1482,20 @@ register node *n;
 }
 
 /*
- * NAME:	lvalue()
- * DESCRIPTION:	Convert a value into an lvalue.  Return the converted argument
- *		or NULL.
+ * NAME:	compile->vtype()
+ * DESCRIPTION:	return the type of a variable
  */
-static node *lvalue(n)
+short c_vtype(i)
+int i;
+{
+    return variables[i].type;
+}
+
+/*
+ * NAME:	lvalue()
+ * DESCRIPTION:	check if a value can be an lvalue
+ */
+static bool lvalue(n)
 register node *n;
 {
     switch (n->type) {
@@ -2005,23 +1506,16 @@ register node *n;
 	break;
 
     case N_CAST:
-	switch (n->l.left->type) {
-	case N_LOCAL:
-	case N_GLOBAL:
-	case N_INDEX:
-	case N_FAKE:
+	if (n->mod == n->l.left->mod) {
+	    /* only an implicit cast is allowed */
 	    break;
-
-	default:
-	    return (node *) NULL;
 	}
-	break;
-
+	/* fall through */
     default:
-	return (node *) NULL;
+	return FALSE;
     }
 
-    return node_mon(N_LVALUE, n->mod, n);
+    return TRUE;
 }
 
 /*
@@ -2032,7 +1526,7 @@ node *c_lock(n)
 node *n;
 {
     if (strcmp(current->file, auto_object) != 0) {
-	yyerror("only auto object can use lock()");
+	c_error("only auto object can use lock()");
     }
     return node_mon(N_LOCK, n->mod, n);
 }
@@ -2071,11 +1565,11 @@ node *args;
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
 	    if (!(PROTO_CLASS(proto) & C_VARARGS)) {
-		yyerror("too few arguments for function %s", fname);
+		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
 	}
-	if ((*argv)->type == N_COMMA) {
+	if ((*argv)->type == N_PAIR) {
 	    arg = &(*argv)->l.left;
 	    argv = &(*argv)->r.right;
 	} else {
@@ -2095,7 +1589,7 @@ node *args;
 	    t = (*arg)->l.left->mod;
 	    if (t != T_MIXED) {
 		if ((t & T_REF) == 0) {
-		    yyerror("ellipsis requires array");
+		    c_error("ellipsis requires array");
 		    t = T_MIXED;
 		} else {
 		    t -= (1 << REFSHIFT);
@@ -2103,32 +1597,32 @@ node *args;
 	    }
 	    if (!(PROTO_CLASS(proto) & C_VARARGS) &&
 		PROTO_FTYPE(proto) != T_IMPLICIT) {
-		yyerror("ellipsis in call to non-varargs function");
+		c_error("ellipsis in call to non-varargs function");
 	    }
 
 	    while (n <= nargs) {
-		if ((typechecked || t == T_VOID) &&
+		if (typechecked &&
 		    c_tmatch(t, UCHAR(*argp) & ~T_ELLIPSIS) == T_INVALID) {
-		    yyerror("bad argument %d for function %s (needs %s)", n,
-			    fname, c_typename(UCHAR(*argp) & ~T_ELLIPSIS));
+		    c_error("bad argument %d for function %s (needs %s)", n,
+			    fname, i_typename(UCHAR(*argp) & ~T_ELLIPSIS));
 		}
 		n++;
 		argp++;
 	    }
 	    break;
 	} else if (t == T_LVALUE) {
-	    *arg = lvalue(*arg);
-	    if (*arg == (node *) NULL) {
-		yyerror("bad argument %d for function %s (needs lvalue)",
+	    if (!lvalue(*arg)) {
+		c_error("bad argument %d for function %s (needs lvalue)",
 			n, fname);
 	    }
+	    *arg = node_mon(N_LVALUE, (*arg)->mod, *arg);
 	    /* only kfuns can have lvalue parameters */
 	    func->r.number |= 1L << 16;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
-		   ((*arg)->type != N_INT || (*arg)->l.number != 0) &&
+		   (!c_zero(*arg) || t == T_FLOAT) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {
-	    yyerror("bad argument %d for function %s (needs %s)", n, fname,
-		    c_typename(t));
+	    c_error("bad argument %d for function %s (needs %s)", n, fname,
+		    i_typename(t));
 	}
 
 	if (UCHAR(*argp) & T_ELLIPSIS) {
@@ -2138,13 +1632,9 @@ node *args;
 	}
     }
     if (args != (node *) NULL && PROTO_FTYPE(proto) != T_IMPLICIT) {
-	yyerror("too many arguments for function %s", fname);
+	c_error("too many arguments for function %s", fname);
     }
 
-    if (!(PROTO_CLASS(proto) & C_LOCAL) && func->mod == T_NUMBER) {
-	/* cast to number */
-	return node_mon(N_CAST, T_NUMBER, func);
-    }
     return func;
 }
 
@@ -2155,7 +1645,7 @@ node *args;
 node *c_funcall(func, args)
 node *func, *args;
 {
-    return funcall(func, revert_list(args, N_COMMA));
+    return funcall(func, revert_list(args));
 }
 
 /*
@@ -2168,50 +1658,61 @@ node *other, *func, *args;
     if (args == (node *) NULL) {
 	args = func;
     } else {
-	args = node_bin(N_COMMA, 0, func, revert_list(args, N_COMMA));
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
     return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
-		   node_bin(N_COMMA, 0, other, args));
+		   node_bin(N_PAIR, 0, other, args));
 }
 
 /*
- * NAME:	compile->checklval()
- * DESCRIPTION:	check assignments to local variables in a function call
+ * NAME:	compile->checkcall()
+ * DESCRIPTION:	check assignments in a function call, as well as the
+ *		returned value
  */
-node *c_checklval(n)
+node *c_checkcall(n)
 node *n;
 {
     register node *t, *a, *l;
 
-    if (n->type == N_FUNC && (n->r.number >> 16 == ((KFCALL << 8) | 1))) {
-	/*
-	 * the function has lvalue parameters
-	 */
-	l = (node *) NULL;
-	a = n->l.left;
-	while (a != (node *) NULL) {
-	    if (a->type == N_COMMA) {
-		t = a->l.left;
-		a = a->r.right;
-	    } else {
-		t = a;
-		a = (node *) NULL;
+    if (n->type == N_FUNC) {
+	if (n->r.number >> 16 == ((KFCALL << 8) | 1)) {
+	    /*
+	     * the function has lvalue parameters
+	     */
+	    l = (node *) NULL;
+	    a = n->l.left;
+	    while (a != (node *) NULL) {
+		if (a->type == N_PAIR) {
+		    t = a->l.left;
+		    a = a->r.right;
+		} else {
+		    t = a;
+		    a = (node *) NULL;
+		}
+		if (t->type == N_LVALUE && t->l.left->type == N_LOCAL &&
+		    t->mod != T_MIXED) {
+		    /*
+		     * check the assignment
+		     */
+		    t = node_mon(N_CAST, t->mod, t->l.left);
+		    l = (l == (node *) NULL) ? t : node_bin(N_COMMA, 0, t, l);
+		}
 	    }
-	    if (t->type == N_LVALUE && (t=t->l.left)->type == N_LOCAL &&
-		t->mod == T_NUMBER) {
+
+	    if (l != (node *) NULL) {
 		/*
-		 * assignment to local integer variable
+		 * append checks for assignments to function call
 		 */
-		t = node_mon(N_CAST, T_NUMBER, t);
-		l = (l == (node *) NULL) ? t : node_bin(N_COMMA, 0, t, l);
+		return node_bin(N_PAIR, n->mod, n, l);
 	    }
 	}
 
-	if (l != (node *) NULL) {
+	if (n->r.number >> 24 != KFCALL && n->r.number >> 24 != DFCALL &&
+	    n->mod != T_MIXED && n->mod != T_VOID) {
 	    /*
-	     * append checks for integer var assignments to function call
+	     * make sure the return value is as it should be
 	     */
-	    return node_bin(N_PAIR, n->mod, n, l);
+	    n = node_mon(N_CAST, n->mod, n);
 	}
     }
 
@@ -2230,11 +1731,18 @@ register node *n;
 	n->l.number = (n->l.number != 0);
 	return n;
 
+    case N_FLOAT:
+	return node_int((Int) !NFLT_ISZERO(n));
+
     case N_STR:
 	return node_int((Int) TRUE);
 
     case N_TST:
+    case N_TSTF:
+    case N_TSTI:
     case N_NOT:
+    case N_NOTF:
+    case N_NOTI:
     case N_LAND:
     case N_EQ:
     case N_EQ_INT:
@@ -2251,12 +1759,12 @@ register node *n;
 	return n;
 
     case N_COMMA:
-	n->type = T_NUMBER;
+	n->mod = T_INT;
 	n->r.right = c_tst(n->r.right);
 	return n;
     }
 
-    return node_mon(N_TST, T_NUMBER, n);
+    return node_mon(N_TST, T_INT, n);
 }
 
 /*
@@ -2268,8 +1776,11 @@ register node *n;
 {
     switch (n->type) {
     case N_INT:
-	n->l.number = !n->l.number;
+	n->l.number = (n->l.number == 0);
 	return n;
+
+    case N_FLOAT:
+	return node_int((Int) NFLT_ISZERO(n));
 
     case N_STR:
 	return node_int((Int) FALSE);
@@ -2290,8 +1801,24 @@ register node *n;
 	n->type = N_NOT;
 	return n;
 
+    case N_TSTF:
+	n->type = N_NOTF;
+	return n;
+
+    case N_TSTI:
+	n->type = N_NOTI;
+	return n;
+
     case N_NOT:
 	n->type = N_TST;
+	return n;
+
+    case N_NOTF:
+	n->type = N_TSTF;
+	return n;
+
+    case N_NOTI:
+	n->type = N_TSTI;
 	return n;
 
     case N_EQ:
@@ -2343,12 +1870,12 @@ register node *n;
 	return n;
 
     case N_COMMA:
-	n->type = T_NUMBER;
+	n->mod = T_INT;
 	n->r.right = c_not(n->r.right);
 	return n;
     }
 
-    return node_mon(N_NOT, T_NUMBER, n);
+    return node_mon(N_NOT, T_INT, n);
 }
 
 /*
@@ -2359,46 +1886,11 @@ node *c_lvalue(n, oper)
 node *n;
 char *oper;
 {
-    n = lvalue(n);
-    if (n == (node *) NULL) {
-	yyerror("bad lvalue for %s", oper);
-	return node_mon(N_FAKE, T_MIXED, (node *) NULL);
+    if (!lvalue(n)) {
+	c_error("bad lvalue for %s", oper);
+	return node_mon(N_FAKE, T_MIXED, n);
     }
     return n;
-}
-
-/*
- * NAME:	compile->typename()
- * DESCRIPTION:	return the name of the argument type
- */
-char *c_typename(type)
-register unsigned short type;
-{
-    static bool flag;
-    static char buf1[8 + 16 + 1], buf2[8 + 16 + 1], *name[] = TYPENAMES;
-    register char *buf;
-
-    if (flag) {
-	buf = buf1;
-	flag = FALSE;
-    } else {
-	buf = buf2;
-	flag = TRUE;
-    }
-    strcpy(buf, name[type & T_TYPE]);
-    type &= T_REF;
-    type >>= REFSHIFT;
-    if (type > 0) {
-	register char *p;
-
-	p = buf + strlen(buf);
-	*p++ = ' ';
-	do {
-	    *p++ = '*';
-	} while (--type > 0);
-	*p = '\0';
-    }
-    return buf;
 }
 
 /*
@@ -2419,17 +1911,33 @@ register unsigned short type1, type2;
     }
     if ((type1 & T_TYPE) == T_MIXED && (type1 & T_REF) <= (type2 & T_REF)) {
 	/* mixed <-> int,  mixed * <-> int *,  mixed * <-> int ** */
-	if (type1 == T_MIXED && (type2 & T_REF)) {
+	if (type1 == T_MIXED && (type2 & T_REF) != 0) {
 	    type1 |= 1 << REFSHIFT;	/* mixed <-> int * */
 	}
 	return type1;
     }
     if ((type2 & T_TYPE) == T_MIXED && (type2 & T_REF) <= (type1 & T_REF)) {
 	/* int <-> mixed,  int * <-> mixed *,  int ** <-> mixed * */
-	if (type2 == T_MIXED && (type1 & T_REF)) {
+	if (type2 == T_MIXED && (type1 & T_REF) != 0) {
 	    type2 |= 1 << REFSHIFT;	/* int * <-> mixed */
 	}
 	return type2;
     }
     return T_INVALID;
+}
+
+/*
+ * NAME:	compile->error()
+ * DESCRIPTION:	Produce a warning with the supplied error message.
+ */
+void c_error(f, a1, a2, a3)
+char *f, *a1, *a2, *a3;
+{
+    char buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
+    extern int nerrors;
+
+    sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
+    sprintf(buf + strlen(buf), f, a1, a2, a3);
+    message("%s\012", buf);	/* LF */
+    nerrors++;
 }
