@@ -459,6 +459,7 @@ register frame *f;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	flag = (f->sp[1].u.array == f->sp->u.array);
 	arr_del(f->sp->u.array);
 	f->sp++;
@@ -1003,6 +1004,7 @@ register frame *f;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	flag = (f->sp[1].u.array != f->sp->u.array);
 	arr_del(f->sp->u.array);
 	f->sp++;
@@ -1105,6 +1107,7 @@ register frame *f;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr_del(f->sp->u.array);
 	break;
     }
@@ -1721,6 +1724,7 @@ register frame *f;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr_del(f->sp->u.array);
 	break;
     }
@@ -2195,15 +2199,26 @@ char pt_statuso_idx[] = { C_STATIC, T_MIXED, 2, T_OBJECT, T_INT };
 int kf_statuso_idx(f)
 register frame *f;
 {
-    if (f->sp[1].type != T_OBJECT) {
+    uindex n;
+
+    switch (f->sp[1].type) {
+    case T_OBJECT:
+	n = f->sp[1].oindex;
+	break;
+
+    case T_LWOBJECT:
+	n = d_get_elts(f->sp[1].u.array)[0].oindex;
+	arr_del(f->sp[1].u.array);
+	break;
+
+    default:
 	return 1;
     }
     if (f->sp->type != T_INT) {
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_objecti(f->data, OBJR(f->sp[1].oindex), f->sp->u.number,
-		      &f->sp[1])) {
+    if (!conf_objecti(f->data, OBJR(n), f->sp->u.number, &f->sp[1])) {
 	error("Index out of range");
     }
     f->sp++;

@@ -82,7 +82,7 @@ nomask void _F_create()
 	string cname;
 # endif
 	object driver;
-	int clone;
+	int clone, number;
 
 	rlimits (-1; -1) {
 	    /*
@@ -91,23 +91,31 @@ nomask void _F_create()
 	    oname = object_name(this_object());
 	    driver = ::find_object(DRIVER);
 	    creator = driver->creator(oname);
-	    clone = sscanf(oname, "%*s#");
+	    clone = !!sscanf(oname, "%*s#%d", number);
 	    if (clone) {
 		owner = previous_object()->query_owner();
 	    } else {
 		owner = creator;
 	    }
 
-	    /*
-	     * register object
-	     */
-	    if (oname != OBJREGD) {
-		::find_object(OBJREGD)->link(this_object(), owner);
+	    if (number >= 0) {
+		/*
+		 * register object
+		 */
+		if (oname != OBJREGD) {
+		    ::find_object(OBJREGD)->link(this_object(), owner);
+		}
+
+		if (clone) {
+		    driver->clone(this_object(), owner);
+		}
+	    } else {
+		/*
+		 * new non-persistent object
+		 */
+		prev = previous_object();
 	    }
 
-	    if (clone) {
-		driver->clone(this_object(), owner);
-	    }
 # ifdef CREATOR
 	    cname = function_object(CREATOR, this_object());
 	    if (cname && sscanf(cname, USR + "/System/%*s") != 0) {
@@ -117,7 +125,7 @@ nomask void _F_create()
 # endif
 	}
 	/* call higher-level creator function */
-	if (sscanf(oname, "%*s/obj/") == 0) {
+	if (sscanf(oname, "%*s/obj/") == 0 && sscanf(oname, "%*s/data/") == 0) {
 	    create();
 	} else {
 	    create(clone);
@@ -250,6 +258,9 @@ static int destruct_object(mixed obj)
      * check privileges
      */
     oname = object_name(obj);
+    if (sscanf(oname, "%*s#-1") != 0) {
+	error("Cannot destruct non-persistent object");
+    }
     lib = sscanf(oname, "%*s/lib/");
     oowner = (lib) ? driver->creator(oname) : obj->query_owner();
     if ((sscanf(oname, "/kernel/%*s") != 0 && !lib && !KERNEL()) ||
@@ -388,7 +399,7 @@ static object clone_object(string path, varargs string uid)
      * check if object can be cloned
      */
     if (!owner || !(obj=::find_object(path)) || sscanf(path, "%*s/obj/") == 0 ||
-	sscanf(path, "%*s/lib/") != 0) {
+	sscanf(path, "%*s/data/") != 0 || sscanf(path, "%*s/lib/") != 0) {
 	/*
 	 * no owner for clone, master object not compiled, or not path of
 	 * clonable
@@ -429,6 +440,63 @@ static object clone_object(string path, varargs string uid)
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return ::clone_object(obj);
+}
+
+/*
+ * NAME:	new_object()
+ * DESCRIPTION:	create a new non-persistent object
+ */
+static object new_object(string path, varargs string uid)
+{
+    string oname;
+    object rsrcd, obj;
+    int stack, ticks;
+
+    CHECKARG(path, 1, "new_object");
+    if (uid) {
+	CHECKARG(creator == "System", 1, "new_object");
+    } else {
+	uid = owner;
+    }
+    if (!this_object()) {
+	error("Access denied");
+    }
+
+    /*
+     * check if object can be created
+     */
+    oname = object_name(this_object());
+    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
+    if (!owner || !(obj=::find_object(path)) ||
+	sscanf(path, "%*s/data/") == 0 || sscanf(path, "%*s/obj/") != 0 ||
+	sscanf(path, "%*s/lib/") != 0) {
+	/*
+	 * no owner for new object, master object not compiled, or not path of
+	 * non-persistent object
+	 */
+	error("Cannot create new instance of " + path);
+    }
+
+    /*
+     * create the object
+     */
+    rsrcd = ::find_object(RSRCD);
+    stack = ::status()[ST_STACKDEPTH];
+    ticks = ::status()[ST_TICKS];
+    catch {
+	rlimits (-1; -1) {
+	    if ((stack >= 0 &&
+		 stack - 2 < rsrcd->rsrc_get(uid, "create stack")[RSRC_MAX]) ||
+		(ticks >= 0 &&
+		 ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
+		error("Insufficient stack or ticks to create object");
+	    }
+	    if (uid != owner) {
+		owner = "/" + uid + "/" + owner;
+	    }
+	}
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    return ::new_object(obj);
 }
 
 /*
@@ -650,6 +718,9 @@ static int call_out(string function, mixed delay, mixed args...)
 	return 0;
     }
     CHECKARG(function_object(function, this_object()) != AUTO, 1, "call_out");
+    if (!next) {
+	error("Callout in non-persistent object");
+    }
 
     /*
      * add callout
@@ -680,6 +751,9 @@ static mixed remove_call_out(int handle)
     rlimits (-1; -1) {
 	mixed delay;
 
+	if (!next && prev) {
+	    error("No callouts in non-persistent object");
+	}
 	if ((delay=::remove_call_out(handle)) != -1 &&
 	    ::find_object(RSRCD)->remove_callout(this_object(), owner, handle))
 	{
@@ -736,6 +810,9 @@ nomask void _F_release(mixed handle)
 static void add_event(string name)
 {
     CHECKARG(name, 1, "add_event");
+    if (!next && prev) {
+	error("Cannot add event in non-persistent object");
+    }
 
     if (!events) {
 	events = ([ ]);
@@ -766,6 +843,8 @@ static void remove_event(string name)
 	    }
 	    events[name] = nil;
 	}
+    } else {
+	error("No such event");
     }
 }
 
@@ -831,7 +910,7 @@ static void subscribe_event(object obj, string name)
     CHECKARG(obj, 1, "subscribe_event");
     CHECKARG(name, 2, "subscribe_event");
 
-    if (!obj->allow_subscribe(this_object(), name) || !obj) {
+    if (!next || !obj->allow_subscribe(this_object(), name) || !obj) {
 	error("Cannot subscribe to event");
     }
     obj->_F_subscribe_event(this_object(), owner, name, TRUE);
@@ -1373,7 +1452,7 @@ static string editor(varargs string cmd)
     string result;
     mixed *info;
 
-    if (creator != "System" || !this_object()) {
+    if (creator != "System" || !this_object() || !next) {
 	error("Access denied");
     }
 
@@ -1416,7 +1495,7 @@ static void execute_program(string cmdline)
     } else {
 	CHECKARG(cmdline, 1, "execute_program");
 
-	if (creator == "System" && this_object()) {
+	if (creator == "System" && this_object() && next) {
 	    if (function_object("query_conn", this_object()) != LIB_USER) {
 		error("Not a user object");
 	    }
@@ -1454,7 +1533,7 @@ static void connect(string destination, int port)
     } else {
 	CHECKARG(destination, 1, "connect");
 
-	if (creator == "System" && this_object()) {
+	if (creator == "System" && this_object() && next) {
 	    if (function_object("query_conn", this_object()) != LIB_USER) {
 		error("Not a user object");
 	    }
@@ -1481,7 +1560,7 @@ static void open_port(string protocol, int port)
 {
     CHECKARG(protocol, 1, "open_port");
 
-    if (KERNEL() && this_object()) {
+    if (KERNEL() && this_object() && next) {
 	::open_port(protocol, port);
     }
 }

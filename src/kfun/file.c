@@ -23,6 +23,9 @@ int nargs;
     object *obj;
     string *str;
 
+    if (f->lwobj != (array *) NULL) {
+	error("editor() in non-persistent object");
+    }
     obj = OBJW(f->oindex);
     if (obj->count == 0) {
 	error("editor() in destructed object");
@@ -67,13 +70,18 @@ register frame *f;
     object *obj;
     char *status;
 
-    obj = OBJR(f->sp->oindex);
-    if ((obj->flags & O_SPECIAL) == O_EDITOR) {
-	status = ed_status(obj);
-	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
+    if (f->sp->type == T_OBJECT) {
+	obj = OBJR(f->sp->oindex);
+	if ((obj->flags & O_SPECIAL) == O_EDITOR) {
+	    status = ed_status(obj);
+	    PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
+	    return 0;
+	}
     } else {
-	*f->sp = nil_value;
+	arr_del(f->sp->u.array);
     }
+
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -213,6 +221,7 @@ array *a;
 	    break;
 
 	case T_OBJECT:
+	case T_LWOBJECT:
 	    if (conf_typechecking() >= 2) {
 		put(x, "nil", 3);
 	    } else {
@@ -261,14 +270,14 @@ array *a;
      * skip index/value pairs of which either is an object
      */
     for (i = n = a->size >> 1, v = d_get_elts(a); i > 0; --i) {
-	if (v->type == T_OBJECT) {
+	if (v->type == T_OBJECT || v->type == T_LWOBJECT) {
 	    /* skip object index */
 	    --n;
 	    v += 2;
 	    continue;
 	}
 	v++;
-	if (v->type == T_OBJECT) {
+	if (v->type == T_OBJECT || v->type == T_LWOBJECT) {
 	    /* skip object value */
 	    --n;
 	}
@@ -278,7 +287,8 @@ array *a;
     put(x, buf, strlen(buf));
 
     for (i = a->size >> 1, v = a->elts; i > 0; --i) {
-	if (v[0].type == T_OBJECT || v[1].type == T_OBJECT) {
+	if (v[0].type == T_OBJECT || v[0].type == T_LWOBJECT ||
+	    v[1].type == T_OBJECT || v[1].type == T_LWOBJECT) {
 	    v += 2;
 	    continue;
 	}
@@ -406,7 +416,7 @@ register frame *f;
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
-		    VAL_TRUE(var)) {
+		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
 		    /*
 		     * don't save object values, nil or 0
 		     */
@@ -938,7 +948,8 @@ register frame *f;
 	    ctrl = o_control(OBJR(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
-		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
+		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
+		    var->type != T_LWOBJECT) {
 		    d_assign_var(data, var,
 				 (v->type == T_INT) ?
 				  &zero_int : (v->type == T_FLOAT) ?

@@ -68,7 +68,7 @@ control *ctrl;
 	d_get_funcdefs(ctrl);
 	printf("function definitions:\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
-	    printf("%3u: %04lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
+	    printf("%3u: %08lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
 	    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[i].inherit,
 				      ctrl->funcdefs[i].index)->text,
 		       d_get_prog(ctrl) + ctrl->funcdefs[i].offset);
@@ -654,7 +654,15 @@ char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 int kf_dump_object(f)
 frame *f;
 {
-    showctrl(o_control(OBJR(f->sp->oindex)));
+    uindex n;
+
+    if (f->sp->type == T_OBJECT) {
+	n = f->sp->oindex;
+    } else {
+	n = d_get_elts(f->sp->u.array)[0].oindex;
+	arr_del(f->sp->u.array);
+    }
+    showctrl(o_control(OBJR(n)));
     fflush(stdout);
     *f->sp = nil_value;
     return 0;
@@ -671,14 +679,19 @@ char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, T_VOID, 2,
 int kf_dump_function(f)
 frame *f;
 {
+    uindex n;
+    control *ctrl;
     dsymbol *symb;
 
-    symb = ctrl_symb(o_control(OBJR(f->sp[1].oindex)),
-		     f->sp->u.string->text, f->sp->u.string->len);
+    if (f->sp[1].type == T_OBJECT) {
+	n = f->sp[1].oindex;
+    } else {
+	n = d_get_elts(f->sp[1].u.array)[0].oindex;
+	arr_del(f->sp[1].u.array);
+    }
+    ctrl = o_control(OBJR(n));
+    symb = ctrl_symb(ctrl, f->sp->u.string->text, f->sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
-	control *ctrl;
-
-	ctrl = o_control(OBJR(f->sp[1].oindex));
 	disasm(o_control(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)),
 	       UCHAR(symb->index));
 	fflush(stdout);

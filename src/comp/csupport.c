@@ -984,6 +984,7 @@ register frame *f;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr_del(f->sp->u.array);
 	break;
     }

@@ -64,25 +64,26 @@ int kf_call_other(f, nargs)
 register frame *f;
 int nargs;
 {
-    register object *obj;
     register value *val;
+    object *obj;
+    array *lwobj;
 
+    obj = (object *) NULL;
+    lwobj = (array *) NULL;
     val = &f->sp[nargs - 1];
-    switch (val->type) {
-    case T_STRING:
+    if (val->type == T_STRING) {
 	*--f->sp = *val;
 	*val = nil_value;	/* erase old copy */
 	call_driver_object(f, "call_object", 1);
-	if (f->sp->type != T_OBJECT) {
-	    i_del_value(f->sp++);
-	    return 1;
-	}
-	obj = OBJR(f->sp->oindex);
-	f->sp++;
-	break;
-
+	*val = *f->sp++;
+    }
+    switch (val->type) {
     case T_OBJECT:
 	obj = OBJR(val->oindex);
+	break;
+
+    case T_LWOBJECT:
+	lwobj = val->u.array;
 	break;
 
     default:
@@ -90,28 +91,24 @@ int nargs;
 	return 1;
     }
 
-    /* default return value */
-    *val = nil_value;
-    --val;
-
     if (OBJR(f->oindex)->count == 0) {
 	/*
 	 * call from destructed object
 	 */
-	i_pop(f, nargs - 1);
+	i_pop(f, nargs);
+	*--f->sp = nil_value;
 	return 0;
     }
 
-    if (i_call(f, obj, val->u.string->text, val->u.string->len, FALSE,
-	       nargs - 2)) {
-	/* function exists */
-	val = f->sp++;
-	str_del((f->sp++)->u.string);
-	*f->sp = *val;
+    if (i_call(f, obj, lwobj, val[-1].u.string->text, val[-1].u.string->len,
+	       FALSE, nargs - 2)) {
+	val = f->sp++;		/* function exists */
     } else {
-	/* function doesn't exist */
-	str_del((f->sp++)->u.string);
+	val = &nil_value;	/* function doesn't exist */
     }
+    str_del((f->sp++)->u.string);
+    i_del_value(f->sp);
+    *f->sp = *val;
     return 0;
 }
 # endif
@@ -134,7 +131,11 @@ register frame *f;
     --f->sp;
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	PUT_OBJVAL(f->sp, obj);
+	if (f->lwobj == (array *) NULL) {
+	    PUT_OBJVAL(f->sp, obj);
+	} else {
+	    PUT_LWOVAL(f->sp, f->lwobj);
+	}
     } else {
 	*f->sp = nil_value;
     }
@@ -158,6 +159,7 @@ int kf_previous_object(f, nargs)
 register frame *f;
 int nargs;
 {
+    register frame *prev;
     register object *obj;
 
     if (nargs == 0) {
@@ -166,12 +168,20 @@ int nargs;
 	return 1;
     }
 
-    obj = i_prev_object(f, (int) f->sp->u.number);
-    if (obj != (object *) NULL) {
-	PUT_OBJVAL(f->sp, obj);
-    } else {
-	*f->sp = nil_value;
+    prev = i_prev_object(f, (int) f->sp->u.number);
+    if (prev != (frame *) NULL) {
+	obj = OBJR(prev->oindex);
+	if (obj->count != 0) {
+	    if (prev->lwobj == (array *) NULL) {
+		PUT_OBJVAL(f->sp, obj);
+	    } else {
+		PUT_LWOVAL(f->sp, prev->lwobj);
+	    }
+	    return 0;
+	}
     }
+
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -246,13 +256,18 @@ register frame *f;
 {
     register object *obj;
 
+    if (f->sp->type == T_LWOBJECT) {
+	error("Cloning from a non-persistent object");
+    }
     obj = OBJF(f->sp->oindex);
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
     obj = o_clone(obj);
     PUT_OBJ(f->sp, obj);
-    i_call(f, obj, "", 0, FALSE, 0);	/* cause creator to be called */
+    if (i_call(f, obj, (array *) NULL, (char *) NULL, 0, FALSE, 0)) {
+	i_del_value(f->sp++);
+    }
     return 0;
 }
 # endif
@@ -272,6 +287,9 @@ register frame *f;
 {
     register object *obj;
 
+    if (f->sp->type == T_LWOBJECT) {
+	error("Destructing a non-persistent object");
+    }
     obj = OBJW(f->sp->oindex);
     switch (obj->flags & O_SPECIAL) {
     case O_USER:
@@ -298,6 +316,35 @@ register frame *f;
 
 
 # ifdef FUNCDEF
+FUNCDEF("new_object", kf_new_object, pt_new_object)
+# else
+char pt_new_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_OBJECT };
+
+/*
+ * NAME:	kfun->new_object()
+ * DESCRIPTION:	create a new non-persistent object
+ */
+int kf_new_object(f)
+register frame *f;
+{
+    object *obj;
+
+    if (f->sp->type != T_OBJECT ||
+	!((obj=OBJF(f->sp->oindex))->flags & O_MASTER)) {
+	error("Creating new instance from a non-master object");
+    }
+
+    PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
+    if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, FALSE, 0))
+    {
+	i_del_value(f->sp++);
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("object_name", kf_object_name, pt_object_name)
 # else
 char pt_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
@@ -310,11 +357,23 @@ int kf_object_name(f)
 register frame *f;
 {
     char buffer[STRINGSZ + 12], *name;
+    register string *str;
+    uindex n;
 
-    name = o_name(buffer, OBJR(f->sp->oindex));
-    PUT_STRVAL(f->sp, str_new((char *) NULL, strlen(name) + 1L));
-    f->sp->u.string->text[0] = '/';
-    strcpy(f->sp->u.string->text + 1, name);
+    if (f->sp->type == T_OBJECT) {
+	name = o_name(buffer, OBJR(f->sp->oindex));
+	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 1L));
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+    } else {
+	n = d_get_elts(f->sp->u.array)[0].oindex;
+	arr_del(f->sp->u.array);
+	name = o_name(buffer, OBJR(n));
+	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 4L));
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+	strcpy(str->text + str->len - 3, "#-1");
+    }
     return 0;
 }
 # endif
@@ -366,11 +425,18 @@ int kf_function_object(f)
 register frame *f;
 {
     object *obj;
+    uindex n;
     dsymbol *symb;
     char *name;
 
     i_add_ticks(f, 2);
-    obj = OBJR(f->sp->oindex);
+    if (f->sp->type == T_OBJECT) {
+	obj = OBJR(f->sp->oindex);
+    } else {
+	n = d_get_elts(f->sp->u.array)[0].oindex;
+	arr_del(f->sp->u.array);
+	obj = OBJR(n);
+    }
     f->sp++;
     symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
 		     f->sp->u.string->len);
@@ -437,12 +503,17 @@ register frame *f;
 {
     object *obj;
 
-    obj = OBJR(f->sp->oindex);
-    if ((obj->flags & O_SPECIAL) == O_USER) {
-	PUT_STRVAL(f->sp, comm_ip_number(obj));
+    if (f->sp->type == T_OBJECT) {
+	obj = OBJR(f->sp->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER) {
+	    PUT_STRVAL(f->sp, comm_ip_number(obj));
+	    return 0;
+	}
     } else {
-	*f->sp = nil_value;
+	arr_del(f->sp->u.array);
     }
+
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -462,12 +533,17 @@ register frame *f;
 {
     object *obj;
 
-    obj = OBJR(f->sp->oindex);
-    if ((obj->flags & O_SPECIAL) == O_USER) {
-	PUT_STRVAL(f->sp, comm_ip_name(obj));
+    if (f->sp->type == T_OBJECT) {
+	obj = OBJR(f->sp->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER) {
+	    PUT_STRVAL(f->sp, comm_ip_name(obj));
+	    return 0;
+	}
     } else {
-	*f->sp = nil_value;
+	arr_del(f->sp->u.array);
     }
+
+    *f->sp = nil_value;
     return 0;
 }
 # endif
@@ -708,7 +784,7 @@ int kf_typeof(f)
 register frame *f;
 {
     i_del_value(f->sp);
-    PUT_INTVAL(f->sp, f->sp->type);
+    PUT_INTVAL(f->sp, (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type);
     return 0;
 }
 # endif
@@ -752,17 +828,19 @@ register frame *f;
     }
 
     num = 0;
-    obj = OBJR(f->oindex);
-    if (obj->count != 0) {
-	if ((obj->flags & O_SPECIAL) == O_USER) {
-	    if (f->sp->type == T_INT) {
-		num = comm_echo(obj, f->sp->u.number != 0);
-	    } else {
-		num = comm_send(OBJW(obj->index), f->sp->u.string);
+    if (f->lwobj == (array *) NULL) {
+	obj = OBJR(f->oindex);
+	if (obj->count != 0) {
+	    if ((obj->flags & O_SPECIAL) == O_USER) {
+		if (f->sp->type == T_INT) {
+		    num = comm_echo(obj, f->sp->u.number != 0);
+		} else {
+		    num = comm_send(OBJW(obj->index), f->sp->u.string);
+		}
+	    } else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
+		P_message(f->sp->u.string->text);
+		num = f->sp->u.string->len;
 	    }
-	} else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
-	    P_message(f->sp->u.string->text);
-	    num = f->sp->u.string->len;
 	}
     }
     if (f->sp->type == T_STRING) {
@@ -789,11 +867,12 @@ register frame *f;
     object *obj;
     int num;
 
-    obj = OBJW(f->oindex);
-    if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
-	num = comm_udpsend(obj, f->sp->u.string);
-    } else {
-	num = 0;
+    num = 0;
+    if (f->lwobj == (array *) NULL) {
+	obj = OBJW(f->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
+	    num = comm_udpsend(obj, f->sp->u.string);
+	}
     }
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, num);
@@ -816,9 +895,11 @@ register frame *f;
 {
     object *obj;
 
-    obj = OBJR(f->oindex);
-    if ((obj->flags & O_SPECIAL) == O_USER) {
-	comm_block(obj, f->sp->u.number != 0);
+    if (f->lwobj == (array *) NULL) {
+	obj = OBJR(f->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER) {
+	    comm_block(obj, f->sp->u.number != 0);
+	}
     }
     *f->sp = nil_value;
     return 0;
@@ -911,6 +992,9 @@ int nargs;
     } else {
 	return 2;
     }
+    if (f->lwobj != (array *) NULL) {
+	error("call_out() in non-persistent object");
+    }
 
     i_add_ticks(f, nargs);
     if (OBJR(f->oindex)->count != 0 &&
@@ -946,6 +1030,9 @@ register frame *f;
     Int delay;
     xfloat flt;
 
+    if (f->lwobj != (array *) NULL) {
+	error("remove_call_out() in non-persistent object");
+    }
     i_add_ticks(f, 10);
     delay = d_del_call_out(f->data, (uindex) f->sp->u.number);
     if (delay < -1) {
@@ -1036,13 +1123,20 @@ register frame *f;
 int nargs;
 {
     array *a;
+    uindex n;
 
     i_add_ticks(f, 100);
     if (nargs == 0) {
 	a = conf_status(f);
 	--f->sp;
     } else {
-	a = conf_object(f->data, OBJR(f->sp->oindex));
+	if (f->sp->type == T_OBJECT) {
+	    n = f->sp->oindex;
+	} else {
+	    n = d_get_elts(f->sp->u.array)[0].oindex;
+	    arr_del(f->sp->u.array);
+	}
+	a = conf_object(f->data, OBJR(n));
     }
     PUT_ARRVAL(f->sp, a);
     return 0;

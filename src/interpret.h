@@ -68,7 +68,7 @@
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
-# define T_RESERVED	0x07	/* reserved for add-on packages */
+# define T_LWOBJECT	0x07	/* internal only */
 # define T_MIXED	0x08	/* declaration type only */
 # define T_VOID		0x09	/* function return type only */
 # define T_LVALUE	0x0a	/* address of a value */
@@ -87,10 +87,10 @@
 # define T_ARITHMETIC(t) ((t) <= T_FLOAT)
 # define T_ARITHSTR(t)	((t) <= T_STRING)
 # define T_POINTER(t)	((t) >= T_STRING)
-# define T_INDEXED(t)	((t) >= T_ARRAY)	/* only T_ARRAY and T_MAPPING */
+# define T_INDEXED(t)	((t) >= T_ARRAY)   /* T_ARRAY, T_MAPPING, T_LWOBJECT */
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
-			  "array", "mapping", "reserved", "mixed", "void" }
+			  "array", "mapping", "lwobject", "mixed", "void" }
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
 # define VAL_TRUE(v)	((v)->u.number != 0 ||				\
@@ -139,6 +139,12 @@
 				 (v)->type = T_MAPPING)
 # define PUT_MAPVAL_NOREF(v, m)	((v)->u.array = (m), (v)->type = T_MAPPING)
 # define PUT_MAP(v, m)		(arr_ref((v)->u.array = (m)))
+# define PUSH_LWOVAL(f, o)	(arr_ref((--(f)->sp)->u.array = (o)),	\
+				 (f)->sp->type = T_LWOBJECT)
+# define PUT_LWOVAL(v, o)	(arr_ref((v)->u.array = (o)),		\
+				 (v)->type = T_LWOBJECT)
+# define PUT_LWOVAL_NOREF(v, o)	((v)->u.array = (o), (v)->type = T_LWOBJECT)
+# define PUT_LWO(v, o)		(arr_ref((v)->u.array = (o)))
 
 # define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)
 # define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
@@ -174,6 +180,7 @@ typedef struct _rlinfo_ {
 struct _frame_ {
     frame *prev;		/* previous stack frame */
     uindex oindex;		/* current object index */
+    array *lwobj;		/* lightweight object */
     control *ctrl;		/* object control block */
     dataspace *data;		/* dataspace of current object */
     control *p_ctrl;		/* program control block */
@@ -223,13 +230,13 @@ extern Int	i_get_ticks	P((frame*));
 extern void	i_new_rlimits	P((frame*, Int, Int));
 extern void	i_set_rlimits	P((frame*, rlinfo*));
 extern frame   *i_set_sp	P((frame*, value*));
-extern object  *i_prev_object	P((frame*, int));
+extern frame   *i_prev_object	P((frame*, int));
 extern char    *i_prev_program	P((frame*, int));
 extern void	i_typecheck	P((frame*, char*, char*, char*, int, int));
 extern void	i_catcherr	P((frame*, Int));
-extern void	i_funcall	P((frame*, object*, int, int, int));
-extern bool	i_call		P((frame*, object*, char*, unsigned int, int,
-				   int));
+extern void	i_funcall	P((frame*, object*, array*, int, int, int));
+extern bool	i_call		P((frame*, object*, array*, char*, unsigned int,
+				   int, int));
 extern bool	i_call_tracei	P((frame*, Int, value*));
 extern array   *i_call_trace	P((frame*));
 extern bool	i_call_critical	P((frame*, char*, int, int));

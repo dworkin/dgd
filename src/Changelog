@@ -1461,3 +1461,4 @@ DGD 1.3
  - Show a proper errormessage if precompiling fails.
  - Made a minor change to the code optimizer, in preparation for light-weight
    objects.
+ - Partial implementation of light-weight objects.

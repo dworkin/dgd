@@ -1065,13 +1065,14 @@ register int state;
 		}
 	    }
 	    if (((n->r.number >> 8) & 0xff) == 0) {
-		output("i_funcall(f, (object *) NULL, 0, %d/*%s*/, %s)",
-		       ((int) n->r.number) & 0xff, n->l.left->l.string->text,
-		       p);
-	    } else {
-		output("i_funcall(f, (object *) NULL, f->p_index-%d, ",
-		       ((int) n->r.number >> 8) & 0xff);
+		output("i_funcall(f, (object *) NULL, (array *) NULL, 0, ");
 		output("%d/*%s*/, %s)", ((int) n->r.number) & 0xff,
+		       n->l.left->l.string->text, p);
+	    } else {
+		output("i_funcall(f, (object *) NULL, (array *) NULL, ");
+		output("f->p_index - %d, %d/*%s*/, %s)",
+		       ((int) n->r.number >> 8) & 0xff,
+		       ((int) n->r.number) & 0xff,
 		       n->l.left->l.string->text, p);
 	    }
 	    break;
@@ -1084,9 +1085,9 @@ register int state;
 		    }
 		}
 	    }
-	    output("p = i_foffset(%u), i_funcall(f, (object *)NULL, ",
+	    output("p = i_foffset(%u), i_funcall(f, (object *) NULL, ",
 		   ctrl_gencall((long) n->r.number));
-	    output("UCHAR(p[0]), UCHAR(p[1])/*%s*/, %s)",
+	    output("(array *) NULL, UCHAR(p[0]), UCHAR(p[1])/*%s*/, %s)",
 		   n->l.left->l.string->text, p);
 	    break;
 	}
@@ -1144,7 +1145,7 @@ register int state;
 		break;
 
 	    case T_OBJECT:
-		output("%s->type == T_OBJECT", p);
+		output("%s->type == T_OBJECT || %s->type == T_LWOBJECT", p, p);
 		break;
 
 	    case T_ARRAY:
@@ -1446,8 +1447,7 @@ register int state;
     switch (state) {
     case POP:
 	if ((n->type != N_FUNC || n->r.number >> 24 != FCALL) &&
-	    (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_OBJECT ||
-	     n->mod == T_VOID)) {
+	    (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_VOID)) {
 	    output(", f->sp++");
 	} else {
 	    output(", i_del_value(f->sp++)");
@@ -1478,7 +1478,8 @@ register int state;
 	    break;
 
 	case T_OBJECT:
-	    output(", (f->sp++)->type == T_OBJECT");
+	    output(", f->sp++, f->sp[-1].type == T_OBJECT || ");
+	    output("f->sp[-1].type == T_LWOBJECT");
 	    break;
 
 	default:

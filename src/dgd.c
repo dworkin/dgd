@@ -40,7 +40,7 @@ int narg;
 	dindex = driver->index;
 	dcount = driver->count;
     }
-    if (!i_call(f, driver, func, strlen(func), TRUE, narg)) {
+    if (!i_call(f, driver, (array *) NULL, func, strlen(func), TRUE, narg)) {
 	fatal("missing function in driver object: %s", func);
     }
     return TRUE;

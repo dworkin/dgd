@@ -224,7 +224,7 @@ bool force;
     } else {
 	this_user = obj->index;
 	PUSH_INTVAL(f, force);
-	if (i_call(f, obj, "close", 5, TRUE, 1)) {
+	if (i_call(f, obj, (array *) NULL, "close", 5, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	}
 	this_user = olduser;
@@ -670,7 +670,7 @@ unsigned int mtime;
 	    }
 	    call_driver_object(f, "telnet_connect", 0);
 	    if (f->sp->type != T_OBJECT) {
-		fatal("driver->telnet_connect() did not return an object");
+		fatal("driver->telnet_connect() did not return a persistent object");
 	    }
 	    obj = OBJ(f->sp->oindex);
 	    f->sp++;
@@ -681,7 +681,7 @@ unsigned int mtime;
 	    usr->flags |= CF_PROMPT;
 	    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
 	    this_user = obj->index;
-	    if (i_call(f, obj, "open", 4, TRUE, 0)) {
+	    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 		i_del_value(f->sp++);
 		endthread();
 	    }
@@ -704,7 +704,7 @@ unsigned int mtime;
 	}
 	call_driver_object(f, "binary_connect", 0);
 	if (f->sp->type != T_OBJECT) {
-	    fatal("driver->binary_connect() did not return an object");
+	    fatal("driver->binary_connect() did not return a persistent object");
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
@@ -713,7 +713,7 @@ unsigned int mtime;
 	endthread();
 
 	this_user = obj->index;
-	if (i_call(f, obj, "open", 4, TRUE, 0)) {
+	if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 	    if (VAL_TRUE(f->sp)) {
 		i_del_value(f->sp);
 		if ((obj->flags & O_SPECIAL) == O_USER) {
@@ -744,7 +744,7 @@ unsigned int mtime;
 	    usr->flags &= ~CF_ODONE;
 	    --odone;
 	    this_user = obj->index;
-	    if (i_call(f, obj, "message_done", 12, TRUE, 0)) {
+	    if (i_call(f, obj, (array *) NULL, "message_done", 12, TRUE, 0)) {
 		i_del_value(f->sp++);
 		endthread();
 	    }
@@ -978,7 +978,8 @@ unsigned int mtime;
 		    usr->flags |= CF_UDPDATA;
 		    PUSH_STRVAL(f, str_new(buffer, (long) n));
 		    this_user = obj->index;
-		    if (i_call(f, obj, "receive_datagram", 16, TRUE, 1)) {
+		    if (i_call(f, obj, (array *) NULL, "receive_datagram", 16,
+			       TRUE, 1)) {
 			i_del_value(f->sp++);
 			endthread();
 		    }
@@ -1003,7 +1004,7 @@ unsigned int mtime;
 	}
 
 	this_user = obj->index;
-	if (i_call(f, obj, "receive_message", 15, TRUE, 1)) {
+	if (i_call(f, obj, (array *) NULL, "receive_message", 15, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	    endthread();
 	}

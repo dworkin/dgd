@@ -1,5 +1,6 @@
 # include <kernel/kernel.h>
 # include <kernel/rsrc.h>
+# include <type.h>
 
 private object rsrcd;		/* resource manager */
 
@@ -120,7 +121,8 @@ static mixed *rsrc_get(string owner, string name)
 static int rsrc_incr(string owner, string name, mixed index, int incr,
 		     varargs int force)
 {
-    if (!name) {
+    if (!name || (typeof(index) == T_OBJECT &&
+		  sscanf(object_name(index), "%*s#-1") != 0)) {
 	error("Bad arguments for rsrc_incr");
     }
     return rsrcd->rsrc_incr(owner, name, index, incr, force);

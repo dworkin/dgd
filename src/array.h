@@ -47,3 +47,5 @@ extern value	       *map_index	P((dataspace*, array*, value*, value*));
 extern array	       *map_range	P((dataspace*, array*, value*, value*));
 extern array	       *map_indices	P((dataspace*, array*));
 extern array	       *map_values	P((dataspace*, array*));
+
+extern array	       *lwo_new		P((dataspace*, object*));

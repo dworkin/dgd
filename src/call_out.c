@@ -729,7 +729,8 @@ frame *f;
 	    freecallout(&running, i, i, 0);
 
 	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
-	    if (i_call(f, obj, str->text, str->len, TRUE, nargs)) {
+	    if (i_call(f, obj, (array *) NULL, str->text, str->len, TRUE,
+		       nargs)) {
 		/* function exists */
 		i_del_value(f->sp++);
 		str_del((f->sp++)->u.string);

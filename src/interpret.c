@@ -67,6 +67,7 @@ register value *v;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr_ref(v->u.array);
 	break;
     }
@@ -86,6 +87,7 @@ register value *v;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr_del(v->u.array);
 	break;
     }
@@ -99,6 +101,8 @@ void i_copy(v, w, len)
 register value *v, *w;
 register unsigned int len;
 {
+    register value *o;
+
     for ( ; len != 0; --len) {
 	switch (w->type) {
 	case T_STRING:
@@ -113,6 +117,14 @@ register unsigned int len;
 	    }
 	    break;
 
+	case T_LWOBJECT:
+	    o = d_get_elts(w->u.array);
+	    if (DESTRUCTED(o)) {
+		*v++ = nil_value;
+		w++;
+		continue;
+	    }
+	    /* fall through */
 	case T_ARRAY:
 	case T_MAPPING:
 	    arr_ref(w->u.array);
@@ -186,6 +198,8 @@ void i_push_value(f, v)
 frame *f;
 register value *v;
 {
+    register value *o;
+
     *--f->sp = *v;
     switch (v->type) {
     case T_STRING:
@@ -202,6 +216,17 @@ register value *v;
 	}
 	break;
 
+    case T_LWOBJECT:
+	o = d_get_elts(v->u.array);
+	if (DESTRUCTED(o)) {
+	    /*
+	     * can't wipe out the original, since it may be a value from a
+	     * mapping
+	     */
+	    *f->sp = nil_value;
+	    break;
+	}
+	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
 	arr_ref(v->u.array);
@@ -229,6 +254,7 @@ register int n;
 	    --f->lip;
 	case T_ARRAY:
 	case T_MAPPING:
+	case T_LWOBJECT:
 	    arr_del(v->u.array);
 	    break;
 
@@ -318,7 +344,7 @@ object *obj;
 {
     register frame *f;
     register Uint count;
-    register value *v;
+    register value *v, *o;
     register unsigned short n;
 
     count = obj->count;
@@ -327,13 +353,37 @@ object *obj;
     for (;;) {
 	f = prev;
 	for (v = f->sp; v < f->fp; v++) {
-	    if (v->type == T_OBJECT && v->u.objcnt == count) {
-		*v = nil_value;
+	    switch (v->type) {
+	    case T_OBJECT:
+		if (v->u.objcnt == count) {
+		    *v = nil_value;
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v->u.array);
+		if (o->u.objcnt == count) {
+		    arr_del(v->u.array);
+		    *v = nil_value;
+		}
+		break;
 	    }
 	}
 	for (v = f->lip; --v >= f->stack; ) {
-	    if (v->type == T_OBJECT && v->u.objcnt == count) {
-		*v = nil_value;
+	    switch (v->type) {
+	    case T_OBJECT:
+		if (v->u.objcnt == count) {
+		    *v = nil_value;
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v->u.array);
+		if (o->u.objcnt == count) {
+		    arr_del(v->u.array);
+		    *v = nil_value;
+		}
+		break;
 	    }
 	}
 
@@ -346,8 +396,20 @@ object *obj;
 	     * wipe out objects in arguments to atomic function call
 	     */
 	    for (n = f->nargs, v = prev->sp; n != 0; --n, v++) {
-		if (v->type == T_OBJECT && v->u.objcnt == count) {
-		    *v = nil_value;
+		switch (v->type) {
+		case T_OBJECT:
+		    if (v->u.objcnt == count) {
+			*v = nil_value;
+		    }
+		    break;
+
+		case T_LWOBJECT:
+		    o = d_get_elts(v->u.array);
+		    if (o->u.objcnt == count) {
+			arr_del(v->u.array);
+			*v = nil_value;
+		    }
+		    break;
 		}
 	    }
 	    break;
@@ -488,7 +550,11 @@ register int inherit, index;
     if (inherit != 0) {
 	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
-    i_push_value(f, d_get_variable(f->data, inherit + index));
+    if (f->lwobj == (array *) NULL) {
+	i_push_value(f, d_get_variable(f->data, inherit + index));
+    } else {
+	i_push_value(f, &d_get_elts(f->lwobj)[2 + inherit + index]);
+    }
 }
 
 /*
@@ -504,9 +570,17 @@ int index, vtype;
     if (inherit != 0) {
 	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
-    (--f->sp)->type = T_LVALUE;
-    f->sp->oindex = vtype;
-    f->sp->u.lval = d_get_variable(f->data, inherit + index);
+    if (f->lwobj == (array *) NULL) {
+	(--f->sp)->type = T_LVALUE;
+	f->sp->oindex = vtype;
+	f->sp->u.lval = d_get_variable(f->data, inherit + index);
+    } else {
+	(--f->sp)->type = T_ALVALUE;
+	f->sp->oindex = vtype;
+	arr_ref(f->sp->u.array = f->lwobj);
+	f->lip->type = T_INT;
+	(f->lip++)->u.number = 2 + inherit + index;
+    }
 }
 
 /*
@@ -566,6 +640,13 @@ register frame *f;
 	}
 	break;
 
+    case T_LWOBJECT:
+	ival = d_get_elts(val->u.array);
+	if (DESTRUCTED(ival)) {
+	    val = &nil_value;
+	    break;
+	}
+	/* fall through */
     case T_ARRAY:
     case T_MAPPING:
 	arr_ref(val->u.array);
@@ -775,7 +856,8 @@ register unsigned int type;
 {
     char tnbuf[8];
 
-    if (val->type != type && (!VAL_NIL(val) || !T_POINTER(type))) {
+    if (val->type != type && (val->type != T_LWOBJECT || type != T_OBJECT) &&
+	(!VAL_NIL(val) || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
 	    error("Value is not an %s", tnbuf);
@@ -967,7 +1049,12 @@ register frame *f;
     --f->sp;
     f->sp[0] = f->sp[1];
     f->sp[1] = f->sp[2];
-    PUT_OBJVAL(&f->sp[2], obj);
+    if (f->lwobj == (array *) NULL) {
+	PUT_OBJVAL(&f->sp[2], obj);
+    } else {
+	PUT_LWOVAL(&f->sp[2], f->lwobj);
+    }
+
     /* obj, stack, ticks */
     call_driver_object(f, "runtime_rlimits", 3);
 
@@ -1054,7 +1141,7 @@ register value *sp;
     register value *v, *w;
     register frame *f;
 
-    for (f = ftop; f != (frame *) NULL; f = f->prev) {
+    for (f = ftop; ; f = f->prev) {
 	v = f->sp;
 	w = f->lip;
 	for (;;) {
@@ -1079,6 +1166,7 @@ register value *sp;
 		--w;
 	    case T_ARRAY:
 	    case T_MAPPING:
+	    case T_LWOBJECT:
 		arr_del(v->u.array);
 		break;
 
@@ -1101,6 +1189,9 @@ register value *sp;
 	    v++;
 	}
 
+	if (f->lwobj != (array *) NULL) {
+	    arr_del(f->lwobj);
+	}
 	if (f->sos) {
 	    /* stack on stack */
 	    AFREE(f->stack);
@@ -1118,7 +1209,7 @@ register value *sp;
  * NAME:	interpret->prev_object()
  * DESCRIPTION:	return the nth previous object in the call_other chain
  */
-object *i_prev_object(f, n)
+frame *i_prev_object(f, n)
 register frame *f;
 register int n;
 {
@@ -1131,12 +1222,11 @@ register int n;
 	}
 	f = f->prev;
 	if (f->oindex == OBJ_NONE) {
-	    return (object *) NULL;
+	    return (frame *) NULL;
 	}
 	--n;
     }
-    obj = OBJR(f->oindex);
-    return (obj->count != 0) ? obj : (object *) NULL;
+    return f;
 }
 
 /*
@@ -1196,6 +1286,9 @@ int strict;
 
 	if (ptype != T_MIXED) {
 	    atype = f->sp[i].type;
+	    if (atype == T_LWOBJECT) {
+		atype = T_OBJECT;
+	    }
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
 		if (!VAL_NIL(f->sp + i) || !T_POINTER(ptype)) {
 		    /* wrong type */
@@ -1522,16 +1615,12 @@ register char *pc;
 	    break;
 
 	case I_PUSH_GLOBAL:
-	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
-	    i_push_value(f, d_get_variable(f->data, u));
+	    i_global(f, 1, FETCH1U(pc));
 	    break;
 
 	case I_PUSH_FAR_GLOBAL:
 	    u = FETCH1U(pc);
-	    if (u != 0) {
-		u = f->ctrl->inherits[f->p_index - u].varoffset;
-	    }
-	    i_push_value(f, d_get_variable(f->data, u + FETCH1U(pc)));
+	    i_global(f, u, FETCH1U(pc));
 	    break;
 
 	case I_PUSH_LOCAL_LVAL:
@@ -1542,21 +1631,14 @@ register char *pc;
 	    continue;
 
 	case I_PUSH_GLOBAL_LVAL:
-	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
-	    (--f->sp)->type = T_LVALUE;
-	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
-	    f->sp->u.lval = d_get_variable(f->data, u);
+	    u = FETCH1U(pc);
+	    i_global_lvalue(f, 1, u, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
 	    continue;
 
 	case I_PUSH_FAR_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
-	    if (u != 0) {
-		u = f->ctrl->inherits[f->p_index - u].varoffset;
-	    }
-	    u += FETCH1U(pc);
-	    (--f->sp)->type = T_LVALUE;
-	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
-	    f->sp->u.lval = d_get_variable(f->data, u);
+	    u2 = FETCH1U(pc);
+	    i_global_lvalue(f, u, u2, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
 	    continue;
 
 	case I_INDEX:
@@ -1657,21 +1739,23 @@ register char *pc;
 
 	case I_CALL_AFUNC:
 	    u = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, 0, u, FETCH1U(pc) + size);
+	    i_funcall(f, (object *) NULL, (array *) NULL, 0, u,
+		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
 	case I_CALL_DFUNC:
 	    u = f->p_index - FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, u, u2, FETCH1U(pc) + size);
+	    i_funcall(f, (object *) NULL, (array *) NULL, u, u2,
+		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
 	case I_CALL_FUNC:
 	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall(f, (object *) NULL, UCHAR(p[0]), UCHAR(p[1]),
-		      FETCH1U(pc) + size);
+	    i_funcall(f, (object *) NULL, (array *) NULL, UCHAR(p[0]),
+		      UCHAR(p[1]), FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
@@ -1731,9 +1815,10 @@ register char *pc;
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-void i_funcall(prev_f, obj, p_ctrli, funci, nargs)
+void i_funcall(prev_f, obj, lwobj, p_ctrli, funci, nargs)
 register frame *prev_f;
 register object *obj;
+array *lwobj;
 register int p_ctrli, nargs;
 int funci;
 {
@@ -1748,14 +1833,25 @@ int funci;
 	 * top level call
 	 */
 	f.oindex = obj->index;
+	f.lwobj = (array *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
-    } else if (obj != (object *) NULL) {
+    } else if (lwobj != (array *) NULL) {
 	/*
-	 * call_other
+	 * call_other to lightweight object
 	 */
 	f.oindex = obj->index;
+	f.lwobj = lwobj;
+	f.ctrl = obj->ctrl;
+	f.data = lwobj->primary->data;
+	f.external = TRUE;
+    } else if (obj != (object *) NULL) {
+	/*
+	 * call_other to persistent object
+	 */
+	f.oindex = obj->index;
+	f.lwobj = (array *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
@@ -1764,6 +1860,7 @@ int funci;
 	 * local function call
 	 */
 	f.oindex = prev_f->oindex;
+	f.lwobj = prev_f->lwobj;
 	f.ctrl = prev_f->ctrl;
 	f.data = prev_f->data;
 	f.external = FALSE;
@@ -1913,6 +2010,9 @@ int funci;
     f.sp = prev_f->sp;
     f.nargs = nargs;
     cframe = &f;
+    if (f.lwobj != (array *) NULL) {
+	arr_ref(f.lwobj);
+    }
 
     /* deal with atomic functions */
     f.level = prev_f->level;
@@ -1989,6 +2089,9 @@ int funci;
 	}
     }
 
+    if (f.lwobj != (array *) NULL) {
+	arr_del(f.lwobj);
+    }
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
@@ -2007,9 +2110,10 @@ int funci;
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(f, obj, func, len, call_static, nargs)
+bool i_call(f, obj, lwobj, func, len, call_static, nargs)
 frame *f;
 object *obj;
+array *lwobj;
 char *func;
 unsigned int len;
 int call_static;
@@ -2019,18 +2123,31 @@ int nargs;
     register dfuncdef *fdef;
     register control *ctrl;
 
-    ctrl = o_control(obj);
-    if (!(obj->flags & O_CREATED)) {
+    if (lwobj != (array *) NULL) {
+	uindex oindex;
+
+	oindex = d_get_elts(lwobj)[0].oindex;
+	obj = OBJR(oindex);
+	if (obj->update != lwobj->elts[1].u.number) {
+	    d_upgrade_lwobj(lwobj, obj);
+	}
+    } else if (!(obj->flags & O_CREATED)) {
 	/*
 	 * initialize the object
 	 */
 	obj->flags |= O_CREATED;
-	if (i_call(f, obj, creator, clen, TRUE, 0)) {
+	if (func != (char *) NULL &&
+	    i_call(f, obj, (array *) NULL, creator, clen, TRUE, 0)) {
 	    i_del_value(f->sp++);
 	}
     }
+    if (func == (char *) NULL) {
+	func = creator;
+	len = clen;
+    }
 
     /* find the function in the symbol table */
+    ctrl = o_control(obj);
     symb = ctrl_symb(ctrl, func, len);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
@@ -2042,13 +2159,15 @@ int nargs;
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
-    if (!call_static && (fdef->class & C_STATIC) && f->oindex != obj->index) {
+    if (!call_static && (fdef->class & C_STATIC) &&
+	((lwobj != (array *) NULL) ?
+	 lwobj != f->lwobj : f->oindex != obj->index)) {
 	i_pop(f, nargs);
 	return FALSE;
     }
 
     /* call the function */
-    i_funcall(f, obj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
+    i_funcall(f, obj, lwobj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
 
     return TRUE;
 }
@@ -2217,10 +2336,18 @@ dataspace *data;
 
     /* object name */
     name = o_name(buffer, OBJR(f->oindex));
-    PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
-    v++;
-    str->text[0] = '/';
-    strcpy(str->text + 1, name);
+    if (f->lwobj == (array *) NULL) {
+	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
+	v++;
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+    } else {
+	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 4L));
+	v++;
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+	strcpy(str->text + str->len - 3, "#-1");
+    }
 
     /* program name */
     name = OBJR(f->p_ctrl->oindex)->chain.name;

@@ -77,6 +77,7 @@ register value *rhs;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr = rhs->u.array;
 	if (arr->primary->data == data) {
 	    /* in this object */
@@ -137,6 +138,7 @@ register value *lhs;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	arr = lhs->u.array;
 	if (arr->primary->data == data) {
 	    /* in this object */
@@ -1375,7 +1377,7 @@ int *nargs;
 {
     string *str;
     register dcallout *co;
-    register value *v;
+    register value *v, *o;
     register uindex n;
 
     if (data->callouts == (dcallout *) NULL) {
@@ -1420,8 +1422,20 @@ int *nargs;
 
     /* wipe out destructed objects */
     for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
-	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    *v = nil_value;
+	switch (v->type) {
+	case T_OBJECT:
+	    if (DESTRUCTED(v)) {
+		*v = nil_value;
+	    }
+	    break;
+
+	case T_LWOBJECT:
+	    o = d_get_elts(v->u.array);
+	    if (DESTRUCTED(o)) {
+		arr_del(v->u.array);
+		*v = nil_value;
+	    }
+	    break;
 	}
     }
 
@@ -1525,6 +1539,165 @@ register dataspace *data;
     return list;
 }
 
+
+/*
+ * NAME:	data->set_varmap()
+ * DESCRIPTION:	add a variable mapping to a control block
+ */
+void d_set_varmap(ctrl, nvar, vmap)
+register control *ctrl;
+unsigned int nvar;
+unsigned short *vmap;
+{
+    ctrl->vmapsize = nvar;
+    ctrl->vmap = vmap;
+
+    /* varmap modified */
+    ctrl->flags |= CTRL_VARMAP;
+}
+
+/*
+ * NAME:	data->get_varmap()
+ * DESCRIPTION:	get the variable mapping for an object
+ */
+static unsigned short *d_get_varmap(obj, update, nvariables)
+object **obj;
+register Uint update;
+unsigned short *nvariables;
+{
+    register object *tmpl;
+    register unsigned short nvar, *vmap;
+
+    tmpl = OBJ((*obj)->prev);
+    if (O_UPGRADING(*obj)) {
+	/* in the middle of an upgrade */
+	tmpl = OBJ(tmpl->prev);
+    }
+    nvar = o_control(*obj)->nvariables + 1;
+    vmap = o_control(tmpl)->vmap;
+
+    if (tmpl->update != update) {
+	register unsigned short *m1, *m2, n;
+
+	m1 = vmap;
+	vmap = ALLOC(unsigned short, n = nvar);
+	do {
+	    tmpl = OBJ(tmpl->prev);
+	    m2 = o_control(tmpl)->vmap;
+	    while (n > 0) {
+		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
+		--n;
+	    }
+	    n = nvar;
+	    vmap -= n;
+	    m1 = vmap;
+	} while (tmpl->update != update);
+    }
+
+    *obj = tmpl;
+    *nvariables = nvar;
+    return vmap;
+}
+
+/*
+ * NAME:	data->upgrade_data()
+ * DESCRIPTION:	upgrade the dataspace for one object
+ */
+void d_upgrade_data(data, nvar, vmap, tmpl)
+register dataspace *data;
+register unsigned short nvar, *vmap;
+object *tmpl;
+{
+    register value *v;
+    register unsigned short n;
+    value *vars;
+
+    /* make sure variables are in memory */
+    vars = d_get_variable(data, 0);
+
+    /* map variables */
+    for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
+	switch (*vmap) {
+	case NEW_INT:
+	    *v++ = zero_int;
+	    break;
+
+	case NEW_FLOAT:
+	    *v++ = zero_float;
+	    break;
+
+	case NEW_POINTER:
+	    *v++ = nil_value;
+	    break;
+
+	default:
+	    *v = vars[*vmap];
+	    i_ref_value(v);
+	    v->modified = TRUE;
+	    ref_rhs(data, v++);
+	    break;
+	}
+	vmap++;
+    }
+    vars = v - nvar;
+
+    /* deref old values */
+    v = data->variables;
+    for (n = data->nvariables; n > 0; --n) {
+	del_lhs(data, v);
+	i_del_value(v++);
+    }
+
+    /* replace old with new */
+    FREE(data->variables);
+    data->variables = vars;
+
+    data->base.flags |= MOD_VARIABLE;
+    if (data->nvariables != nvar) {
+	if (data->svariables != (svalue *) NULL) {
+	    FREE(data->svariables);
+	    data->svariables = (svalue *) NULL;
+	}
+	data->nvariables = nvar;
+	data->base.achange++;	/* force rebuild on swapout */
+    }
+
+    o_upgraded(tmpl, OBJ(data->oindex));
+}
+
+/*
+ * NAME:	data->upgrade_clone()
+ * DESCRIPTION:	upgrade a clone object
+ */
+void d_upgrade_clone(data)
+dataspace *data;
+{
+    object *obj;
+    unsigned short *vmap, nvar;
+    Uint update;
+
+    /*
+     * the program for the clone was upgraded since last swapin
+     */
+    obj = OBJ(data->oindex);
+    update = obj->update;
+    obj = OBJ(obj->u_master);
+    vmap = d_get_varmap(&obj, update, &nvar);
+    d_upgrade_data(data, nvar, vmap, obj);
+    if (vmap != obj->ctrl->vmap) {
+	FREE(vmap);
+    }
+}
+
+/*
+ * NAME:	data->upgrade_lwobj()
+ * DESCRIPTION:	upgrade a non-persistent object
+ */
+void d_upgrade_lwobj(lwobj, obj)
+array *lwobj;
+object *obj;
+{
+}
 
 /*
  * NAME:	data->import()
@@ -1690,88 +1863,6 @@ void d_export()
 
 	FREE(imp.itab);
     }
-}
-
-/*
- * NAME:	data->varmap()
- * DESCRIPTION:	add a variable mapping to a control block
- */
-void d_varmap(ctrl, nvar, vmap)
-register control *ctrl;
-unsigned int nvar;
-unsigned short *vmap;
-{
-    ctrl->vmapsize = nvar;
-    ctrl->vmap = vmap;
-
-    /* varmap modified */
-    ctrl->flags |= CTRL_VARMAP;
-}
-
-/*
- * NAME:	data->upgrade()
- * DESCRIPTION:	upgrade the dataspace for one object
- */
-void d_upgrade(data, nvar, vmap, tmpl)
-register dataspace *data;
-register unsigned short nvar, *vmap;
-object *tmpl;
-{
-    register value *v;
-    register unsigned short n;
-    value *vars;
-
-    /* make sure variables are in memory */
-    vars = d_get_variable(data, 0);
-
-    /* map variables */
-    for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
-	switch (*vmap) {
-	case NEW_INT:
-	    *v++ = zero_int;
-	    break;
-
-	case NEW_FLOAT:
-	    *v++ = zero_float;
-	    break;
-
-	case NEW_POINTER:
-	    *v++ = nil_value;
-	    break;
-
-	default:
-	    *v = vars[*vmap];
-	    i_ref_value(v);
-	    v->modified = TRUE;
-	    ref_rhs(data, v++);
-	    break;
-	}
-	vmap++;
-    }
-    vars = v - nvar;
-
-    /* deref old values */
-    v = data->variables;
-    for (n = data->nvariables; n > 0; --n) {
-	del_lhs(data, v);
-	i_del_value(v++);
-    }
-
-    /* replace old with new */
-    FREE(data->variables);
-    data->variables = vars;
-
-    data->base.flags |= MOD_VARIABLE;
-    if (data->nvariables != nvar) {
-	if (data->svariables != (svalue *) NULL) {
-	    FREE(data->svariables);
-	    data->svariables = (svalue *) NULL;
-	}
-	data->nvariables = nvar;
-	data->base.achange++;	/* force rebuild on swapout */
-    }
-
-    o_upgraded(tmpl, OBJ(data->oindex));
 }
 
 

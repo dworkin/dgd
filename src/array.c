@@ -500,7 +500,7 @@ static void copytmp(v1, a)
 register value *v1;
 register array *a;
 {
-    register value *v2;
+    register value *v2, *o;
     register unsigned short n;
 
     v2 = d_get_elts(a);
@@ -516,8 +516,19 @@ register array *a;
 	 */
 	a->odcount = odcount;
 	for (n = a->size; n != 0; --n) {
-	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		d_assign_elt(a->primary->data, a, v2, &nil_value);
+	    switch (v2->type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(v2)) {
+		    d_assign_elt(a->primary->data, a, v2, &nil_value);
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v2->u.array);
+		if (DESTRUCTED(o)) {
+		    d_assign_elt(a->primary->data, a, v2, &nil_value);
+		}
+		break;
 	    }
 	    *v1++ = *v2++;
 	}
@@ -586,6 +597,7 @@ cvoid *cv1, *cv2;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	return (v1->u.array->tag <= v2->u.array->tag) ?
 		(v1->u.array->tag < v2->u.array->tag) ? -1 : 0 :
 		1;
@@ -679,7 +691,7 @@ array *arr_sub(data, a1, a2)
 dataspace *data;
 array *a1, *a2;
 {
-    register value *v1, *v2, *v3;
+    register value *v1, *v2, *v3, *o;
     register array *a3;
     register unsigned short n, size;
 
@@ -722,9 +734,21 @@ array *a1, *a2;
     } else {
 	a1->odcount = odcount;
 	for (n = a1->size; n > 0; --n) {
-	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-		/* replace destructed object by nil */
-		d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+	    switch (v1->type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(v1)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v1->u.array);
+		if (DESTRUCTED(o)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		}
+		break;
 	    }
 	    if (search(v1, v2, size, 1, FALSE) < 0) {
 		/*
@@ -756,7 +780,7 @@ array *arr_intersect(data, a1, a2)
 dataspace *data;
 array *a1, *a2;
 {
-    register value *v1, *v2, *v3;
+    register value *v1, *v2, *v3, *o;
     register array *a3;
     register unsigned short n, size;
 
@@ -789,9 +813,21 @@ array *a1, *a2;
     } else {
 	a1->odcount = odcount;
 	for (n = a1->size; n > 0; --n) {
-	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-		/* replace destructed object by nil */
-		d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+	    switch (v1->type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(v1)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v1->u.array);
+		if (DESTRUCTED(o)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
+		}
+		break;
 	    }
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -823,7 +859,7 @@ array *arr_setadd(data, a1, a2)
 dataspace *data;
 array *a1, *a2;
 {
-    register value *v, *v1, *v2;
+    register value *v, *v1, *v2, *o;
     value *v3;
     register array *a3;
     register unsigned short n, size;
@@ -865,9 +901,21 @@ array *a1, *a2;
     } else {
 	a2->odcount = odcount;
 	for (n = a2->size; n > 0; --n) {
-	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		/* replace destructed object by nil */
-		d_assign_elt(a2->primary->data, a2, v2, &nil_value);
+	    switch (v2->type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(v2)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v2->u.array);
+		if (DESTRUCTED(o)) {
+		    /* replace destructed object by nil */
+		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
+		}
+		break;
 	    }
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -1174,7 +1222,6 @@ register array *m;
 static void map_clean(m)
 register array *m;
 {
-    register value *v1, *v2;
     register unsigned short i, size;
 
     if (m->odcount == odcount) {
@@ -1189,26 +1236,63 @@ register array *m;
      * remove destructed objects in the array
      */
     if (m->size != 0) {
+	register value *v1, *v2, *o;
+
 	size = 0;
 	v1 = v2 = d_get_elts(m);
 	for (i = m->size; i > 0; i -= 2) {
-	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		/*
-		 * index is destructed object
-		 */
-		d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
-		v2 += 2;
-	    } else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
-		/*
-		 * value is destructed object
-		 */
-		d_assign_elt(m->primary->data, m, v2, &nil_value);
-		v2 += 2;
-	    } else {
-		*v1++ = *v2++;
-		*v1++ = *v2++;
-		size += 2;
+	    switch (v2->type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(v2)) {
+		    /*
+		     * index is destructed object
+		     */
+		    d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
+		    v2 += 2;
+		    continue;
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v2->u.array);
+		if (DESTRUCTED(o)) {
+		    /*
+		     * index is destructed object
+		     */
+		    d_assign_elt(m->primary->data, m, v2++, &nil_value);
+		    d_assign_elt(m->primary->data, m, v2++, &nil_value);
+		    continue;
+		}
+		break;
 	    }
+	    switch (v2[1].type) {
+	    case T_OBJECT:
+		if (DESTRUCTED(&v2[1])) {
+		    /*
+		     * value is destructed object
+		     */
+		    d_assign_elt(m->primary->data, m, v2, &nil_value);
+		    v2 += 2;
+		    continue;
+		}
+		break;
+
+	    case T_LWOBJECT:
+		o = d_get_elts(v2[1].u.array);
+		if (DESTRUCTED(o)) {
+		    /*
+		     * value is destructed object
+		     */
+		    d_assign_elt(m->primary->data, m, v2++, &nil_value);
+		    d_assign_elt(m->primary->data, m, v2++, &nil_value);
+		    continue;
+		}
+		break;
+	    }
+
+	    *v1++ = *v2++;
+	    *v1++ = *v2++;
+	    size += 2;
 	}
 	if (size == 0) {
 	    FREE(m->elts);
@@ -1225,29 +1309,73 @@ register array *m;
      */
     if (m->hashed != (maphash *) NULL && m->hashed->size != 0) {
 	register mapelt *e, **p, **t;
+	register value *o;
 
 	size = 0;
 	t = m->hashed->table;
 	for (i = m->hashed->size; i > 0; ) {
 	    for (p = t++; (e=*p) != (mapelt *) NULL; --i) {
-		if (e->idx.type == T_OBJECT && DESTRUCTED(&e->idx)) {
-		    /*
-		     * index is destructed object
-		     */
-		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
-		} else if (e->val.type == T_OBJECT && DESTRUCTED(&e->val)) {
-		    /*
-		     * value is destructed object
-		     */
-		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
-		} else {
-		    size++;
-		    p = &e->next;
-		    continue;
+		switch (e->idx.type) {
+		case T_OBJECT:
+		    if (DESTRUCTED(&e->idx)) {
+			/*
+			 * index is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+			*p = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			continue;
+		    }
+		    break;
+
+		case T_LWOBJECT:
+		    o = d_get_elts(e->idx.u.array);
+		    if (DESTRUCTED(&e->idx)) {
+			/*
+			 * index is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
+			d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+			*p = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			continue;
+		    }
+		    break;
 		}
-		*p = e->next;
-		e->next = fmelt;
-		fmelt = e;
+		switch (e->val.type) {
+		case T_OBJECT:
+		    if (DESTRUCTED(&e->val)) {
+			/*
+			 * value is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
+			*p = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			continue;
+		    }
+		    break;
+
+		case T_LWOBJECT:
+		    o = d_get_elts(e->val.u.array);
+		    if (DESTRUCTED(o)) {
+			/*
+			 * value is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
+			d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+			*p = e->next;
+			e->next = fmelt;
+			fmelt = e;
+			continue;
+		    }
+		    break;
+		}
+
+		size++;
+		p = &e->next;
 	    }
 	}
 	m->hashed->size = size;
@@ -1264,7 +1392,7 @@ register array *m;
 void map_compact(m)
 register array *m;
 {
-    register value *v1, *v2;
+    register value *v1, *v2, *o;
     register unsigned short i, arrsize, hashsize;
 
     if ((m->size == 0 || m->odcount == odcount) &&
@@ -1285,23 +1413,58 @@ register array *m;
 	     * remove destructed objects in the array
 	     */
 	    for (i = m->size; i > 0; i -= 2) {
-		if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		    /*
-		     * index is destructed object
-		     */
-		    d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
-		    v2 += 2;
-		} else if (v2[1].type == T_OBJECT && DESTRUCTED(&v2[1])) {
-		    /*
-		     * value is destructed object
-		     */
-		    d_assign_elt(m->primary->data, m, v2, &nil_value);
-		    v2 += 2;
-		} else {
-		    *v1++ = *v2++;
-		    *v1++ = *v2++;
-		    arrsize += 2;
+		switch (v2->type) {
+		case T_OBJECT:
+		    if (DESTRUCTED(v2)) {
+			/*
+			 * index is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, v2 + 1, &nil_value);
+			v2 += 2;
+			continue;
+		    }
+		    break;
+
+		case T_LWOBJECT:
+		    o = d_get_elts(v2->u.array);
+		    if (DESTRUCTED(o)) {
+			/*
+			 * index is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, v2++, &nil_value);
+			d_assign_elt(m->primary->data, m, v2++, &nil_value);
+			continue;
+		    }
+		    break;
 		}
+		switch (v2[1].type) {
+		case T_OBJECT:
+		    if (DESTRUCTED(&v2[1])) {
+			/*
+			 * value is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, v2, &nil_value);
+			v2 += 2;
+			continue;
+		    }
+		    break;
+
+		case T_LWOBJECT:
+		    o = d_get_elts(v2[1].u.array);
+		    if (DESTRUCTED(o)) {
+			/*
+			 * value is destructed object
+			 */
+			d_assign_elt(m->primary->data, m, v2++, &nil_value);
+			d_assign_elt(m->primary->data, m, v2++, &nil_value);
+			continue;
+		    }
+		    break;
+		}
+
+		*v1++ = *v2++;
+		*v1++ = *v2++;
+		arrsize += 2;
 	    }
 	} else {
 	    arrsize = m->size;
@@ -1331,31 +1494,67 @@ register array *m;
 		hashsize = m->hashed->size << 1;
 	    } else {
 		for (i = m->hashed->size; i > 0; ) {
-		    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
-			if (e->idx.type == T_OBJECT && DESTRUCTED(&e->idx)) {
-			    /*
-			     * index is destructed object
-			     */
-			    d_assign_elt(m->primary->data, m, &e->val,
-					 &nil_value);
-			} else if (e->val.type == T_OBJECT &&
-				   DESTRUCTED(&e->val)) {
-			    /*
-			     * value is destructed object
-			     */
-			    d_assign_elt(m->primary->data, m, &e->idx,
-					 &nil_value);
-			} else {
-			    /*
-			     * copy to array
-			     */
-			    *v2++ = e->idx;
-			    *v2++ = e->val;
-			    hashsize += 2;
+		    for (e = *t++; e != (mapelt *) NULL;
+			 --i, n = e->next, e->next = fmelt, fmelt = e, e = n) {
+			switch (e->idx.type) {
+			case T_OBJECT:
+			    if (DESTRUCTED(&e->idx)) {
+				/*
+				 * index is destructed object
+				 */
+				d_assign_elt(m->primary->data, m, &e->val,
+					     &nil_value);
+				continue;
+			    }
+			    break;
+
+			case T_LWOBJECT:
+			    o = d_get_elts(e->idx.u.array);
+			    if (DESTRUCTED(o)) {
+				/*
+				 * index is destructed object
+				 */
+				d_assign_elt(m->primary->data, m, &e->idx,
+					     &nil_value);
+				d_assign_elt(m->primary->data, m, &e->val,
+					     &nil_value);
+				continue;
+			    }
+			    break;
 			}
-			n = e->next;
-			e->next = fmelt;
-			fmelt = e;
+			switch (e->val.type) {
+			case T_OBJECT:
+			    if (DESTRUCTED(&e->val)) {
+				/*
+				 * value is destructed object
+				 */
+				d_assign_elt(m->primary->data, m, &e->idx,
+					     &nil_value);
+				continue;
+			    }
+			    break;
+
+			case T_LWOBJECT:
+			    o = d_get_elts(e->val.u.array);
+			    if (DESTRUCTED(o)) {
+				/*
+				 * value is destructed object
+				 */
+				d_assign_elt(m->primary->data, m, &e->idx,
+					     &nil_value);
+				d_assign_elt(m->primary->data, m, &e->val,
+					     &nil_value);
+				continue;
+			    }
+			    break;
+			}
+
+			/*
+			 * copy to array
+			 */
+			*v2++ = e->idx;
+			*v2++ = e->val;
+			hashsize += 2;
 		    }
 		}
 	    }
@@ -1873,6 +2072,7 @@ value *val, *elt;
 
     case T_ARRAY:
     case T_MAPPING:
+    case T_LWOBJECT:
 	i = (unsigned short) ((unsigned long) val->u.array >> 3);
 	break;
     }
@@ -2019,4 +2219,28 @@ array *m;
 
     d_ref_imports(values);
     return values;
+}
+
+
+/*
+ * NAME:	lwobject->new()
+ * DESCRIPTION:	create a new light-weight object
+ */
+array *lwo_new(data, obj)
+dataspace *data;
+register object *obj;
+{
+    register control *ctrl;
+    register array *a;
+
+    ctrl = o_control(obj);
+    a = arr_alloc(ctrl->nvariables + 3);
+    a->elts = ALLOC(value, ctrl->nvariables + 3);
+    PUT_OBJVAL(&a->elts[0], obj);
+    PUT_INTVAL(&a->elts[1], obj->update);
+    d_new_variables(ctrl, a->elts + 2);
+    a->tag = tag++;
+    a->odcount = (Uint) -1;
+    a->primary = &data->plane->alocal;
+    return a;
 }

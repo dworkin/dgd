@@ -386,55 +386,6 @@ register object *obj;
 }
 
 /*
- * NAME:	data->upgrade_clone()
- * DESCRIPTION:	upgrade a clone object
- */
-static void d_upgrade_clone(data)
-register dataspace *data;
-{
-    register object *obj, *tmpl;
-    register unsigned short nvar, *vmap;
-    register Uint update;
-
-    /*
-     * the program for the clone was upgraded since last swapin
-     */
-    obj = OBJ(data->oindex);
-    update = obj->update;
-    obj = OBJ(obj->u_master);
-    tmpl = OBJ(obj->prev);
-    if (O_UPGRADING(obj)) {
-	/* in the middle of an upgrade */
-	tmpl = OBJ(tmpl->prev);
-    }
-    nvar = data->ctrl->nvariables + 1;
-    vmap = o_control(tmpl)->vmap;
-
-    if (tmpl->update != update) {
-	register unsigned short *m1, *m2, n;
-
-	m1 = vmap;
-	vmap = ALLOCA(unsigned short, n = nvar);
-	do {
-	    tmpl = OBJ(tmpl->prev);
-	    m2 = o_control(tmpl)->vmap;
-	    while (n > 0) {
-		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
-		--n;
-	    }
-	    n = nvar;
-	    vmap -= n;
-	    m1 = vmap;
-	} while (tmpl->update != update);
-    }
-
-    d_upgrade(data, nvar, vmap, tmpl);
-    if (vmap != tmpl->ctrl->vmap) {
-	AFREE(vmap);
-    }
-}
-
-/*
  * NAME:	data->load_dataspace()
  * DESCRIPTION:	load the dataspace header block of an object from the swap
  */
@@ -1004,6 +955,7 @@ register int n;
 
 	case T_ARRAY:
 	case T_MAPPING:
+	case T_LWOBJECT:
 	    arr_ref(v->u.array = d_get_array(data, sv->u.array));
 	    break;
 	}
@@ -1017,29 +969,27 @@ register int n;
  * NAME:	data->new_variables()
  * DESCRIPTION:	initialize variables in a dataspace block
  */
-static void d_new_variables(data)
-dataspace *data;
+void d_new_variables(ctrl, variables)
+register control *ctrl;
+register value *variables;
 {
     register unsigned short nifdefs, nvars, nvinit;
-    register value *val;
     register dvardef *var;
-    register control *ctrl;
     register dinherit *inh;
 
     /*
      * first, initialize all variables to nil
      */
-    for (val = data->variables, nvars = data->nvariables; nvars > 0; --nvars) {
-	*val++ = nil_value;
+    for (nvars = ctrl->nvariables + 1, variables += nvars; nvars > 0; --nvars) {
+	*--variables = nil_value;
     }
 
-    if (data->ctrl->nvinit != 0) {
+    if (ctrl->nvinit != 0) {
 	/*
 	 * explicitly initialize some variables
 	 */
 	nvars = 0;
-	for (nvinit = data->ctrl->nvinit, inh = data->ctrl->inherits;
-	     nvinit > 0; inh++) {
+	for (nvinit = ctrl->nvinit, inh = ctrl->inherits; nvinit > 0; inh++) {
 	    if (inh->varoffset == nvars) {
 		ctrl = o_control(OBJR(inh->oindex));
 		if (ctrl->nifdefs != 0) {
@@ -1047,10 +997,10 @@ dataspace *data;
 		    for (nifdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
 			 nifdefs > 0; var++) {
 			if (var->type == T_INT && nilisnot0) {
-			    data->variables[nvars] = zero_int;
+			    variables[nvars] = zero_int;
 			    --nifdefs;
 			} else if (var->type == T_FLOAT) {
-			    data->variables[nvars] = zero_float;
+			    variables[nvars] = zero_float;
 			    --nifdefs;
 			}
 			nvars++;
@@ -1075,7 +1025,7 @@ register unsigned int idx;
 	data->variables = ALLOC(value, data->nvariables);
 	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
-	    d_new_variables(data);
+	    d_new_variables(data->ctrl, data->variables);
 	} else {
 	    /*
 	     * variables must be loaded from the swap
@@ -1413,6 +1363,7 @@ register unsigned short n;
 
 	case T_ARRAY:
 	case T_MAPPING:
+	case T_LWOBJECT:
 	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
@@ -1478,6 +1429,7 @@ register unsigned short n;
 
 	case T_ARRAY:
 	case T_MAPPING:
+	case T_LWOBJECT:
 	    i = arr_put(save->amerge, v->u.array, save->narr);
 	    sv->oindex = 0;
 	    sv->u.array = i;
@@ -1539,6 +1491,7 @@ register unsigned short n;
 
 	    case T_ARRAY:
 	    case T_MAPPING:
+	    case T_LWOBJECT:
 		sv->oindex = 0;
 		sv->u.array = v->u.array->primary - data->base.arrays;
 		break;
@@ -2079,7 +2032,7 @@ register object *tmpl, *new;
 	    obj->count != 0) {
 	    /* upgrade clone */
 	    if (nvar != 0) {
-		d_upgrade(data, nvar, vmap, tmpl);
+		d_upgrade_data(data, nvar, vmap, tmpl);
 	    }
 	    data->ctrl->ndata--;
 	    data->ctrl = new->ctrl;

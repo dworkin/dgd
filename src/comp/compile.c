@@ -562,7 +562,7 @@ object *obj;
 		o_upgrade(obj, ctrl, f);
 		vmap = ctrl_varmap(obj->ctrl, ctrl);
 		if (vmap != (unsigned short *) NULL) {
-		    d_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
+		    d_set_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
 		}
 	    }
 	    return obj;
