@@ -75,6 +75,9 @@ nomask _F_create()
 {
     if (!prev) {
 	string oname;
+# ifdef CREATOR
+	string cname;
+# endif
 	object driver;
 	int clone;
 
@@ -103,8 +106,8 @@ nomask _F_create()
 		driver->clone(this_object(), owner);
 	    }
 # ifdef CREATOR
-	    oname = function_object(CREATOR, this_object());
-	    if (oname && sscanf(oname, USR + "/System/%*s") != 0) {
+	    cname = function_object(CREATOR, this_object());
+	    if (cname && sscanf(cname, USR + "/System/%*s") != 0) {
 		/* extra initialisation function */
 		call_other(this_object(), CREATOR, clone);
 	    }
