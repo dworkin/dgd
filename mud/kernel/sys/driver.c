@@ -780,7 +780,8 @@ static void runtime_error(string str, int caught, int ticks)
     if (caught == 1) {
 	/* top-level catch: ignore */
 	caught = 0;
-    } else if (caught != 0 && ticks < 0) {
+    } else if (caught != 0 && ticks < 0 &&
+	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%*s") != 0) {
 	tls[1] = str;
 	return;
     }
