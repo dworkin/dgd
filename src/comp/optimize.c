@@ -369,16 +369,48 @@ register node **m;
 	    switch (n->l.left->type) {
 	    case N_ADD:
 		n->l.left->type = N_SUM;
-		d1 = max2(d1 + 1, 4);
+		d1 = max2(d1 + 2, 4);
 		n->type = N_SUM;
-		return d1 + max2(d2, 2);
+		switch (n->r.right->type) {
+		case N_ADD:
+		    d2 = max2(d2 + 2, 4);
+		    break;
+
+		case N_RANGE:
+		    d2 = max2(d2 + 1, 3);
+		    break;
+
+		case N_SUM:
+		    break;
+
+		default:
+		    d2 = max2(d2 + 1, 2);
+		    break;
+		}
+		return d1 + d2;
 
 	    case N_RANGE:
-		d1++;	/* possible implicit operand */
+		d1 = max2(d1 + 1, 3);
 		/* fall through */
 	    case N_SUM:
 		n->type = N_SUM;
-		return d1 + max2(d2, 2);
+		switch (n->r.right->type) {
+		case N_ADD:
+		    d2 = max2(d2 + 2, 4);
+		    break;
+
+		case N_RANGE:
+		    d2 = max2(d2 + 1, 3);
+		    break;
+
+		case N_SUM:
+		    break;
+
+		default:
+		    d2 = max2(d2 + 1, 2);
+		    break;
+		}
+		return d1 + d2;
 	    }
 	}
     }

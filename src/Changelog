@@ -866,3 +866,4 @@ DGD 1.1
  - Made it possible to use ( ) in inherit string expressions.
  - Fixed a bug in the C code generator; no check was made to see if the stack
    had been reallocated after a kfun- or function call.
+ - Fixed a memory leak in get_dir(), also introduced in the latest rewrite.

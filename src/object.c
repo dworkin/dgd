@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include <ctype.h>
 # include "str.h"

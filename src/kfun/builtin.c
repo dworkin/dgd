@@ -1701,8 +1701,7 @@ int kf_tostring()
     }
 
     sp->type = T_STRING;
-    str_ref(sp->u.string = str_new((char *) NULL, (long) strlen(buffer)));
-    strcpy(sp->u.string->text, buffer);
+    str_ref(sp->u.string = str_new(buffer, (long) strlen(buffer)));
     return 0;
 }
 # endif

@@ -1542,7 +1542,11 @@ int kf_get_dir()
 	    fatal("cannot chdir back to base dir");
 	}
     } else {
-	nfiles = 0;
+	/* free strings again */
+	while (nfiles > 0) {
+	    str_del((f++)->u.string);
+	    --nfiles;
+	}
     }
 
     /* adjust array sizes */

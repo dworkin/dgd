@@ -6,8 +6,6 @@
 # include "interpret.h"
 # include "comm.h"
 
-# define ERR_LOG_BUF_SZ		1024	/* extra error log buffer size */
-
 typedef struct {
     jmp_buf env;			/* error context */
     value *sp;				/* stack pointer value */

@@ -993,6 +993,13 @@ register value *newsp;
 	}
 	v = f->argp;
 	w = f->ilvp;
+
+	if (f->sos) {
+	    /* stack on stack */
+	    AFREE(f->stack);
+	} else {
+	    FREE(f->stack);
+	}
     }
 
     while (v < newsp) {

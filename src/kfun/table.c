@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "kfun.h"
 # include "table.h"
 

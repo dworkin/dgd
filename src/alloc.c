@@ -14,9 +14,9 @@
 # define UINTSIZE	ALIGN(sizeof(unsigned int), STRUCT_AL)
 
 # ifdef DEBUG
-# define OFFSET		ALIGN(sizeof(header), STRUCT_AL)
+# define MOFFSET		ALIGN(sizeof(header), STRUCT_AL)
 # else
-# define OFFSET		SIZESIZE
+# define MOFFSET		SIZESIZE
 # endif
 
 typedef struct _chunk_ {
@@ -58,8 +58,8 @@ unsigned int size;
  */
 
 # define INIT_MEM	16384		/* initial static memory chunk */
-# define SLIMIT		(STRINGSZ + OFFSET)
-# define SSMALL		(OFFSET + STRINGSZ / 8)
+# define SLIMIT		(STRINGSZ + MOFFSET)
+# define SSMALL		(MOFFSET + STRINGSZ / 8)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
 # define LCHUNKS	16
 
@@ -134,15 +134,15 @@ register unsigned int size;
 	    *lc = c->next;
 	    return c;
 	}
-    } else if ((c=schunks[(size - OFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
+    } else if ((c=schunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
 	/* small chunk */
-	schunks[(size - OFFSET) / STRUCT_AL - 1] = c->next;
+	schunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
 	return c;
     }
 
     /* try unused chunk list */
     if (slist != (chunk *) NULL && slist->size >= size) {
-	if (slist->size - size <= OFFSET) {
+	if (slist->size - size <= MOFFSET) {
 	    /* remainder is too small to put in free list */
 	    c = slist;
 	    slist = c->next;
@@ -155,8 +155,8 @@ register unsigned int size;
 	    n->size = c->size - size;
 	    if (n->size <= SSMALL) {
 		/* small chunk */
-		n->next = schunks[(n->size - OFFSET) / STRUCT_AL - 1];
-		schunks[(n->size - OFFSET) / STRUCT_AL - 1] = n;
+		n->next = schunks[(n->size - MOFFSET) / STRUCT_AL - 1];
+		schunks[(n->size - MOFFSET) / STRUCT_AL - 1] = n;
 		slist = c->next;
 	    } else {
 		/* large enough chunk */
@@ -185,7 +185,7 @@ register unsigned int size;
 	}
     }
     if (schunk->size >= size) {
-	if (schunk->size - size <= OFFSET) {
+	if (schunk->size - size <= MOFFSET) {
 	    /* remainder is too small */
 	    c = schunk;
 	    schunk = (chunk *) NULL;
@@ -194,8 +194,8 @@ register unsigned int size;
 	    schunk = (chunk *) ((char *) schunk + size);
 	    if ((schunk->size=c->size - size) <= SSMALL) {
 		/* small chunk */
-		schunk->next = schunks[(schunk->size - OFFSET) / STRUCT_AL - 1];
-		schunks[(schunk->size - OFFSET) / STRUCT_AL - 1] = schunk;
+		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1];
+		schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
 		schunk = (chunk *) NULL;
 	    }
 	    c->size = size;
@@ -218,8 +218,8 @@ register chunk *c;
 {
     if (c->size < SLIMIT) {
 	/* small chunk */
-	c->next = schunks[(c->size - OFFSET) / STRUCT_AL - 1];
-	schunks[(c->size - OFFSET) / STRUCT_AL - 1] = c;
+	c->next = schunks[(c->size - MOFFSET) / STRUCT_AL - 1];
+	schunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
     } else {
 	register chunk **lc;
 
@@ -499,7 +499,7 @@ chunk *c;
 }
 
 # define DSMALL		48
-# define DLIMIT		(DSMALL + OFFSET)
+# define DLIMIT		(DSMALL + MOFFSET)
 # define DCHUNKS	(DSMALL / STRUCT_AL - 1)
 # define DCHUNKSZ	16384
 
@@ -531,9 +531,9 @@ register unsigned int size;
 	/*
 	 * small chunk
 	 */
-	if ((c=dchunks[(size - OFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
+	if ((c=dchunks[(size - MOFFSET) / STRUCT_AL - 1]) != (chunk *) NULL) {
 	    /* small chunk from free list */
-	    dchunks[(size - OFFSET) / STRUCT_AL - 1] = c->next;
+	    dchunks[(size - MOFFSET) / STRUCT_AL - 1] = c->next;
 	    return c;
 	}
 	if (dchunk == (chunk *) NULL) {
@@ -626,8 +626,8 @@ register chunk *c;
 
     if (c->size < DLIMIT) {
 	/* small chunk */
-	c->next = dchunks[(c->size - OFFSET) / STRUCT_AL - 1];
-	dchunks[(c->size - OFFSET) / STRUCT_AL - 1] = c;
+	c->next = dchunks[(c->size - MOFFSET) / STRUCT_AL - 1];
+	dchunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
 	return;
     }
 
@@ -701,7 +701,7 @@ register unsigned int size;
 	fatal("alloc(0)");
     }
 # endif
-    size = ALIGN(size + OFFSET, STRUCT_AL);
+    size = ALIGN(size + MOFFSET, STRUCT_AL);
 # ifndef DEBUG
     if (size < ALIGN(sizeof(chunk), STRUCT_AL)) {
 	size = ALIGN(sizeof(chunk), STRUCT_AL);
@@ -728,7 +728,7 @@ register unsigned int size;
     ((header *) c)->file = file;
     ((header *) c)->line = line;
 # endif
-    return (char *) c + OFFSET;
+    return (char *) c + MOFFSET;
 }
 
 /*
@@ -740,7 +740,7 @@ char *mem;
 {
     register chunk *c;
 
-    c = (chunk *) (mem - OFFSET);
+    c = (chunk *) (mem - MOFFSET);
     if ((c->size & MAGIC_MASK) == SM_MAGIC) {
 	c->size &= SIZE_MASK;
 	mstat.smemused -= c->size;
@@ -792,7 +792,7 @@ void mpurge()
 	register char *mem;
 	char buf[160];
 
-	n = (hlist->size & SIZE_MASK) - OFFSET;
+	n = (hlist->size & SIZE_MASK) - MOFFSET;
 	if (n >= DLIMIT) {
 	    n -= UINTSIZE;
 	}
