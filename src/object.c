@@ -149,7 +149,7 @@ register object *o;
 
     /* callback to the system */
     (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1));
+    str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1L));
     sp->u.string->text[0] = '/';
     strcpy(sp->u.string->text + 1, o->chain.name);
     (--sp)->type = T_INT;
@@ -574,7 +574,7 @@ int fd;
 {
     register uindex i;
     register object *o;
-    register int len, buflen;
+    register unsigned int len, buflen;
     dump_header dh;
     char buffer[CHUNKSZ];
 
@@ -622,7 +622,7 @@ int fd;
 {
     register uindex i;
     register object *o;
-    register int len, buflen;
+    register unsigned int len, buflen;
     register char *p;
     dump_header dh;
     char buffer[CHUNKSZ];

@@ -956,7 +956,7 @@ register cmdbuf *cb;
 /* status variables for substitute */
 static bool currentblock, skipped, globsubst, upper, lower, tupper, tlower;
 static Int offset, *mark;
-static int buflen;
+static unsigned int buflen;
 
 /*
  * NAME:	sub()
@@ -964,10 +964,10 @@ static int buflen;
  */
 static void sub(text, size)
 char *text;
-int size;
+unsigned int size;
 {
     register char *p, *q;
-    register int i;
+    register unsigned int i;
 
     i = size;
     if (buflen + i >= MAX_LINE_SIZE) {

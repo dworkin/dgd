@@ -234,18 +234,20 @@ int wait;
  * NAME:	conn->read()
  * DESCRIPTION:	read from a connection
  */
-int conn_read(conn, buf, size)
+int conn_read(conn, buf, len)
 connection *conn;
 char *buf;
-int size;
+unsigned int len;
 {
+    int size;
+
     if (conn->fd < 0) {
 	return -1;
     }
     if (!FD_ISSET(conn->fd, &readfds)) {
 	return 0;
     }
-    size = read(conn->fd, buf, size);
+    size = read(conn->fd, buf, len);
     return (size == 0) ? -1 : size;
 }
 
@@ -256,7 +258,7 @@ int size;
 int conn_write(conn, buf, len, wait)
 register connection *conn;
 char *buf;
-int len;
+unsigned int len;
 int wait;
 {
     int size;

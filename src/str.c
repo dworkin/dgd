@@ -10,7 +10,7 @@
 typedef struct _strh_ {
     hte chain;			/* hash table chain */
     string *str;		/* string entry */
-    long index;			/* building index */
+    Uint index;			/* building index */
     struct _strh_ **link;	/* next in list */
 } strh;
 
@@ -83,9 +83,9 @@ register string *s;
  * NAME:	string->put()
  * DESCRIPTION:	put a string in the string merge table
  */
-long str_put(str, n)
+Uint str_put(str, n)
 register string *str;
-register long n;
+register Uint n;
 {
     register strh **h;
 

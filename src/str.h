@@ -10,7 +10,7 @@ extern string	       *str_new		P((char*, long));
 # define str_ref(s)	((s)->ref++)
 extern void		str_del		P((string*));
 
-extern long		str_put		P((string*, long));
+extern Uint		str_put		P((string*, Uint));
 extern void		str_clear	P((void));
 
 extern int		str_cmp		P((string*, string*));

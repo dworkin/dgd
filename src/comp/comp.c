@@ -59,7 +59,7 @@ register control *ctrl;
 
     printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("\"%s\", %u, %u,\n",
+	printf("{ \"%s\", %u, %u },\n",
 	       ctrl->inherits[i].obj->chain.name,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
@@ -214,7 +214,7 @@ int dgd_main(argc, argv)
 int argc;
 char *argv[];
 {
-    register int len;
+    register unsigned int len;
     register control *ctrl;
     char *file, tag[9];
     int nfuncs;
@@ -478,6 +478,17 @@ Uint size, idx;
 }
 
 /*
+ * NAME:	swap->dreadv()
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ */
+void sw_dreadv(m, vec, size, idx)
+char *m;
+sector *vec;
+Uint size, idx;
+{
+}
+
+/*
  * NAME:	swap->mapsize()
  * DESCRIPTION:	pretend to count the number of sectors required for size bytes
  */
@@ -528,7 +539,8 @@ int fd, secsize;
  * DESCRIPTION:	pretend to initialize communications
  */
 void comm_init(nusers, telnet_port, binary_port)
-int nusers, telnet_port, binary_port;
+int nusers;
+unsigned int telnet_port, binary_port;
 {
 }
 

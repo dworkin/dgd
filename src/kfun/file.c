@@ -729,7 +729,7 @@ value *val;
 	error("'|' expected");
     }
 
-    ac_put(T_MAPPING, a = map_new(val->u.number << 1L));
+    ac_put(T_MAPPING, a = map_new((long) val->u.number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	(v++)->type = T_INT;
     }
@@ -1467,7 +1467,7 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
 int kf_get_dir()
 {
     struct stat sbuf;
-    register int nfiles, i;
+    register unsigned int nfiles, i;
     register value *f, *o, *s, *t;
     register string *str;
     char *file, *dir, *pat, buf[2 * STRINGSZ];

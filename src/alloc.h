@@ -1,21 +1,21 @@
 # ifdef DEBUG
 
 # define ALLOC(type, size) \
-		      ((type *) (m_alloc(sizeof(type) * (unsigned int) (size),\
-					 __FILE__, __LINE__)))
-extern char *m_alloc	P((unsigned int, char*, int));
+			((type *) (m_alloc(sizeof(type) * (size_t) (size),\
+					   __FILE__, __LINE__)))
+extern char *m_alloc	P((size_t, char*, int));
 
 # else
 
 # define ALLOC(type, size) \
-		      ((type *) (m_alloc(sizeof(type) * (unsigned int) (size))))
-extern char *m_alloc	P((unsigned int));
+			((type *) (m_alloc(sizeof(type) * (size_t) (size))))
+extern char *m_alloc	P((size_t));
 
 # endif
 
 # define FREE(memory)	m_free((char *) (memory))
 
-extern void  m_init	P((unsigned int, unsigned int));
+extern void  m_init	P((size_t, size_t));
 extern void  m_free	P((char*));
 extern void  m_dynamic	P((void));
 extern void  m_static	P((void));

@@ -80,7 +80,7 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, T_STRING | (1 << REFSHIFT), 2,
  */
 int kf_explode()
 {
-    register int len, slen, size;
+    register unsigned int len, slen, size;
     register char *p, *s;
     register value *v;
     array *a;
@@ -189,7 +189,7 @@ char pt_implode[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
 int kf_implode()
 {
     register long len;
-    register int slen, i;
+    register unsigned int i, slen;
     register char *p, *s;
     register value *v;
     string *str;
@@ -201,8 +201,8 @@ int kf_implode()
     i = sp[1].u.array->size;
     i_add_ticks(i);
     if (i != 0) {
-	len = --i * (long) slen;	/* size of all separators */
-	for (v = d_get_elts(sp[1].u.array); i >= 0; v++, --i) {
+	len = (i - 1) * (long) slen;	/* size of all separators */
+	for (v = d_get_elts(sp[1].u.array); i > 0; v++, --i) {
 	    if (v->type != T_STRING) {
 		/* not a (string *) */
 		return 1;
@@ -268,10 +268,10 @@ char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
  */
 static bool match(f, s, flenp, slenp)
 register char *f, *s;
-int *flenp, *slenp;
+unsigned int *flenp, *slenp;
 {
     register char *p;
-    register int flen, slen;
+    register unsigned int flen, slen;
 
     flen = *flenp;
     slen = *slenp;
@@ -322,12 +322,13 @@ int *flenp, *slenp;
 int kf_sscanf(nargs)
 int nargs;
 {
-    register int flen, slen, size;
+    register unsigned int flen, slen, size;
     register char *f, *x;
     value values[MAX_LOCALS];
     value *oldval;
     static value *val;
-    int fl, sl, matches;
+    unsigned int fl, sl;
+    int matches;
     char *s;
     xfloat flt;
     bool skip;
@@ -465,15 +466,15 @@ int nargs;
 
 		    x = s;
 		    for (;;) {
-			if (slen - (x - s) < size) {
+			sl = slen - (x - s);
+			if (sl < size) {
 			    goto no_match;
 			}
-			x = (char *) memchr(x, f[0], slen - (x - s) - size + 1);
+			x = (char *) memchr(x, f[0], sl - size + 1);
 			if (x == (char *) NULL) {
 			    goto no_match;
 			}
 			fl = flen;
-			sl = slen - (x - s);
 			if (match(f, x, &fl, &sl)) {
 			    f += fl;
 			    flen -= fl;

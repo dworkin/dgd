@@ -18,7 +18,7 @@
 # define TOPTRUTHVAL	4
 
 static void output();
-static void cg_iexpr P((node*, bool));
+static void cg_iexpr P((node*, int));
 static void cg_expr P((node*, int));
 static void cg_stmt P((node*));
 
@@ -323,7 +323,7 @@ bool direct;
  */
 static void cg_iexpr(n, direct)
 register node *n;
-bool direct;
+int direct;
 {
     register int i;
 

@@ -10,12 +10,12 @@ extern connection *conn_tnew	P((void));
 extern connection *conn_bnew	P((void));
 extern void	   conn_del	P((connection*));
 extern int	   conn_select	P((int));
-extern int	   conn_read	P((connection*, char*, int));
-extern int	   conn_write	P((connection*, char*, int, int));
+extern int	   conn_read	P((connection*, char*, unsigned int));
+extern int	   conn_write	P((connection*, char*, unsigned int, int));
 extern bool	   conn_wrdone	P((connection*));
 extern char	  *conn_ipnum	P((connection*));
 
-extern void	comm_init	P((int, int, int));
+extern void	comm_init	P((int, unsigned int, unsigned int));
 extern void	comm_finish	P((void));
 extern int	comm_send	P((object*, string*));
 extern void	comm_echo	P((object*, int));

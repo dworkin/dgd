@@ -596,7 +596,7 @@ int fd;
 		}
 
 		/* get control block for precompiled object */
-		hash_add(obj, i);
+		hash_add(obj, (uindex) i);
 		tmp.flags = O_MASTER | O_COMPILED;
 		tmp.index = i;
 		tmp.ctrl = (control *) NULL;
@@ -617,7 +617,7 @@ int fd;
 		 * new precompiled object
 		 */
 		l->obj = pc_obj(name, inherits + itab[i], l->ninherits);
-		hash_add(l->obj, i);
+		hash_add(l->obj, (uindex) i);
 	    }
 	}
     }

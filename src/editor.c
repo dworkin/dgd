@@ -18,7 +18,7 @@ static editor *flist;		/* free list */
 static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
 static char *outbuf;		/* output buffer */
-static int outbufsz;		/* chars in output buffer */
+static unsigned int outbufsz;	/* chars in output buffer */
 static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
 
@@ -190,7 +190,7 @@ void output(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
     char buf[2 * MAX_LINE_SIZE + 15];
-    int len;
+    unsigned int len;
 
     sprintf(buf, f, a1, a2, a3);
     len = strlen(buf);

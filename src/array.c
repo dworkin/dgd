@@ -184,12 +184,10 @@ register array *a;
  */
 void arr_freeall()
 {
+# ifdef DEBUG
     register arrchunk *ac;
     register meltchunk *mc;
 
-    flist = (array *) NULL;
-
-# ifdef DEBUG
     /* free array chunks */
     for (ac = aclist; ac != (arrchunk *) NULL; ) {
 	register arrchunk *f;
@@ -201,6 +199,8 @@ void arr_freeall()
 # endif
     aclist = (arrchunk *) NULL;
     achunksz = ARR_CHUNK;
+
+    flist = (array *) NULL;
 
 # ifdef DEBUG
     /* free mapping element chunks */

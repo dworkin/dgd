@@ -19,7 +19,7 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {
-    P_srandom(P_time());
+    P_srandom((long) P_time());
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term);
     return dgd_main(argc, argv);

@@ -26,8 +26,8 @@ static char *cbuf;			/* sector buffer */
 static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
-static int sectorsize;			/* size of sector */
-static int restoresecsize;		/* size of sector in restore file */
+static unsigned int sectorsize;		/* size of sector */
+static unsigned int restoresecsize;	/* size of sector in restore file */
 static sector swapsize, cachesize;	/* # of sectors in swap and cache */
 static sector nsectors;			/* total swap sectors */
 static sector nfree;			/* # free sectors */
@@ -375,7 +375,7 @@ register char *m;
 register sector *vec;
 register Uint size, idx;
 {
-    register int len;
+    register unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -397,7 +397,7 @@ register sector *vec;
 register Uint size, idx;
 {
     register header *h;
-    register int len;
+    register unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -421,7 +421,7 @@ register sector *vec;
 register Uint size, idx;
 {
     static sector cached = SW_UNUSED;
-    register int len;
+    register unsigned int len;
 
     vec += idx / restoresecsize;
     idx %= restoresecsize;
@@ -577,7 +577,7 @@ char *dumpfile;
 	    fatal("cannot move swap file");
 	}
 	/* copy initial sector */
-	if (read(swap, cbuf, sectorsize) != sectorsize) {
+	if (read(swap, cbuf, sectorsize) <= 0) {
 	    fatal("cannot read swap file");
 	}
 	if (write(dump, cbuf, sectorsize) < 0) {
@@ -585,7 +585,7 @@ char *dumpfile;
 	}
 	/* copy swap sectors */
 	for (n = ssectors; n > 0; --n) {
-	    if (read(swap, cbuf, sectorsize) != sectorsize) {
+	    if (read(swap, cbuf, sectorsize) <= 0) {
 		fatal("cannot read swap file");
 	    }
 	    if (write(dump, cbuf, sectorsize) < 0) {
@@ -668,7 +668,6 @@ char *dumpfile;
 void sw_restore(fd, secsize)
 int fd, secsize;
 {
-    register sector sec;
     dump_header dh;
 
     /* restore swap header */

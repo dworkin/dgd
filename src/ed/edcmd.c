@@ -97,7 +97,7 @@ char *pat, *buffer;
 int delim;
 {
     register char *p;
-    register int size;
+    register unsigned int size;
 
     p = pat;
     while (*p != '\0') {
@@ -231,7 +231,7 @@ Int first;
 		break;
 	    }
 	}
-	l = cb_search(cb, 1L, first, FALSE);
+	l = cb_search(cb, (Int) 1, first, FALSE);
 	if (l == 0) {
 	    error("Pattern not found");
 	}
@@ -241,7 +241,7 @@ Int first;
 	cb->cmd++;
 	cb_pattern(cb, *p);
 	if (first > 1) {
-	    l = cb_search(cb, 1L, first - 1, TRUE);
+	    l = cb_search(cb, (Int) 1, first - 1, TRUE);
 	}
 	if (l == 0) {
 	    l = cb->edbuf->lines;

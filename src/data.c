@@ -74,7 +74,7 @@ typedef struct _svalue_ {
     uindex oindex;		/* index in object table */
     union {
 	Int number;		/* number */
-	Int string;		/* string */
+	Uint string;		/* string */
 	Uint objcnt;		/* object creation count */
 	Uint array;		/* array */
     } u;
@@ -860,11 +860,8 @@ register dataspace *data;
 register unsigned int idx;
 {
     if (data->variables == (value *) NULL) {
-	register value *v;
-	register unsigned short i;
-
 	/* create room for variables */
-	v = data->variables = ALLOC(value, data->nvariables);
+	data->variables = ALLOC(value, data->nvariables);
 	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
 	    d_new_variables(data);
@@ -1721,7 +1718,7 @@ register unsigned short n;
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (str_put(v->u.string, (long) nstr) >= (long) nstr) {
+	    if (str_put(v->u.string, nstr) >= nstr) {
 		nstr++;
 		strsize += v->u.string->len;
 	    }
@@ -1760,7 +1757,7 @@ register svalue *sv;
 register value *v;
 register unsigned short n;
 {
-    register long i;
+    register Uint i;
 
     while (n > 0) {
 	switch (sv->type = v->type) {
@@ -1773,7 +1770,7 @@ register unsigned short n;
 	    break;
 
 	case T_STRING:
-	    i = str_put(v->u.string, (long) nstr);
+	    i = str_put(v->u.string, nstr);
 	    sv->u.string = i;
 	    if (i >= nstr) {
 		/* new string value */
@@ -2380,17 +2377,17 @@ register unsigned short n;
 		     */
 		    if (i >= itabsz) {
 			array **tmp;
-			register Uint n;
+			register Uint j;
 
 			/*
 			 * increase size of itab
 			 */
-			for (n = itabsz; n <= i; n += n) ;
-			tmp = ALLOC(array*, n);
+			for (j = itabsz; j <= i; j += j) ;
+			tmp = ALLOC(array*, j);
 			memcpy(tmp, itab, itabsz * sizeof(array*));
 			FREE(itab);
 			itab = tmp;
-			itabsz = n;
+			itabsz = j;
 		    }
 		    arr_put(itab[i] = a);
 		    narr += 2;	/* 1 old, 1 new */
@@ -2493,8 +2490,7 @@ void d_export()
  */
 static void d_upgrade(data, nvar, vmap, old)
 register dataspace *data;
-unsigned int nvar;
-register unsigned short *vmap;
+register unsigned short nvar, *vmap;
 object *old;
 {
     register value *v;
@@ -3111,7 +3107,8 @@ Uint *counttab;
 	/* callouts */
 	co = data->callouts = ALLOC(dcallout, header.ncallouts);
 	sco = scallouts = ALLOCA(scallout, header.ncallouts);
-	d_conv((char *) scallouts, s, sco_layout, header.ncallouts, size);
+	d_conv((char *) scallouts, s, sco_layout, (Uint) header.ncallouts,
+	       size);
 
 	for (n = data->ncallouts; n > 0; --n) {
 	    co->time = sco->time;

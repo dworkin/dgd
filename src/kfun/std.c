@@ -696,8 +696,8 @@ int nargs;
     i_add_ticks(nargs);
     obj = cframe->obj;
     if (obj->count != 0 &&
-	(handle=co_new(obj, sp[nargs - 1].u.string,
-		       (long) sp[nargs - 2].u.number, nargs - 2)) != 0) {
+	(handle=co_new(obj, sp[nargs - 1].u.string, sp[nargs - 2].u.number,
+		       nargs - 2)) != 0) {
 	/* pop duration */
 	sp++;
     } else {

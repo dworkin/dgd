@@ -18,11 +18,11 @@ typedef struct _linechunk_ {
     struct _linechunk_ *next;		/* next in list */
 } linechunk;
 
-static linechunk *lline, *tline;	/* line chunk list */
-static linechunk *fline;		/* free line chunk list */
-static int lchunksz = LINE_CHUNK;	/* line chunk size */
-static unsigned short line;		/* current line number */
-static int line_info_size;		/* size of all line info */
+static linechunk *lline, *tline;		/* line chunk list */
+static linechunk *fline;			/* free line chunk list */
+static unsigned int lchunksz = LINE_CHUNK;	/* line chunk size */
+static unsigned short line;			/* current line number */
+static unsigned int line_info_size;		/* size of all line info */
 
 /*
  * NAME:	line->byte()
@@ -141,11 +141,11 @@ typedef struct _codechunk_ {
     struct _codechunk_ *next;		/* next in list */
 } codechunk;
 
-static codechunk *lcode, *tcode;	/* code chunk list */
-static codechunk *fcode;		/* free code chunk list */
-static int cchunksz = CODE_CHUNK;	/* code chunk size */
-static Uint here;			/* current offset */
-static char *last_instruction;		/* address of last instruction */
+static codechunk *lcode, *tcode;		/* code chunk list */
+static codechunk *fcode;			/* free code chunk list */
+static unsigned int cchunksz = CODE_CHUNK;	/* code chunk size */
+static Uint here;				/* current offset */
+static char *last_instruction;			/* last instruction's address */
 
 /*
  * NAME:	code->byte()
@@ -1836,7 +1836,7 @@ register node *n;
 	    code_instr(I_PUSH_ZERO, 0);
 	    code_instr(I_RETURN, 0);
 	    if (m->r.right != (node *) NULL) {
-		j2list = jump(I_JUMP, 0);
+		j2list = jump(I_JUMP, (jmplist *) NULL);
 		jump_resolve(jlist, here);
 		cg_stmt(m->r.right);
 		jump_resolve(j2list, here);

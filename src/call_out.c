@@ -75,7 +75,7 @@ int frag;
 static uindex enqueue(t)
 register Uint t;
 {
-    register unsigned int i, j;
+    register uindex i, j;
     register call_out *l;
 
     if (queuebrk == cycbrk) {
@@ -100,10 +100,10 @@ register Uint t;
  * DESCRIPTION:	remove a callout from the queue
  */
 static void dequeue(i)
-register unsigned int i;
+register uindex i;
 {
     register Uint t;
-    register unsigned int j;
+    register uindex j;
     register call_out *l;
 
     l = cotab - 1;

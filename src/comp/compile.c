@@ -204,11 +204,11 @@ loop *prev;
 	fllist = l->prev;
     } else {
 	if (lchunksz == LOOP_CHUNK) {
-	    register lchunk *l;
+	    register lchunk *lc;
 
-	    l = ALLOC(lchunk, 1);
-	    l->next = llist;
-	    llist = l;
+	    lc = ALLOC(lchunk, 1);
+	    lc->next = llist;
+	    llist = lc;
 	    lchunksz = 0;
 	}
 	l = &llist->l[lchunksz++];

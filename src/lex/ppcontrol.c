@@ -385,7 +385,7 @@ int priority;
  */
 static int pptokenz(key, len)
 register char *key;
-register int len;
+register unsigned int len;
 {
     static char *keyword[] = {
       "else", "error", "line", "elif", "endif", "if", "define",

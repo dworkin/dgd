@@ -70,7 +70,8 @@ void kf_init()
 int kf_func(name)
 register char *name;
 {
-    register int h, l, m, c;
+    register unsigned int h, l, m;
+    register int c;
 
     l = KF_BUILTINS;
     h = sizeof(kfx);
@@ -106,7 +107,8 @@ static char dh_layout[] = "sss";
 bool kf_dump(fd)
 int fd;
 {
-    register int i, len, buflen;
+    register int i;
+    register unsigned int len, buflen;
     register kfunc *kf;
     dump_header dh;
     char *buffer;

@@ -18,15 +18,15 @@ typedef struct _user_ {
 	object *obj;		/* associated object */
 	struct _user_ *next;	/* next in free list */
     } u;
-    int inbufsz;		/* bytes in input buffer */
-    int outbufsz;		/* bytes in output buffer */
+    unsigned int inbufsz;	/* bytes in input buffer */
+    unsigned int outbufsz;	/* bytes in output buffer */
     char flags;			/* connection flags */
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
     char *inbuf;		/* input buffer */
     char *outbuf;		/* output buffer */
-    int osoffset;		/* offset in output string */
+    unsigned int osoffset;	/* offset in output string */
 } user;
 
 /* flags */
@@ -48,7 +48,7 @@ typedef struct _user_ {
 static user **users;		/* array of users */
 static int maxusers;		/* max # of users */
 static int nusers;		/* # of users */
-static int newlines;		/* # of newlines in all input buffers */
+static long newlines;		/* # of newlines in all input buffers */
 static long binchars;		/* # characters in binary buffers */
 static object *this_user;	/* current user */
 static bool flush;		/* do telnet output buffers need flushing? */
@@ -58,7 +58,8 @@ static bool flush;		/* do telnet output buffers need flushing? */
  * DESCRIPTION:	initialize communications
  */
 void comm_init(nusers, telnet_port, binary_port)
-int nusers, telnet_port, binary_port;
+int nusers;
+unsigned int telnet_port, binary_port;
 {
     register int i;
     register user **usr;
@@ -189,7 +190,8 @@ string *str;
 {
     register user *usr;
     register char *p, *q;
-    register int len, size;
+    register unsigned int len;
+    register int size;
 
     usr = users[UCHAR(obj->etabi)];
     p = str->text;
@@ -209,7 +211,7 @@ string *str;
 		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		    size = 0;
 		}
-		*q++ = IAC;
+		*q++ = (char) IAC;
 		size++;
 	    } else if (*p == LF) {
 		/*
@@ -284,7 +286,7 @@ string *str;
 static void comm_telnet(usr, buf, size)
 register user *usr;
 char *buf;
-register int size;
+register unsigned int size;
 {
     if (usr->outbufsz > OUTBUF_SIZE - size) {
 	conn_write(usr->conn, usr->outbuf, usr->outbufsz, FALSE);
@@ -308,7 +310,7 @@ int echo;
 
     usr = users[UCHAR(obj->etabi)];
     if ((usr->flags & CF_TELNET) && echo != (usr->flags & CF_ECHO)) {
-	buf[0] = IAC;
+	buf[0] = (char) IAC;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
 	comm_telnet(usr, buf, 3);
@@ -324,7 +326,8 @@ void comm_flush(prompt)
 int prompt;
 {
     register user **usr;
-    register int i, size;
+    register int i;
+    register unsigned int size;
     register char *p;
 
     if (!flush) {
@@ -343,8 +346,8 @@ int prompt;
 			size = 0;
 		    }
 		    p = (*usr)->outbuf + size;
-		    *p++ = IAC;
-		    *p++ = GA;
+		    *p++ = (char) IAC;
+		    *p++ = (char) GA;
 		    size += 2;
 		}
 		conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
@@ -797,7 +800,7 @@ array *comm_users()
     register user **usr;
     register value *v;
 
-    a = arr_new((long) i = nusers);
+    a = arr_new((long) (i = nusers));
     v = a->elts;
     for (usr = users; i > 0; usr++) {
 	if (*usr != (user *) NULL) {

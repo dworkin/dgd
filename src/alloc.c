@@ -10,23 +10,23 @@
 # define SM_MAGIC	0xc5000000L	/* static mem */
 # define DM_MAGIC	0xc6000000L	/* dynamic mem */
 
-# define SIZESIZE	ALGN(sizeof(Int), STRUCT_AL)
-# define UINTSIZE	ALGN(sizeof(unsigned int), STRUCT_AL)
+# define UINTSIZE	ALGN(sizeof(Uint), STRUCT_AL)
+# define SIZETSIZE	ALGN(sizeof(size_t), STRUCT_AL)
 
 # ifdef DEBUG
-# define MOFFSET		ALGN(sizeof(header), STRUCT_AL)
+# define MOFFSET	ALGN(sizeof(header), STRUCT_AL)
 # else
-# define MOFFSET		SIZESIZE
+# define MOFFSET	UINTSIZE
 # endif
 
 typedef struct _chunk_ {
-    Int size;			/* size of chunk */
+    Uint size;			/* size of chunk */
     struct _chunk_ *next;	/* next chunk */
 } chunk;
 
 # ifdef DEBUG
 typedef struct _header_ {
-    Int size;			/* size of chunk */
+    Uint size;			/* size of chunk */
     int line;			/* line it was allocated from */
     char *file;			/* file it was allocated from */
     struct _header_ *prev;	/* previous in list */
@@ -42,7 +42,7 @@ static allocinfo mstat;		/* memory statistics */
  * DESCRIPTION:	allocate new memory
  */
 static char *newmem(size)
-unsigned int size;
+size_t size;
 {
     char *mem;
 
@@ -64,15 +64,15 @@ unsigned int size;
 # define LCHUNKS	32
 
 typedef struct {
-    unsigned int size;		/* size of chunks in list */
+    size_t size;		/* size of chunks in list */
     chunk *list;		/* list of chunks (possibly empty) */
 } clist;
 
 static chunk *schunk;			/* current chunk */
-static unsigned int schunksz;		/* size of current chunk */
+static size_t schunksz;			/* size of current chunk */
 static chunk *schunks[SCHUNKS];		/* lists of small free chunks */
 static clist lchunks[LCHUNKS];		/* lists of large free chunks */
-static int nlc;				/* # elements in large chunk list */
+static unsigned int nlc;		/* # elements in large chunk list */
 static chunk *slist;			/* list of small unused chunks */
 static int slevel;			/* static level */
 
@@ -81,10 +81,10 @@ static int slevel;			/* static level */
  * DESCRIPTION:	get the address of a list of large chunks
  */
 static chunk **lchunk(size, new)
-register unsigned int size;
+register size_t size;
 bool new;
 {
-    register int h, l, m;
+    register unsigned int h, l, m;
 
     l = m = 0;
     h = nlc;
@@ -119,7 +119,7 @@ bool new;
  * DESCRIPTION:	allocate static memory
  */
 static chunk *salloc(size)
-register unsigned int size;
+register size_t size;
 {
     register chunk *c;
 
@@ -256,13 +256,13 @@ void m_dynamic()
  */
 
 typedef struct _spnode_ {
-    Int size;			/* size of chunk */
+    Uint size;			/* size of chunk */
     struct _spnode_ *parent;	/* parent node */
     struct _spnode_ *left;	/* left child node */
     struct _spnode_ *right;	/* right child node */
 } spnode;
 
-static unsigned int dchunksz;	/* dynamic chunk size */
+static size_t dchunksz;		/* dynamic chunk size */
 static spnode *dtree;		/* splay tree of large dynamic free chunks */
 
 /*
@@ -274,7 +274,7 @@ chunk *c;
 {
     register spnode *n, *t;
     register spnode *l, *r;
-    register Int size;
+    register Uint size;
 
     n = dtree;
     dtree = t = (spnode *) c;
@@ -351,7 +351,7 @@ chunk *c;
  * DESCRIPTION:	find a chunk of the proper size in the splay tree
  */
 static chunk *seek(size)
-register Int size;
+register Uint size;
 {
     spnode dummy;
     register spnode *n, *t;
@@ -514,11 +514,11 @@ static chunk *dchunk;		/* chunk of small chunks */
  * DESCRIPTION:	allocate dynamic memory
  */
 static chunk *dalloc(size)
-register unsigned int size;
+register size_t size;
 {
     register chunk *c;
     register char *p;
-    register unsigned int sz;
+    register size_t sz;
 
     if (dchunksz == 0) {
 	/*
@@ -541,8 +541,8 @@ register unsigned int size;
 	if (dchunk == (chunk *) NULL) {
 	    /* get new chunks chunk */
 	    dchunk = dalloc(DCHUNKSZ);	/* cannot use alloc() here */
-	    p = (char *) dchunk + SIZESIZE;
-	    ((chunk *) p)->size = dchunk->size - SIZESIZE - UINTSIZE;
+	    p = (char *) dchunk + UINTSIZE;
+	    ((chunk *) p)->size = dchunk->size - UINTSIZE - SIZETSIZE;
 	    dchunk->size |= DM_MAGIC;
 	    dchunk = (chunk *) p;
 	}
@@ -560,8 +560,8 @@ register unsigned int size;
 	return c;
     }
 
-    size += UINTSIZE;
-    c = seek((Int) size);
+    size += SIZETSIZE;
+    c = seek((Uint) size);
     if (c != (chunk *) NULL) {
 	/*
 	 * remove from free list
@@ -572,7 +572,7 @@ register unsigned int size;
 	 * get new dynamic chunk
 	 */
 	for (sz = dchunksz;
-	     sz < size + ALGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
+	     sz < size + ALGN(sizeof(char *), STRUCT_AL) + SIZETSIZE + UINTSIZE;
 	     sz += dchunksz) ;
 	p = newmem(sz);
 	mstat.dmemsize += sz;
@@ -581,27 +581,27 @@ register unsigned int size;
 	p += ALGN(sizeof(char *), STRUCT_AL);
 
 	/* no previous chunk */
-	*(unsigned int *) p = 0;
-	c = (chunk *) (p + UINTSIZE);
+	*(size_t *) p = 0;
+	c = (chunk *) (p + SIZETSIZE);
 	/* initialize chunk */
-	c->size = sz - ALGN(sizeof(char *), STRUCT_AL) - UINTSIZE - SIZESIZE;
+	c->size = sz - ALGN(sizeof(char *), STRUCT_AL) - SIZETSIZE - UINTSIZE;
 	p += c->size;
-	*(unsigned int *) p = c->size;
+	*(size_t *) p = c->size;
 	/* no following chunk */
-	p += UINTSIZE;
+	p += SIZETSIZE;
 	((chunk *) p)->size = 0;
     }
 
-    if ((sz=c->size - size) >= DLIMIT + UINTSIZE) {
+    if ((sz=c->size - size) >= DLIMIT + SIZETSIZE) {
 	/*
 	 * split block, put second part in free list
 	 */
 	c->size = size;
-	p = (char *) c + size - UINTSIZE;
-	*(unsigned int *) p = size;
-	p += UINTSIZE;
+	p = (char *) c + size - SIZETSIZE;
+	*(size_t *) p = size;
+	p += SIZETSIZE;
 	((chunk *) p)->size = sz;
-	*((unsigned int *) (p + sz - UINTSIZE)) = sz;
+	*((size_t *) (p + sz - SIZETSIZE)) = sz;
 	insert((chunk *) p);	/* add to free list */
     }
     return c;
@@ -631,9 +631,9 @@ register chunk *c;
 	return;
     }
 
-    p = (char *) c - UINTSIZE;
-    if (*(unsigned int *) p != 0) {
-	p -= *(unsigned int *) p - UINTSIZE;
+    p = (char *) c - SIZETSIZE;
+    if (*(size_t *) p != 0) {
+	p -= *(size_t *) p - SIZETSIZE;
 	if ((((chunk *) p)->size & MAGIC_MASK) == 0) {
 	    /*
 	     * merge with previous block
@@ -641,7 +641,7 @@ register chunk *c;
 	    delete((chunk *) p);
 	    ((chunk *) p)->size += c->size;
 	    c = (chunk *) p;
-	    *((unsigned int *) (p + c->size - UINTSIZE)) = c->size;
+	    *((size_t *) (p + c->size - SIZETSIZE)) = c->size;
 	}
     }
     p = (char*) c + c->size;
@@ -651,7 +651,7 @@ register chunk *c;
 	 */
 	delete((chunk *) p);
 	c->size += ((chunk *) p)->size;
-	*((unsigned int *) ((char *) c + c->size - UINTSIZE)) = c->size;
+	*((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;
     }
 
     insert(c);	/* add to free list */
@@ -663,7 +663,7 @@ register chunk *c;
  * DESCRIPTION:	initialize memory manager
  */
 void m_init(ssz, dsz)
-unsigned int ssz, dsz;
+size_t ssz, dsz;
 {
     schunksz = ALGN(ssz, STRUCT_AL);
     dchunksz = ALGN(dsz, STRUCT_AL);
@@ -688,12 +688,12 @@ static header *hlist;			/* list of all dynamic memory chunks */
  */
 # ifdef DEBUG
 char *m_alloc(size, file, line)
-register unsigned int size;
+register size_t size;
 char *file;
 int line;
 # else
 char *m_alloc(size)
-register unsigned int size;
+register size_t size;
 # endif
 {
     register chunk *c;
@@ -790,13 +790,13 @@ void m_purge()
 
 # ifdef DEBUG
     while (hlist != (header *) NULL) {
-	register unsigned int n;
+	register size_t n;
 	register char *mem;
 	char buf[160];
 
 	n = (hlist->size & SIZE_MASK) - MOFFSET;
 	if (n >= DLIMIT) {
-	    n -= UINTSIZE;
+	    n -= SIZETSIZE;
 	}
 	sprintf(buf, "FREE(%08lx/%u), %s line %u:\012", /* LF */
 		(unsigned long) (hlist + 1), n, hlist->file, hlist->line);

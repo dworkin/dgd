@@ -6,7 +6,6 @@
 
 # ifdef WIN32
 
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
 # define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
 # define SCHAR(c)	((char) (c))		/* signed character */
 
@@ -55,8 +54,9 @@ extern int P_chdir(char*);
 # include <setjmp.h>
 # include <stdio.h>
 
+# define STRUCT_AL		4	/* define this if align(struct) > 2 */
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
+							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
 # define FS_BLOCK_SIZE		2048
@@ -97,10 +97,34 @@ typedef unsigned int Uint;
 
 # include <alloca.h>
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
+							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
 # endif	/* SUNOS4 */
+
+
+# ifdef SOLARIS
+
+# define GENERIC_SYSV
+
+# include <alloca.h>
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+							     (size_t) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# endif	/* SOLARIS */
+
+
+# ifdef DECALPHA
+
+# define GENERIC_SYSV
+
+# define STRUCT_AL		8	/* define this if align(struct) > 2 */
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+							     (size_t) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# endif /* DECALPHA */
 
 
 # if defined(NETBSD) || defined(BSD386)
@@ -108,7 +132,7 @@ typedef unsigned int Uint;
 # define GENERIC_BSD
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
+							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
 # endif /* NETBSD || BSD386 */
@@ -119,7 +143,7 @@ typedef unsigned int Uint;
 # define GENERIC_SYSV
 
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
+							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
 
 # endif /* LINUX */
@@ -127,7 +151,6 @@ typedef unsigned int Uint;
 
 # ifdef GENERIC_BSD
 
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
 # define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
 # define SCHAR(c)	((char) (c))		/* signed character */
 
@@ -156,6 +179,9 @@ typedef unsigned int Uint;
 # include <setjmp.h>
 # include <stdio.h>
 
+# ifndef STRUCT_AL
+# define STRUCT_AL		4	/* define this if align(struct) > 2 */
+# endif
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)
 # define AFREE(ptr)		FREE(ptr)
@@ -168,7 +194,6 @@ typedef unsigned int Uint;
 
 # ifdef GENERIC_SYSV
 
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
 # define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
 # define SCHAR(c)	((char) (c))		/* signed character */
 
@@ -200,6 +225,9 @@ typedef unsigned int Uint;
 # include <setjmp.h>
 # include <stdio.h>
 
+# ifndef STRUCT_AL
+# define STRUCT_AL		4	/* define this if align(struct) > 2 */
+# endif
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)
 # define AFREE(ptr)		FREE(ptr)

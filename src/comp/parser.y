@@ -963,9 +963,11 @@ register node *n1, *n2, *n3;
 	(n3 == (node *) NULL || n3->type == N_INT)) {
 	/* str [ int .. int ] */
 	return node_str(str_range(n1->l.string,
-				  (n2 == (node *) NULL) ? 0 : n2->l.number,
-				  (n3 == (node *) NULL) ?
-				    n1->l.string->len - 1 : n3->l.number));
+				  (long) ((n2 == (node *) NULL) ?
+					   0 : n2->l.number),
+				  (long) ((n3 == (node *) NULL) ?
+					  n1->l.string->len - 1 :
+					  n3->l.number)));
     }
 
     if (typechecking) {

@@ -750,7 +750,7 @@ void ctrl_create()
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
 		    str_put(d_get_strconst(ctrl, i, n),
-			    ((long) count << 16) | n);
+			    ((Uint) count << 16) | n);
 		}
 	    } else {
 		new->funcoffset = newctrl->inherits[i].funcoffset;
@@ -788,9 +788,9 @@ void ctrl_create()
 long ctrl_dstring(str)
 string *str;
 {
-    register long desc, new;
+    register Uint desc, new;
 
-    desc = str_put(str, new = ((long) ninherits << 16) | nstrs);
+    desc = str_put(str, new = ((Uint) ninherits << 16) | nstrs);
     if (desc == new) {
 	/*
 	 * it is really a new string
@@ -1126,7 +1126,7 @@ int typechecking;
 
     h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     if (h == (vfh *) NULL) {
-	static char uproto[] = { C_UNDEFINED, T_IMPLICIT, 0 };
+	static char uproto[] = { (char) C_UNDEFINED, T_IMPLICIT, 0 };
 	register short kf;
 
 	/*
@@ -1349,7 +1349,8 @@ static void ctrl_mkfuncs()
     register char *p;
     register dfuncdef *d;
     register cfunc *f;
-    register int i, len;
+    register int i;
+    register unsigned int len;
 
     newctrl->progsize = progsize;
     if ((newctrl->nfuncdefs = nfdefs) != 0) {
@@ -1755,7 +1756,7 @@ register control *old, *new;
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
 		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),
-			    ((long) k << 8) | v->type);
+			    ((Uint) k << 8) | v->type);
 		}
 	    } else if (j != 1) {
 		continue;
@@ -1765,7 +1766,8 @@ register control *old, *new;
 	     * map new variables to old ones
 	     */
 	    for (k = 0, v = ctrl->vardefs; k < ctrl->nvardefs; k++, v++) {
-		n = str_put(d_get_strconst(ctrl, v->inherit, v->index), 0L);
+		n = str_put(d_get_strconst(ctrl, v->inherit, v->index),
+			    (Uint) 0);
 		if ((n & 0xff) == v->type) {
 		    *vmap = inh2->varoffset + (n >> 8);
 		} else if (v->type == T_FLOAT) {

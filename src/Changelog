@@ -1036,3 +1036,6 @@ DGD 1.1
    table.
  - Dumpfiles from different platforms are now converted at boot time.
  - Fixed a bug in restoring the swap header.
+ - Generate a trace.h include file for call_trace() on startup.
+ - Brought precompilation up to date with latest changes.
+ - General code cleanup.

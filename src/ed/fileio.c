@@ -8,11 +8,11 @@
  * The file I/O operations of the editor.
  */
 
-static io iobuf;	/* local status buffer */
+static io iobuf;		/* local status buffer */
 
-static int fd;		/* read/write file descriptor */
+static int fd;			/* read/write file descriptor */
 static char *buffer, *lbuf, *lbuflast;	/* buffer pointers */
-static int inbuf;	/* # bytes in buffer */
+static unsigned int inbuf;	/* # bytes in buffer */
 
 /*
  * NAME:	getline()
@@ -125,14 +125,14 @@ Int l;
 static void putline(text)
 register char *text;
 {
-    register int len;
+    register unsigned int len;
 
     len = strlen(text);
     iobuf.lines += 1;
     iobuf.chars += len + 1;
     while (inbuf + len >= BUF_SIZE) {	/* flush buffer */
 	if (inbuf != BUF_SIZE) {	/* room left for a piece of line */
-	    register int chunk;
+	    register unsigned int chunk;
 
 	    chunk = BUF_SIZE - inbuf;
 	    memcpy(buffer + inbuf, text, chunk);

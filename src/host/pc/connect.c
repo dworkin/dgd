@@ -239,15 +239,17 @@ int conn_select(int wait)
  * NAME:	conn->read()
  * DESCRIPTION:	read from a connection
  */
-int conn_read(connection *conn, char *buf, int size)
+int conn_read(connection *conn, char *buf, unsigned int len)
 {
+    int size;
+
     if (conn->fd == INVALID_SOCKET) {
 	return -1;
     }
     if (!FD_ISSET(conn->fd, &readfds)) {
 	return 0;
     }
-    size = recv(conn->fd, buf, size, 0);
+    size = recv(conn->fd, buf, len, 0);
     return (size == 0) ? -1 : size;
 }
 
@@ -255,7 +257,7 @@ int conn_read(connection *conn, char *buf, int size)
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-int conn_write(connection *conn, char *buf, int len, int wait)
+int conn_write(connection *conn, char *buf, unsigned int len, int wait)
 {
     int size;
 

@@ -173,7 +173,7 @@ char *file;
 	fd = open(file, O_RDONLY | O_BINARY, 0);
 	if (fd >= 0) {
 	    char *buffer;
-	    register int len;
+	    register unsigned int len;
 
 	    buffer = ALLOC(char, BUF_SIZE);
 	    buffer[0] = '\0';
@@ -241,7 +241,7 @@ unsigned int line;
 void tk_setfilename(file)
 char *file;
 {
-    register int len;
+    register unsigned int len;
 
     FREE(ibuffer->u.filename);
     len = strlen(file);
