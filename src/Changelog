@@ -1405,3 +1405,4 @@ DGD 1.1
  - Do not allow a restart after a fatal error.
  - Removed support for stand-alone compilations of editor and lexical scanner.
  - Implemented DGD runtime extension interface.
+ - Fixed another tricky bug that could commit arrays to the wrong plane.

@@ -2144,14 +2144,14 @@ register array *arr;
 dataplane *prev, *old;
 {
     if (arr->primary->plane != prev) {
+	if (arr->hashed != (struct _maphash_ *) NULL) {
+	    map_compact(arr);
+	}
+
 	if (arr->primary->arr == (array *) NULL) {
 	    arr->primary = &prev->alocal;
 	} else {
 	    arr->primary->plane = prev;
-	}
-
-	if (arr->hashed != (struct _maphash_ *) NULL) {
-	    map_compact(arr);
 	}
 	commit_values(arr->elts, arr->size, prev->level);
     }

@@ -308,7 +308,7 @@ void MainFrame::MessageReceived(BMessage *message)
 	bool eoln;
 	short n;
 
-	message->FindString("mesg", &mesg);
+	message->FindString("mesg", (const char **) &mesg);
 	if (log->selected) {
 	    log->GetSelection(&start, &finish);
 	} else {
@@ -460,7 +460,7 @@ void DGD::AboutRequested(void)
     view->SetFontAndColor(&font);
     about->AddChild(view);
     sprintf(buf, "\
-DGD %s\n© 1993 - 1998 BeeHive Internet Technologies, Inc. \
+DGD %s\n© 1993 - 2000 BeeHive Internet Technologies, Inc. \
 All Rights Reserved.", VERSION);
     view->SetText(buf);
     view = new BTextView(BRect(0, ABOUT_INDENT, ABOUT_WIDTH, ABOUT_HEIGHT),

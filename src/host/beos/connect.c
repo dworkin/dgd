@@ -357,12 +357,6 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	perror("setsockopt");
 	return FALSE;
     }
-    on = TRUE;
-    if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	return FALSE;
-    }
 
     memset(&sin, '\0', sizeof(sin));
     sin.sin_port = htons(telnet_port);
