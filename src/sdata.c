@@ -1986,7 +1986,7 @@ Uint *counttab;
     }
 
     data->base.flags = 0;
-    return swap;
+    return TRUE;
 }
 
 
@@ -2003,11 +2003,15 @@ unsigned int frag;
     register control *ctrl;
 
     count = 0;
+    n = ndata;
 
     /* perform garbage collection for one dataspace */
-    if (gcdata != (dataspace *) NULL) {
+    if (gcdata != (dataspace *) NULL && (frag == 0 || n - 1 >= frag)) {
 	if (d_save_dataspace(gcdata, (frag != 0), (Uint *) NULL)) {
 	    count++;
+	    if (frag != 1) {
+		--n;
+	    }
 	}
 	gcdata = gcdata->gcnext;
     }
@@ -2015,7 +2019,7 @@ unsigned int frag;
     if (frag != 0) {
 	/* swap out dataspace blocks */
 	data = dtail;
-	for (n = ndata / frag; n > 0; --n) {
+	for (n /= frag; n > 0; --n) {
 	    register dataspace *prev;
 
 	    prev = data->prev;

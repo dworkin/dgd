@@ -601,7 +601,7 @@ char *ptr, *text;
 	    noshift(cb, p);
 	    return;
 	} else if (cb->flags & CB_COMMENT) {
-	    shift(cb, text);	/* use previous shift */
+	    shift(ptr, text);	/* use previous shift */
 	} else {
 	    do_indent = TRUE;
 	}
@@ -665,7 +665,7 @@ char *ptr, *text;
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
 			cb->shift = cb->ind[0] - idx;
-			shift(cb, text);
+			shift(ptr, text);
 			do_indent = FALSE;
 		    } else {
 			register char *q;
@@ -801,7 +801,7 @@ char *ptr, *text;
 			/* back up if this is a switch label */
 			cb->shift -= SHIFTWIDTH(cb->vars);
 		    }
-		    shift(cb, text);
+		    shift(ptr, text);
 		    do_indent = FALSE;
 		}
 		/* change indentation after current token */

@@ -1964,7 +1964,7 @@ static string *funcnames[255];
  * DESCRIPTION:	initialize the code generator
  */
 void cg_init(inherited)
-bool inherited;
+int inherited;
 {
     skip = inherited;
     nfuncs = 0;
