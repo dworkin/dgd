@@ -1,5 +1,6 @@
 # define INCLUDE_TIME
 # include "dgd.h"
+# include <signal.h>
 
 /*
  * NAME:	host->init()
@@ -11,6 +12,7 @@ void host_init()
 
     time(&t);
     srandom((int) t);
+    signal(SIGPIPE, SIG_IGN);
 }
 
 /*
