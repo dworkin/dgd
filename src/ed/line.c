@@ -295,7 +295,7 @@ char *text;
 	txtsz = 0;
     }
 # ifdef STRUCT_AL
-    lb->blksz = ALIGN(lb->blksz, STRUCT_AL);
+    lb->blksz = ALGN(lb->blksz, STRUCT_AL);
 # endif
 
     /* flush write buffer if needed */

@@ -508,7 +508,7 @@ int fd;
 {
     dump_header dh;
     register precomp *l, **pc;
-    register Uint i, ninherits;
+    register Uint i;
     register object *obj;
     register char *name;
 

@@ -11,7 +11,7 @@ DESCRIPTION
 	as name.
 	If the object to be compiled already exists and is not inherited by
 	any other object, it and all of its clones will be upgraded to the
-	new version.  Variables will be preserved only if the also exist in
+	new version.  Variables will be preserved only if they also exist in
 	the new version and have the same type; new variables will be
 	initialized to 0.  The actual upgrading is done immediately upon
 	completion of the current thread.

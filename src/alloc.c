@@ -10,11 +10,11 @@
 # define SM_MAGIC	0xc5000000L	/* static mem */
 # define DM_MAGIC	0xc6000000L	/* dynamic mem */
 
-# define SIZESIZE	ALIGN(sizeof(Int), STRUCT_AL)
-# define UINTSIZE	ALIGN(sizeof(unsigned int), STRUCT_AL)
+# define SIZESIZE	ALGN(sizeof(Int), STRUCT_AL)
+# define UINTSIZE	ALGN(sizeof(unsigned int), STRUCT_AL)
 
 # ifdef DEBUG
-# define MOFFSET		ALIGN(sizeof(header), STRUCT_AL)
+# define MOFFSET		ALGN(sizeof(header), STRUCT_AL)
 # else
 # define MOFFSET		SIZESIZE
 # endif
@@ -572,19 +572,19 @@ register unsigned int size;
 	 * get new dynamic chunk
 	 */
 	for (sz = dchunksz;
-	     sz < size + ALIGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
+	     sz < size + ALGN(sizeof(char *), STRUCT_AL) + UINTSIZE + SIZESIZE;
 	     sz += dchunksz) ;
 	p = newmem(sz);
 	mstat.dmemsize += sz;
 	*(char **) p = dlist;
 	dlist = p;
-	p += ALIGN(sizeof(char *), STRUCT_AL);
+	p += ALGN(sizeof(char *), STRUCT_AL);
 
 	/* no previous chunk */
 	*(unsigned int *) p = 0;
 	c = (chunk *) (p + UINTSIZE);
 	/* initialize chunk */
-	c->size = sz - ALIGN(sizeof(char *), STRUCT_AL) - UINTSIZE - SIZESIZE;
+	c->size = sz - ALGN(sizeof(char *), STRUCT_AL) - UINTSIZE - SIZESIZE;
 	p += c->size;
 	*(unsigned int *) p = c->size;
 	/* no following chunk */
@@ -665,8 +665,8 @@ register chunk *c;
 void m_init(ssz, dsz)
 unsigned int ssz, dsz;
 {
-    schunksz = ALIGN(ssz, STRUCT_AL);
-    dchunksz = ALIGN(dsz, STRUCT_AL);
+    schunksz = ALGN(ssz, STRUCT_AL);
+    dchunksz = ALGN(dsz, STRUCT_AL);
     if (schunksz != 0) {
 	if (schunk != (chunk *) NULL) {
 	    schunk->next = slist;
@@ -703,10 +703,10 @@ register unsigned int size;
 	fatal("alloc(0)");
     }
 # endif
-    size = ALIGN(size + MOFFSET, STRUCT_AL);
+    size = ALGN(size + MOFFSET, STRUCT_AL);
 # ifndef DEBUG
-    if (size < ALIGN(sizeof(chunk), STRUCT_AL)) {
-	size = ALIGN(sizeof(chunk), STRUCT_AL);
+    if (size < ALGN(sizeof(chunk), STRUCT_AL)) {
+	size = ALGN(sizeof(chunk), STRUCT_AL);
     }
 # endif
     if (slevel > 0) {

@@ -1654,12 +1654,11 @@ int pop;
 	    d2 = opt_expr(m, FALSE);
 	    return max3(d1, i + d2, i + side_end(m, side, oldside, olddepth));
 	}
+    }
 
 # ifdef DEBUG
-    default:
-	fatal("unknown expression type %d", n->type);
+    fatal("unknown expression type %d", n->type);
 # endif
-    }
 }
 
 /*

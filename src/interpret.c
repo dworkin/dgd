@@ -111,7 +111,7 @@ int size;
 	 */
 	spsize = cframe->fp - sp;
 	ilsize = ilvp - cframe->stack;
-	size = ALIGN(spsize + ilsize + size + MIN_STACK, 8);
+	size = ALGN(spsize + ilsize + size + MIN_STACK, 8);
 	stk = ALLOC(value, size);
 	offset = (long) (stk + size) - (long) cframe->fp;
 

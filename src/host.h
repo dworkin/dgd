@@ -234,4 +234,4 @@ extern char *P_crypt	P((char*, char*));
 # define FF	'\014'
 # define CR	'\015'
 
-# define ALIGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
+# define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))

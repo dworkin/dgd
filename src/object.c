@@ -60,6 +60,8 @@ static object *o_alloc()
     o->data = (dataspace *) NULL;
     o->cfirst = SW_UNUSED;
     o->dfirst = SW_UNUSED;
+
+    return o;
 }
 
 /*
