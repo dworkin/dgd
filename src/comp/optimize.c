@@ -1628,6 +1628,11 @@ unsigned short *depth;
 	    d = max3(d, d1, d2);
 	    break;
 
+	case N_CATCH:
+	    opt_stmt(m->l.left, &d1);
+	    d = d1;
+	    break;
+
 	case N_IF:
 	    side_start(&side, depth);
 	    d1 = opt_expr(&m->l.left, FALSE);

@@ -370,6 +370,8 @@ stmt
 		}
 	  compound_stmt
 		{ $$ = c_endrlimits($3, $5, $8); }
+	| CATCH compound_stmt
+		{ $$ = node_mon(N_CATCH, 0, $2); }
 	| SWITCH '(' f_list_exp ')'
 		{ c_startswitch($3, typechecking); }
 	  compound_stmt

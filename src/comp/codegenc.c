@@ -1685,6 +1685,7 @@ static void cg_stmt(n)
 register node *n;
 {
     register node *m;
+    register int i;
 
     while (n != (node *) NULL) {
 	if (n->type == N_PAIR) {
@@ -1694,7 +1695,9 @@ register node *n;
 	    m = n;
 	    n = (node *) NULL;
 	}
-	tvc = 0;
+	if (catch_level == 0) {
+	    tvc = 0;
+	}
 	switch (m->type) {
 	case N_BLOCK:
 	    cg_stmt(m->l.left);
@@ -1774,6 +1777,29 @@ register node *n;
 	    output(";\npre_rlimits();\n");
 	    cg_stmt(m->r.right);
 	    output("i_set_rllevel(-1);\n");
+	    break;
+
+	case N_CATCH:
+	    if (catch_level == 0) {
+		for (i = nvars; i > 0; ) {
+		    if (vars[--i] != 0) {
+			output("%s->u.number = ivar%d;\n", local(i), vars[i]);
+		    }
+		}
+	    }
+	    output("pre_catch();\n");
+	    output("if (ec_push((ec_ftn) i_cleanup)) ec_pop(); else {\n");
+	    catch_level++;
+	    cg_stmt(m->l.left);
+	    --catch_level;
+	    output("} post_catch();\n");
+	    if (catch_level == 0) {
+		for (i = nvars; i > 0; ) {
+		    if (vars[--i] != 0) {
+			output("ivar%d = %s->u.number;\n", vars[i], local(i));
+		    }
+		}
+	    }
 	    break;
 
 	case N_IF:

@@ -1819,6 +1819,13 @@ register node *n;
 	    }
 	    break;
 
+	case N_CATCH:
+	    jlist = jump(I_CATCH | I_POP_BIT, (jmplist *) NULL);
+	    cg_stmt(m->l.left);
+	    code_instr(I_RETURN, 0);
+	    jump_resolve(jlist, here);
+	    break;
+
 	case N_IF:
 	    if (m->r.right->l.left != (node *) NULL) {
 		if (m->r.right->l.left->type == N_BREAK &&

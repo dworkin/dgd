@@ -917,3 +917,4 @@ DGD 1.1
    Currently, the editor still takes no ticks.
  - The object table wasn't properly prepared before including it in a state
    dump.
+ - catch { stmts } is now allowed as a statement.
