@@ -1470,3 +1470,4 @@ DGD 1.3
  - DGD now has fully automatic garbage collection.  swapout() can still be
    used to reduce memory usage after a peak, or to track down memory leaks.
  - Fixed a bug in calculating line numbers in a stack trace.
+ - Fixed a stack depth miscalculation bug for subranges.

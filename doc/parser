@@ -54,6 +54,7 @@ expression, with the following syntax:
 and, with regular expressions "a" and "b":
 
     a*      zero or more occurrences of a	(highest precedence)
+    a?      zero or one occurrences of a
     a+      one or more occurrences of a
     ab      the concatenation of a and b
     a|b     a or b
