@@ -568,6 +568,17 @@ string *str;
 }
 
 /*
+ * NAME:	comm->udpsend()
+ * DESCRIPTION:	pretend to send a message on the UDP channel of a connection
+ */
+int comm_udpsend(obj, str)
+object *obj;
+string *str;
+{
+    return 0;
+}
+
+/*
  * NAME:	comm->echo()
  * DESCRIPTION:	pretend to turn on/off input echoing for a user
  */
@@ -601,6 +612,16 @@ int flag;
  * DESCRIPTION:	pretend to return the ip number of a user (as a string)
  */
 string *comm_ip_number(obj)
+object *obj;
+{
+    return (string *) NULL;
+}
+
+/*
+ * NAME:	comm->ip_name()
+ * DESCRIPTION:	pretend to return the ip name of a user
+ */
+string *comm_ip_name(obj)
 object *obj;
 {
     return (string *) NULL;
