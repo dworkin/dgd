@@ -9,6 +9,7 @@
 # include "api_rsrc.c"
 # include "api_access.c"
 # include "api_user.c"
+# include "api_tls.c"
 # include "lib_connection.c"
 # include "lib_user.c"
 # include "lib_wiztool.c"
@@ -17,8 +18,4 @@
 # include "binary.c"
 # include "user.c"
 # include "wiztool.c"
-/*
-# include "lib_port.c"
-# include "port.c"
- */
 # endif

@@ -802,14 +802,11 @@ static void runtime_error(string str, int caught, int ticks)
     trace = call_trace();
     tls = trace[1][TRACE_FIRSTARG];
 
-    if (caught == 1) {
-	/* top-level catch: ignore */
+    if (caught == 2 && trace[1][TRACE_PROGNAME] == DRIVER) {
+	/* top-level catch in driver object: ignore */
 	caught = 0;
     } else if (caught != 0 && ticks < 0 &&
-	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%s",
-		      objname) != 0 &&
-	       (objname != "lib/auto" ||
-		trace[caught - 1][TRACE_FUNCTION] != "destruct_object")) {
+	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%*s") != 0) {
 	tls[1] = str;
 	return;
     }

@@ -1296,7 +1296,8 @@ int pop;
 	d1 = opt_expr(&n->l.left, TRUE);
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
-	    node_nil();
+	    *m = node_nil();
+	    (*m)->line = n->line;
 	    return !pop;
 	}
 	return d1;
@@ -2032,8 +2033,11 @@ Uint *depth;
 	case N_POP:
 	    side_start(&side, depth);
 	    d1 = opt_expr(&n->l.left, TRUE);
-	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
 	    if (d1 == 0) {
+		n->l.left = (node *) NULL;
+	    }
+	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
+	    if (n->l.left == (node *) NULL) {
 		n = (node *) NULL;
 	    }
 	    break;
