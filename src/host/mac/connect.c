@@ -276,14 +276,20 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	ffirst->prev = (ipaddr *) NULL;
 	--nfree;
 
-	/* remove from hash table */
-	for (h = &ipahtab[ipa->ipnum % ipahtabsz];
-	     *h != ipa;
-	     h = &(*h)->link) ;
-	*h = ipa->link;
-
 	if (ipa == lastreq) {
 	    lastreq = (ipaddr *) NULL;
+	}
+
+	if (hash != &ipa->link) {
+	    /* remove from hash table */
+	    for (h = &ipahtab[ipa->ipnum % ipahtabsz];
+		 *h != ipa;
+		 h = &(*h)->link) ;
+	    *h = ipa->link;
+
+	    /* put in hash table */
+	    ipa->link = *hash;
+	    *hash = ipa;
 	}
     } else {
 	/*
@@ -292,11 +298,12 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	m_static();
 	ipa = ALLOC(ipaddr, 1);
 	m_dynamic();
+
+	/* put in hash table */
+	ipa->link = *hash;
+	*hash = ipa;
     }
 
-    /* put in hash table */
-    ipa->link = *hash;
-    *hash = ipa;
     ipa->ref = 1;
     ipa->ipnum = ipnum;
     ipa->name[0] = '\0';
