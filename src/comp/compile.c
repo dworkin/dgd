@@ -371,15 +371,15 @@ register char *file;
     c.prev = current;
     current = &c;
 
-    file = path_file(c.file);
-    if (file == (char *) NULL) {
+    if (strchr(c.file, '#') != (char *) NULL ||
+	(file=path_file(c.file)) == (char *) NULL) {
 	error("Illegal file name \"/%s\"", c.file);
     }
     strcpy(file_c, file);
     strcat(file_c, ".c");
 
     for (;;) {
-	if (!c_autodriver()) {
+	if (c_autodriver() == 0) {
 	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
 		/*
 		 * (re)compile the driver object to do pathname translation
@@ -396,11 +396,9 @@ register char *file;
 		c_inherit(auto_object, (node *) NULL);
 	    }
 	}
-	if (strchr(c.file, '#') != (char *) NULL) {
-	    error("Illegal file name \"/%s\"", c.file);
-	}
 	if (!pp_init(file_c, paths, 1)) {
-	    if (!c_autodriver()) {
+	    ctrl_clear();
+	    if (c_autodriver() == 0) {
 		/*
 		 * Object can't be loaded.  Ask the driver object for
 		 * a replacement.
@@ -455,7 +453,7 @@ register char *file;
 	    c_clear();
 	    error((char *) NULL);
 	}
-	if (!c_autodriver()) {
+	if (c_autodriver() == 0) {
 	    /*
 	     * compile time error logging
 	     */
@@ -475,7 +473,7 @@ register char *file;
 	    i_del_value(sp++);
 	}
 	recursion = TRUE;
-	if (yyparse() != 0) {
+	if (yyparse() != 0 || !ctrl_chkfuncs(c.file)) {
 	    recursion = FALSE;
 	    errorlog((char *) NULL);
 	    ec_pop();
@@ -502,7 +500,7 @@ register char *file;
 	    ctrl_clear();
 	    c_clear();
 	    current = c.prev;
-	    return ctrl->inherits[ctrl->nvirtuals - 1].obj;
+	    return ctrl->inherits[ctrl->ninherits - 1].obj;
 	}
 	ctrl_clear();
 	c_clear();
@@ -523,13 +521,18 @@ char *file;
 
 /*
  * NAME:	compile->autodriver()
- * DESCRIPTION:	return TRUE if the auto object or driver object is being
+ * DESCRIPTION:	indicate if the auto object or driver object is being
  *		compiled
  */
-bool c_autodriver()
+int c_autodriver()
 {
-    return strcmp(current->file, auto_object) == 0 ||
-	   strcmp(current->file, driver_object) == 0;
+    if (strcmp(current->file, auto_object) == 0) {
+	return O_AUTO;
+    }
+    if (strcmp(current->file, driver_object) == 0) {
+	return O_DRIVER;
+    }
+    return 0;
 }
 
 
@@ -573,8 +576,7 @@ bool function;
 
     /* check for some errors */
     if (strcmp(str->text, "catch") == 0 || strcmp(str->text, "lock") == 0) {
-	yyerror("cannot redeclare %s()\n", str->text);
-	return;
+	yyerror("cannot redeclare %s()", str->text);
     }
     if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
 	yyerror("private contradicts nomask");
@@ -733,6 +735,9 @@ register node *n;
     if (!seen_decls) {
 	ctrl_create(current->file);
 	seen_decls = TRUE;
+    }
+    if (type & C_NOMASK) {
+	type |= C_LOCAL;
     }
     c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right, TRUE);
 }
@@ -1920,9 +1925,9 @@ node *n, *label;
     char *proto;
     long call;
 
-    proto = (label != (node *) NULL) ?
-	    ctrl_lfcall(n->l.string, label->l.string->text, &call) :
-	    ctrl_ifcall(n->l.string, &call);
+    proto = ctrl_ifcall(n->l.string, (label != (node *) NULL) ?
+				     label->l.string->text : (char *) NULL,
+			&call);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
 		  node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
     return n;
@@ -2047,6 +2052,10 @@ node *args;
 	yyerror("too many arguments for function %s", fname);
     }
 
+    if (!(PROTO_CLASS(proto) & C_LOCAL) && func->mod == T_NUMBER) {
+	/* cast to number */
+	return node_mon(N_CAST, T_NUMBER, func);
+    }
     return func;
 }
 
@@ -2102,7 +2111,7 @@ node *n;
 {
     register node *t, *a, *l;
 
-    if (n->r.number >> 16 == ((KFCALL << 8) | 1)) {
+    if (n->type == N_FUNC && (n->r.number >> 16 == ((KFCALL << 8) | 1))) {
 	/*
 	 * the function has lvalue parameters
 	 */
