@@ -1,7 +1,9 @@
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
+# include "array.h"
 # include "object.h"
+# include "data.h"
+# include "interpret.h"
 # include "path.h"
 
 /*
@@ -25,7 +27,10 @@ char *file;
 		q = d;
 	    } else if (q - 2 == d && d[0] == '.' && d[1] == '.') {
 		/* .. */
-		for (q = d; q != buf && *--q != '/'; ) ;
+		q = d;
+		if (q != buf) {
+		    for (--q; q != buf && *--q != '/'; ) ;
+		}
 	    }
 	    if (q != buf) {
 		if (q[-1] == '/') {
@@ -59,18 +64,26 @@ char *file;
 char *path_ed_read(file)
 char *file;
 {
-    i_check_stack(2);
-    (--sp)->type = T_OBJECT;
-    sp->u.object = i_this_object()->key;
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    call_driver_object("path_ed_read", 2);
-    if (sp->type != T_STRING) {
-	i_del_value(sp++);
-	return (char *) NULL;
+    object *obj;
+
+    obj = i_this_object();
+    if (obj->flags & O_DRIVER) {
+	file = path_file(path_resolve(file));
+    } else {
+	i_check_stack(2);
+	(--sp)->type = T_OBJECT;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+	call_driver_object("path_ed_read", 2);
+	if (sp->type != T_STRING) {
+	    i_del_value(sp++);
+	    return (char *) NULL;
+	}
+	file = path_file(path_resolve(sp->u.string->text));
+	str_del((sp++)->u.string);
     }
-    file = path_file(path_resolve(sp->u.string->text));
-    str_del((sp++)->u.string);
     return file;
 }
 
@@ -81,19 +94,27 @@ char *file;
 char *path_ed_write(file)
 char *file;
 {
-    i_check_stack(2);
-    (--sp)->type = T_OBJECT;
-    sp->u.object = i_this_object()->key;
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    call_driver_object("path_ed_write", 2);
-    if (sp->type != T_STRING) {
-	i_del_value(sp++);
-	return (char *) NULL;
+    object *obj;
+
+    obj = i_this_object();
+    if (obj->flags & O_DRIVER) {
+	return path_file(path_resolve(file));
+    } else {
+	i_check_stack(2);
+	(--sp)->type = T_OBJECT;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+	call_driver_object("path_ed_write", 2);
+	if (sp->type != T_STRING) {
+	    i_del_value(sp++);
+	    return (char *) NULL;
+	}
+	file = path_file(path_resolve(sp->u.string->text));
+	str_del((sp++)->u.string);
+	return file;
     }
-    file = path_file(path_resolve(sp->u.string->text));
-    str_del((sp++)->u.string);
-    return file;
 }
 
 /*
@@ -103,19 +124,31 @@ char *file;
 char *path_object(file)
 char *file;
 {
-    i_check_stack(2);
-    (--sp)->type = T_OBJECT;
-    sp->u.object = i_this_object()->key;
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    call_driver_object("path_object", 2);
-    if (sp->type != T_STRING) {
-	i_del_value(sp++);
+    object *obj;
+
+    obj = i_this_object();
+    if (obj->count == 0) {
+	/* from destructed object */
 	return (char *) NULL;
     }
-    file = path_resolve(sp->u.string->text);
-    str_del((sp++)->u.string);
-    return file;
+    if (obj->flags & O_DRIVER) {
+	return path_file(path_resolve(file));
+    } else {
+	i_check_stack(2);
+	(--sp)->type = T_OBJECT;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+	call_driver_object("path_object", 2);
+	if (sp->type != T_STRING) {
+	    i_del_value(sp++);
+	    return (char *) NULL;
+	}
+	file = path_resolve(sp->u.string->text);
+	str_del((sp++)->u.string);
+	return file;
+    }
 }
 
 /*
