@@ -1,10 +1,10 @@
-# include <ctype.h>
 # include "dgd.h"
-# include "interpret.h"
+# include <ctype.h>
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 
 static object *otab;		/* object table */
 static int otabsize;		/* size of object table */
@@ -13,7 +13,7 @@ static object *free_obj;	/* free object list */
 static object *dest_obj;	/* destructed object list */
 static uindex nobjects;		/* number of objects in object table */
 static uindex nfreeobjs;	/* number of objects in free list */
-static long count;		/* object creation count */
+static Int count;		/* object creation count */
 
 /*
  * NAME:	object->init()
@@ -47,7 +47,7 @@ control *ctrl;
     if (free_obj != (object *) NULL) {
 	/* get space from free object list */
 	o = free_obj;
-	free_obj = o->u.master;
+	free_obj = (object *) o->chain.next;
 	--nfreeobjs;
     } else {
 	/* use new space in object table */
@@ -55,9 +55,9 @@ control *ctrl;
 	    fatal("too many objects");
 	}
 	o = &otab[nobjects];
-	o->key.index = nobjects++;
+	o->index = nobjects++;
     }
-    o->key.count = ++count;
+    o->count = ++count;
 
     if (master == (object *) NULL) {
 	register dinherit *inh;
@@ -127,7 +127,7 @@ register object *o;
     }
 
     /* put in deleted list */
-    o->u.master = dest_obj;
+    o->chain.next = (hte *) dest_obj;
     dest_obj = o;
 }
 
@@ -138,11 +138,11 @@ register object *o;
 void o_del(o)
 register object *o;
 {
-    if (o->key.count == 0) {
+    if (o->count == 0) {
 	/* objects can only be destructed once */
 	error("Destructing destructed object");
     }
-    o->key.count = 0;
+    o->count = 0;
 
     if (o->chain.name != (char *) NULL) {
 	/* remove from object name hash table */
@@ -153,15 +153,16 @@ register object *o;
 
 /*
  * NAME:	object->object()
- * DESCRIPTION:	translate an object key to an object
+ * DESCRIPTION:	get an object, given index and count
  */
-object *o_object(key)
-register objkey *key;
+object *o_object(idx, count)
+uindex idx;
+Int count;
 {
     register object *o;
 
-    o = &otab[key->index];
-    return (o->key.count == key->count) ? o : (object *) NULL;
+    o = &otab[idx];
+    return (o->count == count) ? o : (object *) NULL;
 }
 
 /*
@@ -179,7 +180,7 @@ register object *o;
 	/*
 	 * return the name of the master object with the index appended
 	 */
-	sprintf(name, "%s#%d", o->u.master->chain.name, o->key.index);
+	sprintf(name, "%s#%d", o->u.master->chain.name, o->index);
 	return name;
     }
 }
@@ -252,7 +253,7 @@ char *name;
 	} while (*p != '\0');
 
 	o = &otab[number];
-	if (o->key.count == 0 || (o->flags & O_MASTER) ||
+	if (o->count == 0 || (o->flags & O_MASTER) ||
 	    strncmp(name, o->u.master->chain.name, hash - name) != 0 ||
 	    o->u.master->chain.name[hash - name] != '\0') {
 	    /*
@@ -329,8 +330,8 @@ void o_clean()
 	    FREE(o->chain.name);	/* free object name */
 	}
 
-	next = o->u.master;
-	o->u.master = free_obj;	/* put object in free list */
+	next = (object *) o->chain.next;
+	o->chain.next = (hte *) free_obj;	/* put object in free list */
 	free_obj = o;
 	nfreeobjs++;
     }
