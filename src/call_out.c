@@ -163,7 +163,7 @@ register uindex i;
  */
 static Uint encode(time, mtime)
 Uint time;
-uindex mtime;
+unsigned int mtime;
 {
     return 0x01000000L + (((time - timediff) & 0xff) << 16) + mtime;
 }
@@ -174,7 +174,7 @@ uindex mtime;
  */
 static Uint decode(time, mtime)
 register Uint time;
-uindex *mtime;
+unsigned short *mtime;
 {
     *mtime = time & 0xffff;
     time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff) +
@@ -339,7 +339,7 @@ register Uint t;
  * DESCRIPTION:	get the current (adjusted) time
  */
 static Uint co_time(mtime)
-uindex *mtime;
+unsigned short *mtime;
 {
     Uint t;
 
@@ -379,7 +379,7 @@ frame *f;
 int nargs;
 {
     Uint t;
-    uindex m;
+    unsigned short m;
     register call_out *co;
 
     if (cotabsz == 0) {
@@ -566,7 +566,7 @@ object *obj;
 {
     array *a;
     value *v, *w;
-    uindex i, mtime, m;
+    unsigned short i, mtime, m;
     Uint t;
     xfloat flt;
 
@@ -611,7 +611,7 @@ static void co_expire()
     register uindex handle, oindex, i;
     register cbuf *cyc;
     Uint t;
-    uindex m;
+    unsigned short m;
 
     if (P_timeout()) {
 	t = co_time(&m);
@@ -730,7 +730,7 @@ Uint co_delay(mtime)
 unsigned short *mtime;
 {
     Uint t;
-    uindex m;
+    unsigned short m;
 
     if (nzero != 0) {
 	/* immediate */
@@ -810,7 +810,7 @@ int fd;
     register call_out *co;
     register uindex n;
     register cbuf *cb;
-    uindex m;
+    unsigned short m;
     int ret;
 
     /* update timestamp */
@@ -892,6 +892,7 @@ register Uint t;
     register cbuf *cb;
     dump_header dh;
     cbuf buffer[CYCBUF_SIZE];
+    unsigned short m;
 
     /* read and check header */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
@@ -922,8 +923,12 @@ register Uint t;
 	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
 	    co->handle = dc->handle;
 	    co->oindex = dc->oindex;
-	    co->time = (dc->time >> 24 == 1) ?
-			decode(dc->time, &co->mtime) : dc->time + t;
+	    if (dc->time >> 24 == 1) {
+		co->time = decode(dc->time, &m);
+		co->mtime = m;
+	    } else {
+		co->time = dc->time + t;
+	    }
 	    dc++;
 	}
 	for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
