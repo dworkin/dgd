@@ -151,7 +151,7 @@ register object *o;
     sp->u.string->text[0] = '/';
     strcpy(sp->u.string->text + 1, o->chain.name);
     (--sp)->type = T_INT;
-    sp->u.number = o->ctrl->compiled;
+    sp->u.number = o_control(o)->compiled;
     if (i_call_critical("remove_program", 2, TRUE)) {
 	i_del_value(sp++);
     }
@@ -161,9 +161,6 @@ register object *o;
 	register int i;
 
 	/* remove references to inherited objects too */
-	if (o->ctrl == (control *) NULL) {
-	    o->ctrl = d_load_control(o);
-	}
 	inh = o->ctrl->inherits;
 	i = o->ctrl->ninherits;
 	while (--i > 0) {

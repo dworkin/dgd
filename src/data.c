@@ -1599,7 +1599,8 @@ register control *ctrl;
 	       header.nfuncalls * (Uint) 2 +
 	       header.nsymbols * (Uint) sizeof(dsymbol);
     }
-    ctrl->nsectors = header.nsectors = d_swapalloc(size, 0, &ctrl->sectors);
+    ctrl->nsectors = header.nsectors = d_swapalloc(size, ctrl->nsectors,
+						   &ctrl->sectors);
     ctrl->obj->cfirst = ctrl->sectors[0];
 
     /*
@@ -2630,8 +2631,10 @@ register control *ctrl;
 	    FREE(ctrl->sectors);
 	}
 
-	/* delete inherits */
-	FREE(ctrl->inherits);
+	if (ctrl->inherits != (dinherit *) NULL) {
+	    /* delete inherits */
+	    FREE(ctrl->inherits);
+	}
 
 	if (ctrl->prog != (char *) NULL) {
 	    FREE(ctrl->prog);
