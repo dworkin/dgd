@@ -678,8 +678,7 @@ void ctrl_create()
 		i = ctrl->nvirtuals - 1;
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
-		    str_put(d_get_strconst(ctrl, i, n)->text,
-			    (count << 16L) | n);
+		    str_put(d_get_strconst(ctrl, i, n), (count << 16L) | n);
 		}
 	    }
 	    new++;
@@ -731,7 +730,7 @@ string *str;
 {
     register long desc, new;
 
-    desc = str_put(str->text, new = (nvirtuals << 16L) | nstrs);
+    desc = str_put(str, new = (nvirtuals << 16L) | nstrs);
     if (desc == new) {
 	/*
 	 * it is really a new string
@@ -1129,6 +1128,7 @@ static void ctrl_mkstrings()
 	for (l = strlist; l != (strchunk *) NULL; ) {
 	    while (i > 0) {
 		*--s = l->s[--i];	/* already referenced */
+		(*s)->ref |= STR_CONST;
 	    }
 	    i = STRING_CHUNK;
 	    f = l;

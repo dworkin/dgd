@@ -965,7 +965,7 @@ register svalue *sv;
 		 */
 		i = strconst_obj(sdata, v->u.string);
 		if (i >= 0) {
-		    if (str_put(v->u.string->text, -1L - i) > 0) {
+		    if (str_put(v->u.string, -1L - i) > 0) {
 			/*
 			 * The constant was preceded by an identical
 			 * string value, but it is marked as a constant,
@@ -977,7 +977,7 @@ register svalue *sv;
 		    break;
 		}
 	    }
-	    if (str_put(v->u.string->text, nstr) >= nstr) {
+	    if (str_put(v->u.string, nstr) >= nstr) {
 		nstr++;
 		strsize += v->u.string->len;
 	    }
@@ -1043,7 +1043,7 @@ register svalue *sv;
 	    break;
 
 	case T_STRING:
-	    i = str_put(v->u.string->text, nstr);
+	    i = str_put(v->u.string, nstr);
 	    sv->type = T_STRING;
 	    if (i < 0) {
 		/* string constant (in this object) */
