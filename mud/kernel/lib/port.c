@@ -44,7 +44,7 @@ private object _connection(mixed *tls, string ipaddr, int port)
 	if (function_object("query_conn", user) != LIB_USER) {
 	    error("Invalid user object");
 	}
-	conn->set_user(user);
+	conn->set_user(user, nil);
     }
     return conn;
 }
