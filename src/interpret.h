@@ -26,8 +26,7 @@
 # define I_SWITCH_RANGE		23	/* n */
 # define I_SWITCH_STR		24	/* n */
 # define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_LFUNC		26	/* 1 unsigned, 1 unsigned, 1 unsigned,
-					   1 unsigned */
+# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
 # define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
 # define I_CATCH		29	/* 2 signed */
@@ -103,20 +102,26 @@ extern void		i_index		P((void));
 extern void		i_index_lvalue	P((void));
 extern void		i_fetch		P((void));
 extern void		i_store		P((value*, value*));
-extern void		i_set_cost	P((long));
+extern void		i_set_cost	P((Int));
+extern Int		i_reset_cost	P((void));
 extern void		i_lock		P((void));
 extern void		i_unlock	P((void));
+extern void		i_set_lock	P((unsigned short));
+extern unsigned short	i_query_lock	P((void));
+extern void		i_set_frame	P((int));
+extern int		i_query_frame	P((void));
 extern object	       *i_this_object	P((void));
 extern object	       *i_prev_object	P((int));
 extern char	       *i_foffset	P((unsigned short));
+extern int		i_pindex	P((void));
 extern void		i_typecheck	P((char*, char*, char*, int, bool));
-extern void		i_funcall	P((object*, int, int, int, int));
+extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, bool, int));
 extern void		i_dump_trace	P((FILE*));
 extern void		i_log_error	P((void));
 extern void		i_clear		P((void));
 
 extern value *sp;
-extern long exec_cost;
+extern Int exec_cost;
 
 # define i_add_cost(e)	(exec_cost -= (e))
