@@ -671,7 +671,7 @@ typedef struct _cfunc_ {
 
 static control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
-static strchunk *strlist;		/* list of string chunks */
+static strchunk *str_list;		/* list of string chunks */
 static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
 static Uint nstrs;			/* # of strings in all string chunks */
 static fcchunk *fclist;			/* list of fcall chunks */
@@ -799,11 +799,11 @@ string *str;
 	    register strchunk *l;
 
 	    l = ALLOC(strchunk, 1);
-	    l->next = strlist;
-	    strlist = l;
+	    l->next = str_list;
+	    str_list = l;
 	    strchunksz = 0;
 	}
-	str_ref(strlist->s[strchunksz++] = str);
+	str_ref(str_list->s[strchunksz++] = str);
 	if (nstrs == USHRT_MAX) {
 	    c_error("too many string constants");
 	}
@@ -1324,7 +1324,7 @@ static void ctrl_mkstrings()
 	newctrl->strings = ALLOC(string*, newctrl->nstrings);
 	s = newctrl->strings + nstrs;
 	i = strchunksz;
-	for (l = strlist; l != (strchunk *) NULL; ) {
+	for (l = str_list; l != (strchunk *) NULL; ) {
 	    while (i > 0) {
 		*--s = l->s[--i];	/* already referenced */
 		strsize += (*s)->len;
@@ -1334,7 +1334,7 @@ static void ctrl_mkstrings()
 	    l = l->next;
 	    FREE(f);
 	}
-	strlist = (strchunk *) NULL;
+	str_list = (strchunk *) NULL;
 	strchunksz = i;
     }
     newctrl->strsize = strsize;
@@ -1678,17 +1678,17 @@ void ctrl_clear()
 	newctrl = (control *) NULL;
     }
     str_clear();
-    while (strlist != (strchunk *) NULL) {
+    while (str_list != (strchunk *) NULL) {
 	register strchunk *l;
 	register string **s;
 
-	l = strlist;
+	l = str_list;
 	s = &l->s[strchunksz];
 	while (--strchunksz >= 0) {
 	    str_del(*--s);
 	}
 	strchunksz = STRING_CHUNK;
-	strlist = l->next;
+	str_list = l->next;
 	FREE(l);
     }
     while (fclist != (fcchunk *) NULL) {

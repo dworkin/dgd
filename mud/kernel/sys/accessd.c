@@ -168,7 +168,7 @@ remove_user(string user)
  */
 string *query_users()
 {
-    if (previous_program() == API_ACCESS) {
+    if (KERNEL()) {
 	return map_indices(uaccess);
     }
 }

@@ -315,7 +315,11 @@ private object load(string path)
  */
 static initialize()
 {
+    string *users;
+    int i;
+# ifdef SYS_NETWORKING
     object port;
+# endif
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
@@ -340,8 +344,6 @@ static initialize()
     rsrcd->add_owner(0);	/* Ecru */
     rsrcd->rsrc_incr(0, "filequota", 0,
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
-    rsrcd->add_owner("admin");
-    rsrcd->rsrc_incr("admin", "filequota", 0, file_size(USR + "/admin", TRUE));
 
     /* load remainder of manager objects */
     call_other(accessd = load(ACCESSD), "???");
@@ -354,6 +356,14 @@ static initialize()
 # endif
     catch {
 	initd = load(USR + "/System/initd");
+    }
+
+    /* initialize other users as resource owners */
+    users = (accessd->query_users() - ({ "System" })) | ({ "admin" });
+    for (i = sizeof(users); --i >= 0; ) {
+	rsrcd->add_owner(users[i]);
+	rsrcd->rsrc_incr(users[i], "filequota", 0,
+			 file_size(USR + "/" + users[i], TRUE));
     }
 
     /* correct object count */
@@ -556,13 +566,17 @@ static string path_include(string from, string path)
 	/*
 	 * safe include: return immediately
 	 */
-	if (objectd) {
-	    objectd->include(from, path);
-	}
 	if (path[0] == '/') {
+	    if (objectd) {
+		objectd->include(from, path);
+	    }
 	    return path;
+	} else {
+	    if (objectd) {
+		objectd->include(from, normalize_path(path, from + "/..", 0));
+	    }
+	    return from + "/../" + path;
 	}
-	return from + "/../" + path;
     } else {
 	path = normalize_path(path, from + "/..", creator(from));
     }
