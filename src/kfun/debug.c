@@ -609,7 +609,7 @@ FUNCDEF("rusage", kf_rusage, p_rusage)
 #include <sys/resource.h>
 extern int getrusage P((int, struct rusage *));
 #ifndef RUSAGE_SELF
-#define RUSAGE_SELF     0
+#define RUSAGE_SELF	0
 #endif
 
 char p_rusage[] = { C_STATIC | C_LOCAL, T_NUMBER | (1 << REFSHIFT), 0 };
@@ -643,4 +643,4 @@ int kf_rusage()
     return 0;
 }
 # endif
-#endif	/* RUSAGE */
+#endif  /* RUSAGE */
