@@ -9,71 +9,35 @@
 # include "control.h"
 # include "csupport.h"
 
-static object **inherits;	/* inherited objects */
-static string **strings;	/* strings defined */
+static dinherit *inherits;	/* inherited objects */
+static int *itab;		/* inherit index table */
 pcfunc *pcfunctions;		/* table of precompiled functions */
 
 /*
- * NAME:	preload->inherits()
+ * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static void pl_inherits(inh, ninherits)
-register char **inh;
+static void pc_inherits(inh, pcinh, ninherits)
+register dinherit *inh;
+register pcinherit *pcinh;
 register int ninherits;
 {
-    char label[5];
-    register int i;
-    register object *obj;
-
-    for (i = 0; i < ninherits - 1; i++) {
-	obj = o_find(*inh);
-	if (obj == (object *) NULL) {
-	    fatal("cannot inherit \"/%s\"", *inh);
+    while (--ninherits > 0) {
+	if ((inh->obj=o_find(pcinh->name)) == (object *) NULL) {
+	    fatal("cannot inherit /%s", pcinh->name);
 	}
-	inherits[i] = obj;
-	ctrl_inherit(obj, (string *) NULL);
-	inh++;
+	inh->funcoffset = pcinh->funcoffset;
+	(inh++)->varoffset = (pcinh++)->varoffset;
     }
-    inherits[i++] = (object *) NULL;
+    inh->funcoffset = pcinh->funcoffset;
+    inh->varoffset = pcinh->varoffset;
 }
 
 /*
- * NAME:	preload->strings()
- * DESCRIPTION:	handle string constants
- */
-static void pl_strings(stext, slength, nstrings)
-register char *stext;
-register unsigned short *slength, nstrings;
-{
-    register unsigned short i;
-
-    for (i = 0; i < nstrings; i++) {
-	ctrl_dstring(strings[i] = str_new(stext, (long) *slength));
-	stext += *slength++;
-    }
-}
-
-/*
- * NAME:	getstring()
+ * NAME:	precomp->funcdefs()
  * DESCRIPTION:	handle function definitions
  */
-static string *getstring(inherit, index)
-register unsigned short inherit, index;
-{
-    register control *ctrl;
-
-    if (inherits[inherit] == (object *) NULL) {
-	return strings[index];
-    }
-    ctrl = inherits[inherit]->ctrl;
-    return d_get_strconst(ctrl, ctrl->ninherits - 1, index);
-}
-
-/*
- * NAME:	preload->funcdefs()
- * DESCRIPTION:	handle function definitions
- */
-static void pl_funcdefs(program, funcdefs, nfuncdefs, nfuncs)
+static void pc_funcdefs(program, funcdefs, nfuncdefs, nfuncs)
 char *program;
 register dfuncdef *funcdefs;
 register unsigned short nfuncdefs, nfuncs;
@@ -84,15 +48,11 @@ register unsigned short nfuncdefs, nfuncs;
     --nfuncs;
     while (nfuncdefs > 0) {
 	p = program + funcdefs->offset;
-	ctrl_dfunc(getstring(UCHAR(funcdefs->inherit), funcdefs->index), p);
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
 	    p += PROTO_SIZE(p);
-	    p = (char *) memcpy(ALLOC(char, 5), p, 5);
-	    index = (UCHAR(p[3]) << 8) | UCHAR(p[4]);
-	    index += nfuncs;
+	    index = nfuncs + ((UCHAR(p[3]) << 8) | UCHAR(p[4]));
 	    p[3] = index >> 8;
 	    p[4] = index;
-	    ctrl_dprogram(p, 5);
 	}
 	funcdefs++;
 	--nfuncdefs;
@@ -100,86 +60,112 @@ register unsigned short nfuncdefs, nfuncs;
 }
 
 /*
- * NAME:	preload->vardefs()
- * DESCRIPTION:	handle variable definitions
- */
-static void pl_vardefs(vardefs, nvardefs)
-register dvardef *vardefs;
-register unsigned short nvardefs;
-{
-    while (nvardefs > 0) {
-	ctrl_dvar(getstring(UCHAR(vardefs->inherit), vardefs->index),
-		  vardefs->class, vardefs->type);
-	vardefs++;
-	--nvardefs;
-    }
-}
-
-/*
- * NAME:	preload->funcalls()
- * DESCRIPTION:	handle function calls
- */
-static void pl_funcalls(funcalls, nfuncalls)
-register char *funcalls;
-register unsigned short nfuncalls;
-{
-    while (nfuncalls > 0) {
-	ctrl_funcall(funcalls[0], funcalls[1]);
-	funcalls += 2;
-	--nfuncalls;
-    }
-}
-
-/*
-/*
- * NAME:	preload()
+ * NAME:	precomp->preload()
  * DESCRIPTION:	preload compiled objects
  */
-void preload()
+void pc_preload(auto_name, driver_name)
+char *auto_name, *driver_name;
 {
     register precomp **pc, *l;
-    register unsigned short nfuncs;
+    register uindex nobjects, ninherits, nfuncs;
+    register object *obj;
+    control ctrl;
+    char *name;
 
-    nfuncs = 0;
+    nobjects = ninherits = nfuncs = 0;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	nobjects++;
+	ninherits += (*pc)->ninherits;
 	nfuncs += (*pc)->nfunctions;
     }
 
-    if (nfuncs > 0) {
+    if (nobjects > 0) {
 	mstatic();
-	pcfunctions = ALLOC(pcfunc, nfuncs);
+	itab = ALLOC(int, nobjects + 1);
+	inherits = ALLOC(dinherit, ninherits);
+	if (nfuncs > 0) {
+	    pcfunctions = ALLOC(pcfunc, nfuncs);
+	}
 	mdynamic();
-	nfuncs = 0;
+
+	itab[0] = 0;
+	nobjects = ninherits = nfuncs = 0;
+
+	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	    l = *pc;
+	    message("Precompiled: /%s\n",
+		    name = l->inherits[l->ninherits - 1].name);
+
+	    pc_inherits(ctrl.inherits = inherits + ninherits, l->inherits,
+			ctrl.ninherits = l->ninherits);
+	    ninherits += l->ninherits;
+	    itab[++nobjects] = ninherits;
+
+	    pc_funcdefs(l->program, l->funcdefs, l->nfuncdefs, nfuncs);
+	    memcpy(pcfunctions + nfuncs, l->functions,
+		   sizeof(pcfunc) * l->nfunctions);
+	    nfuncs += l->nfunctions;
+
+	    obj = o_new(name, (object *) NULL, &ctrl);
+	    obj->flags |= O_COMPILED;
+	    if (strcmp(name, auto_name) == 0) {
+		obj->flags |= O_AUTO;
+	    }
+	    if (strcmp(name, driver_name) == 0) {
+		obj->flags |= O_DRIVER;
+	    }
+	    obj->ctrl = (control *) NULL;
+	}
+    }
+}
+
+/*
+ * NAME:	precomp->control()
+ * DESCRIPTION:	initialize the control block of a precompiled object
+ */
+void pc_control(ctrl, obj)
+register control *ctrl;
+object *obj;
+{
+    register uindex i;
+    register precomp *l;
+
+    l = precompiled[i = obj->index];
+
+    ctrl->nsectors = 0;
+    ctrl->sectors = (sector *) NULL;
+
+    ctrl->ninherits = itab[i + 1] - itab[i];
+    ctrl->inherits = inherits + itab[i];
+
+    ctrl->progsize = l->progsize;
+    ctrl->prog = l->program;
+
+    ctrl->nstrings = l->nstrings;
+    ctrl->strings = (string **) NULL;
+    ctrl->sstrings = l->sstrings;
+    ctrl->stext = l->stext;
+    if (ctrl->nstrings == 0) {
+	ctrl->strsize = 0;
+    } else {
+	ctrl->strsize = ctrl->sstrings[ctrl->nstrings - 1].index +
+			ctrl->sstrings[ctrl->nstrings - 1].len;
     }
 
-    for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	l = *pc;
-	message("Precompiled: \"/%s\"\n",
-		l->inherits[l->ninherits - 1]);
+    ctrl->nfuncdefs = l->nfuncdefs;
+    ctrl->funcdefs = l->funcdefs;
 
-	inherits = ALLOC(object*, l->ninherits);
-	if (l->nstrings > 0) {
-	    strings = ALLOC(string*, l->nstrings);
-	}
+    ctrl->nvardefs = l->nvardefs;
+    ctrl->vardefs = l->vardefs;
 
-	pl_inherits(l->inherits, l->ninherits);
-	ctrl_create(l->inherits[l->ninherits - 1]);
-	pl_strings(l->stext, l->slength, l->nstrings);
-	pl_funcdefs(l->program, l->funcdefs, l->nfuncdefs, nfuncs);
-	memcpy(pcfunctions + nfuncs, l->functions,
-	       sizeof(pcfunc) * l->nfunctions);
-	nfuncs += l->nfunctions;
-	pl_vardefs(l->vardefs, l->nvardefs);
-	pl_funcalls(l->funcalls, l->nfuncalls);
+    ctrl->nfuncalls = l->nfuncalls;
+    ctrl->funcalls = l->funcalls;
 
-	if (l->nstrings > 0) {
-	    FREE(strings);
-	}
-	FREE(inherits);
+    ctrl->nsymbols = l->nsymbols;
+    ctrl->symbols = l->symbols;
 
-	ctrl_construct();
-	ctrl_clear();
-    }
+    ctrl->nvariables = ctrl->inherits[ctrl->ninherits - 1].varoffset +
+		       l->nvardefs;
 }
 
 /*
@@ -298,8 +284,12 @@ void pre_catch()
  * NAME:	post_catch()
  * DESCRIPTION:	clean up after a catch
  */
-void post_catch()
+void post_catch(flag)
+bool flag;
 {
+    if (flag) {
+	i_log_error(TRUE);
+    }
     i_pop(cstack[--csi].sp - sp);
     i_set_frame(cstack[csi].frame);
     i_set_lock(cstack[csi].lock);
