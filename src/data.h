@@ -79,8 +79,7 @@ typedef struct _arrref_ {
     uindex ref;			/* # of refs */
 } arrref;
 
-/* typedef'd in interpret.h */
-struct _dataspace_ {
+typedef struct _dataspace_ {
     struct _dataspace_ *prev, *next;
 
     long achange;		/* # array changes */
@@ -94,7 +93,7 @@ struct _dataspace_ {
     sector *sectors;		/* o vector of sectors */
 
     unsigned short nvariables;	/* o # variables */
-    value *variables;		/* i/o variables */
+    struct _value_ *variables;	/* i/o variables */
     struct _svalue_ *svariables;/* o svariables */
     long varoffset;		/* o offset of variables in data space */
 
@@ -111,29 +110,43 @@ struct _dataspace_ {
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     long stroffset;		/* o offset of string table */
-};
 
-extern control	 *d_new_control		P((void));
-extern dataspace *d_new_dataspace	P((object*));
+    uindex ncallouts;		/* o # callouts */
+    uindex fcallouts;		/* free callout list */
+    long cosize;		/* total size of callouts */
+    struct _dcallout_ *callouts;/* o callouts */
+    struct _scallout_ *scallouts;/* o scallouts */
+    long cooffset;		/* offset of callout table */
+} dataspace;
 
-extern control	 *d_load_control	P((sector));
-extern dataspace *d_load_dataspace	P((object*, sector));
+extern control	       *d_new_control	P((void));
+extern dataspace       *d_new_dataspace	P((object*));
 
-extern char	 *d_get_prog		P((control*));
-extern string	 *d_get_strconst	P((control*, char, unsigned short));
-extern dfuncdef  *d_get_funcdefs	P((control*));
-extern dvardef	 *d_get_vardefs		P((control*));
-extern char	 *d_get_funcalls	P((control*));
-extern dsymbol	 *d_get_symbols		P((control*));
+extern control	       *d_load_control	P((sector));
+extern dataspace       *d_load_dataspace P((object*, sector));
 
-extern value	 *d_get_variable	P((dataspace*, unsigned short));
-extern value	 *d_get_elts		P((array*));
+extern char	       *d_get_prog	P((control*));
+extern string	       *d_get_strconst	P((control*, char, unsigned short));
+extern dfuncdef        *d_get_funcdefs	P((control*));
+extern dvardef	       *d_get_vardefs	P((control*));
+extern char	       *d_get_funcalls	P((control*));
+extern dsymbol	       *d_get_symbols	P((control*));
 
-extern void	  d_assign_var		P((dataspace*, value*, value*));
-extern void	  d_assign_elt		P((array*, value*, value*));
-extern void	  d_change_map		P((array*));
+extern struct _value_  *d_get_variable	P((dataspace*, unsigned short));
+extern struct _value_  *d_get_elts	P((array*));
 
-extern void	  d_clean		P((void));
+extern void		d_assign_var	P((dataspace*, struct _value_*,
+					   struct _value_*));
+extern void		d_assign_elt	P((array*, struct _value_*,
+					   struct _value_*));
+extern void		d_change_map	P((array*));
 
-extern void	  d_del_control		P((control*));
-extern void	  d_del_dataspace	P((dataspace*));
+extern uindex		d_new_call_out	P((dataspace*, string*, unsigned long,
+					   struct _value_*, int));
+extern uindex		d_find_call_out	P((dataspace*, string*));
+extern char	       *d_get_call_out	P((dataspace*, uindex, struct _value_*,
+					   int*));
+
+extern void		d_clean		P((void));
+extern void		d_del_control	P((control*));
+extern void		d_del_dataspace	P((dataspace*));
