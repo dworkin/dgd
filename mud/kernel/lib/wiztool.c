@@ -766,8 +766,15 @@ static cmd_code(object user, string cmd, string str)
     parsed = parse(user, str);
     str = USR + "/" + owner + "/_code";
     remove_file(str + ".c");
+    obj = find_object(str);
+    if (obj) {
+	destruct_object(obj);
+    }
     if (parsed &&
 	write_file(str + ".c",
+		   "# include <float.h>\n# include <limits.h>\n" +
+		   "# include <status.h>\n# include <trace.h>\n" +
+		   "# include <type.h>\n\n" +
 		   "varargs mixed exec(object user, mixed argv...) {\n" +
 		   "    mixed " +
 		   "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +

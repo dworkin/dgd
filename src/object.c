@@ -256,9 +256,7 @@ register object *old, *new;
 	    old->prev = OBJ_NONE;
 	    if (old == new) {
 		new->cref--;
-		if (--(new->u_ref) == 0) {
-		    o_delete(new);
-		}
+		new->u_ref--;
 		break;
 	    }
 	}

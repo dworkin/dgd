@@ -1139,3 +1139,10 @@ DGD 1.1 patchlevel 3
 
  - Clear update field in all objects after a restore.
  - Compensated for a bug in ctime() on some unices.
+
+DGD 1.1 patchlevel 4
+
+ - Removed some code from the upgrading procedure that was unreachable.
+ - Improved Mac edit menu.
+ - The wrong stack depth was passed on to driver->runtime_error() if the
+   the server used an internal catch.

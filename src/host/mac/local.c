@@ -256,7 +256,7 @@ static void setmenu(void)
 	EnableItem(editmenu, PASTE);
 	EnableItem(editmenu, CLEAR);
 	DisableItem(editmenu, SELECT);
-    } else if (running) {
+    } else if (mainframe != NULL) {
 	DisableItem(editmenu, UNDO);
 	DisableItem(editmenu, CUT);
 	if (selected) {
