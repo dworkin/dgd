@@ -954,7 +954,7 @@ register frame *f;
 	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
-	var = data->values->variables;
+	var = data->variables;
 	nvars = 0;
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	    if (inh->varoffset == nvars && !inh->priv) {

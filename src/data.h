@@ -104,23 +104,27 @@ typedef struct _strref_ {
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
+    struct _plane_ *values;	/* value plane this array is in */
     dataspace *data;		/* dataspace this array is in */
     Uint ref;			/* # of refs */
     value *elts;		/* alternate elements */
 } arrref;
 
 typedef struct _plane_ {
-    uindex level;		/* plane level */
+    long level;			/* plane level */
 
+    short flags;		/* modification flags */
     long achange;		/* # array changes */
-    long schange;		/* # string changes */
     long imports;		/* # array imports */
 
-    value *variables;		/* i/o variables */
+    value *original;		/* original variables */
+    arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
-    strref *strings;		/* i/o? string constant table */
 
+    struct _alchunk_ *chunk;	/* chunk of array links */
+    unsigned short chunksz;	/* size left in current chunk */
     struct _arlink_ *list;	/* list of non-swapped changed arrays */
+
     struct _plane_ *prev;	/* previous in per-dataspace linked list */
     struct _plane_ *next;	/* next in per-level linked list */
 } plane;
@@ -128,6 +132,7 @@ typedef struct _plane_ {
 struct _dataspace_ {
     dataspace *prev, *next;
 
+    long schange;		/* # string changes */
     dataspace *ilist;		/* import list */
 
     object *obj;		/* object this dataspace belongs to */
@@ -138,18 +143,19 @@ struct _dataspace_ {
     sector *sectors;		/* o vector of sectors */
 
     unsigned short nvariables;	/* o # variables */
+    value *variables;		/* i/o variables */
     struct _svalue_ *svariables;/* o svariables */
     Uint varoffset;		/* o offset of variables in data space */
 
     Uint narrays;		/* i/o # arrays */
     Uint eltsize;		/* o total size of array elements */
-    arrref alocal;		/* primary of new local arrays */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
     Uint arroffset;		/* o offset of array table in data space */
 
     Uint nstrings;		/* i/o # strings */
     Uint strsize;		/* o total size of string text */
+    strref *strings;		/* i/o? string constant table */
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     Uint stroffset;		/* o offset of string table */
@@ -159,8 +165,8 @@ struct _dataspace_ {
     struct _dcallout_ *callouts;/* callouts */
     Uint cooffset;		/* offset of callout table */
 
-    plane basic;		/* basic values */
-    plane *values;		/* current values */
+    plane basic;		/* basic value plane */
+    plane *values;		/* current value plane */
 
     struct _parser_ *parser;	/* parse_string data */
 };

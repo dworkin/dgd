@@ -12,7 +12,6 @@ typedef uindex sector;
 
 /* general */
 # define BUF_SIZE	FS_BLOCK_SIZE	/* I/O buffer size */
-# define ERRSTACKSZ	256	/* reasonable value */
 # define MAX_LINE_SIZE	1024	/* max. line size in ed and lex (power of 2) */
 # define STRINGSZ	256	/* general (internal) string size */
 # define STRMAPHASHSZ	20	/* # characters to hash of map string indices */

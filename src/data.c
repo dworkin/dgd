@@ -9,20 +9,22 @@
 # include "csupport.h"
 
 /* bit values for ctrl->flags */
-# define CTRL_COMPILED		0x01	/* precompiled control block */
-# define CTRL_VARMAP		0x02	/* varmap updated */
-# define CTRL_PROGCMP		0x0c	/* program compressed */
-# define CTRL_STRCMP		0x30	/* strings compressed */
+# define CTRL_PROGCMP		0x03	/* program compressed */
+# define CTRL_STRCMP		0x0c	/* strings compressed */
+# define CTRL_COMPILED		0x10	/* precompiled control block */
+# define CTRL_VARMAP		0x20	/* varmap updated */
 
 /* bit values for dataspace->flags */
-# define DATA_MODIFIED		0x3f
-# define DATA_VARIABLE		0x01	/* variable changed */
-# define DATA_ARRAY		0x02	/* array element changed */
-# define DATA_ARRAYREF		0x04	/* array reference changed */
-# define DATA_STRINGREF		0x08	/* string reference changed */
-# define DATA_NEWCALLOUT	0x10	/* new callout added */
-# define DATA_CALLOUT		0x20	/* callout changed */
-# define DATA_STRCMP		0xc0	/* strings compressed */
+# define DATA_STRCMP		0x03	/* strings compressed */
+
+/* bit values for dataspace->values->flags */
+# define MOD_ALL		0x3f
+# define MOD_VARIABLE		0x01	/* variable changed */
+# define MOD_ARRAY		0x02	/* array element changed */
+# define MOD_ARRAYREF		0x04	/* array reference changed */
+# define MOD_STRINGREF		0x08	/* string reference changed */
+# define MOD_CALLOUT		0x10	/* callout changed */
+# define MOD_NEWCALLOUT		0x20	/* new callout added */
 
 /* data compression */
 # define CMP_TYPE		0x03
@@ -236,19 +238,20 @@ object *obj;
 
     /* variables */
     data->nvariables = 0;
+    data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
 
     /* arrays */
     data->narrays = 0;
     data->eltsize = 0;
-    data->alocal.arr = (array *) NULL;
-    data->alocal.data = data;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
 
     /* strings */
+    data->schange = 0;
     data->nstrings = 0;
     data->strsize = 0;
+    data->strings = (strref *) NULL;
     data->sstrings = (sstring *) NULL;
     data->stext = (char *) NULL;
 
@@ -257,13 +260,17 @@ object *obj;
     data->fcallouts = 0;
     data->callouts = (dcallout *) NULL;
 
-    /* values */
+    /* value plane */
+    data->basic.level = 0;
+    data->basic.flags = 0;
     data->basic.achange = 0;
-    data->basic.schange = 0;
     data->basic.imports = 0;
-    data->basic.variables = (value *) NULL;
+    data->basic.alocal.values = &data->basic;
+    data->basic.alocal.arr = (array *) NULL;
+    data->basic.alocal.data = data;
     data->basic.arrays = (arrref *) NULL;
-    data->basic.strings = (strref *) NULL;
+    data->basic.prev = (plane *) NULL;
+    data->basic.next = (plane *) NULL;
     data->values = &data->basic;
 
     /* parse_string data */
@@ -282,7 +289,7 @@ object *obj;
     register dataspace *data;
 
     data = d_alloc_dataspace(obj);
-    data->flags = DATA_VARIABLE;
+    data->values->flags = MOD_VARIABLE;
     data->ctrl = o_control(obj);
     data->ctrl->ndata++;
     data->nvariables = data->ctrl->nvariables + 1;
@@ -323,7 +330,7 @@ object *obj;
 	}
 	size += sizeof(scontrol);
 
-	ctrl->flags = header.flags << 2;
+	ctrl->flags = header.flags;
 
 	/* inherits */
 	ctrl->ninherits = UCHAR(header.ninherits);
@@ -430,7 +437,7 @@ object *obj;
     }
     size += sizeof(sdataspace);
 
-    data->flags = header.flags << 6;
+    data->flags = header.flags;
 
     /* variables */
     data->varoffset = size;
@@ -850,12 +857,12 @@ static string *d_get_string(data, idx)
 register dataspace *data;
 register Uint idx;
 {
-    if (data->values->strings == (strref *) NULL) {
+    if (data->strings == (strref *) NULL) {
 	register strref *strs;
 	register Uint i;
 
 	/* initialize string pointers */
-	strs = data->values->strings = ALLOC(strref, data->nstrings);
+	strs = data->strings = ALLOC(strref, data->nstrings);
 	for (i = data->nstrings; i > 0; --i) {
 	    (strs++)->str = (string *) NULL;
 	}
@@ -883,19 +890,19 @@ register Uint idx;
 	}
     }
 
-    if (data->values->strings[idx].str == (string *) NULL) {
+    if (data->strings[idx].str == (string *) NULL) {
 	register string *s;
 
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
 	s->ref = 1;
-	s->primary = &data->values->strings[idx];
+	s->primary = &data->strings[idx];
 	s->primary->str = s;
 	s->primary->data = data;
 	s->primary->ref = data->sstrings[idx].ref;
 	return s;
     }
-    return data->values->strings[idx].str;
+    return data->strings[idx].str;
 }
 
 /*
@@ -932,6 +939,7 @@ register Uint idx;
 	a->ref = 1;
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->values->arrays[idx];
+	a->primary->values = data->values;
 	a->primary->arr = a;
 	a->primary->data = data;
 	a->primary->ref = data->sarrays[idx].ref;
@@ -1001,8 +1009,7 @@ dataspace *data;
     /*
      * first, initialize all variables to nil
      */
-    for (val = data->values->variables, nvars = data->nvariables; nvars > 0;
-	 --nvars) {
+    for (val = data->variables, nvars = data->nvariables; nvars > 0; --nvars) {
 	*val++ = nil_value;
     }
 
@@ -1020,10 +1027,10 @@ dataspace *data;
 		    for (nfdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
 			 nfdefs > 0; var++) {
 			if (var->type == T_INT && nilisnot0) {
-			    data->values->variables[nvars] = zero_int;
+			    data->variables[nvars] = zero_int;
 			    --nfdefs;
 			} else if (var->type == T_FLOAT) {
-			    data->values->variables[nvars] = zero_float;
+			    data->variables[nvars] = zero_float;
 			    --nfdefs;
 			}
 			nvars++;
@@ -1043,9 +1050,9 @@ value *d_get_variable(data, idx)
 register dataspace *data;
 register unsigned int idx;
 {
-    if (data->values->variables == (value *) NULL) {
+    if (data->variables == (value *) NULL) {
 	/* create room for variables */
-	data->values->variables = ALLOC(value, data->nvariables);
+	data->variables = ALLOC(value, data->nvariables);
 	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
 	    d_new_variables(data);
@@ -1060,12 +1067,12 @@ register unsigned int idx;
 			 data->nvariables * (Uint) sizeof(svalue),
 			 data->varoffset);
 	    }
-	    d_get_values(data, data->svariables, data->values->variables,
+	    d_get_values(data, data->svariables, data->variables,
 			 data->nvariables);
 	}
     }
 
-    return &data->values->variables[idx];
+    return &data->variables[idx];
 }
 
 /*
@@ -1147,10 +1154,10 @@ register value *rhs;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    str->primary->ref++;
-	    data->flags |= DATA_STRINGREF;
+	    data->values->flags |= MOD_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
-	    data->values->schange++;
+	    data->schange++;
 	}
 	break;
 
@@ -1162,7 +1169,7 @@ register value *rhs;
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
 		arr->primary->ref++;
-		data->flags |= DATA_ARRAYREF;
+		data->values->flags |= MOD_ARRAYREF;
 	    } else {
 		/* ref new array */
 		data->values->achange++;
@@ -1207,12 +1214,12 @@ register value *lhs;
 		str->primary->str = (string *) NULL;
 		str->primary = (strref *) NULL;
 		str_del(str);
-		data->values->schange++;	/* last reference removed */
+		data->schange++;	/* last reference removed */
 	    }
-	    data->flags |= DATA_STRINGREF;
+	    data->values->flags |= MOD_STRINGREF;
 	} else {
 	    /* not in this object: deref imported string */
-	    data->values->schange--;
+	    data->schange--;
 	}
 	break;
 
@@ -1223,7 +1230,7 @@ register value *lhs;
 	    /* in this object */
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
-		data->flags |= DATA_ARRAYREF;
+		data->values->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
 		    /* last reference removed */
 		    arr->primary->arr = (array *) NULL;
@@ -1268,11 +1275,10 @@ register dataspace *data;
 register value *var;
 register value *val;
 {
-    if (var >= data->values->variables &&
-	var < data->values->variables + data->nvariables) {
+    if (var >= data->variables && var < data->variables + data->nvariables) {
 	ref_rhs(data, val);
 	del_lhs(data, var);
-	data->flags |= DATA_VARIABLE;
+	data->values->flags |= MOD_VARIABLE;
     }
 
     i_ref_value(val);
@@ -1295,7 +1301,7 @@ register dataspace *data;
     del_lhs(data, var);
     i_del_value(var);
     *var = nil_value;
-    data->flags |= DATA_VARIABLE;
+    data->values->flags |= MOD_VARIABLE;
 
     if (data->parser != (struct _parser_ *) NULL) {
 	/*
@@ -1323,7 +1329,7 @@ register value *elt, *val;
 	 */
 	if ((arr->primary->ref & ARR_MOD) == 0) {
 	    arr->primary->ref |= ARR_MOD;
-	    data->flags |= DATA_ARRAY;
+	    data->values->flags |= MOD_ARRAY;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
@@ -1423,7 +1429,7 @@ int nargs;
 	data->callouts = ALLOC(dcallout, 1);
 	data->ncallouts = 1;
 	co = data->callouts;
-	data->flags |= DATA_NEWCALLOUT;
+	data->values->flags |= MOD_NEWCALLOUT;
     } else {
 	if (data->callouts == (dcallout *) NULL) {
 	    d_get_callouts(data);
@@ -1445,7 +1451,7 @@ int nargs;
 		    data->callouts[co->co_next - 1].co_prev = n;
 		}
 	    }
-	    data->flags |= DATA_CALLOUT;
+	    data->values->flags |= MOD_CALLOUT;
 	} else {
 	    /*
 	     * add new callout
@@ -1456,7 +1462,7 @@ int nargs;
 	    co = data->callouts = REALLOC(data->callouts, dcallout,
 					  data->ncallouts, data->ncallouts + 1);
 	    co += data->ncallouts++;
-	    data->flags |= DATA_NEWCALLOUT;
+	    data->values->flags |= MOD_NEWCALLOUT;
 	}
     }
 
@@ -1598,7 +1604,7 @@ int *nargs;
     co->co_next = n;
     data->fcallouts = handle;
 
-    data->flags |= DATA_CALLOUT;
+    data->values->flags |= MOD_CALLOUT;
     return str;
 }
 
@@ -2071,7 +2077,7 @@ register unsigned short n;
 
 	    case T_STRING:
 		sv->oindex = 0;
-		sv->u.string = v->u.string->primary - sdata->values->strings;
+		sv->u.string = v->u.string->primary - sdata->strings;
 		break;
 
 	    case T_OBJECT:
@@ -2109,16 +2115,15 @@ register dataspace *data;
     }
 
     /* free variables */
-    if (data->values->variables != (value *) NULL) {
+    if (data->variables != (value *) NULL) {
 	register value *v;
 
-	for (i = data->nvariables, v = data->values->variables; i > 0; --i, v++)
-	{
+	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
 	    i_del_value(v);
 	}
 
-	FREE(data->values->variables);
-	data->values->variables = (value *) NULL;
+	FREE(data->variables);
+	data->variables = (value *) NULL;
     }
 
     /* free callouts */
@@ -2159,18 +2164,18 @@ register dataspace *data;
     }
 
     /* free strings */
-    if (data->values->strings != (strref *) NULL) {
+    if (data->strings != (strref *) NULL) {
 	register strref *s;
 
-	for (i = data->nstrings, s = data->values->strings; i > 0; --i, s++) {
+	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
 		s->str->primary = (strref *) NULL;
 		str_del(s->str);
 	    }
 	}
 
-	FREE(data->values->strings);
-	data->values->strings = (strref *) NULL;
+	FREE(data->strings);
+	data->strings = (strref *) NULL;
     }
 }
 
@@ -2188,29 +2193,28 @@ register dataspace *data;
     if (data->parser != (struct _parser_ *) NULL) {
 	ps_save(data->parser);
     }
-    if (!(data->flags & DATA_MODIFIED)) {
+    if (data->values->flags == 0) {
 	return FALSE;
     }
 
     if (data->nsectors != 0 && data->values->achange == 0 &&
-	data->values->schange == 0 && !(data->flags & DATA_NEWCALLOUT)) {
+	data->schange == 0 && !(data->values->flags & MOD_NEWCALLOUT)) {
 	bool mod;
 
 	/*
 	 * No strings/arrays added or deleted. Check individual variables and
 	 * array elements.
 	 */
-	if (data->flags & DATA_VARIABLE) {
+	if (data->values->flags & MOD_VARIABLE) {
 	    /*
 	     * variables changed
 	     */
-	    d_put_values(data->svariables, data->values->variables,
-			 data->nvariables);
+	    d_put_values(data->svariables, data->variables, data->nvariables);
 	    sw_writev((char *) data->svariables, data->sectors,
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
 	}
-	if (data->flags & DATA_ARRAYREF) {
+	if (data->values->flags & MOD_ARRAYREF) {
 	    register sarray *sa;
 	    register arrref *a;
 
@@ -2234,7 +2238,7 @@ register dataspace *data;
 			  data->narrays * sizeof(sarray), data->arroffset);
 	    }
 	}
-	if (data->flags & DATA_ARRAY) {
+	if (data->values->flags & MOD_ARRAY) {
 	    register arrref *a;
 	    Uint idx;
 
@@ -2255,7 +2259,7 @@ register dataspace *data;
 		a++;
 	    }
 	}
-	if (data->flags & DATA_STRINGREF) {
+	if (data->values->flags & MOD_STRINGREF) {
 	    register sstring *ss;
 	    register strref *s;
 
@@ -2263,7 +2267,7 @@ register dataspace *data;
 	     * string references changed
 	     */
 	    ss = data->sstrings;
-	    s = data->values->strings;
+	    s = data->strings;
 	    mod = FALSE;
 	    for (n = data->nstrings; n > 0; --n) {
 		if (s->str != (string *) NULL && ss->ref != s->ref) {
@@ -2279,7 +2283,7 @@ register dataspace *data;
 			  data->stroffset);
 	    }
 	}
-	if (data->flags & DATA_CALLOUT) {
+	if (data->values->flags & MOD_CALLOUT) {
 	    scallout *scallouts;
 	    register scallout *sco;
 	    register dcallout *co;
@@ -2331,7 +2335,7 @@ register dataspace *data;
 	if (data->svariables == (svalue *) NULL) {
 	    data->svariables = ALLOC(svalue, data->nvariables);
 	}
-	d_count(data->values->variables, data->nvariables);
+	d_count(data->variables, data->nvariables);
 
 	if (data->ncallouts > 0) {
 	    register dcallout *co;
@@ -2396,7 +2400,7 @@ register dataspace *data;
 	arrsize = 0;
 	strsize = 0;
 
-	d_save(data->svariables, data->values->variables, data->nvariables);
+	d_save(data->svariables, data->variables, data->nvariables);
 	if (header.ncallouts > 0) {
 	    register scallout *sco;
 	    register dcallout *co;
@@ -2496,16 +2500,17 @@ register dataspace *data;
 
 	d_free_values(data);
 
+	data->flags = header.flags;
 	data->narrays = header.narrays;
 	data->eltsize = header.eltsize;
 	data->nstrings = header.nstrings;
 	data->strsize = strsize;
 
+	data->schange = 0;
 	data->values->achange = 0;
-	data->values->schange = 0;
     }
 
-    data->flags &= ~DATA_MODIFIED;
+    data->values->flags = 0;
     return TRUE;
 }
 
@@ -2545,7 +2550,7 @@ register unsigned short n;
 			 * move array to new dataspace
 			 */
 			d_get_elts(a);
-			a->primary = &data->alocal;
+			a->primary = &data->values->alocal;
 		    } else {
 			/*
 			 * make new array
@@ -2553,7 +2558,7 @@ register unsigned short n;
 			a = arr_alloc(a->size);
 			a->tag = val->u.array->tag;
 			a->odcount = val->u.array->odcount;
-			a->primary = &data->alocal;
+			a->primary = &data->values->alocal;
 
 			if (a->size > 0) {
 			    register value *v;
@@ -2648,8 +2653,8 @@ void d_export()
 	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
 	    if (data->values->imports != 0) {
 		narr = 0;
-		if (data->values->variables != (value *) NULL) {
-		    d_import(data, data->values->variables, data->nvariables);
+		if (data->variables != (value *) NULL) {
+		    d_import(data, data->variables, data->nvariables);
 		}
 		if (data->values->arrays != (arrref *) NULL) {
 		    register arrref *a;
@@ -2737,17 +2742,17 @@ object *old;
     vars = v - nvar;
 
     /* deref old values */
-    v = data->values->variables;
+    v = data->variables;
     for (n = data->nvariables; n > 0; --n) {
 	del_lhs(data, v);
 	i_del_value(v++);
     }
 
     /* replace old with new */
-    FREE(data->values->variables);
-    data->values->variables = vars;
+    FREE(data->variables);
+    data->variables = vars;
 
-    data->flags |= DATA_VARIABLE;
+    data->values->flags |= MOD_VARIABLE;
     if (data->nvariables != nvar) {
 	if (data->svariables != (svalue *) NULL) {
 	    FREE(data->svariables);
@@ -3370,7 +3375,7 @@ Uint *counttab;
 	d_upgrade_clone(data);
     }
 
-    data->flags |= DATA_MODIFIED;
+    data->values->flags |= MOD_ALL;
     d_save_dataspace(data);
     d_free_dataspace(data);
 }

@@ -130,7 +130,7 @@ register long size;
     }
     a->tag = tag++;
     a->odcount = odcount;
-    a->primary = &data->alocal;
+    a->primary = &data->values->alocal;
     return a;
 }
 
@@ -310,7 +310,7 @@ register array *a;
 	a->odcount = odcount;
 	for (n = a->size; n != 0; --n) {
 	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-		*v2 = nil_value;
+		d_assign_elt(a, v2, &nil_value);
 	    }
 	    *v1++ = *v2++;
 	}
@@ -529,7 +529,7 @@ array *a1, *a2;
 	for (n = a1->size; n > 0; --n) {
 	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 		/* replace destructed object by nil */
-		*v1 = nil_value;
+		d_assign_elt(a1, v1, &nil_value);
 	    }
 	    if (search(v1, v2, size, 1, FALSE) < 0) {
 		/*
@@ -596,7 +596,7 @@ array *a1, *a2;
 	for (n = a1->size; n > 0; --n) {
 	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
 		/* replace destructed object by nil */
-		*v1 = nil_value;
+		d_assign_elt(a1, v1, &nil_value);
 	    }
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -672,7 +672,7 @@ array *a1, *a2;
 	for (n = a2->size; n > 0; --n) {
 	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
 		/* replace destructed object by nil */
-		*v2 = nil_value;
+		d_assign_elt(a2, v2, &nil_value);
 	    }
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -861,7 +861,7 @@ register long size;
     }
     m->tag = tag++;
     m->odcount = odcount;
-    m->primary = &data->alocal;
+    m->primary = &data->values->alocal;
     return m;
 }
 
@@ -1539,11 +1539,11 @@ value *val, *elt;
 		/*
 		 * change the element
 		 */
+		d_assign_elt(m, v + 1, elt);
 		if (val->type == T_OBJECT) {
 		    v->modified = TRUE;
 		    v->u.objcnt = val->u.objcnt;	/* refresh */
 		}
-		d_assign_elt(m, v + 1, elt);
 	    } else if (del ||
 		       (val->type == T_OBJECT &&
 			val->u.objcnt != v->u.objcnt)) {
@@ -1610,10 +1610,10 @@ value *val, *elt;
 		    /*
 		     * change element
 		     */
+		    d_assign_elt(m, &e->val, elt);
 		    if (val->type == T_OBJECT) {
 			e->idx.u.objcnt = val->u.objcnt;	/* refresh */
 		    }
-		    d_assign_elt(m, &e->val, elt);
 		} else if (del ||
 			   (val->type == T_OBJECT &&
 			    val->u.objcnt != e->idx.u.objcnt)) {
