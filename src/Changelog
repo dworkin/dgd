@@ -1323,3 +1323,4 @@ DGD 1.1
  - Fixed some more bugs in the name lookup code.
  - Encapsulate creation of values with macros, making it easier to extend the
    value struct.
+ - String constants for string switches were generated in the wrong order.
