@@ -407,7 +407,7 @@ static restored()
     }
 # endif
 
-    message("State restored.\n");
+    message("State restored.\n\n");
 }
 
 /*
