@@ -191,9 +191,11 @@ reboot()
  */
 set_user(object obj, string str)
 {
-    if (previous_program() == LIB_USER) {
+    if (KERNEL()) {
 	user = obj;
-	set_mode(obj->login(str));
+	if (query_ip_number(this_object())) {
+	    set_mode(obj->login(str));
+	}
     }
 }
 
