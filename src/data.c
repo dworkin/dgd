@@ -50,11 +50,6 @@ typedef struct {
 
 static char si_layout[] = "uus";
 
-static char dstr_layout[] = DSTR_LAYOUT;
-static char df_layout[] = DF_LAYOUT;
-static char dv_layout[] = DV_LAYOUT;
-static char dsym_layout[] = DSYM_LAYOUT;
-
 typedef struct {
     sector nsectors;		/* number of sectors in data space */
     short flags;		/* dataspace flags, as yet unused */
@@ -2987,7 +2982,7 @@ register object *obj;
 	if (header.nstrings != 0) {
 	    /* strings */
 	    ctrl->sstrings = ALLOC(dstrconst, header.nstrings);
-	    size += d_conv((char *) ctrl->sstrings, s, dstr_layout,
+	    size += d_conv((char *) ctrl->sstrings, s, DSTR_LAYOUT,
 			   (Uint) header.nstrings, size);
 	    if (header.strsize != 0) {
 		ctrl->stext = ALLOC(char, header.strsize);
@@ -2999,14 +2994,14 @@ register object *obj;
 	if (header.nfuncdefs != 0) {
 	    /* function definitions */
 	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
-	    size += d_conv((char *) ctrl->funcdefs, s, df_layout,
+	    size += d_conv((char *) ctrl->funcdefs, s, DF_LAYOUT,
 			   (Uint) UCHAR(header.nfuncdefs), size);
 	}
 
 	if (header.nvardefs != 0) {
 	    /* variable definitions */
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
-	    size += d_conv((char *) ctrl->vardefs, s, dv_layout,
+	    size += d_conv((char *) ctrl->vardefs, s, DV_LAYOUT,
 			   (Uint) UCHAR(header.nvardefs), size);
 	}
 
@@ -3020,7 +3015,7 @@ register object *obj;
 	if (header.nsymbols != 0) {
 	    /* symbol table */
 	    ctrl->symbols = ALLOC(dsymbol, header.nsymbols);
-	    d_conv((char *) ctrl->symbols, s, dsym_layout,
+	    d_conv((char *) ctrl->symbols, s, DSYM_LAYOUT,
 		   (Uint) header.nsymbols, size);
 	}
     }

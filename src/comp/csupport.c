@@ -544,6 +544,14 @@ int fd;
 	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
 	conf_dread(fd, (char *) dinh, di_layout, (Uint) dh.ninherits);
 
+	/* skip the rest */
+	lseek(fd, (conf_dsize(DSTR_LAYOUT) & 0xff) * dh.nstrings +
+		  dh.stringsz +
+		  (conf_dsize(DF_LAYOUT) & 0xff) * dh.nfuncdefs +
+		  (conf_dsize(DV_LAYOUT) & 0xff) * dh.nvardefs +
+		  dh.nfuncalls * 2L,
+	      SEEK_CUR);
+
 	for (i = dh.nprecomps; i > 0; --i) {
 	    /* restored object must still be precompiled */
 	    obj = &otable[dinh[dpc->ninherits - 1].oindex];

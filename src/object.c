@@ -561,7 +561,6 @@ typedef struct {
 } dump_header;
 
 static char dh_layout[] = "uuui";
-static char obj_layout[] = OBJ_LAYOUT;
 
 # define CHUNKSZ	16384
 
@@ -637,7 +636,7 @@ int fd;
 
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
-    conf_dread(fd, (char *) otable, obj_layout, (Uint) dh.nobjects);
+    conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     free_obj = dh.free_obj;
     nobjects = dh.nobjects;
     nfreeobjs = dh.nfreeobjs;
