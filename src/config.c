@@ -1552,12 +1552,19 @@ register dataspace *data;
 register object *obj;
 {
     register value *v;
-    register Int i;
     array *a;
+    value val;
+
+    conf_objecti(data, obj, 4, &val);
 
     a = arr_new(data, 6L);
-    for (i = 0, v = a->elts; i < 6; i++, v++) {
-	conf_objecti(data, obj, i, v);
-    }
+    v = a->elts;
+    conf_objecti(data, obj, 0, v++);
+    conf_objecti(data, obj, 1, v++);
+    conf_objecti(data, obj, 2, v++);
+    conf_objecti(data, obj, 3, v++);
+    *v++ = val;
+    conf_objecti(data, obj, 5, v);
+
     return a;
 }

@@ -212,12 +212,15 @@ register size_t size;
 	    }
 	    c->size = size;
 	}
-	return c;
+    } else {
+	/* allocate static memory directly */
+	c = (chunk *) newmem(size, &slist);
+	mstat.smemsize += c->size = size;
     }
 
-    /* allocate static memory directly */
-    c = (chunk *) newmem(size, &slist);
-    mstat.smemsize += c->size = size;
+    if (c->size > SIZE_MASK) {
+	fatal("static memory chunk too large");
+    }
     return c;
 }
 
@@ -608,6 +611,10 @@ register size_t size;
 	((chunk *) p)->size = sz;
 	*((size_t *) (p + sz - SIZETSIZE)) = sz;
 	insert((chunk *) p);	/* add to free list */
+    }
+
+    if (c->size > SIZE_MASK) {
+	fatal("dynamic memory chunk too large");
     }
     return c;
 }

@@ -1229,9 +1229,6 @@ int nargs;
 	/* callouts are disabled */
 	return 0;
     }
-    if (data->ncallouts >= conf_array_size() && data->fcallouts == 0) {
-	error("Too many callouts in object");
-    }
 
     PUT_STRVAL(&v[0], func);
     switch (nargs) {
