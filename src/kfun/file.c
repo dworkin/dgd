@@ -1334,7 +1334,7 @@ static string *sc_get()
 static int match(pat, text)
 register char *pat, *text;
 {
-    bool found;
+    bool found, reversed;
     int matched;
 
     for (;;) {
@@ -1369,6 +1369,12 @@ register char *pat, *text;
 	    /* character class */
 	    pat++;
 	    found = FALSE;
+	    if (*pat == '^') {
+		reversed = TRUE;
+		pat++;
+	    } else {
+		reversed = FALSE;
+	    }
 	    for (;;) {
 		if (*pat == '\0') {
 		    /* missing ']' */
@@ -1376,7 +1382,7 @@ register char *pat, *text;
 		}
 		if (*pat == ']') {
 		    /* end of character class */
-		    if (found) {
+		    if (found != reversed) {
 			break;
 		    }
 		    return 0;

@@ -107,6 +107,14 @@ driver, mostly to translate pathnames.
 	Values for stack and ticks: < 0 = infinite, 0 = no change,
 	> 0 = set to specified amount.
 
+    void remove_program(string objname)
+
+	Called whenever the program of a master object is removed (because
+	the object has been destructed, and all clones and inheriting objects
+	have also been destructed).  As this function is called from code
+	that cannot be allowed to abort or fail, it is called with
+	rlimits (-1; -1) and a catch.
+
  - in every object:
 
     void create()

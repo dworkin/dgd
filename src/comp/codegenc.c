@@ -247,8 +247,6 @@ static void cg_uasgnop(n, op)
 register node *n;
 char *op;
 {
-    int i;
-
     if (n->l.left->type == N_LOCAL) {
 	cg_iasgn(n->r.right, "(Uint)", op, (int) n->l.left->r.number);
     } else {

@@ -1,7 +1,7 @@
 # include "ed.h"
 # undef error
-# include <signal.h>
 # include "edcmd.h"
+# include <signal.h>
 
 cmdbuf *cb;
 
@@ -47,9 +47,13 @@ char *argv[];
 
     for (;;) {
 	printf((cb->flags & CB_INSERT) ? "*\010" : ":");	/* BS */
-	if (gets(buffer) == (char *) NULL) {
+	if (fgets(buffer, sizeof(buffer), stdin) == (char *) NULL) {
 	    cb_del(cb);
 	    return 1;
+	}
+	tmp = strchr(buffer, '\n');
+	if (tmp != (char *) NULL) {
+	    *tmp = '\0';
 	}
 	if (!cb_command(cb, buffer)) {
 	    cb_del(cb);
@@ -75,5 +79,12 @@ char *f, *a1, *a2, *a3, *a4;
 void ed_error(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
-    error(f, a1,a2, a3);
+    error(f, a1, a2, a3);
+}
+
+struct _value_ *sp;
+
+void i_set_sp(newsp)
+struct _value_ *newsp;
+{
 }

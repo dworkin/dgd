@@ -904,3 +904,5 @@ DGD 1.1
    return an object (which may be compiled inside the function).
  - driver->inherit_program() was accidentally called when implicitly inheriting
    the auto object, too.
+ - Added '^' to filename pattern matching (as in csh).
+ - Fixed a problem with precompiling objects that inherited the auto object.

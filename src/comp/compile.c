@@ -352,7 +352,11 @@ node *label;
     } else {
 	/* precompiling */
 	sp++;
-	obj = c_compile(path_resolve(file));
+	file = path_resolve(file);
+	obj = o_find(file);
+	if (obj == (object *) NULL) {
+	    obj = c_compile(file);
+	}
     }
     inheriting = FALSE;
 
@@ -446,9 +450,8 @@ register char *file;
 		/*
 		 * (re)compile auto object
 		 */
-		current = (context *) NULL;
+		inheriting = TRUE;
 		obj = c_compile(auto_object);
-		current = &c;
 	    }
 	    /* inherit auto object */
 	    ctrl_init(auto_object, driver_object);
