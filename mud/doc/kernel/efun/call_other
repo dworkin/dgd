@@ -2,7 +2,7 @@ NAME
 	call_other - call a function in an object
 
 SYNOPSIS
-	varargs mixed call_other(mixed obj, string function, mixed args...)
+	mixed call_other(mixed obj, string function, mixed args...)
 
 
 DESCRIPTION
@@ -24,11 +24,12 @@ ERRORS
 	is either uncompiled or an object with "lib" as a path component.
 	Calling a function that does not exist, or a function that cannot be
 	called with call_other() because it is private or static, does not
-	result in an error but returns the value 0.
+	result in an error but returns the value nil.
 	If the number of existing objects is equal to the value of the
 	ST_OTABSIZE field of the array returned by status(), where ST_OTABSIZE
 	is defined in the include file <status.h>, attempting to compile a new
 	object will crash the system.
 
 SEE ALSO
-	efun/clone_object, efun/destruct_object, kfun/function_object
+	efun/call_limited, efun/clone_object, efun/destruct_object,
+	kfun/function_object

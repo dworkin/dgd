@@ -2,7 +2,7 @@ NAME
 	crypt - encrypt a string
 
 SYNOPSIS
-	varargs string crypt(string passwd, string salt)
+	string crypt(string passwd, varargs string salt)
 
 
 DESCRIPTION

@@ -1077,7 +1077,8 @@ register int state;
 		if (catch_level == 0 && ((n->r.number >> 24) & KFCALL_LVAL)) {
 		    cg_locals(n->l.left, TRUE);
 		}
-		if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
+		if (PROTO_CLASS(KFUN((short) n->r.number).proto) &
+							    C_KFUN_VARARGS) {
 		    output("call_kfun_arg(f, %d/*%s*/, %s)",
 			   &KFUN((short) n->r.number) - kftab,
 			   KFUN((short) n->r.number).name, p);

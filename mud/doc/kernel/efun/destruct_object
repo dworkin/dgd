@@ -8,7 +8,7 @@ SYNOPSIS
 DESCRIPTION
 	Destruct the object given as the argument, which can be an object or
 	the name of an object.  Any value holding the object will immediately
-	change into 0, and the object will cease to exist.
+	change into nil, and the object will cease to exist.
 	If an object destructs itself, it will cease to exist as soon as
 	execution leaves it.  If the last reference to a master object is
 	removed (including cloned objects and inheriting objects), the

@@ -2,7 +2,7 @@ NAME
 	call_other - call a function in an object
 
 SYNOPSIS
-	varargs mixed call_other(mixed obj, string function, mixed args...)
+	mixed call_other(mixed obj, string function, mixed args...)
 
 
 DESCRIPTION

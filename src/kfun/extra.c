@@ -8,8 +8,8 @@
 # ifdef FUNCDEF
 FUNCDEF("crypt", kf_crypt, pt_crypt)
 # else
-char pt_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING, 2,
-		    T_STRING, T_STRING };
+char pt_crypt[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_STRING, 2,
+		    T_STRING | T_VARARGS, T_STRING };
 
 /*
  * NAME:	kfun->crypt()
@@ -267,7 +267,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sscanf", kf_sscanf, pt_sscanf)
 # else
-char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
+char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_INT, 3,
 		     T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
@@ -576,9 +576,9 @@ no_match:
 # ifdef FUNCDEF
 FUNCDEF("parse_string", kf_parse_string, pt_parse_string)
 # else
-char pt_parse_string[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
+char pt_parse_string[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS,
 			   T_MIXED | (1 << REFSHIFT), 3,
-			   T_STRING, T_STRING, T_INT };
+			   T_STRING, T_STRING | T_VARARGS, T_INT };
 
 /*
  * NAME:	kfun->parse_string()

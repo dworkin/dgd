@@ -13,10 +13,10 @@ DESCRIPTION
 	any other object, it and all of its clones will be upgraded to the
 	new version.  Variables will be preserved only if they also exist in
 	the new version and have the same type; new variables will be
-	initialized to 0.  The actual upgrading is done immediately upon
+	initialized to nil.  The actual upgrading is done immediately upon
 	completion of the current thread.
 	If the new object has "lib" as a path component, it can only be
-	inherited and 0 is returned.  Otherwise, if the object has "obj" as a
+	inherited and nil is returned.  Otherwise, if the object has "obj" as a
 	path component, it can be cloned.
 
 ACCESS

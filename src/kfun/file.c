@@ -9,8 +9,8 @@
 # ifdef FUNCDEF
 FUNCDEF("editor", kf_editor, pt_editor)
 # else
-char pt_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING,
-		     1, T_STRING };
+char pt_editor[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_VARARGS | C_STATIC,
+		     T_STRING, 1, T_STRING };
 
 /*
  * NAME:	kfun->editor()
@@ -1058,8 +1058,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("write_file", kf_write_file, pt_write_file)
 # else
-char pt_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_INT, 3,
-			 T_STRING, T_STRING, T_INT };
+char pt_write_file[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_STATIC, T_INT, 3,
+			 T_STRING, T_STRING | T_VARARGS, T_INT };
 
 /*
  * NAME:	kfun->write_file()
@@ -1134,8 +1134,8 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("read_file", kf_read_file, pt_read_file)
 # else
-char pt_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING, 3,
-			T_STRING, T_INT, T_INT };
+char pt_read_file[] = { C_TYPECHECKED | C_KFUN_VARARGS | C_STATIC, T_STRING, 3,
+			T_STRING | T_VARARGS, T_INT, T_INT };
 
 /*
  * NAME:	kfun->read_file()

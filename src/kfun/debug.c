@@ -12,7 +12,6 @@ register short class;
     if (class & C_COMPILED) printf("compiled ");
     if (class & C_TYPECHECKED) printf("typechecked ");
     if (class & C_UNDEFINED) printf("undefined ");
-    if (class & C_VARARGS) printf("varargs ");
     if (class & C_PRIVATE) printf("private ");
     if (class & C_STATIC) printf("static ");
     if (class & C_NOMASK) printf("nomask ");
@@ -26,8 +25,14 @@ char *func, *proto;
 
     showclass(PROTO_CLASS(proto));
     printf("%s %s(", i_typename(tnbuf, PROTO_FTYPE(proto)), func);
+    if (PROTO_CLASS(proto) & C_VARARGS) {
+	printf("varargs ");
+    }
     for (i = 0; i < PROTO_NARGS(proto) - 1; i++) {
-	printf("%s, ", i_typename(tnbuf, PROTO_ARGS(proto)[i]));
+	if (PROTO_ARGS(proto)[i] & T_VARARGS) {
+	    printf("varargs ");
+	}
+	printf("%s, ", i_typename(tnbuf, PROTO_ARGS(proto)[i] & ~T_VARARGS));
     }
     if (i < PROTO_NARGS(proto)) {
 	printf("%s", i_typename(tnbuf, PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
@@ -552,7 +557,7 @@ int func;
 
 	case I_CALL_KFUNC:
 	    u = FETCH1U(pc);
-	    if (PROTO_CLASS(KFUN(u).proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN(u).proto) & C_KFUN_VARARGS) {
 		codesize = 3;
 		u2 = FETCH1U(pc);
 	    } else {

@@ -2,7 +2,7 @@ NAME
 	read_file - read a file
 
 SYNOPSIS
-	varargs string read_file(string file, int offset, int size)
+	string read_file(string file, varargs int offset, int size)
 
 
 DESCRIPTION

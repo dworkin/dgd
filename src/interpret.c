@@ -1643,7 +1643,7 @@ register char *pc;
 
 	case I_CALL_KFUNC:
 	    kf = &KFUN(FETCH1U(pc));
-	    if (PROTO_CLASS(kf->proto) & C_VARARGS) {
+	    if (PROTO_CLASS(kf->proto) & C_KFUN_VARARGS) {
 		/* variable # of arguments */
 		u = FETCH1U(pc) + size;
 		size = 0;
@@ -2157,7 +2157,7 @@ register frame *f;
 	    break;
 
 	case I_CALL_KFUNC:
-	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_KFUN_VARARGS) {
 		pc++;
 	    }
 	    break;

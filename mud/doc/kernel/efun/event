@@ -2,7 +2,7 @@ NAME
 	event - broadcast event to subscribers
 
 SYNOPSIS
-	varargs void event(string name, mixed args...)
+	void event(string name, mixed args...)
 
 
 DESCRIPTION

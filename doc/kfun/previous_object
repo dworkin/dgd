@@ -2,7 +2,7 @@ NAME
 	previous_object - return the previous object
 
 SYNOPSIS
-	varargs object previous_object(int n)
+	object previous_object(varargs int n)
 
 
 DESCRIPTION

@@ -861,7 +861,7 @@ register int pop;
 	case KFCALL:
 	case KFCALL_LVAL:
 	    code_kfun((int) n->r.number, n->line);
-	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_KFUN_VARARGS) {
 		code_byte(i);
 	    }
 	    break;

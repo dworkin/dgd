@@ -2002,7 +2002,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("sum", kf_sum, pt_sum)
 # else
-char pt_sum[] = { C_VARARGS | C_STATIC, T_MIXED, 0 };
+char pt_sum[] = { C_KFUN_VARARGS | C_VARARGS | C_STATIC, T_MIXED, 0 };
 
 /*
  * NAME:	kfun->sum()

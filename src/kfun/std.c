@@ -55,7 +55,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("call_other", kf_call_other, pt_call_other)
 # else
-char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_MIXED, 3,
+char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_MIXED, 3,
 			 T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
 
 /*
@@ -156,8 +156,9 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("previous_object", kf_previous_object, pt_previous_object)
 # else
-char pt_previous_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_OBJECT, 1,
-			      T_INT };
+char pt_previous_object[] =
+	{ C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS, T_OBJECT, 1,
+	  T_INT };
 
 /*
  * NAME:	kfun->previous_object()
@@ -193,8 +194,9 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("previous_program", kf_previous_program, pt_previous_program)
 # else
-char pt_previous_program[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING,
-			       1, T_INT };
+char pt_previous_program[] =
+	{ C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS, T_STRING,
+	  1, T_INT };
 
 /*
  * NAME:	kfun->previous_program()
@@ -887,7 +889,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, pt_call_out)
 # else
-char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
+char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS, T_INT, 3,
 		       T_STRING, T_INT, T_MIXED | T_ELLIPSIS };
 
 /*
@@ -1013,7 +1015,7 @@ frame *f;
 # ifdef FUNCDEF
 FUNCDEF("status", kf_status, pt_status)
 # else
-char pt_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
+char pt_status[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS | C_VARARGS,
 		     T_MIXED | (1 << REFSHIFT), 1, T_OBJECT };
 
 /*

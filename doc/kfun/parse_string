@@ -2,8 +2,8 @@ NAME
 	parse_string - parse a string
 
 SYNOPSIS
-	varargs mixed *parse_string(string grammar, string str,
-				    int alternatives)
+	mixed *parse_string(string grammar, string str,
+			    varargs int alternatives)
 
 
 DESCRIPTION

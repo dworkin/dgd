@@ -2,7 +2,7 @@ NAME
 	editor - handle an editor command
 
 SYNOPSIS
-	varargs string editor(string command)
+	string editor(varargs string command)
 
 
 DESCRIPTION

@@ -2,7 +2,7 @@ NAME
 	write_file - write to a file
 
 SYNOPSIS
-	varargs int write_file(string file, string str, int offset)
+	int write_file(string file, string str, varargs int offset)
 
 
 DESCRIPTION

@@ -2,7 +2,7 @@ NAME
 	clone_object - clone an object
 
 SYNOPSIS
-	varargs object clone_object(string master, string owner)
+	object clone_object(string master, varargs string owner)
 
 
 DESCRIPTION

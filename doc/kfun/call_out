@@ -2,7 +2,7 @@ NAME
 	call_out - call function with delay
 
 SYNOPSIS
-	varargs int call_out(string function, int delay, mixed args...)
+	int call_out(string function, int delay, mixed args...)
 
 
 DESCRIPTION
