@@ -274,7 +274,7 @@ DGD 1.0.a2
     * int remove_call_out(string);
     * void shutdown();
 
-    * int editor(string);
+    * void editor(string);
 	Handle an editor command, such as "e file", "%s/foo/bar/g", "x".
 	If no editor instance exists for the current object, it will be
 	created; editor output will call receive_message() in the object.
@@ -312,3 +312,47 @@ DGD 1.0.a2
     * int random(int);
     * varargs int sscanf(string, string, ...);
 	As in LPmud, but also handles %*s (skip assignment), %s%d and %%.
+
+DGD 1.0.a3
+
+ - Replaced objkey with separate fields in both objects and values.  Structure
+   alignment on sun4 systems caused the size of a value to be 12 bytes, where
+   it should have been 8.  It should now be 8 bytes on any host (as long as
+   uindex is an unsigned short, and pointers use 4 bytes).
+ - Redeclaring an inherited function with different parameters is now allowed
+   (runtime typechecking will handle calls from inherited objects to the new
+   function), but the return type still has to match.
+ - Fixed a bug with the return type of an implicit prototype, which should
+   read as mixed, when used.
+ - Some checks to see if the result of path_file() was NULL were missing.
+ - Removed time_interval from the configuration parameters.  If I'm going to
+   support call_out intervals of less then a second, I'll do it in a different
+   way.
+ - The simulated rename() erroneously removed the destination if it existed.
+ - Some checks for destructed this_object() in kfuns removed.  Either the
+   error is caused from path_object(), or there was not real reason to block
+   the kfun (file I/O).  Doing a call_other() from a destructed object is still
+   illegal.
+ - Special files are no longer excluded from a get_dir() listing.
+ - Fixed some bugs in the compiler, where functions from different inherited
+   objects were confused.
+ - The type of the objcnt field in the value struct has been changed into
+   Int, to save space on hosts that have 64-bit longs.
+ - Replaced all variables called "index" by "idx".  index() is a function like
+   strchr() on some systems.  Sigh.
+ - Fixed a bad bug in integer comparisions.
+ - The call_outs configuration parameter now specifies the maximum number of
+   call_outs in all objects together, rather than per object.
+ - The maximum execution cost is now set to the appropriate value at runtime
+   (25% for call_outs), rather than once at initialisation.
+ - call_out() and remove_call_out() now work.  The gamedriver is fully
+   functional for a single user.
+ - DGD now automatically generates a file called "limits.h" in the first
+   include directory, which describes the sizes of datatypes and resources.
+ - Fixed a problem with dumping function call traces of destructed objects.
+ - Fixed several bugs in get_dir() and path_resolve().
+ - Fixed a bug which occurred if a variable was defined with a name that had
+   been used in an inherited object.
+ - Destructing a destructed object gives an error, rather than a fatal error.
+ - call_other() from a destructed object no longer results in an error, but
+   is simply ignored, like in LPmud.
