@@ -2,7 +2,6 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
 # include "path.h"
 
@@ -68,7 +67,7 @@ char *file;
 
     obj = i_this_object();
     if (obj->flags & O_DRIVER) {
-	file = path_file(path_resolve(file));
+	return path_file(path_resolve(file));
     } else {
 	i_check_stack(2);
 	(--sp)->type = T_OBJECT;
@@ -83,8 +82,8 @@ char *file;
 	}
 	file = path_file(path_resolve(sp->u.string->text));
 	str_del((sp++)->u.string);
+	return file;
     }
-    return file;
 }
 
 /*
@@ -152,6 +151,22 @@ char *file;
 }
 
 /*
+ * NAME:	path->from()
+ * DESCRIPTION:	resolve a (possibly relative) path
+ */
+static char *path_from(from, file)
+register char *from, *file;
+{
+    char buf[STRINGSZ];
+
+    if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
+	sprintf(buf, "%s/../%s", from, file);
+	return path_resolve(buf);
+    }
+    return path_resolve(file);
+}
+
+/*
  * NAME:	path->inherit()
  * DESCRIPTION:	resolve an inherit path
  */
@@ -159,7 +174,7 @@ char *path_inherit(from, file)
 char *from, *file;
 {
     if (c_autodriver()) {
-	return path_resolve(file);
+	return path_from(from, file);
     }
     i_check_stack(2);
     (--sp)->type = T_STRING;
@@ -168,7 +183,10 @@ char *from, *file;
     strcpy(sp->u.string->text + 1, from);
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    call_driver_object("path_inherit", 2);
+    if (!call_driver_object("path_inherit", 2)) {
+	sp++;
+	return path_from(from, file);
+    }
     if (sp->type != T_STRING) {
 	i_del_value(sp++);
 	return (char *) NULL;
@@ -186,7 +204,7 @@ char *path_include(from, file)
 char *from, *file;
 {
     if (c_autodriver()) {
-	return path_file(path_resolve(file));
+	return path_file(path_from(from, file));
     }
     i_check_stack(2);
     (--sp)->type = T_STRING;
@@ -195,7 +213,10 @@ char *from, *file;
     strcpy(sp->u.string->text + 1, from);
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    call_driver_object("path_include", 2);
+    if (!call_driver_object("path_include", 2)) {
+	sp++;
+	return path_file(path_from(from, file));
+    }
     if (sp->type != T_STRING) {
 	i_del_value(sp++);
 	return (char *) NULL;
