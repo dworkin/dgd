@@ -36,7 +36,7 @@ ec_ftn handler;
 
 /*
  * NAME:	errcontext->pop()
- * DESCRIPTION:	pop and return the current errorcontext
+ * DESCRIPTION:	pop the current errorcontext
  */
 void ec_pop()
 {

@@ -1,5 +1,3 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # include <Resources.h>
 # include <Quickdraw.h>
 # include <Fonts.h>
@@ -12,6 +10,8 @@
 # include <ToolUtils.h>
 # include <SegLoad.h>
 # include <OSUtils.h>
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 
 
 static bool running;
@@ -78,10 +78,13 @@ static int linelength;
 static void windowstart(void)
 {
     GrafPtr port;
+    EventRecord evt;
     Rect bounds;
 
-    mainframe = GetNewWindow(MAINFRAME, NULL, (WindowPtr) -1);
     GetPort(&port);
+    mainframe = GetNewWindow(MAINFRAME, NULL, (WindowPtr) -1);
+    GetNextEvent(nullEvent, &evt);
+    ShowWindow(mainframe);
     SetPort(mainframe);
     TextFont(monaco);
     TextSize(9);
@@ -287,7 +290,7 @@ static bool menuselect(long menuitem)
 	SystemEdit(item - 1);
 	break;
     }
-    
+
     return FALSE;
 }
 
@@ -377,7 +380,7 @@ static bool getargs(void)
     for (i = 1; i <= count; i++) {
 	GetAppFiles(i, &file);
 	if (file.fType == 'pref') {
-	    if (config_file[0] != '\0') {
+	    if (config_file != NULL) {
 		/* 2 config files? */
 		ExitToShell();
 	    }

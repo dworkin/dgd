@@ -87,6 +87,15 @@ void comm_finish()
 }
 
 /*
+ * NAME:	comm->listen()
+ * DESCRIPTION:	start listening on telnet port and binary port
+ */
+void comm_listen()
+{
+    conn_listen();
+}
+
+/*
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */

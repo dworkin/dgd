@@ -1071,3 +1071,12 @@ DGD 1.1
  - Fixed bug which would occur with foo() { return catch("bar"); }
  - Setting a variable didn't work in the editor.
  - Initial Mac port completed.
+ - Split up comm initialization in two parts, one for general initialization
+   and one to start listening on the ports.
+ - Fixed a bad bug in the code generated for a return out of a catch { }.
+   Unfortunately, the fix affects the code generated for all catches, making
+   older state dump files INCOMPATIBLE.  It is possible to convert an old
+   dumpfile if all objects in it are upgraded, and if the objects that perform
+   the upgrade have no catch or are precompiled.
+ - return val; was typechecked only at compile time, not at runtime.
+ - Fixed some bugs in the Mac port.

@@ -1589,6 +1589,7 @@ register char *pc;
 		i_interpret(pc);
 		ec_pop();
 		pc = f->pc;
+		*--sp = zero_value;
 	    } else {
 		/* error */
 		f->pc = pc = p;

@@ -1514,6 +1514,11 @@ int typechecked;
 	     */
 	    c_error("returned value doesn't match %s (%s)",
 		    i_typename(ftype), i_typename(n->mod));
+	} else if (ftype != T_MIXED && n->mod == T_MIXED) {
+	    /*
+	     * typecheck at runtime
+	     */
+	    n = node_mon(N_CAST, ftype, n);
 	}
     }
 

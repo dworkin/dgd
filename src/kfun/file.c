@@ -1513,10 +1513,6 @@ int kf_get_dir()
 		}
 	    }
 	    P_closedir();
-
-	    if (nfiles == 0) {
-		AFREE(ftable);
-	    }
 	}
 
 	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
@@ -1553,8 +1549,9 @@ int kf_get_dir()
 	    t->u.number = ftable->time;
 	    n++, s++, t++;
 	}
-	AFREE(ftable - nfiles);
+	ftable -= nfiles;
     }
+    AFREE(ftable);
 
     return 0;
 }

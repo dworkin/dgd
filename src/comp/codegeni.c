@@ -807,7 +807,6 @@ register int pop;
     case N_CATCH:
 	jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, (jmplist *) NULL);
 	cg_expr(n->l.left, TRUE);
-	code_instr(I_PUSH_ZERO, n->line);
 	code_instr(I_RETURN, 0);
 	jump_resolve(jlist, here);
 	return;
@@ -1833,15 +1832,21 @@ register node *n;
 	case N_CATCH:
 	    jlist = jump(I_CATCH | I_POP_BIT, (jmplist *) NULL);
 	    cg_stmt(m->l.left);
-	    code_instr(I_PUSH_ZERO, 0);
-	    code_instr(I_RETURN, 0);
-	    if (m->r.right != (node *) NULL) {
-		j2list = jump(I_JUMP, (jmplist *) NULL);
+	    if (m->l.left->flags & F_END) {
 		jump_resolve(jlist, here);
-		cg_stmt(m->r.right);
-		jump_resolve(j2list, here);
+		if (m->r.right != (node *) NULL) {
+		    cg_stmt(m->r.right);
+		}
 	    } else {
-		jump_resolve(jlist, here);
+		code_instr(I_RETURN, 0);
+		if (m->r.right != (node *) NULL) {
+		    j2list = jump(I_JUMP, (jmplist *) NULL);
+		    jump_resolve(jlist, here);
+		    cg_stmt(m->r.right);
+		    jump_resolve(j2list, here);
+		} else {
+		    jump_resolve(jlist, here);
+		}
 	    }
 	    break;
 

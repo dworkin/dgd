@@ -1,8 +1,8 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # include <Files.h>
 # include <StandardFile.h>
 # include <Errors.h>
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 
 extern Uint m2utime(long t);
 
@@ -27,9 +27,11 @@ static long dirid;	/* directory ID */
 void fsinit(long fcrea, long ftype)
 {
     WDPBRec buf;
+    Str255 str;
 
     crea = fcrea;
     type = ftype;
+    buf.ioNamePtr = str;
     PBHGetVolSync(&buf);
     vref = buf.ioVRefNum;
     dirid = buf.ioWDDirID;
@@ -50,7 +52,7 @@ char *path_file(char *path)
     }
     buf[0] = ':';
     if (path[0] == '.' && path[1] == '\0') {
-	buf[0] = '\0';
+	buf[1] = '\0';
 	return buf;
     }
     strncpy(buf + 1, path, STRINGSZ - 1);
@@ -138,7 +140,7 @@ char *getfile(char *buf, long type)
     Point where;
     SFTypeList list;
     SFReply reply;
-    
+
     where.h = 82;
     where.v = 124;
     list[0] = type;
@@ -472,7 +474,7 @@ int rename(const char *from, const char *to)
 	return -1;
     }
     xdirid = buf.ioDirID;
-    
+
     /* source file must exist */
     buf.ioNamePtr = file1;
     if (PBGetCatInfoSync((CInfoPBPtr) &buf) != noErr) {
@@ -485,7 +487,7 @@ int rename(const char *from, const char *to)
 
     if (p - from != q - to || memcmp(from, to, p - from) != 0) {
 	CMovePBRec move;
-	
+
 	/*
 	 * move to different directory
 	 */
@@ -504,7 +506,7 @@ int rename(const char *from, const char *to)
 	if (PBGetCatInfoSync((CInfoPBPtr) &buf) == noErr) {
 	    return -1;
 	}
-	
+
 	/* rename source */
 	memcpy(dir1, file1, file1[0] + 1);
 	memcpy(file1, "\p:_tmp0000", 6);
@@ -524,7 +526,7 @@ int rename(const char *from, const char *to)
 	if (HRename(vref, xdirid, dir1, file1) != noErr) {
 	    return -1;
 	}
-	
+
 	/* move source to new directory */
 	move.ioNamePtr = file1;
 	move.ioVRefNum = vref;
@@ -535,7 +537,7 @@ int rename(const char *from, const char *to)
 	    HRename(vref, xdirid, file1, dir1);
 	    return -1;
 	}
-	
+
 	xdirid = move.ioNewDirID;
     }
 

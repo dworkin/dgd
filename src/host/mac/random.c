@@ -1,5 +1,5 @@
-# include "dgd.h"
 # include <Quickdraw.h>
+# include "dgd.h"
 
 /*
  * NAME:	P->srandom()
@@ -7,7 +7,7 @@
  */
 void P_srandom(long s)
 {
-    GetDateTime(&qd.randSeed);
+    qd.randSeed = s;
 }
 
 /*
@@ -16,6 +16,5 @@ void P_srandom(long s)
  */
 long P_random(void)
 {
-    return ((Random() & 0xffff) << 16) | (Random() & 0xffff);
+    return (Random() + Random() * 32768) & 0x7fffffff;
 }
-	

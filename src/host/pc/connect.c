@@ -25,18 +25,17 @@ static fd_set writefds;			/* file descriptor write map */
 
 /*
  * NAME:	conn->init()
- * DESCRIPTION:	initialize connections
+ * DESCRIPTION:	initialize connection handling
  */
 void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
+    WSADATA wsadata;
     struct sockaddr_in sin;
     struct hostent *host;
     int n;
     connection *conn;
     char buffer[256];
     int on;
-    WSADATA wsadata;
-    unsigned long nonblock;
 
     /* initialize winsock */
     if (WSAStartup(MAKEWORD(1, 1), &wsadata) != 0) {
@@ -81,28 +80,12 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     sin.sin_family = host->h_addrtype;
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
-	P_message("bind() failed\n");
+	P_message("telnet bind failed\n");
 	exit(2);
     }
     sin.sin_port = htons((u_short) binary_port);
     if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
-	P_message("bind() failed\n");
-	exit(2);
-    }
-
-    if (listen(telnet, 64) != 0 || listen(binary, 64) != 0) {
-	P_message("listen() failed\n");
-	exit(2);
-    }
-
-    nonblock = TRUE;
-    if (ioctlsocket(telnet, FIONBIO, &nonblock) != 0) {
-	P_message("fcntl() failed\n");
-	exit(2);
-    }
-    nonblock = TRUE;
-    if (ioctlsocket(binary, FIONBIO, &nonblock) != 0) {
-	P_message("fcntl() failed\n");
+	P_message("binary bind failed\n");
 	exit(2);
     }
 
@@ -127,6 +110,28 @@ void conn_finish(void)
     closesocket(telnet);
     closesocket(binary);
     WSACleanup();
+}
+
+/*
+ * NAME:	conn->listen()
+ * DESCRIPTION:	start listening on telnet port and binary port
+ */
+void conn_listen(void)
+{
+    unsigned long nonblock;
+
+    if (listen(telnet, 64) != 0 || listen(binary, 64) != 0) {
+	fatal("listen() failed");
+    }
+
+    nonblock = TRUE;
+    if (ioctlsocket(telnet, FIONBIO, &nonblock) != 0) {
+	fatal("fcntl() failed");
+    }
+    nonblock = TRUE;
+    if (ioctlsocket(binary, FIONBIO, &nonblock) != 0) {
+	fatal("fcntl() failed");
+    }
 }
 
 /*

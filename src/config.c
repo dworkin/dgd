@@ -817,6 +817,11 @@ char *configfile, *dumpfile;
 	   conf[INCLUDE_FILE].u.str,
 	   dirs);
 
+    /* initialize communications */
+    comm_init((int) conf[USERS].u.num,
+	      (unsigned int) conf[TELNET_PORT].u.num,
+	      (unsigned int) conf[BINARY_PORT].u.num);
+
     m_dynamic();
 
     /* initialize memory manager */
@@ -962,12 +967,8 @@ char *configfile, *dumpfile;
     i_del_value(sp++);
     endthread();
 
-    /* initialize communications */
-    m_static();
-    comm_init((int) conf[USERS].u.num,
-	      (unsigned int) conf[TELNET_PORT].u.num,
-	      (unsigned int) conf[BINARY_PORT].u.num);
-    m_dynamic();
+    /* start accepting connections */
+    comm_listen();
 }
 
 /*

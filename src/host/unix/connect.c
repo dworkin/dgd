@@ -30,7 +30,7 @@ static int maxfd;			/* largest fd opened yet */
 
 /*
  * NAME:	conn->init()
- * DESCRIPTION:	initialize connections
+ * DESCRIPTION:	initialize connection handling
  */
 void conn_init(maxusers, telnet_port, binary_port)
 int maxusers;
@@ -75,23 +75,12 @@ unsigned int telnet_port, binary_port;
     sin.sin_family = host->h_addrtype;
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	perror("bind");
+	perror("telnet bind");
 	exit(2);
     }
     sin.sin_port = htons(binary_port);
     if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	perror("bind");
-	exit(2);
-    }
-
-    if (listen(telnet, 64) < 0 || listen(binary, 64) < 0) {
-	perror("listen");
-	exit(2);
-    }
-
-    if (fcntl(telnet, F_SETFL, FNDELAY) < 0 ||
-	fcntl(binary, F_SETFL, FNDELAY) < 0) {
-	perror("fcntl");
+	perror("binary bind");
 	exit(2);
     }
 
@@ -116,6 +105,23 @@ void conn_finish()
 {
     close(telnet);
     close(binary);
+}
+
+/*
+ * NAME:	conn->listen()
+ * DESCRIPTION:	start listening on telnet port and binary port
+ */
+void conn_listen()
+{
+    if (listen(telnet, 64) < 0 || listen(binary, 64) < 0) {
+	perror("listen");
+    } else if (fcntl(telnet, F_SETFL, FNDELAY) < 0 ||
+	       fcntl(binary, F_SETFL, FNDELAY) < 0) {
+	perror("fcntl");
+    } else {
+	return;
+    }
+    fatal("conn_listen failed");
 }
 
 /*

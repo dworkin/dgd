@@ -142,22 +142,14 @@ void *memcpy(void *dst, const void *src, size_t len)
 
     p = dst;
     q = src;
-    if ((((long) p | (long) q) & 1) == 0) {
-	long *l1, *l2;
-
-	/* 4 aligned */
-	l1 = (long *) p;
-	l2 = (long *) q;
-	while (len >= 4) {
-	    *l1++ = *l2++;
-	    len -= 4;
-	}
-	p = (char *) l1;
-	q = (char *) l2;
+    while (len >= 0x01000000) {
+	BlockMove((Ptr) q, (Ptr) p, 0x00800000);
+	p += 0x00800000;
+	q += 0x00800000;
+	len -= 0x00800000;
     }
-    while (len != 0) {
-	*p++ = *q++;
-	--len;
+    if (len != 0) {
+	BlockMove((Ptr) q, (Ptr) p, len);
     }
     return dst;
 }

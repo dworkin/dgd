@@ -1,6 +1,6 @@
-# include "dgd.h"
 # include <OSUtils.h>
 # include <Events.h>
+# include "dgd.h"
 
 static unsigned long timediff;
 
@@ -13,7 +13,7 @@ void tminit(void)
     static DateTimeRec ubirth = {
 	1970, 1, 1, 0, 0, 0, 0
     };
-    
+
     Date2Secs(&ubirth, &timediff);
 }
 
@@ -34,7 +34,7 @@ Uint m2utime(long t)
 Uint P_time(void)
 {
     unsigned long t;
-    
+
     GetDateTime(&t);
     return (Uint) (t - timediff);
 }
@@ -55,7 +55,7 @@ char *P_ctime(Uint t)
     static char buf[26];
     DateTimeRec date;
     int offset;
-    
+
     for (offset = 0; t + timediff < t; t -= 1009843200L, offset += 32) ;
     Secs2Date((long) t + timediff, &date);
     if (offset != 0) {
