@@ -30,7 +30,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
     GetClientRect(&rect);
     listbox = new CListBox();
-    listbox->Create(LBS_NOINTEGRALHEIGHT | LBS_USETABSTOPS | WS_VSCROLL,
+    listbox->Create(LBS_NOINTEGRALHEIGHT | LBS_USETABSTOPS | WS_HSCROLL |
+		    WS_VSCROLL,
 		    rect, this, 0);
     listbox->SetFont(CFont::FromHandle((HFONT) GetStockObject(ANSI_FIXED_FONT)));
     listbox->ShowWindow(SW_SHOW);

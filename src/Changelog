@@ -987,3 +987,4 @@ DGD 1.1
    a service on NT.
  - Fixed a bug that made it possible to access files outside the mudlib
    directory on Win32.
+ - Fixed a rare problem with arrays as mapping indices.

@@ -416,11 +416,11 @@ register int step;		/* 1 for arrays, 2 for mappings */
 		m = ((l + h) >> 1) & mask;
 		v3 = v2 + m;
 		for (;;) {
-		    m -= step;
 		    v3 -= step;
-		    if (m < l || !T_INDEXED(v3->type)) {
+		    if (m == l || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
 		    }
+		    m -= step;
 		    if (v1->u.array == v3->u.array) {
 			return m;	/* found the right one */
 		    }

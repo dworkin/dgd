@@ -34,7 +34,7 @@ typedef struct {
 static config conf[] = {
 # define ARRAY_SIZE	0
 				{ "array_size",		INT_CONST, FALSE,
-							1, USHRT_MAX },
+							1, USHRT_MAX / 2 },
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, FALSE },
 # define BINARY_PORT	2
@@ -181,6 +181,7 @@ int fd;
     }
     boottime = info.btime;
     elapsed = info.etime;
+    conf[SECTOR_SIZE].u.num = info.sectorsz;
     sw_restore(fd, (int) info.sectorsz);
     kf_restore(fd);
     o_restore(fd);

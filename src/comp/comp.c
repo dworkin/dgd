@@ -127,9 +127,8 @@ register control *ctrl;
  * NAME:	dump_functions()
  * DESCRIPTION:	output the function table
  */
-static void dump_functions(ctrl, nfuncs)
-register control *ctrl;
-register int nfuncs;
+static void dump_functions(nfuncs)
+int nfuncs;
 {
     register int i;
 
@@ -235,7 +234,10 @@ char *argv[];
     char *file, tag[9];
     int nfuncs;
 
-    if (argc != 3 && argc != 4) {
+    file = argv[2];
+    if ((argc != 3 && argc != 4) ||
+	(len=strlen(file)) < 2 || file[len - 2] != '.' || file[len - 1] != 'c')
+    {
 	P_message("usage: precomp config_file lpc_file [c_file]\012");	/* LF */
 	return 2;
     }
@@ -250,9 +252,7 @@ char *argv[];
     conf_init(argv[1], (char *) NULL);
 
     len = strlen(file = path_resolve(argv[2]));
-    if (len > 2 && file[len - 2] == '.' && file[len - 1] == 'c') {
-	file[len -= 2] = '\0';
-    }
+    file[len - 2] = '\0';
     sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
 	    (unsigned short) P_random());
 
@@ -269,10 +269,10 @@ char *argv[];
 
     if (ec_push((ec_ftn) NULL)) {
 	message((char *) NULL);
+	printf("\n# error Error while compiling\n");
+	fclose(stdout);
 	if (argc == 4) {
 	    /* remove output file: may fail if path is not absolute */
-	    printf("\n# error Error while compiling\n");
-	    fclose(stdout);
 	    unlink(argv[3]);
 	}
 	return 1;
@@ -287,7 +287,7 @@ char *argv[];
     dump_iinherits(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
-    dump_functions(ctrl, nfuncs = cg_nfuncs());
+    dump_functions(nfuncs = cg_nfuncs());
     dump_funcdefs(ctrl);
     dump_vardefs(ctrl);
     dump_funcalls(ctrl);
