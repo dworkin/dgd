@@ -1444,6 +1444,7 @@ register unsigned int n;
 	    if (elts[1].type == T_INT) {
 		/* convert to new LWO type */
 		elts[1].type = T_FLOAT;
+		elts[1].oindex = FALSE;
 	    }
 	    if (elts->u.objcnt == count) {
 		if (arr_put(save->amerge, v->u.array, save->narr) == save->narr)

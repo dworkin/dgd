@@ -17,6 +17,10 @@ DESCRIPTION
 	initialized to 0.  The actual upgrading is done immediately upon
 	completion of the current thread.
 
+ERRORS
+	Compilation errors will be reported to the driver object.  Furthermore,
+	a failure to compile will result in a runtime error, as well.
+
 SEE ALSO
 	kfun/clone_object, kfun/destruct_object, kfun/new_object,
 	kfun/object_name

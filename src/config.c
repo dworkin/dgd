@@ -197,7 +197,7 @@ static void conf_dumpinit()
     i3 = strchr((char *) &i, 0x78) - (char *) &i;
     utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
     desize = sizeof(sector) | (sizeof(eindex) << 4);
-    psize = sizeof(char*);
+    psize = sizeof(char*) | (sizeof(char) << 4);
     calign = (char *) &cdummy.c - (char *) &cdummy.fill;
     salign = (char *) &sdummy.s - (char *) &sdummy.fill;
     ialign = (char *) &idummy.i - (char *) &idummy.fill;
@@ -314,6 +314,7 @@ int fd;
     if ((rpsize >> 4) > 1) {
 	error("Cannot restore hindex != 1");
     }
+    rpsize &= 0xf;
 
     sw_restore(fd, secsize);
     kf_restore(fd);
