@@ -1,8 +1,10 @@
-void co_init	P((uindex, int));
-bool co_new	P((object*, string*, long, int));
-long co_del	P((object*, string*));
-void co_timeout	P((void));
-void co_call	P((void));
-
-uindex co_count    P((void));
-long   co_swaprate P((void));
+extern void	co_init		P((uindex, int));
+extern bool	co_new		P((object*, string*, long, int));
+extern long	co_find		P((object*, string*));
+extern long	co_del		P((object*, string*));
+extern void	co_timeout	P((void));
+extern void	co_call		P((void));
+extern uindex	co_count    	P((void));
+extern long	co_swaprate 	P((void));
+extern bool	co_dump		P((int));
+extern void	co_restore	P((int, long));
