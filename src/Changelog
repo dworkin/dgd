@@ -1545,3 +1545,4 @@ DGD 1.3
  - ... and yet another.
  - And (ugh) another.
  - And the (hopefully) last one.
+ - Allow allocation of blocks up to 1G in size.
