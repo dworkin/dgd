@@ -312,6 +312,7 @@ struct _connection_ {
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* port of connection */
+    unsigned short at;			/* port connection was accepted at */
     struct _connection_ *next;		/* next in list */
 };
 
@@ -320,9 +321,9 @@ static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
-static SOCKET telnet;			/* telnet port socket descriptor */
-static SOCKET binary;			/* binary port socket descriptor */
-static SOCKET udp;			/* UDP port socket descriptor */
+static SOCKET *tdescs, *bdescs;		/* telnet & binary descriptor arrays */
+static SOCKET ntdescs, nbdescs;		/* # telnet & binary ports */
+static SOCKET *udescs;			/* UDP port descriptor array */
 static fd_set infds;			/* file descriptor input bitmap */
 static fd_set outfds;			/* file descriptor output bitmap */
 static fd_set waitfds;			/* file descriptor wait-write bitmap */
@@ -346,7 +347,8 @@ static BOOL hook(void)
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
+bool conn_init(int maxusers, unsigned short *tports, unsigned short *bports,
+	       int ntports, int nbports)
 {
     WSADATA wsadata;
     struct sockaddr_in sin;
@@ -365,65 +367,98 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
     WSASetBlockingHook((FARPROC) &hook);
 
-    telnet = socket(PF_INET, SOCK_STREAM, 0);
-    binary = socket(PF_INET, SOCK_STREAM, 0);
-    udp = socket(PF_INET, SOCK_DGRAM, 0);
-    if (telnet == INVALID_SOCKET || binary == INVALID_SOCKET ||
-	udp == INVALID_SOCKET) {
-	P_message("socket() failed\n");
-	return FALSE;
-    }
-    on = 1;
-    if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) != 0) {
-	P_message("setsockopt() failed\n");
-	return FALSE;
-    }
-    on = 1;
-    if (setsockopt(telnet, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
-		   sizeof(on)) != 0) {
-	P_message("setsockopt() failed\n");
-	return FALSE;
-    }
-    on = 1;
-    if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) != 0) {
-	P_message("setsockopt() failed\n");
-	return FALSE;
-    }
-    on = 1;
-    if (setsockopt(binary, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
-		   sizeof(on)) != 0) {
-	P_message("setsockopt() failed\n");
-	return FALSE;
-    }
-    on = 1;
-    if (setsockopt(udp, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) != 0) {
-	P_message("setsockopt() failed\n");
-	return FALSE;
-    }
-
     memset(&sin, '\0', sizeof(sin));
-    sin.sin_port = htons((u_short) telnet_port);
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
-    if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
-	P_message("telnet bind failed\n");
-	return FALSE;
-    }
-    sin.sin_port = htons((u_short) binary_port);
-    if (bind(binary, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
-	P_message("binary bind failed\n");
-	return FALSE;
-    }
-    if (bind(udp, (struct sockaddr *) &sin, sizeof(sin)) != 0) {
-	P_message("udp bind failed\n");
-	return FALSE;
-    }
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
+    }
+
+    nusers = 0;
+    FD_ZERO(&infds);
+    FD_ZERO(&outfds);
+    FD_ZERO(&waitfds);
+    FD_SET(in, &infds);
+    closed = 0;
+
+    tdescs = ALLOC(SOCKET, ntdescs = ntports);
+    for (n = 0; n < ntdescs; n++) {
+	tdescs[n] = INVALID_SOCKET;
+    }
+    bdescs = ALLOC(SOCKET, nbdescs = nbports);
+    udescs = ALLOC(SOCKET, nbports);
+    for (n = 0; n < nbdescs; n++) {
+	bdescs[n] = INVALID_SOCKET;
+	udescs[n] = INVALID_SOCKET;
+    }
+
+    for (n = 0; n < ntdescs; n++) {
+	/* telnet ports */
+	if ((tdescs[n]=socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+	    P_message("socket() failed\n");
+	    return FALSE;
+	}
+	on = 1;
+	if (setsockopt(tdescs[n], SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		       sizeof(on)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	on = 1;
+	if (setsockopt(tdescs[n], SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+		       sizeof(on)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	sin.sin_port = htons((u_short) tports[n]);
+	if (bind(tdescs[n], (struct sockaddr *) &sin, sizeof(sin)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	FD_SET(tdescs[n], &infds);
+    }
+    for (n = 0; n < nbdescs; n++) {
+	/* binary ports */
+	if ((bdescs[n]=socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+	    P_message("socket() failed\n");
+	    return FALSE;
+	}
+	on = 1;
+	if (setsockopt(bdescs[n], SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		       sizeof(on)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	on = 1;
+	if (setsockopt(bdescs[n], SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+		       sizeof(on)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	sin.sin_port = htons((u_short) bports[n]);
+	if (bind(bdescs[n], (struct sockaddr *) &sin, sizeof(sin)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	FD_SET(bdescs[n], &infds);
+
+	/* UDP ports */
+	if ((udescs[n]=socket(PF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET) {
+	    P_message("socket() failed\n");
+	    return FALSE;
+	}
+	on = 1;
+	if (setsockopt(udescs[n], SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		       sizeof(on)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	if (bind(udescs[n], (struct sockaddr *) &sin, sizeof(sin)) != 0) {
+	    P_message("setsockopt() failed\n");
+	    return FALSE;
+	}
+	FD_SET(udescs[n], &infds);
     }
 
     flist = (connection *) NULL;
@@ -436,16 +471,6 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
-
-    FD_ZERO(&infds);
-    FD_ZERO(&outfds);
-    FD_ZERO(&waitfds);
-    FD_SET(telnet, &infds);
-    FD_SET(binary, &infds);
-    FD_SET(udp, &infds);
-    FD_SET(in, &infds);
-
-    closed = 0;
 
     return TRUE;
 }
@@ -468,32 +493,35 @@ void conn_finish(void)
  */
 void conn_listen(void)
 {
+    int n;
     unsigned long nonblock;
 
-    if (listen(telnet, 64) != 0 || listen(binary, 64) != 0) {
-	fatal("listen() failed");
+    for (n = 0; n < ntdescs; n++) {
+	nonblock = TRUE;
+	if (listen(tdescs[n], 64) != 0 ||
+	    ioctlsocket(tdescs[n], FIONBIO, &nonblock) != 0) {
+	    fatal("conn_listen failed");
+	}
     }
-    ipa_start(binary);
-
-    nonblock = TRUE;
-    if (ioctlsocket(telnet, FIONBIO, &nonblock) != 0) {
-	fatal("ioctlsocket() failed");
+    for (n = 0; n < nbdescs; n++) {
+	nonblock = TRUE;
+	if (listen(bdescs[n], 64) != 0 ||
+	    ioctlsocket(bdescs[n], FIONBIO, &nonblock) != 0) {
+	    fatal("conn_listen failed");
+	}
+	nonblock = TRUE;
+	if (ioctlsocket(udescs[n], FIONBIO, &nonblock) != 0) {
+	    fatal("conn_listen failed");
+	}
     }
-    nonblock = TRUE;
-    if (ioctlsocket(binary, FIONBIO, &nonblock) != 0) {
-	fatal("ioctlsocket() failed");
-    }
-    nonblock = TRUE;
-    if (ioctlsocket(udp, FIONBIO, &nonblock) != 0) {
-	fatal("ioctlsocket() failed");
-    }
+    ipa_start(bdescs[0]);
 }
 
 /*
  * NAME:	conn->tnew()
  * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_tnew(void)
+connection *conn_tnew(int port)
 {
     SOCKET fd;
     int len;
@@ -501,12 +529,13 @@ connection *conn_tnew(void)
     connection *conn;
     unsigned long nonblock;
 
-    if (!FD_ISSET(telnet, &readfds)) {
+    if (!FD_ISSET(tdescs[port], &readfds)) {
 	return (connection *) NULL;
     }
     len = sizeof(sin);
-    fd = accept(telnet, (struct sockaddr *) &sin, &len);
+    fd = accept(tdescs[port], (struct sockaddr *) &sin, &len);
     if (fd == INVALID_SOCKET) {
+	FD_CLR(tdescs[port], &readfds);
 	return (connection *) NULL;
     }
     nonblock = TRUE;
@@ -518,6 +547,7 @@ connection *conn_tnew(void)
     conn->udpbuf = (char *) NULL;
     conn->addr = ipa_new(&sin.sin_addr);
     conn->port = sin.sin_port;
+    conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -530,7 +560,7 @@ connection *conn_tnew(void)
  * NAME:	conn->bnew()
  * DESCRIPTION:	accept a new binary connection
  */
-connection *conn_bnew(void)
+connection *conn_bnew(int port)
 {
     SOCKET fd;
     int len;
@@ -538,12 +568,13 @@ connection *conn_bnew(void)
     connection *conn;
     unsigned long nonblock;
 
-    if (!FD_ISSET(binary, &readfds)) {
+    if (!FD_ISSET(bdescs[port], &readfds)) {
 	return (connection *) NULL;
     }
     len = sizeof(sin);
-    fd = accept(binary, (struct sockaddr *) &sin, &len);
+    fd = accept(bdescs[port], (struct sockaddr *) &sin, &len);
     if (fd == INVALID_SOCKET) {
+	FD_CLR(bdescs[port], &readfds);
 	return (connection *) NULL;
     }
     nonblock = TRUE;
@@ -555,6 +586,7 @@ connection *conn_bnew(void)
     conn->udpbuf = (char *) NULL;
     conn->addr = ipa_new(&sin.sin_addr);
     conn->port = sin.sin_port;
+    conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -635,7 +667,7 @@ void conn_block(connection *conn, int flag)
 int conn_select(Uint t, unsigned int mtime)
 {
     struct timeval timeout;
-    int retval;
+    int retval, n;
 
     /*
      * First, check readability and writability for binary sockets with pending
@@ -669,31 +701,33 @@ int conn_select(Uint t, unsigned int mtime)
     timeout.tv_usec = 0;
     select(0, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
 
-    /* check for UDP packet */
-    if (FD_ISSET(udp, &readfds)) {
-	char buffer[BINBUF_SIZE];
-	struct sockaddr_in from;
-	int fromlen, size;
-	connection **hash;
-
-	fromlen = sizeof(struct sockaddr_in);
-	size = recvfrom(udp, buffer, BINBUF_SIZE, 0, (struct sockaddr *) &from,
-			&fromlen);
-	if (size >= 0) {
-	    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
-			    udphtabsz];
-	    while (*hash != (connection *) NULL) {
-		if ((*hash)->addr->ipnum.s_addr == from.sin_addr.s_addr &&
-		    (*hash)->port == from.sin_port) {
-		    /*
-		     * copy to connection's buffer
-		     */
-		    memcpy((*hash)->udpbuf, buffer, (*hash)->bufsz = size);
-		    break;
+    /* check for UDP packets */
+    for (n = 0; n < nbdescs; n++) {
+	if (FD_ISSET(udescs[n], &readfds)) {
+	    char buffer[BINBUF_SIZE];
+	    struct sockaddr_in from;
+	    int fromlen, size;
+	    connection **hash;
+  
+	    fromlen = sizeof(struct sockaddr_in);
+	    size = recvfrom(udescs[n], buffer, BINBUF_SIZE, 0,
+			    (struct sockaddr *) &from, &fromlen);
+	    if (size >= 0) {
+		hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
+				udphtabsz];
+		while (*hash != (connection *) NULL) {
+		    if ((*hash)->addr->ipnum.s_addr == from.sin_addr.s_addr &&
+			(*hash)->port == from.sin_port && (*hash)->at == n) {
+			/*
+			 * copy to connection's buffer
+			 */
+			memcpy((*hash)->udpbuf, buffer, (*hash)->bufsz = size);
+			break;
+		    }
+		    hash = &(*hash)->next;
 		}
-		hash = &(*hash)->next;
+		/* else from unknown source: ignore */
 	    }
-	    /* else from unknown source: ignore */
 	}
     }
 
@@ -798,7 +832,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 	to.sin_family = AF_INET;
 	to.sin_addr.s_addr = conn->addr->ipnum.s_addr;
 	to.sin_port = conn->port;
-	return sendto(udp, buf, len, 0, (struct sockaddr *) &to,
+	return sendto(udescs[conn->at], buf, len, 0, (struct sockaddr *) &to,
 		      sizeof(struct sockaddr_in));
     }
     return 0;

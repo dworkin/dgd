@@ -6,6 +6,7 @@
 # include "interpret.h"
 # include "data.h"
 # include "comm.h"
+# include "version.h"
 
 # ifndef TELOPT_LINEMODE
 # define TELOPT_LINEMODE	34	/* linemode option */
@@ -63,14 +64,18 @@ static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
 static uindex this_user;	/* current user */
+static int ntport, nbport;	/* # telnet/binary ports */
+static int nexttport;		/* next telnet port to check */
+static int nextbport;		/* next binary port to check */
+static char ayt[20];		/* are you there? */
 
 /*
  * NAME:	comm->init()
  * DESCRIPTION:	initialize communications
  */
-bool comm_init(n, telnet_port, binary_port)
-int n;
-unsigned int telnet_port, binary_port;
+bool comm_init(n, tports, bports, ntelnet, nbinary)
+int n, ntelnet, nbinary;
+unsigned short *tports, *bports;
 {
     register int i;
     register user *usr;
@@ -88,7 +93,10 @@ unsigned int telnet_port, binary_port;
     nusers = odone = newlines = 0;
     this_user = OBJ_NONE;
 
-    return conn_init(n, telnet_port, binary_port);
+    sprintf(ayt, "\15\12[DGD %s]\15\12", VERSION);
+
+    nexttport = nextbport = 0;
+    return conn_init(n, tports, bports, ntport = ntelnet, nbport = nbinary);
 }
 
 /*
@@ -627,7 +635,6 @@ unsigned int mtime;
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
-    static char ayt[] =		{ CR, LF, '[', 'Y', 'e', 's', ']', CR, LF };
     static char tm[] =		{ (char) IAC, (char) WONT, (char) TELOPT_TM };
     static char will_sga[] =	{ (char) IAC, (char) WILL, (char) TELOPT_SGA };
     static char wont_sga[] =	{ (char) IAC, (char) WONT, (char) TELOPT_SGA };
@@ -659,73 +666,108 @@ unsigned int mtime;
     }
 
     if (nusers < maxusers) {
-	/*
-	 * accept new telnet connection
-	 */
-	conn = conn_tnew();
-	if (conn != (connection *) NULL) {
-	    if (ec_push((ec_ftn) NULL)) {
-		conn_del(conn);		/* delete connection */
-		error((char *) NULL);	/* pass on error */
-	    }
-	    call_driver_object(f, "telnet_connect", 0);
-	    if (f->sp->type != T_OBJECT) {
-		fatal("driver->telnet_connect() did not return a persistent object");
-	    }
-	    obj = OBJ(f->sp->oindex);
-	    f->sp++;
-	    usr = comm_new(obj, conn, TRUE);
-	    ec_pop();
-	    endthread();
+	n = nexttport;
+	do {
+	    /*
+	     * accept new telnet connection
+	     */
+	    conn = conn_tnew(n);
+	    if (conn != (connection *) NULL) {
+		nexttport = n + 1;
+		if (nexttport == ntport) {
+		    nexttport = 0;
+		}
 
-	    usr->flags |= CF_PROMPT;
-	    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
-	    this_user = obj->index;
-	    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-		i_del_value(f->sp++);
+		if (ec_push((ec_ftn) NULL)) {
+		    conn_del(conn);		/* delete connection */
+		    error((char *) NULL);	/* pass on error */
+		}
+		PUSH_INTVAL(f, n);
+		call_driver_object(f, "telnet_connect", 1);
+		if (f->sp->type != T_OBJECT) {
+		    fatal("driver->telnet_connect() did not return a persistent object");
+		}
+		obj = OBJ(f->sp->oindex);
+		f->sp++;
+		usr = comm_new(obj, conn, TRUE);
+		ec_pop();
 		endthread();
+
+		usr->flags |= CF_PROMPT;
+		addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		this_user = obj->index;
+		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+		    i_del_value(f->sp++);
+		    endthread();
+		}
+		this_user = OBJ_NONE;
+
+		break;
 	    }
-	    this_user = OBJ_NONE;
-	}
+
+	    n++;
+	    if (n == ntport) {
+		n = 0;
+	    }
+	} while (n != nexttport);
     }
 
-    while (nusers < maxusers) {
-	/*
-	 * accept new binary connection
-	 */
-	conn = conn_bnew();
-	if (conn == (connection *) NULL) {
-	    break;
-	}
+    if (nusers < maxusers) {
+	n = nextbport;
+	for (;;) {
+	    /*
+	     * accept new binary connection
+	     */
+	    conn = conn_bnew(n);
+	    if (conn == (connection *) NULL) {
+		n++;
+		if (n == nbport) {
+		    n = 0;
+		}
+		if (n == nextbport) {
+		    break;
+		}
+	    } else {
+		if (ec_push((ec_ftn) NULL)) {
+		    conn_del(conn);		/* delete connection */
+		    error((char *) NULL);	/* pass on error */
+		}
+		PUSH_INTVAL(f, n);
+		call_driver_object(f, "binary_connect", 1);
+		if (f->sp->type != T_OBJECT) {
+		    fatal("driver->binary_connect() did not return a persistent object");
+		}
+		obj = OBJ(f->sp->oindex);
+		f->sp++;
+		usr = comm_new(obj, conn, FALSE);
+		ec_pop();
+		endthread();
 
-	if (ec_push((ec_ftn) NULL)) {
-	    conn_del(conn);		/* delete connection */
-	    error((char *) NULL);	/* pass on error */
-	}
-	call_driver_object(f, "binary_connect", 0);
-	if (f->sp->type != T_OBJECT) {
-	    fatal("driver->binary_connect() did not return a persistent object");
-	}
-	obj = OBJ(f->sp->oindex);
-	f->sp++;
-	usr = comm_new(obj, conn, FALSE);
-	ec_pop();
-	endthread();
+		this_user = obj->index;
+		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+		    if (VAL_TRUE(f->sp)) {
+			i_del_value(f->sp);
+			if ((obj->flags & O_SPECIAL) == O_USER) {
+			    /* open UDP channel */
+			    usr->flags |= CF_UDP;
+			    conn_udp(conn);
+			}
+		    }
+		    f->sp++;
+		    endthread();
+		}
+		this_user = OBJ_NONE;
 
-	this_user = obj->index;
-	if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-	    if (VAL_TRUE(f->sp)) {
-		i_del_value(f->sp);
-		if ((obj->flags & O_SPECIAL) == O_USER) {
-		    /* open UDP channel */
-		    usr->flags |= CF_UDP;
-		    conn_udp(conn);
+		n++;
+		if (n == nbport) {
+		    n = 0;
+		}
+		nextbport = n;
+		if (nusers == maxusers) {
+		    break;
 		}
 	    }
-	    f->sp++;
-	    endthread();
 	}
-	this_user = OBJ_NONE;
     }
 
     for (i = nusers; i > 0; --i) {
@@ -870,7 +912,7 @@ unsigned int mtime;
 
 			case AYT:
 			    comm_write(usr, obj, (string *) NULL, ayt,
-				       sizeof(ayt));
+				       strlen(ayt));
 			    state = TS_DATA;
 			    break;
 

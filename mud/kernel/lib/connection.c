@@ -2,6 +2,7 @@
 # include <kernel/user.h>
 
 private object userd;		/* user daemon */
+private int port;		/* port # */
 private object user;		/* user object */
 private string conntype;	/* connection type */
 private int mode;		/* connection mode */
@@ -177,6 +178,26 @@ void reboot()
 	}
 	destruct_object(this_object());
     }
+}
+
+/*
+ * NAME:	set_port()
+ * DESCRIPTION:	set the port number
+ */
+void set_port(int num)
+{
+    if (previous_object() == userd) {
+	port = num;
+    }
+}
+
+/*
+ * NAME:	query_port()
+ * DESCRIPTION:	return the port number
+ */
+int query_port()
+{
+    return port;
 }
 
 /*

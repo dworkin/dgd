@@ -747,18 +747,18 @@ static void recompile(object obj)
  * NAME:	telnet_connect()
  * DESCRIPTION:	return a telnet connection user object
  */
-static object telnet_connect()
+static object telnet_connect(int port)
 {
-    return userd->telnet_connection();
+    return userd->telnet_connection(port);
 }
 
 /*
  * NAME:	binary_connect()
  * DESCRIPTION:	return a binary connection user object
  */
-static object binary_connect()
+static object binary_connect(int port)
 {
-    return userd->binary_connection();
+    return userd->binary_connection(port);
 }
 
 /*

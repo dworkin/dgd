@@ -34,10 +34,14 @@ static void create()
  * NAME:	telnet_connection()
  * DESCRIPTION:	return a new telnet connection object
  */
-object telnet_connection()
+object telnet_connection(int port)
 {
     if (previous_program() == PORT) {
-	return clone_object(TELNET_CONN);
+	object conn;
+
+	conn = clone_object(TELNET_CONN);
+	conn->set_port(port);
+	return conn;
     }
 }
 
@@ -45,10 +49,14 @@ object telnet_connection()
  * NAME:	binary_connection()
  * DESCRIPTION:	return a new binary connection object
  */
-object binary_connection()
+object binary_connection(int port)
 {
     if (previous_program() == PORT) {
-	return clone_object(BINARY_CONN);
+	object conn;
+
+	conn = clone_object(BINARY_CONN);
+	conn->set_port(port);
+	return conn;
     }
 }
 
@@ -114,7 +122,8 @@ object binary_user(string str)
 
 	user = names[str];
 	if (!user) {
-	    if (binary_manager && str != "admin") {
+	    if (binary_manager &&
+		(str != "admin" || previous_object()->query_port() != 0)) {
 		user = binary_manager->select(str);
 		if (function_object("query_conn", user) != LIB_USER) {
 		    error("Invalid user object");

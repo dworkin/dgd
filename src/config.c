@@ -38,8 +38,8 @@ static config conf[] = {
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, TRUE },
 # define BINARY_PORT	2
-				{ "binary_port",	INT_CONST, FALSE,
-							0, USHRT_MAX },
+				{ "binary_port",	'[', FALSE,
+							1, USHRT_MAX },
 # define CACHE_SIZE	3
 				{ "cache_size",		INT_CONST, FALSE,
 							2, UINDEX_MAX },
@@ -82,8 +82,8 @@ static config conf[] = {
 				{ "swap_size",		INT_CONST, FALSE,
 							1024, SW_UNUSED },
 # define TELNET_PORT	20
-				{ "telnet_port",	INT_CONST, FALSE,
-							0, USHRT_MAX },
+				{ "telnet_port",	'[', FALSE,
+							1, USHRT_MAX },
 # define TYPECHECKING	21
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 2 },
@@ -643,9 +643,12 @@ register Uint n;
 }
 
 
+# define MAX_PORTS	32
 # define MAX_DIRS	32
 
 static char *dirs[MAX_DIRS];
+static unsigned short bports[MAX_PORTS], tports[MAX_PORTS];
+static int ntports, nbports;
 
 /*
  * NAME:	conferr()
@@ -666,6 +669,7 @@ static bool conf_config()
     char buf[STRINGSZ];
     register char *p;
     register int h, l, m, c;
+    unsigned short *ports;
 
     for (h = NR_OPTIONS; h > 0; ) {
 	conf[--h].u.num = 0;
@@ -704,9 +708,13 @@ static bool conf_config()
 	    if (c != INT_CONST && c != STRING_CONST && c != '(') {
 		conferr("syntax error");
 		return FALSE;
-	    } else {
-		conferr("bad value type");
-		return FALSE;
+	    } else if (conf[m].type != '[' || c != INT_CONST) {
+		if (conf[m].type == '[' && c == '(') {
+		    c = '[';
+		} else {
+		    conferr("bad value type");
+		    return FALSE;
+		}
 	    }
 	}
 
@@ -765,6 +773,47 @@ static bool conf_config()
 	    }
 	    dirs[l] = (char *) NULL;
 	    break;
+
+	case '[':
+	    if (pp_gettok() != '{') {
+		conferr("'{' expected");
+		return FALSE;
+	    }
+	    l = 0;
+	    ports = (m == TELNET_PORT) ? tports : bports;
+	    for (;;) {
+		if (pp_gettok() != INT_CONST) {
+		    conferr("integer expected");
+		    return FALSE;
+		}
+		if (l == MAX_PORTS) {
+		    conferr("too many ports");
+		    return FALSE;
+		}
+		if (yylval.number <= 0 || yylval.number > USHRT_MAX) {
+		    conferr("int value out of range");
+		    return FALSE;
+		}
+		ports[l] = yylval.number;
+		l++;
+		if ((c=pp_gettok()) == '}') {
+		    break;
+		}
+		if (c != ',') {
+		    conferr("',' expected");
+		    return FALSE;
+		}
+	    }
+	    if (pp_gettok() != ')') {
+		conferr("')' expected");
+		return FALSE;
+	    }
+	    if (m == TELNET_PORT) {
+		ntports = l;
+	    } else {
+		nbports = l;
+	    }
+	    break;
 	}
 	conf[m].set = TRUE;
 	if (pp_gettok() != ';') {
@@ -781,6 +830,14 @@ static bool conf_config()
 	    conferr(buffer);
 	    return FALSE;
 	}
+    }
+    if (ntports == 0) {
+	tports[0] = conf[TELNET_PORT].u.num;
+	ntports = 1;
+    }
+    if (nbports == 0) {
+	bports[0] = conf[BINARY_PORT].u.num;
+	nbports = 1;
     }
 
     return TRUE;
@@ -1055,8 +1112,8 @@ sector *fragment;
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
-		   (unsigned int) conf[TELNET_PORT].u.num,
-		   (unsigned int) conf[BINARY_PORT].u.num)) {
+		   tports, bports,
+		   ntports, nbports)) {
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);

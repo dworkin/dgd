@@ -1761,13 +1761,13 @@ object *obj;
 	}
 
 	/* deref old values */
-	for (n = nvar; n > 0; --n) {
+	for (n = lwobj->size - 2; n > 0; --n) {
 	    del_lhs(a->data, v);
 	    i_del_value(v++);
 	}
     } else {
 	/* deref old values */
-	for (n = nvar; n > 0; --n) {
+	for (n = lwobj->size - 2; n > 0; --n) {
 	    i_del_value(v++);
 	}
     }

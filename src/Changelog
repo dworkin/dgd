@@ -1502,3 +1502,5 @@ DGD 1.3
  - Fixed several bugs in error handling.
  - A better fix for errors in atomic code, in combination with multi-level
    catches.
+ - Fixed a bug in upgrading light-weight objects.
+ - DGD can now listen on multiple ports (currently Unix and Windows only).
