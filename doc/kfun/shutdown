@@ -2,12 +2,8 @@ NAME
 	shutdown - shutdown the system
 
 SYNOPSIS
-	varargs void shutdown(int flag)
+	void shutdown()
 
 
 DESCRIPTION
 	Shut down the system after the current user typed command has finished.
-	If flag is non-zero, dump the state of the system just before shutdown.
-
-SEE ALSO
-	kfun/swapout
