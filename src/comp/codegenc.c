@@ -228,45 +228,6 @@ bool direct;
 }
 
 /*
- * NAME:	codegen->uasgnop()
- * DESCRIPTION:	handle an unsigned integer assignment operator
- */
-static void cg_uasgnop(n, op, direct)
-register node *n;
-char *op;
-bool direct;
-{
-    register int i;
-
-    if (n->l.left->type == N_LOCAL) {
-	/*
-	 * local variable
-	 */
-	i = n->l.left->r.number;
-	n = n->r.right;
-	if (catch_level != 0) {
-	    output("%s->u.number = ", local(i));
-	}
-	output("ivar%d = ((Uint) ivar%d) %s ", vars[i], vars[i], op);
-	cg_iexpr(n, direct);
-    } else {
-	cg_fetch(n->l.left);
-	n = n->r.right;
-	if (n->type == N_INT) {
-	    output("f->sp->u.number = ((Uint) f->sp->u.number) %s ", op);
-	    cg_iexpr(n, TRUE);
-	} else {
-	    i = tmpval();
-	    output("tv[%d] = ", i);
-	    cg_iexpr(n, TRUE);
-	    output(", f->sp->u.number = ((Uint) f->sp->u.number) %s tv[%d]", op,
-		   i);
-	}
-	output(", store_int()");
-    }
-}
-
-/*
  * NAME:	codegen->ifasgnop()
  * DESCRIPTION:	handle a function integer assignment operator
  */
@@ -490,12 +451,13 @@ int direct;
 	break;
 
     case N_LSHIFT_INT:
-	output("(Uint) (");
-	cg_ibinop(n, ") <<", direct);
+	output("xlshift(");
+	cg_ibinop(n, ",", direct);
+	output(")");
 	break;
 
     case N_LSHIFT_EQ_INT:
-	cg_uasgnop(n, "<<", direct);
+	cg_ifasgnop(n, "xlshift", direct);
 	break;
 
     case N_LT_INT:
@@ -561,12 +523,13 @@ int direct;
 	break;
 
     case N_RSHIFT_INT:
-	output("(Uint) (");
-	cg_ibinop(n, ") >>", direct);
+	output("xrshift(");
+	cg_ibinop(n, ",", direct);
+	output(")");
 	break;
 
     case N_RSHIFT_EQ_INT:
-	cg_uasgnop(n, ">>", direct);
+	cg_ifasgnop(n, "xrshift", direct);
 	break;
 
     case N_SUB_INT:

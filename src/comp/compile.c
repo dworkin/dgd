@@ -173,7 +173,7 @@ typedef struct _loop_ {
     bool brk;			/* seen any breaks? */
     bool cont;			/* seen any continues? */
     bool dflt;			/* seen any default labels? */
-    short ncase;		/* number of case labels */
+    Uint ncase;			/* number of case labels */
     unsigned short nesting;	/* rlimits/catch nesting level */
     node *case_list;		/* previous list of case nodes */
     struct _loop_ *prev;	/* previous loop or switch */
@@ -822,6 +822,7 @@ register node *n;
     register unsigned short i;
     register node *v, *zero;
     char *prog;
+    Uint depth;
     unsigned short size;
     xfloat flt;
 
@@ -884,9 +885,14 @@ register node *n;
 	n = c_concat(c_exp_stmt(zero), n);
     }
 
-    n = opt_stmt(n, &size);
-    prog = cg_function(fname, n, nvars, nparams, size, &size);
-    ctrl_dprogram(prog, size);
+    n = opt_stmt(n, &depth);
+    if (depth > 0x7fff) {
+	c_error("function requires too much runtime stack space");
+    } else {
+	prog = cg_function(fname, n, nvars, nparams, (unsigned short) depth,
+			   &size);
+	ctrl_dprogram(prog, size);
+    }
     node_free();
     nvars = 0;
     nparams = 0;
@@ -1235,6 +1241,8 @@ node *expr, *stmt;
 	    n = c_exp_stmt(expr);
 	} else if (!(stmt->flags & F_ENTRY)) {
 	    c_error("unreachable code in switch");
+	} else if (switch_list->ncase > 0x7fff) {
+	    c_error("too many cases in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
 	    if (switch_list->ncase == 0) {
 		/* can happen when recovering from syntax error */

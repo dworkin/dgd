@@ -725,7 +725,14 @@ register frame *f;
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_LSHIFT, 2);
     }
-    f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+    if ((f->sp->u.number & ~31) != 0) {
+	if (f->sp->u.number < 0) {
+	    error("Negative left shift");
+	}
+	f->sp[1].u.number = 0;
+    } else {
+	f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+    }
     f->sp++;
     return 0;
 }
@@ -744,7 +751,14 @@ char pt_lshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_lshift_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+    if ((f->sp->u.number & ~31) != 0) {
+	if (f->sp->u.number < 0) {
+	    error("Negative left shift");
+	}
+	f->sp[1].u.number = 0;
+    } else {
+	f->sp[1].u.number = (Uint) f->sp[1].u.number << f->sp->u.number;
+    }
     f->sp++;
     return 0;
 }
@@ -1441,7 +1455,14 @@ register frame *f;
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_RSHIFT, 2);
     }
-    f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+    if ((f->sp->u.number & ~31) != 0) {
+	if (f->sp->u.number < 0) {
+	    error("Negative right shift");
+	}
+	f->sp[1].u.number = 0;
+    } else {
+	f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+    }
     f->sp++;
     return 0;
 }
@@ -1460,7 +1481,14 @@ char pt_rshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 int kf_rshift_int(f)
 register frame *f;
 {
-    f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+    if ((f->sp->u.number & ~31) != 0) {
+	if (f->sp->u.number < 0) {
+	    error("Negative right shift");
+	}
+	f->sp[1].u.number = 0;
+    } else {
+	f->sp[1].u.number = (Uint) f->sp[1].u.number >> f->sp->u.number;
+    }
     f->sp++;
     return 0;
 }

@@ -83,6 +83,8 @@ void call_kfun		P((frame*, int));
 void call_kfun_arg	P((frame*, int, int));
 Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
+Int  xlshift		P((Int, Int));
+Int  xrshift		P((Int, Int));
 bool poptruthval	P((frame*));
 void pre_catch		P((frame*));
 void post_catch		P((frame*, int));

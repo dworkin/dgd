@@ -15,8 +15,8 @@
  * NAME:	max2()
  * DESCRIPTION:	return the maximum of two numbers
  */
-static unsigned short max2(a, b)
-unsigned short a, b;
+static Uint max2(a, b)
+Uint a, b;
 {
     return (a > b) ? a : b;
 }
@@ -25,14 +25,14 @@ unsigned short a, b;
  * NAME:	max3()
  * DESCRIPTION:	return the maximum of three numbers
  */
-static unsigned short max3(a, b, c)
-register unsigned short a, b, c;
+static Uint max3(a, b, c)
+register Uint a, b, c;
 {
     return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
 
 static node **aside;
-static unsigned short sidedepth;
+static Uint sidedepth;
 
 /*
  * NAME:	side->start()
@@ -40,7 +40,7 @@ static unsigned short sidedepth;
  */
 static node **side_start(n, depth)
 node **n;
-unsigned short *depth;
+Uint *depth;
 {
     node **old;
 
@@ -58,7 +58,7 @@ unsigned short *depth;
  */
 static void side_add(n, depth)
 node **n;
-unsigned short depth;
+Uint depth;
 {
     node *m;
 
@@ -79,11 +79,11 @@ unsigned short depth;
  * NAME:	side->end()
  * DESCRIPTION:	end a side expression
  */
-static unsigned short side_end(n, side, oldside, olddepth)
+static Uint side_end(n, side, oldside, olddepth)
 node **n, *side, **oldside;
-unsigned short olddepth;
+Uint olddepth;
 {
-    unsigned short depth;
+    Uint depth;
 
     if (side != (node *) NULL) {
 	if (*n == (node *) NULL) {
@@ -114,13 +114,13 @@ void opt_init()
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
 }
 
-static unsigned short opt_expr P((node**, int));
+static Uint opt_expr P((node**, int));
 
 /*
  * NAME:	optimize->lvalue()
  * DESCRIPTION:	optimize an lvalue
  */
-static unsigned short opt_lvalue(n)
+static Uint opt_lvalue(n)
 register node *n;
 {
     if (n->type == N_CAST) {
@@ -151,7 +151,7 @@ register node *n;
  * NAME:	optimize->binconst()
  * DESCRIPTION:	optimize a binary operator constant expression
  */
-static unsigned short opt_binconst(m)
+static Uint opt_binconst(m)
 node **m;
 {
     register node *n;
@@ -535,11 +535,11 @@ register node *n;
  * NAME:	optimize->binop()
  * DESCRIPTION:	optimize a binary operator expression
  */
-static unsigned short opt_binop(m)
+static Uint opt_binop(m)
 register node **m;
 {
     register node *n, *t;
-    unsigned short d1, d2, d;
+    Uint d1, d2, d;
     xfloat f1, f2;
 
     n = *m;
@@ -1034,12 +1034,12 @@ register node **m;
  * NAME:	optimize->asgnexp()
  * DESCRIPTION:	optimize an assignment expression
  */
-static unsigned short opt_asgnexp(m, pop)
+static Uint opt_asgnexp(m, pop)
 register node **m;
 bool pop;
 {
     register node *n;
-    unsigned short d1, d2;
+    Uint d1, d2;
 
     n = *m;
     d2 = opt_expr(&n->r.right, FALSE);
@@ -1234,11 +1234,11 @@ register node *n;
  * NAME:	optimize->cond()
  * DESCRIPTION:	optimize a condition
  */
-static unsigned short opt_cond(m, pop)
+static Uint opt_cond(m, pop)
 register node **m;
 int pop;
 {
-    unsigned short d;
+    Uint d;
 
     d = opt_expr(m, pop);
     if (*m != (node *) NULL && (*m)->type == N_TST) {
@@ -1251,14 +1251,14 @@ int pop;
  * NAME:	optimize->expr()
  * DESCRIPTION:	optimize an expression
  */
-static unsigned short opt_expr(m, pop)
+static Uint opt_expr(m, pop)
 register node **m;
 int pop;
 {
-    register unsigned short d1, d2, i;
+    register Uint d1, d2, i;
     register node *n;
     node **oldside, *side;
-    unsigned short olddepth;
+    Uint olddepth;
 
     n = *m;
     switch (n->type) {
@@ -1856,11 +1856,11 @@ register node *n;
  */
 node *opt_stmt(first, depth)
 node *first;
-unsigned short *depth;
+Uint *depth;
 {
     register node *n, **m, **prev;
-    register unsigned short d;
-    unsigned short d1, d2;
+    register Uint d;
+    Uint d1, d2;
     register int i;
     node *side;
 

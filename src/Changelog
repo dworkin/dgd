@@ -1261,3 +1261,8 @@ DGD 1.1
    first, then condition), to ensure that tables are generated in the same
    order by both.
  - Math functions implemented.
+ - New kfun millitime (was added before, but not mentioned in the log).
+ - Made behaviour of << and >> uniform on all platforms: no negative shift
+   allowed, shifts >= 32 make the result 0.
+ - Check that a switch doesn't contain more than 32767 cases, and a function
+   doesn't need more than 32767 values on the stack.

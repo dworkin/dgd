@@ -1375,10 +1375,17 @@ int op;
 register node *n1, *n2;
 char *name;
 {
-    if (n1->type == N_INT && n2->type == N_INT) {
-	/* i << i */
-	n1->l.number = (Uint) n1->l.number << n2->l.number;
-	return n1;
+    if (n2->type == N_INT) {
+	if (n2->l.number < 0) {
+	    c_error("negative left shift");
+	    n2->l.number = 0;
+	}
+	if (n1->type == N_INT) {
+	    /* i << i */
+	    n1->l.number = (n2->l.number < 32) ?
+			    (Uint) n1->l.number << n2->l.number : 0;
+	    return n1;
+	}
     }
 
     return bini(op, n1, n2, name);
@@ -1393,10 +1400,17 @@ int op;
 register node *n1, *n2;
 char *name;
 {
-    if (n1->type == N_INT && n2->type == N_INT) {
-	/* i >> i */
-	n1->l.number = (Uint) n1->l.number >> n2->l.number;
-	return n1;
+    if (n2->type == N_INT) {
+	if (n2->l.number < 0) {
+	    c_error("negative right shift");
+	    n2->l.number = 0;
+	}
+	if (n1->type == N_INT) {
+	    /* i >> i */
+	    n1->l.number = (n2->l.number < 32) ?
+			    (Uint) n1->l.number >> n2->l.number : 0;
+	    return n1;
+	}
     }
 
     return bini(op, n1, n2, name);

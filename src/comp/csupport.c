@@ -909,6 +909,38 @@ register Int i, d;
 }
 
 /*
+ * NAME:	xlshift()
+ * DESCRIPTION:	perform left shift
+ */
+Int xlshift(i, shift)
+register Int i, shift;
+{
+    if ((shift & ~31) != 0) {
+	if (shift < 0) {
+	    error("Negative left shift");
+	}
+	return 0;
+    }
+    return (Uint) i << shift;
+}
+
+/*
+ * NAME:	xrshift()
+ * DESCRIPTION:	perform right shift
+ */
+Int xrshift(i, shift)
+register Int i, shift;
+{
+    if ((shift & ~31) != 0) {
+	if (shift < 0) {
+	    error("Negative right shift");
+	}
+	return 0;
+    }
+    return (Uint) i >> shift;
+}
+
+/*
  * NAME:	poptruthval()
  * DESCRIPTION:	pop a truth value from the stack
  */
