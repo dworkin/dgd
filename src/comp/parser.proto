@@ -1,0 +1,3 @@
+
+extern int  yyparse	P((void));
+extern void yyerror	();
