@@ -233,7 +233,28 @@ static void message_done(mixed *tls)
     }
 }
 
-# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	datagram_challenge()
+ * DESCRIPTION:	set the challenge for the datagram channel
+ */
+void datagram_challenge(string str)
+{
+    if (previous_object() == user) {
+	::datagram_challenge(str);
+    }
+}
+
+/*
+ * NAME:	open_datagram()
+ * DESCRIPTION:	open a datagram channel for this connection
+ */
+static void open_datagram(mixed *tls)
+{
+    if (user) {
+	user->open_datagram();
+    }
+}
+
 /*
  * NAME:	receive_datagram()
  * DESCRIPTION:	forward a datagram to the user
@@ -255,4 +276,3 @@ int datagram(string str)
 	return (send_datagram(str) == strlen(str));
     }
 }
-# endif

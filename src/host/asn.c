@@ -58,7 +58,7 @@ register Uint *a, *b, sizea, sizeb;
  * NAME:	asi->lshift()
  * DESCRIPTION:	a <<= lshift, lshift != 0
  */
-static Uint asi_lshift(a, size, lshift)
+static void asi_lshift(a, size, lshift)
 register Uint *a, size, lshift;
 {
     register Uint offset, rshift, tmp, bits;
@@ -97,7 +97,7 @@ register Uint *a, size, lshift;
  * NAME:	asi->rshift()
  * DESCRIPTION:	a >>= rshift, rshift != 0
  */
-static Uint asi_rshift(a, size, rshift)
+static void asi_rshift(a, size, rshift)
 register Uint *a, size, rshift;
 {
     register Uint offset, lshift, tmp, bits;
@@ -439,7 +439,7 @@ static Uint *asi_div(c, t, a, b, sizea, sizeb)
 Uint *c;
 register Uint *t, *a, *b, sizea, sizeb;
 {
-    register Uint *v, d, q, shift;
+    register Uint d, q, shift;
 
     /* copy values */
     if (a != c) {
@@ -953,7 +953,7 @@ string *s1, *s2, *s3;
     cc = c = ALLOCA(Uint, sizec);
     t1 = ALLOCA(Uint, (sizec << 1) + 3);
     t2 = t1 + sizec;
-    memset(c, '\0', sizec * sizeof(uint));
+    memset(c, '\0', sizec * sizeof(Uint));
     while (sizea != sizeb) {
 	if (sizea < sizeb) {
 	    Uint *t, sizet;
@@ -1572,7 +1572,7 @@ Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
 	asn_powqmod(c, t, a, b, mod, sizea, sizeb, sizemod);
     } else {
 	register Uint size, i, *x, *y, *z;
-	Uint *q, *qinv, sizeq, sizeqinv;
+	Uint *q, *qinv, sizeq;
 
 	/*
 	 * modulo even number

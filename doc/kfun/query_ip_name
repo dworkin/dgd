@@ -11,5 +11,5 @@ DESCRIPTION
 	IP number is returned, instead.
 
 SEE ALSO
-	kfun/query_ip_number, kfun/send_datagram, kfun/send_message,
-	kfun/this_user, kfun/users
+	kfun/datagram_challenge, kfun/query_ip_number, kfun/send_datagram,
+	kfun/send_message, kfun/this_user, kfun/users

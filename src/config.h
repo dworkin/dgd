@@ -32,6 +32,11 @@ typedef char eindex;
 # define OBJPATCHHTABSZ	128	/* object patch hash table size */
 # define SWAPCHUNKSZ	32	/* # swap sectors reconstructed in main loop */
 
+/* comm */
+# define INBUF_SIZE	2048	/* telnet input buffer size */
+# define OUTBUF_SIZE	8192	/* telnet output buffer size */
+# define BINBUF_SIZE	8192	/* binary/UDP input buffer size */
+# define UDPHASHSZ	10	/* # characters in UDP challenge to hash */
 
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */

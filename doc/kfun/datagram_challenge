@@ -1,0 +1,20 @@
+NAME
+	datagram_challenge - set the datagram challenge
+
+SYNOPSIS
+	void datagram_challenge(string challenge)
+
+
+DESCRIPTION
+	Set the datagram challenge for the current binary user object.  The
+	client must send this challenge in order to open the datagram channel,
+	after which open_datagram() will be called in the object.  All
+	outstanding challenges must be unique.
+
+ERRORS
+	An error will result if a challenge has already been set for the
+	current object.
+
+SEE ALSO
+	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,
+	kfun/this_user, kfun/users

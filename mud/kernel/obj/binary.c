@@ -24,14 +24,9 @@ static void create(int clone)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static int open()
+static void open()
 {
     ::open(allocate(driver->query_tls_size()));
-# ifdef SYS_DATAGRAMS
-    return TRUE;
-# else
-    return FALSE;
-# endif
 }
 
 /*
@@ -137,7 +132,15 @@ static void message_done()
     ::message_done(allocate(driver->query_tls_size()));
 }
 
-# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	open_datagram()
+ * DESCRIPTION:	open a datagram channel for this connection
+ */
+static void open_datagram()
+{
+    ::open_datagram(allocate(driver->query_tls_size()));
+}
+
 /*
  * NAME:	receive_datagram()
  * DESCRIPTION:	receive a datagram
@@ -146,4 +149,3 @@ static void receive_datagram(string str)
 {
     ::receive_datagram(allocate(driver->query_tls_size()), str);
 }
-# endif

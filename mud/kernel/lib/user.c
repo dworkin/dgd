@@ -104,7 +104,20 @@ int message_done()
     return MODE_NOCHANGE;
 }
 
-# ifdef SYS_DATAGRAMS
+/*
+ * NAME:	datagram_challenge()
+ * DESCRIPTION:	set the challenge for the datagram channel
+ */
+static void datagram_challenge(string str)
+{
+    if (!str) {
+	error("Bad argument 1 for function datagram_challenge");
+    }
+    if (connection) {
+	connection->datagram_challenge(str);
+    }
+}
+
 /*
  * NAME:	datagram()
  * DESCRIPTION:	forward a datagram to the connection object
@@ -119,4 +132,3 @@ int datagram(string str)
     }
     return 0;
 }
-# endif

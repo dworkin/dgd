@@ -7,6 +7,7 @@
 # include <errno.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
+# include "hash.h"
 # include "comm.h"
 
 # ifndef MAXHOSTNAMELEN
@@ -25,7 +26,6 @@ typedef struct _ipaddr_ {
 } ipaddr;
 
 static int in = -1, out = -1;		/* pipe to/from name resolver */
-static int addrtype;			/* network address family */
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -53,10 +53,10 @@ register int in, out;
 
     while (read(in, buf, sizeof(struct in_addr)) > 0) {
 	/* lookup host */
-	host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
+	host = gethostbyaddr(buf, sizeof(struct in_addr), AF_INET);
 	if (host == (struct hostent *) NULL) {
 	    sleep(2);
-	    host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
+	    host = gethostbyaddr(buf, sizeof(struct in_addr), AF_INET);
 	}
 
 	if (host != (struct hostent *) NULL) {
@@ -332,11 +332,13 @@ static void ipa_lookup()
 
 
 struct _connection_ {
+    hte chain;				/* UDP challenge hash chain */
     int fd;				/* file descriptor */
+    int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
-    unsigned short port;		/* port of connection */
+    unsigned short uport;		/* UDP port of connection */
     unsigned short at;			/* port connection was accepted at */
     struct _connection_ *next;		/* next in list */
 };
@@ -346,6 +348,7 @@ static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
+static hashtab *chtab;			/* challenge hash table */
 static int *tdescs, *bdescs;		/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static int *udescs;			/* UDP port descriptor array */
@@ -355,34 +358,23 @@ static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
+static int npackets;			/* # packets buffered */
 static int closed;			/* #fds closed in write */
 
 /*
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(maxusers, tports, bports, ntports, nbports)
+bool conn_init(maxusers, thosts, bhosts, tports, bports, ntports, nbports)
 int maxusers, ntports, nbports;
+char **thosts, **bhosts;
 unsigned short *tports, *bports;
 {
     struct sockaddr_in sin;
     struct hostent *host;
     register int n;
     register connection *conn;
-    char buffer[MAXHOSTNAMELEN];
     int on;
-
-    gethostname(buffer, MAXHOSTNAMELEN);
-    host = gethostbyname(buffer);
-    if (host == (struct hostent *) NULL) {
-	perror("gethostbyname");
-	return FALSE;
-    }
-    addrtype = host->h_addrtype;
-    memset(&sin, '\0', sizeof(sin));
-    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
-    sin.sin_family = host->h_addrtype;
-    sin.sin_addr.s_addr = INADDR_ANY;
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
@@ -394,18 +386,28 @@ unsigned short *tports, *bports;
     FD_ZERO(&outfds);
     FD_ZERO(&waitfds);
     FD_SET(in, &infds);
+    npackets = 0;
     closed = 0;
 
-    tdescs = ALLOC(int, ntdescs = ntports);
-    memset(tdescs, -1, ntports * sizeof(int));
-    bdescs = ALLOC(int, nbdescs = nbports);
-    memset(bdescs, -1, nbports * sizeof(int));
-    udescs = ALLOC(int, nbports);
-    memset(udescs, -1, nbports * sizeof(int));
+    ntdescs = ntports;
+    if (ntports != 0) {
+	tdescs = ALLOC(int, ntports);
+	memset(tdescs, -1, ntports * sizeof(int));
+    }
+    nbdescs = nbports;
+    if (nbports != 0) {
+	bdescs = ALLOC(int, nbports);
+	memset(bdescs, -1, nbports * sizeof(int));
+	udescs = ALLOC(int, nbports);
+	memset(udescs, -1, nbports * sizeof(int));
+    }
+
+    memset(&sin, '\0', sizeof(sin));
+    sin.sin_family = AF_INET;
 
     for (n = 0; n < ntdescs; n++) {
 	/* telnet ports */
-	if ((tdescs[n]=socket(host->h_addrtype, SOCK_STREAM, 0)) < 0) {
+	if ((tdescs[n]=socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 	    perror("socket");
 	    return FALSE;
 	}
@@ -426,6 +428,15 @@ unsigned short *tports, *bports;
 	    return FALSE;
 	}
 # endif
+	if (thosts[n] == (char *) NULL) {
+	    sin.sin_addr.s_addr = INADDR_ANY;
+	} else if ((sin.sin_addr.s_addr=inet_addr(thosts[n])) == INADDR_NONE) {
+	    host = gethostbyname(thosts[n]);
+	    if (host == (struct hostent *) NULL) {
+		perror(thosts[n]);
+	    }
+	    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
+	}
 	sin.sin_port = htons(tports[n]);
 	if (bind(tdescs[n], (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    perror("telnet bind");
@@ -435,7 +446,7 @@ unsigned short *tports, *bports;
     }
     for (n = 0; n < nbdescs; n++) {
 	/* binary ports */
-	if ((bdescs[n]=socket(host->h_addrtype, SOCK_STREAM, 0)) < 0) {
+	if ((bdescs[n]=socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 	    perror("socket");
 	    return FALSE;
 	}
@@ -456,6 +467,15 @@ unsigned short *tports, *bports;
 	    return FALSE;
 	}
 # endif
+	if (bhosts[n] == (char *) NULL) {
+	    sin.sin_addr.s_addr = INADDR_ANY;
+	} else if ((sin.sin_addr.s_addr=inet_addr(bhosts[n])) == INADDR_NONE) {
+	    host = gethostbyname(bhosts[n]);
+	    if (host == (struct hostent *) NULL) {
+		perror(bhosts[n]);
+	    }
+	    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
+	}
 	sin.sin_port = htons(bports[n]);
 	if (bind(bdescs[n], (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    perror("binary bind");
@@ -464,7 +484,7 @@ unsigned short *tports, *bports;
 	FD_SET(bdescs[n], &infds);
 
 	/* UDP ports */
-	if ((udescs[n]=socket(host->h_addrtype, SOCK_DGRAM, 0)) < 0) {
+	if ((udescs[n]=socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 	    perror("socket");
 	    return FALSE;
 	}
@@ -488,12 +508,13 @@ unsigned short *tports, *bports;
     connections = ALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = -1;
-	conn->next = flist;
+	conn->chain.next = (hte *) flist;
 	flist = conn;
     }
 
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
+    chtab = ht_new(maxusers, UDPHASHSZ);
 
     return TRUE;
 }
@@ -578,11 +599,11 @@ int port;
     fcntl(fd, F_SETFL, FNDELAY);
 
     conn = flist;
-    flist = conn->next;
+    flist = (connection *) conn->chain.next;
+    conn->chain.name = (char *) NULL;
     conn->fd = fd;
     conn->udpbuf = (char *) NULL;
     conn->addr = ipa_new(&sin.sin_addr);
-    conn->port = sin.sin_port;
     conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
@@ -618,11 +639,11 @@ int port;
     fcntl(fd, F_SETFL, FNDELAY);
 
     conn = flist;
-    flist = conn->next;
+    flist = (connection *) conn->chain.next;
+    conn->chain.name = (char *) NULL;
     conn->fd = fd;
     conn->udpbuf = (char *) NULL;
     conn->addr = ipa_new(&sin.sin_addr);
-    conn->port = sin.sin_port;
     conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
@@ -636,22 +657,64 @@ int port;
 }
 
 /*
- * NAME:	conn->udp()
- * DESCRIPTION:	enable the UDP channel of a binary connection
+ * NAME:	conn->hashudp()
+ * DESCRIPTION:	prepare a UDP challenge for hashing
  */
-void conn_udp(conn)
-register connection *conn;
+static void conn_udphash(buf, str, len)
+register char *buf, *str;
+register unsigned int len;
 {
+    /* replace \0 characters in the challenge */
+    if (len > UDPHASHSZ) {
+	len = UDPHASHSZ;
+    }
+    while (len != 0) {
+	if ((*buf=*str++) == '\0') {
+	    *buf = len;
+	}
+	buf++;
+	--len;
+    }
+    *buf = '\0';
+}
+
+/*
+ * NAME:	conn->udp()
+ * DESCRIPTION:	set the challenge for attaching a UDP channel
+ */
+bool conn_udp(conn, challenge, len)
+register connection *conn;
+char *challenge;
+register unsigned int len;
+{
+    char buffer[UDPHASHSZ + 1];
     register connection **hash;
 
+    if (len == 0 || len > BINBUF_SIZE - UDPHASHSZ - 1 ||
+	conn->udpbuf != (char *) NULL) {
+	return FALSE;	/* invalid challenge */
+    }
+
+    conn_udphash(buffer, challenge, len);
+    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+    while (*hash != (connection *) NULL &&
+	   strcmp((*hash)->chain.name, buffer) == 0) {
+	if ((*hash)->bufsz == len &&
+	    memcmp((*hash)->udpbuf, challenge, len) == 0) {
+	    return FALSE;	/* duplicate challenge */
+	}
+    }
+
+    conn->chain.next = (hte *) *hash;
+    *hash = conn;
+    conn->npkts = 0;
     m_static();
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
-    conn->bufsz = -1;
+    memcpy(conn->udpbuf, challenge, conn->bufsz = len);
+    strcpy(conn->chain.name = conn->udpbuf + len, buffer);
 
-    hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) % udphtabsz];
-    conn->next = *hash;
-    *hash = conn;
+    return TRUE;
 }
 
 /*
@@ -673,16 +736,21 @@ register connection *conn;
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
+	if (conn->chain.name != (char *) NULL) {
+	    hash = (connection **) ht_lookup(chtab, conn->chain.name, FALSE);
+	} else {
+	    hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^
+						    conn->uport) % udphtabsz];
+	}
+	while (*hash != conn) {
+	    hash = (connection **) &(*hash)->chain.next;
+	}
+	*hash = (connection *) conn->chain.next;
+	npackets -= conn->npkts;
 	FREE(conn->udpbuf);
-
-	for (hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) %
-			     udphtabsz];
-	     *hash != conn;
-	     hash = &(*hash)->next) ;
-	*hash = conn->next;
     }
     ipa_del(conn->addr);
-    conn->next = flist;
+    conn->chain.next = (hte *) flist;
     flist = conn;
 }
 
@@ -705,6 +773,83 @@ int flag;
 }
 
 /*
+ * NAME:	conn->udprecv()
+ * DESCRIPTION:	receive an UDP packet
+ */
+static void conn_udprecv(n)
+int n;
+{
+    char chash[UDPHASHSZ + 1];
+    char buffer[BINBUF_SIZE];
+    struct sockaddr_in from;
+    int fromlen;
+    register int size;
+    register connection **hash, *conn;
+    register char *p;
+
+    for (;;) {
+	fromlen = sizeof(struct sockaddr_in);
+	size = recvfrom(udescs[n], buffer, BINBUF_SIZE, 0,
+			(struct sockaddr *) &from, &fromlen);
+	if (size < 0) {
+	    return;
+	}
+
+	hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
+								    udphtabsz];
+	for (;;) {
+	    conn = *hash;
+	    if (conn == (connection *) NULL) {
+		/*
+		 * see if the packet matches an outstanding challenge
+		 */
+		conn_udphash(chash, buffer, size);
+		hash = (connection **) ht_lookup(chtab, chash, FALSE);
+		while ((conn=*hash) != (connection *) NULL &&
+		       strcmp((*hash)->chain.name, chash) == 0) {
+		    if (memcmp(conn->udpbuf, buffer, size) == 0) {
+			/*
+			 * attach new UDP channel
+			 */
+			*hash = (connection *) conn->chain.next;
+			conn->chain.name = (char *) NULL;
+			conn->bufsz = 0;
+			conn->uport = from.sin_port;
+			hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^
+						    conn->uport) % udphtabsz];
+			conn->chain.next = (hte *) *hash;
+			*hash = conn;
+
+			break;
+		    }
+		    hash = (connection **) &conn->chain.next;
+		}
+		break;
+	    }
+
+	    if (conn->at == n &&
+		conn->addr->ipnum.s_addr == from.sin_addr.s_addr &&
+		conn->uport == from.sin_port) {
+		/*
+		 * packet from known correspondent
+		 */
+		if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+		    p = conn->udpbuf + conn->bufsz;
+		    *p++ = size >> 8;
+		    *p++ = size;
+		    memcpy(p, buffer, size);
+		    conn->bufsz += size + 2;
+		    conn->npkts++;
+		    npackets++;
+		}
+		break;
+	    }
+	    hash = (connection **) &conn->chain.next;
+	}
+    }
+}
+
+/*
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
@@ -722,7 +867,7 @@ unsigned int mtime;
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
     memcpy(&writefds, &waitfds, sizeof(fd_set));
-    if (closed != 0) {
+    if (npackets + closed != 0) {
 	t = 0;
 	mtime = 0;
     }
@@ -739,7 +884,14 @@ unsigned int mtime;
 	FD_ZERO(&readfds);
 	retval = 0;
     }
-    retval += closed;
+
+    /* check for UDP packets */
+    for (n = 0; n < nbdescs; n++) {
+	if (FD_ISSET(udescs[n], &readfds)) {
+	    conn_udprecv(n);
+	}
+    }
+    retval += npackets + closed;
 
     /*
      * Now check writability for all sockets in a polling call.
@@ -749,41 +901,21 @@ unsigned int mtime;
     timeout.tv_usec = 0;
     select(maxfd + 1, (fd_set *) NULL, &writefds, (fd_set *) NULL, &timeout);
 
-    /* check for UDP packets */
-    for (n = 0; n < nbdescs; n++) {
-	if (FD_ISSET(udescs[n], &readfds)) {
-	    char buffer[BINBUF_SIZE];
-	    struct sockaddr_in from;
-	    int fromlen, size;
-	    register connection **hash;
-
-	    fromlen = sizeof(struct sockaddr_in);
-	    size = recvfrom(udescs[n], buffer, BINBUF_SIZE, 0,
-			    (struct sockaddr *) &from, &fromlen);
-	    if (size >= 0) {
-		hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
-				udphtabsz];
-		while (*hash != (connection *) NULL) {
-		    if ((*hash)->addr->ipnum.s_addr == from.sin_addr.s_addr &&
-			(*hash)->port == from.sin_port && (*hash)->at == n) {
-			/*
-			 * copy to connection's buffer
-			 */
-			memcpy((*hash)->udpbuf, buffer, (*hash)->bufsz = size);
-			break;
-		    }
-		    hash = &(*hash)->next;
-		}
-		/* else from unknown source: ignore */
-	    }
-	}
-    }
-
     /* handle ip name lookup */
     if (FD_ISSET(in, &readfds)) {
 	ipa_lookup();
     }
     return retval;
+}
+
+/*
+ * NAME:	conn->udpcheck()
+ * DESCRIPTION:	check if UDP challenge met
+ */
+bool conn_udpcheck(conn)
+connection *conn;
+{
+    return (conn->chain.name == (char *) NULL);
 }
 
 /*
@@ -824,15 +956,25 @@ register connection *conn;
 char *buf;
 unsigned int len;
 {
-    if (conn->bufsz >= 0) {
+    register unsigned short size, n;
+    register char *p, *q;
+
+    while (conn->bufsz != 0) {
 	/* udp buffer is not empty */
-	if (conn->bufsz <= len) {
-	    memcpy(buf, conn->udpbuf, len = conn->bufsz);
-	} else {
-	    len = 0;
+	size = ((unsigned char) conn->udpbuf[0] << 8) |
+		(unsigned char) conn->udpbuf[1];
+	if (size <= len) {
+	    memcpy(buf, conn->udpbuf + 2, len = size);
 	}
-	conn->bufsz = -1;
-	return len;
+	--conn->npkts;
+	--npackets;
+	conn->bufsz -= size + 2;
+	for (p = conn->udpbuf, q = p + size + 2, n = conn->bufsz; n != 0; --n) {
+	    *p++ = *q++;
+	}
+	if (len == size) {
+	    return len;
+	}
     }
     return -1;
 }
@@ -888,13 +1030,13 @@ unsigned int len;
     struct sockaddr_in to;
 
     if (conn->fd >= 0) {
-	to.sin_family = addrtype;
+	to.sin_family = AF_INET;
 	to.sin_addr.s_addr = conn->addr->ipnum.s_addr;
-	to.sin_port = conn->port;
+	to.sin_port = conn->uport;
 	return sendto(udescs[conn->at], buf, len, 0, (struct sockaddr *) &to,
 		      sizeof(struct sockaddr_in));
     }
-    return 0;
+    return -1;
 }
 
 /*

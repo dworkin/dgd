@@ -45,5 +45,5 @@ xfloat.c: simfloat.c
 	cp simfloat.c $@
 
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
-connect.o: ../comm.h
+connect.o: ../hash.h ../comm.h
 xfloat.o: ../xfloat.h

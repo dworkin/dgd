@@ -972,6 +972,34 @@ register frame *f;
 
 
 # ifdef FUNCDEF
+FUNCDEF("datagram_challenge", kf_datagram_challenge, pt_datagram_challenge)
+# else
+char pt_datagram_challenge[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->datagram_challenge()
+ * DESCRIPTION:	set the challenge for a datagram connection to attach
+ */
+int kf_datagram_challenge(f)
+register frame *f;
+{
+    object *obj;
+
+    if (f->lwobj == (array *) NULL) {
+	obj = OBJW(f->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
+	    comm_challenge(obj, f->sp->u.string);
+	}
+    }
+    str_del(f->sp->u.string);
+    *f->sp = nil_value;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("block_input", kf_block_input, pt_block_input)
 # else
 char pt_block_input[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_INT };
@@ -987,7 +1015,7 @@ register frame *f;
 
     if (f->lwobj == (array *) NULL) {
 	obj = OBJR(f->oindex);
-	if ((obj->flags & O_SPECIAL) == O_USER) {
+	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    comm_block(obj, f->sp->u.number != 0);
 	}
     }

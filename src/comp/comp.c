@@ -553,8 +553,9 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-bool comm_init(n, tports, bports, ntelnet, nbinary)
+bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
 int n, ntelnet, nbinary;
+char **thosts, **bhosts;
 unsigned short *tports, *bports;
 {
     return TRUE;
@@ -566,6 +567,17 @@ unsigned short *tports, *bports;
  */
 void comm_finish()
 {
+}
+
+
+/*
+ * NAME:	comm->finish()
+ * DESCRIPTION:	pretend to set the datagram challenge
+ */
+void comm_challenge(obj, str)
+object *obj;
+string *str;
+{  
 }
 
 /*

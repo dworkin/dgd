@@ -184,16 +184,31 @@ driver, mostly to translate pathnames.
 	This function is called when a buffered string that could not be
 	sent entirely when send_message was called, was fully transmitted.
 
+    void open_datagram()
+
+	This function is called when a response to the datagram challenge
+	has been received, opening a datagram channel on the current
+	connection.
+
+    void receive_datagram(string packet)
+
+	This function is called when a packet is received on the datagram
+	channel of the connection.
+
+
    On startup, the system is configured with a configuration file, which
 must specify the following configuration parameters:
 
 param		type	meaning
 --------------------------------------------------------------------------
-telnet_port	number	The port number on which the driver will accept
-			telnet connections, or an array of such ports.
-binary_port	number	The port number on which the driver will accept
-			binary connections, or an array of such ports.
-			Communication on the binary port is plain TCP/IP.
+telnet_port	mapping	A mapping containing host:port pairs, where the host
+		  or	string is a name, an IP number or "*", and the port
+		number	number is a port on which to accept telnet connections.
+			Alternatively, a telnet port number.
+binary_port	mapping	A mapping containing host:port pairs, where the host
+		  or	string is a name, an IP number or "*", and the port
+		number	number is a port on which to accept raw TCP/IP
+			connections.  Alternatively, a binary port number.
 directory	string	The base directory for the system.
 users		number	The maximum number of active telnet and binary
 			connections.

@@ -665,7 +665,7 @@ register Uint n;
 # define MAX_PORTS	32
 # define MAX_DIRS	32
 
-static char *dirs[MAX_DIRS];
+static char *dirs[MAX_DIRS], *bhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], tports[MAX_PORTS];
 static int ntports, nbports;
 
@@ -688,6 +688,7 @@ static bool conf_config()
     char buf[STRINGSZ];
     register char *p;
     register int h, l, m, c;
+    char **hosts;
     unsigned short *ports;
 
     for (h = NR_OPTIONS; h > 0; ) {
@@ -744,7 +745,23 @@ static bool conf_config()
 		conferr("int value out of range");
 		return FALSE;
 	    }
-	    conf[m].u.num = yylval.number;
+	    switch (m) {
+	    case BINARY_PORT:
+		bhosts[0] = (char *) NULL;
+		bports[0] = yylval.number;
+		nbports = 1;
+		break;
+
+	    case TELNET_PORT:
+		thosts[0] = (char *) NULL;
+		tports[0] = yylval.number;
+		ntports = 1;
+		break;
+
+	    default:
+		conf[m].u.num = yylval.number;
+		break;
+	    }
 	    break;
 
 	case STRING_CONST:
@@ -794,33 +811,57 @@ static bool conf_config()
 	    break;
 
 	case '[':
-	    if (pp_gettok() != '{') {
-		conferr("'{' expected");
+	    if (pp_gettok() != '[') {
+		conferr("'[' expected");
 		return FALSE;
 	    }
 	    l = 0;
-	    ports = (m == TELNET_PORT) ? tports : bports;
-	    for (;;) {
-		if (pp_gettok() != INT_CONST) {
-		    conferr("integer expected");
-		    return FALSE;
+	    if ((c=pp_gettok()) != ']') {
+		if (m == BINARY_PORT) {
+		    hosts = bhosts;
+		    ports = bports;
+		} else {
+		    hosts = thosts;
+		    ports = tports;
 		}
-		if (l == MAX_PORTS) {
-		    conferr("too many ports");
-		    return FALSE;
-		}
-		if (yylval.number <= 0 || yylval.number > USHRT_MAX) {
-		    conferr("int value out of range");
-		    return FALSE;
-		}
-		ports[l] = yylval.number;
-		l++;
-		if ((c=pp_gettok()) == '}') {
-		    break;
-		}
-		if (c != ',') {
-		    conferr("',' expected");
-		    return FALSE;
+		for (;;) {
+		    if (l == MAX_PORTS) {
+			conferr("too many ports");
+			return FALSE;
+		    }
+		    if (c != STRING_CONST) {
+			conferr("string expected");
+			return FALSE;
+		    }
+		    if (strcmp(yytext, "*") == 0) {
+			hosts[l] = (char *) NULL;
+		    } else {
+			m_static();
+			hosts[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
+					  yytext);
+			m_dynamic();
+		    }
+		    if (pp_gettok() != ':') {
+			conferr("':' expected");
+			return FALSE;
+		    }
+		    if (pp_gettok() != INT_CONST) {
+			conferr("integer expected");
+			return FALSE;
+		    }
+		    if (yylval.number <= 0 || yylval.number > USHRT_MAX) {
+			conferr("int value out of range");
+			return FALSE;
+		    }
+		    ports[l++] = yylval.number;
+		    if ((c=pp_gettok()) == ']') {
+			break;
+		    }
+		    if (c != ',') {
+			conferr("',' expected");
+			return FALSE;
+		    }
+		    c = pp_gettok();
 		}
 	    }
 	    if (pp_gettok() != ')') {
@@ -849,14 +890,6 @@ static bool conf_config()
 	    conferr(buffer);
 	    return FALSE;
 	}
-    }
-    if (ntports == 0) {
-	tports[0] = conf[TELNET_PORT].u.num;
-	ntports = 1;
-    }
-    if (nbports == 0) {
-	bports[0] = conf[BINARY_PORT].u.num;
-	nbports = 1;
     }
 
     return TRUE;
@@ -1133,6 +1166,7 @@ sector *fragment;
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
+		   thosts, bhosts,
 		   tports, bports,
 		   ntports, nbports)) {
 	comm_finish();

@@ -73,8 +73,9 @@ static char ayt[20];		/* are you there? */
  * NAME:	comm->init()
  * DESCRIPTION:	initialize communications
  */
-bool comm_init(n, tports, bports, ntelnet, nbinary)
+bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
 int n, ntelnet, nbinary;
+char **thosts, **bhosts;
 unsigned short *tports, *bports;
 {
     register int i;
@@ -96,7 +97,8 @@ unsigned short *tports, *bports;
     sprintf(ayt, "\15\12[%s]\15\12", VERSION);
 
     nexttport = nextbport = 0;
-    return conn_init(n, tports, bports, ntport = ntelnet, nbport = nbinary);
+    return conn_init(n, thosts, bhosts, tports, bports, ntport = ntelnet,
+		     nbport = nbinary);
 }
 
 /*
@@ -244,6 +246,38 @@ bool force;
 	this_user = olduser;
 	ec_pop();
     }
+}
+
+/*
+ * NAME:	comm->challenge()
+ * DESCRIPTION:	set the UDP challenge for a binary connection
+ */
+void comm_challenge(obj, str)
+object *obj;
+string *str;
+{
+    register user *usr;
+    dataspace *data;
+    array *arr;
+    register value *v;
+    value val;
+
+    usr = &users[obj->etabi];
+    if (usr->flags & CF_TELNET) {
+	error("Datagram channel cannot be attached to telnet connection");
+    }
+    arr = d_get_extravar(data = obj->data)->u.array;
+    if (!(usr->flags & CF_FLUSH)) {
+	addtoflush(usr, arr);
+    }
+
+    v = arr->elts + 2;
+    if ((usr->flags & CF_UDP) || v->type == T_STRING) {
+	error("Datagram challenge already set");
+    }
+    obj->flags |= O_PENDIO;
+    PUT_STRVAL_NOREF(&val, str);
+    d_assign_elt(data, arr, v, &val);
 }
 
 /*
@@ -403,10 +437,10 @@ string *str;
 
     usr = &users[EINDEX(obj->etabi)];
     if ((usr->flags & (CF_TELNET | CF_UDP)) != CF_UDP) {
-	error("Object has no UDP channel");
+	error("Object has no datagram channel");
     }
     if (!(usr->flags & CF_UDPDATA)) {
-	error("No datagrams received yet");
+	error("No response to datagram challenge received yet");
     }
 
     arr = d_get_extravar(data = obj->data)->u.array;
@@ -528,7 +562,12 @@ array *arr;
     }
 
     if (v[2].type == T_STRING) {
-	conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
+	if (usr->flags & CF_UDP) {
+	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
+	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
+	{
+	    usr->flags |= CF_UDP;
+	}
 	d_assign_elt(data, arr, &v[2], &nil_value);
     }
 }
@@ -751,15 +790,7 @@ unsigned int mtime;
 
 		this_user = obj->index;
 		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
-		    if (VAL_TRUE(f->sp)) {
-			i_del_value(f->sp);
-			if ((obj->flags & O_SPECIAL) == O_USER) {
-			    /* open UDP channel */
-			    usr->flags |= CF_UDP;
-			    conn_udp(conn);
-			}
-		    }
-		    f->sp++;
+		    i_del_value(f->sp++);
 		    endthread();
 		}
 		this_user = OBJ_NONE;
@@ -1018,16 +1049,26 @@ unsigned int mtime;
 	     * binary connection
 	     */
 	    if (usr->flags & CF_UDP) {
-		n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
-		if (n >= 0) {
-		    /*
-		     * received datagram
-		     */
+		if (usr->flags & CF_UDPDATA) {
+		    n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
+		    if (n >= 0) {
+			/*
+			 * received datagram
+			 */
+			PUSH_STRVAL(f, str_new(buffer, (long) n));
+			this_user = obj->index;
+			if (i_call(f, obj, (array *) NULL, "receive_datagram",
+				   16, TRUE, 1)) {
+			    i_del_value(f->sp++);
+			    endthread();
+			}
+			this_user = OBJ_NONE;
+		    }
+		} else if (conn_udpcheck(usr->conn)) {
 		    usr->flags |= CF_UDPDATA;
-		    PUSH_STRVAL(f, str_new(buffer, (long) n));
 		    this_user = obj->index;
-		    if (i_call(f, obj, (array *) NULL, "receive_datagram", 16,
-			       TRUE, 1)) {
+		    if (i_call(f, obj, (array *) NULL, "open_datagram", 13,
+			       TRUE, 0)) {
 			i_del_value(f->sp++);
 			endthread();
 		    }
