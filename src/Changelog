@@ -1235,3 +1235,5 @@ DGD 1.1
    0 and nil are the same.
  - allocate() now allocates an array of nil values.  New kfuns allocate_int()
    and allocate_float() explicitly allocate arrays of those respective values.
+ - In a further bit of type matching cleanup, integer 0 and floating point 0.0
+   no longer test as equal.

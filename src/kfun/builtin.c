@@ -422,18 +422,6 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
-	if (f->sp->type + f->sp[1].type == T_INT + T_FLOAT) {
-	    /* int == float */
-	    i_add_ticks(f, 1);
-	    if (f->sp->type == T_INT) {
-		flag = (f->sp->u.number == 0 && VFLT_ISZERO(f->sp + 1));
-		f->sp[1].type = T_INT;
-	    } else {
-		flag = (VFLT_ISZERO(f->sp) && f->sp[1].u.number == 0);
-	    }
-	    (++f->sp)->u.number = flag;
-	    return 0;
-	}
 	i_pop(f, 2);
 	(--f->sp)->type = T_INT;
 	f->sp->u.number = FALSE;
@@ -978,18 +966,6 @@ register frame *f;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
-	if (f->sp->type + f->sp[1].type == T_INT + T_FLOAT) {
-	    /* int != float */
-	    i_add_ticks(f, 1);
-	    if (f->sp->type == T_INT) {
-		flag = (f->sp->u.number != 0 || !VFLT_ISZERO(f->sp + 1));
-		f->sp[1].type = T_INT;
-	    } else {
-		flag = (!VFLT_ISZERO(f->sp) || f->sp[1].u.number != 0);
-	    }
-	    (++f->sp)->u.number = flag;
-	    return 0;
-	}
 	i_pop(f, 2);
 	(--f->sp)->type = T_INT;
 	f->sp->u.number = TRUE;

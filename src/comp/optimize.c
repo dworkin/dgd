@@ -571,8 +571,7 @@ register node **m;
 	    return d1;
 	}
 
-	if (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0 ||
-	    n->l.left->type == N_RANGE) {
+	if (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0) {
 	    /*
 	     * see if the summand operator can be used
 	     */
@@ -655,12 +654,14 @@ register node **m;
     }
     d = max2(d1, d2 + 1);
 
-    if ((n->r.right->type == N_INT && n->r.right->l.number == 0) ||
+    if ((n->r.right->type == N_INT && n->r.right->l.number == 0 &&
+	 n->l.left->mod == T_INT) ||
 	(n->r.right->type == N_FLOAT && NFLT_ISZERO(n->r.right) &&
 	 n->l.left->mod == T_FLOAT) ||
-	n->r.right->type == N_NIL) {
+	(n->r.right->type == nil_node && n->r.right->l.number == 0 &&
+	 n->l.left->mod != T_MIXED && T_POINTER(n->l.left->mod))) {
 	/*
-	 * x == 0, x == 0.0, x == nil
+	 * int == 0, float == 0.0, ptr == nil
 	 */
 	switch (n->type) {
 	case N_EQ:
