@@ -5,9 +5,9 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("+", kf_add, p_add)
+FUNCDEF("+", kf_add, pt_add)
 # else
-char p_add[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_add[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->add()
@@ -135,9 +135,9 @@ int kf_add()
 
 
 # ifdef FUNCDEF
-FUNCDEF("+", kf_add_int, p_add_int)
+FUNCDEF("+", kf_add_int, pt_add_int)
 # else
-char p_add_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_add_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->add_int()
@@ -153,9 +153,9 @@ int kf_add_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("++", kf_add1, p_add1)
+FUNCDEF("++", kf_add1, pt_add1)
 # else
-char p_add1[] = { C_STATIC, T_MIXED, 1, T_MIXED };
+char pt_add1[] = { C_STATIC, T_MIXED, 1, T_MIXED };
 
 /*
  * NAME:	kfun->add1()
@@ -181,9 +181,9 @@ int kf_add1()
 
 
 # ifdef FUNCDEF
-FUNCDEF("++", kf_add1_int, p_add1_int)
+FUNCDEF("++", kf_add1_int, pt_add1_int)
 # else
-char p_add1_int[] = { C_STATIC, T_INT, 1, T_INT };
+char pt_add1_int[] = { C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->add1_int()
@@ -198,9 +198,9 @@ int kf_add1_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("&", kf_and, p_and)
+FUNCDEF("&", kf_and, pt_and)
 # else
-char p_and[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_and[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->and()
@@ -251,9 +251,9 @@ int kf_and()
 
 
 # ifdef FUNCDEF
-FUNCDEF("&", kf_and_int, p_and_int)
+FUNCDEF("&", kf_and_int, pt_and_int)
 # else
-char p_and_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_and_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->and_int()
@@ -269,9 +269,9 @@ int kf_and_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("/", kf_div, p_div)
+FUNCDEF("/", kf_div, pt_div)
 # else
-char p_div[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_div[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->div()
@@ -309,9 +309,9 @@ int kf_div()
 
 
 # ifdef FUNCDEF
-FUNCDEF("/", kf_div_int, p_div_int)
+FUNCDEF("/", kf_div_int, pt_div_int)
 # else
-char p_div_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_div_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->div()
@@ -330,9 +330,9 @@ int kf_div_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("==", kf_eq, p_eq)
+FUNCDEF("==", kf_eq, pt_eq)
 # else
-char p_eq[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_eq[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->eq()
@@ -407,9 +407,9 @@ int kf_eq()
 
 
 # ifdef FUNCDEF
-FUNCDEF("==", kf_eq_int, p_eq_int)
+FUNCDEF("==", kf_eq_int, pt_eq_int)
 # else
-char p_eq_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_eq_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->eq_int()
@@ -425,9 +425,9 @@ int kf_eq_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">=", kf_ge, p_ge)
+FUNCDEF(">=", kf_ge, pt_ge)
 # else
-char p_ge[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_ge[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->ge()
@@ -472,9 +472,9 @@ int kf_ge()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">=", kf_ge_int, p_ge_int)
+FUNCDEF(">=", kf_ge_int, pt_ge_int)
 # else
-char p_ge_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_ge_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->ge_int()
@@ -490,9 +490,9 @@ int kf_ge_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">", kf_gt, p_gt)
+FUNCDEF(">", kf_gt, pt_gt)
 # else
-char p_gt[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_gt[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->gt()
@@ -537,9 +537,9 @@ int kf_gt()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">", kf_gt_int, p_gt_int)
+FUNCDEF(">", kf_gt_int, pt_gt_int)
 # else
-char p_gt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_gt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->gt_int()
@@ -555,9 +555,9 @@ int kf_gt_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<=", kf_le, p_le)
+FUNCDEF("<=", kf_le, pt_le)
 # else
-char p_le[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_le[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->le()
@@ -602,9 +602,9 @@ int kf_le()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<=", kf_le_int, p_le_int)
+FUNCDEF("<=", kf_le_int, pt_le_int)
 # else
-char p_le_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_le_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->le_int()
@@ -620,9 +620,9 @@ int kf_le_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<<", kf_lshift, p_lshift)
+FUNCDEF("<<", kf_lshift, pt_lshift)
 # else
-char p_lshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_lshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->lshift()
@@ -638,16 +638,16 @@ int kf_lshift()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<<", kf_lshift, p_lshift_int)
+FUNCDEF("<<", kf_lshift, pt_lshift_int)
 # else
-char p_lshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_lshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("<", kf_lt, p_lt)
+FUNCDEF("<", kf_lt, pt_lt)
 # else
-char p_lt[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_lt[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->lt()
@@ -692,9 +692,9 @@ int kf_lt()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<", kf_lt_int, p_lt_int)
+FUNCDEF("<", kf_lt_int, pt_lt_int)
 # else
-char p_lt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_lt_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->lt_int()
@@ -710,9 +710,9 @@ int kf_lt_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("%", kf_mod, p_mod)
+FUNCDEF("%", kf_mod, pt_mod)
 # else
-char p_mod[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_mod[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->mod()
@@ -731,16 +731,16 @@ int kf_mod()
 
 
 # ifdef FUNCDEF
-FUNCDEF("%", kf_mod, p_mod_int)
+FUNCDEF("%", kf_mod, pt_mod_int)
 # else
-char p_mod_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_mod_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("*", kf_mult, p_mult)
+FUNCDEF("*", kf_mult, pt_mult)
 # else
-char p_mult[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_mult[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->mult()
@@ -775,9 +775,9 @@ int kf_mult()
 
 
 # ifdef FUNCDEF
-FUNCDEF("*", kf_mult_int, p_mult_int)
+FUNCDEF("*", kf_mult_int, pt_mult_int)
 # else
-char p_mult_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_mult_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->mult_int()
@@ -793,9 +793,9 @@ int kf_mult_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!=", kf_ne, p_ne)
+FUNCDEF("!=", kf_ne, pt_ne)
 # else
-char p_ne[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
+char pt_ne[] = { C_STATIC, T_INT, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->ne()
@@ -870,9 +870,9 @@ int kf_ne()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!=", kf_ne_int, p_ne_int)
+FUNCDEF("!=", kf_ne_int, pt_ne_int)
 # else
-char p_ne_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_ne_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->ne_int()
@@ -888,9 +888,9 @@ int kf_ne_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("~", kf_neg, p_neg)
+FUNCDEF("~", kf_neg, pt_neg)
 # else
-char p_neg[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
+char pt_neg[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->neg()
@@ -905,16 +905,16 @@ int kf_neg()
 
 
 # ifdef FUNCDEF
-FUNCDEF("~", kf_neg, p_neg_int)
+FUNCDEF("~", kf_neg, pt_neg_int)
 # else
-char p_neg_int[] = { C_STATIC, T_INT, 1, T_INT };
+char pt_neg_int[] = { C_STATIC, T_INT, 1, T_INT };
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_not, p_not)
+FUNCDEF("!", kf_not, pt_not)
 # else
-char p_not[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_not[] = { C_STATIC, T_INT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->not()
@@ -950,7 +950,7 @@ int kf_not()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_notf, p_not)
+FUNCDEF("!", kf_notf, pt_not)
 # else
 /*
  * NAME:	kfun->notf()
@@ -982,7 +982,7 @@ int kf_notf()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_noti, p_not)
+FUNCDEF("!", kf_noti, pt_not)
 # else
 /*
  * NAME:	kfun->noti()
@@ -1013,9 +1013,9 @@ int kf_noti()
 
 
 # ifdef FUNCDEF
-FUNCDEF("|", kf_or, p_or)
+FUNCDEF("|", kf_or, pt_or)
 # else
-char p_or[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_or[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->or()
@@ -1055,9 +1055,9 @@ int kf_or()
 
 
 # ifdef FUNCDEF
-FUNCDEF("|", kf_or_int, p_or_int)
+FUNCDEF("|", kf_or_int, pt_or_int)
 # else
-char p_or_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_or_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->or_int()
@@ -1073,10 +1073,10 @@ int kf_or_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangeft, p_rangeft)
+FUNCDEF("[]", kf_rangeft, pt_rangeft)
 # else
-char p_rangeft[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 3,
-		     T_MIXED, T_INT, T_INT };
+char pt_rangeft[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 3,
+		      T_MIXED, T_INT, T_INT };
 /*
  * NAME:	kfun->rangeft()
  * DESCRIPTION:	value [ int .. int ]
@@ -1113,9 +1113,9 @@ int kf_rangeft()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangef, p_rangef)
+FUNCDEF("[]", kf_rangef, pt_rangef)
 # else
-char p_rangef[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_rangef[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->rangef()
@@ -1153,9 +1153,9 @@ int kf_rangef()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ranget, p_ranget)
+FUNCDEF("[]", kf_ranget, pt_ranget)
 # else
-char p_ranget[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_ranget[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ranget()
@@ -1191,9 +1191,9 @@ int kf_ranget()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_range, p_range)
+FUNCDEF("[]", kf_range, pt_range)
 # else
-char p_range[] = { C_STATIC, T_MIXED, 1, T_MIXED };
+char pt_range[] = { C_STATIC, T_MIXED, 1, T_MIXED };
 
 /*
  * NAME:	kfun->range()
@@ -1227,9 +1227,9 @@ int kf_range()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">>", kf_rshift, p_rshift)
+FUNCDEF(">>", kf_rshift, pt_rshift)
 # else
-char p_rshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_rshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->rshift()
@@ -1245,16 +1245,16 @@ int kf_rshift()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">>", kf_rshift, p_rshift_int)
+FUNCDEF(">>", kf_rshift, pt_rshift_int)
 # else
-char p_rshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_rshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("-", kf_sub, p_sub)
+FUNCDEF("-", kf_sub, pt_sub)
 # else
-char p_sub[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_sub[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->sub()
@@ -1320,9 +1320,9 @@ int kf_sub()
 
 
 # ifdef FUNCDEF
-FUNCDEF("-", kf_sub_int, p_sub_int)
+FUNCDEF("-", kf_sub_int, pt_sub_int)
 # else
-char p_sub_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_sub_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->sub_int()
@@ -1338,9 +1338,9 @@ int kf_sub_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("--", kf_sub1, p_sub1)
+FUNCDEF("--", kf_sub1, pt_sub1)
 # else
-char p_sub1[] = { C_STATIC, T_MIXED, 1, T_MIXED };
+char pt_sub1[] = { C_STATIC, T_MIXED, 1, T_MIXED };
 
 /*
  * NAME:	kfun->sub1()
@@ -1366,9 +1366,9 @@ int kf_sub1()
 
 
 # ifdef FUNCDEF
-FUNCDEF("--", kf_sub1_int, p_sub1_int)
+FUNCDEF("--", kf_sub1_int, pt_sub1_int)
 # else
-char p_sub1_int[] = { C_STATIC, T_INT, 1, T_INT };
+char pt_sub1_int[] = { C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->sub1_int()
@@ -1383,9 +1383,9 @@ int kf_sub1_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("(float)", kf_tofloat, p_tofloat)
+FUNCDEF("(float)", kf_tofloat, pt_tofloat)
 # else
-char p_tofloat[] = { C_STATIC, T_FLOAT, 1, T_MIXED };
+char pt_tofloat[] = { C_STATIC, T_FLOAT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->tofloat()
@@ -1423,9 +1423,9 @@ int kf_tofloat()
 
 
 # ifdef FUNCDEF
-FUNCDEF("(int)", kf_toint, p_toint)
+FUNCDEF("(int)", kf_toint, pt_toint)
 # else
-char p_toint[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_toint[] = { C_STATIC, T_INT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->toint()
@@ -1464,9 +1464,9 @@ int kf_toint()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tst, p_tst)
+FUNCDEF("!!", kf_tst, pt_tst)
 # else
-char p_tst[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_tst[] = { C_STATIC, T_INT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->tst()
@@ -1502,7 +1502,7 @@ int kf_tst()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tstf, p_tst)
+FUNCDEF("!!", kf_tstf, pt_tst)
 # else
 /*
  * NAME:	kfun->tstf()
@@ -1534,7 +1534,7 @@ int kf_tstf()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tsti, p_tst)
+FUNCDEF("!!", kf_tsti, pt_tst)
 # else
 /*
  * NAME:	kfun->tsti()
@@ -1565,9 +1565,9 @@ int kf_tsti()
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin, p_umin)
+FUNCDEF("unary -", kf_umin, pt_umin)
 # else
-char p_umin[] = { C_STATIC, T_MIXED, 1, T_MIXED };
+char pt_umin[] = { C_STATIC, T_MIXED, 1, T_MIXED };
 
 /*
  * NAME:	kfun->umin()
@@ -1593,9 +1593,9 @@ int kf_umin()
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin_int, p_umin_int)
+FUNCDEF("unary -", kf_umin_int, pt_umin_int)
 # else
-char p_umin_int[] = { C_STATIC, T_INT, 1, T_INT };
+char pt_umin_int[] = { C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->umin_int()
@@ -1610,9 +1610,9 @@ int kf_umin_int()
 
 
 # ifdef FUNCDEF
-FUNCDEF("^", kf_xor, p_xor)
+FUNCDEF("^", kf_xor, pt_xor)
 # else
-char p_xor[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
+char pt_xor[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->xor()
@@ -1652,9 +1652,9 @@ int kf_xor()
 
 
 # ifdef FUNCDEF
-FUNCDEF("^", kf_xor_int, p_xor_int)
+FUNCDEF("^", kf_xor_int, pt_xor_int)
 # else
-char p_xor_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_xor_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->xor_int()
@@ -1674,9 +1674,9 @@ int kf_xor_int()
  */
 
 # ifdef FUNCDEF
-FUNCDEF("(string)", kf_tostring, p_tostring)
+FUNCDEF("(string)", kf_tostring, pt_tostring)
 # else
-char p_tostring[] = { C_STATIC, T_STRING, 1, T_MIXED };
+char pt_tostring[] = { C_STATIC, T_STRING, 1, T_MIXED };
 
 /*
  * NAME:	kfun->tostring()
@@ -1708,10 +1708,10 @@ int kf_tostring()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangeft, p_ckrangeft)
+FUNCDEF("[]", kf_ckrangeft, pt_ckrangeft)
 # else
-char p_ckrangeft[] = { C_TYPECHECKED | C_STATIC, T_INT,
-		       3, T_MIXED, T_INT, T_INT };
+char pt_ckrangeft[] = { C_TYPECHECKED | C_STATIC, T_INT,
+			3, T_MIXED, T_INT, T_INT };
 
 /*
  * NAME:	kfun->ckrangeft()
@@ -1733,9 +1733,9 @@ int kf_ckrangeft()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangef, p_ckrangef)
+FUNCDEF("[]", kf_ckrangef, pt_ckrangef)
 # else
-char p_ckrangef[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
+char pt_ckrangef[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ckrangef()
@@ -1761,9 +1761,9 @@ int kf_ckrangef()
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckranget, p_ckranget)
+FUNCDEF("[]", kf_ckranget, pt_ckranget)
 # else
-char p_ckranget[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
+char pt_ckranget[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ckranget()
@@ -1789,9 +1789,9 @@ int kf_ckranget()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sum", kf_sum, p_sum)
+FUNCDEF("sum", kf_sum, pt_sum)
 # else
-char p_sum[] = { C_VARARGS | C_STATIC, T_MIXED, 0 };
+char pt_sum[] = { C_VARARGS | C_STATIC, T_MIXED, 0 };
 
 /*
  * NAME:	kfun->sum()

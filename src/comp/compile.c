@@ -674,7 +674,7 @@ bool global;
 	type = T_MIXED;
     }
     if (global) {
-	if (class & C_NOMASK) {
+	if (class & (C_NOMASK | C_VARARGS)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);

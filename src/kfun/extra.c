@@ -5,10 +5,10 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("crypt", kf_crypt, p_crypt)
+FUNCDEF("crypt", kf_crypt, pt_crypt)
 # else
-char p_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING, 2,
-		   T_STRING, T_STRING };
+char pt_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING, 2,
+		    T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->crypt()
@@ -48,9 +48,9 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("ctime", kf_ctime, p_ctime)
+FUNCDEF("ctime", kf_ctime, pt_ctime)
 # else
-char p_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
+char pt_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
 
 /*
  * NAME:	kfun->ctime()
@@ -67,10 +67,10 @@ int kf_ctime()
 
 
 # ifdef FUNCDEF
-FUNCDEF("explode", kf_explode, p_explode)
+FUNCDEF("explode", kf_explode, pt_explode)
 # else
-char p_explode[] = { C_TYPECHECKED | C_STATIC, T_STRING | (1 << REFSHIFT), 2,
-		     T_STRING, T_STRING };
+char pt_explode[] = { C_TYPECHECKED | C_STATIC, T_STRING | (1 << REFSHIFT), 2,
+		      T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->explode()
@@ -174,10 +174,10 @@ int kf_explode()
 
 
 # ifdef FUNCDEF
-FUNCDEF("implode", kf_implode, p_implode)
+FUNCDEF("implode", kf_implode, pt_implode)
 # else
-char p_implode[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
-		     T_STRING | (1 << REFSHIFT), T_STRING };
+char pt_implode[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
+		      T_STRING | (1 << REFSHIFT), T_STRING };
 
 /*
  * NAME:	kfun->implode()
@@ -234,9 +234,9 @@ int kf_implode()
 
 
 # ifdef FUNCDEF
-FUNCDEF("random", kf_random, p_random)
+FUNCDEF("random", kf_random, pt_random)
 # else
-char p_random[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
+char pt_random[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->random()
@@ -251,10 +251,10 @@ int kf_random()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sscanf", kf_sscanf, p_sscanf)
+FUNCDEF("sscanf", kf_sscanf, pt_sscanf)
 # else
-char p_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
-		    T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
+char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
+		     T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->sscanf()
@@ -521,10 +521,10 @@ no_match:
 
 
 # ifdef FUNCDEF
-FUNCDEF("parse_string", kf_parse_string, p_parse_string)
+FUNCDEF("parse_string", kf_parse_string, pt_parse_string)
 # else
-char p_parse_string[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
-			  2, T_STRING, T_STRING };
+char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
+			   2, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->parse_string()

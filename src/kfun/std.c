@@ -11,10 +11,10 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("call_other", kf_call_other, p_call_other)
+FUNCDEF("call_other", kf_call_other, pt_call_other)
 # else
-char p_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_MIXED, 3,
-			T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
+char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_MIXED, 3,
+			 T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_other()
@@ -82,9 +82,9 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("this_object", kf_this_object, p_this_object)
+FUNCDEF("this_object", kf_this_object, pt_this_object)
 # else
-char p_this_object[] = { C_STATIC, T_OBJECT, 0 };
+char pt_this_object[] = { C_STATIC, T_OBJECT, 0 };
 
 /*
  * NAME:	kfun->this_object()
@@ -110,10 +110,10 @@ int kf_this_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("previous_object", kf_previous_object, p_previous_object)
+FUNCDEF("previous_object", kf_previous_object, pt_previous_object)
 # else
-char p_previous_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_OBJECT, 1,
-			     T_INT };
+char pt_previous_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_OBJECT, 1,
+			      T_INT };
 
 /*
  * NAME:	kfun->previous_object()
@@ -143,10 +143,10 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("call_trace", kf_call_trace, p_call_trace)
+FUNCDEF("call_trace", kf_call_trace, pt_call_trace)
 # else
-char p_call_trace[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT),
-			0 };
+char pt_call_trace[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT),
+			 0 };
 
 /*
  * NAME:	kfun->call_trace()
@@ -162,9 +162,9 @@ int kf_call_trace()
 
 
 # ifdef FUNCDEF
-FUNCDEF("clone_object", kf_clone_object, p_clone_object)
+FUNCDEF("clone_object", kf_clone_object, pt_clone_object)
 # else
-char p_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 
 /*
  * NAME:	kfun->clone_object()
@@ -199,9 +199,9 @@ int kf_clone_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("destruct_object", kf_destruct_object, p_destruct_object)
+FUNCDEF("destruct_object", kf_destruct_object, pt_destruct_object)
 # else
-char p_destruct_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
+char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->destruct_object()
@@ -226,9 +226,9 @@ int kf_destruct_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("object_name", kf_object_name, p_object_name)
+FUNCDEF("object_name", kf_object_name, pt_object_name)
 # else
-char p_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->object_name()
@@ -249,9 +249,9 @@ int kf_object_name()
 
 
 # ifdef FUNCDEF
-FUNCDEF("find_object", kf_find_object, p_find_object)
+FUNCDEF("find_object", kf_find_object, pt_find_object)
 # else
-char p_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 
 /*
  * NAME:	kfun->find_object()
@@ -283,10 +283,10 @@ int kf_find_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("function_object", kf_function_object, p_function_object)
+FUNCDEF("function_object", kf_function_object, pt_function_object)
 # else
-char p_function_object[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
-			     T_STRING, T_OBJECT };
+char pt_function_object[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
+			      T_STRING, T_OBJECT };
 
 /*
  * NAME:	kfun->function_object()
@@ -327,9 +327,9 @@ int kf_function_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("this_user", kf_this_user, p_this_user)
+FUNCDEF("this_user", kf_this_user, pt_this_user)
 # else
-char p_this_user[] = { C_STATIC, T_OBJECT, 0 };
+char pt_this_user[] = { C_STATIC, T_OBJECT, 0 };
 
 /*
  * NAME:	kfun->this_user()
@@ -354,9 +354,9 @@ int kf_this_user()
 
 
 # ifdef FUNCDEF
-FUNCDEF("query_ip_number", kf_query_ip_number, p_query_ip_number)
+FUNCDEF("query_ip_number", kf_query_ip_number, pt_query_ip_number)
 # else
-char p_query_ip_number[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->query_ip_number()
@@ -380,9 +380,9 @@ int kf_query_ip_number()
 
 
 # ifdef FUNCDEF
-FUNCDEF("users", kf_users, p_users)
+FUNCDEF("users", kf_users, pt_users)
 # else
-char p_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
+char pt_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
 
 /*
  * NAME:	kfun->users()
@@ -398,9 +398,9 @@ int kf_users()
 
 
 # ifdef FUNCDEF
-FUNCDEF("strlen", kf_strlen, p_strlen)
+FUNCDEF("strlen", kf_strlen, pt_strlen)
 # else
-char p_strlen[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_strlen[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->strlen()
@@ -420,10 +420,10 @@ int kf_strlen()
 
 
 # ifdef FUNCDEF
-FUNCDEF("allocate", kf_allocate, p_allocate)
+FUNCDEF("allocate", kf_allocate, pt_allocate)
 # else
-char p_allocate[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
-		      T_INT };
+char pt_allocate[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
+		       T_INT };
 
 /*
  * NAME:	kfun->allocate()
@@ -446,10 +446,10 @@ int kf_allocate()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sizeof", kf_sizeof, p_sizeof)
+FUNCDEF("sizeof", kf_sizeof, pt_sizeof)
 # else
-char p_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1,
-		    T_MIXED | (1 << REFSHIFT) };
+char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1,
+		     T_MIXED | (1 << REFSHIFT) };
 
 /*
  * NAME:	kfun->sizeof()
@@ -469,10 +469,10 @@ int kf_sizeof()
 
 
 # ifdef FUNCDEF
-FUNCDEF("map_indices", kf_map_indices, p_map_indices)
+FUNCDEF("map_indices", kf_map_indices, pt_map_indices)
 # else
-char p_map_indices[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
-			 T_MAPPING };
+char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
+			  1, T_MAPPING };
 
 /*
  * NAME:	kfun->map_indices()
@@ -492,10 +492,10 @@ int kf_map_indices()
 
 
 # ifdef FUNCDEF
-FUNCDEF("map_values", kf_map_values, p_map_values)
+FUNCDEF("map_values", kf_map_values, pt_map_values)
 # else
-char p_map_values[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
-			T_MAPPING };
+char pt_map_values[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
+			 T_MAPPING };
 
 /*
  * NAME:	kfun->map_values()
@@ -515,9 +515,9 @@ int kf_map_values()
 
 
 # ifdef FUNCDEF
-FUNCDEF("map_sizeof", kf_map_sizeof, p_map_sizeof)
+FUNCDEF("map_sizeof", kf_map_sizeof, pt_map_sizeof)
 # else
-char p_map_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_MAPPING };
+char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_MAPPING };
 
 /*
  * NAME:	kfun->map_sizeof()
@@ -537,9 +537,9 @@ int kf_map_sizeof()
 
 
 # ifdef FUNCDEF
-FUNCDEF("typeof", kf_typeof, p_typeof)
+FUNCDEF("typeof", kf_typeof, pt_typeof)
 # else
-char p_typeof[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_typeof[] = { C_STATIC, T_INT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->typeof()
@@ -559,9 +559,9 @@ int kf_typeof()
 
 
 # ifdef FUNCDEF
-FUNCDEF("error", kf_error, p_error)
+FUNCDEF("error", kf_error, pt_error)
 # else
-char p_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
+char pt_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
 
 /*
  * NAME:	kfun->error()
@@ -579,9 +579,9 @@ int kf_error()
 
 
 # ifdef FUNCDEF
-FUNCDEF("send_message", kf_send_message, p_send_message)
+FUNCDEF("send_message", kf_send_message, pt_send_message)
 # else
-char p_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
+char pt_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
 
 /*
  * NAME:	kfun->send_message()
@@ -623,9 +623,9 @@ int kf_send_message()
 
 
 # ifdef FUNCDEF
-FUNCDEF("time", kf_time, p_time)
+FUNCDEF("time", kf_time, pt_time)
 # else
-char p_time[] = { C_STATIC, T_INT, 0 };
+char pt_time[] = { C_STATIC, T_INT, 0 };
 
 /*
  * NAME:	kfun->time()
@@ -641,10 +641,10 @@ int kf_time()
 
 
 # ifdef FUNCDEF
-FUNCDEF("call_out", kf_call_out, p_call_out)
+FUNCDEF("call_out", kf_call_out, pt_call_out)
 # else
-char p_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
-		      T_STRING, T_INT, T_MIXED | T_ELLIPSIS };
+char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
+		       T_STRING, T_INT, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_out()
@@ -681,9 +681,9 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("remove_call_out", kf_remove_call_out, p_remove_call_out)
+FUNCDEF("remove_call_out", kf_remove_call_out, pt_remove_call_out)
 # else
-char p_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
+char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->remove_call_out()
@@ -698,9 +698,9 @@ int kf_remove_call_out()
 
 
 # ifdef FUNCDEF
-FUNCDEF("swapout", kf_swapout, p_swapout)
+FUNCDEF("swapout", kf_swapout, pt_swapout)
 # else
-char p_swapout[] = { C_STATIC, T_VOID, 0 };
+char pt_swapout[] = { C_STATIC, T_VOID, 0 };
 
 /*
  * NAME:	kfun->swapout()
@@ -718,9 +718,9 @@ int kf_swapout()
 
 
 # ifdef FUNCDEF
-FUNCDEF("dump_state", kf_dump_state, p_dump_state)
+FUNCDEF("dump_state", kf_dump_state, pt_dump_state)
 # else
-char p_dump_state[] = { C_TYPECHECKED | C_STATIC, T_VOID, 0 };
+char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, T_VOID, 0 };
 
 /*
  * NAME:	kfun->dump_state()
@@ -737,9 +737,9 @@ int kf_dump_state()
 
 
 # ifdef FUNCDEF
-FUNCDEF("shutdown", kf_shutdown, p_shutdown)
+FUNCDEF("shutdown", kf_shutdown, pt_shutdown)
 # else
-char p_shutdown[] = { C_STATIC, T_VOID, 0 };
+char pt_shutdown[] = { C_STATIC, T_VOID, 0 };
 
 /*
  * NAME:	kfun->shutdown()
@@ -757,10 +757,10 @@ int kf_shutdown()
 
 
 # ifdef FUNCDEF
-FUNCDEF("status", kf_status, p_status)
+FUNCDEF("status", kf_status, pt_status)
 # else
-char p_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
-		    T_MIXED | (1 << REFSHIFT), 1, T_OBJECT };
+char pt_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
+		     T_MIXED | (1 << REFSHIFT), 1, T_OBJECT };
 
 /*
  * NAME:	kfun->status()

@@ -4,9 +4,9 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("fabs", kf_fabs, p_fabs)
+FUNCDEF("fabs", kf_fabs, pt_fabs)
 # else
-char p_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->fabs()
@@ -21,9 +21,9 @@ int kf_fabs()
 
 
 # ifdef FUNCDEF
-FUNCDEF("floor", kf_floor, p_floor)
+FUNCDEF("floor", kf_floor, pt_floor)
 # else
-char p_floor[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_floor[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->floor()
@@ -42,9 +42,9 @@ int kf_floor()
 
 
 # ifdef FUNCDEF
-FUNCDEF("ceil", kf_ceil, p_ceil)
+FUNCDEF("ceil", kf_ceil, pt_ceil)
 # else
-char p_ceil[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_ceil[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->ceil()
@@ -63,9 +63,9 @@ int kf_ceil()
 
 
 # ifdef FUNCDEF
-FUNCDEF("fmod", kf_fmod, p_fmod)
+FUNCDEF("fmod", kf_fmod, pt_fmod)
 # else
-char p_fmod[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_fmod[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->fmod()
@@ -86,10 +86,10 @@ int kf_fmod()
 
 
 # ifdef FUNCDEF
-FUNCDEF("frexp", kf_frexp, p_frexp)
+FUNCDEF("frexp", kf_frexp, pt_frexp)
 # else
-char p_frexp[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_MIXED, 1,
-		   T_FLOAT };
+char pt_frexp[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_MIXED, 1,
+		    T_FLOAT };
 
 /*
  * NAME:	kfun->frexp()
@@ -117,9 +117,9 @@ int kf_frexp()
 
 
 # ifdef FUNCDEF
-FUNCDEF("ldexp", kf_ldexp, p_ldexp)
+FUNCDEF("ldexp", kf_ldexp, pt_ldexp)
 # else
-char p_ldexp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_INT };
+char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_INT };
 
 /*
  * NAME:	kfun->ldexp()
@@ -139,10 +139,10 @@ int kf_ldexp()
 
 
 # ifdef FUNCDEF
-FUNCDEF("modf", kf_modf, p_modf)
+FUNCDEF("modf", kf_modf, pt_modf)
 # else
-char p_modf[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_FLOAT, 1,
-		  T_FLOAT };
+char pt_modf[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_FLOAT, 1,
+		   T_FLOAT };
 
 /*
  * NAME:	kfun->modf()
@@ -170,9 +170,9 @@ int kf_modf()
 
 # if 0
 # ifdef FUNCDEF
-FUNCDEF("exp", kf_exp, p_exp)
+FUNCDEF("exp", kf_exp, pt_exp)
 # else
-char p_exp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_exp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->exp()
@@ -191,9 +191,9 @@ int kf_exp()
 
 
 # ifdef FUNCDEF
-FUNCDEF("log", kf_log, p_log)
+FUNCDEF("log", kf_log, pt_log)
 # else
-char p_log[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_log[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->log()
@@ -212,9 +212,9 @@ int kf_log()
 
 
 # ifdef FUNCDEF
-FUNCDEF("log10", kf_log10, p_log10)
+FUNCDEF("log10", kf_log10, pt_log10)
 # else
-char p_log10[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_log10[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->log10()
@@ -233,9 +233,9 @@ int kf_log10()
 
 
 # ifdef FUNCDEF
-FUNCDEF("pow", kf_pow, p_pow)
+FUNCDEF("pow", kf_pow, pt_pow)
 # else
-char p_pow[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_pow[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->pow()
@@ -256,9 +256,9 @@ int kf_pow()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sqrt", kf_sqrt, p_sqrt)
+FUNCDEF("sqrt", kf_sqrt, pt_sqrt)
 # else
-char p_sqrt[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->sqrt()
@@ -277,9 +277,9 @@ int kf_sqrt()
 
 
 # ifdef FUNCDEF
-FUNCDEF("cos", kf_cos, p_cos)
+FUNCDEF("cos", kf_cos, pt_cos)
 # else
-char p_cos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_cos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->cos()
@@ -298,9 +298,9 @@ int kf_cos()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sin", kf_sin, p_sin)
+FUNCDEF("sin", kf_sin, pt_sin)
 # else
-char p_sin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->sin()
@@ -319,9 +319,9 @@ int kf_sin()
 
 
 # ifdef FUNCDEF
-FUNCDEF("tan", kf_tan, p_tan)
+FUNCDEF("tan", kf_tan, pt_tan)
 # else
-char p_tan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_tan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->tan()
@@ -340,9 +340,9 @@ int kf_tan()
 
 
 # ifdef FUNCDEF
-FUNCDEF("acos", kf_acos, p_acos)
+FUNCDEF("acos", kf_acos, pt_acos)
 # else
-char p_acos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_acos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->acos()
@@ -361,9 +361,9 @@ int kf_acos()
 
 
 # ifdef FUNCDEF
-FUNCDEF("asin", kf_asin, p_asin)
+FUNCDEF("asin", kf_asin, pt_asin)
 # else
-char p_asin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_asin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->asin()
@@ -382,9 +382,9 @@ int kf_asin()
 
 
 # ifdef FUNCDEF
-FUNCDEF("atan", kf_atan, p_atan)
+FUNCDEF("atan", kf_atan, pt_atan)
 # else
-char p_atan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_atan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->atan()
@@ -403,9 +403,9 @@ int kf_atan()
 
 
 # ifdef FUNCDEF
-FUNCDEF("atan2", kf_atan2, p_atan2)
+FUNCDEF("atan2", kf_atan2, pt_atan2)
 # else
-char p_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
+char pt_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->atan2()
@@ -426,9 +426,9 @@ int kf_atan2()
 
 
 # ifdef FUNCDEF
-FUNCDEF("cosh", kf_cosh, p_cosh)
+FUNCDEF("cosh", kf_cosh, pt_cosh)
 # else
-char p_cosh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_cosh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->cosh()
@@ -447,9 +447,9 @@ int kf_cosh()
 
 
 # ifdef FUNCDEF
-FUNCDEF("sinh", kf_sinh, p_sinh)
+FUNCDEF("sinh", kf_sinh, pt_sinh)
 # else
-char p_sinh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_sinh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->sinh()
@@ -468,9 +468,9 @@ int kf_sinh()
 
 
 # ifdef FUNCDEF
-FUNCDEF("tanh", kf_tanh, p_tanh)
+FUNCDEF("tanh", kf_tanh, pt_tanh)
 # else
-char p_tanh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
+char pt_tanh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
 
 /*
  * NAME:	kfun->tanh()

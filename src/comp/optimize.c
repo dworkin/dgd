@@ -120,14 +120,16 @@ register node *n;
 	switch (m->type) {
 	case N_LOCAL:
 	case N_GLOBAL:
-	    return 3;
+	    return 3;	/* mapvar[mixed] */
 
 	case N_INDEX:
+	    /* strarray[x][y] = 'c'; */
 	    return max3(opt_expr(&m->l.left, FALSE),
 			opt_expr(&m->r.right, FALSE) + 1,
 			opt_expr(&n->r.right, FALSE) + 3);
 
 	default:
+	    /* mapval[mixed] */
 	    return max3(opt_expr(&n->l.left, FALSE),
 			opt_expr(&n->r.right, FALSE) + 1, 3);
 	}
@@ -153,7 +155,7 @@ node **m;
 	} else if (n->type == N_NE) {
 	    *m = node_int((Int) TRUE);
 	} else {
-	    return 2;
+	    return 2;	/* runtime error expected */
 	}
 	(*m)->line = n->line;
 	return 1;
@@ -193,7 +195,7 @@ node **m;
 	    break;
 
 	default:
-	    return 2;
+	    return 2;	/* runtime error expected */
 	}
 
 	*m = node_int((Int) flag);
@@ -221,14 +223,14 @@ node **m;
 
     case N_DIV:
 	if (NFLT_ISZERO(n->r.right)) {
-	    return 2;
+	    return 2;	/* runtime error: division by 0.0 */
 	}
 	flt_div(&f1, &f2);
 	break;
 
     case N_DIV_INT:
 	if (n->r.right->l.number == 0) {
-	    return 2;
+	    return 2;	/* runtime error: division by 0 */
 	}
 	n->l.left->l.number /= n->r.right->l.number;
 	break;
@@ -279,7 +281,7 @@ node **m;
 
     case N_MOD_INT:
 	if (n->r.right->l.number == 0) {
-	    return 2;
+	    return 2;	/* runtime error: % 0 */
 	}
 	n->l.left->l.number %= n->r.right->l.number;
 	break;
@@ -321,7 +323,7 @@ node **m;
 	break;
 
     default:
-	return 2;
+	return 2;	/* runtime error expected */
     }
 
     if (n->l.left->type == N_FLOAT) {
@@ -369,46 +371,22 @@ register node **m;
 	    switch (n->l.left->type) {
 	    case N_ADD:
 		n->l.left->type = N_SUM;
-		d1 = max2(d1 + 2, 4);
+		d1 += 2;			/* (-2) on both sides */
 		n->type = N_SUM;
-		switch (n->r.right->type) {
-		case N_ADD:
-		    d2 = max2(d2 + 2, 4);
-		    break;
-
-		case N_RANGE:
-		    d2 = max2(d2 + 1, 3);
-		    break;
-
-		case N_SUM:
-		    break;
-
-		default:
-		    d2 = max2(d2 + 1, 2);
-		    break;
+		d2++;				/* add (-2) */
+		if (n->r.right->type == N_RANGE) {
+		    d2 = max2(d2, 3);		/* at least 3 */
 		}
 		return d1 + d2;
 
 	    case N_RANGE:
-		d1 = max2(d1 + 1, 3);
+		d1 = max2(d1 + 1, 3);		/* add (-2), at least 3 */
 		/* fall through */
 	    case N_SUM:
 		n->type = N_SUM;
-		switch (n->r.right->type) {
-		case N_ADD:
-		    d2 = max2(d2 + 2, 4);
-		    break;
-
-		case N_RANGE:
-		    d2 = max2(d2 + 1, 3);
-		    break;
-
-		case N_SUM:
-		    break;
-
-		default:
-		    d2 = max2(d2 + 1, 2);
-		    break;
+		d2++;				/* add (-2) */
+		if (n->r.right->type == N_RANGE) {
+		    d2 = max2(d2, 3);		/* at least 3 */
 		}
 		return d1 + d2;
 	    }
@@ -1072,19 +1050,22 @@ int pop;
 
     case N_FUNC:
 	m = &n->l.left;
-	n = n->l.left;
+	n = *m;
 	if (n == (node *) NULL) {
 	    return 1;
 	}
 
 	d1 = 0;
-	for (i = 0; n->type == N_PAIR; i += (i == 0) ? 3 : 1) {
+	for (i = 0; n->type == N_PAIR; ) {
 	    oldside = side_start(&side, &olddepth);
 	    d2 = opt_expr(&n->l.left, FALSE);
 	    d1 = max3(d1, i + d2,
 		      i + side_end(&n->l.left, side, oldside, olddepth));
 	    m = &n->r.right;
-	    n = n->r.right;
+	    n = n->l.left;
+	    i += (n->type == N_LVALUE ||
+		  (n->type == N_COMMA && n->r.right->type == N_LVALUE)) ? 3 : 1;
+	    n = *m;
 	}
 	if (n->type == N_SPREAD) {
 	    m = &n->l.left;
@@ -1450,7 +1431,7 @@ int pop;
 			i + 1 + side_end(&n->r.right, side, oldside, olddepth));
 	} else {
 	    m = &n->l.left;
-	    n = n->l.left;
+	    n = *m;
 	    if (n == (node *) NULL) {
 		return 1;
 	    }
@@ -1462,7 +1443,7 @@ int pop;
 		d1 = max3(d1, i + d2,
 			  i + side_end(&n->l.left, side, oldside, olddepth));
 		m = &n->r.right;
-		n = n->r.right;
+		n = *m;
 	    }
 	    oldside = side_start(&side, &olddepth);
 	    d2 = opt_expr(m, FALSE);
@@ -1585,6 +1566,7 @@ unsigned short *depth;
 	    n = (node *) NULL;
 	}
 
+	sidedepth = 0;
 	switch (m->type) {
 	case N_BLOCK:
 	case N_CASE:
@@ -1643,7 +1625,7 @@ unsigned short *depth;
 	    d1 = max2(opt_expr(&m->l.left->l.left, FALSE),
 		      1 + opt_expr(&m->l.left->r.right, FALSE)) + !m->mod;
 	    opt_stmt(m->r.right, &d2);
-	    d = max2(d1, d2);
+	    d = max3(d, d1, d2);
 	    break;
 
 	case N_IF:

@@ -7,10 +7,10 @@
 # endif
 
 # ifdef FUNCDEF
-FUNCDEF("editor", kf_editor, p_editor)
+FUNCDEF("editor", kf_editor, pt_editor)
 # else
-char p_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING,
-		    1, T_STRING };
+char pt_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING,
+		     1, T_STRING };
 
 /*
  * NAME:	kfun->editor()
@@ -51,9 +51,9 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("query_editor", kf_query_editor, p_query_editor)
+FUNCDEF("query_editor", kf_query_editor, pt_query_editor)
 # else
-char p_query_editor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
+char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
 
 /*
  * NAME:	kfun->query_editor()
@@ -79,7 +79,7 @@ int kf_query_editor()
 
 
 # ifdef FUNCDEF
-FUNCDEF("save_object", kf_save_object, p_save_object)
+FUNCDEF("save_object", kf_save_object, pt_save_object)
 # else
 static int fd;			/* save/restore file descriptor */
 static char *buffer;		/* save/restore buffer */
@@ -325,7 +325,7 @@ array *a;
     put("])", 2);
 }
 
-char p_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
+char pt_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
 
 /*
  * NAME:	kfun->save_object()
@@ -448,7 +448,7 @@ int kf_save_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("restore_object", kf_restore_object, p_restore_object)
+FUNCDEF("restore_object", kf_restore_object, pt_restore_object)
 # else
 # define ACHUNKSZ	16
 
@@ -811,7 +811,7 @@ register value *val;
     }
 }
 
-char p_restore_object[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->restore_object()
@@ -998,10 +998,10 @@ int kf_restore_object()
 
 
 # ifdef FUNCDEF
-FUNCDEF("write_file", kf_write_file, p_write_file)
+FUNCDEF("write_file", kf_write_file, pt_write_file)
 # else
-char p_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_INT, 3,
-			T_STRING, T_STRING, T_INT };
+char pt_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_INT, 3,
+			 T_STRING, T_STRING, T_INT };
 
 /*
  * NAME:	kfun->write_file()
@@ -1071,10 +1071,10 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("read_file", kf_read_file, p_read_file)
+FUNCDEF("read_file", kf_read_file, pt_read_file)
 # else
-char p_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING, 3,
-		       T_STRING, T_INT, T_INT };
+char pt_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING, 3,
+			T_STRING, T_INT, T_INT };
 
 /*
  * NAME:	kfun->read_file()
@@ -1166,10 +1166,10 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("rename_file", kf_rename_file, p_rename_file)
+FUNCDEF("rename_file", kf_rename_file, pt_rename_file)
 # else
-char p_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
-			 T_STRING, T_STRING };
+char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
+			  T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->rename_file()
@@ -1199,9 +1199,9 @@ int kf_rename_file()
 
 
 # ifdef FUNCDEF
-FUNCDEF("remove_file", kf_remove_file, p_remove_file)
+FUNCDEF("remove_file", kf_remove_file, pt_remove_file)
 # else
-char p_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->remove_file()
@@ -1225,9 +1225,9 @@ int kf_remove_file()
 
 
 # ifdef FUNCDEF
-FUNCDEF("make_dir", kf_make_dir, p_make_dir)
+FUNCDEF("make_dir", kf_make_dir, pt_make_dir)
 # else
-char p_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->make_dir()
@@ -1251,9 +1251,9 @@ int kf_make_dir()
 
 
 # ifdef FUNCDEF
-FUNCDEF("remove_dir", kf_remove_dir, p_remove_dir)
+FUNCDEF("remove_dir", kf_remove_dir, pt_remove_dir)
 # else
-char p_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
+char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->remove_dir()
@@ -1277,7 +1277,7 @@ int kf_remove_dir()
 
 
 # ifdef FUNCDEF
-FUNCDEF("get_dir", kf_get_dir, p_get_dir)
+FUNCDEF("get_dir", kf_get_dir, pt_get_dir)
 # else
 # define SCHUNK_SIZE	64
 
@@ -1434,8 +1434,8 @@ cvoid *cv1, *cv2;
 		  ((value *) cv2)->u.string->text);
 }
 
-char p_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
-		     T_STRING };
+char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
+		      T_STRING };
 
 /*
  * NAME:	kfun->get_dir()
