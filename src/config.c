@@ -109,7 +109,6 @@ typedef char dumpinfo[28];
 # define DUMP_TYPECHECK	3	/* global typechecking */
 # define DUMP_SECSIZE	4	/* sector size */
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
-# define DUMP_PLATFORM	20	/* if first XX bytes the same, no conversion */
 # define DUMP_BOOTTIME	20	/* boot time */
 # define DUMP_ELAPSED	24	/* elapsed time */
 

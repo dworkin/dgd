@@ -3,6 +3,9 @@
 # include "edcmd.h"
 # include <signal.h>
 
+struct _value_ *sp;
+struct _frame_ *cframe;
+
 cmdbuf *cb;
 
 void intr()
@@ -17,6 +20,8 @@ char *argv[];
 {
     char buffer[2048];
     char tmpfname[100], *tmp;
+
+    cframe = (struct _frame_ *) buffer;
 
     signal(SIGHUP, intr);
     signal(SIGINT, intr);
@@ -82,9 +87,6 @@ char *f, *a1, *a2, *a3;
 {
     error(f, a1, a2, a3);
 }
-
-struct _value_ *sp;
-struct _frame_ *cframe;
 
 void i_set_sp(newsp)
 struct _value_ *newsp;

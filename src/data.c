@@ -3029,7 +3029,7 @@ register Uint n, *ctab;
 		v->u.objcnt = ctab[v->oindex];
 	    } else {
 		/* destructed object; mark as invalid */
-		v->u.objcnt = ctab[v->oindex] - 1;
+		v->u.objcnt = 1;
 	    }
 	}
 	v++;

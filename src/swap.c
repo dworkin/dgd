@@ -677,8 +677,6 @@ int fd, secsize;
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
 	fatal("bad swap header in restore file");
     }
-    nfree = dh.nfree;
-    mfree = dh.mfree;
     restoresecsize = secsize;
 
     /* seek beyond swap sectors */

@@ -84,3 +84,5 @@ char *f, *file;
 {
     return file;
 }
+
+void interrupt() { }
