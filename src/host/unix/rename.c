@@ -1,5 +1,4 @@
 # include "dgd.h"
-# include <errno.h>
 
 /*
  * NAME:	rename()

@@ -25,11 +25,6 @@ int arg;
 void _alarm(timeout)
 unsigned int timeout;
 {
-    struct sigvec vec;
-
     signal(SIGALRM, intr);
     alarm(timeout);
-    sigvec(SIGALRM, (struct sigvec *) NULL, &vec);
-    vec.sv_flags |= SV_INTERRUPT;
-    sigvec(SIGALRM, &vec, (struct sigvec *) NULL);
 }
