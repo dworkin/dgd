@@ -45,7 +45,7 @@ static Uint swaprate5;			/* swaprate per 5 minutes */
  * DESCRIPTION:	initialize callout handling
  */
 void co_init(max, frag)
-uindex max;
+unsigned int max;
 int frag;
 {
     if (max != 0) {
@@ -257,7 +257,7 @@ int nargs;
  */
 Int co_del(obj, handle)
 register object *obj;
-register uindex handle;
+register unsigned int handle;
 {
     register uindex j, k;
     register call_out *l;

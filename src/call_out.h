@@ -1,6 +1,6 @@
-extern void	co_init		P((uindex, int));
+extern void	co_init		P((unsigned int, int));
 extern uindex	co_new		P((object*, string*, Int, int));
-extern Int	co_del		P((object*, uindex));
+extern Int	co_del		P((object*, unsigned int));
 extern array   *co_list		P((object*));
 extern void	co_call		P((void));
 extern void	co_info    	P((uindex*, uindex*));
