@@ -380,8 +380,7 @@ unsigned short port;
 {
     int on;
 
-    if ((*fd=socket(AF_INET6, type, 0)) < 0) {
-	P_message("socket() failed\n");
+    if ((*fd=socket(AF_INET6, type, 0)) == INVALID_SOCKET) {
 	return FALSE;
     }
     on = 1;
@@ -420,7 +419,7 @@ unsigned short port;
 {
     int on;
 
-    if ((*fd=socket(AF_INET, type, 0)) < 0) {
+    if ((*fd=socket(AF_INET, type, 0)) == INVALID_SOCKET) {
 	P_message("socket() failed\n");
 	return FALSE;
     }
@@ -558,8 +557,9 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	    return FALSE;
 	}
 
-	if (ipv6 && !conn_port6(&tdescs[n].in6, SOCK_STREAM, &sin6, tports[n]))
-	{
+	if (ipv6 &&
+	    !conn_port6(&tdescs[n].in6, SOCK_STREAM, &sin6, tports[n]) &&
+	    tdescs[n].in6 != INVALID_SOCKET) {
 	    return FALSE;
 	}
 	if (ipv4 && !conn_port(&tdescs[n].in4, SOCK_STREAM, &sin, tports[n])) {
@@ -622,10 +622,12 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	}
 
 	if (ipv6) {
-	    if (!conn_port6(&bdescs[n].in6, SOCK_STREAM, &sin6, bports[n])) {
+	    if (!conn_port6(&bdescs[n].in6, SOCK_STREAM, &sin6, bports[n]) &&
+		bdescs[n].in6 != INVALID_SOCKET) {
 		return FALSE;
 	    }
-	    if (!conn_port6(&udescs[n].in6, SOCK_DGRAM, &sin6, bports[n])) {
+	    if (!conn_port6(&udescs[n].in6, SOCK_DGRAM, &sin6, bports[n]) &&
+		udescs[n].in6 != INVALID_SOCKET) {
 		return FALSE;
 	    }
 	}
