@@ -12,7 +12,7 @@ typedef struct _header_ {	/* swap slot header */
 
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap check map */
-static sector mfree, sfree;		/* free sector lists */
+static sector nfree, sfree;		/* free sector lists */
 static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
@@ -56,7 +56,7 @@ uindex secsize;
     ssectors = 0;
 
     /* init free sector maps */
-    mfree = SW_UNUSED;
+    nfree = SW_UNUSED;
     sfree = SW_UNUSED;
     lfree = h = (header *) mem;
     for (i = cache - 1; i > 0; --i) {
@@ -80,10 +80,10 @@ sector sw_new()
 {
     register sector sec;
 
-    if (mfree != SW_UNUSED) {
+    if (nfree != SW_UNUSED) {
 	/* reuse a previously deleted sector */
-	sec = mfree;
-	mfree = map[mfree];
+	sec = nfree;
+	nfree = map[nfree];
     } else {
 	/* allocate a new sector */
 	if (nsectors == swapsize) {
@@ -151,8 +151,8 @@ sector sec;
     /*
      * put sec in free sector list
      */
-    map[sec] = mfree;
-    mfree = sec;
+    map[sec] = nfree;
+    nfree = sec;
 }
 
 /*
@@ -341,35 +341,3 @@ uindex sw_count()
 {
     return nsectors;
 }
-
-# if 0
-void sw_dump()
-{
-    register header *l;
-    register sector s;
-
-    printf("in cache:");
-    for (l = first; l != (header *) NULL; l = l->next) {
-	printf(" (%d %d %d)", l->sec, map[l->sec], l->swap);
-    }
-    putchar('\n');
-
-    printf("sectors in free list:");
-    for (s = mfree; s != SW_UNUSED; s = map[s]) {
-	printf(" %2u", s);
-    }
-    putchar('\n');
-
-    printf("map:");
-    for (s = 0; s < nsectors; s++) {
-	printf(" %2u", map[s]);
-    }
-    putchar('\n');
-
-    printf("free slots in swap file:");
-    for (s = sfree; s != SW_UNUSED; s = smap[s]) {
-	printf(" %2u", s);
-    }
-    putchar('\n');
-}
-# endif
