@@ -448,7 +448,11 @@ varargs mixed *status(mixed obj)
 	return 0;
     }
     if (!obj) {
-	return ::status();
+	status = ::status();
+	if (status[ST_STACKDEPTH] >= 0) {
+	    status[ST_STACKDEPTH]++;
+	}
+	return status;
     }
 
     /*
@@ -561,13 +565,13 @@ static shutdown()
  * NAME:	_F_call_limited()
  * DESCRIPTION:	call a function with limited stack depth and ticks
  */
-nomask _F_call_limited(mixed arg1, mixed *args)
+nomask mixed _F_call_limited(mixed arg1, mixed *args)
 {
     if (previous_program() == AUTO) {
 	object rsrcd;
 	int stack, ticks;
 	string function;
-	mixed tls, *limits;
+	mixed tls, *limits, result;
 
 	rsrcd = ::find_object(RSRCD);
 	function = arg1;
@@ -582,7 +586,7 @@ nomask _F_call_limited(mixed arg1, mixed *args)
 	}
 
 	rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
-	    call_other(this_object(), function, args...);
+	    result = call_other(this_object(), function, args...);
 
 	    ticks = ::status()[ST_TICKS];
 	    rlimits (-1; -1) {
@@ -590,7 +594,20 @@ nomask _F_call_limited(mixed arg1, mixed *args)
 		tls[0] = limits[LIM_NEXT];
 	    }
 	}
+
+	return result;
     }
+}
+
+/*
+ * NAME:	call_limited()
+ * DESCRIPTION:	call a function with the current object owner's resource limits
+ */
+static varargs mixed call_limited(string function, mixed args...)
+{
+    CHECKARG(function, 1, "call_limited");
+
+    return _F_call_limited(function, args);
 }
 
 /*

@@ -14,7 +14,7 @@ static create(int clone)
 {
     if (clone) {
 	::create(200);
-	subscribe_event(user = this_user(), "input");
+	user = this_user();
     }
 }
 
@@ -28,10 +28,21 @@ static object query_user()
 }
 
 /*
- * NAME:	evt_input()
- * DESCRIPTION:	handle an input event
+ * NAME:	input()
+ * DESCRIPTION:	deal with input from user
  */
-static evt_input(object user, string str)
+void input(string str)
+{
+    if (previous_object() == user) {
+	call_limited("process", str);
+    }
+}
+
+/*
+ * NAME:	process()
+ * DESCRIPTION:	process user input
+ */
+static void process(string str)
 {
     string arg;
 

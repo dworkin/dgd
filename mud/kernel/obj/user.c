@@ -31,7 +31,6 @@ static create(int clone)
 	user::create();
 	rsrc::create();
 	state = ([ ]);
-	add_event("input");
     }
 }
 
@@ -223,7 +222,7 @@ int receive_message(string str)
 
 	    if (str) {
 		if (wiztool) {
-		    event("input", str);
+		    wiztool->input(str);
 		} else if (strlen(str) != 0) {
 		    message("No command: " + str + "\n");
 		}
@@ -282,14 +281,4 @@ int receive_message(string str)
 	state[previous_object()] = STATE_NORMAL;
 	return MODE_ECHO;
     }
-}
-
-/*
- * NAME:	allow_subscribe()
- * DESCRIPTION:	allow objects to subscribe to input events if they're owned
- *		by this user
- */
-int allow_subscribe(object obj, string event)
-{
-    return (event == "input" && query_conn() && obj->query_owner() == name);
 }
