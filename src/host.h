@@ -123,6 +123,8 @@ typedef unsigned int Uint;
 # define GENERIC_SYSV
 
 # define STRUCT_AL		8	/* define this if align(struct) > 2 */
+
+# include <alloca.h>
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */

@@ -187,6 +187,7 @@ extern void		i_catcherr	P((frame*, Int));
 extern void		i_funcall	P((frame*, object*, int, int, int));
 extern bool		i_call		P((frame*, object*, char*, unsigned int,
 					   int, int));
+extern bool		i_call_tracei	P((frame*, Int, value*));
 extern array	       *i_call_trace	P((frame*));
 extern bool		i_call_critical	P((frame*, char*, int, int));
 extern void		i_runtime_error	P((frame*, Int));

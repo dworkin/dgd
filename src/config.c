@@ -228,7 +228,7 @@ void conf_dump()
     }
 
     lseek(fd, 0L, SEEK_SET);
-    write(fd, &header, sizeof(dumpinfo));
+    write(fd, header, sizeof(dumpinfo));
 }
 
 /*
@@ -1095,126 +1095,201 @@ unsigned short conf_array_size()
 }
 
 /*
- * NAME:	config->status()
- * DESCRIPTION:	return an array with information about resource usage
+ * NAME:	config->statusi()
+ * DESCRIPTION:	return resource usage information
  */
-array *conf_status(f)
+bool conf_statusi(f, idx, v)
 frame *f;
+Int idx;
+register value *v;
 {
-    register value *v;
-    array *a;
     char *version;
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
+    switch (idx) {
+    case 0:	/* ST_VERSION */
+	v->type = T_STRING;
+	version = VERSION;
+	str_ref(v->u.string = str_new(version, (long) strlen(version)));
+	break;
+
+    case 1:	/* ST_STARTTIME */
+	v->type = T_INT;
+	v->u.number = starttime;
+	break;
+
+    case 2:	/* ST_BOOTTIME */
+	v->type = T_INT;
+	v->u.number = boottime;
+	break;
+
+    case 3:	/* ST_UPTIME */
+	v->type = T_INT;
+	v->u.number = elapsed + P_time() - boottime;
+	break;
+
+    case 4:	/* ST_SWAPSIZE */
+	v->type = T_INT;
+	v->u.number = conf[SWAP_SIZE].u.num;
+	break;
+
+    case 5:	/* ST_SWAPUSED */
+	v->type = T_INT;
+	v->u.number = sw_count();
+	break;
+
+    case 6:	/* ST_SECTORSIZE */
+	v->type = T_INT;
+	v->u.number = conf[SECTOR_SIZE].u.num;
+	break;
+
+    case 7:	/* ST_SWAPRATE1 */
+	v->type = T_INT;
+	v->u.number = co_swaprate1();
+	break;
+
+    case 8:	/* ST_SWAPRATE5 */
+	v->type = T_INT;
+	v->u.number = co_swaprate5();
+	break;
+
+    case 9:	/* ST_SMEMSIZE */
+	mstat = m_info();
+	v->type = T_INT;
+	v->u.number = mstat->smemsize;
+	break;
+
+    case 10:	/* ST_SMEMUSED */
+	mstat = m_info();
+	v->type = T_INT;
+	v->u.number = mstat->smemused;
+	break;
+
+    case 11:	/* ST_DMEMSIZE */
+	mstat = m_info();
+	v->type = T_INT;
+	v->u.number = mstat->dmemsize;
+	break;
+
+    case 12:	/* ST_DMEMUSED */
+	mstat = m_info();
+	v->type = T_INT;
+	v->u.number = mstat->dmemused;
+	break;
+
+    case 13:	/* ST_OTABSIZE */
+	v->type = T_INT;
+	v->u.number = conf[OBJECTS].u.num;
+	break;
+
+    case 14:	/* ST_NOBJECTS */
+	v->type = T_INT;
+	v->u.number = o_count();
+	break;
+
+    case 15:	/* ST_COTABSIZE */
+	v->type = T_INT;
+	v->u.number = conf[CALL_OUTS].u.num;
+	break;
+
+    case 16:	/* ST_NCOSHORT */
+	co_info(&ncoshort, &ncolong);
+	v->type = T_INT;
+	v->u.number = ncoshort;
+	break;
+
+    case 17:	/* ST_NCOLONG */
+	co_info(&ncoshort, &ncolong);
+	v->type = T_INT;
+	v->u.number = ncolong;
+	break;
+
+    case 18:	/* ST_UTABSIZE */
+	v->type = T_INT;
+	v->u.number = conf[USERS].u.num;
+	break;
+
+    case 19:	/* ST_ETABSIZE */
+	v->type = T_INT;
+	v->u.number = conf[EDITORS].u.num;
+	break;
+
+    case 20:	/* ST_STRSIZE */
+	v->type = T_INT;
+	v->u.number = USHRT_MAX;
+	break;
+
+    case 21:	/* ST_ARRAYSIZE */
+	v->type = T_INT;
+	v->u.number = conf[ARRAY_SIZE].u.num;
+	break;
+
+    case 22:	/* ST_STACKDEPTH */
+	v->type = T_INT;
+	v->u.number = i_get_depth(f);
+	break;
+
+    case 23:	/* ST_TICKS */
+	v->type = T_INT;
+	v->u.number = i_get_ticks(f);
+	break;
+
+    case 24:	/* ST_PRECOMPILED */
+	v->type = T_ARRAY;
+	arr_ref(v->u.array = pc_list(f->data));
+	break;
+
+    default:
+	return FALSE;
+    }
+
+    return TRUE;
+}
+
+/*
+ * NAME:	config->status()
+ * DESCRIPTION:	return an array with information about resource usage
+ */
+array *conf_status(f)
+register frame *f;
+{
+    register value *v;
+    register Int i;
+    array *a;
+
     a = arr_new(f->data, 25L);
-    v = a->elts;
-
-    /* version */
-    v->type = T_STRING;
-    version = VERSION;
-    str_ref((v++)->u.string = str_new(version, (long) strlen(version)));
-
-    /* uptime */
-    v->type = T_INT;
-    (v++)->u.number = starttime;
-    v->type = T_INT;
-    (v++)->u.number = boottime;
-    v->type = T_INT;
-    (v++)->u.number = elapsed + P_time() - boottime;
-
-    /* swap */
-    v->type = T_INT;
-    (v++)->u.number = conf[SWAP_SIZE].u.num;
-    v->type = T_INT;
-    (v++)->u.number = sw_count();
-    v->type = T_INT;
-    (v++)->u.number = conf[SECTOR_SIZE].u.num;
-    v->type = T_INT;
-    (v++)->u.number = co_swaprate1();
-    v->type = T_INT;
-    (v++)->u.number = co_swaprate5();
-
-    /* memory */
-    mstat = m_info();
-    v->type = T_INT;
-    (v++)->u.number = mstat->smemsize;
-    v->type = T_INT;
-    (v++)->u.number = mstat->smemused;
-    v->type = T_INT;
-    (v++)->u.number = mstat->dmemsize;
-    v->type = T_INT;
-    (v++)->u.number = mstat->dmemused;
-
-    /* objects */
-    v->type = T_INT;
-    (v++)->u.number = conf[OBJECTS].u.num;
-    v->type = T_INT;
-    (v++)->u.number = o_count();
-
-    /* callouts */
-    co_info(&ncoshort, &ncolong);
-    v->type = T_INT;
-    (v++)->u.number = conf[CALL_OUTS].u.num;
-    v->type = T_INT;
-    (v++)->u.number = ncoshort;
-    v->type = T_INT;
-    (v++)->u.number = ncolong;
-
-    /* users & editors */
-    v->type = T_INT;
-    (v++)->u.number = conf[USERS].u.num;
-    v->type = T_INT;
-    (v++)->u.number = conf[EDITORS].u.num;
-
-    /* limits */
-    v->type = T_INT;
-    (v++)->u.number = USHRT_MAX;
-    v->type = T_INT;
-    (v++)->u.number = conf[ARRAY_SIZE].u.num;
-    v->type = T_INT;
-    (v++)->u.number = i_get_depth(f);
-    v->type = T_INT;
-    (v++)->u.number = i_get_ticks(f);
-
-    /* precompiled objects */
-    v->type = T_ARRAY;
-    arr_ref(v->u.array = pc_list(f->data));
-
+    for (i = 0, v = a->elts; i < 25; i++, v++) {
+	conf_statusi(f, i, v);
+    }
     return a;
 }
 
 /*
- * NAME:	config->object()
- * DESCRIPTION:	return resource usage of an object
+ * NAME:	config->objecti()
+ * DESCRIPTION:	return object resource usage information
  */
-array *conf_object(data, obj)
+bool conf_objecti(data, obj, idx, v)
 dataspace *data;
-object *obj;
+register object *obj;
+Int idx;
+register value *v;
 {
     register control *ctrl;
-    register value *v;
     object *prog;
-    array *clist, *a;
-    sector nsectors;
 
     prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
     ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
-    if (obj->flags & O_CREATED) {
-	clist = co_list(data, obj);
-	nsectors = obj->data->nsectors;
-    } else {
-	/* avoid creating a dataspace for this object */
-	clist = arr_new(data, 0L);
-	nsectors = 0;
-    }
-    a = arr_new(data, 6L);
 
-    v = a->elts;
-    v->type = T_INT;
-    (v++)->u.number = ctrl->compiled;
-    v->type = T_INT;
-    (v++)->u.number = ctrl->ninherits * sizeof(dinherit) +
+    switch (idx) {
+    case 0:	/* O_COMPILETIME */
+	v->type = T_INT;
+	v->u.number = ctrl->compiled;
+	break;
+
+    case 1:	/* O_PROGSIZE */
+	v->type = T_INT;
+	v->u.number = ctrl->ninherits * sizeof(dinherit) +
 		      ctrl->progsize +
 		      ctrl->nstrings * (Uint) sizeof(dstrconst) +
 		      ctrl->strsize +
@@ -1222,18 +1297,56 @@ object *obj;
 		      ctrl->nvardefs * sizeof(dvardef) +
 		      ctrl->nfuncalls * (Uint) 2 +
 		      ctrl->nsymbols * (Uint) sizeof(dsymbol);
-    v->type = T_INT;
-    (v++)->u.number = ctrl->nvariables;
-    v->type = T_INT;
-    if (obj->flags & O_MASTER) {
-	(v++)->u.number = ctrl->nsectors + nsectors;
-    } else {
-	(v++)->u.number = nsectors;
-    }
-    v->type = T_ARRAY;
-    arr_ref((v++)->u.array = clist);
-    v->type = T_INT;
-    v->u.number = (obj->flags & O_MASTER) ? (Uint) obj->index : obj->u_master;
+	break;
 
+    case 2:	/* O_DATASIZE */
+	v->type = T_INT;
+	v->u.number = ctrl->nvariables;
+	break;
+
+    case 3:	/* O_NSECTORS */
+	v->type = T_INT;
+	v->u.number = (obj->flags & O_CREATED) ? o_dataspace(obj)->nsectors : 0;
+	if (obj->flags & O_MASTER) {
+	    v->u.number += ctrl->nsectors;
+	}
+	break;
+
+    case 4:	/* O_CALLOUTS */
+	v->type = T_ARRAY;
+	arr_ref(v->u.array = (obj->flags & O_CREATED) ?
+			      co_list(data, obj) : arr_new(data, 0L));
+	break;
+
+    case 5:	/* O_INDEX */
+	v->type = T_INT;
+	v->u.number = (obj->flags & O_MASTER) ?
+		       (Uint) obj->index : obj->u_master;
+	break;
+
+
+    default:
+	return FALSE;
+    }
+
+    return TRUE;
+}
+
+/*
+ * NAME:	config->object()
+ * DESCRIPTION:	return resource usage of an object
+ */
+array *conf_object(data, obj)
+register dataspace *data;
+register object *obj;
+{
+    register value *v;
+    register Int i;
+    array *a;
+
+    a = arr_new(data, 6L);
+    for (i = 0, v = a->elts; i < 6; i++, v++) {
+	conf_objecti(data, obj, i, v);
+    }
     return a;
 }

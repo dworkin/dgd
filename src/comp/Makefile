@@ -44,19 +44,19 @@ clean:
 
 $(OBJ) comp.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h
 $(OBJ) comp.o: ../str.h ../array.h ../object.h ../xfloat.h ../interpret.h
-control.o codegeni.o codegenc.o compile.o csupport.o comp.o: ../data.h
+control.o optimize.o codegeni.o codegenc.o compile.o csupport.o: ../data.h
 control.o comp.o: ../hash.h ../path.h
-comp.o: ../swap.h ../comm.h ../editor.h ../call_out.h
+comp.o: ../data.h ../swap.h ../comm.h ../editor.h ../call_out.h
 
 node.o parser.o compile.o: ../lex/macro.h ../lex/token.h
 parser.o compile.o: ../lex/ppcontrol.h
 
-control.o codegeni.o codegenc.o csupport.o: ../kfun/table.h
+control.o optimize.o codegeni.o codegenc.o csupport.o: ../kfun/table.h
 
 $(OBJ): comp.h
 node.o parser.o optimize.o control.o codegeni.o codegenc.o: node.h
 compile.o comp.o csupport.o: node.h
-control.o codegeni.o codegenc.o compile.o csupport.o: control.h
+control.o optimize.o codegeni.o codegenc.o compile.o csupport.o: control.h
 codegeni.o codegenc.o compile.o comp.o: codegen.h
 parser.o control.o optimize.o codegeni.o codegenc.o compile.o comp.o: compile.h
 csupport.o: compile.h

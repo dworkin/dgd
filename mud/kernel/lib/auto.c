@@ -259,7 +259,7 @@ static object compile_object(string path)
 {
     string oname, uid;
     object driver, rsrcd, obj;
-    int *rsrc, *status, lib, new;
+    int *rsrc, lib, new, stack, ticks;
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
@@ -292,15 +292,12 @@ static object compile_object(string path)
     lib = sscanf(path, "%*s/lib/");
     new = !::find_object(path);
     if (new && !lib) {
-	status = ::status();
+	stack = ::status()[ST_STACKDEPTH];
+	ticks = ::status()[ST_TICKS];
     }
     catch {
 	rlimits (-1; -1) {
 	    if (new && !lib) {
-		int stack, ticks;
-
-		stack = status[ST_STACKDEPTH];
-		ticks = status[ST_TICKS];
 		if ((stack >= 0 &&
 		     stack - 2 < rsrcd->rsrc_get(uid,
 						 "create stack")[RSRC_MAX]) ||
@@ -320,7 +317,7 @@ static object compile_object(string path)
 		driver->compile(obj, uid);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     if (new && !lib) {
 	call_other(obj, "???");	/* initialize & register */
     }
@@ -335,8 +332,8 @@ static object compile_object(string path)
 static varargs object clone_object(string path, string uid)
 {
     string oname, str;
-    object driver, rsrcd, obj;
-    int *rsrc, *status;
+    object rsrcd, obj;
+    int *rsrc, stack, ticks;
 
     CHECKARG(path, 1, "clone_object");
     if (uid) {
@@ -352,8 +349,7 @@ static varargs object clone_object(string path, string uid)
      * check permissions
      */
     oname = object_name(this_object());
-    driver = ::find_object(DRIVER);
-    path = driver->normalize_path(path, oname + "/..", creator);
+    path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
     if ((sscanf(path, "/kernel/%*s") != 0 &&
 	 sscanf(oname, "/kernel/%*s") == 0) ||
 	(creator != "System" &&
@@ -391,13 +387,10 @@ static varargs object clone_object(string path, string uid)
     /*
      * do the cloning
      */
-    status = ::status();
+    stack = ::status()[ST_STACKDEPTH];
+    ticks = ::status()[ST_TICKS];
     catch {
 	rlimits (-1; -1) {
-	    int stack, ticks;
-
-	    stack = status[ST_STACKDEPTH];
-	    ticks = status[ST_TICKS];
 	    if ((stack >= 0 &&
 		 stack - 2 < rsrcd->rsrc_get(uid, "create stack")[RSRC_MAX]) ||
 		(ticks >= 0 &&
@@ -411,7 +404,7 @@ static varargs object clone_object(string path, string uid)
 		owner = "/" + uid;
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return ::clone_object(obj);
 }
 
@@ -447,6 +440,7 @@ static mixed **call_trace()
 varargs mixed *status(mixed obj)
 {
     object driver;
+    string oname;
     mixed *status, **callouts, *co;
     int i;
 
@@ -461,11 +455,10 @@ varargs mixed *status(mixed obj)
      * check arguments
      */
     driver = ::find_object(DRIVER);
+    oname = object_name(this_object());
     if (typeof(obj) == T_STRING) {
 	/* get corresponding object */
-	obj = ::find_object(driver->normalize_path(obj,
-						   object_name(this_object()) +
-						   "/..",
+	obj = ::find_object(driver->normalize_path(obj, oname + "/..",
 						   creator));
 	if (!obj) {
 	    return 0;
@@ -476,8 +469,11 @@ varargs mixed *status(mixed obj)
     status = ::status(obj);
     callouts = status[O_CALLOUTS];
     if ((i=sizeof(callouts)) != 0) {
-	if (creator != "System" &&
-	    (!owner || owner != driver->creator(object_name(obj)))) {
+	if (sscanf(oname, "/kernel/%*s") != 0) {
+	    /* can't see callouts in kernel objects */
+	    status[O_CALLOUTS] = ({ });
+	} else if (creator != "System" &&
+		   (!owner || owner != driver->creator(object_name(obj)))) {
 	    /* remove arguments from callouts */
 	    do {
 		--i;
@@ -565,25 +561,33 @@ static shutdown()
  * NAME:	_F_call_limited()
  * DESCRIPTION:	call a function with limited stack depth and ticks
  */
-nomask _F_call_limited(string function, mixed *args)
+nomask _F_call_limited(mixed arg1, mixed *args)
 {
     if (previous_program() == AUTO) {
 	object rsrcd;
-	int *status;
-	mixed *limits;
+	int stack, ticks;
+	string function;
+	mixed tls, *limits;
 
-	status = ::status();
+	rsrcd = ::find_object(RSRCD);
+	function = arg1;
+	stack = ::status()[ST_STACKDEPTH];
+	ticks = ::status()[ST_TICKS];
 	rlimits (-1; -1) {
-	    rsrcd = ::find_object(RSRCD);
-	    limits = rsrcd->call_limits(owner, status);
+	    tls = ::call_trace()[1][TRACE_FIRSTARG];
+	    if (tls == arg1) {
+		tls = arg1 = allocate(TLS_SIZE);
+	    }
+	    limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
 	}
 
-	rlimits (limits[2]; limits[3]) {
+	rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
 	    call_other(this_object(), function, args...);
 
-	    status = ::status();
+	    ticks = ::status()[ST_TICKS];
 	    rlimits (-1; -1) {
-		rsrcd->update_ticks(status[ST_TICKS]);
+		rsrcd->update_ticks(limits, ticks);
+		tls[0] = limits[LIM_NEXT];
 	    }
 	}
     }
@@ -595,7 +599,6 @@ nomask _F_call_limited(string function, mixed *args)
  */
 static varargs int call_out(string function, int delay, mixed args...)
 {
-    object rsrcd;
     int handle;
 
     CHECKARG(function, 1, "call_out");
@@ -607,20 +610,21 @@ static varargs int call_out(string function, int delay, mixed args...)
     /*
      * add callout
      */
-    rsrcd = ::find_object(RSRCD);
-    if (this_object() == rsrcd) {
-	return ::call_out(function, delay, function, FALSE, ({ }));
+    if (sscanf(object_name(this_object()), "/kernel/%*s/rsrc") != 0) {
+	/* direct callouts for resource management objects */
+	return ::call_out(function, delay, args...);
     }
     catch {
 	rlimits (-1; -1) {
 	    handle = ::call_out("_F_callout", delay, function, FALSE, args);
-	    if (rsrcd->rsrc_incr(owner, "callouts", this_object(), 1)) {
+	    if (::find_object(RSRCD)->rsrc_incr(owner, "callouts",
+						this_object(), 1)) {
 		return handle;
 	    }
 	    ::remove_call_out(handle);
 	    error("Too many callouts");
 	}
-    } : error(::find_object(DRIVER)->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 }
 
 /*
@@ -649,6 +653,7 @@ nomask varargs _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
+	mixed *tls;
 
 	if (!suspended &&
 	    !::find_object(RSRCD)->suspended(this_object(), owner)) {
@@ -666,7 +671,7 @@ nomask varargs _F_callout(string function, int suspended, mixed *args)
  * NAME:	_F_release()
  * DESCRIPTION:	release a suspended callout
  */
-nomask _F_release(int handle)
+nomask _F_release(mixed handle)
 {
     if (previous_program() == RSRCD) {
 	int i;
@@ -675,6 +680,7 @@ nomask _F_release(int handle)
 	callouts = ::status(this_object())[O_CALLOUTS];
 	::remove_call_out(handle);
 	for (i = sizeof(callouts); callouts[--i][CO_HANDLE] != handle; ) ;
+	handle = allocate(TLS_SIZE);
 	_F_call_limited(callouts[i][CO_FIRSTXARG],
 			callouts[i][CO_FIRSTXARG + 2]);
     }
@@ -759,7 +765,7 @@ nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
 		    }
 		    events[name] = objlist;
 		}
-	    } : error(::find_object(DRIVER)->query_error());
+	    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 	} else {
 	    if (sizeof(objlist & ({ obj })) == 0) {
 		error("Not subscribed to event");
@@ -816,6 +822,28 @@ static object *query_subscribed(string name)
 }
 
 /*
+ * NAME:	_F_event()
+ * DESCRIPTION:	handle an event
+ */
+nomask _F_event(string name, mixed *args)
+{
+    if (!previous_program() && args[0]) {
+	_F_call_limited(name, args);
+    }
+}
+
+/*
+ * NAME:	_F_start_event()
+ * DESCRIPTION:	start an event in this object
+ */
+nomask _F_start_event(string name, mixed *args)
+{
+    if (previous_program() == AUTO) {
+	::call_out("_F_event", 0, name, args);
+    }
+}
+
+/*
  * NAME:	event()
  * DESCRIPTION:	cause an event
  */
@@ -823,28 +851,17 @@ static varargs event(string name, mixed args...)
 {
     object *objlist;
     string *names;
-    int dest, i, sz;
+    int i, sz;
 
     CHECKARG(name, 1, "event");
     if (!events || !(objlist=events[name])) {
 	error("No such event");
     }
-    if (!this_object()) {
-	return;
-    }
 
     name = "evt_" + name;
-    dest = FALSE;
-    for (i = 0, sz = sizeof(objlist); i < sz; i++) {
-	if (objlist[i]) {
-	    objlist[i]->_F_call_limited(name, args);
-	} else {
-	    dest = TRUE;
-	}
-    }
-
-    if (dest && events[name]) {
-	events[name] -= ({ 0 });
+    args = ({ this_object() }) + args;
+    for (i = 0, sz = sizeof(objlist -= ({ 0 })); i < sz; i++) {
+	objlist[i]->_F_start_event(name, args);
     }
 }
 
@@ -913,7 +930,7 @@ static varargs int write_file(string path, string str, int offset)
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, TRUE);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 
     return result;
 }
@@ -952,7 +969,7 @@ static int remove_file(string path)
 						"filequota", 0, -size);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return result;
 }
 
@@ -1006,7 +1023,7 @@ static int rename_file(string from, string to)
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, -size);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return result;
 }
 
@@ -1100,7 +1117,7 @@ static int make_dir(string path)
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, 1, TRUE);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return result;
 }
 
@@ -1137,7 +1154,7 @@ static int remove_dir(string path)
 						"filequota", 0, -1);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return result;
 }
 
@@ -1205,7 +1222,7 @@ static save_object(string path)
 		rsrcd->rsrc_incr(fcreator, "filequota", 0, size, TRUE);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 }
 
 /*
@@ -1242,7 +1259,7 @@ static varargs string editor(string cmd)
 				 driver->file_size(info[0]) - info[1], TRUE);
 	    }
 	}
-    } : error(driver->query_error());
+    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return result;
 }
 

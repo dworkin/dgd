@@ -8,3 +8,9 @@
 # define RSRC_INDEXED	2	/* ...or, indexed usages */
 # define RSRC_DECAY	3	/* decay percentage */
 # define RSRC_PERIOD	4	/* decay period */
+
+# define LIM_NEXT       0	/* next limits frame */
+# define LIM_OWNER	1	/* owner of this frame */
+# define LIM_MAXSTACK	2	/* max stack in frame */
+# define LIM_MAXTICKS	3	/* max ticks in frame */
+# define LIM_TICKS	4	/* current ticks in frame */

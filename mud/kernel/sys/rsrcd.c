@@ -2,12 +2,6 @@
 # include <kernel/rsrc.h>
 # include <type.h>
 
-# define LIM_NEXT	0	/* next limits frame */
-# define LIM_OWNER	1	/* owner of this frame */
-# define LIM_MAXSTACK	2	/* max stack in frame */
-# define LIM_MAXTICKS	3	/* max ticks in frame */
-# define LIM_TICKS	4	/* current ticks in frame */
-
 # define CO_OBJ		0	/* callout object */
 # define CO_OWNER	1	/* owner */
 # define CO_HANDLE	2	/* handle in object */
@@ -18,7 +12,6 @@
 
 mapping resources;		/* registered resources */
 mapping owners;			/* resource owners */
-mixed *limits;			/* limits for current owner */
 int downtime;			/* shutdown time */
 mapping suspended;		/* suspended callouts */
 mixed *first_suspended;		/* first suspended callout */
@@ -83,27 +76,20 @@ remove_owner(string owner)
 {
     object obj;
     string *names;
-    mixed **rsrcs, *rsrc, *usage;
-    int i, sz;
+    mixed **rsrcs, *rsrc;
+    int i;
 
     if (previous_program() == API_RSRC && (obj=owners[owner])) {
 	names = map_indices(resources);
 	rsrcs = map_values(resources);
-	usage = allocate(sz = sizeof(rsrcs));
-	for (i = sz; --i >= 0; ) {
+	for (i = sizeof(names); --i >= 0; ) {
 	    rsrc = obj->rsrc_get(names[i], rsrcs[i]);
 	    if (rsrc[RSRC_DECAY] == 0 && (int) rsrc[RSRC_USAGE] != 0) {
 		error("Removing owner with non-zero resources");
 	    }
-	    usage[i] = rsrc[RSRC_USAGE];
 	}
 
-	rlimits (-1; -1) {
-	    for (i = sz; --i >= 0; ) {
-		rsrcs[i][RSRC_USAGE] -= usage[i];
-	    }
-	    destruct_object(obj);
-	}
+	destruct_object(obj);
     }
 }
 
@@ -180,10 +166,19 @@ remove_rsrc(string name)
  */
 mixed *query_rsrc(string name)
 {
-    mixed *rsrc;
-
     if (previous_program() == API_RSRC) {
-	rsrc = resources[name];
+	mixed *rsrc, usage;
+	object *objects;
+	int i;
+
+	rsrc = resources[name][..];
+	objects = map_values(owners);
+	usage = (rsrc[RSRC_DECAY - 1] == 0) ? 0 : 0.0;
+	for (i = sizeof(objects); --i >= 0; ) {
+	    usage += objects[i]->rsrc_get(name, resources[name])[RSRC_USAGE];
+	}
+
+	rsrc[RSRC_USAGE] = usage;
 	return rsrc[RSRC_USAGE .. RSRC_MAX] + ({ 0 }) +
 	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
     }
@@ -255,13 +250,13 @@ varargs int rsrc_incr(string owner, string name, mixed index, int incr,
  * NAME:	call_limits()
  * DESCRIPTION:	handle stack and tick limits for _F_call_limited
  */
-mixed *call_limits(string owner, mixed *status)
+mixed *call_limits(mixed *limits, string owner, int stack, int ticks)
 {
     if (previous_program() == AUTO) {
-	return limits = owners[owner]->call_limits(limits, status,
-						   resources["stack"],
-						   resources["ticks"],
-						   resources["tick usage"]);
+	return owners[owner]->call_limits(limits, stack, ticks,
+					  resources["stack"],
+					  resources["ticks"],
+					  resources["tick usage"]);
     }
 }
 
@@ -269,7 +264,7 @@ mixed *call_limits(string owner, mixed *status)
  * NAME:	update_ticks()
  * DESCRIPTION:	update ticks after execution
  */
-int update_ticks(int ticks)
+int update_ticks(mixed *limits, int ticks)
 {
     if (KERNEL()) {
 	if (limits[LIM_MAXTICKS] > 0 &&
@@ -277,11 +272,9 @@ int update_ticks(int ticks)
 	     limits[LIM_OWNER] != limits[LIM_NEXT][LIM_OWNER])) {
 	    owners[limits[LIM_OWNER]]->update_ticks(ticks = limits[LIM_MAXTICKS]
 								    - ticks);
-	    resources["tick usage"][RSRC_USAGE] += (float) ticks;
 	    ticks = (limits[LIM_TICKS] >= 0) ?
 		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}
-	limits = limits[LIM_NEXT];
 	return ticks;
     }
 }

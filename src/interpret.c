@@ -2026,78 +2026,118 @@ register frame *f;
 }
 
 /*
- * NAME:	interpret->call_trace()
- * DESCRIPTION:	return the function call trace
+ * NAME:	interpret->func_trace()
+ * DESCRIPTION:	return the trace of a single function
  */
-array *i_call_trace(ftop)
-frame *ftop;
+static array *i_func_trace(f, data)
+register frame *f;
+dataspace *data;
 {
-    register frame *f;
     register value *v;
     register string *str;
     register char *name;
     register unsigned short n;
     register value *args;
     array *a;
-    value *elts;
     unsigned short max_args;
+
+    max_args = conf_array_size() - 5;
+
+    n = f->nargs;
+    args = f->argp + n;
+    if (n > max_args) {
+	/* unlikely, but possible */
+	n = max_args;
+    }
+    a = arr_new(data, n + 5L);
+    v = a->elts;
+
+    /* object name */
+    name = o_name(f->obj);
+    v[0].type = T_STRING;
+    str = str_new((char *) NULL, strlen(name) + 1L);
+    str->text[0] = '/';
+    strcpy(str->text + 1, name);
+    str_ref(v[0].u.string = str);
+
+    /* program name */
+    name = f->p_ctrl->obj->chain.name;
+    v[1].type = T_STRING;
+    str = str_new((char *) NULL, strlen(name) + 1L);
+    str->text[0] = '/';
+    strcpy(str->text + 1, name);
+    str_ref(v[1].u.string = str);
+
+    /* function name */
+    v[2].type = T_STRING;
+    str_ref(v[2].u.string = d_get_strconst(f->p_ctrl, f->func->inherit,
+					   f->func->index));
+
+    /* line number */
+    v[3].type = T_INT;
+    if (f->func->class & C_COMPILED) {
+	v[3].u.number = 0;
+    } else {
+	v[3].u.number = i_line(f);
+    }
+
+    /* external flag */
+    v[4].type = T_INT;
+    v[4].u.number = f->external;
+
+    /* arguments */
+    v += 5;
+    while (n > 0) {
+	*v++ = *--args;
+	i_ref_value(args);
+	--n;
+    }
+    d_ref_imports(a);
+
+    return a;
+}
+
+/*
+ * NAME:	interpret->call_tracei()
+ * DESCRIPTION:	get the trace of a single function
+ */
+bool i_call_tracei(ftop, idx, v)
+frame *ftop;
+Int idx;
+value *v;
+{
+    register frame *f;
+    register unsigned short n;
+
+    for (f = ftop, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
+    if (idx < 0 || idx >= n) {
+	return FALSE;
+    }
+
+    for (f = ftop, n -= idx + 1; n != 0; f = f->prev, --n) ;
+    v->type = T_ARRAY;
+    arr_ref(v->u.array = i_func_trace(f, ftop->data));
+    return TRUE;
+}
+
+/*
+ * NAME:	interpret->call_trace()
+ * DESCRIPTION:	return the function call trace
+ */
+array *i_call_trace(ftop)
+register frame *ftop;
+{
+    register frame *f;
+    register value *v;
+    register unsigned short n;
+    array *a;
 
     for (f = ftop, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
     a = arr_new(ftop->data, (long) n);
     i_add_ticks(ftop, 10 * n);
-    max_args = conf_array_size() - 5;
-    for (f = ftop, elts = a->elts + n; f->obj != (object *) NULL; f = f->prev) {
-	(--elts)->type = T_ARRAY;
-	n = f->nargs;
-	args = f->argp + n;
-	if (n > max_args) {
-	    /* unlikely, but possible */
-	    n = max_args;
-	}
-	arr_ref(elts->u.array = arr_new(ftop->data, n + 5L));
-	v = elts->u.array->elts;
-
-	/* object name */
-	name = o_name(f->obj);
-	v[0].type = T_STRING;
-	str = str_new((char *) NULL, strlen(name) + 1L);
-	str->text[0] = '/';
-	strcpy(str->text + 1, name);
-	str_ref(v[0].u.string = str);
-
-	/* program name */
-	name = f->p_ctrl->obj->chain.name;
-	v[1].type = T_STRING;
-	str = str_new((char *) NULL, strlen(name) + 1L);
-	str->text[0] = '/';
-	strcpy(str->text + 1, name);
-	str_ref(v[1].u.string = str);
-
-	/* function name */
-	v[2].type = T_STRING;
-	str_ref(v[2].u.string = d_get_strconst(f->p_ctrl, f->func->inherit,
-					       f->func->index));
-
-	/* line number */
-	v[3].type = T_INT;
-	if (f->func->class & C_COMPILED) {
-	    v[3].u.number = 0;
-	} else {
-	    v[3].u.number = i_line(f);
-	}
-
-	/* external flag */
-	v[4].type = T_INT;
-	v[4].u.number = f->external;
-
-	/* arguments */
-	v += 5;
-	while (n > 0) {
-	    *v++ = *--args;
-	    i_ref_value(args);
-	    --n;
-	}
-	d_ref_imports(elts->u.array);
+    for (f = ftop, v = a->elts + n; f->obj != (object *) NULL; f = f->prev) {
+	(--v)->type = T_ARRAY;
+	arr_ref(v->u.array = i_func_trace(f, ftop->data));
     }
 
     return a;

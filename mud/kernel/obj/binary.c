@@ -21,6 +21,24 @@ static create(int clone)
 }
 
 /*
+ * NAME:	open()
+ * DESCRIPTION:	open the connection
+ */
+static open()
+{
+    ::open(allocate(TLS_SIZE));
+}
+
+/*
+ * NAME:	close()
+ * DESCRIPTION:	close the connection
+ */
+static close(int dest)
+{
+    ::close(allocate(TLS_SIZE), dest);
+}
+
+/*
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
@@ -51,10 +69,12 @@ static receive_message(string str)
 		    }
 		}
 
-		linemode = (::receive_message(str) != MODE_RAW);
+		linemode = (::receive_message(allocate(TLS_SIZE),
+					      str) != MODE_RAW);
 	    }
 	} else {
-	    linemode = (::receive_message(buffer) != MODE_RAW);
+	    linemode = (::receive_message(allocate(TLS_SIZE),
+					  buffer) != MODE_RAW);
 	    buffer = "";
 	    break;
 	}

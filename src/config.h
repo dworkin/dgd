@@ -80,5 +80,7 @@ typedef struct _control_ control;
 typedef struct _dataspace_ dataspace;
 typedef struct _frame_ frame;
 
+extern bool   conf_statusi	P((frame*, Int, value*));
 extern array *conf_status	P((frame*));
+extern bool   conf_objecti	P((dataspace*, object*, Int, value*));
 extern array *conf_object	P((dataspace*, object*));

@@ -2166,3 +2166,80 @@ int nargs;
     return 0;
 }
 # endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("status", kf_status_idx, pt_status_idx)
+# else
+char pt_status_idx[] = { C_STATIC, T_MIXED, 1, T_INT };
+
+/*
+ * NAME:	kfun->status_idx()
+ * DESCRIPTION:	return status()[idx]
+ */
+int kf_status_idx(f)
+register frame *f;
+{
+    if (f->sp->type != T_INT) {
+	error("Non-numeric array index");
+    }
+    i_add_ticks(f, 6);
+    if (!conf_statusi(f, f->sp->u.number, f->sp)) {
+	error("Index out of range");
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("status", kf_statuso_idx, pt_statuso_idx)
+# else
+char pt_statuso_idx[] = { C_STATIC, T_MIXED, 2, T_OBJECT, T_INT };
+
+/*
+ * NAME:	kfun->statuso_idx()
+ * DESCRIPTION:	return status(obj)[idx]
+ */
+int kf_statuso_idx(f)
+register frame *f;
+{
+    if (f->sp[1].type != T_OBJECT) {
+	return 1;
+    }
+    if (f->sp->type != T_INT) {
+	error("Non-numeric array index");
+    }
+    i_add_ticks(f, 6);
+    if (!conf_objecti(f->data, &otable[f->sp[1].oindex], f->sp->u.number,
+		      &f->sp[1])) {
+	error("Index out of range");
+    }
+    f->sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call_trace", kf_calltr_idx, pt_calltr_idx)
+# else
+char pt_calltr_idx[] = { C_STATIC, T_MIXED | (1 << REFSHIFT), 1, T_INT };
+
+/*
+ * NAME:	kfun->calltr_idx()
+ * DESCRIPTION:	return call_trace()[idx]
+ */
+int kf_calltr_idx(f)
+register frame *f;
+{
+    if (f->sp->type != T_INT) {
+	error("Non-numeric array index");
+    }
+    i_add_ticks(f, 10);
+    if (!i_call_tracei(f, f->sp->u.number, f->sp)) {
+	error("Index out of range");
+    }
+    return 0;
+}
+# endif

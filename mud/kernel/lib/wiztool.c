@@ -18,6 +18,7 @@ private int hsize, hindex, hmax; /* expression table size and index */
 private string directory;	/* current directory */
 private object driver;		/* driver object */
 
+static object query_user();
 
 /*
  * NAME:	create()
@@ -64,7 +65,7 @@ static nomask int access(string user, string file, int type)
 static add_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Insufficient access granting privileges.\n");
+	query_user()->message("Insufficient access granting privileges.\n");
     } else {
 	::add_user(user);
     }
@@ -77,7 +78,7 @@ static add_user(string user)
 static remove_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Insufficient access granting privileges.\n");
+	query_user()->message("Insufficient access granting privileges.\n");
     } else {
 	::remove_user(user);
     }
@@ -91,7 +92,7 @@ static set_access(string user, string file, int type)
 {
     if (!access(owner, (type == FULL_ACCESS) ? "/" : file + "/*", FULL_ACCESS))
     {
-	this_user()->message("Insufficient access granting privileges.\n");
+	query_user()->message("Insufficient access granting privileges.\n");
     } else {
 	::set_access(user, file, type);
     }
@@ -104,7 +105,7 @@ static set_access(string user, string file, int type)
 static set_global_access(string dir, int flag)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Insufficient access granting privileges.\n");
+	query_user()->message("Insufficient access granting privileges.\n");
     } else {
 	::set_global_access(dir, flag);
     }
@@ -118,7 +119,7 @@ static set_global_access(string dir, int flag)
 static add_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::add_owner(rowner);
     }
@@ -131,7 +132,7 @@ static add_owner(string rowner)
 static remove_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::remove_owner(rowner);
     }
@@ -145,7 +146,7 @@ static remove_owner(string rowner)
 static set_rsrc(string name, int max, int decay, int period)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::set_rsrc(name, max, decay, period);
     }
@@ -158,7 +159,7 @@ static set_rsrc(string name, int max, int decay, int period)
 static remove_rsrc(string name)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::remove_rsrc(name);
     }
@@ -171,7 +172,7 @@ static remove_rsrc(string name)
 static rsrc_set_limit(string rowner, string name, int max)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::rsrc_set_limit(rowner, name, max);
     }
@@ -186,7 +187,7 @@ static varargs int rsrc_incr(string rowner, string name, mixed index, int incr,
 			     int force)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
 	return FALSE;
     } else {
 	return ::rsrc_incr(rowner, name, index, incr, force);
@@ -202,7 +203,7 @@ static object compile_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Permission denied.\n");
+	query_user()->message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::compile_object(path);
@@ -216,7 +217,7 @@ static object clone_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (sscanf(path, "/kernel/%*s") != 0 || !access(owner, path, READ_ACCESS)) {
-	this_user()->message(path + ": Permission denied.\n");
+	query_user()->message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::clone_object(path);
@@ -253,7 +254,7 @@ static int destruct_object(mixed obj)
     if (path && owner != oowner &&
 	((sscanf(path, "/kernel/%*s") != 0 && sscanf(path, "%*s/lib/") == 0) ||
 	 !access(owner, path, WRITE_ACCESS))) {
-	this_user()->message(path + ": Permission denied.\n");
+	query_user()->message(path + ": Permission denied.\n");
 	return -1;
     }
     return ::destruct_object(obj);
@@ -269,12 +270,12 @@ static varargs mixed read_file(string path, int offset, int size)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, READ_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	query_user()->message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::read_file(path, offset, size));
     if (err) {
-	this_user()->message(path + ": " + err + ".\n");
+	query_user()->message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -291,12 +292,12 @@ static varargs int write_file(string path, string str, int offset)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	query_user()->message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::write_file(path, str, offset));
     if (err) {
-	this_user()->message(path + ": " + err + ".\n");
+	query_user()->message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -313,12 +314,12 @@ static int remove_file(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	query_user()->message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::remove_file(path));
     if (err) {
-	this_user()->message(path + ": " + err + ".\n");
+	query_user()->message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -335,17 +336,17 @@ static int rename_file(string from, string to)
 
     from = driver->normalize_path(from, directory, owner);
     if (!access(owner, from, WRITE_ACCESS)) {
-	this_user()->message(from + ": Access denied.\n");
+	query_user()->message(from + ": Access denied.\n");
 	return -1;
     }
     to = driver->normalize_path(to, directory, owner);
     if (!access(owner, to, WRITE_ACCESS)) {
-	this_user()->message(to + ": Access denied.\n");
+	query_user()->message(to + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::rename_file(from, to));
     if (err) {
-	this_user()->message(to + ": " + err + ".\n");
+	query_user()->message(to + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -375,12 +376,12 @@ static int make_dir(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	query_user()->message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::make_dir(path));
     if (err) {
-	this_user()->message(path + ": " + err + ".\n");
+	query_user()->message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -397,12 +398,12 @@ static int remove_dir(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, READ_ACCESS)) {
-	this_user()->message(path + ": Access denied.\n");
+	query_user()->message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::remove_dir(path));
     if (err) {
-	this_user()->message(path + ": " + err + ".\n");
+	query_user()->message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -435,7 +436,7 @@ nomask string path_write(string path)
 static swapout()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::swapout();
     }
@@ -448,7 +449,7 @@ static swapout()
 static dump_state()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::dump_state();
     }
@@ -461,7 +462,7 @@ static dump_state()
 static shutdown()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	this_user()->message("Permission denied.\n");
+	query_user()->message("Permission denied.\n");
     } else {
 	::shutdown();
     }
@@ -714,7 +715,7 @@ static mixed *expand(string files, int exist, int full)
 
 	if (!dir) {
 	    if (exist != 0 || files) {
-		this_user()->message(str + ": Access denied.\n");
+		query_user()->message(str + ": Access denied.\n");
 		all[4]++;
 		continue;
 	    }
@@ -725,7 +726,7 @@ static mixed *expand(string files, int exist, int full)
 	    }
 	} else if ((sz=sizeof(strs=dir[0])) == 0) {
 	    if (exist > 0 || (exist == 0 && files)) {
-		this_user()->message(str + ": No such file or directory.\n");
+		query_user()->message(str + ": No such file or directory.\n");
 		all[4]++;
 		continue;
 	    }

@@ -1164,3 +1164,7 @@ DGD 1.1
    calling order for same-delay callouts can be guaranteed.
  - Deal more efficiently with blocked connections.  Also don't close a
    connection while there is still input to process.
+ - Optimize indexing the value returned by kernel functions: status()[i],
+   status(obj)[i], call_trace()[i].
+ - The value of integer arguments in precompiled functions would not always
+   be given correctly in call_trace().

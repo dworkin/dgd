@@ -85,12 +85,10 @@ private decay_rsrc(mixed *rsrc, mixed *grsrc, int time)
 	}
 	t += period;
     } while (time >= t);
-    usage = floor(usage + 0.5);
 
     rlimits (-1; -1) {
 	rsrc[RSRC_DECAYTIME] = t;
-	grsrc[RSRC_USAGE] -= rsrc[RSRC_USAGE] - usage;
-	rsrc[RSRC_USAGE] = usage;
+	rsrc[RSRC_USAGE] = floor(usage + 0.5);
     }
 }
 
@@ -185,12 +183,12 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 	    if (typeof(rsrc[RSRC_USAGE]) == T_INT) {
 		/* normal resource */
 		rsrc[RSRC_USAGE] += incr;
-		grsrc[RSRC_USAGE] += incr;
 	    } else {
-		/* decaying resource */
-		index = (float) incr;
-		rsrc[RSRC_USAGE] += index;
-		grsrc[RSRC_USAGE] += index;
+		/*
+		 * decaying resources are expected to be updated frequently,
+		 * so handle it with a callout
+		 */
+		call_out("rsrc_update", 0, rsrc, incr);
 	    }
 	}
 
@@ -199,23 +197,31 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 }
 
 /*
+ * NAME:	rsrc_update()
+ * DESCRIPTION:	update a decaying resource
+ */
+static rsrc_update(float *rsrc, int incr)
+{
+    rsrc[RSRC_USAGE] += (float) incr;
+}
+
+/*
  * NAME:	call_limits()
  * DESCRIPTION:	return stack & ticks limits
  */
-mixed *call_limits(mixed *limits, mixed *status, int *stack, int *ticks,
-		   int *usage)
+mixed *call_limits(mixed *limits, int stack, int ticks,
+		   int *rstack, int *rticks, int *usage)
 {
     if (previous_object() == rsrcd) {
-	int maxstack, maxticks, n;
+	int maxstack, maxticks;
 
 	/* determine available stack */
 	maxstack = resources["stack"][RSRC_MAX];
 	if (maxstack < 0) {
-	    maxstack = stack[RSRC_MAX];
+	    maxstack = rstack[RSRC_MAX];
 	}
-	n = status[ST_STACKDEPTH];
-	if (maxstack > n && n >= 0) {
-	    maxstack = n;
+	if (maxstack > stack && stack >= 0) {
+	    maxstack = stack;
 	}
 	if (maxstack >= 0) {
 	    maxstack++;
@@ -224,10 +230,11 @@ mixed *call_limits(mixed *limits, mixed *status, int *stack, int *ticks,
 	/* determine available ticks */
 	maxticks = resources["ticks"][RSRC_MAX];
 	if (maxticks < 0) {
-	    maxticks = ticks[RSRC_MAX];
+	    maxticks = rticks[RSRC_MAX];
 	}
 	if (maxticks >= 0) {
 	    mixed *rsrc;
+	    int n;
 
 	    rsrc = resources["tick usage"];
 	    if ((n=time()) - (int) rsrc[RSRC_DECAYTIME] >=
@@ -244,16 +251,15 @@ mixed *call_limits(mixed *limits, mixed *status, int *stack, int *ticks,
 				  ((float) n - rsrc[RSRC_USAGE]) /
 				  (float) (n >> 1));
 	    }
-	    n = status[ST_TICKS];
-	    if (maxticks > n - 25 && n >= 0) {
-		maxticks = n - 25;
+	    if (maxticks > ticks - 25 && ticks >= 0) {
+		maxticks = ticks - 25;
 	    }
 	    if (maxticks <= 0) {
 		maxticks = 1;
 	    }
 	}
 
-	return ({ limits, owner, maxstack, maxticks, n });
+	return ({ limits, owner, maxstack, maxticks, ticks });
     }
 }
 
@@ -264,7 +270,7 @@ mixed *call_limits(mixed *limits, mixed *status, int *stack, int *ticks,
 update_ticks(int ticks)
 {
     if (previous_object() == rsrcd) {
-	resources["tick usage"][RSRC_USAGE] += (float) ticks;
+	call_out("rsrc_update", 0, resources["tick usage"], ticks);
     }
 }
 

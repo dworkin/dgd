@@ -69,5 +69,8 @@ extern void kf_restore	P((int));
 # define KF_CKRANGEF	52
 # define KF_CKRANGET	53
 # define KF_SUM		54
+# define KF_STATUS_IDX	55
+# define KF_STATUSO_IDX	56
+# define KF_CALLTR_IDX	57
 
-# define KF_BUILTINS	55
+# define KF_BUILTINS	58

@@ -19,7 +19,7 @@ static create(string type)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static open(mixed *tls)
 {
     int timeout;
     string banner;
@@ -44,7 +44,7 @@ static open()
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static close(mixed *tls, int dest)
 {
     rlimits (-1; -1) {
 	if (user) {
@@ -76,7 +76,12 @@ disconnect()
 reboot()
 {
     if (previous_object() == userd) {
-	close(0);
+	if (user) {
+	    catch {
+		user->logout(0);
+	    }
+	}
+	destruct_object(this_object());
     }
 }
 
@@ -116,7 +121,7 @@ static timeout()
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to user object
  */
-static int receive_message(string str)
+static int receive_message(mixed *tls, string str)
 {
     int result;
 
@@ -158,7 +163,7 @@ int message(string str)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static void message_done()
+static void message_done(mixed *tls)
 {
     if (user) {
 	user->message_done();

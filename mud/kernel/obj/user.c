@@ -121,6 +121,15 @@ logout(int quit)
 }
 
 /*
+ * NAME:	prompt()
+ * DESCRIPTION:	output a prompt
+ */
+prompt(string prompt)
+{
+    message((prompt == "> " && name == "admin") ? "# " : prompt);
+}
+
+/*
  * NAME:	receive_message()
  * DESCRIPTION:	process a message from the user
  */
@@ -224,7 +233,9 @@ int receive_message(string str)
 	    if (str) {
 		if (wiztool) {
 		    event("input", str);
-		} else if (strlen(str) != 0) {
+		    return MODE_ECHO;
+		}
+		if (strlen(str) != 0) {
 		    message("No command: " + str + "\n");
 		}
 	    }
@@ -275,9 +286,9 @@ int receive_message(string str)
 
 	str = (wiztool) ? query_editor(wiztool) : 0;
 	if (str) {
-	    message((str == "insert") ? "*\b" : ":");
+	    prompt((str == "insert") ? "*\b" : ":");
 	} else {
-	    message((name == "admin") ? "# " : "> ");
+	    prompt("> ");
 	}
 	state[previous_object()] = STATE_NORMAL;
 	return MODE_ECHO;

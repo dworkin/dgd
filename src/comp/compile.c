@@ -284,6 +284,7 @@ extern int nerrors;			/* # of errors during parsing */
 void c_init(a, d, i, p)
 char *a, *d, *i, **p;
 {
+    opt_init();
     auto_object = a;
     driver_object = d;
     include = i;

@@ -4,7 +4,10 @@
 # include "object.h"
 # include "xfloat.h"
 # include "interpret.h"
+# include "data.h"
+# include "table.h"
 # include "node.h"
+# include "control.h"
 # include "compile.h"
 # include "optimize.h"
 
@@ -97,6 +100,19 @@ unsigned short olddepth;
     return depth;
 }
 
+
+static Int kf_status, kf_call_trace;	/* kfun descriptors */
+
+/*
+ * NAME:	optimize->init()
+ * DESCRIPTION:	initialize optimizer
+ */
+void opt_init()
+{
+    /* kfuns are already initialized at this point */
+    kf_status = ((long) KFCALL << 24) | kf_func("status");
+    kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
+}
 
 static unsigned short opt_expr P((node**, int));
 
@@ -1397,6 +1413,29 @@ int pop;
 	    node_toint(n, (Int) str_index(n->l.left->l.string,
 					  (long) n->r.right->l.number));
 	    return !pop;
+	}
+	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
+	    if (n->l.left->r.number == kf_status) {
+		n->type = N_FUNC;
+		if (n->l.left->l.left != (node *) NULL) {
+		    /* status(obj)[i] */
+		    n->l.left->type = N_PAIR;
+		    n->l.left->r.right = n->r.right;
+		    n->r.number = ((long) KFCALL << 24) | KF_STATUSO_IDX;
+		} else {
+		    /* status()[i] */
+		    n->l.left = n->r.right;
+		    n->r.number = ((long) KFCALL << 24) | KF_STATUS_IDX;
+		}
+		return opt_expr(m, pop);
+	    }
+	    if (n->l.left->r.number == kf_call_trace) {
+		/* call_trace()[i] */
+		n->type = N_FUNC;
+		n->l.left = n->r.right;
+		n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX;
+		return opt_expr(m, pop);
+	    }
 	}
 	return max2(opt_expr(&n->l.left, FALSE),
 		    opt_expr(&n->r.right, FALSE) + 1);
