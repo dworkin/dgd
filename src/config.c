@@ -166,6 +166,7 @@ static void conf_dumpinit()
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
     header[DUMP_DRIVER] = 0;			/* vanilla DGD */
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
     header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
 
