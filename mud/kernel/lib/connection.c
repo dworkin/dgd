@@ -60,8 +60,6 @@ static program_terminated()
 
 
 # ifdef SYS_NETWORKING
-private int outbound;		/* outbound connection */
-
 /*
  * NAME:	connect()
  * DESCRIPTION:	establish an outbount connection
@@ -71,7 +69,6 @@ connect(string destination, int port)
     if (previous_program() == AUTO) {
 	::connect(destination, port);
 	user = previous_object();
-	outbound = TRUE;
     }
 }
 # endif
@@ -104,7 +101,7 @@ static open(mixed *tls)
 	}
     }
 # ifdef SYS_NETWORKING
-    else if (outbound) {
+    else {
 	user->login(nil);
     }
 # endif
@@ -163,7 +160,9 @@ int set_user(object obj, string str)
 {
     if (KERNEL()) {
 	user = obj;
-	return obj->login(str);
+	if (query_ip_number(this_object())) {
+	    return obj->login(str);
+	}
     }
 }
 
