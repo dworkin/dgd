@@ -1,10 +1,10 @@
 #
 # Makefile for LPC objects
 #
-HOST=	SUNOS4
+HOST=	NETBSD
 DEFINES=-D$(HOST)
-DEBUG=	-g
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LIBS=
 CC=	gcc
@@ -19,7 +19,7 @@ OBJ=
 dgd:	$(OBJ) lpc.o
 	@for i in $(OBJ) lpc.o; do echo lpc/$$i; done > dgd
 
-# $(SRC):	$(PRECOMP)
+#$(SRC):	$(PRECOMP)
 
 $(PRECOMP):
 	cd ../comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \

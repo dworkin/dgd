@@ -1,10 +1,10 @@
 #
 # Makefile for editor, part of DGD.
 #
-HOST=	SUNOS4
+HOST=	NETBSD
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -14,11 +14,15 @@ DMAKE=	make
 
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
 
-a.out:	$(OBJ) ed.o
+a.out:	$(OBJ) always
 	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
 	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			     sub
-	$(LD) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` `cat ../host/sub` $(LIBS)
+	$(LD) $(DEBUG) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` \
+	      `cat ../host/sub` $(LIBS)
+
+always:
+	@rm -f a.out
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd

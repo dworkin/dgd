@@ -1,10 +1,10 @@
 #
 # Makefile for kernel functions, part of DGD.
 #
-HOST=	SUNOS4
+HOST=	NETBSD
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 CC=	gcc
 

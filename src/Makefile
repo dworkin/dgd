@@ -1,10 +1,10 @@
 #
 # Makefile for DGD, Dworkin's Game Driver
 #
-HOST=	SUNOS4
+HOST=	NETBSD
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -20,7 +20,7 @@ LEXOBJ=	alloc.o hash.o
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o data.o \
 	interpret.o config.o
 
-a.out:	$(OBJ)
+a.out:	$(OBJ) always
 	cd comp; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lex; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
@@ -28,16 +28,17 @@ a.out:	$(OBJ)
 	cd lpc; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			'LIBS=$(LIBS)' dgd
 	cd host; $(MAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	$(LD) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` `cat ed/dgd` \
-	      `cat kfun/dgd` `cat lpc/dgd` `cat host/dgd` $(LIBS)
+	$(LD) $(DEBUG) $(LDFLAGS) $(OBJ) `cat comp/dgd` `cat lex/dgd` \
+	      `cat ed/dgd` `cat kfun/dgd` `cat lpc/dgd` `cat host/dgd` $(LIBS)
+
+always:
+	@rm -f a.out
 
 $(BIN)/driver: a.out
+	-mv $(BIN)/driver $(BIN)/driver.old
 	cp a.out $(BIN)/driver
 
-$(BIN)/precomp: comp/a.out
-	cp comp/a.out $(BIN)/precomp
-
-install: $(BIN)/driver $(BIN)/precomp
+install: $(BIN)/driver
 
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub

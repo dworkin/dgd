@@ -1,16 +1,17 @@
 #
-# Makefile for host dependent object files for SunOS 4.x
+# Makefile for host dependent object files for BSD
 #
-HOST=	SUNOS4
+HOST=	GENERIC_BSD
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
-CCFLAGS=$(DEFINES) $(DEBUG)
+DEBUG=
+CCFLAGS=-O2 $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 CC=	gcc
 
-SRC=	local.c random.c path.c dirent.c time.c timeout.c connect.c xfloat.c
-OBJ=	local.o random.o path.o dirent.o time.o timeout.o connect.o xfloat.o
-SUBOBJ=	local.o random.o path.o dirent.o time.o xfloat.o
+SRC=	local.c random.c path.c dirent.c time.c alarm.c connect.c xfloat.c
+OBJ=	local.o random.o path.o dirent.o time.o alarm.o connect.o crypt.o \
+	xfloat.o
+SUBOBJ=	local.o random.o path.o dirent.o time.o crypt.o xfloat.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
@@ -22,7 +23,7 @@ clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
 
-local.c random.c path.c dirent.c time.c timeout.c connect.c: unix/$@
+local.c random.c path.c dirent.c time.c alarm.c connect.c: unix/$@
 	cp unix/$@ $@
 
 xfloat.c: simfloat.c
