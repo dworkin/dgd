@@ -249,11 +249,10 @@ char *op;
 	 */
 	i = n->l.left->r.number;
 	n = n->r.right;
-	/* assignment to register var */
 	if (catch_level != 0) {
 	    output("ivar%d = %s->u.number, ", vars[i], local(i));
 	}
-	output("ivar%d = (Uint) ivar%d %s ", vars[i], vars[i], op);
+	output("ivar%d = ((Uint) ivar%d) %s ", vars[i], vars[i], op);
 	cg_iexpr(n);
 	if (catch_level != 0) {
 	    output(", %s->u.number = ivar%d", local(i), vars[i]);
@@ -262,13 +261,13 @@ char *op;
 	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
-	    output("sp->u.number = (Uint) sp->u.number %s ", op);
+	    output("sp->u.number = ((Uint) sp->u.number) %s ", op);
 	    cg_iexpr(n);
 	} else {
 	    i = tmpval();
 	    output("tv[%d] = ", i);
 	    cg_iexpr(n);
-	    output(", sp->u.number = (Uint) sp->u.number %s tv[%d]", op, i);
+	    output(", sp->u.number = ((Uint) sp->u.number) %s tv[%d]", op, i);
 	}
 	output(", store_int()");
     }

@@ -289,6 +289,7 @@ char pt_div[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
  */
 int kf_div()
 {
+    register Int i, d;
     xfloat f1, f2;
 
     if (sp[1].type != sp->type) {
@@ -296,10 +297,19 @@ int kf_div()
     }
     switch (sp->type) {
     case T_INT:
-	if (sp->u.number == 0) {
+	i = sp[1].u.number;
+	d = sp->u.number;
+	if (d == 0) {
 	    error("Division by zero");
 	}
-	sp[1].u.number /= sp->u.number;
+	if ((i | d) < 0) {
+	    Int r;
+
+	    r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
+	    sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+	} else {
+	    sp[1].u.number = ((Uint) i) / ((Uint) d);
+	}
 	sp++;
 	return 0;
 
@@ -330,10 +340,21 @@ char pt_div_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
  */
 int kf_div_int()
 {
-    if (sp->u.number == 0) {
+    register Int i, d;
+
+    i = sp[1].u.number;
+    d = sp->u.number;
+    if (d == 0) {
 	error("Division by zero");
     }
-    sp[1].u.number /= sp->u.number;
+    if ((i | d) < 0) {
+	Int r;
+
+	r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
+	sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+    } else {
+	sp[1].u.number = ((Uint) i) / ((Uint) d);
+    }
     sp++;
     return 0;
 }
@@ -742,10 +763,21 @@ char pt_mod[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
  */
 int kf_mod()
 {
-    if (sp->u.number == 0) {
+    register Int i, d;
+
+    i = sp[1].u.number;
+    d = sp->u.number;
+    if (d == 0) {
 	error("Modulus by zero");
     }
-    sp[1].u.number %= sp->u.number;
+    if ((i | d) < 0) {
+	Int r;
+
+	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
+	sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+    } else {
+	sp[1].u.number = ((Uint) i) % ((Uint) d);
+    }
     sp++;
     return 0;
 }

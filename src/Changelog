@@ -973,3 +973,7 @@ DGD 1.1
  - During precompilation, inherit paths without a leading slash are now
    considered to be relative to the current directory, rather than absolute.
  - C code generated for >>= and <<= operators made more portable.
+ - Disambiguated results of division and remainder operations.
+ - No more core dumps for errors in the configuration phase.
+ - PC version: don't exit program immediately on a configuration error when
+   started without an argument.

@@ -191,12 +191,13 @@ int fd;
 
 /*
  * NAME:	conferr()
- * DESCRIPTION:	cause a fatal error during the configuration phase
+ * DESCRIPTION:	error during the configuration phase
  */
 static void conferr(err)
 char *err;
 {
-    fatal("config file, line %u: %s", tk_line(), err);
+    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
+    exit(1);
 }
 
 static char *fname;	/* file name */
@@ -213,7 +214,8 @@ char *file;
 {
     if ((fd=open(path_file(fname = path_resolve(file)),
 		 O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
-	fatal("cannot create \"/%s\"", fname);
+	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
+	exit(1);
     }
     bufsz = 0;
 }
@@ -249,7 +251,8 @@ register char *str;
 static void cclose()
 {
     if (bufsz > 0 && write(fd, obuf, bufsz) != bufsz) {
-	fatal("cannot write \"/%s\"", fname);
+	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
+	exit(1);
     }
     close(fd);
 }
@@ -277,7 +280,7 @@ char *configfile, *dumpfile;
     palign pdummy;
 
     if (!pp_init(configfile, (char **) NULL, 0)) {
-	message("Cannot open config file\012");	/* LF */
+	message("Config error: cannot open config file\012");	/* LF */
 	exit(2);
     }
     while ((c=pp_gettok()) != EOF) {
@@ -386,13 +389,16 @@ char *configfile, *dumpfile;
     if (dumpfile != (char *) NULL) {
 	fd = open(dumpfile, O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
-	    fatal("cannot open restore file");
+	    message("Config error: cannot open restore file\012");	/* LF */
+	    exit(2);
 	}
     }
 
     /* change directory */
     if (chdir(conf[DIRECTORY].u.str) < 0) {
-	fatal("bad base directory \"%s\"", conf[DIRECTORY].u.str);
+	message("Config error: bad base directory \"%s\"\012",	/* LF */
+		conf[DIRECTORY].u.str);
+	exit(1);
     }
 
     m_static();
@@ -566,7 +572,8 @@ char *configfile, *dumpfile;
     starttime = boottime = P_time();
     if (ec_push((ec_ftn) NULL)) {
 	message((char *) NULL);
-	fatal("error during initialization");
+	message("Config error: initialization failed\012");	/* LF */
+	exit(1);
     }
     if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */

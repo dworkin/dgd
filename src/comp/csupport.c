@@ -437,12 +437,18 @@ register int n, nargs;
  * DESCRIPTION:	perform integer division
  */
 Int xdiv(i, d)
-Int i, d;
+register Int i, d;
 {
     if (d == 0) {
 	error("Division by zero");
     }
-    return i / d;
+    if ((i | d) < 0) {
+	Int r;
+
+	r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
+	return ((i | d) < 0) ? -r : r;
+    }
+    return ((Uint) i) / ((Uint) d);
 }
 
 /*
@@ -450,12 +456,18 @@ Int i, d;
  * DESCRIPTION:	perform integer modulus
  */
 Int xmod(i, d)
-Int i, d;
+register Int i, d;
 {
     if (d == 0) {
 	error("Modulus by zero");
     }
-    return i % d;
+    if ((i | d) < 0) {
+	Int r;
+
+	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
+	return ((i | d) < 0) ? -r : r;
+    }
+    return ((Uint) i) % ((Uint) d);
 }
 
 /*

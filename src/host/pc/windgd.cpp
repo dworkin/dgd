@@ -11,7 +11,9 @@ static char THIS_FILE[] = __FILE__;
 
 static CWindgdApp	theApp;
 static CMainFrame      *frame;
-static int		dgd_started;
+static int		argstart;	/* started with arguments */
+static int		dgd_started;	/* started */
+static int		dgd_running;	/* now running */
 static CString		dgd_config;
 static CString		dgd_restore;
 
@@ -35,7 +37,12 @@ void P_message(char *mesg)
  */
 void dgd_exit(int code)
 {
-    exit(code);
+    dgd_running = FALSE;
+    if (code != 0 && !argstart) {
+	_endthread();
+    } else {
+	exit(code);
+    }
 }
 
 }
@@ -127,6 +134,7 @@ BOOL CWindgdApp::InitInstance()
 	    p[-1] = '\0';
 	}
 	dgd_config = cmdline;
+	argstart = TRUE;
 	OnDgdStart();
     }
 
@@ -160,7 +168,7 @@ void CWindgdApp::OnDgdRestore()
 
 void CWindgdApp::OnDgdStart()
 {
-    dgd_started = TRUE;
+    dgd_started = dgd_running = TRUE;
     m_pMainWnd->SetWindowText("DGD - running");
     _beginthread(run_dgd, 0, NULL);
 }
@@ -182,12 +190,12 @@ void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 
 BOOL CWindgdApp::SaveAllModified()
 {
-    if (!dgd_started) {
+    if (!dgd_running) {
 	return TRUE;
     }
     if (AfxMessageBox(
 		"Are you sure you want to\nterminate the running process?",
-		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES)) {
+		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
 	interrupt();
     }
     return FALSE;

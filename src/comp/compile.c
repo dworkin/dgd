@@ -411,8 +411,7 @@ register char *file;
 
 	for (cc = current; cc != (context *) NULL; cc = cc->prev) {
 	    if (strcmp(file, cc->file) == 0) {
-		c_error("cycle in inheritance");
-		error("Failed to compile \"/%s.c\"", file);
+		error("Cycle in inheritance from \"%s.c\"", current->file);
 	    }
 	}
 
