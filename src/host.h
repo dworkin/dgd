@@ -20,6 +20,9 @@
 
 typedef long Int;
 
+# define ALLOCA(type, size)	ALLOC(type, size)
+# define AFREE(ptr)		FREE(ptr)
+
 # define FS_BLOCK_SIZE		1024
 # define UNIX_PATH_RESOLVE
 
@@ -36,6 +39,8 @@ typedef long Int;
 # include <unistd.h>
 # endif
 
+# include <alloca.h>
+# include <stdlib.h>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
@@ -45,6 +50,9 @@ typedef long Int;
 # define SCHAR(c)	(c)		/* signed character */
 
 typedef int Int;
+
+# define ALLOCA(type, size)	alloca(sizeof(type) * (unsigned int) (size))
+# define AFREE(ptr)		/* on function return */
 
 # define FS_BLOCK_SIZE		8192
 # define UNIX_PATH_RESOLVE

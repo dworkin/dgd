@@ -55,7 +55,7 @@ void (*del) P((hte *));
  *		an unsigned modulo size.
  *		Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned int hashstr(s, len, size)
+unsigned short hashstr(s, len, size)
 register char *s;
 register unsigned short len;
 unsigned short size;
@@ -98,11 +98,12 @@ unsigned short size;
 
     h = 0;
     l = 0;
-    while (*s != '\0' && --len >= 0) {
+    while (*s != '\0' && len > 0) {
 	h = l;
 	l = UCHAR(table[UCHAR(l ^ *s++)]);
+	--len;
     }
-    return ((h << 8) | UCHAR(l)) % size;
+    return (UCHAR(h << 8) | UCHAR(l)) % size;
 }
 
 /*

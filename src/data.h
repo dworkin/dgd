@@ -79,7 +79,8 @@ typedef struct _arrref_ {
     uindex ref;			/* # of refs */
 } arrref;
 
-typedef struct _dataspace_ {
+/* typedef'd in interpret.h */
+struct _dataspace_ {
     struct _dataspace_ *prev, *next;
 
     long achange;		/* # array changes */
@@ -110,7 +111,7 @@ typedef struct _dataspace_ {
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     long stroffset;		/* o offset of string table */
-} dataspace;
+};
 
 extern control	 *d_new_control		P((void));
 extern dataspace *d_new_dataspace	P((object*));
@@ -129,7 +130,7 @@ extern value	 *d_get_variable	P((dataspace*, unsigned short));
 extern value	 *d_get_elts		P((array*));
 
 extern void	  d_assign_var		P((dataspace*, value*, value*));
-extern void	  d_assign_elt		P((array*, unsigned short, value*));
+extern void	  d_assign_elt		P((array*, value*, value*));
 extern void	  d_change_map		P((array*));
 
 extern void	  d_clean		P((void));

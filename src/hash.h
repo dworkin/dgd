@@ -12,8 +12,10 @@ typedef struct {
     hte *table[1];		/* hash table entries */
 } hashtab;
 
+extern unsigned short	hashstr	P((char*, unsigned short, unsigned short));
+
 extern hashtab	       *ht_new		P((unsigned short, unsigned short));
-extern void		ht_del		P((hashtab*, (*void) P((hte*))));
+extern void		ht_del		P((hashtab*, void P((hte*))));
 extern hte	      **ht_lookup	P((hashtab*, char*));
 
 # endif /* H_HASH */

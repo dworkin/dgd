@@ -160,3 +160,18 @@ Kfuns: DGD has about half of the kfuns of LPmud 3.1.2:
    a function that does not exist results in an error if the call has
    arguments (I still have to think about this).
  - There are no optional flag arguments to any kfun.
+
+DGD 1.0.a1
+
+ - ALLOCA() and AFREE() have replaced some instances of ALLOC() and FREE(),
+   and be used to allocate memory with alloca(), if available on the host.
+ - Mappings are now partially hashed.  If a mapping grows by assigning to
+   an index/value that doesn't exist yet, the index/value pair is stored in
+   a hash table.  Mappings are converted to sorted arrays of index/value
+   pairs when swapped out.
+ - Fixed some bugs in the compiler, interpreter and kfuns.
+ - Changed the way line numbers are stored.  The interpreter no longer
+   maintains the current line number at runtime.
+ - Added int-only versions of some kfuns to speed up integer arithmetic in
+   typechecked programs. Typechecked functions are now typechecked at runtime
+   as well, to ensure that integer arguments are really integers.

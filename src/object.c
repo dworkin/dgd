@@ -195,6 +195,12 @@ char *name;
 {
     hte **h;
 
+    if (strchr(name, '#') != (char *) NULL) {
+	error("Illegal object name");
+    }
+    if (o_find(name) != (object *) NULL) {
+	error("Rename to existing object");
+    }
     if (o->chain.name != (char *) NULL) {
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name) = o->chain.next;

@@ -206,7 +206,7 @@ register string *s1, *s2;
  * NAME:	string->index()
  * DESCRIPTION:	index a string
  */
-int str_index(s, l)
+unsigned short str_index(s, l)
 register string *s;
 register Int l;
 {

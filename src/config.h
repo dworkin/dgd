@@ -32,10 +32,10 @@ typedef unsigned short uindex;
 # define BUF_SIZE	FS_BLOCK_SIZE	/* I/O buffer size */
 # define MAX_LINE_SIZE	1024	/* max. line size in ed and lex (power of 2) */
 # define STRINGSZ	256	/* general (internal) string size */
+# define STRMAPHASHSZ	20	/* # characters to hash of map string indices */
 # define STRMERGETABSZ	1031	/* general string merge table size */
 # define STRMERGEHASHSZ	20	/* # characters in merge strings to hash */
 # define ARRMERGETABSZ	1031	/* general array merge table size */
-# define MAX_ARRAY_SIZE	1000	/* also mapping size */
 # define OBJTABSZ	1031	/* object name table size */
 # define OBJHASHSZ	100	/* # characters in object names to hash */
 

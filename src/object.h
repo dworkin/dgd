@@ -31,3 +31,5 @@ extern struct _control_	  *o_control	P((object*));
 extern struct _dataspace_ *o_dataspace	P((object*));
 extern void		   o_clean	P((void));
 extern uindex		   o_count	P((void));
+
+# define DESTRUCTED(o)		(o_object(&(o)) == (object *) NULL)
