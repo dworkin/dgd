@@ -13,6 +13,7 @@
 
 static object *driver;		/* driver object */
 static char *driver_name;	/* driver object name */
+static uindex fragment;		/* swap fragment parameter */
 static bool swap;		/* are objects to be swapped out? */
 static bool dump;		/* is the program to dump? */
 static bool intr;		/* received an interrupt? */
@@ -91,6 +92,10 @@ void endthread()
     o_clean();
     i_clear();
 
+    if (fragment != 0) {
+	co_swapcount(d_swapout(fragment));
+    }
+
     if (stop) {
 	comm_finish();
 	ed_finish();
@@ -156,7 +161,7 @@ char **argv;
     driver = (object *) NULL;
     driver_name = (char *) NULL;
     swap = dump = intr = stop = FALSE;
-    if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL)) {
+    if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
 	return 2;	/* initialization failed */
     }
 

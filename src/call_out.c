@@ -45,12 +45,9 @@ static Uint timeout;			/* time of first callout in cycbuf */
 static Uint atimeout;			/* alarm time in seconds */
 static unsigned short amtime;		/* alarm time in milliseconds */
 static Uint timediff;			/* stored/actual time difference */
-static int fragment;			/* swap fragment */
-static uindex swapped1[SWPERIOD];	/* swap info for last minute */
-static uindex swapped5[SWPERIOD];	/* swap info for last five minutes */
-static int swapidx1, swapidx5;		/* index in swap info arrays */
-static int incr5;			/* 5 second period counter */
-static uindex swaps5;			/* swapout info for last 5 seconds */
+static Uint swaptime;			/* last swap count timestamp */
+static Uint swapped1[SWPERIOD];		/* swap info for last minute */
+static Uint swapped5[SWPERIOD];		/* swap info for last five minutes */
 static Uint swaprate1;			/* swaprate per minute */
 static Uint swaprate5;			/* swaprate per 5 minutes */
 
@@ -58,9 +55,8 @@ static Uint swaprate5;			/* swaprate per 5 minutes */
  * NAME:	call_out->init()
  * DESCRIPTION:	initialize callout handling
  */
-void co_init(max, frag)
+void co_init(max)
 unsigned int max;
-int frag;
 {
     if (max != 0) {
 	cotab = ALLOC(call_out, max + 1);
@@ -81,11 +77,9 @@ int frag;
     queuebrk = 0;
     nzero = nshort = 0;
 
-    fragment = frag;
+    swaptime = P_time();
     memset(swapped1, '\0', sizeof(swapped1));
     memset(swapped5, '\0', sizeof(swapped5));
-    swapidx1 = swapidx5 = swaps5 = 0;
-    incr5 = 5;
     swaprate1 = swaprate5 = 0;
 }
 
@@ -612,8 +606,7 @@ static void co_expire()
     Uint t;
     unsigned short m;
 
-    if (P_timeout()) {
-	t = co_time(&m);
+    if (P_timeout(&t, &m)) {
 	while (timestamp < t) {
 	    timestamp++;
 
@@ -663,6 +656,17 @@ static void co_expire()
 	}
 
 	restart(t);
+    }
+
+    /* handle swaprate */
+    while (swaptime < t) {
+	++swaptime;
+	swaprate1 -= swapped1[swaptime % SWPERIOD];
+	swapped1[swaptime % SWPERIOD] = 0;
+	if (swaptime % 5 == 0) {
+	    swaprate5 -= swapped5[swaptime % (5 * SWPERIOD) / 5];
+	    swapped5[swaptime % (5 * SWPERIOD) / 5] = 0;
+	}
     }
 }
 
@@ -754,6 +758,19 @@ unsigned short *mtime;
     }
     *mtime = amtime - m;
     return atimeout - t;
+}
+
+/*
+ * NAME:	call_out->swapcount()
+ * DESCRIPTION:	keep track of the number of objects swapped out
+ */
+void co_swapcount(count)
+unsigned int count;
+{
+    swaprate1 += count;
+    swaprate5 += count;
+    swapped1[swaptime % 60] += count;
+    swapped5[swaptime % 300 / 5] += count;
 }
 
 /*

@@ -77,15 +77,20 @@ unsigned int mtime;
  * NAME:        P->timeout()
  * DESCRIPTION: return TRUE if there is a timeout, FALSE otherwise
  */
-bool P_timeout()
+bool P_timeout(t, mtime)
+Uint *t;
+unsigned short *mtime;
 {
-    struct timeval t;
+    struct timeval time;
+
+    gettimeofday(&time, (struct timezone *) NULL);
+    *t = time.tv_sec;
+    *mtime = time.tv_usec / 1000;
 
     if (timeout.tv_sec == 0) {
 	/* timer disabled */
 	return FALSE;
     }
-    gettimeofday(&t, (struct timezone *) NULL);
-    return (t.tv_sec > timeout.tv_sec || 
-	    (t.tv_sec == timeout.tv_sec && t.tv_usec >= timeout.tv_usec));
+    return (time.tv_sec > timeout.tv_sec || 
+	    (time.tv_sec == timeout.tv_sec && time.tv_usec >= timeout.tv_usec));
 }

@@ -207,7 +207,7 @@ extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));
-extern uindex		d_swapout	P((int));
+extern uindex		d_swapout	P((unsigned int));
 extern void		d_swapsync	P((void));
 extern void		d_conv_control	P((object*));
 extern void		d_conv_dataspace P((object*, Uint*));

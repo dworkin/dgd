@@ -348,7 +348,7 @@ extern Uint  P_mtime	P((unsigned short*));
 extern char *P_ctime	P((char*, Uint));
 
 extern void  P_timer	P((Uint, unsigned int));
-extern bool  P_timeout	P((void));
+extern bool  P_timeout	P((Uint*, unsigned short*));
 
 extern char *P_crypt	P((char*, char*));
 

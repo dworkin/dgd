@@ -363,8 +363,10 @@ static initialize()
 # ifdef SYS_NETWORKING
     call_other(port = load(PORT_OBJECT), "???");
 # endif
-    catch {
-	initd = load(USR + "/System/initd");
+    if (file_size(USR + "/System/initd.c") != 0) {
+	catch {
+	    initd = load(USR + "/System/initd");
+	}
     }
 
     /* initialize other users as resource owners */

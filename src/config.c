@@ -76,7 +76,8 @@ static config conf[] = {
 # define SWAP_FILE	17
 				{ "swap_file",		STRING_CONST, FALSE },
 # define SWAP_FRAGMENT	18
-				{ "swap_fragment",	INT_CONST, FALSE },
+				{ "swap_fragment",	INT_CONST, FALSE,
+							0, UINDEX_MAX },
 # define SWAP_SIZE	19
 				{ "swap_size",		INT_CONST, FALSE,
 							1024, SW_UNUSED },
@@ -928,8 +929,9 @@ static bool conf_includes()
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(configfile, dumpfile)
+bool conf_init(configfile, dumpfile, fragment)
 char *configfile, *dumpfile;
+uindex *fragment;
 {
     char buf[STRINGSZ];
     int fd;
@@ -999,14 +1001,14 @@ char *configfile, *dumpfile;
 
     /* initialize swapped data handler */
     d_init(conf[TYPECHECKING].u.num == 2);
+    *fragment = conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,
 	    (int) conf[EDITORS].u.num);
 
     /* initialize call_outs */
-    co_init((uindex) conf[CALL_OUTS].u.num,
-	    (int) conf[SWAP_FRAGMENT].u.num);
+    co_init((uindex) conf[CALL_OUTS].u.num);
 
     /* initialize kfuns */
     kf_init();

@@ -1266,3 +1266,8 @@ DGD 1.1
    allowed, shifts >= 32 make the result 0.
  - Check that a switch doesn't contain more than 32767 cases, and a function
    doesn't need more than 32767 values on the stack.
+ - Put automatic object swapping, accidentally left out in the callout rewrite,
+   back in.  NOTE: one out of every swap_fragment objects is now swapped out
+   at the end of each thread, rather than each second.  This means that to get
+   the same memory usage, the swap_fragment parameter should get a
+   considerably larger value.

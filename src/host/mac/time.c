@@ -114,10 +114,16 @@ void P_timer(Uint t, unsigned int mtime)
  * NAME:	P->timeout()
  * DESCRIPTION:	return TRUE if there is a timeout, FALSE otherwise
  */
-bool P_timeout(void)
+bool P_timeout(Uint *t, unsigned short *mtime)
 {
+    long time;
+
+    time = TickCount();
+    *t = timeoffset + time / 60;
+    *milli = time % 60 * 1667 / 100;
+
     if (timeout == 0) {
 	return FALSE;
     }
-    return (timeout - TickCount() <= 0);
+    return (timeout - time <= 0);
 }

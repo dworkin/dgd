@@ -75,14 +75,17 @@ void P_timer(Uint t, unsigned int mtime)
  * NAME:        P->timeout()
  * DESCRIPTION: return TRUE if there is a timeout, FALSE otherwise
  */
-bool P_timeout(void)
+bool P_timeout(Uint *t, unsigned short *mtime)
 {
-    struct _timeb t;
+    struct _timeb time;
+
+    _ftime(&time);
+    *t = time.time;
+    *mtime = time.millitm;
 
     if (timeout.time == 0) {
 	return FALSE;
     }
-    _ftime(&t);
-    return (t.time > timeout.time || 
-	    (t.time == timeout.time && t.millitm >= timeout.millitm));
+    return (time.time > timeout.time || 
+	    (time.time == timeout.time && time.millitm >= timeout.millitm));
 }

@@ -3101,7 +3101,7 @@ register dataspace *data;
  *		memory.  Return the number of dataspace blocks swapped out.
  */
 uindex d_swapout(frag)
-int frag;
+unsigned int frag;
 {
     register uindex n, count;
     register dataspace *data;
