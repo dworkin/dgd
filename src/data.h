@@ -152,6 +152,7 @@ extern dsymbol	       *d_get_symbols	P((control*));
 extern struct _value_  *d_get_variable	P((dataspace*, unsigned int));
 extern struct _value_  *d_get_elts	P((array*));
 
+extern void		d_ref_imports	P((array*));
 extern void		d_assign_var	P((dataspace*, struct _value_*,
 					   struct _value_*));
 extern void		d_assign_elt	P((array*, struct _value_*,

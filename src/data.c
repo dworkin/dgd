@@ -814,6 +814,37 @@ register array *arr;
     return v;
 }
 
+static dataspace *ilist;	/* list of dataspaces with imports */
+
+/*
+ * NAME:	data->ref_imports()
+ * DESCRIPTION:	check the elements of an array for imports
+ */
+void d_ref_imports(arr)
+array *arr;
+{
+    register dataspace *data;
+    register unsigned short n;
+    register value *v;
+
+    data = arr->primary->data;
+    for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
+	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
+	    /* mark as imported */
+	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+		ilist != data) {
+		/* add to imports list */
+		data->iprev = (dataspace *) NULL;
+		data->inext = ilist;
+		if (ilist != (dataspace *) NULL) {
+		    ilist->iprev = data;
+		}
+		ilist = data;
+	    }
+	}
+    }
+}
+
 /*
  * NAME:	strconst_obj()
  * DESCRIPTION:	check if the constant is defined in the current object
@@ -834,8 +865,6 @@ string *str;
 
     return -1;	/* not a constant in this object */
 }
-
-static dataspace *ilist;	/* list of dataspaces with imports */
 
 /*
  * NAME:	ref_rhs()
@@ -1209,6 +1238,7 @@ int nargs;
 	nargs -= 2;
 	arr_ref(v[3].u.array = arr_new((long) nargs));
 	memcpy(v[3].u.array->elts, sp, nargs * sizeof(value));
+	d_ref_imports(v[3].u.array);
 	ref_rhs(data, &v[3]);
 	break;
     }
@@ -1390,6 +1420,7 @@ Uint t;
 		i_ref_value(--v);
 		--size;
 	    }
+	    d_ref_imports(a);
 
 	    /* put in list */
 	    elts->type = T_ARRAY;
@@ -2219,10 +2250,7 @@ void d_export()
 	itab = ALLOC(array*, itabsz = 16);
 
 	for (data = ilist; data != (dataspace *) NULL; data = next) {
-	    next = data->inext;
-	    data->inext = (dataspace *) NULL;
 	    if (data->imports != 0) {
-		data->imports = 0;
 		narr = 0;
 		if (data->variables != (value *) NULL) {
 		    d_import(data, data->variables, data->nvariables);
@@ -2249,7 +2277,10 @@ void d_export()
 		    }
 		}
 		arr_clear();	/* clear hash table */
+		data->imports = 0;
 	    }
+	    next = data->inext;
+	    data->inext = (dataspace *) NULL;
 	}
 
 	FREE(itab);

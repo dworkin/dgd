@@ -251,6 +251,7 @@ register unsigned int size;
 	do {
 	    *--elts = *v++;
 	} while (--size != 0);
+	d_ref_imports(a);
 	sp = v;
     }
     (--sp)->type = T_ARRAY;
@@ -286,6 +287,7 @@ register unsigned int size;
 	}
 	map_sort(a);
 	ec_pop();
+	d_ref_imports(a);
     }
     (--sp)->type = T_MAPPING;
     arr_ref(sp->u.array = a);
@@ -1565,6 +1567,7 @@ int funci;
 	    do {
 		*--v = *sp++;
 	    } while (--nargs > 0);
+	    d_ref_imports(a);
 	    nargs = n;
 	} else {
 	    /* make empty arguments array, and optionally push zeroes */
@@ -1875,6 +1878,7 @@ array *i_call_trace()
 	elts++;
     }
 
+    d_ref_imports(a);
     return a;
 }
 

@@ -1900,6 +1900,7 @@ int n;
 	}
 
 	sp = v - 1;
+	d_ref_imports(a);
 	arr_ref(sp->u.array = a);
     } else {
 	/* integers only */
