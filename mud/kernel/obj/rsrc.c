@@ -72,8 +72,8 @@ private decay_rsrc(mixed *rsrc, mixed *grsrc, int time)
     int period, t;
 
     usage = rsrc[RSRC_USAGE];
-    decay = (float) (100 - (int) grsrc[RSRC_DECAY - 1]) / 100.0;
-    period = grsrc[RSRC_PERIOD - 1];
+    decay = (float) (100 - (int) grsrc[GRSRC_DECAY]) / 100.0;
+    period = grsrc[GRSRC_PERIOD];
     time -= period;
     t = rsrc[RSRC_DECAYTIME];
 
@@ -104,19 +104,19 @@ int *rsrc_get(string name, mixed *grsrc)
 
 	rsrc = resources[name];
 	if (!rsrc) {
-	    return ({ ((int) grsrc[RSRC_DECAY - 1] == 0) ? 0 : 0.0,
-		      grsrc[RSRC_MAX], 0 }) +
-		   grsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
+	    return ({ ((int) grsrc[GRSRC_DECAY] == 0) ? 0 : 0.0,
+		      grsrc[GRSRC_MAX], 0 }) +
+		   grsrc[GRSRC_DECAY .. GRSRC_PERIOD];
 	} else {
-	    if ((int) grsrc[RSRC_DECAY - 1] != 0 &&
+	    if ((int) grsrc[GRSRC_DECAY] != 0 &&
 		(time=time()) - (int) rsrc[RSRC_DECAYTIME] >=
-						(int) grsrc[RSRC_PERIOD - 1]) {
+						    (int) grsrc[GRSRC_PERIOD]) {
 		/* decay resource */
 		decay_rsrc(rsrc, grsrc, time);
 	    }
-	    rsrc += grsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
+	    rsrc += grsrc[GRSRC_DECAY .. GRSRC_PERIOD];
 	    if ((int) rsrc[RSRC_MAX] < 0) {
-		rsrc[RSRC_MAX] = grsrc[RSRC_MAX];
+		rsrc[RSRC_MAX] = grsrc[GRSRC_MAX];
 	    }
 	    if (typeof(rsrc[RSRC_INDEXED]) == T_MAPPING) {
 		rsrc[RSRC_INDEXED] = rsrc[RSRC_INDEXED][..];
@@ -142,19 +142,20 @@ int rsrc_incr(string name, mixed index, int incr, mixed *grsrc, int force)
 	if (!rsrc) {
 	    /* new resource */
 	    rsrc = resources[name] =
-		   ((int) grsrc[RSRC_DECAY - 1] == 0) ? ({   0, -1,    0 }) :
-							({ 0.0, -1, time });
-	    max = grsrc[RSRC_MAX];
+		   ((int) grsrc[GRSRC_DECAY] == 0) ? ({   0, -1,    0 }) :
+						     ({ 0.0, -1, time });
+	    max = grsrc[GRSRC_MAX];
 	} else {
 	    /* existing resource */
-	    if ((int) grsrc[RSRC_DECAY - 1] != 0 &&
-		time - (int) rsrc[RSRC_DECAYTIME] >=
-						(int) grsrc[RSRC_PERIOD - 1]) {
+	    if ((int) grsrc[GRSRC_DECAY] != 0 &&
+		time - (int) rsrc[RSRC_DECAYTIME] >= (int) grsrc[GRSRC_PERIOD])
+	    {
 		/* decay resource */
 		decay_rsrc(rsrc, grsrc, time);
 	    }
 
-	    max = (((int) rsrc[RSRC_MAX] >= 0) ? rsrc : grsrc)[RSRC_MAX];
+	    max = ((int) rsrc[RSRC_MAX] >= 0) ?
+		   rsrc[RSRC_MAX] : grsrc[GRSRC_MAX];
 	}
 
 	if (!force && max >= 0 &&
@@ -218,7 +219,7 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
 	/* determine available stack */
 	maxstack = resources["stack"][RSRC_MAX];
 	if (maxstack < 0) {
-	    maxstack = rstack[RSRC_MAX];
+	    maxstack = rstack[GRSRC_MAX];
 	}
 	if (maxstack > stack && stack >= 0) {
 	    maxstack = stack;
@@ -230,7 +231,7 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
 	/* determine available ticks */
 	maxticks = resources["ticks"][RSRC_MAX];
 	if (maxticks < 0) {
-	    maxticks = rticks[RSRC_MAX];
+	    maxticks = rticks[GRSRC_MAX];
 	}
 	if (maxticks >= 0) {
 	    mixed *rsrc;
@@ -238,13 +239,13 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
 
 	    rsrc = resources["tick usage"];
 	    if ((n=time()) - (int) rsrc[RSRC_DECAYTIME] >=
-						    usage[RSRC_PERIOD - 1]) {
+						    usage[GRSRC_PERIOD]) {
 		/* decay resource */
 		decay_rsrc(rsrc, usage, n);
 	    }
 	    n = rsrc[RSRC_MAX];
 	    if (n < 0) {
-		n = usage[RSRC_MAX];
+		n = usage[GRSRC_MAX];
 	    }
 	    if (n >= 0 && (int) rsrc[RSRC_USAGE] >= n >> 1) {
 		maxticks = (int) ((float) maxticks *

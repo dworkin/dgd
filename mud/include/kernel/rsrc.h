@@ -9,7 +9,11 @@
 # define RSRC_DECAY	3	/* decay percentage */
 # define RSRC_PERIOD	4	/* decay period */
 
-# define LIM_NEXT       0	/* next limits frame */
+# define GRSRC_MAX	0	/* global resource limit */
+# define GRSRC_DECAY	1	/* global decay percentage */
+# define GRSRC_PERIOD	2	/* global decay period */
+
+# define LIM_NEXT	0	/* next limits frame */
 # define LIM_OWNER	1	/* owner of this frame */
 # define LIM_MAXSTACK	2	/* max stack in frame */
 # define LIM_MAXTICKS	3	/* max ticks in frame */

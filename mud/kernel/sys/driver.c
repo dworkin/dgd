@@ -720,7 +720,7 @@ static runtime_error(string str, int caught, int ticks)
 
 	for (i = 0; i < sz; i++) {
 	    progname = trace[i][TRACE_PROGNAME];
-	    len      = trace[i][TRACE_LINE];
+	    len = trace[i][TRACE_LINE];
 	    if (len == 0) {
 		line = "    ";
 	    } else {
@@ -742,7 +742,7 @@ static runtime_error(string str, int caught, int ticks)
 		function += "                 "[len ..];
 	    }
 
-	    objname  = trace[i][TRACE_OBJNAME];
+	    objname = trace[i][TRACE_OBJNAME];
 	    if (progname != objname) {
 		len = strlen(progname);
 		if (len < strlen(objname) && progname == objname[.. len - 1] &&

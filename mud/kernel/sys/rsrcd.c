@@ -27,16 +27,16 @@ static create()
 {
     /* initial resources */
     resources = ([
-      "objects" :	({   0, -1,  0,    0 }),
-      "events" :	({   0, -1,  0,    0 }),
-      "callouts" :	({   0, -1,  0,    0 }),
-      "stack" :		({   0, -1,  0,    0 }),
-      "ticks" :		({   0, -1,  0,    0 }),
-      "tick usage" :	({ 0.0, -1, 10, 3600 }),
-      "filequota" :	({   0, -1,  0,    0 }),
-      "editors" :	({   0, -1,  0,    0 }),
-      "create stack" :	({   0, -1,  0,    0 }),
-      "create ticks" :	({   0, -1,  0,    0 }),
+      "objects" :	({ -1,  0,    0 }),
+      "events" :	({ -1,  0,    0 }),
+      "callouts" :	({ -1,  0,    0 }),
+      "stack" :		({ -1,  0,    0 }),
+      "ticks" :		({ -1,  0,    0 }),
+      "tick usage" :	({ -1, 10, 3600 }),
+      "filequota" :	({ -1,  0,    0 }),
+      "editors" :	({ -1,  0,    0 }),
+      "create stack" :	({ -1,  0,    0 }),
+      "create ticks" :	({ -1,  0,    0 }),
     ]);
 
     owners = ([ ]);		/* no resource owners yet */
@@ -120,17 +120,17 @@ set_rsrc(string name, int max, int decay, int period)
 	    /*
 	     * existing resource
 	     */
-	    if ((rsrc[RSRC_DECAY - 1] == 0) != (decay == 0)) {
+	    if ((rsrc[GRSRC_DECAY] == 0) != (decay == 0)) {
 		error("Cannot change resource decay");
 	    }
 	    rlimits (-1; -1) {
-		rsrc[RSRC_MAX] = max;
-		rsrc[RSRC_DECAY - 1] = decay;
-		rsrc[RSRC_PERIOD - 1] = period;
+		rsrc[GRSRC_MAX] = max;
+		rsrc[GRSRC_DECAY] = decay;
+		rsrc[GRSRC_PERIOD] = period;
 	    }
 	} else {
 	    /* new resource */
-	    resources[name] = ({ (decay == 0) ? 0 : 0.0, max, decay, period });
+	    resources[name] = ({ max, decay, period });
 	}
     }
 }
@@ -145,10 +145,6 @@ remove_rsrc(string name)
     object *objects;
 
     if (previous_program() == API_RSRC && (rsrc=resources[name])) {
-	if (rsrc[RSRC_DECAY - 1] == 0 && (int) rsrc[RSRC_USAGE] != 0) {
-	    error("Removing non-zero resource");
-	}
-
 	objects = map_values(owners);
 	i = sizeof(objects);
 	rlimits (-1; -1) {
@@ -173,14 +169,13 @@ mixed *query_rsrc(string name)
 
 	rsrc = resources[name][..];
 	objects = map_values(owners);
-	usage = (rsrc[RSRC_DECAY - 1] == 0) ? 0 : 0.0;
+	usage = (rsrc[GRSRC_DECAY] == 0) ? 0 : 0.0;
 	for (i = sizeof(objects); --i >= 0; ) {
 	    usage += objects[i]->rsrc_get(name, resources[name])[RSRC_USAGE];
 	}
 
-	rsrc[RSRC_USAGE] = usage;
-	return rsrc[RSRC_USAGE .. RSRC_MAX] + ({ 0 }) +
-	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
+	return ({ usage, rsrc[GRSRC_MAX], 0 }) +
+	       rsrc[GRSRC_DECAY .. GRSRC_PERIOD];
     }
 }
 
@@ -208,7 +203,7 @@ rsrc_set_limit(string owner, string name, int max)
 	if (!(obj=owners[owner])) {
 	    error("No such resource owner");
 	}
-	obj->rsrc_set_limit(name, max, resources[name][RSRC_DECAY - 1]);
+	obj->rsrc_set_limit(name, max, resources[name][GRSRC_DECAY]);
     }
 }
 
