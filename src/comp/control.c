@@ -127,40 +127,6 @@ vfh **addr;
 }
 
 /*
- * NAME:	vfh->r0clear()
- * DESCRIPTION:	recursively clear the vfh list, listing the entries with the
- *		ohash field set to NULL in reverse order
- */
-static void vfh_r0clear(h)
-register vfh **h;
-{
-    register vfh *f;
-
-    while (h != (vfh **) NULL) {
-	f = *h;
-	*h = (vfh *) f->chain.next;
-	h = f->next;
-	if (f->ohash == (oh *) NULL) {
-	    vfh_r0clear(h);
-	    message("  %s\n", f->str->text);
-	    h = (vfh **) NULL;
-	}
-	str_del(f->str);
-    }
-}
-
-/*
- * NAME:	vfh->0clear()
- * DESCRIPTION:	clear the vfh list, listing the entries with the ohash field
- *		set to NULL
- */
-static void vfh_0clear()
-{
-    vfh_r0clear(vfhlist);
-    vfhlist = (vfh **) NULL;
-}
-
-/*
  * NAME:	vfh->clear()
  * DESCRIPTION:	clear the vfh tables
  */
@@ -348,8 +314,9 @@ register control *ctrl;
 		/* new variable */
 		vfh_new(str, ohash, v->type, n, h);
 	    } else {
-		/* duplicate variable */
-		yyerror("multiple inheritance of variable %s", str->text);
+	       /* duplicate variable */
+	       yyerror("multiple inheritance of variable %s (/%s, /%s)",
+		       str->text, (*h)->ohash->chain.name, ohash->chain.name);
 	    }
 	}
 	v++;
@@ -379,12 +346,14 @@ oh *ohash;
 	 * New function (-1: no calls to it yet)
 	 */
 	vfh_new(str, ohash, -1, idx, h);
-	if (ctrl->ninherits != 1 || !(f->class & C_STATIC)) {
+	if (ctrl->ninherits != 1 ||
+	    (f->class & (C_STATIC | C_UNDEFINED)) != C_STATIC) {
 	    /* don't count static functions from the auto object */
 	    nsymbs++;
 	}
     } else if ((*h)->ohash != ohash) {
 	char *prot1, *prot2;
+	vfh **marker;
 
 	/*
 	 * Different prototypes.
@@ -392,8 +361,9 @@ oh *ohash;
 	prot1 = ctrl->prog + f->offset;
 	if ((*h)->ohash == (oh *) NULL) {
 	    /*
-	     * There has been a clash already; skip the clash marker.
+	     * Skip old clash marker.
 	     */
+	    marker = h;
 	    h = (vfh **) &(*h)->chain.next;
 	} else {
 	    register dinherit *inh;
@@ -414,7 +384,8 @@ oh *ohash;
 		     * redefined inherited function
 		     */
 		    if (ctrl->ninherits == 1 &&
-			(ctrl->funcdefs[(*h)->index].class & C_STATIC)) {
+			(ctrl->funcdefs[(*h)->index].class &
+				  (C_STATIC | C_UNDEFINED)) == C_STATIC) {
 			/*
 			 * redefine static function in auto object
 			 */
@@ -450,9 +421,12 @@ oh *ohash;
 	     */
 	    if (!((f->class | ctrl->funcdefs[(*h)->index].class) & C_UNDEFINED))
 	    {
-		vfh_new(str, (oh *) NULL, 0, 0, h);
 		nfclash++;
+		vfh_new(str, (oh *) NULL, 0, 0, h);
+		marker = h;
 		h = (vfh **) &(*h)->chain.next;
+	    } else {
+		marker = (vfh **) NULL;
 	    }
 	}
 
@@ -460,7 +434,7 @@ oh *ohash;
 	 * Go to the end of the list, meanwhile checking prototypes.
 	 */
 	for (l = h;
-	     *l != (vfh *) NULL && strcmp((*l)->str->text, str->text) == 0;
+	     *l != (vfh *) NULL && strcmp((*l)->chain.name, str->text) == 0;
 	     l = (vfh **) &(*l)->chain.next) {
 	    ctrl = (*l)->ohash->obj->ctrl;
 	    prot2 = ctrl->prog + ctrl->funcdefs[(*l)->index].offset;
@@ -469,8 +443,8 @@ oh *ohash;
 		/*
 		 * a nomask function is inherited more than once
 		 */
-		yyerror("multiple inheritance of nomask function %s",
-			str->text);
+		yyerror("multiple inheritance of nomask function %s (/%s, /%s)",
+			str->text, (*l)->ohash->chain.name, ohash->chain.name);
 		return;
 	    }
 	    if (((f->class | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
@@ -478,7 +452,8 @@ oh *ohash;
 		/*
 		 * prototype conflict
 		 */
-		yyerror("unequal prototypes for function %s", str->text);
+		yyerror("unequal prototypes for function %s (/%s, /%s)",
+			str->text, (*l)->ohash->chain.name, ohash->chain.name);
 		return;
 	    }
 	}
@@ -496,10 +471,21 @@ oh *ohash;
 	    }
 	}
 
-	/*
-	 * add function at the beginning of the list
-	 */
-	vfh_new(str, ohash, -1, idx, h);
+	if (marker != (vfh **) NULL) {
+	    /*
+	     * replace clash marker with function, and insert a new clash marker
+	     */
+	    h = marker;
+	    (*h)->ohash = ohash;
+	    (*h)->ct = -1;
+	    (*h)->index = idx;
+	    vfh_new(str, (oh *) NULL, 0, 0, h);
+	} else {
+	    /*
+	     * insert before old prototype
+	     */
+	    vfh_new(str, ohash, -1, idx, h);
+	}
     }
 }
 
@@ -550,14 +536,13 @@ register control *ctrl;
  * NAME:	control->inherit()
  * DESCRIPTION:	inherit an object
  */
-void ctrl_inherit(o, label)
-register object *o;
+bool ctrl_inherit(obj, label)
+object *obj;
 string *label;
 {
-    register control *ctrl;
     register oh *ohash;
 
-    ohash = oh_new(o->chain.name);
+    ohash = oh_new(obj->chain.name);
     if (label != (string *) NULL) {
 	/*
 	 * use a label
@@ -569,18 +554,35 @@ string *label;
     }
 
     if (ohash->index == 0) {
-	register int i, n;
+	register control *ctrl;
+	register object *o;
 	dinherit *inh;
+	register int i, n;
 
 	/*
 	 * new inherited object
 	 */
-	ctrl = o_control(o);
+	ctrl = o_control(obj);
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i) {
 	    /*
 	     * check all the objects inherited by the object now inherited
 	     */
 	    o = (inh++)->obj;
+	    if (o->count == 0) {
+		/*
+		 * This object inherits an object that has been destructed.
+		 * Give the driver object a chance to destruct it.
+		 */
+		i_check_stack(1);
+		(--sp)->type = T_OBJECT;
+		sp->oindex = obj->index;
+		sp->u.objcnt = obj->count;
+		call_driver_object("recompile", 1);
+		i_del_value(sp++);
+		if (obj->count == 0) {
+		    return FALSE;	/* recompile this object */
+		}
+	    }
 
 	    ohash = oh_new(o->chain.name);
 	    if (ohash->index == 0) {
@@ -608,7 +610,7 @@ string *label;
 		/*
 		 * inherited two different objects with same name
 		 */
-		yyerror("inherited different instances of \"/%s\"",
+		yyerror("inherited different instances of /%s",
 			o->chain.name);
 		return;
 	    } else if (ohash->index < 0 && ohash->obj->ctrl->ninherits > 1) {
@@ -640,16 +642,18 @@ string *label;
 	 */
 	ctrl_funcdefs(ctrl);
 
-    } else if (ohash->obj != o) {
+    } else if (ohash->obj != obj) {
 	/*
 	 * inherited two objects with same name
 	 */
-	yyerror("inherited different instances of \"/%s\"", o->chain.name);
+	yyerror("inherited different instances of /%s", obj->chain.name);
     }
 
     if (ninherits >= MAX_INHERITS) {
 	yyerror("too many objects inherited");
     }
+
+    return TRUE;
 }
 
 
@@ -660,13 +664,10 @@ typedef struct _strchunk_ {
     struct _strchunk_ *next;		/* next in string chunk list */
 } strchunk;
 
-# define FCALL_CHUNK	32
+# define FCALL_CHUNK	64
 
 typedef struct _fcchunk_ {
-    struct {
-	char inherit;			/* program index */
-	char index;			/* function index */
-    } f[FCALL_CHUNK];
+    char *f[FCALL_CHUNK];		/* function reference */
     struct _fcchunk_ *next;		/* next in fcall chunk list */
 } fcchunk;
 
@@ -823,6 +824,8 @@ register char *proto;
     register int i;
     long s;
 
+    i = -1;	/* default: no calls yet */
+
     /* first check if prototype exists already */
     h = (vfh **) ht_lookup(ftab, str->text);
     if (*h != (vfh *) NULL) {
@@ -837,13 +840,24 @@ register char *proto;
 	     * redefinition of new function
 	     */
 	    proto2 = functions[(*h)->index].proto;
-	    if (!((PROTO_CLASS(proto) | PROTO_CLASS(proto2)) & C_UNDEFINED) ||
-		!cmp_proto(proto, proto2)) {
+	    if (!((PROTO_CLASS(proto) | PROTO_CLASS(proto2)) & C_UNDEFINED)) {
 		/*
-		 * either both prototypes are from functions, or they are not
-		 * equal
+		 * both prototypes are from functions
 		 */
 		yyerror("multiple declaration of function %s", str->text);
+	    } else if (!cmp_proto(proto, proto2)) {
+		if ((PROTO_CLASS(proto) ^ PROTO_CLASS(proto2)) & C_UNDEFINED) {
+		    /*
+		     * declaration does not match prototype
+		     */
+		    yyerror("declaration does not match prototype of %s",
+			    str->text);
+		} else {
+		    /*
+		     * unequal prototypes
+		     */
+		    yyerror("unequal prototypes for function %s", str->text);
+		}
 	    } else if (!(PROTO_CLASS(proto) & C_UNDEFINED) ||
 		       PROTO_FTYPE(proto2) == T_IMPLICIT) {
 		/*
@@ -871,10 +885,12 @@ register char *proto;
 	 * redefinition of inherited function
 	 */
 	if ((*h)->ohash == (oh *) NULL) {
-	    /*
-	     * mask inherited functions
-	     */
-	    --nfclash;
+	    if (!(PROTO_CLASS(proto) & C_PRIVATE)) {
+		/*
+		 * mask inherited functions
+		 */
+		--nfclash;
+	    }
 	} else {
 	    ctrl = (*h)->ohash->obj->ctrl;
 	    proto2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
@@ -882,13 +898,22 @@ register char *proto;
 		/*
 		 * attempt to redefine nomask function
 		 */
-		yyerror("redeclaration of nomask function %s", str->text);
+		yyerror("redeclaration of nomask function %s (/%s)",
+			str->text, (*h)->ohash->chain.name);
 	    } else if ((PROTO_CLASS(proto2) & C_UNDEFINED) &&
 		       !cmp_proto(proto, proto2)) {
 		/*
 		 * declaration does not match inherited prototype
 		 */
-		yyerror("invalid redeclaration of function %s", str->text);
+		yyerror("declaration does not match prototype of %s (/%s)",
+			str->text, (*h)->ohash->chain.name);
+	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
+		       PROTO_FTYPE(proto2) != T_IMPLICIT &&
+		       cmp_proto(proto, proto2)) {
+		/*
+		 * there is no point in replacing an identical prototype
+		 */
+		return;
 	    }
 
 	    if (!(PROTO_CLASS(proto) & C_PRIVATE) && ctrl->ninherits == 1 &&
@@ -899,6 +924,7 @@ register char *proto;
 		 */
 		nsymbs++;
 	    }
+	    i = (*h)->ct;	/* take old call index */
 	}
 	/*
 	 * insert the definition before the old one in the hash table
@@ -922,7 +948,7 @@ register char *proto;
     /*
      * Actual definition.
      */
-    vfh_new(str, newohash, -1, nfdefs, h);
+    vfh_new(str, newohash, i, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
@@ -972,12 +998,18 @@ unsigned short class, type;
     register long s;
 
     h = (vfh **) ht_lookup(vtab, str->text);
-    if (*h != (vfh *) NULL && !(class & C_PRIVATE)) {
-	/*
-	 * non-private redeclaration of a variable
-	 */
-	yyerror("redeclaration of variable %s", str->text);
-	return;
+    if (*h != (vfh *) NULL) {
+	if ((*h)->ohash == newohash) {
+	    yyerror("redeclaration of variable %s", str->text);
+	    return;
+	} else if (!(class & C_PRIVATE)) {
+	    /*
+	     * non-private redeclaration of a variable
+	     */
+	    yyerror("redeclaration of variable %s (/%s)", str->text,
+		    (*h)->ohash->chain.name);
+	    return;
+	}
     }
     if (nvars == 256) {
 	yyerror("too many variables declared");
@@ -1074,29 +1106,6 @@ long *call;
 }
 
 /*
- * NAME:	control->funcall()
- * DESCRIPTION:	generate a funcall (low-level)
- */
-void ctrl_funcall(inherit, index)
-char inherit, index;
-{
-    /*
-     * add to function call table
-     */
-    if (fcchunksz == FCALL_CHUNK) {
-	register fcchunk *l;
-
-	l = ALLOC(fcchunk, 1);
-	l->next = fclist;
-	fclist = l;
-	fcchunksz = 0;
-    }
-    fclist->f[fcchunksz].inherit = inherit;
-    fclist->f[fcchunksz++].index = index;
-    nfcalls++;
-}
-
-/*
  * NAME:	control->fcall()
  * DESCRIPTION:	call a function
  */
@@ -1163,8 +1172,19 @@ bool typechecking;
     } else {
 	/* ordinary function call */
 	if (h->ct == (unsigned short) -1) {
-	    h->ct = nfcalls;
-	    ctrl_funcall(h->ohash->index, h->index);
+	    /*
+	     * add to function call table
+	     */
+	    if (fcchunksz == FCALL_CHUNK) {
+		register fcchunk *l;
+
+		l = ALLOC(fcchunk, 1);
+		l->next = fclist;
+		fclist = l;
+		fcchunksz = 0;
+	    }
+	    fclist->f[fcchunksz++] = h->chain.name;
+	    h->ct = nfcalls++;
 	}
 	*call = (FCALL << 24L) | h->ct;
     }
@@ -1198,6 +1218,42 @@ long *ref;
 
 
 /*
+ * NAME:	vfh->lclear()
+ * DESCRIPTION:	clear the vfh list, meanwhile listing multiple definitions
+ */
+static void vfh_lclear()
+{
+    register vfh **h, *f, *t;
+
+    for (h = vfhlist; h != (vfh **) NULL; h = f->next) {
+	f = *h;
+	*h = t = (vfh *) f->chain.next;
+	if (f->ohash == (oh *) NULL) {
+	    /*
+	     * list a clash
+	     */
+	    message("  %s (/%s", f->chain.name, t->ohash->chain.name);
+	    while ((t=(vfh *) t->chain.next) != (vfh *) NULL &&
+		   strcmp(t->str->text, f->str->text) == 0 &&
+		   !(t->ohash->obj->ctrl->funcdefs[t->index].class &
+		     C_UNDEFINED)) {
+		message(", /%s", t->ohash->chain.name);
+	    }
+	    message(")\n");
+	} else if (t != (vfh *) NULL && t->ohash == (oh *) NULL &&
+		   strcmp(t->str->text, f->str->text) == 0 &&
+		   !(PROTO_CLASS(functions[f->index].proto) & C_PRIVATE)) {
+	    /*
+	     * this function was redefined, and must not be listed
+	     */
+	    t->ohash = f->ohash;
+	}
+	str_del(f->str);
+    }
+    vfhlist = (vfh **) NULL;
+}
+
+/*
  * NAME:	control->chkfuncs()
  * DESCRIPTION:
  */
@@ -1206,11 +1262,12 @@ char *file;
 {
     if (nfclash != 0) {
 	message("\"/%s.c\": inherited multiple instances of:\n", file);
-	vfh_0clear();
+	vfh_lclear();
 	return FALSE;
     }
     return TRUE;
 }
+
 
 /*
  * NAME:	control->mkstrings()
@@ -1221,7 +1278,9 @@ static void ctrl_mkstrings()
     register string **s;
     register strchunk *l, *f;
     register unsigned short i;
+    register long strsize;
 
+    strsize = 0;
     if ((newctrl->nstrings = nstrs) != 0) {
 	newctrl->strings = ALLOC(string*, newctrl->nstrings);
 	s = newctrl->strings + nstrs;
@@ -1231,6 +1290,7 @@ static void ctrl_mkstrings()
 		*--s = l->s[--i];	/* already referenced */
 		(*s)->ref |= STR_CONST;
 		(*s)->u.strconst = s;
+		strsize += (*s)->len;
 	    }
 	    i = STRING_CHUNK;
 	    f = l;
@@ -1240,6 +1300,7 @@ static void ctrl_mkstrings()
 	strlist = (strchunk *) NULL;
 	strchunksz = i;
     }
+    newctrl->strsize = strsize;
 }
 
 /*
@@ -1294,6 +1355,7 @@ static void ctrl_mkfcalls()
 {
     register char *fc;
     register int i;
+    register vfh *h;
     register fcchunk *l;
 
     newctrl->nfuncalls = newctrl->inherits[newctrl->ninherits - 1].funcoffset +
@@ -1309,7 +1371,6 @@ static void ctrl_mkfcalls()
 	 */
 	if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
 	    register char *ofc;
-	    register vfh *h;
 	    register dfuncdef *f;
 	    register control *ctrl, *ctrl2;
 	    register uindex j, n;
@@ -1358,8 +1419,9 @@ static void ctrl_mkfcalls()
     i = fcchunksz;
     for (l = fclist; l != (fcchunk *) NULL; l = l->next) {
 	do {
-	    *--fc = l->f[--i].index;
-	    *--fc = l->f[i].inherit;
+	    h = *(vfh **) ht_lookup(ftab, l->f[--i]);
+	    *--fc = h->index;
+	    *--fc = h->ohash->index;
 	} while (i != 0);
 	i = FCALL_CHUNK;
     }
@@ -1403,8 +1465,9 @@ static void ctrl_mksymbs()
 		register char *name;
 
 		if ((f->class & C_PRIVATE) ||
-		    ((f->class & C_STATIC) && ctrl->ninherits == 1 &&
-		      (is_auto || (ctrl->inherits->obj->flags & O_AUTO)))) {
+		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
+		     ctrl->ninherits == 1 &&
+		     (is_auto || (ctrl->inherits->obj->flags & O_AUTO)))) {
 		    continue;
 		}
 		name = d_get_strconst(ctrl, f->inherit, f->index)->text;
@@ -1475,32 +1538,41 @@ char *func;
 {
     register dsymbol *symb;
     register dfuncdef *f;
-    register unsigned int i;
+    register unsigned int i, j;
+    dsymbol *symtab, *symb1;
     dinherit *inherits;
-    dsymbol *symtab;
 
-    if ((i = ctrl->nsymbols) == 0) {
+    if ((i=ctrl->nsymbols) == 0) {
 	return (dsymbol *) NULL;
     }
 
     inherits = ctrl->inherits;
     symtab = d_get_symbols(ctrl);
     i = hashstr(func, VFMERGEHASHSZ) % i;
-    for (;;) {
-	symb = &symtab[i];
+    symb1 = symb = &symtab[i];
+    ctrl = o_control(inherits[UCHAR(symb->inherit)].obj);
+    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+    if (strcmp(func, d_get_strconst(ctrl, f->inherit, f->index)->text) == 0) {
+	/* found it */
+	return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
+    }
+    while (i != symb->next) {
+	symb = &symtab[i = symb->next];
 	ctrl = o_control(inherits[UCHAR(symb->inherit)].obj);
 	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	if (strcmp(func, d_get_strconst(ctrl, f->inherit, f->index)->text) == 0)
 	{
-	    /* found it */
-	    return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb;
+	    /* found it: put symbol first in linked list */
+	    i = symb1->inherit;
+	    j = symb1->index;
+	    symb1->inherit = symb->inherit;
+	    symb1->index = symb->index;
+	    symb->inherit = i;
+	    symb->index = j;
+	    return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
 	}
-	if (i == symb->next) {
-	    /* points to itself: end of linked list */
-	    return (dsymbol *) NULL;
-	}
-	i = symb->next;
     }
+    return (dsymbol *) NULL;
 }
 
 /*
@@ -1523,7 +1595,7 @@ control *ctrl_construct()
     ctrl_mkfcalls();
     ctrl_mksymbs();
 
-    if (strcmp(name, auto_name) == 0) {
+    if (is_auto) {
 	/*
 	 * this is the auto object
 	 */
