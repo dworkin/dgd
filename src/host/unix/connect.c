@@ -32,7 +32,7 @@ static int maxfd;			/* largest fd opened yet */
  */
 void conn_init(maxusers, telnet_port, binary_port)
 int maxusers;
-unsigned short telnet_port, binary_port;
+unsigned int telnet_port, binary_port;
 {
     struct sockaddr_in sin;
     struct hostent *host;
@@ -55,12 +55,14 @@ unsigned short telnet_port, binary_port;
 	exit(2);
     }
     on = 1;
-    if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    if (setsockopt(telnet, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	exit(2);
     }
     on = 1;
-    if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	exit(2);
     }
@@ -188,7 +190,7 @@ register connection *conn;
  * DESCRIPTION:	wait for input from connections
  */
 int conn_select(wait)
-bool wait;
+int wait;
 {
     struct timeval timeout;
 
