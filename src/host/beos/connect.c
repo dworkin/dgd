@@ -743,7 +743,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 {
     struct sockaddr_in to;
 
-    if (conn->fd >= 0 && len != 0) {
+    if (conn->fd >= 0) {
 	to.sin_family = AF_INET;
 	to.sin_addr.s_addr = conn->addr->ipnum.s_addr;
 	to.sin_port = conn->port;

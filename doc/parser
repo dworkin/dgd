@@ -106,8 +106,8 @@ object if the specified rule has been matched.
 
 Normally, parse_string() returns a flat array of token strings (if the input
 string could be parsed as a sentence in the language defined by the grammar)
-or 0 (if the input string could not be parsed).  However, the return value can
-be modified to an array containing arbitrary other values, including
+or nil (if the input string could not be parsed).  However, the return value
+can be modified to an array containing arbitrary other values, including
 sub-arrays, by specifying LPC functions in the grammar that will be called
 while parsing.  Moreover, if the grammar is ambiguous, sub-arrays for the
 alternative may be automatically included in the result.
@@ -124,7 +124,7 @@ The LPC function can return its argument unchanged, or modify its argument
 before returning it, or return a completely different value.  Whatever the
 return value is, it is taken to be an array matching the current rule; if
 it is not an array at all, the current parse tree (and all parse trees that
-depend on it) are discarded altogether.
+depend on it) is discarded altogether.
 
 LPC functions are typically used to replace tokens in the parse tree by
 their semantic value, or to add structure to a parse tree, which otherwise
@@ -171,4 +171,5 @@ or right-recursive:
 
 Neither rewritten grammar is ambiguous, and both explicitly specify the order
 in which expressions are to be evaluated: from left to right, or from right to
-left, respectively.
+left, respectively.  If the order doesn't matter, left recursion should be
+preferred, as this is parsed more efficiently.

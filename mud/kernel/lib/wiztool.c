@@ -1628,7 +1628,7 @@ private string list_resources(string name, string *names, mixed *resources)
 
     for (i = sizeof(names); --i >= 0; ) {
 	rsrc = resources[i];
-	str = (names[i] + SPACE16)[.. 15] + ralign(rsrc[RSRC_USAGE], 13) +
+	str = (names[i] + SPACE16)[.. 15] + ralign(rsrc[RSRC_USAGE], 14) +
 	      ralign(rsrc[RSRC_MAX], 13);
 	if ((int) rsrc[RSRC_DECAY] != 0) {
 	    str += ralign(rsrc[RSRC_DECAY], 6) + "%";
@@ -1660,8 +1660,8 @@ private string list_resources(string name, string *names, mixed *resources)
     }
 
     return (name + SPACE16)[.. 15] +
-			   "        usage          max  decay  period\n" +
-	   "----------------+------------+------------+------+---------\n" +
+			   "         usage          max  decay  period\n" +
+	   "----------------+-------------+------------+------+---------\n" +
 	   implode(resources, "\n") + "\n";
 }
 

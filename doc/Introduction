@@ -121,8 +121,8 @@ driver, mostly to translate pathnames.
 	Called at runtime for rlimits constructs not already cleared by
 	compile_rlimits().  If 0 is returned, the rlimits usage is illegal
 	and is aborted with an error.
-	Values for stack and ticks: < 0 = infinite, 0 = no change,
-	> 0 = set to specified amount.
+	Values for stack and ticks: < 0: infinite, 0: no change,
+	> 0: set to specified amount.
 
     void remove_program(string objname, int timestamp, int index)
 
@@ -234,5 +234,4 @@ call_outs	int	The maximum number of simultaneously active
 			callouts.
 
    Examples of the auto object, driver object and config file are present
-in the simulation of LPmud 2.4.5 for DGD, at ftp.lysator.liu.se, in
-directory /pub/lpmud/drivers/dgd.
+in the kernel library, which is distributed with DGD.

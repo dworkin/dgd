@@ -1981,7 +1981,7 @@ int funci;
     *--prev_f->sp = val;
 
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
-	d_commit_plane(f.level);
+	d_commit_plane(f.level, &val);
 	o_commit_plane();
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;

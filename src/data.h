@@ -196,7 +196,7 @@ extern value	       *d_get_variable	P((dataspace*, unsigned int));
 extern value	       *d_get_elts	P((array*));
 
 extern void		d_new_plane	P((dataspace*, Int));
-extern void		d_commit_plane	P((Int));
+extern void		d_commit_plane	P((Int, value*));
 extern void		d_discard_plane	P((Int));
 extern abchunk	      **d_commit_arr	P((array*, dataplane*, dataplane*));
 extern void		d_discard_arr	P((array*, dataplane*));

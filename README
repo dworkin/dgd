@@ -1,101 +1,84 @@
-DGD (which stands for "Dworkin's Generic Driver") is a rewrite from scratch
-of the popular LPMud server.  It runs on Unix, Mac and Win32.  A minimal
-development library is included with DGD.
+This file was written for release 1.2 of DGD.
 
-The latest version of DGD can be found at
-ftp://ftp.imaginary.com/pub/LPC/servers/DGD/
+DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS,
+BeOS and many versions of Unix.  Binaries and source for the latest stable
+release of DGD can be found at:
 
----
+    ftp://ftp.imaginary.com/pub/LPC/servers/DGD/
 
-Most important changes since 1.0.9:
+DGD's home page is at:
 
- - lock() has been replaced with a new LPC construct, rlimits.
+    http://www.dworkin.nl/dgd/
 
-    rlimits (stackdepth; ticks) { code; }
 
-   The code between the curly brackets is executed with the specified limits
-   on function call depth and ticks (= execution cost).  The value 0 can
-   be used to mean "no change", and -1 means unlimited.  All calls are
-   started without limits, so be sure to use rlimits in the proper top-level
-   functions (see doc/Introduction for a list of functions called by the
-   driver).
- - DGD has been ported to Win32 (95, NT) and MacOS.
- - It is now possible to recompile an object without first destructing it,
-   as long as the object is not inherited.  This has the effect of replacing
-   the program for the object as soon has the current thread has finished.
-   Variables are preserved if they keep the same name and type.
- - A kernel LPC library has been added.  See doc/mud/kernel/overview for
-   an introduction.
- - The commercial status of DGD has changed.  See doc/Commercial for details.
+This distribution is organized as follows:
 
----
+bin		Installation binaries will be created here (Unix & BeOS).
+doc		Documentation, currently still very incomplete.
+mud		A minimal mudlib called the kernel library, which is
+		distributed together with, but not part of DGD.  The kernel
+		library is in the public domain.
+src		Where the source of DGD resides, and where you issue your
+		`make' command on Unix or BeOS.
+src/host/*	Subdirectories for various platform-dependent files.  For
+		historical reasons, files for Windows are in src/host/pc.
+tmp		The place where temporary files, such as the swap file, are
+		created by DGD.
 
-List of incompatibilities between 1.0.9 and 1.1:
+See the file doc/Platforms for help on compiling DGD on various platforms.
+Also consult the src/host/*/README file for your platform, if there is one.
 
- - The config parameters `call_stack', `value_stack', `reserved_cstack',
-   `reserved_vstack' and `exec_cost' are obsolete and have been removed.
- - driver->path_ed_read() and driver->path_ed_write() have been renamed to
-   driver->path_read() and driver->path_write(), respectively.
- - driver->log_error() has been renamed to driver->runtime_error().  A
-   third argument has been added to runtime_error(), the number of ticks
-   left at the time the error occurred.
- - driver->compile_log() has been replaced with
-   driver->compile_error(string file, int line, string error).
- - When the last instance of a program is removed, the function
-   remove_program(string program, int timestamp, int index) is called in
-   the driver object.
- - driver->path_object() has been replaced by call_object(), which returns
-   an object.
- - driver->path_inherit() has been replaced by inherit_program(), which
-   returns an object.
- - driver->compile_object() has been removed.  You can do your own object
-   renaming by redefining find_object() and adjusting driver->call_object().
- - driver->interrupt() is called if the server process is terminated from
-   the outside.
- - lock() has been replaced with rlimits.  Replace
 
-    lock(code)
+The following significant changes have been made since version 1.1 (for
+a full list, consult the file src/Changelog):
 
-   with
+ - A generic string parser has been added, which parses strings using a
+   context-free grammar and regular expressions; see the file doc/parser.
+ - Functions can now be `atomic'.  An error that occurs while executing an
+   atomic function will roll back all changes made by that function,
+   including calls to other functions.  Calls to atomic functions can be
+   safely nested.  There is one limitation: file writing operations are not
+   possible from atomically executed code.
+ - A new typechecking mode has been added, selected by setting the config
+   variable `typechecking' to 2.  This introduces the constant `nil' as
+   a value distinct of integer 0.  String, object, array and mapping values
+   will be initialized as nil.  The kfuns allocate(), allocate_int() and
+   allocate_float() allocate an array of nil values, integer 0 values, and
+   floating point 0.0 values, respectively.
+ - `varargs' can now be used in the argument list of a function, to specify
+   that only the following arguments are optional, rather than all of them.
+   In typechecking mode 2, this is the only allowed use of varargs.
+ - Callouts can now have millisecond delays, using a float delay argument.
+   A callout with a delay of 0 will be executed immediately after termination
+   of the current thread.
+ - A new kfun millitime() was added.
+ - Blocking of user input is now possible with the new block_input() kfun.
+ - New kfuns query_ip_name() and send_datagram() were added.
+ - ANSI C equivalent math functions have been implemented as kfuns.
+ - New kfuns hash_crc16() and hash_md5() were added.
+ - DGD has been made restartable without quitting on Windows, Mac and BeOS.
 
-    rlimits (-1; -1) { code; }
 
- - The functions driver->compile_rlimits() and driver->runtime_rlimits()
-   have been added to compile access to rlimits at compile time and runtime,
-   respectively.
- - catch() doesn't behave differently anymore when used by the driver object.
-   The old special behaviour can be simulated with catch + rlimits.
- - Objects are no longer automatically compiled on first reference.  In
-   driver->call_object(), use compile_object() to load the object if needed.
- - find_object() doesn't call driver->path_object() to translate the path,
-   anymore.
- - STRING->function() from the auto object now also calls driver->call_object()
-   to get the object named by STRING.  Replace such calls in the auto object
-   by
+*WARNING*
 
-    ::find_object(STRING)->function();
+It is possible to use statedumps created by DGD 1.1 with 1.2.  However, you
+must first make sure that there are no partially upgraded objects in the
+statedump that DGD 1.1 (or any version up to 1.1.96) created.
 
- - function_object() doesn't find static functions in other objects anymore.
- - clone_object() now takes an object as argument.  Redefine it in the auto
-   object:
+A partially upgraded object is a clone whose master object has been
+recompiled, but which itself hasn't been upgraded yet.  DGD 1.2 handles
+these objects differently, and attempting to use it on a statedump with
+old-style partially upgraded objects will result in crashes and trashed
+statedumps.
 
-    object clone_object(string path)
-    {
-	object obj;
+Getting rid of partially upgraded objects is very simple: when restoring
+state from a statedump file, DGD automatically upgrades any left-over
+partially upgraded objects.  So, if you have a statedump file that might
+contain a partially upgraded object, restart your old DGD with it, and
+then let it create a new statedump immediately, or at least without
+recompiling any objects in the meantime.  The resulting statedump file
+will be guaranteed free of partially upgraded objects, and can safely be
+used by DGD 1.2.
 
-	obj = ::find_object(path);
-	if (!obj) {
-	    obj = compile_object(path);
-	}
-	return ::clone_object(obj);
-    }
-
- - The kfun get_exec_cost() has been removed.  Use status()[ST_TICKS] instead.
- - MAX_ARRAY_SIZE and MAX_MAPPING_SIZE are no longer defined in limits.h.
-   Use status()[ST_ARRAYSIZE] instead.
- - send_message() now returns the number of bytes that could be sent in
-   one call.  If this is less than the length of the string sent, the
-   remainder is buffered and sent later.  Once the last bit of buffered
-   data has been sent, message_done() is called in the sending object.
- - State dumps made by DGD 1.0.9 cannot be restored by DGD 1.1.  If you
-   depend on a state dump made by DGD 1.0.9, contact me (felix@simplex.nl).
+It is <not> possible to restore a statedump created by DGD 1.2 with any
+earlier version.

@@ -1885,8 +1885,9 @@ bool merge;
  * NAME:	data->commit_plane()
  * DESCRIPTION:	commit the current data plane
  */
-void d_commit_plane(level)
+void d_commit_plane(level, retval)
 Int level;
+value *retval;
 {
     register dataplane *p, *commit, **r, **cr;
     register dataspace *data;
@@ -1993,6 +1994,14 @@ Int level;
 	}
 
 	data->plane = p->prev;
+    }
+    if (T_INDEXED(retval->type)) {
+	register array *arr;
+
+	arr = retval->u.array;
+	if (arr->primary->plane->level == level) {
+	    arr->primary = &arr->primary->plane->prev->alocal;
+	}
     }
 
     /*
