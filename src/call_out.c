@@ -499,16 +499,23 @@ Uint t;
 Int co_remaining(t)
 register Uint t;
 {
-    unsigned short m, mtime;
+    Uint time;
+    unsigned short mtime, m;
 
+    time = co_time(&mtime);
     if (t >> 24 != 1) {
 	t += timediff;
-	return (t > timestamp) ? t - timestamp : 0;
+	if (t > time) {
+	    return t - time;
+	}
     } else {
 	/* encoded millisecond */
-	t = decode((Uint) t, &m) - co_time(&mtime);
-	return -2 - t * 1000 - m + mtime;
+	t = decode((Uint) t, &m);
+	if (t > time || t == time && m > mtime) {
+	    return -2 - (t - time) * 1000 - m + mtime;
+	}
     }
+    return 0;
 }
 
 /*

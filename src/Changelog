@@ -1429,3 +1429,6 @@ DGD 1.3
    introduction of atomic functions.
  - Replacing interpreted objects with precompiled ones at restore time failed
    to work properly.
+ - remove_call_out() would not always return the correct remaining time.
+ - Destructing and then recompiling an object within the same thread could lead
+   to trouble.

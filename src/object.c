@@ -364,9 +364,10 @@ void o_commit_plane()
 		     * commit to base plane
 		     */
 		    if (op->obj.chain.name != (char *) NULL) {
+			hte **h;
+
 			if (obj->chain.name == (char *) NULL) {
 			    char *name;
-			    hte **h;
 
 			    /*
 			     * make object name static
@@ -394,8 +395,13 @@ void o_commit_plane()
 				op->obj.chain.next = obj->chain.next;
 			    } else if (obj->count != 0) {
 				/* remove from hash table */
-				*ht_lookup(prev->htab, obj->chain.name, FALSE) =
-							(hte *) obj->chain.next;
+				h = ht_lookup(prev->htab, obj->chain.name,
+					      FALSE);
+				if (*h != (hte *) obj) {
+				    /* new object was compiled also */
+				    h = &(*h)->next;
+				}
+				*h = obj->chain.next;
 			    }
 			}
 		    }
