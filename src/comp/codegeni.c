@@ -1820,7 +1820,7 @@ register node *n;
 	    break;
 
 	case N_CATCH:
-	    jlist = jump(I_CATCH | I_POP_BIT, (jmplist *) NULL);
+	    jlist = jump(I_CATCH, (jmplist *) NULL);
 	    cg_stmt(m->l.left);
 	    code_instr(I_RETURN, 0);
 	    jump_resolve(jlist, here);

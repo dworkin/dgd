@@ -270,25 +270,28 @@ int prompt;
     register int i, size;
     register char *p;
 
-    for (usr = users, i = maxusers; i > 0; usr++, --i) {
-	if (*usr != (user *) NULL && ((*usr)->flags & CF_TELNET) &&
-	    (size=(*usr)->outbufsz) > 0) {
-	    if (prompt && (*usr)->u.obj == this_user && ((*usr)->flags & CF_GA))
-	    {
-		/*
-		 * append "go ahead" to indicate that the prompt has been sent
-		 */
-		if (size >= OUTBUF_SIZE - 2) {
-		    conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
-		    size = 0;
+    for (usr = users, i = nusers; i > 0; usr++) {
+	if (*usr != (user *) NULL) {
+	    --i;
+	    if (((*usr)->flags & CF_TELNET) && (size=(*usr)->outbufsz) > 0) {
+		if (prompt && (*usr)->u.obj == this_user &&
+		    ((*usr)->flags & CF_GA)) {
+		    /*
+		     * append "go ahead" to indicate that the prompt has been
+		     * sent
+		     */
+		    if (size >= OUTBUF_SIZE - 2) {
+			conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
+			size = 0;
+		    }
+		    p = (*usr)->outbuf + size;
+		    *p++ = IAC;
+		    *p++ = GA;
+		    size += 2;
 		}
-		p = (*usr)->outbuf + size;
-		*p++ = IAC;
-		*p++ = GA;
-		size += 2;
+		conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
+		(*usr)->outbufsz = 0;
 	    }
-	    conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
-	    (*usr)->outbufsz = 0;
 	}
     }
     this_user = (object *) NULL;
@@ -343,13 +346,13 @@ int *size;
 		    error((char *) NULL);	/* pass on error */
 		}
 		call_driver_object("telnet_connect", 0);
-		ec_pop();
 		if (sp->type != T_OBJECT) {
 		    fatal("driver->telnet_connect() did not return an object");
 		}
 		d_export();
 		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
 		sp++;
+		ec_pop();
 		if (i_call(o, "open", TRUE, 0)) {
 		    i_del_value(sp++);
 		    d_export();
@@ -369,13 +372,13 @@ int *size;
 		    error((char *) NULL);	/* pass on error */
 		}
 		call_driver_object("binary_connect", 0);
-		ec_pop();
 		if (sp->type != T_OBJECT) {
 		    fatal("driver->binary_connect() did not return an object");
 		}
 		d_export();
 		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
 		sp++;
+		ec_pop();
 		if (i_call(o, "open", TRUE, 0)) {
 		    i_del_value(sp++);
 		    d_export();
