@@ -9,6 +9,7 @@
 # include "node.h"
 # include "control.h"
 # include "codegen.h"
+# include "compile.h"
 
 # define LINE_CHUNK	128
 
@@ -410,7 +411,7 @@ register char *code;
 	     */
 	    code[where    ] = code[to + 1];
 	    code[where + 1] = code[to + 2];
-	    where = to;
+	    where = to + 1;
 	    to = (UCHAR(code[to + 1]) << 8) | UCHAR(code[to + 2]);
 	}
 	/*

@@ -1749,7 +1749,7 @@ register unsigned short n;
 		} else {
 		    /* string value */
 		    sv->u.string = ((Int) 0x80000000) |
-				   v->u.string->u.primary - sdata->strings;
+				   (v->u.string->u.primary - sdata->strings);
 		}
 		break;
 
