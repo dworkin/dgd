@@ -6,6 +6,7 @@ extern jmp_buf *ec_pop		P((void));
 extern char *errormesg		P((void));
 extern void  errorlog		P((char*));
 
+extern void  message		();
 extern void  warning		();
 extern void  error		();
 extern void  fatal		();
