@@ -1,5 +1,8 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
+# if defined(SYS_NETWORKING) && defined(SYS_DATAGRAMS)
+#  include <kernel/net.h>
+# endif
 
 inherit LIB_CONN;	/* basic connection object */
 
@@ -94,17 +97,6 @@ static void receive_message(string str)
     }
 }
 
-# ifdef SYS_DATAGRAMS
-/*
- * NAME:	receive_datagram()
- * DESCRIPTION:	receive a datagram
- */
-static void receive_datagram(string str)
-{
-    ::receive_datagram(allocate(driver->query_tls_size()), str);
-}
-# endif
-
 /*
  * NAME:	set_mode()
  * DESCRIPTION:	set the connection mode
@@ -144,3 +136,61 @@ static void message_done()
 {
     ::message_done(allocate(driver->query_tls_size()));
 }
+
+# ifdef SYS_DATAGRAMS
+#  ifdef SYS_NETWORKING
+
+object udpchannel;	/* UDP channel object */
+
+/*
+ * NAME:	set_udpchannel()
+ * DESCRIPTION:	set the UDP channel for this connection
+ */
+void set_udpchannel(object udp, string host, int port)
+{
+    if (previous_program() == LIB_PORT) {
+	udpchannel = udp;
+	udp->add_connection(this_object(), host, port);
+    }
+}
+
+/*
+ * NAME:	receive_datagram()
+ * DESCRIPTION:	receive a datagram
+ */
+void receive_datagram(mixed *tls, string str)
+{
+    if (previous_object() == udpchannel) {
+	object user;
+
+	user = query_user();
+	if (user) {
+	    user->receive_datagram(str);
+	}
+    }
+}
+
+/*
+ * NAME:	datagram()
+ * DESCRIPTION:	send a datagram on the UDP channel
+ */
+int datagram(string str)
+{
+    if (previous_object() == query_user() && udpchannel) {
+	return udpchannel->datagram(str);
+    }
+}
+
+#  else	/* !SYS_NETWORKING */
+
+/*
+ * NAME:	receive_datagram()
+ * DESCRIPTION:	receive a datagram
+ */
+static void receive_datagram(string str)
+{
+    ::receive_datagram(allocate(driver->query_tls_size()), str);
+}
+
+#  endif /* !SYS_NETWORKING */
+# endif	/* SYS_DATAGRAMS */

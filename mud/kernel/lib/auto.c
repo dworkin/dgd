@@ -1249,6 +1249,7 @@ static int remove_dir(string path)
     return result;
 }
 
+# ifndef __SKOTOS__
 /*
  * NAME:	restore_object()
  * DESCRIPTION:	restore the state of an object
@@ -1316,6 +1317,7 @@ static void save_object(string path)
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
 }
+# endif /* __SKOTOS__ */
 
 /*
  * NAME:	editor()
@@ -1356,7 +1358,7 @@ static string editor(varargs string cmd)
 }
 
 
-# ifdef __ICHAT__
+# ifdef __SKOTOS__
 /*
  * NAME:	execute_program()
  * DESCRIPTION:	execute external program

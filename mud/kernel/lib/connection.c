@@ -19,7 +19,7 @@ static void create(string type)
 }
 
 
-# ifdef __ICHAT__
+# ifdef __SKOTOS__
 private int dedicated;		/* object created for execution */
 
 /*
@@ -57,7 +57,7 @@ static void program_terminated()
 	destruct_object(this_object());
     }
 }
-# endif	/* __ICHAT__ */
+# endif	/* __SKOTOS__ */
 
 
 # ifdef SYS_NETWORKING
@@ -255,7 +255,7 @@ static void message_done(mixed *tls)
     }
 }
 
-# ifdef SYS_DATAGRAMS
+# if defined(SYS_DATAGRAMS) && !defined(SYS_NETWORKING)
 /*
  * NAME:	receive_datagram()
  * DESCRIPTION:	forward a datagram to the user

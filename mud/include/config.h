@@ -3,7 +3,7 @@
 # undef SYS_CONTINUOUS		/* off by default */
 # undef SYS_DATAGRAMS		/* off by default */
 
-# ifdef __ICHAT__
+# ifdef __SKOTOS__
 #  define SYS_NETWORKING	/* ichat server has networking capabilities */
 # endif
 
