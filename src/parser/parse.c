@@ -697,6 +697,7 @@ pnode *next;
 		}
 		ps->data->parser = ps;
 
+		pn->symbol = PN_BLOCKED;
 		if (!call) {
 		    return -1;	/* no function: block branch */
 		}
