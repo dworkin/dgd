@@ -1717,18 +1717,22 @@ register sector nsectors, **sectors;
 {
     register sector n, *s;
 
-    n = sw_mapsize(size);
-    s = *sectors = REALLOC(*sectors, sector, nsectors, n);
+    s = *sectors;
     if (nsectors != 0) {
 	/* wipe old sectors */
 	sw_wipev(s, nsectors);
     }
+
+    n = sw_mapsize(size);
+    if (nsectors > n) {
+	/* too many sectors */
+	sw_delv(s + n, nsectors - n);
+    }
+
+    s = *sectors = REALLOC(*sectors, sector, nsectors, n);
     if (nsectors < n) {
 	/* not enough sectors */
 	sw_newv(s + nsectors, n - nsectors);
-    } else if (nsectors > n) {
-	/* too many sectors */
-	sw_delv(s + n, nsectors - n);
     }
 
     return n;

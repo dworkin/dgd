@@ -833,8 +833,8 @@ register size_t size1, size2;
 	    fatal("bad size1 in m_realloc");
 	}
 # endif
-	if ((c1->size & SIZE_MASK) < (size2 < DLIMIT) ?
-				      size2 : size2 + SIZETSIZE) {
+	if ((c1->size & SIZE_MASK) < ((size2 < DLIMIT) ?
+				       size2 : size2 + SIZETSIZE)) {
 	    c2 = dalloc(size2);
 	    if (size1 != 0) {
 		memcpy((char *) c2 + MOFFSET, mem, size1);
