@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "fcontrol.h"
@@ -328,12 +329,11 @@ jmplist *list;
  * NAME:	jump()
  * DESCRIPTION:	create a jump
  */
-static jmplist *jump(i, list, line)
+static jmplist *jump(i, list)
 int i;
 jmplist *list;
-unsigned short line;
 {
-    code_instr(i, line);
+    code_instr(i, 0);
     return jump_offset(list);
 }
 
@@ -461,7 +461,7 @@ register node *n;
     if (n == (node *) NULL) {
 	return 0;
     }
-    for (i = 1; n->type == N_COMMA; i++) {
+    for (i = 1; n->type == N_PAIR; i++) {
 	cg_expr(n->r.right, FALSE);
 	n = n->l.left;
     }
@@ -481,7 +481,7 @@ register node *n;
     if (n == (node *) NULL) {
 	return 0;
     }
-    for (i = 2; n->type == N_COMMA; i += 2) {
+    for (i = 2; n->type == N_PAIR; i += 2) {
 	cg_expr(n->r.right->r.right, FALSE);
 	cg_expr(n->r.right->l.left, FALSE);
 	n = n->l.left;
@@ -503,7 +503,7 @@ register node *n;
     if (n == (node *) NULL) {
 	return 0;
     }
-    for (i = 1; n->type == N_COMMA; i++) {
+    for (i = 1; n->type == N_PAIR; i++) {
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
     }
@@ -567,20 +567,48 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->cast()
+ * DESCRIPTION:	generate code for a cast
+ */
+static void cg_cast(type)
+unsigned short type;
+{
+    code_instr(I_CAST, 0);
+    if ((type & T_REF) != 0) {
+	type = T_ARRAY;
+    }
+    code_byte(type);
+}
+
+/*
  * NAME:	codegen->fetch()
  * DESCRIPTION:	generate code for a fetched lvalue
  */
 static void cg_fetch(n)
 node *n;
 {
+    cg_lvalue(n);
+    code_instr(I_FETCH, 0);
     if (n->type == N_CAST) {
-	cg_lvalue(n->l.left);
-	code_instr(I_FETCH, 0);
-	code_instr(I_CHECK_INT, 0);
-    } else {
-	cg_lvalue(n);
-	code_instr(I_FETCH, 0);
+	cg_cast(n->mod);
     }
+}
+
+/*
+ * NAME:	codegen->asgnop()
+ * DESCRIPTION:	generate code for an assignment operator
+ */
+static void cg_asgnop(n, op)
+register node *n;
+int op;
+{
+    cg_fetch(n->l.left);
+    cg_expr(n->r.right, FALSE);
+    code_kfun(op, n->line);
+    if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
+	cg_cast(n->l.left->mod);
+    }
+    code_instr(I_STORE, 0);
 }
 
 /*
@@ -598,35 +626,53 @@ register bool pop;
     switch (n->type) {
     case N_ADD:
 	cg_expr(n->l.left, FALSE);
+	if (n->r.right->type == N_FLOAT) {
+	    if (NFLT_ISONE(n->r.right)) {
+		code_kfun(KF_ADD1, n->line);
+		break;
+	    }
+	    if (NFLT_ISMONE(n->r.right)) {
+		code_kfun(KF_SUB1, n->line);
+		break;
+	    }
+	}
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_ADD, n->line);
 	break;
 
     case N_ADD_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
+	if (n->r.right->type == N_INT) {
+	    if (n->r.right->l.number == 1) {
+		code_kfun(KF_ADD1_INT, n->line);
+		break;
+	    }
+	    if (n->r.right->l.number == -1) {
+		code_kfun(KF_SUB1_INT, n->line);
+		break;
+	    }
+	}
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_ADD_INT, n->line);
 	break;
 
     case N_ADD_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_ADD, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_ADD);
 	break;
 
     case N_ADD_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
+	cg_asgnop(n, KF_ADD_INT);
+	break;
+
+    case N_ADD_EQ_1:
 	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_ADD_INT, n->line);
+	code_kfun(KF_ADD1, 0);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_ADD_EQ_1_INT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
 
@@ -648,31 +694,17 @@ register bool pop;
 	break;
 
     case N_AND_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_AND_INT, n->line);
 	break;
 
     case N_AND_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_AND, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_AND);
 	break;
 
     case N_AND_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_AND_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_AND_INT);
 	break;
 
     case N_ASSIGN:
@@ -683,22 +715,15 @@ register bool pop;
 
     case N_CAST:
 	cg_expr(n->l.left, FALSE);
-	code_instr(I_CHECK_INT, 0);	/* always cast to int */
+	cg_cast(n->mod);
 	break;
 
     case N_CATCH:
-	if (n->l.left == (node *) NULL) {
-	    /* nothing to catch */
-	    if (!pop) {
-		code_instr(I_PUSH_ZERO, n->line);
-	    }
-	} else {
-	    jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH,
-			 (jmplist *) NULL, 0);
-	    cg_expr(n->l.left, TRUE);
-	    code_instr(I_RETURN_ZERO, n->line);
-	    jump_resolve(jlist, here);
-	}
+	jlist = jump((pop) ? I_CATCH | I_POP_BIT : I_CATCH, (jmplist *) NULL);
+	cg_expr(n->l.left, TRUE);
+	code_instr(I_PUSH_ZERO, n->line);
+	code_instr(I_RETURN, 0);
+	jump_resolve(jlist, here);
 	return;
 
     case N_COMMA:
@@ -713,31 +738,17 @@ register bool pop;
 	break;
 
     case N_DIV_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_DIV_INT, n->line);
 	break;
 
     case N_DIV_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_DIV, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_DIV);
 	break;
 
     case N_DIV_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_DIV_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_DIV_INT);
 	break;
 
     case N_EQ:
@@ -752,12 +763,24 @@ register bool pop;
 	code_kfun(KF_EQ_INT, n->line);
 	break;
 
+    case N_FLOAT:
+	if (n->r.flow == 0L) {
+	    code_instr(I_PUSH_FLOAT2, n->line);
+	    code_word(n->l.fhigh);
+	} else {
+	    code_instr(I_PUSH_FLOAT6, n->line);
+	    code_word(n->l.fhigh);
+	    code_word((int) (n->r.flow >> 16));
+	    code_word((int) n->r.flow);
+	}
+	break;
+
     case N_FUNC:
 	i = cg_funargs(n->l.left);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	    code_kfun((int) n->r.number, n->line);
-	    if (PROTO_CLASS(kftab[(short) n->r.number].proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
 		code_byte(i);
 	    }
 	    break;
@@ -794,9 +817,6 @@ register bool pop;
 	break;
 
     case N_GLOBAL:
-	if (pop) {
-	    return;
-	}
 	code_instr(I_PUSH_GLOBAL, n->line);
 	code_word((int) n->r.number);
 	break;
@@ -820,9 +840,6 @@ register bool pop;
 	break;
 
     case N_INT:
-	if (pop) {
-	    return;
-	}
 	if (n->l.number == 0) {
 	    code_instr(I_PUSH_ZERO, n->line);
 	} else if (n->l.number == 1) {
@@ -830,9 +847,6 @@ register bool pop;
 	} else if (n->l.number >> 7 == 0 || n->l.number >> 7 == -1) {
 	    code_instr(I_PUSH_INT1, n->line);
 	    code_byte((int) n->l.number);
-	} else if (n->l.number >> 15 == 0 || n->l.number >> 15 == -1) {
-	    code_instr(I_PUSH_INT2, n->line);
-	    code_word((int) n->l.number);
 	} else {
 	    code_instr(I_PUSH_INT4, n->line);
 	    code_word((int) (n->l.number >> 16));
@@ -841,18 +855,23 @@ register bool pop;
 	break;
 
     case N_LAND:
-	jlist = true_list;
-	true_list = (jmplist *) NULL;
-	cg_cond(n, TRUE);
 	if (!pop) {
+	    jlist = true_list;
+	    true_list = (jmplist *) NULL;
+	    cg_cond(n, TRUE);
 	    code_instr(I_PUSH_ZERO, 0);
-	    j2list = jump(I_JUMP, (jmplist *) NULL, 0);
-	}
-	jump_resolve(true_list, here);
-	true_list = jlist;
-	if (!pop) {
+	    j2list = jump(I_JUMP, (jmplist *) NULL);
+	    jump_resolve(true_list, here);
+	    true_list = jlist;
 	    code_instr(I_PUSH_ONE, 0);
 	    jump_resolve(j2list, here);
+	} else {
+	    jlist = false_list;
+	    false_list = (jmplist *) NULL;
+	    cg_cond(n->l.left, FALSE);
+	    cg_expr(n->r.right, TRUE);
+	    jump_resolve(false_list, here);
+	    false_list = jlist;
 	}
 	return;
 
@@ -869,9 +888,6 @@ register bool pop;
 	break;
 
     case N_LOCAL:
-	if (pop) {
-	    return;
-	}
 	code_instr(I_PUSH_LOCAL, n->line);
 	code_byte(nvars - (int) n->r.number - 1);
 	break;
@@ -883,18 +899,23 @@ register bool pop;
 	return;
 
     case N_LOR:
-	jlist = false_list;
-	false_list = (jmplist *) NULL;
-	cg_cond(n, FALSE);
 	if (!pop) {
+	    jlist = false_list;
+	    false_list = (jmplist *) NULL;
+	    cg_cond(n, FALSE);
 	    code_instr(I_PUSH_ONE, 0);
-	    j2list = jump(I_JUMP, (jmplist *) NULL, 0);
-	}
-	jump_resolve(false_list, here);
-	false_list = jlist;
-	if (!pop) {
+	    j2list = jump(I_JUMP, (jmplist *) NULL);
+	    jump_resolve(false_list, here);
+	    false_list = jlist;
 	    code_instr(I_PUSH_ZERO, 0);
 	    jump_resolve(j2list, here);
+	} else {
+	    jlist = true_list;
+	    true_list = (jmplist *) NULL;
+	    cg_cond(n->l.left, TRUE);
+	    cg_expr(n->r.right, TRUE);
+	    jump_resolve(true_list, here);
+	    true_list = jlist;
 	}
 	return;
 
@@ -905,31 +926,17 @@ register bool pop;
 	break;
 
     case N_LSHIFT_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LSHIFT_INT, n->line);
 	break;
 
     case N_LSHIFT_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LSHIFT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_LSHIFT);
 	break;
 
     case N_LSHIFT_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_LSHIFT_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_LSHIFT_INT);
 	break;
 
     case N_LT:
@@ -961,17 +968,11 @@ register bool pop;
 	break;
 
     case N_MOD_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MOD, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_MOD);
 	break;
 
     case N_MOD_EQ_INT:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MOD_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_MOD_INT);
 	break;
 
     case N_MULT:
@@ -981,31 +982,17 @@ register bool pop;
 	break;
 
     case N_MULT_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_MULT_INT, n->line);
 	break;
 
     case N_MULT_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MULT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_MULT);
 	break;
 
     case N_MULT_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 1) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_MULT_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_MULT_INT);
 	break;
 
     case N_NE:
@@ -1025,6 +1012,16 @@ register bool pop;
 	code_kfun(KF_NOT, n->line);
 	break;
 
+    case N_NOTF:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_NOTF, n->line);
+	break;
+
+    case N_NOTI:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_NOTI, n->line);
+	break;
+
     case N_OR:
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
@@ -1032,31 +1029,17 @@ register bool pop;
 	break;
 
     case N_OR_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_OR_INT, n->line);
 	break;
 
     case N_OR_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_OR, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_OR);
 	break;
 
     case N_OR_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_OR_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_OR_INT);
 	break;
 
     case N_PAIR:
@@ -1065,15 +1048,31 @@ register bool pop;
 	return;
 
     case N_QUEST:
-	jlist = false_list;
-	false_list = (jmplist *) NULL;
-	cg_cond(n->l.left, FALSE);
-	cg_expr(n->r.right->l.left, pop);
-	j2list = jump(I_JUMP, (jmplist *) NULL, 0);
-	jump_resolve(false_list, here);
-	false_list = jlist;
-	cg_expr(n->r.right->r.right, pop);
-	jump_resolve(j2list, here);
+	if (n->r.right->l.left != (node *) NULL) {
+	    jlist = false_list;
+	    false_list = (jmplist *) NULL;
+	    cg_cond(n->l.left, FALSE);
+	    cg_expr(n->r.right->l.left, pop);
+	    if (n->r.right->r.right != (node *) NULL) {
+		j2list = jump(I_JUMP, (jmplist *) NULL);
+		jump_resolve(false_list, here);
+		false_list = jlist;
+		cg_expr(n->r.right->r.right, pop);
+		jump_resolve(j2list, here);
+	    } else {
+		jump_resolve(false_list, here);
+		false_list = jlist;
+	    }
+	} else {
+	    jlist = true_list;
+	    true_list = (jmplist *) NULL;
+	    cg_cond(n->l.left, TRUE);
+	    if (n->r.right->r.right != (node *) NULL) {
+		cg_expr(n->r.right->r.right, pop);
+	    }
+	    jump_resolve(true_list, here);
+	    true_list = jlist;
+	}
 	return;
 
     case N_RANGE:
@@ -1103,37 +1102,20 @@ register bool pop;
 	break;
 
     case N_RSHIFT_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_RSHIFT_INT, n->line);
 	break;
 
     case N_RSHIFT_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_RSHIFT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_RSHIFT);
 	break;
 
     case N_RSHIFT_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_RSHIFT_INT, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_RSHIFT_INT);
 	break;
 
     case N_STR:
-	if (pop) {
-	    return;
-	}
 	l = ctrl_dstring(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
 	    code_instr(I_PUSH_STRING, n->line);
@@ -1150,11 +1132,22 @@ register bool pop;
 	break;
 
     case N_SUB:
-	if (n->l.left->type == N_INT && n->l.left->l.number == 0) {
+	if ((n->l.left->type == N_INT && n->l.left->l.number == 0) ||
+	    (n->l.left->type == N_FLOAT && NFLT_ISZERO(n->l.left))) {
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_UMIN, n->line);
 	} else {
 	    cg_expr(n->l.left, FALSE);
+	    if (n->r.right->type == N_FLOAT) {
+		if (NFLT_ISONE(n->r.right)) {
+		    code_kfun(KF_SUB1, n->line);
+		    break;
+		}
+		if (NFLT_ISMONE(n->r.right)) {
+		    code_kfun(KF_ADD1, n->line);
+		    break;
+		}
+	    }
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_SUB, n->line);
 	}
@@ -1166,29 +1159,69 @@ register bool pop;
 	    code_kfun(KF_UMIN_INT, n->line);
 	} else {
 	    cg_expr(n->l.left, FALSE);
+	    if (n->r.right->type == N_INT) {
+		if (n->r.right->l.number == 1) {
+		    code_kfun(KF_SUB1_INT, n->line);
+		    break;
+		}
+		if (n->r.right->l.number == -1) {
+		    code_kfun(KF_ADD1_INT, n->line);
+		    break;
+		}
+	    }
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_SUB_INT, n->line);
 	}
 	break;
 
     case N_SUB_EQ:
-	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_SUB, n->line);
-	code_instr(I_STORE, 0);
+	cg_asgnop(n, KF_SUB);
 	break;
 
     case N_SUB_EQ_INT:
+	cg_asgnop(n, KF_SUB_INT);
+	break;
+
+    case N_SUB_EQ_1:
 	cg_fetch(n->l.left);
-	cg_expr(n->r.right, FALSE);
-	code_kfun(KF_SUB_INT, n->line);
+	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
+	break;
+
+    case N_SUB_EQ_1_INT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_SUB1_INT, 0);
+	code_instr(I_STORE, 0);
+	break;
+
+    case N_TOFLOAT:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_TOFLOAT, n->line);
+	break;
+
+    case N_TOINT:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_TOINT, n->line);
 	break;
 
     case N_TST:
 	cg_expr(n->l.left, FALSE);
 	code_kfun(KF_TST, n->line);
 	break;
+
+    case N_TSTF:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_TSTF, n->line);
+	break;
+
+    case N_TSTI:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_TSTI, n->line);
+	break;
+
+    case N_UPLUS:
+	cg_expr(n->l.left, pop);
+	return;
 
     case N_XOR:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
@@ -1202,10 +1235,6 @@ register bool pop;
 	break;
 
     case N_XOR_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
 	    cg_expr(n->l.left, FALSE);
 	    code_kfun(KF_NEG_INT, n->line);
@@ -1217,75 +1246,54 @@ register bool pop;
 	break;
 
     case N_XOR_EQ:
-	cg_fetch(n->l.left);
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_fetch(n->l.left);
 	    code_kfun(KF_NEG, 0);
+	    code_instr(I_STORE, 0);
 	} else {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_XOR, n->line);
+	    cg_asgnop(n, KF_XOR);
 	}
-	code_instr(I_STORE, 0);
 	break;
 
     case N_XOR_EQ_INT:
-	if (n->r.right->type == N_INT && n->r.right->l.number == 0) {
-	    cg_expr(n->l.left, pop);
-	    return;
-	}
-	cg_fetch(n->l.left);
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
+	    cg_fetch(n->l.left);
 	    code_kfun(KF_NEG_INT, 0);
+	    code_instr(I_STORE, 0);
 	} else {
-	    cg_expr(n->r.right, FALSE);
-	    code_kfun(KF_XOR_INT, n->line);
+	    cg_asgnop(n, KF_XOR_INT);
 	}
-	code_instr(I_STORE, 0);
 	break;
 
     case N_MIN_MIN:
 	cg_fetch(n->l.left);
-	code_instr(I_PUSH_ONE, 0);
-	code_kfun(KF_SUB, 0);
+	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
-	if (!pop) {
-	    code_instr(I_PUSH_ONE, 0);
-	    code_kfun(KF_ADD_INT, 0);	/* safe */
-	}
+	code_kfun((n->mod == T_INT) ? KF_ADD1_INT : KF_ADD1, 0);
 	break;
 
     case N_MIN_MIN_INT:
 	cg_fetch(n->l.left);
-	code_instr(I_PUSH_ONE, 0);
-	code_kfun(KF_SUB_INT, 0);
+	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
-	if (!pop) {
-	    code_instr(I_PUSH_ONE, 0);
-	    code_kfun(KF_ADD_INT, 0);
-	}
+	code_kfun(KF_ADD1_INT, 0);
 	break;
 
     case N_PLUS_PLUS:
 	cg_fetch(n->l.left);
-	code_instr(I_PUSH_ONE, 0);
-	code_kfun(KF_ADD, 0);
+	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
-	if (!pop) {
-	    code_instr(I_PUSH_ONE, 0);
-	    code_kfun(KF_SUB_INT, 0);	/* safe */
-	}
+	code_kfun((n->mod == T_INT) ? KF_SUB1_INT : KF_SUB1, 0);
 	break;
 
     case N_PLUS_PLUS_INT:
 	cg_fetch(n->l.left);
-	code_instr(I_PUSH_ONE, 0);
-	code_kfun(KF_ADD_INT, 0);
+	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
-	if (!pop) {
-	    code_instr(I_PUSH_ONE, 0);
-	    code_kfun(KF_SUB_INT, 0);
-	}
+	code_kfun(KF_SUB1_INT, 0);
 	break;
     }
+
     if (pop) {
 	*last_instruction |= I_POP_BIT;
     }
@@ -1304,10 +1312,12 @@ register bool jmptrue;
     for (;;) {
 	switch (n->type) {
 	case N_INT:
-	    if (jmptrue == (n->l.number != 0)) {
-		true_list = jump(I_JUMP, true_list, n->line);
-	    } else {
-		false_list = jump(I_JUMP, false_list, n->line);
+	    if (jmptrue) {
+		if (n->l.number != 0) {
+		    true_list = jump(I_JUMP, true_list);
+		}
+	    } else if (n->l.number == 0) {
+		false_list = jump(I_JUMP, false_list);
 	    }
 	    break;
 
@@ -1361,9 +1371,9 @@ register bool jmptrue;
 	default:
 	    cg_expr(n, FALSE);
 	    if (jmptrue) {
-		true_list = jump(I_JUMP_NONZERO | I_POP_BIT, true_list, 0);
+		true_list = jump(I_JUMP_NONZERO | I_POP_BIT, true_list);
 	    } else {
-		false_list = jump(I_JUMP_ZERO | I_POP_BIT, false_list, 0);
+		false_list = jump(I_JUMP_ZERO | I_POP_BIT, false_list);
 	    }
 	    break;
 	}
@@ -1674,7 +1684,7 @@ register node *n;
 	    break;
 
 	case N_BREAK:
-	    break_list = jump(I_JUMP, break_list, m->line);
+	    break_list = jump(I_JUMP, break_list);
 	    break;
 
 	case N_CASE:
@@ -1683,7 +1693,7 @@ register node *n;
 	    break;
 
 	case N_CONTINUE:
-	    continue_list = jump(I_JUMP, continue_list, m->line);
+	    continue_list = jump(I_JUMP, continue_list);
 	    break;
 
 	case N_DO:
@@ -1697,9 +1707,8 @@ register node *n;
 	    break;
 
 	case N_FOR:
-	case N_WHILE:
 	    if (m->r.right != (node *) NULL) {
-		jlist = jump(I_JUMP, (jmplist *) NULL, 0);
+		jlist = jump(I_JUMP, (jmplist *) NULL);
 		offset = here;
 		cg_stmt(m->r.right);
 		jump_resolve(jlist, here);
@@ -1716,48 +1725,62 @@ register node *n;
 
 	case N_FOREVER:
 	    offset = here;
-	    cg_stmt(m->l.left);
-	    jump_resolve(jump(I_JUMP, (jmplist *) NULL, m->line), offset);
+	    if (m->l.left != (node *) NULL) {
+		cg_expr(m->l.left, TRUE);
+	    }
+	    cg_stmt(m->r.right);
+	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), offset);
 	    break;
 
 	case N_IF:
-	    if (m->r.right->l.left->type == N_BREAK) {
-		jlist = true_list;
-		true_list = break_list;
-		cg_cond(m->l.left, TRUE);
-		break_list = true_list;
-		true_list = jlist;
-		if (m->r.right->r.right != (node *) NULL) {
-		    /* else */
-		    cg_stmt(m->r.right->r.right);
+	    if (m->r.right->l.left != (node *) NULL) {
+		if (m->r.right->l.left->type == N_BREAK) {
+		    jlist = true_list;
+		    true_list = break_list;
+		    cg_cond(m->l.left, TRUE);
+		    break_list = true_list;
+		    true_list = jlist;
+		    if (m->r.right->r.right != (node *) NULL) {
+			/* else */
+			cg_stmt(m->r.right->r.right);
+		    }
+		    break;
+		} else if (m->r.right->l.left->type == N_CONTINUE) {
+		    jlist = true_list;
+		    true_list = continue_list;
+		    cg_cond(m->l.left, TRUE);
+		    continue_list = true_list;
+		    true_list = jlist;
+		    if (m->r.right->r.right != (node *) NULL) {
+			/* else */
+			cg_stmt(m->r.right->r.right);
+		    }
+		    break;
 		}
-	    } else if (m->r.right->l.left->type == N_CONTINUE) {
-		jlist = true_list;
-		true_list = continue_list;
-		cg_cond(m->l.left, TRUE);
-		continue_list = true_list;
-		true_list = jlist;
-		if (m->r.right->r.right != (node *) NULL) {
-		    /* else */
+	    }
+	    jlist = false_list;
+	    false_list = (jmplist *) NULL;
+	    cg_cond(m->l.left, FALSE);
+	    cg_stmt(m->r.right->l.left);
+	    if (m->r.right->r.right != (node *) NULL) {
+		/* else */
+		if (m->r.right->l.left != (node *) NULL &&
+		    (m->r.right->l.left->flags & (F_BREAK | F_CONT | F_RETURN)))
+		{
+		    jump_resolve(false_list, here);
+		    false_list = jlist;
 		    cg_stmt(m->r.right->r.right);
-		}
-	    } else {
-		jlist = false_list;
-		false_list = (jmplist *) NULL;
-		cg_cond(m->l.left, FALSE);
-		cg_stmt(m->r.right->l.left);
-		if (m->r.right->r.right != (node *) NULL) {
-		    /* else */
-		    j2list = jump(I_JUMP, (jmplist *) NULL, 0);
+		} else {
+		    j2list = jump(I_JUMP, (jmplist *) NULL);
 		    jump_resolve(false_list, here);
 		    false_list = jlist;
 		    cg_stmt(m->r.right->r.right);
 		    jump_resolve(j2list, here);
-		} else {
-		    /* no else */
-		    jump_resolve(false_list, here);
-		    false_list = jlist;
 		}
+	    } else {
+		/* no else */
+		jump_resolve(false_list, here);
+		false_list = jlist;
 	    }
 	    break;
 
@@ -1770,12 +1793,8 @@ register node *n;
 	    break;
 
 	case N_RETURN:
-	    if (m->l.left->type == N_INT && m->l.left->l.number == 0) {
-		code_instr(I_RETURN_ZERO, m->line);
-	    } else {
-		cg_expr(m->l.left, FALSE);
-		code_instr(I_RETURN, m->line);
-	    }
+	    cg_expr(m->l.left, FALSE);
+	    code_instr(I_RETURN, m->line);
 	    break;
 
 	case N_SWITCH_INT:
@@ -1820,7 +1839,8 @@ bool cg_compiled()
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */
-char *cg_function(n, nvar, npar, depth, size)
+char *cg_function(fname, n, nvar, npar, depth, size)
+string *fname;
 node *n;
 int nvar, npar;
 unsigned short depth, *size;

@@ -1,8 +1,6 @@
 # ifndef FUNCDEF
 # include "kfun.h"
 # include "fcontrol.h"
-# include "node.h"
-# include "compile.h"
 # include "table.h"
 # endif
 
@@ -26,12 +24,12 @@ char *func, *proto;
     int i;
 
     showclass(PROTO_CLASS(proto));
-    printf("%s %s(", c_typename(PROTO_FTYPE(proto)), func);
+    printf("%s %s(", i_typename(PROTO_FTYPE(proto)), func);
     for (i = 0; i < PROTO_NARGS(proto) - 1; i++) {
-	printf("%s, ", c_typename(PROTO_ARGS(proto)[i]));
+	printf("%s, ", i_typename(PROTO_ARGS(proto)[i]));
     }
     if (i < PROTO_NARGS(proto)) {
-	printf("%s", c_typename(PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
+	printf("%s", i_typename(PROTO_ARGS(proto)[i] & ~T_ELLIPSIS));
 	if (PROTO_ARGS(proto)[i] & T_ELLIPSIS) {
 	    printf("...");
 	}
@@ -76,7 +74,7 @@ control *ctrl;
 	for (i = 0; i < ctrl->nvardefs; i++) {
 	    printf(" %u: ", i);
 	    showclass(ctrl->vardefs[i].class);
-	    printf("%s %s\n", c_typename(ctrl->vardefs[i].type),
+	    printf("%s %s\n", i_typename(ctrl->vardefs[i].type),
 		   d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
 				  ctrl->vardefs[i].index)->text);
 	}
@@ -127,6 +125,10 @@ control *ctrl;
 				v |= UCHAR(*(pc)++), v <<= (Int) 8, \
 				v |= UCHAR(*(pc)++), v <<= (Int) 8, \
 				v |= UCHAR(*(pc)++)))
+# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
+				 v |= UCHAR(*(pc)++), v <<= (Int) 8, \
+				 v |= UCHAR(*(pc)++), v <<= (Int) 8, \
+				 v |= UCHAR(*(pc)++)))
 
 static unsigned short addr;
 static unsigned short line;
@@ -191,16 +193,18 @@ char *s;
     fflush(stdout);
 }
 
-static void disasm(ctrl, func)
+void disasm(ctrl, func)
 control *ctrl;
 int func;
 {
     char *pc, *end, *linenumbers, buffer[100];
     control *cc;
     register unsigned short u, u2, u3;
-    register long l;
+    register unsigned long l;
     unsigned short a, progsize;
     int sz;
+    xfloat flt;
+    char fltbuf[18];
 
     pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
     show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
@@ -249,15 +253,27 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_INT2:
-	    codesize = 3;
-	    sprintf(buffer, "PUSH_INT2 %d", FETCH2S(pc, u));
-	    show_instr(buffer);
-	    break;
-
 	case I_PUSH_INT4:
 	    codesize = 5;
 	    sprintf(buffer, "PUSH_INT4 %ld", FETCH4S(pc, l));
+	    show_instr(buffer);
+	    break;
+
+	case I_PUSH_FLOAT2:
+	    codesize = 3;
+	    flt.high = FETCH2U(pc, u);
+	    flt.low = 0L;
+	    flt_ftoa(&flt, fltbuf);
+	    sprintf(buffer, "PUSH_FLOAT2 %s", fltbuf);
+	    show_instr(buffer);
+	    break;
+
+	case I_PUSH_FLOAT6:
+	    codesize = 7;
+	    flt.high = FETCH2U(pc, u);
+	    flt.low = FETCH4U(pc, l);
+	    flt_ftoa(&flt, fltbuf);
+	    sprintf(buffer, "PUSH_FLOAT6 %s", fltbuf);
 	    show_instr(buffer);
 	    break;
 
@@ -351,9 +367,10 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_CHECK_INT:
-	    codesize = 1;
-	    show_instr("CHECK_INT");
+	case I_CAST:
+	    codesize = 2;
+	    sprintf(buffer, "CAST %s", i_typename(FETCH1U(pc)));
+	    show_instr(buffer);
 	    break;
 
 	case I_FETCH:
@@ -494,15 +511,15 @@ int func;
 
 	case I_CALL_KFUNC:
 	    u = FETCH1U(pc);
-	    if (PROTO_CLASS(kftab[u].proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN(u).proto) & C_VARARGS) {
 		codesize = 3;
 		u2 = FETCH1U(pc);
 	    } else {
 		codesize = 2;
-		u2 = PROTO_NARGS(kftab[u].proto);
+		u2 = PROTO_NARGS(KFUN(u).proto);
 	    }
-	    sprintf(buffer, "CALL_KFUNC %d (%s%s) %d", u, kftab[u].name,
-		    (PROTO_CLASS(kftab[u].proto) & C_TYPECHECKED) ? " tc" : "",
+	    sprintf(buffer, "CALL_KFUNC %d (%s%s) %d", u, KFUN(u).name,
+		    (PROTO_CLASS(KFUN(u).proto) & C_TYPECHECKED) ? " tc" : "",
 		    u2);
 	    show_instr(buffer);
 	    break;
@@ -556,11 +573,6 @@ int func;
 	case I_LOCK:
 	    codesize = 1;
 	    show_instr("LOCK");
-	    break;
-
-	case I_RETURN_ZERO:
-	    codesize = 1;
-	    show_instr("RETURN_ZERO");
 	    break;
 
 	case I_RETURN:
@@ -640,7 +652,7 @@ extern int getrusage P((int, struct rusage *));
 #define RUSAGE_SELF	0
 #endif
 
-char p_rusage[] = { C_STATIC | C_LOCAL, T_NUMBER | (1 << REFSHIFT), 0 };
+char p_rusage[] = { C_STATIC | C_LOCAL, T_INT | (1 << REFSHIFT), 0 };
 
 #if !defined(sun) || !defined(__svr4__)
 #define RUSAGE_TIME(t) (t).tv_sec * 1000 + (t).tv_usec / 1000;
@@ -654,15 +666,15 @@ int kf_rusage()
     value val;
 
     if (getrusage(RUSAGE_SELF, &rus) < 0) {
-	val.type = T_NUMBER;
+	val.type = T_INT;
 	val.u.number = 0;
     } else {
 	array *a;
 
 	a = arr_new(2L);
-	a->elts[0].type = T_NUMBER;
+	a->elts[0].type = T_INT;
 	a->elts[0].u.number = RUSAGE_TIME(rus.ru_utime);
-	a->elts[1].type = T_NUMBER;
+	a->elts[1].type = T_INT;
 	a->elts[1].u.number = RUSAGE_TIME(rus.ru_stime);
 	val.type = T_ARRAY;
 	val.u.array = a;

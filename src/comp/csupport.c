@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "fcontrol.h"
@@ -108,11 +109,10 @@ char *auto_name, *driver_name;
 
 	    obj = o_new(name, (object *) NULL, &ctrl);
 	    obj->flags |= O_COMPILED;
-	    if (strcmp(name, auto_name) == 0) {
-		obj->flags |= O_AUTO;
-	    }
 	    if (strcmp(name, driver_name) == 0) {
 		obj->flags |= O_DRIVER;
+	    } else if (strcmp(name, auto_name) == 0) {
+		obj->flags |= O_AUTO;
 	    }
 	    obj->ctrl = (control *) NULL;
 	}
@@ -137,6 +137,8 @@ object *obj;
 
     ctrl->ninherits = itab[i + 1] - itab[i];
     ctrl->inherits = inherits + itab[i];
+
+    ctrl->compiled = l->compiled;
 
     ctrl->progsize = l->progsize;
     ctrl->prog = l->program;
@@ -164,8 +166,9 @@ object *obj;
     ctrl->nsymbols = l->nsymbols;
     ctrl->symbols = l->symbols;
 
-    ctrl->nvariables = ctrl->inherits[ctrl->ninherits - 1].varoffset +
-		       l->nvardefs;
+    ctrl->nvariables = l->nvariables;
+    ctrl->nfloatdefs = l->nfloatdefs;
+    ctrl->nfloats = l->nfloats;
 }
 
 /*
@@ -177,7 +180,7 @@ register int n;
 {
     register kfunc *kf;
 
-    kf = &kftab[n];
+    kf = &KFUN(n);
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 	i_typecheck(kf->name, "kfun", kf->proto, PROTO_NARGS(kf->proto), TRUE);
     }
@@ -196,25 +199,13 @@ register int n, nargs;
 {
     register kfunc *kf;
 
-    kf = &kftab[n];
+    kf = &KFUN(n);
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 	i_typecheck(kf->name, "kfun", kf->proto, nargs, TRUE);
     }
     n = (*kf->func)(nargs);
     if (n != 0) {
 	error("Bad argument %d for kfun %s", n, kf->name);
-    }
-}
-
-/*
- * NAME:	check_int()
- * DESCRIPTION:	check if a value is an integer
- */
-void check_int(v)
-value *v;
-{
-    if (v->type != T_NUMBER) {
-	error("Value is not a number");
     }
 }
 
@@ -250,8 +241,12 @@ Int i, d;
  */
 bool poptruthval()
 {
-    if (sp->type == T_NUMBER) {
+    if (sp->type == T_INT) {
 	return (sp++)->u.number != 0;
+    }
+    if (sp->type == T_FLOAT) {
+	sp++;
+	return !VFLT_ISZERO(sp - 1);
     }
     i_del_value(sp++);
     return TRUE;
@@ -336,7 +331,7 @@ register int h;
     register string *s;
     register control *ctrl;
 
-    if (v->type == T_NUMBER && v->u.number == 0) {
+    if (v->type == T_INT && v->u.number == 0) {
 	return (tab[0] == 0);
     } else if (v->type != T_STRING) {
 	i_del_value(v);
@@ -344,7 +339,7 @@ register int h;
     }
 
     s = v->u.string;
-    ctrl = o_control(i_this_object());
+    ctrl = i_this_program();
     if (*tab++ == 0) {
 	tab -= 3;
 	l = 1;

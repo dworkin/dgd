@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "fcontrol.h"
@@ -38,7 +39,7 @@ static unsigned short lock;	/* current lock level */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
 
-static value zero_value = { T_NUMBER, TRUE };
+static value zero_value = { T_INT, TRUE };
 
 /*
  * NAME:	interpret->init()
@@ -195,7 +196,7 @@ void i_odest(obj)
 object *obj;
 {
     register value *v;
-    register Int count;
+    register Uint count;
 
     count = obj->count;
     for (v = sp; v < stackend; v++) {
@@ -361,18 +362,20 @@ void i_index()
     aval = sp;
     switch (aval->type) {
     case T_STRING:
-	if (ival->type != T_NUMBER) {
+	if (ival->type != T_INT) {
+	    i_del_value(ival);
 	    error("Non-numeric string index");
 	}
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
 						 (long) ival->u.number)]);
 	str_del(aval->u.string);
-	aval->type = T_NUMBER;
+	aval->type = T_INT;
 	aval->u.number = i;
 	return;
 
     case T_ARRAY:
-	if (ival->type != T_NUMBER) {
+	if (ival->type != T_INT) {
+	    i_del_value(ival);
 	    error("Non-numeric array index");
 	}
 	val = &d_get_elts(aval->u.array)[arr_index(aval->u.array,
@@ -385,6 +388,7 @@ void i_index()
 	break;
 
     default:
+	i_del_value(ival);
 	error("Index on bad type");
     }
 
@@ -423,10 +427,12 @@ void i_index_lvalue()
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
+	i_del_value(ival);
 	error("Bad lvalue");
 
     case T_ARRAY:
-	if (ival->type != T_NUMBER) {
+	if (ival->type != T_INT) {
+	    i_del_value(ival);
 	    error("Non-numeric array index");
 	}
 	i = arr_index(lval->u.array, (long) ival->u.number);
@@ -449,7 +455,8 @@ void i_index_lvalue()
 	 */
 	switch (lval->u.lval->type) {
 	case T_STRING:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
 	    i = str_index(lvstr = lval->u.lval->u.string,
@@ -462,7 +469,8 @@ void i_index_lvalue()
 	    return;
 
 	case T_ARRAY:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
@@ -485,18 +493,20 @@ void i_index_lvalue()
 	val = &d_get_elts(ilvp[-1].u.array)[lval->u.number];
 	switch (val->type) {
 	case T_STRING:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
 	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
-	    ilvp->type = T_NUMBER;
+	    ilvp->type = T_INT;
 	    (ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
 	    lval->u.number = i;
 	    return;
 
 	case T_ARRAY:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
@@ -520,7 +530,8 @@ void i_index_lvalue()
 	val = map_index(ilvp[-2].u.array, &ilvp[-1], (value *) NULL);
 	switch (val->type) {
 	case T_STRING:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
 	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
@@ -529,7 +540,8 @@ void i_index_lvalue()
 	    return;
 
 	case T_ARRAY:
-	    if (ival->type != T_NUMBER) {
+	    if (ival->type != T_INT) {
+		i_del_value(ival);
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
@@ -551,7 +563,63 @@ void i_index_lvalue()
 	}
 	break;
     }
+    i_del_value(ival);
     error("Index on bad type");
+}
+
+/*
+ * NAME:	interpret->typename()
+ * DESCRIPTION:	return the name of the argument type
+ */
+char *i_typename(type)
+register unsigned short type;
+{
+    static bool flag;
+    static char buf1[8 + 8 + 1], buf2[8 + 8 + 1], *name[] = TYPENAMES;
+    register char *buf;
+
+    if (flag) {
+	buf = buf1;
+	flag = FALSE;
+    } else {
+	buf = buf2;
+	flag = TRUE;
+    }
+    strcpy(buf, name[type & T_TYPE]);
+    type &= T_REF;
+    type >>= REFSHIFT;
+    if (type > 0) {
+	register char *p;
+
+	p = buf + strlen(buf);
+	*p++ = ' ';
+	do {
+	    *p++ = '*';
+	} while (--type > 0);
+	*p = '\0';
+    }
+    return buf;
+}
+
+/*
+ * NAME:	interpret->cast()
+ * DESCRIPTION:	cast a value to a type
+ */
+void i_cast(val, type)
+register value *val;
+register unsigned short type;
+{
+    char *tname;
+
+    if (val->type != type &&
+	(val->type != T_INT || val->u.number != 0 || type == T_FLOAT)) {
+	tname = i_typename(type);
+	if (strchr("aeiuoy", tname[0]) != (char *) NULL) {
+	    error("Value is not an %s", tname);
+	} else {
+	    error("Value is not a %s", tname);
+	}
+    }
 }
 
 /*
@@ -579,7 +647,7 @@ void i_fetch()
 	 * The fetch is always done directly after an lvalue
 	 * constructor, so lvstr is valid.
 	 */
-	(--sp)->type = T_NUMBER;
+	(--sp)->type = T_INT;
 	sp->u.number = UCHAR(lvstr->text[sp[1].u.number]);
 	break;
     }
@@ -596,7 +664,7 @@ register value *val;
 {
     static value ret = { T_STRING };
 
-    if (val->type != T_NUMBER) {
+    if (val->type != T_INT) {
 	error("Non-numeric value in indexed string assignment");
     }
 
@@ -761,6 +829,15 @@ int i_query_frame()
 }
 
 /*
+ * NAME:	interpret->this_program()
+ * DESCRIPTION:	return the current program
+ */
+control *i_this_program()
+{
+    return cframe->p_ctrl;
+}
+
+/*
  * NAME:	interpret->this_object()
  * DESCRIPTION:	return the current object
  */
@@ -830,6 +907,9 @@ bool strict;
 	ptype = UCHAR(*args);
 	if (ptype & T_ELLIPSIS) {
 	    ptype &= ~T_ELLIPSIS;
+	    if (ptype == T_MIXED || ptype == T_LVALUE) {
+		return;
+	    }
 	} else {
 	    args++;
 	    --n;
@@ -838,7 +918,8 @@ bool strict;
 	if (ptype != T_MIXED) {
 	    atype = sp[i].type;
 	    if (ptype != atype &&
-		(strict || atype != T_NUMBER || sp[i].u.number != 0) &&
+		(strict || atype != T_INT || sp[i].u.number != 0 ||
+		 ptype == T_FLOAT) &&
 		(atype != T_ARRAY || !(ptype & T_REF))) {
 		error("Bad argument %d for %s %s", nargs - i, ftype, name);
 	    }
@@ -858,6 +939,10 @@ bool strict;
 				v |= UCHAR(*(pc)++), v <<= 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
 				v |= UCHAR(*(pc)++)))
+# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++)))
 
 /*
  * NAME:	interpret->switch_int()
@@ -875,7 +960,7 @@ register char *pc;
     p = pc;
     dflt = p + FETCH2S(pc, l);
     --h;
-    if (sp->type != T_NUMBER) {
+    if (sp->type != T_INT) {
 	return dflt;
     }
 
@@ -965,7 +1050,7 @@ register char *pc;
     p = pc;
     dflt = p + FETCH2S(pc, l);
     --h;
-    if (sp->type != T_NUMBER) {
+    if (sp->type != T_INT) {
 	return dflt;
     }
 
@@ -1065,7 +1150,7 @@ register char *pc;
     if (FETCH1U(pc) == 0) {
 	p = pc;
 	p += FETCH2S(pc, l);
-	if (sp->type == T_NUMBER && sp->u.number == 0) {
+	if (sp->type == T_INT && sp->u.number == 0) {
 	    return p;
 	}
 	--h;
@@ -1100,13 +1185,13 @@ register char *pc;
 static void i_interpret(pc)
 register char *pc;
 {
-    register unsigned short instr, u, u2, u3;
-    register Int l;
+    register unsigned short instr, u, u2;
+    register Uint l;
     register frame *f;
     register char *p;
     register kfunc *kf;
+    xfloat flt;
     value *v;
-    array *a;
     int size;
 
     f = cframe;
@@ -1125,23 +1210,32 @@ register char *pc;
 	    break;
 
 	case I_PUSH_ONE:
-	    (--sp)->type = T_NUMBER;
+	    (--sp)->type = T_INT;
 	    sp->u.number = 1;
 	    break;
 
 	case I_PUSH_INT1:
-	    (--sp)->type = T_NUMBER;
+	    (--sp)->type = T_INT;
 	    sp->u.number = FETCH1S(pc);
 	    break;
 
-	case I_PUSH_INT2:
-	    (--sp)->type = T_NUMBER;
-	    sp->u.number = FETCH2S(pc, u);
+	case I_PUSH_INT4:
+	    (--sp)->type = T_INT;
+	    sp->u.number = FETCH4S(pc, l);
 	    break;
 
-	case I_PUSH_INT4:
-	    (--sp)->type = T_NUMBER;
-	    sp->u.number = FETCH4S(pc, l);
+	case I_PUSH_FLOAT2:
+	    (--sp)->type = T_FLOAT;
+	    flt.high = FETCH2U(pc, u);
+	    flt.low = 0L;
+	    VFLT_PUT(sp, flt);
+	    break;
+
+	case I_PUSH_FLOAT6:
+	    (--sp)->type = T_FLOAT;
+	    flt.high = FETCH2U(pc, u);
+	    flt.low = FETCH4U(pc, l);
+	    VFLT_PUT(sp, flt);
 	    break;
 
 	case I_PUSH_STRING:
@@ -1212,10 +1306,8 @@ register char *pc;
 	    size = i_spread(FETCH1S(pc));
 	    break;
 
-	case I_CHECK_INT:
-	    if (sp->type != T_NUMBER) {
-		error("Value is not a number");
-	    }
+	case I_CAST:
+	    i_cast(sp, FETCH1U(pc));
 	    break;
 
 	case I_FETCH:
@@ -1237,7 +1329,8 @@ register char *pc;
 	case I_JUMP_ZERO:
 	    p = pc;
 	    p += FETCH2S(pc, u);
-	    if (sp->type == T_NUMBER && sp->u.number == 0) {
+	    if ((sp->type == T_INT && sp->u.number == 0) ||
+		(sp->type == T_FLOAT && VFLT_ISZERO(sp))) {
 		pc = p;
 	    }
 	    break;
@@ -1245,7 +1338,8 @@ register char *pc;
 	case I_JUMP_NONZERO:
 	    p = pc;
 	    p += FETCH2S(pc, u);
-	    if (sp->type != T_NUMBER || sp->u.number != 0) {
+	    if ((sp->type != T_INT || sp->u.number != 0) &&
+		(sp->type != T_FLOAT || !VFLT_ISZERO(sp))) {
 		pc = p;
 	    }
 	    break;
@@ -1267,7 +1361,7 @@ register char *pc;
 	    break;
 
 	case I_CALL_KFUNC:
-	    kf = &kftab[FETCH1U(pc)];
+	    kf = &KFUN(FETCH1U(pc));
 	    if (PROTO_CLASS(kf->proto) & C_VARARGS) {
 		/* variable # of arguments */
 		u = FETCH1U(pc) + size;
@@ -1348,10 +1442,6 @@ register char *pc;
 	    pc = f->pc;
 	    --lock;
 	    break;
-
-	case I_RETURN_ZERO:
-	    *--sp = zero_value;
-	    return;
 
 	case I_RETURN:
 	    return;
@@ -1533,10 +1623,10 @@ int nargs;
     register dfuncdef *f;
     register control *ctrl;
 
+    ctrl = o_control(obj);
     if (!(obj->flags & O_CREATED)) {
 	/*
-	 * call the creator function in the object, if this hasn't happened
-	 * before
+	 * initialize the object
 	 */
 	obj->flags |= O_CREATED;
 	if (i_call(obj, creator, TRUE, 0)) {
@@ -1545,14 +1635,14 @@ int nargs;
     }
 
     /* find the function in the symbol table */
-    symb = ctrl_symb(o_control(obj), func);
+    symb = ctrl_symb(ctrl, func);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
 	i_pop(nargs);
 	return FALSE;
     }
 
-    ctrl = obj->ctrl->inherits[UCHAR(symb->inherit)].obj->ctrl;
+    ctrl = ctrl->inherits[UCHAR(symb->inherit)].obj->ctrl;
     f = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
@@ -1610,11 +1700,9 @@ register frame *f;
 	case I_PUSH_ONE:
 	case I_INDEX:
 	case I_INDEX_LVALUE:
-	case I_CHECK_INT:
 	case I_FETCH:
 	case I_STORE:
 	case I_LOCK:
-	case I_RETURN_ZERO:
 	case I_RETURN:
 	    break;
 
@@ -1623,10 +1711,11 @@ register frame *f;
 	case I_PUSH_LOCAL:
 	case I_PUSH_LOCAL_LVALUE:
 	case I_SPREAD:
+	case I_CAST:
 	    pc++;
 	    break;
 
-	case I_PUSH_INT2:
+	case I_PUSH_FLOAT2:
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_GLOBAL:
 	case I_PUSH_GLOBAL_LVALUE:
@@ -1648,6 +1737,10 @@ register frame *f;
 
 	case I_PUSH_INT4:
 	    pc += 4;
+	    break;
+
+	case I_PUSH_FLOAT6:
+	    pc += 6;
 	    break;
 
 	case I_SWITCH:
@@ -1677,7 +1770,7 @@ register frame *f;
 	    break;
 
 	case I_CALL_KFUNC:
-	    if (PROTO_CLASS(kftab[FETCH1U(pc)].proto) & C_VARARGS) {
+	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_VARARGS) {
 		pc++;
 	    }
 	    break;
@@ -1721,13 +1814,13 @@ array *i_call_trace()
 	v[2].type = T_STRING;
 	str_ref(v[2].u.string = d_get_strconst(f->p_ctrl, f->func->inherit,
 					       f->func->index));
-	v[3].type = T_NUMBER;
+	v[3].type = T_INT;
 	if (f->func->class & C_COMPILED) {
 	    v[3].u.number = 0;
 	} else {
 	    v[3].u.number = i_line(f);
 	}
-	v[4].type = T_NUMBER;
+	v[4].type = T_INT;
 	v[4].u.number = f->external;
 	elts++;
     }
@@ -1745,7 +1838,7 @@ bool flag;
     char *err;
 
     if (ec_push()) {
-	message("Error within log_error:\n");
+	message("Error within log_error:\012");	/* LF */
 	warning((char *) NULL);
     } else {
 	i_lock();
@@ -1753,7 +1846,7 @@ bool flag;
 	err = errormesg();
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(err, (long) strlen(err)));
-	(--sp)->type = T_NUMBER;
+	(--sp)->type = T_INT;
 	sp->u.number = flag;
 	call_driver_object("log_error", 2);
 	i_del_value(sp++);
