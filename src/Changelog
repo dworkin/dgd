@@ -1556,3 +1556,4 @@ DGD 1.3
  - call_touch() now also works on light-weight objects.
  - Light-weight objects restored from the state dump were not converted
    properly, causing spurious driver::touch() calls.
+ - Fixed a bug in object upgrading, introduced with call_touch().

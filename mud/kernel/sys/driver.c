@@ -7,6 +7,9 @@
 # include <status.h>
 # include <trace.h>
 
+# define TLSVAR2	call_trace()[1][TRACE_FIRSTARG][1]
+# define TLSVAR3	call_trace()[1][TRACE_FIRSTARG][2]
+
 object rsrcd;		/* resource manager object */
 object accessd;		/* access manager object */
 object userd;		/* user manager object */
@@ -14,8 +17,7 @@ object initd;		/* init manager object */
 object objectd;		/* object manager object */
 object errord;		/* error manager object */
 int tls_size;		/* thread local storage size */
-string compiled;	/* object currently being compiled */
-string *inherited;	/* list of inherited objects */
+int mp_ready;		/* prepared for MP */
 
 /*
  * NAME:	creator()
@@ -190,13 +192,12 @@ void compiling(string path)
 	    if (objectd) {
 		objectd->compiling(AUTO);
 	    }
-	    compiled = AUTO;
+	    TLSVAR3 = ({ AUTO });
 	    err = catch(compile_object(AUTO));
 	    if (err) {
 		if (objectd) {
 		    objectd->compile_failed("System", AUTO);
 		}
-		compiled = nil;
 		error(err);
 	    }
 	    rsrcd->rsrc_incr("System", "objects", nil, 1, TRUE);
@@ -207,8 +208,7 @@ void compiling(string path)
 	if (objectd) {
 	    objectd->compiling(path);
 	}
-	compiled = path;
-	inherited = ({ });
+	TLSVAR3 = ({ path });
     }
 }
 
@@ -220,10 +220,8 @@ void compile(object obj, string owner, string source)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {
-	    objectd->compile(owner, obj, source, inherited...);
+	    objectd->compile(owner, obj, source, TLSVAR3[1 ..]...);
 	}
-	compiled = nil;
-	inherited = nil;
     }
 }
 
@@ -235,10 +233,8 @@ void compile_lib(string path, string owner, string source)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {
-	    objectd->compile_lib(owner, path, source, inherited...);
+	    objectd->compile_lib(owner, path, source, TLSVAR3[1 ..]...);
 	}
-	compiled = nil;
-	inherited = nil;
     }
 }
 
@@ -252,8 +248,6 @@ void compile_failed(string path, string owner)
 	if (objectd) {
 	    objectd->compile_failed(owner, path);
 	}
-	compiled = nil;
-	inherited = nil;
     }
 }
 
@@ -306,7 +300,7 @@ string query_owner()
 void set_tls_size(int size)
 {
     if (previous_program() == API_TLS) {
-	tls_size = size + 2;
+	tls_size = size + 3;
     }
 }
 
@@ -326,7 +320,7 @@ int query_tls_size()
 mixed get_tlvar(int index)
 {
     if (previous_program() == API_TLS) {
-	return call_trace()[1][TRACE_FIRSTARG][index + 2];
+	return call_trace()[1][TRACE_FIRSTARG][index + 3];
     }
 }
 
@@ -337,7 +331,7 @@ mixed get_tlvar(int index)
 void set_tlvar(int index, mixed value)
 {
     if (previous_program() == API_TLS) {
-	call_trace()[1][TRACE_FIRSTARG][index + 2] = value;
+	call_trace()[1][TRACE_FIRSTARG][index + 3] = value;
     }
 }
 
@@ -362,7 +356,11 @@ private object load(string path)
     object obj;
 
     obj = find_object(path);
-    return (obj) ? obj : compile_object(path);
+    if (obj) {
+	return obj;
+    }
+    TLSVAR3 = ({ path });
+    return compile_object(path);
 }
 
 /*
@@ -377,6 +375,7 @@ private void _initialize(mixed *tls)
 
     message(status()[ST_VERSION] + "\n");
     message("Initializing...\n");
+    mp_ready = TRUE;
 
     /* load initial objects */
     load(AUTO);
@@ -438,7 +437,7 @@ private void _initialize(mixed *tls)
  */
 static void initialize()
 {
-    _initialize(allocate(tls_size = 2));
+    _initialize(allocate(tls_size = 3));
 }
 
 /*
@@ -463,6 +462,10 @@ void prepare_reboot()
 private void _restored(mixed *tls)
 {
     message(status()[ST_VERSION] + "\n");
+    if (!mp_ready) {
+	tls_size++;
+	mp_ready = TRUE;
+    }
 
     rsrcd->reboot();
     call_other(userd, "reboot");
@@ -525,7 +528,7 @@ static string path_write(string path)
 	    (creator == "System" ||
 	     (accessd->access(oname, path, WRITE_ACCESS) &&
 	      (rsrc[RSRC_USAGE] < rsrc[RSRC_MAX] || rsrc[RSRC_MAX] < 0)))) {
-	    call_trace()[1][TRACE_FIRSTARG][1] = ({ path, file_size(path) });
+	    TLSVAR2 = ({ path, file_size(path) });
 	    return path;
 	}
     }
@@ -617,31 +620,27 @@ static object inherit_program(string from, string path, int priv)
 	    error("Too many objects");
 	}
 
-	compiled = path;
-	inherited = ({ });
 	if (objectd) {
 	    objectd->compiling(path);
 	}
+	TLSVAR3 = ({ path });
 	err = catch(obj = compile_object(path));
 	if (err) {
 	    if (objectd) {
 		objectd->compile_failed(creator, path);
 	    }
-	    compiled = nil;
-	    inherited = nil;
 	    error(err);
 	}
 	rsrcd->rsrc_incr(creator, "objects", nil, 1, TRUE);
 	if (objectd) {
-	    objectd->compile_lib(creator, path, nil, inherited...);
+	    objectd->compile_lib(creator, path, nil, TLSVAR3[1 ..]...);
 	}
-	compiled = from;
-	inherited = ({ });
 	if (objectd) {
 	    objectd->compiling(from);
 	}
-    } else if (inherited) {
-	inherited += ({ path });
+	TLSVAR3 = ({ from });
+    } else {
+	TLSVAR3 += ({ path });
     }
     return obj;
 }
@@ -652,6 +651,9 @@ static object inherit_program(string from, string path, int priv)
  */
 static string path_include(string from, string path)
 {
+    string compiled;
+
+    compiled = TLSVAR3[0];
     if (path == "AUTO" && from == "/include/std.h" && objectd &&
 	creator(compiled) != "System") {
 	/*

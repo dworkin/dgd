@@ -7,6 +7,7 @@
 # include <type.h>
 # include <trace.h>
 
+# define TLSVAR2		::call_trace()[1][TRACE_FIRSTARG][1]
 # define LONG_TIME		(365 * 24 * 60 * 60)
 # define CHECKARG(arg, n, func)	if (!(arg)) badarg((n), (func))
 
@@ -83,7 +84,7 @@ nomask void _F_create()
 	    creator = driver->creator(oname);
 	    clone = !!sscanf(oname, "%*s#%d", number);
 	    if (clone) {
-		owner = ::call_trace()[1][TRACE_FIRSTARG][1];
+		owner = TLSVAR2;
 	    } else {
 		owner = creator;
 	    }
@@ -345,7 +346,7 @@ static object compile_object(string path, varargs string source)
 	} : {
 	    driver->compile_failed(path, uid);
 	    rlimits (stack; ticks) {
-		error(::call_trace()[1][TRACE_FIRSTARG][1]);
+		error(TLSVAR2);
 	    }
 	}
     }
@@ -430,9 +431,9 @@ static object clone_object(string path, varargs string uid)
 	    if (path != RSRCOBJ) {
 		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
-	    ::call_trace()[1][TRACE_FIRSTARG][1] = uid;
+	    TLSVAR2 = uid;
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return ::clone_object(obj);
 }
 
@@ -503,9 +504,9 @@ static object new_object(mixed obj, varargs string uid)
 		     ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
 		    error("Insufficient stack or ticks to create object");
 		}
-		::call_trace()[1][TRACE_FIRSTARG][1] = uid;
+		TLSVAR2 = uid;
 	    }
-	} : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	} : error(TLSVAR2);
     }
     return ::new_object(obj);
 }
@@ -927,7 +928,7 @@ _F_subscribe_event(object obj, string oowner, string name, int subscribe)
 		    }
 		    events[name] = objlist;
 		}
-	    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	    } : error(TLSVAR2);
 	} else {
 	    if (sizeof(objlist & ({ obj })) == 0) {
 		error("Not subscribed to event");
@@ -1133,7 +1134,7 @@ static int write_file(string path, string str, varargs int offset)
 		rsrcd->rsrc_incr(fcreator, "filequota", nil, size, TRUE);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
 
     return result;
 }
@@ -1172,7 +1173,7 @@ static int remove_file(string path)
 						"filequota", nil, -size);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return result;
 }
 
@@ -1225,7 +1226,7 @@ static int rename_file(string from, string to)
 		rsrcd->rsrc_incr(fcreator, "filequota", nil, -size);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return result;
 }
 
@@ -1372,7 +1373,7 @@ static int make_dir(string path)
 		rsrcd->rsrc_incr(fcreator, "filequota", nil, 1, TRUE);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return result;
 }
 
@@ -1409,7 +1410,7 @@ static int remove_dir(string path)
 						"filequota", nil, -1);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return result;
 }
 
@@ -1478,7 +1479,7 @@ static void save_object(string path)
 		rsrcd->rsrc_incr(fcreator, "filequota", nil, size, TRUE);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
 }
 
 /*
@@ -1505,7 +1506,7 @@ static string editor(varargs string cmd)
 	    driver = ::find_object(DRIVER);
 
 	    result = (cmd) ? ::editor(cmd) : ::editor();
-	    info = ::call_trace()[1][TRACE_FIRSTARG][1];
+	    info = TLSVAR2;
 
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
@@ -1515,6 +1516,6 @@ static string editor(varargs string cmd)
 				 driver->file_size(info[0]) - info[1], TRUE);
 	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    } : error(TLSVAR2);
     return result;
 }

@@ -1075,7 +1075,8 @@ void o_clean()
 		}
 
 		up->update++;
-		if (up->count != 0 && O_HASDATA(up)) {
+		if (up->count != 0 && up->data == (dataspace *) NULL &&
+		    up->dfirst != SW_UNUSED) {
 		    /* load dataspace (with old control block) */
 		    up->data = d_load_dataspace(up);
 		}
