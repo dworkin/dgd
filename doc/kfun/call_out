@@ -8,8 +8,9 @@ SYNOPSIS
 DESCRIPTION
 	Call a function in the current object with a delay.  The function to
 	be called must not be private.  The delay is specified in seconds.
-	The minimum delay is 1 second; if the given delay is less, it is
-	changed into 1 second.
+	The minimum delay is 0 seconds; however, a delay of 0 does not imply
+	that the function is called immediately after termination of the
+	current thread.
 	The returned value is the callout handle, an integer > 0 which
 	must be used if the callout is to be removed.
 
