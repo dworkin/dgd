@@ -95,6 +95,15 @@ int message(string str)
     return 0;
 }
 
+/*
+ * NAME:	message_done()
+ * DESCRIPTION:	placeholder function which does no buffering
+ */
+int message_done()
+{
+    return MODE_NOCHANGE;
+}
+
 # ifdef SYS_DATAGRAMS
 /*
  * NAME:	datagram()
