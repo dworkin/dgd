@@ -387,7 +387,8 @@ int remove_callout(object obj, string owner, int handle)
 	mapping callouts;
 	mixed *callout;
 
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				 FALSE);
 
 	if (suspended && (callouts=suspended[obj]) &&
 	    (callout=callouts[handle])) {
@@ -425,7 +426,8 @@ remove_callouts(object obj, string owner, int n)
 	mixed **callouts, *callout;
 	int i;
 
-	owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"]);
+	owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"],
+				 FALSE);
 
 	if (suspended && suspended[obj]) {
 	    callouts = map_values(suspended[obj]);
