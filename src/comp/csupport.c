@@ -548,7 +548,7 @@ int fd;
 	for (i = dh.nprecomps; i > 0; --i) {
 	    /* restored object must still be precompiled */
 	    obj = o_objref(dinh[dpc->ninherits - 1].oindex);
-	    name = o_name(obj);
+	    name = obj->chain.name;
 	    for (pc = precompiled; ; pc++) {
 		l = *pc;
 		if (l == (precomp *) NULL) {
@@ -716,14 +716,15 @@ bool poptruthval()
 	return !VFLT_ISZERO(sp - 1);
 
     case T_STRING:
-	str_del((sp++)->u.string);
+	str_del(sp->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
-	arr_del((sp++)->u.array);
+	arr_del(sp->u.array);
 	break;
     }
+    sp++;
     return TRUE;
 }
 

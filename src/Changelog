@@ -1024,3 +1024,5 @@ DGD 1.1
    program.  Variables with the same name and type (private and static don't
    matter) are preserved in the upgraded object; all other variables are
    initialized to 0.
+ - Brought dump_function() up to date.
+ - Fixed a nasty bug in the runtime support for precompiled code.

@@ -334,7 +334,7 @@ int kf_function_object()
 	    /*
 	     * function exists and is callable
 	     */
-	    name = o_name(o);
+	    name = o->chain.name;
 	    str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
 	    sp->u.string->text[0] = '/';
 	    strcpy(sp->u.string->text + 1, name);
