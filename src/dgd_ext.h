@@ -41,6 +41,7 @@
 # define DGD_TYPE_OBJECT	T_OBJECT
 # define DGD_TYPE_ARRAY		T_ARRAY
 # define DGD_TYPE_MAPPING	T_MAPPING
+# define DGD_TYPE_MIXED		T_MIXED
 
 # define DGD_TYPE_ARRAY_OF(t)	((t) + (1 << REFSHIFT))
 # define DGD_TYPE_VARARGS	T_VARARGS
@@ -89,12 +90,17 @@
  */
 # define DGD_FLOAT_GETVAL(v, f)		GET_FLT(&(v), (f))
 # define DGD_FLOAT_PUTVAL(v, f)		PUT_FLTVAL(&(v), (f))
-# define DGD_FLOAT_GET(f, s, e, m)	((s) = (f).high >> 15, \
-					 (e) = ((f).high >> 4) & 0xfff, \
-					 (m) = (f).high & 0xf, (m) <<= 32, \
-					 (m) |= (f).low)
-# define DGD_FLOAT_PUT(f, s, e, m)	((f).high = ((s) << 15) | ((e) << 4) | \
-						    ((m) >> 32), \
+# define DGD_FLOAT_GET(f, s, e, m)	((((f).high | (f).low) == 0) ? \
+					  ((s) = 0, (e) = 0, (m) = 0) : \
+					  ((s) = (f).high >> 15, \
+					   (e) = (((f).high >> 4) & 0x7ff) - \
+						 1023, \
+					   (m) = 0x10 | ((f).high & 0xf), \
+					   (m) <<= 32, (m) |= (f).low))
+# define DGD_FLOAT_PUT(f, s, e, m)	((f).high = (((m) == 0) ? 0 : \
+						      ((s) << 15) | \
+						      (((e) + 1023) << 4) | \
+						      (((m) >> 32) & 0xf)), \
 					 (f).low = (m))
 
 /*

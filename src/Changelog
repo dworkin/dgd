@@ -1471,3 +1471,4 @@ DGD 1.3
    used to reduce memory usage after a peak, or to track down memory leaks.
  - Fixed a bug in calculating line numbers in a stack trace.
  - Fixed a stack depth miscalculation bug for subranges.
+ - Fixed some bugs in the extension interface.

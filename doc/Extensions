@@ -207,8 +207,17 @@ Each type has its own set of macros.
     void      DGD_INT_PUTVAL(DGD_VALUE_T val, DGD_INT_T num);
 
 Floats consist of a 1-bit sign, a 11-bit exponent, and a 36-bit mantissa.
+To make a C double out of a sign, exponent and mantissa, use this expression:
 
-    DGD_FLOAT_T DGD_FLOAT_GETVAL(DGD_VALUE_T val);
+	((sign) ? -1 : 1) * ldexp(mantissa, exponent - 36)
+
+To convert in the other direction, use the following code:
+
+	sign = (Cfloatval < 0);
+	mantissa = ldexp(frexp(Cfloatval, &exponent), 37);
+	--exponent;
+
+    void	DGD_FLOAT_GETVAL(DGD_VALUE_T val, DGD_FLOAT_T flt);
     void	DGD_FLOAT_PUTVAL(DGD_VALUE_T val, DGD_FLOAT_T flt);
     void	DGD_FLOAT_GET(DGD_FLOAT_T flt, int sign, int exp,
 			      int64 mantissa); /* assign to sign/exp/mantissa */
