@@ -1134,3 +1134,4 @@ DGD 1.1
  - Increased max string length in status() to 65535.
  - Increased max editor output string length to 65535.
  - Made DGD restartable.
+ - Fixed a line range bug in editor global commands.

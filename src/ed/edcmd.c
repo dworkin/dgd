@@ -776,7 +776,7 @@ typedef struct {
 static cmd ed_commands[] = {
     { CM_LN0,				'a', "append",	cb_append },
 # define CM_ASSIGN 1
-    { CM_LNNONE,			'=', (char*) NULL,
+    { CM_LNNONE,			'=', (char *) NULL,
 							cb_assign },
     { CM_LNDOT | CM_COUNT,		'c', "change",	cb_change },
     { CM_LNDOT | CM_BUFFER | CM_COUNT, 	'd', "delete",	cb_delete },
@@ -799,22 +799,22 @@ static cmd ed_commands[] = {
 							cb_subst },
     { CM_LNDOT | CM_ADDR,		't', "copy",	cb_copy },
     { CM_LNNONE,			'u', "undo",	cb_undo },
-    { CM_LNRNG,				'v', (char*) NULL,
+    { CM_LNRNG,				'v', (char *) NULL,
 							cb_vglobal },
     { CM_LNRNG | CM_EXCL,		'w', "write",	cb_write },
     { CM_LNRNG,				'x', "xit",	cb_xit },
     { CM_LNDOT | CM_BUFFER | CM_COUNT,	'y', "yank",	cb_yank },
-    { CM_LNNONE,			'z', (char*) NULL,
+    { CM_LNNONE,			'z', (char *) NULL,
 							cb_page },
     { CM_LNNONE,			 0,  "set",	cb_set },
 # define CM_LSHIFT	27
-    { CM_LNDOT | CM_COUNT,		'<', (char*) NULL,
+    { CM_LNDOT | CM_COUNT,		'<', (char *) NULL,
 							cb_lshift },
 # define CM_RSHIFT	28
-    { CM_LNDOT | CM_COUNT,		'>', (char*) NULL,
+    { CM_LNDOT | CM_COUNT,		'>', (char *) NULL,
 							cb_rshift },
 # define CM_INDENT	29
-    { CM_LNRNG,				'I', (char*) NULL,
+    { CM_LNRNG,				'I', (char *) NULL,
 							cb_indent },
 };
 
@@ -925,13 +925,13 @@ char *command;
 			    break;
 			}
 			if (++cm == &ed_commands[NR_CMD]) {
-			    cm = (cmd*) NULL;
+			    cm = (cmd *) NULL;
 			    break;
 			}
 		    }
 		}
 
-		if (cm == (cmd*) NULL) {
+		if (cm == (cmd *) NULL) {
 		    error("No such command");
 		}
 
@@ -1038,18 +1038,16 @@ char *command;
 		    break;
 		}
 
-		/* no autoprint in global */
-		if (!(cb->flags & CB_GLOBAL)) {
-		    if (cb->this <= 0) {
-			cb->this = 1;
-		    }
-		    if (cb->this > cb->edbuf->lines) {
-			cb->this = cb->edbuf->lines;
-		    }
-		    if (cb->this != 0) {
-			cb->first = cb->last = cb->this;
-			cb_print(cb);
-		    }
+		if (cb->this <= 0) {
+		    cb->this = 1;
+		}
+		if (cb->this > cb->edbuf->lines) {
+		    cb->this = cb->edbuf->lines;
+		}
+		if (cb->this != 0 && !(cb->flags & CB_GLOBAL)) {
+		    /* no autoprint in global */
+		    cb->first = cb->last = cb->this;
+		    cb_print(cb);
 		}
 		p = skipst(cb->cmd);
 	    }

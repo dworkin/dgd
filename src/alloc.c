@@ -866,6 +866,9 @@ void m_finish()
     dchunksz = 0;
 
     /* purge dynamic memory */
+# ifdef DEBUG
+    hlist = (header *) NULL;
+# endif
     m_purge();
 
     /* purge static memory */
