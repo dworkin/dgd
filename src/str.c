@@ -88,9 +88,13 @@ register long n;
 
     h = (strh **) ht_lookup(ht, str->text);
     for (;;) {
-	if (*h == (strh *) NULL || strcmp(str->text, (*h)->str->text) != 0) {
+	/*
+	 * The hasher doesn't handle \0 in strings, and so may not have
+	 * found the proper string. Follow the hash table chain until
+	 * the end is reached, or until a match is found using str_cmp().
+	 */
+	if (*h == (strh *) NULL) {
 	    register strh *s;
-	    hte *next;
 
 	    /*
 	     * Not in the hash table. Make a new entry.
@@ -103,9 +107,8 @@ register long n;
 		shlist = l;
 		strhchunksz = 0;
 	    }
-	    next = (hte *) *h;
 	    s = *h = &shlist->sh[strhchunksz++];
-	    s->chain.next = next;
+	    s->chain.next = (hte *) NULL;
 	    s->chain.name = str->text;
 	    s->str = str;
 	    s->index = n;
