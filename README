@@ -1,17 +1,11 @@
-   The 2.4.5 directory contains diffs to the 2.4.5 mudlib (as it can be found
-on ftp.cd.chalmers.se) to make it work with DGD.  Move the dgd subdirectory
-into the mudlib directory, apply the patches, and run the program in the src
-subdirectory as "a.out lpmud" (after changing the path to the mudlib directory
-in the lpmud file).
+   FreeBSD and Linux are now supported directly (Linux support is untested).
+To compile, modify HOST in src/Makefile, and copy src/host/Makefile.yourhost
+to src/host/Makefile.
 
-   Version 1.0.a5 has the following differences with 1.0.a4, which will
-require changes to be made in any code depending on them:
+   To port DGD to a new host, find out if it is closest to V7, BSD, or SysV;
+add a new entry for it to the src/host.h file, which you base on MINIX68K,
+BSD386 or LINUX respectively (warning: if you use MINIX68K, you probably
+don't want 2-byte integers).  Also make a new src/host/Makefile.yourhost.
 
- - The behaviour of catch() and lock() has changed slightly.
- - get_dir() now returns an array of the form ({ names, sizes, times }),
-   rather than ({ names, times, sizes }).
- - Negative indices for strings and arrays are no longer allowed.  Adding
-   them was a mistake, since arr[0 .. -1], which was previously ({ }),
-   became the whole array.  It is now ({ }) again.
- - Using a label with inheritance no longer specifies that a different
-   kind of inheritance is to be used.  See the file Changelog for details.
+   The 2.4.5 simulation is now separated from the DGD distribution; it is
+called sim-2.4.5.tar.gz .
