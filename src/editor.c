@@ -17,6 +17,7 @@ static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
 static char *outbuf;		/* output buffer */
 static Uint outbufsz;		/* chars in output buffer */
+static eindex newed;		/* new editor in current thread */
 static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
 
@@ -43,6 +44,7 @@ register int num;
 	}
     }
     flist = f;
+    newed = EINDEX_MAX;
 }
 
 /*
@@ -59,6 +61,15 @@ void ed_finish()
 	    cb_del(e->ed);
 	}
     }
+}
+
+/*
+ * NAME:	ed->clear()
+ * DESCRIPTION:	allow new editor to be created
+ */
+void ed_clear()
+{
+    newed = EINDEX_MAX;
 }
 
 /*
@@ -83,12 +94,15 @@ object *obj;
     register editor *e;
 
     check_recursion();
+    if (EINDEX(newed) != EINDEX_MAX) {
+	error("Too many simultaneous editors started");
+    }
     e = flist;
     if (e == (editor *) NULL) {
 	error("Too many editor instances");
     }
     flist = e->next;
-    obj->etabi = e - editors;
+    obj->etabi = newed = e - editors;
     obj->flags |= O_EDITOR;
 
     sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
@@ -107,6 +121,9 @@ object *obj;
     check_recursion();
     e = &editors[EINDEX(obj->etabi)];
     cb_del(e->ed);
+    if (obj->etabi == newed) {
+	newed = EINDEX_MAX;
+    }
     e->ed = (cmdbuf *) NULL;
     e->next = flist;
     flist = e;

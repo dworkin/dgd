@@ -92,6 +92,7 @@ void endthread()
     d_export();
     o_clean();
     i_clear();
+    ed_clear();
     ec_clear();
 
     if (fragment != 0) {

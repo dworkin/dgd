@@ -1149,7 +1149,7 @@ int nargs;
     char file[STRINGSZ];
     struct stat sbuf;
     register Int l, size;
-    int fd;
+    static int fd;
 
     l = 0;
     size = 0;

@@ -7,12 +7,6 @@
 # endif
 
 
-# ifdef HOST_WITH_UNSIGNED_CHAR
-# define UCHAR(c)	((char) (c))			/* unsigned character */
-# define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
-# endif
-
-
 # ifdef BEOS
 
 # define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
@@ -362,3 +356,11 @@ extern char *P_crypt	P((char*, char*));
 # define CR	'\015'
 
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
+
+
+# ifdef HOST_WITH_UNSIGNED_CHAR
+# undef UCHAR
+# undef SCHAR
+# define UCHAR(c)	((char) (c))			/* unsigned character */
+# define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
+# endif

@@ -706,7 +706,15 @@ int conn_read(connection *conn, char *buf, unsigned int len)
 	return 0;
     }
     size = recv(conn->fd, buf, len, 0);
-    return (size == 0) ? -1 : size;
+    if (size == SOCKET_ERROR) {
+	closesocket(conn->fd);
+	FD_CLR(conn->fd, &infds);
+	FD_CLR(conn->fd, &outfds);
+	FD_CLR(conn->fd, &waitfds);
+	conn->fd = INVALID_SOCKET;
+	closed++;
+    }
+    return (size == 0 || size == SOCKET_ERROR) ? -1 : size;
 }
 
 /*

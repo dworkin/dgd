@@ -736,6 +736,14 @@ unsigned int len;
 	return 0;
     }
     size = read(conn->fd, buf, len);
+    if (size < 0) {
+	close(conn->fd);
+	FD_CLR(conn->fd, &infds);
+	FD_CLR(conn->fd, &outfds);
+	FD_CLR(conn->fd, &waitfds);
+	conn->fd = -1;
+	closed++;
+    }
     return (size == 0) ? -1 : size;
 }
 

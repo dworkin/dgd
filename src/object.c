@@ -271,7 +271,7 @@ static object *o_alloc()
     } else {
 	/* use new space in object table */
 	if (oplane->nobjects == otabsize) {
-	    fatal("too many objects");
+	    error("Too many objects");
 	}
 	n = oplane->nobjects++;
 	obj = OBJW(n);

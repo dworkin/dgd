@@ -11,7 +11,7 @@ BEOS		BeOS.  Set LDFLAGS to -lbe -ltracker, and copy
 		src/host/Makefile.beos to src/host/Makefile.
 WIN32		Windows NT or Windows 95.  Follow the instructions in
 		src/host/pc/README.
-MACOS		Mac System 6 or 7.  Follow the instructions in
+MACOS		Mac System 6 to 9.  Follow the instructions in
 		src/host/mac/README.
 GENERIC_BSD	BSD Unix.
 GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
@@ -22,8 +22,7 @@ which are not supported directly yet, but for which porting is easy:
 
 NeXT	use GENERIC_BSD, but in src/host/Makefile replace dirent.* by direct.*
 ULTRIX	use GENERIC_BSD
-AIX	use GENERIC_SYSV, but change the definitions of UCHAR and SCHAR to
-	the versions in the HOST_WITH_UNSIGNED_CHAR entry in host.h (AIX
+AIX	use GENERIC_SYSV, but compile with -DHOST_WITH_UNSIGNED_CHAR (AIX
 	characters are unsigned), also add #include <sys/select.h> to
 	src/host/unix/connect.c
 

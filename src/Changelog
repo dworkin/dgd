@@ -1372,3 +1372,6 @@ DGD 1.1
  - Fixed the above for the case of multi-level atomic calls.
  - Fixed a restore-time bug involving upgraded objects.
  - Fixed a bug in removing dataspaces.
+ - Allow only one simultaneous new editor instance per thread.
+ - Fixed a bug where a connection would hang if there was pending output while
+   the connection was lost.
