@@ -1735,19 +1735,18 @@ register node *n;
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
-static node *funcall(func, args)
-register node *func;
-node *args;
+static node *funcall(call, args)
+node *call, *args;
 {
     char tnbuf[17];
     register int n, nargs, t;
-    register node **argv, **arg;
+    register node *func, **argv, **arg;
     char *argp, *proto, *fname;
     bool typechecked, optional;
 
     /* get info, prepare return value */
-    fname = func->l.string->text;
-    func = func->r.right;
+    fname = call->l.string->text;
+    func = call->r.right;
     if (func == (node *) NULL) {
 	/* error during function lookup */
 	return node_mon(N_FAKE, T_MIXED, (node *) NULL);
@@ -1755,8 +1754,9 @@ node *args;
     proto = func->l.ptr;
     func->mod = (PROTO_FTYPE(proto) == T_IMPLICIT) ?
 		 T_MIXED : PROTO_FTYPE(proto);
-    func->l.left = args;
-    argv = &func->l.left;
+    func->l.left = call;
+    call->r.right = args;
+    argv = &call->r.right;
 
     /*
      * check function arguments

@@ -122,8 +122,6 @@ int access;
 {
     register optable *tab;
     register objpatch *op;
-    register int i;
-    register value *v;
 
     /* allocate */
     tab = plane->optab;

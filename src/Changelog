@@ -1364,3 +1364,5 @@ DGD 1.1
  - Made maximum sizes of strings more configurable.
  - Allow any string as an argument to error().
  - Fixed some leftover short string holdouts.
+ - Got precompiling to work again; add global variable and function names to
+   generated C output.

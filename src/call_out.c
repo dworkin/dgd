@@ -371,7 +371,6 @@ cbuf **qp;
 {
     register Uint t;
     register unsigned short m;
-    register call_out *co;
 
     if (cotabsz == 0) {
 	/*

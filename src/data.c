@@ -2405,7 +2405,6 @@ unsigned int handle;
     } else {
 	register dataplane *plane;
 	register copatch **c, *cop;
-	register value *v;
 	copatch **cc;
 
 	/*

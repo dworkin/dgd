@@ -125,9 +125,9 @@ register int type;
 	break;
 
     case N_GLOBAL:
-	output("i_global_lvalue(f, %d, %d, %d)",
+	output("i_global_lvalue(f, %d, %d/*%s*/, %d)",
 	       ((int) n->r.number >> 8) & 0xff, 
-	       ((int) n->r.number) & 0xff, type);
+	       ((int) n->r.number) & 0xff, n->l.left->l.string->text, type);
 	break;
 
     case N_INDEX:
@@ -141,8 +141,9 @@ register int type;
 	    break;
 
 	case N_GLOBAL:
-	    output("i_global_lvalue(f, %d, %d, 0)",
-		   ((int) m->r.number >> 8) & 0xff, ((int) m->r.number) & 0xff);
+	    output("i_global_lvalue(f, %d, %d/*%s*/, 0)",
+		   ((int) m->r.number >> 8) & 0xff, ((int) m->r.number) & 0xff,
+		   n->l.left->l.string->text);
 	    break;
 
 	case N_INDEX:
@@ -969,7 +970,7 @@ register int state;
 	--catch_level;
 	if (state == PUSH) {
 	    output(", ec_pop(), *--f->sp = nil_value, 0) : ");
-	    output("PUSH_STRVAL(f, errorstr())");
+	    output("(PUSH_STRVAL(f, errorstr())");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1017,7 +1018,7 @@ register int state;
 	break;
 
     case N_FUNC:
-	p = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
+	p = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	    if (catch_level == 0 &&
@@ -1030,26 +1031,27 @@ register int state;
 		    }
 		}
 	    }
+	    /* fall through */
 	case KFCALL_LVAL:
 	    if (PROTO_NARGS(KFUN((short) n->r.number).proto) == 0) {
 		/* kfun without arguments won't do argument checking */
 		kfun(KFUN((short) n->r.number).name);
 	    } else {
 		if (catch_level == 0 && ((n->r.number >> 24) & KFCALL_LVAL)) {
-		    cg_locals(n->l.left, TRUE);
+		    cg_locals(n->l.left->r.right, TRUE);
 		}
 		if (PROTO_CLASS(KFUN((short) n->r.number).proto) &
 							    C_KFUN_VARARGS) {
 		    output("call_kfun_arg(f, %d/*%s*/, %s)",
 			   &KFUN((short) n->r.number) - kftab,
-			   KFUN((short) n->r.number).name, p);
+			   n->l.left->l.string->text, p);
 		} else {
 		    output("call_kfun(f, %d/*%s*/)",
 			   &KFUN((short) n->r.number) - kftab,
-			   KFUN((short) n->r.number).name);
+			   n->l.left->l.string->text);
 		}
 		if ((n->r.number >> 24) & KFCALL_LVAL) {
-		    cg_locals(n->l.left, FALSE);
+		    cg_locals(n->l.left->r.right, FALSE);
 		}
 	    }
 	    break;
@@ -1063,12 +1065,14 @@ register int state;
 		}
 	    }
 	    if (((n->r.number >> 8) & 0xff) == 0) {
-		output("i_funcall(f, (object *) NULL, 0, %d, %s)",
-		       ((int) n->r.number) & 0xff, p);
+		output("i_funcall(f, (object *) NULL, 0, %d/*%s*/, %s)",
+		       ((int) n->r.number) & 0xff, n->l.left->l.string->text,
+		       p);
 	    } else {
-		output("i_funcall(f, (object *) NULL, f->p_index-%d, %d, %s)",
-		       ((int) n->r.number >> 8) & 0xff,
-		       ((int) n->r.number) & 0xff, p);
+		output("i_funcall(f, (object *) NULL, f->p_index-%d, ",
+		       ((int) n->r.number >> 8) & 0xff);
+		output("%d/*%s*/, %s)", ((int) n->r.number) & 0xff,
+		       n->l.left->l.string->text, p);
 	    }
 	    break;
 
@@ -1080,9 +1084,10 @@ register int state;
 		    }
 		}
 	    }
-	    output("p = i_foffset(%u), ", ctrl_gencall((long) n->r.number));
-	    output("i_funcall(f, (object *)NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
-		   p);
+	    output("p = i_foffset(%u), i_funcall(f, (object *)NULL, ",
+		   ctrl_gencall((long) n->r.number));
+	    output("UCHAR(p[0]), UCHAR(p[1])/*%s*/, %s)",
+		   n->l.left->l.string->text, p);
 	    break;
 	}
 	break;
@@ -1093,8 +1098,8 @@ register int state;
 	break;
 
     case N_GLOBAL:
-	output("i_global(f, %d, %d)", ((int) n->r.number >> 8) & 0xff,
-	       ((int) n->r.number) & 0xff);
+	output("i_global(f, %d, %d/*%s*/)", ((int) n->r.number >> 8) & 0xff,
+	       ((int) n->r.number) & 0xff, n->l.left->l.string->text);
 	break;
 
     case N_GT:

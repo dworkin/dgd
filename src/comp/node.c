@@ -133,7 +133,7 @@ string *str;
 
 /*
  * NAME:	node->fcall()
- * DESCRIPTION:	create a character pointer node
+ * DESCRIPTION:	create a function call node
  */
 node *node_fcall(mod, func, call)
 int mod;

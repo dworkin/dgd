@@ -21,23 +21,6 @@ register Uint *cs;
 }
 
 /*
- * NAME:	charset->and()
- * DESCRIPTION:	and two charsets
- */
-static void cs_and(cs1, cs2)
-register Uint *cs1, *cs2;
-{
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1++ &= *cs2++;
-    *cs1   &= *cs2;
-}
-
-/*
  * NAME:	charset->or()
  * DESCRIPTION:	or two charsets
  */

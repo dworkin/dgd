@@ -599,8 +599,7 @@ int echo;
  * NAME:	comm->flush()
  * DESCRIPTION:	pretend to flush output to all users
  */
-void comm_flush(flag)
-int flag;
+void comm_flush()
 {
 }
 
@@ -750,7 +749,7 @@ cbuf **qp;
 void co_new(oindex, handle, t, m, q)
 unsigned int oindex, handle, m;
 Uint t;
-cbuf* q;
+cbuf *q;
 {
 }
 

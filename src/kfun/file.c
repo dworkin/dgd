@@ -30,7 +30,7 @@ int nargs;
     if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
 	error("editor() from special purpose object");
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("editor() within atomic function");
     }
     if (!(obj->flags & O_EDITOR)) {
@@ -365,7 +365,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("save_object() within atomic function");
     }
 
@@ -1090,7 +1090,7 @@ int nargs;
 		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("write_file() within atomic function");
     }
 
@@ -1277,7 +1277,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("remove_file() within atomic function");
     }
 
@@ -1307,7 +1307,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("make_dir() within atomic function");
     }
 
@@ -1337,7 +1337,7 @@ register frame *f;
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
-    if (f->data->plane->level != 0) {
+    if (f->level != 0) {
 	error("remove_dir() within atomic function");
     }
 

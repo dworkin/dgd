@@ -279,7 +279,7 @@ register frame *f;
 	break;
 
     case O_EDITOR:
-	if (f->data->plane->level != 0) {
+	if (f->level != 0) {
 	    error("Editor object destructed in atomic function");
 	}
 	ed_del(obj);
@@ -741,14 +741,11 @@ register frame *f;
     register object *obj;
     int num;
 
-    if (f->sp->type == T_STRING) {
-	num = f->sp->u.string->len;
-    } else if (f->sp->type == T_INT) {
-	num = 0;
-    } else {
+    if (f->sp->type != T_STRING && f->sp->type != T_INT) {
 	return 1;
     }
 
+    num = 0;
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
 	if ((obj->flags & O_SPECIAL) == O_USER) {
@@ -759,6 +756,7 @@ register frame *f;
 	    }
 	} else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
 	    P_message(f->sp->u.string->text);
+	    num = f->sp->u.string->len;
 	}
     }
     if (f->sp->type == T_STRING) {
@@ -788,6 +786,8 @@ register frame *f;
     obj = OBJW(f->oindex);
     if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	num = comm_udpsend(obj, f->sp->u.string);
+    } else {
+	num = 0;
     }
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, num);

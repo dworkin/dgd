@@ -146,7 +146,7 @@ unsigned int *buflen;
     register char *p;
     char *q;
     register ssizet size;
-    register unsigned int len, n;
+    register unsigned int len;
 
     size = *strlen;
     p = str->text + str->len - size;

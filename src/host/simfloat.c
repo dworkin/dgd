@@ -2274,7 +2274,7 @@ xfloat *f1, *f2;
 void flt_cosh(f)
 xfloat *f;
 {
-    flt a, b, c;
+    flt a, b;
 
     f_xftof(f, &a);
     a.sign = 0;

@@ -525,7 +525,6 @@ array *arr;
 void comm_flush()
 {
     register user *usr;
-    register int i;
     object *obj;
     array *arr;
     register value *v;

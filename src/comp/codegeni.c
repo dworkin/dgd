@@ -856,7 +856,7 @@ register int pop;
 	break;
 
     case N_FUNC:
-	i = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
+	i = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:

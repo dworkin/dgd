@@ -1339,7 +1339,7 @@ int pop;
 	return opt_lvalue(n->l.left) + 1;
 
     case N_FUNC:
-	m = &n->l.left;
+	m = &n->l.left->r.right;
 	n = *m;
 	if (n == (node *) NULL) {
 	    return 1;
@@ -1456,14 +1456,21 @@ int pop;
 	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
 	    if (n->l.left->r.number == kf_status) {
 		n->type = N_FUNC;
-		if (n->l.left->l.left != (node *) NULL) {
+		if (n->l.left->l.left->r.right != (node *) NULL) {
 		    /* status(obj)[i] */
-		    n->l.left->type = N_PAIR;
-		    n->l.left->r.right = n->r.right;
-		    n->r.number = ((long) KFCALL << 24) | KF_STATUSO_IDX;
+		    n = n->l.left;
+		    n->type = N_STR;
+		    n->r.right = n->l.left;
+		    n->l.string = n->l.left->l.string;
+		    n = n->r.right;
+		    n->type = N_PAIR;
+		    n->l.left = n->r.right;
+		    n->r.right = (*m)->r.right;
+		    (*m)->r.number = ((long) KFCALL << 24) | KF_STATUSO_IDX;
 		} else {
 		    /* status()[i] */
-		    n->l.left = n->r.right;
+		    n->l.left = n->l.left->l.left;
+		    n->l.left->r.right = n->r.right;
 		    n->r.number = ((long) KFCALL << 24) | KF_STATUS_IDX;
 		}
 		return opt_expr(m, pop);
@@ -1471,7 +1478,8 @@ int pop;
 	    if (n->l.left->r.number == kf_call_trace) {
 		/* call_trace()[i] */
 		n->type = N_FUNC;
-		n->l.left = n->r.right;
+		n->l.left = n->l.left->l.left;
+		n->l.left->r.right = n->r.right;
 		n->r.number = ((long) KFCALL << 24) | KF_CALLTR_IDX;
 		return opt_expr(m, pop);
 	    }
