@@ -39,7 +39,7 @@ int nargs;
 	str_del((sp++)->u.string);
     }
 
-    p = crypt(sp->u.string->text, salt);
+    p = P_crypt(sp->u.string->text, salt);
     str_del(sp->u.string);
     str_ref(sp->u.string = str_new(p, (long) strlen(p)));
     return 0;

@@ -677,7 +677,7 @@ linebuf *lb;
 block b;
 Int idx, size;
 void (*putline) P((char*));
-bool reverse;
+int reverse;
 {
     blk *bp;
 

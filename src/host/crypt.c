@@ -178,10 +178,10 @@ static char out[64] = {
 				 (b) ^= (t), (a) ^= (t) << (n))
 
 /*
- * NAME:	crypt()
+ * NAME:	P->crypt()
  * DESCRIPTION:	Unix password encryption.
  */
-char *crypt(passwd, salt)
+char *P_crypt(passwd, salt)
 char *passwd, *salt;
 {
     static char result[14];

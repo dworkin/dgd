@@ -22,4 +22,4 @@ typedef struct {
 extern rxbuf *rx_new  P((void));
 extern void   rx_del  P((rxbuf*));
 extern char  *rx_comp P((rxbuf*, char*));
-extern int    rx_exec P((rxbuf*, char*, int, bool));
+extern int    rx_exec P((rxbuf*, char*, int, int));

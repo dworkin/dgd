@@ -157,7 +157,7 @@ io *io_save(eb, filename, first, last, append)
 editbuf *eb;
 char *filename;
 Int first, last;
-bool append;
+int append;
 {
     int sz;
     char buf[BUF_SIZE];

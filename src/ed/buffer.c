@@ -225,7 +225,7 @@ void eb_range(eb, first, last, putline, reverse)
 register editbuf *eb;
 Int first, last;
 void (*putline) P((char*));
-bool reverse;
+int reverse;
 {
     bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }

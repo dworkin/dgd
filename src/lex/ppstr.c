@@ -110,7 +110,7 @@ char *s;
  */
 int pps_ccat(sb, c)
 register str *sb;
-char c;
+int c;
 {
     if (sb->len < 0 || c == '\0' || sb->len + 1 >= sb->size) {
 	return sb->len = -1;

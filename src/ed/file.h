@@ -7,4 +7,4 @@ typedef struct {
 } io;
 
 extern io *io_load P((editbuf*, char*, Int));
-extern io *io_save P((editbuf*, char*, Int, Int, bool));
+extern io *io_save P((editbuf*, char*, Int, Int, int));

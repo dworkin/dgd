@@ -33,4 +33,4 @@ extern block	bk_new	  P((linebuf*, char*(*)(void)));
 extern Int	bk_size	  P((linebuf*, block));
 extern void	bk_split  P((linebuf*, block, Int, block*, block*));
 extern block	bk_cat	  P((linebuf*, block, block));
-extern void	bk_put	  P((linebuf*, block, Int, Int, void(*)(char*), bool));
+extern void	bk_put	  P((linebuf*, block, Int, Int, void(*)(char*), int));

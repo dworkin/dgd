@@ -442,7 +442,7 @@ int rx_exec(rx, text, idx, ic)
 register rxbuf *rx;
 register char *text;
 register int idx;
-bool ic;
+int ic;
 {
     rx->start = (char *) NULL;
     if (!rx->valid) return -1;
