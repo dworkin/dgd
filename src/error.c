@@ -28,7 +28,7 @@ ec_ftn handler;
 	error("Too many nested error contexts");
     }
     esp->f = cframe;
-    esp->offset = cframe->fp - sp;
+    esp->offset = cframe->fp - cframe->sp;
 
     esp->handler = handler;
     return &(esp++)->env;
@@ -40,16 +40,22 @@ ec_ftn handler;
  */
 void ec_pop()
 {
+# ifdef DEBUG
     if (--esp < stack) {
 	fatal("pop empty error stack");
     }
+# else
+    --esp;
+# endif
 }
 
 /*
  * NAME:	errorcontext->handler()
  * DESCRIPTION:	dummy handler for previously handled error
  */
-static void ec_handler()
+static void ec_handler(f, depth)
+frame *f;
+Int depth;
 {
 }
 
@@ -89,12 +95,12 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	if (e->handler != (ec_ftn) NULL) {
 	    handler = e->handler;
 	    e->handler = (ec_ftn) ec_handler;
-	    (*handler)(f->depth);
+	    (*handler)(cframe, f->depth);
 	    break;
 	}
     } while (--e >= stack);
 
-    i_set_sp(f->fp - offset);
+    cframe = i_set_sp(cframe, f->fp - offset);
     longjmp(env, 1);
 }
 

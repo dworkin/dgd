@@ -260,6 +260,7 @@ static void loop_clear()
 typedef struct _context_ {
     char file[STRINGSZ];		/* file to compile */
     char inherit[STRINGSZ];		/* file to inherit */
+    frame *frame;			/* current interpreter stack frame */
     struct _context_ *prev;		/* previous context */
 } context;
 
@@ -328,6 +329,7 @@ char *file;
 node *label;
 {
     register object *obj;
+    register frame *f;
     long ncomp;
 
     if (strcmp(current->file, auto_object) == 0) {
@@ -335,6 +337,7 @@ node *label;
 	return FALSE;
     }
 
+    f = current->frame;
     if (strcmp(current->file, driver_object) == 0) {
 	/*
 	 * the driver object can only inherit the auto object
@@ -347,7 +350,7 @@ node *label;
 	obj = o_find(file);
 	if (obj == (object *) NULL) {
 	    inheriting = TRUE;
-	    obj = c_compile(file, (object *) NULL);
+	    obj = c_compile(f, file, (object *) NULL);
 	    inheriting = FALSE;
 	    return FALSE;
 	}
@@ -355,19 +358,19 @@ node *label;
 	ncomp = ncompiled;
 
 	/* get associated object */
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(NULL, strlen(current->file) + 1L));
-	sp->u.string->text[0] = '/';
-	strcpy(sp->u.string->text + 1, current->file);
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(NULL, strlen(current->file) + 1L));
+	f->sp->u.string->text[0] = '/';
+	strcpy(f->sp->u.string->text + 1, current->file);
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
 
 	inheriting = TRUE;
-	if (call_driver_object("inherit_program", 2)) {
+	if (call_driver_object(f, "inherit_program", 2)) {
 	    inheriting = FALSE;
-	    if (sp->type == T_OBJECT) {
-		obj = &otable[sp->oindex];
-		sp++;
+	    if (f->sp->type == T_OBJECT) {
+		obj = &otable[f->sp->oindex];
+		f->sp++;
 	    } else {
 		/* returned value not an object */
 		error("Cannot inherit \"%s\"", file);
@@ -378,13 +381,13 @@ node *label;
 	    }
 	} else {
 	    /* precompiling */
-	    sp++;
+	    f->sp++;
 	    inheriting = FALSE;
 	    file = path_from(current->file, file);
 	    obj = o_find(file);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
-		obj = c_compile(file, (object *) NULL);
+		obj = c_compile(f, file, (object *) NULL);
 		inheriting = FALSE;
 		return FALSE;
 	    }
@@ -397,15 +400,17 @@ node *label;
 	return FALSE;
     }
 
-    return ctrl_inherit(current->file, obj, (label == (node *) NULL) ?
-					     (string *) NULL : label->l.string);
+    return ctrl_inherit(current->frame, current->file, obj,
+			(label == (node *) NULL) ?
+			 (string *) NULL : label->l.string);
 }
 
 /*
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(file, obj)
+object *c_compile(f, file, obj)
+frame *f;
 register char *file;
 object *obj;
 {
@@ -438,6 +443,7 @@ object *obj;
     }
     strcpy(file_c, file);
     strcat(file_c, ".c");
+    c.frame = f;
     c.prev = current;
     current = &c;
     ncompiled++;
@@ -464,7 +470,7 @@ object *obj;
 		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(driver_object, (object *) NULL);
+		c_compile(f, driver_object, (object *) NULL);
 		current = &c;
 	    }
 
@@ -474,14 +480,14 @@ object *obj;
 		 * compile auto object
 		 */
 		inheriting = TRUE;
-		aobj = c_compile(auto_object, (object *) NULL);
+		aobj = c_compile(f, auto_object, (object *) NULL);
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
 		error("Upgraded auto object while compiling \"/%s.c\"", c.file);
 	    }
 	    ctrl_init();
-	    ctrl_inherit(c.file, aobj, (string *) NULL);
+	    ctrl_inherit(c.frame, c.file, aobj, (string *) NULL);
 	}
 
 	if (!pp_init(file_c, paths, 1)) {
@@ -538,7 +544,7 @@ object *obj;
 		unsigned short *vmap;
 
 		/* recompiled object */
-		o_upgrade(obj, ctrl);
+		o_upgrade(obj, ctrl, f);
 		vmap = ctrl_varmap(obj->ctrl, ctrl);
 		if (vmap != (unsigned short *) NULL) {
 		    d_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
@@ -1041,18 +1047,21 @@ node *n1, *n2, *n3;
 	strcmp(current->file, auto_object) == 0) {
 	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
     } else {
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new((char *) NULL,
-				       strlen(current->file) + 1L));
-	sp->u.string->text[0] = '/';
-	strcpy(sp->u.string->text + 1, current->file);
-	call_driver_object("compile_rlimits", 1);
+	register frame *f;
+
+	f = current->frame;
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new((char *) NULL,
+					  strlen(current->file) + 1L));
+	f->sp->u.string->text[0] = '/';
+	strcpy(f->sp->u.string->text + 1, current->file);
+	call_driver_object(f, "compile_rlimits", 1);
 	n1 = node_bin(N_RLIMITS,
-		      (!((sp->type == T_INT && sp->u.number == 0) ||
-			 (sp->type == T_FLOAT && VFLT_ISZERO(sp)))),
+		      (!((f->sp->type == T_INT && f->sp->u.number == 0) ||
+			 (f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp)))),
 		      node_bin(N_PAIR, 0, n1, n2),
 		      n3);
-	i_del_value(sp++);
+	i_del_value(f->sp++);
     }
 
     if (n3 != (node *) NULL) {
@@ -2013,30 +2022,33 @@ register unsigned int type1, type2;
  * NAME:	compile->error()
  * DESCRIPTION:	Call the driver object with the supplied error message.
  */
-void c_error(f, a1, a2, a3)
-char *f, *a1, *a2, *a3;
+void c_error(format, a1, a2, a3)
+char *format, *a1, *a2, *a3;
 {
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
 	o_find(driver_object) != (object *) NULL) {
-	fname = tk_filename();
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(NULL, strlen(fname) + 1L));
-	strcpy(sp->u.string->text + 1, fname);
-	sp->u.string->text[0] = '/';
-	(--sp)->type = T_INT;
-	sp->u.number = tk_line();
-	sprintf(buf, f, a1, a2, a3);
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(buf, (long) strlen(buf)));
+	register frame *f;
 
-	call_driver_object("compile_error", 3);
-	i_del_value(sp++);
+	f = current->frame;
+	fname = tk_filename();
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(NULL, strlen(fname) + 1L));
+	strcpy(f->sp->u.string->text + 1, fname);
+	f->sp->u.string->text[0] = '/';
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = tk_line();
+	sprintf(buf, format, a1, a2, a3);
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(buf, (long) strlen(buf)));
+
+	call_driver_object(f, "compile_error", 3);
+	i_del_value(f->sp++);
     } else {
 	/* there is no driver object to call; show the error on stderr */
 	sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
-	sprintf(buf + strlen(buf), f, a1, a2, a3);
+	sprintf(buf + strlen(buf), format, a1, a2, a3);
 	message("%s\012", buf);     /* LF */
     }
 

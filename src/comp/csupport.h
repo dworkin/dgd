@@ -4,7 +4,7 @@ typedef struct {
     unsigned short varoffset;	/* variable offset */
 } pcinherit;
 
-typedef void (*pcfunc) P((void));
+typedef void (*pcfunc) P((frame*));
 
 typedef struct {
     object *obj;		/* precompiled object */
@@ -47,17 +47,19 @@ extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 
 void   pc_preload	P((char*, char*));
-array *pc_list		P((void));
+array *pc_list		P((dataspace*));
 void   pc_control	P((control*, object*));
 bool   pc_dump		P((int));
 void   pc_restore	P((int));
 
 
-# define PUSH_NUMBER		(--sp)->type = T_INT, sp->u.number =
-# define push_lvalue(v, t)	((--sp)->type = T_LVALUE, sp->oindex = (t), \
-				 sp->u.lval = (v))
-# define store()		(i_store(sp + 1, sp), sp[1] = sp[0], sp++)
-# define store_int()		(i_store(sp + 1, sp), sp += 2, sp[-2].u.number)
+# define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =
+# define push_lvalue(v, t)	((--f->sp)->type = T_LVALUE, \
+				 f->sp->oindex = (t), f->sp->u.lval = (v))
+# define store()		(i_store(f, f->sp + 1, f->sp), \
+				 f->sp[1] = f->sp[0], f->sp++)
+# define store_int()		(i_store(f, f->sp + 1, f->sp), f->sp += 2, \
+				 f->sp[-2].u.number)
 # define truthval(v)		(((v)->type != T_INT || (v)->u.number != 0) && \
 			 	((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])
@@ -65,28 +67,29 @@ void   pc_restore	P((int));
 /*
  * prototypes for kfuns that might be called directly from precompiled code
  */
-int kf_add P((void)), kf_add1 P((void)), kf_and P((void)), kf_div P((void)),
-    kf_eq P((void)), kf_ge P((void)), kf_gt P((void)), kf_le P((void)),
-    kf_lshift P((void)), kf_lt P((void)), kf_mod P((void)), kf_mult P((void)),
-    kf_ne P((void)), kf_neg P((void)), kf_not P((void)), kf_or P((void)),
-    kf_rangeft P((void)), kf_rangef P((void)), kf_ranget P((void)),
-    kf_range P((void)), kf_rshift P((void)), kf_sub P((void)),
-    kf_sub1 P((void)), kf_tofloat P((void)), kf_toint P((void)),
-    kf_tst P((void)), kf_umin P((void)), kf_xor P((void)),
-    kf_tostring P((void)), kf_ckrangeft P((void)), kf_ckrangef P((void)),
-    kf_ckranget P((void)), kf_sum P((int));
+int kf_add P((frame*)), kf_add1 P((frame*)), kf_and P((frame*)),
+    kf_div P((frame*)), kf_eq P((frame*)), kf_ge P((frame*)), kf_gt P((frame*)),
+    kf_le P((frame*)), kf_lshift P((frame*)), kf_lt P((frame*)),
+    kf_mod P((frame*)), kf_mult P((frame*)), kf_ne P((frame*)),
+    kf_neg P((frame*)), kf_not P((frame*)), kf_or P((frame*)),
+    kf_rangeft P((frame*)), kf_rangef P((frame*)), kf_ranget P((frame*)),
+    kf_range P((frame*)), kf_rshift P((frame*)), kf_sub P((frame*)),
+    kf_sub1 P((frame*)), kf_tofloat P((frame*)), kf_toint P((frame*)),
+    kf_tst P((frame*)), kf_umin P((frame*)), kf_xor P((frame*)),
+    kf_tostring P((frame*)), kf_ckrangeft P((frame*)), kf_ckrangef P((frame*)),
+    kf_ckranget P((frame*)), kf_sum P((frame*, int));
 
-int kf_this_object P((void)), kf_call_trace P((void)), kf_this_user P((void)),
-    kf_users P((void)), kf_time P((void)), kf_swapout P((void)),
-    kf_dump_state P((void)), kf_shutdown P((void));
+int kf_this_object P((frame*)), kf_call_trace P((frame*)),
+    kf_this_user P((frame*)), kf_users P((frame*)), kf_time P((frame*)),
+    kf_swapout P((frame*)), kf_dump_state P((frame*)), kf_shutdown P((frame*));
 
-void call_kfun		P((int));
-void call_kfun_arg	P((int, int));
+void call_kfun		P((frame*, int));
+void call_kfun_arg	P((frame*, int, int));
 Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
-bool poptruthval	P((void));
-void pre_catch		P((void));
-void post_catch		P((int));
-int  pre_rlimits	P((void));
+bool poptruthval	P((frame*));
+void pre_catch		P((frame*));
+void post_catch		P((frame*, int));
+int  pre_rlimits	P((frame*));
 int  switch_range	P((Int, Int*, int));
-int  switch_str		P((value*, char*, int));
+int  switch_str		P((value*, control*, char*, int));

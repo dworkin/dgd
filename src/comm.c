@@ -156,7 +156,8 @@ bool telnet;
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
  */
-static void comm_del(usr, force)
+static void comm_del(f, usr, force)
+register frame *f;
 register user *usr;
 bool force;
 {
@@ -202,10 +203,10 @@ bool force;
 	error((char *) NULL);
     } else {
 	this_user = obj;
-	(--sp)->type = T_INT;
-	sp->u.number = force;
-	if (i_call(obj, "close", 5, TRUE, 1)) {
-	    i_del_value(sp++);
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = force;
+	if (i_call(f, obj, "close", 5, TRUE, 1)) {
+	    i_del_value(f->sp++);
 	}
 	if (obj == olduser) {
 	    this_user = (object *) NULL;
@@ -483,7 +484,8 @@ int prompt;
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-void comm_receive()
+void comm_receive(f)
+register frame *f;
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
@@ -524,19 +526,19 @@ void comm_receive()
 		conn_del(conn);		/* delete connection */
 		error((char *) NULL);	/* pass on error */
 	    }
-	    call_driver_object("telnet_connect", 0);
-	    if (sp->type != T_OBJECT) {
+	    call_driver_object(f, "telnet_connect", 0);
+	    if (f->sp->type != T_OBJECT) {
 		fatal("driver->telnet_connect() did not return an object");
 	    }
-	    o = &otable[sp->oindex];
-	    sp++;
+	    o = &otable[f->sp->oindex];
+	    f->sp++;
 	    endthread();
 	    comm_new(o, conn, TRUE);
 	    ec_pop();
 
 	    this_user = o;
-	    if (i_call(o, "open", 4, TRUE, 0)) {
-		i_del_value(sp++);
+	    if (i_call(f, o, "open", 4, TRUE, 0)) {
+		i_del_value(f->sp++);
 		endthread();
 		comm_flush(TRUE);
 	    }
@@ -557,19 +559,19 @@ void comm_receive()
 	    conn_del(conn);		/* delete connection */
 	    error((char *) NULL);	/* pass on error */
 	}
-	call_driver_object("binary_connect", 0);
-	if (sp->type != T_OBJECT) {
+	call_driver_object(f, "binary_connect", 0);
+	if (f->sp->type != T_OBJECT) {
 	    fatal("driver->binary_connect() did not return an object");
 	}
-	o = &otable[sp->oindex];
-	sp++;
+	o = &otable[f->sp->oindex];
+	f->sp++;
 	endthread();
 	comm_new(o, conn, FALSE);
 	ec_pop();
 
 	this_user = o;
-	if (i_call(o, "open", 4, TRUE, 0)) {
-	    i_del_value(sp++);
+	if (i_call(f, o, "open", 4, TRUE, 0)) {
+	    i_del_value(f->sp++);
 	    endthread();
 	    comm_flush(TRUE);
 	}
@@ -585,8 +587,8 @@ void comm_receive()
 	    if (!(usr->obj->flags & O_PENDIO) && !(usr->flags & CF_TELNET)) {
 		/* callback */
 		this_user = usr->obj;
-		if (i_call(this_user, "message_done", 12, TRUE, 0)) {
-		    i_del_value(sp++);
+		if (i_call(f, this_user, "message_done", 12, TRUE, 0)) {
+		    i_del_value(f->sp++);
 		    endthread();
 		    comm_flush(TRUE);
 		}
@@ -606,7 +608,7 @@ void comm_receive()
 		    /*
 		     * bad connection
 		     */
-		    comm_del(usr, FALSE);
+		    comm_del(f, usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */
 		    comm_flush(FALSE);
 		    break;
@@ -772,8 +774,8 @@ void comm_receive()
 		p++;			/* skip \n */
 		usr->inbufsz -= n + 1;
 
-		(--sp)->type = T_STRING;
-		str_ref(sp->u.string = str_new(usr->inbuf, (long) n));
+		(--f->sp)->type = T_STRING;
+		str_ref(f->sp->u.string = str_new(usr->inbuf, (long) n));
 		for (n = usr->inbufsz; n != 0; --n) {
 		    *q++ = *p++;
 		}
@@ -783,8 +785,8 @@ void comm_receive()
 		 */
 		n = usr->inbufsz;
 		usr->inbufsz = 0;
-		(--sp)->type = T_STRING;
-		str_ref(sp->u.string = str_new(usr->inbuf, (long) n));
+		(--f->sp)->type = T_STRING;
+		str_ref(f->sp->u.string = str_new(usr->inbuf, (long) n));
 	    }
 	} else {
 	    /*
@@ -796,7 +798,7 @@ void comm_receive()
 		    /*
 		     * bad connection
 		     */
-		    comm_del(usr, FALSE);
+		    comm_del(f, usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */
 		    comm_flush(FALSE);
 		    break;
@@ -804,13 +806,13 @@ void comm_receive()
 		continue;
 	    }
 
-	    (--sp)->type = T_STRING;
-	    str_ref(sp->u.string = str_new(buffer, (long) n));
+	    (--f->sp)->type = T_STRING;
+	    str_ref(f->sp->u.string = str_new(buffer, (long) n));
 	}
 
 	this_user = usr->obj;
-	if (i_call(usr->obj, "receive_message", 15, TRUE, 1)) {
-	    i_del_value(sp++);
+	if (i_call(f, usr->obj, "receive_message", 15, TRUE, 1)) {
+	    i_del_value(f->sp++);
 	    endthread();
 	    comm_flush(TRUE);
 	}
@@ -838,7 +840,8 @@ object *obj;
  * NAME:	comm->close()
  * DESCRIPTION:	remove a user
  */
-void comm_close(obj)
+void comm_close(f, obj)
+frame *f;
 object *obj;
 {
     register user *usr;
@@ -850,7 +853,7 @@ object *obj;
 	 */
 	comm_write(usr, (string *) NULL, FALSE);
     }
-    comm_del(usr, TRUE);
+    comm_del(f, usr, TRUE);
 }
 
 /*
@@ -866,14 +869,15 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	return an array with all user objects
  */
-array *comm_users()
+array *comm_users(data)
+dataspace *data;
 {
     array *a;
     register int i;
     register user *usr;
     register value *v;
 
-    a = arr_new((long) (i = nusers));
+    a = arr_new(data, (long) (i = nusers));
     v = a->elts;
     for (usr = users; i > 0; usr++) {
 	if (usr->obj != (object *) NULL) {

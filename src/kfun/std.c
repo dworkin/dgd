@@ -19,12 +19,13 @@ char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
  * NAME:	kfun->compile_object()
  * DESCRIPTION:	compile an object
  */
-int kf_compile_object()
+int kf_compile_object(f)
+register frame *f;
 {
     char *file;
     register object *obj;
 
-    file = path_string(sp->u.string->text, sp->u.string->len);
+    file = path_string(f->sp->u.string->text, f->sp->u.string->len);
     if (file == (char *) NULL) {
 	return 1;
     }
@@ -40,11 +41,11 @@ int kf_compile_object()
 	    error("Cannot recompile inherited object");
 	}
     }
-    obj = c_compile(file, obj);
-    str_del(sp->u.string);
-    sp->type = T_OBJECT;
-    sp->oindex = obj->index;
-    sp->u.objcnt = obj->count;
+    obj = c_compile(f, file, obj);
+    str_del(f->sp->u.string);
+    f->sp->type = T_OBJECT;
+    f->sp->oindex = obj->index;
+    f->sp->u.objcnt = obj->count;
 
     return 0;
 }
@@ -61,7 +62,8 @@ char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_MIXED, 3,
  * NAME:	kfun->call_other()
  * DESCRIPTION:	call a function in another object
  */
-int kf_call_other(nargs)
+int kf_call_other(f, nargs)
+register frame *f;
 int nargs;
 {
     register object *obj;
@@ -71,18 +73,18 @@ int nargs;
 	return -1;
     }
 
-    val = &sp[nargs - 1];
+    val = &f->sp[nargs - 1];
     switch (val->type) {
     case T_STRING:
-	*--sp = *val;
+	*--f->sp = *val;
 	val->type = T_INT;	/* erase old copy */
-	call_driver_object("call_object", 1);
-	if (sp->type != T_OBJECT) {
-	    i_del_value(sp++);
+	call_driver_object(f, "call_object", 1);
+	if (f->sp->type != T_OBJECT) {
+	    i_del_value(f->sp++);
 	    return 1;
 	}
-	obj = &otable[sp->oindex];
-	sp++;
+	obj = &otable[f->sp->oindex];
+	f->sp++;
 	break;
 
     case T_OBJECT:
@@ -99,23 +101,23 @@ int nargs;
     val->u.number = 0;
     --val;
 
-    if (cframe->obj->count == 0) {
+    if (f->obj->count == 0) {
 	/*
 	 * call from destructed object
 	 */
-	i_pop(nargs - 1);
+	i_pop(f, nargs - 1);
 	return 0;
     }
 
-    if (i_call(obj, val->u.string->text, val->u.string->len, FALSE, nargs - 2))
-    {
+    if (i_call(f, obj, val->u.string->text, val->u.string->len, FALSE,
+	       nargs - 2)) {
 	/* function exists */
-	val = sp++;
-	str_del((sp++)->u.string);
-	*sp = *val;
+	val = f->sp++;
+	str_del((f->sp++)->u.string);
+	*f->sp = *val;
     } else {
 	/* function doesn't exist */
-	str_del((sp++)->u.string);
+	str_del((f->sp++)->u.string);
     }
     return 0;
 }
@@ -131,19 +133,20 @@ char pt_this_object[] = { C_STATIC, T_OBJECT, 0 };
  * NAME:	kfun->this_object()
  * DESCRIPTION:	return the current object
  */
-int kf_this_object()
+int kf_this_object(f)
+register frame *f;
 {
     register object *obj;
 
-    --sp;
-    obj = cframe->obj;
+    --f->sp;
+    obj = f->obj;
     if (obj->count != 0) {
-	sp->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	f->sp->type = T_OBJECT;
+	f->sp->oindex = obj->index;
+	f->sp->u.objcnt = obj->count;
     } else {
-	sp->type = T_INT;
-	sp->u.number = 0;
+	f->sp->type = T_INT;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -160,25 +163,26 @@ char pt_previous_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_OBJECT, 1,
  * NAME:	kfun->previous_object()
  * DESCRIPTION:	return the previous object in the call_other chain
  */
-int kf_previous_object(nargs)
+int kf_previous_object(f, nargs)
+register frame *f;
 int nargs;
 {
     register object *obj;
 
     if (nargs == 0) {
-	(--sp)->type = T_INT;
-	sp->u.number = 0;
-    } else if (sp->u.number < 0) {
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = 0;
+    } else if (f->sp->u.number < 0) {
 	return 1;
     }
 
-    obj = i_prev_object((int) sp->u.number);
+    obj = i_prev_object(f, (int) f->sp->u.number);
     if (obj != (object *) NULL) {
-	sp->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	f->sp->type = T_OBJECT;
+	f->sp->oindex = obj->index;
+	f->sp->u.objcnt = obj->count;
     } else {
-	sp->u.number = 0;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -195,28 +199,29 @@ char pt_previous_program[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING,
  * NAME:	kfun->previous_program()
  * DESCRIPTION:	return the previous program in the function call chain
  */
-int kf_previous_program(nargs)
+int kf_previous_program(f, nargs)
+register frame *f;
 int nargs;
 {
     char *prog;
     register string *str;
 
     if (nargs == 0) {
-	(--sp)->type = T_INT;
-	sp->u.number = 0;
-    } else if (sp->u.number < 0) {
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = 0;
+    } else if (f->sp->u.number < 0) {
 	return 1;
     }
 
-    prog = i_prev_program((int) sp->u.number);
+    prog = i_prev_program(f, (int) f->sp->u.number);
     if (prog != (char *) NULL) {
-	sp->type = T_STRING;
+	f->sp->type = T_STRING;
 	str = str_new((char *) NULL, strlen(prog) + 1L);
 	str->text[0] = '/';
 	strcpy(str->text + 1, prog);
-	str_ref(sp->u.string = str);
+	str_ref(f->sp->u.string = str);
     } else {
-	sp->u.number = 0;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -232,13 +237,14 @@ char pt_call_trace[] = { C_STATIC, T_MIXED | (2 << REFSHIFT), 0 };
  * NAME:	kfun->call_trace()
  * DESCRIPTION:	return the entire call_other chain
  */
-int kf_call_trace()
+int kf_call_trace(f)
+register frame *f;
 {
     array *a;
 
-    a = i_call_trace();
-    (--sp)->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    a = i_call_trace(f);
+    (--f->sp)->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
     return 0;
 }
 # endif
@@ -253,18 +259,19 @@ char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_OBJECT };
  * NAME:	kfun->clone_object()
  * DESCRIPTION:	clone a new object
  */
-int kf_clone_object()
+int kf_clone_object(f)
+register frame *f;
 {
     register object *obj;
 
-    obj = &otable[sp->oindex];
+    obj = &otable[f->sp->oindex];
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
     obj = o_clone(obj);
-    sp->oindex = obj->index;
-    sp->u.objcnt = obj->count;
-    i_call(obj, "", 0, FALSE, 0);	/* cause creator to be called */
+    f->sp->oindex = obj->index;
+    f->sp->u.objcnt = obj->count;
+    i_call(f, obj, "", 0, FALSE, 0);	/* cause creator to be called */
     return 0;
 }
 # endif
@@ -279,19 +286,20 @@ char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
  * NAME:	kfun->destruct_object()
  * DESCRIPTION:	destruct an object
  */
-int kf_destruct_object()
+int kf_destruct_object(f)
+register frame *f;
 {
     register object *obj;
 
-    obj = &otable[sp->oindex];
+    obj = &otable[f->sp->oindex];
     if (obj->flags & O_USER) {
-	comm_close(obj);
+	comm_close(f, obj);
     }
     if (obj->flags & O_EDITOR) {
 	ed_del(obj);
     }
-    i_odest(obj);	/* wipe out occurrances on the stack */
-    o_del(obj);
+    i_odest(f, obj);	/* wipe out occurrances on the stack */
+    o_del(obj, f);
     return 0;
 }
 # endif
@@ -306,15 +314,16 @@ char pt_object_name[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
  * NAME:	kfun->object_name()
  * DESCRIPTION:	return the name of an object
  */
-int kf_object_name()
+int kf_object_name(f)
+register frame *f;
 {
     char *name;
 
-    name = o_name(&otable[sp->oindex]);
-    sp->type = T_STRING;
-    str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
-    sp->u.string->text[0] = '/';
-    strcpy(sp->u.string->text + 1, name);
+    name = o_name(&otable[f->sp->oindex]);
+    f->sp->type = T_STRING;
+    str_ref(f->sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
+    f->sp->u.string->text[0] = '/';
+    strcpy(f->sp->u.string->text + 1, name);
     return 0;
 }
 # endif
@@ -329,25 +338,26 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
  * NAME:	kfun->find_object()
  * DESCRIPTION:	find the loaded object for a given object name
  */
-int kf_find_object()
+int kf_find_object(f)
+register frame *f;
 {
     char *path;
     object *obj;
 
-    path = path_string(sp->u.string->text, sp->u.string->len);
+    path = path_string(f->sp->u.string->text, f->sp->u.string->len);
     if (path == (char *) NULL) {
 	return 1;
     }
-    i_add_ticks(2);
+    i_add_ticks(f, 2);
     obj = o_find(path);
-    str_del(sp->u.string);
+    str_del(f->sp->u.string);
     if (obj != (object *) NULL) {
-	sp->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	f->sp->type = T_OBJECT;
+	f->sp->oindex = obj->index;
+	f->sp->u.objcnt = obj->count;
     } else {
-	sp->type = T_INT;
-	sp->u.number = 0;
+	f->sp->type = T_INT;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -364,36 +374,39 @@ char pt_function_object[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
  * NAME:	kfun->function_object()
  * DESCRIPTION:	return the name of the program a function is in
  */
-int kf_function_object()
+int kf_function_object(f)
+register frame *f;
 {
     object *obj;
     dsymbol *symb;
     char *name;
 
-    i_add_ticks(2);
-    obj = &otable[sp->oindex];
-    sp++;
-    symb = ctrl_symb(o_control(obj), sp->u.string->text, sp->u.string->len);
-    str_del(sp->u.string);
+    i_add_ticks(f, 2);
+    obj = &otable[f->sp->oindex];
+    f->sp++;
+    symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
+		     f->sp->u.string->len);
+    str_del(f->sp->u.string);
 
     if (symb != (dsymbol *) NULL) {
 	object *o;
 
 	o = obj->ctrl->inherits[UCHAR(symb->inherit)].obj;
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
-	    obj == cframe->obj) {
+	    obj == f->obj) {
 	    /*
 	     * function exists and is callable
 	     */
 	    name = o->chain.name;
-	    str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
-	    sp->u.string->text[0] = '/';
-	    strcpy(sp->u.string->text + 1, name);
+	    str_ref(f->sp->u.string = str_new((char *) NULL,
+					      strlen(name) + 1L));
+	    f->sp->u.string->text[0] = '/';
+	    strcpy(f->sp->u.string->text + 1, name);
 	    return 0;
 	}
     }
-    sp->type = T_INT;
-    sp->u.number = 0;
+    f->sp->type = T_INT;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -408,18 +421,19 @@ char pt_this_user[] = { C_STATIC, T_OBJECT, 0 };
  * NAME:	kfun->this_user()
  * DESCRIPTION:	return the current user object (if any)
  */
-int kf_this_user()
+int kf_this_user(f)
+register frame *f;
 {
     object *obj;
 
     obj = comm_user();
     if (obj != (object *) NULL) {
-	(--sp)->type = T_OBJECT;
-	sp->oindex = obj->index;
-	sp->u.objcnt = obj->count;
+	(--f->sp)->type = T_OBJECT;
+	f->sp->oindex = obj->index;
+	f->sp->u.objcnt = obj->count;
     } else {
-	(--sp)->type = T_INT;
-	sp->u.number = 0;
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -435,17 +449,18 @@ char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
  * NAME:	kfun->query_ip_number()
  * DESCRIPTION:	return the ip number of a user
  */
-int kf_query_ip_number()
+int kf_query_ip_number(f)
+register frame *f;
 {
     register object *obj;
 
-    obj = &otable[sp->oindex];
+    obj = &otable[f->sp->oindex];
     if (obj->flags & O_USER) {
-	sp->type = T_STRING;
-	str_ref(sp->u.string = comm_ip_number(obj));
+	f->sp->type = T_STRING;
+	str_ref(f->sp->u.string = comm_ip_number(obj));
     } else {
-	sp->type = T_INT;
-	sp->u.number = 0;
+	f->sp->type = T_INT;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -461,11 +476,12 @@ char pt_users[] = { C_STATIC, T_OBJECT | (1 << REFSHIFT), 0 };
  * NAME:	kfun->users()
  * DESCRIPTION:	return the array of users
  */
-int kf_users()
+int kf_users(f)
+register frame *f;
 {
-    (--sp)->type = T_ARRAY;
-    arr_ref(sp->u.array = comm_users());
-    i_add_ticks(sp->u.array->size);
+    (--f->sp)->type = T_ARRAY;
+    arr_ref(f->sp->u.array = comm_users(f->data));
+    i_add_ticks(f, f->sp->u.array->size);
     return 0;
 }
 # endif
@@ -480,14 +496,15 @@ char pt_strlen[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
  * NAME:	kfun->strlen()
  * DESCRIPTION:	return the length of a string
  */
-int kf_strlen()
+int kf_strlen(f)
+register frame *f;
 {
     unsigned short len;
 
-    len = sp->u.string->len;
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = len;
+    len = f->sp->u.string->len;
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = len;
     return 0;
 }
 # endif
@@ -503,18 +520,19 @@ char pt_allocate[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
  * NAME:	kfun->allocate()
  * DESCRIPTION:	allocate an array
  */
-int kf_allocate()
+int kf_allocate(f)
+register frame *f;
 {
     register int i;
     register value *v;
 
-    if (sp->u.number < 0) {
+    if (f->sp->u.number < 0) {
 	return 1;
     }
-    i_add_ticks(sp->u.number);
-    arr_ref(sp->u.array = arr_new((long) sp->u.number));
-    sp->type = T_ARRAY;
-    for (i = sp->u.array->size, v = sp->u.array->elts; i > 0; --i, v++) {
+    i_add_ticks(f, f->sp->u.number);
+    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
+    f->sp->type = T_ARRAY;
+    for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
 	v->type = T_INT;
 	v->u.number = 0;
     }
@@ -533,14 +551,15 @@ char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1,
  * NAME:	kfun->sizeof()
  * DESCRIPTION:	return the size of an array
  */
-int kf_sizeof()
+int kf_sizeof(f)
+register frame *f;
 {
     unsigned short size;
 
-    size = sp->u.array->size;
-    arr_del(sp->u.array);
-    sp->type = T_INT;
-    sp->u.number = size;
+    size = f->sp->u.array->size;
+    arr_del(f->sp->u.array);
+    f->sp->type = T_INT;
+    f->sp->u.number = size;
     return 0;
 }
 # endif
@@ -556,15 +575,16 @@ char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT),
  * NAME:	kfun->map_indices()
  * DESCRIPTION:	return the array of mapping indices
  */
-int kf_map_indices()
+int kf_map_indices(f)
+register frame *f;
 {
     array *a;
 
-    a = map_indices(sp->u.array);
-    i_add_ticks(sp->u.array->size);
-    arr_del(sp->u.array);
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    a = map_indices(f->data, f->sp->u.array);
+    i_add_ticks(f, f->sp->u.array->size);
+    arr_del(f->sp->u.array);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
     return 0;
 }
 # endif
@@ -580,15 +600,16 @@ char pt_map_values[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (1 << REFSHIFT), 1,
  * NAME:	kfun->map_values()
  * DESCRIPTION:	return the array of mapping values
  */
-int kf_map_values()
+int kf_map_values(f)
+register frame *f;
 {
     array *a;
 
-    a = map_values(sp->u.array);
-    i_add_ticks(sp->u.array->size);
-    arr_del(sp->u.array);
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    a = map_values(f->data, f->sp->u.array);
+    i_add_ticks(f, f->sp->u.array->size);
+    arr_del(f->sp->u.array);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
     return 0;
 }
 # endif
@@ -603,15 +624,16 @@ char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_MAPPING };
  * NAME:	kfun->map_sizeof()
  * DESCRIPTION:	return the number of index/value pairs in a mapping
  */
-int kf_map_sizeof()
+int kf_map_sizeof(f)
+register frame *f;
 {
     unsigned short size;
 
-    i_add_ticks(sp->u.array->size);
-    size = map_size(sp->u.array);
-    arr_del(sp->u.array);
-    sp->type = T_INT;
-    sp->u.number = size;
+    i_add_ticks(f, f->sp->u.array->size);
+    size = map_size(f->sp->u.array);
+    arr_del(f->sp->u.array);
+    f->sp->type = T_INT;
+    f->sp->u.number = size;
     return 0;
 }
 # endif
@@ -626,14 +648,15 @@ char pt_typeof[] = { C_STATIC, T_INT, 1, T_MIXED };
  * NAME:	kfun->typeof()
  * DESCRIPTION:	return the type of a value
  */
-int kf_typeof()
+int kf_typeof(f)
+register frame *f;
 {
     unsigned short type;
 
-    type = sp->type;
-    i_del_value(sp);
-    sp->type = T_INT;
-    sp->u.number = type;
+    type = f->sp->type;
+    i_del_value(f->sp);
+    f->sp->type = T_INT;
+    f->sp->u.number = type;
     return 0;
 }
 # endif
@@ -648,15 +671,16 @@ char pt_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
  * NAME:	kfun->error()
  * DESCRIPTION:	cause an error
  */
-int kf_error()
+int kf_error(f)
+register frame *f;
 {
-    if (strchr(sp->u.string->text, LF) != (char *) NULL) {
+    if (strchr(f->sp->u.string->text, LF) != (char *) NULL) {
 	error("'\\n' in error string");
     }
-    if (sp->u.string->len >= 4 * STRINGSZ) {
+    if (f->sp->u.string->len >= 4 * STRINGSZ) {
 	error("Error string too long");
     }
-    error("%s", sp->u.string->text);
+    error("%s", f->sp->u.string->text);
     return 0;
 }
 # endif
@@ -671,36 +695,37 @@ char pt_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
  * NAME:	kfun->send_message()
  * DESCRIPTION:	send a message to a user
  */
-int kf_send_message()
+int kf_send_message(f)
+register frame *f;
 {
     object *obj;
     int num;
 
-    if (sp->type == T_STRING) {
-	num = sp->u.string->len;
-    } else if (sp->type == T_INT) {
+    if (f->sp->type == T_STRING) {
+	num = f->sp->u.string->len;
+    } else if (f->sp->type == T_INT) {
 	num = 1;
     } else {
 	return 1;
     }
 
-    obj = cframe->obj;
+    obj = f->obj;
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
-	    if (sp->type == T_INT) {
-		comm_echo(obj, sp->u.number != 0);
+	    if (f->sp->type == T_INT) {
+		comm_echo(obj, f->sp->u.number != 0);
 	    } else {
-		num = comm_send(obj, sp->u.string);
+		num = comm_send(obj, f->sp->u.string);
 	    }
-	} else if ((obj->flags & O_DRIVER) && sp->type == T_STRING) {
-	    P_message(sp->u.string->text);
+	} else if ((obj->flags & O_DRIVER) && f->sp->type == T_STRING) {
+	    P_message(f->sp->u.string->text);
 	}
     }
-    if (sp->type == T_STRING) {
-	str_del(sp->u.string);
+    if (f->sp->type == T_STRING) {
+	str_del(f->sp->u.string);
     }
-    sp->type = T_INT;
-    sp->u.number = num;
+    f->sp->type = T_INT;
+    f->sp->u.number = num;
     return 0;
 }
 # endif
@@ -715,10 +740,11 @@ char pt_time[] = { C_STATIC, T_INT, 0 };
  * NAME:	kfun->time()
  * DESCRIPTION:	return the current time
  */
-int kf_time()
+int kf_time(f)
+frame *f;
 {
-    (--sp)->type = T_INT;
-    sp->u.number = P_time();
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = P_time();
     return 0;
 }
 # endif
@@ -734,7 +760,8 @@ char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,
  * NAME:	kfun->call_out()
  * DESCRIPTION:	start a call_out
  */
-int kf_call_out(nargs)
+int kf_call_out(f, nargs)
+register frame *f;
 int nargs;
 {
     object *obj;
@@ -744,21 +771,21 @@ int nargs;
 	return -1;
     }
 
-    i_add_ticks(nargs);
-    obj = cframe->obj;
+    i_add_ticks(f, nargs);
+    obj = f->obj;
     if (obj->count != 0 &&
-	(handle=co_new(obj, sp[nargs - 1].u.string, sp[nargs - 2].u.number,
-		       nargs - 2)) != 0) {
+	(handle=co_new(obj, f->sp[nargs - 1].u.string,
+		       f->sp[nargs - 2].u.number, f, nargs - 2)) != 0) {
 	/* pop duration */
-	sp++;
+	f->sp++;
     } else {
 	/* no call_out was started: pop all arguments */
-	i_pop(nargs - 1);
+	i_pop(f, nargs - 1);
 	handle = 0;
     }
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = handle;
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = handle;
 
     return 0;
 }
@@ -774,10 +801,11 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  * NAME:	kfun->remove_call_out()
  * DESCRIPTION:	remove a call_out
  */
-int kf_remove_call_out()
+int kf_remove_call_out(f)
+register frame *f;
 {
-    i_add_ticks(10);
-    sp->u.number = co_del(cframe->obj, (uindex) sp->u.number);
+    i_add_ticks(f, 10);
+    f->sp->u.number = co_del(f->obj, (uindex) f->sp->u.number);
     return 0;
 }
 # endif
@@ -792,12 +820,13 @@ char pt_swapout[] = { C_STATIC, T_VOID, 0 };
  * NAME:	kfun->swapout()
  * DESCRIPTION:	swap out all objects
  */
-int kf_swapout()
+int kf_swapout(f)
+frame *f;
 {
     swapout();
 
-    (--sp)->type = T_INT;
-    sp->u.number = 0;
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -812,11 +841,12 @@ char pt_dump_state[] = { C_STATIC, T_VOID, 0 };
  * NAME:	kfun->dump_state()
  * DESCRIPTION:	dump state
  */
-int kf_dump_state()
+int kf_dump_state(f)
+frame *f;
 {
     dump_state();
-    (--sp)->type = T_INT;
-    sp->u.number = 0;
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -831,12 +861,13 @@ char pt_shutdown[] = { C_STATIC, T_VOID, 0 };
  * NAME:	kfun->shutdown()
  * DESCRIPTION:	shut down the mud
  */
-int kf_shutdown()
+int kf_shutdown(f)
+frame *f;
 {
     finish();
 
-    (--sp)->type = T_INT;
-    sp->u.number = 0;
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -853,20 +884,21 @@ char pt_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS,
  * DESCRIPTION:	return an array with status information about the gamedriver
  *		or an object
  */
-int kf_status(nargs)
+int kf_status(f, nargs)
+register frame *f;
 int nargs;
 {
     array *a;
 
-    i_add_ticks(100);
+    i_add_ticks(f, 100);
     if (nargs == 0) {
-	a = conf_status();
-	--sp;
+	a = conf_status(f);
+	--f->sp;
     } else {
-	a = conf_object(&otable[sp->oindex]);
+	a = conf_object(f->data, &otable[f->sp->oindex]);
     }
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
     return 0;
 }
 # endif

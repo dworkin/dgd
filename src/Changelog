@@ -1142,3 +1142,6 @@ DGD 1.1
  - Use SO_OOBINLINE on sockets if the host supports it.
  - Clear update field in all objects after a restore.
  - Compensated for a bug in ctime() on some unices.
+ - Removed many references to global variables.
+ - Removed some code from the upgrading procedure that was unreachable.
+ - Improved Mac edit menu.

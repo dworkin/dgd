@@ -261,7 +261,7 @@ static void setmenu(void)
 	EnableItem(editmenu, PASTE);
 	EnableItem(editmenu, CLEAR);
 	DisableItem(editmenu, SELECT);
-    } else if (running) {
+    } else if (mainframe != NULL) {
 	DisableItem(editmenu, UNDO);
 	DisableItem(editmenu, CUT);
 	if (selected) {
@@ -276,7 +276,7 @@ static void setmenu(void)
 	} else {
 	    DisableItem(editmenu, SELECT);
 	}
-    } else if (editing && mainframe == NULL) {
+    } else if (editing) {
 	DisableItem(editmenu, 0);
 	DrawMenuBar();
 	editing = FALSE;

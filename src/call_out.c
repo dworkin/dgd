@@ -215,10 +215,11 @@ register uindex i;
  * NAME:	call_out->new()
  * DESCRIPTION:	add a new callout
  */
-uindex co_new(obj, str, delay, nargs)
+uindex co_new(obj, str, delay, f, nargs)
 object *obj;
 string *str;
 Int delay;
+frame *f;
 int nargs;
 {
     Uint t;
@@ -266,7 +267,7 @@ int nargs;
 	co->time = t;
     }
 
-    co->handle = d_new_call_out(o_dataspace(obj), str, t - timediff, nargs);
+    co->handle = d_new_call_out(o_dataspace(obj), str, t - timediff, f, nargs);
     co->oindex = obj->index;
 
     return co->handle;
@@ -289,12 +290,11 @@ register unsigned int handle;
     /*
      * get the callout
      */
-    if (d_get_call_out(o_dataspace(obj), handle, &t, &nargs) == (string *) NULL)
-    {
+    if (d_get_call_out(o_dataspace(obj), handle, &t, (frame *) NULL, &nargs) ==
+							    (string *) NULL) {
 	/* no such callout */
 	return -1;
     }
-    i_pop(nargs + 1);
 
     t += timediff;
     i = obj->index;
@@ -361,17 +361,19 @@ register unsigned int handle;
  * NAME:	call_out->list()
  * DESCRIPTION:	return an array with the callouts of an object
  */
-array *co_list(obj)
+array *co_list(data, obj)
+dataspace *data;
 object *obj;
 {
-    return d_list_callouts(o_dataspace(obj), timeout - timediff);
+    return d_list_callouts(data, o_dataspace(obj), timeout - timediff);
 }
 
 /*
  * NAME:	call_out->call()
  * DESCRIPTION:	call expired callouts
  */
-void co_call()
+void co_call(f)
+frame *f;
 {
     register uindex i, handle;
     object *obj;
@@ -443,14 +445,14 @@ void co_call()
 		return;
 	    }
 
-	    str = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
-	    if (i_call(obj, str->text, str->len, TRUE, nargs)) {
+	    str = d_get_call_out(o_dataspace(obj), handle, &t, f, &nargs);
+	    if (i_call(f, obj, str->text, str->len, TRUE, nargs)) {
 		/* function exists */
-		i_del_value(sp++);
-		str_del((sp++)->u.string);
+		i_del_value(f->sp++);
+		str_del((f->sp++)->u.string);
 	    } else {
 		/* function doesn't exist */
-		str_del((sp++)->u.string);
+		str_del((f->sp++)->u.string);
 	    }
 	    endthread();
 	}

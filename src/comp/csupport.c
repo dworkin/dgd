@@ -209,7 +209,8 @@ char *auto_obj, *driver_obj;
  * NAME:	precomp->list()
  * DESCRIPTION:	return an array with all precompiled objects
  */
-array *pc_list()
+array *pc_list(data)
+dataspace *data;
 {
     array *a;
     register uindex n;
@@ -223,7 +224,7 @@ array *pc_list()
 	}
     }
 
-    a = arr_new((long) n);
+    a = arr_new(data, (long) n);
     v = a->elts;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->obj != (object *) NULL && (*pc)->obj->count != 0 &&
@@ -832,16 +833,18 @@ int fd;
  * NAME:	call_kfun()
  * DESCRIPTION:	call a kernel function
  */
-void call_kfun(n)
+void call_kfun(f, n)
+frame *f;
 register int n;
 {
     register kfunc *kf;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(kf->name, "kfun", kf->proto, PROTO_NARGS(kf->proto), TRUE);
+	i_typecheck(f, kf->name, "kfun", kf->proto, PROTO_NARGS(kf->proto),
+		    TRUE);
     }
-    n = (*kf->func)();
+    n = (*kf->func)(f);
     if (n != 0) {
 	error("Bad argument %d for kfun %s", n, kf->name);
     }
@@ -851,16 +854,17 @@ register int n;
  * NAME:	call_kfun_arg()
  * DESCRIPTION:	call a kernel function with variable # of arguments
  */
-void call_kfun_arg(n, nargs)
+void call_kfun_arg(f, n, nargs)
+frame *f;
 register int n, nargs;
 {
     register kfunc *kf;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-	i_typecheck(kf->name, "kfun", kf->proto, nargs, TRUE);
+	i_typecheck(f, kf->name, "kfun", kf->proto, nargs, TRUE);
     }
-    n = (*kf->func)(nargs);
+    n = (*kf->func)(f, nargs);
     if (n != 0) {
 	error("Bad argument %d for kfun %s", n, kf->name);
     }
@@ -908,26 +912,27 @@ register Int i, d;
  * NAME:	poptruthval()
  * DESCRIPTION:	pop a truth value from the stack
  */
-bool poptruthval()
+bool poptruthval(f)
+register frame *f;
 {
-    switch (sp->type) {
+    switch (f->sp->type) {
     case T_INT:
-	return (sp++)->u.number != 0;
+	return (f->sp++)->u.number != 0;
 
     case T_FLOAT:
-	sp++;
-	return !VFLT_ISZERO(sp - 1);
+	f->sp++;
+	return !VFLT_ISZERO(f->sp - 1);
 
     case T_STRING:
-	str_del(sp->u.string);
+	str_del(f->sp->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
-	arr_del(sp->u.array);
+	arr_del(f->sp->u.array);
 	break;
     }
-    sp++;
+    f->sp++;
     return TRUE;
 }
 
@@ -938,26 +943,28 @@ static int csi;			/* catch stack index */
  * NAME:	pre_catch()
  * DESCRIPTION:	prepare for a catch
  */
-void pre_catch()
+void pre_catch(f)
+frame *f;
 {
     if (csi == ERRSTACKSZ) {
 	error("Too deep catch() nesting");
     }
-    cstack[csi++] = i_get_rllevel();
+    cstack[csi++] = i_get_rllevel(f);
 }
 
 /*
  * NAME:	post_catch()
  * DESCRIPTION:	clean up after a catch
  */
-void post_catch(n)
+void post_catch(f, n)
+frame *f;
 int n;
 {
     if (n == 0) {
-	i_set_rllevel(cstack[--csi]);
+	i_set_rllevel(f, cstack[--csi]);
     } else {
 	/* break, continue, return out of catch */
-	i_set_rllevel(cstack[csi -= n]);
+	i_set_rllevel(f, cstack[csi -= n]);
 	do {
 	    ec_pop();
 	} while (--n != 0);
@@ -968,17 +975,18 @@ int n;
  * NAME:	pre_rlimits()
  * DESCRIPTION:	prepare for rlimits
  */
-int pre_rlimits()
+int pre_rlimits(f)
+register frame *f;
 {
-    if (sp[1].type != T_INT) {
+    if (f->sp[1].type != T_INT) {
 	error("Bad rlimits depth type");
     }
-    if (sp->type != T_INT) {
+    if (f->sp->type != T_INT) {
 	error("Bad rlimits ticks type");
     }
-    sp += 2;
+    f->sp += 2;
 
-    return i_set_rlimits(sp[-1].u.number, sp[-2].u.number);
+    return i_set_rlimits(f, f->sp[-1].u.number, f->sp[-2].u.number);
 }
 
 /*
@@ -1012,15 +1020,15 @@ register int h;
  * NAME:	switch_str()
  * DESCRIPTION:	handle a str switch
  */
-int switch_str(v, tab, h)
+int switch_str(v, ctrl, tab, h)
 value *v;
+register control *ctrl;
 register char *tab;
 register int h;
 {
     register int l, m, c;
     register char *t;
     register string *s;
-    register control *ctrl;
 
     if (v->type == T_INT && v->u.number == 0) {
 	return (tab[0] == 0);
@@ -1030,7 +1038,6 @@ register int h;
     }
 
     s = v->u.string;
-    ctrl = cframe->p_ctrl;
     if (*tab++ == 0) {
 	tab -= 3;
 	l = 1;

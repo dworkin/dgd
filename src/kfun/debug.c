@@ -637,9 +637,10 @@ FUNCDEF("dump_object", kf_dump_object, pt_dump_object)
 # else
 char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 
-int kf_dump_object()
+int kf_dump_object(f)
+frame *f;
 {
-    showctrl(o_control(&otable[sp->oindex]));
+    showctrl(o_control(&otable[f->sp->oindex]));
     fflush(stdout);
     return 0;
 }
@@ -652,21 +653,22 @@ FUNCDEF("dump_function", kf_dump_function, pt_dump_function)
 char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, T_VOID, 2,
 			    T_OBJECT, T_STRING };
 
-int kf_dump_function()
+int kf_dump_function(f)
+frame *f;
 {
     dsymbol *symb;
 
-    symb = ctrl_symb(o_control(&otable[sp[1].oindex]),
-		     sp->u.string->text, sp->u.string->len);
+    symb = ctrl_symb(o_control(&otable[f->sp[1].oindex]),
+		     f->sp->u.string->text, f->sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
 	control *ctrl;
 
-	ctrl = o_control(&otable[sp[1].oindex]);
+	ctrl = o_control(&otable[f->sp[1].oindex]);
 	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
 	       UCHAR(symb->index));
 	fflush(stdout);
     }
-    str_del((sp++)->u.string);
+    str_del((f->sp++)->u.string);
     return 0;
 }
 # endif

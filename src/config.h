@@ -72,8 +72,13 @@ extern char	       *conf_driver	P((void));
 extern bool		conf_typechecking P((void));
 extern unsigned short	conf_array_size	P((void));
 
+typedef struct _string_ string;
 typedef struct _array_ array;
 typedef struct _object_ object;
+typedef struct _value_ value;
+typedef struct _control_ control;
+typedef struct _dataspace_ dataspace;
+typedef struct _frame_ frame;
 
-extern array *conf_status	P((void));
-extern array *conf_object	P((object*));
+extern array *conf_status	P((frame*));
+extern array *conf_object	P((dataspace*, object*));

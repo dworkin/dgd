@@ -16,14 +16,7 @@
 
 
 static value stack[MIN_STACK];	/* initial stack */
-value *sp;			/* interpreter stack pointer */
-static value *ilvp;		/* indexed lvalue stack pointer */
 frame *cframe;			/* current frame */
-static Int maxdepth;		/* max stack depth */
-Int ticks;			/* # ticks left */
-static bool nodepth;		/* no stack depth checking */
-static bool noticks;		/* no ticks checking */
-static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 
@@ -39,12 +32,12 @@ char *create;
 {
     static frame topframe;
 
-    topframe.fp = sp = stack + MIN_STACK;
-    topframe.stack = topframe.ilvp = ilvp = stack;
+    topframe.fp = topframe.sp = stack + MIN_STACK;
+    topframe.stack = topframe.prev_ilvp = topframe.ilvp = stack;
+    topframe.nodepth = TRUE;
+    topframe.noticks = TRUE;
     cframe = &topframe;
 
-    nodepth = TRUE;
-    noticks = TRUE;
     creator = create;
     clen = strlen(create);
 }
@@ -98,10 +91,11 @@ register value *v;
  * DESCRIPTION:	check if there is room on the stack for new values; if not,
  *		make space
  */
-void i_grow_stack(size)
+void i_grow_stack(f, size)
+register frame *f;
 int size;
 {
-    if (sp < ilvp + size + MIN_STACK) {
+    if (f->sp < f->ilvp + size + MIN_STACK) {
 	register int spsize, ilsize;
 	register value *v, *stk;
 	register long offset;
@@ -109,50 +103,50 @@ int size;
 	/*
 	 * extend the local stack
 	 */
-	spsize = cframe->fp - sp;
-	ilsize = ilvp - cframe->stack;
+	spsize = f->fp - f->sp;
+	ilsize = f->ilvp - f->stack;
 	size = ALGN(spsize + ilsize + size + MIN_STACK, 8);
 	stk = ALLOC(value, size);
-	offset = (long) (stk + size) - (long) cframe->fp;
+	offset = (long) (stk + size) - (long) f->fp;
 
 	/* copy indexed lvalue stack values */
 	v = stk;
 	if (ilsize > 0) {
-	    memcpy(stk, cframe->stack, ilsize * sizeof(value));
+	    memcpy(stk, f->stack, ilsize * sizeof(value));
 	    do {
-		if (v->type == T_LVALUE && v->u.lval >= sp &&
-		    v->u.lval < cframe->fp) {
+		if (v->type == T_LVALUE && v->u.lval >= f->sp &&
+		    v->u.lval < f->fp) {
 		    v->u.lval = (value *) ((long) v->u.lval + offset);
 		}
 		v++;
 	    } while (--ilsize > 0);
 	}
-	ilvp = v;
+	f->ilvp = v;
 
 	/* copy stack values */
 	v = stk + size;
 	if (spsize > 0) {
-	    memcpy(v - spsize, sp, spsize * sizeof(value));
+	    memcpy(v - spsize, f->sp, spsize * sizeof(value));
 	    do {
 		--v;
-		if (v->type == T_LVALUE && v->u.lval >= sp &&
-		    v->u.lval < cframe->fp) {
+		if (v->type == T_LVALUE && v->u.lval >= f->sp &&
+		    v->u.lval < f->fp) {
 		    v->u.lval = (value *) ((long) v->u.lval + offset);
 		}
 	    } while (--spsize > 0);
 	}
-	sp = v;
+	f->sp = v;
 
 	/* replace old stack */
-	if (cframe->sos) {
+	if (f->sos) {
 	    /* stack on stack: alloca'd */
-	    AFREE(cframe->stack);
-	    cframe->sos = FALSE;
-	} else if (cframe->stack != stack) {
-	    FREE(cframe->stack);
+	    AFREE(f->stack);
+	    f->sos = FALSE;
+	} else if (f->stack != stack) {
+	    FREE(f->stack);
 	}
-	cframe->stack = stk;
-	cframe->fp = stk + size;
+	f->stack = stk;
+	f->fp = stk + size;
     }
 }
 
@@ -160,10 +154,11 @@ int size;
  * NAME:	interpret->push_value()
  * DESCRIPTION:	push a value on the stack
  */
-void i_push_value(v)
+void i_push_value(f, v)
+frame *f;
 register value *v;
 {
-    *--sp = *v;
+    *--f->sp = *v;
     switch (v->type) {
     case T_STRING:
 	str_ref(v->u.string);
@@ -175,7 +170,7 @@ register value *v;
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *sp = zero_value;
+	    *f->sp = zero_value;
 	}
 	break;
 
@@ -190,12 +185,13 @@ register value *v;
  * NAME:	interpret->pop()
  * DESCRIPTION:	pop a number of values (can be lvalues) from the stack
  */
-void i_pop(n)
+void i_pop(f, n)
+register frame *f;
 register int n;
 {
     register value *v;
 
-    for (v = sp; --n >= 0; v++) {
+    for (v = f->sp; --n >= 0; v++) {
 	switch (v->type) {
 	case T_STRING:
 	    str_del(v->u.string);
@@ -207,26 +203,27 @@ register int n;
 	    break;
 
 	case T_SALVALUE:
-	    --ilvp;
+	    --f->ilvp;
 	case T_ALVALUE:
-	    arr_del((--ilvp)->u.array);
+	    arr_del((--f->ilvp)->u.array);
 	    break;
 
 	case T_MLVALUE:
 	case T_SMLVALUE:
-	    i_del_value(--ilvp);
-	    arr_del((--ilvp)->u.array);
+	    i_del_value(--f->ilvp);
+	    arr_del((--f->ilvp)->u.array);
 	    break;
 	}
     }
-    sp = v;
+    f->sp = v;
 }
 
 /*
  * NAME:	interpret->odest()
  * DESCRIPTION:	replace all occurrances of an object on the stack by 0
  */
-void i_odest(obj)
+void i_odest(ftop, obj)
+frame *ftop;
 object *obj;
 {
     register Uint count;
@@ -236,8 +233,8 @@ object *obj;
     count = obj->count;
 
     /* wipe out objects in stack frames */
-    v = sp;
-    for (f = cframe; f != (frame *) NULL; f = f->prev) {
+    v = ftop->sp;
+    for (f = ftop; f != (frame *) NULL; f = f->prev) {
 	while (v < f->fp) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
 		*v = zero_value;
@@ -247,15 +244,15 @@ object *obj;
 	v = f->argp;
     }
     /* wipe out objects in indexed lvalue stack */
-    v = ilvp;
-    for (f = cframe; f != (frame *) NULL; f = f->prev) {
+    v = ftop->ilvp;
+    for (f = ftop; f != (frame *) NULL; f = f->prev) {
 	while (v >= f->stack) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
 		*v = zero_value;
 	    }
 	    --v;
 	}
-	v = f->ilvp;
+	v = f->prev_ilvp;
     }
 }
 
@@ -263,64 +260,67 @@ object *obj;
  * NAME:	interpret->string()
  * DESCRIPTION:	push a string constant on the stack
  */
-void i_string(inherit, index)
+void i_string(f, inherit, index)
+frame *f;
 int inherit;
 unsigned int index;
 {
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = d_get_strconst(cframe->p_ctrl, inherit, index));
+    (--f->sp)->type = T_STRING;
+    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, inherit, index));
 }
 
 /*
  * NAME:	interpret->aggregate()
  * DESCRIPTION:	create an array on the stack
  */
-void i_aggregate(size)
+void i_aggregate(f, size)
+register frame *f;
 register unsigned int size;
 {
     register array *a;
 
     if (size == 0) {
-	a = arr_new(0L);
+	a = arr_new(f->data, 0L);
     } else {
 	register value *v, *elts;
 
-	i_add_ticks(size);
-	a = arr_new((long) size);
+	i_add_ticks(f, size);
+	a = arr_new(f->data, (long) size);
 	elts = a->elts + size;
-	v = sp;
+	v = f->sp;
 	do {
 	    *--elts = *v++;
 	} while (--size != 0);
 	d_ref_imports(a);
-	sp = v;
+	f->sp = v;
     }
-    (--sp)->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    (--f->sp)->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
 }
 
 /*
  * NAME:	interpret->map_aggregate()
  * DESCRIPTION:	create a mapping on the stack
  */
-void i_map_aggregate(size)
+void i_map_aggregate(f, size)
+register frame *f;
 register unsigned int size;
 {
     register array *a;
 
     if (size == 0) {
-	a = map_new(0L);
+	a = map_new(f->data, 0L);
     } else {
 	register value *v, *elts;
 
-	i_add_ticks(size);
-	a = map_new((long) size);
+	i_add_ticks(f, size);
+	a = map_new(f->data, (long) size);
 	elts = a->elts + size;
-	v = sp;
+	v = f->sp;
 	do {
 	    *--elts = *v++;
 	} while (--size != 0);
-	sp = v;
+	f->sp = v;
 	if (ec_push((ec_ftn) NULL)) {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);
@@ -331,8 +331,8 @@ register unsigned int size;
 	ec_pop();
 	d_ref_imports(a);
     }
-    (--sp)->type = T_MAPPING;
-    arr_ref(sp->u.array = a);
+    (--f->sp)->type = T_MAPPING;
+    arr_ref(f->sp->u.array = a);
 }
 
 /*
@@ -340,39 +340,40 @@ register unsigned int size;
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-int i_spread(n, vtype)
+int i_spread(f, n, vtype)
+register frame *f;
 register int n, vtype;
 {
     register array *a;
     register int i;
     register value *v;
 
-    if (sp->type != T_ARRAY) {
+    if (f->sp->type != T_ARRAY) {
 	error("Spread of non-array");
     }
-    a = sp->u.array;
+    a = f->sp->u.array;
     if (n < 0 || n > a->size) {
 	/* no lvalues */
 	n = a->size;
     }
     if (a->size > 0) {
-	i_add_ticks(a->size);
-	i_grow_stack((a->size << 1) - n - 1);
+	i_add_ticks(f, a->size);
+	i_grow_stack(f, (a->size << 1) - n - 1);
 	a->ref += a->size - n;
     }
-    sp++;
+    f->sp++;
 
     /* values */
     for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
-	i_push_value(v);
+	i_push_value(f, v);
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	ilvp->type = T_ARRAY;
-	(ilvp++)->u.array = a;
-	(--sp)->type = T_ALVALUE;
-	sp->oindex = vtype;
-	sp->u.number = i;
+	f->ilvp->type = T_ARRAY;
+	(f->ilvp++)->u.array = a;
+	(--f->sp)->type = T_ALVALUE;
+	f->sp->oindex = vtype;
+	f->sp->u.number = i;
     }
 
     arr_del(a);
@@ -383,46 +384,49 @@ register int n, vtype;
  * NAME:	interpret->global()
  * DESCRIPTION:	push a global value on the stack
  */
-void i_global(inherit, index)
+void i_global(f, inherit, index)
+register frame *f;
 register int inherit, index;
 {
-    i_add_ticks(4);
+    i_add_ticks(f, 4);
     if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index - inherit].varoffset;
+	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
-    i_push_value(d_get_variable(cframe->data, inherit + index));
+    i_push_value(f, d_get_variable(f->data, inherit + index));
 }
 
 /*
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(inherit, index, vtype)
+void i_global_lvalue(f, inherit, index, vtype)
+register frame *f;
 register int inherit;
 int index, vtype;
 {
-    i_add_ticks(4);
+    i_add_ticks(f, 4);
     if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index - inherit].varoffset;
+	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
-    (--sp)->type = T_LVALUE;
-    sp->oindex = vtype;
-    sp->u.lval = d_get_variable(cframe->data, inherit + index);
+    (--f->sp)->type = T_LVALUE;
+    f->sp->oindex = vtype;
+    f->sp->u.lval = d_get_variable(f->data, inherit + index);
 }
 
 /*
  * NAME:	interpret->index()
  * DESCRIPTION:	index a value, REPLACING it by the indexed value
  */
-void i_index()
+void i_index(f)
+register frame *f;
 {
     register int i;
     register value *aval, *ival, *val;
     array *a;
 
-    i_add_ticks(2);
-    ival = sp++;
-    aval = sp;
+    i_add_ticks(f, 2);
+    ival = f->sp++;
+    aval = f->sp;
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
@@ -480,15 +484,16 @@ void i_index()
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(vtype)
+void i_index_lvalue(f, vtype)
+register frame *f;
 int vtype;
 {
     register int i;
     register value *lval, *ival, *val;
 
-    i_add_ticks(2);
-    ival = sp++;
-    lval = sp;
+    i_add_ticks(f, 2);
+    ival = f->sp++;
+    lval = f->sp;
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
@@ -501,17 +506,17 @@ int vtype;
 	    error("Non-numeric array index");
 	}
 	i = arr_index(lval->u.array, (long) ival->u.number);
-	ilvp->type = T_ARRAY;
-	(ilvp++)->u.array = lval->u.array;
+	f->ilvp->type = T_ARRAY;
+	(f->ilvp++)->u.array = lval->u.array;
 	lval->type = T_ALVALUE;
 	lval->oindex = vtype;
 	lval->u.number = i;
 	return;
 
     case T_MAPPING:
-	ilvp->type = T_ARRAY;
-	(ilvp++)->u.array = lval->u.array;
-	*ilvp++ = *ival;
+	f->ilvp->type = T_ARRAY;
+	(f->ilvp++)->u.array = lval->u.array;
+	*f->ilvp++ = *ival;
 	lval->type = T_MLVALUE;
 	lval->oindex = vtype;
 	return;
@@ -526,10 +531,9 @@ int vtype;
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = lval->u.lval->u.string,
-			  (long) ival->u.number);
-	    ilvp->type = T_LVALUE;
-	    (ilvp++)->u.lval = lval->u.lval;
+	    i = str_index(lval->u.lval->u.string, (long) ival->u.number);
+	    f->ilvp->type = T_LVALUE;
+	    (f->ilvp++)->u.lval = lval->u.lval;
 	    /* indexed string lvalues are not referenced */
 	    lval->type = T_SLVALUE;
 	    lval->oindex = vtype;
@@ -542,17 +546,17 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
-	    ilvp->type = T_ARRAY;
-	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
+	    f->ilvp->type = T_ARRAY;
+	    arr_ref((f->ilvp++)->u.array = lval->u.lval->u.array);
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    ilvp->type = T_ARRAY;
-	    arr_ref((ilvp++)->u.array = lval->u.lval->u.array);
-	    *ilvp++ = *ival;
+	    f->ilvp->type = T_ARRAY;
+	    arr_ref((f->ilvp++)->u.array = lval->u.lval->u.array);
+	    *f->ilvp++ = *ival;
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
 	    return;
@@ -560,16 +564,16 @@ int vtype;
 	break;
 
     case T_ALVALUE:
-	val = &d_get_elts(ilvp[-1].u.array)[lval->u.number];
+	val = &d_get_elts(f->ilvp[-1].u.array)[lval->u.number];
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
-	    ilvp->type = T_INT;
-	    (ilvp++)->u.number = lval->u.number;
+	    i = str_index(val->u.string, (long) ival->u.number);
+	    f->ilvp->type = T_INT;
+	    (f->ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
@@ -581,18 +585,18 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(ilvp[-1].u.array);	/* has to be second */
-	    ilvp[-1].u.array = val->u.array;
+	    arr_ref(val->u.array);		/* has to be first */
+	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
+	    f->ilvp[-1].u.array = val->u.array;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(ilvp[-1].u.array);	/* has to be second */
-	    ilvp[-1].u.array = val->u.array;
-	    *ilvp++ = *ival;
+	    arr_ref(val->u.array);		/* has to be first */
+	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
+	    f->ilvp[-1].u.array = val->u.array;
+	    *f->ilvp++ = *ival;
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
 	    return;
@@ -600,14 +604,14 @@ int vtype;
 	break;
 
     case T_MLVALUE:
-	val = map_index(ilvp[-2].u.array, &ilvp[-1], (value *) NULL);
+	val = map_index(f->ilvp[-2].u.array, &f->ilvp[-1], (value *) NULL);
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
 		i_del_value(ival);
 		error("Non-numeric string index");
 	    }
-	    i = str_index(lvstr = val->u.string, (long) ival->u.number);
+	    i = str_index(val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
@@ -619,21 +623,21 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
-	    i_del_value(--ilvp);
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(ilvp[-1].u.array);	/* has to be second */
-	    ilvp[-1].u.array = val->u.array;
+	    i_del_value(--f->ilvp);
+	    arr_ref(val->u.array);		/* has to be first */
+	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
+	    f->ilvp[-1].u.array = val->u.array;
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
 	    lval->u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(ilvp[-2].u.array);	/* has to be second */
-	    ilvp[-2].u.array = val->u.array;
-	    i_del_value(&ilvp[-1]);
-	    ilvp[-1] = *ival;
+	    arr_ref(val->u.array);		/* has to be first */
+	    arr_del(f->ilvp[-2].u.array);	/* has to be second */
+	    f->ilvp[-2].u.array = val->u.array;
+	    i_del_value(&f->ilvp[-1]);
+	    f->ilvp[-1] = *ival;
 	    lval->oindex = vtype;
 	    return;
 	}
@@ -702,29 +706,27 @@ register unsigned int type;
  * NAME:	interpret->fetch()
  * DESCRIPTION:	fetch the value of an lvalue
  */
-void i_fetch()
+void i_fetch(f)
+register frame *f;
 {
-    switch (sp->type) {
+    switch (f->sp->type) {
     case T_LVALUE:
-	i_push_value(sp->u.lval);
+	i_push_value(f, f->sp->u.lval);
 	break;
 
     case T_ALVALUE:
-	i_push_value(d_get_elts(ilvp[-1].u.array) + sp->u.number);
+	i_push_value(f, d_get_elts(f->ilvp[-1].u.array) + f->sp->u.number);
 	break;
 
     case T_MLVALUE:
-	i_push_value(map_index(ilvp[-2].u.array, &ilvp[-1], (value *) NULL));
+	i_push_value(f, map_index(f->ilvp[-2].u.array, &f->ilvp[-1],
+		     (value *) NULL));
 	break;
 
     default:
-	/*
-	 * Indexed string.
-	 * The fetch is always done directly after an lvalue
-	 * constructor, so lvstr is valid.
-	 */
-	(--sp)->type = T_INT;
-	sp->u.number = UCHAR(lvstr->text[sp[1].u.number]);
+	(--f->sp)->type = T_INT;
+	f->sp->u.number =
+		UCHAR(f->ilvp[-1].u.lval->u.string->text[f->sp[1].u.number]);
 	break;
     }
 }
@@ -758,7 +760,8 @@ register value *val;
  * NAME:	interpret->store()
  * DESCRIPTION:	Perform an assignment. This invalidates the lvalue.
  */
-void i_store(lval, val)
+void i_store(f, lval, val)
+register frame *f;
 register value *lval, *val;
 {
     register value *v;
@@ -769,14 +772,14 @@ register value *lval, *val;
 	i_cast(val, lval->oindex);
     }
 
-    i_add_ticks(1);
+    i_add_ticks(f, 1);
     switch (lval->type) {
     case T_LVALUE:
-	d_assign_var(cframe->data, lval->u.lval, val);
+	d_assign_var(f->data, lval->u.lval, val);
 	break;
 
     case T_SLVALUE:
-	v = ilvp[-1].u.lval;
+	v = f->ilvp[-1].u.lval;
 	i = lval->u.number;
 	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
@@ -784,26 +787,26 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	--ilvp;
-	d_assign_var(cframe->data, v, istr(v->u.string, i, val));
+	--f->ilvp;
+	d_assign_var(f->data, v, istr(v->u.string, i, val));
 	break;
 
     case T_ALVALUE:
-	a = (--ilvp)->u.array;
+	a = (--f->ilvp)->u.array;
 	d_assign_elt(a, &d_get_elts(a)[lval->u.number], val);
 	arr_del(a);
 	break;
 
     case T_MLVALUE:
-	map_index(a = ilvp[-2].u.array, &ilvp[-1], val);
-	i_del_value(--ilvp);
-	--ilvp;
+	map_index(a = f->ilvp[-2].u.array, &f->ilvp[-1], val);
+	i_del_value(--f->ilvp);
+	--f->ilvp;
 	arr_del(a);
 	break;
 
     case T_SALVALUE:
-	a = ilvp[-2].u.array;
-	v = &a->elts[ilvp[-1].u.number];
+	a = f->ilvp[-2].u.array;
+	v = &a->elts[f->ilvp[-1].u.number];
 	i = lval->u.number;
 	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
@@ -812,13 +815,13 @@ register value *lval, *val;
 	    error("Lvalue disappeared!");
 	}
 	d_assign_elt(a, v, istr(v->u.string, i, val));
-	ilvp -= 2;
+	f->ilvp -= 2;
 	arr_del(a);
 	break;
 
     case T_SMLVALUE:
-	a = ilvp[-2].u.array;
-	v = map_index(a, &ilvp[-1], (value *) NULL);
+	a = f->ilvp[-2].u.array;
+	v = map_index(a, &f->ilvp[-1], (value *) NULL);
 	if (v->type != T_STRING || lval->u.number >= v->u.string->len) {
 	    /*
 	     * The lvalue was changed.
@@ -827,8 +830,8 @@ register value *lval, *val;
 	}
 	d_assign_elt(a, v, istr(v->u.string, (unsigned short) lval->u.number,
 				val));
-	i_del_value(--ilvp);
-	--ilvp;
+	i_del_value(--f->ilvp);
+	--f->ilvp;
 	arr_del(a);
 	break;
     }
@@ -842,30 +845,31 @@ typedef struct {
 } rlinfo;
 
 static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
-static int rli;				/* rlimits stack index */
 
 /*
  * NAME:	interpret->get_depth()
  * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
-Int i_get_depth()
+Int i_get_depth(f)
+register frame *f;
 {
-    if (nodepth) {
+    if (f->nodepth) {
 	return -1;
     }
-    return maxdepth - cframe->depth;
+    return f->maxdepth - f->depth;
 }
 
 /*
  * NAME:	interpret->get_ticks()
  * DESCRIPTION:	get the remaining ticks (-1: infinite)
  */
-Int i_get_ticks()
+Int i_get_ticks(f)
+register frame *f;
 {
-    if (noticks) {
+    if (f->noticks) {
 	return -1;
     } else {
-	return (ticks < 0) ? 0 : ticks;
+	return (f->ticks < 0) ? 0 : f->ticks;
     }
 }
 
@@ -873,25 +877,26 @@ Int i_get_ticks()
  * NAME:	interpret->check_rlimits()
  * DESCRIPTION:	check if this rlimits call is valid
  */
-void i_check_rlimits()
+static void i_check_rlimits(f)
+register frame *f;
 {
-    if (cframe->obj->count == 0) {
+    if (f->obj->count == 0) {
 	error("Illegal use of rlimits");
     }
-    --sp;
-    sp[0] = sp[1];
-    sp[1] = sp[2];
-    sp[2].type = T_OBJECT;
-    sp[2].oindex = cframe->obj->index;
-    sp[2].u.objcnt = cframe->obj->count;
+    --f->sp;
+    f->sp[0] = f->sp[1];
+    f->sp[1] = f->sp[2];
+    f->sp[2].type = T_OBJECT;
+    f->sp[2].oindex = f->obj->index;
+    f->sp[2].u.objcnt = f->obj->count;
     /* obj, stack, ticks */
-    call_driver_object("runtime_rlimits", 3);
+    call_driver_object(f, "runtime_rlimits", 3);
 
-    if ((sp->type == T_INT && sp->u.number == 0) ||
-	(sp->type == T_FLOAT && VFLT_ISZERO(sp))) {
+    if ((f->sp->type == T_INT && f->sp->u.number == 0) ||
+	(f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp))) {
 	error("Illegal use of rlimits");
     }
-    i_del_value(sp++);
+    i_del_value(f->sp++);
 }
 
 /*
@@ -899,72 +904,75 @@ void i_check_rlimits()
  * DESCRIPTION:	set new rlimits.  Return an integer that can be used in
  *		restoring the old values
  */
-int i_set_rlimits(depth, t)
+int i_set_rlimits(f, depth, t)
+register frame *f;
 Int depth, t;
 {
-    if (rli == ERRSTACKSZ) {
+    if (f->rli == ERRSTACKSZ) {
 	error("Too deep rlimits nesting");
     }
-    rlstack[rli].depth = maxdepth;
-    rlstack[rli].nodepth = nodepth;
-    rlstack[rli].noticks = noticks;
+    rlstack[f->rli].depth = f->maxdepth;
+    rlstack[f->rli].nodepth = f->nodepth;
+    rlstack[f->rli].noticks = f->noticks;
 
     if (depth != 0) {
 	if (depth < 0) {
-	    nodepth = TRUE;
+	    f->nodepth = TRUE;
 	} else {
-	    maxdepth = cframe->depth + depth;
-	    nodepth = FALSE;
+	    f->maxdepth = f->depth + depth;
+	    f->nodepth = FALSE;
 	}
     }
     if (t != 0) {
 	if (t < 0) {
-	    rlstack[rli].ticks = ticks;
-	    noticks = TRUE;
+	    rlstack[f->rli].ticks = f->ticks;
+	    f->noticks = TRUE;
 	} else {
-	    rlstack[rli].ticks = ticks - t;
-	    ticks = t;
-	    noticks = FALSE;
+	    rlstack[f->rli].ticks = f->ticks - t;
+	    f->ticks = t;
+	    f->noticks = FALSE;
 	}
     } else {
-	rlstack[rli].ticks = 0;
+	rlstack[f->rli].ticks = 0;
     }
 
-    return rli++;
+    return f->rli++;
 }
 
 /*
  * NAME:	interpret->get_rllevel()
  * DESCRIPTION:	return the current rlimits stack level
  */
-int i_get_rllevel()
+int i_get_rllevel(f)
+frame *f;
 {
-    return rli;
+    return f->rli;
 }
 
 /*
  * NAME:	interpret->set_rllevel()
  * DESCRIPTION:	restore rlimits to an earlier level
  */
-void i_set_rllevel(n)
+void i_set_rllevel(f, n)
+register frame *f;
 int n;
 {
     if (n < 0) {
-	n += rli;
+	n += f->rli;
     }
-    if (ticks < 0) {
-	ticks = 0;
+    if (f->ticks < 0) {
+	f->ticks = 0;
     }
-    while (rli > n) {
-	--rli;
-	maxdepth = rlstack[rli].depth;
-	if (noticks) {
-	    ticks = rlstack[rli].ticks;
+    while (f->rli > n) {
+	--f->rli;
+	f->maxdepth = rlstack[f->rli].depth;
+	if (f->noticks) {
+	    f->ticks = rlstack[f->rli].ticks;
 	} else {
-	    ticks += rlstack[rli].ticks;
+	    f->ticks += rlstack[f->rli].ticks;
 	}
-	nodepth = rlstack[rli].nodepth;
-	noticks = rlstack[rli].noticks;
+	f->nodepth = rlstack[f->rli].nodepth;
+	f->noticks = rlstack[f->rli].noticks;
     }
 }
 
@@ -972,21 +980,22 @@ int n;
  * NAME:	interpret->set_sp()
  * DESCRIPTION:	set the current stack pointer
  */
-void i_set_sp(newsp)
-register value *newsp;
+frame *i_set_sp(ftop, sp)
+frame *ftop;
+register value *sp;
 {
     register value *v, *w;
     register frame *f;
 
-    v = sp;
-    w = ilvp;
-    for (f = cframe; f != NULL; f = f->prev) {
-	cframe = f;
+    v = ftop->sp;
+    w = ftop->ilvp;
+    for (f = ftop; f != NULL; f = f->prev) {
 	for (;;) {
-	    if (v == newsp) {
-		sp = v;
-		ilvp = w;
-		return;
+	    if (v == sp) {
+		f->sp = v;
+		f->ilvp = w;
+		f->ticks = ftop->ticks;
+		return f;
 	    }
 	    if (v == f->fp) {
 		break;
@@ -1016,7 +1025,7 @@ register value *newsp;
 	    v++;
 	}
 	v = f->argp;
-	w = f->ilvp;
+	w = f->prev_ilvp;
 
 	if (f->sos) {
 	    /* stack on stack */
@@ -1026,20 +1035,21 @@ register value *newsp;
 	}
     }
 
-    sp = v;
-    ilvp = w;
+    f->sp = v;
+    f->ilvp = w;
+    f->ticks = ftop->ticks;
+    return f;
 }
 
 /*
  * NAME:	interpret->prev_object()
  * DESCRIPTION:	return the nth previous object in the call_other chain
  */
-object *i_prev_object(n)
+object *i_prev_object(f, n)
+register frame *f;
 register int n;
 {
-    register frame *f;
-
-    for (f = cframe; n >= 0; --n) {
+    while (n >= 0) {
 	/* back to last external call */
 	while (!f->external) {
 	    f = f->prev;
@@ -1048,6 +1058,7 @@ register int n;
 	if (f->obj == (object *) NULL) {
 	    return (object *) NULL;
 	}
+	--n;
     }
     return (f->obj->count == 0) ? (object *) NULL : f->obj;
 }
@@ -1056,16 +1067,16 @@ register int n;
  * NAME:	interpret->prev_program()
  * DESCRIPTION:	return the nth previous program in the function call chain
  */
-char *i_prev_program(n)
+char *i_prev_program(f, n)
+register frame *f;
 register int n;
 {
-    register frame *f;
-
-    for (f = cframe; n >= 0; --n) {
+    while (n >= 0) {
 	f = f->prev;
 	if (f->obj == (object *) NULL) {
 	    return (char *) NULL;
 	}
+	--n;
     }
 
     return f->p_ctrl->obj->chain.name;
@@ -1075,7 +1086,8 @@ register int n;
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-void i_typecheck(name, ftype, proto, nargs, strict)
+void i_typecheck(f, name, ftype, proto, nargs, strict)
+register frame *f;
 char *name, *ftype;
 register char *proto;
 int nargs;
@@ -1101,9 +1113,10 @@ int strict;
 	}
 
 	if (ptype != T_MIXED) {
-	    atype = sp[i].type;
+	    atype = f->sp[i].type;
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
-		if (atype != T_INT || sp[i].u.number != 0 || ptype == T_FLOAT) {
+		if (atype != T_INT || f->sp[i].u.number != 0 ||
+		    ptype == T_FLOAT) {
 		    /* wrong type */
 		    error("Bad argument %d (%s) for %s %s", nargs - i,
 			  i_typename(atype), ftype, name);
@@ -1120,7 +1133,8 @@ int strict;
  * NAME:	interpret->switch_int()
  * DESCRIPTION:	handle an int switch
  */
-static unsigned short i_switch_int(pc)
+static unsigned short i_switch_int(f, pc)
+register frame *f;
 register char *pc;
 {
     register unsigned short h, l, m, sz, dflt;
@@ -1130,7 +1144,7 @@ register char *pc;
     FETCH2U(pc, h);
     sz = FETCH1U(pc);
     FETCH2U(pc, dflt);
-    if (sp->type != T_INT) {
+    if (f->sp->type != T_INT) {
 	return dflt;
     }
 
@@ -1142,9 +1156,9 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 3 * m;
 	    num = FETCH1S(p);
-	    if (sp->u.number == num) {
+	    if (f->sp->u.number == num) {
 		return FETCH2U(p, l);
-	    } else if (sp->u.number < num) {
+	    } else if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1157,9 +1171,9 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
 	    FETCH2S(p, num);
-	    if (sp->u.number == num) {
+	    if (f->sp->u.number == num) {
 		return FETCH2U(p, l);
-	    } else if (sp->u.number < num) {
+	    } else if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1172,9 +1186,9 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 5 * m;
 	    FETCH3S(p, num);
-	    if (sp->u.number == num) {
+	    if (f->sp->u.number == num) {
 		return FETCH2U(p, l);
-	    } else if (sp->u.number < num) {
+	    } else if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1187,9 +1201,9 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 6 * m;
 	    FETCH4S(p, num);
-	    if (sp->u.number == num) {
+	    if (f->sp->u.number == num) {
 		return FETCH2U(p, l);
-	    } else if (sp->u.number < num) {
+	    } else if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		l = m + 1;	/* search in upper half */
@@ -1205,7 +1219,8 @@ register char *pc;
  * NAME:	interpret->switch_range()
  * DESCRIPTION:	handle a range switch
  */
-static unsigned short i_switch_range(pc)
+static unsigned short i_switch_range(f, pc)
+register frame *f;
 register char *pc;
 {
     register unsigned short h, l, m, sz, dflt;
@@ -1215,7 +1230,7 @@ register char *pc;
     FETCH2U(pc, h);
     sz = FETCH1U(pc);
     FETCH2U(pc, dflt);
-    if (sp->type != T_INT) {
+    if (f->sp->type != T_INT) {
 	return dflt;
     }
 
@@ -1227,11 +1242,11 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 4 * m;
 	    num = FETCH1S(p);
-	    if (sp->u.number < num) {
+	    if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		num = FETCH1S(p);
-		if (sp->u.number <= num) {
+		if (f->sp->u.number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1244,11 +1259,11 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 6 * m;
 	    FETCH2S(p, num);
-	    if (sp->u.number < num) {
+	    if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH2S(p, num);
-		if (sp->u.number <= num) {
+		if (f->sp->u.number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1261,11 +1276,11 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 8 * m;
 	    FETCH3S(p, num);
-	    if (sp->u.number < num) {
+	    if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH3S(p, num);
-		if (sp->u.number <= num) {
+		if (f->sp->u.number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1278,11 +1293,11 @@ register char *pc;
 	    m = (l + h) >> 1;
 	    p = pc + 10 * m;
 	    FETCH4S(p, num);
-	    if (sp->u.number < num) {
+	    if (f->sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
 		FETCH4S(p, num);
-		if (sp->u.number <= num) {
+		if (f->sp->u.number <= num) {
 		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
@@ -1297,7 +1312,8 @@ register char *pc;
  * NAME:	interpret->switch_str()
  * DESCRIPTION:	handle a string switch
  */
-static unsigned short i_switch_str(pc)
+static unsigned short i_switch_str(f, pc)
+register frame *f;
 register char *pc;
 {
     register unsigned short h, l, m, u, u2, dflt;
@@ -1309,23 +1325,23 @@ register char *pc;
     FETCH2U(pc, dflt);
     if (FETCH1U(pc) == 0) {
 	FETCH2U(pc, l);
-	if (sp->type == T_INT && sp->u.number == 0) {
+	if (f->sp->type == T_INT && f->sp->u.number == 0) {
 	    return l;
 	}
 	--h;
     }
-    if (sp->type != T_STRING) {
+    if (f->sp->type != T_STRING) {
 	return dflt;
     }
 
-    ctrl = cframe->p_ctrl;
+    ctrl = f->p_ctrl;
     l = 0;
     --h;
     while (l < h) {
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
-	cmp = str_cmp(sp->u.string, d_get_strconst(ctrl, u, FETCH2U(p, u2)));
+	cmp = str_cmp(f->sp->u.string, d_get_strconst(ctrl, u, FETCH2U(p, u2)));
 	if (cmp == 0) {
 	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
@@ -1341,40 +1357,40 @@ register char *pc;
  * NAME:	interpret->catcherr()
  * DESCRIPTION:	handle caught error
  */
-void i_catcherr(depth)
+void i_catcherr(f, depth)
+frame *f;
 Int depth;
 {
-    i_runtime_error(depth + 1);
+    i_runtime_error(f, depth + 1);
 }
 
 /*
  * NAME:	interpret->interpret()
  * DESCRIPTION:	Main interpreter function. Interpret stack machine code.
  */
-static void i_interpret(pc)
+static void i_interpret(f, pc)
+register frame *f;
 register char *pc;
 {
     register unsigned short instr, u, u2;
     register Uint l;
-    register frame *f;
     register char *p;
     register kfunc *kf;
     xfloat flt;
     int size;
     Int newdepth, newticks;
 
-    f = cframe;
     size = 0;
 
     for (;;) {
 # ifdef DEBUG
-	if (sp < ilvp + MIN_STACK) {
+	if (f->sp < f->ilvp + MIN_STACK) {
 	    fatal("out of value stack");
 	}
 # endif
-	if (--ticks <= 0) {
-	    if (noticks) {
-		ticks = 0x7fffffff;
+	if (--f->ticks <= 0) {
+	    if (f->noticks) {
+		f->ticks = 0x7fffffff;
 	    } else {
 		error("Out of ticks");
 	    }
@@ -1384,59 +1400,60 @@ register char *pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
-	    *--sp = zero_value;
+	    *--f->sp = zero_value;
 	    break;
 
 	case I_PUSH_ONE:
-	    (--sp)->type = T_INT;
-	    sp->u.number = 1;
+	    (--f->sp)->type = T_INT;
+	    f->sp->u.number = 1;
 	    break;
 
 	case I_PUSH_INT1:
-	    (--sp)->type = T_INT;
-	    sp->u.number = FETCH1S(pc);
+	    (--f->sp)->type = T_INT;
+	    f->sp->u.number = FETCH1S(pc);
 	    break;
 
 	case I_PUSH_INT4:
-	    (--sp)->type = T_INT;
-	    sp->u.number = FETCH4S(pc, l);
+	    (--f->sp)->type = T_INT;
+	    f->sp->u.number = FETCH4S(pc, l);
 	    break;
 
 	case I_PUSH_FLOAT:
-	    (--sp)->type = T_FLOAT;
+	    (--f->sp)->type = T_FLOAT;
 	    flt.high = FETCH2U(pc, u);
 	    flt.low = FETCH4U(pc, l);
-	    VFLT_PUT(sp, flt);
+	    VFLT_PUT(f->sp, flt);
 	    break;
 
 	case I_PUSH_STRING:
-	    (--sp)->type = T_STRING;
-	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl,
-						  f->p_ctrl->ninherits - 1,
-						  FETCH1U(pc)));
+	    (--f->sp)->type = T_STRING;
+	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl,
+						     f->p_ctrl->ninherits - 1,
+						     FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_NEAR_STRING:
-	    (--sp)->type = T_STRING;
+	    (--f->sp)->type = T_STRING;
 	    u = FETCH1U(pc);
-	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
+	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, u,
+						     FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_FAR_STRING:
-	    (--sp)->type = T_STRING;
+	    (--f->sp)->type = T_STRING;
 	    u = FETCH1U(pc);
-	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u,
-						  FETCH2U(pc, u2)));
+	    str_ref(f->sp->u.string = d_get_strconst(f->p_ctrl, u,
+						     FETCH2U(pc, u2)));
 	    break;
 
 	case I_PUSH_LOCAL:
 	    u = FETCH1S(pc);
-	    i_push_value(((short) u < 0) ? f->fp + (short) u : f->argp + u);
+	    i_push_value(f, ((short) u < 0) ? f->fp + (short) u : f->argp + u);
 	    break;
 
 	case I_PUSH_GLOBAL:
 	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
-	    i_push_value(d_get_variable(f->data, u));
+	    i_push_value(f, d_get_variable(f->data, u));
 	    break;
 
 	case I_PUSH_FAR_GLOBAL:
@@ -1444,21 +1461,21 @@ register char *pc;
 	    if (u != 0) {
 		u = f->ctrl->inherits[f->p_index - u].varoffset;
 	    }
-	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
+	    i_push_value(f, d_get_variable(f->data, u + FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_LOCAL_LVAL:
-	    (--sp)->type = T_LVALUE;
+	    (--f->sp)->type = T_LVALUE;
 	    u = FETCH1S(pc);
-	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
-	    sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
+	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    f->sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
 	    continue;
 
 	case I_PUSH_GLOBAL_LVAL:
 	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
-	    (--sp)->type = T_LVALUE;
-	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
-	    sp->u.lval = d_get_variable(f->data, u);
+	    (--f->sp)->type = T_LVALUE;
+	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    f->sp->u.lval = d_get_variable(f->data, u);
 	    continue;
 
 	case I_PUSH_FAR_GLOBAL_LVAL:
@@ -1467,44 +1484,45 @@ register char *pc;
 		u = f->ctrl->inherits[f->p_index - u].varoffset;
 	    }
 	    u += FETCH1U(pc);
-	    (--sp)->type = T_LVALUE;
-	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
-	    sp->u.lval = d_get_variable(f->data, u);
+	    (--f->sp)->type = T_LVALUE;
+	    f->sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    f->sp->u.lval = d_get_variable(f->data, u);
 	    continue;
 
 	case I_INDEX:
-	    i_index();
+	    i_index(f);
 	    break;
 
 	case I_INDEX_LVAL:
-	    i_index_lvalue((instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    i_index_lvalue(f, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
 	    continue;
 
 	case I_AGGREGATE:
 	    if (FETCH1U(pc) == 0) {
-		i_aggregate(FETCH2U(pc, u));
+		i_aggregate(f, FETCH2U(pc, u));
 	    } else {
-		i_map_aggregate(FETCH2U(pc, u));
+		i_map_aggregate(f, FETCH2U(pc, u));
 	    }
 	    break;
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
-	    size = i_spread((short) u, (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
+	    size = i_spread(f, (short) u,
+			    (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
 	    continue;
 
 	case I_CAST:
-	    i_cast(sp, FETCH1U(pc));
+	    i_cast(f->sp, FETCH1U(pc));
 	    break;
 
 	case I_FETCH:
-	    i_fetch();
+	    i_fetch(f);
 	    break;
 
 	case I_STORE:
-	    i_store(sp + 1, sp);
-	    sp[1] = sp[0];
-	    sp++;
+	    i_store(f, f->sp + 1, f->sp);
+	    f->sp[1] = f->sp[0];
+	    f->sp++;
 	    break;
 
 	case I_JUMP:
@@ -1514,16 +1532,16 @@ register char *pc;
 
 	case I_JUMP_ZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if ((sp->type == T_INT && sp->u.number == 0) ||
-		(sp->type == T_FLOAT && VFLT_ISZERO(sp))) {
+	    if ((f->sp->type == T_INT && f->sp->u.number == 0) ||
+		(f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp))) {
 		pc = p;
 	    }
 	    break;
 
 	case I_JUMP_NONZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if ((sp->type != T_INT || sp->u.number != 0) &&
-		(sp->type != T_FLOAT || !VFLT_ISZERO(sp))) {
+	    if ((f->sp->type != T_INT || f->sp->u.number != 0) &&
+		(f->sp->type != T_FLOAT || !VFLT_ISZERO(f->sp))) {
 		pc = p;
 	    }
 	    break;
@@ -1531,15 +1549,15 @@ register char *pc;
 	case I_SWITCH:
 	    switch (FETCH1U(pc)) {
 	    case 0:
-		pc = f->prog + i_switch_int(pc);
+		pc = f->prog + i_switch_int(f, pc);
 		break;
 
 	    case 1:
-		pc = f->prog + i_switch_range(pc);
+		pc = f->prog + i_switch_range(f, pc);
 		break;
 
 	    case 2:
-		pc = f->prog + i_switch_str(pc);
+		pc = f->prog + i_switch_str(f, pc);
 		break;
 	    }
 	    break;
@@ -1555,9 +1573,9 @@ register char *pc;
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(kf->name, "kfun", kf->proto, u, TRUE);
+		i_typecheck(f, kf->name, "kfun", kf->proto, u, TRUE);
 	    }
-	    u = (*kf->func)(u);
+	    u = (*kf->func)(f, u);
 	    if (u != 0) {
 		if ((short) u < 0) {
 		    error("Too few arguments for kfun %s", kf->name);
@@ -1571,7 +1589,7 @@ register char *pc;
 
 	case I_CALL_AFUNC:
 	    u = FETCH1U(pc);
-	    i_funcall((object *) NULL, 0, u, FETCH1U(pc) + size);
+	    i_funcall(f, (object *) NULL, 0, u, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
@@ -1581,56 +1599,56 @@ register char *pc;
 		u = f->p_index - u;
 	    }
 	    u2 = FETCH1U(pc);
-	    i_funcall((object *) NULL, u, u2, FETCH1U(pc) + size);
+	    i_funcall(f, (object *) NULL, u, u2, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
 	case I_CALL_FUNC:
 	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]),
+	    i_funcall(f, (object *) NULL, UCHAR(p[0]), UCHAR(p[1]),
 		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
-	    u = rli;
+	    u = f->rli;
 	    if (!ec_push((ec_ftn) i_catcherr)) {
-		i_interpret(pc);
+		i_interpret(f, pc);
 		ec_pop();
 		pc = f->pc;
-		*--sp = zero_value;
+		*--f->sp = zero_value;
 	    } else {
 		/* error */
 		f->pc = pc = p;
 		p = errormesg();
-		(--sp)->type = T_STRING;
-		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
-		i_set_rllevel(u);
+		(--f->sp)->type = T_STRING;
+		str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
+		i_set_rllevel(f, u);
 	    }
 	    break;
 
 	case I_RLIMITS:
-	    if (sp[1].type != T_INT) {
+	    if (f->sp[1].type != T_INT) {
 		error("Bad rlimits depth type");
 	    }
-	    if (sp->type != T_INT) {
+	    if (f->sp->type != T_INT) {
 		error("Bad rlimits ticks type");
 	    }
-	    newdepth = sp[1].u.number;
-	    newticks = sp->u.number;
+	    newdepth = f->sp[1].u.number;
+	    newticks = f->sp->u.number;
 	    if (!FETCH1U(pc)) {
 		/* runtime check */
-		i_check_rlimits();
+		i_check_rlimits(f);
 	    } else {
 		/* pop limits */
-		sp += 2;
+		f->sp += 2;
 	    }
 
-	    i_set_rlimits(newdepth, newticks);
-	    i_interpret(pc);
+	    i_set_rlimits(f, newdepth, newticks);
+	    i_interpret(f, pc);
 	    pc = f->pc;
-	    i_set_rllevel(-1);
+	    i_set_rllevel(f, -1);
 	    break;
 
 	case I_RETURN:
@@ -1639,7 +1657,7 @@ register char *pc;
 
 	if (instr & I_POP_BIT) {
 	    /* pop the result of the last operation (never an lvalue) */
-	    i_del_value(sp++);
+	    i_del_value(f->sp++);
 	}
     }
 }
@@ -1649,7 +1667,8 @@ register char *pc;
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-void i_funcall(obj, p_ctrli, funci, nargs)
+void i_funcall(prev_f, obj, p_ctrli, funci, nargs)
+register frame *prev_f;
 register object *obj;
 register int p_ctrli, nargs;
 int funci;
@@ -1659,8 +1678,8 @@ int funci;
     frame f;
     value val;
 
-    f.prev = cframe;
-    if (cframe->obj == (object *) NULL) {
+    f.prev = prev_f;
+    if (prev_f->obj == (object *) NULL) {
 	/*
 	 * top level call
 	 */
@@ -1676,28 +1695,33 @@ int funci;
 	f.obj = obj;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
-	f.depth = cframe->depth + 1;
+	f.depth = prev_f->depth + 1;
 	f.external = TRUE;
     } else {
 	/*
 	 * local function call
 	 */
-	f.obj = cframe->obj;
-	f.ctrl = cframe->ctrl;
-	f.data = cframe->data;
-	f.depth = cframe->depth + 1;
+	f.obj = prev_f->obj;
+	f.ctrl = prev_f->ctrl;
+	f.data = prev_f->data;
+	f.depth = prev_f->depth + 1;
 	f.external = FALSE;
     }
-    if (f.depth >= maxdepth && !nodepth) {
+    f.maxdepth = prev_f->maxdepth;
+    f.nodepth = prev_f->nodepth;
+    if (f.depth >= f.maxdepth && !f.nodepth) {
 	error("Stack overflow");
     }
-    if (ticks < 100) {
-	if (noticks) {
-	    ticks = 0x7fffffff;
+    f.ticks = prev_f->ticks;
+    f.noticks = prev_f->noticks;
+    if (f.ticks < 100) {
+	if (f.noticks) {
+	    f.ticks = 0x7fffffff;
 	} else {
 	    error("Out of ticks");
 	}
     }
+    f.rli = prev_f->rli;
 
     /* set the program control block */
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
@@ -1714,8 +1738,8 @@ int funci;
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
     if (PROTO_CLASS(pc) & C_TYPECHECKED) {
 	/* typecheck arguments */
-	i_typecheck(d_get_strconst(f.p_ctrl, f.func->inherit,
-				   f.func->index)->text,
+	i_typecheck(prev_f, d_get_strconst(f.p_ctrl, f.func->inherit,
+					   f.func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
 
@@ -1728,48 +1752,46 @@ int funci;
 	if (nargs >= n) {
 	    /* put additional arguments in array */
 	    nargs -= n - 1;
-	    cframe = &f;
-	    a = arr_new((long) nargs);
+	    a = arr_new(f.data, (long) nargs);
 	    v = a->elts + nargs;
 	    do {
-		*--v = *sp++;
+		*--v = *prev_f->sp++;
 	    } while (--nargs > 0);
 	    d_ref_imports(a);
 	    nargs = n;
 	} else {
 	    /* make empty arguments array, and optionally push zeroes */
-	    i_grow_stack(n - nargs);
+	    i_grow_stack(prev_f, n - nargs);
 	    while (++nargs < n) {
-		*--sp = zero_value;
+		*--prev_f->sp = zero_value;
 	    }
-	    cframe = &f;
-	    a = arr_new(0L);
+	    a = arr_new(f.data, 0L);
 	}
-	(--sp)->type = T_ARRAY;
-	arr_ref(sp->u.array = a);
+	(--prev_f->sp)->type = T_ARRAY;
+	arr_ref(prev_f->sp->u.array = a);
     } else {
 	if (nargs > n) {
 	    /* pop superfluous arguments */
-	    i_pop(nargs - n);
+	    i_pop(prev_f, nargs - n);
 	    nargs = n;
 	} else if (nargs < n) {
 	    /* add missing arguments */
-	    i_grow_stack(n - nargs);
+	    i_grow_stack(prev_f, n - nargs);
 	    do {
-		*--sp = zero_value;
+		*--prev_f->sp = zero_value;
 	    } while (++nargs < n);
 	}
-	cframe = &f;
     }
-    f.argp = sp;
+    f.argp = prev_f->sp;
+    cframe = &f;
     f.nargs = nargs;
     pc += PROTO_SIZE(pc);
 
     /* create new local stack */
-    f.ilvp = ilvp;
+    f.prev_ilvp = prev_f->ilvp;
     FETCH2U(pc, n);
-    f.stack = ilvp = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
-    f.fp = sp = f.stack + n + MIN_STACK + EXTRA_STACK;
+    f.stack = f.ilvp = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+    f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
     f.sos = TRUE;
 
     /* initialize local variables */
@@ -1779,33 +1801,32 @@ int funci;
 # endif
     if (n > 0) {
 	do {
-	    *--sp = zero_value;
+	    *--f.sp = zero_value;
 	} while (--n > 0);
     }
 
     /* execute code */
-    i_add_ticks(10);
+    i_add_ticks(&f, 10);
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     if (f.func->class & C_COMPILED) {
 	Uint l;
 
 	/* compiled function */
-	(*pcfunctions[FETCH3U(pc, l)])();
+	(*pcfunctions[FETCH3U(pc, l)])(&f);
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;
-	i_interpret(pc);
+	i_interpret(&f, pc);
     }
-    cframe = f.prev;
 
     /* clean up stack, move return value to outer stackframe */
-    val = *sp++;
+    val = *f.sp++;
 # ifdef DEBUG
-    if (sp != f.fp - nargs) {
+    if (f.sp != f.fp - nargs) {
 	fatal("bad stack pointer after function call");
     }
 # endif
-    i_pop(f.fp - sp);
+    i_pop(&f, f.fp - f.sp);
     if (f.sos) {
 	/* still alloca'd */
 	AFREE(f.stack);
@@ -1813,10 +1834,10 @@ int funci;
 	/* extended and malloced */
 	FREE(f.stack);
     }
-    sp = f.argp;
-    ilvp = f.ilvp;
-    i_pop(f.nargs);
-    *--sp = val;
+    prev_f->ticks = f.ticks;
+    cframe = prev_f;
+    i_pop(prev_f, f.nargs);
+    *--prev_f->sp = val;
 }
 
 /*
@@ -1824,7 +1845,8 @@ int funci;
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(obj, func, len, call_static, nargs)
+bool i_call(f, obj, func, len, call_static, nargs)
+frame *f;
 object *obj;
 char *func;
 unsigned int len;
@@ -1832,7 +1854,7 @@ int call_static;
 int nargs;
 {
     register dsymbol *symb;
-    register dfuncdef *f;
+    register dfuncdef *fdef;
     register control *ctrl;
 
     ctrl = o_control(obj);
@@ -1841,8 +1863,8 @@ int nargs;
 	 * initialize the object
 	 */
 	obj->flags |= O_CREATED;
-	if (i_call(obj, creator, clen, TRUE, 0)) {
-	    i_del_value(sp++);
+	if (i_call(f, obj, creator, clen, TRUE, 0)) {
+	    i_del_value(f->sp++);
 	}
     }
 
@@ -1850,21 +1872,21 @@ int nargs;
     symb = ctrl_symb(ctrl, func, len);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
-	i_pop(nargs);
+	i_pop(f, nargs);
 	return FALSE;
     }
 
     ctrl = ctrl->inherits[UCHAR(symb->inherit)].obj->ctrl;
-    f = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
+    fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
-    if (!call_static && (f->class & C_STATIC) && cframe->obj != obj) {
-	i_pop(nargs);
+    if (!call_static && (fdef->class & C_STATIC) && f->obj != obj) {
+	i_pop(f, nargs);
 	return FALSE;
     }
 
     /* call the function */
-    i_funcall(obj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
+    i_funcall(f, obj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
 
     return TRUE;
 }
@@ -2007,7 +2029,8 @@ register frame *f;
  * NAME:	interpret->call_trace()
  * DESCRIPTION:	return the function call trace
  */
-array *i_call_trace()
+array *i_call_trace(ftop)
+frame *ftop;
 {
     register frame *f;
     register value *v;
@@ -2019,12 +2042,11 @@ array *i_call_trace()
     value *elts;
     unsigned short max_args;
 
-    for (f = cframe, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
-    a = arr_new((long) n);
-    i_add_ticks(10 * n);
+    for (f = ftop, n = 0; f->obj != (object *) NULL; f = f->prev, n++) ;
+    a = arr_new(ftop->data, (long) n);
+    i_add_ticks(ftop, 10 * n);
     max_args = conf_array_size() - 5;
-    for (f = cframe, elts = a->elts + n; f->obj != (object *) NULL; f = f->prev)
-    {
+    for (f = ftop, elts = a->elts + n; f->obj != (object *) NULL; f = f->prev) {
 	(--elts)->type = T_ARRAY;
 	n = f->nargs;
 	args = f->argp + n;
@@ -2032,7 +2054,7 @@ array *i_call_trace()
 	    /* unlikely, but possible */
 	    n = max_args;
 	}
-	arr_ref(elts->u.array = arr_new(n + 5L));
+	arr_ref(elts->u.array = arr_new(ftop->data, n + 5L));
 	v = elts->u.array->elts;
 
 	/* object name */
@@ -2087,32 +2109,33 @@ array *i_call_trace()
  *		The function is called with rlimits (-1; -1) and errors
  *		caught.
  */
-bool i_call_critical(func, narg, flag)
+bool i_call_critical(f, func, narg, flag)
+register frame *f;
 char *func;
 int narg, flag;
 {
     bool xnodepth, xnoticks, ok;
     Int xticks;
 
-    xnodepth = nodepth;
-    xnoticks = noticks;
-    xticks = ticks;
-    nodepth = TRUE;
-    noticks = TRUE;
+    xnodepth = f->nodepth;
+    xnoticks = f->noticks;
+    xticks = f->ticks;
+    f->nodepth = TRUE;
+    f->noticks = TRUE;
 
-    sp += narg;		/* so the error context knows what to pop */
+    f->sp += narg;		/* so the error context knows what to pop */
     if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
 	ok = FALSE;
     } else {
-	sp -= narg;	/* recover arguments */
-	call_driver_object(func, narg);
+	f->sp -= narg;	/* recover arguments */
+	call_driver_object(f, func, narg);
 	ec_pop();
 	ok = TRUE;
     }
 
-    nodepth = xnodepth;
-    noticks = xnoticks;
-    ticks = xticks;
+    f->nodepth = xnodepth;
+    f->noticks = xnoticks;
+    f->ticks = xticks;
 
     return ok;
 }
@@ -2121,23 +2144,24 @@ int narg, flag;
  * NAME:	interpret->runtime_error()
  * DESCRIPTION:	handle a runtime error
  */
-void i_runtime_error(depth)
+void i_runtime_error(f, depth)
+register frame *f;
 Int depth;
 {
     char *err;
 
     err = errormesg();
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(err, (long) strlen(err)));
-    (--sp)->type = T_INT;
-    sp->u.number = depth;
-    (--sp)->type = T_INT;
-    sp->u.number = i_get_ticks();
-    if (!i_call_critical("runtime_error", 3, FALSE)) {
+    (--f->sp)->type = T_STRING;
+    str_ref(f->sp->u.string = str_new(err, (long) strlen(err)));
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = depth;
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = i_get_ticks(f);
+    if (!i_call_critical(f, "runtime_error", 3, FALSE)) {
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
-	i_del_value(sp++);
+	i_del_value(f->sp++);
     }
 }
 
@@ -2147,13 +2171,16 @@ Int depth;
  */
 void i_clear()
 {
-    if (cframe->stack != stack) {
-	FREE(cframe->stack);
-	cframe->fp = sp = stack + MIN_STACK;
-	cframe->stack = cframe->ilvp = ilvp = stack;
+    register frame *f;
+
+    f = cframe;
+    if (f->stack != stack) {
+	FREE(f->stack);
+	f->fp = f->sp = stack + MIN_STACK;
+	f->stack = f->prev_ilvp = f->ilvp = stack;
     }
 
-    nodepth = TRUE;
-    noticks = TRUE;
-    rli = 0;
+    f->nodepth = TRUE;
+    f->noticks = TRUE;
+    f->rli = 0;
 }

@@ -1419,10 +1419,11 @@ register dataspace *data;
  * NAME:	data->new_call_out()
  * DESCRIPTION:	add a new callout
  */
-uindex d_new_call_out(data, func, t, nargs)
+uindex d_new_call_out(data, func, t, f, nargs)
 register dataspace *data;
 string *func;
 Uint t;
+register frame *f;
 int nargs;
 {
     register dcallout *co;
@@ -1484,31 +1485,31 @@ int nargs;
 
     switch (nargs) {
     case 3:
-	v[3] = sp[2];
+	v[3] = f->sp[2];
 	ref_rhs(data, &v[3]);
     case 2:
-	v[2] = sp[1];
+	v[2] = f->sp[1];
 	ref_rhs(data, &v[2]);
     case 1:
-	v[1] = sp[0];
+	v[1] = f->sp[0];
 	ref_rhs(data, &v[1]);
     case 0:
 	break;
 
     default:
-	v[1] = *sp++;
+	v[1] = *f->sp++;
 	ref_rhs(data, &v[1]);
-	v[2] = *sp++;
+	v[2] = *f->sp++;
 	ref_rhs(data, &v[2]);
 	v[3].type = T_ARRAY;
 	nargs -= 2;
-	arr_ref(v[3].u.array = arr_new((long) nargs));
-	memcpy(v[3].u.array->elts, sp, nargs * sizeof(value));
+	arr_ref(v[3].u.array = arr_new(data, (long) nargs));
+	memcpy(v[3].u.array->elts, f->sp, nargs * sizeof(value));
 	d_ref_imports(v[3].u.array);
 	ref_rhs(data, &v[3]);
 	break;
     }
-    sp += nargs;
+    f->sp += nargs;
 
     return co - data->callouts + 1;
 }
@@ -1517,10 +1518,11 @@ int nargs;
  * NAME:	data->get_call_out()
  * DESCRIPTION:	get a callout
  */
-string *d_get_call_out(data, handle, t, nargs)
+string *d_get_call_out(data, handle, t, f, nargs)
 dataspace *data;
 unsigned int handle;
 Uint *t;
+register frame *f;
 int *nargs;
 {
     string *str;
@@ -1541,48 +1543,67 @@ int *nargs;
 	/* invalid callout */
 	return (string *) NULL;
     }
-    i_grow_stack((*nargs = co->nargs) + 1);
+
     *t = co->time;
     v = co->val;
-
     del_lhs(data, &v[0]);
-    *--sp = v[0];
     str = v[0].u.string;
     v[0].type = T_INVALID;
 
-    switch (co->nargs) {
-    case 3:
-	del_lhs(data, &v[3]);
-	*--sp = v[3];
-    case 2:
-	del_lhs(data, &v[2]);
-	*--sp = v[2];
-    case 1:
-	del_lhs(data, &v[1]);
-	*--sp = v[1];
-    case 0:
-	break;
+    if (f != (frame *) NULL) {
+	i_grow_stack(f, (*nargs = co->nargs) + 1);
+	*--f->sp = v[0];
 
-    default:
-	n = co->nargs - 2;
-	sp -= n;
-	memcpy(sp, d_get_elts(v[3].u.array), n * sizeof(value));
-	del_lhs(data, &v[3]);
-	FREE(v[3].u.array->elts);
-	v[3].u.array->elts = (value *) NULL;
-	arr_del(v[3].u.array);
-	del_lhs(data, &v[2]);
-	*--sp = v[2];
-	del_lhs(data, &v[1]);
-	*--sp = v[1];
-	break;
-    }
+	switch (co->nargs) {
+	case 3:
+	    del_lhs(data, &v[3]);
+	    *--f->sp = v[3];
+	case 2:
+	    del_lhs(data, &v[2]);
+	    *--f->sp = v[2];
+	case 1:
+	    del_lhs(data, &v[1]);
+	    *--f->sp = v[1];
+	case 0:
+	    break;
 
-    /* wipe out destructed objects */
-    for (n = co->nargs, v = sp; n > 0; --n, v++) {
-	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    v->type = T_INT;
-	    v->u.number = 0;
+	default:
+	    n = co->nargs - 2;
+	    f->sp -= n;
+	    memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(value));
+	    del_lhs(data, &v[3]);
+	    FREE(v[3].u.array->elts);
+	    v[3].u.array->elts = (value *) NULL;
+	    arr_del(v[3].u.array);
+	    del_lhs(data, &v[2]);
+	    *--f->sp = v[2];
+	    del_lhs(data, &v[1]);
+	    *--f->sp = v[1];
+	    break;
+	}
+
+	/* wipe out destructed objects */
+	for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
+	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
+		v->type = T_INT;
+		v->u.number = 0;
+	    }
+	}
+    } else {
+	str_del(str);	/* str becomes invalid but remains non-NULL */
+
+	switch (co->nargs) {
+	default:
+	    del_lhs(data, &v[3]);
+	    i_del_value(&v[3]);
+	case 2:
+	    del_lhs(data, &v[2]);
+	    i_del_value(&v[2]);
+	case 1:
+	    del_lhs(data, &v[1]);
+	    i_del_value(&v[1]);
+	case 0:
+	    break;
 	}
     }
 
@@ -1614,7 +1635,8 @@ cvoid *cv1, *cv2;
  * NAME:	data->list_callouts()
  * DESCRIPTION:	list all call_outs in an object
  */
-array *d_list_callouts(data, t)
+array *d_list_callouts(host, data, t)
+dataspace *host;
 register dataspace *data;
 Uint t;
 {
@@ -1625,7 +1647,7 @@ Uint t;
     uindex max_args;
 
     if (data->ncallouts == 0) {
-	return arr_new(0L);
+	return arr_new(host, 0L);
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
@@ -1637,7 +1659,7 @@ Uint t;
 	--count;
     }
 
-    list = arr_new((long) count);
+    list = arr_new(host, (long) count);
     elts = list->elts;
     max_args = conf_array_size() - 3;
 
@@ -1648,7 +1670,7 @@ Uint t;
 		/* unlikely, but possible */
 		size = max_args;
 	    }
-	    a = arr_new(size + 3L);
+	    a = arr_new(host, size + 3L);
 	    v = a->elts;
 
 	    /* handle */

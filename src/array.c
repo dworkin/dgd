@@ -115,7 +115,8 @@ unsigned int size;
  * NAME:	array->new()
  * DESCRIPTION:	create a new array
  */
-array *arr_new(size)
+array *arr_new(data, size)
+dataspace *data;
 register long size;
 {
     register array *a;
@@ -129,7 +130,7 @@ register long size;
     }
     a->tag = tag++;
     a->odcount = odcount;
-    a->primary = &cframe->obj->data->alocal;
+    a->primary = &data->alocal;
     return a;
 }
 
@@ -352,12 +353,13 @@ array *a;
  * NAME:	array->add()
  * DESCRIPTION:	add two arrays
  */
-array *arr_add(a1, a2)
+array *arr_add(data, a1, a2)
+dataspace *data;
 register array *a1, *a2;
 {
     register array *a;
 
-    a = arr_new((long) a1->size + a2->size);
+    a = arr_new(data, (long) a1->size + a2->size);
     arr_copy(a->elts, a1);
     arr_copy(a->elts + a1->size, a2);
     d_ref_imports(a);
@@ -495,7 +497,8 @@ bool place;
  * NAME:	array->sub()
  * DESCRIPTION:	subtract one array from another
  */
-array *arr_sub(a1, a2)
+array *arr_sub(data, a1, a2)
+dataspace *data;
 array *a1, *a2;
 {
     register value *v1, *v2, *v3;
@@ -507,14 +510,14 @@ array *a1, *a2;
 	 * array - ({ })
 	 * Return a copy of the first array.
 	 */
-	a3 = arr_new((long) a1->size);
+	a3 = arr_new(data, (long) a1->size);
 	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
     }
 
     /* create new array */
-    a3 = arr_new((long) a1->size);
+    a3 = arr_new(data, (long) a1->size);
     if (a3->size == 0) {
 	/* subtract from empty array */
 	return a3;
@@ -571,7 +574,8 @@ array *a1, *a2;
  * NAME:	array->intersect()
  * DESCRIPTION:	A - (A - B).  If A and B are sets, the result is a set also.
  */
-array *arr_intersect(a1, a2)
+array *arr_intersect(data, a1, a2)
+dataspace *data;
 array *a1, *a2;
 {
     register value *v1, *v2, *v3;
@@ -580,11 +584,11 @@ array *a1, *a2;
 
     if (a1->size == 0 || a2->size == 0) {
 	/* array & ({ }) */
-	return arr_new(0L);
+	return arr_new(data, 0L);
     }
 
     /* create new array */
-    a3 = arr_new((long) a1->size);
+    a3 = arr_new(data, (long) a1->size);
     size = a2->size;
 
     /* copy and sort values of 2nd array */
@@ -637,7 +641,8 @@ array *a1, *a2;
  * NAME:	array->setadd()
  * DESCRIPTION:	A + (B - A).  If A and B are sets, the result is a set also.
  */
-array *arr_setadd(a1, a2)
+array *arr_setadd(data, a1, a2)
+dataspace *data;
 array *a1, *a2;
 {
     register value *v, *v1, *v2;
@@ -647,14 +652,14 @@ array *a1, *a2;
 
     if (a1->size == 0) {
 	/* ({ }) | array */
-	a3 = arr_new((long) a2->size);
+	a3 = arr_new(data, (long) a2->size);
 	arr_copy(a3->elts, a2);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
-	a3 = arr_new((long) a1->size);
+	a3 = arr_new(data, (long) a1->size);
 	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
@@ -703,7 +708,7 @@ array *a1, *a2;
 	error("Array too large");
     }
 
-    a3 = arr_new((long) size + n);
+    a3 = arr_new(data, (long) size + n);
     copy(a3->elts, a1->elts, size);
     copy(a3->elts + size, v3, n);
     AFREE(v3);
@@ -717,7 +722,8 @@ array *a1, *a2;
  * DESCRIPTION:	(A - B) + (B - A).  If A and B are sets, the result is a set
  *		also.
  */
-array *arr_setxadd(a1, a2)
+array *arr_setxadd(data, a1, a2)
+dataspace *data;
 array *a1, *a2;
 {
     register value *v, *w, *v1, *v2;
@@ -728,14 +734,14 @@ array *a1, *a2;
 
     if (a1->size == 0) {
 	/* ({ }) ^ array */
-	a3 = arr_new((long) a2->size);
+	a3 = arr_new(data, (long) a2->size);
 	arr_copy(a3->elts, a2);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
-	a3 = arr_new((long) a1->size);
+	a3 = arr_new(data, (long) a1->size);
 	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
@@ -793,7 +799,7 @@ array *a1, *a2;
 	error("Array too large");
     }
 
-    a3 = arr_new((long) num + n);
+    a3 = arr_new(data, (long) num + n);
     copy(a3->elts, v3, num);
     copy(a3->elts + num, v2, n);
     AFREE(v3);
@@ -835,7 +841,8 @@ register long l1, l2;
  * NAME:	array->range()
  * DESCRIPTION:	return a subrange of an array
  */
-array *arr_range(a, l1, l2)
+array *arr_range(data, a, l1, l2)
+dataspace *data;
 register array *a;
 register long l1, l2;
 {
@@ -845,7 +852,7 @@ register long l1, l2;
 	error("Invalid array range");
     }
 
-    range = arr_new(l2 - l1 + 1);
+    range = arr_new(data, l2 - l1 + 1);
     copy(range->elts, d_get_elts(a) + l1, (unsigned short) (l2 - l1 + 1));
     d_ref_imports(range);
     return range;
@@ -880,7 +887,8 @@ cvoid *cv1, *cv2;
  * NAME:	mapping->new()
  * DESCRIPTION:	create a new mapping
  */
-array *map_new(size)
+array *map_new(data, size)
+dataspace *data;
 register long size;
 {
     array *m;
@@ -894,7 +902,7 @@ register long size;
     }
     m->tag = tag++;
     m->odcount = odcount;
-    m->primary = &cframe->obj->data->alocal;
+    m->primary = &data->alocal;
     return m;
 }
 
@@ -1197,7 +1205,8 @@ register array *m;
  * NAME:	mapping->add()
  * DESCRIPTION:	add two mappings
  */
-array *map_add(m1, m2)
+array *map_add(data, m1, m2)
+dataspace *data;
 array *m1, *m2;
 {
     register value *v1, *v2, *v3;
@@ -1207,7 +1216,7 @@ array *m1, *m2;
 
     map_compact(m1);
     map_compact(m2);
-    m3 = map_new((long) m1->size + m2->size);
+    m3 = map_new(data, (long) m1->size + m2->size);
     if (m3->size == 0) {
 	/* add two empty mappings */
 	return m3;
@@ -1280,7 +1289,8 @@ array *m1, *m2;
  * NAME:	mapping->sub()
  * DESCRIPTION:	subtract an array from a mapping
  */
-array *map_sub(m1, a2)
+array *map_sub(data, m1, a2)
+dataspace *data;
 array *m1, *a2;
 {
     register value *v1, *v2, *v3;
@@ -1289,7 +1299,7 @@ array *m1, *a2;
     array *m3;
 
     map_compact(m1);
-    m3 = map_new((long) m1->size);
+    m3 = map_new(data, (long) m1->size);
     if (m1->size == 0) {
 	/* subtract from empty mapping */
 	return m3;
@@ -1367,7 +1377,8 @@ array *m1, *a2;
  * NAME:	mapping->intersect()
  * DESCRIPTION:	intersect a mapping with an array
  */
-array *map_intersect(m1, a2)
+array *map_intersect(data, m1, a2)
+dataspace *data;
 array *m1, *a2;
 {
     register value *v1, *v2, *v3;
@@ -1378,9 +1389,9 @@ array *m1, *a2;
     map_compact(m1);
     if ((size=a2->size) == 0) {
 	/* intersect with empty array */
-	return map_new(0L);
+	return map_new(data, 0L);
     }
-    m3 = map_new((long) m1->size);
+    m3 = map_new(data, (long) m1->size);
     if (m1->size == 0) {
 	/* intersect with empty mapping */
 	return m3;
@@ -1679,7 +1690,8 @@ value *val, *elt;
  * NAME:	mapping->range()
  * DESCRIPTION:	return a mapping value subrange
  */
-array *map_range(m, v1, v2)
+array *map_range(data, m, v1, v2)
+dataspace *data;
 array *m;
 register value *v1, *v2;
 {
@@ -1703,11 +1715,11 @@ register value *v1, *v2;
 	}
     }
     if (from >= to) {
-	return map_new(0L);	/* empty subrange */
+	return map_new(data, 0L);	/* empty subrange */
     }
 
     /* copy subrange */
-    range = map_new((long) (to -= from));
+    range = map_new(data, (long) (to -= from));
     copy(range->elts, m->elts + from, to);
 
     d_ref_imports(range);
@@ -1718,7 +1730,8 @@ register value *v1, *v2;
  * NAME:	mapping->indices()
  * DESCRIPTION:	return the indices of a mapping
  */
-array *map_indices(m)
+array *map_indices(data, m)
+dataspace *data;
 array *m;
 {
     register array *indices;
@@ -1726,7 +1739,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    indices = arr_new((long) (n = m->size >> 1));
+    indices = arr_new(data, (long) (n = m->size >> 1));
     v1 = indices->elts;
     for (v2 = m->elts; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);
@@ -1741,7 +1754,8 @@ array *m;
  * NAME:	mapping->values()
  * DESCRIPTION:	return the values of a mapping
  */
-array *map_values(m)
+array *map_values(data, m)
+dataspace *data;
 array *m;
 {
     register array *values;
@@ -1749,7 +1763,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    values = arr_new((long) (n = m->size >> 1));
+    values = arr_new(data, (long) (n = m->size >> 1));
     v1 = values->elts;
     for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);

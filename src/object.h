@@ -11,8 +11,8 @@ struct _object_ {
     Uint count;			/* object creation count */
     Uint update;		/* object update count */
     Uint ref;			/* ref count (if master object) */
-    struct _control_ *ctrl;	/* control block (master object only) */
-    struct _dataspace_ *data;	/* dataspace block */
+    control *ctrl;		/* control block (master object only) */
+    dataspace *data;		/* dataspace block */
     sector cfirst;		/* first sector of control block */
     sector dfirst;		/* first sector of dataspace block */
 };
@@ -33,21 +33,21 @@ struct _object_ {
 # define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 
-extern void		   o_init	P((unsigned int));
-extern object		  *o_new	P((char*, struct _control_*));
-extern object		  *o_clone	P((object*));
-extern void		   o_upgrade	P((object*, struct _control_*));
-extern void		   o_upgraded	P((object*, object*));
-extern void		   o_del	P((object*));
-extern char		  *o_name	P((object*));
-extern object		  *o_find	P((char*));
-extern struct _control_	  *o_control	P((object*));
-extern struct _dataspace_ *o_dataspace	P((object*));
-extern void		   o_clean	P((void));
-extern uindex		   o_count	P((void));
-extern bool		   o_dump	P((int));
-extern void		   o_restore	P((int));
-extern void		   o_conv	P((void));
+extern void	  o_init	P((unsigned int));
+extern object	 *o_new		P((char*, control*));
+extern object	 *o_clone	P((object*));
+extern void	  o_upgrade	P((object*, control*, frame*));
+extern void	  o_upgraded	P((object*, object*));
+extern void	  o_del		P((object*, frame*));
+extern char	 *o_name	P((object*));
+extern object	 *o_find	P((char*));
+extern control   *o_control	P((object*));
+extern dataspace *o_dataspace	P((object*));
+extern void	  o_clean	P((void));
+extern uindex	  o_count	P((void));
+extern bool	  o_dump	P((int));
+extern void	  o_restore	P((int));
+extern void	  o_conv	P((void));
 
-extern object  *otable;
-extern Uint	odcount;
+extern object    *otable;
+extern Uint	  odcount;

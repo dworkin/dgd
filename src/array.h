@@ -3,14 +3,14 @@ struct _array_ {
     Uint ref;				/* number of references */
     Uint tag;				/* used in sorting */
     Uint odcount;			/* last destructed object count */
-    struct _value_ *elts;		/* elements */
+    value *elts;			/* elements */
     struct _maphash_ *hashed;		/* hashed mapping elements */
     struct _arrref_ *primary;		/* primary reference */
 };
 
 extern void		arr_init	P((unsigned int));
 extern array	       *arr_alloc	P((unsigned int));
-extern array	       *arr_new		P((long));
+extern array	       *arr_new		P((dataspace*, long));
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		P((array*));
 extern void		arr_freeall	P((void));
@@ -18,25 +18,23 @@ extern void		arr_freeall	P((void));
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
 
-extern array	       *arr_add		P((array*, array*));
-extern array	       *arr_sub		P((array*, array*));
-extern array	       *arr_intersect	P((array*, array*));
-extern array	       *arr_setadd	P((array*, array*));
-extern array	       *arr_setxadd	P((array*, array*));
+extern array	       *arr_add		P((dataspace*, array*, array*));
+extern array	       *arr_sub		P((dataspace*, array*, array*));
+extern array	       *arr_intersect	P((dataspace*, array*, array*));
+extern array	       *arr_setadd	P((dataspace*, array*, array*));
+extern array	       *arr_setxadd	P((dataspace*, array*, array*));
 extern unsigned short	arr_index	P((array*, long));
 extern void		arr_ckrange	P((array*, long, long));
-extern array	       *arr_range	P((array*, long, long));
+extern array	       *arr_range	P((dataspace*, array*, long, long));
 
-extern array	       *map_new		P((long));
+extern array	       *map_new		P((dataspace*, long));
 extern void		map_sort	P((array*));
 extern void		map_compact	P((array*));
 extern unsigned short	map_size	P((array*));
-extern array	       *map_add		P((array*, array*));
-extern array	       *map_sub		P((array*, array*));
-extern array	       *map_intersect	P((array*, array*));
-extern struct _value_  *map_index	P((array*, struct _value_*,
-					   struct _value_*));
-extern array	       *map_range	P((array*, struct _value_*,
-					   struct _value_*));
-extern array	       *map_indices	P((array*));
-extern array	       *map_values	P((array*));
+extern array	       *map_add		P((dataspace*, array*, array*));
+extern array	       *map_sub		P((dataspace*, array*, array*));
+extern array	       *map_intersect	P((dataspace*, array*, array*));
+extern value	       *map_index	P((array*, value*, value*));
+extern array	       *map_range	P((dataspace*, array*, value*, value*));
+extern array	       *map_indices	P((dataspace*, array*));
+extern array	       *map_values	P((dataspace*, array*));

@@ -249,7 +249,7 @@ char *argv[];
     }
 
     /* compile file */
-    ctrl = c_compile(file, (object *) NULL)->ctrl;
+    ctrl = c_compile(cframe, file, (object *) NULL)->ctrl;
     nfuncs = cg_nfuncs();
     ec_pop();
 
@@ -316,13 +316,14 @@ char *argv[];
  * NAME:	call_driver_object()
  * DESCRIPTION:	pretend to call a function in the driver object
  */
-bool call_driver_object(func, narg)
+bool call_driver_object(f, func, narg)
+register frame *f;
 char *func;
 int narg;
 {
-    i_pop(narg);
-    (--sp)->type = T_INT;
-    sp->u.number = 0;
+    i_pop(f, narg);
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = 0;
     return FALSE;
 }
 
@@ -381,7 +382,8 @@ char *auto_name, *driver_name;
  * NAME:	pc_list()
  * DESCRIPTION:	pretend to return a list of precompiled objects
  */
-array *pc_list()
+array *pc_list(data)
+dataspace *data;
 {
     return (array *) NULL;
 }
@@ -586,7 +588,8 @@ object *obj;
  * NAME:	comm->close()
  * DESCRIPTION:	pretend to remove a user
  */
-void comm_close(obj)
+void comm_close(f, obj)
+frame *f;
 object *obj;
 {
 }
@@ -604,7 +607,8 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
-array *comm_users()
+array *comm_users(data)
+dataspace *data;
 {
     return (array *) NULL;
 }
@@ -689,10 +693,11 @@ int frag;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new call_out
  */
-uindex co_new(obj, str, delay, nargs)
+uindex co_new(obj, str, delay, f, nargs)
 object *obj;
 string *str;
 Int delay;
+frame *f;
 int nargs;
 {
     return 0;
@@ -723,7 +728,8 @@ object *obj;
  * NAME:	call_out->call()
  * DESCRIPTION:	pretend to call expired call_outs
  */
-void co_call()
+void co_call(f)
+frame *f;
 {
 }
 

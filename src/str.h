@@ -1,9 +1,9 @@
-typedef struct _string_ {
+struct _string_ {
     struct _strref_ *primary;	/* primary reference */
     Uint ref;			/* number of references + const bit */
     unsigned short len;		/* string length */
     char text[1];		/* actual characters following this struct */
-} string;
+};
 
 extern void		str_init	P((void));
 extern string	       *str_new		P((char*, long));

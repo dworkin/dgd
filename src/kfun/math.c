@@ -12,10 +12,11 @@ char pt_fabs[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->fabs()
  * DESCRIPTION:	return the absolute value of a float
  */
-int kf_fabs()
+int kf_fabs(f)
+frame *f;
 {
-    i_add_ticks(1);
-    VFLT_ABS(sp);
+    i_add_ticks(f, 1);
+    VFLT_ABS(f->sp);
     return 0;
 }
 # endif
@@ -30,14 +31,15 @@ char pt_floor[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->floor()
  * DESCRIPTION:	round the argument downwards
  */
-int kf_floor()
+int kf_floor(f)
+register frame *f;
 {
     xfloat flt;
 
-    i_add_ticks(1);
-    VFLT_GET(sp, flt);
+    i_add_ticks(f, 1);
+    VFLT_GET(f->sp, flt);
     flt_floor(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -52,14 +54,15 @@ char pt_ceil[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->ceil()
  * DESCRIPTION:	round the argument upwards
  */
-int kf_ceil()
+int kf_ceil(f)
+register frame *f;
 {
     xfloat flt;
 
-    i_add_ticks(1);
-    VFLT_GET(sp, flt);
+    i_add_ticks(f, 1);
+    VFLT_GET(f->sp, flt);
     flt_ceil(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -74,16 +77,17 @@ char pt_fmod[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
  * NAME:	kfun->fmod()
  * DESCRIPTION:	compute fmod
  */
-int kf_fmod()
+int kf_fmod(f)
+register frame *f;
 {
     xfloat f1, f2;
 
-    i_add_ticks(1);
-    VFLT_GET(sp, f2);
-    sp++;
-    VFLT_GET(sp, f1);
+    i_add_ticks(f, 1);
+    VFLT_GET(f->sp, f2);
+    f->sp++;
+    VFLT_GET(f->sp, f1);
     flt_fmod(&f1, &f2);
-    VFLT_PUT(sp, f1);
+    VFLT_PUT(f->sp, f1);
     return 0;
 }
 # endif
@@ -99,22 +103,23 @@ char pt_frexp[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_MIXED, 1,
  * NAME:	kfun->frexp()
  * DESCRIPTION:	split a float into a fraction and an exponent
  */
-int kf_frexp()
+int kf_frexp(f)
+register frame *f;
 {
     xfloat flt;
     Int num;
     array *a;
 
-    i_add_ticks(2);
-    VFLT_GET(sp, flt);
+    i_add_ticks(f, 2);
+    VFLT_GET(f->sp, flt);
     num = flt_frexp(&flt);
-    a = arr_new(2L);
+    a = arr_new(f->data, 2L);
     a->elts[0].type = T_FLOAT;
     VFLT_PUT(a->elts, flt);
     a->elts[1].type = T_INT;
     a->elts[1].u.number = num;
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
 
     return 0;
 }
@@ -130,15 +135,16 @@ char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_INT };
  * NAME:	kfun->ldexp()
  * DESCRIPTION:	make a float from a fraction and an exponent
  */
-int kf_ldexp()
+int kf_ldexp(f)
+register frame *f;
 {
     xfloat flt;
 
-    i_add_ticks(1);
-    VFLT_GET(sp + 1, flt);
-    flt_ldexp(&flt, sp->u.number);
-    sp++;
-    VFLT_PUT(sp, flt);
+    i_add_ticks(f, 1);
+    VFLT_GET(f->sp + 1, flt);
+    flt_ldexp(&flt, f->sp->u.number);
+    f->sp++;
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -154,21 +160,22 @@ char pt_modf[] = { C_TYPECHECKED | C_STATIC, (1 << REFSHIFT) | T_FLOAT, 1,
  * NAME:	kfun->modf()
  * DESCRIPTION:	split float into fraction and integer part
  */
-int kf_modf()
+int kf_modf(f)
+register frame *f;
 {
     xfloat f1, f2;
     array *a;
 
-    i_add_ticks(2);
-    VFLT_GET(sp, f1);
+    i_add_ticks(f, 2);
+    VFLT_GET(f->sp, f1);
     flt_modf(&f1, &f2);
-    a = arr_new(2L);
+    a = arr_new(f->data, 2L);
     a->elts[0].type = T_FLOAT;
     VFLT_PUT(a->elts, f1);
     a->elts[1].type = T_FLOAT;
     VFLT_PUT(a->elts + 1, f2);
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
 
     return 0;
 }
@@ -185,13 +192,14 @@ char pt_exp[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->exp()
  * DESCRIPTION:	compute exp
  */
-int kf_exp()
+int kf_exp(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_exp(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -206,13 +214,14 @@ char pt_log[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->log()
  * DESCRIPTION:	compute log
  */
-int kf_log()
+int kf_log(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_log(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -227,13 +236,14 @@ char pt_log10[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->log10()
  * DESCRIPTION:	compute log10
  */
-int kf_log10()
+int kf_log10(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_log10(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -248,15 +258,16 @@ char pt_pow[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
  * NAME:	kfun->pow()
  * DESCRIPTION:	compute pow
  */
-int kf_pow()
+int kf_pow(f)
+register frame *f;
 {
     xfloat f1, f2;
 
-    VFLT_GET(sp, f2);
-    sp++;
-    VFLT_GET(sp, f1);
+    VFLT_GET(f->sp, f2);
+    f->sp++;
+    VFLT_GET(f->sp, f1);
     flt_pow(&f1, &f2);
-    VFLT_PUT(sp, f1);
+    VFLT_PUT(f->sp, f1);
     return 0;
 }
 # endif
@@ -271,13 +282,14 @@ char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->sqrt()
  * DESCRIPTION:	compute sqrt
  */
-int kf_sqrt()
+int kf_sqrt(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_sqrt(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -292,13 +304,14 @@ char pt_cos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->cos()
  * DESCRIPTION:	compute cos
  */
-int kf_cos()
+int kf_cos(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_cos(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -313,13 +326,14 @@ char pt_sin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->sin()
  * DESCRIPTION:	compute sin
  */
-int kf_sin()
+int kf_sin(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_sin(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -334,13 +348,14 @@ char pt_tan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->tan()
  * DESCRIPTION:	compute tan
  */
-int kf_tan()
+int kf_tan(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_tan(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -355,13 +370,14 @@ char pt_acos[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->acos()
  * DESCRIPTION:	compute acos
  */
-int kf_acos()
+int kf_acos(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_acos(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -376,13 +392,14 @@ char pt_asin[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->asin()
  * DESCRIPTION:	compute asin
  */
-int kf_asin()
+int kf_asin(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_asin(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -397,13 +414,14 @@ char pt_atan[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->atan()
  * DESCRIPTION:	compute atan
  */
-int kf_atan()
+int kf_atan(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_atan(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -418,15 +436,16 @@ char pt_atan2[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 2, T_FLOAT, T_FLOAT };
  * NAME:	kfun->atan2()
  * DESCRIPTION:	compute atan2
  */
-int kf_atan2()
+int kf_atan2(f)
+register frame *f;
 {
     xfloat f1, f2;
 
-    VFLT_GET(sp, f2);
-    sp++;
-    VFLT_GET(sp, f1);
+    VFLT_GET(f->sp, f2);
+    f->sp++;
+    VFLT_GET(f->sp, f1);
     flt_atan2(&f1, &f2);
-    VFLT_PUT(sp, f1);
+    VFLT_PUT(f->sp, f1);
     return 0;
 }
 # endif
@@ -441,13 +460,14 @@ char pt_cosh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->cosh()
  * DESCRIPTION:	compute cosh
  */
-int kf_cosh()
+int kf_cosh(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_cosh(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -462,13 +482,14 @@ char pt_sinh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->sinh()
  * DESCRIPTION:	compute sinh
  */
-int kf_sinh()
+int kf_sinh(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_sinh(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif
@@ -483,13 +504,14 @@ char pt_tanh[] = { C_TYPECHECKED | C_STATIC, T_FLOAT, 1, T_FLOAT };
  * NAME:	kfun->tanh()
  * DESCRIPTION:	compute tanh
  */
-int kf_tanh()
+int kf_tanh(f)
+register frame *f;
 {
     xfloat flt;
 
-    VFLT_GET(sp, flt);
+    VFLT_GET(f->sp, flt);
     flt_tanh(&flt);
-    VFLT_PUT(sp, flt);
+    VFLT_PUT(f->sp, flt);
     return 0;
 }
 # endif

@@ -39,8 +39,8 @@ typedef struct {
 
 # define DSYM_LAYOUT	"ccs"
 
-typedef struct _control_ {
-    struct _control_ *prev, *next;
+struct _control_ {
+    control *prev, *next;
     Uint refc;
     uindex ndata;		/* # of data blocks using this control block */
 
@@ -89,7 +89,7 @@ typedef struct _control_ {
 
     unsigned short vmapsize;	/* i/o size of variable mapping */
     unsigned short *vmap;	/* variable mapping */
-} control;
+};
 
 # define NEW_INT		((unsigned short) -1)
 # define NEW_FLOAT		((unsigned short) -2)
@@ -97,25 +97,25 @@ typedef struct _control_ {
 
 typedef struct _strref_ {
     string *str;		/* string value */
-    struct _dataspace_ *data;	/* dataspace this string is in */
+    dataspace *data;		/* dataspace this string is in */
     Uint ref;			/* # of refs */
 } strref;
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
-    struct _dataspace_ *data;	/* dataspace this array is in */
+    dataspace *data;		/* dataspace this array is in */
     Uint index;			/* selts index */
     Uint ref;			/* # of refs */
 } arrref;
 
-typedef struct _dataspace_ {
-    struct _dataspace_ *prev, *next;
+struct _dataspace_ {
+    dataspace *prev, *next;
     Uint refc;
 
     long achange;		/* # array changes */
     long schange;		/* # string changes */
     long imports;		/* # array imports */
-    struct _dataspace_ *ilist;	/* import list */
+    dataspace *ilist;		/* import list */
 
     object *obj;		/* object this dataspace belongs to */
     control *ctrl;		/* control block */
@@ -125,7 +125,7 @@ typedef struct _dataspace_ {
     sector *sectors;		/* o vector of sectors */
 
     unsigned short nvariables;	/* o # variables */
-    struct _value_ *variables;	/* i/o variables */
+    value *variables;		/* i/o variables */
     struct _svalue_ *svariables;/* o svariables */
     Uint varoffset;		/* o offset of variables in data space */
 
@@ -148,7 +148,7 @@ typedef struct _dataspace_ {
     uindex fcallouts;		/* free callout list */
     struct _dcallout_ *callouts;/* callouts */
     Uint cooffset;		/* offset of callout table */
-} dataspace;
+};
 
 extern void		d_init		P((void));
 extern control	       *d_new_control	P((void));
@@ -168,21 +168,20 @@ extern dvardef	       *d_get_vardefs	P((control*));
 extern char	       *d_get_funcalls	P((control*));
 extern dsymbol	       *d_get_symbols	P((control*));
 
-extern struct _value_  *d_get_variable	P((dataspace*, unsigned int));
-extern struct _value_  *d_get_elts	P((array*));
+extern value	       *d_get_variable	P((dataspace*, unsigned int));
+extern value	       *d_get_elts	P((array*));
 
 extern void		d_ref_imports	P((array*));
-extern void		d_assign_var	P((dataspace*, struct _value_*,
-					   struct _value_*));
-extern void		d_assign_elt	P((array*, struct _value_*,
-					   struct _value_*));
+extern void		d_assign_var	P((dataspace*, value*, value*));
+extern void		d_assign_elt	P((array*, value*, value*));
 extern void		d_change_map	P((array*));
 extern void		d_del_array	P((array*));
 
-extern uindex		d_new_call_out	P((dataspace*, string*, Uint, int));
+extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
+					   int));
 extern string	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
-					   int*));
-extern array	       *d_list_callouts	P((dataspace*, Uint));
+					   frame*, int*));
+extern array	       *d_list_callouts	P((dataspace*, dataspace*, Uint));
 
 extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));

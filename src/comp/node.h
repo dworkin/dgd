@@ -6,7 +6,7 @@ typedef struct _node_ {
     union {
 	Int number;		/* numeric value */
 	unsigned short fhigh;	/* high word of float */
-	struct _string_ *string;/* string value */
+	string *string;		/* string value */
 	char *ptr;		/* character pointer */
 	struct _node_ *left;	/* left child */
     } l;

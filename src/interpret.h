@@ -90,7 +90,7 @@
 # define TYPENAMES	{ "invalid", "int", "float", "string", "object", \
 			  "array", "mapping", "reserved", "mixed", "void" }
 
-typedef struct _value_ {
+struct _value_ {
     char type;			/* value type */
     bool modified;		/* dirty bit */
     uindex oindex;		/* index in object table */
@@ -99,9 +99,9 @@ typedef struct _value_ {
 	Uint objcnt;		/* object creation count */
 	string *string;		/* string */
 	array *array;		/* array or mapping */
-	struct _value_ *lval;	/* lvalue: variable */
+	value *lval;		/* lvalue: variable */
     } u;
-} value;
+};
 
 # define VFLT_GET(v, f)	((f).high = (v)->oindex, (f).low = (v)->u.objcnt)
 # define VFLT_PUT(v, f)	((v)->oindex = (f).high, (v)->u.objcnt = (f).low)
@@ -125,68 +125,74 @@ typedef struct _value_ {
 # define C_UNDEFINED	0x80
 
 
-typedef struct _frame_ {
-    struct _frame_ *prev;	/* previous stack frame */
+struct _frame_ {
+    frame *prev;		/* previous stack frame */
     object *obj;		/* current object */
-    struct _control_ *ctrl;	/* object control block */
-    struct _dataspace_ *data;	/* dataspace of current object */
-    struct _control_ *p_ctrl;	/* program control block */
+    control *ctrl;		/* object control block */
+    dataspace *data;		/* dataspace of current object */
+    control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
-    Int depth;			/* stack depth */
+    unsigned short nargs;	/* # arguments */
     bool external;		/* TRUE if it's an external call */
     bool sos;			/* stack on stack */
     uindex foffset;		/* program function offset */
     struct _dfuncdef_ *func;	/* current function */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
-    unsigned short nargs;	/* # arguments */
     value *stack;		/* local value stack */
-    value *ilvp;		/* old indexed lvalue pointer */
-    value *argp;		/* argument pointer (old sp) */
+    value *sp;			/* stack pointer */
+    value *ilvp;		/* indexed lvalue pointer */
+    value *argp;		/* argument pointer (previous sp) */
     value *fp;			/* frame pointer (at end of local stack) */
-} frame;
+    value *prev_ilvp;		/* previous indexed lvalue pointer */
+    Int depth;			/* stack depth */
+    Int maxdepth;		/* max stack depth */
+    Int ticks;			/* ticks left */
+    bool nodepth;		/* no stack depth checking */
+    bool noticks;		/* no ticks checking */
+    short rli;			/* rlimits stack index */
+};
 
 
 extern void		i_init		P((char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
-extern void		i_grow_stack	P((int));
-extern void		i_push_value	P((value*));
-extern void		i_pop		P((int));
-extern void		i_odest		P((object*));
-extern void		i_string	P((int, unsigned int));
-extern void		i_aggregate	P((unsigned int));
-extern void		i_map_aggregate	P((unsigned int));
-extern int		i_spread	P((int, int));
-extern void		i_global	P((int, int));
-extern void		i_global_lvalue	P((int, int, int));
-extern void		i_index		P((void));
-extern void		i_index_lvalue	P((int));
+extern void		i_grow_stack	P((frame*, int));
+extern void		i_push_value	P((frame*, value*));
+extern void		i_pop		P((frame*, int));
+extern void		i_odest		P((frame*, object*));
+extern void		i_string	P((frame*, int, unsigned int));
+extern void		i_aggregate	P((frame*, unsigned int));
+extern void		i_map_aggregate	P((frame*, unsigned int));
+extern int		i_spread	P((frame*, int, int));
+extern void		i_global	P((frame*, int, int));
+extern void		i_global_lvalue	P((frame*, int, int, int));
+extern void		i_index		P((frame*));
+extern void		i_index_lvalue	P((frame*, int));
 extern char	       *i_typename	P((unsigned int));
 extern void		i_cast		P((value*, unsigned int));
-extern void		i_fetch		P((void));
-extern void		i_store		P((value*, value*));
-extern Int		i_get_depth	P((void));
-extern Int		i_get_ticks	P((void));
-extern void		i_check_rlimits	P((void));
-extern int		i_set_rlimits	P((Int, Int));
-extern int		i_get_rllevel	P((void));
-extern void		i_set_rllevel	P((int));
-extern void		i_set_sp	P((value*));
-extern object	       *i_prev_object	P((int));
-extern char	       *i_prev_program	P((int));
-extern void		i_typecheck	P((char*, char*, char*, int, int));
-extern void		i_catcherr	P((Int));
-extern void		i_funcall	P((object*, int, int, int));
-extern bool		i_call		P((object*, char*, unsigned int, int,
+extern void		i_fetch		P((frame*));
+extern void		i_store		P((frame*, value*, value*));
+extern Int		i_get_depth	P((frame*));
+extern Int		i_get_ticks	P((frame*));
+extern int		i_set_rlimits	P((frame*, Int, Int));
+extern int		i_get_rllevel	P((frame*));
+extern void		i_set_rllevel	P((frame*, int));
+extern frame	       *i_set_sp	P((frame*, value*));
+extern object	       *i_prev_object	P((frame*, int));
+extern char	       *i_prev_program	P((frame*, int));
+extern void		i_typecheck	P((frame*, char*, char*, char*, int,
 					   int));
-extern array	       *i_call_trace	P((void));
-extern bool		i_call_critical	P((char*, int, int));
-extern void		i_runtime_error	P((Int));
+extern void		i_catcherr	P((frame*, Int));
+extern void		i_funcall	P((frame*, object*, int, int, int));
+extern bool		i_call		P((frame*, object*, char*, unsigned int,
+					   int, int));
+extern array	       *i_call_trace	P((frame*));
+extern bool		i_call_critical	P((frame*, char*, int, int));
+extern void		i_runtime_error	P((frame*, Int));
 extern void		i_clear		P((void));
 
 extern frame *cframe;
-extern value *sp, zero_value, zero_float;
-extern Int ticks;
+extern value zero_value, zero_float;
 
-# define i_add_ticks(e)	(ticks -= (e))
+# define i_add_ticks(f, t)	((f)->ticks -= (t))

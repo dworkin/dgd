@@ -14,7 +14,8 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_STRING, 2,
  * NAME:	kfun->crypt()
  * DESCRIPTION:	encrypt a string
  */
-int kf_crypt(nargs)
+int kf_crypt(f, nargs)
+register frame *f;
 int nargs;
 {
     static char salts[] =
@@ -25,10 +26,10 @@ int nargs;
 	return -1;
     }
 
-    if (nargs == 2 && sp->u.string->len >= 2) {
+    if (nargs == 2 && f->sp->u.string->len >= 2) {
 	/* fixed salt */
-	salt[0] = sp->u.string->text[0];
-	salt[1] = sp->u.string->text[1];
+	salt[0] = f->sp->u.string->text[0];
+	salt[1] = f->sp->u.string->text[1];
     } else {
 	/* random salt */
 	salt[0] = salts[P_random() % 64];
@@ -36,13 +37,13 @@ int nargs;
     }
     salt[2] = '\0';
     if (nargs == 2) {
-	str_del((sp++)->u.string);
+	str_del((f->sp++)->u.string);
     }
 
-    i_add_ticks(400);
-    p = P_crypt(sp->u.string->text, salt);
-    str_del(sp->u.string);
-    str_ref(sp->u.string = str_new(p, (long) strlen(p)));
+    i_add_ticks(f, 400);
+    p = P_crypt(f->sp->u.string->text, salt);
+    str_del(f->sp->u.string);
+    str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
     return 0;
 }
 # endif
@@ -57,11 +58,12 @@ char pt_ctime[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_INT };
  * NAME:	kfun->ctime()
  * DESCRIPTION:	convert a time value to a string
  */
-int kf_ctime()
+int kf_ctime(f)
+frame *f;
 {
-    i_add_ticks(5);
-    sp->type = T_STRING;
-    str_ref(sp->u.string = str_new(P_ctime((Uint) sp->u.number), 24L));
+    i_add_ticks(f, 5);
+    f->sp->type = T_STRING;
+    str_ref(f->sp->u.string = str_new(P_ctime((Uint) f->sp->u.number), 24L));
 
     return 0;
 }
@@ -78,28 +80,29 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, T_STRING | (1 << REFSHIFT), 2,
  * NAME:	kfun->explode()
  * DESCRIPTION:	explode a string
  */
-int kf_explode()
+int kf_explode(f)
+register frame *f;
 {
     register unsigned int len, slen, size;
     register char *p, *s;
     register value *v;
     array *a;
 
-    p = sp[1].u.string->text;
-    len = sp[1].u.string->len;
-    s = sp->u.string->text;
-    slen = sp->u.string->len;
+    p = f->sp[1].u.string->text;
+    len = f->sp[1].u.string->len;
+    s = f->sp->u.string->text;
+    slen = f->sp->u.string->len;
 
     if (len == 0) {
 	/*
 	 * exploding "" always gives an empty array
 	 */
-	a = arr_new(0L);
+	a = arr_new(f->data, 0L);
     } else if (slen == 0) {
 	/*
 	 * the sepatator is ""; split string into single characters
 	 */
-	a = arr_new((long) len);
+	a = arr_new(f->data, (long) len);
 	for (v = a->elts; len > 0; v++, --len) {
 	    v->type = T_STRING;
 	    str_ref(v->u.string = str_new(p, 1L));
@@ -128,11 +131,11 @@ int kf_explode()
 	    }
 	}
 
-	a = arr_new((long) size);
+	a = arr_new(f->data, (long) size);
 	v = a->elts;
 
-	p = sp[1].u.string->text;
-	len = sp[1].u.string->len;
+	p = f->sp[1].u.string->text;
+	len = f->sp[1].u.string->len;
 	size = 0;
 	if (len > slen && memcmp(p, s, slen) == 0) {
 	    /* skip leading separator */
@@ -165,11 +168,11 @@ int kf_explode()
 	str_ref(v->u.string = str_new(p - size, (long) size));
     }
 
-    str_del((sp++)->u.string);
-    str_del(sp->u.string);
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a);
-    i_add_ticks((Int) 2 * a->size);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a);
+    i_add_ticks(f, (Int) 2 * a->size);
 
     return 0;
 }
@@ -186,7 +189,8 @@ char pt_implode[] = { C_TYPECHECKED | C_STATIC, T_STRING, 2,
  * NAME:	kfun->implode()
  * DESCRIPTION:	implode an array
  */
-int kf_implode()
+int kf_implode(f)
+register frame *f;
 {
     register long len;
     register unsigned int i, slen;
@@ -194,15 +198,15 @@ int kf_implode()
     register value *v;
     string *str;
 
-    s = sp->u.string->text;
-    slen = sp->u.string->len;
+    s = f->sp->u.string->text;
+    slen = f->sp->u.string->len;
 
     /* first, determine the size of the imploded string */
-    i = sp[1].u.array->size;
-    i_add_ticks(i);
+    i = f->sp[1].u.array->size;
+    i_add_ticks(f, i);
     if (i != 0) {
 	len = (i - 1) * (long) slen;	/* size of all separators */
-	for (v = d_get_elts(sp[1].u.array); i > 0; v++, --i) {
+	for (v = d_get_elts(f->sp[1].u.array); i > 0; v++, --i) {
 	    if (v->type != T_STRING) {
 		/* not a (string *) */
 		return 1;
@@ -213,7 +217,7 @@ int kf_implode()
 
 	/* create the imploded string */
 	p = str->text;
-	for (i = sp[1].u.array->size, v -= i; i > 1; --i, v++) {
+	for (i = f->sp[1].u.array->size, v -= i; i > 1; --i, v++) {
 	    /* copy array part */
 	    memcpy(p, v->u.string->text, v->u.string->len);
 	    p += v->u.string->len;
@@ -228,10 +232,10 @@ int kf_implode()
 	str = str_new((char *) NULL, 0L);
     }
 
-    str_del((sp++)->u.string);
-    arr_del(sp->u.array);
-    sp->type = T_STRING;
-    str_ref(sp->u.string = str);
+    str_del((f->sp++)->u.string);
+    arr_del(f->sp->u.array);
+    f->sp->type = T_STRING;
+    str_ref(f->sp->u.string = str);
     return 0;
 }
 # endif
@@ -246,10 +250,11 @@ char pt_random[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  * NAME:	kfun->random()
  * DESCRIPTION:	return a random number
  */
-int kf_random()
+int kf_random(f)
+register frame *f;
 {
-    i_add_ticks(1);
-    sp->u.number = (sp->u.number > 0) ? P_random() % sp->u.number : 0;
+    i_add_ticks(f, 1);
+    f->sp->u.number = (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0;
     return 0;
 }
 # endif
@@ -319,11 +324,12 @@ unsigned int *flenp, *slenp;
  * NAME:	kfun->sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_sscanf(nargs)
+int kf_sscanf(f, nargs)
+register frame *f;
 int nargs;
 {
     register unsigned int flen, slen, size;
-    register char *f, *x;
+    register char *format, *x;
     value values[MAX_LOCALS], *val;
     unsigned int fl, sl;
     int matches;
@@ -336,40 +342,40 @@ int nargs;
     } else if (nargs > MAX_LOCALS + 2) {
 	return 4;
     }
-    s = sp[nargs - 1].u.string->text;
-    slen = sp[nargs - 1].u.string->len;
-    f = sp[nargs - 2].u.string->text;
-    flen = sp[nargs - 2].u.string->len;
+    s = f->sp[nargs - 1].u.string->text;
+    slen = f->sp[nargs - 1].u.string->len;
+    format = f->sp[nargs - 2].u.string->text;
+    flen = f->sp[nargs - 2].u.string->len;
 
     nargs -= 2;
-    i_add_ticks(8 * nargs);
+    i_add_ticks(f, 8 * nargs);
     val = values;
     matches = 0;
 
     while (flen > 0) {
-	if (f[0] != '%' || f[1] == '%') {
+	if (format[0] != '%' || format[1] == '%') {
 	    /* match initial part */
 	    fl = flen;
 	    sl = slen;
-	    if (!match(f, s, &fl, &sl) || fl == flen) {
+	    if (!match(format, s, &fl, &sl) || fl == flen) {
 		goto no_match;
 	    }
-	    f += fl;
+	    format += fl;
 	    flen -= fl;
 	    s += sl;
 	    slen -= sl;
 	}
 
 	/* skip first % */
-	f++;
+	format++;
 	--flen;
 
 	/*
 	 * check for %*
 	 */
-	if (*f == '*') {
+	if (*format == '*') {
 	    /* no assignment */
-	    f++;
+	    format++;
 	    --flen;
 	    skip = TRUE;
 	} else {
@@ -377,11 +383,11 @@ int nargs;
 	}
 
 	--flen;
-	switch (*f++) {
+	switch (*format++) {
 	case 's':
 	    /* %s */
-	    if (f[0] == '%' && f[1] != '%') {
-		switch ((f[1] == '*') ? f[2] : f[1]) {
+	    if (format[0] == '%' && format[1] != '%') {
+		switch ((format[1] == '*') ? format[2] : format[1]) {
 		case 'd':
 		    /*
 		     * %s%d
@@ -435,16 +441,17 @@ int nargs;
 		    slen = 0;
 		} else {
 		    /* get # of chars to match after string */
-		    for (x = f, size = 0; (x - f) != flen; x++, size++) {
-			x = (char *) memchr(x, '%', flen - (x - f));
+		    for (x = format, size = 0; (x - format) != flen;
+			 x++, size++) {
+			x = (char *) memchr(x, '%', flen - (x - format));
 			if (x == (char *) NULL) {
-			    x = f + flen;
+			    x = format + flen;
 			    break;
 			} else if (x[1] != '%') {
 			    break;
 			}
 		    }
-		    size = (x - f) - size;
+		    size = (x - format) - size;
 
 		    x = s;
 		    for (;;) {
@@ -452,13 +459,13 @@ int nargs;
 			if (sl < size) {
 			    goto no_match;
 			}
-			x = (char *) memchr(x, f[0], sl - size + 1);
+			x = (char *) memchr(x, format[0], sl - size + 1);
 			if (x == (char *) NULL) {
 			    goto no_match;
 			}
 			fl = flen;
-			if (match(f, x, &fl, &sl)) {
-			    f += fl;
+			if (match(format, x, &fl, &sl)) {
+			    format += fl;
 			    flen -= fl;
 			    size = x - s;
 			    x += sl;
@@ -552,18 +559,18 @@ int nargs;
 no_match:
     if (nargs > 0) {
 	/* pop superfluous arguments */
-	i_pop(nargs);
+	i_pop(f, nargs);
     }
     while (val > values) {
-	i_store(sp, (value *) val - 1);
-	sp++;
+	i_store(f, f->sp, (value *) val - 1);
+	f->sp++;
 	--val;
     }
 
-    str_del((sp++)->u.string);
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = matches;
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = matches;
     return 0;
 
 err:

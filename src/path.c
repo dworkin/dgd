@@ -97,18 +97,21 @@ register char *from, *file;
 char *path_ed_read(file)
 char *file;
 {
-    if (cframe->obj->flags & O_DRIVER) {
+    register frame *f;
+
+    f = cframe;
+    if (f->obj->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_read", 1);
-	if (sp->type != T_STRING) {
-	    i_del_value(sp++);
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+	call_driver_object(f, "path_read", 1);
+	if (f->sp->type != T_STRING) {
+	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	file = path_file(path_resolve(sp->u.string->text));
-	str_del((sp++)->u.string);
+	file = path_file(path_resolve(f->sp->u.string->text));
+	str_del((f->sp++)->u.string);
 	return file;
     }
 }
@@ -120,18 +123,21 @@ char *file;
 char *path_ed_write(file)
 char *file;
 {
-    if (cframe->obj->flags & O_DRIVER) {
+    register frame *f;
+
+    f = cframe;
+    if (f->obj->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-	call_driver_object("path_write", 1);
-	if (sp->type != T_STRING) {
-	    i_del_value(sp++);
+	(--f->sp)->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+	call_driver_object(f, "path_write", 1);
+	if (f->sp->type != T_STRING) {
+	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
-	file = path_file(path_resolve(sp->u.string->text));
-	str_del((sp++)->u.string);
+	file = path_file(path_resolve(f->sp->u.string->text));
+	str_del((f->sp++)->u.string);
 	return file;
     }
 }
@@ -143,24 +149,27 @@ char *file;
 char *path_include(from, file)
 char *from, *file;
 {
+    register frame *f;
+
     if (c_autodriver()) {
 	return path_file(path_from(from, file));
     }
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
-    sp->u.string->text[0] = '/';
-    strcpy(sp->u.string->text + 1, from);
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(file, (long) strlen(file)));
-    if (!call_driver_object("path_include", 2)) {
-	sp++;
+    f = cframe;
+    (--f->sp)->type = T_STRING;
+    str_ref(f->sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
+    f->sp->u.string->text[0] = '/';
+    strcpy(f->sp->u.string->text + 1, from);
+    (--f->sp)->type = T_STRING;
+    str_ref(f->sp->u.string = str_new(file, (long) strlen(file)));
+    if (!call_driver_object(f, "path_include", 2)) {
+	f->sp++;
 	return path_file(path_from(from, file));
     }
-    if (sp->type != T_STRING) {
-	i_del_value(sp++);
+    if (f->sp->type != T_STRING) {
+	i_del_value(f->sp++);
 	return (char *) NULL;
     }
-    file = path_file(path_resolve(sp->u.string->text));
-    str_del((sp++)->u.string);
+    file = path_file(path_resolve(f->sp->u.string->text));
+    str_del((f->sp++)->u.string);
     return file;
 }

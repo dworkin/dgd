@@ -16,13 +16,14 @@ char pt_editor[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING,
  * NAME:	kfun->editor()
  * DESCRIPTION:	handle an editor command
  */
-int kf_editor(nargs)
+int kf_editor(f, nargs)
+register frame *f;
 int nargs;
 {
     object *obj;
     string *str;
 
-    obj = cframe->obj;
+    obj = f->obj;
     if (obj->count == 0) {
 	error("editor() from destructed object");
     }
@@ -33,16 +34,16 @@ int nargs;
 	ed_new(obj);
     }
     if (nargs == 0) {
-	(--sp)->type = T_INT;
-	sp->u.number = 0;
+	(--f->sp)->type = T_INT;
+	f->sp->u.number = 0;
     } else {
-	str = ed_command(obj, sp->u.string->text);
-	str_del(sp->u.string);
+	str = ed_command(obj, f->sp->u.string->text);
+	str_del(f->sp->u.string);
 	if (str != (string *) NULL) {
-	    str_ref(sp->u.string = str);
+	    str_ref(f->sp->u.string = str);
 	} else {
-	    sp->type = T_INT;
-	    sp->u.number = 0;
+	    f->sp->type = T_INT;
+	    f->sp->u.number = 0;
 	}
     }
     return 0;
@@ -59,19 +60,20 @@ char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, T_STRING, 1, T_OBJECT };
  * NAME:	kfun->query_editor()
  * DESCRIPTION:	query the editing status of an object
  */
-int kf_query_editor()
+int kf_query_editor(f)
+register frame *f;
 {
     object *obj;
     char *status;
 
-    obj = &otable[sp->oindex];
+    obj = &otable[f->sp->oindex];
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
-	sp->type = T_STRING;
-	str_ref(sp->u.string = str_new(status, (long) strlen(status)));
+	f->sp->type = T_STRING;
+	str_ref(f->sp->u.string = str_new(status, (long) strlen(status)));
     } else {
-	sp->type = T_INT;
-	sp->u.number = 0;
+	f->sp->type = T_INT;
+	f->sp->u.number = 0;
     }
     return 0;
 }
@@ -331,7 +333,8 @@ char pt_save_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
  * NAME:	kfun->save_object()
  * DESCRIPTION:	save the variables of the current object
  */
-int kf_save_object()
+int kf_save_object(f)
+register frame *f;
 {
     static unsigned short count;
     register unsigned short i, j, nvars;
@@ -345,7 +348,7 @@ int kf_save_object()
     object *obj;
     xfloat flt;
 
-    _tmp = path_string(sp->u.string->text, sp->u.string->len);
+    _tmp = path_string(f->sp->u.string->text, f->sp->u.string->len);
     if (_tmp == (char *) NULL) {
 	return 1;
     }
@@ -359,7 +362,7 @@ int kf_save_object()
      * First save in a different file in the same directory, so a possibly
      * existing old instance will not be lost if something goes wrong.
      */
-    i_add_ticks(2000);	/* arbitrary */
+    i_add_ticks(f, 2000);	/* arbitrary */
     _tmp = strrchr(tmp, '/');
     _tmp = (_tmp == (char *) NULL) ? tmp : _tmp + 1;
     sprintf(_tmp, "_tmp%04x", ++count);
@@ -371,9 +374,9 @@ int kf_save_object()
     buffer = ALLOCA(char, BUF_SIZE);
     bufsz = 0;
 
-    obj = cframe->obj;
-    ctrl = o_control(obj);
-    data = o_dataspace(obj);
+    obj = f->obj;
+    ctrl = f->ctrl;
+    data = f->data;
     narrays = 0;
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -444,9 +447,9 @@ int kf_save_object()
 	      path_unfile(file));
     }
 
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = 0;
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -669,14 +672,15 @@ value *val;
     return p + 1;
 }
 
-static char *restore_value	P((char*, value*));
-static char *restore_mapping	P((char*, value*));
+static char *restore_value	P((frame*, char*, value*));
+static char *restore_mapping	P((frame*, char*, value*));
 
 /*
  * NAME:	restore_array()
  * DESCRIPTION:	restore an array
  */
-static char *restore_array(buf, val)
+static char *restore_array(f, buf, val)
+register frame *f;
 register char *buf;
 value *val;
 {
@@ -694,7 +698,7 @@ value *val;
 	restore_error("'|' expected");
     }
 
-    ac_put(T_ARRAY, a = arr_new((long) val->u.number));
+    ac_put(T_ARRAY, a = arr_new(f->data, (long) val->u.number));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	(v++)->type = T_INT;
     }
@@ -707,7 +711,7 @@ value *val;
     }
     /* restore the values */
     while (i > 0) {
-	buf = restore_value(buf, v);
+	buf = restore_value(f, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
 	    restore_error("',' expected");
@@ -729,7 +733,8 @@ value *val;
  * NAME:	restore_mapping()
  * DESCRIPTION:	restore a mapping
  */
-static char *restore_mapping(buf, val)
+static char *restore_mapping(f, buf, val)
+register frame *f;
 register char *buf;
 value *val;
 {
@@ -747,7 +752,7 @@ value *val;
 	restore_error("'|' expected");
     }
 
-    ac_put(T_MAPPING, a = map_new((long) val->u.number << 1));
+    ac_put(T_MAPPING, a = map_new(f->data, (long) val->u.number << 1));
     for (i = a->size, v = a->elts; i > 0; --i) {
 	(v++)->type = T_INT;
     }
@@ -760,12 +765,12 @@ value *val;
     }
     /* restore the values */
     while (i > 0) {
-	buf = restore_value(buf, v);
+	buf = restore_value(f, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ':') {
 	    restore_error("':' expected");
 	}
-	buf = restore_value(buf, v);
+	buf = restore_value(f, buf, v);
 	i_ref_value(v++);
 	if (*buf++ != ',') {
 	    restore_error("',' expected");
@@ -788,7 +793,8 @@ value *val;
  * NAME:	restore_value()
  * DESCRIPTION:	restore a value
  */
-static char *restore_value(buf, val)
+static char *restore_value(f, buf, val)
+register frame *f;
 register char *buf;
 register value *val;
 {
@@ -798,9 +804,9 @@ register value *val;
 
     case '(':
 	if (buf[1] == '{') {
-	    return restore_array(buf, val);
+	    return restore_array(f, buf, val);
 	} else {
-	    return restore_mapping(buf, val);
+	    return restore_mapping(f, buf, val);
 	}
 
     case '#':
@@ -836,7 +842,8 @@ char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
  * NAME:	kfun->restore_object()
  * DESCRIPTION:	restore the variables of the current object from file
  */
-int kf_restore_object()
+int kf_restore_object(f)
+register frame *f;
 {
     struct stat sbuf;
     register int i, j;
@@ -851,16 +858,16 @@ int kf_restore_object()
     char *name;
     bool pending;
 
-    obj = cframe->obj;
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    obj = f->obj;
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    i_add_ticks(2000);	/* arbitrary */
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = 0;
+    i_add_ticks(f, 2000);	/* arbitrary */
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = 0;
     fd = open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* restore failed */
@@ -982,7 +989,7 @@ int kf_restore_object()
 			/*
 			 * found the proper variable to restore
 			 */
-			buf = restore_value(buf, &tmp);
+			buf = restore_value(f, buf, &tmp);
 			if (v->type != tmp.type && v->type != T_MIXED &&
 			    conf_typechecking() &&
 			    (tmp.type != T_INT || tmp.u.number != 0 ||
@@ -1010,7 +1017,7 @@ int kf_restore_object()
 		    arr_clear();
 		    ac_clear();
 		    AFREE(buffer);
-		    sp->u.number = 1;
+		    f->sp->u.number = 1;
 		    return 0;
 		}
 	    }
@@ -1030,7 +1037,8 @@ char pt_write_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_INT, 3,
  * NAME:	kfun->write_file()
  * DESCRIPTION:	write a string to a file
  */
-int kf_write_file(nargs)
+int kf_write_file(f, nargs)
+register frame *f;
 int nargs;
 {
     struct stat sbuf;
@@ -1048,22 +1056,23 @@ int nargs;
 	break;
 
     case 3:
-	l = (sp++)->u.number;
+	l = (f->sp++)->u.number;
 	break;
     }
-    file = path_file(path_string(sp[1].u.string->text, sp[1].u.string->len));
+    file = path_file(path_string(f->sp[1].u.string->text,
+				 f->sp[1].u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    i_add_ticks(1000 + (Int) 2 * sp->u.string->len);
-    str_del(sp[1].u.string);
-    sp[1].type = T_INT;
-    sp[1].u.number = 0;
+    i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
+    str_del(f->sp[1].u.string);
+    f->sp[1].type = T_INT;
+    f->sp[1].u.number = 0;
 
     fd = open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	str_del((sp++)->u.string);
+	str_del((f->sp++)->u.string);
 	return 0;
     }
 
@@ -1078,17 +1087,18 @@ int nargs;
     if (l < 0 || l > sbuf.st_size || lseek(fd, l, SEEK_SET) < 0) {
 	/* bad offset */
 	close(fd);
-	str_del((sp++)->u.string);
+	str_del((f->sp++)->u.string);
 	return 0;
     }
 
-    if (write(fd, sp->u.string->text, sp->u.string->len) == sp->u.string->len) {
+    if (write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
+							f->sp->u.string->len) {
 	/* succesful write */
-	sp[1].u.number = 1;
+	f->sp[1].u.number = 1;
     }
     close(fd);
 
-    str_del((sp++)->u.string);
+    str_del((f->sp++)->u.string);
     return 0;
 }
 # endif
@@ -1104,7 +1114,8 @@ char pt_read_file[] = { C_TYPECHECKED | C_VARARGS | C_STATIC, T_STRING, 3,
  * NAME:	kfun->read_file()
  * DESCRIPTION:	read a string from file
  */
-int kf_read_file(nargs)
+int kf_read_file(f, nargs)
+register frame *f;
 int nargs;
 {
     struct stat sbuf;
@@ -1116,29 +1127,29 @@ int nargs;
     size = 0;
     switch (nargs) {
     case 3:
-	size = (sp++)->u.number;
+	size = (f->sp++)->u.number;
     case 2:
-	l = (sp++)->u.number;	/* offset in file */
+	l = (f->sp++)->u.number;	/* offset in file */
     case 1:
 	break;
 
     case 0:
 	return -1;
     }
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = 0;
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = 0;
 
     if (size < 0) {
 	/* size has to be >= 0 */
 	return 0;
     }
-    i_add_ticks(1000);
+    i_add_ticks(f, 1000);
     fd = open(file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
 	/* cannot open file */
@@ -1174,17 +1185,18 @@ int nargs;
 	close(fd);
 	error((char *) NULL);	/* pass on error */
     } else {
-	str_ref(sp->u.string = str_new((char *) NULL, size));
-	sp->type = T_STRING;
+	str_ref(f->sp->u.string = str_new((char *) NULL, size));
+	f->sp->type = T_STRING;
 	ec_pop();
     }
-    if (size > 0 && read(fd, sp->u.string->text, (unsigned int) size) != size) {
+    if (size > 0 &&
+	read(fd, f->sp->u.string->text, (unsigned int) size) != size) {
 	/* read failed (should never happen, but...) */
 	close(fd);
 	error("Read failed in read_file()");
     }
     close(fd);
-    i_add_ticks(2 * size);
+    i_add_ticks(f, 2 * size);
 
     return 0;
 }
@@ -1201,25 +1213,27 @@ char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 2,
  * NAME:	kfun->rename_file()
  * DESCRIPTION:	rename a file
  */
-int kf_rename_file()
+int kf_rename_file(f)
+register frame *f;
 {
     char buf[STRINGSZ], *file;
 
-    file = path_file(path_string(sp[1].u.string->text, sp[1].u.string->len));
+    file = path_file(path_string(f->sp[1].u.string->text,
+				 f->sp[1].u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
     strcpy(buf, file);
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 2;
     }
 
-    i_add_ticks(1000);
-    str_del((sp++)->u.string);
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = (access(buf, W_OK) >= 0 && access(file, F_OK) < 0 &&
+    i_add_ticks(f, 1000);
+    str_del((f->sp++)->u.string);
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = (access(buf, W_OK) >= 0 && access(file, F_OK) < 0 &&
 		    rename(buf, file) >= 0);
     return 0;
 }
@@ -1235,19 +1249,20 @@ char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
  * NAME:	kfun->remove_file()
  * DESCRIPTION:	remove a file
  */
-int kf_remove_file()
+int kf_remove_file(f)
+register frame *f;
 {
     char *file;
 
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    i_add_ticks(1000);
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = (access(file, W_OK) >= 0 && unlink(file) >= 0);
+    i_add_ticks(f, 1000);
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = (access(file, W_OK) >= 0 && unlink(file) >= 0);
     return 0;
 }
 # endif
@@ -1262,19 +1277,20 @@ char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
  * NAME:	kfun->make_dir()
  * DESCRIPTION:	create a directory
  */
-int kf_make_dir()
+int kf_make_dir(f)
+register frame *f;
 {
     char *file;
 
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    i_add_ticks(1000);
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = (mkdir(file, 0775) >= 0);
+    i_add_ticks(f, 1000);
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = (mkdir(file, 0775) >= 0);
     return 0;
 }
 # endif
@@ -1289,19 +1305,20 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
  * NAME:	kfun->remove_dir()
  * DESCRIPTION:	remove an empty directory
  */
-int kf_remove_dir()
+int kf_remove_dir(f)
+register frame *f;
 {
     char *file;
 
-    file = path_file(path_string(sp->u.string->text, sp->u.string->len));
+    file = path_file(path_string(f->sp->u.string->text, f->sp->u.string->len));
     if (file == (char *) NULL) {
 	return 1;
     }
 
-    i_add_ticks(1000);
-    str_del(sp->u.string);
-    sp->type = T_INT;
-    sp->u.number = (rmdir(file) >= 0);
+    i_add_ticks(f, 1000);
+    str_del(f->sp->u.string);
+    f->sp->type = T_INT;
+    f->sp->u.number = (rmdir(file) >= 0);
     return 0;
 }
 # endif
@@ -1422,9 +1439,9 @@ typedef struct _finfo_ {
  * NAME:	getinfo()
  * DESCRIPTION:	get info about a file
  */
-static bool getinfo(path, file, f)
+static bool getinfo(path, file, finf)
 char *path, *file;
-register finfo *f;
+register finfo *finf;
 {
     struct stat sbuf;
 
@@ -1435,13 +1452,13 @@ register finfo *f;
 	return FALSE;
     }
 
-    str_ref(f->name = str_new(file, (long) strlen(file)));
+    str_ref(finf->name = str_new(file, (long) strlen(file)));
     if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
-	f->size = -2;	/* special value for directory */
+	finf->size = -2;	/* special value for directory */
     } else {
-	f->size = sbuf.st_size;
+	finf->size = sbuf.st_size;
     }
-    f->time = sbuf.st_mtime;
+    finf->time = sbuf.st_mtime;
 
     return TRUE;
 }
@@ -1466,9 +1483,10 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT), 1,
 
 /*
  * NAME:	kfun->get_dir()
- * DESCRIPTION:	remove a file
+ * DESCRIPTION:	get directory filelist + info
  */
-int kf_get_dir()
+int kf_get_dir(f)
+frame *f;
 {
     register unsigned int i, nfiles, ftabsz;
     register finfo *ftable;
@@ -1476,7 +1494,7 @@ int kf_get_dir()
     finfo finf;
     array *a;
 
-    file = path_string(sp->u.string->text, sp->u.string->len);
+    file = path_string(f->sp->u.string->text, f->sp->u.string->len);
     if (path_file(file) == (char *) NULL) {
 	return 1;
     }
@@ -1531,17 +1549,17 @@ int kf_get_dir()
     }
 
     /* prepare return value */
-    str_del(sp->u.string);
-    sp->type = T_ARRAY;
-    arr_ref(sp->u.array = a = arr_new(3L));
+    str_del(f->sp->u.string);
+    f->sp->type = T_ARRAY;
+    arr_ref(f->sp->u.array = a = arr_new(f->data, 3L));
     a->elts[0].type = T_ARRAY;
-    arr_ref(a->elts[0].u.array = arr_new((long) nfiles));
+    arr_ref(a->elts[0].u.array = arr_new(f->data, (long) nfiles));
     a->elts[1].type = T_ARRAY;
-    arr_ref(a->elts[1].u.array = arr_new((long) nfiles));
+    arr_ref(a->elts[1].u.array = arr_new(f->data, (long) nfiles));
     a->elts[2].type = T_ARRAY;
-    arr_ref(a->elts[2].u.array = arr_new((long) nfiles));
+    arr_ref(a->elts[2].u.array = arr_new(f->data, (long) nfiles));
 
-    i_add_ticks(1000 + 5 * nfiles);
+    i_add_ticks(f, 1000 + 5 * nfiles);
 
     if (nfiles != 0) {
 	register value *n, *s, *t;

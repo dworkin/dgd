@@ -47,7 +47,7 @@ static int tmpval()
 static char *local(n)
 register int n;
 {
-    static char buffer[14];
+    static char buffer[16];
 
     n = nparam - n - 1;
     if (n < 0) {
@@ -74,7 +74,7 @@ static void comma()
 static void kfun(func)
 char *func;
 {
-    output("kf_%s()", func);
+    output("kf_%s(f)", func);
 }
 
 /*
@@ -123,7 +123,8 @@ register int type;
 	break;
 
     case N_GLOBAL:
-	output("i_global_lvalue(%d, %d, %d)", ((int) n->r.number >> 8) & 0xff, 
+	output("i_global_lvalue(f, %d, %d, %d)",
+	       ((int) n->r.number >> 8) & 0xff, 
 	       ((int) n->r.number) & 0xff, type);
 	break;
 
@@ -138,16 +139,15 @@ register int type;
 	    break;
 
 	case N_GLOBAL:
-	    output("i_global_lvalue(%d, %d, 0)",
-		   ((int) m->r.number >> 8) & 0xff,
-		   ((int) m->r.number) & 0xff);
+	    output("i_global_lvalue(f, %d, %d, 0)",
+		   ((int) m->r.number >> 8) & 0xff, ((int) m->r.number) & 0xff);
 	    break;
 
 	case N_INDEX:
 	    cg_expr(m->l.left, PUSH);
 	    comma();
 	    cg_expr(m->r.right, PUSH);
-	    output(", i_index_lvalue(0)");
+	    output(", i_index_lvalue(f, 0)");
 	    break;
 
 	default:
@@ -156,7 +156,7 @@ register int type;
 	}
 	comma();
 	cg_expr(n->r.right, PUSH);
-	output(", i_index_lvalue(%d)", type);
+	output(", i_index_lvalue(f, %d)", type);
 	break;
     }
 }
@@ -169,9 +169,9 @@ static void cg_fetch(n)
 node *n;
 {
     cg_lvalue(n, 0);
-    output(", i_fetch(), ");
+    output(", i_fetch(f), ");
     if (n->type == N_CAST) {
-	cg_cast("sp", n->mod);
+	cg_cast("f->sp", n->mod);
 	comma();
     }
 }
@@ -189,13 +189,13 @@ bool direct;
     if (i < 0) {
 	/* assignment on stack */
 	if (n->type == N_INT) {
-	    output("sp->u.number %s ", op);
+	    output("f->sp->u.number %s ", op);
 	    cg_iexpr(n, TRUE);
 	} else {
 	    i = tmpval();
 	    output("tv[%d] = ", i);
 	    cg_iexpr(n, TRUE);
-	    output(", sp->u.number %s tv[%d]", op, i);
+	    output(", f->sp->u.number %s tv[%d]", op, i);
 	}
     } else {
 	/* assignment to register var */
@@ -251,13 +251,14 @@ bool direct;
 	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
-	    output("sp->u.number = ((Uint) sp->u.number) %s ", op);
+	    output("f->sp->u.number = ((Uint) f->sp->u.number) %s ", op);
 	    cg_iexpr(n, TRUE);
 	} else {
 	    i = tmpval();
 	    output("tv[%d] = ", i);
 	    cg_iexpr(n, TRUE);
-	    output(", sp->u.number = ((Uint) sp->u.number) %s tv[%d]", op, i);
+	    output(", f->sp->u.number = ((Uint) f->sp->u.number) %s tv[%d]", op,
+		   i);
 	}
 	output(", store_int()");
     }
@@ -286,14 +287,14 @@ bool direct;
 	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
-	    output("sp->u.number = %s(sp->u.number, ", op);
+	    output("f->sp->u.number = %s(f->sp->u.number, ", op);
 	    cg_iexpr(n, TRUE);
 	    output("), store_int()");
 	} else {
 	    i = tmpval();
-	    output("tv[%d] = %s(sp->u.number, ", i, op);
+	    output("tv[%d] = %s(f->sp->u.number, ", i, op);
 	    cg_iexpr(n, TRUE);
-	    output("), sp->u.number = tv[%d], store_int()", op, i);
+	    output("), f->sp->u.number = tv[%d], store_int()", op, i);
 	}
     }
 }
@@ -400,7 +401,7 @@ int direct;
 	    output("++ivar%d", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left);
-	    output("++sp->u.number, store_int()");
+	    output("++f->sp->u.number, store_int()");
 	}
 	break;
 
@@ -419,12 +420,12 @@ int direct;
 	} else {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
-	    cg_cast("sp", T_INT);
+	    cg_cast("f->sp", T_INT);
 	    if (direct) {
-		output(", (sp++)->u.number");
+		output(", (f->sp++)->u.number");
 	    } else {
 		i = tmpval();
-		output(", tv[%d] = (sp++)->u.number, tv[%d]", i, i);
+		output(", tv[%d] = (f->sp++)->u.number, tv[%d]", i, i);
 	    }
 	}
 	break;
@@ -586,7 +587,7 @@ int direct;
 	    output("--ivar%d", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left);
-	    output("--sp->u.number, store_int()");
+	    output("--f->sp->u.number, store_int()");
 	}
 	break;
 
@@ -624,7 +625,7 @@ int direct;
 	    output("ivar%d--", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left);
-	    output("sp->u.number--, store_int() + 1");
+	    output("f->sp->u.number--, store_int() + 1");
 	}
 	break;
 
@@ -636,7 +637,7 @@ int direct;
 	    output("ivar%d++", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left);
-	    output("sp->u.number++, store_int() - 1");
+	    output("f->sp->u.number++, store_int() - 1");
 	}
 	break;
     }
@@ -657,12 +658,12 @@ char *op;
 	comma();
 	kfun(op);
 	comma();
-	cg_cast("sp", T_INT);
+	cg_cast("f->sp", T_INT);
 	comma();
 	if (catch_level != 0) {
 	    output("%s->u.number = ", local((int) n->l.left->r.number));
 	}
-	output("ivar%d = sp->u.number", vars[n->l.left->r.number]);
+	output("ivar%d = f->sp->u.number", vars[n->l.left->r.number]);
     } else {
 	cg_fetch(n->l.left);
 	cg_expr(n->r.right, PUSH);
@@ -777,7 +778,7 @@ static char *cg_funargs(n, lv)
 register node *n;
 bool lv;
 {
-    static char buffer[20];
+    static char buffer[32];
     register int i;
 
     if (n == (node *) NULL) {
@@ -796,7 +797,7 @@ bool lv;
 	}
 	cg_expr(n->l.left, PUSH);
 	comma();
-	sprintf(buffer, "%d + i_spread(%d, %d)", i, (short) n->mod, type);
+	sprintf(buffer, "%d + i_spread(f, %d, %d)", i, (short) n->mod, type);
     } else {
 	cg_expr(n, PUSH);
 	comma();
@@ -946,9 +947,9 @@ register int state;
 	
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
-	    output("i_map_aggregate(%u)", cg_map_aggr(n->l.left));
+	    output("i_map_aggregate(f, %u)", cg_map_aggr(n->l.left));
 	} else {
-	    output("i_aggregate(%u)", cg_aggr(n->l.left));
+	    output("i_aggregate(f, %u)", cg_aggr(n->l.left));
 	}
 	break;
 
@@ -984,11 +985,11 @@ register int state;
     case N_CAST:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	cg_cast("sp", n->mod);
+	cg_cast("f->sp", n->mod);
 	break;
 
     case N_CATCH:
-	output("(pre_catch(), ");
+	output("(pre_catch(f), ");
 	if (catch_level == 0) {
 	    for (i = nvars; i > 0; ) {
 		if (vars[--i] != 0) {
@@ -1002,7 +1003,7 @@ register int state;
 	--catch_level;
 	if (state == PUSH) {
 	    output(", ec_pop(), PUSH_NUMBER 0) : (p = errormesg(), ");
-	    output("(--sp)->type = T_STRING, str_ref(sp->u.string = ");
+	    output("(--f->sp)->type = T_STRING, str_ref(f->sp->u.string = ");
 	    output("str_new(p, (long) strlen(p)))");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
@@ -1011,9 +1012,9 @@ register int state;
 		    }
 		}
 	    }
-	    output("), post_catch(0))");
+	    output("), post_catch(f, 0))");
 	} else {
-	    output(", ec_pop(), post_catch(0), FALSE) : (");
+	    output(", ec_pop(), post_catch(f, 0), FALSE) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1021,7 +1022,7 @@ register int state;
 		    }
 		}
 	    }
-	    output("post_catch(0), TRUE))");
+	    output("post_catch(f, 0), TRUE))");
 	}
 	return;
 
@@ -1046,8 +1047,9 @@ register int state;
 	break;
 
     case N_FLOAT:
-	output("(--sp)->type = T_FLOAT, sp->oindex = 0x%04x, ", n->l.fhigh);
-	output("sp->u.objcnt = 0x%08XL", (long) n->r.flow);
+	output("(--f->sp)->type = T_FLOAT, f->sp->oindex = 0x%04x, ",
+	       n->l.fhigh);
+	output("f->sp->u.objcnt = 0x%08XL", (long) n->r.flow);
 	break;
 
     case N_FUNC:
@@ -1063,11 +1065,11 @@ register int state;
 		    cg_locals(n->l.left, TRUE);
 		}
 		if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
-		    output("call_kfun_arg(%d/*%s*/, %s)",
+		    output("call_kfun_arg(f, %d/*%s*/, %s)",
 			   &KFUN((short) n->r.number) - kftab,
 			   KFUN((short) n->r.number).name, p);
 		} else {
-		    output("call_kfun(%d/*%s*/)",
+		    output("call_kfun(f, %d/*%s*/)",
 			   &KFUN((short) n->r.number) - kftab,
 			   KFUN((short) n->r.number).name);
 		}
@@ -1079,10 +1081,10 @@ register int state;
 
 	case DFCALL:
 	    if (((n->r.number >> 8) & 0xff) == 0) {
-		output("i_funcall((object *) NULL, 0, %d, %s)",
+		output("i_funcall(f, (object *) NULL, 0, %d, %s)",
 		       ((int) n->r.number) & 0xff, p);
 	    } else {
-		output("i_funcall((object *) NULL, f->p_index-%d, %d, %s)",
+		output("i_funcall(f, (object *) NULL, f->p_index-%d, %d, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
 		       ((int) n->r.number) & 0xff, p);
 	    }
@@ -1090,7 +1092,7 @@ register int state;
 
 	case FCALL:
 	    output("p = i_foffset(%u), ", ctrl_gencall((long) n->r.number));
-	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
+	    output("i_funcall(f, (object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
 		   p);
 	    break;
 	}
@@ -1102,7 +1104,7 @@ register int state;
 	break;
 
     case N_GLOBAL:
-	output("i_global(%d, %d)", ((int) n->r.number >> 8) & 0xff,
+	output("i_global(f, %d, %d)", ((int) n->r.number >> 8) & 0xff,
 	       ((int) n->r.number) & 0xff);
 	break;
 
@@ -1113,7 +1115,7 @@ register int state;
 
     case N_INDEX:
 	cg_binop(n);
-	output("i_index()");
+	output("i_index(f)");
 	break;
 
     case N_INT:
@@ -1162,7 +1164,7 @@ register int state;
 	    }
 	    return;
 	}
-	output((n->mod == T_FLOAT) ?  "*--sp = *%s" : "i_push_value(%s)",
+	output((n->mod == T_FLOAT) ?  "*--f->sp = *%s" : "i_push_value(f, %s)",
 	       local((int) n->r.number));
 	break;
 
@@ -1299,7 +1301,7 @@ register int state;
 
     case N_STR:
 	l = ctrl_dstring(n->l.string);
-	output("i_string(%d, %u)", ((int) (l >> 16)) & 0xff,
+	output("i_string(f, %d, %u)", ((int) (l >> 16)) & 0xff,
 	       (unsigned short) l);
 	break;
 
@@ -1339,13 +1341,13 @@ register int state;
 	break;
 
     case N_SUM:
-	output("kf_sum(%d)", cg_sumargs(n));
+	output("kf_sum(f, %d)", cg_sumargs(n));
 	break;
 
     case N_SUM_EQ:
 	cg_fetch(n->l.left);
 	output("PUSH_NUMBER -2,\n");
-	output("kf_sum(%d), store()", cg_sumargs(n->r.right) + 1);
+	output("kf_sum(f, %d), store()", cg_sumargs(n->r.right) + 1);
 	break;
 
     case N_TOFLOAT:
@@ -1419,7 +1421,7 @@ register int state;
 	store();
 	comma();
 	if (n->mod == T_INT) {
-	    output("sp->u.number++");
+	    output("f->sp->u.number++");
 	} else {
 	    kfun("add1");
 	}
@@ -1431,7 +1433,7 @@ register int state;
 	store();
 	comma();
 	if (n->mod == T_INT) {
-	    output("sp->u.number--");
+	    output("f->sp->u.number--");
 	} else {
 	    kfun("sub1");
 	}
@@ -1448,41 +1450,41 @@ register int state;
 	if ((n->type != N_FUNC || n->r.number >> 24 != FCALL) &&
 	    (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_OBJECT ||
 	     n->mod == T_VOID)) {
-	    output(", sp++");
+	    output(", f->sp++");
 	} else {
-	    output(", i_del_value(sp++)");
+	    output(", i_del_value(f->sp++)");
 	}
 	break;
 
     case INTVAL:
-	output(", (sp++)->u.number");
+	output(", (f->sp++)->u.number");
 	break;
 
     case TRUTHVAL:
 	if (n->mod == T_INT) {
 	    i = tmpval();
-	    output(", tv[%d] = (sp++)->u.number, tv[%d]", i, i);
+	    output(", tv[%d] = (f->sp++)->u.number, tv[%d]", i, i);
 	} else {
-	    output(", poptruthval()");
+	    output(", poptruthval(f)");
 	}
 	break;
 
     case TOPTRUTHVAL:
 	switch (n->mod) {
 	case T_INT:
-	    output(", (sp++)->u.number");
+	    output(", (f->sp++)->u.number");
 	    break;
 
 	case T_FLOAT:
-	    output(", sp++, VFLT_ISZERO(sp - 1)");
+	    output(", f->sp++, VFLT_ISZERO(f->sp - 1)");
 	    break;
 
 	case T_OBJECT:
-	    output(", (sp++)->type == T_OBJECT");
+	    output(", (f->sp++)->type == T_OBJECT");
 	    break;
 
 	default:
-	    output(", poptruthval()");
+	    output(", poptruthval(f)");
 	    break;
 	}
 	break;
@@ -1564,9 +1566,9 @@ register node *n;
 	switch_table[0] = 0;
     } else {
 	cg_expr(n->r.right->l.left, PUSH);
-	output(";\nif (sp->type != T_INT) { i_del_value(sp++); goto sw%d; }",
-	       ++swcount);
-	output("\nswitch ((sp++)->u.number) {\n");
+	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
+	output(" goto sw%d; }", ++swcount);
+	output("\nswitch ((f->sp++)->u.number) {\n");
 	switch_table[0] = swcount;
     }
 
@@ -1629,9 +1631,9 @@ register node *n;
 	switch_table[0] = 0;
     } else {
 	cg_expr(n->r.right->l.left, PUSH);
-	output(";\nif (sp->type != T_INT) { i_del_value(sp++); goto sw%d; }",
-	       ++swcount);
-	output("\nswitch (switch_range((sp++)->u.number, swtab, %d)) {\n",
+	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
+	output(" goto sw%d; }", ++swcount);
+	output("\nswitch (switch_range((f->sp++)->u.number, swtab, %d)) {\n",
 	       size - 1);
 	switch_table[0] = swcount;
     }
@@ -1704,7 +1706,8 @@ register node *n;
      * switch expression
      */
     cg_expr(n->r.right->l.left, PUSH);
-    output(";\nswitch (switch_str(sp++, swtab, %d)) {\n", size - 1);
+    output(";\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
+	   size - 1);
     switch_table[0] = 0;
 
     /*
@@ -1748,10 +1751,10 @@ register int n;
     } while (--n != 0);
 
     if (c != 0) {
-	output("post_catch(%d);", c);
+	output("post_catch(f, %d);", c);
     }
     if (r != 0) {
-	output("i_set_rllevel(-%u);", r);
+	output("i_set_rllevel(f, -%u);", r);
     }
 }
 
@@ -1810,7 +1813,7 @@ register node *n;
 	    break;
 
 	case N_DO:
-	    output("do {\ni_add_ticks(1);\n");
+	    output("do {\ni_add_ticks(f, 1);\n");
 	    cg_stmt(m->r.right);
 	    output("} while (");
 	    tvc = 0;
@@ -1827,14 +1830,14 @@ register node *n;
 		if (m->type == N_PAIR && m->l.left->type == N_BLOCK &&
 		    m->l.left->mod == N_CONTINUE) {
 		    cg_expr(m->r.right->l.left, POP);
-		    output(") {\ni_add_ticks(1);\n");
+		    output(") {\ni_add_ticks(f, 1);\n");
 		    cg_stmt(m->l.left->l.left);
 		} else {
-		    output(") {\ni_add_ticks(1);\n");
+		    output(") {\ni_add_ticks(f, 1);\n");
 		    cg_stmt(m);
 		}
 	    } else {
-		output(") {\ni_add_ticks(1);\n");
+		output(") {\ni_add_ticks(f, 1);\n");
 	    }
 	    output("}\n");
 	    break;
@@ -1844,7 +1847,7 @@ register node *n;
 	    if (m->l.left != (node *) NULL) {
 		cg_expr(m->l.left, POP);
 	    }
-	    output(";;) {\ni_add_ticks(1);\n");
+	    output(";;) {\ni_add_ticks(f, 1);\n");
 	    cg_stmt(m->r.right);
 	    output("}\n");
 	    break;
@@ -1856,10 +1859,10 @@ register node *n;
 	    rcstart.type = N_RLIMITS;
 	    rcstart.next = rclist;
 	    rclist = &rcstart;
-	    output(";\npre_rlimits();\n");
+	    output(";\npre_rlimits(f);\n");
 	    cg_stmt(m->r.right);
 	    if (!(m->r.right->flags & F_END)) {
-		output("i_set_rllevel(-1);\n");
+		output("i_set_rllevel(f, -1);\n");
 	    }
 	    rclist = rcstart.next;
 	    break;
@@ -1868,7 +1871,7 @@ register node *n;
 	    rcstart.type = N_CATCH;
 	    rcstart.next = rclist;
 	    rclist = &rcstart;
-	    output("pre_catch();\n");
+	    output("pre_catch(f);\n");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1881,7 +1884,7 @@ register node *n;
 	    cg_stmt(m->l.left);
 	    --catch_level;
 	    if (!(m->l.left->flags & F_END)) {
-		output("ec_pop(); post_catch(0);");
+		output("ec_pop(); post_catch(f, 0);");
 	    }
 	    output("} else {\n");
 	    if (catch_level == 0) {
@@ -1891,7 +1894,7 @@ register node *n;
 		    }
 		}
 	    }
-	    output("post_catch(0);\n");
+	    output("post_catch(f, 0);\n");
 	    rclist = rcstart.next;
 	    if (m->r.right != (node *) NULL) {
 		cg_stmt(m->r.right);
@@ -1994,8 +1997,8 @@ unsigned short *size;
     nparam = npar;
     if (!inherited) {
 	str_ref(funcnames[nfuncs] = fname);
-	output("\nstatic void LPC_%s()\n{\n", fname->text);
-	output("register frame *f = cframe; char *p; Int tv[%d];\n", NTMPVAL);
+	output("\nstatic void LPC_%s(f)\nregister frame *f;\n{\n", fname->text);
+	output("char *p; Int tv[%d];\n", NTMPVAL);
     }
     j = 0;
     for (i = 0; i < nvar; i++) {

@@ -1040,16 +1040,16 @@ int fd;
     }
     if (fd < 0) {
 	/* initialize mudlib */
-	call_driver_object("initialize", 0);
+	call_driver_object(cframe, "initialize", 0);
     } else {
 	/* restore dump file */
 	conf_restore(fd);
 
 	/* notify mudlib */
-	call_driver_object("restored", 0);
+	call_driver_object(cframe, "restored", 0);
     }
     ec_pop();
-    i_del_value(sp++);
+    i_del_value(cframe->sp++);
     endthread();
 
     /* start accepting connections */
@@ -1098,7 +1098,8 @@ unsigned short conf_array_size()
  * NAME:	config->status()
  * DESCRIPTION:	return an array with information about resource usage
  */
-array *conf_status()
+array *conf_status(f)
+frame *f;
 {
     register value *v;
     array *a;
@@ -1106,7 +1107,7 @@ array *conf_status()
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
-    a = arr_new(25L);
+    a = arr_new(f->data, 25L);
     v = a->elts;
 
     /* version */
@@ -1172,13 +1173,13 @@ array *conf_status()
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;
-    (v++)->u.number = i_get_depth();
+    (v++)->u.number = i_get_depth(f);
     v->type = T_INT;
-    (v++)->u.number = i_get_ticks();
+    (v++)->u.number = i_get_ticks(f);
 
     /* precompiled objects */
     v->type = T_ARRAY;
-    arr_ref(v->u.array = pc_list());
+    arr_ref(v->u.array = pc_list(f->data));
 
     return a;
 }
@@ -1187,7 +1188,8 @@ array *conf_status()
  * NAME:	config->object()
  * DESCRIPTION:	return resource usage of an object
  */
-array *conf_object(obj)
+array *conf_object(data, obj)
+dataspace *data;
 object *obj;
 {
     register control *ctrl;
@@ -1199,14 +1201,14 @@ object *obj;
     prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
     ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
     if (obj->flags & O_CREATED) {
-	clist = co_list(obj);
+	clist = co_list(data, obj);
 	nsectors = obj->data->nsectors;
     } else {
 	/* avoid creating a dataspace for this object */
-	clist = arr_new(0L);
+	clist = arr_new(data, 0L);
 	nsectors = 0;
     }
-    a = arr_new(6L);
+    a = arr_new(data, 6L);
 
     v = a->elts;
     v->type = T_INT;

@@ -141,8 +141,9 @@ register object *master;
  * NAME:	object->delete()
  * DESCRIPTION:	the last reference to a master object was removed
  */
-static void o_delete(o)
+static void o_delete(o, f)
 register object *o;
+register frame *f;
 {
     register control *ctrl;
     register dinherit *inh;
@@ -155,16 +156,16 @@ register object *o;
     dest_obj = o - otable;
 
     /* callback to the system */
-    (--sp)->type = T_STRING;
-    str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1L));
-    sp->u.string->text[0] = '/';
-    strcpy(sp->u.string->text + 1, o->chain.name);
-    (--sp)->type = T_INT;
-    sp->u.number = ctrl->compiled;
-    (--sp)->type = T_INT;
-    sp->u.number = o->index;
-    if (i_call_critical("remove_program", 3, TRUE)) {
-	i_del_value(sp++);
+    (--f->sp)->type = T_STRING;
+    str_ref(f->sp->u.string = str_new(NULL, strlen(o->chain.name) + 1L));
+    f->sp->u.string->text[0] = '/';
+    strcpy(f->sp->u.string->text + 1, o->chain.name);
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = ctrl->compiled;
+    (--f->sp)->type = T_INT;
+    f->sp->u.number = o->index;
+    if (i_call_critical(f, "remove_program", 3, TRUE)) {
+	i_del_value(f->sp++);
     }
 
     /* remove references to inherited objects too */
@@ -173,7 +174,7 @@ register object *o;
     while (--i > 0) {
 	o = (inh++)->obj;
 	if (--(o->u_ref) == 0) {
-	    o_delete(o);
+	    o_delete(o, f);
 	}
     }
 }
@@ -182,9 +183,10 @@ register object *o;
  * NAME:	object->upgrade()
  * DESCRIPTION:	upgrade an object to a new program
  */
-void o_upgrade(obj, ctrl)
+void o_upgrade(obj, ctrl, f)
 object *obj;
 control *ctrl;
+register frame *f;
 {
     register object *o;
     register dinherit *inh;
@@ -222,7 +224,7 @@ control *ctrl;
     while (--i > 0) {
 	o = (inh++)->obj;
 	if (--(o->u_ref) == 0) {
-	    o_delete(o);
+	    o_delete(o, f);
 	}
     }
 }
@@ -256,9 +258,7 @@ register object *old, *new;
 	    old->prev = OBJ_NONE;
 	    if (old == new) {
 		new->cref--;
-		if (--(new->u_ref) == 0) {
-		    o_delete(new);
-		}
+		new->u_ref--;
 		break;
 	    }
 	}
@@ -271,8 +271,9 @@ register object *old, *new;
  * NAME:	object->del()
  * DESCRIPTION:	delete an object
  */
-void o_del(o)
+void o_del(o, f)
 register object *o;
+frame *f;
 {
     if (o->count == 0) {
 	/* can happen if object selfdestructs in close()-on-destruct */
@@ -286,7 +287,7 @@ register object *o;
 	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 
 	if (--(o->u_ref) == 0) {
-	    o_delete(o);
+	    o_delete(o, f);
 	}
     } else {
 	register object *m;
@@ -296,7 +297,7 @@ register object *o;
 	if (m->update == o->update) {
 	    m->cref--;
 	    if (--(m->u_ref) == 0) {
-		o_delete(m);
+		o_delete(m, f);
 	    }
 	} else {
 	    /* non-upgraded clone of old issue */
@@ -310,7 +311,7 @@ register object *o;
 
 		m = &otable[o->u_master];
 		if (--(m->u_ref) == 0) {
-		    o_delete(m);
+		    o_delete(m, f);
 		}
 	    }
 	}

@@ -23,7 +23,8 @@ static bool stop;		/* is the program to terminate? */
  * NAME:	call_driver_object()
  * DESCRIPTION:	call a function in the driver object
  */
-bool call_driver_object(func, narg)
+bool call_driver_object(f, func, narg)
+frame *f;
 char *func;
 int narg;
 {
@@ -35,11 +36,11 @@ int narg;
 	}
 	driver = o_find(driver_name);
 	if (driver == (object *) NULL) {
-	    driver = c_compile(driver_name, (object *) NULL);
+	    driver = c_compile(f, driver_name, (object *) NULL);
 	}
 	dcount = driver->count;
     }
-    if (!i_call(driver, func, strlen(func), TRUE, narg)) {
+    if (!i_call(f, driver, func, strlen(func), TRUE, narg)) {
 	fatal("missing function in driver object: %s", func);
     }
     return TRUE;
@@ -129,10 +130,11 @@ void endthread()
  * NAME:	errhandler()
  * DESCRIPTION:	handle an error
  */
-static void errhandler(depth)
+static void errhandler(f, depth)
+frame *f;
 Int depth;
 {
-    i_runtime_error((Int) 0);
+    i_runtime_error(f, (Int) 0);
 }
 
 /*
@@ -180,8 +182,8 @@ char **argv;
 	/* interrupts */
 	if (intr) {
 	    intr = FALSE;
-	    call_driver_object("interrupt", 0);
-	    i_del_value(sp++);
+	    call_driver_object(cframe, "interrupt", 0);
+	    i_del_value(cframe->sp++);
 	    endthread();
 	    comm_flush(FALSE);
 	}
@@ -190,10 +192,10 @@ char **argv;
 	sw_copy();
 
 	/* handle user input */
-	comm_receive();
+	comm_receive(cframe);
 
 	/* callouts */
-	co_call();
+	co_call(cframe);
 	comm_flush(FALSE);
     }
 }

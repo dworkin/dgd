@@ -502,7 +502,8 @@ register control *ctrl;
  * NAME:	control->inherit()
  * DESCRIPTION:	inherit an object
  */
-bool ctrl_inherit(from, obj, label)
+bool ctrl_inherit(f, from, obj, label)
+register frame *f;
 char *from;
 object *obj;
 string *label;
@@ -564,11 +565,11 @@ string *label;
 		 * This object inherits an object that has been destructed.
 		 * Give the driver object a chance to destruct it.
 		 */
-		(--sp)->type = T_OBJECT;
-		sp->oindex = obj->index;
-		sp->u.objcnt = ocount = obj->count;
-		call_driver_object("recompile", 1);
-		i_del_value(sp++);
+		(--f->sp)->type = T_OBJECT;
+		f->sp->oindex = obj->index;
+		f->sp->u.objcnt = ocount = obj->count;
+		call_driver_object(f, "recompile", 1);
+		i_del_value(f->sp++);
 		if (obj->count != ocount) {
 		    return FALSE;	/* recompile this object */
 		}
