@@ -1729,8 +1729,8 @@ static cmd_rsrc(object user, string cmd, string str)
 static cmd_people(object user, string cmd, string str)
 {
     object *users, usr;
+    string *owners, name;
     int i, sz;
-    string name;
 
     if (str) {
 	user->message("Usage: " + cmd + "\n");
@@ -1739,11 +1739,12 @@ static cmd_people(object user, string cmd, string str)
 
     str = "";
     users = users();
+    owners = query_owners();
     for (i = 0, sz = sizeof(users); i < sz; i++) {
 	usr = users[i];
 	name = usr->query_name();
 	str += (query_ip_number(usr->query_conn()) + SPACE16)[.. 15] +
-	       ((sizeof(query_owners() & ({ name })) == 0) ? " " : "*") +
+	       ((sizeof(owners & ({ name })) == 0) ? " " : "*") +
 	       name + "\n";
     }
     user->message(str);
