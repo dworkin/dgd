@@ -1,0 +1,12 @@
+NAME
+	tanh - compute hyperbolic tangent
+
+SYNOPSIS
+	float tanh(float x)
+
+
+DESCRIPTION
+	Return the hyperbolic tangent of the argument.
+
+SEE ALSO
+	kfun/cosh, kfun/sinh

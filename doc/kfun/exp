@@ -1,0 +1,15 @@
+NAME
+	exp - compute exponential
+
+SYNOPSIS
+	float exp(float x)
+
+
+DESCRIPTION
+	Return the exponential value of the given argument.
+
+ERRORS
+	If the computed exponential is too large, an error will result.
+
+SEE ALSO
+	kfun/log, kfun/log10, kfun/pow

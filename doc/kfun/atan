@@ -1,0 +1,12 @@
+NAME
+	atan - compute arc tangent
+
+SYNOPSIS
+	float atan(float x)
+
+
+DESCRIPTION
+	Return the arc tangent of the argument.
+
+SEE ALSO
+	kfun/acos, kfun/asin, kfun/atan2

@@ -182,7 +182,6 @@ register frame *f;
 # endif
 
 
-# if 0
 # ifdef FUNCDEF
 FUNCDEF("exp", kf_exp, pt_exp)
 # else
@@ -197,6 +196,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 21);
     VFLT_GET(f->sp, flt);
     flt_exp(&flt);
     VFLT_PUT(f->sp, flt);
@@ -219,6 +219,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 35);
     VFLT_GET(f->sp, flt);
     flt_log(&flt);
     VFLT_PUT(f->sp, flt);
@@ -241,6 +242,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 41);
     VFLT_GET(f->sp, flt);
     flt_log10(&flt);
     VFLT_PUT(f->sp, flt);
@@ -263,6 +265,7 @@ register frame *f;
 {
     xfloat f1, f2;
 
+    i_add_ticks(f, 48);
     VFLT_GET(f->sp, f2);
     f->sp++;
     VFLT_GET(f->sp, f1);
@@ -287,6 +290,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 11);
     VFLT_GET(f->sp, flt);
     flt_sqrt(&flt);
     VFLT_PUT(f->sp, flt);
@@ -309,6 +313,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 25);
     VFLT_GET(f->sp, flt);
     flt_cos(&flt);
     VFLT_PUT(f->sp, flt);
@@ -331,6 +336,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 25);
     VFLT_GET(f->sp, flt);
     flt_sin(&flt);
     VFLT_PUT(f->sp, flt);
@@ -353,6 +359,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 31);
     VFLT_GET(f->sp, flt);
     flt_tan(&flt);
     VFLT_PUT(f->sp, flt);
@@ -375,6 +382,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_acos(&flt);
     VFLT_PUT(f->sp, flt);
@@ -397,6 +405,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_asin(&flt);
     VFLT_PUT(f->sp, flt);
@@ -419,6 +428,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_atan(&flt);
     VFLT_PUT(f->sp, flt);
@@ -441,6 +451,7 @@ register frame *f;
 {
     xfloat f1, f2;
 
+    i_add_ticks(f, 27);
     VFLT_GET(f->sp, f2);
     f->sp++;
     VFLT_GET(f->sp, f1);
@@ -465,6 +476,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_cosh(&flt);
     VFLT_PUT(f->sp, flt);
@@ -487,6 +499,7 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_sinh(&flt);
     VFLT_PUT(f->sp, flt);
@@ -509,10 +522,10 @@ register frame *f;
 {
     xfloat flt;
 
+    i_add_ticks(f, 24);
     VFLT_GET(f->sp, flt);
     flt_tanh(&flt);
     VFLT_PUT(f->sp, flt);
     return 0;
 }
-# endif
 # endif

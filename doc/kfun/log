@@ -1,0 +1,15 @@
+NAME
+	log - compute natural logarithm
+
+SYNOPSIS
+	float log(float x)
+
+
+DESCRIPTION
+	Return the natural logarithm of the argument.
+
+ERRORS
+	An error will result if the argument is less than or equal to 0.
+
+SEE ALSO
+	kfun/exp, kfun/log10, kfun/pow

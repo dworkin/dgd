@@ -15,12 +15,18 @@ typedef struct {
 
 /* constants */
 
-xfloat sixty =	    { 0x404e, 0x00000000 };	/* 60 */
-xfloat thousand =   { 0x408f, 0x40000000 };	/* 1e3 */
-xfloat thousandth = { 0x3f50, 0x624dd2f2 };	/* 1e-3 */
+xfloat sixty =		{ 0x404e, 0x00000000L };	/* 60 */
+xfloat thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
+xfloat thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 
-static flt half =   { 0x0000, 0x7ffe, 0x4000, 0x00000000L }; /* .5 */
-static flt one =    { 0x0000, 0x7fff, 0x4000, 0x00000000L }; /* 1 */
+static flt half =	{ 0x0000, 0x7ffe, 0x4000, 0x00000000L };
+static flt one =	{ 0x0000, 0x7fff, 0x4000, 0x00000000L };
+static flt maxlog =	{ 0x0000, 0x8008, 0x588c, 0x57baf578L };
+static flt minlog =	{ 0x8000, 0x8008, 0x588c, 0x57baf578L };
+static flt sqrth =	{ 0x0000, 0x7ffe, 0x5a82, 0x3cccfe78L };
+static flt pi =		{ 0x0000, 0x8000, 0x6487, 0x76a8885cL };
+static flt pio2 =	{ 0x0000, 0x7fff, 0x6487, 0x76a8885cL };
+static flt pio4 =	{ 0x0000, 0x7ffe, 0x6487, 0x76a8885cL };
 
 
 /*
@@ -87,8 +93,7 @@ register flt *a, *b;
 	 */
 	if (n < 31) {
 	    h += (Uint) b->high >> n;
-	    l += (((Uint) b->high << (31 - n)) & 0x7fffffffL) |
-		 (b->low >> n);
+	    l += (((Uint) b->high << (31 - n)) & 0x7fffffffL) | (b->low >> n);
 	} else {
 	    l += b->high >> (n - 31);
 	}
@@ -157,7 +162,7 @@ register flt *a, *b;
     }
 
     n = a->exp - b->exp;
-    if (n <= NBITS + 1) {
+    if (n <= NBITS) {
 	h = a->high;
 	l = a->low;
 
@@ -166,15 +171,14 @@ register flt *a, *b;
 	 */
 	if (n < 31) {
 	    h -= (Uint) b->high >> n;
-	    l -= (((Uint) b->high << (31 - n)) & 0x7fffffffL) |
-		 (b->low >> n);
-	    if ((b->low >> n) << n != b->low) {
+	    l -= (((Uint) b->high << (31 - n)) & 0x7fffffffL) | (b->low >> n);
+	    if (b->low & ((1 << n) - 1)) {
 		--l;
 	    }
 	} else {
 	    n -= 31;
 	    l -= b->high >> n;
-	    if (b->low != 0 || (b->high >> n) << n != b->high) {
+	    if (b->low != 0 || (b->high & ((1 << n) - 1))) {
 		--l;
 	    }
 	}
@@ -192,7 +196,7 @@ register flt *a, *b;
 		a->exp = 0;
 		return;
 	    }
-	    n = 0;
+	    n = 15;
 	    if ((l & 0xffff0000L) == 0) {
 		l <<= 15;
 		n += 15;
@@ -200,7 +204,7 @@ register flt *a, *b;
 	    h = l >> 16;
 	    l <<= 15;
 	    l &= 0x7fffffffL;
-	    a->exp -= n + 15;
+	    a->exp -= n;
 	}
 	if (h < 0x4000) {
 	    n = 0;
@@ -298,7 +302,7 @@ register flt *a, *b;
 
 /*
  * NAME:	f_div()
- * DESCRIPTION:	c = a / b.  b must be non-zero.  The result is normalized,
+ * DESCRIPTION:	a = a / b.  b must be non-zero.  The result is normalized,
  *		but may be out of range.
  */
 static void f_div(a, b)
@@ -328,7 +332,7 @@ register flt *a, *b;
     do {
 	/* estimate the high word of the quotient */
 	q = numh / divh;
-	/* highlow = num * q */
+	/* highlow = div * q */
 	low = (unsigned short) (high = q * (unsigned short) divl);
 	high >>= 16;
 	high += q * (divl >> 16);
@@ -466,25 +470,6 @@ register flt *a;
 }
 
 /*
- * NAME:	f_ldexp()
- * DESCRIPTION:	add an integer value to the exponent of a flt
- */
-static void f_ldexp(a, exp)
-register flt *a;
-register short exp;
-{
-    if (a->exp == 0) {
-	return;
-    }
-    exp += a->exp;
-    if (exp <= 0) {
-	a->exp = 0;
-	return;
-    }
-    a->exp = exp;
-}
-
-/*
  * NAME:	f_cmp()
  * DESCRIPTION:	compate two flts
  */
@@ -555,7 +540,7 @@ register flt *a;
 
 /*
  * NAME:	f_ftoi()
- * DESCRIPTION:	convert a flt to an integer, disregarding the fractional part
+ * DESCRIPTION:	convert a flt to an integer, discarding the fractional part
  */
 static Int f_ftoi(a)
 register flt *a;
@@ -632,6 +617,7 @@ register flt *a;
 {
     register unsigned short exp;
 
+    a->sign = f->high & 0x8000;
     exp = (f->high >> 4) & 0x07ff;
     if (exp == 0) {
 	/* zero */
@@ -639,7 +625,6 @@ register flt *a;
 	return;
     }
     a->exp = exp + BIAS - 1023;
-    a->sign = f->high & 0x8000;
     a->high = 0x4000 | ((f->high & 0x0f) << 10) | (f->low >> 22);
     a->low = (f->low << 9) & 0x7fffffffL;
 }
@@ -819,9 +804,7 @@ char *buffer;
 	/* >= 1 */
 	for (i = 10, t = &tens[9], t2 = &tenths[9]; i > 0; --i, --t, --t2) {
 	    e <<= 1;
-	    if (a.exp >= t->exp &&
-		(a.exp > t->exp || (a.high >= t->high &&
-				    (a.high > t->high || a.low >= t->low)))) {
+	    if (f_cmp(&a, t) >= 0) {
 		e |= 1;
 		f_mult(&a, t2);
 	    }
@@ -830,9 +813,7 @@ char *buffer;
 	/* < 1 */
 	for (i = 10, t = &tenths[9], t2 = &tens[9]; i > 0; --i, --t, --t2) {
 	    e <<= 1;
-	    if (a.exp <= t->exp &&
-		(a.exp < t->exp || (a.high <= t->high &&
-				    (a.high < t->high || a.low <= t->low)))) {
+	    if (f_cmp(&a, t) <= 0) {
 		e |= 1;
 		f_mult(&a, t2);
 	    }
@@ -923,7 +904,6 @@ xfloat *f;
 
     f_itof(i, &a);
     f_ftoxf(&a, f);
-    f_xftof(f, &a);
 }
 
 /*
@@ -987,7 +967,7 @@ xfloat *f1, *f2;
 
 /*
  * NAME:	float->div()
- * DESCRIPTION:	devide a float by a float
+ * DESCRIPTION:	divide a float by a float
  */
 void flt_div(f1, f2)
 xfloat *f1, *f2;
@@ -1032,7 +1012,7 @@ xfloat *f;
     f_xftof(f, &a);
     b = a;
     f_trunc(&b);
-    if (b.sign != 0 && (a.exp != b.exp || a.high != b.high || a.low != b.low)) {
+    if (b.sign != 0 && f_cmp(&a, &b) != 0) {
 	f_sub(&b, &one);
     }
     f_ftoxf(&b, f);
@@ -1050,7 +1030,7 @@ xfloat *f;
     f_xftof(f, &a);
     b = a;
     f_trunc(&b);
-    if (b.sign == 0 && (a.exp != b.exp || a.high != b.high || a.low != b.low)) {
+    if (b.sign == 0 && f_cmp(&a, &b) != 0) {
 	f_add(&b, &one);
     }
     f_ftoxf(&b, f);
@@ -1077,11 +1057,9 @@ xfloat *f1, *f2;
     c.sign = a.sign;
     c.high = b.high;
     c.low = b.low;
-    while (a.exp >= b.exp &&
-	   (a.exp > b.exp ||
-	    (a.high >= b.high && (a.high > b.high || a.low >= b.low)))) {
+    while (f_cmp(&a, &b) >= 0) {
 	c.exp = a.exp;
-	if (a.high <= c.high && (a.high < c.high || a.low < c.low)) {
+	if (f_cmp(&a, &c) < 0) {
 	    c.exp--;
 	}
 	f_sub(&a, &c);
@@ -1149,4 +1127,1272 @@ xfloat *f1, *f2;
     }
     f_ftoxf(&a, f1);
     f_ftoxf(&b, f2);
+}
+
+
+/*
+ * The algorithms for much of the following are taken from the Cephes Math
+ * Library 2.1, by Stephen L. Moshier.
+ */
+
+/*
+ * NAME:	f_poly()
+ * DESCRIPTION:	evaluate polynomial
+ */
+static void f_poly(x, coef, n)
+register flt *x, *coef;
+register int n;
+{
+    flt result;
+
+    result = *coef++;
+    do {
+	f_mult(&result, x);
+	f_add(&result, coef++);
+    } while (--n != 0);
+
+    *x = result;
+}
+
+/*
+ * NAME:	f_poly1()
+ * DESCRIPTION:	evaluate polynomial with coefficient of x ** (n + 1) == 1.0.
+ */
+static void f_poly1(x, coef, n)
+register flt *x, *coef;
+register int n;
+{
+    flt result;
+
+    result = *x;
+    f_add(&result, coef++);
+    do {
+	f_mult(&result, x);
+	f_add(&result, coef++);
+    } while (--n != 0);
+
+    *x = result;
+}
+
+/*
+ * NAME:	f_exp()
+ * DESCRIPTION:	internal version of exp(f)
+ */
+static void f_exp(a)
+register flt *a;
+{
+    static flt p[] = {
+	{ 0x0000, 0x7ff2, 0x4228, 0x01073370L },
+	{ 0x0000, 0x7ff9, 0x7c1b, 0x4362a050L },
+	{ 0x0000, 0x7fff, 0x4000, 0x00000000L }
+    };
+    static flt q[] = {
+	{ 0x0000, 0x7fec, 0x64bd, 0x3130af58L },
+	{ 0x0000, 0x7ff6, 0x52b9, 0x2c76e408L },
+	{ 0x0000, 0x7ffc, 0x745c, 0x1b8352c0L },
+	{ 0x0000, 0x8000, 0x4000, 0x00000000L }
+    };
+    static flt log2e = { 0x0000, 0x7fff, 0x5c55, 0x0eca5704L };
+    static flt c1 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
+    static flt c2 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
+    flt b, c;
+    register short n;
+
+    b = *a;
+    f_mult(&b, &log2e);
+    f_round(&b);
+    n = f_ftoi(&b);
+    c = b;
+    f_mult(&c, &c1);
+    f_sub(a, &c);
+    f_mult(&b, &c2);
+    f_add(a, &b);
+
+    b = *a;
+    f_mult(&b, a);
+    c = b;
+    f_poly(&c, p, 2);
+    f_mult(a, &c);
+    f_poly(&b, q, 3);
+    f_sub(&b, a);
+    f_div(a, &b);
+
+    if (a->exp != 0) {
+	a->exp++;
+    }
+    f_add(a, &one);
+    if (a->exp != 0) {
+	a->exp += n;
+    }
+}
+
+/*
+ * NAME:	float->exp()
+ * DESCRIPTION:	exp(f)
+ */
+void flt_exp(f)
+xfloat *f;
+{
+    flt a;
+
+    f_xftof(f, &a);
+    if (f_cmp(&a, &maxlog) > 0) {
+	/* overflow */
+	f_erange();
+    }
+    if (f_cmp(&a, &minlog) < 0) {
+	/* underflow */
+	a.exp = 0;
+    } else {
+	f_exp(&a);
+    }
+
+    f_ftoxf(&a, f);
+}
+
+static flt logp[] = {
+    { 0x0000, 0x7ff0, 0x6026, 0x4ed4bf30L },
+    { 0x0000, 0x7ffd, 0x7f9f, 0x5db2f2b4L },
+    { 0x0000, 0x8001, 0x6902, 0x458cd8e8L },
+    { 0x0000, 0x8003, 0x7726, 0x52fc7a84L },
+    { 0x0000, 0x8004, 0x7939, 0x5ac9d7b8L },
+    { 0x0000, 0x8004, 0x7178, 0x244a33a8L },
+    { 0x0000, 0x8003, 0x4f8e, 0x4b136264L }
+};
+static flt logq[] = {
+    { 0x0000, 0x8002, 0x7840, 0x2c1bf7a0L },
+    { 0x0000, 0x8005, 0x52bd, 0x5a8f5cf4L },
+    { 0x0000, 0x8006, 0x6e55, 0x0548968cL },
+    { 0x0000, 0x8007, 0x4cd0, 0x22530620L },
+    { 0x0000, 0x8006, 0x6b7a, 0x28551a68L },
+    { 0x0000, 0x8004, 0x7755, 0x709d1394L }
+};
+
+/*
+ * NAME:	float->log()
+ * DESCRIPTION:	log(f)
+ */
+void flt_log(f)
+xfloat *f;
+{
+    static flt r[] = {
+	{ 0x8000, 0x7ffe, 0x6510, 0x7bb8d81cL },
+	{ 0x0000, 0x8003, 0x418b, 0x78e604f8L },
+	{ 0x8000, 0x8005, 0x4024, 0x0c224454L }
+    };
+    static flt s[] = {
+	{ 0x8000, 0x8004, 0x4758, 0x1a87d8dcL },
+	{ 0x0000, 0x8007, 0x4e06, 0x002255c8L },
+	{ 0x8000, 0x8008, 0x6036, 0x12336680L }
+    };
+    static flt c1 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
+    static flt c2 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
+    flt a, b, c, d;
+    register short n;
+
+    f_xftof(f, &a);
+    if (a.sign != 0 || a.exp == 0) {
+	/* <= 0.0 */
+	f_edom();
+    }
+
+    n = a.exp - BIAS + 1;
+    a.exp = BIAS - 1;
+
+    if (n > 2 || n < -2) {
+	if (f_cmp(&a, &sqrth) < 0) {
+	    --n;
+	    f_sub(&a, &half);
+	    b = a;
+	} else {
+	    b = a;
+	    f_sub(&a, &half);
+	    f_sub(&a, &half);
+	}
+	if (b.exp != 0) {
+	    --b.exp;
+	}
+	f_add(&b, &half);
+
+	f_div(&a, &b);
+	b = a;
+	f_mult(&b, &b);
+	c = b;
+	f_poly(&b, r, 2);
+	f_mult(&b, &c);
+	f_poly1(&c, s, 2);
+	f_div(&b, &c);
+	f_mult(&b, &a);
+	f_add(&a, &b);
+    } else {
+	if (f_cmp(&a, &sqrth) < 0) {
+	    --n;
+	    a.exp++;
+	}
+	f_sub(&a, &one);
+
+	b = a;
+	f_mult(&b, &a);
+	c = a;
+	f_poly(&c, logp, 6);
+	f_mult(&c, &b);
+	d = a;
+	f_poly1(&d, logq, 5);
+	f_div(&c, &d);
+	f_mult(&c, &a);
+	if (b.exp != 0) {
+	    --b.exp;
+	}
+	f_sub(&c, &b);
+	f_add(&a, &c);
+    }
+
+    if (n != 0) {
+	f_itof((Int) n, &b);
+	c = b;
+	f_mult(&c, &c1);
+	f_sub(&a, &c);
+	f_mult(&b, &c2);
+	f_add(&a, &b);
+    }
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->log10()
+ * DESCRIPTION:	log10(f)
+ */
+void flt_log10(f)
+xfloat *f;
+{
+    static flt l102a = { 0x0000, 0x7ffd, 0x4d00, 0x00000000L };
+    static flt l102b = { 0x0000, 0x7ff3, 0x4135, 0x04fbcff8L };
+    static flt l10ea = { 0x0000, 0x7ffd, 0x6f00, 0x00000000L };
+    static flt l10eb = { 0x0000, 0x7ff4, 0x5bd8, 0x549b9438L };
+    flt a, b, c, d;
+    register short n;
+
+    f_xftof(f, &a);
+    if (a.sign != 0 || a.exp == 0) {
+	/* <= 0.0 */
+	f_edom();
+    }
+
+    n = a.exp - BIAS + 1;
+    a.exp = BIAS - 1;
+
+    if (f_cmp(&a, &sqrth) < 0) {
+	--n;
+	a.exp++;
+    }
+    f_sub(&a, &one);
+
+    b = a;
+    f_mult(&b, &a);
+    c = a;
+    f_poly(&c, logp, 6);
+    f_mult(&c, &b);
+    d = a;
+    f_poly1(&d, logq, 5);
+    f_div(&c, &d);
+    f_mult(&c, &a);
+    if (b.exp != 0) {
+	--b.exp;
+    }
+    f_sub(&c, &b);
+
+    b = a;
+    f_add(&b, &c);
+    f_mult(&b, &l10eb);
+    f_mult(&a, &l10ea);
+    f_add(&a, &b);
+    f_mult(&c, &l10ea);
+    f_add(&a, &c);
+    f_itof((Int) n, &b);
+    c = b;
+    f_mult(&b, &l102b);
+    f_add(&a, &b);
+    f_mult(&c, &l102a);
+    f_add(&a, &c);
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	f_powi()
+ * DESCRIPTION:	take a number to an integer power
+ */
+static void f_powi(a, n)
+register flt *a;
+register int n;
+{
+    flt b;
+    unsigned short sign;
+    bool neg;
+
+    if (n == 0) {
+	/* pow(x, 0.0) == 1.0 */
+	*a = one;
+	return;
+    }
+
+    if (a->exp == 0) {
+	if (n < 0) {
+	    /* negative power of 0.0 */
+	    f_edom();
+	}
+	/* pow(0.0, y) == 0.0 */
+	return;
+    }
+
+    sign = a->sign;
+    a->sign = 0;
+
+    if (n < 0) {
+	neg = TRUE;
+	n = -n;
+    } else {
+	neg = FALSE;
+    }
+
+    if (n & 1) {
+	b = *a;
+    } else {
+	b = one;
+	sign = 0;
+    }
+    while ((n >>= 1) != 0) {
+	f_mult(a, a);
+	if (a->exp > BIAS + 1023) {
+	    f_erange();
+	}
+	if (n & 1) {
+	    f_mult(&b, a);
+	}
+    }
+    /* range of b is checked when converting back to xfloat */
+
+    b.sign = sign;
+    if (neg) {
+	*a = one;
+	f_div(a, &b);
+    } else {
+	*a = b;
+    }
+}
+
+/*
+ * NAME:	float->pow()
+ * DESCRIPTION:	pow(f1, f2)
+ */
+void flt_pow(f1, f2)
+xfloat *f1, *f2;
+{
+    static flt p[] = {
+	{ 0x0000, 0x7ffd, 0x7f6e, 0x32feb6b8L },
+	{ 0x0000, 0x8000, 0x7777, 0x5fd53dc0L },
+	{ 0x0000, 0x8001, 0x7b32, 0x7afef1d8L },
+	{ 0x0000, 0x8001, 0x4aaa, 0x076cb938L }
+    };
+    static flt q[] = {
+	{ 0x0000, 0x8002, 0x4aaa, 0x69364124L },
+	{ 0x0000, 0x8003, 0x6fff, 0x7e838394L },
+	{ 0x0000, 0x8004, 0x4332, 0x78362ec8L },
+	{ 0x0000, 0x8002, 0x6fff, 0x0b2315d4L }
+    };
+    static flt aloga[] = {
+	{ 0x0000, 0x7fff, 0x4000, 0x00000000L },
+	{ 0x0000, 0x7ffe, 0x7a92, 0x5f454920L },
+	{ 0x0000, 0x7ffe, 0x7560, 0x31b9f748L },
+	{ 0x0000, 0x7ffe, 0x7066, 0x37bb0aa4L },
+	{ 0x0000, 0x7ffe, 0x6ba2, 0x3f32b5a8L },
+	{ 0x0000, 0x7ffe, 0x6712, 0x230547e0L },
+	{ 0x0000, 0x7ffe, 0x62b3, 0x4a845540L },
+	{ 0x0000, 0x7ffe, 0x5e84, 0x28e7d604L },
+	{ 0x0000, 0x7ffe, 0x5a82, 0x3cccfe78L },
+	{ 0x0000, 0x7ffe, 0x56ac, 0x0fba90a8L },
+	{ 0x0000, 0x7ffe, 0x52ff, 0x35aa6c54L },
+	{ 0x0000, 0x7ffe, 0x4f7a, 0x4c982468L },
+	{ 0x0000, 0x7ffe, 0x4c1b, 0x7c146370L },
+	{ 0x0000, 0x7ffe, 0x48e1, 0x74dceac4L },
+	{ 0x0000, 0x7ffe, 0x45ca, 0x7078faa4L },
+	{ 0x0000, 0x7ffe, 0x42d5, 0x30d9f314L },
+	{ 0x0000, 0x7ffe, 0x4000, 0x00000000L }
+    };
+    static flt alogb[] = {
+	{ 0x0000, 0x0000, 0x0000, 0x00000000L },
+	{ 0x0000, 0x7fc7, 0x4bb4, 0x05aeb670L },
+	{ 0x0000, 0x7fc8, 0x5e87, 0x1a68bb98L },
+	{ 0x0000, 0x7fc8, 0x5ba7, 0x62ad0c98L },
+	{ 0x8000, 0x7fc8, 0x6f74, 0x682764c8L },
+	{ 0x0000, 0x7fc6, 0x750e, 0x2f5fd884L },
+	{ 0x0000, 0x7fc7, 0x5bd1, 0x55a46304L },
+	{ 0x8000, 0x7fc7, 0x4641, 0x0373af14L },
+	{ 0x0000, 0x0000, 0x0000, 0x00000000L }
+    };
+    static flt r[] = {
+	{ 0x0000, 0x7fee, 0x7d8c, 0x0fafe528L },
+	{ 0x0000, 0x7ff2, 0x50be, 0x7cc1f924L },
+	{ 0x0000, 0x7ff5, 0x5761, 0x7d9095e0L },
+	{ 0x0000, 0x7ff8, 0x4eca, 0x56dde268L },
+	{ 0x0000, 0x7ffa, 0x71ac, 0x11ae0834L },
+	{ 0x0000, 0x7ffc, 0x7afe, 0x7bff058cL },
+	{ 0x0000, 0x7ffe, 0x58b9, 0x05fdf474L }
+    };
+    static flt log2ea = { 0x0000, 0x7ffd, 0x7154, 0x3b295c18L };
+    static flt sixteenth = { 0x0000, 0x7ffb, 0x4000, 0x00000000L };
+    flt a, b, c, d, e;
+    register int n, i;
+    unsigned short sign;
+
+    f_xftof(f1, &a);
+    f_xftof(f2, &b);
+
+    c = b;
+    f_trunc(&c);
+    if (f_cmp(&b, &c) == 0 && a.exp < 0x800e) {
+	/* integer power < 32768 */
+	f_powi(&a, (int) f_ftoi(&c));
+	f_ftoxf(&a, f1);
+	return;
+    }
+
+    sign = a.sign;
+    if (sign != 0) {
+	if (f_cmp(&b, &c) != 0) {
+	    /* non-integer power of negative number */
+	    f_edom();
+	}
+	a.sign = 0;
+	--c.exp;
+	f_trunc(&c);
+	if (f_cmp(&b, &c) == 0) {
+	    /* even power of negative number */
+	    sign = 0;
+	}
+    }
+    if (a.exp == 0) {
+	if (b.sign != 0) {
+	    /* negative power of 0.0 */
+	    f_edom();
+	}
+	/* pow(0.0, y) == 0.0 */
+	return;
+    }
+
+    n = a.exp - BIAS + 1;
+    a.exp = BIAS - 1;
+
+    if (f_cmp(&a, &aloga[1]) >= 0) {
+	i = 0;
+    } else {
+	i = 1;
+	if (f_cmp(&a, &aloga[9]) <= 0) {
+	    i = 9;
+	}
+	if (f_cmp(&a, &aloga[i + 4]) <= 0) {
+	    i += 4;
+	}
+	if (f_cmp(&a, &aloga[i + 2]) <= 0) {
+	    i += 2;
+	}
+	i++;
+    }
+    f_sub(&a, &aloga[i]);
+    f_sub(&a, &alogb[i >> 1]);
+    f_div(&a, &aloga[i]);
+
+    c = a;
+    f_mult(&c, &a);
+    d = a;
+    f_poly(&d, p, 3);
+    f_mult(&d, &c);
+    e = a;
+    f_poly1(&e, q, 3);
+    f_div(&d, &e);
+    f_mult(&d, &a);
+    if (c.exp != 0) {
+	--c.exp;
+    }
+    f_sub(&d, &c);
+
+    c = d;
+    f_mult(&d, &log2ea);
+    f_add(&c, &d);
+    d = a;
+    f_mult(&d, &log2ea);
+    f_add(&c, &d);
+    f_add(&c, &a);
+    f_mult(&c, &b);
+
+    f_itof((Int) -i, &d);
+    d.exp -= 4;
+    f_itof((Int) n, &e);
+    f_add(&d, &e);
+
+    e = b;
+    e.exp += 4;
+    f_trunc(&e);
+    if (e.exp != 0) {
+	e.exp -= 4;
+    }
+    f_sub(&b, &e);
+
+    f_mult(&b, &d);
+    f_add(&c, &b);
+    b = c;
+    if (b.exp != 0) {
+	b.exp += 4;
+	f_trunc(&b);
+	if (b.exp != 0) {
+	    b.exp -= 4;
+	}
+    }
+    f_sub(&c, &b);
+
+    f_mult(&d, &e);
+    f_add(&b, &d);
+    d = b;
+    if (d.exp != 0) {
+	d.exp += 4;
+	f_trunc(&d);
+	if (d.exp != 0) {
+	    d.exp -= 4;
+	}
+    }
+    f_sub(&b, &d);
+
+    f_add(&b, &c);
+    c = b;
+    if (c.exp != 0) {
+	c.exp += 4;
+	f_trunc(&c);
+	if (c.exp != 0) {
+	    c.exp -= 4;
+	}
+    }
+    f_add(&d, &c);
+    if (d.exp != 0) {
+	d.exp += 4;
+    }
+
+    if (d.exp >= 0x800d) {
+	/* exponent >= 16384 */
+	if (d.sign == 0) {
+	    /* overflow */
+	    f_erange();
+	}
+	/* underflow */
+	a.exp = 0;
+	f_ftoxf(&a, f1);
+	return;
+    }
+    n = f_ftoi(&d);
+    f_sub(&b, &c);
+    if (b.sign == 0 && b.exp != 0) {
+	n++;
+	f_sub(&b, &sixteenth);
+    }
+
+    a = b;
+    f_poly(&a, r, 6);
+    f_mult(&a, &b);
+
+    i = n / 16 + ((n < 0) ? 0 : 1);
+    n = i * 16 - n;
+    f_mult(&a, &aloga[n]);
+    f_add(&a, &aloga[n]);
+    if (a.exp != 0) {
+	a.exp += i;
+    }
+    a.sign = sign;
+
+    f_ftoxf(&a, f1);
+}
+
+/*
+ * NAME:	f_sqrt()
+ * DESCRIPTION:	internal version of sqrt(f)
+ */
+static void f_sqrt(a)
+register flt *a;
+{
+    static flt c1 = { 0x0000, 0x7ffe, 0x4b8a, 0x371e5fa0L };
+    static flt c2 = { 0x0000, 0x7ffd, 0x6ad4, 0x55de691cL };
+    static flt sqrt2 = { 0x0000, 0x7fff, 0x5a82, 0x3cccfe78L };
+    flt b, c;
+    register int n;
+
+    if (a->exp == 0) {
+	return;
+    }
+
+    b = *a;
+    n = a->exp - BIAS + 1;
+    a->exp = BIAS - 1;
+    f_mult(a, &c1);
+    f_add(a, &c2);
+    if (n & 1) {
+	f_mult(a, &sqrt2);
+    }
+    a->exp += n >> 1;
+
+    c = b;
+    f_div(&c, a);
+    f_add(a, &c);
+    --a->exp;
+    c = b;
+    f_div(&c, a);
+    f_add(a, &c);
+    --a->exp;
+    f_div(&b, a);
+    f_add(a, &b);
+    --a->exp;
+}
+
+/*
+ * NAME:	float->sqrt()
+ * DESCRIPTION:	sqrt(f)
+ */
+void flt_sqrt(f)
+xfloat *f;
+{
+    flt a;
+
+    f_xftof(f, &a);
+    if (a.sign != 0) {
+	f_edom();
+    }
+    f_sqrt(&a);
+    f_ftoxf(&a, f);
+}
+
+static flt sincof[] = {
+    { 0x0000, 0x7fde, 0x5763, 0x7a3fa338L },
+    { 0x8000, 0x7fe5, 0x6b97, 0x4b525240L },
+    { 0x0000, 0x7fec, 0x5c77, 0x46acfa90L },
+    { 0x8000, 0x7ff2, 0x6806, 0x40337fc0L },
+    { 0x0000, 0x7ff8, 0x4444, 0x222221f0L },
+    { 0x8000, 0x7ffc, 0x5555, 0x2aaaaaacL }
+};
+static flt coscof[] = {
+    { 0x8000, 0x7fda, 0x63e9, 0x13410c34L },
+    { 0x0000, 0x7fe2, 0x47ba, 0x3af69c80L },
+    { 0x8000, 0x7fe9, 0x49f9, 0x1efd5898L },
+    { 0x0000, 0x7fef, 0x6806, 0x40339088L },
+    { 0x8000, 0x7ff5, 0x5b05, 0x582d82a0L },
+    { 0x0000, 0x7ffa, 0x5555, 0x2aaaaaacL }
+};
+static flt sc1 = { 0x0000, 0x7ffe, 0x6487, 0x76800000L };
+static flt sc2 = { 0x0000, 0x7fe6, 0x5110, 0x5a000000L };
+static flt sc3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
+
+/*
+ * NAME:	float->cos()
+ * DESCRIPTION:	cos(f)
+ */
+void flt_cos(f)
+xfloat *f;
+{
+    flt a, b, c;
+    register int n;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    if (a.exp >= 0x801d) {
+	f_edom();
+    }
+
+    a.sign = sign = 0;
+    b = a;
+    f_div(&b, &pio4);
+    f_trunc(&b);
+    n = f_ftoi(&b);
+    if (n & 1) {
+	n++;
+	f_add(&b, &one);
+    }
+    n &= 7;
+    if (n > 3) {
+	sign = 0x8000;
+	n -= 4;
+    }
+    if (n > 1) {
+	sign ^= 0x8000;
+    }
+
+    c = b;
+    f_mult(&c, &sc1);
+    f_sub(&a, &c);
+    c = b;
+    f_mult(&c, &sc2);
+    f_sub(&a, &c);
+    f_mult(&b, &sc3);
+    f_sub(&a, &b);
+
+    b = a;
+    f_mult(&b, &a);
+    if (n == 1 || n == 2) {
+	c = b;
+	f_mult(&b, &a);
+	f_poly(&c, sincof, 5);
+    } else {
+	a = one;
+	c = b;
+	if (c.exp != 0) {
+	    --c.exp;
+	}
+	f_sub(&a, &c);
+	c = b;
+	f_mult(&b, &b);
+	f_poly(&c, coscof, 5);
+    }
+    f_mult(&b, &c);
+    f_add(&a, &b);
+    a.sign ^= sign;
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->sin()
+ * DESCRIPTION:	sin(f)
+ */
+void flt_sin(f)
+xfloat *f;
+{
+    flt a, b, c;
+    register int n;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    if (a.exp >= 0x801d) {
+	f_edom();
+    }
+
+    sign = a.sign;
+    a.sign = 0;
+    b = a;
+    f_div(&b, &pio4);
+    f_trunc(&b);
+    n = f_ftoi(&b);
+    if (n & 1) {
+	n++;
+	f_add(&b, &one);
+    }
+    n &= 7;
+    if (n > 3) {
+	sign ^= 0x8000;
+	n -= 4;
+    }
+
+    c = b;
+    f_mult(&c, &sc1);
+    f_sub(&a, &c);
+    c = b;
+    f_mult(&c, &sc2);
+    f_sub(&a, &c);
+    f_mult(&b, &sc3);
+    f_sub(&a, &b);
+
+    b = a;
+    f_mult(&b, &a);
+    if (n == 1 || n == 2) {
+	a = one;
+	c = b;
+	if (c.exp != 0) {
+	    --c.exp;
+	}
+	f_sub(&a, &c);
+	c = b;
+	f_mult(&b, &b);
+	f_poly(&c, coscof, 5);
+    } else {
+	c = b;
+	f_mult(&b, &a);
+	f_poly(&c, sincof, 5);
+    }
+    f_mult(&b, &c);
+    f_add(&a, &b);
+    a.sign ^= sign;
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->tan()
+ * DESCRIPTION:	float(f)
+ */
+void flt_tan(f)
+xfloat *f;
+{
+    static flt p[] = {
+	{ 0x8000, 0x800c, 0x664b, 0x31a49e80L },
+	{ 0x0000, 0x8013, 0x4667, 0x594bf93cL },
+	{ 0x8000, 0x8017, 0x447f, 0x55a65324L }
+    };
+    static flt q[] = {
+	{ 0x0000, 0x800c, 0x6ae2, 0x4bdd66ccL },
+	{ 0x8000, 0x8013, 0x509e, 0x78b05578L },
+	{ 0x0000, 0x8017, 0x5f66, 0x1f85d5b0L },
+	{ 0x8000, 0x8018, 0x66bf, 0x40797cb4L }
+    };
+    static flt p1 = { 0x0000, 0x7ffe, 0x6487, 0x76800000L };
+    static flt p2 = { 0x0000, 0x7fe6, 0x5110, 0x5a000000L };
+    static flt p3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
+    flt a, b, c;
+    register int n;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    if (a.exp >= 0x801d) {
+	f_edom();
+    }
+
+    sign = a.sign;
+    a.sign = 0;
+    b = a;
+    f_div(&b, &pio4);
+    f_trunc(&b);
+    n = f_ftoi(&b);
+    if (n & 1) {
+	n++;
+	f_add(&b, &one);
+    }
+
+    c = b;
+    f_mult(&c, &p1);
+    f_sub(&a, &c);
+    c = b;
+    f_mult(&c, &p2);
+    f_sub(&a, &c);
+    f_mult(&b, &p3);
+    f_sub(&a, &b);
+
+    b = a;
+    f_mult(&b, &a);
+    if (b.exp > 0x7fd0) {	/* ~1e-14 */
+	c = b;
+	f_poly(&b, p, 2);
+	f_mult(&b, &c);
+	f_poly1(&c, q, 3);
+	f_div(&b, &c);
+	f_mult(&b, &a);
+	f_add(&a, &b);
+    }
+
+    if (n & 2) {
+	b = one;
+	f_div(&b, &a);
+	a = b;
+	a.sign ^= 0x8000;
+    }
+    a.sign ^= sign;
+
+    f_ftoxf(&a, f);
+}
+
+static flt ascp[] = {
+    { 0x8000, 0x7ffe, 0x5931, 0x3dd1792cL },
+    { 0x0000, 0x8002, 0x5147, 0x2a1c6244L },
+    { 0x8000, 0x8004, 0x4f77, 0x6c7ab96cL },
+    { 0x0000, 0x8004, 0x7295, 0x0d081500L },
+    { 0x8000, 0x8003, 0x6da8, 0x634b0bb0L }
+};
+static flt ascq[] = {
+    { 0x8000, 0x8003, 0x5f58, 0x7442cc70L },
+    { 0x0000, 0x8006, 0x4b8c, 0x15abd1acL },
+    { 0x8000, 0x8007, 0x5f95, 0x630cc2e0L },
+    { 0x0000, 0x8007, 0x6871, 0x0dbab9b8L },
+    { 0x8000, 0x8006, 0x523e, 0x4a7848c4L }
+};
+
+/*
+ * NAME:	float->acos()
+ * DESCRIPTION:	acos(f)
+ */
+void flt_acos(f)
+xfloat *f;
+{
+    flt a, b, c;
+    unsigned short sign;
+    bool flag;
+
+    f_xftof(f, &a);
+    sign = a.sign;
+    a.sign = 0;
+    if (f_cmp(&a, &one) > 0) {
+	f_edom();
+    }
+
+    if (f_cmp(&a, &half) > 0) {
+	b = half;
+	f_sub(&b, &a);
+	f_add(&b, &half);
+	if (b.exp != 0) {
+	    --b.exp;
+	}
+	a = b;
+	f_sqrt(&a);
+	flag = TRUE;
+    } else {
+	b = a;
+	f_mult(&b, &a);
+	flag = FALSE;
+    }
+
+    if (a.exp >= 0x7fe7) {	/* ~1e-7 */
+	c = b;
+	f_poly(&c, ascp, 4);
+	f_mult(&c, &b);
+	f_poly1(&b, ascq, 4);
+	f_div(&c, &b);
+	f_mult(&c, &a);
+	f_add(&a, &c);
+    }
+
+    if (flag) {
+	if (a.exp != 0) {
+	    a.exp++;
+	}
+	if (sign != 0) {
+	    b = pi;
+	    f_sub(&b, &a);
+	    a = b;
+	}
+    } else {
+	if (sign != 0) {
+	    f_add(&a, &pio2);
+	} else {
+	    b = pio2;
+	    f_sub(&b, &a);
+	    a = b;
+	}
+    }
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->asin()
+ * DESCRIPTION:	asin(f)
+ */
+void flt_asin(f)
+xfloat *f;
+{
+    flt a, b, c;
+    unsigned short sign;
+    bool flag;
+
+    f_xftof(f, &a);
+    sign = a.sign;
+    a.sign = 0;
+    if (f_cmp(&a, &one) > 0) {
+	f_edom();
+    }
+
+    if (f_cmp(&a, &half) > 0) {
+	b = half;
+	f_sub(&b, &a);
+	f_add(&b, &half);
+	if (b.exp != 0) {
+	    --b.exp;
+	}
+	a = b;
+	f_sqrt(&a);
+	flag = TRUE;
+    } else {
+	b = a;
+	f_mult(&b, &a);
+	flag = FALSE;
+    }
+
+    if (a.exp >= 0x7fe7) {	/* ~1e-7 */
+	c = b;
+	f_poly(&c, ascp, 4);
+	f_mult(&c, &b);
+	f_poly1(&b, ascq, 4);
+	f_div(&c, &b);
+	f_mult(&c, &a);
+	f_add(&a, &c);
+    }
+
+    if (flag) {
+	if (a.exp != 0) {
+	    a.exp++;
+	}
+	b = pio2;
+	f_sub(&b, &a);
+	a = b;
+    }
+    a.sign ^= sign;
+
+    f_ftoxf(&a, f);
+}
+
+static flt atp[] = {
+    { 0x8000, 0x7ffe, 0x6ba5, 0x2175f64cL },
+    { 0x8000, 0x8002, 0x46b5, 0x3c27114cL },
+    { 0x8000, 0x8003, 0x5763, 0x7b6b8ba4L },
+    { 0x8000, 0x8002, 0x76a5, 0x2457275cL }
+};
+static flt atq[] = {
+    { 0x0000, 0x8002, 0x7bfa, 0x59b1a2acL },
+    { 0x0000, 0x8004, 0x7d94, 0x68676274L },
+    { 0x0000, 0x8005, 0x5c3c, 0x7b2444acL },
+    { 0x0000, 0x8004, 0x58fb, 0x7b415d88L }
+};
+static flt t3p8 = { 0x0000, 0x8000, 0x4d41, 0x1e667f3cL };
+static flt tp8 = { 0x0000, 0x7ffd, 0x6a09, 0x7333f9e0L };
+
+/*
+ * NAME:	float->atan()
+ * DESCRIPTION:	atan(f)
+ */
+void flt_atan(f)
+xfloat *f;
+{
+    flt a, b, c, d, e;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    sign = a.sign;
+    a.sign = 0;
+
+    if (f_cmp(&a, &t3p8) > 0) {
+	b = pio2;
+	c = one;
+	f_div(&c, &a);
+	a = c;
+	a.sign = 0x8000;
+    } else if (f_cmp(&a, &tp8) > 0) {
+	b = pio4;
+	c = a;
+	f_sub(&a, &one);
+	f_add(&c, &one);
+	f_div(&a, &c);
+    } else {
+	b.exp = 0;
+    }
+
+    c = a;
+    f_mult(&c, &a);
+    d = e = c;
+    f_poly(&c, atp, 3);
+    f_poly1(&d, atq, 3);
+    f_div(&c, &d);
+    f_mult(&c, &e);
+    f_mult(&c, &a);
+    f_add(&c, &b);
+    f_add(&a, &c);
+    a.sign ^= sign;
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->atan2()
+ * DESCRIPTION:	atan2(f)
+ */
+void flt_atan2(f1, f2)
+xfloat *f1, *f2;
+{
+    flt a, b, c, d, e;
+    unsigned short asign, bsign;
+
+    f_xftof(f1, &a);
+    f_xftof(f2, &b);
+
+    if (b.exp == 0) {
+	if (a.exp == 0) {
+	    /* atan2(0.0, 0.0); */
+	    return;
+	}
+	a.exp = pio2.exp;
+	a.high = pio2.high;
+	a.low = pio2.low;
+	f_ftoxf(&a, f1);
+	return;
+    }
+    if (a.exp == 0) {
+	if (b.sign != 0) {
+	    a = pi;
+	}
+	f_ftoxf(&a, f1);
+	return;
+    }
+
+    asign = a.sign;
+    bsign = b.sign;
+    f_div(&a, &b);
+    a.sign = 0;
+
+    if (f_cmp(&a, &t3p8) > 0) {
+	b = pio2;
+	c = one;
+	f_div(&c, &a);
+	a = c;
+	a.sign = 0x8000;
+    } else if (f_cmp(&a, &tp8) > 0) {
+	b = pio4;
+	c = a;
+	f_sub(&a, &one);
+	f_add(&c, &one);
+	f_div(&a, &c);
+    } else {
+	b.exp = 0;
+    }
+
+    c = a;
+    f_mult(&c, &a);
+    d = e = c;
+    f_poly(&c, atp, 3);
+    f_poly1(&d, atq, 3);
+    f_div(&c, &d);
+    f_mult(&c, &e);
+    f_mult(&c, &a);
+    f_add(&c, &b);
+    f_add(&a, &c);
+    a.sign ^= asign ^ bsign;
+
+    if (bsign != 0) {
+	if (asign == 0) {
+	    f_add(&a, &pi);
+	} else {
+	    f_sub(&a, &pi);
+	}
+    }
+
+    f_ftoxf(&a, f1);
+}
+
+/*
+ * NAME:	float->cosh()
+ * DESCRIPTION:	cosh(f)
+ */
+void flt_cosh(f)
+xfloat *f;
+{
+    flt a, b, c;
+
+    f_xftof(f, &a);
+    a.sign = 0;
+    if (f_cmp(&a, &maxlog) > 0) {
+	f_erange();
+    }
+
+    f_exp(&a);
+    b = one;
+    f_div(&b, &a);
+    f_add(&a, &b);
+    --a.exp;
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->sinh()
+ * DESCRIPTION:	sinh(f)
+ */
+void flt_sinh(f)
+xfloat *f;
+{
+    static flt p[] = {
+	{ 0x8000, 0x7ffe, 0x650d, 0x3fd17678L },
+	{ 0x8000, 0x8006, 0x51dc, 0x74731fe8L },
+	{ 0x8000, 0x800c, 0x5a52, 0x718e3ac4L },
+	{ 0x8000, 0x8011, 0x55e0, 0x57b7ed58L }
+    };
+    static flt q[] = {
+	{ 0x8000, 0x8007, 0x456d, 0x412dd2c8L },
+	{ 0x0000, 0x800e, 0x469e, 0x74fdae44L },
+	{ 0x8000, 0x8014, 0x4068, 0x41c9f200L }
+    };
+    flt a, b, c, d;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    if (f_cmp(&a, &maxlog) > 0 || f_cmp(&a, &minlog) < 0) {
+	f_erange();
+    }
+
+    sign = a.sign;
+    a.sign = 0;
+
+    if (f_cmp(&a, &one) > 0) {
+	f_exp(&a);
+	b = half;
+	f_div(&b, &a);
+	--a.exp;
+	f_sub(&a, &b);
+	a.sign ^= sign;
+    } else {
+	b = a;
+	f_mult(&b, &a);
+	c = d = b;
+	f_poly(&c, p, 3);
+	f_poly1(&d, q, 2);
+	f_div(&c, &d);
+	f_mult(&b, &a);
+	f_mult(&b, &c);
+	f_add(&a, &b);
+    }
+
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->tanh()
+ * DESCRIPTION:	tanh(f)
+ */
+void flt_tanh(f)
+xfloat *f;
+{
+    static flt p[] = {
+	{ 0x8000, 0x7ffe, 0x7b71, 0x3755fae0L },
+	{ 0x8000, 0x8005, 0x6349, 0x541c4cd0L },
+	{ 0x8000, 0x8009, 0x64eb, 0x0060b00cL }
+    };
+    static flt q[] = {
+	{ 0x0000, 0x8005, 0x70cf, 0x6514b038L },
+	{ 0x0000, 0x800a, 0x45db, 0x741caa6cL },
+	{ 0x0000, 0x800b, 0x4bb0, 0x20488408L }
+    };
+    static flt mlog2 = { 0x0000, 0x8007, 0x588c, 0x57baf578L };
+    static flt d625 = { 0x0000, 0x7ffe, 0x5000, 0x00000000L };
+    static flt two = { 0x0000, 0x8000, 0x4000, 0x00000000L };
+    flt a, b, c, d;
+    unsigned short sign;
+
+    f_xftof(f, &a);
+    sign = a.sign;
+    a.sign = 0;
+
+    if (f_cmp(&a, &mlog2) > 0) {
+	a.exp = one.exp;
+	a.high = one.high;
+	a.low = one.low;
+    } else if (f_cmp(&a, &d625) >= 0) {
+	a.exp++;
+	f_exp(&a);
+	f_add(&a, &one);
+	b = two;
+	f_div(&b, &a);
+	a = one;
+	f_sub(&a, &b);
+    } else {
+	b = a;
+	f_mult(&b, &a);
+	c = d = b;
+	f_poly(&c, p, 2);
+	f_poly1(&d, q, 2);
+	f_div(&c, &d);
+	f_mult(&b, &c);
+	f_mult(&b, &a);
+	f_add(&a, &b);
+    }
+    a.sign = sign;
+
+    f_ftoxf(&a, f);
 }

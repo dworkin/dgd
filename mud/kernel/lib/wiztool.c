@@ -490,10 +490,12 @@ static string dump_value(mixed value, mapping seen)
 
     switch (typeof(value)) {
     case T_FLOAT:
-	if (value == 0.0) {
-	    return "0.0";
+	str = (string) value;
+	if (sscanf(str, "%*s.") == 0 && sscanf(str, "%*se") == 0) {
+	    str += ".0";
 	}
-	/* fall through */
+	return str;
+
     case T_INT:
 	return (string) value;
 

@@ -1,7 +1,7 @@
 #
 # Makefile for host dependent object files for NetBSD
 #
-HOST=	NetBSD
+HOST=	NETBSD
 DEFINES=-D$(HOST)
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
