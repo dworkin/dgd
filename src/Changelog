@@ -1452,3 +1452,5 @@ DGD 1.3
  - Fixed a crashing bug in the compiler for a switch that contains only a
    default label.
  - Arrays saved with save_object() should save object values as nil, not 0.
+ - Fixed the too-many-callouts check, which has been completely wrong since the
+   introduction of atomic functions.

@@ -383,8 +383,7 @@ cbuf **qp;
 	return 0;
     }
 
-    if (queuebrk + nshort + (uindex) n == cotabsz ||
-	nshort + (uindex) n == cotabsz - 1) {
+    if (queuebrk + (uindex) n == cycbrk || cycbrk - (uindex) n == 1) {
 	error("Too many callouts");
     }
 
