@@ -198,15 +198,15 @@ void CWindgdApp::OnUpdateDgdRestore(CCmdUI* pCmdUI)
 
 BOOL CWindgdApp::SaveAllModified()
 {
-    if (!dgd_running || (argstart && !menuquit)) {
+    if (!dgd_running) {
 	return TRUE;
     }
-    menuquit = FALSE;
-    if (AfxMessageBox(
+    if ((argstart && !menuquit) || AfxMessageBox(
 		"Are you sure you want to\nterminate the running process?",
 		MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
 	interrupt();
     }
+    menuquit = FALSE;
     return FALSE;
 }
 

@@ -176,7 +176,9 @@ typedef unsigned int Uint;
 # ifdef INCLUDE_FILE_IO
 # include <fcntl.h>
 # include <sys/stat.h>
+# ifndef FNDELAY
 # define FNDELAY	O_NDELAY
+# endif
 # endif
 
 # ifdef INCLUDE_CTYPE

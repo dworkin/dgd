@@ -279,7 +279,7 @@ int pp;
  * DESCRIPTION:	unget a character on the input
  */
 static void uc(c)
-int c;
+register int c;
 {
     if (c != EOF) {	/* don't unget EOF */
 	if (c == LF && tbuffer == ibuffer) {
@@ -295,37 +295,39 @@ int c;
  */
 static int gc()
 {
+    register tbuf *tb;
     register int c;
     register bool backslash;
 
+    tb = tbuffer;
     backslash = FALSE;
 
     for (;;) {
-	if (tbuffer->up != tbuffer->ubuf) {
+	if (tb->up != tb->ubuf) {
 	    /* get a character from unget buffer */
-	    c = UCHAR(*--(tbuffer->up));
+	    c = UCHAR(*--(tb->up));
 	} else {
-	    if (tbuffer->inbuf <= 0) {
+	    if (tb->inbuf <= 0) {
 		/* Current input buffer is empty. Try a refill. */
-		if (tbuffer->fd >= 0 &&
-		    (tbuffer->inbuf =
-		     read(tbuffer->fd, tbuffer->buffer, BUF_SIZE)) > 0) {
-		    tbuffer->p = tbuffer->buffer;
+		if (tb->fd >= 0 &&
+		    (tb->inbuf = read(tb->fd, tb->buffer, BUF_SIZE)) > 0) {
+		    tb->p = tb->buffer;
 		} else if (backslash) {
 		    return '\\';
-		} else if (tbuffer->eof) {
+		} else if (tb->eof) {
 		    return EOF;
 		} else {
 		    /* otherwise, pop the current token input buffer */
 		    pop();
+		    tb = tbuffer;
 		    continue;
 		}
 	    }
-	    tbuffer->inbuf--;
-	    c = UCHAR(*(tbuffer->p)++);
+	    tb->inbuf--;
+	    c = UCHAR(*(tb->p)++);
 	}
 
-	if (c == LF && tbuffer == ibuffer) {
+	if (c == LF && tb == ibuffer) {
 	    ibuffer->line++;
 	    if (!backslash) {
 		return c;
@@ -335,7 +337,7 @@ static int gc()
 	    if (backslash) {
 		uc(c);
 		return '\\';
-	    } else if (c == '\\' && tbuffer == ibuffer) {
+	    } else if (c == '\\' && tb == ibuffer) {
 		backslash = TRUE;
 	    } else {
 		return c;

@@ -341,17 +341,15 @@ int kf_save_object()
     register string *str;
     register dinherit *inh;
     register dataspace *data;
-    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
+    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp, *path;
     object *obj;
     xfloat flt;
 
-    obj = cframe->obj;
-    _tmp = path_resolve(sp->u.string->text);
-    if (_tmp == (char *) NULL) {
+    strcpy(tmp, path_resolve(sp->u.string->text));
+    if ((_tmp=path_file(tmp)) == (char *) NULL) {
 	return 1;
     }
-    strcpy(file, path_file(_tmp));
-    strcpy(tmp, _tmp);
+    strcpy(file, _tmp);
 
     /*
      * First save in a different file in the same directory, so a possibly
@@ -369,6 +367,7 @@ int kf_save_object()
     buffer = ALLOCA(char, BUF_SIZE);
     bufsz = 0;
 
+    obj = cframe->obj;
     ctrl = o_control(obj);
     data = o_dataspace(obj);
     narrays = 0;

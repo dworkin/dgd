@@ -484,7 +484,7 @@ register char *file;
 	if (!pp_init(file_c, paths, 1)) {
 	    error("Could not compile \"/%s.c\"", c.file);
 	}
-	if (!tk_include(path_file(include))) {
+	if ((file=path_file(include)) == (char *) NULL || !tk_include(file)) {
 	    error("Could not include \"/%s\"", include);
 	}
 

@@ -985,3 +985,5 @@ DGD 1.1
  - PC version: don't ask for confirmation if the program is stopped from the
    outside and was started with an argument, making it easier to run it as
    a service on NT.
+ - Fixed a bug that made it possible to access files outside the mudlib
+   directory on Win32.

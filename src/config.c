@@ -212,8 +212,8 @@ static int bufsz;	/* buffer size */
 static void copen(file)
 char *file;
 {
-    if ((fd=open(path_file(fname = path_resolve(file)),
-		 O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
+    if ((file=path_file(fname=path_resolve(file))) == (char *) NULL ||
+	(fd=open(file, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
 	message("Config error: cannot create \"/%s\"\012", fname);	/* LF */
 	exit(1);
     }
