@@ -1,12 +1,12 @@
 # include "comp.h"
-# include "hash.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
-# include "kfun.h"
+# include "data.h"
 # include "fcontrol.h"
+# include "hash.h"
+# include "table.h"
 # include "control.h"
 
 typedef struct _oh_ {		/* object hash table */
@@ -271,7 +271,8 @@ static oh *directs[MAX_INHERITS];	/* direct inherit table */
 static int ndirects;			/* # directly inh. objects */
 static int ninherits;			/* # inherited objects */
 static int nvirtuals;			/* # virtually inh. objects */
-static char *auto_file;			/* name of auto object */
+static char *auto_name;			/* name of auto object */
+static char *driver_name;		/* name of driver object */
 static hashtab *vtab;			/* variable merge table */
 static hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
@@ -282,10 +283,11 @@ static uindex nfcalls;			/* # function calls */
  * NAME:	control->init()
  * DESCRIPTION:	initialize control block construction
  */
-void ctrl_init(auto_obj)
-char *auto_obj;
+void ctrl_init(auto_obj, driver_obj)
+char *auto_obj, *driver_obj;
 {
-    auto_file = auto_obj;
+    auto_name = auto_obj;
+    driver_name = driver_obj;
     oh_init();
     vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
     ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
@@ -561,8 +563,8 @@ string *label;
 	    yyerror("redeclaration of label %s", label->text);
 	}
 	ctrl = o_control(o);
-	if (ctrl->inherits[0].obj != oh_new(auto_file)->obj) {
-	    yyerror("inherited different instances of \"/%s\"", auto_file);
+	if (ctrl->inherits[0].obj != oh_new(auto_name)->obj) {
+	    yyerror("inherited different instances of \"/%s\"", auto_name);
 	}
 	ninherits++;
 	lab_new(label, o);
@@ -626,7 +628,7 @@ char *file;
     lab *l;
 
     name = file;
-    is_auto = (strcmp(file, auto_file) == 0);
+    is_auto = (strcmp(file, auto_name) == 0);
 
     /*
      * create a new control block
@@ -707,7 +709,7 @@ char *file;
     /*
      * prepare for construction of a new control block
      */
-    newohash = oh_new("/");	/* legal object couldn't have this name */
+    newohash = oh_new(file);
     newohash->index = nvirtuals;
     functions = ALLOC(cfunc, 256);
     variables = ALLOC(dvardef, 256);
@@ -754,19 +756,19 @@ string *str;
  * DESCRIPTION:	define a new function prototype
  */
 void ctrl_dproto(str, proto)
-string *str;
-char *proto;
+register string *str;
+register char *proto;
 {
     register vfh **h;
-    register int i;
     register dfuncdef *func;
+    register int i;
     long s;
 
     /* first check if prototype exists already */
     h = (vfh **) ht_lookup(ftab, str->text);
     if (*h != (vfh *) NULL) {
-	char *proto2;
-	control *ctrl;
+	register char *proto2;
+	register control *ctrl;
 
 	/*
 	 * redefinition
@@ -854,16 +856,16 @@ char *proto;
     }
 
     /*
-     * Handle actual definition.
+     * Actual definition.
      */
     vfh_new(str, newohash, -1, nfdefs, h);
+    s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].progsize = 0;
     progsize += i;
     func = &functions[nfdefs++].func;
     func->class = PROTO_CLASS(proto);
-    s = ctrl_dstring(str);
     func->inherit = s >> 16;
     func->index = s;
 }
@@ -920,12 +922,12 @@ unsigned short class, type;
 
     /* actually define the variable */
     vfh_new(str, newohash, type, nvars, h);
+    s = ctrl_dstring(str);
     var = &variables[nvars++];
     var->class = class;
-    var->type = type;
-    s = ctrl_dstring(str);
     var->inherit = s >> 16;
     var->index = s;
+    var->type = type;
 }
 
 /*
@@ -1009,6 +1011,29 @@ long *call;
 }
 
 /*
+ * NAME:	control->funcall()
+ * DESCRIPTION:	generate a funcall (low-level)
+ */
+void ctrl_funcall(inherit, index)
+char inherit, index;
+{
+    /*
+     * add to function call table
+     */
+    if (fcchunksz == FCALL_CHUNK) {
+	register fcchunk *l;
+
+	l = ALLOC(fcchunk, 1);
+	l->next = fclist;
+	fclist = l;
+	fcchunksz = 0;
+    }
+    fclist->f[fcchunksz].inherit = inherit;
+    fclist->f[fcchunksz++].index = index;
+    nfcalls++;
+}
+
+/*
  * NAME:	control->fcall()
  * DESCRIPTION:	call a function
  */
@@ -1070,20 +1095,8 @@ bool typechecking;
     } else {
 	/* ordinary function call */
 	if (h->ct == (unsigned short) -1) {
-	    /*
-	     * add to function call table
-	     */
-	    if (fcchunksz == FCALL_CHUNK) {
-		register fcchunk *l;
-
-		l = ALLOC(fcchunk, 1);
-		l->next = fclist;
-		fclist = l;
-		fcchunksz = 0;
-	    }
-	    fclist->f[fcchunksz].inherit = h->ohash->index;
-	    fclist->f[fcchunksz++].index = h->index;
-	    h->ct = nfcalls++;
+	    h->ct = nfcalls;
+	    ctrl_funcall(h->ohash->index, h->index);
 	}
 	*call = (FCALL << 24L) | h->ct;
     }
@@ -1415,6 +1428,7 @@ control *ctrl_construct()
 {
     register control *ctrl;
     register int i;
+    register object *obj;
 
     ctrl = newctrl;
     for (i = ctrl->nvirtuals; i < ctrl->ninherits; i++) {
@@ -1423,13 +1437,25 @@ control *ctrl_construct()
     }
     ctrl->nvariables += nvars;
 
-    o_new(name, (object *) NULL, ctrl);
-    oh_new(name)->index = nvirtuals;
+    obj = o_new(name, (object *) NULL, ctrl);
     ctrl_mkstrings();
     ctrl_mkfuncs();
     ctrl_mkvars();
     ctrl_mkfcalls();
     ctrl_mksymbs();
+
+    if (strcmp(name, auto_name) == 0) {
+	/*
+	 * this is the auto object
+	 */
+	obj->flags |= O_AUTO;
+    }
+    if (strcmp(name, driver_name) == 0) {
+	/*
+	 * this is the driver object
+	 */
+	obj->flags |= O_DRIVER;
+    }
 
     newctrl = (control *) NULL;
     return ctrl;
