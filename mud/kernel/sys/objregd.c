@@ -73,6 +73,9 @@ void unlink(object obj, string owner)
 void add_editor(object obj)
 {
     if (previous_program() == AUTO) {
+	if (!editors) {
+	    editors = ([ ]);
+	}
 	editors[obj] = TRUE;
     }
 }
@@ -84,7 +87,9 @@ void add_editor(object obj)
 void remove_editor(object obj)
 {
     if (previous_program() == AUTO) {
-	editors[obj] = nil;
+	if (editors) {
+	    editors[obj] = nil;
+	}
     }
 }
 
@@ -97,6 +102,9 @@ object *remove_editors()
     if (previous_program() == RSRCD) {
 	object *objects;
 
+	if (!editors) {
+	    editors = ([ ]);
+	}
 	objects = map_indices(editors);
 	editors = ([ ]);
 	return objects;
