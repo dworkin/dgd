@@ -968,3 +968,4 @@ DGD 1.1
    has been increased to 8K.
  - Made often-used objects less likely to be swapped out during a lull in
    activity.
+ - With global typechecking, a function without declared type has type void.

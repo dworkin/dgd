@@ -927,7 +927,7 @@ register unsigned int idx;
 
 /*
  * NAME:	data->extravar()
- * DESCRIPTION:	reserve, obtain or remove extra variable in object
+ * DESCRIPTION:	reserve or remove extra variable in object
  */
 void d_extravar(data, extra)
 register dataspace *data;
@@ -956,8 +956,9 @@ int extra;
 	}
     } else {
 	if (data->flags & F_EXTRAVAR) {
-	    d_assign_var(data, d_get_variable(data, --(data->nvariables)),
+	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
 			 &zero_value);
+	    data->nvariables--;
 	    data->flags &= ~F_EXTRAVAR;
 	}
     }

@@ -576,10 +576,14 @@ bool function;
 	c_error("private contradicts nomask");
     }
     if ((type & T_TYPE) == T_INVALID) {
-	typechecked = FALSE;
-	type = T_MIXED;
 	if (typechecking) {
-	    c_error("missing type for function %s", str->text);
+	    /* no return type defaults to void with typechecking */
+	    typechecked = TRUE;
+	    type = T_VOID;
+	} else {
+	    /* don't typecheck this function */
+	    typechecked = FALSE;
+	    type = T_MIXED;
 	}
     } else {
 	typechecked = TRUE;
