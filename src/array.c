@@ -46,7 +46,7 @@ typedef struct _maphash_ {
 
 # define MTABLE_SIZE	16	/* most mappings are quite small */
 
-static long max_array_size;	/* max. size of array and mapping */
+static unsigned long max_size;	/* max. size of array and mapping */
 static long tag;		/* current array tag */
 static array *list;		/* linked list of all arrays */
 static arrchunk *aclist;	/* linked list of all array chunks */
@@ -70,7 +70,7 @@ static value zero_value = { T_NUMBER, TRUE };	/* the zero value */
 void arr_init(size)
 int size;
 {
-    max_array_size = size;
+    max_size = size;
     ht = ALLOC(arrh*, ARRMERGETABSZ);
     memset(ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
     achunksz = ARR_CHUNK;
@@ -139,7 +139,7 @@ unsigned short hashval;
 	/*
 	 * add hash table to this mapping
 	 */
-	if (m->size == 2 * max_array_size) {
+	if (m->size == 2 * max_size) {
 	    error("Mapping too large to grow");
 	}
 	m->hashed = h = (maphash *)
@@ -149,7 +149,7 @@ unsigned short hashval;
 	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
     } else {
 	h = m->hashed;
-	if (m->size + (h->size << 1) == 2 * max_array_size) {
+	if (m->size + (h->size << 1) == 2 * max_size) {
 	    error("Mapping too large to grow");
 	}
 	if (h->size == h->tablesize >> 1) {
@@ -216,7 +216,7 @@ unsigned short hashval;
 array *arr_new(size)
 long size;
 {
-    if (size > max_array_size) {
+    if (size > max_size) {
 	error("Array too large");
     }
     return arr_alloc((unsigned short) size);
@@ -386,6 +386,15 @@ void arr_freeall()
     meltlist = (meltchunk *) NULL;
     meltchunksz = MELT_CHUNK;
     fmelt = (mapelt *) NULL;
+}
+
+/*
+ * NAME:	array->maxsize()
+ * DESCRIPTION:	return the maximum array size
+ */
+int arr_maxsize()
+{
+    return max_size;
 }
 
 /*
@@ -650,6 +659,10 @@ array *a1, *a2;
 
     /* create new array */
     a3 = arr_alloc(a1->size);
+    if (a3->size == 0) {
+	/* subtract from empty array */
+	return a3;
+    }
     size = a2->size;
 
     /* copy values of subtrahend */
@@ -692,12 +705,10 @@ array *a1, *a2;
     }
     AFREE(v2);	/* free copy of values of subtrahend */
 
-    if (a3->size > 0) {
-	a3->size = v3 - a3->elts;
-	if (a3->size == 0) {
-	    FREE(a3->elts);
-	    a3->elts = (value *) NULL;
-	}
+    a3->size = v3 - a3->elts;
+    if (a3->size == 0) {
+	FREE(a3->elts);
+	a3->elts = (value *) NULL;
     }
     return a3;
 }
@@ -767,12 +778,10 @@ array *a1, *a2;
     }
     AFREE(v2);	/* free copy of values of 2nd array */
 
-    if (a3->size > 0) {
-	a3->size = v3 - a3->elts;
-	if (a3->size == 0) {
-	    FREE(a3->elts);
-	    a3->elts = (value *) NULL;
-	}
+    a3->size = v3 - a3->elts;
+    if (a3->size == 0) {
+	FREE(a3->elts);
+	a3->elts = (value *) NULL;
     }
     return a3;
 }
@@ -846,7 +855,7 @@ value *v1, *v2;
 array *map_new(size)
 long size;
 {
-    if (size > 2 * max_array_size) {
+    if (size > 2 * max_size) {
 	error("Mapping too large");
     }
     return arr_alloc((unsigned short) size);
@@ -1034,6 +1043,11 @@ array *m1, *m2;
     map_compact(m1);
     map_compact(m2);
     m3 = map_new((long) m1->size + m2->size);
+    if (m3->size == 0) {
+	/* add two empty mappings */
+	return m3;
+    }
+
     v1 = m1->elts;
     v2 = m2->elts;
     v3 = m3->elts;
@@ -1087,12 +1101,10 @@ array *m1, *m2;
     copy(v3, v2, n2);
     v3 += n2;
 
-    if (m3->size > 0) {
-	m3->size = v3 - m3->elts;
-	if (m3->size == 0) {
-	    FREE(m3->elts);
-	    m3->elts = (value *) NULL;
-	}
+    m3->size = v3 - m3->elts;
+    if (m3->size == 0) {
+	FREE(m3->elts);
+	m3->elts = (value *) NULL;
     }
     return m3;
 }
