@@ -20,7 +20,7 @@ typedef struct _strhchunk_ {
 } strhchunk;
 
 static hashtab *ht;		/* string merge table */
-static strh **link;		/* linked list of merged strings */
+static strh **slink;		/* linked list of merged strings */
 static strhchunk *shlist;	/* list of all strh chunks */
 static int strhchunksz;		/* size of current strh chunk */
 
@@ -45,13 +45,14 @@ char *text;
 register long len;
 {
     register string *s;
+    string dummy;
 
     if (len > (unsigned long) USHRT_MAX - sizeof(string)) {
 	error("String too long");
     }
 
     /* allocate string struct & text in one block */
-    s = (string *) ALLOC(char, s->text - (char *) &s->len + 1 + len);
+    s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
     if (text != (char *) NULL && len > 0) {
 	memcpy(s->text, text, (unsigned int) len);
     }
@@ -108,8 +109,8 @@ register long n;
 	    s->chain.name = str->text;
 	    s->str = str;
 	    s->index = n;
-	    s->link = link;
-	    link = h;
+	    s->link = slink;
+	    slink = h;
 
 	    return n;
 	} else if (str_cmp(str, (*h)->str) == 0) {
@@ -145,14 +146,14 @@ void str_clear()
     register strh **h;
     register strhchunk *l;
 
-    for (h = link; h != (strh **) NULL; ) {
+    for (h = slink; h != (strh **) NULL; ) {
 	register strh *f;
 
 	f = *h;
 	*h = (strh *) NULL;
 	h = f->link;
     }
-    link = (strh **) NULL;
+    slink = (strh **) NULL;
 
     for (l = shlist; l != (strhchunk *) NULL; ) {
 	register strhchunk *f;
