@@ -570,7 +570,7 @@ static string dump_value(mixed value, mapping seen)
  * NAME:	store()
  * DESCRIPTION:	store a value in the history table
  */
-static void store(object user, mixed value)
+static void store(mixed value)
 {
     if (hindex == hsize) {
 	hindex = 0;
@@ -605,11 +605,11 @@ static object ident(string str)
 }
 
 /*
- * NAME:	parse()
+ * NAME:	parse_code()
  * DESCRIPTION:	parse the argument of code, replacing $num by the proper
  *		historic reference
  */
-static mixed *parse(object user, string str)
+static mixed *parse_code(string str)
 {
     mixed *argv;
     int argc, len, i, c;
@@ -666,7 +666,7 @@ static mixed *parse(object user, string str)
 	    if (sscanf(str, "%d%s", i, str) != 0) {
 		/* $num */
 		if (i < 0 || i >= hmax) {
-		    message("Parse error: $num out of range\n");
+		    message("Error: $num out of range.\n");
 		    return nil;
 		}
 		argv[argc] = history[i];
@@ -683,7 +683,7 @@ static mixed *parse(object user, string str)
 		    tmp = str[.. i - 1];
 		    str = str[i ..];
 		    if (!(argv[argc]=ident(tmp))) {
-			message("Parse error: unknown $ident\n");
+			message("Error: Unknown $ident.\n");
 			return nil;
 		    }
 		}
@@ -698,6 +698,44 @@ static mixed *parse(object user, string str)
     }
     argv[0] = result;
     return argv;
+}
+
+/*
+ * NAME:	parse_obj()
+ * DESCRIPTION:	get an object from a string
+ */
+static mixed parse_obj(string str)
+{
+    int i;
+    mixed obj;
+
+    if (!str) {
+	return 0;
+    }
+    if (sscanf(str, "$%d%s", i, str) != 0) {
+	if (str != "") {
+	    return 0;
+	}
+	if (i < 0 || i >= hmax) {
+	    message("$num out of range.\n");
+	    return nil;
+	}
+	obj = history[i];
+	if (typeof(obj) != T_OBJECT) {
+	    message("Not an object.\n");
+	    return nil;
+	}
+    } else if (sscanf(str, "$%s", str) != 0) {
+	obj = ident(str);
+	if (!obj) {
+	    message("Unknown $ident.\n");
+	    return nil;
+	}
+    } else {
+	obj = driver->normalize_path(str, directory, owner);
+    }
+
+    return obj;
 }
 
 /*
@@ -787,15 +825,18 @@ static void cmd_code(object user, string cmd, string str)
 	return;
     }
 
-    parsed = parse(user, str);
+    parsed = parse_code(str);
     str = USR + "/" + owner + "/_code";
     remove_file(str + ".c");
     obj = find_object(str);
     if (obj) {
 	destruct_object(obj);
     }
-    if (parsed &&
-	write_file(str + ".c",
+    if (!parsed) {
+	return;
+    }
+
+    if (write_file(str + ".c",
 		   "# include <float.h>\n# include <limits.h>\n" +
 		   "# include <status.h>\n# include <trace.h>\n" +
 		   "# include <type.h>\n\n" +
@@ -810,12 +851,14 @@ static void cmd_code(object user, string cmd, string str)
 	    remove_file(str + ".c");
 	    message("Error: " + err + ".\n");
 	} else {
-	    store(user, result);
+	    store(result);
 	}
 
 	if (obj) {
 	    destruct_object(obj);
 	}
+    } else {
+	message("Failed to write temporary file.\n");
     }
 }
 
@@ -889,7 +932,7 @@ static void cmd_compile(object user, string cmd, string str)
 	} else {
 	    obj = compile_object(str[ .. len - 3]);
 	    if (obj) {
-		store(user, obj);
+		store(obj);
 	    }
 	}
     }
@@ -901,48 +944,35 @@ static void cmd_compile(object user, string cmd, string str)
  */
 static void cmd_clone(object user, string cmd, string str)
 {
-    int i;
-    mixed obj, *files;
+    mixed obj;
 
-    if (!str) {
+    obj = parse_obj(str);
+    switch (typeof(obj)) {
+    case T_INT:
 	message("Usage: " + cmd + " <obj> | $<ident>\n");
+    case T_NIL:
 	return;
+
+    case T_STRING:
+	str = obj;
+	obj = find_object(str);
+	break;
+
+    case T_OBJECT:
+	str = object_name(obj);
+	break;
     }
-
-    if (sscanf(str, "$%s", str) != 0) {
-	if (sscanf(str, "%d%s", i, str) != 0) {
-	    if (i < 0 || i >= hmax || str != "") {
-		message("Usage: " + cmd + " <obj> | $<ident>\n");
-		return;
-	    }
-
-	    obj = history[i];
-	    if (typeof(obj) != T_OBJECT) {
-		message("Not an object.\n");
-		return;
-	    }
-	} else {
-	    obj = ident(str);
-	    if (!obj) {
-		message("Unknown $ident.\n");
-		return;
-	    }
-	}
-
-	str = (typeof(obj) == T_OBJECT) ? object_name(obj) : obj;
-    }
-
-    str = driver->normalize_path(str, directory, owner);
-    if (!find_object(str)) {
-	message("No object: " + str + "\n");
-    } else if (sscanf(str, "%*s/obj/") == 0) {
-	message("Not clonable: " + str + "\n");
+	
+    if (sscanf(str, "%*s/obj/%*s#") != 1) {
+	message("Not a master object.\n");
+    } else if (!obj) {
+	message("No such object.\n");
     } else {
 	str = catch(obj = clone_object(str));
 	if (str) {
 	    message(str + ".\n");
 	} else if (obj) {
-	    store(user, obj);
+	    store(obj);
 	}
     }
 }
@@ -953,36 +983,21 @@ static void cmd_clone(object user, string cmd, string str)
  */
 static void cmd_destruct(object user, string cmd, string str)
 {
-    int i;
     mixed obj;
+    int flag;
 
-    i = -1;
-    if (!str || (sscanf(str, "$%d%s", i, str) != 0 &&
-		 (i < 0 || i >= hmax || str != ""))) {
+    obj = parse_obj(str);
+    switch (typeof(obj)) {
+    case T_INT:
 	message("Usage: " + cmd + " <obj> | $<ident>\n");
+    case T_NIL:
 	return;
     }
 
-    if (i >= 0) {
-	obj = history[i];
-	if (typeof(obj) != T_OBJECT) {
-	    message("Not an object.\n");
-	    return;
-	}
-    } else if (sscanf(str, "$%s", str) != 0) {
-	obj = ident(str);
-	if (!obj) {
-	    message("Unknown $ident.\n");
-	    return;
-	}
-    } else {
-	obj = driver->normalize_path(str, directory, owner);
-    }
-
-    str = catch(i = destruct_object(obj));
+    str = catch(flag = destruct_object(obj));
     if (str) {
 	message(str + ".\n");
-    } else if (i == 0) {
+    } else if (flag == 0) {
 	message("No such object.\n");
     }
 }
@@ -1837,7 +1852,7 @@ static void cmd_status(object user, string cmd, string str)
 "sector size:   " + (((float) status[ST_SECTORSIZE] / 1024.0) + "K" +
 		     SPACE16)[..15];
 	if ((int) status[ST_STARTTIME] != (int) status[ST_BOOTTIME]) {
-	    str += "           Reboot time:  " +
+	    str += "           Last reboot:  " +
 		   ctime(status[ST_BOOTTIME])[4 ..];
 	}
 
@@ -1865,7 +1880,7 @@ static void cmd_status(object user, string cmd, string str)
   ralign((int) ((float) status[ST_SMEMUSED] * 100.0 /
 		(float) status[ST_SMEMSIZE]), 3) +
   "%)    short term:   " + ralign(short, 5) + "         (" +
-  ((short + long == 0) ? "  0" : ralign(short * 100 / (short + long), 3)) +
+  ((short + long == 0) ? "  0" : ralign(100 - long * 100 / (short + long), 3)) +
   "%)\n" +
 "dynamic:  " + ralign(status[ST_DMEMUSED], 9) + " / " +
 	       ralign(status[ST_DMEMSIZE], 9) + " (" +
