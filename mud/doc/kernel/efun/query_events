@@ -9,4 +9,4 @@ DESCRIPTION
 	Return an array with names of events defined by the current object.
 
 SEE ALSO
-	efun/add_event, efun/async_event, efun/event, efun/remove_event
+	efun/add_event, efun/event, efun/remove_event

@@ -11,4 +11,4 @@ DESCRIPTION
 	type did not exist, nothing is changed.
 
 SEE ALSO
-	efun/add_event, efun/async_event, efun/event
+	efun/add_event, efun/event

@@ -791,8 +791,28 @@ static int compile_rlimits(string objname)
  * NAME:	runtime_rlimits()
  * DESCRIPTION:	runtime check on rlimits
  */
-static int runtime_rlimits(object obj, int depth, int ticks)
+static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 {
-    return (sscanf(object_name(obj), USR + "/System/%*s") != 0 &&
-	    depth == 0 && ticks < 0);
+    int depth, ticks;
+
+    if (maxdepth != 0) {
+	if (maxdepth < 0) {
+	    return 0;
+	}
+	depth = status()[ST_STACKDEPTH];
+	if (depth >= 0 && maxdepth > depth + 1) {
+	    return 0;
+	}
+    }
+    if (maxticks != 0) {
+	if (maxticks < 0) {
+	    return (sscanf(object_name(obj), USR + "/System/%*s"));
+	}
+	ticks = status()[ST_TICKS];
+	if (ticks >= 0 && maxticks > ticks) {
+	    return 0;
+	}
+    }
+
+    return 1;
 }
