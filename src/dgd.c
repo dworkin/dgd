@@ -1,9 +1,9 @@
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "path.h"
 # include "ed.h"
 # include "call_out.h"
@@ -14,6 +14,7 @@
 typedef struct {
     char *name;		/* name of the option */
     short type;		/* option type */
+    bool set;		/* TRUE if option is set */
     long low, high;	/* lower and higher bound, for numeric values */
     union {
 	long num;	/* numeric value */
@@ -23,52 +24,64 @@ typedef struct {
 
 static config conf[] = {
 # define ARRAY_SIZE	0
-				{ "array_size",		INT_CONST, 1000 },
+				{ "array_size",		INT_CONST, FALSE,
+							1000, 8192 },
 # define AUTO_OBJECT	1
-				{ "auto_object",	STRING_CONST },
+				{ "auto_object",	STRING_CONST, FALSE },
 # define CALL_OUTS	2
-				{ "call_outs",		INT_CONST, 1 },
+				{ "call_outs",		INT_CONST, FALSE,
+							0, UINDEX_MAX },
 # define CALL_STACK	3
-				{ "call_stack",		INT_CONST, 10 },
+				{ "call_stack",		INT_CONST, FALSE,
+							10 },
 # define CREATE		4
-				{ "create",		STRING_CONST },
+				{ "create",		STRING_CONST, FALSE },
 # define DIRECTORY	5
-				{ "directory",		STRING_CONST },
+				{ "directory",		STRING_CONST, FALSE },
 # define DRIVER_OBJECT	6
-				{ "driver_object",	STRING_CONST },
+				{ "driver_object",	STRING_CONST, FALSE },
 # define ED_TMPFILE	7
-				{ "ed_tmpfile",		STRING_CONST },
+				{ "ed_tmpfile",		STRING_CONST, FALSE },
 # define EDITORS	8
-				{ "editors",		INT_CONST, 1, 255 },
+				{ "editors",		INT_CONST, FALSE,
+							1, 255 },
 # define INCLUDE_DIRS	9
-				{ "include_dirs",	'(' },
+				{ "include_dirs",	'(', FALSE },
 # define INCLUDE_FILE	10
-				{ "include_file",	STRING_CONST },
+				{ "include_file",	STRING_CONST, FALSE },
 # define MAX_COST	11
-				{ "max_cost",		INT_CONST, 100000L },
+				{ "max_cost",		INT_CONST, FALSE,
+							100000L },
 # define OBJECTS	12
-				{ "objects",		INT_CONST, 100 },
+				{ "objects",		INT_CONST, FALSE,
+							100 },
 # define PORT_NUMBER	13
-				{ "port_number",	INT_CONST, 2000 },
+				{ "port_number",	INT_CONST, FALSE,
+							2000 },
 # define RESERVED_STACK	14
-				{ "reserved_stack",	INT_CONST, 5 },
+				{ "reserved_stack",	INT_CONST, FALSE,
+							5 },
 # define SWAP_CACHE	15
-				{ "swap_cache",		INT_CONST, 100 },
+				{ "swap_cache",		INT_CONST, FALSE,
+							100, UINDEX_MAX },
 # define SWAP_FILE	16
-				{ "swap_file",		STRING_CONST },
+				{ "swap_file",		STRING_CONST, FALSE },
 # define SWAP_SECTOR	17
-				{ "swap_sector",	INT_CONST, 512, 8192 },
+				{ "swap_sector",	INT_CONST, FALSE,
+							512, 8192 },
 # define SWAP_SIZE	18
-				{ "swap_size",		INT_CONST, 1024 },
-# define TIME_INTERVAL	19
-				{ "time_interval",	INT_CONST, 1 },
-# define TYPECHECKING	20
-				{ "typechecking",	INT_CONST, 0, 1 },
-# define USERS		21
-				{ "users",		INT_CONST, 1, 255 },
-# define VALUE_STACK	22
-				{ "value_stack",	INT_CONST, 100 },
-# define NR_OPTIONS	23
+				{ "swap_size",		INT_CONST, FALSE,
+							1024, UINDEX_MAX },
+# define TYPECHECKING	19
+				{ "typechecking",	INT_CONST, FALSE,
+							0, 1 },
+# define USERS		20
+				{ "users",		INT_CONST, FALSE,
+							1, 255 },
+# define VALUE_STACK	21
+				{ "value_stack",	INT_CONST, FALSE,
+							100 },
+# define NR_OPTIONS	22
 };
 
 /*
@@ -90,11 +103,12 @@ char *err;
 static void initialize(configfile)
 char *configfile;
 {
-    static char *dirs[MAX_DIRS];
+    static char *dirs[MAX_DIRS], limits[STRINGSZ];
     register char *p;
     register int h, l, m, c;
+    FILE *fp;
 
-    if (!pp_init(configfile, dirs)) {
+    if (!pp_init(configfile, dirs, 0)) {
 	fatal("cannot open config file");
     }
     while ((c=pp_gettok()) != EOF) {
@@ -182,6 +196,7 @@ char *configfile;
 	    dirs[l] = (char *) NULL;
 	    break;
 	}
+	conf[m].set = TRUE;
 	if (pp_gettok() != ';') {
 	    conferr("';' expected");
 	}
@@ -191,27 +206,11 @@ char *configfile;
     for (l = 0; l < NR_OPTIONS; l++) {
 	char buf[128];
 
-	switch (conf[l].type) {
-	case INT_CONST:
-	    if (conf[l].u.num >= conf[l].low) {
-		continue;
-	    }
-	    break;
-
-	case STRING_CONST:
-	    if (conf[l].u.str != (char *) NULL) {
-		continue;
-	    }
-	    break;
-
-	case '(':
-	    if (dirs[0] != (char *) NULL) {
-		continue;
-	    }
-	    break;
+	if (!conf[l].set) {
+	    sprintf(buf, "unspecified configuration parameter %s",
+		    conf[l].name);
+	    conferr(buf);
 	}
-	sprintf(buf, "unspecified configuration parameter %s", conf[l].name);
-	conferr(buf);
     }
 
     /* change directory */
@@ -239,8 +238,7 @@ char *configfile;
 	    (int) conf[EDITORS].u.num);
 
     /* initialize call_outs */
-    co_init(conf[TIME_INTERVAL].u.num,
-	    (int) conf[CALL_OUTS].u.num);
+    co_init((int) conf[CALL_OUTS].u.num);
 
     /* initialize kfuns */
     kf_init();
@@ -256,10 +254,44 @@ char *configfile;
     i_init((int) conf[VALUE_STACK].u.num,
 	   (int) conf[CALL_STACK].u.num,
 	   (int) conf[RESERVED_STACK].u.num,
-	   conf[MAX_COST].u.num,
 	   conf[CREATE].u.str);
 
+    /* create limits file */
+    sprintf(limits, "%s/limits.h", path_resolve(dirs[0]));
+    fp = fopen(limits, "w");
+    if (fp == (FILE *) NULL) {
+	fatal("cannot create \"/%s\"", limits);
+    }
+    fprintf(fp, "/*\n * This file defines some basic sizes of datatypes and ");
+    fprintf(fp, "resources.\n * It is automatically generated by DGD on ");
+    fprintf(fp, "startup.\n */\n\n");
+    fprintf(fp, "# define CHAR_BIT\t\t8\t\t/* # bits in character */\n");
+    fprintf(fp, "# define CHAR_MIN\t\t0\t\t/* min character value */\n");
+    fprintf(fp, "# define CHAR_MAX\t\t255\t\t/* max character value */\n\n");
+    fprintf(fp, "# define INT_MIN\t\t%ld\t/* min integer value */\n",
+	    (long) (Int) 0x80000000L);
+    fprintf(fp, "# define INT_MAX\t\t%ld\t/* max integer value */\n\n",
+	    (long) (Int) 0x7fffffffL);
+    fprintf(fp, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\n",
+	    USHRT_MAX - sizeof(string));
+    fprintf(fp, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\n",
+	    conf[ARRAY_SIZE].u.num);
+    fprintf(fp, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\n\n",
+	    conf[ARRAY_SIZE].u.num);
+    fprintf(fp, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\n",
+	    conf[MAX_COST].u.num);
+    fprintf(fp, "# define MAX_OBJECTS\t\t%ld\t\t/* max # of objects */\n",
+	    conf[OBJECTS].u.num);
+    fprintf(fp, "# define MAX_CALL_OUTS\t\t%ld\t\t/* max # of call_outs */\n\n",
+	    conf[CALL_OUTS].u.num);
+    fprintf(fp, "# define MAX_USERS\t\t%ld\t\t/* max # of users */\n",
+	    conf[USERS].u.num);
+    fprintf(fp, "# define MAX_EDITORS\t\t%ld\t\t/* max # of editors */\n",
+	    conf[EDITORS].u.num);
+    fclose(fp);
+
     /* initialize mudlib */
+    i_set_cost(conf[MAX_COST].u.num);
     i_lock();
     call_driver_object("initialize", 0);
     i_unlock();
@@ -278,18 +310,27 @@ char *func;
 int narg;
 {
     static object *driver;
-    static long dcount;
+    static Int dcount;
 
-    if (driver == (object *) NULL || dcount != driver->key.count) {
+    if (driver == (object *) NULL || dcount != driver->count) {
 	driver = o_find(conf[DRIVER_OBJECT].u.str);
 	if (driver == (object *) NULL) {
 	    driver = c_compile(conf[DRIVER_OBJECT].u.str);
 	}
-	dcount = driver->key.count;
+	dcount = driver->count;
     }
     if (!i_call(driver, func, TRUE, narg)) {
 	fatal("missing function %s in driver object", func);
     }
+}
+
+/*
+ * NAME:	base_dir()
+ * DESCRIPTION:	return the driver base directory
+ */
+char *base_dir()
+{
+    return conf[DIRECTORY].u.str;
 }
 
 static object *usr;
@@ -300,7 +341,7 @@ static object *usr;
  */
 object *this_user()
 {
-    return (usr != (object *) NULL && usr->key.count != 0) ?
+    return (usr != (object *) NULL && usr->count != 0) ?
 	    usr : (object *) NULL;
 }
 
@@ -324,7 +365,7 @@ char *argv[];
 
     if (ec_push()) {
 	warning((char *) NULL);
-	fatal("error during initialiation");
+	fatal("error during initialization");
     }
     initialize(argv[1]);
     ec_pop();
@@ -336,11 +377,24 @@ char *argv[];
 	i_dump_trace(stderr);
 	host_error();
 	i_clear();
-	i_log_error();
+	if (ec_push()) {
+	    /* error within error... */
+	    warning((char *) NULL);
+	    i_dump_trace(stderr);
+	    host_error();
+	    i_clear();
+	} else {
+	    i_log_error();
+	    ec_pop();
+	}
 	comm_flush();
     }
 
     for (;;) {
+	i_set_cost(conf[MAX_COST].u.num >> 2);
+	co_call();
+
+	i_set_cost(conf[MAX_COST].u.num);
 	usr = comm_receive(buf, &size);
 	if (usr != (object *) NULL) {
 	    (--sp)->type = T_STRING;
@@ -349,7 +403,6 @@ char *argv[];
 		i_del_value(sp++);
 	    }
 	}
-	co_call();
 
 	comm_flush();
 	o_clean();
