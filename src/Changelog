@@ -1048,3 +1048,5 @@ DGD 1.1
    should be used).
  - If select() is interrupted, make sure that all socket read flags are zero.
  - DUMPFILE FORMAT STABLE AGAIN, and it had better not change before 1.1...
+ - Added 3rd argument to runtime_error(), ticks left, and removed ST_ASTACKDEPTH
+   and ST_ATICKS.

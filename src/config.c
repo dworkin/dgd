@@ -855,8 +855,6 @@ char *configfile, *dumpfile;
     cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
     cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
     cputs("# define ST_PRECOMPILED\t24\t/* precompiled objects */\012");
-    cputs("# define ST_ASTACKDEPTH\t25\t/* actual remaining stack depth */\012");
-    cputs("# define ST_ATICKS\t26\t/* actual remaining ticks */\012");
 
     cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
@@ -1020,7 +1018,7 @@ array *conf_status()
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
-    a = arr_new(27L);
+    a = arr_new(25L);
     v = a->elts;
 
     /* version */
@@ -1086,19 +1084,13 @@ array *conf_status()
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;
-    (v++)->u.number = i_get_depth(FALSE);
+    (v++)->u.number = i_get_depth();
     v->type = T_INT;
-    (v++)->u.number = i_get_ticks(FALSE);
+    (v++)->u.number = i_get_ticks();
 
     /* precompiled objects */
     v->type = T_ARRAY;
-    arr_ref((v++)->u.array = pc_list());
-
-    /* more limits */
-    v->type = T_INT;
-    (v++)->u.number = i_get_depth(TRUE);
-    v->type = T_INT;
-    v->u.number = i_get_ticks(TRUE);
+    arr_ref(v->u.array = pc_list());
 
     return a;
 }

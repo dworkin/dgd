@@ -10,9 +10,9 @@ DESCRIPTION
 	to zero.  The new array is returned.
 
 ERRORS
-	If the specified array size is smaller than zero or larger than the
-	constant MAX_ARRAY_SIZE, defined in the include file <limits.h>, an
-	error will result.
+	If the specified array size is smaller than zero or larger than
+	status()[ST_ARRAYSIZE], with ST_ARRAYSIZE defined in the include file
+	<status.h>, an error will result.
 
 SEE ALSO
 	kfun/sizeof

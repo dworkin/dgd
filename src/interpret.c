@@ -843,20 +843,9 @@ static int rli;				/* rlimits stack index */
  * NAME:	interpret->get_depth()
  * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
-Int i_get_depth(flag)
-int flag;
+Int i_get_depth()
 {
     if (nodepth) {
-	if (flag) {
-	    register rlinfo *rl;
-
-	    rl = &rlstack[rli];
-	    while (--rl >= rlstack) {
-		if (!rl->nodepth) {
-		    return rl->depth;
-		}
-	    }
-	}
 	return -1;
     }
     return maxdepth - cframe->depth;
@@ -864,27 +853,14 @@ int flag;
 
 /*
  * NAME:	interpret->get_ticks()
- * DESCRIPTION:	get the remaining ticks (negative: infinite)
+ * DESCRIPTION:	get the remaining ticks (-1: infinite)
  */
-Int i_get_ticks(flag)
-int flag;
+Int i_get_ticks()
 {
     if (noticks) {
-	if (flag) {
-	    register rlinfo *rl;
-
-	    rl = &rlstack[rli];
-	    while (--rl >= rlstack) {
-		if (!rl->noticks) {
-		    return rl->ticks;
-		}
-	    }
-	}
 	return -1;
-    } else if (ticks < 0) {
-	return 0;
     } else {
-	return ticks;
+	return (ticks < 0) ? 0 : ticks;
     }
 }
 
@@ -2125,7 +2101,9 @@ int flag;
     str_ref(sp->u.string = str_new(err, (long) strlen(err)));
     (--sp)->type = T_INT;
     sp->u.number = flag;
-    if (!i_call_critical("runtime_error", 2, FALSE)) {
+    (--sp)->type = T_INT;
+    sp->u.number = i_get_ticks();
+    if (!i_call_critical("runtime_error", 3, FALSE)) {
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {

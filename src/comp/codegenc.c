@@ -1231,14 +1231,22 @@ register int state;
 	output(") ? (");
 	if (n->r.right->l.left != (node *) NULL) {
 	    cg_expr(n->r.right->l.left, state);
-	    comma();
+	    if (state == PUSH || state == POP) {
+		output(", 0");
+	    }
+	} else {
+	    output("0");
 	}
-	output("0) : (");
+	output(") : (");
 	if (n->r.right->r.right != (node *) NULL) {
 	    cg_expr(n->r.right->r.right, state);
-	    comma();
+	    if (state == PUSH || state == POP) {
+		output(", 0");
+	    }
+	} else {
+	    output("0");
 	}
-	output("0)");
+	output(")");
 	return;
 
     case N_RANGE:

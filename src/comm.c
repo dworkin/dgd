@@ -520,7 +520,7 @@ void comm_receive()
 		    comm_del(usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */
 		    comm_flush(FALSE);
-		    continue;
+		    break;
 		}
 
 		flags = usr->flags;
@@ -710,6 +710,7 @@ void comm_receive()
 		    comm_del(usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */
 		    comm_flush(FALSE);
+		    break;
 		}
 		continue;
 	    }

@@ -78,12 +78,13 @@ driver, mostly to translate pathnames.
 	Handle a compile-time error; there can be several for the same
 	LPC file before a runtime error results (calling runtime_error).
 
-    void runtime_error(string error, int caught)
+    void runtime_error(string error, int caught, int ticks)
 
 	Called when a runtime error occurs.  <caught> specifies whether or
 	not the error occurred in code run with catch().  runtime_error()
 	is called with rlimits (-1; -1) so it will not run out of stack or
-	ticks.
+	ticks.  <ticks> specifies the amount of ticks left at the moment
+	the error occurred.
 
     int compile_rlimits(string objname)
 

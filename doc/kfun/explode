@@ -11,8 +11,9 @@ DESCRIPTION
 	into account.
 
 ERRORS
-	If the resulting array size is larger than the constant MAX_ARRAY_SIZE,
-	defined in the include file <limits.h>, an error will result.
+	If the resulting array size is larger than status()[ST_ARRAYSIZE], with
+	ST_ARRAYSIZE defined in the include file <status.h>, an error will
+	result.
 
 SEE ALSO
 	kfun/implode, kfun/sscanf, kfun/parse_string
