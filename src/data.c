@@ -574,7 +574,7 @@ register unsigned short *vmap;
 char *d_get_prog(ctrl)
 register control *ctrl;
 {
-    if (ctrl->prog == (char *) NULL && ctrl->progsize > 0) {
+    if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
 	ctrl->prog = ALLOC(char, ctrl->progsize);
 	sw_readv(ctrl->prog, ctrl->sectors, ctrl->progsize, ctrl->progoffset);
     }
@@ -634,7 +634,7 @@ unsigned int idx;
 dfuncdef *d_get_funcdefs(ctrl)
 register control *ctrl;
 {
-    if (ctrl->funcdefs == (dfuncdef *) NULL && ctrl->nfuncdefs > 0) {
+    if (ctrl->funcdefs == (dfuncdef *) NULL && ctrl->nfuncdefs != 0) {
 	ctrl->funcdefs = ALLOC(dfuncdef, ctrl->nfuncdefs);
 	sw_readv((char *) ctrl->funcdefs, ctrl->sectors,
 		 ctrl->nfuncdefs * (Uint) sizeof(dfuncdef), ctrl->funcdoffset);
@@ -649,7 +649,7 @@ register control *ctrl;
 dvardef *d_get_vardefs(ctrl)
 register control *ctrl;
 {
-    if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs > 0) {
+    if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs != 0) {
 	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
 	sw_readv((char *) ctrl->vardefs, ctrl->sectors,
 		 ctrl->nvardefs * (Uint) sizeof(dvardef), ctrl->vardoffset);
@@ -664,7 +664,7 @@ register control *ctrl;
 char *d_get_funcalls(ctrl)
 register control *ctrl;
 {
-    if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls > 0) {
+    if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls != 0) {
 	ctrl->funcalls = ALLOC(char, 2 * ctrl->nfuncalls);
 	sw_readv((char *) ctrl->funcalls, ctrl->sectors,
 		 ctrl->nfuncalls * (Uint) 2, ctrl->funccoffset);
@@ -2519,8 +2519,8 @@ object *old;
 	    *v++ = (*vmap == NEW_INT) ? zero_value : zero_float;
 	} else {
 	    *v = vars[*vmap];
+	    i_ref_value(&vars[*vmap]);	/* don't wipe out objects */
 	    v->modified = TRUE;
-	    i_ref_value(v);
 	    ref_rhs(data, v++);
 	}
 	vmap++;
@@ -3179,6 +3179,9 @@ register control *ctrl;
 	    sw_del(*--s);
 	}
     }
+    if (ctrl->obj != (object *) NULL) {
+	ctrl->obj->cfirst = SW_UNUSED;
+    }
     d_free_control(ctrl);
 }
 
@@ -3212,5 +3215,6 @@ register dataspace *data;
 	    sw_del(*--s);
 	}
     }
+    data->obj->dfirst = SW_UNUSED;
     d_free_dataspace(data);
 }

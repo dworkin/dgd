@@ -547,9 +547,17 @@ unsigned int telnet_port, binary_port;
 
 /*
  * NAME:	comm->finish()
- * DESCRIPTION:	pretend terminate connections
+ * DESCRIPTION:	pretend to terminate connections
  */
 void comm_finish()
+{
+}
+
+/*
+ * NAME:        comm->listen()
+ * DESCRIPTION: pretend to start listening on telnet port and binary port
+ */
+void comm_listen()
 {
 }
 

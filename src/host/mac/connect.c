@@ -28,9 +28,10 @@ struct _connection_ {
 # define TCP_CLOSING	0x01		/* shutdown on other side */
 # define TCP_TERMINATED	0x02		/* terminated */
 # define TCP_OPEN	0x01		/* open */
-# define TCP_SEND	0x02		/* writing data */
-# define TCP_WAIT	0x04		/* waiting for data to be written */
-# define TCP_RELEASED	0x08		/* (about to be) released */
+# define TCP_CLOSE	0x02		/* closing connection */
+# define TCP_SEND	0x04		/* writing data */
+# define TCP_WAIT	0x08		/* waiting for data to be written */
+# define TCP_RELEASED	0x10		/* (about to be) released */
 
 static connection *connlist;		/* list of open connections */
 static QHdr flist;			/* free connection queue */
@@ -182,7 +183,6 @@ void conn_init(int nusers, unsigned int t_port, unsigned int b_port)
     conn = ALLOC(connection, nusers);
     while (--nusers >= 0) {
 	/* open TCP stream */
-	conn->iobuf.ioCompletion = NewTCPIOCompletionProc(completion);
 	conn->iobuf.ioCRefNum = mactcp;
 	conn->iobuf.csCode = TCPCreate;
 	conn->iobuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, tcpbufsz);
@@ -361,6 +361,7 @@ static bool conn_flush(connection *conn)
  */
 void conn_del(connection *conn)
 {
+    conn->sflags |= TCP_CLOSE;
     if (!(conn->cflags & TCP_TERMINATED)) {
 	if (!conn_flush(conn)) {
 	    /* buffer not flushed */
@@ -436,15 +437,15 @@ int conn_select(int wait)
 
 	for (conn = connlist; conn != NULL; conn = next) {
 	    next = conn->next;
-	    if (conn->sflags & TCP_OPEN) {
+	    if (conn->sflags & TCP_CLOSE) {
+	    	conn_del(conn);
+	    } else {
 		conn_flush(conn);
 		if (conn->dflag || conn->cflags ||
 		    ((conn->sflags & TCP_WAIT) &&
 		      conn->wds[0].length + conn->ssize != tcpbufsz)) {
 		    stop = TRUE;
 		}
-	    } else {
-	    	conn_del(conn);
 	    }
 	}
 	if (stop) {

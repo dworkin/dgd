@@ -218,7 +218,8 @@ array *pc_list()
     register precomp **pc;
 
     for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
-	if ((*pc)->obj->count != 0 && ((*pc)->obj->flags & O_COMPILED)) {
+	if ((*pc)->obj != (object *) NULL && (*pc)->obj->count != 0 &&
+	    ((*pc)->obj->flags & O_COMPILED)) {
 	    n++;
 	}
     }
@@ -226,7 +227,8 @@ array *pc_list()
     a = arr_new((long) n);
     v = a->elts;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	if ((*pc)->obj->count != 0 && ((*pc)->obj->flags & O_COMPILED)) {
+	if ((*pc)->obj != (object *) NULL && (*pc)->obj->count != 0 &&
+	    ((*pc)->obj->flags & O_COMPILED)) {
 	    v->type = T_OBJECT;
 	    v->oindex = (*pc)->obj->index;
 	    v->u.objcnt = (*pc)->obj->count;
@@ -335,7 +337,8 @@ int fd;
 
     /* first compute sizes of data to dump */
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
+	if ((*pc)->obj != (object *) NULL && ((*pc)->obj->flags & O_COMPILED) &&
+	    (*pc)->obj->u_ref != 0) {
 	    dh.nprecomps++;
 	    dh.ninherits += (*pc)->ninherits;
 	    dh.nstrings += (*pc)->nstrings;
@@ -364,7 +367,7 @@ int fd;
 	dvardef *vardefs;
 
 	/*
-	 * Save everything, even though only a few things are needed.
+	 * Save only the necessary information.
 	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
 	inh = ALLOCA(dump_inherit, dh.ninherits);
@@ -385,7 +388,8 @@ int fd;
 	}
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	    if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
+	    if ((*pc)->obj != (object *) NULL &&
+		((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
 		dpc->compiled = (*pc)->compiled;
 		dpc->ninherits = (*pc)->ninherits;
 		dpc->nstrings = (*pc)->nstrings;
@@ -415,7 +419,12 @@ int fd;
 		if (dpc->nfuncdefs > 0) {
 		    memcpy(funcdefs, (*pc)->funcdefs,
 			   dpc->nfuncdefs * sizeof(dfuncdef));
-		    funcdefs += dpc->nfuncdefs;
+		    for (i = 0; i < dpc->nfuncdefs; i++) {
+			funcdefs[i].offset =
+				    PROTO_FTYPE((*pc)->program +
+						(*pc)->funcdefs[i].offset);
+		    }
+		    funcdefs += i;
 		}
 
 		if (dpc->nvardefs > 0) {
@@ -496,18 +505,148 @@ register int ninherits;
     register char *name;
     register precomp **pc;
 
-    while (--ninherits >= 0) {
+    do {
 	name = (pcinh++)->name;
 	for (pc = precompiled;
 	     strcmp((*pc)->inherits[(*pc)->ninherits - 1].name, name) != 0;
 	     pc++) ;
 	(inh++)->obj = (*pc)->obj;
+    } while (--ninherits != 0);
+}
+
+/*
+ * NAME:	inh1cmp()
+ * DESCRIPTION:	compare inherited object lists
+ */
+static bool inh1cmp(dinh, inh, ninherits)
+register dump_inherit *dinh;
+register dinherit *inh;
+register int ninherits;
+{
+    do {
+	if (dinh->oindex != inh->obj->index ||
+	    dinh->funcoffset != inh->funcoffset ||
+	    dinh->varoffset != inh->varoffset) {
+	    return FALSE;
+	}
+	dinh++;
+	inh++;
+    } while (--ninherits != 0);
+    return TRUE;
+}
+
+/*
+ * NAME:	inh2cmp()
+ * DESCRIPTION:	compare inherited object lists
+ */
+static bool inh2cmp(dinh, inh, ninherits)
+register dinherit *dinh, *inh;
+register int ninherits;
+{
+    do {
+	if (dinh->obj != inh->obj ||
+	    dinh->funcoffset != inh->funcoffset ||
+	    dinh->varoffset != inh->varoffset) {
+	    return FALSE;
+	}
+	dinh++;
+	inh++;
+    } while (--ninherits != 0);
+    return TRUE;
+}
+
+/*
+ * NAME:	dstrcmp()
+ * DESCRIPTION:	compare string tables
+ */
+static bool dstrcmp(dstrings, strings, nstrings)
+register dstrconst *dstrings, *strings;
+register int nstrings;
+{
+    while (nstrings != 0) {
+	if (dstrings->index != strings->index ||
+	    dstrings->len != strings->len) {
+	    return FALSE;
+	}
+	dstrings++;
+	strings++;
+	--nstrings;
     }
+    return TRUE;
+}
+
+/*
+ * NAME:	func1cmp()
+ * DESCRIPTION:	compare function tables
+ */
+static bool func1cmp(dfuncdefs, funcdefs, prog, nfuncdefs)
+register dfuncdef *dfuncdefs, *funcdefs;
+register char *prog;
+register int nfuncdefs;
+{
+    while (nfuncdefs != 0) {
+	if (dfuncdefs->class != funcdefs->class ||
+	    dfuncdefs->inherit != funcdefs->inherit ||
+	    dfuncdefs->index != funcdefs->index ||
+	    dfuncdefs->offset != (Uint) PROTO_FTYPE(prog + funcdefs->offset)) {
+	    return FALSE;
+	}
+	dfuncdefs++;
+	funcdefs++;
+	--nfuncdefs;
+    }
+    return TRUE;
+}
+
+/*
+ * NAME:	func2cmp()
+ * DESCRIPTION:	compare function tables
+ */
+static bool func2cmp(dfuncdefs, funcdefs, dprog, prog, nfuncdefs)
+register dfuncdef *dfuncdefs, *funcdefs;
+register char *dprog, *prog;
+register int nfuncdefs;
+{
+    while (nfuncdefs != 0) {
+	if (dfuncdefs->class != (funcdefs->class & ~C_COMPILED) ||
+	    dfuncdefs->inherit != funcdefs->inherit ||
+	    dfuncdefs->index != funcdefs->index ||
+	    PROTO_FTYPE(dprog + dfuncdefs->offset) !=
+					PROTO_FTYPE(prog + funcdefs->offset)) {
+	    return FALSE;
+	}
+	dfuncdefs++;
+	funcdefs++;
+	--nfuncdefs;
+    }
+    return TRUE;
+}
+
+/*
+ * NAME:	varcmp()
+ * DESCRIPTION:	compare variable tables
+ */
+static bool varcmp(dvardefs, vardefs, nvardefs)
+register dvardef *dvardefs, *vardefs;
+register int nvardefs;
+{
+    while (nvardefs != 0) {
+	if (dvardefs->class != vardefs->class ||
+	    dvardefs->inherit != vardefs->inherit ||
+	    dvardefs->index != vardefs->index ||
+	    dvardefs->type != vardefs->type) {
+	    return FALSE;
+	}
+	dvardefs++;
+	vardefs++;
+	--nvardefs;
+    }
+    return TRUE;
 }
 
 /*
  * NAME:	precomp->restore()
- * DESCRIPTION:	restore and upgrade precompiled objects
+ * DESCRIPTION:	restore and replace precompiled objects
  */
 void pc_restore(fd)
 int fd;
@@ -534,23 +673,43 @@ int fd;
     if (dh.nprecomps != 0) {
 	register dump_precomp *dpc;
 	register dump_inherit *dinh;
+	register dstrconst *strings;
+	register char *stext;
+	register dfuncdef *funcdefs;
+	register dvardef *vardefs;
+	register char *funcalls;
 
 	/*
-	 * Only some of the information in the dump file is currently restored.
+	 * Restore old precompiled objects.
 	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
-	dinh = ALLOCA(dump_inherit, dh.ninherits);
-
 	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
-	conf_dread(fd, (char *) dinh, di_layout, (Uint) dh.ninherits);
-
-	/* skip the rest */
-	lseek(fd, (conf_dsize(DSTR_LAYOUT) & 0xff) * dh.nstrings +
-		  dh.stringsz +
-		  (conf_dsize(DF_LAYOUT) & 0xff) * dh.nfuncdefs +
-		  (conf_dsize(DV_LAYOUT) & 0xff) * dh.nvardefs +
-		  dh.nfuncalls * 2L,
-	      SEEK_CUR);
+	dinh = ALLOCA(dump_inherit, dh.ninherits);
+	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
+	if (dh.nstrings != 0) {
+	    strings = ALLOCA(dstrconst, dh.nstrings);
+	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
+	    if (dh.stringsz != 0) {
+		stext = ALLOCA(char, dh.stringsz);
+		if (read(fd, stext, dh.stringsz) != dh.stringsz) {
+		    fatal("cannot read from dump file");
+		}
+	    }
+	}
+	if (dh.nfuncdefs != 0) {
+	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
+	    conf_dread(fd, (char *) funcdefs, DF_LAYOUT, dh.nfuncdefs);
+	}
+	if (dh.nvardefs != 0) {
+	    vardefs = ALLOCA(dvardef, dh.nvardefs);
+	    conf_dread(fd, (char *) vardefs, DV_LAYOUT, dh.nvardefs);
+	}
+	if (dh.nfuncalls != 0) {
+	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
+	    if (read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
+		fatal("cannot read from dump file");
+	    }
+	}
 
 	for (i = dh.nprecomps; i > 0; --i) {
 	    /* restored object must still be precompiled */
@@ -562,21 +721,55 @@ int fd;
 		    fatal("restored object not precompiled: /%s", name);
 		}
 		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
-		    if (l->compiled != dpc->compiled) {
+		    hash_add(l->obj = obj, pc - precompiled);
+		    fixinherits(inherits + itab[pc - precompiled], l->inherits,
+				l->ninherits);
+		    if (dpc->ninherits != l->ninherits ||
+			dpc->nstrings != l->nstrings ||
+			dpc->stringsz != l->stringsz ||
+			dpc->nfuncdefs != l->nfuncdefs ||
+			dpc->nvardefs != l->nvardefs ||
+			dpc->nfuncalls != l->nfuncalls ||
+			!inh1cmp(dinh, inherits + itab[pc - precompiled],
+				 l->ninherits) ||
+			!dstrcmp(strings, l->sstrings, l->nstrings) ||
+			memcmp(stext, l->stext, l->stringsz) != 0 ||
+			!func1cmp(funcdefs, l->funcdefs, l->program,
+				  l->nfuncdefs) ||
+			!varcmp(vardefs, l->vardefs, l->nvardefs) ||
+			memcmp(funcalls, l->funcalls, 2 * l->nfuncalls) != 0) {
+			/* not the same */
 			fatal("restored different precompiled object /%s",
 			      name);
 		    }
 		    break;
 		}
 	    }
-	    hash_add(l->obj = obj, pc - precompiled);
-	    fixinherits(inherits + itab[pc - precompiled], l->inherits,
-			l->ninherits);
 
 	    dinh += dpc->ninherits;
+	    strings += dpc->nstrings;
+	    stext += dpc->stringsz;
+	    funcdefs += dpc->nfuncdefs;
+	    vardefs += dpc->nvardefs;
+	    funcalls += 2 * dpc->nfuncalls;
 	    dpc++;
 	}
 
+	if (dh.nfuncalls != 0) {
+	    AFREE(funcalls - dh.nfuncalls);
+	}
+	if (dh.nvardefs != 0) {
+	    AFREE(vardefs - dh.nvardefs);
+	}
+	if (dh.nfuncdefs != 0) {
+	    AFREE(funcdefs - dh.nfuncdefs);
+	}
+	if (dh.nstrings != 0) {
+	    if (dh.stringsz != 0) {
+		AFREE(stext - dh.stringsz);
+	    }
+	    AFREE(strings - dh.nstrings);
+	}
 	AFREE(dinh - dh.ninherits);
 	AFREE(dpc - dh.nprecomps);
     }
@@ -584,50 +777,53 @@ int fd;
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
 	l = *pc;
 	if (l->obj == (object *) NULL) {
-	    fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 	    obj = o_find(name = l->inherits[l->ninherits - 1].name);
 	    if (obj != (object *) NULL) {
-		object tmp;
-		unsigned short *vmap;
+		register control *ctrl;
 
-		if (o_control(obj)->compiled > l->compiled) {
+		ctrl = o_control(obj);
+		if (ctrl->compiled > l->compiled) {
 		    /* interpreted object is more recent */
-		    l->obj = obj;
 		    continue;
 		}
 
 		/*
-		 * upgrade existing interpreted object to precompiled
+		 * replace by precompiled
 		 */
-		if (O_INHERITED(obj)) {
-		    fatal("cannot upgrade inherited object /%s", name);
-		}
-
-		/* get control block for precompiled object */
-		hash_add(obj, (uindex) i);
-		tmp.flags = O_MASTER | O_COMPILED;
-		tmp.index = obj->index;
-		tmp.ctrl = (control *) NULL;
-		o_control(l->obj = &tmp);
-
-		/* upgrade existing object */
-		o_upgrade(obj, tmp.ctrl);
-		vmap = ctrl_varmap(obj->ctrl, tmp.ctrl);
-		if (vmap != (unsigned short *) NULL) {
-		    d_varmap(obj->ctrl, tmp.ctrl->nvariables + 1, vmap);
-		}
-		o_clean();
-
 		l->obj = obj;
+		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
+		if (ctrl->nstrings != 0) {
+		    d_get_strconst(ctrl, ctrl->ninherits - 1, 0);
+		}
+		if (ctrl->ninherits != l->ninherits ||
+		    ctrl->nstrings != l->nstrings ||
+		    ctrl->strsize != l->stringsz ||
+		    ctrl->nfuncdefs != l->nfuncdefs ||
+		    ctrl->nvardefs != l->nvardefs ||
+		    ctrl->nfuncalls != l->nfuncalls ||
+		    !inh2cmp(ctrl->inherits, inherits + itab[pc - precompiled],
+			     l->ninherits) ||
+		    !dstrcmp(ctrl->sstrings, l->sstrings, l->nstrings) ||
+		    memcmp(ctrl->stext, l->stext, l->stringsz) != 0 ||
+		    !func2cmp(d_get_funcdefs(ctrl), l->funcdefs,
+			      d_get_prog(ctrl), l->program, l->nfuncdefs) ||
+		    !varcmp(d_get_vardefs(ctrl), l->vardefs, l->nvardefs) ||
+		    memcmp(d_get_funcalls(ctrl), l->funcalls,
+			   2 * l->nfuncalls) != 0) {
+		    /* not the same */
+		    fatal("precompiled object != restored object /%s", name);
+		}
+
+		d_del_control(ctrl);
 		obj->flags |= O_COMPILED;
 	    } else {
 		/*
 		 * new precompiled object
 		 */
 		l->obj = pc_obj(name, inherits + itab[i], l->ninherits);
-		hash_add(l->obj, (uindex) i);
-		o_control(l->obj);	/* make sure it's loaded */
+		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 	    }
+	    hash_add(l->obj, (uindex) i);
 	}
     }
 }

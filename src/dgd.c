@@ -129,25 +129,23 @@ char **argv;
 	    comm_flush(FALSE);
 	}
 
+	if (stop) {
+	    comm_finish();
+	    ed_finish();
 # ifdef DEBUG
-	swap |= stop;
+	    swap = 1;
 # endif
-	if (!m_check()) {
-	    /*
-	     * Swap out everything and extend the static memory area.
-	     */
-	    d_swapout(1);
-	    arr_freeall();
-	    m_purge();
-	} else if (swap) {
-	    /*
-	     * swap out everything
-	     */
-	    d_swapout(1);
-	    arr_freeall();
-	    m_purge();
 	}
-	swap = FALSE;
+
+	if (swap || !m_check()) {
+	    /*
+	     * Swap out everything and possibly extend the static memory area.
+	     */
+	    d_swapout(1);
+	    arr_freeall();
+	    m_purge();
+	    swap = FALSE;
+	}
 
 	if (dump) {
 	    /*
@@ -159,7 +157,9 @@ char **argv;
 	}
 
 	if (stop) {
-	    break;
+	    sw_finish();
+	    ec_pop();
+	    return 0;
 	}
 
 	/* rebuild swapfile */
@@ -172,10 +172,4 @@ char **argv;
 	co_call();
 	comm_flush(FALSE);
     }
-    ec_pop();
-
-    comm_finish();
-    ed_finish();
-    sw_finish();
-    return 0;
 }

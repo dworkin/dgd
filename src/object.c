@@ -742,8 +742,7 @@ void o_conv()
 	qsort(sorted, nobjects, sizeof(Uint), cmp);
 	/* skip destructed objects */
 	for (i = 0; i < nobjects; i++) {
-	    o = &otable[*sorted];
-	    if (o->count != 0) {
+	    if (otable[*sorted].count != 0) {
 		break;
 	    }
 	    sorted++;

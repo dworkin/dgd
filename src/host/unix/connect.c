@@ -103,6 +103,14 @@ unsigned int telnet_port, binary_port;
  */
 void conn_finish()
 {
+    register int n;
+    register connection *conn;
+
+    for (n = nusers, conn = connections; n > 0; --n, conn++) {
+	if (conn->fd >= 0) {
+	    close(conn->fd);
+	}
+    }
     close(telnet);
     close(binary);
 }

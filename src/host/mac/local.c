@@ -7,6 +7,7 @@
 # include <TextEdit.h>
 # include <Dialogs.h>
 # include <Desk.h>
+# include <Scrap.h>
 # include <ToolUtils.h>
 # include <SegLoad.h>
 # include <OSUtils.h>
@@ -51,11 +52,12 @@ static void aboutbox(void)
     Rect rect;
 
     about = GetNewDialog(ABOUT, NULL, (WindowPtr) -1);
-    GetDItem(about, FONTCHANGE, &itype, &handle, &rect);
-    SetDItem(about, FONTCHANGE, itype, (Handle) changefont, &rect);
+    GetDialogItem(about, FONTCHANGE, &itype, &handle, &rect);
+    SetDialogItem(about, FONTCHANGE, itype,
+		  (Handle) NewUserItemProc(changefont), &rect);
     ShowWindow(about);
     ModalDialog(NULL, &item);
-    DisposDialog(about);
+    DisposeDialog(about);
 }
 
 
@@ -70,6 +72,7 @@ static WindowPtr mainframe;
 static TEHandle te;
 static int lines = 1;
 static int linelength;
+static bool selected;
 
 /*
  * NAME:	windowstart()
@@ -93,6 +96,7 @@ static void windowstart(void)
     bounds.bottom = 2 + HEIGHT * CHARHEIGHT;
     te = TENew(&bounds, &bounds);
     (*te)->crOnly = -1;
+    selected = FALSE;
     SetPort(port);
 }
 
@@ -113,10 +117,12 @@ static void windowupdt(WindowPtr window)
  */
 static void windowact(int active)
 {
-    if (active) {
-	TEActivate(te);
-    } else {
-	TEDeactivate(te);
+    if (mainframe != NULL) {
+	if (active) {
+	    TEActivate(te);
+	} else {
+	    TEDeactivate(te);
+	}
     }
 }
 
@@ -129,12 +135,16 @@ void P_message(char *mesg)
     GrafPtr port;
     static char cr[] = "\015";	/* CR */
     char *nl;
-    int len;
-    RgnHandle region;
+    int start, end, len;
 
     /* display message in window */
     GetPort(&port);
     SetPort(mainframe);
+    if (selected) {
+	start = (*te)->selStart;
+	end = (*te)->selEnd;
+	(*te)->selStart = (*te)->selEnd = (*te)->teLength;
+    }
     do {
 	nl = strchr(mesg, LF);
 	len = (nl != NULL) ? nl - mesg : strlen(mesg);
@@ -148,11 +158,20 @@ void P_message(char *mesg)
 	    TEInsert(cr, 1, te);
 	    if (lines == HEIGHT) {
 		(*te)->teLength -= linelength = (*te)->lineStarts[1];
-		ScrollRect(&(*te)->destRect, 0, -CHARHEIGHT, region = NewRgn());
-		DisposeRgn(region);
+		if (selected) {
+		    start -= linelength;
+		    end -= linelength;
+		    if (end <= 0) {
+			selected = FALSE;
+		    } else if (start < 0) {
+			start = 0;
+		    }
+		}
+		TEScroll(0, -CHARHEIGHT, te);
+		(*te)->destRect = (*te)->viewRect;
 		Munger((*te)->hText, 0, 0, linelength, "", 0);
 		TECalText(te);
-		TESetSelect(32768, 32768, te);
+		(*te)->selStart = (*te)->selEnd = (*te)->teLength;
 	    } else {
 		lines++;
 	    }
@@ -163,6 +182,11 @@ void P_message(char *mesg)
 	    mesg++;
 	}
     } while (mesg[0] != '\0');
+    TEScroll(0,  0, te);
+    if (selected) {
+	(*te)->selStart = start;
+	(*te)->selEnd = end;
+    }
     SetPort(port);
 }
 
@@ -190,6 +214,7 @@ enum medit {
 };
 
 static MenuHandle applemenu, filemenu, editmenu;
+static bool editing;
 
 /*
  * NAME:	menuinit()
@@ -206,6 +231,51 @@ static void menuinit(void)
     filemenu = GetMHandle(FILE);
     editmenu = GetMHandle(EDIT);
     AddResMenu(applemenu, 'DRVR');
+    editing = FALSE;
+}
+
+/*
+ * NAME:	setmenu()
+ * DESCRIPTION:	set current menu options
+ */
+static void setmenu(void)
+{
+    WindowPeek wp;
+
+    wp = (WindowPeek) FrontWindow();
+    if (wp != NULL && wp->windowKind < 0) {
+	/* enable edit menu for desk accessory */
+	if (!editing) {
+	    EnableItem(editmenu, 0);
+	    DrawMenuBar();
+	    editing = TRUE;
+	}
+	EnableItem(editmenu, UNDO);
+	EnableItem(editmenu, CUT);
+	EnableItem(editmenu, COPY);
+	EnableItem(editmenu, PASTE);
+	EnableItem(editmenu, CLEAR);
+	DisableItem(editmenu, SELECT);
+    } else if (running) {
+	DisableItem(editmenu, UNDO);
+	DisableItem(editmenu, CUT);
+	if (selected) {
+	    EnableItem(editmenu, COPY);
+	} else {
+	    DisableItem(editmenu, COPY);
+	}
+	DisableItem(editmenu, PASTE);
+	DisableItem(editmenu, CLEAR);
+	if ((*te)->teLength != 0) {
+	    EnableItem(editmenu, SELECT);
+	} else {
+	    DisableItem(editmenu, SELECT);
+	}
+    } else if (editing) {
+	DisableItem(editmenu, 0);
+	DrawMenuBar();
+	editing = FALSE;
+    }
 }
 
 /*
@@ -214,28 +284,10 @@ static void menuinit(void)
  */
 static bool menuselect(long menuitem)
 {
-    WindowPeek wp;
     int menu, item;
     Str255 name;
     GrafPtr port;
     char *file;
-
-    wp = (WindowPeek) FrontWindow();
-    if (wp != NULL && wp->windowKind < 0) {
-	/* enable edit menu for desk accessory */
-	EnableItem(editmenu, UNDO);
-	EnableItem(editmenu, CUT);
-	EnableItem(editmenu, COPY);
-	EnableItem(editmenu, PASTE);
-	EnableItem(editmenu, CLEAR);
-    } else {
-	/* disable edit menu */
-	DisableItem(editmenu, UNDO);
-	DisableItem(editmenu, CUT);
-	DisableItem(editmenu, COPY);
-	DisableItem(editmenu, PASTE);
-	DisableItem(editmenu, CLEAR);
-    }
 
     menu = HiWord(menuitem);
     item = LoWord(menuitem);
@@ -287,7 +339,20 @@ static bool menuselect(long menuitem)
 	break;
 
     case EDIT:
-	SystemEdit(item - 1);
+	if (!SystemEdit(item - 1)) {
+	    switch (item) {
+	    case COPY:
+		ZeroScrap();
+		PutScrap((*te)->selEnd - (*te)->selStart, 'TEXT',
+			 *(*te)->hText + (*te)->selStart);
+		break;
+
+	    case SELECT:
+		TESetSelect(0, (*te)->teLength, te);
+		selected = TRUE;
+		break;
+	    }
+	}
 	break;
     }
 
@@ -300,9 +365,15 @@ static bool menuselect(long menuitem)
  */
 static void menurun(void)
 {
+    HiliteMenu(0);
     DisableItem(filemenu, CONFIG);
     DisableItem(filemenu, RESTORE);
     DisableItem(filemenu, START);
+    if (!editing) {
+	EnableItem(editmenu, 0);
+	DrawMenuBar();
+	editing = TRUE;
+    }
 }
 
 
@@ -315,9 +386,13 @@ bool getevent(void)
     EventRecord evt;
     WindowPtr window;
     Rect limits;
+    GrafPtr port;
+    long offset;
 
     HiliteMenu(0);
     SystemTask();
+    setmenu();
+
     if (GetNextEvent(everyEvent, &evt)) {
 	switch (evt.what) {
 	case mouseDown:
@@ -330,14 +405,30 @@ bool getevent(void)
 		return menuselect(MenuSelect(evt.where));
 
 	    case inDrag:
-	    	/* handle window drag */
-	    	limits = qd.screenBits.bounds;
-	    	limits.top += 4;
-	    	limits.left += 4;
-	    	limits.bottom -= 4;
-	    	limits.right -= 4;
-	    	DragWindow(window, evt.where, &limits);
-	    	break;
+		/* handle window drag */
+		limits = qd.screenBits.bounds;
+		limits.top += 4;
+		limits.left += 4;
+		limits.bottom -= 4;
+		limits.right -= 4;
+		DragWindow(window, evt.where, &limits);
+		break;
+
+	    case inContent:
+		GetPort(&port);
+		SetPort(window);
+		GlobalToLocal(&evt.where);
+		TEClick(evt.where, (evt.modifiers & shiftKey) ? TRUE : FALSE,
+			te);
+		if ((*te)->selStart != (*te)->selEnd) {
+		    selected = TRUE;
+		} else {
+		    TEScroll(0, 0, te);
+		    (*te)->selStart = (*te)->selEnd = (*te)->teLength;
+		    selected = FALSE;
+		}
+		SetPort(port);
+		break;
 	    }
 	    break;
 
@@ -353,6 +444,12 @@ bool getevent(void)
 
 	case updateEvt:
 	    windowupdt((WindowPtr) evt.message);
+	    break;
+
+	case osEvt:
+	    if ((evt.message >> 24) == suspendResumeMessage) {
+		windowact(evt.message & resumeFlag);
+	    }
 	    break;
 	}
     }

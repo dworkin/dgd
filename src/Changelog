@@ -1080,3 +1080,12 @@ DGD 1.1
    the upgrade have no catch or are precompiled.
  - return val; was typechecked only at compile time, not at runtime.
  - Fixed some bugs in the Mac port.
+ - Make sure all connections are closed as soon as it is known that the
+   system is shutting down, instead of waiting until after a state dump.
+ - Fixed a loss-of-variable bug in upgrading while restoring state.
+ - Enabled edit menu in Mac port.
+ - Precompiled objects now replace existing objects silently, rather than
+   causing an upgrade.  The object replaced must have the same inherit,
+   string, function definition, variable definition and function call tables.
+   NOTE: the dumpfile format was slightly changed, but state dumps that do
+   not contain precompiled objects are unaffected.
