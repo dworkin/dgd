@@ -60,7 +60,7 @@ register control *ctrl;
     printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
 	printf("{ \"%s\", %u, %u },\n",
-	       ctrl->inherits[i].obj->chain.name,
+	       otable[ctrl->inherits[i].oindex].chain.name,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
     }
@@ -264,7 +264,7 @@ char *argv[];
     dump_funcalls(ctrl);
     dump_symbols(ctrl);
 
-    printf("\nprecomp %s = {\n(object *) NULL,\n%d, inherits,\n", tag,
+    printf("\nprecomp %s = {\nUINDEX_MAX,\n%d, inherits,\n", tag,
 	   ctrl->ninherits);
     printf("%ldL,\n", (long) ctrl->compiled);
     if (ctrl->progsize == 0) {
@@ -747,9 +747,8 @@ cbuf **qp;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new callout
  */
-void co_new(handle, obj, t, m, q)
-unsigned int handle, m;
-object *obj;
+void co_new(oindex, handle, t, m, q)
+unsigned int oindex, handle, m;
 Uint t;
 cbuf* q;
 {
@@ -759,9 +758,8 @@ cbuf* q;
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a callout
  */
-void co_del(obj, handle, t)
-object *obj;
-unsigned int handle;
+void co_del(oindex, handle, t)
+unsigned int oindex, handle;
 Uint t;
 {
 }

@@ -97,13 +97,13 @@ register control *ctrl;
     o->count = ++ocount;
     o->update = 0;
     o->ctrl = ctrl;
-    ctrl->inherits[ctrl->ninherits - 1].obj = ctrl->obj = o;
+    ctrl->inherits[ctrl->ninherits - 1].oindex = ctrl->oindex = o->index;
 
     /* add reference to all inherited objects */
     o->u_ref = 0;	/* increased to 1 in following loop */
     inh = ctrl->inherits;
     for (i = ctrl->ninherits; i > 0; --i) {
-	(inh++)->obj->u_ref++;
+	otable[(inh++)->oindex].u_ref++;
     }
 
     return o;
@@ -169,7 +169,7 @@ register frame *f;
     inh = ctrl->inherits;
     i = ctrl->ninherits;
     while (--i > 0) {
-	o = (inh++)->obj;
+	o = &otable[(inh++)->oindex];
 	if (--(o->u_ref) == 0) {
 	    o_delete(o, f);
 	}
@@ -194,15 +194,14 @@ register frame *f;
     o->chain.name = (char *) NULL;
     o->flags = O_MASTER;
     o->count = 0;
-    o->u_master = obj->index;
     o->ctrl = ctrl;
-    ctrl->inherits[ctrl->ninherits - 1].obj = obj;
+    ctrl->inherits[ctrl->ninherits - 1].oindex = o->u_master = obj->index;
 
     /* add reference to inherited objects */
     inh = ctrl->inherits;
     i = ctrl->ninherits;
     while (--i > 0) {
-	(inh++)->obj->u_ref++;
+	otable[(inh++)->oindex].u_ref++;
     }
 
     /* add to upgrades list */
@@ -219,7 +218,7 @@ register frame *f;
     inh = ctrl->inherits;
     i = ctrl->ninherits;
     while (--i > 0) {
-	o = (inh++)->obj;
+	o = &otable[(inh++)->oindex];
 	if (--(o->u_ref) == 0) {
 	    o_delete(o, f);
 	}
@@ -318,6 +317,7 @@ frame *f;
     o->chain.next = (hte *) clean_obj;
     clean_obj = o;
 }
+
 
 /*
  * NAME:	object->name()
@@ -421,7 +421,7 @@ object *obj;
 	o = &otable[o->u_master];	/* get control block of master object */
     }
     if (o->ctrl == (control *) NULL) {
-	o->ctrl = d_load_control(o);	/* reload */
+	o->ctrl = d_load_control((uindex) (o - otable));	/* reload */
     } else {
 	d_ref_control(o->ctrl);
     }
@@ -524,9 +524,9 @@ void o_clean()
 
 	    /* swap control blocks */
 	    up->ctrl = o->ctrl;
-	    up->ctrl->obj = up;
+	    up->ctrl->oindex = up->index;
 	    o->ctrl = ctrl;
-	    ctrl->obj = o;
+	    ctrl->oindex = o - otable;
 	    o->cfirst = up->cfirst;
 	    up->cfirst = SW_UNUSED;
 
@@ -778,7 +778,7 @@ void o_conv()
 	for (i = nobjects, o = otable; i > 0; --i, o++) {
 	    if ((o->count != 0 || ((o->flags & O_MASTER) && o->u_ref != 0)) &&
 		o->cfirst != SW_UNUSED) {
-		d_conv_control(o);
+		d_conv_control((uindex) (o - otable));
 	    }
 	}
 

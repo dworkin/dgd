@@ -1,7 +1,7 @@
 # include "swap.h"
 
 typedef struct {
-    object *obj;		/* inherited object */
+    uindex oindex;		/* inherited object */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
     bool priv;			/* privately inherited? */
@@ -47,7 +47,7 @@ struct _control_ {
     sector nsectors;		/* o # of sectors */
     sector *sectors;		/* o vector with sectors */
 
-    object *obj;		/* i object */
+    uindex oindex;		/* i object */
 
     short flags;		/* various bitflags */
 
@@ -104,14 +104,14 @@ typedef struct _strref_ {
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
-    plane *values;		/* value plane this array is in */
+    dataplane *values;		/* value plane this array is in */
     dataspace *data;		/* dataspace this array is in */
     short state;		/* state of mapping */
     Uint ref;			/* # of refs */
 } arrref;
 
-struct _plane_ {
-    Int level;			/* plane level */
+struct _dataplane_ {
+    Int level;			/* dataplane level */
 
     short flags;		/* modification flags */
     long achange;		/* # array changes */
@@ -123,8 +123,8 @@ struct _plane_ {
     abchunk *achunk;		/* chunk of array backup info */
     struct _coptable_ *coptab;	/* callout patch table */
 
-    plane *prev;		/* previous in per-dataspace linked list */
-    plane *plist;		/* next in per-level linked list */
+    dataplane *prev;		/* previous in per-dataspace linked list */
+    dataplane *plist;		/* next in per-level linked list */
 };
 
 struct _dataspace_ {
@@ -133,12 +133,12 @@ struct _dataspace_ {
     long schange;		/* # string changes */
     dataspace *ilist;		/* import list */
 
-    object *obj;		/* object this dataspace belongs to */
-    control *ctrl;		/* control block */
-    short flags;		/* various bitflags */
-
-    sector nsectors;		/* o # sectors */
     sector *sectors;		/* o vector of sectors */
+    sector nsectors;		/* o # sectors */
+
+    short flags;		/* various bitflags */
+    control *ctrl;		/* control block */
+    uindex oindex;		/* object this dataspace belongs to */
 
     unsigned short nvariables;	/* o # variables */
     value *variables;		/* i/o variables */
@@ -163,8 +163,8 @@ struct _dataspace_ {
     struct _dcallout_ *callouts;/* callouts */
     Uint cooffset;		/* offset of callout table */
 
-    plane basic;		/* basic value plane */
-    plane *values;		/* current value plane */
+    dataplane basic;		/* basic value plane */
+    dataplane *values;		/* current value plane */
 
     struct _parser_ *parser;	/* parse_string data */
 };
@@ -175,14 +175,10 @@ struct _dataspace_ {
 extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
-extern control	       *d_load_control	P((object*));
+extern control	       *d_load_control	P((unsigned int));
 extern dataspace       *d_load_dataspace P((object*));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
-
-extern void		d_add_plane	P((dataspace*, value*, unsigned int));
-extern void		d_remove_plane	P((void));
-extern void		d_discard_plane	P((void));
 
 extern void		d_varmap	P((control*, unsigned int,
 					   unsigned short*));
@@ -200,9 +196,9 @@ extern value	       *d_get_elts	P((array*));
 
 extern void		d_new_plane	P((dataspace*, Int));
 extern void		d_commit_plane	P((Int));
-extern void		d_del_plane	P((Int));
-extern abchunk	      **d_commit_arr	P((array*, plane*, plane*));
-extern void		d_restore_arr	P((array*, plane*));
+extern void		d_discard_plane	P((Int));
+extern abchunk	      **d_commit_arr	P((array*, dataplane*, dataplane*));
+extern void		d_discard_arr	P((array*, dataplane*));
 
 extern void		d_ref_imports	P((array*));
 extern void		d_assign_var	P((dataspace*, value*, value*));
@@ -221,7 +217,7 @@ extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));
 extern uindex		d_swapout	P((unsigned int));
 extern void		d_swapsync	P((void));
-extern void		d_conv_control	P((object*));
+extern void		d_conv_control	P((unsigned int));
 extern void		d_conv_dataspace P((object*, Uint*));
 
 extern void		d_del_control	P((control*));

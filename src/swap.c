@@ -2,10 +2,6 @@
 # include "dgd.h"
 # include "swap.h"
 
-# define BSET(map, bit)		(map[(bit) >> 3] |= (1 << ((bit) & 7)))
-# define BCLR(map, bit)		(map[(bit) >> 3] &= ~(1 << ((bit) & 7)))
-# define BTST(map, bit)		(map[(bit) >> 3] & (1 << ((bit) & 7)))
-
 typedef struct _header_ {	/* swap slot header */
     struct _header_ *prev;	/* previous in swap slot list */
     struct _header_ *next;	/* next in swap slot list */

@@ -1326,3 +1326,5 @@ DGD 1.1
  - String constants for string switches were generated in the wrong order.
  - Completed callout undo (atomic functions).
  - Fixed a reference counting bug in callout undo.
+ - Replaced many direct object references by indirect ones.
+ - Fixed yet another bug in the name lookup code.

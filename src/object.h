@@ -30,26 +30,34 @@ struct _object_ {
 
 # define OBJ_LAYOUT		"xccuuuiiippdd"
 
-# define OBJ(i)			(otable[(i)])
+# define OBJ(i)			(&otable[(i)])
 
 # define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 
-extern void	  o_init	P((unsigned int));
-extern object	 *o_new		P((char*, control*));
-extern object	 *o_clone	P((object*));
-extern void	  o_upgrade	P((object*, control*, frame*));
-extern void	  o_upgraded	P((object*, object*));
-extern void	  o_del		P((object*, frame*));
-extern char	 *o_name	P((char*, object*));
-extern object	 *o_find	P((char*));
-extern control   *o_control	P((object*));
-extern dataspace *o_dataspace	P((object*));
-extern void	  o_clean	P((void));
-extern uindex	  o_count	P((void));
-extern bool	  o_dump	P((int));
-extern void	  o_restore	P((int));
-extern void	  o_conv	P((void));
+extern void	  o_init		P((unsigned int));
+extern object	 *o_object		P((unsigned int));
+extern void	  o_new_plane		P((void));
+extern void	  o_commit_plane	P((void));
+extern void	  o_discard_plane	P((void));
+
+extern object	 *o_new			P((char*, control*));
+extern object	 *o_clone		P((object*));
+extern void	  o_upgrade		P((object*, control*, frame*));
+extern void	  o_upgraded		P((object*, object*));
+extern void	  o_del			P((object*, frame*));
+
+extern char	 *o_name		P((char*, object*));
+extern object	 *o_find		P((char*));
+extern control   *o_control		P((object*));
+extern dataspace *o_dataspace		P((object*));
+
+extern void	  o_clean		P((void));
+extern uindex	  o_count		P((void));
+extern bool	  o_dump		P((int));
+extern void	  o_restore		P((int));
+extern void	  o_conv		P((void));
 
 extern object    *otable;
+extern char	 *ocmap;
 extern Uint	  odcount;

@@ -3,10 +3,10 @@ typedef struct _cbuf_ cbuf;
 extern void	co_init		P((unsigned int));
 extern Uint	co_check	P((unsigned int, Int, unsigned int,
 				   Uint*, unsigned short*, cbuf**));
-extern void	co_new		P((unsigned int, object*, Uint, unsigned int,
-				   cbuf*));
+extern void	co_new		P((unsigned int, unsigned int, Uint,
+				   unsigned int, cbuf*));
 extern Int	co_remaining	P((Uint));
-extern void	co_del		P((object*, unsigned int, Uint));
+extern void	co_del		P((unsigned int, unsigned int, Uint));
 extern void	co_list		P((array*));
 extern void	co_call		P((frame*));
 extern void	co_info    	P((uindex*, uindex*));

@@ -436,9 +436,8 @@ cbuf **qp;
  * NAME:	call_out->new()
  * DESCRIPTION:	add a callout
  */
-void co_new(handle, obj, t, m, q)
-unsigned int handle, m;
-object *obj;
+void co_new(oindex, handle, t, m, q)
+unsigned int oindex, handle, m;
 Uint t;
 cbuf *q;
 {
@@ -446,7 +445,7 @@ cbuf *q;
 
     co = (q != (cbuf *) NULL) ? newcallout(q, t) : enqueue(t, m);
     co->handle = handle;
-    co->oindex = obj->index;
+    co->oindex = oindex;
 }
 
 /*
@@ -514,23 +513,20 @@ register Uint t;
  * NAME:	call_out->del()
  * DESCRIPTION:	remove a callout
  */
-void co_del(obj, handle, t)
-object *obj;
-register unsigned int handle;
+void co_del(oindex, handle, t)
+register unsigned int oindex, handle;
 Uint t;
 {
-    register uindex i;
     register call_out *l;
 
-    i = obj->index;
     if (t >> 24 != 1) {
 	t += timediff;
 	if (t <= timestamp) {
 	    /*
 	     * possible immediate callout
 	     */
-	    if (rmshort(&immediate, i, handle, 0) ||
-		rmshort(&running, i, handle, 0)) {
+	    if (rmshort(&immediate, oindex, handle, 0) ||
+		rmshort(&running, oindex, handle, 0)) {
 		return;
 	    }
 	}
@@ -539,7 +535,7 @@ Uint t;
 	    /*
 	     * try to find the callout in the cyclic buffer
 	     */
-	    if (rmshort(&cycbuf[t & CYCBUF_MASK], i, handle, t)) {
+	    if (rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
 		return;
 	    }
 	}
@@ -550,7 +546,7 @@ Uint t;
      */
     l = cotab;
     for (;;) {
-	if (l->oindex == i && l->handle == handle) {
+	if (l->oindex == oindex && l->handle == handle) {
 	    dequeue(l - cotab);
 	    return;
 	}

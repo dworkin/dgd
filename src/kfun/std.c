@@ -80,12 +80,12 @@ int nargs;
 	    i_del_value(f->sp++);
 	    return 1;
 	}
-	obj = &OBJ(f->sp->oindex);
+	obj = OBJ(f->sp->oindex);
 	f->sp++;
 	break;
 
     case T_OBJECT:
-	obj = &OBJ(val->oindex);
+	obj = OBJ(val->oindex);
 	break;
 
     default:
@@ -249,7 +249,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
@@ -278,7 +278,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     if (f->data->values->level != 0) {
 	error("destruct_object() within atomic function (cannot undo yet)");
     }
@@ -309,7 +309,7 @@ register frame *f;
 {
     char buffer[STRINGSZ + 12], *name;
 
-    name = o_name(buffer, &OBJ(f->sp->oindex));
+    name = o_name(buffer, OBJ(f->sp->oindex));
     PUT_STRVAL(f->sp, str_new((char *) NULL, strlen(name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, name);
@@ -368,7 +368,7 @@ register frame *f;
     char *name;
 
     i_add_ticks(f, 2);
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     f->sp++;
     symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
 		     f->sp->u.string->len);
@@ -377,7 +377,7 @@ register frame *f;
     if (symb != (dsymbol *) NULL) {
 	object *o;
 
-	o = obj->ctrl->inherits[UCHAR(symb->inherit)].obj;
+	o = OBJ(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
 	    obj == f->obj) {
 	    /*
@@ -435,7 +435,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     if (obj->flags & O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_number(obj));
     } else {
@@ -460,7 +460,7 @@ register frame *f;
 {
     register object *obj;
 
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     if (obj->flags & O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_name(obj));
     } else {
@@ -1043,7 +1043,7 @@ int nargs;
 	a = conf_status(f);
 	--f->sp;
     } else {
-	a = conf_object(f->data, &OBJ(f->sp->oindex));
+	a = conf_object(f->data, OBJ(f->sp->oindex));
     }
     PUT_ARRVAL(f->sp, a);
     return 0;

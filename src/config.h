@@ -21,6 +21,9 @@ typedef uindex sector;
 # define OBJHASHSZ	256	/* # characters in object names to hash */
 # define PARSERULTABSZ	256	/* size of parse rule hash table */
 # define PARSERULHASHSZ	10	/* # characters in parse rule symbols to hash */
+# define COPATCHHTABSZ	64	/* callout patch hash table size */
+# define OBJPATCHHTABSZ	256	/* object patch hash table size */
+
 
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */

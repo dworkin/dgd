@@ -67,7 +67,7 @@ register frame *f;
     object *obj;
     char *status;
 
-    obj = &OBJ(f->sp->oindex);
+    obj = OBJ(f->sp->oindex);
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
 	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
@@ -395,7 +395,7 @@ register frame *f;
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
-	    ctrl = o_control(inh->obj);
+	    ctrl = o_control(OBJ(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
@@ -918,7 +918,7 @@ register frame *f;
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
-	    ctrl = o_control(inh->obj);
+	    ctrl = o_control(OBJ(inh->oindex));
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
@@ -954,7 +954,7 @@ register frame *f;
 		/*
 		 * Restore non-static variables.
 		 */
-		ctrl = inh->obj->ctrl;
+		ctrl = OBJ(inh->oindex)->ctrl;
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
 		    if (pending && nvars == checkpoint) {
 			/*

@@ -376,7 +376,7 @@ int priv;
 	if (call_driver_object(f, "inherit_program", 3)) {
 	    inheriting = FALSE;
 	    if (f->sp->type == T_OBJECT) {
-		obj = &OBJ(f->sp->oindex);
+		obj = OBJ(f->sp->oindex);
 		f->sp++;
 	    } else {
 		/* returned value not an object */

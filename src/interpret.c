@@ -1122,7 +1122,7 @@ register int n;
 	--n;
     }
 
-    return f->p_ctrl->obj->chain.name;
+    return OBJ(f->p_ctrl->oindex)->chain.name;
 }
 
 /*
@@ -1755,7 +1755,7 @@ int funci;
 
     /* set the program control block */
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
-    f.p_ctrl = o_control(f.ctrl->inherits[p_ctrli].obj);
+    f.p_ctrl = o_control(OBJ(f.ctrl->inherits[p_ctrli].oindex));
     f.p_index = p_ctrli + 1;
 
     /* get the function */
@@ -1994,7 +1994,7 @@ int nargs;
 	return FALSE;
     }
 
-    ctrl = ctrl->inherits[UCHAR(symb->inherit)].obj->ctrl;
+    ctrl = OBJ(ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
@@ -2179,7 +2179,7 @@ dataspace *data;
     strcpy(str->text + 1, name);
 
     /* program name */
-    name = f->p_ctrl->obj->chain.name;
+    name = OBJ(f->p_ctrl->oindex)->chain.name;
     PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';
@@ -2335,7 +2335,7 @@ Int level;
 	    f->rlim->ticks *= 2;
 	}
 	i_set_sp(ftop, f->sp);
-	d_del_plane(ftop->level);
+	d_discard_plane(ftop->level);
     }
 
     return f;

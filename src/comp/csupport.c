@@ -33,15 +33,18 @@ register int ninherits;
 Uint compiled;
 {
     register Uint cc;
+    register object *obj;
 
     cc = 0;
     while (--ninherits > 0) {
-	if ((inh->obj=o_find(pcinh->name)) == (object *) NULL) {
+	obj = o_find(pcinh->name);
+	if (obj == (object *) NULL) {
 	    fatal("cannot inherit /%s from /%s", pcinh->name,
 		  pcinh[ninherits].name);
 	}
-	if (precompiled[inh->obj->index]->compiled > cc) {
-	    cc = precompiled[inh->obj->index]->compiled;
+	inh->oindex = obj->index;
+	if (precompiled[inh->oindex]->compiled > cc) {
+	    cc = precompiled[inh->oindex]->compiled;
 	}
 
 	inh->funcoffset = pcinh->funcoffset;
@@ -89,7 +92,7 @@ register Uint nfuncs;
  * NAME:	pc->obj()
  * DESCRIPTION:	create a precompiled object
  */
-static object *pc_obj(name, inherits, ninherits)
+static uindex pc_obj(name, inherits, ninherits)
 char *name;
 dinherit *inherits;
 int ninherits;
@@ -108,20 +111,19 @@ int ninherits;
     }
     obj->ctrl = (control *) NULL;
 
-    return obj;
+    return obj->index;
 }
 
 /*
  * NAME:	hash_add()
  * DESCRIPTION:	add object->elt to hash table
  */
-static void hash_add(obj, elt)
-object *obj;
-uindex elt;
+static void hash_add(oindex, elt)
+uindex oindex, elt;
 {
     register uindex i, j;
 
-    i = obj->index % nprecomps;
+    i = oindex % nprecomps;
     if (map[2 * i] == nprecomps) {
 	map[2 * i] = elt;
 	map[2 * i + 1] = nprecomps;
@@ -138,14 +140,14 @@ uindex elt;
  * NAME:	hash_find()
  * DESCRIPTION:	find element in hash table
  */
-static uindex hash_find(obj)
-register object *obj;
+static uindex hash_find(oindex)
+uindex oindex;
 {
     register uindex i;
     uindex j;
 
-    i = obj->index % nprecomps;
-    while (precompiled[j = map[2 * i]]->obj != obj) {
+    i = oindex % nprecomps;
+    while (precompiled[j = map[2 * i]]->oindex != oindex) {
 	i = map[2 * i + 1];
     }
     return j;
@@ -190,8 +192,8 @@ char *auto_obj, *driver_obj;
 	    pc_inherits(inherits + ninherits, l->inherits, l->ninherits,
 			l->compiled);
 	    itab[n] = ninherits;
-	    l->obj = pc_obj(l->inherits[l->ninherits - 1].name,
-			    inherits + ninherits, l->ninherits);
+	    l->oindex = pc_obj(l->inherits[l->ninherits - 1].name,
+			       inherits + ninherits, l->ninherits);
 	    ninherits += l->ninherits;
 
 	    pc_funcdefs(l->program, l->funcdefs, l->nfuncdefs, nfuncs);
@@ -213,13 +215,14 @@ array *pc_list(data)
 dataspace *data;
 {
     array *a;
+    register object *obj;
     register uindex n;
     register value *v;
     register precomp **pc;
 
     for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
-	if ((*pc)->obj != (object *) NULL && (*pc)->obj->count != 0 &&
-	    ((*pc)->obj->flags & O_COMPILED)) {
+	if ((*pc)->oindex != UINDEX_MAX &&
+	    (obj=OBJ((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED)) {
 	    n++;
 	}
     }
@@ -227,11 +230,11 @@ dataspace *data;
     a = arr_new(data, (long) n);
     v = a->elts;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	if ((*pc)->obj != (object *) NULL && (*pc)->obj->count != 0 &&
-	    ((*pc)->obj->flags & O_COMPILED)) {
+	if ((*pc)->oindex != UINDEX_MAX &&
+	    (obj=OBJ((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED)) {
 	    v->type = T_OBJECT;
-	    v->oindex = (*pc)->obj->index;
-	    v->u.objcnt = (*pc)->obj->count;
+	    v->oindex = obj->index;
+	    v->u.objcnt = obj->count;
 	    v++;
 	}
     }
@@ -250,7 +253,7 @@ object *obj;
     register precomp *l;
     uindex i;
 
-    l = precompiled[i = hash_find(obj)];
+    l = precompiled[i = hash_find(obj->index)];
 
     ctrl->ninherits = l->ninherits;
     ctrl->inherits = inherits + itab[i];
@@ -325,6 +328,7 @@ int fd;
 {
     dump_header dh;
     register precomp **pc;
+    register object *obj;
     bool ok;
 
     dh.nprecomps = 0;
@@ -337,8 +341,8 @@ int fd;
 
     /* first compute sizes of data to dump */
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	if ((*pc)->obj != (object *) NULL && ((*pc)->obj->flags & O_COMPILED) &&
-	    (*pc)->obj->u_ref != 0) {
+	if ((*pc)->oindex != UINDEX_MAX &&
+	    ((obj=OBJ((*pc)->oindex))->flags & O_COMPILED) && obj->u_ref != 0) {
 	    dh.nprecomps++;
 	    dh.ninherits += (*pc)->ninherits;
 	    dh.nstrings += (*pc)->nstrings;
@@ -388,8 +392,9 @@ int fd;
 	}
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	    if ((*pc)->obj != (object *) NULL &&
-		((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
+	    if ((*pc)->oindex != UINDEX_MAX &&
+		((obj=OBJ((*pc)->oindex))->flags & O_COMPILED) &&
+		obj->u_ref != 0) {
 		dpc->compiled = (*pc)->compiled;
 		dpc->ninherits = (*pc)->ninherits;
 		dpc->nstrings = (*pc)->nstrings;
@@ -401,7 +406,7 @@ int fd;
 
 		inh2 = inherits + itab[pc - precompiled];
 		for (i = dpc->ninherits; i > 0; --i) {
-		    inh->oindex = inh2->obj->index;
+		    inh->oindex = inh2->oindex;
 		    inh->funcoffset = inh2->funcoffset;
 		    (inh++)->varoffset = (inh2++)->varoffset;
 		}
@@ -510,7 +515,7 @@ register int ninherits;
 	for (pc = precompiled;
 	     strcmp((*pc)->inherits[(*pc)->ninherits - 1].name, name) != 0;
 	     pc++) ;
-	(inh++)->obj = (*pc)->obj;
+	(inh++)->oindex = (*pc)->oindex;
     } while (--ninherits != 0);
 }
 
@@ -524,7 +529,7 @@ register dinherit *inh;
 register int ninherits;
 {
     do {
-	if (dinh->oindex != inh->obj->index ||
+	if (dinh->oindex != inh->oindex ||
 	    dinh->funcoffset != inh->funcoffset ||
 	    dinh->varoffset != inh->varoffset) {
 	    return FALSE;
@@ -544,7 +549,7 @@ register dinherit *dinh, *inh;
 register int ninherits;
 {
     do {
-	if (dinh->obj != inh->obj ||
+	if (dinh->oindex != inh->oindex ||
 	    dinh->funcoffset != inh->funcoffset ||
 	    dinh->varoffset != inh->varoffset) {
 	    return FALSE;
@@ -654,13 +659,13 @@ int fd;
     dump_header dh;
     register precomp *l, **pc;
     register Uint i;
-    register object *obj;
+    register uindex oindex;
     register char *name;
 
     if (nprecomps != 0) {
 	/* re-initialize tables before restore */
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	    (*pc)->obj = (object *) NULL;
+	    (*pc)->oindex = UINDEX_MAX;
 	}
 	for (i = nprecomps; i > 0; ) {
 	    map[2 * --i] = nprecomps;
@@ -713,15 +718,15 @@ int fd;
 
 	for (i = dh.nprecomps; i > 0; --i) {
 	    /* restored object must still be precompiled */
-	    obj = &otable[dinh[dpc->ninherits - 1].oindex];
-	    name = obj->chain.name;
+	    oindex = dinh[dpc->ninherits - 1].oindex;
+	    name = OBJ(oindex)->chain.name;
 	    for (pc = precompiled; ; pc++) {
 		l = *pc;
 		if (l == (precomp *) NULL) {
 		    error("Restored object not precompiled: /%s", name);
 		}
 		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
-		    hash_add(l->obj = obj, pc - precompiled);
+		    hash_add(l->oindex = oindex, pc - precompiled);
 		    fixinherits(inherits + itab[pc - precompiled], l->inherits,
 				l->ninherits);
 		    if (dpc->ninherits != l->ninherits ||
@@ -776,7 +781,9 @@ int fd;
 
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
 	l = *pc;
-	if (l->obj == (object *) NULL) {
+	if (l->oindex == UINDEX_MAX) {
+	    register object *obj;
+
 	    obj = o_find(name = l->inherits[l->ninherits - 1].name);
 	    if (obj != (object *) NULL) {
 		register control *ctrl;
@@ -790,7 +797,7 @@ int fd;
 		/*
 		 * replace by precompiled
 		 */
-		l->obj = obj;
+		l->oindex = obj->index;
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 		if (ctrl->nstrings != 0) {
 		    d_get_strconst(ctrl, ctrl->ninherits - 1, 0);
@@ -820,10 +827,10 @@ int fd;
 		/*
 		 * new precompiled object
 		 */
-		l->obj = pc_obj(name, inherits + itab[i], l->ninherits);
+		l->oindex = pc_obj(name, inherits + itab[i], l->ninherits);
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 	    }
-	    hash_add(l->obj, (uindex) i);
+	    hash_add(l->oindex, (uindex) i);
 	}
     }
 }

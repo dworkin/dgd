@@ -7,7 +7,7 @@ typedef struct {
 typedef void (*pcfunc) P((frame*));
 
 typedef struct {
-    object *obj;		/* precompiled object */
+    uindex oindex;		/* precompiled object */
 
     short ninherits;		/* # of inherits */
     pcinherit *inherits;	/* inherits */

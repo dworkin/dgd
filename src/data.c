@@ -136,7 +136,7 @@ static char sco_layout[] = "is[sui][sui][sui][sui]";
 typedef struct _copatch_ {
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
-    plane *values;		/* plane */
+    dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
     cbuf *queue;		/* callout queue */
@@ -152,18 +152,16 @@ typedef struct _copchunk_ {
     struct _copchunk_ *next;	/* next in linked list */
 } copchunk;
 
-# define COPHTABSZ	64
-
 typedef struct _coptable_ {
-    copatch *cop[COPHTABSZ];	/* hash table of callout patches */
-    copchunk *chunk;		/* callout patch chunk */
-    unsigned short chunksz;	/* size of callout patch chunk */
-    copatch *flist;		/* free list of callout patches */
+    copatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
+    copchunk *chunk;			/* callout patch chunk */
+    unsigned short chunksz;		/* size of callout patch chunk */
+    copatch *flist;			/* free list of callout patches */
 } coptable;
 
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
-static plane *plist;			/* list of planes */
+static dataplane *plist;		/* list of dataplanes */
 static uindex nctrl;			/* # control blocks */
 static uindex ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
@@ -179,7 +177,7 @@ bool flag;
 {
     chead = ctail = (control *) NULL;
     dhead = dtail = (dataspace *) NULL;
-    plist = (plane *) NULL;
+    plist = (dataplane *) NULL;
     nctrl = ndata = 0;
     nilisnot0 = flag;
 }
@@ -211,7 +209,7 @@ control *d_new_control()
 
     ctrl->nsectors = 0;		/* nothing on swap device yet */
     ctrl->sectors = (sector *) NULL;
-    ctrl->obj = (object *) NULL;
+    ctrl->oindex = UINDEX_MAX;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
     ctrl->progsize = 0;
@@ -263,7 +261,7 @@ object *obj;
     data->ilist = (dataspace *) NULL;
     data->flags = 0;
 
-    data->obj = obj;
+    data->oindex = obj->index;
     data->ctrl = (control *) NULL;
 
     /* sectors */
@@ -305,8 +303,8 @@ object *obj;
     data->basic.alocal.state = AR_ALOCAL;
     data->basic.arrays = (arrref *) NULL;
     data->basic.coptab = (coptable *) NULL;
-    data->basic.prev = (plane *) NULL;
-    data->basic.plist = (plane *) NULL;
+    data->basic.prev = (dataplane *) NULL;
+    data->basic.plist = (dataplane *) NULL;
     data->values = &data->basic;
 
     /* parse_string data */
@@ -337,13 +335,15 @@ object *obj;
  * NAME:	data->load_control()
  * DESCRIPTION:	load a control block from the swap device
  */
-control *d_load_control(obj)
-object *obj;
+control *d_load_control(oindex)
+unsigned int oindex;
 {
     register control *ctrl;
+    register object *obj;
 
     ctrl = d_new_control();
-    ctrl->obj = obj;
+    ctrl->oindex = oindex;
+    obj = OBJ(oindex);
 
     if (obj->flags & O_COMPILED) {
 	/* initialize control block of compiled object */
@@ -393,7 +393,7 @@ object *obj;
 		     n * (Uint) sizeof(sinherit), size);
 	    size += n * sizeof(sinherit);
 	    do {
-		inherits->obj = &OBJ(sinherits->oindex);
+		inherits->oindex = sinherits->oindex;
 		inherits->funcoffset = sinherits->funcoffset;
 		inherits->varoffset = sinherits->varoffset & ~PRIV;
 		(inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
@@ -498,7 +498,7 @@ object *obj;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
 
-    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master).update) {
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master)->update) {
 	d_upgrade_clone(data);
     }
 
@@ -766,7 +766,7 @@ unsigned int idx;
 {
     if (UCHAR(inherit) < ctrl->ninherits - 1) {
 	/* get the proper control block */
-	ctrl = o_control(ctrl->inherits[UCHAR(inherit)].obj);
+	ctrl = o_control(OBJ(ctrl->inherits[UCHAR(inherit)].oindex));
     }
 
     if (ctrl->strings == (string **) NULL) {
@@ -952,7 +952,7 @@ register Uint idx;
 	data->values->arrays[idx].arr == (array *) NULL) {
 	register array *arr;
 	register arrref *a;
-	register plane *p;
+	register dataplane *p;
 	register Uint i;
 
 	if (data->sarrays == (sarray *) NULL) {
@@ -982,7 +982,7 @@ register Uint idx;
 	    a->state = AR_UNCHANGED;
 	    a->ref = data->sarrays[idx].ref;
 	    p = p->prev;
-	} while (p != (plane *) NULL);
+	} while (p != (dataplane *) NULL);
 
 	arr->primary = &data->values->arrays[idx];
 	return arr;
@@ -1060,7 +1060,7 @@ dataspace *data;
 	for (nvinit = data->ctrl->nvinit, inh = data->ctrl->inherits;
 	     nvinit > 0; inh++) {
 	    if (inh->varoffset == nvars) {
-		ctrl = o_control(inh->obj);
+		ctrl = o_control(OBJ(inh->oindex));
 		if (ctrl->nifdefs != 0) {
 		    nvinit -= ctrl->nifdefs;
 		    for (nifdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
@@ -1446,38 +1446,38 @@ unsigned int handle;
  * NAME:	copatch->init()
  * DESCRIPTION:	initialize copatch table
  */
-static void cop_init(values)
-plane *values;
+static void cop_init(plane)
+dataplane *plane;
 {
-    memset(values->coptab = ALLOC(coptable, 1), '\0', sizeof(coptable));
+    memset(plane->coptab = ALLOC(coptable, 1), '\0', sizeof(coptable));
 }
 
 /*
  * NAME:	copatch->clean()
  * DESCRIPTION:	free copatch table
  */
-static void cop_clean(values)
-plane *values;
+static void cop_clean(plane)
+dataplane *plane;
 {
     register copchunk *c, *f;
 
-    c = values->coptab->chunk;
+    c = plane->coptab->chunk;
     while (c != (copchunk *) NULL) {
 	f = c;
 	c = c->next;
 	FREE(f);
     }
 
-    FREE(values->coptab);
-    values->coptab = (coptable *) NULL;
+    FREE(plane->coptab);
+    plane->coptab = (coptable *) NULL;
 }
 
 /*
  * NAME:	copatch->new()
  * DESCRIPTION:	create a new callout patch
  */
-static copatch *cop_new(values, c, type, handle, co, time, mtime, q)
-plane *values;
+static copatch *cop_new(plane, c, type, handle, co, time, mtime, q)
+dataplane *plane;
 copatch **c;
 int type;
 unsigned int handle, mtime;
@@ -1491,7 +1491,7 @@ cbuf *q;
     register value *v;
 
     /* allocate */
-    tab = values->coptab;
+    tab = plane->coptab;
     if (tab->flist != (copatch *) NULL) {
 	/* from free list */
 	cop = tab->flist;
@@ -1524,7 +1524,7 @@ cbuf *q;
     }
     cop->time = time;
     cop->mtime = mtime;
-    cop->values = values;
+    cop->plane = plane;
     cop->queue = q;
 
     /* add to hash table */
@@ -1536,8 +1536,8 @@ cbuf *q;
  * NAME:	copatch->del()
  * DESCRIPTION:	delete a callout patch
  */
-static void cop_del(values, c, del)
-plane *values;
+static void cop_del(plane, c, del)
+dataplane *plane;
 copatch **c;
 bool del;
 {
@@ -1561,7 +1561,7 @@ bool del;
     }
 
     /* add to free list */
-    tab = values->coptab;
+    tab = plane->coptab;
     cop->next = tab->flist;
     tab->flist = cop;
 }
@@ -1625,10 +1625,10 @@ register copatch *cop;
 }
 
 /*
- * NAME:	copatch->restore()
- * DESCRIPTION:	undo replacement
+ * NAME:	copatch->discard()
+ * DESCRIPTION:	discard replacement
  */
-static void cop_restore(cop)
+static void cop_discard(cop)
 copatch *cop;
 {
     /* force unref of proper component later */
@@ -1640,24 +1640,24 @@ copatch *cop;
  * NAME:	commit_callouts()
  * DESCRIPTION:	commit callout patches to previous plane
  */
-static void commit_callouts(values)
-register plane *values;
+static void commit_callouts(plane)
+register dataplane *plane;
 {
-    register plane *prev;
+    register dataplane *prev;
     register copatch **c, **n, *cop;
     copatch **t, **next;
     int i;
 
-    prev = values->prev;
-    for (i = COPHTABSZ, t = values->coptab->cop; --i >= 0; t++) {
-	if (*t != (copatch *) NULL && (*t)->values == values) {
+    prev = plane->prev;
+    for (i = COPATCHHTABSZ, t = plane->coptab->cop; --i >= 0; t++) {
+	if (*t != (copatch *) NULL && (*t)->plane == plane) {
 	    /*
 	     * find previous plane
 	     */
 	    next = t;
 	    do {
 		next = &(*next)->next;
-	    } while (*next != (copatch *) NULL && (*next)->values == values);
+	    } while (*next != (copatch *) NULL && (*next)->plane == plane);
 
 	    c = t;
 	    do {
@@ -1668,21 +1668,21 @@ register plane *values;
 		     */
 		    switch (cop->type) {
 		    case COP_ADD:
-			co_new(cop->handle, values->alocal.data->obj,
+			co_new(plane->alocal.data->oindex, cop->handle,
 			       cop->time, cop->mtime, cop->queue);
 			--ncallout;
 			break;
 
 		    case COP_REMOVE:
-			co_del(values->alocal.data->obj, cop->handle,
+			co_del(plane->alocal.data->oindex, cop->handle,
 			       cop->rco.time);
 			ncallout++;
 			break;
 
 		    case COP_REPLACE:
-			co_del(values->alocal.data->obj, cop->handle,
+			co_del(plane->alocal.data->oindex, cop->handle,
 			       cop->rco.time);
-			co_new(cop->handle, values->alocal.data->obj,
+			co_new(plane->alocal.data->oindex, cop->handle,
 			       cop->time, cop->mtime, cop->queue);
 			cop_commit(cop);
 			break;
@@ -1691,13 +1691,13 @@ register plane *values;
 		    if (next == &cop->next) {
 			next = c;
 		    }
-		    cop_del(values, c, TRUE);
+		    cop_del(plane, c, TRUE);
 		} else {
 		    /*
 		     * commit to previous plane
 		     */
 		    for (n = next;
-			 *n != (copatch *) NULL && (*n)->values == prev;
+			 *n != (copatch *) NULL && (*n)->plane == prev;
 			 n = &(*n)->next) {
 			if (cop->handle == (*n)->handle) {
 			    switch (cop->type) {
@@ -1708,7 +1708,7 @@ register plane *values;
 				if (next == &cop->next) {
 				    next = c;
 				}
-				cop_del(values, c, TRUE);
+				cop_del(plane, c, TRUE);
 				cop = (copatch *) NULL;
 				break;
 
@@ -1718,13 +1718,13 @@ register plane *values;
 				    cop_release(*n);
 				} else {
 				    /* del old */
-				    cop_del(values, n, TRUE);
+				    cop_del(plane, n, TRUE);
 				}
 				/* del new */
 				if (next == &cop->next) {
 				    next = c;
 				}
-				cop_del(values, c, TRUE);
+				cop_del(plane, c, TRUE);
 				cop = (copatch *) NULL;
 				break;
 
@@ -1737,11 +1737,11 @@ register plane *values;
 				    if (next == &cop->next) {
 					next = c;
 				    }
-				    cop_del(values, c, TRUE);
+				    cop_del(plane, c, TRUE);
 				    cop = (copatch *) NULL;
 				} else {
 				    /* make replace into add, remove old */
-				    cop_del(values, n, TRUE);
+				    cop_del(plane, n, TRUE);
 				    cop_commit(cop);
 				}
 				break;
@@ -1751,7 +1751,7 @@ register plane *values;
 		    }
 
 		    if (cop != (copatch *) NULL) {
-			cop->values = prev;
+			cop->plane = prev;
 			c = &cop->next;
 		    }
 		}
@@ -1761,32 +1761,32 @@ register plane *values;
 }
 
 /*
- * NAME:	restore_callouts()
+ * NAME:	discard_callouts()
  * DESCRIPTION:	discard callout patches on current plane, restoring old callouts
  */
-static void restore_callouts(values)
-register plane *values;
+static void discard_callouts(plane)
+register dataplane *plane;
 {
     register copatch *cop, **c, **t;
     register dataspace *data;
     register int i;
 
-    data = values->alocal.data;
-    for (i = COPHTABSZ, t = values->coptab->cop; --i >= 0; t++) {
+    data = plane->alocal.data;
+    for (i = COPATCHHTABSZ, t = plane->coptab->cop; --i >= 0; t++) {
 	c = t;
-	while (*c != (copatch *) NULL && (*c)->values == values) {
+	while (*c != (copatch *) NULL && (*c)->plane == plane) {
 	    cop = *c;
 	    switch (cop->type) {
 	    case COP_ADD:
 		d_free_call_out(data, cop->handle);
-		cop_del(values, c, TRUE);
+		cop_del(plane, c, TRUE);
 		--ncallout;
 		break;
 
 	    case COP_REMOVE:
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
 				 cop->rco.nargs, cop->rco.val);
-		cop_del(values, c, FALSE);
+		cop_del(plane, c, FALSE);
 		ncallout++;
 		break;
 
@@ -1794,8 +1794,8 @@ register plane *values;
 		d_free_call_out(data, cop->handle);
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
 				 cop->rco.nargs, cop->rco.val);
-		cop_restore(cop);
-		cop_del(values, c, TRUE);
+		cop_discard(cop);
+		cop_del(plane, c, TRUE);
 		break;
 	    }
 	}
@@ -1805,15 +1805,15 @@ register plane *values;
 
 /*
  * NAME:	data->new_plane()
- * DESCRIPTION:	create a new data plane
+ * DESCRIPTION:	create a new dataplane
  */
 void d_new_plane(data, level)
 register dataspace *data;
 Int level;
 {
-    register plane *p;
+    register dataplane *p;
 
-    p = ALLOC(plane, 1);
+    p = ALLOC(dataplane, 1);
 
     p->level = level;
     p->flags = data->values->flags;
@@ -1858,10 +1858,10 @@ Int level;
  * NAME:	commit_values()
  * DESCRIPTION:	commit non-swapped arrays among the values
  */
-static void commit_values(v, n, values)
+static void commit_values(v, n, plane)
 register value *v;
 register unsigned int n;
-plane *values;
+dataplane *plane;
 {
     register array *arr;
 
@@ -1869,12 +1869,12 @@ plane *values;
 	if (T_INDEXED(v->type)) {
 	    arr = v->u.array;
 	    if (arr->primary->state == AR_ALOCAL &&
-		arr->primary->values != values) {
-		arr->primary = &values->alocal;
+		arr->primary->values != plane) {
+		arr->primary = &plane->alocal;
 		if (arr->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(arr);
 		}
-		commit_values(arr->elts, arr->size, values);
+		commit_values(arr->elts, arr->size, plane);
 	    }
 
 	}
@@ -1890,13 +1890,14 @@ plane *values;
 void d_commit_plane(level)
 Int level;
 {
-    register plane *p, **r;
+    register dataplane *p, **r;
     register dataspace *data;
     register value *v;
     register arrref *a;
     register Uint i;
 
-    for (r = &plist, p = *r; p != (plane *) NULL && p->level == level; p = *r) {
+    for (r = &plist, p = *r; p != (dataplane *) NULL && p->level == level;
+	 p = *r) {
 	if (p->prev->level == level - 1) {
 	    /*
 	     * commit changes to previous plane
@@ -1951,19 +1952,20 @@ Int level;
 }
 
 /*
- * NAME:	data->del_plane()
+ * NAME:	data->discard_plane()
  * DESCRIPTION:	discard the current data plane without committing it
  */
-void d_del_plane(level)
+void d_discard_plane(level)
 Int level;
 {
-    register plane *p;
+    register dataplane *p;
     register dataspace *data;
     register value *v;
     register arrref *a;
     register Uint i;
 
-    for (p = plist; p != (plane *) NULL && p->level == level; p = p->plist) {
+    for (p = plist; p != (dataplane *) NULL && p->level == level; p = p->plist)
+    {
 	/*
 	 * discard changes except for callout mods
 	 */
@@ -1982,7 +1984,7 @@ Int level;
 
 	if (p->coptab != (coptable *) NULL) {
 	    /* undo callout changes */
-	    restore_callouts(p);
+	    discard_callouts(p);
 	    if (p->level == 1) {
 		cop_clean(p);
 	    } else {
@@ -1990,7 +1992,7 @@ Int level;
 	    }
 	}
 
-	arr_restore(&p->achunk);
+	arr_discard(&p->achunk);
 	if (p->arrays != (arrref *) NULL) {
 	    /* delete new array refs */
 	    for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
@@ -2019,7 +2021,7 @@ Int level;
  */
 abchunk **d_commit_arr(arr, prev, old)
 register array *arr;
-plane *prev, *old;
+dataplane *prev, *old;
 {
     if (arr->primary->values != prev) {
 	if (arr->primary->state == AR_ALOCAL) {
@@ -2038,15 +2040,15 @@ plane *prev, *old;
 }
 
 /*
- * NAME:	data->restore_arr()
+ * NAME:	data->discard_arr()
  * DESCRIPTION:	restore array to previous state, if necessary
  */
-void d_restore_arr(arr, values)
+void d_discard_arr(arr, plane)
 register array *arr;
-plane *values;
+dataplane *plane;
 {
     if (arr->primary->state == AR_ALOCAL) {
-	arr->primary = &values->alocal;
+	arr->primary = &plane->alocal;
     }
 }
 
@@ -2268,9 +2270,9 @@ int nargs;
 	/*
 	 * add normal callout
 	 */
-	co_new(handle, data->obj, t, m, q);
+	co_new(data->oindex, handle, t, m, q);
     } else {
-	register plane *values;
+	register dataplane *plane;
 	register copatch **c, *cop;
 	dcallout *co;
 	uindex i;
@@ -2278,18 +2280,18 @@ int nargs;
 	/*
 	 * add callout patch
 	 */
-	values = data->values;
-	if (values->coptab == (coptable *) NULL) {
-	    cop_init(values);
+	plane = data->values;
+	if (plane->coptab == (coptable *) NULL) {
+	    cop_init(plane);
 	}
 	co = &data->callouts[handle - 1];
-	i = handle % COPHTABSZ;
-	c = &values->coptab->cop[i];
+	i = handle % COPATCHHTABSZ;
+	c = &plane->coptab->cop[i];
 	for (;;) {
 	    cop = *c;
-	    if (cop == (copatch *) NULL || cop->values != values) {
+	    if (cop == (copatch *) NULL || cop->plane != plane) {
 		/* add new */
-		cop_new(values, &values->coptab->cop[i], COP_ADD,
+		cop_new(plane, &plane->coptab->cop[i], COP_ADD,
 			handle, co, t, m, q);
 		break;
 	    }
@@ -2339,9 +2341,9 @@ unsigned int handle;
 	/*
 	 * remove normal callout
 	 */
-	co_del(data->obj, handle, co->time);
+	co_del(data->oindex, handle, co->time);
     } else {
-	register plane *values;
+	register dataplane *plane;
 	register copatch **c, *cop;
 	register value *v;
 	uindex i;
@@ -2351,23 +2353,23 @@ unsigned int handle;
 	 */
 	--ncallout;
 
-	values = data->values;
-	if (values->coptab == (coptable *) NULL) {
-	    cop_init(values);
+	plane = data->values;
+	if (plane->coptab == (coptable *) NULL) {
+	    cop_init(plane);
 	}
-	i = handle % COPHTABSZ;
-	c = &values->coptab->cop[i];
+	i = handle % COPATCHHTABSZ;
+	c = &plane->coptab->cop[i];
 	for (;;) {
 	    cop = *c;
-	    if (cop == (copatch *) NULL || cop->values != values) {
+	    if (cop == (copatch *) NULL || cop->plane != plane) {
 		/* delete new */
-		cop_new(values, &values->coptab->cop[i], COP_REMOVE,
+		cop_new(plane, &plane->coptab->cop[i], COP_REMOVE,
 			handle, co, (Uint) 0, 0, (cbuf *) NULL);
 		break;
 	    }
 	    if (cop->handle == handle) {
 		/* delete existing */
-		cop_del(values, c, TRUE);
+		cop_del(plane, c, TRUE);
 		break;
 	    }
 	    c = &cop->next;
@@ -2673,7 +2675,7 @@ register control *ctrl;
     }
     ctrl->nsectors = header.nsectors = d_swapalloc(size, ctrl->nsectors,
 						   &ctrl->sectors);
-    ctrl->obj->cfirst = ctrl->sectors[0];
+    OBJ(ctrl->oindex)->cfirst = ctrl->sectors[0];
 
     /*
      * Copy everything to the swap device.
@@ -2700,7 +2702,7 @@ register control *ctrl;
 	inherits = ctrl->inherits;
 	sinherits = ALLOCA(sinherit, i = UCHAR(header.ninherits));
 	do {
-	    sinherits->oindex = inherits->obj->index;
+	    sinherits->oindex = inherits->oindex;
 	    sinherits->funcoffset = inherits->funcoffset;
 	    sinherits->varoffset = inherits->varoffset;
 	    if (inherits->priv) {
@@ -3286,7 +3288,7 @@ register dataspace *data;
 	       header.ncallouts * (Uint) sizeof(scallout);
 	header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
 	data->nsectors = header.nsectors;
-	data->obj->dfirst = data->sectors[0];
+	OBJ(data->oindex)->dfirst = data->sectors[0];
 
 	/* save header */
 	size = sizeof(sdataspace);
@@ -3585,7 +3587,7 @@ object *old;
 	data->values->achange++;	/* force rebuild on swapout */
     }
 
-    o_upgraded(old, data->obj);
+    o_upgraded(old, OBJ(data->oindex));
 }
 
 /*
@@ -3602,13 +3604,12 @@ register dataspace *data;
     /*
      * the program for the clone was upgraded since last swapin
      */
-    obj = data->obj;
-    update = obj->update;
-    obj = &OBJ(obj->u_master);
-    old = &OBJ(obj->prev);
+    update = OBJ(data->oindex)->update;
+    obj = OBJ(obj->u_master);
+    old = OBJ(obj->prev);
     if (O_UPGRADING(obj)) {
 	/* in the middle of an upgrade */
-	old = &OBJ(old->prev);
+	old = OBJ(old->prev);
     }
     nvar = data->ctrl->nvariables + 1;
     vmap = o_control(old)->vmap;
@@ -3619,7 +3620,7 @@ register dataspace *data;
 	m1 = vmap;
 	vmap = ALLOCA(unsigned short, n = nvar);
 	do {
-	    old = &OBJ(old->prev);
+	    old = OBJ(old->prev);
 	    m2 = o_control(old)->vmap;
 	    while (n > 0) {
 		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
@@ -3648,6 +3649,7 @@ register object *old, *new;
     register dataspace *data;
     register unsigned int nvar;
     register unsigned short *vmap;
+    register object *obj;
 
     nvar = old->ctrl->vmapsize;
     vmap = old->ctrl->vmap;
@@ -3664,8 +3666,8 @@ register object *old, *new;
     }
 
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if (!(data->obj->flags & O_MASTER) && data->obj->u_master == new->index)
-	{
+	obj = OBJ(data->oindex);
+	if (!(obj->flags & O_MASTER) && obj->u_master == new->index) {
 	    /* upgrade clone */
 	    if (nvar != 0) {
 		d_upgrade(data, nvar, vmap, old);
@@ -3686,8 +3688,8 @@ register control *ctrl;
 {
     register string **strs;
 
-    if (ctrl->obj != (object *) NULL) {
-	ctrl->obj->ctrl = (control *) NULL;
+    if (ctrl->oindex != UINDEX_MAX) {
+	OBJ(ctrl->oindex)->ctrl = (control *) NULL;
     }
 
     /* delete strings */
@@ -3810,7 +3812,7 @@ register dataspace *data;
 	FREE(data->svariables);
     }
 
-    data->obj->data = (dataspace *) NULL;
+    OBJ(data->oindex)->data = (dataspace *) NULL;
     if (data->ctrl != (control *) NULL) {
 	data->ctrl->ndata--;
     }
@@ -3857,7 +3859,7 @@ unsigned int frag;
 	register dataspace *prev;
 
 	prev = data->prev;
-	if (!(data->obj->flags & O_PENDIO) || frag == 1) {
+	if (!(OBJ(data->oindex)->flags & O_PENDIO) || frag == 1) {
 	    if (d_save_dataspace(data)) {
 		count++;
 	    }
@@ -3935,17 +3937,19 @@ Uint n, idx;
  * NAME:	data->conv_control()
  * DESCRIPTION:	convert control block
  */
-void d_conv_control(obj)
-register object *obj;
+void d_conv_control(oindex)
+unsigned int oindex;
 {
     scontrol header;
     register control *ctrl;
     register Uint size;
     register sector *s;
     register unsigned int n;
+    object *obj;
 
     ctrl = d_new_control();
-    ctrl->obj = obj;
+    ctrl->oindex = oindex;
+    obj = OBJ(oindex);
 
     /*
      * restore from dump file
@@ -3990,7 +3994,7 @@ register object *obj;
 	sinherits = ALLOCA(sinherit, n);
 	size += d_conv((char *) sinherits, s, si_layout, (Uint) n, size);
 	do {
-	    inherits->obj = &OBJ(sinherits->oindex);
+	    inherits->oindex = sinherits->oindex;
 	    inherits->funcoffset = sinherits->funcoffset;
 	    inherits->varoffset = sinherits->varoffset & ~PRIV;
 	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
@@ -4071,7 +4075,7 @@ register Uint n, *ctab;
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->u.objcnt == OBJ(v->oindex).count) {
+	    if (v->u.objcnt == OBJ(v->oindex)->count) {
 		/* fix object count */
 		v->u.objcnt = ctab[v->oindex];
 	    } else {
@@ -4190,7 +4194,7 @@ Uint *counttab;
 
     AFREE(s);
 
-    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master).update) {
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master)->update) {
 	/* handle object upgrading right away */
 	data->ctrl = o_control(obj);
 	data->ctrl->ndata++;
@@ -4214,8 +4218,8 @@ register control *ctrl;
 	sw_wipev(ctrl->sectors, ctrl->nsectors);
 	sw_delv(ctrl->sectors, ctrl->nsectors);
     }
-    if (ctrl->obj != (object *) NULL) {
-	ctrl->obj->cfirst = SW_UNUSED;
+    if (ctrl->oindex != UINDEX_MAX) {
+	OBJ(ctrl->oindex)->cfirst = SW_UNUSED;
     }
     d_free_control(ctrl);
 }
@@ -4247,6 +4251,6 @@ register dataspace *data;
 	sw_wipev(data->sectors, data->nsectors);
 	sw_delv(data->sectors, data->nsectors);
     }
-    data->obj->dfirst = SW_UNUSED;
+    OBJ(data->oindex)->dfirst = SW_UNUSED;
     d_free_dataspace(data);
 }

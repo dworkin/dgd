@@ -11,8 +11,8 @@
 # include "node.h"
 # include "compile.h"
 
-static object *driver;		/* driver object */
-static char *driver_name;	/* driver object name */
+static uindex dindex;		/* driver object index */
+static Uint dcount;		/* driver object count */
 static uindex fragment;		/* swap fragment parameter */
 static bool swap;		/* are objects to be swapped out? */
 static bool dump;		/* is the program to dump? */
@@ -28,16 +28,16 @@ frame *f;
 char *func;
 int narg;
 {
-    static Uint dcount;
+    object *driver;
+    char *driver_name;
 
-    if (driver == (object *) NULL || dcount != driver->count) {
-	if (driver_name == (char *) NULL) {
-	    driver_name = conf_driver();
-	}
+    if (dindex == UINDEX_MAX || dcount != (driver=OBJ(dindex))->count) {
+	driver_name = conf_driver();
 	driver = o_find(driver_name);
 	if (driver == (object *) NULL) {
 	    driver = c_compile(f, driver_name, (object *) NULL);
 	}
+	dindex = driver->index;
 	dcount = driver->count;
     }
     if (!i_call(f, driver, func, strlen(func), TRUE, narg)) {
@@ -158,8 +158,7 @@ char **argv;
     }
 
     /* initialize */
-    driver = (object *) NULL;
-    driver_name = (char *) NULL;
+    dindex = UINDEX_MAX;
     swap = dump = intr = stop = FALSE;
     if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
 	return 2;	/* initialization failed */
