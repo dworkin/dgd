@@ -11,15 +11,16 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("compile_object", kf_compile_object, pt_compile_object)
+FUNCDEF("(compile_object)", kf_old_compile_object, pt_old_compile_object)
 # else
-char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
+char pt_old_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1,
+				 T_STRING };
 
 /*
- * NAME:	kfun->compile_object()
+ * NAME:	kfun->old_compile_object()
  * DESCRIPTION:	compile an object
  */
-int kf_compile_object(f)
+int kf_old_compile_object(f)
 register frame *f;
 {
     char file[STRINGSZ];
@@ -41,7 +42,55 @@ register frame *f;
 	    error("Cannot recompile inherited object");
 	}
     }
-    obj = c_compile(f, file, obj);
+    obj = c_compile(f, file, obj, (string *) NULL);
+    str_del(f->sp->u.string);
+    PUT_OBJVAL(f->sp, obj);
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("compile_object", kf_compile_object, pt_compile_object)
+# else
+char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_KFUN_VARARGS,
+			     T_OBJECT, 2, T_STRING | T_VARARGS, T_STRING };
+
+/*
+ * NAME:	kfun->compile_object()
+ * DESCRIPTION:	compile an object
+ */
+int kf_compile_object(f, nargs)
+register frame *f;
+int nargs;
+{
+    char file[STRINGSZ];
+    register string *str;
+    register object *obj;
+
+    str = f->sp[nargs - 1].u.string;
+    if (path_string(file, str->text, str->len) == (char *) NULL) {
+	return 1;
+    }
+    obj = o_find(file, OACC_MODIFY);
+    if (obj != (object *) NULL) {
+	if (!(obj->flags & O_MASTER)) {
+	    error("Cannot recompile cloned object");
+	}
+	if (O_UPGRADING(obj)) {
+	    error("Object is already being upgraded");
+	}
+	if (O_INHERITED(obj)) {
+	    error("Cannot recompile inherited object");
+	}
+    }
+    str = (nargs == 2) ? f->sp->u.string : (string *) NULL;
+    obj = c_compile(f, file, obj, str);
+    if (str != (string *) NULL) {
+	str_del(str);
+	f->sp++;
+    }
     str_del(f->sp->u.string);
     PUT_OBJVAL(f->sp, obj);
 

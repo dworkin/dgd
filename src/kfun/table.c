@@ -273,6 +273,7 @@ int fd;
     register int i, n, buflen;
     dump_header dh;
     char *buffer;
+    bool converted;
 
     /* read header */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
@@ -283,12 +284,19 @@ int fd;
 	fatal("cannot restore kfun names");
     }
     buflen = 0;
+    converted = FALSE;
     for (i = 0; i < dh.nkfun; i++) {
 	n = kf_func(buffer + buflen);
 	if (n < 0) {
 	    error("Restored unknown kfun: %s", buffer + buflen);
 	}
 	n += KF_BUILTINS - 128;
+	if (kftab[n].func == kf_old_compile_object) {
+	    converted = TRUE;
+	} else if (kftab[n].func == kf_compile_object && !converted) {
+	    /* HACK: convert compile_object() */
+	    n = KF_BUILTINS;
+	}
 	kfind[i + 128] = n;
 	kfx[n] = i + 128;
 	buflen += strlen(buffer + buflen) + 1;

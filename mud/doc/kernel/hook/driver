@@ -28,9 +28,21 @@ void set_object_manager(object objectd)	[System only]
 	The given object has just been compiled.  Called just before the object
 	is initialized with create(0).
 
+    * void compile_string(string owner, object obj, string source,
+			  string inherited...)
+
+	The given object has just been compiled from the source string.  Called
+	just before the object is initialized with create(0).
+
     * void compile_lib(string owner, string path, string inherited...)
 
 	The given inheritable object has just been compiled.
+
+    * void compile_lib_string(string owner, string path, string source,
+			      string inherited...)
+
+	The given inheritable object has just been compiled from the source
+	string.
 
     * void compile_failed(string owner, string path)
 

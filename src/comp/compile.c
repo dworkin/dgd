@@ -356,7 +356,7 @@ int priv;
 	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
 	    inheriting = TRUE;
-	    obj = c_compile(f, file, (object *) NULL);
+	    obj = c_compile(f, file, (object *) NULL, (string *) NULL);
 	    inheriting = FALSE;
 	    return FALSE;
 	}
@@ -394,7 +394,7 @@ int priv;
 	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
-		obj = c_compile(f, file, (object *) NULL);
+		obj = c_compile(f, file, (object *) NULL, (string *) NULL);
 		inheriting = FALSE;
 		return FALSE;
 	    }
@@ -417,10 +417,11 @@ int priv;
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(f, file, obj)
+object *c_compile(f, file, obj, str)
 frame *f;
 register char *file;
 object *obj;
+string *str;
 {
     bool iflag;
     context c;
@@ -453,7 +454,9 @@ object *obj;
 	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
-    strcat(file_c, ".c");
+    if (str == (string *) NULL) {
+	strcat(file_c, ".c");
+    }
     c.frame = f;
     c.prev = current;
     current = &c;
@@ -482,7 +485,7 @@ object *obj;
 		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(f, driver_object, (object *) NULL);
+		c_compile(f, driver_object, (object *) NULL, (string *) NULL);
 		current = &c;
 	    }
 
@@ -492,7 +495,8 @@ object *obj;
 		 * compile auto object
 		 */
 		inheriting = TRUE;
-		aobj = c_compile(f, auto_object, (object *) NULL);
+		aobj = c_compile(f, auto_object, (object *) NULL,
+				 (string *) NULL);
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
@@ -502,10 +506,12 @@ object *obj;
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 
-	if (!pp_init(file_c, paths, 1)) {
+	if (str != (string *) NULL) {
+	    pp_init(file_c, paths, str->text, str->len, 1);
+	} else if (!pp_init(file_c, paths, (char *) NULL, 0, 1)) {
 	    error("Could not compile \"/%s\"", file_c);
 	}
-	if (!tk_include(include)) {
+	if (!tk_include(include, (char *) NULL, 0)) {
 	    error("Could not include \"/%s\"", include);
 	}
 

@@ -1480,3 +1480,5 @@ DGD 1.3
    lightweight objects.
  - Upgrading a lightweight object went wrong if the number of variables was
    increased or reduced.
+ - Added an optional second argument to compile_object(), a string to compile
+   the object from.

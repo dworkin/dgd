@@ -1,6 +1,6 @@
 extern void		 tk_init	P((void));
 extern void		 tk_clear	P((void));
-extern bool		 tk_include	P((char*));
+extern bool		 tk_include	P((char*, char*, unsigned int));
 extern void		 tk_endinclude	P((void));
 extern unsigned short	 tk_line	P((void));
 extern char		*tk_filename	P((void));

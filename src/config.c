@@ -1020,7 +1020,8 @@ sector *fragment;
     /*
      * process config file
      */
-    if (!pp_init(path_native(buf, configfile), (char **) NULL, 0)) {
+    if (!pp_init(path_native(buf, configfile), (char **) NULL, (char *) NULL,
+		 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
 	m_finish();
 	return FALSE;

@@ -225,12 +225,18 @@ void compiling(string path)
  * NAME:	compile()
  * DESCRIPTION:	object compiled
  */
-void compile(object obj, string owner)
+void compile(object obj, string owner, string source)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
-	    objectd->compile(owner, obj, inherited...);
+	    if (source) {
+		objectd->compile_string(owner, obj, source, inherited...);
+	    } else {
+		objectd->compile(owner, obj, inherited...);
+	    }
 	    inherited = nil;
+	} else if (source) {
+	    objectd->compile_string(owner, obj, source);
 	} else {
 	    objectd->compile(owner, obj);
 	}
@@ -241,12 +247,18 @@ void compile(object obj, string owner)
  * NAME:	compile_lib()
  * DESCRIPTION:	inherited object compiled
  */
-void compile_lib(string path, string owner)
+void compile_lib(string path, string owner, string source)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
-	    objectd->compile_lib(owner, path, inherited...);
+	    if (source) {
+		objectd->compile_lib_string(owner, path, source, inherited...);
+	    } else {
+		objectd->compile_lib(owner, path, inherited...);
+	    }
 	    inherited = nil;
+	} else if (source) {
+	    objectd->compile_lib_string(owner, path, source);
 	} else {
 	    objectd->compile_lib(owner, path);
 	}

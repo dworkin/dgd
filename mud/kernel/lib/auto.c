@@ -284,7 +284,7 @@ static int destruct_object(mixed obj)
  * NAME:	compile_object()
  * DESCRIPTION:	compile a master object
  */
-static object compile_object(string path)
+static object compile_object(string path, varargs string source)
 {
     string oname, uid;
     object driver, rsrcd, obj;
@@ -337,14 +337,18 @@ static object compile_object(string path)
 		}
 	    }
 	    driver->compiling(path);
-	    obj = ::compile_object(path);
+	    if (source) {
+		obj = ::compile_object(path, source);
+	    } else {
+		obj = ::compile_object(path);
+	    }
 	    if (new) {
 		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
 	    if (lib) {
-		driver->compile_lib(path, uid);
+		driver->compile_lib(path, uid, source);
 	    } else {
-		driver->compile(obj, uid);
+		driver->compile(obj, uid, source);
 	    }
 	} : {
 	    driver->compile_failed(path, uid);

@@ -73,9 +73,10 @@ void tk_init()
  * DESCRIPTION:	Push a buffer on the token input stream. If eof is false, then
  *		the buffer will automatically be dropped when all is read.
  */
-static void push(mc, buffer, eof)
+static void push(mc, buffer, buflen, eof)
 macro *mc;
 char *buffer;
+unsigned int buflen;
 bool eof;
 {
     register tbuf *tb;
@@ -97,10 +98,10 @@ bool eof;
 	tb = &tlist->t[tchunksz++];
     }
     tb->p = tb->buffer = buffer;
-    tb->inbuf = strlen(buffer);
+    tb->inbuf = buflen;
     tb->up = tb->ubuf;
     tb->eof = eof;
-    tb->fd = -1;
+    tb->fd = -2;
     tb->u.mc = mc;
     tb->prev = tbuffer;
     tbuffer = tb;
@@ -116,7 +117,7 @@ static void pop()
     register tbuf *tb;
 
     tb = tbuffer;
-    if (tb->fd < 0) {
+    if (tb->fd < -1) {
 	if (tb->u.mc != (macro *) NULL) {
 	    if (tb->u.mc->narg > 0) {
 		/* in the buffer a function-like macro has been expanded */
@@ -124,10 +125,12 @@ static void pop()
 	    }
 	}
     } else {
-	P_close(tb->fd);
+	if (tb->fd >= 0) {
+	    P_close(tb->fd);
+	    FREE(tb->buffer);
+	}
 	ibuffer = tbuffer->prev;
 	FREE(tb->u.filename);
-	FREE(tb->buffer);
     }
     tbuffer = tb->prev;
 
@@ -164,17 +167,21 @@ void tk_clear()
  * NAME:	token->include()
  * DESCRIPTION:	push a file on the input stream
  */
-bool tk_include(file)
-char *file;
+bool tk_include(file, buf, len)
+char *file, *buf;
+register unsigned int len;
 {
     int fd;
 
     if (file != (char *) NULL) {
-	fd = P_open(file, O_RDONLY | O_BINARY, 0);
-	if (fd >= 0) {
+	if (buf == (char *) NULL) {
 	    struct stat sbuf;
-	    char *buffer;
-	    register unsigned int len;
+
+	    /* read from file */
+	    fd = P_open(file, O_RDONLY | O_BINARY, 0);
+	    if (fd < 0) {
+		return FALSE;
+	    }
 
 	    P_fstat(fd, &sbuf);
 	    if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
@@ -182,23 +189,26 @@ char *file;
 		P_close(fd);
 		return FALSE;
 	    }
-					     
-	    buffer = ALLOC(char, BUF_SIZE);
-	    buffer[0] = '\0';
-	    push((macro *) NULL, buffer, TRUE);
-	    ibuffer = tbuffer;
-	    ibuffer->fd = fd;
-	    len = strlen(file);
-	    if (len >= STRINGSZ) {
-		len = STRINGSZ - 1;
-	    }
-	    ibuffer->u.filename = strncpy(ALLOC(char, len + 1), file, len);
-	    ibuffer->u.filename[len] = '\0';
-	    ibuffer->line = 1;
-	    seen_nl = TRUE;
-
-	    return TRUE;
+					 
+	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
+	} else {
+	    /* read from string */
+	    fd = -1;
+	    push((macro *) NULL, buf, len, TRUE);
 	}
+
+	ibuffer = tbuffer;
+	ibuffer->fd = fd;
+	len = strlen(file);
+	if (len >= STRINGSZ) {
+	    len = STRINGSZ - 1;
+	}
+	ibuffer->u.filename = strncpy(ALLOC(char, len + 1), file, len);
+	ibuffer->u.filename[len] = '\0';
+	ibuffer->line = 1;
+	seen_nl = TRUE;
+
+	return TRUE;
     }
 
     return FALSE;
@@ -1023,7 +1033,7 @@ register macro *mc;
 
 	tb = tbuffer;
 	do {
-	    if (tb->fd < 0 && tb->u.mc != (macro *) NULL &&
+	    if (tb->fd < -1 && tb->u.mc != (macro *) NULL &&
 	      strcmp(mc->chain.name, tb->u.mc->chain.name) == 0) {
 		return -1;
 	    }
@@ -1159,7 +1169,7 @@ register macro *mc;
 	}
 
 	if (narg > 0) {
-	    push((macro *) NULL, mc->replace, TRUE);
+	    push((macro *) NULL, mc->replace, strlen(mc->replace), TRUE);
 	    s->len = 0;
 
 	    pp_level++;
@@ -1171,7 +1181,8 @@ register macro *mc;
 			register char *p;
 
 			/* copy it, inserting \ before \ and " */
-			push((macro *) NULL, args[narg], TRUE);
+			push((macro *) NULL, args[narg], strlen(args[narg]),
+			     TRUE);
 			pps_ccat(s, '"');
 			while ((token=tk_gettok()) != EOF) {
 			    if (token != HT) {
@@ -1202,7 +1213,8 @@ register macro *mc;
 			    s->len--;
 			}
 
-			push((macro *) NULL, args[narg], TRUE);
+			push((macro *) NULL, args[narg], strlen(args[narg]),
+			     TRUE);
 			token = tk_gettok();
 			/*
 			 * if the first token of the argument is a
@@ -1219,7 +1231,8 @@ register macro *mc;
 		    } else {
 
 			/* preprocess the argument */
-			push((macro *) NULL, args[narg], TRUE);
+			push((macro *) NULL, args[narg], strlen(args[narg]),
+			     TRUE);
 			while ((token=tk_gettok()) != EOF) {
 			    if (token == IDENTIFIER) {
 				macro *m;
@@ -1260,7 +1273,7 @@ register macro *mc;
 	    if (narg < 0) {
 		error("macro expansion too large");
 	    } else {
-		push(mc, strcpy(ALLOC(char, narg + 1), ppbuf), FALSE);
+		push(mc, strcpy(ALLOC(char, narg + 1), ppbuf), narg, FALSE);
 	    }
 	    return 1;
 	}
@@ -1268,9 +1281,12 @@ register macro *mc;
 
     /* manifest constant, or function-like macro without arguments */
     if (mc->replace != (char *) NULL) {
-	push(mc, mc->replace, FALSE);
+	push(mc, mc->replace, strlen(mc->replace), FALSE);
     } else {
-	push(mc, special_replace(mc->chain.name), FALSE);
+	char *p;
+
+	p = special_replace(mc->chain.name);
+	push(mc, p, strlen(p), FALSE);
     }
 
     return 1;
