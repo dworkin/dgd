@@ -7,25 +7,25 @@
 # include "data.h"
 # include "csupport.h"
 
-/* bit values for dataspace->flags */
-# define F_MODIFIED		0x3f
-# define F_VARIABLE		0x01
-# define F_ARRAY		0x02
-# define F_ARRAYREF		0x04
-# define F_STRINGREF		0x08
-# define F_NEWCALLOUT		0x10
-# define F_CALLOUT		0x20
-# define F_EXTRAVAR		0x40
+/* bit values for ctrl->flags */
+# define CTRL_COMPILED		0x01	/* precompiled control block */
+# define CTRL_VARMAP		0x02	/* varmap updated */
 
-/* bit values for sdataspace->flags */
-# define S_EXTRAVAR		0x01
+/* bit values for dataspace->flags */
+# define DATA_MODIFIED		0x3f
+# define DATA_VARIABLE		0x01	/* variable changed */
+# define DATA_ARRAY		0x02	/* array element changed */
+# define DATA_ARRAYREF		0x04	/* array reference changed */
+# define DATA_STRINGREF		0x08	/* string reference changed */
+# define DATA_NEWCALLOUT	0x10	/* new callout added */
+# define DATA_CALLOUT		0x20	/* callout changed */
 
 # define ARR_MOD		0x80000000L	/* in array->index */
 
 typedef struct {
-    uindex nsectors;		/* # sectors in part one */
+    sector nsectors;		/* # sectors in part one */
+    char flags;			/* control flags, as yet unused */
     char ninherits;		/* # objects in inherit table */
-    char niinherits;		/* # immediately inherited objects */
     Uint compiled;		/* time of compilation */
     Uint progsize;		/* size of program code */
     unsigned short nstrings;	/* # strings in string constant table */
@@ -37,6 +37,7 @@ typedef struct {
     unsigned short nvariables;	/* # variables */
     unsigned short nfloatdefs;	/* # float definitions */
     unsigned short nfloats;	/* # float vars */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
 } scontrol;
 
 typedef struct {
@@ -46,8 +47,9 @@ typedef struct {
 } sinherit;
 
 typedef struct {
-    short flags;		/* dataspace flags */
-    uindex nsectors;		/* number of sectors in data space */
+    sector nsectors;		/* number of sectors in data space */
+    short flags;		/* dataspace flags, as yet unused */
+    unsigned short nvariables;	/* number of variables */
     Uint narrays;		/* number of array values */
     Uint eltsize;		/* total size of array elements */
     Uint nstrings;		/* number of strings */
@@ -102,8 +104,8 @@ typedef struct {
 
 static control *chead, *ctail, *cone;	/* list of control blocks */
 static dataspace *dhead, *dtail, *done;	/* list of dataspace blocks */
-static uindex nctrl;		/* # control blocks */
-static uindex ndata;		/* # dataspace blocks */
+static uindex nctrl;			/* # control blocks */
+static uindex ndata;			/* # dataspace blocks */
 
 
 /*
@@ -143,12 +145,13 @@ control *d_new_control()
     cone = ctrl;
     nctrl++;
 
+    ctrl->flags = 0;
+
     ctrl->nsectors = 0;		/* nothing on swap device yet */
     ctrl->sectors = (sector *) NULL;
+    ctrl->obj = (object *) NULL;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
-    ctrl->niinherits = 0;
-    ctrl->iinherits = (char *) NULL;
     ctrl->progsize = 0;
     ctrl->prog = (char *) NULL;
     ctrl->nstrings = 0;
@@ -166,6 +169,8 @@ control *d_new_control()
     ctrl->nvariables = 0;
     ctrl->nfloatdefs = 0;
     ctrl->nfloats = 0;
+    ctrl->vmapsize = 0;
+    ctrl->vmap = (unsigned short *) NULL;
 
     return ctrl;
 }
@@ -211,7 +216,7 @@ object *obj;
     data->schange = 0;
     data->imports = 0;
     data->ilist = (dataspace *) NULL;
-    data->flags = 0;
+    data->flags = DATA_VARIABLE;
 
     data->obj = obj;
     data->ctrl = o_control(obj);
@@ -222,7 +227,7 @@ object *obj;
     data->sectors = (sector *) NULL;
 
     /* variables */
-    data->nvariables = data->ctrl->nvariables;
+    data->nvariables = data->ctrl->nvariables + 1;
     data->variables = (value *) NULL;
     data->svariables = (svalue *) NULL;
 
@@ -259,44 +264,16 @@ object *obj;
 {
     register control *ctrl;
 
-    ctrl = ALLOC(control, 1);
-    if (cone != (control *) NULL) {
-	/* insert before first 1 */
-	if (chead != cone) {
-	    ctrl->prev = cone->prev;
-	    ctrl->prev->next = ctrl;
-	} else {
-	    /* at beginning */
-	    chead = ctrl;
-	    ctrl->prev = (control *) NULL;
-	}
-	cone->prev = ctrl;
-	ctrl->next = cone;
-    } else if (ctail != (control *) NULL) {
-	/* append at end of list */
-	ctail->next = ctrl;
-	ctrl->prev = ctail;
-	ctrl->next = (control *) NULL;
-	ctail = ctrl;
-    } else {
-	/* list was empty */
-	ctrl->prev = ctrl->next = (control *) NULL;
-	chead = ctail = ctrl;
-    }
-    ctrl->refc = 1;
-    ctrl->ndata = 0;
-    cone = ctrl;
-    nctrl++;
+    ctrl = d_new_control();
+    ctrl->obj = obj;
 
     if (obj->flags & O_COMPILED) {
 	/* initialize control block of compiled object */
 	pc_control(ctrl, obj);
+	ctrl->flags |= CTRL_COMPILED;
     } else {
 	scontrol header;
 	register Uint size;
-	register int n;
-	register dinherit *inherits;
-	register sinherit *sinherits;
 
 	/* header */
 	sw_readv((char *) &header, &obj->cfirst, (Uint) sizeof(scontrol),
@@ -312,24 +289,36 @@ object *obj;
 	size += sizeof(scontrol);
 
 	/* inherits */
-	ctrl->ninherits = n = UCHAR(header.ninherits); /* at least one */
-	ctrl->inherits = inherits = ALLOC(dinherit, n);
-	sinherits = ALLOCA(sinherit, n);
-	sw_readv((char *) sinherits, ctrl->sectors, n * (Uint) sizeof(sinherit),
-		 size);
-	size += n * sizeof(sinherit);
-	do {
-	    inherits->obj = o_objref(sinherits->oindex);
-	    inherits->funcoffset = sinherits->funcoffset;
-	    (inherits++)->varoffset = (sinherits++)->varoffset;
-	} while (--n > 0);
-	AFREE(sinherits - UCHAR(header.ninherits));
+	ctrl->ninherits = UCHAR(header.ninherits);
 
-	/* immediate inherits */
-	ctrl->iinhoffset = size;
-	ctrl->niinherits = UCHAR(header.niinherits);
-	ctrl->iinherits = (char *) NULL;
-	size += UCHAR(header.niinherits);
+	if (header.vmapsize != 0) {
+	    /*
+	     * Control block for outdated issue; only vmap can be loaded.
+	     * The load offsets will be invalid (and unused).
+	     */
+	    ctrl->vmapsize = header.vmapsize;
+	    ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
+	    sw_readv((char *) ctrl->vmap, ctrl->sectors,
+		     header.vmapsize * (Uint) sizeof(unsigned short), size);
+	} else {
+	    register int n;
+	    register dinherit *inherits;
+	    register sinherit *sinherits;
+
+	    /* load inherits */
+	    n = UCHAR(header.ninherits); /* at least one */
+	    ctrl->inherits = inherits = ALLOC(dinherit, n);
+	    sinherits = ALLOCA(sinherit, n);
+	    sw_readv((char *) sinherits, ctrl->sectors,
+		     n * (Uint) sizeof(sinherit), size);
+	    size += n * sizeof(sinherit);
+	    do {
+		inherits->obj = o_objref(sinherits->oindex);
+		inherits->funcoffset = sinherits->funcoffset;
+		(inherits++)->varoffset = (sinherits++)->varoffset;
+	    } while (--n > 0);
+	    AFREE(sinherits - UCHAR(header.ninherits));
+	}
 
 	/* compile time */
 	ctrl->compiled = header.compiled;
@@ -337,40 +326,32 @@ object *obj;
 	/* program */
 	ctrl->progoffset = size;
 	ctrl->progsize = header.progsize;
-	ctrl->prog = (char *) NULL;
 	size += header.progsize;
 
 	/* string constants */
 	ctrl->stroffset = size;
 	ctrl->nstrings = header.nstrings;
-	ctrl->strings = (string **) NULL;
-	ctrl->sstrings = (dstrconst *) NULL;
-	ctrl->stext = (char *) NULL;
 	ctrl->strsize = header.strsize;
 	size += header.nstrings * (Uint) sizeof(dstrconst) + header.strsize;
 
 	/* function definitions */
 	ctrl->funcdoffset = size;
 	ctrl->nfuncdefs = UCHAR(header.nfuncdefs);
-	ctrl->funcdefs = (dfuncdef *) NULL;
 	size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
 
 	/* variable definitions */
 	ctrl->vardoffset = size;
 	ctrl->nvardefs = UCHAR(header.nvardefs);
-	ctrl->vardefs = (dvardef *) NULL;
 	size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
 
 	/* function call table */
 	ctrl->funccoffset = size;
 	ctrl->nfuncalls = header.nfuncalls;
-	ctrl->funcalls = (char *) NULL;
 	size += header.nfuncalls * (Uint) 2;
 
 	/* symbol table */
 	ctrl->symboffset = size;
 	ctrl->nsymbols = header.nsymbols;
-	ctrl->symbols = (dsymbol *) NULL;
 
 	/* # variables */
 	ctrl->nvariables = header.nvariables;
@@ -381,50 +362,20 @@ object *obj;
     return ctrl;
 }
 
+static void d_upgrade P((dataspace*, unsigned int, unsigned short*, object*));
+
 /*
  * NAME:	data->load_dataspace()
  * DESCRIPTION:	load the dataspace header block of an object from the swap
  */
-dataspace *d_load_dataspace(obj, extra)
-object *obj;
-int extra;
+dataspace *d_load_dataspace(obj)
+register object *obj;
 {
     sdataspace header;
     register dataspace *data;
     register Uint size;
 
-    data = ALLOC(dataspace, 1);
-    if (done != (dataspace *) NULL) {
-	/* insert before first 1 */
-	if (dhead != done) {
-	    data->prev = done->prev;
-	    data->prev->next = data;
-	} else {
-	    /* at beginning */
-	    dhead = data;
-	    data->prev = (dataspace *) NULL;
-	}
-	done->prev = data;
-	data->next = done;
-    } else if (dtail != (dataspace *) NULL) {
-	/* append at end of list */
-	dtail->next = data;
-	data->prev = dtail;
-	data->next = (dataspace *) NULL;
-	dtail = data;
-    } else {
-	/* list was empty */
-	data->prev = data->next = (dataspace *) NULL;
-	dhead = dtail = data;
-    }
-    data->refc = 1;
-    done = data;
-    ndata++;
-
-    data->achange = 0;
-    data->schange = 0;
-    data->imports = 0;
-    data->ilist = (dataspace *) NULL;
+    data = d_new_dataspace(obj);
     data->flags = 0;
 
     /* header */
@@ -439,30 +390,16 @@ int extra;
 		 (Uint) sizeof(sdataspace));
     }
     size += sizeof(sdataspace);
-    data->obj = obj;
-    data->ctrl = o_control(obj);
-    data->ctrl->ndata++;
 
     /* variables */
     data->varoffset = size;
-    data->nvariables = data->ctrl->nvariables;
-    if (header.flags & S_EXTRAVAR) {
-	data->flags |= F_EXTRAVAR;
-	data->nvariables++;
-    }
-    data->variables = (value *) NULL;
-    data->svariables = (svalue *) NULL;
+    data->nvariables = header.nvariables;
     size += data->nvariables * (Uint) sizeof(svalue);
 
     /* arrays */
     data->arroffset = size;
     data->narrays = header.narrays;
     data->eltsize = header.eltsize;
-    data->alocal.arr = (array *) NULL;
-    data->alocal.data = data;
-    data->arrays = (arrref *) NULL;
-    data->sarrays = (sarray *) NULL;
-    data->selts = (svalue *) NULL;
     size += header.narrays * (Uint) sizeof(sarray) +
 	    header.eltsize * sizeof(svalue);
 
@@ -470,18 +407,47 @@ int extra;
     data->stroffset = size;
     data->nstrings = header.nstrings;
     data->strsize = header.strsize;
-    data->strings = (strref *) NULL;
-    data->sstrings = (sstring *) NULL;
-    data->stext = (char *) NULL;
     size += header.nstrings * sizeof(sstring) + header.strsize;
 
     /* callouts */
     data->cooffset = size;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
-    data->callouts = (dcallout *) NULL;
 
-    d_extravar(data, extra);
+    if (!(obj->flags & O_MASTER) && obj->update != obj->u.master->update) {
+	unsigned short nvar, *vmap;
+	register object *old;
+
+	/*
+	 * the program for the object was upgraded since last access
+	 */
+	nvar = data->ctrl->nvariables + 1;
+	old = o_objref(obj->u.master->prev);
+	vmap = o_control(old)->vmap;
+
+	if (old->update != obj->update) {
+	    register unsigned short *m1, *m2, n;
+
+	    m1 = vmap;
+	    vmap = ALLOCA(unsigned short, n = nvar);
+	    do {
+		old = o_objref(old->prev);
+		m2 = o_control(old)->vmap;
+		while (n > 0) {
+		    *vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
+		    --n;
+		}
+		n = nvar;
+		vmap -= n;
+		m1 = m2 - n;
+	    } while (old->update != obj->update);
+	}
+
+	d_upgrade(data, nvar, vmap, old);
+	if (vmap != old->ctrl->vmap) {
+	    AFREE(vmap);
+	}
+    }
 
     return data;
 }
@@ -584,18 +550,19 @@ register dataspace *data;
 
 
 /*
- * NAME:	data->get_iinherits()
- * DESCRIPTION:	get the immediately inherited object indices
+ * NAME:	data->varmap()
+ * DESCRIPTION:	add a variable mapping to a control block
  */
-char *d_get_iinherits(ctrl)
+void d_varmap(ctrl, nvar, vmap)
 register control *ctrl;
+register unsigned int nvar;
+register unsigned short *vmap;
 {
-    if (ctrl->iinherits == (char *) NULL && ctrl->niinherits > 0) {
-	ctrl->iinherits = ALLOC(char, ctrl->niinherits);
-	sw_readv(ctrl->iinherits, ctrl->sectors, (Uint) ctrl->niinherits,
-		 (Uint) ctrl->iinhoffset);
-    }
-    return ctrl->iinherits;
+    ctrl->vmapsize = nvar;
+    ctrl->vmap = vmap;
+
+    /* varmap modified */
+    ctrl->flags |= CTRL_VARMAP;
 }
 
 /*
@@ -652,9 +619,7 @@ unsigned int idx;
 
 	str = str_new(ctrl->stext + ctrl->sstrings[idx].index,
 		      (long) ctrl->sstrings[idx].len);
-	str->ref = STR_CONST | 1;
-	ctrl->strings[idx] = str;
-	str->u.strconst = &ctrl->strings[idx];
+	str_ref(ctrl->strings[idx] = str);
     }
 
     return ctrl->strings[idx];
@@ -757,10 +722,10 @@ register Uint idx;
 
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
-	s->u.primary = &data->strings[idx];
-	s->u.primary->str = s;
-	s->u.primary->data = data;
-	s->u.primary->ref = data->sstrings[idx].ref;
+	s->primary = &data->strings[idx];
+	s->primary->str = s;
+	s->primary->data = data;
+	s->primary->ref = data->sstrings[idx].ref;
 	return s;
     }
     return data->strings[idx].str;
@@ -830,10 +795,7 @@ register int n;
 	    break;
 
 	case T_STRING:
-	    str_ref(v->u.string = (sv->u.string < 0) ?
-		    d_get_string(data, sv->u.string & 0x7fffffff) :
-		    d_get_strconst(data->ctrl, sv->u.string >> 23,
-				   sv->u.string & 0x007fffff));
+	    str_ref(v->u.string = d_get_string(data, sv->u.string));
 	    break;
 
 	case T_OBJECT:
@@ -896,9 +858,6 @@ dataspace *data;
 		}
 	    }
 	}
-
-	/* don't do this again for the same object */
-	data->flags |= F_VARIABLE;
     }
 }
 
@@ -940,45 +899,6 @@ register unsigned int idx;
 	d_get_values(data, &data->svariables[idx], &data->variables[idx], 1);
     }
     return &data->variables[idx];
-}
-
-/*
- * NAME:	data->extravar()
- * DESCRIPTION:	reserve or remove extra variable in object
- */
-void d_extravar(data, extra)
-register dataspace *data;
-int extra;
-{
-    if (extra) {
-	if (!(data->flags & F_EXTRAVAR)) {
-	    register value *variables;
-
-	    /* this should not happen while executing LPC code in the object */
-	    if (data->variables == (value *) NULL && data->nvariables > 0) {
-		/* load or initialize variables */
-		d_get_variable(data, 0);
-	    }
-	    variables = ALLOC(value, data->nvariables + 1);
-	    if (data->nvariables > 0) {
-		/* copy old to new */
-		memcpy(variables, data->variables,
-		       data->nvariables * sizeof(value));
-		FREE(data->variables);
-	    }
-	    data->variables = variables;
-	    variables[data->nvariables++] = zero_value;
-	    data->flags |= F_EXTRAVAR | F_ARRAY;
-	    data->achange++;	/* force swapspace rebuild for this object */
-	}
-    } else {
-	if (data->flags & F_EXTRAVAR) {
-	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
-			 &zero_value);
-	    data->nvariables--;
-	    data->flags &= ~F_EXTRAVAR;
-	}
-    }
 }
 
 /*
@@ -1041,27 +961,6 @@ array *arr;
 }
 
 /*
- * NAME:	strconst_obj()
- * DESCRIPTION:	check if the constant is defined in the current object
- */
-static long strconst_obj(data, str)
-dataspace *data;
-string *str;
-{
-    register control *ctrl;
-    register string **strconst;
-
-    ctrl = data->ctrl;
-    strconst = str->u.strconst;
-    if (strconst >= ctrl->strings && strconst < ctrl->strings + ctrl->nstrings)
-    {
-	return ((ctrl->ninherits - 1L) << 23) | (strconst - ctrl->strings);
-    }
-
-    return -1;	/* not a constant in this object */
-}
-
-/*
  * NAME:	ref_rhs()
  * DESCRIPTION:	reference the right-hand side in an assignment
  */
@@ -1075,18 +974,12 @@ register value *rhs;
     switch (rhs->type) {
     case T_STRING:
 	str = rhs->u.string;
-	if (str->ref & STR_CONST) {	/* a constant */
-	    if (strconst_obj(data, str) < 0) {
-		/* not in this object: ref imported string const */
-		data->schange++;
-	    }
-	} else if (str->u.primary != (strref *) NULL &&
-		   str->u.primary->data == data) {
+	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
-	    if (str->u.primary->ref++ == 0) {
+	    if (str->primary->ref++ == 0) {
 		data->schange--;	/* first reference restored */
 	    }
-	    data->flags |= F_STRINGREF;
+	    data->flags |= DATA_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
 	    data->schange++;
@@ -1107,7 +1000,7 @@ register value *rhs;
 			arr_ref(arr);
 		    }
 		}
-		data->flags |= F_ARRAYREF;
+		data->flags |= DATA_ARRAYREF;
 	    } else {
 		/* ref new array */
 		data->achange++;
@@ -1145,18 +1038,12 @@ register value *lhs;
     switch (lhs->type) {
     case T_STRING:
 	str = lhs->u.string;
-	if (str->ref & STR_CONST) {	/* a constant */
-	    if (strconst_obj(data, str) < 0) {
-		/* not in this object: deref imported string const */
-		data->schange--;
-	    }
-	} else if (str->u.primary != (strref *) NULL &&
-		   str->u.primary->data == data) {
+	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
-	    if (--(str->u.primary->ref) == 0) {
+	    if (--(str->primary->ref) == 0) {
 		data->schange++;	/* last reference removed */
 	    }
-	    data->flags |= F_STRINGREF;
+	    data->flags |= DATA_STRINGREF;
 	} else {
 	    /* not in this object: deref imported string */
 	    data->schange--;
@@ -1177,7 +1064,7 @@ register value *lhs;
 			arr_del(arr);
 		    }
 		}
-		data->flags |= F_ARRAYREF;
+		data->flags |= DATA_ARRAYREF;
 	    } else {
 		/* deref new array */
 		data->achange--;
@@ -1203,7 +1090,7 @@ register value *val;
     if (var >= data->variables && var < data->variables + data->nvariables) {
 	ref_rhs(data, val);
 	del_lhs(data, var);
-	data->flags |= F_VARIABLE;
+	data->flags |= DATA_VARIABLE;
     }
 
     i_ref_value(val);
@@ -1235,7 +1122,7 @@ register value *elt, *val;
 	     */
 	    arr->primary->index |= ARR_MOD;
 	    arr_ref(arr);
-	    data->flags |= F_ARRAY;
+	    data->flags |= DATA_ARRAY;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
@@ -1360,7 +1247,7 @@ int nargs;
 	data->callouts = ALLOC(dcallout, 1);
 	data->ncallouts = 1;
 	co = data->callouts;
-	data->flags |= F_NEWCALLOUT;
+	data->flags |= DATA_NEWCALLOUT;
     } else {
 	if (data->callouts == (dcallout *) NULL) {
 	    d_get_callouts(data);
@@ -1382,7 +1269,7 @@ int nargs;
 		    data->callouts[co->co_next - 1].co_prev = n;
 		}
 	    }
-	    data->flags |= F_CALLOUT;
+	    data->flags |= DATA_CALLOUT;
 	} else {
 	    /*
 	     * add new callout
@@ -1395,7 +1282,7 @@ int nargs;
 	    FREE(data->callouts);
 	    data->callouts = co;
 	    co += data->ncallouts++;
-	    data->flags |= F_NEWCALLOUT;
+	    data->flags |= DATA_NEWCALLOUT;
 	}
     }
 
@@ -1516,7 +1403,7 @@ int *nargs;
     co->co_next = n;
     data->fcallouts = handle;
 
-    data->flags |= F_CALLOUT;
+    data->flags |= DATA_CALLOUT;
     return str;
 }
 
@@ -1621,6 +1508,51 @@ Uint t;
 }
 
 /*
+ * NAME:	data->swapalloc()
+ * DESCRIPTION:	allocate swapspace for something
+ */
+static sector d_swapalloc(size, nsectors, sectors)
+Uint size;
+register sector nsectors, **sectors;
+{
+    register sector n, *s;
+
+    n = sw_mapsize(size);
+    if (nsectors == 0) {
+	/* no sectors yet */
+	*sectors = s = ALLOC(sector, nsectors = n);
+	while (n > 0) {
+	    *s++ = sw_new();
+	    --n;
+	}
+    } else if (nsectors < n) {
+	/* not enough sectors */
+	s = ALLOC(sector, n);
+	memcpy(s, *sectors, nsectors * sizeof(sector));
+	FREE(*sectors);
+	*sectors = s;
+	s += nsectors;
+	n -= nsectors;
+	nsectors += n;
+	while (n > 0) {
+	    *s++ = sw_new();
+	    --n;
+	}
+    } else if (nsectors > n) {
+	/* too many sectors */
+	s = *sectors + nsectors;
+	n = nsectors - n;
+	nsectors -= n;
+	while (n > 0) {
+	    sw_del(*--s);
+	    --n;
+	}
+    }
+
+    return nsectors;
+}
+
+/*
  * NAME:	data->save_control()
  * DESCRIPTION:	save the control block
  */
@@ -1628,39 +1560,17 @@ static void d_save_control(ctrl)
 register control *ctrl;
 {
     scontrol header;
-    register Uint size;
-    register uindex i;
-    register sector *v;
+    register Uint size, i;
     register sinherit *sinherits;
     register dinherit *inherits;
 
     /*
-     * Save a control block. This is only done once for each control block.
+     * Save a control block.
      */
 
-    /* calculate the size of the control block */
-    size = sizeof(scontrol) +
-	   ctrl->ninherits * sizeof(sinherit) +
-	   ctrl->niinherits +
-    	   ctrl->progsize +
-    	   ctrl->nstrings * (Uint) sizeof(dstrconst) +
-    	   ctrl->strsize +
-    	   ctrl->nfuncdefs * sizeof(dfuncdef) +
-    	   ctrl->nvardefs * sizeof(dvardef) +
-    	   ctrl->nfuncalls * (Uint) 2 +
-    	   ctrl->nsymbols * (Uint) sizeof(dsymbol);
-
-    /* create sector space */
-    ctrl->nsectors = header.nsectors = i = sw_mapsize(size);
-    ctrl->sectors = v = ALLOC(sector, i);
-    do {
-	*v++ = sw_new();
-    } while (--i > 0);
-    ctrl->inherits[ctrl->ninherits - 1].obj->cfirst = ctrl->sectors[0];
-
     /* create header */
+    header.flags = 0;
     header.ninherits = ctrl->ninherits;
-    header.niinherits = ctrl->niinherits;
     header.compiled = ctrl->compiled;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
@@ -1672,6 +1582,25 @@ register control *ctrl;
     header.nvariables = ctrl->nvariables;
     header.nfloatdefs = ctrl->nfloatdefs;
     header.nfloats = ctrl->nfloats;
+    header.vmapsize = ctrl->vmapsize;
+
+    /* create sector space */
+    if (header.vmapsize != 0) {
+	size = sizeof(scontrol) +
+	       header.vmapsize * (Uint) sizeof(unsigned short);
+    } else {
+	size = sizeof(scontrol) +
+	       UCHAR(header.ninherits) * sizeof(sinherit) +
+	       header.progsize +
+	       header.nstrings * (Uint) sizeof(dstrconst) +
+	       header.strsize +
+	       UCHAR(header.nfuncdefs) * sizeof(dfuncdef) +
+	       UCHAR(header.nvardefs) * sizeof(dvardef) +
+	       header.nfuncalls * (Uint) 2 +
+	       header.nsymbols * (Uint) sizeof(dsymbol);
+    }
+    ctrl->nsectors = header.nsectors = d_swapalloc(size, 0, &ctrl->sectors);
+    ctrl->obj->cfirst = ctrl->sectors[0];
 
     /*
      * Copy everything to the swap device.
@@ -1687,94 +1616,95 @@ register control *ctrl;
 	      header.nsectors * (Uint) sizeof(sector), size);
     size += header.nsectors * (Uint) sizeof(sector);
 
-    /* save inherits */
-    inherits = ctrl->inherits;
-    sinherits = ALLOCA(sinherit, i = UCHAR(header.ninherits));
-    do {
-	sinherits->oindex = inherits->obj->index;
-	sinherits->funcoffset = inherits->funcoffset;
-	(sinherits++)->varoffset = (inherits++)->varoffset;
-    } while (--i > 0);
-    sinherits -= UCHAR(header.ninherits);
-    sw_writev((char *) sinherits, ctrl->sectors,
-	      UCHAR(header.ninherits) * (Uint) sizeof(sinherit), size);
-    size += UCHAR(header.ninherits) * sizeof(sinherit);
-    AFREE(sinherits);
+    if (header.vmapsize != 0) {
+	/*
+	 * save only vmap
+	 */
+	sw_writev((char *) ctrl->vmap, ctrl->sectors,
+		  header.vmapsize * (Uint) sizeof(unsigned short), size);
+    } else {
+	/* save inherits */
+	inherits = ctrl->inherits;
+	sinherits = ALLOCA(sinherit, i = UCHAR(header.ninherits));
+	do {
+	    sinherits->oindex = inherits->obj->index;
+	    sinherits->funcoffset = inherits->funcoffset;
+	    (sinherits++)->varoffset = (inherits++)->varoffset;
+	} while (--i > 0);
+	sinherits -= UCHAR(header.ninherits);
+	sw_writev((char *) sinherits, ctrl->sectors,
+		  UCHAR(header.ninherits) * (Uint) sizeof(sinherit), size);
+	size += UCHAR(header.ninherits) * sizeof(sinherit);
+	AFREE(sinherits);
 
-    /* save immediate inherits */
-    if (ctrl->niinherits > 0) {
-	sw_writev(ctrl->iinherits, ctrl->sectors,
-		  (Uint) UCHAR(header.niinherits), size);
-	size += UCHAR(header.niinherits);
-    }
-
-    /* save program */
-    if (header.progsize > 0) {
-	sw_writev(ctrl->prog, ctrl->sectors, (Uint) header.progsize, size);
-	size += header.progsize;
-    }
-
-    /* save string constants */
-    if (header.nstrings > 0) {
-	dstrconst *ss;
-	char *tt;
-	register string **strs;
-	register dstrconst *s;
-	register Uint strsize;
-	register char *t;
-
-	ss = ALLOCA(dstrconst, header.nstrings);
-	if (ctrl->strsize > 0) {
-	    tt = ALLOCA(char, ctrl->strsize);
+	/* save program */
+	if (header.progsize > 0) {
+	    sw_writev(ctrl->prog, ctrl->sectors, (Uint) header.progsize, size);
+	    size += header.progsize;
 	}
 
-	strs = ctrl->strings;
-	strsize = 0;
-	s = ss;
-	t = tt;
-	for (i = header.nstrings; i > 0; --i) {
-	    s->index = strsize;
-	    strsize += s->len = (*strs)->len;
-	    memcpy(t, (*strs++)->text, s->len);
-	    t += (s++)->len;
+	/* save string constants */
+	if (header.nstrings > 0) {
+	    dstrconst *ss;
+	    char *tt;
+	    register string **strs;
+	    register dstrconst *s;
+	    register Uint strsize;
+	    register char *t;
+
+	    ss = ALLOCA(dstrconst, header.nstrings);
+	    if (ctrl->strsize > 0) {
+		tt = ALLOCA(char, ctrl->strsize);
+	    }
+
+	    strs = ctrl->strings;
+	    strsize = 0;
+	    s = ss;
+	    t = tt;
+	    for (i = header.nstrings; i > 0; --i) {
+		s->index = strsize;
+		strsize += s->len = (*strs)->len;
+		memcpy(t, (*strs++)->text, s->len);
+		t += (s++)->len;
+	    }
+
+	    sw_writev((char *) ss, ctrl->sectors,
+		      header.nstrings * (Uint) sizeof(dstrconst), size);
+	    size += header.nstrings * (Uint) sizeof(dstrconst);
+	    if (strsize > 0) {
+		sw_writev(tt, ctrl->sectors, strsize, size);
+		size += strsize;
+		AFREE(tt);
+	    }
+	    AFREE(ss);
 	}
 
-	sw_writev((char *) ss, ctrl->sectors,
-		  header.nstrings * (Uint) sizeof(dstrconst), size);
-	size += header.nstrings * (Uint) sizeof(dstrconst);
-	if (strsize > 0) {
-	    sw_writev(tt, ctrl->sectors, strsize, size);
-	    size += strsize;
-	    AFREE(tt);
+	/* save function definitions */
+	if (UCHAR(header.nfuncdefs) > 0) {
+	    sw_writev((char *) ctrl->funcdefs, ctrl->sectors,
+		      UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef), size);
+	    size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
 	}
-	AFREE(ss);
-    }
 
-    /* save function definitions */
-    if (UCHAR(header.nfuncdefs) > 0) {
-	sw_writev((char *) ctrl->funcdefs, ctrl->sectors,
-		  UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef), size);
-	size += UCHAR(header.nfuncdefs) * (Uint) sizeof(dfuncdef);
-    }
+	/* save variable definitions */
+	if (UCHAR(header.nvardefs) > 0) {
+	    sw_writev((char *) ctrl->vardefs, ctrl->sectors,
+		      UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
+	    size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
+	}
 
-    /* save variable definitions */
-    if (UCHAR(header.nvardefs) > 0) {
-	sw_writev((char *) ctrl->vardefs, ctrl->sectors,
-		  UCHAR(header.nvardefs) * (Uint) sizeof(dvardef), size);
-	size += UCHAR(header.nvardefs) * (Uint) sizeof(dvardef);
-    }
+	/* save function call table */
+	if (header.nfuncalls > 0) {
+	    sw_writev((char *) ctrl->funcalls, ctrl->sectors,
+		      header.nfuncalls * (Uint) 2, size);
+	    size += header.nfuncalls * (Uint) 2;
+	}
 
-    /* save function call table */
-    if (header.nfuncalls > 0) {
-	sw_writev((char *) ctrl->funcalls, ctrl->sectors,
-		  header.nfuncalls * (Uint) 2, size);
-	size += header.nfuncalls * (Uint) 2;
-    }
-
-    /* save symbol table */
-    if (header.nsymbols > 0) {
-	sw_writev((char *) ctrl->symbols, ctrl->sectors,
-		  header.nsymbols * (Uint) sizeof(dsymbol), size);
+	/* save symbol table */
+	if (header.nsymbols > 0) {
+	    sw_writev((char *) ctrl->symbols, ctrl->sectors,
+		      header.nsymbols * (Uint) sizeof(dsymbol), size);
+	}
     }
 }
 
@@ -1794,28 +1724,6 @@ register unsigned short n;
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (v->u.string->ref & STR_CONST) {
-		register long i;
-
-		/*
-		 * The string is a constant.  See if it
-		 * is among the string constants of this object and the objects
-		 * inherited by it.
-		 */
-		i = strconst_obj(sdata, v->u.string);
-		if (i >= 0) {
-		    if (str_put(v->u.string, -1L - i) >= 0) {
-			/*
-			 * The constant was preceded by an identical
-			 * string value, but it is marked as a constant,
-			 * now.
-			 */
-			cstr++;
-			strsize -= v->u.string->len;
-		    }
-		    break;
-		}
-	    }
 	    if (str_put(v->u.string, (long) nstr) >= (long) nstr) {
 		nstr++;
 		strsize += v->u.string->len;
@@ -1868,24 +1776,18 @@ register unsigned short n;
 
 	case T_STRING:
 	    i = str_put(v->u.string, (long) nstr);
-	    if (i < 0) {
-		/* string constant (in this object) */
-		sv->u.string = -1 - i;
-	    } else {
-		/* string value */
-		sv->u.string = ((Int) 0x80000000) | i;
-		if (i >= nstr) {
-		    /* new string value */
-		    sstrings[i].index = strsize;
-		    sstrings[i].len = v->u.string->len;
-		    sstrings[i].ref = 0;
-		    memcpy(stext + strsize, v->u.string->text,
-			   v->u.string->len);
-		    strsize += v->u.string->len;
-		    nstr++;
-		}
-		sstrings[i].ref++;
+	    sv->u.string = i;
+	    if (i >= nstr) {
+		/* new string value */
+		sstrings[i].index = strsize;
+		sstrings[i].len = v->u.string->len;
+		sstrings[i].ref = 0;
+		memcpy(stext + strsize, v->u.string->text,
+		       v->u.string->len);
+		strsize += v->u.string->len;
+		nstr++;
 	    }
+	    sstrings[i].ref++;
 	    break;
 
 	case T_OBJECT:
@@ -1940,14 +1842,7 @@ register unsigned short n;
 		break;
 
 	    case T_STRING:
-		if (v->u.string->ref & STR_CONST) {
-		    /* string constant */
-		    sv->u.string = strconst_obj(sdata, v->u.string);
-		} else {
-		    /* string value */
-		    sv->u.string = ((Int) 0x80000000) |
-				   (v->u.string->u.primary - sdata->strings);
-		}
+		sv->u.string = v->u.string->primary - sdata->strings;
 		break;
 
 	    case T_OBJECT:
@@ -2014,7 +1909,7 @@ register dataspace *data;
 
     /* free arrays */
     if (data->arrays != (arrref *) NULL) {
-	if (data->flags & F_ARRAY) {
+	if (data->flags & DATA_ARRAY) {
 	    register arrref *a;
 
 	    /*
@@ -2038,7 +1933,7 @@ register dataspace *data;
 
 	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
-		s->str->u.primary = (strref *) NULL;
+		s->str->primary = (strref *) NULL;
 	    }
 	}
 
@@ -2059,16 +1954,16 @@ register dataspace *data;
 
     sdata = data;
 
-    if (!(data->nsectors == 0 && (data->flags & F_VARIABLE)) &&
+    if (!(data->nsectors == 0 && (data->flags & DATA_VARIABLE)) &&
 	data->achange == 0 && data->schange == 0 &&
-	!(data->flags & F_NEWCALLOUT)) {
+	!(data->flags & DATA_NEWCALLOUT)) {
 	bool mod;
 
 	/*
 	 * No strings/arrays added or deleted. Check individual variables and
 	 * array elements.
 	 */
-	if (data->flags & F_VARIABLE) {
+	if (data->flags & DATA_VARIABLE) {
 	    /*
 	     * variables changed
 	     */
@@ -2077,7 +1972,7 @@ register dataspace *data;
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
 	}
-	if (data->flags & F_ARRAYREF) {
+	if (data->flags & DATA_ARRAYREF) {
 	    register sarray *sa;
 	    register arrref *a;
 
@@ -2100,7 +1995,7 @@ register dataspace *data;
 			  data->narrays * sizeof(sarray), data->arroffset);
 	    }
 	}
-	if (data->flags & F_ARRAY) {
+	if (data->flags & DATA_ARRAY) {
 	    register arrref *a;
 
 	    /*
@@ -2121,7 +2016,7 @@ register dataspace *data;
 		a++;
 	    }
 	}
-	if (data->flags & F_STRINGREF) {
+	if (data->flags & DATA_STRINGREF) {
 	    register sstring *ss;
 	    register strref *s;
 
@@ -2145,7 +2040,7 @@ register dataspace *data;
 			  data->stroffset);
 	    }
 	}
-	if (data->flags & F_CALLOUT) {
+	if (data->flags & DATA_CALLOUT) {
 	    scallout *scallouts;
 	    register scallout *sco;
 	    register dcallout *co;
@@ -2192,26 +2087,25 @@ register dataspace *data;
 	arrsize = 0;
 	strsize = 0;
 
-	if (data->nvariables > 0) {
-	    d_get_variable(data, 0);
-	    if (data->svariables == (svalue *) NULL) {
-		data->svariables = ALLOC(svalue, data->nvariables);
-	    } else {
-		register value *v;
-		register svalue *sv;
+	d_get_variable(data, 0);
+	if (data->svariables == (svalue *) NULL) {
+	    data->svariables = ALLOC(svalue, data->nvariables);
+	} else {
+	    register value *v;
+	    register svalue *sv;
 
-		sv = data->svariables;
-		v = data->variables;
-		for (n = data->nvariables; n > 0; --n) {
-		    if (v->type == T_INVALID) {
-			d_get_values(data, sv, v, 1);
-		    }
-		    sv++;
-		    v++;
+	    sv = data->svariables;
+	    v = data->variables;
+	    for (n = data->nvariables; n > 0; --n) {
+		if (v->type == T_INVALID) {
+		    d_get_values(data, sv, v, 1);
 		}
+		sv++;
+		v++;
 	    }
-	    d_count(data->variables, data->nvariables);
 	}
+	d_count(data->variables, data->nvariables);
+
 	if (data->ncallouts > 0) {
 	    register dcallout *co;
 
@@ -2253,21 +2147,24 @@ register dataspace *data;
 
 	/* fill in header */
 	header.flags = 0;
-	if (data->flags & F_EXTRAVAR) {
-	    header.flags |= S_EXTRAVAR;
-	}
+	header.nvariables = data->nvariables;
 	header.narrays = narr;
 	header.eltsize = arrsize;
 	header.nstrings = nstr - cstr;
 	header.strsize = strsize;
 	header.ncallouts = data->ncallouts;
 	header.fcallouts = data->fcallouts;
-	header.nsectors = sw_mapsize(sizeof(sdataspace) +
-			  (data->nvariables + header.eltsize) * sizeof(svalue) +
-			  header.narrays * sizeof(sarray) +
-			  header.nstrings * sizeof(sstring) +
-			  header.strsize +
-			  header.ncallouts * (Uint) sizeof(scallout));
+
+	/* create sector space */
+	size = sizeof(sdataspace) +
+	       (header.nvariables + header.eltsize) * sizeof(svalue) +
+	       header.narrays * sizeof(sarray) +
+	       header.nstrings * sizeof(sstring) +
+	       header.strsize +
+	       header.ncallouts * (Uint) sizeof(scallout);
+	header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
+	data->nsectors = header.nsectors;
+	data->obj->dfirst = data->sectors[0];
 
 	/*
 	 * put everything into a saveable form
@@ -2362,41 +2259,6 @@ register dataspace *data;
 	str_clear();
 	arr_clear();
 
-	/*
-	 * create the sectors to save everything on
-	 */
-	if (data->nsectors == 0) {
-	    register sector *sectors;
-
-	    /* no sectors yet */
-	    data->sectors = sectors = ALLOC(sector, header.nsectors);
-	    for (n = header.nsectors; n > 0; --n) {
-		*sectors++ = sw_new();
-	    }
-	    data->obj->dfirst = data->sectors[0];
-	} else if (data->nsectors < header.nsectors) {
-	    register sector *sectors;
-
-	    /* not enough sectors */
-	    sectors = ALLOC(sector, header.nsectors);
-	    memcpy(sectors, data->sectors, data->nsectors * sizeof(sector));
-	    FREE(data->sectors);
-	    data->sectors = sectors;
-	    sectors += data->nsectors;
-	    for (n = header.nsectors - data->nsectors; n > 0; --n) {
-		*sectors++ = sw_new();
-	    }
-	} else if (data->nsectors > header.nsectors) {
-	    register sector *sectors;
-
-	    /* too many sectors */
-	    sectors = data->sectors + data->nsectors;
-	    for (n = data->nsectors - header.nsectors; n > 0; --n) {
-		sw_del(*--sectors);
-	    }
-	}
-	data->nsectors = header.nsectors;
-
 	/* save header */
 	size = sizeof(sdataspace);
 	sw_writev((char *) &header, data->sectors, size, (Uint) 0);
@@ -2406,11 +2268,9 @@ register dataspace *data;
 
 	/* save variables */
 	data->varoffset = size;
-	if (data->nvariables > 0) {
-	    sw_writev((char *) data->svariables, data->sectors,
-		      data->nvariables * (Uint) sizeof(svalue), size);
-	    size += data->nvariables * (Uint) sizeof(svalue);
-	}
+	sw_writev((char *) data->svariables, data->sectors,
+		  data->nvariables * (Uint) sizeof(svalue), size);
+	size += data->nvariables * (Uint) sizeof(svalue);
 
 	/* save arrays */
 	data->arroffset = size;
@@ -2456,7 +2316,7 @@ register dataspace *data;
 	data->schange = 0;
     }
 
-    data->flags &= ~F_MODIFIED;
+    data->flags &= ~DATA_MODIFIED;
 }
 
 static array **itab;	/* imported array replacement table */
@@ -2566,6 +2426,112 @@ register unsigned short n;
 }
 
 /*
+ * NAME:	data->upgrade()
+ * DESCRIPTION:	upgrade the dataspace for one object
+ */
+static void d_upgrade(data, nvar, vmap, old)
+register dataspace *data;
+unsigned int nvar;
+register unsigned short *vmap;
+object *old;
+{
+    register value *v;
+    register unsigned short n;
+    value *vars;
+
+    /* make sure variables are in memory */
+    vars = d_get_variable(data, 0);
+    if (data->svariables != (svalue *) NULL) {
+	register svalue *sv;
+
+	/* load svalues */
+	sv = data->svariables;
+	v = vars;
+	for (n = data->nvariables; n > 0; --n) {
+	    if (v->type == T_INVALID) {
+		d_get_values(data, sv, v, 1);
+	    }
+	    sv++;
+	    v++;
+	}
+    }
+
+    /* map variables */
+    for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
+	if (NEW_VAR(*vmap)) {
+	    *v++ = (*vmap == NEW_INT) ? zero_value : zero_float;
+	} else {
+	    *v = vars[*vmap];
+	    v->modified = TRUE;
+	    ref_rhs(data, v++);
+	}
+	vmap++;
+    }
+    vars = v - nvar;
+
+    /* deref old values */
+    v = data->variables;
+    for (n = data->nvariables; n > 0; --n) {
+	del_lhs(data, v++);
+    }
+
+    /* replace old with new */
+    FREE(data->variables);
+    data->variables = vars;
+
+    data->flags |= DATA_VARIABLE;
+    if (data->nvariables != nvar) {
+	if (data->svariables != (svalue *) NULL) {
+	    FREE(data->svariables);
+	    data->svariables = (svalue *) NULL;
+	}
+	data->nvariables = nvar;
+	data->achange++;	/* force rebuild on swapout */
+    }
+
+    o_upgraded(old, data->obj);
+}
+
+/*
+ * NAME:	data->upgrade_all()
+ * DESCRIPTION:	upgrade all obj and all objects cloned from obj that have
+ *		dataspaces in memory
+ */
+void d_upgrade_all(old, new)
+register object *old, *new;
+{
+    register dataspace *data;
+    register unsigned int nvar;
+    register unsigned short *vmap;
+
+    nvar = old->ctrl->vmapsize;
+    vmap = old->ctrl->vmap;
+
+    data = new->data;
+    if (data != (dataspace *) NULL) {
+	/* upgrade dataspace of master object */
+	if (nvar != 0) {
+	    d_upgrade(data, nvar, vmap, old);
+	}
+	data->ctrl->ndata--;
+	data->ctrl = new->ctrl;
+	data->ctrl->ndata++;
+    }
+
+    for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
+	if (!(data->obj->flags & O_MASTER) && data->obj->u.master == new) {
+	    /* upgrade clone */
+	    if (nvar != 0) {
+		d_upgrade(data, nvar, vmap, old);
+	    }
+	    data->ctrl->ndata--;
+	    data->ctrl = new->ctrl;
+	    data->ctrl->ndata++;
+	}
+    }
+}
+
+/*
  * NAME:	data->export()
  * DESCRIPTION:	handle exporting of arrays shared by more than one object
  */
@@ -2634,11 +2600,9 @@ static void d_free_control(ctrl)
 register control *ctrl;
 {
     register string **strs;
-    object *obj;
 
-    obj = ctrl->inherits[ctrl->ninherits - 1].obj;
-    if (obj != (object *) NULL) {
-	obj->ctrl = (control *) NULL;
+    if (ctrl->obj != (object *) NULL) {
+	ctrl->obj->ctrl = (control *) NULL;
     }
 
     /* delete strings */
@@ -2648,8 +2612,6 @@ register control *ctrl;
 	strs = ctrl->strings;
 	for (i = ctrl->nstrings; i > 0; --i) {
 	    if (*strs != (string *) NULL) {
-		(*strs)->ref &= ~STR_CONST;
-		(*strs)->u.strconst = (string **) NULL;
 		str_del(*strs);
 	    }
 	    strs++;
@@ -2657,7 +2619,12 @@ register control *ctrl;
 	FREE(ctrl->strings);
     }
 
-    if (obj == (object *) NULL || !(obj->flags & O_COMPILED)) {
+    /* delete vmap */
+    if (ctrl->vmap != (unsigned short *) NULL) {
+	FREE(ctrl->vmap);
+    }
+
+    if (!(ctrl->flags & CTRL_COMPILED)) {
 	/* delete sectors */
 	if (ctrl->sectors != (sector *) NULL) {
 	    FREE(ctrl->sectors);
@@ -2665,9 +2632,6 @@ register control *ctrl;
 
 	/* delete inherits */
 	FREE(ctrl->inherits);
-	if (ctrl->iinherits != (char *) NULL) {
-	    FREE(ctrl->iinherits);
-	}
 
 	if (ctrl->prog != (char *) NULL) {
 	    FREE(ctrl->prog);
@@ -2811,7 +2775,7 @@ int frag;
 
 	prev = data->prev;
 	if (!(data->obj->flags & O_PENDIO) || frag == 1) {
-	    if (data->flags & F_MODIFIED) {
+	    if (data->flags & DATA_MODIFIED) {
 		d_save_dataspace(data);
 		count++;
 	    }
@@ -2835,8 +2799,8 @@ int frag;
 
 	prev = ctrl->prev;
 	if (ctrl->ndata == 0) {
-	    if (ctrl->sectors == (sector *) NULL &&
-		!(ctrl->inherits[ctrl->ninherits - 1].obj->flags & O_COMPILED))
+	    if ((ctrl->sectors == (sector *) NULL &&
+		 !(ctrl->flags & CTRL_COMPILED)) || (ctrl->flags & CTRL_VARMAP))
 	    {
 		d_save_control(ctrl);
 	    }
@@ -2868,15 +2832,15 @@ void d_swapsync()
 
     /* save control blocks */
     for (ctrl = ctail; ctrl != (control *) NULL; ctrl = ctrl->prev) {
-	if (ctrl->sectors == (sector *) NULL &&
-	    !(ctrl->inherits[ctrl->ninherits - 1].obj->flags & O_COMPILED)) {
+	if ((ctrl->sectors == (sector *) NULL &&
+	     !(ctrl->flags & CTRL_COMPILED)) || (ctrl->flags & CTRL_VARMAP)) {
 	    d_save_control(ctrl);
 	}
     }
 
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if (data->flags & F_MODIFIED) {
+	if (data->flags & DATA_MODIFIED) {
 	    d_save_dataspace(data);
 	}
     }
@@ -2889,8 +2853,7 @@ void d_swapsync()
 void d_del_control(ctrl)
 register control *ctrl;
 {
-    register uindex i;
-    register sector *s;
+    register sector i, *s;
 
     if (ctrl->sectors != (sector *) NULL) {
 	for (i = ctrl->nsectors, s = ctrl->sectors + i; i > 0; --i) {
@@ -2907,8 +2870,7 @@ register control *ctrl;
 void d_del_dataspace(data)
 register dataspace *data;
 {
-    register uindex i;
-    register sector *s;
+    register sector i, *s;
 
     if (data->sectors != (sector *) NULL) {
 	for (i = data->nsectors, s = data->sectors + i; i > 0; --i) {

@@ -6,7 +6,8 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Dump the current state of the system to file.
+	Dump the current state of the system to file.  The actual dump is not
+	performed until after the current thread has finished.
 
 SEE ALSO
 	kfun/swapout

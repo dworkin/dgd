@@ -8,7 +8,13 @@ SYNOPSIS
 DESCRIPTION
 	Compile an object from a LPC file, specified by the argument string
 	with ".c" appended.  The returned object will have the argument string
-	as name.  It is an error to compile an object which already exists.
+	as name.
+	If the object to be compiled already exists and is not inherited by
+	any other object, it and all of its clones will be upgraded to the
+	new version.  Variables will be preserved only if the also exist in
+	the new version and have the same type; new variables will be
+	initialized to 0.  The actual upgrading is done immediately upon
+	completion of the current thread.
 
 SEE ALSO
 	kfun/object_name

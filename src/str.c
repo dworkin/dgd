@@ -58,7 +58,7 @@ register long len;
     }
     s->text[s->len = len] = '\0';
     s->ref = 0;
-    s->u.primary = (strref *) NULL;
+    s->primary = (strref *) NULL;
 
     return s;
 }
@@ -71,10 +71,9 @@ register long len;
 void str_del(s)
 register string *s;
 {
-    if ((--(s->ref) & STR_REF) == 0) {
-	/* this cannot be a string constant */
-	if (s->u.primary != (strref *) NULL) {
-	    s->u.primary->str = (string *) NULL;
+    if (--(s->ref) == 0) {
+	if (s->primary != (strref *) NULL) {
+	    s->primary->str = (string *) NULL;
 	}
 	FREE(s);
     }
@@ -121,22 +120,8 @@ register long n;
 
 	    return n;
 	} else if (str_cmp(str, (*h)->str) == 0) {
-	    register long i;
-
-	    /*
-	     * found it
-	     */
-	    i = (*h)->index;
-	    if (n < i) {
-		/*
-		 * It was in the hash table, but give it a new index anyway.
-		 */
-		(*h)->index = n;
-		if (n >= 0) {
-		    return n;
-		}
-	    }
-	    return i;	/* return the previous index */
+	    /* already in the hash table */
+	    return (*h)->index;
 	}
 	h = (strh **) &(*h)->chain.next;
     }

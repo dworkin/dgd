@@ -1786,7 +1786,6 @@ unsigned short *depth;
     }
 
     d = 0;
-    first;
     prev = m = &first;
 
     for (;;) {

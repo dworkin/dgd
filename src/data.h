@@ -1,5 +1,3 @@
-# include "swap.h"
-
 typedef struct {
     object *obj;		/* inherited object */
     uindex funcoffset;		/* function call offset */
@@ -34,16 +32,17 @@ typedef struct {
 typedef struct _control_ {
     struct _control_ *prev, *next;
     Uint refc;
+    uindex ndata;		/* # of data blocks using this control block */
 
-    uindex nsectors;		/* o # of sectors */
+    sector nsectors;		/* o # of sectors */
     sector *sectors;		/* o vector with sectors */
+
+    object *obj;		/* i object */
+
+    short flags;		/* various bitflags */
 
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
-
-    short niinherits;		/* i/o # immediately inherited object indices */
-    char *iinherits;		/* i/o immediately inherited object indices */
-    Uint iinhoffset;		/* o iinherits offset */
 
     Uint compiled;		/* time of compilation */
 
@@ -78,8 +77,13 @@ typedef struct _control_ {
     unsigned short nfloatdefs;	/* i/o # float definitions */
     unsigned short nfloats;	/* i/o # floats in object */
 
-    uindex ndata;		/* # of data blocks using this control block */
+    unsigned short vmapsize;	/* i/o size of variable mapping */
+    unsigned short *vmap;	/* variable mapping */
 } control;
+
+# define NEW_INT		((unsigned short) -1)
+# define NEW_FLOAT		((unsigned short) -2)
+# define NEW_VAR(x)		((x) >= NEW_FLOAT)
 
 typedef struct _strref_ {
     string *str;		/* string value */
@@ -102,12 +106,12 @@ typedef struct _dataspace_ {
     long schange;		/* # string changes */
     long imports;		/* # array imports */
     struct _dataspace_ *ilist;	/* import list */
-    char flags;			/* various bitflags */
 
     object *obj;		/* object this dataspace belongs to */
     control *ctrl;		/* control block */
+    short flags;		/* various bitflags */
 
-    uindex nsectors;		/* o # sectors */
+    sector nsectors;		/* o # sectors */
     sector *sectors;		/* o vector of sectors */
 
     unsigned short nvariables;	/* o # variables */
@@ -139,11 +143,13 @@ typedef struct _dataspace_ {
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
 extern control	       *d_load_control	P((object*));
-extern dataspace       *d_load_dataspace P((object*, int));
+extern dataspace       *d_load_dataspace P((object*));
 extern void		d_ref_control	P((control*));
 extern void		d_ref_dataspace	P((dataspace*));
 
-extern char	       *d_get_iinherits	P((control*));
+extern void		d_varmap	P((control*, unsigned int,
+					   unsigned short*));
+
 extern char	       *d_get_prog	P((control*));
 extern string	       *d_get_strconst	P((control*, int, unsigned int));
 extern dfuncdef        *d_get_funcdefs	P((control*));
@@ -152,7 +158,6 @@ extern char	       *d_get_funcalls	P((control*));
 extern dsymbol	       *d_get_symbols	P((control*));
 
 extern struct _value_  *d_get_variable	P((dataspace*, unsigned int));
-extern void 		d_extravar	P((dataspace*, int));
 extern struct _value_  *d_get_elts	P((array*));
 
 extern void		d_ref_imports	P((array*));
@@ -169,7 +174,7 @@ extern string	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
 extern array	       *d_list_callouts	P((dataspace*, Uint));
 
 extern void		d_export	P((void));
-
+extern void		d_upgrade_all	P((object*, object*));
 extern uindex		d_swapout	P((int));
 extern void		d_swapsync	P((void));
 

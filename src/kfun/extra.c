@@ -325,6 +325,7 @@ int nargs;
     register int flen, slen, size;
     register char *f, *x;
     value values[MAX_LOCALS];
+    value *oldval;
     static volatile value *val;
     int fl, sl, matches;
     char *s;
@@ -343,6 +344,7 @@ int nargs;
 
     nargs -= 2;
     i_add_ticks(8 * nargs);
+    oldval = (value *) val;
     val = values;
     matches = 0;
 
@@ -356,6 +358,7 @@ int nargs;
 		str_del(val->u.string);
 	    }
 	}
+	val = oldval;
 	error((char *) NULL);	/* pass on error */
     }
 
@@ -566,6 +569,7 @@ no_match:
 	sp++;
 	--val;
     }
+    val = oldval;
     ec_pop();
 
     str_del((sp++)->u.string);

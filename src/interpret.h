@@ -9,25 +9,25 @@
 # define I_PUSH_NEAR_STRING	 6	/* 1 unsigned, 1 unsigned */
 # define I_PUSH_FAR_STRING	 7	/* 1 unsigned, 2 unsigned */
 # define I_PUSH_LOCAL		 8	/* 1 signed */
-# define I_PUSH_GLOBAL		 9	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_LOCAL_LVALUE	10	/* 1 signed */
-# define I_PUSH_GLOBAL_LVALUE	11	/* 1 unsigned, 1 unsigned */
-# define I_INDEX		12
-# define I_INDEX_LVALUE		13
-# define I_AGGREGATE		14	/* 1 unsigned, 2 unsigned */
-# define I_SPREAD		15	/* 1 signed */
-# define I_CAST			16	/* 1 unsigned */
-# define I_FETCH		17
-# define I_STORE		18
-# define I_JUMP			19	/* 2 unsigned */
-# define I_JUMP_ZERO		20	/* 2 unsigned */
-# define I_JUMP_NONZERO		21	/* 2 unsigned */
-# define I_SWITCH		22	/* n */
-# define I_CALL_KFUNC		23	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_IKFUNC		24	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_AFUNC		25	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		26	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define I_CALL_IDFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define I_PUSH_GLOBAL		 9	/* 1 unsigned */
+# define I_PUSH_FAR_GLOBAL	10	/* 1 unsigned, 1 unsigned */
+# define I_PUSH_LOCAL_LVAL	11	/* 1 signed */
+# define I_PUSH_GLOBAL_LVAL	12	/* 1 unsigned */
+# define I_PUSH_FAR_GLOBAL_LVAL	13	/* 1 unsigned, 1 unsigned */
+# define I_INDEX		14
+# define I_INDEX_LVAL		15
+# define I_AGGREGATE		16	/* 1 unsigned, 2 unsigned */
+# define I_SPREAD		17	/* 1 signed */
+# define I_CAST			18	/* 1 unsigned */
+# define I_FETCH		19
+# define I_STORE		20
+# define I_JUMP			21	/* 2 unsigned */
+# define I_JUMP_ZERO		22	/* 2 unsigned */
+# define I_JUMP_NONZERO		23	/* 2 unsigned */
+# define I_SWITCH		24	/* n */
+# define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
+# define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
 # define I_CATCH		29	/* 2 signed */
 # define I_RLIMITS		30

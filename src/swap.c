@@ -19,17 +19,18 @@ static int swap = -1;			/* swap file descriptor */
 static int dump = -1;			/* dump file descriptor */
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap check map */
-static sector nfree, sfree;		/* free sector lists */
+static sector mfree, sfree;		/* free sector lists */
 static char *bmap;			/* sector bitmap */
 static char *cbuf;			/* sector buffer */
 static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
 static int sectorsize;			/* size of sector */
-static uindex swapsize, cachesize;	/* # of sectors in swap and cache */
-static uindex nsectors;			/* total swap sectors */
-static uindex ssectors;			/* sectors actually in swap file */
-static uindex dsectors, dcursec;	/* dump sectors */
+static sector swapsize, cachesize;	/* # of sectors in swap and cache */
+static sector nsectors;			/* total swap sectors */
+static sector nfree;			/* # free sectors */
+static sector ssectors;			/* sectors actually in swap file */
+static sector dsectors, dcursec;	/* dump sectors */
 
 /*
  * NAME:	swap->init()
@@ -58,9 +59,10 @@ unsigned int secsize;
     /* 0 sectors allocated */
     nsectors = 0;
     ssectors = 0;
+    nfree = 0;
 
     /* init free sector maps */
-    nfree = SW_UNUSED;
+    mfree = SW_UNUSED;
     sfree = SW_UNUSED;
     lfree = h = (header *) mem;
     for (i = cache - 1; i > 0; --i) {
@@ -110,7 +112,7 @@ static void sw_create()
  */
 static void copy(sec, n)
 register sector sec;
-register uindex n;
+register sector n;
 {
     dsectors -= n;
 
@@ -145,10 +147,11 @@ sector sw_new()
 {
     register sector sec;
 
-    if (nfree != SW_UNUSED) {
+    if (mfree != SW_UNUSED) {
 	/* reuse a previously deleted sector */
-	sec = nfree;
-	nfree = map[nfree];
+	sec = mfree;
+	mfree = map[mfree];
+	--nfree;
     } else {
 	/* allocate a new sector */
 	if (nsectors == swapsize) {
@@ -213,7 +216,7 @@ unsigned int sec;
 		/*
 		 * replace by sector from dump file
 		 */
-		copy(i, (uindex) 1);
+		copy(i, (sector) 1);
 	    }
 	    if (dsectors == 0) {
 		close(dump);
@@ -231,8 +234,9 @@ unsigned int sec;
     /*
      * put sec in free sector list
      */
-    map[sec] = nfree;
-    nfree = sec;
+    map[sec] = mfree;
+    mfree = sec;
+    nfree++;
 }
 
 /*
@@ -422,10 +426,10 @@ register Uint size, idx;
  * NAME:	swap->mapsize()
  * DESCRIPTION:	count the number of sectors required for size bytes + a map
  */
-uindex sw_mapsize(size)
-Uint size;
+sector sw_mapsize(size)
+unsigned int size;
 {
-    register uindex i, n;
+    register sector i, n;
 
     /* calculate the number of sectors required */
     n = 0;
@@ -440,19 +444,20 @@ Uint size;
 
 /*
  * NAME:	swap->count()
- * DESCRIPTION:	return the number of sectors presently in use (or in free list)
+ * DESCRIPTION:	return the number of sectors presently in use
  */
-uindex sw_count()
+sector sw_count()
 {
-    return nsectors;
+    return nsectors - nfree;
 }
 
 
 typedef struct {
-    uindex sectorsize;		/* size of swap sector */
-    uindex nsectors;		/* # sectors */
-    uindex ssectors;		/* # swap sectors */
-    uindex nfree, sfree;	/* free sector lists */
+    Uint sectorsize;		/* size of swap sector */
+    sector nsectors;		/* # sectors */
+    sector ssectors;		/* # swap sectors */
+    sector nfree;		/* # free sectors */
+    sector mfree, sfree;	/* free sector lists */
 } dump_header;
 
 # define CHUNKSZ	32
@@ -464,7 +469,7 @@ typedef struct {
 void sw_copy()
 {
     if (dump >= 0) {
-	register uindex n;
+	register sector n;
 
 	if (dsectors > 0) {
 	    n = CHUNKSZ;
@@ -491,7 +496,7 @@ char *dumpfile;
     register header *h;
     register sector sec;
     char buffer[STRINGSZ + 4];
-    register uindex n;
+    register sector n;
     dump_header dh;
 
     if (dump >= 0) {
@@ -582,6 +587,7 @@ char *dumpfile;
     dh.nsectors = nsectors;
     dh.ssectors = ssectors;
     dh.nfree = nfree;
+    dh.mfree = mfree;
     dh.sfree = sfree;
     lseek(dump, sectorsize - (long) sizeof(dump_header), SEEK_SET);
     if (write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
@@ -605,7 +611,7 @@ char *dumpfile;
 	dsectors = nsectors;
 	dcursec = 0;
 	memset(bmap, -1, (dsectors + 7) >> 3);
-	for (sec = nfree; sec != SW_UNUSED; sec = map[sec]) {
+	for (sec = mfree; sec != SW_UNUSED; sec = map[sec]) {
 	    BCLR(bmap, sec);
 	    --dsectors;
 	}
@@ -643,7 +649,7 @@ char *dumpfile;
 void sw_restore(fd, secsize)
 int fd, secsize;
 {
-    register uindex n, size;
+    register sector n, size;
     dump_header dh;
     char *buffer;
 
@@ -656,6 +662,7 @@ int fd, secsize;
     nsectors = dh.nsectors;
     ssectors = dh.ssectors;
     nfree = dh.nfree;
+    mfree = dh.mfree;
     sfree = dh.sfree;
 
     /* create swap file */

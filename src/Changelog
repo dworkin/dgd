@@ -1013,3 +1013,14 @@ DGD 1.1
  - Fixed a compiler bug which sometimes rejected x..x case label ranges.
  - Generate summand operators in even more cases, where array aggregates
    are now also included.
+ - Added 2nd argument to driver->remove_program(), the compile time of the
+   object.
+ - Cleaned up comm.c a bit.
+ - Made sector independent of uindex.
+ - String constants are no longer shared between control block and dataspace
+   when swapped out.
+ - Objects can be recompiled before being destructed if they are not inherited.
+   This has the effect of upgrading the object and all clones to the new
+   program.  Variables with the same name and type (private and static don't
+   matter) are preserved in the upgraded object; all other variables are
+   initialized to 0.

@@ -347,7 +347,7 @@ node *label;
 	obj = o_find(file);
 	if (obj == (object *) NULL) {
 	    inheriting = TRUE;
-	    obj = c_compile(file);
+	    obj = c_compile(file, (object *) NULL);
 	    inheriting = FALSE;
 	    return FALSE;
 	}
@@ -384,7 +384,7 @@ node *label;
 	    obj = o_find(file);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
-		obj = c_compile(file);
+		obj = c_compile(file, (object *) NULL);
 		inheriting = FALSE;
 		return FALSE;
 	    }
@@ -405,12 +405,13 @@ node *label;
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(file)
+object *c_compile(file, obj)
 register char *file;
+object *obj;
 {
+    bool iflag;
     context c;
     char file_c[STRINGSZ + 2];
-    bool iflag;
     extern int yyparse P((void));
 
     iflag = inheriting;
@@ -454,30 +455,30 @@ register char *file;
 	inheriting = FALSE;
 
 	if (c_autodriver() != 0) {
-	    ctrl_init(auto_object, driver_object);
+	    ctrl_init();
 	} else {
-	    object *obj;
+	    object *aobj;
 
 	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
 		/*
-		 * (re)compile the driver object to do pathname translation
+		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(driver_object);
+		c_compile(driver_object, (object *) NULL);
 		current = &c;
 	    }
 
-	    obj = o_find(auto_object);
-	    if (obj == (object *) NULL) {
+	    aobj = o_find(auto_object);
+	    if (aobj == (object *) NULL) {
 		/*
-		 * (re)compile auto object
+		 * compile auto object
 		 */
 		inheriting = TRUE;
-		obj = c_compile(auto_object);
+		aobj = c_compile(auto_object, (object *) NULL);
 	    }
 	    /* inherit auto object */
-	    ctrl_init(auto_object, driver_object);
-	    ctrl_inherit(c.file, obj, (string *) NULL);
+	    ctrl_init();
+	    ctrl_inherit(c.file, aobj, (string *) NULL);
 	}
 
 	if (!pp_init(file_c, paths, 1)) {
@@ -491,6 +492,19 @@ register char *file;
 	if (yyparse() == 0 && ctrl_chkfuncs()) {
 	    control *ctrl;
 
+	    if (obj != (object *) NULL) {
+		if (obj->count == 0) {
+		    error("Object destructed during recompilation");
+		}
+		if (O_UPGRADING(obj)) {
+		    error("Object recompiled during recompilation");
+		}
+		if (O_INHERITED(obj)) {
+		    /* inherited */
+		    error("Object inherited during recompilation");
+		}
+	    }
+
 	    /*
 	     * successfully compiled
 	     */
@@ -501,14 +515,33 @@ register char *file;
 		/*
 		 * object with inherit statements only (or nothing at all)
 		 */
-		ctrl_create(c.file);
+		ctrl_create();
 	    }
 	    ctrl = ctrl_construct();
 	    ctrl_clear();
 	    c_clear();
 	    inheriting = iflag;
 	    current = c.prev;
-	    return ctrl->inherits[ctrl->ninherits - 1].obj;
+
+	    if (obj == (object *) NULL) {
+		/* new object */
+		obj = o_new(c.file, ctrl);
+		if (strcmp(c.file, driver_object) == 0) {
+		    obj->flags |= O_DRIVER;
+		} else if (strcmp(c.file, auto_object) == 0) {
+		    obj->flags |= O_AUTO;
+		}
+	    } else {
+		unsigned short *vmap;
+
+		/* recompiled object */
+		o_upgrade(obj, ctrl);
+		vmap = ctrl_varmap(obj->ctrl, ctrl);
+		if (vmap != (unsigned short *) NULL) {
+		    d_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
+		}
+	    }
+	    return obj;
 	} else if (nerrors == 0) {
 	    /* another try */
 	    pp_clear();
@@ -728,7 +761,7 @@ unsigned int class, type;
 node *n;
 {
     if (!seen_decls) {
-	ctrl_create(current->file);
+	ctrl_create();
 	seen_decls = TRUE;
     }
     c_decl_list(class, type, n, TRUE);
@@ -746,7 +779,7 @@ unsigned int class, type;
 register node *n;
 {
     if (!seen_decls) {
-	ctrl_create(current->file);
+	ctrl_create();
 	seen_decls = TRUE;
     }
     c_decl_func(class, type | n->mod, fname = n->l.left->l.string, n->r.right,
@@ -1673,7 +1706,7 @@ node *args;
 	if ((*arg)->type == N_SPREAD) {
 	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
 		(*arg)->mod = nargs-- - n;
-		/* KFCALL => KFCALL_LVAL, IKFCALL => IKFCALL_LVAL */
+		/* KFCALL => KFCALL_LVAL */
 		func->r.number |= (long) KFCALL_LVAL << 24;
 	    }
 	    t = (*arg)->l.left->mod;
@@ -1972,7 +2005,7 @@ char *f, *a1, *a2, *a3;
 	o_find(driver_object) != (object *) NULL) {
 	fname = tk_filename();
 	(--sp)->type = T_STRING;
-	str_ref(sp->u.string = str_new(NULL, (long) strlen(fname) + 1));
+	str_ref(sp->u.string = str_new(NULL, strlen(fname) + 1L));
 	strcpy(sp->u.string->text + 1, fname);
 	sp->u.string->text[0] = '/';
 	(--sp)->type = T_INT;

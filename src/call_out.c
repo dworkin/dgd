@@ -440,7 +440,7 @@ void co_call()
 		    /* function exists */
 		    i_del_value(sp++);
 		    str_del((sp++)->u.string);
-		    d_export();
+		    endthread();
 		} else {
 		    /* function doesn't exist */
 		    str_del((sp++)->u.string);

@@ -7,10 +7,13 @@
 # include "interpret.h"
 # include "data.h"
 
+# define OBJ_NONE		UINDEX_MAX
+
 static object *otab;		/* object table */
 static uindex otabsize;		/* size of object table */
 static hashtab *htab;		/* object name hash table */
 static object *clean_obj;	/* list of objects to clean */
+static object *upgrade_obj;	/* list of upgrade objects */
 static object *dest_obj;	/* destructed object list */
 static object *free_obj;	/* free object list */
 static uindex nobjects;		/* number of objects in object table */
@@ -27,26 +30,20 @@ register unsigned int n;
     otab = ALLOC(object, otabsize = n);
     for (n = 4; n < otabsize; n <<= 1) ;
     htab = ht_new(n >> 2, OBJHASHSZ);
-    free_obj = (object *) NULL;
+    free_obj = dest_obj = upgrade_obj = clean_obj = (object *) NULL;
     nobjects = 0;
     nfreeobjs = 0;
     count = 0;
 }
 
 /*
- * NAME:	object->new()
- * DESCRIPTION:	create a new object. If the master argument is non-NULL, the
- *		new object is a clone of this master object; otherwise it is
- *		a new master object.
+ * NAME:	object->alloc()
+ * DESCRIPTION:	allocate a new object
  */
-object *o_new(name, master, ctrl)
-char *name;
-object *master;
-control *ctrl;
+static object *o_alloc()
 {
-    register object *o;
+    object *o;
 
-    /* allocate object */
     if (free_obj != (object *) NULL) {
 	/* get space from free object list */
 	o = free_obj;
@@ -55,88 +52,212 @@ control *ctrl;
     } else {
 	/* use new space in object table */
 	if (nobjects == otabsize) {
-	    error("Too many objects");
+	    fatal("too many objects");
 	}
-	o = &otab[nobjects];
-	o->index = nobjects++;
+	o = &otab[nobjects++];
     }
-    o->count = ++count;
 
-    if (master == (object *) NULL) {
-	register dinherit *inh;
-	register int i;
-	hte **h;
-
-	/* put object in object name hash table */
-	m_static();
-	strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
-	m_dynamic();
-	h = ht_lookup(htab, name, FALSE);
-	o->chain.next = *h;
-	*h = (hte *) o;
-	o->flags = O_MASTER;
-	o->ctrl = ctrl;
-	ctrl->inherits[ctrl->ninherits - 1].obj = o;
-
-	/* add reference to all inherited objects */
-	o->u.ref = 0;	/* increased to 1 in following loop */
-	inh = ctrl->inherits;
-	for (i = ctrl->ninherits; i > 0; --i) {
-	    (inh++)->obj->u.ref++;
-	}
-    } else {
-	/* ignore the object name */
-	o->chain.name = (char *) NULL;
-
-	/* add reference to master object */
-	o->flags = 0;
-	(o->u.master = master)->u.ref++;
-	o->ctrl = (control *) NULL;
-    }
     o->data = (dataspace *) NULL;
+    o->cfirst = SW_UNUSED;
     o->dfirst = SW_UNUSED;
+}
+
+/*
+ * NAME:	object->new()
+ * DESCRIPTION:	create a new object
+ */
+object *o_new(name, ctrl)
+char *name;
+register control *ctrl;
+{
+    register object *o;
+    register dinherit *inh;
+    register int i;
+    hte **h;
+
+    /* allocate object */
+    o = o_alloc();
+
+    /* put object in object name hash table */
+    m_static();
+    strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
+    m_dynamic();
+    h = ht_lookup(htab, name, FALSE);
+    o->chain.next = *h;
+    *h = (hte *) o;
+
+    o->flags = O_MASTER;
+    o->cref = 0;
+    o->prev = OBJ_NONE;
+    o->index = o - otab;
+    o->count = ++count;
+    o->update = 0;
+    o->ctrl = ctrl;
+    ctrl->inherits[ctrl->ninherits - 1].obj = ctrl->obj = o;
+
+    /* add reference to all inherited objects */
+    o->u.ref = 0;	/* increased to 1 in following loop */
+    inh = ctrl->inherits;
+    for (i = ctrl->ninherits; i > 0; --i) {
+	(inh++)->obj->u.ref++;
+    }
+
+    return o;
+}
+
+/*
+ * NAME:	object->clone()
+ * DESCRIPTION:	clone an object
+ */
+object *o_clone(master)
+register object *master;
+{
+    register object *o;
+
+    /* allocate object */
+    o = o_alloc();
+
+    o->chain.name = (char *) NULL;
+    o->flags = 0;
+    o->index = o - otab;
+    o->count = ++count;
+    o->update = (o->u.master = master)->update;
+    o->ctrl = (control *) NULL;
+    o->data = d_new_dataspace(o);	/* clones always have a dataspace */
+
+    /* add reference to master object */
+    master->cref++;
+    master->u.ref++;
 
     return o;
 }
 
 /*
  * NAME:	object->delete()
- * DESCRIPTION:	delete a reference to an object, and put it in the deleted
- *		list if it was the last reference
+ * DESCRIPTION:	the last reference to a master object was removed
  */
 static void o_delete(o)
 register object *o;
 {
-    register int i;
-    register dinherit *inh;
-
-    if (--(o->u.ref) != 0) {
-	/* last reference not removed yet */
-	return;
-    }
+    /* put in deleted list */
+    o->u.master = dest_obj;
+    dest_obj = o;
 
     /* callback to the system */
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new(NULL, strlen(o->chain.name) + 1));
     sp->u.string->text[0] = '/';
     strcpy(sp->u.string->text + 1, o->chain.name);
-    if (i_call_critical("remove_program", 1, TRUE)) {
+    (--sp)->type = T_INT;
+    sp->u.number = o->ctrl->compiled;
+    if (i_call_critical("remove_program", 2, TRUE)) {
 	i_del_value(sp++);
     }
 
-    /* remove references to inherited objects too */
-    if (o->ctrl == (control *) NULL) {
-	o->ctrl = d_load_control(o);
+    if (!O_UPGRADING(o)) {
+	register dinherit *inh;
+	register int i;
+
+	/* remove references to inherited objects too */
+	if (o->ctrl == (control *) NULL) {
+	    o->ctrl = d_load_control(o);
+	}
+	inh = o->ctrl->inherits;
+	i = o->ctrl->ninherits;
+	while (--i > 0) {
+	    o = (inh++)->obj;
+	    if (--(o->u.ref) == 0) {
+		o_delete(o);
+	    }
+	}
     }
-    inh = o->ctrl->inherits;
-    i = o->ctrl->ninherits;
+}
+
+/*
+ * NAME:	object->upgrade()
+ * DESCRIPTION:	upgrade an object to a new program
+ */
+void o_upgrade(obj, ctrl)
+object *obj;
+control *ctrl;
+{
+    register object *o;
+    register dinherit *inh;
+    register int i;
+
+    /* allocate upgrade object */
+    o = o_alloc();
+    o->chain.name = (char *) NULL;
+    o->flags = O_MASTER;
+    o->count = 0;
+    o->u.master = obj;
+    o->ctrl = ctrl;
+    ctrl->inherits[ctrl->ninherits - 1].obj = obj;
+
+    /* add reference to inherited objects */
+    inh = ctrl->inherits;
+    i = ctrl->ninherits;
     while (--i > 0) {
-	o_delete((inh++)->obj);
+	(inh++)->obj->u.ref++;
     }
 
-    /* put in deleted list */
-    o->u.master = dest_obj;
-    dest_obj = o;
+    /* add to upgrades list */
+    o->chain.next = (hte *) upgrade_obj;
+    upgrade_obj = o;
+
+    /* mark as upgrading */
+    obj->cref += 2;
+
+    /* remove references to old inherited objects */
+    ctrl = o_control(obj);
+    inh = ctrl->inherits;
+    i = ctrl->ninherits;
+    while (--i > 0) {
+	o = (inh++)->obj;
+	if (--(o->u.ref) == 0) {
+	    o_delete(o);
+	}
+    }
+}
+
+/*
+ * NAME:	object->upgraded()
+ * DESCRIPTION:	an object has been upgraded
+ */
+void o_upgraded(old, new)
+register object *old, *new;
+{
+    if (new->count != 0) {
+	if (!(new->flags & O_MASTER)) {
+	    new->update = new->u.master->update;
+	    new = new->u.master;
+	    new->cref++;
+	    new->u.ref++;
+	}
+	while (--(old->u.ref) == 0) {
+	    /* put in deleted list */
+	    old->u.master = dest_obj;
+	    dest_obj = old;
+
+# ifdef DEBUG
+	    if (old->prev != OBJ_NONE) {
+		fatal("removing issue in middle of list");
+	    }
+# endif
+	    /* remove from issue list */
+	    old = &otab[old->cref];
+	    old->prev = OBJ_NONE;
+	    if (old == new) {
+		new->cref--;
+		if (--(new->u.ref) == 0) {
+		    o_delete(new);
+		}
+		break;
+	    }
+	}
+    } else if (!(new->flags & O_MASTER)) {
+	new->update = new->u.master->update;
+    }
 }
 
 /*
@@ -146,19 +267,46 @@ register object *o;
 void o_del(o)
 register object *o;
 {
+# ifdef DEBUG
     if (o->count == 0) {
-	/* objects can only be destructed once */
-	error("Destructing destructed object");
+	fatal("destructing destructed object");
     }
+# endif
     o->count = 0;
 
     if (o->flags & O_MASTER) {
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 
-	o_delete(o);
+	if (--(o->u.ref) == 0) {
+	    o_delete(o);
+	}
     } else {
-	o_delete(o->u.master);
+	register object *m;
+
+	/* clone */
+	m = o->u.master;
+	if (m->update == o->update) {
+	    m->cref--;
+	    if (--(m->u.ref) == 0) {
+		o_delete(m);
+	    }
+	} else {
+	    /* non-upgraded clone of old issue */
+	    do {
+		m = &otab[m->prev];
+	    } while (m->update != o->update);
+	    if (--(m->u.ref) == 0) {
+		/* put old issue in deleted list */
+		m->u.master = dest_obj;
+		dest_obj = m;
+
+		m = o->u.master;
+		if (--(m->u.ref) == 0) {
+		    o_delete(m);
+		}
+	    }
+	}
     }
 
     /* put in clean list */
@@ -299,7 +447,7 @@ register object *o;
 	    o->data = d_new_dataspace(o);
 	} else {
 	    /* load dataspace block */
-	    o->data = d_load_dataspace(o, (o->flags & O_USER));
+	    o->data = d_load_dataspace(o);
 	}
     } else {
 	d_ref_dataspace(o->data);
@@ -309,7 +457,7 @@ register object *o;
 
 /*
  * NAME:	object->clean()
- * DESCRIPTION:	deal with destructed objects
+ * DESCRIPTION:	clean up the object table
  */
 void o_clean()
 {
@@ -319,7 +467,7 @@ void o_clean()
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
-	    o->data = d_load_dataspace(o, FALSE);
+	    o->data = d_load_dataspace(o);
 	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
@@ -335,13 +483,77 @@ void o_clean()
     }
     clean_obj = (object *) NULL;
 
+    for (o = upgrade_obj; o != (object *) NULL; o = (object *) o->chain.next) {
+	register object *up;
+	register control *ctrl;
+
+	up = o->u.master;
+	up->cref -= 2;
+
+	if (up->count == 0 && up->cref == 0) {
+	    /* also remove upgrader */
+	    o->u.master = dest_obj;
+	    dest_obj = o;
+	} else {
+	    /* upgrade objects */
+	    up->flags &= ~O_COMPILED;
+	    o->u.ref = up->u.ref;
+	    ctrl = up->ctrl;
+
+	    if (ctrl->vmapsize != 0 &&
+		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED ||
+		 up->count == 0 || --(o->u.ref) != 0)) {
+		/* upgrade variables */
+		o->cref = o->index = up->index;
+		o->prev = up->prev;
+		if (o->prev != SW_UNUSED) {
+		    otab[o->prev].cref = o - otab;
+		}
+		o->update = up->update;
+
+		up->prev = o - otab;
+		up->cref = 1;
+		up->u.ref = 1;
+		up->update++;
+		if (up->count != 0) {
+		    up->u.ref++;
+		    if (up->data == (dataspace *) NULL &&
+			up->dfirst != SW_UNUSED) {
+			/* load dataspace (with old control block) */
+			up->data = d_load_dataspace(up);
+		    }
+		}
+	    } else {
+		/* no variable upgrading */
+		o->u.master = dest_obj;
+		dest_obj = o;
+	    }
+
+	    /* swap control blocks */
+	    up->ctrl = o->ctrl;
+	    up->ctrl->obj = up;
+	    o->ctrl = ctrl;
+	    ctrl->obj = o;
+	    o->cfirst = up->cfirst;
+	    up->cfirst = SW_UNUSED;
+
+	    if (ctrl->ndata != 0) {
+		/* upgrade all dataspaces in memory */
+		d_upgrade_all(o, up);
+	    }
+	}
+    }
+    upgrade_obj = (object *) NULL;
+
     for (o = dest_obj; o != (object *) NULL; o = next) {
 	/* free control block */
 	d_del_control(o_control(o));
 
-	/* free object name */
-	FREE(o->chain.name);
-	o->chain.name = (char *) NULL;
+	if (o->chain.name != (char *) NULL) {
+	    /* free object name */
+	    FREE(o->chain.name);
+	    o->chain.name = (char *) NULL;
+	}
 
 	/* put master object in free list */
 	o->chain.next = (hte *) free_obj;
@@ -352,26 +564,6 @@ void o_clean()
 	o->u.ref = 0;
     }
     dest_obj = (object *) NULL;
-}
-
-/*
- * NAME:	object->scantable()
- * DESCRIPTION:	scan the object table for objects of a certain type
- */
-void o_scantable(check)
-void (*check) P((object*));
-{
-    register uindex n;
-    register object *obj;
-
-    if (nobjects != nfreeobjs) {
-	for (n = 0, obj = otab; n < nobjects; n++, obj++) {
-	    if (obj->count != 0 || ((obj->flags & O_MASTER) && obj->u.ref != 0))
-	    {
-		check(obj);
-	    }
-	}
-    }
 }
 
 /*

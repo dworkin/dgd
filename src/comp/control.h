@@ -1,6 +1,6 @@
-extern void		 ctrl_init	P((char*, char*));
+extern void		 ctrl_init	P((void));
 extern bool		 ctrl_inherit	P((char*, object*, string*));
-extern void		 ctrl_create	P((char*));
+extern void		 ctrl_create	P((void));
 extern long		 ctrl_dstring	P((string*));
 extern void		 ctrl_dproto	P((string*, char*));
 extern void		 ctrl_dfunc	P((string*, char*));
@@ -15,6 +15,7 @@ extern bool		 ctrl_chkfuncs	P((void));
 extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));
+extern unsigned short	*ctrl_varmap	P((control*, control*));
 
 # define PROTO_CLASS(prot)	((prot)[0])
 # define PROTO_FTYPE(prot)	((prot)[1])
@@ -26,8 +27,5 @@ extern void		 ctrl_clear	P((void));
 
 # define KFCALL			0
 # define KFCALL_LVAL		1
-# define IKFCALL		2
-# define IKFCALL_LVAL		3
-# define DFCALL			4
-# define IDFCALL		5
-# define FCALL			6
+# define DFCALL			2
+# define FCALL			3

@@ -12,9 +12,6 @@ typedef struct {
     short ninherits;		/* # of inherits */
     pcinherit *inherits;	/* inherits */
 
-    short niinherits;		/* # of immediate inherits */
-    char *iinherits;		/* immediate inherits */
-
     Uint compiled;		/* compile time */
 
     unsigned short progsize;	/* program size */

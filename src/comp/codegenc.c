@@ -307,7 +307,9 @@ register node *n;
 char *op;
 bool direct;
 {
-    if (!((n->l.left->flags | n->r.right->flags) & F_CONST)) {
+    if (!((n->l.left->flags | n->r.right->flags) & F_CONST) &&
+	n->l.left->type != N_LOCAL && n->r.right->type != N_LOCAL) {
+	/* neither is a constant or a local intvar */
 	direct = FALSE;
     }
     cg_iexpr(n->l.left, direct);
@@ -1044,9 +1046,11 @@ register int state;
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
-	case IKFCALL:
-	case IKFCALL_LVAL:
-	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
+	    if (PROTO_NARGS(KFUN((short) n->r.number).proto) == 0) {
+		/* kfun without arguments won't do argument checking */
+		kfun(KFUN((short) n->r.number).name);
+	    } else if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS)
+	    {
 		output("call_kfun_arg(%d/*%s*/, %s)",
 		       &KFUN((short) n->r.number) - kftab,
 		       KFUN((short) n->r.number).name, p);
@@ -1061,12 +1065,11 @@ register int state;
 	    break;
 
 	case DFCALL:
-	case IDFCALL:
 	    if (((n->r.number >> 8) & 0xff) == 0) {
 		output("i_funcall((object *) NULL, 0, %d, %s)",
 		       ((int) n->r.number) & 0xff, p);
 	    } else {
-		output("i_funcall((object *) NULL, f->p_index+%d, %d, %s)",
+		output("i_funcall((object *) NULL, f->p_index-%d, %d, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
 		       ((int) n->r.number) & 0xff, p);
 	    }

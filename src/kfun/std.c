@@ -22,13 +22,19 @@ char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, T_OBJECT, 1, T_STRING };
 int kf_compile_object()
 {
     char *file;
-    object *obj;
+    register object *obj;
 
     file = path_resolve(sp->u.string->text);
-    if (o_find(file) != (object *) NULL) {
-	error("/%s already exists", file);
+    obj = o_find(file);
+    if (obj != (object *) NULL) {
+	if (O_UPGRADING(obj)) {
+	    error("Object is already being upgraded");
+	}
+	if (O_INHERITED(obj)) {
+	    error("Cannot recompile inherited object");
+	}
     }
-    obj = c_compile(file);
+    obj = c_compile(file, obj);
     str_del(sp->u.string);
     sp->type = T_OBJECT;
     sp->oindex = obj->index;
@@ -174,8 +180,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("call_trace", kf_call_trace, pt_call_trace)
 # else
-char pt_call_trace[] = { C_TYPECHECKED | C_STATIC, T_MIXED | (2 << REFSHIFT),
-			 0 };
+char pt_call_trace[] = { C_STATIC, T_MIXED | (2 << REFSHIFT), 0 };
 
 /*
  * NAME:	kfun->call_trace()
@@ -210,7 +215,7 @@ int kf_clone_object()
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
-    obj = o_new((char *) NULL, obj, (control *) NULL);
+    obj = o_clone(obj);
     sp->oindex = obj->index;
     sp->u.objcnt = obj->count;
     i_call(obj, "", 0, FALSE, 0);	/* cause creator to be called */
@@ -339,24 +344,6 @@ int kf_function_object()
     sp->type = T_INT;
     sp->u.number = 0;
     return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("upgrade_object", kf_upgrade_object, pt_upgrade_object)
-# else
-char pt_upgrade_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_VOID,
-			     1, T_MIXED | T_ELLIPSIS };
-
-/*
- * NAME:	kfun->upgrade_object()
- * DESCRIPTION:	upgrade the objects given as arguments
- */
-int kf_upgrade_object(nargs)
-int nargs;
-{
-    error("Not yet implemented");
 }
 # endif
 
@@ -768,7 +755,7 @@ int kf_swapout()
 # ifdef FUNCDEF
 FUNCDEF("dump_state", kf_dump_state, pt_dump_state)
 # else
-char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, T_VOID, 0 };
+char pt_dump_state[] = { C_STATIC, T_VOID, 0 };
 
 /*
  * NAME:	kfun->dump_state()

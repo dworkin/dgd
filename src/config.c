@@ -42,7 +42,7 @@ static config conf[] = {
 							0, USHRT_MAX },
 # define CACHE_SIZE	3
 				{ "cache_size",		INT_CONST, FALSE,
-							100, UINDEX_MAX },
+							1, UINDEX_MAX },
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE,
 							0, UINDEX_MAX },
@@ -124,7 +124,7 @@ typedef struct {	/* struct align */
 
 
 typedef struct {
-    char b[18];		/* various things */
+    char b[19];		/* various things */
     Int sectorsz;	/* sector size */
     Uint btime;		/* boot time */
     Uint etime;		/* elapsed time */
@@ -557,20 +557,21 @@ char *configfile, *dumpfile;
     header.b[1] = 2;				/* dump file version number */
     header.b[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
     header.b[3] = sizeof(uindex);		/* sizeof uindex */
-    header.b[4] = sizeof(long);			/* sizeof long */
-    header.b[5] = sizeof(char *);		/* sizeof char* */
-    header.b[6] = ((char *) &s)[0];		/* 1 of 2 */
-    header.b[7] = ((char *) &s)[1];		/* 2 of 2 */
-    header.b[8] = ((char *) &i)[0];		/* 1 of 4 */
-    header.b[9] = ((char *) &i)[1];		/* 2 of 4 */
-    header.b[10] = ((char *) &i)[2];		/* 3 of 4 */
-    header.b[11] = ((char *) &i)[3];		/* 4 of 4 */
-    header.b[12] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
-    header.b[13] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
-    header.b[14] = (char *) &idummy.i - (char *) &idummy.fill; /* int align */
-    header.b[15] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
-    header.b[16] = (char *) &pdummy.p - (char *) &pdummy.fill; /* ptr align */
-    header.b[17] = sizeof(align);			     /* struct align */
+    header.b[4] = sizeof(sector);		/* sizeof sector */
+    header.b[5] = sizeof(long);			/* sizeof long */
+    header.b[6] = sizeof(char*);		/* sizeof char* */
+    header.b[7] = ((char *) &s)[0];		/* 1 of 2 */
+    header.b[8] = ((char *) &s)[1];		/* 2 of 2 */
+    header.b[9] = ((char *) &i)[0];		/* 1 of 4 */
+    header.b[10] = ((char *) &i)[1];		/* 2 of 4 */
+    header.b[11] = ((char *) &i)[2];		/* 3 of 4 */
+    header.b[12] = ((char *) &i)[3];		/* 4 of 4 */
+    header.b[13] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
+    header.b[14] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
+    header.b[15] = (char *) &idummy.i - (char *) &idummy.fill; /* Int align */
+    header.b[16] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
+    header.b[17] = (char *) &pdummy.p - (char *) &pdummy.fill; /* ptr align */
+    header.b[18] = sizeof(align);			     /* struct align */
 
     starttime = boottime = P_time();
     if (ec_push((ec_ftn) NULL)) {
@@ -589,9 +590,9 @@ char *configfile, *dumpfile;
 	/* notify mudlib */
 	call_driver_object("restored", 0);
     }
-    i_del_value(sp++);
     ec_pop();
-    d_export();
+    i_del_value(sp++);
+    endthread();
 
     /* initialize communications */
     m_static();

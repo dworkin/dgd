@@ -75,7 +75,6 @@ int nusers, telnet_port, binary_port;
  */
 void comm_finish()
 {
-    comm_flush(FALSE);
     conn_finish();
 }
 
@@ -103,11 +102,9 @@ bool telnet;
     obj->flags |= O_USER;
     obj->etabi = usr - users;
     (*usr)->inbufsz = 0;
-    (*usr)->outbufsz = 0;
     (*usr)->conn = conn;
     if (telnet) {
 	/* initialize connection */
-	conn_write(conn, init, sizeof(init), FALSE);
 	(*usr)->flags = CF_TELNET | CF_ECHO;
 	(*usr)->state = TS_DATA;
 	(*usr)->newlines = 0;
@@ -115,16 +112,14 @@ bool telnet;
 	(*usr)->inbuf = ALLOC(char, INBUF_SIZE);
 	(*usr)->outbuf = ALLOC(char, OUTBUF_SIZE);
 	m_dynamic();
+	memcpy((*usr)->outbuf, init, (*usr)->outbufsz = sizeof(init));
     } else {
 	(*usr)->flags = 0;
 	m_static();
 	(*usr)->inbuf = ALLOC(char, BINBUF_SIZE);
 	m_dynamic();
     }
-    (*usr)->osoffset = -1;
-    d_extravar(o_dataspace(obj), TRUE);	/* add space for output buffer */
     nusers++;
-    this_user = obj;
 }
 
 /*
@@ -136,24 +131,29 @@ register user **usr;
 bool force;
 {
     object *obj, *olduser;
+    dataspace *data;
 
+    obj = (*usr)->u.obj;
     conn_del((*usr)->conn);
     if ((*usr)->flags & CF_TELNET) {
 	newlines -= (*usr)->newlines;
 	FREE((*usr)->outbuf);
     } else {
 	binchars -= (*usr)->inbufsz;
+	if (obj->flags & O_PENDIO) {
+	    /* remove old buffer */
+	    data = o_dataspace(obj);
+	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
+			 &zero_value);
+	}
     }
     FREE((*usr)->inbuf);
-    obj = (*usr)->u.obj;
     obj->flags &= ~(O_USER | O_PENDIO);
-    d_extravar(o_dataspace(obj), FALSE);	/* remove output buffer */
     FREE(*usr);
     *usr = (user *) NULL;
     --nusers;
 
     olduser = this_user;
-    this_user = obj;
     if (ec_push((ec_ftn) NULL)) {
 	if (obj == olduser) {
 	    this_user = (object *) NULL;
@@ -162,6 +162,7 @@ bool force;
 	}
 	error((char *) NULL);
     } else {
+	this_user = obj;
 	(--sp)->type = T_INT;
 	sp->u.number = force;
 	if (i_call(obj, "close", 5, TRUE, 1)) {
@@ -242,10 +243,9 @@ string *str;
 	/*
 	 * binary connection: initially, no buffering
 	 */
-	if (usr->osoffset >= 0) {
+	if (obj->flags & O_PENDIO) {
 	    /* remove old buffer */
 	    obj->flags &= ~O_PENDIO;
-	    usr->osoffset = -1;
 	    data = o_dataspace(obj);
 	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
 			 &zero_value);
@@ -265,13 +265,30 @@ string *str;
 		usr->outbufsz = len;
 	    }
 	    obj->flags |= O_PENDIO;
+	    data = o_dataspace(obj);
 	    v.type = T_STRING;
 	    v.u.string = str;
-	    data = o_dataspace(obj);
 	    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &v);
 	}
 	return size;
     }
+}
+
+/*
+ * NAME:	comm_telnet()
+ * DESCRIPTION:	add telnet data to output buffer
+ */
+static void comm_telnet(usr, buf, size)
+register user *usr;
+char *buf;
+register int size;
+{
+    if (usr->outbufsz > OUTBUF_SIZE - size) {
+	conn_write(usr->conn, usr->outbuf, usr->outbufsz, FALSE);
+	usr->outbufsz = 0;
+    }
+    memcpy(usr->outbuf + usr->outbufsz, buf, size);
+    usr->outbufsz += size;
 }
 
 /*
@@ -290,7 +307,7 @@ int echo;
 	buf[0] = IAC;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
-	conn_write(usr->conn, buf, 3, FALSE);
+	comm_telnet(usr, buf, 3);
 	usr->flags ^= CF_ECHO;
     }
 }
@@ -308,17 +325,11 @@ int prompt;
 
     for (usr = users, i = nusers; i > 0; usr++) {
 	if (*usr != (user *) NULL) {
-	    --i;
 	    if (((*usr)->flags & CF_TELNET) && (size=(*usr)->outbufsz) > 0) {
-		if (prompt &&
+		if (prompt && ((*usr)->flags & CF_GA) &&
 		    ((*usr)->u.obj == this_user ||
-		     (*usr)->outbuf[size - 1] != LF) &&
-		    ((*usr)->flags & CF_GA)) {
-		    /*
-		     * append "go ahead" to indicate that the prompt has been
-		     * sent
-		     */
-		    if (size >= OUTBUF_SIZE - 2) {
+		     (*usr)->outbuf[size - 1] == LF)) {
+		    if (size > OUTBUF_SIZE - 2) {
 			conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 			size = 0;
 		    }
@@ -330,18 +341,16 @@ int prompt;
 		conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 		(*usr)->outbufsz = 0;
 	    }
+	    --i;
 	}
     }
-    this_user = (object *) NULL;
 }
 
 /*
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-object *comm_receive(buf, size)
-char *buf;
-int *size;
+void comm_receive()
 {
     static int lastuser;
     connection *conn;
@@ -352,14 +361,13 @@ int *size;
     /*
      * read input from users
      */
-    this_user = (object *) NULL;
     n = conn_select(newlines == 0 && binchars == 0);
     if (n <= 0) {
 	/*
 	 * call_out to do, or timeout
 	 */
 	if (newlines == 0 && binchars == 0) {
-	    return (object *) NULL;
+	    return;
 	}
     } else {
 	static char intr[] =	 { '\177' };
@@ -387,14 +395,22 @@ int *size;
 		if (sp->type != T_OBJECT) {
 		    fatal("driver->telnet_connect() did not return an object");
 		}
-		d_export();
+		endthread();
 		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
 		sp++;
 		ec_pop();
+
+		if (ec_push((ec_ftn) NULL)) {
+		    this_user = (object *) NULL;
+		    error((char *) NULL);
+		}
+		this_user = o;
 		if (i_call(o, "open", 4, TRUE, 0)) {
 		    i_del_value(sp++);
-		    d_export();
+		    endthread();
 		}
+		this_user = (object *) NULL;
+		ec_pop();
 		comm_flush(TRUE);
 	    }
 	}
@@ -416,14 +432,22 @@ int *size;
 	    if (sp->type != T_OBJECT) {
 		fatal("driver->binary_connect() did not return an object");
 	    }
-	    d_export();
+	    endthread();
 	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
 	    sp++;
 	    ec_pop();
+
+	    if (ec_push((ec_ftn) NULL)) {
+		this_user = (object *) NULL;
+		error((char *) NULL);
+	    }
+	    this_user = o;
 	    if (i_call(o, "open", 4, TRUE, 0)) {
 		i_del_value(sp++);
-		d_export();
+		endthread();
 	    }
+	    this_user = (object *) NULL;
+	    ec_pop();
 	    comm_flush(TRUE);
 	}
 
@@ -441,7 +465,7 @@ int *size;
 		     * bad connection
 		     */
 		    comm_del(usr, FALSE);
-		    d_export();	/* this cannot be in comm_del() */
+		    endthread();	/* this cannot be in comm_del() */
 		    continue;
 		} else if ((*usr)->flags & CF_TELNET) {
 		    /*
@@ -521,17 +545,17 @@ int *size;
 				break;
 
 			    case IP:
-				conn_write((*usr)->conn, intr, 1, FALSE);
+				comm_telnet(*usr, intr, sizeof(intr));
 				state = TS_DATA;
 				break;
 
 			    case BREAK:
-				conn_write((*usr)->conn, brk, 1, FALSE);
+				comm_telnet(*usr, brk, sizeof(brk));
 				state = TS_DATA;
 				break;
 
 			    case AYT:
-				conn_write((*usr)->conn, ayt, 9, FALSE);
+				comm_telnet(*usr, ayt, sizeof(ayt));
 				state = TS_DATA;
 				break;
 
@@ -544,10 +568,10 @@ int *size;
 
 			case TS_DO:
 			    if (UCHAR(*p) == TELOPT_TM) {
-				conn_write((*usr)->conn, tm, 3, FALSE);
+				comm_telnet(*usr, tm, sizeof(tm));
 			    } else if (UCHAR(*p) == TELOPT_SGA) {
 				flags &= ~CF_GA;
-				conn_write((*usr)->conn, will_sga, 3, FALSE);
+				comm_telnet(*usr, will_sga, sizeof(will_sga));
 			    }
 			    state = TS_DATA;
 			    break;
@@ -555,7 +579,7 @@ int *size;
 			case TS_DONT:
 			    if (UCHAR(*p) == TELOPT_SGA) {
 				flags |= CF_GA;
-				conn_write((*usr)->conn, wont_sga, 3, FALSE);
+				comm_telnet(*usr, wont_sga, sizeof(wont_sga));
 			    }
 			    state = TS_DATA;
 			    break;
@@ -563,7 +587,7 @@ int *size;
 			case TS_WILL:
 			    if (UCHAR(*p) == TELOPT_LINEMODE) {
 				/* linemode confirmed; now request editing */
-				conn_write((*usr)->conn, mode_edit, 7, FALSE);
+				comm_telnet(*usr, mode_edit, sizeof(mode_edit));
 			    }
 			    /* fall through */
 			case TS_WONT:
@@ -601,14 +625,16 @@ int *size;
 		    binchars += n;
 		}
 	    }
-	    if ((*usr)->osoffset >= 0 && conn_wrdone((*usr)->conn)) {
+
+	    if (((*usr)->u.obj->flags & O_PENDIO) && conn_wrdone((*usr)->conn))
+	    {
 		dataspace *data;
 		value *v;
 
+		data = o_dataspace((*usr)->u.obj);
+		v = d_get_variable(data, data->nvariables - 1);
 		if ((*usr)->outbufsz != 0) {
 		    /* write next chunk */
-		    data = o_dataspace((*usr)->u.obj);
-		    v = d_get_variable(data, data->nvariables - 1);
 		    n = conn_write((*usr)->conn,
 				   v->u.string->text + (*usr)->osoffset,
 				   (*usr)->outbufsz, TRUE);
@@ -620,15 +646,20 @@ int *size;
 		if ((*usr)->outbufsz == 0) {
 		    /* remove buffer */
 		    (*usr)->u.obj->flags &= ~O_PENDIO;
-		    (*usr)->osoffset = -1;
 		    d_assign_var(data, v, &zero_value);
 		    /* callback */
-		    this_user = (*usr)->u.obj;
-		    if (i_call(this_user, "message_done", 12, TRUE, 0)) {
-			i_del_value(sp++);
-			d_export();
+		    if (ec_push((ec_ftn) NULL)) {
+			this_user = (object *) NULL;
+			error((char *) NULL);
+		    } else {
+			this_user = (*usr)->u.obj;
+			if (i_call(this_user, "message_done", 12, TRUE, 0)) {
+			    i_del_value(sp++);
+			    endthread();
+			}
+			this_user = (object *) NULL;
+			ec_pop();
 		    }
-		    this_user = (object *) NULL;
 		}
 	    }
 	}
@@ -637,10 +668,10 @@ int *size;
     if (newlines != 0 || binchars != 0) {
 	register user *usr;
 
-	n = lastuser;
+	i = lastuser;
 	for (;;) {
-	    n = (n + 1) % maxusers;
-	    usr = users[n];
+	    i = (i + 1) % maxusers;
+	    usr = users[i];
 	    if (usr != (user *) NULL && usr->inbufsz != 0) {
 		if (usr->flags & CF_TELNET) {
 		    /*
@@ -650,48 +681,54 @@ int *size;
 			/*
 			 * input terminated by \n
 			 */
-			p = (char *) memchr(usr->inbuf, LF, usr->inbufsz);
+			p = (char *) memchr(q = usr->inbuf, LF, usr->inbufsz);
 			usr->newlines--;
 			--newlines;
-			lastuser = n;
-			*size = n = p - usr->inbuf;
-			if (n != 0) {
-			    memcpy(buf, usr->inbuf, n);
-			}
-			p++;	/* skip \n */
-			n++;
-			usr->inbufsz -= n;
-			if (usr->inbufsz != 0) {
-			    /* can't rely on memcpy */
-			    for (q = usr->inbuf, n = usr->inbufsz; n > 0; --n) {
-				*q++ = *p++;
-			    }
-			}
-			return this_user = usr->u.obj;
+			lastuser = i;
+			n = p - usr->inbuf;
+			p++;			/* skip \n */
+			usr->inbufsz -= n + 1;
 		    } else if (usr->inbufsz == INBUF_SIZE) {
 			/*
 			 * input buffer full
 			 */
-			lastuser = n;
-			memcpy(buf, usr->inbuf, *size = INBUF_SIZE);
+			lastuser = i;
+			n = usr->inbufsz;
 			usr->inbufsz = 0;
-			return this_user = usr->u.obj;
+		    } else {
+			continue;	/* no ready input */
 		    }
 		} else {
 		    /*
 		     * binary connection
 		     */
-		    lastuser = n;
 		    binchars -= usr->inbufsz;
-		    memcpy(buf, usr->inbuf, *size = usr->inbufsz);
+		    lastuser = i;
+		    n = usr->inbufsz;
 		    usr->inbufsz = 0;
-		    return this_user = usr->u.obj;
+		}
+
+		if (ec_push((ec_ftn) NULL)) {
+		    this_user = (object *) NULL;
+		    error((char *) NULL);		/* pass on error */
+		} else {
+		    this_user = usr->u.obj;
+		    (--sp)->type = T_STRING;
+		    str_ref(sp->u.string = str_new(usr->inbuf, (long) n));
+		    for (n = usr->inbufsz; n != 0; --n) {
+			*q++ = *p++;
+		    }
+		    if (i_call(usr->u.obj, "receive_message", 15, TRUE, 1)) {
+			i_del_value(sp++);
+			endthread();
+		    }
+		    this_user = (object *) NULL;
+		    ec_pop();
+		    return;
 		}
 	    }
 	}
     }
-
-    return (object *) NULL;
 }
 
 /*
@@ -746,9 +783,9 @@ array *comm_users()
     register user **usr;
     register value *v;
 
-    a = arr_new((long) nusers);
+    a = arr_new((long) i = nusers);
     v = a->elts;
-    for (i = nusers, usr = users; i > 0; usr++) {
+    for (usr = users; i > 0; usr++) {
 	if (*usr != (user *) NULL) {
 	    v->type = T_OBJECT;
 	    v->oindex = (*usr)->u.obj->index;

@@ -68,21 +68,6 @@ register control *ctrl;
 }
 
 /*
- * NAME:	dump_iinherits()
- * DESCRIPTION:	output the immediately inherited objects
- */
-static void dump_iinherits(ctrl)
-control *ctrl;
-{
-    if (ctrl->niinherits != 0) {
-	printf("\nstatic char iinherits[] = {\n");
-	size = 0;
-	dump_chars(ctrl->iinherits, ctrl->niinherits);
-	printf("\n};\n");
-    }
-}
-
-/*
  * NAME:	dump_program()
  * DESCRIPTION:	output the program
  */
@@ -279,12 +264,11 @@ char *argv[];
     }
 
     /* compile file */
-    ctrl = c_compile(file)->ctrl;
+    ctrl = c_compile(file, (object *) NULL)->ctrl;
     ec_pop();
 
     /* dump tables */
     dump_inherits(ctrl);
-    dump_iinherits(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
     dump_functions(nfuncs = cg_nfuncs());
@@ -295,11 +279,6 @@ char *argv[];
 
     printf("\nprecomp %s = {\n(object *) NULL,\n%d, inherits,\n", tag,
 	   ctrl->ninherits);
-    if (ctrl->niinherits == 0) {
-	printf("0, 0,\n");
-    } else {
-	printf("%d, iinherits,\n", ctrl->niinherits);
-    }
     printf("%ldL,\n", (long) ctrl->compiled);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
@@ -391,6 +370,14 @@ void interrupt()
  * DESCRIPTION:	pretend to indicate that the program must finish
  */
 void finish()
+{
+}
+
+/*
+ * NAME:	endthread()
+ * DESCRIPTION:	pretend to clean up after a thread has terminated
+ */
+void endthread()
 {
 }
 

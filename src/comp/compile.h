@@ -1,5 +1,5 @@
 extern void	 c_init		P((char*, char*, char*, char**));
-extern object	*c_compile	P((char*));
+extern object	*c_compile	P((char*, object*));
 extern bool	 c_upgrade	P((object**, unsigned int));
 extern int	 c_autodriver	P((void));
 extern void 	 c_error	();

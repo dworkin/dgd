@@ -107,7 +107,7 @@ driver, mostly to translate pathnames.
 	Values for stack and ticks: < 0 = infinite, 0 = no change,
 	> 0 = set to specified amount.
 
-    void remove_program(string objname)
+    void remove_program(string objname, int timestamp)
 
 	Called whenever the program of a master object is removed (because
 	the object has been destructed, and all clones and inheriting objects

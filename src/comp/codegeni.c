@@ -480,13 +480,18 @@ int type;
     }
     switch (n->type) {
     case N_LOCAL:
-	code_instr(I_PUSH_LOCAL_LVALUE | typeflag, n->line);
+	code_instr(I_PUSH_LOCAL_LVAL | typeflag, n->line);
 	code_byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_GLOBAL:
-	code_instr(I_PUSH_GLOBAL_LVALUE | typeflag, n->line);
-	code_word((int) n->r.number);
+	if ((n->r.number >> 8) == 1) {
+	    code_instr(I_PUSH_GLOBAL_LVAL | typeflag, n->line);
+	    code_byte((int) n->r.number);
+	} else {
+	    code_instr(I_PUSH_FAR_GLOBAL_LVAL | typeflag, n->line);
+	    code_word((int) n->r.number);
+	}
 	break;
 
     case N_INDEX:
@@ -496,19 +501,24 @@ int type;
 	}
 	switch (m->type) {
 	case N_LOCAL:
-	    code_instr(I_PUSH_LOCAL_LVALUE, m->line);
+	    code_instr(I_PUSH_LOCAL_LVAL, m->line);
 	    code_byte(nparams - (int) m->r.number - 1);
 	    break;
 
 	case N_GLOBAL:
-	    code_instr(I_PUSH_GLOBAL_LVALUE, m->line);
-	    code_word((int) m->r.number);
+	    if ((m->r.number >> 8) == 1) {
+		code_instr(I_PUSH_GLOBAL_LVAL, m->line);
+		code_byte((int) m->r.number);
+	    } else {
+		code_instr(I_PUSH_FAR_GLOBAL_LVAL, m->line);
+		code_word((int) m->r.number);
+	    }
 	    break;
 
 	case N_INDEX:
 	    cg_expr(m->l.left, FALSE);
 	    cg_expr(m->r.right, FALSE);
-	    code_instr(I_INDEX_LVALUE, m->line);
+	    code_instr(I_INDEX_LVAL, m->line);
 	    break;
 
 	default:
@@ -516,7 +526,7 @@ int type;
 	    break;
 	}
 	cg_expr(n->r.right, FALSE);
-	code_instr(I_INDEX_LVALUE | typeflag, n->line);
+	code_instr(I_INDEX_LVAL | typeflag, n->line);
 	break;
     }
 
@@ -857,16 +867,6 @@ register int pop;
 	    }
 	    break;
 
-	case IKFCALL:
-	case IKFCALL_LVAL:
-	    code_instr(I_CALL_IKFUNC, n->line);
-	    code_byte((int) (n->r.number >> 16));
-	    code_byte((int) n->r.number);
-	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
-		code_byte(i);
-	    }
-	    break;
-
 	case DFCALL:
 	    if ((n->r.number & 0xff00) == 0) {
 		/* auto object */
@@ -876,13 +876,6 @@ register int pop;
 		code_instr(I_CALL_DFUNC, n->line);
 		code_word((int) n->r.number);
 	    }
-	    code_byte(i);
-	    break;
-
-	case IDFCALL:
-	    code_instr(I_CALL_IDFUNC, n->line);
-	    code_byte((int) (n->r.number >> 16));
-	    code_word((int) n->r.number);
 	    code_byte(i);
 	    break;
 
@@ -907,8 +900,13 @@ register int pop;
 	break;
 
     case N_GLOBAL:
-	code_instr(I_PUSH_GLOBAL, n->line);
-	code_word((int) n->r.number);
+	if ((n->r.number >> 8) == 1) {
+	    code_instr(I_PUSH_GLOBAL, n->line);
+	    code_byte((int) n->r.number);
+	} else {
+	    code_instr(I_PUSH_FAR_GLOBAL, n->line);
+	    code_word((int) n->r.number);
+	}
 	break;
 
     case N_GT:

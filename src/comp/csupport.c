@@ -12,16 +12,10 @@
 # include "compile.h"
 # include "csupport.h"
 
-static uindex *map;		/* object -> precompiled */
 static dinherit *inherits;	/* inherited objects */
 static int *itab;		/* inherit index table */
+static uindex *map;		/* object -> precompiled */
 static uindex nprecomps;	/* # precompiled objects */
-
-static uindex *rmap;		/* object -> restored precompiled */
-static dinherit *rinherits;	/* restored inherited objects */
-static int *ritab;		/* restored inherit index table */
-static precomp *restored;	/* restored precompiled objects */
-static uindex nrestored;	/* # restored precompiled objects */
 
 pcfunc *pcfunctions;		/* table of precompiled functions */
 
@@ -106,7 +100,7 @@ int ninherits;
 
     ctrl.inherits = inherits;
     ctrl.ninherits = ninherits;
-    obj = o_new(name, (object *) NULL, &ctrl);
+    obj = o_new(name, &ctrl);
     obj->flags |= O_COMPILED;
     if (strcmp(name, driver_name) == 0) {
 	obj->flags |= O_DRIVER;
@@ -120,26 +114,42 @@ int ninherits;
 
 /*
  * NAME:	hash_add()
- * DESCRIPTION:	add object to precompiled hash table
+ * DESCRIPTION:	add object->elt to hash table
  */
-static void hash_add(obj, idx, map, size)
+static void hash_add(obj, elt)
 object *obj;
-uindex idx;
-register uindex *map, size;
+uindex elt;
 {
     register uindex i, j;
 
-    i = obj->index % size;
-    if (map[2 * i] == size) {
-	map[2 * i] = idx;
-	map[2 * i + 1] = size;
+    i = obj->index % nprecomps;
+    if (map[2 * i] == nprecomps) {
+	map[2 * i] = elt;
+	map[2 * i + 1] = nprecomps;
     } else {
-	for (j = 0; map[2 * j] != size; j++) ;
+	for (j = 0; map[2 * j] != nprecomps; j++) ;
 	map[2 * j] = map[2 * i];
 	map[2 * j + 1] = map[2 * i + 1];
-	map[2 * i] = idx;
+	map[2 * i] = elt;
 	map[2 * i + 1] = j;
     }
+}
+
+/*
+ * NAME:	hash_find()
+ * DESCRIPTION:	find element in hash table
+ */
+static uindex hash_find(obj)
+register object *obj;
+{
+    register uindex i;
+    uindex j;
+
+    i = obj->index % nprecomps;
+    while (precompiled[j = map[2 * i]]->obj != obj) {
+	i = map[2 * i + 1];
+    }
+    return j;
 }
 
 /*
@@ -235,32 +245,13 @@ void pc_control(ctrl, obj)
 register control *ctrl;
 object *obj;
 {
-    register uindex i;
     register precomp *l;
+    uindex i;
 
-    i = obj->index % nprecomps;
-    for (;;) {
-	if ((l=precompiled[map[2 * i]]) != (precomp *) NULL && l->obj == obj) {
-	    ctrl->inherits = inherits + itab[i];
-	    break;
-	}
-	i = map[2 * i + 1];
-	if (i == nprecomps) {
-	    /* look among the restored objects */
-	    for (i = obj->index % nrestored;
-		 (l=&restored[rmap[2 * i]])->obj != obj;
-		 i = rmap[2 * i + 1]) ;
-	    ctrl->inherits = rinherits + ritab[i];
-	    break;
-	}
-    }
-
-    ctrl->nsectors = 0;
-    ctrl->sectors = (sector *) NULL;
+    l = precompiled[i = hash_find(obj)];
 
     ctrl->ninherits = l->ninherits;
-    ctrl->niinherits = l->niinherits;
-    ctrl->iinherits = l->iinherits;
+    ctrl->inherits = inherits + itab[i];
 
     ctrl->compiled = l->compiled;
 
@@ -268,7 +259,6 @@ object *obj;
     ctrl->prog = l->program;
 
     ctrl->nstrings = l->nstrings;
-    ctrl->strings = (string **) NULL;
     ctrl->sstrings = l->sstrings;
     ctrl->stext = l->stext;
     ctrl->strsize = l->stringsz;
@@ -337,6 +327,7 @@ int fd;
     dh.nvardefs = 0;
     dh.nfuncalls = 0;
 
+    /* first compute sizes of data to dump */
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u.ref != 0) {
 	    dh.nprecomps++;
@@ -348,6 +339,8 @@ int fd;
 	    dh.nfuncalls += (*pc)->nfuncalls;
 	}
     }
+
+    /* write header */
     if (write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	return FALSE;
     }
@@ -364,6 +357,9 @@ int fd;
 	dfuncdef *funcdefs;
 	dvardef *vardefs;
 
+	/*
+	 * Save everything, even though only a few things are needed.
+	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
 	inh = ALLOCA(dump_inherit, dh.ninherits);
 	if (dh.nstrings != 0) {
@@ -482,252 +478,152 @@ int fd;
 }
 
 /*
+ * NAME:	fixinherits()
+ * DESCRIPTION:	fix the inherited object pointers that may be wrong after
+ *		a restore
+ */
+static void fixinherits(inh, pcinh, ninherits)
+register dinherit *inh;
+register pcinherit *pcinh;
+register int ninherits;
+{
+    register char *name;
+    register precomp **pc;
+
+    while (--ninherits >= 0) {
+	name = (pcinh++)->name;
+	for (pc = precompiled;
+	     strcmp((*pc)->inherits[(*pc)->ninherits - 1].name, name) != 0;
+	     pc++) ;
+	(inh++)->obj = (*pc)->obj;
+    }
+}
+
+/*
  * NAME:	precomp->restore()
- * DESCRIPTION:	restore precompiled objects
+ * DESCRIPTION:	restore and upgrade precompiled objects
  */
 void pc_restore(fd)
 int fd;
 {
     dump_header dh;
-    dump_precomp *dpc;
-    dump_inherit *inh;
-    dstrconst *strings;
-    char *stext, *funcalls;
-    dfuncdef *funcdefs;
-    dvardef *vardefs;
-    object *obj, **changed;
-    register precomp **pc;
-    register uindex i;
+    register precomp *l, **pc;
+    register Uint i, ninherits;
+    register object *obj;
     register char *name;
 
+    if (nprecomps != 0) {
+	/* re-initialize tables before restore */
+	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	    (*pc)->obj = (object *) NULL;
+	}
+	for (i = nprecomps; i > 0; ) {
+	    map[2 * --i] = nprecomps;
+	}
+    }
+
+    /* read header */
     if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	fatal("cannot restore precompiled objects header");
     }
 
     if (dh.nprecomps != 0) {
+	register dump_precomp *dpc;
+	register dump_inherit *dinh;
+
 	/*
-	 * restore precompiled objects
+	 * Put all possible information in the dump file, even though little
+	 * of it is needed.
 	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
-	inh = ALLOCA(dump_inherit, dh.ninherits);
-	if (dh.nstrings != 0) {
-	    strings = ALLOCA(dstrconst, dh.nstrings);
-	    if (dh.stringsz != 0) {
-		stext = ALLOCA(char, dh.stringsz);
-	    }
-	}
-	if (dh.nfuncdefs != 0) {
-	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
-	}
-	if (dh.nvardefs != 0) {
-	    vardefs = ALLOCA(dvardef, dh.nvardefs);
-	}
-	if (dh.nfuncalls != 0) {
-	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
-	}
+	dinh = ALLOCA(dump_inherit, dh.ninherits);
 
 	if (read(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
 					dh.nprecomps * sizeof(dump_precomp) ||
-	    read(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
-					dh.ninherits * sizeof(dump_inherit) ||
-	    (dh.nstrings != 0 &&
-	     read(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
-					dh.nstrings * sizeof(dstrconst)) ||
-	    (dh.stringsz != 0 && read(fd, stext, dh.stringsz) != dh.stringsz) ||
-	    (dh.nfuncdefs != 0 &&
-	     read(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
-					dh.nfuncdefs * sizeof(dfuncdef)) ||
-	    (dh.nvardefs != 0 &&
-	     read(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
-					    dh.nvardefs * sizeof(dvardef)) ||
-	    (dh.nfuncalls != 0 &&
-	     read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls)) {
+	    read(fd, (char *) dinh, dh.ninherits * sizeof(dump_inherit)) !=
+					dh.ninherits * sizeof(dump_inherit)) {
 	    fatal("cannot restore precompiled objects");
 	}
 
-	restored = ALLOCA(precomp, nrestored = dh.nprecomps);
-	rinherits = ALLOCA(dinherit, dh.ninherits);
-	ritab = ALLOCA(int, dh.nprecomps);
-	rmap = ALLOCA(uindex, 2 * dh.nprecomps);
-
-	/* restored inherits */
-	for (i = dh.ninherits; i > 0; --i) {
-	    rinherits->obj = o_objref(inh->oindex);
-	    rinherits->funcoffset = inh->funcoffset;
-	    (rinherits++)->varoffset = (inh++)->varoffset;
-	}
-	rinherits -= dh.ninherits;
-	AFREE(inh - dh.ninherits);
-
-	/* initialize empty rmap */
-	for (i = dh.nprecomps; i > 0; ) {
-	    rmap[2 * --i] = dh.nprecomps;
-	}
-
-	dh.ninherits = 0;
-	for (i = 0; i < dh.nprecomps; i++) {
-	    restored->obj = rinherits[dpc->ninherits - 1].obj;
-	    ritab[i] = dh.ninherits;
-	    dh.ninherits += dpc->ninherits;
-	    rinherits += dpc->ninherits;
-
-	    restored->ninherits = dpc->ninherits;
-	    restored->inherits = (pcinherit *) NULL;
-	    restored->niinherits = 0;
-	    restored->iinherits = (char *) NULL;
-
-	    restored->compiled = dpc->compiled;
-
-	    restored->progsize = 0;
-	    restored->program = (char *) NULL;
-
-	    restored->nstrings = dpc->nstrings;
-	    restored->sstrings = strings;
-	    restored->stext = stext;
-	    restored->stringsz = dpc->stringsz;
-	    strings += dpc->nstrings;
-	    stext += dpc->stringsz;
-
-	    restored->nfunctions = 0;
-	    restored->functions = (pcfunc *) NULL;
-	    restored->nfuncdefs = dpc->nfuncdefs;
-	    restored->funcdefs = funcdefs;
-	    funcdefs += dpc->nfuncdefs;
-
-	    restored->nvardefs = dpc->nvardefs;
-	    restored->vardefs = vardefs;
-	    vardefs += dpc->nvardefs;
-
-	    restored->nfuncalls = dpc->nfuncalls;
-	    restored->funcalls = funcalls;
-	    funcalls += 2 * dpc->nfuncalls;
-
-	    restored->nsymbols = 0;
-	    restored->symbols = (dsymbol *) NULL;
-
-	    restored->nvariables = dpc->nvariables;
-	    restored->nfloatdefs = 0;
-	    restored->nfloats = 0;
-
-	    /* all restored precompiled objects must still be precompiled */
-	    name = restored->obj->chain.name;
-	    pc = precompiled;
-	    for (;;) {
-		if (*pc == (precomp *) NULL) {
-		    fatal("object not precompiled: /%s", name);
+	for (i = dh.nprecomps; i > 0; --i) {
+	    /* restored object must still be precompiled */
+	    obj = o_objref(dinh[dpc->ninherits - 1].oindex);
+	    name = o_name(obj);
+	    for (pc = precompiled; ; pc++) {
+		l = *pc;
+		if (l == (precomp *) NULL) {
+		    fatal("restored object not precompiled: /%s", name);
 		}
-		if (strcmp(name,
-			   (*pc)->inherits[(*pc)->ninherits - 1].name) == 0) {
+		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
+		    if (l->compiled != dpc->compiled) {
+			fatal("restored different precompiled object /%s",
+			      name);
+		    }
 		    break;
 		}
-		pc++;
 	    }
+	    hash_add(l->obj = obj, pc - precompiled);
+	    fixinherits(inherits + itab[pc - precompiled], l->inherits,
+			l->ninherits);
 
-	    hash_add(restored->obj, i, rmap, dh.nprecomps);
-
-	    restored++;
+	    dinh += dpc->ninherits;
 	    dpc++;
 	}
-	restored -= dh.nprecomps;
-	rinherits -= dh.ninherits;
-	strings -= dh.nstrings;
-	stext -= dh.stringsz;
-	funcdefs -= dh.nfuncdefs;
-	vardefs -= dh.nvardefs;
-	funcalls -= 2 * dh.nfuncalls;
+
+	AFREE(inh - dh.ninherits);
 	AFREE(dpc - dh.nprecomps);
+    }
 
-	/* initialize empty map */
-	for (i = nprecomps; i > 0; ) {
-	    map[2 * --i] = nprecomps;
-	}
+    for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
+	l = *pc;
+	if (l->obj == (object *) NULL) {
+	    fixinherits(inherits + itab[i], l->inherits, l->ninherits);
+	    obj = o_find(name = l->inherits[l->ninherits - 1].name);
+	    if (obj != (object *) NULL) {
+		object tmp;
+		unsigned short *vmap;
 
-	/* go through the list of precompiled objects and find changes */
-	changed = ALLOCA(object*, nprecomps);
-	i = 0;
-	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	    name = (*pc)->inherits[(*pc)->ninherits - 1].name;
-	    obj = o_find(name);
-	    if (obj == (object *) NULL) {
-		/* new object */
-		changed[i++] = obj = pc_obj(name,
-					    inherits + itab[pc - precompiled],
-					    (*pc)->ninherits);
-	    } else if (!(obj->flags & O_COMPILED) ||
-		       (*pc)->compiled != o_control(obj)->compiled) {
-		char buf[STRINGSZ + 1];
+		if (o_control(obj)->compiled > l->compiled) {
+		    /* interpreted object is more recent */
+		    l->obj = obj;
+		    continue;
+		}
 
-		/* changed object */
-		sprintf(buf, "/%s", name);
-		changed[i++] = obj = pc_obj(buf,
-					    inherits + itab[pc - precompiled],
-					    (*pc)->ninherits);
+		/*
+		 * upgrade existing interpreted object to precompiled
+		 */
+		if (O_INHERITED(obj)) {
+		    fatal("cannot upgrade inherited object /%s", name);
+		}
+
+		/* get control block for precompiled object */
+		hash_add(obj, i);
+		tmp.flags = O_MASTER | O_COMPILED;
+		tmp.index = i;
+		tmp.ctrl = (control *) NULL;
+		o_control(l->obj = &tmp);
+
+		/* upgrade existing object */
+		o_upgrade(obj, tmp.ctrl);
+		vmap = ctrl_varmap(obj->ctrl, tmp.ctrl);
+		if (vmap != (unsigned short *) NULL) {
+		    d_varmap(obj->ctrl, tmp.ctrl->nvariables + 1, vmap);
+		}
+		o_clean();
+
+		l->obj = obj;
+		obj->flags |= O_COMPILED;
+	    } else {
+		/*
+		 * new precompiled object
+		 */
+		l->obj = pc_obj(name, inherits + itab[i], l->ninherits);
+		hash_add(l->obj, i);
 	    }
-	    hash_add((*pc)->obj = obj, pc - precompiled, map, nprecomps);
-	}
-
-	if (i != nprecomps) {
-	    /* refresh control blocks */
-	    d_swapout(1);
-	}
-
-# if 0
-	if (i != 0 && !c_upgrade(changed, i)) {
-	    fatal("failed to upgrade precompiled objects");
-	}
-# endif
-
-	AFREE(changed);
-	AFREE(rmap);
-	AFREE(ritab);
-	AFREE(rinherits);
-	AFREE(restored);
-
-	if (dh.nfuncalls != 0) {
-	    AFREE(funcalls);
-	}
-	if (dh.nvardefs != 0) {
-	    AFREE(vardefs);
-	}
-	if (dh.nfuncdefs != 0) {
-	    AFREE(funcdefs);
-	}
-	if (dh.nstrings != 0) {
-	    if (dh.stringsz != 0) {
-		AFREE(stext);
-	    }
-	    AFREE(strings);
 	}
     }
 }
 
-/*
- * NAME:	pc->remap()
- * DESCRIPTION:	change the hash table mapping for a precompiled object
- */
-void pc_remap(from, to)
-object *from, *to;
-{
-    register uindex *m, i, idx;
-    object *obj;
-
-    m = ALLOCA(uindex, 2 * nprecomps);
-    for (i = 0; i < nprecomps; i++) {
-	m[2 * i] = nprecomps;
-    }
-    for (i = 0; i < nprecomps; i++) {
-	obj = precompiled[idx]->obj;
-	idx = map[2 * i];
-	if (obj == from) {
-	    precompiled[idx]->obj = to;
-	    hash_add(to, idx, m, nprecomps);
-	} else {
-	    hash_add(obj, idx, m, nprecomps);
-	}
-    }
-    memcpy(map, m, 2 * nprecomps * sizeof(uindex));
-    AFREE(m);
-}
 
 /*
  * NAME:	call_kfun()

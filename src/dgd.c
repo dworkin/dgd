@@ -29,7 +29,7 @@ int narg;
 	}
 	driver = o_find(driver_name);
 	if (driver == (object *) NULL) {
-	    driver = c_compile(driver_name);
+	    driver = c_compile(driver_name, (object *) NULL);
 	}
 	dcount = driver->count;
     }
@@ -81,6 +81,17 @@ void finish()
 }
 
 /*
+ * NAME:	endthread()
+ * DESCRIPTION:	clean up after a thread has terminated
+ */
+void endthread()
+{
+    i_clear();
+    o_clean();
+    d_export();
+}
+
+/*
  * NAME:	errhandler()
  * DESCRIPTION:	handle an error
  */
@@ -97,30 +108,18 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
-    char buf[BINBUF_SIZE];
-    int size;
-    object *usr;
-
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
     }
 
-    if (argc == 2) {
-	conf_init(argv[1], (char *) NULL);
-    } else {
-	conf_init(argv[1], argv[2]);
-    }
+    conf_init(argv[1], (argc == 2) ? (char *) NULL : argv[2]);
 
     while (ec_push((ec_ftn) errhandler)) {
-	d_export();
-	comm_flush(TRUE);
+	endthread();
+	comm_flush(FALSE);
     }
-
     for (;;) {
-	i_clear();
-	o_clean();
-
 # ifdef DEBUG
 	swap |= stop;
 # endif
@@ -162,27 +161,23 @@ char **argv;
 	    intr = FALSE;
 	    call_driver_object("interrupt", 0);
 	    i_del_value(sp++);
-	    d_export();
-	}
-
-	/* user input */
-	usr = comm_receive(buf, &size);
-	if (usr != (object *) NULL) {
-	    (--sp)->type = T_STRING;
-	    str_ref(sp->u.string = str_new(buf, (long) size));
-	    if (i_call(usr, "receive_message", 15, TRUE, 1)) {
-		i_del_value(sp++);
-		comm_flush(TRUE);
-		d_export();
+	    endthread();
+	    if (stop) {
+		/* stop immediately */
+		comm_flush(FALSE);
+		break;
 	    }
 	}
+
+	/* handle user input */
+	comm_receive();
 
 	/* callouts */
 	co_call();
 	comm_flush(FALSE);
     }
-
     ec_pop();
+
     comm_finish();
     ed_finish();
     sw_finish();

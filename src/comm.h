@@ -20,7 +20,7 @@ extern void	comm_finish	P((void));
 extern int	comm_send	P((object*, string*));
 extern void	comm_echo	P((object*, int));
 extern void	comm_flush	P((int));
-extern object  *comm_receive	P((char*, int*));
+extern void	comm_receive	P((void));
 extern string  *comm_ip_number	P((object*));
 extern void	comm_close	P((object*));
 extern object  *comm_user	P((void));

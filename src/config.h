@@ -21,6 +21,8 @@ typedef char bool;
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX
 
+typedef uindex sector;
+# define SW_UNUSED	UINDEX_MAX
 
 /*
  * Host dependent stuff.

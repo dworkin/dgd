@@ -388,7 +388,7 @@ register int inherit, index;
 {
     i_add_ticks(4);
     if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
+	inherit = cframe->ctrl->inherits[cframe->p_index - inherit].varoffset;
     }
     i_push_value(d_get_variable(cframe->data, inherit + index));
 }
@@ -403,7 +403,7 @@ int index, vtype;
 {
     i_add_ticks(4);
     if (inherit != 0) {
-	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
+	inherit = cframe->ctrl->inherits[cframe->p_index - inherit].varoffset;
     }
     (--sp)->type = T_LVALUE;
     sp->oindex = vtype;
@@ -1447,24 +1447,36 @@ register char *pc;
 	    break;
 
 	case I_PUSH_GLOBAL:
+	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
+	    i_push_value(d_get_variable(f->data, u));
+	    break;
+
+	case I_PUSH_FAR_GLOBAL:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->ctrl->inherits[f->p_index + u].varoffset;
+		u = f->ctrl->inherits[f->p_index - u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
 	    break;
 
-	case I_PUSH_LOCAL_LVALUE:
+	case I_PUSH_LOCAL_LVAL:
 	    (--sp)->type = T_LVALUE;
 	    u = FETCH1S(pc);
 	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
 	    sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
 	    continue;
 
-	case I_PUSH_GLOBAL_LVALUE:
+	case I_PUSH_GLOBAL_LVAL:
+	    u = f->ctrl->inherits[f->p_index - 1].varoffset + FETCH1U(pc);
+	    (--sp)->type = T_LVALUE;
+	    sp->oindex = (instr & I_TYPE_BIT) ? FETCH1U(pc) : 0;
+	    sp->u.lval = d_get_variable(f->data, u);
+	    continue;
+
+	case I_PUSH_FAR_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u = f->ctrl->inherits[f->p_index + u].varoffset;
+		u = f->ctrl->inherits[f->p_index - u].varoffset;
 	    }
 	    u += FETCH1U(pc);
 	    (--sp)->type = T_LVALUE;
@@ -1476,7 +1488,7 @@ register char *pc;
 	    i_index();
 	    break;
 
-	case I_INDEX_LVALUE:
+	case I_INDEX_LVAL:
 	    i_index_lvalue((instr & I_TYPE_BIT) ? FETCH1U(pc) : 0);
 	    continue;
 
@@ -1544,9 +1556,6 @@ register char *pc;
 	    }
 	    break;
 
-	case I_CALL_IKFUNC:
-	    pc++;
-	    /* fall through */
 	case I_CALL_KFUNC:
 	    kf = &KFUN(FETCH1U(pc));
 	    if (PROTO_CLASS(kf->proto) & C_VARARGS) {
@@ -1578,13 +1587,10 @@ register char *pc;
 	    size = 0;
 	    break;
 
-	case I_CALL_IDFUNC:
-	    pc++;
-	    /* fall through */
 	case I_CALL_DFUNC:
 	    u = FETCH1U(pc);
 	    if (u != 0) {
-		u += f->p_index;
+		u = f->p_index - u;
 	    }
 	    u2 = FETCH1U(pc);
 	    i_funcall((object *) NULL, u, u2, FETCH1U(pc) + size);
@@ -1707,7 +1713,7 @@ int funci;
     /* set the program control block */
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
     f.p_ctrl = o_control(f.ctrl->inherits[p_ctrli].obj);
-    f.p_index = p_ctrli + 1 - f.p_ctrl->ninherits;
+    f.p_index = p_ctrli + 1;
 
     /* get the function */
     f.func = &d_get_funcdefs(f.p_ctrl)[funci];
@@ -1912,7 +1918,7 @@ register frame *f;
 	}
 
 	switch (instr & I_INSTR_MASK) {
-	case I_INDEX_LVALUE:
+	case I_INDEX_LVAL:
 	    if (instr & I_TYPE_BIT) {
 		pc++;
 	    }
@@ -1925,7 +1931,8 @@ register frame *f;
 	case I_RETURN:
 	    break;
 
-	case I_PUSH_LOCAL_LVALUE:
+	case I_PUSH_LOCAL_LVAL:
+	case I_PUSH_GLOBAL_LVAL:
 	    if (instr & I_TYPE_BIT) {
 		pc++;
 	    }
@@ -1933,19 +1940,20 @@ register frame *f;
 	case I_PUSH_INT1:
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
+	case I_PUSH_GLOBAL:
 	case I_SPREAD:
 	case I_CAST:
 	case I_RLIMITS:
 	    pc++;
 	    break;
 
-	case I_PUSH_GLOBAL_LVALUE:
+	case I_PUSH_FAR_GLOBAL_LVAL:
 	    if (instr & I_TYPE_BIT) {
 		pc++;
 	    }
 	    /* fall through */
 	case I_PUSH_NEAR_STRING:
-	case I_PUSH_GLOBAL:
+	case I_PUSH_FAR_GLOBAL:
 	case I_JUMP:
 	case I_JUMP_ZERO:
 	case I_JUMP_NONZERO:
@@ -1962,7 +1970,6 @@ register frame *f;
 	    break;
 
 	case I_PUSH_INT4:
-	case I_CALL_IDFUNC:
 	    pc += 4;
 	    break;
 
@@ -1996,9 +2003,6 @@ register frame *f;
 	    }
 	    break;
 
-	case I_CALL_IKFUNC:
-	    pc++;
-	    /* fall through */
 	case I_CALL_KFUNC:
 	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_VARARGS) {
 		pc++;
@@ -2051,7 +2055,7 @@ array *i_call_trace()
 	str_ref(v[0].u.string = str);
 
 	/* program name */
-	name = f->p_ctrl->inherits[f->p_ctrl->ninherits - 1].obj->chain.name;
+	name = f->p_ctrl->obj->chain.name;
 	v[1].type = T_STRING;
 	str = str_new((char *) NULL, strlen(name) + 1L);
 	str->text[0] = '/';

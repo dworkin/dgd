@@ -255,8 +255,6 @@ register char *prot1, *prot2;
 static oh *directs[MAX_INHERITS];	/* direct inherit table */
 static int ndirects;			/* # directly inh. objects */
 static int ninherits;			/* # inherited objects */
-static char *auto_name;			/* name of auto object */
-static char *driver_name;		/* name of driver object */
 static hashtab *vtab;			/* variable merge table */
 static hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
@@ -269,11 +267,8 @@ static Uint nifcalls;			/* # inherited function calls */
  * NAME:	control->init()
  * DESCRIPTION:	initialize control block construction
  */
-void ctrl_init(auto_obj, driver_obj)
-char *auto_obj, *driver_obj;
+void ctrl_init()
 {
-    auto_name = auto_obj;
-    driver_name = driver_obj;
     oh_init();
     vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
     ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
@@ -518,6 +513,10 @@ string *label;
 	c_error("cannot inherit cloned object");
 	return TRUE;
     }
+    if (O_UPGRADING(obj)) {
+	c_error("cannot inherit object being upgraded");
+	return TRUE;
+    }
 
     ohash = oh_new(obj->chain.name);
     if (label != (string *) NULL) {
@@ -670,7 +669,6 @@ typedef struct _cfunc_ {
     unsigned short progsize;		/* function program size */
 } cfunc;
 
-static char *name;			/* name of object compiled */
 static control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *strlist;		/* list of string chunks */
@@ -688,20 +686,17 @@ static Uint nfcalls;			/* # function calls */
  * NAME:	control->create()
  * DESCRIPTION:	make an initial control block
  */
-void ctrl_create(file)
-char *file;
+void ctrl_create()
 {
     register dinherit *new;
     register control *ctrl;
     register unsigned short n;
     register int i, count;
 
-    name = file;
-
     /*
      * create a new control block
      */
-    newohash = oh_new(file);
+    newohash = oh_new("/");		/* unique name */
     newohash->index = count = ninherits;
     newctrl = d_new_control();
     new = newctrl->inherits = ALLOC(dinherit, newctrl->ninherits = count + 1);
@@ -731,13 +726,6 @@ char *file;
 		    ohash->index = --count;	/* may happen more than once */
 		} while (--i > 0);
 	    }
-	}
-	if (ndirects > 1) {
-	    /* indices of immediately inherited objects in inherit list */
-	    newctrl->iinherits = ALLOC(char, newctrl->niinherits = --ndirects);
-	    do {
-		newctrl->iinherits[n] = directs[n + 1]->index;
-	    } while (++n < ndirects);
 	}
 
 	/*
@@ -1075,7 +1063,7 @@ long *call;
 	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
-		*call = ((long) IKFCALL << 24) | ((long) inherit << 16) | index;
+		*call = ((long) KFCALL << 24) | index;
 		return KFUN(index).proto;
 	    }
 	    c_error("undefined function %s::%s", label, str->text);
@@ -1096,7 +1084,7 @@ long *call;
 	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
-		*call = ((long) IKFCALL << 24) | ((long) inherit << 16) | index;
+		*call = ((long) KFCALL << 24) | index;
 		return KFUN(index).proto;
 	    }
 	    c_error("undefined function ::%s", str->text);
@@ -1119,8 +1107,8 @@ long *call;
 	c_error("undefined function %s::%s", label, str->text);
 	return (char *) NULL;
     }
-    *call = ((long) IDFCALL << 24) | ((long) inherit << 16) |
-	    ((long) ohash->index << 8) | index;
+    inherit = (ohash->index == 0) ? 0 : ninherits + 1 - ohash->index;
+    *call = ((long) DFCALL << 24) | ((long) inherit << 8) | index;
     return ctrl->prog + ctrl->funcdefs[index].offset;
 }
 
@@ -1190,8 +1178,13 @@ int typechecking;
 	((PROTO_CLASS(proto) & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 	 h->ohash->index == 0)) {
 	/* direct call */
-	*call = ((long) DFCALL << 24) | ((long) h->ohash->index << 8) |
-		h->index;
+	if (h->ohash->index == 0) {
+	    *call = ((long) DFCALL << 24) | h->index;
+	} else {
+	    *call = ((long) DFCALL << 24) |
+		    ((ninherits + 1L - h->ohash->index) << 8) |
+		    h->index;
+	}
     } else {
 	/* ordinary function call */
 	*call = ((long) FCALL << 24) | ((long) h->ohash->index << 8) | h->index;
@@ -1265,7 +1258,11 @@ long *ref;
 	return T_MIXED;
     }
 
-    *ref = ((long) h->ohash->index << 8) | h->index;
+    if (h->ohash->index == 0 && ninherits != 0) {
+	*ref = h->index;
+    } else {
+	*ref = ((ninherits + 1L - h->ohash->index) << 8) | h->index;
+    }
     return h->ct;	/* the variable type */
 }
 
@@ -1330,8 +1327,6 @@ static void ctrl_mkstrings()
 	for (l = strlist; l != (strchunk *) NULL; ) {
 	    while (i > 0) {
 		*--s = l->s[--i];	/* already referenced */
-		(*s)->ref |= STR_CONST;
-		(*s)->u.strconst = s;
 		strsize += (*s)->len;
 	    }
 	    i = STRING_CHUNK;
@@ -1501,51 +1496,56 @@ static void ctrl_mksymbs()
      * object once.
      */
     for (i = 0; i <= ninherits; i++) {
-	if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
-	    register dfuncdef *f;
-	    register control *ctrl;
+	register dfuncdef *f;
+	register control *ctrl;
 
+	if (i == ninherits) {
+	    ctrl = newctrl;
+	} else if (oh_new(newctrl->inherits[i].obj->chain.name)->index == i) {
 	    ctrl = newctrl->inherits[i].obj->ctrl;
-	    for (f = ctrl->funcdefs, n = 0; n < ctrl->nfuncdefs; f++, n++) {
-		register vfh *h;
-		register char *name;
+	} else {
+	    continue;
+	}
 
-		if ((f->class & C_PRIVATE) ||
-		    (i == 0 && ninherits != 0 &&
-		     (f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC)) {
-		    /* not in symbol table */
-		    continue;
-		}
-		name = d_get_strconst(ctrl, f->inherit, f->index)->text;
-		h = *(vfh **) ht_lookup(ftab, name, FALSE);
-		if (h->ohash->index == ninherits &&
-		    (functions[h->index].func.class & C_PRIVATE)) {
+	for (f = ctrl->funcdefs, n = 0; n < ctrl->nfuncdefs; f++, n++) {
+	    register vfh *h;
+	    register char *name;
+
+	    if ((f->class & C_PRIVATE) ||
+		(i == 0 && ninherits != 0 &&
+		 (f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC)) {
+		/* not in symbol table */
+		continue;
+	    }
+	    name = d_get_strconst(ctrl, f->inherit, f->index)->text;
+	    h = *(vfh **) ht_lookup(ftab, name, FALSE);
+	    if (h->ohash->index == ninherits &&
+		(functions[h->index].func.class & C_PRIVATE)) {
+		/*
+		 * private redefinition of inherited function:
+		 * use inherited function
+		 */
+		h = (vfh *) h->chain.next;
+	    }
+	    if (i == h->ohash->index) {
+		/*
+		 * all non-private functions are put into the hash table
+		 */
+		x = hashstr(name, VFMERGEHASHSZ) % nsymbs;
+		if (symtab[x].next == (unsigned short) -1) {
 		    /*
-		     * private redefinition of inherited function:
-		     * use inherited function
+		     * new entry
 		     */
-		    h = (vfh *) h->chain.next;
-		}
-		if (i == h->ohash->index) {
+		    symtab[x].inherit = i;
+		    symtab[x].index = n;
+		    symtab[x].next = x;
+		} else {
 		    /*
-		     * all non-private functions are put into the hash table
+		     * collision
 		     */
-		    x = hashstr(name, VFMERGEHASHSZ) % nsymbs;
-		    if (symtab[x].next == (unsigned short) -1) {
-			/*
-			 * new entry
-			 */
-			symtab[x].inherit = i;
-			symtab[x].index = n;
-			symtab[x].next = x;
-		    } else {
-			/*
-			 * collision
-			 */
-			coll[ncoll].inherit = i;
-			coll[ncoll].index = n;
-			coll[ncoll++].next = x;
-		    }
+		    coll[ncoll].inherit = i;
+		    coll[ncoll].index = n;
+		    coll[ncoll++].next = x;
 		}
 	    }
 	}
@@ -1632,12 +1632,10 @@ unsigned int len;
 control *ctrl_construct()
 {
     register control *ctrl;
-    register object *obj;
 
     ctrl = newctrl;
     ctrl->nvariables += nvars;
 
-    obj = o_new(name, (object *) NULL, ctrl);
     ctrl_mkstrings();
     ctrl_mkfuncs();
     ctrl_mkvars();
@@ -1646,18 +1644,6 @@ control *ctrl_construct()
     ctrl->nfloatdefs = nfloats;
     ctrl->nfloats += nfloats;
     ctrl->compiled = P_time();
-
-    if (strcmp(name, driver_name) == 0) {
-	/*
-	 * this is the driver object
-	 */
-	obj->flags |= O_DRIVER;
-    } else if (strcmp(name, auto_name) == 0) {
-	/*
-	 * this is the auto object
-	 */
-	obj->flags |= O_AUTO;
-    }
 
     newctrl = (control *) NULL;
     return ctrl;
@@ -1729,4 +1715,84 @@ void ctrl_clear()
 	FREE(variables);
 	variables = (dvardef *) NULL;
     }
+}
+
+/*
+ * NAME:	control->varmap()
+ * DESCRIPTION:	create a variable mapping from the old control block to the new
+ */
+unsigned short *ctrl_varmap(old, new)
+register control *old, *new;
+{
+    register unsigned short j, k;
+    register dvardef *v;
+    register long n;
+    register unsigned short *vmap;
+    register dinherit *inh, *inh2;
+    register control *ctrl;
+    unsigned short i, voffset;
+
+    /*
+     * make variable mapping from old to new, with new just compiled
+     */
+
+    vmap = ALLOC(unsigned short, new->nvariables + 1);
+
+    voffset = 0;
+    for (i = new->ninherits, inh = new->inherits; i > 0; --i, inh++) {
+	if (inh->varoffset < voffset || inh->obj->ctrl->nvardefs == 0) {
+	    continue;
+	}
+	voffset = inh->varoffset + inh->obj->ctrl->nvardefs;
+
+	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
+	    if (strcmp(inh->obj->chain.name, inh2->obj->chain.name) != 0) {
+		continue;
+	    }
+
+	    /*
+	     * put variable names from old control block in string merge table
+	     */
+	    ctrl = o_control(inh2->obj);
+	    for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
+		str_put(d_get_strconst(ctrl, v->inherit, v->index),
+			((long) k << 8) | v->type);
+	    }
+
+	    /*
+	     * map new variables to old ones
+	     */
+	    ctrl = (i == 1) ? new : inh->obj->ctrl;
+	    for (k = 0, v = ctrl->vardefs; k < ctrl->nvardefs; k++, v++) {
+		n = str_put(d_get_strconst(ctrl, v->inherit, v->index), 0L);
+		if ((n & 0xff) == v->type) {
+		    *vmap = inh2->varoffset + (n >> 8);
+		} else if (v->type == T_FLOAT) {
+		    *vmap = NEW_FLOAT;
+		} else {
+		    *vmap = NEW_INT;
+		}
+		vmap++;
+	    }
+	    str_clear();
+	    break;
+	}
+    }
+
+    /*
+     * check if any variable changed
+     */
+    *vmap = old->nvariables;
+    vmap -= new->nvariables;
+    if (old->nvariables != new->nvariables) {
+	return vmap;		/* changed */
+    }
+    for (i = 0; i <= new->nvariables; i++) {
+	if (vmap[i] != i) {
+	    return vmap;	/* changed */
+	}
+    }
+    /* no variable remapping needed */
+    FREE(vmap);
+    return (unsigned short *) NULL;
 }

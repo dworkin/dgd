@@ -7,4 +7,5 @@ extern void swapout		P((void));
 extern void dump_state		P((void));
 extern void interrupt		P((void));
 extern void finish		P((void));
+extern void endthread		P((void));
 extern int  dgd_main		P((int, char**));
