@@ -1,3 +1,4 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -45,55 +46,154 @@ static config conf[] = {
 				{ "directory",		STRING_CONST, FALSE },
 # define DRIVER_OBJECT	6
 				{ "driver_object",	STRING_CONST, FALSE },
-# define DYNAMIC_CHUNK	7
+# define DUMP_FILE	7
+				{ "dump_file",		STRING_CONST, FALSE },
+# define DYNAMIC_CHUNK	8
 				{ "dynamic_chunk",	INT_CONST, FALSE },
-# define ED_TMPFILE	8
+# define ED_TMPFILE	9
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
-# define EDITORS	9
+# define EDITORS	10
 				{ "editors",		INT_CONST, FALSE,
 							1, 255 },
-# define INCLUDE_DIRS	10
+# define INCLUDE_DIRS	11
 				{ "include_dirs",	'(', FALSE },
-# define INCLUDE_FILE	11
+# define INCLUDE_FILE	12
 				{ "include_file",	STRING_CONST, FALSE },
-# define MAX_COST	12
+# define MAX_COST	13
 				{ "max_cost",		INT_CONST, FALSE,
 							100000L },
-# define OBJECTS	13
+# define OBJECTS	14
 				{ "objects",		INT_CONST, FALSE,
 							100 },
-# define PORT_NUMBER	14
+# define PORT_NUMBER	15
 				{ "port_number",	INT_CONST, FALSE,
 							1000 },
-# define RESERVED_STACK	15
-				{ "reserved_stack",	INT_CONST, FALSE,
+# define RESERVED_CSTACK 16
+				{ "reserved_cstack",	INT_CONST, FALSE,
 							5 },
-# define STATIC_CHUNK	16
+# define RESERVED_VSTACK 17
+				{ "reserved_vstack",	INT_CONST, FALSE,
+							20 },
+# define STATIC_CHUNK	18
 				{ "static_chunk",	INT_CONST, FALSE },
-# define SWAP_CACHE	17
+# define SWAP_CACHE	19
 				{ "swap_cache",		INT_CONST, FALSE,
 							100, UINDEX_MAX },
-# define SWAP_FILE	18
+# define SWAP_FILE	20
 				{ "swap_file",		STRING_CONST, FALSE },
-# define SWAP_FRAGMENT	19
+# define SWAP_FRAGMENT	21
 				{ "swap_fragment",	INT_CONST, FALSE },
-# define SWAP_SECTOR	20
+# define SWAP_SECTOR	22
 				{ "swap_sector",	INT_CONST, FALSE,
 							512, 8192 },
-# define SWAP_SIZE	21
+# define SWAP_SIZE	23
 				{ "swap_size",		INT_CONST, FALSE,
-							1024, UINDEX_MAX },
-# define TYPECHECKING	22
+							1024, UINDEX_MAX - 1 },
+# define TYPECHECKING	24
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 1 },
-# define USERS		23
+# define USERS		25
 				{ "users",		INT_CONST, FALSE,
 							1, 255 },
-# define VALUE_STACK	24
+# define VALUE_STACK	26
 				{ "value_stack",	INT_CONST, FALSE,
 							100 },
-# define NR_OPTIONS	25
+# define NR_OPTIONS	27
 };
+
+
+typedef struct {
+    char fill;		/* filler */
+    char c;		/* char */
+} calign;
+
+typedef struct {
+    char fill;		/* filler */
+    short s;		/* short */
+} salign;
+
+typedef struct {
+    char fill;		/* filler */
+    Int i;		/* Int */
+} ialign;
+
+typedef struct {
+    char fill;		/* filler */
+    long l;		/* long */
+} lalign;
+
+typedef struct {
+    char fill;		/* filler */
+    char *p;		/* char* */
+} palign;
+
+typedef struct {	/* struct align */
+    char c;
+} align;
+
+static char header[16];	/* dump file header */
+
+
+/*
+ * NAME:	conf->dump()
+ * DESCRIPTION:	dump system state on file
+ */
+void conf_dump()
+{
+    char buffer[STRINGSZ + 4];
+    int fd;
+    long t;
+
+    sprintf(buffer, "%s.old", conf[DUMP_FILE].u.str);
+    unlink(buffer);
+    rename(conf[DUMP_FILE].u.str, buffer);
+    fd = open(conf[DUMP_FILE].u.str, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+    if (fd < 0) {
+	fatal("cannot create dump file \"%s\"", conf[DUMP_FILE].u.str);
+    }
+
+    header[0] = 0;
+    t = P_time();
+    if (write(fd, header, sizeof(header)) >= 0 &&
+	write(fd, &t, sizeof(long)) >= 0 &&
+	sw_dump(fd) && o_dump(fd) && co_dump(fd)) {
+	header[0] = 1;
+	lseek(fd, 0L, SEEK_SET);
+	write(fd, header, 1);
+	fprintf(stderr, "*** State dumped.\n");
+    } else {
+	fprintf(stderr, "*** State dump failed.\n");
+    }
+    close(fd);
+}
+
+/*
+ * NAME:	conf->restore()
+ * DESCRIPTION:	restore system stare from file
+ */
+static void conf_restore(file)
+char *file;
+{
+    char buffer[sizeof(header)];
+    int fd;
+    long t;
+
+    fd = open(file, O_RDONLY);
+    if (fd < 0) {
+	fatal("cannot open restore file");
+    }
+    header[0] = 1;
+    if (read(fd, buffer, sizeof(header)) != sizeof(header) ||
+	memcmp(buffer, header, sizeof(header)) != 0 ||
+	read(fd, &t, sizeof(long)) != sizeof(long)) {
+	fatal("bad restore file header");
+    }
+    sw_restore(fd);
+    t = P_time() - t;
+    o_restore(fd, t);
+    co_restore(fd, t);
+    close(fd);
+}
 
 /*
  * NAME:	conferr()
@@ -102,7 +202,7 @@ static config conf[] = {
 static void conferr(err)
 char *err;
 {
-    fatal("line %u: %s in config file", tk_line(), err);
+    fatal("config file, line %u: %s", tk_line(), err);
 }
 
 # define MAX_DIRS	32
@@ -111,15 +211,23 @@ char *err;
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-void conf_init(configfile)
-char *configfile;
+void conf_init(configfile, dumpfile)
+char *configfile, *dumpfile;
 {
-    static char *dirs[MAX_DIRS], buffer[STRINGSZ];
+    static char *nodir[1], *dirs[MAX_DIRS], buffer[STRINGSZ];
     register char *p;
     register int h, l, m, c;
     FILE *fp;
+    short s;
+    Int i;
+    calign cdummy;
+    salign sdummy;
+    ialign idummy;
+    lalign ldummy;
+    palign pdummy;
+    align dummy;
 
-    if (!pp_init(configfile, dirs, 0)) {
+    if (!pp_init(configfile, nodir, 0)) {
 	fatal("cannot open config file");
     }
     while ((c=pp_gettok()) != EOF) {
@@ -269,8 +377,9 @@ char *configfile;
 
     /* initialize interpreter */
     i_init((int) conf[VALUE_STACK].u.num,
+	   (int) conf[RESERVED_VSTACK].u.num,
 	   (int) conf[CALL_STACK].u.num,
-	   (int) conf[RESERVED_STACK].u.num,
+	   (int) conf[RESERVED_CSTACK].u.num,
 	   conf[CREATE].u.str);
 
     mdynamic();
@@ -335,13 +444,40 @@ char *configfile;
     fprintf(fp, "# define O_NCALLOUTS\t2\t/* # call_outs in object */\n");
     fclose(fp);
 
-    /* preload precompiled objects */
-    preload();
+    /* preload compiled objects */
+    pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str);
 
-    /* initialize mudlib */
+    /* initialize dumpfile header */
+    s = 0x1234;
+    i = 0x12345678L;
+    header[0] = 0;
+    header[1] = sizeof(uindex);
+    header[2] = sizeof(long);
+    header[3] = sizeof(char *);
+    header[4] = ((char *) &s)[0];
+    header[5] = ((char *) &s)[1];
+    header[6] = ((char *) &i)[0];
+    header[7] = ((char *) &i)[1];
+    header[8] = ((char *) &i)[2];
+    header[9] = ((char *) &i)[3];
+    header[10] = (char *) &cdummy.c - (char *) &cdummy.fill;
+    header[11] = (char *) &sdummy.s - (char *) &sdummy.fill;
+    header[12] = (char *) &idummy.i - (char *) &idummy.fill;
+    header[13] = (char *) &ldummy.l - (char *) &ldummy.fill;
+    header[14] = (char *) &pdummy.p - (char *) &pdummy.fill;
+    header[15] = sizeof(align);
+
     i_set_cost((Int) conf[MAX_COST].u.num);
-    call_driver_object("initialize", 0);
-    i_del_value(sp++);
+    if (dumpfile == (char *) NULL) {
+	/* initialize mudlib */
+	call_driver_object("initialize", 0);
+	i_del_value(sp++);
+    } else {
+	/* restore dump file */
+	conf_restore(dumpfile);
+	call_driver_object("restored", 0);
+	i_del_value(sp++);
+    }
 
     /* initialize communications */
     mstatic();
@@ -415,17 +551,24 @@ object *obj;
 {
     array *a;
     register value *v;
-    register dataspace *data;
+    dataspace *data;
 
     a = arr_new(3L);
     v = a->elts;
     data = o_dataspace(obj);
     if (obj->flags & O_MASTER) {
-	control *ctrl;
+	register control *ctrl;
 
 	ctrl = o_control(obj);
 	v->type = T_NUMBER;
-	(v++)->u.number = ctrl->progsize;
+	(v++)->u.number = ctrl->ninherits * sizeof(dinherit) +
+			  ctrl->progsize +
+			  ctrl->nstrings * (long) sizeof(dstrconst) +
+			  ctrl->strsize +
+			  ctrl->nfuncdefs * sizeof(dfuncdef) +
+			  ctrl->nvardefs * sizeof(dvardef) +
+			  ctrl->nfuncalls * 2L +
+			  ctrl->nsymbols * (long) sizeof(dsymbol);
 	v->type = T_NUMBER;
 	(v++)->u.number = ctrl->nsectors + data->nsectors;
     } else {
