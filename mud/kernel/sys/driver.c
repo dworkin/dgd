@@ -38,7 +38,7 @@ string creator(string file)
  * NAME:	normalize_path()
  * DESCRIPTION:	reduce a path to its minimal absolute form
  */
-string normalize_path(string file, string dir, string creator)
+string normalize_path(string file, string dir, varargs string creator)
 {
     string *path;
     int i, j, sz;
@@ -588,7 +588,7 @@ static string path_include(string from, string path)
 	    return path;
 	} else {
 	    if (objectd) {
-		objectd->include(from, normalize_path(path, from + "/..", nil));
+		objectd->include(from, normalize_path(path, from + "/.."));
 	    }
 	    return from + "/../" + path;
 	}
