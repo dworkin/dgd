@@ -919,7 +919,7 @@ register parser *ps;
 	    lrlen -= len;
 	} while (lrlen != 0);
 
-	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &val);
+	d_set_extravar(data, &val);
     }
 }
 
@@ -950,7 +950,7 @@ Int maxalt;
 	ps->frame = f;
 	same = (str_cmp(ps->source, source) == 0);
     } else {
-	val = d_get_variable(data, data->nvariables - 1);
+	val = d_get_extravar(data);
 	if (val->type == T_ARRAY && d_get_elts(val->u.array)->type == T_INT &&
 	    str_cmp(val->u.array->elts[1].u.string, source) == 0) {
 	    ps = ps_load(f, val->u.array->elts);

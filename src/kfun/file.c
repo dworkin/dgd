@@ -27,8 +27,8 @@ int nargs;
     if (obj->count == 0) {
 	error("editor() from destructed object");
     }
-    if (obj->flags & O_USER) {
-	error("editor() from user object");
+    if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
+	error("editor() from special purpose object");
     }
     if (f->data->plane->level != 0) {
 	error("editor() within atomic function");
@@ -68,7 +68,7 @@ register frame *f;
     char *status;
 
     obj = OBJR(f->sp->oindex);
-    if (obj->flags & O_EDITOR) {
+    if ((obj->flags & O_SPECIAL) == O_EDITOR) {
 	status = ed_status(obj);
 	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
     } else {
@@ -124,7 +124,7 @@ string *str;
 {
     char buf[STRINGSZ];
     register char *p, *q, c;
-    register unsigned short len;
+    register ssizet len;
     register unsigned int size;
 
     p = str->text;

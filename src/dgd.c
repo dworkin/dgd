@@ -13,7 +13,7 @@
 
 static uindex dindex;		/* driver object index */
 static Uint dcount;		/* driver object count */
-static uindex fragment;		/* swap fragment parameter */
+static sector fragment;		/* swap fragment parameter */
 static bool swap;		/* are objects to be swapped out? */
 static bool dump;		/* is the program to dump? */
 bool intr;			/* received an interrupt? */

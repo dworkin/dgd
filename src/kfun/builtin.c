@@ -2016,7 +2016,7 @@ int nargs;
     register value *v, *e1, *e2;
     register int i, type, vtype, nonint;
     register long size;
-    register unsigned short len;
+    register ssizet len;
     register Int result;
     register long isize;
 

@@ -16,7 +16,7 @@ typedef struct _arrchunk_ {
 typedef struct _arrh_ {
     struct _arrh_ *next;	/* next in hash table chain */
     array *arr;			/* array entry */
-    uindex index;		/* building index */
+    Uint index;			/* building index */
     struct _arrh_ **link;	/* next in list */
 } arrh;
 
@@ -74,7 +74,7 @@ static int ahchunksz;		/* size of current arrh chunk */
 static mapelt *fmelt;		/* free mapelt list */
 static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
-static uindex idx;		/* current building index */
+static Uint idx;		/* current building index */
 
 /*
  * NAME:	array->init()
@@ -235,7 +235,7 @@ void arr_freeall()
  * NAME:	array->put()
  * DESCRIPTION:	Put an array in the merge table, and return its "index".
  */
-uindex arr_put(a)
+Uint arr_put(a)
 register array *a;
 {
     register arrh **h;

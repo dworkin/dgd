@@ -17,7 +17,7 @@ typedef struct _context_ {
 
 static context firstcontext;		/* bottom context */
 static context *econtext;		/* current error context */
-static char errbuf[4 * STRINGSZ];	/* current error message */
+static string *errstr;			/* current error string */
 
 /*
  * NAME:	errcontext->_push_()
@@ -60,6 +60,9 @@ void ec_pop()
     econtext = e->next;
     if (e != &firstcontext) {
 	FREE(e);
+    } else if (errstr != (string *) NULL) {
+	str_del(errstr);
+	errstr = (string *) NULL;
     }
 }
 
@@ -74,20 +77,20 @@ Int depth;
 }
 
 /*
- * NAME:	errormesg()
- * DESCRIPTION:	return the current error message
+ * NAME:	errorstr()
+ * DESCRIPTION:	return the current error string
  */
-char *errormesg()
+string *errorstr()
 {
-    return errbuf;
+    return errstr;
 }
 
 /*
- * NAME:	error()
- * DESCRIPTION:	cause an error
+ * NAME:	serror()
+ * DESCRIPTION:	cause an error, with a string argument
  */
-void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void serror(str)
+string *str;
 {
     jmp_buf env;
     register context *e;
@@ -95,8 +98,15 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     int offset;
     ec_ftn handler;
 
-    if (format != (char *) NULL) {
-	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+    if (str != (string *) NULL) {
+	if (errstr != (string *) NULL) {
+	    str_del(errstr);
+	}
+	str_ref(errstr = str);
+# ifdef DEBUG
+    } else if (errstr == (string *) NULL) {
+	fatal("no error string");
+# endif
     }
 
     e = econtext;
@@ -122,6 +132,23 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     cframe->rlim = econtext->rlim;
     ec_pop();
     longjmp(env, 1);
+}
+
+/*
+ * NAME:	error()
+ * DESCRIPTION:	cause an error
+ */
+void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
+char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+{
+    char ebuf[4 * STRINGSZ];
+
+    if (format != (char *) NULL) {
+	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+	serror(str_new(ebuf, (long) strlen(ebuf)));
+    } else {
+	serror((string *) NULL);
+    }
 }
 
 /*
@@ -156,7 +183,16 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
     char ebuf[4 * STRINGSZ];
 
     if (format == (char *) NULL) {
-	sprintf(ebuf, "%s\012", errbuf);
+# ifdef DEBUG
+	if (errstr == (string *) NULL) {
+	    fatal("no error string");
+	}
+# endif
+	if (errstr->len <= sizeof(ebuf) - 2) {
+	    sprintf(ebuf, "%s\012", errstr->text);
+	} else {
+	    strcpy(ebuf, "[too long error string]\012");
+	}
     } else {
 	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
     }

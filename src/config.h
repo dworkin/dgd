@@ -1,6 +1,9 @@
-/* these may be changed, but sizeof(uindex) <= sizeof(int) */
+/* these may be changed, but sizeof(type) <= sizeof(int) */
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX
+
+typedef unsigned short ssizet;
+# define SSIZET_MAX	USHRT_MAX
 
 typedef uindex sector;
 # define SW_UNUSED	UINDEX_MAX
@@ -31,6 +34,7 @@ typedef char eindex;
 /* interpreter */
 # define MIN_STACK	3	/* minimal stack, # arguments in driver calls */
 # define EXTRA_STACK	32	/* extra space in stack frames */
+# define MAX_STRLEN	SSIZET_MAX	/* max string length, >= 65535 */
 
 /* parser */
 # define MAX_AUTOMSZ	6	/* DFA/PDA storage size, in strings */
@@ -55,7 +59,7 @@ typedef char eindex;
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
 
-extern bool		conf_init	P((char*, char*, uindex*));
+extern bool		conf_init	P((char*, char*, sector*));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
 extern int		conf_typechecking P((void));

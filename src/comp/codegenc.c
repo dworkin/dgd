@@ -968,8 +968,8 @@ register int state;
 	cg_expr(n->l.left, POP);
 	--catch_level;
 	if (state == PUSH) {
-	    output(", ec_pop(), *--f->sp = nil_value, 0) : (p = errormesg(), ");
-	    output("PUSH_STRVAL(f, str_new(p, (long) strlen(p)))");
+	    output(", ec_pop(), *--f->sp = nil_value, 0) : ");
+	    output("PUSH_STRVAL(f, errorstr())");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {

@@ -47,7 +47,7 @@ register long len;
     register string *s;
     string dummy;
 
-    if (len > (unsigned long) USHRT_MAX) {
+    if (len > (unsigned long) MAX_STRLEN) {
 	error("String too long");
     }
 
@@ -166,7 +166,7 @@ string *s1, *s2;
     if (s1 == s2) {
 	return 0;
     } else {
-	register unsigned short len;
+	register ssizet len;
 	register char *p, *q;
 	long cmplen;
 	int cmp;
@@ -209,7 +209,7 @@ register string *s1, *s2;
  * NAME:	string->index()
  * DESCRIPTION:	index a string
  */
-unsigned short str_index(s, l)
+ssizet str_index(s, l)
 string *s;
 register long l;
 {

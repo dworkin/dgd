@@ -28,6 +28,8 @@ struct _object_ {
 # define O_COMPILED		0x40
 # define O_PENDIO		0x80
 
+# define O_SPECIAL		0x30
+
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
 # define OBJ(i)			(&otable[i])

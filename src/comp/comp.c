@@ -201,7 +201,7 @@ char *argv[];
     register control *ctrl;
     register char *file;
     int nfuncs;
-    uindex fragment;
+    sector fragment;
 
     file = argv[2];
     if ((argc != 3 && argc != 4) ||

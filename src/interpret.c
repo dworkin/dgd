@@ -808,7 +808,7 @@ register frame *f;
 static value *istr(val, str, i, v)
 register value *val, *v;
 register string *str;
-unsigned short i;
+ssizet i;
 {
     if (v->type != T_INT) {
 	error("Non-numeric value in indexed string assignment");
@@ -829,7 +829,7 @@ register frame *f;
 {
     value ival;
     register value *lval, *val, *v;
-    register unsigned short i;
+    register ssizet i;
     register array *a;
 
     lval = f->sp + 1;
@@ -1674,9 +1674,7 @@ register char *pc;
 	    } else {
 		/* error */
 		f->pc = pc = p;
-		p = errormesg();
-		(--f->sp)->type = T_STRING;
-		str_ref(f->sp->u.string = str_new(p, (long) strlen(p)));
+		PUSH_STRVAL(f, errorstr());
 	    }
 	    f->atomic = atomic;
 	    break;
@@ -2308,10 +2306,7 @@ void i_runtime_error(f, depth)
 register frame *f;
 Int depth;
 {
-    char *err;
-
-    err = errormesg();
-    PUSH_STRVAL(f, str_new(err, (long) strlen(err)));
+    PUSH_STRVAL(f, errorstr());
     PUSH_INTVAL(f, depth);
     PUSH_INTVAL(f, i_get_ticks(f));
     if (!i_call_critical(f, "runtime_error", 3, FALSE)) {
@@ -2334,10 +2329,7 @@ Int level;
 
     for (f = ftop; f->level != level; f = f->prev) ;
     if (f != ftop) {
-	char *err;
-
-	err = errormesg();
-	PUSH_STRVAL(ftop, str_new(err, (long) strlen(err)));
+	PUSH_STRVAL(ftop, errorstr());
 	PUSH_INTVAL(ftop, f->depth);
 	PUSH_INTVAL(ftop, i_get_ticks(ftop));
 	if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {

@@ -273,14 +273,17 @@ register frame *f;
     register object *obj;
 
     obj = OBJW(f->sp->oindex);
-    if (obj->flags & O_USER) {
+    switch (obj->flags & O_SPECIAL) {
+    case O_USER:
 	comm_close(f, obj);
-    }
-    if (obj->flags & O_EDITOR) {
+	break;
+
+    case O_EDITOR:
 	if (f->data->plane->level != 0) {
 	    error("Editor object destructed in atomic function");
 	}
 	ed_del(obj);
+	break;
     }
     o_del(obj, f);
     return 0;
@@ -429,7 +432,7 @@ register frame *f;
     object *obj;
 
     obj = OBJR(f->sp->oindex);
-    if (obj->flags & O_USER) {
+    if ((obj->flags & O_SPECIAL) == O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_number(obj));
     } else {
 	*f->sp = nil_value;
@@ -454,7 +457,7 @@ register frame *f;
     object *obj;
 
     obj = OBJR(f->sp->oindex);
-    if (obj->flags & O_USER) {
+    if ((obj->flags & O_SPECIAL) == O_USER) {
 	PUT_STRVAL(f->sp, comm_ip_name(obj));
     } else {
 	*f->sp = nil_value;
@@ -495,7 +498,7 @@ char pt_strlen[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_STRING };
 int kf_strlen(f)
 register frame *f;
 {
-    unsigned short len;
+    ssizet len;
 
     len = f->sp->u.string->len;
     str_del(f->sp->u.string);
@@ -715,18 +718,9 @@ char pt_error[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_STRING };
  * DESCRIPTION:	cause an error
  */
 int kf_error(f)
-register frame *f;
+frame *f;
 {
-    string *str;
-
-    str = f->sp->u.string;
-    if (strlen(str->text) >= 4 * STRINGSZ) {
-	error("Error string too long");
-    }
-    if (strchr(str->text, LF) != (char *) NULL) {
-	error("'\\n' in error string");
-    }
-    error("%s", str->text);
+    serror(f->sp->u.string);
     return 0;
 }
 # endif
@@ -757,7 +751,7 @@ register frame *f;
 
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	if (obj->flags & O_USER) {
+	if ((obj->flags & O_SPECIAL) == O_USER) {
 	    if (f->sp->type == T_INT) {
 		num = comm_echo(obj, f->sp->u.number != 0);
 	    } else {
@@ -792,7 +786,7 @@ register frame *f;
     int num;
 
     obj = OBJW(f->oindex);
-    if ((obj->flags & O_USER) && obj->count != 0) {
+    if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	num = comm_udpsend(obj, f->sp->u.string);
     }
     str_del(f->sp->u.string);
@@ -817,7 +811,7 @@ register frame *f;
     object *obj;
 
     obj = OBJR(f->oindex);
-    if (obj->flags & O_USER) {
+    if ((obj->flags & O_SPECIAL) == O_USER) {
 	comm_block(obj, f->sp->u.number != 0);
     }
     *f->sp = nil_value;

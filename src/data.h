@@ -203,6 +203,8 @@ extern void		d_discard_arr	P((array*, dataplane*));
 
 extern void		d_ref_imports	P((array*));
 extern void		d_assign_var	P((dataspace*, value*, value*));
+extern value	       *d_get_extravar	P((dataspace*));
+extern void		d_set_extravar	P((dataspace*, value*));
 extern void		d_wipe_extravar	P((dataspace*));
 extern void		d_assign_elt	P((dataspace*, array*, value*, value*));
 extern void		d_change_map	P((array*));
@@ -216,7 +218,7 @@ extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));
-extern uindex		d_swapout	P((unsigned int));
+extern sector		d_swapout	P((unsigned int));
 extern void		d_swapsync	P((void));
 extern void		d_conv_control	P((unsigned int));
 extern void		d_conv_dataspace P((object*, Uint*));

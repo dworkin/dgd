@@ -25,9 +25,10 @@ typedef struct _user_ {
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
     char *inbuf;		/* input buffer */
+    array *extra;		/* object's extra value */
     string *outbuf;		/* output buffer string */
-    unsigned short inbufsz;	/* bytes in input buffer */
-    unsigned short osdone;	/* bytes of output string done */
+    ssizet inbufsz;		/* bytes in input buffer */
+    ssizet osdone;		/* bytes of output string done */
 } user;
 
 /* flags */
@@ -110,17 +111,18 @@ void comm_listen()
  * NAME:	addtoflush()
  * DESCRIPTION:	add a user to the flush list
  */
-static void addtoflush(usr, v)
+static void addtoflush(usr, arr)
 register user *usr;
-register value *v;
+register array *arr;
 {
     usr->flags |= CF_FLUSH;
     usr->flush = flush;
     flush = usr;
+    arr_ref(usr->extra = arr);
 
     /* remember initial buffer */
-    if (v[1].type == T_STRING) {
-	str_ref(usr->outbuf = v[1].u.string);
+    if (d_get_elts(arr)[1].type == T_STRING) {
+	str_ref(usr->outbuf = arr->elts[1].u.string);
     }
 }
 
@@ -136,12 +138,12 @@ bool telnet;
     static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
 			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
     register user *usr;
-    register dataspace *data;
+    dataspace *data;
     array *arr;
     value val;
 
-    if (obj->flags & (O_USER | O_EDITOR)) {
-	error("User object is already used for user or editor");
+    if (obj->flags & O_SPECIAL) {
+	error("User object is already special purpose");
     }
 
     usr = freeuser;
@@ -162,7 +164,7 @@ bool telnet;
     arr->elts[0] = zero_int;
     arr->elts[1] = arr->elts[2] = nil_value;
     PUT_ARRVAL_NOREF(&val, arr);
-    d_assign_var(data, d_get_variable(data, data->nvariables - 1), &val);
+    d_set_extravar(data, &val);
 
     usr->oindex = obj->index;
     obj->flags |= O_USER;
@@ -180,7 +182,7 @@ bool telnet;
 	usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
 	*usr->inbuf++ = LF;	/* sentinel */
 	m_dynamic();
-	addtoflush(usr, arr->elts);
+	addtoflush(usr, arr);
 
 	arr->elts[0].u.number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
@@ -207,11 +209,11 @@ bool force;
     dataspace *data;
     uindex olduser;
 
+    data = o_dataspace(obj);
     if (!(usr->flags & CF_FLUSH)) {
-	data = o_dataspace(obj);
-	addtoflush(usr,
-	     d_get_elts(d_get_variable(data, data->nvariables - 1)->u.array));
+	addtoflush(usr, d_get_extravar(data)->u.array);
     }
+    d_wipe_extravar(data);
 
     obj->flags &= ~O_USER;
     olduser = this_user;
@@ -243,23 +245,21 @@ unsigned int len;
     dataspace *data;
     array *arr;
     register value *v;
-    register unsigned short odone, olen;
+    register ssizet odone, olen;
     value val;
 
-    data = o_dataspace(obj);
-    arr = d_get_variable(data, data->nvariables - 1)->u.array;
-    v = d_get_elts(arr);
+    arr = d_get_extravar(data = o_dataspace(obj))->u.array;
     if (!(usr->flags & CF_FLUSH)) {
-	addtoflush(usr, v);
+	addtoflush(usr, arr);
     }
 
-    v++;
+    v = arr->elts + 1;
     if (v->type == T_STRING) {
 	/* append to existing buffer */
 	odone = (usr->outbuf == v->u.string) ? usr->osdone : 0;
 	olen = v->u.string->len - odone;
-	if (olen + len > USHRT_MAX) {
-	    len = USHRT_MAX - olen;
+	if (olen + len > MAX_STRLEN) {
+	    len = MAX_STRLEN - olen;
 	    if (len == 0 ||
 		((usr->flags & CF_TELNET) && text[0] == (char) IAC &&
 		 len < MAXIACSEQLEN)) {
@@ -391,14 +391,12 @@ string *str;
 	error("No datagrams received yet");
     }
 
-    data = obj->data;
-    arr = d_get_variable(data, data->nvariables - 1)->u.array;
-    v = d_get_elts(arr);
+    arr = d_get_extravar(data = obj->data)->u.array;
     if (!(usr->flags & CF_FLUSH)) {
-	addtoflush(usr, v);
+	addtoflush(usr, arr);
     }
 
-    v += 2;
+    v = arr->elts + 2;
     if (v->type == T_STRING) {
 	return 0;	/* datagram queued already */
     }
@@ -424,14 +422,13 @@ int echo;
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
-	data = obj->data;
-	arr = d_get_variable(data, data->nvariables - 1)->u.array;
+	arr = d_get_extravar(data = obj->data)->u.array;
 	v = d_get_elts(arr);
 	if (echo != (v->u.number & CF_ECHO) >> 1) {
 	    value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {
-		addtoflush(usr, v);
+		addtoflush(usr, arr);
 	    }
 	    val = *v;
 	    val.u.number ^= CF_ECHO;
@@ -457,14 +454,13 @@ int block;
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
-	data = obj->data;
-	arr = d_get_variable(data, data->nvariables - 1)->u.array;
+	arr = d_get_extravar(data = obj->data)->u.array;
 	v = d_get_elts(arr);
 	if (block != (v->u.number & CF_BLOCKED) >> 4) {
 	    value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {
-		addtoflush(usr, v);
+		addtoflush(usr, arr);
 	    }
 	    val = *v;
 	    val.u.number ^= CF_BLOCKED;
@@ -477,16 +473,15 @@ int block;
  * NAME:	comm->uflush()
  * DESCRIPTION:	flush output buffers for a single user only
  */
-static void comm_uflush(usr, obj, data)
+static void comm_uflush(usr, obj, data, arr)
 register user *usr;
 object *obj;
 register dataspace *data;
+array *arr;
 {
-    array *arr;
     register value *v;
     register int n;
 
-    arr = d_get_variable(data, data->nvariables - 1)->u.array;
     v = d_get_elts(arr);
 
     if (v[1].type == T_STRING) {
@@ -532,7 +527,6 @@ void comm_flush()
     register user *usr;
     register int i;
     object *obj;
-    register dataspace *data;
     array *arr;
     register value *v;
 
@@ -544,9 +538,8 @@ void comm_flush()
 	 * status change
 	 */
 	obj = OBJ(usr->oindex);
-	data = o_dataspace(obj);
-	arr = d_get_variable(data, data->nvariables - 1)->u.array;
-	v = d_get_elts(arr);
+	arr = usr->extra;
+	v = arr->elts;
 	if (usr->flags & CF_TELNET) {
 	    if ((v->u.number ^ usr->flags) & CF_ECHO) {
 		char buf[3];
@@ -579,13 +572,13 @@ void comm_flush()
 	 * write
 	 */
 	if (obj->flags & O_PENDIO) {
-	    comm_uflush(usr, obj, data);
+	    comm_uflush(usr, obj, obj->data, arr);
 	}
 
 	/*
-	 * destruct
+	 * disconnect
 	 */
-	if (!(obj->flags & O_USER)) {
+	if ((obj->flags & O_SPECIAL) != O_USER) {
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;
@@ -607,6 +600,7 @@ void comm_flush()
 	    --nusers;
 	}
 
+	arr_del(arr);
 	usr->flags &= ~CF_FLUSH;
     }
 }
@@ -710,7 +704,7 @@ unsigned int mtime;
 	if (i_call(f, obj, "open", 4, TRUE, 0)) {
 	    if (VAL_TRUE(f->sp)) {
 		i_del_value(f->sp);
-		if (obj->flags & O_USER) {
+		if ((obj->flags & O_SPECIAL) == O_USER) {
 		    /* open UDP channel */
 		    usr->flags |= CF_UDP;
 		    conn_udp(conn);
@@ -728,7 +722,10 @@ unsigned int mtime;
 
 	obj = OBJ(usr->oindex);
 	if (obj->flags & O_PENDIO) {
-	    comm_uflush(usr, obj, o_dataspace(obj));
+	    dataspace *data;
+
+	    data = o_dataspace(obj);
+	    comm_uflush(usr, obj, data, d_get_extravar(data)->u.array);
 	}
 	if (usr->flags & CF_ODONE) {
 	    /* callback */

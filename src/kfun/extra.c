@@ -583,8 +583,8 @@ int nargs;
 	maxalt = 1;	/* default: just one valid parse tree */
     }
 
-    if (OBJR(f->oindex)->flags & (O_USER | O_EDITOR)) {
-	error("parse_string() from editor or user object");
+    if (OBJR(f->oindex)->flags & O_SPECIAL) {
+	error("parse_string() from special purpose object");
     }
 
     a = ps_parse_string(f, f->sp[1].u.string, f->sp->u.string, maxalt);
@@ -664,7 +664,7 @@ int nargs;
     };
     register unsigned short crc;
     register int i;
-    register unsigned short len;
+    register ssizet len;
     register char *p;
     register Int cost;
 
@@ -820,7 +820,8 @@ int nargs;
     char buffer[64];
     Uint cv[4];
     register int i;
-    register unsigned short len, bufsz;
+    register ssizet len;
+    register unsigned short bufsz;
     register char *p;
     register Int cost;
     register Uint length;

@@ -77,7 +77,7 @@ static config conf[] = {
 				{ "swap_file",		STRING_CONST, FALSE },
 # define SWAP_FRAGMENT	18
 				{ "swap_fragment",	INT_CONST, FALSE,
-							0, UINDEX_MAX },
+							0, SW_UNUSED },
 # define SWAP_SIZE	19
 				{ "swap_size",		INT_CONST, FALSE,
 							1024, SW_UNUSED },
@@ -120,7 +120,7 @@ static dumpinfo header;		/* dumpfile header */
 # define i1	(header[ 9])
 # define i2	(header[10])
 # define i3	(header[11])	/* Int, lsb */
-# define usize	(header[12])	/* sizeof(uindex) */
+# define utsize	(header[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define desize	(header[13])	/* sizeof(sector) + sizeof(eindex) */
 # define psize	(header[14])	/* sizeof(char*) */
 # define calign	(header[15])	/* align(char) */
@@ -128,9 +128,8 @@ static dumpinfo header;		/* dumpfile header */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
-static int dsize;		/* sizeof(sector) */
-static int esize;		/* sizeof(eindex) */
 static int ualign;		/* align(uindex) */
+static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
 static int ealign;		/* align(eindex) */
 static dumpinfo rheader;	/* restored header */
@@ -140,7 +139,7 @@ static dumpinfo rheader;	/* restored header */
 # define ri1	(rheader[ 9])
 # define ri2	(rheader[10])
 # define ri3	(rheader[11])	/* Int, lsb */
-# define rusize	(rheader[12])	/* sizeof(uindex) */
+# define rutsize (rheader[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define rdesize (rheader[13])	/* sizeof(sector) + sizeof(eindex) */
 # define rpsize	(rheader[14])	/* sizeof(char*) */
 # define rcalign (rheader[15])	/* align(char) */
@@ -148,9 +147,12 @@ static dumpinfo rheader;	/* restored header */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
+static int rusize;		/* sizeof(uindex) */
+static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
 static int resize;		/* sizeof(eindex) */
 static int rualign;		/* align(uindex) */
+static int rtalign;		/* align(ssizet) */
 static int rdalign;		/* align(sector) */
 static int realign;		/* align(eindex) */
 static Uint starttime;		/* start time */
@@ -187,10 +189,8 @@ static void conf_dumpinit()
     i1 = strchr((char *) &i, 0x34) - (char *) &i;
     i2 = strchr((char *) &i, 0x56) - (char *) &i;
     i3 = strchr((char *) &i, 0x78) - (char *) &i;
-    usize = sizeof(uindex);
-    dsize = sizeof(sector);
-    esize = sizeof(eindex);
-    desize = dsize | (esize << 4);
+    utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
+    desize = sizeof(sector) | (sizeof(eindex) << 4);
     psize = sizeof(char*);
     calign = (char *) &cdummy.c - (char *) &cdummy.fill;
     salign = (char *) &sdummy.s - (char *) &sdummy.fill;
@@ -198,9 +198,10 @@ static void conf_dumpinit()
     palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     zalign = sizeof(alignz);
 
-    ualign = (usize == sizeof(short)) ? salign : ialign;
-    dalign = (dsize == sizeof(short)) ? salign : ialign;
-    switch (esize) {
+    ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
+    talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
+    dalign = (sizeof(sector) == sizeof(short)) ? salign : ialign;
+    switch (sizeof(eindex)) {
     case sizeof(char):	ealign = calign; break;
     case sizeof(short):	ealign = salign; break;
     case sizeof(Int):	ealign = ialign; break;
@@ -268,20 +269,27 @@ int fd;
 	       (UCHAR(rheader[DUMP_ELAPSED + 1]) << 16) |
 	       (UCHAR(rheader[DUMP_ELAPSED + 2]) << 8) |
 		UCHAR(rheader[DUMP_ELAPSED + 3]);
+    rusize = rutsize & 0xf;
+    rtsize = rutsize >> 4;
+    if (rtsize == 0) {
+	rtsize = sizeof(unsigned short);	/* backward compat */
+    }
     rdsize = rdesize & 0xf;
     resize = rdesize >> 4;
     if (resize == 0) {
-	resize = sizeof(char);	/* backward compat */
+	resize = sizeof(char);			/* backward compat */
     }
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
+    rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
     rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
     switch (resize) {
     case sizeof(char):	realign = rcalign; break;
     case sizeof(short):	realign = rsalign; break;
     case sizeof(Int):	realign = rialign; break;
     }
-    if (usize < rusize || dsize < rdsize) {
-	error("Cannot restore uindex or sector of greater width");
+    if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
+	sizeof(sector) < rdsize) {
+	error("Cannot restore uindex, ssizet or sector of greater width");
     }
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
@@ -336,7 +344,7 @@ char *layout;
 	    break;
 
 	case 'u':	/* uindex */
-	    sz = usize;
+	    sz = sizeof(uindex);
 	    rsz = rusize;
 	    al = ualign;
 	    ral = rualign;
@@ -348,22 +356,29 @@ char *layout;
 	    ral = rialign;
 	    break;
 
+	case 't':	/* ssizet */
+	    sz = sizeof(ssizet);
+	    rsz = rtsize;
+	    al = talign;
+	    ral = rtalign;
+	    break;
+
 	case 'd':	/* sector */
-	    sz = dsize;
+	    sz = sizeof(sector);
 	    rsz = rdsize;
 	    al = dalign;
 	    ral = rdalign;
 	    break;
 
 	case 'e':	/* eindex */
-	    sz = esize;
+	    sz = sizeof(eindex);
 	    rsz = resize;
 	    al = ealign;
 	    ral = realign;
 	    break;
 
 	case 'p':	/* pointer */
-	    sz = psize;
+	    sz = sizeof(char*);
 	    rsz = rpsize;
 	    al = palign;
 	    ral = rpalign;
@@ -372,9 +387,9 @@ char *layout;
 	case 'x':	/* hte */
 	    size = ALGN(size, zalign);
 	    size = ALGN(size, palign);
-	    size += psize;
+	    size += sizeof(char*);
 	    size = ALGN(size, palign);
-	    size += psize;
+	    size += sizeof(char*);
 	    size = ALGN(size, zalign);
 	    rsize = ALGN(rsize, rzalign);
 	    rsize = ALGN(rsize, rpalign);
@@ -454,8 +469,8 @@ Uint n;
 	    case 'u':
 		i = ALGN(i, ualign);
 		ri = ALGN(ri, rualign);
-		if (usize == rusize) {
-		    if (usize == sizeof(short)) {
+		if (sizeof(uindex) == rusize) {
+		    if (sizeof(uindex) == sizeof(short)) {
 			buf[i + s0] = rbuf[ri + rs0];
 			buf[i + s1] = rbuf[ri + rs1];
 		    } else {
@@ -472,7 +487,7 @@ Uint n;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
-		i += usize;
+		i += sizeof(uindex);
 		ri += rusize;
 		break;
 
@@ -487,11 +502,34 @@ Uint n;
 		ri += sizeof(Int);
 		break;
 
+	    case 't':
+		i = ALGN(i, talign);
+		ri = ALGN(ri, rtalign);
+		if (sizeof(ssizet) == rtsize) {
+		    if (sizeof(ssizet) == sizeof(short)) {
+			buf[i + s0] = rbuf[ri + rs0];
+			buf[i + s1] = rbuf[ri + rs1];
+		    } else {
+			buf[i + i0] = rbuf[ri + ri0];
+			buf[i + i1] = rbuf[ri + ri1];
+			buf[i + i2] = rbuf[ri + ri2];
+			buf[i + i3] = rbuf[ri + ri3];
+		    }
+		} else {
+		    buf[i + i0] = 0;
+		    buf[i + i1] = 0;
+		    buf[i + i2] = rbuf[ri + rs0];
+		    buf[i + i3] = rbuf[ri + rs1];
+		}
+		i += sizeof(ssizet);
+		ri += rtsize;
+		break;
+
 	    case 'd':
 		i = ALGN(i, dalign);
 		ri = ALGN(ri, rdalign);
-		if (dsize == rdsize) {
-		    if (dsize == sizeof(short)) {
+		if (sizeof(sector) == rdsize) {
+		    if (sizeof(sector) == sizeof(short)) {
 			buf[i + s0] = rbuf[ri + rs0];
 			buf[i + s1] = rbuf[ri + rs1];
 		    } else {
@@ -508,21 +546,21 @@ Uint n;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
-		i += dsize;
+		i += sizeof(sector);
 		ri += rdsize;
 		break;
 
 	    case 'e':
 		i = ALGN(i, ealign);
 		ri = ALGN(ri, realign);
-		i += esize;
+		i += sizeof(eindex);
 		ri += resize;
 		break;
 
 	    case 'p':
 		i = ALGN(i, palign);
 		ri = ALGN(ri, rpalign);
-		for (j = psize; j > 0; --j) {
+		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
 		ri += rpsize;
@@ -541,11 +579,11 @@ Uint n;
 	    case 'x':
 		i = ALGN(i, zalign);
 		i = ALGN(i, palign);
-		for (j = psize; j > 0; --j) {
+		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
 		i = ALGN(i, palign);
-		for (j = psize; j > 0; --j) {
+		for (j = sizeof(char*); j > 0; --j) {
 		    buf[i++] = 0;
 		}
 		ri = ALGN(ri, rzalign);
@@ -910,7 +948,7 @@ static bool conf_includes()
     cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
     cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
     sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
-	    USHRT_MAX);
+	    MAX_STRLEN);
     cputs(buffer);
     if (!cclose()) {
 	return FALSE;
@@ -961,7 +999,7 @@ static bool conf_includes()
  */
 bool conf_init(configfile, dumpfile, fragment)
 char *configfile, *dumpfile;
-uindex *fragment;
+sector *fragment;
 {
     char buf[STRINGSZ];
     int fd;
@@ -1243,7 +1281,7 @@ register value *v;
 	break;
 
     case 20:	/* ST_STRSIZE */
-	PUT_INTVAL(v, USHRT_MAX);
+	PUT_INTVAL(v, MAX_STRLEN);
 	break;
 
     case 21:	/* ST_ARRAYSIZE */

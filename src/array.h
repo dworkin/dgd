@@ -17,7 +17,7 @@ extern array	       *arr_new		P((dataspace*, long));
 extern void		arr_del		P((array*));
 extern void		arr_freeall	P((void));
 
-extern uindex		arr_put		P((array*));
+extern Uint		arr_put		P((array*));
 extern void		arr_clear	P((void));
 
 extern void		arr_backup	P((abchunk**, array*));

@@ -107,11 +107,11 @@ static char sa_layout[] = "isii";
 
 typedef struct _sstring_ {
     Uint index;			/* index in string text table */
-    unsigned short len;		/* length of string */
+    ssizet len;			/* length of string */
     Uint ref;			/* refcount */
 } sstring;
 
-static char ss_layout[] = "isi";
+static char ss_layout[] = "iti";
 
 typedef struct _dcallout_ {
     Uint time;			/* time of call */
@@ -163,8 +163,8 @@ typedef struct _coptable_ {
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static dataplane *plist;		/* list of dataplanes */
-static uindex nctrl;			/* # control blocks */
-static uindex ndata;			/* # dataspace blocks */
+static sector nctrl;			/* # control blocks */
+static sector ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
 static uindex ncallout;			/*  # callouts added */
 
@@ -2157,8 +2157,29 @@ register value *val;
 }
 
 /*
+ * NAME:	data->get_extravar()
+ * DESCRIPTION:	get an object's special value
+ */
+value *d_get_extravar(data)
+dataspace *data;
+{
+    return d_get_variable(data, data->nvariables - 1);
+}
+
+/*
+ * NAME:	data->set_extravar()
+ * DESCRIPTION:	set an object's special value
+ */
+void d_set_extravar(data, val)
+register dataspace *data;
+value *val;
+{
+    d_assign_var(data, d_get_variable(data, data->nvariables - 1), val);
+}
+
+/*
  * NAME:	data->wipe_extravar()
- * DESCRIPTION:	wipe the value of the extra variable
+ * DESCRIPTION:	wipe out an object's special value
  */
 void d_wipe_extravar(data)
 register dataspace *data;
@@ -3865,10 +3886,10 @@ register dataspace *data;
  * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
  *		memory.  Return the number of dataspace blocks swapped out.
  */
-uindex d_swapout(frag)
+sector d_swapout(frag)
 unsigned int frag;
 {
-    register uindex n, count;
+    register sector n, count;
     register dataspace *data;
     register control *ctrl;
 
@@ -4263,7 +4284,7 @@ register dataspace *data;
     }
 
     if (data->ncallouts != 0) {
-	register unsigned short n;
+	register uindex n;
 	register dcallout *co;
 
 	/*

@@ -16,7 +16,7 @@ static editor *flist;		/* free list */
 static int neditors;		/* # of editors */
 static char *tmpedfile;		/* proto temporary file */
 static char *outbuf;		/* output buffer */
-static unsigned int outbufsz;	/* chars in output buffer */
+static Uint outbufsz;		/* chars in output buffer */
 static bool recursion;		/* recursion in editor command */
 static bool internal;		/* flag editor internal error */
 
@@ -34,7 +34,7 @@ register int num;
     f = (editor *) NULL;
     neditors = num;
     if (num != 0) {
-	outbuf = ALLOC(char, USHRT_MAX + 1);
+	outbuf = ALLOC(char, MAX_STRLEN + 1);
 	editors = ALLOC(editor, num);
 	for (e = editors + num; num != 0; --num) {
 	    (--e)->ed = (cmdbuf *) NULL;
@@ -153,7 +153,7 @@ char *cmd;
 	if (!internal) {
 	    error((char *) NULL);	/* pass on error */
 	}
-	output("%s\012", errormesg());	/* LF */
+	output("%s\012", errorstr()->text);	/* LF */
     } else {
 	recursion = TRUE;
 	if (cb_command(e->ed, cmd)) {
@@ -191,11 +191,11 @@ void output(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
     char buf[2 * MAX_LINE_SIZE + 15];
-    unsigned int len;
+    Uint len;
 
     sprintf(buf, f, a1, a2, a3);
     len = strlen(buf);
-    if (outbufsz + len > USHRT_MAX) {
+    if (outbufsz + len > MAX_STRLEN) {
 	error("Editor output string too long");
     }
     memcpy(outbuf + outbufsz, buf, len);

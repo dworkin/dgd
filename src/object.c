@@ -1242,7 +1242,10 @@ int fd;
 
 	if (o->count != 0) {
 	    /* there are no user or editor objects after a restore */
-	    o->flags &= ~(O_USER | O_EDITOR | O_PENDIO);
+	    if ((o->flags & O_SPECIAL) != O_SPECIAL) {
+		o->flags &= ~O_SPECIAL;
+	    }
+	    o->flags &= ~O_PENDIO;
 	}
 
 	/* check memory */
