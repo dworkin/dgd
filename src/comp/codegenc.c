@@ -71,21 +71,10 @@ static void comma()
  * NAME:	kfun()
  * DESCRIPTION:	output a kfun call
  */
-static void kfun(n)
-int n;
+static void kfun(func)
+char *func;
 {
-    output("call_kfun(%d/*%s*/)", &KFUN(n) - kftab, KFUN(n).name);
-}
-
-/*
- * NAME:	kfun_arg()
- * DESCRIPTION:	output a kfun call with a specified argument
- */
-static void kfun_arg(n, arg)
-int n;
-char *arg;
-{
-    output("call_kfun_arg(%d/*%s*/, %s)", &KFUN(n) - kftab, KFUN(n).name, arg);
+    output("kf_%s()", func);
 }
 
 /*
@@ -658,7 +647,7 @@ bool direct;
  */
 static void cg_asgnop(n, op)
 register node *n;
-int op;
+char *op;
 {
     if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
 	output("PUSH_NUMBER ivar%d, ", vars[n->l.left->r.number]);
@@ -760,14 +749,14 @@ register node *n;
 	    if (n->r.right != (node *) NULL) {
 		cg_expr(n->r.right, PUSH);
 		comma();
-		kfun(KF_CKRANGEFT);
+		kfun("ckrangeft");
 	    } else {
-		kfun(KF_CKRANGEF);
+		kfun("ckrangef");
 	    }
 	} else if (n->r.right != (node *) NULL) {
 	    cg_expr(n->r.right, PUSH);
 	    comma();
-	    kfun(KF_CKRANGET);
+	    kfun("ckranget");
 	} else {
 	    output("PUSH_NUMBER -2");	/* no range */
 	}
@@ -872,9 +861,8 @@ register node *n;
 register int state;
 {
     register int i;
-    char buffer[12];
     long l;
-    char *arg;
+    char *p;
 
     switch (n->type) {
     case N_ADD_INT:
@@ -924,26 +912,26 @@ register int state;
 	comma();
 	if (n->r.right->type == N_FLOAT) {
 	    if (NFLT_ISONE(n->r.right)) {
-		kfun(KF_ADD1);
+		kfun("add1");
 		break;
 	    }
 	    if (NFLT_ISMONE(n->r.right)) {
-		kfun(KF_SUB1);
+		kfun("sub1");
 		break;
 	    }
 	}
 	cg_expr(n->r.right, PUSH);
 	comma();
-	kfun(KF_ADD);
+	kfun("add");
 	break;
 
     case N_ADD_EQ:
-	cg_asgnop(n, KF_ADD);
+	cg_asgnop(n, "add");
 	break;
 
     case N_ADD_EQ_1:
 	cg_fetch(n->l.left, 0);
-	kfun(KF_ADD1);
+	kfun("add1");
 	store();
 	break;
 	
@@ -957,11 +945,11 @@ register int state;
 
     case N_AND:
 	cg_binop(n);
-	kfun(KF_AND);
+	kfun("and");
 	break;
 
     case N_AND_EQ:
-	cg_asgnop(n, KF_AND);
+	cg_asgnop(n, "and");
 	break;
 
     case N_ASSIGN:
@@ -1036,16 +1024,16 @@ register int state;
 
     case N_DIV:
 	cg_binop(n);
-	kfun(KF_DIV);
+	kfun("div");
 	break;
 
     case N_DIV_EQ:
-	cg_asgnop(n, KF_DIV);
+	cg_asgnop(n, "div");
 	break;
 
     case N_EQ:
 	cg_binop(n);
-	kfun(KF_EQ);
+	kfun("eq");
 	break;
 
     case N_FLOAT:
@@ -1054,16 +1042,20 @@ register int state;
 	break;
 
     case N_FUNC:
-	arg = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
+	p = cg_funargs(n->l.left, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
 	case IKFCALL:
 	case IKFCALL_LVAL:
 	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
-		kfun_arg((short) n->r.number, arg);
+		output("call_kfun_arg(%d/*%s*/, %s)",
+		       &KFUN((short) n->r.number) - kftab,
+		       KFUN((short) n->r.number).name, p);
 	    } else {
-		kfun((short) n->r.number);
+		output("call_kfun(%d/*%s*/)",
+		       &KFUN((short) n->r.number) - kftab,
+		       KFUN((short) n->r.number).name);
 	    }
 	    if ((n->r.number >> 24) & KFCALL_LVAL) {
 		cg_locals(n->l.left);
@@ -1074,25 +1066,25 @@ register int state;
 	case IDFCALL:
 	    if (((n->r.number >> 8) & 0xff) == 0) {
 		output("i_funcall((object *) NULL, 0, %d, %s)",
-		       ((int) n->r.number) & 0xff, arg);
+		       ((int) n->r.number) & 0xff, p);
 	    } else {
-		output("i_funcall((object *) NULL, cframe->p_index+%d, %d, %s)",
+		output("i_funcall((object *) NULL, f->p_index+%d, %d, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
-		       ((int) n->r.number) & 0xff, arg);
+		       ((int) n->r.number) & 0xff, p);
 	    }
 	    break;
 
 	case FCALL:
 	    output("p = i_foffset(%u), ", ctrl_gencall((long) n->r.number));
 	    output("i_funcall((object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
-		   arg);
+		   p);
 	    break;
 	}
 	break;
 
     case N_GE:
 	cg_binop(n);
-	kfun(KF_GE);
+	kfun("ge");
 	break;
 
     case N_GLOBAL:
@@ -1102,7 +1094,7 @@ register int state;
 
     case N_GT:
 	cg_binop(n);
-	kfun(KF_GT);
+	kfun("gt");
 	break;
 
     case N_INDEX:
@@ -1119,7 +1111,7 @@ register int state;
 
     case N_LE:
 	cg_binop(n);
-	kfun(KF_LE);
+	kfun("le");
 	break;
 
     case N_LOCAL:
@@ -1131,28 +1123,47 @@ register int state;
 	    return;
 	}
 	if (state == TRUTHVAL || state == TOPTRUTHVAL) {
-	    if (n->mod == T_FLOAT) {
-		output("VFLT_ISZERO(%s)", local((int) n->r.number));
-	    } else {
-		output("truthval(%s)", local((int) n->r.number));
+	    p = local((int) n->r.number);
+	    switch (n->mod) {
+	    case T_FLOAT:
+		output("VFLT_ISZERO(%s)", p);
+		break;
+
+	    case T_STRING:
+		output("%s->type == T_STRING", p);
+		break;
+
+	    case T_OBJECT:
+		output("%s->type == T_OBJECT", p);
+		break;
+
+	    case T_ARRAY:
+	    case T_MAPPING:
+		output("T_INDEXED(%s->type)", p);
+		break;
+
+	    default:
+		output("truthval(%s)", p);
+		break;
 	    }
 	    return;
 	}
-	output("i_push_value(%s)", local((int) n->r.number));
+	output((n->mod == T_FLOAT) ?  "*--sp = *%s" : "i_push_value(%s)",
+	       local((int) n->r.number));
 	break;
 
     case N_LSHIFT:
 	cg_binop(n);
-	kfun(KF_LSHIFT);
+	kfun("lshift");
 	break;
 
     case N_LSHIFT_EQ:
-	cg_asgnop(n, KF_LSHIFT);
+	cg_asgnop(n, "lshift");
 	break;
 
     case N_LT:
 	cg_binop(n);
-	kfun(KF_LT);
+	kfun("lt");
 	break;
 
     case N_LVALUE:
@@ -1161,25 +1172,25 @@ register int state;
 
     case N_MOD:
 	cg_binop(n);
-	kfun(KF_MOD);
+	kfun("mod");
 	break;
 
     case N_MOD_EQ:
-	cg_asgnop(n, KF_MOD);
+	cg_asgnop(n, "mod");
 	break;
 
     case N_MULT:
 	cg_binop(n);
-	kfun(KF_MULT);
+	kfun("mult");
 	break;
 
     case N_MULT_EQ:
-	cg_asgnop(n, KF_MULT);
+	cg_asgnop(n, "mult");
 	break;
 
     case N_NE:
 	cg_binop(n);
-	kfun(KF_NE);
+	kfun("ne");
 	break;
 
     case N_NOT:
@@ -1206,11 +1217,11 @@ register int state;
 	comma();
 	cg_expr(n->r.right, PUSH);
 	comma();
-	kfun(KF_OR);
+	kfun("or");
 	break;
 
     case N_OR_EQ:
-	cg_asgnop(n, KF_OR);
+	cg_asgnop(n, "or");
 	break;
 
     case N_QUEST:
@@ -1244,16 +1255,16 @@ register int state;
 	    if (n->r.right != (node *) NULL) {
 		cg_expr(n->r.right, PUSH);
 		comma();
-		kfun(KF_RANGEFT);
+		kfun("rangeft");
 	    } else {
-		kfun(KF_RANGEF);
+		kfun("rangef");
 	    }
 	} else if (n->r.right != (node *) NULL) {
 	    cg_expr(n->r.right, PUSH);
 	    comma();
-	    kfun(KF_RANGET);
+	    kfun("ranget");
 	} else {
-	    kfun(KF_RANGE);
+	    kfun("range");
 	}
 	break;
 
@@ -1262,11 +1273,11 @@ register int state;
 	comma();
 	cg_expr(n->r.right, PUSH);
 	comma();
-	kfun(KF_RSHIFT);
+	kfun("rshift");
 	break;
 
     case N_RSHIFT_EQ:
-	cg_asgnop(n, KF_RSHIFT);
+	cg_asgnop(n, "rshift");
 	break;
 
     case N_STR:
@@ -1280,45 +1291,44 @@ register int state;
 	    (n->l.left->type == N_FLOAT && NFLT_ISZERO(n->l.left))) {
 	    cg_expr(n->r.right, PUSH);
 	    comma();
-	    kfun(KF_UMIN);
+	    kfun("umin");
 	} else {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
 	    if (n->r.right->type == N_FLOAT) {
 		if (NFLT_ISONE(n->r.right)) {
-		    kfun(KF_SUB1);
+		    kfun("sub1");
 		    break;
 		}
 		if (NFLT_ISMONE(n->r.right)) {
-		    kfun(KF_ADD1);
+		    kfun("add1");
 		    break;
 		}
 	    }
 	    cg_expr(n->r.right, PUSH);
 	    comma();
-	    kfun(KF_SUB);
+	    kfun("sub");
 	}
 	break;
 
     case N_SUB_EQ:
-	cg_asgnop(n, KF_SUB);
+	cg_asgnop(n, "sub");
 	break;
 
     case N_SUB_EQ_1:
 	cg_fetch(n->l.left, 0);
-	kfun(KF_SUB1);
+	kfun("sub1");
 	store();
 	break;
 
     case N_SUM:
-	sprintf(buffer, "%d", cg_sumargs(n));
-	kfun_arg(KF_SUM, buffer);
+	output("kf_sum(%d)", cg_sumargs(n));
 	break;
 
     case N_TOFLOAT:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	kfun(KF_TOFLOAT);
+	kfun("tofloat");
 	break;
 
     case N_TST:
@@ -1343,13 +1353,13 @@ register int state;
     case N_TOINT:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	kfun(KF_TOINT);
+	kfun("toint");
 	break;
 
     case N_TOSTRING:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	kfun(KF_TOSTRING);
+	kfun("tostring");
 	break;
 
     case N_UPLUS:
@@ -1360,47 +1370,47 @@ register int state;
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
-	    kfun(KF_NEG);
+	    kfun("neg");
 	} else {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
 	    cg_expr(n->r.right, PUSH);
 	    comma();
-	    kfun(KF_XOR);
+	    kfun("xor");
 	}
 	break;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
 	    cg_fetch(n->l.left, 0);
-	    kfun(KF_NEG);
+	    kfun("neg");
 	    store();
 	} else {
-	    cg_asgnop(n, KF_XOR);
+	    cg_asgnop(n, "xor");
 	}
 	break;
 
     case N_MIN_MIN:
 	cg_fetch(n->l.left, 0);
-	kfun(KF_SUB1);
+	kfun("sub1");
 	store();
 	comma();
 	if (n->mod == T_INT) {
 	    output("sp->u.number++");
 	} else {
-	    kfun(KF_ADD1);
+	    kfun("add1");
 	}
 	break;
 
     case N_PLUS_PLUS:
 	cg_fetch(n->l.left, 0);
-	kfun(KF_ADD1);
+	kfun("add1");
 	store();
 	comma();
 	if (n->mod == T_INT) {
 	    output("sp->u.number--");
 	} else {
-	    kfun(KF_SUB1);
+	    kfun("sub1");
 	}
 	break;
 
@@ -1435,10 +1445,22 @@ register int state;
 	break;
 
     case TOPTRUTHVAL:
-	if (n->mod == T_INT) {
+	switch (n->mod) {
+	case T_INT:
 	    output(", (sp++)->u.number");
-	} else {
+	    break;
+
+	case T_FLOAT:
+	    output(", sp++, VFLT_ISZERO(sp - 1)");
+	    break;
+
+	case T_OBJECT:
+	    output(", sp++, sp[-1].type == T_OBJECT");
+	    break;
+
+	default:
 	    output(", poptruthval()");
+	    break;
 	}
 	break;
     }
@@ -1842,8 +1864,7 @@ register node *n;
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
-			output("ivar%d = %s->u.number;\n", vars[i],
-			       local(i));
+			output("ivar%d = %s->u.number;\n", vars[i], local(i));
 		    }
 		}
 	    }

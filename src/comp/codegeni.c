@@ -652,11 +652,10 @@ int type;
  * NAME:	codegen->fetch()
  * DESCRIPTION:	generate code for a fetched lvalue
  */
-static void cg_fetch(n, type)
+static void cg_fetch(n)
 node *n;
-int type;
 {
-    cg_lvalue(n, type);
+    cg_lvalue(n, 0);
     code_instr(I_FETCH, 0);
     if (n->type == N_CAST) {
 	cg_cast(n->mod);
@@ -671,11 +670,7 @@ static void cg_asgnop(n, op)
 register node *n;
 int op;
 {
-    if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
-	cg_fetch(n->l.left, n->l.left->mod);
-    } else {
-	cg_fetch(n->l.left, 0);
-    }
+    cg_fetch(n->l.left);
     cg_expr(n->r.right, FALSE);
     code_kfun(op, n->line);
     code_instr(I_STORE, 0);
@@ -735,13 +730,13 @@ register int pop;
 	break;
 
     case N_ADD_EQ_1:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
 	break;
 
     case N_ADD_EQ_1_INT:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
@@ -782,11 +777,11 @@ register int pop;
     case N_ASSIGN:
 	if (n->r.right->type == N_CAST) {
 	    cg_lvalue(n->l.left, n->r.right->mod);
-	    n->r.right = n->r.right->l.left;
+	    cg_expr(n->r.right->l.left, FALSE);
 	} else {
 	    cg_lvalue(n->l.left, 0);
+	    cg_expr(n->r.right, FALSE);
 	}
-	cg_expr(n->r.right, FALSE);
 	code_instr(I_STORE, n->line);
 	break;
 
@@ -1094,19 +1089,7 @@ register int pop;
 
     case N_NOT:
 	cg_expr(n->l.left, FALSE);
-	switch (n->l.left->mod) {
-	case T_INT:
-	    code_kfun(KF_NOTI, n->line);
-	    break;
-
-	case T_FLOAT:
-	    code_kfun(KF_NOTF, n->line);
-	    break;
-
-	default:
-	    code_kfun(KF_NOT, n->line);
-	    break;
-	}
+	code_kfun((n->l.left->mod == T_INT) ? KF_NOT_INT : KF_NOT, n->line);
 	break;
 
     case N_OR:
@@ -1265,13 +1248,13 @@ register int pop;
 	break;
 
     case N_SUB_EQ_1:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
 	break;
 
     case N_SUB_EQ_1_INT:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
@@ -1299,19 +1282,7 @@ register int pop;
 
     case N_TST:
 	cg_expr(n->l.left, FALSE);
-	switch (n->l.left->mod) {
-	case T_INT:
-	    code_kfun(KF_TSTI, n->line);
-	    break;
-
-	case T_FLOAT:
-	    code_kfun(KF_TSTF, n->line);
-	    break;
-
-	default:
-	    code_kfun(KF_TST, n->line);
-	    break;
-	}
+	code_kfun((n->l.left->mod == T_INT) ? KF_TST_INT : KF_TST, n->line);
 	break;
 
     case N_UPLUS:
@@ -1342,7 +1313,7 @@ register int pop;
 
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    code_kfun(KF_NEG, 0);
 	    code_instr(I_STORE, 0);
 	} else {
@@ -1352,7 +1323,7 @@ register int pop;
 
     case N_XOR_EQ_INT:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
-	    cg_fetch(n->l.left, 0);
+	    cg_fetch(n->l.left);
 	    code_kfun(KF_NEG_INT, 0);
 	    code_instr(I_STORE, 0);
 	} else {
@@ -1361,28 +1332,28 @@ register int pop;
 	break;
 
     case N_MIN_MIN:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
 	code_kfun((n->mod == T_INT) ? KF_ADD1_INT : KF_ADD1, 0);
 	break;
 
     case N_MIN_MIN_INT:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
 	code_kfun(KF_ADD1_INT, 0);
 	break;
 
     case N_PLUS_PLUS:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
 	code_kfun((n->mod == T_INT) ? KF_SUB1_INT : KF_SUB1, 0);
 	break;
 
     case N_PLUS_PLUS_INT:
-	cg_fetch(n->l.left, 0);
+	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	code_kfun(KF_SUB1_INT, 0);

@@ -1215,8 +1215,15 @@ char *name;
 	}
     } else if (type == T_INT) {
 	op++;
-    } else if (type == T_INVALID) {
-	type = T_STRING;
+    } else if (op == N_ADD_EQ) {
+	if (n1->mod == T_INT) {
+	    n2 = node_mon(N_CAST, T_INT, n2);
+	    type = T_INT;
+	    op++;
+	} else if (n1->mod == T_FLOAT && n2->mod != T_FLOAT) {
+	    n2 = node_mon(N_CAST, T_FLOAT, n2);
+	    type = T_FLOAT;
+	}
     }
     return node_bin(op, type, n1, n2);
 }

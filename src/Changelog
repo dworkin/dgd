@@ -1007,3 +1007,4 @@ DGD 1.1
  - Tweaked the last tweaks in generated C code optimization.
  - Bugfix in C code generated for ?:.
  - Attempt to avoid Linux bug in socket writes.
+ - Generate better C code for calls to builtin kfuns.

@@ -595,13 +595,6 @@ bool function;
 	}
     }
 
-    /* handle function class and return type */
-    if (typechecked) {
-	class |= C_TYPECHECKED;
-    }
-    PROTO_CLASS(proto) = class;
-    PROTO_FTYPE(proto) = type;
-
     /* handle function arguments */
     args = PROTO_ARGS(proto);
     nargs = 0;
@@ -631,6 +624,9 @@ bool function;
 	    c_error("invalid type for parameter %s (%s)", arg->l.string->text,
 		    i_typename(t & ~T_ELLIPSIS));
 	    t = T_MIXED | (t & T_ELLIPSIS);
+	} else if (typechecked && (t & ~T_ELLIPSIS) != T_MIXED) {
+	    /* only bother to typecheck functions with non-mixed arguments */
+	    class |= C_TYPECHECKED;
 	}
 	*args++ = t;
 	nargs++;
@@ -648,6 +644,9 @@ bool function;
 	    block_pdef(arg->l.string->text, t);
 	}
     }
+
+    PROTO_CLASS(proto) = class;
+    PROTO_FTYPE(proto) = type;
     PROTO_NARGS(proto) = nargs;
 
     /* define prototype */

@@ -30,5 +30,5 @@ std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
 debug.o: ../comp/control.h
 
 $(OBJ): kfun.h
-debug.o: table.h
+builtin.o debug.o: table.h
 table.o: table.h $(OBJ)

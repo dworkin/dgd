@@ -1,6 +1,17 @@
 # ifndef FUNCDEF
 # define INCLUDE_CTYPE
 # include "kfun.h"
+# include "table.h"
+
+/*
+ * NAME:	kfun->argerror()
+ * DESCRIPTION:	handle an argument error in a builtin kfun
+ */
+static void kf_argerror(kfun, n)
+int kfun, n;
+{
+    error("Bad argument %d for kfun %s", n, kftab[kfun].name);
+}
 # endif
 
 
@@ -133,10 +144,10 @@ int kf_add()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_ADD, 1);
     }
 
-    return 2;
+    kf_argerror(KF_ADD, 2);
 }
 # endif
 
@@ -181,7 +192,7 @@ int kf_add1()
 	flt_add(&f1, &f2);
 	VFLT_PUT(sp, f1);
     } else {
-	return 1;
+	kf_argerror(KF_ADD1, 1);
     }
     return 0;
 }
@@ -252,10 +263,10 @@ int kf_and()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_AND, 1);
     }
 
-    return 2;
+    kf_argerror(KF_AND, 2);
 }
 # endif
 
@@ -293,7 +304,7 @@ int kf_div()
     xfloat f1, f2;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_DIV, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -323,7 +334,7 @@ int kf_div()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_DIV, 1);
     }
 }
 # endif
@@ -474,7 +485,7 @@ int kf_ge()
     bool flag;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_GE, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -502,7 +513,7 @@ int kf_ge()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_GE, 1);
     }
 }
 # endif
@@ -541,7 +552,7 @@ int kf_gt()
     bool flag;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_GT, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -569,7 +580,7 @@ int kf_gt()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_GT, 1);
     }
 }
 # endif
@@ -608,7 +619,7 @@ int kf_le()
     bool flag;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_LE, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -636,7 +647,7 @@ int kf_le()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_LE, 1);
     }
 }
 # endif
@@ -663,7 +674,7 @@ int kf_le_int()
 # ifdef FUNCDEF
 FUNCDEF("<<", kf_lshift, pt_lshift)
 # else
-char pt_lshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_lshift[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->lshift()
@@ -671,7 +682,13 @@ char pt_lshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
  */
 int kf_lshift()
 {
-    sp[1].u.number  = (Uint) sp[1].u.number << sp->u.number;
+    if (sp[1].type != T_INT) {
+	kf_argerror(KF_LSHIFT, 1);
+    }
+    if (sp->type != T_INT) {
+	kf_argerror(KF_LSHIFT, 2);
+    }
+    sp[1].u.number = (Uint) sp[1].u.number << sp->u.number;
     sp++;
     return 0;
 }
@@ -679,9 +696,20 @@ int kf_lshift()
 
 
 # ifdef FUNCDEF
-FUNCDEF("<<", kf_lshift, pt_lshift_int)
+FUNCDEF("<<", kf_lshift_int, pt_lshift_int)
 # else
 char pt_lshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->lshift_int()
+ * DESCRIPTION:	int << int
+ */
+int kf_lshift_int()
+{
+    sp[1].u.number = (Uint) sp[1].u.number << sp->u.number;
+    sp++;
+    return 0;
+}
 # endif
 
 
@@ -700,7 +728,7 @@ int kf_lt()
     bool flag;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_LT, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -728,7 +756,7 @@ int kf_lt()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_LT, 1);
     }
 }
 # endif
@@ -755,13 +783,51 @@ int kf_lt_int()
 # ifdef FUNCDEF
 FUNCDEF("%", kf_mod, pt_mod)
 # else
-char pt_mod[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_mod[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->mod()
  * DESCRIPTION:	int % int
  */
 int kf_mod()
+{
+    register Int i, d;
+
+    if (sp[1].type != T_INT) {
+	kf_argerror(KF_MOD, 1);
+    }
+    if (sp->type != T_INT) {
+	kf_argerror(KF_MOD, 2);
+    }
+    i = sp[1].u.number;
+    d = sp->u.number;
+    if (d == 0) {
+	error("Modulus by zero");
+    }
+    if ((i | d) < 0) {
+	Int r;
+
+	r = ((Uint) ((i < 0) ? -i : i)) % ((Uint) ((d < 0) ? -d : d));
+	sp[1].u.number = ((i ^ d) < 0) ? -r : r;
+    } else {
+	sp[1].u.number = ((Uint) i) % ((Uint) d);
+    }
+    sp++;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("%", kf_mod_int, pt_mod_int)
+# else
+char pt_mod_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->mod_int()
+ * DESCRIPTION:	int % int
+ */
+int kf_mod_int()
 {
     register Int i, d;
 
@@ -785,13 +851,6 @@ int kf_mod()
 
 
 # ifdef FUNCDEF
-FUNCDEF("%", kf_mod, pt_mod_int)
-# else
-char pt_mod_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("*", kf_mult, pt_mult)
 # else
 char pt_mult[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
@@ -805,7 +864,7 @@ int kf_mult()
     xfloat f1, f2;
 
     if (sp[1].type != sp->type) {
-	return 2;
+	kf_argerror(KF_MULT, 2);
     }
     switch (sp->type) {
     case T_INT:
@@ -823,7 +882,7 @@ int kf_mult()
 	return 0;
 
     default:
-	return 1;
+	kf_argerror(KF_MULT, 1);
     }
 }
 # endif
@@ -948,7 +1007,7 @@ int kf_ne_int()
 # ifdef FUNCDEF
 FUNCDEF("~", kf_neg, pt_neg)
 # else
-char pt_neg[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
+char pt_neg[] = { C_STATIC, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->neg()
@@ -956,6 +1015,9 @@ char pt_neg[] = { C_TYPECHECKED | C_STATIC, T_INT, 1, T_INT };
  */
 int kf_neg()
 {
+    if (sp->type != T_INT) {
+	kf_argerror(KF_NEG, 1);
+    }
     sp->u.number = ~sp->u.number;
     return 0;
 }
@@ -963,9 +1025,19 @@ int kf_neg()
 
 
 # ifdef FUNCDEF
-FUNCDEF("~", kf_neg, pt_neg_int)
+FUNCDEF("~", kf_neg_int, pt_neg_int)
 # else
 char pt_neg_int[] = { C_STATIC, T_INT, 1, T_INT };
+
+/*
+ * NAME:	kfun->neg_int()
+ * DESCRIPTION:	~ int
+ */
+int kf_neg_int()
+{
+    sp->u.number = ~sp->u.number;
+    return 0;
+}
 # endif
 
 
@@ -1008,63 +1080,15 @@ int kf_not()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_notf, pt_not)
+FUNCDEF("!", kf_not_int, pt_not)
 # else
 /*
- * NAME:	kfun->notf()
- * DESCRIPTION:	! fvalue
+ * NAME:	kfun->not_int()
+ * DESCRIPTION:	! int
  */
-int kf_notf()
+int kf_not_int()
 {
-    switch (sp->type) {
-    case T_FLOAT:
-	sp->type = T_INT;
-	sp->u.number = VFLT_ISZERO(sp);
-	return 0;
-
-    case T_STRING:
-	str_del(sp->u.string);
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr_del(sp->u.array);
-	break;
-    }
-
-    sp->type = T_INT;
-    sp->u.number = FALSE;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("!", kf_noti, pt_not)
-# else
-/*
- * NAME:	kfun->noti()
- * DESCRIPTION:	! ivalue
- */
-int kf_noti()
-{
-    switch (sp->type) {
-    case T_INT:
-	sp->u.number = !sp->u.number;
-	return 0;
-
-    case T_STRING:
-	str_del(sp->u.string);
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr_del(sp->u.array);
-	break;
-    }
-
-    sp->type = T_INT;
-    sp->u.number = FALSE;
+    sp->u.number = !sp->u.number;
     return 0;
 }
 # endif
@@ -1105,10 +1129,10 @@ int kf_or()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_OR, 1);
     }
 
-    return 2;
+    kf_argerror(KF_OR, 2);
 }
 # endif
 
@@ -1134,8 +1158,7 @@ int kf_or_int()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_rangeft, pt_rangeft)
 # else
-char pt_rangeft[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 3,
-		      T_MIXED, T_INT, T_INT };
+char pt_rangeft[] = { C_STATIC, T_MIXED, 3, T_MIXED, T_INT, T_INT };
 /*
  * NAME:	kfun->rangeft()
  * DESCRIPTION:	value [ int .. int ]
@@ -1145,6 +1168,12 @@ int kf_rangeft()
     string *str;
     array *a;
 
+    if (sp[1].type != T_INT) {
+	kf_argerror(KF_RANGEFT, 2);
+    }
+    if (sp->type != T_INT) {
+	kf_argerror(KF_RANGEFT, 3);
+    }
     switch (sp[2].type) {
     case T_STRING:
 	i_add_ticks(2);
@@ -1165,7 +1194,7 @@ int kf_rangeft()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_RANGEFT, 1);
     }
 
     return 0;
@@ -1176,7 +1205,7 @@ int kf_rangeft()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_rangef, pt_rangef)
 # else
-char pt_rangef[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_rangef[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->rangef()
@@ -1187,6 +1216,9 @@ int kf_rangef()
     string *str;
     array *a;
 
+    if (sp->type != T_INT) {
+	kf_argerror(KF_RANGEF, 2);
+    }
     switch (sp[1].type) {
     case T_STRING:
 	i_add_ticks(2);
@@ -1207,7 +1239,7 @@ int kf_rangef()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_RANGEF, 1);
     }
 
     return 0;
@@ -1218,7 +1250,7 @@ int kf_rangef()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_ranget, pt_ranget)
 # else
-char pt_ranget[] = { C_TYPECHECKED | C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_ranget[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ranget()
@@ -1229,6 +1261,9 @@ int kf_ranget()
     string *str;
     array *a;
 
+    if (sp->type != T_INT) {
+	kf_argerror(KF_RANGET, 2);
+    }
     switch (sp[1].type) {
     case T_STRING:
 	i_add_ticks(2);
@@ -1247,7 +1282,7 @@ int kf_ranget()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_RANGET, 1);
     }
 
     return 0;
@@ -1285,7 +1320,7 @@ int kf_range()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_RANGE, 1);
     }
 
     return 0;
@@ -1296,7 +1331,7 @@ int kf_range()
 # ifdef FUNCDEF
 FUNCDEF(">>", kf_rshift, pt_rshift)
 # else
-char pt_rshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
+char pt_rshift[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
 
 /*
  * NAME:	kfun->rshift()
@@ -1304,6 +1339,12 @@ char pt_rshift[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_INT, T_INT };
  */
 int kf_rshift()
 {
+    if (sp[1].type != T_INT) {
+	kf_argerror(KF_RSHIFT, 1);
+    }
+    if (sp->type != T_INT) {
+	kf_argerror(KF_RSHIFT, 2);
+    }
     sp[1].u.number = (Uint) sp[1].u.number >> sp->u.number;
     sp++;
     return 0;
@@ -1312,9 +1353,20 @@ int kf_rshift()
 
 
 # ifdef FUNCDEF
-FUNCDEF(">>", kf_rshift, pt_rshift_int)
+FUNCDEF(">>", kf_rshift_int, pt_rshift_int)
 # else
 char pt_rshift_int[] = { C_STATIC, T_INT, 2, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->rshift_int()
+ * DESCRIPTION:	int >> int
+ */
+int kf_rshift_int()
+{
+    sp[1].u.number = (Uint) sp[1].u.number >> sp->u.number;
+    sp++;
+    return 0;
+}
 # endif
 
 
@@ -1381,10 +1433,10 @@ int kf_sub()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_SUB, 1);
     }
 
-    return 2;
+    kf_argerror(KF_SUB, 2);
 }
 # endif
 
@@ -1429,7 +1481,7 @@ int kf_sub1()
 	flt_sub(&f1, &f2);
 	VFLT_PUT(sp, f1);
     } else {
-	return 1;
+	kf_argerror(KF_SUB1, 1);
     }
     return 0;
 }
@@ -1575,63 +1627,15 @@ int kf_tst()
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tstf, pt_tst)
+FUNCDEF("!!", kf_tst_int, pt_tst)
 # else
 /*
- * NAME:	kfun->tstf()
- * DESCRIPTION:	!! fvalue
+ * NAME:	kfun->tst_int()
+ * DESCRIPTION:	!! int
  */
-int kf_tstf()
+int kf_tst_int()
 {
-    switch (sp->type) {
-    case T_FLOAT:
-	sp->type = T_INT;
-	sp->u.number = !VFLT_ISZERO(sp);
-	return 0;
-
-    case T_STRING:
-	str_del(sp->u.string);
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr_del(sp->u.array);
-	break;
-    }
-
-    sp->type = T_INT;
-    sp->u.number = TRUE;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("!!", kf_tsti, pt_tst)
-# else
-/*
- * NAME:	kfun->tsti()
- * DESCRIPTION:	!! ivalue
- */
-int kf_tsti()
-{
-    switch (sp->type) {
-    case T_INT:
-	sp->u.number = (sp->u.number != 0);
-	return 0;
-
-    case T_STRING:
-	str_del(sp->u.string);
-	break;
-
-    case T_ARRAY:
-    case T_MAPPING:
-	arr_del(sp->u.array);
-	break;
-    }
-
-    sp->type = T_INT;
-    sp->u.number = TRUE;
+    sp->u.number = (sp->u.number != 0);
     return 0;
 }
 # endif
@@ -1661,7 +1665,7 @@ int kf_umin()
 	return 0;
     }
 
-    return 1;
+    kf_argerror(KF_UMIN, 1);
 }
 # endif
 
@@ -1718,10 +1722,10 @@ int kf_xor()
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_XOR, 1);
     }
 
-    return 2;
+    kf_argerror(KF_XOR, 2);
 }
 # endif
 
@@ -1787,8 +1791,7 @@ int kf_tostring()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_ckrangeft, pt_ckrangeft)
 # else
-char pt_ckrangeft[] = { C_TYPECHECKED | C_STATIC, T_INT,
-			3, T_MIXED, T_INT, T_INT };
+char pt_ckrangeft[] = { C_STATIC, T_INT, 3, T_MIXED, T_INT, T_INT };
 
 /*
  * NAME:	kfun->ckrangeft()
@@ -1797,12 +1800,18 @@ char pt_ckrangeft[] = { C_TYPECHECKED | C_STATIC, T_INT,
  */
 int kf_ckrangeft()
 {
+    if (sp[1].type != T_INT) {
+	kf_argerror(KF_CKRANGEFT, 2);
+    }
+    if (sp->type != T_INT) {
+	kf_argerror(KF_CKRANGEFT, 3);
+    }
     if (sp[2].type == T_STRING) {
 	str_ckrange(sp[2].u.string, (long) sp[1].u.number, (long) sp->u.number);
     } else if (sp[2].type == T_ARRAY) {
 	arr_ckrange(sp[2].u.array, (long) sp[1].u.number, (long) sp->u.number);
     } else {
-	return 1;
+	kf_argerror(KF_CKRANGEFT, 1);
     }
     return 0;
 }
@@ -1812,7 +1821,7 @@ int kf_ckrangeft()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_ckrangef, pt_ckrangef)
 # else
-char pt_ckrangef[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
+char pt_ckrangef[] = { C_STATIC, T_INT, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ckrangef()
@@ -1821,6 +1830,9 @@ char pt_ckrangef[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
  */
 int kf_ckrangef()
 {
+    if (sp->type != T_INT) {
+	kf_argerror(KF_CKRANGEF, 2);
+    }
     if (sp[1].type == T_STRING) {
 	(--sp)->type = T_INT;
 	sp->u.number = (Int) sp[2].u.string->len - 1;
@@ -1830,7 +1842,7 @@ int kf_ckrangef()
 	sp->u.number = (Int) sp[2].u.array->size - 1;
 	arr_ckrange(sp[2].u.array, (long) sp[1].u.number, (long) sp->u.number);
     } else {
-	return 1;
+	kf_argerror(KF_CKRANGEF, 1);
     }
     return 0;
 }
@@ -1840,7 +1852,7 @@ int kf_ckrangef()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_ckranget, pt_ckranget)
 # else
-char pt_ckranget[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
+char pt_ckranget[] = { C_STATIC, T_INT, 2, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->ckranget()
@@ -1849,12 +1861,15 @@ char pt_ckranget[] = { C_TYPECHECKED | C_STATIC, T_INT, 2, T_MIXED, T_INT };
  */
 int kf_ckranget()
 {
+    if (sp->type != T_INT) {
+	kf_argerror(KF_CKRANGET, 2);
+    }
     if (sp[1].type == T_STRING) {
 	str_ckrange(sp[1].u.string, 0L, (long) sp->u.number);
     } else if (sp[1].type == T_ARRAY) {
 	arr_ckrange(sp[1].u.array, 0L, (long) sp->u.number);
     } else {
-	return 1;
+	kf_argerror(KF_CKRANGET, 1);
     }
 
     --sp;

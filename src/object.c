@@ -55,7 +55,7 @@ control *ctrl;
     } else {
 	/* use new space in object table */
 	if (nobjects == otabsize) {
-	    fatal("too many objects");
+	    error("Too many objects");
 	}
 	o = &otab[nobjects];
 	o->index = nobjects++;
@@ -356,31 +356,22 @@ void o_clean()
 
 /*
  * NAME:	object->scantable()
- * DESCRIPTION:	scan the object table for objects of a certain type; return
- *		a bitmap
+ * DESCRIPTION:	scan the object table for objects of a certain type
  */
-char *o_scantable(check)
-bool (*check) P((object*));
+void o_scantable(check)
+void (*check) P((object*));
 {
-    register char *bitmap;
     register uindex n;
     register object *obj;
 
-    if (nobjects == 0) {
-	return (char *) NULL;
-    }
-
-    bitmap = ALLOC(char, (nobjects + 7) >> 3);
-    memset(bitmap, '\0', (nobjects + 7) >> 3);
-
-    for (n = 0, obj = otab; n < nobjects; n++, obj++) {
-	if (obj->count != 0 || ((obj->flags & O_MASTER) && obj->u.ref != 0) &&
-	    check(obj)) {
-	    /* object exists and meets requirements */
-	    bitmap[n >> 3] |= 1 << (n & 7);
+    if (nobjects != nfreeobjs) {
+	for (n = 0, obj = otab; n < nobjects; n++, obj++) {
+	    if (obj->count != 0 || ((obj->flags & O_MASTER) && obj->u.ref != 0))
+	    {
+		check(obj);
+	    }
 	}
     }
-    return bitmap;
 }
 
 /*

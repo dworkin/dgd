@@ -811,14 +811,23 @@ register Int i, d;
  */
 bool poptruthval()
 {
-    if (sp->type == T_INT) {
+    switch (sp->type) {
+    case T_INT:
 	return (sp++)->u.number != 0;
-    }
-    if (sp->type == T_FLOAT) {
+
+    case T_FLOAT:
 	sp++;
 	return !VFLT_ISZERO(sp - 1);
+
+    case T_STRING:
+	str_del((sp++)->u.string);
+	break;
+
+    case T_ARRAY:
+    case T_MAPPING:
+	arr_del((sp++)->u.array);
+	break;
     }
-    i_del_value(sp++);
     return TRUE;
 }
 
@@ -848,9 +857,9 @@ int n;
 	i_set_rllevel(cstack[--csi]);
     } else {
 	/* break, continue, return out of catch */
+	i_set_rllevel(cstack[csi -= n]);
 	do {
 	    ec_pop();
-	    i_set_rllevel(cstack[--csi]);
 	} while (--n != 0);
     }
 }
