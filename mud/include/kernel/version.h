@@ -1,1 +1,1 @@
-# define KERNEL_LIB_VERSION	"1.0"
+# define KERNEL_LIB_VERSION	"1.0.1"
