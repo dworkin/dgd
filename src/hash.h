@@ -7,12 +7,12 @@ typedef struct _hte_ {
 } hte;
 
 typedef struct {
-    unsigned short size;	/* size of hash table */
+    unsigned short size;	/* size of hash table (power of two) */
     unsigned short maxlen;	/* max length of string to be used in hashing */
     hte *table[1];		/* hash table entries */
 } hashtab;
 
-extern unsigned short	hashstr	P((char*, unsigned short, unsigned short));
+extern unsigned short	hashstr		P((char*, unsigned short));
 
 extern hashtab	       *ht_new		P((unsigned short, unsigned short));
 extern void		ht_del		P((hashtab*, void P((hte*))));
