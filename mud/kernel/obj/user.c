@@ -187,7 +187,7 @@ int receive_message(string str)
 			!(user=user::find_user(cmd))) {
 			message("Usage: tell <user> <text>\n");
 		    } else {
-			user->message(Name + " tell you: " + str + "\n");
+			user->message(Name + " tells you: " + str + "\n");
 		    }
 		    str = nil;
 		    break;
