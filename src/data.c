@@ -134,17 +134,18 @@ object *obj;
     data->sectors = (sector *) NULL;
 
     /* variables */
-    if ((data->nvariables = data->ctrl->nvariables) > 0) {
+    if ((data->nvariables=data->ctrl->nvariables) > 0) {
 	register value *v;
 	register unsigned short i;
 
+	i = data->nvariables;
 	v = data->variables = ALLOC(value, i);
 	data->svariables = ALLOC(svalue, i);
-	for (i = data->nvariables; i > 0; --i) {
+	do {
 	    v->type = T_NUMBER;
 	    v->modified = TRUE;
 	    (v++)->u.number = 0;
-	}
+	} while (--i > 0);
 	data->modified = M_VARIABLE;
     } else {
 	data->variables = (value *) NULL;
@@ -273,7 +274,7 @@ sector sec;
     data->modified = 0;
 
     /* header */
-    sw_readv((char *) &header, sec, (long) sizeof(sdataspace), 0L);
+    sw_readv((char *) &header, &sec, (long) sizeof(sdataspace), 0L);
     data->nsectors = header.nsectors;
     data->sectors = ALLOC(sector, header.nsectors);
     data->sectors[0] = sec;
@@ -506,7 +507,7 @@ register uindex index;
 
 	a = arr_new((long) (i = data->sarrays[index].size));
 	if (i > 0) {
-	    a->elts[0].type = T_UNLOADED;
+	    a->elts[0].type = T_INVALID;
 	}
 	a->tag = data->sarrays[index].tag;
 	a->primary = &data->arrays[index];
@@ -566,7 +567,7 @@ register unsigned short index;
 	v = data->variables = ALLOC(value, data->nvariables);
 	/* variables must be loaded from the swap */
 	for (i = data->nvariables; i > 0; --i) {
-	    (v++)->type = T_UNLOADED;
+	    (v++)->type = T_INVALID;
 	}
 
 	/* load svalues */
@@ -575,7 +576,7 @@ register unsigned short index;
 		 data->nvariables * (long) sizeof(svalue), data->varoffset);
     }
 
-    if (data->variables[index].type == T_UNLOADED) {
+    if (data->variables[index].type == T_INVALID) {
 	d_get_value(data, &data->svariables[index], &data->variables[index]);
     }
     return &data->variables[index];
@@ -591,7 +592,7 @@ array *arr;
     register value *v;
 
     v = arr->elts;
-    if (v != (value *) NULL && v[0].type == T_UNLOADED) {
+    if (v != (value *) NULL && v[0].type == T_INVALID) {
 	register dataspace *data;
 	register svalue *sv;
 	register unsigned short n;
@@ -763,19 +764,18 @@ value *val;
  * NAME:	data->assign_elt()
  * DESCRIPTION:	assign a value to an array element
  */
-void d_assign_elt(arr, index, val)
+void d_assign_elt(arr, val, new)
 register array *arr;
-unsigned short index;
-value *val;
+value *val, *new;
 {
     if (arr->primary != (arrref *) NULL) {
 	/* the array is in the dataspace of some object */
-	check_assign(arr->primary->data, &d_get_elts(arr)[index], val);
+	check_assign(arr->primary->data, val, new);
 	arr->primary->data->modified |= M_ARRAY;
 	arr->primary->index |= ARR_MOD;
     } else {
 	/* recently allocated array */
-	check_assign((dataspace *) NULL, &arr->elts[index], val);
+	check_assign((dataspace *) NULL, val, new);
     }
 }
 
@@ -876,8 +876,8 @@ register control *ctrl;
 	register sstrconst *s;
 	register char *t;
 
-	ss = ALLOC(sstrconst, header.nstrings);
-	tt = ALLOC(char, strsize);
+	ss = ALLOCA(sstrconst, header.nstrings);
+	tt = ALLOCA(char, strsize);
 
 	strs = ctrl->strings;
 	strsize = size + header.nstrings * (long) sizeof(sstrconst);
@@ -897,8 +897,8 @@ register control *ctrl;
 		  strsize - size);
 	size = strsize;
 
-	FREE(tt);
-	FREE(ss);
+	AFREE(tt);
+	AFREE(ss);
     }
 
     /* save function definitions */
@@ -950,7 +950,7 @@ register svalue *sv;
 {
     while (n > 0) {
 	switch (v->type) {
-	case T_UNLOADED:
+	case T_INVALID:
 	    d_get_value(load, sv, v);
 	    continue;	/* try again */
 
@@ -989,6 +989,9 @@ register svalue *sv;
 		register arrref *primary;
 
 		narr++;
+		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
+		    map_compact(v->u.array);
+		}
 		arrsize += v->u.array->size;
 		primary = v->u.array->primary;
 		if (primary != (arrref *) NULL) {
@@ -1265,14 +1268,14 @@ register dataspace *data;
 	/*
 	 * put everything into a savable form
 	 */
-	svariables = ALLOC(svalue, data->nvariables);
+	svariables = ALLOCA(svalue, data->nvariables);
 	if (header.narrays > 0) {
-	    sarrays = ALLOC(sarray, header.narrays);
-	    selts = ALLOC(svalue, arrsize);
+	    sarrays = ALLOCA(sarray, header.narrays);
+	    selts = ALLOCA(svalue, arrsize);
 	}
 	if (header.nstrings > 0) {
-	    sstrings = ALLOC(sstring, header.nstrings);
-	    stext = ALLOC(char, strsize);
+	    sstrings = ALLOCA(sstring, header.nstrings);
+	    stext = ALLOCA(char, strsize);
 	}
 	narr = 0;
 	nstr = 0;
@@ -1325,7 +1328,7 @@ register dataspace *data;
 	sw_writev((char *) svariables, data->sectors,
 		  data->nvariables * (long) sizeof(svalue), size);
 	size += data->nvariables * (long) sizeof(svalue);
-	FREE(svariables);
+	AFREE(svariables);
 
 	/* save arrays */
 	if (header.narrays > 0) {
@@ -1335,8 +1338,8 @@ register dataspace *data;
 	    sw_writev((char *) selts, data->sectors,
 		      arrsize * (long) sizeof(svalue), size);
 	    size += arrsize * (long) sizeof(svalue);
-	    FREE(selts);
-	    FREE(sarrays);
+	    AFREE(selts);
+	    AFREE(sarrays);
 	}
 
 	/* save strings */
@@ -1345,8 +1348,8 @@ register dataspace *data;
 		      header.nstrings * (long) sizeof(sstring), size);
 	    size += header.nstrings * (long) sizeof(sstring);
 	    sw_writev((char *) stext, data->sectors, strsize, size);
-	    FREE(stext);
-	    FREE(sstrings);
+	    AFREE(stext);
+	    AFREE(sstrings);
 	}
     }
 }
