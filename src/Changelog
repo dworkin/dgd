@@ -1204,3 +1204,4 @@ DGD 1.1
    an integer that is out of range.
  - Allow datagrams of length 0.
  - Ported query_ip_name() and send_datagram() to Mac and Win32.
+ - Improved tick counting and check for overflows in parse_string().

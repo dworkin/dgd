@@ -523,19 +523,18 @@ bool *toobig;
 	    for (n = 0; n < nred; n++) {
 		ps_reduce(ps, sn->pn, red);
 		red += 4;
-		i_add_ticks(ps->frame, 8);
+		i_add_ticks(ps->frame, 16);
+		if (ps->frame->ticks < 0) {
+		    if (ps->frame->noticks) {
+			ps->frame->ticks = 0x7fffffff;
+		    } else {
+			FREE(ps->states);
+			error("Out of ticks");
+		    }
+		}
 	    }
 	}
-
-	i_add_ticks(ps->frame, 6);
-	if (ps->frame->ticks < 0) {
-	    if (ps->frame->noticks) {
-		ps->frame->ticks = 0x7fffffff;
-	    } else {
-		FREE(ps->states);
-		error("Out of ticks");
-	    }
-	}
+	i_add_ticks(ps->frame, 8);
 
 	switch (n = dfa_scan(ps->fa, str, &size, &ttext, &tlen)) {
 	case DFA_EOS:
