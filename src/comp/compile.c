@@ -1097,10 +1097,7 @@ node *n1, *n2, *n3;
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
-	n1 = node_bin(N_RLIMITS,
-		      (f->sp->u.number != 0 ||
-		       (f->sp->type == T_FLOAT && f->sp->oindex != 0)),
-		      node_bin(N_PAIR, 0, n1, n2),
+	n1 = node_bin(N_RLIMITS, VAL_TRUE(f->sp), node_bin(N_PAIR, 0, n1, n2),
 		      n3);
 	i_del_value(f->sp++);
     }
@@ -1807,8 +1804,8 @@ node *args;
 	    /* only kfuns can have lvalue parameters */
 	    func->r.number |= (long) KFCALL_LVAL << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
-		   (!c_nil(*arg) || !T_POINTER(t)) &&
-		   c_tmatch((*arg)->mod, t) == T_INVALID) {
+		   c_tmatch((*arg)->mod, t) == T_INVALID &&
+		   (!c_nil(*arg) || !T_POINTER(t))) {
 	    c_error("bad argument %d for function %s (needs %s)", n, fname,
 		    i_typename(tnbuf, t));
 	}

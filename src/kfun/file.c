@@ -396,10 +396,8 @@ register frame *f;
 	    ctrl = o_control(inh->obj);
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
-		if (!(v->class & C_STATIC) &&
-		    var->type != T_OBJECT && var->type != T_NIL &&
-		    (var->type != T_INT || var->u.number != 0) &&
-		    (var->type != T_FLOAT || !VFLT_ISZERO(var))) {
+		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
+		    VAL_TRUE(var)) {
 		    /*
 		     * don't save object values, nil or 0
 		     */
@@ -826,6 +824,14 @@ register value *val;
 	    return restore_mapping(x, buf, val);
 	}
 
+    case 'n':
+	/* nil */
+	if (buf[1] != 'i' || buf[2] != 'l') {
+	    restore_error(x, "nil expected");
+	}
+	*val = nil_value;
+	return buf + 3;
+
     case '#':
 	buf = restore_int(x, buf + 1, val);
 	if ((uindex) val->u.number >= x->narrays) {
@@ -909,8 +915,7 @@ register frame *f;
     P_close(fd);
 
     /*
-     * First, initialize all non-static variables that do not hold object
-     * values to 0.
+     * First, reset all non-static variables that do not hold object values.
      */
     ctrl = o_control(obj);
     data = o_dataspace(obj);
@@ -1016,8 +1021,7 @@ register frame *f;
 			buf = restore_value(&x, buf, &tmp);
 			if (v->type != tmp.type && v->type != T_MIXED &&
 			    conf_typechecking() &&
-			    (tmp.type != nil_type || tmp.u.number != 0 ||
-			     !T_POINTER(v->type)) &&
+			    (!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
 			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
 			    i_ref_value(&tmp);
 			    i_del_value(&tmp);

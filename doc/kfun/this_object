@@ -6,7 +6,7 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Return the current object, or 0 if the current object is destructed.
+	Return the current object, or nil if the current object is destructed.
 
 SEE ALSO
 	kfun/previous_object

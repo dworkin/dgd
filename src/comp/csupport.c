@@ -933,6 +933,7 @@ register frame *f;
 	break;
 
     case T_NIL:
+	f->sp++;
 	return FALSE;
     }
     f->sp++;
@@ -1033,7 +1034,7 @@ register int h;
     register char *t;
     register string *s;
 
-    if (v->type == nil_type && v->u.number == 0) {
+    if (VAL_NIL(v)) {
 	return (tab[0] == 0);
     } else if (v->type != T_STRING) {
 	i_del_value(v);

@@ -8,7 +8,7 @@ SYNOPSIS
 DESCRIPTION
 	Execute the code for <expression> until an error results, or until
 	execution is complete.  If an error resulted, catch() will return
-	the error message as a string; otherwise, it will return 0.
+	the error message as a string; otherwise, it will return nil.
 
 ERRORS
 	A limited number of nested catches is allowed.  The limit is

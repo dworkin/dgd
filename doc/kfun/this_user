@@ -7,7 +7,7 @@ SYNOPSIS
 
 DESCRIPTION
 	Return the user for which the current execution started.  If current
-	execution started from a delayed function call, 0 is returned.
+	execution started from a delayed function call, nil is returned.
 
 SEE ALSO
 	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,

@@ -753,8 +753,7 @@ register unsigned int type;
 {
     char tnbuf[8];
 
-    if (val->type != type &&
-	(val->type != nil_type || val->u.number != 0 || !T_POINTER(type))) {
+    if (val->type != type && (!VAL_NIL(val) || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
 	    error("Value is not an %s", tnbuf);
@@ -958,8 +957,7 @@ register frame *f;
     /* obj, stack, ticks */
     call_driver_object(f, "runtime_rlimits", 3);
 
-    if (f->sp->u.number == 0 && (f->sp->type != T_FLOAT || f->sp->oindex == 0))
-    {
+    if (!VAL_TRUE(f->sp)) {
 	error("Illegal use of rlimits");
     }
     i_del_value(f->sp++);
@@ -1192,8 +1190,7 @@ int strict;
 	if (ptype != T_MIXED) {
 	    atype = f->sp[i].type;
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
-		if (atype != nil_type || f->sp[i].u.number != 0 ||
-		    !T_POINTER(ptype)) {
+		if (!VAL_NIL(f->sp + i) || !T_POINTER(ptype)) {
 		    /* wrong type */
 		    error("Bad argument %d (%s) for %s %s", nargs - i,
 			  i_typename(tnbuf, atype), ftype, name);
@@ -1402,7 +1399,7 @@ register char *pc;
     FETCH2U(pc, dflt);
     if (FETCH1U(pc) == 0) {
 	FETCH2U(pc, l);
-	if (f->sp->type == nil_type && f->sp->u.number == 0) {
+	if (VAL_NIL(f->sp)) {
 	    return l;
 	}
 	--h;
@@ -1609,16 +1606,14 @@ register char *pc;
 
 	case I_JUMP_ZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if (f->sp->u.number == 0 &&
-		(f->sp->type != T_FLOAT || f->sp->oindex == 0)) {
+	    if (!VAL_TRUE(f->sp)) {
 		pc = p;
 	    }
 	    break;
 
 	case I_JUMP_NONZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if (f->sp->u.number != 0 ||
-		(f->sp->type == T_FLOAT && f->sp->oindex != 0)) {
+	    if (VAL_TRUE(f->sp)) {
 		pc = p;
 	    }
 	    break;

@@ -1227,8 +1227,8 @@ DGD 1.1
  - Added the constant `nil'.  If typechecking is 0 or 1 (in the config file),
    nil has the value 0.  If typechecking has the value 2, nil is distinct from
    integer zero.
-   String, object, array and mapping values are initialized to nil.  Using
-   call_other() to call a non-existant function returns nil.  Values holding
+   String, object, array and mapping variables are initialized to nil.  Using
+   call_other() to call a non-existant function returns nil.  Variables holding
    an object become nil after the object has been destructed.  Indexing a
    mapping with a non-existant index results in nil, and nil must be assigned
    to delete an index:value pair; assigning 0 has the same effect only when

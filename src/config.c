@@ -998,7 +998,7 @@ char *configfile, *dumpfile;
 	    (unsigned int) conf[SECTOR_SIZE].u.num);
 
     /* initialize swapped data handler */
-    d_init(conf[TYPECHECKING].u.num);
+    d_init(conf[TYPECHECKING].u.num == 2);
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,

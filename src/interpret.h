@@ -104,6 +104,10 @@ struct _value_ {
     } u;
 };
 
+# define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
+# define VAL_TRUE(v)	((v)->u.number != 0 ||				\
+			 ((v)->type == T_FLOAT && (v)->oindex != 0))
+
 # define VFLT_GET(v, f)	((f).high = (v)->oindex, (f).low = (v)->u.objcnt)
 # define VFLT_PUT(v, f)	((v)->oindex = (f).high, (v)->u.objcnt = (f).low)
 # define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)

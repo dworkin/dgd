@@ -876,7 +876,7 @@ register array *m;
     register value *v, *w;
 
     for (i = m->size, sz = 0, v = w = m->elts; i > 0; i -= 2) {
-	if (v[1].type != nil_type || v[1].u.number != 0) {
+	if (!VAL_NIL(v + 1)) {
 	    *w++ = *v++;
 	    *w++ = *v++;
 	    sz += 2;
@@ -1517,7 +1517,7 @@ value *val, *elt;
     register unsigned short i;
     bool del;
 
-    if (elt != (value *) NULL && elt->type == nil_type && elt->u.number == 0) {
+    if (elt != (value *) NULL && VAL_NIL(elt)) {
 	elt = (value *) NULL;
 	del = TRUE;
     } else {

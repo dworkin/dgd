@@ -612,8 +612,7 @@ int poll;
 
 	this_user = o;
 	if (i_call(f, o, "open", 4, TRUE, 0)) {
-	    if (f->sp->u.number != 0 ||
-		(f->sp->type == T_FLOAT && f->sp->oindex != 0)) {
+	    if (VAL_TRUE(f->sp)) {
 		i_del_value(f->sp);
 		if (o->flags & O_USER) {
 		    /* open UDP channel */

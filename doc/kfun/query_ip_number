@@ -6,7 +6,7 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Return the ip number of a user, as a string, or 0 if the given object
+	Return the ip number of a user, as a string, or nil if the given object
 	is not a user object.
 
 SEE ALSO

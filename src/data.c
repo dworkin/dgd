@@ -1374,7 +1374,7 @@ register dataspace *data;
     var = d_get_variable(data, data->nvariables - 1);
     del_lhs(data, var);
     i_del_value(var);
-    *var = zero_int;
+    *var = nil_value;
     data->flags |= DATA_VARIABLE;
 
     if (data->parser != (struct _parser_ *) NULL) {
