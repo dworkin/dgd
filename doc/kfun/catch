@@ -9,8 +9,8 @@ DESCRIPTION
 	Execute the code for <expression> until an error results, or until
 	execution is complete.  If an error resulted, catch() will return
 	the error message as a string; otherwise, it will return 0.
-	If catch() is used inside lock(), the execution cost will be reset,
-	and the effect of lock() will be cancelled inside the catch().
+	If catch() is used by the driver object, the execution cost will be
+	reset to maximum.
 
 ERRORS
 	A limited number of nested catches is allowed.  The limit is

@@ -10,8 +10,6 @@ DESCRIPTION
 	and with some extra space on the function call stack.  The return
 	type is the same as the type of <expression>.  lock() can only be used
 	by the auto object.
-	If catch() is used inside lock(), the execution cost will be reset,
-	and the effect of lock() will be cancelled inside the catch().
 
 ERRORS
 	It is still possible to force an error inside a locked expression by
