@@ -15,6 +15,7 @@ typedef struct _user_ {
     int outbufsz;		/* bytes in output buffer */
     char flags;			/* connection flags */
     char state;			/* telnet state */
+    short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
     char inbuf[INBUF_SIZE];	/* input buffer */
     char outbuf[OUTBUF_SIZE];	/* output buffer */
@@ -86,7 +87,7 @@ bool telnet;
     mdynamic();
     (*usr)->u.obj = obj;
     obj->flags |= O_USER;
-    obj->eduser = usr - users;
+    obj->etabi = usr - users;
     (*usr)->inbufsz = 0;
     (*usr)->outbufsz = 0;
     (*usr)->conn = conn;
@@ -95,6 +96,7 @@ bool telnet;
 	conn_write(conn, echo_on, 3);
 	(*usr)->flags = CF_TELNET | CF_ECHO;
 	(*usr)->state = TS_DATA;
+	(*usr)->newlines = 0;
     } else {
 	(*usr)->flags = 0;
     }
@@ -109,22 +111,13 @@ bool telnet;
 static void comm_del(usr)
 register user **usr;
 {
-    register char *p, *q;
-    register int n;
     object *obj, *olduser;
 
     conn_del((*usr)->conn);
-    n = (*usr)->inbufsz;
     if ((*usr)->flags & CF_TELNET) {
-	p = (*usr)->inbuf;
-	while (n > 0 && (q=(char *) memchr(p, LF, n)) != (char *) NULL) {
-	    --newlines;
-	    q++;
-	    n -= q - p;
-	    p = q;
-	}
+	newlines -= (*usr)->newlines;
     } else {
-	binchars -= n;
+	binchars -= (*usr)->inbufsz;
     }
     obj = (*usr)->u.obj;
     obj->flags &= ~O_USER;
@@ -156,7 +149,7 @@ string *str;
     register char *p, *q;
     register unsigned short len, size;
 
-    usr = users[UCHAR(obj->eduser)];
+    usr = users[UCHAR(obj->etabi)];
     p = str->text;
     len = str->len;
     size = usr->outbufsz;
@@ -230,7 +223,7 @@ bool echo;
     register user *usr;
     char buf[3];
 
-    usr = users[UCHAR(obj->eduser)];
+    usr = users[UCHAR(obj->etabi)];
     if ((usr->flags & CF_TELNET) && echo != (usr->flags & CF_ECHO)) {
 	buf[0] = IAC;
 	buf[1] = (echo) ? WONT : WILL;
@@ -285,7 +278,7 @@ int *size;
     static int lastuser;
     connection *conn;
     object *o;
-    register int n, i, state, flags;
+    register int n, i, state, flags, nls;
     register char *p, *q;
 
     if (nusers < maxusers) {
@@ -371,6 +364,7 @@ int *size;
 		     */
 		    flags = (*usr)->flags;
 		    state = (*usr)->state;
+		    nls = (*usr)->newlines;
 		    q = p;
 		    while (n > 0) {
 			switch (state) {
@@ -389,6 +383,7 @@ int *size;
 				break;
 
 			    case CR:
+				nls++;
 				newlines++;
 				*q++ = LF;
 				flags |= CF_SEENCR;
@@ -399,6 +394,7 @@ int *size;
 				    flags &= ~CF_SEENCR;
 				    break;
 				}
+				nls++;
 				newlines++;
 				/* fall through */
 			    default:
@@ -469,6 +465,7 @@ int *size;
 		    }
 		    (*usr)->flags = flags;
 		    (*usr)->state = state;
+		    (*usr)->newlines = nls;
 		    (*usr)->inbufsz = q - (*usr)->inbuf;
 		} else {
 		    /*
@@ -493,11 +490,12 @@ int *size;
 		    /*
 		     * telnet connection
 		     */
-		    p = (char *) memchr(usr->inbuf, LF, usr->inbufsz);
-		    if (p != (char *) NULL) {
+		    if (usr->newlines != 0) {
 			/*
 			 * input terminated by \n
 			 */
+			p = (char *) memchr(usr->inbuf, LF, usr->inbufsz);
+			usr->newlines--;
 			--newlines;
 			lastuser = n;
 			*size = n = p - usr->inbuf;
@@ -549,7 +547,7 @@ object *obj;
 {
     char *ipnum;
 
-    ipnum = conn_ipnum(users[UCHAR(obj->eduser)]->conn);
+    ipnum = conn_ipnum(users[UCHAR(obj->etabi)]->conn);
     return str_new(ipnum, (long) strlen(ipnum));
 }
 
@@ -562,7 +560,7 @@ object *obj;
 {
     register user **usr;
 
-    usr = &users[UCHAR(obj->eduser)];
+    usr = &users[UCHAR(obj->etabi)];
     if ((*usr)->outbufsz != 0) {
 	/*
 	 * flush last bit of output

@@ -66,5 +66,10 @@ extern void kf_restore	P((int));
 # define KF_UMIN_INT	49
 # define KF_XOR		50
 # define KF_XOR_INT	51
+# define KF_TOSTRING	52
+# define KF_CKRANGEFT	53
+# define KF_CKRANGEF	54
+# define KF_CKRANGET	55
+# define KF_SUM		56
 
-# define KF_BUILTINS	52
+# define KF_BUILTINS	57

@@ -27,8 +27,8 @@ kfunc kftab[] = {
 # undef FUNCDEF
 };
 
-char kfind[sizeof(kftab) / sizeof(kfunc)];	/* n -> index */
-static char kfx[sizeof(kftab) / sizeof(kfunc)];	/* index -> n */
+char kfind[sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS + 128];	/* n -> index */
+static char kfx[sizeof(kftab) / sizeof(kfunc)];			/* index -> n */
 
 /*
  * NAME:	kfun->cmp()
@@ -49,10 +49,14 @@ void kf_init()
     register int i;
     register char *k1, *k2;
 
-    qsort(kftab + KF_BUILTINS, sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS,
-	  sizeof(kfunc), kf_cmp);
-    for (i = sizeof(kftab) / sizeof(kfunc), k1 = kfind + i, k2 = kfx + i;
-	 i > 0; ) {
+    qsort(kftab + KF_BUILTINS, sizeof(kfx) - KF_BUILTINS, sizeof(kfunc),
+	  kf_cmp);
+    for (i = sizeof(kfx), k1 = kfind + sizeof(kfind), k2 = kfx + sizeof(kfx);
+	 i > KF_BUILTINS; ) {
+	*--k1 = --i;
+	*--k2 = i + 128 - KF_BUILTINS;
+    }
+    for (k1 = kfind + KF_BUILTINS; i > 0; ) {
 	*--k1 = --i;
 	*--k2 = i;
     }
@@ -68,7 +72,7 @@ register char *name;
     register int h, l, m, c;
 
     l = KF_BUILTINS;
-    h = sizeof(kftab) / sizeof(kfunc);
+    h = sizeof(kfx);
     do {
 	c = strcmp(name, kftab[m = (l + h) >> 1].name);
 	if (c == 0) {
@@ -107,14 +111,14 @@ int fd;
 
     /* prepare header */
     dh.nbuiltin = KF_BUILTINS;
-    dh.nkfun = sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS;
+    dh.nkfun = sizeof(kfx) - KF_BUILTINS;
     dh.kfnamelen = 0;
     for (i = dh.nkfun, kf = kftab + KF_BUILTINS; i > 0; --i, kf++) {
 	dh.kfnamelen += strlen(kf->name) + 1;
     }
 
     /* write header */
-    if (write(fd, &dh, sizeof(dump_header)) < 0) {
+    if (write(fd, (char *) &dh, sizeof(dump_header)) < 0) {
 	return FALSE;
     }
 
@@ -122,7 +126,7 @@ int fd;
     buffer = ALLOCA(char, dh.kfnamelen);
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
-	kf = &KFUN(i + KF_BUILTINS);
+	kf = &KFUN(i + 128);
 	len = strlen(kf->name) + 1;
 	memcpy(buffer + buflen, kf->name, len);
 	buflen += len;
@@ -145,8 +149,8 @@ int fd;
     char *buffer;
 
     /* deal with header */
-    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	dh.nbuiltin > KF_BUILTINS || dh.nkfun > sizeof(kftab) / sizeof(kfunc)) {
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+	dh.nbuiltin > KF_BUILTINS || dh.nkfun > sizeof(kfx) - KF_BUILTINS) {
 	fatal("cannot restore kfun table");
     }
 
@@ -161,20 +165,22 @@ int fd;
 	if (n < 0) {
 	    fatal("restored unknown kfun: %s", buffer + buflen);
 	}
-	kfind[i + KF_BUILTINS] = n;
-	kfx[n] = i + KF_BUILTINS;
+	n += KF_BUILTINS - 128;
+	kfind[i + 128] = n;
+	kfx[n] = i + 128;
 	buflen += strlen(buffer + buflen) + 1;
     }
     AFREE(buffer);
 
-    if (dh.nkfun < sizeof(kftab) / sizeof(kfunc) - KF_BUILTINS) {
+    if (dh.nkfun < sizeof(kfx) - KF_BUILTINS) {
 	/*
 	 * There are more kfuns in the current driver than in the driver
 	 * which created the dump file: deal with those new kfuns.
 	 */
-	n = dh.nkfun + KF_BUILTINS;
-	for (i = KF_BUILTINS; i < sizeof(kftab) / sizeof(kfunc); i++) {
-	    if (kfx[i] >= dh.nkfun + KF_BUILTINS || kfind[kfx[i]] != i) {
+	n = dh.nkfun + 128;
+	for (i = KF_BUILTINS; i < sizeof(kfx); i++) {
+	    if (UCHAR(kfx[i]) >= dh.nkfun + 128 ||
+		UCHAR(kfind[UCHAR(kfx[i])]) != i) {
 		/* new kfun */
 		kfind[n] = i;
 		kfx[i] = n++;

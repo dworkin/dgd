@@ -7,6 +7,7 @@
 %{
 
 # include "comp.h"
+# include <ctype.h>
 # include "str.h"
 # include "array.h"
 # include "object.h"
@@ -51,6 +52,7 @@ static node *land	P((node*, node*));
 static node *lor	P((node*, node*));
 static node *quest	P((node*, node*, node*));
 static node *assign	P((node*, node*));
+static node *comma	P((node*, node*));
 
 %}
 
@@ -634,16 +636,7 @@ exp
 list_exp
 	: exp
 	| list_exp ',' exp
-		{
-		  if ($3->type == N_COMMA) {
-		      /* a, (b, c) --> (a, b), c */
-		      $$ = node_bin(N_COMMA, $3->mod, $3, $3->r.right);
-		      $3->r.right = $3->l.left;
-		      $3->l.left = $1;
-		  } else {
-		      $$ = node_bin(N_COMMA, $3->mod, $1, $3);
-		  }
-		}
+		{ $$ = comma($1, $3); }
 	;
 
 opt_list_exp
@@ -771,27 +764,101 @@ register node *n;
 register unsigned short type;
 {
     xfloat flt;
+    Int i;
+    char *p, buffer[18];
 
     if (type != n->mod) {
-	if (type == T_INT) {
-	    if (n->type == N_FLOAT) {
+	switch (type) {
+	case T_INT:
+	    switch (n->type) {
+	    case N_FLOAT:
 		/* cast float constant to int */
 		NFLT_GET(n, flt);
 		return node_int(flt_ftoi(&flt));
-	    } else if (n->type == N_TOFLOAT && n->l.left->mod == N_INT) {
-		/* (int) (float) i */
-		return n->l.left;
-	    } else if (n->mod == T_FLOAT || n->mod == T_MIXED) {
-		return node_mon(N_TOINT, T_INT, n);
+
+	    case N_STR:
+		/* cast string to int */
+		i = strtol(n->l.string->text, &p, 10);
+		if (p != n->l.string->text) {
+		    return node_int(i);
+		} else {
+		    c_error("cast of invalid string constant");
+		    n->mod = T_MIXED;
+		}
+		break;
+
+	    case N_TOFLOAT:
+	    case N_TOSTRING:
+		if (n->l.left->type == N_INT) {
+		    /* (int) (float) i, (int) (string) i */
+		    return n->l.left;
+		}
+		/* fall through */
+	    default:
+		if (n->mod == T_FLOAT || n->mod == T_STRING ||
+		    n->mod == T_MIXED) {
+		    return node_mon(N_TOINT, T_INT, n);
+		}
+		break;
 	    }
-	} else if (type == T_FLOAT) {
-	    if (n->type == N_INT) {
+	    break;
+
+	case T_FLOAT:
+	    switch (n->type) {
+	    case N_INT:
 		/* cast int constant to float */
 		flt_itof(n->l.number, &flt);
 		return node_float(&flt);
-	    } else if (n->mod == T_INT || n->mod == T_MIXED) {
-		return node_mon(N_TOFLOAT, T_FLOAT, n);
+
+	    case N_STR:
+		/* cast string to float */
+		p = n->l.string->text;
+		if (*p == '-') {
+		    p++;
+		}
+		if ((isdigit(*p) || (*p++ == '.' && isdigit(*p))) &&
+		    flt_atof(n->l.string->text, &flt)) {
+		    return node_float(&flt);
+		} else {
+		    yyerror("cast of invalid string constant");
+		    n->mod = T_MIXED;
+		}
+		break;
+
+	    case N_TOSTRING:
+		if (n->l.left->mod == T_INT) {
+		    return node_mon(N_TOFLOAT, T_FLOAT, n->l.left);
+		}
+		/* fall through */
+	    default:
+		if (n->mod == T_INT || n->mod == T_STRING || n->mod == T_MIXED)
+		{
+		    return node_mon(N_TOFLOAT, T_FLOAT, n);
+		}
+		break;
 	    }
+	    break;
+
+	case T_STRING:
+	    switch (n->type) {
+	    case N_INT:
+		/* cast int constant to string */
+		sprintf(buffer, "%ld", (long) n->l.number);
+		return node_str(str_new(buffer, (long) strlen(buffer)));
+
+	    case N_FLOAT:
+		/* cast float constant to string */
+		NFLT_GET(n, flt);
+		flt_ftoa(&flt, buffer);
+		return node_str(str_new(buffer, (long) strlen(buffer)));
+
+	    default:
+		if (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_MIXED) {
+		    return node_mon(N_TOSTRING, T_STRING, n);
+		}
+		break;
+	    }
+	    break;
 	}
 
 	if ((n->mod & T_TYPE) != T_MIXED) {
@@ -1033,14 +1100,14 @@ char *name;
 
 /*
  * NAME:	add()
- * DESCRIPTION:	handle the + += operators
+ * DESCRIPTION:	handle the + += operators, possibly rearranging the order
+ *		of the expression
  */
 static node *add(op, n1, n2, name)
 int op;
 register node *n1, *n2;
 char *name;
 {
-    char buffer[16];
     xfloat f1, f2;
     register unsigned short type;
 
@@ -1048,22 +1115,14 @@ char *name;
     t_void(n2);
 
     if (n1->mod == T_STRING) {
-	if (n2->type == N_INT) {
-	    sprintf(buffer, "%ld", (long) n2->l.number);
-	    n2 = node_str(str_new(buffer, (long) strlen(buffer)));
-	} else if (n2->type == N_FLOAT) {
-	    NFLT_GET(n2, f1);
-	    flt_ftoa(&f1, buffer);
-	    n2 = node_str(str_new(buffer, (long) strlen(buffer)));
+	if (n2->mod == T_INT || n2->mod == T_FLOAT ||
+	    (n2->mod == T_MIXED && typechecking)) {
+	    n2 = cast(n2, T_STRING);
 	}
-    } else if (n2->mod == T_STRING) {
-	if (n1->type == N_INT) {
-	    sprintf(buffer, "%ld", (long) n1->l.number);
-	    n1 = node_str(str_new(buffer, (long) strlen(buffer)));
-	} else if (n1->type == N_FLOAT) {
-	    NFLT_GET(n1, f1);
-	    flt_ftoa(&f1, buffer);
-	    n1 = node_str(str_new(buffer, (long) strlen(buffer)));
+    } else if (n2->mod == T_STRING && op == N_ADD) {
+	if (n1->mod == T_INT || n1->mod == T_FLOAT ||
+	    (n1->mod == T_MIXED && typechecking)) {
+	    n1 = cast(n1, T_STRING);
 	}
     }
 
@@ -1085,11 +1144,17 @@ char *name;
 	return node_str(str_add(n1->l.string, n2->l.string));
     }
 
+    if (op == N_ADD && n2->type == N_ADD && n1->mod == n2->mod &&
+	(n2->mod == T_STRING || n2->mod == T_ARRAY)) {
+	/*
+	 * a + (b + c) --> (a + b) + c
+	 * the order in which these are added won't affect the final result
+	 */
+	return add(N_ADD, add(N_ADD, n1, n2->l.left, "+"), n2->r.right, "+");
+    }
+
     type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_OBJECT ||
-	(type == T_INVALID &&	/* only if not adding a to s */
-	 (!T_ARITHSTR(n1->mod) || !T_ARITHSTR(n2->mod) ||
-	  (n1->mod != T_STRING && (op == N_ADD_EQ || n2->mod != T_STRING))))) {
+    if (type == T_OBJECT || type == T_INVALID) {
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
@@ -1525,4 +1590,21 @@ register node *n1, *n2;
     }
 
     return node_bin(N_ASSIGN, n1->mod, n1, n2);
+}
+
+/*
+ * NAME:	comma()
+ * DESCRIPTION:	handle the comma operator, rearranging the order of the
+ *		expression if needed
+ */
+static node *comma(n1, n2)
+register node *n1, *n2;
+{
+    if (n2->type == N_COMMA) {
+	/* a, (b, c) --> (a, b), c */
+	n2->l.left = comma(n1, n2->l.left);
+	return n2;
+    } else {
+	return node_bin(N_COMMA, n2->mod, n1, n2);
+    }
 }

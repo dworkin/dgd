@@ -248,8 +248,8 @@ char *passwd, *salt;
     }
 
     /* prepare salt */
-    E[0] = UCHAR(Salt[result[0] = *salt++]) << 8;
-    E[1] = UCHAR(Salt[result[1] = *salt++]) << 4;
+    E[0] = UCHAR(Salt[UCHAR(result[0] = *salt++)]) << 8;
+    E[1] = UCHAR(Salt[UCHAR(result[1] = *salt++)]) << 4;
 
     /* encrypt */
     L = 0;

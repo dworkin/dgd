@@ -87,10 +87,10 @@ object *obj;
 	error("Too many editor instances");
     }
     flist = e->next;
-    obj->eduser = e - editors;
+    obj->etabi = e - editors;
     obj->flags |= O_EDITOR;
 
-    sprintf(tmp, "%s%03d", tmpedfile, UCHAR(obj->eduser));
+    sprintf(tmp, "%s%03d", tmpedfile, UCHAR(obj->etabi));
     e->ed = cb_new(tmp);
 }
 
@@ -104,7 +104,7 @@ object *obj;
     register editor *e;
 
     check_recursion();
-    e = &editors[UCHAR(obj->eduser)];
+    e = &editors[UCHAR(obj->etabi)];
     cb_del(e->ed);
     e->ed = (cmdbuf *) NULL;
     e->next = flist;
@@ -129,7 +129,7 @@ char *cmd;
 	error("Newline in editor command");
     }
 
-    e = &editors[UCHAR(obj->eduser)];
+    e = &editors[UCHAR(obj->etabi)];
     outbuf = buffer;
     outbufsz = 0;
     internal = FALSE;
@@ -166,7 +166,7 @@ char *cmd;
 char *ed_status(obj)
 object *obj;
 {
-    return (editors[UCHAR(obj->eduser)].ed->flags & CB_INSERT) ?
+    return (editors[UCHAR(obj->etabi)].ed->flags & CB_INSERT) ?
 	    "insert" : "command";
 }
 

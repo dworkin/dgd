@@ -6,7 +6,7 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Return the object n-1 (default: 1) steps back in the call_other chain.
+	Return the object n+1 (default: 1) steps back in the call_other chain.
 	If the object is destructed, or the number of steps is larger than
 	the number of call_others involved, zero is returned.
 

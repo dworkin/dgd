@@ -16,10 +16,10 @@ DESCRIPTION
 	and path_ed_write(), respectively, in the driver object.
 
 ERRORS
-	If the editor() kfun is called for an object without an active
-	editor instance, and the number of editor instances in the system
-	is equal to the constant MAX_EDITORS, defined in the include file
-	<limits.h>, an error will result.
+	If the number of adtive editor instances is equal to the value of the
+	ST_ETABSIZE field of the array returned by status(), where ST_ETABSIZE
+	is defined in the include file <status.h>, attempting to add another
+	one will result in an error.
 	It is not possible to start an editor instance for a user object.
 
 SEE ALSO

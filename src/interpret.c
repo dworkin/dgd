@@ -19,6 +19,8 @@ typedef struct _frame_ {
     unsigned short p_index;	/* program index */
     unsigned short foffset;	/* program function offset */
     dfuncdef *func;		/* current function */
+    int nargs;			/* # arguments */
+    int nvars;			/* # local variables */
     char *pc;			/* program counter */
     value *fp;			/* frame pointer (value stack) */
 } frame;
@@ -1531,6 +1533,7 @@ int funci;
     }
 
     /* handle arguments */
+    f->nargs = nargs;
     n = PROTO_NARGS(pc);
     if (n > 0 && (PROTO_ARGS(pc)[n - 1] & T_ELLIPSIS)) {
 	register value *v;
@@ -1573,6 +1576,7 @@ int funci;
 
     /* initialize local variables */
     n = FETCH1U(pc);
+    f->nvars = n;
     if (n > 0) {
 	nargs += n;
 	do {
@@ -1790,38 +1794,66 @@ array *i_call_trace()
     register value *v;
     register string *str;
     register char *name;
+    register int n;
+    register value *args;
     array *a;
     value *elts;
+    int max_args;
 
     a = arr_new(cframe - iframe + 1L);
     elts = a->elts;
+    max_args = conf_array_size() - 5;
     for (f = iframe; f <= cframe; f++) {
 	elts->type = T_ARRAY;
-	arr_ref(elts->u.array = arr_new(5L));
+	n = f->nargs;
+	args = f->fp + n + f->nvars;
+	if (n > max_args) {
+	    /* unlikely, but possible */
+	    n = max_args;
+	}
+	arr_ref(elts->u.array = arr_new(n + 5L));
 	v = elts->u.array->elts;
+
+	/* object name */
 	name = o_name(f->obj);
 	v[0].type = T_STRING;
 	str = str_new((char *) NULL, strlen(name) + 1L);
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
 	str_ref(v[0].u.string = str);
+
+	/* program name */
 	name = f->p_ctrl->inherits[f->p_ctrl->ninherits - 1].obj->chain.name;
 	v[1].type = T_STRING;
 	str = str_new((char *) NULL, strlen(name) + 1L);
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
 	str_ref(v[1].u.string = str);
+
+	/* function name */
 	v[2].type = T_STRING;
 	str_ref(v[2].u.string = d_get_strconst(f->p_ctrl, f->func->inherit,
 					       f->func->index));
+
+	/* line number */
 	v[3].type = T_INT;
 	if (f->func->class & C_COMPILED) {
 	    v[3].u.number = 0;
 	} else {
 	    v[3].u.number = i_line(f);
 	}
+
+	/* external flag */
 	v[4].type = T_INT;
 	v[4].u.number = f->external;
+
+	/* arguments */
+	v += 5;
+	while (n > 0) {
+	    *v++ = *--args;
+	    i_ref_value(args);
+	    --n;
+	}
 	elts++;
     }
 

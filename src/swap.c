@@ -155,6 +155,7 @@ sector sw_new()
 	    fatal("out of sectors");
 	}
 	sec = nsectors++;
+	BCLR(bmap, sec);
     }
     map[sec] = SW_UNUSED;	/* nothing in it yet */
 
@@ -173,6 +174,7 @@ sector sec;
 
     i = map[sec];
     if (i < cachesize && (h=(header *) (mem + i * slotsize))->sec == sec) {
+	i = h->swap;
 	/*
 	 * remove the swap slot from the first-last list
 	 */
@@ -198,10 +200,6 @@ sector sec;
 	h->sec = SW_UNUSED;
 	h->next = lfree;
 	lfree = h;
-	/*
-	 * free sector in swap file (if any)
-	 */
-	i = h->swap;
     }
     if (i != SW_UNUSED) {
 	if (dsectors > 0) {
@@ -216,10 +214,10 @@ sector sec;
 		 * replace by sector from dump file
 		 */
 		copy(i, (uindex) 1);
-		if (dsectors == 0) {
-		    close(dump);
-		    dump = -1;
-		}
+	    }
+	    if (dsectors == 0) {
+		close(dump);
+		dump = -1;
 	    }
 	} else {
 	    /*
@@ -491,7 +489,7 @@ char *dumpfile;
     register header *h;
     register sector sec;
     char buffer[STRINGSZ + 4];
-    uindex n;
+    register uindex n;
     dump_header dh;
 
     if (dsectors > 0) {
@@ -508,7 +506,7 @@ char *dumpfile;
 	sw_create();
     }
 
-    /* flush the cache */
+    /* flush the cache and adjust sector map */
     for (h = last; h != (header *) NULL; h = h->prev) {
 	sec = h->swap;
 	if (h->dirty) {
@@ -532,18 +530,52 @@ char *dumpfile;
 		fatal("cannot write swap file");
 	    }
 	}
+	map[h->sec] = sec;
     }
 
     /* move to dumpfile */
     close(swap);
-    swap = -1;
     if (rename(swapfile, dumpfile) < 0) {
-	fatal("cannot move swap file");
+	/*
+	 * The rename failed.  Attempt to copy the dumpfile instead.
+	 * This will take a long, long while.  Also, afterwards the
+	 * swapfile will still be removed and recreated at low priority
+	 * from the dumpfile, so keep the swapfile and dumpfile on the
+	 * same file system if at all possible.
+	 */
+	swap = open(swapfile, O_RDONLY | O_BINARY);
+	dump = open(dumpfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
+	if (swap < 0 || dump < 0) {
+	    fatal("cannot move swap file");
+	}
+	/* copy initial sector */
+	if (read(swap, cbuf, sectorsize) != sectorsize) {
+	    fatal("cannot read swap file");
+	}
+	if (write(dump, cbuf, sectorsize) < 0) {
+	    fatal("cannot write dump file");
+	}
+	/* copy swap sectors */
+	for (n = ssectors; n > 0; --n) {
+	    if (read(swap, cbuf, sectorsize) != sectorsize) {
+		fatal("cannot read swap file");
+	    }
+	    if (write(dump, cbuf, sectorsize) < 0) {
+		fatal("cannot write dump file");
+	    }
+	}
+	close(swap);
+	unlink(swapfile);
+    } else {
+	/*
+	 * The rename succeeded; reopen the new dumpfile.
+	 */
+	dump = open(dumpfile, O_RDWR | O_BINARY);
+	if (dump < 0) {
+	    fatal("cannot reopen dump file");
+	}
     }
-    dump = open(dumpfile, O_RDWR | O_BINARY);
-    if (dump < 0) {
-	fatal("cannot reopen dump file");
-    }
+    swap = -1;
 
     /* write header */
     dh.sectorsize = sectorsize;
@@ -552,19 +584,14 @@ char *dumpfile;
     dh.nfree = nfree;
     dh.sfree = sfree;
     lseek(dump, sectorsize - (long) sizeof(dump_header), SEEK_SET);
-    if (write(dump, &dh, sizeof(dump_header)) < 0) {
+    if (write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
 	fatal("cannot write swap header to dump file");
-    }
-
-    /* adjust the sector map */
-    for (h = last; h != (header *) NULL; h = h->prev) {
-	map[h->sec] = h->swap;
     }
 
     /* write maps */
     lseek(dump, (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (write(dump, map, nsectors * sizeof(sector)) < 0 ||
-	write(dump, smap, ssectors * sizeof(sector)) < 0) {
+    if (write(dump, (char *) map, nsectors * sizeof(sector)) < 0 ||
+	write(dump, (char *) smap, ssectors * sizeof(sector)) < 0) {
 	fatal("cannot write swap maps to dump file");
     }
 
@@ -580,9 +607,9 @@ char *dumpfile;
     /* fix the sector map and bitmap */
     for (h = last; h != (header *) NULL; h = h->prev) {
 	map[h->sec] = ((long) h - (long) mem) / slotsize;
-	BCLR(bmap, h->sec);
 	h->swap = SW_UNUSED;
 	h->dirty = TRUE;
+	BCLR(bmap, h->sec);
 	--dsectors;
     }
 
@@ -604,7 +631,7 @@ int fd, secsize;
 
     /* restore swap header */
     lseek(fd, secsize - (long) sizeof(dump_header), SEEK_SET);
-    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
 	dh.sectorsize != sectorsize || dh.nsectors > swapsize) {
 	fatal("bad swap header in restore file");
     }
@@ -630,9 +657,10 @@ int fd, secsize;
     AFREE(buffer);
 
     /* restore swap maps */
-    if (read(fd, map, nsectors * sizeof(sector)) != nsectors * sizeof(sector) ||
-	read(fd, smap, ssectors * sizeof(sector)) != ssectors * sizeof(sector))
-    {
+    if (read(fd, (char *) map, nsectors * sizeof(sector)) !=
+						nsectors * sizeof(sector) ||
+	read(fd, (char *) smap, ssectors * sizeof(sector)) !=
+						ssectors * sizeof(sector)) {
 	fatal("cannot restore swap maps");
     }
 }

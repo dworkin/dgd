@@ -62,6 +62,7 @@ extern void   conf_init		P((char*, char*));
 extern char  *conf_base_dir	P((void));
 extern char  *conf_driver	P((void));
 extern Int    conf_exec_cost	P((void));
+extern int    conf_array_size	P((void));
 extern void   conf_dump		P((void));
 
 typedef struct _array_ array;

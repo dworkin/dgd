@@ -1,5 +1,6 @@
 # ifndef FUNCDEF
 # include "kfun.h"
+# include <ctype.h>
 # endif
 
 
@@ -1340,12 +1341,30 @@ char p_tofloat[] = { C_STATIC | C_LOCAL, T_FLOAT, 1, T_MIXED };
 int kf_tofloat()
 {
     xfloat flt;
+    char *p;
 
     if (sp->type == T_INT) {
+	/* from int */
 	flt_itof(sp->u.number, &flt);
 	sp->type = T_FLOAT;
 	VFLT_PUT(sp, flt);
-    } else if (sp->type != T_FLOAT) {
+	return 0;
+    } else if (sp->type == T_STRING) {
+	p = sp->u.string->text;
+	if (*p == '-') {
+	    p++;
+	}
+	if ((isdigit(*p) || (*p++ == '.' && isdigit(*p))) &&
+	    flt_atof(sp->u.string->text, &flt)) {
+	    /* from string */
+	    str_del(sp->u.string);
+	    sp->type = T_FLOAT;
+	    VFLT_PUT(sp, flt);
+	    return 0;
+	}
+    }
+
+    if (sp->type != T_FLOAT) {
 	error("Value is not a float");
     }
     return 0;
@@ -1367,10 +1386,26 @@ int kf_toint()
     xfloat flt;
 
     if (sp->type == T_FLOAT) {
+	/* from float */
 	VFLT_GET(sp, flt);
-	sp->u.number = flt_ftoi(&flt);
 	sp->type = T_INT;
-    } else if (sp->type != T_INT) {
+	sp->u.number = flt_ftoi(&flt);
+	return 0;
+    } else if (sp->type == T_STRING) {
+	char *p;
+	 Int i;
+
+	i = strtol(sp->u.string->text, &p, 10);
+	if (p != sp->u.string->text) {
+	    /* from string */
+	    str_del(sp->u.string);
+	    sp->type = T_INT;
+	    sp->u.number = i;
+	    return 0;
+	}
+    }
+
+    if (sp->type != T_INT) {
 	error("Value is not an int");
     }
     return 0;
@@ -1546,4 +1581,272 @@ int kf_xor()
 FUNCDEF("^", kf_xor, p_xor_int)
 # else
 char p_xor_int[] = { C_STATIC | C_LOCAL, T_INT, 2, T_INT, T_INT };
+# endif
+
+
+/*
+ * the following were added after 1.0.a7
+ */
+
+# ifdef FUNCDEF
+FUNCDEF("(string)", kf_tostring, p_tostring)
+# else
+char p_tostring[] = { C_STATIC | C_LOCAL, T_STRING, 1, T_MIXED };
+
+/*
+ * NAME:	kfun->tostring()
+ * DESCRIPTION:	cast an int or float to a string
+ */
+int kf_tostring()
+{
+    char buffer[18];
+    xfloat flt;
+
+    if (sp->type == T_INT) {
+	/* from int */
+	sprintf(buffer, "%ld", (long) sp->u.number);
+    } else if (sp->type == T_FLOAT) {
+	/* from float */
+	VFLT_GET(sp, flt);
+	flt_ftoa(&flt, buffer);
+    } else if (sp->type == T_STRING) {
+	return 0;
+    } else {
+	error("Value is not a string");
+    }
+
+    sp->type = T_STRING;
+    str_ref(sp->u.string = str_new((char *) NULL, (long) strlen(buffer)));
+    strcpy(sp->u.string->text, buffer);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_ckrangeft, p_ckrangeft)
+# else
+char p_ckrangeft[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT,
+		       3, T_MIXED, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->ckrangeft()
+ * DESCRIPTION:	Check a [ from .. to ] subrange.
+ *		This function doesn't pop its arguments and returns nothing.
+ */
+int kf_ckrangeft()
+{
+    if (sp[2].type == T_STRING) {
+	str_ckrange(sp[2].u.string, (long) sp[1].u.number, (long) sp->u.number);
+    } else if (sp[2].type == T_ARRAY) {
+	arr_ckrange(sp[2].u.array, (long) sp[1].u.number, (long) sp->u.number);
+    } else {
+	return 1;
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_ckrangef, p_ckrangef)
+# else
+char p_ckrangef[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT,
+		      2, T_MIXED, T_INT };
+
+/*
+ * NAME:	kfun->ckrangef()
+ * DESCRIPTION:	Check a [ from .. ] subrange, add missing index.
+ *		This function doesn't pop its arguments.
+ */
+int kf_ckrangef()
+{
+    if (sp[1].type == T_STRING) {
+	(--sp)->type = T_INT;
+	sp->u.number = sp[2].u.string->len - 1;
+	str_ckrange(sp[2].u.string, (long) sp[1].u.number, (long) sp->u.number);
+    } else if (sp[1].type == T_ARRAY) {
+	(--sp)->type = T_INT;
+	sp->u.number = sp[2].u.array->size - 1;
+	arr_ckrange(sp[2].u.array, (long) sp[1].u.number, (long) sp->u.number);
+    } else {
+	return 1;
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("[]", kf_ckranget, p_ckranget)
+# else
+char p_ckranget[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT,
+		      2, T_MIXED, T_INT };
+
+/*
+ * NAME:	kfun->ckranget()
+ * DESCRIPTION:	Check a [ .. to ] subrange, add missing index.
+ *		This function doesn't pop its arguments.
+ */
+int kf_ckranget()
+{
+    if (sp[1].type == T_STRING) {
+	str_ckrange(sp[1].u.string, 0L, (long) sp->u.number);
+    } else if (sp[1].type == T_ARRAY) {
+	arr_ckrange(sp[1].u.array, 0L, (long) sp->u.number);
+    } else {
+	return 1;
+    }
+
+    --sp;
+    sp[0] = sp[1];
+    sp[1].u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("sum", kf_sum, p_sum)
+# else
+char p_sum[] = { C_VARARGS | C_STATIC | C_LOCAL, T_MIXED, 0 };
+
+/*
+ * NAME:	kfun->sum()
+ * DESCRIPTION:	perform a summand operation
+ */
+int kf_sum(n)
+int n;
+{
+    char buffer[12];
+    string *s;
+    array *a;
+    register value *v, *e1, *e2;
+    register int i, type, nonint;
+    register long size;
+    register unsigned short len;
+    register Int result;
+    register long isize;
+
+    /*
+     * pass 1: check the types of everything and calculate the size
+     */
+    type = 0;
+    isize = size = 0;
+    nonint = n;
+    result = 0;
+    for (v = sp, i = n; --i >= 0; v++) {
+	if (v->u.number == -2) {
+	    /* simple term */
+	    v++;
+	    if (v->type == T_STRING) {
+		size += v->u.string->len;
+	    } else if (v->type == T_ARRAY) {
+		size += v->u.array->size;
+	    } else {
+		sprintf(buffer, "%ld", (long) v->u.number);
+		size += strlen(buffer);
+	    }
+	} else {
+	    /* subrange term */
+	    size += v->u.number - v[1].u.number + 1;
+	    v += 2;
+	}
+
+	if (v->type == T_STRING || v->type == T_ARRAY) {
+	    nonint = i;
+	    isize = size;
+	    if (type == 0) {
+		type = v->type;
+	    } else if (type != v->type) {
+		error("Bad argument 2 for kfun +");
+	    }
+	} else if (v->type != T_INT || type == T_ARRAY) {
+	    error("Bad argument 2 for kfun +");
+	} else {
+	    result += v->u.number;
+	}
+    }
+    if (nonint > 1) {
+	sprintf(buffer, "%ld", (long) result);
+	size = isize + strlen(buffer);
+    }
+
+    /*
+     * pass 2: build the string or array
+     */
+    result = 0;
+    if (type == T_STRING) {
+	s = str_new((char *) NULL, size);
+	s->text[size] = '\0';
+	for (v = sp, i = n; --i >= 0; v++) {
+	    if (v->u.number == -2) {
+		/* simple term */
+		v++;
+		if (v->type == T_STRING) {
+		    size -= v->u.string->len;
+		    memcpy(s->text + size, v->u.string->text, v->u.string->len);
+		    str_del(v->u.string);
+		    result = 0;
+		} else if (nonint < i) {
+		    sprintf(buffer, "%ld", (long) v->u.number);
+		    len = strlen(buffer);
+		    size -= len;
+		    memcpy(s->text + size, buffer, len);
+		    result = 0;
+		} else {
+		    result += v->u.number;
+		}
+	    } else {
+		len = v->u.number - v[1].u.number + 1;
+		size -= len;
+		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
+		       len);
+		v += 2;
+		str_del(v->u.string);
+		result = 0;
+	    }
+	}
+	if (nonint > 0) {
+	    sprintf(buffer, "%ld", (long) result);
+	    memcpy(s->text, buffer, strlen(buffer));
+	}
+
+	sp = v - 1;
+	sp->type = T_STRING;
+	str_ref(sp->u.string = s);
+    } else if (type == T_ARRAY) {
+	a = arr_new(size);
+	for (v = sp, i = n; --i >= 0; v++) {
+	    if (v->u.number == -2) {
+		/* simple term */
+		v++;
+		len = v->u.array->size;
+		e2 = d_get_elts(v->u.array) + len;
+	    } else {
+		len = v->u.number - v[1].u.number + 1;
+		e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
+		v += 2;
+	    }
+	    for (e1 = a->elts + size, size -= len; len > 0; --len) {
+		*--e1 = *--e2;
+		i_ref_value(e1);
+	    }
+	    arr_del(v->u.array);
+	}
+
+	sp = v - 1;
+	arr_ref(sp->u.array = a);
+    } else {
+	/* integers only */
+	for (v = sp, i = n; --i > 0; v += 2) {
+	    result += v[1].u.number;
+	}
+
+	sp = v;
+	sp->u.number += result;
+    }
+
+    return 0;
+}
 # endif

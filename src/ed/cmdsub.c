@@ -1147,7 +1147,8 @@ register char *text;
 	}
 
 	idx = ccb->regexp->start + ccb->regexp->size - text;
-	if (!globsubst || text[idx] == '\0') {
+	if (!globsubst || text[idx] == '\0' ||
+	    (ccb->regexp->size == 0 && text[++idx] == '\0')) {
 	    break;
 	}
     }

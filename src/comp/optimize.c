@@ -342,16 +342,8 @@ register node **m;
     d2 = opt_expr(&n->r.right, FALSE);
 
     if (n->type == N_ADD) {
-	if (n->l.left->type == N_STR && n->r.right->type == N_ADD &&
-	    n->r.right->l.left->type == N_STR) {
-	    /* s1 + (s2 + x) */
-	    n->l.left = node_str(str_add(n->l.left->l.string,
-					 n->r.right->l.left->l.string));
-	    n->l.left->line = n->r.right->l.left->line;
-	    n->r.right = n->r.right->r.right;
-	    return d2;
-	}
-	if (n->r.right->type == N_STR && n->l.left->type == N_ADD &&
+	if (n->mod == T_STRING && n->r.right->type == N_STR &&
+	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
 	    n->r.right = node_str(str_add(n->l.left->r.right->l.string,
@@ -359,6 +351,25 @@ register node **m;
 	    n->r.right->line = n->l.left->r.right->line;
 	    n->l.left = n->l.left->l.left;
 	    return d1;
+	}
+
+	if ((n->mod == T_STRING || (n->mod & T_REF) != 0 ||
+	     n->r.right->type == N_RANGE) &&
+	    (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0 ||
+	     n->l.left->type == N_RANGE)) {
+	    /*
+	     * see if the summand operator can be used
+	     */
+	    switch (n->l.left->type) {
+	    case N_ADD:
+		n->l.left->type = N_SUM;
+		d1 = max2(d1, 2);
+		/* fall through */
+	    case N_SUM:
+	    case N_RANGE:
+		n->type = N_SUM;
+		return d1 + max2(d2, 2);
+	    }
 	}
     }
 
@@ -951,14 +962,18 @@ bool pop;
 	return opt_expr(&n->l.left, FALSE);
 
     case N_CATCH:
+	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, TRUE);
+	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
 	    *m = node_int((Int) 0);
 	}
 	return d1;
 
     case N_LOCK:
+	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, pop);
+	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
 	    *m = n->l.left;
 	}
@@ -977,6 +992,13 @@ bool pop;
     case N_TSTI:
     case N_UPLUS:
 	if (pop) {
+	    *m = n->l.left;
+	    return opt_expr(m, TRUE);
+	}
+	return opt_expr(&n->l.left, FALSE);
+
+    case N_TOSTRING:
+	if (pop && (n->l.left->mod == T_INT || n->l.left->mod == T_FLOAT)) {
 	    *m = n->l.left;
 	    return opt_expr(m, TRUE);
 	}
@@ -1412,6 +1434,11 @@ bool pop;
 	    d2 = opt_expr(m, FALSE);
 	    return max3(d1, i + d2, i + side_end(m, side, oldside, olddepth));
 	}
+
+# ifdef DEBUG
+    default:
+	fatal("unknown expression type %d", n->type);
+# endif
     }
 }
 

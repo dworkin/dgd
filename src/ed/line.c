@@ -294,15 +294,14 @@ char *text;
     } else {
 	txtsz = 0;
     }
+# ifdef STRUCT_AL
+    lb->blksz = ALIGN(lb->blksz, STRUCT_AL);
+# endif
 
     /* flush write buffer if needed */
     if (lb->blksz + lb->txtsz + blksz + txtsz > BLOCK_SIZE) {
 	/* write buffer full */
 	lb_write(lb);
-# ifdef STRUCT_AL
-    } else {
-	lb->blksz = ALIGN(lb->blksz, STRUCT_AL);
-# endif
     }
 
 

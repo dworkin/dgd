@@ -14,11 +14,12 @@ DESCRIPTION
 	must be used if the callout is to be removed.
 
 ERRORS
-	If the total number of active delayed calls in the system is equal to
-	the constant MAX_CALL_OUTS, defined in the include file <limits.h>,
+	If the number of active delayed calls in the system is equal to the
+	value of the ST_COTABSIZE field of the array returned by status(),
+	where ST_COTABSIZE is defined in the include file <status.h>,
 	attempting to add another one will result in an error.
-	If MAX_CALL_OUTS is set to 0, no delayed call will be added, and no
-	error will be caused.
+	If the maximum number of callouts is set to 0, no delayed call will
+	be added, and no error will be caused.
 
 SEE ALSO
 	kfun/remove_call_out

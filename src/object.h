@@ -4,7 +4,7 @@
 struct _object_ {
     hte chain;			/* object name hash table */
     char flags;			/* object status */
-    char eduser;		/* index in user/editor array */
+    char etabi;			/* index in external table */
     uindex index;		/* index in object table */
     Uint count;			/* object creation count */
     union {
@@ -24,6 +24,7 @@ struct _object_ {
 # define O_USER			0x10
 # define O_EDITOR		0x20
 # define O_COMPILED		0x40
+# define O_RESERVED		0x80	/* reserved for add-on packages */
 
 extern void		   o_init	P((int));
 extern object		  *o_new	P((char*, object*, struct _control_*));

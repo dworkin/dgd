@@ -6,6 +6,7 @@ DEFINES=-D$(HOST)
 DEBUG=	-g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
+LIBS=
 CC=	gcc
 DMAKE=	make
 PRECOMP=../comp/a.out
@@ -22,7 +23,7 @@ dgd:	$(OBJ) lpc.o
 
 $(PRECOMP):
 	cd ../comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			     a.out
+			     'LIBS=$(LIBS)' a.out
 
 clean:
 	rm -f dgd $(SRC) $(OBJ) lpc.o

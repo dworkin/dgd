@@ -304,11 +304,11 @@ chunk *c;
 		    }
 		    t->left = n; n->parent = t;
 		    l->right = t; t->parent = l;
-		    l = t;
 		    if ((n=t->right) == (spnode *) NULL) {
 			r->left = (spnode *) NULL;
 			break;	/* finished */
 		    }
+		    l = t;
 		}
 	    } else {
 		if ((t=n->left) == (spnode *) NULL) {
@@ -327,11 +327,11 @@ chunk *c;
 		    }
 		    t->right = n; n->parent = t;
 		    r->left = t; t->parent = r;
-		    r = t;
 		    if ((n=t->left) == (spnode *) NULL) {
 			l->right = (spnode *) NULL;
 			break;	/* finished */
 		    }
+		    r = t;
 		}
 	    }
 	}
@@ -388,7 +388,6 @@ register Int size;
 		    }
 		    t->left = n; n->parent = t;
 		    l->right = t; t->parent = l;
-		    l = t;
 		    if ((n=t->right) == (spnode *) NULL) {
 			if (r == &dummy) {
 			    /* all chunks are too small */
@@ -402,6 +401,7 @@ register Int size;
 			n = r;
 			break;	/* finished */
 		    }
+		    l = t;
 		}
 	    } else {
 		if ((t=n->left) == (spnode *) NULL) {

@@ -6,7 +6,7 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Return an array of substrings of str, devided by the given separator.
+	Return an array of substrings of str, divided by the given separator.
 	The separators that str starts and ends with, if any, are not taken
 	into account.
 

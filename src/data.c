@@ -1206,6 +1206,7 @@ Uint t;
     register dcallout *co;
     register value *v, *v2, *elts;
     array *list, *a;
+    int max_args;
 
     if (data->ncallouts == 0) {
 	return arr_alloc((unsigned short) 0);
@@ -1226,17 +1227,14 @@ Uint t;
 	(v++)->type = T_INVALID;
     }
 
-    if (ec_push()) {
-	/*
-	 * Free the list of callouts.  Efficiency is not important here.
-	 */
-	arr_ref(list);
-	arr_del(list);
-	error((char *) NULL);	/* pass on error */
-    }
+    max_args = conf_array_size() - 3;
     for (co = data->callouts; count > 0; co++) {
 	if (co->val[0].type != T_INVALID) {
 	    size = co->nargs;
+	    if (size > max_args) {
+		/* unlikely, but possible */
+		size = max_args;
+	    }
 	    a = arr_new(size + 3L);
 	    v = a->elts;
 
@@ -1281,7 +1279,6 @@ Uint t;
 	    --count;
 	}
     }
-    ec_pop();
 
     /* sort by time */
     qsort(list->elts, list->size, sizeof(value), cmp);

@@ -1192,7 +1192,7 @@ int kf_rename_file()
     str_del((sp++)->u.string);
     str_del(sp->u.string);
     sp->type = T_INT;
-    sp->u.number = (rename(buf, file) >= 0);
+    sp->u.number = (access(buf, W_OK) >= 0 && rename(buf, file) >= 0);
     return 0;
 }
 # endif
@@ -1219,7 +1219,7 @@ int kf_remove_file()
 
     str_del(sp->u.string);
     sp->type = T_INT;
-    sp->u.number = (unlink(file) >= 0);
+    sp->u.number = (access(file, W_OK) >= 0 && unlink(file) >= 0);
     return 0;
 }
 # endif
@@ -1460,18 +1460,24 @@ int kf_get_dir()
     file = strcpy(buf + STRINGSZ, file);
     if (stat(path_file(file), &sbuf) >= 0) {
 	/* the file is not considered to be a pattern */
-	dir = ".";
-	pat = strrchr(dir, '/');
-	sc_put((pat == (char *) NULL) ? file : pat + 1);
+	pat = strrchr(file, '/');
+	if (pat == (char *) NULL) {
+	    dir = ".";
+	    sc_put(file);
+	} else {
+	    dir = file;
+	    *pat++ = '\0';
+	    sc_put(pat);
+	}
 	nfiles = 1;
     } else {
-	dir = file;
-	pat = strrchr(dir, '/');
+	pat = strrchr(file, '/');
 	if (pat == (char *) NULL) {
-	    pat = dir;
 	    dir = ".";
+	    pat = file;
 	} else {
 	    /* separate directory and pattern */
+	    dir = file;
 	    *pat++ = '\0';
 	}
 	nfiles = 0;

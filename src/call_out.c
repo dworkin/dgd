@@ -498,13 +498,13 @@ int fd;
     dh.timestamp = timestamp;
 
     /* write header and callouts */
-    return (write(fd, &dh, sizeof(dump_header)) >= 0 &&
+    return (write(fd, (char *) &dh, sizeof(dump_header)) >= 0 &&
 	    (queuebrk == 0 ||
-	     write(fd, cotab, queuebrk * sizeof(call_out)) >= 0) &&
+	     write(fd, (char *) cotab, queuebrk * sizeof(call_out)) >= 0) &&
 	    (cycbrk == cotabsz ||
-	     write(fd, cotab + cycbrk,
+	     write(fd, (char *) (cotab + cycbrk),
 		   (cotabsz - cycbrk) * sizeof(call_out)) >= 0) &&
-	    write(fd, cycbuf, CYCBUF_SIZE * sizeof(cbuf)) >= 0);
+	    write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) >= 0);
 }
 
 /*
@@ -522,16 +522,18 @@ register long t;
     cbuf buffer[CYCBUF_SIZE];
 
     /* read and check */
-    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
 	(queuebrk=dh.queuebrk) >
 			(cycbrk=dh.cycbrk + (offset=cotabsz - dh.cotabsz)) ||
 	cycbrk == 0 ||
-	(queuebrk != 0 && read(fd, cotab, queuebrk * sizeof(call_out)) !=
+	(queuebrk != 0 &&
+	 read(fd, (char *) cotab, queuebrk * sizeof(call_out)) !=
 						queuebrk * sizeof(call_out)) ||
 	(cycbrk != cotabsz &&
-	 read(fd, cotab + cycbrk, (cotabsz - cycbrk) * sizeof(call_out)) !=
+	 read(fd, (char *) (cotab + cycbrk),
+	      (cotabsz - cycbrk) * sizeof(call_out)) !=
 				    (cotabsz - cycbrk) * sizeof(call_out)) ||
-	read(fd, buffer, CYCBUF_SIZE * sizeof(cbuf)) !=
+	read(fd, (char *) buffer, CYCBUF_SIZE * sizeof(cbuf)) !=
 						CYCBUF_SIZE * sizeof(cbuf)) {
 	fatal("cannot restore callouts");
     }

@@ -22,6 +22,7 @@ extern array	       *arr_add		P((array*, array*));
 extern array	       *arr_sub		P((array*, array*));
 extern array	       *arr_intersect	P((array*, array*));
 extern unsigned short	arr_index	P((array*, long));
+extern void		arr_ckrange	P((array*, long, long));
 extern array	       *arr_range	P((array*, long, long));
 
 extern array	       *map_new		P((long));

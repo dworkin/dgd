@@ -9,7 +9,7 @@ DESCRIPTION
 	Return the function call trace as an array.  The elements are of
 	the following format:
 
-	    ({ objname, progname, function, line, extern })
+	    ({ objname, progname, function, line, extern, arg1, ..., argn })
 
 	The line number is 0 if the function is in a compiled object.
 	Extern is 1 if the function was called with call_other(), and 0

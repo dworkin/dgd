@@ -149,7 +149,7 @@ register object *o;
 	/*
 	 * return the name of the master object with the index appended
 	 */
-	sprintf(name, "%s#%d", o->u.master->chain.name, o->index);
+	sprintf(name, "%s#%u", o->u.master->chain.name, o->index);
 	return name;
     }
 }
@@ -402,8 +402,8 @@ int fd;
     }
 
     /* write header and objects */
-    if (write(fd, &dh, sizeof(dump_header)) < 0 ||
-	write(fd, otab, nobjects * sizeof(object)) < 0) {
+    if (write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
+	write(fd, (char *) otab, nobjects * sizeof(object)) < 0) {
 	return FALSE;
     }
 
@@ -451,9 +451,9 @@ long t;
     }
 
     /* deal with header */
-    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
 	dh.nobjects > otabsize ||
-	read(fd, otab, dh.nobjects * sizeof(object)) !=
+	read(fd, (char *) otab, dh.nobjects * sizeof(object)) !=
 						dh.nobjects * sizeof(object)) {
 	fatal("cannot restore objects");
     }

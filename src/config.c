@@ -172,7 +172,6 @@ void conf_dump()
     lseek(fd, 0L, SEEK_SET);
     write(fd, header, sizeof(header));
     write(fd, (char *) t, sizeof(t));
-    P_message("*** State dumped.\012");
 }
 
 /*
@@ -188,7 +187,7 @@ int fd;
     if (read(fd, buffer, sizeof(header)) != sizeof(header) ||
 	buffer[0] != 1 ||
 	memcmp(buffer + 2, header + 2, sizeof(header) - 2) != 0 ||
-	read(fd, t, sizeof(t)) != sizeof(t)) {
+	read(fd, (char *) t, sizeof(t)) != sizeof(t)) {
 	fatal("bad or incompatible restore file header");
     }
     t[1] = P_time() - t[1];
@@ -588,6 +587,15 @@ char *conf_driver()
 Int conf_exec_cost()
 {
     return conf[MAX_COST].u.num;
+}
+
+/*
+ * NAME:	config->array_size()
+ * DESCRIPTION:	return the maximum array size
+ */
+int conf_array_size()
+{
+    return conf[ARRAY_SIZE].u.num;
 }
 
 /*

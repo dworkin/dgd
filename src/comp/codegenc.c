@@ -286,8 +286,10 @@ register node *n;
     case N_SUB:
     case N_SUB_EQ:
     case N_SUB_EQ_1:
+    case N_SUM:
     case N_TOFLOAT:
     case N_TOINT:
+    case N_TOSTRING:
     case N_TSTF:
     case N_XOR:
     case N_XOR_EQ:
@@ -677,6 +679,53 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->sumargs()
+ * DESCRIPTION:	generate code for summand arguments
+ */
+static int cg_sumargs(n)
+register node *n;
+{
+    register int i;
+
+    if (n->type == N_SUM) {
+	i = cg_sumargs(n->l.left);
+	n = n->r.right;
+    } else {
+	i = 0;
+    }
+
+    if (n->type == N_RANGE) {
+	cg_expr(n->l.left, PUSH);
+	comma();
+	n = n->r.right;
+	if (n->l.left != (node *) NULL &&
+	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	    cg_expr(n->l.left, PUSH);
+	    comma();
+	    if (n->r.right != (node *) NULL) {
+		cg_expr(n->r.right, PUSH);
+		comma();
+		kfun(KF_CKRANGEFT);
+	    } else {
+		kfun(KF_CKRANGEF);
+	    }
+	} else if (n->r.right != (node *) NULL) {
+	    cg_expr(n->r.right, PUSH);
+	    comma();
+	    kfun(KF_CKRANGET);
+	} else {
+	    output("PUSH_NUMBER -2");	/* no range */
+	}
+    } else {
+	cg_expr(n, PUSH);
+	output(", PUSH_NUMBER -2");
+    }
+    comma();
+
+    return i + 1;
+}
+
+/*
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
@@ -741,6 +790,7 @@ register node *n;
 register int state;
 {
     register int i, j;
+    char buffer[12];
     long l;
     char *arg;
 
@@ -1240,6 +1290,11 @@ register int state;
 	store();
 	break;
 
+    case N_SUM:
+	sprintf(buffer, "%d", cg_sumargs(n));
+	kfun_arg(KF_SUM, buffer);
+	break;
+
     case N_TOFLOAT:
 	cg_expr(n->l.left, PUSH);
 	comma();
@@ -1250,6 +1305,12 @@ register int state;
 	cg_expr(n->l.left, PUSH);
 	comma();
 	kfun(KF_TOINT);
+	break;
+
+    case N_TOSTRING:
+	cg_expr(n->l.left, PUSH);
+	comma();
+	kfun(KF_TOSTRING);
 	break;
 
     case N_TST:
@@ -1289,7 +1350,7 @@ register int state;
     case N_XOR_EQ:
 	if (n->r.right->type == N_INT && n->r.right->l.number == -1) {
 	    cg_fetch(n->l.left);
-	    kfun(KF_NEG, 0);
+	    kfun(KF_NEG);
 	    store();
 	} else {
 	    cg_asgnop(n, KF_XOR);
@@ -1300,8 +1361,9 @@ register int state;
 	cg_fetch(n->l.left);
 	kfun(KF_SUB1);
 	store();
+	comma();
 	if (n->mod == T_INT) {
-	    output(", sp->u.number++");
+	    output("sp->u.number++");
 	} else {
 	    kfun(KF_ADD1);
 	}
@@ -1311,12 +1373,18 @@ register int state;
 	cg_fetch(n->l.left);
 	kfun(KF_ADD1);
 	store();
+	comma();
 	if (n->mod == T_INT) {
-	    output(", sp->u.number--");
+	    output("sp->u.number--");
 	} else {
 	    kfun(KF_SUB1);
 	}
 	break;
+
+# ifdef DEBUG
+    default:
+	fatal("unknown expression type %d", n->type);
+# endif
     }
 
     switch (state) {

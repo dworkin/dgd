@@ -31,8 +31,8 @@ typedef unsigned long Uint;
 
 # define FS_BLOCK_SIZE		1024
 
-extern int   rename		P((char*, char*));		/* simulated */
-extern char *crypt		P((const char*, const char*));
+extern int   rename		P((const char*, const char*));
+extern char *crypt		P((char*, char*));
 
 # endif	/* MINIX_68K */
 
@@ -78,37 +78,12 @@ extern char *crypt		P((char*, char*));
 
 # ifdef SUNOS4
 
-# include <limits.h>
-# include <sys/types.h>
-# include <unistd.h>
-
-# ifdef INCLUDE_FILE_IO
-# include <fcntl.h>
-# include <sys/stat.h>
-# endif
-
-# ifdef INCLUDE_TELNET
-# include <arpa/telnet.h>
-# endif
+# define GENERIC_BSD
 
 # include <alloca.h>
-# include <stdlib.h>
-# include <string.h>
-# include <setjmp.h>
-# include <stdio.h>
-
-# define STRUCT_AL	4		/* define this if align(struct) > 2 */
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
-typedef int Int;
-typedef unsigned int Uint;
-
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 						 (unsigned int) (size)))
 # define AFREE(ptr)		/* on function return */
-
-# define FS_BLOCK_SIZE		8192
 
 # define crypt			_crypt
 extern char *crypt		P((const char*, const char*));
@@ -117,11 +92,25 @@ extern char *crypt		P((const char*, const char*));
 
 
 # ifdef BSD386
+
 # define GENERIC_BSD
-# endif
+
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+						 (unsigned int) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# endif /* BSD386 */
+
+
 # ifdef LINUX
+
 # define GENERIC_SYSV
-# endif
+
+# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
+						 (unsigned int) (size)))
+# define AFREE(ptr)		/* on function return */
+
+# endif /* LINUX */
 
 
 # ifdef GENERIC_BSD
@@ -151,9 +140,10 @@ extern char *crypt		P((const char*, const char*));
 typedef int Int;
 typedef unsigned int Uint;
 
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
-# define AFREE(ptr)		/* on function return */
+# ifndef ALLOCA
+# define ALLOCA(type, size)	ALLOC(type, size)
+# define AFREE(ptr)		FREE(ptr)
+# endif
 
 # define FS_BLOCK_SIZE		8192
 
@@ -188,9 +178,10 @@ typedef unsigned int Uint;
 typedef int Int;
 typedef unsigned int Uint;
 
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-						 (unsigned int) (size)))
-# define AFREE(ptr)		/* on function return */
+# ifndef ALLOCA
+# define ALLOCA(type, size)	ALLOC(type, size)
+# define AFREE(ptr)		FREE(ptr)
+# endif
 
 # define FS_BLOCK_SIZE		8192
 

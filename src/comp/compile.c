@@ -786,8 +786,12 @@ register node *n;
     register node *v, *zero;
     char *prog;
     unsigned short size;
+    xfloat flt;
 
-    if (n == (node *) NULL || !(n->flags & F_RETURN)) {
+    FLT_ZERO(flt.high, flt.low);
+    if (ftype == T_FLOAT) {
+	n = c_concat(n, node_mon(N_RETURN, 0, node_float(&flt)));
+    } else {
 	n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
     }
 
@@ -801,9 +805,6 @@ register node *n;
 	    v->line = fline;
 	    v->r.number = i;
 	    if (zero == (node *) NULL) {
-		xfloat flt;
-
-		FLT_ZERO(flt.high, flt.low);
 		zero = node_float(&flt);
 		zero->line = fline;
 	    }
@@ -866,7 +867,8 @@ register node *n1, *n2;
     }
 
     n = node_bin(N_PAIR, 0, n1, n2);
-    n->flags |= (n1->flags | n2->flags) & F_REACH;
+    n->flags |= (n1->flags & F_REACH) |
+		(n2->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN));
     return n;
 }
 
@@ -984,9 +986,6 @@ node *n1, *n3;
 {
     if (n4 != (node *) NULL) {
 	n4 = c_reloop(n4);
-	if (n4->type == N_BLOCK) {
-	    n4->flags |= n4->l.left->flags & (F_REACH | F_BREAK | F_RETURN);
-	}
     }
     n2 = c_concat(n1,
 		  c_endloop(node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,

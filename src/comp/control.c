@@ -874,15 +874,19 @@ register char *proto;
 		/*
 		 * replace undefined prototype
 		 */
-		progsize -= PROTO_SIZE(proto2);
-		FREE(proto2);
 		if (is_auto &&
 		    (PROTO_CLASS(proto) & (C_STATIC | C_PRIVATE | C_UNDEFINED))
 								== C_STATIC) {
 		    /* static function in auto object replaces prototype */
 		    PROTO_CLASS(proto) |= C_LOCAL;
 		    --nsymbs;
+		} else if (PROTO_FTYPE(proto2) == T_IMPLICIT &&
+			   (PROTO_CLASS(proto) & C_PRIVATE)) {
+		    /* private function replaces implicit prototype */
+		    --nsymbs;
 		}
+		progsize -= PROTO_SIZE(proto2);
+		FREE(proto2);
 		i = PROTO_SIZE(proto);
 		functions[fdef = (*h)->index].proto =
 				    (char *) memcpy(ALLOC(char, i), proto, i);
@@ -1484,8 +1488,7 @@ static void ctrl_mksymbs()
 		if ((f->class & C_PRIVATE) ||
 		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
 		     ctrl->ninherits == 1 &&
-		     (is_auto ||
-		      (ctrl->inherits->obj->flags & O_AUTO)))) {
+		     (is_auto || (ctrl->inherits->obj->flags & O_AUTO)))) {
 		    continue;
 		}
 		name = d_get_strconst(ctrl, f->inherit, f->index)->text;

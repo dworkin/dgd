@@ -687,6 +687,21 @@ register long l;
 }
 
 /*
+ * NAME:	array->ckrange()
+ * DESCRIPTION:	check an array subrange
+ */
+void arr_ckrange(a, l1, l2)
+array *a;
+register long l1, l2;
+{
+    register array *range;
+
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
+	error("Invalid array range");
+    }
+}
+
+/*
  * NAME:	array->range()
  * DESCRIPTION:	return a subrange of an array
  */

@@ -492,6 +492,50 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->sumargs()
+ * DESCRIPTION:	generate code for summand arguments
+ */
+static int cg_sumargs(n)
+register node *n;
+{
+    register int i;
+
+    if (n->type == N_SUM) {
+	i = cg_sumargs(n->l.left);
+	n = n->r.right;
+    } else {
+	i = 0;
+    }
+
+    if (n->type == N_RANGE) {
+	cg_expr(n->l.left, FALSE);
+	n = n->r.right;
+	if (n->l.left != (node *) NULL &&
+	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	    cg_expr(n->l.left, FALSE);
+	    if (n->r.right != (node *) NULL) {
+		cg_expr(n->r.right, FALSE);
+		code_kfun(KF_CKRANGEFT, n->line);
+	    } else {
+		code_kfun(KF_CKRANGEF, n->line);
+	    }
+	} else if (n->r.right != (node *) NULL) {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_CKRANGET, n->line);
+	} else {
+	    code_instr(I_PUSH_INT1, 0);
+	    code_byte(-2);		/* no range */
+	}
+    } else {
+	cg_expr(n, FALSE);
+	code_instr(I_PUSH_INT1, 0);
+	code_byte(-2);		/* no range */
+    }
+
+    return i + 1;
+}
+
+/*
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
@@ -1194,6 +1238,12 @@ register bool pop;
 	code_instr(I_STORE, 0);
 	break;
 
+    case N_SUM:
+	i = cg_sumargs(n);
+	code_kfun(KF_SUM, 0);
+	code_byte(i);
+	break;
+
     case N_TOFLOAT:
 	cg_expr(n->l.left, FALSE);
 	code_kfun(KF_TOFLOAT, n->line);
@@ -1202,6 +1252,11 @@ register bool pop;
     case N_TOINT:
 	cg_expr(n->l.left, FALSE);
 	code_kfun(KF_TOINT, n->line);
+	break;
+
+    case N_TOSTRING:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_TOSTRING, n->line);
 	break;
 
     case N_TST:
@@ -1292,6 +1347,11 @@ register bool pop;
 	code_instr(I_STORE, 0);
 	code_kfun(KF_SUB1_INT, 0);
 	break;
+
+# ifdef DEBUG
+    default:
+	fatal("unknown expression type %d", n->type);
+# endif
     }
 
     if (pop) {

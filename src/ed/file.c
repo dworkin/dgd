@@ -76,17 +76,19 @@ static char *getline()
  */
 io *io_load(eb, filename, l)
 editbuf *eb;
-Int l;
 char *filename;
+Int l;
 {
-    char b[MAX_LINE_SIZE];
-    char buf[BUF_SIZE];
+    char b[MAX_LINE_SIZE], buf[BUF_SIZE];
+    struct stat sbuf;
 
     /* open file */
     filename = path_ed_read(filename);
-    if (filename == (char *) NULL) {
+    if (filename == (char *) NULL || stat(filename, &sbuf) < 0 ||
+	(sbuf.st_mode & S_IFMT) != S_IFREG) {
 	return (io *) NULL;
     }
+
     fd = open(filename, O_RDONLY | O_BINARY);
     if (fd < 0) {
 	return (io *) NULL;

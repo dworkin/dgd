@@ -13,8 +13,9 @@ DESCRIPTION
 	is returned.
 
 ERRORS
-	If the number of existing objects is equal to the constant MAX_OBJECTS,
-	defined in the include file <limits.h>, attempting to clone a new
+	If the number of existing objects is equal to the value of the
+	ST_OTABSIZE field of the array returned by status(), where ST_OTABSIZE
+	is defined in the include file <status.h>, attempting to clone a new
 	object will crash the system.
 	Calling clone_object() with the name of a clone as an argument will
 	result in an error.

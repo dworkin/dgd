@@ -172,14 +172,15 @@ void str_clear()
  * DESCRIPTION:	compare two strings
  */
 int str_cmp(s1, s2)
-register string *s1, *s2;
+string *s1, *s2;
 {
     if (s1 == s2) {
 	return 0;
     } else {
-	register long cmplen;
 	register unsigned short len;
-	register int cmp;
+	register char *p, *q;
+	long cmplen;
+	int cmp;
 
 	cmplen = (long) s1->len - s2->len;
 	if (cmplen > 0) {
@@ -191,7 +192,8 @@ register string *s1, *s2;
 	    cmplen >>= 16;
 	    len = s1->len;
 	}
-	cmp = memcmp(s1->text, s2->text, len);
+	for (p = s1->text, q = s2->text; len > 0 && *p == *q; p++, q++, --len) ;
+	cmp = UCHAR(*p) - UCHAR(*q);
 	return (cmp != 0) ? cmp : cmplen;
     }
 }
@@ -225,6 +227,19 @@ register long l;
     }
 
     return l;
+}
+
+/*
+ * NAME:	string->ckrange()
+ * DESCRIPTION:	check a string subrange
+ */
+void str_ckrange(s, l1, l2)
+string *s;
+register long l1, l2;
+{
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
+	error("Invalid string range");
+    }
 }
 
 /*
