@@ -547,9 +547,11 @@ Uint t;
 	    rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
 	    return;
 	}
-    } else {
-	t = decode(t, &m);
     }
+    /*
+     * decode() won't work correctly for times in the past, so always check
+     * the immediate queues for millisecond callouts
+     */
     if (t <= timestamp) {
 	/*
 	 * possible immediate callout
