@@ -158,8 +158,8 @@ register unsigned int size;
 	if (size == 0) {
 	    return;
 	}
-	map[*vec++ = mfree] = SW_UNUSED;
-	mfree = map[mfree];
+	mfree = map[*vec = mfree];
+	map[*vec++] = SW_UNUSED;
 	--nfree;
 	--size;
     }

@@ -1152,3 +1152,8 @@ DGD 1.1
  - The wrong stack depth was passed on to driver->runtime_error() if the
    the server used an internal catch.
  - Added a new kfun, block_input().
+ - Fixed a leftover bug in the swapping changes that made reclaiming of freed
+   sectors unlikely, and a crash possible just after a successful state dump
+   had been made.
+ - Read_file() was returning return 0 in an error situation, and also when it
+   should return "".
