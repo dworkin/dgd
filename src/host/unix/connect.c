@@ -57,7 +57,7 @@ register int in, out;
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
 	if (host == (struct hostent *) NULL) {
-	    sleep(2);
+	    sleep(5);
 	    host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
 	}
 

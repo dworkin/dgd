@@ -134,7 +134,8 @@ top_level_declaration
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
-		  } else if (!c_inherit($3->l.string->text, $2)) {
+		  } else if (nerrors > 0 || !c_inherit($3->l.string->text, $2))
+		  {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.

@@ -169,6 +169,7 @@ extern dfuncdef        *d_get_funcdefs	P((control*));
 extern dvardef	       *d_get_vardefs	P((control*));
 extern char	       *d_get_funcalls	P((control*));
 extern dsymbol	       *d_get_symbols	P((control*));
+extern Uint		d_get_progsize	P((control*));
 
 extern value	       *d_get_variable	P((dataspace*, unsigned int));
 extern value	       *d_get_elts	P((array*));

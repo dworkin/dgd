@@ -1283,14 +1283,7 @@ register value *v;
 
     case 1:	/* O_PROGSIZE */
 	v->type = T_INT;
-	v->u.number = ctrl->ninherits * sizeof(dinherit) +
-		      ctrl->progsize +
-		      ctrl->nstrings * (Uint) sizeof(dstrconst) +
-		      ctrl->strsize +
-		      ctrl->nfuncdefs * sizeof(dfuncdef) +
-		      ctrl->nvardefs * sizeof(dvardef) +
-		      ctrl->nfuncalls * (Uint) 2 +
-		      ctrl->nsymbols * (Uint) sizeof(dsymbol);
+	v->u.number = d_get_progsize(ctrl);
 	break;
 
     case 2:	/* O_DATASIZE */

@@ -765,6 +765,27 @@ register control *ctrl;
 }
 
 /*
+ * NAME:	d_get_stext()
+ * DESCRIPTION:	load strings text
+ */
+static void d_get_stext(ctrl)
+register control *ctrl;
+{
+    /* load strings text */
+    if (ctrl->flags & CTRL_STRCMP) {
+	ctrl->stext = decompress(ctrl->sectors, sw_readv,
+				 ctrl->strsize,
+				 ctrl->stroffset +
+				 ctrl->nstrings * sizeof(dstrconst),
+				 &ctrl->strsize);
+    } else {
+	ctrl->stext = ALLOC(char, ctrl->strsize);
+	sw_readv(ctrl->stext, ctrl->sectors, ctrl->strsize,
+		 ctrl->stroffset + ctrl->nstrings * (Uint) sizeof(dstrconst));
+    }
+}
+
+/*
  * NAME:	data->get_strconst()
  * DESCRIPTION:	get a string constant
  */
@@ -789,20 +810,8 @@ unsigned int idx;
 	    sw_readv((char *) ctrl->sstrings, ctrl->sectors,
 		     ctrl->nstrings * (Uint) sizeof(dstrconst),
 		     ctrl->stroffset);
-	    if (ctrl->strsize > 0) {
-		/* load strings text */
-		if (ctrl->flags & CTRL_STRCMP) {
-		    ctrl->stext = decompress(ctrl->sectors, sw_readv,
-					     ctrl->strsize,
-					     ctrl->stroffset +
-					     ctrl->nstrings * sizeof(dstrconst),
-					     &ctrl->strsize);
-		} else {
-		    ctrl->stext = ALLOC(char, ctrl->strsize);
-		    sw_readv(ctrl->stext, ctrl->sectors, ctrl->strsize,
-			     ctrl->stroffset +
-				     ctrl->nstrings * (Uint) sizeof(dstrconst));
-		}
+	    if (ctrl->strsize > 0 && ctrl->stext == (char *) NULL) {
+		d_get_stext(ctrl);	/* load strings text */
 	    }
 	}
     }
@@ -877,6 +886,33 @@ register control *ctrl;
     }
     return ctrl->symbols;
 }
+
+/*
+ * NAME:	data->get_progsize()
+ * DESCRIPTION:	get the size of a control block
+ */
+Uint d_get_progsize(ctrl)
+register control *ctrl;
+{
+    if (ctrl->progsize != 0 && ctrl->prog == (char *) NULL &&
+	(ctrl->flags & CTRL_PROGCMP)) {
+	d_get_prog(ctrl);	/* decompress program */
+    }
+    if (ctrl->strsize != 0 && ctrl->stext == (char *) NULL &&
+	(ctrl->flags & CTRL_STRCMP)) {
+	d_get_stext(ctrl);	/* decompress strings */
+    }
+
+    return ctrl->ninherits * sizeof(dinherit) +
+	   ctrl->progsize +
+	   ctrl->nstrings * (Uint) sizeof(dstrconst) +
+	   ctrl->strsize +
+	   ctrl->nfuncdefs * sizeof(dfuncdef) +
+	   ctrl->nvardefs * sizeof(dvardef) +
+	   ctrl->nfuncalls * (Uint) 2 +
+	   ctrl->nsymbols * (Uint) sizeof(dsymbol);
+}
+
 
 /*
  * NAME:	data->get_string()
@@ -2920,10 +2956,10 @@ register control *ctrl;
 
 	/* delete string constants */
 	if (ctrl->sstrings != (dstrconst *) NULL) {
-	    if (ctrl->stext != (char *) NULL) {
-		FREE(ctrl->stext);
-	    }
 	    FREE(ctrl->sstrings);
+	}
+	if (ctrl->stext != (char *) NULL) {
+	    FREE(ctrl->stext);
 	}
 
 	/* delete function definitions */

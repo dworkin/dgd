@@ -1196,3 +1196,7 @@ DGD 1.1
  - Fixed a bug in parse_string() that prevented proper compression of the
    shift/reduce parser, and could also lead to strings being erroneously
    rejected.
+ - Let status() report the proper program size, even if the object is swapped
+   out and compressed.
+ - Increased max number of function parameters + local variables to 255.
+ - Fixed a stack depth miscalculation bug for untypechecked code.
