@@ -12,9 +12,9 @@ typedef struct {
     hte *table[1];		/* hash table entries */
 } hashtab;
 
-extern unsigned short	hashstr		P((char*, unsigned short));
+extern unsigned short	hashstr		P((char*, unsigned int));
 
-extern hashtab	       *ht_new		P((unsigned short, unsigned short));
+extern hashtab	       *ht_new		P((unsigned int, unsigned int));
 extern void		ht_del		P((hashtab*));
 extern hte	      **ht_lookup	P((hashtab*, char*));
 

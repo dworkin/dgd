@@ -11,8 +11,8 @@
  *		of each string are significant
  */
 hashtab *ht_new(size, maxlen)
-register unsigned short size;
-unsigned short maxlen;
+register unsigned int size;
+unsigned int maxlen;
 {
     register hashtab *ht;
 
@@ -42,7 +42,7 @@ hashtab *ht;
  */
 unsigned short hashstr(s, len)
 register char *s;
-register unsigned short len;
+register unsigned int len;
 {
     static char table[] = {
 	  1,  87,  49,  12, 176, 178, 102, 166,
