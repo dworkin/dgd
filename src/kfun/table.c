@@ -34,10 +34,10 @@ static char kfx[sizeof(kftab) / sizeof(kfunc)];			/* index -> n */
  * NAME:	kfun->cmp()
  * DESCRIPTION:	compare two kftable entries
  */
-static int kf_cmp(kf1, kf2)
-kfunc *kf1, *kf2;
+static int kf_cmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
-    return strcmp(kf1->name, kf2->name);
+    return strcmp(((kfunc *) cv1)->name, ((kfunc *) cv2)->name);
 }
 
 /*
