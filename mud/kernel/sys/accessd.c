@@ -13,9 +13,7 @@ static create()
 {
     uaccess = ([ ]);
     gaccess = ([ ]);
-# ifndef SYS_CONTINUOUS
     restore_object(ACCESSDATA);
-# endif
 }
 
 /*
