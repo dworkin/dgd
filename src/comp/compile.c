@@ -2,13 +2,15 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "path.h"
-# include "lex.h"
 # include "fcontrol.h"
-# include "control.h"
+# include "macro.h"
+# include "token.h"
+# include "ppcontrol.h"
 # include "node.h"
+# include "control.h"
 # include "codegen.h"
 # include "compile.h"
 
@@ -281,8 +283,8 @@ bool flag;
     driver_object = d;
     include = i;
     paths = p;
-    typechecking = flag;
-    ctrl_init(a);
+    typechecking = flag | cg_compiled();
+    ctrl_init(a, d);
 }
 
 /*
@@ -378,7 +380,7 @@ register char *file;
 
     for (;;) {
 	if (!c_autodriver()) {
-	    if (o_find(driver_object) == (object *) NULL) {
+	    if (!cg_compiled() && o_find(driver_object) == (object *) NULL) {
 		/*
 		 * (re)compile the driver object to do pathname translation
 		 */
@@ -443,6 +445,7 @@ register char *file;
 	}
 	c.inherit[0] = '\0';
 
+	cg_init(c.prev != (context *) NULL);
 	if (ec_push()) {
 	    yyerror("error while compiling:");
 	    recursion = FALSE;
@@ -488,7 +491,6 @@ register char *file;
 
 	if (c.inherit[0] == '\0') {
 	    control *ctrl;
-	    object *obj;
 
 	    if (!seen_decls) {
 		/*
@@ -500,20 +502,7 @@ register char *file;
 	    ctrl_clear();
 	    c_clear();
 	    current = c.prev;
-	    obj = ctrl->inherits[ctrl->nvirtuals - 1].obj;
-	    if (strcmp(c.file, auto_object) == 0) {
-		/*
-		 * this is the auto object
-		 */
-		obj->flags |= O_AUTO;
-	    }
-	    if (strcmp(c.file, driver_object) == 0) {
-		/*
-		 * this is the driver object
-		 */
-		obj->flags |= O_DRIVER;
-	    }
-	    return obj;
+	    return ctrl->inherits[ctrl->nvirtuals - 1].obj;
 	}
 	ctrl_clear();
 	c_clear();
@@ -749,6 +738,281 @@ register node *n;
 }
 
 /*
+ * NAME:	max2()
+ * DESCRIPTION:	return the maximum of two numbers
+ */
+static unsigned short max2(a, b)
+unsigned short a, b;
+{
+    return (a > b) ? a : b;
+}
+
+/*
+ * NAME:	max3()
+ * DESCRIPTION:	return the maximum of three numbers
+ */
+static unsigned short max3(a, b, c)
+register unsigned short a, b, c;
+{
+    return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
+}
+
+static unsigned short d_expr P((node*));
+
+/*
+ * NAME:	depth->lvalue()
+ * DESCRIPTION:	return the stack depth of an lvalue
+ */
+static unsigned short d_lvalue(n)
+register node *n;
+{
+    switch (n->type) {
+    case N_LOCAL:
+    case N_GLOBAL:
+	return 1;
+
+    case N_INDEX:
+	switch (n->l.left->type) {
+	case N_LOCAL:
+	case N_GLOBAL:
+	    return 1 + d_expr(n->r.right);
+
+	case N_INDEX:
+	    return max3(d_expr(n->l.left->l.left),
+			1 + d_expr(n->l.left->r.right),
+			2 + d_expr(n->r.right));
+
+	default:
+	    return max2(d_expr(n->l.left), 1 + d_expr(n->r.right));
+	}
+    }
+}
+
+/*
+ * NAME:	depth->expr()
+ * DESCRIPTION:	return the stack depth of an expression
+ */
+static unsigned short d_expr(n)
+register node *n;
+{
+    register unsigned short d, i;
+
+    switch (n->type) {
+    case N_ADD:
+    case N_ADD_INT:
+    case N_AND:
+    case N_AND_INT:
+    case N_DIV:
+    case N_DIV_INT:
+    case N_EQ:
+    case N_EQ_INT:
+    case N_GE:
+    case N_GE_INT:
+    case N_GT:
+    case N_GT_INT:
+    case N_INDEX:
+    case N_LE:
+    case N_LE_INT:
+    case N_LSHIFT:
+    case N_LSHIFT_INT:
+    case N_LT:
+    case N_LT_INT:
+    case N_MOD:
+    case N_MOD_INT:
+    case N_MULT:
+    case N_MULT_INT:
+    case N_NE:
+    case N_NE_INT:
+    case N_OR:
+    case N_OR_INT:
+    case N_PAIR:
+    case N_RSHIFT:
+    case N_RSHIFT_INT:
+    case N_SUB:
+    case N_SUB_INT:
+    case N_XOR:
+    case N_XOR_INT:
+	return max2(d_expr(n->l.left), 1 + d_expr(n->r.right));
+
+    case N_ADD_EQ:
+    case N_ADD_EQ_INT:
+    case N_AND_EQ:
+    case N_AND_EQ_INT:
+    case N_DIV_EQ:
+    case N_DIV_EQ_INT:
+    case N_LSHIFT_EQ:
+    case N_LSHIFT_EQ_INT:
+    case N_MOD_EQ:
+    case N_MOD_EQ_INT:
+    case N_MULT_EQ:
+    case N_MULT_EQ_INT:
+    case N_OR_EQ:
+    case N_OR_EQ_INT:
+    case N_SUB_EQ:
+    case N_SUB_EQ_INT:
+    case N_XOR_EQ:
+    case N_XOR_EQ_INT:
+    case N_RSHIFT_EQ:
+    case N_RSHIFT_EQ_INT:
+	d = 4 + d_expr(n->r.right);
+	n = n->l.left;
+	if (n->type == N_CAST) {
+	    n = n->l.left;
+	}
+	return max2(d, 1 + d_lvalue(n));
+
+    case N_AGGR:
+	if (n->mod == T_MAPPING) {
+	    n = n->l.left;
+	    if (n == (node *) NULL) {
+		return 1;
+	    }
+
+	    d = 0;
+	    for (i = 0; n->type == N_COMMA; i += 2) {
+		d = max3(d, i + d_expr(n->r.right->r.right),
+			 i + 1 + d_expr(n->r.right->l.left));
+		n = n->l.left;
+	    }
+	    return max3(d, i + d_expr(n->r.right), i + 1 + d_expr(n->l.left));
+	} else {
+	    n = n->l.left;
+	    if (n == (node *) NULL) {
+		return 1;
+	    }
+
+	    d = 0;
+	    for (i = 0; n->type == N_COMMA; i++) {
+		d = max2(d, i + d_expr(n->r.right));
+		n = n->l.left;
+	    }
+	    return max2(d, i + d_expr(n));
+	}
+
+    case N_ASSIGN:
+	d = 3 + d_expr(n->r.right);
+	if (n->l.left->type == N_CAST) {
+	    n = n->l.left;
+	}
+	return max2(d, d_lvalue(n->l.left));
+
+    case N_CATCH:
+	if (n->l.left == (node *) NULL) {
+	    return 1;
+	}
+    case N_CAST:
+    case N_LOCK:
+    case N_NOT:
+    case N_TST:
+	return d_expr(n->l.left);
+
+    case N_COMMA:
+    case N_LAND:
+    case N_LOR:
+	return max2(d_expr(n->l.left), d_expr(n->r.right));
+
+    case N_FUNC:
+	n = n->l.left;
+	if (n == (node *) NULL) {
+	    return 1;
+	}
+
+	d = 0;
+	for (i = 0; n->type == N_COMMA; i++) {
+	    d = max2(d, i + d_expr(n->l.left));
+	    n = n->r.right;
+	}
+	return max2(d, i + 1 + d_expr(n));
+
+    case N_GLOBAL:
+    case N_INT:
+    case N_LOCAL:
+    case N_STR:
+	return 1;
+
+    case N_LVALUE:
+	return d_lvalue(n->l.left);
+
+    case N_QUEST:
+	return max3(d_expr(n->l.left),
+		    d_expr(n->r.right->l.left),
+		    d_expr(n->r.right->r.right));
+
+    case N_RANGE:
+	return max3(d_expr(n->l.left),
+		    1 + d_expr(n->r.right->l.left),
+		    2 + d_expr(n->r.right->r.right));
+
+    case N_MIN_MIN:
+    case N_MIN_MIN_INT:
+    case N_PLUS_PLUS:
+    case N_PLUS_PLUS_INT:
+	n = n->l.left;
+	if (n->type == N_CAST) {
+	    n = n->l.left;
+	}
+	return 2 + d_lvalue(n);
+    }
+}
+
+/*
+ * NAME:	depth->stmt()
+ * DESCRIPTION:	return the stack depth of a statement
+ */
+static unsigned short d_stmt(n)
+register node *n;
+{
+    register unsigned short d;
+    register node *m;
+
+    d = 0;
+    while (n != (node *) NULL) {
+	if (n->type == N_PAIR) {
+	    m = n->l.left;
+	    n = n->r.right;
+	} else {
+	    m = n;
+	    n = (node *) NULL;
+	}
+	switch (m->type) {
+	case N_BLOCK:
+	case N_CASE:
+	case N_FOREVER:
+	    d = max2(d, d_stmt(m->l.left));
+	    break;
+
+	case N_DO:
+	case N_FOR:
+	case N_WHILE:
+	    d = max3(d, d_expr(m->l.left), d_stmt(m->r.right));
+	    break;
+
+	case N_IF:
+	    d = max3(d, d_expr(m->l.left),
+		     max2(d_stmt(m->r.right->l.left),
+			  d_stmt(m->r.right->r.right)));
+	    break;
+
+	case N_PAIR:
+	    d = max2(d, d_stmt(m));
+	    break;
+
+	case N_POP:
+	case N_RETURN:
+	    d = max2(d, d_expr(m->l.left));
+	    break;
+
+	case N_SWITCH_INT:
+	case N_SWITCH_RANGE:
+	case N_SWITCH_STR:
+	    d = max2(d, d_expr(m->r.right->l.left));
+	    break;
+	}
+    }
+    return d;
+}
+
+/*
  * NAME:	compile->funcbody()
  * DESCRIPTION:	create a function body
  */
@@ -758,8 +1022,8 @@ node *n;
     char *prog;
     unsigned short size;
 
-    prog = cg_function(c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0))),
-		       nvars, nparams, &size);
+    n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
+    prog = cg_function(n, nvars, nparams, d_stmt(n), &size);
     ctrl_dprogram(prog, size);
     node_free();
     nvars = 0;
@@ -1583,11 +1847,21 @@ node *c_continue()
 
 /*
  * NAME:	compile->ftype()
- * DESCRIPTION:	handle a return statement
+ * DESCRIPTION:	return the type of the current function
  */
 short c_ftype()
 {
     return ftype;
+}
+
+/*
+ * NAME:	compile->vtype()
+ * DESCRIPTION:	return the type of a variable
+ */
+short c_vtype(i)
+int i;
+{
+    return variables[i].type;
 }
 
 /*
@@ -1842,9 +2116,7 @@ node *n;
 		t = a;
 		a = (node *) NULL;
 	    }
-	    if (t->type == N_LVALUE &&
-		((t=t->l.left)->type == N_LOCAL ||
-		 (t->type == N_CAST && (t=t->l.left)->type == N_LOCAL)) &&
+	    if (t->type == N_LVALUE && (t=t->l.left)->type == N_LOCAL &&
 		t->mod == T_NUMBER) {
 		/*
 		 * assignment to local integer variable
