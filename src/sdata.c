@@ -54,7 +54,7 @@ typedef struct {
 
 static char sd_layout[] = "dssiiiiuu";
 
-typedef struct _svalue_ {
+struct _svalue_ {
     short type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
     union {
@@ -63,7 +63,7 @@ typedef struct _svalue_ {
 	Uint objcnt;		/* object creation count */
 	Uint array;		/* array */
     } u;
-} svalue;
+};
 
 static char sv_layout[] = "sui";
 
@@ -93,6 +93,8 @@ typedef struct {
 static char sco_layout[] = "is[sui][sui][sui][sui]";
 
 typedef struct {
+    arrmerge *amerge;			/* array merge table */
+    strmerge *smerge;			/* string merge table */
     Uint narr;				/* # of arrays */
     Uint nstr;				/* # of strings */
     Uint arrsize;			/* # of array elements */
@@ -105,7 +107,6 @@ typedef struct {
 
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
-static dataplane *plist;		/* list of dataplanes */
 static sector nctrl;			/* # control blocks */
 static sector ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
@@ -1404,7 +1405,7 @@ register unsigned short n;
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (str_put(v->u.string, save->nstr) >= save->nstr) {
+	    if (str_put(save->smerge, v->u.string, save->nstr) == save->nstr) {
 		save->nstr++;
 		save->strsize += v->u.string->len;
 	    }
@@ -1412,7 +1413,7 @@ register unsigned short n;
 
 	case T_ARRAY:
 	case T_MAPPING:
-	    if (arr_put(v->u.array) >= save->narr) {
+	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
 		}
@@ -1453,10 +1454,10 @@ register unsigned short n;
 	    break;
 
 	case T_STRING:
-	    i = str_put(v->u.string, save->nstr);
+	    i = str_put(save->smerge, v->u.string, save->nstr);
 	    sv->oindex = 0;
 	    sv->u.string = i;
-	    if (i >= save->nstr) {
+	    if (i == save->nstr) {
 		/* new string value */
 		save->sstrings[i].index = save->strsize;
 		save->sstrings[i].len = v->u.string->len;
@@ -1477,10 +1478,10 @@ register unsigned short n;
 
 	case T_ARRAY:
 	case T_MAPPING:
-	    i = arr_put(v->u.array);
+	    i = arr_put(save->amerge, v->u.array, save->narr);
 	    sv->oindex = 0;
 	    sv->u.array = i;
-	    if (i >= save->narr) {
+	    if (i == save->narr) {
 		svalue *tmp;
 
 		/* new array */
@@ -1778,6 +1779,8 @@ register dataspace *data;
 	/*
 	 * count the number and sizes of strings and arrays
 	 */
+	save.amerge = arr_merge();
+	save.smerge = str_merge();
 	save.narr = 0;
 	save.nstr = 0;
 	save.arrsize = 0;
@@ -1876,9 +1879,9 @@ register dataspace *data;
 	    }
 	}
 
-	/* clear hash tables */
-	str_clear();
-	arr_clear();
+	/* clear merge tables */
+	arr_clear(save.amerge);
+	str_clear(save.smerge);
 
 	text = save.stext;
 	if (header.strsize >= CMPLIMIT) {

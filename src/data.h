@@ -1,5 +1,7 @@
 # include "swap.h"
 
+typedef struct _svalue_ svalue;
+
 typedef struct {
     uindex oindex;		/* inherited object */
     uindex funcoffset;		/* function call offset */

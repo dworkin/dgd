@@ -42,6 +42,7 @@ typedef struct _coptable_ {
 typedef struct {
     array **itab;			/* imported array replacement table */
     Uint itabsz;			/* size of table */
+    arrmerge *merge;			/* array merge table */
     Uint narr;				/* # of arrays */
 } arrimport;
 
@@ -1545,8 +1546,8 @@ register unsigned short n;
 		/*
 		 * imported array
 		 */
-		i = arr_put(a);
-		if (i >= imp->narr) {
+		i = arr_put(imp->merge, a, imp->narr);
+		if (i == imp->narr) {
 		    /*
 		     * first time encountered
 		     */
@@ -1595,8 +1596,7 @@ register unsigned short n;
 			imp->itab = REALLOC(imp->itab, array*, imp->itabsz, j);
 			imp->itabsz = j;
 		    }
-		    arr_put(imp->itab[i] = a);
-		    imp->narr++;
+		    arr_put(imp->merge, imp->itab[i] = a, imp->narr++);
 
 		    if (a->size > 0) {
 			/*
@@ -1612,7 +1612,7 @@ register unsigned short n;
 		    arr_del(val->u.array);
 		    val->u.array = a;
 		}
-	    } else if (arr_put(a) >= imp->narr) {
+	    } else if (arr_put(imp->merge, a, imp->narr) == imp->narr) {
 		/*
 		 * not previously encountered mapping or array
 		 */
@@ -1646,7 +1646,9 @@ void d_export()
 	for (data = ifirst; data != (dataspace *) NULL; data = data->inext) {
 	    if (data->base.imports != 0) {
 		data->base.imports = 0;
+		imp.merge = arr_merge();
 		imp.narr = 0;
+
 		if (data->variables != (value *) NULL) {
 		    d_import(&imp, data, data->variables, data->nvariables);
 		}
@@ -1680,7 +1682,7 @@ void d_export()
 			co++;
 		    }
 		}
-		arr_clear();	/* clear hash table */
+		arr_clear(imp.merge);	/* clear merge table */
 	    }
 	    data->iprev = (dataspace *) NULL;
 	}
@@ -1761,9 +1763,9 @@ object *tmpl;
 
     data->base.flags |= MOD_VARIABLE;
     if (data->nvariables != nvar) {
-	if (data->svariables != (struct _svalue_ *) NULL) {
+	if (data->svariables != (svalue *) NULL) {
 	    FREE(data->svariables);
-	    data->svariables = (struct _svalue_ *) NULL;
+	    data->svariables = (svalue *) NULL;
 	}
 	data->nvariables = nvar;
 	data->base.achange++;	/* force rebuild on swapout */

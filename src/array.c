@@ -25,6 +25,13 @@ typedef struct _arrhchunk_ {
     arrh ah[ARR_CHUNK];		/* chunk of arrh entries */
 } arrhchunk;
 
+struct _arrmerge_ {
+    arrh **ht;			/* array merge table */
+    arrh **alink;		/* linked list of merged arrays */
+    arrhchunk *ahlist;		/* linked list of all arrh chunks */
+    int ahchunksz;		/* size of current arrh chunk */
+};
+
 # define MELT_CHUNK	128
 
 typedef struct _mapelt_ {
@@ -67,14 +74,9 @@ static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
 static array *flist;		/* free array list */
-static arrh **ht;		/* array merge table */
-static arrh **alink;		/* linked list of merged arrays */
-static arrhchunk *ahlist;	/* linked list of all arrh chunks */
-static int ahchunksz;		/* size of current arrh chunk */
 static mapelt *fmelt;		/* free mapelt list */
 static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
-static Uint idx;		/* current building index */
 
 /*
  * NAME:	array->init()
@@ -85,10 +87,7 @@ unsigned int size;
 {
     max_size = size;
     tag = 0;
-    ht = ALLOC(arrh*, ARRMERGETABSZ);
-    memset(ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
     achunksz = ARR_CHUNK;
-    ahchunksz = ARR_CHUNK;
     meltchunksz = MELT_CHUNK;
 }
 
@@ -252,15 +251,35 @@ void arr_freeall()
 }
 
 /*
- * NAME:	array->put()
- * DESCRIPTION:	Put an array in the merge table, and return its "index".
+ * NAME:	array->merge()
+ * DESCRIPTION:	create an array merge table
  */
-Uint arr_put(a)
+arrmerge *arr_merge()
+{
+    register arrmerge *merge;
+
+    merge = ALLOC(arrmerge, 1);
+    merge->ht = ALLOC(arrh*, ARRMERGETABSZ);
+    memset(merge->ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
+    merge->alink = (arrh **) NULL;
+    merge->ahlist = (arrhchunk *) NULL;
+    merge->ahchunksz = ARR_CHUNK;
+
+    return merge;
+}
+
+/*
+ * NAME:	array->put()
+ * DESCRIPTION:	Put an array in a merge table, and return its "index".
+ */
+Uint arr_put(merge, a, idx)
+register arrmerge *merge;
 register array *a;
+Uint idx;
 {
     register arrh **h;
 
-    for (h = &ht[(unsigned long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
+    for (h = &merge->ht[(unsigned long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
 	 h = &(*h)->next) {
 	if ((*h)->arr == a) {
 	    return (*h)->index;
@@ -269,35 +288,36 @@ register array *a;
     /*
      * Add a new entry to the hash table.
      */
-    if (ahchunksz == ARR_CHUNK) {
+    if (merge->ahchunksz == ARR_CHUNK) {
 	register arrhchunk *l;
 
 	l = ALLOC(arrhchunk, 1);
-	l->next = ahlist;
-	ahlist = l;
-	ahchunksz = 0;
+	l->next = merge->ahlist;
+	merge->ahlist = l;
+	merge->ahchunksz = 0;
     }
-    *h = &ahlist->ah[ahchunksz++];
+    *h = &merge->ahlist->ah[merge->ahchunksz++];
     (*h)->next = (arrh *) NULL;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
-    (*h)->link = alink;
-    alink = h;
+    (*h)->link = merge->alink;
+    merge->alink = h;
 
-    return idx++;
+    return idx;
 }
 
 /*
  * NAME:	array->clear()
- * DESCRIPTION:	clear the array merge table
+ * DESCRIPTION:	clear an array merge table
  */
-void arr_clear()
+void arr_clear(merge)
+register arrmerge *merge;
 {
     register arrh **h;
     register arrhchunk *l;
 
     /* clear hash table */
-    for (h = alink; h != (arrh **) NULL; ) {
+    for (h = merge->alink; h != (arrh **) NULL; ) {
 	register arrh *f;
 
 	f = *h;
@@ -305,19 +325,18 @@ void arr_clear()
 	arr_del(f->arr);
 	h = f->link;
     }
-    alink = (arrh **) NULL;
-    idx = 0;
+    FREE(merge->ht);
 
     /* free array hash chunks */
-    for (l = ahlist; l != (arrhchunk *) NULL; ) {
+    for (l = merge->ahlist; l != (arrhchunk *) NULL; ) {
 	register arrhchunk *f;
 
 	f = l;
 	l = l->next;
 	FREE(f);
     }
-    ahlist = (arrhchunk *) NULL;
-    ahchunksz = ARR_CHUNK;
+
+    FREE(merge);
 }
 
 

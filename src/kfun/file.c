@@ -86,7 +86,8 @@ typedef struct {
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
-    uindex narrays;		/* number of arrays/mappings encountered */
+    arrmerge *merge;		/* array merge table */
+    Uint narrays;		/* number of arrays/mappings encountered */
 } savecontext;
 
 /*
@@ -173,14 +174,14 @@ register savecontext *x;
 array *a;
 {
     char buf[16];
-    register uindex i;
+    register Uint i;
     register value *v;
     xfloat flt;
 
-    i = arr_put(a);
+    i = arr_put(x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
-	sprintf(buf, "#%u", i);
+	sprintf(buf, "#%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
@@ -237,14 +238,15 @@ register savecontext *x;
 array *a;
 {
     char buf[16];
-    register uindex i, n;
+    register Uint i;
+    register uindex n;
     register value *v;
     xfloat flt;
 
-    i = arr_put(a);
+    i = arr_put(x->merge, a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
-	sprintf(buf, "@%u", i);
+	sprintf(buf, "@%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
@@ -387,6 +389,7 @@ register frame *f;
 
     ctrl = f->ctrl;
     data = f->data;
+    x.merge = arr_merge();
     x.narrays = 0;
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
@@ -439,7 +442,7 @@ register frame *f;
 	}
     }
 
-    arr_clear();
+    arr_clear(x.merge);
     if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
 	AFREE(x.buffer);
@@ -477,7 +480,7 @@ typedef struct {
     frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
     int achunksz;		/* size of current array chunk */
-    uindex narrays;		/* # of arrays/mappings */
+    Uint narrays;		/* # of arrays/mappings */
     char file[STRINGSZ];	/* current restore file */
 } restcontext;
 
@@ -509,9 +512,9 @@ array *a;
  */
 static value *ac_get(x, n)
 restcontext *x;
-register uindex n;
+register Uint n;
 {
-    register uindex sz;
+    register Uint sz;
     register achunk *l;
 
     n = x->narrays - n;
@@ -828,10 +831,10 @@ register value *val;
 
     case '#':
 	buf = restore_int(x, buf + 1, val);
-	if ((uindex) val->u.number >= x->narrays) {
+	if ((Uint) val->u.number >= x->narrays) {
 	    restore_error(x, "bad array reference");
 	}
-	*val = *ac_get(x, (uindex) val->u.number);
+	*val = *ac_get(x, (Uint) val->u.number);
 	if (val->type != T_ARRAY) {
 	    restore_error(x, "bad array reference");
 	}
@@ -839,10 +842,10 @@ register value *val;
 
     case '@':
 	buf = restore_int(x, buf + 1, val);
-	if ((uindex) val->u.number >= x->narrays) {
+	if ((Uint) val->u.number >= x->narrays) {
 	    restore_error(x, "bad mapping reference");
 	}
-	*val = *ac_get(x, (uindex) val->u.number);
+	*val = *ac_get(x, (Uint) val->u.number);
 	if (val->type != T_MAPPING) {
 	    restore_error(x, "bad mapping reference");
 	}
@@ -951,7 +954,6 @@ register frame *f;
     pending = FALSE;
     if (ec_push((ec_ftn) NULL)) {
 	/* error; clean up */
-	arr_clear();
 	ac_clear(&x);
 	if (onstack) {
 	    AFREE(buffer);
@@ -1049,7 +1051,6 @@ register frame *f;
 		     * finished restoring
 		     */
 		    ec_pop();
-		    arr_clear();
 		    ac_clear(&x);
 		    if (onstack) {
 			AFREE(buffer);

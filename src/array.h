@@ -8,6 +8,7 @@ struct _array_ {
     struct _arrref_ *primary;		/* primary reference */
 };
 
+typedef struct _arrmerge_ arrmerge;	/* array merge table */
 typedef struct _abchunk_ abchunk;	/* array backup chunk */
 
 extern void		arr_init	P((unsigned int));
@@ -18,8 +19,9 @@ extern array	       *arr_ext_new	P((dataspace*, long));
 extern void		arr_del		P((array*));
 extern void		arr_freeall	P((void));
 
-extern Uint		arr_put		P((array*));
-extern void		arr_clear	P((void));
+extern arrmerge	       *arr_merge	P((void));
+extern Uint		arr_put		P((arrmerge*, array*, Uint));
+extern void		arr_clear	P((arrmerge*));
 
 extern void		arr_backup	P((abchunk**, array*));
 extern void		arr_commit	P((abchunk**, dataplane*, int));

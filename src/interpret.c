@@ -1662,10 +1662,7 @@ register char *pc;
 	    break;
 
 	case I_CALL_DFUNC:
-	    u = FETCH1U(pc);
-	    if (u != 0) {
-		u = f->p_index - u;
-	    }
+	    u = f->p_index - FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    i_funcall(f, (object *) NULL, u, u2, FETCH1U(pc) + size);
 	    size = 0;

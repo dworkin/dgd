@@ -1064,9 +1064,6 @@ sector *fragment;
 	return FALSE;
     }
 
-    /* initialize strings */
-    str_init();
-
     /* initialize arrays */
     arr_init((int) conf[ARRAY_SIZE].u.num);
 
