@@ -1074,19 +1074,7 @@ int nargs;
     register Int l;
     int fd;
 
-    switch (nargs) {
-    case 0:
-    case 1:
-	return -1;
-
-    case 2:
-	l = 0;
-	break;
-
-    case 3:
-	l = (f->sp++)->u.number;
-	break;
-    }
+    l = (nargs < 3) ? 0 : (f->sp++)->u.number;
     if (path_string(file, f->sp[1].u.string->text,
 		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
@@ -1157,11 +1145,7 @@ int nargs;
 	size = (f->sp++)->u.number;
     case 2:
 	l = (f->sp++)->u.number;	/* offset in file */
-    case 1:
 	break;
-
-    case 0:
-	return -1;
     }
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {

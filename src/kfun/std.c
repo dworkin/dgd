@@ -69,10 +69,6 @@ int nargs;
     register object *obj;
     register value *val;
 
-    if (nargs < 2) {
-	return -1;
-    }
-
     val = &f->sp[nargs - 1];
     switch (val->type) {
     case T_STRING:
@@ -903,9 +899,6 @@ int nargs;
     object *obj;
     uindex handle;
 
-    if (nargs < 2) {
-	return -1;
-    }
     if (f->sp[nargs - 2].u.number < 0) {
 	return 2;
     }

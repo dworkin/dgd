@@ -23,10 +23,6 @@ int nargs;
 	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     char salt[3], *p;
     
-    if (nargs == 0) {
-	return -1;
-    }
-
     if (nargs == 2 && f->sp->u.string->len >= 2) {
 	/* fixed salt */
 	salt[0] = f->sp->u.string->text[0];
@@ -341,9 +337,7 @@ int nargs;
     xfloat flt;
     bool skip;
 
-    if (nargs < 2) {
-	return -1;
-    } else if (nargs > MAX_LOCALS + 2) {
+    if (nargs > MAX_LOCALS + 2) {
 	return 4;
     }
     s = f->sp[nargs - 1].u.string->text;
@@ -591,9 +585,6 @@ int nargs;
     Int maxalt;
     array *a;
 
-    if (nargs < 2) {
-	return -1;
-    }
     if (nargs > 2) {
 	maxalt = (f->sp++)->u.number + 1;
 	if (maxalt <= 0) {

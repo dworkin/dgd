@@ -1251,3 +1251,4 @@ DGD 1.1
    Varargs is implied for the last parameter when using ellipsis, and need no
    longer be specified explicitly.
  - Changed over kfuns to the new varargs system.
+ - Removed some kfun argument count checks that have become superfluous.
