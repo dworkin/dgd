@@ -32,6 +32,16 @@ unsigned short port_number;
 }
 
 /*
+ * NAME:	conn->finish()
+ * DESCRIPTION:	terminate connections
+ */
+void conn_finish()
+{
+    tty.sg_flags |= ECHO;
+    ioctl(1, TIOCSETP, &tty);
+}
+
+/*
  * NAME:	conn->new()
  * DESCRIPTION:	accept a new connection
  */
