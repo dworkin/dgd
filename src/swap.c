@@ -531,22 +531,11 @@ sector sw_count()
     return nsectors - nfree;
 }
 
-
-typedef struct {
-    Uint secsize;		/* size of swap sector */
-    sector nsectors;		/* # sectors */
-    sector ssectors;		/* # swap sectors */
-    sector nfree;		/* # free sectors */
-    sector mfree;		/* free sector list */
-} dump_header;
-
-static char dh_layout[] = "idddd";
-
 /*
  * NAME:	swap->copy()
  * DESCRIPTION:	copy sectors from dumpfile to swapfile
  */
-void sw_copy()
+bool sw_copy()
 {
     if (dump >= 0) {
 	if (dsectors > 0) {
@@ -562,9 +551,23 @@ void sw_copy()
 	if (dsectors == 0) {
 	    P_close(dump);
 	    dump = -1;
+	    return FALSE;
 	}
+	return TRUE;
     }
+    return FALSE;
 }
+
+
+typedef struct {
+    Uint secsize;		/* size of swap sector */
+    sector nsectors;		/* # sectors */
+    sector ssectors;		/* # swap sectors */
+    sector nfree;		/* # free sectors */
+    sector mfree;		/* free sector list */
+} dump_header;
+
+static char dh_layout[] = "idddd";
 
 /*
  * NAME:	swap->dump()

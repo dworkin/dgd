@@ -9,8 +9,6 @@
 
 # define NFREE		32
 
-extern thread_id driver;		/* driver thread */
-
 typedef struct _ipaddr_ {
     struct _ipaddr_ *link;		/* next in hash table */
     struct _ipaddr_ *prev;		/* previous in linked list */
@@ -20,8 +18,7 @@ typedef struct _ipaddr_ {
     char name[MAXHOSTNAMELEN];		/* ip name */
 } ipaddr;
 
-static port_id port = -1;		/* named => driver port */
-static thread_id named = -1;		/* name lookup thread */
+static int in = -1, out = -1;		/* name resolver sockets */
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -38,11 +35,11 @@ static bool busy;			/* name resolver busy */
 static int32 ipa_run(void *arg)
 {
     char buf[sizeof(struct in_addr)];
-    thread_id thread;
     struct hostent *host;
+    char hname[MAXHOSTNAMELEN + 1];
     int len;
 
-    while (receive_data(&thread, buf, sizeof(struct in_addr)) == B_OK) {
+    while (recv(out, buf, sizeof(struct in_addr), 0) > 0) {
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), AF_INET);
 	if (host == (struct hostent *) NULL) {
@@ -52,9 +49,14 @@ static int32 ipa_run(void *arg)
 
 	if (host != (struct hostent *) NULL) {
 	    /* send host name */
-	    write_port(port, 0, host->h_name, strlen(host->h_name) + 1);
+	    len = strlen(host->h_name);
+	    if (len >= MAXHOSTNAMELEN) {
+		len = MAXHOSTNAMELEN - 1;
+	    }
+	    memcpy(hname + 1, host->h_name, hname[0] = len);
+	    send(out, hname, len + 1, 0);
 	} else {
-	    write_port(port, 0, "", 1);	/* failure */
+	    send(out, "\1", 2, 0);	/* failure */
 	}
     }
 
@@ -67,16 +69,16 @@ static int32 ipa_run(void *arg)
  */
 static bool ipa_init(int maxusers)
 {
-    if (port == -1) {
-	port = create_port(1, "named => driver");
-	named = spawn_thread(ipa_run, "name_lookup", B_NORMAL_PRIORITY, NULL);
-	resume_thread(named);
+    if (in < 0) {
+	in = socket(AF_INET, SOCK_STREAM, 0);
+	if (in < 0) {
+	    return FALSE;
+	}
     } else if (busy) {
-	char buf[MAXHOSTNAMELEN];
-	int32 code;
+	char buf[MAXHOSTNAMELEN + 2];
 
 	/* discard ip name */
-	read_port(port, &code, buf, MAXHOSTNAMELEN);
+	recv(in, buf, MAXHOSTNAMELEN + 2, 0);
     }
 
     ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
@@ -89,19 +91,31 @@ static bool ipa_init(int maxusers)
 }
 
 /*
+ * NAME:	ipaddr->start()
+ * DESCRIPTION:	start name resolver thread
+ */
+static void ipa_start(int sock)
+{
+    if (out < 0) {
+	struct sockaddr_in addr;
+	int len;
+
+	len = sizeof(struct sockaddr_in);
+	getsockname(sock, (struct sockaddr *) &addr, &len);
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	connect(in, (struct sockaddr *) &addr, len);
+	out = accept(sock, (struct sockaddr *) &addr, &len);
+	resume_thread(spawn_thread(ipa_run, "name_lookup", B_NORMAL_PRIORITY,
+				   NULL));
+    }
+}
+
+/*
  * NAME:	ipaddr->finish()
  * DESCRIPTION:	stop name lookup
  */
-static void ipa_finish()
+static void ipa_finish(void)
 {
-    if (port >= 0) {
-	delete_port(port);
-	port = -1;
-    }
-    if (named >= 0) {
-	kill_thread(named);
-	named = -1;
-    }
 }
 
 /*
@@ -186,7 +200,7 @@ static ipaddr *ipa_new(struct in_addr *ipnum)
 
     if (!busy) {
 	/* send query to name resolver */
-	send_data(named, 0, (char *) ipnum, sizeof(struct in_addr));
+	send(in, (char *) ipnum, sizeof(struct in_addr), 0);
 	ipa->prev = ipa->next = (ipaddr *) NULL;
 	lastreq = ipa;
 	busy = TRUE;
@@ -247,22 +261,28 @@ static void ipa_del(ipaddr *ipa)
 static void ipa_lookup()
 {
     ipaddr *ipa;
-    int32 code;
 
     if (lastreq != (ipaddr *) NULL) {
+	unsigned char len;
+
 	/* read ip name */
-	read_port(port, &code, lastreq->name, MAXHOSTNAMELEN);
+	recv(in, &len, 1, 0);
+	if (len == 0) {
+	    return;	/* interrupt */
+	}
+	recv(in, lastreq->name, len, 0);
+	lastreq->name[len] = '\0';
     } else {
-	char buf[MAXHOSTNAMELEN];
+	char buf[MAXHOSTNAMELEN + 2];
 
 	/* discard ip name */
-	read_port(port, &code, buf, MAXHOSTNAMELEN);
+	recv(in, buf, MAXHOSTNAMELEN + 2, 0);
     }
 
     /* if request queue not empty, write new query */
     if (qhead != (ipaddr *) NULL) {
 	ipa = qhead;
-	send_data(named, 0, (char *) &ipa->ipnum, sizeof(struct in_addr));
+	send(in, (char *) &ipa->ipnum, sizeof(struct in_addr), 0);
 	qhead = ipa->next;
 	if (qhead == (ipaddr *) NULL) {
 	    qtail = (ipaddr *) NULL;
@@ -334,19 +354,7 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	return FALSE;
     }
     on = TRUE;
-    if (setsockopt(telnet, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	return FALSE;
-    }
-    on = TRUE;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		   sizeof(on)) < 0) {
-	perror("setsockopt");
-	return FALSE;
-    }
-    on = TRUE;
-    if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
@@ -393,9 +401,13 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     FD_SET(telnet, &infds);
     FD_SET(binary, &infds);
     FD_SET(udp, &infds);
+    FD_SET(in, &infds);
     maxfd = (telnet < binary) ? binary : telnet;
     if (maxfd < udp) {
 	maxfd = udp;
+    }
+    if (maxfd < in) {
+	maxfd = in;
     }
 
     closed = 0;
@@ -430,9 +442,25 @@ void conn_finish()
  */
 void conn_listen()
 {
+    int on;
+
     if (listen(telnet, 64) < 0 || listen(binary, 64) < 0) {
 	perror("listen");
 	fatal("conn_listen failed");
+    }
+    ipa_start(binary);
+
+    on = TRUE;
+    if (setsockopt(telnet, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
+		   sizeof(on)) < 0) {
+	perror("setsockopt");
+	fatal("setsockopt failed");
+    }
+    on = TRUE;
+    if (setsockopt(binary, SOL_SOCKET, SO_NONBLOCK, (char *) &on,
+		   sizeof(on)) < 0) {
+	perror("setsockopt");
+	fatal("setsockopt failed");
     }
 }
 
@@ -578,6 +606,18 @@ void conn_block(connection *conn, int flag)
 }
 
 /*
+ * NAME:	conn->intr()
+ * DESCRIPTION:	make sure select() is interrupted
+ */
+void conn_intr(void)
+{
+    char intr;
+
+    intr = '\0';
+    send(out, &intr, 1, 0);
+}
+
+/*
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
@@ -648,7 +688,7 @@ int conn_select(Uint t, unsigned int mtime)
     }
 
     /* handle ip name lookup */
-    if (port_count(port) != 0) {
+    if (FD_ISSET(in, &readfds)) {
 	ipa_lookup();
     }
     return retval;

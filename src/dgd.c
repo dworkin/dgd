@@ -158,6 +158,7 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
+    bool swrebuild;
     Uint timeout;
     unsigned short mtime;
 
@@ -188,10 +189,19 @@ char **argv;
 	}
 
 	/* rebuild swapfile */
-	sw_copy();
+	swrebuild = sw_copy();
 
 	/* handle user input */
 	timeout = co_delay(&mtime);
+	if (swrebuild &&
+	    (mtime == 0xffff || timeout > 1 || (timeout == 1 && mtime != 0))) {
+	    /*
+	     * wait no longer than one second if the swapfile has to be
+	     * rebuilt
+	     */
+	    timeout = 1;
+	    mtime = 0;
+	}
 	comm_receive(cframe, timeout, mtime);
 
 	/* callouts */

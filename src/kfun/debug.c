@@ -12,6 +12,7 @@ register short class;
     if (class & C_COMPILED) printf("compiled ");
     if (class & C_TYPECHECKED) printf("typechecked ");
     if (class & C_UNDEFINED) printf("undefined ");
+    if (class & C_ATOMIC) printf("atomic ");
     if (class & C_PRIVATE) printf("private ");
     if (class & C_STATIC) printf("static ");
     if (class & C_NOMASK) printf("nomask ");
@@ -51,7 +52,7 @@ control *ctrl;
 
     printf("inherits:\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("  %s (%u, %u)\n", ctrl->inherits[i].obj->chain.name,
+	printf("  /%s (%u, %u)\n", OBJR(ctrl->inherits[i].oindex)->chain.name,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset);
     }
@@ -92,7 +93,7 @@ control *ctrl;
 	    control *c2;
 	    dfuncdef *f;
 
-	    c2 = ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].obj->ctrl;
+	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex)->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->funcalls[2 * i + 1]);
 	    printf("%3u: %s(%d, %d)\n", i,
 		   d_get_strconst(c2, f->inherit, f->index)->text,
@@ -109,7 +110,7 @@ control *ctrl;
 	    char *name;
 
 	    printf("%3u: (%u) ", i, ctrl->symbols[i].next);
-	    c2 = ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].obj->ctrl;
+	    c2 = OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex)->ctrl;
 	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
 	    name = d_get_strconst(c2, f->inherit, f->index)->text;
 	    show_proto(name, d_get_prog(c2) + f->offset);
@@ -171,7 +172,7 @@ char *s;
     codesize -= size;
 
     if (pop) {
-	printf("P\t");
+	printf(" P\t");
     } else {
 	putchar('\t');
     }
@@ -199,11 +200,15 @@ int func;
     pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
     show_proto(d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
 			      ctrl->funcdefs[func].index)->text, pc);
-    u2 = PROTO_CLASS(pc) & C_COMPILED;
+    u2 = PROTO_CLASS(pc);
+    if (u2 & C_UNDEFINED) {
+	putchar('\n');
+	return;
+    }
     pc += PROTO_SIZE(pc);
     printf("; depth %u,", FETCH2U(pc, u));
     printf(" %u local vars\n", FETCH1U(pc));
-    if (u2) {
+    if (u2 & C_COMPILED) {
 	return;
     }
 
@@ -255,7 +260,7 @@ int func;
 	    flt.high = FETCH2U(pc, u);
 	    flt.low = FETCH4U(pc, l);
 	    flt_ftoa(&flt, fltbuf);
-	    sprintf(buffer, "PUSH_FLOAT6 %s", fltbuf);
+	    sprintf(buffer, "PUSH_FLOAT %s", fltbuf);
 	    show_instr(buffer);
 	    break;
 
@@ -305,7 +310,7 @@ int func;
 	    codesize = 3;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    cc = ctrl->inherits[u].obj->ctrl;
+	    cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
 	    d_get_vardefs(cc);
 	    sprintf(buffer, "PUSH_FAR_GLOBAL %s",
 		    d_get_strconst(cc, cc->vardefs[u2].inherit,
@@ -354,7 +359,7 @@ int func;
 		codesize = 4;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
-		cc = ctrl->inherits[u].obj->ctrl;
+		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
 		d_get_vardefs(cc);
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s (%s)",
 			d_get_strconst(cc, cc->vardefs[u2].inherit,
@@ -364,7 +369,7 @@ int func;
 		codesize = 3;
 		u = FETCH1U(pc);
 		u2 = FETCH1U(pc);
-		cc = ctrl->inherits[u].obj->ctrl;
+		cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
 		d_get_vardefs(cc);
 		sprintf(buffer, "PUSH_FAR_GLOBAL_LVALUE %s",
 			d_get_strconst(cc, cc->vardefs[u2].inherit,
@@ -394,7 +399,7 @@ int func;
 	case I_AGGREGATE:
 	    codesize = 4;
 	    u = FETCH1U(pc);
-	    sprintf(buffer, "AGGREGATE %s %u", (u) ? "map" : "array",
+	    sprintf(buffer, "AGGREGATE %s %u", (u) ? "mapping" : "array",
 		    FETCH2U(pc, u2));
 	    show_instr(buffer);
 	    break;
@@ -573,7 +578,7 @@ int func;
 	case I_CALL_AFUNC:
 	    codesize = 3;
 	    u = FETCH1U(pc);
-	    cc = ctrl->inherits[0].obj->ctrl;
+	    cc = OBJR(ctrl->inherits[0].oindex)->ctrl;
 	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_AFUNC %s %u",
 		    d_get_strconst(cc, cc->funcdefs[u].inherit,
@@ -586,9 +591,9 @@ int func;
 	    codesize = 4;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    cc = ctrl->inherits[u].obj->ctrl;
+	    cc = OBJR(ctrl->inherits[u].oindex)->ctrl;
 	    d_get_funcdefs(cc);
-	    sprintf(buffer, "CALL_DFUNC [%u] %s %u", u2,
+	    sprintf(buffer, "CALL_DFUNC %s %u",
 		    d_get_strconst(cc, cc->funcdefs[u2].inherit,
 				   cc->funcdefs[u2].index)->text,
 		    FETCH1U(pc));
@@ -599,11 +604,11 @@ int func;
 	    codesize = 4;
 	    FETCH2U(pc, u);
 	    u += ctrl->inherits[ctrl->ninherits - 1].funcoffset;
-	    u2 = d_get_funcalls(ctrl)[2 * u];
-	    u3 = ctrl->funcalls[2 * u + 1];
-	    cc = ctrl->inherits[u2].obj->ctrl;
+	    u2 = UCHAR(d_get_funcalls(ctrl)[2 * u]);
+	    u3 = UCHAR(ctrl->funcalls[2 * u + 1]);
+	    cc = OBJR(ctrl->inherits[u2].oindex)->ctrl;
 	    d_get_funcdefs(cc);
-	    sprintf(buffer, "CALL_FUNC [%u] %s %u", u2,
+	    sprintf(buffer, "CALL_FUNC [%u, %u] %s %u", u2, u3,
 		    d_get_strconst(cc, cc->funcdefs[u3].inherit,
 				   cc->funcdefs[u3].index)->text,
 		    FETCH1U(pc));
@@ -674,7 +679,7 @@ frame *f;
 	control *ctrl;
 
 	ctrl = o_control(OBJR(f->sp[1].oindex));
-	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
+	disasm(o_control(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)),
 	       UCHAR(symb->index));
 	fflush(stdout);
     }

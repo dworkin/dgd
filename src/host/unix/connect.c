@@ -45,12 +45,7 @@ register int in, out;
     struct hostent *host;
     register int len;
 
-    for (;;) {
-	/* read request */
-	if (read(in, buf, sizeof(struct in_addr)) <= 0) {
-	    exit(0);	/* pipe closed */
-	}
-
+    while (read(in, buf, sizeof(struct in_addr)) > 0) {
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
 	if (host == (struct hostent *) NULL) {
@@ -69,6 +64,8 @@ register int in, out;
 	    write(out, "", 1);	/* failure */
 	}
     }
+
+    exit(0);	/* pipe closed */
 }
 
 /*

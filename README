@@ -59,11 +59,27 @@ a full list, consult the file src/Changelog):
  - DGD has been made restartable without quitting on Windows, Mac and BeOS.
 
 
+DGD 1.2 has changed behaviour in one significant way: the semantics of
+send_message() have changed, and the function message_done() is now
+called in the user object whenever the output buffer has drained --
+not just after a message couldn't be sent completely right away.  One
+effect of this is that the kernel library that came with DGD 1.1 may
+not work with later versions.  This is because the standard user object
+in the old version of the kernel library does not have a message_done()
+function.  To get it to work, add the following function to
+/kernel/lib/user.c:
+
+    int message_done()
+    {
+	return MODE_NOCHANGE;
+    }
+
+
 *WARNING*
 
 It is possible to use statedumps created by DGD 1.1 with 1.2.  However, you
 must first make sure that there are no partially upgraded objects in the
-statedump that DGD 1.1 (or any version up to 1.1.96) created.
+statedump that DGD 1.1 (or any version prior to 1.1.97) created.
 
 A partially upgraded object is a clone whose master object has been
 recompiled, but which itself hasn't been upgraded yet.  DGD 1.2 handles

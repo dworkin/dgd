@@ -1409,3 +1409,6 @@ DGD 1.1
  - Even trickier than I thought.
  - Make sure the return value of an atomic function is on the proper plane.
  - Better fix for the above.
+ - Rebuild the swapfile slowly, even if there is no socket and/or callout
+   activity.
+ - Fixed the quit/interrupt problem on BeOS.

@@ -39,12 +39,7 @@ static void ipa_run(void *dummy)
     struct hostent *host;
     int len;
 
-    for (;;) {
-	/* read request */
-	if (recv(out, buf, sizeof(struct in_addr), 0) <= 0) {
-	    return;	/* connection closed */
-	}
-
+    while (recv(out, buf, sizeof(struct in_addr), 0) > 0) {
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), PF_INET);
 	if (host == (struct hostent *) NULL) {
@@ -94,7 +89,7 @@ static bool ipa_init(int maxusers)
 
 /*
  * NAME:	ipadd->start()
- * DESCRIPTION:	start resolver thread
+ * DESCRIPTION:	start name resolver thread
  */
 static void ipa_start(SOCKET sock)
 {
@@ -464,15 +459,15 @@ void conn_listen(void)
 
     nonblock = TRUE;
     if (ioctlsocket(telnet, FIONBIO, &nonblock) != 0) {
-	fatal("fcntl() failed");
+	fatal("ioctlsocket() failed");
     }
     nonblock = TRUE;
     if (ioctlsocket(binary, FIONBIO, &nonblock) != 0) {
-	fatal("fcntl() failed");
+	fatal("ioctlsocket() failed");
     }
     nonblock = TRUE;
     if (ioctlsocket(udp, FIONBIO, &nonblock) != 0) {
-	fatal("fcntl() failed");
+	fatal("ioctlsocket() failed");
     }
 }
 

@@ -29,7 +29,9 @@ extern "C" {
 # undef bool
 # undef exit
 
-thread_id driver;		/* driver thread */
+extern void conn_intr(void);
+
+static thread_id driver;		/* driver thread */
 
 /*
  * NAME:	term()
@@ -38,6 +40,7 @@ thread_id driver;		/* driver thread */
 static void term(int arg)
 {
     interrupt();
+    conn_intr();
 }
 
 void dgd_exit(int code)
@@ -505,6 +508,7 @@ bool DGD::QuitRequested()
 {
     if (dgd_running) {
 	interrupt();
+	conn_intr();
 	return false;
     }
     return true;

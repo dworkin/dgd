@@ -2280,7 +2280,6 @@ register dataspace *data;
 register array *arr;
 register value *elt, *val;
 {
-
     if (data->plane->level != arr->primary->data->plane->level) {
 	/*
 	 * bring dataspace of imported array up to the current plane level

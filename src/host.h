@@ -214,7 +214,7 @@ typedef unsigned int Uint;
 # endif
 
 # ifdef INCLUDE_TELNET
-# include <arpa/telnet.h>
+# include "host/telnet.h"
 # endif
 
 # include <stdlib.h>
@@ -260,7 +260,7 @@ typedef unsigned int Uint;
 # endif
 
 # ifdef INCLUDE_TELNET
-# include <arpa/telnet.h>
+# include "host/telnet.h"
 # endif
 
 # include <stdlib.h>
