@@ -48,6 +48,15 @@ string query_directory()
     return directory;
 }
 
+/*
+ * NAME:	query_history()
+ * DESCRIPTION:	return the current value history
+ */
+static mixed *query_history()
+{
+    return history[..];
+}
+
 
 /*
  * NAME:	access()
