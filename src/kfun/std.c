@@ -314,7 +314,7 @@ register frame *f;
     }
     obj = o_clone(obj);
     PUT_OBJ(f->sp, obj);
-    if (i_call(f, obj, (array *) NULL, (char *) NULL, 0, FALSE, 0)) {
+    if (i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
     return 0;
@@ -385,7 +385,7 @@ register frame *f;
 	}
 
 	PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
-	if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, FALSE,
+	if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, TRUE,
 		   0)) {
 	    i_del_value(f->sp++);
 	}
