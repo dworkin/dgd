@@ -1548,3 +1548,4 @@ DGD 1.3
  - Allow allocation of blocks up to 1G in size.
  - Allow more than array_size callouts per object, for compatibility with
    DGD/MP.
+ - Fixed a bug that could cause a crash during the atomic commit phase.

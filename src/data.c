@@ -844,8 +844,6 @@ value *retval;
 		p->prev->strings = p->strings;
 	    }
 	}
-
-	data->plane = p->prev;
     }
     commit_values(retval, 1, level - 1);
 
@@ -857,6 +855,7 @@ value *retval;
 	p->prev->schange = p->schange;
 	p->prev->achange = p->achange;
 	p->prev->imports = p->imports;
+	p->alocal.data->plane = p->prev;
 	plist = p->plist;
 	FREE(p);
     }
