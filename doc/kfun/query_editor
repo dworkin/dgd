@@ -7,7 +7,7 @@ SYNOPSIS
 
 DESCRIPTION
 	Return the editor status of an object.  This is either "command", if
-	the editor instance is in command mode, "input", if the editor instance
+	the editor instance is in command mode, "insert", if the editor instance
 	is in input mode, or 0, if there is no editor instance for the given
 	object.
 
