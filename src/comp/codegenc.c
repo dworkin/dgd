@@ -187,38 +187,32 @@ node *n;
  * NAME:	codegen->iasgn()
  * DESCRIPTION:	handle general integer assignment (operator) case
  */
-static void cg_iasgn(n, pre, op, i)
+static void cg_iasgn(n, op, i)
 register node *n;
-char *pre, *op;
-int i;
+char *op;
+register int i;
 {
-    int j;
-
     if (i < 0) {
 	/* assignment on stack */
 	if (n->type == N_INT) {
-	    output("%s sp->u.number %s ", pre, op);
+	    output("sp->u.number %s ", op);
 	    cg_iexpr(n);
 	} else {
-	    j = tmpval();
-	    output("tv[%d] = ", j);
+	    i = tmpval();
+	    output("tv[%d] = ", i);
 	    cg_iexpr(n);
-	    output(", %s sp->u.number %s tv[%d]", pre, op, j);
+	    output(", sp->u.number %s tv[%d]", op, i);
 	}
-    } else if (catch_level == 0) {
-	/* assignment to register var */
-	output("%s ivar%d %s ", pre, vars[i], op);
-	cg_iexpr(n);
-    } else if (i >= nparam && n->type != N_INT) {
-	/* assignment to local var */
-	j = tmpval();
-	output("tv[%d] = ", j);
-	cg_iexpr(n);
-	output(", %s %s->u.number %s tv[%d]", pre, local(i), op, j);
     } else {
-	/* assignment to parameter */
-	output("%s %s->u.number %s ", pre, local(i), op);
+	/* assignment to register var */
+	if (catch_level != 0) {
+	    output("ivar%d = %s->u.number, ", vars[i], local(i));
+	}
+	output("ivar%d %s ", vars[i], op);
 	cg_iexpr(n);
+	if (catch_level != 0) {
+	    output(", %s->u.number = ivar%d", local(i), vars[i]);
+	}
     }
 }
 
@@ -231,10 +225,10 @@ register node *n;
 char *op;
 {
     if (n->l.left->type == N_LOCAL) {
-	cg_iasgn(n->r.right, "", op, (int) n->l.left->r.number);
+	cg_iasgn(n->r.right, op, (int) n->l.left->r.number);
     } else {
 	cg_fetch(n->l.left);
-	cg_iasgn(n->r.right, "", op, -1);
+	cg_iasgn(n->r.right, op, -1);
 	output(", store_int()");
     }
 }
@@ -247,11 +241,35 @@ static void cg_uasgnop(n, op)
 register node *n;
 char *op;
 {
+    register int i;
+
     if (n->l.left->type == N_LOCAL) {
-	cg_iasgn(n->r.right, "(Uint)", op, (int) n->l.left->r.number);
+	/*
+	 * local variable
+	 */
+	i = n->l.left->r.number;
+	n = n->r.right;
+	/* assignment to register var */
+	if (catch_level != 0) {
+	    output("ivar%d = %s->u.number, ", vars[i], local(i));
+	}
+	output("ivar%d = (Uint) ivar%d %s ", vars[i], vars[i], op);
+	cg_iexpr(n);
+	if (catch_level != 0) {
+	    output(", %s->u.number = ivar%d", local(i), vars[i]);
+	}
     } else {
 	cg_fetch(n->l.left);
-	cg_iasgn(n->r.right, "(Uint)", op, -1);
+	n = n->r.right;
+	if (n->type == N_INT) {
+	    output("sp->u.number = (Uint) sp->u.number %s ", op);
+	    cg_iexpr(n);
+	} else {
+	    i = tmpval();
+	    output("tv[%d] = ", i);
+	    cg_iexpr(n);
+	    output(", sp->u.number = (Uint) sp->u.number %s tv[%d]", op, i);
+	}
 	output(", store_int()");
     }
 }
@@ -264,22 +282,31 @@ static void cg_ifasgnop(n, op)
 register node *n;
 char *op;
 {
-    if (n->l.left->type == N_LOCAL) {
-	if (catch_level == 0) {
-	    output("ivar%d = %s(ivar%d, ", vars[n->l.left->r.number], op,
-		   vars[n->l.left->r.number]);
-	} else {
-	    char *p;
+    register int i;
 
-	    p = local((int) n->l.left->r.number);
-	    output("%s->u.number = %s(%s->u.number, ", p, op, p);
+    if (n->l.left->type == N_LOCAL) {
+	i = n->l.left->r.number;
+	if(catch_level != 0) {
+	    output("ivar%d = %s->u.number, ", vars[i], local(i));
 	}
+	output("ivar%d = %s(ivar%d, ", vars[i], op, vars[i]);
 	cg_iexpr(n->r.right);
 	output(")");
+	if (catch_level != 0) {
+	    output(", %s->u.number = ivar%d", local(i), vars[i]);
+	}
     } else {
 	cg_fetch(n->l.left);
-	output("sp->u.number = %s(sp->u.number, ", op);
-	cg_iexpr(n->r.right);
+	n = n->r.right;
+	if (n->type == N_INT) {
+	    output("sp->u.number = %s(sp->u.number, ", op);
+	    cg_iexpr(n);
+	} else {
+	    i = tmpval();
+	    output("tv[%d] = %s(sp->u.number, ", i, op);
+	    cg_iexpr(n);
+	    output(", sp->u.number = tv[%d]", op, i);
+	}
 	output("), store_int()");
     }
 }
@@ -473,7 +500,7 @@ register node *n;
 	break;
 
     case N_LSHIFT_EQ_INT:
-	cg_uasgnop(n, "<<=");
+	cg_uasgnop(n, "<<");
 	break;
 
     case N_LT_INT:
@@ -555,7 +582,7 @@ register node *n;
 	break;
 
     case N_RSHIFT_EQ_INT:
-	cg_uasgnop(n, ">>=");
+	cg_uasgnop(n, ">>");
 	break;
 
     case N_SUB_INT:
@@ -942,7 +969,7 @@ register int state;
 
     case N_ASSIGN:
 	if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
-	    cg_iasgn(n->r.right, "", "=", (int) n->l.left->r.number);
+	    cg_iasgn(n->r.right, "=", (int) n->l.left->r.number);
 	    if (state == PUSH) {
 		if (catch_level == 0) {
 		    output(", PUSH_NUMBER ivar%d", vars[n->l.left->r.number]);

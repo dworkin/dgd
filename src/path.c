@@ -61,6 +61,22 @@ char *file;
 }
 
 /*
+ * NAME:	path->from()
+ * DESCRIPTION:	resolve a (possibly relative) path
+ */
+char *path_from(from, file)
+register char *from, *file;
+{
+    char buf[STRINGSZ];
+
+    if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
+	sprintf(buf, "%s/../%s", from, file);
+	return path_resolve(buf);
+    }
+    return path_resolve(file);
+}
+
+/*
  * NAME:	path->ed_read()
  * DESCRIPTION:	resolve an editor read file path
  */
@@ -104,22 +120,6 @@ char *file;
 	str_del((sp++)->u.string);
 	return file;
     }
-}
-
-/*
- * NAME:	path->from()
- * DESCRIPTION:	resolve a (possibly relative) path
- */
-static char *path_from(from, file)
-register char *from, *file;
-{
-    char buf[STRINGSZ];
-
-    if (file[0] != '/' && strlen(from) + strlen(file) < STRINGSZ - 4) {
-	sprintf(buf, "%s/../%s", from, file);
-	return path_resolve(buf);
-    }
-    return path_resolve(file);
 }
 
 /*

@@ -107,7 +107,7 @@ bool telnet;
     (*usr)->conn = conn;
     if (telnet) {
 	/* initialize connection */
-	conn_write(conn, init, sizeof(init));
+	conn_write(conn, init, sizeof(init), FALSE);
 	(*usr)->flags = CF_TELNET | CF_ECHO;
 	(*usr)->state = TS_DATA;
 	(*usr)->newlines = 0;
@@ -203,7 +203,7 @@ string *str;
 		 * double the telnet IAC character
 		 */
 		if (size == OUTBUF_SIZE) {
-		    conn_write(usr->conn, q = usr->outbuf, size);
+		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		    size = 0;
 		}
 		*q++ = IAC;
@@ -213,7 +213,7 @@ string *str;
 		 * insert CR before LF
 		 */
 		if (size == OUTBUF_SIZE) {
-		    conn_write(usr->conn, q = usr->outbuf, size);
+		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		    size = 0;
 		}
 		*q++ = CR;
@@ -227,7 +227,7 @@ string *str;
 		continue;
 	    }
 	    if (size == OUTBUF_SIZE) {
-		conn_write(usr->conn, q = usr->outbuf, size);
+		conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		size = 0;
 	    }
 	    *q++ = *p++;
@@ -250,7 +250,7 @@ string *str;
 	    d_assign_var(data, d_get_variable(data, data->nvariables - 1),
 			 &zero_value);
 	}
-	size = conn_write(usr->conn, p, len);
+	size = conn_write(usr->conn, p, len, TRUE);
 	if (size != len) {
 	    value v;
 
@@ -290,7 +290,7 @@ int echo;
 	buf[0] = IAC;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
-	conn_write(usr->conn, buf, 3);
+	conn_write(usr->conn, buf, 3, FALSE);
 	usr->flags ^= CF_ECHO;
     }
 }
@@ -319,7 +319,7 @@ int prompt;
 		     * sent
 		     */
 		    if (size >= OUTBUF_SIZE - 2) {
-			conn_write((*usr)->conn, (*usr)->outbuf, size);
+			conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 			size = 0;
 		    }
 		    p = (*usr)->outbuf + size;
@@ -327,7 +327,7 @@ int prompt;
 		    *p++ = GA;
 		    size += 2;
 		}
-		conn_write((*usr)->conn, (*usr)->outbuf, size);
+		conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 		(*usr)->outbufsz = 0;
 	    }
 	}
@@ -519,17 +519,17 @@ int *size;
 				break;
 
 			    case IP:
-				conn_write((*usr)->conn, intr, 1);
+				conn_write((*usr)->conn, intr, 1, FALSE);
 				state = TS_DATA;
 				break;
 
 			    case BREAK:
-				conn_write((*usr)->conn, brk, 1);
+				conn_write((*usr)->conn, brk, 1, FALSE);
 				state = TS_DATA;
 				break;
 
 			    case AYT:
-				conn_write((*usr)->conn, ayt, 9);
+				conn_write((*usr)->conn, ayt, 9, FALSE);
 				state = TS_DATA;
 				break;
 
@@ -542,10 +542,10 @@ int *size;
 
 			case TS_DO:
 			    if (UCHAR(*p) == TELOPT_TM) {
-				conn_write((*usr)->conn, tm, 3);
+				conn_write((*usr)->conn, tm, 3, FALSE);
 			    } else if (UCHAR(*p) == TELOPT_SGA) {
 				flags &= ~CF_GA;
-				conn_write((*usr)->conn, will_sga, 3);
+				conn_write((*usr)->conn, will_sga, 3, FALSE);
 			    }
 			    state = TS_DATA;
 			    break;
@@ -553,7 +553,7 @@ int *size;
 			case TS_DONT:
 			    if (UCHAR(*p) == TELOPT_SGA) {
 				flags |= CF_GA;
-				conn_write((*usr)->conn, wont_sga, 3);
+				conn_write((*usr)->conn, wont_sga, 3, FALSE);
 			    }
 			    state = TS_DATA;
 			    break;
@@ -561,7 +561,7 @@ int *size;
 			case TS_WILL:
 			    if (UCHAR(*p) == TELOPT_LINEMODE) {
 				/* linemode confirmed; now request editing */
-				conn_write((*usr)->conn, mode_edit, 7);
+				conn_write((*usr)->conn, mode_edit, 7, FALSE);
 			    }
 			    /* fall through */
 			case TS_WONT:
@@ -609,7 +609,7 @@ int *size;
 		    v = d_get_variable(data, data->nvariables - 1);
 		    n = conn_write((*usr)->conn,
 				   v->u.string->text + (*usr)->osoffset,
-				   (*usr)->outbufsz);
+				   (*usr)->outbufsz, TRUE);
 		    if (n > 0) {
 			(*usr)->osoffset += n;
 			(*usr)->outbufsz -= n;
@@ -718,7 +718,7 @@ object *obj;
 	/*
 	 * flush last bit of output
 	 */
-	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz);
+	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz, FALSE);
     }
     comm_del(usr, TRUE);
 }

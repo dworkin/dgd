@@ -372,7 +372,7 @@ node *label;
 	    /* precompiling */
 	    sp++;
 	    inheriting = FALSE;
-	    file = path_resolve(file);
+	    file = path_from(current->file, file);
 	    obj = o_find(file);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;

@@ -970,3 +970,6 @@ DGD 1.1
    activity.
  - With global typechecking, a function without declared type has type void.
  - Fixed some bugs in new output buffer handling.
+ - During precompilation, inherit paths without a leading slash are now
+   considered to be relative to the current directory, rather than absolute.
+ - C code generated for >>= and <<= operators made more portable.
