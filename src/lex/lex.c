@@ -23,7 +23,7 @@ char *argv[];
 {
     register int c;
 
-    pp_init(argv[1], paths);
+    pp_init(argv[1], paths, 0);
 
     while ((c=pp_gettok()) != EOF) {
 	switch (c) {

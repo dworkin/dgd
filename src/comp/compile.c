@@ -1,9 +1,9 @@
 # include "comp.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "path.h"
 # include "lex.h"
 # include "fcontrol.h"
@@ -323,6 +323,11 @@ node *label;
 	    yyerror("illegal inherit path");
 	    return TRUE;
 	}
+	if (strcmp(file, driver_object) == 0) {
+	    /* would mess up too many things */
+	    yyerror("illegal to inherit driver object");
+	    return TRUE;
+	}
 	for (c = current; c != (context *) NULL; c = c->prev) {
 	    if (strcmp(file, c->file) == 0) {
 		yyerror("cycle in inheritance");
@@ -364,7 +369,11 @@ register char *file;
     c.prev = current;
     current = &c;
 
-    strcpy(file_c, path_file(c.file));
+    file = path_file(c.file);
+    if (file == (char *) NULL) {
+	error("Illegal file name \"/%s\"", c.file);
+    }
+    strcpy(file_c, file);
     strcat(file_c, ".c");
 
     for (;;) {
@@ -388,7 +397,7 @@ register char *file;
 	if (strchr(c.file, '#') != (char *) NULL) {
 	    error("Illegal file name \"/%s\"", c.file);
 	}
-	if (!pp_init(file_c, paths)) {
+	if (!pp_init(file_c, paths, 1)) {
 	    if (!c_autodriver()) {
 		/*
 		 * Object can't be loaded.  Ask the driver object for
@@ -405,7 +414,8 @@ register char *file;
 		    object *o;
 		    char *name;
 
-		    o = o_object(&(sp++)->u.object);
+		    o = o_object(sp->oindex, sp->u.objcnt);
+		    sp++;
 		    name = o_name(o);
 		    if (strcmp(name, auto_object) == 0) {
 			error("Illegal rename of auto object");
@@ -425,7 +435,7 @@ register char *file;
 		 */
 		i_del_value(sp++);
 	    }
-	    error("Could not compile \"/%s\"", c.file);
+	    error("Could not compile \"/%s.c\"", c.file);
 	}
 	if (!tk_include(include)) {
 	    pp_clear();
@@ -469,7 +479,7 @@ register char *file;
 	    pp_clear();
 	    ctrl_clear();
 	    c_clear();
-	    error("Failed to compile \"/%s\"", c.file);
+	    error("Failed to compile \"/%s.c\"", c.file);
 	}
 	recursion = FALSE;
 	errorlog((char *) NULL);
@@ -484,13 +494,19 @@ register char *file;
 		/*
 		 * object with inherit statements only (or nothing at all)
 		 */
-		ctrl_create();
+		ctrl_create(c.file);
 	    }
-	    ctrl = ctrl_construct(c.file);
+	    ctrl = ctrl_construct();
 	    ctrl_clear();
 	    c_clear();
 	    current = c.prev;
 	    obj = ctrl->inherits[ctrl->nvirtuals - 1].obj;
+	    if (strcmp(c.file, auto_object) == 0) {
+		/*
+		 * this is the auto object
+		 */
+		obj->flags |= O_AUTO;
+	    }
 	    if (strcmp(c.file, driver_object) == 0) {
 		/*
 		 * this is the driver object
@@ -585,6 +601,7 @@ bool function;
 	if (type != T_VOID && (type & T_TYPE) == T_VOID) {
 	    yyerror("invalid type for function %s (%s)", str->text,
 		    c_typename(type));
+	    type = T_MIXED;
 	}
     }
 
@@ -633,6 +650,10 @@ bool function;
 
     /* define prototype */
     if (function) {
+	if (cg_compiled()) {
+	    /* LPC compiled to C */
+	    PROTO_CLASS(proto) |= C_COMPILED;
+	}
 	ftype = type;
 	ctrl_dfunc(str, proto);
     } else {
@@ -706,7 +727,7 @@ unsigned short class, type;
 node *n;
 {
     if (!seen_decls) {
-	ctrl_create();
+	ctrl_create(current->file);
 	seen_decls = TRUE;
     }
     c_decl_list(class, type, n, TRUE);
@@ -721,7 +742,7 @@ unsigned short class, type;
 register node *n;
 {
     if (!seen_decls) {
-	ctrl_create();
+	ctrl_create(current->file);
 	seen_decls = TRUE;
     }
     c_decl_func(class, type | n->mod, n->l.left->l.string, n->r.right, TRUE);
@@ -1709,7 +1730,8 @@ node *args;
 	return node_mon(N_FAKE, T_MIXED, (node *) NULL);
     }
     proto = func->l.ptr;
-    func->mod = PROTO_FTYPE(proto);
+    func->mod = (PROTO_FTYPE(proto) == T_IMPLICIT) ?
+		 T_MIXED : PROTO_FTYPE(proto);
     func->l.left = args;
     argv = &func->l.left;
 
