@@ -158,17 +158,16 @@ nomask void _F_destruct()
 	    }
 	}
 
+	/*
+	 * remove callouts
+	 */
+	rsrcd->remove_callouts(this_object(), owner,
+			       (resources && resources["callouts"]) ?
+				resources["callouts"] : 0);
+
 	if (resources) {
 	    string *names;
 	    int *values;
-
-	    if (resources["callouts"]) {
-		/*
-		 * remove callouts
-		 */
-		rsrcd->remove_callouts(this_object(), owner,
-				       resources["callouts"]);
-	    }
 
 	    /*
 	     * decrease resources associated with object
@@ -787,12 +786,12 @@ static mixed remove_call_out(int handle)
 nomask void _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
-	int handle;
-
 	if (!suspended &&
 	    !::find_object(RSRCD)->suspended(this_object(), owner)) {
 	    _F_call_limited(function, args);
 	} else {
+	    int handle;
+
 	    handle = ::call_out("_F_callout", LONG_TIME, function, TRUE, args);
 	    if (!suspended) {
 		::find_object(RSRCD)->suspend(this_object(), owner, handle);

@@ -1884,7 +1884,7 @@ static void cmd_status(object user, string cmd, string str)
 	       ralign(status[ST_DMEMSIZE], 9) + " (" +
   ralign((int) ((float) status[ST_DMEMUSED] * 100.0 /
 	 (float) status[ST_DMEMSIZE]), 3) +
-  "%) +  long term:    " + ralign(long, 5) + "         (" +
+  "%) +  other:        " + ralign(long, 5) + "         (" +
   ((short + long == 0) ? "  0" : ralign(long * 100 / (short + long), 3)) +
   "%) +\n" +
 "          " +

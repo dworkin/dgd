@@ -1959,6 +1959,7 @@ value *val, *elt;
 		    if (add) {
 			d_assign_elt(data, m, &e->idx, &nil_value);
 			d_assign_elt(data, m, &e->val, &nil_value);
+			m->hashed->sizemod--;
 		    }
 
 		    *p = e->next;

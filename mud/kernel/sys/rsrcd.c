@@ -18,6 +18,7 @@ mixed *first_suspended;		/* first suspended callout */
 mixed *last_suspended;		/* last suspended callout */
 object suspender;		/* object that suspended callouts */
 int suspend;			/* callouts suspended */
+int nocallouts;			/* don't use callouts as a resource */
 
 /*
  * NAME:	create()
@@ -29,7 +30,6 @@ static void create()
     resources = ([
       "objects" :	({ -1,  0,    0 }),
       "events" :	({ -1,  0,    0 }),
-      "callouts" :	({ -1,  0,    0 }),
       "stack" :		({ -1,  0,    0 }),
       "ticks" :		({ -1,  0,    0 }),
       "tick usage" :	({ -1, 10, 3600 }),
@@ -38,8 +38,41 @@ static void create()
       "create stack" :	({ -1,  0,    0 }),
       "create ticks" :	({ -1,  0,    0 }),
     ]);
+    nocallouts = !CALLOUTRSRC;
+    if (!nocallouts) {
+    	resources["callouts"] = ({ -1, 0, 0 });
+    }
 
     owners = ([ ]);		/* no resource owners yet */
+}
+
+/*
+ * NAME:	remove_callouts_rsrc()
+ * DESCRIPTION:	remove callouts as a resource
+ */
+void remove_callouts_rsrc()
+{
+    if (SYSTEM()) {
+	int *rsrc, i;
+	object *objects;
+
+	if (nocallouts) {
+	    error("Callouts resource already removed");
+	}
+	objects = map_values(owners);
+	i = sizeof(objects);
+	rlimits (-1; -1) {
+	    /*
+	     * This will leave a "callouts":num pair in all objects that
+	     * currently have callouts, unfortunately.
+	     */
+	    nocallouts = TRUE;
+	    while (i != 0) {
+		objects[--i]->remove_rsrc("callouts");
+	    }
+	    resources["callouts"] = nil;
+	}
+    }
 }
 
 /*
@@ -234,6 +267,9 @@ int rsrc_incr(string owner, string name, mixed index, int incr,
     if (KERNEL()) {
 	object obj;
 
+	if (name == "callouts" && nocallouts) {
+	    return TRUE;
+	}
 	if (!(obj=owners[owner])) {
 	    error("No such resource owner: " + owner);
 	}
@@ -265,8 +301,8 @@ int update_ticks(mixed *limits, int ticks)
 	if (limits[LIM_MAXTICKS] > 0 &&
 	    (!limits[LIM_NEXT] ||
 	     limits[LIM_OWNER] != limits[LIM_NEXT][LIM_OWNER])) {
-	    owners[limits[LIM_OWNER]]->update_ticks(ticks = limits[LIM_MAXTICKS]
-								    - ticks);
+	    owners[limits[LIM_OWNER]]->update_ticks(ticks =
+						limits[LIM_MAXTICKS] - ticks);
 	    ticks = (limits[LIM_TICKS] >= 0) ?
 		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}
@@ -343,8 +379,10 @@ int suspended(object obj, string owner)
 	if (suspend != 0 && obj != suspender) {
 	    return TRUE;
 	}
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
-				 FALSE);
+	if (!nocallouts) {
+	    owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				     FALSE);
+	}
 	return FALSE;
     }
 }
@@ -387,8 +425,10 @@ int remove_callout(object obj, string owner, int handle)
 	mapping callouts;
 	mixed *callout;
 
-	owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
-				 FALSE);
+	if (!nocallouts) {
+	    owners[owner]->rsrc_incr("callouts", obj, -1, resources["callouts"],
+				     FALSE);
+	}
 
 	if (suspended && (callouts=suspended[obj]) &&
 	    (callout=callouts[handle])) {
@@ -426,8 +466,10 @@ void remove_callouts(object obj, string owner, int n)
 	mixed **callouts, *callout;
 	int i;
 
-	owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"],
-				 FALSE);
+	if (!nocallouts && n != 0) {
+	    owners[owner]->rsrc_incr("callouts", obj, -n, resources["callouts"],
+				     FALSE);
+	}
 
 	if (suspended && suspended[obj]) {
 	    callouts = map_values(suspended[obj]);
@@ -477,8 +519,10 @@ static void release()
 	suspended = nil;
 	suspend = 0;
     }
-    owners[callout[CO_OWNER]]->rsrc_incr("callouts", obj, -1,
-					 resources["callouts"], FALSE);
+    if (!nocallouts) {
+	owners[callout[CO_OWNER]]->rsrc_incr("callouts", obj, -1,
+					     resources["callouts"], FALSE);
+    }
     obj->_F_release(handle);
 }
 
