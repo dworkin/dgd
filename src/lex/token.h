@@ -1,6 +1,3 @@
-extern char *yytext;
-extern long yynumber;
-
 extern void		 tk_init	P((void));
 extern void		 tk_clear	P((void));
 extern bool		 tk_include	P((char*));
@@ -13,3 +10,7 @@ extern void		 tk_setpp	P((bool));
 extern int		 tk_gettok	P((void));
 extern void		 tk_skiptonl	P((bool));
 extern int		 tk_expand	P((macro*));
+
+extern char *yytext;
+extern int yyleng;
+extern long yynumber;
