@@ -1331,7 +1331,8 @@ register value *v;
 	break;
 
     case 4:	/* O_CALLOUTS */
-	a = (obj->flags & O_CREATED) ? co_list(data, obj) : arr_new(data, 0L);
+	a = (obj->flags & O_CREATED) ?
+	     d_list_callouts(data, o_dataspace(obj)) : arr_new(data, 0L);
 	v->type = T_ARRAY;
 	arr_ref(v->u.array = a);
 	break;

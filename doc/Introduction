@@ -93,6 +93,15 @@ driver, mostly to translate pathnames.
 	ticks.  <ticks> specifies the amount of ticks left at the moment
 	the error occurred.
 
+    void atomic_error(string error, int atom, int ticks)
+
+	Called when a runtime error occurs in atomic code.  <atom> is an
+	an index in the return value of call_trace(), indicating the frame in
+	which the atomically executed code starts.  atomic_error() is called
+	with rlimits (-1; -1) so it will not run out of stack or ticks.
+	<ticks> specifies the amount of ticks left at the moment the error
+	occurred.
+
     int compile_rlimits(string objname)
 
 	An object uses the rlimits (stackdepth; ticks) { /* code */ }

@@ -1421,7 +1421,7 @@ void i_catcherr(f, depth)
 frame *f;
 Int depth;
 {
-    i_runtime_error(f, depth + 1);
+    i_runtime_error(f, depth);
 }
 
 /*
@@ -1746,7 +1746,6 @@ int funci;
 	f.obj = obj;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
-	f.depth = 0;
 	f.external = TRUE;
     } else if (obj != (object *) NULL) {
 	/*
@@ -1755,7 +1754,6 @@ int funci;
 	f.obj = obj;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
-	f.depth = prev_f->depth + 1;
 	f.external = TRUE;
     } else {
 	/*
@@ -1764,9 +1762,9 @@ int funci;
 	f.obj = prev_f->obj;
 	f.ctrl = prev_f->ctrl;
 	f.data = prev_f->data;
-	f.depth = prev_f->depth + 1;
 	f.external = FALSE;
     }
+    f.depth = prev_f->depth + 1;
     f.rlim = prev_f->rlim;
     if (f.depth >= f.rlim->maxdepth && !f.rlim->nodepth) {
 	error("Stack overflow");
@@ -1983,31 +1981,6 @@ int funci;
     cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
-}
-
-/*
- * NAME:	interpret->restore()
- * DESCRIPTION:	restore state to given level
- */
-frame *i_restore(ftop, level)
-frame *ftop;
-Int level;
-{
-    register frame *f;
-
-    for (f = ftop; f->level != level; f = f->prev) ;
-    if (f != ftop) {
-	if (f->rlim != ftop->rlim) {
-	    i_set_rlimits(ftop, f->rlim);
-	}
-	if (!f->rlim->noticks) {
-	    f->rlim->ticks *= 2;
-	}
-	i_set_sp(ftop, f->sp);
-	d_del_plane(ftop->level);
-    }
-
-    return f;
 }
 
 /*
@@ -2365,6 +2338,47 @@ Int depth;
     } else {
 	i_del_value(f->sp++);
     }
+}
+
+/*
+ * NAME:	interpret->restore()
+ * DESCRIPTION:	restore state to given level
+ */
+frame *i_restore(ftop, level)
+register frame *ftop;
+Int level;
+{
+    register frame *f;
+
+    for (f = ftop; f->level != level; f = f->prev) ;
+    if (f != ftop) {
+	char *err;
+
+	err = errormesg();
+	(--ftop->sp)->type = T_STRING;
+	str_ref(ftop->sp->u.string = str_new(err, (long) strlen(err)));
+	(--ftop->sp)->type = T_INT;
+	ftop->sp->u.number = f->depth;
+	(--ftop->sp)->type = T_INT;
+	ftop->sp->u.number = i_get_ticks(ftop);
+	if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
+	    message("Error within atomic_error:\012");	/* LF */
+	    message((char *) NULL);
+	} else {
+	    i_del_value(ftop->sp++);
+	}
+
+	if (f->rlim != ftop->rlim) {
+	    i_set_rlimits(ftop, f->rlim);
+	}
+	if (!f->rlim->noticks) {
+	    f->rlim->ticks *= 2;
+	}
+	i_set_sp(ftop, f->sp);
+	d_del_plane(ftop->level);
+    }
+
+    return f;
 }
 
 /*

@@ -1300,3 +1300,6 @@ DGD 1.1
  - Partial implementation of atomic functions.
  - Forbid file changes in atomically executed code.
  - Fixed a slew of bugs in atomic functions.
+ - In case of an error in atomic code, call driver->atomic_error() with the
+   full stack trace.  Everything will be undone later, except for all use of
+   send_message() by the driver object.

@@ -930,7 +930,6 @@ int nargs;
     Int delay;
     unsigned short mdelay;
     xfloat flt1, flt2;
-    object *obj;
     uindex handle;
 
     if (f->sp[nargs - 2].type == T_INT) {
@@ -955,10 +954,9 @@ int nargs;
     }
 
     i_add_ticks(f, nargs);
-    obj = f->obj;
-    if (obj->count != 0 &&
-	(handle=co_new(obj, f->sp[nargs - 1].u.string, delay, mdelay, f,
-		       nargs - 2)) != 0) {
+    if (f->obj->count != 0 &&
+	(handle=d_new_call_out(f->data, f->sp[nargs - 1].u.string, delay,
+			       mdelay, f, nargs - 2)) != 0) {
 	/* pop duration */
 	f->sp++;
     } else {
@@ -991,7 +989,7 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 10);
-    delay = co_del(f->obj, (uindex) f->sp->u.number);
+    delay = d_del_call_out(f->data, (uindex) f->sp->u.number);
     if (delay < -1) {
 	f->sp->type = T_FLOAT;
 	flt_itof(-2 - delay, &flt);

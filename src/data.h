@@ -209,10 +209,11 @@ extern void		d_wipe_extravar	P((dataspace*));
 extern void		d_assign_elt	P((dataspace*, array*, value*, value*));
 extern void		d_change_map	P((array*));
 
-extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
-					   int));
-extern string	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,
-					   frame*, int*));
+extern uindex		d_new_call_out	P((dataspace*, string*, Int,
+					   unsigned int, frame*, int));
+extern Int		d_del_call_out	P((dataspace*, unsigned int));
+extern string	       *d_get_call_out	P((dataspace*, unsigned int, frame*,
+					   int*));
 extern array	       *d_list_callouts	P((dataspace*, dataspace*));
 
 extern void		d_export	P((void));

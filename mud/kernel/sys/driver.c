@@ -811,6 +811,67 @@ static runtime_error(string str, int caught, int ticks)
 }
 
 /*
+ * NAME:	atomic_error()
+ * DESCRIPTION:	log a runtime error in atomic code
+ */
+static atomic_error(string str, int atom, int ticks)
+{
+    mixed **trace;
+    string line, function, progname, objname;
+    int i, sz, len;
+    object obj;
+
+    trace = call_trace();
+    sz = sizeof(trace) - 1;
+
+    if (errord) {
+	errord->atomic_error(str, atom, trace);
+    } else {
+	str += " [atomic]\n";
+
+	for (i = atom; i < sz; i++) {
+	    progname = trace[i][TRACE_PROGNAME];
+	    len = trace[i][TRACE_LINE];
+	    if (len == 0) {
+		line = "    ";
+	    } else {
+		line = "    " + len;
+		line = line[strlen(line) - 4 ..];
+	    }
+
+	    function = trace[i][TRACE_FUNCTION];
+	    len = strlen(function);
+	    if (progname == AUTO && i != sz - 1 && len > 3) {
+		switch (function[.. 2]) {
+		case "bad":
+		case "_F_":
+		case "_Q_":
+		    continue;
+		}
+	    }
+	    if (len < 17) {
+		function += "                 "[len ..];
+	    }
+
+	    objname = trace[i][TRACE_OBJNAME];
+	    if (progname != objname) {
+		len = strlen(progname);
+		if (len < strlen(objname) && progname == objname[.. len - 1] &&
+		    objname[len] == '#') {
+		    objname = objname[len ..];
+		}
+		str += line + " " + function + " " + progname + " (" + objname +
+		       ")\n";
+	    } else {
+		str += line + " " + function + " " + progname + "\n";
+	    }
+	}
+
+	message(str);
+    }
+}
+
+/*
  * NAME:	compile_error()
  * DESCRIPTION:	deal with a compilation error
  */

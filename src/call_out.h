@@ -1,8 +1,14 @@
+typedef struct _cbuf_ cbuf;
+
 extern void	co_init		P((unsigned int));
-extern uindex	co_new		P((object*, string*, Int, unsigned int, frame*,
-				   int));
-extern Int	co_del		P((object*, unsigned int));
-extern array   *co_list		P((dataspace*, object*));
+extern Uint	co_check	P((unsigned int, unsigned int,
+				   Int, unsigned int,
+				   Uint*, unsigned short*, cbuf**));
+extern void	co_new		P((unsigned int, object*, Uint, unsigned int,
+				   cbuf*));
+extern Int	co_remaining	P((Uint));
+extern void	co_del		P((object*, unsigned int, Uint));
+extern void	co_list		P((array*));
 extern void	co_call		P((frame*));
 extern void	co_info    	P((uindex*, uindex*));
 extern Uint	co_delay	P((unsigned short*));

@@ -78,6 +78,10 @@ void set_error_manager(object errord)	[System only]
 
 	A runtime error has occurred.
 
+    * void atomic_error(string error, int atom, mixed **trace)
+
+	A runtime error has occurred in atomic code.
+
     * void compile_error(string file, int line, string error)
 
 	A compile-time error has occurred.

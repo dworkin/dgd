@@ -8,7 +8,7 @@ SYNOPSIS
 DESCRIPTION
 	Find the named function, which must be callable with call_other(),
 	in an object.  If the function is found, the name of the inherited
-	object that defines it is returned; otherwise, zero is returned.
+	object that defines it is returned; otherwise, nil is returned.
 
 SEE ALSO
 	kfun/call_other

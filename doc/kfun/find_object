@@ -8,7 +8,7 @@ SYNOPSIS
 DESCRIPTION
 	The string argument is resolved as a file path, and the object with
 	the resulting name is searched for.  Either the object, if found, or
-	zero is returned.
+	nil is returned.
 
 SEE ALSO
 	kfun/object_name

@@ -1664,24 +1664,32 @@ register dataspace *data;
  * NAME:	data->new_call_out()
  * DESCRIPTION:	add a new callout
  */
-uindex d_new_call_out(data, func, t, f, nargs)
+uindex d_new_call_out(data, func, delay, mdelay, f, nargs)
 register dataspace *data;
 string *func;
-Uint t;
+Int delay;
+unsigned int mdelay;
 register frame *f;
 int nargs;
 {
     register dcallout *co;
     register value *v;
     register uindex n;
+    Uint ct, t;
+    unsigned short m;
+    cbuf *q;
 
+    ct = co_check(0, 0, delay, mdelay, &t, &m, &q);
+    if (ct == 0 && q == (cbuf *) NULL) {
+	/* callouts are disabled */
+	return 0;
+    }
     if (data->ncallouts == 0) {
 	/*
 	 * the first in this object
 	 */
-	data->callouts = ALLOC(dcallout, 1);
-	data->ncallouts = 1;
-	co = data->callouts;
+	co = data->callouts = ALLOC(dcallout, 1);
+	data->ncallouts = n = 1;
 	data->values->flags |= MOD_NEWCALLOUT;
     } else {
 	if (data->callouts == (dcallout *) NULL) {
@@ -1703,6 +1711,7 @@ int nargs;
 		if (co->co_next != 0) {
 		    data->callouts[co->co_next - 1].co_prev = n;
 		}
+		n = co - data->callouts + 1;
 	    }
 	    data->values->flags |= MOD_CALLOUT;
 	} else {
@@ -1712,14 +1721,16 @@ int nargs;
 	    if (data->ncallouts == UINDEX_MAX) {
 		error("Too many callouts");
 	    }
-	    co = data->callouts = REALLOC(data->callouts, dcallout,
-					  data->ncallouts, data->ncallouts + 1);
-	    co += data->ncallouts++;
+	    n = data->ncallouts;
+	    co = data->callouts = REALLOC(data->callouts, dcallout, n, n + 1);
+	    co += n;
+	    data->ncallouts = ++n;
 	    data->values->flags |= MOD_NEWCALLOUT;
 	}
     }
+    co_new(n, data->obj, t, m, q);
 
-    co->time = t;
+    co->time = ct;
     co->nargs = nargs;
     v = co->val;
     v[0].type = T_STRING;
@@ -1754,28 +1765,25 @@ int nargs;
     }
     f->sp += nargs;
 
-    return co - data->callouts + 1;
+    return n;
 }
 
 /*
- * NAME:	data->get_call_out()
- * DESCRIPTION:	get a callout
+ * NAME:	data->del_call_out()
+ * DESCRIPTION:	remove a callout
  */
-string *d_get_call_out(data, handle, t, f, nargs)
+Int d_del_call_out(data, handle)
 dataspace *data;
 unsigned int handle;
-Uint *t;
-register frame *f;
-int *nargs;
 {
-    string *str;
     register dcallout *co;
     register value *v;
     register uindex n;
+    Int t;
 
     if (handle == 0 || handle > data->ncallouts) {
 	/* no such callout */
-	return (string *) NULL;
+	return -1;
     }
     if (data->callouts == (dcallout *) NULL) {
 	d_get_callouts(data);
@@ -1784,68 +1792,101 @@ int *nargs;
     co = &data->callouts[handle - 1];
     if (co->val[0].type == T_NIL) {
 	/* invalid callout */
-	return (string *) NULL;
+	return -1;
     }
 
-    *t = co->time;
+    t = co_remaining(co->time);
+    co_del(data->obj, handle, co->time);
+    v = co->val;
+    del_lhs(data, &v[0]);
+    str_del(v[0].u.string);
+
+    switch (co->nargs) {
+    default:
+	del_lhs(data, &v[3]);
+	i_del_value(&v[3]);
+    case 2:
+	del_lhs(data, &v[2]);
+	i_del_value(&v[2]);
+    case 1:
+	del_lhs(data, &v[1]);
+	i_del_value(&v[1]);
+    case 0:
+	break;
+    }
+
+    co->val[0].type = T_NIL;
+    n = data->fcallouts;
+    if (n != 0) {
+	data->callouts[n - 1].co_prev = handle;
+    }
+    co->co_next = n;
+    data->fcallouts = handle;
+
+    data->values->flags |= MOD_CALLOUT;
+    return t;
+}
+
+/*
+ * NAME:	data->get_call_out()
+ * DESCRIPTION:	get a callout
+ */
+string *d_get_call_out(data, handle, f, nargs)
+dataspace *data;
+unsigned int handle;
+register frame *f;
+int *nargs;
+{
+    string *str;
+    register dcallout *co;
+    register value *v;
+    register uindex n;
+
+    if (data->callouts == (dcallout *) NULL) {
+	d_get_callouts(data);
+    }
+
+    co = &data->callouts[handle - 1];
     v = co->val;
     del_lhs(data, &v[0]);
     str = v[0].u.string;
 
-    if (f != (frame *) NULL) {
-	i_grow_stack(f, (*nargs = co->nargs) + 1);
-	*--f->sp = v[0];
+    i_grow_stack(f, (*nargs = co->nargs) + 1);
+    *--f->sp = v[0];
 
-	switch (co->nargs) {
-	case 3:
-	    del_lhs(data, &v[3]);
-	    *--f->sp = v[3];
-	case 2:
-	    del_lhs(data, &v[2]);
-	    *--f->sp = v[2];
-	case 1:
-	    del_lhs(data, &v[1]);
-	    *--f->sp = v[1];
-	case 0:
-	    break;
+    switch (co->nargs) {
+    case 3:
+	del_lhs(data, &v[3]);
+	*--f->sp = v[3];
+    case 2:
+	del_lhs(data, &v[2]);
+	*--f->sp = v[2];
+    case 1:
+	del_lhs(data, &v[1]);
+	*--f->sp = v[1];
+    case 0:
+	break;
 
-	default:
-	    n = co->nargs - 2;
-	    f->sp -= n;
-	    memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(value));
-	    del_lhs(data, &v[3]);
-	    FREE(v[3].u.array->elts);
-	    v[3].u.array->elts = (value *) NULL;
-	    arr_del(v[3].u.array);
-	    del_lhs(data, &v[2]);
-	    *--f->sp = v[2];
-	    del_lhs(data, &v[1]);
-	    *--f->sp = v[1];
-	    break;
-	}
+    default:
+	n = co->nargs - 2;
+	f->sp -= n;
+	memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(value));
+	del_lhs(data, &v[3]);
+	FREE(v[3].u.array->elts);
+	v[3].u.array->elts = (value *) NULL;
+	arr_del(v[3].u.array);
+	del_lhs(data, &v[2]);
+	*--f->sp = v[2];
+	del_lhs(data, &v[1]);
+	*--f->sp = v[1];
+	break;
+    }
 
-	/* wipe out destructed objects */
-	for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
-	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
-		v->type = nil_type;
-		v->u.number = 0;
-	    }
-	}
-    } else {
-	str_del(str);	/* str becomes invalid but remains non-NULL */
-
-	switch (co->nargs) {
-	default:
-	    del_lhs(data, &v[3]);
-	    i_del_value(&v[3]);
-	case 2:
-	    del_lhs(data, &v[2]);
-	    i_del_value(&v[2]);
-	case 1:
-	    del_lhs(data, &v[1]);
-	    i_del_value(&v[1]);
-	case 0:
-	    break;
+    /* wipe out destructed objects */
+    for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
+	if (v->type == T_OBJECT && DESTRUCTED(v)) {
+	    v->type = nil_type;
+	    v->u.number = 0;
 	}
     }
 
@@ -1944,6 +1985,7 @@ register dataspace *data;
 	    --count;
 	}
     }
+    co_list(list);
 
     return list;
 }
@@ -3654,7 +3696,7 @@ register dataspace *data;
 	}
 	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
 	    if ((--co)->val[0].type != T_NIL) {
-		co_del(data->obj, n);
+		d_del_call_out(data, n);
 	    }
 	}
     }
