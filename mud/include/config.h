@@ -1,4 +1,3 @@
-# define CREATOR	"create"/* initialize function */
 # define USR		"/usr"	/* default user directory */
 
 # undef SYS_CONTINUOUS		/* off by default */
