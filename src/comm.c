@@ -399,30 +399,32 @@ int *size;
 	    }
 	}
 
-	if (nusers < maxusers) {
+	for (i = 5; i > 0 && nusers < maxusers; --i) {
 	    /*
 	     * accept new binary connection
 	     */
 	    conn = conn_bnew();
-	    if (conn != (connection *) NULL) {
-		if (ec_push((ec_ftn) NULL)) {
-		    conn_del(conn);		/* delete connection */
-		    error((char *) NULL);	/* pass on error */
-		}
-		call_driver_object("binary_connect", 0);
-		if (sp->type != T_OBJECT) {
-		    fatal("driver->binary_connect() did not return an object");
-		}
-		d_export();
-		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
-		sp++;
-		ec_pop();
-		if (i_call(o, "open", 4, TRUE, 0)) {
-		    i_del_value(sp++);
-		    d_export();
-		}
-		comm_flush(TRUE);
+	    if (conn == (connection *) NULL) {
+		break;
 	    }
+
+	    if (ec_push((ec_ftn) NULL)) {
+		conn_del(conn);		/* delete connection */
+		error((char *) NULL);	/* pass on error */
+	    }
+	    call_driver_object("binary_connect", 0);
+	    if (sp->type != T_OBJECT) {
+		fatal("driver->binary_connect() did not return an object");
+	    }
+	    d_export();
+	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
+	    sp++;
+	    ec_pop();
+	    if (i_call(o, "open", 4, TRUE, 0)) {
+		i_del_value(sp++);
+		d_export();
+	    }
+	    comm_flush(TRUE);
 	}
 
 	for (i = nusers, usr = users; i > 0; usr++) {

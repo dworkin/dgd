@@ -749,10 +749,12 @@ register int pop;
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
 	    i = cg_map_aggr(n->l.left);
-	    code_instr(I_MAP_AGGREGATE, n->line);
+	    code_instr(I_AGGREGATE, n->line);
+	    code_byte(1);
 	} else {
 	    i = cg_aggr(n->l.left);
 	    code_instr(I_AGGREGATE, n->line);
+	    code_byte(0);
 	}
 	code_word(i);
 	break;
@@ -867,8 +869,14 @@ register int pop;
 	    break;
 
 	case DFCALL:
-	    code_instr(I_CALL_DFUNC, n->line);
-	    code_word((int) n->r.number);
+	    if ((n->r.number & 0xff00) == 0) {
+		/* auto object */
+		code_instr(I_CALL_AFUNC, n->line);
+		code_byte((int) n->r.number);
+	    } else {
+		code_instr(I_CALL_DFUNC, n->line);
+		code_word((int) n->r.number);
+	    }
 	    code_byte(i);
 	    break;
 
@@ -1086,17 +1094,19 @@ register int pop;
 
     case N_NOT:
 	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_NOT, n->line);
-	break;
+	switch (n->l.left->mod) {
+	case T_INT:
+	    code_kfun(KF_NOTI, n->line);
+	    break;
 
-    case N_NOTF:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_NOTF, n->line);
-	break;
+	case T_FLOAT:
+	    code_kfun(KF_NOTF, n->line);
+	    break;
 
-    case N_NOTI:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_NOTI, n->line);
+	default:
+	    code_kfun(KF_NOT, n->line);
+	    break;
+	}
 	break;
 
     case N_OR:
@@ -1289,17 +1299,19 @@ register int pop;
 
     case N_TST:
 	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TST, n->line);
-	break;
+	switch (n->l.left->mod) {
+	case T_INT:
+	    code_kfun(KF_TSTI, n->line);
+	    break;
 
-    case N_TSTF:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TSTF, n->line);
-	break;
+	case T_FLOAT:
+	    code_kfun(KF_TSTF, n->line);
+	    break;
 
-    case N_TSTI:
-	cg_expr(n->l.left, FALSE);
-	code_kfun(KF_TSTI, n->line);
+	default:
+	    code_kfun(KF_TST, n->line);
+	    break;
+	}
 	break;
 
     case N_UPLUS:
@@ -1446,10 +1458,6 @@ register int jmptrue;
 	    true_list = false_list;
 	    false_list = jlist;
 	    break;
-
-	case N_TST:
-	    n = n->l.left;
-	    continue;
 
 	case N_COMMA:
 	    cg_expr(n->l.left, TRUE);

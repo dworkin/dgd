@@ -15,6 +15,7 @@
 # define POP		1
 # define INTVAL		2
 # define TRUTHVAL	3
+# define TOPTRUTHVAL	4
 
 static void output();
 static void cg_iexpr P((node*));
@@ -210,13 +211,10 @@ register int i;
     } else {
 	/* assignment to register var */
 	if (catch_level != 0) {
-	    output("ivar%d = %s->u.number, ", vars[i], local(i));
+	    output("%s->u.number = ", local(i));
 	}
 	output("ivar%d %s ", vars[i], op);
 	cg_iexpr(n);
-	if (catch_level != 0) {
-	    output(", %s->u.number = ivar%d", local(i), vars[i]);
-	}
     }
 }
 
@@ -254,13 +252,10 @@ char *op;
 	i = n->l.left->r.number;
 	n = n->r.right;
 	if (catch_level != 0) {
-	    output("ivar%d = %s->u.number, ", vars[i], local(i));
+	    output("%s->u.number = ", local(i));
 	}
 	output("ivar%d = ((Uint) ivar%d) %s ", vars[i], vars[i], op);
 	cg_iexpr(n);
-	if (catch_level != 0) {
-	    output(", %s->u.number = ivar%d", local(i), vars[i]);
-	}
     } else {
 	cg_fetch(n->l.left, 0);
 	n = n->r.right;
@@ -290,14 +285,11 @@ char *op;
     if (n->l.left->type == N_LOCAL) {
 	i = n->l.left->r.number;
 	if(catch_level != 0) {
-	    output("ivar%d = %s->u.number, ", vars[i], local(i));
+	    output("%s->u.number = ", local(i));
 	}
 	output("ivar%d = %s(ivar%d, ", vars[i], op, vars[i]);
 	cg_iexpr(n->r.right);
 	output(")");
-	if (catch_level != 0) {
-	    output(", %s->u.number = ivar%d", local(i), vars[i]);
-	}
     } else {
 	cg_fetch(n->l.left, 0);
 	n = n->r.right;
@@ -352,7 +344,6 @@ register node *n;
     case N_MULT:
     case N_MULT_EQ:
     case N_NE:
-    case N_NOTF:
     case N_OR:
     case N_OR_EQ:
     case N_RANGE:
@@ -366,7 +357,6 @@ register node *n;
     case N_TOFLOAT:
     case N_TOINT:
     case N_TOSTRING:
-    case N_TSTF:
     case N_XOR:
     case N_XOR_EQ:
     case N_MIN_MIN:
@@ -389,11 +379,10 @@ register node *n;
 
     case N_ADD_EQ_1_INT:
 	if (n->l.left->type == N_LOCAL) {
-	    if (catch_level == 0) {
-		output("++ivar%d", vars[n->l.left->r.number]);
-	    } else {
-		output("++%s->u.number", local((int) n->l.left->r.number));
+	    if (catch_level != 0) {
+		output("%s->u.number = ", local((int) n->l.left->r.number));
 	    }
+	    output("++ivar%d", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left, 0);
 	    output("++sp->u.number, store_int()");
@@ -411,7 +400,7 @@ register node *n;
 	break;
 
     case N_CAST:
-	if (n->l.left->type == N_LOCAL && n->l.left->mod == T_INT) {
+	if (n->l.left->type == N_LOCAL) {
 	    cg_cast(local((int) n->l.left->r.number), T_INT);
 	    output(", %s->u.number", local((int) n->l.left->r.number));
 	} else {
@@ -465,9 +454,9 @@ register node *n;
 
     case N_LAND:
 	output("(");
-	cg_expr(n->l.left, TRUTHVAL);
+	cg_expr(n->l.left, TOPTRUTHVAL);
 	output(") && (");
-	cg_expr(n->r.right, TRUTHVAL);
+	cg_expr(n->r.right, TOPTRUTHVAL);
 	output(")");
 	break;
 
@@ -478,18 +467,14 @@ register node *n;
 	break;
 
     case N_LOCAL:
-	if (catch_level == 0) {
-	    output("ivar%d", vars[n->r.number]);
-	} else {
-	    output("%s->u.number", local((int) n->r.number));
-	}
+	output("ivar%d", vars[n->r.number]);
 	break;
 
     case N_LOR:
 	output("(");
-	cg_expr(n->l.left, TRUTHVAL);
+	cg_expr(n->l.left, TOPTRUTHVAL);
 	output(") || (");
-	cg_expr(n->r.right, TRUTHVAL);
+	cg_expr(n->r.right, TOPTRUTHVAL);
 	output(")");
 	break;
 
@@ -540,12 +525,14 @@ register node *n;
 	break;
 
     case N_NOT:
-	cg_expr(n, TRUTHVAL);
-	break;
-
-    case N_NOTI:
 	output("!");
-	cg_iexpr(n->l.left);
+	if (n->l.left->mod == T_INT) {
+	    cg_iexpr(n->l.left);
+	} else {
+	    output("(");
+	    cg_expr(n->l.left, TRUTHVAL);
+	    output(")");
+	}
 	break;
 
     case N_OR_INT:
@@ -560,7 +547,7 @@ register node *n;
 
     case N_QUEST:
 	output("(");
-	cg_expr(n->l.left, TRUTHVAL);
+	cg_expr(n->l.left, TOPTRUTHVAL);
 	output(") ? ");
 	if (n->r.right->l.left != (node *) NULL) {
 	    cg_iexpr(n->r.right->l.left);
@@ -604,11 +591,10 @@ register node *n;
 
     case N_SUB_EQ_1_INT:
 	if (n->l.left->type == N_LOCAL) {
-	    if (catch_level == 0) {
-		output("--ivar%d", vars[n->l.left->r.number]);
-	    } else {
-		output("--%s->u.number", local((int) n->l.left->r.number));
+	    if (catch_level != 0) {
+		output("%s->u.number = ", local((int) n->l.left->r.number));
 	    }
+	    output("--ivar%d", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left, 0);
 	    output("--sp->u.number, store_int()");
@@ -616,12 +602,14 @@ register node *n;
 	break;
 
     case N_TST:
-	cg_expr(n->l.left, TRUTHVAL);
-	break;
-
-    case N_TSTI:
-	output("!!");
-	cg_iexpr(n->l.left);
+	if (n->l.left->mod == T_INT) {
+	    output("!!");
+	    cg_iexpr(n->l.left);
+	} else {
+	    output("(");
+	    cg_expr(n->l.left, TRUTHVAL);
+	    output(")");
+	}
 	break;
 
     case N_UPLUS:
@@ -645,11 +633,10 @@ register node *n;
 
     case N_MIN_MIN_INT:
 	if (n->l.left->type == N_LOCAL) {
-	    if (catch_level == 0) {
-		output("ivar%d--", vars[n->l.left->r.number]);
-	    } else {
-		output("%s->u.number--", local((int) n->l.left->r.number));
+	    if (catch_level != 0) {
+		output("%s->u.number--, ", local((int) n->l.left->r.number));
 	    }
+	    output("ivar%d--", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left, 0);
 	    output("sp->u.number--, store_int() + 1");
@@ -658,11 +645,10 @@ register node *n;
 
     case N_PLUS_PLUS_INT:
 	if (n->l.left->type == N_LOCAL) {
-	    if (catch_level == 0) {
-		output("ivar%d++", vars[n->l.left->r.number]);
-	    } else {
-		output("%s->u.number++", local((int) n->l.left->r.number));
+	    if (catch_level != 0) {
+		output("%s->u.number++, ", local((int) n->l.left->r.number));
 	    }
+	    output("ivar%d++", vars[n->l.left->r.number]);
 	} else {
 	    cg_fetch(n->l.left, 0);
 	    output("sp->u.number++, store_int() - 1");
@@ -681,24 +667,17 @@ register node *n;
 int op;
 {
     if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
-	if (catch_level == 0) {
-	    output("PUSH_NUMBER ivar%d, ", vars[n->l.left->r.number]);
-	    cg_expr(n->r.right, PUSH);
-	    comma();
-	    kfun(op);
-	    comma();
-	    cg_cast("sp", T_INT);
-	    output(", ivar%d = sp->u.number", vars[n->l.left->r.number]);
-	} else {
-	    output("*(--sp) = *%s, ", local((int) n->l.left->r.number));
-	    cg_expr(n->r.right, PUSH);
-	    comma();
-	    kfun(op);
-	    comma();
-	    cg_cast("sp", T_INT);
-	    output(", %s->u.number = sp->u.number",
-		   local((int) n->l.left->r.number));
+	output("PUSH_NUMBER ivar%d, ", vars[n->l.left->r.number]);
+	cg_expr(n->r.right, PUSH);
+	comma();
+	kfun(op);
+	comma();
+	cg_cast("sp", T_INT);
+	comma();
+	if (catch_level != 0) {
+	    output("%s->u.number = ", local((int) n->l.left->r.number));
 	}
+	output("ivar%d = sp->u.number", vars[n->l.left->r.number]);
     } else {
 	if (n->l.left->mod != T_MIXED && n->r.right->mod == T_MIXED) {
 	    cg_fetch(n->l.left, n->l.left->mod);
@@ -912,7 +891,6 @@ register int state;
     case N_MULT_INT:
     case N_MULT_EQ_INT:
     case N_NE_INT:
-    case N_NOTI:
     case N_OR_INT:
     case N_OR_EQ_INT:
     case N_RSHIFT_INT:
@@ -920,7 +898,6 @@ register int state;
     case N_SUB_INT:
     case N_SUB_EQ_INT:
     case N_SUB_EQ_1_INT:
-    case N_TSTI:
     case N_XOR_INT:
     case N_XOR_EQ_INT:
     case N_MIN_MIN_INT:
@@ -987,12 +964,7 @@ register int state;
 	if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
 	    cg_iasgn(n->r.right, "=", (int) n->l.left->r.number);
 	    if (state == PUSH) {
-		if (catch_level == 0) {
-		    output(", PUSH_NUMBER ivar%d", vars[n->l.left->r.number]);
-		} else {
-		    output(", PUSH_NUMBER %s->u.number",
-			   local((int) n->l.left->r.number));
-		}
+		output(", PUSH_NUMBER ivar%d", vars[n->l.left->r.number]);
 	    }
 	    return;
 	}
@@ -1014,7 +986,7 @@ register int state;
 	break;
 
     case N_CATCH:
-	output("(");
+	output("(pre_catch(), ");
 	if (catch_level == 0) {
 	    for (i = nvars; i > 0; ) {
 		if (vars[--i] != 0) {
@@ -1022,14 +994,14 @@ register int state;
 		}
 	    }
 	}
-	output("pre_catch(), !ec_push((ec_ftn) i_catcherr) ? (");
+	output("!ec_push((ec_ftn) i_catcherr) ? (");
 	catch_level++;
 	cg_expr(n->l.left, POP);
 	--catch_level;
 	if (state == PUSH) {
 	    output(", ec_pop(), PUSH_NUMBER 0) : (p = errormesg(), ");
 	    output("(--sp)->type = T_STRING, str_ref(sp->u.string = ");
-	    output("str_new(p, (long) strlen(p)))), post_catch()");
+	    output("str_new(p, (long) strlen(p)))");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1037,9 +1009,9 @@ register int state;
 		    }
 		}
 	    }
-	    output(")");
+	    output("), post_catch(0))");
 	} else {
-	    output(", ec_pop(), post_catch(), ");
+	    output(", ec_pop(), post_catch(0), FALSE) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1047,15 +1019,7 @@ register int state;
 		    }
 		}
 	    }
-	    output("FALSE) : (post_catch(), ");
-	    if (catch_level == 0) {
-		for (i = nvars; i > 0; ) {
-		    if (vars[--i] != 0) {
-			output("ivar%d = %s->u.number, ", vars[i], local(i));
-		    }
-		}
-	    }
-	    output("TRUE))");
+	    output("post_catch(0), TRUE))");
 	}
 	return;
 
@@ -1102,7 +1066,7 @@ register int state;
 	    } else {
 		kfun((short) n->r.number);
 	    }
-	    if (((n->r.number >> 24) & KFCALL_LVAL) && catch_level == 0) {
+	    if ((n->r.number >> 24) & KFCALL_LVAL) {
 		cg_locals(n->l.left);
 	    }
 	    break;
@@ -1175,15 +1139,15 @@ register int state;
 	    if (state == PUSH) {
 		output("PUSH_NUMBER ");
 	    }
-	    if (catch_level == 0) {
-		output("ivar%d", vars[n->r.number]);
-	    } else {
-		output("%s->u.number", local((int) n->r.number));
-	    }
+	    output("ivar%d", vars[n->r.number]);
 	    return;
 	}
-	if (state == TRUTHVAL) {
-	    output("truthval(%s)", local((int) n->r.number));
+	if (state == TRUTHVAL || state == TOPTRUTHVAL) {
+	    if (n->mod == T_FLOAT) {
+		output("VFLT_ISZERO(%s)", local((int) n->r.number));
+	    } else {
+		output("truthval(%s)", local((int) n->r.number));
+	    }
 	    return;
 	}
 	output("i_push_value(%s)", local((int) n->r.number));
@@ -1247,21 +1211,22 @@ register int state;
 
     case N_NOT:
 	if (state == PUSH) {
-	    cg_expr(n->l.left, PUSH);
-	    comma();
-	    kfun(KF_NOT);
+	    i = tmpval();
+	    output("tv[%d] = ", i);
+	    cg_iexpr(n);
+	    output(", PUSH_NUMBER tv[%d]", i);
 	} else {
-	    output("!(");
-	    cg_expr(n->l.left, TRUTHVAL);
-	    output(")");
+	    output("!");
+	    n = n->l.left;
+	    if (n->mod == T_INT) {
+		cg_iexpr(n);
+	    } else {
+		output("(");
+		cg_expr(n, (state == TOPTRUTHVAL) ? TOPTRUTHVAL : TRUTHVAL);
+		output(")");
+	    }
 	}
 	return;
-
-    case N_NOTF:
-	cg_expr(n->l.left, PUSH);
-	comma();
-	kfun(KF_NOTF);
-	break;
 
     case N_OR:
 	cg_expr(n->l.left, PUSH);
@@ -1276,11 +1241,12 @@ register int state;
 	break;
 
     case N_QUEST:
-	if (state == INTVAL || state == TRUTHVAL) {
+	if (state == INTVAL) {
 	    cg_iexpr(n);
+	    return;
 	} else {
 	    output("(");
-	    cg_expr(n->l.left, TRUTHVAL);
+	    cg_expr(n->l.left, TOPTRUTHVAL);
 	    output(") ? (");
 	    if (n->r.right->l.left != (node *) NULL) {
 		cg_expr(n->r.right->l.left, state);
@@ -1293,7 +1259,7 @@ register int state;
 	    }
 	    output("0)");
 	}
-	return;
+	break;
 
     case N_RANGE:
 	cg_expr(n->l.left, PUSH);
@@ -1383,6 +1349,25 @@ register int state;
 	kfun(KF_TOFLOAT);
 	break;
 
+    case N_TST:
+	if (state == PUSH) {
+	    i = tmpval();
+	    output("tv[%d] = ", i);
+	    cg_iexpr(n);
+	    output(", PUSH_NUMBER tv[%d]", i);
+	} else {
+	    output("!!");
+	    n = n->l.left;
+	    if (n->mod == T_INT) {
+		cg_iexpr(n);
+	    } else {
+		output("(");
+		cg_expr(n, (state == TOPTRUTHVAL) ? TOPTRUTHVAL : TRUTHVAL);
+		output(")");
+	    }
+	}
+	return;
+
     case N_TOINT:
 	cg_expr(n->l.left, PUSH);
 	comma();
@@ -1393,22 +1378,6 @@ register int state;
 	cg_expr(n->l.left, PUSH);
 	comma();
 	kfun(KF_TOSTRING);
-	break;
-
-    case N_TST:
-	if (state == PUSH) {
-	    cg_expr(n->l.left, PUSH);
-	    comma();
-	    kfun(KF_TST);
-	} else {
-	    cg_expr(n->l.left, TRUTHVAL);
-	}
-	return;
-
-    case N_TSTF:
-	cg_expr(n->l.left, PUSH);
-	comma();
-	kfun(KF_TSTF);
 	break;
 
     case N_UPLUS:
@@ -1485,9 +1454,17 @@ register int state;
 	break;
 
     case TRUTHVAL:
-	i = tmpval();
 	if (n->mod == T_INT) {
+	    i = tmpval();
 	    output(", tv[%d] = (sp++)->u.number, tv[%d]", i, i);
+	} else {
+	    output(", poptruthval()");
+	}
+	break;
+
+    case TOPTRUTHVAL:
+	if (n->mod == T_INT) {
+	    output(", (sp++)->u.number");
 	} else {
 	    output(", poptruthval()");
 	}
@@ -1723,6 +1700,44 @@ register node *n;
     switch_table = table;
 }
 
+typedef struct _rclink_ {
+    int type;			/* rlimits or catch */
+    struct _rclink_ *next;	/* next in linked list */
+} rclink;
+
+static rclink *rclist;
+
+/*
+ * NAME:	breakout()
+ * DESCRIPTION:	break out of a catch or rlimits
+ */
+static void breakout(n)
+register int n;
+{
+    register int c, r;
+    register rclink *link;
+
+    c = r = 0;
+    link = rclist;
+
+    do {
+	if (link->type == N_CATCH) {
+	    c++;
+	    r = 0;
+	} else {
+	    r++;
+	}
+	link = link->next;
+    } while (--n != 0);
+
+    if (c != 0) {
+	output("post_catch(%d);", c);
+    }
+    if (r != 0) {
+	output("i_set_rllevel(-%u);", r);
+    }
+}
+
 /*
  * NAME:	codegen->stmt()
  * DESCRIPTION:	generate code for a statement
@@ -1730,6 +1745,7 @@ register node *n;
 static void cg_stmt(n)
 register node *n;
 {
+    rclink rcstart;
     register node *m;
     register int i;
 
@@ -1750,8 +1766,8 @@ register node *n;
 	    break;
 
 	case N_BREAK:
-	    if (m->mod > 0) {
-		output("i_set_rllevel(-%u);", m->mod);
+	    if (m->mod != 0) {
+		breakout(m->mod);
 	    }
 	    output("break;\n");
 	    break;
@@ -1770,8 +1786,8 @@ register node *n;
 	    break;
 
 	case N_CONTINUE:
-	    if (m->mod > 0) {
-		output("i_set_rllevel(-%u);", m->mod);
+	    if (m->mod != 0) {
+		breakout(m->mod);
 	    }
 	    output("continue;\n");
 	    break;
@@ -1781,13 +1797,13 @@ register node *n;
 	    cg_stmt(m->r.right);
 	    output("} while (");
 	    tvc = 0;
-	    cg_expr(m->l.left, TRUTHVAL);
+	    cg_expr(m->l.left, TOPTRUTHVAL);
 	    output(");\n");
 	    break;
 
 	case N_FOR:
 	    output("for (;");
-	    cg_expr(m->l.left, TRUTHVAL);
+	    cg_expr(m->l.left, TOPTRUTHVAL);
 	    output(";");
 	    m = m->r.right;
 	    if (m != (node *) NULL) {
@@ -1820,12 +1836,22 @@ register node *n;
 	    cg_expr(m->l.left->l.left, PUSH);
 	    comma();
 	    cg_expr(m->l.left->r.right, PUSH);
+	    rcstart.type = N_RLIMITS;
+	    rcstart.next = rclist;
+	    rclist = &rcstart;
 	    output(";\npre_rlimits();\n");
 	    cg_stmt(m->r.right);
-	    output("i_set_rllevel(-1);\n");
+	    if (!(m->r.right->flags & (F_BREAK | F_CONT | F_RETURN))) {
+		output("i_set_rllevel(-1);\n");
+	    }
+	    rclist = rcstart.next;
 	    break;
 
 	case N_CATCH:
+	    rcstart.type = N_CATCH;
+	    rcstart.next = rclist;
+	    rclist = &rcstart;
+	    output("pre_catch();\n");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1833,50 +1859,33 @@ register node *n;
 		    }
 		}
 	    }
-	    output("pre_catch();\n");
 	    output("if (!ec_push((ec_ftn) i_catcherr)) {\n");
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;
-	    output("ec_pop();");
-	    if (m->r.right != (node *) NULL) {
-		/* caught */
-		output("post_catch();\n");
-		if (catch_level == 0) {
-		    for (i = nvars; i > 0; ) {
-			if (vars[--i] != 0) {
-			    output("ivar%d = %s->u.number;\n", vars[i],
-				   local(i));
-			}
-		    }
-		}
-		output("} else { post_catch();\n");
-		if (catch_level == 0) {
-		    for (i = nvars; i > 0; ) {
-			if (vars[--i] != 0) {
-			    output("ivar%d = %s->u.number;\n", vars[i],
-				   local(i));
-			}
-		    }
-		}
-		cg_stmt(m->r.right);
-		output("}\n");
-	    } else {
-		output("} post_catch();\n");
-		if (catch_level == 0) {
-		    for (i = nvars; i > 0; ) {
-			if (vars[--i] != 0) {
-			    output("ivar%d = %s->u.number;\n", vars[i],
-				   local(i));
-			}
+	    if (!(m->l.left->flags & (F_BREAK | F_CONT | F_RETURN))) {
+		output("ec_pop(); post_catch(0);");
+	    }
+	    output("} else {\n");
+	    if (catch_level == 0) {
+		for (i = nvars; i > 0; ) {
+		    if (vars[--i] != 0) {
+			output("ivar%d = %s->u.number;\n", vars[i],
+			       local(i));
 		    }
 		}
 	    }
+	    output("post_catch(0);\n");
+	    rclist = rcstart.next;
+	    if (m->r.right != (node *) NULL) {
+		cg_stmt(m->r.right);
+	    }
+	    output("}\n");
 	    break;
 
 	case N_IF:
 	    output("if (");
-	    cg_expr(m->l.left, TRUTHVAL);
+	    cg_expr(m->l.left, TOPTRUTHVAL);
 	    output(") {\n");
 	    cg_stmt(m->r.right->l.left);
 	    if (m->r.right->r.right != (node *) NULL) {
@@ -1897,10 +1906,11 @@ register node *n;
 
 	case N_RETURN:
 	    cg_expr(m->l.left, PUSH);
-	    if (m->mod > 0) {
-		output(";i_set_rllevel(-%u)", m->mod);
+	    output(";\n");
+	    if (m->mod != 0) {
+		breakout(m->mod);
 	    }
-	    output(";return;\n");
+	    output("return;\n");
 	    break;
 
 	case N_SWITCH_INT:
@@ -1958,12 +1968,10 @@ unsigned short *size;
     char *prog;
 
     depth += nvar;
-    prog = ALLOC(char, *size = 5);
+    prog = ALLOC(char, *size = 6);
     prog[0] = depth >> 8;
     prog[1] = depth;
     prog[2] = nvar - npar;
-    prog[3] = 0;
-    prog[4] = 0;
 
     nvars = nvar;
     nparam = npar;
@@ -1988,11 +1996,10 @@ unsigned short *size;
     swcount = 0;
     cg_stmt(n);
 
-    if (!inherited) {
-	output("}\n");
-	prog[3] = nfuncs >> 8;
-	prog[4] = nfuncs++;
-    }
+    output("}\n");
+    prog[3] = nfuncs >> 16;
+    prog[4] = nfuncs >> 8;
+    prog[5] = nfuncs++;
 
     return prog;
 }

@@ -368,14 +368,10 @@ int func;
 	    break;
 
 	case I_AGGREGATE:
-	    codesize = 3;
-	    sprintf(buffer, "AGGREGATE %u", FETCH2U(pc, u));
-	    show_instr(buffer);
-	    break;
-
-	case I_MAP_AGGREGATE:
-	    codesize = 3;
-	    sprintf(buffer, "MAP_AGGREGATE %u", FETCH2U(pc, u));
+	    codesize = 4;
+	    u = FETCH1U(pc);
+	    sprintf(buffer, "AGGREGATE %s %u", (u) ? "map" : "array",
+		    FETCH2U(pc, u2));
 	    show_instr(buffer);
 	    break;
 
@@ -562,6 +558,18 @@ int func;
 	    sprintf(buffer, "CALL_IKFUNC %d (%s%s) %d", u, KFUN(u).name,
 		    (PROTO_CLASS(KFUN(u).proto) & C_TYPECHECKED) ? " tc" : "",
 		    u2);
+	    show_instr(buffer);
+	    break;
+
+	case I_CALL_AFUNC:
+	    codesize = 3;
+	    u = FETCH1U(pc);
+	    cc = ctrl->inherits[0].obj->ctrl;
+	    d_get_funcdefs(cc);
+	    sprintf(buffer, "CALL_AFUNC %d (%s) %d", u,
+		    d_get_strconst(cc, cc->funcdefs[u].inherit,
+				   cc->funcdefs[u].index)->text,
+		    FETCH1U(pc));
 	    show_instr(buffer);
 	    break;
 

@@ -373,8 +373,11 @@ stmt
 		}
 	  compound_stmt
 		{ $$ = c_endrlimits($3, $5, $8); }
-	| CATCH compound_stmt opt_caught_stmt
-		{ $$ = node_bin(N_CATCH, 0, $2, $3); }
+	| CATCH	{ c_startcatch(); }
+	  compound_stmt
+		{ c_endcatch(); }
+	  opt_caught_stmt
+		{ $$ = c_donecatch($3, $5); }
 	| SWITCH '(' f_list_exp ')'
 		{ c_startswitch($3, typechecking); }
 	  compound_stmt

@@ -174,7 +174,7 @@ typedef struct _loop_ {
     bool cont;			/* seen any continues? */
     bool dflt;			/* seen any default labels? */
     short ncase;		/* number of case labels */
-    unsigned short rlimits;	/* rlimits reference number */
+    unsigned short nesting;	/* rlimits/catch nesting level */
     node *case_list;		/* previous list of case nodes */
     struct _loop_ *prev;	/* previous loop or switch */
     struct _loop_ *env;		/* enclosing loop */
@@ -188,7 +188,7 @@ typedef struct _lchunk_ {
 static lchunk *llist;		/* list of all loop chunks */
 static loop *fllist;		/* list of free loops */
 static int lchunksz = LOOP_CHUNK; /* size of current loop chunk */
-static unsigned short rlimits;	/* current rlimits nesting level */
+static unsigned short nesting;	/* current rlimits/catch nesting level */
 
 /*
  * NAME:	loop->new()
@@ -215,7 +215,7 @@ loop *prev;
     }
     l->brk = FALSE;
     l->cont = FALSE;
-    l->rlimits = rlimits;
+    l->nesting = nesting;
     l->prev = prev;
     return l;
 }
@@ -303,7 +303,7 @@ static void c_clear()
     block_clear();
     node_clear();
     seen_decls = FALSE;
-    rlimits = 0;
+    nesting = 0;
 }
 
 /*
@@ -981,7 +981,7 @@ node *n1, *n3;
  */
 void c_startrlimits()
 {
-    rlimits++;
+    nesting++;
 }
 
 /*
@@ -991,7 +991,7 @@ void c_startrlimits()
 node *c_endrlimits(n1, n2, n3)
 node *n1, *n2, *n3;
 {
-    --rlimits;
+    --nesting;
 
     if (n3 == (node *) NULL) {
 	return (node *) NULL;
@@ -1015,8 +1015,49 @@ node *n1, *n2, *n3;
 	i_del_value(sp++);
     }
 
-    n1->flags |= n3->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
+    n1->flags |= n3->flags & (F_BREAK | F_CONT | F_RETURN);
     return n1;
+}
+
+/*
+ * NAME:	compile->startcatch()
+ * DESCRIPTION:	begin catch handling
+ */
+void c_startcatch()
+{
+    nesting++;
+}
+
+/*
+ * NAME:	compile->endcatch()
+ * DESCRIPTION:	end catch handling
+ */
+void c_endcatch()
+{
+    --nesting;
+}
+
+/*
+ * NAME:	compile->donecatch()
+ * DESCRIPTION:	handle statements within catch
+ */
+node *c_donecatch(n1, n2)
+register node *n1, *n2;
+{
+    register node *n;
+    register int flags1, flags2;
+
+    n = node_bin(N_CATCH, 0, n1, n2);
+    flags1 = n1->flags & (F_BREAK | F_CONT | F_RETURN);
+    if (n2 == (node *) NULL) {
+	n->flags = flags1;
+    } else {
+	flags2 = n2->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
+	flags1 |= flags2 & F_REACH;
+	n->flags = (flags1 < flags2) ? flags1 : flags2;
+    }
+
+    return n;
 }
 
 /*
@@ -1255,8 +1296,8 @@ register node *n1, *n2;
 	c_error("case label not inside switch");
 	return (node *) NULL;
     }
-    if (switch_list->rlimits != rlimits) {
-	c_error("illegal jump into rlimits");
+    if (switch_list->nesting != nesting) {
+	c_error("illegal jump into rlimits or catch");
 	return (node *) NULL;
     }
     if (switch_list->type == T_INVALID) {
@@ -1337,8 +1378,8 @@ node *c_default()
     } else if (switch_list->dflt) {
 	c_error("duplicate default label in switch");
 	switch_list->type = T_INVALID;
-    } else if (switch_list->rlimits != rlimits) {
-	c_error("illegal jump into rlimits");
+    } else if (switch_list->nesting != nesting) {
+	c_error("illegal jump into rlimits or catch");
     } else {
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
@@ -1371,7 +1412,7 @@ node *c_break()
     }
     l->brk = TRUE;
 
-    n = node_mon(N_BREAK, rlimits - l->rlimits, (node *) NULL);
+    n = node_mon(N_BREAK, nesting - l->nesting, (node *) NULL);
     n->flags |= F_BREAK;
     return n;
 }
@@ -1390,7 +1431,7 @@ node *c_continue()
     }
     thisloop->cont = TRUE;
 
-    n = node_mon(N_CONTINUE, rlimits - thisloop->rlimits, (node *) NULL);
+    n = node_mon(N_CONTINUE, nesting - thisloop->nesting, (node *) NULL);
     n->flags |= F_CONT;
     return n;
 }
@@ -1424,7 +1465,7 @@ int typechecked;
 	}
     }
 
-    n = node_mon(N_RETURN, rlimits, n);
+    n = node_mon(N_RETURN, nesting, n);
     n->flags |= F_RETURN;
     return n;
 }
@@ -1739,11 +1780,7 @@ register node *n;
 	return node_int((Int) TRUE);
 
     case N_TST:
-    case N_TSTF:
-    case N_TSTI:
     case N_NOT:
-    case N_NOTF:
-    case N_NOTI:
     case N_LAND:
     case N_EQ:
     case N_EQ_INT:
@@ -1802,24 +1839,8 @@ register node *n;
 	n->type = N_NOT;
 	return n;
 
-    case N_TSTF:
-	n->type = N_NOTF;
-	return n;
-
-    case N_TSTI:
-	n->type = N_NOTI;
-	return n;
-
     case N_NOT:
 	n->type = N_TST;
-	return n;
-
-    case N_NOTF:
-	n->type = N_TSTF;
-	return n;
-
-    case N_NOTI:
-	n->type = N_TSTI;
 	return n;
 
     case N_EQ:

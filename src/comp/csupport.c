@@ -69,19 +69,22 @@ Uint compiled;
 static void pc_funcdefs(program, funcdefs, nfuncdefs, nfuncs)
 char *program;
 register dfuncdef *funcdefs;
-register unsigned short nfuncdefs, nfuncs;
+register unsigned short nfuncdefs;
+register Uint nfuncs;
 {
     register char *p;
-    register unsigned short index;
+    register Uint index;
 
     --nfuncs;
     while (nfuncdefs > 0) {
 	p = program + funcdefs->offset;
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
 	    p += PROTO_SIZE(p);
-	    index = nfuncs + ((UCHAR(p[3]) << 8) | UCHAR(p[4]));
-	    p[3] = index >> 8;
-	    p[4] = index;
+	    index = nfuncs + ((UCHAR(p[3]) << 16) | (UCHAR(p[4]) << 8) |
+			      UCHAR(p[5]));
+	    p[3] = index >> 16;
+	    p[4] = index >> 8;
+	    p[5] = index;
 	}
 	funcdefs++;
 	--nfuncdefs;
@@ -146,7 +149,8 @@ void pc_preload(auto_obj, driver_obj)
 char *auto_obj, *driver_obj;
 {
     register precomp **pc, *l;
-    register uindex n, ninherits, nfuncs;
+    register uindex n, ninherits;
+    register Uint nfuncs;
 
     auto_name = auto_obj;
     driver_name = driver_obj;
@@ -836,9 +840,18 @@ void pre_catch()
  * NAME:	post_catch()
  * DESCRIPTION:	clean up after a catch
  */
-void post_catch()
+void post_catch(n)
+int n;
 {
-    i_set_rllevel(cstack[--csi]);
+    if (n == 0) {
+	i_set_rllevel(cstack[--csi]);
+    } else {
+	/* break, continue, return out of catch */
+	do {
+	    ec_pop();
+	    i_set_rllevel(cstack[--csi]);
+	} while (--n != 0);
+    }
 }
 
 /*

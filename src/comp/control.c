@@ -540,7 +540,12 @@ string *label;
 	 * new inherited object
 	 */
 	ctrl = o_control(obj);
-	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i) {
+	inh = ctrl->inherits;
+	if (ndirects != 0 && strcmp(inh->obj->chain.name,
+				    directs[0]->obj->chain.name) != 0) {
+	    c_error("inherited different auto objects");
+	}
+	for (i = ctrl->ninherits; i > 0; --i) {
 	    /*
 	     * check all the objects inherited by the object now inherited
 	     */

@@ -151,13 +151,12 @@ node **m;
     n = *m;
     if (n->l.left->type != n->r.right->type) {
 	if (n->type == N_EQ) {
-	    *m = node_int((Int) FALSE);
+	    node_toint(n, FALSE);
 	} else if (n->type == N_NE) {
-	    *m = node_int((Int) TRUE);
+	    node_toint(n, TRUE);
 	} else {
 	    return 2;	/* runtime error expected */
 	}
-	(*m)->line = n->line;
 	return 1;
     }
 
@@ -166,8 +165,7 @@ node **m;
 
 	switch (n->type) {
 	case N_ADD:
-	    *m = node_str(str_add(n->l.left->l.string, n->r.right->l.string));
-	    (*m)->line = n->line;
+	    node_tostr(n, str_add(n->l.left->l.string, n->r.right->l.string));
 	    return 1;
 
 	case N_EQ:
@@ -198,8 +196,7 @@ node **m;
 	    return 2;	/* runtime error expected */
 	}
 
-	*m = node_int((Int) flag);
-	(*m)->line = n->line;
+	node_toint(n, (Int) flag);
 	return 1;
     }
 
@@ -236,7 +233,7 @@ node **m;
 	break;
 
     case N_EQ:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) == 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) == 0));
 	break;
 
     case N_EQ_INT:
@@ -244,7 +241,7 @@ node **m;
 	break;
 
     case N_GE:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) >= 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) >= 0));
 	break;
 
     case N_GE_INT:
@@ -252,7 +249,7 @@ node **m;
 	break;
 
     case N_GT:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) > 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) > 0));
 	break;
 
     case N_GT_INT:
@@ -260,7 +257,7 @@ node **m;
 	break;
 
     case N_LE:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) <= 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) <= 0));
 	break;
 
     case N_LE_INT:
@@ -272,7 +269,7 @@ node **m;
 	break;
 
     case N_LT:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) < 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) < 0));
 	break;
 
     case N_LT_INT:
@@ -295,7 +292,7 @@ node **m;
 	break;
 
     case N_NE:
-	n->l.left = node_int((Int) (flt_cmp(&f1, &f2) != 0));
+	node_toint(n->l.left, (flt_cmp(&f1, &f2) != 0));
 	break;
 
     case N_NE_INT:
@@ -335,6 +332,163 @@ node **m;
 }
 
 /*
+ * NAME:	optimize->tst()
+ * DESCRIPTION:	optimize a tst operation
+ */
+static node *opt_tst(n)
+register node *n;
+{
+    register node *m;
+
+    switch (n->type) {
+    case N_INT:
+	n->l.number = (n->l.number != 0);
+	return n;
+
+    case N_FLOAT:
+	node_toint(n, (Int) !NFLT_ISZERO(n));
+	return n;
+
+    case N_STR:
+	node_toint(n, (Int) TRUE);
+	return n;
+
+    case N_TST:
+    case N_NOT:
+    case N_LAND:
+    case N_EQ:
+    case N_EQ_INT:
+    case N_NE:
+    case N_NE_INT:
+    case N_GT:
+    case N_GT_INT:
+    case N_GE:
+    case N_GE_INT:
+    case N_LT:
+    case N_LT_INT:
+    case N_LE:
+    case N_LE_INT:
+	return n;
+
+    case N_COMMA:
+	n->mod = T_INT;
+	n->r.right = opt_tst(n->r.right);
+	return n;
+
+    default:
+	m = node_new(n->line);
+	m->type = N_TST;
+	m->mod = T_INT;
+	m->l.left = n;
+	return m;
+    }
+}
+
+/*
+ * NAME:	optimize->not()
+ * DESCRIPTION:	optimize a not operation
+ */
+static node *opt_not(n)
+register node *n;
+{
+    register node *m;
+
+    switch (n->type) {
+    case N_INT:
+	node_toint(n, (n->l.number == 0));
+	return n;
+
+    case N_FLOAT:
+	node_toint(n, (Int) NFLT_ISZERO(n));
+	return n;
+
+    case N_STR:
+	node_toint(n, (Int) FALSE);
+	return n;
+
+    case N_LAND:
+	n->type = N_LOR;
+	n->l.left = opt_not(n->l.left);
+	n->r.right = opt_not(n->r.right);
+	return n;
+
+    case N_LOR:
+	n->type = N_LAND;
+	n->l.left = opt_not(n->l.left);
+	n->r.right = opt_not(n->r.right);
+	return n;
+
+    case N_TST:
+	n->type = N_NOT;
+	return n;
+
+    case N_NOT:
+	n->type = N_TST;
+	return n;
+
+    case N_EQ:
+	n->type = N_NE;
+	return n;
+
+    case N_EQ_INT:
+	n->type = N_NE_INT;
+	return n;
+
+    case N_NE:
+	n->type = N_EQ;
+	return n;
+
+    case N_NE_INT:
+	n->type = N_EQ_INT;
+	return n;
+
+    case N_GT:
+	n->type = N_LE;
+	return n;
+
+    case N_GT_INT:
+	n->type = N_LE_INT;
+	return n;
+
+    case N_GE:
+	n->type = N_LT;
+	return n;
+
+    case N_GE_INT:
+	n->type = N_LT_INT;
+	return n;
+
+    case N_LT:
+	n->type = N_GE;
+	return n;
+
+    case N_LT_INT:
+	n->type = N_GE_INT;
+	return n;
+
+    case N_LE:
+	n->type = N_GT;
+	return n;
+
+    case N_LE_INT:
+	n->type = N_GT_INT;
+	return n;
+
+    case N_COMMA:
+	n->mod = T_INT;
+	n->r.right = opt_not(n->r.right);
+	return n;
+
+    default:
+	m = node_new(n->line);
+	m->type = N_NOT;
+	m->mod = T_INT;
+	m->l.left = n;
+	return m;
+    }
+}
+
+/*
  * NAME:	optimize->binop()
  * DESCRIPTION:	optimize a binary operator expression
  */
@@ -354,9 +508,8 @@ register node **m;
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
-	    n->r.right = node_str(str_add(n->l.left->r.right->l.string,
-					  n->r.right->l.string));
-	    n->r.right->line = n->l.left->r.right->line;
+	    node_tostr(n->r.right, str_add(n->l.left->r.right->l.string,
+					   n->r.right->l.string));
 	    n->l.left = n->l.left->l.left;
 	    return d1;
 	}
@@ -418,6 +571,7 @@ register node **m;
 	case N_OR_INT:
 	case N_XOR:
 	case N_XOR_INT:
+	    /* swap constant to the right */
 	    t = n->l.left;
 	    n->l.left = n->r.right;
 	    n->r.right = t;
@@ -428,6 +582,25 @@ register node **m;
 	}
     }
     d = max2(d1, d2 + 1);
+
+    if ((n->r.right->type == N_INT && n->r.right->l.number == 0) ||
+	(n->r.right->type == N_FLOAT && NFLT_ISZERO(n->r.right) &&
+	 n->l.left->mod == T_FLOAT)) {
+	/*
+	 * x == 0, flt == 0.0
+	 */
+	switch (n->type) {
+	case N_EQ:
+	case N_EQ_INT:
+	    *m = opt_not(n->l.left);
+	    return d1;
+
+	case N_NE:
+	case N_NE_INT:
+	    *m = opt_tst(n->l.left);
+	    return d1;
+	}
+    }
 
     if (T_ARITHMETIC(n->mod) && n->mod == n->l.left->mod &&
 	n->mod == n->r.right->mod) {
@@ -700,7 +873,7 @@ register node **m;
 	}
 	n = *m;
 
-	if (T_ARITHMETIC(n->l.left->mod) && n->r.right->flags & F_CONST) {
+	if (T_ARITHMETIC(n->l.left->mod) && (n->r.right->flags & F_CONST)) {
 	    switch (n->type) {
 	    case N_ADD:
 	    case N_SUB:
@@ -723,8 +896,8 @@ register node **m;
 
 	    case N_AND_INT:
 		if (n->r.right->l.number == 0) {
-		    *m = n->r.right;
-		    return 1;
+		    n->type = N_COMMA;
+		    return opt_expr(m, FALSE);
 		}
 		if (n->r.right->l.number == -1) {
 		    *m = n->l.left;
@@ -734,8 +907,8 @@ register node **m;
 
 	    case N_MULT:
 		if (NFLT_ISZERO(n->r.right)) {
-		    *m = n->r.right;
-		    return 1;
+		    n->type = N_COMMA;
+		    return opt_expr(m, FALSE);
 		}
 		/* fall through */
 	    case N_DIV:
@@ -747,8 +920,8 @@ register node **m;
 
 	    case N_MULT_INT:
 		if (n->r.right->l.number == 0) {
-		    *m = n->r.right;
-		    return 1;
+		    n->type = N_COMMA;
+		    return opt_expr(m, FALSE);
 		}
 		/* fall through */
 	    case N_DIV_INT:
@@ -761,15 +934,15 @@ register node **m;
 	    case N_MOD_INT:
 		if (n->r.right->l.number == 1) {
 		    n->r.right->l.number = 0;
-		    *m = n->r.right;
-		    return 1;
+		    n->type = N_COMMA;
+		    return opt_expr(m, FALSE);
 		}
 		break;
 
 	    case N_OR_INT:
 		if (n->r.right->l.number == -1) {
-		    *m = n->r.right;
-		    return 1;
+		    n->type = N_COMMA;
+		    return opt_expr(m, FALSE);
 		}
 		if (n->r.right->l.number == 0) {
 		    *m = n->l.left;
@@ -938,21 +1111,33 @@ bool pop;
 }
 
 /*
- * NAME:	optimize->test()
+ * NAME:	optimize->ctest()
  * DESCRIPTION:	test a constant expression
  */
-static bool opt_test(m)
-register node **m;
+static bool opt_ctest(n)
+register node *n;
 {
-    register node *n;
-
-    n = *m;
     if (n->type != N_INT) {
-	n = node_int((Int) (n->type != T_FLOAT || !NFLT_ISZERO(n)));
-	n->line = (*m)->line;
-	*m = n;
+	node_toint(n, (n->type != T_FLOAT || !NFLT_ISZERO(n)));
     }
     return (n->l.number != 0);
+}
+
+/*
+ * NAME:	optimize->cond()
+ * DESCRIPTION:	optimize a condition
+ */
+static unsigned short opt_cond(m, pop)
+register node **m;
+int pop;
+{
+    unsigned short d;
+
+    d = opt_expr(m, pop);
+    if (*m != (node *) NULL && (*m)->type == N_TST) {
+	*m = (*m)->l.left;
+    }
+    return d;
 }
 
 /*
@@ -986,7 +1171,7 @@ int pop;
 	d1 = opt_expr(&n->l.left, TRUE);
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
-	    *m = node_int((Int) 0);
+	    node_toint(n, (Int) 0);
 	}
 	return d1;
 
@@ -996,11 +1181,7 @@ int pop;
 	}
 	/* fall through */
     case N_NOT:
-    case N_NOTF:
-    case N_NOTI:
     case N_TST:
-    case N_TSTF:
-    case N_TSTI:
     case N_UPLUS:
 	if (pop) {
 	    *m = n->l.left;
@@ -1085,10 +1266,6 @@ int pop;
 	/* fall through */
     case N_EQ:
     case N_NE:
-	if (!T_ARITHSTR(n->l.left->mod) || !T_ARITHSTR(n->r.right->mod)) {
-	    return max2(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE) + 1);
-	}
 	if (pop) {
 	    d1 = opt_expr(&n->l.left, TRUE);
 	    if (d1 == 0) {
@@ -1163,9 +1340,8 @@ int pop;
 		n->r.right->l.number >= (long) n->l.left->l.string->len) {
 		return 2;
 	    }
-	    *m = node_int((Int) str_index(n->l.left->l.string,
+	    node_toint(n, (Int) str_index(n->l.left->l.string,
 					  (long) n->r.right->l.number));
-	    (*m)->line = n->line;
 	    return !pop;
 	}
 	return max2(opt_expr(&n->l.left, FALSE),
@@ -1202,18 +1378,9 @@ int pop;
 	return opt_expr(m, pop);
 
     case N_LAND:
-	if (n->l.left->type == N_TST || n->l.left->type == N_TSTF ||
-	    n->l.left->type == N_TSTI) {
-	    n->l.left = n->l.left->l.left;
-	}
-	if (n->r.right->type == N_TST || n->r.right->type == N_TSTF ||
-	    n->r.right->type == N_TSTI) {
-	    n->r.right = n->r.right->l.left;
-	}
-
-	d1 = opt_expr(&n->l.left, FALSE);
+	d1 = opt_cond(&n->l.left, FALSE);
 	if (n->l.left->flags & F_CONST) {
-	    if (!opt_test(&n->l.left)) {
+	    if (!opt_ctest(n->l.left)) {
 		/* false && x */
 		*m = n->l.left;
 		return !pop;
@@ -1224,7 +1391,7 @@ int pop;
 	}
 
 	oldside = side_start(&side, &olddepth);
-	d2 = opt_expr(&n->r.right, pop);
+	d2 = opt_cond(&n->r.right, pop);
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
 	    *m = n->l.left;
@@ -1234,7 +1401,7 @@ int pop;
 	    return d1;
 	}
 	if (n->r.right->flags & F_CONST) {
-	    if (!opt_test(&n->r.right)) {
+	    if (!opt_ctest(n->r.right)) {
 		/* x && false */
 		n->type = N_COMMA;
 		return opt_expr(m, pop);
@@ -1248,7 +1415,7 @@ int pop;
 	}
 	if (n->r.right->type == N_COMMA) {
 	    n = n->r.right;
-	    if (n->r.right->flags & F_CONST && !opt_test(&n->r.right)) {
+	    if ((n->r.right->flags & F_CONST) && !opt_ctest(n->r.right)) {
 		/* x && (y, false) --> (x && y, false) */
 		(*m)->r.right = n->l.left;
 		n->l.left = *m;
@@ -1259,18 +1426,9 @@ int pop;
 	return max2(d1, d2);
 
     case N_LOR:
-	if (n->l.left->type == N_TST || n->l.left->type == N_TSTF ||
-	    n->l.left->type == N_TSTI) {
-	    n->l.left = n->l.left->l.left;
-	}
-	if (n->r.right->type == N_TST || n->r.right->type == N_TSTF ||
-	    n->r.right->type == N_TSTI) {
-	    n->r.right = n->r.right->l.left;
-	}
-
-	d1 = opt_expr(&n->l.left, FALSE);
+	d1 = opt_cond(&n->l.left, FALSE);
 	if (n->l.left->flags & F_CONST) {
-	    if (opt_test(&n->l.left)) {
+	    if (opt_ctest(n->l.left)) {
 		/* true || x */
 		*m = n->l.left;
 		return !pop;
@@ -1281,7 +1439,7 @@ int pop;
 	}
 
 	oldside = side_start(&side, &olddepth);
-	d2 = opt_expr(&n->r.right, pop);
+	d2 = opt_cond(&n->r.right, pop);
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
 	    *m = n->l.left;
@@ -1291,7 +1449,7 @@ int pop;
 	    return d1;
 	}
 	if (n->r.right->flags & F_CONST) {
-	    if (opt_test(&n->r.right)) {
+	    if (opt_ctest(n->r.right)) {
 		/* x || true */
 		n->type = N_COMMA;
 		return opt_expr(m, pop);
@@ -1305,7 +1463,7 @@ int pop;
 	}
 	if (n->r.right->type == N_COMMA) {
 	    n = n->r.right;
-	    if (n->r.right->flags & F_CONST && opt_test(&n->r.right)) {
+	    if ((n->r.right->flags & F_CONST) && opt_ctest(n->r.right)) {
 		/* x || (y, true) --> (x || y, true) */
 		(*m)->r.right = n->l.left;
 		n->l.left = *m;
@@ -1316,18 +1474,19 @@ int pop;
 	return max2(d1, d2);
 
     case N_QUEST:
-	i = opt_expr(&n->l.left, FALSE);
+	i = opt_cond(&n->l.left, FALSE);
 	if (n->l.left->flags & F_CONST) {
-	    if (opt_test(&n->l.left)) {
+	    if (opt_ctest(n->l.left)) {
 		*m = n->r.right->l.left;
 	    } else {
 		*m = n->r.right->r.right;
 	    }
 	    return opt_expr(m, pop);
 	}
-	if (n->l.left->type == N_COMMA && n->l.left->r.right->flags & F_CONST) {
+	if (n->l.left->type == N_COMMA && (n->l.left->r.right->flags & F_CONST))
+	{
 	    side_add(&n->l.left, i);
-	    if (opt_test(&n->l.left)) {
+	    if (opt_ctest(n->l.left)) {
 		*m = n->r.right->l.left;
 	    } else {
 		*m = n->r.right->r.right;
@@ -1380,8 +1539,7 @@ int pop;
 	    }
 	    if (from >= 0 && from <= to + 1 &&
 		to < (long) n->l.left->l.string->len) {
-		*m = node_str(str_range(n->l.left->l.string, from, to));
-		(*m)->line = n->line;
+		node_tostr(n, str_range(n->l.left->l.string, from, to));
 		return !pop;
 	    }
 	}
@@ -1562,7 +1720,7 @@ unsigned short *depth;
 
 	case N_DO:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->l.left, FALSE);
+	    d1 = opt_cond(&m->l.left, FALSE);
 	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
 	    opt_stmt(m->r.right, &d2);
 	    d = max3(d, d1, d2);
@@ -1570,7 +1728,7 @@ unsigned short *depth;
 
 	case N_FOR:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->l.left, FALSE);
+	    d1 = opt_cond(&m->l.left, FALSE);
 	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
 	    i = opt_const(m->l.left);
 	    if (i == 0) {
@@ -1627,7 +1785,7 @@ unsigned short *depth;
 
 	case N_IF:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->l.left, FALSE);
+	    d1 = opt_cond(&m->l.left, FALSE);
 	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
 	    i = opt_const(m->l.left);
 	    if (i == 0) {

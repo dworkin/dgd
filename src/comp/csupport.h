@@ -72,7 +72,7 @@ Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
 bool poptruthval	P((void));
 void pre_catch		P((void));
-void post_catch		P((void));
+void post_catch		P((int));
 int  pre_rlimits	P((void));
 int  switch_range	P((Int, Int*, int));
 int  switch_str		P((value*, char*, int));

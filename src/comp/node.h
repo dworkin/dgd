@@ -34,12 +34,15 @@ typedef struct _node_ {
 # define F_CONT		0x20	/* continue */
 # define F_RETURN	0x40	/* return */
 
+extern node *node_new	P((unsigned int));
 extern node *node_int	P((Int));
 extern node *node_float	P((xfloat*));
 extern node *node_str	P((string*));
 extern node *node_fcall	P((int, char*, Int));
 extern node *node_mon	P((int, int, node*));
 extern node *node_bin	P((int, int, node*, node*));
+extern void  node_toint	P((node*, Int));
+extern void  node_tostr	P((node*, string*));
 extern void  node_free	P((void));
 extern void  node_clear	P((void));
 
@@ -106,46 +109,42 @@ extern void  node_clear	P((void));
 # define N_NE			 61
 # define N_NE_INT		 62
 # define N_NOT			 63
-# define N_NOTF			 64
-# define N_NOTI			 65
-# define N_OR			 66
-# define N_OR_INT		 67
-# define N_OR_EQ		 68
-# define N_OR_EQ_INT		 69
-# define N_PAIR			 70
-# define N_POP			 71
-# define N_QUEST		 72
-# define N_RANGE		 73
-# define N_RETURN		 74
-# define N_RLIMITS		 75
-# define N_RSHIFT		 76
-# define N_RSHIFT_INT		 77
-# define N_RSHIFT_EQ		 78
-# define N_RSHIFT_EQ_INT	 79
-# define N_SPREAD		 80
-# define N_STR			 81
-# define N_SUB			 82
-# define N_SUB_INT		 83
-# define N_SUB_EQ		 84
-# define N_SUB_EQ_INT		 85
-# define N_SUB_EQ_1		 86
-# define N_SUB_EQ_1_INT		 87
-# define N_SUM			 88
-# define N_SWITCH_INT		 89
-# define N_SWITCH_RANGE		 90
-# define N_SWITCH_STR		 91
-# define N_TOFLOAT		 92
-# define N_TOINT		 93
-# define N_TOSTRING		 94
-# define N_TST			 95
-# define N_TSTF			 96
-# define N_TSTI			 97
-# define N_UPLUS		 98
-# define N_XOR			 99
-# define N_XOR_INT		100
-# define N_XOR_EQ		101
-# define N_XOR_EQ_INT		102
-# define N_MIN_MIN		103
-# define N_MIN_MIN_INT		104
-# define N_PLUS_PLUS		105
-# define N_PLUS_PLUS_INT	106
+# define N_OR			 64
+# define N_OR_INT		 65
+# define N_OR_EQ		 66
+# define N_OR_EQ_INT		 67
+# define N_PAIR			 68
+# define N_POP			 69
+# define N_QUEST		 70
+# define N_RANGE		 71
+# define N_RETURN		 72
+# define N_RLIMITS		 73
+# define N_RSHIFT		 74
+# define N_RSHIFT_INT		 75
+# define N_RSHIFT_EQ		 76
+# define N_RSHIFT_EQ_INT	 77
+# define N_SPREAD		 78
+# define N_STR			 79
+# define N_SUB			 80
+# define N_SUB_INT		 81
+# define N_SUB_EQ		 82
+# define N_SUB_EQ_INT		 83
+# define N_SUB_EQ_1		 84
+# define N_SUB_EQ_1_INT		 85
+# define N_SUM			 86
+# define N_SWITCH_INT		 87
+# define N_SWITCH_RANGE		 88
+# define N_SWITCH_STR		 89
+# define N_TOFLOAT		 90
+# define N_TOINT		 91
+# define N_TOSTRING		 92
+# define N_TST			 93
+# define N_UPLUS		 94
+# define N_XOR			 95
+# define N_XOR_INT		 96
+# define N_XOR_EQ		 97
+# define N_XOR_EQ_INT		 98
+# define N_MIN_MIN		 99
+# define N_MIN_MIN_INT		100
+# define N_PLUS_PLUS		101
+# define N_PLUS_PLUS_INT	102

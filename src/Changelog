@@ -998,3 +998,7 @@ DGD 1.1
  - restore_object() now does typechecking, if global typechecking is enabled.
  - Faster code with global typechecking.
  - Re-introduced keyword "atomic".
+ - Extended precompiled function index from 2 to 3 bytes.
+ - Accept binary connections more quickly.
+ - Optimize generated code a little further, particularly generated C code.
+ - Fixed possibly bad code generated for breaking out of a catch.

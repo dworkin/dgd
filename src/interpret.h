@@ -14,18 +14,18 @@
 # define I_PUSH_GLOBAL_LVALUE	11	/* 1 unsigned, 1 unsigned */
 # define I_INDEX		12
 # define I_INDEX_LVALUE		13
-# define I_AGGREGATE		14	/* 2 unsigned */
-# define I_MAP_AGGREGATE	15	/* 2 unsigned */
-# define I_SPREAD		16	/* 1 signed */
-# define I_CAST			17	/* 1 unsigned */
-# define I_FETCH		18
-# define I_STORE		19
-# define I_JUMP			20	/* 2 unsigned */
-# define I_JUMP_ZERO		21	/* 2 unsigned */
-# define I_JUMP_NONZERO		22	/* 2 unsigned */
-# define I_SWITCH		23	/* n */
-# define I_CALL_KFUNC		24	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_IKFUNC		25	/* 1 unsigned (+ 1 unsigned) */
+# define I_AGGREGATE		14	/* 1 unsigned, 2 unsigned */
+# define I_SPREAD		15	/* 1 signed */
+# define I_CAST			16	/* 1 unsigned */
+# define I_FETCH		17
+# define I_STORE		18
+# define I_JUMP			19	/* 2 unsigned */
+# define I_JUMP_ZERO		20	/* 2 unsigned */
+# define I_JUMP_NONZERO		21	/* 2 unsigned */
+# define I_SWITCH		22	/* n */
+# define I_CALL_KFUNC		23	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_IKFUNC		24	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_AFUNC		25	/* 1 unsigned, 1 unsigned */
 # define I_CALL_DFUNC		26	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_IDFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */

@@ -36,6 +36,7 @@ extern object		  *o_find	P((char*));
 extern struct _control_	  *o_control	P((object*));
 extern struct _dataspace_ *o_dataspace	P((object*));
 extern void		   o_clean	P((void));
+extern char		  *o_scantable	P((bool(*)(object*)));
 extern uindex		   o_count	P((void));
 extern bool		   o_dump	P((int));
 extern void		   o_restore	P((int));

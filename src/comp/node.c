@@ -23,7 +23,8 @@ static int chunksize = NODE_CHUNK;	/* part of list chunk used */
  * NAME:	node->new()
  * DESCRIPTION:	create a new node
  */
-static node *node_new()
+node *node_new(line)
+unsigned int line;
 {
     register node *n;
 
@@ -41,8 +42,9 @@ static node *node_new()
 	chunksize = 0;
     }
     n = &list->n[chunksize++];
+    n->type = N_INT;
     n->flags = 0;
-    n->line = tk_line();
+    n->line = line;
     return n;
 }
 
@@ -55,9 +57,9 @@ Int num;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = N_INT;
-    n->flags |= F_CONST;
+    n->flags = F_CONST;
     n->mod = T_INT;
     n->l.number = num;
 
@@ -73,9 +75,9 @@ xfloat *flt;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = N_FLOAT;
-    n->flags |= F_CONST;
+    n->flags = F_CONST;
     n->mod = T_FLOAT;
     NFLT_PUT(n, *flt);
 
@@ -91,9 +93,9 @@ string *str;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = N_STR;
-    n->flags |= F_CONST;
+    n->flags = F_CONST;
     n->mod = T_STRING;
     str_ref(n->l.string = str);
     n->r.right = (node *) NULL;
@@ -112,7 +114,7 @@ Int call;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = N_FUNC;
     n->mod = mod;
     n->l.ptr = func;
@@ -131,7 +133,7 @@ node *left;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
@@ -150,13 +152,46 @@ node *left, *right;
 {
     register node *n;
 
-    n = node_new();
+    n = node_new(tk_line());
     n->type = type;
     n->mod = mod;
     n->l.left = left;
     n->r.right = right;
 
     return n;
+}
+
+/*
+ * NAME:	node->toint()
+ * DESCRIPTION:	convert node type to integer constant
+ */
+void node_toint(n, i)
+register node *n;
+Int i;
+{
+    if (n->type == N_STR) {
+	str_del(n->l.string);
+    }
+    n->type = N_INT;
+    n->flags = F_CONST;
+    n->l.number = i;
+}
+
+/*
+ * NAME:	node->tostr()
+ * DESCRIPTION:	convert node type to string constant
+ */
+void node_tostr(n, str)
+register node *n;
+string *str;
+{
+    str_ref(str);
+    if (n->type == N_STR) {
+	str_del(n->l.string);
+    }
+    n->type = N_STR;
+    n->flags = F_CONST;
+    n->l.string = str;
 }
 
 /*

@@ -1117,6 +1117,9 @@ int strict;
 # define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
 				v |= UCHAR(*(pc)++)))
+# define FETCH3U(pc, v)	((Uint) (v = UCHAR(*(pc)++) << 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++)))
 # define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
 				v |= UCHAR(*(pc)++), v <<= 8, \
@@ -1478,11 +1481,11 @@ register char *pc;
 	    continue;
 
 	case I_AGGREGATE:
-	    i_aggregate(FETCH2U(pc, u));
-	    break;
-
-	case I_MAP_AGGREGATE:
-	    i_map_aggregate(FETCH2U(pc, u));
+	    if (FETCH1U(pc) == 0) {
+		i_aggregate(FETCH2U(pc, u));
+	    } else {
+		i_map_aggregate(FETCH2U(pc, u));
+	    }
 	    break;
 
 	case I_SPREAD:
@@ -1567,6 +1570,12 @@ register char *pc;
 		    error("Too many arguments for kfun %s", kf->name);
 		}
 	    }
+	    break;
+
+	case I_CALL_AFUNC:
+	    u = FETCH1U(pc);
+	    i_funcall((object *) NULL, 0, u, FETCH1U(pc) + size);
+	    size = 0;
 	    break;
 
 	case I_CALL_IDFUNC:
@@ -1784,7 +1793,7 @@ int funci;
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     if (f.func->class & C_COMPILED) {
 	/* compiled function */
-	(*pcfunctions[FETCH2U(pc, n)])();
+	(*pcfunctions[FETCH3U(pc, n)])();
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;
@@ -1935,16 +1944,16 @@ register frame *f;
 	    /* fall through */
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_GLOBAL:
-	case I_AGGREGATE:
-	case I_MAP_AGGREGATE:
 	case I_JUMP:
 	case I_JUMP_ZERO:
 	case I_JUMP_NONZERO:
+	case I_CALL_AFUNC:
 	case I_CATCH:
 	    pc += 2;
 	    break;
 
 	case I_PUSH_FAR_STRING:
+	case I_AGGREGATE:
 	case I_CALL_DFUNC:
 	case I_CALL_FUNC:
 	    pc += 3;

@@ -1,5 +1,6 @@
 extern void	 c_init		P((char*, char*, char*, char**));
 extern object	*c_compile	P((char*));
+extern bool	 c_upgrade	P((object**, int));
 extern int	 c_autodriver	P((void));
 extern void 	 c_error	();
 
@@ -19,6 +20,9 @@ extern node *c_while		P((node*, node*));
 extern node *c_for		P((node*, node*, node*, node*));
 extern void  c_startrlimits	P((void));
 extern node *c_endrlimits	P((node*, node*, node*));
+extern void  c_startcatch	P((void));
+extern void  c_endcatch		P((void));
+extern node *c_donecatch	P((node*, node*));
 extern void  c_startswitch	P((node*, int));
 extern node *c_endswitch	P((node*, node*));
 extern node *c_case		P((node*, node*));
