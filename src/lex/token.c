@@ -223,7 +223,7 @@ char *tk_filename()
  * DESCRIPTION:	set the current line number
  */
 void tk_setline(line)
-unsigned short line;
+unsigned int line;
 {
     ibuffer->line = line;
 }
@@ -252,7 +252,7 @@ char *file;
  *		specially processed.
  */
 void tk_header(incl)
-bool incl;
+int incl;
 {
     do_include = incl;
 }
@@ -263,7 +263,7 @@ bool incl;
  *		strings, and don't report errors.
  */
 void tk_setpp(pp)
-bool pp;
+int pp;
 {
     pp_level = (int) pp;
 }
@@ -953,7 +953,7 @@ int tk_gettok()
  *		TRUE, only whitespace is allowed.
  */
 void tk_skiptonl(ws)
-bool ws;
+int ws;
 {
     pp_level++;
     for (;;) {
