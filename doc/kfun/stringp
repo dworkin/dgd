@@ -1,0 +1,12 @@
+NAME
+	stringp - check if a value is a string
+
+SYNOPSIS
+	int stringp(mixed value)
+
+
+DESCRIPTION
+	Return 1 if the argument is a string, or 0 otherwise.
+
+SEE ALSO
+	kfun/arrayp, kfun/intp, kfun/objectp, kfun/mappingp

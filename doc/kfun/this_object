@@ -1,0 +1,12 @@
+NAME
+	this_object - return current object
+
+SYNOPSIS
+	object this_object()
+
+
+DESCRIPTION
+	Return the current object, or 0 if the current object is destructed.
+
+SEE ALSO
+	kfun/previous_object

@@ -1,0 +1,13 @@
+NAME
+	this_user - return the current user
+
+SYNOPSIS
+	object this_user()
+
+
+DESCRIPTION
+	Return the user for which the current execution started.  If current
+	execution started from a delayed function call, 0 is returned.
+
+SEE ALSO
+	kfun/query_ip_number, kfun/send_message, kfun/users

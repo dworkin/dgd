@@ -1,0 +1,13 @@
+NAME
+	users - return array with users
+
+SYNOPSIS
+	object *users()
+
+
+DESCRIPTION
+	Return an array containing the objects associated with the current
+	users.
+
+SEE ALSO
+	kfun/query_ip_number, kfun/send_message, kfun/this_user
