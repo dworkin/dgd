@@ -10,24 +10,6 @@
 # include "file.c"
 # include "extra.c"
 # include "debug.c"
-# ifdef KF_PACKAGE1
-# include KF_PACKAGE1
-# endif
-# ifdef KF_PACKAGE2
-# include KF_PACKAGE2
-# endif
-# ifdef KF_PACKAGE3
-# include KF_PACKAGE3
-# endif
-# ifdef KF_PACKAGE4
-# include KF_PACKAGE4
-# endif
-# ifdef KF_PACKAGE5
-# include KF_PACKAGE5
-# endif
-# ifdef KF_PACKAGE6
-# include KF_PACKAGE6
-# endif
 # undef FUNCDEF
 
 /*
@@ -40,24 +22,6 @@ kfunc kftab[] = {
 # include "file.c"
 # include "extra.c"
 # include "debug.c"
-# ifdef KF_PACKAGE1
-# include KF_PACKAGE1
-# endif
-# ifdef KF_PACKAGE2
-# include KF_PACKAGE2
-# endif
-# ifdef KF_PACKAGE3
-# include KF_PACKAGE3
-# endif
-# ifdef KF_PACKAGE4
-# include KF_PACKAGE4
-# endif
-# ifdef KF_PACKAGE5
-# include KF_PACKAGE5
-# endif
-# ifdef KF_PACKAGE6
-# include KF_PACKAGE6
-# endif
 # undef FUNCDEF
 };
 
