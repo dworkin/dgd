@@ -30,6 +30,7 @@ extern node *c_iflookup		P((node*, node*));
 extern node *c_variable		P((node*));
 extern node *c_funcall		P((node*, node*));
 extern node *c_arrow		P((node*, node*, node*));
+extern node *c_checklval	P((node*));
 extern node *c_tst		P((node*));
 extern node *c_not		P((node*));
 extern node *c_lvalue		P((node*, char*));
