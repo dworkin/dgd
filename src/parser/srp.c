@@ -1,223 +1,6 @@
-# define INCLUDE_CTYPE
 # include "dgd.h"
+# include "str.h"
 # include "srp.h"
-
-typedef struct {
-    char **follow;	/* actual follow info */
-    Uint size;		/* size of follow string */
-} follow;
-
-/*
- * NAME:	follow->new()
- * DESCRIPTION:	compute FOLLOW() for each nonterminal
- */
-static follow *fl_new(grammar, size, ntoken, nprod, nrule)
-char *grammar;
-unsigned short size, ntoken, nprod, nrule;
-{
-    register char *p, *q;
-    register int i, j, k, l;
-    Uint *dstart, *depend, dep;
-    char **rule;
-    unsigned short *rsym, *cstart, *copysym, csym, *rcount;
-    unsigned short *queue1, *qhead1, *qtail1, *queue2, *qhead2, *qtail2;
-    unsigned short *fstart, *fmap, *fsize;
-    bool *nullable, *flag1, *flag2;
-    follow *fl;
-
-    /* offset of productions */
-    p = grammar + 12 + (ntoken << 1);
-    p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-
-    /*
-     * allocate and initialize tables
-     */
-    fstart = ALLOCA(unsigned short, nprod);
-    memset(fstart, '\0', nprod * sizeof(unsigned short));
-    fmap = ALLOCA(unsigned short, ntoken * nprod);
-    fsize = ALLOCA(unsigned short, nprod);
-    memset(fsize, '\0', nprod * sizeof(unsigned short));
-
-    dstart = ALLOCA(Uint, ntoken + nprod);
-    memset(dstart, '\0', (ntoken + nprod) * sizeof(Uint));
-    depend = ALLOCA(Uint, 2 * (size - (p - grammar)));
-    rule = ALLOCA(char*, nrule);
-    rsym = ALLOCA(unsigned short, nrule);
-    cstart = ALLOCA(unsigned short, nprod);
-    copysym = ALLOCA(unsigned short, nprod + nrule);
-    queue1 = ALLOCA(unsigned short, nrule + 1);
-    queue2 = ALLOCA(unsigned short, nprod);
-    rcount = ALLOCA(unsigned short, nrule);
-    memset(rcount, '\0', nrule * sizeof(unsigned short));
-    nullable = ALLOCA(bool, nprod);
-    memset(nullable, '\0', nprod * sizeof(bool));
-    flag1 = ALLOCA(bool, nprod);
-    flag2 = ALLOCA(bool, nprod);
-
-    /*
-     * collect dependancy info from grammar
-     */
-    nrule = 0;
-    dep = 1;
-    csym = 0;
-    qhead1 = qtail1 = queue1;
-    for (i = 0; i < nprod; i++) {
-	cstart[i] = csym;
-
-	j = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-	p += 2;
-	do {
-	    rsym[nrule] = i;
-	    rule[nrule] = p;
-	    k = UCHAR(p[0]);
-	    if (k == 0) {
-		/* empty rule */
-		if (!nullable[i]) {
-		    nullable[i] = TRUE;
-		    *qtail1++ = i;
-		}
-	    } else {
-		q = p;
-		do {
-		    q += 2;
-		    l = (UCHAR(q[0]) << 8) + UCHAR(q[1]);
-		    depend[dep] = nrule + ((Uint) (q - p) << 16);
-		    depend[dep + 1] = dstart[l];
-		    dstart[l] = dep;
-		    dep += 2;
-		    rcount[nrule]++;
-		} while (--k != 0);
-
-		if (l >= ntoken) {
-		    copysym[csym++] = l;
-		}
-	    }
-	    p += 2 + UCHAR(p[1]);
-	    nrule++;
-	} while (--j != 0);
-
-	copysym[csym++] = 0;
-    }
-
-    /*
-     * propagate nullable
-     */
-    while (qhead1 != qtail1) {
-	for (i = dstart[*qhead1++]; i != 0; i = depend[i + 1]) {
-	    j = depend[i] & 0xffff;
-	    if (--rcount[j] == 0 && !nullable[j = rsym[j]]) {
-		nullable[j] = TRUE;
-		*qtail1++ = j;
-	    }
-	}
-    }
-
-    /*
-     * get follow info
-     */
-    for (i = 0; i < ntoken; i++) {
-	/*
-	 * pass 1
-	 */
-	memset(flag1, '\0', nprod);
-	memset(flag2, '\0', nprod);
-	qhead1 = qtail1 = queue1;
-	qhead2 = qtail2 = queue2;
-	*qtail1++ = i;
-	do {
-	    for (j = dstart[*qhead1++]; j != 0; j = depend[j + 1]) {
-		k = depend[j] & 0xffff;
-		if (!flag1[rsym[k]]) {
-		    p = rule[k];
-		    q = p + (depend[j] >> 16);
-		    do {
-			q -= 2;
-			if (q == p) {
-			    l = rsym[k];
-			    flag1[l] = TRUE;
-			    *qtail1++ = l + ntoken;
-			    break;
-			}
-
-			l = (UCHAR(q[0]) << 8) + UCHAR(q[1]);
-			if (l < ntoken) {
-			    break;
-			}
-			l -= ntoken;
-
-			if (!flag2[l]) {
-			    flag2[l] = TRUE;
-			    *qtail2++ = l;
-			}
-		    } while (nullable[l]);
-		}
-	    }
-	} while (qhead1 != qtail1);
-
-	/*
-	 * pass 2
-	 */
-	memset(flag1, '\0', nprod);
-	while (qhead2 != qtail2) {
-	    l = *qhead2++;
-	    if (!flag1[l]) {
-		flag1[l] = TRUE;
-		fmap[l * ntoken + i] = fstart[l];
-		fstart[l] = i + 1;
-		fsize[l]++;
-
-		for (k = cstart[l]; (l=copysym[k]) != 0; k++) {
-		    l -= ntoken;
-		    if (!flag2[l]) {
-			flag2[l] = TRUE;
-			*qtail2++ = l;
-		    }
-		}
-	    }
-	}
-    }
-
-    AFREE(flag2);
-    AFREE(flag1);
-    AFREE(nullable);
-    AFREE(rcount);
-    AFREE(queue2);
-    AFREE(queue1);
-    AFREE(copysym);
-    AFREE(cstart);
-    AFREE(rsym);
-    AFREE(rule);
-    AFREE(depend);
-    AFREE(dstart);
-
-    /*
-     * convert to proper table
-     */
-    for (i = j = 0; i < nprod; i++) {
-	j += 2 * fsize[i] + 2;
-    }
-    fl = ALLOC(follow, 1);
-    fl->follow = ALLOC(char*, nprod);
-    fl->size = j;
-    p = ALLOC(char, j);
-
-    for (i = 0; i < nprod; i++) {
-	fl->follow[i] = p;
-	*p++ = fsize[i] >> 8;
-	*p++ = fsize[i];
-	for (j = fstart[i]; j != 0; j = fmap[i * ntoken + j]) {
-	    *p++ = --j >> 8;
-	    *p++ = j;
-	}
-    }
-
-    AFREE(fsize);
-    AFREE(fmap);
-    AFREE(fstart);
-
-    return fl;
-}
-
 
 typedef struct _item_ {
     char *ref;			/* pointer to rule in grammar */
@@ -400,143 +183,10 @@ srpstate *states;
 }
 
 
-typedef struct {
-    Uint gap;			/* first gap in packed mapping */
-    Uint spread;		/* max spread in packed mapping */
-    Uint mapsize;		/* packed mapping size */
-    char *data;			/* packed data (may be NULL) */
-    char *check;		/* packed check for data validity */
-} packed;
-
-/*
- * NAME:	packed->new()
- * DESCRIPTION:	create a new packed table
- */
-static packed *pk_new(size, data)
-register Uint size;
-bool data;
-{
-    register packed *pk;
-
-    pk = ALLOC(packed, 1);
-    pk->gap = pk->spread = 0;
-    pk->mapsize = size;
-    if (data) {
-	pk->data = ALLOC(char, size);
-	memset(pk->data, '\0', size);
-    } else {
-	pk->data = (char *) NULL;
-    }
-    pk->check = ALLOC(char, size);
-    memset(pk->check, '\xff', size);
-
-    return pk;
-}
-
-
-/*
- * NAME:	cmp()
- * DESCRIPTION:	compare two Ints
- */
-static int cmp(sh1, sh2)
-cvoid *sh1, *sh2;
-{
-    return (*(Int *) sh1 < *(Int *) sh2) ?
-	    -1 : (*(Int *) sh1 == *(Int *) sh2) ? 0 : 1;
-}
-
-/*
- * NAME:	packed->add()
- * DESCRIPTION:	add a new set of pairs to a packed mapping
- */
-static int pk_add(pk, from, to, n, check)
-register packed *pk;
-short *from, *to;
-register int n;
-int check;
-{
-    register int i, j;
-    register char *p;
-    Int *offstab;
-    int offset, range;
-
-    if (n == 0) {
-	return 0;	/* stuck in this state */
-    }
-
-    /* create offset table */
-    offstab = ALLOCA(Int, n);
-    for (i = n; --i >= 0; ) {
-	offstab[i] = from[i] * 2;
-    }
-    qsort(offstab, n, sizeof(Int), cmp);
-    j = offset = offstab[0];
-    for (i = 1; i < n; i++) {
-	offstab[i] -= j;
-	j += offstab[i];
-    }
-    range = j - offset + 2;
-
-    /*
-     * add shift and gotos to packed table
-     */
-    for (i = pk->gap, p = &pk->check[i]; ; i += 2, p += 2) {
-	/* find first free slot */
-	if (UCHAR(p[0]) == 0xff && UCHAR(p[1]) == 0xff) {
-	    if (i + range >= pk->mapsize) {
-		/* grow tables */
-		j = (i + range) << 1;
-		if (pk->data != (char *) NULL) {
-		    pk->data = REALLOC(pk->data, char, pk->mapsize, j);
-		    memset(pk->data + pk->mapsize, '\0', j - pk->mapsize);
-		}
-		pk->check = REALLOC(pk->check, char, pk->mapsize, j);
-		memset(pk->check + pk->mapsize, '\xff', j - pk->mapsize);
-		pk->mapsize = j;
-	    }
-	    /* match each symbol with free slot */
-	    for (j = 1; j < n; j++) {
-		p += offstab[j];
-		if (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff) {
-		    goto next;
-		}
-	    }
-	    AFREE(offstab);
-
-	    /* free slots found: adjust gap and spread */
-	    pk->gap = i + 2;
-	    if (i + range > pk->spread) {
-		pk->spread = i + range;
-	    }
-
-	    /* add to packed table */
-	    offset = i - offset;
-	    for (j = n; --j >= 0; ) {
-		i = from[j] * 2 + offset;
-		if (to != (short *) NULL) {
-		    p = &pk->data[i];
-		    *p++ = to[j] >> 8;
-		    *p = to[j];
-		}
-		p = &pk->check[i];
-		*p++ = check >> 8;
-		*p = check;
-	    }
-	    return offset / 2;
-
-	next:
-	    p = &pk->check[i];
-	}
-    }
-}
-
-
 struct _srp_ {
     char *grammar;		/* grammar */
     unsigned short ntoken;	/* # of tokens (regexp & string) */
     unsigned short nprod;	/* # of nonterminals */
-
-    follow *fl;			/* follow info */
 
     unsigned short nstates;	/* number of states */
     Uint sttsize;		/* state table size */
@@ -546,17 +196,21 @@ struct _srp_ {
 
     itchunk *itc;		/* item chunk */
 
-    packed *looka;		/* reduction lookaheads */
-    packed *shift;		/* shifts & gotos */
+    Uint gap;			/* first gap in packed mapping */
+    Uint spread;		/* max spread in packed mapping */
+    Uint mapsize;		/* packed mapping size */
+    char *shift;		/* packed shifts */
+    char *check;		/* packed check for shift validity */
 };
+
+# define NOSHIFT	((short) 0x8000)
 
 /*
  * NAME:	srp->new()
  * DESCRIPTION:	create new shift/reduce parser
  */
-srp *srp_new(grammar, size)
+srp *srp_new(grammar)
 char *grammar;
-unsigned int size;
 {
     register srp *lr;
     register char *p;
@@ -570,10 +224,6 @@ unsigned int size;
 		 UCHAR(grammar[3]) + UCHAR(grammar[7]);
     lr->nprod = (UCHAR(grammar[8]) << 8) + UCHAR(grammar[9]);
     nrule = (UCHAR(grammar[10]) << 8) + UCHAR(grammar[11]);
-
-    /* follow info */
-    lr->fl = fl_new(grammar, size, lr->ntoken, lr->nprod,
-		    (unsigned short) nrule);
 
     /* states */
     lr->nstates = 1;
@@ -594,9 +244,13 @@ unsigned int size;
     lr->states[0].shoffset = 0;
     lr->states[0].next = 0;		/* but don't put it in hash table */
 
-    /* packed mappings */
-    lr->looka = pk_new((Uint) (lr->ntoken + lr->nprod) << 2, FALSE);
-    lr->shift = pk_new((Uint) (lr->ntoken + lr->nprod) << 2, TRUE);
+    /* packed mapping for shift */
+    lr->gap = lr->spread = 0;
+    lr->mapsize = (Uint) (lr->ntoken + lr->nprod) << 2;
+    lr->shift = ALLOC(char, lr->mapsize);
+    memset(lr->shift, '\0', lr->mapsize);
+    lr->check = ALLOC(char, lr->mapsize);
+    memset(lr->check, '\xff', lr->mapsize);
 
     return lr;
 }
@@ -609,44 +263,149 @@ void srp_del(lr)
 register srp *lr;
 {
     /* XXX do something about reductions and stuff */
-    FREE(lr->states);
-    FREE(lr->sthtab);
     it_clear(lr->itc);
+    FREE(lr->sthtab);
+    FREE(lr->states);
+    FREE(lr->shift);
+    FREE(lr->check);
+    FREE(lr);
 }
 
 /*
- * NAME:	srp->check()
- * DESCRIPTION:	fetch reductions for a given state, possibly first expanding it
+ * NAME:	srp->load()
+ * DESCRIPTION:	load a shift/reduce parser from strings
  */
-int srp_check(lr, num, token, nredp, redp)
+srp *srp_load(grammar, s1, s2)
+char *grammar;
+string *s1, *s2;
+{
+    return srp_new(grammar);
+}
+
+/*
+ * NAME:	srp->save()
+ * DESCRIPTION:	save a shift/reduce parser to strings
+ */
+bool srp_save(lr, s1, s2)
+srp *lr;
+string **s1, **s2;
+{
+    *s1 = str_new("", 0L);
+    *s2 = (string *) NULL;
+    return TRUE;
+}
+
+/*
+ * NAME:	cmp()
+ * DESCRIPTION:	compare two Ints
+ */
+static int cmp(i1, i2)
+cvoid *i1, *i2;
+{
+    return (*(Int *) i1 < *(Int *) i2) ?
+	    -1 : (*(Int *) i1 == *(Int *) i2) ? 0 : 1;
+}
+
+/*
+ * NAME:	srp->pack()
+ * DESCRIPTION:	add a new set of shifts and gotos to the packed mapping
+ */
+static int srp_pack(lr, from, to, n, check)
 register srp *lr;
-int num;
-int token;
-int *nredp;
-char **redp;
+short *from, *to;
+register int n;
+int check;
+{
+    register int i, j;
+    register char *p;
+    Int *offstab;
+    int offset, range;
+
+    /* create offset table */
+    offstab = ALLOCA(Int, n);
+    for (i = n; --i >= 0; ) {
+	offstab[i] = from[i] * 2;
+    }
+    qsort(offstab, n, sizeof(Int), cmp);
+    j = offset = offstab[0];
+    for (i = 1; i < n; i++) {
+	offstab[i] -= j;
+	j += offstab[i];
+    }
+    range = j - offset + 2;
+
+    /*
+     * add from/to pairs to packed mapping
+     */
+    for (i = lr->gap, p = &lr->check[i];
+	 UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff; i += 2, p += 2) ;
+    lr->gap = i;
+    for (;;) {
+    next:
+	if (i + range >= lr->mapsize) {
+	    /* grow tables */
+	    j = (i + range) << 1;
+	    lr->shift = REALLOC(lr->shift, char, lr->mapsize, j);
+	    lr->check = REALLOC(lr->check, char, lr->mapsize, j);
+	    memset(lr->shift + lr->mapsize, '\0', j - lr->mapsize);
+	    memset(lr->check + lr->mapsize, '\xff', j - lr->mapsize);
+	    lr->mapsize = j;
+	}
+
+	/* match each symbol with free slot */
+	for (j = 1; j < n; j++) {
+	    p += offstab[j];
+	    if (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff) {
+		p = &lr->check[i];
+		do {
+		    i += 2;
+		    p += 2;
+		} while (UCHAR(p[0]) != 0xff || UCHAR(p[1]) != 0xff);
+		goto next;
+	    }
+	}
+	AFREE(offstab);
+
+	/* free slots found: adjust spread */
+	if (i + range > lr->spread) {
+	    lr->spread = i + range;
+	}
+
+	/* add to packed mapping */
+	offset = i - offset;
+	for (j = n; --j >= 0; ) {
+	    i = from[j] * 2 + offset;
+	    p = &lr->shift[i];
+	    *p++ = to[j] >> 8;
+	    *p = to[j];
+	    p = &lr->check[i];
+	    *p++ = check >> 8;
+	    *p = check;
+	}
+	return offset / 2;
+    }
+}
+
+/*
+ * NAME:	srp->expand()
+ * DESCRIPTION:	expand a state
+ */
+static srpstate *srp_expand(lr, state)
+register srp *lr;
+srpstate *state;
 {
     register int i, n;
     register char *p;
     register item *it;
     item **itemtab, *next;
     short *tokens, *targets;
-    srpstate *state, *newstate;
+    srpstate *newstate;
     int nred, nshift;
-
-    state = &lr->states[num];
-    if (state->nred >= 0) {
-	/* already expanded */
-	*nredp = state->nred;
-	*redp = state->reds;
-	return lr->nstates;
-    }
 
     if (state - lr->states == 1) {
 	/* final state */
 	state->nred = 0;
-	*nredp = state->nred;
-	*redp = state->reds;
-	return lr->nstates;
+	return state;
     }
 
     n = lr->ntoken + lr->nprod;
@@ -723,7 +482,7 @@ char **redp;
     for (it = next; it != (item *) NULL; it = it_del(lr->itc, it)) ;
 
     /*
-     * create shift/goto table
+     * create target table
      */
     for (i = 0; i < nshift; i++) {
 	newstate = &lr->states[lr->nstates];
@@ -755,13 +514,37 @@ char **redp;
     }
 
     /*
-     * add to global table
+     * add shifts and gotos to packed mapping
      */
-    state->shoffset = pk_add(lr->shift, tokens, targets, nshift,
-			     state - lr->states);
+    if (nshift != 0) {
+	state->shoffset = srp_pack(lr, tokens, targets, nshift,
+				   state - lr->states);
+    } else {
+	state->shoffset = NOSHIFT;
+    }
     AFREE(targets);
     AFREE(tokens);
     AFREE(itemtab);
+
+    return state;
+}
+
+/*
+ * NAME:	srp->check()
+ * DESCRIPTION:	fetch reductions for a given state, possibly first expanding it
+ */
+int srp_check(lr, num, nredp, redp)
+register srp *lr;
+int num;
+int *nredp;
+char **redp;
+{
+    register srpstate *state;
+
+    state = &lr->states[num];
+    if (state->nred < 0) {
+	state = srp_expand(lr, state);
+    }
 
     *nredp = state->nred;
     *redp = state->reds;
@@ -778,14 +561,18 @@ int num, token;
 {
     register int n;
     register char *p;
+    srpstate *state;
 
-    n = (lr->states[num].shoffset + token) * 2;
-    if (n >= 0 && n < lr->shift->mapsize) {
-        p = &lr->shift->check[n];
-        if ((UCHAR(p[0]) << 8) + UCHAR(p[1]) == num) {
-	    /* shift works: return new state */
-	    p = &lr->shift->data[n];
-	    return (UCHAR(p[0]) << 8) + UCHAR(p[1]);
+    n = lr->states[num].shoffset;
+    if (n != NOSHIFT) {
+	n = (n + token) * 2;
+	if (n >= 0 && n < lr->mapsize) {
+	    p = &lr->check[n];
+	    if ((UCHAR(p[0]) << 8) + UCHAR(p[1]) == num) {
+		/* shift works: return new state */
+		p = &lr->shift[n];
+		return (UCHAR(p[0]) << 8) + UCHAR(p[1]);
+	    }
 	}
     }
 
@@ -803,6 +590,6 @@ int num, symb;
 {
     register char *p;
 
-    p = &lr->shift->data[(lr->states[num].shoffset + symb) * 2];
+    p = &lr->shift[(lr->states[num].shoffset + symb) * 2];
     return (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 }

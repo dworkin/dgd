@@ -2102,6 +2102,12 @@ register dataspace *data;
 {
     register Uint i;
 
+    /* free parse_string data */
+    if (data->parser != (struct _parser_ *) NULL) {
+	ps_del(data->parser);
+	data->parser = (struct _parser_ *) NULL;
+    }
+
     /* free variables */
     if (data->variables != (value *) NULL) {
 	register value *v;
@@ -2176,17 +2182,19 @@ register dataspace *data;
  * NAME:	data->save_dataspace()
  * DESCRIPTION:	save all values in a dataspace block
  */
-static void d_save_dataspace(data)
+static bool d_save_dataspace(data)
 register dataspace *data;
 {
     sdataspace header;
     register Uint n;
 
-    if (data->parser != (struct _parser_ *) NULL) {
-	ps_save(data);
-    }
-
     sdata = data;
+    if (data->parser != (struct _parser_ *) NULL) {
+	ps_save(data->parser);
+    }
+    if (!(data->flags & DATA_MODIFIED)) {
+	return FALSE;
+    }
 
     if (data->nsectors != 0 && data->achange == 0 && data->schange == 0 &&
 	!(data->flags & DATA_NEWCALLOUT)) {
@@ -2500,6 +2508,7 @@ register dataspace *data;
     }
 
     data->flags &= ~DATA_MODIFIED;
+    return TRUE;
 }
 
 static array **itab;	/* imported array replacement table */
@@ -2970,11 +2979,6 @@ register dataspace *data;
 	FREE(data->svariables);
     }
 
-    /* free parse_string data */
-    if (data->parser != (struct _parser_ *) NULL) {
-	ps_free(data);
-    }
-
     data->obj->data = (dataspace *) NULL;
     if (data->ctrl != (control *) NULL) {
 	data->ctrl->ndata--;
@@ -3026,8 +3030,7 @@ int frag;
 
 	prev = data->prev;
 	if (!(data->obj->flags & O_PENDIO) || frag == 1) {
-	    if (data->flags & DATA_MODIFIED) {
-		d_save_dataspace(data);
+	    if (d_save_dataspace(data)) {
 		count++;
 	    }
 	    d_free_dataspace(data);
@@ -3091,9 +3094,7 @@ void d_swapsync()
 
     /* save dataspace blocks */
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if (data->flags & DATA_MODIFIED) {
-	    d_save_dataspace(data);
-	}
+	d_save_dataspace(data);
     }
 }
 

@@ -863,8 +863,8 @@ struct _dfa_ {
     Uint dfasize;		/* size of state machine */
     Uint tmpssize;		/* size of temporary state data */
     Uint tmppsize;		/* size of temporary posn data */
-    string *dfasaved;		/* saved dfa */
-    string *tmpsaved;		/* saved temporary data */
+    string *dfastr;		/* saved dfa */
+    string *tmpstr;		/* saved temporary data */
 
     unsigned short nregexp;	/* # regexps */
     unsigned short nposn;	/* number of unique positions */
@@ -880,10 +880,10 @@ struct _dfa_ {
     unsigned short *sthtab;	/* state hash table */
 
     unsigned short ecnum;	/* number of equivalence classes */
-    char eclass[256];		/* equivalence classes */
     char *ecsplit;		/* equivalence class split history */
     char *ecmembers;		/* members per equivalence class */
     Uint *ecset;		/* equivalence class sets */
+    char eclass[256];		/* equivalence classes */
 
     char zerotrans[2 * 256];	/* shared zero transitions */
 };
@@ -911,13 +911,23 @@ register char *grammar;
     fa->whitespace = grammar[1];
 
     /* size info */
-    fa->dfachanged = FALSE;
-    fa->tmpchanged = FALSE;
+    fa->dfachanged = TRUE;
+    fa->tmpchanged = TRUE;
     fa->dfasize = 8 + 256 + 3;
     fa->tmpssize = 3 + 1 + 5 + 5;
     fa->tmppsize = 0;
-    fa->dfasaved = (string *) NULL;
-    fa->tmpsaved = (string *) NULL;
+    fa->dfastr = (string *) NULL;
+    fa->tmpstr = (string *) NULL;
+
+    /* equivalence classes */
+    fa->ecnum = 1;
+    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    fa->ecmembers = fa->ecsplit + 256;
+    fa->ecset = (Uint *) (fa->ecmembers + 256);
+    memset(fa->eclass, '\0', 256);
+    memset(fa->ecmembers, '\0', 256);
+    memset(fa->ecset, -1, 32);
+    memset(fa->ecset + 8, '\0', 32 * 255);
 
     /* positions */
     fa->nposn = (UCHAR(grammar[4]) << 8) + UCHAR(grammar[5]);
@@ -995,16 +1005,6 @@ register char *grammar;
     /* add to hashtable */
     ds_hash(fa->sthtab, fa->sthsize, fa->states, 1);
 
-    /* equivalence classes */
-    fa->ecnum = 1;
-    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
-    fa->ecmembers = fa->ecsplit + 256;
-    fa->ecset = (Uint *) (fa->ecmembers + 256);
-    memset(fa->eclass, '\0', 256);
-    memset(fa->ecmembers, '\0', 256);
-    memset(fa->ecset, -1, 32);
-    memset(fa->ecset + 8, '\0', 32 * 255);
-
     /* zero transitions */
     memset(fa->zerotrans, '\0', 2 * 256);
 
@@ -1021,11 +1021,14 @@ register dfa *fa;
     register dfastate *state;
     register int i;
 
-    if (fa->dfasaved != (string *) NULL) {
-	str_del(fa->dfasaved);
+    if (fa->dfastr != (string *) NULL) {
+	str_del(fa->dfastr);
     }
-    if (fa->tmpsaved != (string *) NULL) {
-	str_del(fa->tmpsaved);
+    if (fa->tmpstr != (string *) NULL) {
+	str_del(fa->tmpstr);
+    }
+    if (fa->ecsplit != (char *) NULL) {
+	FREE(fa->ecsplit);
     }
     if (fa->rpc != (rpchunk *) NULL) {
 	rp_clear(fa->rpc);
@@ -1048,10 +1051,257 @@ register dfa *fa;
     if (fa->sthtab != (unsigned short *) NULL) {
 	FREE(fa->sthtab);
     }
-    if (fa->ecsplit != (char *) NULL) {
-	FREE(fa->ecsplit);
-    }
     FREE(fa);
+}
+
+/*
+ * NAME:	dfa->extend()
+ * DESCRIPTION:	extend transition table
+ */
+static void dfa_extend(fa, state, limit)
+register dfa *fa;
+register dfastate *state;
+register int limit;
+{
+    register char *p, *q;
+    register unsigned int i;
+
+    /* extend transition table */
+    if (!state->alloc) {
+	p = ALLOC(char, 2 * 256);
+	memcpy(p, state->trans, state->ntrans << 1);
+	state->trans = p;
+	state->alloc = TRUE;
+    }
+    p = state->trans + (state->ntrans << 1);
+    for (i = state->ntrans; i <= limit; i++) {
+	q = &state->trans[UCHAR(fa->ecsplit[i]) << 1];
+	*p++ = *q++;
+	*p++ = *q;
+    }
+    state->ntrans = i;
+}
+
+/*
+ * state & eclass format:
+ *
+ * header	[0]	version number
+ *		[x][y]	# states
+ *		[x][y]	# expanded states
+ *		[x]	# equivalence classes
+ * eclass	[...]	256 equivalence classes
+ *
+ * state 	[x][y]	final				} ...
+ *		[...]	optional: transitions		}
+ *
+ *
+ * temporary data format:
+ *
+ * header	[0]	version number
+ *		[x][y]	number of positions
+ * ecsplit	[...]	256 ecsplit data
+ *
+ * state	[x][y]	# positions			}
+ *		[x][y]	# strings			}
+ * 		[x]	len				} ...
+ *		[...]   position data			}
+ *		[...]	string data			}
+ *
+ * position	[x][y]	regexp				}
+ *		[x][y]	ruleno				}
+ *		[0]	optional: final position	} ...
+ *		[x]	size				}
+ *		[...]	position data			}
+ */
+
+/*
+ * NAME:	dfa->load()
+ * DESCRIPTION:	load dfa from strings
+ */
+dfa *dfa_load(grammar, s1, s2)
+char *grammar;
+string *s1, *s2;
+{
+    register dfa *fa;
+    register dfastate *state;
+    register int i;
+    register char *buf;
+    int nstrings;
+
+    fa = ALLOC(dfa, 1);
+    str_ref(fa->dfastr = s1);
+    if (s2 != (string *) NULL) {
+	str_ref(fa->tmpstr = s2);
+    }
+    buf = s1->text;
+
+    /* grammar info */
+    fa->grammar = grammar;
+    fa->nregexp = (UCHAR(grammar[2]) << 8) + UCHAR(grammar[3]);
+    nstrings = (UCHAR(grammar[6]) << 8) + UCHAR(grammar[7]);
+    fa->strings = grammar + 12 + (fa->nregexp << 1);
+    fa->whitespace = grammar[1];
+
+    /* positions */
+    fa->nposn = (UCHAR(grammar[4]) << 8) + UCHAR(grammar[5]);
+    fa->rpc = (rpchunk *) NULL;
+    fa->posnhtab = (hashtab *) NULL;
+
+    /* states 1 */
+    fa->nstates = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
+    fa->expanded = (UCHAR(buf[3]) << 8) + UCHAR(buf[4]);
+    fa->endstates = (UCHAR(buf[5]) << 8) + UCHAR(buf[6]);
+    fa->sttsize = fa->nstates + 1;
+    fa->sthsize = (Uint) (fa->nposn + nstrings + 1) << 2;
+    fa->states = ALLOC(dfastate, fa->sttsize);
+    fa->sthtab = (short *) NULL;
+
+    /* equivalence classes */
+    fa->ecnum = UCHAR(buf[7]);
+    buf += 8;
+    memcpy(fa->eclass, buf, 256);
+    buf += 256;
+    fa->ecsplit = (char *) NULL;
+    fa->ecmembers = (char *) NULL;
+    fa->ecset = (Uint *) NULL;
+
+    /* states 2 */
+    fa->states[0].posn = (rgxposn **) NULL;
+    fa->states[0].str = (unsigned short *) NULL;
+    fa->states[0].trans = (char *) NULL;
+    fa->states[0].nposn = fa->states[0].nstr = 0;
+    fa->states[0].ntrans = fa->states[0].len = 0;
+    fa->states[0].final = -1;
+    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
+	buf = ds_load(state, buf, fa->ecnum, fa->zerotrans);
+    }
+
+    /* size info */
+    fa->tmpssize = 0;
+    fa->tmppsize = 0;
+    fa->dfasize = s1->len;
+    fa->dfachanged = fa->tmpchanged = FALSE;
+
+    /* zero transitions */
+    memset(fa->zerotrans, '\0', 2 * 256);
+
+    return fa;
+}
+
+/*
+ * NAME:	dfa->loadtmp()
+ * DESCRIPTION:	load dfa tmp info
+ */
+static void dfa_loadtmp(fa)
+register dfa *fa;
+{
+    register dfastate *state;
+    register int i, c;
+    register char *buf;
+    int nposn;
+
+    buf = fa->tmpstr->text;
+    nposn = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
+    buf += 3;
+
+    /* equivalence classes */
+    fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    fa->ecmembers = fa->ecsplit + 256;
+    fa->ecset = (Uint *) (fa->ecmembers + 256);
+    memcpy(fa->ecsplit, buf, fa->ecnum);
+    buf += fa->ecnum;
+    memset(fa->ecmembers, '\0', 256);
+    memset(fa->ecset, '\0', 32 * 256);
+    for (i = 256; --i >= 0; ) {
+	c = UCHAR(fa->eclass[i]);
+	fa->ecmembers[c]++;
+	fa->ecset[(c << 3) + (i >> 5)] |= 1 << (i & 31);
+    }
+
+    /* positions */
+    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257);
+
+    /* states */
+    fa->sthtab = ALLOC(short, fa->sthsize);
+    memset(fa->sthtab, '\0', sizeof(short) * fa->sthsize);
+
+    fa->nposn = 0;
+    for (i = 1, state = &fa->states[1]; i < fa->nstates; i++, state++) {
+	buf = ds_loadtmp(state, buf, fa->tmpstr->text, fa->posnhtab, &fa->rpc,
+			 &fa->nposn, fa->grammar);
+	ds_hash(fa->sthtab, fa->sthsize, fa->states, i);
+    }
+
+    /* size info */
+    fa->tmpssize = buf - fa->tmpstr->text;
+    fa->tmppsize = fa->tmpstr->len - fa->tmpssize;
+}
+
+/*
+ * NAME:	dfa->save()
+ * DESCRIPTION:	save dfa in strings
+ */
+bool dfa_save(fa, s1, s2)
+register dfa *fa;
+string **s1, **s2;
+{
+    register int i;
+    register char *buf, *pbase;
+    register dfastate *state;
+    char *pbuf;
+    short *ptab, *nposn;
+
+    if (!fa->dfachanged) {
+	return FALSE;
+    }
+
+    *s1 = str_new((char *) NULL, (long) fa->dfasize);
+    buf = (*s1)->text;
+    *buf++ = 0;
+    *buf++ = fa->nstates >> 8;
+    *buf++ = fa->nstates;
+    *buf++ = fa->expanded >> 8;
+    *buf++ = fa->expanded;
+    *buf++ = fa->endstates >> 8;
+    *buf++ = fa->endstates;
+    *buf++ = fa->ecnum;
+    memcpy(buf, fa->eclass, 256);
+    buf += 256;
+
+    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
+	if (state->ntrans != 0 && state->ntrans < fa->ecnum) {
+	    dfa_extend(fa, state, fa->ecnum - 1);
+	}
+	buf = ds_save(state, buf);
+    }
+
+    if (fa->nstates == fa->expanded + fa->endstates) {
+	*s2 = (string *) NULL;
+	return TRUE;
+    }
+    if (!fa->tmpchanged) {
+	*s2 = fa->tmpstr;
+	return TRUE;
+    }
+
+    *s2 = str_new((char *) NULL, (long) (fa->tmpssize + fa->tmppsize));
+    buf = (*s2)->text;
+    pbuf = buf + fa->tmpssize;
+    *buf++ = 0;
+    *buf++ = fa->nposn >> 8;
+    *buf++ = fa->nposn;
+    memcpy(buf, fa->ecsplit, fa->ecnum);
+    buf += fa->ecnum;
+
+    ptab = ALLOCA(short, fa->nposn);
+    nposn = 0;
+    for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
+	buf = ds_savetmp(state, buf, &pbuf, (*s2)->text, ptab, &nposn,
+			 fa->grammar);
+    }
+    AFREE(ptab);
+
+    return TRUE;
 }
 
 /*
@@ -1188,6 +1438,10 @@ dfastate *state;
     short *newstr;
     int size;
 
+    if (fa->posnhtab == (hashtab *) NULL) {
+	dfa_loadtmp(fa);	/* load tmp info */
+    }
+
     memset(iset, '\0', sizeof(iset));
 
     /* allocate character sets for strings and positions */
@@ -1317,261 +1571,6 @@ dfastate *state;
     fa->expanded++;
     fa->dfasize += fa->ecnum << 1;
     return state;
-}
-
-/*
- * NAME:	dfa->extend()
- * DESCRIPTION:	extend transition table
- */
-static void dfa_extend(fa, state, limit)
-register dfa *fa;
-register dfastate *state;
-register int limit;
-{
-    register char *p, *q;
-    register unsigned int i;
-
-    /* extend transition table */
-    if (!state->alloc) {
-	p = ALLOC(char, 2 * 256);
-	memcpy(p, state->trans, state->ntrans << 1);
-	state->trans = p;
-	state->alloc = TRUE;
-    }
-    p = state->trans + (state->ntrans << 1);
-    for (i = state->ntrans; i <= limit; i++) {
-	q = &state->trans[UCHAR(fa->ecsplit[i]) << 1];
-	*p++ = *q++;
-	*p++ = *q;
-    }
-    state->ntrans = i;
-}
-
-/*
- * state & eclass format:
- *
- * header	[0]	version number
- *		[x][y]	# states
- *		[x][y]	# expanded states
- *		[x]	# equivalence classes
- * eclass	[...]	256 equivalence classes
- *
- * state 	[x][y]	final				} ...
- *		[...]	optional: transitions		}
- *
- *
- * temporary data format:
- *
- * header	[0]	version number
- *		[x][y]	number of positions
- * ecsplit	[...]	256 ecsplit data
- *
- * state	[x][y]	# positions			}
- *		[x][y]	# strings			}
- * 		[x]	len				} ...
- *		[...]   position data			}
- *		[...]	string data			}
- *
- * position	[x][y]	regexp				}
- *		[x][y]	ruleno				}
- *		[0]	optional: final position	} ...
- *		[x]	size				}
- *		[...]	position data			}
- */
-
-/*
- * NAME:	dfa->load()
- * DESCRIPTION:	load dfa from strings
- */
-dfa *dfa_load(grammar, s1, s2)
-char *grammar;
-string *s1, *s2;
-{
-    int nstrings, nposn;
-    register dfa *fa;
-    register dfastate *state;
-    register int i, c;
-    register char *buf, *tmpbuf;
-
-    fa = ALLOC(dfa, 1);
-    str_ref(fa->dfasaved = s1);
-    buf = s1->text;
-
-    /* grammar info */
-    fa->grammar = grammar;
-    fa->nregexp = (UCHAR(grammar[2]) << 8) + UCHAR(grammar[3]);
-    nstrings = (UCHAR(grammar[6]) << 8) + UCHAR(grammar[7]);
-    fa->strings = grammar + 12 + (fa->nregexp << 1);
-    fa->whitespace = grammar[1];
-
-    /* states */
-    fa->nstates = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
-    fa->expanded = (UCHAR(buf[3]) << 8) + UCHAR(buf[4]);
-    fa->endstates = (UCHAR(buf[5]) << 8) + UCHAR(buf[6]);
-
-    /* equivalence classes */
-    fa->ecnum = UCHAR(buf[7]);
-    buf += 8;
-    memcpy(fa->eclass, buf, 256);
-    buf += 256;
-
-    if (fa->nstates == fa->expanded + fa->endstates) {
-	/*
-	 * dfa is complete
-	 */
-	fa->tmpsaved = (string *) NULL;
-
-	/* positions */
-	fa->nposn = 0;
-	fa->rpc = (rpchunk *) NULL;
-	fa->posnhtab = (hashtab *) NULL;
-
-	/* equivalence classes */
-	fa->ecsplit = (char *) NULL;
-	fa->ecmembers = (char *) NULL;
-	fa->ecset = (Uint *) NULL;
-
-	/* states */
-	fa->sttsize = fa->nstates;
-	fa->sthsize = 0;
-	fa->states = ALLOC(dfastate, fa->sttsize);
-	fa->sthtab = (short *) NULL;
-
-	for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
-	    buf = ds_load(state, buf, fa->ecnum, fa->zerotrans);
-	}
-
-	/* size info */
-	fa->tmpssize = 0;
-	fa->tmppsize = 0;
-    } else {
-	/*
-	 * dfa is incomplete
-	 */
-	str_ref(fa->tmpsaved = s2);
-	tmpbuf = s2->text;
-	nposn = (UCHAR(tmpbuf[1]) << 8) + UCHAR(tmpbuf[2]);
-	tmpbuf += 3;
-
-	/* positions */
-	fa->nposn = 0;
-	fa->rpc = (rpchunk *) NULL;
-	fa->posnhtab = ht_new((nposn + 1) << 2, 257);
-
-	/* equivalence classes */
-	fa->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
-	fa->ecmembers = fa->ecsplit + 256;
-	fa->ecset = (Uint *) (fa->ecmembers + 256);
-	memcpy(fa->ecsplit, tmpbuf, fa->ecnum);
-	tmpbuf += fa->ecnum;
-	memset(fa->ecmembers, '\0', 256);
-	memset(fa->ecset, '\0', 32 * 256);
-	for (i = 256; --i >= 0; ) {
-	    c = UCHAR(fa->eclass[i]);
-	    fa->ecmembers[c]++;
-	    fa->ecset[(c << 3) + (i >> 5)] |= 1 << (i & 31);
-	}
-
-	/* states */
-	fa->sttsize = (Uint) fa->nstates + 1;
-	fa->sthsize = (Uint) (fa->nposn + nstrings + 1) << 2;
-	fa->states = ALLOC(dfastate, fa->sttsize);
-	fa->sthtab = ALLOC(short, fa->sthsize);
-	memset(fa->sthtab, '\0', sizeof(short) * fa->sthsize);
-
-	for (i = 1, state = &fa->states[1]; i < fa->nstates; i++, state++) {
-	    buf = ds_load(state, buf, fa->ecnum, fa->zerotrans);
-	    tmpbuf = ds_loadtmp(state, tmpbuf, s2->text, fa->posnhtab,
-				&fa->rpc, &fa->nposn, grammar);
-	    ds_hash(fa->sthtab, fa->sthsize, fa->states, i);
-	}
-
-	/* size info */
-	fa->tmpssize = tmpbuf - s2->text;
-	fa->tmppsize = s2->len - fa->tmpssize;
-    }
-    fa->dfasize = s1->len;
-    fa->dfachanged = fa->tmpchanged = FALSE;
-
-    /* zero state */
-    fa->states[0].posn = (rgxposn **) NULL;
-    fa->states[0].str = (unsigned short *) NULL;
-    fa->states[0].trans = (char *) NULL;
-    fa->states[0].nposn = fa->states[0].nstr = 0;
-    fa->states[0].ntrans = fa->states[0].len = 0;
-    fa->states[0].final = -1;
-
-    /* zero transitions */
-    memset(fa->zerotrans, '\0', 2 * 256);
-
-    return fa;
-}
-
-/*
- * NAME:	dfa->save()
- * DESCRIPTION:	save dfa in strings
- */
-bool dfa_save(fa, s1, s2)
-register dfa *fa;
-string **s1, **s2;
-{
-    register int i;
-    register char *buf, *pbase;
-    register dfastate *state;
-    char *pbuf;
-    short *ptab, *nposn;
-
-    if (!fa->dfachanged) {
-	return FALSE;
-    }
-
-    *s1 = str_new((char *) NULL, (long) fa->dfasize);
-    buf = (*s1)->text;
-    *buf++ = 0;
-    *buf++ = fa->nstates >> 8;
-    *buf++ = fa->nstates;
-    *buf++ = fa->expanded >> 8;
-    *buf++ = fa->expanded;
-    *buf++ = fa->endstates >> 8;
-    *buf++ = fa->endstates;
-    *buf++ = fa->ecnum;
-    memcpy(buf, fa->eclass, 256);
-    buf += 256;
-
-    for (i = fa->nstates, state = &fa->states[1]; --i >= 0; state++) {
-	if (state->ntrans != 0 && state->ntrans < fa->ecnum) {
-	    dfa_extend(fa, state, fa->ecnum - 1);
-	}
-	buf = ds_save(state, buf);
-    }
-
-    if (fa->nstates == fa->expanded + fa->endstates) {
-	*s2 = (string *) NULL;
-	return TRUE;
-    }
-    if (!fa->tmpchanged) {
-	*s2 = fa->tmpsaved;
-	return TRUE;
-    }
-
-    *s2 = str_new((char *) NULL, (long) (fa->tmpssize + fa->tmppsize));
-    buf = (*s2)->text;
-    pbuf = buf + fa->tmpssize;
-    *buf++ = 0;
-    *buf++ = fa->nposn >> 8;
-    *buf++ = fa->nposn;
-    memcpy(buf, fa->ecsplit, fa->ecnum);
-    buf += fa->ecnum;
-
-    ptab = ALLOCA(short, fa->nposn);
-    nposn = 0;
-    for (i = fa->nstates, state = &fa->states[1]; --i >= 0; state++) {
-	buf = ds_savetmp(state, buf, &pbuf, (*s2)->text, ptab, &nposn,
-			 fa->grammar);
-    }
-    AFREE(ptab);
-
-    return TRUE;
 }
 
 /*

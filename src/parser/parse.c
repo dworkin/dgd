@@ -11,7 +11,7 @@
 # include "parse.h"
 
 typedef struct _pnode_ {
-    unsigned short symbol;	/* node symbol */
+    short symbol;		/* node symbol */
     unsigned short state;	/* state reached after this symbol */
     unsigned short len;		/* token/reduction length */
     union {
@@ -23,7 +23,7 @@ typedef struct _pnode_ {
     struct _pnode_ *list;	/* list of nodes for reduction */
 } pnode;
 
-# define PNCHUNKSZ	128
+# define PNCHUNKSZ	256
 
 typedef struct _pnchunk_ {
     pnode pn[PNCHUNKSZ];	/* chunk of pnodes */
@@ -37,7 +37,8 @@ typedef struct _pnchunk_ {
  */
 static pnode *pn_new(c, symb, state, text, len, next, list)
 register pnchunk **c;
-unsigned short symb, state, len;
+short symb;
+unsigned short state, len;
 char *text;
 pnode *next, *list;
 {
@@ -85,7 +86,7 @@ typedef struct _snode_ {
     struct _snode_ *slist;	/* per-state list */
 } snode;
 
-# define SNCHUNKSZ	128
+# define SNCHUNKSZ	32
 
 typedef struct _snchunk_ {
     snode sn[SNCHUNKSZ];	/* chunk of snodes */
@@ -180,7 +181,7 @@ snode *sn;
  * DESCRIPTION:	free all snodes in memory
  */
 static void sn_clear(list)
-snlist *list;
+register snlist *list;
 {
     register snchunk *c, *f;
 
@@ -190,10 +191,12 @@ snlist *list;
 	c = c->next;
 	FREE(f);
     }
+    list->snc = (snchunk *) NULL;
+    list->first = list->free = (snode *) NULL;
 }
 
 
-# define STRCHUNKSZ	128
+# define STRCHUNKSZ	256
 
 typedef struct _strchunk_ {
     string *str[STRCHUNKSZ];	/* strings */
@@ -242,7 +245,7 @@ register strchunk *c;
 }
 
 
-# define ARRCHUNKSZ	128
+# define ARRCHUNKSZ	256
 
 typedef struct _arrchunk_ {
     array *arr[ARRCHUNKSZ];	/* arrays */
@@ -291,13 +294,19 @@ register arrchunk *c;
 }
 
 
-typedef struct _parser_ {
+struct _parser_ {
     frame *frame;		/* interpreter stack frame */
+    dataspace *data;		/* dataspace for current object */
+
     string *source;		/* grammar source */
     string *grammar;		/* preprocessed grammar */
+    string *dfastr;		/* saved DFA string */
+    string *srpstr;		/* saved shift/reduce parser string */
+
     dfa *fa;			/* (partial) DFA */
     srp *lr;			/* (partial) shift/reduce parser */
-    int ntoken;			/* number of tokens in grammar */
+    short ntoken;		/* # of tokens (regexp + string) */
+    short nprod;		/* # of nonterminals */
 
     pnchunk *pnc;		/* pnode chunk */
 
@@ -308,9 +317,8 @@ typedef struct _parser_ {
     strchunk *strc;		/* string chunk */
     arrchunk *arrc;		/* array chunk */
 
-    short traverse;		/* traverse code (ntoken + nprod) */
     Int maxalt;			/* max number of branches */
-} parser;
+};
 
 /*
  * NAME:	parser->new()
@@ -325,10 +333,14 @@ string *source, *grammar;
 
     ps = ALLOC(parser, 1);
     ps->frame = f;
+    ps->data = f->data;
+    ps->data->parser = ps;
     str_ref(ps->source = source);
     str_ref(ps->grammar = grammar);
+    ps->dfastr = (string *) NULL;
+    ps->srpstr = (string *) NULL;
     ps->fa = dfa_new(grammar->text);
-    ps->lr = srp_new(grammar->text, grammar->len);
+    ps->lr = srp_new(grammar->text);
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
@@ -339,9 +351,29 @@ string *source, *grammar;
 
     p = grammar->text;
     ps->ntoken = ((UCHAR(p[2]) + UCHAR(p[6])) << 8) + UCHAR(p[3]) + UCHAR(p[7]);
-    ps->traverse = ps->ntoken + (UCHAR(p[8]) << 8) + UCHAR(p[9]);
+    ps->nprod = (UCHAR(p[8]) << 8) + UCHAR(p[9]);
 
     return ps;
+}
+
+/*
+ * NAME:	parser->del()
+ * DESCRIPTION:	delete parser
+ */
+void ps_del(ps)
+register parser *ps;
+{
+    str_del(ps->source);
+    str_del(ps->grammar);
+    if (ps->dfastr != (string *) NULL) {
+	str_del(ps->dfastr);
+    }
+    if (ps->srpstr != (string *) NULL) {
+	str_del(ps->srpstr);
+    }
+    dfa_del(ps->fa);
+    srp_del(ps->lr);
+    FREE(ps);
 }
 
 /*
@@ -355,7 +387,8 @@ register char *p;
 {
     register snode *sn;
     register pnode *next;
-    register unsigned short n, symb;
+    register unsigned short n;
+    register short symb;
     char *red;
     unsigned short len;
 
@@ -448,9 +481,10 @@ unsigned short len;
  * NAME:	parser->parse()
  * DESCRIPTION:	parse a string, return a parse tangle
  */
-static pnode *ps_parse(ps, str)
+static pnode *ps_parse(ps, str, toobig)
 register parser *ps;
 string *str;
+bool *toobig;
 {
     register snode *sn;
     register int n;
@@ -462,7 +496,10 @@ string *str;
 
     /* initialize */
     size = str->len;
-    ps->nstates = srp_check(ps->lr, 0, 0, &nred, &red);
+    ps->nstates = srp_check(ps->lr, 0, &nred, &red);
+    if (ps->nstates < ps->nprod) {
+	ps->nstates = ps->nprod;
+    }
     ps->states = ALLOC(snode*, ps->nstates);
     memset(ps->states, '\0', ps->nstates * sizeof(snode*));
     ps->list.first = (snode *) NULL;
@@ -478,7 +515,7 @@ string *str;
 	 * apply reductions for current states, expanding states if needed
 	 */
 	for (sn = ps->list.first; sn != (snode *) NULL; sn = sn->next) {
-	    n = srp_check(ps->lr, sn->pn->state, 0, &nred, &red);
+	    n = srp_check(ps->lr, sn->pn->state, &nred, &red);
 	    if (n > ps->nstates) {
 		/* grow tables */
 		n <<= 1;
@@ -490,8 +527,10 @@ string *str;
 	    for (n = 0; n < nred; n++) {
 		ps_reduce(ps, sn->pn, red);
 		red += 4;
+		i_add_ticks(ps->frame, 1);
 	    }
 	}
+	i_add_ticks(ps->frame, 1);
 
 	switch (n = dfa_scan(ps->fa, str, &size, &ttext, &tlen)) {
 	case DFA_EOS:
@@ -503,10 +542,12 @@ string *str;
 	case DFA_REJECT:
 	    /* bad token */
 	    FREE(ps->states);
+	    error("Bad token");
 	    return (pnode *) NULL;
 
 	case DFA_TOOBIG:
 	    FREE(ps->states);
+	    *toobig = TRUE;
 	    return (pnode *) NULL;
 
 	default:
@@ -522,31 +563,33 @@ string *str;
 	}
     } while (ps->list.first != (snode *) NULL);
 
-    /* parsing failed */
+    /*
+     * parsing failed
+     */
+    FREE(ps->states);
     return (pnode *) NULL;
 }
 
 
-# define PN_STRING	0	/* string node */
-# define PN_ARRAY	1	/* array node */
-# define PN_RULE	2	/* rule node */
-# define PN_BRANCH	3	/* branch node */
-# define PN_BLOCKED	4	/* blocked branch */
+# define PN_STRING	-1	/* string node */
+# define PN_ARRAY	-2	/* array node */
+# define PN_RULE	-3	/* rule node */
+# define PN_BRANCH	-4	/* branch node */
+# define PN_BLOCKED	-5	/* blocked branch */
 
 /*
  * NAME:	parser->flatten()
  * DESCRIPTION:	traverse parse tree, collecting values in a flat array
  */
-static void ps_flatten(pn, traverse, v)
+static void ps_flatten(pn, v)
 register pnode *pn;
-register short traverse;
 register value *v;
 {
     register pnode *next;
 
     next = pn->next;
     do {
-	switch (pn->symbol - traverse) {
+	switch (pn->symbol) {
 	case PN_STRING:
 	    (--v)->type = T_STRING;
 	    str_ref(v->u.string = pn->u.str);
@@ -587,8 +630,9 @@ register pnode *pn;
     register unsigned short len, i;
     register value *v;
     array *a;
+    bool call;
 
-    if (pn->symbol < ps->traverse) {
+    if (pn->symbol >= 0) {
 	/*
 	 * node hasn't been traversed before
 	 */
@@ -599,13 +643,13 @@ register pnode *pn;
 	    pn->u.str = str_new(pn->u.text, (long) pn->len);
 	    sc_add(&ps->strc, pn->u.str);
 
-	    pn->symbol = ps->traverse + PN_STRING;
+	    pn->symbol = PN_STRING;
 	    return pn->len = 1;
 	} else if (pn->u.text != (char *) NULL) {
 	    /*
 	     * production rule
 	     */
-	    pn->symbol = ps->traverse + PN_BLOCKED;
+	    pn->symbol = PN_BLOCKED;
 	    len = 0;
 	    for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next) {
 		n = ps_traverse(ps, sub);
@@ -614,7 +658,7 @@ register pnode *pn;
 		}
 		len += n;
 	    }
-	    pn->symbol = ps->traverse + PN_RULE;
+	    pn->symbol = PN_RULE;
 
 	    n = UCHAR(pn->u.text[0]) << 1;
 	    if (n == UCHAR(pn->u.text[1])) {
@@ -624,13 +668,32 @@ register pnode *pn;
 		/*
 		 * call LPC function to process subtree
 		 */
-		a = arr_new(ps->frame->data, (long) len);
-		ps_flatten(pn, ps->traverse, a->elts + len);
+		a = arr_new(ps->data, (long) len);
+		ps_flatten(pn, a->elts + len);
 		(--ps->frame->sp)->type = T_ARRAY;
 		arr_ref(ps->frame->sp->u.array = a);
+		ps->data->parser = (parser *) NULL;
 
-		if (!i_call(ps->frame, ps->frame->obj, pn->u.text + 2 + n,
-			    UCHAR(pn->u.text[1]) - n - 1, TRUE, 1)) {
+		if (ec_push((ec_ftn) NULL)) {
+		    /* error: restore original parser */
+		    if (ps->data->parser != (parser *) NULL) {
+			ps_del(ps->data->parser);
+		    }
+		    ps->data->parser = ps;
+		    error((char *) NULL);	/* pass on error */
+		} else {
+		    call = i_call(ps->frame, ps->frame->obj, pn->u.text + 2 + n,
+				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
+		    ec_pop();
+		}
+
+		/* restore original parser */
+		if (ps->data->parser != (parser *) NULL) {
+		    ps_del(ps->data->parser);
+		}
+		ps->data->parser = ps;
+
+		if (!call) {
 		    return -1;	/* no function: block branch */
 		}
 		if (ps->frame->sp->type != T_ARRAY) {
@@ -641,8 +704,9 @@ register pnode *pn;
 		    return -1;
 		}
 
-		pn->symbol = ps->traverse + PN_ARRAY;
+		pn->symbol = PN_ARRAY;
 		ac_add(&ps->arrc, pn->u.arr = (ps->frame->sp++)->u.array);
+		arr_del(pn->u.arr);
 		pn->len = pn->u.arr->size;
 	    }
 	    return pn->len;
@@ -650,7 +714,7 @@ register pnode *pn;
 	    /*
 	     * branches
 	     */
-	    pn->symbol = ps->traverse + PN_BLOCKED;
+	    pn->symbol = PN_BLOCKED;
 
 	    /* pass 1: count branches */
 	    n = 0;
@@ -658,7 +722,7 @@ register pnode *pn;
 		if (ps_traverse(ps, sub) >= 0) {
 		    n++;
 		} else {
-		    sub->symbol = ps->traverse + PN_BLOCKED;
+		    sub->symbol = PN_BLOCKED;
 		}
 	    }
 	    if (n == 0) {
@@ -670,26 +734,25 @@ register pnode *pn;
 
 	    /* pass 2: create branch arrays */
 	    if (n != 1) {
-		ac_add(&ps->arrc, a = arr_new(ps->frame->data, (long) n));
+		ac_add(&ps->arrc, a = arr_new(ps->data, (long) n));
 		v = a->elts;
 		memset(v, '\0', n * sizeof(value));
 	    }
 	    for (sub = pn->list, i = 0; i < n; sub = sub->next) {
-		if (sub->symbol != ps->traverse + PN_BLOCKED) {
+		if (sub->symbol != PN_BLOCKED) {
 		    if (n == 1) {
 			/* sole branch */
 			*pn = *sub;
 			return pn->len;
 		    } else {
-			arr_ref(v->u.array = arr_new(ps->frame->data,
-				(long) pn->len));
+			arr_ref(v->u.array = arr_new(ps->data, (long) pn->len));
 			v->type = T_ARRAY;
-			ps_flatten(pn, ps->traverse, (v++)->u.array->elts);
+			ps_flatten(pn, (v++)->u.array->elts);
 			i++;
 		    }
 		}
 	    }
-	    pn->symbol = ps->traverse + PN_BRANCH;
+	    pn->symbol = PN_BRANCH;
 	    pn->u.arr = a;
 	    return pn->len = n;
 	}
@@ -697,7 +760,7 @@ register pnode *pn;
 	/*
 	 * node has been traversed before
 	 */
-	if (pn->symbol == ps->traverse + PN_BLOCKED) {
+	if (pn->symbol == PN_BLOCKED) {
 	    return -1;
 	}
 	return pn->len;
@@ -708,60 +771,106 @@ register pnode *pn;
  * NAME:	parser->load()
  * DESCRIPTION:	load parse_string data
  */
-static parser *ps_load()
+static parser *ps_load(f, elts)
+frame *f;
+register value *elts;
 {
-    return (parser *) NULL;
+    register parser *ps;
+    register char *p;
+    register string *tmp;
+
+    ps = ALLOC(parser, 1);
+    ps->frame = f;
+    ps->data = f->data;
+    ps->data->parser = ps;
+    str_ref(ps->source = (elts++)->u.string);
+    str_ref(ps->grammar = (elts++)->u.string);
+
+    str_ref(ps->dfastr = elts->u.string);
+    tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
+    ps->fa = dfa_load(ps->grammar->text, elts[0].u.string, tmp);
+    elts += 2;
+    str_ref(ps->srpstr = elts->u.string);
+    tmp = (elts[1].type == T_STRING) ? elts[1].u.string : (string *) NULL;
+    ps->lr = srp_load(ps->grammar->text, elts[0].u.string, tmp);
+
+    ps->pnc = (pnchunk *) NULL;
+    ps->list.snc = (snchunk *) NULL;
+    ps->list.first = ps->list.free = (snode *) NULL;
+
+    ps->strc = (strchunk *) NULL;
+    ps->arrc = (arrchunk *) NULL;
+
+    p = ps->grammar->text;
+    ps->ntoken = ((UCHAR(p[2]) + UCHAR(p[6])) << 8) + UCHAR(p[3]) + UCHAR(p[7]);
+    ps->nprod = (UCHAR(p[8]) << 8) + UCHAR(p[9]);
+
+    return ps;
 }
 
 /*
  * NAME:	parser->save()
  * DESCRIPTION:	save parse_string data
  */
-void ps_save(data)
-register dataspace *data;
+void ps_save(ps)
+register parser *ps;
 {
-    register parser *ps;
     register value *v;
+    register dataspace *data;
     value val;
-    string *s1, *s2;
+    string *d1, *d2, *p1, *p2;
+    bool save;
 
-    ps = data->parser;
-    if (dfa_save(ps->fa, &s1, &s2)) {
+    d1 = ps->dfastr;
+    p1 = ps->srpstr;
+    save = dfa_save(ps->fa, &d1, &d2);
+    save |= srp_save(ps->lr, &p1, &p2);
+
+    if (save) {
+	if (ps->dfastr != (string *) NULL) {
+	    str_del(ps->dfastr);
+	}
+	if (ps->srpstr != (string *) NULL) {
+	    str_del(ps->srpstr);
+	}
+	data = ps->data;
 	val.type = T_ARRAY;
-	val.u.array = arr_new(data, 4L);
+	val.u.array = arr_new(data, 6L);
+
+	/* grammar */
 	v = val.u.array->elts;
 	v->type = T_STRING;
 	str_ref((v++)->u.string = ps->source);
 	v->type = T_STRING;
 	str_ref((v++)->u.string = ps->grammar);
+
+	/* dfa */
 	v->type = T_STRING;
-	str_ref((v++)->u.string = s1);
-	if (s2 != (string *) NULL) {
+	str_ref((v++)->u.string = d1);
+	str_ref(ps->dfastr = d1);
+	if (d2 != (string *) NULL) {
 	    v->type = T_STRING;
-	    str_ref(v->u.string = s2);
+	    str_ref(v->u.string = d2);
 	} else {
 	    v->type = T_INT;
 	    v->u.number = 0;
 	}
+	v++;
+
+	/* srp */
+	v->type = T_STRING;
+	str_ref((v++)->u.string = p1);
+	str_ref(ps->srpstr = p1);
+	if (p2 != (string *) NULL) {
+	    v->type = T_STRING;
+	    str_ref(v->u.string = p2);
+	} else {
+	    v->type = T_INT;
+	    v->u.number = 0;
+	}
+
 	d_assign_var(data, d_get_variable(data, data->nvariables - 1), &val);
     }
-}
-
-/*
- * NAME:	parser->free()
- * DESCRIPTION:	free parse_string data
- */
-void ps_free(data)
-dataspace *data;
-{
-    register parser *ps;
-
-    ps = data->parser;
-    srp_del(ps->lr);
-    dfa_del(ps->fa);
-    str_del(ps->source);
-    str_del(ps->grammar);
-    FREE(ps);
 }
 
 /*
@@ -776,61 +885,98 @@ Int maxalt;
 {
     register dataspace *data;
     register parser *ps;
-    string *grammar;
-    bool same;
+    value *val;
+    bool same, toobig;
     pnode *pn;
     array *a;
     Int len;
 
+    /*
+     * create or load parser
+     */
     data = f->data;
     if (data->parser != (parser *) NULL) {
 	ps = data->parser;
 	same = (str_cmp(ps->source, source) == 0);
     } else {
-	value *val;
-
 	val = d_get_variable(data, data->nvariables - 1);
 	if (val->type == T_ARRAY &&
 	    str_cmp(d_get_elts(val->u.array)->u.string, source) == 0) {
-	    ps = data->parser = ALLOC(parser, 1);
-	    val = d_get_elts(val->u.array);
-	    str_ref(ps->source = val[0].u.string);
-	    str_ref(ps->grammar = val[1].u.string);
-	    ps->fa = dfa_load(ps->grammar->text, val[2].u.string,
-			      val[3].u.string);
+	    ps = ps_load(f, val->u.array->elts);
 	    same = TRUE;
 	} else {
 	    ps = (parser *) NULL;
 	    same = FALSE;
 	}
     }
-
     if (!same) {
-	grammar = parse_grammar(source);
-
+	/* new parser */
 	if (data->parser != (parser *) NULL) {
-	    ps_free(data);
+	    ps_del(data->parser);
 	}
-	ps = data->parser = ps_new(f, source, grammar);
+	ps = ps_new(f, source, parse_grammar(source));
     }
 
+    /*
+     * parse string
+     */
     ps->maxalt = maxalt;
-    pn = ps_parse(ps, str);
-    sn_clear(&ps->list);
-
-    a = (array *) NULL;
-    if (pn != (pnode *) NULL) {
-	len = ps_traverse(ps, pn);
-	if (len >= 0) {
-	    a = arr_new(data, (long) len);
-	    ps_flatten(pn, ps->traverse, a->elts + len);
-	}
+    if (ec_push((ec_ftn) NULL)) {
+	/*
+	 * error occurred; clean up
+	 */
+	sn_clear(&ps->list);
+	pn_clear(ps->pnc);
+	ps->pnc = (pnchunk *) NULL;
 
 	sc_clean(ps->strc);
+	ps->strc = (strchunk *) NULL;
 	ac_clean(ps->arrc);
+	ps->arrc = (arrchunk *) NULL;
+
+	error((char *) NULL);	/* pass on error */
+    } else {
+	/*
+	 * do the parse thing
+	 */
+	toobig = FALSE;
+	pn = ps_parse(ps, str, &toobig);
+	sn_clear(&ps->list);
+
+	/*
+	 * put result in array
+	 */
+	a = (array *) NULL;
+	if (pn != (pnode *) NULL) {
+	    /*
+	     * valid parse tree was created
+	     */
+	    len = ps_traverse(ps, pn);
+	    if (len >= 0) {
+		a = arr_new(data, (long) len);
+		ps_flatten(pn, a->elts + len);
+	    }
+
+	    /* clean up */
+	    sc_clean(ps->strc);
+	    ps->strc = (strchunk *) NULL;
+	    ac_clean(ps->arrc);
+	    ps->arrc = (arrchunk *) NULL;
+	} else if (toobig) {
+	    /*
+	     * lexer or parser has become too big
+	     */
+	    pn_clear(ps->pnc);
+	    ps->data->parser = (parser *) NULL;
+	    ps_del(ps);
+
+	    error("Grammar too large");
+	}
+	pn_clear(ps->pnc);
+	ps->pnc = (pnchunk *) NULL;
+
+	ec_pop();
+
+	return a;
     }
-
-    pn_clear(ps->pnc);
-
-    return a;
 }
