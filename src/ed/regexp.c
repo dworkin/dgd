@@ -110,12 +110,14 @@ char *pattern;
 	    case LSTAR:
 		/* ignore */
 		break;
+
 	    case ANY:
 		--m;
 		prevcode = prevpat = m;
 		*m++ = STAR;
 		*m++ = ANY;
 		break;
+
 	    case SINGLE:
 	    case CCLASS:
 		letter = *--m;
@@ -152,7 +154,7 @@ char *pattern;
 		    if (*p == '\0') {
 			return "Unmatched [";
 		    }
-		    while (c <= *p) {
+		    while (UCHAR(c) <= UCHAR(*p)) {
 			/* this could be done more efficiently. */
 			CCL(cclass, |=, c);
 			c++;
@@ -206,6 +208,7 @@ char *pattern;
 		prevcode = m;
 		*m++ = SOW;
 		break;
+
 	    case '>':
 		if (*prevpat == 0) {
 		    return "\\> must follow pattern";
@@ -213,6 +216,7 @@ char *pattern;
 		prevcode = m;
 		*m++ = EOW;
 		break;
+
 	    case '(':
 		if (brac == NSUBEXP) {
 		    return "Too many \\( \\) pairs";
@@ -221,6 +225,7 @@ char *pattern;
 		*m++ = LBRAC;
 		*m++ = braclist[depth++] = brac++;
 		break;
+
 	    case ')':
 		if (depth == 0) {
 		    return "Unmatched \\)";
@@ -229,8 +234,10 @@ char *pattern;
 		*m++ = RBRAC;
 		*m++ = braclist[--depth];
 		break;
+
 	    case '\0':
 		return "Premature end of pattern";
+
 	    default:
 		goto single;
 	    }
@@ -356,12 +363,14 @@ char *text;
 		    p++;
 		}
 		break;
+
 	    case SINGLE:
 		while (*p == *m || (l_ic && tolower(*p) == tolower(*m))) {
 		    p++;
 		}
 		m++;
 		break;
+
 	    case CCLASS:
 		cclass = CCL_BUF(l_rx, *m++);
 		if (!l_ic) {
