@@ -178,10 +178,20 @@ connection *conn;
 char *buf;
 register int size;
 {
-    if (conn->fd >= 0 && write(conn->fd, buf, size) < 0 && errno != EWOULDBLOCK)
-    {
-	close(conn->fd);
-	conn->fd = -1;
+    char buffer[2 * OUTBUF_SIZE];
+    register char *p, *q;
+
+    if (conn->fd >= 0) {
+	for (p = buf, q = buffer; size > 0; --size) {
+	    if (*p == '\n') {
+		*q++ = '\r';
+	    }
+	    *q++ = *p++;
+	}
+	if (write(conn->fd, buffer, q - buffer) < 0 && errno != EWOULDBLOCK) {
+	    close(conn->fd);
+	    conn->fd = -1;
+	}
     }
 }
 
