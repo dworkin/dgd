@@ -8,52 +8,64 @@
  * The file I/O operations of the editor.
  */
 
-static io iobuf;		/* local status buffer */
-
-static int fd;			/* read/write file descriptor */
-static char *buffer, *lbuf, *lbuflast;	/* buffer pointers */
-static unsigned int inbuf;	/* # bytes in buffer */
+typedef struct {
+    char *filename;	/* file name */
+    int fd;		/* read/write file descriptor */
+    char *buffer;	/* file buffer */
+    char *bufp;		/* buffer pointer */
+    unsigned int inbuf;	/* # bytes in buffer */
+    char *lbuf;		/* line buffer */
+    char *lbuflast;	/* end of line buffer */
+    io *iostat;		/* I/O status */
+} fiocontext;
 
 /*
  * NAME:	getline()
  * DESCRIPTION:	read a line from the input, return as '\0'-terminated string
  *		without '\n'
  */
-static char *getline()
+static char *getline(ptr)
+char *ptr;
 {
-    static char *bufp;
+    register fiocontext *x;
     register char c, *p, *bp;
     register int i;
 
-    if (iobuf.ill) {	/* previous line was incomplete, therefore the last */
+    x = (fiocontext *) ptr;
+
+    if (x->iostat->ill) {
+	/* previous line was incomplete, therefore the last */
 	return (char *) NULL;
     }
 
-    p = lbuf;
-    bp = bufp;
-    i = inbuf;
+    p = x->lbuf;
+    bp = x->bufp;
+    i = x->inbuf;
     do {
 	if (i == 0) {	/* buffer empty */
-	    i = read(fd, buffer, BUF_SIZE);
+	    i = read(x->fd, x->buffer, BUF_SIZE);
 	    if (i <= 0) {
 		/* eof or error */
-		if (p == lbuf) {
+		if (i < 0) {
+		    error("error while reading file \"/%s\"", x->filename);
+		}
+		if (p == x->lbuf) {
 		    return (char *) NULL;
 		} else {
 		    p++;	/* make room for terminating '\0' */
-		    iobuf.ill = TRUE;
+		    x->iostat->ill = TRUE;
 		    break;
 		}
 	    }
-	    bp = buffer;
+	    bp = x->buffer;
 	}
 	--i;
 	c = *bp++;
 	if (c == '\0') {
-	    iobuf.zero++;	/* skip zeroes */
+	    x->iostat->zero++;	/* skip zeroes */
 	} else {
-	    if (p == lbuflast && c != LF) {
-		iobuf.split++;
+	    if (p == x->lbuflast && c != LF) {
+		x->iostat->split++;
 		i++;
 		--bp;
 		c = LF;
@@ -62,141 +74,152 @@ static char *getline()
 	}
     } while (c != LF);	/* eoln */
 
-    iobuf.lines++;
-    iobuf.chars += p - lbuf;	/* including terminating '\0' */
-    bufp = bp;
-    inbuf = i;
+    x->iostat->lines++;
+    x->iostat->chars += p - x->lbuf;	/* including terminating '\0' */
+    x->bufp = bp;
+    x->inbuf = i;
     *--p = '\0';
-    return lbuf;
+    return x->lbuf;
 }
 
 /*
  * NAME:	io_load()
  * DESCRIPTION:	append block read from file after a line
  */
-io *io_load(eb, filename, l)
+bool io_load(eb, filename, l, iobuf)
 editbuf *eb;
 char *filename;
 Int l;
+io *iobuf;
 {
     char b[MAX_LINE_SIZE], buf[BUF_SIZE];
     struct stat sbuf;
+    fiocontext x;
 
     /* open file */
-    filename = path_ed_read(filename);
-    if (filename == (char *) NULL || stat(filename, &sbuf) < 0 ||
+    x.filename = path_ed_read(filename);
+    if (x.filename == (char *) NULL || stat(x.filename, &sbuf) < 0 ||
 	(sbuf.st_mode & S_IFMT) != S_IFREG) {
-	return (io *) NULL;
+	return FALSE;
     }
 
-    fd = open(filename, O_RDONLY | O_BINARY, 0);
-    if (fd < 0) {
-	return (io *) NULL;
+    x.fd = open(x.filename, O_RDONLY | O_BINARY, 0);
+    if (x.fd < 0) {
+	return FALSE;
     }
 
     /* initialize buffers */
-    buffer = buf;
-    lbuf = b;
-    lbuflast = &b[MAX_LINE_SIZE - 1];
-    inbuf = 0;
+    x.buffer = buf;
+    x.inbuf = 0;
+    x.lbuf = b;
+    x.lbuflast = &b[MAX_LINE_SIZE - 1];
 
     /* initialize statistics */
-    iobuf.lines = 0;
-    iobuf.chars = 0;
-    iobuf.zero = 0;
-    iobuf.split = 0;
-    iobuf.ill = FALSE;
+    x.iostat = iobuf;
+    x.iostat->lines = 0;
+    x.iostat->chars = 0;
+    x.iostat->zero = 0;
+    x.iostat->split = 0;
+    x.iostat->ill = FALSE;
 
     /* add the block to the edit buffer */
     if (ec_push((ec_ftn) NULL)) {
-	close(fd);
+	close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_add(eb, l, getline);
+    eb_add(eb, l, getline, (char *) &x);
     ec_pop();
-    close(fd);
-    return &iobuf;
+    close(x.fd);
+
+    return TRUE;
 }
 
 /*
  * NAME:	putline()
  * DESCRIPTION:	write a line to a file
  */
-static void putline(text)
+static void putline(ptr, text)
+char *ptr;
 register char *text;
 {
+    register fiocontext *x;
     register unsigned int len;
 
+    x = (fiocontext *) ptr;
     len = strlen(text);
-    iobuf.lines += 1;
-    iobuf.chars += len + 1;
-    while (inbuf + len >= BUF_SIZE) {	/* flush buffer */
-	if (inbuf != BUF_SIZE) {	/* room left for a piece of line */
+    x->iostat->lines += 1;
+    x->iostat->chars += len + 1;
+    while (x->inbuf + len >= BUF_SIZE) {	/* flush buffer */
+	if (x->inbuf != BUF_SIZE) {	/* room left for a piece of line */
 	    register unsigned int chunk;
 
-	    chunk = BUF_SIZE - inbuf;
-	    memcpy(buffer + inbuf, text, chunk);
+	    chunk = BUF_SIZE - x->inbuf;
+	    memcpy(x->buffer + x->inbuf, text, chunk);
 	    text += chunk;
 	    len -= chunk;
 	}
-	write(fd, buffer, BUF_SIZE);
-	inbuf = 0;
+	if (write(x->fd, x->buffer, BUF_SIZE) != BUF_SIZE) {
+	    error("error while writing file \"/%s\"", x->filename);
+	}
+	x->inbuf = 0;
     }
     if (len > 0) {			/* piece of line left */
-	memcpy(buffer + inbuf, text, len);
-	inbuf += len;
+	memcpy(x->buffer + x->inbuf, text, len);
+	x->inbuf += len;
     }
-    buffer[inbuf++] = LF;
+    x->buffer[x->inbuf++] = LF;
 }
 
 /*
  * NAME:	io_save()
  * DESCRIPTION:	write a range of lines to a file
  */
-io *io_save(eb, filename, first, last, append)
+bool io_save(eb, filename, first, last, append, iobuf)
 editbuf *eb;
 char *filename;
 Int first, last;
 int append;
+io *iobuf;
 {
-    int sz;
     char buf[BUF_SIZE];
+    fiocontext x;
 
-    filename = path_ed_write(filename);
-    if (filename == (char *) NULL) {
-	return (io *) NULL;
+    x.filename = path_ed_write(filename);
+    if (x.filename == (char *) NULL) {
+	return FALSE;
     }
     /* create file */
-    fd = open(filename,
-	      (append) ? O_CREAT | O_APPEND | O_WRONLY | O_BINARY :
-		         O_CREAT | O_TRUNC | O_WRONLY | O_BINARY,
+    x.fd = open(x.filename,
+		(append) ? O_CREAT | O_APPEND | O_WRONLY | O_BINARY :
+			   O_CREAT | O_TRUNC | O_WRONLY | O_BINARY,
 	      0664);
-    if (fd < 0) {
-	return (io *) NULL;
+    if (x.fd < 0) {
+	return FALSE;
     }
 
     /* initialize buffer */
-    buffer = buf;
-    inbuf = 0;
+    x.buffer = buf;
+    x.inbuf = 0;
 
     /* initialize statistics */
-    iobuf.lines = 0;
-    iobuf.chars = 0;
-    iobuf.zero = 0;
-    iobuf.split = 0;
-    iobuf.ill = FALSE;
+    x.iostat = iobuf;
+    x.iostat->lines = 0;
+    x.iostat->chars = 0;
+    x.iostat->zero = 0;
+    x.iostat->split = 0;
+    x.iostat->ill = FALSE;
 
     /* write range */
     if (ec_push((ec_ftn) NULL)) {
-	close(fd);
+	close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_range(eb, first, last, putline, FALSE);
-    sz = write(fd, buffer, inbuf);
-    ec_pop();
-    close(fd);
-    if (sz != inbuf) {
-	error("error while writing file \"/%s\"", filename);
+    eb_range(eb, first, last, putline, (char *) &x, FALSE);
+    if (write(x.fd, x.buffer, x.inbuf) != x.inbuf) {
+	error("error while writing file \"/%s\"", x.filename);
     }
-    return &iobuf;
+    ec_pop();
+    close(x.fd);
+
+    return TRUE;
 }

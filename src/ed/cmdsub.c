@@ -21,23 +21,21 @@ extern void  addblock		P((cmdbuf*, char*));
 extern void  endblock		P((cmdbuf*));
 
 
-static jmp_buf env;	/* env to jump back to when pattern is found */
-static rxbuf *rx;	/* current pattern */
-static Int lineno;	/* current line number */
-static bool ignorecase;	/* current ignorecase status */
-
 /*
  * NAME:	find()
  * DESCRIPTION:	scan a line for a pattern. If the pattern is found, longjump
  *		out.
  */
-static void find(text)
-char *text;
+static void find(ptr, text)
+char *ptr, *text;
 {
-    if (rx_exec(rx, text, 0, ignorecase) > 0) {
-	longjmp(env, TRUE);
+    register cmdbuf *cb;
+
+    cb = (cmdbuf *) ptr;
+    if (rx_exec(cb->regexp, text, 0, cb->ignorecase) > 0) {
+	longjmp(cb->env, TRUE);
     }
-    lineno++;
+    cb->lineno++;
 }
 
 /*
@@ -50,67 +48,36 @@ cmdbuf *cb;
 Int first, last;
 int reverse;
 {
-    if (setjmp(env)) {
+    if (setjmp(cb->env)) {
 	/* found */
-	return (reverse) ? last - lineno : first + lineno;
+	return (reverse) ? last - cb->lineno : first + cb->lineno;
     }
 
-    rx = cb->regexp;
-    lineno = 0;
-    ignorecase = IGNORECASE(cb->vars);
-    eb_range(cb->edbuf, first, last, find, reverse);
+    cb->lineno = 0;
+    cb->ignorecase = IGNORECASE(cb->vars);
+    eb_range(cb->edbuf, first, last, find, (char *) cb, reverse);
     /* not found */
     return 0;
 }
 
-
-static char flags;	/* printing flags for println() */
-
-/*
- * NAME:	cmdbuf->flags()
- * DESCRIPTION:	set the flags according to the cmd
- */
-static void cb_flags(cb)
-register cmdbuf *cb;
-{
-    register char *p;
-
-    flags = cb->flags;
-    p = cb->cmd;
-    for (;;) {
-	switch (*p++) {
-	case '-':
-	case '+':
-	case 'p':
-	    /* ignore */
-	    continue;
-
-	case 'l':
-	    flags |= CB_LIST;
-	    continue;
-
-	case '#':
-	    flags |= CB_NUMBER;
-	    continue;
-	}
-	cb->cmd = --p;
-	break;
-    }
-}
 
 /*
  * NAME:	println()
  * DESCRIPTION:	output a line of text. The format is decided by flags.
  *		Non-ascii characters (eight bit set) have no special processing.
  */
-static void println(text)
+static void println(ptr, text)
+char *ptr;
 register char *text;
 {
     char buffer[2 * MAX_LINE_SIZE + 14];	/* all ^x + number + list */
+    register cmdbuf *cb;
     register char *p;
 
-    if (flags & CB_NUMBER) {
-	sprintf(buffer, "%6ld  ", (long) lineno++);
+    cb = (cmdbuf *) ptr;
+
+    if (cb->flags & CB_NUMBER) {
+	sprintf(buffer, "%6ld  ", (long) cb->lineno++);
 	p = buffer + 8;
     } else {
 	p = buffer;
@@ -119,7 +86,7 @@ register char *text;
     while (*text != '\0') {
 	if ((*text & 0x7f) < ' ') {
 	    /* control character */
-	    if (*text == HT && !(flags & CB_LIST)) {
+	    if (*text == HT && !(cb->flags & CB_LIST)) {
 		*p++ = HT;
 	    } else {
 		*p++ = '^'; *p++ = (*text & 0x9f) + '@';
@@ -133,7 +100,7 @@ register char *text;
 	}
 	text++;
     }
-    if (flags & CB_LIST) {
+    if (cb->flags & CB_LIST) {
 	*p++ = '$';
     }
     *p = '\0';
@@ -149,10 +116,32 @@ register char *text;
 int cb_print(cb)
 register cmdbuf *cb;
 {
-    lineno = cb->first;
-    cb_flags(cb);	/* handle flags right now */
+    register char *p;
 
-    eb_range(cb->edbuf, cb->first, cb->last, println, FALSE);
+    /* handle flags right now */
+    p = cb->cmd;
+    for (;;) {
+	switch (*p++) {
+	case '-':
+	case '+':
+	case 'p':
+	    /* ignore */
+	    continue;
+
+	case 'l':
+	    cb->flags |= CB_LIST;
+	    continue;
+
+	case '#':
+	    cb->flags |= CB_NUMBER;
+	    continue;
+	}
+	cb->cmd = --p;
+	break;
+    }
+
+    cb->lineno = cb->first;
+    eb_range(cb->edbuf, cb->first, cb->last, println, (char *) cb, FALSE);
     cb->this = cb->last;
     return 0;
 }
@@ -429,17 +418,18 @@ register cmdbuf *cb;
 }
 
 
-static int shi;		/* the current shift (negative for left shift) */
-static cmdbuf *ccb;	/* local copy of command buffer pointer */
-
 /*
  * NAME:	shift()
- * DESCRIPTION:	Shift a line left or right according to "shi".
+ * DESCRIPTION:	shift a line left or right
  */
-static void shift(text)
+static void shift(ptr, text)
+char *ptr;
 register char *text;
 {
+    register cmdbuf *cb;
     register int idx;
+
+    cb = (cmdbuf *) ptr;
 
     /* first determine the number of leading spaces */
     idx = 0;
@@ -453,10 +443,10 @@ register char *text;
 
     if (*text == '\0') {
 	/* don't shift lines with ws only */
-	addblock(ccb, text);
-	lineno++;
+	addblock(cb, text);
+	cb->lineno++;
     } else {
-	idx += shi;
+	idx += cb->shift;
 	if (idx < MAX_LINE_SIZE) {
 	    char buffer[MAX_LINE_SIZE];
 	    register char *p;
@@ -473,15 +463,15 @@ register char *text;
 	    }
 	    if (p - buffer + strlen(text) < MAX_LINE_SIZE) {
 		strcpy(p, text);
-		addblock(ccb, buffer);
-		lineno++;
+		addblock(cb, buffer);
+		cb->lineno++;
 		return;
 	    }
 	}
 
 	/* Error: line too long. Finish block of lines already shifted. */
-	ccb->last = lineno;
-	endblock(ccb);
+	cb->last = cb->lineno;
+	endblock(cb);
 	error("Result of shift would be too long");
     }
 }
@@ -495,10 +485,9 @@ register cmdbuf *cb;
 {
     cb_do(cb, cb->first);
     startblock(cb);
-    lineno = cb->first - 1;
+    cb->lineno = cb->first - 1;
     cb->flags |= CB_CHANGE;
-    ccb = cb;
-    eb_range(cb->edbuf, cb->first, cb->last, shift, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, shift, (char *) cb, FALSE);
     endblock(cb);
 
     return RET_FLAGS;
@@ -509,9 +498,9 @@ register cmdbuf *cb;
  * DESCRIPTION:	shift a range of lines to the left
  */
 int cb_lshift(cb)
-cmdbuf *cb;
+register cmdbuf *cb;
 {
-    shi = -SHIFTWIDTH(cb->vars);
+    cb->shift = -SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
 }
 
@@ -522,7 +511,7 @@ cmdbuf *cb;
 int cb_rshift(cb)
 register cmdbuf *cb;
 {
-    shi = SHIFTWIDTH(cb->vars);
+    cb->shift = SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
 }
 
@@ -548,17 +537,13 @@ register cmdbuf *cb;
  * NAME:	noshift()
  * DESCRIPTION:	add this line to the current block without shifting it
  */
-static void noshift(text)
+static void noshift(cb, text)
+cmdbuf *cb;
 char *text;
 {
-    addblock(ccb, text);
-    lineno++;
+    addblock(cb, text);
+    cb->lineno++;
 }
-
-static char *stack, *stackbot;	/* token stack */
-static int *ind, *indbot;	/* indent stack */
-static char quote;		/* ' or " */
-static bool in_ppcontrol, in_comment, after_keyword;	/* status */
 
 /*
  * NAME:	indent()
@@ -568,37 +553,40 @@ static bool in_ppcontrol, in_comment, after_keyword;	/* status */
  *		and last but not least everyone has his own taste of
  *		indentation.
  */
-static void indent(text)
-char *text;
+static void indent(ptr, text)
+char *ptr, *text;
 {
     static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
     static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
+    register cmdbuf *cb;
     register char *p, *sp;
     register int *ip, idx;
     register int top, token;
     char *start;
     bool do_indent;
 
+    cb = (cmdbuf *) ptr;
+
     do_indent = FALSE;
     idx = 0;
     p = text = strcpy(line, text);
 
     /* process status vars */
-    if (quote != '\0') {
-	shi = 0;	/* in case a comment starts on this line */
-	noshift(p);
-    } else if (in_ppcontrol || *p == '#') {
-	noshift(p);
+    if (cb->quote != '\0') {
+	cb->shift = 0;	/* in case a comment starts on this line */
+	noshift(cb, p);
+    } else if ((cb->flags & CB_PPCONTROL) || *p == '#') {
+	noshift(cb, p);
 	while (*p != '\0') {
 	    if (*p == '\\' && *++p == '\0') {
-		in_ppcontrol = TRUE;
+		cb->flags |= CB_PPCONTROL;
 		return;
 	    }
 	    p++;
 	}
-	in_ppcontrol = FALSE;
+	cb->flags &= ~CB_PPCONTROL;
 	return;
     } else {
 	/* count leading ws */
@@ -610,10 +598,10 @@ char *text;
 	    }
 	}
 	if (*p == '\0') {
-	    noshift(p);
+	    noshift(cb, p);
 	    return;
-	} else if (in_comment) {
-	    shift(text);	/* use previous shi */
+	} else if (cb->flags & CB_COMMENT) {
+	    shift(cb, text);	/* use previous shift */
 	} else {
 	    do_indent = TRUE;
 	}
@@ -625,7 +613,7 @@ char *text;
 
 	/* lexical scanning: find the next token */
 	ident[0] = '\0';
-	if (in_comment) {
+	if (cb->flags & CB_COMMENT) {
 	    /* comment */
 	    while (*p != '*') {
 		if (*p == '\0') {
@@ -637,21 +625,21 @@ char *text;
 		p++;
 	    }
 	    if (*p == '/') {
-		in_comment = FALSE;
+		cb->flags &= ~CB_COMMENT;
 		p++;
 	    }
 	    continue;
 
-	} else if (quote != '\0') {
+	} else if (cb->quote != '\0') {
 	    /* string or character constant */
 	    for (;;) {
-		if (*p == quote) {
-		    quote = '\0';
+		if (*p == cb->quote) {
+		    cb->quote = '\0';
 		    p++;
 		    break;
 		} else if (*p == '\0') {
-		    ccb->last = lineno;
-		    endblock(ccb);
+		    cb->last = cb->lineno;
+		    endblock(cb);
 		    error("Unterminated string");
 		} else if (*p == '\\' && *++p == '\0') {
 		    break;
@@ -668,16 +656,16 @@ char *text;
 
 	    case '\'':	/* start of string */
 	    case '"':
-		quote = p[-1];
+		cb->quote = p[-1];
 		continue;
 
 	    case '/':
 		if (*p == '*') {	/* start of comment */
-		    in_comment = TRUE;
+		    cb->flags |= CB_COMMENT;
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
-			shi = *ind - idx;
-			shift(text);
+			cb->shift = cb->ind[0] - idx;
+			shift(cb, text);
 			do_indent = FALSE;
 		    } else {
 			register char *q;
@@ -688,7 +676,7 @@ char *text;
 			 * shift can be used if the comment continues on the
 			 * next line
 			 */
-			idx2 = *ind;
+			idx2 = cb->ind[0];
 			for (q = start; q < p - 1;) {
 			    if (*q++ == HT) {
 				idx = (idx + 8) & ~7;
@@ -698,7 +686,7 @@ char *text;
 				idx2++;
 			    }
 			}
-			shi = idx2 - idx;
+			cb->shift = idx2 - idx;
 		    }
 		    p++;
 		    continue;
@@ -711,7 +699,7 @@ char *text;
 		break;
 
 	    case '(':
-		if (after_keyword) {
+		if (cb->flags & CB_JSKEYWORD) {
 		    /*
 		     * LOPERATOR & ROPERATOR are a kludge. The operator
 		     * precedence parser that is used could not work if
@@ -771,8 +759,8 @@ char *text;
 	}
 
 	/* parse */
-	sp = stack;
-	ip = ind;
+	sp = cb->stack;
+	ip = cb->ind;
 	for (;;) {
 	    top = *sp;
 	    if (top == LOPERATOR && token == RHOOK) {
@@ -783,10 +771,10 @@ char *text;
 	    if (f[top] <= g[token]) {	/* shift the token on the stack */
 		register int i;
 
-		if (sp == stackbot) {
+		if (sp == cb->stackbot) {
 		    /* out of stack. Finish already indented block. */
-		    ccb->last = lineno;
-		    endblock(ccb);
+		    cb->last = cb->lineno;
+		    endblock(cb);
 		    error("Nesting too deep");
 		}
 
@@ -798,33 +786,33 @@ char *text;
 		  token == RBRACKET ||
 		  (token == IF && *sp == ELSE)) {
 		    /* back up */
-		    i -= SHIFTWIDTH(ccb->vars);
+		    i -= SHIFTWIDTH(cb->vars);
 		}
 		/* shift the current line, if appropriate */
 		if (do_indent) {
-		    shi = i - idx;
+		    cb->shift = i - idx;
 		    if (i > 0 && token != RHOOK &&
 		      (*sp == LOPERATOR || *sp == LHOOK)) {
 			/* half indent after ( [ ({ (HACK!) */
-			shi += SHIFTWIDTH(ccb->vars) / 2;
+			cb->shift += SHIFTWIDTH(cb->vars) / 2;
 		    } else if (token == TOKEN && *sp == LBRACKET &&
 		      (strcmp(ident, "case") == 0 ||
 		      strcmp(ident, "default") == 0)) {
 			/* back up if this is a switch label */
-			shi -= SHIFTWIDTH(ccb->vars);
+			cb->shift -= SHIFTWIDTH(cb->vars);
 		    }
-		    shift(text);
+		    shift(cb, text);
 		    do_indent = FALSE;
 		}
 		/* change indentation after current token */
 		if (token == LBRACKET || token == ROPERATOR || token == ELSE ||
 		  token == DO) {
 		    /* add indentation */
-		    i += SHIFTWIDTH(ccb->vars);
+		    i += SHIFTWIDTH(cb->vars);
 		} else if (token == SEMICOLON &&
 		  (*sp == ROPERATOR || *sp == ELSE)) {
 		    /* in case it is followed by a comment */
-		    i -= SHIFTWIDTH(ccb->vars);
+		    i -= SHIFTWIDTH(cb->vars);
 		}
 
 		*--sp = token;
@@ -838,9 +826,13 @@ char *text;
 		ip++;
 	    } while (f[*sp] >= g[top]);
 	}
-	stack = sp;
-	ind = ip;
-	after_keyword = (token >= IF);	/* but not after ELSE */
+	cb->stack = sp;
+	cb->ind = ip;
+	if (token >= IF) {	/* but not ELSE */
+	    cb->flags |= CB_JSKEYWORD;
+	} else {
+	    cb->flags &= ~CB_JSKEYWORD;
+	}
     }
 }
 
@@ -855,44 +847,40 @@ register cmdbuf *cb;
     int i[STACKSZ];
 
     /* setup stacks */
-    stackbot = s;
-    indbot = i;
-    stack = stackbot + STACKSZ - 1;
-    *stack = EOT;
-    ind = indbot + STACKSZ - 1;
-    *ind = 0;
-
-    quote = '\0';
-    in_ppcontrol = FALSE;
-    in_comment = FALSE;
+    cb->stackbot = s;
+    cb->stack = s + STACKSZ - 1;
+    cb->stack[0] = EOT;
+    cb->ind = i + STACKSZ - 1;
+    cb->ind[0] = 0;
+    cb->quote = '\0';
 
     cb_do(cb, cb->first);
     startblock(cb);
-    lineno = cb->first - 1;
+    cb->lineno = cb->first - 1;
     cb->flags |= CB_CHANGE;
-    ccb = cb;
-    eb_range(cb->edbuf, cb->first, cb->last, indent, FALSE);
+    cb->flags &= ~(CB_PPCONTROL | CB_COMMENT | CB_JSKEYWORD);
+    eb_range(cb->edbuf, cb->first, cb->last, indent, (char *) cb, FALSE);
     endblock(cb);
 
     return 0;
 }
 
 
-static char *buffer;	/* local buffer pointer for the following functions */
-
 /*
  * NAME:	join()
  * DESCRIPTION:	join a string to the one already in the join buffer
  */
-static void join(text)
+static void join(ptr, text)
+char *ptr;
 register char *text;
 {
-    register int len;
+    register cmdbuf *cb;
     register char *p;
 
-    len = strlen(buffer);
-    p = buffer + len;
-    if (len != 0 && !(ccb->flags & CB_EXCL)) {
+    cb = (cmdbuf *) ptr;
+
+    p = cb->buffer + cb->buflen;
+    if (cb->buflen != 0 && !(cb->flags & CB_EXCL)) {
 	/* do special processing */
 	text = skipst(text);
 	if (*text != '\0' && *text != ')' && p[-1] != ' ' && p[-1] != HT) {
@@ -901,9 +889,10 @@ register char *text;
 	    }
 	    *p++ = ' ';
 	}
-	len = p - buffer;
+	cb->buflen = p - cb->buffer;
     }
-    if (len + strlen(text) >= MAX_LINE_SIZE) {
+    cb->buflen += strlen(text);
+    if (cb->buflen >= MAX_LINE_SIZE) {
 	error("Result of join would be too long");
     }
     strcpy(p, text);
@@ -933,9 +922,9 @@ register cmdbuf *cb;
 
     cb->this = cb->othis = cb->first;
     buf[0] = '\0';
-    buffer = buf;
-    ccb = cb;
-    eb_range(cb->edbuf, cb->first, cb->last, join, FALSE);
+    cb->buffer = buf;
+    cb->buflen = 0;
+    eb_range(cb->edbuf, cb->first, cb->last, join, (char *) cb, FALSE);
 
     /* erase marks for joined lines */
     for (m = cb->mark; m < &cb->mark[26]; m++) {
@@ -953,16 +942,12 @@ register cmdbuf *cb;
 }
 
 
-/* status variables for substitute */
-static bool currentblock, skipped, globsubst, upper, lower, tupper, tlower;
-static Int offset, *mark;
-static unsigned int buflen;
-
 /*
  * NAME:	sub()
  * DESCRIPTION:	add a string to the current substitute buffer
  */
-static void sub(text, size)
+static void sub(cb, text, size)
+register cmdbuf *cb;
 char *text;
 unsigned int size;
 {
@@ -970,36 +955,36 @@ unsigned int size;
     register unsigned int i;
 
     i = size;
-    if (buflen + i >= MAX_LINE_SIZE) {
-	if (currentblock) {
+    if (cb->buflen + i >= MAX_LINE_SIZE) {
+	if (cb->flags & CB_CURRENTBLK) {
 	    /* finish already processed block */
-	    endblock(ccb);
+	    endblock(cb);
 	}
-	ccb->this = ccb->othis = lineno;
+	cb->this = cb->othis = cb->lineno;
 	error("Line overflow in substitute");
     }
 
-    p = buffer + buflen;
+    p = cb->buffer + cb->buflen;
     q = text;
-    if (tlower) {		/* lowercase one letter */
+    if (cb->flags & CB_TLOWER) {	/* lowercase one letter */
 	*p++ = tolower(*q);
 	q++;
-	tlower = FALSE;
+	cb->flags & ~CB_TLOWER;
 	--i;
-    } else if (tupper) {	/* uppercase one letter */
+    } else if (cb->flags & CB_TUPPER) {	/* uppercase one letter */
 	*p++ = toupper(*q);
 	q++;
-	tupper = FALSE;
+	cb->flags &= ~CB_TUPPER;
 	--i;
     }
 
-    if (lower) {		/* lowercase string */
+    if (cb->flags & CB_LOWER) {		/* lowercase string */
 	while (i > 0) {
 	    *p++ = tolower(*q);
 	    q++;
 	    --i;
 	}
-    } else if (upper) {		/* uppercase string */
+    } else if (cb->flags & CB_UPPER) {		/* uppercase string */
 	while (i > 0) {
 	    *p++ = toupper(*q);
 	    q++;
@@ -1008,7 +993,7 @@ unsigned int size;
     } else if (i > 0) {		/* don't change case */
 	memcpy(p, q, i);
     }
-    buflen += size;
+    cb->buflen += size;
 }
 
 /*
@@ -1017,15 +1002,19 @@ unsigned int size;
  *		N, and the next substitution happens on line N + 2, line N + 1
  *		is joined in the new block also.
  */
-static void subst(text)
+static void subst(ptr, text)
+char *ptr;
 register char *text;
 {
     char line[MAX_LINE_SIZE];
+    register cmdbuf *cb;
     register int idx, size;
     register char *p;
     register Int *k, *l;
     Int newlines;
     bool found;
+
+    cb = (cmdbuf *) ptr;
 
     found = FALSE;
     newlines = 0;
@@ -1036,41 +1025,42 @@ register char *text;
      * not remain in memory, use a local copy.
      */
     text = strcpy(line, text);
-    while (rx_exec(ccb->regexp, text, idx, IGNORECASE(ccb->vars)) > 0) {
-	if (skipped) {
+    while (rx_exec(cb->regexp, text, idx, IGNORECASE(cb->vars)) > 0) {
+	if (cb->flags & CB_SKIPPED) {
 	    /*
 	     * add the previous line, in which nothing was substituted, to
 	     * the block. Has to be done here, before the contents of the buffer
 	     * are changed.
 	     */
-	    addblock(ccb, buffer);
-	    skipped = FALSE;
+	    addblock(cb, cb->buffer);
+	    cb->flags &= ~CB_SKIPPED;
 	    /*
 	     * check if there were newlines in the last substitution. If there
 	     * are, marks on the previous line (without substitutions) will
 	     * also have to be changed.
 	     */
-	    if (offset > 0) {
-		for (k = ccb->mark, l = mark; l < &mark[26]; k++, l++) {
-		    if (*k == lineno - 1 && *l == 0) {
-			*l = *k + offset;
+	    if (cb->offset > 0) {
+		for (k = cb->mark, l = cb->moffset; k < &cb->mark[26]; k++, l++)
+		{
+		    if (*k == cb->lineno - 1 && *l == 0) {
+			*l = *k + cb->offset;
 		    }
 		}
 	    }
 	}
 	found = TRUE;
-	tupper = tlower = upper = lower = FALSE;
-	size = ccb->regexp->start - text - idx;
+	cb->flags &= ~(CB_UPPER | CB_LOWER | CB_TUPPER | CB_TLOWER);
+	size = cb->regexp->start - text - idx;
 	if (size > 0) {
 	    /* copy first unchanged part of line to buffer */
-	    sub(text + idx, size);
+	    sub(cb, text + idx, size);
 	}
-	p = ccb->replace;
+	p = cb->replace;
 	while (*p != '\0') {
 	    switch (*p) {
 	    case '&':
 		/* insert matching string */
-		sub(ccb->regexp->start, ccb->regexp->size);
+		sub(cb, cb->regexp->start, cb->regexp->size);
 		break;
 
 	    case '\\':		/* special substitute characters */
@@ -1085,54 +1075,49 @@ register char *text;
 		case '8':
 		case '9':
 		    /* insert subexpression between \( \) */
-		    if (ccb->regexp->se[*p - '1'].start != (char*) NULL) {
-			sub(ccb->regexp->se[*p - '1'].start,
-			  ccb->regexp->se[*p - '1'].size);
+		    if (cb->regexp->se[*p - '1'].start != (char*) NULL) {
+			sub(cb, cb->regexp->se[*p - '1'].start,
+			    cb->regexp->se[*p - '1'].size);
 			break;
 		    }
 		    /* if no subexpression, fall though */
 		default:
-		    sub(p, 1);	/* ignore preceding backslash */
+		    sub(cb, p, 1);	/* ignore preceding backslash */
 		    break;
 
 		case 'n':
-		    buffer[buflen++] = '\0';
+		    cb->buffer[cb->buflen++] = '\0';
 		    newlines++;		/* insert newline */
 		    break;
 
 		case 'U':
 		    /* convert string to uppercase */
-		    upper = TRUE;
-		    lower = FALSE;
-		    tupper = FALSE;
-		    tlower = FALSE;
+		    cb->flags |= CB_UPPER;
+		    cb->flags &= ~(CB_LOWER | CB_TUPPER | CB_TLOWER);
 		    break;
 
 		case 'L':
 		    /* convert string to lowercase */
-		    upper = FALSE;
-		    lower = TRUE;
-		    tupper = FALSE;
-		    tlower = FALSE;
+		    cb->flags |= CB_LOWER;
+		    cb->flags &= ~(CB_UPPER | CB_TUPPER | CB_TLOWER);
 		    break;
 
 		case 'e':
 		case 'E':
 		    /* end case conversion */
-		    tupper = upper = FALSE;
-		    tlower = lower = FALSE;
+		    cb->flags &= ~(CB_UPPER | CB_LOWER | CB_TUPPER | CB_TLOWER);
 		    break;
 
 		case 'u':
 		    /* convert char to uppercase */
-		    tupper = TRUE;
-		    tlower = FALSE;
+		    cb->flags |= CB_TUPPER;
+		    cb->flags &= ~CB_TLOWER;
 		    break;
 
 		case 'l':
 		    /* convert char to lowercase */
-		    tupper = FALSE;
-		    tlower = TRUE;
+		    cb->flags &= ~CB_TUPPER;
+		    cb->flags |= CB_TLOWER;
 		    break;
 
 		case '\0':	/* sigh */
@@ -1141,15 +1126,15 @@ register char *text;
 		break;
 
 	    default:		/* normal char */
-		sub(p, 1);
+		sub(cb, p, 1);
 		break;
 	    }
 	    p++;
 	}
 
-	idx = ccb->regexp->start + ccb->regexp->size - text;
-	if (!globsubst || text[idx] == '\0' ||
-	    (ccb->regexp->size == 0 && text[++idx] == '\0')) {
+	idx = cb->regexp->start + cb->regexp->size - text;
+	if (!(cb->flags & CB_GLOBSUBST) || text[idx] == '\0' ||
+	    (cb->regexp->size == 0 && text[++idx] == '\0')) {
 	    break;
 	}
     }
@@ -1157,59 +1142,58 @@ register char *text;
     if (found) {
 	if (text[idx] != '\0') {
 	    /* concatenate unchanged part of line after found pattern */
-	    tupper = tlower = upper = lower = FALSE;
-	    sub(text + idx, strlen(text + idx));
+	    cb->flags &= ~(CB_UPPER | CB_LOWER | CB_TUPPER | CB_TLOWER);
+	    sub(cb, text + idx, strlen(text + idx));
 	}
-	if (!currentblock) {
+	if (!(cb->flags & CB_CURRENTBLK)) {
 	    /* start a new block of lines with substitutions in them */
-	    ccb->flags |= CB_CHANGE;
-	    ccb->first = lineno;
-	    startblock(ccb);
-	    currentblock = TRUE;
+	    cb->flags |= CB_CHANGE;
+	    cb->first = cb->lineno;
+	    startblock(cb);
+	    cb->flags |= CB_CURRENTBLK;
 	}
 	/* add this changed line to block */
-	buffer[buflen] = '\0';
+	cb->buffer[cb->buflen] = '\0';
 	if (newlines == 0) {
-	    addblock(ccb, buffer);
+	    addblock(cb, cb->buffer);
 	} else {
 	    /*
 	     * There were newlines in the substituted string. Add all
 	     * lines to the current block, and save the marks in range.
 	     */
-	    p = buffer;
+	    p = cb->buffer;
 	    do {
-		addblock(ccb, p);
+		addblock(cb, p);
 		p += strlen(p) + 1;
-	    } while (p <= buffer + buflen);
+	    } while (p <= cb->buffer + cb->buflen);
 
-	    for (k = ccb->mark, l = mark; l < &mark[26]; k++, l++) {
-		if (*k == lineno && *l == 0) {
-		    *l = *k + offset;
+	    for (k = cb->mark, l = cb->moffset; k < &cb->mark[26]; k++, l++) {
+		if (*k == cb->lineno && *l == 0) {
+		    *l = *k + cb->offset;
 		}
 	    }
-	    offset += newlines;
+	    cb->offset += newlines;
 	}
-	buflen = 0;
-	ccb->last = lineno;
+	cb->buflen = 0;
+	cb->last = cb->lineno;
     } else {
-	if (skipped) {
+	if (cb->flags & CB_SKIPPED) {
 	    /* two lines without substitutions now. Finish previous block. */
-	    endblock(ccb);
-	    lineno += offset;
-	    offset = 0;
-	    currentblock = FALSE;
-	    skipped = FALSE;
-	} else if (currentblock) {
+	    endblock(cb);
+	    cb->lineno += cb->offset;
+	    cb->offset = 0;
+	    cb->flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
+	} else if (cb->flags & CB_CURRENTBLK) {
 	    /*
 	     * no substitution on this line, but there was one on the previous
 	     * line. mark this line as skipped, so it can still be added to
 	     * the block of changed lines if the next line has substitutions.
 	     */
-	    strcpy(buffer, text);
-	    skipped = TRUE;
+	    strcpy(cb->buffer, text);
+	    cb->flags |= CB_SKIPPED;
 	}
     }
-    lineno++;
+    cb->lineno++;
 }
 
 /*
@@ -1271,30 +1255,28 @@ register cmdbuf *cb;
     cb_count(cb);	/* get count */
     /* handle global flag */
     if (cb->cmd[0] == 'g') {
-	globsubst = TRUE;
+	cb->flags |= CB_GLOBSUBST;
 	cb->cmd++;
     } else {
-	globsubst = FALSE;
+	cb->flags &= ~CB_GLOBSUBST;
     }
 
     /* make a blank mark table */
-    mark = m;
+    cb->moffset = m;
     for (l = m; l < &m[26]; ) {
 	*l++ = 0;
     }
-    offset = 0;
+    cb->offset = 0;
 
     /* do substitutions */
     cb_do(cb, cb->first);
-    lineno = cb->first;
+    cb->lineno = cb->first;
     edit = cb->edit;
-    buffer = buf;
-    buflen = 0;
-    currentblock = FALSE;
-    skipped = FALSE;
-    ccb = cb;
-    eb_range(cb->edbuf, cb->first, cb->last, subst, FALSE);
-    if (currentblock) {
+    cb->buffer = buf;
+    cb->buflen = 0;
+    cb->flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
+    eb_range(cb->edbuf, cb->first, cb->last, subst, (char *) cb, FALSE);
+    if (cb->flags & CB_CURRENTBLK) {
 	/* finish current block, if needed */
 	endblock(cb);
     }
@@ -1389,8 +1371,6 @@ register cmdbuf *cb;
     return 0;
 }
 
-static io* iob;	/* local pointer for file read/write statistics */
-
 /*
  * NAME:	io->show()
  * DESCRIPTION:	show statistics on the file just read/written
@@ -1420,6 +1400,7 @@ int cb_read(cb)
 register cmdbuf *cb;
 {
     char buffer[STRINGSZ];
+    io iob;
 
     not_in_global(cb);
 
@@ -1434,14 +1415,13 @@ register cmdbuf *cb;
 
     cb_do(cb, cb->first);
     output("\"%s\" ", buffer);
-    iob = io_load(cb->edbuf, buffer, cb->first);
-    if (iob == (io*) NULL) {
+    if (!io_load(cb->edbuf, buffer, cb->first, &iob)) {
 	error("is unreadable");
     }
-    io_show(iob);
+    io_show(&iob);
 
     cb->edit++;
-    cb->this = cb->first + iob->lines;
+    cb->this = cb->first + iob.lines;
 
     return 0;
 }
@@ -1453,6 +1433,8 @@ register cmdbuf *cb;
 int cb_edit(cb)
 register cmdbuf *cb;
 {
+    io iob;
+
     not_in_global(cb);
 
     if (cb->edit > 0 && !(cb->flags & CB_EXCL)) {
@@ -1473,7 +1455,7 @@ register cmdbuf *cb;
     memset(cb->zbuf, '\0', sizeof(cb->zbuf));
     cb->undo = (block) -1;	/* not 0! */
     cb_read(cb);
-    if (iob->zero > 0 || iob->split > 0 || iob->ill) {
+    if (iob.zero > 0 || iob.split > 0 || iob.ill) {
 	/* the editbuffer in memory is not a perfect image of the file read */
 	cb->flags |= CB_NOIMAGE;
     }
@@ -1508,6 +1490,7 @@ register cmdbuf *cb;
 {
     char buffer[STRINGSZ];
     bool append;
+    io iob;
 
     not_in_global(cb);
 
@@ -1536,11 +1519,10 @@ register cmdbuf *cb;
     }
 
     output("\"%s\" ", buffer);
-    iob = io_save(cb->edbuf, buffer, cb->first, cb->last, append);
-    if (iob == (io *) NULL) {
+    if (!io_save(cb->edbuf, buffer, cb->first, cb->last, append, &iob)) {
 	error("write failed");
     }
-    io_show(iob);
+    io_show(&iob);
 
     if (cb->first == 1 && cb->last == cb->edbuf->lines) {
 	/* file is now perfect image of editbuffer in memory */

@@ -293,29 +293,24 @@ char *pattern;
     return (char *) NULL;
 }
 
-/* local copies of variables to save stack space */
-static rxbuf *l_rx;
-static char *l_text;
-static bool l_ic;
-
 /*
  * NAME:	match()
- * DESCRIPTION:	match the text (arg2) against the pattern (arg1). Return 1 if
+ * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
  *		success.
  */
-static bool match(m, text)
-register char *m;
+static bool match(rx, text, ic, m, t)
+rxbuf *rx;
 char *text;
+bool ic;
+register char *m, *t;
 {
-    register char *t, *p, *cclass, code, c;
-
-    t = text;
+    register char *p, *cclass, code, c;
 
     for (;;) {
 	switch (code = *m++) {
 	case EOM:
 	    /* found a match */
-	    l_rx->start = t;
+	    rx->start = t;
 	    return TRUE;
 
 	case EOL:
@@ -333,7 +328,7 @@ char *text;
 
 	case SINGLE:
 	    /* match single character */
-	    if (*t != *m && (!l_ic || tolower(*t) != tolower(*m))) {
+	    if (*t != *m && (!ic || tolower(*t) != tolower(*m))) {
 		return FALSE;
 	    }
 	    m++;
@@ -341,9 +336,9 @@ char *text;
 
 	case CCLASS:
 	    /* match character class */
-	    cclass = CCL_BUF(l_rx, *m++);
+	    cclass = CCL_BUF(rx, *m++);
 	    if (CCL(cclass, &, *t) == 0) {
-		if (l_ic) {
+		if (ic) {
 		    c = tolower(*t);
 		    if (CCL(cclass, &, c)) {
 			break;
@@ -365,15 +360,15 @@ char *text;
 		break;
 
 	    case SINGLE:
-		while (*p == *m || (l_ic && tolower(*p) == tolower(*m))) {
+		while (*p == *m || (ic && tolower(*p) == tolower(*m))) {
 		    p++;
 		}
 		m++;
 		break;
 
 	    case CCLASS:
-		cclass = CCL_BUF(l_rx, *m++);
-		if (!l_ic) {
+		cclass = CCL_BUF(rx, *m++);
+		if (!ic) {
 		    while (CCL(cclass, &, *p)) {
 			p++;
 		    }
@@ -392,7 +387,7 @@ char *text;
 	    } else {
 		/* try all possible lengths of the starred pattern */
 		while (p > t) {
-		    if (match(m, p)) {
+		    if (match(rx, text, ic, m, p)) {
 			return TRUE;
 		    }
 		    --p;
@@ -402,7 +397,7 @@ char *text;
 
 	case SOW:
 	    /* start of word */
-	    if ((t != l_text && (isalnum(t[-1]) || t[-1] == '_'))
+	    if ((t != text && (isalnum(t[-1]) || t[-1] == '_'))
 	      || (!isalpha(*t) && *t != '_')) {
 		return FALSE;
 	    }
@@ -418,12 +413,12 @@ char *text;
 
 	case LBRAC:
 	    /* start of subexpression */
-	    l_rx->se[*m++].start = t;
+	    rx->se[*m++].start = t;
 	    continue;
 
 	case RBRAC:
 	    /* end of subexpression */
-	    l_rx->se[*m].size = t - l_rx->se[*m].start;
+	    rx->se[*m].size = t - rx->se[*m].start;
 	    m++;
 	    continue;
 	}
@@ -445,14 +440,13 @@ register int idx;
 int ic;
 {
     rx->start = (char *) NULL;
-    if (!rx->valid) return -1;
+    if (!rx->valid) {
+	return -1;
+    }
 
-    l_rx = rx;
-    l_text = text;
-    l_ic = ic;
     if (rx->anchor) {
 	/* the easy case */
-	if (idx || !match(rx->buffer, text)) {
+	if (idx || !match(rx, text, ic, rx->buffer, text)) {
 	    return 0;
 	}
     } else {
@@ -476,7 +470,9 @@ int ic;
 		    return 0;
 		}
 	    }
-	    if (match(rx->buffer, text + idx)) break;
+	    if (match(rx, text + idx, ic, rx->buffer, text + idx)) {
+		break;
+	    }
 	    /* if no match, try the next character in the string */
 	    if (text[idx++] == '\0') {
 		return 0;

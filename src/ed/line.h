@@ -9,28 +9,33 @@
 typedef Int block;
 
 typedef struct _btbuf_ {
-    long offset;		/* offset in tmpfile */
-    struct _btbuf_ *prev;	/* prev in linked list */
-    struct _btbuf_ *next;	/* next in linked list */
-    char *buf;			/* buffer with blocks and text */
+    long offset;			/* offset in tmpfile */
+    struct _btbuf_ *prev;		/* prev in linked list */
+    struct _btbuf_ *next;		/* next in linked list */
+    char *buf;				/* buffer with blocks and text */
 } btbuf;
 
 typedef struct {
-    char *file;			/* tmpfile name */
-    int fd;			/* tmpfile fd */
-    btbuf bt[NR_EDBUFS];	/* read & write buffers */
-    btbuf *wb;			/* write buffer */
-    int blksz;			/* block size in write buffer */
-    int txtsz;			/* text size in write buffer */
+    char *file;				/* tmpfile name */
+    int fd;				/* tmpfile fd */
+    btbuf bt[NR_EDBUFS];		/* read & write buffers */
+    btbuf *wb;				/* write buffer */
+    char *buf;				/* current low-level buffer */
+    int blksz;				/* block size in write buffer */
+    int txtsz;				/* text size in write buffer */
+    void (*putline) P((char*, char*));	/* output line function */
+    char *context;			/* context for putline */
+    bool reverse;			/* for bk_put() */
 } linebuf;
 
 extern linebuf *lb_new	  P((linebuf*, char*));
 extern void	lb_del	  P((linebuf*));
 extern void	lb_inact  P((linebuf*));
 
-extern block	bk_new	  P((linebuf*, char*(*)(void)));
+extern block	bk_new	  P((linebuf*, char*(*)(char*), char*));
 # define	bk_del(linebuf, block)	/* nothing */
 extern Int	bk_size	  P((linebuf*, block));
 extern void	bk_split  P((linebuf*, block, Int, block*, block*));
 extern block	bk_cat	  P((linebuf*, block, block));
-extern void	bk_put	  P((linebuf*, block, Int, Int, void(*)(char*), int));
+extern void	bk_put	  P((linebuf*, block, Int, Int, void(*)(char*, char*),
+			     char*, int));

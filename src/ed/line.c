@@ -39,8 +39,6 @@
  *   There is no special stategy for keeping the depth of binary trees of CAT
  * blocks low. Concatenation always increases the depth; splitting typically
  * decreases it, because large parts of the tree are rebuild.
- *
- * WARNING: the code here is not fully reentrant.
  */
 
 # define BLOCK_SIZE	(2 * (MAX_LINE_SIZE))
@@ -67,14 +65,8 @@ typedef struct {
 # define index2	u.s.u_index2
 
 # define BLOCK(lb, blk)	\
-	(block)(lb->wb->offset + (long)(blk) - (long)lb->wb->buf)
+	(block) ((lb)->wb->offset + (long) (blk) - (long) (lb)->wb->buf)
 
-/* local temporaries */
-static linebuf *l_lb;
-static char *l_buf;
-static block *l_b1, *l_b2;
-static void (*l_putline)();
-static bool l_reverse;
 
 /*
  * NAME:	linebuf->new()
@@ -270,7 +262,7 @@ block b;
 	}
     }
 
-    return (blk *) ((l_buf = bt->buf) + b - bt->offset);
+    return (blk *) ((lb->buf = bt->buf) + b - bt->offset);
 }
 
 /*
@@ -377,16 +369,16 @@ char *text;
  * DESCRIPTION:	read a block of lines from function getline. continue until
  *		getline returns 0. Return the block.
  */
-block bk_new(lb, getline)
+block bk_new(lb, getline, context)
 register linebuf *lb;
-char *(*getline) P((void));
+char *(*getline) P((char*)), *context;
 {
     register blk *bp;
     register char *text;
     blk bb;
 
     /* get first line */
-    text = (*getline)();
+    text = (*getline)(context);
     if (text == (char *) NULL) {
 	return (block) 0;
     }
@@ -399,7 +391,7 @@ char *(*getline) P((void));
     bb.index2 = 0;
 
     /* append lines */
-    while ((text=(*getline)()) != (char *) NULL) {
+    while ((text=(*getline)(context)) != (char *) NULL) {
 	bp = bk_putln(lb, bp, text);
 	bb.lines++;
     }
@@ -425,12 +417,14 @@ block b;
 
 /*
  * NAME:	bk_split1()
- * DESCRIPTION:	split blk in two, arg 2 is size of first block
+ * DESCRIPTION:	split blk in two, arg 3 is size of first block
  *		(local for bk_split)
  */
-static void bk_split1(bp, size)
+static void bk_split1(lb, bp, size, b1, b2)
+register linebuf *lb;
 register blk *bp;
 register Int size;
+block *b1, *b2;
 {
     register Int lines;
     register Int first, last;
@@ -440,27 +434,27 @@ register Int size;
 	first = bp->lfirst;
 	last = bp->llast;
 
-	bp = bk_load(l_lb, first);
+	bp = bk_load(lb, first);
 	lines = bp->lines;
 	if (lines > size) {
 	    /* the first split block is contained in the first block */
-	    bk_split1(bp, size);
-	    if (l_b2 != (block *) NULL) {
-		*l_b2 = bk_cat(l_lb, *l_b2, last);
+	    bk_split1(lb, bp, size, b1, b2);
+	    if (b2 != (block *) NULL) {
+		*b2 = bk_cat(lb, *b2, last);
 	    }
 	} else if (lines < size) {
 	    /* the second split block is contained in the last block */
-	    bk_split1(bk_load(l_lb, last), size - lines);
-	    if (l_b1 != (block *) NULL) {
-		*l_b1 = bk_cat(l_lb, first, *l_b1);
+	    bk_split1(lb, bk_load(lb, last), size - lines, b1, b2);
+	    if (b1 != (block *) NULL) {
+		*b1 = bk_cat(lb, first, *b1);
 	    }
 	} else {
 	    /* splitting on the edge of cat */
-	    if (l_b1 != (block *) NULL) {
-		*l_b1 = first;
+	    if (b1 != (block *) NULL) {
+		*b1 = first;
 	    }
-	    if (l_b2 != (block *) NULL) {
-		*l_b2 = last;
+	    if (b2 != (block *) NULL) {
+		*b2 = last;
 	    }
 	}
     } else {
@@ -482,7 +476,7 @@ register Int size;
 	last = bp->llast + BLOCK_SIZE;
 	lines += bb1.index1;
 	size += bb1.index1;
-	bp = bk_load(l_lb, mid = bp->lfirst);
+	bp = bk_load(lb, mid = bp->lfirst);
 	offset = bp->lindex;
 
 	while (size < 0 || size >= bp->lines) {
@@ -497,7 +491,7 @@ register Int size;
 		offset = bp->lindex + bp->lines;
 	    }
 	    mid = first + ((((last - first) / lines) * size) & BLOCK_MASK);
-	    bp = bk_load(l_lb, mid);
+	    bp = bk_load(lb, mid);
 	    size -= bp->lindex - offset;
 	}
 
@@ -512,32 +506,29 @@ register Int size;
 	bb2.index1 = size;
 
 	/* block 1 */
-	if (l_b1 != (block *) NULL) {
-	    bp = bk_putblk(l_lb, &bb1, (char *) NULL);
-	    *l_b1 = BLOCK(l_lb, bp);
+	if (b1 != (block *) NULL) {
+	    bp = bk_putblk(lb, &bb1, (char *) NULL);
+	    *b1 = BLOCK(lb, bp);
 	}
 
 	/* block 2 */
-	if (l_b2 != (block *) NULL) {
-	    bp = bk_putblk(l_lb, &bb2, (char *) NULL);
-	    *l_b2 = BLOCK(l_lb, bp);
+	if (b2 != (block *) NULL) {
+	    bp = bk_putblk(lb, &bb2, (char *) NULL);
+	    *b2 = BLOCK(lb, bp);
 	}
     }
 }
 
 /*
  * NAME:	linebuf->split()
- * DESCRIPTION:	split block in two, arg 2 is size of first block
+ * DESCRIPTION:	split block in two, arg 3 is size of first block
  */
 void bk_split(lb, b, size, b1, b2)
 linebuf *lb;
 block b, *b1, *b2;
 Int size;
 {
-    l_lb = lb;
-    l_b1 = b1;
-    l_b2 = b2;
-    bk_split1(bk_load(lb, b), size);
+    bk_split1(lb, bk_load(lb, b), size, b1, b2);
 }
 
 /*
@@ -567,7 +558,8 @@ block b1, b2;
  * DESCRIPTION:	output of a subrange of a blk
  *		(local for bk_put)
  */
-static void bk_put1(bp, idx, size)
+static void bk_put1(lb, bp, idx, size)
+register linebuf *lb;
 register blk *bp;
 register Int idx, size;
 {
@@ -576,12 +568,12 @@ register Int idx, size;
     lines = bp->lines;
 
     if (bp->type == CAT) {
-	if (!l_reverse) {
+	if (!lb->reverse) {
 	    last = bp->llast;
-	    bp = bk_load(l_lb, bp->lfirst);
+	    bp = bk_load(lb, bp->lfirst);
 	} else {
 	    last = bp->lfirst;
-	    bp = bk_load(l_lb, bp->llast);
+	    bp = bk_load(lb, bp->llast);
 	}
 	lines = bp->lines;
 	if (lines > idx) {
@@ -589,26 +581,26 @@ register Int idx, size;
 	    if (lines > size) {
 		lines = size;
 	    }
-	    bk_put1(bp, idx, lines);
+	    bk_put1(lb, bp, idx, lines);
 	    size -= lines;
 	    idx = 0;
 	} else {
 	    idx -= lines;
 	}
 	if (size > 0) {
-	    bk_put1(bk_load(l_lb, last), idx, size);
+	    bk_put1(lb, bk_load(lb, last), idx, size);
 	}
     } else {
 	register Int first, offset, mid;
 
 	last = bp->llast + BLOCK_SIZE;
 	lines += bp->index1;
-	if (!l_reverse) {
+	if (!lb->reverse) {
 	    idx += bp->index1;
 	} else {
 	    idx = lines - idx - 1;
 	}
-	bp = bk_load(l_lb, mid = bp->lfirst);
+	bp = bk_load(lb, mid = bp->lfirst);
 	offset = bp->lindex;
 
 	while (idx < 0 || idx >= bp->lines) {
@@ -623,47 +615,54 @@ register Int idx, size;
 		offset = bp->lindex + bp->lines;
 	    }
 	    mid = first + ((((last - first) / lines) * idx) & BLOCK_MASK);
-	    bp = bk_load(l_lb, mid);
+	    bp = bk_load(lb, mid);
 	    idx -= bp->lindex - offset;
 	}
 
-	if (l_reverse) {
-	    idx = bp->lines - idx - 1;
-	}
+	if (!lb->reverse) {
+	    for (;;) {
+		lines = size;
+		if (lines > bp->lines - idx) {
+		    lines = bp->lines - idx;
+		}
+		size -= lines;
 
-	for (;;) {
-	    lines = size;
-	    if (lines > bp->lines - idx) {
-		lines = bp->lines - idx;
-	    }
-	    size -= lines;
-
-	    if (!l_reverse) {
 		do {
-		    (*l_putline)(l_buf + *((short *)(bp + 1) + idx++));
-		    bp = bk_load(l_lb, mid);
+		    (*lb->putline)(lb->context,
+				   lb->buf + *((short *)(bp + 1) + idx++));
+		    bp = bk_load(lb, mid);
 		} while (--lines > 0);
 
 		if (size == 0) {
 		    return;
 		}
 
-		bp = bk_load(l_lb, mid = bp->next);
+		bp = bk_load(lb, mid = bp->next);
+		idx = 0;
+	    }
+	} else {
+	    idx = bp->lines - idx - 1;
+	    for (;;) {
+		lines = size;
+		if (lines > bp->lines - idx) {
+		    lines = bp->lines - idx;
+		}
+		size -= lines;
 
-	    } else {
 		idx = bp->lines - idx;
 		do {
-		    (*l_putline)(l_buf + *((short *)(bp + 1) + --idx));
-		    bp = bk_load(l_lb, mid);
+		    (*lb->putline)(lb->context,
+				   lb->buf + *((short *)(bp + 1) + --idx));
+		    bp = bk_load(lb, mid);
 		} while (--lines > 0);
 
 		if (size == 0) {
 		    return;
 		}
 
-		bp = bk_load(l_lb, mid = bp->prev);
+		bp = bk_load(lb, mid = bp->prev);
+		idx = 0;
 	    }
-	    idx = 0;
 	}
     }
 }
@@ -672,18 +671,19 @@ register Int idx, size;
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(lb, b, idx, size, putline, reverse)
-linebuf *lb;
+void bk_put(lb, b, idx, size, putline, context, reverse)
+register linebuf *lb;
 block b;
 Int idx, size;
-void (*putline) P((char*));
+void (*putline) P((char*, char*));
+char *context;
 int reverse;
 {
     blk *bp;
 
-    l_lb = lb;
-    l_putline = putline;
-    l_reverse = reverse;
+    lb->putline = putline;
+    lb->context = context;
+    lb->reverse = reverse;
     bp = bk_load(lb, b);
-    bk_put1(bp, (reverse) ? bp->lines - idx - size : idx, size);
+    bk_put1(lb, bp, (reverse) ? bp->lines - idx - size : idx, size);
 }

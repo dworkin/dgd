@@ -447,10 +447,7 @@ register block b;
  * Commands are allowed to affect the first or the last or all of the next lines
  * to be examined by a global command. The lines must stay in a contiguous
  * block.
- * Next_global specifies the next line to be affected by the global command, and
- * size_global specifies the number of lines to be affected.
  */
-static Int next_global, size_global;
 
 /*
  * NAME:	add()
@@ -465,9 +462,9 @@ block b;
 
     /* global checks */
     if (cb->flags & CB_GLOBAL) {
-	if (ln < next_global) {
-	    next_global += size;
-	} else if (ln < next_global + size_global - 1) {
+	if (ln < cb->glob_next) {
+	    cb->glob_next += size;
+	} else if (ln < cb->glob_next + cb->glob_size - 1) {
 	    error("Illegal add in global");
 	}
     }
@@ -498,13 +495,13 @@ register Int first, last;
 
     /* global checks */
     if (cb->flags & CB_GLOBAL) {
-	if (last < next_global) {
-	    next_global -= size;
-	} else if (first <= next_global) {
-	    size_global -= last - next_global + 1;
-	    next_global = first;
-	} else if (last >= next_global + size_global) {
-	    size_global = first - next_global;
+	if (last < cb->glob_next) {
+	    cb->glob_next -= size;
+	} else if (first <= cb->glob_next) {
+	    cb->glob_size -= last - cb->glob_next + 1;
+	    cb->glob_next = first;
+	} else if (last >= cb->glob_next + cb->glob_size) {
+	    cb->glob_size = first - cb->glob_next;
 	} else {
 	    error("Illegal delete in global");
 	}
@@ -548,13 +545,13 @@ block b;
 
     /* global checks */
     if (cb->flags & CB_GLOBAL) {
-	if (last < next_global) {
-	    next_global -= offset;
-	} else if (first <= next_global) {
-	    size_global -= last - next_global + 1;
-	    next_global = last - offset + 1;
-	} else if (last >= next_global + size_global) {
-	    size_global = first - next_global;
+	if (last < cb->glob_next) {
+	    cb->glob_next -= offset;
+	} else if (first <= cb->glob_next) {
+	    cb->glob_size -= last - cb->glob_next + 1;
+	    cb->glob_next = last - offset + 1;
+	} else if (last >= cb->glob_next + cb->glob_size) {
+	    cb->glob_size = first - cb->glob_next;
 	} else {
 	    error("Illegal change in global");
 	}
@@ -632,21 +629,20 @@ register cmdbuf *cb;
 }
 
 
-static jmp_buf env;	/* env to jump to if global regexp found */
-static rxbuf *rx;	/* global regexp */
-static bool reverse_global, ignorecase;	/* global status vars */
-
 /*
  * NAME:	find()
  * DESCRIPTION:	match a pattern in a global command
  */
-static void find(text)
-char *text;
+static void find(ptr, text)
+char *ptr, *text;
 {
-    next_global++;
-    --size_global;
-    if (rx_exec(rx, text, 0, ignorecase) != reverse_global) {
-	longjmp(env, TRUE);
+    register cmdbuf *cb;
+
+    cb = (cmdbuf *) ptr;
+    cb->glob_next++;
+    cb->glob_size--;
+    if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != cb->reverse) {
+	longjmp(cb->env, TRUE);
     }
 }
 
@@ -685,10 +681,10 @@ register cmdbuf *cb;
      * A local error context is created, so the regular expression buffer
      * can be deallocated in case of an error.
      */
-    rx = rx_new();
+    cb->glob_rx = rx_new();
     if (!ec_push((ec_ftn) NULL)) {
 	/* compile regexp */
-	p = rx_comp(rx, buffer);
+	p = rx_comp(cb->glob_rx, buffer);
 	if (p != (char *) NULL) {
 	    error(p);
 	}
@@ -700,22 +696,23 @@ register cmdbuf *cb;
 	    p = "p";	/* default: print lines */
 	}
 	cb->flags |= CB_GLOBAL;
-	next_global = cb->first;
-	size_global = cb->last - cb->first + 1;
-	reverse_global = (cb->flags & CB_EXCL) != 0;
-	ignorecase = IGNORECASE(cb->vars);
+	cb->reverse = (cb->flags & CB_EXCL) != 0;
+	cb->ignorecase = IGNORECASE(cb->vars);
+	cb->glob_next = cb->first;
+	cb->glob_size = cb->last - cb->first + 1;
 
 	do {
-	    if (setjmp(env)) {
+	    if (setjmp(cb->env)) {
 		/* found: do the commands */
-		cb->this = next_global - 1;
+		cb->this = cb->glob_next - 1;
 		cb_command(cb, p);
 	    } else {
 		/* search */
-		eb_range(cb->edbuf, next_global, next_global + size_global - 1,
-		  find, FALSE);
+		eb_range(cb->edbuf, cb->glob_next,
+			 cb->glob_next + cb->glob_size - 1, find, (char *) cb,
+			 FALSE);
 	    }
-	} while (size_global > 0);
+	} while (cb->glob_size > 0);
 
 	/* pop error context */
 	ec_pop();
@@ -726,7 +723,7 @@ register cmdbuf *cb;
     /* come here if global is finished or in case of an error */
 
     /* clean up regular expression */
-    rx_del(rx);
+    rx_del(cb->glob_rx);
 
     /* set undo status */
     cb->undo = undo;

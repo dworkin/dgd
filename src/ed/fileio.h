@@ -6,5 +6,5 @@ typedef struct {
     bool ill;	/* incomplete last line */
 } io;
 
-extern io *io_load P((editbuf*, char*, Int));
-extern io *io_save P((editbuf*, char*, Int, Int, int));
+extern bool io_load P((editbuf*, char*, Int, io*));
+extern bool io_save P((editbuf*, char*, Int, Int, int, io*));

@@ -1158,3 +1158,4 @@ DGD 1.1
  - Read_file() was returning 0 in an error situation, and also when it
    should return "".
  - Fixed a memory leak introduced in the global variable rewrite.
+ - Made editor code reentrant.

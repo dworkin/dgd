@@ -51,14 +51,14 @@ register editbuf *eb;
  *		If this line is 0 the block is inserted before the other lines
  *		in the edit buffer.
  */
-void eb_add(eb, ln, getline)
+void eb_add(eb, ln, getline, context)
 register editbuf *eb;
 register Int ln;
-char *(*getline) P((void));
+char *(*getline) P((char*)), *context;
 {
     register block b;
 
-    b = bk_new(eb->lb, getline);
+    b = bk_new(eb->lb, getline, context);
     if (b != (block) 0) {
 	Int size;
 
@@ -232,13 +232,15 @@ register block b;
  * DESCRIPTION:	output a subrange of the edit buffer, without first making
  *		a subrange block for it
  */
-void eb_range(eb, first, last, putline, reverse)
+void eb_range(eb, first, last, putline, context, reverse)
 register editbuf *eb;
 Int first, last;
-void (*putline) P((char*));
+void (*putline) P((char*, char*));
+char *context;
 int reverse;
 {
-    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
+    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, context,
+	   reverse);
 }
 
 /*
@@ -247,22 +249,24 @@ int reverse;
  * stand-alone program.
  * Lines are stored in a local buffer, which is flushed into a block when full.
  */
-static char *lines;
-static int szlines;
 
 /*
  * NAME:	add_line()
  * DESCRIPTION:	return the next line from the lines buffer
  */
-static char *add_line()
+static char *add_line(ptr)
+char *ptr;
 {
-    if (szlines > 0) {
+    register editbuf *eb;
+
+    eb = (editbuf *) ptr;
+    if (eb->szlines > 0) {
 	char *p;
 	int len;
 
-	len = strlen(p = lines) + 1;
-	szlines -= len;
-	lines += len;
+	len = strlen(p = eb->llines) + 1;
+	eb->llines += len;
+	eb->szlines -= len;
 	return p;
     }
     return (char *) NULL;
@@ -277,10 +281,8 @@ register editbuf *eb;
 {
     block b;
 
-    lines = eb->llines;
-    szlines = eb->szlines;
-    b = bk_new(eb->lb, add_line);
-    eb->szlines = 0;
+    eb->llines = eb->llbuf;
+    b = bk_new(eb->lb, add_line, (char *) eb);
     if (eb->flines == (block) 0) {
 	eb->flines = b;
     } else {
@@ -314,7 +316,7 @@ register char *text;
     if (eb->szlines + len >= sizeof(eb->llines)) {
 	flush_line(eb);
     }
-    strcpy(eb->llines + eb->szlines, text);
+    memcpy(eb->llbuf + eb->szlines, text, len);
     eb->szlines += len;
 }
 
