@@ -2,9 +2,13 @@ NAME
 	swapout - swap out all objects
 
 SYNOPSIS
-	void swapout()
+	varargs void swapout(int flag)
 
 
 DESCRIPTION
 	Swap out all objects.  This function can be called periodically to
-	clean up memory.
+	clean up memory.  If flag is non-zero, dump the state of the system
+	after everything is swapped out.
+
+SEE ALSO
+	kfun/shutdown
