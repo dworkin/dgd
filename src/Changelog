@@ -944,3 +944,5 @@ DGD 1.1
    an automatic swapout, at the cost of more memory fragmentation.
  - Made sure ctime() works, even if the host implementation cannot handle
    "negative" times.
+ - Fixed a problem in the new statedump code, which might occur with frequent
+   statedumps.

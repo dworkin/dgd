@@ -2319,6 +2319,7 @@ register dataspace *data;
 	size += header.nsectors * (Uint) sizeof(sector);
 
 	/* save variables */
+	data->varoffset = size;
 	if (data->nvariables > 0) {
 	    sw_writev((char *) data->svariables, data->sectors,
 		      data->nvariables * (Uint) sizeof(svalue), size);
@@ -2326,6 +2327,7 @@ register dataspace *data;
 	}
 
 	/* save arrays */
+	data->arroffset = size;
 	if (header.narrays > 0) {
 	    sw_writev((char *) sarrays, data->sectors,
 		      header.narrays * sizeof(sarray), size);
@@ -2338,6 +2340,7 @@ register dataspace *data;
 	}
 
 	/* save strings */
+	data->stroffset = size;
 	if (header.nstrings > 0) {
 	    sw_writev((char *) sstrings, data->sectors,
 		      header.nstrings * sizeof(sstring), size);
@@ -2349,11 +2352,11 @@ register dataspace *data;
 	}
 
 	/* save callouts */
+	data->cooffset = size;
 	if (header.ncallouts > 0) {
 	    sw_writev((char *) scallouts, data->sectors,
 		      header.ncallouts * (Uint) sizeof(scallout), size);
 	    AFREE(scallouts);
-	    data->cooffset = size;	/* might have to be reloaded */
 	}
 
 	d_free_values(data);
@@ -2362,11 +2365,12 @@ register dataspace *data;
 	data->eltsize = header.eltsize;
 	data->nstrings = header.nstrings;
 	data->strsize = header.strsize;
+
+	data->achange = 0;
+	data->schange = 0;
     }
 
     data->modified = 0;
-    data->achange = 0;
-    data->schange = 0;
 }
 
 static array **itab;	/* imported array replacement table */
@@ -2765,7 +2769,7 @@ int frag;
 void d_swapsync()
 {
     register control *ctrl;
-    register dataspace *data, *next;
+    register dataspace *data;
 
     /* save control blocks */
     for (ctrl = ctail; ctrl != (control *) NULL; ctrl = ctrl->prev) {
@@ -2776,8 +2780,7 @@ void d_swapsync()
     }
 
     /* save dataspace blocks */
-    for (data = dtail; data != (dataspace *) NULL; data = next) {
-	next = data->prev;
+    for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
 	if (data->modified != 0) {
 	    d_save_dataspace(data);
 	}

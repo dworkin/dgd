@@ -732,10 +732,7 @@ register value *val;
 	error("Non-numeric value in indexed string assignment");
     }
 
-    ret.u.string = (str->ref == 1 &&
-		    (str->u.primary == (strref *) NULL ||
-		     str->u.primary->ref <= 1)) ?
-				    str : str_new(str->text, (long) str->len);
+    ret.u.string = str_new(str->text, (long) str->len);
     ret.u.string->text[i] = val->u.number;
     return &ret;
 }
