@@ -936,7 +936,7 @@ static int write_file(string path, string str, varargs int offset)
 {
     string oname, fcreator;
     object driver, rsrcd;
-    int size, result;
+    int size, result, *rsrc;
 
     CHECKARG(path, 1, "write_file");
     CHECKARG(str, 2, "write_file");
@@ -956,10 +956,8 @@ static int write_file(string path, string str, varargs int offset)
 
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
     if (creator != "System") {
-	int *rsrc;
-
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}
@@ -1024,7 +1022,7 @@ static int rename_file(string from, string to)
 {
     string oname, fcreator, tcreator;
     object driver, accessd, rsrcd;
-    int size, result;
+    int size, result, *rsrc;
 
     CHECKARG(from, 1, "rename_file");
     CHECKARG(to, 2, "rename_file");
@@ -1051,10 +1049,8 @@ static int rename_file(string from, string to)
     tcreator = driver->creator(to);
     size = driver->file_size(from, TRUE);
     rsrcd = ::find_object(RSRCD);
+    rsrc = rsrcd->rsrc_get(tcreator, "filequota");
     if (size != 0 && fcreator != tcreator && creator != "System") {
-	int *rsrc;
-
-	rsrc = rsrcd->rsrc_get(tcreator, "filequota");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}
@@ -1179,7 +1175,7 @@ static int make_dir(string path)
 {
     string oname, fcreator;
     object driver, rsrcd;
-    int result;
+    int result, *rsrc;
 
     CHECKARG(path, 1, "make_dir");
     if (!this_object()) {
@@ -1198,10 +1194,8 @@ static int make_dir(string path)
 
     fcreator = driver->creator(path + "/");
     rsrcd = ::find_object(RSRCD);
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
     if (creator != "System") {
-	int *rsrc;
-
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}
@@ -1286,7 +1280,7 @@ static save_object(string path)
 {
     string oname, fcreator;
     object driver, rsrcd;
-    int size;
+    int size, *rsrc;
 
     CHECKARG(path, 1, "save_object");
     if (!this_object()) {
@@ -1306,10 +1300,8 @@ static save_object(string path)
 
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
+    rsrc = rsrcd->rsrc_get(fcreator, "filequota");
     if (creator != "System") {
-	int *rsrc;
-
-	rsrc = rsrcd->rsrc_get(fcreator, "filequota");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}

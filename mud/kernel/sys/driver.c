@@ -909,22 +909,22 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 
     if (maxdepth != 0) {
 	if (maxdepth < 0) {
-	    return 0;
+	    return FALSE;
 	}
 	depth = status()[ST_STACKDEPTH];
 	if (depth >= 0 && maxdepth > depth + 1) {
-	    return 0;
+	    return FALSE;
 	}
     }
     if (maxticks != 0) {
 	if (maxticks < 0) {
-	    return (sscanf(object_name(obj), USR + "/System/%*s"));
+	    return (sscanf(previous_program(), USR + "/System/%*s"));
 	}
 	ticks = status()[ST_TICKS];
 	if (ticks >= 0 && maxticks > ticks) {
-	    return 0;
+	    return FALSE;
 	}
     }
 
-    return 1;
+    return TRUE;
 }

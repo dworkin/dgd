@@ -303,6 +303,7 @@ static fd_set outfds;			/* file descriptor output bitmap */
 static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
+static int closed;			/* #fds closed in write */
 
 /*
  * NAME:	conn->init()
@@ -405,6 +406,8 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     FD_SET(binary, &infds);
     FD_SET(udp, &infds);
     FD_SET(in, &infds);
+
+    closed = 0;
 
     return TRUE;
 }
@@ -553,6 +556,8 @@ void conn_del(connection *conn)
 	FD_CLR(conn->fd, &outfds);
 	FD_CLR(conn->fd, &waitfds);
 	conn->fd = INVALID_SOCKET;
+    } else {
+	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
 	FREE(conn->udpbuf);
@@ -599,6 +604,10 @@ int conn_select(Uint t, unsigned int mtime)
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
     memcpy(&writefds, &waitfds, sizeof(fd_set));
+    if (closed != 0) {
+	t = 0;
+	mtime = 0;
+    }
     if (mtime != 0xffff) {
 	timeout.tv_sec = t; 
 	timeout.tv_usec = mtime * 1000;
@@ -607,6 +616,7 @@ int conn_select(Uint t, unsigned int mtime)
 	retval = select(0, &readfds, &writefds, (fd_set *) NULL,
 			(struct timeval *) NULL);
     }
+    retval += closed;
 
     /*
      * Now check writability for all sockets in a polling call.
@@ -712,6 +722,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 	    FD_CLR(conn->fd, &infds);
 	    FD_CLR(conn->fd, &outfds);
 	    conn->fd = INVALID_SOCKET;
+	    closed++;
 	} else if ((unsigned int) size != len) {
 	    /* waiting for wrdone */
 	    FD_SET(conn->fd, &waitfds);
@@ -719,7 +730,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 	}
 	return size;
     }
-    return 0;
+    return len;
 }
 
 /*

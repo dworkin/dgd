@@ -1309,3 +1309,5 @@ DGD 1.1
  - Temporarily disable compile_object(), clone_object(), destruct_object(),
    call_out() and remove_call_out() from within atomic code, making atomic safe
    to use.
+ - Connections with pending output that failed in a write would never get
+   closed.

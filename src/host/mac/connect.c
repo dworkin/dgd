@@ -1060,7 +1060,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
     int size;
 
     if (conn->cflags) {
-	return 0;
+	return len;
     }
     conn->sflags &= ~TCP_WAIT;
     if (len == 0) {

@@ -291,6 +291,7 @@ static fd_set waitfds;			/* file descriptor wait-write bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
 static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
+static int closed;			/* #fds closed in write */
 
 /*
  * NAME:	conn->init()
@@ -391,6 +392,8 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     if (maxfd < udp) {
 	maxfd = udp;
     }
+
+    closed = 0;
 
     return TRUE;
 }
@@ -536,6 +539,8 @@ void conn_del(connection *conn)
 	FD_CLR(conn->fd, &outfds);
 	FD_CLR(conn->fd, &waitfds);
 	conn->fd = -1;
+    } else {
+	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
 	FREE(conn->udpbuf);
@@ -582,6 +587,10 @@ int conn_select(Uint t, unsigned int mtime)
      */
     memcpy(&readfds, &infds, sizeof(fd_set));
     memcpy(&writefds, &waitfds, sizeof(fd_set));
+    if (closed != 0) {
+	t = 0;
+	mtime = 0;
+    }
     if (mtime != 0xffff) {
 	timeout.tv_sec = t;
 	timeout.tv_usec = mtime * 1000;
@@ -593,7 +602,9 @@ int conn_select(Uint t, unsigned int mtime)
     }
     if (retval < 0) {
 	FD_ZERO(&readfds);
+	retval = 0;
     }
+    retval += closed;
 
     /*
      * Now check writability for all sockets in a polling call.
@@ -698,6 +709,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 	    FD_CLR(conn->fd, &infds);
 	    FD_CLR(conn->fd, &outfds);
 	    conn->fd = -1;
+	    closed++;
 	} else if (size != len) {
 	    /* waiting for wrdone */
 	    FD_SET(conn->fd, &waitfds);
@@ -705,7 +717,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
 	}
 	return size;
     }
-    return 0;
+    return len;
 }
 
 /*
