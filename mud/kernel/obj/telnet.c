@@ -4,14 +4,17 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
+object driver;		/* driver object */
+
 /*
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create("telnet");
+	driver = find_object(DRIVER);
     }
 }
 
@@ -19,44 +22,39 @@ static create(int clone)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static int open()
 {
-    ::open(allocate(TLS_SIZE));
+    ::open(allocate(driver->query_tls_size()));
+    return FALSE;
 }
 
 /*
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static void close(int dest)
 {
-    ::close(allocate(TLS_SIZE), dest);
+    ::close(allocate(driver->query_tls_size()), dest);
 }
 
 /*
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
-static receive_message(string str)
+static void receive_message(string str)
 {
-    int mode, newmode;
-
-    mode = query_mode();
-    newmode = ::receive_message(allocate(TLS_SIZE), str);
-    if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO)) {
-	send_message(newmode - MODE_NOECHO);
-    }
+    ::receive_message(allocate(driver->query_tls_size()), str);
 }
 
 /*
  * NAME:	set_mode()
  * DESCRIPTION:	set the connection mode
  */
-set_mode(int newmode)
+void set_mode(int newmode)
 {
     int mode;
 
-    if (SYSTEM()) {
+    if (previous_program() == LIB_CONN || SYSTEM()) {
 	mode = query_mode();
 	::set_mode(newmode);
 	if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO))
@@ -64,4 +62,13 @@ set_mode(int newmode)
 	    send_message(newmode - MODE_NOECHO);
 	}
     }
+}
+
+/*
+ * NAME:	message_done()
+ * DESCRIPTION:	called when output is completed
+ */
+static void message_done()
+{
+    ::message_done(allocate(driver->query_tls_size()));
 }

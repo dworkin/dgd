@@ -7,7 +7,7 @@ private object accessd;		/* access manager */
  * NAME:	create()
  * DESCRIPTION:	initialize API
  */
-static create()
+static void create()
 {
     accessd = find_object(ACCESSD);
 }
@@ -28,7 +28,7 @@ static int access(string user, string file, int type)
  * NAME:	add_user()
  * DESCRIPTION:	add a new user
  */
-static add_user(string user)
+static void add_user(string user)
 {
     if (!user) {
 	error("Bad argument for add_user");
@@ -40,7 +40,7 @@ static add_user(string user)
  * NAME:	remove_user()
  * DESCRIPTION:	remove a user
  */
-static remove_user(string user)
+static void remove_user(string user)
 {
     if (!user) {
 	error("Bad argument for remove_user");
@@ -61,7 +61,7 @@ static string *query_users()
  * NAME:	set_access()
  * DESCRIPTION:	set access
  */
-static set_access(string user, string file, int type)
+static void set_access(string user, string file, int type)
 {
     if (!user || !file || type < 0 || type > FULL_ACCESS) {
 	error("Bad arguments for set_access");
@@ -97,7 +97,7 @@ static mapping query_file_access(string path)
  * NAME:	set_global_access()
  * DESCRIPTION:	set global read access for a directory
  */
-static set_global_access(string dir, int flag)
+static void set_global_access(string dir, int flag)
 {
     if (!dir || (flag & ~1) != 0) {
 	error("Bad arguments for set_global_access");

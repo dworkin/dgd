@@ -1368,7 +1368,7 @@ register char *pc;
 
     for (;;) {
 # ifdef DEBUG
-	if (sp < ilvp + MIN_STACK) {
+	if (sp < ilvp) {
 	    fatal("out of value stack");
 	}
 # endif

@@ -1188,3 +1188,14 @@ DGD 1.1 patchlevel 7
    allowed, shifts >= 32 make the result 0.
  - Check that a switch doesn't contain more than 32767 cases, and a function
    doesn't need more than 32767 values on the stack.
+
+DGD 1.1 patchlevel 8
+
+ - Guard against too deep recursion in the editor.
+ - String case labels with embedded NUL characters were not compared properly.
+ - Fixed a tricky bug in swapping out mappings with object indices that have
+   been destructed and replaced by a new version with the same object index,
+   that had eluded me for a long time.
+ - Fixed a file descriptor leak in P_readdir() for Windows.
+ - ctime() didn't give the proper weekday for times > 0x7fffffff.
+ - Use a Windows font that displays properly on foreign language systems.

@@ -44,7 +44,6 @@ typedef unsigned int Uint;
 
 # define bool			dgd_bool
 # define exit			dgd_exit
-# define abort			dgd_abort
 
 # endif /* BEOS */
 

@@ -36,10 +36,6 @@
  * the same chain block. Splitting a CAT block creates new subrange blocks and
  * a whole new tree of CAT blocks, if needed.
  *
- *   There is no special stategy for keeping the depth of binary trees of CAT
- * blocks low. Concatenation always increases the depth; splitting typically
- * decreases it, because large parts of the tree are rebuild.
- *
  * WARNING: the code here is not fully reentrant.
  */
 
@@ -62,12 +58,17 @@ typedef struct {
 # define lfirst	prev
 # define llast	next
 # define type	u.s.u_index1
+# define depth	u.s.u_index2
 # define lindex	u.u_index
 # define index1	u.s.u_index1
 # define index2	u.s.u_index2
 
 # define BLOCK(lb, blk)	\
 	(block)(lb->wb->offset + (long)(blk) - (long)lb->wb->buf)
+
+# define EDFULLTREE	0x8000
+# define EDDEPTH	0x7fff
+# define EDMAXDEPTH	10000
 
 /* local temporaries */
 static linebuf *l_lb;
@@ -548,18 +549,56 @@ block bk_cat(lb, b1, b2)
 register linebuf *lb;
 block b1, b2;
 {
-    blk *bp, bb;
+    register blk *bp1, *bp2;
+    unsigned short depth1, depth2;
+    blk bb;
 
-    /* create a 'cat'-blk */
+    /* get information about blocks to concatenate */
+    bp1 = bk_load(lb, b1);
+    depth1 = (bp1->type == CAT) ? bp1->depth & EDDEPTH : 1;
+    bp2 = bk_load(lb, b2);
+    depth2 = (bp2->type == CAT) ? bp2->depth & EDDEPTH : 1;
+
+    /* start new block */
     bb.type = CAT;
+    bb.lines = bp1->lines + bp2->lines;
+
+    if (depth1 < depth2 && !(bp2->depth & EDFULLTREE)) {
+	/* concat b1 and the first subblock of b2 */
+	b2 = bp2->llast;
+	b1 = bk_cat(lb, b1, bp2->lfirst);
+
+	bp1 = bk_load(lb, b1);
+	depth1 = bp1->depth & EDDEPTH;
+	bp2 = bk_load(lb, b2);
+	depth2 = (bp2->type == CAT) ? bp2->depth & EDDEPTH : 1;
+    } else if (depth1 > depth2 && !(bp1->depth & EDFULLTREE)) {
+	/* concat the last subblock of b1 and b2 */
+	b1 = bp1->lfirst;
+	b2 = bk_cat(lb, bp1->llast, b2);
+
+	bp1 = bk_load(lb, b1);
+	depth1 = (bp1->type == CAT) ? bp1->depth & EDDEPTH : 1;
+	bp2 = bk_load(lb, b2);
+	depth2 = bp2->depth & EDDEPTH;
+    }
+
+    /* finish new block */
     bb.lfirst = b1;
     bb.llast = b2;
-    bb.lines = bk_size(lb, b1) + bk_size(lb, b2);
+    bb.depth = ((depth1 > depth2) ? depth1 : depth2) + 1;
+    if (bb.depth > EDMAXDEPTH) {
+	error("Editor line tree too large");
+    }
+    if (depth1 == depth2 &&
+	(depth1 == 1 || (bp1->depth & bp2->depth & EDFULLTREE))) {
+	bb.depth |= EDFULLTREE;
+    }
 
     /* put it in the write buffer */
-    bp = bk_putblk(lb, &bb, (char *) NULL);
+    bp1 = bk_putblk(lb, &bb, (char *) NULL);
     /* return the block */
-    return BLOCK(lb, bp);
+    return BLOCK(lb, bp1);
 }
 
 /*

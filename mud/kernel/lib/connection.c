@@ -10,11 +10,11 @@ private int mode;		/* connection mode */
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create(string type)
+static void create(string type)
 {
     userd = find_object(USERD);
     conntype = type;
-    mode = MODE_ECHO;
+    mode = MODE_ECHO;	/* same as MODE_LINE for binary connection */
 }
 
 
@@ -25,7 +25,7 @@ private int dedicated;		/* object created for execution */
  * NAME:	execute_program()
  * DESCRIPTION:	execute a program on the host
  */
-execute_program(string cmdline)
+void execute_program(string cmdline)
 {
     if (previous_program() == AUTO) {
 	::execute_program(cmdline);
@@ -40,7 +40,7 @@ execute_program(string cmdline)
  * NAME:	_program_terminated()
  * DESCRIPTION:	internal version of program_terminated()
  */
-private _program_terminated(mixed *tls)
+private void _program_terminated(mixed *tls)
 {
     user->program_terminated();
 }
@@ -49,9 +49,9 @@ private _program_terminated(mixed *tls)
  * NAME:	program_terminated()
  * DESCRIPTION:	called when the executing program has terminated
  */
-static program_terminated()
+static void program_terminated()
 {
-    _program_terminated(allocate(TLS_SIZE));
+    _program_terminated(allocate(DRIVER->query_tls_size()));
     if (dedicated) {
 	destruct_object(this_object());
     }
@@ -64,7 +64,7 @@ static program_terminated()
  * NAME:	connect()
  * DESCRIPTION:	establish an outbount connection
  */
-connect(string destination, int port)
+void connect(string destination, int port)
 {
     if (previous_program() == AUTO) {
 	::connect(destination, port);
@@ -75,13 +75,43 @@ connect(string destination, int port)
 
 
 /*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the current connection mode
+ */
+static void set_mode(int newmode)
+{
+    if (newmode != mode && newmode != MODE_NOCHANGE) {
+	if (newmode == MODE_DISCONNECT) {
+	    destruct_object(this_object());
+	} else {
+	    mode = newmode;
+	}
+    }
+}
+
+/*
+ * NAME:	query_mode()
+ * DESCRIPTION:	return the current connection mode
+ */
+int query_mode()
+{
+    return mode;
+}
+
+
+/*
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open(mixed *tls)
+static void open(mixed *tls)
 {
     int timeout;
     string banner;
+
+    banner = call_other(userd, "query_" + conntype + "_banner");
+    if (banner) {
+	send_message(banner);
+    }
 
     timeout = call_other(userd, "query_" + conntype + "_timeout");
     if (timeout < 0) {
@@ -94,15 +124,10 @@ static open(mixed *tls)
 	if (timeout != 0) {
 	    call_out("timeout", timeout);
 	}
-
-	banner = call_other(userd, "query_" + conntype + "_banner");
-	if (banner) {
-	    send_message(banner);
-	}
     }
 # ifdef SYS_NETWORKING
     else {
-	user->login(0);
+	set_mode(user->login(0));
     }
 # endif
 }
@@ -111,7 +136,7 @@ static open(mixed *tls)
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(mixed *tls, int dest)
+static void close(mixed *tls, int dest)
 {
     rlimits (-1; -1) {
 	if (user) {
@@ -129,7 +154,7 @@ static close(mixed *tls, int dest)
  * NAME:	disconnect()
  * DESCRIPTION:	break connection
  */
-disconnect()
+void disconnect()
 {
     if (previous_program() == LIB_USER) {
 	destruct_object(this_object());
@@ -140,7 +165,7 @@ disconnect()
  * NAME:	reboot()
  * DESCRIPTION:	destruct connection object after a reboot
  */
-reboot()
+void reboot()
 {
     if (previous_object() == userd) {
 	if (user) {
@@ -156,12 +181,12 @@ reboot()
  * NAME:	set_user()
  * DESCRIPTION:	set or change the user object directly
  */
-int set_user(object obj, string str)
+void set_user(object obj, string str)
 {
     if (KERNEL()) {
 	user = obj;
 	if (query_ip_number(this_object())) {
-	    return obj->login(str);
+	    set_mode(obj->login(str));
 	}
     }
 }
@@ -179,7 +204,7 @@ object query_user()
  * NAME:	timeout()
  * DESCRIPTION:	if the connection timed out, disconnect
  */
-static timeout()
+static void timeout()
 {
     if (!user || user->query_conn() != this_object()) {
 	destruct_object(this_object());
@@ -190,36 +215,14 @@ static timeout()
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to user object
  */
-static int receive_message(mixed *tls, string str)
+static void receive_message(mixed *tls, string str)
 {
     if (!user) {
 	user = call_other(userd, conntype + "_user", str);
-	mode = user->login(str);
+	set_mode(user->login(str));
     } else {
-	mode = user->receive_message(str);
+	set_mode(user->receive_message(str));
     }
-    if (mode == MODE_DISCONNECT && this_object()) {
-	destruct_object(this_object());
-    }
-    return mode;
-}
-
-/*
- * NAME:	set_mode()
- * DESCRIPTION:	set the current connection mode
- */
-static set_mode(int newmode)
-{
-    mode = newmode;
-}
-
-/*
- * NAME:	query_mode()
- * DESCRIPTION:	return the current connection mode
- */
-int query_mode()
-{
-    return mode;
 }
 
 /*
@@ -237,9 +240,9 @@ int message(string str)
  * NAME:	message_done()
  * DESCRIPTION:	called when output is completed
  */
-static message_done(mixed *tls)
+static void message_done(mixed *tls)
 {
     if (user) {
-	user->message_done();
+	set_mode(user->message_done());
     }
 }

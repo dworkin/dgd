@@ -34,4 +34,4 @@ DESCRIPTION
 	ST_ARRAYSIZE defined in the include file <status.h>, will be collected.
 
 SEE ALSO
-	kfun/make_dir, kfun/remove_dir
+	efun/file_info, kfun/make_dir, kfun/remove_dir

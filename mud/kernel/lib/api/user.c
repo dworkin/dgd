@@ -7,7 +7,7 @@ private object userd;		/* user manager */
  * NAME:	create()
  * DESCRIPTION:	initialize API
  */
-static create()
+static void create()
 {
     userd = find_object(USERD);
 }

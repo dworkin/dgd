@@ -25,7 +25,7 @@ static int nconn;		/* # of connections */
  * NAME:	create()
  * DESCRIPTION:	initialize user object
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	user::create();
@@ -38,7 +38,7 @@ static create(int clone)
  * NAME:	tell_audience()
  * DESCRIPTION:	send message to listening users
  */
-private tell_audience(string str)
+private void tell_audience(string str)
 {
     object *users, user;
     int i;
@@ -101,7 +101,7 @@ int login(string str)
  * NAME:	logout()
  * DESCRIPTION:	logout user
  */
-logout(int quit)
+void logout(int quit)
 {
     if (previous_program() == LIB_CONN && --nconn == 0) {
 	if (query_conn()) {

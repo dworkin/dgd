@@ -3,26 +3,30 @@
 # include <kernel/rsrc.h>
 # include <kernel/access.h>
 # include <kernel/user.h>
+# include <kernel/tls.h>
 # ifdef SYS_NETWORKING
 #  include <kernel/net.h>
 # endif
 # include <status.h>
 # include <trace.h>
 
-object rsrcd;		/* resource manager object */
-object accessd;		/* access manager object */
-object userd;		/* user manager object */
-object initd;		/* init manager object */
-object objectd;		/* object manager object */
-object errord;		/* error manager object */
+static object rsrcd;		/* resource manager object */
+static object accessd;		/* access manager object */
+static object userd;		/* user manager object */
+static object initd;		/* init manager object */
+static object objectd;		/* object manager object */
+static object errord;		/* error manager object */
 # ifdef SYS_NETWORKING
-object telnet;		/* telnet port object */
-object binary;		/* binary port object */
+static object port_master;	/* port master object */
+static object telnet;		/* telnet port object */
+static object binary;		/* binary port object */
+int port;			/* emergency binary port number */
 # endif
-string file;		/* last file used in editor write operation */
-int size;		/* size of file used in editor write operation */
-string compiled;	/* object currently being compiled */
-string *inherited;	/* list of inherited objects */
+static string file;		/* last file used in editor write operation */
+static int size;		/* size of file used in ed write operation */
+static int tls_size;		/* thread local storage size */
+static string compiled;		/* object currently being compiled */
+static string *inherited;	/* list of inherited objects */
 
 /*
  * NAME:	creator()
@@ -166,7 +170,7 @@ varargs int file_size(string file, int dir)
  * NAME:	set_object_manager()
  * DESCRIPTION:	set the object manager
  */
-set_object_manager(object obj)
+void set_object_manager(object obj)
 {
     if (SYSTEM()) {
 	objectd = obj;
@@ -177,7 +181,7 @@ set_object_manager(object obj)
  * NAME:	set_error_manager()
  * DESCRIPTION:	set the error manager
  */
-set_error_manager(object obj)
+void set_error_manager(object obj)
 {
     if (SYSTEM()) {
 	errord = obj;
@@ -188,20 +192,31 @@ set_error_manager(object obj)
  * NAME:	compiling()
  * DESCRIPTION:	object being compiled
  */
-compiling(string path)
+void compiling(string path)
 {
     if (previous_program() == AUTO) {
 	compiled = path;
 	inherited = ({ });
-	if (objectd) {
-	    objectd->compiling(path);
-	}
 	if (path != AUTO && path != DRIVER && !find_object(AUTO)) {
-	    compile_object(AUTO);
+	    string err;
+
+	    if (objectd) {
+		objectd->compiling(AUTO);
+	    }
+	    err = catch(compile_object(AUTO));
+	    if (err) {
+		if (objectd) {
+		    objectd->compile_failed("System", AUTO);
+		}
+		error(err);
+	    }
 	    rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
 	    if (objectd) {
 		objectd->compile_lib("System", AUTO);
 	    }
+	}
+	if (objectd) {
+	    objectd->compiling(path);
 	}
     }
 }
@@ -210,7 +225,7 @@ compiling(string path)
  * NAME:	compile()
  * DESCRIPTION:	object compiled
  */
-compile(object obj, string owner)
+void compile(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
@@ -226,7 +241,7 @@ compile(object obj, string owner)
  * NAME:	compile_lib()
  * DESCRIPTION:	inherited object compiled
  */
-compile_lib(string path, string owner)
+void compile_lib(string path, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
@@ -239,10 +254,22 @@ compile_lib(string path, string owner)
 }
 
 /*
+ * NAME:	compile_failed()
+ * DESCRIPTION:	object couldn't be compiled
+ */
+void compile_failed(string path, string owner)
+{
+    if (objectd && previous_program() == AUTO) {
+	objectd->compile_failed(owner, path);
+	inherited = 0;
+    }
+}
+
+/*
  * NAME:	clone()
  * DESCRIPTION:	object cloned
  */
-clone(object obj, string owner)
+void clone(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	objectd->clone(owner, obj);
@@ -253,7 +280,7 @@ clone(object obj, string owner)
  * NAME:	destruct()
  * DESCRIPTION:	object about to be destructed
  */
-destruct(object obj, string owner)
+void destruct(object obj, string owner)
 {
     if (objectd && previous_program() == AUTO) {
 	objectd->destruct(owner, obj);
@@ -264,7 +291,7 @@ destruct(object obj, string owner)
  * NAME:	destruct_lib()
  * DESCRIPTION:	inherited object about to be destructed
  */
-destruct_lib(string path, string owner)
+void destruct_lib(string path, string owner)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {
@@ -282,12 +309,54 @@ string query_owner()
     return "System";
 }
 
+/*
+ * NAME:	set_tls_size()
+ * DESCRIPTION:	set the thread local storage size
+ */
+void set_tls_size(int size)
+{
+    if (previous_program() == API_TLS) {
+	tls_size = size + 2;
+    }
+}
+
+/*
+ * NAME:	query_tls_size()
+ * DESCRIPTION:	return the thread local storage size
+ */
+int query_tls_size()
+{
+    return tls_size;
+}
+
+/*
+ * NAME:	get_tlvar()
+ * DESCRIPTION:	return value of thread local variable
+ */
+mixed get_tlvar(int index)
+{
+    if (previous_program() == API_TLS) {
+	return call_trace()[1][TRACE_FIRSTARG][index + 2];
+    }
+}
+
+/*
+ * NAME:	set_tlvar()
+ * DESCRIPTION:	set value of thread local variable
+ */
+void set_tlvar(int index, mixed value)
+{
+    if (previous_program() == API_TLS) {
+	call_trace()[1][TRACE_FIRSTARG][index + 2] = value;
+    }
+}
+
 
 /*
  * NAME:	message()
  * DESCRIPTION:	show message
  */
-message(string str)
+void message(string str)
 {
     if (KERNEL() || SYSTEM()) {
 	send_message(ctime(time())[4 .. 18] + " ** " + str);
@@ -316,7 +385,7 @@ private mixed call(mixed what, string func)
     object obj;
 
     obj = what;
-    what = allocate(TLS_SIZE);
+    what = allocate(tls_size);
     return call_other(obj, func);
 }
 
@@ -324,16 +393,16 @@ private mixed call(mixed what, string func)
  * NAME:	initialize()
  * DESCRIPTION:	called once at system startup
  */
-static initialize()
+static void initialize()
 {
+    object rsrcobj;
     string *users;
     int i;
-# ifdef SYS_NETWORKING
-    object port;
-# endif
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
+
+    tls_size = 2;	/* two variables used by kernel */
 
     /* load initial objects */
     load(AUTO);
@@ -346,7 +415,7 @@ static initialize()
     rsrcd->set_rsrc("create stack",      5, 0, 0);
     rsrcd->set_rsrc("create ticks",  10000, 0, 0);
 
-    load(RSRCOBJ);
+    rsrcobj = load(RSRCOBJ);
 
     /* create initial resource owners */
     rsrcd->add_owner("System");
@@ -357,11 +426,12 @@ static initialize()
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
 
     /* load remainder of manager objects */
+    call_other(rsrcobj, "???");
     call_other(accessd = load(ACCESSD), "???");
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
 # ifdef SYS_NETWORKING
-    call_other(port = load(PORT_OBJECT), "???");
+    call_other(port_master = load(PORT_OBJECT), "???");
 # endif
     if (file_size(USR + "/System/initd.c") != 0) {
 	catch {
@@ -388,8 +458,8 @@ static initialize()
 	call(initd, "???");
 # ifdef SYS_NETWORKING
     } else {
-	telnet = clone_object(port);
-	binary = clone_object(port);
+	telnet = clone_object(port_master);
+	binary = clone_object(port_master);
 	rsrcd->rsrc_incr("System", "objects", 0, 2, 1);
 
 	telnet->listen("telnet", TELNET_PORT);
@@ -404,7 +474,7 @@ static initialize()
  * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a state dump
  */
-prepare_reboot()
+void prepare_reboot()
 {
     if (KERNEL()) {
 	rsrcd->prepare_reboot();
@@ -419,14 +489,16 @@ prepare_reboot()
  * NAME:	restored()
  * DESCRIPTION:	re-initialize the system after a restore
  */
-static restored()
+static void restored()
 {
     message("DGD " + status()[ST_VERSION] + "\n");
 
     rsrcd->reboot();
-    userd->reboot();
+    call(userd, "reboot");
     if (initd) {
-	call(initd, "reboot");
+	catch {
+	    call(initd, "reboot");
+	}
     }
 # ifdef SYS_NETWORKING
     if (telnet) {
@@ -434,6 +506,13 @@ static restored()
     }
     if (binary) {
 	binary->listen("tcp", BINARY_PORT);
+    }
+    if (restore_object("/kernel/data/binary_port")) {
+	object emergency;
+
+	emergency = clone_object(port_master);
+	rsrcd->rsrc_incr("System", "objects", 0, 1, 1);
+	emergency->listen("tcp", port);
     }
 # endif
 
@@ -467,6 +546,7 @@ static string path_read(string path)
 static string path_write(string path)
 {
     string oname, creator;
+    int *rsrc;
 
     catch {
 	path = previous_object()->path_write(path);
@@ -474,10 +554,12 @@ static string path_write(string path)
     if (path) {
 	creator = creator(oname = object_name(previous_object()));
 	path = normalize_path(path, oname, creator);
+	rsrc = rsrcd->rsrc_get(creator, "filequota");
 	if (sscanf(path, "/kernel/%*s") == 0 &&
 	    sscanf(path, "/include/kernel/%*s") == 0 &&
-	    (creator == "System" || accessd->access(oname, path, WRITE_ACCESS)))
-	{
+	    (creator == "System" ||
+	     (accessd->access(oname, path, WRITE_ACCESS) &&
+	      (rsrc[RSRC_USAGE] < rsrc[RSRC_MAX] || rsrc[RSRC_MAX] < 0)))) {
 	    size = file_size(file = path);
 	    return path;
 	}
@@ -523,7 +605,7 @@ static object call_object(string path)
  * NAME:	inherit_program()
  * DESCRIPTION:	inherit a program, compiling it if needed
  */
-static object inherit_program(string from, string path)
+static object inherit_program(string from, string path, int priv)
 {
     string creator;
     object obj;
@@ -531,14 +613,15 @@ static object inherit_program(string from, string path)
     path = normalize_path(path, from + "/..", creator = creator(from));
     if (sscanf(path, "%*s/lib/") == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
-	!accessd->access(from, path, READ_ACCESS)) {
+	!accessd->access(from, path, READ_ACCESS) ||
+	(objectd && objectd->forbid_inherit(from, path, priv))) {
 	return 0;
     }
 
     obj = find_object(path);
     if (!obj) {
 	int *rsrc;
-	string saved;
+	string err;
 
 	creator = creator(path);
 	rsrc = rsrcd->rsrc_get(creator, "objects");
@@ -546,19 +629,27 @@ static object inherit_program(string from, string path)
 	    error("Too many objects");
 	}
 
-	saved = compiled;
 	compiled = path;
 	inherited = ({ });
 	if (objectd) {
 	    objectd->compiling(path);
 	}
-	obj = compile_object(path);
+	err = catch(obj = compile_object(path));
+	if (err) {
+	    if (objectd) {
+		objectd->compile_failed(creator, path);
+	    }
+	    error(err);
+	}
 	rsrcd->rsrc_incr(creator, "objects", 0, 1, TRUE);
 	if (objectd) {
 	    objectd->compile_lib(creator, path, inherited...);
 	}
-	compiled = saved;
+	compiled = from;
 	inherited = ({ });
+	if (objectd) {
+	    objectd->compiling(from);
+	}
     } else if (inherited) {
 	inherited += ({ path });
     }
@@ -611,7 +702,7 @@ static string path_include(string from, string path)
  * NAME:	remove_program()
  * DESCRIPTION:	the last reference to a program is removed
  */
-static remove_program(string path, int timestamp, int index)
+static void remove_program(string path, int timestamp, int index)
 {
     string creator;
 
@@ -628,7 +719,7 @@ static remove_program(string path, int timestamp, int index)
  * NAME:	recompile()
  * DESCRIPTION:	recompile an inherited object
  */
-static recompile(object obj)
+static void recompile(object obj)
 {
     if (objectd) {
 	string name;
@@ -661,12 +752,12 @@ static object binary_connect()
  * NAME:	interrupt
  * DESCRIPTION:	called when a kill signal is sent to the server
  */
-static interrupt()
+static void interrupt()
 {
     message("Interrupt.\n");
 
 # ifdef SYS_CONTINUOUS
-    prepare_reboot();
+    call(this_object(), "prepare_reboot");
     dump_state();
 # endif
     shutdown();
@@ -676,7 +767,7 @@ static interrupt()
  * NAME:	runtime_error()
  * DESCRIPTION:	log a runtime error
  */
-static runtime_error(string str, int caught, int ticks)
+static void runtime_error(string str, int caught, int ticks)
 {
     mixed **trace, tls;
     string line, function, progname, objname;
@@ -769,7 +860,7 @@ static runtime_error(string str, int caught, int ticks)
  * NAME:	compile_error()
  * DESCRIPTION:	deal with a compilation error
  */
-static compile_error(string file, int line, string err)
+static void compile_error(string file, int line, string err)
 {
     object obj;
 
@@ -803,22 +894,22 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
 
     if (maxdepth != 0) {
 	if (maxdepth < 0) {
-	    return 0;
+	    return FALSE;
 	}
 	depth = status()[ST_STACKDEPTH];
 	if (depth >= 0 && maxdepth > depth + 1) {
-	    return 0;
+	    return FALSE;
 	}
     }
     if (maxticks != 0) {
 	if (maxticks < 0) {
-	    return (sscanf(object_name(obj), USR + "/System/%*s"));
+	    return (sscanf(previous_program(), USR + "/System/%*s"));
 	}
 	ticks = status()[ST_TICKS];
 	if (ticks >= 0 && maxticks > ticks) {
-	    return 0;
+	    return FALSE;
 	}
     }
 
-    return 1;
+    return TRUE;
 }

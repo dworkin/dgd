@@ -1,7 +1,7 @@
 # include <kernel/kernel.h>
 # include <kernel/objreg.h>
-# include <kernel/access.h>
 # include <kernel/rsrc.h>
+# include <kernel/access.h>
 # include <kernel/user.h>
 # include <status.h>
 # include <type.h>
@@ -14,7 +14,7 @@
  * NAME:	badarg()
  * DESCRIPTION:	called when an argument check failed
  */
-private badarg(int n, string func)
+private void badarg(int n, string func)
 {
     error("Bad argument " + n + " for function " + func);
 }
@@ -25,8 +25,10 @@ private string creator, owner;	/* creator and owner of this object */
 private mapping resources;	/* resources associated with this object */
 private mapping events;		/* events for this object */
 
-nomask _F_prev(object obj)  { if (previous_program() == OBJREGD) prev = obj; }
-nomask _F_next(object obj)  { if (previous_program() == OBJREGD) next = obj; }
+nomask void _F_prev(object obj)
+			    { if (previous_program() == OBJREGD) prev = obj; }
+nomask void _F_next(object obj)
+			    { if (previous_program() == OBJREGD) next = obj; }
 nomask object _Q_prev()	    { if (previous_program() == OBJREGD) return prev; }
 nomask object _Q_next()	    { if (previous_program() == OBJREGD) return next; }
 
@@ -42,9 +44,8 @@ nomask string query_owner()
 	/*
 	 * temporary owner for cloned object
 	 */
-	str = owner;
-	owner = "System";
-	return str[1 ..];
+	sscanf(owner, "/%s/%s", str, owner);
+	return str;
     } else {
 	return owner;
     }
@@ -54,7 +55,7 @@ nomask string query_owner()
  * NAME:	_F_rsrc_incr()
  * DESCRIPTION:	increase/decrease a resource associated with this object
  */
-nomask _F_rsrc_incr(string rsrc, int incr)
+nomask void _F_rsrc_incr(string rsrc, int incr)
 {
     if (previous_program() == RSRCOBJ) {
 	if (!resources) {
@@ -69,7 +70,7 @@ nomask _F_rsrc_incr(string rsrc, int incr)
  * NAME:	_F_create()
  * DESCRIPTION:	kernel creator function
  */
-nomask _F_create()
+nomask void _F_create()
 {
     if (!prev) {
 	string oname;
@@ -120,7 +121,7 @@ nomask _F_create()
  * NAME:	_F_destruct()
  * DESCRIPTION:	prepare object for being destructed
  */
-nomask _F_destruct()
+nomask void _F_destruct()
 {
     if (previous_program() == AUTO) {
 	object rsrcd;
@@ -153,7 +154,7 @@ nomask _F_destruct()
 	    string *names;
 	    int *values;
 
-	    if (resources["callouts"] != 0) {
+	    if (resources["callouts"]) {
 		/*
 		 * remove callouts
 		 */
@@ -268,7 +269,7 @@ static object compile_object(string path)
 {
     string oname, uid;
     object driver, rsrcd, obj;
-    int *rsrc, *status, lib, new;
+    int *rsrc, *status, lib, new, stack, ticks;
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
@@ -276,14 +277,17 @@ static object compile_object(string path)
     }
 
     /*
-     * check permission; compiling requires write access
+     * check permission; compiling requires access
      */
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
+    lib = sscanf(path, "%*s/lib/");
     uid = driver->creator(path);
     if (uid && creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path, WRITE_ACCESS)) {
+	!::find_object(ACCESSD)->access(oname, path,
+					(sscanf(path, "/kernel/%*s") == 0 &&
+					 lib) ? READ_ACCESS : WRITE_ACCESS)) {
 	error("Access denied");
     }
 
@@ -299,18 +303,13 @@ static object compile_object(string path)
     /*
      * do the compiling
      */
-    lib = sscanf(path, "%*s/lib/");
     new = !::find_object(path);
-    if (new && !lib) {
-	status = ::status();
-    }
-    catch {
-	rlimits (-1; -1) {
+    status = ::status();
+    stack = status[ST_STACKDEPTH];
+    ticks = status[ST_TICKS];
+    rlimits (-1; -1) {
+	catch {
 	    if (new && !lib) {
-		int stack, ticks;
-
-		stack = status[ST_STACKDEPTH];
-		ticks = status[ST_TICKS];
 		if ((stack >= 0 &&
 		     stack - 2 < rsrcd->rsrc_get(uid,
 						 "create stack")[RSRC_MAX]) ||
@@ -329,8 +328,13 @@ static object compile_object(string path)
 	    } else {
 		driver->compile(obj, uid);
 	    }
+	} : {
+	    driver->compile_failed(path, uid);
+	    rlimits (stack; ticks) {
+		error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	    }
 	}
-    } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
+    }
     if (new && !lib) {
 	call_other(obj, "???");	/* initialize & register */
     }
@@ -346,11 +350,11 @@ static varargs object clone_object(string path, string uid)
 {
     string oname, str;
     object rsrcd, obj;
-    int *rsrc, *status;
+    int *rsrc, *status, stack, ticks;
 
     CHECKARG(path, 1, "clone_object");
     if (uid) {
-	CHECKARG(owner == "System", 1, "clone_object");
+	CHECKARG(creator == "System", 1, "clone_object");
     } else {
 	uid = owner;
     }
@@ -402,8 +406,6 @@ static varargs object clone_object(string path, string uid)
     status = ::status();
     catch {
 	rlimits (-1; -1) {
-	    int stack, ticks;
-
 	    stack = status[ST_STACKDEPTH];
 	    ticks = status[ST_TICKS];
 	    if ((stack >= 0 &&
@@ -416,7 +418,7 @@ static varargs object clone_object(string path, string uid)
 		rsrcd->rsrc_incr(uid, "objects", 0, 1, TRUE);
 	    }
 	    if (uid != owner) {
-		owner = "/" + uid;
+		owner = "/" + uid + "/" + owner;
 	    }
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
@@ -544,7 +546,7 @@ static object *users()
  * NAME:	swapout()
  * DESCRIPTION:	swap out all objects
  */
-static swapout()
+static void swapout()
 {
     if (creator == "System" && this_object()) {
 	::swapout();
@@ -555,7 +557,7 @@ static swapout()
  * NAME:	dump_state()
  * DESCRIPTION:	create state dump
  */
-static dump_state()
+static void dump_state()
 {
     if (creator == "System" && this_object()) {
 	rlimits (-1; -1) {
@@ -569,7 +571,7 @@ static dump_state()
  * NAME:	shutdown()
  * DESCRIPTION:	shutdown the system
  */
-static shutdown()
+static void shutdown()
 {
     if (creator == "System" && this_object()) {
 	::find_object(DRIVER)->message("System halted.\n");
@@ -597,7 +599,7 @@ nomask mixed _F_call_limited(mixed arg1, mixed *args)
 	rlimits (-1; -1) {
 	    tls = ::call_trace()[1][TRACE_FIRSTARG];
 	    if (tls == arg1) {
-		tls = arg1 = allocate(TLS_SIZE);
+		tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
 	    }
 	    limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
 	}
@@ -631,12 +633,13 @@ static varargs mixed call_limited(string function, mixed args...)
  * NAME:	call_out()
  * DESCRIPTION:	start a callout
  */
-static varargs int call_out(string function, int delay, mixed args...)
+static varargs int call_out(string function, mixed delay, mixed args...)
 {
-    object rsrcd;
     int handle;
 
     CHECKARG(function, 1, "call_out");
+    handle = typeof(delay);
+    CHECKARG(handle == T_INT || handle == T_FLOAT, 2, "call_out");
     if (!this_object()) {
 	return 0;
     }
@@ -645,14 +648,15 @@ static varargs int call_out(string function, int delay, mixed args...)
     /*
      * add callout
      */
-    rsrcd = ::find_object(RSRCD);
-    if (this_object() == rsrcd) {
+    if (sscanf(object_name(this_object()), "/kernel/%*s/rsrc") != 0) {
+	/* direct callouts for resource management objects */
 	return ::call_out(function, delay, args...);
     }
     catch {
 	rlimits (-1; -1) {
 	    handle = ::call_out("_F_callout", delay, function, FALSE, args);
-	    if (rsrcd->rsrc_incr(owner, "callouts", this_object(), 1)) {
+	    if (::find_object(RSRCD)->rsrc_incr(owner, "callouts",
+						this_object(), 1)) {
 		return handle;
 	    }
 	    ::remove_call_out(handle);
@@ -668,9 +672,9 @@ static varargs int call_out(string function, int delay, mixed args...)
 static mixed remove_call_out(int handle)
 {
     rlimits (-1; -1) {
-	int delay;
+	mixed delay;
 
-	if ((delay=::remove_call_out(handle)) >= 0 &&
+	if ((delay=::remove_call_out(handle)) != -1 &&
 	    ::find_object(RSRCD)->remove_callout(this_object(), owner, handle))
 	{
 	    return 0;
@@ -683,7 +687,7 @@ static mixed remove_call_out(int handle)
  * NAME:	_F_callout()
  * DESCRIPTION:	callout gate
  */
-nomask _F_callout(string function, int suspended, mixed *args)
+nomask void _F_callout(string function, int suspended, mixed *args)
 {
     if (!previous_program()) {
 	int handle;
@@ -704,7 +708,7 @@ nomask _F_callout(string function, int suspended, mixed *args)
  * NAME:	_F_release()
  * DESCRIPTION:	release a suspended callout
  */
-nomask _F_release(mixed handle)
+nomask void _F_release(mixed handle)
 {
     if (previous_program() == RSRCD) {
 	int i;
@@ -713,7 +717,7 @@ nomask _F_release(mixed handle)
 	callouts = ::status(this_object())[O_CALLOUTS];
 	::remove_call_out(handle);
 	for (i = sizeof(callouts); callouts[--i][CO_HANDLE] != handle; ) ;
-	handle = allocate(TLS_SIZE);
+	handle = allocate(::find_object(DRIVER)->query_tls_size());
 	_F_call_limited(callouts[i][CO_FIRSTXARG],
 			callouts[i][CO_FIRSTXARG + 2]);
     }
@@ -723,7 +727,7 @@ nomask _F_release(mixed handle)
  * NAME:	add_event()
  * DESCRIPTION:	add a new event type
  */
-static add_event(string name)
+static void add_event(string name)
 {
     CHECKARG(name, 1, "add_event");
 
@@ -739,7 +743,7 @@ static add_event(string name)
  * NAME:	remove_event()
  * DESCRIPTION:	remove an event type
  */
-static remove_event(string name)
+static void remove_event(string name)
 {
     object *objlist, rsrcd;
     int i;
@@ -776,7 +780,8 @@ static string *query_events()
  * NAME:	_F_subscribe_event()
  * DESCRIPTION:	subscribe to an event
  */
-nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
+nomask void
+_F_subscribe_event(object obj, string oowner, string name, int subscribe)
 {
     if (previous_program() == AUTO) {
 	object *objlist, rsrcd;
@@ -815,7 +820,7 @@ nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
  * NAME:	subscribe_event()
  * DESCRIPTION:	subscribe to an event
  */
-static subscribe_event(object obj, string name)
+static void subscribe_event(object obj, string name)
 {
     CHECKARG(obj, 1, "subscribe_event");
     CHECKARG(name, 2, "subscribe_event");
@@ -830,7 +835,7 @@ static subscribe_event(object obj, string name)
  * NAME:	unsubscribe_event()
  * DESCRIPTION:	unsubscribe from an event
  */
-static unsubscribe_event(object obj, string name)
+static void unsubscribe_event(object obj, string name)
 {
     CHECKARG(obj, 1, "unsubscribe_event");
     CHECKARG(name, 2, "unsubscribe_event");
@@ -858,7 +863,7 @@ static object *query_subscribed(string name)
  * NAME:	event()
  * DESCRIPTION:	cause an event
  */
-static varargs event(string name, mixed args...)
+static varargs void event(string name, mixed args...)
 {
     object *objlist;
     string *names;
@@ -868,14 +873,11 @@ static varargs event(string name, mixed args...)
     if (!events || !(objlist=events[name])) {
 	error("No such event");
     }
-    if (!this_object()) {
-	return;
-    }
 
     name = "evt_" + name;
     args = ({ this_object() }) + args;
     dest = FALSE;
-    for (i = 0, sz = sizeof(objlist); i < sz; i++) {
+    for (i = 0, sz = sizeof(objlist -= ({ 0 })); i < sz; i++) {
 	if (objlist[i]) {
 	    objlist[i]->_F_call_limited(name, args);
 	} else {
@@ -920,7 +922,7 @@ static varargs int write_file(string path, string str, int offset)
 {
     string oname, fcreator;
     object driver, rsrcd;
-    int *rsrc, size, result;
+    int size, result, *rsrc;
 
     CHECKARG(path, 1, "write_file");
     CHECKARG(str, 2, "write_file");
@@ -941,8 +943,10 @@ static varargs int write_file(string path, string str, int offset)
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	error("File quota exceeded");
+    if (creator != "System") {
+	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	    error("File quota exceeded");
+	}
     }
 
     size = driver->file_size(path);
@@ -1004,7 +1008,7 @@ static int rename_file(string from, string to)
 {
     string oname, fcreator, tcreator;
     object driver, accessd, rsrcd;
-    int size, *rsrc, result;
+    int size, result, *rsrc;
 
     CHECKARG(from, 1, "rename_file");
     CHECKARG(to, 2, "rename_file");
@@ -1031,8 +1035,8 @@ static int rename_file(string from, string to)
     tcreator = driver->creator(to);
     size = driver->file_size(from, TRUE);
     rsrcd = ::find_object(RSRCD);
-    if (size != 0 && fcreator != tcreator) {
-	rsrc = rsrcd->rsrc_get(tcreator, "filequota");
+    rsrc = rsrcd->rsrc_get(tcreator, "filequota");
+    if (size != 0 && fcreator != tcreator && creator != "System") {
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("File quota exceeded");
 	}
@@ -1058,7 +1062,7 @@ static mixed **get_dir(string path)
 {
     string oname, *names, dir;
     mixed **list, *olist;
-    int i, sz, len;
+    int i, sz;
 
     CHECKARG(path, 1, "get_dir");
     if (!this_object()) {
@@ -1081,8 +1085,8 @@ static mixed **get_dir(string path)
 	/* lib objects */
 	for (i = sz; --i >= 0; ) {
 	    path = dir + "/" + names[i];
-	    if ((len=strlen(path)) >= 2 && path[len - 2 ..] == ".c" &&
-		::find_object(path[.. len - 3])) {
+	    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+		::find_object(path[.. sz - 3])) {
 		olist[i] = TRUE;
 	    }
 	}
@@ -1092,13 +1096,61 @@ static mixed **get_dir(string path)
 	    object obj;
 
 	    path = dir + "/" + names[i];
-	    if ((len=strlen(path)) >= 2 && path[len - 2 ..] == ".c" &&
-		(obj=::find_object(path[.. len - 3]))) {
+	    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+		(obj=::find_object(path[.. sz - 3]))) {
 		olist[i] = obj;
 	    }
 	}
     }
     return list + ({ olist });
+}
+
+/*
+ * NAME:	file_info()
+ * DESCRIPTION:	get info for a single file
+ */
+static mixed *file_info(string path)
+{
+    string name, *files;
+    mixed *info;
+    int i, sz;
+    object obj;
+
+    CHECKARG(path, 1, "file_info");
+    if (!this_object()) {
+	error("Access denied");
+    }
+
+    name = object_name(this_object());
+    path = ::find_object(DRIVER)->normalize_path(path, name + "/..", creator);
+    if (creator != "System" &&
+	!::find_object(ACCESSD)->access(name, path, READ_ACCESS)) {
+	error("Access denied");
+    }
+
+    info = ::get_dir(path);
+    files = explode(path, "/");
+    name = files[sizeof(files) - 1];
+    files = info[0];
+    sz = sizeof(files);
+    if (sz <= 1) {
+	if (sz == 0 || files[0] != name) {
+	    return 0;	/* file does not exist */
+	}
+    } else {
+	/* name is a pattern: find in file list */
+	for (i = 0; name != files[i]; ) {
+	    if (++i == sz) {
+		return 0;	/* file does not exist */
+	    }
+	}
+    }
+    info = ({ info[1][i], info[2][i], 0 });
+    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+	(obj=::find_object(path[.. sz - 3]))) {
+	info[2] = (sscanf(path, "%*s/lib/") != 0) ? TRUE : obj;
+    }
+    return info;
 }
 
 /*
@@ -1109,7 +1161,7 @@ static int make_dir(string path)
 {
     string oname, fcreator;
     object driver, rsrcd;
-    int *rsrc, result;
+    int result, *rsrc;
 
     CHECKARG(path, 1, "make_dir");
     if (!this_object()) {
@@ -1129,8 +1181,10 @@ static int make_dir(string path)
     fcreator = driver->creator(path + "/");
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	error("File quota exceeded");
+    if (creator != "System") {
+	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	    error("File quota exceeded");
+	}
     }
 
     catch {
@@ -1208,7 +1262,7 @@ static int restore_object(string path)
  * NAME:	save_object()
  * DESCRIPTION:	save the state of an object
  */
-static save_object(string path)
+static void save_object(string path)
 {
     string oname, fcreator;
     object driver, rsrcd;
@@ -1233,8 +1287,10 @@ static save_object(string path)
     fcreator = driver->creator(path);
     rsrcd = ::find_object(RSRCD);
     rsrc = rsrcd->rsrc_get(fcreator, "filequota");
-    if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
-	error("File quota exceeded");
+    if (creator != "System") {
+	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
+	    error("File quota exceeded");
+	}
     }
 
     size = driver->file_size(path);
@@ -1292,7 +1348,7 @@ static varargs string editor(string cmd)
  * NAME:	execute_program()
  * DESCRIPTION:	execute external program
  */
-static execute_program(string cmdline)
+static void execute_program(string cmdline)
 {
     object conn;
     int dedicated;
@@ -1332,7 +1388,7 @@ static execute_program(string cmdline)
  * NAME:	connect()
  * DESCRIPTION:	open an outbound connection
  */
-static connect(string destination, int port)
+static void connect(string destination, int port)
 {
     object conn;
 
@@ -1360,7 +1416,7 @@ static connect(string destination, int port)
  * NAME:	open_port()
  * DESCRIPTION:	open a port to listen on
  */
-static open_port(string protocol, int port)
+static void open_port(string protocol, int port)
 {
     CHECKARG(protocol, 1, "open_port");
 

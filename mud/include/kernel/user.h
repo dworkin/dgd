@@ -13,6 +13,8 @@
 # define MODE_DISCONNECT	0
 # define MODE_NOECHO		1	/* telnet */
 # define MODE_ECHO		2	/* telnet */
+# define MODE_LINE		2	/* binary */
 # define MODE_RAW		3	/* binary */
+# define MODE_NOCHANGE		4	/* telnet + binary */
 
 # define DEFAULT_TIMEOUT	120	/* two minutes */

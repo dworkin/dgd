@@ -24,7 +24,7 @@ static void message(string str);
  * NAME:	create()
  * DESCRIPTION:	initialize variables
  */
-static create(int size)
+static void create(int size)
 {
     access::create();
     rsrc::create();
@@ -71,7 +71,7 @@ static nomask int access(string user, string file, int type)
  * NAME:	add_user()
  * DESCRIPTION:	add a new user
  */
-static add_user(string user)
+static void add_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Insufficient access granting privileges.\n");
@@ -84,7 +84,7 @@ static add_user(string user)
  * NAME:	remove_user()
  * DESCRIPTION:	remove a user
  */
-static remove_user(string user)
+static void remove_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Insufficient access granting privileges.\n");
@@ -97,7 +97,7 @@ static remove_user(string user)
  * NAME:	set_access()
  * DESCRIPTION:	set access
  */
-static set_access(string user, string file, int type)
+static void set_access(string user, string file, int type)
 {
     if (!access(owner, (type == FULL_ACCESS) ? "/" : file + "/*", FULL_ACCESS))
     {
@@ -111,7 +111,7 @@ static set_access(string user, string file, int type)
  * NAME:	set_global_access()
  * DESCRIPTION:	set global read access for a directory
  */
-static set_global_access(string dir, int flag)
+static void set_global_access(string dir, int flag)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Insufficient access granting privileges.\n");
@@ -125,7 +125,7 @@ static set_global_access(string dir, int flag)
  * NAME:	add_owner()
  * DESCRIPTION:	add a new resource owner
  */
-static add_owner(string rowner)
+static void add_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -138,7 +138,7 @@ static add_owner(string rowner)
  * NAME:	remove_owner()
  * DESCRIPTION:	remove a resource owner
  */
-static remove_owner(string rowner)
+static void remove_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -152,7 +152,7 @@ static remove_owner(string rowner)
  * DESCRIPTION:	set the maximum, decay percentage and decay period of a
  *		resource
  */
-static set_rsrc(string name, int max, int decay, int period)
+static void set_rsrc(string name, int max, int decay, int period)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -165,7 +165,7 @@ static set_rsrc(string name, int max, int decay, int period)
  * NAME:	remove_rsrc()
  * DESCRIPTION:	remove a resource
  */
-static remove_rsrc(string name)
+static void remove_rsrc(string name)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -178,7 +178,7 @@ static remove_rsrc(string name)
  * NAME:	rsrc_set_limit()
  * DESCRIPTION:	set individual resource limit
  */
-static rsrc_set_limit(string rowner, string name, int max)
+static void rsrc_set_limit(string rowner, string name, int max)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -211,7 +211,9 @@ static varargs int rsrc_incr(string rowner, string name, mixed index, int incr,
 static object compile_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
-    if (!access(owner, path, WRITE_ACCESS)) {
+    if (!access(owner, path,
+		(sscanf(path, "/kernel/%*s") == 0 &&
+		 sscanf(path, "%*s/lib/") != 0) ? READ_ACCESS : WRITE_ACCESS)) {
 	message(path + ": Permission denied.\n");
 	return 0;
     }
@@ -239,11 +241,13 @@ static object clone_object(string path)
 static int destruct_object(mixed obj)
 {
     string path, oowner;
+    int lib;
 
     switch (typeof(obj)) {
     case T_STRING:
 	path = obj = driver->normalize_path(obj, directory, owner);
-	if (sscanf(path, "%*s/lib/") != 0) {
+	lib = sscanf(path, "%*s/lib/");
+	if (lib) {
 	    oowner = driver->creator(path);
 	} else {
 	    obj = find_object(path);
@@ -256,12 +260,13 @@ static int destruct_object(mixed obj)
 
     case T_OBJECT:
 	path = object_name(obj);
+	lib = sscanf(path, "%*s/lib/");
 	oowner = obj->query_owner();
 	break;
     }
 
     if (path && owner != oowner &&
-	((sscanf(path, "/kernel/%*s") != 0 && sscanf(path, "%*s/lib/") == 0) ||
+	((sscanf(path, "/kernel/%*s") != 0 && !lib) ||
 	 !access(owner, path, WRITE_ACCESS))) {
 	message(path + ": Permission denied.\n");
 	return -1;
@@ -442,7 +447,7 @@ nomask string path_write(string path)
  * NAME:	swapout()
  * DESCRIPTION:	swap out all objects
  */
-static swapout()
+static void swapout()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -455,7 +460,7 @@ static swapout()
  * NAME:	dump_state()
  * DESCRIPTION:	create a state dump
  */
-static dump_state()
+static void dump_state()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -468,7 +473,7 @@ static dump_state()
  * NAME:	shutdown()
  * DESCRIPTION:	shut down the system
  */
-static shutdown()
+static void shutdown()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
 	message("Permission denied.\n");
@@ -562,7 +567,7 @@ static string dump_value(mixed value, mapping seen)
  * NAME:	store()
  * DESCRIPTION:	store a value in the history table
  */
-static store(object user, mixed value)
+static void store(object user, mixed value)
 {
     if (hindex == hsize) {
 	hindex = 0;
@@ -768,7 +773,7 @@ static mixed *expand(string files, int exist, int full)
  * NAME:	cmd_code()
  * DESCRIPTION:	implementation of the code command
  */
-static cmd_code(object user, string cmd, string str)
+static void cmd_code(object user, string cmd, string str)
 {
     mixed *parsed, result;
     object obj;
@@ -815,7 +820,7 @@ static cmd_code(object user, string cmd, string str)
  * NAME:	cmd_history()
  * DESCRIPTION:	show command history
  */
-static cmd_history(object user, string cmd, string str)
+static void cmd_history(object user, string cmd, string str)
 {
     int num, i;
 
@@ -841,7 +846,7 @@ static cmd_history(object user, string cmd, string str)
  * NAME:	cmd_clear()
  * DESCRIPTION:	clear command history
  */
-static cmd_clear(object user, string cmd, string str)
+static void cmd_clear(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");
@@ -857,7 +862,7 @@ static cmd_clear(object user, string cmd, string str)
  * NAME:	cmd_compile()
  * DESCRIPTION:	compile an object
  */
-static cmd_compile(object user, string cmd, string str)
+static void cmd_compile(object user, string cmd, string str)
 {
     mixed *files;
     string *names;
@@ -891,7 +896,7 @@ static cmd_compile(object user, string cmd, string str)
  * NAME:	cmd_clone()
  * DESCRIPTION:	clone an object
  */
-static cmd_clone(object user, string cmd, string str)
+static void cmd_clone(object user, string cmd, string str)
 {
     int i;
     mixed obj, *files;
@@ -943,7 +948,7 @@ static cmd_clone(object user, string cmd, string str)
  * NAME:	cmd_destruct()
  * DESCRIPTION:	destruct an object
  */
-static cmd_destruct(object user, string cmd, string str)
+static void cmd_destruct(object user, string cmd, string str)
 {
     int i;
     mixed obj;
@@ -984,29 +989,26 @@ static cmd_destruct(object user, string cmd, string str)
  * NAME:	cmd_cd()
  * DESCRIPTION:	change the current directory
  */
-static cmd_cd(object user, string cmd, string str)
+static void cmd_cd(object user, string cmd, string str)
 {
-    mixed *files;
+    mixed *info;
 
     if (!str) {
 	str = "~";
     }
 
-    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
-    if (files[4] == 1) {
-	str = files[0][0];
+    info = expand(str, -1, TRUE);	/* may not exist, full filenames */
+    if (info[4] == 1) {
+	str = info[0][0];
 	if (!access(owner, str + "/.", READ_ACCESS)) {
 	    message(str + ": Access denied.\n");
 	} else {
-	    files = ::get_dir(str);
-	    if (sizeof(files[0]) == 0) {
+	    info = file_info(str);
+	    if (!info) {
 		message(str + ": No such file or directory.\n");
-	    } else if (files[1][0] == -2) {
-		if (str == "/") {
-		    str = "";
-		}
-		directory = str;
-		message(((str == "") ? "/" : str) + "\n");
+	    } else if (info[0] < 0) {
+		directory = (str == "/") ? "" : str;
+		message(str + "\n");
 	    } else {
 		message(str + ": Not a directory.\n");
 	    }
@@ -1020,7 +1022,7 @@ static cmd_cd(object user, string cmd, string str)
  * NAME:	cmd_pwd()
  * DESCRIPTION:	print current directory
  */
-static cmd_pwd(object user, string cmd, string str)
+static void cmd_pwd(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");
@@ -1034,7 +1036,7 @@ static cmd_pwd(object user, string cmd, string str)
  * NAME:	cmd_ls()
  * DESCRIPTION:	list files
  */
-static cmd_ls(object user, string cmd, string str)
+static void cmd_ls(object user, string cmd, string str)
 {
     mixed *files, *objects;
     string *names, timestr, dirlist;
@@ -1142,7 +1144,7 @@ static cmd_ls(object user, string cmd, string str)
  * NAME:	cmd_cp()
  * DESCRIPTION:	copy file(s)
  */
-static cmd_cp(object user, string cmd, string str)
+static void cmd_cp(object user, string cmd, string str)
 {
     mixed *files, chunk;
     int *sizes, num, i, sz, offset, n;
@@ -1204,7 +1206,7 @@ static cmd_cp(object user, string cmd, string str)
  * NAME:	cmd_mv()
  * DESCRIPTION:	move file(s)
  */
-static cmd_mv(object user, string cmd, string str)
+static void cmd_mv(object user, string cmd, string str)
 {
     mixed *files;
     int *sizes, num, i, n;
@@ -1249,7 +1251,7 @@ static cmd_mv(object user, string cmd, string str)
  * NAME:	cmd_rm()
  * DESCRIPTION:	remove file(s)
  */
-static cmd_rm(object user, string cmd, string str)
+static void cmd_rm(object user, string cmd, string str)
 {
     mixed *files;
     string *names;
@@ -1279,7 +1281,7 @@ static cmd_rm(object user, string cmd, string str)
  * NAME:	cmd_mkdir()
  * DESCRIPTION:	make directory(s)
  */
-static cmd_mkdir(object user, string cmd, string str)
+static void cmd_mkdir(object user, string cmd, string str)
 {
     mixed *files;
     string *names;
@@ -1309,7 +1311,7 @@ static cmd_mkdir(object user, string cmd, string str)
  * NAME:	cmd_rmdir()
  * DESCRIPTION:	remove directory(s)
  */
-static cmd_rmdir(object user, string cmd, string str)
+static void cmd_rmdir(object user, string cmd, string str)
 {
     mixed *files;
     string *names;
@@ -1339,7 +1341,7 @@ static cmd_rmdir(object user, string cmd, string str)
  * NAME:	cmd_ed()
  * DESCRIPTION:	handle editor
  */
-static cmd_ed(object user, string cmd, string str)
+static void cmd_ed(object user, string cmd, string str)
 {
     mixed *files;
 
@@ -1392,7 +1394,7 @@ private string list_access(mapping access)
  * NAME:	access()
  * DESCRIPTION:	list special access
  */
-static cmd_access(object user, string cmd, string str)
+static void cmd_access(object user, string cmd, string str)
 {
     mapping access, *values;
     mixed *files;
@@ -1449,7 +1451,7 @@ static cmd_access(object user, string cmd, string str)
  * NAME:	cmd_grant()
  * DESCRIPTION:	grant access
  */
-static cmd_grant(object user, string cmd, string str)
+static void cmd_grant(object user, string cmd, string str)
 {
     string who, dir;
     mixed type, *files;
@@ -1534,7 +1536,7 @@ static cmd_grant(object user, string cmd, string str)
  * NAME:	cmd_ungrant()
  * DESCRIPTION:	remove access
  */
-static cmd_ungrant(object user, string cmd, string str)
+static void cmd_ungrant(object user, string cmd, string str)
 {
     string who, dir;
     mixed *files;
@@ -1651,7 +1653,7 @@ private string list_resources(string name, string *names, mixed *resources)
  * NAME:	cmd_quota()
  * DESCRIPTION:	resource quota command
  */
-static cmd_quota(object user, string cmd, string str)
+static void cmd_quota(object user, string cmd, string str)
 {
     int limit, i;
     string who, rsrc, *names;
@@ -1718,7 +1720,7 @@ static cmd_quota(object user, string cmd, string str)
  * NAME:	cmd_rsrc()
  * DESCRIPTION:	deal with resources
  */
-static cmd_rsrc(object user, string cmd, string str)
+static void cmd_rsrc(object user, string cmd, string str)
 {
     int i, sz, limit;
     string *names, name;
@@ -1769,7 +1771,7 @@ static cmd_rsrc(object user, string cmd, string str)
  * NAME:	cmd_people()
  * DESCRIPTION:	show users logged on via telnet, with ip numbers
  */
-static cmd_people(object user, string cmd, string str)
+static void cmd_people(object user, string cmd, string str)
 {
     object *users, usr;
     string *owners, name;
@@ -1813,7 +1815,7 @@ private string swapnum(int num, int div)
  * NAME:	cmd_status()
  * DESCRIPTION:	show driver status
  */
-static cmd_status(object user, string cmd, string str)
+static void cmd_status(object user, string cmd, string str)
 {
     mixed *status;
     int uptime, hours, minutes, seconds;
@@ -1941,7 +1943,7 @@ static cmd_status(object user, string cmd, string str)
  * NAME:	cmd_swapout()
  * DESCRIPTION:	swap out all objects
  */
-static cmd_swapout(object user, string cmd, string str)
+static void cmd_swapout(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");
@@ -1955,7 +1957,7 @@ static cmd_swapout(object user, string cmd, string str)
  * NAME:	cmd_statedump()
  * DESCRIPTION:	create a state dump
  */
-static cmd_statedump(object user, string cmd, string str)
+static void cmd_statedump(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");
@@ -1969,7 +1971,7 @@ static cmd_statedump(object user, string cmd, string str)
  * NAME:	cmd_shutdown()
  * DESCRIPTION:	shut down the system
  */
-static cmd_shutdown(object user, string cmd, string str)
+static void cmd_shutdown(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");
@@ -1983,7 +1985,7 @@ static cmd_shutdown(object user, string cmd, string str)
  * NAME:	cmd_reboot()
  * DESCRIPTION:	reboot system
  */
-static cmd_reboot(object user, string cmd, string str)
+static void cmd_reboot(object user, string cmd, string str)
 {
     if (str) {
 	message("Usage: " + cmd + "\n");

@@ -7,8 +7,8 @@ SUNOS4		SunOS 4.x.  Copy src/host/Makefile.sun4 to src/host/Makefile.
 SOLARIS		SunOS 5.x.  Copy src/host/Makefile.sysv to src/host/Makefile,
 		and in src/Makefile also set LIBS to -lsocket -lnsl
 DECALPHA	DEC Alpha.  Copy src/host/Makefile.sysv to src/host/Makefile.
-BEOS		BeOS.  Set CC to mwcc, and copy src/host/Makefile.beos to
-		src/host/Makefile.
+BEOS		BeOS.  Set LDFLAGS to -lbe -ltracker, and copy
+		src/host/Makefile.beos to src/host/Makefile.
 WIN32		Windows NT or Windows 95.  Follow the instructions in
 		src/host/pc/README.
 MACOS		Mac System 6 or 7.  Follow the instructions in

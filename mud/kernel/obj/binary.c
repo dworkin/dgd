@@ -4,16 +4,18 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
+object driver;		/* driver object */
 string buffer;		/* buffered input */
 
 /*
  * NAME:	create()
  * DESCRIPTION:	initialize
  */
-static create(int clone)
+static void create(int clone)
 {
     if (clone) {
 	::create("binary");
+	driver = find_object(DRIVER);
 	buffer = "";
     }
 }
@@ -22,32 +24,34 @@ static create(int clone)
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
-static open()
+static int open()
 {
-    ::open(allocate(TLS_SIZE));
+    ::open(allocate(driver->query_tls_size()));
+    return FALSE;
 }
 
 /*
  * NAME:	close()
  * DESCRIPTION:	close the connection
  */
-static close(int dest)
+static void close(int dest)
 {
-    ::close(allocate(TLS_SIZE), dest);
+    ::close(allocate(driver->query_tls_size()), dest);
 }
 
 /*
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to listeners
  */
-static receive_message(string str)
+static void receive_message(string str)
 {
     int mode, len;
     string head, pre;
+    mixed *tls;
 
+    tls = allocate(driver->query_tls_size());
     buffer += str;
-    mode = query_mode();
-    while (mode != MODE_DISCONNECT) {
+    while ((mode=query_mode()) != MODE_DISCONNECT) {
 	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
@@ -70,7 +74,7 @@ static receive_message(string str)
 		    }
 		}
 
-		mode = ::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(tls, str);
 	    } else {
 		break;
 	    }
@@ -78,7 +82,7 @@ static receive_message(string str)
 	    if (strlen(buffer) != 0) {
 		str = buffer;
 		buffer = "";
-		::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(tls, str);
 	    }
 	    break;
 	}
@@ -89,11 +93,11 @@ static receive_message(string str)
  * NAME:	set_mode()
  * DESCRIPTION:	set the connection mode
  */
-set_mode(int mode)
+void set_mode(int mode)
 {
     string str;
 
-    if (SYSTEM()) {
+    if (KERNEL() || SYSTEM()) {
 	::set_mode(mode);
 	if (mode == MODE_RAW && strlen(buffer) != 0) {
 	    /* flush buffer */
@@ -114,4 +118,13 @@ int message(string str)
 	str = implode(explode("\n" + str + "\n", "\n"), "\r\n");
     }
     return ::message(str);
+}
+
+/*
+ * NAME:	message_done()
+ * DESCRIPTION:	called when output is completed
+ */
+static void message_done()
+{
+    ::message_done(allocate(driver->query_tls_size()));
 }

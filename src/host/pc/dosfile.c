@@ -87,6 +87,7 @@ char *P_readdir(void)
 	}
 	fd = fdata;
 	if (_findnext(d, &fdata) != 0) {
+	    _findclose(d);
     	    d = -1;
 	}
     } while (fd.name[0] == '.' &&
@@ -101,5 +102,7 @@ char *P_readdir(void)
  */
 void P_closedir(void)
 {
-    _findclose(d);
+    if (d != -1) {
+	_findclose(d);
+    }
 }

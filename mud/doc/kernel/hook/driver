@@ -32,6 +32,10 @@ void set_object_manager(object objectd)	[System only]
 
 	The given inheritable object has just been compiled.
 
+    * void compile_failed(string owner, string path)
+
+	An attempt to compile the given object has failed.
+
     * void clone(string owner, object obj)
 
 	The given object has just been cloned.  Called just before the object
@@ -59,6 +63,10 @@ void set_object_manager(object objectd)	[System only]
 
 	The file `path' (which might not exist) is about to be included by
 	`from'.
+
+    * int forbid_inherit(string from, string path, int priv)
+
+	Return a non-zero value if inheritance of path by from is not allowed.
 
 
 void set_error_manager(object errord)	[System only]

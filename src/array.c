@@ -1566,6 +1566,7 @@ value *val, *elt;
 		 * change the element
 		 */
 		if (val->type == T_OBJECT) {
+		    v->modified = TRUE;
 		    v->u.objcnt = val->u.objcnt;	/* refresh */
 		}
 		d_assign_elt(m, v + 1, elt);

@@ -2,7 +2,7 @@ NAME
 	status - get information about resource usage
 
 SYNOPSIS
-	varargs mixed *status(object obj)
+	varargs mixed *status(mixed obj)
 
 
 DESCRIPTION
