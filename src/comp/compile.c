@@ -1795,15 +1795,25 @@ node *other, *func, *args;
  * NAME:	compile->checkcall()
  * DESCRIPTION:	check return value of a system call
  */
-node *c_checkcall(n)
+node *c_checkcall(n, typechecked)
 register node *n;
+int typechecked;
 {
-    if (n->type == N_FUNC && (n->r.number >> 24) == FCALL &&
-	n->mod != T_MIXED && n->mod != T_VOID) {
-	/*
-	 * make sure the return value is as it should be
-	 */
-	return node_mon(N_CAST, n->mod, n);
+    if (n->type == N_FUNC && (n->r.number >> 24) == FCALL) {
+	if (typechecked) {
+	    if (n->mod != T_MIXED && n->mod != T_VOID) {
+		/*
+		 * make sure the return value is as it should be
+		 */
+		return node_mon(N_CAST, n->mod, n);
+	    }
+	} else {
+	    /* could be anything */
+	    n->mod = T_MIXED;
+	}
+    } else if (n->mod == T_VOID && !typechecked) {
+	/* no void expressions */
+	n->mod = T_INT;
     }
 
     return n;

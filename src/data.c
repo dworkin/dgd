@@ -2362,20 +2362,15 @@ register unsigned short n;
 			 */
 			a = arr_alloc(a->size);
 			a->tag = val->u.array->tag;
+			a->odcount = odcount;
 			a->primary = &data->alocal;
 
 			if (a->size > 0) {
-			    register value *v, *w;
-
 			    /*
 			     * copy elements
 			     */
-			    v = a->elts = ALLOC(value, a->size);
-			    w = d_get_elts(val->u.array);
-			    for (j = a->size; j > 0; --j) {
-				i_ref_value(w);
-				*v++ = *w++;
-			    }
+			    arr_copy(a->elts = ALLOC(value, a->size),
+				     val->u.array);
 			}
 
 			/*

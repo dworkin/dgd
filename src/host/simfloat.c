@@ -153,7 +153,7 @@ register flt *a, *b;
     }
 
     n = a->exp - b->exp;
-    if (n <= NBITS) {
+    if (n <= NBITS + 1) {
 	h = a->high;
 	l = a->low;
 
@@ -183,33 +183,36 @@ register flt *a, *b;
 	/*
 	 * normalize
 	 */
-	n = 0;
 	if (h == 0) {
 	    if (l == 0) {
 		a->exp = 0;
 		return;
 	    }
+	    n = 0;
 	    if ((l & 0xffff0000L) == 0) {
 		l <<= 15;
 		n += 15;
 	    }
 	    h = l >> 16;
 	    l <<= 15;
+	    l &= 0x7fffffffL;
 	    a->exp -= n + 15;
+	}
+	if (h < 0x4000) {
 	    n = 0;
+	    if ((h & 0xff00) == 0) {
+		h <<= 7;
+		n += 7;
+	    }
+	    while (h < 0x4000) {
+		h <<= 1;
+		n++;
+	    }
+	    h |= l >> (31 - n);
+	    l <<= n;
+	    l &= 0x7fffffffL;
+	    a->exp -= n;
 	}
-	if ((h & 0xff00) == 0) {
-	    h <<= 7;
-	    n += 7;
-	}
-	while (h < 0x4000) {
-	    h <<= 1;
-	    n++;
-	}
-	h |= l >> (31 - n);
-	l <<= n;
-	l &= 0x7fffffffL;
-	a->exp -= n;
 
 	/*
 	 * rounding off
@@ -232,7 +235,7 @@ register flt *a, *b;
 static void f_mult(a, b)
 register flt *a, *b;
 {
-    register Uint m;
+    register Uint m, l;
     register unsigned short al, am, ah, bl, bm, bh;
 
     if (a->exp == 0) {
@@ -247,8 +250,8 @@ register flt *a, *b;
 
     al = ((unsigned short) a->low) >> 1;
     bl = ((unsigned short) b->low) >> 1;
-    am = (a->low >> 16) & 0x7fff;
-    bm = (b->low >> 16) & 0x7fff;
+    am = a->low >> 16;
+    bm = b->low >> 16;
     ah = a->high;
     bh = b->high;
 
@@ -256,23 +259,37 @@ register flt *a, *b;
     m >>= 15;
     m += (Uint) al * bm + (Uint) am * bl;
     m >>= 15;
-    m += (Uint) al * bh + (Uint) am * bm + (Uint) ah * bl + 0x4000;
-    m >>= 15;
+    m += (Uint) al * bh + (Uint) am * bm + (Uint) ah * bl;
+    m >>= 13;
+    l = m & 0x03;
+    m >>= 2;
     m += (Uint) am * bh + (Uint) ah * bm;
-    a->low = (m << 2) & 0x1ffffL;
+    l |= (m & 0x7fff) << 2;
     m >>= 15;
     m += (Uint) ah * bh;
-    a->low |= m << 17;
-    a->high = m >> 14;
+    l |= m << 17;
+    ah = m >> 14;
 
     a->sign ^= b->sign;
     a->exp += b->exp - BIAS;
-    if ((short) a->high < 0) {
-	a->high >>= 1;
-	a->low >>= 1;
+    if ((short) ah < 0) {
+	ah >>= 1;
+	l >>= 1;
 	a->exp++;
     }
-    a->low &= 0x7ffffffcL;
+    l &= 0x7fffffffL;
+
+    /*
+     * rounding off
+     */
+    if ((Int) (l += 2) < 0 && (short) ++ah < 0) {
+	ah >>= 1;
+	a->exp++;
+    }
+    l &= 0x7ffffffcL;
+
+    a->high = ah;
+    a->low = l;
 }
 
 /*
@@ -960,13 +977,19 @@ xfloat *f1, *f2;
  * DESCRIPTION:	compare two xfloats
  */
 int flt_cmp(f1, f2)
-xfloat *f1, *f2;
+register xfloat *f1, *f2;
 {
-    flt a, b;
+    if ((short) (f1->high ^ f2->high) < 0) {
+	return ((short) f1->high < 0) ? -1 : 1;
+    }
 
-    f_xftof(f1, &a);
-    f_xftof(f2, &b);
-    return f_cmp(&a, &b);
+    if (f1->high == f2->high && f1->low == f2->low) {
+	return 0;
+    }
+    if (f1->high <= f2->high && (f1->high < f2->high || f1->low < f2->low)) {
+	return ((short) f1->high < 0) ? 1 : -1;
+    }
+    return ((short) f1->high < 0) ? -1 : 1;
 }
 
 /*

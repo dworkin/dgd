@@ -19,6 +19,7 @@ static uindex free_obj;		/* free object list */
 static uindex nobjects;		/* number of objects in object table */
 static uindex nfreeobjs;	/* number of objects in free list */
 static Uint ocount;		/* object creation count */
+Uint odcount;			/* objects destructed count */
 
 /*
  * NAME:	object->init()
@@ -34,7 +35,7 @@ register unsigned int n;
     free_obj = dest_obj = OBJ_NONE;
     nobjects = 0;
     nfreeobjs = 0;
-    ocount = 1;
+    ocount = odcount = 1;
 }
 
 /*
@@ -278,6 +279,7 @@ register object *o;
 	error("Destructing destructed object");
     }
     o->count = 0;
+    odcount++;
 
     if (o->flags & O_MASTER) {
 	/* remove from object name hash table */

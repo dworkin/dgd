@@ -481,28 +481,13 @@ primary_p1_exp
 	| '(' list_exp ')'
 		{ $$ = $2; }
 	| function_name '(' opt_arg_list ')'
-		{
-		  $$ = c_funcall($1, $3);
-		  if (typechecking) {
-		      $$ = c_checkcall($$);
-		  } else if ($$->mod == T_VOID) {
-		      $$->mod = T_INT;	/* get rid of void */
-		  }
-		}
+		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
 	| CATCH '(' list_exp ')'
 		{ $$ = node_mon(N_CATCH, T_STRING, $3); }
 	| primary_p2_exp ARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
-		  $$ = c_arrow($1, $3, $5);
-		  /*
-		   * call_other() may have been redeclared
-		   */
-		  if (typechecking) {
-		      $$ = c_checkcall($$);
-		  } else if ($$->mod == T_VOID) {
-		      $$->mod = T_INT;	/* get rid of void */
-		  }
+		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
 		}
 	;
 
@@ -970,17 +955,16 @@ register node *n1, *n2, *n3;
 					  n3->l.number)));
     }
 
-    if (typechecking) {
+    if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
 	/* indices */
-	if (n2 != (node*) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
+	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
 	    c_error("bad index type (%s)", i_typename(n2->mod));
 	}
-	if (n3 != (node*) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
+	if (n3 != (node *) NULL && n3->mod != T_INT && n3->mod != T_MIXED) {
 	    c_error("bad index type (%s)", i_typename(n3->mod));
 	}
 	/* range */
-	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)
-	{
+	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING) {
 	    c_error("bad indexed type (%s)", i_typename(n1->mod));
 	}
     }

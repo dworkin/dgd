@@ -104,6 +104,7 @@ unsigned int size;
     a->size = size;
     a->elts = (value *) NULL;
     a->ref = 0;
+    a->odcount = 0;			/* if swapped in, check objects */
     a->hashed = (maphash *) NULL;	/* only used for mappings */
 
     return a;
@@ -126,6 +127,7 @@ register long size;
 	a->elts = ALLOC(value, size);
     }
     a->tag = tag++;
+    a->odcount = odcount;
     a->primary = &cframe->obj->data->alocal;
     return a;
 }
@@ -302,6 +304,50 @@ register unsigned short n;
 }
 
 /*
+ * NAME:	copytmp()
+ * DESCRIPTION:	make temporary copies of values
+ */
+static void copytmp(v1, a)
+register value *v1;
+register array *a;
+{
+    register value *v2;
+    register unsigned short n;
+
+    v2 = d_get_elts(a);
+    if (a->odcount == odcount) {
+	/*
+	 * no need to check for destructed objects
+	 */
+	memcpy(v1, v2, a->size * sizeof(value));
+    } else {
+	/*
+	 * Copy and check for destructed objects.  If destructed objects are
+	 * found, they will be replaced by 0 in the original array.
+	 */
+	a->odcount = odcount;
+	for (n = a->size; n != 0; --n) {
+	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
+		*v2 = zero_value;
+	    }
+	    *v1++ = *v2++;
+	}
+    }
+}
+
+/*
+ * NAME:	array->copy()
+ * DESCRIPTION:	copy the elements of an array or mapping
+ */
+void arr_copy(v, a)
+value *v;
+array *a;
+{
+    copy(v, d_get_elts(a), a->size);
+    a->odcount = odcount;
+}
+
+/*
  * NAME:	array->add()
  * DESCRIPTION:	add two arrays
  */
@@ -311,8 +357,8 @@ register array *a1, *a2;
     register array *a;
 
     a = arr_new((long) a1->size + a2->size);
-    copy(a->elts, d_get_elts(a1), a1->size);
-    copy(a->elts + a1->size, d_get_elts(a2), a2->size);
+    arr_copy(a->elts, a1);
+    arr_copy(a->elts + a1->size, a2);
     d_ref_imports(a);
 
     return a;
@@ -369,10 +415,11 @@ cvoid *cv1, *cv2;
  * NAME:	search()
  * DESCRIPTION:	search for a value in an array
  */
-static int search(v1, v2, h, step)
+static int search(v1, v2, h, step, place)
 register value *v1, *v2;
 register unsigned short h;
 register int step;		/* 1 for arrays, 2 for mappings */
+bool place;
 {
     register unsigned short l, m;
     register Int c;
@@ -440,7 +487,7 @@ register int step;		/* 1 for arrays, 2 for mappings */
     /*
      * not found
      */
-    return -1;
+    return (place) ? l : -1;
 }
 
 /*
@@ -460,15 +507,10 @@ array *a1, *a2;
 	 * Return a copy of the first array.
 	 */
 	a3 = arr_new((long) a1->size);
-	copy(a3->elts, d_get_elts(a1), a1->size);
+	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
     }
-
-    /*
-     * If destructed objects are found, they will be replaced by 0 in the
-     * original arrays.
-     */
 
     /* create new array */
     a3 = arr_new((long) a1->size);
@@ -478,34 +520,39 @@ array *a1, *a2;
     }
     size = a2->size;
 
-    /* copy values of subtrahend */
-    v1 = d_get_elts(a2);
-    v2 = ALLOCA(value, size);
-    for (n = size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
-	}
-	*v2++ = *v1++;
-    }
-    /* sort values */
-    qsort(v2 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of subtrahend */
+    copytmp(v2 = ALLOCA(value, size), a2);
+    qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
-    for (n = a1->size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
+    if (a1->odcount == odcount) {
+	for (n = a1->size; n > 0; --n) {
+	    if (search(v1, v2, size, 1, FALSE) < 0) {
+		/*
+		 * not found in subtrahend: copy to result array
+		 */
+		i_ref_value(v1);
+		*v3++ = *v1;
+	    }
+	    v1++;
 	}
-	if (search(v1, v2, size, 1) < 0) {
-	    /*
-	     * not found in subtrahend: copy to result array
-	     */
-	    i_ref_value(v1);
-	    *v3++ = *v1;
+    } else {
+	a1->odcount = odcount;
+	for (n = a1->size; n > 0; --n) {
+	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
+		/* replace destructed object by 0 */
+		*v1 = zero_value;
+	    }
+	    if (search(v1, v2, size, 1, FALSE) < 0) {
+		/*
+		 * not found in subtrahend: copy to result array
+		 */
+		i_ref_value(v1);
+		*v3++ = *v1;
+	    }
+	    v1++;
 	}
-	v1++;
     }
     AFREE(v2);	/* free copy of values of subtrahend */
 
@@ -539,39 +586,39 @@ array *a1, *a2;
     a3 = arr_new((long) a1->size);
     size = a2->size;
 
-    /*
-     * If destructed objects are found, they will be replaced by 0 in the
-     * original arrays.
-     */
-
-    /* copy values of 2nd array */
-    v1 = d_get_elts(a2);
-    v2 = ALLOCA(value, size);
-    for (n = size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
-	}
-	*v2++ = *v1++;
-    }
-    /* sort values */
-    qsort(v2 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of 2nd array */
+    copytmp(v2 = ALLOCA(value, size), a2);
+    qsort(v2, size, sizeof(value), cmp);
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
-    for (n = a1->size; n > 0; --n) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
+    if (a1->odcount == odcount) {
+	for (n = a1->size; n > 0; --n) {
+	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
+		/*
+		 * element is in both arrays: copy to result array
+		 */
+		i_ref_value(v1);
+		*v3++ = *v1;
+	    }
+	    v1++;
 	}
-	if (search(v1, v2, a2->size, 1) >= 0) {
-	    /*
-	     * element is in both arrays: copy to result array
-	     */
-	    i_ref_value(v1);
-	    *v3++ = *v1;
+    } else {
+	a1->odcount = odcount;
+	for (n = a1->size; n > 0; --n) {
+	    if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
+		/* replace destructed object by 0 */
+		*v1 = zero_value;
+	    }
+	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
+		/*
+		 * element is in both arrays: copy to result array
+		 */
+		i_ref_value(v1);
+		*v3++ = *v1;
+	    }
+	    v1++;
 	}
-	v1++;
     }
     AFREE(v2);	/* free copy of values of 2nd array */
 
@@ -600,14 +647,14 @@ array *a1, *a2;
     if (a1->size == 0) {
 	/* ({ }) | array */
 	a3 = arr_new((long) a2->size);
-	copy(a3->elts, d_get_elts(a2), a3->size);
+	arr_copy(a3->elts, a2);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array | ({ }) */
 	a3 = arr_new((long) a1->size);
-	copy(a3->elts, d_get_elts(a1), a3->size);
+	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
     }
@@ -615,38 +662,37 @@ array *a1, *a2;
     /* make room for elements to add */
     v3 = ALLOCA(value, a2->size);
 
-    /*
-     * If destructed objects are found, they will be replaced by 0 in the
-     * original arrays.
-     */
-
-    /* copy values of 1st array */
-    v1 = ALLOCA(value, size = a1->size);
-    v = d_get_elts(a1);
-    for (n = size; n > 0; --n) {
-	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    /* replace destructed object by 0 */
-	    *v = zero_value;
-	}
-	*v1++ = *v++;
-    }
-    /* sort values */
-    qsort(v1 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of 1st array */
+    copytmp(v1 = ALLOCA(value, size = a1->size), a1);
+    qsort(v1, size, sizeof(value), cmp);
 
     v = v3;
     v2 = d_get_elts(a2);
-    for (n = a2->size; n > 0; --n) {
-	if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
-	    /* replace destructed object by 0 */
-	    *v2 = zero_value;
+    if (a2->odcount == odcount) {
+	for (n = a2->size; n > 0; --n) {
+	    if (search(v2, v1, size, 1, FALSE) < 0) {
+		/*
+		 * element is only in second array: copy to result array
+		 */
+		*v++ = *v2;
+	    }
+	    v2++;
 	}
-	if (search(v2, v1, size, 1) < 0) {
-	    /*
-	     * element is only in second array: copy to result array
-	     */
-	    *v++ = *v2;
+    } else {
+	a2->odcount = odcount;
+	for (n = a2->size; n > 0; --n) {
+	    if (v2->type == T_OBJECT && DESTRUCTED(v2)) {
+		/* replace destructed object by 0 */
+		*v2 = zero_value;
+	    }
+	    if (search(v2, v1, size, 1, FALSE) < 0) {
+		/*
+		 * element is only in second array: copy to result array
+		 */
+		*v++ = *v2;
+	    }
+	    v2++;
 	}
-	v2++;
     }
     AFREE(v1);	/* free copy of values of 1st array */
 
@@ -682,47 +728,24 @@ array *a1, *a2;
     if (a1->size == 0) {
 	/* ({ }) ^ array */
 	a3 = arr_new((long) a2->size);
-	copy(a3->elts, d_get_elts(a2), a3->size);
+	arr_copy(a3->elts, a2);
 	d_ref_imports(a3);
 	return a3;
     }
     if (a2->size == 0) {
 	/* array ^ ({ }) */
 	a3 = arr_new((long) a1->size);
-	copy(a3->elts, d_get_elts(a1), a3->size);
+	arr_copy(a3->elts, a1);
 	d_ref_imports(a3);
 	return a3;
     }
 
-    /*
-     * If destructed objects are found, they will be replaced by 0 in the
-     * original arrays.
-     */
-
     /* copy values of 1st array */
-    v = d_get_elts(a1);
-    v1 = ALLOCA(value, size = a1->size);
-    for (n = size; n > 0; --n) {
-	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    /* replace destructed object by 0 */
-	    *v = zero_value;
-	}
-	*v1++ = *v++;
-    }
-    v1 -= size;
+    copytmp(v1 = ALLOCA(value, size = a1->size), a1);
 
-    /* copy values of 2nd array */
-    v = d_get_elts(a2);
-    v2 = ALLOCA(value, size = a2->size);
-    for (n = size; n > 0; --n) {
-	if (v->type == T_OBJECT && DESTRUCTED(v)) {
-	    /* replace destructed object by 0 */
-	    *v = zero_value;
-	}
-	*v2++ = *v++;
-    }
-    /* sort 2nd array */
-    qsort(v2 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of 2nd array */
+    copytmp(v2 = ALLOCA(value, size = a2->size), a2);
+    qsort(v2, size, sizeof(value), cmp);
 
     /* room for first half of result */
     v3 = ALLOCA(value, a1->size);
@@ -730,7 +753,7 @@ array *a1, *a2;
     v = v3;
     w = v1;
     for (n = a1->size; n > 0; --n) {
-	if (search(v1, v2, size, 1) < 0) {
+	if (search(v1, v2, size, 1, FALSE) < 0) {
 	    /*
 	     * element is only in first array: copy to result array
 	     */
@@ -752,7 +775,7 @@ array *a1, *a2;
     v = v2;
     w = a2->elts;
     for (n = a2->size; n > 0; --n) {
-	if (search(w, v1, size, 1) < 0) {
+	if (search(w, v1, size, 1, FALSE) < 0) {
 	    /*
 	     * element is only in second array: copy to 2nd result array
 	     */
@@ -869,6 +892,7 @@ register long size;
 	m->elts = ALLOC(value, size);
     }
     m->tag = tag++;
+    m->odcount = odcount;
     m->primary = &cframe->obj->data->alocal;
     return m;
 }
@@ -919,11 +943,13 @@ array *m;
     register value *v1, *v2;
     register unsigned short i, arrsize, hashsize;
 
-    if (m->size == 0 && (m->hashed == (maphash *) NULL || m->hashed->size == 0))
-    {
-	/* skip empty mapping */
+    if ((m->size == 0 || m->odcount == odcount) &&
+	(m->hashed == (maphash *) NULL || m->hashed->size == 0)) {
+	/* skip empty or unchanged mapping */
 	return;
     }
+
+    m->odcount = odcount;	/* update */
 
     /*
      * remove destructed objects in the array
@@ -1161,23 +1187,14 @@ array *m1, *a2;
     }
     if ((size=a2->size) == 0) {
 	/* subtract empty array */
-	copy(m3->elts, m1->elts, m1->size);
+	arr_copy(m3->elts, m1);
 	d_ref_imports(m3);
 	return m3;
     }
 
-    /* copy values of array */
-    v1 = d_get_elts(a2);
-    v2 = ALLOCA(value, size);
-    for (n1 = size; n1 > 0; --n1) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
-	}
-	*v2++ = *v1++;
-    }
-    /* sort values */
-    qsort(v2 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of array */
+    copytmp(v2 = ALLOCA(value, size), a2);
+    qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
     v3 = m3->elts;
@@ -1260,18 +1277,9 @@ array *m1, *a2;
 	return m3;
     }
 
-    /* copy values of array */
-    v1 = d_get_elts(a2);
-    v2 = ALLOCA(value, size);
-    for (n1 = size; n1 > 0; --n1) {
-	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
-	    /* replace destructed object by 0 */
-	    *v1 = zero_value;
-	}
-	*v2++ = *v1++;
-    }
-    /* sort values */
-    qsort(v2 -= size, size, sizeof(value), cmp);
+    /* copy and sort values of array */
+    copytmp(v2 = ALLOCA(value, size), a2);
+    qsort(v2, size, sizeof(value), cmp);
 
     v1 = m1->elts;
     v3 = m3->elts;
@@ -1437,7 +1445,7 @@ value *val, *elt;
     if (m->size > 0) {
 	register int n;
 
-	n = search(val, d_get_elts(m), m->size, 2);
+	n = search(val, d_get_elts(m), m->size, 2, FALSE);
 	if (n >= 0) {
 	    value *v;
 
@@ -1562,6 +1570,45 @@ value *val, *elt;
 }
 
 /*
+ * NAME:	mapping->range()
+ * DESCRIPTION:	return a mapping value subrange
+ */
+array *map_range(m, v1, v2)
+array *m;
+register value *v1, *v2;
+{
+    register unsigned short from, to;
+    register array *range;
+
+    map_compact(m);
+
+    /* determine subrange */
+    from = (v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
+    if (v2 == (value *) NULL) {
+	to = m->size;
+    } else {
+	to = search(v2, m->elts, m->size, 2, TRUE);
+	if (to < m->size && cmp(v2, &m->elts[to]) == 0 &&
+	    (!T_INDEXED(v2->type) || v2->u.array == m->elts[to].u.array)) {
+	    /*
+	     * include last element
+	     */
+	    to += 2;
+	}
+    }
+    if (from >= to) {
+	return map_new(0L);	/* empty subrange */
+    }
+
+    /* copy subrange */
+    range = map_new((long) (to -= from));
+    copy(range->elts, m->elts + from, to);
+
+    d_ref_imports(range);
+    return range;
+}
+
+/*
  * NAME:	mapping->indices()
  * DESCRIPTION:	return the indices of a mapping
  */
@@ -1573,7 +1620,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    indices = map_new((long) (n = m->size >> 1));
+    indices = arr_new((long) (n = m->size >> 1));
     v1 = indices->elts;
     for (v2 = m->elts; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);
@@ -1596,7 +1643,7 @@ array *m;
     register unsigned short n;
 
     map_compact(m);
-    values = map_new((long) (n = m->size >> 1));
+    values = arr_new((long) (n = m->size >> 1));
     v1 = values->elts;
     for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);

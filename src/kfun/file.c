@@ -563,11 +563,12 @@ register value *val;
 {
     register char *p;
     register int i;
+    char *q;
     xfloat flt;
     bool isfloat;
 
-    val->u.number = strtol(p = buf, &buf, 10);
-    if (p == buf) {
+    val->u.number = strtol(q = buf, &buf, 10);
+    if (q == buf) {
 	restore_error("digit expected");
     }
 
@@ -619,7 +620,7 @@ register value *val;
 	VFLT_PUT(val, flt);
 	return p + 1;
     } else if (isfloat) {
-	if (!flt_atof(&buf, &flt)) {
+	if (!flt_atof(&q, &flt)) {
 	    restore_error("float too large");
 	}
 	val->type = T_FLOAT;

@@ -744,7 +744,12 @@ register value *val;
 	error("Non-numeric value in indexed string assignment");
     }
 
-    ret.u.string = str_new(str->text, (long) str->len);
+    if (str->primary == (strref *) NULL && str->ref == 1) {
+	/* only reference to this string: don't copy */
+	ret.u.string = str;
+    } else {
+	ret.u.string = str_new(str->text, (long) str->len);
+    }
     ret.u.string->text[i] = val->u.number;
     return &ret;
 }

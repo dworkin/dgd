@@ -1158,7 +1158,7 @@ int kf_or_int()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_rangeft, pt_rangeft)
 # else
-char pt_rangeft[] = { C_STATIC, T_MIXED, 3, T_MIXED, T_INT, T_INT };
+char pt_rangeft[] = { C_STATIC, T_MIXED, 3, T_MIXED, T_MIXED, T_MIXED };
 /*
  * NAME:	kfun->rangeft()
  * DESCRIPTION:	value [ int .. int ]
@@ -1167,6 +1167,17 @@ int kf_rangeft()
 {
     string *str;
     array *a;
+
+    if (sp[2].type == T_MAPPING) {
+	a = map_range(sp[2].u.array, &sp[1], sp);
+	i_del_value(sp++);
+	i_del_value(sp++);
+	i_add_ticks(sp->u.array->size);
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+
+	return 0;
+    }
 
     if (sp[1].type != T_INT) {
 	kf_argerror(KF_RANGEFT, 2);
@@ -1205,7 +1216,7 @@ int kf_rangeft()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_rangef, pt_rangef)
 # else
-char pt_rangef[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_rangef[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->rangef()
@@ -1215,6 +1226,16 @@ int kf_rangef()
 {
     string *str;
     array *a;
+
+    if (sp[1].type == T_MAPPING) {
+	a = map_range(sp[1].u.array, sp, (value *) NULL);
+	i_del_value(sp++);
+	i_add_ticks(sp->u.array->size);
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+
+	return 0;
+    }
 
     if (sp->type != T_INT) {
 	kf_argerror(KF_RANGEF, 2);
@@ -1250,7 +1271,7 @@ int kf_rangef()
 # ifdef FUNCDEF
 FUNCDEF("[]", kf_ranget, pt_ranget)
 # else
-char pt_ranget[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_INT };
+char pt_ranget[] = { C_STATIC, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->ranget()
@@ -1260,6 +1281,16 @@ int kf_ranget()
 {
     string *str;
     array *a;
+
+    if (sp[1].type == T_MAPPING) {
+	a = map_range(sp[1].u.array, (value *) NULL, sp);
+	i_del_value(sp++);
+	i_add_ticks(sp->u.array->size);
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+
+	return 0;
+    }
 
     if (sp->type != T_INT) {
 	kf_argerror(KF_RANGET, 2);
@@ -1303,6 +1334,15 @@ int kf_range()
 {
     string *str;
     array *a;
+
+    if (sp->type == T_MAPPING) {
+	a = map_range(sp->u.array, (value *) NULL, (value *) NULL);
+	i_add_ticks(sp->u.array->size);
+	arr_del(sp->u.array);
+	arr_ref(sp->u.array = a);
+
+	return 0;
+    }
 
     switch (sp->type) {
     case T_STRING:

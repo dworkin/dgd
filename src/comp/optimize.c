@@ -502,7 +502,7 @@ register node **m;
     n = *m;
     if (n->type == N_ADD && n->r.right->type == N_ADD &&
 	n->l.left->mod == n->r.right->mod &&
-	(n->l.left->mod == T_STRING || n->l.left->mod == T_ARRAY)) {
+	(n->mod == T_STRING || (n->mod & T_REF) != 0)) {
 	/*
 	 * a + (b + c) --> (a + b) + c
 	 * the order in which these are added won't affect the final result
@@ -528,10 +528,7 @@ register node **m;
 	    return d1;
 	}
 
-	if ((n->mod == T_STRING || (n->mod & T_REF) != 0 ||
-	     n->r.right->type == N_RANGE) &&
-	    (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0 ||
-	     n->l.left->type == N_RANGE)) {
+	if (n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0) {
 	    /*
 	     * see if the summand operator can be used
 	     */
@@ -540,9 +537,10 @@ register node **m;
 		n->l.left->type = N_SUM;
 		d1 += 2;			/* (-2) on both sides */
 		n->type = N_SUM;
-		d2++;				/* add (-2) */
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
+		} else {
+		    d2++;			/* add (-2) */
 		}
 		return d1 + d2;
 
@@ -554,20 +552,22 @@ register node **m;
 	    case N_AGGR:
 		d1++;				/* add (-2) */
 		n->type = N_SUM;
-		d2++;				/* add (-2) */
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
+		} else {
+		    d2++;			/* add (-2) */
 		}
 		return d1 + d2;
 
 	    case N_RANGE:
-		d1 = max2(d1 + 1, 3);		/* add (-2), at least 3 */
+		d1 = max2(d1, 3);		/* at least 3 */
 		/* fall through */
 	    case N_SUM:
 		n->type = N_SUM;
-		d2++;				/* add (-2) */
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
+		} else {
+		    d2++;			/* add (-2) */
 		}
 		return d1 + d2;
 	    }
@@ -1138,8 +1138,7 @@ bool pop;
 
     if (n->type == N_ADD_EQ &&
 	(n->mod == T_STRING || (n->mod & T_REF) != 0) &&
-	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0 ||
-	 n->r.right->type == N_RANGE)) {
+	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0)) {
 	/*
 	 * see if the summand operator can be used
 	 */
@@ -1158,7 +1157,7 @@ bool pop;
 	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
 
 	case N_RANGE:
-	    d2 = max2(d2, 3);			/* add (-2), at least 3 */
+	    d2 = max2(d2, 3);			/* at least 3 */
 	    /* fall through */
 	case N_SUM:
 	    n->type = N_SUM_EQ;
@@ -1565,7 +1564,19 @@ int pop;
 	d1 = opt_expr(&n->l.left, FALSE);
 	d2 = 1;
 	if (n->r.right->l.left != (node *) NULL) {
-	    d1 = max2(d1, d2++ + opt_expr(&n->r.right->l.left, FALSE));
+	    d2 = opt_expr(&n->r.right->l.left, FALSE);
+	    if ((n->l.left->mod == T_STRING || (n->l.left->mod & T_REF) != 0) &&
+		n->r.right->l.left->type == N_INT &&
+		n->r.right->l.left->l.number == 0) {
+		/*
+		 * str[0 .. x] or arr[0 .. x]
+		 */
+		n->r.right->l.left = (node *) NULL;
+		d2 = 1;
+	    } else {
+		d1 = max2(d1, d2 + 1);
+		d2 = 2;
+	    }
 	}
 	if (n->r.right->r.right != (node *) NULL) {
 	    d1 = max2(d1, d2 + opt_expr(&n->r.right->r.right, FALSE));

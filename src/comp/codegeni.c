@@ -628,8 +628,7 @@ register node *n;
     } else if (n->type == N_RANGE) {
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
-	if (n->l.left != (node *) NULL &&
-	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	if (n->l.left != (node *) NULL) {
 	    cg_expr(n->l.left, FALSE);
 	    if (n->r.right != (node *) NULL) {
 		cg_expr(n->r.right, FALSE);
@@ -641,8 +640,9 @@ register node *n;
 	    cg_expr(n->r.right, FALSE);
 	    code_kfun(KF_CKRANGET, n->line);
 	} else {
+	    code_kfun(KF_RANGE, n->line);
 	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(-2);		/* no range */
+	    code_byte(-2);
 	}
     } else {
 	cg_expr(n, FALSE);
@@ -1144,8 +1144,7 @@ register int pop;
     case N_RANGE:
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
-	if (n->l.left != (node *) NULL &&
-	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	if (n->l.left != (node *) NULL) {
 	    cg_expr(n->l.left, FALSE);
 	    if (n->r.right != (node *) NULL) {
 		cg_expr(n->r.right, FALSE);

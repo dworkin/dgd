@@ -561,7 +561,7 @@ int kf_map_indices()
     array *a;
 
     a = map_indices(sp->u.array);
-    i_add_ticks(a->size);
+    i_add_ticks(sp->u.array->size);
     arr_del(sp->u.array);
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);
@@ -585,7 +585,7 @@ int kf_map_values()
     array *a;
 
     a = map_values(sp->u.array);
-    i_add_ticks(a->size);
+    i_add_ticks(sp->u.array->size);
     arr_del(sp->u.array);
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);

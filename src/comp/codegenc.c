@@ -742,8 +742,7 @@ register node *n;
 	cg_expr(n->l.left, PUSH);
 	comma();
 	n = n->r.right;
-	if (n->l.left != (node *) NULL &&
-	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	if (n->l.left != (node *) NULL) {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
 	    if (n->r.right != (node *) NULL) {
@@ -758,7 +757,8 @@ register node *n;
 	    comma();
 	    kfun("ckranget");
 	} else {
-	    output("PUSH_NUMBER -2");	/* no range */
+	    kfun("range");
+	    output(", PUSH_NUMBER -2");
 	}
     } else {
 	cg_expr(n, PUSH);
@@ -1266,8 +1266,7 @@ register int state;
 	cg_expr(n->l.left, PUSH);
 	comma();
 	n = n->r.right;
-	if (n->l.left != (node *) NULL &&
-	    (n->l.left->type != N_INT || n->l.left->l.number != 0)) {
+	if (n->l.left != (node *) NULL) {
 	    cg_expr(n->l.left, PUSH);
 	    comma();
 	    if (n->r.right != (node *) NULL) {

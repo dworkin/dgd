@@ -1106,3 +1106,8 @@ DGD 1.1
  - Optimize `1 && a' and `0 || a' to `!!a', rather than `a'.
  - Fixed a bug in upgrading an old clone after doing a recompile on the object
    earlier in the same thread.
+ - Corrected some floating point rounding errors.
+ - The return value of a redirectable function was not properly checked in
+   a call from an untypechecked function.
+ - Added mapping subranges.
+ - Made dealing with destructed objects in arrays and mappings faster.

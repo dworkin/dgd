@@ -49,4 +49,5 @@ extern bool		   o_dump	P((int));
 extern void		   o_restore	P((int));
 extern void		   o_conv	P((void));
 
-extern object *otable;
+extern object  *otable;
+extern Uint	odcount;
