@@ -968,22 +968,6 @@ register array *m;
 }
 
 /*
- * NAME:	mapping->size()
- * DESCRIPTION:	return the size of a mapping
- */
-unsigned short map_size(m)
-register array *m;
-{
-    register unsigned short size;
-
-    size = m->size >> 1;
-    if (m->hashed != (maphash *) NULL) {
-	size += m->hashed->size;
-    }
-    return size;
-}
-
-/*
  * NAME:	mapping->compact()
  * DESCRIPTION:	compact a mapping: put elements from the hash table into
  *		the array, and remove destructed objects
@@ -1120,6 +1104,17 @@ array *m;
 	m->size = arrsize;
 	d_change_map(m);
     }
+}
+
+/*
+ * NAME:	mapping->size()
+ * DESCRIPTION:	return the size of a mapping
+ */
+unsigned short map_size(m)
+array *m;
+{
+    map_compact(m);
+    return m->size >> 1;
 }
 
 /*

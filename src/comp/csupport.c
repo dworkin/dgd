@@ -192,7 +192,7 @@ register int n;
 {
     register kfunc *kf;
 
-    kf = &KFUN(n);
+    kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 	i_typecheck(kf->name, "kfun", kf->proto, PROTO_NARGS(kf->proto), TRUE);
     }
@@ -211,7 +211,7 @@ register int n, nargs;
 {
     register kfunc *kf;
 
-    kf = &KFUN(n);
+    kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
 	i_typecheck(kf->name, "kfun", kf->proto, nargs, TRUE);
     }

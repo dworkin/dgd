@@ -1,13 +1,13 @@
    To compile DGD, you will have to set HOST in src/Makefile to the
 proper value:
-SUNOS4		SunOS 4.x, the default.  Should compile immediately with gcc.
+NETBSD		NetBSD.  This is the default.
+BSD386		FreeBSD or 386BSD.
+GENERIC_BSD	BSD Unix.
+SUNOS4		SunOS 4.x.  Copy src/host/Makefile.sun4 to src/host/Makefile.
+GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
 MINIX_68K	Minix 1.5 for 68K computers, probably works with Minix 1.6
 		as well.  Copy src/host/minix68k/Makefile to src/host.
 ATARI_ST	Atari ST with MiNT and gcc.  See src/host/atarist/README.
-GENERIC_BSD	BSD Unix.  Copy src/host/Makefile.bsd to src/host/Makefile.
-GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
-NETBSD		NetBSD.  Copy host/Makefile.bsd to host/Makefile.
-BSD386		FreeBSD or 386BSD.  Copy host/Makefile.bsd to host/Makefile.
 LINUX		Linux.  Copy host/Makefile.sysv to host/Makefile.
 
    For other platforms, you can either try to use the closest of the above,

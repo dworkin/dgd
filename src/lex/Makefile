@@ -14,7 +14,7 @@ DMAKE=	make
 
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
-a.out:	$(OBJ) always
+a.out:	$(OBJ) lex.o always
 	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' lex.sub
 	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			     sub

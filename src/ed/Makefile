@@ -14,7 +14,7 @@ DMAKE=	make
 
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
 
-a.out:	$(OBJ) always
+a.out:	$(OBJ) ed.o always
 	cd ..; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
 	cd ../host; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			     sub

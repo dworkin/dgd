@@ -1064,18 +1064,17 @@ node *expr, *stmt;
 	} else if (!(stmt->flags & F_ENTRY)) {
 	    c_error("unreachable code in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
-	    /* only a default label */
-	    stmt = stmt->l.left;
+	    /* only a default label: erase N_CASE */
+	    n = case_list->r.right->r.right->l.left;
+	    *(case_list->r.right->r.right) = *n;
+	    n->type = N_FAKE;
 	    if (switch_list->brk) {
-		if (stmt->type == N_BREAK) {
-		    stmt = (node *) NULL;
-		} else {
-		    /*
-		     * enclose the break statement with a proper block
-		     */
-		    stmt = node_bin(N_FOREVER, 0, (node *) NULL,
-				    node_mon(N_BLOCK, N_BREAK, stmt));
-		}
+		/*
+		 * enclose the break statement with a proper block
+		 */
+		stmt = c_concat(stmt, node_mon(N_BREAK, 0, (node *) NULL));
+		stmt = node_mon(N_BLOCK, N_BREAK,
+				node_bin(N_FOREVER, 0, (node *) NULL, stmt));
 	    }
 	    n = c_concat(c_exp_stmt(expr), stmt);
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&

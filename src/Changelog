@@ -748,3 +748,14 @@ DGD 1.0.9
    inconsistant state.
  - Changed YYDEPTH into YYMAXDEPTH in config.h; this should work for a wider
    range of yaccs.
+
+DGD 1.1
+
+ - Fixed a bug that caused precompiled kfun calls to be wrong if kfuns were
+   added since the last state dump.
+ - The type of (expr1 ? void : expr2) and (expr1 ? expr2 : void) is now always
+   void.
+ - Fixed another bug in switch statements with only a default label inside.
+ - Made sure that mappings are compacted before the size is checked.
+ - Fixed a bug that might occur while restoring object filenames in a state
+   dump.

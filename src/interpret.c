@@ -14,10 +14,10 @@ typedef struct _frame_ {
     object *obj;		/* current object */
     control *ctrl;		/* object control block */
     dataspace *data;		/* dataspace of current object */
-    bool external;		/* TRUE if it's an external call */
     control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
     unsigned short foffset;	/* program function offset */
+    bool external;		/* TRUE if it's an external call */
     dfuncdef *func;		/* current function */
     int nargs;			/* # arguments */
     int nvars;			/* # local variables */
@@ -1626,7 +1626,7 @@ int funci;
 bool i_call(obj, func, call_static, nargs)
 object *obj;
 char *func;
-bool call_static;
+int call_static;
 int nargs;
 {
     register dsymbol *symb;

@@ -233,7 +233,8 @@ char *argv[];
     if (ec_push()) {
 	warning((char *) NULL);
 	if (argc == 4) {
-	    /* remove output file */
+	    /* remove output file: may fail if path is not absolute */
+	    printf("\n# error Error while compiling\n");
 	    fclose(stdout);
 	    unlink(argv[3]);
 	}
@@ -535,7 +536,7 @@ string *str;
  */
 void comm_echo(obj, echo)
 object *obj;
-bool echo;
+int echo;
 {
 }
 
@@ -544,7 +545,7 @@ bool echo;
  * DESCRIPTION:	pretend to flush output to all users
  */
 void comm_flush(flag)
-bool flag;
+int flag;
 {
 }
 

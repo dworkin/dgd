@@ -1575,7 +1575,10 @@ register node *n1, *n2, *n3;
 	/*
 	 * typechecked
 	 */
-	if ((type=n2->mod) != T_VOID || n3->mod != T_VOID) {
+	if (n2->mod == T_VOID || n3->mod == T_VOID) {
+	    /* result can never be used */
+	    type = T_VOID;
+	} else {
 	    type = c_tmatch(n2->mod, n3->mod);
 	    if (type == T_INVALID) {
 		/* no typechecking here, just let the result be mixed */

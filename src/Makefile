@@ -1,5 +1,5 @@
 #
-# Makefile for DGD, Dworkin's Game Driver
+# Makefile for DGD, Dworkin's Generic Driver
 #
 HOST=	NETBSD
 DEFINES=-D$(HOST)

@@ -55,7 +55,7 @@ static void comma()
 static void kfun(n)
 int n;
 {
-    output("call_kfun(%d/*%s*/)", n, KFUN(n).name);
+    output("call_kfun(%d/*%s*/)", &KFUN(n) - kftab, KFUN(n).name);
 }
 
 /*
@@ -66,7 +66,7 @@ static void kfun_arg(n, arg)
 int n;
 char *arg;
 {
-    output("call_kfun_arg(%d/*%s*/, %s)", n, KFUN(n).name, arg);
+    output("call_kfun_arg(%d/*%s*/, %s)", &KFUN(n) - kftab, KFUN(n).name, arg);
 }
 
 /*

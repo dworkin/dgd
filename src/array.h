@@ -28,8 +28,8 @@ extern array	       *arr_range	P((array*, long, long));
 
 extern array	       *map_new		P((long));
 extern void		map_sort	P((array*));
-extern unsigned short	map_size	P((array*));
 extern void		map_compact	P((array*));
+extern unsigned short	map_size	P((array*));
 extern array	       *map_add		P((array*, array*));
 extern array	       *map_sub		P((array*, array*));
 extern array	       *map_intersect	P((array*, array*));

@@ -479,13 +479,14 @@ long t;
 		(char *) memchr(p, '\0', buflen) == (char *) NULL) {
 		/* move remainder to beginning, and refill buffer */
 		memcpy(buffer, p, buflen);
-		p = buffer + buflen;
-		buflen = (onamelen > CHUNKSZ - buflen) ?
-			  CHUNKSZ - buflen : onamelen;
-		if (read(fd, p, buflen) != buflen) {
+		len = (onamelen > CHUNKSZ - buflen) ?
+		       CHUNKSZ - buflen : onamelen;
+		if (read(fd, buffer + buflen, len) != len) {
 		    fatal("cannot restore object names");
 		}
-		onamelen -= buflen;
+		onamelen -= len;
+		buflen += len;
+		p = buffer;
 	    }
 	    mstatic();
 	    strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
