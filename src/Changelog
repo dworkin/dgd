@@ -1565,3 +1565,4 @@ DGD 1.3
  - While restoring a callout, not all appropriate fields were zeroed.
  - Don't look for further connections when no new ones can be accepted.
  - Prepare the name lookup thread for running again after exiting (Windows).
+ - A few more fixes to get restarting (not just on Windows) to work.

@@ -114,7 +114,7 @@ static void ipa_start(SOCKET sock)
  */
 static void ipa_finish(void)
 {
-    close(in);
+    closesocket(in);
     in = INVALID_SOCKET;
     out = INVALID_SOCKET;
 }

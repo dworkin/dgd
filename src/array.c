@@ -89,7 +89,11 @@ unsigned int size;
 {
     max_size = size;
     tag = 0;
+    aclist = (arrchunk *) NULL;
     achunksz = ARR_CHUNK;
+    flist = (array *) NULL;
+    fmelt = (mapelt *) NULL;
+    meltlist = (meltchunk *) NULL;
     meltchunksz = MELT_CHUNK;
 }
 
