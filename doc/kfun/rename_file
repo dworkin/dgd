@@ -1,0 +1,18 @@
+NAME
+	rename_file - rename a file
+
+SYNOPSIS
+	int rename_file(string file)
+
+
+DESCRIPTION
+	Rename a file.  1 is returned if the file could be renamed, 0
+	otherwise.
+
+ERRORS
+	Moving a directory may not be possible if the host operating system
+	does not support this as a system call.  Moving a file across file
+	systems will probably fail.
+
+SEE ALSO
+	kfun/remove_file
