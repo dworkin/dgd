@@ -1509,3 +1509,4 @@ DGD 1.3
  - Include the server name with the version number.
  - Fixed a bug in saving/restoring variables in an object that privately
    inherited another.
+ - Prevent code from being erroneously optimized away in rare cases.
