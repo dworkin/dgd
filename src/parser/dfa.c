@@ -1194,7 +1194,8 @@ register dfa *fa;
     buf += fa->ecnum;
     memset(fa->ecmembers, '\0', 256);
     memset(fa->ecset, '\0', 32 * 256);
-    for (i = 256; i > 0; --i) {
+    for (i = 256; i > 0; ) {
+	--i;
 	c = UCHAR(fa->eclass[i]);
 	fa->ecmembers[c]++;
 	fa->ecset[(c << 3) + (i >> 5)] |= 1 << (i & 31);
