@@ -26,4 +26,4 @@ ERRORS
 	object will crash the system.
 
 SEE ALSO
-	efun/call_other, efun/destruct_object
+	efun/call_other, efun/destruct_object, efun/new_object

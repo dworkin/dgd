@@ -154,7 +154,8 @@ struct _dataplane_ {
 };
 
 struct _dataspace_ {
-    dataspace *prev, *next;
+    dataspace *prev, *next;	/* swap list */
+    dataspace *gcprev, *gcnext;	/* garbage collection list */
 
     dataspace *iprev;		/* previous in import list */
     dataspace *inext;		/* next in import list */
@@ -175,6 +176,7 @@ struct _dataspace_ {
     Uint eltsize;		/* o total size of array elements */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
+    array alist;		/* array linked list sentinel */
     Uint arroffset;		/* o offset of array table in data space */
 
     Uint nstrings;		/* i/o # strings */
@@ -186,6 +188,7 @@ struct _dataspace_ {
     uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
     dcallout *callouts;		/* callouts */
+    struct _scallout_ *scallouts; /* o scallouts */
     Uint cooffset;		/* offset of callout table */
 
     dataplane base;		/* basic value plane */

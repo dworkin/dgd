@@ -6,6 +6,7 @@ struct _array_ {
     value *elts;			/* elements */
     struct _maphash_ *hashed;		/* hashed mapping elements */
     struct _arrref_ *primary;		/* primary reference */
+    array *prev, *next;			/* per-object linked list */
 };
 
 typedef struct _arrmerge_ arrmerge;	/* array merge table */
@@ -17,6 +18,7 @@ extern array	       *arr_new		P((dataspace*, long));
 extern array	       *arr_ext_new	P((dataspace*, long));
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		P((array*));
+extern void		arr_freelist	P((array*));
 extern void		arr_freeall	P((void));
 
 extern arrmerge	       *arr_merge	P((void));

@@ -18,4 +18,4 @@ ERRORS
 	object will crash the system.
 
 SEE ALSO
-	kfun/call_other, kfun/destruct_object
+	kfun/call_other, kfun/destruct_object, kfun/new_object

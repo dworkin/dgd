@@ -1808,6 +1808,8 @@ register unsigned short n;
 			 * move array to new dataspace
 			 */
 			a->primary = &data->base.alocal;
+			a->prev->next = a->next;
+			a->next->prev = a->prev;
 		    } else {
 			/*
 			 * make new array
@@ -1832,6 +1834,10 @@ register unsigned short n;
 			arr_ref(val->u.array = a);
 			imp->narr++;
 		    }
+		    a->prev = &data->alist;
+		    a->next = data->alist.next;
+		    a->next->prev = a;
+		    data->alist.next = a;
 
 		    /*
 		     * store in itab

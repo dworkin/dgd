@@ -103,7 +103,7 @@ unsigned int size;
     if (flist != (array *) NULL) {
 	/* from free list */
 	a = flist;
-	flist = (array *) a->primary;
+	flist = a->next;
     } else {
 	if (achunksz == ARR_CHUNK) {
 	    register arrchunk *l;
@@ -145,6 +145,10 @@ register long size;
     a->tag = tag++;
     a->odcount = odcount;
     a->primary = &data->plane->alocal;
+    a->prev = &data->alist;
+    a->next = data->alist.next;
+    a->next->prev = a;
+    data->alist.next = a;
     return a;
 }
 
@@ -206,9 +210,62 @@ register array *a;
 	    FREE(a->hashed);
 	}
 
-	a->primary = (arrref *) flist;
+	a->prev->next = a->next;
+	a->next->prev = a->prev;
+	a->next = flist;
 	flist = a;
     }
+}
+
+/*
+ * NAME:	array->freelist()
+ * DESCRIPTION:	free all left-over arrays in a dataspace
+ */
+void arr_freelist(alist)
+array *alist;
+{
+    register array *a;
+    register value *v;
+    register unsigned short i;
+    register mapelt *e, *n, **t;
+
+    a = alist;
+    do {
+	if ((v=a->elts) != (value *) NULL) {
+	    for (i = a->size; i > 0; --i) {
+		if (v->type == T_STRING) {
+		    str_del(v->u.string);
+		}
+		v++;
+	    }
+	    FREE(a->elts);
+	}
+
+	if (a->hashed != (maphash *) NULL) {
+	    /*
+	     * delete the hashtable of a mapping
+	     */
+	    for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
+		for (e = *t; e != (mapelt *) NULL; e = n) {
+		    if (e->idx.type == T_STRING) {
+			str_del(e->idx.u.string);
+		    }
+		    if (e->val.type == T_STRING) {
+			str_del(e->val.u.string);
+		    }
+		    n = e->next;
+		    e->next = fmelt;
+		    fmelt = e;
+		    --i;
+		}
+	    }
+	    FREE(a->hashed);
+	}
+
+	a->next = flist;
+	flist = a;
+	a = a->prev;
+    } while (a != alist);
 }
 
 /*
@@ -1105,6 +1162,10 @@ register long size;
     m->tag = tag++;
     m->odcount = odcount;
     m->primary = &data->plane->alocal;
+    m->prev = &data->alist;
+    m->next = data->alist.next;
+    m->next->prev = m;
+    data->alist.next = m;
     return m;
 }
 
@@ -2243,6 +2304,10 @@ register object *obj;
     a->tag = tag++;
     a->odcount = odcount;
     a->primary = &data->plane->alocal;
+    a->prev = &data->alist;
+    a->next = data->alist.next;
+    a->next->prev = a;
+    data->alist.prev = a;
     return a;
 }
 
@@ -2261,6 +2326,10 @@ array *a;
     copy->tag = tag++;
     copy->odcount = odcount;
     copy->primary = &data->plane->alocal;
+    copy->prev = &data->alist;
+    copy->next = data->alist.next;
+    copy->next->prev = copy;
+    data->alist.prev = copy;
     d_ref_imports(copy);
     return copy;
 }

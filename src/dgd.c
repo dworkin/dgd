@@ -98,9 +98,7 @@ void endthread()
     ed_clear();
     ec_clear();
 
-    if (fragment != 0) {
-	co_swapcount(d_swapout(fragment));
-    }
+    co_swapcount(d_swapout(fragment));
 
     if (stop) {
 	if (ext_finish != (void (*) P((void))) NULL) {

@@ -84,7 +84,7 @@ typedef struct _sstring_ {
 
 static char ss_layout[] = "iti";
 
-typedef struct {
+typedef struct _scallout_ {
     Uint time;			/* time of call */
     unsigned short nargs;	/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
@@ -108,6 +108,7 @@ typedef struct {
 
 static control *chead, *ctail;		/* list of control blocks */
 static dataspace *dhead, *dtail;	/* list of dataspace blocks */
+static dataspace *gcdata;		/* next dataspace to garbage collect */
 static sector nctrl;			/* # control blocks */
 static sector ndata;			/* # dataspace blocks */
 static bool nilisnot0;			/* nil != int 0 */
@@ -122,6 +123,7 @@ bool flag;
 {
     chead = ctail = (control *) NULL;
     dhead = dtail = (dataspace *) NULL;
+    gcdata = (dataspace *) NULL;
     nctrl = ndata = 0;
     nilisnot0 = flag;
 }
@@ -195,10 +197,16 @@ object *obj;
 	data->prev = (dataspace *) NULL;
 	data->next = dhead;
 	dhead = data;
+	data->gcprev = gcdata->gcprev;
+	data->gcnext = gcdata;
+	data->gcprev->gcnext = data;
+	gcdata->gcprev = data;
     } else {
 	/* list was empty */
 	data->prev = data->next = (dataspace *) NULL;
 	dhead = dtail = data;
+	gcdata = data;
+	data->gcprev = data->gcnext = data;
     }
     ndata++;
 
@@ -223,6 +231,7 @@ object *obj;
     data->eltsize = 0;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
+    data->alist.prev = data->alist.next = &data->alist;
 
     /* strings */
     data->nstrings = 0;
@@ -234,6 +243,7 @@ object *obj;
     data->ncallouts = 0;
     data->fcallouts = 0;
     data->callouts = (dcallout *) NULL;
+    data->scallouts = (scallout *) NULL;
 
     /* value plane */
     data->base.level = 0;
@@ -918,6 +928,10 @@ register Uint idx;
 	} while (p != (dataplane *) NULL);
 
 	arr->primary = &data->plane->arrays[idx];
+	arr->prev = &data->alist;
+	arr->next = data->alist.next;
+	arr->next->prev = arr;
+	data->alist.next = arr;
 	return arr;
     }
     return data->plane->arrays[idx].arr;
@@ -1084,15 +1098,17 @@ register array *arr;
 void d_get_callouts(data)
 register dataspace *data;
 {
-    scallout *scallouts;
     register scallout *sco;
     register dcallout *co;
     register uindex n;
 
+    if (data->scallouts == (scallout *) NULL) {
+	data->scallouts = ALLOC(scallout, data->ncallouts);
+	sw_readv((char *) data->scallouts, data->sectors,
+		 data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
+    }
+    sco = data->scallouts;
     co = data->callouts = ALLOC(dcallout, data->ncallouts);
-    sco = scallouts = ALLOCA(scallout, data->ncallouts);
-    sw_readv((char *) scallouts, data->sectors,
-	     data->ncallouts * (Uint) sizeof(scallout), data->cooffset);
 
     for (n = data->ncallouts; n > 0; --n) {
 	co->time = sco->time;
@@ -1106,8 +1122,6 @@ register dataspace *data;
 	sco++;
 	co++;
     }
-
-    AFREE(scallouts);
 }
 
 
@@ -1614,14 +1628,23 @@ register dataspace *data;
 	FREE(data->base.strings);
 	data->base.strings = (strref *) NULL;
     }
+
+    /* free any left-over arrays */
+    if (data->alist.next != &data->alist) {
+	data->alist.prev->next = data->alist.next;
+	data->alist.next->prev = data->alist.prev;
+	arr_freelist(data->alist.next);
+	data->alist.prev = data->alist.next = &data->alist;
+    }
 }
 
 /*
  * NAME:	data->save_dataspace()
  * DESCRIPTION:	save all values in a dataspace block
  */
-static bool d_save_dataspace(data, counttab)
+static bool d_save_dataspace(data, swap, counttab)
 register dataspace *data;
+bool swap;
 Uint *counttab;
 {
     sdataspace header;
@@ -1634,7 +1657,7 @@ Uint *counttab;
 	return FALSE;
     }
 
-    if (data->nsectors != 0 && data->base.achange == 0 &&
+    if ((data->nsectors != 0 || !swap) && data->base.achange == 0 &&
 	data->base.schange == 0 && !(data->base.flags & MOD_NEWCALLOUT)) {
 	bool mod;
 
@@ -1648,9 +1671,11 @@ Uint *counttab;
 	     */
 	    d_put_values(data, data->svariables, data->variables,
 			 data->nvariables);
-	    sw_writev((char *) data->svariables, data->sectors,
-		      data->nvariables * (Uint) sizeof(svalue),
-		      data->varoffset);
+	    if (swap) {
+		sw_writev((char *) data->svariables, data->sectors,
+			  data->nvariables * (Uint) sizeof(svalue),
+			  data->varoffset);
+	    }
 	}
 	if (data->base.flags & MOD_ARRAYREF) {
 	    register sarray *sa;
@@ -1671,7 +1696,7 @@ Uint *counttab;
 		sa++;
 		a++;
 	    }
-	    if (mod) {
+	    if (mod && swap) {
 		sw_writev((char *) data->sarrays, data->sectors,
 			  data->narrays * sizeof(sarray), data->arroffset);
 	    }
@@ -1690,10 +1715,13 @@ Uint *counttab;
 		    idx = data->sarrays[n].index;
 		    d_put_values(data, &data->selts[idx], a->arr->elts,
 				 a->arr->size);
-		    sw_writev((char *) &data->selts[idx], data->sectors,
-			      a->arr->size * (Uint) sizeof(svalue),
-			      data->arroffset + data->narrays * sizeof(sarray) +
-				idx * sizeof(svalue));
+		    if (swap) {
+			sw_writev((char *) &data->selts[idx], data->sectors,
+				  a->arr->size * (Uint) sizeof(svalue),
+				  data->arroffset +
+					      data->narrays * sizeof(sarray) +
+					      idx * sizeof(svalue));
+		    }
 		}
 		a++;
 	    }
@@ -1716,23 +1744,17 @@ Uint *counttab;
 		ss++;
 		s++;
 	    }
-	    if (mod) {
+	    if (mod && swap) {
 		sw_writev((char *) data->sstrings, data->sectors,
 			  data->nstrings * sizeof(sstring),
 			  data->stroffset);
 	    }
 	}
 	if (data->base.flags & MOD_CALLOUT) {
-	    scallout *scallouts;
 	    register scallout *sco;
 	    register dcallout *co;
 
-	    /* save new (?) fcallouts value */
-	    sw_writev((char *) &data->fcallouts, data->sectors,
-		      (Uint) sizeof(uindex),
-		      (Uint) ((char *) &header.fcallouts - (char *) &header));
-
-	    sco = scallouts = ALLOCA(scallout, data->ncallouts);
+	    sco = data->scallouts;
 	    co = data->callouts;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
@@ -1751,14 +1773,20 @@ Uint *counttab;
 		co++;
 	    }
 
-	    sw_writev((char *) scallouts, data->sectors,
-		      data->ncallouts * (Uint) sizeof(scallout),
-		      data->cooffset);
-	    AFREE(scallouts);
+	    if (swap) {
+		/* save new (?) fcallouts value */
+		sw_writev((char *) &data->fcallouts, data->sectors,
+			  (Uint) sizeof(uindex),
+			  (Uint) ((char *)&header.fcallouts - (char *)&header));
+
+		/* save scallouts */
+		sw_writev((char *) data->scallouts, data->sectors,
+			  data->ncallouts * (Uint) sizeof(scallout),
+			  data->cooffset);
+	    }
 	}
     } else {
 	savedata save;
-	scallout *scallouts;
 	char *text;
 	register Uint size;
 
@@ -1809,7 +1837,6 @@ Uint *counttab;
 		data->callouts = (dcallout *) NULL;
 	    } else {
 		/* process callouts */
-		scallouts = ALLOCA(scallout, n);
 		for (co = data->callouts; n > 0; --n, co++) {
 		    if (co->val[0].type == T_STRING) {
 			d_count(&save, co->val,
@@ -1844,13 +1871,15 @@ Uint *counttab;
 	save.nstr = 0;
 	save.arrsize = 0;
 	save.strsize = 0;
+	data->scallouts = REALLOC(data->scallouts, scallout, 0,
+				  header.ncallouts);
 
 	d_save(&save, data->svariables, data->variables, data->nvariables);
 	if (header.ncallouts > 0) {
 	    register scallout *sco;
 	    register dcallout *co;
 
-	    sco = scallouts;
+	    sco = data->scallouts;
 	    co = data->callouts;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
@@ -1870,77 +1899,78 @@ Uint *counttab;
 	arr_clear(save.amerge);
 	str_clear(save.smerge);
 
-	text = save.stext;
-	if (header.strsize >= CMPLIMIT) {
-	    text = ALLOCA(char, header.strsize);
-	    size = compress(text, save.stext, header.strsize);
-	    if (size != 0) {
-		header.flags |= CMP_PRED;
-		header.strsize = size;
-	    } else {
-		AFREE(text);
-		text = save.stext;
-	    }
-	}
-
-	/* create sector space */
-	size = sizeof(sdataspace) +
-	       (header.nvariables + header.eltsize) * sizeof(svalue) +
-	       header.narrays * sizeof(sarray) +
-	       header.nstrings * sizeof(sstring) +
-	       header.strsize +
-	       header.ncallouts * (Uint) sizeof(scallout);
-	header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
-	data->nsectors = header.nsectors;
-	OBJ(data->oindex)->dfirst = data->sectors[0];
-
-	/* save header */
-	size = sizeof(sdataspace);
-	sw_writev((char *) &header, data->sectors, size, (Uint) 0);
-	sw_writev((char *) data->sectors, data->sectors,
-		  header.nsectors * (Uint) sizeof(sector), size);
-	size += header.nsectors * (Uint) sizeof(sector);
-
-	/* save variables */
-	data->varoffset = size;
-	sw_writev((char *) data->svariables, data->sectors,
-		  data->nvariables * (Uint) sizeof(svalue), size);
-	size += data->nvariables * (Uint) sizeof(svalue);
-
-	/* save arrays */
-	data->arroffset = size;
-	if (header.narrays > 0) {
-	    sw_writev((char *) save.sarrays, data->sectors,
-		      header.narrays * sizeof(sarray), size);
-	    size += header.narrays * sizeof(sarray);
-	    if (header.eltsize > 0) {
-		sw_writev((char *) save.selts, data->sectors,
-			  header.eltsize * sizeof(svalue), size);
-		size += header.eltsize * sizeof(svalue);
-	    }
-	}
-
-	/* save strings */
-	data->stroffset = size;
-	if (header.nstrings > 0) {
-	    sw_writev((char *) save.sstrings, data->sectors,
-		      header.nstrings * sizeof(sstring), size);
-	    size += header.nstrings * sizeof(sstring);
-	    if (header.strsize > 0) {
-		sw_writev(text, data->sectors, header.strsize, size);
-		size += header.strsize;
-		if (text != save.stext) {
+	if (swap) {
+	    text = save.stext;
+	    if (header.strsize >= CMPLIMIT) {
+		text = ALLOCA(char, header.strsize);
+		size = compress(text, save.stext, header.strsize);
+		if (size != 0) {
+		    header.flags |= CMP_PRED;
+		    header.strsize = size;
+		} else {
 		    AFREE(text);
+		    text = save.stext;
 		}
 	    }
-	}
 
-	/* save callouts */
-	data->cooffset = size;
-	if (header.ncallouts > 0) {
-	    sw_writev((char *) scallouts, data->sectors,
-		      header.ncallouts * (Uint) sizeof(scallout), size);
-	    AFREE(scallouts);
+	    /* create sector space */
+	    size = sizeof(sdataspace) +
+		   (header.nvariables + header.eltsize) * sizeof(svalue) +
+		   header.narrays * sizeof(sarray) +
+		   header.nstrings * sizeof(sstring) +
+		   header.strsize +
+		   header.ncallouts * (Uint) sizeof(scallout);
+	    header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
+	    data->nsectors = header.nsectors;
+	    OBJ(data->oindex)->dfirst = data->sectors[0];
+
+	    /* save header */
+	    size = sizeof(sdataspace);
+	    sw_writev((char *) &header, data->sectors, size, (Uint) 0);
+	    sw_writev((char *) data->sectors, data->sectors,
+		      header.nsectors * (Uint) sizeof(sector), size);
+	    size += header.nsectors * (Uint) sizeof(sector);
+
+	    /* save variables */
+	    data->varoffset = size;
+	    sw_writev((char *) data->svariables, data->sectors,
+		      data->nvariables * (Uint) sizeof(svalue), size);
+	    size += data->nvariables * (Uint) sizeof(svalue);
+
+	    /* save arrays */
+	    data->arroffset = size;
+	    if (header.narrays > 0) {
+		sw_writev((char *) save.sarrays, data->sectors,
+			  header.narrays * sizeof(sarray), size);
+		size += header.narrays * sizeof(sarray);
+		if (header.eltsize > 0) {
+		    sw_writev((char *) save.selts, data->sectors,
+			      header.eltsize * sizeof(svalue), size);
+		    size += header.eltsize * sizeof(svalue);
+		}
+	    }
+
+	    /* save strings */
+	    data->stroffset = size;
+	    if (header.nstrings > 0) {
+		sw_writev((char *) save.sstrings, data->sectors,
+			  header.nstrings * sizeof(sstring), size);
+		size += header.nstrings * sizeof(sstring);
+		if (header.strsize > 0) {
+		    sw_writev(text, data->sectors, header.strsize, size);
+		    size += header.strsize;
+		    if (text != save.stext) {
+			AFREE(text);
+		    }
+		}
+	    }
+
+	    /* save callouts */
+	    data->cooffset = size;
+	    if (header.ncallouts > 0) {
+		sw_writev((char *) data->scallouts, data->sectors,
+			  header.ncallouts * (Uint) sizeof(scallout), size);
+	    }
 	}
 
 	d_free_values(data);
@@ -1956,7 +1986,7 @@ Uint *counttab;
     }
 
     data->base.flags = 0;
-    return TRUE;
+    return swap;
 }
 
 
@@ -1974,42 +2004,52 @@ unsigned int frag;
 
     count = 0;
 
-    /* swap out dataspace blocks */
-    data = dtail;
-    for (n = ndata / frag; n > 0; --n) {
-	register dataspace *prev;
-
-	prev = data->prev;
-	if (!(OBJ(data->oindex)->flags & O_PENDIO) || frag == 1) {
-	    if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
-		ext_swapout != (void (*) P((object*))) NULL) {
-		(*ext_swapout)(OBJ(data->oindex));
-	    }
-	    if (d_save_dataspace(data, (Uint *) NULL)) {
-		count++;
-	    }
-	    OBJ(data->oindex)->data = (dataspace *) NULL;
-	    d_free_dataspace(data);
+    /* perform garbage collection for one dataspace */
+    if (gcdata != (dataspace *) NULL) {
+	if (d_save_dataspace(gcdata, (frag != 0), (Uint *) NULL)) {
+	    count++;
 	}
-	data = prev;
+	gcdata = gcdata->gcnext;
     }
 
-    /* swap out control blocks */
-    ctrl = ctail;
-    for (n = nctrl / frag; n > 0; --n) {
-	register control *prev;
+    if (frag != 0) {
+	/* swap out dataspace blocks */
+	data = dtail;
+	for (n = ndata / frag; n > 0; --n) {
+	    register dataspace *prev;
 
-	prev = ctrl->prev;
-	if (ctrl->ndata == 0) {
-	    if ((ctrl->sectors == (sector *) NULL &&
-		 !(ctrl->flags & CTRL_COMPILED)) || (ctrl->flags & CTRL_VARMAP))
-	    {
-		d_save_control(ctrl);
+	    prev = data->prev;
+	    if (!(OBJ(data->oindex)->flags & O_PENDIO) || frag == 1) {
+		if ((OBJ(data->oindex)->flags & O_SPECIAL) == O_SPECIAL &&
+		    ext_swapout != (void (*) P((object*))) NULL) {
+		    (*ext_swapout)(OBJ(data->oindex));
+		}
+		if (d_save_dataspace(data, TRUE, (Uint *) NULL)) {
+		    count++;
+		}
+		OBJ(data->oindex)->data = (dataspace *) NULL;
+		d_free_dataspace(data);
 	    }
-	    OBJ(ctrl->oindex)->ctrl = (control *) NULL;
-	    d_free_control(ctrl);
+	    data = prev;
 	}
-	ctrl = prev;
+
+	/* swap out control blocks */
+	ctrl = ctail;
+	for (n = nctrl / frag; n > 0; --n) {
+	    register control *prev;
+
+	    prev = ctrl->prev;
+	    if (ctrl->ndata == 0) {
+		if ((ctrl->sectors == (sector *) NULL &&
+		     !(ctrl->flags & CTRL_COMPILED)) ||
+		    (ctrl->flags & CTRL_VARMAP)) {
+		    d_save_control(ctrl);
+		}
+		OBJ(ctrl->oindex)->ctrl = (control *) NULL;
+		d_free_control(ctrl);
+	    }
+	    ctrl = prev;
+	}
     }
 
     return count;
@@ -2039,7 +2079,7 @@ void d_swapsync()
 	    ext_swapout != (void (*) P((object*))) NULL) {
 	    (*ext_swapout)(OBJ(data->oindex));
 	}
-	d_save_dataspace(data, (Uint *) NULL);
+	d_save_dataspace(data, TRUE, (Uint *) NULL);
     }
 }
 
@@ -2325,14 +2365,13 @@ Uint *counttab;
     }
 
     if (header.ncallouts != 0) {
-	scallout *scallouts;
 	register scallout *sco;
 	register dcallout *co;
 
 	/* callouts */
 	co = data->callouts = ALLOC(dcallout, header.ncallouts);
-	sco = scallouts = ALLOCA(scallout, header.ncallouts);
-	d_conv((char *) scallouts, s, sco_layout, (Uint) header.ncallouts,
+	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
+	d_conv((char *) data->scallouts, s, sco_layout, (Uint) header.ncallouts,
 	       size);
 
 	for (n = data->ncallouts; n > 0; --n) {
@@ -2352,8 +2391,6 @@ Uint *counttab;
 	    sco++;
 	    co++;
 	}
-
-	AFREE(scallouts);
     }
 
     AFREE(s);
@@ -2366,7 +2403,7 @@ Uint *counttab;
     }
 
     data->base.flags |= MOD_ALL;
-    d_save_dataspace(data, counttab);
+    d_save_dataspace(data, TRUE, counttab);
     OBJ(data->oindex)->data = (dataspace *) NULL;
     d_free_dataspace(data);
 }
@@ -2480,6 +2517,11 @@ register dataspace *data;
 	FREE(data->sectors);
     }
 
+    /* free scallouts */
+    if (data->scallouts != (scallout *) NULL) {
+	FREE(data->scallouts);
+    }
+
     /* free sarrays */
     if (data->sarrays != (sarray *) NULL) {
 	if (data->selts != (svalue *) NULL) {
@@ -2520,6 +2562,11 @@ register dataspace *data;
 	if (dtail != (dataspace *) NULL) {
 	    dtail->next = (dataspace *) NULL;
 	}
+    }
+    data->gcprev->gcnext = data->gcnext;
+    data->gcnext->gcprev = data->gcprev;
+    if (data == gcdata) {
+	gcdata = (data != data->gcnext) ? data->gcnext : (dataspace *) NULL;
     }
     --ndata;
 
