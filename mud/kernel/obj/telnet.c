@@ -40,13 +40,7 @@ static close(int dest)
  */
 static receive_message(string str)
 {
-    int mode, newmode;
-
-    mode = query_mode();
-    newmode = ::receive_message(allocate(TLS_SIZE), str);
-    if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO)) {
-	send_message(newmode - MODE_NOECHO);
-    }
+    ::receive_message(allocate(TLS_SIZE), str);
 }
 
 /*
@@ -57,7 +51,7 @@ set_mode(int newmode)
 {
     int mode;
 
-    if (SYSTEM()) {
+    if (previous_program() == LIB_CONN || SYSTEM()) {
 	mode = query_mode();
 	::set_mode(newmode);
 	if (newmode != mode && (newmode == MODE_NOECHO || newmode == MODE_ECHO))

@@ -5,6 +5,7 @@ private object userd;		/* user daemon */
 private object user;		/* user object */
 private string conntype;	/* connection type */
 private int mode;		/* connection mode */
+private int blocked;		/* connection blocked? */
 
 /*
  * NAME:	create()
@@ -14,7 +15,7 @@ static create(string type)
 {
     userd = find_object(USERD);
     conntype = type;
-    mode = MODE_ECHO;
+    mode = MODE_ECHO;	/* same as MODE_LINE for binary connection */
 }
 
 
@@ -75,6 +76,38 @@ connect(string destination, int port)
 
 
 /*
+ * NAME:	set_mode()
+ * DESCRIPTION:	set the current connection mode
+ */
+static set_mode(int newmode)
+{
+    if (newmode != mode && newmode != MODE_NOCHANGE) {
+	if (newmode == MODE_DISCONNECT) {
+	    destruct_object(this_object());
+	} else if (newmode >= MODE_BLOCK) {
+	    if (newmode - MODE_UNBLOCK != blocked) {
+		block_input(blocked = newmode - MODE_UNBLOCK);
+	    }
+	} else {
+	    if (blocked) {
+		block_input(blocked = FALSE);
+	    }
+	    mode = newmode;
+	}
+    }
+}
+
+/*
+ * NAME:	query_mode()
+ * DESCRIPTION:	return the current connection mode
+ */
+int query_mode()
+{
+    return (blocked) ? MODE_BLOCK : mode;
+}
+
+
+/*
  * NAME:	open()
  * DESCRIPTION:	open the connection
  */
@@ -82,6 +115,11 @@ static open(mixed *tls)
 {
     int timeout;
     string banner;
+
+    banner = call_other(userd, "query_" + conntype + "_banner");
+    if (banner) {
+	send_message(banner);
+    }
 
     timeout = call_other(userd, "query_" + conntype + "_timeout");
     if (timeout < 0) {
@@ -94,20 +132,10 @@ static open(mixed *tls)
 	if (timeout != 0) {
 	    call_out("timeout", timeout);
 	}
-
-	banner = call_other(userd, "query_" + conntype + "_banner");
-	if (banner) {
-	    send_message(banner);
-	}
     }
 # ifdef SYS_NETWORKING
     else {
-	mode = user->login(nil);
-	if (mode == MODE_DISCONNECT) {
-	    destruct_object(this_object());
-	} else if (mode == MODE_BLOCK) {
-	    ::block_input(TRUE);
-	}
+	set_mode(user->login(nil));
     }
 # endif
 }
@@ -165,12 +193,7 @@ set_user(object obj, string str)
 {
     if (previous_program() == LIB_USER) {
 	user = obj;
-	mode = obj->login(str);
-	if (mode == MODE_DISCONNECT) {
-	    destruct_object(this_object());
-	} else if (mode == MODE_BLOCK) {
-	    ::block_input(TRUE);
-	}
+	set_mode(obj->login(str));
     }
 }
 
@@ -198,49 +221,13 @@ static timeout()
  * NAME:	receive_message()
  * DESCRIPTION:	forward a message to user object
  */
-static int receive_message(mixed *tls, string str)
+static receive_message(mixed *tls, string str)
 {
     if (!user) {
 	user = call_other(userd, conntype + "_user", str);
-	mode = user->login(str);
+	set_mode(user->login(str));
     } else {
-	mode = user->receive_message(str);
-    }
-    if (mode == MODE_DISCONNECT) {
-	destruct_object(this_object());
-    } else if (mode == MODE_BLOCK) {
-	::block_input(TRUE);
-    }
-    return mode;
-}
-
-/*
- * NAME:	set_mode()
- * DESCRIPTION:	set the current connection mode
- */
-static set_mode(int newmode)
-{
-    mode = newmode;
-    ::block_input(newmode == MODE_BLOCK);
-}
-
-/*
- * NAME:	query_mode()
- * DESCRIPTION:	return the current connection mode
- */
-int query_mode()
-{
-    return mode;
-}
-
-/*
- * NAME:	block_input()
- * DESCRIPTION:	block input for this connection
- */
-block_input(int flag)
-{
-    if (SYSTEM()) {
-	::block_input(flag || mode == MODE_BLOCK);
+	set_mode(user->receive_message(str));
     }
 }
 
@@ -262,12 +249,7 @@ int message(string str)
 static message_done(mixed *tls)
 {
     if (user) {
-	mode = user->message_done();
-	if (mode == MODE_DISCONNECT) {
-	    destruct_object(this_object());
-	} else if (mode == MODE_BLOCK) {
-	    ::block_input(TRUE);
-	}
+	set_mode(user->message_done());
     }
 }
 

@@ -51,8 +51,7 @@ static receive_message(string str)
     string head, pre;
 
     buffer += str;
-    mode = query_mode();
-    while (mode != MODE_BLOCK && mode != MODE_DISCONNECT) {
+    while ((mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {
 	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
@@ -75,7 +74,7 @@ static receive_message(string str)
 		    }
 		}
 
-		mode = ::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(allocate(TLS_SIZE), str);
 	    } else {
 		break;
 	    }
@@ -109,7 +108,7 @@ set_mode(int mode)
 {
     string str;
 
-    if (SYSTEM()) {
+    if (KERNEL() || SYSTEM()) {
 	::set_mode(mode);
 	if (mode == MODE_RAW && strlen(buffer) != 0) {
 	    /* flush buffer */
