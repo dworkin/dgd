@@ -71,16 +71,15 @@ char *P_ctime(char *buf, Uint t)
     DateTimeRec date;
     int offset;
 
-    for (offset = 0; t + timediff < t; t -= 1009843200L, offset += 32) ;
+    for (offset = 0; t + timediff > 2147397248L; t -= 883612800L, offset += 28)
+	;
     Secs2Date((long) t + timediff, &date);
     if (offset != 0) {
-	if (date.year + offset >= 2100 &&
-	    (date.month > 2 || (date.month == 2 && date.day == 29))) {
-	    t += 86400L;
-	    if (t + timediff < t) {
-		t -= 1009843200L;
-		offset += 32;
-	    }
+	if (date.year + offset > 2100 ||
+	    (date.year + offset == 2100 &&
+	     (date.month > 2 || (date.month == 2 && date.day == 29)))) {
+	    t -= 378604800L;
+	    offset += 12;
 	    Secs2Date((long) t + timediff, &date);
 	}
 	date.year += offset;

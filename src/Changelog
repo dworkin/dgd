@@ -1303,3 +1303,6 @@ DGD 1.1
  - In case of an error in atomic code, call driver->atomic_error() with the
    full stack trace.  Everything will be undone later, except for all use of
    send_message() by the driver object.
+ - ctime() didn't give the proper weekday for times > 0x7fffffff.
+ - If there is no more input on a connection, make sure there is no pending
+   output before closing it.

@@ -652,20 +652,23 @@ unsigned int mtime;
 		p = usr->inbuf + usr->inbufsz;
 		n = conn_read(usr->conn, p, INBUF_SIZE - usr->inbufsz);
 		if (n < 0) {
-		    if (usr->inbufsz == 0) {
+		    if (usr->inbufsz != 0) {
+			if (p[-1] != LF) {
+			    /*
+			     * add a newline at the end
+			     */
+			    *p = LF;
+			    n = 1;
+			}
+		    } else if (!(usr->obj->flags & O_PENDIO) &&
+			       usr->outbufsz == 0) {
 			/*
-			 * empty buffer & no more input
+			 * empty buffer, no more input, no pending output
 			 */
 			comm_del(f, usr, FALSE);
 			endthread();	/* this cannot be in comm_del() */
 			comm_flush(FALSE);
 			break;
-		    } else if (p[-1] != LF) {
-			/*
-			 * add a newline at the end
-			 */
-			*p = LF;
-			n = 1;
 		    }
 		}
 
@@ -868,9 +871,9 @@ unsigned int mtime;
 
 	    n = conn_read(usr->conn, p = buffer, BINBUF_SIZE);
 	    if (n <= 0) {
-		if (n < 0) {
+		if (n < 0 && !(usr->obj->flags & O_PENDIO)) {
 		    /*
-		     * bad connection
+		     * no more input and no pending output
 		     */
 		    comm_del(f, usr, FALSE);
 		    endthread();	/* this cannot be in comm_del() */

@@ -1718,8 +1718,8 @@ int nargs;
 	    /*
 	     * add new callout
 	     */
-	    if (data->ncallouts == UINDEX_MAX) {
-		error("Too many callouts");
+	    if (data->ncallouts >= conf_array_size()) {
+		error("Too many callouts in object");
 	    }
 	    n = data->ncallouts;
 	    co = data->callouts = REALLOC(data->callouts, dcallout, n, n + 1);
