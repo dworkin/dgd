@@ -292,7 +292,7 @@ int *size;
 	 */
 	conn = conn_tnew();
 	if (conn != (connection *) NULL) {
-	    if (ec_push()) {
+	    if (ec_push((ec_ftn) NULL)) {
 		conn_del(conn);		/* delete connection */
 		error((char *) NULL);	/* pass on error */
 	    }
@@ -318,7 +318,7 @@ int *size;
 	 */
 	conn = conn_bnew();
 	if (conn != (connection *) NULL) {
-	    if (ec_push()) {
+	    if (ec_push((ec_ftn) NULL)) {
 		conn_del(conn);		/* delete connection */
 		error((char *) NULL);	/* pass on error */
 	    }

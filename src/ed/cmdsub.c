@@ -539,10 +539,9 @@ register cmdbuf *cb;
 # define TOKEN		7
 # define ELSE		8
 # define IF		9
-# define FOR		10
-# define WHILE		11
-# define DO		12
-# define EOT		13
+# define FOR		10	/* WHILE, RLIMIT */
+# define DO		11
+# define EOT		12
 
 /*
  * NAME:	noshift()
@@ -571,8 +570,8 @@ static bool in_ppcontrol, in_comment, after_keyword;	/* status */
 static void indent(text)
 char *text;
 {
-    static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 7, 2, 0, };
-    static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 2, 0, };
+    static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
+    static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
     register char *p, *sp;
@@ -754,11 +753,12 @@ char *text;
 		    } while (isalnum(*p) || *p == '_');
 		    *q = '\0';
 
-		    if      (strcmp(ident, "if"   ) == 0)	token = IF;
-		    else if (strcmp(ident, "else" ) == 0)	token = ELSE;
-		    else if (strcmp(ident, "for"  ) == 0)	token = FOR;
-		    else if (strcmp(ident, "while") == 0)	token = WHILE;
-		    else if (strcmp(ident, "do"   ) == 0)	token = DO;
+		    if      (strcmp(ident, "if") == 0)		token = IF;
+		    else if (strcmp(ident, "else") == 0)	token = ELSE;
+		    else if (strcmp(ident, "for") == 0 ||
+			     strcmp(ident, "while") == 0 ||
+			     strcmp(ident, "rlimits") == 0)	token = FOR;
+		    else if (strcmp(ident, "do") == 0)		token = DO;
 		    else    /* not a keyword */			token = TOKEN;
 		} else {
 		    /* anything else is a "token" */

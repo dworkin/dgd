@@ -9,8 +9,6 @@ DESCRIPTION
 	Execute the code for <expression> until an error results, or until
 	execution is complete.  If an error resulted, catch() will return
 	the error message as a string; otherwise, it will return 0.
-	If catch() is used by the driver object, the allowed execution cost
-	will be reset to maximum.
 
 ERRORS
 	A limited number of nested catches is allowed.  The limit is
@@ -18,7 +16,7 @@ ERRORS
 	purposes.
 
 SEE ALSO
-	kfun/error, kfun/lock()
+	kfun/error
 
 NOTE
 	catch() is not a real kfun.  catch(a, b) will evaluate the expression

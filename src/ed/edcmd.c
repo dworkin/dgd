@@ -686,7 +686,7 @@ register cmdbuf *cb;
      * can be deallocated in case of an error.
      */
     rx = rx_new();
-    if (!ec_push()) {
+    if (!ec_push((ec_ftn) NULL)) {
 	/* compile regexp */
 	p = rx_comp(rx, buffer);
 	if (p != (char *) NULL) {

@@ -823,3 +823,39 @@ DGD 1.1
  - foo() = bar; could crash the system.
  - An incomplete recovery from a syntax error during compilation of a switch
    statement could result in a crash.
+ - Discarded I_PUSH_FLOAT2 and I_CALL_AFUNC in favor of I_CALL_IKFUNC and
+   I_CALL_IDFUNC (needed for object upgrading).
+ - Change of the version numbering scheme: rather than 1.0.9.24, the current
+   version is 1.0.10.  The next major release is still 1.1.
+ - Made value stack and call stack dynamically expandible.
+ - Fixed several stack depth miscalculation bugs.
+ - Added a cleanup function to the error context, used mainly to clean up
+   the value stack in case of an error.
+ - (int) "12a" now results in an error, as does (float) of the same.
+ - Renamed "exec cost" to "ticks".
+ - Replaced lock() with the following language construct:
+
+    rlimits (stack; ticks) {
+	/* statements */
+    }
+
+   This will execute code with reduced or increased stack depth and ticks.
+   There are two new driver calls to handle it: at compile time, for each
+   rlimits construct, driver->compile_rlimits(filename) is called.  If this
+   function returns non-zero, the rlimits is allowed without futher ado.  If
+   it returns 0, then at runtime there will be an additional check,
+   driver->runtime_rlimits(obj, stack, ticks).  If zero is returned from this
+   function, an error results.  This allows fast execution of rlimits
+   constructs in trusted code.  For precompiled code, the return value is
+   always assumed to be 1 (!).
+   By default, there are no resource limits.  Also, driver->log_error() is
+   called without resource limits.
+   -1 can be used in rlimits to signify that a resource should be unlimited.
+ - Removed call_stack, value_stack, reserved_cstack, reserved_vstack and
+   exec_cost from the config file.
+ - Replaced max execution cost with remaining stack depth and remaining ticks
+   in the array returned by status().
+ - Removed kfun get_exec_cost().
+ - Replaced driver->compile_log() with driver->compile_error(file, line, err).
+   By default, DGD now writes nothing to stderr at all.
+ - Renamed driver->log_error() to driver->runtime_error().

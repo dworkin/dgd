@@ -415,15 +415,15 @@ register char *key;
 register int len;
 {
     static char *keyword[] = {
-      "for", "void", "do", "continue", "inherit", "mapping", "int",
-      "lock", "nomask", "catch", "case", "float", "break", "mixed",
-      "static", "varargs", "string", "else", "if", "while", "switch",
-      "default", "return", "private", "object"
+      "for", "break", "varargs", "mapping", "int", "float", "void", "do",
+      "inherit", "nomask", "case", "catch", "private", "else", "string",
+      "return", "rlimits", "continue", "static", "default", "while",
+      "mixed", "if", "switch", "object"
     };
 
     static char value[] = {
-      2, 17, 7, 2, 12, 17, 13, 10, 1, 0, 0, 9, 0,
-      3, 0, 0, 0, 10, 8, 13, 3, 0, 13, 0, 0, 0
+      1, 14, 10, 7, 15, 16, 1, 16, 6, 0, 0, 4, 0,
+      2, 0, 0, 0, 0, 9, 12, 17, 0, 13, 0, 0, 0
     };
 
     if (len >= 2) {
@@ -895,9 +895,9 @@ int pp_gettok()
 			}
 			tk_setpp(FALSE);
 			if (s->len == 0) {
-			    warning("#error directive");
+			    error("#error directive");
 			} else {
-			    warning("#error:%s", buf);
+			    error("#error:%s", buf);
 			}
 			pps_del(s);
 		    } else {

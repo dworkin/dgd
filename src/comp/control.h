@@ -25,5 +25,9 @@ extern void		 ctrl_clear	P((void));
 # define T_IMPLICIT		(T_VOID | (1 << REFSHIFT))
 
 # define KFCALL			0
-# define DFCALL			1
-# define FCALL			2
+# define KFCALL_LVAL		1
+# define IKFCALL		2
+# define IKFCALL_LVAL		3
+# define DFCALL			4
+# define IDFCALL		5
+# define FCALL			6

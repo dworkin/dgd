@@ -11,7 +11,7 @@ typedef struct {
 # define FLT_ABS(h, l)		((h) &= ~0x8000)
 # define FLT_NEG(h, l)		((h) ^= 0x8000)
 
-extern bool	flt_atof	P((char*, xfloat*));
+extern bool	flt_atof	P((char**, xfloat*));
 extern void	flt_ftoa	P((xfloat*, char*));
 extern void	flt_itof	P((Int, xfloat*));
 extern Int	flt_ftoi	P((xfloat*));

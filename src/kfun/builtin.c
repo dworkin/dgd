@@ -1394,7 +1394,6 @@ char p_tofloat[] = { C_STATIC, T_FLOAT, 1, T_MIXED };
 int kf_tofloat()
 {
     xfloat flt;
-    char *p;
 
     if (sp->type == T_INT) {
 	/* from int */
@@ -1403,12 +1402,10 @@ int kf_tofloat()
 	VFLT_PUT(sp, flt);
 	return 0;
     } else if (sp->type == T_STRING) {
+	char *p;
+
 	p = sp->u.string->text;
-	if (*p == '-') {
-	    p++;
-	}
-	if ((isdigit(*p) || (*p++ == '.' && isdigit(*p))) &&
-	    flt_atof(sp->u.string->text, &flt)) {
+	if (flt_atof(&p, &flt) && p == sp->u.string->text + sp->u.string->len) {
 	    /* from string */
 	    str_del(sp->u.string);
 	    sp->type = T_FLOAT;
@@ -1446,10 +1443,10 @@ int kf_toint()
 	return 0;
     } else if (sp->type == T_STRING) {
 	char *p;
-	 Int i;
+	Int i;
 
 	i = strtol(sp->u.string->text, &p, 10);
-	if (p != sp->u.string->text) {
+	if (p == sp->u.string->text + sp->u.string->len) {
 	    /* from string */
 	    str_del(sp->u.string);
 	    sp->type = T_INT;

@@ -72,7 +72,7 @@ int narg;
 	/* the macro already exists. */
 	if ((*m)->replace != (char *) NULL) {
 	    if ((*m)->narg != narg || strcmp((*m)->replace, replace) != 0) {
-		warning("macro %s redefined", name);
+		error("macro %s redefined", name);
 	    }
 	    FREE((*m)->replace);
 	}

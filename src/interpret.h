@@ -4,33 +4,33 @@
 # define I_PUSH_ONE		 1
 # define I_PUSH_INT1		 2	/* 1 signed */
 # define I_PUSH_INT4		 3	/* 4 signed */
-# define I_PUSH_FLOAT2		 4	/* 2 unsigned */
-# define I_PUSH_FLOAT6		 5	/* 6 unsigned */
-# define I_PUSH_STRING		 6	/* 1 unsigned */
-# define I_PUSH_NEAR_STRING	 7	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_FAR_STRING	 8	/* 1 unsigned, 2 unsigned */
-# define I_PUSH_LOCAL		 9	/* 1 signed */
-# define I_PUSH_GLOBAL		10	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_LOCAL_LVALUE	11	/* 1 signed */
-# define I_PUSH_GLOBAL_LVALUE	12	/* 1 unsigned, 1 unsigned */
-# define I_INDEX		13
-# define I_INDEX_LVALUE		14
-# define I_AGGREGATE		15	/* 2 unsigned */
-# define I_MAP_AGGREGATE	16	/* 2 unsigned */
-# define I_SPREAD		17	/* 1 signed */
-# define I_CAST			18	/* 1 unsigned */
-# define I_FETCH		19
-# define I_STORE		20
-# define I_JUMP			21	/* 2 signed */
-# define I_JUMP_ZERO		22	/* 2 signed */
-# define I_JUMP_NONZERO		23	/* 2 signed */
-# define I_SWITCH		24	/* n */
-# define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define I_PUSH_FLOAT		 4	/* 6 unsigned */
+# define I_PUSH_STRING		 5	/* 1 unsigned */
+# define I_PUSH_NEAR_STRING	 6	/* 1 unsigned, 1 unsigned */
+# define I_PUSH_FAR_STRING	 7	/* 1 unsigned, 2 unsigned */
+# define I_PUSH_LOCAL		 8	/* 1 signed */
+# define I_PUSH_GLOBAL		 9	/* 1 unsigned, 1 unsigned */
+# define I_PUSH_LOCAL_LVALUE	10	/* 1 signed */
+# define I_PUSH_GLOBAL_LVALUE	11	/* 1 unsigned, 1 unsigned */
+# define I_INDEX		12
+# define I_INDEX_LVALUE		13
+# define I_AGGREGATE		14	/* 2 unsigned */
+# define I_MAP_AGGREGATE	15	/* 2 unsigned */
+# define I_SPREAD		16	/* 1 signed */
+# define I_CAST			17	/* 1 unsigned */
+# define I_FETCH		18
+# define I_STORE		19
+# define I_JUMP			20	/* 2 unsigned */
+# define I_JUMP_ZERO		21	/* 2 unsigned */
+# define I_JUMP_NONZERO		22	/* 2 unsigned */
+# define I_SWITCH		23	/* n */
+# define I_CALL_KFUNC		24	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_IKFUNC		25	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_DFUNC		26	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define I_CALL_IDFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
 # define I_CATCH		29	/* 2 signed */
-# define I_LOCK			30
+# define I_RLIMITS		30
 # define I_RETURN		31
 
 # define I_LINE_MASK		0xc0	/* line add bits */
@@ -103,10 +103,10 @@ typedef struct _value_ {
 # define C_UNDEFINED	0x80
 
 
-extern void		i_init		P((int, int, int, int, char*));
+extern void		i_init		P((char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
-extern void		i_check_stack	P((int));
+extern void		i_grow_stack	P((int));
 extern void		i_push_value	P((value*));
 extern void		i_pop		P((int));
 extern void		i_odest		P((object*));
@@ -122,27 +122,28 @@ extern char	       *i_typename	P((unsigned int));
 extern void		i_cast		P((value*, unsigned int));
 extern void		i_fetch		P((void));
 extern void		i_store		P((value*, value*));
-extern void		i_set_cost	P((Int));
-extern Int		i_reset_cost	P((void));
-extern void		i_lock		P((void));
-extern void		i_unlock	P((void));
-extern void		i_set_lock	P((unsigned int));
-extern unsigned short	i_query_lock	P((void));
-extern void		i_set_frame	P((int));
-extern int		i_query_frame	P((void));
+extern Int		i_get_depth	P((void));
+extern Int		i_get_ticks	P((void));
+extern void		i_check_rlimits	P((void));
+extern int		i_set_rlimits	P((Int, Int));
+extern int		i_get_rllevel	P((void));
+extern void		i_set_rllevel	P((int));
+extern void		i_set_sp	P((value*));
 extern struct _control_*i_this_program	P((void));
 extern object	       *i_this_object	P((void));
 extern object	       *i_prev_object	P((int));
 extern char	       *i_foffset	P((unsigned int));
 extern int		i_pindex	P((void));
 extern void		i_typecheck	P((char*, char*, char*, int, int));
+extern value	       *i_set_cleanup	P((value*));
+extern void		i_cleanup	P((void));
 extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, int, int));
 extern array	       *i_call_trace	P((void));
-extern void		i_log_error	P((int));
+extern void		i_runtime_error	P((int));
 extern void		i_clear		P((void));
 
 extern value *sp;
-extern Int exec_cost;
+extern Int ticks;
 
-# define i_add_cost(e)	(exec_cost -= (e))
+# define i_add_ticks(e)	(ticks -= (e))

@@ -258,16 +258,7 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_FLOAT2:
-	    codesize = 3;
-	    flt.high = FETCH2U(pc, u);
-	    flt.low = 0L;
-	    flt_ftoa(&flt, fltbuf);
-	    sprintf(buffer, "PUSH_FLOAT2 %s", fltbuf);
-	    show_instr(buffer);
-	    break;
-
-	case I_PUSH_FLOAT6:
+	case I_PUSH_FLOAT:
 	    codesize = 7;
 	    flt.high = FETCH2U(pc, u);
 	    flt.low = FETCH4U(pc, l);
@@ -304,7 +295,7 @@ int func;
 
 	case I_PUSH_LOCAL:
 	    codesize = 2;
-	    sprintf(buffer, "PUSH_LOCAL %d", FETCH1U(pc));
+	    sprintf(buffer, "PUSH_LOCAL %d", FETCH1S(pc));
 	    show_instr(buffer);
 	    break;
 
@@ -322,7 +313,7 @@ int func;
 
 	case I_PUSH_LOCAL_LVALUE:
 	    codesize = 2;
-	    sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1U(pc));
+	    sprintf(buffer, "PUSH_LOCAL_LVALUE %d", FETCH1S(pc));
 	    show_instr(buffer);
 	    break;
 
@@ -523,15 +514,19 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_CALL_AFUNC:
-	    codesize = 3;
+	case I_CALL_IKFUNC:
+	    pc++;
 	    u = FETCH1U(pc);
-	    cc = ctrl->inherits[0].obj->ctrl;
-	    d_get_funcdefs(cc);
-	    sprintf(buffer, "CALL_AFUNC %d (%s) %d", u,
-		    d_get_strconst(cc, cc->funcdefs[u].inherit,
-				   cc->funcdefs[u].index)->text,
-		    FETCH1U(pc));
+	    if (PROTO_CLASS(KFUN(u).proto) & C_VARARGS) {
+		codesize = 4;
+		u2 = FETCH1U(pc);
+	    } else {
+		codesize = 3;
+		u2 = PROTO_NARGS(KFUN(u).proto);
+	    }
+	    sprintf(buffer, "CALL_IKFUNC %d (%s%s) %d", u, KFUN(u).name,
+		    (PROTO_CLASS(KFUN(u).proto) & C_TYPECHECKED) ? " tc" : "",
+		    u2);
 	    show_instr(buffer);
 	    break;
 
@@ -542,6 +537,20 @@ int func;
 	    cc = ctrl->inherits[u].obj->ctrl;
 	    d_get_funcdefs(cc);
 	    sprintf(buffer, "CALL_DFUNC %d %d (%s) %d", u, u2,
+		    d_get_strconst(cc, cc->funcdefs[u2].inherit,
+				   cc->funcdefs[u2].index)->text,
+		    FETCH1U(pc));
+	    show_instr(buffer);
+	    break;
+
+	case I_CALL_IDFUNC:
+	    codesize = 5;
+	    pc++;
+	    u = FETCH1U(pc);
+	    u2 = FETCH1U(pc);
+	    cc = ctrl->inherits[u].obj->ctrl;
+	    d_get_funcdefs(cc);
+	    sprintf(buffer, "CALL_IDFUNC %d %d (%s) %d", u, u2,
 		    d_get_strconst(cc, cc->funcdefs[u2].inherit,
 				   cc->funcdefs[u2].index)->text,
 		    FETCH1U(pc));
@@ -569,9 +578,10 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_LOCK:
-	    codesize = 1;
-	    show_instr("LOCK");
+	case I_RLIMITS:
+	    codesize = 2;
+	    sprintf(buffer, "RLIMITS %d", FETCH1U(pc));
+	    show_instr(buffer);
 	    break;
 
 	case I_RETURN:

@@ -60,9 +60,9 @@ static node *comma	P((node*, node*));
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token FOR VOID DO CONTINUE INHERIT MAPPING INT LOCK NOMASK CATCH CASE FLOAT
-       BREAK MIXED STATIC VARARGS STRING ELSE IF WHILE SWITCH DEFAULT RETURN
-       PRIVATE OBJECT
+%token FOR BREAK VARARGS MAPPING INT FLOAT VOID DO INHERIT NOMASK CASE CATCH
+       PRIVATE ELSE STRING RETURN RLIMITS CONTINUE STATIC DEFAULT WHILE MIXED
+       IF SWITCH OBJECT
 
 /*
  * composite tokens
@@ -352,6 +352,22 @@ stmt
 	| FOR '(' opt_list_exp ';' f_opt_list_exp ';' opt_list_exp ')'
 		{ c_loop(); }
 	  stmt	{ $$ = c_for(c_exp_stmt($3), $5, c_exp_stmt($7), $10); }
+	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
+		{
+		  if (typechecking) {
+		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
+			  c_error("bad type for stack rlimit (%s)",
+				  i_typename($3->mod));
+		      }
+		      if ($5->mod != T_INT && $5->mod != T_MIXED) {
+			  c_error("bad type for ticks rlimit (%s)",
+				  i_typename($5->mod));
+		      }
+		  }
+		  c_startrlimits();
+		}
+	  compound_stmt
+		{ $$ = c_endrlimits($3, $5, $8); }
 	| SWITCH '(' f_list_exp ')'
 		{ c_startswitch($3, typechecking); }
 	  compound_stmt
@@ -457,8 +473,6 @@ primary_p1_exp
 		}
 	| CATCH '(' list_exp ')'
 		{ $$ = node_mon(N_CATCH, T_STRING, $3); }
-	| LOCK '(' list_exp ')'
-		{ $$ = c_lock($3); }
 	| primary_p2_exp ARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
@@ -779,7 +793,7 @@ register unsigned int type;
 	    case N_STR:
 		/* cast string to int */
 		i = strtol(n->l.string->text, &p, 10);
-		if (p != n->l.string->text) {
+		if (p == n->l.string->text + n->l.string->len) {
 		    return node_int(i);
 		} else {
 		    c_error("cast of invalid string constant");
@@ -813,11 +827,8 @@ register unsigned int type;
 	    case N_STR:
 		/* cast string to float */
 		p = n->l.string->text;
-		if (*p == '-') {
-		    p++;
-		}
-		if ((isdigit(*p) || (*p++ == '.' && isdigit(*p))) &&
-		    flt_atof(n->l.string->text, &flt)) {
+		if (flt_atof(&p, &flt) &&
+		    p == n->l.string->text + n->l.string->len) {
 		    return node_float(&flt);
 		} else {
 		    yyerror("cast of invalid string constant");

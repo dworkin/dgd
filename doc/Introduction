@@ -16,9 +16,7 @@ every object should have.  DGD is made in such a way that some kfuns
 programming together; for instance, by default there is no file security.
 The auto object has some other special properties; static functions
 declared in the auto object cannot be called using this_object()->func()
-(i.e. they behave like kfuns), and the auto object can use a special
-construct, lock(expression), to execute code without regard for execution
-cost, and with extra space on the stack.
+(i.e. they behave like kfuns).
    The driver object defines several functions which are called by the
 driver, mostly to translate pathnames.
    The following functions will be called by the driver:
@@ -86,17 +84,39 @@ driver, mostly to translate pathnames.
 
 	Return an object for a new connection on the binary port.
 
-    void log_error(string error, int caught)
+    void compile_error(string file, int line, string err)
 
-	Called when an error occurs.  <caught> specifies whether or not
-	the error occurred in code run with catch().  log_error() is
-	called locked, so it will not run out of execution cost.
+	Handle a compile-time error; there can be several for the same
+	LPC file before a runtime error results (calling log_error).
 
-    string compile_log(string file)
+    void runtime_error(string error, int caught)
 
-	Return the path of a secondary error log upon the compilation of
-	an object from <file>.  If 0 is returned, compile time errors are
-	only logged on stderr.
+	Called when a runtime error occurs.  <caught> specifies whether or
+	not the error occurred in code run with catch().  runtime_error()
+	is called with rlimits (-1; -1) so it will not run out of stack or
+	ticks.
+
+    int compile_rlimits(string objname)
+
+	An object uses the rlimits (stackdepth; ticks) { /* code */ }
+	construct, which can be used to assign arbitrary limits to function
+	call stack depth and ticks; running out of ticks during execution
+	causes an error.  -1 signifies an infinite amount of stack space or
+	ticks.
+	During compilation, driver->compile_rlimits(objname) is called.  If
+	non-zero is returned, the object will be able to use rlimits at
+	runtime with no restructions.  If 0 is returned,
+	driver->runtime_rlimits() will be called at runtime to further
+	verify if an object is allowed to change its rlimits (resource
+	limits).
+
+    int runtime_rlimits(object obj, int stack, int ticks)
+
+	Called at runtime for rlimits constructs not already cleared by
+	compile_rlimits().  If 0 is returned, the rlimits usage is illegal
+	and is aborted with an error.
+	Values for stack and ticks: < 0 = infinite, 0 = no change,
+	> 0 = set to specified amount.
 
  - in every object:
 
@@ -171,15 +191,6 @@ auto_object	string	The file name of the auto object (relative to the
 driver_object	string	The file name of the driver object (relative to
 			the base directory).
 create		string	The name of the create function.
-value_stack	int	The size of the value stack for the system's
-			internal interpreted language.
-call_stack	int	The size of the function call stack for the
-			system's internal interpreted language.
-reserved_vstack	int	The extra value stack available for code executed
-			with a lock.
-reserved_cstack	int	The extra function call stack available for code
-			executed with a lock.
-max_cost	int	The maximum execution cost.
 array_size	int	The maximum array and mapping size.
 objects		int	The maximum number of objects.
 call_outs	int	The maximum number of simultaneously active

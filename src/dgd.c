@@ -81,6 +81,16 @@ void finish()
 }
 
 /*
+ * NAME:	cleanup()
+ * DESCRIPTION:	clean up in case of an error
+ */
+static void cleanup()
+{
+    i_runtime_error(FALSE);
+    i_clear();
+}
+
+/*
  * NAME:	dgd_main()
  * DESCRIPTION:	the main loop of DGD
  */
@@ -97,8 +107,8 @@ char **argv;
 	return 2;
     }
 
-    if (ec_push()) {
-	warning((char *) NULL);
+    if (ec_push((ec_ftn) NULL)) {
+	message((char *) NULL);
 	fatal("error during initialization");
     }
     if (argc == 2) {
@@ -109,10 +119,9 @@ char **argv;
     ec_pop();
     d_export();
 
-    while (ec_push()) {
-	i_log_error(FALSE);
-	i_clear();
+    while (ec_push((ec_ftn) cleanup)) {
 	d_export();
+	comm_flush(TRUE);
     }
 
     for (;;) {

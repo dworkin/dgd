@@ -4,7 +4,7 @@ typedef struct {
     unsigned short varoffset;	/* variable offset */
 } pcinherit;
 
-typedef void (*pcfunc)();
+typedef void (*pcfunc) P((value*));
 
 typedef struct {
     short ninherits;		/* # of inherits */
@@ -64,6 +64,7 @@ Int  xdiv		P((Int, Int));
 Int  xmod		P((Int, Int));
 bool poptruthval	P((void));
 void pre_catch		P((void));
-void post_catch		P((int));
+void post_catch		P((void));
+int  pre_rlimits	P((void));
 int  switch_range	P((Int, Int*, int));
 int  switch_str		P((value*, char*, int));

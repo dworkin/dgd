@@ -42,6 +42,10 @@ typedef unsigned short uindex;
 # define OBJTABSZ	1024	/* object name table size */
 # define OBJHASHSZ	100	/* # characters in object names to hash */
 
+/* interpreter */
+# define MIN_STACK	3	/* minimal stack, # arguments in driver calls */
+# define EXTRA_STACK	32	/* extra space in stack frames */
+
 /* editor */
 # define NR_EDBUFS	3	/* # buffers in editor cache (>= 3) */
 /*# define TMPFILE_SIZE	2097152	/* max. editor tmpfile size */
@@ -63,7 +67,6 @@ typedef unsigned short uindex;
 extern void   conf_init		P((char*, char*));
 extern char  *conf_base_dir	P((void));
 extern char  *conf_driver	P((void));
-extern Int    conf_exec_cost	P((void));
 extern int    conf_array_size	P((void));
 extern void   conf_dump		P((void));
 

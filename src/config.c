@@ -46,65 +46,50 @@ static config conf[] = {
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE,
 							0, UINDEX_MAX },
-# define CALL_STACK	5
-				{ "call_stack",		INT_CONST, FALSE,
-							5 },
-# define CREATE		6
+# define CREATE		5
 				{ "create",		STRING_CONST, FALSE },
-# define DIRECTORY	7
+# define DIRECTORY	6
 				{ "directory",		STRING_CONST, FALSE },
-# define DRIVER_OBJECT	8
+# define DRIVER_OBJECT	7
 				{ "driver_object",	STRING_CONST, FALSE },
-# define DUMP_FILE	9
+# define DUMP_FILE	8
 				{ "dump_file",		STRING_CONST, FALSE },
-# define DYNAMIC_CHUNK	10
+# define DYNAMIC_CHUNK	9
 				{ "dynamic_chunk",	INT_CONST, FALSE },
-# define ED_TMPFILE	11
+# define ED_TMPFILE	10
 				{ "ed_tmpfile",		STRING_CONST, FALSE },
-# define EDITORS	12
+# define EDITORS	11
 				{ "editors",		INT_CONST, FALSE,
 							1, UCHAR_MAX },
-# define INCLUDE_DIRS	13
+# define INCLUDE_DIRS	12
 				{ "include_dirs",	'(', FALSE },
-# define INCLUDE_FILE	14
+# define INCLUDE_FILE	13
 				{ "include_file",	STRING_CONST, FALSE },
-# define MAX_COST	15
-				{ "max_cost",		INT_CONST, FALSE,
-							10000L },
-# define OBJECTS	16
+# define OBJECTS	14
 				{ "objects",		INT_CONST, FALSE,
 							2, UINDEX_MAX },
-# define RESERVED_CSTACK 17
-				{ "reserved_cstack",	INT_CONST, FALSE,
-							1 },
-# define RESERVED_VSTACK 18
-				{ "reserved_vstack",	INT_CONST, FALSE,
-							20 },
-# define SECTOR_SIZE	19
+# define SECTOR_SIZE	15
 				{ "sector_size",	INT_CONST, FALSE,
 							512, 8192 },
-# define STATIC_CHUNK	20
+# define STATIC_CHUNK	16
 				{ "static_chunk",	INT_CONST, FALSE },
-# define SWAP_FILE	21
+# define SWAP_FILE	17
 				{ "swap_file",		STRING_CONST, FALSE },
-# define SWAP_FRAGMENT	22
+# define SWAP_FRAGMENT	18
 				{ "swap_fragment",	INT_CONST, FALSE },
-# define SWAP_SIZE	23
+# define SWAP_SIZE	19
 				{ "swap_size",		INT_CONST, FALSE,
 							1024, UINDEX_MAX },
-# define TELNET_PORT	24
+# define TELNET_PORT	20
 				{ "telnet_port",	INT_CONST, FALSE,
 							1024, USHRT_MAX },
-# define TYPECHECKING	25
+# define TYPECHECKING	21
 				{ "typechecking",	INT_CONST, FALSE,
 							0, 1 },
-# define USERS		26
+# define USERS		22
 				{ "users",		INT_CONST, FALSE,
 							1, UCHAR_MAX },
-# define VALUE_STACK	27
-				{ "value_stack",	INT_CONST, FALSE,
-							100 },
-# define NR_OPTIONS	28
+# define NR_OPTIONS	23
 };
 
 
@@ -291,7 +276,7 @@ char *configfile, *dumpfile;
     palign pdummy;
 
     if (!pp_init(configfile, nodir, 0)) {
-	warning("Cannot open config file");
+	message("Cannot open config file\012");	/* LF */
 	exit(2);
     }
     while ((c=pp_gettok()) != EOF) {
@@ -445,11 +430,7 @@ char *configfile, *dumpfile;
 	   (int) conf[TYPECHECKING].u.num);
 
     /* initialize interpreter */
-    i_init((int) conf[VALUE_STACK].u.num,
-	   (int) conf[RESERVED_VSTACK].u.num,
-	   (int) conf[CALL_STACK].u.num,
-	   (int) conf[RESERVED_CSTACK].u.num,
-	   conf[CREATE].u.str);
+    i_init(conf[CREATE].u.str);
 
     mdynamic();
 
@@ -486,7 +467,8 @@ char *configfile, *dumpfile;
     cputs("# define ST_ETABSIZE\t19\t/* editor table size */\012");
     cputs("# define ST_STRSIZE\t20\t/* max string size */\012");
     cputs("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
-    cputs("# define ST_EXECCOST\t22\t/* max exec cost */\012");
+    cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
+    cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
     cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
     cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
@@ -531,11 +513,8 @@ char *configfile, *dumpfile;
     sprintf(buffer, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\012",
 	    conf[ARRAY_SIZE].u.num);
     cputs(buffer);
-    sprintf(buffer, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012\012",
+    sprintf(buffer, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012",
 	    conf[ARRAY_SIZE].u.num);
-    cputs(buffer);
-    sprintf(buffer, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\012",
-	    conf[MAX_COST].u.num);
     cputs(buffer);
     cclose();
 
@@ -583,7 +562,6 @@ char *configfile, *dumpfile;
     header[17] = sizeof(align);				     /* struct align */
 
     starttime = boottime = P_time();
-    i_set_cost((Int) conf[MAX_COST].u.num);
     if (dumpfile == (char *) NULL) {
 	/*
 	 * initialize mudlib
@@ -626,15 +604,6 @@ char *conf_driver()
 }
 
 /*
- * NAME:	config->exec_cost()
- * DESCRIPTION:	return the maximum execution cost
- */
-Int conf_exec_cost()
-{
-    return conf[MAX_COST].u.num;
-}
-
-/*
  * NAME:	config->array_size()
  * DESCRIPTION:	return the maximum array size
  */
@@ -655,7 +624,7 @@ array *conf_status()
     allocinfo *mstat;
     uindex ncoshort, ncolong;
 
-    a = arr_new(23L);
+    a = arr_new(24L);
     v = a->elts;
 
     /* version */
@@ -721,7 +690,9 @@ array *conf_status()
     v->type = T_INT;
     (v++)->u.number = conf[ARRAY_SIZE].u.num;
     v->type = T_INT;
-    v->u.number = conf[MAX_COST].u.num;
+    (v++)->u.number = i_get_depth();
+    v->type = T_INT;
+    v->u.number = i_get_ticks();
 
     return a;
 }

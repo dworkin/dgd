@@ -601,7 +601,7 @@ register value *val;
 	VFLT_PUT(val, flt);
 	return p + 1;
     } else if (isfloat) {
-	if (!flt_atof(buf, &flt)) {
+	if (!flt_atof(&buf, &flt)) {
 	    error("float too large");
 	}
 	val->type = T_FLOAT;
@@ -681,7 +681,7 @@ value *val;
     }
     i = a->size;
     v = a->elts;
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -734,7 +734,7 @@ value *val;
     }
     i = a->size;
     v = a->elts;
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -893,7 +893,7 @@ int kf_restore_object()
     buf = buffer;
     line = 1;
     pending = FALSE;
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	char err[32];
 
 	/* error; clean up */
@@ -1145,7 +1145,7 @@ int nargs;
     if (size == 0 || size > sbuf.st_size) {
 	size = sbuf.st_size;
     }
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	close(fd);
 	error((char *) NULL);	/* pass on error */
     } else {

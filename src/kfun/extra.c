@@ -286,7 +286,7 @@ int nargs;
     val = values;
     matches = 0;
 
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	/*
 	 * free any values left unassigned
 	 */
@@ -453,31 +453,7 @@ int nargs;
 	case 'f':
 	    /* %f */
 	    pct = p;
-	    if (*pct == '-') {
-		pct++;
-	    }
-	    if (isdigit(*pct)) {
-		while (isdigit(*++pct)) ;
-		if (*pct == '.') {
-		    while (isdigit(*++pct));
-		}
-	    } else if (*pct++ == '.' && isdigit(*pct)) {
-		while (isdigit(*++pct)) ;
-	    } else {
-		goto no_match;
-	    }
-	    q = pct;
-	    if (*pct == 'e' || *pct == 'E') {
-		if (*++pct == '+' || *pct == '-') {
-		    pct++;
-		}
-		if (!isdigit(*pct)) {
-		    pct = q;
-		} else {
-		    while (isdigit(*++pct)) ;
-		}
-	    }
-	    if (!flt_atof(p, &flt)) {
+	    if (!flt_atof(&p, &flt)) {
 		goto no_match;
 	    }
 	    if (!skip) {
@@ -489,8 +465,7 @@ int nargs;
 		VFLT_PUT(val, flt);
 		val++;
 	    }
-	    len -= pct - p;
-	    p = pct;
+	    len -= p - pct;
 	    break;
 
 	case 'c':

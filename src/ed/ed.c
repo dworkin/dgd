@@ -32,16 +32,16 @@ char *argv[];
     if (argc > 1) {
 
 	cb->cmd = argv[1];
-	if (!ec_push()) {
+	if (!ec_push((ec_ftn) NULL)) {
 	    cb_edit(cb);
 	    ec_pop();
 	} else {
-	    warning((char *) NULL);
+	    message((char *) NULL);
 	}
     }
 
-    while (ec_push()) {
-	warning((char *) NULL);
+    while (ec_push((ec_ftn) NULL)) {
+	message((char *) NULL);
 	cb->flags &= ~(CB_INSERT|CB_CHANGE);
     }
 

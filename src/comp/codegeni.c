@@ -446,7 +446,7 @@ static void cg_expr P((node*, int));
 static void cg_cond P((node*, int));
 static void cg_stmt P((node*));
 
-static int nvars;		/* number of local variables */
+static int nparams;		/* number of parameters */
 
 /*
  * NAME:	codegen->aggr()
@@ -587,7 +587,7 @@ register node *n;
     switch (n->type) {
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL_LVALUE, n->line);
-	code_byte(nvars - (int) n->r.number - 1);
+	code_byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_GLOBAL:
@@ -599,7 +599,7 @@ register node *n;
 	switch (n->l.left->type) {
 	case N_LOCAL:
 	    code_instr(I_PUSH_LOCAL_LVALUE, n->l.left->line);
-	    code_byte(nvars - (int) n->l.left->r.number - 1);
+	    code_byte(nparams - (int) n->l.left->r.number - 1);
 	    break;
 
 	case N_GLOBAL:
@@ -814,35 +814,43 @@ register int pop;
 	break;
 
     case N_FLOAT:
-	if (n->r.flow == 0L) {
-	    code_instr(I_PUSH_FLOAT2, n->line);
-	    code_word(n->l.fhigh);
-	} else {
-	    code_instr(I_PUSH_FLOAT6, n->line);
-	    code_word(n->l.fhigh);
-	    code_word((int) (n->r.flow >> 16));
-	    code_word((int) n->r.flow);
-	}
+	code_instr(I_PUSH_FLOAT, n->line);
+	code_word(n->l.fhigh);
+	code_word((int) (n->r.flow >> 16));
+	code_word((int) n->r.flow);
 	break;
 
     case N_FUNC:
 	i = cg_funargs(n->l.left);
 	switch (n->r.number >> 24) {
 	case KFCALL:
+	case KFCALL_LVAL:
 	    code_kfun((int) n->r.number, n->line);
 	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
 		code_byte(i);
 	    }
 	    break;
 
-	case DFCALL:
-	    if (((n->r.number >> 8) & 0xff) == 0) {
-		code_instr(I_CALL_AFUNC, n->line);
-		code_byte((int) n->r.number);
-	    } else {
-		code_instr(I_CALL_DFUNC, n->line);
-		code_word((int) n->r.number);
+	case IKFCALL:
+	case IKFCALL_LVAL:
+	    code_instr(I_CALL_IKFUNC, n->line);
+	    code_byte((int) (n->r.number >> 16));
+	    code_byte((int) n->r.number);
+	    if (PROTO_CLASS(KFUN((short) n->r.number).proto) & C_VARARGS) {
+		code_byte(i);
 	    }
+	    break;
+
+	case DFCALL:
+	    code_instr(I_CALL_DFUNC, n->line);
+	    code_word((int) n->r.number);
+	    code_byte(i);
+	    break;
+
+	case IDFCALL:
+	    code_instr(I_CALL_IDFUNC, n->line);
+	    code_byte((int) (n->r.number >> 16));
+	    code_word((int) n->r.number);
 	    code_byte(i);
 	    break;
 
@@ -939,14 +947,8 @@ register int pop;
 
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL, n->line);
-	code_byte(nvars - (int) n->r.number - 1);
+	code_byte(nparams - (int) n->r.number - 1);
 	break;
-
-    case N_LOCK:
-	code_instr(I_LOCK, 0);
-	cg_expr(n->l.left, pop);
-	code_instr(I_RETURN, 0);
-	return;
 
     case N_LOR:
 	if (!pop) {
@@ -1750,6 +1752,10 @@ register node *n;
 	    break;
 
 	case N_BREAK:
+	    while (m->mod > 0) {
+		code_instr(I_RETURN, 0);
+		m->mod--;
+	    }
 	    break_list = jump(I_JUMP, break_list);
 	    break;
 
@@ -1759,6 +1765,10 @@ register node *n;
 	    break;
 
 	case N_CONTINUE:
+	    while (m->mod > 0) {
+		code_instr(I_RETURN, 0);
+		m->mod--;
+	    }
 	    continue_list = jump(I_JUMP, continue_list);
 	    break;
 
@@ -1798,9 +1808,21 @@ register node *n;
 	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
 	    break;
 
+	case N_RLIMITS:
+	    cg_expr(m->l.left->l.left, FALSE);
+	    cg_expr(m->l.left->r.right, FALSE);
+	    code_instr(I_RLIMITS, 0);
+	    code_byte(m->mod);
+	    cg_stmt(m->r.right);
+	    if (!(m->flags & (F_BREAK | F_CONT | F_RETURN))) {
+		code_instr(I_RETURN, 0);
+	    }
+	    break;
+
 	case N_IF:
 	    if (m->r.right->l.left != (node *) NULL) {
-		if (m->r.right->l.left->type == N_BREAK) {
+		if (m->r.right->l.left->type == N_BREAK &&
+		    m->r.right->l.left->mod == 0) {
 		    jlist = true_list;
 		    true_list = break_list;
 		    cg_cond(m->l.left, TRUE);
@@ -1811,7 +1833,8 @@ register node *n;
 			cg_stmt(m->r.right->r.right);
 		    }
 		    break;
-		} else if (m->r.right->l.left->type == N_CONTINUE) {
+		} else if (m->r.right->l.left->type == N_CONTINUE &&
+			   m->r.right->l.left->mod == 0) {
 		    jlist = true_list;
 		    true_list = continue_list;
 		    cg_cond(m->l.left, TRUE);
@@ -1860,6 +1883,10 @@ register node *n;
 
 	case N_RETURN:
 	    cg_expr(m->l.left, FALSE);
+	    while (m->mod > 0) {
+		code_instr(I_RETURN, 0);
+		m->mod--;
+	    }
 	    code_instr(I_RETURN, m->line);
 	    break;
 
@@ -1914,9 +1941,9 @@ unsigned short *size;
 {
     char *prog;
 
-    nvars = nvar;
+    nparams = npar;
     cg_stmt(n);
-    prog = code_make(depth + nvar, nvar - npar, size);
+    prog = code_make(depth + nvar - npar, nvar - npar, size);
     jump_make(prog + 5);
     nfuncs++;
 

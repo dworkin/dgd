@@ -70,7 +70,6 @@ char *file;
     if (i_this_object()->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
 	call_driver_object("path_ed_read", 1);
@@ -94,7 +93,6 @@ char *file;
     if (i_this_object()->flags & O_DRIVER) {
 	return path_file(path_resolve(file));
     } else {
-	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
 	call_driver_object("path_ed_write", 1);
@@ -119,7 +117,6 @@ char *file;
 	/* driver or auto object */
 	return path_resolve(file);
     } else {
-	i_check_stack(1);
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(file, (long) strlen(file)));
 	call_driver_object("path_object", 1);
@@ -159,7 +156,6 @@ char *from, *file;
     if (c_autodriver()) {
 	return path_from(from, file);
     }
-    i_check_stack(2);
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
     sp->u.string->text[0] = '/';
@@ -189,7 +185,6 @@ char *from, *file;
     if (c_autodriver()) {
 	return path_file(path_from(from, file));
     }
-    i_check_stack(2);
     (--sp)->type = T_STRING;
     str_ref(sp->u.string = str_new((char *) NULL, strlen(from) + 1L));
     sp->u.string->text[0] = '/';

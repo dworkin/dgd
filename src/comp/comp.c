@@ -246,8 +246,8 @@ char *argv[];
 	return 2;
     }
 
-    if (ec_push()) {
-	warning((char *) NULL);
+    if (ec_push((ec_ftn) NULL)) {
+	message((char *) NULL);
 	if (argc == 4) {
 	    /* remove output file: may fail if path is not absolute */
 	    printf("\n# error Error while compiling\n");
@@ -258,7 +258,7 @@ char *argv[];
     }
 
     /* initialize */
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	P_message("error in initialization:\012");	/* LF */
 	error((char *) NULL);
     }

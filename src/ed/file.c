@@ -108,7 +108,7 @@ Int l;
     iobuf.ill = FALSE;
 
     /* add the block to the edit buffer */
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	close(fd);
 	error((char *) NULL);	/* pass on error */
     }
@@ -187,7 +187,7 @@ int append;
     iobuf.ill = FALSE;
 
     /* write range */
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	close(fd);
 	error((char *) NULL);	/* pass on error */
     }

@@ -1387,7 +1387,7 @@ int *nargs;
 	/* invalid callout */
 	return (char *) NULL;
     }
-    i_check_stack(*nargs = co->nargs);
+    i_grow_stack(*nargs = co->nargs);
     *t = co->time;
     v = co->val;
 

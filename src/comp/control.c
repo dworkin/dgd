@@ -568,7 +568,6 @@ string *label;
 		 * This object inherits an object that has been destructed.
 		 * Give the driver object a chance to destruct it.
 		 */
-		i_check_stack(1);
 		(--sp)->type = T_OBJECT;
 		sp->oindex = obj->index;
 		sp->u.objcnt = obj->count;
@@ -1057,6 +1056,7 @@ long *call;
     register control *ctrl;
     register oh *ohash;
     register short index;
+    short inherit;
 
     if (label != (char *) NULL) {
 	register dsymbol *symb;
@@ -1067,6 +1067,7 @@ long *call;
 	    c_error("undefined label %s", label);
 	    return (char *) NULL;
 	}
+	inherit = ohash->index;
 	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text);
 	if (symb == (dsymbol *) NULL) {
 	    /*
@@ -1076,7 +1077,7 @@ long *call;
 	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
-		*call = ((long) KFCALL << 24) | index;
+		*call = ((long) IKFCALL << 24) | ((long) inherit << 16) | index;
 		return KFUN(index).proto;
 	    }
 	    c_error("undefined function %s::%s", label, str->text);
@@ -1088,6 +1089,7 @@ long *call;
 	register vfh *h;
 
 	/* check if the function exists */
+	inherit = ninherits;
 	h = *(vfh **) ht_lookup(ftab, str->text);
 	if (h == (vfh *) NULL || (h->ohash == newohash &&
 	    ((h=(vfh *) h->chain.next) == (vfh *) NULL ||
@@ -1096,7 +1098,7 @@ long *call;
 	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
-		*call = ((long) KFCALL << 24) | index;
+		*call = ((long) IKFCALL << 24) | ((long) inherit << 16) | index;
 		return KFUN(index).proto;
 	    }
 	    c_error("undefined function ::%s", str->text);
@@ -1119,7 +1121,8 @@ long *call;
 	c_error("undefined function %s::%s", label, str->text);
 	return (char *) NULL;
     }
-    *call = ((long) DFCALL << 24) | ((long) ohash->index << 8) | index;
+    *call = ((long) IDFCALL << 24) | ((long) inherit << 16) |
+	    ((long) ohash->index << 8) | index;
     return ctrl->prog + ctrl->funcdefs[index].offset;
 }
 

@@ -267,9 +267,8 @@ bool poptruthval()
 }
 
 typedef struct {
-    value *sp;			/* stack pointer */
-    int frame;			/* function call frame level */
-    unsigned short lock;	/* lock value */
+    value *clean_sp;		/* old cleanup stack pointer */
+    int level;			/* rlimits stack level */
 } catchinfo;
 
 static catchinfo cstack[ERRSTACKSZ];	/* catch stack */
@@ -284,24 +283,35 @@ void pre_catch()
     if (csi == ERRSTACKSZ) {
 	error("Too deep catch() nesting");
     }
-    cstack[csi].sp = sp;
-    cstack[csi].frame = i_query_frame();
-    cstack[csi++].lock = i_query_lock();
+    cstack[csi].clean_sp = i_set_cleanup(sp);
+    cstack[csi++].level = i_get_rllevel();
 }
 
 /*
  * NAME:	post_catch()
  * DESCRIPTION:	clean up after a catch
  */
-void post_catch(flag)
-int flag;
+void post_catch()
 {
-    if (flag) {
-	i_log_error(TRUE);
+    i_set_cleanup(cstack[--csi].clean_sp);
+    i_set_rllevel(cstack[csi].level);
+}
+
+/*
+ * NAME:	pre_rlimits()
+ * DESCRIPTION:	prepare for rlimits
+ */
+int pre_rlimits()
+{
+    if (sp[1].type != T_INT) {
+	error("Bad rlimits depth type");
     }
-    i_pop(cstack[--csi].sp - sp);
-    i_set_frame(cstack[csi].frame);
-    i_set_lock(cstack[csi].lock);
+    if (sp->type != T_INT) {
+	error("Bad rlimits ticks type");
+    }
+    sp += 2;
+
+    return i_set_rlimits(sp[-1].u.number, sp[-2].u.number);
 }
 
 /*

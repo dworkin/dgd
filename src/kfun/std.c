@@ -641,24 +641,6 @@ int kf_time()
 
 
 # ifdef FUNCDEF
-FUNCDEF("get_exec_cost", kf_get_exec_cost, p_get_exec_cost)
-# else
-char p_get_exec_cost[] = { C_STATIC, T_INT, 0 };
-
-/*
- * NAME:	kfun->get_exec_cost()
- * DESCRIPTION:	return the allowed execution cost
- */
-int kf_get_exec_cost()
-{
-    (--sp)->type = T_INT;
-    sp->u.number = exec_cost;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, p_call_out)
 # else
 char p_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS, T_INT, 3,

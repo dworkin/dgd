@@ -9,36 +9,42 @@
 # include "csupport.h"
 # include "table.h"
 
+# ifdef DEBUG
+# undef EXTRA_STACK
+# define EXTRA_STACK	0
+# endif
+
 
 typedef struct _frame_ {
+    struct _frame_ *prev;	/* previous stack frame */
     object *obj;		/* current object */
     control *ctrl;		/* object control block */
     dataspace *data;		/* dataspace of current object */
     control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
-    uindex foffset;		/* program function offset */
+    Int depth;			/* stack depth */
     bool external;		/* TRUE if it's an external call */
+    bool sos;			/* stack on stack */
+    uindex foffset;		/* program function offset */
     dfuncdef *func;		/* current function */
-    int nargs;			/* # arguments */
-    int nvars;			/* # local variables */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
-    value *fp;			/* frame pointer (value stack) */
+    unsigned short nargs;	/* # arguments */
+    value *stack;		/* local value stack */
+    value *ilvp;		/* old indexed lvalue pointer */
+    value *argp;		/* argument pointer (old sp) */
+    value *fp;			/* frame pointer (at end of local stack) */
 } frame;
 
 
-static value *stack;		/* interpreter stack */
-static value *stackend;		/* interpreter stack end */
-static int reserved;		/* size of reserved stack */
+static value stack[MIN_STACK];	/* initial stack */
 value *sp;			/* interpreter stack pointer */
 static value *ilvp;		/* indexed lvalue stack pointer */
-static frame *iframe;		/* stack frames */
 static frame *cframe;		/* current frame */
-static frame *maxframe;		/* max frame */
-static frame *maxmaxframe;	/* max locked frame */
-static Int max_cost;		/* max exec cost allowed */
-Int exec_cost;			/* interpreter ticks left */
-static unsigned short lock;	/* current lock level */
+static Int maxdepth;		/* max stack depth */
+Int ticks;			/* # ticks left */
+static bool nodepth;		/* no stack depth checking */
+static bool noticks;		/* no ticks checking */
 static string *lvstr;		/* the last indexed string */
 static char *creator;		/* creator function name */
 
@@ -48,22 +54,12 @@ static value zero_value = { T_INT, TRUE };
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(vstack, vreserved, cstack, creserved, create)
-int vstack, vreserved, cstack, creserved;
+void i_init(create)
 char *create;
 {
-    stack = ALLOC(value, vstack + vreserved);
-    /*
-     * The stack array is used both for the stack values (on one side) and
-     * the indexed lvalues.
-     */
-    sp = stackend = stack + vstack + vreserved;
-    reserved = vreserved;
-    ilvp = stack;
-    iframe = ALLOC(frame, cstack + creserved);
-    cframe = iframe - 1;
-    maxframe = iframe + cstack;
-    maxmaxframe = iframe + cstack + creserved;
+    sp = stack + MIN_STACK;
+    nodepth = TRUE;
+    noticks = TRUE;
     creator = create;
 }
 
@@ -94,7 +90,7 @@ register value *v;
 
 /*
  * NAME:	interpret->del_value()
- * DESCRIPTION:	dereference a value
+ * DESCRIPTION:	dereference a value (not an lvalue)
  */
 void i_del_value(v)
 register value *v;
@@ -112,16 +108,65 @@ register value *v;
 }
 
 /*
- * NAME:	interpret->check_stack()
- * DESCRIPTION:	check if there is room on the stack for new values
+ * NAME:	interpret->grow_stack()
+ * DESCRIPTION:	check if there is room on the stack for new values; if not,
+ *		make space
  */
-void i_check_stack(size)
-register int size;
+void i_grow_stack(size)
+int size;
 {
-    if (sp <= ilvp + ++size + reserved) {
-	if (lock == 0 || sp <= ilvp + size) {
-	    error("Stack overflow");
+    if (sp < ilvp + size + MIN_STACK) {
+	register int spsize, ilsize;
+	register value *v, *stack;
+	register long offset;
+
+	/*
+	 * extend the local stack
+	 */
+	spsize = cframe->fp - sp;
+	ilsize = ilvp - cframe->stack;
+	size = ALIGN(spsize + ilsize + size + MIN_STACK, 8);
+	stack = ALLOC(value, size);
+	offset = (long) (stack + size) - (long) cframe->fp;
+
+	/* copy indexed lvalue stack values */
+	v = stack;
+	if (ilsize > 0) {
+	    memcpy(stack, cframe->stack, ilsize * sizeof(value));
+	    do {
+		if (v->type == T_LVALUE && v->u.lval >= sp &&
+		    v->u.lval < cframe->fp) {
+		    v->u.lval = (value *) ((long) v->u.lval + offset);
+		}
+		v++;
+	    } while (--ilsize > 0);
 	}
+	ilvp = v;
+
+	/* copy stack values */
+	v = stack + size;
+	if (spsize > 0) {
+	    memcpy(v - spsize, sp, spsize * sizeof(value));
+	    do {
+		--v;
+		if (v->type == T_LVALUE && v->u.lval >= sp &&
+		    v->u.lval < cframe->fp) {
+		    v->u.lval = (value *) ((long) v->u.lval + offset);
+		}
+	    } while (--spsize > 0);
+	}
+	sp = v;
+
+	/* replace old stack */
+	if (cframe->sos) {
+	    /* stack on stack: alloca'd */
+	    AFREE(cframe->stack);
+	    cframe->sos = FALSE;
+	} else {
+	    FREE(cframe->stack);
+	}
+	cframe->stack = stack;
+	cframe->fp = stack + size;
     }
 }
 
@@ -198,25 +243,40 @@ register int n;
 void i_odest(obj)
 object *obj;
 {
-    register value *v;
     register Uint count;
+    register value *v;
+    register frame *f;
 
     count = obj->count;
-    for (v = sp; v < stackend; v++) {
-	if (v->type == T_OBJECT && v->u.objcnt == count) {
-	    /*
-	     * wipe out destructed object on stack
-	     */
-	    *v = zero_value;
+
+    /* wipe out objects in stack frames */
+    v = sp;
+    for (f = cframe; f != (frame *) NULL; f = f->prev) {
+	while (v < f->fp) {
+	    if (v->type == T_OBJECT && v->u.objcnt == count) {
+		*v = zero_value;
+	    }
+	    v++;
 	}
+	v = f->argp;
     }
-    for (v = stack; v < ilvp; v++) {
+    /* wipe out objects in initial stack */
+    while (v < stack + MIN_STACK) {
 	if (v->type == T_OBJECT && v->u.objcnt == count) {
-	    /*
-	     * wipe out destructed object on stack
-	     */
 	    *v = zero_value;
 	}
+	v++;
+    }
+    /* wipe out objects in indexed lvalue stack */
+    v = ilvp;
+    for (f = cframe; f != (frame *) NULL; f = f->prev) {
+	while (v >= f->stack) {
+	    if (v->type == T_OBJECT && v->u.objcnt == count) {
+		*v = zero_value;
+	    }
+	    --v;
+	}
+	v = f->ilvp;
     }
 }
 
@@ -280,7 +340,7 @@ register unsigned int size;
 	    *--elts = *v++;
 	} while (--size != 0);
 	sp = v;
-	if (ec_push()) {
+	if (ec_push((ec_ftn) NULL)) {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);
 	    arr_del(a);
@@ -315,7 +375,7 @@ register int n;
 	n = a->size;
     }
     if (a->size > 0) {
-	i_check_stack((a->size << 1) - n - 1);
+	i_grow_stack((a->size << 1) - n - 1);
 	a->ref += a->size - n;
     }
     sp++;
@@ -347,7 +407,7 @@ register int inherit, index;
 	inherit = cframe->ctrl->inherits[cframe->p_index + inherit].varoffset;
     }
     i_push_value(d_get_variable(cframe->data, inherit + index));
-    exec_cost -= 3;
+    ticks -= 3;
 }
 
 /*
@@ -362,7 +422,7 @@ register int inherit, index;
     }
     (--sp)->type = T_LVALUE;
     sp->u.lval = d_get_variable(cframe->data, inherit + index);
-    exec_cost -= 3;
+    ticks -= 3;
 }
 
 /*
@@ -772,83 +832,212 @@ register value *lval, *val;
 }
 
 /*
- * NAME:	interpret->set_cost()
- * DESCRIPTION:	set the maximum allowed execution cost
+ * NAME:	interpret->get_depth()
+ * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
-void i_set_cost(cost)
-Int cost;
+Int i_get_depth()
 {
-    max_cost = cost;
+    if (nodepth) {
+	return -1;
+    }
+    return maxdepth - cframe->depth;
 }
 
 /*
- * NAME:	interpret->reset_cost()
- * DESCRIPTION:	reset the execution cost, and return the previous value
+ * NAME:	interpret->get_ticks()
+ * DESCRIPTION:	get the remaining ticks (negative: infinite)
  */
-Int i_reset_cost()
+Int i_get_ticks()
 {
-    Int cost;
-
-    cost = exec_cost;
-    exec_cost = max_cost;
-    return cost;
+    if (noticks) {
+	return -1;
+    } else if (ticks < 0) {
+	return 0;
+    } else {
+	return ticks;
+    }
 }
 
 /*
- * NAME:	interpret->lock()
- * DESCRIPTION:	lock the current frame, allowing deeper recursion and longer
- *		evaluation
+ * NAME:	interpret->check_rlimits()
+ * DESCRIPTION:	check if this rlimits call is valid
  */
-void i_lock()
+void i_check_rlimits()
 {
-    lock++;
+    --sp;
+    sp[0] = sp[1];
+    sp[1] = sp[2];
+    sp[2].type = T_OBJECT;
+    sp[2].oindex = cframe->obj->index;
+    sp[2].u.objcnt = cframe->obj->count;
+    /* obj, stack, ticks */
+    call_driver_object("runtime_rlimits", 3);
+
+    if ((sp->type == T_INT && sp->u.number == 0) ||
+	(sp->type == T_FLOAT && VFLT_ISZERO(sp))) {
+	error("Illegal use of rlimits");
+    }
+    i_del_value(sp++);
+}
+
+typedef struct {
+    Int depth;		/* stack depth */
+    Int ticks;		/* ticks left */
+    bool nodepth;	/* no depth checking */
+    bool noticks;	/* no ticks checking */
+    bool restore;	/* restore old ticks */
+} rlinfo;
+
+static rlinfo rlstack[ERRSTACKSZ];	/* rlimits stack */
+static int rli;				/* rlimits stack index */
+
+/*
+ * NAME:	interpret->set_rlimits()
+ * DESCRIPTION:	set new rlimits.  Return an integer that can be used in
+ *		restoring the old values
+ */
+int i_set_rlimits(depth, t)
+Int depth, t;
+{
+    if (rli == ERRSTACKSZ) {
+	error("Too deep rlimits nesting");
+    }
+    rlstack[rli].depth = maxdepth;
+    rlstack[rli].ticks = ticks;
+    rlstack[rli].nodepth = nodepth;
+    rlstack[rli].noticks = noticks;
+
+    if (depth != 0) {
+	if (depth < 0) {
+	    nodepth = TRUE;
+	} else {
+	    maxdepth = cframe->depth + depth;
+	    nodepth = FALSE;
+	}
+    }
+    if (t != 0) {
+	if (t < 0) {
+	    rlstack[rli].restore = TRUE;
+	    noticks = TRUE;
+	} else {
+	    rlstack[rli].restore = (t > ticks);
+	    ticks = t;
+	    noticks = FALSE;
+	}
+    } else {
+	rlstack[rli].restore = FALSE;
+    }
+
+    return rli++;
 }
 
 /*
- * NAME:	interpret->unlock()
- * DESCRIPTION:	unlock the current frame
+ * NAME:	interpret->get_rllevel()
+ * DESCRIPTION:	return the current rlimits stack level
  */
-void i_unlock()
+int i_get_rllevel()
 {
-    --lock;
+    return rli;
 }
 
 /*
- * NAME:	interpret->set_lock()
- * DESCRIPTION:	set the current lock level
+ * NAME:	interpret->set_rllevel()
+ * DESCRIPTION:	restore rlimits to an earlier level
  */
-void i_set_lock(l)
-unsigned int l;
+void i_set_rllevel(n)
+int n;
 {
-    lock = l;
+    if (n < 0) {
+	n += rli;
+    }
+    while (rli > n) {
+	--rli;
+	maxdepth = rlstack[rli].depth;
+	if (rlstack[rli].restore) {
+	    ticks = rlstack[rli].ticks;
+	}
+	nodepth = rlstack[rli].nodepth;
+	noticks = rlstack[rli].noticks;
+    }
 }
 
 /*
- * NAME:	interpret->query_lock()
- * DESCRIPTION:	return the current lock level
+ * NAME:	interpret->set_sp()
+ * DESCRIPTION:	set the current stack pointer
  */
-unsigned short i_query_lock()
+void i_set_sp(newsp)
+register value *newsp;
 {
-    return lock;
-}
+    register value *v, *w;
+    register frame *f;
 
-/*
- * NAME:	interpret->set_frame()
- * DESCRIPTION:	set the current stack frame level
- */
-void i_set_frame(f)
-int f;
-{
-    cframe = iframe + f;
-}
+    v = sp;
+    w = ilvp;
+    for (f = cframe; f != NULL; f = f->prev) {
+	while (v < f->fp) {
+	    if (v == newsp) {
+		sp = v;
+		ilvp = w;
+		cframe = f;
+		return;
+	    }
+	    switch (v->type) {
+	    case T_STRING:
+		str_del(v->u.string);
+		break;
 
-/*
- * NAME:	interpret->query_frame()
- * DESCRIPTION:	return the current stack frame level
- */
-int i_query_frame()
-{
-    return cframe - iframe;
+	    case T_ARRAY:
+	    case T_MAPPING:
+		arr_del(v->u.array);
+		break;
+
+	    case T_SALVALUE:
+		--w;
+	    case T_ALVALUE:
+		arr_del((--w)->u.array);
+		break;
+
+	    case T_MLVALUE:
+	    case T_SMLVALUE:
+		i_del_value(--w);
+		arr_del((--w)->u.array);
+		break;
+	    }
+	    v++;
+	}
+	v = f->argp;
+	w = f->ilvp;
+    }
+
+    while (v < newsp) {
+	switch (v->type) {
+	case T_STRING:
+	    str_del(v->u.string);
+	    break;
+
+	case T_ARRAY:
+	case T_MAPPING:
+	    arr_del(v->u.array);
+	    break;
+
+	case T_SALVALUE:
+	    --w;
+	case T_ALVALUE:
+	    arr_del((--w)->u.array);
+	    break;
+
+	case T_MLVALUE:
+	case T_SMLVALUE:
+	    i_del_value(--w);
+	    arr_del((--w)->u.array);
+	    break;
+	}
+	v++;
+    }
+
+    sp = v;
+    ilvp = w;
+    cframe = f;
 }
 
 /*
@@ -881,9 +1070,9 @@ register int n;
     for (f = cframe; n >= 0; --n) {
 	/* back to last external call */
 	while (!f->external) {
-	    --f;
+	    f = f->prev;
 	}
-	if (--f < iframe) {
+	if ((f=f->prev) == (frame *) NULL) {
 	    return (object *) NULL;
 	}
     }
@@ -1188,6 +1377,32 @@ register char *pc;
     return dflt;
 }
 
+static value *clean_sp;
+
+/*
+ * NAME:	set_cleanup()
+ * DESCRIPTION:	set the cleanup stack pointer, and return the old value
+ */
+value *i_set_cleanup(v)
+value *v;
+{
+    value *r;
+
+    r = clean_sp;
+    clean_sp = v;
+    return r;
+}
+
+/*
+ * NAME:	interpret->cleanup()
+ * DESCRIPTION:	cleanup stack in case of an error
+ */
+void i_cleanup()
+{
+    i_runtime_error(TRUE);
+    i_set_sp(clean_sp);
+}
+
 /*
  * NAME:	interpret->interpret()
  * DESCRIPTION:	Main interpreter function. Interpret stack machine code.
@@ -1203,13 +1418,18 @@ register char *pc;
     xfloat flt;
     value *v;
     int size;
+    Int newdepth, newticks;
 
     f = cframe;
     size = 0;
 
     for (;;) {
-	if (--exec_cost <= 0 && lock == 0) {
-	    error("Maximum execution cost exceeded (%ld)", (long) max_cost);
+	if (--ticks <= 0) {
+	    if (noticks) {
+		ticks = 0x7fffffff;
+	    } else {
+		error("Out of ticks");
+	    }
 	}
 	instr = FETCH1U(pc);
 	f->pc = pc;
@@ -1234,14 +1454,7 @@ register char *pc;
 	    sp->u.number = FETCH4S(pc, l);
 	    break;
 
-	case I_PUSH_FLOAT2:
-	    (--sp)->type = T_FLOAT;
-	    flt.high = FETCH2U(pc, u);
-	    flt.low = 0L;
-	    VFLT_PUT(sp, flt);
-	    break;
-
-	case I_PUSH_FLOAT6:
+	case I_PUSH_FLOAT:
 	    (--sp)->type = T_FLOAT;
 	    flt.high = FETCH2U(pc, u);
 	    flt.low = FETCH4U(pc, l);
@@ -1269,7 +1482,8 @@ register char *pc;
 	    break;
 
 	case I_PUSH_LOCAL:
-	    i_push_value(f->fp + FETCH1U(pc));
+	    u = FETCH1S(pc);
+	    i_push_value(((short) u < 0) ? f->fp + (short) u : f->argp + u);
 	    break;
 
 	case I_PUSH_GLOBAL:
@@ -1278,12 +1492,13 @@ register char *pc;
 		u = f->ctrl->inherits[f->p_index + u].varoffset;
 	    }
 	    i_push_value(d_get_variable(f->data, u + FETCH1U(pc)));
-	    exec_cost -= 3;
+	    ticks -= 3;
 	    break;
 
 	case I_PUSH_LOCAL_LVALUE:
 	    (--sp)->type = T_LVALUE;
-	    sp->u.lval = f->fp + FETCH1U(pc);
+	    u = FETCH1S(pc);
+	    sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
 	    break;
 
 	case I_PUSH_GLOBAL_LVALUE:
@@ -1293,7 +1508,7 @@ register char *pc;
 	    }
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
-	    exec_cost -= 3;
+	    ticks -= 3;
 	    break;
 
 	case I_INDEX:
@@ -1367,6 +1582,9 @@ register char *pc;
 	    }
 	    break;
 
+	case I_CALL_IKFUNC:
+	    pc++;
+	    /* fall through */
 	case I_CALL_KFUNC:
 	    kf = &KFUN(FETCH1U(pc));
 	    if (PROTO_CLASS(kf->proto) & C_VARARGS) {
@@ -1392,16 +1610,16 @@ register char *pc;
 	    }
 	    break;
 
-	case I_CALL_AFUNC:
-	    u = FETCH1U(pc);
-	    i_funcall((object *) NULL, 0, u, FETCH1U(pc) + size);
-	    size = 0;
-	    break;
-
+	case I_CALL_IDFUNC:
+	    pc++;
+	    /* fall through */
 	case I_CALL_DFUNC:
 	    u = FETCH1U(pc);
+	    if (u != 0) {
+		u += f->p_index;
+	    }
 	    u2 = FETCH1U(pc);
-	    i_funcall((object *) NULL, f->p_index + u, u2, FETCH1U(pc) + size);
+	    i_funcall((object *) NULL, u, u2, FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
@@ -1414,45 +1632,56 @@ register char *pc;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
-	    u = lock;
-	    v = sp;
-	    if (f->obj->flags & O_DRIVER) {
-		/* reset execution cost */
-		l = exec_cost;
-		exec_cost = max_cost;
-	    }
-	    if (!ec_push()) {
+	    v = clean_sp;
+	    clean_sp = sp;
+	    u = rli;
+	    if (!ec_push((ec_ftn) i_cleanup)) {
 		i_interpret(pc);
 		ec_pop();
 		pc = f->pc;
 	    } else {
 		/* error */
-		i_log_error(TRUE);
-		lock = u;
-		cframe = f;
 		f->pc = pc = p;
-		i_pop(v - sp);
 		p = errormesg();
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
+		i_set_rllevel(u);
 	    }
-	    if (f->obj->flags & O_DRIVER) {
-		/* restore execution cost */
-		exec_cost = l;
-	    }
+	    clean_sp = v;
 	    break;
 
-	case I_LOCK:
-	    lock++;
+	case I_RLIMITS:
+	    if (sp[1].type != T_INT) {
+		error("Bad rlimits depth type");
+	    }
+	    if (sp->type != T_INT) {
+		error("Bad rlimits ticks type");
+	    }
+	    newdepth = sp[1].u.number;
+	    newticks = sp->u.number;
+	    if (!FETCH1U(pc)) {
+		/* runtime check */
+		i_check_rlimits();
+	    } else {
+		/* pop limits */
+		sp += 2;
+	    }
+
+	    u = i_set_rlimits(newdepth, newticks);
 	    i_interpret(pc);
 	    pc = f->pc;
-	    --lock;
+	    i_set_rllevel(u);
 	    break;
 
 	case I_RETURN:
 	    return;
 	}
 
+# ifdef DEBUG
+	if (sp < ilvp + MIN_STACK) {
+	    fatal("out of value stack");
+	}
+# endif
 	if (instr & I_POP_BIT) {
 	    /* pop the result of the last operation (never an lvalue) */
 	    i_del_value(sp++);
@@ -1470,72 +1699,70 @@ register object *obj;
 register int p_ctrli, nargs;
 int funci;
 {
-    register frame *f, *pf;
     register char *pc;
     register unsigned short n;
+    frame f;
     value val;
-# ifdef DEBUG
-    value *keep;
-# endif
 
-    f = pf = cframe;
-    f++;
-    if (f == maxmaxframe || (f == maxframe && lock == 0)) {
-	error("Function call stack overflow");
-    }
-
-    if (f == iframe) {
+    f.prev = cframe;
+    if (cframe == (frame *) NULL) {
 	/*
 	 * top level call
 	 */
-	exec_cost = max_cost;
-
-	f->obj = obj;
-	f->ctrl = obj->ctrl;
-	f->data = o_dataspace(obj);
-	f->external = TRUE;
+	f.obj = obj;
+	f.ctrl = obj->ctrl;
+	f.data = o_dataspace(obj);
+	f.depth = 0;
+	f.external = TRUE;
     } else if (obj != (object *) NULL) {
 	/*
 	 * call_other
 	 */
-	f->obj = obj;
-	f->ctrl = obj->ctrl;
-	f->data = o_dataspace(obj);
-	f->external = TRUE;
+	f.obj = obj;
+	f.ctrl = obj->ctrl;
+	f.data = o_dataspace(obj);
+	f.depth = cframe->depth + 1;
+	f.external = TRUE;
     } else {
 	/*
 	 * local function call
 	 */
-	f->obj = pf->obj;
-	f->ctrl = pf->ctrl;
-	f->data = pf->data;
-	f->external = FALSE;
+	f.obj = cframe->obj;
+	f.ctrl = cframe->ctrl;
+	f.data = cframe->data;
+	f.depth = cframe->depth + 1;
+	f.external = FALSE;
     }
-    if (exec_cost < 100 && lock == 0) {
-	error("Maximum execution cost exceeded (%ld)", (long) max_cost);
+    if (f.depth >= maxdepth && !nodepth) {
+	error("Stack overflow");
+    }
+    if (ticks < 100) {
+	if (noticks) {
+	    ticks = 0x7fffffff;
+	} else {
+	    error("Out of ticks");
+	}
     }
 
     /* set the program control block */
-    f->foffset = f->ctrl->inherits[p_ctrli].funcoffset;
-    f->p_ctrl = o_control(f->ctrl->inherits[p_ctrli].obj);
-    f->p_index = p_ctrli + 1 - f->p_ctrl->ninherits;
+    f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
+    f.p_ctrl = o_control(f.ctrl->inherits[p_ctrli].obj);
+    f.p_index = p_ctrli + 1 - f.p_ctrl->ninherits;
 
     /* get the function */
-    f->func = &d_get_funcdefs(f->p_ctrl)[funci];
-    if (f->func->class & C_UNDEFINED) {
+    f.func = &d_get_funcdefs(f.p_ctrl)[funci];
+    if (f.func->class & C_UNDEFINED) {
 	error("Undefined function %s",
-	      d_get_strconst(f->p_ctrl, f->func->inherit,
-			     f->func->index)->text);
+	      d_get_strconst(f.p_ctrl, f.func->inherit, f.func->index)->text);
     }
 
-    pc = d_get_prog(f->p_ctrl) + f->func->offset;
+    pc = d_get_prog(f.p_ctrl) + f.func->offset;
     if (PROTO_CLASS(pc) & C_TYPECHECKED) {
 	/* typecheck arguments */
-	i_typecheck(d_get_strconst(f->p_ctrl, f->func->inherit,
-				   f->func->index)->text,
+	i_typecheck(d_get_strconst(f.p_ctrl, f.func->inherit,
+				   f.func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
-    cframe++;
 
     /* handle arguments */
     n = PROTO_NARGS(pc);
@@ -1546,6 +1773,7 @@ int funci;
 	if (nargs >= n) {
 	    /* put additional arguments in array */
 	    nargs -= n - 1;
+	    cframe = &f;
 	    a = arr_new((long) nargs);
 	    v = a->elts + nargs;
 	    do {
@@ -1555,65 +1783,84 @@ int funci;
 	    nargs = n;
 	} else {
 	    /* make empty arguments array, and optionally push zeroes */
-	    i_check_stack(n - nargs);
-	    while (++nargs < n) {
-		*--sp = zero_value;
+	    if (++nargs < n) {
+		i_grow_stack(n - nargs + 1);
+		do {
+		    *--sp = zero_value;
+		} while (++nargs < n);
 	    }
+	    cframe = &f;
 	    a = arr_new(0L);
 	}
 	(--sp)->type = T_ARRAY;
 	arr_ref(sp->u.array = a);
-    } else if (nargs > n) {
-	/* pop superfluous arguments */
-	i_pop(nargs - n);
-	nargs = n;
-    } else if (nargs < n) {
-	/* add missing arguments */
-	i_check_stack(n - nargs);
-	do {
-	    *--sp = zero_value;
-	} while (++nargs < n);
+    } else {
+	if (nargs > n) {
+	    /* pop superfluous arguments */
+	    i_pop(nargs - n);
+	    nargs = n;
+	} else if (nargs < n) {
+	    /* add missing arguments */
+	    i_grow_stack(n - nargs);
+	    do {
+		*--sp = zero_value;
+	    } while (++nargs < n);
+	}
+	cframe = &f;
     }
-    f->nargs = nargs;
+    f.argp = sp;
+    f.nargs = nargs;
     pc += PROTO_SIZE(pc);
 
-    /* check stack depth */
-    i_check_stack(FETCH2U(pc, n));
+    /* create new local stack */
+    f.ilvp = ilvp;
+    FETCH2U(pc, n);
+    f.stack = ilvp = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+    f.fp = sp = f.stack + n + MIN_STACK + EXTRA_STACK;
+    f.sos = TRUE;
 
     /* initialize local variables */
     n = FETCH1U(pc);
-    f->nvars = n;
+# ifdef DEBUG
+    nargs = n;
+# endif
     if (n > 0) {
-	nargs += n;
 	do {
 	    *--sp = zero_value;
 	} while (--n > 0);
     }
-    f->fp = sp;
 
-    d_get_funcalls(f->ctrl);	/* make sure they are available */
-    exec_cost -= 5;
-# ifdef DEBUG
-    keep = sp;
-# endif
-    if (f->func->class & C_COMPILED) {
+    /* execute code */
+    d_get_funcalls(f.ctrl);	/* make sure they are available */
+    ticks -= 5;
+    if (f.func->class & C_COMPILED) {
 	/* compiled function */
-	(*pcfunctions[FETCH2U(pc, n)])();
+	(*pcfunctions[FETCH2U(pc, n)])(f.argp);
     } else {
 	/* interpreted function */
-	f->prog = pc += 2;
+	f.prog = pc += 2;
 	i_interpret(pc);
     }
-    --cframe;
+    cframe = f.prev;
 
-    /* clean up stack, move return value upwards */
+    /* clean up stack, move return value to outer stackframe */
     val = *sp++;
 # ifdef DEBUG
-    if (sp != keep) {
+    if (sp != f.fp - nargs) {
 	fatal("bad stack pointer after function call");
     }
 # endif
-    i_pop(nargs);
+    i_pop(f.fp - sp);
+    if (f.sos) {
+	/* still alloca'd */
+	AFREE(f.stack);
+    } else {
+	/* extended and malloced */
+	FREE(f.stack);
+    }
+    sp = f.argp;
+    ilvp = f.ilvp;
+    i_pop(f.nargs);
     *--sp = val;
 }
 
@@ -1656,7 +1903,7 @@ int nargs;
 
     /* check if the function can be called */
     if (!call_static && (f->class & C_STATIC) &&
-	(cframe < iframe || cframe->obj != obj)) {
+	(cframe == (frame *) NULL || cframe->obj != obj)) {
 	i_pop(nargs);
 	return FALSE;
     }
@@ -1711,7 +1958,6 @@ register frame *f;
 	case I_INDEX_LVALUE:
 	case I_FETCH:
 	case I_STORE:
-	case I_LOCK:
 	case I_RETURN:
 	    break;
 
@@ -1721,10 +1967,10 @@ register frame *f;
 	case I_PUSH_LOCAL_LVALUE:
 	case I_SPREAD:
 	case I_CAST:
+	case I_RLIMITS:
 	    pc++;
 	    break;
 
-	case I_PUSH_FLOAT2:
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_GLOBAL:
 	case I_PUSH_GLOBAL_LVALUE:
@@ -1733,7 +1979,6 @@ register frame *f;
 	case I_JUMP:
 	case I_JUMP_ZERO:
 	case I_JUMP_NONZERO:
-	case I_CALL_AFUNC:
 	case I_CATCH:
 	    pc += 2;
 	    break;
@@ -1745,10 +1990,11 @@ register frame *f;
 	    break;
 
 	case I_PUSH_INT4:
+	case I_CALL_IDFUNC:
 	    pc += 4;
 	    break;
 
-	case I_PUSH_FLOAT6:
+	case I_PUSH_FLOAT:
 	    pc += 6;
 	    break;
 
@@ -1778,6 +2024,9 @@ register frame *f;
 	    }
 	    break;
 
+	case I_CALL_IKFUNC:
+	    pc++;
+	    /* fall through */
 	case I_CALL_KFUNC:
 	    if (PROTO_CLASS(KFUN(FETCH1U(pc)).proto) & C_VARARGS) {
 		pc++;
@@ -1805,12 +2054,13 @@ array *i_call_trace()
     value *elts;
     int max_args;
 
-    a = arr_new(cframe - iframe + 1L);
+    for (f = cframe, n = 0; f != (frame *) NULL; f = f->prev, n++) ;
+    a = arr_new((long) n);
     max_args = conf_array_size() - 5;
-    for (f = iframe, elts = a->elts; f <= cframe; f++, elts++) {
-	elts->type = T_ARRAY;
+    for (f = cframe, elts = a->elts + n; f != (frame *) NULL; f = f->prev) {
+	(--elts)->type = T_ARRAY;
 	n = f->nargs;
-	args = f->fp + n + f->nvars;
+	args = f->argp + n;
 	if (n > max_args) {
 	    /* unlikely, but possible */
 	    n = max_args;
@@ -1865,28 +2115,27 @@ array *i_call_trace()
 }
 
 /*
- * NAME:	interpret->log_error()
- * DESCRIPTION:	log an error
+ * NAME:	interpret->runtime_error()
+ * DESCRIPTION:	handle a runtime error
  */
-void i_log_error(flag)
+void i_runtime_error(flag)
 int flag;
 {
     char *err;
 
-    if (ec_push()) {
-	message("Error within log_error:\012");	/* LF */
-	warning((char *) NULL);
+    if (ec_push((ec_ftn) NULL)) {
+	message("Error within runtime_error:\012");	/* LF */
+	message((char *) NULL);
     } else {
-	i_lock();
-	i_check_stack(2);
+	nodepth = TRUE;
+	noticks = TRUE;
 	err = errormesg();
 	(--sp)->type = T_STRING;
 	str_ref(sp->u.string = str_new(err, (long) strlen(err)));
 	(--sp)->type = T_INT;
 	sp->u.number = flag;
-	call_driver_object("log_error", 2);
+	call_driver_object("runtime_error", 2);
 	i_del_value(sp++);
-	i_unlock();
 	ec_pop();
     }
 }
@@ -1897,7 +2146,8 @@ int flag;
  */
 void i_clear()
 {
-    cframe = iframe - 1;
-    i_pop(stackend - sp);
-    lock = 0;
+    i_set_sp(stack + MIN_STACK);
+    nodepth = TRUE;
+    noticks = TRUE;
+    rli = 0;
 }

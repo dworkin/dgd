@@ -114,7 +114,7 @@ register node *n;
 	switch (n->l.left->type) {
 	case N_LOCAL:
 	case N_GLOBAL:
-	    return 1;
+	    return 2;
 
 	case N_INDEX:
 	    return max3(max2(opt_expr(&n->l.left->l.left, FALSE),
@@ -363,10 +363,14 @@ register node **m;
 	    switch (n->l.left->type) {
 	    case N_ADD:
 		n->l.left->type = N_SUM;
-		d1 = max2(d1, 2);
+		d1 = max2(d1 + 1, 4);
+		n->type = N_SUM;
+		return d1 + max2(d2, 2);
+
+	    case N_RANGE:
+		d1++;	/* possible implicit operand */
 		/* fall through */
 	    case N_SUM:
-	    case N_RANGE:
 		n->type = N_SUM;
 		return d1 + max2(d2, 2);
 	    }
@@ -970,15 +974,6 @@ int pop;
 	}
 	return d1;
 
-    case N_LOCK:
-	oldside = side_start(&side, &olddepth);
-	d1 = opt_expr(&n->l.left, pop);
-	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
-	if (d1 == 0) {
-	    *m = n->l.left;
-	}
-	return d1;
-
     case N_TOFLOAT:
 	if (n->l.left->mod != T_INT) {
 	    return opt_expr(&n->l.left, FALSE);
@@ -1352,11 +1347,12 @@ int pop;
 
     case N_RANGE:
 	d1 = opt_expr(&n->l.left, FALSE);
+	d2 = 1;
 	if (n->r.right->l.left != (node *) NULL) {
-	    d1 = max2(d1, opt_expr(&n->r.right->l.left, FALSE));
+	    d1 = max2(d1, d2++ + opt_expr(&n->r.right->l.left, FALSE));
 	}
 	if (n->r.right->r.right != (node *) NULL) {
-	    d1 = max2(d1, opt_expr(&n->r.right->r.right, FALSE));
+	    d1 = max2(d1, d2 + opt_expr(&n->r.right->r.right, FALSE));
 	}
 	if (n->l.left->type == N_STR) {
 	    long from, to;
@@ -1603,6 +1599,13 @@ unsigned short *depth;
 	    }
 	    opt_stmt(m->r.right, &d2);
 	    d = max3(d, d1, d2);
+	    break;
+
+	case N_RLIMITS:
+	    d1 = max2(opt_expr(&m->l.left->l.left, FALSE),
+		      1 + opt_expr(&m->l.left->r.right, FALSE)) + !m->mod;
+	    opt_stmt(m->r.right, &d2);
+	    d = max2(d1, d2);
 	    break;
 
 	case N_IF:

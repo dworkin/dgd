@@ -648,12 +648,15 @@ static flt tenths[] = {
  *		proper format.  Return TRUE if the operation was successful,
  *		FALSE otherwise.
  */
-bool flt_atof(p, f)
-register char *p;
+bool flt_atof(s, f)
+char **s;
 xfloat *f;
 {
     flt a, b, c, *t;
     register unsigned short e, h;
+    register char *p;
+
+    p = *s;
 
     /* sign */
     if (*p == '-') {
@@ -749,6 +752,7 @@ xfloat *f;
     }
 
     f_ftoxf(&a, f);
+    *s = p;
     return TRUE;
 }
 

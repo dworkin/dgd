@@ -174,6 +174,7 @@ typedef struct _loop_ {
     bool cont;			/* seen any continues? */
     bool dflt;			/* seen any default labels? */
     short ncase;		/* number of case labels */
+    unsigned short rlimits;	/* rlimits reference number */
     node *case_list;		/* previous list of case nodes */
     struct _loop_ *prev;	/* previous loop or switch */
     struct _loop_ *env;		/* enclosing loop */
@@ -187,6 +188,7 @@ typedef struct _lchunk_ {
 static lchunk *llist;		/* list of all loop chunks */
 static loop *fllist;		/* list of free loops */
 static int lchunksz = LOOP_CHUNK; /* size of current loop chunk */
+static unsigned short rlimits;	/* current rlimits nesting level */
 
 /*
  * NAME:	loop->new()
@@ -213,6 +215,7 @@ loop *prev;
     }
     l->brk = FALSE;
     l->cont = FALSE;
+    l->rlimits = rlimits;
     l->prev = prev;
     return l;
 }
@@ -300,6 +303,7 @@ static void c_clear()
     block_clear();
     node_clear();
     seen_decls = FALSE;
+    rlimits = 0;
 }
 
 /*
@@ -415,7 +419,6 @@ register char *file;
 		 * Object can't be loaded.  Ask the driver object for
 		 * a replacement.
 		 */
-		i_check_stack(1);
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new((char *) NULL,
 					       strlen(c.file) + 1L));
@@ -456,33 +459,13 @@ register char *file;
 	}
 
 	cg_init(c.prev != (context *) NULL);
-	if (ec_push()) {
+	if (ec_push((ec_ftn) NULL)) {
 	    c_error("error while compiling:");
 	    recursion = FALSE;
-	    errorlog((char *) NULL);
 	    pp_clear();
 	    ctrl_clear();
 	    c_clear();
 	    error((char *) NULL);
-	}
-	if (c_autodriver() == 0) {
-	    /*
-	     * compile time error logging
-	     */
-	    i_check_stack(1);
-	    (--sp)->type = T_STRING;
-	    str_ref(sp->u.string = str_new((char *) NULL, strlen(c.file) + 1L));
-	    sp->u.string->text[0] = '/';
-	    strcpy(sp->u.string->text + 1, c.file);
-	    call_driver_object("compile_log", 1);
-	    if (sp->type == T_STRING) {
-		file = path_file(path_resolve(sp->u.string->text));
-		if (file != (char *) NULL) {
-		    /* start logging errors */
-		    errorlog(strcpy(errlog, file));
-		}
-	    }
-	    i_del_value(sp++);
 	}
 
 	c.inherit[0] = '\0';
@@ -491,7 +474,6 @@ register char *file;
 	    control *ctrl;
 
 	    recursion = FALSE;
-	    errorlog((char *) NULL);
 	    ec_pop();
 	    pp_clear();
 
@@ -508,7 +490,6 @@ register char *file;
 	    return ctrl->inherits[ctrl->ninherits - 1].obj;
 	} else {
 	    recursion = FALSE;
-	    errorlog((char *) NULL);
 	    ec_pop();
 	    pp_clear();
 	    ctrl_clear();
@@ -990,6 +971,49 @@ node *n1, *n3;
 }
 
 /*
+ * NAME:	compile->startrlimits()
+ * DESCRIPTION:	begin rlimit handling
+ */
+void c_startrlimits()
+{
+    rlimits++;
+}
+
+/*
+ * NAME:	compile->endrlimits()
+ * DESCRIPTION:	handle statements with resource limitations
+ */
+node *c_endrlimits(n1, n2, n3)
+node *n1, *n2, *n3;
+{
+    --rlimits;
+
+    if (n3 == (node *) NULL) {
+	return (node *) NULL;
+    }
+
+    if (strcmp(current->file, driver_object) == 0) {
+	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
+    } else {
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new((char *) NULL,
+				       strlen(current->file) + 1L));
+	sp->u.string->text[0] = '/';
+	strcpy(sp->u.string->text + 1, current->file);
+	call_driver_object("compile_rlimits", 1);
+	n1 = node_bin(N_RLIMITS,
+		      (!((sp->type == T_INT && sp->u.number == 0) ||
+			 (sp->type == T_FLOAT && VFLT_ISZERO(sp)))),
+		      node_bin(N_PAIR, 0, n1, n2),
+		      n3);
+	i_del_value(sp++);
+    }
+
+    n1->flags |= n3->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
+    return n1;
+}
+
+/*
  * NAME:	compile->startswitch()
  * DESCRIPTION:	start a switch statement
  */
@@ -1225,6 +1249,10 @@ register node *n1, *n2;
 	c_error("case label not inside switch");
 	return (node *) NULL;
     }
+    if (switch_list->rlimits != rlimits) {
+	c_error("illegal jump into rlimits");
+	return (node *) NULL;
+    }
     if (switch_list->type == T_INVALID) {
 	return (node *) NULL;
     }
@@ -1303,6 +1331,8 @@ node *c_default()
     } else if (switch_list->dflt) {
 	c_error("duplicate default label in switch");
 	switch_list->type = T_INVALID;
+    } else if (switch_list->rlimits != rlimits) {
+	c_error("illegal jump into rlimits");
     } else {
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
@@ -1335,7 +1365,7 @@ node *c_break()
     }
     l->brk = TRUE;
 
-    n = node_mon(N_BREAK, 0, (node *) NULL);
+    n = node_mon(N_BREAK, rlimits - l->rlimits, (node *) NULL);
     n->flags |= F_BREAK;
     return n;
 }
@@ -1354,7 +1384,7 @@ node *c_continue()
     }
     thisloop->cont = TRUE;
 
-    n = node_mon(N_CONTINUE, 0, (node *) NULL);
+    n = node_mon(N_CONTINUE, rlimits - thisloop->rlimits, (node *) NULL);
     n->flags |= F_CONT;
     return n;
 }
@@ -1388,7 +1418,7 @@ int typechecking;
 	}
     }
 
-    n = node_mon(N_RETURN, 0, n);
+    n = node_mon(N_RETURN, rlimits, n);
     n->flags |= F_RETURN;
     return n;
 }
@@ -1434,11 +1464,6 @@ int typechecking;
 {
     if (strcmp(n->l.string->text, "catch") == 0) {
 	return node_mon(N_CATCH, T_STRING, n);
-    } else if (strcmp(n->l.string->text, "lock") == 0) {
-	if (strcmp(current->file, auto_object) != 0) {
-	    c_error("only auto object can use lock()");
-	}
-	return node_mon(N_LOCK, 0, n);
     } else {
 	char *proto;
 	long call;
@@ -1539,19 +1564,6 @@ register node *n;
 }
 
 /*
- * NAME:	compile->lock()
- * DESCRIPTION:	handle lock
- */
-node *c_lock(n)
-node *n;
-{
-    if (strcmp(current->file, auto_object) != 0) {
-	c_error("only auto object can use lock()");
-    }
-    return node_mon(N_LOCK, n->mod, n);
-}
-
-/*
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
@@ -1601,8 +1613,8 @@ node *args;
 	if ((*arg)->type == N_SPREAD) {
 	    if (argp[nargs - n] == (T_LVALUE | T_ELLIPSIS)) {
 		(*arg)->mod = nargs-- - n;
-		/* only kfuns can have lvalue parameters */
-		func->r.number |= 1L << 16;
+		/* KFCALL => KFCALL_LVAL, IKFCALL => IKFCALL_LVAL */
+		func->r.number += 1L << 24;
 	    } else {
 		(*arg)->mod = (unsigned short) -1;
 	    }
@@ -1695,7 +1707,8 @@ node *n;
     register node *t, *a, *l;
 
     if (n->type == N_FUNC) {
-	if (n->r.number >> 16 == ((KFCALL << 8) | 1)) {
+	if ((n->r.number >> 24) == KFCALL_LVAL ||
+	    (n->r.number >> 24) == IKFCALL_LVAL) {
 	    /*
 	     * the function has lvalue parameters
 	     */
@@ -1727,7 +1740,7 @@ node *n;
 	    }
 	}
 
-	if (n->r.number >> 24 != KFCALL && n->r.number >> 24 != DFCALL &&
+	if ((n->r.number >> 24) == FCALL &&
 	    n->mod != T_MIXED && n->mod != T_VOID) {
 	    /*
 	     * make sure the return value is as it should be
@@ -1948,16 +1961,34 @@ register unsigned int type1, type2;
 
 /*
  * NAME:	compile->error()
- * DESCRIPTION:	Produce a warning with the supplied error message.
+ * DESCRIPTION:	Call the driver object with the supplied error message.
  */
 void c_error(f, a1, a2, a3)
 char *f, *a1, *a2, *a3;
 {
-    char buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
+    char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
     extern int nerrors;
 
-    sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
-    sprintf(buf + strlen(buf), f, a1, a2, a3);
-    message("%s\012", buf);	/* LF */
+    if (o_find(driver_object) != (object *) NULL) {
+	fname = tk_filename();
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(NULL, (long) strlen(fname) + 1));
+	strcpy(sp->u.string->text + 1, fname);
+	sp->u.string->text[0] = '/';
+	(--sp)->type = T_INT;
+	sp->u.number = tk_line();
+	sprintf(buf, f, a1, a2, a3);
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(buf, (long) strlen(buf)));
+
+	call_driver_object("compile_error", 3);
+	i_del_value(sp++);
+    } else {
+	/* there is no driver object to call; show the error on stderr */
+	sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
+	sprintf(buf + strlen(buf), f, a1, a2, a3);
+	message("%s\012", buf);     /* LF */
+    }
+
     nerrors++;
 }

@@ -133,7 +133,7 @@ char *cmd;
     outbuf = buffer;
     outbufsz = 0;
     internal = FALSE;
-    if (ec_push()) {
+    if (ec_push((ec_ftn) NULL)) {
 	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
 	lb_inact(e->ed->edbuf->lb);
 	recursion = FALSE;

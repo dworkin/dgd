@@ -681,8 +681,11 @@ int tk_gettok()
 		    if (p == yyend) {
 			error("too long floating point constant");
 		    } else {
+			char *buf;
+
 			*p = '\0';
-			if (!flt_atof(yytext, &yyfloat)) {
+			buf = yytext;
+			if (!flt_atof(&buf, &yyfloat)) {
 			    error("overflow in floating point constant");
 			}
 		    }
