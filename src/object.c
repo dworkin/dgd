@@ -123,10 +123,6 @@ register object *o;
 	i_del_value(sp++);
     } /* else error: ignore */
 
-    /* free object name */
-    FREE(o->chain.name);
-    o->chain.name = (char *) NULL;
-
     /* remove references to inherited objects too */
     if (o->ctrl == (control *) NULL) {
 	o->ctrl = d_load_control(o);
@@ -162,7 +158,6 @@ register object *o;
 	o_delete(o);
     } else {
 	o_delete(o->u.master);
-	o->u.ref = 0;
 
 	/* put clones in free list right away */
 	o->chain.next = (hte *) free_obj;
@@ -329,6 +324,10 @@ void o_clean()
     for (o = dest_obj; o != (object *) NULL; o = o->u.master) {
 	/* free control block */
 	d_del_control(o_control(o));
+
+	/* free object name */
+	FREE(o->chain.name);
+	o->chain.name = (char *) NULL;
 
 	/* put object in free list */
 	o->chain.next = (hte *) free_obj;

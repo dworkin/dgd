@@ -7,6 +7,8 @@ typedef struct {
 typedef void (*pcfunc) P((void));
 
 typedef struct {
+    object *obj;		/* precompiled object */
+
     short ninherits;		/* # of inherits */
     pcinherit *inherits;	/* inherits */
 
@@ -46,10 +48,11 @@ extern precomp	*precompiled[];	/* table of precompiled objects */
 extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 
-void pc_preload		P((char*, char*));
-void pc_control		P((control*, object*));
-bool pc_dump		P((int));
-void pc_restore		P((int));
+void   pc_preload	P((char*, char*));
+array *pc_list		P((void));
+void   pc_control	P((control*, object*));
+bool   pc_dump		P((int));
+void   pc_restore	P((int));
 
 # define PUSH_NUMBER	(--sp)->type = T_INT, sp->u.number =
 # define push_lvalue(v)	((--sp)->type = T_LVALUE, sp->u.lval = (v))

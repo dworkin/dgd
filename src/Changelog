@@ -892,3 +892,4 @@ DGD 1.1
  - find_object() no longer calls driver->path_object() to translate a path.
  - call_other() now calls driver->call_object() to translate a string to an
    object.
+ - Added list of precompiled objects to status().

@@ -298,7 +298,8 @@ char *argv[];
     dump_funcalls(ctrl);
     dump_symbols(ctrl);
 
-    printf("\nprecomp %s = {\n%d, inherits,\n", tag, ctrl->ninherits);
+    printf("\nprecomp %s = {\n(object *) NULL,\n%d, inherits,\n", tag,
+	   ctrl->ninherits);
     if (ctrl->niinherits == 0) {
 	printf("0, 0,\n");
     } else {
@@ -406,6 +407,15 @@ pcfunc *pcfunctions;	/* dummy */
 void pc_preload(auto_name, driver_name)
 char *auto_name, *driver_name;
 {
+}
+
+/*
+ * NAME:	pc_list()
+ * DESCRIPTION:	pretend to return a list of precompiled objects
+ */
+array *pc_list()
+{
+    return (array *) NULL;
 }
 
 /*

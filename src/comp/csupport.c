@@ -93,9 +93,6 @@ char *auto_name, *driver_name;
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
-	    message("Precompiled: /%s\n",
-		    name = l->inherits[l->ninherits - 1].name);
-
 	    pc_inherits(ctrl.inherits = inherits + ninherits, l->inherits,
 			ctrl.ninherits = l->ninherits);
 	    ninherits += l->ninherits;
@@ -106,7 +103,8 @@ char *auto_name, *driver_name;
 		   sizeof(pcfunc) * l->nfunctions);
 	    nfuncs += l->nfunctions;
 
-	    obj = o_new(name, (object *) NULL, &ctrl);
+	    obj = o_new(name = l->inherits[l->ninherits - 1].name,
+			(object *) NULL, &ctrl);
 	    obj->flags |= O_COMPILED;
 	    if (strcmp(name, driver_name) == 0) {
 		obj->flags |= O_DRIVER;
@@ -114,8 +112,40 @@ char *auto_name, *driver_name;
 		obj->flags |= O_AUTO;
 	    }
 	    obj->ctrl = (control *) NULL;
+	    l->obj = obj;
 	}
     }
+}
+
+/*
+ * NAME:	precomp->list()
+ * DESCRIPTION:	return an array with all precompiled objects
+ */
+array *pc_list()
+{
+    array *a;
+    register uindex n;
+    register value *v;
+    register precomp **pc;
+
+    for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
+	if ((*pc)->obj->count != 0 && ((*pc)->obj->flags & O_COMPILED)) {
+	    n++;
+	}
+    }
+
+    a = arr_new((long) n);
+    v = a->elts;
+    for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
+	if ((*pc)->obj->count != 0 && ((*pc)->obj->flags & O_COMPILED)) {
+	    v->type = T_OBJECT;
+	    v->oindex = (*pc)->obj->index;
+	    v->u.objcnt = (*pc)->obj->count;
+	    v++;
+	}
+    }
+
+    return a;
 }
 
 /*
