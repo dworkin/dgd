@@ -97,7 +97,7 @@ char *filename;
 	/* allocate new line buffer */
 	lb = ALLOC(linebuf, 1);
 
-	lb->file = filename;
+	lb->file = strcpy(ALLOC(char, strlen(filename) + 1), filename);
 
 	bt = lb->bt;
 	for (i = NR_EDBUFS; i > 0; --i) {
@@ -121,7 +121,7 @@ char *filename;
     lb->txtsz = 0;
 
     /* create or truncate tmpfile */
-    lb->fd = open(lb->file, O_RDWR | O_CREAT | O_TRUNC, 0600);
+    lb->fd = open(lb->file, O_CREAT | O_TRUNC | O_RDWR, 0600);
     if (lb->fd < 0) {
 	fatal("cannot create editor tmpfile \"%s\"", lb->file);
     }
@@ -144,6 +144,7 @@ register linebuf *lb;
 
     /* remove tmpfile */
     unlink(lb->file);
+    FREE(lb->file);
 
     /* release memory */
     bt = lb->bt;
