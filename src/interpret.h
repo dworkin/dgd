@@ -94,19 +94,29 @@ extern void		i_check_stack	P((int));
 extern void		i_push_value	P((value*));
 extern void		i_pop		P((int));
 extern void		i_odest		P((object*));
-extern void		i_index		P((value*, value*));
-extern void		i_index_lvalue	P((value*, value*));
-extern void		i_store		P((dataspace*, value*, value*));
+extern void		i_string	P((char, unsigned short));
+extern void		i_global	P((int, int));
+extern void		i_global_lvalue	P((int, int));
+extern void		i_aggregate	P((unsigned short));
+extern void		i_map_aggregate	P((unsigned short));
+extern void		i_index		P((void));
+extern void		i_index_lvalue	P((void));
+extern void		i_fetch		P((void));
+extern void		i_store		P((value*, value*));
 extern void		i_set_cost	P((long));
-extern void		i_add_cost	P((int));
 extern void		i_lock		P((void));
 extern void		i_unlock	P((void));
-extern unsigned short	i_locklvl	P((void));
 extern object	       *i_this_object	P((void));
 extern object	       *i_prev_object	P((int));
+extern char	       *i_foffset	P((unsigned short));
+extern void		i_typecheck	P((char*, char*, char*, int, bool));
+extern void		i_funcall	P((object*, int, int, int, int));
 extern bool		i_call		P((object*, char*, bool, int));
 extern void		i_dump_trace	P((FILE*));
 extern void		i_log_error	P((void));
 extern void		i_clear		P((void));
 
 extern value *sp;
+extern long exec_cost;
+
+# define i_add_cost(e)	(exec_cost -= (e))
