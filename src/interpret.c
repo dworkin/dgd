@@ -286,9 +286,9 @@ register unsigned int size;
 	    arr_del(a);
 	    error((char *) NULL);
 	}
+	d_ref_imports(a);
 	map_sort(a);
 	ec_pop();
-	d_ref_imports(a);
     }
     (--sp)->type = T_MAPPING;
     arr_ref(sp->u.array = a);

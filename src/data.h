@@ -101,7 +101,7 @@ typedef struct _dataspace_ {
     long achange;		/* # array changes */
     long schange;		/* # string changes */
     long imports;		/* # array imports */
-    struct _dataspace_ *iprev, *inext;	/* prev & next in import list */
+    struct _dataspace_ *ilist;	/* import list */
     char modified;		/* has a variable or array elt been modified */
 
     object *obj;		/* object this dataspace belongs to */

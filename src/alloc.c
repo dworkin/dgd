@@ -774,7 +774,7 @@ bool mcheck()
     if (schunk == (chunk *) NULL) {
 	return FALSE;
     } else {
-	return (schunk->size >= schunksz / 2);
+	return (schunk->size >= schunksz);
     }
 }
 
@@ -825,7 +825,8 @@ void mpurge()
     }
     mstat.dmemsize = mstat.dmemused = 0;
 
-    if (schunk == (chunk *) NULL || schunk->size < schunksz) {
+    if (schunk == (chunk *) NULL || schunk->size < schunksz ||
+	(mstat.smemsize - mstat.smemused) * 2 < schunksz * 3) {
 	/* expand static memory */
 	if (schunk != (chunk *) NULL) {
 	    schunk->next = slist;

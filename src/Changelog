@@ -819,3 +819,4 @@ DGD 1.1
  - Rebuilt the main loop so continuous exec cost errors during callouts don't
    result in user command starvation.
  - Ignore NUL characters in telnet input.
+ - Fixed another array exporting bug.

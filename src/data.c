@@ -198,7 +198,7 @@ object *obj;
     data->achange = 0;
     data->schange = 0;
     data->imports = 0;
-    data->iprev = data->inext = (dataspace *) NULL;
+    data->ilist = (dataspace *) NULL;
     data->modified = 0;
 
     data->obj = obj;
@@ -400,7 +400,7 @@ object *obj;
     data->achange = 0;
     data->schange = 0;
     data->imports = 0;
-    data->iprev = data->inext = (dataspace *) NULL;
+    data->ilist = (dataspace *) NULL;
     data->modified = 0;
 
     /* header */
@@ -930,7 +930,7 @@ register array *arr;
     return v;
 }
 
-static dataspace *ilist;	/* list of dataspaces with imports */
+static dataspace *ifirst, *ilast;	/* list of dataspaces with imports */
 
 /*
  * NAME:	data->ref_imports()
@@ -947,14 +947,16 @@ array *arr;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
 	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
-		ilist != data) {
+	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
+		ilast != data) {
 		/* add to imports list */
-		data->inext = ilist;
-		if (ilist != (dataspace *) NULL) {
-		    ilist->iprev = data;
+		if (ifirst == (dataspace *) NULL) {
+		    ifirst = data;
+		} else {
+		    ilast->ilist = data;
 		}
-		ilist = data;
+		ilast = data;
+		data->ilist = (dataspace *) NULL;
 	    }
 	}
     }
@@ -1034,14 +1036,16 @@ register value *rhs;
 	    }
 	} else {
 	    /* not in this object: ref imported array */
-	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
-		ilist != data) {
+	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
+		ilast != data) {
 		/* add to imports list */
-		data->inext = ilist;
-		if (ilist != (dataspace *) NULL) {
-		    ilist->iprev = data;
+		if (ifirst == (dataspace *) NULL) {
+		    ifirst = data;
+		} else {
+		    ilast->ilist = data;
 		}
-		ilist = data;
+		ilast = data;
+		data->ilist = (dataspace *) NULL;
 	    }
 	    data->achange++;
 	}
@@ -1160,14 +1164,16 @@ register value *elt, *val;
     } else {
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
-		ilist != data) {
+	    if (data->imports++ == 0 && data->ilist == (dataspace *) NULL &&
+		ilast != data) {
 		/* add to imports list */
-		data->inext = ilist;
-		if (ilist != (dataspace *) NULL) {
-		    ilist->iprev = data;
+		if (ifirst == (dataspace *) NULL) {
+		    ifirst = data;
+		} else {
+		    ilast->ilist = data;
 		}
-		ilist = data;
+		ilast = data;
+		data->ilist = (dataspace *) NULL;
 	    }
 	}
 	if (T_INDEXED(elt->type) && data != elt->u.array->primary->data) {
@@ -2329,14 +2335,13 @@ register unsigned short n;
 		    arr_ref(val->u.array = a);
 		}
 	    } else if (val->u.array->size != 0 &&
-		       val->u.array->elts[0].type != T_INVALID) {
-		if (arr_put(val->u.array) >= narr) {
-		    /*
-		     * not previously encountered non-empty array
-		     */
-		    narr++;
-		    d_import(data, val->u.array->elts, val->u.array->size);
-		}
+		       val->u.array->elts[0].type != T_INVALID &&
+		       arr_put(val->u.array) >= narr) {
+		/*
+		 * not previously encountered non-empty array
+		 */
+		narr++;
+		d_import(data, val->u.array->elts, val->u.array->size);
 	    }
 	}
 	val++;
@@ -2353,20 +2358,21 @@ void d_export()
     register dataspace *data;
     register Uint n;
 
-    if (ilist != (dataspace *) NULL) {
+    if (ifirst != (dataspace *) NULL) {
 	itab = ALLOC(array*, itabsz = 16);
 
-	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
+	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
 	    if (data->imports != 0) {
 		narr = 0;
 		if (data->variables != (value *) NULL) {
 		    d_import(data, data->variables, data->nvariables);
 		}
-		if (data->modified & M_ARRAY) {
+		if (data->arrays != (arrref *) NULL) {
 		    register arrref *a;
 
 		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
-			if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
+			if (a->arr != (array *) NULL && a->arr->size != 0 &&
+			    a->arr->elts[0].type != T_INVALID) {
 			    d_import(data, a->arr->elts, a->arr->size);
 			}
 		    }
@@ -2387,13 +2393,13 @@ void d_export()
 	    }
 	}
 
-	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
+	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
 	    data->imports = 0;
-	    data->iprev = (dataspace *) NULL;
+	    data->ilist = (dataspace *) NULL;
 	}
+	ifirst = ilast = (dataspace *) NULL;
 
 	FREE(itab);
-	ilist = (dataspace *) NULL;
     }
 }
 

@@ -120,6 +120,9 @@ char **argv;
 
 	o_clean();
 
+# ifdef DEBUG
+	swap |= stop;
+# endif
 	if (!mcheck()) {
 	    /*
 	     * Swap out everything and extend the static memory area.
