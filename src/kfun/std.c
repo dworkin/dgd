@@ -308,7 +308,7 @@ register frame *f;
     if (f->sp->type == T_LWOBJECT) {
 	error("Cloning from a non-persistent object");
     }
-    obj = OBJF(f->sp->oindex);
+    obj = OBJW(f->sp->oindex);
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
@@ -380,7 +380,7 @@ register frame *f;
     array *a;
 
     if (f->sp->type == T_OBJECT) {
-	if (!((obj=OBJF(f->sp->oindex))->flags & O_MASTER)) {
+	if (!((obj=OBJW(f->sp->oindex))->flags & O_MASTER)) {
 	    error("Creating new instance from a non-master object");
 	}
 

@@ -322,7 +322,7 @@ static connection *flist;		/* list of free connections */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
 static SOCKET *tdescs, *bdescs;		/* telnet & binary descriptor arrays */
-static SOCKET ntdescs, nbdescs;		/* # telnet & binary ports */
+static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static SOCKET *udescs;			/* UDP port descriptor array */
 static fd_set infds;			/* file descriptor input bitmap */
 static fd_set outfds;			/* file descriptor output bitmap */

@@ -208,7 +208,7 @@ static int rsrc_incr(string rowner, string name, mixed index, int incr,
  * NAME:	compile_object()
  * DESCRIPTION:	compile_object wrapper
  */
-static object compile_object(string path)
+static object compile_object(string path, varargs string code)
 {
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path,
@@ -217,7 +217,7 @@ static object compile_object(string path)
 	message(path + ": Permission denied.\n");
 	return nil;
     }
-    return ::compile_object(path);
+    return (code) ? ::compile_object(path, code) : ::compile_object(path);
 }
 
 /*
@@ -635,7 +635,7 @@ static mixed *parse_code(string str)
 	    /* search finishing quote */
 	    do {
 		if (sscanf(str, "%s" + tmp + "%s", head, str) == 0) {
-		    /* error; let DGD's compiler do the complaining */
+		    /* error; let the compiler do the complaining */
 		    argv[0] = result + str;
 		    return argv;
 		}
@@ -818,7 +818,7 @@ static void cmd_code(object user, string cmd, string str)
 {
     mixed *parsed, result;
     object obj;
-    string err;
+    string name;
 
     if (!str) {
 	message("Usage: " + cmd + " <LPC-code>\n");
@@ -826,9 +826,8 @@ static void cmd_code(object user, string cmd, string str)
     }
 
     parsed = parse_code(str);
-    str = USR + "/" + owner + "/_code";
-    remove_file(str + ".c");
-    obj = find_object(str);
+    name = USR + "/" + owner + "/_code";
+    obj = find_object(name);
     if (obj) {
 	destruct_object(obj);
     }
@@ -836,29 +835,22 @@ static void cmd_code(object user, string cmd, string str)
 	return;
     }
 
-    if (write_file(str + ".c",
-		   "# include <float.h>\n# include <limits.h>\n" +
-		   "# include <status.h>\n# include <trace.h>\n" +
-		   "# include <type.h>\n\n" +
-		   "mixed exec(object user, mixed argv...) {\n" +
-		   "    mixed " +
-		   "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
-		   "    " + parsed[0] + "\n}\n") > 0) {
-	err = catch(obj = compile_object(str),
-		    remove_file(str + ".c"),
-		    result = obj->exec(user, parsed[1 ..]...));
-	if (err) {
-	    remove_file(str + ".c");
-	    message("Error: " + err + ".\n");
-	} else {
-	    store(result);
-	}
-
-	if (obj) {
-	    destruct_object(obj);
-	}
+    str = "# include <float.h>\n# include <limits.h>\n" +
+	  "# include <status.h>\n# include <trace.h>\n" +
+	  "# include <type.h>\n\n" +
+	  "mixed exec(object user, mixed argv...) {\n" +
+	  "    mixed a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;\n\n" +
+	  "    " + parsed[0] + "\n}\n";
+    str = catch(obj = compile_object(name, str),
+		result = obj->exec(user, parsed[1 ..]...));
+    if (str) {
+	message("Error: " + str + ".\n");
     } else {
-	message("Failed to write temporary file.\n");
+	store(result);
+    }
+
+    if (obj) {
+	destruct_object(obj);
     }
 }
 
@@ -1842,7 +1834,7 @@ static void cmd_status(object user, string cmd, string str)
     if (!str) {
 	status = status();
 	str =
-"                                          DGD version:  " +
+"                                          server:       " +
   (string) status[ST_VERSION] + "\n" +
 "------------ Swap device -------------\n" +
 "sectors:  " + ralign(status[ST_SWAPUSED], 9) + " / " +

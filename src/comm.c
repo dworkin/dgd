@@ -93,7 +93,7 @@ unsigned short *tports, *bports;
     nusers = odone = newlines = 0;
     this_user = OBJ_NONE;
 
-    sprintf(ayt, "\15\12[DGD %s]\15\12", VERSION);
+    sprintf(ayt, "\15\12[%s]\15\12", VERSION);
 
     nexttport = nextbport = 0;
     return conn_init(n, tports, bports, ntport = ntelnet, nbport = nbinary);

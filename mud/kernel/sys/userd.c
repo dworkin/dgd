@@ -9,10 +9,10 @@
 # include <status.h>
 
 
-object *users;				/* user mappings */
-object telnet_manager, binary_manager;	/* user object managers */
-mapping names;				/* name : connection object */
-object *connections;			/* saved connections */
+object *users;		/* user mappings */
+mapping names;		/* name : connection object */
+object *connections;	/* saved connections */
+mapping telnet, binary;	/* port managers */
 
 /*
  * NAME:	create()
@@ -28,13 +28,15 @@ static void create()
     /* initialize user arrays */
     users = ({ });
     names = ([ ]);
+    telnet = ([ ]);
+    binary = ([ ]);
 }
 
 /*
  * NAME:	telnet_connection()
  * DESCRIPTION:	return a new telnet connection object
  */
-object telnet_connection(int port)
+object telnet_connection(mixed *tls, int port)
 {
     if (previous_program() == PORT) {
 	object conn;
@@ -49,7 +51,7 @@ object telnet_connection(int port)
  * NAME:	binary_connection()
  * DESCRIPTION:	return a new binary connection object
  */
-object binary_connection(int port)
+object binary_connection(mixed *tls, int port)
 {
     if (previous_program() == PORT) {
 	object conn;
@@ -65,10 +67,13 @@ object binary_connection(int port)
  * DESCRIPTION:	set the telnet manager object, which determines what the
  *		user object is, based on the first line of input
  */
-void set_telnet_manager(object manager)
+void set_telnet_manager(int port, object manager)
 {
     if (SYSTEM()) {
-	telnet_manager = manager;
+	if (!telnet) {
+	    telnet = ([ ]);
+	}
+	telnet[port] = manager;
     }
 }
 
@@ -77,10 +82,13 @@ void set_telnet_manager(object manager)
  * DESCRIPTION:	set the binary manager object, which determines what the
  *		user object is, based on the first line of input
  */
-void set_binary_manager(object manager)
+void set_binary_manager(int port, object manager)
 {
     if (SYSTEM()) {
-	binary_manager = manager;
+	if (!binary) {
+	    binary = ([ ]);
+	}
+	binary[port] = manager;
     }
 }
 
@@ -90,15 +98,16 @@ void set_binary_manager(object manager)
  * DESCRIPTION:	select user object for telnet connection, based on line of
  *		input
  */
-object telnet_user(string str)
+object telnet_user(int port, string str)
 {
     if (previous_program() == LIB_CONN) {
 	object user;
 
 	user = names[str];
 	if (!user) {
-	    if (telnet_manager) {
-		user = telnet_manager->select(str);
+	    user = telnet[port];
+	    if (user) {
+		user = user->select(str);
 		if (function_object("query_conn", user) != LIB_USER) {
 		    error("Invalid user object");
 		}
@@ -115,16 +124,16 @@ object telnet_user(string str)
  * DESCRIPTION:	select user object for binary connection, based on line of
  *		input
  */
-object binary_user(string str)
+object binary_user(int port, string str)
 {
     if (previous_program() == LIB_CONN) {
 	object user;
 
 	user = names[str];
 	if (!user) {
-	    if (binary_manager &&
-		(str != "admin" || previous_object()->query_port() != 0)) {
-		user = binary_manager->select(str);
+	    user = binary[port];
+	    if (user && (str != "admin" || port != 0)) {
+		user = user->select(str);
 		if (function_object("query_conn", user) != LIB_USER) {
 		    error("Invalid user object");
 		}
@@ -140,12 +149,13 @@ object binary_user(string str)
  * NAME:	query_telnet_timeout()
  * DESCRIPTION:	return the current telnet connection timeout
  */
-int query_telnet_timeout()
+int query_telnet_timeout(int port, object obj)
 {
     if (previous_program() == LIB_CONN) {
-	return (telnet_manager) ?
-		telnet_manager->query_timeout(previous_object()) :
-		DEFAULT_TIMEOUT;
+	object manager;
+
+	manager = telnet[port];
+	return (manager) ? manager->query_timeout(obj) : DEFAULT_TIMEOUT;
     }
 }
 
@@ -153,12 +163,13 @@ int query_telnet_timeout()
  * NAME:	query_binary_timeout()
  * DESCRIPTION:	return the current binary connection timeout
  */
-int query_binary_timeout()
+int query_binary_timeout(int port, object obj)
 {
     if (previous_program() == LIB_CONN) {
-	return (binary_manager) ?
-		binary_manager->query_timeout(previous_object()) :
-		DEFAULT_TIMEOUT;
+	object manager;
+
+	manager = binary[port];
+	return (manager) ? manager->query_timeout(obj) : DEFAULT_TIMEOUT;
     }
 }
 
@@ -166,12 +177,15 @@ int query_binary_timeout()
  * NAME:	query_telnet_banner()
  * DESCRIPTION:	return the current telnet login banner
  */
-string query_telnet_banner()
+string query_telnet_banner(int port, object obj)
 {
     if (previous_program() == LIB_CONN) {
-	return (telnet_manager) ?
-		telnet_manager->query_banner(previous_object()) :
-		"\nDGD " + status()[ST_VERSION] + " (telnet)\n\nlogin: ";
+	object manager;
+
+	manager = telnet[port];
+	return (manager) ?
+		manager->query_banner(obj) :
+		"\n" + status()[ST_VERSION] + " (telnet)\n\nlogin: ";
     }
 }
 
@@ -179,12 +193,15 @@ string query_telnet_banner()
  * NAME:	query_binary_banner()
  * DESCRIPTION:	return the current binary login banner
  */
-string query_binary_banner()
+string query_binary_banner(int port, object obj)
 {
     if (previous_program() == LIB_CONN) {
-	return (binary_manager) ?
-		binary_manager->query_banner(previous_object()) :
-		"\r\nDGD " + status()[ST_VERSION] + " (binary)\r\n\r\nlogin: ";
+	object manager;
+
+	manager = binary[port];
+	return (manager) ?
+		manager->query_banner(obj) :
+		"\r\n" + status()[ST_VERSION] + " (binary)\r\n\r\nlogin: ";
     }
 }
 

@@ -38,17 +38,7 @@ nomask object _Q_next()	    { if (previous_program() == OBJREGD) return next; }
  */
 nomask string query_owner()
 {
-    if (owner && owner[0] == '/') {
-	string str;
-
-	/*
-	 * temporary owner for cloned object
-	 */
-	sscanf(owner, "/%s/%s", str, owner);
-	return str;
-    } else {
-	return owner;
-    }
+    return owner;
 }
 
 /*
@@ -93,7 +83,7 @@ nomask void _F_create()
 	    creator = driver->creator(oname);
 	    clone = !!sscanf(oname, "%*s#%d", number);
 	    if (clone) {
-		owner = previous_object()->query_owner();
+		owner = ::call_trace()[1][TRACE_FIRSTARG][1];
 	    } else {
 		owner = creator;
 	    }
@@ -441,9 +431,7 @@ static object clone_object(string path, varargs string uid)
 	    if (path != RSRCOBJ) {
 		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
-	    if (uid != owner) {
-		owner = "/" + uid + "/" + owner;
-	    }
+	    ::call_trace()[1][TRACE_FIRSTARG][1] = uid;
 	}
     } : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     return ::clone_object(obj);
@@ -516,9 +504,7 @@ static object new_object(mixed obj, varargs string uid)
 		     ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
 		    error("Insufficient stack or ticks to create object");
 		}
-		if (uid != owner) {
-		    owner = "/" + uid + "/" + owner;
-		}
+		::call_trace()[1][TRACE_FIRSTARG][1] = uid;
 	    }
 	} : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     }
@@ -1497,11 +1483,11 @@ static string editor(varargs string cmd)
 	    driver = ::find_object(DRIVER);
 
 	    result = (cmd) ? ::editor(cmd) : ::editor();
+	    info = ::call_trace()[1][TRACE_FIRSTARG][1];
 
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
 	    }
-	    info = driver->query_wfile();
 	    if (info) {
 		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", nil,
 				 driver->file_size(info[0]) - info[1], TRUE);

@@ -1,8 +1,8 @@
-void set_telnet_manager(object telnetd)
-void set_binary_manager(object binaryd)
+void set_telnet_manager(int port, object telnetd)
+void set_binary_manager(int port, object binaryd)
 
-    Install a manager for telnet/binary connections, in which the following
-    functions will be called:
+    Install a manager on a specific port for a telnet/binary connection, in
+    which the following functions will be called:
 
     * object select(string str)
 

@@ -23,6 +23,7 @@
 typedef struct {
     char *name;		/* name of the option */
     short type;		/* option type */
+    bool resolv;	/* TRUE if path name must be resolved */
     bool set;		/* TRUE if option is set */
     Uint low, high;	/* lower and higher bound, for numeric values */
     union {
@@ -33,62 +34,62 @@ typedef struct {
 
 static config conf[] = {
 # define ARRAY_SIZE	0
-				{ "array_size",		INT_CONST, FALSE,
+				{ "array_size",		INT_CONST, FALSE, FALSE,
 							1, USHRT_MAX / 2 },
 # define AUTO_OBJECT	1
 				{ "auto_object",	STRING_CONST, TRUE },
 # define BINARY_PORT	2
-				{ "binary_port",	'[', FALSE,
+				{ "binary_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
 # define CACHE_SIZE	3
-				{ "cache_size",		INT_CONST, FALSE,
+				{ "cache_size",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
 # define CALL_OUTS	4
-				{ "call_outs",		INT_CONST, FALSE,
+				{ "call_outs",		INT_CONST, FALSE, FALSE,
 							0, UINDEX_MAX },
 # define CREATE		5
-				{ "create",		STRING_CONST, FALSE },
+				{ "create",		STRING_CONST },
 # define DIRECTORY	6
-				{ "directory",		STRING_CONST, FALSE },
+				{ "directory",		STRING_CONST },
 # define DRIVER_OBJECT	7
 				{ "driver_object",	STRING_CONST, TRUE },
 # define DUMP_FILE	8
-				{ "dump_file",		STRING_CONST, FALSE },
+				{ "dump_file",		STRING_CONST },
 # define DYNAMIC_CHUNK	9
-				{ "dynamic_chunk",	INT_CONST, FALSE },
+				{ "dynamic_chunk",	INT_CONST },
 # define ED_TMPFILE	10
-				{ "ed_tmpfile",		STRING_CONST, FALSE },
+				{ "ed_tmpfile",		STRING_CONST },
 # define EDITORS	11
-				{ "editors",		INT_CONST, FALSE,
+				{ "editors",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
 # define INCLUDE_DIRS	12
-				{ "include_dirs",	'(', FALSE },
+				{ "include_dirs",	'(' },
 # define INCLUDE_FILE	13
 				{ "include_file",	STRING_CONST, TRUE },
 # define OBJECTS	14
-				{ "objects",		INT_CONST, FALSE,
+				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
 # define SECTOR_SIZE	15
-				{ "sector_size",	INT_CONST, FALSE,
+				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 8192 },
 # define STATIC_CHUNK	16
-				{ "static_chunk",	INT_CONST, FALSE },
+				{ "static_chunk",	INT_CONST },
 # define SWAP_FILE	17
-				{ "swap_file",		STRING_CONST, FALSE },
+				{ "swap_file",		STRING_CONST },
 # define SWAP_FRAGMENT	18
-				{ "swap_fragment",	INT_CONST, FALSE,
+				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
 # define SWAP_SIZE	19
-				{ "swap_size",		INT_CONST, FALSE,
+				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
 # define TELNET_PORT	20
-				{ "telnet_port",	'[', FALSE,
+				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
 # define TYPECHECKING	21
-				{ "typechecking",	INT_CONST, FALSE,
+				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
 # define USERS		22
-				{ "users",		INT_CONST, FALSE,
+				{ "users",		INT_CONST, FALSE, FALSE,
 							1, EINDEX_MAX },
 # define NR_OPTIONS	23
 };
@@ -672,7 +673,7 @@ static bool conf_config()
     unsigned short *ports;
 
     for (h = NR_OPTIONS; h > 0; ) {
-	conf[--h].u.num = 0;
+	conf[--h].set = FALSE;
     }
     memset(dirs, '\0', sizeof(dirs));
 
@@ -729,7 +730,7 @@ static bool conf_config()
 	    break;
 
 	case STRING_CONST:
-	    p = (conf[m].set) ? path_resolve(buf, yytext) : yytext;
+	    p = (conf[m].resolv) ? path_resolve(buf, yytext) : yytext;
 	    l = strlen(p);
 	    if (l >= STRINGSZ) {
 		l = STRINGSZ - 1;
@@ -949,6 +950,8 @@ static bool conf_includes()
     cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
     cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
     cputs("# define ST_PRECOMPILED\t24\t/* precompiled objects */\012");
+    cputs("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
+    cputs("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
 
     cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
@@ -1318,12 +1321,14 @@ unsigned short conf_array_size()
  * DESCRIPTION:	return resource usage information
  */
 bool conf_statusi(f, idx, v)
-frame *f;
+register frame *f;
 Int idx;
 register value *v;
 {
     char *version;
     uindex ncoshort, ncolong;
+    array *a;
+    register int i;
 
     switch (idx) {
     case 0:	/* ST_VERSION */
@@ -1429,6 +1434,22 @@ register value *v;
 	PUT_ARRVAL(v, pc_list(f->data));
 	break;
 
+    case 25:	/* ST_TELNETPORTS */
+	a = arr_new(f->data, (long) ntports);
+	PUT_ARRVAL(v, a);
+	for (i = 0, v = a->elts; i < ntports; i++, v++) {
+	    PUT_INTVAL(v, tports[i]);
+	}
+	break;
+
+    case 26:	/* ST_BINARYPORTS */
+	a = arr_new(f->data, (long) nbports);
+	PUT_ARRVAL(v, a);
+	for (i = 0, v = a->elts; i < nbports; i++, v++) {
+	    PUT_INTVAL(v, bports[i]);
+	}
+	break;
+
     default:
 	return FALSE;
     }
@@ -1447,8 +1468,8 @@ register frame *f;
     register Int i;
     array *a;
 
-    a = arr_new(f->data, 25L);
-    for (i = 0, v = a->elts; i < 25; i++, v++) {
+    a = arr_new(f->data, 27L);
+    for (i = 0, v = a->elts; i < 27; i++, v++) {
 	conf_statusi(f, i, v);
     }
     return a;

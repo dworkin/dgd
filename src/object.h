@@ -38,14 +38,12 @@ struct _object_ {
 # define OBJ(i)			(&otable[i])
 # define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
 # define OBJW(i)		((!obase) ? o_owrite((i)) : &otable[i])
-# define OBJF(i)		OBJW(i)
 
 # define O_UPGRADING(o)		(((o)->cref & O_CLONE) > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != ((o)->cref & O_CLONE))
 
 # define OACC_READ		0x00	/* read access */
-# define OACC_REFCHANGE		0x01	/* modify refcount */
-# define OACC_MODIFY		0x02	/* write access */
+# define OACC_MODIFY		0x01	/* write access */
 
 # define OBJ_NONE		UINDEX_MAX
 

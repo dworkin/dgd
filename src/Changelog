@@ -1504,3 +1504,6 @@ DGD 1.3
    catches.
  - Fixed a bug in upgrading light-weight objects.
  - DGD can now listen on multiple ports (currently Unix and Windows only).
+ - Fixed a config file reading bug that could occur if the server was restarted.
+ - Add arrays of telnet ports and binary ports to status().
+ - Include the server name with the version number.

@@ -14,8 +14,6 @@ typedef struct _objpatch_ {
     objplane *plane;			/* plane that patch is on */
     struct _objpatch_ *prev;		/* previous patch */
     struct _objpatch_ *next;		/* next in linked list */
-    uindex ref;				/* old ref count */
-    uindex cref;			/* old clone refcount */
     object obj;				/* new object value */
 } objpatch;
 
@@ -149,8 +147,6 @@ int access;
     op->access = access;
     op->plane = plane;
     op->prev = prev;
-    op->ref = obj->u_ref;
-    op->cref = obj->cref;
     op->obj = *obj;
 
     /* add to hash table */
@@ -612,7 +608,7 @@ register control *ctrl;
     o->u_ref = 0;	/* increased to 1 in following loop */
     inh = ctrl->inherits;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	OBJF(inh->oindex)->u_ref++;
+	OBJW(inh->oindex)->u_ref++;
     }
 
     return o;
@@ -688,7 +684,7 @@ register frame *f;
 
     /* remove references to inherited objects too */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	o = OBJF(inh->oindex);
+	o = OBJW(inh->oindex);
 	if (--(o->u_ref) == 0) {
 	    o_delete(OBJW(inh->oindex), f);
 	}
@@ -719,7 +715,7 @@ register frame *f;
 
     /* add reference to inherited objects */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	OBJF(inh->oindex)->u_ref++;
+	OBJW(inh->oindex)->u_ref++;
     }
 
     /* add to upgrades list */
@@ -734,7 +730,7 @@ register frame *f;
     /* remove references to old inherited objects */
     ctrl = o_control(obj);
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	obj = OBJF(inh->oindex);
+	obj = OBJW(inh->oindex);
 	if (--(obj->u_ref) == 0) {
 	    o_delete(OBJW(inh->oindex), f);
 	}
@@ -789,7 +785,7 @@ frame *f;
     } else {
 	object *master;
 
-	master = OBJF(obj->u_master);
+	master = OBJW(obj->u_master);
 	master->cref--;
 	if (--(master->u_ref) == 0) {
 	    o_delete(OBJW(master->index), f);
@@ -894,19 +890,7 @@ int access;
 		o = (object *) *ht_lookup(baseplane.htab, name, FALSE);
 		if (o != (object *) NULL) {
 		    number = o->index;
-		    switch (access) {
-		    case OACC_READ:
-			o = OBJR(number);
-			break;
-
-		    case OACC_REFCHANGE:
-			o = OBJF(number);
-			break;
-
-		    case OACC_MODIFY:
-			o = OBJW(number);
-			break;
-		    }
+		    o = (access == OACC_READ)? OBJR(number) : OBJW(number);
 		    if (o->count != 0) {
 			return o;
 		    }
@@ -917,16 +901,7 @@ int access;
 	number = o->index;
     }
 
-    switch (access) {
-    case OACC_READ:
-	return o;
-
-    case OACC_REFCHANGE:
-	return OBJF(number);
-
-    case OACC_MODIFY:
-	return OBJW(number);
-    }
+    return (access == OACC_READ)? o : OBJW(number);
 }
 
 /*
@@ -1063,11 +1038,11 @@ void o_clean()
 	    register object *tmpl;
 
 	    /* check if clone still had to be upgraded */
-	    tmpl = OBJF(o->u_master);
+	    tmpl = OBJW(o->u_master);
 	    if (tmpl->update != o->update) {
 		/* non-upgraded clone of old issue */
 		do {
-		    tmpl = OBJF(tmpl->prev);
+		    tmpl = OBJW(tmpl->prev);
 		} while (tmpl->update != o->update);
 
 		if (tmpl->count == 0) {

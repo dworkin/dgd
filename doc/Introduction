@@ -66,13 +66,13 @@ driver, mostly to translate pathnames.
 	destruct B; if this is done, A will inherit the most recent
 	versions of B and C.
 
-    object telnet_connect()
+    object telnet_connect(int port)
 
-	Return an object for a new connection on the telnet port.
+	Return an object for a new connection on the given telnet port.
 
-    object binary_connect()
+    object binary_connect(int port)
 
-	Return an object for a new connection on the binary port.
+	Return an object for a new connection on the given binary port.
 
     void interrupt()
 

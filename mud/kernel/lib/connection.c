@@ -111,12 +111,14 @@ static void open(mixed *tls)
     int timeout;
     string banner;
 
-    banner = call_other(userd, "query_" + conntype + "_banner");
+    banner = call_other(userd, "query_" + conntype + "_banner", port,
+			this_object());
     if (banner) {
 	send_message(banner);
     }
 
-    timeout = call_other(userd, "query_" + conntype + "_timeout");
+    timeout = call_other(userd, "query_" + conntype + "_timeout", port,
+			 this_object());
     if (timeout < 0) {
 	/* disconnect immediately */
 	destruct_object(this_object());
@@ -241,7 +243,7 @@ static void timeout()
 static void receive_message(mixed *tls, string str)
 {
     if (!user) {
-	user = call_other(userd, conntype + "_user", str);
+	user = call_other(userd, conntype + "_user", port, str);
 	set_mode(user->login(str));
     } else {
 	set_mode(user->receive_message(str));
