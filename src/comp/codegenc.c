@@ -22,6 +22,7 @@ static void cg_iexpr P((node*, int));
 static void cg_expr P((node*, int));
 static void cg_stmt P((node*));
 
+static bool skip;		/* no output for current code? */
 static int vars[MAX_LOCALS];	/* local variable types */
 static int nvars;		/* number of local variables */
 static int nparam;		/* how many of those are arguments */
@@ -1854,6 +1855,14 @@ register node *n;
 	    break;
 
 	case N_FOR:
+	    /* hack: process in the same order as in codegeni.c */
+	    if (m->r.right != (node *) NULL) {
+		i = skip;
+		skip = TRUE;
+		cg_stmt(m->r.right);
+		skip = i;
+	    }
+
 	    output("for (;");
 	    cg_expr(m->l.left, TOPTRUTHVAL);
 	    output(";");
@@ -1980,7 +1989,6 @@ register node *n;
 }
 
 
-static bool inherited;
 static unsigned short nfuncs;
 static string *funcnames[255];
 
@@ -1988,10 +1996,10 @@ static string *funcnames[255];
  * NAME:	codegen->init()
  * DESCRIPTION:	initialize the code generator
  */
-void cg_init(flag)
-bool flag;
+void cg_init(inherited)
+bool inherited;
 {
-    inherited = flag;
+    skip = inherited;
     nfuncs = 0;
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
     kf_call_other = ((long) KFCALL << 24) | kf_func("call_other");
@@ -2031,7 +2039,7 @@ unsigned short *size;
 
     nvars = nvar;
     nparam = npar;
-    if (!inherited) {
+    if (!skip) {
 	str_ref(funcnames[nfuncs] = fname);
 	output("\nstatic void LPC_%s(f)\nregister frame *f;\n{\n", fname->text);
 	output("char *p; Int tv[%d];\n", NTMPVAL);
@@ -2078,7 +2086,7 @@ int cg_nfuncs()
  */
 void cg_clear()
 {
-    if (!inherited && nfuncs != 0) {
+    if (!skip && nfuncs != 0) {
 	register int i;
 	register string **f;
 
@@ -2098,7 +2106,7 @@ void cg_clear()
 static void output(format, arg1, arg2, arg3, arg4)
 char *format, *arg1, *arg2, *arg3, *arg4;
 {
-    if (!inherited) {
+    if (!skip) {
 	printf(format, arg1, arg2, arg3, arg4);
     }
 }
