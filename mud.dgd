@@ -13,7 +13,7 @@ static_chunk	= 64512;		/* static memory chunk */
 dynamic_chunk	= 261120;		/* dynamic memory chunk */
 dump_file	= "../dump";		/* dump file */
 
-typechecking	= 1;			/* global typechecking */
+typechecking	= 2;			/* highest level of typechecking */
 include_file	= "/include/std.h";	/* standard include file */
 include_dirs	= ({ "/include", "~/include" }); /* directories to search */
 auto_object	= "/kernel/lib/auto";	/* auto inherited object */

@@ -48,7 +48,7 @@ typedef uindex sector;
 extern bool		conf_init	P((char*, char*));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
-extern bool		conf_typechecking P((void));
+extern int		conf_typechecking P((void));
 extern unsigned short	conf_array_size	P((void));
 
 extern void   conf_dump		P((void));

@@ -21,15 +21,18 @@ frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 
-value zero_value = { T_INT, TRUE };
+int nil_type;			/* type of nil value */
+value zero_int = { T_INT, TRUE };
 value zero_float = { T_FLOAT, TRUE };
+value nil_value = { T_NIL, TRUE };
 
 /*
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(create)
+void i_init(create, nilisnot0)
 char *create;
+bool nilisnot0;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.prev_lip = topframe.lip = stack;
@@ -39,6 +42,8 @@ char *create;
 
     creator = create;
     clen = strlen(create);
+
+    nil_value.type = nil_type = (nilisnot0) ? T_NIL : T_INT;
 }
 
 /*
@@ -55,7 +60,7 @@ register value *v;
 
     case T_OBJECT:
 	if (DESTRUCTED(v)) {
-	    *v = zero_value;
+	    *v = nil_value;
 	}
 	break;
 
@@ -176,7 +181,7 @@ register value *v;
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
 	     */
-	    *f->sp = zero_value;
+	    *f->sp = nil_value;
 	}
 	break;
 
@@ -305,7 +310,7 @@ object *obj;
     for (f = ftop; f != (frame *) NULL; f = f->prev) {
 	while (v < f->fp) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
-		*v = zero_value;
+		*v = nil_value;
 	    }
 	    v++;
 	}
@@ -316,7 +321,7 @@ object *obj;
     for (f = ftop; f != (frame *) NULL; f = f->prev) {
 	while (v >= f->stack) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
-		*v = zero_value;
+		*v = nil_value;
 	    }
 	    --v;
 	}
@@ -535,7 +540,7 @@ register frame *f;
 
     case T_OBJECT:
 	if (DESTRUCTED(val)) {
-	    val = &zero_value;
+	    val = &nil_value;
 	}
 	break;
 
@@ -749,7 +754,7 @@ register unsigned int type;
     char tnbuf[8];
 
     if (val->type != type &&
-	(val->type != T_INT || val->u.number != 0 || type == T_FLOAT)) {
+	(val->type != nil_type || val->u.number != 0 || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
 	    error("Value is not an %s", tnbuf);
@@ -953,8 +958,8 @@ register frame *f;
     /* obj, stack, ticks */
     call_driver_object(f, "runtime_rlimits", 3);
 
-    if ((f->sp->type == T_INT && f->sp->u.number == 0) ||
-	(f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp))) {
+    if (f->sp->u.number == 0 && (f->sp->type != T_FLOAT || f->sp->oindex == 0))
+    {
 	error("Illegal use of rlimits");
     }
     i_del_value(f->sp++);
@@ -1187,8 +1192,8 @@ int strict;
 	if (ptype != T_MIXED) {
 	    atype = f->sp[i].type;
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
-		if (atype != T_INT || f->sp[i].u.number != 0 ||
-		    ptype == T_FLOAT) {
+		if (atype != nil_type || f->sp[i].u.number != 0 ||
+		    !T_POINTER(ptype)) {
 		    /* wrong type */
 		    error("Bad argument %d (%s) for %s %s", nargs - i,
 			  i_typename(tnbuf, atype), ftype, name);
@@ -1397,7 +1402,7 @@ register char *pc;
     FETCH2U(pc, dflt);
     if (FETCH1U(pc) == 0) {
 	FETCH2U(pc, l);
-	if (f->sp->type == T_INT && f->sp->u.number == 0) {
+	if (f->sp->type == nil_type && f->sp->u.number == 0) {
 	    return l;
 	}
 	--h;
@@ -1472,7 +1477,7 @@ register char *pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
-	    *--f->sp = zero_value;
+	    *--f->sp = zero_int;
 	    break;
 
 	case I_PUSH_ONE:
@@ -1604,16 +1609,16 @@ register char *pc;
 
 	case I_JUMP_ZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if ((f->sp->type == T_INT && f->sp->u.number == 0) ||
-		(f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp))) {
+	    if (f->sp->u.number == 0 &&
+		(f->sp->type != T_FLOAT || f->sp->oindex == 0)) {
 		pc = p;
 	    }
 	    break;
 
 	case I_JUMP_NONZERO:
 	    p = f->prog + FETCH2U(pc, u);
-	    if ((f->sp->type != T_INT || f->sp->u.number != 0) &&
-		(f->sp->type != T_FLOAT || !VFLT_ISZERO(f->sp))) {
+	    if (f->sp->u.number != 0 ||
+		(f->sp->type == T_FLOAT && f->sp->oindex != 0)) {
 		pc = p;
 	    }
 	    break;
@@ -1689,7 +1694,7 @@ register char *pc;
 		i_interpret(f, pc);
 		ec_pop();
 		pc = f->pc;
-		*--f->sp = zero_value;
+		*--f->sp = nil_value;
 	    } else {
 		/* error */
 		f->pc = pc = p;
@@ -1817,7 +1822,8 @@ int funci;
 
     /* handle arguments */
     n = PROTO_NARGS(pc);
-    if (n > 0 && (PROTO_ARGS(pc)[n - 1] & T_ELLIPSIS)) {
+    pc = PROTO_ARGS(pc);
+    if (n > 0 && (UCHAR(pc[n - 1]) & T_ELLIPSIS)) {
 	register value *v;
 	array *a;
 
@@ -1831,33 +1837,61 @@ int funci;
 	    } while (--nargs > 0);
 	    d_ref_imports(a);
 	    nargs = n;
+	    pc += nargs;
 	} else {
-	    /* make empty arguments array, and optionally push zeroes */
+	    /* make empty arguments array, and optionally push zeros */
 	    i_grow_stack(prev_f, n - nargs);
+	    pc += nargs;
 	    while (++nargs < n) {
-		*--prev_f->sp = zero_value;
+		switch (FETCH1U(pc)) {
+		case T_INT:
+		    *--prev_f->sp = zero_int;
+		    break;
+
+		case T_FLOAT:
+		    *--prev_f->sp = zero_float;
+		    break;
+
+		default:
+		    *--prev_f->sp = nil_value;
+		    break;
+		}
 	    }
+	    pc++;
 	    a = arr_new(f.data, 0L);
 	}
 	(--prev_f->sp)->type = T_ARRAY;
 	arr_ref(prev_f->sp->u.array = a);
+    } else if (nargs > n) {
+	/* pop superfluous arguments */
+	i_pop(prev_f, nargs - n);
+	nargs = n;
+	pc += nargs;
     } else {
-	if (nargs > n) {
-	    /* pop superfluous arguments */
-	    i_pop(prev_f, nargs - n);
-	    nargs = n;
-	} else if (nargs < n) {
+	pc += nargs;
+	if (nargs < n) {
 	    /* add missing arguments */
 	    i_grow_stack(prev_f, n - nargs);
 	    do {
-		*--prev_f->sp = zero_value;
+		switch (FETCH1U(pc)) {
+		case T_INT:
+		    *--prev_f->sp = zero_int;
+		    break;
+
+		case T_FLOAT:
+		    *--prev_f->sp = zero_float;
+			break;
+
+		default:
+		    *--prev_f->sp = nil_value;
+		    break;
+		}
 	    } while (++nargs < n);
 	}
     }
     f.argp = prev_f->sp;
     cframe = &f;
     f.nargs = nargs;
-    pc += PROTO_SIZE(pc);
 
     /* create new local stack */
     f.prev_lip = prev_f->lip;
@@ -1873,7 +1907,7 @@ int funci;
 # endif
     if (n > 0) {
 	do {
-	    *--f.sp = zero_value;
+	    *--f.sp = nil_value;
 	} while (--n > 0);
     }
 

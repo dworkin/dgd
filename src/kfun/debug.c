@@ -111,8 +111,8 @@ control *ctrl;
 	    putchar('\n');
 	}
     }
-    printf("%u variables, %u floats, %u floatdefs\n",
-	   ctrl->nvariables, ctrl->nfloats, ctrl->nfloatdefs);
+    printf("%u variables, %u ints/floats, %u int/float defs\n",
+	   ctrl->nvariables, ctrl->nvinit, ctrl->nifdefs);
 }
 
 static unsigned short addr;
@@ -646,6 +646,8 @@ frame *f;
 {
     showctrl(o_control(&otable[f->sp->oindex]));
     fflush(stdout);
+    f->sp->type = nil_type;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -673,6 +675,8 @@ frame *f;
 	fflush(stdout);
     }
     str_del((f->sp++)->u.string);
+    f->sp->type = nil_type;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif

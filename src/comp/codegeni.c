@@ -1088,6 +1088,10 @@ register int pop;
 	code_kfun(KF_NE_INT, n->line);
 	break;
 
+    case N_NIL:
+	code_kfun(KF_NIL, n->line);
+	break;
+
     case N_NOT:
 	cg_expr(n->l.left, FALSE);
 	code_kfun((n->l.left->mod == T_INT) ? KF_NOT_INT : KF_NOT, n->line);
@@ -1680,9 +1684,9 @@ register node *n;
     switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
-    if (m->l.left->type == N_INT) {
+    if (m->l.left->type == nil_node) {
 	/*
-	 * 0
+	 * nil
 	 */
 	code_byte(0);
 	switch_table[i++].jump = jump_addr((jmplist *) NULL);

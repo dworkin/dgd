@@ -278,8 +278,8 @@ object *obj;
     ctrl->symbols = l->symbols;
 
     ctrl->nvariables = l->nvariables;
-    ctrl->nfloatdefs = l->nfloatdefs;
-    ctrl->nfloats = l->nfloats;
+    ctrl->nifdefs = l->nifdefs;
+    ctrl->nvinit = l->nvinit;
 }
 
 
@@ -931,6 +931,9 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
+
+    case T_NIL:
+	return FALSE;
     }
     f->sp++;
     return TRUE;
@@ -1030,7 +1033,7 @@ register int h;
     register char *t;
     register string *s;
 
-    if (v->type == T_INT && v->u.number == 0) {
+    if (v->type == nil_type && v->u.number == 0) {
 	return (tab[0] == 0);
     } else if (v->type != T_STRING) {
 	i_del_value(v);

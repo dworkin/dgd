@@ -170,7 +170,7 @@ int receive_message(string str)
 		    } else {
 			tell_audience(Name + " says: " + str + "\n");
 		    }
-		    str = 0;
+		    str = nil;
 		    break;
 
 		case "emote":
@@ -179,7 +179,7 @@ int receive_message(string str)
 		    } else {
 			tell_audience(Name + " " + str + "\n");
 		    }
-		    str = 0;
+		    str = nil;
 		    break;
 
 		case "tell":
@@ -189,7 +189,7 @@ int receive_message(string str)
 		    } else {
 			user->message(Name + " tell you: " + str + "\n");
 		    }
-		    str = 0;
+		    str = nil;
 		    break;
 
 		case "users":
@@ -202,7 +202,7 @@ int receive_message(string str)
 			}
 		    }
 		    message(str + "\n");
-		    str = 0;
+		    str = nil;
 		    break;
 
 		case "password":
@@ -268,11 +268,11 @@ int receive_message(string str)
 	    } else {
 		message("\nMismatch; password not changed.\n");
 	    }
-	    newpasswd = 0;
+	    newpasswd = nil;
 	    break;
 	}
 
-	str = (wiztool) ? query_editor(wiztool) : 0;
+	str = (wiztool) ? query_editor(wiztool) : nil;
 	if (str) {
 	    message((str == "insert") ? "*\b" : ":");
 	} else {

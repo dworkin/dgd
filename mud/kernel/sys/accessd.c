@@ -223,7 +223,7 @@ set_access(string user, string file, int type)
 		    }
 		} else {
 		    /* remove specific access */
-		    access[file] = 0;
+		    access[file] = nil;
 		}
 		if (map_sizeof(access) == 0) {
 		    uaccess[user] = TRUE;

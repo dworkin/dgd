@@ -36,9 +36,11 @@ typedef struct _node_ {
 # define F_END		(F_BREAK | F_CONTINUE | F_RETURN)
 # define F_FLOW		(F_ENTRY | F_REACH | F_END)
 
+extern void  node_init	P((bool));
 extern node *node_new	P((unsigned int));
 extern node *node_int	P((Int));
 extern node *node_float	P((xfloat*));
+extern node *node_nil	P((void));
 extern node *node_str	P((string*));
 extern node *node_fcall	P((int, char*, Int));
 extern node *node_mon	P((int, int, node*));
@@ -110,44 +112,47 @@ extern void  node_clear	P((void));
 # define N_MULT_EQ_INT		 60
 # define N_NE			 61
 # define N_NE_INT		 62
-# define N_NOT			 63
-# define N_OR			 64
-# define N_OR_INT		 65
-# define N_OR_EQ		 66
-# define N_OR_EQ_INT		 67
-# define N_PAIR			 68
-# define N_POP			 69
-# define N_QUEST		 70
-# define N_RANGE		 71
-# define N_RETURN		 72
-# define N_RLIMITS		 73
-# define N_RSHIFT		 74
-# define N_RSHIFT_INT		 75
-# define N_RSHIFT_EQ		 76
-# define N_RSHIFT_EQ_INT	 77
-# define N_SPREAD		 78
-# define N_STR			 79
-# define N_SUB			 80
-# define N_SUB_INT		 81
-# define N_SUB_EQ		 82
-# define N_SUB_EQ_INT		 83
-# define N_SUB_EQ_1		 84
-# define N_SUB_EQ_1_INT		 85
-# define N_SUM			 86
-# define N_SUM_EQ		 87
-# define N_SWITCH_INT		 88
-# define N_SWITCH_RANGE		 89
-# define N_SWITCH_STR		 90
-# define N_TOFLOAT		 91
-# define N_TOINT		 92
-# define N_TOSTRING		 93
-# define N_TST			 94
-# define N_UPLUS		 95
-# define N_XOR			 96
-# define N_XOR_INT		 97
-# define N_XOR_EQ		 98
-# define N_XOR_EQ_INT		 99
-# define N_MIN_MIN		100
-# define N_MIN_MIN_INT		101
-# define N_PLUS_PLUS		102
-# define N_PLUS_PLUS_INT	103
+# define N_NIL			 63
+# define N_NOT			 64
+# define N_OR			 65
+# define N_OR_INT		 66
+# define N_OR_EQ		 67
+# define N_OR_EQ_INT		 68
+# define N_PAIR			 69
+# define N_POP			 70
+# define N_QUEST		 71
+# define N_RANGE		 72
+# define N_RETURN		 73
+# define N_RLIMITS		 74
+# define N_RSHIFT		 75
+# define N_RSHIFT_INT		 76
+# define N_RSHIFT_EQ		 77
+# define N_RSHIFT_EQ_INT	 78
+# define N_SPREAD		 79
+# define N_STR			 80
+# define N_SUB			 81
+# define N_SUB_INT		 82
+# define N_SUB_EQ		 83
+# define N_SUB_EQ_INT		 84
+# define N_SUB_EQ_1		 85
+# define N_SUB_EQ_1_INT		 86
+# define N_SUM			 87
+# define N_SUM_EQ		 88
+# define N_SWITCH_INT		 89
+# define N_SWITCH_RANGE		 90
+# define N_SWITCH_STR		 91
+# define N_TOFLOAT		 92
+# define N_TOINT		 93
+# define N_TOSTRING		 94
+# define N_TST			 95
+# define N_UPLUS		 96
+# define N_XOR			 97
+# define N_XOR_INT		 98
+# define N_XOR_EQ		 99
+# define N_XOR_EQ_INT		100
+# define N_MIN_MIN		101
+# define N_MIN_MIN_INT		102
+# define N_PLUS_PLUS		103
+# define N_PLUS_PLUS_INT	104
+
+extern int nil_node;

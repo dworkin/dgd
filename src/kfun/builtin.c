@@ -480,6 +480,12 @@ register frame *f;
 	f->sp->type = T_INT;
 	f->sp->u.number = flag;
 	break;
+
+    case T_NIL:
+	f->sp++;
+	f->sp->type = T_INT;
+	f->sp->u.number = TRUE;
+	break;
     }
 
     return 0;
@@ -1030,6 +1036,12 @@ register frame *f;
 	f->sp->type = T_INT;
 	f->sp->u.number = flag;
 	break;
+
+    case T_NIL:
+	f->sp++;
+	f->sp->type = T_INT;
+	f->sp->u.number = FALSE;
+	break;
     }
 
     return 0;
@@ -1125,6 +1137,11 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
+
+    case T_NIL:
+	f->sp->type = T_INT;
+	f->sp->u.number = TRUE;
+	return 0;
     }
 
     f->sp->type = T_INT;
@@ -1729,6 +1746,11 @@ register frame *f;
     case T_MAPPING:
 	arr_del(f->sp->u.array);
 	break;
+
+    case T_NIL:
+	f->sp->type = T_INT;
+	f->sp->u.number = FALSE;
+	return 0;
     }
 
     f->sp->type = T_INT;
@@ -2028,7 +2050,7 @@ int nargs;
      * pass 1: check the types of everything and calculate the size
      */
     i_add_ticks(f, nargs);
-    type = 0;
+    type = T_INVALID;
     isize = size = 0;
     nonint = nargs;
     result = 0;
@@ -2059,13 +2081,13 @@ int nargs;
 	if (vtype == T_STRING || vtype == T_ARRAY) {
 	    nonint = i;
 	    isize = size;
-	    if (type == 0 && (vtype != T_ARRAY || i == nargs - 1)) {
+	    if (type == T_INVALID && (vtype != T_ARRAY || i == nargs - 1)) {
 		type = vtype;
 	    } else if (type != vtype) {
 		error("Bad argument 2 for kfun +");
 	    }
 	} else if (vtype != T_INT || type == T_ARRAY) {
-	    error("Bad argument 2 for kfun +");
+	    error("Bad argument %d for kfun +", (i == nargs - 1) ? 1 : 2);
 	} else {
 	    result += v->u.number;
 	}
@@ -2237,6 +2259,25 @@ register frame *f;
     if (!i_call_tracei(f, f->sp->u.number, f->sp)) {
 	error("Index out of range");
     }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("nil", kf_nil, pt_nil)
+# else
+char pt_nil[] = { C_STATIC, T_NIL, 0 };
+
+/*
+ * NAME:	kfun->nil()
+ * DESCRIPTION:	return nil
+ */
+int kf_nil(f)
+register frame *f;
+{
+    (--f->sp)->type = T_NIL;
+    f->sp->u.number = 0;
     return 0;
 }
 # endif

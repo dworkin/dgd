@@ -51,7 +51,7 @@ unlink(object obj, string owner)
 
 	prev = obj->_Q_prev();
 	if (prev == obj) {
-	    links[owner] = 0;	/* no more objects left */
+	    links[owner] = nil;	/* no more objects left */
 	} else {
 	    next = obj->_Q_next();
 	    prev->_F_next(next);

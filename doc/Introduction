@@ -196,9 +196,12 @@ dynamic_chunk	number	of memory.  Memory is divided into static memory
 			make more room for static memory, but will also
 			increase fragmentation.
 dump_file	string	The name of the state dump file.
-typechecking	number	If non-zero, all LPC objects must be typechecked.
-			If zero, only functions with a declared type are
+typechecking	number	If zero, only functions with a declared type are
 			typechecked.
+			If one, all LPC functions are typechecked.
+			If two, additionally, nil (the value of an uninitialized
+			string, object, array or mapping variable) is a value
+			distinct from integer 0.
 include_file	string	The standard include file, which is always
 			included automatically for each compiled object
 			(relative to the base directory).

@@ -156,6 +156,7 @@ node **m;
 {
     register node *n;
     xfloat f1, f2;
+    bool flag;
 
     n = *m;
     if (n->l.left->type != n->r.right->type) {
@@ -169,9 +170,145 @@ node **m;
 	return 1;
     }
 
-    if (n->l.left->type == N_STR) {
-	bool flag;
+    switch (n->l.left->type) {
+    case N_INT:
+	switch (n->type) {
+	case N_ADD_INT:
+	    n->l.left->l.number += n->r.right->l.number;
+	    break;
 
+	case N_AND_INT:
+	    n->l.left->l.number &= n->r.right->l.number;
+	    break;
+
+	case N_DIV_INT:
+	    if (n->r.right->l.number == 0) {
+		return 2;	/* runtime error: division by 0 */
+	    }
+	    n->l.left->l.number /= n->r.right->l.number;
+	    break;
+
+	case N_EQ_INT:
+	    n->l.left->l.number = (n->l.left->l.number == n->r.right->l.number);
+	    break;
+
+	case N_GE_INT:
+	    n->l.left->l.number = (n->l.left->l.number >= n->r.right->l.number);
+	    break;
+
+	case N_GT_INT:
+	    n->l.left->l.number = (n->l.left->l.number > n->r.right->l.number);
+	    break;
+
+	case N_LE_INT:
+	    n->l.left->l.number = (n->l.left->l.number <= n->r.right->l.number);
+	    break;
+
+	case N_LSHIFT_INT:
+	    n->l.left->l.number <<= n->r.right->l.number;
+	    break;
+
+	case N_LT_INT:
+	    n->l.left->l.number = (n->l.left->l.number < n->r.right->l.number);
+	    break;
+
+	case N_MOD_INT:
+	    if (n->r.right->l.number == 0) {
+		return 2;	/* runtime error: % 0 */
+	    }
+	    n->l.left->l.number %= n->r.right->l.number;
+	    break;
+
+	case N_MULT_INT:
+	    n->l.left->l.number *= n->r.right->l.number;
+	    break;
+
+	case N_NE_INT:
+	    n->l.left->l.number = (n->l.left->l.number != n->r.right->l.number);
+	    break;
+
+	case N_OR_INT:
+	    n->l.left->l.number |= n->r.right->l.number;
+	    break;
+
+	case N_RSHIFT_INT:
+	    n->l.left->l.number >>= n->r.right->l.number;
+	    break;
+
+	case N_SUB_INT:
+	    n->l.left->l.number -= n->r.right->l.number;
+	    break;
+
+	case N_XOR_INT:
+	    n->l.left->l.number ^= n->r.right->l.number;
+	    break;
+
+	default:
+	    return 2;	/* runtime error expected */
+	}
+
+	*m = n->l.left;
+	(*m)->line = n->line;
+	return 1;
+
+    case N_FLOAT:
+	NFLT_GET(n->l.left, f1);
+	NFLT_GET(n->r.right, f2);
+
+	switch (n->type) {
+	case N_ADD:
+	    flt_add(&f1, &f2);
+	    break;
+
+	case N_DIV:
+	    if (NFLT_ISZERO(n->r.right)) {
+		return 2;	/* runtime error: division by 0.0 */
+	    }
+	    flt_div(&f1, &f2);
+	    break;
+
+	case N_EQ:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) == 0));
+	    break;
+
+	case N_GE:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) >= 0));
+	    break;
+
+	case N_GT:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) > 0));
+	    break;
+
+	case N_LE:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) <= 0));
+	    break;
+
+	case N_LT:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) < 0));
+	    break;
+
+	case N_MULT:
+	    flt_mult(&f1, &f2);
+	    break;
+
+	case N_NE:
+	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) != 0));
+	    break;
+
+	case N_SUB:
+	    flt_sub(&f1, &f2);
+	    break;
+
+	default:
+	    return 2;	/* runtime error expected */
+	}
+
+	NFLT_PUT(n->l.left, f1);
+	*m = n->l.left;
+	(*m)->line = n->line;
+	return 1;
+
+    case N_STR:
 	switch (n->type) {
 	case N_ADD:
 	    node_tostr(n, str_add(n->l.left->l.string, n->r.right->l.string));
@@ -207,137 +344,26 @@ node **m;
 
 	node_toint(n, (Int) flag);
 	return 1;
-    }
 
-    if (n->l.left->type == N_FLOAT) {
-	NFLT_GET(n->l.left, f1);
-	NFLT_GET(n->r.right, f2);
-    }
+    case N_NIL:
+	switch (n->type) {
+	case N_EQ:
+	    flag = TRUE;
+	    break;
 
-    switch (n->type) {
-    case N_ADD:
-	flt_add(&f1, &f2);
-	break;
+	case N_NE:
+	    flag = FALSE;
+	    break;
 
-    case N_ADD_INT:
-	n->l.left->l.number += n->r.right->l.number;
-	break;
-
-    case N_AND_INT:
-	n->l.left->l.number &= n->r.right->l.number;
-	break;
-
-    case N_DIV:
-	if (NFLT_ISZERO(n->r.right)) {
-	    return 2;	/* runtime error: division by 0.0 */
+	default:
+	    return 2;	/* runtime error expected */
 	}
-	flt_div(&f1, &f2);
-	break;
 
-    case N_DIV_INT:
-	if (n->r.right->l.number == 0) {
-	    return 2;	/* runtime error: division by 0 */
-	}
-	n->l.left->l.number /= n->r.right->l.number;
-	break;
-
-    case N_EQ:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) == 0));
-	break;
-
-    case N_EQ_INT:
-	n->l.left->l.number = (n->l.left->l.number == n->r.right->l.number);
-	break;
-
-    case N_GE:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) >= 0));
-	break;
-
-    case N_GE_INT:
-	n->l.left->l.number = (n->l.left->l.number >= n->r.right->l.number);
-	break;
-
-    case N_GT:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) > 0));
-	break;
-
-    case N_GT_INT:
-	n->l.left->l.number = (n->l.left->l.number > n->r.right->l.number);
-	break;
-
-    case N_LE:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) <= 0));
-	break;
-
-    case N_LE_INT:
-	n->l.left->l.number = (n->l.left->l.number <= n->r.right->l.number);
-	break;
-
-    case N_LSHIFT_INT:
-	n->l.left->l.number <<= n->r.right->l.number;
-	break;
-
-    case N_LT:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) < 0));
-	break;
-
-    case N_LT_INT:
-	n->l.left->l.number = (n->l.left->l.number < n->r.right->l.number);
-	break;
-
-    case N_MOD_INT:
-	if (n->r.right->l.number == 0) {
-	    return 2;	/* runtime error: % 0 */
-	}
-	n->l.left->l.number %= n->r.right->l.number;
-	break;
-
-    case N_MULT:
-	flt_mult(&f1, &f2);
-	break;
-
-    case N_MULT_INT:
-	n->l.left->l.number *= n->r.right->l.number;
-	break;
-
-    case N_NE:
-	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) != 0));
-	break;
-
-    case N_NE_INT:
-	n->l.left->l.number = (n->l.left->l.number != n->r.right->l.number);
-	break;
-
-    case N_OR_INT:
-	n->l.left->l.number |= n->r.right->l.number;
-	break;
-
-    case N_RSHIFT_INT:
-	n->l.left->l.number >>= n->r.right->l.number;
-	break;
-
-    case N_SUB:
-	flt_sub(&f1, &f2);
-	break;
-
-    case N_SUB_INT:
-	n->l.left->l.number -= n->r.right->l.number;
-	break;
-
-    case N_XOR_INT:
-	n->l.left->l.number ^= n->r.right->l.number;
-	break;
-
-    default:
-	return 2;	/* runtime error expected */
+	node_toint(n, (Int) flag);
+	return 1;
     }
 
-    if (n->l.left->type == N_FLOAT) {
-	NFLT_PUT(n->l.left, f1);
-    }
-    *m = n->l.left;
-    (*m)->line = n->line;
-    return 1;
+    return 2;
 }
 
 /*
@@ -360,6 +386,10 @@ register node *n;
 
     case N_STR:
 	node_toint(n, (Int) TRUE);
+	return n;
+
+    case N_NIL:
+	node_toint(n, (Int) FALSE);
 	return n;
 
     case N_TST:
@@ -413,6 +443,10 @@ register node *n;
 
     case N_STR:
 	node_toint(n, (Int) FALSE);
+	return n;
+
+    case N_NIL:
+	node_toint(n, (Int) TRUE);
 	return n;
 
     case N_LAND:
@@ -623,9 +657,10 @@ register node **m;
 
     if ((n->r.right->type == N_INT && n->r.right->l.number == 0) ||
 	(n->r.right->type == N_FLOAT && NFLT_ISZERO(n->r.right) &&
-	 n->l.left->mod == T_FLOAT)) {
+	 n->l.left->mod == T_FLOAT) ||
+	n->r.right->type == N_NIL) {
 	/*
-	 * x == 0, flt == 0.0
+	 * x == 0, x == 0.0, x == nil
 	 */
 	switch (n->type) {
 	case N_EQ:
@@ -1188,7 +1223,8 @@ static bool opt_ctest(n)
 register node *n;
 {
     if (n->type != N_INT) {
-	node_toint(n, (Int) (n->type != T_FLOAT || !NFLT_ISZERO(n)));
+	node_toint(n, (Int) (n->type != N_NIL &&
+			     (n->type != T_FLOAT || !NFLT_ISZERO(n))));
     }
     return (n->l.number != 0);
 }
@@ -1230,6 +1266,7 @@ int pop;
     case N_INT:
     case N_LOCAL:
     case N_STR:
+    case N_NIL:
 	return !pop;
 
     case N_TOINT:
@@ -1707,10 +1744,22 @@ register node *n;
     if (n->type == N_COMMA) {
 	n = n->r.right;
     }
-    if (n->flags & F_CONST) {
+    switch (n->type) {
+    case N_INT:
 	return (n->l.number != 0);
+
+    case N_FLOAT:
+	return (!NFLT_ISZERO(n));
+
+    case N_STR:
+	return TRUE;
+
+    case N_NIL:
+	return FALSE;
+
+    default:
+	return -1;
     }
-    return -1;
 }
 
 /*

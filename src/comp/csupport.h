@@ -38,8 +38,8 @@ typedef struct {
     dsymbol *symbols;		/* symbols */
 
     unsigned short nvariables;	/* # variables */
-    unsigned short nfloatdefs;	/* # float definitions */
-    unsigned short nfloats;	/* # floats */
+    unsigned short nifdefs;	/* # int/float definitions */
+    unsigned short nvinit;	/* # variables requiring initialization */
 } precomp;
 
 extern precomp	*precompiled[];	/* table of precompiled objects */
@@ -58,8 +58,8 @@ void   pc_restore	P((int));
 				 f->sp->oindex = (t), f->sp->u.lval = (v))
 # define store()		(i_store(f), f->sp[1] = f->sp[0], f->sp++)
 # define store_int()		(i_store(f), f->sp += 2, f->sp[-2].u.number)
-# define truthval(v)		(((v)->type != T_INT || (v)->u.number != 0) && \
-			 	((v)->type != T_FLOAT || !VFLT_ISZERO(v)))
+# define truthval(v)		((v)->u.number != 0 || \
+			 	 (v)->type == T_FLOAT && (v)->oindex != 0))
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])
 
 /*

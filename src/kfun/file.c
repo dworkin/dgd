@@ -34,7 +34,7 @@ int nargs;
 	ed_new(obj);
     }
     if (nargs == 0) {
-	(--f->sp)->type = T_INT;
+	(--f->sp)->type = nil_type;
 	f->sp->u.number = 0;
     } else {
 	str = ed_command(obj, f->sp->u.string->text);
@@ -42,7 +42,7 @@ int nargs;
 	if (str != (string *) NULL) {
 	    str_ref(f->sp->u.string = str);
 	} else {
-	    f->sp->type = T_INT;
+	    f->sp->type = nil_type;
 	    f->sp->u.number = 0;
 	}
     }
@@ -72,7 +72,7 @@ register frame *f;
 	f->sp->type = T_STRING;
 	str_ref(f->sp->u.string = str_new(status, (long) strlen(status)));
     } else {
-	f->sp->type = T_INT;
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -219,6 +219,10 @@ array *a;
 	case T_MAPPING:
 	    save_mapping(x, v->u.array);
 	    break;
+
+	case T_NIL:
+	    put(x, "nil", 3);
+	    break;
 	}
 	put(x, ",", 1);
     }
@@ -297,6 +301,10 @@ array *a;
 
 	case T_MAPPING:
 	    save_mapping(x, v->u.array);
+	    break;
+
+	case T_NIL:
+	    put(x, "nil", 3);
 	    break;
 	}
 	put(x, ":", 1);
@@ -388,11 +396,12 @@ register frame *f;
 	    ctrl = o_control(inh->obj);
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
-		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
+		if (!(v->class & C_STATIC) &&
+		    var->type != T_OBJECT && var->type != T_NIL &&
 		    (var->type != T_INT || var->u.number != 0) &&
 		    (var->type != T_FLOAT || !VFLT_ISZERO(var))) {
 		    /*
-		     * don't save object values or 0
+		     * don't save object values, nil or 0
 		     */
 		    str = d_get_strconst(ctrl, v->inherit, v->index);
 		    put(&x, str->text, str->len);
@@ -447,7 +456,7 @@ register frame *f;
     }
 
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
+    f->sp->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }
@@ -915,8 +924,10 @@ register frame *f;
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		var = d_get_variable(data, nvars);
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT) {
-		    d_assign_var(data, var, (v->type == T_FLOAT) ?
-					     &zero_float : &zero_value);
+		    d_assign_var(data, var,
+				 (v->type == T_INT) ?
+				  &zero_int : (v->type == T_FLOAT) ?
+					       &zero_float : &nil_value);
 		}
 		nvars++;
 	    }
@@ -1005,8 +1016,8 @@ register frame *f;
 			buf = restore_value(&x, buf, &tmp);
 			if (v->type != tmp.type && v->type != T_MIXED &&
 			    conf_typechecking() &&
-			    (tmp.type != T_INT || tmp.u.number != 0 ||
-			     v->type == T_FLOAT) &&
+			    (tmp.type != nil_type || tmp.u.number != 0 ||
+			     !T_POINTER(v->type)) &&
 			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
 			    i_ref_value(&tmp);
 			    i_del_value(&tmp);
@@ -1154,7 +1165,7 @@ int nargs;
     }
 
     str_del(f->sp->u.string);
-    f->sp->type = T_INT;
+    f->sp->type = nil_type;
     f->sp->u.number = 0;
 
     if (size < 0) {

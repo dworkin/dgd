@@ -268,6 +268,7 @@ static char *auto_object;		/* auto object */
 static char *driver_object;		/* driver object */
 static char *include;			/* standard include file */
 static char **paths;			/* include paths */
+static bool nilisnot0;			/* nil is not 0 */
 static bool typechecking;		/* is current function typechecked? */
 static bool seen_decls;			/* seen any declarations yet? */
 static short ftype;			/* current function type & class */
@@ -280,15 +281,18 @@ extern int nerrors;			/* # of errors during parsing */
  * NAME:	compile->init()
  * DESCRIPTION:	initialize the compiler
  */
-void c_init(a, d, i, p)
+void c_init(a, d, i, p, tc)
 char *a, *d, *i, **p;
+int tc;
 {
+    nilisnot0 = (tc == 2);
+    node_init(nilisnot0);
     opt_init();
     auto_object = a;
     driver_object = d;
     include = i;
     paths = p;
-    typechecking = conf_typechecking() | cg_compiled();
+    typechecking = tc | cg_compiled();
 }
 
 /*
@@ -467,7 +471,7 @@ object *obj;
 	inheriting = FALSE;
 
 	if (c_autodriver() != 0) {
-	    ctrl_init();
+	    ctrl_init(nilisnot0);
 	} else {
 	    object *aobj;
 
@@ -492,7 +496,7 @@ object *obj;
 	    if (O_UPGRADING(aobj)) {
 		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
-	    ctrl_init();
+	    ctrl_init(nilisnot0);
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 
@@ -814,10 +818,41 @@ register node *n;
     xfloat flt;
 
     FLT_ZERO(flt.high, flt.low);
-    if (ftype == T_FLOAT) {
-	n = c_concat(n, node_mon(N_RETURN, 0, node_float(&flt)));
-    } else {
+    switch (ftype) {
+    case T_INT:
 	n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
+	break;
+
+    case T_FLOAT:
+	n = c_concat(n, node_mon(N_RETURN, 0, node_float(&flt)));
+	break;
+
+    default:
+	n = c_concat(n, node_mon(N_RETURN, 0, node_nil()));
+	break;
+    }
+
+    if (nilisnot0) {
+	/*
+	 * initialize local ints to 0
+	 */
+	zero = (node *) NULL;
+	for (i = nvars; i > nparams; ) {
+	    if (variables[--i].type == T_INT) {
+		v = node_mon(N_LOCAL, T_INT, (node *) NULL);
+		v->line = fline;
+		v->r.number = i;
+		if (zero == (node *) NULL) {
+		    zero = node_int((Int) 0);
+		    zero->line = fline;
+		}
+		zero = node_bin(N_ASSIGN, T_INT, v, zero);
+		zero->line = fline;
+	    }
+	}
+	if (zero != (node *) NULL) {
+	    n = c_concat(c_exp_stmt(zero), n);
+	}
     }
 
     /*
@@ -862,17 +897,17 @@ node *n;
 
 
 /*
- * NAME:	compile->zero()
- * DESCRIPTION:	check if an expression has the value integer 0
+ * NAME:	compile->nil()
+ * DESCRIPTION:	check if an expression has the value nil
  */
-bool c_zero(n)
+bool c_nil(n)
 register node *n;
 {
     if (n->type == N_COMMA) {
 	/* the parser always generates comma expressions as (a, b), c */
 	n = n->r.right;
     }
-    return (n->type == N_INT && n->l.number == 0);
+    return (n->type == nil_node && n->l.number == 0);
 }
 
 /*
@@ -1063,8 +1098,8 @@ node *n1, *n2, *n3;
 	strcpy(f->sp->u.string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
 	n1 = node_bin(N_RLIMITS,
-		      (!((f->sp->type == T_INT && f->sp->u.number == 0) ||
-			 (f->sp->type == T_FLOAT && VFLT_ISZERO(f->sp)))),
+		      (f->sp->u.number != 0 ||
+		       (f->sp->type == T_FLOAT && f->sp->oindex != 0)),
 		      node_bin(N_PAIR, 0, n1, n2),
 		      n3);
 	i_del_value(f->sp++);
@@ -1165,10 +1200,10 @@ cvoid *cv1, *cv2;
 	    return strcmp(n1[0]->l.left->l.string->text,
 			  n2[0]->l.left->l.string->text);
 	} else {
-	    return 1;	/* str > 0 */
+	    return 1;	/* str > nil */
 	}
     } else if (n2[0]->l.left->type == N_STR) {
-	return -1;	/* 0 < str */
+	return -1;	/* nil < str */
     } else {
 	return (n1[0]->l.left->l.number <= n2[0]->l.left->l.number) ? -1 : 1;
     }
@@ -1237,10 +1272,10 @@ node *expr, *stmt;
 		/*
 		 * check for duplicate cases
 		 */
-		if (size >= 2 && v[1]->l.left->type == N_INT) {
+		if (size >= 2 && v[1]->l.left->type == nil_node) {
 		    c_error("duplicate case labels in switch");
 		} else {
-		    i = (v[0]->l.left->type == N_INT);
+		    i = (v[0]->l.left->type == nil_node);
 		    for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
 			if (strcmp(w[0]->l.left->l.string->text,
 				   w[1]->l.left->l.string->text) == 0) {
@@ -1373,8 +1408,28 @@ register node *n1, *n2;
 	return (node *) NULL;
     }
 
-    if (n1->type == N_INT) {
+    if (n1->type == N_STR || n1->type == N_NIL) {
+	/* string */
+	if (n2 != (node *) NULL) {
+	    c_error("bad case range");
+	    switch_list->type = T_INVALID;
+	    return (node *) NULL;
+	}
+	/* compare type with other cases */
+	if (switch_list->type == T_MIXED) {
+	    switch_list->type = T_STRING;
+	} else if (switch_list->type != T_STRING) {
+	    c_error("multiple case types in switch");
+	    switch_list->type = T_INVALID;
+	    return (node *) NULL;
+	}
+    } else {
 	/* int */
+	if (n1->type != N_INT) {
+	    c_error("bad case expression");
+	    switch_list->type = T_INVALID;
+	    return (node *) NULL;
+	}
 	if (n2 == (node *) NULL) {
 	    n1->r.number = n1->l.number;
 	} else {
@@ -1405,26 +1460,6 @@ register node *n1, *n2;
 		switch_list->type = T_INVALID;
 		return (node *) NULL;
 	    }
-	}
-    } else {
-	/* string */
-	if (n2 != (node *) NULL) {
-	    c_error("bad case range");
-	    switch_list->type = T_INVALID;
-	    return (node *) NULL;
-	}
-	if (n1->type != N_STR) {
-	    c_error("bad case expression");
-	    switch_list->type = T_INVALID;
-	    return (node *) NULL;
-	}
-	/* compare type with other cases */
-	if (switch_list->type == T_MIXED) {
-	    switch_list->type = T_STRING;
-	} else if (switch_list->type != T_STRING) {
-	    c_error("multiple case types in switch");
-	    switch_list->type = T_INVALID;
-	    return (node *) NULL;
 	}
     }
 
@@ -1521,14 +1556,14 @@ int typechecked;
 	if (typechecked && ftype != T_VOID) {
 	    c_error("function must return value");
 	}
-	n = node_int((Int) 0);
+	n = node_nil();
     } else if (typechecked) {
 	if (ftype == T_VOID) {
 	    /*
 	     * can't return anything from a void function
 	     */
 	    c_error("value returned from void function");
-	} else if ((!c_zero(n) || ftype == T_FLOAT) &&
+	} else if ((!c_nil(n) || !T_POINTER(ftype)) &&
 		   c_tmatch(n->mod, ftype) == T_INVALID) {
 	    /*
 	     * type error
@@ -1772,7 +1807,7 @@ node *args;
 	    /* only kfuns can have lvalue parameters */
 	    func->r.number |= (long) KFCALL_LVAL << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
-		   (!c_zero(*arg) || t == T_FLOAT) &&
+		   (!c_nil(*arg) || !T_POINTER(t)) &&
 		   c_tmatch((*arg)->mod, t) == T_INVALID) {
 	    c_error("bad argument %d for function %s (needs %s)", n, fname,
 		    i_typename(tnbuf, t));
@@ -1863,6 +1898,9 @@ register node *n;
     case N_STR:
 	return node_int((Int) TRUE);
 
+    case N_NIL:
+	return node_int((Int) FALSE);
+
     case N_TST:
     case N_NOT:
     case N_LAND:
@@ -1906,6 +1944,9 @@ register node *n;
 
     case N_STR:
 	return node_int((Int) FALSE);
+
+    case N_NIL:
+	return node_int((Int) TRUE);
 
     case N_LAND:
 	n->type = N_LOR;
@@ -2007,6 +2048,10 @@ char *oper;
 unsigned short c_tmatch(type1, type2)
 register unsigned int type1, type2;
 {
+    if (type1 == T_NIL || type2 == T_NIL) {
+	/* nil doesn't match with anything else, not even itself */
+	return T_INVALID;
+    }
     if (type1 == type2) {
 	/* identical types */
 	return type1;

@@ -257,11 +257,12 @@ register char *prot1, *prot2;
 static oh *directs[MAX_INHERITS];	/* direct inherit table */
 static int ndirects;			/* # directly inh. objects */
 static int ninherits;			/* # inherited objects */
+static bool countint;			/* TRUE if counting integer variables */
 static bool privinherit;		/* TRUE if private inheritance used */
 static hashtab *vtab;			/* variable merge table */
 static hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
-static unsigned short nfloats;		/* # float variables */
+static unsigned short nvinit;		/* # variables needing initialization */
 static unsigned short nsymbs;		/* # symbols */
 static int nfclash;			/* # prototype clashes */
 static Uint nifcalls;			/* # inherited function calls */
@@ -270,11 +271,13 @@ static Uint nifcalls;			/* # inherited function calls */
  * NAME:	control->init()
  * DESCRIPTION:	initialize control block construction
  */
-void ctrl_init()
+void ctrl_init(flag)
+bool flag;
 {
     oh_init();
     vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
     ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ);
+    countint = flag;
 }
 
 /*
@@ -659,7 +662,7 @@ int priv;
 		 */
 		ohash->obj = o;
 		ohash->index = 2;	/* indirect */
-		nfloats += o_control(o)->nfloatdefs;
+		nvinit += o_control(o)->nifdefs;
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
@@ -886,7 +889,7 @@ void ctrl_create()
     new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
     new->priv = FALSE;
-    newctrl->nfloats = nfloats;
+    newctrl->nvinit = nvinit;
 
     /*
      * prepare for construction of a new control block
@@ -898,7 +901,7 @@ void ctrl_create()
     nfdefs = 0;
     nvars = 0;
     nfcalls = 0;
-    nfloats = 0;
+    nvinit = 0;
 }
 
 /*
@@ -1144,8 +1147,8 @@ unsigned int class, type;
     var->index = s;
     var->type = type;
 
-    if (type == T_FLOAT) {
-	nfloats++;
+    if ((type == T_INT && countint) || type == T_FLOAT) {
+	nvinit++;
     }
 }
 
@@ -1805,8 +1808,8 @@ control *ctrl_construct()
     ctrl_mkvars();
     ctrl_mkfcalls();
     ctrl_mksymbs();
-    ctrl->nfloatdefs = nfloats;
-    ctrl->nfloats += nfloats;
+    ctrl->nifdefs = nvinit;
+    ctrl->nvinit += nvinit;
     ctrl->compiled = P_time();
 
     newctrl = (control *) NULL;
@@ -1832,7 +1835,7 @@ void ctrl_clear()
     ndirects = 0;
     ninherits = 0;
     privinherit = FALSE;
-    nfloats = 0;
+    nvinit = 0;
     nsymbs = 0;
     nfclash = 0;
     nifcalls = 0;

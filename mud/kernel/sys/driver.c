@@ -31,7 +31,7 @@ string *inherited;	/* list of inherited objects */
 string creator(string file)
 {
     return (sscanf(file, "/kernel/%*s") != 0) ? "System" :
-	    (sscanf(file, USR + "/%s/", file) != 0) ? file : 0;
+	    (sscanf(file, USR + "/%s/", file) != 0) ? file : nil;
 }
 
 /*
@@ -215,7 +215,7 @@ compile(object obj, string owner)
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
 	    objectd->compile(owner, obj, inherited...);
-	    inherited = 0;
+	    inherited = nil;
 	} else {
 	    objectd->compile(owner, obj);
 	}
@@ -231,7 +231,7 @@ compile_lib(string path, string owner)
     if (objectd && previous_program() == AUTO) {
 	if (inherited) {
 	    objectd->compile_lib(owner, path, inherited...);
-	    inherited = 0;
+	    inherited = nil;
 	} else {
 	    objectd->compile_lib(owner, path);
 	}
@@ -352,8 +352,8 @@ static initialize()
     rsrcd->add_owner("System");
     rsrcd->rsrc_incr("System", "filequota", 0,
 		     dir_size("/kernel") + file_size(USR + "/System", TRUE));
-    rsrcd->add_owner(0);	/* Ecru */
-    rsrcd->rsrc_incr(0, "filequota", 0,
+    rsrcd->add_owner(nil);	/* Ecru */
+    rsrcd->rsrc_incr(nil, "filequota", 0,
 		     file_size("/doc", TRUE) + file_size("/include", TRUE));
 
     /* load remainder of manager objects */
@@ -453,9 +453,9 @@ static string path_read(string path)
 	creator = creator(oname = object_name(previous_object()));
 	path = normalize_path(path, oname, creator);
 	return ((creator == "System" ||
-		 accessd->access(oname, path, READ_ACCESS)) ? path : 0);
+		 accessd->access(oname, path, READ_ACCESS)) ? path : nil);
     }
-    return 0;
+    return nil;
 }
 
 /*
@@ -480,7 +480,7 @@ static string path_write(string path)
 	    return path;
 	}
     }
-    return 0;
+    return nil;
 }
 
 /*
@@ -493,10 +493,10 @@ mixed *query_wfile()
 
     if (file) {
 	info = ({ file, size });
-	file = 0;
+	file = nil;
 	return info;
     }
-    return 0;
+    return nil;
 }
 
 /*
@@ -530,7 +530,7 @@ static object inherit_program(string from, string path)
     if (sscanf(path, "%*s/lib/") == 0 ||
 	(sscanf(path, "/kernel/%*s") != 0 && creator != "System") ||
 	!accessd->access(from, path, READ_ACCESS)) {
-	return 0;
+	return nil;
     }
 
     obj = find_object(path);
@@ -588,7 +588,7 @@ static string path_include(string from, string path)
 	    return path;
 	} else {
 	    if (objectd) {
-		objectd->include(from, normalize_path(path, from + "/..", 0));
+		objectd->include(from, normalize_path(path, from + "/..", nil));
 	    }
 	    return from + "/../" + path;
 	}
@@ -602,7 +602,7 @@ static string path_include(string from, string path)
 	}
 	return path;
     }
-    return 0;
+    return nil;
 }
 
 /*

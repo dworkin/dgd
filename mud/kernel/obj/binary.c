@@ -79,7 +79,7 @@ static receive_message(string str)
 	    if (strlen(buffer) != 0) {
 		str = buffer;
 		buffer = "";
-		mode = ::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(allocate(TLS_SIZE), str);
 	    }
 	    break;
 	}
@@ -111,7 +111,7 @@ set_mode(int mode)
 	    /* flush buffer */
 	    str = buffer;
 	    buffer = "";
-	    ::receive_message(0, str);
+	    ::receive_message(nil, str);
 	}
     }
 }

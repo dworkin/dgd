@@ -47,8 +47,8 @@ typedef struct {
     uindex nfuncalls;		/* # entries in function call table */
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
-    unsigned short nfloatdefs;	/* # float definitions */
-    unsigned short nfloats;	/* # float vars */
+    unsigned short nifdefs;	/* # int/float definitions */
+    unsigned short nvinit;	/* # variables requiring initialization */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 } scontrol;
 
@@ -132,17 +132,20 @@ static control *chead, *ctail, *cone;	/* list of control blocks */
 static dataspace *dhead, *dtail, *done;	/* list of dataspace blocks */
 static uindex nctrl;			/* # control blocks */
 static uindex ndata;			/* # dataspace blocks */
+static bool nilisnot0;			/* nil != int 0 */
 
 
 /*
  * NAME:	data->init()
  * DESCRIPTION:	initialize swapped data handling
  */
-void d_init()
+void d_init(flag)
+bool flag;
 {
     chead = ctail = cone = (control *) NULL;
     dhead = dtail = done = (dataspace *) NULL;
     nctrl = ndata = 0;
+    nilisnot0 = flag;
 }
 
 /*
@@ -204,8 +207,8 @@ control *d_new_control()
     ctrl->nsymbols = 0;
     ctrl->symbols = (dsymbol *) NULL;
     ctrl->nvariables = 0;
-    ctrl->nfloatdefs = 0;
-    ctrl->nfloats = 0;
+    ctrl->nifdefs = 0;
+    ctrl->nvinit = 0;
     ctrl->vmapsize = 0;
     ctrl->vmap = (unsigned short *) NULL;
 
@@ -418,8 +421,8 @@ object *obj;
 
 	/* # variables */
 	ctrl->nvariables = header.nvariables;
-	ctrl->nfloatdefs = header.nfloatdefs;
-	ctrl->nfloats = header.nfloats;
+	ctrl->nifdefs = header.nifdefs;
+	ctrl->nvinit = header.nvinit;
     }
 
     return ctrl;
@@ -1051,6 +1054,10 @@ register int n;
 	case T_MAPPING:
 	    arr_ref(v->u.array = d_get_array(data, sv->u.array));
 	    break;
+
+	case T_NIL:
+	    v->u.number = 0;
+	    break;
 	}
 	sv++;
 	v++;
@@ -1065,34 +1072,37 @@ register int n;
 static void d_new_variables(data)
 dataspace *data;
 {
-    register unsigned short nfdefs, nvars, nfloats;
+    register unsigned short nfdefs, nvars, nvinit;
     register value *val;
     register dvardef *var;
     register control *ctrl;
     register dinherit *inh;
 
     /*
-     * initialize all variables to integer 0
+     * first, initialize all variables to nil
      */
     for (val = data->values->variables, nvars = data->nvariables; nvars > 0;
 	 --nvars) {
-	*val++ = zero_value;
+	*val++ = nil_value;
     }
 
-    if (data->ctrl->nfloats != 0) {
+    if (data->ctrl->nvinit != 0) {
 	/*
-	 * initialize float variables to 0.0
+	 * explicitly initialize some variables
 	 */
 	nvars = 0;
-	for (nfloats = data->ctrl->nfloats, inh = data->ctrl->inherits;
-	     nfloats > 0; inh++) {
+	for (nvinit = data->ctrl->nvinit, inh = data->ctrl->inherits;
+	     nvinit > 0; inh++) {
 	    if (inh->varoffset == nvars) {
 		ctrl = o_control(inh->obj);
-		if (ctrl->nfloatdefs != 0) {
-		    nfloats -= ctrl->nfloatdefs;
-		    for (nfdefs = ctrl->nfloatdefs, var = d_get_vardefs(ctrl);
+		if (ctrl->nifdefs != 0) {
+		    nvinit -= ctrl->nifdefs;
+		    for (nfdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
 			 nfdefs > 0; var++) {
-			if (var->type == T_FLOAT) {
+			if (var->type == T_INT && nilisnot0) {
+			    data->values->variables[nvars] = zero_int;
+			    --nfdefs;
+			} else if (var->type == T_FLOAT) {
 			    data->values->variables[nvars] = zero_float;
 			    --nfdefs;
 			}
@@ -1364,7 +1374,7 @@ register dataspace *data;
     var = d_get_variable(data, data->nvariables - 1);
     del_lhs(data, var);
     i_del_value(var);
-    *var = zero_value;
+    *var = zero_int;
     data->flags |= DATA_VARIABLE;
 
     if (data->parser != (struct _parser_ *) NULL) {
@@ -1638,7 +1648,7 @@ int *nargs;
 	/* wipe out destructed objects */
 	for (n = co->nargs, v = f->sp; n > 0; --n, v++) {
 	    if (v->type == T_OBJECT && DESTRUCTED(v)) {
-		v->type = T_INT;
+		v->type = nil_type;
 		v->u.number = 0;
 	    }
 	}
@@ -1821,8 +1831,8 @@ register control *ctrl;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
-    header.nfloatdefs = ctrl->nfloatdefs;
-    header.nfloats = ctrl->nfloats;
+    header.nifdefs = ctrl->nifdefs;
+    header.nvinit = ctrl->nvinit;
     header.vmapsize = ctrl->vmapsize;
 
     /* create sector space */
@@ -2102,6 +2112,11 @@ register unsigned short n;
 	    }
 	    sarrays[i].ref++;
 	    break;
+
+	case T_NIL:
+	    sv->oindex = 0;
+	    sv->u.number = 0;
+	    break;
 	}
 	sv++;
 	v++;
@@ -2144,6 +2159,11 @@ register unsigned short n;
 	    case T_MAPPING:
 		sv->oindex = 0;
 		sv->u.array = v->u.array->primary - sdata->values->arrays;
+		break;
+
+	    case T_NIL:
+		sv->oindex = 0;
+		sv->u.number = 0;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -2774,7 +2794,7 @@ object *old;
     /* map variables */
     for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
 	if (NEW_VAR(*vmap)) {
-	    *v++ = (*vmap == NEW_INT) ? zero_value : zero_float;
+	    *v++ = (*vmap == NEW_INT) ? zero_int : zero_float;
 	} else {
 	    *v = vars[*vmap];
 	    i_ref_value(&vars[*vmap]);	/* don't wipe out objects */
@@ -3208,8 +3228,8 @@ register object *obj;
     ctrl->nfuncalls = header.nfuncalls;
     ctrl->nsymbols = header.nsymbols;
     ctrl->nvariables = header.nvariables;
-    ctrl->nfloatdefs = header.nfloatdefs;
-    ctrl->nfloats = header.nfloats;
+    ctrl->nifdefs = header.nifdefs;
+    ctrl->nvinit = header.nvinit;
     ctrl->vmapsize = header.vmapsize;
 
     /* sectors */

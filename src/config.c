@@ -85,7 +85,7 @@ static config conf[] = {
 							0, USHRT_MAX },
 # define TYPECHECKING	21
 				{ "typechecking",	INT_CONST, FALSE,
-							0, 1 },
+							0, 2 },
 # define USERS		22
 				{ "users",		INT_CONST, FALSE,
 							1, UCHAR_MAX },
@@ -859,6 +859,8 @@ static bool conf_includes()
     cputs(buffer);
     sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
     cputs(buffer);
+    sprintf(buffer, "# define T_NIL\t\t%d\012", T_NIL);
+    cputs(buffer);
     if (!cclose()) {
 	return FALSE;
     }
@@ -996,7 +998,7 @@ char *configfile, *dumpfile;
 	    (unsigned int) conf[SECTOR_SIZE].u.num);
 
     /* initialize swapped data handler */
-    d_init();
+    d_init(conf[TYPECHECKING].u.num);
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,
@@ -1010,13 +1012,14 @@ char *configfile, *dumpfile;
     kf_init();
 
     /* initialize interpreter */
-    i_init(conf[CREATE].u.str);
+    i_init(conf[CREATE].u.str, conf[TYPECHECKING].u.num == 2);
 
     /* initialize compiler */
     c_init(conf[AUTO_OBJECT].u.str,
 	   conf[DRIVER_OBJECT].u.str,
 	   conf[INCLUDE_FILE].u.str,
-	   dirs);
+	   dirs,
+	   (int) conf[TYPECHECKING].u.num);
 
     m_dynamic();
 
@@ -1097,9 +1100,9 @@ char *conf_driver()
  * NAME:	config->typechecking()
  * DESCRIPTION:	return the global typechecking flag
  */
-bool conf_typechecking()
+int conf_typechecking()
 {
-    return (bool) conf[TYPECHECKING].u.num;
+    return conf[TYPECHECKING].u.num;
 }
 
 /*

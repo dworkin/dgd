@@ -34,5 +34,5 @@ listen(string protocol, int port)
  */
 static object open_connection()
 {
-    return 0;
+    return nil;
 }

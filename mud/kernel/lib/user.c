@@ -47,7 +47,7 @@ static int redirect(object user, string str)
 	error("Bad redirect");
     }
     conn = connection;
-    connection = 0;
+    connection = nil;
     return conn->set_user(user, str);
 }
 

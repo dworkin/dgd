@@ -148,7 +148,7 @@ reboot()
     if (previous_object() == userd) {
 	if (user) {
 	    catch {
-		user->logout(0);
+		user->logout();
 	    }
 	}
 	destruct_object(this_object());

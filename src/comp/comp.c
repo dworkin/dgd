@@ -302,7 +302,7 @@ char *argv[];
     } else {
 	printf("%u, symbols,\n", ctrl->nsymbols);
     }
-    printf("%u, %u, %u\n", ctrl->nvariables, ctrl->nfloatdefs, ctrl->nfloats);
+    printf("%u, %u, %u\n", ctrl->nvariables, ctrl->nifdefs, ctrl->nvinit);
     printf("};\n# endif\n");
 
     return 0;

@@ -72,5 +72,6 @@ extern void kf_restore	P((int));
 # define KF_STATUS_IDX	55
 # define KF_STATUSO_IDX	56
 # define KF_CALLTR_IDX	57
+# define KF_NIL		58
 
-# define KF_BUILTINS	58
+# define KF_BUILTINS	59

@@ -546,7 +546,7 @@ bool *toobig;
 	case DFA_REJECT:
 	    /* bad token */
 	    FREE(ps->states);
-	    error("Bad token");
+	    error("Bad token at offset %u", str->len - size);
 	    return (pnode *) NULL;
 
 	case DFA_TOOBIG:

@@ -358,6 +358,7 @@ int direct;
     case N_MULT:
     case N_MULT_EQ:
     case N_NE:
+    case N_NIL:
     case N_OR:
     case N_OR_EQ:
     case N_RANGE:
@@ -1117,7 +1118,7 @@ register int state;
 		}
 	    }
 	    output("p = i_foffset(%u), ", ctrl_gencall((long) n->r.number));
-	    output("i_funcall(f, (object *) NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
+	    output("i_funcall(f, (object *)NULL, UCHAR(p[0]), UCHAR(p[1]), %s)",
 		   p);
 	    break;
 	}
@@ -1232,6 +1233,10 @@ register int state;
     case N_NE:
 	cg_binop(n);
 	kfun("ne");
+	break;
+
+    case N_NIL:
+	output("(--f->sp)->type = nil_type, f->sp->u.number = 0");
 	break;
 
     case N_NOT:
@@ -1704,9 +1709,9 @@ register node *n;
     output("{\nstatic char swtab[] = {\n");
     outcount = 0;
     i = 1;
-    if (m->l.left->type == N_INT) {
+    if (m->l.left->type == nil_node) {
 	/*
-	 * 0
+	 * nil
 	 */
 	outchar(0);
 	switch_table[i++] = 1;

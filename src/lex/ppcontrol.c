@@ -408,7 +408,7 @@ register unsigned int len;
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..26 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..27 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
@@ -417,17 +417,17 @@ register char *key;
 register unsigned int len;
 {
     static char *keyword[] = {
-      "string", "nomask", "do", "break", "else", "case", "object",
+      "string", "nomask", "nil", "break", "else", "case", "while",
       "default", "static", "continue", "int", "rlimits", "float", "for",
-      "inherit", "while", "if", "catch", "switch", "mapping", "private",
-      "void", "atomic", "return", "mixed", "varargs"
+      "inherit", "void", "if", "catch", "switch", "varargs", "mapping",
+      "private", "do", "return", "atomic", "mixed", "object"
     };
     static char value[] = {
-      15, 17,  1,  0,  0,  7, 19, 11,  7,  0,  7,  0, 19,
-      14,  0, 13,  0,  3,  1,  0,  0, 17, 10,  0,  0,  0
+      17, 17,  1,  0,  0,  7, 20, 11,  7,  0,  8, 12, 20,
+      14, 20, 14,  0,  3,  1,  0,  0, 11,  1,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 26;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 27;
     return (strcmp(keyword[len], key) == 0) ? len + 1 : 0;
 }
 

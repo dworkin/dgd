@@ -41,7 +41,7 @@ set_owner(string name)
 remove_rsrc(string name)
 {
     if (previous_object() == rsrcd) {
-	resources[name] = 0;
+	resources[name] = nil;
     }
 }
 

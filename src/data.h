@@ -85,8 +85,8 @@ struct _control_ {
     Uint symboffset;		/* o offset of symbol table */
 
     unsigned short nvariables;	/* i/o # variables */
-    unsigned short nfloatdefs;	/* i/o # float definitions */
-    unsigned short nfloats;	/* i/o # floats in object */
+    unsigned short nifdefs;	/* i/o # int/float definitions */
+    unsigned short nvinit;	/* i/o # variables requiring initialization */
 
     unsigned short vmapsize;	/* i/o size of variable mapping */
     unsigned short *vmap;	/* variable mapping */
@@ -166,7 +166,7 @@ struct _dataspace_ {
     struct _parser_ *parser;	/* parse_string data */
 };
 
-extern void		d_init		P((void));
+extern void		d_init		P((bool));
 extern control	       *d_new_control	P((void));
 extern dataspace       *d_new_dataspace	P((object*));
 extern control	       *d_load_control	P((object*));

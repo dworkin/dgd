@@ -97,7 +97,7 @@ int nargs;
     }
 
     /* default return value */
-    val->type = T_INT;
+    val->type = nil_type;
     val->u.number = 0;
     --val;
 
@@ -145,7 +145,7 @@ register frame *f;
 	f->sp->oindex = obj->index;
 	f->sp->u.objcnt = obj->count;
     } else {
-	f->sp->type = T_INT;
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -170,7 +170,7 @@ int nargs;
     register object *obj;
 
     if (nargs == 0) {
-	(--f->sp)->type = T_INT;
+	(--f->sp)->type = nil_type;
 	f->sp->u.number = 0;
     } else if (f->sp->u.number < 0) {
 	return 1;
@@ -182,6 +182,7 @@ int nargs;
 	f->sp->oindex = obj->index;
 	f->sp->u.objcnt = obj->count;
     } else {
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -207,7 +208,7 @@ int nargs;
     register string *str;
 
     if (nargs == 0) {
-	(--f->sp)->type = T_INT;
+	(--f->sp)->type = nil_type;
 	f->sp->u.number = 0;
     } else if (f->sp->u.number < 0) {
 	return 1;
@@ -221,6 +222,7 @@ int nargs;
 	strcpy(str->text + 1, prog);
 	str_ref(f->sp->u.string = str);
     } else {
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -356,7 +358,7 @@ register frame *f;
 	f->sp->oindex = obj->index;
 	f->sp->u.objcnt = obj->count;
     } else {
-	f->sp->type = T_INT;
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -405,7 +407,7 @@ register frame *f;
 	    return 0;
 	}
     }
-    f->sp->type = T_INT;
+    f->sp->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }
@@ -432,7 +434,7 @@ register frame *f;
 	f->sp->oindex = obj->index;
 	f->sp->u.objcnt = obj->count;
     } else {
-	(--f->sp)->type = T_INT;
+	(--f->sp)->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -459,7 +461,7 @@ register frame *f;
 	f->sp->type = T_STRING;
 	str_ref(f->sp->u.string = comm_ip_number(obj));
     } else {
-	f->sp->type = T_INT;
+	f->sp->type = nil_type;
 	f->sp->u.number = 0;
     }
     return 0;
@@ -485,11 +487,10 @@ register frame *f;
     if (obj->flags & O_USER) {
 	f->sp->type = T_STRING;
 	str_ref(f->sp->u.string = comm_ip_name(obj));
-	return 0;
+    } else {
+	f->sp->type = nil_type;
+	f->sp->u.number = 0;
     }
-
-    f->sp->type = T_INT;
-    f->sp->u.number = 0;
     return 0;
 }
 # endif
@@ -561,8 +562,67 @@ register frame *f;
     arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
     f->sp->type = T_ARRAY;
     for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
-	v->type = T_INT;
-	v->u.number = 0;
+	*v = nil_value;
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("allocate_int", kf_allocate_int, pt_allocate_int)
+# else
+char pt_allocate_int[] = { C_TYPECHECKED | C_STATIC, T_INT | (1 << REFSHIFT), 1,
+			   T_INT };
+
+/*
+ * NAME:	kfun->allocate_int()
+ * DESCRIPTION:	allocate an array of integers
+ */
+int kf_allocate_int(f)
+register frame *f;
+{
+    register int i;
+    register value *v;
+
+    if (f->sp->u.number < 0) {
+	return 1;
+    }
+    i_add_ticks(f, f->sp->u.number);
+    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
+    f->sp->type = T_ARRAY;
+    for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
+	*v = zero_int;
+    }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("allocate_float", kf_allocate_float, pt_allocate_float)
+# else
+char pt_allocate_float[] = { C_TYPECHECKED | C_STATIC,
+			     T_FLOAT | (1 << REFSHIFT), 1, T_INT };
+
+/*
+ * NAME:	kfun->allocate_float()
+ * DESCRIPTION:	allocate an array
+ */
+int kf_allocate_float(f)
+register frame *f;
+{
+    register int i;
+    register value *v;
+
+    if (f->sp->u.number < 0) {
+	return 1;
+    }
+    i_add_ticks(f, f->sp->u.number);
+    arr_ref(f->sp->u.array = arr_new(f->data, (long) f->sp->u.number));
+    f->sp->type = T_ARRAY;
+    for (i = f->sp->u.array->size, v = f->sp->u.array->elts; i > 0; --i, v++) {
+	*v = zero_float;
     }
     return 0;
 }
@@ -679,12 +739,9 @@ char pt_typeof[] = { C_STATIC, T_INT, 1, T_MIXED };
 int kf_typeof(f)
 register frame *f;
 {
-    unsigned short type;
-
-    type = f->sp->type;
     i_del_value(f->sp);
+    f->sp->u.number = f->sp->type;
     f->sp->type = T_INT;
-    f->sp->u.number = type;
     return 0;
 }
 # endif
@@ -801,6 +858,7 @@ register frame *f;
     if (f->obj->flags & O_USER) {
 	comm_block(f->obj, f->sp->u.number != 0);
     }
+    f->sp->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }
@@ -904,7 +962,7 @@ frame *f;
 {
     swapout();
 
-    (--f->sp)->type = T_INT;
+    (--f->sp)->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }
@@ -924,7 +982,7 @@ int kf_dump_state(f)
 frame *f;
 {
     dump_state();
-    (--f->sp)->type = T_INT;
+    (--f->sp)->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }
@@ -945,7 +1003,7 @@ frame *f;
 {
     finish();
 
-    (--f->sp)->type = T_INT;
+    (--f->sp)->type = nil_type;
     f->sp->u.number = 0;
     return 0;
 }

@@ -108,6 +108,7 @@ typedef unsigned int Uint;
 # define abort			dgd_abort
 
 extern void dgd_exit(int);
+extern void dgd_abort(void);
 
 # endif	/* WIN32 */
 

@@ -187,7 +187,7 @@ string query_binary_banner()
 login(object user, string name)
 {
     if (previous_program() == LIB_USER) {
-	users = (users - ({ 0 })) | ({ user });
+	users = (users - ({ nil })) | ({ user });
 	names[name] = user;
     }
 }
@@ -200,7 +200,7 @@ logout(object user, string name)
 {
     if (previous_program() == LIB_USER) {
 	users -= ({ user });
-	names[name] = 0;
+	names[name] = nil;
     }
 }
 
@@ -215,15 +215,15 @@ object *query_users()
 	object *usr;
 	int i, changed;
 
-	usr = users - ({ 0 });
+	usr = users - ({ nil });
 	changed = FALSE;
 	for (i = sizeof(usr); --i >= 0; ) {
 	    if (!usr[i]->query_conn()) {
-		usr[i] = 0;
+		usr[i] = nil;
 		changed = TRUE;
 	    }
 	}
-	return (changed) ? usr - ({ 0 }) : usr;
+	return (changed) ? usr - ({ nil }) : usr;
     }
 }
 

@@ -18,6 +18,17 @@ typedef struct _nodelist_ {
 static nodelist *list;			/* linked list of all node chunks */
 static nodelist *flist;			/* list of free node chunks */
 static int chunksize = NODE_CHUNK;	/* part of list chunk used */
+int nil_node;				/* N_NIL or N_INT */
+
+/*
+ * NAME:	node->init()
+ * DESCRIPTION:	initialize node handling
+ */
+void node_init(nil)
+bool nil;
+{
+    nil_node = (nil) ? N_NIL : N_INT;
+}
 
 /*
  * NAME:	node->new()
@@ -80,6 +91,23 @@ xfloat *flt;
     n->flags = F_CONST;
     n->mod = T_FLOAT;
     NFLT_PUT(n, *flt);
+
+    return n;
+}
+
+/*
+ * NAME:	node->nil()
+ * DESCRIPTION:	create a nil node
+ */
+node *node_nil()
+{
+    register node *n;
+
+    n = node_new(tk_line());
+    n->type = nil_node;
+    n->flags = F_CONST;
+    n->mod = nil_type;
+    n->l.number = 0;
 
     return n;
 }

@@ -151,7 +151,7 @@ remove_rsrc(string name)
 	    while (i != 0) {
 		objects[--i]->remove_rsrc(name);
 	    }
-	    resources[name] = 0;
+	    resources[name] = nil;
 	}
     }
 }
@@ -311,7 +311,7 @@ release_callouts()
 {
     if (SYSTEM() && suspend < 0) {
 	rlimits (-1; -1) {
-	    suspender = 0;
+	    suspender = nil;
 	    if (first_suspended) {
 		mixed *callout;
 
@@ -324,7 +324,7 @@ release_callouts()
 		} while (callout);
 		suspend = 1;
 	    } else {
-		suspended = 0;
+		suspended = nil;
 		suspend = 0;
 	    }
 	}
@@ -448,7 +448,7 @@ remove_callouts(object obj, string owner, int n)
 		    last_suspended = callout[CO_PREV];
 		}
 	    }
-	    suspended[obj] = 0;
+	    suspended[obj] = nil;
 	}
     }
 }
@@ -470,8 +470,8 @@ static release()
 	first_suspended[CO_PREV] = 0;
 	suspended[obj][handle] = 0;
     } else {
-	last_suspended = 0;
-	suspended = 0;
+	last_suspended = nil;
+	suspended = nil;
 	suspend = 0;
     }
     owners[callout[CO_OWNER]]->rsrc_incr("callouts", obj, -1,

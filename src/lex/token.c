@@ -524,7 +524,7 @@ int tk_gettok()
     register long result;
     register char *p;
     register bool overflow;
-    bool is_float;
+    bool is_float, badoctal;
 
 # define TEST(x, tok)	if (c == x) { c = tok; break; }
 # define CHECK(x, tok)	*p++ = c = gc(); TEST(x, tok); --p; uc(c)
@@ -789,6 +789,7 @@ int tk_gettok()
 	break;
 
     case '0':
+	badoctal = FALSE;
 	c = gc();
 	if (c == 'x' || c == 'X') {
 	    *p++ = c;
@@ -817,7 +818,10 @@ int tk_gettok()
 	    }
 	    yynumber = result;
 	} else {
-	    while (c >= '0' && c <= '7') {
+	    while (c >= '0' && c <= '9') {
+		if (c >= '8') {
+		    badoctal = TRUE;
+		}
 		if (p < yyend) {
 		    *p++ = c;
 		}
@@ -847,6 +851,8 @@ int tk_gettok()
 	if (pp_level == 0) {
 	    if (p == yyend) {
 		error("too long integer constant");
+	    } else if (badoctal) {
+		error("bad octal constant");
 	    } else if (overflow) {
 		error("overflow in integer constant");
 	    }

@@ -136,7 +136,7 @@ nomask _F_destruct()
 	    evtlist = map_values(events);
 	    i = sizeof(evtlist);
 	    while (--i >= 0) {
-		j = sizeof(objlist = evtlist[i] - ({ 0 }));
+		j = sizeof(objlist = evtlist[i] - ({ nil }));
 		while (--j >= 0) {
 		    obj = objlist[j];
 		    if (obj != this_object()) {
@@ -187,7 +187,7 @@ static object find_object(string path)
 {
     CHECKARG(path, 1, "find_object");
     if (!this_object()) {
-	return 0;
+	return nil;
     }
 
     path = ::find_object(DRIVER)->normalize_path(path,
@@ -199,7 +199,7 @@ static object find_object(string path)
 	 * It is not possible to find a lib object by name, or to call a
 	 * function in it.
 	 */
-	return 0;
+	return nil;
     }
     return ::find_object(path);
 }
@@ -328,7 +328,7 @@ static object compile_object(string path)
 	call_other(obj, "???");	/* initialize & register */
     }
 
-    return (lib) ? 0 : obj;
+    return (lib) ? nil : obj;
 }
 
 /*
@@ -450,7 +450,7 @@ static varargs mixed *status(mixed obj)
     int i;
 
     if (!this_object()) {
-	return 0;
+	return nil;
     }
     if (!obj) {
 	status = ::status();
@@ -470,7 +470,7 @@ static varargs mixed *status(mixed obj)
 	obj = ::find_object(driver->normalize_path(obj, oname + "/..",
 						   creator));
 	if (!obj) {
-	    return 0;
+	    return nil;
 	}
     }
     CHECKARG(typeof(obj) == T_OBJECT, 1, "status");
@@ -509,7 +509,7 @@ static varargs mixed *status(mixed obj)
  */
 static object this_user()
 {
-    return (::this_user()) ? ::this_user()->query_user() : 0;
+    return (::this_user()) ? ::this_user()->query_user() : nil;
 }
 
 /*
@@ -519,7 +519,7 @@ static object this_user()
 static object *users()
 {
     if (!this_object()) {
-	return 0;
+	return nil;
     } else if (object_name(this_object()) == USERD) {
 	/* connection objects */
 	return ::users();
@@ -736,13 +736,13 @@ static remove_event(string name)
 
     if (events && (objlist=events[name])) {
 	rsrcd = ::find_object(RSRCD);
-	i = sizeof(objlist -= ({ 0 }));
+	i = sizeof(objlist -= ({ nil }));
 	rlimits (-1; -1) {
 	    while (--i >= 0) {
 		rsrcd->rsrc_incr(objlist[i]->query_owner(), "events",
 				 objlist[i], -1);
 	    }
-	    events[name] = 0;
+	    events[name] = nil;
 	}
     }
 }
@@ -778,7 +778,7 @@ nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
 	    if (sizeof(objlist & ({ obj })) != 0) {
 		error("Already subscribed to event");
 	    }
-	    objlist = objlist - ({ 0 }) + ({ obj });
+	    objlist = objlist - ({ nil }) + ({ obj });
 	    catch {
 		rlimits (-1; -1) {
 		    if (!rsrcd->rsrc_incr(oowner, "events", obj, 1)) {
@@ -793,7 +793,7 @@ nomask _F_subscribe_event(object obj, string oowner, string name, int subscribe)
 	    }
 	    rlimits (-1; -1) {
 		rsrcd->rsrc_incr(oowner, "events", obj, -1);
-		events[name] -= ({ 0, obj });
+		events[name] -= ({ nil, obj });
 	    }
 	}
     }
@@ -839,7 +839,7 @@ static object *query_subscribed(string name)
     if (!events || !(objlist=events[name])) {
 	error("No such event");
     }
-    return objlist - ({ 0 });
+    return objlist - ({ nil });
 }
 
 /*

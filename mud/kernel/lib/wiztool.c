@@ -204,7 +204,7 @@ static object compile_object(string path)
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
 	message(path + ": Permission denied.\n");
-	return 0;
+	return nil;
     }
     return ::compile_object(path);
 }
@@ -218,7 +218,7 @@ static object clone_object(string path)
     path = driver->normalize_path(path, directory, owner);
     if (sscanf(path, "/kernel/%*s") != 0 || !access(owner, path, READ_ACCESS)) {
 	message(path + ": Permission denied.\n");
-	return 0;
+	return nil;
     }
     return ::clone_object(path);
 }
@@ -360,7 +360,7 @@ static mixed **get_dir(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, READ_ACCESS)) {
-	return 0;
+	return nil;
     }
     return ::get_dir(path);
 }
@@ -416,7 +416,7 @@ static int remove_dir(string path)
 nomask string path_read(string path)
 {
     path = driver->normalize_path(path, directory, owner);
-    return (access(owner, path, READ_ACCESS)) ? path : 0;
+    return (access(owner, path, READ_ACCESS)) ? path : nil;
 }
 
 /*
@@ -426,7 +426,7 @@ nomask string path_read(string path)
 nomask string path_write(string path)
 {
     path = driver->normalize_path(path, directory, owner);
-    return (access(owner, path, WRITE_ACCESS)) ? path : 0;
+    return (access(owner, path, WRITE_ACCESS)) ? path : nil;
 }
 
 /*
@@ -540,6 +540,9 @@ static string dump_value(mixed value, mapping seen)
 	}
 	return str + dump_value(indices[i], seen) + ":" +
 		     dump_value(values[i], seen) + " ])";
+
+    case T_NIL:
+	return "nil";
     }
 }
 
@@ -644,7 +647,7 @@ static mixed *parse(object user, string str)
 		/* $num */
 		if (i < 0 || i >= hmax) {
 		    message("Parse error: $num out of range\n");
-		    return 0;
+		    return nil;
 		}
 		argv[argc] = history[i];
 	    } else {
@@ -661,7 +664,7 @@ static mixed *parse(object user, string str)
 		    str = str[i ..];
 		    if (!(argv[argc]=ident(tmp))) {
 			message("Parse error: unknown $ident\n");
-			return 0;
+			return nil;
 		    }
 		}
 	    }
@@ -691,7 +694,7 @@ static mixed *expand(string files, int exist, int full)
 
     do {
 	str = files;
-	files = 0;
+	files = nil;
 	sscanf(str, "%s %s", str, files);
 	file = driver->normalize_path(str, directory, owner);
 	dir = get_dir(file);
@@ -1454,7 +1457,7 @@ static cmd_grant(object user, string cmd, string str)
 	type = READ_ACCESS;
 	break;
 
-    case 0:
+    case nil:
     case "write":
 	type = WRITE_ACCESS;
 	break;
@@ -1642,7 +1645,7 @@ static cmd_quota(object user, string cmd, string str)
 	who = owner;
     } else if (sscanf(str, "%s %s", who, str) != 0) {
 	if (who == "Ecru") {
-	    who = 0;
+	    who = nil;
 	}
 	if (sizeof(query_owners() & ({ who })) == 0) {
 	    message("No such resource owner.\n");
@@ -1679,7 +1682,7 @@ static cmd_quota(object user, string cmd, string str)
     }
 
     if (who == "Ecru") {
-	who = 0;
+	who = nil;
     }
     if (sizeof(query_owners() & ({ who })) == 0) {
 	message("No such resource owner.\n");

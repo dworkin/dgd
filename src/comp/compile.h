@@ -1,4 +1,4 @@
-extern void	 c_init		P((char*, char*, char*, char**));
+extern void	 c_init		P((char*, char*, char*, char**, int));
 extern object	*c_compile	P((frame*, char*, object*));
 extern bool	 c_upgrade	P((object**, unsigned int));
 extern int	 c_autodriver	P((void));
@@ -10,7 +10,7 @@ extern void	 c_global	P((unsigned int, unsigned int, node*));
 extern void	 c_function	P((unsigned int, unsigned int, node*));
 extern void	 c_funcbody	P((node*));
 extern void	 c_local	P((unsigned int, unsigned int, node*));
-extern bool	 c_zero		P((node*));
+extern bool	 c_nil		P((node*));
 extern node	*c_concat	P((node*, node*));
 extern node	*c_exp_stmt	P((node*));
 extern node	*c_if		P((node*, node*, node*));

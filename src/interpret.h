@@ -68,7 +68,7 @@
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
-# define T_RESERVED	0x07	/* reserved for add-on packages */
+# define T_NIL		0x07
 # define T_MIXED	0x08	/* declaration type only */
 # define T_VOID		0x09	/* function return type only */
 # define T_LVALUE	0x0a	/* address of a value */
@@ -85,10 +85,11 @@
 
 # define T_ARITHMETIC(t) ((t) <= T_FLOAT)
 # define T_ARITHSTR(t)	((t) <= T_STRING)
-# define T_INDEXED(t)	((t) >= T_ARRAY)	/* only T_ARRAY and T_MAPPING */
+# define T_POINTER(t)	((t) >= T_STRING)
+# define T_INDEXED(t)	((t) == T_ARRAY || (t) == T_MAPPING)
 
 # define TYPENAMES	{ "invalid", "int", "float", "string", "object", \
-			  "array", "mapping", "reserved", "mixed", "void" }
+			  "array", "mapping", "nil", "mixed", "void" }
 
 struct _value_ {
     char type;			/* value type */
@@ -160,7 +161,7 @@ struct _frame_ {
 };
 
 
-extern void		i_init		P((char*));
+extern void		i_init		P((char*, bool));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
 extern void		i_copy		P((value*, value*, unsigned int));
@@ -202,6 +203,7 @@ extern void		i_runtime_error	P((frame*, Int));
 extern void		i_clear		P((void));
 
 extern frame *cframe;
-extern value zero_value, zero_float;
+extern int nil_type;
+extern value zero_int, zero_float, nil_value;
 
 # define i_add_ticks(f, t)	((f)->ticks -= (t))

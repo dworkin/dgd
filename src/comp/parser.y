@@ -60,9 +60,9 @@ static node *comma	P((node*, node*));
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token STRING NOMASK DO BREAK ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT
-       RLIMITS FLOAT FOR INHERIT WHILE IF CATCH SWITCH MAPPING PRIVATE VOID
-       ATOMIC RETURN MIXED VARARGS
+%token STRING NOMASK NIL BREAK ELSE CASE WHILE DEFAULT STATIC CONTINUE INT
+       RLIMITS FLOAT FOR INHERIT VOID IF CATCH SWITCH VARARGS MAPPING PRIVATE
+       DO RETURN ATOMIC MIXED OBJECT
 
 /*
  * composite tokens
@@ -478,6 +478,7 @@ primary_p1_exp
 		{ $$ = node_int($1); }
 	| FLOAT_CONST
 		{ $$ = node_float(&$1); }
+	| NIL	{ $$ = node_nil(); }
 	| string
 	| '(' '{' opt_arg_list_comma '}' ')'
 		{ $$ = c_aggregate($3, T_MIXED | (1 << REFSHIFT)); }
@@ -1468,7 +1469,7 @@ register node *n1, *n2;
 		n1->l.number = TRUE;
 		return n1;
 	    }
-	    if (n2->type == N_STR) {
+	    if (nil_node == N_INT && n2->type == N_STR) {
 		/* 0 == s */
 		return n1;	/* FALSE */
 	    }
@@ -1494,17 +1495,28 @@ register node *n1, *n2;
 	    /* s == s */
 	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) == 0));
 	}
-	if (n2->type == N_INT && n2->l.number == 0) {
-	    /* s == 0 */
-	    return n2;	/* FALSE */
+	if (n2->type == nil_node && n2->l.number == 0) {
+	    /* s == nil */
+	    return node_int((Int) FALSE);
+	}
+	break;
+
+    case N_NIL:
+	if (n2->type == N_STR) {
+	    /* nil == str */
+	    return node_int((Int) FALSE);
+	}
+	if (n2->type == N_NIL) {
+	    /* nil == nil */
+	    return node_int((Int) TRUE);
 	}
 	break;
     }
 
     op = N_EQ;
     if (n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED &&
-	(!c_zero(n1) || n2->mod == T_FLOAT) &&
-	(!c_zero(n2) || n1->mod == T_FLOAT)) {
+	(!c_nil(n1) || !T_POINTER(n2->mod)) &&
+	(!c_nil(n2) || !T_POINTER(n1->mod))) {
 	if (typechecking) {
 	    c_error("incompatible types for equality (%s, %s)",
 		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
@@ -1533,7 +1545,7 @@ char *name;
     }
     if ((((type=n1->mod) == T_MIXED || type == T_MAPPING) &&
 	 ((n2->mod & T_REF) != 0 || n2->mod == T_MIXED)) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
 	/*
 	 * possibly array & array or mapping & array
 	 */
@@ -1559,7 +1571,7 @@ char *name;
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
 	/*
 	 * possibly array ^ array
 	 */
@@ -1585,7 +1597,7 @@ char *name;
 	return n1;
     }
     if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
-	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != T_INVALID) {
 	/*
 	 * possibly array | array
 	 */
@@ -1655,18 +1667,21 @@ register node *n1, *n2, *n3;
 
 	case N_STR:
 	    return n2;
+
+	case N_NIL:
+	    return n1;
 	}
     }
 
     type = T_MIXED;
-    if (c_zero(n2) && n3->mod != T_FLOAT) {
+    if (c_nil(n2) && T_POINTER(n3->mod)) {
 	/*
-	 * expr ? 0 : expr
+	 * expr ? nil : expr
 	 */
 	type = n3->mod;
-    } else if (c_zero(n3) && n2->mod != T_FLOAT) {
+    } else if (c_nil(n3) && T_POINTER(n2->mod)) {
 	/*
-	 * expr ? expr : 0;
+	 * expr ? expr : nil;
 	 */
 	type = n2->mod;
     } else if (typechecking) {
@@ -1697,7 +1712,7 @@ register node *n1, *n2;
 {
     char tnbuf1[17], tnbuf2[17];
 
-    if (typechecking && (!c_zero(n2) || n1->mod == T_FLOAT)) {
+    if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
 	/*
 	 * typechecked
 	 */
