@@ -23,7 +23,9 @@ static connection *flist;		/* list of free connections */
 static int telnet;			/* telnet port socket descriptor */
 static int binary;			/* binary port socket descriptor */
 static fd_set fds;			/* file descriptor bitmap */
+static fd_set wfds;			/* file descriptor w bitmap */
 static fd_set readfds;			/* file descriptor read bitmap */
+static fd_set writefds;			/* file descriptor write map */
 static int maxfd;			/* largest fd opened yet */
 
 /*
@@ -179,6 +181,7 @@ register connection *conn;
     if (conn->fd >= 0) {
 	close(conn->fd);
 	FD_CLR(conn->fd, &fds);
+	FD_CLR(conn->fd, &wfds);
 	conn->fd = -1;
     }
     conn->next = flist;
@@ -195,10 +198,10 @@ int wait;
     struct timeval timeout;
 
     memcpy(&readfds, &fds, sizeof(fd_set));
+    memcpy(&writefds, &wfds, sizeof(fd_set));
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
-    return select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL,
-		  &timeout);
+    return select(maxfd + 1, &readfds, &writefds, (fd_set *) NULL, &timeout);
 }
 
 /*
@@ -224,20 +227,45 @@ int size;
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-int conn_write(conn, buf, size)
-connection *conn;
+int conn_write(conn, buf, len, wait)
+register connection *conn;
 char *buf;
-register int size;
+int len;
+int wait;
 {
+    int size;
+
     if (conn->fd >= 0) {
-	if ((size=write(conn->fd, buf, size)) < 0 && errno != EWOULDBLOCK) {
+	FD_CLR(conn->fd, &wfds);
+	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);
 	    conn->fd = -1;
+	} else if (wait && size != len) {
+	    /* waiting for wrdone */
+	    FD_SET(conn->fd, &wfds);
 	}
 	return size;
     }
     return 0;
+}
+
+/*
+ * NAME:	conn->wrdone()
+ * DESCRIPTION:	return true if a connection is ready for output
+ */
+bool conn_wrdone(conn)
+connection *conn;
+{
+    if (conn->fd < 0) {
+	return TRUE;
+    }
+    if (FD_ISSET(conn->fd, &writefds)) {
+	FD_CLR(conn->fd, &wfds);
+	FD_CLR(conn->fd, &writefds);
+	return TRUE;
+    }
+    return FALSE;
 }
 
 /*

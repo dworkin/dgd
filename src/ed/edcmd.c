@@ -48,13 +48,13 @@ char *tmpfile;
 {
     register cmdbuf *cb;
 
-    mstatic();
+    m_static();
     cb = ALLOC(cmdbuf, 1);
     memset(cb, '\0', sizeof(cmdbuf));
     cb->edbuf = eb_new(tmpfile);
     cb->regexp = rx_new();
     cb->vars = va_new();
-    mdynamic();
+    m_dynamic();
 
     cb->this = 0;
     cb->undo = (block) -1;	/* not 0! */

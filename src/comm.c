@@ -25,7 +25,8 @@ typedef struct _user_ {
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
     char inbuf[INBUF_SIZE];	/* input buffer */
-    char outbuf[OUTBUF_SIZE];	/* output buffer */
+    char *outbuf;		/* output buffer */
+    char *outbufp;		/* output buffer pointer */
 } user;
 
 /* flags */
@@ -94,9 +95,9 @@ bool telnet;
 	error("user object is already used for user or editor");
     }
     for (usr = users; *usr != (user *) NULL; usr++) ;
-    mstatic();
+    m_static();
     *usr = ALLOC(user, 1);
-    mdynamic();
+    m_dynamic();
     (*usr)->u.obj = obj;
     obj->flags |= O_USER;
     obj->etabi = usr - users;
@@ -105,13 +106,20 @@ bool telnet;
     (*usr)->conn = conn;
     if (telnet) {
 	/* initialize connection */
-	conn_write(conn, init, sizeof(init));
+	conn_write(conn, init, sizeof(init), FALSE);
 	(*usr)->flags = CF_TELNET | CF_ECHO;
 	(*usr)->state = TS_DATA;
 	(*usr)->newlines = 0;
+	m_static();
+	(*usr)->outbuf = ALLOC(char, OUTBUF_SIZE);
+	m_dynamic();
     } else {
 	(*usr)->flags = 0;
+	m_static();
+	(*usr)->outbuf = ALLOC(char, BOUTBUF_SIZE);
+	m_dynamic();
     }
+    (*usr)->outbufp = (char *) NULL;
     nusers++;
     this_user = obj;
 }
@@ -133,6 +141,7 @@ register user **usr;
     }
     obj = (*usr)->u.obj;
     obj->flags &= ~O_USER;
+    FREE((*usr)->outbuf);
     FREE(*usr);
     *usr = (user *) NULL;
     --nusers;
@@ -176,7 +185,7 @@ string *str;
 		 * double the telnet IAC character
 		 */
 		if (size == OUTBUF_SIZE) {
-		    conn_write(usr->conn, q = usr->outbuf, size);
+		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		    size = 0;
 		}
 		*q++ = IAC;
@@ -186,7 +195,7 @@ string *str;
 		 * insert CR before LF
 		 */
 		if (size == OUTBUF_SIZE) {
-		    conn_write(usr->conn, q = usr->outbuf, size);
+		    conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		    size = 0;
 		}
 		*q++ = CR;
@@ -200,7 +209,7 @@ string *str;
 		continue;
 	    }
 	    if (size == OUTBUF_SIZE) {
-		conn_write(usr->conn, q = usr->outbuf, size);
+		conn_write(usr->conn, q = usr->outbuf, size, FALSE);
 		size = 0;
 	    }
 	    *q++ = *p++;
@@ -213,7 +222,19 @@ string *str;
 	/*
 	 * binary connection: no buffering
 	 */
-	return conn_write(usr->conn, p, len);
+	usr->outbufp = (char *) NULL;
+	size = conn_write(usr->conn, p, len, TRUE);
+	if (size != len) {
+	    /*
+	     * buffer the remainder of the string
+	     */
+	    if (size > 0) {
+		p += size;
+		len -= size;
+	    }
+	    memcpy(usr->outbufp = usr->outbuf, p, usr->outbufsz = len);
+	}
+	return size;
     }
 }
 
@@ -233,7 +254,7 @@ int echo;
 	buf[0] = IAC;
 	buf[1] = (echo) ? WONT : WILL;
 	buf[2] = TELOPT_ECHO;
-	conn_write(usr->conn, buf, 3);
+	conn_write(usr->conn, buf, 3, FALSE);
 	usr->flags ^= CF_ECHO;
     }
 }
@@ -250,14 +271,15 @@ int prompt;
     register char *p;
 
     for (usr = users, i = maxusers; i > 0; usr++, --i) {
-	if (*usr != (user *) NULL && (size=(*usr)->outbufsz) > 0) {
-	    if (prompt && (*usr)->u.obj == this_user &&
-		((*usr)->flags & (CF_TELNET | CF_GA)) == (CF_TELNET | CF_GA)) {
+	if (*usr != (user *) NULL && ((*usr)->flags & CF_TELNET) &&
+	    (size=(*usr)->outbufsz) > 0) {
+	    if (prompt && (*usr)->u.obj == this_user && ((*usr)->flags & CF_GA))
+	    {
 		/*
 		 * append "go ahead" to indicate that the prompt has been sent
 		 */
 		if (size >= OUTBUF_SIZE - 2) {
-		    conn_write((*usr)->conn, (*usr)->outbuf, size);
+		    conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 		    size = 0;
 		}
 		p = (*usr)->outbuf + size;
@@ -265,7 +287,7 @@ int prompt;
 		*p++ = GA;
 		size += 2;
 	    }
-	    conn_write((*usr)->conn, (*usr)->outbuf, size);
+	    conn_write((*usr)->conn, (*usr)->outbuf, size, FALSE);
 	    (*usr)->outbufsz = 0;
 	}
     }
@@ -362,7 +384,10 @@ int *size;
 	register user **usr;
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {
-	    if (*usr != (user *) NULL && (*usr)->inbufsz != INBUF_SIZE) {
+	    if (*usr == (user *) NULL) {
+		continue;	/* avoid even worse indentation */
+	    }
+	    if ((*usr)->inbufsz != INBUF_SIZE) {
 		p = (*usr)->inbuf + (*usr)->inbufsz;
 		n = conn_read((*usr)->conn, p, INBUF_SIZE - (*usr)->inbufsz);
 		if (n < 0) {
@@ -371,6 +396,7 @@ int *size;
 		     */
 		    comm_del(usr);
 		    d_export();	/* this cannot be in comm_del() */
+		    continue;
 		} else if ((*usr)->flags & CF_TELNET) {
 		    /*
 		     * telnet mode
@@ -449,12 +475,12 @@ int *size;
 				break;
 
 			    case IP:
-				conn_write((*usr)->conn, intr, 1);
+				conn_write((*usr)->conn, intr, 1, FALSE);
 				state = TS_DATA;
 				break;
 
 			    case BREAK:
-				conn_write((*usr)->conn, brk, 1);
+				conn_write((*usr)->conn, brk, 1, FALSE);
 				state = TS_DATA;
 				break;
 
@@ -467,10 +493,10 @@ int *size;
 
 			case TS_DO:
 			    if (UCHAR(*p) == TELOPT_TM) {
-				conn_write((*usr)->conn, tm, 3);
+				conn_write((*usr)->conn, tm, 3, FALSE);
 			    } else if (UCHAR(*p) == TELOPT_SGA) {
 				flags &= ~CF_GA;
-				conn_write((*usr)->conn, will_sga, 3);
+				conn_write((*usr)->conn, will_sga, 3, FALSE);
 			    }
 			    state = TS_DATA;
 			    break;
@@ -478,7 +504,7 @@ int *size;
 			case TS_DONT:
 			    if (UCHAR(*p) == TELOPT_SGA) {
 				flags |= CF_GA;
-				conn_write((*usr)->conn, wont_sga, 3);
+				conn_write((*usr)->conn, wont_sga, 3, FALSE);
 			    }
 			    state = TS_DATA;
 			    break;
@@ -486,7 +512,7 @@ int *size;
 			case TS_WILL:
 			    if (UCHAR(*p) == TELOPT_LINEMODE) {
 				/* linemode confirmed; now request editing */
-				conn_write((*usr)->conn, mode_edit, 7);
+				conn_write((*usr)->conn, mode_edit, 7, FALSE);
 			    }
 			    /* fall through */
 			case TS_WONT:
@@ -522,6 +548,26 @@ int *size;
 		     */
 		    (*usr)->inbufsz += n;
 		    binchars += n;
+		}
+	    }
+	    if ((*usr)->outbufp != (char *) NULL && conn_wrdone((*usr)->conn)) {
+		/* write next chunk */
+		n = conn_write((*usr)->conn, (*usr)->outbufp, (*usr)->outbufsz,
+			       TRUE);
+		if (n != (*usr)->outbufsz) {
+		    if (n > 0) {
+			(*usr)->outbufp += n;
+			(*usr)->outbufsz -= n;
+		    }
+		} else {
+		    /* callback */
+		    (*usr)->outbufp = (char *) NULL;
+		    this_user = (*usr)->u.obj;
+		    if (i_call(this_user, "message_done", TRUE, 0)) {
+			i_del_value(sp++);
+			d_export();
+		    }
+		    this_user = (object *) NULL;
 		}
 	    }
 	}
@@ -610,11 +656,11 @@ object *obj;
     register user **usr;
 
     usr = &users[UCHAR(obj->etabi)];
-    if ((*usr)->outbufsz != 0) {
+    if (((*usr)->flags & CF_TELNET) && (*usr)->outbufsz != 0) {
 	/*
 	 * flush last bit of output
 	 */
-	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz);
+	conn_write((*usr)->conn, (*usr)->outbuf, (*usr)->outbufsz, FALSE);
     }
     comm_del(usr);
 }

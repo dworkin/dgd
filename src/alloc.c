@@ -234,7 +234,7 @@ register chunk *c;
  * NAME:	mstatic()
  * DESCRIPTION:	enter static mode
  */
-void mstatic()
+void m_static()
 {
     slevel++;
 }
@@ -243,7 +243,7 @@ void mstatic()
  * NAME:	mdynamic()
  * DESCRIPTION:	reenter dynamic mode
  */
-void mdynamic()
+void m_dynamic()
 {
     --slevel;
 }
@@ -659,10 +659,10 @@ register chunk *c;
 
 
 /*
- * NAME:	minit()
+ * NAME:	mem->init()
  * DESCRIPTION:	initialize memory manager
  */
-void minit(ssz, dsz)
+void m_init(ssz, dsz)
 unsigned int ssz, dsz;
 {
     schunksz = ALIGN(ssz, STRUCT_AL);
@@ -681,16 +681,16 @@ static header *hlist;			/* list of all dynamic memory chunks */
 # endif
 
 /*
- * NAME:	alloc()
+ * NAME:	mem->alloc()
  * DESCRIPTION:	allocate memory
  */
 # ifdef DEBUG
-char *alloc(size, file, line)
+char *m_alloc(size, file, line)
 register unsigned int size;
 char *file;
 int line;
 # else
-char *alloc(size)
+char *m_alloc(size)
 register unsigned int size;
 # endif
 {
@@ -732,10 +732,10 @@ register unsigned int size;
 }
 
 /*
- * NAME:	mfree()
+ * NAME:	mem->free()
  * DESCRIPTION:	free memory
  */
-void mfree(mem)
+void m_free(mem)
 char *mem;
 {
     register chunk *c;
@@ -765,11 +765,11 @@ char *mem;
 }
 
 /*
- * NAME:	mcheck()
+ * NAME:	mem->check()
  * DESCRIPTION:	return TRUE if there is enough static memory left, or FALSE
  *		otherwise
  */
-bool mcheck()
+bool m_check()
 {
     if (schunk == (chunk *) NULL) {
 	return FALSE;
@@ -779,10 +779,10 @@ bool mcheck()
 }
 
 /*
- * NAME:	mpurge()
+ * NAME:	mem->purge()
  * DESCRIPTION:	purge dynamic memory
  */
-void mpurge()
+void m_purge()
 {
     register char *p;
 
@@ -810,7 +810,7 @@ void mpurge()
 	}
 	strcat(buf, "\012");	/* LF */
 	P_message(buf);
-	mfree((char *) (hlist + 1));
+	m_free((char *) (hlist + 1));
     }
 # endif
 
@@ -839,10 +839,10 @@ void mpurge()
 
 
 /*
- * NAME:	minfo()
+ * NAME:	mem->info()
  * DESCRIPTION:	return informaton about memory usage
  */
-allocinfo *minfo()
+allocinfo *m_info()
 {
     return &mstat;
 }

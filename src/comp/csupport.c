@@ -80,13 +80,13 @@ char *auto_name, *driver_name;
     }
 
     if (nobjects > 0) {
-	mstatic();
+	m_static();
 	itab = ALLOC(int, nobjects + 1);
 	inherits = ALLOC(dinherit, ninherits);
 	if (nfuncs > 0) {
 	    pcfunctions = ALLOC(pcfunc, nfuncs);
 	}
-	mdynamic();
+	m_dynamic();
 
 	itab[0] = 0;
 	nobjects = ninherits = nfuncs = 0;

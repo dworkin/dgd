@@ -132,20 +132,20 @@ char **argv;
 # ifdef DEBUG
 	swap |= stop;
 # endif
-	if (!mcheck()) {
+	if (!m_check()) {
 	    /*
 	     * Swap out everything and extend the static memory area.
 	     */
 	    d_swapout(1);
 	    arr_freeall();
-	    mpurge();
+	    m_purge();
 	} else if (swap) {
 	    /*
 	     * swap out everything
 	     */
 	    d_swapout(1);
 	    arr_freeall();
-	    mpurge();
+	    m_purge();
 	}
 	swap = FALSE;
 

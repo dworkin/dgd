@@ -67,9 +67,9 @@ control *ctrl;
 	hte **h;
 
 	/* put object in object name hash table */
-	mstatic();
+	m_static();
 	strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
-	mdynamic();
+	m_dynamic();
 	h = ht_lookup(htab, name);
 	o->chain.next = *h;
 	*h = (hte *) o;
@@ -174,9 +174,9 @@ char *name;
 	FREE(o->chain.name);
     }
     /* put new name in object name hash table */
-    mstatic();
+    m_static();
     strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
-    mdynamic();
+    m_dynamic();
     h = ht_lookup(htab, name);
     o->chain.next = *h;
     *h = (hte *) o;
@@ -489,9 +489,9 @@ long t;
 		buflen += len;
 		p = buffer;
 	    }
-	    mstatic();
+	    m_static();
 	    strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
-	    mdynamic();
+	    m_dynamic();
 
 	    if (o->count != 0) {
 		register hte **h;
@@ -529,8 +529,8 @@ long t;
 	}
 
 	/* check memory */
-	if (!mcheck()) {
-	    mpurge();
+	if (!m_check()) {
+	    m_purge();
 	}
     }
 

@@ -332,9 +332,9 @@ char *configfile, *dumpfile;
 		l = STRINGSZ - 1;
 		p[l] = '\0';
 	    }
-	    mstatic();
+	    m_static();
 	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
-	    mdynamic();
+	    m_dynamic();
 	    break;
 
 	case '(':
@@ -352,9 +352,9 @@ char *configfile, *dumpfile;
 		if (dirs[l] != (char *) NULL) {
 		    FREE(dirs[l]);
 		}
-		mstatic();
+		m_static();
 		dirs[l++] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
-		mdynamic();
+		m_dynamic();
 		if ((c=pp_gettok()) == '}') {
 		    break;
 		}
@@ -394,7 +394,7 @@ char *configfile, *dumpfile;
 	fatal("bad base directory \"%s\"", conf[DIRECTORY].u.str);
     }
 
-    mstatic();
+    m_static();
 
     /* initialize strings */
     str_init();
@@ -432,11 +432,11 @@ char *configfile, *dumpfile;
     /* initialize interpreter */
     i_init(conf[CREATE].u.str);
 
-    mdynamic();
+    m_dynamic();
 
     /* initialize memory manager */
-    minit((unsigned int) conf[STATIC_CHUNK].u.num,
-    	  (unsigned int) conf[DYNAMIC_CHUNK].u.num);
+    m_init((unsigned int) conf[STATIC_CHUNK].u.num,
+    	   (unsigned int) conf[DYNAMIC_CHUNK].u.num);
 
     /* create status.h file */
     obuf = buf;
@@ -578,11 +578,11 @@ char *configfile, *dumpfile;
     i_del_value(sp++);
 
     /* initialize communications */
-    mstatic();
+    m_static();
     comm_init((int) conf[USERS].u.num,
 	      (int) conf[TELNET_PORT].u.num,
 	      (int) conf[BINARY_PORT].u.num);
-    mdynamic();
+    m_dynamic();
 }
 
 /*
@@ -653,7 +653,7 @@ array *conf_status()
     (v++)->u.number = co_swaprate5();
 
     /* memory */
-    mstat = minfo();
+    mstat = m_info();
     v->type = T_INT;
     (v++)->u.number = mstat->smemsize;
     v->type = T_INT;
