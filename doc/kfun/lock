@@ -11,10 +11,6 @@ DESCRIPTION
 	type is the same as the type of <expression>.  lock() can only be used
 	by the auto object.
 
-ERRORS
-	It is still possible to force an error inside a locked expression by
-	leaving too little space on the value stack.
-
 SEE ALSO
 	kfun/catch
 
