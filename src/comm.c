@@ -1,10 +1,10 @@
 # define INCLUDE_TELNET
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "comm.h"
 
 typedef struct _user_ {
@@ -248,17 +248,24 @@ int *size;
 	 */
 	conn = conn_new();
 	if (conn != (connection *) NULL) {
+	    if (ec_push()) {
+		conn_del(conn);		/* delete connection */
+		error((char *) NULL);	/* pass on error */
+	    }
 	    call_driver_object("connect", 0);
+	    ec_pop();
 	    if (sp->type != T_OBJECT) {
 		fatal("driver->connect() did not return an object");
 	    }
-	    comm_new(o = o_object(&(sp++)->u.object), conn);
-	    if (!i_call(o, "open", TRUE, 0)) {
-		o_del(o);
-		error("No open function in user object");
+	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn);
+	    sp++;
+	    if (i_call(o, "open", TRUE, 0)) {
+		i_del_value(sp++);
 	    }
-	    i_del_value(sp++);
 	    comm_flush();
+	} else if (nusers == 0) {
+	    /* no users to read input from */
+	    return (object *) NULL;
 	}
     }
 
@@ -279,6 +286,15 @@ int *size;
 		p = q = (*usr)->inbuf + (*usr)->inbufsz;
 		n = conn_read((*usr)->conn, p, INBUF_SIZE - (*usr)->inbufsz);
 		if (n < 0) {
+		    p = (*usr)->inbuf;
+		    n = (*usr)->inbufsz;
+		    while (n > 0 &&
+			   (q=(char *) memchr(p, '\n', n)) != (char *) NULL) {
+			--newlines;
+			q++;
+			n -= q - p;
+			p = q;
+		    }
 		    comm_del(usr);
 		    continue;
 		}
@@ -429,7 +445,8 @@ array *comm_users()
     for (i = nusers, usr = users; i > 0; --i, usr++) {
 	if (*usr != (user *) NULL) {
 	    v->type = T_OBJECT;
-	    v->u.object = (*usr)->u.obj->key;
+	    v->oindex = (*usr)->u.obj->index;
+	    v->u.objcnt = (*usr)->u.obj->count;
 	    v++;
 	}
     }
