@@ -24,6 +24,8 @@ char *path_native(char *to, char *from)
  */
 static char *path_file(char *buf, char *path)
 {
+    bool valid;
+
     if (path[0] == '/') {
 	/* already native */
 	strcpy(buf, path + 1);
@@ -32,10 +34,20 @@ static char *path_file(char *buf, char *path)
 	return (char *) NULL;
     } else {
 	strcpy(buf, path);
+	valid = FALSE;
 	for (path = buf; *path != '\0'; path++) {
 	    if (*path == '/') {
+		if (!valid) {
+		    return (char *) NULL;
+		}
 		*path = '\\';
+		valid = FALSE;
+	    } else if (*path != '.') {
+		valid = TRUE;
 	    }
+	}
+	if (!valid && strcmp(buf, ".") != 0) {
+	    return (char *) NULL;
 	}
     }
     return buf;

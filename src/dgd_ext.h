@@ -130,7 +130,7 @@
 # define DGD_ARRAY_ELTS(a)		d_get_elts((a))
 # define DGD_ARRAY_INDEX(a, i)		(d_get_elts((a))[(i)])
 # define DGD_ARRAY_ASSIGN(d, a, i, v)	d_assign_elt((d), (a), \
-						     d_get_elts((a))[(i)], &(v))
+						    &d_get_elts((a))[(i)], &(v))
 
 /*
  * mapping

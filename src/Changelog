@@ -1436,3 +1436,5 @@ DGD 1.3
  - Fixed a typo in dgd_ext.h.
  - Forked off sdata.c from data.c.
  - Fixed a hanging-connection bug in comm.c.
+ - Fixed another typo in dgd_ext.h, in the same macro.
+ - Don't allow "..." as a path component in Windows.
