@@ -117,7 +117,7 @@ char *file;
 {
     if (i_this_program()->ninherits == 1) {
 	/* driver or auto object */
-	return path_file(path_resolve(file));
+	return path_resolve(file);
     } else {
 	i_check_stack(1);
 	(--sp)->type = T_STRING;

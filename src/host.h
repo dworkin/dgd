@@ -32,7 +32,6 @@ typedef unsigned long Uint;
 # define FS_BLOCK_SIZE		1024
 
 extern int   rename		P((const char*, const char*));
-extern char *crypt		P((char*, char*));
 
 # endif	/* MINIX_68K */
 
@@ -71,8 +70,6 @@ typedef unsigned int Uint;
 
 # define P_fbinio(fp)		((fp)->_flag |= _IOBIN)
 
-extern char *crypt		P((char*, char*));
-
 # endif	/* ATARI_ST */
 
 
@@ -85,13 +82,10 @@ extern char *crypt		P((char*, char*));
 						 (unsigned int) (size)))
 # define AFREE(ptr)		/* on function return */
 
-# define crypt			_crypt
-extern char *crypt		P((const char*, const char*));
-
 # endif	/* SUNOS4 */
 
 
-# ifdef BSD386
+# if defined(NETBSD) || defined(BSD386)
 
 # define GENERIC_BSD
 
@@ -99,7 +93,7 @@ extern char *crypt		P((const char*, const char*));
 						 (unsigned int) (size)))
 # define AFREE(ptr)		/* on function return */
 
-# endif /* BSD386 */
+# endif /* NETBSD || BSD386 */
 
 
 # ifdef LINUX
@@ -211,6 +205,7 @@ extern char *P_ctime	P((Uint));
 extern void  P_alarm	P((unsigned int));
 extern bool  P_timeout	P((void));
 
+extern char *P_crypt	P((char*, char*));
 
 /* these must be the same on all hosts */
 # define BEL	'\007'

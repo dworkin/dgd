@@ -1,0 +1,40 @@
+   To compile DGD, you will have to set HOST in src/Makefile to the
+proper value:
+SUNOS4		SunOS 4.x, the default.  Should compile immediately with gcc.
+MINIX_68K	Minix 1.5 for 68K computers, probably works with Minix 1.6
+		as well.  Copy src/host/minix68k/Makefile to src/host.
+ATARI_ST	Atari ST with MiNT and gcc.  See src/host/atarist/README.
+GENERIC_BSD	BSD Unix.  Copy src/host/Makefile.bsd to src/host/Makefile.
+GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
+NETBSD		NetBSD.  Copy host/Makefile.bsd to host/Makefile.
+BSD386		FreeBSD or 386BSD.  Copy host/Makefile.bsd to host/Makefile.
+LINUX		Linux.  Copy host/Makefile.sysv to host/Makefile.
+
+   For other platforms, you can either try to use the closest of the above,
+or add your own host support to the src/host.h file.  There are some systems
+which I don't support directly yet, but for which porting is easy:
+NeXT	use GENERIC_BSD, but in host/Makefile replace dirent.* by direct.*
+Solaris	use GENERIC_SYSV, in Makefile set LIBS to -lsocket -lnsl
+ULTRIX	use GENERIC_BSD
+AIX	use GENERIC_SYSV, but change the definitions of UCHAR and SCHAR to
+	the outcommented versions in the MINIX_68K entry in host.h (AIX
+	characters are unsigned), also add #include <sys/select.h> to
+	host/unix/connect.c
+Alpha	use GENERIC_SYSV, and in host.h, the GENERIC_SYSV section, change
+	STRUCT_AL to 8.
+
+   Things may become more difficult if you want to port DGD to a different
+type of host.  I planned a port to the Mac and MSDOS myself, but so far
+haven't been able to do this because I don't have those machines; I do
+have an XT but DGD is now too big to fit in 640K, alas (this also means that
+I won't do the planned port to the Sinclair QL).  If you want to do your own
+port and you need some advice, contact me.
+   In general, platforms must meet the following requirements:
+ - shorts should be 2 bytes wide
+ - integers should be either 2 or 4 bytes wide
+ - longs should be at least as wide as pointers
+ - all pointer types must be equally wide
+ - two's complement should be used to represent negative numbers
+ - the value of NULL must be 0.
+For each port, one should only have to modify src/host.h, the makefiles and
+the files in the src/host directory.

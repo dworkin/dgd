@@ -89,14 +89,14 @@ static void dump_strings(ctrl)
 register control *ctrl;
 {
     register int i;
-    register long size;
+    register long len;
 
     if (ctrl->nstrings != 0) {
 	printf("\nstatic dstrconst sstrings[] = {\n");
-	size = 0;
+	len = 0;
 	for (i = 0; i < ctrl->nstrings; i++) {
-	    printf("{ %ld, %u },\n", size, ctrl->strings[i]->len);
-	    size += ctrl->strings[i]->len;
+	    printf("{ %ld, %u },\n", len, ctrl->strings[i]->len);
+	    len += ctrl->strings[i]->len;
 	}
 	printf("};\n\nstatic char stext[] = {\n");
 	size = 0;
@@ -179,6 +179,7 @@ register control *ctrl;
 {
     if (ctrl->nfuncalls > 0) {
 	printf("\nstatic char funcalls[] = {\n");
+	size = 0;
 	dump_chars(ctrl->funcalls, ctrl->nfuncalls << 1);
 	printf("\n};\n");
     }
@@ -218,14 +219,31 @@ char *argv[];
     char *file, tag[9];
     int nfuncs;
 
-    if (argc != 3) {
-	P_message("usage: precomp config_file file\012");	/* LF */
+    if (argc != 3 && argc != 4) {
+	P_message("usage: precomp config_file lpc_file [c_file]\012");	/* LF */
+	return 2;
+    }
+
+    /* open output file */
+    if (argc == 4 && freopen(argv[3], "w", stdout) == (FILE *) NULL) {
+	P_message("cannot open output file\012");	/* LF */
 	return 2;
     }
 
     if (ec_push()) {
-	P_message("error in initialization\012");	/* LF */
-	return 2;
+	warning((char *) NULL);
+	if (argc == 4) {
+	    /* remove output file */
+	    fclose(stdout);
+	    unlink(argv[3]);
+	}
+	return 1;
+    }
+
+    /* initialize */
+    if (ec_push()) {
+	P_message("error in initialization:\012");	/* LF */
+	error((char *) NULL);
     }
     conf_init(argv[1], (char *) NULL);
     ec_pop();
@@ -248,13 +266,11 @@ char *argv[];
     printf("# include \"interpret.h\"\n# include \"data.h\"\n");
     printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
 
-    if (ec_push()) {
-	warning((char *) NULL);
-	return 1;
-    }
+    /* compile file */
     ctrl = c_compile(file)->ctrl;
     ec_pop();
 
+    /* dump tables */
     dump_inherits(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
@@ -379,13 +395,24 @@ object *obj;
 {
 }
 
+bool pc_dump(fd)
+int fd;
+{
+    return TRUE;
+}
+
+void pc_restore(fd)
+int fd;
+{
+}
+
 /*
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
 void sw_init(file, total, cache, secsize)
 char *file;
-uindex total, cache, secsize;
+unsigned int total, cache, secsize;
 {
 }
 
@@ -403,7 +430,7 @@ sector sw_new()
  * DESCRIPTION:	pretend to delete a swap sector
  */
 void sw_del(sec)
-sector sec;
+unsigned int sec;
 {
 }
 
@@ -612,7 +639,7 @@ object *obj;
  * DESCRIPTION:	pretend to initialize call_out handling
  */
 void co_init(max, frag)
-uindex max;
+unsigned int max;
 int frag;
 {
 }
@@ -636,7 +663,7 @@ int nargs;
  */
 Int co_del(obj, handle)
 object *obj;
-uindex handle;
+unsigned int handle;
 {
     return -1;
 }

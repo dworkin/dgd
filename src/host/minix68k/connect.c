@@ -17,7 +17,9 @@ static char state;				/* current output state */
 
 # define TS_DATA	0
 # define TS_IAC		1
-# define TS_IGNORE	2
+# define TS_WILL	2
+# define TS_WONT	3
+# define TS_IGNORE	4
 
 /*
  * NAME:	conn->init()
@@ -25,7 +27,7 @@ static char state;				/* current output state */
  */
 void conn_init(nusers, telnet_port, binary_port)
 int nusers;
-unsigned short telnet_port, binary_port;
+unsigned int telnet_port, binary_port;
 {
     ioctl(1, TIOCGETP, &tty);
     inbuf = -1;
@@ -146,18 +148,29 @@ register int size;
 	    if (UCHAR(*p) == IAC) {
 		*q++ = *p;
 		state = TS_DATA;
+	    } else if (UCHAR(*p) == WONT) {
+		state = TS_WONT;
+	    } else if (UCHAR(*p) == WILL) {
+		state = TS_WILL;
 	    } else {
-		if (UCHAR(*p) == GA) {
-		    state = TS_DATA;
-		    break;
-		} else if (UCHAR(*p) == WONT) {
-		    tty.sg_flags |= ECHO;
-		} else {
-		    tty.sg_flags &= ~ECHO;
-		}
-		ioctl(1, TIOCSETP, &tty);
 		state = TS_IGNORE;
 	    }
+	    break;
+
+	case TS_WILL:
+	    if (UCHAR(*p) == TELOPT_ECHO) {
+		tty.sg_flags &= ~ECHO;
+		ioctl(1, TIOCSETP, &tty);
+	    }
+	    state = TS_DATA;
+	    break;
+
+	case TS_WONT:
+	    if (UCHAR(*p) == TELOPT_ECHO) {
+		tty.sg_flags |= ECHO;
+		ioctl(1, TIOCSETP, &tty);
+	    }
+	    state = TS_DATA;
 	    break;
 
 	case TS_IGNORE:

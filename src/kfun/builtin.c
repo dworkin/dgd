@@ -994,25 +994,60 @@ int kf_noti()
 # ifdef FUNCDEF
 FUNCDEF("|", kf_or, p_or)
 # else
-char p_or[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 2, T_INT, T_INT };
+char p_or[] = { C_STATIC | C_LOCAL, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->or()
- * DESCRIPTION:	int | int
+ * DESCRIPTION:	value | value
  */
 int kf_or()
 {
-    sp[1].u.number |= sp->u.number;
-    sp++;
-    return 0;
+    array *a;
+
+    switch (sp[1].type) {
+    case T_INT:
+	if (sp->type == T_INT) {
+	    sp[1].u.number |= sp->u.number;
+	    sp++;
+	    return 0;
+	}
+	break;
+
+    case T_ARRAY:
+	if (sp->type == T_ARRAY) {
+	    a = arr_setadd(sp[1].u.array, sp->u.array);
+	    arr_del(sp->u.array);
+	    sp++;
+	    arr_del(sp->u.array);
+	    arr_ref(sp->u.array = a);
+	    return 0;
+	}
+	break;
+
+    default:
+	return 1;
+    }
+
+    return 2;
 }
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("|", kf_or, p_or_int)
+FUNCDEF("|", kf_or_int, p_or_int)
 # else
 char p_or_int[] = { C_STATIC | C_LOCAL, T_INT, 2, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->or_int()
+ * DESCRIPTION:	int | int
+ */
+int kf_or_int()
+{
+    sp[1].u.number |= sp->u.number;
+    sp++;
+    return 0;
+}
 # endif
 
 
@@ -1562,25 +1597,60 @@ int kf_umin_int()
 # ifdef FUNCDEF
 FUNCDEF("^", kf_xor, p_xor)
 # else
-char p_xor[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 2, T_INT, T_INT };
+char p_xor[] = { C_STATIC | C_LOCAL, T_MIXED, 2, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->xor()
- * DESCRIPTION:	int ^ int
+ * DESCRIPTION:	value ^ value
  */
 int kf_xor()
 {
-    sp[1].u.number ^= sp->u.number;
-    sp++;
-    return 0;
+    array *a;
+
+    switch (sp[1].type) {
+    case T_INT:
+	if (sp->type == T_INT) {
+	    sp[1].u.number ^= sp->u.number;
+	    sp++;
+	    return 0;
+	}
+	break;
+
+    case T_ARRAY:
+	if (sp->type == T_ARRAY) {
+	    a = arr_setxadd(sp[1].u.array, sp->u.array);
+	    arr_del(sp->u.array);
+	    sp++;
+	    arr_del(sp->u.array);
+	    arr_ref(sp->u.array = a);
+	    return 0;
+	}
+	break;
+
+    default:
+	return 1;
+    }
+
+    return 2;
 }
 # endif
 
 
 # ifdef FUNCDEF
-FUNCDEF("^", kf_xor, p_xor_int)
+FUNCDEF("^", kf_xor_int, p_xor_int)
 # else
 char p_xor_int[] = { C_STATIC | C_LOCAL, T_INT, 2, T_INT, T_INT };
+
+/*
+ * NAME:	kfun->xor_int()
+ * DESCRIPTION:	int ^ int
+ */
+int kf_xor_int()
+{
+    sp[1].u.number ^= sp->u.number;
+    sp++;
+    return 0;
+}
 # endif
 
 

@@ -10,3 +10,13 @@ char *file;
 {
     return file;
 }
+
+/*
+ * NAME:	path->unfile()
+ * DESCRIPTION:	translate a path from local host format
+ */
+char *path_unfile(file)
+char *file;
+{
+    return file;
+}

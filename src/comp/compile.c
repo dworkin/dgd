@@ -279,7 +279,7 @@ static node *case_list;			/* list of case labels */
  */
 void c_init(a, d, i, p, flag)
 char *a, *d, *i, **p;
-bool flag;
+int flag;
 {
     auto_object = a;
     driver_object = d;
@@ -450,7 +450,7 @@ register char *file;
 	    }
 	    error("Could not compile \"/%s.c\"", c.file);
 	}
-	if (!tk_include(include)) {
+	if (!tk_include(path_file(include))) {
 	    pp_clear();
 	    ctrl_clear();
 	    error("Could not include \"/%s\"", include);
@@ -743,7 +743,7 @@ bool global;
  * DESCRIPTION:	handle a global declaration
  */
 void c_global(class, type, n)
-unsigned short class, type;
+unsigned int class, type;
 node *n;
 {
     if (!seen_decls) {
@@ -761,7 +761,7 @@ static unsigned short fline;	/* first line of function */
  * DESCRIPTION:	create a function
  */
 void c_function(class, type, n)
-unsigned short class, type;
+unsigned int class, type;
 register node *n;
 {
     if (!seen_decls) {
@@ -829,7 +829,7 @@ register node *n;
  * DESCRIPTION:	handle local declarations
  */
 void c_local(class, type, n)
-unsigned short class, type;
+unsigned int class, type;
 node *n;
 {
     c_decl_list(class, type, n, FALSE);
@@ -897,13 +897,13 @@ register node *n1, *n2, *n3;
     n1 = node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
     if (n2 != (node *) NULL) {
 	flags1 = n2->flags & (F_BREAK | F_CONT | F_RETURN);
-	n1->flags |= n2->flags & F_REACH;
+	n1->flags |= n2->flags & (F_ENTRY | F_REACH);
     } else {
 	flags1 = 0;
     }
     if (n3 != (node *) NULL) {
 	flags2 = n3->flags & (F_BREAK | F_CONT | F_RETURN);
-	n1->flags |= n3->flags & F_REACH;
+	n1->flags |= n3->flags & (F_ENTRY | F_REACH);
     } else {
 	flags2 = 0;
     }
@@ -1002,7 +1002,7 @@ node *n1, *n3;
  */
 void c_startswitch(n, typechecking)
 register node *n;
-bool typechecking;
+int typechecking;
 {
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
@@ -1022,9 +1022,13 @@ bool typechecking;
  * NAME:	cmp()
  * DESCRIPTION:	compare two case label nodes
  */
-static int cmp(n1, n2)
-register node **n1, **n2;
+static int cmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
+    register node **n1, **n2;
+
+    n1 = (node **) cv1;
+    n2 = (node **) cv2;
     if (n1[0]->l.left->type == N_STR) {
 	if (n2[0]->l.left->type == N_STR) {
 	    return strcmp(n1[0]->l.left->l.string->text,
@@ -1058,10 +1062,22 @@ node *expr, *stmt;
 	    /* empty switch statement */
 	    n = c_exp_stmt(expr);
 	} else if (!(stmt->flags & F_ENTRY)) {
-	    c_error("unreachable statement(s) in switch");
+	    c_error("unreachable code in switch");
 	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
 	    /* only a default label */
-	    n = c_concat(c_exp_stmt(expr), stmt->l.left);
+	    stmt = stmt->l.left;
+	    if (switch_list->brk) {
+		if (stmt->type == N_BREAK) {
+		    stmt = (node *) NULL;
+		} else {
+		    /*
+		     * enclose the break statement with a proper block
+		     */
+		    stmt = node_bin(N_FOREVER, 0, (node *) NULL,
+				    node_mon(N_BLOCK, N_BREAK, stmt));
+		}
+	    }
+	    n = c_concat(c_exp_stmt(expr), stmt);
 	} else if (expr->mod != T_MIXED && expr->mod != switch_list->type &&
 		   switch_list->type != T_MIXED) {
 	    c_error("wrong switch expression type (%s)", i_typename(expr->mod));
@@ -1351,7 +1367,7 @@ node *c_continue()
  */
 node *c_return(n, typechecking)
 register node *n;
-bool typechecking;
+int typechecking;
 {
     if (n == (node *) NULL) {
 	if (typechecking && ftype != T_VOID) {
@@ -1416,7 +1432,7 @@ register node *n;
  */
 node *c_flookup(n, typechecking)
 register node *n;
-bool typechecking;
+int typechecking;
 {
     if (strcmp(n->l.string->text, "catch") == 0) {
 	return node_mon(N_CATCH, T_STRING, n);
@@ -1898,7 +1914,7 @@ char *oper;
  *		combined type. If not, return T_INVALID.
  */
 unsigned short c_tmatch(type1, type2)
-register unsigned short type1, type2;
+register unsigned int type1, type2;
 {
     if (type1 == type2) {
 	/* identical types */
@@ -1935,7 +1951,7 @@ char *f, *a1, *a2, *a3;
     char buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
     extern int nerrors;
 
-    sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
+    sprintf(buf, "/%s, %u: ", path_unfile(tk_filename()), tk_line());
     sprintf(buf + strlen(buf), f, a1, a2, a3);
     message("%s\012", buf);	/* LF */
     nerrors++;

@@ -30,7 +30,7 @@ static bool typechecking;	/* does the current function have it? */
 static void  t_void	P((node*));
 static bool  t_unary	P((node*, char*));
 static node *uassign	P((int, node*, char*));
-static node *cast	P((node*, unsigned short));
+static node *cast	P((node*, unsigned int));
 static node *idx	P((node*, node*));
 static node *range	P((node*, node*, node*));
 static node *bini	P((int, node*, node*, char*));
@@ -761,7 +761,7 @@ char *name;
  */
 static node *cast(n, type)
 register node *n;
-register unsigned short type;
+register unsigned int type;
 {
     xfloat flt;
     Int i;
@@ -1453,10 +1453,19 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    register unsigned short type;
+
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i ^ i */
 	n1->l.number ^= n2->l.number;
 	return n1;
+    }
+    if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	/*
+	 * possibly array ^ array
+	 */
+	return node_bin(op, type, n1, n2);
     }
     return bini(op, n1, n2, name);
 }
@@ -1470,10 +1479,19 @@ int op;
 register node *n1, *n2;
 char *name;
 {
+    register unsigned short type;
+
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i | i */
 	n1->l.number |= n2->l.number;
 	return n1;
+    }
+    if (((type=n1->mod) == T_MIXED && n2->mod == T_MIXED) ||
+	((type=c_tmatch(n1->mod, n2->mod)) & T_REF) != 0) {
+	/*
+	 * possibly array | array
+	 */
+	return node_bin(op, type, n1, n2);
     }
     return bini(op, n1, n2, name);
 }
@@ -1560,8 +1578,7 @@ register node *n1, *n2, *n3;
 	if ((type=n2->mod) != T_VOID || n3->mod != T_VOID) {
 	    type = c_tmatch(n2->mod, n3->mod);
 	    if (type == T_INVALID) {
-		c_error("incompatible types for ? : (%s, %s)",
-			i_typename(n2->mod), i_typename(n3->mod));
+		/* no typechecking here, just let the result be mixed */
 		type = T_MIXED;
 	    }
 	}

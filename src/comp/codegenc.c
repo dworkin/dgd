@@ -79,6 +79,21 @@ static void store()
 }
 
 /*
+ * NAME:	codegen->cast()
+ * DESCRIPTION:	generate code for a cast
+ */
+static void cg_cast(what, idx, type)
+char *what;
+int idx;
+unsigned short type;
+{
+    if ((type & T_REF) != 0) {
+	type = T_ARRAY;
+    }
+    output("i_cast(%s + %d, %u)", what, idx, type);
+}
+
+/*
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
@@ -118,6 +133,14 @@ register node *n;
 	    output(", i_index_lvalue()");
 	    break;
 
+	case N_CAST:
+	    if (n->l.left->mod == T_STRING) {
+		cg_lvalue(n->l.left);
+		comma();
+		cg_cast("sp", 0, T_STRING);
+		break;
+	    }
+	    /* fall through */
 	default:
 	    cg_expr(n->l.left, PUSH);
 	    break;
@@ -127,21 +150,6 @@ register node *n;
 	output(", i_index_lvalue()");
 	break;
     }
-}
-
-/*
- * NAME:	codegen->cast()
- * DESCRIPTION:	generate code for a cast
- */
-static void cg_cast(what, idx, type)
-char *what;
-int idx;
-unsigned short type;
-{
-    if ((type & T_REF) != 0) {
-	type = T_ARRAY;
-    }
-    output("i_cast(%s + %d, %u)", what, idx, type);
 }
 
 /*
@@ -385,7 +393,7 @@ register node *n;
 	break;
 
     case N_INT:
-	output("(Int) %ldL", (long) n->l.number);
+	output("(Int) 0x%lxL", (long) n->l.number);
 	break;
 
     case N_LAND:
@@ -1801,7 +1809,8 @@ char *cg_function(fname, n, nvar, npar, depth, size)
 string *fname;
 node *n;
 int nvar, npar;
-unsigned short depth, *size;
+unsigned int depth;
+unsigned short *size;
 {
     register int i, j;
     char *prog;

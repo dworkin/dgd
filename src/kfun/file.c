@@ -1430,10 +1430,11 @@ register char *pat, *text;
  * NAME:	cmp()
  * DESCRIPTION:	compare two string values
  */
-static int cmp(v1, v2)
-value *v1, *v2;
+static int cmp(cv1, cv2)
+cvoid *cv1, *cv2;
 {
-    return strcmp(v1->u.string->text, v2->u.string->text);
+    return strcmp(((value *) cv1)->u.string->text,
+		  ((value *) cv2)->u.string->text);
 }
 
 char p_get_dir[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
@@ -1486,8 +1487,9 @@ int kf_get_dir()
 	    /*
 	     * read files from directory
 	     */
-	    i = arr_maxsize();
+	    i = conf_array_size();
 	    while (nfiles < i && (file=P_readdir()) != (char *) NULL) {
+		file = path_unfile(file);
 		if (match(pat, file) == 1) {
 		    /* add file */
 		    sc_put(file);
@@ -1528,7 +1530,7 @@ int kf_get_dir()
     }
     for (i = nfiles, o = f; i > 0; o++, --i) {
 	str = o->u.string;
-	if (stat(str->text, &sbuf) < 0) {
+	if (stat(path_file(str->text), &sbuf) < 0) {
 	    /*
 	     * the file disappeared
 	     */

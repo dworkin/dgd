@@ -12,6 +12,13 @@ typedef struct {
 # define NBITS		44
 # define BIAS		0x7fff
 
+
+/* constants */
+
+static flt half =   { 0x0000, 0x7ffe, 0x4000, 0x00000000L }; /* .5 */
+static flt one =    { 0x0000, 0x7fff, 0x4000, 0x00000000L }; /* 1 */
+
+
 /*
  * NAME:	f_edom()
  * DESCRIPTION:	Domain error
@@ -34,8 +41,8 @@ static void f_sub P((flt*, flt*));
 
 /*
  * NAME:	f_add()
- * DESCRIPTION:	a = a + b.  b may not be 0.  The result is normalized, but not
- *		guaranteed to be in range.
+ * DESCRIPTION:	a = a + b.  The result is normalized, but not guaranteed to 
+ *		be in range.
  */
 static void f_add(a, b)
 register flt *a, *b;
@@ -44,6 +51,10 @@ register flt *a, *b;
     register Uint l;
     flt tmp;
 
+    if (b->exp == 0) {
+	/* b is 0 */
+	return;
+    }
     if (a->exp == 0) {
 	/* a is 0 */
 	*a = *b;
@@ -106,8 +117,8 @@ register flt *a, *b;
 
 /*
  * NAME:	f_sub()
- * DESCRIPTION:	a = a - b.  b may not be 0.  The result is normalized, but not
- *		guaranteed to be in range.
+ * DESCRIPTION:	a = a - b.  The result is normalized, but not guaranteed to be
+ *		in range.
  */
 static void f_sub(a, b)
 register flt *a, *b;
@@ -116,6 +127,10 @@ register flt *a, *b;
     register Uint l;
     flt tmp;
 
+    if (b->exp == 0) {
+	/* b is 0 */
+	return;
+    }
     if (a->exp == 0) {
 	*a = *b;
 	a->sign ^= 0x8000;
@@ -221,6 +236,12 @@ register flt *a, *b;
     register unsigned short al, am, ah, bl, bm, bh;
 
     if (a->exp == 0) {
+	/* a is 0 */
+	return;
+    }
+    if (b->exp == 0) {
+	/* b is 0 */
+	a->exp = 0;
 	return;
     }
 
@@ -266,7 +287,11 @@ register flt *a, *b;
     register Uint numh, numl, divl, high, low, q;
     register unsigned short divh, i;
 
+    if (b->exp == 0) {
+	error("Division by zero");
+    }
     if (a->exp == 0) {
+	/* a is 0 */
 	return;
     }
 
@@ -412,23 +437,6 @@ register flt *a;
 }
 
 /*
- * NAME:	f_frexp()
- * DESCRIPTION:	split a flt into a fraction and an exponent
- */
-static short f_frexp(a)
-register flt *a;
-{
-    short e;
-
-    if (a->exp == 0) {
-	return 0;
-    }
-    e = a->exp - BIAS + 1;
-    a->exp = BIAS - 1;
-    return e;
-}
-
-/*
  * NAME:	f_ldexp()
  * DESCRIPTION:	add an integer value to the exponent of a flt
  */
@@ -477,6 +485,66 @@ register flt *a, *b;
 	}
 	return (a->sign == 0) ? 1 : -1;
     }
+}
+
+/*
+ * NAME:	f_itof()
+ * DESCRIPTION:	convert an integer to a flt
+ */
+static void f_itof(i, a)
+Int i;
+register flt *a;
+{
+    register Uint n;
+    register unsigned short shift;
+
+    /* deal with zero and sign */
+    if (i == 0) {
+	a->exp = 0;
+	return;
+    } else if (i < 0) {
+	a->sign = 0x8000;
+	n = -i;
+    } else {
+	a->sign = 0;
+	n = i;
+    }
+
+    shift = 0;
+    while ((n & 0xff000000L) == 0) {
+	n <<= 8;
+	shift += 8;
+    }
+    while ((Int) n >= 0) {
+	n <<= 1;
+	shift++;
+    }
+    a->exp = BIAS + 31 - shift;
+    a->high = n >> 17;
+    a->low = (n << 14) & 0x7fffffff;
+}
+
+/*
+ * NAME:	f_ftoi()
+ * DESCRIPTION:	convert a flt to an integer, disregarding the fractional part
+ */
+static Int f_ftoi(a)
+register flt *a;
+{
+    Uint i;
+
+    if (a->exp < BIAS) {
+	return 0;
+    }
+    if (a->exp > BIAS + 30 &&
+	(a->sign == 0 || a->exp != BIAS + 31 || a->high != 0x4000 ||
+	 a->low != 0)) {
+	f_erange();
+    }
+
+    i = (((Uint) a->high << 17) | (a->low >> 14)) >> (BIAS + 31 - a->exp);
+
+    return (a->sign == 0) ? i : -i;
 }
 
 /*
@@ -693,7 +761,6 @@ xfloat *f;
 char *buffer;
 {
     static flt tenmillion =	{ 0, 0x8016, 0x4c4b, 0x20000000L };
-    static flt half =		{ 0, 0x7ffe, 0x4000, 0x00000000L };
     register unsigned short i;
     register short e;
     register Uint n;
@@ -801,35 +868,13 @@ char *buffer;
  */
 void flt_itof(i, f)
 Int i;
-register xfloat *f;
+xfloat *f;
 {
-    register Uint n;
-    register unsigned short shift;
+    flt a;
 
-    /* deal with zero and sign */
-    if (i == 0) {
-	f->high = 0;
-	f->low = 0;
-	return;
-    } else if (i < 0) {
-	f->high = 0x8000;
-	n = -i;
-    } else {
-	f->high = 0;
-	n = i;
-    }
-
-    shift = 0;
-    while ((n & 0xff000000L) == 0) {
-	n <<= 8;
-	shift += 8;
-    }
-    while ((Int) n >= 0) {
-	n <<= 1;
-	shift++;
-    }
-    f->high |= ((1023 + 31 - shift) << 4) | ((n >> 27) & 0x000f);
-    f->low = n << 5;
+    f_itof(i, &a);
+    f_ftoxf(&a, f);
+    f_xftof(f, &a);
 }
 
 /*
@@ -840,40 +885,10 @@ Int flt_ftoi(f)
 xfloat *f;
 {
     flt a;
-    Uint i;
 
     f_xftof(f, &a);
     f_round(&a);
-    if (a.exp == 0) {
-	return 0;
-    }
-    if (a.exp > BIAS + 30 &&
-	(a.sign == 0 || a.exp != BIAS + 31 || a.high != 0x4000 || a.low != 0)) {
-	f_erange();
-    }
-
-    i = (((Uint) a.high << 17) | (a.low >> 14)) >> (BIAS + 31 - a.exp);
-
-    return (a.sign == 0) ? i : -i;
-}
-
-/*
- * NAME:	float->isint()
- * DESCRIPTION:	check if a float holds an integer value
- */
-bool flt_isint(f)
-xfloat *f;
-{
-    flt a, b;
-
-    f_xftof(f, &a);
-    if (a.exp > BIAS + 30 &&
-	(a.sign == 0 || a.exp != BIAS + 31 || a.high != 0x4000 || a.low != 0)) {
-	return FALSE;
-    }
-    b = a;
-    f_trunc(&b);
-    return (a.high == b.high && a.low == b.low);
+    return f_ftoi(&a);
 }
 
 /*
@@ -886,9 +901,6 @@ xfloat *f1, *f2;
     flt a, b;
 
     f_xftof(f2, &b);
-    if (b.exp == 0) {
-	return;
-    }
     f_xftof(f1, &a);
     f_add(&a, &b);
     f_ftoxf(&a, f1);
@@ -904,9 +916,6 @@ xfloat *f1, *f2;
     flt a, b;
 
     f_xftof(f2, &b);
-    if (b.exp == 0) {
-	return;
-    }
     f_xftof(f1, &a);
     f_sub(&a, &b);
     f_ftoxf(&a, f1);
@@ -922,15 +931,7 @@ xfloat *f1, *f2;
     flt a, b;
 
     f_xftof(f1, &a);
-    if (a.exp == 0) {
-	return;
-    }
     f_xftof(f2, &b);
-    if (b.exp == 0) {
-	*f1 = *f2;
-	return;
-    }
-
     f_mult(&a, &b);
     f_ftoxf(&a, f1);
 }
@@ -945,14 +946,7 @@ xfloat *f1, *f2;
     flt a, b;
 
     f_xftof(f2, &b);
-    if (b.exp == 0) {
-	f_edom();
-    }
     f_xftof(f1, &a);
-    if (a.exp == 0) {
-	return;
-    }
-
     f_div(&a, &b);
     f_ftoxf(&a, f1);
 }
@@ -970,8 +964,6 @@ xfloat *f1, *f2;
     f_xftof(f2, &b);
     return f_cmp(&a, &b);
 }
-
-static flt one = { 0, 0x7fff, 0x4000, 0x00000000L };
 
 /*
  * NAME:	float->floor()

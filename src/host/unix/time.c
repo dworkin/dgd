@@ -17,5 +17,5 @@ Uint P_time()
 char *P_ctime(t)
 Uint t;
 {
-    return ctime((long *) &t);
+    return ctime((time_t *) &t);
 }
