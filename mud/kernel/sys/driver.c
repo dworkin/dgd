@@ -730,7 +730,7 @@ static runtime_error(string str, int caught, int ticks)
 
 	    function = trace[i][TRACE_FUNCTION];
 	    len = strlen(function);
-	    if (progname == AUTO && len > 3) {
+	    if (progname == AUTO && i != sz - 1 && len > 3) {
 		switch (function[.. 2]) {
 		case "bad":
 		case "_F_":
