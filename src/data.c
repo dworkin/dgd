@@ -3382,6 +3382,7 @@ Uint *counttab;
 	d_upgrade_clone(data);
     }
 
+    data->flags |= DATA_MODIFIED;
     d_save_dataspace(data);
     d_free_dataspace(data);
 }

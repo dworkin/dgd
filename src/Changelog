@@ -1184,3 +1184,4 @@ DGD 1.1
  - Fixed some Mac compilation problems for various compilers.
  - Replaced some FREE,ALLOC pairs with REALLOC.
  - Completed parse_string implementation on all platforms.
+ - Fixed a bug that prevented any restore from dump file.
