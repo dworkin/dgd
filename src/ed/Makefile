@@ -1,9 +1,10 @@
 #
 # Makefile for editor, part of DGD.
 #
-DEFINES=-DSUN
+HOST=	MINIX_68K
+DEFINES=-D$(HOST)
 DEBUG=	-g
-CCFLAGS=$(DEFINES) $(DEBUG)
+CCFLAGS=-O $(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LDFLAGS=
 LIBS=
@@ -14,8 +15,10 @@ MAKE=	make
 OBJ=	line.o buffer.o file.o regexp.o vars.o edcmd.o cmdsub.o
 
 a.out:	$(OBJ) ed.o
+	cd ../host; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+			    host.a
 	cd ..; $(MAKE) 'MAKE=$(MAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' ed.sub
-	$(LD) $(LDFLAGS) $(OBJ) `cat ../ed.sub` ed.o $(LIBS)
+	$(LD) $(LDFLAGS) $(OBJ) ed.o `cat ../ed.sub` ../host/host.a $(LIBS)
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd

@@ -52,7 +52,7 @@ Language:
    object, with the added limitation that they cannot be called with
    this_object()->kfun().  All static functions declared in the auto object
    share this limitation.
- - There is no class_specifier inherit "file"; This did not work in 3.1.2
+ - There is no class_specifier inherit "file"; This did not work in LPmud 3.1.2
    anyhow.
  - Function prototypes are always inherited together with the function.
  - Function calls are typechecked if the called function is typechecked.  It
@@ -175,3 +175,140 @@ DGD 1.0.a1
  - Added int-only versions of some kfuns to speed up integer arithmetic in
    typechecked programs. Typechecked functions are now typechecked at runtime
    as well, to ensure that integer arguments are really integers.
+
+DGD 1.0.a2
+
+ - Better dead code removal.
+ - Mixed return values are cast to int if needed.
+ - Lvalues as function arguments are now handled properly.
+ - Fixed a problem with (exp1, exp2) in aggregates and function arguments.
+ - More untypechecked expressions are optimized.
+ - String constants are marked as such.
+ - Driver object has been enabled.
+ - It is now illegal to call any function with too many arguments, even if the
+   function has class vararg.
+ - I removed the error on call_other() to a non-existing function.
+ - When an object is cloned, or a function is called in it for the first time,
+   create() in the object will be called.  
+ - Added config file which is read on startup.
+ - All ANSI escape sequences are now recognized in string constants and
+   character constants.  Fixed a bug with #arg in macros.
+ - Created proper main loop that reads input and calls receive_message() for
+   the associated objects.
+ - Created (single user) comm package.  DGD now works as a regular game driver.
+ - Overview of functions called by the gamedriver (can be static):
+   In the driver object:
+    * void initialize()
+	Initialize the mudlib.  Called once at program startup.
+    * string path_ed_read(object, string)
+	Path translation for editor read.
+    * string path_ed_write(object, string)
+	Path translation for editor write.
+    * string path_object(object, string)
+	Object path translation (for find_object, clone_object, etc).
+    * string path_inherit(string, string)
+	Inherit file name translation.
+    * string path_include(string, string)
+	Include file name translation.
+    * object compile_object(string)
+	Called if the given argument could not be compiled.  The driver
+	object can return an object that will be renamed to the wanted
+	object.  The returned object may be a clone, and will remain
+	a clone (i.e. may not itself be cloned), even with the new name.
+	Modelled after "virtual objects" in MudOS, the American LPmud brand.
+    * object connect()
+    * void log_error(string, string, string, int)
+	Log a runtime error.
+    * string compile_log(string)
+	Return the name of the file to which compile time errormessages
+	should be appended.
+   In the user object:
+    * void open()
+	LPmud: login
+    * void close()
+	Called if the user connection to the mud is closed.
+    * void receive_message(string)
+	Called for user input.
+   In an object that uses the editor() kfun:
+    * void receive_message(string)
+	Called for editor output.
+ - Overview of the kfuns added:
+    * varargs mixed call_other(mixed, string, ...);
+    * object this_object();
+    * varargs object previous_object(int);
+	Return the previous object n+1 steps back in the call_other chain.
+    * object clone_object(string);
+    * void destruct_object(object);
+	LPmud: destruct()
+    * string object_name(object);
+	LPmud: file_name()
+    * object find_object(string);
+    * string function_object(string, object);
+	LPmud: function_exists()
+    * object this_user();
+	LPmud: this_player(1);
+    * string query_ip_number(object);
+    * object *users();
+    * int strlen(string);
+    * mixed *allocate(int);
+    * int sizeof(mixed *);
+    * mixed *map_indices(mapping);
+	LPmud + mappings: m_indices()
+    * mixed *map_values(mapping);
+	LPmud + mappings: m_values()
+    * int map_sizeof(mapping);
+	LPmud + mappings: m_sizeof()
+    * int intp(mixed);
+    * int stringp(mixed);
+    * int objectp(mixed);
+    * int arrayp(mixed);
+	LPmud: pointerp()
+    * int mappingp(mixed);
+    * void error(string);
+	Cause an error.
+    * void send_message(string);
+	Send a message to the current object (should be interactive user),
+	messages from the user will call receive_message() in the object.
+    * int time();
+    * varargs void call_out(string, int, ...);
+    * int remove_call_out(string);
+    * void shutdown();
+
+    * int editor(string);
+	Handle an editor command, such as "e file", "%s/foo/bar/g", "x".
+	If no editor instance exists for the current object, it will be
+	created; editor output will call receive_message() in the object.
+    * string query_editor(object);
+	Return the editor status of the object ("command", "input" or 0).
+    * void save_object(string);
+	LPmud: save_object() without .o tagged on.
+    * int restore_object(string);
+	LPmud: restore_object() without .o tagged on.
+    * varargs string read_file(string, int, int);
+	LPmud: read_bytes()
+    * int rename_file(string, string);
+	LPmud: rename() (limited, will not rename directories if the
+	       host doesn't support this)
+    * int remove_file(string);
+	LPmud: rm()
+    * varargs void write_file(string, string, int);
+	LPmud: write_bytes(), will append if third argument is omitted.
+    * int make_dir(string);
+	LPmud: mkdir()
+    * int remove_dir(string);
+	LPmud: rmdir()
+    * mixed **get_dir(string);
+	Get file info using get_dir(file), directory info using
+	get_dir(dir + "/" + pattern), the pattern can have ? * [a-z].
+	The return value has this form:
+	    ({ ({ names }), ({ mod times }), ({ sizes }) })
+	This is almost compatible with MudOS, except that directories have
+	size -2 (non-existing files and special files are not included).
+
+    * varargs string crypt(string, string);
+    * string ctime(int);
+    * string *explode(string, string);
+    * string implode(string*, string);
+    * int random(int);
+    * varargs int sscanf(string, string, ...);
+	As in LPmud, but also handles %*s (skip assignment), %s%d and %%.

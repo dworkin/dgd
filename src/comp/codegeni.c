@@ -564,12 +564,12 @@ node *n;
 static void cg_fetch(n)
 node *n;
 {
-    if (n->l.left->type == N_CAST) {
-	cg_lvalue(n->l.left->l.left);
+    if (n->type == N_CAST) {
+	cg_lvalue(n->l.left);
 	code_instr(I_FETCH, 0);
 	code_instr(I_CHECK_INT, 0);
     } else {
-	cg_lvalue(n->l.left);
+	cg_lvalue(n);
 	code_instr(I_FETCH, 0);
     }
 }
@@ -667,11 +667,11 @@ register bool pop;
 	break;
 
     case N_ASSIGN:
-	if (n->l.left->l.left->type == N_CAST) {
+	if (n->l.left->type == N_CAST) {
 	    /* ignore cast */
-	    cg_lvalue(n->l.left->l.left->l.left);
-	} else {
 	    cg_lvalue(n->l.left->l.left);
+	} else {
+	    cg_lvalue(n->l.left);
 	}
 	cg_expr(n->r.right, FALSE);
 	code_instr(I_STORE, n->line);
@@ -755,7 +755,7 @@ register bool pop;
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	    code_kfun((int) n->r.number, n->line);
-	    if (PROTO_CLASS(kftab[n->r.number].proto) & C_VARARGS) {
+	    if (PROTO_CLASS(kftab[(short) n->r.number].proto) & C_VARARGS) {
 		code_byte(i);
 	    }
 	    break;
@@ -794,9 +794,6 @@ register bool pop;
 	break;
 
     case N_GLOBAL:
-	if (pop) {
-	    return;
-	}
 	code_instr(I_PUSH_GLOBAL, n->line);
 	code_word((int) n->r.number);
 	break;
@@ -820,9 +817,6 @@ register bool pop;
 	break;
 
     case N_INT:
-	if (pop) {
-	    return;
-	}
 	if (n->l.number == 0) {
 	    code_instr(I_PUSH_ZERO, n->line);
 	} else if (n->l.number == 1) {
@@ -869,9 +863,6 @@ register bool pop;
 	break;
 
     case N_LOCAL:
-	if (pop) {
-	    return;
-	}
 	code_instr(I_PUSH_LOCAL, n->line);
 	code_byte(nvars - (int) n->r.number - 1);
 	break;
@@ -942,6 +933,10 @@ register bool pop;
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LT_INT, n->line);
+	break;
+
+    case N_LVALUE:
+	cg_lvalue(n->l.left, FALSE);
 	break;
 
     case N_MOD:
@@ -1055,6 +1050,11 @@ register bool pop;
 	code_instr(I_STORE, 0);
 	break;
 
+    case N_PAIR:
+	cg_expr(n->l.left, pop);
+	cg_expr(n->r.right, TRUE);
+	return;
+
     case N_QUEST:
 	jlist = false_list;
 	false_list = (jmplist *) NULL;
@@ -1109,9 +1109,6 @@ register bool pop;
 	break;
 
     case N_STR:
-	if (pop) {
-	    return;
-	}
 	l = ctrl_dstring(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
 	    code_instr(I_PUSH_STRING, n->line);
