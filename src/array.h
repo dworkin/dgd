@@ -13,6 +13,7 @@ extern array	       *arr_new		P((long));
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		P((array*));
 extern void		arr_freeall	P((void));
+extern int		arr_maxsize	P((void));
 
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
