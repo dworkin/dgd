@@ -459,7 +459,7 @@ char *wanted, *directive;
  */
 static void do_include()
 {
-    char file[MAX_LINE_SIZE], buf[STRINGSZ + MAX_LINE_SIZE], *slash;
+    char file[MAX_LINE_SIZE], buf[STRINGSZ + MAX_LINE_SIZE];
     register int token;
     register char **idir;
 

@@ -891,8 +891,6 @@ char p_tst[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
  */
 int kf_tst()
 {
-    register bool flag;
-
     switch (sp->type) {
     case T_NUMBER:
 	sp->u.number = (sp->u.number != 0);

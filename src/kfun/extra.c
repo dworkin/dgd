@@ -272,7 +272,7 @@ char p_sscanf[] = { C_STATIC | C_VARARGS | C_LOCAL, T_NUMBER, 32,
 int kf_sscanf(nargs)
 int nargs;
 {
-    register int len, flen, size, n, i;
+    register int len, flen, size, n;
     register char *f, *pct;
     register value *val;
     int matches;
@@ -463,7 +463,7 @@ no_match:
     }
     data = o_dataspace(i_this_object());
     while (val > values) {
-	i_store(data, sp, --val);
+	i_store(sp, --val);
 	sp++;
     }
     ec_pop();
