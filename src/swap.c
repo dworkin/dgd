@@ -37,8 +37,8 @@ static uindex dsectors, dcursec;	/* dump sectors */
  */
 void sw_init(file, total, cache, secsize)
 char *file;
-register uindex total, cache;
-uindex secsize;
+register unsigned int total, cache;
+unsigned int secsize;
 {
     register header *h;
     register sector i;
@@ -167,7 +167,7 @@ sector sw_new()
  * DESCRIPTION:	delete a swap sector
  */
 void sw_del(sec)
-sector sec;
+unsigned int sec;
 {
     register sector i;
     register header *h;
@@ -463,15 +463,17 @@ typedef struct {
  */
 void sw_copy()
 {
-    register uindex n;
+    if (dump >= 0) {
+	register uindex n;
 
-    if (dsectors > 0) {
-	n = CHUNKSZ;
-	if (n > dsectors) {
-	    n = dsectors;
+	if (dsectors > 0) {
+	    n = CHUNKSZ;
+	    if (n > dsectors) {
+		n = dsectors;
+	    }
+	    copy(ssectors, n);
+	    ssectors += n;
 	}
-	copy(ssectors, n);
-	ssectors += n;
 	if (dsectors == 0) {
 	    close(dump);
 	    dump = -1;
@@ -492,11 +494,13 @@ char *dumpfile;
     register uindex n;
     dump_header dh;
 
-    if (dsectors > 0) {
-	/* copy remaining dump sectors */
-	n = dsectors;
-	copy(ssectors, n);
-	ssectors += n;
+    if (dump >= 0) {
+	if (dsectors > 0) {
+	    /* copy remaining dump sectors */
+	    n = dsectors;
+	    copy(ssectors, n);
+	    ssectors += n;
+	}
 	close(dump);
     }
     sprintf(buffer, "%s.old", dumpfile);
@@ -538,12 +542,10 @@ char *dumpfile;
     if (rename(swapfile, dumpfile) < 0) {
 	/*
 	 * The rename failed.  Attempt to copy the dumpfile instead.
-	 * This will take a long, long while.  Also, afterwards the
-	 * swapfile will still be removed and recreated at low priority
-	 * from the dumpfile, so keep the swapfile and dumpfile on the
-	 * same file system if at all possible.
+	 * This will take a long, long while, so keep the swapfile and
+	 * dumpfile on the same file system if at all possible.
 	 */
-	swap = open(swapfile, O_RDONLY | O_BINARY);
+	swap = open(swapfile, O_RDWR | O_BINARY);
 	dump = open(dumpfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
 	if (swap < 0 || dump < 0) {
 	    fatal("cannot move swap file");
@@ -564,8 +566,6 @@ char *dumpfile;
 		fatal("cannot write dump file");
 	    }
 	}
-	close(swap);
-	unlink(swapfile);
     } else {
 	/*
 	 * The rename succeeded; reopen the new dumpfile.
@@ -574,8 +574,8 @@ char *dumpfile;
 	if (dump < 0) {
 	    fatal("cannot reopen dump file");
 	}
+	swap = -1;
     }
-    swap = -1;
 
     /* write header */
     dh.sectorsize = sectorsize;
@@ -595,26 +595,44 @@ char *dumpfile;
 	fatal("cannot write swap maps to dump file");
     }
 
-    /* create bitmap */
-    dsectors = nsectors;
-    dcursec = 0;
-    memset(bmap, -1, (dsectors + 7) >> 3);
-    for (sec = nfree; sec != SW_UNUSED; sec = map[sec]) {
-	BCLR(bmap, sec);
-	--dsectors;
+
+    if (swap < 0) {
+	/*
+	 * the swapfile was moved
+	 */
+
+	/* create bitmap */
+	dsectors = nsectors;
+	dcursec = 0;
+	memset(bmap, -1, (dsectors + 7) >> 3);
+	for (sec = nfree; sec != SW_UNUSED; sec = map[sec]) {
+	    BCLR(bmap, sec);
+	    --dsectors;
+	}
+
+	/* fix the sector map and bitmap */
+	for (h = last; h != (header *) NULL; h = h->prev) {
+	    map[h->sec] = ((long) h - (long) mem) / slotsize;
+	    h->swap = SW_UNUSED;
+	    h->dirty = TRUE;
+	    BCLR(bmap, h->sec);
+	    --dsectors;
+	}
+
+	ssectors = 0;
+	sfree = SW_UNUSED;
+    } else {
+	/*
+	 * the swapfile was copied
+	 */
+
+	/* fix the sector map */
+	for (h = last; h != (header *) NULL; h = h->prev) {
+	    map[h->sec] = ((long) h - (long) mem) / slotsize;
+	    h->dirty = FALSE;
+	}
     }
 
-    /* fix the sector map and bitmap */
-    for (h = last; h != (header *) NULL; h = h->prev) {
-	map[h->sec] = ((long) h - (long) mem) / slotsize;
-	h->swap = SW_UNUSED;
-	h->dirty = TRUE;
-	BCLR(bmap, h->sec);
-	--dsectors;
-    }
-
-    ssectors = 0;
-    sfree = SW_UNUSED;
     return dump;
 }
 
