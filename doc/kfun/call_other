@@ -1,8 +1,8 @@
 NAME
-	call_other - call a function in a given object
+	call_other - call a function in an object
 
 SYNOPSIS
-	mixed call_other(mixed obj, string function, ...)
+	varargs mixed call_other(mixed obj, string function, mixed args...)
 
 
 DESCRIPTION
@@ -16,8 +16,8 @@ DESCRIPTION
 	call will fail.
 	Any additional arguments to call_other() will be passed on to the
 	called function.
-	In LPC, obj->func(arg1, arg2, ...) can be used as a shorthand for
-	call_other(obj, "func", arg1, arg2, ...).
+	In LPC, obj->func(arg1, arg2, argn) can be used as a shorthand for
+	call_other(obj, "func", arg1, arg2, argn).
 
 ERRORS
 	An error will result if the first argument is not an object and not a
@@ -25,7 +25,7 @@ ERRORS
 	is unloaded and cannot be compiled.
 	Calling a function that does not exist, or a function that cannot be
 	called with call_other() because it is private or static, does not
-	result in an error but gives return value 0.
+	result in an error but returns the value 0.
 	If the number of existing objects is equal to the constant MAX_OBJECTS,
 	defined in the include file <limits.h>, attempting to compile a new
 	object will crash the system.

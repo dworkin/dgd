@@ -6,7 +6,5 @@ SYNOPSIS
 
 
 DESCRIPTION
-	Return a positive random number in the range 0 .. mod-1.
-
-ERRORS
-	Mod must be larger than 0.
+	Return a positive random number in the range 0 .. mod-1.  If mod
+	is less than 1, 0 is returned.

@@ -2,13 +2,13 @@ NAME
 	crypt - encrypt a string
 
 SYNOPSIS
-	string crypt(string passwd)
-	string crypt(string passwd, string salt)
+	varargs string crypt(string passwd, string salt)
 
 
 DESCRIPTION
 	Encrypt a password, of which only the first 8 characters are
-	significant.  If a second argument is given, its first two characters
-	are used to perturb the encryption algorithm additionally; without
-	one, the encryption is perturbed randomly.  The returned string is
-	13 characters long, the first two of which are equal to the used salt.
+	significant.  If the optional second argument is given, its first two
+	characters are used to perturb the encryption algorithm additionally;
+	without one, the encryption is perturbed randomly.  The returned
+	string is 13 characters long, the first two of which are equal to the
+	used salt.

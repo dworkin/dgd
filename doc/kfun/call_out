@@ -2,7 +2,7 @@ NAME
 	call_out - call function with delay
 
 SYNOPSIS
-	void call_out(string function, int delay, ...)
+	varargs void call_out(string function, int delay, mixed args...)
 
 
 DESCRIPTION
@@ -16,7 +16,7 @@ ERRORS
 	the constant MAX_CALL_OUTS, defined in the include file <limits.h>,
 	attempting to add another one will result in an error.
 	If MAX_CALL_OUTS is set to 0, no delayed call will be added, and no
-	error be caused.
+	error will be caused.
 
 SEE ALSO
 	kfun/remove_call_out

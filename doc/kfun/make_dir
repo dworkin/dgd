@@ -7,7 +7,7 @@ SYNOPSIS
 
 DESCRIPTION
 	Create a new directory.  1 is returned if the directory could be
-	created 0 otherwise.
+	created, 0 otherwise.
 
 SEE ALSO
 	kfun/get_dir, kfun/remove_dir
