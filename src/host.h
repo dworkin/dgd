@@ -38,7 +38,7 @@ typedef long Int;
 /* simulated syscalls */
 extern int  rename	P((char*, char*));
 
-# endif
+# endif	/* MINIX_68K */
 
 
 # ifdef SUN
@@ -78,7 +78,9 @@ typedef int Int;
 # define FS_BLOCK_SIZE		8192
 # define UNIX_PATH_RESOLVE
 
-# endif
+# define crypt		_crypt
+
+# endif	/* SUN */
 
 
 # define ALIGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
