@@ -126,9 +126,9 @@ user and resource management commands for administrators.  Both the
 user manager and the user object are minimal, and intended to be extended
 or replaced altogether.
 
-Initially, users can login on either the telnet or the binary port.
-The only existing user is "admin", who has administrator access.  Using
-the "admin" account, other users can be granted programming access.
+Initially, users can login on either a telnet or binary port.  The only
+existing user is "admin", who has administrator access.  Using the
+"admin" account, other users can be granted programming access.
 
 
 8. Standard wiztool
@@ -162,7 +162,7 @@ user object, over which you now have full control.
 10. Backdoor
 
 Even if a different binary connections manager has been installed, the
-user "admin" can still login on the binary port.  To disable this
+user "admin" can still login on the first binary port.  To disable this
 backdoor, change the file /kernel/data/admin.pwd to contain this line:
 
     password "*"
@@ -170,4 +170,4 @@ backdoor, change the file /kernel/data/admin.pwd to contain this line:
 This will disable access for "admin".  If, at some time in the future,
 things have gone so thoroughly wrong that nobody can login in the
 ordinary way anymore, remove the file /kernel/data/admin.pwd and login
-as "admin" on the binary port.
+as "admin" on the first binary port.

@@ -4,9 +4,6 @@
 # include <kernel/access.h>
 # include <kernel/user.h>
 # include <kernel/tls.h>
-# ifdef SYS_NETWORKING
-#  include <kernel/net.h>
-# endif
 # include <status.h>
 # include <trace.h>
 
@@ -16,12 +13,6 @@ static object userd;		/* user manager object */
 static object initd;		/* init manager object */
 static object objectd;		/* object manager object */
 static object errord;		/* error manager object */
-# ifdef SYS_NETWORKING
-static object port_master;	/* port master object */
-static object telnet;		/* telnet port object */
-static object binary;		/* binary port object */
-int port;			/* emergency binary port number */
-# endif
 static int tls_size;		/* thread local storage size */
 static string compiled;		/* object currently being compiled */
 static string *inherited;	/* list of inherited objects */
@@ -413,9 +404,6 @@ private void _initialize(mixed *tls)
     call_other(accessd = load(ACCESSD), "???");
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
-# ifdef SYS_NETWORKING
-    call_other(port_master = load(PORT_OBJECT), "???");
-# endif
     if (file_size(USR + "/System/initd.c") != 0) {
 	catch {
 	    initd = load(USR + "/System/initd");
@@ -439,15 +427,6 @@ private void _initialize(mixed *tls)
     /* system-specific initialization */
     if (initd) {
 	call_other(initd, "???");
-# ifdef SYS_NETWORKING
-    } else {
-	telnet = clone_object(port_master);
-	binary = clone_object(port_master);
-	rsrcd->rsrc_incr("System", "objects", nil, 2, 1);
-
-	telnet->listen("telnet", TELNET_PORT);
-	binary->listen("tcp", BINARY_PORT);
-# endif
     }
 
     message("Initialization complete.\n\n");
@@ -483,7 +462,7 @@ void prepare_reboot()
  */
 private void _restored(mixed *tls)
 {
-    message("DGD " + status()[ST_VERSION] + "\n");
+    message(status()[ST_VERSION] + "\n");
 
     rsrcd->reboot();
     call_other(userd, "reboot");
@@ -492,21 +471,6 @@ private void _restored(mixed *tls)
 	    call_other(initd, "reboot");
 	}
     }
-# ifdef SYS_NETWORKING
-    if (telnet) {
-	telnet->listen("telnet", TELNET_PORT);
-    }
-    if (binary) {
-	binary->listen("tcp", BINARY_PORT);
-    }
-    if (restore_object("/kernel/data/binary_port")) {
-	object emergency;
-
-	emergency = clone_object(port_master);
-	rsrcd->rsrc_incr("System", "objects", nil, 1, 1);
-	emergency->listen("tcp", port);
-    }
-# endif
 
     message("State restored.\n\n");
 }

@@ -410,12 +410,18 @@ register frame *f;
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars && !inh->priv) {
+	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
+	    if (inh->priv) {
+		/* skip privately inherited variables */
+		var += ctrl->nvardefs;
+		nvars += ctrl->nvardefs;
+		continue;
+	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
@@ -949,11 +955,17 @@ register frame *f;
     }
     nvars = 0;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset == nvars && !inh->priv) {
+	if (inh->varoffset == nvars) {
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
 	    ctrl = o_control(OBJR(inh->oindex));
+	    if (inh->priv) {
+		/* skip privately inherited variables */
+		var += ctrl->nvardefs;
+		nvars += ctrl->nvardefs;
+		continue;
+	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
 		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
@@ -993,11 +1005,17 @@ register frame *f;
 	}
 	nvars = 0;
 	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	    if (inh->varoffset == nvars && !inh->priv) {
+	    if (inh->varoffset == nvars) {
 		/*
 		 * Restore non-static variables.
 		 */
 		ctrl = OBJR(inh->oindex)->ctrl;
+		if (inh->priv) {
+		    /* skip privately inherited variables */
+		    var += ctrl->nvardefs;
+		    nvars += ctrl->nvardefs;
+		    continue;
+		}
 		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
 		    if (pending && nvars == checkpoint) {
 			/*

@@ -1,11 +1,5 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
-# ifdef SYS_NETWORKING
-#  include <kernel/net.h>
-#  define PORT	LIB_PORT
-# else
-#  define PORT	DRIVER
-# endif
 # include <status.h>
 
 
@@ -38,7 +32,7 @@ static void create()
  */
 object telnet_connection(mixed *tls, int port)
 {
-    if (previous_program() == PORT) {
+    if (previous_program() == DRIVER) {
 	object conn;
 
 	conn = clone_object(TELNET_CONN);
@@ -53,7 +47,7 @@ object telnet_connection(mixed *tls, int port)
  */
 object binary_connection(mixed *tls, int port)
 {
-    if (previous_program() == PORT) {
+    if (previous_program() == DRIVER) {
 	object conn;
 
 	conn = clone_object(BINARY_CONN);
