@@ -1,1 +1,1 @@
-# define VERSION	"\"1.0.a5\""
+# define VERSION	"\"1.0.a6\""
