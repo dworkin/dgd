@@ -861,24 +861,24 @@ static object *query_subscribed(string name)
 }
 
 /*
- * NAME:	_F_event()
- * DESCRIPTION:	handle an event
- */
-nomask _F_event(string name, mixed *args)
-{
-    if (!previous_program() && args[0]) {
-	_F_call_limited(name, args);
-    }
-}
-
-/*
  * NAME:	_F_start_event()
  * DESCRIPTION:	start an event in this object
  */
 nomask _F_start_event(string name, mixed *args)
 {
     if (previous_program() == AUTO) {
-	::call_out("_F_event", 0, name, args);
+	catch {
+	    rlimits (-1; -1) {
+		int handle;
+
+		handle = ::call_out("_F_callout", 0, name, FALSE, args);
+		if (!::find_object(RSRCD)->rsrc_incr(owner, "callouts",
+						     this_object(), 1)) {
+		    ::remove_call_out(handle);
+		    error("Too many callouts");
+		}
+	    }
+	} : error(::call_trace()[1][TRACE_FIRSTARG][1]);
     }
 }
 
