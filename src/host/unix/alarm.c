@@ -18,11 +18,11 @@ int arg;
 }
 
 /*
- * NAME:	_alarm()
+ * NAME:	P->alarm()
  * DESCRIPTION:	cause an alarm signal to occur after the given number of
  *		seconds
  */
-void _alarm(timeout)
+void P_alarm(timeout)
 unsigned int timeout;
 {
     signal(SIGALRM, intr);

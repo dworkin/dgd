@@ -4,10 +4,10 @@
 static DIR *d;
 
 /*
- * NAME:	_opendir()
+ * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-bool _opendir(dir)
+bool P_opendir(dir)
 char *dir;
 {
     d = opendir(dir);
@@ -15,10 +15,10 @@ char *dir;
 }
 
 /*
- * NAME:	_readdir()
+ * NAME:	P->readdir()
  * DESCRIPTION:	read a directory, skipping . and ..
  */
-char *_readdir()
+char *P_readdir()
 {
     register struct dirent *de;
 
@@ -33,10 +33,10 @@ char *_readdir()
 }
 
 /*
- * NAME:	_closedir()
+ * NAME:	P->closedir()
  * DESCRIPTION:	close a directory
  */
-void _closedir()
+void P_closedir()
 {
     closedir(d);
 }
