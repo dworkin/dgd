@@ -133,6 +133,17 @@ static int receive_message(string str)
 }
 
 /*
+ * NAME:	block_input()
+ * DESCRIPTION:	block input for this connection
+ */
+block_input(int flag)
+{
+    if (SYSTEM()) {
+	::block_input(flag);
+    }
+}
+
+/*
  * NAME:	message()
  * DESCRIPTION:	send a message across the connection
  */

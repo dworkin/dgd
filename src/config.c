@@ -109,7 +109,7 @@ typedef char dumpinfo[28];
 # define DUMP_TYPECHECK	3	/* global typechecking */
 # define DUMP_SECSIZE	4	/* sector size */
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
-# define DUMP_BOOTTIME	20	/* boot time */
+# define DUMP_STARTTIME	20	/* start time */
 # define DUMP_ELAPSED	24	/* elapsed time */
 
 static dumpinfo header;		/* dumpfile header */
@@ -146,9 +146,9 @@ static dumpinfo rheader;	/* restored header */
 # define rzalign (rheader[19])	/* align(struct) */
 static int rualign;		/* align(uindex) */
 static int rdalign;		/* align(sector) */
-static Uint boottime;		/* boot time */
-static Uint elapsed;		/* elapsed time */
 static Uint starttime;		/* start time */
+static Uint elapsed;		/* elapsed time */
+static Uint boottime;		/* boot time */
 
 /*
  * NAME:	conf->dumpinit()
@@ -203,11 +203,11 @@ void conf_dump()
     Uint etime;
 
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
-    header[DUMP_BOOTTIME + 0] = boottime >> 24;
-    header[DUMP_BOOTTIME + 1] = boottime >> 16;
-    header[DUMP_BOOTTIME + 2] = boottime >> 8;
-    header[DUMP_BOOTTIME + 3] = boottime;
-    etime = elapsed + P_time() - starttime;
+    header[DUMP_STARTTIME + 0] = starttime >> 24;
+    header[DUMP_STARTTIME + 1] = starttime >> 16;
+    header[DUMP_STARTTIME + 2] = starttime >> 8;
+    header[DUMP_STARTTIME + 3] = starttime;
+    etime = elapsed + P_time() - boottime;
     header[DUMP_ELAPSED + 0] = etime >> 24;
     header[DUMP_ELAPSED + 1] = etime >> 16;
     header[DUMP_ELAPSED + 2] = etime >> 8;
@@ -246,10 +246,10 @@ int fd;
 	error("Bad or incompatible restore file header");
     }
 
-    boottime = (UCHAR(rheader[DUMP_BOOTTIME + 0]) << 24) |
-	       (UCHAR(rheader[DUMP_BOOTTIME + 1]) << 16) |
-	       (UCHAR(rheader[DUMP_BOOTTIME + 2]) << 8) |
-		UCHAR(rheader[DUMP_BOOTTIME + 3]);
+    starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
+		(UCHAR(rheader[DUMP_STARTTIME + 1]) << 16) |
+		(UCHAR(rheader[DUMP_STARTTIME + 2]) << 8) |
+		 UCHAR(rheader[DUMP_STARTTIME + 3]);
     elapsed =  (UCHAR(rheader[DUMP_ELAPSED + 0]) << 24) |
 	       (UCHAR(rheader[DUMP_ELAPSED + 1]) << 16) |
 	       (UCHAR(rheader[DUMP_ELAPSED + 2]) << 8) |
@@ -274,8 +274,8 @@ int fd;
     lseek(fd, posn, SEEK_SET);		/* restore file position */
 
     pc_restore(fd);
-    starttime = P_time();
-    co_restore(fd, starttime);
+    boottime = P_time();
+    co_restore(fd, boottime);
 }
 
 /*
@@ -802,7 +802,7 @@ static bool conf_includes()
     cputs("by DGD on startup.\012 */\012\012");
     cputs("# define ST_VERSION\t0\t/* driver version */\012");
     cputs("# define ST_STARTTIME\t1\t/* system start time */\012");
-    cputs("# define ST_BOOTTIME\t2\t/* system boot time */\012");
+    cputs("# define ST_BOOTTIME\t2\t/* system reboot time */\012");
     cputs("# define ST_UPTIME\t3\t/* system virtual uptime */\012");
     cputs("# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
     cputs("# define ST_SWAPUSED\t5\t/* # sectors allocated */\012");
@@ -1117,11 +1117,11 @@ frame *f;
 
     /* uptime */
     v->type = T_INT;
-    (v++)->u.number = boottime;
-    v->type = T_INT;
     (v++)->u.number = starttime;
     v->type = T_INT;
-    (v++)->u.number = elapsed + P_time() - starttime;
+    (v++)->u.number = boottime;
+    v->type = T_INT;
+    (v++)->u.number = elapsed + P_time() - boottime;
 
     /* swap */
     v->type = T_INT;

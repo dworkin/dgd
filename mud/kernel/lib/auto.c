@@ -1268,7 +1268,7 @@ static execute_program(string cmdline)
  */
 static string gethostbyname(string name)
 {
-    CHECKARG(name, 1, "name");
+    CHECKARG(name, 1, "gethostbyname");
 
     if (creator == "System" && this_object()) {
 	return ::gethostbyname(name);
@@ -1282,7 +1282,7 @@ static string gethostbyname(string name)
  */
 static string gethostbyaddr(string addr)
 {
-    CHECKARG(addr, 1, "addr");
+    CHECKARG(addr, 1, "gethostbyaddr");
 
     if (creator == "System" && this_object()) {
 	return ::gethostbyaddr(addr);

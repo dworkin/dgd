@@ -732,6 +732,27 @@ register frame *f;
 
 
 # ifdef FUNCDEF
+FUNCDEF("block_input", kf_block_input, pt_block_input)
+# else
+char pt_block_input[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_INT };
+
+/*
+ * NAME:	kfun->block_input()
+ * DESCRIPTION:	block input for the current object
+ */
+int kf_block_input(f)
+register frame *f;
+{
+    if (f->obj->flags & O_USER) {
+	comm_block(f->obj, f->sp->u.number != 0);
+    }
+    f->sp->u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("time", kf_time, pt_time)
 # else
 char pt_time[] = { C_STATIC, T_INT, 0 };

@@ -1151,3 +1151,4 @@ DGD 1.1
    partial sector write patch.
  - The wrong stack depth was passed on to driver->runtime_error() if the
    the server used an internal catch.
+ - Added a new kfun, block_input().

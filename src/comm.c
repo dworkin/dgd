@@ -34,6 +34,7 @@ typedef struct _user_ {
 # define CF_GA		0x04	/* send GA after prompt */
 # define CF_SEENCR	0x08	/* just seen a CR */
 # define CF_NOPROMPT	0x10	/* no prompt in telnet output */
+# define CF_BLOCKED	0x20	/* binary connection blocked */
 
 /* state */
 # define TS_DATA	0
@@ -219,8 +220,8 @@ bool force;
 
 /*
  * NAME:	comm->write()
- * DESCRIPTION:	write more data to a socket; return bytes written (binary) or
- *		bytes left in output buffer (telnet)
+ * DESCRIPTION:	write more data to a connection; return bytes written (binary)
+ *		or bytes left in output buffer (telnet)
  */
 static int comm_write(usr, str, prompt)
 register user *usr;
@@ -481,6 +482,24 @@ int prompt;
 }
 
 /*
+ * NAME:	comm->block()
+ * DESCRIPTION:	suspend on release input for a connection
+ */
+void comm_block(obj, flag)
+object *obj;
+int flag;
+{
+    register user *usr;
+
+    usr = &users[UCHAR(obj->etabi)];
+    if (flag) {
+	usr->flags |= CF_BLOCKED;
+    } else {
+	usr->flags &= ~CF_BLOCKED;
+    }
+}
+
+/*
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
@@ -595,6 +614,10 @@ register frame *f;
 		this_user = (object *) NULL;
 		break;
 	    }
+	}
+
+	if (usr->flags & CF_BLOCKED) {
+	    continue;	/* no input on this connection */
 	}
 
 	if (usr->flags & CF_TELNET) {

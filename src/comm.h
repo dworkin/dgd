@@ -23,6 +23,7 @@ extern void	comm_listen	P((void));
 extern int	comm_send	P((object*, string*));
 extern void	comm_echo	P((object*, int));
 extern void	comm_flush	P((int));
+extern void	comm_block	P((object*, int));
 extern void	comm_receive	P((frame*));
 extern string  *comm_ip_number	P((object*));
 extern void	comm_close	P((frame*, object*));
