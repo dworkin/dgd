@@ -18,7 +18,6 @@ extern void		arr_freeall	P((void));
 extern uindex		arr_put		P((array*));
 extern void		arr_clear	P((void));
 
-extern void		arr_copy	P((struct _value_*, array*));
 extern array	       *arr_add		P((array*, array*));
 extern array	       *arr_sub		P((array*, array*));
 extern array	       *arr_intersect	P((array*, array*));

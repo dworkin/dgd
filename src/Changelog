@@ -1139,3 +1139,5 @@ DGD 1.1
  - Fixed a bug in exporting mappings.
  - Made compression a bit faster.
  - Fixed the exporting bug fix.
+ - Use SO_OOBINLINE on sockets if the host supports it.
+ - Clear update field in all objects after a restore.

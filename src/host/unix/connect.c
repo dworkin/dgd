@@ -64,12 +64,28 @@ unsigned int telnet_port, binary_port;
 	perror("setsockopt");
 	return FALSE;
     }
+# ifdef SO_OOBINLINE
+    on = 1;
+    if (setsockopt(telnet, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+		   sizeof(on)) < 0) {
+	perror("setsockopt");
+	return FALSE;
+    }
+# endif
     on = 1;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
+# ifdef SO_OOBINLINE
+    on = 1;
+    if (setsockopt(binary, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+		   sizeof(on)) < 0) {
+	perror("setsockopt");
+	return FALSE;
+    }
+# endif
 
     memset(&sin, '\0', sizeof(sin));
     memcpy(&sin.sin_addr, host->h_addr, host->h_length);

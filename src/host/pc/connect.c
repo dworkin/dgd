@@ -68,7 +68,19 @@ bool conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 	return FALSE;
     }
     on = 1;
+    if (setsockopt(telnet, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+		   sizeof(on)) != 0) {
+	P_message("setsockopt() failed\n");
+	return FALSE;
+    }
+    on = 1;
     if (setsockopt(binary, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+		   sizeof(on)) != 0) {
+	P_message("setsockopt() failed\n");
+	return FALSE;
+    }
+    on = 1;
+    if (setsockopt(binary, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
 		   sizeof(on)) != 0) {
 	P_message("setsockopt() failed\n");
 	return FALSE;

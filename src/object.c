@@ -795,12 +795,13 @@ void o_conv()
 	}
 
 	/*
-	 * fix counts of all objects
+	 * fix count and update fields of all objects
 	 */
 	for (i = nobjects, o = otable; i > 0; --i, o++, counts++) {
 	    if (o->count != 0) {
 		o->count = *counts;
 	    }
+	    o->update = 0;
 	}
 	AFREE(counts - nobjects);
 	o_clean();

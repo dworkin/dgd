@@ -340,7 +340,7 @@ register array *a;
  * NAME:	array->copy()
  * DESCRIPTION:	copy the elements of an array or mapping
  */
-void arr_copy(v, a)
+static void arr_copy(v, a)
 value *v;
 array *a;
 {

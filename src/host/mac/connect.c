@@ -55,6 +55,7 @@ static pascal void asr(StreamPtr stream, unsigned short event, Ptr userdata,
     conn = (connection *) userdata;
     switch (event) {
     case TCPDataArrival:
+    case TCPUrgent:
 	conn->dflag = TCP_DATA;
 	break;
 
@@ -68,7 +69,6 @@ static pascal void asr(StreamPtr stream, unsigned short event, Ptr userdata,
     /*
      * currently ignored:
      * ULP timeout
-     * urgent data
      */
     }
 }
