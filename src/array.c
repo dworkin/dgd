@@ -933,11 +933,11 @@ register array *m;
 }
 
 /*
- * NAME:	map_clean()
+ * NAME:	mapping->clean()
  * DESCRIPTION:	remove destructed objects from mapping
  */
 static void map_clean(m)
-array *m;
+register array *m;
 {
     register value *v1, *v2;
     register unsigned short i, size;
@@ -975,16 +975,15 @@ array *m;
     }
 
     /*
-     * convert hashtable into sorted array
+     * remove destructed objects in the hash table
      */
     if (m->hashed != (maphash *) NULL && m->hashed->size != 0) {
-	register mapelt *e, *n, **t;
+	register mapelt *e, **p, **t;
 
 	size = 0;
 	t = m->hashed->table;
 	for (i = m->hashed->size; i > 0; ) {
-	    for (e = *t++; e != (mapelt *) NULL; --i, e = n) {
-		n = e->next;
+	    for (p = t++; (e=*p) != (mapelt *) NULL; --i) {
 		if (e->idx.type == T_OBJECT && DESTRUCTED(&e->idx)) {
 		    /*
 		     * index is destructed object
@@ -997,8 +996,10 @@ array *m;
 		    d_assign_elt(m, &e->idx, &zero_value);
 		} else {
 		    size++;
+		    p = &e->next;
 		    continue;
 		}
+		*p = e->next;
 		e->next = fmelt;
 		fmelt = e;
 	    }
@@ -1015,7 +1016,7 @@ array *m;
  *		the array, and remove destructed objects
  */
 void map_compact(m)
-array *m;
+register array *m;
 {
     register value *v1, *v2;
     register unsigned short i, arrsize, hashsize;
@@ -1547,7 +1548,7 @@ value *val, *elt;
 
 	n = search(val, d_get_elts(m), m->size, 2, FALSE);
 	if (n >= 0) {
-	    value *v;
+	    register value *v;
 
 	    /*
 	     * found in the array
@@ -1610,12 +1611,12 @@ value *val, *elt;
     }
 
     if (m->hashed != (maphash *) NULL) {
-	register mapelt **e;
+	register mapelt *e, **p;
 
-	for (e = &m->hashed->table[i % m->hashed->tablesize];
-	     *e != (mapelt *) NULL; e = &(*e)->next) {
-	    if (cmp(val, &(*e)->idx) == 0 &&
-		(!T_INDEXED(val->type) || val->u.array == (*e)->idx.u.array)) {
+	for (p = &m->hashed->table[i % m->hashed->tablesize];
+	     (e=*p) != (mapelt *) NULL; p = &e->next) {
+	    if (cmp(val, &e->idx) == 0 &&
+		(!T_INDEXED(val->type) || val->u.array == e->idx.u.array)) {
 		/*
 		 * found in the hashtable
 		 */
@@ -1624,28 +1625,25 @@ value *val, *elt;
 		     * change element
 		     */
 		    if (val->type == T_OBJECT) {
-			(*e)->idx.u.objcnt = val->u.objcnt;	/* refresh */
+			e->idx.u.objcnt = val->u.objcnt;	/* refresh */
 		    }
-		    d_assign_elt(m, &(*e)->val, elt);
+		    d_assign_elt(m, &e->val, elt);
 		} else if (del ||
 			   (val->type == T_OBJECT &&
-			    val->u.objcnt != (*e)->idx.u.objcnt)) {
-		    mapelt *next;
-
+			    val->u.objcnt != e->idx.u.objcnt)) {
 		    /*
 		     * delete element
 		     */
-		    d_assign_elt(m, &(*e)->idx, &zero_value);
-		    d_assign_elt(m, &(*e)->val, &zero_value);
+		    d_assign_elt(m, &e->idx, &zero_value);
+		    d_assign_elt(m, &e->val, &zero_value);
 
-		    next = (*e)->next;
-		    (*e)->next = fmelt;
-		    fmelt = *e;
-		    *e = next;
+		    *p = e->next;
+		    e->next = fmelt;
+		    fmelt = e;
 		    m->hashed->size--;
 		    return &zero_value;
 		}
-		return &(*e)->val;
+		return &e->val;
 	    }
 	}
     }
