@@ -128,9 +128,9 @@
 # define DGD_ARRAY_PUTVAL(v, a)		PUT_ARRVAL(&(v), (a))
 # define DGD_ARRAY_NEW(d, n)		arr_ext_new((d), (long) (n))
 # define DGD_ARRAY_ELTS(a)		d_get_elts((a))
-# define DGD_ARRAY_INDEX(a, i)		(*d_get_elts((a))[(i)])
+# define DGD_ARRAY_INDEX(a, i)		(d_get_elts((a))[(i)])
 # define DGD_ARRAY_ASSIGN(d, a, i, v)	d_assign_elt((d), (a), \
-						     d_get_elts((a))[(i)], &(v))
+						    &d_get_elts((a))[(i)], &(v))
 
 /*
  * mapping

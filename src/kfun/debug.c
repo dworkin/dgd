@@ -68,7 +68,7 @@ control *ctrl;
 	d_get_funcdefs(ctrl);
 	printf("function definitions:\n");
 	for (i = 0; i < ctrl->nfuncdefs; i++) {
-	    printf("%3u: %04lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
+	    printf("%3u: %08lx ", i, (unsigned long) ctrl->funcdefs[i].offset);
 	    show_proto(d_get_strconst(ctrl, ctrl->funcdefs[i].inherit,
 				      ctrl->funcdefs[i].index)->text,
 		       d_get_prog(ctrl) + ctrl->funcdefs[i].offset);

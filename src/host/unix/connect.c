@@ -3,6 +3,7 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <netdb.h>
+# include <signal.h>
 # include <errno.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
@@ -44,6 +45,11 @@ register int in, out;
     char buf[sizeof(struct in_addr)];
     struct hostent *host;
     register int len;
+
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTRAP, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
 
     while (read(in, buf, sizeof(struct in_addr)) > 0) {
 	/* lookup host */

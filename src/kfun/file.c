@@ -25,10 +25,10 @@ int nargs;
 
     obj = OBJW(f->oindex);
     if (obj->count == 0) {
-	error("editor() from destructed object");
+	error("editor() in destructed object");
     }
     if ((obj->flags & O_SPECIAL) && (obj->flags & O_SPECIAL) != O_EDITOR) {
-	error("editor() from special purpose object");
+	error("editor() in special purpose object");
     }
     if (f->level != 0) {
 	error("editor() within atomic function");
@@ -86,7 +86,7 @@ typedef struct {
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
-    uindex narrays;		/* number of arrays/mappings encountered */
+    Uint narrays;		/* number of arrays/mappings encountered */
 } savecontext;
 
 /*
@@ -173,14 +173,14 @@ register savecontext *x;
 array *a;
 {
     char buf[16];
-    register uindex i;
+    register Uint i;
     register value *v;
     xfloat flt;
 
     i = arr_put(a);
     if (i < x->narrays) {
 	/* same as some previous array */
-	sprintf(buf, "#%u", i);
+	sprintf(buf, "#%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
@@ -212,7 +212,11 @@ array *a;
 	    break;
 
 	case T_OBJECT:
-	    put(x, "0", 1);
+	    if (conf_typechecking() >= 2) {
+		put(x, "nil", 3);
+	    } else {
+		put(x, "0", 1);
+	    }
 	    break;
 
 	case T_ARRAY:
@@ -237,14 +241,15 @@ register savecontext *x;
 array *a;
 {
     char buf[16];
-    register uindex i, n;
+    register Uint i;
+    register uindex n;
     register value *v;
     xfloat flt;
 
     i = arr_put(a);
     if (i < x->narrays) {
 	/* same as some previous mapping */
-	sprintf(buf, "@%u", i);
+	sprintf(buf, "@%lu", (unsigned long) i);
 	put(x, buf, strlen(buf));
 	return;
     }
@@ -477,7 +482,7 @@ typedef struct {
     frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
     int achunksz;		/* size of current array chunk */
-    uindex narrays;		/* # of arrays/mappings */
+    Uint narrays;		/* # of arrays/mappings */
     char file[STRINGSZ];	/* current restore file */
 } restcontext;
 
@@ -509,9 +514,9 @@ array *a;
  */
 static value *ac_get(x, n)
 restcontext *x;
-register uindex n;
+register Uint n;
 {
-    register uindex sz;
+    register Uint sz;
     register achunk *l;
 
     n = x->narrays - n;
@@ -828,10 +833,10 @@ register value *val;
 
     case '#':
 	buf = restore_int(x, buf + 1, val);
-	if ((uindex) val->u.number >= x->narrays) {
+	if ((Uint) val->u.number >= x->narrays) {
 	    restore_error(x, "bad array reference");
 	}
-	*val = *ac_get(x, (uindex) val->u.number);
+	*val = *ac_get(x, (Uint) val->u.number);
 	if (val->type != T_ARRAY) {
 	    restore_error(x, "bad array reference");
 	}
@@ -839,10 +844,10 @@ register value *val;
 
     case '@':
 	buf = restore_int(x, buf + 1, val);
-	if ((uindex) val->u.number >= x->narrays) {
+	if ((Uint) val->u.number >= x->narrays) {
 	    restore_error(x, "bad mapping reference");
 	}
-	*val = *ac_get(x, (uindex) val->u.number);
+	*val = *ac_get(x, (Uint) val->u.number);
 	if (val->type != T_MAPPING) {
 	    restore_error(x, "bad mapping reference");
 	}

@@ -403,7 +403,7 @@ oh *ohash;
 	    n = ctrl->ninherits;
 	    ctrl = ohash->obj->ctrl;
 	    while (--n != 0) {
-		if (o->index == inh->oindex) {
+		if (o->index == inh->oindex && !inh->priv) {
 		    if (ohash->priv == 0 && (*l)->ohash->priv != 0 &&
 			(ctrl->ninherits != 1 ||
 			 (ctrl->funcdefs[idx].class &
@@ -1959,7 +1959,7 @@ register control *old, *new;
 	    /*
 	     * map new variables to old ones
 	     */
-	    for (k = 0, v = ctrl->vardefs; k < ctrl->nvardefs; k++, v++) {
+	    for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
 		n = str_put(d_get_strconst(ctrl, v->inherit, v->index),
 			    (Uint) 0);
 		if (n != 0 &&

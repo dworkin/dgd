@@ -1407,7 +1407,7 @@ private string list_access(mapping access)
 }
 
 /*
- * NAME:	access()
+ * NAME:	cmd_access()
  * DESCRIPTION:	list special access
  */
 static void cmd_access(object user, string cmd, string str)

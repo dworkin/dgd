@@ -64,6 +64,11 @@ void set_object_manager(object objectd)	[System only]
 	The file `path' (which might not exist) is about to be included by
 	`from'.
 
+    * int forbid_call(string path)
+
+	Return a non-zero value if `path' is not a legal first argument
+	for call_other().
+
     * int forbid_inherit(string from, string path, int priv)
 
 	Return a non-zero value if inheritance of `path' by `from' is not

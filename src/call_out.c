@@ -59,11 +59,11 @@ bool co_init(max)
 unsigned int max;
 {
     if (max != 0) {
+	/* only if callouts are enabled */
 	cotab = ALLOC(call_out, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
 	cotab++;
 	flist = 0;
-	/* only if callouts are enabled */
 	if (P_time() >> 24 <= 1) {
 	    message("Config error: bad time (early seventies)");
 	    return FALSE;
@@ -136,6 +136,11 @@ unsigned short m;
     /*
      * create a free spot in the heap, and sift it upward
      */
+# ifdef DEBUG
+    if (queuebrk == cycbrk) {
+	fatal("callout table overflow");
+    }
+# endif
     i = ++queuebrk;
     l = cotab - 1;
     for (j = i >> 1; l[j].time > t || (l[j].time == t && l[j].mtime > m);
@@ -174,7 +179,7 @@ register uindex i;
 	     i = j, j >>= 1) {
 	    l[i] = l[j];
 	}
-    } else {
+    } else if (i <= UINDEX_MAX / 2) {
 	/* sift downward */
 	for (j = i << 1; j < queuebrk; i = j, j <<= 1) {
 	    if (l[j].time > l[j + 1].time ||
@@ -208,6 +213,11 @@ Uint t;
 	flist = cotab[i].next;
     } else {
 	/* allocate new callout */
+# ifdef DEBUG
+	if (cycbrk == queuebrk || cycbrk == 1) {
+	    fatal("callout table overflow");
+	}
+# endif
 	i = --cycbrk;
     }
     nshort++;
@@ -344,17 +354,17 @@ unsigned short *mtime;
 	t = timestamp;
 	*mtime = 0;
     } else if (timestamp < t) {
-	if (atimeout == 0 || atimeout > t) {
-	    timestamp = t;
-	} else {
-	    if (timestamp < atimeout - 1) {
+	if (running.list == 0 && immediate.list == 0) {
+	    if (atimeout == 0 || atimeout > t) {
+		timestamp = t;
+	    } else if (timestamp < atimeout - 1) {
 		timestamp = atimeout - 1;
 	    }
-	    if (t > timestamp + 60) {
-		/* lot of lag? */
-		t = timestamp + 60;
-		*mtime = 0;
-	    }
+	}
+	if (t > timestamp + 60) {
+	    /* lot of lag? */
+	    t = timestamp + 60;
+	    *mtime = 0;
 	}
     }
 
@@ -383,8 +393,7 @@ cbuf **qp;
 	return 0;
     }
 
-    if (queuebrk + nshort + (uindex) n == cotabsz ||
-	nshort + (uindex) n == cotabsz - 1) {
+    if (queuebrk + (uindex) n == cycbrk || cycbrk - (uindex) n == 1) {
 	error("Too many callouts");
     }
 
@@ -499,16 +508,23 @@ Uint t;
 Int co_remaining(t)
 register Uint t;
 {
-    unsigned short m, mtime;
+    Uint time;
+    unsigned short mtime, m;
 
+    time = co_time(&mtime);
     if (t >> 24 != 1) {
 	t += timediff;
-	return (t > timestamp) ? t - timestamp : 0;
+	if (t > time) {
+	    return t - time;
+	}
     } else {
 	/* encoded millisecond */
-	t = decode((Uint) t, &m) - co_time(&mtime);
-	return -2 - t * 1000 - m + mtime;
+	t = decode(t, &m);
+	if (t > time || t == time && m > mtime) {
+	    return -2 - (t - time) * 1000 - m + mtime;
+	}
     }
+    return 0;
 }
 
 /*
@@ -520,26 +536,29 @@ register unsigned int oindex, handle;
 Uint t;
 {
     register call_out *l;
+    unsigned short m;
 
     if (t >> 24 != 1) {
 	t += timediff;
-	if (t <= timestamp) {
-	    /*
-	     * possible immediate callout
-	     */
-	    if (rmshort(&immediate, oindex, handle, 0) ||
-		rmshort(&running, oindex, handle, 0)) {
-		return;
-	    }
+	/*
+	 * try to find the callout in the cyclic buffer
+	 */
+	if (t > timestamp && t < timestamp + CYCBUF_SIZE &&
+	    rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
+	    return;
 	}
-
-	if (t < timestamp + CYCBUF_SIZE) {
-	    /*
-	     * try to find the callout in the cyclic buffer
-	     */
-	    if (rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
-		return;
-	    }
+    }
+    /*
+     * decode() won't work correctly for times in the past, so always check
+     * the immediate queues for millisecond callouts
+     */
+    if (t <= timestamp) {
+	/*
+	 * possible immediate callout
+	 */
+	if (rmshort(&immediate, oindex, handle, 0) ||
+	    rmshort(&running, oindex, handle, 0)) {
+	    return;
 	}
     }
 
@@ -570,10 +589,11 @@ array *a;
 {
     register value *v, *w;
     register unsigned short i;
+    Uint time, t;
     unsigned short mtime, m;
-    Uint t;
     xfloat flt;
 
+    time = co_time(&mtime);
     for (i = a->size, v = a->elts; i != 0; --i, v++) {
 	w = &v->u.array->elts[2];
 	switch ((Uint) w->u.number >> 24) {
@@ -583,15 +603,24 @@ array *a;
 
 	case 1:
 	    /* encoded millisecond */
-	    t = decode((Uint) w->u.number, &m) - co_time(&mtime);
-	    flt_itof((Int) t * 1000 + m - mtime, &flt);
-	    flt_mult(&flt, &thousandth);
-	    PUT_FLTVAL(w, flt);
+	    t = decode((Uint) w->u.number, &m);
+	    if (t > time || t == time && m > mtime) {
+		flt_itof((Int) (t - time) * 1000 + m - mtime, &flt);
+		flt_mult(&flt, &thousandth);
+		PUT_FLTVAL(w, flt);
+	    } else {
+		w->u.number = 0;
+	    }
 	    break;
 
 	default:
 	    /* normal */
-	    w->u.number -= timestamp - timediff;
+	    t = w->u.number + timediff;
+	    if (t > time) {
+		w->u.number = t - time;
+	    } else {
+		w->u.number = 0;
+	    }
 	    break;
 	}
     }
@@ -1016,9 +1045,5 @@ register Uint t;
     }
 
     /* restart callouts */
-    if (nshort != nzero) {
-	for (t = timestamp; cycbuf[t & CYCBUF_MASK].list == 0; t++) ;
-	timeout = t;
-    }
-    restart(timeout);
+    restart(timestamp);
 }

@@ -1551,7 +1551,7 @@ xfloat *f1, *f2;
 
     c = b;
     f_trunc(&c);
-    if (f_cmp(&b, &c) == 0 && a.exp < 0x800e) {
+    if (f_cmp(&b, &c) == 0 && b.exp < 0x800e) {
 	/* integer power < 32768 */
 	f_powi(&a, (int) f_ftoi(&c));
 	f_ftoxf(&a, f1);
@@ -1627,7 +1627,9 @@ xfloat *f1, *f2;
     f_mult(&c, &b);
 
     f_itof((Int) -i, &d);
-    d.exp -= 4;
+    if (d.exp != 0) {
+	d.exp -= 4;
+    }
     f_itof((Int) n, &e);
     f_add(&d, &e);
 

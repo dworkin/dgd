@@ -222,18 +222,20 @@ int access;
 	    hte **h;
 
 	    /* copy object name to higher plane */
-	    if (oplane->htab == (hashtab *) NULL) {
-		oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
-	    }
 	    strcpy(name = ALLOC(char, strlen(obj->chain.name) + 1),
 		   obj->chain.name);
-	    h = ht_lookup(oplane->htab, obj->chain.name = name, FALSE);
-	    obj->chain.next = *h;
-	    *h = (hte *) obj;
+	    obj->chain.name = name;
+	    if (obj->count != 0) {
+		if (oplane->htab == (hashtab *) NULL) {
+		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ);
+		}
+		h = ht_lookup(oplane->htab, name, FALSE);
+		obj->chain.next = *h;
+		*h = (hte *) obj;
+	    }
 	}
 	return obj;
     }
-
 }
 
 /*
@@ -364,9 +366,10 @@ void o_commit_plane()
 		     * commit to base plane
 		     */
 		    if (op->obj.chain.name != (char *) NULL) {
+			hte **h;
+
 			if (obj->chain.name == (char *) NULL) {
 			    char *name;
-			    hte **h;
 
 			    /*
 			     * make object name static
@@ -394,8 +397,13 @@ void o_commit_plane()
 				op->obj.chain.next = obj->chain.next;
 			    } else if (obj->count != 0) {
 				/* remove from hash table */
-				*ht_lookup(prev->htab, obj->chain.name, FALSE) =
-							(hte *) obj->chain.next;
+				h = ht_lookup(prev->htab, obj->chain.name,
+					      FALSE);
+				if (*h != (hte *) obj) {
+				    /* new object was compiled also */
+				    h = &(*h)->next;
+				}
+				*h = obj->chain.next;
 			    }
 			}
 		    }
@@ -1049,8 +1057,6 @@ void o_clean()
 	baseplane.upgrade = (unsigned long) o->chain.next;
 
 	up = OBJ(o->dfirst);
-	up->cref -= 2;
-
 	if (up->u_ref == 0) {
 	    /* no more instances of object around */
 	    o->cref = baseplane.destruct;
@@ -1058,12 +1064,15 @@ void o_clean()
 	} else {
 	    /* upgrade objects */
 	    up->flags &= ~O_COMPILED;
-	    o->u_ref = up->u_ref;
+	    up->cref -= 2;
+	    o->u_ref = up->cref;
+	    if (up->count != 0 &&
+		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED)) {
+		o->u_ref++;
+	    }
 	    ctrl = up->ctrl;
 
-	    if (ctrl->vmapsize != 0 &&
-		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED ||
-		 up->count == 0 || --(o->u_ref) != 0)) {
+	    if (ctrl->vmapsize != 0 && o->u_ref != 0) {
 		/*
 		 * upgrade variables
 		 */
@@ -1354,10 +1363,11 @@ void o_conv()
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
 		d_conv_dataspace(o, counts);
-		o_clean();
+		o_clean_upgrades();
 		d_swapout(1);
 	    }
 	}
+	o_clean();
 
 	/*
 	 * last pass over all objects:

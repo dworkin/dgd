@@ -355,7 +355,7 @@ static object compile_object(string path)
  */
 static object clone_object(string path, varargs string uid)
 {
-    string oname, str;
+    string oname;
     object rsrcd, obj;
     int *rsrc, stack, ticks;
 
@@ -446,7 +446,7 @@ static mixed **call_trace()
 	driver = ::find_object(DRIVER);
 	for (i = sizeof(trace) - 1; --i >= 0; ) {
 	    if (sizeof(call = trace[i]) > TRACE_FIRSTARG &&
-		(!owner || owner != driver->creator(call[TRACE_PROGNAME]))) {
+		creator != driver->creator(call[TRACE_PROGNAME])) {
 		/* remove arguments */
 		trace[i] = call[.. TRACE_FIRSTARG - 1];
 	    }
@@ -501,8 +501,8 @@ static mixed *status(varargs mixed obj)
 	if (sscanf(oname, "/kernel/%*s") != 0) {
 	    /* can't see callouts in kernel objects */
 	    status[O_CALLOUTS] = ({ });
-	} else if (creator != "System" &&
-		   (!owner || owner != driver->creator(oname))) {
+	} else if (obj != this_object() && creator != "System" &&
+		   (!owner || owner != obj->query_owner())) {
 	    /* remove arguments from callouts */
 	    do {
 		--i;
@@ -766,6 +766,8 @@ static void remove_event(string name)
 	    }
 	    events[name] = nil;
 	}
+    } else {
+	error("No such event");
     }
 }
 
@@ -1425,7 +1427,7 @@ static void execute_program(string cmdline)
 	    }
 	    catch {
 		rlimits (-1; -1) {
-		    conn = clone_object(BINARY_CONN);
+		    conn = clone_object(BINARY_CONN, "System");
 		    conn->execute_program(cmdline);
 		}
 	    } : {
@@ -1460,7 +1462,7 @@ static void connect(string destination, int port)
 	    }
 	    catch {
 		rlimits (-1; -1) {
-		    conn = clone_object(BINARY_CONN);
+		    conn = clone_object(BINARY_CONN, "System");
 		    conn->connect(destination, port);
 		}
 	    } : {
@@ -1492,7 +1494,7 @@ static void open_port(string protocol, int port)
  */
 static object *ports()
 {
-    if (creator == "System" && this_object()) {
+    if (creator == "System") {
 	return ::ports();
     }
 }

@@ -1631,14 +1631,15 @@ register frame *f;
     } else if (f->sp->type == T_STRING) {
 	char *p;
 
+	/* from string */
 	p = f->sp->u.string->text;
-	if (flt_atof(&p, &flt) &&
-	    p == f->sp->u.string->text + f->sp->u.string->len) {
-	    /* from string */
-	    str_del(f->sp->u.string);
-	    PUT_FLTVAL(f->sp, flt);
-	    return 0;
+	if (!flt_atof(&p, &flt) ||
+	    p != f->sp->u.string->text + f->sp->u.string->len) {
+	    error("String cannot be converted to float");
 	}
+	str_del(f->sp->u.string);
+	PUT_FLTVAL(f->sp, flt);
+	return 0;
     }
 
     if (f->sp->type != T_FLOAT) {
@@ -1673,13 +1674,14 @@ register frame *f;
 	char *p;
 	Int i;
 
+	/* from string */
 	i = strtol(f->sp->u.string->text, &p, 10);
-	if (p == f->sp->u.string->text + f->sp->u.string->len) {
-	    /* from string */
-	    str_del(f->sp->u.string);
-	    PUT_INTVAL(f->sp, i);
-	    return 0;
+	if (p != f->sp->u.string->text + f->sp->u.string->len) {
+	    error("String cannot be converted to int");
 	}
+	str_del(f->sp->u.string);
+	PUT_INTVAL(f->sp, i);
+	return 0;
     }
 
     if (f->sp->type != T_INT) {

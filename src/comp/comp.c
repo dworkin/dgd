@@ -240,7 +240,7 @@ char *argv[];
     printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
 
     if (ec_push((ec_ftn) NULL)) {
-	message((char *) NULL);
+	message("Failed to compile \"%s.c\"\012", file);	/* LF */
 	printf("\n# error Error while compiling\n");
 	fclose(stdout);
 	if (argc == 4) {

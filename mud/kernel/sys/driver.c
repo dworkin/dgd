@@ -595,7 +595,8 @@ static object call_object(string path)
 	oname = object_name(previous_object());
 	path = normalize_path(path, oname + "/..", creator(oname));
     }
-    if (sscanf(path, "%*s/lib/") != 0) {
+    if (sscanf(path, "%*s/lib/") != 0 ||
+	(objectd && objectd->forbid_call(path))) {
 	error("Illegal use of call_other");
     }
     return find_object(path);
@@ -780,7 +781,8 @@ static void runtime_error(string str, int caught, int ticks)
     if (caught == 1) {
 	/* top-level catch: ignore */
 	caught = 0;
-    } else if (caught != 0 && ticks < 0) {
+    } else if (caught != 0 && ticks < 0 &&
+	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%*s") != 0) {
 	tls[1] = str;
 	return;
     }
