@@ -153,11 +153,6 @@ struct _value_ {
 # define PUT_MAPVAL_NOREF(v, m)	((v)->u.array = (m), (v)->type = T_MAPPING)
 # define PUT_MAP(v, m)		(arr_ref((v)->u.array = (m)))
 
-# define VFLT_GET(v, f) ((f).high = (v)->oindex, (f).low = (v)->u.objcnt)
-# define VFLT_PUT(v, f) ((v)->oindex = (f).high, (v)->u.objcnt = (f).low)
-# define VFLT_ABS(v)    FLT_ABS((v)->oindex, (v)->u.objcnt)
-# define VFLT_NEG(v)    FLT_NEG((v)->oindex, (v)->u.objcnt)
-
 # define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)
 # define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
 # define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
