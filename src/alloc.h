@@ -22,5 +22,12 @@ extern void  mstatic	P((void));
 extern bool  mcheck	P((void));
 extern void  mpurge	P((void));
 extern void  mexpand	P((void));
-extern long  memsize	P((void));
-extern long  memused	P((void));
+
+typedef struct {
+    Uint smemsize;	/* static memory size */
+    Uint smemused;	/* static memory used */
+    Uint dmemsize;	/* dynamic memory used */
+    Uint dmemused;	/* dynamic memory used */
+} allocinfo;
+
+extern allocinfo *minfo	P((void));
