@@ -1,0 +1,12 @@
+NAME
+	random - return random number
+
+SYNOPSIS
+	int random(int mod)
+
+
+DESCRIPTION
+	Return a positive random number in the range 0 .. mod-1.
+
+ERRORS
+	Mod must be larger than 0.
