@@ -22,8 +22,8 @@ DESCRIPTION
 	    ?	    any single character
 	    *	    any (possibly empty) string
 	    [a-z]   any character in the range a-z
-	    \c	    the literal character `c', not interpreted as having
-		    a special meaning
+	    \c	    the character c, not interpreted as having a special
+		    meaning
 
 	The files will be sorted by file name.
 	Only as many files as given in the constant MAX_ARRAY_SIZE, defined in
