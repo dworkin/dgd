@@ -52,7 +52,7 @@ static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
 static array *flist;		/* free arrays */
 static arrh **ht;		/* array merge table */
-static arrh **link;		/* linked list of merged arrays */
+static arrh **alink;		/* linked list of merged arrays */
 static arrhchunk *ahlist;	/* linked list of all arrh chunks */
 static int ahchunksz;		/* size of current arrh chunk */
 static mapelt *fmelt;		/* free mapelt list */
@@ -339,8 +339,8 @@ register array *a;
     (*h)->next = (arrh *) NULL;
     (*h)->arr = a;
     (*h)->index = idx;
-    (*h)->link = link;
-    link = h;
+    (*h)->link = alink;
+    alink = h;
 
     return idx++;
 }
@@ -355,14 +355,14 @@ void arr_clear()
     register arrhchunk *l;
 
     /* clear hash table */
-    for (h = link; h != (arrh **) NULL; ) {
+    for (h = alink; h != (arrh **) NULL; ) {
 	register arrh *f;
 
 	f = *h;
 	*h = (arrh *) NULL;
 	h = f->link;
     }
-    link = (arrh **) NULL;
+    alink = (arrh **) NULL;
     idx = 0;
 
     /* free array hash chunks */
@@ -986,6 +986,189 @@ array *m1, *m2;
     /* copy tail part of m2 */
     copy(v3, v2, n2);
     v3 += n2;
+
+    m3->size = v3 - m3->elts;
+    if (m3->size == 0) {
+	FREE(m3->elts);
+	m3->elts = (value *) NULL;
+    }
+    return m3;
+}
+
+/*
+ * NAME:	mapping->sub()
+ * DESCRIPTION:	subtract an array from a mapping
+ */
+array *map_sub(m1, a2)
+array *m1, *a2;
+{
+    register value *v1, *v2, *v3;
+    register unsigned short n1, n2, size;
+    register int c;
+    array *m3;
+
+    map_compact(m1);
+    m3 = arr_alloc(m1->size);
+    if (m1->size == 0) {
+	/* subtract from empty mapping */
+	return m3;
+    }
+    if ((size=a2->size) == 0) {
+	/* subtract empty array */
+	copy(m3->elts, m1->elts, m1->size);
+	return m3;
+    }
+
+    /* copy values of array */
+    v1 = d_get_elts(a2);
+    v2 = ALLOCA(value, size);
+    for (n1 = size; n1 > 0; --n1) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
+	    /* replace destructed object by 0 */
+	    *v1 = zero_value;
+	}
+	*v2++ = *v1++;
+    }
+    /* sort values */
+    qsort(v2 -= size, size, sizeof(value), cmp);
+
+    v1 = m1->elts;
+    v3 = m3->elts;
+    for (n1 = m1->size, n2 = size; n1 > 0 && n2 > 0; ) {
+	c = cmp(v1, v2);
+	if (c < 0) {
+	    /* the smaller element is in m1 */
+	    copy(v3, v1, 2);
+	    v1 += 2; v3 += 2; n1 -= 2;
+	} else if (c > 0) {
+	    /* the smaller element is in a2 */
+	    v2++; --n2;
+	} else {
+	    /* equal elements? */
+	    if (v1->type >= T_ARRAY && v1->u.array != v2->u.array) {
+		register value *v;
+		register unsigned short n;
+
+		/*
+		 * The array tags are the same, but the arrays are not.
+		 * Check ahead to see if the array is somewhere else
+		 * in a2; if not, copy the element from m1.
+		 */
+		v = v2; n = n2;
+		for (;;) {
+		    v++; --n;
+		    if (n == 0 || v->type < T_ARRAY ||
+			v->u.array->tag != v1->u.array->tag) {
+			/* not in a2 */
+			copy(v3, v1, 2);
+			v3 += 2;
+			break;
+		    }
+		    if (v->u.array == v1->u.array) {
+			/* also in a2 */
+			break;
+		    }
+		}
+	    }
+	    /* skip m1 */
+	    v1 += 2; n1 -= 2;
+	}
+    }
+    AFREE(v2 - (size - n2));
+
+    /* copy tail part of m1 */
+    copy(v3, v1, n1);
+    v3 += n1;
+
+    m3->size = v3 - m3->elts;
+    if (m3->size == 0) {
+	FREE(m3->elts);
+	m3->elts = (value *) NULL;
+    }
+    return m3;
+}
+
+/*
+ * NAME:	mapping->intersect()
+ * DESCRIPTION:	intersect a mapping with an array
+ */
+array *map_intersect(m1, a2)
+array *m1, *a2;
+{
+    register value *v1, *v2, *v3;
+    register unsigned short n1, n2, size;
+    register int c;
+    array *m3;
+
+    map_compact(m1);
+    if ((size=a2->size) == 0) {
+	/* intersect with empty array */
+	return arr_alloc(0);
+    }
+    m3 = arr_alloc(m1->size);
+    if (m1->size == 0) {
+	/* intersect with empty mapping */
+	return m3;
+    }
+
+    /* copy values of array */
+    v1 = d_get_elts(a2);
+    v2 = ALLOCA(value, size);
+    for (n1 = size; n1 > 0; --n1) {
+	if (v1->type == T_OBJECT && DESTRUCTED(v1)) {
+	    /* replace destructed object by 0 */
+	    *v1 = zero_value;
+	}
+	*v2++ = *v1++;
+    }
+    /* sort values */
+    qsort(v2 -= size, size, sizeof(value), cmp);
+
+    v1 = m1->elts;
+    v3 = m3->elts;
+    for (n1 = m1->size, n2 = size; n1 > 0 && n2 > 0; ) {
+	c = cmp(v1, v2);
+	if (c < 0) {
+	    /* the smaller element is in m1 */
+	    v1 += 2; n1 -= 2;
+	} else if (c > 0) {
+	    /* the smaller element is in a2 */
+	    v2++; --n2;
+	} else {
+	    /* equal elements? */
+	    if (v1->type >= T_ARRAY && v1->u.array != v2->u.array) {
+		register value *v;
+		register unsigned short n;
+
+		/*
+		 * The array tags are the same, but the arrays are not.
+		 * Check ahead to see if the array is somewhere else
+		 * in a2; if not, don't copy the element from m1.
+		 */
+		v = v2; n = n2;
+		for (;;) {
+		    v++; --n;
+		    if (n == 0 || v->type < T_ARRAY ||
+			v->u.array->tag != v1->u.array->tag) {
+			/* not in a2 */
+			break;
+		    }
+		    if (v->u.array == v1->u.array) {
+			/* also in a2 */
+			copy(v3, v1, 2);
+			v3 += 2; v1 += 2; n1 -= 2;
+			break;
+		    }
+		}
+	    } else {
+		/* equal */
+		copy(v3, v1, 2);
+		v3 += 2; v1 += 2; n1 -= 2;
+	    }
+	    v2++; --n2;
+	}
+    }
+    AFREE(v2 - (size - n2));
 
     m3->size = v3 - m3->elts;
     if (m3->size == 0) {
