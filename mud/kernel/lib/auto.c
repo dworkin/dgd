@@ -1369,25 +1369,29 @@ static void execute_program(string cmdline)
 {
     object conn;
 
-    CHECKARG(cmdline, 1, "execute_program");
+    if (previous_program() == LIB_CONN) {
+	::execute_program(cmdline);
+    } else {
+	CHECKARG(cmdline, 1, "execute_program");
 
-    if (creator == "System" && this_object()) {
-	if (function_object("query_conn", this_object()) != LIB_USER) {
-	    error("Not a user object");
-	}
-	if (this_object()->query_conn()) {
-	    error("Already connected");
-	}
-	catch {
-	    rlimits (-1; -1) {
-		conn = clone_object(BINARY_CONN);
-		conn->execute_program(cmdline);
+	if (creator == "System" && this_object()) {
+	    if (function_object("query_conn", this_object()) != LIB_USER) {
+		error("Not a user object");
 	    }
-	} : {
-	    rlimits (-1; -1) {
-		destruct_object(conn);
+	    if (this_object()->query_conn()) {
+		error("Already connected");
 	    }
-	    error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	    catch {
+		rlimits (-1; -1) {
+		    conn = clone_object(BINARY_CONN);
+		    conn->execute_program(cmdline);
+		}
+	    } : {
+		rlimits (-1; -1) {
+		    destruct_object(conn);
+		}
+		error(::call_trace()[1][TRACE_FIRSTARG][1]);
+	    }
 	}
     }
 }
@@ -1403,22 +1407,26 @@ static void connect(string destination, int port)
 {
     object conn;
 
-    CHECKARG(destination, 1, "connect");
+    if (previous_program() == LIB_CONN) {
+	::connect(destination, port);
+    } else {
+	CHECKARG(destination, 1, "connect");
 
-    if (creator == "System" && this_object()) {
-	if (function_object("query_conn", this_object()) != LIB_USER) {
-	    error("Not a user object");
-	}
-	catch {
-	    rlimits (-1; -1) {
-		conn = clone_object(BINARY_CONN);
-		conn->connect(destination, port);
+	if (creator == "System" && this_object()) {
+	    if (function_object("query_conn", this_object()) != LIB_USER) {
+		error("Not a user object");
 	    }
-	} : {
-	    rlimits (-1; -1) {
-		destruct_object(conn);
+	    catch {
+		rlimits (-1; -1) {
+		    conn = clone_object(BINARY_CONN);
+		    conn->connect(destination, port);
+		}
+	    } : {
+		rlimits (-1; -1) {
+		    destruct_object(conn);
+		}
+		error(::call_trace()[1][TRACE_FIRSTARG][1]);
 	    }
-	    error(::call_trace()[1][TRACE_FIRSTARG][1]);
 	}
     }
 }
