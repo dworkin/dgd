@@ -1,6 +1,5 @@
 # include <sys/time.h>
-# include <sys/socket.h>
-# include <netinet/in.h>
+# include <socket.h>
 # include <netdb.h>
 # include <errno.h>
 # define INCLUDE_FILE_IO
@@ -34,21 +33,11 @@ static int maxfd;			/* largest fd opened yet */
 void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
 {
     struct sockaddr_in sin;
-    struct hostent *host;
-    register int n;
-    register connection *conn;
-    char buffer[256];
-    int on;
+    connection *conn;
+    int n, on;
 
-    gethostname(buffer, sizeof(buffer));
-    host = gethostbyname(buffer);
-    if (host == (struct hostent *) NULL) {
-	perror("gethostbyname");
-	exit(2);
-    }
-
-    telnet = socket(host->h_addrtype, SOCK_STREAM, 0);
-    binary = socket(host->h_addrtype, SOCK_STREAM, 0);
+    telnet = socket(AF_INET, SOCK_STREAM, 0);
+    binary = socket(AF_INET, SOCK_STREAM, 0);
     if (telnet < 0 || binary < 0) {
 	perror("socket");
 	exit(2);
@@ -79,9 +68,8 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
     }
 
     memset(&sin, '\0', sizeof(sin));
-    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
     sin.sin_port = htons(telnet_port);
-    sin.sin_family = host->h_addrtype;
+    sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     if (bind(telnet, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	perror("telnet bind");
@@ -112,8 +100,8 @@ void conn_init(int maxusers, unsigned int telnet_port, unsigned int binary_port)
  */
 void conn_finish()
 {
-    register int n;
-    register connection *conn;
+    int n;
+    connection *conn;
 
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	if (conn->fd >= 0) {
@@ -144,7 +132,7 @@ connection *conn_tnew()
 {
     int fd, len;
     struct sockaddr_in sin;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(telnet, &readfds)) {
 	return (connection *) NULL;
@@ -176,7 +164,7 @@ connection *conn_bnew()
 {
     int fd, len;
     struct sockaddr_in sin;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(binary, &readfds)) {
 	return (connection *) NULL;

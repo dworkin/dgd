@@ -1175,3 +1175,4 @@ DGD 1.1 patchlevel 6
    an integer that is out of range.
  - Turned off debug settings in Makefile and added optimization.
  - Avoided the nasty gethostbyname() problem on Windows 95.
+ - And on BeOS as well.
