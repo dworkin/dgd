@@ -562,7 +562,7 @@ unsigned int mtime;
 	    if (f->sp->type != T_OBJECT) {
 		fatal("driver->telnet_connect() did not return an object");
 	    }
-	    o = &otable[f->sp->oindex];
+	    o = &OBJ(f->sp->oindex);
 	    f->sp++;
 	    comm_new(o, conn, TRUE);
 	    ec_pop();
@@ -595,7 +595,7 @@ unsigned int mtime;
 	if (f->sp->type != T_OBJECT) {
 	    fatal("driver->binary_connect() did not return an object");
 	}
-	o = &otable[f->sp->oindex];
+	o = &OBJ(f->sp->oindex);
 	f->sp++;
 	usr = comm_new(o, conn, FALSE);
 	ec_pop();

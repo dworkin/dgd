@@ -1402,8 +1402,8 @@ array *m1, *m2;
 	return m3;
     }
 
-    v1 = m1->elts;
-    v2 = m2->elts;
+    v1 = d_get_elts(m1);
+    v2 = d_get_elts(m2);
     v3 = m3->elts;
     for (n1 = m1->size, n2 = m2->size; n1 > 0 && n2 > 0; ) {
 	c = cmp(v1, v2);
@@ -1484,9 +1484,10 @@ array *m1, *a2;
 	/* subtract from empty mapping */
 	return m3;
     }
+    v1 = d_get_elts(m1);
     if ((size=a2->size) == 0) {
 	/* subtract empty array */
-	i_copy(m3->elts, m1->elts, m1->size);
+	i_copy(m3->elts, v1, m1->size);
 	d_ref_imports(m3);
 	return m3;
     }
@@ -1495,7 +1496,6 @@ array *m1, *a2;
     copytmp(v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
-    v1 = m1->elts;
     v3 = m3->elts;
     for (n1 = m1->size, n2 = size; n1 > 0 && n2 > 0; ) {
 	c = cmp(v1, v2);
@@ -1581,7 +1581,7 @@ array *m1, *a2;
     copytmp(v2 = ALLOCA(value, size), a2);
     qsort(v2, size, sizeof(value), cmp);
 
-    v1 = m1->elts;
+    v1 = d_get_elts(m1);
     v3 = m3->elts;
     for (n1 = m1->size, n2 = size; n1 > 0 && n2 > 0; ) {
 	c = cmp(v1, v2);
@@ -1891,7 +1891,8 @@ register value *v1, *v2;
     map_compact(m);
 
     /* determine subrange */
-    from = (v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
+    from = (v1 == (value *) NULL) ?
+	    0 : search(v1, d_get_elts(m), m->size, 2, TRUE);
     if (v2 == (value *) NULL) {
 	to = m->size;
     } else {
@@ -1931,7 +1932,7 @@ array *m;
     map_compact(m);
     indices = arr_new(data, (long) (n = m->size >> 1));
     v1 = indices->elts;
-    for (v2 = m->elts; n > 0; v2 += 2, --n) {
+    for (v2 = d_get_elts(m); n > 0; v2 += 2, --n) {
 	i_ref_value(v2);
 	*v1++ = *v2;
     }
@@ -1955,7 +1956,7 @@ array *m;
     map_compact(m);
     values = arr_new(data, (long) (n = m->size >> 1));
     v1 = values->elts;
-    for (v2 = m->elts + 1; n > 0; v2 += 2, --n) {
+    for (v2 = d_get_elts(m) + 1; n > 0; v2 += 2, --n) {
 	i_ref_value(v2);
 	*v1++ = *v2;
     }

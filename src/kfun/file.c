@@ -67,7 +67,7 @@ register frame *f;
     object *obj;
     char *status;
 
-    obj = &otable[f->sp->oindex];
+    obj = &OBJ(f->sp->oindex);
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
 	PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));

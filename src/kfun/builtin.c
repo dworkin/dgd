@@ -2202,7 +2202,7 @@ register frame *f;
 	error("Non-numeric array index");
     }
     i_add_ticks(f, 6);
-    if (!conf_objecti(f->data, &otable[f->sp[1].oindex], f->sp->u.number,
+    if (!conf_objecti(f->data, &OBJ(f->sp[1].oindex), f->sp->u.number,
 		      &f->sp[1])) {
 	error("Index out of range");
     }

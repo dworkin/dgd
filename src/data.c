@@ -393,7 +393,7 @@ object *obj;
 		     n * (Uint) sizeof(sinherit), size);
 	    size += n * sizeof(sinherit);
 	    do {
-		inherits->obj = &otable[sinherits->oindex];
+		inherits->obj = &OBJ(sinherits->oindex);
 		inherits->funcoffset = sinherits->funcoffset;
 		inherits->varoffset = sinherits->varoffset & ~PRIV;
 		(inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
@@ -498,8 +498,7 @@ object *obj;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
 
-    if (!(obj->flags & O_MASTER) && obj->update != otable[obj->u_master].update)
-    {
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master).update) {
 	d_upgrade_clone(data);
     }
 
@@ -1520,7 +1519,7 @@ cbuf *q;
     } else {
 	cop->rco = *co;
     }
-    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i >= 0; --i) {
+    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
 	i_ref_value(v++);
     }
     cop->time = time;
@@ -1556,7 +1555,7 @@ bool del;
 	/* free referenced callout */
 	co = (cop->type == COP_ADD) ? &cop->aco : &cop->rco;
 	v = co->val;
-	for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i >= 0; --i) {
+	for (i = (co->nargs > 3) ? 4 : co->nargs + 1; i > 0; --i) {
 	    i_del_value(v++);
 	}
     }
@@ -1583,7 +1582,7 @@ cbuf *q;
 
     cop->type = COP_REPLACE;
     cop->aco = *co;
-    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i >= 0; --i) {
+    for (i = (co->nargs > 3) ? 4 : co->nargs + 1, v = co->val; i > 0; --i) {
 	i_ref_value(v++);
     }
     cop->time = time;
@@ -1603,7 +1602,7 @@ register copatch *cop;
 
     cop->type = COP_ADD;
     for (i = (cop->rco.nargs > 3) ? 4 : cop->rco.nargs + 1, v = cop->rco.val;
-	 i >= 0; --i) {
+	 i > 0; --i) {
 	i_del_value(v++);
     }
 }
@@ -1620,7 +1619,7 @@ register copatch *cop;
 
     cop->type = COP_REMOVE;
     for (i = (cop->aco.nargs > 3) ? 4 : cop->aco.nargs + 1, v = cop->aco.val;
-	 i >= 0; --i) {
+	 i > 0; --i) {
 	i_del_value(v++);
     }
 }
@@ -1827,6 +1826,7 @@ Int level;
     p->alocal.arr = (array *) NULL;
     p->alocal.data = data;
     p->alocal.state = AR_ALOCAL;
+    p->coptab = data->values->coptab;
 
     if (data->values->arrays != (arrref *) NULL) {
 	register arrref *a, *b;
@@ -1847,7 +1847,6 @@ Int level;
 	p->arrays = (arrref *) NULL;
     }
     p->achunk = (abchunk *) NULL;
-    p->coptab = data->values->coptab;
 
     p->prev = data->values;
     data->values = p;
@@ -3605,11 +3604,11 @@ register dataspace *data;
      */
     obj = data->obj;
     update = obj->update;
-    obj = &otable[obj->u_master];
-    old = &otable[obj->prev];
+    obj = &OBJ(obj->u_master);
+    old = &OBJ(obj->prev);
     if (O_UPGRADING(obj)) {
 	/* in the middle of an upgrade */
-	old = &otable[old->prev];
+	old = &OBJ(old->prev);
     }
     nvar = data->ctrl->nvariables + 1;
     vmap = o_control(old)->vmap;
@@ -3620,7 +3619,7 @@ register dataspace *data;
 	m1 = vmap;
 	vmap = ALLOCA(unsigned short, n = nvar);
 	do {
-	    old = &otable[old->prev];
+	    old = &OBJ(old->prev);
 	    m2 = o_control(old)->vmap;
 	    while (n > 0) {
 		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
@@ -3991,7 +3990,7 @@ register object *obj;
 	sinherits = ALLOCA(sinherit, n);
 	size += d_conv((char *) sinherits, s, si_layout, (Uint) n, size);
 	do {
-	    inherits->obj = &otable[sinherits->oindex];
+	    inherits->obj = &OBJ(sinherits->oindex);
 	    inherits->funcoffset = sinherits->funcoffset;
 	    inherits->varoffset = sinherits->varoffset & ~PRIV;
 	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
@@ -4072,7 +4071,7 @@ register Uint n, *ctab;
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->u.objcnt == otable[v->oindex].count) {
+	    if (v->u.objcnt == OBJ(v->oindex).count) {
 		/* fix object count */
 		v->u.objcnt = ctab[v->oindex];
 	    } else {
@@ -4191,8 +4190,7 @@ Uint *counttab;
 
     AFREE(s);
 
-    if (!(obj->flags & O_MASTER) && obj->update != otable[obj->u_master].update)
-    {
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master).update) {
 	/* handle object upgrading right away */
 	data->ctrl = o_control(obj);
 	data->ctrl->ndata++;

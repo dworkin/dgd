@@ -1272,8 +1272,8 @@ register value *v;
     register control *ctrl;
     object *prog;
 
-    prog = (obj->flags & O_MASTER) ? obj : &otable[obj->u_master];
-    ctrl = (O_UPGRADING(prog)) ? otable[prog->prev].ctrl : o_control(prog);
+    prog = (obj->flags & O_MASTER) ? obj : &OBJ(obj->u_master);
+    ctrl = (O_UPGRADING(prog)) ? OBJ(prog->prev).ctrl : o_control(prog);
 
     switch (idx) {
     case 0:	/* O_COMPILETIME */

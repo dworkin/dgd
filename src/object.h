@@ -30,6 +30,8 @@ struct _object_ {
 
 # define OBJ_LAYOUT		"xccuuuiiippdd"
 
+# define OBJ(i)			(otable[(i)])
+
 # define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 

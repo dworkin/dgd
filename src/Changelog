@@ -1325,3 +1325,4 @@ DGD 1.1
    value struct.
  - String constants for string switches were generated in the wrong order.
  - Completed callout undo (atomic functions).
+ - Fixed a reference counting bug in callout undo.
