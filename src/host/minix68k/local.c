@@ -1,4 +1,3 @@
-# define INCLUDE_TIME
 # include "dgd.h"
 # include <sgtty.h>
 # include <signal.h>
@@ -24,10 +23,7 @@ int arg;
  */
 void host_init()
 {
-    time_t t;
-
-    time(&t);
-    seed((long) t);
+    seed(P_time());
     ioctl(0, TIOCGETP, &tty);
     tty.sg_flags |= CBREAK;
     ioctl(0, TIOCSETP, &tty);

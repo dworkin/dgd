@@ -1,4 +1,3 @@
-# define INCLUDE_TIME
 # include "lex.h"
 # include "macro.h"
 # include "token.h"
@@ -24,7 +23,7 @@ void special_define()
     mc_define("__DATE__", (char *) NULL, -1);
     mc_define("__TIME__", (char *) NULL, -1);
 
-    ts = _ctime(_time());
+    ts = P_ctime(P_time());
     sprintf(datestr, "\"%.6s %.4s\"", ts + 4, ts + 20);
     sprintf(timestr, "\"%.8s\"", ts + 11);
 }
