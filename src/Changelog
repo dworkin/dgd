@@ -1500,3 +1500,5 @@ DGD 1.3
    part of a different product line.
  - Garbage collection made less aggressive.
  - Fixed several bugs in error handling.
+ - A better fix for errors in atomic code, in combination with multi-level
+   catches.

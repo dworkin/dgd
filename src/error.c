@@ -18,6 +18,7 @@ typedef struct _context_ {
 
 static context firstcontext;		/* bottom context */
 static context *econtext;		/* current error context */
+static context *atomicec;		/* first context beyond atomic */
 static string *errstr;			/* current error string */
 
 /*
@@ -106,7 +107,6 @@ string *str;
 {
     jmp_buf env;
     register context *e;
-    frame *f;
     int offset;
     ec_ftn handler;
 
@@ -122,25 +122,38 @@ string *str;
     }
 
     e = econtext;
-    f = e->f;
     offset = e->offset;
     memcpy(&env, &e->env, sizeof(jmp_buf));
 
-    cframe = i_restore(cframe, f->level);
-    do {
-	if (e->handler != (ec_ftn) NULL) {
-	    handler = e->handler;
-	    e->handler = (ec_ftn) ec_handler;
-	    (*handler)(cframe, e->f->depth);
-	    break;
-	}
-	e = e->next;
-    } while (e != (context *) NULL && f->level == e->f->level);
+    if (atomicec == (context *) NULL || atomicec == e) {
+	do {
+	    if (cframe->level != e->f->level) {
+		if (atomicec == (context *) NULL) {
+		    i_atomic_error(cframe, e->f->level);
+		    if (e != econtext) {
+			atomicec = e;
+			break;	/* handle rollback later */
+		    }
+		}
+
+		cframe = i_restore(cframe, e->f->level);
+		atomicec = (context *) NULL;
+	    }
+
+	    if (e->handler != (ec_ftn) NULL) {
+		handler = e->handler;
+		e->handler = (ec_ftn) ec_handler;
+		(*handler)(cframe, e->f->depth);
+		break;
+	    }
+	    e = e->next;
+	} while (e != (context *) NULL);
+    }
 
     if (cframe->rlim != econtext->rlim) {
 	i_set_rlimits(cframe, econtext->rlim);
     }
-    cframe = i_set_sp(cframe, f->fp - offset);
+    cframe = i_set_sp(cframe, econtext->f->fp - offset);
     cframe->rlim = econtext->rlim;
     ec_pop();
     longjmp(env, 1);

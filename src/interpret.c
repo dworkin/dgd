@@ -2469,6 +2469,29 @@ Int depth;
 }
 
 /*
+ * NAME:	interpret->atomic_error()
+ * DESCRIPTION:	handle error in atomic code
+ */
+void i_atomic_error(ftop, level)
+register frame *ftop;
+Int level;
+{
+    register frame *f;
+
+    for (f = ftop; f->level != level; f = f->prev) ;
+
+    PUSH_STRVAL(ftop, errorstr());
+    PUSH_INTVAL(ftop, f->depth);
+    PUSH_INTVAL(ftop, i_get_ticks(ftop));
+    if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
+	message("Error within atomic_error:\012");	/* LF */
+	message((char *) NULL);
+    } else {
+	i_del_value(ftop->sp++);
+    }
+}
+
+/*
  * NAME:	interpret->restore()
  * DESCRIPTION:	restore state to given level
  */
@@ -2479,27 +2502,16 @@ Int level;
     register frame *f;
 
     for (f = ftop; f->level != level; f = f->prev) ;
-    if (f != ftop) {
-	PUSH_STRVAL(ftop, errorstr());
-	PUSH_INTVAL(ftop, f->depth);
-	PUSH_INTVAL(ftop, i_get_ticks(ftop));
-	if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
-	    message("Error within atomic_error:\012");	/* LF */
-	    message((char *) NULL);
-	} else {
-	    i_del_value(ftop->sp++);
-	}
 
-	if (f->rlim != ftop->rlim) {
-	    i_set_rlimits(ftop, f->rlim);
-	}
-	if (!f->rlim->noticks) {
-	    f->rlim->ticks *= 2;
-	}
-	i_set_sp(ftop, f->sp);
-	d_discard_plane(ftop->level);
-	o_discard_plane();
+    if (f->rlim != ftop->rlim) {
+	i_set_rlimits(ftop, f->rlim);
     }
+    if (!f->rlim->noticks) {
+	f->rlim->ticks *= 2;
+    }
+    i_set_sp(ftop, f->sp);
+    d_discard_plane(ftop->level);
+    o_discard_plane();
 
     return f;
 }
