@@ -1,6 +1,6 @@
 extern void	 c_init		P((char*, char*, char*, char**, bool));
 extern object	*c_compile	P((char*));
-extern bool	 c_autodriver	P((void));
+extern int	 c_autodriver	P((void));
 
 extern bool  c_inherit		P((char*, node*));
 extern void  c_global		P((unsigned short, unsigned short, node*));
