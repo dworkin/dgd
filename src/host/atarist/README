@@ -1,0 +1,7 @@
+   To compile DGD on the Atari ST, you'll need MiNT and gcc.  Copy Makefile
+to the src directory, and each Makefile.dir to the appropriate dir -- then
+type "make" in the src directory to make a.out, or "make debug" to make
+a symbol file for gdb as well.
+   The binary created is a single-user version of DGD, which works with
+MiNT, and hopefully with TOS as well (though on my ST, which has TOS 1.00,
+all file I/O usually fails after a while -- I don't know why).
