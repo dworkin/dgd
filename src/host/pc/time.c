@@ -61,13 +61,14 @@ char *P_ctime(char *buf, Uint t)
 static struct _timeb timeout;
 
 /*
- * NAME:        P->alarm()
- * DESCRIPTION: set the timeout to <delay> seconds in the future
+ * NAME:        P->timer()
+ * DESCRIPTION: set the timer to go off at some time in the future, or disable
+ *		it
  */
-void P_alarm(unsigned int delay)
+void P_timer(Uint t, unsigned int mtime)
 {
-    _ftime(&timeout);
-    timeout.time += delay;
+    timeout.time = t;
+    timeout.millitm = mtime;
 }
 
 /*
@@ -78,7 +79,10 @@ bool P_timeout(void)
 {
     struct _timeb t;
 
+    if (timeout.time == 0) {
+	return FALSE;
+    }
     _ftime(&t);
-    return (t.time >= timeout.time && 
-	    (t.time > timeout.time || t.millitm >= timeout.millitm));
+    return (t.time > timeout.time || 
+	    (t.time == timeout.time && t.millitm >= timeout.millitm));
 }
