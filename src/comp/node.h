@@ -28,11 +28,13 @@ typedef struct _node_ {
 
 # define F_CONST	0x01	/* constant expression */
 # define F_SIDEFX	0x02	/* expression has side effect */
-# define F_ENTRY	0x04	/* statement has case/default entry */
+# define F_ENTRY	0x04	/* (first) statement has case/default entry */
 # define F_REACH	0x08	/* statement block has case/default entry */
 # define F_BREAK	0x10	/* break */
-# define F_CONT		0x20	/* continue */
+# define F_CONTINUE	0x20	/* continue */
 # define F_RETURN	0x40	/* return */
+# define F_END		(F_BREAK | F_CONTINUE | F_RETURN)
+# define F_FLOW		(F_ENTRY | F_REACH | F_END)
 
 extern node *node_new	P((unsigned int));
 extern node *node_int	P((Int));

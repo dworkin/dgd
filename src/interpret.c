@@ -1792,8 +1792,10 @@ int funci;
     i_add_ticks(10);
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     if (f.func->class & C_COMPILED) {
+	Uint l;
+
 	/* compiled function */
-	(*pcfunctions[FETCH3U(pc, n)])();
+	(*pcfunctions[FETCH3U(pc, l)])();
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;

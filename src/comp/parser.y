@@ -704,9 +704,9 @@ opt_arg_list
 		{
 		  $$ = $1;
 		  if ($$->type == N_PAIR) {
-		      $$->r.right = node_mon(N_SPREAD, 0, $$->r.right);
+		      $$->r.right = node_mon(N_SPREAD, -1, $$->r.right);
 		  } else {
-		      $$ = node_mon(N_SPREAD, 0, $$);
+		      $$ = node_mon(N_SPREAD, -1, $$);
 		  }
 		}
 	;

@@ -1842,7 +1842,7 @@ register node *n;
 	    code_instr(I_RLIMITS, 0);
 	    code_byte(m->mod);
 	    cg_stmt(m->r.right);
-	    if (!(m->flags & (F_BREAK | F_CONT | F_RETURN))) {
+	    if (!(m->flags & F_END)) {
 		code_instr(I_RETURN, 0);
 	    }
 	    break;
@@ -1863,9 +1863,9 @@ register node *n;
 	    break;
 
 	case N_IF:
-	    if (m->r.right->l.left != (node *) NULL) {
-		if (m->r.right->l.left->type == N_BREAK &&
-		    m->r.right->l.left->mod == 0) {
+	    if (m->r.right->l.left != (node *) NULL &&
+		m->r.right->l.left->mod == 0) {
+		if (m->r.right->l.left->type == N_BREAK) {
 		    jlist = true_list;
 		    true_list = break_list;
 		    cg_cond(m->l.left, TRUE);
@@ -1876,8 +1876,7 @@ register node *n;
 			cg_stmt(m->r.right->r.right);
 		    }
 		    break;
-		} else if (m->r.right->l.left->type == N_CONTINUE &&
-			   m->r.right->l.left->mod == 0) {
+		} else if (m->r.right->l.left->type == N_CONTINUE) {
 		    jlist = true_list;
 		    true_list = continue_list;
 		    cg_cond(m->l.left, TRUE);
@@ -1897,8 +1896,7 @@ register node *n;
 	    if (m->r.right->r.right != (node *) NULL) {
 		/* else */
 		if (m->r.right->l.left != (node *) NULL &&
-		    (m->r.right->l.left->flags & (F_BREAK | F_CONT | F_RETURN)))
-		{
+		    (m->r.right->l.left->flags & F_END)) {
 		    jump_resolve(false_list, here);
 		    false_list = jlist;
 		    cg_stmt(m->r.right->r.right);

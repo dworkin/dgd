@@ -1002,3 +1002,5 @@ DGD 1.1
  - Accept binary connections more quickly.
  - Optimize generated code a little further, particularly generated C code.
  - Fixed possibly bad code generated for breaking out of a catch.
+ - Fixed a problem with ellipsis in calls to functions without prototype.
+ - Improved dead code removal.

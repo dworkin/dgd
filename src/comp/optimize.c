@@ -151,9 +151,9 @@ node **m;
     n = *m;
     if (n->l.left->type != n->r.right->type) {
 	if (n->type == N_EQ) {
-	    node_toint(n, FALSE);
+	    node_toint(n, (Int) FALSE);
 	} else if (n->type == N_NE) {
-	    node_toint(n, TRUE);
+	    node_toint(n, (Int) TRUE);
 	} else {
 	    return 2;	/* runtime error expected */
 	}
@@ -233,7 +233,7 @@ node **m;
 	break;
 
     case N_EQ:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) == 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) == 0));
 	break;
 
     case N_EQ_INT:
@@ -241,7 +241,7 @@ node **m;
 	break;
 
     case N_GE:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) >= 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) >= 0));
 	break;
 
     case N_GE_INT:
@@ -249,7 +249,7 @@ node **m;
 	break;
 
     case N_GT:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) > 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) > 0));
 	break;
 
     case N_GT_INT:
@@ -257,7 +257,7 @@ node **m;
 	break;
 
     case N_LE:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) <= 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) <= 0));
 	break;
 
     case N_LE_INT:
@@ -269,7 +269,7 @@ node **m;
 	break;
 
     case N_LT:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) < 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) < 0));
 	break;
 
     case N_LT_INT:
@@ -292,7 +292,7 @@ node **m;
 	break;
 
     case N_NE:
-	node_toint(n->l.left, (flt_cmp(&f1, &f2) != 0));
+	node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) != 0));
 	break;
 
     case N_NE_INT:
@@ -395,7 +395,7 @@ register node *n;
 
     switch (n->type) {
     case N_INT:
-	node_toint(n, (n->l.number == 0));
+	node_toint(n, (Int) (n->l.number == 0));
 	return n;
 
     case N_FLOAT:
@@ -1118,7 +1118,7 @@ static bool opt_ctest(n)
 register node *n;
 {
     if (n->type != N_INT) {
-	node_toint(n, (n->type != T_FLOAT || !NFLT_ISZERO(n)));
+	node_toint(n, (Int) (n->type != T_FLOAT || !NFLT_ISZERO(n)));
     }
     return (n->l.number != 0);
 }
@@ -1660,19 +1660,37 @@ register node *n;
 	case N_IF:
 	    m->r.right->l.left = opt_skip(m->r.right->l.left);
 	    m->r.right->r.right = opt_skip(m->r.right->r.right);
-	    if (m->r.right->l.left != (node *) NULL ||
-		m->r.right->r.right != (node *) NULL) {
+	    if (m->r.right->l.left != (node *) NULL) {
+		if (m->r.right->r.right != (node *) NULL) {
+		    node_toint(m->l.left, (Int) TRUE);
+		} else {
+		    *m = *(m->r.right->l.left);
+		}
+		return n;
+	    } else if (m->r.right->r.right != (node *) NULL) {
+		*m = *(m->r.right->r.right);
+		return n;
+	    }
+	    break;
+
+	case N_CATCH:
+	    m->r.right = opt_skip(m->r.right);
+	    if (m->r.right != (node *) NULL) {
+		*m = *(m->r.right);
 		return n;
 	    }
 	    break;
 
 	case N_PAIR:
-	    if (m->flags & F_REACH) {
+	    if (n->flags & F_REACH) {
 		if (m == n) {
 		    return opt_skip(m);
 		} else {
-		    n->l.left = opt_skip(m);
-		    return n;
+		    m = opt_skip(m);
+		    if (m != (node *) NULL) {
+			n->l.left = m;
+			return n;
+		    }
 		}
 	    }
 	    break;
@@ -1690,164 +1708,209 @@ register node *n;
  * NAME:	optimize->stmt()
  * DESCRIPTION:	optimize a statement
  */
-void opt_stmt(n, depth)
-register node *n;
+node *opt_stmt(first, depth)
+node *first;
 unsigned short *depth;
 {
-    register node *m;
+    register node *n, **m, **prev;
     register unsigned short d;
+    unsigned short d1, d2;
     register int i;
     node *side;
-    unsigned short d1, d2;
+
+
+    if (first == (node *) NULL) {
+	*depth = 0;
+	return (node *) NULL;
+    }
 
     d = 0;
-    while (n != (node *) NULL) {
-	if (n->type == N_PAIR) {
-	    m = n->l.left;
-	    n = n->r.right;
-	} else {
-	    m = n;
-	    n = (node *) NULL;
-	}
+    first;
+    prev = m = &first;
 
-	sidedepth = 0;
-	switch (m->type) {
+    for (;;) {
+	n = ((*m)->type == N_PAIR) ? (*m)->l.left : *m;
+	switch (n->type) {
 	case N_BLOCK:
+	    n->l.left = opt_stmt(n->l.left, &d1);
+	    if (n->l.left == (node *) NULL) {
+		n = (node *) NULL;
+	    }
+	    d = max2(d, d1);
+	    break;
+
 	case N_CASE:
-	    opt_stmt(m->l.left, &d1);
+	    n->l.left = opt_stmt(n->l.left, &d1);
 	    d = max2(d, d1);
 	    break;
 
 	case N_DO:
+	    n->r.right = opt_stmt(n->r.right, &d1);
 	    side_start(&side, depth);
-	    d1 = opt_cond(&m->l.left, FALSE);
-	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
-	    opt_stmt(m->r.right, &d2);
-	    d = max3(d, d1, d2);
+	    d2 = opt_cond(&n->l.left, FALSE);
+	    d2 = max2(d2, side_end(&n->l.left, side, (node **) NULL, 0));
+	    if (opt_const(n->l.left) == 0) {
+		n = n->r.right;
+		d = max2(d, d1);
+	    } else {
+		d = max3(d, d1, d2);
+	    }
 	    break;
 
 	case N_FOR:
 	    side_start(&side, depth);
-	    d1 = opt_cond(&m->l.left, FALSE);
-	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
-	    i = opt_const(m->l.left);
+	    d1 = opt_cond(&n->l.left, FALSE);
+	    d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
+	    i = opt_const(n->l.left);
 	    if (i == 0) {
-		m->r.right = opt_skip(m->r.right);
-		if (m->r.right == (node *) NULL) {
-		    m->type = N_POP;
-		    opt_stmt(m, &d1);
+		/* never */
+		n->r.right = opt_skip(n->r.right);
+		if (n->r.right == (node *) NULL) {
+		    n->type = N_POP;
+		    n = opt_stmt(n, &d1);
 		    d = max2(d, d1);
 		    break;
 		}
 	    } else if (i > 0) {
-		m->type = N_FOREVER;
-		opt_stmt(m, &d1);
+		/* always */
+		n->type = N_FOREVER;
+		n = opt_stmt(n, &d1);
 		d = max2(d, d1);
 		break;
 	    }
 
-	    opt_stmt(m->r.right, &d2);
+	    n->r.right = opt_stmt(n->r.right, &d2);
 	    d = max3(d, d1, d2);
 	    break;
 
 	case N_FOREVER:
-	    if (m->l.left != (node *) NULL) {
+	    if (n->l.left != (node *) NULL) {
 		side_start(&side, depth);
-		d1 = opt_expr(&m->l.left, TRUE);
+		d1 = opt_expr(&n->l.left, TRUE);
+		d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
 		if (d1 == 0) {
-		    m->l.left = (node *) NULL;
+		    n->l.left = (node *) NULL;
 		}
-		d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
 	    } else {
 		d1 = 0;
 	    }
-	    opt_stmt(m->r.right, &d2);
+	    n->r.right = opt_stmt(n->r.right, &d2);
 	    d = max3(d, d1, d2);
 	    break;
 
 	case N_RLIMITS:
-	    d1 = max2(opt_expr(&m->l.left->l.left, FALSE),
-		      1 + opt_expr(&m->l.left->r.right, FALSE)) + !m->mod;
-	    opt_stmt(m->r.right, &d2);
+	    side_start(&side, depth);
+	    d1 = opt_expr(&n->l.left->l.left, FALSE);
+	    d1 = max2(d1, side_end(&n->l.left->l.left, side, (node **) NULL,
+				   0));
+
+	    side_start(&side, depth);
+	    d2 = opt_expr(&n->l.left->r.right, FALSE);
+	    d2 = max2(d2, side_end(&n->l.left->r.right, side, (node **) NULL,
+				   0));
+
+	    d1 = max2(d1, d2 + 1);
+	    n->r.right = opt_stmt(n->r.right, &d2);
 	    d = max3(d, d1, d2);
 	    break;
 
 	case N_CATCH:
-	    opt_stmt(m->l.left, &d1);
-	    if (m->r.right != (node *) NULL) {
-		opt_stmt(m->r.right, &d2);
-		d2 = max2(d2, 1);
+	    n->l.left = opt_stmt(n->l.left, &d1);
+	    if (n->l.left == (node *) NULL) {
+		n = opt_stmt(opt_skip(n->r.right), &d1);
+		d = max2(d, d1);
 	    } else {
-		d2 = 1;
+		n->r.right = opt_stmt(n->r.right, &d2);
+		d = max3(d, d1, d2);
 	    }
-	    d = max3(d, d1, d2);
 	    break;
 
 	case N_IF:
 	    side_start(&side, depth);
-	    d1 = opt_cond(&m->l.left, FALSE);
-	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
-	    i = opt_const(m->l.left);
-	    if (i == 0) {
-		m->r.right->l.left = opt_skip(m->r.right->l.left);
-	    } else if (i > 0) {
-		m->r.right->r.right = opt_skip(m->r.right->r.right);
-	    }
+	    d1 = opt_cond(&n->l.left, FALSE);
+	    d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
 
-	    if (m->r.right->l.left == (node *) NULL) {
-		if (m->r.right->r.right == (node *) NULL) {
-		    m->type = N_POP;
-		    opt_stmt(m, &d1);
+	    i = opt_const(n->l.left);
+	    if (i == 0) {
+		n->r.right->l.left = opt_skip(n->r.right->l.left);
+	    } else if (i > 0) {
+		n->r.right->r.right = opt_skip(n->r.right->r.right);
+	    }
+	    n->r.right->l.left = opt_stmt(n->r.right->l.left, &d2);
+	    d1 = max2(d1, d2);
+	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d2);
+
+	    if (n->r.right->l.left == (node *) NULL) {
+		if (n->r.right->r.right == (node *) NULL) {
+		    n->type = N_POP;
+		    n = opt_stmt(n, &d1);
 		    d = max2(d, d1);
 		    break;
 		}
-		m->l.left = c_not(m->l.left);
-		m->r.right->l.left = m->r.right->r.right;
-		m->r.right->r.right = (node *) NULL;
+		n->l.left = opt_not(n->l.left);
+		n->r.right->l.left = n->r.right->r.right;
+		n->r.right->r.right = (node *) NULL;
 	    }
-	    opt_stmt(m->r.right->l.left, &d2);
 	    d = max3(d, d1, d2);
-	    opt_stmt(m->r.right->r.right, &d2);
-	    d = max2(d, d2);
 	    break;
 
 	case N_PAIR:
-	    opt_stmt(m, &d1);
+	    n = opt_stmt(n, &d1);
 	    d = max2(d, d1);
 	    break;
 
 	case N_POP:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->l.left, TRUE);
+	    d1 = opt_expr(&n->l.left, TRUE);
+	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
 	    if (d1 == 0) {
-		m->l.left = (node *) NULL;
-	    }
-	    d1 = max2(d1, side_end(&m->l.left, side, (node **) NULL, 0));
-	    if (d1 == 0) {
-		m->type = N_FAKE;
-	    } else {
-		d = max2(d, d1);
+		n = (node *) NULL;
 	    }
 	    break;
 
 	case N_RETURN:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->l.left, FALSE);
-	    d = max3(d, d1, side_end(&m->l.left, side, (node **) NULL, 0));
+	    d1 = opt_expr(&n->l.left, FALSE);
+	    d = max3(d, d1, side_end(&n->l.left, side, (node **) NULL, 0));
 	    break;
 
 	case N_SWITCH_INT:
 	case N_SWITCH_RANGE:
 	case N_SWITCH_STR:
 	    side_start(&side, depth);
-	    d1 = opt_expr(&m->r.right->l.left, FALSE);
-	    d1 = max2(d1, side_end(&m->r.right->l.left, side, (node **) NULL,
+	    d1 = opt_expr(&n->r.right->l.left, FALSE);
+	    d1 = max2(d1, side_end(&n->r.right->l.left, side, (node **) NULL,
 				   0));
-	    opt_stmt(m->r.right->r.right, &d2);
+	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d2);
 	    d = max3(d, d1, d2);
+	    break;
+	}
+
+	if ((*m)->type == N_PAIR) {
+	    if (n == (node *) NULL) {
+		*m = (*m)->r.right;
+	    } else {
+		(*m)->l.left = n;
+		if (n->flags & F_END) {
+		    n = opt_skip((*m)->r.right);
+		    if (n == (node *) NULL) {
+			*m = (*m)->l.left;
+			break;
+		    }
+		    (*m)->r.right = n;
+		}
+		prev = m;
+		m = &(*m)->r.right;
+	    }
+	} else {
+	    *m = n;
+	    if (n == (node *) NULL && prev != m) {
+		*prev = (*prev)->l.left;
+	    }
 	    break;
 	}
     }
 
     *depth = d;
+    return first;
 }

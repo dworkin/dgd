@@ -1243,7 +1243,6 @@ register int state;
     case N_QUEST:
 	if (state == INTVAL) {
 	    cg_iexpr(n);
-	    return;
 	} else {
 	    output("(");
 	    cg_expr(n->l.left, TOPTRUTHVAL);
@@ -1259,7 +1258,7 @@ register int state;
 	    }
 	    output("0)");
 	}
-	break;
+	return;
 
     case N_RANGE:
 	cg_expr(n->l.left, PUSH);
@@ -1841,7 +1840,7 @@ register node *n;
 	    rclist = &rcstart;
 	    output(";\npre_rlimits();\n");
 	    cg_stmt(m->r.right);
-	    if (!(m->r.right->flags & (F_BREAK | F_CONT | F_RETURN))) {
+	    if (!(m->r.right->flags & F_END)) {
 		output("i_set_rllevel(-1);\n");
 	    }
 	    rclist = rcstart.next;
@@ -1863,7 +1862,7 @@ register node *n;
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;
-	    if (!(m->l.left->flags & (F_BREAK | F_CONT | F_RETURN))) {
+	    if (!(m->l.left->flags & F_END)) {
 		output("ec_pop(); post_catch(0);");
 	    }
 	    output("} else {\n");

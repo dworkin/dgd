@@ -908,18 +908,12 @@ register char *proto;
 	} else {
 	    ctrl = (*h)->ohash->obj->ctrl;
 	    proto2 = ctrl->prog + ctrl->funcdefs[(*h)->index].offset;
-	    if ((PROTO_CLASS(proto2) & (C_NOMASK | C_UNDEFINED)) == C_NOMASK) {
-		/*
-		 * attempt to redefine nomask function
-		 */
-		c_error("redeclaration of nomask function %s (/%s)",
-			str->text, (*h)->ohash->chain.name);
-	    } else if ((PROTO_CLASS(proto2) & C_UNDEFINED) &&
-		       !cmp_proto(proto, proto2)) {
+	    if ((PROTO_CLASS(proto2) & C_UNDEFINED) &&
+		!cmp_proto(proto, proto2)) {
 		/*
 		 * declaration does not match inherited prototype
 		 */
-		c_error("declaration does not match prototype of %s (/%s)",
+		c_error("inherited different prototype for %s (/%s)",
 			str->text, (*h)->ohash->chain.name);
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
 		       PROTO_FTYPE(proto2) != T_IMPLICIT &&
@@ -928,6 +922,13 @@ register char *proto;
 		 * there is no point in replacing an identical prototype
 		 */
 		return;
+	    } else if ((PROTO_CLASS(proto2) & (C_NOMASK | C_UNDEFINED)) ==
+								    C_NOMASK) {
+		/*
+		 * attempt to redefine nomask function
+		 */
+		c_error("redeclaration of nomask function %s (/%s)",
+			str->text, (*h)->ohash->chain.name);
 	    }
 
 	    if (!(PROTO_CLASS(proto) & C_PRIVATE) && ctrl->ninherits == 1 &&

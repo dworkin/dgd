@@ -795,7 +795,7 @@ register node *n;
 	n = c_concat(c_exp_stmt(zero), n);
     }
 
-    opt_stmt(n, &size);
+    n = opt_stmt(n, &size);
     prog = cg_function(fname, n, nvars, nparams, size, &size);
     ctrl_dprogram(prog, size);
     node_free();
@@ -840,14 +840,13 @@ register node *n1, *n2;
     if (n1 == (node *) NULL) {
 	return n2;
     } else if (n2 == (node *) NULL ||
-	       ((n1->flags & (F_BREAK | F_CONT | F_RETURN)) &&
-	        !(n2->flags & F_REACH))) {
+	       ((n1->flags & F_END) && !(n2->flags & F_REACH))) {
 	return n1;
     }
 
     n = node_bin(N_PAIR, 0, n1, n2);
-    n->flags |= (n1->flags & F_REACH) |
-		(n2->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN));
+    n->flags |= (n1->flags & (F_ENTRY | F_REACH)) |
+		(n2->flags & (F_REACH | F_END));
     return n;
 }
 
@@ -875,20 +874,35 @@ register node *n1, *n2, *n3;
 
     n1 = node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
     if (n2 != (node *) NULL) {
-	flags1 = n2->flags & (F_BREAK | F_CONT | F_RETURN);
+	flags1 = n2->flags & F_END;
 	n1->flags |= n2->flags & F_REACH;
     } else {
 	flags1 = 0;
     }
     if (n3 != (node *) NULL) {
-	flags2 = n3->flags & (F_BREAK | F_CONT | F_RETURN);
+	flags2 = n3->flags & F_END;
 	n1->flags |= n3->flags & F_REACH;
     } else {
 	flags2 = 0;
     }
 
-    n1->flags |= (flags1 < flags2) ? flags1 : flags2;
+    if (flags1 != 0 && flags2 != 0) {
+	n1->flags |= flags1 | flags2;
+    }
     return n1;
+}
+
+/*
+ * NAME:	compile->block()
+ * DESCRIPTION:	create a scope block for break or continue
+ */
+static node *c_block(n, type, flags)
+node *n;
+int type, flags;
+{
+    n = node_mon(N_BLOCK, type, n);
+    n->flags |= n->l.left->flags & F_FLOW & ~flags;
+    return n;
 }
 
 /*
@@ -907,10 +921,7 @@ void c_loop()
 static node *c_reloop(n)
 node *n;
 {
-    if (thisloop->cont) {
-	n = node_mon(N_BLOCK, N_CONTINUE, n);
-    }
-    return n;
+    return (thisloop->cont) ? c_block(n, N_CONTINUE, F_END) : n;
 }
 
 /*
@@ -921,7 +932,7 @@ static node *c_endloop(n)
 node *n;
 {
     if (thisloop->brk) {
-	n = node_mon(N_BLOCK, N_BREAK, n);
+	n = c_block(n, N_BREAK, F_BREAK);
     }
     thisloop = loop_del(thisloop);
     return n;
@@ -934,11 +945,11 @@ node *n;
 node *c_do(n1, n2)
 register node *n1, *n2;
 {
-    n1 = c_endloop(node_bin(N_DO, 0, n1, c_reloop(n2)));
+    n1 = node_bin(N_DO, 0, n1, n2 = c_reloop(n2));
     if (n2 != (node *) NULL) {
-	n1->flags |= n2->flags & (F_ENTRY | F_REACH);
+	n1->flags |= n2->flags & F_FLOW;
     }
-    return n1;
+    return c_endloop(n1);
 }
 
 /*
@@ -948,11 +959,11 @@ register node *n1, *n2;
 node *c_while(n1, n2)
 register node *n1, *n2;
 {
-    n1 = c_endloop(node_bin(N_FOR, 0, n1, c_reloop(n2)));
+    n1 = node_bin(N_FOR, 0, n1, c_reloop(n2));
     if (n2 != (node *) NULL) {
-	n1->flags |= n2->flags & F_REACH;
+	n1->flags |= n2->flags & F_FLOW & ~(F_ENTRY | F_RETURN);
     }
-    return n1;
+    return c_endloop(n1);
 }
 
 /*
@@ -966,13 +977,13 @@ node *n1, *n3;
     if (n4 != (node *) NULL) {
 	n4 = c_reloop(n4);
     }
-    n2 = c_concat(n1,
-		  c_endloop(node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
-			    0, n2, c_concat(n4, n3))));
+    n2 = node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
+		  0, n2, c_concat(n4, n3));
     if (n4 != (node *) NULL) {
-	n2->flags = n4->flags & F_REACH;
+	n2->flags = n4->flags & F_FLOW & ~(F_ENTRY | F_RETURN);
     }
-    return n2;
+
+    return c_concat(n1, c_endloop(n2));
 }
 
 /*
@@ -993,10 +1004,6 @@ node *n1, *n2, *n3;
 {
     --nesting;
 
-    if (n3 == (node *) NULL) {
-	return (node *) NULL;
-    }
-
     if (strcmp(current->file, driver_object) == 0 ||
 	strcmp(current->file, auto_object) == 0) {
 	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
@@ -1015,7 +1022,9 @@ node *n1, *n2, *n3;
 	i_del_value(sp++);
     }
 
-    n1->flags |= n3->flags & (F_BREAK | F_CONT | F_RETURN);
+    if (n3 != (node *) NULL) {
+	n1->flags |= n3->flags & F_END;
+    }
     return n1;
 }
 
@@ -1048,15 +1057,21 @@ register node *n1, *n2;
     register int flags1, flags2;
 
     n = node_bin(N_CATCH, 0, n1, n2);
-    flags1 = n1->flags & (F_BREAK | F_CONT | F_RETURN);
-    if (n2 == (node *) NULL) {
-	n->flags = flags1;
+    if (n1 != (node *) NULL) {
+	flags1 = n1->flags & F_END;
     } else {
-	flags2 = n2->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
-	flags1 |= flags2 & F_REACH;
-	n->flags = (flags1 < flags2) ? flags1 : flags2;
+	flags1 = 0;
+    }
+    if (n2 != (node *) NULL) {
+	n->flags |= n2->flags & F_REACH;
+	flags2 = n2->flags & F_END;
+    } else {
+	flags2 = 0;
     }
 
+    if (flags1 != 0 && flags2 != 0) {
+	n->flags |= flags1 | flags2;
+    }
     return n;
 }
 
@@ -1141,9 +1156,9 @@ node *expr, *stmt;
 		     * enclose the break statement with a proper block
 		     */
 		    stmt = c_concat(stmt, node_mon(N_BREAK, 0, (node *) NULL));
-		    stmt = node_mon(N_BLOCK, N_BREAK,
-				    node_bin(N_FOREVER, 0, (node *) NULL,
-					     stmt));
+		    stmt = node_bin(N_FOREVER, 0, (node *) NULL, stmt);
+		    stmt->flags |= stmt->r.right->flags & F_FLOW;
+		    stmt = c_block(stmt, N_BREAK, F_BREAK);
 		}
 		n = c_concat(c_exp_stmt(expr), stmt);
 	    }
@@ -1273,7 +1288,7 @@ node *expr, *stmt;
 	    }
 
 	    if (switch_list->brk) {
-		stmt = node_mon(N_BLOCK, N_BREAK, stmt);
+		stmt = c_block(stmt, N_BREAK, F_BREAK);
 	    }
 	    n = node_bin(type, size, n, node_bin(N_PAIR, sz, expr, stmt));
 	}
@@ -1432,7 +1447,7 @@ node *c_continue()
     thisloop->cont = TRUE;
 
     n = node_mon(N_CONTINUE, nesting - thisloop->nesting, (node *) NULL);
-    n->flags |= F_CONT;
+    n->flags |= F_CONTINUE;
     return n;
 }
 
@@ -1493,7 +1508,7 @@ register node *n;
 
     block_del();
     if (n != (node *) NULL && n->type == N_PAIR) {
-	flags = n->flags & (F_REACH | F_BREAK | F_CONT | F_RETURN);
+	flags = n->flags & (F_REACH | F_END);
 	n = revert_list(n);
 	n->flags |= flags | (n->l.left->flags & F_ENTRY);
     }
@@ -1509,17 +1524,13 @@ node *c_flookup(n, typechecked)
 register node *n;
 int typechecked;
 {
-    if (strcmp(n->l.string->text, "catch") == 0) {
-	return node_mon(N_CATCH, T_STRING, n);
-    } else {
-	char *proto;
-	long call;
+    char *proto;
+    long call;
 
-	proto = ctrl_fcall(n->l.string, &call, typechecked);
-	n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		      node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
-	return n;
-    }
+    proto = ctrl_fcall(n->l.string, &call, typechecked);
+    n->r.right = (proto == (char *) NULL) ? (node *) NULL :
+		  node_fcall(PROTO_FTYPE(proto), proto, (Int) call);
+    return n;
 }
 
 /*
@@ -1662,8 +1673,6 @@ node *args;
 		(*arg)->mod = nargs-- - n;
 		/* KFCALL => KFCALL_LVAL, IKFCALL => IKFCALL_LVAL */
 		func->r.number |= (long) KFCALL_LVAL << 24;
-	    } else {
-		(*arg)->mod = (unsigned short) -1;
 	    }
 	    t = (*arg)->l.left->mod;
 	    if (t != T_MIXED) {
