@@ -2,8 +2,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 
 # define ARR_CHUNK	128
 
@@ -86,7 +86,6 @@ static array *arr_alloc(size)
 unsigned short size;
 {
     register array *a;
-    register value *v;
 
     if (flist != (array *) NULL) {
 	/* from free list */

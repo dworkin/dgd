@@ -3,8 +3,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "call_out.h"
 
 # define CIRCBUF_SIZE	64		/* circular buffer size, power of 2 */
