@@ -759,16 +759,14 @@ register bool pop;
 	    }
 	    break;
 
-	case LFCALL:
-	    code_instr(I_CALL_LFUNC, n->line);
-	    code_byte((int) (n->r.number >> 16));
-	    code_word((int) n->r.number);
-	    code_byte(i);
-	    break;
-
 	case DFCALL:
-	    code_instr(I_CALL_DFUNC, n->line);
-	    code_word((int) n->r.number);
+	    if (((n->r.number >> 8) & 0xff) == 0) {
+		code_instr(I_CALL_AFUNC, n->line);
+		code_byte((int) n->r.number);
+	    } else {
+		code_instr(I_CALL_DFUNC, n->line);
+		code_word((int) n->r.number);
+	    }
 	    code_byte(i);
 	    break;
 
