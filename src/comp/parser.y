@@ -839,7 +839,8 @@ register node *n, *type;
 
 	    case N_STR:
 		/* cast string to int */
-		i = strtol(n->l.string->text, &p, 10);
+		p = n->l.string->text;
+		i = strtoint(&p);
 		if (p == n->l.string->text + n->l.string->len) {
 		    return node_int(i);
 		} else {

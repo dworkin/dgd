@@ -43,7 +43,7 @@ register vars *v;
 register char *option;
 {
     register char *val;
-    register int i;
+    register Int i;
 
     if (strncmp(option, "no", 2) == 0) {
 	option += 2;
@@ -63,8 +63,9 @@ register char *option;
 	    } else {
 		char *p;
 
-		i = strtol(val, &p, 10);
-		if (i < 0 || val == p) {
+		p = val;
+		i = strtoint(&p);
+		if (val == p || i < 0) {
 		    error("Bad numeric value for option \"%s\"", v->name);
 		}
 		v->val = i;

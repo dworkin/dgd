@@ -587,7 +587,8 @@ value *val;
 {
     char *p;
 
-    PUT_INTVAL(val, strtol(buf, &p, 10));
+    p = buf;
+    PUT_INTVAL(val, strtoint(&p));
     if (p == buf) {
 	restore_error(x, "digit expected");
     }
@@ -610,8 +611,9 @@ register value *val;
     xfloat flt;
     bool isfloat;
 
-    PUT_INTVAL(val, strtol(q = buf, &buf, 10));
-    if (q == buf) {
+    q = buf;
+    PUT_INTVAL(val, strtoint(&buf));
+    if (buf == q) {
 	restore_error(x, "digit expected");
     }
 

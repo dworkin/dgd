@@ -590,7 +590,12 @@ int nargs;
 	case 'd':
 	    /* %d */
 	    x = s;
-	    i = strtol(s, &s, 10);
+	    while (slen != 0 && *x == ' ') {
+		x++;
+		--slen;
+	    }
+	    s = x;
+	    i = strtoint(&s);
 	    if (s == x) {
 		goto no_match;
 	    }
@@ -610,6 +615,11 @@ int nargs;
 	case 'f':
 	    /* %f */
 	    x = s;
+	    while (slen != 0 && *x == ' ') {
+		x++;
+		--slen;
+	    }
+	    s = x;
 	    if (!flt_atof(&s, &flt) || s == x) {
 		goto no_match;
 	    }

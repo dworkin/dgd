@@ -1679,7 +1679,8 @@ register frame *f;
 	Int i;
 
 	/* from string */
-	i = strtol(f->sp->u.string->text, &p, 10);
+	p = f->sp->u.string->text;
+	i = strtoint(&p);
 	if (p != f->sp->u.string->text + f->sp->u.string->len) {
 	    error("String cannot be converted to int");
 	}

@@ -94,3 +94,6 @@ extern void (*ext_destruct)	P((object*));
 extern bool (*ext_funcall)	P((frame*, int, value*, char*));
 extern void (*ext_cleanup)	P((void));
 extern void (*ext_finish)	P((void));
+
+/* utility functions */
+extern Int strtoint		P((char**));

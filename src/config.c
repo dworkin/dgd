@@ -1628,3 +1628,38 @@ register object *obj;
 
     return a;
 }
+
+
+/*
+ * NAME:	strtoint()
+ * DESCRIPTION:	retrieve an Int from a string (utility function)
+ */
+Int strtoint(str)
+char **str;
+{
+    register char *p;
+    register Int i;
+    Int sign;
+
+    p = *str;
+    if (*p == '-') {
+	p++;
+	sign = -1;
+    } else {
+	sign = 1;
+    }
+
+    i = 0;
+    while (isdigit(*p)) {
+	if ((Uint) i > (Uint) 214748364L) {
+	    return 0;
+	}
+	i = i * 10 + *p++ - '0';
+	if (i < 0 && ((Uint) i != (Uint) 0x80000000L || sign > 0)) {
+	    return 0;
+	}
+    }
+
+    *str = p;
+    return sign * i;
+}
