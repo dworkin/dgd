@@ -920,13 +920,17 @@ void conn_block(connection *conn, int flag)
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
-int conn_select(int wait)
+int conn_select(Uint t, unsigned int mtime)
 {
     long ticks;
     bool stop;
     connection *conn, *next, **hash;
 
-    ticks = TickCount() + wait * 60;
+    if (mtime != 0xffffL) {
+	ticks = TickCount() + t * 60 + mtime * 100L / 1667;
+    } else {
+	ticks = 0x7fffffffL;
+    }
     stop = FALSE;
     do {
 	getevent();
@@ -985,7 +989,7 @@ int conn_select(int wait)
 	if (conn != NULL && conn->sflags == TCP_OPEN) {
 	    return 1;	/* new binary connection */
 	}
-    } while (TickCount() - ticks < 0);
+    } while (ticks - TickCount() > 0);
 
     return 0;
 }

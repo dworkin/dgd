@@ -3,6 +3,8 @@
 # include "dgd.h"
 
 static unsigned long timediff;
+static unsigned long timeoffset;
+static long timeout;
 
 /*
  * NAME:	tminit()
@@ -13,8 +15,11 @@ void tminit(void)
     static DateTimeRec ubirth = {
 	1970, 1, 1, 0, 0, 0, 0
     };
+    long t;
 
     Date2Secs(&ubirth, &timediff);
+    GetDateTime(&t);
+    timeoffset = t - timediff - TickCount() / 60;
 }
 
 /*
@@ -33,10 +38,21 @@ Uint m2utime(long t)
  */
 Uint P_time(void)
 {
-    unsigned long t;
+    return timeoffset + TickCount() / 60;
+}
 
-    GetDateTime(&t);
-    return (Uint) (t - timediff);
+/*
+ * NAME:	P->mtime()
+ * DESCRIPTION:	return the current time in milliseconds
+ */
+Uint P_mtime(milli)
+unsigned short *milli;
+{
+    long t;
+
+    t = TickCount();
+    *milli = t % 60 * 1667 / 100;
+    return timeoffset + t / 60;
 }
 
 /*
@@ -77,22 +93,31 @@ char *P_ctime(char *buf, Uint t)
 }
 
 
-static long ticks;
-
 /*
- * NAME:	P->alarm()
- * DESCRIPTION:	set the amarm
+ * NAME:	P->timer()
+ * DESCRIPTION:	set the timer to go off at some time in the future, or disable
+ *		it
  */
-void P_alarm(unsigned int sec)
+void P_timer(Uint t, unsigned int mtime)
 {
-    ticks = TickCount() + 60 * sec;
+    if (t == 0) {
+	timeout = 0;
+    } else {
+	timeout = t - timeoffset + mtime * 100L / 1667;
+	if (timeout < 0) {
+	    timeout = 0;
+	}
+    }
 }
 
 /*
  * NAME:	P->timeout()
- * DESCRIPTION:	return TRUE if the alarm has timed out, FALSE otherwise
+ * DESCRIPTION:	return TRUE if there is a timeout, FALSE otherwise
  */
 bool P_timeout(void)
 {
-    return (TickCount() - ticks >= 0);
+    if (timeout == 0) {
+	return FALSE;
+    }
+    return (timeout - TickCount() <= 0);
 }

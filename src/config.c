@@ -815,7 +815,7 @@ static bool conf_includes()
     cputs("# define ST_NOBJECTS\t14\t/* # objects in the system */\012");
     cputs("# define ST_COTABSIZE\t15\t/* callouts table size */\012");
     cputs("# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
-    cputs("# define ST_NCOLONG\t17\t/* # long-term callouts */\012");
+    cputs("# define ST_NCOLONG\t17\t/* # long-term & millisecond callouts */\012");
     cputs("# define ST_UTABSIZE\t18\t/* user table size */\012");
     cputs("# define ST_ETABSIZE\t19\t/* editor table size */\012");
     cputs("# define ST_STRSIZE\t20\t/* max string size */\012");
