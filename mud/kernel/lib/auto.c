@@ -1,7 +1,7 @@
 # include <kernel/kernel.h>
 # include <kernel/objreg.h>
-# include <kernel/access.h>
 # include <kernel/rsrc.h>
+# include <kernel/access.h>
 # include <kernel/user.h>
 # include <status.h>
 # include <type.h>
@@ -1069,7 +1069,7 @@ static mixed **get_dir(string path)
 {
     string oname, *names, dir;
     mixed **list, *olist;
-    int i, sz, len;
+    int i, sz;
 
     CHECKARG(path, 1, "get_dir");
     if (!this_object()) {
@@ -1092,8 +1092,8 @@ static mixed **get_dir(string path)
 	/* lib objects */
 	for (i = sz; --i >= 0; ) {
 	    path = dir + "/" + names[i];
-	    if ((len=strlen(path)) >= 2 && path[len - 2 ..] == ".c" &&
-		::find_object(path[.. len - 3])) {
+	    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+		::find_object(path[.. sz - 3])) {
 		olist[i] = TRUE;
 	    }
 	}
@@ -1103,13 +1103,61 @@ static mixed **get_dir(string path)
 	    object obj;
 
 	    path = dir + "/" + names[i];
-	    if ((len=strlen(path)) >= 2 && path[len - 2 ..] == ".c" &&
-		(obj=::find_object(path[.. len - 3]))) {
+	    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+		(obj=::find_object(path[.. sz - 3]))) {
 		olist[i] = obj;
 	    }
 	}
     }
     return list + ({ olist });
+}
+
+/*
+ * NAME:	file_info()
+ * DESCRIPTION:	get info for a single file
+ */
+static mixed *file_info(string path)
+{
+    string name, *files;
+    mixed *info;
+    int i, sz;
+    object obj;
+
+    CHECKARG(path, 1, "file_info");
+    if (!this_object()) {
+	error("Access denied");
+    }
+
+    name = object_name(this_object());
+    path = ::find_object(DRIVER)->normalize_path(path, name + "/..", creator);
+    if (creator != "System" &&
+	!::find_object(ACCESSD)->access(name, path, READ_ACCESS)) {
+	error("Access denied");
+    }
+
+    info = ::get_dir(path);
+    files = explode(path, "/");
+    name = files[sizeof(files) - 1];
+    files = info[0];
+    sz = sizeof(files);
+    if (sz <= 1) {
+	if (sz == 0 || files[0] != name) {
+	    return nil;	/* file does not exist */
+	}
+    } else {
+	/* name is a pattern: find in file list */
+	for (i = 0; name != files[i]; ) {
+	    if (++i == sz) {
+		return nil;	/* file does not exist */
+	    }
+	}
+    }
+    info = ({ info[1][i], info[2][i], nil });
+    if ((sz=strlen(path)) >= 2 && path[sz - 2 ..] == ".c" &&
+	(obj=::find_object(path[.. sz - 3]))) {
+	info[2] = (sscanf(path, "%*s/lib/") != 0) ? TRUE : obj;
+    }
+    return info;
 }
 
 /*
