@@ -31,7 +31,8 @@ static void create()
       "events" :	({ -1,  0,    0 }),
       "callouts" :	({ -1,  0,    0 }),
       "stack" :		({ -1,  0,    0 }),
-      "ticks" :		({ -1, 10, 3600 }),
+      "ticks" :		({ -1,  0,    0 }),
+      "tick usage" :	({ -1, 10, 3600 }),
       "filequota" :	({ -1,  0,    0 }),
       "editors" :	({ -1,  0,    0 }),
       "create stack" :	({ -1,  0,    0 }),
@@ -249,7 +250,8 @@ mixed *call_limits(mixed *limits, string owner, int stack, int ticks)
     if (previous_program() == AUTO) {
 	return owners[owner]->call_limits(limits, stack, ticks,
 					  resources["stack"],
-					  resources["ticks"]);
+					  resources["ticks"],
+					  resources["tick usage"]);
     }
 }
 

@@ -16,7 +16,8 @@ static void create(int clone)
     if (clone) {
 	resources = ([
 			"stack" :	({   0, -1, 0 }),
-			"ticks" :	({ 0.0, -1, 0 })
+			"ticks" :	({   0, -1, 0 }),
+			"tick usage" :	({ 0.0, -1, 0 })
 		    ]);
 	rsrcd = find_object(RSRCD);
     }
@@ -214,7 +215,7 @@ static void rsrc_update(float *rsrc, int incr)
  * DESCRIPTION:	return stack & ticks limits
  */
 mixed *call_limits(mixed *limits, int stack, int ticks,
-		   int *rstack, int *rticks)
+		   int *rstack, int *rticks, int *usage)
 {
     if (previous_object() == rsrcd) {
 	int maxstack, maxticks;
@@ -240,15 +241,15 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
 	    mixed *rsrc;
 	    int n;
 
-	    rsrc = resources["ticks"];
-	    if ((n=time()) - (int) rsrc[RSRC_DECAYTIME] >= rticks[GRSRC_PERIOD])
-	    {
+	    rsrc = resources["tick usage"];
+	    if ((n=time()) - (int) rsrc[RSRC_DECAYTIME] >=
+						    usage[GRSRC_PERIOD]) {
 		/* decay resource */
-		decay_rsrc(rsrc, rticks, n);
+		decay_rsrc(rsrc, usage, n);
 	    }
 	    n = rsrc[RSRC_MAX];
 	    if (n < 0) {
-		n = rticks[GRSRC_MAX];
+		n = usage[GRSRC_MAX];
 	    }
 	    if (n >= 0 && (int) rsrc[RSRC_USAGE] >= n >> 1) {
 		maxticks = (int) ((float) maxticks *
@@ -274,7 +275,7 @@ mixed *call_limits(mixed *limits, int stack, int ticks,
 void update_ticks(int ticks)
 {
     if (previous_object() == rsrcd) {
-	call_out("rsrc_update", 0, resources["ticks"], ticks);
+	call_out("rsrc_update", 0, resources["tick usage"], ticks);
     }
 }
 
