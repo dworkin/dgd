@@ -573,7 +573,7 @@ static Uint compress(data, text, size)
 char *data, *text;
 register Uint size;
 {
-    char hashtab[16384];
+    char htab[16384];
     register unsigned short buf, bufsize, x;
     register char *p, *q;
     register Uint cspace;
@@ -584,7 +584,7 @@ register Uint size;
     }
 
     /* clear the hash table */
-    memset(hashtab, '\0', sizeof(hashtab));
+    memset(htab, '\0', sizeof(htab));
 
     buf = bufsize = 0;
     x = 0;
@@ -597,11 +597,11 @@ register Uint size;
     cspace = size - 4;
 
     while (size != 0) {
-        if (hashtab[x] == *p) {
+        if (htab[x] == *p) {
             buf >>= 1;
             bufsize += 1;
         } else {
-            hashtab[x] = *p;
+            htab[x] = *p;
             buf >>= 9;
             buf += 0x0080 + (UCHAR(*p) << 8);
             bufsize += 9;
@@ -633,12 +633,13 @@ register Uint size;
  * NAME:	decompress()
  * DESCRIPTION:	read and decompress data from the swap file
  */
-static char *decompress(sectors, size, offset, dsize)
+static char *decompress(sectors, readv, size, offset, dsize)
 sector *sectors;
+void (*readv) P((char*, sector*, Uint, Uint));
 Uint size, offset;
 Uint *dsize;
 {
-    char buffer[8192], hashtab[16384];
+    char buffer[8192], htab[16384];
     register unsigned short buf, bufsize, x;
     register Uint n;
     register char *p, *q;
@@ -647,13 +648,13 @@ Uint *dsize;
     x = 0;
 
     /* clear the hash table */
-    memset(hashtab, '\0', sizeof(hashtab));
+    memset(htab, '\0', sizeof(htab));
 
     n = sizeof(buffer);
     if (n > size) {
 	n = size;
     }
-    sw_readv(p = buffer, sectors, n, offset);
+    (*readv)(p = buffer, sectors, n, offset);
     size -= n;
     offset += n;
     *dsize = (UCHAR(p[0]) << 24) | (UCHAR(p[1]) << 16) | (UCHAR(p[2]) << 8) |
@@ -679,10 +680,10 @@ Uint *dsize;
 		--n;
 		buf += UCHAR(*p++) << bufsize;
 
-		*q = hashtab[x] = buf >> 1;
+		*q = htab[x] = buf >> 1;
 		buf >>= 9;
 	    } else {
-		*q = hashtab[x];
+		*q = htab[x];
 		buf >>= 1;
 	    }
 	    --bufsize;
@@ -697,7 +698,7 @@ Uint *dsize;
 	if (n > size) {
 	    n = size;
 	}
-	sw_readv(p = buffer, sectors, n, offset);
+	(*readv)(p = buffer, sectors, n, offset);
 	size -= n;
 	offset += n;
     }
@@ -729,7 +730,7 @@ register control *ctrl;
 {
     if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
 	if (ctrl->flags & CTRL_PROGCMP) {
-	    ctrl->prog = decompress(ctrl->sectors, ctrl->progsize,
+	    ctrl->prog = decompress(ctrl->sectors, sw_readv, ctrl->progsize,
 				    ctrl->progoffset, &ctrl->progsize);
 	} else {
 	    ctrl->prog = ALLOC(char, ctrl->progsize);
@@ -768,7 +769,8 @@ unsigned int idx;
 	    if (ctrl->strsize > 0) {
 		/* load strings text */
 		if (ctrl->flags & CTRL_STRCMP) {
-		    ctrl->stext = decompress(ctrl->sectors, ctrl->strsize,
+		    ctrl->stext = decompress(ctrl->sectors, sw_readv,
+					     ctrl->strsize,
 					     ctrl->stroffset +
 					     ctrl->nstrings * sizeof(dstrconst),
 					     &ctrl->strsize);
@@ -879,7 +881,8 @@ register Uint idx;
 	    if (data->strsize > 0) {
 		/* load strings text */
 		if (data->flags & DATA_STRCMP) {
-		    data->stext = decompress(data->sectors, data->strsize,
+		    data->stext = decompress(data->sectors, sw_readv,
+					     data->strsize,
 					     data->stroffset +
 					       data->nstrings * sizeof(sstring),
 					     &data->strsize);
@@ -3192,7 +3195,7 @@ register object *obj;
 	if (header.progsize != 0) {
 	    /* program */
 	    if (header.flags & CMP_TYPE) {
-		ctrl->prog = decompress(s, header.progsize, size,
+		ctrl->prog = decompress(s, sw_dreadv, header.progsize, size,
 					&ctrl->progsize);
 	    } else {
 		ctrl->prog = ALLOC(char, header.progsize);
@@ -3208,7 +3211,7 @@ register object *obj;
 			   (Uint) header.nstrings, size);
 	    if (header.strsize != 0) {
 		if (header.flags & (CMP_TYPE << 2)) {
-		    ctrl->stext = decompress(s, header.strsize, size,
+		    ctrl->stext = decompress(s, sw_dreadv, header.strsize, size,
 					     &ctrl->strsize);
 		} else {
 		    ctrl->stext = ALLOC(char, header.strsize);
@@ -3338,7 +3341,7 @@ Uint *counttab;
 		       size);
 	if (header.strsize != 0) {
 	    if (header.flags & (CMP_TYPE << 2)) {
-		data->stext = decompress(s, header.strsize, size,
+		data->stext = decompress(s, sw_dreadv, header.strsize, size,
 					 &data->strsize);
 	    } else {
 		data->stext = ALLOC(char, header.strsize);
