@@ -2,16 +2,16 @@ NAME
 	write_file - write to a file
 
 SYNOPSIS
-	int write_file(string file, string str)
-	int write_file(string file, string str, int start)
+	varargs int write_file(string file, string str, int offset)
 
 
 DESCRIPTION
-	Write a string to a file.  In the first form, the string is appended
-	to the file, if it exists; otherwise the file is created.  In the
-	second form, the file is written to from the point start, a byte offset
-	from the beginning if positive, or end of the file if negative.  1 is
-	returned if the file could be written to, or 0 otherwise.
+	Write a string to a file.  If the optional third argument is
+	specified and non-zero, write the string at the given offset in
+	the file; otherwise, append to the file.  The offset may be
+	negative to offset backwards from the end of the file.
+	To write a string to the beginning of a file, let the offset be
+	equal to minus the length of the file.
 
 SEE ALSO
 	kfun/editor, kfun/read_file
