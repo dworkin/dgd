@@ -18,7 +18,7 @@ private int hsize, hindex, hmax; /* expression table size and index */
 private string directory;	/* current directory */
 private object driver;		/* driver object */
 
-static object query_user();
+static void message(string str);
 
 /*
  * NAME:	create()
@@ -65,7 +65,7 @@ static nomask int access(string user, string file, int type)
 static add_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Insufficient access granting privileges.\n");
+	message("Insufficient access granting privileges.\n");
     } else {
 	::add_user(user);
     }
@@ -78,7 +78,7 @@ static add_user(string user)
 static remove_user(string user)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Insufficient access granting privileges.\n");
+	message("Insufficient access granting privileges.\n");
     } else {
 	::remove_user(user);
     }
@@ -92,7 +92,7 @@ static set_access(string user, string file, int type)
 {
     if (!access(owner, (type == FULL_ACCESS) ? "/" : file + "/*", FULL_ACCESS))
     {
-	query_user()->message("Insufficient access granting privileges.\n");
+	message("Insufficient access granting privileges.\n");
     } else {
 	::set_access(user, file, type);
     }
@@ -105,7 +105,7 @@ static set_access(string user, string file, int type)
 static set_global_access(string dir, int flag)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Insufficient access granting privileges.\n");
+	message("Insufficient access granting privileges.\n");
     } else {
 	::set_global_access(dir, flag);
     }
@@ -119,7 +119,7 @@ static set_global_access(string dir, int flag)
 static add_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::add_owner(rowner);
     }
@@ -132,7 +132,7 @@ static add_owner(string rowner)
 static remove_owner(string rowner)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::remove_owner(rowner);
     }
@@ -146,7 +146,7 @@ static remove_owner(string rowner)
 static set_rsrc(string name, int max, int decay, int period)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::set_rsrc(name, max, decay, period);
     }
@@ -159,7 +159,7 @@ static set_rsrc(string name, int max, int decay, int period)
 static remove_rsrc(string name)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::remove_rsrc(name);
     }
@@ -172,7 +172,7 @@ static remove_rsrc(string name)
 static rsrc_set_limit(string rowner, string name, int max)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::rsrc_set_limit(rowner, name, max);
     }
@@ -187,7 +187,7 @@ static varargs int rsrc_incr(string rowner, string name, mixed index, int incr,
 			     int force)
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
 	return FALSE;
     } else {
 	return ::rsrc_incr(rowner, name, index, incr, force);
@@ -203,7 +203,7 @@ static object compile_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	query_user()->message(path + ": Permission denied.\n");
+	message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::compile_object(path);
@@ -217,7 +217,7 @@ static object clone_object(string path)
 {
     path = driver->normalize_path(path, directory, owner);
     if (sscanf(path, "/kernel/%*s") != 0 || !access(owner, path, READ_ACCESS)) {
-	query_user()->message(path + ": Permission denied.\n");
+	message(path + ": Permission denied.\n");
 	return 0;
     }
     return ::clone_object(path);
@@ -254,7 +254,7 @@ static int destruct_object(mixed obj)
     if (path && owner != oowner &&
 	((sscanf(path, "/kernel/%*s") != 0 && sscanf(path, "%*s/lib/") == 0) ||
 	 !access(owner, path, WRITE_ACCESS))) {
-	query_user()->message(path + ": Permission denied.\n");
+	message(path + ": Permission denied.\n");
 	return -1;
     }
     return ::destruct_object(obj);
@@ -270,12 +270,12 @@ static varargs mixed read_file(string path, int offset, int size)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, READ_ACCESS)) {
-	query_user()->message(path + ": Access denied.\n");
+	message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::read_file(path, offset, size));
     if (err) {
-	query_user()->message(path + ": " + err + ".\n");
+	message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -292,12 +292,12 @@ static varargs int write_file(string path, string str, int offset)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	query_user()->message(path + ": Access denied.\n");
+	message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::write_file(path, str, offset));
     if (err) {
-	query_user()->message(path + ": " + err + ".\n");
+	message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -314,12 +314,12 @@ static int remove_file(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	query_user()->message(path + ": Access denied.\n");
+	message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::remove_file(path));
     if (err) {
-	query_user()->message(path + ": " + err + ".\n");
+	message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -336,17 +336,17 @@ static int rename_file(string from, string to)
 
     from = driver->normalize_path(from, directory, owner);
     if (!access(owner, from, WRITE_ACCESS)) {
-	query_user()->message(from + ": Access denied.\n");
+	message(from + ": Access denied.\n");
 	return -1;
     }
     to = driver->normalize_path(to, directory, owner);
     if (!access(owner, to, WRITE_ACCESS)) {
-	query_user()->message(to + ": Access denied.\n");
+	message(to + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::rename_file(from, to));
     if (err) {
-	query_user()->message(to + ": " + err + ".\n");
+	message(to + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -376,12 +376,12 @@ static int make_dir(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, WRITE_ACCESS)) {
-	query_user()->message(path + ": Access denied.\n");
+	message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::make_dir(path));
     if (err) {
-	query_user()->message(path + ": " + err + ".\n");
+	message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -398,12 +398,12 @@ static int remove_dir(string path)
 
     path = driver->normalize_path(path, directory, owner);
     if (!access(owner, path, READ_ACCESS)) {
-	query_user()->message(path + ": Access denied.\n");
+	message(path + ": Access denied.\n");
 	return -1;
     }
     err = catch(result = ::remove_dir(path));
     if (err) {
-	query_user()->message(path + ": " + err + ".\n");
+	message(path + ": " + err + ".\n");
 	return -1;
     }
     return result;
@@ -436,7 +436,7 @@ nomask string path_write(string path)
 static swapout()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::swapout();
     }
@@ -449,7 +449,7 @@ static swapout()
 static dump_state()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::dump_state();
     }
@@ -462,7 +462,7 @@ static dump_state()
 static shutdown()
 {
     if (!access(owner, "/", FULL_ACCESS)) {
-	query_user()->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::shutdown();
     }
@@ -552,7 +552,7 @@ static store(object user, mixed value)
     if (hindex == hsize) {
 	hindex = 0;
     }
-    user->message("$" + hindex + " = " + dump_value(value, ([ ])) + "\n");
+    message("$" + hindex + " = " + dump_value(value, ([ ])) + "\n");
     history[hindex] = value;
     if (++hindex > hmax) {
 	hmax = hindex;
@@ -643,7 +643,7 @@ static mixed *parse(object user, string str)
 	    if (sscanf(str, "%d%s", i, str) != 0) {
 		/* $num */
 		if (i < 0 || i >= hmax) {
-		    user->message("Parse error: $num out of range\n");
+		    message("Parse error: $num out of range\n");
 		    return 0;
 		}
 		argv[argc] = history[i];
@@ -660,7 +660,7 @@ static mixed *parse(object user, string str)
 		    tmp = str[.. i - 1];
 		    str = str[i ..];
 		    if (!(argv[argc]=ident(tmp))) {
-			user->message("Parse error: unknown $ident\n");
+			message("Parse error: unknown $ident\n");
 			return 0;
 		    }
 		}
@@ -715,7 +715,7 @@ static mixed *expand(string files, int exist, int full)
 
 	if (!dir) {
 	    if (exist != 0 || files) {
-		query_user()->message(str + ": Access denied.\n");
+		message(str + ": Access denied.\n");
 		all[4]++;
 		continue;
 	    }
@@ -726,7 +726,7 @@ static mixed *expand(string files, int exist, int full)
 	    }
 	} else if ((sz=sizeof(strs=dir[0])) == 0) {
 	    if (exist > 0 || (exist == 0 && files)) {
-		query_user()->message(str + ": No such file or directory.\n");
+		message(str + ": No such file or directory.\n");
 		all[4]++;
 		continue;
 	    }
@@ -760,7 +760,7 @@ static cmd_code(object user, string cmd, string str)
     string err;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <LPC-code>\n");
+	message("Usage: " + cmd + " <LPC-code>\n");
 	return;
     }
 
@@ -783,7 +783,7 @@ static cmd_code(object user, string cmd, string str)
 	err = catch(obj = compile_object(str),
 		    result = obj->exec(user, parsed[1 ..]...));
 	if (err) {
-	    user->message("Error: " + err + ".\n");
+	    message("Error: " + err + ".\n");
 	} else {
 	    store(user, result);
 	}
@@ -806,7 +806,7 @@ static cmd_history(object user, string cmd, string str)
     num = 10;
     if (str && (sscanf(str, "%d%s", num, str) == 0 || num <= 0 ||
 		strlen(str) != 0)) {
-	user->message("Usage: " + cmd + " [<num>]\n");
+	message("Usage: " + cmd + " [<num>]\n");
 	return;
     }
 
@@ -817,7 +817,7 @@ static cmd_history(object user, string cmd, string str)
 	if (i >= hmax) {
 	    i -= hsize;
 	}
-	user->message("$" + i + " = " + dump_value(history[i], ([ ])) + "\n");
+	message("$" + i + " = " + dump_value(history[i], ([ ])) + "\n");
     }
 }
 
@@ -828,13 +828,13 @@ static cmd_history(object user, string cmd, string str)
 static cmd_clear(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
     history = allocate(hsize);
     hindex = hmax = 0;
-    user->message("Code history cleared.\n");
+    message("Code history cleared.\n");
 }
 
 /*
@@ -849,7 +849,7 @@ static cmd_compile(object user, string cmd, string str)
     object obj;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <file> [<file> ...]\n");
+	message("Usage: " + cmd + " <file> [<file> ...]\n");
 	return;
     }
 
@@ -861,7 +861,7 @@ static cmd_compile(object user, string cmd, string str)
 	str = names[i];
 	len = strlen(str);
 	if (len < 2 || str[len - 2 ..] != ".c") {
-	    user->message("Not an LPC source file: " + str + "\n");
+	    message("Not an LPC source file: " + str + "\n");
 	} else {
 	    obj = compile_object(str[ .. len - 3]);
 	    if (obj) {
@@ -881,22 +881,22 @@ static cmd_clone(object user, string cmd, string str)
     object obj;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <obj>\n");
+	message("Usage: " + cmd + " <obj>\n");
 	return;
     }
 
     files = expand(str, -1, TRUE);	/* may not exist, full filenames */
     if (files[4] != 1) {
-	user->message("Usage: " + cmd + " <obj>\n");
+	message("Usage: " + cmd + " <obj>\n");
 	return;
     }
 
     if (sizeof(files[0]) == 1) {
 	str = files[0][0];
 	if (!find_object(str)) {
-	    user->message("No object: " + str + "\n");
+	    message("No object: " + str + "\n");
 	} else if (sscanf(str, "%*s/obj/") == 0) {
-	    user->message("Not clonable: " + str + "\n");
+	    message("Not clonable: " + str + "\n");
 	} else {
 	    obj = clone_object(str);
 	    if (obj) {
@@ -918,20 +918,20 @@ static cmd_destruct(object user, string cmd, string str)
     i = -1;
     if (!str || (sscanf(str, "$%d%s", i, str) != 0 &&
 		 (i < 0 || i >= hmax || str != ""))) {
-	user->message("Usage: " + cmd + " <obj> | $<ident>\n");
+	message("Usage: " + cmd + " <obj> | $<ident>\n");
 	return;
     }
 
     if (i >= 0) {
 	obj = history[i];
 	if (typeof(obj) != T_OBJECT) {
-	    user->message("Not an object.\n");
+	    message("Not an object.\n");
 	    return;
 	}
     } else if (sscanf(str, "$%s", str) != 0) {
 	obj = ident(str);
 	if (!obj) {
-	    user->message("Unknown $ident.\n");
+	    message("Unknown $ident.\n");
 	    return;
 	}
     } else {
@@ -940,9 +940,9 @@ static cmd_destruct(object user, string cmd, string str)
 
     str = catch(i = destruct_object(obj));
     if (str) {
-	user->message(str + ".\n");
+	message(str + ".\n");
     } else if (i == 0) {
-	user->message("No such object.\n");
+	message("No such object.\n");
     }
 }
 
@@ -963,23 +963,23 @@ static cmd_cd(object user, string cmd, string str)
     if (files[4] == 1) {
 	str = files[0][0];
 	if (!access(owner, str + "/.", READ_ACCESS)) {
-	    user->message(str + ": Access denied.\n");
+	    message(str + ": Access denied.\n");
 	} else {
 	    files = ::get_dir(str);
 	    if (sizeof(files[0]) == 0) {
-		user->message(str + ": No such file or directory.\n");
+		message(str + ": No such file or directory.\n");
 	    } else if (files[1][0] == -2) {
 		if (str == "/") {
 		    str = "";
 		}
 		directory = str;
-		user->message(((str == "") ? "/" : str) + "\n");
+		message(((str == "") ? "/" : str) + "\n");
 	    } else {
-		user->message(str + ": Not a directory.\n");
+		message(str + ": Not a directory.\n");
 	    }
 	}
     } else {
-	user->message("Usage: " + cmd + " <directory>\n");
+	message("Usage: " + cmd + " <directory>\n");
     }
 }
 
@@ -990,11 +990,11 @@ static cmd_cd(object user, string cmd, string str)
 static cmd_pwd(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
-    user->message(((directory == "") ? "/" : directory) + "\n");
+    message(((directory == "") ? "/" : directory) + "\n");
 }
 
 /*
@@ -1014,7 +1014,7 @@ static cmd_ls(object user, string cmd, string str)
 	if (str == "l") {
 	    str = ".";
 	} else if (sscanf(str, "l %s", str) == 0) {
-	    user->message("Usage: " + cmd + " [-l] [<file> ...]\n");
+	    message("Usage: " + cmd + " [-l] [<file> ...]\n");
 	    return;
 	}
     }
@@ -1028,7 +1028,7 @@ static cmd_ls(object user, string cmd, string str)
 	}
 	files = get_dir(str + "/*");
 	if (!files) {
-	    user->message(str + ": Access denied.\n");
+	    message(str + ": Access denied.\n");
 	    return;
 	}
     }
@@ -1102,7 +1102,7 @@ static cmd_ls(object user, string cmd, string str)
 		       [0 .. max];
 	}
     }
-    user->message(dirlist);
+    message(dirlist);
 }
 
 /*
@@ -1116,7 +1116,7 @@ static cmd_cp(object user, string cmd, string str)
     string *names, *path;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
+	message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
 	return;
     }
 
@@ -1125,13 +1125,13 @@ static cmd_cp(object user, string cmd, string str)
     sizes = files[1];
     num = sizeof(names) - 1;
     if (files[4] < 2 || (files[4] > 2 && sizes[num] != -2)) {
-	user->message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
+	message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
 	return;
     }
 
     for (i = 0; i < num; i++) {
 	if (sizes[i] < 0) {
-	    user->message(names[i] + ": Directory (not copied).\n");
+	    message(names[i] + ": Directory (not copied).\n");
 	} else {
 	    if (sizes[num] == -2) {
 		path = explode(names[i], "/");
@@ -1149,15 +1149,14 @@ static cmd_cp(object user, string cmd, string str)
 		chunk = read_file(names[i], offset, 57344);
 		if (typeof(chunk) != T_STRING) {
 		    if (chunk == 0) {
-			user->message(names[i] +
-				      ": No such file or directory.\n");
+			message(names[i] + ": No such file or directory.\n");
 		    }
 		    return;
 		}
 		n = write_file(str, chunk);
 		if (n <= 0) {
 		    if (n == 0) {
-			user->message(str + ": No such file or directory.\n");
+			message(str + ": No such file or directory.\n");
 		    }
 		    return;
 		}
@@ -1179,7 +1178,7 @@ static cmd_mv(object user, string cmd, string str)
     string *names, *path;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
+	message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
 	return;
     }
 
@@ -1188,7 +1187,7 @@ static cmd_mv(object user, string cmd, string str)
     sizes = files[1];
     num = sizeof(names) - 1;
     if (files[4] < 2 || (files[4] > 2 && sizes[num] != -2)) {
-	user->message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
+	message("Usage: " + cmd + " <file> [<file> ...] <target>\n");
 	return;
     }
 
@@ -1206,7 +1205,7 @@ static cmd_mv(object user, string cmd, string str)
 	n = rename_file(names[i], str);
 	if (n <= 0) {
 	    if (n == 0) {
-		user->message(str + ": move failed.\n");
+		message(str + ": move failed.\n");
 	    }
 	    return;
 	}
@@ -1224,7 +1223,7 @@ static cmd_rm(object user, string cmd, string str)
     int *sizes, num, i;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <file> [<file> ...]\n");
+	message("Usage: " + cmd + " <file> [<file> ...]\n");
 	return;
     }
 
@@ -1236,7 +1235,7 @@ static cmd_rm(object user, string cmd, string str)
     for (i = 0; i < num; i++) {
 	str = names[i];
 	if (sizes[i] == -2) {
-	    user->message(str + ": Directory.\n");
+	    message(str + ": Directory.\n");
 	} else {
 	    remove_file(str);
 	}
@@ -1254,7 +1253,7 @@ static cmd_mkdir(object user, string cmd, string str)
     int *sizes, num, i;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <directory> [<directory> ...]\n");
+	message("Usage: " + cmd + " <directory> [<directory> ...]\n");
 	return;
     }
 
@@ -1266,9 +1265,9 @@ static cmd_mkdir(object user, string cmd, string str)
     for (i = 0; i < num; i++) {
 	str = names[i];
 	if (sizes[i] != -1) {
-	    user->message(str + ": File exists.\n");
+	    message(str + ": File exists.\n");
 	} else if (make_dir(str) == 0) {
-	    user->message(str + ": No such file or directory.\n");
+	    message(str + ": No such file or directory.\n");
 	}
     }
 }
@@ -1284,7 +1283,7 @@ static cmd_rmdir(object user, string cmd, string str)
     int *sizes, num, i;
 
     if (!str) {
-	user->message("Usage: " + cmd + " <directory> [<directory> ...]\n");
+	message("Usage: " + cmd + " <directory> [<directory> ...]\n");
 	return;
     }
 
@@ -1296,9 +1295,9 @@ static cmd_rmdir(object user, string cmd, string str)
     for (i = 0; i < num; i++) {
 	str = names[i];
 	if (sizes[i] != -2) {
-	    user->message(str + ": Not a directory.\n");
+	    message(str + ": Not a directory.\n");
 	} else if (remove_dir(str) == 0) {
-	    user->message(str + ": Directory not empty.\n");
+	    message(str + ": Directory not empty.\n");
 	}
     }
 }
@@ -1314,7 +1313,7 @@ static cmd_ed(object user, string cmd, string str)
     if (str) {
 	files = expand(str, -1, FALSE);
 	if (files[4] != 1) {
-	    user->message("Usage: " + cmd + " [<file>]\n");
+	    message("Usage: " + cmd + " [<file>]\n");
 	    return;
 	}
 	str = editor("e " + files[0][0]);
@@ -1322,7 +1321,7 @@ static cmd_ed(object user, string cmd, string str)
 	str = editor();
     }
     if (str) {
-	user->message(str);
+	message(str);
     }
 }
 
@@ -1371,26 +1370,26 @@ static cmd_access(object user, string cmd, string str)
     if (str == "global") {
 	str = implode(query_global_access(), "\n " + USR + "/");
 	if (strlen(str) != 0) {
-	    user->message("Global read access:\n " + USR + "/" + str + "\n");
+	    message("Global read access:\n " + USR + "/" + str + "\n");
 	}
     } else if (sizeof(query_users() & ({ str })) != 0) {
 	access = query_user_access(str);
 	switch (map_sizeof(access)) {
 	case 0:
-	    user->message(str + " has no special access.\n");
+	    message(str + " has no special access.\n");
 	    break;
 
 	case 1:
-	    user->message(str + " has access to:" + list_access(access));
+	    message(str + " has access to:" + list_access(access));
 	    break;
 
 	default:
-	    user->message(str + " has access to:\n" + list_access(access));
+	    message(str + " has access to:\n" + list_access(access));
 	    break;
 	}
     } else {
 	if (sscanf(str, "%*s ") != 0 || (files=expand(str, 0, TRUE))[4] != 1) {
-	    user->message("Usage: " + cmd + " <user> | global | <directory>\n");
+	    message("Usage: " + cmd + " <user> | global | <directory>\n");
 	    return;
 	}
 	str = files[0][0];
@@ -1400,13 +1399,12 @@ static cmd_access(object user, string cmd, string str)
 	    values = map_values(access);
 	    for (i = 0, sz = sizeof(users); i < sz; i++) {
 		access = values[i];
-		user->message(users[i] +
-			      ((map_sizeof(access) == 1) ?
-				" has access to:" : " has access to:\n") +
-			      list_access(values[i]));
+		message(users[i] + ((map_sizeof(access) == 1) ?
+				     " has access to:" : " has access to:\n") +
+				   list_access(values[i]));
 	    }
 	} else {
-	    user->message("No special access to " + str + ".\n");
+	    message("No special access to " + str + ".\n");
 	}
     }
 }
@@ -1425,7 +1423,7 @@ static cmd_grant(object user, string cmd, string str)
 	 sscanf(str, "%s %s", who, dir) != 2) ||
 	(who == "global" && type) ||
 	((dir == "access") ? type : (files=expand(dir, 0, TRUE))[4] != 1)) {
-	user->message(
+	message(
 	    "Usage: " + cmd + " <user> access\n" +
 	    "       " + cmd + " <user> <directory> [read | write | full]\n" +
 	    "       " + cmd + " global <directory>\n");
@@ -1448,7 +1446,7 @@ static cmd_grant(object user, string cmd, string str)
 	break;
 
     default:
-	user->message(
+	message(
 	    "Usage: " + cmd + " <user> access\n" +
 	    "       " + cmd + " <user> <directory> [read | write | full]\n" +
 	    "       " + cmd + " global <directory>\n");
@@ -1460,10 +1458,10 @@ static cmd_grant(object user, string cmd, string str)
 	 * global access
 	 */
 	if (sscanf(str, USR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0) {
-	    user->message("Global read access is for directories under " + USR +
-			  " only.\n");
+	    message("Global read access is for directories under " + USR +
+		    " only.\n");
 	} else if (sizeof(query_global_access() & ({ str })) != 0) {
-	    user->message("That global access already exists.\n");
+	    message("That global access already exists.\n");
 	} else {
 	    set_global_access(str, TRUE);
 	}
@@ -1472,9 +1470,9 @@ static cmd_grant(object user, string cmd, string str)
 	 * file access
 	 */
 	if (sizeof(query_users() & ({ who })) != 0) {
-	    user->message(who + " already has file access.\n");
+	    message(who + " already has file access.\n");
 	} else if (!access(owner, "/", FULL_ACCESS)) {
-	    user->message("Insufficient access granting privileges.\n");
+	    message("Insufficient access granting privileges.\n");
 	} else {
 	    ::add_user(who);
 	    ::add_owner(who);
@@ -1485,9 +1483,9 @@ static cmd_grant(object user, string cmd, string str)
 	 * special access
 	 */
 	if (sizeof(query_users() & ({ who })) == 0) {
-	    user->message(who + " has no file access.\n");
+	    message(who + " has no file access.\n");
 	} else if (access(who, str + "/*", type)) {
-	    user->message(who + " already has that access.\n");
+	    message(who + " already has that access.\n");
 	} else {
 	    set_access(who, str, type);
 	}
@@ -1506,9 +1504,9 @@ static cmd_ungrant(object user, string cmd, string str)
     if (!str || sscanf(str, "%s %s", who, dir) != 2 ||
 	(dir != "access" &&
 	 (sscanf(dir, "%*s ") != 0 || (files=expand(dir, 0, TRUE))[4] != 1))) {
-	user->message("Usage: " + cmd + " <user> access\n" +
-		      "       " + cmd + " <user> <directory>\n" +
-		      "       " + cmd + " global <directory>\n");
+	message("Usage: " + cmd + " <user> access\n" +
+		"       " + cmd + " <user> <directory>\n" +
+		"       " + cmd + " global <directory>\n");
 	return;
     }
 
@@ -1519,10 +1517,10 @@ static cmd_ungrant(object user, string cmd, string str)
 	 * global access
 	 */
 	if (sscanf(str, USR + "/%s", str) == 0 || sscanf(str, "%*s/") != 0) {
-	    user->message("Global read access is for directories under " + USR +
-			  " only.\n");
+	    message("Global read access is for directories under " + USR +
+		    " only.\n");
 	} else if (sizeof(query_global_access() & ({ str })) == 0) {
-	    user->message("That global access does not exist.\n");
+	    message("That global access does not exist.\n");
 	} else {
 	    set_global_access(str, FALSE);
 	}
@@ -1531,7 +1529,7 @@ static cmd_ungrant(object user, string cmd, string str)
 	 * file access
 	 */
 	if (sizeof(query_users() & ({ who })) == 0) {
-	    user->message(who + " has no file access.\n");
+	    message(who + " has no file access.\n");
 	} else {
 	    remove_user(who);
 	}
@@ -1540,9 +1538,9 @@ static cmd_ungrant(object user, string cmd, string str)
 	 * special access
 	 */
 	if (sizeof(query_users() & ({ who })) == 0) {
-	    user->message(who + " has no file access.\n");
+	    message(who + " has no file access.\n");
 	} else if (!query_user_access(who)[str]) {
-	    user->message(who + " has no such access.\n");
+	    message(who + " has no such access.\n");
 	} else {
 	    set_access(who, str, 0);
 	}
@@ -1629,32 +1627,31 @@ static cmd_quota(object user, string cmd, string str)
 	    who = 0;
 	}
 	if (sizeof(query_owners() & ({ who })) == 0) {
-	    user->message("No such resource owner.\n");
+	    message("No such resource owner.\n");
 	    return;
 	}
 
 	if (sscanf(str, "%s%d%s", rsrc, limit, str) == 0) {
 	    /* show single resource */
-	    user->message(list_resources("resource", ({ str }),
-					 ({ rsrc_get(who, str) })));
+	    message(list_resources("resource", ({ str }),
+				   ({ rsrc_get(who, str) })));
 	} else {
 	    /* change resource */
 	    if (strlen(str) != 0 || (i=strlen(rsrc)) == 0 || rsrc[i - 1] != ' ')
 	    {
-		user->message("Usage: " + cmd +
-			      " [<user> [<rsrc> [<limit>]]]\n");
+		message("Usage: " + cmd + " [<user> [<rsrc> [<limit>]]]\n");
 		return;
 	    }
 	    rsrc = rsrc[.. i - 2];
 
 	    if (sizeof(query_resources() & ({ rsrc })) == 0) {
-		user->message("No such resource.\n");
+		message("No such resource.\n");
 		return;
 	    }
 
 	    str = catch(rsrc_set_limit(who, rsrc, limit));
 	    if (str) {
-		user->message(str + ".\n");
+		message(str + ".\n");
 	    }
 	}
 	return;
@@ -1667,7 +1664,7 @@ static cmd_quota(object user, string cmd, string str)
 	who = 0;
     }
     if (sizeof(query_owners() & ({ who })) == 0) {
-	user->message("No such resource owner.\n");
+	message("No such resource owner.\n");
 	return;
     }
 
@@ -1676,7 +1673,7 @@ static cmd_quota(object user, string cmd, string str)
     while (--i >= 0) {
 	resources[i] = rsrc_get(who, names[i]);
     }
-    user->message(list_resources("resources", names, resources));
+    message(list_resources("resources", names, resources));
 }
 
 /*
@@ -1695,26 +1692,26 @@ static cmd_rsrc(object user, string cmd, string str)
 	while (--i >= 0) {
 	    resources[i] = query_rsrc(names[i]);
 	}
-	user->message(list_resources("resources", names, resources));
+	message(list_resources("resources", names, resources));
     } else if (sscanf(str, "%s%d%s", name, limit, str) != 0) {
 	if (strlen(str) != 0 || (i=strlen(name)) == 0 || name[i - 1] != ' ') {
-	    user->message("Usage: " + cmd + " [<resource> [<limit>]]\n");
+	    message("Usage: " + cmd + " [<resource> [<limit>]]\n");
 	    return;
 	}
 	name = name[.. i - 2];
 	if (sizeof(query_resources() & ({ name })) == 0) {
-	    user->message("No such resource.\n");
+	    message("No such resource.\n");
 	    return;
 	}
 
 	rsrc = query_rsrc(name);
 	str = catch(set_rsrc(name, limit, rsrc[RSRC_DECAY], rsrc[RSRC_PERIOD]));
 	if (str) {
-	    user->message(str + ".\n");
+	    message(str + ".\n");
 	}
     } else {
 	if (sizeof(query_resources() & ({ str })) == 0) {
-	    user->message("No such resource.\n");
+	    message("No such resource.\n");
 	    return;
 	}
 	names = query_owners();
@@ -1726,7 +1723,7 @@ static cmd_rsrc(object user, string cmd, string str)
 	    names[0] = "Ecru";
 	}
 
-	user->message(list_resources("owner", names, resources));
+	message(list_resources("owner", names, resources));
     }
 }
 
@@ -1741,7 +1738,7 @@ static cmd_people(object user, string cmd, string str)
     int i, sz;
 
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
@@ -1755,7 +1752,7 @@ static cmd_people(object user, string cmd, string str)
 	       ((sizeof(owners & ({ name })) == 0) ? " " : "*") +
 	       name + "\n";
     }
-    user->message(str);
+    message(str);
 }
 
 /*
@@ -1852,20 +1849,20 @@ static cmd_status(object user, string cmd, string str)
 	i = -1;
 	if (!str || (sscanf(str, "$%d%s", i, str) != 0 &&
 		     (i < 0 || i >= hmax || str != ""))) {
-	    user->message("Usage: " + cmd + " [<obj> | $<ident>]\n");
+	    message("Usage: " + cmd + " [<obj> | $<ident>]\n");
 	    return;
 	}
 
 	if (i >= 0) {
 	    obj = history[i];
 	    if (typeof(obj) != T_OBJECT) {
-		user->message("Not an object.\n");
+		message("Not an object.\n");
 		return;
 	    }
 	} else if (sscanf(str, "$%s", str) != 0) {
 	    obj = ident(str);
 	    if (!obj) {
-		user->message("Unknown $ident.\n");
+		message("Unknown $ident.\n");
 		return;
 	    }
 	} else {
@@ -1899,7 +1896,7 @@ static cmd_status(object user, string cmd, string str)
 	}
     }
 
-    user->message(str);
+    message(str);
 }
 
 /*
@@ -1909,7 +1906,7 @@ static cmd_status(object user, string cmd, string str)
 static cmd_swapout(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
@@ -1923,7 +1920,7 @@ static cmd_swapout(object user, string cmd, string str)
 static cmd_statedump(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
@@ -1937,7 +1934,7 @@ static cmd_statedump(object user, string cmd, string str)
 static cmd_shutdown(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
@@ -1951,12 +1948,12 @@ static cmd_shutdown(object user, string cmd, string str)
 static cmd_reboot(object user, string cmd, string str)
 {
     if (str) {
-	user->message("Usage: " + cmd + "\n");
+	message("Usage: " + cmd + "\n");
 	return;
     }
 
     if (!access(owner, "/", FULL_ACCESS)) {
-	user->message("Permission denied.\n");
+	message("Permission denied.\n");
     } else {
 	::dump_state();
 	::shutdown();

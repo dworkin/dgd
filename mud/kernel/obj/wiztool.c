@@ -19,12 +19,12 @@ static create(int clone)
 }
 
 /*
- * NAME:	query_user()
- * DESCRIPTION:	return the current user
+ * NAME:	message()
+ * DESCRIPTION:	pass on a message to the user
  */
-static object query_user()
+static void message(string str)
 {
-    return user;
+    user->message(str);
 }
 
 /*
@@ -52,7 +52,7 @@ static void process(string str)
 	} else {
 	    str = editor(str);
 	    if (str) {
-		user->message(str);
+		message(str);
 	    }
 	    return;
 	}
@@ -98,7 +98,7 @@ static void process(string str)
 	break;
 
     default:
-	user->message("No command: " + str + "\n");
+	message("No command: " + str + "\n");
 	break;
     }
 }
