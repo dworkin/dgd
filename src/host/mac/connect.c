@@ -265,7 +265,7 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	hash = &ipa->link;
     }
 
-    if (nfree >= NFREE && ffirst != (ipaddr *) NULL) {
+    if (nfree >= NFREE) {
 	register ipaddr **h;
 
 	/*
@@ -273,9 +273,7 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	 */
 	ipa = ffirst;
 	ffirst = ipa->next;
-	if (ffirst == (ipaddr *) NULL) {
-	    flast = (ipaddr *) NULL;
-	}
+	ffirst->prev = (ipaddr *) NULL;
 	--nfree;
 
 	/* remove from hash table */
@@ -299,7 +297,7 @@ static ipaddr *ipa_new(unsigned long ipnum)
     /* put in hash table */
     ipa->link = *hash;
     *hash = ipa;
-    ipa->ref++;
+    ipa->ref = 1;
     ipa->ipnum = ipnum;
     ipa->name[0] = '\0';
 
@@ -317,6 +315,8 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	ipa->prev = qtail;
 	if (qtail == (ipaddr *) NULL) {
 	    qhead = ipa;
+	} else {
+	    qtail->next = ipa;
 	}
 	qtail = ipa;
 	ipa->next = (ipaddr *) NULL;
@@ -380,10 +380,6 @@ static void ipa_lookup()
 	} else {
 	    lastreq->name[0] = '\0';
 	}
-	qhead = lastreq->next;
-	if (qhead == (ipaddr *) NULL) {
-	    qtail = (ipaddr *) NULL;
-	}
     }
 
     /* if request queue not empty, write new query */
@@ -397,6 +393,8 @@ static void ipa_lookup()
 	qhead = ipa->next;
 	if (qhead == (ipaddr *) NULL) {
 	    qtail = (ipaddr *) NULL;
+	} else {
+	    qhead->prev = (ipaddr *) NULL;
 	}
 	ipa->prev = ipa->next = (ipaddr *) NULL;
 	lastreq = ipa;

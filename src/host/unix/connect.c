@@ -172,7 +172,7 @@ struct in_addr *ipnum;
 	hash = &ipa->link;
     }
 
-    if (nfree >= NFREE && ffirst != (ipaddr *) NULL) {
+    if (nfree >= NFREE) {
 	register ipaddr **h;
 
 	/*
@@ -180,9 +180,7 @@ struct in_addr *ipnum;
 	 */
 	ipa = ffirst;
 	ffirst = ipa->next;
-	if (ffirst == (ipaddr *) NULL) {
-	    flast = (ipaddr *) NULL;
-	}
+	ffirst->prev = (ipaddr *) NULL;
 	--nfree;
 
 	/* remove from hash table */
@@ -206,7 +204,7 @@ struct in_addr *ipnum;
     /* put in hash table */
     ipa->link = *hash;
     *hash = ipa;
-    ipa->ref++;
+    ipa->ref = 1;
     ipa->ipnum = *ipnum;
     ipa->name[0] = '\0';
 
@@ -221,6 +219,8 @@ struct in_addr *ipnum;
 	ipa->prev = qtail;
 	if (qtail == (ipaddr *) NULL) {
 	    qhead = ipa;
+	} else {
+	    qtail->next = ipa;
 	}
 	qtail = ipa;
 	ipa->next = (ipaddr *) NULL;
@@ -275,10 +275,6 @@ static void ipa_lookup()
     if (lastreq != (ipaddr *) NULL) {
 	/* read ip name */
 	lastreq->name[read(in, lastreq->name, MAXHOSTNAMELEN)] = '\0';
-	qhead = lastreq->next;
-	if (qhead == (ipaddr *) NULL) {
-	    qtail = (ipaddr *) NULL;
-	}
     } else {
 	char buf[MAXHOSTNAMELEN];
 
@@ -293,6 +289,8 @@ static void ipa_lookup()
 	qhead = ipa->next;
 	if (qhead == (ipaddr *) NULL) {
 	    qtail = (ipaddr *) NULL;
+	} else {
+	    qhead->prev = (ipaddr *) NULL;
 	}
 	ipa->prev = ipa->next = (ipaddr *) NULL;
 	lastreq = ipa;
