@@ -43,7 +43,8 @@ Uint compiled;
     cc = 0;
     while (--ninherits > 0) {
 	if ((inh->obj=o_find(pcinh->name)) == (object *) NULL) {
-	    fatal("cannot inherit /%s", pcinh->name);
+	    fatal("cannot inherit /%s from /%s", pcinh->name,
+		  pcinh[ninherits].name);
 	}
 	if (precompiled[inh->obj->index]->compiled > cc) {
 	    cc = precompiled[inh->obj->index]->compiled;

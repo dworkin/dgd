@@ -1823,11 +1823,11 @@ int kf_ckrangef()
 {
     if (sp[1].type == T_STRING) {
 	(--sp)->type = T_INT;
-	sp->u.number = sp[2].u.string->len - 1;
+	sp->u.number = (Int) sp[2].u.string->len - 1;
 	str_ckrange(sp[2].u.string, (long) sp[1].u.number, (long) sp->u.number);
     } else if (sp[1].type == T_ARRAY) {
 	(--sp)->type = T_INT;
-	sp->u.number = sp[2].u.array->size - 1;
+	sp->u.number = (Int) sp[2].u.array->size - 1;
 	arr_ckrange(sp[2].u.array, (long) sp[1].u.number, (long) sp->u.number);
     } else {
 	return 1;

@@ -1004,3 +1004,4 @@ DGD 1.1
  - Fixed possibly bad code generated for breaking out of a catch.
  - Fixed a problem with ellipsis in calls to functions without prototype.
  - Improved dead code removal.
+ - Tweaked the last tweaks in generated C code optimization.
