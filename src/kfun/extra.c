@@ -595,7 +595,7 @@ register frame *f;
     if (f->obj->flags & (O_USER | O_EDITOR)) {
 	error("parse_string() from editor or user object");
     }
-    a = parse_string(f->data, f->sp[1].u.string, f->sp->u.string);
+    a = ps_parse_string(f->data, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
 

@@ -1116,6 +1116,66 @@ register Uint *cs1, *cs2;
 }
 
 /*
+ * NAME:	charset->sub()
+ * DESCRIPTION:	subtract a charset from another one
+ */
+static void cs_sub(cs1, cs2)
+register Uint *cs1, *cs2;
+{
+    cs1[0] &= ~cs2[0];
+    cs1[1] &= ~cs2[1];
+    cs1[2] &= ~cs2[2];
+    cs1[3] &= ~cs2[3];
+    cs1[4] &= ~cs2[4];
+    cs1[5] &= ~cs2[5];
+    cs1[6] &= ~cs2[6];
+    cs1[7] &= ~cs2[7];
+}
+
+/*
+ * NAME:	charset->intersect()
+ * DESCRIPTION:	return TRUE if two character sets intersect, FALSE otherwise
+ */
+static bool cs_intersect(cs1, cs2)
+register Uint *cs1, *cs2;
+{
+    register Uint i;
+
+    i  = cs1[0] & cs2[0];
+    i |= cs1[1] & cs2[1];
+    i |= cs1[2] & cs2[2];
+    i |= cs1[3] & cs2[3];
+    i |= cs1[4] & cs2[4];
+    i |= cs1[5] & cs2[5];
+    i |= cs1[6] & cs2[6];
+    i |= cs1[7] & cs2[7];
+
+    return (i != 0);
+}
+
+/*
+ * NAME:	charset->overlap()
+ * DESCRIPTION:	Check if two character sets overlap.  Return TRUE if they do,
+ *		or if the first set contains the second one.
+ */
+static bool cs_overlap(cs1, cs2, cs3, cs4)
+register Uint *cs1, *cs2, *cs3, *cs4;
+{
+    register Uint s3, s4;
+
+    s3  = cs3[0] = cs1[0] & cs2[0];	s4  = cs4[0] = cs1[0] & ~cs3[0];
+    s3 |= cs3[1] = cs1[1] & cs2[1];	s4 |= cs4[1] = cs1[1] & ~cs3[1];
+    s3 |= cs3[2] = cs1[2] & cs2[2];	s4 |= cs4[2] = cs1[2] & ~cs3[2];
+    s3 |= cs3[3] = cs1[3] & cs2[3];	s4 |= cs4[3] = cs1[3] & ~cs3[3];
+    s3 |= cs3[4] = cs1[4] & cs2[4];	s4 |= cs4[4] = cs1[4] & ~cs3[4];
+    s3 |= cs3[5] = cs1[5] & cs2[5];	s4 |= cs4[5] = cs1[5] & ~cs3[5];
+    s3 |= cs3[6] = cs1[6] & cs2[6];	s4 |= cs4[6] = cs1[6] & ~cs3[6];
+    s3 |= cs3[7] = cs1[7] & cs2[7];	s4 |= cs4[7] = cs1[7] & ~cs3[7];
+
+    return (s3 != 0 && s4 != 0);
+}
+
+/*
  * NAME:	charset->firstc()
  * DESCRIPTION:	find the first char in a charset
  */
@@ -1126,7 +1186,7 @@ register int c;
     register Uint x;
 
     while (c < 256) {
-	if ((x=(cset[c >> 5] >> (c & 31)) != 0) {
+	if ((x=cset[c >> 5] >> (c & 31)) != 0) {
 	    while ((x & 0xff) == 0) {
 		x >>= 8;
 		c += 8;
@@ -1145,18 +1205,54 @@ register int c;
     return -1;
 }
 
+/*
+ * NAME:	charset->eclass()
+ * DESCRIPTION:	convert a charset into an equivalence class
+ */
+static int cs_eclass(cset, eclass, class)
+Uint *cset;
+char *eclass;
+int class;
+{
+    register int n, c;
+    register Uint x;
+
+    n = 0;
+    for (c = cs_firstc(cset, 0); c < 256; c += 31, c &= ~31) {
+	x = cset[c >> 5] >> (c & 31);
+	if (x != 0) {
+	    do {
+		while ((x & 0xff) == 0) {
+		    x >>= 8;
+		    c += 8;
+		}
+		if (x & 1) {
+		    eclass[c] = class;
+		    n++;
+		}
+		x >>= 1;
+		c++;
+	    } while (x != 0);
+	} else {
+	    c++;
+	}
+    }
+
+    return n;
+}
+
 
 typedef struct {
     hte chain;			/* hash table chain */
     char *rgx;			/* regular expression this position is in */
-    short len;			/* length of position string */
+    short size;			/* size of position (length of string - 2) */
     short nposn;		/* position number */
     short ruleno;		/* the rule this position is in */
     bool final;			/* final position? */
-    char *storage;		/* storage for the position string */
+    bool alloc;			/* position allocated separately? */
 } lexposn;
 
-# define LPCHUNKSZ	64
+# define LPCHUNKSZ	32
 
 typedef struct _lpchunk_ {
     lexposn lp[LPCHUNKSZ];	/* lexposn chunk */
@@ -1165,17 +1261,22 @@ typedef struct _lpchunk_ {
 } lpchunk;
 
 /*
- * NAME:	lexposn->new()
- * DESCRIPTION:	allocate a new lexposn
+ * NAME:	lexposn->alloc()
+ * DESCRIPTION:	allocate a new lexposn (or return an old one)
  */
-static lexposn *lp_new(c, posn, len, nposn, final, ruleno, alloc, next)
-register lpchunk **c;
-char *posn;
-int len, nposn, ruleno;
-bool final, alloc;
-lexposn **next;
+static lexposn *lp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final)
+hashtab *htab;
+char *posn, *rgx;
+int size, nposn, ruleno;
+lpchunk **c;
+bool final;
 {
-    register lexposn *lp;
+    register lexposn **llp, *lp;
+
+    llp = (lexposn **) ht_lookup(htab, posn, TRUE);
+    if (*llp != (lexposn *) NULL) {
+	return *llp;	/* already exists */
+    }
 
     if (*c == (lpchunk *) NULL || (*c)->chunksz == LPCHUNKSZ) {
 	lpchunk *x;
@@ -1185,25 +1286,91 @@ lexposn **next;
 	*c = x;
 	x->chunksz = 0;
     }
-
-/* add rgx */
-
     lp = &(*c)->lp[(*c)->chunksz++];
-    lp->chain.next = (hte *) *next;
-    *next = lp;
-    if (alloc) {
-	strcpy(lp->storage = ALLOC(char, len + 1), posn);
-	posn = lp->storage;
-    } else {
-	lp->storage = (char *) NULL;
-    }
+    lp->chain.next = (hte *) *llp;
+    *llp = lp;
     lp->chain.name = posn;
-    lp->len = len;
+    lp->rgx = rgx;
+    lp->size = size;
     lp->nposn = nposn;
-    lp->final = final;
     lp->ruleno = ruleno;
+    lp->final = final;
+    lp->alloc = FALSE;
 
     return lp;
+}
+
+/*
+ * NAME:	lexposn->new()
+ * DESCRIPTION:	create a new lexposn
+ */
+static lexposn *lp_new(htab, posn, size, c, rgx, nposn, ruleno, final)
+hashtab *htab;
+char *posn, *rgx;
+int size, nposn, ruleno;
+lpchunk **c;
+bool final;
+{
+    register lexposn *lp;
+
+    lp = lp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
+    strcpy(lp->chain.name = ALLOC(char, size + 3), posn);
+    lp->alloc = TRUE;
+    return lp;
+}
+
+/*
+ * NAME:	lexposn->load()
+ * DESCRIPTION:	load a lexposn from a buffer
+ */
+static lexposn *lp_load(htab, c, nposn, buf, grammar)
+hashtab *htab;
+lpchunk **c;
+int nposn;
+register char *buf;
+char *grammar;
+{
+    char *rgx;
+    int ruleno, size;
+    bool final;
+
+    rgx = grammar + UCHAR(buf[0]) * 256 + UCHAR(buf[1]);
+    ruleno = UCHAR(buf[2]) * 256 + UCHAR(buf[3]);
+    buf += 4;
+    if (*buf == '\0') {
+	final = TRUE;
+	buf++;
+    } else {
+	final = FALSE;
+    }
+    size = UCHAR(*buf++);
+
+    return lp_alloc(htab, buf, size, c, rgx, nposn, ruleno, final);
+}
+
+/*
+ * NAME:	lexposn->save()
+ * DESCRIPTION:	save a lexposn to a buffer
+ */
+static char *lp_save(lp, buf, grammar)
+register lexposn *lp;
+register char *buf;
+char *grammar;
+{
+    unsigned int rgx;
+
+    rgx = lp->rgx - grammar;
+    buf[0] = rgx / 256;
+    buf[1] = rgx;
+    buf[2] = lp->ruleno / 256;
+    buf[3] = lp->ruleno;
+    buf += 4;
+    if (lp->final) {
+	*buf++ = '\0';
+    }
+    *buf++ = lp->size;
+    memcpy(buf, lp->chain.name, lp->size + 1);
+    return buf + lp->size + 1;
 }
 
 /*
@@ -1219,8 +1386,8 @@ register lpchunk *c;
 
     while (c != (lpchunk *) NULL) {
 	for (lp = c->lp, i = c->chunksz; i != 0; lp++, --i) {
-	    if (lp->storage != (char *) NULL) {
-		FREE(lp->storage);
+	    if (lp->alloc) {
+		FREE(lp->chain.name);
 	    }
 	}
 	f = c;
@@ -1271,15 +1438,15 @@ int *buflen;
 			}
 			continue;
 		    }
-		}
 
-		/* add to heap */
-		for (i = ++len, j = i >> 1;
-		     UCHAR(heap[j]) > place;
-		     i = j, j >>= 1) {
-		     heap[i] = heap[j];
+		    /* add to heap */
+		    for (i = ++len, j = i >> 1;
+			 UCHAR(heap[j]) > place;
+			 i = j, j >>= 1) {
+			heap[i] = heap[j];
+		    }
+		    heap[i] = place;
 		}
-		heap[i] = place;
 	    }
 	}
     }
@@ -1305,15 +1472,15 @@ int *buflen;
 			q[n++] = place + 2;
 			continue;
 		    }
-		}
 
-		/* add to heap */
-		for (i = ++len, j = i >> 1;
-		     UCHAR(heap[j]) > place;
-		     i = j, j >>= 1) {
-		     heap[i] = heap[j];
+		    /* add to heap */
+		    for (i = ++len, j = i >> 1;
+			 UCHAR(heap[j]) > place;
+			 i = j, j >>= 1) {
+			heap[i] = heap[j];
+		    }
+		    heap[i] = place;
 		}
-		heap[i] = place;
 	    }
 	} while (*p != '\0');
 	q[n] = '\0';
@@ -1365,65 +1532,63 @@ register Uint *cset;
 
     for (q = lp->chain.name + 2; *q != '\0'; q++) {
 	memset(cset, '\0', 32);
-	if (*q != lp->rgx[0]) {
-	    p = lp->rgx + UCHAR(*q);
-	    switch (*p) {
-	    case '[':
-		/* character class */
+	p = lp->rgx + UCHAR(*q);
+	switch (*p) {
+	case '[':
+	    /* character class */
+	    p++;
+	    if (*p == '^') {
+		negate = TRUE;
 		p++;
-		if (*p == '^') {
-		    negate = TRUE;
-		    p++;
-		} else {
-		    negate = FALSE;
-		}
-		do {
-		    if (*p == '\\') {
-			p++;
-		    }
-		    c = UCHAR(*p++);
-		    cset[c >> 5] |= 1 << (c & 31);
-		    if (p[0] == '-' && p[1] != ']') {
-			n = p[1] - c;
-			if (n != 0) {
-			    x = 32 - (++c & 31);
-			    if (x > n) {
-				x = n;
-			    }
-			    cset[c >> 5] |= bits[x - 1] << (c & 31);
-			    c += x;
-			    n -= x;
-			    while (n >= 32) {
-				cset[c >> 5] |= 0xffffffffL;
-				c += 32;
-				n -= 32;
-			    }
-			    if (n != 0) {
-				cset[c >> 5] |= bits[n - 1];
-			    }
-			}
-			p += 2;
-		    }
-		} while (*p != ']');
-		if (negate) {
-		    cs_neg(cset);
-		}
-		break;
-
-	    case '.':
-		/* anything */
-		memset(cset, -1, 32);
-		break;
-
-	    case '\\':
-		/* escaped char */
-		p++;
-	    default:
-		/* normal char */
-		c = UCHAR(*p);
-		cset[c >> 5] |= 1 << (c & 31);
-		break;
+	    } else {
+		negate = FALSE;
 	    }
+	    do {
+		if (*p == '\\') {
+		    p++;
+		}
+		c = UCHAR(*p++);
+		cset[c >> 5] |= 1 << (c & 31);
+		if (p[0] == '-' && p[1] != ']') {
+		    n = p[1] - c;
+		    if (n != 0) {
+			x = 32 - (++c & 31);
+			if (x > n) {
+			    x = n;
+			}
+			cset[c >> 5] |= bits[x - 1] << (c & 31);
+			c += x;
+			n -= x;
+			while (n >= 32) {
+			    cset[c >> 5] |= 0xffffffffL;
+			    c += 32;
+			    n -= 32;
+			}
+			if (n != 0) {
+			    cset[c >> 5] |= bits[n - 1];
+			}
+		    }
+		    p += 2;
+		}
+	    } while (*p != ']');
+	    if (negate) {
+		cs_neg(cset);
+	    }
+	    break;
+
+	case '.':
+	    /* anything */
+	    memset(cset, -1, 32);
+	    break;
+
+	case '\\':
+	    /* escaped char */
+	    p++;
+	default:
+	    /* normal char */
+	    c = UCHAR(*p);
+	    cset[c >> 5] |= 1 << (c & 31);
+	    break;
 	}
 
 	cset += 8;
@@ -1434,11 +1599,11 @@ register Uint *cset;
  * NAME:	lexposn->trans()
  * DESCRIPTION:	perform a transition on a position, given an input set
  */
-static bool lp_trans(lp, cset, buf, buflen)
+static bool lp_trans(lp, cset, posn, size)
 lexposn *lp;
-char *buf;
 Uint *cset;
-int *buflen;
+char *posn;
+int *size;
 {
     char trans[256];
     register char *p, *q;
@@ -1449,261 +1614,978 @@ int *buflen;
 
     t = trans;
     for (q = lp->chain.name + 2; *q != '\0'; q++) {
-	if (*q != lp->rgx[0]) {
-	    p = lp->rgx + UCHAR(*q);
-	    found = 0;
-	    switch (*p) {
-	    case '[':
-		/* character class */
+	p = lp->rgx + UCHAR(*q);
+	found = 0;
+	switch (*p) {
+	case '[':
+	    /* character class */
+	    p++;
+	    if (*p == '^') {
+		negate = TRUE;
 		p++;
-		if (*p == '^') {
-		    negate = TRUE;
+	    } else {
+		negate = FALSE;
+	    }
+	    do {
+		if (*p == '\\') {
 		    p++;
-		} else {
-		    negate = FALSE;
 		}
-		do {
-		    if (*p == '\\') {
-			p++;
-		    }
-		    c = UCHAR(*p++);
-		    found |= cset[c >> 5] & 1 << (c & 31);
-		    if (p[0] == '-' && p[1] != ']') {
-			n = p[1] - c;
-			if (n != 0) {
-			    x = 32 - (++c & 31);
-			    if (x > n) {
-				x = n;
-			    }
-			    found |= cset[c >> 5] & (bits[x - 1] << (c & 31));
-			    c += x;
-			    n -= x;
-			    while (n >= 32) {
-				found |= cset[c >> 5] & 0xffffffffL;
-				c += 32;
-				n -= 32;
-			    }
-			    if (n != 0) {
-				found |= cset[c >> 5] & bits[n - 1];
-			    }
+		c = UCHAR(*p++);
+		found |= cset[c >> 5] & 1 << (c & 31);
+		if (p[0] == '-' && p[1] != ']') {
+		    n = p[1] - c;
+		    if (n != 0) {
+			x = 32 - (++c & 31);
+			if (x > n) {
+			    x = n;
 			}
-			p += 2;
+			found |= cset[c >> 5] & (bits[x - 1] << (c & 31));
+			c += x;
+			n -= x;
+			while (n >= 32) {
+			    found |= cset[c >> 5] & 0xffffffffL;
+			    c += 32;
+			    n -= 32;
+			}
+			if (n != 0) {
+			    found |= cset[c >> 5] & bits[n - 1];
+			}
 		    }
-		} while (*p != ']');
-		if (negate) {
-		    found ^= 0xffffffffL;
+		    p += 2;
 		}
-		break;
-
-	    case '.':
-		/* anything */
-		found = 1;
-		break;
-
-	    case '\\':
-		/* escaped char */
-		p++;
-	    default:
-		/* normal char */
-		c = UCHAR(*p);
-		found = cset[c >> 5] & (1 << (c & 31));
-		break;
+	    } while (*p != ']');
+	    if (negate) {
+		found = !found;
 	    }
-	    if (found != 0) {
-		*t++ = p - lp->rgx + 1;
-	    }
+	    break;
+
+	case '.':
+	    /* anything */
+	    found = 1;
+	    break;
+
+	case '\\':
+	    /* escaped char */
+	    p++;
+	default:
+	    /* normal char */
+	    c = UCHAR(*p);
+	    found = cset[c >> 5] & (1 << (c & 31));
+	    break;
+	}
+	if (found != 0) {
+	    *t++ = p - lp->rgx + 1;
 	}
     }
     *t = '\0';
 
-    return lp_transposn(lp->rgx, trans, buf, buflen);
+    return lp_transposn(lp->rgx, trans, posn, size);
 }
 
 
 typedef struct {
     lexposn **posn;		/* regexp positions */
-    char *str;			/* strings */
+    short *str;			/* strings */
     char *trans;		/* transitions */
     short nposn;		/* number of positions */
     short nstr;			/* number of string positions */
+    short len;			/* string length */
     short ntrans;		/* number of transitions */
-    short final;		/* -2: unresolved, -1: not final */
-    string *strstorage;		/* storage for strings */
-    string *transstorage;	/* storage for transitions */
+    short final;		/* rule number, -1: not final */
+    short next;			/* next in hash chain */
+    bool alloc;			/* transitions allocated? */
 } lexstate;
 
+/*
+ * NAME:	lexstate->load()
+ * DESCRIPTION:	load a lexstate from a buffer
+ */
+static char *ls_load(state, buf, ntrans)
+register lexstate *state;
+register char *buf;
+register int ntrans;
+{
+    state->posn = (lexposn **) NULL;
+    state->str = (short *) NULL;
+    state->nposn = state->nstr = state->len = 0;
+    state->ntrans = ntrans;
+    state->alloc = FALSE;
+    state->final = UCHAR(buf[0]) * 256 + UCHAR(buf[1]);
+    buf += 2;
+    if (ntrans != 0) {
+	state->trans = buf;
+	buf += ntrans * 2;
+    } else {
+	state->trans = (char *) NULL;
+    }
+
+    return buf;
+}
+
+/*
+ * NAME:	lexstate->loadtmp()
+ * DESCRIPTION:	load lexstate temporary data from a buffer
+ */
+static char *ls_loadtmp(state, sbuf, pbuf, htab, c, nposn, grammar)
+register lexstate *state;
+register char *sbuf;
+char *pbuf, *grammar;
+hashtab *htab;
+lpchunk **c;
+int *nposn;
+{
+    register int i;
+    register lexposn *lp;
+    char *posn;
+
+    state->nposn = UCHAR(sbuf[0]) * 256 + UCHAR(sbuf[1]);
+    state->nstr = UCHAR(sbuf[2]) * 256 + UCHAR(sbuf[3]);
+    sbuf += 4;
+    state->len = UCHAR(*sbuf++);
+
+    if (state->nposn != 0) {
+	state->posn = ALLOC(lexposn*, state->nposn);
+	for (i = 0; i < state->nposn; i++) {
+	    posn = pbuf + UCHAR(sbuf[0]) * 256 + UCHAR(sbuf[1]);
+	    sbuf += 2;
+	    lp = state->posn[i] = lp_load(htab, c, *nposn, posn, grammar);
+	    if (lp->nposn == *nposn) {
+		*nposn++;
+	    }
+	}
+    }
+    if (state->nstr != 0) {
+	state->str = ALLOC(short, state->nstr);
+	for (i = 0; i < state->nstr; i++) {
+	    state->str[i] = UCHAR(sbuf[0]) * 256 + UCHAR(sbuf[1]);
+	    sbuf += 2;
+	}
+    }
+
+    return sbuf;
+}
+
+/*
+ * NAME:	lexstate->save()
+ * DESCRIPTION:	save a lexstate to a buffer
+ */
+static char *ls_save(state, buf)
+register lexstate *state;
+register char *buf;
+{
+    buf[0] = state->final / 256;
+    buf[1] = state->final;
+    buf += 2;
+    if (state->ntrans != 0) {
+	memcpy(buf, state->trans, state->ntrans * 2);
+	buf += state->ntrans * 2;
+    }
+
+    return buf;
+}
+
+/*
+ * NAME:	lexstate->savetmp()
+ * DESCRIPTION:	save lexstate temporary data to a buffer
+ */
+static char *ls_savetmp(state, sbuf, pbuf, pbase, ptab, nposn, grammar)
+register lexstate *state;
+char *sbuf, **pbuf, *pbase, *grammar;
+short *ptab, *nposn;
+{
+    register char *p;
+    register lexposn *lp;
+    register int i;
+    register short n;
+
+    sbuf[0] = state->nposn / 256;
+    sbuf[1] = state->nposn;
+    sbuf[2] = state->nstr / 256;
+    sbuf[3] = state->nstr;
+    sbuf[4] = state->len;
+    sbuf += 5;
+
+    p = *pbuf;
+    for (i = 0; i < state->nposn; i++) {
+	lp = state->posn[i];
+	if (lp->nposn == *nposn) {
+	    ptab[(*nposn)++] = p - pbase;
+	    p = lp_save(lp, p, grammar);
+	}
+	n = ptab[lp->nposn];
+	sbuf[0] = n / 256;
+	sbuf[1] = n;
+	sbuf += 2;
+    }
+    *pbuf = p;
+    for (i = 0; i < state->nstr; i++) {
+	n = state->str[i];
+	sbuf[0] = n / 256;
+	sbuf[1] = n;
+	sbuf += 2;
+    }
+
+    return sbuf;
+}
+
+/*
+ * NAME:	lexstate->hash()
+ * DESCRIPTION:	put a new state in the hash table, or return an old one
+ */
+static short ls_hash(htab, htabsize, states, idx)
+short *htab;
+int htabsize, idx;
+lexstate *states;
+{
+    register unsigned long x;
+    register int n;
+    register lexposn **posn;
+    register short *str;
+    register lexstate *newstate, *ls;
+    short *lls;
+
+    /* hash on position and string pointers */
+    newstate = &states[idx];
+    x = newstate->len ^ newstate->final;
+    for (n = newstate->nposn, posn = newstate->posn; --n >= 0; ) {
+	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *posn++;
+    }
+    for (n = newstate->nstr, str = newstate->str; --n >= 0; ) {
+	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *str++;
+    }
+    x = (Uint) x % htabsize;
+
+    /* check state hash table */
+    posn = newstate->posn;
+    str = newstate->str;
+    lls = &htab[x];
+    ls = &states[*lls];
+    while (ls != states &&
+	   (newstate->len != ls->len || newstate->final != ls->final ||
+	    newstate->nposn != ls->nposn || newstate->nstr != ls->nstr ||
+	    memcmp(posn, ls->posn, newstate->nposn * sizeof(lexposn*)) != 0 ||
+	    memcmp(str, ls->str, newstate->nstr * sizeof(short)) != 0)) {
+	lls = &ls->next;
+	ls = &states[*lls];
+    }
+
+    if (ls != states) {
+	return *lls;	/* state already exists */
+    }
+
+    newstate->next = *lls;
+    return *lls = idx;
+}
+
+
 typedef struct {
-    string *grammar;		/* reference grammar */
-    char *regexp;		/* offset of regular expressions in grammar */
+    char *grammar;		/* reference grammar */
     char *strings;		/* offset of strings in grammar */
-    short nregexp;		/* # regexps */
-    short nstrings;		/* # strings */
     bool whitespace;		/* true if lexer token 0 is whitespace */
 
-    lexstate *states;		/* lexer states */
-    unsigned short nstates;	/* # states */
-    unsigned short stsize;	/* state table size */
+    Int lexsize;		/* size of state machine */
+    Int tmpssize;		/* size of temporary state data */
+    Int tmppsize;		/* size of temporary posn data */
 
-    hashtab *posnhash;		/* position hash table */
-    unsigned int nposn;		/* total number of unique positions */
+    unsigned short nregexp;	/* # regexps */
+    unsigned short nposn;	/* number of unique positions */
     lpchunk *lpc;		/* current lexposn chunk */
+    hashtab *posnhtab;		/* position hash table */
 
-    hashtab *statehash;		/* state hash table */
-    unsigned int sthsize;	/* size of state hash table */
+    unsigned short nstates;	/* # states */
+    unsigned short sttsize;	/* state table size */
+    unsigned short sthsize;	/* size of state hash table */
+    unsigned short expanded;	/* # expanded states */
+    lexstate *states;		/* lexer states */
+    short *sthtab;		/* state hash table */
 
-    hashtab *transhash;		/* transition hash table */
-    unsigned int transhashsz;	/* size of transition hash table */
-
-    int ecnum;			/* number of equivalence classes */
+    short ecnum;		/* number of equivalence classes */
     char eclass[256];		/* equivalence classes */
-    char ecmembers[256];	/* members per equivalence class */
-    Uint ecset[8][256];		/* equivalence class sets */
+    char *ecsplit;		/* equivalence class split history */
+    char *ecmembers;		/* members per equivalence class */
+    Uint *ecset;		/* equivalence class sets */
 } lexer;
+
+/*
+ * state & eclass format:
+ *
+ * header	[0]	version number
+ *		[x][y]	# states
+ *		[x][y]	# expanded states
+ *		[x]	# equivalence classes
+ * eclass	[...]	256 equivalence classes
+ *
+ * state 	[x][y]	final
+ *		[...]	optional: transitions
+ *
+ *
+ * temporary data format:
+ *
+ * header	[0]	version number
+ * ecsplit	[...]	256 ecsplit data
+ *
+ * state	[x][y]	# positions
+ *		[x][y]	# strings
+ * 		[x]	len
+ *		[...]   position data
+ *		[...]	string data
+ *
+ * position	[x][y]	regexp
+ *		[x][y]	ruleno
+ *		[0]	optional: final position
+ *		[x]	size
+ *		[...]	position data
+ */
+
+/*
+ * NAME:	lexer->new()
+ * DESCRIPTION:	create new lexer instance
+ */
+static lexer *lx_new(grammar)
+register char *grammar;
+{
+    char posn[258];
+    int nstrings, size;
+    register lexer *lx;
+    register char *rgx;
+    register lexposn **llp;
+    register int i, j, n;
+    bool final;
+
+    lx = ALLOC(lexer, 1);
+
+    /* grammar info */
+    lx->grammar = grammar;
+    lx->nregexp = UCHAR(grammar[2]) * 256 + UCHAR(grammar[3]);
+    nstrings = UCHAR(grammar[6]) * 256 + UCHAR(grammar[7]);
+    lx->strings = grammar + 10 + lx->nregexp * 2;
+    lx->whitespace = grammar[1];
+
+    /* size info */
+    lx->lexsize = 6 + 256 + 2;
+    lx->tmpssize = 3 + 256 + 5 + 5;
+    lx->tmppsize = 0;
+
+    /* positions */
+    lx->nposn = UCHAR(grammar[4]) * 256 + UCHAR(grammar[5]);
+    lx->lpc = (lpchunk *) NULL;
+    lx->posnhtab = ht_new(4 * (lx->nposn + 1), 257);
+
+    /* states */
+    lx->nstates = 2;
+    lx->sttsize = 2 * (lx->nposn + nstrings + 1);
+    lx->sthsize = 2 * lx->sttsize;
+    lx->expanded = 0;
+    lx->states = ALLOC(lexstate, lx->sttsize);
+    lx->sthtab = ALLOC(short, lx->sthsize);
+    memset(lx->sthtab, '\0', sizeof(short) * lx->sthsize);
+
+    /* initial states */
+    lx->states[0].posn = (lexposn **) NULL;
+    lx->states[0].str = (short *) NULL;
+    lx->states[0].trans = (char *) NULL;
+    lx->states[0].nposn = lx->states[0].nstr = 0;
+    lx->states[0].ntrans = lx->states[0].len = 0;
+    lx->states[0].final = -1;
+    lx->states[1].posn = (lx->nposn != 0) ?
+			  ALLOC(lexposn*, lx->nposn) : (lexposn **) NULL;
+    lx->states[1].str = (nstrings != 0) ?
+			 ALLOC(short, nstrings) : (short *) NULL;
+    lx->states[1].trans = (char *) NULL;
+    lx->states[1].nposn = lx->nposn;
+    lx->states[1].nstr = nstrings;
+    lx->states[1].ntrans = lx->states[1].len = 0;
+    lx->states[1].final = -1;
+    lx->states[1].alloc = FALSE;
+    grammar += 10;
+    /* initial positions */
+    llp = lx->states[1].posn;
+    for (i = j = 0; i < lx->nregexp; i++) {
+	rgx = lx->grammar + UCHAR(grammar[0]) * 256 + UCHAR(grammar[1]);
+	grammar += 2;
+	n = j + UCHAR(rgx[0]) * 256 + UCHAR(rgx[1]);
+	rgx += 2;
+	while (j < n) {
+	    final = lp_transposn(rgx, (char *) NULL, posn + 2, &size);
+	    if (final && lx->states[1].final < 0) {
+		lx->states[1].final = i;
+	    }
+	    posn[0] = 1 + j / 255;
+	    posn[1] = 1 + j % 255;
+	    *llp++ = lp_new(lx->posnhtab, posn, size, &lx->lpc, rgx, j++, i,
+			    final);
+	    lx->tmpssize += 2;
+	    lx->tmppsize += 8 + size + final;
+	    rgx += UCHAR(rgx[0]) + 1;
+	}
+    }
+    /* initial strings */
+    for (i = nstrings; --i >= 0; ) {
+	lx->states[1].str[i] = i;
+    }
+    lx->tmpssize += nstrings * 2;
+    /* add to hashtable */
+    ls_hash(lx->sthtab, lx->sthsize, lx->states, 1);
+
+    /* equivalence classes */
+    lx->ecnum = 1;
+    lx->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    lx->ecmembers = lx->ecsplit + 256;
+    lx->ecset = (Uint *) (lx->ecmembers + 256);
+    memset(lx->eclass, '\0', 256);
+    memset(lx->ecsplit, '\0', 256);
+    memset(lx->ecmembers, '\0', 256);
+    memset(lx->ecset, -1, 32);
+    memset(lx->ecset + 8, '\0', 32 * 255);
+
+    return lx;
+}
+
+/*
+ * NAME:	lexer->load()
+ * DESCRIPTION:	load lexer from strings
+ */
+static lexer *lx_load(grammar, s1, s2)
+char *grammar;
+string *s1, *s2;
+{
+# if 0
+    char posn[258];
+    int nstrings, size;
+    register lexer *lx;
+    register char *rgx;
+    register lexposn **llp;
+    register int i, j, n;
+    bool final;
+
+    lx = ALLOC(lexer, 1);
+    buf = s1->text;
+
+    /* grammar info */
+    lx->grammar = grammar;
+    lx->nregexp = UCHAR(grammar[2]) * 256 + UCHAR(grammar[3]);
+    nstrings = UCHAR(grammar[6]) * 256 + UCHAR(grammar[7]);
+    lx->strings = grammar + 10 + lx->nregexp * 2;
+    lx->whitespace = grammar[1];
+
+    /* size info */
+    lx->lexsize = s1->len;
+    lx->tmpssize = 3 + 256 + 5 + 5;
+    lx->tmppsize = 0;
+
+    /* positions */
+    lx->nposn = 0;
+    lx->lpc = (lpchunk *) NULL;
+    lx->posnhtab = ht_new(4 * (lx->nposn + 1), 257);
+
+    /* states */
+    lx->nstates = UCHAR(buf[1]) * 256 + UCHAR(buf[2]) + 1;
+    lx->sttsize = 2 * (lx->nposn + nstrings + 1);
+    if (lx->sttsize <= lx->nstates) {
+	lx->sttsize = lx->nstates + 1;
+    }
+    lx->sthsize = 2 * lx->sttsize;
+    lx->expanded = UCHAR(buf[3]) * 256 + UCHAR(buf[4]);
+    lx->states = ALLOC(lexstate, lx->sttsize);
+    lx->sthtab = ALLOC(short, lx->sthsize);
+    memset(lx->sthtab, '\0', sizeof(short) * lx->sthsize);
+
+    /* zero state */
+    lx->states[0].posn = (lexposn **) NULL;
+    lx->states[0].str = (short *) NULL;
+    lx->states[0].trans = (char *) NULL;
+    lx->states[0].nposn = lx->states[0].nstr = 0;
+    lx->states[0].ntrans = lx->states[0].len = 0;
+    lx->states[0].final = -1;
+
+
+    /* equivalence classes */
+    lx->ecnum = UCHAR(buf[5]);
+    buf += 6;
+    memcpy(lx->eclass, buf, 256);
+    buf += 256;
+    lx->ecsplit = ALLOC(char, 256 + 256 + 32 * 256);
+    lx->ecmembers = lx->ecsplit + 256;
+    lx->ecset = (Uint *) (lx->ecmembers + 256);
+    memset(lx->eclass, '\0', 256);
+    memset(lx->ecsplit, '\0', 256);
+    memset(lx->ecmembers, '\0', 256);
+    memset(lx->ecset, -1, 32);
+    memset(lx->ecset + 8, '\0', 32 * 255);
+
+    for (i = 1; i <= lx->extended; i++) {
+	state = &lx->states[i];
+	buf = ls_load(state, buf, lx->ecnum);
+	buf = ls_loadtmp(state, buf, tmpbuf, lx->htab, &lx->lpc, &lx->nposn,
+			 grammar);
+	ls_hash(lx->sthtab, lx->sthsize, state, i);
+    }
+    while (i < lx->nstates) {
+	buf = ls_load(state, buf, 0);
+	buf = ls_loadtmp(state, buf, tmpbuf, lx->htab, &lx->lpc, &lx->nposn,
+			 grammar);
+	ls_hash(lx->sthtab, lx->sthsize, state, i++);
+    }
+
+    return lx;
+# endif
+}
+
+/*
+ * NAME:	lexer->save()
+ * DESCRIPTION:	save lexer in strings
+ */
+static void lx_save(lx, arr, v1, v2)
+lexer *lx;
+array *arr;
+value *v1, *v2;
+{
+}
+
+/*
+ * NAME:	lexer->del()
+ * DESCRIPTION:	delete lexer
+ */
+static void lx_del(lx)
+lexer *lx;
+{
+}
+
+/*
+ * NAME:	lexer->ecsplit()
+ * DESCRIPTION:	split up equivalence classes along the borders of character
+ *		sets
+ */
+static void lx_ecsplit(lx, iset, cset, ncset)
+register lexer *lx;
+Uint *iset, *cset;
+int ncset;
+{
+    Uint ec1[8], ec2[8];
+    register int i, n, c;
+
+    for (c = cs_firstc(iset, 0); c >= 0; c = cs_firstc(iset, c + 1)) {
+	for (i = 0; i < ncset; i++) {
+	    /*
+	     * get the equivalence class of the first char in the input set
+	     */
+	    n = UCHAR(lx->eclass[c]);
+	    if (lx->ecmembers[n] == 1) {
+		break;	/* only one character left */
+	    }
+	    if (cs_overlap(lx->ecset + 8 * n, cset, ec1, ec2)) {
+		/*
+		 * create new equivalence class
+		 */
+		memcpy(lx->ecset + 8 * n, ec1, sizeof(ec1));
+		memcpy(lx->ecset + 8 * lx->ecnum, ec2, sizeof(ec2));
+		lx->ecsplit[lx->ecnum] = n;
+		lx->ecmembers[n] -= lx->ecmembers[lx->ecnum] =
+				    cs_eclass(ec2, lx->eclass, lx->ecnum);
+		lx->ecnum++;
+		lx->lexsize += 2 * lx->expanded;
+	    }
+	    cset += 8;
+	}
+	cset -= 8 * i;
+
+	/* remove from input set */
+	cs_sub(iset, lx->ecset + 8 * UCHAR(lx->eclass[c]));
+    }
+}
+
+/*
+ * NAME:	lexer->newstate()
+ * DESCRIPTION:	get the positions and strings for a new state
+ */
+static int lx_newstate(lx, state, newstate, ecset, cset)
+lexer *lx;
+register lexstate *state, *newstate;
+Uint *ecset, *cset;
+{
+    char posn[258];
+    register int i, n;
+    register lexposn *lp;
+    register char *p;
+    int size, posnsize;
+    bool final;
+
+    newstate->trans = (char *) NULL;
+    newstate->nposn = newstate->nstr = newstate->ntrans = 0;
+    newstate->len = state->len + 1;
+    newstate->final = -1;
+    newstate->alloc = FALSE;
+    posnsize = 0;
+
+    /* positions */
+    for (i = 0; i < state->nposn; i++) {
+	lp = state->posn[i];
+	for (n = lp->size; n > 0; --n) {
+	    if (cs_intersect(ecset, cset)) {
+		final = lp_trans(lp, ecset, posn + 2, &size);
+		if (size != 0) {
+		    posn[0] = lp->chain.name[0];
+		    posn[1] = lp->chain.name[1];
+		    lp = lp_new(lx->posnhtab, posn, size, &lx->lpc, lp->rgx,
+				lx->nposn, lp->ruleno, final);
+		    if (lp->nposn == lx->nposn) {
+			/* new position */
+			lx->nposn++;
+			posnsize += 8 + lp->size + final;
+		    }
+		    newstate->posn[newstate->nposn++] = lp;
+		}
+		if (final && newstate->final < 0) {
+		    newstate->final = lp->ruleno;
+		}
+		cset += 8 * n;
+		break;
+	    }
+	    cset += 8;
+	}
+    }
+
+    /* strings */
+    for (i = 0; i < state->nstr; i++) {
+	p = lx->strings + 2 * state->str[i];
+	p = lx->grammar + 256 * UCHAR(p[0]) + UCHAR(p[1]);
+	n = UCHAR(p[newstate->len]);
+	if (ecset[n >> 5] & (1 << (n & 31))) {
+	    if (newstate->len == UCHAR(p[0])) {
+		/* end of string */
+		newstate->final = lx->nregexp + state->str[i];
+	    } else {
+		/* add string */
+		newstate->str[newstate->nstr++] = state->str[i];
+	    }
+	}
+    }
+
+    return posnsize;
+}
 
 /*
  * NAME:	lexer->expand()
  * DESCRIPTION:	expand a state
  */
-static void lx_expand(lx, state, len)
+static lexstate *lx_expand(lx, state)
 lexer *lx;
 lexstate *state;
-unsigned int len;
 {
-    Uint ec[256][8];
-    bool ecflag[256];
     Uint iset[8];
+    register Uint *cset, *ecset;
+    register char *p;
+    register int ncset, i, n;
+    lexstate *newstate;
+    lexposn **newposn;
+    short *newstr;
+    int size;
 
-    memset(ec, '\0', sizeof(ec));
-    memset(ecflag, '\0', sizeof(ecflag));
     memset(iset, '\0', sizeof(iset));
 
     /* allocate character sets for strings and positions */
     ncset = state->nstr;
     for (i = 0; i < state->nposn; i++) {
-	ncset += state->posn[i]->len;	/* XXX -2? */
+	ncset += state->posn[i]->size;
     }
     cset = ALLOCA(Uint, 8 * ncset);
 
     /* construct character sets for all string chars */
     for (i = 0; i < state->nstr; i++) {
-	p = state->str + 2 * i;
-	p = lx->grammar->text + 256 * UCHAR(p[0]) + UCHAR(p[1]);
-	c = UCHAR(p[1 + len]);
+	p = lx->strings + 2 * state->str[i];
+	p = lx->grammar + 256 * UCHAR(p[0]) + UCHAR(p[1]);
+	n = UCHAR(p[1 + state->len]);
 	memset(cset, '\0', 32);
-	cset[c >> 5] |= 1 << (c & 31);
-	iset[c >> 5] |= 1 << (c & 31));	/* also add to input set */
+	cset[n >> 5] |= 1 << (n & 31);
+	iset[n >> 5] |= 1 << (n & 31);	/* also add to input set */
 	cset += 8;
     }
 
-    /* construct character sets for all posns */
+    /* construct character sets for all positions */
     for (i = 0; i < state->nposn; i++) {
-	lp_cset(state->posn[i], csets);
-	cs_or(iset, cset);			/* also add to input set */
-	cset += 8 * state->posn[i]->len;	/* XXX -2? */
+	lp_cset(state->posn[i], cset);
+	for (n = state->posn[i]->size; --n >= 0; ) {
+	    cs_or(iset, cset);		/* add to input set */
+	    cset += 8;
+	}
     }
     cset -= 8 * ncset;
 
     /*
-     * Check and adjust the equivalence classes as follows:
-     * - for the first char in the input set, get the equivalence class
-     * - compare with original input set, if no overlap skip to next;
-     * - match will all character classes, possibly breaking up the ec;
-     *   always keep the ec that contains the first char; stop when down
-     *   to 1;
-     * - remove resulting ec from input set and repeat for next first char,
-     *   until the input set is empty
+     * adjust equivalence classes
      */
+    lx_ecsplit(lx, iset, cset, ncset);
+
+    /*
+     * for all equivalence classes, compute transition states
+     */
+    if (state->nposn != 0) {
+	newposn = ALLOCA(lexposn*, state->nposn);
+    }
+    if (state->nstr != 0) {
+	newstr = ALLOCA(short, state->nstr);
+    }
+    p = state->trans = ALLOC(char, 2 * 256);
+    state->ntrans = lx->ecnum;
+    state->alloc = TRUE;
+    cset += 8 * state->nstr;
+    for (i = 0, ecset = lx->ecset; i < lx->ecnum; i++, ecset += 8) {
+	/* prepare new state */
+	newstate = &lx->states[lx->nstates];
+
+	/* flesh out new state */
+	newstate->posn = newposn;
+	newstate->str = newstr;
+	size = lx_newstate(lx, state, newstate, ecset, cset);
+
+	if (newstate->nposn == 0 && newstate->nstr == 0 && newstate->final < 0)
+	{
+	    /* stuck in state 0 */
+	    n = 0;
+	} else {
+	    if (newstate->nposn == 0) {
+		newstate->posn = (lexposn **) NULL;
+	    }
+	    if (newstate->nstr == 0) {
+		newstate->str = (short *) NULL;
+		newstate->len = 0;
+	    }
+
+	    n = ls_hash(lx->sthtab, lx->sthsize, lx->states, lx->nstates);
+	    if (n == lx->nstates) {
+		/*
+		 * genuinely new state
+		 */
+		if (newstate->nposn != 0) {
+		    newstate->posn = ALLOC(lexposn*, newstate->nposn);
+		    memcpy(newstate->posn, newposn,
+			   newstate->nposn * sizeof(lexposn*));
+		}
+		if (newstate->nstr != 0) {
+		    newstate->str = ALLOC(short, newstate->nstr);
+		    memcpy(newstate->str, newstr,
+			   newstate->nstr * sizeof(short));
+		}
+		lx->lexsize += 2;
+		lx->tmpssize += 5 + (newstate->nposn + newstate->nstr) * 2;
+		lx->tmppsize += size;
+		lx->nstates++;
+		if (lx->nstates == lx->sttsize) {
+		    lexstate *table;
+
+		    /* grow table */
+		    table = ALLOC(lexstate, lx->sttsize *= 2);
+		    memcpy(table, lx->states, lx->nstates * sizeof(lexstate));
+		    state = &table[state - lx->states];
+		    FREE(lx->states);
+		    lx->states = table;
+		}
+	    }
+	}
+
+	*p++ = n / 256;
+	*p++ = n;
+    }
+
+    if (state->nstr != 0) {
+	AFREE(newstr);
+    }
+    if (state->nposn != 0) {
+	AFREE(newposn);
+    }
+    AFREE(cset - 8 * state->nstr);
+
+    lx->expanded++;
+    lx->lexsize += lx->ecnum * 2;
+    return state;
+}
+
+/*
+ * NAME:	lexer->extend()
+ * DESCRIPTION:	extend transition table
+ */
+static void lx_extend(lx, state, limit)
+register lexer *lx;
+register lexstate *state;
+register int limit;
+{
+    register char *p, *q;
+    register unsigned int i;
+
+    /* extend transition table */
+    if (!state->alloc) {
+	p = ALLOC(char, 2 * 256);
+	memcpy(p, state->trans, 2 * state->ntrans);
+	state->trans = p;
+	state->alloc = TRUE;
+    }
+    p = state->trans + (state->ntrans << 1);
+    for (i = state->ntrans; i <= limit; i++) {
+	q = &state->trans[UCHAR(lx->ecsplit[i]) << 1];
+	*p++ = q[0];
+	*p++ = q[1];
+    }
+    state->ntrans = i;
 }
 
 /*
  * NAME:	lexer->lazyscan()
- * DESCRIPTION:	scan the input, meanwhile lazily constructing a DFA
+ * DESCRIPTION:	scan the input, while lazily constructing a DFA
  */
 static int lx_lazyscan(lx, str, strlen)
 register lexer *lx;
 string *str;
 unsigned int *strlen;
 {
-    register unsigned int size, len;
+    register unsigned int size, eclass;
     register char *p, *q;
     register lexstate *state;
-    int lastfinal;
-    unsigned int lastflen;
+    int final;
+    unsigned int fsize;
 
     size = *strlen;
-    if (size == 0) {
-	return -1;	/* end of string */
-    }
 
-    for (;;) {
+    while (size != 0) {
 	state = &lx->states[1];
-	lastfinal = -1;
-	len = 0;
+	final = -1;
 	p = str->text + str->len - size;
 
-	for (;;) {
-	    if (state->ntrans == 0) {
-		if (state == lx->states) {
-		    break;	/* stuck in state 0 */
+	while (size != 0) {
+	    eclass = UCHAR(lx->eclass[UCHAR(*p)]);
+	    if (state->ntrans <= eclass) {
+		if (state->ntrans == 0) {
+		    /* expand state */
+		    if (state == lx->states) {
+			break;	/* stuck in state 0 */
+		    }
+		    state = lx_expand(lx, state);
+		    eclass = UCHAR(lx->eclass[UCHAR(*p)]);
+		} else {
+		    /* extend transition table */
+		    lx_extend(lx, state, eclass);
 		}
-		lx_expand(lx, state, len);
 	    }
-
-	    if (size == 0) {
-		break;
-	    }
-	    --size;
 
 	    /* transition */
-	    q = &state->trans[UCHAR(lx->eclass[UCHAR(*p++) << 1])];
+	    --size;
+	    p++;
+	    q = &state->trans[eclass << 1];
 	    state = &lx->states[(UCHAR(q[0]) << 8) + UCHAR(q[1])];
-	    len++;
 
 	    /* check if final state */
 	    if (state->final >= 0) {
-		lastfinal = state->final;
-		lastflen = len;
+		final = state->final;
+		fsize = size;
 	    }
 	}
 
-	if (lastfinal >= 0) {
+	if (final >= 0) {
 	    /* in a final state */
-	    size += len - lastflen;
-	    if (lastfinal != 0 || !lx->whitespace) {
+	    size = fsize;
+	    if (final != 0 || !lx->whitespace) {
 		*strlen = size;
-		return lastfinal;
+		return final;
 	    }
-	    /* else continue */
+	    /* else whitespace: continue */
 	} else {
 	    return -2;	/* reject */
 	}
     }
+
+    return -1;	/* end of string */
+}
+
+
+typedef struct _parser_ {
+    string *source;		/* grammar source */
+    string *grammar;		/* preprocessed grammar */
+    lexer *lex;			/* lexical scanner */
+} parser;
+
+/*
+ * NAME:	parser->save()
+ * DESCRIPTION:	save parse_string data
+ */
+void ps_save(data)
+dataspace *data;
+{
+}
+
+/*
+ * NAME:	parser->free()
+ * DESCRIPTION:	free parse_string data
+ */
+void ps_free(data)
+dataspace *data;
+{
 }
 
 /*
  * NAME:	parse_string()
  * DESCRIPTION:	parse a string
  */
-array *parse_string(data, gstr, sstr)
+array *ps_parse_string(data, grammar, str)
 dataspace *data;
-string *gstr;
-string *sstr;
+string *grammar;
+string *str;
 {
-    string *str;
-    char buf[256], *q;
-    Uint cset[8];
-    int buflen;
-    lexposn foo;
+    register parser *ps;
+    string *igram;
+    bool same;
 
-    str = parse_grammar(gstr);
-    q = str->text + 10;
-    q = str->text + 256 * UCHAR(q[0]) + UCHAR(q[1]) + 2;
-    lp_transposn(q, (char *) NULL, buf + 2, &buflen);
-    buf[0] = 1;
-    buf[1] = 1;
-    foo.chain.name = buf;
-    lp_cset(&foo, q, cset);
-    while (!lp_trans(&foo, q, cset, buf + 2, &buflen)) ;
+    if (data->parser != (parser *) NULL) {
+	ps = data->parser;
+	same = (str_cmp(ps->source, grammar) == 0);
+    } else {
+	value *val;
 
-    return (array *) NULL;
+	val = d_get_variable(data, data->nvariables - 1);
+	if (val->type == T_ARRAY &&
+	    str_cmp(d_get_elts(val->u.array)->u.string, grammar) == 0) {
+	    /* load_parser(); */
+	    same = TRUE;
+	} else {
+	    ps = (parser *) NULL;
+	    same = FALSE;
+	}
+    }
+
+    if (!same) {
+	igram = parse_grammar(grammar);
+
+	if (data->parser != (parser *) NULL) {
+	    ps_free(data);
+	}
+	data->parser = ps = ALLOC(parser, 1);
+	str_ref(ps->source = grammar);
+	str_ref(ps->grammar = igram);
+	ps->lex = lx_new(igram->text);
+    }
+
+    {
+	int tokens[1000];
+	unsigned int size;
+	int i, n;
+	array *a;
+
+	size = str->len;
+	for (i = 0;; i++) {
+	    n = lx_lazyscan(ps->lex, str, &size);
+	    if (n < 0) {
+		if (n == -2) {
+		    error("Invalid token");
+		}
+		break;
+	    }
+	    tokens[i] = n;
+	}
+
+	a = arr_new(data, (long) i);
+	for (n = 0; n < i; n++) {
+	    a->elts[n].type = T_INT;
+	    a->elts[n].u.number = tokens[n];
+	}
+
+	return a;
+    }
 }

@@ -5,6 +5,7 @@
 # include "interpret.h"
 # include "data.h"
 # include "call_out.h"
+# include "parse.h"
 # include "csupport.h"
 
 /* bit values for ctrl->flags */
@@ -285,6 +286,9 @@ object *obj;
     data->ncallouts = 0;
     data->fcallouts = 0;
     data->callouts = (dcallout *) NULL;
+
+    /* parse_string data */
+    data->parser = (struct _parser_ *) NULL;
 
     return data;
 }
@@ -2183,6 +2187,10 @@ register dataspace *data;
     sdataspace header;
     register Uint n;
 
+    if (data->parser != (struct _parser_ *) NULL) {
+	ps_save(data);
+    }
+
     sdata = data;
 
     if (data->nsectors != 0 && data->achange == 0 && data->schange == 0 &&
@@ -3024,6 +3032,11 @@ register dataspace *data;
     /* free svariables */
     if (data->svariables != (svalue *) NULL) {
 	FREE(data->svariables);
+    }
+
+    /* free parse_string data */
+    if (data->parser != (struct _parser_ *) NULL) {
+	ps_free(data);
     }
 
     data->obj->data = (dataspace *) NULL;

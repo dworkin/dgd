@@ -148,6 +148,8 @@ struct _dataspace_ {
     uindex fcallouts;		/* free callout list */
     struct _dcallout_ *callouts;/* callouts */
     Uint cooffset;		/* offset of callout table */
+
+    struct _parser_ *parser;	/* parse_string data */
 };
 
 extern void		d_init		P((void));

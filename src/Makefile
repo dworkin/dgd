@@ -88,7 +88,7 @@ interpret.o config.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
-parse.o: parse.h
+parse.o data.o: parse.h
 editor.o config.o dgd.o: editor.h
 call_out.o config.o dgd.o: call_out.h
 error.o comm.o call_out.o config.o dgd.o: comm.h
