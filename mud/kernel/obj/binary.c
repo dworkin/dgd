@@ -55,7 +55,8 @@ static void receive_message(string str)
 
     tls = allocate(driver->query_tls_size());
     buffer += str;
-    while ((mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {
+    while (this_object() &&
+	   (mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {
 	if (mode != MODE_RAW) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {
