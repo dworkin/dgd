@@ -1375,3 +1375,6 @@ DGD 1.1
  - Allow only one simultaneous new editor instance per thread.
  - Fixed a bug where a connection would hang if there was pending output while
    the connection was lost.
+ - Remove the swapfile before creating it, to make sure that two drivers
+   attempting to use the same swapfile won't mess it up for both of them.
+ - Fixed yet another object undo bug.

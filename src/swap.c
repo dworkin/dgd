@@ -104,11 +104,12 @@ void sw_finish()
  */
 static void sw_create()
 {
-    char buf[STRINGSZ];
+    char buf[STRINGSZ], *p;
 
     memset(cbuf, '\0', sectorsize);
-    swap = P_open(path_native(buf, swapfile),
-		  O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
+    p = path_native(buf, swapfile);
+    P_unlink(p);
+    swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
     if (swap < 0 || P_write(swap, cbuf, sectorsize) < 0) {
 	fatal("cannot create swap file \"%s\"", swapfile);
     }

@@ -64,6 +64,7 @@ void o_init(n)
 register unsigned int n;
 {
     otable = ALLOC(object, otabsize = n);
+    memset(otable, '\0', n * sizeof(object));
     ocmap = ALLOC(char, (n + 7) >> 3);
     memset(ocmap, '\0', (n + 7) >> 3);
     for (n = 4; n < otabsize; n <<= 1) ;
@@ -203,6 +204,8 @@ int access;
 	    o->access |= access;
 	    return &o->obj;
 	}
+
+	/* create new patch on current plane */
 	return &op_new(oplane, oo, o, &o->obj, access)->obj;
     } else {
 	/*
@@ -342,6 +345,7 @@ void o_commit_plane()
 		    obj = OBJ(op->obj.index);
 		}
 		if (op->obj.count == 0 && obj->count != 0) {
+		    /* remove object from stackframe above atomic function */
 		    i_odest(cframe, obj);
 		}
 
@@ -355,7 +359,7 @@ void o_commit_plane()
 			    hte **h;
 
 			    /*
-			     * new object name
+			     * make object name static
 			     */
 			    m_static();
 			    name = ALLOC(char, strlen(op->obj.chain.name) + 1);
@@ -376,15 +380,13 @@ void o_commit_plane()
 			    FREE(op->obj.chain.name);
 			    op->obj.chain.name = obj->chain.name;
 			    if (op->obj.count != 0) {
+				/* keep this name */
 				op->obj.chain.next = obj->chain.next;
-			    }
-			}
-			if (op->obj.count == 0 && obj->count != 0) {
-			    /*
-			     * remove from hash table
-			     */
-			    *ht_lookup(prev->htab, obj->chain.name, FALSE) =
+			    } else if (obj->count != 0) {
+				/* remove from hash table */
+				*ht_lookup(prev->htab, obj->chain.name, FALSE) =
 							(hte *) obj->chain.next;
+			    }
 			}
 		    }
 		    if (obj->count != 0) {
@@ -479,15 +481,24 @@ void o_discard_plane()
 							= op->obj.chain.next;
 			}
 			FREE(op->obj.chain.name);
-		    } else if (op->obj.count == 0 && obj->count != 0) {
+		    } else {
 			hte **h;
 
-			/*
-			 * put name back in hash table
-			 */
-			h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
-			obj->chain.next = *h;
-			*h = (hte *) obj;
+			if (op->obj.count != 0) {
+			    /*
+			     * move name to previous plane
+			     */
+			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
+			    obj->chain.next = op->obj.chain.next;
+			    *h = (hte *) obj;
+			} else if (obj->count != 0) {
+			    /*
+			     * put name back in hashtable
+			     */
+			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
+			    obj->chain.next = *h;
+			    *h = (hte *) obj;
+			}
 		    }
 		}
 

@@ -1912,6 +1912,7 @@ Int level;
 	}
     }
     if (clist != (dataplane *) NULL) {
+	/* insert commit planes in plane list */
 	*cr = p;
 	*r = clist;
     }
@@ -1956,7 +1957,7 @@ Int level;
 	    if (p->arrays != (arrref *) NULL) {
 		register arrref *a;
 
-		/* replace old array refs */
+		/* remove old array refs */
 		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
 		    if (a->arr != (array *) NULL) {
 			arr_del(a->arr);
@@ -1969,7 +1970,7 @@ Int level;
 	    if (p->strings != (strref *) NULL) {
 		register strref *s;
 
-		/* replace old string refs */
+		/* remove old string refs */
 		for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i)
 		{
 		    if (s->str != (string *) NULL) {
@@ -2894,8 +2895,7 @@ register control *ctrl;
 }
 
 
-static dataspace *sdata;	/* the dataspace block currently being saved */
-static Uint narr, nstr, cstr;	/* # of arrays, strings, string constants */
+static Uint narr, nstr;		/* # of arrays, strings, string constants */
 static Uint arrsize, strsize;	/* # of array elements, total string size */
 
 /*
@@ -3015,7 +3015,8 @@ register unsigned short n;
  * NAME:	data->put_values()
  * DESCRIPTION:	save modified values as svalues
  */
-static void d_put_values(sv, v, n)
+static void d_put_values(data, sv, v, n)
+register dataspace *data;
 register svalue *sv;
 register value *v;
 register unsigned short n;
@@ -3035,7 +3036,7 @@ register unsigned short n;
 
 	    case T_STRING:
 		sv->oindex = 0;
-		sv->u.string = v->u.string->primary - sdata->base.strings;
+		sv->u.string = v->u.string->primary - data->base.strings;
 		break;
 
 	    case T_FLOAT:
@@ -3047,7 +3048,7 @@ register unsigned short n;
 	    case T_ARRAY:
 	    case T_MAPPING:
 		sv->oindex = 0;
-		sv->u.array = v->u.array->primary - sdata->base.arrays;
+		sv->u.array = v->u.array->primary - data->base.arrays;
 		break;
 	    }
 	    v->modified = FALSE;
@@ -3148,7 +3149,6 @@ register dataspace *data;
     sdataspace header;
     register Uint n;
 
-    sdata = data;
     if (data->parser != (struct _parser_ *) NULL) {
 	ps_save(data->parser);
     }
@@ -3168,7 +3168,8 @@ register dataspace *data;
 	    /*
 	     * variables changed
 	     */
-	    d_put_values(data->svariables, data->variables, data->nvariables);
+	    d_put_values(data, data->svariables, data->variables,
+			 data->nvariables);
 	    sw_writev((char *) data->svariables, data->sectors,
 		      data->nvariables * (Uint) sizeof(svalue),
 		      data->varoffset);
@@ -3209,7 +3210,8 @@ register dataspace *data;
 		if (a->arr != (array *) NULL && (a->ref & ARR_MOD)) {
 		    a->ref &= ~ARR_MOD;
 		    idx = data->sarrays[n].index;
-		    d_put_values(&data->selts[idx], a->arr->elts, a->arr->size);
+		    d_put_values(data, &data->selts[idx], a->arr->elts,
+				 a->arr->size);
 		    sw_writev((char *) &data->selts[idx], data->sectors,
 			      a->arr->size * (Uint) sizeof(svalue),
 			      data->arroffset + data->narrays * sizeof(sarray) +
@@ -3262,7 +3264,7 @@ register dataspace *data;
 		    co->val[1].modified = TRUE;
 		    co->val[2].modified = TRUE;
 		    co->val[3].modified = TRUE;
-		    d_put_values(sco->val, co->val,
+		    d_put_values(data, sco->val, co->val,
 				 (co->nargs > 3) ? 4 : co->nargs + 1);
 		} else {
 		    sco->val[0].type = T_NIL;
@@ -3286,7 +3288,6 @@ register dataspace *data;
 	 */
 	narr = 0;
 	nstr = 0;
-	cstr = 0;
 	arrsize = 0;
 	strsize = 0;
 
@@ -3299,7 +3300,7 @@ register dataspace *data;
 	if (data->ncallouts > 0) {
 	    register dcallout *co;
 
-	    if(data->callouts == (dcallout *) NULL) {
+	    if (data->callouts == (dcallout *) NULL) {
 		d_get_callouts(data);
 	    }
 	    /* remove empty callouts at the end */
@@ -3340,7 +3341,7 @@ register dataspace *data;
 	header.nvariables = data->nvariables;
 	header.narrays = narr;
 	header.eltsize = arrsize;
-	header.nstrings = nstr - cstr;
+	header.nstrings = nstr;
 	header.strsize = strsize;
 	header.ncallouts = data->ncallouts;
 	header.fcallouts = data->fcallouts;
