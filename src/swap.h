@@ -13,7 +13,8 @@ extern void	sw_readv	P((char*, sector*, long, long));
 extern void	sw_writev	P((char*, sector*, long, long));
 extern uindex	sw_mapsize	P((long));
 extern uindex	sw_count	P((void));
-extern bool	sw_dump		P((int));
-extern void	sw_restore	P((int));
+extern void	sw_copy		P((void));
+extern int	sw_dump		P((char*));
+extern void	sw_restore	P((int, int));
 
 # endif	/* H_SWAP */
