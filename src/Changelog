@@ -1223,3 +1223,4 @@ DGD 1.1
  - Fixed a float testing bug in precompiled code.
  - Fixed a bug in array exporting, introduced in the last assignment/swapping
    rewrite.
+ - Fixed the bug in the fix.

@@ -2666,7 +2666,7 @@ register unsigned short n;
 			/*
 			 * import elements too
 			 */
-			d_import(data, a, a->size);
+			d_import(data, a->elts, a->size);
 		    }
 		} else {
 		    /*
