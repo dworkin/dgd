@@ -432,10 +432,10 @@ register char *p;
 	    }
 
 	    /* add alternative */
-	    sn->pn->len++;
 	    for (ppn = &sn->pn->list;
 		 *ppn != (pnode *) NULL && (*ppn)->u.text < red;
 		 ppn = &(*ppn)->next) ;
+	    sn->pn->len++;
 
 	    pn->next = *ppn;
 	    *ppn = pn;
@@ -527,10 +527,19 @@ bool *toobig;
 	    for (n = 0; n < nred; n++) {
 		ps_reduce(ps, sn->pn, red);
 		red += 4;
-		i_add_ticks(ps->frame, 1);
+		i_add_ticks(ps->frame, 8);
 	    }
 	}
-	i_add_ticks(ps->frame, 1);
+
+	i_add_ticks(ps->frame, 3);
+	if (ps->frame->ticks < 0) {
+	    if (ps->frame->noticks) {
+		ps->frame->ticks = 0x7fffffff;
+	    } else {
+		FREE(ps->states);
+		error("Out of ticks");
+	    }
+	}
 
 	switch (n = dfa_scan(ps->fa, str, &size, &ttext, &tlen)) {
 	case DFA_EOS:
@@ -581,13 +590,10 @@ bool *toobig;
  * NAME:	parser->flatten()
  * DESCRIPTION:	traverse parse tree, collecting values in a flat array
  */
-static void ps_flatten(pn, v)
-register pnode *pn;
+static void ps_flatten(pn, next, v)
+register pnode *pn, *next;
 register value *v;
 {
-    register pnode *next;
-
-    next = pn->next;
     do {
 	switch (pn->symbol) {
 	case PN_STRING:
@@ -621,9 +627,10 @@ register value *v;
  * NAME:	parser->traverse()
  * DESCRIPTION:	traverse the parse tree, returning the size
  */
-static Int ps_traverse(ps, pn)
+static Int ps_traverse(ps, pn, next)
 register parser *ps;
 register pnode *pn;
+pnode *next;
 {
     register Int n;
     register pnode *sub;
@@ -652,7 +659,7 @@ register pnode *pn;
 	    pn->symbol = PN_BLOCKED;
 	    len = 0;
 	    for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next) {
-		n = ps_traverse(ps, sub);
+		n = ps_traverse(ps, sub, sub->next);
 		if (n < 0) {
 		    return n;	/* blocked branch */
 		}
@@ -669,7 +676,7 @@ register pnode *pn;
 		 * call LPC function to process subtree
 		 */
 		a = arr_new(ps->data, (long) len);
-		ps_flatten(pn, a->elts + len);
+		ps_flatten(pn, next, a->elts + len);
 		(--ps->frame->sp)->type = T_ARRAY;
 		arr_ref(ps->frame->sp->u.array = a);
 		ps->data->parser = (parser *) NULL;
@@ -719,7 +726,7 @@ register pnode *pn;
 	    /* pass 1: count branches */
 	    n = 0;
 	    for (sub = pn->list; sub != (pnode *) NULL; sub = sub->next) {
-		if (ps_traverse(ps, sub) >= 0) {
+		if (ps_traverse(ps, sub, next) >= 0 && n < ps->maxalt) {
 		    n++;
 		} else {
 		    sub->symbol = PN_BLOCKED;
@@ -727,9 +734,6 @@ register pnode *pn;
 	    }
 	    if (n == 0) {
 		return -1;	/* no unblocked branches */
-	    }
-	    if (n > ps->maxalt) {
-		n = ps->maxalt;
 	    }
 
 	    /* pass 2: create branch arrays */
@@ -742,19 +746,27 @@ register pnode *pn;
 		if (sub->symbol != PN_BLOCKED) {
 		    if (n == 1) {
 			/* sole branch */
+			sub->next = pn->next;
 			*pn = *sub;
 			return pn->len;
 		    } else {
-			arr_ref(v->u.array = arr_new(ps->data, (long) pn->len));
-			v->type = T_ARRAY;
-			ps_flatten(pn, (v++)->u.array->elts);
+			if (sub->symbol == PN_ARRAY) {
+			    arr_ref(v->u.array = sub->u.arr);
+			    (v++)->type = T_ARRAY;
+			} else {
+			    arr_ref(v->u.array = arr_new(ps->data,
+							 (long) sub->len));
+			    v->type = T_ARRAY;
+			    ps_flatten(sub, next,
+				       (v++)->u.array->elts + sub->len);
+			}
 			i++;
 		    }
 		}
 	    }
 	    pn->symbol = PN_BRANCH;
 	    pn->u.arr = a;
-	    return pn->len = n;
+	    return pn->len = 1;
 	}
     } else {
 	/*
@@ -822,7 +834,9 @@ register parser *ps;
     bool save;
 
     d1 = ps->dfastr;
+    d2 = (string *) NULL;
     p1 = ps->srpstr;
+    p2 = (string *) NULL;
     save = dfa_save(ps->fa, &d1, &d2);
     save |= srp_save(ps->lr, &p1, &p2);
 
@@ -897,6 +911,7 @@ Int maxalt;
     data = f->data;
     if (data->parser != (parser *) NULL) {
 	ps = data->parser;
+	ps->frame = f;
 	same = (str_cmp(ps->source, source) == 0);
     } else {
 	val = d_get_variable(data, data->nvariables - 1);
@@ -939,6 +954,7 @@ Int maxalt;
 	/*
 	 * do the parse thing
 	 */
+	i_add_ticks(ps->frame, 400);
 	toobig = FALSE;
 	pn = ps_parse(ps, str, &toobig);
 	sn_clear(&ps->list);
@@ -951,10 +967,10 @@ Int maxalt;
 	    /*
 	     * valid parse tree was created
 	     */
-	    len = ps_traverse(ps, pn);
+	    len = ps_traverse(ps, pn, pn->next);
 	    if (len >= 0) {
 		a = arr_new(data, (long) len);
-		ps_flatten(pn, a->elts + len);
+		ps_flatten(pn, pn->next, a->elts + len);
 	    }
 
 	    /* clean up */
