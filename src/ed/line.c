@@ -568,9 +568,9 @@ block b1, b2;
  * DESCRIPTION:	output of a subrange of a blk
  *		(local for bk_put)
  */
-static void bk_put1(bp, index, size)
+static void bk_put1(bp, idx, size)
 register blk *bp;
-register long index, size;
+register long idx, size;
 {
     register long lines, last;
 
@@ -585,19 +585,19 @@ register long index, size;
 	    bp = bk_load(l_lb, bp->llast);
 	}
 	lines = bp->lines;
-	if (lines > index) {
-	    lines -= index;
+	if (lines > idx) {
+	    lines -= idx;
 	    if (lines > size) {
 		lines = size;
 	    }
-	    bk_put1(bp, index, lines);
+	    bk_put1(bp, idx, lines);
 	    size -= lines;
-	    index = 0;
+	    idx = 0;
 	} else {
-	    index -= lines;
+	    idx -= lines;
 	}
 	if (size > 0) {
-	    bk_put1(bk_load(l_lb, last), index, size);
+	    bk_put1(bk_load(l_lb, last), idx, size);
 	}
     } else {
 	register long first, offset, mid;
@@ -605,43 +605,43 @@ register long index, size;
 	last = bp->llast + BLOCK_SIZE;
 	lines += bp->index1;
 	if (!l_reverse) {
-	    index += bp->index1;
+	    idx += bp->index1;
 	} else {
-	    index = lines - index - 1;
+	    idx = lines - idx - 1;
 	}
 	bp = bk_load(l_lb, mid = bp->lfirst);
 	offset = bp->lindex;
 
-	while (index < 0 || index >= bp->lines) {
-	    if (index < 0) {
+	while (idx < 0 || idx >= bp->lines) {
+	    if (idx < 0) {
 		last = mid;
 		lines = bp->lindex - offset;
-		index += lines;
+		idx += lines;
 	    } else {
 		first = bp->next;
 		lines -= bp->lindex + bp->lines - offset;
-		index -= bp->lines;
+		idx -= bp->lines;
 		offset = bp->lindex + bp->lines;
 	    }
-	    mid = first + ((((last - first) / lines) * index) & BLOCK_MASK);
+	    mid = first + ((((last - first) / lines) * idx) & BLOCK_MASK);
 	    bp = bk_load(l_lb, mid);
-	    index -= bp->lindex - offset;
+	    idx -= bp->lindex - offset;
 	}
 
 	if (l_reverse) {
-	    index = bp->lines - index - 1;
+	    idx = bp->lines - idx - 1;
 	}
 
 	for (;;) {
 	    lines = size;
-	    if (lines > bp->lines - index) {
-		lines = bp->lines - index;
+	    if (lines > bp->lines - idx) {
+		lines = bp->lines - idx;
 	    }
 	    size -= lines;
 
 	    if (!l_reverse) {
 		do {
-		    (*l_putline)(l_buf + *((short *)(bp + 1) + index++));
+		    (*l_putline)(l_buf + *((short *)(bp + 1) + idx++));
 		    bp = bk_load(l_lb, mid);
 		} while (--lines > 0);
 
@@ -652,9 +652,9 @@ register long index, size;
 		bp = bk_load(l_lb, mid = bp->next);
 
 	    } else {
-		index = bp->lines - index;
+		idx = bp->lines - idx;
 		do {
-		    (*l_putline)(l_buf + *((short *)(bp + 1) + --index));
+		    (*l_putline)(l_buf + *((short *)(bp + 1) + --idx));
 		    bp = bk_load(l_lb, mid);
 		} while (--lines > 0);
 
@@ -664,7 +664,7 @@ register long index, size;
 
 		bp = bk_load(l_lb, mid = bp->prev);
 	    }
-	    index = 0;
+	    idx = 0;
 	}
     }
 }
@@ -673,10 +673,10 @@ register long index, size;
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(lb, b, index, size, putline, reverse)
+void bk_put(lb, b, idx, size, putline, reverse)
 linebuf *lb;
 block b;
-long index, size;
+long idx, size;
 void (*putline) P((char*));
 bool reverse;
 {
@@ -686,5 +686,5 @@ bool reverse;
     l_putline = putline;
     l_reverse = reverse;
     bp = bk_load(lb, b);
-    bk_put1(bp, (reverse) ? bp->lines - index - size : index, size);
+    bk_put1(bp, (reverse) ? bp->lines - idx - size : idx, size);
 }

@@ -266,17 +266,17 @@ bool fill;
  * NAME:	swap->readv()
  * DESCRIPTION:	read bytes from a vector of sectors
  */
-void sw_readv(m, vec, size, index)
+void sw_readv(m, vec, size, idx)
 register char *m;
 register sector *vec;
-register long size, index;
+register long size, idx;
 {
     register int len;
 
-    vec += index / sectorsize;
-    index %= sectorsize;
-    len = (size > sectorsize - index) ? sectorsize - index : size;
-    memcpy(m, (char *) (sw_load(*vec++, TRUE) + 1) + index, len);
+    vec += idx / sectorsize;
+    idx %= sectorsize;
+    len = (size > sectorsize - idx) ? sectorsize - idx : size;
+    memcpy(m, (char *) (sw_load(*vec++, TRUE) + 1) + idx, len);
 
     while ((size -= len) > 0) {
 	m += len;
@@ -289,20 +289,20 @@ register long size, index;
  * NAME:	swap->writev()
  * DESCRIPTION:	write bytes to a vector of sectors
  */
-void sw_writev(m, vec, size, index)
+void sw_writev(m, vec, size, idx)
 register char *m;
 register sector *vec;
-register long size, index;
+register long size, idx;
 {
     register header *h;
     register int len;
 
-    vec += index / sectorsize;
-    index %= sectorsize;
-    len = (size > sectorsize - index) ? sectorsize - index : size;
+    vec += idx / sectorsize;
+    idx %= sectorsize;
+    len = (size > sectorsize - idx) ? sectorsize - idx : size;
     h = sw_load(*vec++, (len != sectorsize));
     h->dirty = TRUE;
-    memcpy((char *) (h + 1) + index, m, len);
+    memcpy((char *) (h + 1) + idx, m, len);
 
     while ((size -= len) > 0) {
 	m += len;

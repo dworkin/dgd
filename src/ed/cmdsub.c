@@ -438,15 +438,15 @@ static cmdbuf *ccb;	/* local copy of command buffer pointer */
 static void shift(text)
 register char *text;
 {
-    register int index;
+    register int idx;
 
     /* first determine the number of leading spaces */
-    index = 0;
+    idx = 0;
     while (*text == ' ' || *text == '\t') {
 	if (*text++ == ' ') {
-	    index++;
+	    idx++;
 	} else {
-	    index = (index + 8) & ~7;
+	    idx = (idx + 8) & ~7;
 	}
     }
 
@@ -455,20 +455,20 @@ register char *text;
 	addblock(ccb, text);
 	lineno++;
     } else {
-	index += shi;
-	if (index < MAX_LINE_SIZE) {
+	idx += shi;
+	if (idx < MAX_LINE_SIZE) {
 	    char buffer[MAX_LINE_SIZE];
 	    register char *p;
 
 	    p = buffer;
 	    /* fill with leading ws */
-	    while (index >= 8) {
+	    while (idx >= 8) {
 		*p++ = '\t';
-		index -= 8;
+		idx -= 8;
 	    }
-	    while (index > 0) {
+	    while (idx > 0) {
 		*p++ = ' ';
-		--index;
+		--idx;
 	    }
 	    if (p - buffer + strlen(text) < MAX_LINE_SIZE) {
 		strcpy(p, text);
@@ -576,14 +576,13 @@ char *text;
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
     register char *p, *sp;
-    register int *ip;
-    register long index;
+    register int *ip, idx;
     register int top, token;
     char *start;
     bool do_indent;
 
     do_indent = FALSE;
-    index = 0;
+    idx = 0;
     p = text = strcpy(line, text);
 
     /* process status vars */
@@ -605,9 +604,9 @@ char *text;
 	/* count leading ws */
 	while (*p == ' ' || *p == '\t') {
 	    if (*p++ == ' ') {
-		index++;
+		idx++;
 	    } else {
-		index = (index + 8) & ~7;
+		idx = (idx + 8) & ~7;
 	    }
 	}
 	if (*p == '\0') {
@@ -677,29 +676,29 @@ char *text;
 		    in_comment = TRUE;
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
-			shi = *ind - index;
+			shi = *ind - idx;
 			shift(text);
 			do_indent = FALSE;
 		    } else {
 			register char *q;
-			register int index2;
+			register int idx2;
 
 			/*
 			 * find how much the comment has shifted, so the same
 			 * shift can be used if the comment continues on the
 			 * next line
 			 */
-			index2 = *ind;
+			idx2 = *ind;
 			for (q = start; q < p - 1;) {
 			    if (*q++ == '\t') {
-				index = (index + 8) & ~7;
-				index2 = (index2 + 8) & ~7;
+				idx = (idx + 8) & ~7;
+				idx2 = (idx2 + 8) & ~7;
 			    } else {
-				index++;
-				index2++;
+				idx++;
+				idx2++;
 			    }
 			}
-			shi = index2 - index;
+			shi = idx2 - idx;
 		    }
 		    p++;
 		    continue;
@@ -802,7 +801,7 @@ char *text;
 		}
 		/* shift the current line, if appropriate */
 		if (do_indent) {
-		    shi = i - index;
+		    shi = i - idx;
 		    if (i > 0 && token != RHOOK &&
 		      (*sp == LOPERATOR || *sp == LHOOK)) {
 			/* half indent after ( [ ({ (HACK!) */
@@ -1021,7 +1020,7 @@ static void subst(text)
 register char *text;
 {
     char line[MAX_LINE_SIZE];
-    register int index, size;
+    register int idx, size;
     register char *p;
     register long *k, *l;
     long newlines;
@@ -1029,9 +1028,9 @@ register char *text;
 
     found = FALSE;
     newlines = 0;
-    index = 0;
+    idx = 0;
 
-    while (rx_exec(ccb->regexp, text, index, IGNORECASE(ccb->vars)) > 0) {
+    while (rx_exec(ccb->regexp, text, idx, IGNORECASE(ccb->vars)) > 0) {
 	if (skipped) {
 	    /*
 	     * Because the write buffer will be flushed, and the text might
@@ -1060,10 +1059,10 @@ register char *text;
 	}
 	found = TRUE;
 	tupper = tlower = upper = lower = FALSE;
-	size = ccb->regexp->start - text - index;
+	size = ccb->regexp->start - text - idx;
 	if (size > 0) {
 	    /* copy first unchanged part of line to buffer */
-	    sub(text + index, size);
+	    sub(text + idx, size);
 	}
 	p = ccb->replace;
 	while (*p != '\0') {
@@ -1147,17 +1146,17 @@ register char *text;
 	    p++;
 	}
 
-	index = ccb->regexp->start + ccb->regexp->size - text;
-	if (!globsubst || text[index] == '\0') {
+	idx = ccb->regexp->start + ccb->regexp->size - text;
+	if (!globsubst || text[idx] == '\0') {
 	    break;
 	}
     }
 
     if (found) {
-	if (text[index] != '\0') {
+	if (text[idx] != '\0') {
 	    /* concatenate unchanged part of line after found pattern */
 	    tupper = tlower = upper = lower = FALSE;
-	    sub(text + index, strlen(text + index));
+	    sub(text + idx, strlen(text + idx));
 	}
 	if (!currentblock) {
 	    /* start a new block of lines with substitutions in them */

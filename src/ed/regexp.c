@@ -436,10 +436,10 @@ char *text;
  *		pattern is invalid, 0 if no match was found, or 1 if a match
  *		was found.
  */
-int rx_exec(rx, text, index, ic)
+int rx_exec(rx, text, idx, ic)
 register rxbuf *rx;
 register char *text;
-register int index;
+register int idx;
 bool ic;
 {
     rx->start = (char *) NULL;
@@ -450,7 +450,7 @@ bool ic;
     l_ic = ic;
     if (rx->anchor) {
 	/* the easy case */
-	if (index || !match(rx->buffer, text)) {
+	if (idx || !match(rx->buffer, text)) {
 	    return 0;
 	}
     } else {
@@ -459,31 +459,31 @@ bool ic;
 		register char *p;
 
 		/* find the first character of the pattern in the string */
-		p = strchr(text + index, rx->firstc);
+		p = strchr(text + idx, rx->firstc);
 		if (ic) {
 		    register char *q;
 
-		    q = strchr(text + index, toupper(rx->firstc));
+		    q = strchr(text + idx, toupper(rx->firstc));
 		    if (q != (char*)NULL && (p == (char *) NULL || p > q)) {
 			p = q;
 		    }
 		}
 		if (p != (char *) NULL) {
-		    index = p - text;
+		    idx = p - text;
 		} else {
 		    return 0;
 		}
 	    }
-	    if (match(rx->buffer, text + index)) break;
+	    if (match(rx->buffer, text + idx)) break;
 	    /* if no match, try the next character in the string */
-	    if (text[index++] == '\0') {
+	    if (text[idx++] == '\0') {
 		return 0;
 	    }
 	}
     }
 
     /* a match was found, record its starting place and length */
-    rx->size = rx->start - text - index;
+    rx->size = rx->start - text - idx;
     rx->start -= rx->size;
     return 1;
 }
