@@ -1541,6 +1541,8 @@ int kf_get_dir()
 	if (strcmp(dir, ".") != 0 && chdir(conf_base_dir()) < 0) {
 	    fatal("cannot chdir back to base dir");
 	}
+    } else {
+	nfiles = 0;
     }
 
     /* adjust array sizes */

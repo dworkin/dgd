@@ -803,3 +803,7 @@ DGD 1.1
    failed.
  - Fixed a bug in the compiler that was exposed by the changes in the code
    generator.
+ - Inheriting a renamed clone could cause trouble.
+ - send_message() now returns the number of bytes written (1 for echo on/off)
+   or 0 in case of an error.
+ - Fixed a bug introduced in get_dir() in the latest rewrite.

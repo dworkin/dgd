@@ -344,7 +344,7 @@ node *label;
     }
 
     o = o_find(file);
-    if (o == (object *) NULL || !(o->flags & O_MASTER) ||
+    if (o == (object *) NULL ||
 	!ctrl_inherit(current->file, o, (label == (node *) NULL) ?
 					 (string *) NULL : label->l.string)) {
 	/* object is unloaded */

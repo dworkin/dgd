@@ -222,25 +222,22 @@ int size;
 
 /*
  * NAME:	conn->write()
- * DESCRIPTION:	write to a connection; return true if write succeeded
+ * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-bool conn_write(conn, buf, size)
+int conn_write(conn, buf, size)
 connection *conn;
 char *buf;
 register int size;
 {
     if (conn->fd >= 0) {
-	if (write(conn->fd, buf, size) != size) {
-	    if (errno != EWOULDBLOCK) {
-		close(conn->fd);
-		FD_CLR(conn->fd, &fds);
-		conn->fd = -1;
-	    }
-	    return FALSE;
+	if ((size=write(conn->fd, buf, size)) < 0 && errno != EWOULDBLOCK) {
+	    close(conn->fd);
+	    FD_CLR(conn->fd, &fds);
+	    conn->fd = -1;
 	}
-	return TRUE;
+	return size;
     }
-    return FALSE;
+    return 0;
 }
 
 /*

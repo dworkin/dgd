@@ -580,20 +580,23 @@ char p_send_message[] = { C_STATIC, T_INT, 1, T_MIXED };
 int kf_send_message()
 {
     object *obj;
-    bool flag;
+    int num;
 
-    if (sp->type != T_INT && sp->type != T_STRING) {
+    if (sp->type == T_STRING) {
+	num = sp->u.string->len;
+    } else if (sp->type == T_INT) {
+	num = 1;
+    } else {
 	return 1;
     }
 
-    flag = TRUE;	/* default: no error */
     obj = i_this_object();
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
 	    if (sp->type == T_INT) {
 		comm_echo(obj, sp->u.number != 0);
 	    } else {
-		 flag = comm_send(obj, sp->u.string);
+		num = comm_send(obj, sp->u.string);
 	    }
 	} else if ((obj->flags & O_DRIVER) && sp->type == T_STRING) {
 	    P_message(sp->u.string->text);
@@ -603,7 +606,7 @@ int kf_send_message()
 	str_del(sp->u.string);
     }
     sp->type = T_INT;
-    sp->u.number = flag;
+    sp->u.number = num;
     return 0;
 }
 # endif

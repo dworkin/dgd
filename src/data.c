@@ -829,10 +829,9 @@ array *arr;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
 	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
 		ilist != data) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
 		data->inext = ilist;
 		if (ilist != (dataspace *) NULL) {
 		    ilist->iprev = data;
@@ -858,7 +857,7 @@ string *str;
     strconst = str->u.strconst;
     if (strconst >= ctrl->strings && strconst < ctrl->strings + ctrl->nstrings)
     {
-	return ((ctrl->ninherits - 1) << 23) | (strconst - ctrl->strings);
+	return ((ctrl->ninherits - 1L) << 23) | (strconst - ctrl->strings);
     }
 
     return -1;	/* not a constant in this object */
@@ -917,10 +916,9 @@ register value *rhs;
 	    }
 	} else {
 	    /* not in this object: ref imported array */
-	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
 		ilist != data) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
 		data->inext = ilist;
 		if (ilist != (dataspace *) NULL) {
 		    ilist->iprev = data;
@@ -1044,10 +1042,9 @@ register value *elt, *val;
     } else {
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
-	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+	    if (data->imports++ == 0 && data->iprev == (dataspace *) NULL &&
 		ilist != data) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
 		data->inext = ilist;
 		if (ilist != (dataspace *) NULL) {
 		    ilist->iprev = data;
@@ -2235,7 +2232,7 @@ register unsigned short n;
  */
 void d_export()
 {
-    register dataspace *data, *next;
+    register dataspace *data;
     register Uint n;
 
     if (ilist != (dataspace *) NULL) {
@@ -2272,10 +2269,9 @@ void d_export()
 	    }
 	}
 
-	for (data = ilist; data != (dataspace *) NULL; data = next) {
+	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
 	    data->imports = 0;
-	    next = data->inext;
-	    data->inext = (dataspace *) NULL;
+	    data->iprev = (dataspace *) NULL;
 	}
 
 	FREE(itab);

@@ -524,6 +524,11 @@ string *label;
 {
     register oh *ohash;
 
+    if (!(obj->flags & O_MASTER)) {
+	c_error("cannot inherit cloned object");
+	return TRUE;
+    }
+
     ohash = oh_new(obj->chain.name);
     if (label != (string *) NULL) {
 	/*

@@ -153,7 +153,7 @@ register user **usr;
  * NAME:	comm->send()
  * DESCRIPTION:	send a message to a user
  */
-bool comm_send(obj, str)
+int comm_send(obj, str)
 object *obj;
 string *str;
 {
@@ -208,15 +208,13 @@ string *str;
 	    size++;
 	}
 	usr->outbufsz = size;
+	return str->len;	/* always */
     } else {
 	/*
 	 * binary connection: no buffering
 	 */
-	if (!conn_write(usr->conn, p, len)) {
-	    return FALSE;
-	}
+	return conn_write(usr->conn, p, len);
     }
-    return TRUE;
 }
 
 /*
