@@ -52,15 +52,15 @@ static char *getline()
 	if (c == '\0') {
 	    iobuf.zero++;	/* skip zeroes */
 	} else {
-	    if (p == lbuflast && c != '\n') {
+	    if (p == lbuflast && c != LF) {
 		iobuf.split++;
 		i++;
 		--bp;
-		c = '\n';
+		c = LF;
 	    }
 	    *p++ = c;
 	}
-    } while (c != '\n');	/* eoln */
+    } while (c != LF);	/* eoln */
 
     iobuf.lines++;
     iobuf.chars += p - lbuf;	/* including terminating '\0' */
@@ -144,7 +144,7 @@ register char *text;
 	memcpy(buffer + inbuf, text, len);
 	inbuf += len;
     }
-    buffer[inbuf++] = '\n';
+    buffer[inbuf++] = LF;
 }
 
 /*

@@ -119,8 +119,8 @@ register char *text;
     while (*text != '\0') {
 	if ((*text & 0x7f) < ' ') {
 	    /* control character */
-	    if (*text == '\t' && !(flags & CB_LIST)) {
-		*p++ = '\t';
+	    if (*text == HT && !(flags & CB_LIST)) {
+		*p++ = HT;
 	    } else {
 		*p++ = '^'; *p++ = (*text & 0x9f) + '@';
 	    }
@@ -137,7 +137,7 @@ register char *text;
 	*p++ = '$';
     }
     *p = '\0';
-    output("%s\n", buffer);
+    output("%s\012", buffer);	/* LF */
 }
 
 /*
@@ -239,7 +239,7 @@ register cmdbuf *cb;
 int cb_assign(cb)
 register cmdbuf *cb;
 {
-    output("%ld\n", (cb->first < 0) ? cb->edbuf->lines : cb->first);
+    output("%ld\012", (cb->first < 0) ? cb->edbuf->lines : cb->first);	/* LF */
     return 0;
 }
 
@@ -442,7 +442,7 @@ register char *text;
 
     /* first determine the number of leading spaces */
     idx = 0;
-    while (*text == ' ' || *text == '\t') {
+    while (*text == ' ' || *text == HT) {
 	if (*text++ == ' ') {
 	    idx++;
 	} else {
@@ -463,7 +463,7 @@ register char *text;
 	    p = buffer;
 	    /* fill with leading ws */
 	    while (idx >= 8) {
-		*p++ = '\t';
+		*p++ = HT;
 		idx -= 8;
 	    }
 	    while (idx > 0) {
@@ -602,7 +602,7 @@ char *text;
 	return;
     } else {
 	/* count leading ws */
-	while (*p == ' ' || *p == '\t') {
+	while (*p == ' ' || *p == HT) {
 	    if (*p++ == ' ') {
 		idx++;
 	    } else {
@@ -663,7 +663,7 @@ char *text;
 	} else {
 	    switch (*p++) {
 	    case ' ':	/* white space */
-	    case '\t':
+	    case HT:
 		continue;
 
 	    case '\'':	/* start of string */
@@ -690,7 +690,7 @@ char *text;
 			 */
 			idx2 = *ind;
 			for (q = start; q < p - 1;) {
-			    if (*q++ == '\t') {
+			    if (*q++ == HT) {
 				idx = (idx + 8) & ~7;
 				idx2 = (idx2 + 8) & ~7;
 			    } else {
@@ -894,7 +894,7 @@ register char *text;
     if (len != 0 && !(ccb->flags & CB_EXCL)) {
 	/* do special processing */
 	text = skipst(text);
-	if (*text != '\0' && *text != ')' && p[-1] != ' ' && p[-1] != '\t') {
+	if (*text != '\0' && *text != ')' && p[-1] != ' ' && p[-1] != HT) {
 	    if (p[-1] == '.') {
 		*p++ = ' ';
 	    }
@@ -1030,13 +1030,13 @@ register char *text;
     newlines = 0;
     idx = 0;
 
+    /*
+     * Because the write buffer might be flushed, and the text would
+     * not remain in memory, use a local copy.
+     */
+    text = strcpy(line, text);
     while (rx_exec(ccb->regexp, text, idx, IGNORECASE(ccb->vars)) > 0) {
 	if (skipped) {
-	    /*
-	     * Because the write buffer will be flushed, and the text might
-	     * not remain in memory, continue working on a local copy.
-	     */
-	    text = strcpy(line, text);
 	    /*
 	     * add the previous line, in which nothing was substituted, to
 	     * the block. Has to be done here, before the contents of the buffer
@@ -1326,7 +1326,7 @@ char *buffer;
 
     /* find the end of the filename */
     p = strchr(cb->cmd, ' ');
-    q = strchr(cb->cmd, '\t');
+    q = strchr(cb->cmd, HT);
     if (q != (char *) NULL && (p == (char *) NULL || p > q)) {
 	p = q;
     }
@@ -1381,7 +1381,7 @@ register cmdbuf *cb;
     if (cb->edit > 0) {
 	output(" [Modified]");
     }
-    output(" line %ld of %ld --%d%%--\n", cb->this, cb->edbuf->lines,
+    output(" line %ld of %ld --%d%%--\012", cb->this, cb->edbuf->lines,	/* LF */
       (cb->edbuf->lines == 0) ? 0 : (int)((100 * cb->this) / cb->edbuf->lines));
 
     return 0;
@@ -1407,7 +1407,7 @@ register io *iob;
     if (iob->ill) {
 	output(" [incomplete last line]");
     }
-    output("\n");
+    output("\012");	/* LF */
 }
 
 /*
@@ -1608,7 +1608,7 @@ register cmdbuf *cb;
 	do {
 	    /* copy argument */
 	    q = buffer;
-	    while (*p != '\0' && *p != ' ' && *p != '\t') {
+	    while (*p != '\0' && *p != ' ' && *p != HT) {
 		*q++ = *p++;
 	    }
 	    *q = '\0';

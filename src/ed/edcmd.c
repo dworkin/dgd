@@ -82,7 +82,7 @@ register cmdbuf *cb;
 char *skipst(p)
 register char *p;
 {
-    while (*p == ' ' || *p == '\t') {
+    while (*p == ' ' || *p == HT) {
 	p++;
     }
     return p;
