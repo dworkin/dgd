@@ -31,7 +31,7 @@
 
 # define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 
-# define ARR_MOD		0x80000000L	/* in array->index */
+# define ARR_MOD		0x80000000L	/* in arrref->ref */
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -960,6 +960,7 @@ register Uint idx;
 
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
+	s->ref = 1;
 	s->primary = &data->strings[idx];
 	s->primary->str = s;
 	s->primary->data = data;
@@ -1000,11 +1001,11 @@ register Uint idx;
 	register array *a;
 
 	a = arr_alloc(data->sarrays[idx].size);
+	a->ref = 1;
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->arrays[idx];
 	a->primary->arr = a;
 	a->primary->data = data;
-	a->primary->index = data->sarrays[idx].index;
 	a->primary->ref = data->sarrays[idx].ref;
 	return a;
     }
@@ -1143,6 +1144,7 @@ register array *arr;
     v = arr->elts;
     if (v == (value *) NULL && arr->size != 0) {
 	register dataspace *data;
+	Uint idx;
 
 	data = arr->primary->data;
 	if (data->selts == (svalue *) NULL) {
@@ -1153,7 +1155,8 @@ register array *arr;
 		     data->arroffset + data->narrays * sizeof(sarray));
 	}
 	v = arr->elts = ALLOC(value, arr->size);
-	d_get_values(data, &data->selts[arr->primary->index], v, arr->size);
+	idx = data->sarrays[arr->primary - data->arrays].index;
+	d_get_values(data, &data->selts[idx], v, arr->size);
     }
 
     return v;
@@ -1207,9 +1210,7 @@ register value *rhs;
 	str = rhs->u.string;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
-	    if (str->primary->ref++ == 0) {
-		data->schange--;	/* first reference restored */
-	    }
+	    str->primary->ref++;
 	    data->flags |= DATA_STRINGREF;
 	} else {
 	    /* not in this object: ref imported string */
@@ -1224,13 +1225,7 @@ register value *rhs;
 	    /* in this object */
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
-		if (arr->primary->ref++ == 0) {
-		    data->achange--;	/* first reference restored */
-		    if (arr->primary->index & ARR_MOD) {
-			/* add extra reference */
-			arr_ref(arr);
-		    }
-		}
+		arr->primary->ref++;
 		data->flags |= DATA_ARRAYREF;
 	    } else {
 		/* ref new array */
@@ -1272,6 +1267,9 @@ register value *lhs;
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    if (--(str->primary->ref) == 0) {
+		str->primary->str = (string *) NULL;
+		str->primary = (strref *) NULL;
+		str_del(str);
 		data->schange++;	/* last reference removed */
 	    }
 	    data->flags |= DATA_STRINGREF;
@@ -1288,14 +1286,29 @@ register value *lhs;
 	    /* in this object */
 	    if (arr->primary->arr != (array *) NULL) {
 		/* swapped in */
-		if (--(arr->primary->ref) == 0) {
-		    data->achange++;	/* last reference removed */
-		    if (arr->primary->index & ARR_MOD) {
-			/* remove extra reference */
-			arr_del(arr);
-		    }
-		}
 		data->flags |= DATA_ARRAYREF;
+		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
+		    /* last reference removed */
+		    arr->primary->arr = (array *) NULL;
+		    data->achange++;
+
+		    if (arr->hashed != (struct _maphash_ *) NULL) {
+			map_compact(arr);
+		    }
+		    /*
+		     * If the array is not loaded, don't bother to load it now.
+		     */
+		    if ((lhs=arr->elts) != (value *) NULL) {
+			register unsigned short n;
+
+			n = arr->size;
+			data = arr->primary->data;
+			do {
+			    del_lhs(data, lhs++);
+			} while (--n != 0);
+		    }
+		    arr_del(arr);
+		}
 	    } else {
 		/* deref new array */
 		data->achange--;
@@ -1370,13 +1383,8 @@ register value *elt, *val;
 	/*
 	 * the array is in the loaded dataspace of some object
 	 */
-	if ((arr->primary->index & ARR_MOD) == 0) {
-	    /*
-	     * Swapped-in array changed for the first time.  Add an extra
-	     * reference so the changes are not lost.
-	     */
-	    arr->primary->index |= ARR_MOD;
-	    arr_ref(arr);
+	if ((arr->primary->ref & ARR_MOD) == 0) {
+	    arr->primary->ref |= ARR_MOD;
 	    data->flags |= DATA_ARRAY;
 	}
 	ref_rhs(data, val);
@@ -1418,30 +1426,6 @@ array *map;
 {
     if (map->primary->arr != (array *) NULL) {
 	map->primary->data->achange++;
-    }
-}
-
-/*
- * NAME:	data->del_array()
- * DESCRIPTION:	delete an array in a dataspace
- */
-void d_del_array(arr)
-register array *arr;
-{
-    register value *v;
-    register unsigned short n;
-    register dataspace *data;
-
-    if (arr->primary->ref == 0 && (v=arr->elts) != (value *) NULL) {
-	/*
-	 * Completely delete a swapped-in array.  Update the local
-	 * reference counts for all arrays referenced by it.
-	 */
-	n = arr->size;
-	data = arr->primary->data;
-	do {
-	    del_lhs(data, v++);
-	} while (--n != 0);
     }
 }
 
@@ -2020,8 +2004,7 @@ register unsigned short n;
 	case T_ARRAY:
 	case T_MAPPING:
 	    if (arr_put(v->u.array) >= narr) {
-		if (v->type == T_MAPPING &&
-		    v->u.array->hashed != (struct _maphash_ *) NULL) {
+		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
 		}
 		narr++;
@@ -2209,17 +2192,11 @@ register dataspace *data;
 
     /* free arrays */
     if (data->arrays != (arrref *) NULL) {
-	if (data->flags & DATA_ARRAY) {
-	    register arrref *a;
+	register arrref *a;
 
-	    /*
-	     * Modified arrays have gotten an extra reference.  Free them
-	     * now.
-	     */
-	    for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
-		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
-		    arr_del(a->arr);
-		}
+	for (i = data->narrays, a = data->arrays; i > 0; --i, a++) {
+	    if (a->arr != (array *) NULL) {
+		arr_del(a->arr);
 	    }
 	}
 
@@ -2234,6 +2211,7 @@ register dataspace *data;
 	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
 		s->str->primary = (strref *) NULL;
+		str_del(s->str);
 	    }
 	}
 
@@ -2288,8 +2266,9 @@ register dataspace *data;
 	    a = data->arrays;
 	    mod = FALSE;
 	    for (n = data->narrays; n > 0; --n) {
-		if (a->arr != (array *) NULL && sa->ref != a->ref) {
-		    sa->ref = a->ref;
+		if (a->arr != (array *) NULL && sa->ref != (a->ref & ~ARR_MOD))
+		{
+		    sa->ref = a->ref & ~ARR_MOD;
 		    mod = TRUE;
 		}
 		sa++;
@@ -2302,21 +2281,21 @@ register dataspace *data;
 	}
 	if (data->flags & DATA_ARRAY) {
 	    register arrref *a;
+	    Uint idx;
 
 	    /*
 	     * array elements changed
 	     */
 	    a = data->arrays;
-	    for (n = data->narrays; n > 0; --n) {
-		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
-		    a->index &= ~ARR_MOD;
-		    d_put_values(&data->selts[a->index], a->arr->elts,
-				 a->arr->size);
-		    sw_writev((char *) &data->selts[a->index], data->sectors,
+	    for (n = 0; n < data->narrays; n++) {
+		if (a->arr != (array *) NULL && (a->ref & ARR_MOD)) {
+		    a->ref &= ~ARR_MOD;
+		    idx = data->sarrays[n].index;
+		    d_put_values(&data->selts[idx], a->arr->elts, a->arr->size);
+		    sw_writev((char *) &data->selts[idx], data->sectors,
 			      a->arr->size * (Uint) sizeof(svalue),
 			      data->arroffset + data->narrays * sizeof(sarray) +
-				a->index * sizeof(svalue));
-		    arr_del(a->arr);	/* remove extra reference */
+				idx * sizeof(svalue));
 		}
 		a++;
 	    }
@@ -2610,12 +2589,6 @@ register unsigned short n;
 			/*
 			 * move array to new dataspace
 			 */
-			if (a->primary->arr != (array *) NULL) {
-			    /* remove from old dataspace */
-			    d_get_elts(a);
-			    d_del_array(a);
-			    a->primary->arr = (array *) NULL;
-			}
 			a->primary = &data->alocal;
 		    } else {
 			/*
@@ -2676,7 +2649,7 @@ register unsigned short n;
 			/*
 			 * import elements too
 			 */
-			d_import(data, a->elts, a->size);
+			d_import(data, d_get_elts(a), a->size);
 		    }
 		} else {
 		    /*

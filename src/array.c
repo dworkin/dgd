@@ -146,11 +146,6 @@ register array *a;
 	register value *v;
 	register unsigned short i;
 
-	if (a->primary->arr != (array *) NULL) {
-	    d_del_array(a);
-	    a->primary->arr = (array *) NULL;
-	}
-
 	if ((v=a->elts) != (value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
 		i_del_value(v++);

@@ -104,7 +104,6 @@ typedef struct _strref_ {
 typedef struct _arrref_ {
     array *arr;			/* array value */
     dataspace *data;		/* dataspace this array is in */
-    Uint index;			/* selts index */
     Uint ref;			/* # of refs */
 } arrref;
 
@@ -179,7 +178,6 @@ extern void		d_assign_var	P((dataspace*, value*, value*));
 extern void		d_wipe_extravar	P((dataspace*));
 extern void		d_assign_elt	P((array*, value*, value*));
 extern void		d_change_map	P((array*));
-extern void		d_del_array	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Uint, frame*,
 					   int));

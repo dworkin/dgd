@@ -1,5 +1,4 @@
-# include "config.h"
-# include "alloc.h"
+# include "dgd.h"
 # include "str.h"
 # include "xfloat.h"
 # include "node.h"
@@ -8,5 +7,3 @@
 
 # define error		c_error
 # define warning	c_error
-
-extern void fatal();

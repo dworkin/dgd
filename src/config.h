@@ -1,27 +1,9 @@
-/*
- * Global defines and typedefs.
- */
-
-# if defined(__STDC__) || defined(__cplusplus)
-#  define P(proto)	proto
-#  define cvoid		const void
-# else
-#  define P(proto)	()
-#  define cvoid		char
-# endif
-
 /* these may be changed, but sizeof(uindex) <= sizeof(int) */
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX
 
 typedef uindex sector;
 # define SW_UNUSED	UINDEX_MAX
-
-/*
- * Host dependent stuff.
- */
-
-# include "host.h"
 
 
 /*
@@ -63,24 +45,16 @@ typedef uindex sector;
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
 
-extern void   conf_dump		P((void));
-extern Uint   conf_dsize	P((char*));
-extern Uint   conf_dconv	P((char*, char*, char*, Uint));
-extern void   conf_dread	P((int, char*, char*, Uint));
-
 extern bool		conf_init	P((char*, int));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
 extern bool		conf_typechecking P((void));
 extern unsigned short	conf_array_size	P((void));
 
-typedef struct _string_ string;
-typedef struct _array_ array;
-typedef struct _object_ object;
-typedef struct _value_ value;
-typedef struct _control_ control;
-typedef struct _dataspace_ dataspace;
-typedef struct _frame_ frame;
+extern void   conf_dump		P((void));
+extern Uint   conf_dsize	P((char*));
+extern Uint   conf_dconv	P((char*, char*, char*, Uint));
+extern void   conf_dread	P((int, char*, char*, Uint));
 
 extern bool   conf_statusi	P((frame*, Int, value*));
 extern array *conf_status	P((frame*));

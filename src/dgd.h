@@ -1,3 +1,13 @@
+# include "host.h"
+
+typedef struct _string_ string;
+typedef struct _array_ array;
+typedef struct _object_ object;
+typedef struct _value_ value;
+typedef struct _control_ control;
+typedef struct _dataspace_ dataspace;
+typedef struct _frame_ frame;
+
 # include "config.h"
 # include "alloc.h"
 # include "error.h"

@@ -141,10 +141,10 @@ struct _frame_ {
     char *pc;			/* program counter */
     value *stack;		/* local value stack */
     value *sp;			/* stack pointer */
-    value *ilvp;		/* indexed lvalue pointer */
+    value *lip;			/* lvalue index pointer */
     value *argp;		/* argument pointer (previous sp) */
     value *fp;			/* frame pointer (at end of local stack) */
-    value *prev_ilvp;		/* previous indexed lvalue pointer */
+    value *prev_lip;		/* previous lvalue index pointer */
     string *lvstr;		/* last indexed lvalue string */
     Int depth;			/* stack depth */
     Int maxdepth;		/* max stack depth */
@@ -162,6 +162,7 @@ extern void		i_copy		P((value*, value*, unsigned int));
 extern void		i_grow_stack	P((frame*, int));
 extern void		i_push_value	P((frame*, value*));
 extern void		i_pop		P((frame*, int));
+extern void		i_reverse	P((frame*, int));
 extern void		i_odest		P((frame*, object*));
 extern void		i_string	P((frame*, int, unsigned int));
 extern void		i_aggregate	P((frame*, unsigned int));
@@ -174,7 +175,7 @@ extern void		i_index_lvalue	P((frame*, int));
 extern char	       *i_typename	P((char*, unsigned int));
 extern void		i_cast		P((value*, unsigned int));
 extern void		i_fetch		P((frame*));
-extern void		i_store		P((frame*, value*, value*));
+extern void		i_store		P((frame*));
 extern Int		i_get_depth	P((frame*));
 extern Int		i_get_ticks	P((frame*));
 extern int		i_set_rlimits	P((frame*, Int, Int));

@@ -72,9 +72,6 @@ void str_del(s)
 register string *s;
 {
     if (--(s->ref) == 0) {
-	if (s->primary != (strref *) NULL) {
-	    s->primary->str = (string *) NULL;
-	}
 	FREE(s);
     }
 }

@@ -1,7 +1,17 @@
+# if defined(__STDC__) || defined(__cplusplus)
+#  define P(proto)	proto
+#  define cvoid		const void
+# else
+#  define P(proto)	()
+#  define cvoid		char
+# endif
+
+
 # ifdef HOST_WITH_UNSIGNED_CHAR
 # define UCHAR(c)	((char) (c))			/* unsigned character */
 # define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
 # endif
+
 
 # ifdef BEOS
 

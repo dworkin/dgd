@@ -1,6 +1,4 @@
-# include "config.h"
-# include "alloc.h"
-# include "error.h"
+# include "dgd.h"
 
 extern void output();
 extern void ed_error();

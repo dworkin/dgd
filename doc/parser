@@ -13,9 +13,8 @@ any, is returned by the function.
 
 Regular expressions are used to define tokens and whitespace, and the language
 of those tokens is defined by a context-free grammar, which can be enhanced
-with LPC function calls.  [insert reference to context-free grammars]
-Token/whitespace definitions and language definition together are called
-"the grammar".
+with LPC function calls.  Token/whitespace definitions and language definition
+together are called "the grammar".
 
 Internally, DGD generates two partial automatons for each grammar, one to
 match tokens and one to parse a sentence of tokens.  Only those parts of the
@@ -162,15 +161,13 @@ consider the following (partial) grammar, which is ambiguous:
 
 It can be rewritten to be either left-recursive,
 
-    SimpleExpr: number
-    Expr: SimpleExpr
-    Expr: Expr '+' SimpleExpr
+    Expr: number
+    Expr: Expr '+' number
 
 or right-recursive:
 
-    SimpleExpr: number
-    Expr: SimpleExpr
-    Expr: SimpleExpr '+' Expr
+    Expr: number
+    Expr: number '+' Expr
 
 Neither rewritten grammar is ambiguous, and both explicitly specify the order
 in which expressions are to be evaluated: from left to right, or from right to

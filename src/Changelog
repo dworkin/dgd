@@ -1209,3 +1209,6 @@ DGD 1.1
    interpreter cannot actually handle more than that many.
  - Removed static variables from all over.  Only the unix versions will
    compile at present.
+ - Code cleanup made assignments slightly faster, at the cost of somewhat slower
+   swapping.
+ - Fixed a bug that could cause wrong assignments to indexed arrays in sscanf().

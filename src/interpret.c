@@ -32,7 +32,7 @@ void i_init(create)
 char *create;
 {
     topframe.fp = topframe.sp = stack + MIN_STACK;
-    topframe.stack = topframe.prev_ilvp = topframe.ilvp = stack;
+    topframe.stack = topframe.prev_lip = topframe.lip = stack;
     topframe.nodepth = TRUE;
     topframe.noticks = TRUE;
     cframe = &topframe;
@@ -109,8 +109,8 @@ void i_grow_stack(f, size)
 register frame *f;
 int size;
 {
-    if (f->sp < f->ilvp + size + MIN_STACK) {
-	register int spsize, ilsize;
+    if (f->sp < f->lip + size + MIN_STACK) {
+	register int spsize, lisize;
 	register value *v, *stk;
 	register long offset;
 
@@ -118,33 +118,25 @@ int size;
 	 * extend the local stack
 	 */
 	spsize = f->fp - f->sp;
-	ilsize = f->ilvp - f->stack;
-	size = ALGN(spsize + ilsize + size + MIN_STACK, 8);
+	lisize = f->lip - f->stack;
+	size = ALGN(spsize + lisize + size + MIN_STACK, 8);
 	stk = ALLOC(value, size);
 	offset = (long) (stk + size) - (long) f->fp;
 
-	/* copy indexed lvalue stack values */
-	v = stk;
-	if (ilsize > 0) {
-	    memcpy(stk, f->stack, ilsize * sizeof(value));
-	    do {
-		if (v->type == T_LVALUE && v->u.lval >= f->sp &&
-		    v->u.lval < f->fp) {
-		    v->u.lval = (value *) ((long) v->u.lval + offset);
-		}
-		v++;
-	    } while (--ilsize > 0);
+	/* move lvalue index stack values */
+	if (lisize != 0) {
+	    memcpy(stk, f->stack, lisize * sizeof(value));
 	}
-	f->ilvp = v;
+	f->lip = stk + lisize;
 
-	/* copy stack values */
+	/* move stack values */
 	v = stk + size;
-	if (spsize > 0) {
+	if (spsize != 0) {
 	    memcpy(v - spsize, f->sp, spsize * sizeof(value));
 	    do {
 		--v;
-		if (v->type == T_LVALUE && v->u.lval >= f->sp &&
-		    v->u.lval < f->fp) {
+		if ((v->type == T_LVALUE || v->type == T_SLVALUE) &&
+		    v->u.lval >= f->sp && v->u.lval < f->fp) {
 		    v->u.lval = (value *) ((long) v->u.lval + offset);
 		}
 	    } while (--spsize > 0);
@@ -211,25 +203,87 @@ register int n;
 	    str_del(v->u.string);
 	    break;
 
+	case T_ALVALUE:
+	    --f->lip;
 	case T_ARRAY:
 	case T_MAPPING:
 	    arr_del(v->u.array);
 	    break;
 
-	case T_SALVALUE:
-	    --f->ilvp;
-	case T_ALVALUE:
-	    arr_del((--f->ilvp)->u.array);
+	case T_SLVALUE:
+	    --f->lip;
 	    break;
 
 	case T_MLVALUE:
+	    i_del_value(--f->lip);
+	    arr_del(v->u.array);
+	    break;
+
+	case T_SALVALUE:
+	    f->lip -= 2;
+	    arr_del(v->u.array);
+	    break;
+
 	case T_SMLVALUE:
-	    i_del_value(--f->ilvp);
-	    arr_del((--f->ilvp)->u.array);
+	    f->lip -= 2;
+	    i_del_value(f->lip);
+	    arr_del(v->u.array);
 	    break;
 	}
     }
     f->sp = v;
+}
+
+/*
+ * NAME:	interpret->reverse()
+ * DESCRIPTION:	reverse the order of arguments on the stack
+ */
+void i_reverse(f, n)
+frame *f;
+register int n;
+{
+    value sp[MAX_LOCALS];
+    value lip[MAX_LOCALS];
+    register value *v1, *v2, *w1, *w2;
+
+    if (n > 1) {
+	/*
+	 * more than one argument
+	 */
+	v1 = f->sp;
+	v2 = sp;
+	w1 = lip;
+	w2 = f->lip;
+	memcpy(v2, v1, n * sizeof(value));
+	v1 += n;
+
+	do {
+	    switch (v2->type) {
+	    case T_SLVALUE:
+	    case T_ALVALUE:
+	    case T_MLVALUE:
+		*w1++ = *--w2;
+		break;
+
+	    case T_SALVALUE:
+	    case T_SMLVALUE:
+		w2 -= 2;
+		*w1++ = w2[0];
+		*w1++ = w2[1];
+		break;
+	    }
+
+	    *--v1 = *v2++;
+	} while (--n != 0);
+
+	/*
+	 * copy back lvalue indices, if needed
+	 */
+	n = f->lip - w2;
+	if (n > 1) {
+	    memcpy(w2, lip, n * sizeof(value));
+	}
+    }
 }
 
 /*
@@ -257,8 +311,8 @@ object *obj;
 	}
 	v = f->argp;
     }
-    /* wipe out objects in indexed lvalue stack */
-    v = ftop->ilvp;
+    /* wipe out objects in lvalue index stack */
+    v = ftop->lip;
     for (f = ftop; f != (frame *) NULL; f = f->prev) {
 	while (v >= f->stack) {
 	    if (v->type == T_OBJECT && v->u.objcnt == count) {
@@ -266,7 +320,7 @@ object *obj;
 	    }
 	    --v;
 	}
-	v = f->prev_ilvp;
+	v = f->prev_lip;
     }
 }
 
@@ -383,11 +437,11 @@ register int n, vtype;
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	f->ilvp->type = T_ARRAY;
-	(f->ilvp++)->u.array = a;
 	(--f->sp)->type = T_ALVALUE;
 	f->sp->oindex = vtype;
-	f->sp->u.number = i;
+	f->sp->u.array = a;
+	f->lip->type = T_INT;
+	(f->lip++)->u.number = i;
     }
 
     arr_del(a);
@@ -520,19 +574,16 @@ int vtype;
 	    error("Non-numeric array index");
 	}
 	i = arr_index(lval->u.array, (long) ival->u.number);
-	f->ilvp->type = T_ARRAY;
-	(f->ilvp++)->u.array = lval->u.array;
 	lval->type = T_ALVALUE;
 	lval->oindex = vtype;
-	lval->u.number = i;
+	f->lip->type = T_INT;
+	(f->lip++)->u.number = i;
 	return;
 
     case T_MAPPING:
-	f->ilvp->type = T_ARRAY;
-	(f->ilvp++)->u.array = lval->u.array;
-	*f->ilvp++ = *ival;
 	lval->type = T_MLVALUE;
 	lval->oindex = vtype;
+	*f->lip++ = *ival;
 	return;
 
     case T_LVALUE:
@@ -547,12 +598,11 @@ int vtype;
 	    }
 	    i = str_index(f->lvstr = lval->u.lval->u.string,
 			  (long) ival->u.number);
-	    f->ilvp->type = T_LVALUE;
-	    (f->ilvp++)->u.lval = lval->u.lval;
 	    /* indexed string lvalues are not referenced */
 	    lval->type = T_SLVALUE;
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    f->lip->type = T_INT;
+	    (f->lip++)->u.number = i;
 	    return;
 
 	case T_ARRAY:
@@ -561,25 +611,24 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
-	    f->ilvp->type = T_ARRAY;
-	    arr_ref((f->ilvp++)->u.array = lval->u.lval->u.array);
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    arr_ref(lval->u.array = lval->u.lval->u.array);
+	    f->lip->type = T_INT;
+	    (f->lip++)->u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    f->ilvp->type = T_ARRAY;
-	    arr_ref((f->ilvp++)->u.array = lval->u.lval->u.array);
-	    *f->ilvp++ = *ival;
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
+	    arr_ref(lval->u.array = lval->u.lval->u.array);
+	    *f->lip++ = *ival;
 	    return;
 	}
 	break;
 
     case T_ALVALUE:
-	val = &d_get_elts(f->ilvp[-1].u.array)[lval->u.number];
+	val = &d_get_elts(lval->u.array)[f->lip[-1].u.number];
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
@@ -587,11 +636,10 @@ int vtype;
 		error("Non-numeric string index");
 	    }
 	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
-	    f->ilvp->type = T_INT;
-	    (f->ilvp++)->u.number = lval->u.number;
 	    lval->type = T_SALVALUE;
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    f->lip->type = T_INT;
+	    (f->lip++)->u.number = i;
 	    return;
 
 	case T_ARRAY:
@@ -600,26 +648,26 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
-	    arr_ref(val->u.array);		/* has to be first */
-	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
-	    f->ilvp[-1].u.array = val->u.array;
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    lval->u.array = val->u.array;
+	    f->lip[-1].u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    arr_ref(val->u.array);		/* has to be first */
-	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
-	    f->ilvp[-1].u.array = val->u.array;
-	    *f->ilvp++ = *ival;
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
+	    lval->u.array = val->u.array;
+	    f->lip[-1] = *ival;
 	    return;
 	}
 	break;
 
     case T_MLVALUE:
-	val = map_index(f->ilvp[-2].u.array, &f->ilvp[-1], (value *) NULL);
+	val = map_index(lval->u.array, &f->lip[-1], (value *) NULL);
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
@@ -629,7 +677,8 @@ int vtype;
 	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    f->lip->type = T_INT;
+	    (f->lip++)->u.number = i;
 	    return;
 
 	case T_ARRAY:
@@ -638,22 +687,23 @@ int vtype;
 		error("Non-numeric array index");
 	    }
 	    i = arr_index(val->u.array, (long) ival->u.number);
-	    i_del_value(--f->ilvp);
-	    arr_ref(val->u.array);		/* has to be first */
-	    arr_del(f->ilvp[-1].u.array);	/* has to be second */
-	    f->ilvp[-1].u.array = val->u.array;
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
-	    lval->u.number = i;
+	    lval->u.array = val->u.array;
+	    i_del_value(&f->lip[-1]);
+	    f->lip[-1].type = T_INT;
+	    f->lip[-1].u.number = i;
 	    return;
 
 	case T_MAPPING:
-	    arr_ref(val->u.array);		/* has to be first */
-	    arr_del(f->ilvp[-2].u.array);	/* has to be second */
-	    f->ilvp[-2].u.array = val->u.array;
-	    i_del_value(&f->ilvp[-1]);
-	    f->ilvp[-1] = *ival;
+	    arr_ref(val->u.array);	/* has to be first */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->oindex = vtype;
+	    lval->u.array = val->u.array;
+	    i_del_value(&f->lip[-1]);
+	    f->lip[-1] = *ival;
 	    return;
 	}
 	break;
@@ -722,12 +772,12 @@ register frame *f;
 	break;
 
     case T_ALVALUE:
-	i_push_value(f, d_get_elts(f->ilvp[-1].u.array) + f->sp->u.number);
+	i_push_value(f, d_get_elts(f->sp->u.array) + f->lip[-1].u.number);
 	break;
 
     case T_MLVALUE:
-	i_push_value(f, map_index(f->ilvp[-2].u.array, &f->ilvp[-1],
-		     (value *) NULL));
+	i_push_value(f, map_index(f->sp->u.array, &f->lip[-1],
+				  (value *) NULL));
 	break;
 
     default:
@@ -737,7 +787,7 @@ register frame *f;
          * constructor, so lvstr is valid.
          */
 	(--f->sp)->type = T_INT;
-	f->sp->u.number = UCHAR(f->lvstr->text[f->sp[1].u.number]);
+	f->sp->u.number = UCHAR(f->lvstr->text[f->lip[-1].u.number]);
 	break;
     }
 }
@@ -770,15 +820,16 @@ unsigned short i;
  * NAME:	interpret->store()
  * DESCRIPTION:	Perform an assignment. This invalidates the lvalue.
  */
-void i_store(f, lval, val)
+void i_store(f)
 register frame *f;
-register value *lval, *val;
 {
     value ival;
-    register value *v;
+    register value *lval, *val, *v;
     register unsigned short i;
     register array *a;
 
+    lval = f->sp + 1;
+    val = f->sp;
     if (lval->oindex != 0) {
 	i_cast(val, lval->oindex);
     }
@@ -790,35 +841,34 @@ register value *lval, *val;
 	break;
 
     case T_SLVALUE:
-	v = f->ilvp[-1].u.lval;
-	i = lval->u.number;
+	v = lval->u.lval;
+	i = f->lip[-1].u.number;
 	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
 	     * The lvalue was changed.
 	     */
 	    error("Lvalue disappeared!");
 	}
-	--f->ilvp;
+	--f->lip;
 	d_assign_var(f->data, v, istr(&ival, v->u.string, i, val));
 	break;
 
     case T_ALVALUE:
-	a = (--f->ilvp)->u.array;
-	d_assign_elt(a, &d_get_elts(a)[lval->u.number], val);
+	a = lval->u.array;
+	d_assign_elt(a, &d_get_elts(a)[(--f->lip)->u.number], val);
 	arr_del(a);
 	break;
 
     case T_MLVALUE:
-	map_index(a = f->ilvp[-2].u.array, &f->ilvp[-1], val);
-	i_del_value(--f->ilvp);
-	--f->ilvp;
+	map_index(a = lval->u.array, &f->lip[-1], val);
+	i_del_value(--f->lip);
 	arr_del(a);
 	break;
 
     case T_SALVALUE:
-	a = f->ilvp[-2].u.array;
-	v = &a->elts[f->ilvp[-1].u.number];
-	i = lval->u.number;
+	a = lval->u.array;
+	v = &a->elts[f->lip[-2].u.number];
+	i = f->lip[-1].u.number;
 	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
 	     * The lvalue was changed.
@@ -826,23 +876,23 @@ register value *lval, *val;
 	    error("Lvalue disappeared!");
 	}
 	d_assign_elt(a, v, istr(&ival, v->u.string, i, val));
-	f->ilvp -= 2;
+	f->lip -= 2;
 	arr_del(a);
 	break;
 
     case T_SMLVALUE:
-	a = f->ilvp[-2].u.array;
-	v = map_index(a, &f->ilvp[-1], (value *) NULL);
-	if (v->type != T_STRING || lval->u.number >= v->u.string->len) {
+	a = lval->u.array;
+	v = map_index(a, &f->lip[-2], (value *) NULL);
+	i = f->lip[-1].u.number;
+	if (v->type != T_STRING || i >= v->u.string->len) {
 	    /*
 	     * The lvalue was changed.
 	     */
 	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(a, v, istr(&ival, v->u.string,
-				(unsigned short) lval->u.number, val));
-	i_del_value(--f->ilvp);
-	--f->ilvp;
+	d_assign_elt(a, v, istr(&ival, v->u.string, i, val));
+	f->lip -= 2;
+	i_del_value(f->lip);
 	arr_del(a);
 	break;
     }
@@ -999,12 +1049,12 @@ register value *sp;
     register frame *f;
 
     v = ftop->sp;
-    w = ftop->ilvp;
+    w = ftop->lip;
     for (f = ftop; f != NULL; f = f->prev) {
 	for (;;) {
 	    if (v == sp) {
 		f->sp = v;
-		f->ilvp = w;
+		f->lip = w;
 		f->ticks = ftop->ticks;
 		return f;
 	    }
@@ -1016,27 +1066,37 @@ register value *sp;
 		str_del(v->u.string);
 		break;
 
+	    case T_SLVALUE:
+		--w;
+		break;
+
+	    case T_ALVALUE:
+		--w;
 	    case T_ARRAY:
 	    case T_MAPPING:
 		arr_del(v->u.array);
 		break;
 
-	    case T_SALVALUE:
-		--w;
-	    case T_ALVALUE:
-		arr_del((--w)->u.array);
+	    case T_MLVALUE:
+		i_del_value(--w);
+		arr_del(v->u.array);
 		break;
 
-	    case T_MLVALUE:
+	    case T_SALVALUE:
+		w -= 2;
+		arr_del(v->u.array);
+		break;
+
 	    case T_SMLVALUE:
-		i_del_value(--w);
-		arr_del((--w)->u.array);
+		w -= 2;
+		i_del_value(w);
+		arr_del(v->u.array);
 		break;
 	    }
 	    v++;
 	}
 	v = f->argp;
-	w = f->prev_ilvp;
+	w = f->prev_lip;
 
 	if (f->sos) {
 	    /* stack on stack */
@@ -1047,7 +1107,7 @@ register value *sp;
     }
 
     f->sp = v;
-    f->ilvp = w;
+    f->lip = w;
     f->ticks = ftop->ticks;
     return f;
 }
@@ -1396,7 +1456,7 @@ register char *pc;
 
     for (;;) {
 # ifdef DEBUG
-	if (f->sp < f->ilvp + MIN_STACK) {
+	if (f->sp < f->lip + MIN_STACK) {
 	    fatal("out of value stack");
 	}
 # endif
@@ -1532,7 +1592,7 @@ register char *pc;
 	    break;
 
 	case I_STORE:
-	    i_store(f, f->sp + 1, f->sp);
+	    i_store(f);
 	    f->sp[1] = f->sp[0];
 	    f->sp++;
 	    break;
@@ -1748,7 +1808,7 @@ int funci;
     }
 
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
-    if (PROTO_CLASS(pc) & C_TYPECHECKED) {
+    if (f.func->class & C_TYPECHECKED) {
 	/* typecheck arguments */
 	i_typecheck(prev_f, d_get_strconst(f.p_ctrl, f.func->inherit,
 					   f.func->index)->text,
@@ -1800,9 +1860,9 @@ int funci;
     pc += PROTO_SIZE(pc);
 
     /* create new local stack */
-    f.prev_ilvp = prev_f->ilvp;
+    f.prev_lip = prev_f->lip;
     FETCH2U(pc, n);
-    f.stack = f.ilvp = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+    f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
     f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
     f.sos = TRUE;
 
@@ -1834,7 +1894,7 @@ int funci;
     /* clean up stack, move return value to outer stackframe */
     val = *f.sp++;
 # ifdef DEBUG
-    if (f.sp != f.fp - nargs) {
+    if (f.sp != f.fp - nargs || f.lip != f.stack) {
 	fatal("bad stack pointer after function call");
     }
 # endif
@@ -2230,7 +2290,7 @@ void i_clear()
     if (f->stack != stack) {
 	FREE(f->stack);
 	f->fp = f->sp = stack + MIN_STACK;
-	f->stack = f->prev_ilvp = f->ilvp = stack;
+	f->stack = f->prev_lip = f->lip = stack;
     }
 
     f->nodepth = TRUE;

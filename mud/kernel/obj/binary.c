@@ -91,11 +91,27 @@ static receive_message(string str)
  * NAME:	receive_datagram()
  * DESCRIPTION:	receive a datagram
  */
-static void receive_datagram(string str)
+static receive_datagram(string str)
 {
     ::receive_datagram(allocate(TLS_SIZE), str);
 }
 # endif
+
+/*
+ * NAME:	set_linemode()
+ * DESCRIPTION:	enable or disable line mode
+ */
+set_linemode(int mode)
+{
+    if (SYSTEM()) {
+	linemode = mode;
+	if (!mode && strlen(buffer) != 0) {
+	    /* flush buffer */
+	    linemode = (::receive_message(0, buffer) != MODE_RAW);
+	    buffer = "";
+	}
+    }
+}
 
 /*
  * NAME:	message()

@@ -139,9 +139,8 @@ register node *n;
 			opt_expr(&m->r.right, FALSE) + 1,
 			opt_expr(&n->r.right, FALSE) + 3);
 	} else {
-	    /* mapval[mixed] */
-	    return max3(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE) + 1, 3);
+	    return max2(opt_expr(&n->l.left, FALSE),
+			opt_expr(&n->r.right, FALSE) + 1);
 	}
     } else {
 	return 1;

@@ -144,9 +144,9 @@ BEGIN
                     IDC_STATIC,7,43,237,25
     LTEXT           "any form of income is received regardless of profit therefrom, or from which any revenue or promotional value is received, as well as any distribution to or use in a corporate environment. Use of the source or executables made",
                     IDC_STATIC,7,67,237,25
-    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction. Exclusive worldwide rights to this program for use as a server are held by ichat, Inc. If you wish to purchase a commercial license, please",
+    LTEXT           "therefrom to promote or support a commercial venture is included in this restriction. Exclusive worldwide rights to this program for use as a server are held by Acuity Corporation. If you wish to purchase a commercial license,",
                     IDC_STATIC,7,91,237,25
-    LTEXT           "send email to sales@ichat.com. For more information please look at the ichat web site which can be found at http://www.ichat.com.",
+    LTEXT           "please send email to sales@acuity.com. For more information please look at the Acuity web site which can be found at http://www.acuity.com.",
                     IDC_STATIC,7,115,237,17
     LTEXT           "Any modifications of this program lacking an explicit copyright notice are subject to the copyright notice stated herein. Any explicit copyright notices added to this program shall not contradict the terms stated herein, but may",
                     IDC_STATIC,7,136,237,25

@@ -126,7 +126,7 @@ LogView::LogView()
 			 DGD_MENU + DGD_HEIGHT + 2),
 		   NULL,
 		   BRect(0, 0, DGD_WIDTH, DGD_HEIGHT),
-		   be_fixed_font, NULL, 0, 0)
+		   be_fixed_font, NULL, 0, B_WILL_DRAW)
 {
     MakeEditable(false);
     SetWordWrap(false);
@@ -451,8 +451,8 @@ void DGD::AboutRequested(void)
     view = new BTextView(BRect(0, 0, ABOUT_WIDTH, ABOUT_INDENT), NULL,
 			 BRect(ABOUT_INDENT, 20, ABOUT_WIDTH - 10,
 			       ABOUT_INDENT - 10),
-			 0, 0);
-    view->SetViewColor(220, 220, 220);
+			 0, B_WILL_DRAW);
+    view->SetViewColor(ABOUT_GRAY, ABOUT_GRAY, ABOUT_GRAY);
     view->MakeEditable(false);
     view->MakeSelectable(false);
     view->GetFontAndColor(&font, &dummy);
@@ -467,7 +467,7 @@ All Rights Reserved.", VERSION);
 			 NULL,
 			 BRect(10, 0, ABOUT_WIDTH - 10,
 			       ABOUT_HEIGHT - ABOUT_INDENT - 10),
-			 0, 0);
+			 0, B_WILL_DRAW);
     view->SetViewColor(ABOUT_GRAY, ABOUT_GRAY, ABOUT_GRAY);
     view->MakeEditable(false);
     view->MakeSelectable(false);
@@ -481,9 +481,9 @@ or promotional value is received, as well as any distribution to or use in a \
 corporate environment. Use of the source or executables made therefrom to \
 promote or support a commercial venture is included in this restriction. \
 Exclusive worldwide rights to this program for use as a server are held by \
-ichat, Inc. If you wish to purchase a commercial license, please send email \
-to sales@ichat.com. For more information please look at the ichat web site \
-which can be found at http://www.ichat.com.\n\nAny modifications of this \
+Acuity Corporation. If you wish to purchase a commercial license, please send \
+email to sales@acuity.com. For more information please look at the Acuity web \
+site which can be found at http://www.acuity.com.\n\nAny modifications of this \
 program lacking an explicit copyright notice are subject to the copyright \
 notice stated herein. Any explicit copyright notices added to this program \
 shall not contradict the terms stated herein, but may further restrict \

@@ -334,10 +334,10 @@ int nargs;
 {
     register unsigned int flen, slen, size;
     register char *format, *x;
-    value *lval, *val;
     unsigned int fl, sl;
-    int matches, assignments;
+    int matches;
     char *s;
+    Int i;
     xfloat flt;
     bool skip;
 
@@ -348,15 +348,13 @@ int nargs;
     }
     s = f->sp[nargs - 1].u.string->text;
     slen = f->sp[nargs - 1].u.string->len;
-    format = f->sp[nargs - 2].u.string->text;
-    flen = f->sp[nargs - 2].u.string->len;
-    lval = &f->sp[nargs - 2];
-    val = --(f->sp);	/* there's room for this */
-    val->type = T_INVALID;
-
     nargs -= 2;
+    format = f->sp[nargs].u.string->text;
+    flen = f->sp[nargs].u.string->len;
+    i_reverse(f, nargs);
+
     i_add_ticks(f, 8 * nargs);
-    matches = assignments = 0;
+    matches = 0;
 
     while (flen > 0) {
 	if (format[0] != '%' || format[1] == '%') {
@@ -487,12 +485,11 @@ int nargs;
 		    error("No lvalue for %%s");
 		}
 		--nargs;
-		val->type = T_STRING;
-		str_ref(val->u.string = str_new(s, (long) size));
-		i_store(f, --lval, val);
-		lval->type = T_INVALID;
-		val->u.string->ref--;
-		assignments++;
+		(--f->sp)->type = T_STRING;
+		str_ref(f->sp->u.string = str_new(s, (long) size));
+		i_store(f);
+		f->sp->u.string->ref--;
+		f->sp += 2;
 	    }
 	    s = x;
 	    break;
@@ -500,7 +497,7 @@ int nargs;
 	case 'd':
 	    /* %d */
 	    x = s;
-	    val->u.number = strtol(s, &s, 10);
+	    i = strtol(s, &s, 10);
 	    if (s == x) {
 		goto no_match;
 	    }
@@ -511,10 +508,10 @@ int nargs;
 		    error("No lvalue for %%d");
 		}
 		--nargs;
-		val->type = T_INT;
-		i_store(f, --lval, val);
-		lval->type = T_INVALID;
-		assignments++;
+		(--f->sp)->type = T_INT;
+		f->sp->u.number = i;
+		i_store(f);
+		f->sp += 2;
 	    }
 	    break;
 
@@ -531,11 +528,10 @@ int nargs;
 		    error("No lvalue for %%f");
 		}
 		--nargs;
-		val->type = T_FLOAT;
-		VFLT_PUT(val, flt);
-		i_store(f, --lval, val);
-		lval->type = T_INVALID;
-		assignments++;
+		(--f->sp)->type = T_FLOAT;
+		VFLT_PUT(f->sp, flt);
+		i_store(f);
+		f->sp += 2;
 	    }
 	    break;
 
@@ -549,11 +545,10 @@ int nargs;
 		    error("No lvalue for %%c");
 		}
 		--nargs;
-		val->type = T_INT;
-		val->u.number = UCHAR(*s);
-		i_store(f, --lval, val);
-		lval->type = T_INVALID;
-		assignments++;
+		(--f->sp)->type = T_INT;
+		f->sp->u.number = UCHAR(*s);
+		i_store(f);
+		f->sp += 2;
 	    }
 	    s++;
 	    --slen;
@@ -566,11 +561,9 @@ int nargs;
     }
 
 no_match:
-    f->sp++;			/* pop value */
     if (nargs > 0) {
 	i_pop(f, nargs);	/* pop superfluous arguments */
     }
-    f->sp += assignments;	/* pop lvalues */
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
     f->sp->type = T_INT;
