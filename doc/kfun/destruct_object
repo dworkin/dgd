@@ -9,7 +9,9 @@ DESCRIPTION
 	Destruct the object given as the argument.  Any value holding the
 	object will immediately change into 0, and object will cease to exist.
 	If an object destructs itself, it will cease to exist as soon as
-	execution leaves it.
+	execution leaves it.  If the last reference to a master object is
+	removed (including cloned objects and inheriting objects), the
+	function remove_program(objname) will be called in the driver object.
 
 ERRORS
 	Objects destructing themselves may not do certain things between the

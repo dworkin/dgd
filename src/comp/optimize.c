@@ -621,7 +621,7 @@ register node **m;
 			flt_add(&f1, &f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
-			return d2;
+			return d2 + 1;
 		    }
 		} else if (n->r.right->type == N_ADD &&
 			   n->r.right->r.right->type == N_FLOAT) {
@@ -631,7 +631,7 @@ register node **m;
 		    flt_sub(&f1, &f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
-		    return d2;
+		    return d2 + 1;
 		}
 		break;
 
@@ -651,14 +651,14 @@ register node **m;
 			n->r.right->r.right = n->r.right->l.left;
 			n->r.right->l.left = n->l.left;
 			*m = n->r.right;
-			return d2;
+			return d2 + 1;
 		    }
 		} else if (n->r.right->type == N_ADD_INT &&
 			   n->r.right->r.right->type == N_INT) {
 		    /* c1 - (x + c2) */
 		    n->l.left->l.number -= n->r.right->r.right->l.number;
 		    n->r.right = n->r.right->l.left;
-		    return d2;
+		    return d2 + 1;
 		}
 		break;
 
@@ -682,7 +682,7 @@ register node **m;
 			flt_mult(&f1, &f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
-			return d2;
+			return d2 + 1;
 		    }
 		} else if (n->r.right->type == N_MULT &&
 			   n->r.right->r.right->type == N_FLOAT &&
@@ -693,7 +693,7 @@ register node **m;
 		    flt_div(&f1, &f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
-		    return d2;
+		    return d2 + 1;
 		}
 		break;
 	    }

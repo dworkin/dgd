@@ -22,6 +22,7 @@ DESCRIPTION
 	    ?	    any single character
 	    *	    any (possibly empty) string
 	    [a-z]   any character in the range a-z
+	    [^a-z]  any character not in range a-z
 	    \c	    the character c, not interpreted as having a special
 		    meaning
 
