@@ -4,6 +4,7 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
+object driver;		/* driver object */
 string buffer;		/* buffered input */
 
 /*
@@ -14,6 +15,7 @@ static create(int clone)
 {
     if (clone) {
 	::create("binary");
+	driver = find_object(DRIVER);
 	buffer = "";
     }
 }
@@ -24,7 +26,7 @@ static create(int clone)
  */
 static int open()
 {
-    ::open(allocate(TLS_SIZE));
+    ::open(allocate(driver->query_tls_size()));
 # ifdef SYS_DATAGRAMS
     return TRUE;
 # else
@@ -38,7 +40,7 @@ static int open()
  */
 static close(int dest)
 {
-    ::close(allocate(TLS_SIZE), dest);
+    ::close(allocate(driver->query_tls_size()), dest);
 }
 
 /*
@@ -49,7 +51,9 @@ static receive_message(string str)
 {
     int mode, len;
     string head, pre;
+    mixed *tls;
 
+    tls = allocate(driver->query_tls_size());
     buffer += str;
     while ((mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {
 	if (mode != MODE_RAW) {
@@ -74,7 +78,7 @@ static receive_message(string str)
 		    }
 		}
 
-		::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(tls, str);
 	    } else {
 		break;
 	    }
@@ -82,7 +86,7 @@ static receive_message(string str)
 	    if (strlen(buffer) != 0) {
 		str = buffer;
 		buffer = "";
-		::receive_message(allocate(TLS_SIZE), str);
+		::receive_message(tls, str);
 	    }
 	    break;
 	}
@@ -96,7 +100,7 @@ static receive_message(string str)
  */
 static receive_datagram(string str)
 {
-    ::receive_datagram(allocate(TLS_SIZE), str);
+    ::receive_datagram(allocate(driver->query_tls_size()), str);
 }
 # endif
 
@@ -137,5 +141,5 @@ int message(string str)
  */
 static message_done()
 {
-    ::message_done(allocate(TLS_SIZE));
+    ::message_done(allocate(driver->query_tls_size()));
 }

@@ -601,7 +601,7 @@ nomask mixed _F_call_limited(mixed arg1, mixed *args)
 	rlimits (-1; -1) {
 	    tls = ::call_trace()[1][TRACE_FIRSTARG];
 	    if (tls == arg1) {
-		tls = arg1 = allocate(TLS_SIZE);
+		tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
 	    }
 	    limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
 	}
@@ -719,7 +719,7 @@ nomask _F_release(mixed handle)
 	callouts = ::status(this_object())[O_CALLOUTS];
 	::remove_call_out(handle);
 	for (i = sizeof(callouts); callouts[--i][CO_HANDLE] != handle; ) ;
-	handle = allocate(TLS_SIZE);
+	handle = allocate(::find_object(DRIVER)->query_tls_size());
 	_F_call_limited(callouts[i][CO_FIRSTXARG],
 			callouts[i][CO_FIRSTXARG + 2]);
     }

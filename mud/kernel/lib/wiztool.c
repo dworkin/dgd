@@ -994,27 +994,24 @@ static cmd_destruct(object user, string cmd, string str)
  */
 static cmd_cd(object user, string cmd, string str)
 {
-    mixed *files;
+    mixed *info;
 
     if (!str) {
 	str = "~";
     }
 
-    files = expand(str, -1, TRUE);	/* may not exist, full filenames */
-    if (files[4] == 1) {
-	str = files[0][0];
+    info = expand(str, -1, TRUE);	/* may not exist, full filenames */
+    if (info[4] == 1) {
+	str = info[0][0];
 	if (!access(owner, str + "/.", READ_ACCESS)) {
 	    message(str + ": Access denied.\n");
 	} else {
-	    files = ::get_dir(str);
-	    if (sizeof(files[0]) == 0) {
+	    info = file_info(str);
+	    if (!info) {
 		message(str + ": No such file or directory.\n");
-	    } else if (files[1][0] == -2) {
-		if (str == "/") {
-		    str = "";
-		}
-		directory = str;
-		message(((str == "") ? "/" : str) + "\n");
+	    } else if (info[0] < 0) {
+		directory = (str == "/") ? "" : str;
+		message(str + "\n");
 	    } else {
 		message(str + ": Not a directory.\n");
 	    }

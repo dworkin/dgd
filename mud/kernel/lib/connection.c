@@ -52,7 +52,7 @@ private _program_terminated(mixed *tls)
  */
 static program_terminated()
 {
-    _program_terminated(allocate(TLS_SIZE));
+    _program_terminated(allocate(DRIVER->query_tls_size()));
     if (dedicated) {
 	destruct_object(this_object());
     }

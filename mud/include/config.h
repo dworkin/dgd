@@ -2,7 +2,6 @@
 
 # undef SYS_CONTINUOUS		/* off by default */
 # undef SYS_DATAGRAMS		/* off by default */
-# define TLS_SIZE	2	/* thread local storage */
 
 # ifdef __ICHAT__
 #  define SYS_NETWORKING	/* ichat server has networking capabilities */

@@ -3,6 +3,7 @@
 # include <kernel/rsrc.h>
 # include <kernel/access.h>
 # include <kernel/user.h>
+# include <kernel/tls.h>
 # ifdef SYS_NETWORKING
 #  include <kernel/net.h>
 # endif
@@ -23,6 +24,7 @@ int port;			/* emergency binary port number */
 # endif
 static string file;		/* last file used in editor write operation */
 static int size;		/* size of file used in ed write operation */
+static int tls_size;		/* thread local storage size */
 static string compiled;		/* object currently being compiled */
 static string *inherited;	/* list of inherited objects */
 
@@ -307,6 +309,48 @@ string query_owner()
     return "System";
 }
 
+/*
+ * NAME:	set_tls_size()
+ * DESCRIPTION:	set the thread local storage size
+ */
+set_tls_size(int size)
+{
+    if (previous_program() == API_TLS) {
+	tls_size = size + 2;
+    }
+}
+
+/*
+ * NAME:	query_tls_size()
+ * DESCRIPTION:	return the thread local storage size
+ */
+int query_tls_size()
+{
+    return tls_size;
+}
+
+/*
+ * NAME:	get_tlvar()
+ * DESCRIPTION:	return value of thread local variable
+ */
+mixed get_tlvar(int index)
+{
+    if (previous_program() == API_TLS) {
+	return call_trace()[1][TRACE_FIRSTARG][index + 2];
+    }
+}
+
+/*
+ * NAME:	set_tlvar()
+ * DESCRIPTION:	set value of thread local variable
+ */
+void set_tlvar(int index, mixed value)
+{
+    if (previous_program() == API_TLS) {
+	call_trace()[1][TRACE_FIRSTARG][index + 2] = value;
+    }
+}
+
 
 /*
  * NAME:	message()
@@ -341,7 +385,7 @@ private mixed call(mixed what, string func)
     object obj;
 
     obj = what;
-    what = allocate(TLS_SIZE);
+    what = allocate(tls_size);
     return call_other(obj, func);
 }
 
@@ -357,6 +401,8 @@ static initialize()
 
     message("DGD " + status()[ST_VERSION] + "\n");
     message("Initializing...\n");
+
+    tls_size = 2;	/* two variables used by kernel */
 
     /* load initial objects */
     load(AUTO);
@@ -448,7 +494,7 @@ static restored()
     message("DGD " + status()[ST_VERSION] + "\n");
 
     rsrcd->reboot();
-    userd->reboot();
+    call(userd, "reboot");
     if (initd) {
 	catch {
 	    call(initd, "reboot");
@@ -711,7 +757,7 @@ static interrupt()
     message("Interrupt.\n");
 
 # ifdef SYS_CONTINUOUS
-    prepare_reboot();
+    call(this_object(), "prepare_reboot");
     dump_state();
 # endif
     shutdown();

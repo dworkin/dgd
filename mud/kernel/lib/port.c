@@ -56,6 +56,6 @@ private object _connection(mixed *tls, string ipaddr, int port)
 static nomask object connection(string ipaddr, int port)
 {
     if (!previous_program()) {
-	return _connection(allocate(TLS_SIZE), ipaddr, port);
+	return _connection(allocate(DRIVER->query_tls_size()), ipaddr, port);
     }
 }

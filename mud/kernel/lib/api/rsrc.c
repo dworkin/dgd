@@ -5,7 +5,7 @@ private object rsrcd;		/* resource manager */
 
 /*
  * NAME:	create()
- * DESCRIPTION:	initisalize API
+ * DESCRIPTION:	initialize API
  */
 static create()
 {

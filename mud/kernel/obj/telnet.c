@@ -4,6 +4,8 @@
 inherit LIB_CONN;	/* basic connection object */
 
 
+object driver;		/* driver object */
+
 /*
  * NAME:	create()
  * DESCRIPTION:	initialize
@@ -12,6 +14,7 @@ static create(int clone)
 {
     if (clone) {
 	::create("telnet");
+	driver = find_object(DRIVER);
     }
 }
 
@@ -21,7 +24,7 @@ static create(int clone)
  */
 static int open()
 {
-    ::open(allocate(TLS_SIZE));
+    ::open(allocate(driver->query_tls_size()));
     return FALSE;
 }
 
@@ -31,7 +34,7 @@ static int open()
  */
 static close(int dest)
 {
-    ::close(allocate(TLS_SIZE), dest);
+    ::close(allocate(driver->query_tls_size()), dest);
 }
 
 /*
@@ -40,7 +43,7 @@ static close(int dest)
  */
 static receive_message(string str)
 {
-    ::receive_message(allocate(TLS_SIZE), str);
+    ::receive_message(allocate(driver->query_tls_size()), str);
 }
 
 /*
@@ -67,5 +70,5 @@ set_mode(int newmode)
  */
 static message_done()
 {
-    ::message_done(allocate(TLS_SIZE));
+    ::message_done(allocate(driver->query_tls_size()));
 }
