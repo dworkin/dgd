@@ -15,9 +15,9 @@ typedef struct {
 
 typedef struct {
     char class;			/* variable class */
-    char type;			/* variable type */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
+    unsigned short type;	/* variable type */
 } dvardef;
 
 typedef struct {
