@@ -500,7 +500,7 @@ static void do_include()
 	    return;
 	}
     }
-    yyerror("cannot find include file \"%s\"", file);
+    yyerror("cannot include \"%s\"", file);
 }
 
 /*
@@ -758,6 +758,8 @@ int pp_gettok()
 	    }
 	    return IDENTIFIER;
 
+	case HASH:
+	    token = '#';
 	default:
 	    yyerror("illegal character: 0x%02x", token);
 	    break;
