@@ -1174,3 +1174,4 @@ DGD 1.1 patchlevel 6
  - Generate a proper compile-time error if a string constant is indexed by
    an integer that is out of range.
  - Turned off debug settings in Makefile and added optimization.
+ - Avoided the nasty gethostbyname() problem on Windows 95.
