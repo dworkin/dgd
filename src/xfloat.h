@@ -15,7 +15,6 @@ extern bool	flt_atof	P((char*, xfloat*));
 extern void	flt_ftoa	P((xfloat*, char*));
 extern void	flt_itof	P((Int, xfloat*));
 extern Int	flt_ftoi	P((xfloat*));
-extern bool	flt_isint	P((xfloat*));
 
 extern void	flt_add		P((xfloat*, xfloat*));
 extern void	flt_sub		P((xfloat*, xfloat*));
