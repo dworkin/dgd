@@ -2126,7 +2126,7 @@ register unsigned short n;
 			 */
 			tmp = ALLOC(array*, itabsz += itabsz);
 			memcpy(tmp, itab, itabsz * sizeof(array*) / 2);
-			FREE(itabsz);
+			FREE(itab);
 			itab = tmp;
 		    }
 		    arr_put(itab[i] = a);

@@ -8,7 +8,7 @@
  */
 
 extern char *skipst		P((char*));
-extern char *pattern		P((char*, char, char*));
+extern char *pattern		P((char*, int, char*));
 extern void  cb_count		P((cmdbuf*));
 extern void  not_in_global	P((cmdbuf*));
 extern void  cb_do		P((cmdbuf*, Int));
@@ -48,7 +48,7 @@ char *text;
 Int cb_search(cb, first, last, reverse)
 cmdbuf *cb;
 Int first, last;
-bool reverse;
+int reverse;
 {
     if (setjmp(env)) {
 	/* found */

@@ -9,7 +9,7 @@
 /*
  * These functions are in cmdsub.c
  */
-extern Int  cb_search	P((cmdbuf*, Int, Int, bool));
+extern Int  cb_search	P((cmdbuf*, Int, Int, int));
 extern int  cb_print	P((cmdbuf*));
 extern int  cb_list	P((cmdbuf*));
 extern int  cb_number	P((cmdbuf*));
@@ -93,7 +93,8 @@ register char *p;
  * DESCRIPTION:	scan a pattern and copy it to a buffer.
  */
 char *pattern(pat, delim, buffer)
-char *pat, delim, *buffer;
+char *pat, *buffer;
+int delim;
 {
     register char *p;
     register int size;
