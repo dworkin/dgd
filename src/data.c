@@ -284,7 +284,6 @@ object *obj;
     /* strings */
     data->nstrings = 0;
     data->strsize = 0;
-    data->strings = (strref *) NULL;
     data->sstrings = (sstring *) NULL;
     data->stext = (char *) NULL;
 
@@ -304,6 +303,7 @@ object *obj;
     data->base.alocal.data = data;
     data->base.alocal.state = AR_ALOCAL;
     data->base.arrays = (arrref *) NULL;
+    data->base.strings = (strref *) NULL;
     data->base.coptab = (coptable *) NULL;
     data->base.prev = (dataplane *) NULL;
     data->base.plist = (dataplane *) NULL;
@@ -893,15 +893,12 @@ static string *d_get_string(data, idx)
 register dataspace *data;
 register Uint idx;
 {
-    if (data->strings == (strref *) NULL) {
-	register strref *strs;
+    if (data->plane->strings == (strref *) NULL ||
+	data->plane->strings[idx].str == (string *) NULL) {
+	register string *str;
+	register strref *s;
+	register dataplane *p;
 	register Uint i;
-
-	/* initialize string pointers */
-	strs = data->strings = ALLOC(strref, data->nstrings);
-	for (i = data->nstrings; i > 0; --i) {
-	    (strs++)->str = (string *) NULL;
-	}
 
 	if (data->sstrings == (sstring *) NULL) {
 	    /* load strings */
@@ -924,21 +921,31 @@ register Uint idx;
 		}
 	    }
 	}
-    }
 
-    if (data->strings[idx].str == (string *) NULL) {
-	register string *s;
+	str = str_alloc(data->stext + data->sstrings[idx].index,
+			(long) data->sstrings[idx].len);
+	str->ref = 0;
+	p = data->plane;
 
-	s = str_alloc(data->stext + data->sstrings[idx].index,
-		      (long) data->sstrings[idx].len);
-	s->ref = 1;
-	s->primary = &data->strings[idx];
-	s->primary->str = s;
-	s->primary->data = data;
-	s->primary->ref = data->sstrings[idx].ref;
-	return s;
+	do {
+	    if (p->strings == (strref *) NULL) {
+		/* initialize string pointers */
+		s = p->strings = ALLOC(strref, data->nstrings);
+		for (i = data->nstrings; i > 0; --i) {
+		    (s++)->str = (string *) NULL;
+		}
+	    }
+	    s = &p->strings[idx];
+	    str_ref(s->str = str);
+	    s->data = data;
+	    s->ref = data->sstrings[idx].ref;
+	    p = p->prev;
+	} while (p != (dataplane *) NULL);
+
+	str->primary = &data->plane->strings[idx];
+	return str;
     }
-    return data->strings[idx].str;
+    return data->plane->strings[idx].str;
 }
 
 /*
@@ -1643,6 +1650,7 @@ register dataspace *data;
 Int level;
 {
     register dataplane *p;
+    register Uint i;
 
     p = ALLOC(dataplane, 1);
 
@@ -1662,11 +1670,9 @@ Int level;
 
     if (data->plane->arrays != (arrref *) NULL) {
 	register arrref *a, *b;
-	register Uint i;
 
 	p->arrays = ALLOC(arrref, i = data->narrays);
-	for (a = p->arrays, b = data->plane->arrays, i = data->narrays; i != 0;
-	     a++, b++, --i) {
+	for (a = p->arrays, b = data->plane->arrays; i != 0; a++, b++, --i) {
 	    if (b->arr != (array *) NULL) {
 		*a = *b;
 		a->arr->primary = a;
@@ -1679,6 +1685,23 @@ Int level;
 	p->arrays = (arrref *) NULL;
     }
     p->achunk = (abchunk *) NULL;
+
+    if (data->plane->strings != (strref *) NULL) {
+	register strref *s, *t;
+
+	p->strings = ALLOC(strref, i = data->nstrings);
+	for (s = p->strings, t = data->plane->strings; i != 0; s++, t++, --i) {
+	    if (t->str != (string *) NULL) {
+		*s = *t;
+		s->str->primary = s;
+		str_ref(s->str);
+	    } else {
+		s->str = (string *) NULL;
+	    }
+	}
+    } else {
+	p->strings = (strref *) NULL;
+    }
 
     p->prev = data->plane;
     data->plane = p;
@@ -1856,7 +1879,6 @@ Int level;
     register dataplane *p, *commit, **r, **cr;
     register dataspace *data;
     register value *v;
-    register arrref *a;
     register Uint i;
     dataplane *clist;
 
@@ -1929,15 +1951,33 @@ Int level;
 	}
 
 	arr_commit(&p->achunk, p->prev, p->flags & PLANE_MERGE);
-	if ((p->flags & PLANE_MERGE) && p->arrays != (arrref *) NULL) {
-	    /* replace old array refs */
-	    for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
-		if (a->arr != (array *) NULL) {
-		    arr_del(a->arr);
+	if (p->flags & PLANE_MERGE) {
+	    if (p->arrays != (arrref *) NULL) {
+		register arrref *a;
+
+		/* replace old array refs */
+		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
+		    if (a->arr != (array *) NULL) {
+			arr_del(a->arr);
+		    }
 		}
+		FREE(p->prev->arrays);
+		p->prev->arrays = p->arrays;
 	    }
-	    FREE(p->prev->arrays);
-	    p->prev->arrays = p->arrays;
+
+	    if (p->strings != (strref *) NULL) {
+		register strref *s;
+
+		/* replace old string refs */
+		for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i)
+		{
+		    if (s->str != (string *) NULL) {
+			str_del(s->str);
+		    }
+		}
+		FREE(p->prev->strings);
+		p->prev->strings = p->strings;
+	    }
 	}
 
 	data->plane = p->prev;
@@ -2004,7 +2044,6 @@ Int level;
     register dataplane *p;
     register dataspace *data;
     register value *v;
-    register arrref *a;
     register Uint i;
 
     for (p = plist; p != (dataplane *) NULL && p->level == level; p = p->plist)
@@ -2037,6 +2076,8 @@ Int level;
 
 	arr_discard(&p->achunk);
 	if (p->arrays != (arrref *) NULL) {
+	    register arrref *a;
+
 	    /* delete new array refs */
 	    for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
 		if (a->arr != (array *) NULL) {
@@ -2048,6 +2089,24 @@ Int level;
 	    for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
 		if (a->arr != (array *) NULL) {
 		    a->arr->primary = a;
+		}
+	    }
+	}
+
+	if (p->strings != (strref *) NULL) {
+	    register strref *s;
+
+	    /* delete new string refs */
+	    for (s = p->strings, i = data->nstrings; i != 0; s++, --i) {
+		if (s->str != (string *) NULL) {
+		    str_del(s->str);
+		}
+	    }
+	    FREE(p->strings);
+	    /* fix old ones */
+	    for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i) {
+		if (s->str != (string *) NULL) {
+		    s->str->primary = s;
 		}
 	    }
 	}
@@ -2975,7 +3034,7 @@ register unsigned short n;
 
 	    case T_STRING:
 		sv->oindex = 0;
-		sv->u.string = v->u.string->primary - sdata->strings;
+		sv->u.string = v->u.string->primary - sdata->base.strings;
 		break;
 
 	    case T_FLOAT:
@@ -3063,18 +3122,18 @@ register dataspace *data;
     }
 
     /* free strings */
-    if (data->strings != (strref *) NULL) {
+    if (data->base.strings != (strref *) NULL) {
 	register strref *s;
 
-	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
+	for (i = data->nstrings, s = data->base.strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
 		s->str->primary = (strref *) NULL;
 		str_del(s->str);
 	    }
 	}
 
-	FREE(data->strings);
-	data->strings = (strref *) NULL;
+	FREE(data->base.strings);
+	data->base.strings = (strref *) NULL;
     }
 }
 
@@ -3166,7 +3225,7 @@ register dataspace *data;
 	     * string references changed
 	     */
 	    ss = data->sstrings;
-	    s = data->strings;
+	    s = data->base.strings;
 	    mod = FALSE;
 	    for (n = data->nstrings; n > 0; --n) {
 		if (s->str != (string *) NULL && ss->ref != s->ref) {

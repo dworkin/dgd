@@ -122,6 +122,7 @@ struct _dataplane_ {
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
+    strref *strings;		/* i/o? string constant table */
     struct _coptable_ *coptab;	/* callout patch table */
 
     dataplane *prev;		/* previous in per-dataspace linked list */
@@ -154,7 +155,6 @@ struct _dataspace_ {
 
     Uint nstrings;		/* i/o # strings */
     Uint strsize;		/* o total size of string text */
-    strref *strings;		/* i/o? string constant table */
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     Uint stroffset;		/* o offset of string table */

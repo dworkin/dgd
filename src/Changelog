@@ -1368,3 +1368,4 @@ DGD 1.1
    generated C output.
  - Make sure the error context is cleared at the proper time.
  - Fixed another object undo bug.
+ - Completed the string accounting bug fix; the earlier fix was only partial.
