@@ -87,7 +87,7 @@ driver, mostly to translate pathnames.
     void compile_error(string file, int line, string err)
 
 	Handle a compile-time error; there can be several for the same
-	LPC file before a runtime error results (calling log_error).
+	LPC file before a runtime error results (calling runtime_error).
 
     void runtime_error(string error, int caught)
 

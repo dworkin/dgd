@@ -287,7 +287,7 @@ void pre_catch()
  */
 void post_catch()
 {
-    i_set_rllevel(cstack[csi]);
+    i_set_rllevel(cstack[--csi]);
 }
 
 /*
