@@ -1080,7 +1080,13 @@ string *class;
 		functions[fdef = (*h)->index].proto =
 			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.class = PROTO_CLASS(proto);
+		if (functions[fdef].cfstr != (string *) NULL) {
+		    str_del(functions[fdef].cfstr);
+		}
 		functions[fdef].cfstr = class;
+		if (class != (string *) NULL) {
+		    str_ref(class);
+		}
 	    }
 	    return;
 	}
@@ -1156,6 +1162,9 @@ string *class;
     functions[nfdefs].name = str->text;
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].cfstr = class;
+    if (class != (string *) NULL) {
+	str_ref(class);
+    }
     functions[nfdefs].progsize = 0;
     progsize += i;
     func = &functions[nfdefs++].func;
@@ -2009,6 +2018,9 @@ void ctrl_clear()
 	    FREE(f->proto);
 	    if (f->progsize != 0) {
 		FREE(f->prog);
+	    }
+	    if (f->cfstr != (string *) NULL) {
+		str_del(f->cfstr);
 	    }
 	}
 	FREE(functions);

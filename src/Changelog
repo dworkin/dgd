@@ -1605,3 +1605,4 @@ DGD 1.3
    The second argument must be a string constant.  -> and <- have the same
    priority.
  - Check parameters with the called, not the calling, frame.
+ - Fixed a string reference problem during compilation.
