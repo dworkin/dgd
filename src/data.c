@@ -2241,7 +2241,7 @@ void d_export()
     if (ilist != (dataspace *) NULL) {
 	itab = ALLOC(array*, itabsz = 16);
 
-	for (data = ilist; data != (dataspace *) NULL; data = next) {
+	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
 	    if (data->imports != 0) {
 		narr = 0;
 		if (data->variables != (value *) NULL) {
@@ -2269,8 +2269,11 @@ void d_export()
 		    }
 		}
 		arr_clear();	/* clear hash table */
-		data->imports = 0;
 	    }
+	}
+
+	for (data = ilist; data != (dataspace *) NULL; data = next) {
+	    data->imports = 0;
 	    next = data->inext;
 	    data->inext = (dataspace *) NULL;
 	}
