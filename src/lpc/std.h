@@ -1,1 +1,1 @@
-# define VERSION	"1.0a0"
+# define DEBUG	1
