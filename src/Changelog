@@ -926,3 +926,7 @@ DGD 1.1
  - If an error is caught internally, the proper error handler is called again.
  - Ported DGD to Windows 95/NT.  Left to do: starting by double-clicking a
    config file, program icons.
+ - Disallowed #include from the config file, which would cause a crash.
+ - Precompiler brought up to date with latest change in error handling.
+ - Send IAC GA to all users with a prompt, not just the current user.
+ - Swapping in an object with more than 127 inherits might result in a crash.

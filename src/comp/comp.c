@@ -246,6 +246,27 @@ char *argv[];
 	return 2;
     }
 
+    /* initialize */
+    conf_init(argv[1], (char *) NULL);
+
+    len = strlen(file = path_resolve(argv[2]));
+    if (len > 2 && file[len - 2] == '.' && file[len - 1] == 'c') {
+	file[len -= 2] = '\0';
+    }
+    sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
+	    (unsigned short) P_random());
+
+    printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
+    printf("\n * DGD is copyright by BeeHive Internet Technologies, Inc.\n");
+    printf(" * See the file \"Copyright\" for details.\n *\n");
+    printf(" * File: \"/%s.c\"\n */\n", file);
+
+    printf("\n# ifdef TAG\nTAG(%s)\n# else\n", tag);
+    printf("# include \"dgd.h\"\n# include \"str.h\"\n");
+    printf("# include \"array.h\"\n# include \"object.h\"\n");
+    printf("# include \"interpret.h\"\n# include \"data.h\"\n");
+    printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
+
     if (ec_push((ec_ftn) NULL)) {
 	message((char *) NULL);
 	if (argc == 4) {
@@ -256,32 +277,6 @@ char *argv[];
 	}
 	return 1;
     }
-
-    /* initialize */
-    if (ec_push((ec_ftn) NULL)) {
-	P_message("error in initialization:\012");	/* LF */
-	error((char *) NULL);
-    }
-    conf_init(argv[1], (char *) NULL);
-    ec_pop();
-
-    len = strlen(file = path_resolve(argv[2]));
-    if (len > 2 && file[len - 2] == '.' && file[len - 1] == 'c') {
-	file[len -= 2] = '\0';
-    }
-    sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
-	    (unsigned short) P_random());
-
-    printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
-    printf("\n * DGD is copyright by Felix A. Croes.");
-    printf("  See the file \"Copyright\" for details.\n *\n");
-    printf(" * File: \"/%s.c\"\n */\n", file);
-
-    printf("\n# ifdef TAG\nTAG(%s)\n# else\n", tag);
-    printf("# include \"dgd.h\"\n# include \"str.h\"\n");
-    printf("# include \"array.h\"\n# include \"object.h\"\n");
-    printf("# include \"interpret.h\"\n# include \"data.h\"\n");
-    printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
 
     /* compile file */
     ctrl = c_compile(file)->ctrl;

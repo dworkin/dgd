@@ -473,6 +473,9 @@ static void do_include()
     token = wsmcgtok();
     tk_header(FALSE);
 
+    if (idirs == (char **) NULL) {
+	fatal("illegal #include from config file");
+    }
     if (token == STRING_CONST) {
 	strcpy(file, yytext);
 	tk_skiptonl(TRUE);

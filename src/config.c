@@ -263,7 +263,7 @@ static void cclose()
 void conf_init(configfile, dumpfile)
 char *configfile, *dumpfile;
 {
-    static char *nodir[1], *dirs[MAX_DIRS];
+    static char *dirs[MAX_DIRS];
     char buf[BUF_SIZE], buffer[STRINGSZ];
     register char *p;
     register int h, l, m, c;
@@ -276,7 +276,7 @@ char *configfile, *dumpfile;
     lalign ldummy;
     palign pdummy;
 
-    if (!pp_init(configfile, nodir, 0)) {
+    if (!pp_init(configfile, (char **) NULL, 0)) {
 	message("Cannot open config file\012");	/* LF */
 	exit(2);
     }

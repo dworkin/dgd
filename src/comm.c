@@ -275,7 +275,9 @@ int prompt;
 	if (*usr != (user *) NULL) {
 	    --i;
 	    if (((*usr)->flags & CF_TELNET) && (size=(*usr)->outbufsz) > 0) {
-		if (prompt && (*usr)->u.obj == this_user &&
+		if (prompt &&
+		    ((*usr)->u.obj == this_user ||
+		     (*usr)->outbuf[size - 1] != LF) &&
 		    ((*usr)->flags & CF_GA)) {
 		    /*
 		     * append "go ahead" to indicate that the prompt has been

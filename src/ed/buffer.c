@@ -62,7 +62,10 @@ char *(*getline) P((void));
     if (b != (block) 0) {
 	Int size;
 
-	size = bk_size(eb->lb, b);
+	size = eb->lines + bk_size(eb->lb, b);
+	if (size < 0) {
+	    error("Too many lines");
+	}
 
 	if (ln == 0) {
 	    if (eb->lines == 0) {
@@ -79,7 +82,7 @@ char *(*getline) P((void));
 	    eb->buffer = bk_cat(eb->lb, bk_cat(eb->lb, head, b), tail);
 	}
 
-	eb->lines += size;
+	eb->lines = size;
     }
 }
 
@@ -127,7 +130,16 @@ register editbuf *eb;
 register Int first, last;
 register block b;
 {
+    Int size;
     block head, tail;
+
+    size = eb->lines - (last - first + 1);
+    if (b != (block) 0) {
+	size += bk_size(eb->lb, b);
+	if (size < 0) {
+	    error("Too many lines");
+	}
+    }
 
     if (last < eb->lines) {
 	if (first > 1) {
@@ -155,11 +167,7 @@ register block b;
 	}
     }
     eb->buffer = b;
-    if (b == (block) 0) {
-	eb->lines = 0;
-    } else {
-	eb->lines = bk_size(eb->lb, b);
-    }
+    eb->lines = size;
 }
 
 /*
@@ -194,9 +202,12 @@ register editbuf *eb;
 register Int ln;
 register block b;
 {
-    Int l;
+    Int size;
 
-    l = bk_size(eb->lb, b);
+    size = eb->lines + bk_size(eb->lb, b);
+    if (size < 0) {
+	error("Too many lines");
+    }
 
     if (ln == 0) {
 	if (eb->lines == 0) {
@@ -213,7 +224,7 @@ register block b;
 	eb->buffer = bk_cat(eb->lb, bk_cat(eb->lb, head, b), tail);
     }
 
-    eb->lines += l;
+    eb->lines = size;
 }
 
 /*

@@ -298,7 +298,7 @@ object *obj;
 
 	/* inherits */
 	ctrl->ninherits = UCHAR(header.ninherits); /* there is at least one */
-	ctrl->inherits = ALLOC(dinherit, header.ninherits);
+	ctrl->inherits = ALLOC(dinherit, UCHAR(header.ninherits));
 	sw_readv((char *) ctrl->inherits, ctrl->sectors,
 		 UCHAR(header.ninherits) * (Uint) sizeof(dinherit), size);
 	size += UCHAR(header.ninherits) * sizeof(dinherit);
