@@ -8,15 +8,14 @@ SYNOPSIS
 DESCRIPTION
 	Create a clone of the specified object with an unique name of the form
 	"object_name#1234".  The cloned object must not inself be a clone.  The
-	new object is returned.
+	new object is returned.  The creator function will be called in the
+	cloned object immediately.
 
 ERRORS
 	If the number of existing objects is equal to the value of the
 	ST_OTABSIZE field of the array returned by status(), where ST_OTABSIZE
 	is defined in the include file <status.h>, attempting to clone a new
 	object will crash the system.
-	Calling clone_object() with the name of a clone as an argument will
-	result in an error.
 
 SEE ALSO
 	kfun/call_other, kfun/destruct_object

@@ -103,6 +103,9 @@ unsigned int telnet_port, binary_port;
     }
 
     FD_ZERO(&fds);
+    FD_SET(telnet, &fds);
+    FD_SET(binary, &fds);
+    maxfd = (telnet < binary) ? binary : telnet;
 }
 
 /*
@@ -125,6 +128,9 @@ connection *conn_tnew()
     struct sockaddr_in sin;
     register connection *conn;
 
+    if (!FD_ISSET(telnet, &readfds)) {
+	return (connection *) NULL;
+    }
     len = sizeof(sin);
     fd = accept(telnet, (struct sockaddr *) &sin, &len);
     if (fd < 0) {
@@ -153,6 +159,9 @@ connection *conn_bnew()
     struct sockaddr_in sin;
     register connection *conn;
 
+    if (!FD_ISSET(binary, &readfds)) {
+	return (connection *) NULL;
+    }
     len = sizeof(sin);
     fd = accept(binary, (struct sockaddr *) &sin, &len);
     if (fd < 0) {

@@ -2,9 +2,9 @@
 # Makefile for DGD, Dworkin's Generic Driver
 #
 HOST=	NETBSD
-DEFINES=-D$(HOST)
-DEBUG=
-CCFLAGS=-O2 $(DEFINES) $(DEBUG)
+DEFINES=-D$(HOST) #-DDUMP_FUNCS
+DEBUG=	-g -DDEBUG
+CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=

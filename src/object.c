@@ -158,11 +158,6 @@ register object *o;
 	o_delete(o);
     } else {
 	o_delete(o->u.master);
-
-	/* put clones in free list right away */
-	o->chain.next = (hte *) free_obj;
-	free_obj = o;
-	nfreeobjs++;
     }
 
     /* put in clean list */
@@ -307,9 +302,9 @@ register object *o;
  */
 void o_clean()
 {
-    register object *o;
+    register object *o, *next;
 
-    for (o = clean_obj; o != (object *) NULL; o = (object *) o->chain.next) {
+    for (o = clean_obj; o != (object *) NULL; o = next) {
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
@@ -317,6 +312,14 @@ void o_clean()
 	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
+	}
+	next = (object *) o->chain.next;
+
+	if (!(o->flags & O_MASTER)) {
+	    /* put clone in free list */
+	    o->chain.next = (hte *) free_obj;
+	    free_obj = o;
+	    nfreeobjs++;
 	}
     }
     clean_obj = (object *) NULL;
@@ -329,7 +332,7 @@ void o_clean()
 	FREE(o->chain.name);
 	o->chain.name = (char *) NULL;
 
-	/* put object in free list */
+	/* put master object in free list */
 	o->chain.next = (hte *) free_obj;
 	free_obj = o;
 	nfreeobjs++;

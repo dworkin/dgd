@@ -265,7 +265,6 @@ char *configfile, *dumpfile;
     char buf[BUF_SIZE], buffer[STRINGSZ];
     register char *p;
     register int h, l, m, c;
-    FILE *fp;
     short s;
     Int i;
     int fd;

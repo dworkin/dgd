@@ -61,7 +61,7 @@ unsigned int size;
 # define SLIMIT		(STRINGSZ + MOFFSET)
 # define SSMALL		(MOFFSET + STRINGSZ / 8)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
-# define LCHUNKS	16
+# define LCHUNKS	32
 
 typedef struct {
     unsigned int size;		/* size of chunks in list */

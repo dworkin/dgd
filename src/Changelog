@@ -893,3 +893,10 @@ DGD 1.1
  - call_other() now calls driver->call_object() to translate a string to an
    object.
  - Added list of precompiled objects to status().
+ - Increased the number of different sized large free chunks the static memory
+   manager can handle.
+ - In connect.c, calls to accept() will now only be done if the controlling
+   socket was marked for reading by select().
+ - The object free list wasn't properly maintained anymore.
+ - A cloned object erroneously didn't have its creator function called right
+   away.

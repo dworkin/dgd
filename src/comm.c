@@ -308,58 +308,6 @@ int *size;
     register int n, i, state, flags, nls;
     register char *p, *q;
 
-    if (nusers < maxusers) {
-	/*
-	 * accept new telnet connection
-	 */
-	conn = conn_tnew();
-	if (conn != (connection *) NULL) {
-	    if (ec_push((ec_ftn) NULL)) {
-		conn_del(conn);		/* delete connection */
-		error((char *) NULL);	/* pass on error */
-	    }
-	    call_driver_object("telnet_connect", 0);
-	    ec_pop();
-	    if (sp->type != T_OBJECT) {
-		fatal("driver->telnet_connect() did not return an object");
-	    }
-	    d_export();
-	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
-	    sp++;
-	    if (i_call(o, "open", TRUE, 0)) {
-		i_del_value(sp++);
-		d_export();
-	    }
-	    comm_flush(TRUE);
-	}
-    }
-
-    if (nusers < maxusers) {
-	/*
-	 * accept new binary connection
-	 */
-	conn = conn_bnew();
-	if (conn != (connection *) NULL) {
-	    if (ec_push((ec_ftn) NULL)) {
-		conn_del(conn);		/* delete connection */
-		error((char *) NULL);	/* pass on error */
-	    }
-	    call_driver_object("binary_connect", 0);
-	    ec_pop();
-	    if (sp->type != T_OBJECT) {
-		fatal("driver->binary_connect() did not return an object");
-	    }
-	    d_export();
-	    comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
-	    sp++;
-	    if (i_call(o, "open", TRUE, 0)) {
-		i_del_value(sp++);
-		d_export();
-	    }
-	    comm_flush(TRUE);
-	}
-    }
-
     /*
      * read input from users
      */
@@ -376,13 +324,65 @@ int *size;
 	static char intr[] =	 { '\177' };
 	static char brk[] =	 { '\034' };
 	static char ayt[] =	 { CR, LF, '[', 'Y', 'e', 's', ']', CR, LF };
-	static char tm[] =	 { (char) IAC, (char) WILL, (char) TELOPT_TM };
+	static char tm[] =	 { (char) IAC, (char) WONT, (char) TELOPT_TM };
 	static char will_sga[] = { (char) IAC, (char) WILL, (char) TELOPT_SGA };
 	static char wont_sga[] = { (char) IAC, (char) WONT, (char) TELOPT_SGA };
 	static char mode_edit[]= { (char) IAC, (char) SB,
 				   (char) TELOPT_LINEMODE, (char) LM_MODE,
 				   (char) MODE_EDIT, (char) IAC, (char) SE };
 	register user **usr;
+
+	if (nusers < maxusers) {
+	    /*
+	     * accept new telnet connection
+	     */
+	    conn = conn_tnew();
+	    if (conn != (connection *) NULL) {
+		if (ec_push((ec_ftn) NULL)) {
+		    conn_del(conn);		/* delete connection */
+		    error((char *) NULL);	/* pass on error */
+		}
+		call_driver_object("telnet_connect", 0);
+		ec_pop();
+		if (sp->type != T_OBJECT) {
+		    fatal("driver->telnet_connect() did not return an object");
+		}
+		d_export();
+		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, TRUE);
+		sp++;
+		if (i_call(o, "open", TRUE, 0)) {
+		    i_del_value(sp++);
+		    d_export();
+		}
+		comm_flush(TRUE);
+	    }
+	}
+
+	if (nusers < maxusers) {
+	    /*
+	     * accept new binary connection
+	     */
+	    conn = conn_bnew();
+	    if (conn != (connection *) NULL) {
+		if (ec_push((ec_ftn) NULL)) {
+		    conn_del(conn);		/* delete connection */
+		    error((char *) NULL);	/* pass on error */
+		}
+		call_driver_object("binary_connect", 0);
+		ec_pop();
+		if (sp->type != T_OBJECT) {
+		    fatal("driver->binary_connect() did not return an object");
+		}
+		d_export();
+		comm_new(o = o_object(sp->oindex, sp->u.objcnt), conn, FALSE);
+		sp++;
+		if (i_call(o, "open", TRUE, 0)) {
+		    i_del_value(sp++);
+		    d_export();
+		}
+		comm_flush(TRUE);
+	    }
+	}
 
 	for (i = maxusers, usr = users; i > 0; --i, usr++) {
 	    if (*usr == (user *) NULL) {

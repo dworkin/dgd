@@ -209,6 +209,7 @@ int kf_clone_object()
     obj = o_new((char *) NULL, obj, (control *) NULL);
     sp->oindex = obj->index;
     sp->u.objcnt = obj->count;
+    i_call(obj, "", FALSE, 0);	/* cause creator to be called */
     return 0;
 }
 # endif
