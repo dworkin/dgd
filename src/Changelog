@@ -1291,3 +1291,4 @@ DGD 1.1
    had millisecond delay.
  - Slightly better indexing of mapping with string.
  - Removed recursion limit on catch and rlimits.
+ - Fixed a file descriptor leak in P_readdir() for Windows.
