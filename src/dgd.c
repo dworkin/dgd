@@ -3,6 +3,7 @@
 # include "array.h"
 # include "object.h"
 # include "interpret.h"
+# include "ed.h"
 # include "call_out.h"
 # include "comm.h"
 # include "node.h"
@@ -31,20 +32,35 @@ int narg;
 	dcount = driver->count;
     }
     if (!i_call(driver, func, TRUE, narg)) {
-	fatal("missing function %s in driver object", func);
+	fatal("missing function in driver object: %s", func);
     }
     return TRUE;
 }
 
 static bool swap;	/* are objects to be swapped out? */
+static bool stop;	/* is the program to terminate? */
+static bool dump;	/* is the program to dump? */
 
 /*
  * NAME:	swapout()
  * DESCRIPTION:	indicate that objects are to be swapped out
  */
-void swapout()
+void swapout(flag)
+bool flag;
 {
     swap = TRUE;
+    dump = flag;
+}
+
+/*
+ * NAME:	finish()
+ * DESCRIPTION:	indicate that the program must finish
+ */
+void finish(flag)
+bool flag;
+{
+    stop = TRUE;
+    swap = dump = flag;
 }
 
 /*
@@ -62,8 +78,8 @@ char *argv[];
 
     host_init();
 
-    if (argc != 2) {
-	fprintf(stderr, "Usage: %s config_file\n", argv[0]);
+    if (argc < 2 || argc > 3) {
+	fprintf(stderr, "Usage: %s config_file [dump_file]\n", argv[0]);
 	host_finish();
 	return 2;
     }
@@ -72,43 +88,37 @@ char *argv[];
 	warning((char *) NULL);
 	fatal("error during initialization");
     }
-    conf_init(argv[1]);
+    if (argc == 2) {
+	conf_init(argv[1], (char *) NULL);
+    } else {
+	conf_init(argv[1], argv[2]);
+    }
     ec_pop();
     max_cost = conf_exec_cost();
 
     while (ec_push()) {
-	warning((char *) NULL);
-	i_dump_trace(stderr);
-	host_error();
+	i_log_error(FALSE);
 	i_clear();
-	if (ec_push()) {
-	    /* error within error... */
-	    warning((char *) NULL);
-	    i_dump_trace(stderr);
-	    host_error();
-	    i_clear();
-	} else {
-	    i_log_error();
-	    ec_pop();
-	}
-	comm_flush(TRUE);
     }
 
-    for (;;) {
+    do {
 	i_set_cost(max_cost >> 1);
 	co_call();
+	comm_flush(FALSE);
 
-	i_set_cost(max_cost);
-	usr = comm_receive(buf, &size);
-	if (usr != (object *) NULL) {
-	    (--sp)->type = T_STRING;
-	    str_ref(sp->u.string = str_new(buf, (long) size));
-	    if (i_call(usr, "receive_message", TRUE, 1)) {
-		i_del_value(sp++);
+	if (!stop) {
+	    i_set_cost(max_cost);
+	    usr = comm_receive(buf, &size);
+	    if (usr != (object *) NULL) {
+		(--sp)->type = T_STRING;
+		str_ref(sp->u.string = str_new(buf, (long) size));
+		if (i_call(usr, "receive_message", TRUE, 1)) {
+		    i_del_value(sp++);
+		}
+		comm_flush(TRUE);
 	    }
 	}
 
-	comm_flush(TRUE);
 	o_clean();
 
 	if (!mcheck()) {
@@ -122,5 +132,17 @@ char *argv[];
 	    mpurge();
 	}
 	swap = FALSE;
-    }
+
+	if (dump) {
+	    conf_dump();
+	    dump = FALSE;
+	}
+    } while (!stop);
+
+    ec_pop();
+    comm_finish();
+    ed_finish();
+    sw_finish();
+    host_finish();
+    return 0;
 }
