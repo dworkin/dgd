@@ -5,7 +5,6 @@
 # include "interpret.h"
 # include "data.h"
 # include "call_out.h"
-# include "comm.h"
 
 # define CYCBUF_SIZE	128		/* cyclic buffer size, power of 2 */
 # define CYCBUF_MASK	(CYCBUF_SIZE - 1) /* cyclic buffer mask */

@@ -217,7 +217,7 @@ int func;
     }
     progsize = FETCH2U(pc, u);
     end = linenumbers = pc + progsize;
-    addr = 5;
+    addr = 0;
     line = 0;
     newline = 0;
     printf("addr\tline\tcode\t    pop instruction\n");
@@ -384,19 +384,19 @@ int func;
 
 	case I_JUMP:
 	    codesize = 3;
-	    sprintf(buffer, "JUMP %04x", addr + FETCH2S(pc, u) + 1);
+	    sprintf(buffer, "JUMP %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
 	case I_JUMP_ZERO:
 	    codesize = 3;
-	    sprintf(buffer, "JUMP_ZERO %04x", addr + FETCH2S(pc, u) + 1);
+	    sprintf(buffer, "JUMP_ZERO %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
 	case I_JUMP_NONZERO:
 	    codesize = 3;
-	    sprintf(buffer, "JUMP_NONZERO %04x", addr + FETCH2S(pc, u) + 1);
+	    sprintf(buffer, "JUMP_NONZERO %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
@@ -410,7 +410,7 @@ int func;
 		show_instr(buffer);
 		codesize = --u * (sz + 2) + 3;
 		a = addr + 1;
-		sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
+		sprintf(buffer, " DEFAULT: %04x", FETCH2U(pc, u2));
 		show_instr(buffer);
 		a += 2;
 		while (u > 0) {
@@ -426,7 +426,7 @@ int func;
 		    case 1:
 			l = FETCH1S(pc); break;
 		    }
-		    sprintf(buffer, " CASE %ld: %04x", l, a + FETCH2S(pc, u2) + sz);
+		    sprintf(buffer, " CASE %ld: %04x", l, FETCH2U(pc, u2));
 		    show_instr(buffer);
 		    a += 2 + sz;
 		    --u;
@@ -441,7 +441,7 @@ int func;
 		show_instr(buffer);
 		codesize = --u * (2 * sz + 2) + 3;
 		a = addr + 1;
-		sprintf(buffer, " DEFAULT: %04x", a + FETCH2S(pc, u2));
+		sprintf(buffer, " DEFAULT: %04x", FETCH2U(pc, u2));
 		show_instr(buffer);
 		a += 2;
 		while (u > 0) {
@@ -468,7 +468,7 @@ int func;
 			h = FETCH1S(pc); break;
 		    }
 		    sprintf(buffer, " CASE %ld .. %ld: %04x", l, h,
-			    a + FETCH2U(pc, u2) + 2 * sz);
+			    FETCH2U(pc, u2));
 		    show_instr(buffer);
 		    a += 2 + sz * 2;
 		    --u;
@@ -482,12 +482,12 @@ int func;
 		show_instr(buffer);
 		codesize = --u * 5 + 3;
 		a = addr;
-		sprintf(buffer, " DEFAULT: %04x", a + FETCH2U(pc, u2));
+		sprintf(buffer, " DEFAULT: %04x", FETCH2U(pc, u2));
 		show_instr(buffer);
 		a += 3;
 		if (FETCH1U(pc) == 0) {
 		    codesize -= 3;
-		    sprintf(buffer, " CASE 0: %04x", a + FETCH2S(pc, u2));
+		    sprintf(buffer, " CASE 0: %04x", FETCH2U(pc, u2));
 		    show_instr(buffer);
 		    a += 2;
 		    --u;
@@ -499,7 +499,7 @@ int func;
 		    i = FETCH1U(pc);
 		    str = d_get_strconst(ctrl, i, FETCH2S(pc, u2));
 		    sprintf(buffer, " CASE \"%s\": %04x", str->text,
-			    a + FETCH2U(pc, u2) + 3);
+			    FETCH2U(pc, u2));
 		    show_instr(buffer);
 		    a += 5;
 		    --u;
@@ -565,7 +565,7 @@ int func;
 
 	case I_CATCH:
 	    codesize = 3;
-	    sprintf(buffer, "CATCH %04x", addr + FETCH2S(pc, u) + 1);
+	    sprintf(buffer, "CATCH %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 

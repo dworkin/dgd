@@ -273,7 +273,7 @@ static unsigned short nvars;		/* # variables */
 static unsigned short nfloats;		/* # float variables */
 static unsigned short nsymbs;		/* # symbols */
 static int nfclash;			/* # prototype clashes */
-static uindex nfcalls;			/* # function calls */
+static Uint nifcalls;			/* # inherited function calls */
 
 /*
  * NAME:	control->init()
@@ -674,13 +674,14 @@ static control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *strlist;		/* list of string chunks */
 static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
-static unsigned short nstrs;		/* # of strings in all string chunks */
+static Uint nstrs;			/* # of strings in all string chunks */
 static fcchunk *fclist;			/* list of fcall chunks */
 static int fcchunksz = FCALL_CHUNK;	/* size of current fcall chunk */
 static cfunc *functions;		/* defined functions table */
 static int nfdefs, fdef;		/* # defined functions, current func */
-static unsigned short progsize;		/* size of all programs and protos */
+static Uint progsize;			/* size of all programs and protos */
 static dvardef *variables;		/* defined variables */
+static Uint nfcalls;			/* # function calls */
 
 /*
  * NAME:	control->create()
@@ -704,7 +705,6 @@ char *file;
     newctrl = d_new_control();
     new = newctrl->inherits = ALLOC(dinherit, newctrl->ninherits = count + 1);
     new += count;
-    nfcalls = 0;
     nvars = 0;
 
     if (ninherits > 0) {
@@ -749,8 +749,12 @@ char *file;
 	    if (i == count) {
 		ctrl = new->obj->ctrl;
 		i = ctrl->ninherits - 1;
-		new->funcoffset = nfcalls;
-		nfcalls += ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
+		new->funcoffset = nifcalls;
+		n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
+		nifcalls += n;
+		if (nifcalls > UINDEX_MAX && nifcalls - n <= UINDEX_MAX) {
+		    c_error("inherited too many function calls");
+		}
 		new->varoffset = nvars;
 		nvars += ctrl->nvardefs;
 
@@ -771,7 +775,7 @@ char *file;
      * stats for new object
      */
     new->obj = (object *) NULL;
-    new->funcoffset = nfcalls;
+    new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
     newctrl->nfloats = nfloats;
 
@@ -783,8 +787,8 @@ char *file;
     progsize = 0;
     nstrs = 0;
     nfdefs = 0;
-    nfcalls = 0;
     nvars = 0;
+    nfcalls = 0;
     nfloats = 0;
 }
 
@@ -811,6 +815,9 @@ string *str;
 	    strchunksz = 0;
 	}
 	str_ref(strlist->s[strchunksz++] = str);
+	if (nstrs == USHRT_MAX) {
+	    c_error("too many string constants");
+	}
 	nstrs++;
     }
     if (desc >> 16 == ninherits) {
@@ -942,7 +949,7 @@ register char *proto;
 	nsymbs++;
     }
 
-    if (nfdefs == 256) {
+    if (nfdefs == 255) {
 	c_error("too many functions declared");
 	return;
     }
@@ -1014,7 +1021,7 @@ unsigned int class, type;
 	    return;
 	}
     }
-    if (nvars == 256) {
+    if (nvars == 255) {
 	c_error("too many variables declared");
 	return;
     }
@@ -1139,7 +1146,7 @@ int typechecking;
 	}
 
 	/* create an undefined prototype for the function */
-	if (nfcalls == 256) {
+	if (nfdefs == 255) {
 	    c_error("too many undefined functions");
 	    return (char *) NULL;
 	}
@@ -1223,6 +1230,9 @@ long call;
 	    fcchunksz = 0;
 	}
 	fclist->f[fcchunksz++] = name;
+	if (nifcalls + nfcalls == UINDEX_MAX) {
+	    c_error("too many function calls");
+	}
 	h->ct = nfcalls++;
     }
     return h->ct;
@@ -1242,7 +1252,7 @@ long *ref;
     h = *(vfh **) ht_lookup(vtab, str->text);
     if (h == (vfh *) NULL) {
 	c_error("undefined variable %s", str->text);
-	if (nvars < 256) {
+	if (nvars < 255) {
 	    /* don't repeat this error */
 	    ctrl_dvar(str, 0, T_MIXED);
 	}
@@ -1396,8 +1406,7 @@ static void ctrl_mkfcalls()
     register vfh *h;
     register fcchunk *l;
 
-    newctrl->nfuncalls = newctrl->inherits[newctrl->ninherits - 1].funcoffset +
-			 nfcalls;
+    newctrl->nfuncalls = nifcalls + nfcalls;
     if (newctrl->nfuncalls == 0) {
 	return;
     }
@@ -1673,6 +1682,7 @@ void ctrl_clear()
     nfloats = 0;
     nsymbs = 0;
     nfclash = 0;
+    nifcalls = 0;
 
     if (newctrl != (control *) NULL) {
 	d_del_control(newctrl);

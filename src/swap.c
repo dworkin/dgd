@@ -374,7 +374,7 @@ bool fill;
 void sw_readv(m, vec, size, idx)
 register char *m;
 register sector *vec;
-register long size, idx;
+register Uint size, idx;
 {
     register int len;
 
@@ -397,7 +397,7 @@ register long size, idx;
 void sw_writev(m, vec, size, idx)
 register char *m;
 register sector *vec;
-register long size, idx;
+register Uint size, idx;
 {
     register header *h;
     register int len;
@@ -423,7 +423,7 @@ register long size, idx;
  * DESCRIPTION:	count the number of sectors required for size bytes + a map
  */
 uindex sw_mapsize(size)
-long size;
+Uint size;
 {
     register uindex i, n;
 

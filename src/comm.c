@@ -153,7 +153,7 @@ register user **usr;
  * NAME:	comm->send()
  * DESCRIPTION:	send a message to a user
  */
-void comm_send(obj, str)
+bool comm_send(obj, str)
 object *obj;
 string *str;
 {
@@ -164,12 +164,12 @@ string *str;
     usr = users[UCHAR(obj->etabi)];
     p = str->text;
     len = str->len;
-    size = usr->outbufsz;
-    q = usr->outbuf + size;
     if (usr->flags & CF_TELNET) {
 	/*
 	 * telnet connection
 	 */
+	size = usr->outbufsz;
+	q = usr->outbuf + size;
 	while (len != 0) {
 	    if (UCHAR(*p) == IAC) {
 		/*
@@ -207,21 +207,16 @@ string *str;
 	    --len;
 	    size++;
 	}
+	usr->outbufsz = size;
     } else {
 	/*
-	 * binary connection
+	 * binary connection: no buffering
 	 */
-	while (size + len > OUTBUF_SIZE) {
-	    memcpy(q, p, OUTBUF_SIZE - size);
-	    p += OUTBUF_SIZE - size;
-	    len -= OUTBUF_SIZE - size;
-	    conn_write(usr->conn, q = usr->outbuf, OUTBUF_SIZE);
-	    size = 0;
+	if (!conn_write(usr->conn, p, len)) {
+	    return FALSE;
 	}
-	memcpy(q, p, len);
-	size += len;
     }
-    usr->outbufsz = size;
+    return TRUE;
 }
 
 /*

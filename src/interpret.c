@@ -16,11 +16,12 @@ typedef struct _frame_ {
     dataspace *data;		/* dataspace of current object */
     control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
-    unsigned short foffset;	/* program function offset */
+    uindex foffset;		/* program function offset */
     bool external;		/* TRUE if it's an external call */
     dfuncdef *func;		/* current function */
     int nargs;			/* # arguments */
     int nvars;			/* # local variables */
+    char *prog;			/* start of program */
     char *pc;			/* program counter */
     value *fp;			/* frame pointer (value stack) */
 } frame;
@@ -970,23 +971,22 @@ int strict;
  * NAME:	interpret->switch_int()
  * DESCRIPTION:	handle an int switch
  */
-static char *i_switch_int(pc)
+static unsigned short i_switch_int(pc)
 register char *pc;
 {
-    register unsigned short h, l, m, sz;
+    register unsigned short h, l, m, sz, dflt;
     register Int num;
-    register char *p, *dflt;
+    register char *p;
 
     FETCH2U(pc, h);
     sz = FETCH1U(pc);
-    p = pc;
-    dflt = p + FETCH2S(pc, l);
-    --h;
+    FETCH2U(pc, dflt);
     if (sp->type != T_INT) {
 	return dflt;
     }
 
     l = 0;
+    --h;
     switch (sz) {
     case 1:
 	while (l < h) {
@@ -994,8 +994,7 @@ register char *pc;
 	    p = pc + 3 * m;
 	    num = FETCH1S(p);
 	    if (sp->u.number == num) {
-		pc = p;
-		return pc + FETCH2S(p, l);
+		return FETCH2U(p, l);
 	    } else if (sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
@@ -1010,8 +1009,7 @@ register char *pc;
 	    p = pc + 4 * m;
 	    FETCH2S(p, num);
 	    if (sp->u.number == num) {
-		pc = p;
-		return pc + FETCH2S(p, l);
+		return FETCH2U(p, l);
 	    } else if (sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
@@ -1026,8 +1024,7 @@ register char *pc;
 	    p = pc + 5 * m;
 	    FETCH3S(p, num);
 	    if (sp->u.number == num) {
-		pc = p;
-		return pc + FETCH2S(p, l);
+		return FETCH2U(p, l);
 	    } else if (sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
@@ -1042,8 +1039,7 @@ register char *pc;
 	    p = pc + 6 * m;
 	    FETCH4S(p, num);
 	    if (sp->u.number == num) {
-		pc = p;
-		return pc + FETCH2S(p, l);
+		return FETCH2U(p, l);
 	    } else if (sp->u.number < num) {
 		h = m;	/* search in lower half */
 	    } else {
@@ -1060,23 +1056,22 @@ register char *pc;
  * NAME:	interpret->switch_range()
  * DESCRIPTION:	handle a range switch
  */
-static char *i_switch_range(pc)
+static unsigned short i_switch_range(pc)
 register char *pc;
 {
-    register unsigned short h, l, m, sz;
+    register unsigned short h, l, m, sz, dflt;
     register Int num;
-    register char *p, *dflt;
+    register char *p;
 
     FETCH2U(pc, h);
     sz = FETCH1U(pc);
-    p = pc;
-    dflt = p + FETCH2S(pc, l);
-    --h;
+    FETCH2U(pc, dflt);
     if (sp->type != T_INT) {
 	return dflt;
     }
 
     l = 0;
+    --h;
     switch (sz) {
     case 1:
 	while (l < h) {
@@ -1088,8 +1083,7 @@ register char *pc;
 	    } else {
 		num = FETCH1S(p);
 		if (sp->u.number <= num) {
-		    pc = p;
-		    return pc + FETCH2S(p, l);
+		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
 	    }
@@ -1106,8 +1100,7 @@ register char *pc;
 	    } else {
 		FETCH2S(p, num);
 		if (sp->u.number <= num) {
-		    pc = p;
-		    return pc + FETCH2S(p, l);
+		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
 	    }
@@ -1124,8 +1117,7 @@ register char *pc;
 	    } else {
 		FETCH3S(p, num);
 		if (sp->u.number <= num) {
-		    pc = p;
-		    return pc + FETCH2S(p, l);
+		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
 	    }
@@ -1142,8 +1134,7 @@ register char *pc;
 	    } else {
 		FETCH4S(p, num);
 		if (sp->u.number <= num) {
-		    pc = p;
-		    return pc + FETCH2S(p, l);
+		    return FETCH2U(p, l);
 		}
 		l = m + 1;	/* search in upper half */
 	    }
@@ -1157,23 +1148,20 @@ register char *pc;
  * NAME:	interpret->switch_str()
  * DESCRIPTION:	handle a string switch
  */
-static char *i_switch_str(pc)
+static unsigned short i_switch_str(pc)
 register char *pc;
 {
-    register unsigned short h, l, m, u, u2;
+    register unsigned short h, l, m, u, u2, dflt;
     register int cmp;
-    register char *p, *dflt;
+    register char *p;
     register control *ctrl;
 
     FETCH2U(pc, h);
-    p = pc;
-    dflt = p + FETCH2S(pc, l);
-    --h;
+    FETCH2U(pc, dflt);
     if (FETCH1U(pc) == 0) {
-	p = pc;
-	p += FETCH2S(pc, l);
+	FETCH2U(pc, l);
 	if (sp->type == T_INT && sp->u.number == 0) {
-	    return p;
+	    return l;
 	}
 	--h;
     }
@@ -1183,14 +1171,14 @@ register char *pc;
 
     ctrl = cframe->p_ctrl;
     l = 0;
+    --h;
     while (l < h) {
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
 	cmp = str_cmp(sp->u.string, d_get_strconst(ctrl, u, FETCH2U(p, u2)));
 	if (cmp == 0) {
-	    pc = p;
-	    return pc + FETCH2S(p, l);
+	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
 	    h = m;	/* search in lower half */
 	} else {
@@ -1343,14 +1331,12 @@ register char *pc;
 	    break;
 
 	case I_JUMP:
-	    p = pc;
-	    p += FETCH2S(pc, u);
+	    p = f->prog + FETCH2U(pc, u);
 	    pc = p;
 	    break;
 
 	case I_JUMP_ZERO:
-	    p = pc;
-	    p += FETCH2S(pc, u);
+	    p = f->prog + FETCH2U(pc, u);
 	    if ((sp->type == T_INT && sp->u.number == 0) ||
 		(sp->type == T_FLOAT && VFLT_ISZERO(sp))) {
 		pc = p;
@@ -1358,8 +1344,7 @@ register char *pc;
 	    break;
 
 	case I_JUMP_NONZERO:
-	    p = pc;
-	    p += FETCH2S(pc, u);
+	    p = f->prog + FETCH2U(pc, u);
 	    if ((sp->type != T_INT || sp->u.number != 0) &&
 		(sp->type != T_FLOAT || !VFLT_ISZERO(sp))) {
 		pc = p;
@@ -1369,15 +1354,15 @@ register char *pc;
 	case I_SWITCH:
 	    switch (FETCH1U(pc)) {
 	    case 0:
-		pc = i_switch_int(pc);
+		pc = f->prog + i_switch_int(pc);
 		break;
 
 	    case 1:
-		pc = i_switch_range(pc);
+		pc = f->prog + i_switch_range(pc);
 		break;
 
 	    case 2:
-		pc = i_switch_str(pc);
+		pc = f->prog + i_switch_str(pc);
 		break;
 	    }
 	    break;
@@ -1428,8 +1413,7 @@ register char *pc;
 	    break;
 
 	case I_CATCH:
-	    p = pc;
-	    p += FETCH2S(pc, u);
+	    p = f->prog + FETCH2U(pc, u);
 	    u = lock;
 	    v = sp;
 	    if (f->obj->flags & O_DRIVER) {
@@ -1617,7 +1601,7 @@ int funci;
 	(*pcfunctions[FETCH2U(pc, n)])();
     } else {
 	/* interpreted function */
-	pc += 2;
+	f->prog = pc += 2;
 	i_interpret(pc);
     }
     --cframe;

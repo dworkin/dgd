@@ -222,20 +222,25 @@ int size;
 
 /*
  * NAME:	conn->write()
- * DESCRIPTION:	write to a connection
+ * DESCRIPTION:	write to a connection; return true if write succeeded
  */
-void conn_write(conn, buf, size)
+bool conn_write(conn, buf, size)
 connection *conn;
 char *buf;
 register int size;
 {
     if (conn->fd >= 0) {
-	if (write(conn->fd, buf, size) < 0 && errno != EWOULDBLOCK) {
-	    close(conn->fd);
-	    FD_CLR(conn->fd, &fds);
-	    conn->fd = -1;
+	if (write(conn->fd, buf, size) != size) {
+	    if (errno != EWOULDBLOCK) {
+		close(conn->fd);
+		FD_CLR(conn->fd, &fds);
+		conn->fd = -1;
+	    }
+	    return FALSE;
 	}
+	return TRUE;
     }
+    return FALSE;
 }
 
 /*

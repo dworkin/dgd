@@ -2,12 +2,12 @@
 
 typedef struct {
     object *obj;		/* inherited object */
-    unsigned short funcoffset;	/* function call offset */
+    uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
 } dinherit;
 
 typedef struct {
-    long index;			/* index in control block */
+    Uint index;			/* index in control block */
     unsigned short len;		/* string length */
 } dstrconst;
 
@@ -15,7 +15,7 @@ typedef struct {
     char class;			/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */
-    unsigned short offset;	/* offset in program text */
+    Uint offset;		/* offset in program text */
 } dfuncdef;
 
 typedef struct {
@@ -42,36 +42,36 @@ typedef struct _control_ {
 
     short niinherits;		/* i/o # immediately inherited object indices */
     char *iinherits;		/* i/o immediately inherited object indices */
-    long iinhoffset;		/* o iinherits offset */
+    Uint iinhoffset;		/* o iinherits offset */
 
     Uint compiled;		/* time of compilation */
 
     char *prog;			/* i program text */
-    unsigned short progsize;	/* i/o program text size */
-    long progoffset;		/* o program text offset */
+    Uint progsize;		/* i/o program text size */
+    Uint progoffset;		/* o program text offset */
 
     unsigned short nstrings;	/* i/o # strings */
     string **strings;		/* i/o? string table */
     dstrconst *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
-    long strsize;		/* o sstrings text size */
-    long stroffset;		/* o offset of string index table */
+    Uint strsize;		/* o sstrings text size */
+    Uint stroffset;		/* o offset of string index table */
 
     unsigned short nfuncdefs;	/* i/o # function definitions */
     dfuncdef *funcdefs;		/* i/o? function definition table */
-    long funcdoffset;		/* o offset of function definition table */
+    Uint funcdoffset;		/* o offset of function definition table */
 
     unsigned short nvardefs;	/* i/o # variable definitions */
     dvardef *vardefs;		/* i/o? variable definitions */
-    long vardoffset;		/* o offset of variable definition table */
+    Uint vardoffset;		/* o offset of variable definition table */
 
     uindex nfuncalls;		/* i/o # function calls */
     char *funcalls;		/* i/o? function calls */
-    long funccoffset;		/* o offset of function call table */
+    Uint funccoffset;		/* o offset of function call table */
 
     unsigned short nsymbols;	/* i/o # symbols */
     dsymbol *symbols;		/* i/o? symbol table */
-    long symboffset;		/* o offset of symbol table */
+    Uint symboffset;		/* o offset of symbol table */
 
     unsigned short nvariables;	/* i/o # variables */
     unsigned short nfloatdefs;	/* i/o # float definitions */
@@ -83,14 +83,14 @@ typedef struct _control_ {
 typedef struct _strref_ {
     string *str;		/* string value */
     struct _dataspace_ *data;	/* dataspace this string is in */
-    uindex ref;			/* # of refs */
+    Uint ref;			/* # of refs */
 } strref;
 
 typedef struct _arrref_ {
     array *arr;			/* array value */
     struct _dataspace_ *data;	/* dataspace this array is in */
-    long index;			/* selts index */
-    uindex ref;			/* # of refs */
+    Uint index;			/* selts index */
+    Uint ref;			/* # of refs */
 } arrref;
 
 typedef struct _dataspace_ {
@@ -111,27 +111,27 @@ typedef struct _dataspace_ {
     unsigned short nvariables;	/* o # variables */
     struct _value_ *variables;	/* i/o variables */
     struct _svalue_ *svariables;/* o svariables */
-    long varoffset;		/* o offset of variables in data space */
+    Uint varoffset;		/* o offset of variables in data space */
 
-    uindex narrays;		/* i/o # arrays */
-    long eltsize;		/* o total size of array elements */
+    Uint narrays;		/* i/o # arrays */
+    Uint eltsize;		/* o total size of array elements */
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
-    long arroffset;		/* o offset of array table in data space */
+    Uint arroffset;		/* o offset of array table in data space */
 
-    uindex nstrings;		/* i/o # string constants */
-    long strsize;		/* o total size of string text */
+    Uint nstrings;		/* i/o # strings */
+    Uint strsize;		/* o total size of string text */
     struct _strref_ *strings;	/* i/o? string constant table */
     struct _sstring_ *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
-    long stroffset;		/* o offset of string table */
+    Uint stroffset;		/* o offset of string table */
 
     uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
     struct _dcallout_ *callouts;/* callouts */
-    long cooffset;		/* offset of callout table */
+    Uint cooffset;		/* offset of callout table */
 } dataspace;
 
 extern control	       *d_new_control	P((void));

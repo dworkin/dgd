@@ -143,7 +143,7 @@ typedef struct _codechunk_ {
 static codechunk *lcode, *tcode;	/* code chunk list */
 static codechunk *fcode;		/* free code chunk list */
 static int cchunksz = CODE_CHUNK;	/* code chunk size */
-static unsigned short here;		/* current offset */
+static Uint here;			/* current offset */
 static char *last_instruction;		/* address of last instruction */
 
 /*
@@ -222,8 +222,13 @@ int nlocals;
 {
     register codechunk *l;
     register char *code;
+    Uint sz;
 
-    code = ALLOC(char, *size = 5 + here + line_info_size);
+    *size = sz = 5 + here + line_info_size;
+    if (sz > USHRT_MAX) {
+	c_error("function too large");
+    }
+    code = ALLOC(char, sz);
     *code++ = depth >> 8;
     *code++ = depth;
     *code++ = nlocals;
@@ -274,8 +279,8 @@ static void code_clear()
 # define JUMP_CHUNK	128
 
 typedef struct _jmplist_ {
-    unsigned short where;		/* where to jump from */
-    short offset;			/* where to jump to */
+    Uint where;				/* where to jump from */
+    Uint to;				/* where to jump to */
     struct _jmplist_ *next;		/* next in list */
 } jmplist;
 
@@ -340,12 +345,12 @@ jmplist *list;
  * NAME:	jump->resolve()
  * DESCRIPTION:	resolve all jumps in a jump list
  */
-static void jump_resolve(list, where)
+static void jump_resolve(list, to)
 register jmplist *list;
-register unsigned short where;
+register Uint to;
 {
     while (list != (jmplist *) NULL) {
-	list->offset = where - list->where;
+	list->to = to;
 	list = list->next;
     }
 }
@@ -373,9 +378,9 @@ register char *code;
 	j = &l->jump[i];
 	do {
 	    --j;
-	    code[j->where    ] = j->offset >> 8;
-	    code[j->where + 1] = j->offset;
-	    if ((code[j->where + j->offset] & I_INSTR_MASK) == I_JUMP) {
+	    code[j->where    ] = j->to >> 8;
+	    code[j->where + 1] = j->to;
+	    if ((code[j->to] & I_INSTR_MASK) == I_JUMP) {
 		/*
 		 * add to jump-to-jump list
 		 */
@@ -391,34 +396,28 @@ register char *code;
     }
 
     for (j = jmpjmp; j != (jmplist *) NULL; j = j->next) {
-	register unsigned short where, to;
-	register short offset;
+	register Uint where, to;
 
 	/*
 	 * replace jump-to-jump by a direct jump to destination
 	 */
 	where = j->where;
-	offset = j->offset;
-	while ((code[to = where + offset] & I_INSTR_MASK) == I_JUMP &&
-	       offset != -1) {
+	to = j->to;
+	while ((code[to] & I_INSTR_MASK) == I_JUMP && to != where - 1) {
 	    /*
 	     * Change to jump across the next jump.  If there is a loop, it
 	     * will eventually result in a jump to itself.
 	     */
-	    to++;
-	    offset = (code[to] << 8) | UCHAR(code[to + 1]);
-	    offset += to - where;
-	    code[where    ] = offset >> 8;
-	    code[where + 1] = offset;
-	    offset += where - to;
+	    code[where    ] = code[to + 1];
+	    code[where + 1] = code[to + 2];
 	    where = to;
+	    to = (UCHAR(code[to + 1]) << 8) | UCHAR(code[to + 2]);
 	}
 	/*
 	 * jump to final destination
 	 */
-	offset += where - j->where;
-	code[j->where    ] = offset >> 8;
-	code[j->where + 1] = offset;
+	code[j->where    ] = to >> 8;
+	code[j->where + 1] = to;
     }
 
     ljump = (jmpchunk *) NULL;
@@ -1448,7 +1447,7 @@ register int jmptrue;
 }
 
 typedef struct {
-    unsigned short where;		/* where to jump to */
+    Uint where;				/* where to jump to */
     jmplist *jump;			/* list of unresolved jumps */
 } case_label;
 

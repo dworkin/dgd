@@ -87,5 +87,5 @@ hash.o str.o: hash.h
 swap.o data.o: swap.h
 ed.o config.o dgd.o: ed.h
 call_out.o config.o dgd.o: call_out.h
-error.o comm.o call_out.o config.o dgd.o: comm.h
+error.o comm.o config.o dgd.o: comm.h
 config.o: version.h

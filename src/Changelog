@@ -792,3 +792,12 @@ DGD 1.1
  - And some in the memory reduction changes as well.
  - get_dir(foo) will always treat foo as a pattern, even if there is a file
    with that name.
+ - Generate a compile-time error for functions larger than 64K.  Programs can
+   now be larger than 64K.
+ - Compile-time checking for too many string constants or function calls.
+   The number of arrays and string values in an object can be larger than
+   65535.  Replaced longs by Uints in swapping functions.  Extended ref
+   counts to Uint for swapped-out data.
+ - Binary connections don't buffer anymore.  send_message() returns 1 if the
+   write succeeded (always 1 for telnet connections), and 0 if the write
+   failed.

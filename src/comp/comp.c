@@ -464,7 +464,7 @@ unsigned int sec;
 void sw_readv(m, vec, size, idx)
 char *m;
 sector *vec;
-long size, idx;
+Uint size, idx;
 {
 }
 
@@ -475,7 +475,7 @@ long size, idx;
 void sw_writev(m, vec, size, idx)
 char *m;
 sector *vec;
-long size, idx;
+Uint size, idx;
 {
 }
 
@@ -484,7 +484,7 @@ long size, idx;
  * DESCRIPTION:	pretend to count the number of sectors required for size bytes
  */
 uindex sw_mapsize(size)
-long size;
+Uint size;
 {
     return 0;
 }
@@ -546,10 +546,11 @@ void comm_finish()
  * NAME:	comm->send()
  * DESCRIPTION:	pretend to send a message to a user
  */
-void comm_send(obj, str)
+bool comm_send(obj, str)
 object *obj;
 string *str;
 {
+    return FALSE;
 }
 
 /*
