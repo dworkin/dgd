@@ -263,7 +263,7 @@ destruct(object obj, string owner)
  */
 destruct_lib(string path, string owner)
 {
-    if (KERNEL()) {
+    if (previous_program() == AUTO) {
 	if (path == AUTO) {
 	    if (auto) {
 		rsrcd->rsrc_incr("System", "objects", 0, 1, TRUE);
@@ -613,10 +613,12 @@ static remove_program(string path, int timestamp, int index)
  */
 static recompile(object obj)
 {
-    string name;
+    if (objectd) {
+	string name;
 
-    name = object_name(obj);
-    destruct_lib(name, creator(name));
+	name = object_name(obj);
+	objectd->destruct_lib(creator(name), name);
+    }
     destruct_object(obj);
 }
 

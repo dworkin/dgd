@@ -1141,3 +1141,4 @@ DGD 1.1
  - Fixed the exporting bug fix.
  - Use SO_OOBINLINE on sockets if the host supports it.
  - Clear update field in all objects after a restore.
+ - Compensated for a bug in ctime() on some unices.
