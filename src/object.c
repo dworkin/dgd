@@ -9,11 +9,12 @@
 static object *otab;		/* object table */
 static int otabsize;		/* size of object table */
 static hashtab *htab;		/* object name hash table */
-static object *free_obj;	/* free object list */
+static object *clean_obj;	/* list of objects to clean */
 static object *dest_obj;	/* destructed object list */
+static object *free_obj;	/* free object list */
 static uindex nobjects;		/* number of objects in object table */
 static uindex nfreeobjs;	/* number of objects in free list */
-static Int count;		/* object creation count */
+static Uint count;		/* object creation count */
 
 /*
  * NAME:	object->init()
@@ -97,40 +98,6 @@ control *ctrl;
 }
 
 /*
- * NAME:	object->delete()
- * DESCRIPTION:	delete a reference to an object, and put it in the deleted
- *		list if it was the last reference
- */
-static void o_delete(o)
-register object *o;
-{
-    if (o->flags & O_MASTER) {
-	register int i;
-	register dinherit *inh;
-
-	if (--(o->u.ref) != 0) {
-	    /* last reference not removed yet */
-	    return;
-	}
-	if (o->ctrl == (control *) NULL) {
-	    o->ctrl = d_load_control(o);
-	}
-	/* remove references to inherited objects too */
-	inh = o->ctrl->inherits;
-	i = o->ctrl->ninherits;
-	while (--i > 0) {
-	    o_delete((inh++)->obj);
-	}
-    } else {
-	o_delete(o->u.master);
-    }
-
-    /* put in deleted list */
-    o->chain.next = (hte *) dest_obj;
-    dest_obj = o;
-}
-
-/*
  * NAME:	object->del()
  * DESCRIPTION:	delete an object
  */
@@ -147,7 +114,10 @@ register object *o;
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name) = o->chain.next;
     }
-    o_delete(o);
+
+    /* put in clean list */
+    o->chain.next = (hte *) clean_obj;
+    clean_obj = o;
 }
 
 /*
@@ -309,15 +279,49 @@ register object *o;
 }
 
 /*
+ * NAME:	object->delete()
+ * DESCRIPTION:	delete a reference to an object, and put it in the deleted
+ *		list if it was the last reference
+ */
+static void o_delete(o)
+register object *o;
+{
+    if (o->flags & O_MASTER) {
+	register int i;
+	register dinherit *inh;
+
+	if (--(o->u.ref) != 0) {
+	    /* last reference not removed yet */
+	    return;
+	}
+	if (o->ctrl == (control *) NULL) {
+	    o->ctrl = d_load_control(o);
+	}
+	/* remove references to inherited objects too */
+	inh = o->ctrl->inherits;
+	i = o->ctrl->ninherits;
+	while (--i > 0) {
+	    o_delete((inh++)->obj);
+	}
+    } else {
+	o_delete(o->u.master);
+    }
+
+    /* put in deleted list */
+    o->chain.next = (hte *) dest_obj;
+    dest_obj = o;
+}
+
+/*
  * NAME:	object->clean()
- * DESCRIPTION:	actually remove all deleted objects
+ * DESCRIPTION:	deal with destructed objects
  */
 void o_clean()
 {
     register object *o, *next;
 
-    for (o = dest_obj; o != (object *) NULL; o = next) {
-	/* free dataspace and control block (if they exist) */
+    for (o = clean_obj; o != (object *) NULL; o = next) {
+	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
 	    o->data = d_load_dataspace(o);
@@ -325,11 +329,21 @@ void o_clean()
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
 	}
+
+	next = (object *) o->chain.next;
+	o_delete(o);
+    }
+    clean_obj = (object *) NULL;
+
+    for (o = dest_obj; o != (object *) NULL; o = next) {
+	/* free control block (if it exists) */
 	if (o->flags & O_MASTER) {
 	    d_del_control(o_control(o));
 	}
+
 	if (o->chain.name != (char *) NULL) {
-	    FREE(o->chain.name);	/* free object name */
+	    FREE(o->chain.name);		/* free object name */
+	    o->chain.name = (char *) NULL;
 	}
 
 	next = (object *) o->chain.next;
@@ -382,7 +396,7 @@ int fd;
     dh.count = count;
     dh.onamelen = 0;
     for (i = nobjects, o = otab; i > 0; --i, o++) {
-	if (o->count != 0 && o->chain.name != (char *) NULL) {
+	if (o->chain.name != (char *) NULL) {
 	    dh.onamelen += strlen(o->chain.name) + 1;
 	}
     }
@@ -396,7 +410,7 @@ int fd;
     /* write object names */
     buflen = 0;
     for (i = nobjects, o = otab; i > 0; --i, o++) {
-	if (o->count != 0 && o->chain.name != (char *) NULL) {
+	if (o->chain.name != (char *) NULL) {
 	    len = strlen(o->chain.name) + 1;
 	    if (buflen + len > CHUNKSZ) {
 		if (write(fd, buffer, buflen) < 0) {
@@ -423,7 +437,6 @@ long t;
     register object *o;
     register int len, buflen;
     register char *p;
-    register hte **h;
     dump_header dh;
     long offset, onamelen;
     char buffer[CHUNKSZ];
@@ -459,33 +472,38 @@ long t;
     buflen = 0;
     p = buffer;
     for (i = nobjects, o = otab; i > 0; --i, o++) {
-	if (o->count != 0) {
-	    if (o->chain.name != (char *) NULL) {
-		/*
-		 * restore name
-		 */
-		if (buflen == 0 ||
-		    (char *) memchr(p, '\0', buflen) == (char *) NULL) {
-		    /* move remainder to beginning, and refill buffer */
-		    memcpy(buffer, p, buflen);
-		    p = buffer + buflen;
-		    buflen = ((onamelen > CHUNKSZ) ? CHUNKSZ : onamelen) -
-			     buflen;
-		    if (read(fd, p, buflen) != buflen) {
-			fatal("cannot restore object names");
-		    }
-		    onamelen -= buflen;
+	if (o->chain.name != (char *) NULL) {
+	    /*
+	     * restore name
+	     */
+	    if (buflen == 0 ||
+		(char *) memchr(p, '\0', buflen) == (char *) NULL) {
+		/* move remainder to beginning, and refill buffer */
+		memcpy(buffer, p, buflen);
+		p = buffer + buflen;
+		buflen = (onamelen > CHUNKSZ - buflen) ?
+			  CHUNKSZ - buflen : onamelen;
+		if (read(fd, p, buflen) != buflen) {
+		    fatal("cannot restore object names");
 		}
-		mstatic();
-		strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
-		mdynamic();
+		onamelen -= buflen;
+	    }
+	    mstatic();
+	    strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
+	    mdynamic();
+
+	    if (o->count != 0) {
+		register hte **h;
+
 		h = ht_lookup(htab, p);
 		o->chain.next = *h;
 		*h = (hte *) o;
-		p += len;
-		buflen -= len;
 	    }
+	    p += len;
+	    buflen -= len;
+	}
 
+	if (o->count != 0) {
 	    /* there are no user or editor objects after a restore */
 	    o->flags &= ~(O_USER | O_EDITOR);
 	} else if (!(o->flags & O_MASTER) || o->u.ref == 0) {
@@ -497,6 +515,7 @@ long t;
 	    continue;
 	}
 
+	o->ctrl = (control *) NULL;
 	if (offset != 0 && !(o->flags & O_COMPILED)) {
 	    if (o->flags & O_MASTER) {
 		/* patch inherits */
@@ -518,6 +537,7 @@ long t;
     /* patch all data blocks */
     for (i = nobjects, o = otab; i > 0; --i, o++) {
 	if (o->count != 0) {
+	    o->data = (dataspace *) NULL;
 	    if (o->dfirst != SW_UNUSED) {
 		/* patch call_outs */
 		d_patch_callout(o->data = d_load_dataspace(o), t);

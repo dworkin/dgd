@@ -40,6 +40,8 @@ typedef struct _control_ {
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
 
+    Uint compiled;		/* time of compilation */
+
     char *prog;			/* i program text */
     unsigned short progsize;	/* i/o program text size */
     long progoffset;		/* o program text offset */
@@ -68,6 +70,8 @@ typedef struct _control_ {
     long symboffset;		/* o offset of symbol table */
 
     unsigned short nvariables;	/* i/o # variables */
+    unsigned short nfloatdefs;	/* i/o # float definitions */
+    unsigned short nfloats;	/* i/o # floats in object */
 
     uindex ndata;		/* # of data blocks using this control block */
 } control;
@@ -133,16 +137,14 @@ extern void		d_assign_elt	P((array*, struct _value_*,
 					   struct _value_*));
 extern void		d_change_map	P((array*));
 
-extern uindex		d_new_call_out	P((dataspace*, string*, unsigned long,
-					   int));
-extern uindex		d_find_call_out	P((dataspace*, string*,
-					   unsigned long*));
-extern char	       *d_get_call_out	P((dataspace*, uindex, int*));
-extern uindex		d_ncallouts	P((dataspace*));
+extern uindex		d_new_call_out	P((dataspace*, string*, Uint, int));
+extern char	       *d_get_call_out	P((dataspace*, uindex, Uint*, int*));
+extern array	       *d_list_callouts	P((dataspace*, Uint));
 
+extern uindex		d_swapout	P((int));
+extern void		d_swapsync	P((void));
 extern void		d_patch_ctrl	P((control*, long));
 extern void		d_patch_callout	P((dataspace*, long));
-extern uindex		d_swapout	P((int));
 
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));
