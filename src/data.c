@@ -1748,6 +1748,11 @@ object *obj;
     }
     vars = v - (nvar + 2);
 
+    vmap -= nvar;
+    if (vmap != obj->ctrl->vmap) {
+	FREE(vmap);  
+    }
+
     v = lwobj->elts + 2;
     if (a->arr != (array *) NULL) {
 	/* swapped-in */

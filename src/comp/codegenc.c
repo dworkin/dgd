@@ -28,7 +28,8 @@ static int nvars;		/* number of local variables */
 static int nparam;		/* how many of those are arguments */
 static int tvc;			/* tmpval count */
 static int catch_level;		/* level of nested catches */
-static Int kf_call_trace, kf_call_other, kf_clone_object, kf_editor;
+static Int kf_call_trace, kf_call_other, kf_clone_object, kf_new_object,
+	   kf_editor;
 
 /*
  * NAME:	tmpval()
@@ -1024,7 +1025,8 @@ register int state;
 	    if (catch_level == 0 &&
 		(n->r.number == kf_call_trace ||
 		 n->r.number == kf_call_other ||
-		 n->r.number == kf_clone_object || n->r.number == kf_editor)) {
+		 n->r.number == kf_clone_object ||
+		 n->r.number == kf_new_object || n->r.number == kf_editor)) {
 		for (i = nparam; i > 0; ) {
 		    if (vars[--i] != 0) {
 			output("%s->u.number = ivar%d, ", local(i), vars[i]);
@@ -1971,6 +1973,7 @@ int inherited;
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
     kf_call_other = ((long) KFCALL << 24) | kf_func("call_other");
     kf_clone_object = ((long) KFCALL << 24) | kf_func("clone_object");
+    kf_new_object = ((long) KFCALL << 24) | kf_func("new_object");
     kf_editor = ((long) KFCALL << 24) | kf_func("editor");
 }
 

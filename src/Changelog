@@ -1511,3 +1511,5 @@ DGD 1.3
    inherited another.
  - Prevent code from being erroneously optimized away in rare cases.
  - Fixed a bug in copying light-weight objects.
+ - Fixed a memory leak in upgrading light-weight objects.
+ - Preserve the right values on the stack when new_object() is called.

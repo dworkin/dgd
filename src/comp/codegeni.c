@@ -931,7 +931,7 @@ register int pop;
 	    code_instr(I_PUSH_ZERO, n->line);
 	} else if (n->l.number == 1) {
 	    code_instr(I_PUSH_ONE, n->line);
-	} else if (n->l.number >> 7 == 0 || n->l.number >> 7 == -1) {
+	} else if (n->l.number >= -128 && n->l.number <= 127) {
 	    code_instr(I_PUSH_INT1, n->line);
 	    code_byte((int) n->l.number);
 	} else {
