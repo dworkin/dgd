@@ -1,5 +1,6 @@
 # include <ctype.h>
 # include "lex.h"
+# include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
 

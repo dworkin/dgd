@@ -4,6 +4,7 @@
 # include "ppstr.h"
 # include "token.h"
 # include "path.h"
+# include "version.h"
 # include "ppcontrol.h"
 
 /*
@@ -50,6 +51,7 @@ char *file, **id;
     mc_init();
     special_define();
     mc_define("__DGD__", "\t1\t", -1);
+    mc_define("__VERSION__", VERSION, -1);
     pps_init();
     ilist = (ichunk *) NULL;
     ichunksz = ICHUNKSZ;
@@ -312,8 +314,12 @@ int priority;
 	} else {
 	    /* get second operand */
 	    expr2 = eval_expr((int) expr2);
-	    if (expr2 == 0 && (token == '/' || token == '%')) {
-		yyerror("division by zero in conditional control");
+	    if (expr2 == 0) {
+		if (token == '/') {
+		    yyerror("division by zero in conditional control");
+		} else if (token == '%') {
+		    yyerror("modulus by zero in conditional control");
+		}
 	    } else {
 		switch (token) {
 		case '/':	expr /= expr2;		break;
@@ -548,7 +554,7 @@ static void do_define()
 		    break;
 		}
 		if (narg < MAX_NARG) {
-		    args[narg++] = strcpy(ALLOC(char, strlen(yytext) + 1),
+		    args[narg++] = strcpy(ALLOCA(char, strlen(yytext) + 1),
 					  yytext);
 		} else {
 		    yyerror("too many parameters in macro definition");
@@ -576,7 +582,8 @@ static void do_define()
 	    if (errcount > 0) {
 		tk_setpp(FALSE);
 		while (narg > 0) {
-		    FREE(args[--narg]);
+		    --narg;
+		    AFREE(args[narg]);
 		}
 		return;
 	    }
@@ -662,7 +669,8 @@ static void do_define()
     tk_setpp(FALSE);
 
     for (i = narg; i > 0; ) {
-	FREE(args[--i]);
+	--i;
+	AFREE(args[i]);
     }
     i = s->len;
     pps_del(s);

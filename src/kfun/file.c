@@ -1,13 +1,13 @@
 /*
 ed()
 get_dir()
-mkdir()
+make_dir()
 query_editing()
 read_file()
-rename()
+rename_file()
 restore_object()
-rm()
-rmdir()
+remove_file()
+remove_dir()
 save_object()
 write_file()
 */

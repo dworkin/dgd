@@ -2,12 +2,7 @@
 crypt()
 ctime()
 explode()
-filter_array()
-filter_mapping()
 implode()
-map_array()
-map_mapping()
 member_array()
 random()
-shutdown()
 */
