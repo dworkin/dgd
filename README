@@ -1,9 +1,7 @@
-   All kfuns but call_out() and remove_call_out() now work.  I'll make a 2.4.5
-compatibility auto object later, and add the support for call_outs, but decided
-to release the gamedriver as it is now.
-   The mud subdirectory contains some objects I used for testing, all the other
-files in that directory are zero-sized placeholders.  To run the program with
-this mudlib directory, run it as "a.out config" (using the config file in the
-src directory).
+   The 2.4.5 directory contains diffs to the 2.4.5 mudlib (as it can be found
+on ftp.cd.chalmers.se) to make it work with DGD.  Move the dgd subdirectory
+into the mudlib directory, apply the patches, and run the program in the src
+subdirectory as "a.out lpmud" (after changing the path to the mudlib directory
+in the lpmud file).
 
    Regards, Dworkin

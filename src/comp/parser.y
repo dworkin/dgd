@@ -10,11 +10,11 @@
 
 # include "comp.h"
 # include "lex.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
 # include "data.h"
+# include "interpret.h"
 # include "node.h"
 # include "compile.h"
 
@@ -437,7 +437,7 @@ primary_p1_exp
 		}
 	| primary_p2_exp ARROW ident '(' opt_arg_list ')'
 		{
-		  $$ = c_arrow($1, $3, $5);
+		  $$ = c_arrow(c_list_exp($1), $3, $5);
 		  if ($$->mod == T_VOID && !typechecking) {
 		      /*
 		       * This is not impossible -- call_other() may have been
@@ -756,7 +756,7 @@ f_opt_list_exp
 arg_list
 	: exp	{ $$ = c_list_exp($1); }
 	| arg_list ',' exp
-		{ $$ = node_bin(N_COMMA, 0, $1, c_list_exp($3)); }
+		{ $$ = node_bin(N_COMMA, $3->mod, $1, c_list_exp($3)); }
 	;
 
 opt_arg_list
@@ -810,7 +810,7 @@ char *f, *a1, *a2, *a3;
 
     sprintf(buf, "\"/%s\", %u: ", tk_filename(), tk_line());
     sprintf(buf + strlen(buf), f, a1, a2, a3);
-    warning("%s", buf);
+    message("%s\n", buf);
     nerrors++;
 }
 
@@ -870,7 +870,7 @@ register node *n1, *n2;
     if (n1->type == N_STR && n2->type == N_INT) {
 	/* str [ int ] */
 	n2->l.number = UCHAR(n1->l.string->text[str_index(n1->l.string,
-							  n2->l.number)]);
+						         (long) n2->l.number)]);
 	return n2;
     }
 
@@ -913,8 +913,8 @@ register node *n1, *n2, *n3;
 {
     if (n1->type == N_STR && n2->type == N_INT && n3->type == N_INT) {
 	/* str [ int .. int ] */
-	return node_str(str_range(n1->l.string, n2->l.number,
-				  n3->l.number));
+	return node_str(str_range(n1->l.string, (long) n2->l.number,
+				  (long) n3->l.number));
     }
     if (typechecking) {
 	/* indices */
