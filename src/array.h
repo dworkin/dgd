@@ -28,6 +28,8 @@ extern void		map_sort	P((array*));
 extern unsigned short	map_size	P((array*));
 extern void		map_compact	P((array*));
 extern array	       *map_add		P((array*, array*));
+extern array	       *map_sub		P((array*, array*));
+extern array	       *map_intersect	P((array*, array*));
 extern struct _value_  *map_index	P((array*, struct _value_*,
 					   struct _value_*));
 extern array	       *map_indices	P((array*));
