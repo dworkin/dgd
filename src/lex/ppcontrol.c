@@ -159,6 +159,7 @@ void pp_clear()
 	l = l->next;
 	FREE(f);
     }
+    ilist = (ichunk *) NULL;
     mc_clear();
     tk_clear();
 }

@@ -18,10 +18,10 @@
 # include <setjmp.h>
 # include <stdio.h>
 
-/* # define UCHAR(c)	((char) (c))			/* unsigned character */
+/* # define UCHAR(c)	((char) (c))		      *//* unsigned character */
 # define UCHAR(c)	((int) ((c) & 0xff))		/* unsigned character */
 # define SCHAR(c)	((char) (c))			/* signed character */
-/* # define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
+/* # define SCHAR(c)	((((char) (c)) - 128) ^ -128) *//* signed character */
 
 typedef long Int;
 typedef unsigned long Uint;

@@ -54,7 +54,6 @@ int nargs;
 {
     register object *obj;
     register value *val;
-    char *file;
 
     if (nargs < 2) {
 	return -1;

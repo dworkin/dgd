@@ -48,7 +48,7 @@ typedef unsigned short uindex;
 
 /* editor */
 # define NR_EDBUFS	3	/* # buffers in editor cache (>= 3) */
-/*# define TMPFILE_SIZE	2097152	/* max. editor tmpfile size */
+/*# define TMPFILE_SIZE	2097152 */ /* max. editor tmpfile size */
 
 /* lexical scanner */
 # define MACTABSZ	256	/* macro hash table size */

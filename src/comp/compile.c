@@ -383,7 +383,6 @@ register char *file;
 {
     context c;
     char file_c[STRINGSZ + 2];
-    char errlog[STRINGSZ];
     bool iflag;
     extern int yyparse P((void));
 

@@ -353,18 +353,20 @@ int nargs;
 	error((char *) NULL);	/* pass on error */
     }
 
-    /* match initial part */
-    fl = flen;
-    sl = slen;
-    if (!match(f, s, &fl, &sl)) {
-	goto no_match;
-    }
-    f += fl;
-    flen -= fl;
-    s += sl;
-    slen -= sl;
-
     while (flen > 0) {
+	if (f[0] != '%') {
+	    /* match initial part */
+	    fl = flen;
+	    sl = slen;
+	    if (!match(f, s, &fl, &sl) || fl == flen) {
+		goto no_match;
+	    }
+	    f += fl;
+	    flen -= fl;
+	    s += sl;
+	    slen -= sl;
+	}
+
 	/* skip first % */
 	f++;
 	--flen;

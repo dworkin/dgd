@@ -1355,7 +1355,6 @@ register char *pc;
     register char *p;
     register kfunc *kf;
     xfloat flt;
-    value *v;
     int size;
     Int newdepth, newticks;
 
