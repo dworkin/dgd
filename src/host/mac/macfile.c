@@ -437,19 +437,24 @@ int P_rename(char *from, char *to)
     HFileInfo buf;
     long xdirid;
 
-    p = strrchr(from, ':');
-    q = strrchr(to, ':');
-    if (p == NULL || q == NULL) {
-	return -1;
-    }
-    memcpy(dir1 + 1, from, dir1[0] = p - from);
-    if (dir1[0] == 0) {
-	dir1[++(dir1[0])] = ':';
+    p = strrchr(from, '/');
+    if (p == NULL) {
+	dir1[0] = 1;
+	dir1[1] = '.';
+	p = from;
+    } else {
+	*p++ = '\0';
+	path_file(dir1, from);
     }
     path_file(file1, p);
-    memcpy(dir2 + 1, to, dir2[0] = q - to);
-    if (dir2[0] == 0) {
-	dir2[++(dir2[0])] = ':';
+    q = strrchr(to, '/');
+    if (q == NULL) {
+	dir2[0] = 1;
+	dir2[1] = '.';
+	q = to;
+    } else {
+	*q++ = '\0';
+	path_file(dir2, to);
     }
     path_file(file2, q);
 

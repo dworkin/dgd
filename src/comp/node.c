@@ -24,10 +24,10 @@ int nil_node;				/* N_NIL or N_INT */
  * NAME:	node->init()
  * DESCRIPTION:	initialize node handling
  */
-void node_init(nil)
-bool nil;
+void node_init(flag)
+bool flag;
 {
-    nil_node = (nil) ? N_NIL : N_INT;
+    nil_node = (flag) ? N_NIL : N_INT;
 }
 
 /*

@@ -37,11 +37,10 @@ typedef struct _user_ {
 # define CF_TELNET	0x01	/* telnet connection */
 # define  CF_ECHO	0x02	/* client echoes input */
 # define  CF_GA		0x04	/* send GA after prompt */
-# define  CF_SEENCR	0x08	/* just seen a CR */
-# define  CF_PROMPT	0x10	/* prompt in telnet output */
-# define CF_BLOCKED	0x20	/* input blocked */
-# define CF_FLUSH	0x40	/* in flush list */
-# define CF_ODONE	0x80	/* output done */
+# define  CF_PROMPT	0x08	/* prompt in telnet output */
+# define CF_BLOCKED	0x10	/* input blocked */
+# define CF_FLUSH	0x20	/* in flush list */
+# define CF_ODONE	0x40	/* output done */
 
 /* state */
 # define TS_DATA	0
@@ -178,7 +177,8 @@ bool telnet;
 	usr->newlines = 0;
 	usr->inbufsz = 0;
 	m_static();
-	usr->inbuf = ALLOC(char, INBUF_SIZE);
+	usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
+	*usr->inbuf++ = LF;	/* sentinel */
 	m_dynamic();
 	addtoflush(usr, arr->elts);
 
@@ -294,7 +294,7 @@ string *str;
 {
     register user *usr;
 
-    usr = &users[UCHAR(obj->etabi)];
+    usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	register char *p, *q;
@@ -384,7 +384,7 @@ string *str;
     register value *v;
     value val;
 
-    usr = &users[UCHAR(obj->etabi)];
+    usr = &users[EINDEX(obj->etabi)];
     if ((usr->flags & (CF_TELNET | CF_UDP)) != CF_UDP) {
 	error("Object has no UDP channel");
     }
@@ -423,7 +423,7 @@ int echo;
     array *arr;
     register value *v;
 
-    usr = &users[UCHAR(obj->etabi)];
+    usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	data = obj->data;
 	arr = d_get_variable(data, data->nvariables - 1)->u.array;
@@ -456,7 +456,7 @@ int block;
     array *arr;
     register value *v;
 
-    usr = &users[UCHAR(obj->etabi)];
+    usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	data = obj->data;
 	arr = d_get_variable(data, data->nvariables - 1)->u.array;
@@ -590,7 +590,7 @@ void comm_flush()
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;
-		FREE(usr->inbuf);
+		FREE(usr->inbuf - 1);
 	    }
 
 	    usr->oindex = OBJ_NONE;
@@ -781,40 +781,32 @@ unsigned int mtime;
 		    switch (state) {
 		    case TS_DATA:
 			switch (UCHAR(*p)) {
-			case '\0':
-			    flags &= ~CF_SEENCR;
-			    break;
-
 			case IAC:
 			    state = TS_IAC;
 			    break;
 
 			case BS:
 			case 0x7f:
-			    if (q != usr->inbuf && q[-1] != LF) {
+			    if (q[-1] != LF) {
 				--q;
 			    }
-			    flags &= ~CF_SEENCR;
-			    break;
-
-			case CR:
-			    nls++;
-			    newlines++;
-			    *q++ = LF;
-			    flags |= CF_SEENCR;
 			    break;
 
 			case LF:
-			    if ((flags & CF_SEENCR) != 0) {
-				flags &= ~CF_SEENCR;
-				break;
-			    }
 			    nls++;
 			    newlines++;
-			    /* fall through */
-			default:
+			    if (q[-1] == CR || q[-1] == '\0') {
+				--q;
+			    }
 			    *q++ = *p;
-			    flags &= ~CF_SEENCR;
+			    break;
+
+			default:
+			    if ((q[-1] == CR && q[-2] == LF && *p != CR) ||
+				q[-1] == '\0') {
+				--q;
+			    }
+			    *q++ = *p;
 			    break;
 			}
 			break;
@@ -1000,6 +992,7 @@ unsigned int mtime;
     }
 
     ec_pop();
+    comm_flush();
 }
 
 /*
@@ -1011,7 +1004,7 @@ object *obj;
 {
     char *ipnum;
 
-    ipnum = conn_ipnum(users[UCHAR(obj->etabi)].conn);
+    ipnum = conn_ipnum(users[EINDEX(obj->etabi)].conn);
     return str_new(ipnum, (long) strlen(ipnum));
 }
 
@@ -1024,7 +1017,7 @@ object *obj;
 {
     char *ipname;
 
-    ipname = conn_ipname(users[UCHAR(obj->etabi)].conn);
+    ipname = conn_ipname(users[EINDEX(obj->etabi)].conn);
     return str_new(ipname, (long) strlen(ipname));
 }
 
@@ -1036,7 +1029,7 @@ void comm_close(f, obj)
 frame *f;
 object *obj;
 {
-    comm_del(f, &users[UCHAR(obj->etabi)], obj, TRUE);
+    comm_del(f, &users[EINDEX(obj->etabi)], obj, TRUE);
 }
 
 /*
@@ -1065,9 +1058,12 @@ dataspace *data;
     register object *obj;
 
     n = 0;
-    for (i = nusers, usr = users; i > 0; --i, usr++) {
-	if (usr->oindex != OBJ_NONE && OBJR(usr->oindex)->count != 0) {
-	    n++;
+    for (i = nusers, usr = users; i > 0; usr++) {
+	if (usr->oindex != OBJ_NONE) {
+	    --i;
+	    if (OBJR(usr->oindex)->count != 0) {
+		n++;
+	    }
 	}
     }
 

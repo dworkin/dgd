@@ -91,7 +91,7 @@ object *obj;
     obj->etabi = e - editors;
     obj->flags |= O_EDITOR;
 
-    sprintf(tmp, "%s%03d", tmpedfile, UCHAR(obj->etabi));
+    sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
     e->ed = cb_new(tmp);
 }
 
@@ -105,7 +105,7 @@ object *obj;
     register editor *e;
 
     check_recursion();
-    e = &editors[UCHAR(obj->etabi)];
+    e = &editors[EINDEX(obj->etabi)];
     cb_del(e->ed);
     e->ed = (cmdbuf *) NULL;
     e->next = flist;
@@ -143,7 +143,7 @@ char *cmd;
 	error("Newline in editor command");
     }
 
-    e = &editors[UCHAR(obj->etabi)];
+    e = &editors[EINDEX(obj->etabi)];
     outbufsz = 0;
     internal = FALSE;
     if (ec_push((ec_ftn) ed_handler)) {
@@ -179,7 +179,7 @@ char *cmd;
 char *ed_status(obj)
 object *obj;
 {
-    return (editors[UCHAR(obj->etabi)].ed->flags & CB_INSERT) ?
+    return (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) ?
 	    "insert" : "command";
 }
 

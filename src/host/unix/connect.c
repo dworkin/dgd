@@ -54,7 +54,7 @@ register int in, out;
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
 	if (host == (struct hostent *) NULL) {
-	    sleep(5);
+	    sleep(2);
 	    host = gethostbyaddr(buf, sizeof(struct in_addr), addrtype);
 	}
 
@@ -78,37 +78,44 @@ register int in, out;
 static bool ipa_init(maxusers)
 int maxusers;
 {
-    int fd[4], pid;
+    if (in < 0) {
+	int fd[4], pid;
 
-    if (pipe(fd) < 0) {
-	perror("pipe");
-	return FALSE;
-    }
-    if (pipe(fd + 2) < 0) {
-	perror("pipe");
+	if (pipe(fd) < 0) {
+	    perror("pipe");
+	    return FALSE;
+	}
+	if (pipe(fd + 2) < 0) {
+	    perror("pipe");
+	    close(fd[0]);
+	    close(fd[1]);
+	    return FALSE;
+	}
+	pid = fork();
+	if (pid < 0) {
+	    perror("fork");
+	    close(fd[0]);
+	    close(fd[1]);
+	    close(fd[2]);
+	    close(fd[3]);
+	    return FALSE;
+	}
+	if (pid == 0) {
+	    /* child process */
+	    close(fd[1]);
+	    close(fd[2]);
+	    ipa_run(fd[0], fd[3]);
+	}
 	close(fd[0]);
-	close(fd[1]);
-	return FALSE;
-    }
-    pid = fork();
-    if (pid < 0) {
-	perror("fork");
-	close(fd[0]);
-	close(fd[1]);
-	close(fd[2]);
 	close(fd[3]);
-	return FALSE;
+	in = fd[2];
+	out = fd[1];
+    } else if (busy) {
+	char buf[MAXHOSTNAMELEN];
+
+	/* discard ip name */
+	read(in, buf, MAXHOSTNAMELEN);
     }
-    if (pid == 0) {
-	/* child process */
-	close(fd[1]);
-	close(fd[2]);
-	ipa_run(fd[0], fd[3]);
-    }
-    close(fd[0]);
-    close(fd[3]);
-    in = fd[2];
-    out = fd[1];
 
     ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
     memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
@@ -125,10 +132,6 @@ int maxusers;
  */
 static void ipa_finish()
 {
-    close(in);
-    close(out);
-    in = -1;
-    out = -1;
 }
 
 /*
@@ -402,14 +405,6 @@ unsigned int telnet_port, binary_port;
 	perror("setsockopt");
 	return FALSE;
     }
-# ifdef SO_OOBINLINE
-    on = 1;
-    if (setsockopt(udp, SOL_SOCKET, SO_OOBINLINE, (char *) &on, sizeof(on)) < 0)
-    {
-	perror("setsockopt");
-	return FALSE;
-    }
-# endif
 
     memset(&sin, '\0', sizeof(sin));
     memcpy(&sin.sin_addr, host->h_addr, host->h_length);

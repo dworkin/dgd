@@ -67,9 +67,16 @@ static int32 ipa_run(void *arg)
  */
 static bool ipa_init(int maxusers)
 {
-    port = create_port(1, "named => driver");
-    named = spawn_thread(ipa_run, "name_lookup", B_NORMAL_PRIORITY, NULL);
-    resume_thread(named);
+    if (port == -1) {
+	port = create_port(1, "named => driver");
+	named = spawn_thread(ipa_run, "name_lookup", B_NORMAL_PRIORITY, NULL);
+	resume_thread(named);
+    } else if (busy) {
+	char buf[MAXHOSTNAMELEN];
+
+	/* discard ip name */
+	read_port(port, &code, buf, MAXHOSTNAMELEN);
+    }
 
     ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
     memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));

@@ -991,7 +991,7 @@ int conn_select(Uint t, unsigned int mtime)
 	if (conn != NULL && conn->sflags == TCP_OPEN) {
 	    return 1;	/* new binary connection */
 	}
-    } while (ticks - TickCount() > 0);
+    } while (ticks - (long) TickCount() > 0 && !intr);
 
     return 0;
 }

@@ -1862,21 +1862,25 @@ static void cmd_status(object user, string cmd, string str)
   "    ------------ Callouts ------------\n" +
 "static:   " + ralign(status[ST_SMEMUSED], 9) + " / " +
 	       ralign(status[ST_SMEMSIZE], 9) + " (" +
-  ralign((int) status[ST_SMEMUSED] * 100 / (int) status[ST_SMEMSIZE], 3) +
+  ralign((int) ((float) status[ST_SMEMUSED] * 100.0 /
+		(float) status[ST_SMEMSIZE]), 3) +
   "%)    short term:   " + ralign(short, 5) + "         (" +
   ((short + long == 0) ? "  0" : ralign(short * 100 / (short + long), 3)) +
   "%)\n" +
 "dynamic:  " + ralign(status[ST_DMEMUSED], 9) + " / " +
 	       ralign(status[ST_DMEMSIZE], 9) + " (" +
-  ralign((int) status[ST_DMEMUSED] * 100 / (int) status[ST_DMEMSIZE], 3) +
+  ralign((int) ((float) status[ST_DMEMUSED] * 100.0 /
+	 (float) status[ST_DMEMSIZE]), 3) +
   "%) +  long term:    " + ralign(long, 5) + "         (" +
   ((short + long == 0) ? "  0" : ralign(long * 100 / (short + long), 3)) +
   "%) +\n" +
 "          " +
   ralign((int) status[ST_SMEMUSED] + (int) status[ST_DMEMUSED], 9) + " / " +
   ralign((int) status[ST_SMEMSIZE] + (int) status[ST_DMEMSIZE], 9) + " (" +
-  ralign(((int) status[ST_SMEMUSED] + (int) status[ST_DMEMUSED]) * 100 /
-	 ((int) status[ST_SMEMSIZE] + (int) status[ST_DMEMSIZE]), 3) +
+  ralign((int) (((float) status[ST_SMEMUSED] +
+		 (float) status[ST_DMEMUSED]) * 100.0 /
+		((float) status[ST_SMEMSIZE] +
+		 (float) status[ST_DMEMSIZE])), 3) +
   "%)                  " + ralign(short + long, 5) + " / " +
 			   ralign(status[ST_COTABSIZE], 5) + " (" +
   ralign((short + long) * 100 / (int) status[ST_COTABSIZE], 3) + "%)\n\n" +

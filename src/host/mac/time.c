@@ -15,7 +15,7 @@ void tminit(void)
     static DateTimeRec ubirth = {
 	1970, 1, 1, 0, 0, 0, 0
     };
-    long t;
+    unsigned long t;
 
     Date2Secs(&ubirth, &timediff);
     GetDateTime(&t);
@@ -102,7 +102,7 @@ void P_timer(Uint t, unsigned int mtime)
     if (t == 0) {
 	timeout = 0;
     } else {
-	timeout = t - timeoffset + mtime * 100L / 1667;
+	timeout = (t - timeoffset) * 60 + mtime * 100L / 1667;
 	if (timeout < 0) {
 	    timeout = 0;
 	}
@@ -119,7 +119,7 @@ bool P_timeout(Uint *t, unsigned short *mtime)
 
     time = TickCount();
     *t = timeoffset + time / 60;
-    *milli = time % 60 * 1667 / 100;
+    *mtime = time % 60 * 1667 / 100;
 
     if (timeout == 0) {
 	return FALSE;

@@ -930,9 +930,9 @@ srpstate *state;
     n = lr->ntoken + lr->nprod;
     itemtab = ALLOCA(item*, n);
     memset(itemtab, '\0', n * sizeof(item*));
-    symbols = ALLOCA(short, n);
-    targets = ALLOCA(short, n);
-    tokens = ALLOCA(short, lr->ntoken);
+    symbols = ALLOCA(unsigned short, n);
+    targets = ALLOCA(unsigned short, n);
+    tokens = ALLOCA(unsigned short, lr->ntoken);
     nred = nshift = ngoto = 0;
 
     /*

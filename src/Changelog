@@ -1353,3 +1353,8 @@ DGD 1.1
    version, and immediately shutting down again with a statedump.
  - Fixed an object undo bug.
  - Completed comm undo -- and the implementation of atomic functions.
+ - Fixed a bug in users().
+ - Made the type of a variable that holds the number of simultaneous users
+   configurable.
+ - Let the DNS thread be started only once, even for several driver process
+   runs.

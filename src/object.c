@@ -902,7 +902,7 @@ object *obj;
     o = obj;
     if (!(o->flags & O_MASTER)) {
 	/* get control block of master object */
-	o = (obase) ? OBJ(o->u_master) : OBJR(o->u_master);
+	o = OBJR(o->u_master);
     }
     if (o->ctrl == (control *) NULL) {
 	o->ctrl = d_load_control(o);	/* reload */

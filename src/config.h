@@ -5,6 +5,11 @@ typedef unsigned short uindex;
 typedef uindex sector;
 # define SW_UNUSED	UINDEX_MAX
 
+/* eindex can be anything */
+typedef char eindex;
+# define EINDEX_MAX	UCHAR_MAX
+# define EINDEX(e)	UCHAR(e)
+
 
 /*
  * Gamedriver configuration.  Hash table sizes should be powers of two.

@@ -18,7 +18,8 @@ typedef struct _ipaddr_ {
     char name[MAXHOSTNAMELEN];		/* ip name */
 } ipaddr;
 
-static SOCKET in, out;			/* connection from/to name resolver */
+static SOCKET in = INVALID_SOCKET;	/* connection from name resolver */
+static SOCKET out = INVALID_SOCKET;	/* connection to name resolver */
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -47,7 +48,7 @@ static void ipa_run(void *dummy)
 	/* lookup host */
 	host = gethostbyaddr(buf, sizeof(struct in_addr), PF_INET);
 	if (host == (struct hostent *) NULL) {
-	    Sleep(5000);
+	    Sleep(2000);
 	    host = gethostbyaddr(buf, sizeof(struct in_addr), PF_INET);
 	}
 
@@ -70,9 +71,16 @@ static void ipa_run(void *dummy)
  */
 static bool ipa_init(int maxusers)
 {
-    in = socket(PF_INET, SOCK_STREAM, 0);
     if (in == INVALID_SOCKET) {
-	return FALSE;
+	in = socket(PF_INET, SOCK_STREAM, 0);
+	if (in == INVALID_SOCKET) {
+	    return FALSE;
+	}
+    } else if (busy) {
+	char buf[MAXHOSTNAMELEN];
+
+	/* discard ip name */
+	recv(in, buf, MAXHOSTNAMELEN, 0);
     }
 
     ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
@@ -90,16 +98,18 @@ static bool ipa_init(int maxusers)
  */
 static void ipa_start(SOCKET sock)
 {
-    struct sockaddr_in addr;
-    int len;
+    if (out == INVALID_SOCKET) {
+	struct sockaddr_in addr;
+	int len;
 
-    len = sizeof(struct sockaddr_in);
-    getsockname(sock, (struct sockaddr *) &addr, &len);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    connect(in, (struct sockaddr *) &addr, len);
-    out = accept(sock, (struct sockaddr *) &addr, &len);
+	len = sizeof(struct sockaddr_in);
+	getsockname(sock, (struct sockaddr *) &addr, &len);
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	connect(in, (struct sockaddr *) &addr, len);
+	out = accept(sock, (struct sockaddr *) &addr, &len);
 
-    _beginthread(ipa_run, 0, NULL);
+	_beginthread(ipa_run, 0, NULL);
+    }
 }
 
 /*
@@ -108,7 +118,6 @@ static void ipa_start(SOCKET sock)
  */
 static void ipa_finish(void)
 {
-    closesocket(in);
 }
 
 /*

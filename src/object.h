@@ -4,7 +4,7 @@
 struct _object_ {
     hte chain;			/* object name hash table */
     char flags;			/* object status */
-    char etabi;			/* index in external table */
+    eindex etabi;		/* index in external table */
     uindex cref;		/* # clone references (sometimes) */
     uindex prev;		/* previous in issue list */
     uindex index;		/* index in object table */
@@ -28,7 +28,7 @@ struct _object_ {
 # define O_COMPILED		0x40
 # define O_PENDIO		0x80
 
-# define OBJ_LAYOUT		"xccuuuiiippdd"
+# define OBJ_LAYOUT		"xceuuuiiippdd"
 
 # define OBJ(i)			(&otable[i])
 # define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
