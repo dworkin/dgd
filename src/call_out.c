@@ -769,8 +769,8 @@ unsigned int count;
 {
     swaprate1 += count;
     swaprate5 += count;
-    swapped1[swaptime % 60] += count;
-    swapped5[swaptime % 300 / 5] += count;
+    swapped1[swaptime % SWPERIOD] += count;
+    swapped5[swaptime % (SWPERIOD * 5) / 5] += count;
 }
 
 /*

@@ -1848,7 +1848,9 @@ int funci;
 		i = nargs;
 		do {
 		    if (i == 0) {
-			error("Insufficient arguments for function");
+			error("Insufficient arguments for function %s",
+			      d_get_strconst(f.p_ctrl, f.func->inherit,
+					     f.func->index)->text);
 		    }
 		    --i;
 		} while (!(FETCH1U(pc) & T_VARARGS));
@@ -1881,7 +1883,9 @@ int funci;
 	arr_ref(prev_f->sp->u.array = a);
     } else if (nargs > n) {
 	if (stricttc) {
-	    error("Too many arguments for function");
+	    error("Too many arguments for function %s",
+		  d_get_strconst(f.p_ctrl, f.func->inherit,
+				 f.func->index)->text);
 	}
 
 	/* pop superfluous arguments */
@@ -1896,7 +1900,9 @@ int funci;
 	    i = nargs;
 	    do {
 		if (i == 0) {
-		    error("Insufficient arguments for function");
+		    error("Insufficient arguments for function %s",
+			  d_get_strconst(f.p_ctrl, f.func->inherit,
+					 f.func->index)->text);
 		}
 		--i;
 	    } while (!(FETCH1U(pc) & T_VARARGS));

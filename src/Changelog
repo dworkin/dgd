@@ -1273,3 +1273,5 @@ DGD 1.1
    considerably larger value.
  - Simplified the automatic object swapping; too much was happening at the
    end of each thread, especially with many objects in memory.
+ - Show which function is actually being called with too many or too few
+   arguments.
