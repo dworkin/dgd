@@ -872,16 +872,16 @@ static bool conf_includes()
     cputs("# define ST_BOOTTIME\t2\t/* system reboot time */\012");
     cputs("# define ST_UPTIME\t3\t/* system virtual uptime */\012");
     cputs("# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
-    cputs("# define ST_SWAPUSED\t5\t/* # sectors allocated */\012");
+    cputs("# define ST_SWAPUSED\t5\t/* # sectors in use */\012");
     cputs("# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
-    cputs("# define ST_SWAPRATE1\t7\t/* # objects swapped out per minute */\012");
-    cputs("# define ST_SWAPRATE5\t8\t/* # objects swapped out per five minutes */\012");
+    cputs("# define ST_SWAPRATE1\t7\t/* # objects swapped out last minute */\012");
+    cputs("# define ST_SWAPRATE5\t8\t/* # objects swapped out last five minutes */\012");
     cputs("# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
     cputs("# define ST_SMEMUSED\t10\t/* static memory in use */\012");
     cputs("# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
     cputs("# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
     cputs("# define ST_OTABSIZE\t13\t/* object table size */\012");
-    cputs("# define ST_NOBJECTS\t14\t/* # objects in the system */\012");
+    cputs("# define ST_NOBJECTS\t14\t/* # objects in use */\012");
     cputs("# define ST_COTABSIZE\t15\t/* callouts table size */\012");
     cputs("# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
     cputs("# define ST_NCOLONG\t17\t/* # long-term & millisecond callouts */\012");
@@ -947,7 +947,7 @@ static bool conf_includes()
     cputs("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
     cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
     cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
-    sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
+    sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size (obsolete) */\012",
 	    MAX_STRLEN);
     cputs(buffer);
     if (!cclose()) {
@@ -1091,6 +1091,10 @@ sector *fragment;
 	   dirs,
 	   (int) conf[TYPECHECKING].u.num);
 
+# ifdef DGD_MODULES
+    module_init();
+# endif
+
     m_dynamic();
 
     /* initialize memory manager */
@@ -1117,7 +1121,7 @@ sector *fragment;
 
     m_static();				/* allocate error context statically */
     ec_push((ec_ftn) NULL);		/* guard error context */
-    if (ec_push((ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) errhandler)) {
 	message((char *) NULL);
 	endthread();
 	message("Config error: initialization failed\012");	/* LF */

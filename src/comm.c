@@ -486,13 +486,6 @@ array *arr;
     v = d_get_elts(arr);
 
     if (v[1].type == T_STRING) {
-	if (usr->outbuf != (string *) NULL) {
-	    if (usr->outbuf != v[1].u.string) {
-		usr->osdone = 0;	/* new mesg before buffer drained */
-	    }
-	    str_del(usr->outbuf);
-	    usr->outbuf = (string *) NULL;
-	}
 	if (conn_wrdone(usr->conn)) {
 	    n = conn_write(usr->conn, v[1].u.string->text + usr->osdone,
 			   v[1].u.string->len - usr->osdone);
@@ -574,6 +567,13 @@ void comm_flush()
 	/*
 	 * write
 	 */
+	if (usr->outbuf != (string *) NULL) {
+	    if (usr->outbuf != v[1].u.string) {
+		usr->osdone = 0;	/* new mesg before buffer drained */
+	    }
+	    str_del(usr->outbuf);
+	    usr->outbuf = (string *) NULL;
+	}
 	if (obj->flags & O_PENDIO) {
 	    comm_uflush(usr, obj, obj->data, arr);
 	}
@@ -582,9 +582,6 @@ void comm_flush()
 	 * disconnect
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
-	    if (usr->outbuf != (string *) NULL) {
-		str_del(usr->outbuf);
-	    }
 	    conn_del(usr->conn);
 	    if (usr->flags & CF_TELNET) {
 		newlines -= usr->newlines;
