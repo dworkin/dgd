@@ -10,6 +10,8 @@
 /* bit values for ctrl->flags */
 # define CTRL_COMPILED		0x01	/* precompiled control block */
 # define CTRL_VARMAP		0x02	/* varmap updated */
+# define CTRL_PROGCMP		0x0c	/* program compressed */
+# define CTRL_STRCMP		0x30	/* strings compressed */
 
 /* bit values for dataspace->flags */
 # define DATA_MODIFIED		0x3f
@@ -19,12 +21,20 @@
 # define DATA_STRINGREF		0x08	/* string reference changed */
 # define DATA_NEWCALLOUT	0x10	/* new callout added */
 # define DATA_CALLOUT		0x20	/* callout changed */
+# define DATA_STRCMP		0xc0	/* strings compressed */
+
+/* data compression */
+# define CMP_TYPE		0x03
+# define CMP_NONE		0x00	/* no compression */
+# define CMP_PRED		0x01	/* predictor compression */
+
+# define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 
 # define ARR_MOD		0x80000000L	/* in array->index */
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
-    char flags;			/* control flags, as yet unused */
+    char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
     Uint compiled;		/* time of compilation */
     Uint progsize;		/* size of program code */
@@ -52,7 +62,7 @@ static char si_layout[] = "uus";
 
 typedef struct {
     sector nsectors;		/* number of sectors in data space */
-    short flags;		/* dataspace flags, as yet unused */
+    short flags;		/* dataspace flags: compression */
     unsigned short nvariables;	/* number of variables */
     Uint narrays;		/* number of array values */
     Uint eltsize;		/* total size of array elements */
@@ -319,6 +329,8 @@ object *obj;
 	}
 	size += sizeof(scontrol);
 
+	ctrl->flags = header.flags << 2;
+
 	/* inherits */
 	ctrl->ninherits = UCHAR(header.ninherits);
 
@@ -422,6 +434,8 @@ object *obj;
 		 (Uint) sizeof(sdataspace));
     }
     size += sizeof(sdataspace);
+
+    data->flags = header.flags << 6;
 
     /* variables */
     data->varoffset = size;
@@ -552,6 +566,145 @@ register dataspace *data;
 
 
 /*
+ * NAME:	compress()
+ * DESCRIPTION:	compress data
+ */
+static Uint compress(data, text, size)
+char *data, *text;
+register Uint size;
+{
+    char hashtab[16384];
+    register unsigned short buf, bufsize, x;
+    register char *p, *q;
+    register Uint cspace;
+
+    if (size <= 4 + 1) {
+	/* can't get smaller than this */
+	return 0;
+    }
+
+    /* clear the hash table */
+    memset(hashtab, '\0', sizeof(hashtab));
+
+    buf = bufsize = 0;
+    x = 0;
+    p = text;
+    q = data;
+    *q++ = size >> 24;
+    *q++ = size >> 16;
+    *q++ = size >> 8;
+    *q++ = size;
+    cspace = size - 4;
+
+    while (size != 0) {
+        if (hashtab[x] == *p) {
+            buf >>= 1;
+            bufsize += 1;
+        } else {
+            hashtab[x] = *p;
+            buf >>= 9;
+            buf += 0x0080 + (UCHAR(*p) << 8);
+            bufsize += 9;
+        }
+	x = ((x << 3) & 0x3fff) ^ UCHAR(strhashtab[UCHAR(*p++)]);
+
+        while (bufsize >= 8) {
+	    if (--cspace == 0) {
+		return 0;	/* out of space */
+	    }
+	    *q++ = buf >> (16 - bufsize);
+	    bufsize -= 8;
+        }
+
+	--size;
+    }
+    if (bufsize != 0) {
+	if (--cspace == 0) {
+	    return 0;	/* compression did not reduce size */
+	}
+	/* add last incomplete byte */
+	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
+    }
+
+    return (long) q - (long) data;
+}
+
+/*
+ * NAME:	decompress()
+ * DESCRIPTION:	read and decompress data from the swap file
+ */
+static char *decompress(sectors, size, offset, dsize)
+sector *sectors;
+Uint size, offset;
+Uint *dsize;
+{
+    char buffer[8192], hashtab[16384];
+    register unsigned short buf, bufsize, x;
+    register Uint n;
+    register char *p, *q;
+
+    buf = bufsize = 0;
+    x = 0;
+
+    /* clear the hash table */
+    memset(hashtab, '\0', sizeof(hashtab));
+
+    n = sizeof(buffer);
+    if (n > size) {
+	n = size;
+    }
+    sw_readv(p = buffer, sectors, n, offset);
+    size -= n;
+    offset += n;
+    *dsize = (UCHAR(p[0]) << 24) | (UCHAR(p[1]) << 16) | (UCHAR(p[2]) << 8) |
+	     UCHAR(p[3]);
+    q = ALLOC(char, *dsize);
+    p += 4;
+    n -= 4;
+
+    for (;;) {
+	for (;;) {
+	    if (bufsize == 0) {
+		if (n == 0) {
+		    break;
+		}
+		--n;
+		buf = UCHAR(*p++);
+		bufsize = 8;
+	    }
+	    if (buf & 1) {
+		if (n == 0) {
+		    break;
+		}
+		--n;
+		buf += UCHAR(*p++) << bufsize;
+
+		*q = hashtab[x] = buf >> 1;
+		buf >>= 9;
+	    } else {
+		*q = hashtab[x];
+		buf >>= 1;
+	    }
+	    --bufsize;
+
+	    x = ((x << 3) & 0x3fff) ^ UCHAR(strhashtab[UCHAR(*q++)]);
+	}
+
+	if (size == 0) {
+	    return q - *dsize;
+	}
+	n = sizeof(buffer);
+	if (n > size) {
+	    n = size;
+	}
+	sw_readv(p = buffer, sectors, n, offset);
+	size -= n;
+	offset += n;
+    }
+}
+
+
+/*
  * NAME:	data->varmap()
  * DESCRIPTION:	add a variable mapping to a control block
  */
@@ -575,8 +728,14 @@ char *d_get_prog(ctrl)
 register control *ctrl;
 {
     if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
-	ctrl->prog = ALLOC(char, ctrl->progsize);
-	sw_readv(ctrl->prog, ctrl->sectors, ctrl->progsize, ctrl->progoffset);
+	if (ctrl->flags & CTRL_PROGCMP) {
+	    ctrl->prog = decompress(ctrl->sectors, ctrl->progsize,
+				    ctrl->progoffset, &ctrl->progsize);
+	} else {
+	    ctrl->prog = ALLOC(char, ctrl->progsize);
+	    sw_readv(ctrl->prog, ctrl->sectors, ctrl->progsize,
+		     ctrl->progoffset);
+	}
     }
     return ctrl->prog;
 }
@@ -608,10 +767,17 @@ unsigned int idx;
 		     ctrl->stroffset);
 	    if (ctrl->strsize > 0) {
 		/* load strings text */
-		ctrl->stext = ALLOC(char, ctrl->strsize);
-		sw_readv(ctrl->stext, ctrl->sectors, ctrl->strsize,
-			 ctrl->stroffset +
+		if (ctrl->flags & CTRL_STRCMP) {
+		    ctrl->stext = decompress(ctrl->sectors, ctrl->strsize,
+					     ctrl->stroffset +
+					     ctrl->nstrings * sizeof(dstrconst),
+					     &ctrl->strsize);
+		} else {
+		    ctrl->stext = ALLOC(char, ctrl->strsize);
+		    sw_readv(ctrl->stext, ctrl->sectors, ctrl->strsize,
+			     ctrl->stroffset +
 				     ctrl->nstrings * (Uint) sizeof(dstrconst));
+		}
 	    }
 	}
     }
@@ -712,9 +878,17 @@ register Uint idx;
 		     data->nstrings * sizeof(sstring), data->stroffset);
 	    if (data->strsize > 0) {
 		/* load strings text */
-		data->stext = ALLOC(char, data->strsize);
-		sw_readv(data->stext, data->sectors, data->strsize,
-			 data->stroffset + data->nstrings * sizeof(sstring));
+		if (data->flags & DATA_STRCMP) {
+		    data->stext = decompress(data->sectors, data->strsize,
+					     data->stroffset +
+					       data->nstrings * sizeof(sstring),
+					     &data->strsize);
+		} else {
+		    data->stext = ALLOC(char, data->strsize);
+		    sw_readv(data->stext, data->sectors, data->strsize,
+			     data->stroffset +
+					    data->nstrings * sizeof(sstring));
+		}
 	    }
 	}
     }
@@ -1556,6 +1730,8 @@ static void d_save_control(ctrl)
 register control *ctrl;
 {
     scontrol header;
+    char *prog, *stext, *text;
+    dstrconst *sstrings;
     register Uint size, i;
     register sinherit *sinherits;
     register dinherit *inherits;
@@ -1585,6 +1761,57 @@ register control *ctrl;
 	size = sizeof(scontrol) +
 	       header.vmapsize * (Uint) sizeof(unsigned short);
     } else {
+	prog = ctrl->prog;
+	if (header.progsize >= CMPLIMIT) {
+	    prog = ALLOCA(char, header.progsize);
+	    size = compress(prog, ctrl->prog, header.progsize);
+	    if (size != 0) {
+		header.flags |= CMP_PRED;
+		header.progsize = size;
+	    } else {
+		AFREE(prog);
+		prog = ctrl->prog;
+	    }
+	}
+
+	sstrings = ctrl->sstrings;
+	stext = ctrl->stext;
+	if (header.nstrings > 0 && sstrings == (dstrconst *) NULL) {
+	    register string **strs;
+	    register Uint strsize;
+	    register dstrconst *s;
+	    register char *t;
+
+	    sstrings = ALLOCA(dstrconst, header.nstrings);
+	    if (header.strsize > 0) {
+		stext = ALLOCA(char, header.strsize);
+	    }
+
+	    strs = ctrl->strings;
+	    strsize = 0;
+	    s = sstrings;
+	    t = stext;
+	    for (i = header.nstrings; i > 0; --i) {
+		s->index = strsize;
+		strsize += s->len = (*strs)->len;
+		memcpy(t, (*strs++)->text, s->len);
+		t += (s++)->len;
+	    }
+	}
+
+	text = stext;
+	if (header.strsize >= CMPLIMIT) {
+	    text = ALLOCA(char, header.strsize);
+	    size = compress(text, stext, header.strsize);
+	    if (size != 0) {
+		header.flags |= CMP_PRED << 2;
+		header.strsize = size;
+	    } else {
+		AFREE(text);
+		text = stext;
+	    }
+	}
+
 	size = sizeof(scontrol) +
 	       UCHAR(header.ninherits) * sizeof(sinherit) +
 	       header.progsize +
@@ -1636,54 +1863,30 @@ register control *ctrl;
 
 	/* save program */
 	if (header.progsize > 0) {
-	    sw_writev(ctrl->prog, ctrl->sectors, (Uint) header.progsize, size);
+	    sw_writev(prog, ctrl->sectors, (Uint) header.progsize, size);
 	    size += header.progsize;
+	    if (prog != ctrl->prog) {
+		AFREE(prog);
+	    }
 	}
 
 	/* save string constants */
 	if (header.nstrings > 0) {
-	    dstrconst *ss;
-	    char *tt;
-	    register Uint strsize;
-
-	    if (ctrl->sstrings != (dstrconst *) NULL) {
-		ss = ctrl->sstrings;
-		tt = ctrl->stext;
-		strsize = ctrl->strsize;
-	    } else {
-		register string **strs;
-		register dstrconst *s;
-		register char *t;
-
-		ss = ALLOCA(dstrconst, header.nstrings);
-		if (ctrl->strsize > 0) {
-		    tt = ALLOCA(char, ctrl->strsize);
-		}
-
-		strs = ctrl->strings;
-		strsize = 0;
-		s = ss;
-		t = tt;
-		for (i = header.nstrings; i > 0; --i) {
-		    s->index = strsize;
-		    strsize += s->len = (*strs)->len;
-		    memcpy(t, (*strs++)->text, s->len);
-		    t += (s++)->len;
-		}
-	    }
-
-	    sw_writev((char *) ss, ctrl->sectors,
+	    sw_writev((char *) sstrings, ctrl->sectors,
 		      header.nstrings * (Uint) sizeof(dstrconst), size);
 	    size += header.nstrings * (Uint) sizeof(dstrconst);
-	    if (strsize > 0) {
-		sw_writev(tt, ctrl->sectors, strsize, size);
-		size += strsize;
-		if (tt != ctrl->stext) {
-		    AFREE(tt);
+	    if (header.strsize > 0) {
+		sw_writev(text, ctrl->sectors, header.strsize, size);
+		size += header.strsize;
+		if (text != stext) {
+		    AFREE(text);
+		}
+		if (stext != ctrl->stext) {
+		    AFREE(stext);
 		}
 	    }
-	    if (ss != ctrl->sstrings) {
-		AFREE(ss);
+	    if (sstrings != ctrl->sstrings) {
+		AFREE(sstrings);
 	    }
 	}
 
@@ -2084,6 +2287,7 @@ register dataspace *data;
 	}
     } else {
 	scallout *scallouts;
+	char *text;
 	register Uint size;
 
 	/*
@@ -2150,17 +2354,6 @@ register dataspace *data;
 	header.ncallouts = data->ncallouts;
 	header.fcallouts = data->fcallouts;
 
-	/* create sector space */
-	size = sizeof(sdataspace) +
-	       (header.nvariables + header.eltsize) * sizeof(svalue) +
-	       header.narrays * sizeof(sarray) +
-	       header.nstrings * sizeof(sstring) +
-	       header.strsize +
-	       header.ncallouts * (Uint) sizeof(scallout);
-	header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
-	data->nsectors = header.nsectors;
-	data->obj->dfirst = data->sectors[0];
-
 	/*
 	 * put everything into a saveable form
 	 */
@@ -2175,22 +2368,14 @@ register dataspace *data;
 		sstrings = data->sstrings = ALLOC(sstring, header.nstrings);
 	    }
 	    if (header.strsize > 0) {
-		if (header.strsize <= data->strsize &&
-		    data->stext != (char *) NULL) {
-		    stext = data->stext;
-		} else {
-		    if (data->stext != (char *) NULL) {
-			FREE(data->stext);
-		    }
-		    stext = data->stext = ALLOC(char, header.strsize);
-		}
+		stext = ALLOCA(char, header.strsize);
 	    }
 	}
 	if (header.nstrings == 0 && data->sstrings != (sstring *) NULL) {
 	    FREE(data->sstrings);
 	    data->sstrings = (sstring *) NULL;
 	}
-	if (header.strsize == 0 && data->stext != (char *) NULL) {
+	if (data->stext != (char *) NULL) {
 	    FREE(data->stext);
 	    data->stext = (char *) NULL;
 	}
@@ -2254,6 +2439,30 @@ register dataspace *data;
 	str_clear();
 	arr_clear();
 
+	text = stext;
+	if (header.strsize >= CMPLIMIT) {
+	    text = ALLOCA(char, header.strsize);
+	    size = compress(text, stext, header.strsize);
+	    if (size != 0) {
+		header.flags |= CMP_PRED;
+		header.strsize = size;
+	    } else {
+		AFREE(text);
+		text = stext;
+	    }
+	}
+
+	/* create sector space */
+	size = sizeof(sdataspace) +
+	       (header.nvariables + header.eltsize) * sizeof(svalue) +
+	       header.narrays * sizeof(sarray) +
+	       header.nstrings * sizeof(sstring) +
+	       header.strsize +
+	       header.ncallouts * (Uint) sizeof(scallout);
+	header.nsectors = d_swapalloc(size, data->nsectors, &data->sectors);
+	data->nsectors = header.nsectors;
+	data->obj->dfirst = data->sectors[0];
+
 	/* save header */
 	size = sizeof(sdataspace);
 	sw_writev((char *) &header, data->sectors, size, (Uint) 0);
@@ -2287,8 +2496,12 @@ register dataspace *data;
 		      header.nstrings * sizeof(sstring), size);
 	    size += header.nstrings * sizeof(sstring);
 	    if (header.strsize > 0) {
-		sw_writev(stext, data->sectors, header.strsize, size);
+		sw_writev(text, data->sectors, header.strsize, size);
 		size += header.strsize;
+		if (text != stext) {
+		    AFREE(text);
+		}
+		AFREE(stext);
 	    }
 	}
 
@@ -2978,8 +3191,13 @@ register object *obj;
 
 	if (header.progsize != 0) {
 	    /* program */
-	    ctrl->prog = ALLOC(char, header.progsize);
-	    sw_dreadv(ctrl->prog, s, header.progsize, size);
+	    if (header.flags & CMP_TYPE) {
+		ctrl->prog = decompress(s, header.progsize, size,
+					&ctrl->progsize);
+	    } else {
+		ctrl->prog = ALLOC(char, header.progsize);
+		sw_dreadv(ctrl->prog, s, header.progsize, size);
+	    }
 	    size += header.progsize;
 	}
 
@@ -2989,8 +3207,13 @@ register object *obj;
 	    size += d_conv((char *) ctrl->sstrings, s, DSTR_LAYOUT,
 			   (Uint) header.nstrings, size);
 	    if (header.strsize != 0) {
-		ctrl->stext = ALLOC(char, header.strsize);
-		sw_dreadv(ctrl->stext, s, header.strsize, size);
+		if (header.flags & (CMP_TYPE << 2)) {
+		    ctrl->stext = decompress(s, header.strsize, size,
+					     &ctrl->strsize);
+		} else {
+		    ctrl->stext = ALLOC(char, header.strsize);
+		    sw_dreadv(ctrl->stext, s, header.strsize, size);
+		}
 		size += header.strsize;
 	    }
 	}
@@ -3114,8 +3337,13 @@ Uint *counttab;
 	size += d_conv((char *) data->sstrings, s, ss_layout, header.nstrings,
 		       size);
 	if (header.strsize != 0) {
-	    data->stext = ALLOC(char, header.strsize);
-	    sw_dreadv(data->stext, s, header.strsize, size);
+	    if (header.flags & (CMP_TYPE << 2)) {
+		data->stext = decompress(s, header.strsize, size,
+					 &data->strsize);
+	    } else {
+		data->stext = ALLOC(char, header.strsize);
+		sw_dreadv(data->stext, s, header.strsize, size);
+	    }
 	    size += header.strsize;
 	}
     }

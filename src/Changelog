@@ -1123,3 +1123,7 @@ DGD 1.1
    indices.
  - Made map_sizeof() a cheaper operation.
  - PC version: enabled the edit menu.
+
+ DGD 1.2
+
+ - Added swapfile compression.
