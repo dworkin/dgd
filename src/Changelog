@@ -1185,3 +1185,4 @@ DGD 1.1
  - Replaced some FREE,ALLOC pairs with REALLOC.
  - Completed parse_string implementation on all platforms.
  - Fixed a bug that prevented any restore from dump file.
+ - Fixed a bug in REALLOC.
