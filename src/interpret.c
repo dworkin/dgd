@@ -7,13 +7,12 @@
 # include "fcontrol.h"
 # include "table.h"
 
-# define CHECKSP() if (sp <= ilvp + 2) error("Out of interpreter stack space")
+# define CHECKSP(n) if (sp <= ilvp + (n) + 1) error("Stack overflow")
 
 
 typedef struct _frame_ {
     object *obj;		/* current object */
-    object *prevobj;		/* previous object */
-    unsigned short lock;	/* lock level */
+    bool external;		/* TRUE if it's an external call */
     dataspace *data;		/* dataspace of current object */
     control *v_ctrl;		/* virtual control block */
     unsigned short voffset;	/* virtual variable offset */
@@ -29,14 +28,18 @@ typedef struct _frame_ {
 static value *stack;		/* interpreter stack */
 static value *stackend;		/* interpreter stack end */
 value *sp;			/* interpreter stack pointer */
-value *ilvp;			/* indexed lvalue stack pointer */
+static value *ilvp;		/* indexed lvalue stack pointer */
 static frame *iframe;		/* stack frames */
 static frame *cframe;		/* current frame */
 static frame *maxframe;		/* max frame */
 static frame *maxmaxframe;	/* max locked frame */
 static long ticksleft;		/* interpreter ticks left */
 static long maxticks;		/* max ticks allowed */
+static unsigned short lock;	/* current lock level */
 static string *lvstr;		/* the last indexed string */
+static char *creator;		/* creator function name */
+static unsigned short line;	/* current line number */
+static char *oname, *pname;	/* object name, program name */
 
 static value zero_value = { T_NUMBER, TRUE };
 
@@ -44,9 +47,10 @@ static value zero_value = { T_NUMBER, TRUE };
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(stacksize, maxdepth, maxmaxdepth, maxcost)
-int stacksize, maxdepth, maxmaxdepth;
+void i_init(stacksize, maxdepth, reserved, maxcost, create)
+int stacksize, maxdepth, reserved;
 long maxcost;
+char *create;
 {
     stack = ALLOC(value, stacksize);
     /*
@@ -55,21 +59,12 @@ long maxcost;
      */
     sp = stackend = stack + stacksize;
     ilvp = stack;
-    iframe = ALLOC(frame, maxmaxdepth);
+    iframe = ALLOC(frame, maxdepth + reserved);
     cframe = iframe - 1;
     maxframe = iframe + maxdepth;
-    maxmaxframe = iframe + maxmaxdepth;
+    maxmaxframe = iframe + maxdepth + reserved;
     maxticks = maxcost;
-}
-
-/*
- * NAME:	interpret->clear()
- * DESCRIPTION:	clear the interpreter stack
- */
-void i_clear()
-{
-    i_pop(stackend - sp);
-    cframe = iframe - 1;
+    creator = create;
 }
 
 /*
@@ -118,11 +113,12 @@ register value *v;
 
 /*
  * NAME:	interpret->check_stack()
- * DESCRIPTION:	check if there is room on the stack for a new value
+ * DESCRIPTION:	check if there is room on the stack for new values
  */
-void i_check_stack()
+void i_check_stack(size)
+int size;
 {
-    CHECKSP();
+    CHECKSP(size);
 }
 
 /*
@@ -132,7 +128,7 @@ void i_check_stack()
 void i_push_value(v)
 register value *v;
 {
-    CHECKSP();
+    CHECKSP(1);
     *--sp = *v;
     switch (v->type) {
     case T_STRING:
@@ -197,7 +193,7 @@ register int n;
  * DESCRIPTION:	replace all occurrances of an object on the stack by 0
  */
 void i_odest(key)
-register objkey *key;
+objkey *key;
 {
     register value *v;
     register long count;
@@ -291,7 +287,7 @@ register value *lval, *ival;
     register int i;
     register value *val;
 
-    CHECKSP();	/* not actually required in all cases... */
+    CHECKSP(1);	/* not actually required in all cases... */
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
@@ -444,7 +440,7 @@ register value *val;
     char c;
 
     if (val->type != T_NUMBER) {
-	error("Non-numeric string index");
+	error("Non-numeric value in indexed string assignment");
     }
 
     ret.u.string = str_new(str->text, (long) str->len);
@@ -505,8 +501,8 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	ilvp -= 2;
 	d_assign_elt(a, v, istr(v->u.string, i, val));
+	ilvp -= 2;
 	arr_del(a);
 	break;
 
@@ -519,10 +515,10 @@ register value *lval, *val;
 	     */
 	    error("Lvalue disappeared!");
 	}
-	i_del_value(--ilvp);
-	--ilvp;
 	d_assign_elt(a, v, istr(v->u.string,
 		     (unsigned short) lval->u.number, val));
+	i_del_value(--ilvp);
+	--ilvp;
 	arr_del(a);
 	break;
     }
@@ -545,7 +541,7 @@ int extra;
  */
 void i_lock()
 {
-    cframe->lock++;
+    lock++;
 }
 
 /*
@@ -554,7 +550,7 @@ void i_lock()
  */
 void i_unlock()
 {
-    cframe->lock--;
+    --lock;
 }
 
 /*
@@ -563,7 +559,7 @@ void i_unlock()
  */
 unsigned short i_locklvl()
 {
-    return cframe->lock;
+    return lock;
 }
 
 /*
@@ -577,21 +573,34 @@ object *i_this_object()
 
 /*
  * NAME:	interpret->prev_object()
- * DESCRIPTION:	return the previous object in the call_other chain
+ * DESCRIPTION:	return the nth previous object in the call_other chain
  */
-object *i_prev_object()
+object *i_prev_object(n)
+register int n;
 {
-    return cframe->prevobj;
+    register frame *f;
+
+    for (f = cframe; n >= 0; --n) {
+	/* back to last external call */
+	while (!f->external) {
+	    --f;
+	}
+	if (--f < iframe) {
+	    return (object *) NULL;
+	}
+    }
+    return (f->obj->key.count == 0) ? (object *) NULL : f->obj;
 }
 
 /*
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-static void i_typecheck(name, ftype, proto, nargs)
+static void i_typecheck(name, ftype, proto, nargs, strict)
 char *name, *ftype;
 register char *proto;
 int nargs;
+bool strict;
 {
     register int n, i, ptype, atype;
     register char *args;
@@ -603,7 +612,8 @@ int nargs;
 	ptype = UCHAR(*args++);
 	if (ptype != T_MIXED) {
 	    atype = sp[i].type;
-	    if (ptype != atype && (atype != T_NUMBER || sp[i].u.number != 0) &&
+	    if (ptype != atype &&
+		(strict || atype != T_NUMBER || sp[i].u.number != 0) &&
 		(atype != T_ARRAY || !(ptype & T_REF))) {
 		error("Bad argument %d for %s %s", nargs - i, ftype, name);
 	    }
@@ -631,7 +641,7 @@ static void i_interpret P((char*));
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
+static void i_funcall(obj, v_ctrli, p_ctrli, funci, nargs)
 register object *obj;
 register int v_ctrli, p_ctrli, nargs;
 int funci;
@@ -643,8 +653,8 @@ int funci;
 
     f = pf = cframe;
     f++;
-    if (f == maxmaxframe || (f == maxframe && pf->lock == 0)) {
-	error("Function call stack size exceeded");
+    if (f == maxmaxframe || (f == maxframe && lock == 0)) {
+	error("Function call stack overflow");
     }
 
     if (f == iframe) {
@@ -654,8 +664,7 @@ int funci;
 	ticksleft = maxticks;
 
 	f->obj = obj;
-	f->prevobj = (object *) NULL;
-	f->lock = 0;
+	f->external = TRUE;
 	f->data = o_dataspace(obj);
 	f->v_ctrl = obj->ctrl;
 	f->voffset = 0;
@@ -664,8 +673,7 @@ int funci;
 	 * call_other
 	 */
 	f->obj = obj;
-	f->prevobj = pf->obj;
-	f->lock = pf->lock;
+	f->external = TRUE;
 	f->data = o_dataspace(obj);
 	f->v_ctrl = obj->ctrl;
 	f->voffset = 0;
@@ -674,8 +682,7 @@ int funci;
 	 * local function call or labeled function call
 	 */
 	f->obj = pf->obj;
-	f->prevobj = pf->prevobj;
-	f->lock = pf->lock;
+	f->external = FALSE;
 	f->data = pf->data;
 	f->voffset = pf->voffset;
 	if (v_ctrli == 0) {
@@ -709,7 +716,7 @@ int funci;
 	/* typecheck arguments */
 	i_typecheck(d_get_strconst(f->p_ctrl, f->func->inherit,
 				   f->func->index)->text,
-		    "function", pc, nargs);
+		    "function", pc, nargs, FALSE);
     }
 
     /* handle arguments */
@@ -717,20 +724,23 @@ int funci;
 	/* pop superfluous arguments */
 	i_pop(nargs - PROTO_NARGS(pc));
 	nargs = PROTO_NARGS(pc);
-    } else {
+    } else if (nargs < PROTO_NARGS(pc)) {
 	/* add missing arguments */
-	while (nargs < PROTO_NARGS(pc)) {
-	    CHECKSP();
+	CHECKSP(PROTO_NARGS(pc) - nargs);
+	do {
 	    *--sp = zero_value;
-	    nargs++;
-	}
+	} while (++nargs < PROTO_NARGS(pc));
     }
     pc += PROTO_SIZE(pc);
 
     /* initialize local variables */
-    for (n = FETCH1U(pc), nargs += n; n > 0; --n) {
-	CHECKSP();
-	*--sp = zero_value;
+    n = FETCH1U(pc);
+    if (n > 0) {
+	CHECKSP(n);
+	nargs += n;
+	do {
+	    *--sp = zero_value;
+	} while (--n > 0);
     }
     f->fp = sp;
     pc += 2;
@@ -999,7 +1009,7 @@ register char *pc;
     f = cframe;
 
     for (;;) {
-	if (--ticksleft <= 0 && f->lock == 0) {
+	if (--ticksleft <= 0 && lock == 0) {
 	    error("Maximum execution cost exceeded (%ld)",
 		  maxticks - ticksleft);
 	}
@@ -1008,36 +1018,36 @@ register char *pc;
 
 	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_ZERO:
-	    CHECKSP();
+	    CHECKSP(1);
 	    *--sp = zero_value;
 	    break;
 
 	case I_PUSH_ONE:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = 1;
 	    break;
 
 	case I_PUSH_INT1:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH1S(pc);
 	    break;
 
 	case I_PUSH_INT2:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH2S(pc, u);
 	    break;
 
 	case I_PUSH_INT4:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_NUMBER;
 	    sp->u.number = FETCH4S(pc, l);
 	    break;
 
 	case I_PUSH_STRING:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl,
 						  f->p_ctrl->nvirtuals - 1,
@@ -1045,14 +1055,14 @@ register char *pc;
 	    break;
 
 	case I_PUSH_NEAR_STRING:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    u = FETCH1U(pc);
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_FAR_STRING:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_STRING;
 	    u = FETCH1U(pc);
 	    str_ref(sp->u.string = d_get_strconst(f->p_ctrl, u,
@@ -1073,7 +1083,7 @@ register char *pc;
 	    break;
 
 	case I_PUSH_LOCAL_LVALUE:
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = f->fp + FETCH1U(pc);
 	    break;
@@ -1083,7 +1093,7 @@ register char *pc;
 	    if (u != 0) {
 		u = f->voffset + f->v_ctrl->inherits[f->p_index + u].varoffset;
 	    }
-	    CHECKSP();
+	    CHECKSP(1);
 	    (--sp)->type = T_LVALUE;
 	    sp->u.lval = d_get_variable(f->data, u + FETCH1U(pc));
 	    ticksleft -= 3;
@@ -1102,7 +1112,7 @@ register char *pc;
 	case I_AGGREGATE:
 	    FETCH2U(pc, u);
 	    if (u == 0) {
-		CHECKSP();
+		CHECKSP(1);
 		a = arr_new(0L);
 	    } else {
 		a = arr_new((long) u);
@@ -1116,7 +1126,7 @@ register char *pc;
 	case I_MAP_AGGREGATE:
 	    FETCH2U(pc, u);
 	    if (u == 0) {
-		CHECKSP();
+		CHECKSP(1);
 		a = map_new(0L);
 	    } else {
 		a = map_new((long) u);
@@ -1155,7 +1165,7 @@ register char *pc;
 		 * The fetch is always done directly after an lvalue
 		 * constructor, so lvstr is valid.
 		 */
-		CHECKSP();
+		CHECKSP(1);
 		(--sp)->type = T_NUMBER;
 		sp->u.number = UCHAR(lvstr->text[sp[1].u.number]);
 		break;
@@ -1213,7 +1223,7 @@ register char *pc;
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(kf->name, "kfun", kf->proto, u);
+		i_typecheck(kf->name, "kfun", kf->proto, u, TRUE);
 	    }
 	    u = (*kf->func)(u);
 	    if (u != 0) {
@@ -1244,7 +1254,7 @@ register char *pc;
 	    if (!ec_push()) {
 		p = pc;
 		p += FETCH2S(pc, u);
-		u = f->lock;
+		u = lock;
 		v = sp;
 		i_interpret(pc);
 		pc = f->pc;
@@ -1253,9 +1263,9 @@ register char *pc;
 		/* error */
 		cframe = f;
 		f->pc = pc = p;
-		f->lock = u;
+		lock = u;
 		i_pop(v - sp);
-		CHECKSP();
+		CHECKSP(1);
 		p = errormesg();
 		(--sp)->type = T_STRING;
 		str_ref(sp->u.string = str_new(p, (long) strlen(p)));
@@ -1263,10 +1273,10 @@ register char *pc;
 	    break;
 
 	case I_LOCK:
-	    f->lock++;
+	    lock++;
 	    i_interpret(pc);
 	    pc = f->pc;
-	    f->lock--;
+	    --lock;
 	    break;
 
 	case I_RETURN:
@@ -1281,11 +1291,11 @@ register char *pc;
 }
 
 /*
- * NAME:	interpret->apply()
+ * NAME:	interpret->call()
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_apply(obj, func, call_static, nargs)
+bool i_call(obj, func, call_static, nargs)
 object *obj;
 char *func;
 bool call_static;
@@ -1294,6 +1304,17 @@ int nargs;
     register dsymbol *symb;
     register dfuncdef *f;
     register control *ctrl;
+
+    if (!(obj->flags & O_CREATED)) {
+	/*
+	 * call the creator function in the object, if this hasn't happened
+	 * before
+	 */
+	obj->flags |= O_CREATED;
+	if (i_call(obj, creator, TRUE, 0)) {
+	    i_del_value(sp++);
+	}
+    }
 
     /* find the function in the symbol table */
     symb = ctrl_symb(o_control(obj), func);
@@ -1437,12 +1458,12 @@ register frame *f;
  * DESCRIPTION:	dump the function call trace on stderr
  */
 void i_dump_trace(fp)
-register FILE *fp;
+FILE *fp;
 {
     register frame *f;
     register object *prog;
     register int len;
-    char *p;
+    register char *p;
 
     for (f = iframe; f <= cframe; f++) {
 	prog = f->p_ctrl->inherits[f->p_ctrl->nvirtuals - 1].obj;
@@ -1465,4 +1486,55 @@ register FILE *fp;
 	}
 	fputc('\n', fp);
     }
+    fflush(fp);
+}
+
+/*
+ * NAME:	interpret->log_error()
+ * DESCRIPTION:	log the current error
+ */
+void i_log_error()
+{
+    if (line != 0) {
+	char *err;
+
+	err = errormesg();
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new(err, (long) strlen(err)));
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new((char *) NULL, strlen(oname) + 1L));
+	sp->u.string->text[0] = '/';
+	strcpy(sp->u.string->text + 1, oname);
+	(--sp)->type = T_STRING;
+	str_ref(sp->u.string = str_new((char *) NULL, strlen(pname) + 1L));
+	sp->u.string->text[0] = '/';
+	strcpy(sp->u.string->text + 1, pname);
+	(--sp)->type = T_NUMBER;
+	sp->u.number = line;
+	call_driver_object("log_error", 4);
+	i_del_value(sp++);
+    }
+}
+
+/*
+ * NAME:	interpret->clear()
+ * DESCRIPTION:	clear the interpreter stack
+ */
+void i_clear()
+{
+    if (cframe < iframe) {
+	line = 0;
+    } else {
+	control *p_ctrl;
+
+	/* keep error context */
+	line = i_line(cframe);
+	oname = o_name(cframe->obj);
+	p_ctrl = cframe->p_ctrl;
+	pname = o_name(p_ctrl->inherits[p_ctrl->nvirtuals - 1].obj);
+
+	cframe = iframe - 1;
+    }
+    i_pop(stackend - sp);
+    lock = 0;
 }
