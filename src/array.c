@@ -1337,7 +1337,8 @@ bool clean;
 	}
     }
 
-    if (m->hashmod) {
+    if (m->hashmod ||
+	(clean && m->hashed != (maphash *) NULL && m->hashed->size != 0)) {
 	/*
 	 * merge copy of hashtable with sorted array
 	 */
@@ -1446,6 +1447,7 @@ bool clean;
 	    }
 	}
 	m->hashed->sizemod = 0;
+	m->hashmod = FALSE;
 
 	if (size != 0) {
 	    size <<= 1;
@@ -1486,8 +1488,6 @@ bool clean;
 
 	AFREE(v2);
     }
-
-    m->hashmod = FALSE;
 }
 
 /*
@@ -1959,7 +1959,9 @@ value *val, *elt;
 		    if (add) {
 			d_assign_elt(data, m, &e->idx, &nil_value);
 			d_assign_elt(data, m, &e->val, &nil_value);
-			m->hashed->sizemod--;
+			if (--m->hashed->sizemod == 0) {
+			    m->hashmod = FALSE;
+			}
 		    }
 
 		    *p = e->next;
