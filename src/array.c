@@ -2329,7 +2329,7 @@ array *a;
     copy->prev = &data->alist;
     copy->next = data->alist.next;
     copy->next->prev = copy;
-    data->alist.prev = copy;
+    data->alist.next = copy;
     d_ref_imports(copy);
     return copy;
 }
