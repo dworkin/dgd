@@ -189,9 +189,9 @@ swap_file	string	The name of the swap file.
 swap_size	number	The total number of sectors in the swap file.
 cache_size	number	The number of sectors in the swap cache in memory.
 sector_size	number	The size of a swap sector in bytes.
-swap_fragment	number	The fragment of all objects to swap out each
-			second (e.g. with a swap_fragment of 32, 1/32th
-			of all objects will be swapped out each second).
+swap_fragment	number	The fragment of all objects to swap out at the end of
+			each thread (e.g. with a swap_fragment of 32, 1/32th
+			of all objects will be swapped out).
 static_chunk	number	The size in bytes of a static or dynamic chunk
 dynamic_chunk	number	of memory.  Memory is divided into static memory
 			and dynamic memory; static memory is never freed.

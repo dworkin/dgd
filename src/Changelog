@@ -1284,3 +1284,6 @@ DGD 1.1
  - Fix a bug in calling LPC code from the string parser.
  - parse_string() traversed alternatives even when it didn't have to.
  - String case labels with embedded NUL characters were not compared properly.
+ - Fixed a tricky bug in swapping out mappings with object indices that have
+   been destructed and replaced by a new version with the same object index,
+   that had eluded me for a long time.
