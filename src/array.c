@@ -2307,7 +2307,7 @@ register object *obj;
     a->prev = &data->alist;
     a->next = data->alist.next;
     a->next->prev = a;
-    data->alist.prev = a;
+    data->alist.next = a;
     return a;
 }
 

@@ -58,6 +58,7 @@ kfun.  Note that at present, the extension interface does not define a way to
 call an LPC function from a kfun.
 
     DGD_OBJECT_T DGD_FRAME_OBJECT(DGD_FRAME_T f);	/* current object */
+    DGD_LWOBJ_T  DGD_FRAME_LWOBJ(DGD_FRAME_T f);	/* possible LW object */
     DGD_OBJECT_T DGD_FRAME_PROGRAM(DGD_FRAME_T f);	/* current program */
     DGD_DATA_T   DGD_FRAME_DATASPACE(DGD_FRAME_T f);	/* current dataspace */
     DGD_VALUE_T  DGD_FRAME_ARG(DGD_FRAME_T f, int nargs, int n);/* argument n */
@@ -198,6 +199,7 @@ The types can be:
     DGD_TYPE_OBJECT
     DGD_TYPE_ARRAY
     DGD_TYPE_MAPPING
+    DGD_TYPE_LWOBJ
 
 Each type has its own set of macros.
 
@@ -214,7 +216,7 @@ To make a C double out of a sign, exponent and mantissa, use this expression:
 To convert in the other direction, use the following code:
 
 	sign = (Cfloatval < 0);
-	mantissa = ldexp(frexp(Cfloatval, &exponent), 37);
+	mantissa = ldexp(frexp(fabs(Cfloatval), &exponent), 37);
 	--exponent;
 
     void	DGD_FLOAT_GETVAL(DGD_VALUE_T val, DGD_FLOAT_T flt);
@@ -256,6 +258,15 @@ index-value pairs with DGD_MAPPING_ELTS().
     DGD_VALUE_T   DGD_MAPPING_INDEX(DGD_MAPPING_T map, DGD_VALUE_T index);
     void	  DGD_MAPPING_ASSIGN(DGD_DATASPACE_T data, DGD_MAPPING_T map,
 				     DGD_VALUE_T index, DGD_VALUE_T val);
+
+A light-weight object retrieved from an array or mapping element may be
+invalid.  Use DGD_LWOBJ_CHECKVAL() to check the validity of such a light-
+weight object.
+
+    DGD_LWOBJ_T DGD_LWOBJ_GETVAL(DGD_VALUE_T val);
+    void	DGD_LWOBJ_PUTVAL(DGD_VALUE_T val, DGD_LWOBJ_T obj);
+    bool	DGD_LWOBJ_CHECKVAL(DGD_LWOBJ_T obj);
+    DGD_LWOBJ_T DGD_LWOBJ_COPY(DGD_DATASPACE_T data, DGD_LWOBJ_T obj);
 
 
 6. Example
