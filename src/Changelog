@@ -1444,3 +1444,5 @@ DGD 1.3
  - Fixed a find_object() bug in atomic code.
  - Fixed a bug that caused swap sectors to be freed at the wrong moment during
    a restore.
+ - Inheriting an object both privately and non-privately could prevent
+   functions from being found.

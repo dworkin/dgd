@@ -403,7 +403,7 @@ oh *ohash;
 	    n = ctrl->ninherits;
 	    ctrl = ohash->obj->ctrl;
 	    while (--n != 0) {
-		if (o->index == inh->oindex) {
+		if (o->index == inh->oindex && !inh->priv) {
 		    if (ohash->priv == 0 && (*l)->ohash->priv != 0 &&
 			(ctrl->ninherits != 1 ||
 			 (ctrl->funcdefs[idx].class &
