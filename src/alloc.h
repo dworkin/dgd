@@ -1,12 +1,26 @@
-# define ALLOC(type, size) \
-		((type *) (alloc(sizeof(type) * (unsigned int) (size))))
 # ifdef DEBUG
-# define FREE(memory)		xfree((char *) (memory))
+
+# define ALLOC(type, size) \
+			((type *) (alloc(sizeof(type) * (unsigned int) (size),\
+					 __FILE__, __LINE__)))
+extern char *alloc	P((unsigned int, char*, int));
+
 # else
-# define FREE(memory)		free((char *) (memory))
+
+# define ALLOC(type, size) \
+			((type *) (alloc(sizeof(type) * (unsigned int) (size))))
+extern char *alloc	P((unsigned int));
+
 # endif
 
-extern char *alloc  P((unsigned int));
-# ifdef DEBUG
-extern void xfree   P((char *));
-# endif
+# define FREE(memory)	mfree((char *) (memory))
+
+extern void  minit	P((unsigned int, unsigned int));
+extern void  mfree	P((char*));
+extern void  mdynamic	P((void));
+extern void  mstatic	P((void));
+extern bool  mcheck	P((void));
+extern void  mpurge	P((void));
+extern void  mexpand	P((void));
+extern long  memsize	P((void));
+extern long  memused	P((void));
