@@ -1292,3 +1292,4 @@ DGD 1.1
  - Slightly better indexing of mapping with string.
  - Removed recursion limit on catch and rlimits.
  - Fixed a file descriptor leak in P_readdir() for Windows.
+ - Fixed a crash in the first uncaught error.  Whoops.

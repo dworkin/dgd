@@ -547,7 +547,7 @@ unsigned int mtime;
     if (ec_push(errhandler)) {
 	this_user = (object *) NULL;
 	endthread();
-	error((char *) NULL);		/* pass on error */
+	return;
     }
 
     if (nusers < maxusers) {
