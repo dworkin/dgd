@@ -1,0 +1,17 @@
+   Well, this is it.  I had wanted to fix a few more bugs, but decided to
+wait no longer.  Don't expect anything to work :)
+
+   The makefile in the src directory is set up to make a program called
+debug that I use to test the compiler and interpreter.  "debug foo" will
+chdir to the lpc subdirectory and attempt to load foo.c.  After that,
+you type the name of a function and it will be called -- hopefully.  I
+made two debug functions in the auto object that are always included,
+dump_object() to show statistics on the current object, and dump_function()
+to disassemble the function foo() in the current object.
+
+   Each subdirectory has a makefile geared to create an a.out program that
+can do some testing.  Look at comp/comp.c, lex/lex.c etc for details.  A
+warning: I never bother to do argument checking in test programs, and
+if you don't supply the currect ones you'll get a coredump.
+
+   Regards, Dworkin
