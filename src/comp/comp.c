@@ -430,9 +430,10 @@ int fd;
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
-void sw_init(file, total, cache, secsize)
+void sw_init(file, total, cache, secsize, interval)
 char *file;
 unsigned int total, cache, secsize;
+Uint interval;
 {
 }
 
@@ -522,7 +523,8 @@ sector sw_count()
  * NAME:	swap->copy()
  * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
  */
-bool sw_copy()
+bool sw_copy(time)
+Uint time;
 {
     return FALSE;
 }

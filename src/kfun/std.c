@@ -164,6 +164,33 @@ int nargs;
 
 
 # ifdef FUNCDEF
+FUNCDEF("call_touch", kf_call_touch, pt_call_touch)
+# else
+char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
+
+/*
+ * NAME:	kfun->call_touch()
+ * DESCRIPTION:	prepare to call a function when this object is next touched
+ */
+int kf_call_touch(register frame *f)
+{
+    object *obj;
+
+    if (f->sp->type == T_LWOBJECT) {
+	error("call_touch() on non-persistent object");
+    }
+    obj = OBJW(f->sp->oindex);
+    if (!O_HASDATA(obj)) {
+	error("call_touch() on uninitialized object");
+    }
+    obj->flags &= ~O_TOUCHED;
+    *f->sp = nil_value;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("this_object", kf_this_object, pt_this_object)
 # else
 char pt_this_object[] = { C_STATIC, T_OBJECT, 0 };

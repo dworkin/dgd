@@ -54,7 +54,10 @@ static void receive_message(string str)
     mixed *tls;
 
     tls = allocate(driver->query_tls_size());
-    buffer += str;
+    catch {
+	buffer += str;
+    } : error("Binary connection buffer overflow");
+
     while (this_object() &&
 	   (mode=query_mode()) != MODE_BLOCK && mode != MODE_DISCONNECT) {
 	if (mode != MODE_RAW) {

@@ -18,4 +18,5 @@ DESCRIPTION
 	completion of the current thread.
 
 SEE ALSO
+	kfun/clone_object, kfun/destruct_object, kfun/new_object,
 	kfun/object_name

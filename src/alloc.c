@@ -27,10 +27,10 @@ typedef struct _chunk_ {
 # ifdef DEBUG
 typedef struct _header_ {
     Uint size;			/* size of chunk */
-    int line;			/* line it was allocated from */
-    char *file;			/* file it was allocated from */
     struct _header_ *prev;	/* previous in list */
     struct _header_ *next;	/* next in list */
+    char *file;			/* file it was allocated from */
+    int line;			/* line it was allocated from */
 } header;
 # endif
 

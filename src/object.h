@@ -25,7 +25,7 @@ struct _object_ {
 # define O_MASTER		0x01
 # define O_AUTO			0x02
 # define O_DRIVER		0x04
-# define O_CREATED		0x08
+# define O_TOUCHED		0x08
 # define O_USER			0x10
 # define O_EDITOR		0x20
 # define O_COMPILED		0x40
@@ -41,6 +41,8 @@ struct _object_ {
 
 # define O_UPGRADING(o)		(((o)->cref & O_CLONE) > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != ((o)->cref & O_CLONE))
+# define O_HASDATA(o)		((o)->data != (dataspace *) NULL || \
+				 (o)->dfirst != SW_UNUSED)
 
 # define OACC_READ		0x00	/* read access */
 # define OACC_MODIFY		0x01	/* write access */

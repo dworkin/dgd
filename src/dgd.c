@@ -16,6 +16,7 @@ static Uint dcount;		/* driver object count */
 static sector fragment;		/* swap fragment parameter */
 static bool swap;		/* are objects to be swapped out? */
 static bool dump;		/* is the program to dump? */
+static bool rebuild;		/* rebuild swapfile? */
 bool intr;			/* received an interrupt? */
 static bool stop;		/* is the program to terminate? */
 
@@ -62,7 +63,7 @@ void swapout()
  */
 void dump_state()
 {
-    dump = TRUE;
+    dump = rebuild = TRUE;
 }
 
 /*
@@ -157,9 +158,8 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
-    bool swrebuild;
-    Uint timeout;
-    unsigned short mtime;
+    Uint rtime, timeout;
+    unsigned short rmtime, mtime;
 
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
@@ -168,7 +168,8 @@ char **argv;
 
     /* initialize */
     dindex = UINDEX_MAX;
-    swap = dump = intr = stop = FALSE;
+    swap = dump = rebuild = intr = stop = FALSE;
+    rtime = 0;
     if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
 	return 2;	/* initialization failed */
     }
@@ -177,30 +178,30 @@ char **argv;
 	/* interrupts */
 	if (intr) {
 	    intr = FALSE;
-	    if (ec_push((ec_ftn) errhandler)) {
-		endthread();
-	    } else {
+	    if (!ec_push((ec_ftn) errhandler)) {
 		call_driver_object(cframe, "interrupt", 0);
 		i_del_value(cframe->sp++);
 		ec_pop();
-		endthread();
 	    }
+	    endthread();
 	}
 
 	/* rebuild swapfile */
-	swrebuild = sw_copy();
+	if (rebuild) {
+	    timeout = co_time(&mtime);
+	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
+		rebuild = sw_copy(timeout);
+		if (rebuild) {
+		    rtime = timeout + 1;
+		    rmtime = mtime;
+		} else {
+		    rtime = 0;
+		}
+	    }
+	}
 
 	/* handle user input */
-	timeout = co_delay(&mtime);
-	if (swrebuild &&
-	    (mtime == 0xffff || timeout > 1 || (timeout == 1 && mtime != 0))) {
-	    /*
-	     * wait no longer than one second if the swapfile has to be
-	     * rebuilt
-	     */
-	    timeout = 1;
-	    mtime = 0;
-	}
+	timeout = co_delay(rtime, rmtime, &mtime);
 	comm_receive(cframe, timeout, mtime);
 
 	/* callouts */

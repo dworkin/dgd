@@ -343,7 +343,7 @@ unsigned short *mtime;
  * NAME:	call_out->time()
  * DESCRIPTION:	get the current (adjusted) time
  */
-static Uint co_time(mtime)
+Uint co_time(mtime)
 unsigned short *mtime;
 {
     Uint t;
@@ -738,11 +738,8 @@ frame *f;
 		       nargs)) {
 		/* function exists */
 		i_del_value(f->sp++);
-		str_del((f->sp++)->u.string);
-	    } else {
-		/* function doesn't exist */
-		str_del((f->sp++)->u.string);
 	    }
+	    str_del((f->sp++)->u.string);
 	    endthread();
 	}
 	ec_pop();
@@ -764,7 +761,9 @@ uindex *n1, *n2;
  * NAME:	call_out->delay()
  * DESCRIPTION:	return the time until the next timeout
  */
-Uint co_delay(mtime)
+Uint co_delay(rtime, rmtime, mtime)
+register Uint rtime;
+register unsigned short rmtime;
 unsigned short *mtime;
 {
     Uint t;
@@ -775,24 +774,29 @@ unsigned short *mtime;
 	*mtime = 0;
 	return 0;
     }
-    if (atimeout == 0) {
+    if ((atimeout | rtime) == 0) {
 	/* infinite */
 	*mtime = 0xffff;
 	return 0;
     }
+    if (rtime == 0 || rtime > atimeout ||
+	(rtime == atimeout && rmtime > amtime)) {
+	rtime = atimeout;
+	rmtime = amtime;
+    }
 
     t = co_time(&m);
-    if (t > atimeout || (t == atimeout && m >= amtime)) {
+    if (t > rtime || (t == rtime && m >= rmtime)) {
 	/* immediate */
 	*mtime = 0;
 	return 0;
     }
-    if (m > amtime) {
+    if (m > rmtime) {
 	m -= 1000;
 	t++;
     }
-    *mtime = amtime - m;
-    return atimeout - t;
+    *mtime = rmtime - m;
+    return rtime - t;
 }
 
 /*

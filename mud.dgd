@@ -12,6 +12,7 @@ swap_fragment	= 32;			/* fragment to swap out */
 static_chunk	= 64512;		/* static memory chunk */
 dynamic_chunk	= 261120;		/* dynamic memory chunk */
 dump_file	= "../dump";		/* dump file */
+dump_interval	= 3600;			/* dump interval in seconds */
 
 typechecking	= 2;			/* highest level of typechecking */
 include_file	= "/include/std.h";	/* standard include file */

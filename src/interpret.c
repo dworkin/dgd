@@ -2110,14 +2110,25 @@ int nargs;
 	if (obj->update != lwobj->elts[1].u.number) {
 	    d_upgrade_lwobj(lwobj, obj);
 	}
-    } else if (!(obj->flags & O_CREATED)) {
+    } else if (!(obj->flags & O_TOUCHED)) {
 	/*
-	 * initialize the object
+	 * initialize/touch the object
 	 */
-	obj->flags |= O_CREATED;
-	if (func != (char *) NULL &&
-	    i_call(f, obj, (array *) NULL, creator, clen, TRUE, 0)) {
+	obj->flags |= O_TOUCHED;
+	if (O_HASDATA(obj)) {
+	    PUSH_OBJVAL(f, obj);
+	    PUSH_STRVAL(f, str_new(func, len));
+	    call_driver_object(f, "touch", 2);
+	    if (VAL_TRUE(f->sp)) {
+		obj->flags &= ~O_TOUCHED;	/* preserve though call */
+	    }
 	    i_del_value(f->sp++);
+	} else {
+	    obj->data = d_new_dataspace(obj);
+	    if (func != (char *) NULL &&
+		i_call(f, obj, (array *) NULL, creator, clen, TRUE, 0)) {
+		i_del_value(f->sp++);
+	    }
 	}
     }
     if (func == (char *) NULL) {

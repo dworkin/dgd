@@ -140,7 +140,8 @@ register array *arr;
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static user *comm_new(obj, conn, telnet)
+static user *comm_new(f, obj, conn, telnet)
+frame *f;
 object *obj;
 connection *conn;
 bool telnet;
@@ -154,6 +155,11 @@ bool telnet;
 
     if (obj->flags & O_SPECIAL) {
 	error("User object is already special purpose");
+    }
+    /* initialize dataspace before the object receives the user role */
+    if (!O_HASDATA(obj) &&
+	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+	i_del_value(f->sp++);
     }
 
     usr = freeuser;
@@ -689,7 +695,7 @@ unsigned int mtime;
 		}
 		obj = OBJ(f->sp->oindex);
 		f->sp++;
-		usr = comm_new(obj, conn, TRUE);
+		usr = comm_new(f, obj, conn, TRUE);
 		ec_pop();
 		endthread();
 
@@ -739,7 +745,7 @@ unsigned int mtime;
 		}
 		obj = OBJ(f->sp->oindex);
 		f->sp++;
-		usr = comm_new(obj, conn, FALSE);
+		usr = comm_new(f, obj, conn, FALSE);
 		ec_pop();
 		endthread();
 

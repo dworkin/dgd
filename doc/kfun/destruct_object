@@ -19,4 +19,4 @@ ERRORS
 	notably, call_other() may not be used from destructed objects.
 
 SEE ALSO
-	kfun/call_other, kfun/clone_object
+	kfun/clone_object, kfun/compile_object

@@ -267,7 +267,7 @@ int rsrc_incr(string owner, string name, mixed index, int incr,
     if (KERNEL()) {
 	object obj;
 
-	if (name == "callouts" && nocallouts) {
+	if (previous_program() == AUTO && name == "callouts" && nocallouts) {
 	    return TRUE;
 	}
 	if (!(obj=owners[owner])) {

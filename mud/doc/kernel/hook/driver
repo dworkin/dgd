@@ -67,6 +67,13 @@ void set_object_manager(object objectd)	[System only]
 	The file `path' (which might not exist) is about to be included by
 	`from'.
 
+    * int touch(object obj, string function)
+
+	An object which has been marked by call_touch() is about to have the
+	given function called in it.  A non-zero return value indicates that the
+	object's "untouched" status should be preserved through the following
+	call.
+
     * int forbid_call(string path)
 
 	Return a non-zero value if `path' is not a legal first argument

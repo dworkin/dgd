@@ -1549,3 +1549,7 @@ DGD 1.3
  - Allow more than array_size callouts per object, for compatibility with
    DGD/MP.
  - Fixed a bug that could cause a crash during the atomic commit phase.
+ - Added a version string to the start of the state dump.
+ - New config file parameter: dump_interval, the expected time between two
+   statedumps.  Rebuilding the swapfile is paced to this interval.
+ - New kfun: call_touch().

@@ -45,6 +45,13 @@ driver, mostly to translate pathnames.
 	Get the object named by objname as the first argument of a call_other().
 	compile_object() may be called from here.
 
+    int touch(object obj, string function)
+
+	Called just before a function is called in an object which has been
+	marked by call_touch().  A non-zero return value indicates that the
+	object's "untouched" status should be preserved through the following
+	call.
+
     object inherit_program(string file, string program, int priv)
 
 	Get the object named by program as an object to inherit.  The third
@@ -210,6 +217,9 @@ dynamic_chunk	number	of memory.  Memory is divided into static memory
 			make more room for static memory, but will also
 			increase fragmentation.
 dump_file	string	The name of the state dump file.
+dump_interval	number	The expected interval between state dumps, in seconds.
+			Effectively, the time during which the swapfile will be
+			fully recreated.
 typechecking	number	If zero, only functions with a declared type are
 			typechecked.
 			If one, all LPC functions are typechecked.

@@ -30,15 +30,19 @@ static sector nsectors;			/* total swap sectors */
 static sector nfree;			/* # free sectors */
 static sector ssectors;			/* sectors actually in swap file */
 static sector dsectors, dcursec;	/* dump sectors */
+static sector dchunksz;			/* number of dump sectors in copy */
+static Uint dinterval;			/* dump file rebuild interval */
+static Uint dtime;			/* time the rebuild started */
 
 /*
  * NAME:	swap->init()
  * DESCRIPTION:	initialize the swap device
  */
-void sw_init(file, total, cache, secsize)
+void sw_init(file, total, cache, secsize, interval)
 char *file;
 register unsigned int total, cache;
 unsigned int secsize;
+Uint interval;
 {
     register header *h;
     register sector i;
@@ -48,6 +52,10 @@ unsigned int secsize;
     swapsize = total;
     cachesize = cache;
     sectorsize = secsize;
+    dinterval = (interval * 95) / 100;
+    if (dinterval == 0) {
+	dinterval = 1;
+    }
     slotsize = sizeof(header) + secsize;
     mem = ALLOC(char, slotsize * cache);
     map = ALLOC(sector, total);
@@ -535,13 +543,32 @@ sector sw_count()
  * NAME:	swap->copy()
  * DESCRIPTION:	copy sectors from dumpfile to swapfile
  */
-bool sw_copy()
+bool sw_copy(time)
+Uint time;
 {
     if (dump >= 0) {
 	if (dsectors > 0) {
 	    register sector n;
 
-	    n = SWAPCHUNKSZ;
+	    if (dtime == 0) {
+		/* first copy for this dumpfile */
+		dtime = time;
+		n = dchunksz;
+	    } else {
+		/* try to make up for lost time, if necessary */
+		time -= dtime;
+		if (time >= dinterval) {
+		    n = dsectors;
+		} else if ((n=dchunksz * (dinterval - time)) < dsectors) {
+		    n = dsectors - n;
+		    if (n < dchunksz) {
+			n = dchunksz;
+		    }
+		} else {
+		    n = dchunksz;
+		}
+	    }
+
 	    if (n > dsectors) {
 		n = dsectors;
 	    }
@@ -685,6 +712,16 @@ char *dumpfile;
 	fatal("cannot write sector map to dump file");
     }
 
+    /* determine copy chunk size */
+    dtime = 0;
+    if (dinterval == 0) {
+	dchunksz = SWAPCHUNKSZ;
+    } else {
+	dchunksz = (nsectors + dinterval - 1) / dinterval;
+	if (dchunksz == 0) {
+	    dchunksz = 1;
+	}
+    }
 
     if (swap < 0) {
 	/*

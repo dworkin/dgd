@@ -471,7 +471,7 @@ static object new_object(mixed obj, varargs string uid)
 	uid = owner;
     }
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
 
@@ -638,9 +638,10 @@ static object *users()
  */
 static void swapout()
 {
-    if (creator == "System" && this_object()) {
-	::swapout();
+    if (creator != "System") {
+	error("Permission denied");
     }
+    ::swapout();
 }
 
 /*
@@ -649,11 +650,12 @@ static void swapout()
  */
 static void dump_state()
 {
-    if (creator == "System" && this_object()) {
-	rlimits (-1; -1) {
-	    ::find_object(DRIVER)->prepare_reboot();
-	    ::dump_state();
-	}
+    if (creator != "System" || !this_object()) {
+	error("Permission denied");
+    }
+    rlimits (-1; -1) {
+	::find_object(DRIVER)->prepare_reboot();
+	::dump_state();
     }
 }
 
@@ -663,10 +665,25 @@ static void dump_state()
  */
 static void shutdown()
 {
-    if (creator == "System" && this_object()) {
+    if (creator != "System" || !this_object()) {
+	error("Permission denied");
+    }
+    rlimits (-1; -1) {
 	::find_object(DRIVER)->message("System halted.\n");
 	::shutdown();
     }
+}
+
+/*
+ * NAME:	call_touch()
+ * DESCRIPTION:	arrange to be warned when a function is called in an object
+ */
+static void call_touch(object obj)
+{
+    if (creator != "System") {
+	error("Permission denied");
+    }
+    ::call_touch(obj);
 }
 
 
@@ -674,37 +691,35 @@ static void shutdown()
  * NAME:	_F_call_limited()
  * DESCRIPTION:	call a function with limited stack depth and ticks
  */
-nomask mixed _F_call_limited(mixed arg1, mixed *args)
+private mixed _F_call_limited(mixed arg1, mixed *args)
 {
-    if (previous_program() == AUTO) {
-	object rsrcd;
-	int stack, ticks;
-	string function;
-	mixed tls, *limits, result;
+    object rsrcd;
+    int stack, ticks;
+    string function;
+    mixed tls, *limits, result;
 
-	rsrcd = ::find_object(RSRCD);
-	function = arg1;
-	stack = ::status()[ST_STACKDEPTH];
+    rsrcd = ::find_object(RSRCD);
+    function = arg1;
+    stack = ::status()[ST_STACKDEPTH];
+    ticks = ::status()[ST_TICKS];
+    rlimits (-1; -1) {
+	tls = ::call_trace()[1][TRACE_FIRSTARG];
+	if (tls == arg1) {
+	    tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
+	}
+	limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
+    }
+
+    rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
+	result = call_other(this_object(), function, args...);
+
 	ticks = ::status()[ST_TICKS];
 	rlimits (-1; -1) {
-	    tls = ::call_trace()[1][TRACE_FIRSTARG];
-	    if (tls == arg1) {
-		tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
-	    }
-	    limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
+	    rsrcd->update_ticks(limits, ticks);
+	    tls[0] = limits[LIM_NEXT];
+
+	    return result;
 	}
-
-	rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
-	    result = call_other(this_object(), function, args...);
-
-	    ticks = ::status()[ST_TICKS];
-	    rlimits (-1; -1) {
-		rsrcd->update_ticks(limits, ticks);
-		tls[0] = limits[LIM_NEXT];
-	    }
-	}
-
-	return result;
     }
 }
 
@@ -715,6 +730,12 @@ nomask mixed _F_call_limited(mixed arg1, mixed *args)
 static mixed call_limited(string function, mixed args...)
 {
     CHECKARG(function, 1, "call_limited");
+    if (!this_object()) {
+	return nil;
+    }
+    CHECKARG(function_object(function, this_object()) != AUTO ||
+							 function == "create",
+	     1, "call_limited");
 
     return _F_call_limited(function, args);
 }
@@ -733,7 +754,9 @@ static int call_out(string function, mixed delay, mixed args...)
     if (!this_object()) {
 	return 0;
     }
-    CHECKARG(function_object(function, this_object()) != AUTO, 1, "call_out");
+    CHECKARG(function_object(function, this_object()) != AUTO ||
+							 function == "create",
+	     1, "call_out");
     if (!next) {
 	error("Callout in non-persistent object");
     }
@@ -1469,7 +1492,7 @@ static string editor(varargs string cmd)
     mixed *info;
 
     if (creator != "System" || !this_object() || !next) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     catch {

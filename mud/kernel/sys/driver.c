@@ -7,15 +7,15 @@
 # include <status.h>
 # include <trace.h>
 
-static object rsrcd;		/* resource manager object */
-static object accessd;		/* access manager object */
-static object userd;		/* user manager object */
-static object initd;		/* init manager object */
-static object objectd;		/* object manager object */
-static object errord;		/* error manager object */
-static int tls_size;		/* thread local storage size */
-static string compiled;		/* object currently being compiled */
-static string *inherited;	/* list of inherited objects */
+object rsrcd;		/* resource manager object */
+object accessd;		/* access manager object */
+object userd;		/* user manager object */
+object initd;		/* init manager object */
+object objectd;		/* object manager object */
+object errord;		/* error manager object */
+int tls_size;		/* thread local storage size */
+string compiled;	/* object currently being compiled */
+string *inherited;	/* list of inherited objects */
 
 /*
  * NAME:	creator()
@@ -549,6 +549,40 @@ static object call_object(string path)
 	error("Illegal use of call_other");
     }
     return find_object(path);
+}
+
+/*
+ * NAME:	_touch()
+ * DESCRIPTION:	touch an object that has been flagged with call_touch()
+ */
+private mixed _touch(mixed *tls, object obj, string function)
+{
+    if (KERNEL()) {
+	string prog;
+
+	prog = function_object(function, obj);
+	if (prog && sscanf(prog, "/kernel/%*s") != 0 &&
+	    status()[ST_STACKDEPTH] < 0) {
+	    /* protected kernel-to-kernel calls leave the object "untouched" */
+	    return TRUE;
+	}
+    }
+
+    return (objectd) ? objectd->touch(obj, function) : FALSE;
+}
+
+/*
+ * NAME:	touch()
+ * DESCRIPTION:	wrapper for _touch()
+ */
+static mixed touch(object obj, string function)
+{
+    mixed *tls;
+
+    if (!previous_object()) {
+	tls = allocate(tls_size);
+    }
+    return _touch(tls, obj, function);
 }
 
 /*

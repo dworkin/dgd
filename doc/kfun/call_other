@@ -27,4 +27,4 @@ ERRORS
 	result in an error but returns the value nil.
 
 SEE ALSO
-	kfun/clone_object, kfun/destruct_object, kfun/function_object
+	kfun/call_touch, kfun/function_object

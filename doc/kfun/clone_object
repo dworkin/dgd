@@ -11,11 +11,5 @@ DESCRIPTION
 	new object is returned.  The creator function will be called in the
 	cloned object immediately.
 
-ERRORS
-	If the number of existing objects is equal to the value of the
-	ST_OTABSIZE field of the array returned by status(), where ST_OTABSIZE
-	is defined in the include file <status.h>, attempting to clone a new
-	object will crash the system.
-
 SEE ALSO
-	kfun/call_other, kfun/destruct_object, kfun/new_object
+	kfun/compile_object, kfun/destruct_object, kfun/new_object

@@ -55,43 +55,45 @@ static config conf[] = {
 				{ "driver_object",	STRING_CONST, TRUE },
 # define DUMP_FILE	8
 				{ "dump_file",		STRING_CONST },
-# define DYNAMIC_CHUNK	9
+# define DUMP_INTERVAL	9
+				{ "dump_interval",	INT_CONST },
+# define DYNAMIC_CHUNK	10
 				{ "dynamic_chunk",	INT_CONST },
-# define ED_TMPFILE	10
+# define ED_TMPFILE	11
 				{ "ed_tmpfile",		STRING_CONST },
-# define EDITORS	11
+# define EDITORS	12
 				{ "editors",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
-# define INCLUDE_DIRS	12
+# define INCLUDE_DIRS	13
 				{ "include_dirs",	'(' },
-# define INCLUDE_FILE	13
+# define INCLUDE_FILE	14
 				{ "include_file",	STRING_CONST, TRUE },
-# define OBJECTS	14
+# define OBJECTS	15
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define SECTOR_SIZE	15
+# define SECTOR_SIZE	16
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 8192 },
-# define STATIC_CHUNK	16
+# define STATIC_CHUNK	17
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	17
+# define SWAP_FILE	18
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	18
+# define SWAP_FRAGMENT	19
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	19
+# define SWAP_SIZE	20
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	20
+# define TELNET_PORT	21
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	21
+# define TYPECHECKING	22
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		22
+# define USERS		23
 				{ "users",		INT_CONST, FALSE, FALSE,
 							1, EINDEX_MAX },
-# define NR_OPTIONS	23
+# define NR_OPTIONS	24
 };
 
 
@@ -101,7 +103,7 @@ typedef struct { char fill; Int i;	} aligni;
 typedef struct { char fill; char *p;	} alignp;
 typedef struct { char c;		} alignz;
 
-typedef char dumpinfo[28];
+typedef char dumpinfo[50];
 
 # define FORMAT_VERSION	3
 
@@ -113,6 +115,8 @@ typedef char dumpinfo[28];
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_STARTTIME	20	/* start time */
 # define DUMP_ELAPSED	24	/* elapsed time */
+# define DUMP_HEADERSZ	28	/* header size */
+# define DUMP_VSTRING	29	/* version string */
 
 static dumpinfo header;		/* dumpfile header */
 # define s0	(header[ 6])	/* short, msb */
@@ -179,6 +183,7 @@ static void conf_dumpinit()
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
     header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
+    strcpy(header + DUMP_VSTRING, VERSION);
 
     starttime = boottime = P_time();
 
@@ -258,7 +263,7 @@ int fd;
     unsigned int secsize;
     long posn;
 
-    if (P_read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo)) {
+    if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ) {
 	error("Bad or incompatible restore file header");
     }
     if (rheader[DUMP_VERSION] == 2) {
@@ -1147,7 +1152,8 @@ sector *fragment;
     sw_init(conf[SWAP_FILE].u.str,
 	    (sector) conf[SWAP_SIZE].u.num,
 	    (sector) conf[CACHE_SIZE].u.num,
-	    (unsigned int) conf[SECTOR_SIZE].u.num);
+	    (unsigned int) conf[SECTOR_SIZE].u.num,
+	    (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swapped data handler */
     d_init(conf[TYPECHECKING].u.num == 2);
@@ -1517,15 +1523,14 @@ register value *v;
 	break;
 
     case 3:	/* O_NSECTORS */
-	PUT_INTVAL(v, (obj->flags & O_CREATED) ?
-		       o_dataspace(obj)->nsectors : 0);
+	PUT_INTVAL(v, (O_HASDATA(obj)) ?  o_dataspace(obj)->nsectors : 0);
 	if (obj->flags & O_MASTER) {
 	    v->u.number += ctrl->nsectors;
 	}
 	break;
 
     case 4:	/* O_CALLOUTS */
-	PUT_ARRVAL(v, (obj->flags & O_CREATED) ?
+	PUT_ARRVAL(v, (O_HASDATA(obj)) ?
 		       d_list_callouts(data, o_dataspace(obj)) :
 		       arr_new(data, 0L));
 	break;

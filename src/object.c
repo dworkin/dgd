@@ -623,8 +623,6 @@ register object *master;
     o->count = ++oplane->ocount;
     o->update = master->update;
     o->u_master = master->index;
-    o->ctrl = (control *) NULL;
-    o->data = d_new_dataspace(o);	/* clones always have a dataspace */
 
     /* add reference to master object */
     master->cref++;
@@ -923,13 +921,8 @@ dataspace *o_dataspace(o)
 register object *o;
 {
     if (o->data == (dataspace *) NULL) {
-	if (o->dfirst == SW_UNUSED) {
-	    /* create new dataspace block */
-	    o->data = d_new_dataspace(o);
-	} else {
-	    /* load dataspace block */
-	    o->data = d_load_dataspace(o);
-	}
+	/* load dataspace block */
+	o->data = d_load_dataspace(o);
     } else {
 	d_ref_dataspace(o->data);
     }
@@ -1067,8 +1060,7 @@ void o_clean()
 	    up->flags &= ~O_COMPILED;
 	    up->cref -= 2;
 	    o->u_ref = up->cref;
-	    if (up->count != 0 &&
-		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED)) {
+	    if (up->count != 0 && O_HASDATA(up)) {
 		o->u_ref++;
 	    }
 	    ctrl = up->ctrl;
@@ -1083,8 +1075,7 @@ void o_clean()
 		}
 
 		up->update++;
-		if (up->count != 0 && up->data == (dataspace *) NULL &&
-		    up->dfirst != SW_UNUSED) {
+		if (up->count != 0 && O_HASDATA(up)) {
 		    /* load dataspace (with old control block) */
 		    up->data = d_load_dataspace(up);
 		}
