@@ -1995,8 +1995,6 @@ value *retval;
 		p->prev->strings = p->strings;
 	    }
 	}
-
-	data->plane = p->prev;
     }
     commit_values(retval, 1, level - 1);
 
@@ -2008,6 +2006,7 @@ value *retval;
 	p->prev->schange = p->schange;
 	p->prev->achange = p->achange;
 	p->prev->imports = p->imports;
+	p->alocal.data->plane = p->prev;
 	plist = p->plist;
 	FREE(p);
     }
@@ -2455,7 +2454,7 @@ int nargs;
  */
 Int d_del_call_out(data, handle)
 dataspace *data;
-unsigned int handle;
+Uint handle;
 {
     register dcallout *co;
     Int t;
@@ -2479,7 +2478,7 @@ unsigned int handle;
 	/*
 	 * remove normal callout
 	 */
-	co_del(data->oindex, handle, co->time);
+	co_del(data->oindex, (uindex) handle, co->time);
     } else {
 	register dataplane *plane;
 	register copatch **c, *cop;
@@ -2499,7 +2498,7 @@ unsigned int handle;
 	    cop = *c;
 	    if (cop == (copatch *) NULL || cop->plane != plane) {
 		/* delete new */
-		cop_new(plane, cc, COP_REMOVE, handle, co, (Uint) 0, 0,
+		cop_new(plane, cc, COP_REMOVE, (uindex) handle, co, (Uint) 0, 0,
 			(cbuf *) NULL);
 		break;
 	    }
@@ -2515,7 +2514,7 @@ unsigned int handle;
 	    c = &cop->next;
 	}
     }
-    d_free_call_out(data, handle);
+    d_free_call_out(data, (uindex) handle);
 
     return t;
 }
@@ -4374,7 +4373,7 @@ register dataspace *data;
     }
 
     if (data->ncallouts != 0) {
-	register uindex n;
+	register Uint n;
 	register dcallout *co;
 
 	/*

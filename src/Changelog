@@ -1491,3 +1491,17 @@ DGD 1.2p3
  - Fixed a bug with catch and atomic in precompiled code.
  - Fixed a recursion problem for an error in runtime_error().
  - Better fix for the callout pause problem.
+
+DGD 1.2p4
+
+ - Fixed a bug with deleting mapping elements in atomic code.
+ - Allow allocation of blocks up to 1G in size.
+ - Fixed a bug that could cause a crash during the atomic commit phase.
+ - While restoring a callout, not all appropriate fields were zeroed.
+ - Some fixes to get restarting to work.
+ - Make sure that a callout handle is not truncated to 16 bits before an
+   attempt is made to remove it.
+ - Made sure that destructing the driver object in atomic code does not lead
+   to trouble.
+ - Fixed a problem with driver->recompile() in multi-level atomic code.
+ - Input blocking for binary connections didn't work.

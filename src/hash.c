@@ -102,7 +102,7 @@ int move;
 {
     register hte **first, **e, *next;
 
-    first = e = &(ht->table[hashstr(name, ht->maxlen) & (ht->size - 1)]);
+    first = e = &(ht->table[hashstr(name, ht->maxlen) % ht->size]);
     while (*e != (hte *) NULL) {
 	if (strcmp((*e)->name, name) == 0) {
 	    if (move && e != first) {

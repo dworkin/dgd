@@ -7,7 +7,7 @@ typedef struct _hte_ {
 } hte;
 
 typedef struct {
-    unsigned short size;	/* size of hash table (power of two) */
+    Uint size;			/* size of hash table (power of two) */
     unsigned short maxlen;	/* max length of string to be used in hashing */
     hte *table[1];		/* hash table entries */
 } hashtab;

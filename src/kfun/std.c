@@ -947,7 +947,7 @@ register frame *f;
     xfloat flt;
 
     i_add_ticks(f, 10);
-    delay = d_del_call_out(f->data, (uindex) f->sp->u.number);
+    delay = d_del_call_out(f->data, (Uint) f->sp->u.number);
     if (delay < -1) {
 	flt_itof(-2 - delay, &flt);
 	flt_mult(&flt, &thousandth);

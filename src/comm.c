@@ -456,19 +456,17 @@ int block;
     register value *v;
 
     usr = &users[EINDEX(obj->etabi)];
-    if (usr->flags & CF_TELNET) {
-	arr = d_get_extravar(data = obj->data)->u.array;
-	v = d_get_elts(arr);
-	if (block != (v->u.number & CF_BLOCKED) >> 5) {
-	    value val;
+    arr = d_get_extravar(data = obj->data)->u.array;
+    v = d_get_elts(arr);
+    if (block != (v->u.number & CF_BLOCKED) >> 5) {
+	value val;
 
-	    if (!(usr->flags & CF_FLUSH)) {
-		addtoflush(usr, arr);
-	    }
-	    val = *v;
-	    val.u.number ^= CF_BLOCKED;
-	    d_assign_elt(data, arr, v, &val);
+	if (!(usr->flags & CF_FLUSH)) {
+	    addtoflush(usr, arr);
 	}
+	val = *v;
+	val.u.number ^= CF_BLOCKED;
+	d_assign_elt(data, arr, v, &val);
     }
 }
 

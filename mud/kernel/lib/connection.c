@@ -122,10 +122,8 @@ static void open(mixed *tls)
 	return;
     }
 
-    if (!user) {
-	if (timeout != 0) {
-	    call_out("timeout", timeout);
-	}
+    if (!user && timeout != 0) {
+	call_out("timeout", timeout);
     }
 # ifdef SYS_NETWORKING
     else {
@@ -169,7 +167,7 @@ void disconnect()
  */
 void reboot()
 {
-    if (previous_object() == userd) {
+    if (previous_object() == userd || SYSTEM()) {
 	if (user) {
 	    catch {
 		user->logout(FALSE);

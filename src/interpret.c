@@ -2027,6 +2027,7 @@ int nargs;
 	/*
 	 * initialize the object
 	 */
+	obj = OBJW(obj->index);
 	obj->flags |= O_CREATED;
 	if (i_call(f, obj, creator, clen, TRUE, 0)) {
 	    i_del_value(f->sp++);

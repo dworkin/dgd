@@ -273,11 +273,11 @@ static object compile_object(string path)
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     /*
-     * check permission; compiling requires access
+     * check access
      */
     oname = object_name(this_object());
     driver = ::find_object(DRIVER);
@@ -358,11 +358,11 @@ static object clone_object(string path, varargs string uid)
 	uid = owner;
     }
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     /*
-     * check permissions
+     * check access
      */
     oname = object_name(this_object());
     path = ::find_object(DRIVER)->normalize_path(path, oname + "/..", creator);
@@ -397,6 +397,9 @@ static object clone_object(string path, varargs string uid)
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("Too many objects");
 	}
+    }
+    if (::status()[ST_NOBJECTS] == ::status()[ST_OTABSIZE]) {
+	error("Too many objects");
     }
 
     /*
@@ -549,9 +552,10 @@ static object *users()
  */
 static void swapout()
 {
-    if (creator == "System" && this_object()) {
-	::swapout();
+    if (creator != "System") {
+	error("Permission denied");
     }
+    ::swapout();
 }
 
 /*
@@ -560,11 +564,12 @@ static void swapout()
  */
 static void dump_state()
 {
-    if (creator == "System" && this_object()) {
-	rlimits (-1; -1) {
-	    ::find_object(DRIVER)->prepare_reboot();
-	    ::dump_state();
-	}
+    if (creator != "System" || !this_object()) {
+	error("Permission denied");
+    }
+    rlimits (-1; -1) {
+	::find_object(DRIVER)->prepare_reboot();
+	::dump_state();
     }
 }
 
@@ -574,7 +579,10 @@ static void dump_state()
  */
 static void shutdown()
 {
-    if (creator == "System" && this_object()) {
+    if (creator != "System" || !this_object()) {
+	error("Permission denied");
+    }
+    rlimits (-1; -1) {
 	::find_object(DRIVER)->message("System halted.\n");
 	::shutdown();
     }
@@ -585,37 +593,35 @@ static void shutdown()
  * NAME:	_F_call_limited()
  * DESCRIPTION:	call a function with limited stack depth and ticks
  */
-nomask mixed _F_call_limited(mixed arg1, mixed *args)
+private mixed _F_call_limited(mixed arg1, mixed *args)
 {
-    if (previous_program() == AUTO) {
-	object rsrcd;
-	int stack, ticks;
-	string function;
-	mixed tls, *limits, result;
+    object rsrcd;
+    int stack, ticks;
+    string function;
+    mixed tls, *limits, result;
 
-	rsrcd = ::find_object(RSRCD);
-	function = arg1;
-	stack = ::status()[ST_STACKDEPTH];
+    rsrcd = ::find_object(RSRCD);
+    function = arg1;
+    stack = ::status()[ST_STACKDEPTH];
+    ticks = ::status()[ST_TICKS];
+    rlimits (-1; -1) {
+	tls = ::call_trace()[1][TRACE_FIRSTARG];
+	if (tls == arg1) {
+	    tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
+	}
+	limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
+    }
+
+    rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
+	result = call_other(this_object(), function, args...);
+
 	ticks = ::status()[ST_TICKS];
 	rlimits (-1; -1) {
-	    tls = ::call_trace()[1][TRACE_FIRSTARG];
-	    if (tls == arg1) {
-		tls = arg1 = allocate(::find_object(DRIVER)->query_tls_size());
-	    }
-	    limits = tls[0] = rsrcd->call_limits(tls[0], owner, stack, ticks);
+	    rsrcd->update_ticks(limits, ticks);
+	    tls[0] = limits[LIM_NEXT];
+
+	    return result;
 	}
-
-	rlimits (limits[LIM_MAXSTACK]; limits[LIM_MAXTICKS]) {
-	    result = call_other(this_object(), function, args...);
-
-	    ticks = ::status()[ST_TICKS];
-	    rlimits (-1; -1) {
-		rsrcd->update_ticks(limits, ticks);
-		tls[0] = limits[LIM_NEXT];
-	    }
-	}
-
-	return result;
     }
 }
 
@@ -626,6 +632,12 @@ nomask mixed _F_call_limited(mixed arg1, mixed *args)
 static mixed call_limited(string function, mixed args...)
 {
     CHECKARG(function, 1, "call_limited");
+    if (!this_object()) {
+	return nil;
+    }
+    CHECKARG(function_object(function, this_object()) != AUTO ||
+							 function == "create",
+	     1, "call_limited");
 
     return _F_call_limited(function, args);
 }
@@ -640,7 +652,10 @@ static int call_out(string function, mixed delay, mixed args...)
 
     CHECKARG(function, 1, "call_out");
     handle = typeof(delay);
-    CHECKARG(handle == T_INT || handle == T_FLOAT, 2, "call_out");
+    CHECKARG(function_object(function, this_object()) != AUTO ||
+							 function == "create",
+	     1, "call_out");
+
     if (!this_object()) {
 	return 0;
     }
@@ -864,7 +879,7 @@ static object *query_subscribed_event(string name)
     sz = sizeof(objlist);
     objlist -= ({ nil });
     if (sz != sizeof(objlist)) {
-	events[name] = objlist;
+	events[name] = objlist[..];
     }
     return objlist;
 }
@@ -939,7 +954,7 @@ static void event_except(string name, object *exclude, mixed args...)
     sz = sizeof(objlist);
     objlist -= ({ nil });
     if (sz != sizeof(objlist)) {
-	events[name] = objlist;
+	events[name] = objlist[..];
     }
     for (i = 0, sz = sizeof(objlist -= exclude); i < sz; i++) {
 	objlist[i]->_F_start_event(name, args);
@@ -957,7 +972,7 @@ static string read_file(string path, varargs int offset, int size)
 
     CHECKARG(path, 1, "read_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -983,7 +998,7 @@ static int write_file(string path, string str, varargs int offset)
     CHECKARG(path, 1, "write_file");
     CHECKARG(str, 2, "write_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1029,7 +1044,7 @@ static int remove_file(string path)
 
     CHECKARG(path, 1, "remove_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1068,7 +1083,7 @@ static int rename_file(string from, string to)
     CHECKARG(from, 1, "rename_file");
     CHECKARG(to, 2, "rename_file");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1120,7 +1135,7 @@ static mixed **get_dir(string path)
 
     CHECKARG(path, 1, "get_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1172,7 +1187,7 @@ static mixed *file_info(string path)
 
     CHECKARG(path, 1, "file_info");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     name = object_name(this_object());
@@ -1223,7 +1238,7 @@ static int make_dir(string path)
 
     CHECKARG(path, 1, "make_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1267,7 +1282,7 @@ static int remove_dir(string path)
 
     CHECKARG(path, 1, "remove_dir");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1302,7 +1317,7 @@ static int restore_object(string path)
 
     CHECKARG(path, 1, "restore_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1327,7 +1342,7 @@ static void save_object(string path)
 
     CHECKARG(path, 1, "save_object");
     if (!this_object()) {
-	error("Access denied");
+	error("Permission denied");
     }
 
     oname = object_name(this_object());
@@ -1377,9 +1392,11 @@ static string editor(varargs string cmd)
     catch {
 	rlimits (-1; -1) {
 	    rsrcd = ::find_object(RSRCD);
-	    if (!query_editor(this_object()) &&
-		!rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
-		error("Too many editors");
+	    if (!query_editor(this_object())) {
+		if (!rsrcd->rsrc_incr(owner, "editors", this_object(), 1)) {
+		    error("Too many editors");
+		}
+		::find_object(OBJREGD)->add_editor(this_object());
 	    }
 	    driver = ::find_object(DRIVER);
 
@@ -1388,6 +1405,7 @@ static string editor(varargs string cmd)
 
 	    if (!query_editor(this_object())) {
 		rsrcd->rsrc_incr(owner, "editors", this_object(), -1);
+		::find_object(OBJREGD)->remove_editor(this_object());
 	    }
 	    if (info) {
 		rsrcd->rsrc_incr(driver->creator(info[0]), "filequota", nil,

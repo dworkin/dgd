@@ -468,7 +468,7 @@ static void initialize()
  */
 void prepare_reboot()
 {
-    if (KERNEL()) {
+    if (previous_program() == AUTO) {
 	if (initd) {
 	    initd->prepare_reboot();
 	}
@@ -793,7 +793,8 @@ static void runtime_error(string str, int caught, int ticks)
 
 	limits = tls[0];
 	while (--i >= caught) {
-	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited") {
+	    if (trace[i][TRACE_FUNCTION] == "_F_call_limited" &&
+		trace[i][TRACE_PROGNAME] == AUTO) {
 		ticks = rsrcd->update_ticks(limits, ticks);
 		if (ticks < 0) {
 		    break;
@@ -965,7 +966,7 @@ static int runtime_rlimits(object obj, int maxdepth, int maxticks)
     }
     if (maxticks != 0) {
 	if (maxticks < 0) {
-	    return (sscanf(previous_program(), USR + "/System/%*s"));
+	    return SYSTEM();
 	}
 	ticks = status()[ST_TICKS];
 	if (ticks >= 0 && maxticks > ticks) {

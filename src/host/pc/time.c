@@ -1,6 +1,6 @@
-# include "dgd.h"
 # include <windows.h>
 # include <time.h>
+# include "dgd.h"
 
 # define UNIXBIRTH	0x019db1ded53e8000
 

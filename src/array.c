@@ -85,10 +85,16 @@ unsigned int size;
 {
     max_size = size;
     tag = 0;
+    aclist = (arrchunk *) NULL;
+    ahchunksz = ARR_CHUNK;
+    flist = (array *) NULL;
     ht = ALLOC(arrh*, ARRMERGETABSZ);
     memset(ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
+    alink = (arrh **) NULL;
+    ahlist = (arrhchunk *) NULL;
     achunksz = ARR_CHUNK;
-    ahchunksz = ARR_CHUNK;
+    fmelt = (mapelt *) NULL;
+    meltlist = (meltchunk *) NULL;
     meltchunksz = MELT_CHUNK;
 }
 
@@ -1832,8 +1838,8 @@ value *val, *elt;
 		/*
 		 * delete the element
 		 */
-		d_assign_elt(m->primary->data, m, v, &nil_value);
-		d_assign_elt(m->primary->data, m, v + 1, &nil_value);
+		d_assign_elt(data, m, v, &nil_value);
+		d_assign_elt(data, m, v + 1, &nil_value);
 
 		m->size -= 2;
 		if (m->size == 0) {
@@ -1902,8 +1908,8 @@ value *val, *elt;
 		    /*
 		     * delete element
 		     */
-		    d_assign_elt(m->primary->data, m, &e->idx, &nil_value);
-		    d_assign_elt(m->primary->data, m, &e->val, &nil_value);
+		    d_assign_elt(data, m, &e->idx, &nil_value);
+		    d_assign_elt(data, m, &e->val, &nil_value);
 
 		    *p = e->next;
 		    e->next = fmelt;

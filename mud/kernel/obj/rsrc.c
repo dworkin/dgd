@@ -80,7 +80,7 @@ private void decay_rsrc(mixed *rsrc, mixed *grsrc, int time)
     do {
 	usage *= decay;
 	if (usage < 0.5) {
-	    t = time;
+	    t = time + period;
 	    break;
 	}
 	t += period;

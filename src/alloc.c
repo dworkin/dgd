@@ -4,11 +4,11 @@
 # define STRUCT_AL	2		/* default memory alignment */
 # endif
 
-# define MAGIC_MASK	0xff000000L	/* magic number mask */
-# define SIZE_MASK	0x00ffffffL	/* size mask */
+# define MAGIC_MASK	0xc0000000L	/* magic number mask */
+# define SIZE_MASK	0x3fffffffL	/* size mask */
 
-# define SM_MAGIC	0xc5000000L	/* static mem */
-# define DM_MAGIC	0xc6000000L	/* dynamic mem */
+# define SM_MAGIC	0x80000000L	/* static mem */
+# define DM_MAGIC	0xc0000000L	/* dynamic mem */
 
 # define UINTSIZE	ALGN(sizeof(Uint), STRUCT_AL)
 # define SIZETSIZE	ALGN(sizeof(size_t), STRUCT_AL)
@@ -27,10 +27,10 @@ typedef struct _chunk_ {
 # ifdef DEBUG
 typedef struct _header_ {
     Uint size;			/* size of chunk */
-    int line;			/* line it was allocated from */
-    char *file;			/* file it was allocated from */
     struct _header_ *prev;	/* previous in list */
     struct _header_ *next;	/* next in list */
+    int line;			/* line it was allocated from */
+    char *file;			/* file it was allocated from */
 } header;
 # endif
 

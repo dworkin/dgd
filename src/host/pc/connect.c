@@ -1,8 +1,8 @@
-# define INCLUDE_FILE_IO
-# include "dgd.h"
 # define FD_SETSIZE   1024
 # include <winsock.h>
 # include <process.h>
+# define INCLUDE_FILE_IO
+# include "dgd.h"
 # include "comm.h"
 
 # define MAXHOSTNAMELEN	256
@@ -113,6 +113,9 @@ static void ipa_start(SOCKET sock)
  */
 static void ipa_finish(void)
 {
+    closesocket(in);
+    in = INVALID_SOCKET;
+    out = INVALID_SOCKET;
 }
 
 /*
