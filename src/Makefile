@@ -66,6 +66,7 @@ clean:
 path.o config.o dgd.o: comp/node.h comp/compile.h
 config.o data.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
+interpret.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
@@ -81,7 +82,6 @@ array.o object.o data.o path.o ed.o comm.o call_out.o: interpret.h
 interpret.o config.o dgd.o: interpret.h
 str.o array.o object.o data.o path.o call_out.o interpret.o: data.h
 config.o dgd.o: data.h
-interpret.o: fcontrol.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o data.o: swap.h

@@ -72,6 +72,9 @@ void str_del(s)
 register string *s;
 {
     if ((--(s->ref) & STR_REF) == 0) {
+	if (s->u.primary != (struct _strref_ *) NULL) {
+	    d_del_string(s);
+	}
 	FREE(s);
     }
 }
@@ -192,7 +195,9 @@ string *s1, *s2;
 	    len = s2->len;
 	} else {
 	    /* s2 longer or equally long */
-	    cmplen >>= 16;
+	    if (cmplen < 0) {
+		cmplen = -1;
+	    }
 	    len = s1->len;
 	}
 	for (p = s1->text, q = s2->text; len > 0 && *p == *q; p++, q++, --len) ;

@@ -1,6 +1,6 @@
 # ifndef FUNCDEF
 # include "kfun.h"
-# include "fcontrol.h"
+# include "control.h"
 # include "table.h"
 # endif
 
@@ -14,7 +14,6 @@ register short class;
     if (class & C_VARARGS) printf("varargs ");
     if (class & C_PRIVATE) printf("private ");
     if (class & C_STATIC) printf("static ");
-    if (class & C_ATOMIC) printf("atomic ");
     if (class & C_NOMASK) printf("nomask ");
 }
 

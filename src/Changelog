@@ -774,3 +774,11 @@ DGD 1.1
  - Fixed character initializer tables.
  - Added keyword "atomic".
  - Got rid of C_LOCAL.
+ - More Mac compatibility fixes.
+ - Merged fcontrol.h with comp/control.h.
+ - Removed "atomic" again.  One way or another, multitasking will wreak
+   havoc with DGD's concept of data being local to objects (which is very
+   important for efficient swapping).  Maybe in 2.0.
+ - Reduced memory usage, at the cost of slightly slower string and array
+   deletes.
+ - Speeded up swapping of objects with a tangle of arrays and mappings.

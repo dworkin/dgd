@@ -5,7 +5,6 @@
 # include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
-# include "fcontrol.h"
 # include "table.h"
 # include "control.h"
 # include "csupport.h"

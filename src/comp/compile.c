@@ -6,7 +6,6 @@
 # include "interpret.h"
 # include "data.h"
 # include "path.h"
-# include "fcontrol.h"
 # include "macro.h"
 # include "token.h"
 # include "ppcontrol.h"
@@ -694,7 +693,7 @@ bool global;
 	type = T_MIXED;
     }
     if (global) {
-	if (class & (C_ATOMIC | C_NOMASK)) {
+	if (class & C_NOMASK) {
 	    c_error("invalid class for variable %s", str->text);
 	}
 	ctrl_dvar(str, class, type);

@@ -23,11 +23,11 @@ clean:
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../str.h ../array.h
 $(OBJ): ../object.h ../xfloat.h ../interpret.h ../data.h
 std.o file.o: ../path.h ../ed.h
-std.o: ../fcontrol.h ../comm.h ../call_out.h
-debug.o: ../fcontrol.h
+std.o: ../comm.h ../call_out.h
 file.o: ../ed.h
 
-std.o: ../comp/node.h ../comp/compile.h
+std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
+debug.o: ../comp/control.h
 
 $(OBJ): kfun.h
 debug.o: table.h

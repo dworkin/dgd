@@ -363,7 +363,7 @@ int kf_save_object()
     _tmp = path_file(tmp);
     fd = open(_tmp, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	error("Cannot create temporary save file /%s", tmp);
+	error("Cannot create temporary save file \"/%s\"", tmp);
     }
     buffer = ALLOCA(char, BUF_SIZE);
     bufsz = 0;
@@ -427,7 +427,7 @@ int kf_save_object()
 	close(fd);
 	AFREE(buffer);
 	unlink(_tmp);
-	error("Cannot write to temporary save file /%s", tmp);
+	error("Cannot write to temporary save file \"/%s\"", tmp);
     }
     close(fd);
     AFREE(buffer);
@@ -435,7 +435,8 @@ int kf_save_object()
     unlink(file);
     if (rename(_tmp, file) < 0) {
 	unlink(_tmp);
-	error("Cannot rename temporary save file to /%s", path_unfile(file));
+	error("Cannot rename temporary save file to \"/%s\"",
+	      path_unfile(file));
     }
 
     str_del(sp->u.string);
@@ -900,7 +901,7 @@ int kf_restore_object()
 	ac_clear();
 	AFREE(buffer);
 	strcpy(err, errormesg());
-	error("Format error in /%s, line %d: %s", file, line, err);
+	error("Format error in \"/%s\", line %d: %s", file, line, err);
     }
     for (;;) {
 	var = data->variables;

@@ -95,9 +95,9 @@ typedef struct _value_ {
 
 # define C_PRIVATE	0x01
 # define C_STATIC	0x02
-# define C_ATOMIC	0x04
-# define C_NOMASK	0x08
-# define C_VARARGS	0x10
+# define C_NOMASK	0x04
+# define C_VARARGS	0x08
+# define C_RESERVED	0x10		/* reserved for add-on packages */
 # define C_TYPECHECKED	0x20
 # define C_COMPILED	0x40
 # define C_UNDEFINED	0x80

@@ -60,9 +60,9 @@ static node *comma	P((node*, node*));
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token RETURN LOCK DO FOR ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT FLOAT
-       PRIVATE WHILE INHERIT IF CATCH SWITCH MAPPING VOID ATOMIC NOMASK BREAK
-       VARARGS STRING MIXED
+%token FOR VOID DO CONTINUE INHERIT MAPPING INT LOCK NOMASK CATCH CASE FLOAT
+       BREAK MIXED STATIC VARARGS STRING ELSE IF WHILE SWITCH DEFAULT RETURN
+       PRIVATE OBJECT
 
 /*
  * composite tokens
@@ -251,8 +251,6 @@ class_specifier
 		{ $$ = C_STATIC | C_PRIVATE; }
 	| STATIC
 		{ $$ = C_STATIC; }
-	| ATOMIC
-		{ $$ = C_ATOMIC; }
 	| NOMASK
 		{ $$ = C_NOMASK; }
 	| VARARGS

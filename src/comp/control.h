@@ -12,11 +12,18 @@ extern char		*ctrl_fcall	P((string*, long*, int));
 extern unsigned short	 ctrl_gencall	P((long));
 extern unsigned short	 ctrl_var	P((string*, long*));
 extern bool		 ctrl_chkfuncs	P((char*));
+extern dsymbol		*ctrl_symb	P((control*, char*));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));
 
-# define T_IMPLICIT	(T_VOID | (1 << REFSHIFT))
+# define PROTO_CLASS(prot)	((prot)[0])
+# define PROTO_FTYPE(prot)	((prot)[1])
+# define PROTO_NARGS(prot)	((prot)[2])
+# define PROTO_ARGS(prot)	((prot) + 3)
+# define PROTO_SIZE(prot)	(3 + PROTO_NARGS(prot))
 
-# define KFCALL		0
-# define DFCALL		1
-# define FCALL		2
+# define T_IMPLICIT		(T_VOID | (1 << REFSHIFT))
+
+# define KFCALL			0
+# define DFCALL			1
+# define FCALL			2

@@ -391,9 +391,6 @@ void co_call()
 		 * no more callouts to do:
 		 * set the alarm for the next round
 		 */
-		comm_flush(FALSE);
-
-
 		if (fragment > 0) {
 		    static uindex swapped1[SWPERIOD], swapped5[SWPERIOD];
 		    static int swapcnt1, swapcnt5;

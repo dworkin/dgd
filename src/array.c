@@ -119,92 +119,6 @@ unsigned int size;
 }
 
 /*
- * NAME:	mapping->grow()
- * DESCRIPTION:	add an element to a mapping
- */
-static mapelt *map_grow(m, hashval)
-register array *m;
-unsigned short hashval;
-{
-    register maphash *h;
-    register mapelt *e;
-    register unsigned short i;
-
-    if (m->hashed == (maphash *) NULL) {
-	/*
-	 * add hash table to this mapping
-	 */
-	if (m->size >> 1 == max_size) {
-	    error("Mapping too large to grow");
-	}
-	m->hashed = h = (maphash *)
-	    ALLOC(char, sizeof(maphash) + (MTABLE_SIZE - 1) * sizeof(mapelt*));
-	h->size = 0;
-	h->tablesize = MTABLE_SIZE;
-	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
-    } else {
-	h = m->hashed;
-	if ((m->size >> 1) + h->size == max_size) {
-	    error("Mapping too large to grow");
-	}
-	if (h->size << 2 >= h->tablesize * 3) {
-	    register mapelt *n, **t;
-	    register unsigned short j;
-
-	    /*
-	     * extend hash table for this mapping
-	     */
-	    i = h->tablesize << 1;
-	    h = (maphash *) ALLOC(char,
-				  sizeof(maphash) + (i - 1) * sizeof(mapelt*));
-	    h->size = m->hashed->size;
-	    h->tablesize = i;
-	    memset(h->table, '\0', i * sizeof(mapelt*));
-	    /*
-	     * copy entries from old hashtable to new hashtable
-	     */
-	    for (j = h->size, t = m->hashed->table; j > 0; t++) {
-		for (e = *t; e != (mapelt *) NULL; e = n) {
-		    n = e->next;
-		    i = e->hashval % h->tablesize;
-		    e->next = h->table[i];
-		    h->table[i] = e;
-		    --j;
-		}
-	    }
-	    FREE(m->hashed);
-	    m->hashed = h;
-	}
-    }
-    h->size++;
-
-    if (fmelt != (mapelt *) NULL) {
-	/* from free list */
-	e = fmelt;
-	fmelt = e->next;
-    } else {
-	if (meltchunksz == MELT_CHUNK) {
-	    register meltchunk *l;
-
-	    /* new chunk */
-	    l = ALLOC(meltchunk, 1);
-	    l->next = meltlist;
-	    meltlist = l;
-	    meltchunksz = 0;
-	}
-	e = &meltlist->e[meltchunksz++];
-    }
-    e->hashval = hashval;
-    e->idx = zero_value;
-    e->val = zero_value;
-    i = hashval % h->tablesize;
-    e->next = h->table[i];
-    h->table[i] = e;
-
-    return e;
-}
-
-/*
  * NAME:	array->new()
  * DESCRIPTION:	create a new array
  */
@@ -257,6 +171,9 @@ register array *a;
 	    FREE(a->hashed);
 	}
 
+	if (a->primary != (struct _arrref_ *) NULL) {
+	    d_del_array(a);
+	}
 	a->primary = (struct _arrref_ *) flist;
 	flist = a;
     }
@@ -1379,6 +1296,92 @@ array *m1, *a2;
 	m3->elts = (value *) NULL;
     }
     return m3;
+}
+
+/*
+ * NAME:	mapping->grow()
+ * DESCRIPTION:	add an element to a mapping
+ */
+static mapelt *map_grow(m, hashval)
+register array *m;
+unsigned short hashval;
+{
+    register maphash *h;
+    register mapelt *e;
+    register unsigned short i;
+
+    if (m->hashed == (maphash *) NULL) {
+	/*
+	 * add hash table to this mapping
+	 */
+	if (m->size >> 1 == max_size) {
+	    error("Mapping too large to grow");
+	}
+	m->hashed = h = (maphash *)
+	    ALLOC(char, sizeof(maphash) + (MTABLE_SIZE - 1) * sizeof(mapelt*));
+	h->size = 0;
+	h->tablesize = MTABLE_SIZE;
+	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
+    } else {
+	h = m->hashed;
+	if ((m->size >> 1) + h->size == max_size) {
+	    error("Mapping too large to grow");
+	}
+	if (h->size << 2 >= h->tablesize * 3) {
+	    register mapelt *n, **t;
+	    register unsigned short j;
+
+	    /*
+	     * extend hash table for this mapping
+	     */
+	    i = h->tablesize << 1;
+	    h = (maphash *) ALLOC(char,
+				  sizeof(maphash) + (i - 1) * sizeof(mapelt*));
+	    h->size = m->hashed->size;
+	    h->tablesize = i;
+	    memset(h->table, '\0', i * sizeof(mapelt*));
+	    /*
+	     * copy entries from old hashtable to new hashtable
+	     */
+	    for (j = h->size, t = m->hashed->table; j > 0; t++) {
+		for (e = *t; e != (mapelt *) NULL; e = n) {
+		    n = e->next;
+		    i = e->hashval % h->tablesize;
+		    e->next = h->table[i];
+		    h->table[i] = e;
+		    --j;
+		}
+	    }
+	    FREE(m->hashed);
+	    m->hashed = h;
+	}
+    }
+    h->size++;
+
+    if (fmelt != (mapelt *) NULL) {
+	/* from free list */
+	e = fmelt;
+	fmelt = e->next;
+    } else {
+	if (meltchunksz == MELT_CHUNK) {
+	    register meltchunk *l;
+
+	    /* new chunk */
+	    l = ALLOC(meltchunk, 1);
+	    l->next = meltlist;
+	    meltlist = l;
+	    meltchunksz = 0;
+	}
+	e = &meltlist->e[meltchunksz++];
+    }
+    e->hashval = hashval;
+    e->idx = zero_value;
+    e->val = zero_value;
+    i = hashval % h->tablesize;
+    e->next = h->table[i];
+    h->table[i] = e;
+
+    return e;
 }
 
 /*

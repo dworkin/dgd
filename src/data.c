@@ -14,6 +14,7 @@
 # define M_STRINGREF		0x08
 # define M_NEWCALLOUT		0x10
 # define M_CALLOUT		0x20
+# define M_EXPORTING		0x40
 
 # define ARR_MOD		0x80000000L
 
@@ -77,13 +78,13 @@ typedef struct _sstring_ {
 } sstring;
 
 typedef struct _strref_ {
-    string *string;		/* string value */
+    string *str;		/* string value */
     struct _dataspace_ *data;	/* dataspace this string is in */
     uindex ref;			/* # of refs */
 } strref;
 
 typedef struct _arrref_ {
-    array *array;		/* array value */
+    array *arr;			/* array value */
     struct _dataspace_ *data;	/* dataspace this array is in */
     long index;			/* selts index */
     uindex ref;			/* # of refs */
@@ -590,7 +591,7 @@ register uindex idx;
 	/* initialize string pointers */
 	strs = data->strings = ALLOC(strref, data->nstrings);
 	for (i = data->nstrings; i > 0; --i) {
-	    (strs++)->string = (string *) NULL;
+	    (strs++)->str = (string *) NULL;
 	}
 
 	/* load strings */
@@ -605,17 +606,18 @@ register uindex idx;
 	}
     }
 
-    if (data->strings[idx].string == (string *) NULL) {
+    if (data->strings[idx].str == (string *) NULL) {
 	register string *s;
 
 	s = str_new(data->stext + data->sstrings[idx].index,
 		    (long) data->sstrings[idx].len);
 	s->u.primary = &data->strings[idx];
-	str_ref(s->u.primary->string = s);
 	s->u.primary->data = data;
 	s->u.primary->ref = data->sstrings[idx].ref;
+	str_ref(s->u.primary->str = s);
+	return s;
     }
-    return data->strings[idx].string;
+    return data->strings[idx].str;
 }
 
 /*
@@ -634,7 +636,7 @@ register uindex idx;
 	/* create array pointers */
 	a = data->arrays = ALLOC(arrref, data->narrays);
 	for (i = data->narrays; i > 0; --i) {
-	    (a++)->array = (array *) NULL;
+	    (a++)->arr = (array *) NULL;
 	}
 
 	/* load arrays */
@@ -643,18 +645,24 @@ register uindex idx;
 		 data->narrays * (long) sizeof(sarray), data->arroffset);
     }
 
-    if (data->arrays[idx].array == (array *) NULL) {
+    if (data->arrays[idx].arr == (array *) NULL) {
 	register array *a;
 
 	a = arr_alloc(data->sarrays[idx].size);
 	a->tag = data->sarrays[idx].tag;
 	a->primary = &data->arrays[idx];
-	arr_ref(a->primary->array = a);
 	a->primary->data = data;
 	a->primary->index = data->sarrays[idx].index;
 	a->primary->ref = data->sarrays[idx].ref;
+	if (data->modified & M_EXPORTING) {
+	    /* exporting: get the elements as well */
+	    d_get_elts(a);
+	} else {
+	    arr_ref(a->primary->arr = a);
+	}
+	return a;
     }
-    return data->arrays[idx].array;
+    return data->arrays[idx].arr;
 }
 
 /*
@@ -795,7 +803,7 @@ register unsigned int idx;
  * DESCRIPTION:	get the elements of an array
  */
 value *d_get_elts(arr)
-array *arr;
+register array *arr;
 {
     register value *v;
 
@@ -848,6 +856,7 @@ register value *rhs;
 {
     register string *str;
     register array *arr;
+    register int n;
 
     switch (rhs->type) {
     case T_STRING:
@@ -861,7 +870,9 @@ register value *rhs;
 		   str->u.primary->data == data) {
 	    /* in this object */
 	    if (str->u.primary->ref++ == 0) {
-		data->schange--;	/* first reference restored */
+		/* first reference restored */
+		str_ref(str);
+		data->schange--;
 	    }
 	    data->modified |= M_STRINGREF;
 	} else {
@@ -876,7 +887,14 @@ register value *rhs;
 	if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (arr->primary->ref++ == 0) {
-		data->achange--;	/* first reference restored */
+		/* first reference restored */
+		if ((n=arr->size) != 0 && (rhs=arr->elts)->type != T_INVALID) {
+		    do {
+			ref_rhs(data, rhs++);
+		    } while (--n > 0);
+		}
+		arr_ref(arr);
+		data->achange--;
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -897,6 +915,7 @@ register value *lhs;
 {
     register string *str;
     register array *arr;
+    register int n;
 
     switch (lhs->type) {
     case T_STRING:
@@ -910,7 +929,9 @@ register value *lhs;
 		   str->u.primary->data == data) {
 	    /* in this object */
 	    if (--(str->u.primary->ref) == 0) {
-		data->schange++;	/* last reference removed */
+		/* last reference removed */
+		str_del(str);
+		data->schange++;
 	    }
 	    data->modified |= M_STRINGREF;
 	} else {
@@ -925,7 +946,14 @@ register value *lhs;
 	if (arr->primary != (arrref *) NULL && arr->primary->data == data) {
 	    /* in this object */
 	    if (--(arr->primary->ref) == 0) {
-		data->achange++;	/* last reference removed */
+		/* last reference removed */
+		if ((n=arr->size) != 0 && (lhs=arr->elts)->type != T_INVALID) {
+		    do {
+			del_lhs(data, lhs++);
+		    } while (--n > 0);
+		}
+		arr_del(arr);
+		data->achange++;
 	    }
 	    data->modified |= M_ARRAYREF;
 	} else {
@@ -968,7 +996,7 @@ value *elt, *val;
 {
     register dataspace *data;
 
-    if (arr->primary != (arrref *) NULL) {
+    if (arr->primary != (arrref *) NULL && arr->primary->ref != 0) {
 	/* the array is in the dataspace of some object */
 	arr->primary->index |= ARR_MOD;
 	data = arr->primary->data;
@@ -994,6 +1022,26 @@ array *map;
     if (map->primary != (arrref *) NULL) {
 	map->primary->data->achange++;
     }
+}
+
+/*
+ * NAME:	data->del_string()
+ * DESCRIPTION:	delete a string in a dataspace
+ */
+void d_del_string(str)
+string *str;
+{
+    str->u.primary->str = (string *) NULL;
+}
+
+/*
+ * NAME:	data->del_array()
+ * DESCRIPTION:	delete an array in a dataspace
+ */
+void d_del_array(arr)
+array *arr;
+{
+    arr->primary->arr = (array *) NULL;
 }
 
 /*
@@ -1031,7 +1079,7 @@ register dataspace *data;
 
 /*
  * NAME:	data->new_call_out()
- * DESCRIPTION:	add a new call_out
+ * DESCRIPTION:	add a new callout
  */
 uindex d_new_call_out(data, func, t, nargs)
 register dataspace *data;
@@ -1125,7 +1173,7 @@ int nargs;
 
 /*
  * NAME:	data->get_call_out()
- * DESCRIPTION:	get a call_out
+ * DESCRIPTION:	get a callout
  */
 char *d_get_call_out(data, handle, t, nargs)
 dataspace *data;
@@ -1139,7 +1187,7 @@ int *nargs;
     register uindex n;
 
     if (handle == 0 || handle > data->ncallouts) {
-	/* no such call_out */
+	/* no such callout */
 	return (char *) NULL;
     }
     if (data->callouts == (dcallout *) NULL) {
@@ -1148,7 +1196,7 @@ int *nargs;
 
     co = &data->callouts[handle - 1];
     if (co->val[0].type == T_INVALID) {
-	/* invalid call_out */
+	/* invalid callout */
 	return (char *) NULL;
     }
     i_check_stack(*nargs = co->nargs);
@@ -1179,8 +1227,7 @@ int *nargs;
 	sp -= n;
 	memcpy(sp, d_get_elts(v[3].u.array), n * sizeof(value));
 	del_lhs(data, &v[3]);
-	FREE(v[3].u.array->elts);
-	v[3].u.array->elts = (value *) NULL;
+	v[3].u.array->elts[0].type = T_INVALID;	/* pretend */
 	arr_del(v[3].u.array);
 	del_lhs(data, &v[2]);
 	*--sp = v[2];
@@ -1696,7 +1743,7 @@ register dataspace *data;
 	    a = data->arrays;
 	    mod = FALSE;
 	    for (n = data->narrays; n > 0; --n) {
-		if (a->array != (array *) NULL && sa->ref != a->ref) {
+		if (a->arr != (array *) NULL && sa->ref != a->ref) {
 		    sa->ref = a->ref;
 		    mod = TRUE;
 		}
@@ -1717,12 +1764,12 @@ register dataspace *data;
 	     */
 	    a = data->arrays;
 	    for (n = data->narrays; n > 0; --n) {
-		if (a->array != (array *) NULL && (a->index & ARR_MOD)) {
+		if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
 		    a->index &= ~ARR_MOD;
-		    d_put_values(&data->selts[a->index], a->array->elts,
-				 a->array->size);
+		    d_put_values(&data->selts[a->index], a->arr->elts,
+				 a->arr->size);
 		    sw_writev((char *) &data->selts[a->index], data->sectors,
-			      a->array->size * (long) sizeof(svalue),
+			      a->arr->size * (long) sizeof(svalue),
 			      data->arroffset +
 				data->narrays * (long) sizeof(sarray) +
 				a->index * sizeof(svalue));
@@ -1741,7 +1788,7 @@ register dataspace *data;
 	    s = data->strings;
 	    mod = FALSE;
 	    for (n = data->nstrings; n > 0; --n) {
-		if (s->string != (string *) NULL && ss->ref != s->ref) {
+		if (s->str != (string *) NULL && ss->ref != s->ref) {
 		    ss->ref = s->ref;
 		    mod = TRUE;
 		}
@@ -1838,7 +1885,7 @@ register dataspace *data;
 		    break;
 		}
 		if (data->fcallouts == n) {
-		    /* first call_out in the free list */
+		    /* first callout in the free list */
 		    data->fcallouts = co->co_next;
 		} else {
 		    /* connect previous to next */
@@ -2158,25 +2205,25 @@ register dataspace *data;
 	register arrref *aa;
 	bool fetch;
 
-	/* export arrays */
-	do {
-	    fetch = FALSE;
-	    for (i = data->narrays, aa = data->arrays; i > 0; --i, aa++) {
-		a = aa->array;
-		if (a != (array *) NULL && a->ref != 1 && a->size != 0 &&
-		    a->elts[0].type == T_INVALID) {
-		    d_get_elts(a);
-		    fetch = TRUE;
-		}
-	    }
-	} while (fetch);
-
 	/* free arrays */
 	for (i = data->narrays, aa = data->arrays; i > 0; --i, aa++) {
-	    a = aa->array;
+	    a = aa->arr;
 	    if (a != (array *) NULL) {
+		if (aa->ref != 0) {
+		    arr_del(a);
+		}
+	    }
+	}
+
+	/* export arrays which are left */
+	data->modified |= M_EXPORTING;
+	for (i = data->narrays, aa = data->arrays; i > 0; --i, aa++) {
+	    a = aa->arr;
+	    if (a != (array *) NULL) {
+		if (a->size != 0 && a->elts[0].type == T_INVALID) {
+		    d_get_elts(a);
+		}
 		a->primary = (arrref *) NULL;
-		arr_del(a);
 	    }
 	}
 
@@ -2192,9 +2239,11 @@ register dataspace *data;
 	register strref *s;
 
 	for (i = data->nstrings, s = data->strings; i > 0; --i, s++) {
-	    if (s->string != (string *) NULL) {
-		s->string->u.primary = (strref *) NULL;
-		str_del(s->string);
+	    if (s->str != (string *) NULL) {
+		s->str->u.primary = (strref *) NULL;
+		if (s->ref != 0) {
+		    str_del(s->str);
+		}
 	    }
 	}
 

@@ -141,6 +141,8 @@ extern void		d_assign_var	P((dataspace*, struct _value_*,
 extern void		d_assign_elt	P((array*, struct _value_*,
 					   struct _value_*));
 extern void		d_change_map	P((array*));
+extern void		d_del_string	P((string*));
+extern void		d_del_array	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Uint, int));
 extern char	       *d_get_call_out	P((dataspace*, unsigned int, Uint*,

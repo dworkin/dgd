@@ -68,8 +68,6 @@ typedef unsigned int Uint;
 
 # define FS_BLOCK_SIZE		512
 
-# define P_fbinio(fp)		((fp)->_flag |= _IOBIN)
-
 # endif	/* ATARI_ST */
 
 
@@ -185,9 +183,6 @@ typedef unsigned int Uint;
 extern void  P_getevent	P((void));
 extern void  P_message	P((char*));
 
-# ifndef P_fbinio
-# define P_fbinio(x)	/* nothing */
-# endif
 # ifndef O_BINARY
 # define O_BINARY	0
 # endif

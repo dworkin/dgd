@@ -212,6 +212,61 @@ char *err;
     fatal("config file, line %u: %s", tk_line(), err);
 }
 
+static char *fname;	/* file name */
+static int fd;		/* file descriptor */
+static char *obuf;	/* output buffer */
+static int bufsz;	/* buffer size */
+
+/*
+ * NAME:	config->open()
+ * DESCRIPTION:	create a new file
+ */
+static void copen(file)
+char *file;
+{
+    if ((fd=open(path_file(fname = path_resolve(file)),
+		 O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, 0644)) < 0) {
+	fatal("cannot create \"/%s\"", fname);
+    }
+    bufsz = 0;
+}
+
+/*
+ * NAME:	config->put()
+ * DESCRIPTION:	write a string to a file
+ */
+static void cputs(str)
+register char *str;
+{
+    register unsigned int len, chunk;
+
+    len = strlen(str);
+    while (bufsz + len > BUF_SIZE) {
+	chunk = BUF_SIZE - bufsz;
+	memcpy(obuf + bufsz, str, chunk);
+	write(fd, obuf, BUF_SIZE);
+	str += chunk;
+	len -= chunk;
+	bufsz = 0;
+    }
+    if (len > 0) {
+	memcpy(obuf + bufsz, str, len);
+	bufsz += len;
+    }
+}
+
+/*
+ * NAME:	config->close()
+ * DESCRIPTION:	close a file
+ */
+static void cclose()
+{
+    if (bufsz > 0 && write(fd, obuf, bufsz) != bufsz) {
+	fatal("cannot write \"/%s\"", fname);
+    }
+    close(fd);
+}
+
 # define MAX_DIRS	32
 
 /*
@@ -221,7 +276,8 @@ char *err;
 void conf_init(configfile, dumpfile)
 char *configfile, *dumpfile;
 {
-    static char *nodir[1], *dirs[MAX_DIRS], buffer[STRINGSZ];
+    static char *nodir[1], *dirs[MAX_DIRS];
+    char buf[BUF_SIZE], buffer[STRINGSZ];
     register char *p;
     register int h, l, m, c;
     FILE *fp;
@@ -333,11 +389,9 @@ char *configfile, *dumpfile;
     }
 
     for (l = 0; l < NR_OPTIONS; l++) {
-	char buf[128];
-
 	if (!conf[l].set) {
-	    sprintf(buf, "unspecified option %s", conf[l].name);
-	    conferr(buf);
+	    sprintf(buffer, "unspecified option %s", conf[l].name);
+	    conferr(buffer);
 	}
     }
     pp_clear();
@@ -403,121 +457,104 @@ char *configfile, *dumpfile;
     	  (unsigned int) conf[DYNAMIC_CHUNK].u.num);
 
     /* create status.h file */
+    obuf = buf;
     sprintf(buffer, "%s/status.h", dirs[0]);
-    fp = fopen(path_file(path_resolve(buffer)), "w");
-    if (fp == (FILE *) NULL) {
-	fatal("cannot create \"%s\"", buffer);
-    }
-    P_fbinio(fp);
-
-    fprintf(fp, "/*\012 * This file defines the fields of the array returned ");
-    fprintf(fp, "by the\012 * status() kfun.  It is automatically generated ");
-    fprintf(fp, "by DGD on startup.\012 */\012\012");
-    fprintf(fp, "# define ST_VERSION\t0\t/* driver version */\012");
-
-    fprintf(fp, "# define ST_STARTTIME\t1\t/* system start time */\012");
-    fprintf(fp, "# define ST_BOOTTIME\t2\t/* system boot time */\012");
-    fprintf(fp, "# define ST_UPTIME\t3\t/* system virtual uptime */\012");
-
-    fprintf(fp, "# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
-    fprintf(fp, "# define ST_SWAPUSED\t5\t/* # sectors allocated */\012");
-    fprintf(fp, "# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
-    fprintf(fp, "# define ST_SWAPRATE1\t7\t/* # objects swapped out per minute */\012");
-    fprintf(fp, "# define ST_SWAPRATE5\t8\t/* # objects swapped out per five minutes */\012");
-
-    fprintf(fp, "# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
-    fprintf(fp, "# define ST_SMEMUSED\t10\t/* static memory in use */\012");
-    fprintf(fp, "# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
-    fprintf(fp, "# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
-
-    fprintf(fp, "# define ST_OTABSIZE\t13\t/* object table size */\012");
-    fprintf(fp, "# define ST_NOBJECTS\t14\t/* # objects in the system */\012");
-
-    fprintf(fp, "# define ST_COTABSIZE\t15\t/* callouts table size */\012");
-    fprintf(fp, "# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
-    fprintf(fp, "# define ST_NCOLONG\t17\t/* # long-term callouts */\012");
-
-    fprintf(fp, "# define ST_UTABSIZE\t18\t/* user table size */\012");
-    fprintf(fp, "# define ST_ETABSIZE\t19\t/* editor table size */\012");
-
-    fprintf(fp, "# define ST_STRSIZE\t20\t/* max string size */\012");
-    fprintf(fp, "# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
-    fprintf(fp, "# define ST_EXECCOST\t22\t/* max exec cost */\012");
-
-    fprintf(fp, "\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
-    fprintf(fp, "# define O_PROGSIZE\t1\t/* program size of object */\012");
-    fprintf(fp, "# define O_DATASIZE\t2\t/* data size of object */\012");
-    fprintf(fp, "# define O_NSECTORS\t3\t/* # sectors used by object */\012");
-    fprintf(fp, "# define O_CALLOUTS\t4\t/* callouts in object */\012");
-    fclose(fp);
+    copen(buffer);
+    cputs("/*\012 * This file defines the fields of the array returned ");
+    cputs("by the\012 * status() kfun.  It is automatically generated ");
+    cputs("by DGD on startup.\012 */\012\012");
+    cputs("# define ST_VERSION\t0\t/* driver version */\012");
+    cputs("# define ST_STARTTIME\t1\t/* system start time */\012");
+    cputs("# define ST_BOOTTIME\t2\t/* system boot time */\012");
+    cputs("# define ST_UPTIME\t3\t/* system virtual uptime */\012");
+    cputs("# define ST_SWAPSIZE\t4\t/* # sectors on swap device */\012");
+    cputs("# define ST_SWAPUSED\t5\t/* # sectors allocated */\012");
+    cputs("# define ST_SECTORSIZE\t6\t/* size of swap sector */\012");
+    cputs("# define ST_SWAPRATE1\t7\t/* # objects swapped out per minute */\012");
+    cputs("# define ST_SWAPRATE5\t8\t/* # objects swapped out per five minutes */\012");
+    cputs("# define ST_SMEMSIZE\t9\t/* static memory allocated */\012");
+    cputs("# define ST_SMEMUSED\t10\t/* static memory in use */\012");
+    cputs("# define ST_DMEMSIZE\t11\t/* dynamic memory allocated */\012");
+    cputs("# define ST_DMEMUSED\t12\t/* dynamic memory in use */\012");
+    cputs("# define ST_OTABSIZE\t13\t/* object table size */\012");
+    cputs("# define ST_NOBJECTS\t14\t/* # objects in the system */\012");
+    cputs("# define ST_COTABSIZE\t15\t/* callouts table size */\012");
+    cputs("# define ST_NCOSHORT\t16\t/* # short-term callouts */\012");
+    cputs("# define ST_NCOLONG\t17\t/* # long-term callouts */\012");
+    cputs("# define ST_UTABSIZE\t18\t/* user table size */\012");
+    cputs("# define ST_ETABSIZE\t19\t/* editor table size */\012");
+    cputs("# define ST_STRSIZE\t20\t/* max string size */\012");
+    cputs("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
+    cputs("# define ST_EXECCOST\t22\t/* max exec cost */\012");
+    cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
+    cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
+    cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
+    cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
+    cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
+    cclose();
 
     /* create type.h file */
     sprintf(buffer, "%s/type.h", dirs[0]);
-    fp = fopen(path_file(path_resolve(buffer)), "w");
-    if (fp == (FILE *) NULL) {
-	fatal("cannot create \"%s\"", buffer);
-    }
-    P_fbinio(fp);
-
-    fprintf(fp, "/*\012 * This file gives definitions for the value returned ");
-    fprintf(fp, "by the\012 * typeof() kfun.  It is automatically generated ");
-    fprintf(fp, "by DGD on startup.\012 */\012\012");
-    fprintf(fp, "# define T_INT\t\t%d\012", T_INT);
-    fprintf(fp, "# define T_FLOAT\t%d\012", T_FLOAT);
-    fprintf(fp, "# define T_STRING\t%d\012", T_STRING);
-    fprintf(fp, "# define T_OBJECT\t%d\012", T_OBJECT);
-    fprintf(fp, "# define T_ARRAY\t%d\012", T_ARRAY);
-    fprintf(fp, "# define T_MAPPING\t%d\012", T_MAPPING);
-    fclose(fp);
+    copen(buffer);
+    cputs("/*\012 * This file gives definitions for the value returned ");
+    cputs("by the\012 * typeof() kfun.  It is automatically generated ");
+    cputs("by DGD on startup.\012 */\012\012");
+    sprintf(buffer, "# define T_INT\t\t%d\012", T_INT);
+    cputs(buffer);
+    sprintf(buffer, "# define T_FLOAT\t%d\012", T_FLOAT);
+    cputs(buffer);
+    sprintf(buffer, "# define T_STRING\t%d\012", T_STRING);
+    cputs(buffer);
+    sprintf(buffer, "# define T_OBJECT\t%d\012", T_OBJECT);
+    cputs(buffer);
+    sprintf(buffer, "# define T_ARRAY\t%d\012", T_ARRAY);
+    cputs(buffer);
+    sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
+    cputs(buffer);
+    cclose();
 
     /* create limits.h file */
     sprintf(buffer, "%s/limits.h", dirs[0]);
-    fp = fopen(path_file(path_resolve(buffer)), "w");
-    if (fp == (FILE *) NULL) {
-	fatal("cannot create \"%s\"", buffer);
-    }
-    P_fbinio(fp);
-
-    fprintf(fp, "/*\012 * This file defines some basic sizes of datatypes and ");
-    fprintf(fp, "resources.\012 * It is automatically generated by DGD on ");
-    fprintf(fp, "startup.\012 */\012\012");
-    fprintf(fp, "# define CHAR_BIT\t\t8\t\t/* # bits in character */\012");
-    fprintf(fp, "# define CHAR_MIN\t\t0\t\t/* min character value */\012");
-    fprintf(fp, "# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
-    fprintf(fp, "# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
-    fprintf(fp, "# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
-    fprintf(fp, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
+    copen(buffer);
+    cputs("/*\012 * This file defines some basic sizes of datatypes and ");
+    cputs("resources.\012 * It is automatically generated by DGD on ");
+    cputs("startup.\012 */\012\012");
+    cputs("# define CHAR_BIT\t\t8\t\t/* # bits in character */\012");
+    cputs("# define CHAR_MIN\t\t0\t\t/* min character value */\012");
+    cputs("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
+    cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
+    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
+    sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size */\012",
 	    USHRT_MAX - sizeof(string));
-    fprintf(fp, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\012",
+    cputs(buffer);
+    sprintf(buffer, "# define MAX_ARRAY_SIZE\t\t%ld\t\t/* max array size */\012",
 	    conf[ARRAY_SIZE].u.num);
-    fprintf(fp, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012\012",
+    cputs(buffer);
+    sprintf(buffer, "# define MAX_MAPPING_SIZE\t%ld\t\t/* max mapping size */\012\012",
 	    conf[ARRAY_SIZE].u.num);
-    fprintf(fp, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\012",
+    cputs(buffer);
+    sprintf(buffer, "# define MAX_EXEC_COST\t\t%ld\t\t/* max execution cost */\012",
 	    conf[MAX_COST].u.num);
-    fclose(fp);
+    cputs(buffer);
+    cclose();
 
     /* create float.h file */
     sprintf(buffer, "%s/float.h", dirs[0]);
-    fp = fopen(path_file(path_resolve(buffer)), "w");
-    if (fp == (FILE *) NULL) {
-	fatal("cannot create \"%s\"", buffer);
-    }
-    P_fbinio(fp);
-
-    fprintf(fp, "/*\012 * This file describes the floating point type. It is ");
-    fprintf(fp, "automatically\012 * generated by DGD on startup.\012 */\012\012");
-    fprintf(fp, "# define FLT_RADIX\t2\t\t\t/* binary */\012");
-    fprintf(fp, "# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
-    fprintf(fp, "# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
-    fprintf(fp, "# define FLT_DIG\t10\t\t\t/* decimal digits of precision*/\012");
-    fprintf(fp, "# define FLT_MANT_DIG\t36\t\t\t/* binary digits of precision */\012");
-    fprintf(fp, "# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
-    fprintf(fp, "# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
-    fprintf(fp, "# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
-    fprintf(fp, "# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
-    fprintf(fp, "# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
-    fprintf(fp, "# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
-    fclose(fp);
+    copen(buffer);
+    cputs("/*\012 * This file describes the floating point type. It is ");
+    cputs("automatically\012 * generated by DGD on startup.\012 */\012\012");
+    cputs("# define FLT_RADIX\t2\t\t\t/* binary */\012");
+    cputs("# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
+    cputs("# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
+    cputs("# define FLT_DIG\t10\t\t\t/* decimal digits of precision*/\012");
+    cputs("# define FLT_MANT_DIG\t36\t\t\t/* binary digits of precision */\012");
+    cputs("# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
+    cputs("# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
+    cputs("# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
+    cputs("# define FLT_MAX\t1.79769313485E+308\t/* positive maximum */\012");
+    cputs("# define FLT_MAX_EXP\t1024\t\t\t/* maximum binary exponent */\012");
+    cputs("# define FLT_MAX_10_EXP\t308\t\t\t/* maximum decimal exponent */\012");
+    cclose();
 
     /* preload compiled objects */
     pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str);

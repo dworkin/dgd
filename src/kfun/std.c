@@ -1,11 +1,11 @@
 # ifndef FUNCDEF
 # include "kfun.h"
-# include "fcontrol.h"
 # include "path.h"
 # include "comm.h"
 # include "call_out.h"
 # include "ed.h"
 # include "node.h"
+# include "control.h"
 # include "compile.h"
 # endif
 
