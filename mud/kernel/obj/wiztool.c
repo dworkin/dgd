@@ -18,9 +18,6 @@ static create(int clone)
     }
 }
 
-object query_user() { return user; }
-
-
 /*
  * NAME:	evt_input()
  * DESCRIPTION:	handle an input event
@@ -30,15 +27,19 @@ static evt_input(string str)
     string arg;
 
     if (query_editor(this_object())) {
-	str = editor(str);
-	if (str) {
-	    user->message(str);
+	if (strlen(str) != 0 && str[0] == '!') {
+	    str = str[1 ..];
+	} else {
+	    str = editor(str);
+	    if (str) {
+		user->message(str);
+	    }
+	    return;
 	}
-	return;
     }
 
     if (str == "") {
-	return;	/* fix later */
+	return;
     }
 
     sscanf(str, "%s %s", str, arg);
@@ -63,6 +64,16 @@ static evt_input(string str)
 
     case "access":
     case "grant":
+    case "ungrant":
+    case "quota":
+    case "rsrc":
+
+    case "people":
+    case "status":
+    case "swapout":
+    case "statedump":
+    case "shutdown":
+    case "reboot":
 	call_other(this_object(), "cmd_" + str, user, str, arg);
 	break;
 

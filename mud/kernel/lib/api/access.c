@@ -1,11 +1,11 @@
 # include <kernel/kernel.h>
 # include <kernel/access.h>
 
-private object accessd;		/* access daemon */
+private object accessd;		/* access manager */
 
 /*
  * NAME:	create()
- * DESCRIPTION:	initialize variables
+ * DESCRIPTION:	initialize API
  */
 static create()
 {
@@ -18,6 +18,9 @@ static create()
  */
 static int access(string user, string file, int type)
 {
+    if (!user || !file || type < 0 || type > FULL_ACCESS) {
+	error("Bad arguments for access");
+    }
     return accessd->access(user, file, type);
 }
 
@@ -39,6 +42,9 @@ static add_user(string user)
  */
 static remove_user(string user)
 {
+    if (!user) {
+	error("Bad argument for remove_user");
+    }
     accessd->remove_user(user);
 }
 
@@ -69,6 +75,9 @@ static set_access(string user, string file, int type)
  */
 static mapping query_user_access(string user)
 {
+    if (!user) {
+	error("Bad argument for query_user_access");
+    }
     return accessd->query_user_access(user);
 }
 
@@ -78,6 +87,9 @@ static mapping query_user_access(string user)
  */
 static mapping query_file_access(string path)
 {
+    if (!path) {
+	error("Bad argument for query_file_access");
+    }
     return accessd->query_file_access(path);
 }
 

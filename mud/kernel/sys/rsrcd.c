@@ -4,6 +4,7 @@
 
 mapping resources;		/* registered resources */
 mapping owners;			/* resource owners */
+int downtime;			/* shutdown time */
 
 /*
  * NAME:	create()
@@ -13,21 +14,91 @@ static create()
 {
     /* initial resources */
     resources = ([
-      "objects" :		({ 0, -1, 0, 0 }),
-      "events" :		({ 0, -1, 0, 0 }),
-      "callouts" :		({ 0, -1, 0, 0 }),
-      "timers" :		({ 0, -1, 0, 0 }),
-      "stack" :			({ 0, -1, 0, 0 }),
-      "ticks" :			({ 0, -1, 0, 0 }),
-      "tick usage" :		({ 0, -1, 0, 0 }),
-      "filequota" :		({ 0, -1, 0, 0 }),
-      "editors" :		({ 0, -1, 0, 0 }),
-      "create stack" :		({ 0, -1, 0, 0 }),
-      "create ticks" :		({ 0, -1, 0, 0 }),
+      "objects" :	({   0, -1,  0,    0 }),
+      "events" :	({   0, -1,  0,    0 }),
+      "callouts" :	({   0, -1,  0,    0 }),
+      "timers" :	({   0, -1,  0,    0 }),
+      "stack" :		({   0, -1,  0,    0 }),
+      "ticks" :		({   0, -1,  0,    0 }),
+      "tick usage" :	({ 0.0, -1, 10, 3600 }),
+      "filequota" :	({   0, -1,  0,    0 }),
+      "editors" :	({   0, -1,  0,    0 }),
+      "create stack" :	({   0, -1,  0,    0 }),
+      "create ticks" :	({   0, -1,  0,    0 }),
     ]);
 
     owners = ([ ]);		/* no resource owners yet */
 }
+
+/*
+ * NAME:	add_owner()
+ * DESCRIPTION:	add a new resource owner
+ */
+add_owner(string owner)
+{
+    if (KERNEL() && !owners[owner]) {
+	object obj;
+
+	rlimits (-1; -1) {
+	    obj = clone_object(RSRCOBJ);
+	    catch {
+		owners[owner] = obj;
+		obj->set_owner(owner);
+		owners["System"]->rsrc_incr("objects", 0, 1,
+					    resources["objects"], 1);
+	    } : {
+		destruct_object(obj);
+	    }
+	}
+	if (!obj) {
+	    error("Too many resource owners");
+	}
+    }
+}
+
+/*
+ * NAME:	remove_owner()
+ * DESCRIPTION:	remove a resource owner
+ */
+remove_owner(string owner)
+{
+    object obj;
+    string *names;
+    mixed **rsrcs, *rsrc, *usage;
+    int i, sz;
+
+    if (previous_program() == API_RSRC && (obj=owners[owner])) {
+	names = map_indices(resources);
+	rsrcs = map_values(resources);
+	usage = allocate(sz = sizeof(rsrcs));
+	for (i = sz; --i >= 0; ) {
+	    rsrc = obj->get_rsrc(names[i], rsrcs[i]);
+	    if (rsrc[RSRC_DECAY] == 0 && rsrc[RSRC_USAGE] != 0) {
+		error("Removing owner with non-zero resources");
+	    }
+	    usage[i] = rsrc[RSRC_USAGE];
+	}
+
+	rlimits (-1; -1) {
+	    for (i = sz; --i >= 0; ) {
+		rsrcs[i][RSRC_USAGE] -= usage[i];
+	    }
+	    destruct_object(obj);
+	}
+    }
+}
+
+/*
+ * NAME:	query_owners()
+ * DESCRIPTION:	return a list of resource owners
+ */
+string *query_owners()
+{
+    if (previous_program() == API_RSRC) {
+	return map_indices(owners);
+    }
+}
+
 
 /*
  * NAME:	set_rsrc()
@@ -37,13 +108,16 @@ static create()
 set_rsrc(string name, int max, int decay, int period)
 {
     if (KERNEL()) {
-	int *rsrc;
+	mixed *rsrc;
 
 	rsrc = resources[name];
 	if (rsrc != 0) {
 	    /*
 	     * existing resource
 	     */
+	    if ((rsrc[RSRC_DECAY - 1] == 0) != (decay == 0)) {
+		error("Cannot change resource decay");
+	    }
 	    rlimits (-1; -1) {
 		rsrc[RSRC_MAX] = max;
 		rsrc[RSRC_DECAY - 1] = decay;
@@ -51,26 +125,30 @@ set_rsrc(string name, int max, int decay, int period)
 	    }
 	} else {
 	    /* new resource */
-	    resources[name] = ({ 0, max, decay, period });
+	    resources[name] = ({ (decay == 0) ? 0 : 0.0, max, decay, period });
 	}
     }
 }
 
 /*
- * NAME:	del_rsrc()
- * DESCRIPTION:	delete a resource
+ * NAME:	remove_rsrc()
+ * DESCRIPTION:	remove a resource
  */
-del_rsrc(string name)
+remove_rsrc(string name)
 {
-    if (KERNEL()) {
-	object *objlist;
-	int i;
+    int *rsrc, i;
+    object *objects;
 
-	objlist = map_values(owners);
-	i = sizeof(objlist);
+    if (previous_program() == API_RSRC && (rsrc=resources[name])) {
+	if (rsrc[RSRC_DECAY - 1] == 0 && rsrc[RSRC_USAGE] != 0) {
+	    error("Removing non-zero resource");
+	}
+
+	objects = map_values(owners);
+	i = sizeof(objects);
 	rlimits (-1; -1) {
 	    while (i != 0) {
-		objlist[--i]->del_rsrc(name);
+		objects[--i]->remove_rsrc(name);
 	    }
 	    resources[name] = 0;
 	}
@@ -83,22 +161,22 @@ del_rsrc(string name)
  */
 mixed *query_rsrc(string name)
 {
-    int *rsrc;
+    mixed *rsrc;
 
-    if (KERNEL()) {
+    if (previous_program() == API_RSRC) {
 	rsrc = resources[name];
-	return rsrc[RSRC_USAGE .. RSRC_MAX - 1] + ({ 0 }) +
-	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD];
+	return rsrc[RSRC_USAGE .. RSRC_MAX] + ({ 0 }) +
+	       rsrc[RSRC_DECAY - 1 .. RSRC_PERIOD - 1];
     }
 }
 
 /*
- * NAME:	query_rsrc_list()
- * DESCRIPTION:	get a list of resources
+ * NAME:	query_resources()
+ * DESCRIPTION:	return a list of resources
  */
-string *query_rsrc_list()
+string *query_resources()
 {
-    if (KERNEL()) {
+    if (previous_program() == API_RSRC) {
 	return map_indices(resources);
     }
 }
@@ -110,8 +188,9 @@ string *query_rsrc_list()
  */
 rsrc_set_limit(string owner, string name, int max)
 {
-    if (KERNEL()) {
-	owners[owner]->rsrc_set_limit(name, max);
+    if (previous_program() == API_RSRC) {
+	owners[owner]->rsrc_set_limit(name, max,
+				      resources[name][RSRC_DECAY - 1]);
     }
 }
 
@@ -142,37 +221,30 @@ varargs int rsrc_incr(string owner, string name, mixed index, int incr,
 
 
 /*
- * NAME:	add_owner()
- * DESCRIPTION:	add a (possibly already existing) resource owner
+ * NAME:	prepare_reboot()
+ * DESCRIPTION:	prepare for a reboot
  */
-add_owner(string owner)
+prepare_reboot()
 {
-    if (KERNEL() && !owners[owner]) {
-	object obj;
-
-	rlimits (-1; -1) {
-	    obj = clone_object(RSRCOBJ);
-	    catch {
-		owners[owner] = obj;
-		obj->set_owner(owner);
-		rsrc_incr("System", "objects", 0, 1);
-	    } : {
-		destruct_object(obj);
-	    }
-	}
-	if (!obj) {
-	    error("Too many resource owners");
-	}
+    if (previous_program() == DRIVER) {
+	downtime = time();
     }
 }
 
 /*
- * NAME:	query_owner_list()
- * DESCRIPTION:	get a list of resource owners
+ * NAME:	reboot()
+ * DESCRIPTION:	recover from a reboot
  */
-string *query_owner_list()
+reboot()
 {
-    if (SYSTEM()) {
-	return map_indices(owners);
+    if (previous_program() == DRIVER) {
+	object *objects;
+	int i;
+
+	downtime = time() - downtime;
+	objects = map_values(owners);
+	for (i = sizeof(objects); --i >= 0; ) {
+	    objects[i]->reboot(downtime);
+	}
     }
 }

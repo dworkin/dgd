@@ -3,6 +3,7 @@
 
 inherit LIB_CONN;	/* basic connection object */
 
+
 int linemode;		/* process input and output line by line? */
 string buffer;		/* buffered input */
 
@@ -29,7 +30,7 @@ static receive_message(string str)
     string head;
 
     buffer += str;
-    while (buffer != "") {
+    while (buffer != "" && this_object()) {
 	if (linemode) {
 	    if (sscanf(buffer, "%s\r\n%s", str, buffer) != 0 ||
 		sscanf(buffer, "%s\n%s", str, buffer) != 0) {

@@ -3,6 +3,7 @@
 
 inherit LIB_CONN;	/* basic connection object */
 
+
 int mode;		/* input mode */
 
 /*
@@ -26,7 +27,7 @@ static receive_message(string str)
     int result;
 
     result = ::receive_message(str);
-    if (result != mode && result != 0 && result != MODE_RAW) {
-	send_message((mode = result) - 1);
+    if (result != mode && (result == MODE_NOECHO || result == MODE_ECHO)) {
+	send_message((mode = result) - MODE_NOECHO);
     }
 }

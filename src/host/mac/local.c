@@ -381,7 +381,7 @@ static void menurun(void)
  * NAME:	getevent()
  * DESCRIPTION:	get and process the next event
  */
-bool getevent(void)
+int getevent(void)
 {
     EventRecord evt;
     WindowPtr window;

@@ -45,12 +45,27 @@ static open()
  */
 static close(int dest)
 {
-    if (user) {
-	call_other(userd, conntype + "_disconnect", user);
-	user->logout();
+    rlimits (-1; -1) {
+	if (user) {
+	    call_other(userd, conntype + "_disconnect", user);
+	    catch {
+		user->logout(dest);
+	    }
+	}
+	if (!dest) {
+	    destruct_object(this_object());
+	}
     }
-    if (!dest) {
-	destruct_object(this_object());
+}
+
+/*
+ * NAME:	reboot()
+ * DESCRIPTION:	destruct connection object after a reboot
+ */
+reboot()
+{
+    if (previous_object() == userd) {
+	close(0);
     }
 }
 
@@ -91,12 +106,18 @@ static timeout()
  */
 static int receive_message(string str)
 {
+    int result;
+
     if (!user) {
 	user = call_other(userd, conntype + "_user", str);
-	return user->login(str);
+	result = user->login(str);
     } else {
-	return user->receive_message(str);
+	result = user->receive_message(str);
     }
+    if (result == MODE_DISCONNECT && this_object()) {
+	destruct_object(this_object());
+    }
+    return result;
 }
 
 /*

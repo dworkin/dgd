@@ -10,10 +10,6 @@
 #  define cvoid		char
 # endif
 
-typedef char bool;
-# define TRUE		1
-# define FALSE		0
-
 /* these may be changed, but sizeof(uindex) <= sizeof(int) */
 typedef unsigned short uindex;
 # define UINDEX_MAX	USHRT_MAX

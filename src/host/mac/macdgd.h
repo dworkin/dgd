@@ -8,7 +8,7 @@
 # define frame		iframe
 # define EOF		(-1)
 
-extern bool	getevent(void);
+extern int	getevent(void);
 extern void	exit(int status);
 extern void	abort(void);
 extern void	qsort(void *arr, size_t size, size_t sz,
@@ -93,9 +93,6 @@ extern int	access(const char *path, int mode);
 extern int	mkdir(const char *path, int mode);
 extern int	rmdir(const char *path);
 extern int	chdir(const char *path);
-extern bool	P_opendir(char *path);
-extern char	*P_readdir(void);
-extern void	P_closedir(void);
 
 # endif
 

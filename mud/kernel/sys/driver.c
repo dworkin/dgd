@@ -4,14 +4,14 @@
 # include <kernel/access.h>
 # include <kernel/timer.h>
 # include <kernel/user.h>
-# include <config.h>
 # include <status.h>
 # include <trace.h>
 
-object rsrcd;		/* resource daemon object */
-object accessd;		/* access daemon object */
-object timerd;		/* time daemon object */
-object userd;		/* user daemon object */
+object rsrcd;		/* resource manager object */
+object accessd;		/* access manager object */
+object timerd;		/* time manager object */
+object userd;		/* user manager object */
+object initd;		/* init manager object */
 string file;		/* last file used in editor write operation */
 int size;		/* size of file used in editor write operation */
 string error;		/* last error */
@@ -118,7 +118,7 @@ private int dir_size(string file)
  */
 varargs int file_size(string file, int dir)
 {
-    if (SYSTEM()) {
+    if (KERNEL()) {
 	mixed **info;
 	string *files, name;
 	int i, sz;
@@ -151,6 +151,20 @@ varargs int file_size(string file, int dir)
 }
 
 /*
+ * NAME:	init_filequota()
+ * DESCRIPTION:	set initial file quota for user
+ */
+init_filequota(string owner)
+{
+    if (previous_program() == DRIVER || SYSTEM()) {
+	rsrcd->rsrc_incr(owner, "filequota", 0,
+			 file_size(USR + "/" + owner, 1) -
+			     rsrcd->rsrc_get(owner, "filequota")[RSRC_USAGE],
+			 1);
+    }
+}
+
+/*
  * NAME:	query_owner()
  * DESCRIPTION:	return owner of driver object
  */
@@ -171,33 +185,52 @@ static initialize()
     call_other(compile_object(OBJREGD), "???");
     call_other(rsrcd = compile_object(RSRCD), "???");
 
-    rsrcd->set_rsrc("stack",	        50,  0,    0);
-    rsrcd->set_rsrc("ticks",	    500000,  0,    0);
-    rsrcd->set_rsrc("tick usage",       -1, 10, 3600);
-    rsrcd->set_rsrc("create stack",      5,  0,    0);
-    rsrcd->set_rsrc("create ticks",  10000,  0,    0);
+    rsrcd->set_rsrc("stack",	        50, 0, 0);
+    rsrcd->set_rsrc("ticks",	    500000, 0, 0);
+    rsrcd->set_rsrc("create stack",      5, 0, 0);
+    rsrcd->set_rsrc("create ticks",  10000, 0, 0);
 
     compile_object(RSRCOBJ);
     rsrcd->add_owner("System");
+    init_filequota("System");
+    rsrcd->rsrc_incr("System", "filequota", 0, dir_size("/kernel"));
 
     call_other(accessd = compile_object(ACCESSD), "???");
     call_other(timerd = compile_object(TIMERD), "???");
     call_other(userd = compile_object(USERD), "???");
     call_other(compile_object(DEFAULT_WIZTOOL), "???");
 
-    rsrcd->rsrc_incr("System", "objects", 0, 8);
+    rsrcd->rsrc_incr("System", "objects", 0, 9);
 
-    rsrcd->add_owner(0);	/* Backbone */
+    rsrcd->add_owner(0);	/* Ecru */
+    rsrcd->rsrc_incr(0, "filequota", 0, dir_size("/include"));
+
     rsrcd->add_owner("admin");
-    rsrcd->add_owner("dworkin");	/* XXX */
+    init_filequota("admin");
+
+    catch {
+	initd = compile_object(USR + "/System/initialize");
+	rsrcd->rsrc_incr("System", "objects", 0, 1);
+	call_other(initd, "???");
+    }
 }
 
 /*
- * NAME:	prepare_statedump()
+ * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a state dump
  */
-prepare_statedump()
+prepare_reboot()
 {
+    if (previous_program() == AUTO) {
+	rsrcd->prepare_reboot();
+	timerd->prepare_reboot();
+	userd->prepare_reboot();
+	if (initd) {
+	    catch {
+		initd->prepare_reboot();
+	    }
+	}
+    }
 }
 
 /*
@@ -206,8 +239,14 @@ prepare_statedump()
  */
 static restored()
 {
-    timerd->restored();
-    userd->restored();
+    rsrcd->reboot();
+    timerd->reboot();
+    userd->reboot();
+    if (initd) {
+	catch {
+	    initd->reboot();
+	}
+    }
 }
 
 /*
@@ -218,7 +257,9 @@ static string path_read(string path)
 {
     string oname, creator;
 
-    path = previous_object()->path_read(path);
+    catch {
+	path = previous_object()->path_read(path);
+    }
     if (path) {
 	creator = creator(oname = object_name(previous_object()));
 	path = normalize_path(path, oname, creator);
@@ -235,7 +276,9 @@ static string path_write(string path)
 {
     string oname, creator;
 
-    path = previous_object()->path_write(path);
+    catch {
+	path = previous_object()->path_write(path);
+    }
     if (path) {
 	creator = creator(oname = object_name(previous_object()));
 	path = normalize_path(path, oname, creator);
@@ -380,6 +423,10 @@ static object binary_connect()
 static interrupt()
 {
     shutdown();
+# ifdef SYS_CONTINUOUS
+    prepare_statedump();
+    dump_state();
+# endif
 }
 
 /*
@@ -388,7 +435,7 @@ static interrupt()
  */
 string query_error()
 {
-    if (SYSTEM()) {
+    if (KERNEL() || SYSTEM()) {
 	return error;
     }
 }
@@ -402,10 +449,14 @@ static runtime_error(string str, int caught, int ticks)
     mixed **trace, *what;
     string line, function, progname, objname;
     int i, sz, spent, len;
+    object obj;
 
-    if (caught && ticks < 0) {
-	error = str;
-	return;
+    if (caught) {
+	if (ticks < 0) {
+	    error = str;
+	    return;
+	}
+	str += " [caught]";
     }
 
     trace = call_trace();
@@ -431,36 +482,41 @@ static runtime_error(string str, int caught, int ticks)
 
     for (i = 0; i < sz; i++) {
 	progname = trace[i][TRACE_PROGNAME];
-	if (progname != AUTO + DRIVER) {	/* FOO */
-	    len      = trace[i][TRACE_LINE];
-	    if (len == 0) {
-		line = "    ";
-	    } else {
-		line = "    " + len;
-		line = line[strlen(line) - 4 ..];
-	    }
+	len      = trace[i][TRACE_LINE];
+	if (len == 0) {
+	    line = "    ";
+	} else {
+	    line = "    " + len;
+	    line = line[strlen(line) - 4 ..];
+	}
 
-	    function = trace[i][TRACE_FUNCTION];
-	    len = strlen(function);
-	    if (len < 17) {
-		function += "                 "[len ..];
-	    }
+	function = trace[i][TRACE_FUNCTION];
+	len = strlen(function);
+	if (len > 3 && progname == AUTO &&
+	    (function[.. 2] == "_F_" || function[.. 2] == "_Q_")) {
+	    continue;
+	}
+	if (len < 17) {
+	    function += "                 "[len ..];
+	}
 
-	    objname  = trace[i][TRACE_OBJNAME];
-	    if (progname != objname) {
-		len = strlen(progname);
-		if (len < strlen(objname) && progname == objname[.. len - 1] &&
-		    objname[len] == '#') {
-		    objname = objname[len ..];
-		}
-		str += line + " " + function + " " + progname +
-		       " (" + objname + ")\n";
-	    } else {
-		str += line + " " + function + " " + progname + "\n";
+	objname  = trace[i][TRACE_OBJNAME];
+	if (progname != objname) {
+	    len = strlen(progname);
+	    if (len < strlen(objname) && progname == objname[.. len - 1] &&
+		objname[len] == '#') {
+		objname = objname[len ..];
 	    }
+	    str += line + " " + function + " " + progname + " (" + objname +
+		   ")\n";
+	} else {
+	    str += line + " " + function + " " + progname + "\n";
 	}
     }
     send_message(str);
+    if (!caught && this_user() && (obj=this_user()->query_user())) {
+	obj->message(str);
+    }
 }
 
 /*
@@ -469,7 +525,12 @@ static runtime_error(string str, int caught, int ticks)
  */
 static compile_error(string file, int line, string err)
 {
-    send_message(file + ", " + line + ": " + err + "\n");
+    object obj;
+
+    send_message(file += ", " + line + ": " + err + "\n");
+    if (this_user() && (obj=this_user()->query_user())) {
+	obj->message(file);
+    }
 }
 
 /*

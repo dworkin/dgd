@@ -863,10 +863,10 @@ char *configfile, *dumpfile;
 
     cputs("\012# define O_COMPILETIME\t0\t/* time of compilation */\012");
     cputs("# define O_PROGSIZE\t1\t/* program size of object */\012");
-    cputs("# define O_DATASIZE\t2\t/* data size of object */\012");
+    cputs("# define O_DATASIZE\t2\t/* # variables in object */\012");
     cputs("# define O_NSECTORS\t3\t/* # sectors used by object */\012");
     cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
-    cputs("# define O_INDEX\t5\t/* unique number for master object */\012");
+    cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
 
     cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -1135,7 +1135,7 @@ object *obj;
 		      ctrl->nfuncalls * (Uint) 2 +
 		      ctrl->nsymbols * (Uint) sizeof(dsymbol);
     v->type = T_INT;
-    (v++)->u.number = ctrl->nvariables * sizeof(value);
+    (v++)->u.number = ctrl->nvariables;
     v->type = T_INT;
     if (obj->flags & O_MASTER) {
 	(v++)->u.number = ctrl->nsectors + nsectors;

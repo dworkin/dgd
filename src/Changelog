@@ -1113,3 +1113,8 @@ DGD 1.1
  - Made dealing with destructed objects in arrays and mappings faster.
  - Prevent the compiler from attempting to compile foo.c directories.
  - Fixed a bug in multi-phase upgrading of an old clone.
+ - Perform swapout, state dump and shutdown immediately upon completion of
+   the thread in which they are initiated.
+ - Worked around the latest Visual C++ bugs.
+ - Changed the meaning of O_DATASIZE in status(obj): this now returns the
+   number of variables, rather than the assumed amount of space they take.

@@ -89,6 +89,38 @@ void endthread()
     d_export();
     o_clean();
     i_clear();
+
+    if (stop) {
+	comm_finish();
+	ed_finish();
+# ifdef DEBUG
+	swap = 1;
+# endif
+    }
+
+    if (swap || !m_check()) {
+	/*
+	 * swap out everything and possibly extend the static memory area
+	 */
+	d_swapout(1);
+	arr_freeall();
+	m_purge();
+	swap = FALSE;
+    }
+
+    if (dump) {
+	/*
+	 * create a state dump
+	 */
+	d_swapsync();
+	conf_dump();
+	dump = FALSE;
+    }
+
+    if (stop) {
+	sw_finish();
+	exit(0);
+    }
 }
 
 /*
@@ -127,39 +159,6 @@ char **argv;
 	    i_del_value(sp++);
 	    endthread();
 	    comm_flush(FALSE);
-	}
-
-	if (stop) {
-	    comm_finish();
-	    ed_finish();
-# ifdef DEBUG
-	    swap = 1;
-# endif
-	}
-
-	if (swap || !m_check()) {
-	    /*
-	     * Swap out everything and possibly extend the static memory area.
-	     */
-	    d_swapout(1);
-	    arr_freeall();
-	    m_purge();
-	    swap = FALSE;
-	}
-
-	if (dump) {
-	    /*
-	     * create a state dump
-	     */
-	    d_swapsync();
-	    conf_dump();
-	    dump = FALSE;
-	}
-
-	if (stop) {
-	    sw_finish();
-	    ec_pop();
-	    return 0;
 	}
 
 	/* rebuild swapfile */

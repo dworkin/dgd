@@ -61,6 +61,7 @@ extern int P_chdir(char*);
 
 # define FS_BLOCK_SIZE		2048
 
+# define bool			dgd_bool
 # define exit			dgd_exit
 
 extern void dgd_exit(int);
@@ -238,6 +239,11 @@ typedef unsigned int Uint;
 # define FS_BLOCK_SIZE		8192
 
 # endif	/* GENERIC_SYSV */
+
+
+typedef char bool;
+# define TRUE		1
+# define FALSE		0
 
 
 extern void  P_message	P((char*));

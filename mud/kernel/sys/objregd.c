@@ -67,13 +67,36 @@ unlink(object obj, string owner)
     }
 }
 
+
 /*
- * NAME:	query_link()
- * DESCRIPTION:	query first object in linked list
+ * NAME:	first_link()
+ * DESCRIPTION:	return first object in linked list
  */
-object query_link(string owner)
+object first_link(string owner)
 {
-    if (SYSTEM()) {
+    if (previous_program() == API_OBJREG) {
 	return links[owner];
+    }
+}
+
+/*
+ * NAME:	prev_link()
+ * DESCRIPTION:	return prev object in linked list
+ */
+object prev_link(object obj)
+{
+    if (previous_program() == API_OBJREG) {
+	return obj->_Q_prev();
+    }
+}
+
+/*
+ * NAME:	next_link()
+ * DESCRIPTION:	return next object in linked list
+ */
+object next_link(object obj)
+{
+    if (previous_program() == API_OBJREG) {
+	return obj->_Q_next();
     }
 }

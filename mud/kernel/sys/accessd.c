@@ -1,6 +1,5 @@
 # include <kernel/kernel.h>
 # include <kernel/access.h>
-# include <config.h>
 # include <type.h>
 
 mapping uaccess;		/* user access */
@@ -20,16 +19,42 @@ static create()
 }
 
 /*
- * NAME:	filter_access()
- * DESCRIPTION:	filter access mapping for a file or files
+ * NAME:	filter_from_file()
+ * DESCRIPTION:	filter access from a file
  */
-private mapping filter_access(mapping access, string file)
+private mapping filter_from_file(mapping access, string file)
 {
     if (file == "/") {
 	return access[..];
     }
     return access[file .. file] +
 	   (access[file + "/" .. file + "0"] - ({ file + "0" }));
+}
+
+/*
+ * NAME:	filter_to_file()
+ * DESCRIPTION:	filter access to a file
+ */
+private mapping filter_to_file(mapping access, string file)
+{
+    mapping result;
+    string *path;
+    int i, sz, type;
+
+    if (file == "/") {
+	/* special case */
+	return ([ "/" : access["/"] ]);
+    }
+
+    result = ([ ]);
+    path = explode(file, "/");
+    file = "";
+    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
+	file += "/" + path[i];
+	result[file] = access[file];
+    }
+
+    return result;
 }
 
 /*
@@ -53,8 +78,8 @@ int access(string user, string file, int type)
 	     */
 	    return 1;
 	}
-	if (user == dir || (sscanf(user, USR + "/%s/", str) != 0 && str == dir))
-	{
+	if (user == dir ||
+	    (user && sscanf(user, USR + "/%s/", str) != 0 && str == dir)) {
 	    /*
 	     * full access to own/owner directory
 	     */
@@ -76,14 +101,14 @@ int access(string user, string file, int type)
 		return 1;
 	    }
 
-	    path = explode(file + "/", "/");
+	    path = explode(file, "/");
 	    file = "";
-	    for (i = 0, sz = sizeof(path); i < sz; i++) {
+	    for (i = 0, sz = sizeof(path) - 1; i < sz; i++) {
 		file += "/" + path[i];
 		if (access[file] >= type) {
 		    return 1;
 		}
-	    } while (++i < sz);
+	    }
 	}
     }
 }
@@ -94,7 +119,7 @@ int access(string user, string file, int type)
  */
 add_user(string user)
 {
-    if (previous_program() == LIB_ACCESS && !uaccess[user]) {
+    if (previous_program() == API_ACCESS && !uaccess[user]) {
 	rlimits (-1; -1) {
 	    uaccess[user] = 1;
 # ifndef SYS_CONTINUOUS
@@ -110,11 +135,11 @@ add_user(string user)
  */
 remove_user(string user)
 {
-    if (previous_program() == LIB_ACCESS) {
+    if (previous_program() == API_ACCESS) {
 	if (uaccess[user]) {
 	    rlimits (-1; -1) {
 		string *users;
-		mapping *values, access;
+		mixed *values, access;
 		int i;
 
 		uaccess[user] = 0;
@@ -122,9 +147,12 @@ remove_user(string user)
 		values = map_values(uaccess);
 		user = USR + "/" + user;
 		for (i = sizeof(values); --i >= 0; ) {
-		    access = filter_access(values[i], user);
-		    if (map_sizeof(access) != 0) {
-			uaccess[users[i]] -= map_indices(access);
+		    access = values[i];
+		    if (typeof(access) == T_MAPPING) {
+			access = filter_from_file(access, user);
+			if (map_sizeof(access) != 0) {
+			    uaccess[users[i]] -= map_indices(access);
+			}
 		    }
 		}
 # ifndef SYS_CONTINUOUS
@@ -141,7 +169,7 @@ remove_user(string user)
  */
 string *query_users()
 {
-    if (KERNEL()) {
+    if (previous_program() == API_ACCESS) {
 	return map_indices(uaccess);
     }
 }
@@ -152,7 +180,7 @@ string *query_users()
  */
 set_access(string user, string file, int type)
 {
-    if (previous_program() == LIB_ACCESS) {
+    if (previous_program() == API_ACCESS) {
 	mixed access, *indices;
 	int i;
 
@@ -166,7 +194,7 @@ set_access(string user, string file, int type)
 		/*
 		 * add access
 		 */
-		if (access(user, file, type)) {
+		if (access(user, file + "/*", type)) {
 		    return;	/* access already exists */
 		}
 
@@ -175,7 +203,7 @@ set_access(string user, string file, int type)
 		    uaccess[user] = ([ file : type ]);
 		} else {
 		    /* remove existing lesser access */
-		    indices = map_indices(filter_access(access, file));
+		    indices = map_indices(filter_from_file(access, file));
 		    for (i = sizeof(indices); --i >= 0; ) {
 			if (access[indices[i]] <= type) {
 			    access[indices[i]] = 0;
@@ -190,7 +218,7 @@ set_access(string user, string file, int type)
 		 */
 		if (access[file] == 0) {
 		    /* remove all subdir access */
-		    indices = map_indices(filter_access(access, file));
+		    indices = map_indices(filter_from_file(access, file));
 		    for (i = sizeof(indices); --i >= 0; ) {
 			access[indices[i]] = 0;
 		    }
@@ -199,7 +227,7 @@ set_access(string user, string file, int type)
 		    access[file] = 0;
 		}
 		if (map_sizeof(access) == 0) {
-		    uaccess[user] = 0;
+		    uaccess[user] = 1;
 		}
 	    }
 # ifndef SYS_CONTINUOUS
@@ -215,7 +243,7 @@ set_access(string user, string file, int type)
  */
 mapping query_user_access(string user)
 {
-    if (previous_program() == LIB_ACCESS) {
+    if (previous_program() == API_ACCESS) {
 	mixed access;
 
 	access = uaccess[user];
@@ -225,23 +253,29 @@ mapping query_user_access(string user)
 
 /*
  * NAME:	query_file_access()
- * DESCRIPTION:	get all access to a path
+ * DESCRIPTION:	get all access to a file
  */
-mapping query_file_access(string path)
+mapping query_file_access(string file)
 {
-    if (previous_program() == LIB_ACCESS) {
-	mapping access, *values;
+    if (previous_program() == API_ACCESS) {
+	mapping result;
+	mixed *values, access;
 	string *users;
 	int i, sz;
 
-	access = ([ ]);
+	result = ([ ]);
 	users = map_indices(uaccess);
 	values = map_values(uaccess);
-	for (i = 0, sz = sizeof(users); i < sz; i++) {
-	    access[users[i]] = filter_access(values[i], path);
+	for (i = 0, sz = sizeof(values); i < sz; i++) {
+	    access = values[i];
+	    if (typeof(access) == T_MAPPING) {
+		access = filter_to_file(access, file);
+		if (map_sizeof(access) != 0) {
+		    result[users[i]] = access;
+		}
+	    }
 	}
-
-	return access;
+	return result;
     }
 }
 
@@ -251,7 +285,7 @@ mapping query_file_access(string path)
  */
 set_global_access(string dir, int flag)
 {
-    if (previous_program() == LIB_ACCESS) {
+    if (previous_program() == API_ACCESS) {
 	gaccess[dir] = flag;
     }
 }
@@ -263,7 +297,7 @@ set_global_access(string dir, int flag)
  */
 string *query_global_access()
 {
-    if (previous_program() == LIB_ACCESS) {
+    if (previous_program() == API_ACCESS) {
 	return map_indices(gaccess);
     }
 }
