@@ -62,6 +62,7 @@ unsigned int max;
 	/* only if callouts are enabled */
 	cotab = ALLOC(call_out, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
+	cotab[0].mtime = 0;
 	cotab++;
 	flist = 0;
 	if (P_time() >> 24 <= 1) {
@@ -987,6 +988,7 @@ register Uint t;
 		co->mtime = m;
 	    } else {
 		co->time = dc->time + t;
+		co->mtime = 0;
 	    }
 	    dc++;
 	}
