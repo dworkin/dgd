@@ -1370,3 +1370,5 @@ DGD 1.1
  - Fixed another object undo bug.
  - Completed the string accounting bug fix; the earlier fix was only partial.
  - Fixed the above for the case of multi-level atomic calls.
+ - Fixed a restore-time bug involving upgraded objects.
+ - Fixed a bug in removing dataspaces.

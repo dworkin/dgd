@@ -4335,11 +4335,14 @@ register dataspace *data;
 {
     if (data->iprev != (dataspace *) NULL) {
 	data->iprev->inext = data->inext;
+	if (data->inext != (dataspace *) NULL) {
+	    data->inext->iprev = data->iprev;
+	}
     } else if (ifirst == data) {
 	ifirst = data->inext;
-    }
-    if (data->inext != (dataspace *) NULL) {
-	data->inext->iprev = data->iprev;
+	if (ifirst != (dataspace *) NULL) {
+	    ifirst->iprev = (dataspace *) NULL;
+	}
     }
 
     if (data->ncallouts != 0) {
