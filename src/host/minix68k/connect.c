@@ -23,9 +23,9 @@ static char state;				/* current output state */
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connections
  */
-void conn_init(nusers, port_number)
+void conn_init(nusers, telnet_port, binary_port)
 int nusers;
-unsigned short port_number;
+unsigned short telnet_port, binary_port;
 {
     ioctl(1, TIOCGETP, &tty);
     inbuf = -1;
@@ -42,10 +42,10 @@ void conn_finish()
 }
 
 /*
- * NAME:	conn->new()
- * DESCRIPTION:	accept a new connection
+ * NAME:	conn->tnew()
+ * DESCRIPTION:	accept a new telnet connection
  */
-connection *conn_new()
+connection *conn_tnew()
 {
     char buffer[100];
     static connection conn;
@@ -55,6 +55,15 @@ connection *conn_new()
 	inbuf = 0;
 	return &conn;
     }
+    return (connection *) NULL;
+}
+
+/*
+ * NAME:	conn->bnew()
+ * DESCRIPTION:	accept a new binary connection
+ */
+connection *conn_bnew()
+{
     return (connection *) NULL;
 }
 
@@ -79,8 +88,8 @@ bool wait;
     if (inbuf < 0) {
 	return 0;
     }
-    if (!wait || inbuf > 0) {
-	return 1;
+    if (!wait) {
+	return (inbuf > 0);
     }
     if ((inbuf=read(0, buffer, INBUF_SIZE)) < 0) {
 	inbuf = 0;

@@ -23,8 +23,6 @@ int nargs;
     
     if (nargs == 0) {
 	return -1;
-    } else if (nargs > 2) {
-	return 3;
     }
 
     if (nargs == 2 && sp->u.string->len >= 2) {
@@ -52,8 +50,7 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("ctime", kf_ctime, p_ctime)
 # else
-char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1,
-		   T_NUMBER };
+char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1, T_INT };
 
 /*
  * NAME:	kfun->ctime()
@@ -62,7 +59,7 @@ char p_ctime[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 1,
 int kf_ctime()
 {
     sp->type = T_STRING;
-    str_ref(sp->u.string = str_new(P_ctime((long) sp->u.number), 24L));
+    str_ref(sp->u.string = str_new(P_ctime((Uint) sp->u.number), 24L));
 
     return 0;
 }
@@ -239,8 +236,7 @@ int kf_implode()
 # ifdef FUNCDEF
 FUNCDEF("random", kf_random, p_random)
 # else
-char p_random[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
-		    T_NUMBER };
+char p_random[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1, T_INT };
 
 /*
  * NAME:	kfun->random()
@@ -257,7 +253,7 @@ int kf_random()
 # ifdef FUNCDEF
 FUNCDEF("sscanf", kf_sscanf, p_sscanf)
 # else
-char p_sscanf[] = { C_STATIC | C_VARARGS | C_LOCAL, T_NUMBER, 3,
+char p_sscanf[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_INT, 3,
 		    T_STRING, T_STRING, T_LVALUE | T_ELLIPSIS };
 
 /*
@@ -269,22 +265,17 @@ int nargs;
 {
     register int len, flen, size, n;
     register char *f, *pct;
-    register value *val;
-    int matches;
-    char *p;
-    bool skip;
     value values[MAX_LOCALS - 2];
+    static value *val;
+    char *p, *q;
+    xfloat flt;
+    int matches;
+    bool skip;
 
     if (nargs < 2) {
 	return -1;
     } else if (nargs > MAX_LOCALS) {
 	return 4;
-    }
-    if (sp[nargs - 1].type != T_STRING) {
-	return 1;
-    }
-    if (sp[nargs - 2].type != T_STRING) {
-	return 2;
     }
     p = sp[nargs - 1].u.string->text;
     len = sp[nargs - 1].u.string->len;
@@ -366,17 +357,33 @@ int nargs;
 		    if (*pct == '*') {
 			pct++;
 		    }
-		    if (*pct != 'd') {
-			error("Bad sscanf format string");
-		    }
-		    pct = f;
-		    /*
-		     * %s%d
-		     */
-		    for (f = p, size = len; *f != '-' && !isdigit(*f); f++) {
-			if (--size <= 0) {
-			    goto no_match;
+		    if (*pct == 'd') {
+			/*
+			 * %s%d
+			 */
+			pct = f;
+			for (f = p, size = len; *f != '-' && !isdigit(*f); f++)
+			{
+			    if (--size <= 0) {
+				goto no_match;
+			    }
 			}
+		    } else if (*pct == 'f') {
+			/*
+			 * %s%f
+			 */
+			pct = f;
+			for (f = p, size = len; *f != '-' && !isdigit(*f); f++)
+			{
+			    if (f[0] == '.' && isdigit(f[1])) {
+				break;
+			    }
+			    if (--size <= 0) {
+				goto no_match;
+			    }
+			}
+		    } else {
+			error("Bad sscanf format string");
 		    }
 		    n = 0;
 		}
@@ -397,10 +404,15 @@ int nargs;
 		} else {
 		    size = -1;
 		    do {
-			if (len < ++size) {
+			if (len < ++size + n) {
 			    goto no_match;
 			}
-		    } while (memcmp(f, p + size, n) != 0);
+			q = (char *) memchr(p + size, f[0], len - n - size + 1);
+			if (q == (char *) NULL) {
+			    goto no_match;
+			}
+			size = q - p;
+		    } while (memcmp(q, f, n) != 0);
 		    flen -= n;
 		}
 	    }
@@ -433,9 +445,70 @@ int nargs;
 		    error("No lvalue for %%d");
 		}
 		--nargs;
-		val->type = T_NUMBER;
+		val->type = T_INT;
 		val++;
 	    }
+	    break;
+
+	case 'f':
+	    /* %f */
+	    pct = p;
+	    if (*pct == '-') {
+		pct++;
+	    }
+	    if (isdigit(*pct)) {
+		while (isdigit(*++pct)) ;
+		if (*pct == '.') {
+		    while (isdigit(*++pct));
+		}
+	    } else if (*pct++ == '.' && isdigit(*pct)) {
+		while (isdigit(*++pct)) ;
+	    } else {
+		goto no_match;
+	    }
+	    q = pct;
+	    if (*pct == 'e' || *pct == 'E') {
+		if (*++pct == '+' || *pct == '-') {
+		    pct++;
+		}
+		if (!isdigit(*pct)) {
+		    pct = q;
+		} else {
+		    while (isdigit(*++pct)) ;
+		}
+	    }
+	    if (!flt_atof(p, &flt)) {
+		goto no_match;
+	    }
+	    if (!skip) {
+		if (nargs == 0) {
+		    error("No lvalue for %%f");
+		}
+		--nargs;
+		val->type = T_FLOAT;
+		VFLT_PUT(val, flt);
+		val++;
+	    }
+	    len -= pct - p;
+	    p = pct;
+	    break;
+
+	case 'c':
+	    /* %c */
+	    if (len == 0) {
+		goto no_match;
+	    }
+	    if (!skip) {
+		if (nargs == 0) {
+		    error("No lvalue for %%c");
+		}
+		--nargs;
+		val->type = T_INT;
+		val->u.number = UCHAR(*p);
+		val++;
+	    }
+	    p++;
+	    --len;
 	    break;
 
 	case '%':
@@ -465,7 +538,7 @@ no_match:
 
     str_del((sp++)->u.string);
     str_del(sp->u.string);
-    sp->type = T_NUMBER;
+    sp->type = T_INT;
     sp->u.number = matches;
     return 0;
 }

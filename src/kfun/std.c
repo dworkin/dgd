@@ -4,6 +4,7 @@
 # include "path.h"
 # include "comm.h"
 # include "call_out.h"
+# include "ed.h"
 # include "node.h"
 # include "compile.h"
 # endif
@@ -12,8 +13,8 @@
 # ifdef FUNCDEF
 FUNCDEF("call_other", kf_call_other, p_call_other)
 # else
-char p_call_other[] = { C_STATIC | C_VARARGS | C_LOCAL, T_MIXED, 3,
-			T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
+char p_call_other[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_MIXED,
+			3, T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_other()
@@ -55,13 +56,9 @@ int nargs;
     }
 
     /* default return value */
-    val->type = T_NUMBER;
+    val->type = T_INT;
     val->u.number = 0;
     --val;
-    if (val->type != T_STRING) {
-	/* bad arg 2 */
-	return 2;
-    }
     if (i_this_object()->count == 0) {
 	/*
 	 * cannot call_other from destructed object
@@ -104,7 +101,7 @@ int kf_this_object()
 	sp->oindex = obj->index;
 	sp->u.objcnt = obj->count;
     } else {
-	sp->type = T_NUMBER;
+	sp->type = T_INT;
 	sp->u.number = 0;
     }
     return 0;
@@ -116,7 +113,7 @@ int kf_this_object()
 FUNCDEF("previous_object", kf_previous_object, p_previous_object)
 # else
 char p_previous_object[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL,
-			     T_OBJECT, 1, T_NUMBER };
+			     T_OBJECT, 1, T_INT };
 
 /*
  * NAME:	kfun->previous_object()
@@ -128,7 +125,7 @@ int nargs;
     register object *obj;
 
     if (nargs == 0) {
-	(--sp)->type = T_NUMBER;
+	(--sp)->type = T_INT;
 	sp->u.number = 0;
     }
 
@@ -174,7 +171,7 @@ char p_clone_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_OBJECT, 1,
  * NAME:	kfun->clone_object()
  * DESCRIPTION:	clone a new object
  */
-kf_clone_object()
+int kf_clone_object()
 {
     register object *obj;
     char *file;
@@ -212,7 +209,7 @@ char p_destruct_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1,
  * NAME:	kfun->destruct_object()
  * DESCRIPTION:	destruct an object
  */
-kf_destruct_object()
+int kf_destruct_object()
 {
     register object *obj;
 
@@ -264,7 +261,7 @@ char p_find_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_OBJECT, 1,
  * NAME:	kfun->find_object()
  * DESCRIPTION:	find the loaded object for a given object name
  */
-kf_find_object()
+int kf_find_object()
 {
     char *name;
     object *obj;
@@ -281,7 +278,7 @@ kf_find_object()
 	sp->oindex = obj->index;
 	sp->u.objcnt = obj->count;
     } else {
-	sp->type = T_NUMBER;
+	sp->type = T_INT;
 	sp->u.number = 0;
     }
     return 0;
@@ -299,7 +296,7 @@ char p_function_object[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_STRING, 2,
  * NAME:	kfun->function_object()
  * DESCRIPTION:	return the name of the program a function is in
  */
-kf_function_object()
+int kf_function_object()
 {
     object *obj;
     dsymbol *symb;
@@ -315,7 +312,7 @@ kf_function_object()
 	sp->u.string->text[0] = '/';
 	strcpy(sp->u.string->text + 1, name);
     } else {
-	sp->type = T_NUMBER;
+	sp->type = T_INT;
 	sp->u.number = 0;
     }
     return 0;
@@ -342,7 +339,7 @@ int kf_this_user()
 	sp->oindex = obj->index;
 	sp->u.objcnt = obj->count;
     } else {
-	(--sp)->type = T_NUMBER;
+	(--sp)->type = T_INT;
 	sp->u.number = 0;
     }
     return 0;
@@ -369,7 +366,7 @@ int kf_query_ip_number()
 	sp->type = T_STRING;
 	str_ref(sp->u.string = comm_ip_number(obj));
     } else {
-	sp->type = T_NUMBER;
+	sp->type = T_INT;
 	sp->u.number = 0;
     }
     return 0;
@@ -398,7 +395,7 @@ int kf_users()
 # ifdef FUNCDEF
 FUNCDEF("strlen", kf_strlen, p_strlen)
 # else
-char p_strlen[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1, T_STRING };
+char p_strlen[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1, T_STRING };
 
 /*
  * NAME:	kfun->strlen()
@@ -410,7 +407,7 @@ int kf_strlen()
 
     len = sp->u.string->len;
     str_del(sp->u.string);
-    sp->type = T_NUMBER;
+    sp->type = T_INT;
     sp->u.number = len;
     return 0;
 }
@@ -421,7 +418,7 @@ int kf_strlen()
 FUNCDEF("allocate", kf_allocate, p_allocate)
 # else
 char p_allocate[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
-		      T_MIXED | (1 << REFSHIFT), 1, T_NUMBER };
+		      T_MIXED | (1 << REFSHIFT), 1, T_INT };
 
 /*
  * NAME:	kfun->allocate()
@@ -435,7 +432,7 @@ int kf_allocate()
     arr_ref(sp->u.array = arr_new((long) sp->u.number));
     sp->type = T_ARRAY;
     for (i = sp->u.array->size, v = sp->u.array->elts; i > 0; --i, v++) {
-	v->type = T_NUMBER;
+	v->type = T_INT;
 	v->u.number = 0;
     }
     return 0;
@@ -446,7 +443,7 @@ int kf_allocate()
 # ifdef FUNCDEF
 FUNCDEF("sizeof", kf_sizeof, p_sizeof)
 # else
-char p_sizeof[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
+char p_sizeof[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
 		    T_MIXED | (1 << REFSHIFT) };
 
 /*
@@ -459,7 +456,7 @@ int kf_sizeof()
 
     size = sp->u.array->size;
     arr_del(sp->u.array);
-    sp->type = T_NUMBER;
+    sp->type = T_INT;
     sp->u.number = size;
     return 0;
 }
@@ -515,7 +512,7 @@ int kf_map_values()
 # ifdef FUNCDEF
 FUNCDEF("map_sizeof", kf_map_sizeof, p_map_sizeof)
 # else
-char p_map_sizeof[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
+char p_map_sizeof[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
 			T_MAPPING };
 
 /*
@@ -528,7 +525,7 @@ int kf_map_sizeof()
 
     size = map_size(sp->u.array);
     arr_del(sp->u.array);
-    sp->type = T_NUMBER;
+    sp->type = T_INT;
     sp->u.number = size;
     return 0;
 }
@@ -536,118 +533,22 @@ int kf_map_sizeof()
 
 
 # ifdef FUNCDEF
-FUNCDEF("intp", kf_intp, p_intp)
+FUNCDEF("typeof", kf_typeof, p_typeof)
 # else
-char p_intp[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
+char p_typeof[] = { C_STATIC | C_LOCAL, T_INT, 1, T_MIXED };
 
 /*
- * NAME:	kfun->intp()
- * DESCRIPTION:	check if a value is an integer
+ * NAME:	kfun->typeof()
+ * DESCRIPTION:	return the type of a value
  */
-int kf_intp()
+int kf_typeof()
 {
-    if (sp->type == T_NUMBER) {
-	sp->u.number = TRUE;
-    } else {
-	i_del_value(sp);
-	sp->type = T_NUMBER;
-	sp->u.number = FALSE;
-    }
-    return 0;
-}
-# endif
+    unsigned short type;
 
-
-# ifdef FUNCDEF
-FUNCDEF("stringp", kf_stringp, p_stringp)
-# else
-char p_stringp[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
-
-/*
- * NAME:	kfun->stringp()
- * DESCRIPTION:	check if a value is a string
- */
-int kf_stringp()
-{
-    if (sp->type == T_STRING) {
-	str_del(sp->u.string);
-	sp->u.number = TRUE;
-    } else {
-	i_del_value(sp);
-	sp->u.number = FALSE;
-    }
-    sp->type = T_NUMBER;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("objectp", kf_objectp, p_objectp)
-# else
-char p_objectp[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
-
-/*
- * NAME:	kfun->objectp()
- * DESCRIPTION:	check if a value is an object
- */
-int kf_objectp()
-{
-    if (sp->type == T_OBJECT) {
-	sp->u.number = TRUE;
-    } else {
-	i_del_value(sp);
-	sp->u.number = FALSE;
-    }
-    sp->type = T_NUMBER;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("arrayp", kf_arrayp, p_arrayp)
-# else
-char p_arrayp[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
-
-/*
- * NAME:	kfun->arrayp()
- * DESCRIPTION:	check if a value is an array
- */
-int kf_arrayp()
-{
-    if (sp->type == T_ARRAY) {
-	arr_del(sp->u.array);
-	sp->u.number = TRUE;
-    } else {
-	i_del_value(sp);
-	sp->u.number = FALSE;
-    }
-    sp->type = T_NUMBER;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("mappingp", kf_mappingp, p_mappingp)
-# else
-char p_mappingp[] = { C_STATIC | C_LOCAL, T_NUMBER, 1, T_MIXED };
-
-/*
- * NAME:	kfun->mappingp()
- * DESCRIPTION:	check if a value is a mapping
- */
-int kf_mappingp()
-{
-    if (sp->type == T_MAPPING) {
-	arr_del(sp->u.array);
-	sp->u.number = TRUE;
-    } else {
-	i_del_value(sp);
-	sp->u.number = FALSE;
-    }
-    sp->type = T_NUMBER;
+    type = sp->type;
+    i_del_value(sp);
+    sp->type = T_INT;
+    sp->u.number = type;
     return 0;
 }
 # endif
@@ -686,26 +587,26 @@ int kf_send_message()
 {
     object *obj;
 
-    if (sp->type != T_NUMBER && sp->type != T_STRING) {
+    if (sp->type != T_INT && sp->type != T_STRING) {
 	return 1;
     }
 
     obj = i_this_object();
     if (obj->count != 0) {
 	if (obj->flags & O_USER) {
-	    if (sp->type == T_NUMBER) {
+	    if (sp->type == T_INT) {
 		comm_echo(obj, sp->u.number != 0);
 	    } else {
 		comm_send(obj, sp->u.string);
 	    }
 	} else if ((obj->flags & O_DRIVER) && sp->type == T_STRING) {
-	    message(sp->u.string->text);
+	    P_message(sp->u.string->text);
 	}
     }
     if (sp->type == T_STRING) {
 	str_del(sp->u.string);
     }
-    sp->type = T_NUMBER;
+    sp->type = T_INT;
     sp->u.number = 0;
     return 0;
 }
@@ -715,7 +616,7 @@ int kf_send_message()
 # ifdef FUNCDEF
 FUNCDEF("time", kf_time, p_time)
 # else
-char p_time[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
+char p_time[] = { C_STATIC | C_LOCAL, T_INT, 0 };
 
 /*
  * NAME:	kfun->time()
@@ -723,7 +624,7 @@ char p_time[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
  */
 int kf_time()
 {
-    (--sp)->type = T_NUMBER;
+    (--sp)->type = T_INT;
     sp->u.number = P_time();
     return 0;
 }
@@ -733,7 +634,7 @@ int kf_time()
 # ifdef FUNCDEF
 FUNCDEF("get_exec_cost", kf_get_exec_cost, p_get_exec_cost)
 # else
-char p_get_exec_cost[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
+char p_get_exec_cost[] = { C_STATIC | C_LOCAL, T_INT, 0 };
 
 /*
  * NAME:	kfun->get_exec_cost()
@@ -741,7 +642,7 @@ char p_get_exec_cost[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
  */
 int kf_get_exec_cost()
 {
-    (--sp)->type = T_NUMBER;
+    (--sp)->type = T_INT;
     sp->u.number = exec_cost;
     return 0;
 }
@@ -751,8 +652,8 @@ int kf_get_exec_cost()
 # ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, p_call_out)
 # else
-char p_call_out[] = { C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 3,
-		      T_STRING, T_NUMBER, T_MIXED | T_ELLIPSIS };
+char p_call_out[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_INT, 3,
+		      T_STRING, T_INT, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_out()
@@ -762,52 +663,25 @@ int kf_call_out(nargs)
 int nargs;
 {
     object *obj;
+    uindex handle;
 
     if (nargs < 2) {
 	return -1;
     }
-    if (sp[nargs - 1].type != T_STRING) {
-	return 1;
-    }
-    if (sp[nargs - 2].type != T_NUMBER) {
-	return 2;
-    }
 
     obj = i_this_object();
     if (obj->count != 0 &&
-	co_new(obj, sp[nargs - 1].u.string, (long) sp[nargs - 2].u.number,
-	       nargs - 2)) {
-	sp++;			/* pop duration */
+	(handle=co_new(obj, sp[nargs - 1].u.string,
+		       (long) sp[nargs - 2].u.number, nargs - 2)) != 0) {
+	/* pop duration */
+	sp++;
     } else {
-	i_pop(nargs - 1);	/* pop arguments manually */
+	/* no call_out was started: pop all arguments */
+	i_pop(nargs - 1);
     }
     str_del(sp->u.string);
-    sp->type = T_NUMBER;
-    sp->u.number = 0;
-
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("find_call_out", kf_find_call_out, p_find_call_out)
-# else
-char p_find_call_out[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
-			   T_STRING };
-
-/*
- * NAME:	kfun->find_call_out()
- * DESCRIPTION:	find a call_out
- */
-int kf_find_call_out()
-{
-    long timeleft;
-
-    timeleft = co_find(i_this_object(), sp->u.string);
-    str_del(sp->u.string);
-    sp->type = T_NUMBER;
-    sp->u.number = timeleft;
+    sp->type = T_INT;
+    sp->u.number = handle;
 
     return 0;
 }
@@ -817,8 +691,8 @@ int kf_find_call_out()
 # ifdef FUNCDEF
 FUNCDEF("remove_call_out", kf_remove_call_out, p_remove_call_out)
 # else
-char p_remove_call_out[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
-			     T_STRING };
+char p_remove_call_out[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_INT, 1,
+			     T_INT };
 
 /*
  * NAME:	kfun->remove_call_out()
@@ -826,40 +700,7 @@ char p_remove_call_out[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
  */
 int kf_remove_call_out()
 {
-    long timeleft;
-
-    timeleft = co_del(i_this_object(), sp->u.string);
-    str_del(sp->u.string);
-    sp->type = T_NUMBER;
-    sp->u.number = timeleft;
-
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("shutdown", kf_shutdown, p_shutdown)
-# else
-char p_shutdown[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 1,
-		      T_NUMBER };
-
-/*
- * NAME:	kfun->shutdown()
- * DESCRIPTION:	shut down the mud
- */
-int kf_shutdown(nargs)
-int nargs;
-{
-    if (nargs == 0) {
-	(--sp)->type = T_NUMBER;
-	finish(FALSE);
-    } else if (nargs > 1) {
-	return 2;
-    } else {
-	finish(sp->u.number != 0);
-    }
-    sp->u.number = 0;
+    sp->u.number = co_del(i_this_object(), (uindex) sp->u.number);
     return 0;
 }
 # endif
@@ -868,24 +709,56 @@ int nargs;
 # ifdef FUNCDEF
 FUNCDEF("swapout", kf_swapout, p_swapout)
 # else
-char p_swapout[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 1,
-		     T_NUMBER };
+char p_swapout[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
 
 /*
  * NAME:	kfun->swapout()
  * DESCRIPTION:	swap out all objects
  */
-int kf_swapout(nargs)
-int nargs;
+int kf_swapout()
 {
-    if (nargs == 0) {
-	swapout(FALSE);
-	(--sp)->type = T_NUMBER;
-    } else if (nargs > 1) {
-	return 2;
-    } else {
-	swapout(sp->u.number != 0);
-    }
+    swapout();
+
+    (--sp)->type = T_INT;
+    sp->u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("dump_state", kf_dump_state, p_dump_state)
+# else
+char p_dump_state[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 0 };
+
+/*
+ * NAME:	kfun->dump_state()
+ * DESCRIPTION:	dump state
+ */
+int kf_dump_state()
+{
+    dump_state();
+    (--sp)->type = T_INT;
+    sp->u.number = 0;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("shutdown", kf_shutdown, p_shutdown)
+# else
+char p_shutdown[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
+
+/*
+ * NAME:	kfun->shutdown()
+ * DESCRIPTION:	shut down the mud
+ */
+int kf_shutdown()
+{
+    finish();
+
+    (--sp)->type = T_INT;
     sp->u.number = 0;
     return 0;
 }
@@ -896,7 +769,7 @@ int nargs;
 FUNCDEF("status", kf_status, p_status)
 # else
 char p_status[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL,
-		    T_NUMBER | (1 << REFSHIFT), 1, T_OBJECT };
+		    T_MIXED | (1 << REFSHIFT), 1, T_OBJECT };
 
 /*
  * NAME:	kfun->status()
@@ -908,8 +781,6 @@ int nargs;
 {
     if (nargs == 0) {
 	(--sp)->u.array = conf_status();
-    } else if (nargs > 1) {
-	return 2;
     } else {
 	sp->u.array = conf_object(o_object(sp->oindex, sp->u.objcnt));
     }
