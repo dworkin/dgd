@@ -77,7 +77,7 @@ static receive_message(string str)
 	    } else {
 		break;
 	    }
-	} else {
+	} else if (strlen(buffer) != 0) {
 	    linemode = (::receive_message(allocate(TLS_SIZE),
 					  buffer) != MODE_RAW);
 	    buffer = "";
