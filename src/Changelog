@@ -873,7 +873,10 @@ DGD 1.1
    puts the remainder in a buffer which is emptied as soon as possible.  When
    all data is sent, message_done() is called in the user object (but only if
    the output could not be sent all at once).  Using send_message() while
-   previous output is still unfinished will flush the buffer. and prevent
+   previous output is still unfinished will flush the buffer, and prevent
    message_done() from being called.
    Binary connections have 64K buffers which are allocated statically, so
    the static chunk should be large enough (70K or so).
+ - Run callouts less often if they take more than half of the available time.
+   May be useful for muds on extremely heavily loaded hosts.
+ - After runtime_error() was called, no resource limits would be set.

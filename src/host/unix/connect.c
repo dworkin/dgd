@@ -237,6 +237,9 @@ int wait;
 
     if (conn->fd >= 0) {
 	FD_CLR(conn->fd, &wfds);
+	if (len == 0) {
+	    return 0;	/* send_message("") can be used to flush buffer */
+	}
 	if ((size=write(conn->fd, buf, len)) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    FD_CLR(conn->fd, &fds);

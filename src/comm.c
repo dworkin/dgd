@@ -168,7 +168,7 @@ string *str;
 {
     register user *usr;
     register char *p, *q;
-    register unsigned short len, size;
+    register int len, size;
 
     usr = users[UCHAR(obj->etabi)];
     p = str->text;
@@ -220,7 +220,7 @@ string *str;
 	return str->len;	/* always */
     } else {
 	/*
-	 * binary connection: no buffering
+	 * binary connection: initially, no buffering
 	 */
 	usr->outbufp = (char *) NULL;
 	size = conn_write(usr->conn, p, len, TRUE);
@@ -375,6 +375,7 @@ int *size;
     } else {
 	static char intr[] =	 { '\177' };
 	static char brk[] =	 { '\034' };
+	static char ayt[] =	 { CR, LF, '[', 'Y', 'e', 's', ']', CR, LF };
 	static char tm[] =	 { (char) IAC, (char) WILL, (char) TELOPT_TM };
 	static char will_sga[] = { (char) IAC, (char) WILL, (char) TELOPT_SGA };
 	static char wont_sga[] = { (char) IAC, (char) WONT, (char) TELOPT_SGA };
@@ -481,6 +482,11 @@ int *size;
 
 			    case BREAK:
 				conn_write((*usr)->conn, brk, 1, FALSE);
+				state = TS_DATA;
+				break;
+
+			    case AYT:
+				conn_write((*usr)->conn, ayt, 9, FALSE);
 				state = TS_DATA;
 				break;
 

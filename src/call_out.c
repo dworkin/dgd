@@ -421,7 +421,9 @@ void co_call()
 		    }
 		}
 
-		P_alarm(1);
+		/* allow as much time for non-callouts as for callouts */
+		i = P_time() - timeout;
+		P_alarm((i == 0) ? 1 : i);
 		return;
 	    }
 

@@ -9,6 +9,7 @@
 # define WILL		251	/* will */
 # define SB		250	/* begin subnegotiation */
 # define GA		249	/* go ahead */
+# define AYT		246	/* are you there */
 # define IP		244	/* interrupt process */
 # define BREAK		243	/* break */
 # define SE		240	/* end subnegotiation */

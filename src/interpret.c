@@ -2063,6 +2063,13 @@ int flag;
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
+	bool xnodepth, xnoticks;
+	Int xticks;
+
+	xnodepth = nodepth;
+	xnoticks = noticks;
+	xticks = ticks;
+
 	nodepth = TRUE;
 	noticks = TRUE;
 	err = errormesg();
@@ -2073,6 +2080,10 @@ int flag;
 	call_driver_object("runtime_error", 2);
 	i_del_value(sp++);
 	ec_pop();
+
+	nodepth = xnodepth;
+	noticks = xnoticks;
+	ticks = xticks;
     }
 }
 
