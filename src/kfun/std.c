@@ -1,5 +1,4 @@
 # ifndef FUNCDEF
-# define INCLUDE_TIME
 # include "kfun.h"
 # include "fcontrol.h"
 # include "path.h"
@@ -13,13 +12,8 @@
 # ifdef FUNCDEF
 FUNCDEF("call_other", kf_call_other, p_call_other)
 # else
-char p_call_other[] = { C_STATIC | C_VARARGS | C_LOCAL, T_MIXED, 32,
-			T_MIXED, T_STRING,
-			T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-			T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-			T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-			T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-			T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED };
+char p_call_other[] = { C_STATIC | C_VARARGS | C_LOCAL, T_MIXED, 3,
+			T_MIXED, T_STRING, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_other()
@@ -33,7 +27,7 @@ int nargs;
     char *file;
 
     if (nargs < 2) {
-	error("Too few arguments to call_other()");
+	return -1;
     }
 
     val = &sp[nargs - 1];
@@ -102,18 +96,17 @@ char p_this_object[] = { C_STATIC | C_LOCAL, T_OBJECT, 0 };
 int kf_this_object()
 {
     register object *obj;
-    value val;
 
+    --sp;
     obj = i_this_object();
     if (obj->count != 0) {
-	val.type = T_OBJECT;
-	val.oindex = obj->index;
-	val.u.objcnt = obj->count;
+	sp->type = T_OBJECT;
+	sp->oindex = obj->index;
+	sp->u.objcnt = obj->count;
     } else {
-	val.type = T_NUMBER;
-	val.u.number = 0;
+	sp->type = T_NUMBER;
+	sp->u.number = 0;
     }
-    i_push_value(&val);		/* will make it zero if obj is destructed */
     return 0;
 }
 # endif
@@ -147,6 +140,25 @@ int nargs;
     } else {
 	sp->u.number = 0;
     }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call_trace", kf_call_trace, p_call_trace)
+# else
+char p_call_trace[] = { C_TYPECHECKED | C_STATIC | C_LOCAL,
+			T_MIXED | (2 << REFSHIFT), 0 };
+
+/*
+ * NAME:	kfun->call_trace()
+ * DESCRIPTION:	return the entire call_other chain
+ */
+int kf_call_trace()
+{
+    (--sp)->type = T_ARRAY;
+    arr_ref(sp->u.array = i_call_trace());
     return 0;
 }
 # endif
@@ -652,7 +664,7 @@ char p_error[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_VOID, 1, T_STRING };
  */
 int kf_error()
 {
-    if (strchr(sp->u.string->text, '\n') != (char *) NULL) {
+    if (strchr(sp->u.string->text, LF) != (char *) NULL) {
 	error("'\\n' in error string");
     }
     error("%s", sp->u.string->text);
@@ -712,7 +724,7 @@ char p_time[] = { C_STATIC | C_LOCAL, T_NUMBER, 0 };
 int kf_time()
 {
     (--sp)->type = T_NUMBER;
-    sp->u.number = _time();
+    sp->u.number = P_time();
     return 0;
 }
 # endif
@@ -739,13 +751,8 @@ int kf_get_exec_cost()
 # ifdef FUNCDEF
 FUNCDEF("call_out", kf_call_out, p_call_out)
 # else
-char p_call_out[] = { C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 32,
-		      T_STRING, T_NUMBER,
-		      T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-		      T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-		      T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-		      T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED,
-		      T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED, T_MIXED };
+char p_call_out[] = { C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 3,
+		      T_STRING, T_NUMBER, T_MIXED | T_ELLIPSIS };
 
 /*
  * NAME:	kfun->call_out()
@@ -757,7 +764,7 @@ int nargs;
     object *obj;
 
     if (nargs < 2) {
-	error("Too few arguments to function call_out()");
+	return -1;
     }
     if (sp[nargs - 1].type != T_STRING) {
 	return 1;
@@ -777,6 +784,30 @@ int nargs;
     str_del(sp->u.string);
     sp->type = T_NUMBER;
     sp->u.number = 0;
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("find_call_out", kf_find_call_out, p_find_call_out)
+# else
+char p_find_call_out[] = { C_TYPECHECKED | C_STATIC | C_LOCAL, T_NUMBER, 1,
+			   T_STRING };
+
+/*
+ * NAME:	kfun->find_call_out()
+ * DESCRIPTION:	find a call_out
+ */
+int kf_find_call_out()
+{
+    long timeleft;
+
+    timeleft = co_find(i_this_object(), sp->u.string);
+    str_del(sp->u.string);
+    sp->type = T_NUMBER;
+    sp->u.number = timeleft;
 
     return 0;
 }
@@ -810,18 +841,25 @@ int kf_remove_call_out()
 # ifdef FUNCDEF
 FUNCDEF("shutdown", kf_shutdown, p_shutdown)
 # else
-char p_shutdown[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
+char p_shutdown[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 1,
+		      T_NUMBER };
 
 /*
  * NAME:	kfun->shutdown()
  * DESCRIPTION:	shut down the mud
  */
-int kf_shutdown()
+int kf_shutdown(nargs)
+int nargs;
 {
-    comm_flush(TRUE);
-    host_finish();
-    warning("Shutdown.");
-    exit(0);
+    if (nargs == 0) {
+	(--sp)->type = T_NUMBER;
+	finish(FALSE);
+    } else if (nargs > 1) {
+	return 2;
+    } else {
+	finish(sp->u.number != 0);
+    }
+    sp->u.number = 0;
     return 0;
 }
 # endif
@@ -830,16 +868,24 @@ int kf_shutdown()
 # ifdef FUNCDEF
 FUNCDEF("swapout", kf_swapout, p_swapout)
 # else
-char p_swapout[] = { C_STATIC | C_LOCAL, T_VOID, 0 };
+char p_swapout[] = { C_TYPECHECKED | C_STATIC | C_VARARGS | C_LOCAL, T_VOID, 1,
+		     T_NUMBER };
 
 /*
  * NAME:	kfun->swapout()
  * DESCRIPTION:	swap out all objects
  */
-int kf_swapout()
+int kf_swapout(nargs)
+int nargs;
 {
-    swapout();
-    (--sp)->type = T_NUMBER;
+    if (nargs == 0) {
+	swapout(FALSE);
+	(--sp)->type = T_NUMBER;
+    } else if (nargs > 1) {
+	return 2;
+    } else {
+	swapout(sp->u.number != 0);
+    }
     sp->u.number = 0;
     return 0;
 }
@@ -862,6 +908,8 @@ int nargs;
 {
     if (nargs == 0) {
 	(--sp)->u.array = conf_status();
+    } else if (nargs > 1) {
+	return 2;
     } else {
 	sp->u.array = conf_object(o_object(sp->oindex, sp->u.objcnt));
     }

@@ -16,21 +16,21 @@
 # define I_INDEX_LVALUE		13
 # define I_AGGREGATE		14	/* 2 unsigned */
 # define I_MAP_AGGREGATE	15	/* 2 unsigned */
-# define I_CHECK_INT		16
-# define I_FETCH		17
-# define I_STORE		18
-# define I_JUMP			19	/* 2 signed */
-# define I_JUMP_ZERO		20	/* 2 signed */
-# define I_JUMP_NONZERO		21	/* 2 signed */
-# define I_SWITCH_INT		22	/* n */
-# define I_SWITCH_RANGE		23	/* n */
-# define I_SWITCH_STR		24	/* n */
-# define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
-# define I_CATCH		29	/* 2 signed */
-# define I_LOCK			30
+# define I_SPREAD		16	/* 1 signed */
+# define I_CHECK_INT		17
+# define I_FETCH		18
+# define I_STORE		19
+# define I_JUMP			20	/* 2 signed */
+# define I_JUMP_ZERO		21	/* 2 signed */
+# define I_JUMP_NONZERO		22	/* 2 signed */
+# define I_SWITCH		23	/* n */
+# define I_CALL_KFUNC		24	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_AFUNC		25	/* 1 unsigned, 1 unsigned */
+# define I_CALL_DFUNC		26	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define I_CALL_FUNC		27	/* 2 unsigned, 1 unsigned */
+# define I_CATCH		28	/* 2 signed */
+# define I_LOCK			29
+# define I_RETURN_ZERO		30
 # define I_RETURN		31
 
 # define I_LINE_MASK		0xc0	/* line add bits */
@@ -54,8 +54,10 @@
 # define T_SALVALUE	0x0c	/* indexed string indexed array lvalue */
 # define T_SMLVALUE	0x0d	/* indexed string indexed mapping lvalue */
 
-# define T_REF		0xf0	/* reference count mask */
-# define REFSHIFT	4
+# define T_ELLIPSIS	0x10	/* or'ed in declaration type */
+
+# define T_REF		0xe0	/* reference count mask */
+# define REFSHIFT	5
 
 # define TYPENAMES	\
 { "invalid", "int", "object", "string", "array", "mapping", "mixed", "void" }
@@ -86,7 +88,7 @@ typedef struct _value_ {
 # define C_UNDEFINED	0x80
 
 
-extern void		i_init		P((int, int, int, char*));
+extern void		i_init		P((int, int, int, int, char*));
 extern void		i_ref_value	P((value*));
 extern void		i_del_value	P((value*));
 extern void		i_check_stack	P((int));
@@ -94,10 +96,11 @@ extern void		i_push_value	P((value*));
 extern void		i_pop		P((int));
 extern void		i_odest		P((object*));
 extern void		i_string	P((char, unsigned short));
-extern void		i_global	P((int, int));
-extern void		i_global_lvalue	P((int, int));
 extern void		i_aggregate	P((unsigned short));
 extern void		i_map_aggregate	P((unsigned short));
+extern int		i_spread	P((int));
+extern void		i_global	P((int, int));
+extern void		i_global_lvalue	P((int, int));
 extern void		i_index		P((void));
 extern void		i_index_lvalue	P((void));
 extern void		i_fetch		P((void));
@@ -117,8 +120,8 @@ extern int		i_pindex	P((void));
 extern void		i_typecheck	P((char*, char*, char*, int, bool));
 extern void		i_funcall	P((object*, int, int, int));
 extern bool		i_call		P((object*, char*, bool, int));
-extern void		i_dump_trace	P((FILE*));
-extern void		i_log_error	P((void));
+extern array	       *i_call_trace	P((void));
+extern void		i_log_error	P((bool));
 extern void		i_clear		P((void));
 
 extern value *sp;
