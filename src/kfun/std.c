@@ -818,7 +818,7 @@ register frame *f;
     unsigned short size;
 
     i_add_ticks(f, f->sp->u.array->size);
-    size = map_size(f->sp->u.array);
+    size = map_size(f->data, f->sp->u.array);
     arr_del(f->sp->u.array);
     PUT_INTVAL(f->sp, size);
     return 0;

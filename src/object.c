@@ -41,7 +41,6 @@ struct _objplane_ {
     uindex nobjects;		/* number of objects in object table */
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
-    Uint odcount;		/* previous objects destructed count */
     struct _objplane_ *prev;	/* previous object plane */
 };
 
@@ -72,9 +71,9 @@ register unsigned int n;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
-    baseplane.ocount = odcount = 1;
     oplane = &baseplane;
     upgraded = (object *) NULL;
+    odcount = 1;
     obase = TRUE;
 }
 
@@ -322,7 +321,6 @@ void o_new_plane()
     p->nobjects = oplane->nobjects;
     p->nfreeobjs = oplane->nfreeobjs;
     p->ocount = oplane->ocount;
-    p->odcount = odcount;
     p->prev = oplane;
     oplane = p;
 
@@ -546,7 +544,6 @@ void o_discard_plane()
 	}
     }
 
-    odcount = oplane->odcount;
     p = oplane;
     oplane = p->prev;
     if (p->optab != (optable *) NULL) {

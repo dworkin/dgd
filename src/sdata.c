@@ -1419,7 +1419,7 @@ register unsigned int n;
 	case T_MAPPING:
 	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(v->u.array);
+		    map_compact(v->u.array->primary->data, v->u.array);
 		}
 		d_arrcount(save, v->u.array);
 	    }

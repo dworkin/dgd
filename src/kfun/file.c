@@ -264,7 +264,7 @@ array *a;
 	return;
     }
     x->narrays++;
-    map_compact(a);
+    map_compact(a->primary->data, a);
 
     /*
      * skip index/value pairs of which either is an object

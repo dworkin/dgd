@@ -1518,3 +1518,7 @@ DGD 1.3
  - Avoid recursion when deleting a deep tree of arrays/mappings/LWOs.
  - Avoid recursion while saving to swap, also.
  - Fixed a bug in handling some regular expressions.
+ - Measure ticks differently in parse_string(), taking the innermost loop into
+   account.
+ - Fixed several bugs which could, in rare cases, cause nil to turn up in
+   mappings that had been accessed from atomically executed code.

@@ -421,6 +421,7 @@ register char *p;
     /*
      * see if this reduction can be merged with another
      */
+    i_add_ticks(ps->frame, 2);
     for (sn = ps->states[n]; sn != (snode *) NULL; sn = sn->slist) {
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
 	    register pnode **ppn;
@@ -444,6 +445,7 @@ register char *p;
 	    *ppn = pn;
 	    return;
 	}
+	i_add_ticks(ps->frame, 1);
     }
 
     /*
@@ -538,7 +540,6 @@ bool *toobig;
 	    for (n = 0; n < nred; n++) {
 		ps_reduce(ps, sn->pn, red);
 		red += 4;
-		i_add_ticks(ps->frame, 16);
 		if (ps->frame->rlim->ticks < 0) {
 		    if (ps->frame->rlim->noticks) {
 			ps->frame->rlim->ticks = 0x7fffffff;
@@ -548,8 +549,8 @@ bool *toobig;
 		    }
 		}
 	    }
+	    i_add_ticks(ps->frame, 1);
 	}
-	i_add_ticks(ps->frame, 8);
 
 	switch (n = dfa_scan(ps->fa, str, &size, &ttext, &tlen)) {
 	case DFA_EOS:

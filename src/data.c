@@ -150,7 +150,7 @@ register value *lhs;
 
 		    /* last reference removed */
 		    if (arr->hashed != (struct _maphash_ *) NULL) {
-			map_compact(arr);
+			map_compact(data, arr);
 		    } else {
 			d_get_elts(arr);
 		    }
@@ -588,7 +588,7 @@ register Int level;
 	    if (arr->primary->arr == (array *) NULL &&
 		arr->primary->plane->level > level) {
 		if (arr->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(arr);
+		    map_compact(arr->primary->data, arr);
 		}
 		arr->primary = &arr->primary->plane->prev->alocal;
 		commit_values(arr->elts, arr->size, level);
@@ -998,7 +998,7 @@ dataplane *prev, *old;
 {
     if (arr->primary->plane != prev) {
 	if (arr->hashed != (struct _maphash_ *) NULL) {
-	    map_compact(arr);
+	    map_compact(arr->primary->data, arr);
 	}
 
 	if (arr->primary->arr == (array *) NULL) {
@@ -1811,7 +1811,7 @@ register unsigned short n;
 		     * first time encountered
 		     */
 		    if (a->hashed != (struct _maphash_ *) NULL) {
-			map_compact(a);
+			map_compact(a->primary->data, a);
 		    }
 
 		    if (a->ref == 2) {	/* + 1 for array merge table */
@@ -1883,7 +1883,7 @@ register unsigned short n;
 		 */
 		imp->narr++;
 		if (a->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(a);
+		    map_compact(data, a);
 		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (value *) NULL) {
 		    d_import(imp, data, a->elts, a->size);
@@ -1925,7 +1925,7 @@ void d_export()
 			if (a->arr != (array *) NULL) {
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
-				map_compact(a->arr);
+				map_compact(data, a->arr);
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
 			    } else if (a->arr->elts != (value *) NULL) {

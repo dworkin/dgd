@@ -40,8 +40,8 @@ extern array	       *arr_range	P((dataspace*, array*, long, long));
 
 extern array	       *map_new		P((dataspace*, long));
 extern void		map_sort	P((array*));
-extern void		map_compact	P((array*));
-extern unsigned short	map_size	P((array*));
+extern void		map_compact	P((dataspace*, array*));
+extern unsigned short	map_size	P((dataspace*, array*));
 extern array	       *map_add		P((dataspace*, array*, array*));
 extern array	       *map_sub		P((dataspace*, array*, array*));
 extern array	       *map_intersect	P((dataspace*, array*, array*));
