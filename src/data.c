@@ -167,7 +167,7 @@ object *obj;
     data->achange = 0;
     data->schange = 0;
     data->imports = 0;
-    data->iprev = data->inext = 0;
+    data->iprev = data->inext = (dataspace *) NULL;
     data->modified = 0;
 
     data->obj = obj;
@@ -188,7 +188,6 @@ object *obj;
     data->eltsize = 0;
     data->alocal.arr = (array *) NULL;
     data->alocal.data = data;
-    data->alocal.index = 0;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -335,7 +334,7 @@ object *obj;
     data->achange = 0;
     data->schange = 0;
     data->imports = 0;
-    data->iprev = data->inext = 0;
+    data->iprev = data->inext = (dataspace *) NULL;
     data->modified = 0;
 
     /* header */
@@ -366,7 +365,6 @@ object *obj;
     data->eltsize = header.eltsize;
     data->alocal.arr = (array *) NULL;
     data->alocal.data = data;
-    data->alocal.index = 0;
     data->arrays = (arrref *) NULL;
     data->sarrays = (sarray *) NULL;
     data->selts = (svalue *) NULL;
@@ -837,6 +835,8 @@ string *str;
     return -1;	/* not a constant in this object */
 }
 
+static dataspace *ilist;	/* list of dataspaces with imports */
+
 /*
  * NAME:	ref_rhs()
  * DESCRIPTION:	reference the right-hand side in an assignment
@@ -872,18 +872,34 @@ register value *rhs;
     case T_ARRAY:
     case T_MAPPING:
 	arr = rhs->u.array;
-	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
+	if (arr->primary->data == data) {
 	    /* in this object */
-	    if (arr->primary->ref++ == 0) {
-		data->achange--;	/* first reference restored */
-		if (arr->primary->index & ARR_MOD) {
-		    /* add extra reference */
-		    arr_ref(arr);
+	    if (arr->primary->arr != (array *) NULL) {
+		/* swapped in */
+		if (arr->primary->ref++ == 0) {
+		    data->achange--;	/* first reference restored */
+		    if (arr->primary->index & ARR_MOD) {
+			/* add extra reference */
+			arr_ref(arr);
+		    }
 		}
+		data->modified |= M_ARRAYREF;
+	    } else {
+		/* ref new array */
+		data->achange++;
 	    }
-	    data->modified |= M_ARRAYREF;
 	} else {
 	    /* not in this object: ref imported array */
+	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+		ilist != data) {
+		/* add to imports list */
+		data->iprev = (dataspace *) NULL;
+		data->inext = ilist;
+		if (ilist != (dataspace *) NULL) {
+		    ilist->iprev = data;
+		}
+		ilist = data;
+	    }
 	    data->achange++;
 	}
 	break;
@@ -925,67 +941,28 @@ register value *lhs;
     case T_ARRAY:
     case T_MAPPING:
 	arr = lhs->u.array;
-	if (arr->primary->arr != (array *) NULL && arr->primary->data == data) {
+	if (arr->primary->data == data) {
 	    /* in this object */
-	    if (--(arr->primary->ref) == 0) {
-		data->achange++;	/* last reference removed */
-		if (arr->primary->index & ARR_MOD) {
-		    /* remove extra reference */
-		    arr_del(arr);
+	    if (arr->primary->arr != (array *) NULL) {
+		/* swapped in */
+		if (--(arr->primary->ref) == 0) {
+		    data->achange++;	/* last reference removed */
+		    if (arr->primary->index & ARR_MOD) {
+			/* remove extra reference */
+			arr_del(arr);
+		    }
 		}
+		data->modified |= M_ARRAYREF;
+	    } else {
+		/* deref new array */
+		data->achange--;
 	    }
-	    data->modified |= M_ARRAYREF;
 	} else {
 	    /* not in this object: deref imported array */
+	    data->imports--;
 	    data->achange--;
 	}
 	break;
-    }
-}
-
-static dataspace *ilist;	/* list of dataspaces with imports */
-
-/*
- * NAME:	check_imports()
- * DESCRIPTION:	check if importing arrays from other objects
- */
-static void check_imports(data, var, val)
-register dataspace *data;
-register value *var, *val;
-{
-    register long imports;
-
-    imports = data->imports;
-    if (T_INDEXED(var->type) && data != var->u.array->primary->data) {
-	/* deref imported object */
-	imports--;
-    }
-    if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
-	/* ref imported object */
-	imports++;
-    }
-
-    if (imports != data->imports) {
-	if (data->imports == 0) {
-	    /* add to imports list */
-	    data->iprev = (dataspace *) NULL;
-	    data->inext = ilist;
-	    if (ilist != (dataspace *) NULL) {
-		ilist->iprev = data;
-	    }
-	    ilist = data;
-	} else if (imports == 0) {
-	    /* remove from imports list */
-	    if (data->iprev != (dataspace *) NULL) {
-		data->iprev->inext = data->inext;
-	    } else {
-		ilist = data->inext;
-	    }
-	    if (data->inext != (dataspace *) NULL) {
-		data->inext->iprev = data->iprev;
-	    }
-	}
-	data->imports = imports;
     }
 }
 
@@ -999,7 +976,6 @@ register value *var;
 register value *val;
 {
     if (var >= data->variables && var < data->variables + data->nvariables) {
-	check_imports(data, var, val);
 	ref_rhs(data, val);
 	del_lhs(data, var);
 	data->modified |= M_VARIABLE;
@@ -1020,11 +996,9 @@ void d_assign_elt(arr, elt, val)
 register array *arr;
 register value *elt, *val;
 {
-    long imports;
     register dataspace *data;
 
     data = arr->primary->data;
-    check_imports(data, elt, val);
     if (arr->primary->arr != (array *) NULL) {
 	/*
 	 * the array is in the loaded dataspace of some object
@@ -1040,6 +1014,24 @@ register value *elt, *val;
 	}
 	ref_rhs(data, val);
 	del_lhs(data, elt);
+    } else {
+	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
+	    /* mark as imported */
+	    if (data->imports++ == 0 && data->inext == (dataspace *) NULL &&
+		ilist != data) {
+		/* add to imports list */
+		data->iprev = (dataspace *) NULL;
+		data->inext = ilist;
+		if (ilist != (dataspace *) NULL) {
+		    ilist->iprev = data;
+		}
+		ilist = data;
+	    }
+	}
+	if (T_INDEXED(elt->type) && data != elt->u.array->primary->data) {
+	    /* mark as unimported */
+	    data->imports--;
+	}
     }
 
     i_ref_value(val);
@@ -2220,40 +2212,44 @@ register unsigned short n;
  */
 void d_export()
 {
-    register dataspace *data;
+    register dataspace *data, *next;
     register uindex n;
 
     if (ilist != (dataspace *) NULL) {
 	itab = ALLOC(array*, itabsz = 16);
 
-	for (data = ilist; data != (dataspace *) NULL; data = data->inext) {
-	    data->imports = 0;
-	    narr = 0;
-	    if (data->variables != (value *) NULL) {
-		d_import(data, data->variables, data->nvariables);
-	    }
-	    if (data->modified & M_ARRAY) {
-		register arrref *a;
+	for (data = ilist; data != (dataspace *) NULL; data = next) {
+	    next = data->inext;
+	    data->inext = (dataspace *) NULL;
+	    if (data->imports != 0) {
+		data->imports = 0;
+		narr = 0;
+		if (data->variables != (value *) NULL) {
+		    d_import(data, data->variables, data->nvariables);
+		}
+		if (data->modified & M_ARRAY) {
+		    register arrref *a;
 
-		for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
-		    if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
-			d_import(data, a->arr->elts, a->arr->size);
+		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
+			if (a->arr != (array *) NULL && (a->index & ARR_MOD)) {
+			    d_import(data, a->arr->elts, a->arr->size);
+			}
 		    }
 		}
-	    }
-	    if (data->callouts != (dcallout *) NULL) {
-		register dcallout *co;
+		if (data->callouts != (dcallout *) NULL) {
+		    register dcallout *co;
 
-		co = data->callouts;
-		for (n = data->ncallouts; n > 0; --n) {
-		    if (co->val[0].type != T_INVALID) {
-			d_import(data, co->val,
-				 (co->nargs > 3) ? 4 : co->nargs + 1);
+		    co = data->callouts;
+		    for (n = data->ncallouts; n > 0; --n) {
+			if (co->val[0].type != T_INVALID) {
+			    d_import(data, co->val,
+				     (co->nargs > 3) ? 4 : co->nargs + 1);
+			}
+			co++;
 		    }
-		    co++;
 		}
+		arr_clear();	/* clear hash table */
 	    }
-	    arr_clear();	/* clear hash table */
 	}
 
 	FREE(itab);
