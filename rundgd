@@ -1,8 +1,0 @@
-#!/bin/sh
-
-while true
-do
-    mv 2.4.5/lpmud.log 2.4.5/lpmud.log.old
-    date > 2.4.5/lpmud.log
-    src/a.out src/lpmud >> 2.4.5/lpmud.log 2>&1
-done > /dev/null 2>&1

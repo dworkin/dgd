@@ -1,6 +1,6 @@
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include <sys/time.h>
-# include <fcntl.h>
 # include <sys/socket.h>
 # include <netinet/in.h>
 # include <arpa/inet.h>
@@ -21,7 +21,9 @@ static int nusers;			/* # of users */
 static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static int tcpip;			/* TCP/IP socket descriptor */
-static fd_set fds;			/* socket file destriptors */
+static fd_set fds;			/* file descriptor bitmap */
+static fd_set readfds;			/* file descriptor read bitmap */
+static int maxfd;			/* largest fd opened yet */
 
 /*
  * NAME:	conn->init()
@@ -82,6 +84,17 @@ unsigned short port;
 	conn->next = flist;
 	flist = conn;
     }
+
+    FD_ZERO(&fds);
+}
+
+/*
+ * NAME:	conn->finish()
+ * DESCRIPTION:	terminate connections
+ */
+void conn_finish()
+{
+    close(tcpip);
 }
 
 /*
@@ -104,6 +117,10 @@ connection *conn_new()
     flist = conn->next;
     conn->fd = fd;
     memcpy(&conn->addr, (char *) &sin, len);
+    FD_SET(fd, &fds);
+    if (fd > maxfd) {
+	maxfd = fd;
+    }
 
     return conn;
 }
@@ -117,6 +134,7 @@ register connection *conn;
 {
     if (conn->fd >= 0) {
 	close(conn->fd);
+	FD_CLR(conn->fd, &fds);
 	conn->fd = -1;
     }
     conn->next = flist;
@@ -130,24 +148,13 @@ register connection *conn;
 int conn_select(wait)
 bool wait;
 {
-    register int i, max;
-    register connection *conn;
     struct timeval timeout;
 
-    FD_ZERO(&fds);
-    max = 0;
-    for (i = nusers, conn = connections; i > 0; --i, conn++) {
-	if (conn->fd >= 0) {
-	    FD_SET(conn->fd, &fds);
-	    if (conn->fd > max) {
-		max = conn->fd;
-	    }
-	}
-    }
-
+    memcpy(&readfds, &fds, sizeof(fd_set));
     timeout.tv_sec = (int) wait;
     timeout.tv_usec = 0;
-    return select(max + 1, &fds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+    return select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL,
+		  &timeout);
 }
 
 /*
@@ -162,7 +169,7 @@ int size;
     if (conn->fd < 0) {
 	return -1;
     }
-    if (!FD_ISSET(conn->fd, &fds)) {
+    if (!FD_ISSET(conn->fd, &readfds)) {
 	return 0;
     }
     size = read(conn->fd, buf, size);
@@ -178,17 +185,8 @@ connection *conn;
 char *buf;
 register int size;
 {
-    char buffer[2 * OUTBUF_SIZE];
-    register char *p, *q;
-
     if (conn->fd >= 0) {
-	for (p = buf, q = buffer; size > 0; --size) {
-	    if (*p == '\n') {
-		*q++ = '\r';
-	    }
-	    *q++ = *p++;
-	}
-	if (write(conn->fd, buffer, q - buffer) < 0 && errno != EWOULDBLOCK) {
+	if (write(conn->fd, buf, size) < 0 && errno != EWOULDBLOCK) {
 	    close(conn->fd);
 	    conn->fd = -1;
 	}
