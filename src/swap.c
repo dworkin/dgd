@@ -10,6 +10,8 @@ typedef struct _header_ {	/* swap slot header */
     bool dirty;			/* has the swap slot been written to? */
 } header;
 
+static char *swapfile;			/* swap file name */
+static int swap = -1;			/* swap file descriptor */
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap check map */
 static sector nfree, sfree;		/* free sector lists */
@@ -20,7 +22,6 @@ static int sectorsize;			/* size of sector */
 static uindex swapsize, cachesize;	/* # of sectors in swap and cache */
 static uindex nsectors;			/* total swap sectors */
 static uindex ssectors;			/* sectors actually in swap file */
-static int swap;			/* swap file descriptor */
 
 /*
  * NAME:	swap->init()
@@ -45,7 +46,7 @@ uindex secsize;
 
     /* create swap file */
     if (cache < total) {
-	swap = open(file, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	swap = open(swapfile = file, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (swap < 0) {
 	    fatal("cannot create swap file \"%s\"", file);
 	}
@@ -70,6 +71,18 @@ uindex secsize;
     /* no swap slots in use yet */
     first = (header *) NULL;
     last = (header *) NULL;
+}
+
+/*
+ * NAME:	swap->finish()
+ * DESCRIPTION:	clean up swapfile
+ */
+void sw_finish()
+{
+    if (swap >= 0) {
+	close(swap);
+	unlink(swapfile);
+    }
 }
 
 /*
@@ -166,6 +179,7 @@ bool fill;
 {
     register header *h;
     register sector load, save;
+    extern int errno;
 
     load = map[sec];
     if (load >= cachesize ||
@@ -207,7 +221,7 @@ bool fill;
 		}
 		lseek(swap, save * (long) sectorsize, SEEK_SET);
 		if (write(swap, (char *) (h + 1), sectorsize) < 0) {
-		    fatal("cannot write swap file");
+		    fatal("cannot write swap file (%d)", errno);
 		}
 	    }
 	    map[h->sec] = save;
@@ -225,8 +239,8 @@ bool fill;
 	     * load the sector from the swap file
 	     */
 	    lseek(swap, load * (long) sectorsize, SEEK_SET);
-	    if (read(swap, (char *) (h + 1), sectorsize) < 0) {
-		fatal("cannot read swap file");
+	    if (read(swap, (char *) (h + 1), sectorsize) <= 0) {
+		fatal("cannot read swap file (%d)", errno);
 	    }
 	}
     } else {
@@ -340,4 +354,133 @@ long size;
 uindex sw_count()
 {
     return nsectors;
+}
+
+
+typedef struct {
+    uindex sectorsize;		/* size of swap sector */
+    uindex nsectors;		/* # sectors */
+    uindex ssectors;		/* # swap sectors */
+    uindex nfree, sfree;	/* free sector lists */
+} dump_header;
+
+# define CHUNKSZ	16	/* swap sector chunk */
+
+/*
+ * NAME:	swap->dump()
+ * DESCRIPTION:	dump swap file
+ */
+bool sw_dump(fd)
+int fd;
+{
+    register header *h;
+    register sector save;
+    register uindex n, size;
+    dump_header dh;
+    char *buffer;
+    bool bad;
+
+    /* flush the cache, and adjust sector map */
+    for (h = last; h != (header *) NULL; h = h->prev) {
+	save = h->swap;
+	if (h->dirty) {
+	    /*
+	     * Dump the sector to swap file
+	     */
+	    if (save == SW_UNUSED) {
+		/*
+		 * allocate new sector in swap file
+		 */
+		if (sfree == SW_UNUSED) {
+		    save = ssectors++;
+		} else {
+		    save = sfree;
+		    sfree = smap[save];
+		}
+		h->swap = save;
+	    }
+	    lseek(swap, save * (long) sectorsize, SEEK_SET);
+	    if (write(swap, (char *) (h + 1), sectorsize) < 0) {
+		fatal("cannot write swap file");
+	    }
+	}
+	map[h->sec] = save;
+    }
+
+    /* write header & maps */
+    dh.sectorsize = sectorsize;
+    dh.nsectors = nsectors;
+    dh.ssectors = ssectors;
+    dh.nfree = nfree;
+    dh.sfree = sfree;
+    bad = (write(fd, &dh, sizeof(dump_header)) < 0 ||
+	   write(fd, map, nsectors * sizeof(sector)) < 0 ||
+	   write(fd, smap, ssectors * sizeof(sector)) < 0);
+
+    /* fix the sector map */
+    for (h = last; h != (header *) NULL; h = h->prev) {
+	map[h->sec] = ((long) h - (long) mem) / slotsize;
+    }
+
+    if (bad) {
+	return FALSE;
+    }
+
+    /* copy swapfile */
+    buffer = ALLOCA(char, CHUNKSZ * sectorsize);
+    lseek(swap, 0L, SEEK_SET);
+    for (n = ssectors; n > 0; n -= size) {
+	size = (n >= CHUNKSZ) ? CHUNKSZ : n;
+	if (read(swap, buffer, size * sectorsize) <= 0) {
+	    fatal("cannot read swap file");
+	}
+	if (write(fd, buffer, size * sectorsize) < 0) {
+	    return FALSE;
+	}
+    }
+    AFREE(buffer);
+
+    return TRUE;
+}
+
+/*
+ * NAME:	swap->restore()
+ * DESCRIPTION:	restore swap file
+ */
+void sw_restore(fd)
+int fd;
+{
+    register uindex n, size;
+    dump_header dh;
+    char *buffer;
+
+    /* restore swp header */
+    if (read(fd, &dh, sizeof(dump_header)) != sizeof(dump_header) ||
+	dh.sectorsize != sectorsize || dh.nsectors > swapsize) {
+	fatal("bad swap header in restore file");
+    }
+    nsectors = dh.nsectors;
+    ssectors = dh.ssectors;
+    nfree = dh.nfree;
+    sfree = dh.sfree;
+
+    /* restore swap maps */
+    if (read(fd, map, nsectors * sizeof(sector)) != nsectors * sizeof(sector) ||
+	read(fd, smap, ssectors * sizeof(sector)) != ssectors * sizeof(sector))
+    {
+	fatal("cannot restore swap maps");
+    }
+
+    /* restore swapfile */
+    buffer = ALLOCA(char, CHUNKSZ * sectorsize);
+    for (n = ssectors; n > 0; n -= size) {
+	size = (n >= CHUNKSZ) ? CHUNKSZ : n;
+	if (read(fd, buffer, size * sectorsize) != size * sectorsize) {
+	    fatal("cannot restore swap sectors");
+	}
+	if (write(swap, buffer, size * sectorsize) < 0) {
+	    fatal("cannot write to swap file");
+	}
+    }
+    AFREE(buffer);
 }
