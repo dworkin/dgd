@@ -9,4 +9,4 @@ DESCRIPTION
 	Unsubscribe to an event in the given object.
 
 SEE ALSO
-	efun/query_subscribed, efun/subscribe_event
+	efun/query_subscribed_event, efun/subscribe_event

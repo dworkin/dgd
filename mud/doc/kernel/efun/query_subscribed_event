@@ -1,8 +1,8 @@
 NAME
-	query_subscribed - return list of objects subscribed to an event
+	query_subscribed_event - return list of objects subscribed to an event
 
 SYNOPSIS
-	object *query_subscribed(string name)
+	object *query_subscribed_event(string name)
 
 
 DESCRIPTION

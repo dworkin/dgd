@@ -17,5 +17,5 @@ void set_binary_manager(object binaryd)
 
     * string query_banner(object connection)
 
-	Return a login banner for the given connection.  0 can be returned to
+	Return a login banner for the given connection.  Nil can be returned to
 	indicate that no banner should be shown at all.

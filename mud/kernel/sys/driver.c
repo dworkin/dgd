@@ -410,10 +410,10 @@ static void initialize()
     call_other(rsrcd = load(RSRCD), "???");
 
     /* initialize some resources */
-    rsrcd->set_rsrc("stack",	        50, 0, 0);
-    rsrcd->set_rsrc("ticks",	    250000, 0, 0);
-    rsrcd->set_rsrc("create stack",      5, 0, 0);
-    rsrcd->set_rsrc("create ticks",  10000, 0, 0);
+    rsrcd->set_rsrc("stack",	        50,  0,    0);
+    rsrcd->set_rsrc("ticks",	    250000, 10, 3600);
+    rsrcd->set_rsrc("create stack",      5,  0,    0);
+    rsrcd->set_rsrc("create ticks",  10000,  0,    0);
 
     rsrcobj = load(RSRCOBJ);
 
@@ -756,7 +756,7 @@ static void interrupt()
 {
     message("Interrupt.\n");
 
-# ifdef SYS_CONTINUOUS
+# ifdef SYS_PERSISTENT
     call(this_object(), "prepare_reboot");
     dump_state();
 # endif

@@ -123,7 +123,7 @@ void add_user(string user)
     if (previous_program() == API_ACCESS && !uaccess[user]) {
 	rlimits (-1; -1) {
 	    uaccess[user] = TRUE;
-# ifndef SYS_CONTINUOUS
+# ifndef SYS_PERSISTENT
 	    save_object(ACCESSDATA);
 # endif
 	}
@@ -156,7 +156,7 @@ void remove_user(string user)
 			}
 		    }
 		}
-# ifndef SYS_CONTINUOUS
+# ifndef SYS_PERSISTENT
 		save_object(ACCESSDATA);
 # endif
 	    }
@@ -231,7 +231,7 @@ void set_access(string user, string file, int type)
 		    uaccess[user] = TRUE;
 		}
 	    }
-# ifndef SYS_CONTINUOUS
+# ifndef SYS_PERSISTENT
 	    save_object(ACCESSDATA);
 # endif
 	}
@@ -289,7 +289,7 @@ void set_global_access(string dir, int flag)
     if (previous_program() == API_ACCESS) {
 	rlimits (-1; -1) {
 	    gaccess[dir] = (flag != 0) ? flag : nil;
-# ifndef SYS_CONTINUOUS
+# ifndef SYS_PERSISTENT
 	    save_object(ACCESSDATA);
 # endif
 	}

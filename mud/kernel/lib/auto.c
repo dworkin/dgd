@@ -68,6 +68,8 @@ nomask void _F_rsrc_incr(string rsrc, int incr)
     }
 }
 
+void create(varargs int clone) { }	/* default high-level create function */
+
 /*
  * NAME:	_F_create()
  * DESCRIPTION:	kernel creator function
@@ -116,9 +118,9 @@ nomask void _F_create()
 	}
 	/* call higher-level creator function */
 	if (sscanf(oname, "%*s/obj/") == 0) {
-	    this_object()->create();
+	    create();
 	} else {
-	    this_object()->create(clone);
+	    create(clone);
 	}
     }
 }
@@ -848,19 +850,26 @@ static void unsubscribe_event(object obj, string name)
 }
 
 /*
- * NAME:	query_subscribed()
+ * NAME:	query_subscribed_event()
  * DESCRIPTION:	return a list of objects subscribed to an event
  */
-static object *query_subscribed(string name)
+static object *query_subscribed_event(string name)
 {
     object *objlist;
+    int sz;
 
-    CHECKARG(name, 1, "query_subscribed");
+    CHECKARG(name, 1, "query_subscribed_event");
 
     if (!events || !(objlist=events[name])) {
 	error("No such event");
     }
-    return objlist - ({ nil });
+
+    sz = sizeof(objlist);
+    objlist -= ({ nil });
+    if (sz != sizeof(objlist)) {
+	events[name] = objlist;
+    }
+    return objlist;
 }
 
 /*
@@ -887,7 +896,7 @@ nomask void _F_start_event(string name, mixed *args)
 
 /*
  * NAME:	event()
- * DESCRIPTION:	cause an event
+ * DESCRIPTION:	broadcast an event
  */
 static void event(string name, mixed args...)
 {
@@ -902,7 +911,39 @@ static void event(string name, mixed args...)
 
     name = "evt_" + name;
     args = ({ this_object() }) + args;
-    for (i = 0, sz = sizeof(objlist -= ({ nil })); i < sz; i++) {
+    sz = sizeof(objlist);
+    objlist -= ({ nil });
+    if (sz != sizeof(objlist)) {
+	events[name] = objlist;
+    }
+    for (i = 0; i < sz; i++) {
+	objlist[i]->_F_start_event(name, args);
+    }
+}
+
+/*
+ * NAME:	event_except()
+ * DESCRIPTION:	broadcast an event, except to certain objects
+ */
+static void event_except(string name, object *exclude, mixed args...)
+{
+    object *objlist;
+    string *names;
+    int i, sz;
+
+    CHECKARG(name, 1, "event");
+    if (!events || !(objlist=events[name])) {
+	error("No such event");
+    }
+
+    name = "evt_" + name;
+    args = ({ this_object() }) + args;
+    sz = sizeof(objlist);
+    objlist -= ({ nil });
+    if (sz != sizeof(objlist)) {
+	events[name] = objlist;
+    }
+    for (i = 0, sz = sizeof(objlist -= exclude); i < sz; i++) {
 	objlist[i]->_F_start_event(name, args);
     }
 }

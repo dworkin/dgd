@@ -25,10 +25,6 @@ ERRORS
 	Calling a function that does not exist, or a function that cannot be
 	called with call_other() because it is private or static, does not
 	result in an error but returns the value nil.
-	If the number of existing objects is equal to the value of the
-	ST_OTABSIZE field of the array returned by status(), where ST_OTABSIZE
-	is defined in the include file <status.h>, attempting to compile a new
-	object will crash the system.
 
 SEE ALSO
 	efun/call_limited, efun/clone_object, efun/destruct_object,

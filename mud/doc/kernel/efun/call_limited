@@ -1,6 +1,6 @@
 NAME
-	call_limited - call a function with the current object owner's resource
-		       limits
+	call_limited - call a function with the current object owner's
+		       resource limits
 
 SYNOPSIS
 	mixed call_limited(string function, mixed args...)

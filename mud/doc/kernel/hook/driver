@@ -66,7 +66,8 @@ void set_object_manager(object objectd)	[System only]
 
     * int forbid_inherit(string from, string path, int priv)
 
-	Return a non-zero value if inheritance of path by from is not allowed.
+	Return a non-zero value if inheritance of `path' by `from' is not
+	allowed.  The flag `priv' indicates that inheritance is private.
 
 
 void set_error_manager(object errord)	[System only]

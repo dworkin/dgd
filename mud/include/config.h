@@ -1,6 +1,6 @@
 # define USR		"/usr"	/* default user directory */
 
-# undef SYS_CONTINUOUS		/* off by default */
+# undef SYS_PERSISTENT		/* off by default */
 # undef SYS_DATAGRAMS		/* off by default */
 
 # ifdef __SKOTOS__

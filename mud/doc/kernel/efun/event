@@ -12,4 +12,4 @@ DESCRIPTION
 	the tick and stack resources of the subscribed object.
 
 SEE ALSO
-	efun/add_event, efun/query_events, efun/remove_event
+	efun/add_event, efun/event_except, efun/query_events, efun/remove_event
