@@ -1,6 +1,5 @@
 # define INCLUDE_FILE_IO
 # include "dgd.h"
-# include "interpret.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"
@@ -73,17 +72,12 @@ char *f;
 }
 
 /*
- * NAME:	warning()
- * DESCRIPTION:	issue a warning message on stdout (and possibly errlog)
+ * NAME:	message()
+ * DESCRIPTION:	issue a message on stderr (and possibly errlog)
  */
-void warning(format, arg1, arg2, arg3, arg4, arg5, arg6)
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void message(format, arg1, arg2, arg3, arg4, arg5, arg6)
 {
-    if (format != (char *) NULL) {
-	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
-    }
-    fputs(errbuf, stderr);
-    fputc('\n', stderr);
+    fprintf(stderr, format, arg1, arg2, arg3, arg4, arg5, arg6);
     fflush(stderr);
 
     /* secondary error logging */
@@ -115,8 +109,20 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	    memcpy(buffer + bufsz, buf, len);
 	    bufsz += len;
 	}
-	buffer[bufsz++] = '\n';
     }
+}
+
+/*
+ * NAME:	warning()
+ * DESCRIPTION:	issue a warning message on stderr (and possibly errlog)
+ */
+void warning(format, arg1, arg2, arg3, arg4, arg5, arg6)
+char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+{
+    if (format != (char *) NULL) {
+	sprintf(errbuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+    }
+    message("%s\n", errbuf);
 }
 
 /*
