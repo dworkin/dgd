@@ -291,6 +291,8 @@ typedef struct {
     Uint nfuncalls;		/* total # function calls */
 } dump_header;
 
+static char dh_layout[] = "uiiiiii";
+
 typedef struct {
     Uint compiled;		/* compile time */
     short ninherits;		/* # inherits */
@@ -302,11 +304,15 @@ typedef struct {
     short nvariables;		/* # variables */
 } dump_precomp;
 
+static char dp_layout[] = "ississus";
+
 typedef struct {
     uindex oindex;		/* object index */
     uindex funcoffset;		/* function offset */
     unsigned short varoffset;	/* variable offset */
 } dump_inherit;
+
+static char di_layout[] = "uus";
 
 /*
  * NAME:	precomp->dump()
@@ -329,7 +335,7 @@ int fd;
 
     /* first compute sizes of data to dump */
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u.ref != 0) {
+	if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
 	    dh.nprecomps++;
 	    dh.ninherits += (*pc)->ninherits;
 	    dh.nstrings += (*pc)->nstrings;
@@ -379,7 +385,7 @@ int fd;
 	}
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
-	    if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u.ref != 0) {
+	    if (((*pc)->obj->flags & O_COMPILED) && (*pc)->obj->u_ref != 0) {
 		dpc->compiled = (*pc)->compiled;
 		dpc->ninherits = (*pc)->ninherits;
 		dpc->nstrings = (*pc)->nstrings;
@@ -523,31 +529,24 @@ int fd;
     }
 
     /* read header */
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
-	fatal("cannot restore precompiled objects header");
-    }
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 
     if (dh.nprecomps != 0) {
 	register dump_precomp *dpc;
 	register dump_inherit *dinh;
 
 	/*
-	 * Put all possible information in the dump file, even though little
-	 * of it is needed.
+	 * Only some of the information in the dump file is currently restored.
 	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
 	dinh = ALLOCA(dump_inherit, dh.ninherits);
 
-	if (read(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
-					dh.nprecomps * sizeof(dump_precomp) ||
-	    read(fd, (char *) dinh, dh.ninherits * sizeof(dump_inherit)) !=
-					dh.ninherits * sizeof(dump_inherit)) {
-	    fatal("cannot restore precompiled objects");
-	}
+	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
+	conf_dread(fd, (char *) dinh, di_layout, (Uint) dh.ninherits);
 
 	for (i = dh.nprecomps; i > 0; --i) {
 	    /* restored object must still be precompiled */
-	    obj = o_objref(dinh[dpc->ninherits - 1].oindex);
+	    obj = &otable[dinh[dpc->ninherits - 1].oindex];
 	    name = obj->chain.name;
 	    for (pc = precompiled; ; pc++) {
 		l = *pc;
@@ -570,7 +569,7 @@ int fd;
 	    dpc++;
 	}
 
-	AFREE(inh - dh.ninherits);
+	AFREE(dinh - dh.ninherits);
 	AFREE(dpc - dh.nprecomps);
     }
 

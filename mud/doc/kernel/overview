@@ -1,0 +1,159 @@
+		An overview of the kernel library for DGD
+
+
+1. Motivation
+
+The kernel library was written to solve the technical problems encountered
+when writing a mudlib for users who will have programming access.  It deals
+with resource control, file security and user management, and offers basic
+functionality in the form of events, time and logging functions.  The library
+is designed to be fully configurable, and should not have to be modified for
+use on any system.  It can be used for both continuous and non-continuous
+systems.
+
+Throughout this document, a game-mudlib point of view will be taken, but the
+kernel library can be used for any multi-user system.
+
+
+2. Directory structure
+
+The kernel library itself resides in /kernel.  Subdirectories are:
+
+    /kernel/data
+		    This is where kernel information is saved in non-continuous
+		    systems, notably access levels for programmers.
+    /kernel/lib
+		    Inheritable objects, such as the auto object.  None of
+		    these objects can be inherited directly by programmers.
+    /kernel/obj
+		    All kernel objects which can exist in multiple copies
+		    reside here, such as the per-programmer resource limit
+		    object.
+    /kernel/sys
+		    Kernel daemon objects, such as the driver object, access
+		    daemon, global resource daemon, object registry, etc.
+
+The kernel imposes the following directory structure on the rest of the
+system:
+
+    /data
+		    System data in non-continuous muds is saved here, notably
+		    player save files.
+    /doc
+		    Documentation.
+    /doc/kernel
+		    Documentation about the kernel library.
+    /include
+		    System include files.
+    /include/kernel
+		    Kernel include files.
+    /log
+		    System log files.
+    /usr
+		    The programmers' directories are subdirectories of /usr.
+    /usr/System
+		    The system directory, which defines the basic behaviour
+		    of the mudlib above the kernel level.  Files in this
+		    directory have special permissions and may inherit from
+		    /kernel/lib.
+
+
+2.1. Restrictions on use of objects
+
+The kernel imposes strict limits on the use of objects.  The master object
+of an object cloned or inherited can never itself be accessed as an object.
+It is not possible to call functions in them, and special functionality
+exists to load and update them.
+
+Inheritable objects must have "lib" as a path component.  Clonable objects
+must have "obj" as a path component.  Only the last of these is taken into
+account, so /usr/System/lib/foo/obj/bar.c is clonable, but not inheritable.
+Objects with neither "lib" nor "obj" in their path are not clonable or
+inheritable, and can be used for such things as rooms or daemon objects.
+
+
+3. Resource control
+
+The kernel library includes a system to keep track and impose limits on
+resource usage.  A "resource" can be anything of which there is a limited
+supply, such as ticks, amount of objects, or space used by files.  The
+resource control system is generic, and new resources can be defined on
+the fly.
+
+Resource information is maintained per programmer.  Global limits can be
+imposed, and exceptions can be made.  Programmers themselves can define
+new resources, but the amount of programmer-declared resources is itself
+a resource.
+
+
+4. File security
+
+There are 3 access levels: read, write, and access-granting.  By default,
+everyone has read access in all directories outside /usr and /data, and in
+/usr/System.  Everything in /kernel and /usr/System has global access.
+Programmers have access-granting access to their own directory.  A programmer's
+objects have the same global read access as the programmer, the same write
+access in the programmer's directory, and can clone and inherit from
+/usr/System.
+
+A programmer's access can be changed: administrators have access-granting
+access to the root directory.  However, the programmer's access has no effect
+on the access of the programmer's objects.
+
+It is up to the mudlib designer to determine how the access of objects in
+/usr/System will be further restricted.  The kernel library provides an
+inheritable file which restricts the access of the current object to that
+of a specific user.
+
+
+5. User management
+
+The kernel library differentiates between 3 kinds of users: unprivileged
+users, programmers, and administrators.  Unprivileged users have only one
+command: "quit".  Programmers in addition have development commands, a
+message broadcast command and a tell command.  Administrators in addition
+can promote, demote and remove users, and control whether users can login,
+and if new users can be created.  Otherwise, users differ only in their
+file access.
+
+The kernel library keeps track of users, their passwords, and their access.
+The front-end to these functions can be completely redefined, but commands
+made available by the kernel on the telnet port cannot be masked or changed.
+The default front-end allows users to login on both the telnet port and the
+binary port.
+
+A mechanism is provided for storing programmer-defined data for each user.
+
+
+6. Events
+
+Events are a higher abstraction of call_other.  Events may be directed at
+more than one object at a time, and may be blocked, intercepted or redirected.
+An object receives only those events that it has subscribed to.  Events are
+handled using the resource limits of the object that receives them.
+
+There are two types of events: public and private.  Public events can be
+subscribed to by all objects.  For private events, both the subscription of,
+and the sending of events to other objects is handled by the same object,
+which takes on the role of event manager.  An example of a public event is
+the event generated when a user logs in.  An example of a private event is
+the event generated when an object broadcasts a message in a room -- the
+subscription of objects on entry of the room, unsubscription on leaving,
+and sending of broadcast events are all handled automatically by the room.
+
+The number of defined events is subject to resource limits.
+
+
+7. Timers
+
+Callouts use delays relative to the time they are started.  However, sometimes
+it is desirable to perform functions at a specific time of the day.  The
+kernel library provides timer functions, which deal correctly with downtime
+in continuous muds.
+
+
+8. Logging
+
+The kernel library provides event-controlled logging functions, both for
+system logs and programmer logs.  The kernel itself does not log anything
+at all.

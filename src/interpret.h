@@ -39,6 +39,27 @@
 # define I_LINE_SHIFT		6
 
 
+# define FETCH1S(pc)	SCHAR(*(pc)++)
+# define FETCH1U(pc)	UCHAR(*(pc)++)
+# define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
+# define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
+					   v |= UCHAR(*(pc)++)))
+# define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
+				v |= UCHAR(*(pc)++), v <<= 8, \
+				v |= UCHAR(*(pc)++)))
+# define FETCH3U(pc, v)	((Uint) (v = UCHAR(*(pc)++) << 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++)))
+# define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
+				v |= UCHAR(*(pc)++), v <<= 8, \
+				v |= UCHAR(*(pc)++), v <<= 8, \
+				v |= UCHAR(*(pc)++)))
+# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++), v <<= 8, \
+				 v |= UCHAR(*(pc)++)))
+
+
 # define T_TYPE		0x0f	/* type mask */
 # define T_INVALID	0x00
 # define T_INT		0x01
@@ -91,7 +112,7 @@ typedef struct _value_ {
 # define VFLT_NEG(v)	FLT_NEG((v)->oindex, (v)->u.objcnt)
 # define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
 
-# define DESTRUCTED(v)	(o_object((v)->oindex, (v)->u.objcnt) == (object*) NULL)
+# define DESTRUCTED(v)	(otable[(v)->oindex].count != (v)->u.objcnt)
 
 
 # define C_PRIVATE	0x01

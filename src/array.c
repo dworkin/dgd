@@ -102,12 +102,7 @@ unsigned int size;
 	a = &aclist->a[achunksz++];
     }
     a->size = size;
-    if (size > 0) {
-	a->elts = ALLOC(value, size);
-	a->elts[0].type = T_INVALID;
-    } else {
-	a->elts = (value *) NULL;
-    }
+    a->elts = (value *) NULL;
     a->ref = 0;
     a->hashed = (maphash *) NULL;	/* only used for mappings */
 
@@ -119,7 +114,7 @@ unsigned int size;
  * DESCRIPTION:	create a new array
  */
 array *arr_new(size)
-long size;
+register long size;
 {
     register array *a;
 
@@ -127,6 +122,9 @@ long size;
 	error("Array too large");
     }
     a = arr_alloc((unsigned short) size);
+    if (size > 0) {
+	a->elts = ALLOC(value, size);
+    }
     a->tag = tag++;
     a->primary = &cframe->obj->data->alocal;
     return a;
@@ -144,13 +142,14 @@ register array *a;
 	register value *v;
 	register unsigned short i;
 
-	d_del_array(a);
+	if (a->primary->arr != (array *) NULL) {
+	    d_del_array(a);
+	    a->primary->arr = (array *) NULL;
+	}
 
 	if ((v=a->elts) != (value *) NULL) {
-	    if (v[0].type != T_INVALID) {
-		for (i = a->size; i > 0; --i) {
-		    i_del_value(v++);
-		}
+	    for (i = a->size; i > 0; --i) {
+		i_del_value(v++);
 	    }
 	    FREE(a->elts);
 	}
@@ -323,7 +322,7 @@ register array *a1, *a2;
  * NAME:	cmp()
  * DESCRIPTION:	compare two values
  */
-static Int cmp(cv1, cv2)
+static int cmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
     register value *v1, *v2;
@@ -352,10 +351,9 @@ cvoid *cv1, *cv2;
 	return str_cmp(v1->u.string, v2->u.string);
 
     case T_OBJECT:
-	if (v1->oindex != v2->oindex) {
-	    return v1->oindex - v2->oindex;
-	}
-	return v1->u.objcnt - v2->u.objcnt;
+	return (v1->oindex <= v2->oindex) ?
+		(v1->oindex < v2->oindex) ? -1 : 0 :
+		1;
 
     case T_ARRAY:
     case T_MAPPING:
@@ -834,10 +832,10 @@ static bool ididx;	/* flag for identical indices */
  * NAME:	mapcmp()
  * DESCRIPTION:	compare two mapping indices
  */
-static Int mapcmp(cv1, cv2)
+static int mapcmp(cv1, cv2)
 cvoid *cv1, *cv2;
 {
-    register Int c;
+    register int c;
     register value *v1, *v2;
 
     c = cmp(cv1, cv2);
@@ -856,7 +854,7 @@ cvoid *cv1, *cv2;
  * DESCRIPTION:	create a new mapping
  */
 array *map_new(size)
-long size;
+register long size;
 {
     array *m;
 
@@ -864,6 +862,9 @@ long size;
 	error("Mapping too large");
     }
     m = arr_alloc((unsigned short) size);
+    if (size > 0) {
+	m->elts = ALLOC(value, size);
+    }
     m->tag = tag++;
     m->primary = &cframe->obj->data->alocal;
     return m;
@@ -1498,29 +1499,28 @@ value *val, *elt;
 		/*
 		 * found in the hashtable
 		 */
-		if (elt != (value *) NULL) {
-		    if (del) {
-			mapelt *next;
+		if (del ||
+		    (elt == (value *) NULL && val->type == T_OBJECT &&
+		     val->u.objcnt != (*e)->idx.u.objcnt)) {
+		    mapelt *next;
 
-			/*
-			 * delete element
-			 */
-			d_assign_elt(m, &(*e)->idx, &zero_value);
-			d_assign_elt(m, &(*e)->val, &zero_value);
+		    /*
+		     * delete element
+		     */
+		    d_assign_elt(m, &(*e)->idx, &zero_value);
+		    d_assign_elt(m, &(*e)->val, &zero_value);
 
-			next = (*e)->next;
-			(*e)->next = fmelt;
-			fmelt = *e;
-			*e = next;
-			m->hashed->size--;
-		    } else {
-			/*
-			 * change element
-			 */
-			d_assign_elt(m, &(*e)->val, elt);
-		    }
-
+		    next = (*e)->next;
+		    (*e)->next = fmelt;
+		    fmelt = *e;
+		    *e = next;
+		    m->hashed->size--;
 		    return (value *) NULL;
+		} else if (elt != (value *) NULL) {
+		    /*
+		     * change element
+		     */
+		    d_assign_elt(m, &(*e)->val, elt);
 		}
 		return &(*e)->val;
 	    }

@@ -1,3 +1,5 @@
+# include "swap.h"
+
 typedef struct {
     object *obj;		/* inherited object */
     uindex funcoffset;		/* function call offset */
@@ -9,12 +11,16 @@ typedef struct {
     unsigned short len;		/* string length */
 } dstrconst;
 
+# define DSTR_LAYOUT	"is"
+
 typedef struct _dfuncdef_ {
     char class;			/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */
     Uint offset;		/* offset in program text */
 } dfuncdef;
+
+# define DF_LAYOUT	"ccsi"
 
 typedef struct {
     char class;			/* variable class */
@@ -23,11 +29,15 @@ typedef struct {
     unsigned short type;	/* variable type */
 } dvardef;
 
+# define DV_LAYOUT	"ccss"
+
 typedef struct {
     char inherit;		/* function object index */
     char index;			/* function index */
     unsigned short next;	/* next in hash table */
 } dsymbol;
+
+# define DSYM_LAYOUT	"ccs"
 
 typedef struct _control_ {
     struct _control_ *prev, *next;
@@ -177,6 +187,8 @@ extern void		d_export	P((void));
 extern void		d_upgrade_all	P((object*, object*));
 extern uindex		d_swapout	P((int));
 extern void		d_swapsync	P((void));
+extern void		d_conv_control	P((object*));
+extern void		d_conv_dataspace P((object*, Uint*));
 
 extern void		d_del_control	P((control*));
 extern void		d_del_dataspace	P((dataspace*));

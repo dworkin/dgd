@@ -17,8 +17,9 @@ typedef struct _header_ {	/* swap slot header */
 static char *swapfile;			/* swap file name */
 static int swap = -1;			/* swap file descriptor */
 static int dump = -1;			/* dump file descriptor */
+static int restore;			/* restore file descriptor */
 static char *mem;			/* swap slots in memory */
-static sector *map, *smap;		/* sector map, swap check map */
+static sector *map, *smap;		/* sector map, swap free map */
 static sector mfree, sfree;		/* free sector lists */
 static char *bmap;			/* sector bitmap */
 static char *cbuf;			/* sector buffer */
@@ -26,6 +27,7 @@ static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
 static long slotsize;			/* sizeof(header) + size of sector */
 static int sectorsize;			/* size of sector */
+static int restoresecsize;		/* size of sector in restore file */
 static sector swapsize, cachesize;	/* # of sectors in swap and cache */
 static sector nsectors;			/* total swap sectors */
 static sector nfree;			/* # free sectors */
@@ -111,8 +113,7 @@ static void sw_create()
  * DESCRIPTION:	copy sectors from dump to swap
  */
 static void copy(sec, n)
-register sector sec;
-register sector n;
+register sector sec, n;
 {
     dsectors -= n;
 
@@ -218,10 +219,6 @@ unsigned int sec;
 		 */
 		copy(i, (sector) 1);
 	    }
-	    if (dsectors == 0) {
-		close(dump);
-		dump = -1;
-	    }
 	} else {
 	    /*
 	     * free sector in swap file
@@ -322,10 +319,8 @@ bool fill;
 		}
 
 		BCLR(bmap, sec);
-		if (--dsectors == 0) {
-		    close(dump);
-		    dump = -1;
-		}
+		--dsectors;
+
 		h->swap = SW_UNUSED;
 		h->dirty = TRUE;
 	    } else if (fill) {
@@ -384,14 +379,12 @@ register Uint size, idx;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
-    len = (size > sectorsize - idx) ? sectorsize - idx : size;
-    memcpy(m, (char *) (sw_load(*vec++, TRUE) + 1) + idx, len);
-
-    while ((size -= len) > 0) {
+    do {
+	len = (size > sectorsize - idx) ? sectorsize - idx : size;
+	memcpy(m, (char *) (sw_load(*vec++, TRUE) + 1) + idx, len);
+	idx = 0;
 	m += len;
-	len = (size > sectorsize) ? sectorsize : size;
-	memcpy(m, (char *) (sw_load(*vec++, TRUE) + 1), len);
-    }
+    } while ((size -= len) > 0);
 }
 
 /*
@@ -408,18 +401,44 @@ register Uint size, idx;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
-    len = (size > sectorsize - idx) ? sectorsize - idx : size;
-    h = sw_load(*vec++, (len != sectorsize));
-    h->dirty = TRUE;
-    memcpy((char *) (h + 1) + idx, m, len);
-
-    while ((size -= len) > 0) {
-	m += len;
-	len = (size > sectorsize) ? sectorsize : size;
+    do {
+	len = (size > sectorsize - idx) ? sectorsize - idx : size;
 	h = sw_load(*vec++, (len != sectorsize));
 	h->dirty = TRUE;
-	memcpy((char *) (h + 1), m, len);
-    }
+	memcpy((char *) (h + 1) + idx, m, len);
+	idx = 0;
+	m += len;
+    } while ((size -= len) > 0);
+}
+
+/*
+ * NAME:	swap->dreadv()
+ * DESCRIPTION:	restore bytes from a vector of sectors in dump file
+ */
+void sw_dreadv(m, vec, size, idx)
+register char *m;
+register sector *vec;
+register Uint size, idx;
+{
+    static sector cached = SW_UNUSED;
+    register int len;
+
+    vec += idx / restoresecsize;
+    idx %= restoresecsize;
+    do {
+	len = (size > restoresecsize - idx) ? restoresecsize - idx : size;
+	if (*vec != cached) {
+	    lseek(restore, (smap[*vec] + 1L) * restoresecsize, SEEK_SET);
+	    if (read(restore, cbuf, restoresecsize) <= 0) {
+		fatal("cannot read dump file");
+	    }
+	    cached = *vec;
+	}
+	vec++;
+	memcpy(m, cbuf + idx, len);
+	idx = 0;
+	m += len;
+    } while ((size -= len) > 0);
 }
 
 /*
@@ -453,12 +472,14 @@ sector sw_count()
 
 
 typedef struct {
-    Uint sectorsize;		/* size of swap sector */
+    Uint secsize;		/* size of swap sector */
     sector nsectors;		/* # sectors */
     sector ssectors;		/* # swap sectors */
     sector nfree;		/* # free sectors */
-    sector mfree, sfree;	/* free sector lists */
+    sector mfree;		/* free sector list */
 } dump_header;
+
+static char dh_layout[] = "idddd";
 
 # define CHUNKSZ	32
 
@@ -469,9 +490,9 @@ typedef struct {
 void sw_copy()
 {
     if (dump >= 0) {
-	register sector n;
-
 	if (dsectors > 0) {
+	    register sector n;
+
 	    n = CHUNKSZ;
 	    if (n > dsectors) {
 		n = dsectors;
@@ -583,22 +604,20 @@ char *dumpfile;
     }
 
     /* write header */
-    dh.sectorsize = sectorsize;
+    dh.secsize = sectorsize;
     dh.nsectors = nsectors;
     dh.ssectors = ssectors;
     dh.nfree = nfree;
     dh.mfree = mfree;
-    dh.sfree = sfree;
     lseek(dump, sectorsize - (long) sizeof(dump_header), SEEK_SET);
     if (write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
 	fatal("cannot write swap header to dump file");
     }
 
-    /* write maps */
+    /* write map */
     lseek(dump, (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (write(dump, (char *) map, nsectors * sizeof(sector)) < 0 ||
-	write(dump, (char *) smap, ssectors * sizeof(sector)) < 0) {
-	fatal("cannot write swap maps to dump file");
+    if (write(dump, (char *) map, nsectors * sizeof(sector)) < 0) {
+	fatal("cannot write sector map to dump file");
     }
 
 
@@ -644,48 +663,29 @@ char *dumpfile;
 
 /*
  * NAME:	swap->restore()
- * DESCRIPTION:	restore swap file
+ * DESCRIPTION:	restore dump file
  */
 void sw_restore(fd, secsize)
 int fd, secsize;
 {
-    register sector n, size;
+    register sector sec;
     dump_header dh;
-    char *buffer;
 
     /* restore swap header */
-    lseek(fd, secsize - (long) sizeof(dump_header), SEEK_SET);
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	dh.sectorsize != sectorsize || dh.nsectors > swapsize) {
+    lseek(fd, secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    if (dh.secsize != secsize || dh.nsectors > swapsize) {
 	fatal("bad swap header in restore file");
     }
-    nsectors = dh.nsectors;
-    ssectors = dh.ssectors;
     nfree = dh.nfree;
     mfree = dh.mfree;
-    sfree = dh.sfree;
+    restoresecsize = secsize;
 
-    /* create swap file */
-    sw_create();
+    /* seek beyond swap sectors */
+    lseek(fd, (dh.ssectors + 1L) * secsize, SEEK_SET);
 
-    /* restore swapfile */
-    buffer = ALLOCA(char, CHUNKSZ * sectorsize);
-    for (n = ssectors; n > 0; n -= size) {
-	size = (n >= CHUNKSZ) ? CHUNKSZ : n;
-	if (read(fd, buffer, size * sectorsize) != size * sectorsize) {
-	    fatal("cannot restore swap sectors");
-	}
-	if (write(swap, buffer, size * sectorsize) < 0) {
-	    fatal("cannot write to swap file");
-	}
-    }
-    AFREE(buffer);
+    /* restore swap map */
+    conf_dread(fd, (char *) smap, "d", (Uint) dh.nsectors);
 
-    /* restore swap maps */
-    if (read(fd, (char *) map, nsectors * sizeof(sector)) !=
-						nsectors * sizeof(sector) ||
-	read(fd, (char *) smap, ssectors * sizeof(sector)) !=
-						ssectors * sizeof(sector)) {
-	fatal("cannot restore swap maps");
-    }
+    restore = fd;
 }

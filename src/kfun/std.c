@@ -75,12 +75,12 @@ int nargs;
 	    i_del_value(sp++);
 	    return 1;
 	}
-	obj = o_object(sp->oindex, sp->u.objcnt);
+	obj = &otable[sp->oindex];
 	sp++;
 	break;
 
     case T_OBJECT:
-	obj = o_object(val->oindex, val->u.objcnt);
+	obj = &otable[val->oindex];
 	break;
 
     default:
@@ -211,7 +211,7 @@ int kf_clone_object()
 {
     register object *obj;
 
-    obj = o_object(sp->oindex, sp->u.objcnt);
+    obj = &otable[sp->oindex];
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
@@ -237,7 +237,7 @@ int kf_destruct_object()
 {
     register object *obj;
 
-    obj = o_object(sp->oindex, sp->u.objcnt);
+    obj = &otable[sp->oindex];
     if (obj->flags & O_USER) {
 	comm_close(obj);
     }
@@ -264,7 +264,7 @@ int kf_object_name()
 {
     char *name;
 
-    name = o_name(o_object(sp->oindex, sp->u.objcnt));
+    name = o_name(&otable[sp->oindex]);
     sp->type = T_STRING;
     str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
     sp->u.string->text[0] = '/';
@@ -320,7 +320,7 @@ int kf_function_object()
     char *name;
 
     i_add_ticks(2);
-    obj = o_object(sp->oindex, sp->u.objcnt);
+    obj = &otable[sp->oindex];
     sp++;
     symb = ctrl_symb(o_control(obj), sp->u.string->text, sp->u.string->len);
     str_del(sp->u.string);
@@ -388,7 +388,7 @@ int kf_query_ip_number()
 {
     register object *obj;
 
-    obj = o_object(sp->oindex, sp->u.objcnt);
+    obj = &otable[sp->oindex];
     if (obj->flags & O_USER) {
 	sp->type = T_STRING;
 	str_ref(sp->u.string = comm_ip_number(obj));
@@ -812,7 +812,7 @@ int nargs;
 	a = conf_status();
 	--sp;
     } else {
-	a = conf_object(o_object(sp->oindex, sp->u.objcnt));
+	a = conf_object(&otable[sp->oindex]);
     }
     sp->type = T_ARRAY;
     arr_ref(sp->u.array = a);

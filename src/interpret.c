@@ -327,9 +327,9 @@ register unsigned int size;
 	    arr_del(a);
 	    error((char *) NULL);
 	}
-	d_ref_imports(a);
 	map_sort(a);
 	ec_pop();
+	d_ref_imports(a);
     }
     (--sp)->type = T_MAPPING;
     arr_ref(sp->u.array = a);
@@ -1108,26 +1108,6 @@ int strict;
 	}
     }
 }
-
-# define FETCH1S(pc)	SCHAR(*(pc)++)
-# define FETCH1U(pc)	UCHAR(*(pc)++)
-# define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
-# define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
-					   v |= UCHAR(*(pc)++)))
-# define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH3U(pc, v)	((Uint) (v = UCHAR(*(pc)++) << 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++)))
-# define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++), v <<= 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++)))
 
 /*
  * NAME:	interpret->switch_int()

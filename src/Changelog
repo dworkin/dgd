@@ -1030,3 +1030,8 @@ DGD 1.1
    flushing in comm.c.
  - Several bugs fixed in the recompiling code.
  - And some related ones.
+ - And some more.
+ - Array swapping and exporting made faster.
+ - When an object is destructed, remove callouts immediately from the callout
+   table.
+ - Dumpfiles from different platforms are now converted at boot time.

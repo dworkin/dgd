@@ -93,47 +93,110 @@ static config conf[] = {
 };
 
 
-typedef struct {
-    char fill;		/* filler */
-    char c;		/* char */
-} calign;
+typedef struct { char fill; char c;	} alignc;
+typedef struct { char fill; short s;	} aligns;
+typedef struct { char fill; Int i;	} aligni;
+typedef struct { char fill; char *p;	} alignp;
+typedef struct { char c;		} alignz;
 
-typedef struct {
-    char fill;		/* filler */
-    short s;		/* short */
-} salign;
+typedef char dumpinfo[28];
 
-typedef struct {
-    char fill;		/* filler */
-    Int i;		/* Int */
-} ialign;
+# define FORMAT_VERSION	2
 
-typedef struct {
-    char fill;		/* filler */
-    long l;		/* long */
-} lalign;
+# define DUMP_VALID	0	/* valud dump flag */
+# define DUMP_VERSION	1	/* dump file version number */
+# define DUMP_DRIVER	2	/* 0: vanilla DGD, 1: iChat DGD */
+# define DUMP_TYPECHECK	3	/* global typechecking */
+# define DUMP_SECSIZE	4	/* sector size */
+# define DUMP_TYPE	4	/* first XX bytes, dump type */
+# define DUMP_PLATFORM	20	/* if first XX bytes the same, no conversion */
+# define DUMP_BOOTTIME	20	/* boot time */
+# define DUMP_ELAPSED	24	/* elapsed time */
 
-typedef struct {
-    char fill;		/* filler */
-    char *p;		/* char* */
-} palign;
+static dumpinfo header;		/* dumpfile header */
+# define s0	(header[ 6])	/* short, msb */
+# define s1	(header[ 7])	/* short, lsb */
+# define i0	(header[ 8])	/* Int, msb */
+# define i1	(header[ 9])
+# define i2	(header[10])
+# define i3	(header[11])	/* Int, lsb */
+# define usize	(header[12])	/* sizeof(uindex) */
+# define dsize	(header[13])	/* sizeof(sector) */
+# define psize	(header[14])	/* sizeof(char*) */
+# define calign	(header[15])	/* align(char) */
+# define salign	(header[16])	/* align(short) */
+# define ialign	(header[17])	/* align(Int) */
+# define palign	(header[18])	/* align(char*) */
+# define zalign	(header[19])	/* align(struct) */
+static int ualign;		/* align(uindex) */
+static int dalign;		/* align(sector) */
+static dumpinfo rheader;	/* restored header */
+# define rs0	(rheader[ 6])	/* short, msb */
+# define rs1	(rheader[ 7])	/* short, lsb */
+# define ri0	(rheader[ 8])	/* Int, msb */
+# define ri1	(rheader[ 9])
+# define ri2	(rheader[10])
+# define ri3	(rheader[11])	/* Int, lsb */
+# define rusize	(rheader[12])	/* sizeof(uindex) */
+# define rdsize	(rheader[13])	/* sizeof(sector) */
+# define rpsize	(rheader[14])	/* sizeof(char*) */
+# define rcalign (rheader[15])	/* align(char) */
+# define rsalign (rheader[16])	/* align(short) */
+# define rialign (rheader[17])	/* align(Int) */
+# define rpalign (rheader[18])	/* align(char*) */
+# define rzalign (rheader[19])	/* align(struct) */
+static int rualign;		/* align(uindex) */
+static int rdalign;		/* align(sector) */
+static Uint boottime;		/* boot time */
+static Uint elapsed;		/* elapsed time */
+static Uint starttime;		/* start time */
 
-typedef struct {	/* struct align */
-    char c;
-} align;
+/*
+ * NAME:	conf->dumpinit()
+ * DESCRIPTION:	initialize dump file information
+ */
+static void conf_dumpinit()
+{
+    short s;
+    Int i;
+    alignc cdummy;
+    aligns sdummy;
+    aligni idummy;
+    alignp pdummy;
 
+    header[DUMP_VALID] = TRUE;			/* valid dump flag */
+    header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
+    header[DUMP_DRIVER] = 0;			/* vanilla DGD */
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
+    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
 
-typedef struct {
-    char b[19];		/* various things */
-    Int sectorsz;	/* sector size */
-    Uint btime;		/* boot time */
-    Uint etime;		/* elapsed time */
-} dumpinfo;
+    starttime = boottime = P_time();
+    header[DUMP_BOOTTIME + 0] = boottime >> 24;
+    header[DUMP_BOOTTIME + 1] = boottime >> 16;
+    header[DUMP_BOOTTIME + 2] = boottime >> 8;
+    header[DUMP_BOOTTIME + 3] = boottime;
 
-static dumpinfo header;	/* dumpfile header */
-static Uint boottime;	/* boot time */
-static Uint elapsed;	/* elapsed time */
-static Uint starttime;	/* start time */
+    s = 0x1234;
+    i = 0x12345678L;
+    s0 = strchr((char *) &s, 0x12) - (char *) &s;
+    s1 = strchr((char *) &s, 0x34) - (char *) &s;
+    i0 = strchr((char *) &i, 0x12) - (char *) &i;
+    i1 = strchr((char *) &i, 0x34) - (char *) &i;
+    i2 = strchr((char *) &i, 0x56) - (char *) &i;
+    i3 = strchr((char *) &i, 0x78) - (char *) &i;
+    usize = sizeof(uindex);
+    dsize = sizeof(sector);
+    psize = sizeof(char*);
+    calign = (char *) &cdummy.c - (char *) &cdummy.fill;
+    salign = (char *) &sdummy.s - (char *) &sdummy.fill;
+    ialign = (char *) &idummy.i - (char *) &idummy.fill;
+    palign = (char *) &pdummy.p - (char *) &pdummy.fill;
+    zalign = sizeof(alignz);
+
+    ualign = (usize == sizeof(short)) ? salign : ialign;
+    dalign = (dsize == sizeof(short)) ? salign : ialign;
+}
 
 /*
  * NAME:	conf->dump()
@@ -142,11 +205,14 @@ static Uint starttime;	/* start time */
 void conf_dump()
 {
     int fd;
+    Uint etime;
 
-    header.b[2] = conf[TYPECHECKING].u.num;
-    header.sectorsz = conf[SECTOR_SIZE].u.num;
-    header.btime = boottime;
-    header.etime = elapsed + P_time() - starttime;
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    etime = elapsed + P_time() - starttime;
+    header[DUMP_ELAPSED + 0] = etime >> 24;
+    header[DUMP_ELAPSED + 1] = etime >> 16;
+    header[DUMP_ELAPSED + 2] = etime >> 8;
+    header[DUMP_ELAPSED + 3] = etime;
 
     fd = sw_dump(conf[DUMP_FILE].u.str);
     if (!kf_dump(fd)) {
@@ -163,7 +229,7 @@ void conf_dump()
     }
 
     lseek(fd, 0L, SEEK_SET);
-    write(fd, (char *) &header, sizeof(dumpinfo));
+    write(fd, &header, sizeof(dumpinfo));
 }
 
 /*
@@ -173,33 +239,342 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    dumpinfo info;
+    int secsize;
+    long posn;
 
-    if (read(fd, (char *) &info, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
-	memcmp(info.b, header.b, sizeof(info.b)) != 0) {
+    if (read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
+	memcmp(header, rheader, DUMP_TYPE) != 0) {
 	fatal("bad or incompatible restore file header");
     }
-    boottime = info.btime;
-    elapsed = info.etime;
-    conf[SECTOR_SIZE].u.num = info.sectorsz;
-    sw_restore(fd, (int) info.sectorsz);
+
+    boottime = (UCHAR(rheader[DUMP_BOOTTIME + 0]) << 24) |
+	       (UCHAR(rheader[DUMP_BOOTTIME + 1]) << 16) |
+	       (UCHAR(rheader[DUMP_BOOTTIME + 2]) << 8) |
+		UCHAR(rheader[DUMP_BOOTTIME + 3]);
+    elapsed =  (UCHAR(rheader[DUMP_ELAPSED + 0]) << 24) |
+	       (UCHAR(rheader[DUMP_ELAPSED + 1]) << 16) |
+	       (UCHAR(rheader[DUMP_ELAPSED + 2]) << 8) |
+		UCHAR(rheader[DUMP_ELAPSED + 3]);
+    rualign = (rusize == sizeof(short)) ? rsalign : rialign;
+    rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
+    if (usize < rusize || dsize < rdsize) {
+	fatal("cannot restore uindex or sector of greater width");
+    }
+    secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
+	       UCHAR(rheader[DUMP_SECSIZE + 1]);
+    if (secsize > conf[SECTOR_SIZE].u.num) {
+	fatal("cannot decrease sector size");
+    }
+
+    sw_restore(fd, secsize);
     kf_restore(fd);
     o_restore(fd);
+
+    posn = lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
+    o_conv();				/* convert all objects */
+    lseek(fd, posn, SEEK_SET);		/* restore file position */
+
     starttime = P_time();
     co_restore(fd, starttime);
     pc_restore(fd);
 }
 
 /*
- * NAME:	conferr()
- * DESCRIPTION:	error during the configuration phase
+ * NAME:	conf->dsize()
+ * DESCRIPTION:	compute the size and alignment of a struct
+ *		0x000000ff size in dump file
+ *		0x0000ff00 alignment in dump file
+ *		0x00ff0000 size
+ *		0xff000000 alignment
  */
-static void conferr(err)
-char *err;
+Uint conf_dsize(layout)
+char *layout;
 {
-    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
-    exit(1);
+    register char *p;
+    register Uint sz, rsz, al, ral;
+    register Uint size, rsize, align, ralign;
+
+    p = layout;
+    size = rsize = 0;
+    align = ralign = 1;
+
+    for (;;) {
+	switch (*p++) {
+	case 'c':	/* character */
+	    sz = rsz = sizeof(char);
+	    al = calign;
+	    ral = rcalign;
+	    break;
+
+	case 's':	/* short */
+	    sz = rsz = sizeof(short);
+	    al = salign;
+	    ral = rsalign;
+	    break;
+
+	case 'u':	/* uindex */
+	    sz = usize;
+	    rsz = rusize;
+	    al = ualign;
+	    ral = rualign;
+	    break;
+
+	case 'i':	/* Int */
+	    sz = rsz = sizeof(Int);
+	    al = ialign;
+	    ral = rialign;
+	    break;
+
+	case 'd':	/* sector */
+	    sz = dsize;
+	    rsz = rdsize;
+	    al = dalign;
+	    ral = rdalign;
+	    break;
+
+	case 'p':	/* pointer */
+	    sz = psize;
+	    rsz = rpsize;
+	    al = palign;
+	    ral = rpalign;
+	    break;
+
+	case 'x':	/* hte */
+	    size = ALGN(size, zalign);
+	    size = ALGN(size, palign);
+	    size += psize;
+	    size = ALGN(size, palign);
+	    size += psize;
+	    size = ALGN(size, zalign);
+	    rsize = ALGN(rsize, rzalign);
+	    rsize = ALGN(rsize, rpalign);
+	    rsize += rpsize;
+	    rsize = ALGN(rsize, rpalign);
+	    rsize += rpsize;
+	    rsize = ALGN(rsize, rzalign);
+	    align = ALGN(align, palign);
+	    ralign = ALGN(ralign, rpalign);
+	    continue;
+
+	case '[':	/* struct */
+	    sz = conf_dsize(p);
+	    al = (sz >> 8) & 0xff;
+	    rsz = (sz >> 16) & 0xff;
+	    ral = sz >> 24;
+	    sz &= 0xff;
+	    p = strchr(p, ']') + 1;
+	    break;
+
+	case ']':
+	case '\0':	/* end of layout */
+	    if (p != layout + 2) {
+		/* a stuct and not an array element */
+		align = ALGN(align, zalign);
+		ralign = ALGN(ralign, rzalign);
+	    }
+	    return ALGN(rsize, ralign) |
+	    	   (ralign << 8) |
+		   (ALGN(size, align) << 16) |
+		   (align << 24);
+	}
+
+	size = ALGN(size, al) + sz;
+	rsize = ALGN(rsize, ral) + rsz;
+	align = ALGN(align, al);
+	ralign = ALGN(ralign, ral);
+    }
 }
+
+/*
+ * NAME:	conf_dconv()
+ * DESCRIPTION:	convert structs from dumpfile format
+ */
+Uint conf_dconv(buf, rbuf, layout, n)
+register char *buf, *rbuf;
+char *layout;
+Uint n;
+{
+    register Uint i, ri, j, size, rsize;
+    register char *p;
+
+    rsize = conf_dsize(layout);
+    size = (rsize >> 16) & 0xff;
+    rsize &= 0xff;
+    while (n > 0) {
+	i = ri = 0;
+	for (p = layout; *p != '\0' && *p != ']'; p++) {
+	    switch (*p) {
+	    case 'c':
+		i = ALGN(i, calign);
+		ri = ALGN(ri, rcalign);
+		buf[i] = rbuf[ri];
+		i += sizeof(char);
+		ri += sizeof(char);
+		break;
+
+	    case 's':
+		i = ALGN(i, salign);
+		ri = ALGN(ri, rsalign);
+		buf[i + s0] = rbuf[ri + rs0];
+		buf[i + s1] = rbuf[ri + rs1];
+		i += sizeof(short);
+		ri += sizeof(short);
+		break;
+
+	    case 'u':
+		i = ALGN(i, ualign);
+		ri = ALGN(ri, rualign);
+		if (usize == rusize) {
+		    if (usize == sizeof(short)) {
+			buf[i + s0] = rbuf[ri + rs0];
+			buf[i + s1] = rbuf[ri + rs1];
+			i += sizeof(short);
+			ri += sizeof(short);
+		    } else {
+			buf[i + i0] = rbuf[ri + ri0];
+			buf[i + i1] = rbuf[ri + ri1];
+			buf[i + i2] = rbuf[ri + ri2];
+			buf[i + i3] = rbuf[ri + ri3];
+			i += sizeof(Int);
+			ri += sizeof(Int);
+		    }
+		} else {
+		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
+			 -1 : 0;
+		    buf[i + i0] = j;
+		    buf[i + i1] = j;
+		    buf[i + i2] = rbuf[ri + rs0];
+		    buf[i + i3] = rbuf[ri + rs1];
+		    i += sizeof(Int);
+		    ri += sizeof(short);
+		}
+		break;
+
+	    case 'i':
+		i = ALGN(i, ialign);
+		ri = ALGN(ri, rialign);
+		buf[i + i0] = rbuf[ri + ri0];
+		buf[i + i1] = rbuf[ri + ri1];
+		buf[i + i2] = rbuf[ri + ri2];
+		buf[i + i3] = rbuf[ri + ri3];
+		i += sizeof(Int);
+		ri += sizeof(Int);
+		break;
+
+	    case 'd':
+		i = ALGN(i, dalign);
+		ri = ALGN(ri, rdalign);
+		if (dsize == rdsize) {
+		    if (dsize == sizeof(short)) {
+			buf[i + s0] = rbuf[ri + rs0];
+			buf[i + s1] = rbuf[ri + rs1];
+			i += sizeof(short);
+			ri += sizeof(short);
+		    } else {
+			buf[i + i0] = rbuf[ri + ri0];
+			buf[i + i1] = rbuf[ri + ri1];
+			buf[i + i2] = rbuf[ri + ri2];
+			buf[i + i3] = rbuf[ri + ri3];
+			i += sizeof(Int);
+			ri += sizeof(Int);
+		    }
+		} else {
+		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
+			 -1 : 0;
+		    buf[i + i0] = j;
+		    buf[i + i1] = j;
+		    buf[i + i2] = rbuf[ri + rs0];
+		    buf[i + i3] = rbuf[ri + rs1];
+		    i += sizeof(Int);
+		    ri += sizeof(short);
+		}
+		break;
+
+	    case 'p':
+		i = ALGN(i, palign);
+		ri = ALGN(ri, rpalign);
+		for (j = psize; j > 0; --j) {
+		    buf[i++] = 0;
+		}
+		ri += rpsize;
+		break;
+
+	    case '[':
+		j = conf_dsize(++p);
+		i = ALGN(i, j >> 24);
+		ri = ALGN(ri, (j >> 8) & 0xff);
+		j = conf_dconv(buf + i, rbuf + ri, p, (Uint) 1);
+		i += (j >> 16) & 0xff;
+		ri += j & 0xff;
+		p = strchr(p, ']');
+		break;
+
+	    case 'x':
+		i = ALGN(i, zalign);
+		i = ALGN(i, palign);
+		for (j = psize; j > 0; --j) {
+		    buf[i++] = 0;
+		}
+		i = ALGN(i, palign);
+		for (j = psize; j > 0; --j) {
+		    buf[i++] = 0;
+		}
+		ri = ALGN(ri, rzalign);
+		ri = ALGN(ri, rpalign);
+		ri += rpsize;
+		ri = ALGN(ri, rpalign);
+		for (j = rpsize; j > 0; --j) {
+		    if (rbuf[ri] != 0) {
+			buf[i - 1] = 1;
+			break;
+		    }
+		    ri++;
+		}
+		ri += j;
+		i = ALGN(i, zalign);
+		ri = ALGN(ri, rzalign);
+		break;
+	    }
+	}
+
+	buf += size;
+	rbuf += rsize;
+	--n;
+    }
+
+    return (size << 16) | rsize;
+}
+
+/*
+ * NAME:	conf->dread()
+ * DESCRIPTION:	read from dumpfile
+ */
+void conf_dread(fd, buf, layout, n)
+int fd;
+char *buf, *layout;
+register Uint n;
+{
+    char buffer[16384];
+    register unsigned int i, size, rsize;
+    Uint tmp;
+
+    tmp = conf_dsize(layout);
+    size = (tmp >> 16) & 0xff;
+    rsize = tmp & 0xff;
+    while (n != 0) {
+	i = sizeof(buffer) / rsize;
+	if (i > n) {
+	    i = n;
+	}
+	if (read(fd, buffer, i * rsize) != i * rsize) {
+	    fatal("cannot read from dump file");
+	}
+	conf_dconv(buf, buffer, layout, (Uint) i);
+	buf += size * i;
+	n -= i;
+    }
+}
+
 
 static char *fname;	/* file name */
 static int fd;		/* file descriptor */
@@ -258,6 +633,17 @@ static void cclose()
     close(fd);
 }
 
+/*
+ * NAME:	conferr()
+ * DESCRIPTION:	error during the configuration phase
+ */
+static void conferr(err)
+char *err;
+{
+    message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
+    exit(1);
+}
+
 # define MAX_DIRS	32
 
 /*
@@ -271,14 +657,7 @@ char *configfile, *dumpfile;
     char buf[BUF_SIZE], buffer[STRINGSZ];
     register char *p;
     register int h, l, m, c;
-    short s;
-    Int i;
     int fd;
-    calign cdummy;
-    salign sdummy;
-    ialign idummy;
-    lalign ldummy;
-    palign pdummy;
 
     if (!pp_init(configfile, (char **) NULL, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
@@ -551,29 +930,8 @@ char *configfile, *dumpfile;
     pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str);
 
     /* initialize dumpfile header */
-    s = 0x1234;
-    i = 0x12345678L;
-    header.b[0] = 1;				/* valid dump flag */
-    header.b[1] = 2;				/* dump file version number */
-    header.b[2] = conf[TYPECHECKING].u.num;	/* global typechecking */
-    header.b[3] = sizeof(uindex);		/* sizeof uindex */
-    header.b[4] = sizeof(sector);		/* sizeof sector */
-    header.b[5] = sizeof(long);			/* sizeof long */
-    header.b[6] = sizeof(char*);		/* sizeof char* */
-    header.b[7] = ((char *) &s)[0];		/* 1 of 2 */
-    header.b[8] = ((char *) &s)[1];		/* 2 of 2 */
-    header.b[9] = ((char *) &i)[0];		/* 1 of 4 */
-    header.b[10] = ((char *) &i)[1];		/* 2 of 4 */
-    header.b[11] = ((char *) &i)[2];		/* 3 of 4 */
-    header.b[12] = ((char *) &i)[3];		/* 4 of 4 */
-    header.b[13] = (char *) &cdummy.c - (char *) &cdummy.fill; /* char align */
-    header.b[14] = (char *) &sdummy.s - (char *) &sdummy.fill; /* short align */
-    header.b[15] = (char *) &idummy.i - (char *) &idummy.fill; /* Int align */
-    header.b[16] = (char *) &ldummy.l - (char *) &ldummy.fill; /* long align */
-    header.b[17] = (char *) &pdummy.p - (char *) &pdummy.fill; /* ptr align */
-    header.b[18] = sizeof(align);			     /* struct align */
+    conf_dumpinit();
 
-    starttime = boottime = P_time();
     if (ec_push((ec_ftn) NULL)) {
 	message((char *) NULL);
 	message("Config error: initialization failed\012");	/* LF */

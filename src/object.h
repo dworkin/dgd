@@ -10,15 +10,14 @@ struct _object_ {
     uindex index;		/* index in object table */
     Uint count;			/* object creation count */
     Uint update;		/* object update count */
-    union {
-	long ref;		/* ref count (if master object) */
-	struct _object_ *master;/* pointer to master object */
-    } u;
+    Uint ref;			/* ref count (if master object) */
     struct _control_ *ctrl;	/* control block (master object only) */
     struct _dataspace_ *data;	/* dataspace block */
     sector cfirst;		/* first sector of control block */
     sector dfirst;		/* first sector of dataspace block */
 };
+# define u_ref			ref
+# define u_master		ref
 
 # define O_MASTER		0x01
 # define O_AUTO			0x02
@@ -29,8 +28,10 @@ struct _object_ {
 # define O_COMPILED		0x40
 # define O_PENDIO		0x80
 
-# define O_UPGRADING(o)		((o)->cref > (o)->u.ref)
-# define O_INHERITED(o)		((o)->u.ref - 1 != (o)->cref)
+# define OBJ_LAYOUT		"xccuuuiiippdd"
+
+# define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
+# define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
 
 extern void		   o_init	P((unsigned int));
 extern object		  *o_new	P((char*, struct _control_*));
@@ -38,8 +39,6 @@ extern object		  *o_clone	P((object*));
 extern void		   o_upgrade	P((object*, struct _control_*));
 extern void		   o_upgraded	P((object*, object*));
 extern void		   o_del	P((object*));
-extern object		  *o_object	P((unsigned int, Uint));
-extern object		  *o_objref	P((unsigned int));
 extern char		  *o_name	P((object*));
 extern object		  *o_find	P((char*));
 extern struct _control_	  *o_control	P((object*));
@@ -48,3 +47,6 @@ extern void		   o_clean	P((void));
 extern uindex		   o_count	P((void));
 extern bool		   o_dump	P((int));
 extern void		   o_restore	P((int));
+extern void		   o_conv	P((void));
+
+extern object *otable;

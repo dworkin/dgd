@@ -64,7 +64,7 @@ int kf_query_editor()
     object *obj;
     char *status;
 
-    obj = o_object(sp->oindex, sp->u.objcnt);
+    obj = &otable[sp->oindex];
     if (obj->flags & O_EDITOR) {
 	status = ed_status(obj);
 	sp->type = T_STRING;

@@ -9,16 +9,16 @@
 
 # define OBJ_NONE		UINDEX_MAX
 
-static object *otab;		/* object table */
+object *otable;			/* object table */
 static uindex otabsize;		/* size of object table */
 static hashtab *htab;		/* object name hash table */
 static object *clean_obj;	/* list of objects to clean */
 static object *upgrade_obj;	/* list of upgrade objects */
-static object *dest_obj;	/* destructed object list */
-static object *free_obj;	/* free object list */
+static uindex dest_obj;		/* destructed object list */
+static uindex free_obj;		/* free object list */
 static uindex nobjects;		/* number of objects in object table */
 static uindex nfreeobjs;	/* number of objects in free list */
-static Uint count;		/* object creation count */
+static Uint ocount;		/* object creation count */
 
 /*
  * NAME:	object->init()
@@ -27,13 +27,14 @@ static Uint count;		/* object creation count */
 void o_init(n)
 register unsigned int n;
 {
-    otab = ALLOC(object, otabsize = n);
+    otable = ALLOC(object, otabsize = n);
     for (n = 4; n < otabsize; n <<= 1) ;
     htab = ht_new(n >> 2, OBJHASHSZ);
-    free_obj = dest_obj = upgrade_obj = clean_obj = (object *) NULL;
+    upgrade_obj = clean_obj = (object *) NULL;
+    free_obj = dest_obj = OBJ_NONE;
     nobjects = 0;
     nfreeobjs = 0;
-    count = 0;
+    ocount = 1;
 }
 
 /*
@@ -44,17 +45,17 @@ static object *o_alloc()
 {
     object *o;
 
-    if (free_obj != (object *) NULL) {
+    if (free_obj != OBJ_NONE) {
 	/* get space from free object list */
-	o = free_obj;
-	free_obj = (object *) o->chain.next;
+	o = &otable[free_obj];
+	free_obj = o->prev;
 	--nfreeobjs;
     } else {
 	/* use new space in object table */
 	if (nobjects == otabsize) {
 	    fatal("too many objects");
 	}
-	o = &otab[nobjects++];
+	o = &otable[nobjects++];
     }
 
     o->data = (dataspace *) NULL;
@@ -91,17 +92,17 @@ register control *ctrl;
     o->flags = O_MASTER;
     o->cref = 0;
     o->prev = OBJ_NONE;
-    o->index = o - otab;
-    o->count = ++count;
+    o->index = o - otable;
+    o->count = ++ocount;
     o->update = 0;
     o->ctrl = ctrl;
     ctrl->inherits[ctrl->ninherits - 1].obj = ctrl->obj = o;
 
     /* add reference to all inherited objects */
-    o->u.ref = 0;	/* increased to 1 in following loop */
+    o->u_ref = 0;	/* increased to 1 in following loop */
     inh = ctrl->inherits;
     for (i = ctrl->ninherits; i > 0; --i) {
-	(inh++)->obj->u.ref++;
+	(inh++)->obj->u_ref++;
     }
 
     return o;
@@ -121,15 +122,16 @@ register object *master;
 
     o->chain.name = (char *) NULL;
     o->flags = 0;
-    o->index = o - otab;
-    o->count = ++count;
-    o->update = (o->u.master = master)->update;
+    o->index = o - otable;
+    o->count = ++ocount;
+    o->update = master->update;
+    o->u_master = master->index;
     o->ctrl = (control *) NULL;
     o->data = d_new_dataspace(o);	/* clones always have a dataspace */
 
     /* add reference to master object */
     master->cref++;
-    master->u.ref++;
+    master->u_ref++;
 
     return o;
 }
@@ -142,8 +144,8 @@ static void o_delete(o)
 register object *o;
 {
     /* put in deleted list */
-    o->u.master = dest_obj;
-    dest_obj = o;
+    o->u_master = dest_obj;
+    dest_obj = o - otable;
 
     /* callback to the system */
     (--sp)->type = T_STRING;
@@ -165,7 +167,7 @@ register object *o;
 	i = o->ctrl->ninherits;
 	while (--i > 0) {
 	    o = (inh++)->obj;
-	    if (--(o->u.ref) == 0) {
+	    if (--(o->u_ref) == 0) {
 		o_delete(o);
 	    }
 	}
@@ -189,7 +191,7 @@ control *ctrl;
     o->chain.name = (char *) NULL;
     o->flags = O_MASTER;
     o->count = 0;
-    o->u.master = obj;
+    o->u_master = obj->index;
     o->ctrl = ctrl;
     ctrl->inherits[ctrl->ninherits - 1].obj = obj;
 
@@ -197,7 +199,7 @@ control *ctrl;
     inh = ctrl->inherits;
     i = ctrl->ninherits;
     while (--i > 0) {
-	(inh++)->obj->u.ref++;
+	(inh++)->obj->u_ref++;
     }
 
     /* add to upgrades list */
@@ -213,7 +215,7 @@ control *ctrl;
     i = ctrl->ninherits;
     while (--i > 0) {
 	o = (inh++)->obj;
-	if (--(o->u.ref) == 0) {
+	if (--(o->u_ref) == 0) {
 	    o_delete(o);
 	}
     }
@@ -228,15 +230,15 @@ register object *old, *new;
 {
     if (new->count != 0) {
 	if (!(new->flags & O_MASTER)) {
-	    new->update = new->u.master->update;
-	    new = new->u.master;
+	    new->update = otable[new->u_master].update;
+	    new = &otable[new->u_master];
 	    new->cref++;
-	    new->u.ref++;
+	    new->u_ref++;
 	}
-	while (--(old->u.ref) == 0) {
+	while (--(old->u_ref) == 0) {
 	    /* put in deleted list */
-	    old->u.master = dest_obj;
-	    dest_obj = old;
+	    old->u_master = dest_obj;
+	    dest_obj = old - otable;
 
 # ifdef DEBUG
 	    if (old->prev != OBJ_NONE) {
@@ -244,18 +246,18 @@ register object *old, *new;
 	    }
 # endif
 	    /* remove from issue list */
-	    old = &otab[old->cref];
+	    old = &otable[old->cref];
 	    old->prev = OBJ_NONE;
 	    if (old == new) {
 		new->cref--;
-		if (--(new->u.ref) == 0) {
+		if (--(new->u_ref) == 0) {
 		    o_delete(new);
 		}
 		break;
 	    }
 	}
     } else if (!(new->flags & O_MASTER)) {
-	new->update = new->u.master->update;
+	new->update = otable[new->u_master].update;
     }
 }
 
@@ -277,31 +279,31 @@ register object *o;
 	/* remove from object name hash table */
 	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 
-	if (--(o->u.ref) == 0) {
+	if (--(o->u_ref) == 0) {
 	    o_delete(o);
 	}
     } else {
 	register object *m;
 
 	/* clone */
-	m = o->u.master;
+	m = &otable[o->u_master];
 	if (m->update == o->update) {
 	    m->cref--;
-	    if (--(m->u.ref) == 0) {
+	    if (--(m->u_ref) == 0) {
 		o_delete(m);
 	    }
 	} else {
 	    /* non-upgraded clone of old issue */
 	    do {
-		m = &otab[m->prev];
+		m = &otable[m->prev];
 	    } while (m->update != o->update);
-	    if (--(m->u.ref) == 0) {
+	    if (--(m->u_ref) == 0) {
 		/* put old issue in deleted list */
-		m->u.master = dest_obj;
-		dest_obj = m;
+		m->u_master = dest_obj;
+		dest_obj = m - otable;
 
-		m = o->u.master;
-		if (--(m->u.ref) == 0) {
+		m = &otable[o->u_master];
+		if (--(m->u_ref) == 0) {
 		    o_delete(m);
 		}
 	    }
@@ -311,30 +313,6 @@ register object *o;
     /* put in clean list */
     o->chain.next = (hte *) clean_obj;
     clean_obj = o;
-}
-
-/*
- * NAME:	object->object()
- * DESCRIPTION:	get an object, given index and count
- */
-object *o_object(idx, count)
-unsigned int idx;
-Uint count;
-{
-    register object *o;
-
-    o = &otab[idx];
-    return (o->count == count) ? o : (object *) NULL;
-}
-
-/*
- * NAME:	object->objref()
- * DESCRIPTION:	get a (possibly destructed) object, given the object index only
- */
-object *o_objref(idx)
-unsigned int idx;
-{
-    return &otab[idx];
 }
 
 /*
@@ -352,7 +330,7 @@ register object *o;
 	/*
 	 * return the name of the master object with the index appended
 	 */
-	sprintf(name, "%s#%u", o->u.master->chain.name, o->index);
+	sprintf(name, "%s#%u", otable[o->u_master].chain.name, o->index);
 	return name;
     }
 }
@@ -396,10 +374,10 @@ char *name;
 	    }
 	} while (*p != '\0');
 
-	o = &otab[number];
+	o = &otable[number];
 	if (o->count == 0 || (o->flags & O_MASTER) ||
-	    strncmp(name, o->u.master->chain.name, hash - name) != 0 ||
-	    o->u.master->chain.name[hash - name] != '\0') {
+	    strncmp(name, otable[o->u_master].chain.name, hash - name) != 0 ||
+	    otable[o->u_master].chain.name[hash - name] != '\0') {
 	    /*
 	     * no entry, not a clone, or object name doesn't match
 	     */
@@ -423,7 +401,7 @@ object *obj;
 
     o = obj;
     if (!(o->flags & O_MASTER)) {
-	o = o->u.master;	/* get control block of master object */
+	o = &otable[o->u_master];	/* get control block of master object */
     }
     if (o->ctrl == (control *) NULL) {
 	o->ctrl = d_load_control(o);	/* reload */
@@ -460,9 +438,9 @@ register object *o;
  */
 void o_clean()
 {
-    register object *o, *next;
+    register object *o;
 
-    for (o = clean_obj; o != (object *) NULL; o = next) {
+    for (o = clean_obj; o != (object *) NULL; o = (object *) o->chain.next) {
 	/* free dataspace block (if it exists) */
 	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
 	    /* reload dataspace block (sectors are needed) */
@@ -471,12 +449,11 @@ void o_clean()
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
 	}
-	next = (object *) o->chain.next;
 
 	if (!(o->flags & O_MASTER)) {
 	    /* put clone in free list */
-	    o->chain.next = (hte *) free_obj;
-	    free_obj = o;
+	    o->prev = free_obj;
+	    free_obj = o - otable;
 	    nfreeobjs++;
 	}
     }
@@ -486,36 +463,36 @@ void o_clean()
 	register object *up;
 	register control *ctrl;
 
-	up = o->u.master;
+	up = &otable[o->u_master];
 	up->cref -= 2;
 
 	if (up->count == 0 && up->cref == 0) {
 	    /* also remove upgrader */
-	    o->u.master = dest_obj;
-	    dest_obj = o;
+	    o->u_master = dest_obj;
+	    dest_obj = o - otable;
 	} else {
 	    /* upgrade objects */
 	    up->flags &= ~O_COMPILED;
-	    o->u.ref = up->u.ref;
+	    o->u_ref = up->u_ref;
 	    ctrl = up->ctrl;
 
 	    if (ctrl->vmapsize != 0 &&
 		(up->data != (dataspace *) NULL || up->dfirst != SW_UNUSED ||
-		 up->count == 0 || --(o->u.ref) != 0)) {
+		 up->count == 0 || --(o->u_ref) != 0)) {
 		/* upgrade variables */
 		o->cref = o->index = up->index;
 		o->prev = up->prev;
 		if (o->prev != SW_UNUSED) {
-		    otab[o->prev].cref = o - otab;
+		    otable[o->prev].cref = o - otable;
 		}
 		o->update = up->update;
 
-		up->prev = o - otab;
+		up->prev = o - otable;
 		up->cref = 1;
-		up->u.ref = 1;
+		up->u_ref = 1;
 		up->update++;
 		if (up->count != 0) {
-		    up->u.ref++;
+		    up->u_ref++;
 		    if (up->data == (dataspace *) NULL &&
 			up->dfirst != SW_UNUSED) {
 			/* load dataspace (with old control block) */
@@ -524,8 +501,8 @@ void o_clean()
 		}
 	    } else {
 		/* no variable upgrading */
-		o->u.master = dest_obj;
-		dest_obj = o;
+		o->u_master = dest_obj;
+		dest_obj = o - otable;
 	    }
 
 	    /* swap control blocks */
@@ -544,7 +521,9 @@ void o_clean()
     }
     upgrade_obj = (object *) NULL;
 
-    for (o = dest_obj; o != (object *) NULL; o = next) {
+    while (dest_obj != OBJ_NONE) {
+	o = &otable[dest_obj];
+
 	/* free control block */
 	d_del_control(o_control(o));
 
@@ -554,15 +533,14 @@ void o_clean()
 	    o->chain.name = (char *) NULL;
 	}
 
-	/* put master object in free list */
-	o->chain.next = (hte *) free_obj;
-	free_obj = o;
+	/* put object in free list */
+	o->prev = free_obj;
+	free_obj = o - otable;
 	nfreeobjs++;
 
-	next = o->u.master;
-	o->u.ref = 0;
+	dest_obj = o->u_master;
+	o->u_ref = 0;
     }
-    dest_obj = (object *) NULL;
 }
 
 /*
@@ -576,13 +554,14 @@ uindex o_count()
 
 
 typedef struct {
-    object *otab;	/* object table pointer */
-    object *free_obj;	/* free object list */
+    uindex free_obj;	/* free object list */
     uindex nobjects;	/* # objects */
     uindex nfreeobjs;	/* # free objects */
-    Int count;		/* object count */
-    long onamelen;	/* length of all object names */
+    Uint onamelen;	/* length of all object names */
 } dump_header;
+
+static char dh_layout[] = "uuui";
+static char obj_layout[] = OBJ_LAYOUT;
 
 # define CHUNKSZ	16384
 
@@ -600,13 +579,11 @@ int fd;
     char buffer[CHUNKSZ];
 
     /* prepare header */
-    dh.otab = otab;
     dh.free_obj = free_obj;
     dh.nobjects = nobjects;
     dh.nfreeobjs = nfreeobjs;
-    dh.count = count;
     dh.onamelen = 0;
-    for (i = nobjects, o = otab; i > 0; --i, o++) {
+    for (i = nobjects, o = otable; i > 0; --i, o++) {
 	if (o->chain.name != (char *) NULL) {
 	    dh.onamelen += strlen(o->chain.name) + 1;
 	}
@@ -614,13 +591,13 @@ int fd;
 
     /* write header and objects */
     if (write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
-	write(fd, (char *) otab, nobjects * sizeof(object)) < 0) {
+	write(fd, (char *) otable, nobjects * sizeof(object)) < 0) {
 	return FALSE;
     }
 
     /* write object names */
     buflen = 0;
-    for (i = nobjects, o = otab; i > 0; --i, o++) {
+    for (i = nobjects, o = otable; i > 0; --i, o++) {
 	if (o->chain.name != (char *) NULL) {
 	    len = strlen(o->chain.name) + 1;
 	    if (buflen + len > CHUNKSZ) {
@@ -648,37 +625,26 @@ int fd;
     register int len, buflen;
     register char *p;
     dump_header dh;
-    long offset;
     char buffer[CHUNKSZ];
 
     /*
      * Free object names of precompiled objects.
      */
-    for (i = nobjects, o = otab; i > 0; --i, o++) {
+    for (i = nobjects, o = otable; i > 0; --i, o++) {
 	*ht_lookup(htab, o->chain.name, FALSE) = o->chain.next;
 	FREE(o->chain.name);
     }
 
-    /* deal with header */
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	dh.nobjects > otabsize ||
-	read(fd, (char *) otab, dh.nobjects * sizeof(object)) !=
-						dh.nobjects * sizeof(object)) {
-	fatal("cannot restore objects");
-    }
-    offset = (long) otab - (long) dh.otab;
-    if (dh.free_obj == (object *) NULL) {
-	free_obj = (object *) NULL;
-    } else {
-	free_obj = (object *) ((char *) dh.free_obj + offset);
-    }
+    /* read header and object table */
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    conf_dread(fd, (char *) otable, obj_layout, (Uint) dh.nobjects);
+    free_obj = dh.free_obj;
     nobjects = dh.nobjects;
     nfreeobjs = dh.nfreeobjs;
-    count = dh.count;
 
     /* read object names, and patch all objects and control blocks */
     buflen = 0;
-    for (i = nobjects, o = otab; i > 0; --i, o++) {
+    for (i = nobjects, o = otable; i > 0; --i, o++) {
 	if (o->chain.name != (char *) NULL) {
 	    /*
 	     * restore name
@@ -716,25 +682,105 @@ int fd;
 	if (o->count != 0) {
 	    /* there are no user or editor objects after a restore */
 	    o->flags &= ~(O_USER | O_EDITOR | O_PENDIO);
-	} else if (!(o->flags & O_MASTER) || o->u.ref == 0) {
-	    /* free object slot */
-	    if (offset != 0 && o->chain.next != (hte *) NULL) {
-		/* patch free object list pointer */
-		o->chain.next = (hte *) ((char *) o->chain.next + offset);
-	    }
-	    continue;
-	}
-
-	o->ctrl = (control *) NULL;
-	o->data = (dataspace *) NULL;
-	if (offset != 0 && !(o->flags & O_MASTER)) {
-	    /* patch master object reference */
-	    o->u.master = (object *) ((char *) o->u.master + offset);
 	}
 
 	/* check memory */
 	if (!m_check()) {
 	    m_purge();
 	}
+    }
+}
+
+/*
+ * NAME:	cmp()
+ * DESCRIPTION:	compare two objects
+ */
+static int cmp(cv1, cv2)
+cvoid *cv1, *cv2;
+{
+    register object *o1, *o2;
+
+    /* non-objects first, then objects sorted by count */
+    o1 = &otable[*((Uint *) cv1)];
+    o2 = &otable[*((Uint *) cv2)];
+    if (o1->count == 0) {
+	if (o2->count == 0) {
+	    return (o1 <= o2) ? (o1 < o2) ? -1 : 0 : 1;
+	}
+	return -1;
+    } else if (o2->count == 0) {
+	return 1;
+    } else {
+	return (o1->count <= o2->count) ? (o1->count < o2->count) ? -1 : 0 : 1;
+    }
+}
+
+/*
+ * NAME:	object->conv()
+ * DESCRIPTION:	convert all objects, creating a new swap file
+ */
+void o_conv()
+{
+    register Uint *counts, *sorted;
+    register uindex i;
+    register object *o;
+
+    if (nobjects != 0) {
+	/*
+	 * create new object count table
+	 */
+	counts = ALLOCA(Uint, nobjects);
+	sorted = ALLOCA(Uint, nobjects) + nobjects;
+	i = nobjects;
+	while (i != 0) {
+	    *--sorted = --i;
+	}
+	/* sort by count */
+	qsort(sorted, nobjects, sizeof(Uint), cmp);
+	/* skip destructed objects */
+	for (i = 0; i < nobjects; i++) {
+	    o = &otable[*sorted];
+	    if (o->count != 0) {
+		break;
+	    }
+	    sorted++;
+	}
+	/* fill in counts table */
+	while (i < nobjects) {
+	    counts[*sorted++] = ++i + 1;
+	}
+	AFREE(sorted - i);
+	ocount = i + 1;
+
+	/*
+	 * convert all control blocks
+	 */
+	for (i = nobjects, o = otable; i > 0; --i, o++) {
+	    if ((o->count != 0 || ((o->flags & O_MASTER) && o->u_ref != 0)) &&
+		o->cfirst != SW_UNUSED) {
+		d_conv_control(o);
+	    }
+	}
+
+	/*
+	 * convert all data blocks
+	 */
+	for (i = nobjects, o = otable; i > 0; --i, o++) {
+	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
+		d_conv_dataspace(o, counts);
+		d_swapout(1);
+	    }
+	}
+
+	/*
+	 * fix counts of all objects
+	 */
+	for (i = nobjects, o = otable; i > 0; --i, o++, counts++) {
+	    if (o->count != 0) {
+		o->count = *counts;
+	    }
+	}
+	AFREE(counts - nobjects);
+	o_clean();
     }
 }

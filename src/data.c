@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "interpret.h"
-# include "swap.h"
 # include "data.h"
+# include "call_out.h"
 # include "csupport.h"
 
 /* bit values for ctrl->flags */
@@ -40,11 +40,20 @@ typedef struct {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 } scontrol;
 
+static char sc_layout[] = "dcciisiccusssss";
+
 typedef struct {
     uindex oindex;		/* index in object table */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
 } sinherit;
+
+static char si_layout[] = "uus";
+
+static char dstr_layout[] = DSTR_LAYOUT;
+static char df_layout[] = DF_LAYOUT;
+static char dv_layout[] = DV_LAYOUT;
+static char dsym_layout[] = DSYM_LAYOUT;
 
 typedef struct {
     sector nsectors;		/* number of sectors in data space */
@@ -58,6 +67,8 @@ typedef struct {
     uindex fcallouts;		/* first free callout */
 } sdataspace;
 
+static char sd_layout[] = "dssiiiiuu";
+
 typedef struct _svalue_ {
     short type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
@@ -68,6 +79,8 @@ typedef struct _svalue_ {
 	Uint array;		/* array */
     } u;
 } svalue;
+
+static char sv_layout[] = "sui";
 
 # define SFLT_GET(s, v)	((v)->oindex = (s)->oindex, \
 			 (v)->u.objcnt = (s)->u.objcnt)
@@ -81,11 +94,15 @@ typedef struct _sarray_ {
     Uint tag;			/* unique value for each array */
 } sarray;
 
+static char sa_layout[] = "isii";
+
 typedef struct _sstring_ {
     Uint index;			/* index in string text table */
     unsigned short len;		/* length of string */
     Uint ref;			/* refcount */
 } sstring;
+
+static char ss_layout[] = "isi";
 
 typedef struct _dcallout_ {
     Uint time;			/* time of call */
@@ -98,6 +115,8 @@ typedef struct {
     unsigned short nargs;	/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
 } scallout;
+
+static char sco_layout[] = "is[sui][sui][sui][sui]";
 
 # define co_prev	time
 # define co_next	nargs
@@ -313,7 +332,7 @@ object *obj;
 		     n * (Uint) sizeof(sinherit), size);
 	    size += n * sizeof(sinherit);
 	    do {
-		inherits->obj = o_objref(sinherits->oindex);
+		inherits->obj = &otable[sinherits->oindex];
 		inherits->funcoffset = sinherits->funcoffset;
 		(inherits++)->varoffset = (sinherits++)->varoffset;
 	    } while (--n > 0);
@@ -362,18 +381,19 @@ object *obj;
     return ctrl;
 }
 
-static void d_upgrade P((dataspace*, unsigned int, unsigned short*, object*));
+static void d_upgrade_clone P((object*, object*));
 
 /*
  * NAME:	data->load_dataspace()
  * DESCRIPTION:	load the dataspace header block of an object from the swap
  */
 dataspace *d_load_dataspace(obj)
-register object *obj;
+object *obj;
 {
     sdataspace header;
     register dataspace *data;
     register Uint size;
+    object *master;
 
     data = d_new_dataspace(obj);
     data->flags = 0;
@@ -414,39 +434,9 @@ register object *obj;
     data->ncallouts = header.ncallouts;
     data->fcallouts = header.fcallouts;
 
-    if (!(obj->flags & O_MASTER) && obj->update != obj->u.master->update) {
-	unsigned short nvar, *vmap;
-	register object *old;
-
-	/*
-	 * the program for the object was upgraded since last access
-	 */
-	nvar = data->ctrl->nvariables + 1;
-	old = o_objref(obj->u.master->prev);
-	vmap = o_control(old)->vmap;
-
-	if (old->update != obj->update) {
-	    register unsigned short *m1, *m2, n;
-
-	    m1 = vmap;
-	    vmap = ALLOCA(unsigned short, n = nvar);
-	    do {
-		old = o_objref(old->prev);
-		m2 = o_control(old)->vmap;
-		while (n > 0) {
-		    *vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
-		    --n;
-		}
-		n = nvar;
-		vmap -= n;
-		m1 = m2 - n;
-	    } while (old->update != obj->update);
-	}
-
-	d_upgrade(data, nvar, vmap, old);
-	if (vmap != old->ctrl->vmap) {
-	    AFREE(vmap);
-	}
+    if (!(obj->flags & O_MASTER) &&
+	obj->update != (master=&otable[obj->u_master])->update) {
+	d_upgrade_clone(obj, master);
     }
 
     return data;
@@ -875,16 +865,13 @@ register unsigned int idx;
 
 	/* create room for variables */
 	v = data->variables = ALLOC(value, data->nvariables);
-	if (data->nsectors == 0) {
+	if (data->nsectors == 0 && data->svariables == (svalue *) NULL) {
 	    /* new datablock */
 	    d_new_variables(data);
 	} else {
-	    /* variables must be loaded from the swap */
-	    for (i = data->nvariables; i > 0; --i) {
-		v->type = T_INVALID;
-		(v++)->modified = FALSE;
-	    }
-
+	    /*
+	     * variables must be loaded from the swap
+	     */
 	    if (data->svariables == (svalue *) NULL) {
 		/* load svalues */
 		data->svariables = ALLOC(svalue, data->nvariables);
@@ -892,12 +879,11 @@ register unsigned int idx;
 			 data->nvariables * (Uint) sizeof(svalue),
 			 data->varoffset);
 	    }
+	    d_get_values(data, data->svariables, data->variables,
+			 data->nvariables);
 	}
     }
 
-    if (data->variables[idx].type == T_INVALID) {
-	d_get_values(data, &data->svariables[idx], &data->variables[idx], 1);
-    }
     return &data->variables[idx];
 }
 
@@ -911,7 +897,7 @@ register array *arr;
     register value *v;
 
     v = arr->elts;
-    if (v != (value *) NULL && v[0].type == T_INVALID) {
+    if (v == (value *) NULL && arr->size != 0) {
 	register dataspace *data;
 
 	data = arr->primary->data;
@@ -922,6 +908,7 @@ register array *arr;
 		     data->eltsize * sizeof(svalue),
 		     data->arroffset + data->narrays * sizeof(sarray));
 	}
+	v = arr->elts = ALLOC(value, arr->size);
 	d_get_values(data, &data->selts[arr->primary->index], v, arr->size);
     }
 
@@ -1173,23 +1160,20 @@ array *map;
 void d_del_array(arr)
 register array *arr;
 {
-    if (arr->primary->arr != (array *) NULL) {
-	register unsigned short n;
-	register value *v;
-	register dataspace *data;
+    register value *v;
+    register unsigned short n;
+    register dataspace *data;
 
-	if (arr->primary->ref == 0 && (n=arr->size) != 0 &&
-	    (v=arr->elts)[0].type != T_INVALID) {
-	    /*
-	     * Completely delete a swapped-in array.  Update the local
-	     * reference counts for all arrays referenced by it.
-	     */
-	    data = arr->primary->data;
-	    do {
-		del_lhs(data, v++);
-	    } while (--n != 0);
-	}
-	arr->primary->arr = (array *) NULL;
+    if (arr->primary->ref == 0 && (v=arr->elts) != (value *) NULL) {
+	/*
+	 * Completely delete a swapped-in array.  Update the local
+	 * reference counts for all arrays referenced by it.
+	 */
+	n = arr->size;
+	data = arr->primary->data;
+	do {
+	    del_lhs(data, v++);
+	} while (--n != 0);
     }
 }
 
@@ -1379,7 +1363,8 @@ int *nargs;
 	sp -= n;
 	memcpy(sp, d_get_elts(v[3].u.array), n * sizeof(value));
 	del_lhs(data, &v[3]);
-	v[3].u.array->elts[0].type = T_INVALID;	/* pretend */
+	FREE(v[3].u.array->elts);
+	v[3].u.array->elts = (value *) NULL;
 	arr_del(v[3].u.array);
 	del_lhs(data, &v[2]);
 	*--sp = v[2];
@@ -1648,25 +1633,32 @@ register control *ctrl;
 	if (header.nstrings > 0) {
 	    dstrconst *ss;
 	    char *tt;
-	    register string **strs;
-	    register dstrconst *s;
 	    register Uint strsize;
-	    register char *t;
 
-	    ss = ALLOCA(dstrconst, header.nstrings);
-	    if (ctrl->strsize > 0) {
-		tt = ALLOCA(char, ctrl->strsize);
-	    }
+	    if (ctrl->sstrings != (dstrconst *) NULL) {
+		ss = ctrl->sstrings;
+		tt = ctrl->stext;
+		strsize = ctrl->strsize;
+	    } else {
+		register string **strs;
+		register dstrconst *s;
+		register char *t;
 
-	    strs = ctrl->strings;
-	    strsize = 0;
-	    s = ss;
-	    t = tt;
-	    for (i = header.nstrings; i > 0; --i) {
-		s->index = strsize;
-		strsize += s->len = (*strs)->len;
-		memcpy(t, (*strs++)->text, s->len);
-		t += (s++)->len;
+		ss = ALLOCA(dstrconst, header.nstrings);
+		if (ctrl->strsize > 0) {
+		    tt = ALLOCA(char, ctrl->strsize);
+		}
+
+		strs = ctrl->strings;
+		strsize = 0;
+		s = ss;
+		t = tt;
+		for (i = header.nstrings; i > 0; --i) {
+		    s->index = strsize;
+		    strsize += s->len = (*strs)->len;
+		    memcpy(t, (*strs++)->text, s->len);
+		    t += (s++)->len;
+		}
 	    }
 
 	    sw_writev((char *) ss, ctrl->sectors,
@@ -1675,9 +1667,13 @@ register control *ctrl;
 	    if (strsize > 0) {
 		sw_writev(tt, ctrl->sectors, strsize, size);
 		size += strsize;
-		AFREE(tt);
+		if (tt != ctrl->stext) {
+		    AFREE(tt);
+		}
 	    }
-	    AFREE(ss);
+	    if (ss != ctrl->sstrings) {
+		AFREE(ss);
+	    }
 	}
 
 	/* save function definitions */
@@ -1734,7 +1730,8 @@ register unsigned short n;
 	case T_ARRAY:
 	case T_MAPPING:
 	    if (arr_put(v->u.array) >= narr) {
-		if (v->type == T_MAPPING) {
+		if (v->type == T_MAPPING &&
+		    v->u.array->hashed != (struct _maphash_ *) NULL) {
 		    map_compact(v->u.array);
 		}
 		narr++;
@@ -2091,19 +2088,6 @@ register dataspace *data;
 	d_get_variable(data, 0);
 	if (data->svariables == (svalue *) NULL) {
 	    data->svariables = ALLOC(svalue, data->nvariables);
-	} else {
-	    register value *v;
-	    register svalue *sv;
-
-	    sv = data->svariables;
-	    v = data->variables;
-	    for (n = data->nvariables; n > 0; --n) {
-		if (v->type == T_INVALID) {
-		    d_get_values(data, sv, v, 1);
-		}
-		sv++;
-		v++;
-	    }
 	}
 	d_count(data->variables, data->nvariables);
 
@@ -2334,24 +2318,62 @@ register unsigned short n;
 {
     while (n > 0) {
 	if (T_INDEXED(val->type)) {
-	    if (val->u.array->primary->data != data) {
-		register Uint i;
-		register array *a;
+	    register array *a;
+	    register Uint i;
 
+	    a = val->u.array;
+	    if (a->primary->data != data) {
 		/*
 		 * imported array
 		 */
-		i = arr_put(val->u.array);
+		i = arr_put(a);
 		if (i >= narr) {
 		    /*
-		     * make new array
+		     * first time encountered
 		     */
-		    if (val->u.array->hashed != (struct _maphash_ *) NULL) {
-			map_compact(val->u.array);
+		    if (a->hashed != (struct _maphash_ *) NULL) {
+			map_compact(a);
 		    }
-		    a = arr_alloc(val->u.array->size);
-		    a->tag = val->u.array->tag;
-		    a->primary = &data->alocal;
+
+		    if (a->ref == 2) {	/* + 1 for array merge table */
+			/*
+			 * move array to new dataspace
+			 */
+			if (a->primary->arr != (array *) NULL) {
+			    /* remove from old dataspace */
+			    d_get_elts(a);
+			    d_del_array(a);
+			    a->primary->arr = (array *) NULL;
+			}
+			a->primary = &data->alocal;
+		    } else {
+			/*
+			 * make new array
+			 */
+			a = arr_alloc(a->size);
+			a->tag = val->u.array->tag;
+			a->primary = &data->alocal;
+
+			if (a->size > 0) {
+			    register value *v, *w;
+
+			    /*
+			     * copy elements
+			     */
+			    v = a->elts = ALLOC(value, a->size);
+			    w = d_get_elts(val->u.array);
+			    for (i = a->size; i > 0; --i) {
+				i_ref_value(w);
+				*v++ = *w++;
+			    }
+			}
+
+			/*
+			 * replace
+			 */
+			arr_del(val->u.array);
+			arr_ref(val->u.array = a);
+		    }
 
 		    /*
 		     * store in itab
@@ -2373,26 +2395,6 @@ register unsigned short n;
 		    arr_put(itab[i] = a);
 		    narr += 2;	/* 1 old, 1 new */
 
-		    if (val->u.array->size > 0) {
-			register value *v, *w;
-
-			/*
-			 * copy elements
-			 */
-			v = a->elts;
-			w = d_get_elts(val->u.array);
-			for (i = val->u.array->size; i > 0; --i) {
-			    i_ref_value(w);
-			    *v++ = *w++;
-			}
-		    }
-
-		    /*
-		     * replace
-		     */
-		    arr_del(val->u.array);
-		    arr_ref(val->u.array = a);
-
 		    if (a->size > 0) {
 			/*
 			 * import elements too
@@ -2403,26 +2405,85 @@ register unsigned short n;
 		    /*
 		     * array was previously replaced
 		     */
-		    a = itab[i];
+		    arr_ref(a = itab[i]);
 		    arr_del(val->u.array);
-		    arr_ref(val->u.array = a);
+		    val->u.array = a;
 		}
-	    } else if (arr_put(val->u.array) >= narr) {
+	    } else if (arr_put(a) >= narr) {
 		/*
 		 * not previously encountered mapping or array
 		 */
 		narr++;
-		if (val->u.array->hashed != (struct _maphash_ *) NULL) {
-		    map_compact(val->u.array);
-		    d_import(data, val->u.array->elts, val->u.array->size);
-		} else if (val->u.array->size != 0 &&
-			   val->u.array->elts[0].type != T_INVALID) {
-		    d_import(data, val->u.array->elts, val->u.array->size);
+		if (a->hashed != (struct _maphash_ *) NULL) {
+		    map_compact(a);
+		    d_import(data, a->elts, a->size);
+		} else if (a->elts != (value *) NULL) {
+		    d_import(data, a->elts, a->size);
 		}
 	    }
 	}
 	val++;
 	--n;
+    }
+}
+
+/*
+ * NAME:	data->export()
+ * DESCRIPTION:	handle exporting of arrays shared by more than one object
+ */
+void d_export()
+{
+    register dataspace *data, *next;
+    register Uint n;
+
+    if (ifirst != (dataspace *) NULL) {
+	itab = ALLOC(array*, itabsz = 16);
+
+	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
+	    if (data->imports != 0) {
+		narr = 0;
+		if (data->variables != (value *) NULL) {
+		    d_import(data, data->variables, data->nvariables);
+		}
+		if (data->arrays != (arrref *) NULL) {
+		    register arrref *a;
+
+		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
+			if (a->arr != (array *) NULL) {
+			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
+				/* mapping */
+				map_compact(a->arr);
+				d_import(data, a->arr->elts, a->arr->size);
+			    } else if (a->arr->elts != (value *) NULL) {
+				d_import(data, a->arr->elts, a->arr->size);
+			    }
+			}
+		    }
+		}
+		if (data->callouts != (dcallout *) NULL) {
+		    register dcallout *co;
+
+		    co = data->callouts;
+		    for (n = data->ncallouts; n > 0; --n) {
+			if (co->val[0].type != T_INVALID) {
+			    d_import(data, co->val,
+				     (co->nargs > 3) ? 4 : co->nargs + 1);
+			}
+			co++;
+		    }
+		}
+		arr_clear();	/* clear hash table */
+	    }
+	}
+
+	for (data = ifirst; data != (dataspace *) NULL; data = next) {
+	    data->imports = 0;
+	    next = data->ilist;
+	    data->ilist = (dataspace *) NULL;
+	}
+	ifirst = ilast = (dataspace *) NULL;
+
+	FREE(itab);
     }
 }
 
@@ -2442,20 +2503,6 @@ object *old;
 
     /* make sure variables are in memory */
     vars = d_get_variable(data, 0);
-    if (data->svariables != (svalue *) NULL) {
-	register svalue *sv;
-
-	/* load svalues */
-	sv = data->svariables;
-	v = vars;
-	for (n = data->nvariables; n > 0; --n) {
-	    if (v->type == T_INVALID) {
-		d_get_values(data, sv, v, 1);
-	    }
-	    sv++;
-	    v++;
-	}
-    }
 
     /* map variables */
     for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
@@ -2494,6 +2541,49 @@ object *old;
 }
 
 /*
+ * NAME:	data->upgrade_clone()
+ * DESCRIPTION:	upgrade a clone object
+ */
+static void d_upgrade_clone(clone, master)
+object *clone, *master;
+{
+    register dataspace *data;
+    register object *old;
+    register unsigned short nvar, *vmap;
+
+    /*
+     * the program for the clone was upgraded since last swapin
+     */
+    data = clone->data;
+    nvar = data->ctrl->nvariables + 1;
+    old = &otable[master->prev];
+    vmap = o_control(old)->vmap;
+
+    if (old->update != clone->update) {
+	register unsigned short *m1, *m2, n;
+
+	m1 = vmap;
+	vmap = ALLOCA(unsigned short, n = nvar);
+	do {
+	    old = &otable[old->prev];
+	    m2 = o_control(old)->vmap;
+	    while (n > 0) {
+		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
+		--n;
+	    }
+	    n = nvar;
+	    vmap -= n;
+	    m1 = m2 - n;
+	} while (old->update != clone->update);
+    }
+
+    d_upgrade(data, nvar, vmap, old);
+    if (vmap != old->ctrl->vmap) {
+	AFREE(vmap);
+    }
+}
+
+/*
  * NAME:	data->upgrade_all()
  * DESCRIPTION:	upgrade all obj and all objects cloned from obj that have
  *		dataspaces in memory
@@ -2520,7 +2610,8 @@ register object *old, *new;
     }
 
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
-	if (!(data->obj->flags & O_MASTER) && data->obj->u.master == new) {
+	if (!(data->obj->flags & O_MASTER) && data->obj->u_master == new->index)
+	{
 	    /* upgrade clone */
 	    if (nvar != 0) {
 		d_upgrade(data, nvar, vmap, old);
@@ -2529,67 +2620,6 @@ register object *old, *new;
 	    data->ctrl = new->ctrl;
 	    data->ctrl->ndata++;
 	}
-    }
-}
-
-/*
- * NAME:	data->export()
- * DESCRIPTION:	handle exporting of arrays shared by more than one object
- */
-void d_export()
-{
-    register dataspace *data, *next;
-    register Uint n;
-
-    if (ifirst != (dataspace *) NULL) {
-	itab = ALLOC(array*, itabsz = 16);
-
-	for (data = ifirst; data != (dataspace *) NULL; data = data->ilist) {
-	    if (data->imports != 0) {
-		narr = 0;
-		if (data->variables != (value *) NULL) {
-		    d_import(data, data->variables, data->nvariables);
-		}
-		if (data->arrays != (arrref *) NULL) {
-		    register arrref *a;
-
-		    for (n = data->narrays, a = data->arrays; n > 0; --n, a++) {
-			if (a->arr != (array *) NULL) {
-			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
-				/* mapping */
-				map_compact(a->arr);
-				d_import(data, a->arr->elts, a->arr->size);
-			    } else if (a->arr->size != 0 &&
-				       a->arr->elts[0].type != T_INVALID) {
-				d_import(data, a->arr->elts, a->arr->size);
-			    }
-			}
-		    }
-		}
-		if (data->callouts != (dcallout *) NULL) {
-		    register dcallout *co;
-
-		    co = data->callouts;
-		    for (n = data->ncallouts; n > 0; --n) {
-			if (co->val[0].type != T_INVALID) {
-			    d_import(data, co->val,
-				     (co->nargs > 3) ? 4 : co->nargs + 1);
-			}
-			co++;
-		    }
-		}
-		arr_clear();	/* clear hash table */
-	    }
-	}
-
-	for (data = ifirst; data != (dataspace *) NULL; data = next) {
-	    data->imports = 0;
-	    next = data->ilist;
-	    data->ilist = (dataspace *) NULL;
-	}
-	ifirst = ilast = (dataspace *) NULL;
-
-	FREE(itab);
     }
 }
 
@@ -2850,15 +2880,283 @@ void d_swapsync()
 }
 
 /*
+ * NAME:	data->conv()
+ * DESCRIPTION:	convert something from the dump file
+ */
+static Uint d_conv(m, vec, layout, n, idx)
+char *m, *layout;
+sector *vec;
+Uint n, idx;
+{
+    Uint bufsize;
+    char *buf;
+
+    bufsize = (conf_dsize(layout) & 0xff) * n;
+    buf = ALLOCA(char, bufsize);
+    sw_dreadv(buf, vec, bufsize, idx);
+    conf_dconv(m, buf, layout, n);
+    AFREE(buf);
+
+    return bufsize;
+}
+
+/*
+ * NAME:	data->conv_control()
+ * DESCRIPTION:	convert control block
+ */
+void d_conv_control(obj)
+register object *obj;
+{
+    scontrol header;
+    register control *ctrl;
+    register Uint size;
+    register sector *s;
+
+    ctrl = d_new_control();
+    ctrl->obj = obj;
+
+    /*
+     * restore from dump file
+     */
+    size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
+		  (Uint) 0);
+    ctrl->ninherits = UCHAR(header.ninherits);
+    ctrl->compiled = header.compiled;
+    ctrl->progsize = header.progsize;
+    ctrl->nstrings = header.nstrings;
+    ctrl->strsize = header.strsize;
+    ctrl->nfuncdefs = UCHAR(header.nfuncdefs);
+    ctrl->nvardefs = UCHAR(header.nvardefs);
+    ctrl->nfuncalls = header.nfuncalls;
+    ctrl->nsymbols = header.nsymbols;
+    ctrl->nvariables = header.nvariables;
+    ctrl->nfloatdefs = header.nfloatdefs;
+    ctrl->nfloats = header.nfloats;
+    ctrl->vmapsize = header.vmapsize;
+
+    /* sectors */
+    s = ALLOCA(sector, header.nsectors);
+    s[0] = obj->cfirst;
+    size += d_conv((char *) s, s, "d", (Uint) header.nsectors, size);
+
+    if (header.vmapsize != 0) {
+	/* only vmap */
+	ctrl->vmap = ALLOC(unsigned short, header.vmapsize);
+	d_conv((char *) ctrl->vmap, s, "s", (Uint) header.vmapsize, size);
+    } else {
+	register int n;
+	register dinherit *inherits;
+	register sinherit *sinherits;
+
+	/* inherits */
+	n = UCHAR(header.ninherits); /* at least one */
+	ctrl->inherits = inherits = ALLOC(dinherit, n);
+	sinherits = ALLOCA(sinherit, n);
+	size += d_conv((char *) sinherits, s, si_layout, (Uint) n, size);
+	do {
+	    inherits->obj = &otable[sinherits->oindex];
+	    inherits->funcoffset = sinherits->funcoffset;
+	    (inherits++)->varoffset = (sinherits++)->varoffset;
+	} while (--n > 0);
+	AFREE(sinherits - UCHAR(header.ninherits));
+
+	if (header.progsize != 0) {
+	    /* program */
+	    ctrl->prog = ALLOC(char, header.progsize);
+	    sw_dreadv(ctrl->prog, s, header.progsize, size);
+	    size += header.progsize;
+	}
+
+	if (header.nstrings != 0) {
+	    /* strings */
+	    ctrl->sstrings = ALLOC(dstrconst, header.nstrings);
+	    size += d_conv((char *) ctrl->sstrings, s, dstr_layout,
+			   (Uint) header.nstrings, size);
+	    if (header.strsize != 0) {
+		ctrl->stext = ALLOC(char, header.strsize);
+		sw_dreadv(ctrl->stext, s, header.strsize, size);
+		size += header.strsize;
+	    }
+	}
+
+	if (header.nfuncdefs != 0) {
+	    /* function definitions */
+	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
+	    size += d_conv((char *) ctrl->funcdefs, s, df_layout,
+			   (Uint) UCHAR(header.nfuncdefs), size);
+	}
+
+	if (header.nvardefs != 0) {
+	    /* variable definitions */
+	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
+	    size += d_conv((char *) ctrl->vardefs, s, dv_layout,
+			   (Uint) UCHAR(header.nvardefs), size);
+	}
+
+	if (header.nfuncalls != 0) {
+	    /* function calls */
+	    ctrl->funcalls = ALLOC(char, 2 * header.nfuncalls);
+	    sw_dreadv(ctrl->funcalls, s, header.nfuncalls * (Uint) 2, size);
+	    size += header.nfuncalls * (Uint) 2;
+	}
+
+	if (header.nsymbols != 0) {
+	    /* symbol table */
+	    ctrl->symbols = ALLOC(dsymbol, header.nsymbols);
+	    d_conv((char *) ctrl->symbols, s, dsym_layout,
+		   (Uint) header.nsymbols, size);
+	}
+    }
+
+    AFREE(s);
+
+    d_save_control(ctrl);
+    d_free_control(ctrl);
+}
+
+/*
+ * NAME:	data->fixobjs()
+ * DESCRIPTION:	fix objects in dataspace
+ */
+static void d_fixobjs(v, n, ctab)
+register svalue *v;
+register Uint n, *ctab;
+{
+    while (n != 0) {
+	if (v->type == T_OBJECT) {
+	    if (v->u.objcnt == otable[v->oindex].count) {
+		/* fix object count */
+		v->u.objcnt = ctab[v->oindex];
+	    } else {
+		/* destructed object; mark as invalid */
+		v->u.objcnt = ctab[v->oindex] - 1;
+	    }
+	}
+	v++;
+	--n;
+    }
+}
+
+/*
+ * NAME:	data->conv_dataspace()
+ * DESCRIPTION:	convert dataspace
+ */
+void d_conv_dataspace(obj, counttab)
+object *obj;
+Uint *counttab;
+{
+    sdataspace header;
+    register dataspace *data;
+    register Uint size;
+    register sector *s;
+    object *master;
+
+    data = d_new_dataspace(obj);
+
+    /*
+     * restore from dump file
+     */
+    size = d_conv((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
+		  (Uint) 0);
+    data->nvariables = header.nvariables;
+    data->narrays = header.narrays;
+    data->eltsize = header.eltsize;
+    data->nstrings = header.nstrings;
+    data->strsize = header.strsize;
+    data->ncallouts = header.ncallouts;
+    data->fcallouts = header.fcallouts;
+
+    /* sectors */
+    s = ALLOCA(sector, header.nsectors);
+    s[0] = obj->dfirst;
+    size += d_conv((char *) s, s, "d", (Uint) header.nsectors, size);
+
+    /* variables */
+    data->svariables = ALLOC(svalue, header.nvariables);
+    size += d_conv((char *) data->svariables, s, sv_layout,
+		   (Uint) header.nvariables, size);
+    d_fixobjs(data->svariables, (Uint) header.nvariables, counttab);
+
+    if (header.narrays != 0) {
+	/* arrays */
+	data->sarrays = ALLOC(sarray, header.narrays);
+	size += d_conv((char *) data->sarrays, s, sa_layout, header.narrays,
+		       size);
+	if (header.eltsize != 0) {
+	    data->selts = ALLOC(svalue, header.eltsize);
+	    size += d_conv((char *) data->selts, s, sv_layout, header.eltsize,
+			   size);
+	    d_fixobjs(data->selts, header.eltsize, counttab);
+	}
+    }
+
+    if (header.nstrings != 0) {
+	/* strings */
+	data->sstrings = ALLOC(sstring, header.nstrings);
+	size += d_conv((char *) data->sstrings, s, ss_layout, header.nstrings,
+		       size);
+	if (header.strsize != 0) {
+	    data->stext = ALLOC(char, header.strsize);
+	    sw_dreadv(data->stext, s, header.strsize, size);
+	    size += header.strsize;
+	}
+    }
+
+    if (header.ncallouts != 0) {
+	scallout *scallouts;
+	register scallout *sco;
+	register dcallout *co;
+	register uindex n;
+
+	/* callouts */
+	co = data->callouts = ALLOC(dcallout, header.ncallouts);
+	sco = scallouts = ALLOCA(scallout, header.ncallouts);
+	d_conv((char *) scallouts, s, sco_layout, header.ncallouts, size);
+
+	for (n = data->ncallouts; n > 0; --n) {
+	    co->time = sco->time;
+	    co->nargs = sco->nargs;
+	    if (sco->val[0].type != T_INVALID) {
+		if (sco->nargs > 3) {
+		    d_fixobjs(sco->val, (Uint) 4, counttab);
+		    d_get_values(data, sco->val, co->val, 4);
+		} else {
+		    d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab);
+		    d_get_values(data, sco->val, co->val, sco->nargs + 1);
+		}
+	    } else {
+		co->val[0].type = T_INVALID;
+	    }
+	    sco++;
+	    co++;
+	}
+
+	AFREE(scallouts);
+    }
+
+    AFREE(s);
+
+    if (!(obj->flags & O_MASTER) &&
+	obj->update != (master=&otable[obj->u_master])->update) {
+	/* handle object upgrading right away */
+	d_upgrade_clone(obj, master);
+    }
+
+    d_save_dataspace(data);
+    d_free_dataspace(data);
+}
+
+
+/*
  * NAME:	data->del_control()
  * DESCRIPTION:	delete a control block from swap and memory
  */
 void d_del_control(ctrl)
 register control *ctrl;
 {
-    register sector i, *s;
-
     if (ctrl->sectors != (sector *) NULL) {
+	register sector i, *s;
+
 	for (i = ctrl->nsectors, s = ctrl->sectors + i; i > 0; --i) {
 	    sw_del(*--s);
 	}
@@ -2873,9 +3171,25 @@ register control *ctrl;
 void d_del_dataspace(data)
 register dataspace *data;
 {
-    register sector i, *s;
+    if (data->ncallouts != 0) {
+	register unsigned short n;
+	register dcallout *co;
 
+	/*
+	 * remove callouts from callout table
+	 */
+	if (data->callouts == (dcallout *) NULL) {
+	    d_get_callouts(data);
+	}
+	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
+	    if ((--co)->val[0].type != T_INVALID) {
+		co_del(data->obj, n);
+	    }
+	}
+    }
     if (data->sectors != (sector *) NULL) {
+	register sector i, *s;
+
 	for (i = data->nsectors, s = data->sectors + i; i > 0; --i) {
 	    sw_del(*--s);
 	}

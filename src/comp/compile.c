@@ -366,7 +366,7 @@ node *label;
 	if (call_driver_object("inherit_program", 2)) {
 	    inheriting = FALSE;
 	    if (sp->type == T_OBJECT) {
-		obj = o_object(sp->oindex, sp->u.objcnt);
+		obj = &otable[sp->oindex];
 		sp++;
 	    } else {
 		/* returned value not an object */

@@ -1729,7 +1729,7 @@ register control *old, *new;
     register long n;
     register unsigned short *vmap;
     register dinherit *inh, *inh2;
-    register control *ctrl;
+    register control *ctrl, *ctrl2;
     unsigned short i, voffset;
 
     /*
@@ -1740,29 +1740,30 @@ register control *old, *new;
 
     voffset = 0;
     for (i = new->ninherits, inh = new->inherits; i > 0; --i, inh++) {
-	if (inh->varoffset < voffset || inh->obj->ctrl->nvardefs == 0) {
+	ctrl = (i == 1) ? new : inh->obj->ctrl;
+	if (inh->varoffset < voffset || ctrl->nvardefs == 0) {
 	    continue;
 	}
-	voffset = inh->varoffset + inh->obj->ctrl->nvardefs;
+	voffset = inh->varoffset + ctrl->nvardefs;
 
 	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
-	    if (strcmp(inh->obj->chain.name, inh2->obj->chain.name) != 0) {
+	    if (strcmp(inh->obj->chain.name, inh2->obj->chain.name) == 0) {
+		/*
+		 * put var names from old control block in string merge table
+		 */
+		ctrl2 = o_control(inh2->obj);
+		v = d_get_vardefs(ctrl2);
+		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
+		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),
+			    ((long) k << 8) | v->type);
+		}
+	    } else if (j != 1) {
 		continue;
-	    }
-
-	    /*
-	     * put variable names from old control block in string merge table
-	     */
-	    ctrl = o_control(inh2->obj);
-	    for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
-		str_put(d_get_strconst(ctrl, v->inherit, v->index),
-			((long) k << 8) | v->type);
 	    }
 
 	    /*
 	     * map new variables to old ones
 	     */
-	    ctrl = (i == 1) ? new : inh->obj->ctrl;
 	    for (k = 0, v = ctrl->vardefs; k < ctrl->nvardefs; k++, v++) {
 		n = str_put(d_get_strconst(ctrl, v->inherit, v->index), 0L);
 		if ((n & 0xff) == v->type) {

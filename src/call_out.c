@@ -14,17 +14,20 @@
 typedef struct {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
-    Uint objcnt;	/* object count */
     Uint time;		/* when to call */
 } call_out;
 
 # define prev		oindex
 # define next		time
 
+static char co_layout[] = "uui";
+
 typedef struct {
     uindex list;	/* list */
     uindex last;	/* last in list */
 } cbuf;
+
+static char cb_layout[] = "uu";
 
 static call_out *cotab;			/* callout table */
 static uindex cotabsz;			/* callout table size */
@@ -248,7 +251,6 @@ int nargs;
 
     co->handle = d_new_call_out(o_dataspace(obj), str, t - timediff, nargs);
     co->oindex = obj->index;
-    co->objcnt = obj->count;
 
     return co->handle;
 }
@@ -258,10 +260,10 @@ int nargs;
  * DESCRIPTION:	remove a callout
  */
 Int co_del(obj, handle)
-register object *obj;
+object *obj;
 register unsigned int handle;
 {
-    register uindex j, k;
+    register uindex i, j, k;
     register call_out *l;
     register cbuf *cyc;
     Uint t;
@@ -278,11 +280,7 @@ register unsigned int handle;
     i_pop(nargs + 1);
 
     t += timediff;
-    if (obj->count == 0) {
-	/* destructed object */
-	return t - timeout;
-    }
-
+    i = obj->index;
     l = cotab;
     if (t < timestamp + CYCBUF_SIZE) {
 	/*
@@ -294,7 +292,7 @@ register unsigned int handle;
 	     * this time-slot is in use
 	     */
 	    k = cyc->list;
-	    if (l[k].objcnt == obj->count && l[k].handle == handle) {
+	    if (l[k].oindex == i && l[k].handle == handle) {
 		/* first element in list */
 		cyc->list = l[k].next;
 		freecallout(k);
@@ -307,7 +305,7 @@ register unsigned int handle;
 		j = cyc->list;
 		k = l[j].next;
 		do {
-		    if (l[k].objcnt == obj->count && l[k].handle == handle) {
+		    if (l[k].oindex == i && l[k].handle == handle) {
 			/* found it */
 			if (k == cyc->last) {
 			    /* last element of the list */
@@ -329,7 +327,7 @@ register unsigned int handle;
      * Not found in the cyclic buffer; it <must> be in the queue.
      */
     for (;;) {
-	if (l->objcnt == obj->count && l->handle == handle) {
+	if (l->oindex == i && l->handle == handle) {
 	    dequeue(l - cotab);
 	    return t - timeout;
 	}
@@ -375,7 +373,7 @@ void co_call()
 		 * queued callout
 		 */
 		handle = cotab[0].handle;
-		obj = o_object(cotab[0].oindex, cotab[0].objcnt);
+		obj = &otable[cotab[0].oindex];
 		dequeue(0);
 	    } else if (timestamp <= timeout &&
 		(i=cycbuf[timestamp & CYCBUF_MASK].list) != 0) {
@@ -384,7 +382,7 @@ void co_call()
 		 */
 		cycbuf[timestamp & CYCBUF_MASK].list = cotab[i].next;
 		handle = cotab[i].handle;
-		obj = o_object(cotab[i].oindex, cotab[i].objcnt);
+		obj = &otable[cotab[i].oindex];
 		freecallout(i);
 	    } else if (timestamp < timeout) {
 		/*
@@ -433,18 +431,15 @@ void co_call()
 		return;
 	    }
 
-	    if (obj != (object *) NULL) {
-		/* object exists */
-		str = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
-		if (i_call(obj, str->text, str->len, TRUE, nargs)) {
-		    /* function exists */
-		    i_del_value(sp++);
-		    str_del((sp++)->u.string);
-		    endthread();
-		} else {
-		    /* function doesn't exist */
-		    str_del((sp++)->u.string);
-		}
+	    str = d_get_call_out(o_dataspace(obj), handle, &t, &nargs);
+	    if (i_call(obj, str->text, str->len, TRUE, nargs)) {
+		/* function exists */
+		i_del_value(sp++);
+		str_del((sp++)->u.string);
+		endthread();
+	    } else {
+		/* function doesn't exist */
+		str_del((sp++)->u.string);
 	    }
 	}
     }
@@ -491,6 +486,8 @@ typedef struct {
     Uint timediff;		/* accumulated time difference */
 } dump_header;
 
+static char dh_layout[] = "uuuuuuii";
+
 /*
  * NAME:	call_out->dump
  * DESCRIPTION:	dump callout table
@@ -511,13 +508,13 @@ int fd;
     dh.timediff = timediff;
 
     /* write header and callouts */
-    return (write(fd, (char *) &dh, sizeof(dump_header)) >= 0 &&
+    return (write(fd, (char *) &dh, sizeof(dump_header)) > 0 &&
 	    (queuebrk == 0 ||
-	     write(fd, (char *) cotab, queuebrk * sizeof(call_out)) >= 0) &&
+	     write(fd, (char *) cotab, queuebrk * sizeof(call_out)) > 0) &&
 	    (cycbrk == cotabsz ||
 	     write(fd, (char *) (cotab + cycbrk),
-		   (cotabsz - cycbrk) * sizeof(call_out)) >= 0) &&
-	    write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) >= 0);
+		   (cotabsz - cycbrk) * sizeof(call_out)) > 0) &&
+	    write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 }
 
 /*
@@ -534,26 +531,24 @@ register Uint t;
     dump_header dh;
     cbuf buffer[CYCBUF_SIZE];
 
-    /* read and check */
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header) ||
-	(queuebrk=dh.queuebrk) >
-			(cycbrk=dh.cycbrk + (offset=cotabsz - dh.cotabsz)) ||
-	cycbrk == 0 ||
-	(queuebrk != 0 &&
-	 read(fd, (char *) cotab, queuebrk * sizeof(call_out)) !=
-						queuebrk * sizeof(call_out)) ||
-	(cycbrk != cotabsz &&
-	 read(fd, (char *) (cotab + cycbrk),
-	      (cotabsz - cycbrk) * sizeof(call_out)) !=
-				    (cotabsz - cycbrk) * sizeof(call_out)) ||
-	read(fd, (char *) buffer, CYCBUF_SIZE * sizeof(cbuf)) !=
-						CYCBUF_SIZE * sizeof(cbuf)) {
+    /* read and check header */
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    queuebrk = dh.queuebrk;
+    offset = cotabsz - dh.cotabsz;
+    cycbrk = dh.cycbrk + offset;
+    if (queuebrk > cycbrk + offset || cycbrk == 0) {
 	fatal("cannot restore callouts");
     }
+
+    /* read tables */
+    conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
+    conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
+	       (Uint) cotabsz - cycbrk);
+    conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
+
     flist = dh.flist;
     nshort = dh.nshort;
     nlong = dh.nlong;
-
     timestamp = t;
     t -= dh.timestamp;
     timediff = dh.timediff + t;

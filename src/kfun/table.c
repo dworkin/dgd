@@ -97,6 +97,8 @@ typedef struct {
     short kfnamelen;	/* length of all kfun names */
 } dump_header;
 
+static char dh_layout[] = "sss";
+
 /*
  * NAME:	kfun->dump()
  * DESCRIPTION:	dump the kfun table
@@ -149,10 +151,8 @@ int fd;
     dump_header dh;
     char *buffer;
 
-    /* deal with header */
-    if (read(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
-	fatal("cannot restore kfun table");
-    }
+    /* read header */
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 
     /* fix kfuns */
     buffer = ALLOCA(char, dh.kfnamelen);

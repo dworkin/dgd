@@ -87,7 +87,7 @@ str.o array.o object.o data.o path.o comm.o call_out.o interpret.o: data.h
 config.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
-swap.o data.o: swap.h
+swap.o object.o data.o: swap.h
 editor.o config.o dgd.o: editor.h
 call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o dgd.o: comm.h

@@ -113,26 +113,6 @@ control *ctrl;
 	   ctrl->nvariables, ctrl->nfloats, ctrl->nfloatdefs);
 }
 
-# define FETCH1S(pc)	SCHAR(*(pc)++)
-# define FETCH1U(pc)	UCHAR(*(pc)++)
-# define FETCH2S(pc, v)	((short) (v = *(pc)++ << 8, v |= UCHAR(*(pc)++)))
-# define FETCH2U(pc, v)	((unsigned short) (v = *(pc)++ << 8, \
-					   v |= UCHAR(*(pc)++)))
-# define FETCH3S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= (Int) 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH3U(pc, v)	((Uint) (v = UCHAR(*(pc)++) << 8, \
-				 v |= UCHAR(*(pc)++), v <<= 8, \
-				 v |= UCHAR(*(pc)++)))
-# define FETCH4S(pc, v)	((Int) (v = *(pc)++ << 8, \
-				v |= UCHAR(*(pc)++), v <<= (Int) 8, \
-				v |= UCHAR(*(pc)++), v <<= (Int) 8, \
-				v |= UCHAR(*(pc)++)))
-# define FETCH4U(pc, v)	((Uint) (v = *(pc)++ << 8, \
-				 v |= UCHAR(*(pc)++), v <<= (Int) 8, \
-				 v |= UCHAR(*(pc)++), v <<= (Int) 8, \
-				 v |= UCHAR(*(pc)++)))
-
 static unsigned short addr;
 static unsigned short line;
 static unsigned short newline;
@@ -659,7 +639,7 @@ char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, T_VOID, 1, T_OBJECT };
 
 int kf_dump_object()
 {
-    showctrl(o_control(o_object(sp->oindex, sp->u.objcnt)));
+    showctrl(o_control(&otable[sp->oindex]));
     fflush(stdout);
     return 0;
 }
@@ -676,12 +656,12 @@ int kf_dump_function()
 {
     dsymbol *symb;
 
-    symb = ctrl_symb(o_control(o_object(sp[1].oindex, sp[1].u.objcnt)),
+    symb = ctrl_symb(o_control(&otable[sp[1].oindex]),
 		     sp->u.string->text, sp->u.string->len);
     if (symb != (dsymbol *) NULL) {
 	control *ctrl;
 
-	ctrl = o_control(o_object(sp[1].oindex, sp[1].u.objcnt));
+	ctrl = o_control(&otable[sp[1].oindex]);
 	disasm(o_control(ctrl->inherits[UCHAR(symb->inherit)].obj),
 	       UCHAR(symb->index));
 	fflush(stdout);

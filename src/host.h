@@ -1,3 +1,9 @@
+# ifdef HOST_WITH_UNSIGNED_CHAR
+# define UCHAR(c)	((char) (c))			/* unsigned character */
+# define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
+# endif
+
+
 # ifdef WIN32
 
 # define STRUCT_AL	4		/* define this if align(struct) > 2 */
