@@ -344,6 +344,17 @@ int kf_eq()
     xfloat f1, f2;
 
     if (sp[1].type != sp->type) {
+	if (sp->type + sp[1].type == T_INT + T_FLOAT) {
+	    /* int == float */
+	    if (sp->type == T_INT) {
+		flag = (sp->u.number == 0 && VFLT_ISZERO(sp + 1));
+		sp[1].type = T_INT;
+	    } else {
+		flag = (VFLT_ISZERO(sp) && sp[1].u.number == 0);
+	    }
+	    (++sp)->u.number = flag;
+	    return 0;
+	}
 	i_pop(2);
 	(--sp)->type = T_INT;
 	sp->u.number = FALSE;
@@ -796,6 +807,17 @@ int kf_ne()
     xfloat f1, f2;
 
     if (sp[1].type != sp->type) {
+	if (sp->type + sp[1].type == T_INT + T_FLOAT) {
+	    /* int != float */
+	    if (sp->type == T_INT) {
+		flag = (sp->u.number != 0 || !VFLT_ISZERO(sp + 1));
+		sp[1].type = T_INT;
+	    } else {
+		flag = (!VFLT_ISZERO(sp) || sp[1].u.number != 0);
+	    }
+	    (++sp)->u.number = flag;
+	    return 0;
+	}
 	i_pop(2);
 	(--sp)->type = T_INT;
 	sp->u.number = TRUE;

@@ -808,3 +808,14 @@ DGD 1.1
    or 0 in case of an error.
  - Fixed a bug introduced in get_dir() in the latest rewrite.
  - Temporarily disabled new export code to track down bugs.
+ - Fixed a tiny destructive bug in the swapping code, recently introduced.
+ - 0.0 == 0 was 0, is now 1 (!0.0 already was that).  For all other value
+   combinations, integers and floats remain different.
+ - Re-enabled export code.
+ - Allow any binary port value (telnet port remains >= 1024).
+ - Function_object() won't find a static function in a different object anymore
+   (because it cannot be called).
+ - Smarter selection of objects for swapping.
+ - Rebuilt the main loop so continuous exec cost errors during callouts don't
+   result in user command starvation.
+ - Ignore NUL characters in telnet input.

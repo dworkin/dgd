@@ -530,7 +530,6 @@ long t;
 	/* check memory */
 	if (!mcheck()) {
 	    mpurge();
-	    mexpand();
 	}
     }
 

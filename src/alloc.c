@@ -774,7 +774,7 @@ bool mcheck()
     if (schunk == (chunk *) NULL) {
 	return FALSE;
     } else {
-	return (schunk->size >= schunksz);
+	return (schunk->size >= schunksz / 2);
     }
 }
 
@@ -814,6 +814,7 @@ void mpurge()
     }
 # endif
 
+    /* purge dynamic memory */
     memset(dchunks, '\0', sizeof(dchunks));
     dchunk = (chunk *) NULL;
     dtree = (spnode *) NULL;
@@ -823,20 +824,16 @@ void mpurge()
 	free(p);
     }
     mstat.dmemsize = mstat.dmemused = 0;
-}
 
-/*
- * NAME:	mexpand()
- * DESCRIPTION:	expand the static memory area
- */
-void mexpand()
-{
-    if (schunk != (chunk *) NULL) {
-	schunk->next = slist;
-	slist = schunk;
+    if (schunk == (chunk *) NULL || schunk->size < schunksz) {
+	/* expand static memory */
+	if (schunk != (chunk *) NULL) {
+	    schunk->next = slist;
+	    slist = schunk;
+	}
+	schunk = (chunk *) newmem(schunksz);
+	mstat.smemsize += schunk->size = schunksz;
     }
-    schunk = (chunk *) newmem(schunksz);
-    mstat.smemsize += schunk->size = schunksz;
 }
 
 

@@ -115,30 +115,8 @@ char **argv;
 	d_export();
     }
 
-    do {
+    for (;;) {
 	P_getevent();
-	if (intr) {
-	    intr = FALSE;
-	    call_driver_object("interrupt", 0);
-	    i_del_value(sp++);
-	    d_export();
-	}
-
-	co_call();
-	comm_flush(FALSE);
-
-	if (!stop) {
-	    usr = comm_receive(buf, &size);
-	    if (usr != (object *) NULL) {
-		(--sp)->type = T_STRING;
-		str_ref(sp->u.string = str_new(buf, (long) size));
-		if (i_call(usr, "receive_message", TRUE, 1)) {
-		    i_del_value(sp++);
-		    comm_flush(TRUE);
-		    d_export();
-		}
-	    }
-	}
 
 	o_clean();
 
@@ -149,7 +127,6 @@ char **argv;
 	    d_swapout(1);
 	    arr_freeall();
 	    mpurge();
-	    mexpand();
 	} else if (swap) {
 	    /*
 	     * swap out everything
@@ -168,9 +145,37 @@ char **argv;
 	    conf_dump();
 	    dump = FALSE;
 	}
-
+	/* rebuild swapfile */
 	sw_copy();
-    } while (!stop);
+
+	if (stop) {
+	    break;
+	}
+
+	/* interrupts */
+	if (intr) {
+	    intr = FALSE;
+	    call_driver_object("interrupt", 0);
+	    i_del_value(sp++);
+	    d_export();
+	}
+
+	/* user input */
+	usr = comm_receive(buf, &size);
+	if (usr != (object *) NULL) {
+	    (--sp)->type = T_STRING;
+	    str_ref(sp->u.string = str_new(buf, (long) size));
+	    if (i_call(usr, "receive_message", TRUE, 1)) {
+		i_del_value(sp++);
+		comm_flush(TRUE);
+		d_export();
+	    }
+	}
+
+	/* callouts */
+	co_call();
+	comm_flush(FALSE);
+    }
 
     ec_pop();
     comm_finish();

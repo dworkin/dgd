@@ -1376,9 +1376,16 @@ register node *n1, *n2;
 	    n1->l.number = (n1->l.number == n2->l.number);
 	    return n1;
 	}
-	if (n1->l.number == 0 && n2->type == N_STR) {
-	    /* 0 == s */
-	    return n1;	/* FALSE */
+	if (n1->l.number == 0) {
+	    if (n2->type == N_FLOAT && NFLT_ISZERO(n2)) {
+		/* 0 == 0.0 */
+		n1->l.number = TRUE;
+		return n1;
+	    }
+	    if (n2->type == N_STR) {
+		/* 0 == s */
+		return n1;	/* FALSE */
+	    }
 	}
 	break;
 
@@ -1388,6 +1395,11 @@ register node *n1, *n2;
 	    NFLT_GET(n1, f1);
 	    NFLT_GET(n2, f2);
 	    return node_int((Int) (flt_cmp(&f1, &f2) == 0));
+	}
+	if (NFLT_ISZERO(n1) && n2->type == N_INT && n2->l.number == 0) {
+	    /* 0.0 == 0 */
+	    n2->l.number = TRUE;
+	    return n2;
 	}
 	break;
 

@@ -383,6 +383,10 @@ int *size;
 			switch (state) {
 			case TS_DATA:
 			    switch (UCHAR(*p)) {
+			    case '\0':
+				flags &= ~CF_SEENCR;
+				break;
+
 			    case IAC:
 				state = TS_IAC;
 				break;

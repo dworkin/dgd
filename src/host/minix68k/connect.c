@@ -127,7 +127,7 @@ int size;
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection
  */
-bool conn_write(conn, buf, size)
+int conn_write(conn, buf, size)
 connection *conn;
 char *buf;
 register int size;
@@ -182,7 +182,7 @@ register int size;
     if (size > 0) {
 	write(1, buf, size);
     }
-    return TRUE;
+    return p - buf;
 }
 
 /*

@@ -302,15 +302,25 @@ int kf_function_object()
     sp++;
     symb = ctrl_symb(o_control(obj), sp->u.string->text);
     str_del(sp->u.string);
+
     if (symb != (dsymbol *) NULL) {
-	name = o_name(obj->ctrl->inherits[UCHAR(symb->inherit)].obj);
-	str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
-	sp->u.string->text[0] = '/';
-	strcpy(sp->u.string->text + 1, name);
-    } else {
-	sp->type = T_INT;
-	sp->u.number = 0;
+	object *o;
+
+	o = obj->ctrl->inherits[UCHAR(symb->inherit)].obj;
+	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].class & C_STATIC) ||
+	    obj == i_this_object()) {
+	    /*
+	     * function exists and is callable
+	     */
+	    name = o_name(o);
+	    str_ref(sp->u.string = str_new((char *) NULL, strlen(name) + 1L));
+	    sp->u.string->text[0] = '/';
+	    strcpy(sp->u.string->text + 1, name);
+	    return 0;
+	}
     }
+    sp->type = T_INT;
+    sp->u.number = 0;
     return 0;
 }
 # endif

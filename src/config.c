@@ -39,7 +39,7 @@ static config conf[] = {
 				{ "auto_object",	STRING_CONST, FALSE },
 # define BINARY_PORT	2
 				{ "binary_port",	INT_CONST, FALSE,
-							1000 },
+							0, USHRT_MAX },
 # define CACHE_SIZE	3
 				{ "cache_size",		INT_CONST, FALSE,
 							100, UINDEX_MAX },
@@ -291,7 +291,8 @@ char *configfile, *dumpfile;
     palign pdummy;
 
     if (!pp_init(configfile, nodir, 0)) {
-	fatal("cannot open config file");
+	warning("Cannot open config file");
+	exit(2);
     }
     while ((c=pp_gettok()) != EOF) {
 	if (c != IDENTIFIER) {

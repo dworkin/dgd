@@ -33,6 +33,7 @@ typedef struct {
 
 typedef struct _control_ {
     struct _control_ *prev, *next;
+    Uint refc;
 
     uindex nsectors;		/* o # of sectors */
     sector *sectors;		/* o vector with sectors */
@@ -95,6 +96,7 @@ typedef struct _arrref_ {
 
 typedef struct _dataspace_ {
     struct _dataspace_ *prev, *next;
+    Uint refc;
 
     long achange;		/* # array changes */
     long schange;		/* # string changes */
