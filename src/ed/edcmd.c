@@ -48,11 +48,13 @@ char *tmpfile;
 {
     register cmdbuf *cb;
 
-    cb = SALLOC(cmdbuf, 1);
+    m_static();
+    cb = ALLOC(cmdbuf, 1);
     memset(cb, '\0', sizeof(cmdbuf));
     cb->edbuf = eb_new(tmpfile);
     cb->regexp = rx_new();
     cb->vars = va_new();
+    m_dynamic();
 
     cb->this = 0;
     cb->undo = (block) -1;	/* not 0! */
@@ -69,7 +71,7 @@ register cmdbuf *cb;
     eb_del(cb->edbuf);
     rx_del(cb->regexp);
     va_del(cb->vars);
-    SFREE(cb);
+    FREE(cb);
 }
 
 /*
@@ -640,7 +642,7 @@ char *ptr, *text;
     cb->glob_next++;
     cb->glob_size--;
     if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != cb->reverse) {
-	longjmp(cb->jump, TRUE);
+	longjmp(cb->env, TRUE);
     }
 }
 
@@ -680,7 +682,7 @@ register cmdbuf *cb;
      * can be deallocated in case of an error.
      */
     cb->glob_rx = rx_new();
-    if (!ec_push(cb->env, (ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
 	/* compile regexp */
 	p = rx_comp(cb->glob_rx, buffer);
 	if (p != (char *) NULL) {
@@ -700,10 +702,10 @@ register cmdbuf *cb;
 	cb->glob_size = cb->last - cb->first + 1;
 
 	do {
-	    if (setjmp(cb->jump)) {
+	    if (setjmp(cb->env)) {
 		/* found: do the commands */
 		cb->this = cb->glob_next - 1;
-		cb_command(cb, cb->env, p);
+		cb_command(cb, p);
 	    } else {
 		/* search */
 		eb_range(cb->edbuf, cb->glob_next,
@@ -713,7 +715,7 @@ register cmdbuf *cb;
 	} while (cb->glob_size > 0);
 
 	/* pop error context */
-	ec_pop(cb->env);
+	ec_pop();
 	aborted = FALSE;
     } else {
 	aborted = TRUE;
@@ -822,12 +824,10 @@ static cmd ed_commands[] = {
  *		did not terminate the editor. Multiple commands may be
  *		specified, separated by |
  */
-bool cb_command(cb, env, command)
+bool cb_command(cb, command)
 register cmdbuf *cb;
-lpcenv *env;
 char *command;
 {
-    cb->env = env;
     cb->cmd = command;
 
     for (;;) {

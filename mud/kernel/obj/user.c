@@ -1,10 +1,10 @@
 # include <kernel/kernel.h>
 # include <kernel/user.h>
-# include <kernel/rsrc.h>
+# include <kernel/access.h>
 
 inherit LIB_USER;
 inherit user API_USER;
-inherit rsrc API_RSRC;
+inherit access API_ACCESS;
 
 
 # define STATE_NORMAL		0
@@ -20,6 +20,7 @@ string password;		/* user password */
 static string newpasswd;	/* new password */
 static object wiztool;		/* command handler */
 static int nconn;		/* # of connections */
+static int accinit;		/* access interface initialized */
 
 /*
  * NAME:	create()
@@ -29,7 +30,8 @@ static void create(int clone)
 {
     if (clone) {
 	user::create();
-	rsrc::create();
+	access::create();
+	accinit = TRUE;
 	state = ([ ]);
     }
 }
@@ -82,7 +84,11 @@ int login(string str)
 	    /* no password; login immediately */
 	    connection(previous_object());
 	    tell_audience(Name + " logs in.\n");
-	    if (sizeof(rsrc::query_owners() & ({ str })) == 0) {
+	    if (!accinit) {
+		access::create();
+		accinit = TRUE;
+	    }
+	    if (sizeof(access::query_users() & ({ str })) == 0) {
 		message("> ");
 		state[previous_object()] = STATE_NORMAL;
 		return MODE_ECHO;
@@ -237,7 +243,11 @@ int receive_message(string str)
 	    connection(previous_object());
 	    message("\n");
 	    tell_audience(Name + " logs in.\n");
-	    if (!wiztool && sizeof(rsrc::query_owners() & ({ name })) != 0) {
+	    if (!accinit) {
+		access::create();
+		accinit = TRUE;
+	    }
+	    if (!wiztool && sizeof(access::query_users() & ({ name })) != 0) {
 		wiztool = clone_object(DEFAULT_WIZTOOL, name);
 	    }
 	    break;

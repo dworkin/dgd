@@ -4,9 +4,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
-# include "sdata.h"
 # include "interpret.h"
+# include "data.h"
 # include "path.h"
 # include "editor.h"
 # include "call_out.h"
@@ -230,16 +229,16 @@ void conf_dump()
     header[DUMP_ELAPSED + 3] = etime;
 
     fd = sw_dump(conf[DUMP_FILE].u.str);
-    if (!kf_dump(sch_env(), fd)) {
+    if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
     if (!o_dump(fd)) {
 	fatal("failed to dump object table");
     }
-    if (!pc_dump(sch_env(), fd)) {
+    if (!pc_dump(fd)) {
 	fatal("failed to dump precompiled objects");
     }
-    if (!co_dump(sch_env(), fd)) {
+    if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
     }
 
@@ -251,8 +250,7 @@ void conf_dump()
  * NAME:	conf->restore()
  * DESCRIPTION:	restore system state from file
  */
-static void conf_restore(env, fd)
-register lpcenv *env;
+static void conf_restore(fd)
 int fd;
 {
     unsigned int secsize;
@@ -260,7 +258,7 @@ int fd;
 
     if (P_read(fd, rheader, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
 	memcmp(header, rheader, DUMP_TYPE) != 0) {
-	error(env, "Bad or incompatible restore file header");
+	error("Bad or incompatible restore file header");
     }
 
     starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
@@ -291,25 +289,25 @@ int fd;
     }
     if (sizeof(uindex) < rusize || sizeof(ssizet) < rtsize ||
 	sizeof(sector) < rdsize) {
-	error(env, "Cannot restore uindex, ssizet or sector of greater width");
+	error("Cannot restore uindex, ssizet or sector of greater width");
     }
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if (secsize > conf[SECTOR_SIZE].u.num) {
-	error(env, "Cannot restore bigger sector size");
+	error("Cannot restore bigger sector size");
     }
 
-    sw_restore(env, fd, secsize);
-    kf_restore(env, fd);
-    o_restore(env, fd, (uindex) 1 << (rusize * 8 - 1));
+    sw_restore(fd, secsize);
+    kf_restore(fd);
+    o_restore(fd, (uindex) 1 << (rusize * 8 - 1));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv(env);			/* convert all objects */
+    o_conv();				/* convert all objects */
     P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
-    pc_restore(env, fd);
+    pc_restore(fd);
     boottime = P_time();
-    co_restore(env, fd, boottime);
+    co_restore(fd, boottime);
 }
 
 /*
@@ -729,7 +727,9 @@ static bool conf_config()
 		l = STRINGSZ - 1;
 		p[l] = '\0';
 	    }
-	    conf[m].u.str = strcpy(SALLOC(char, l + 1), p);
+	    m_static();
+	    conf[m].u.str = strcpy(ALLOC(char, l + 1), p);
+	    m_dynamic();
 	    break;
 
 	case '(':
@@ -747,8 +747,10 @@ static bool conf_config()
 		    conferr("too many include directories");
 		    return FALSE;
 		}
-		dirs[l] = strcpy(SALLOC(char, strlen(yytext) + 1), yytext);
+		m_static();
+		dirs[l] = strcpy(ALLOC(char, strlen(yytext) + 1), yytext);
 		l++;
+		m_dynamic();
 		if ((c=pp_gettok()) == '}') {
 		    break;
 		}
@@ -1012,15 +1014,12 @@ char *configfile, *dumpfile;
 sector *fragment;
 {
     char buf[STRINGSZ];
-    struct _mempool_ *pool;
     int fd;
     bool init;
-    register lpcenv *env;
 
     /*
      * process config file
      */
-    c_pool(pool = m_new_pool());
     if (!pp_init(path_native(buf, configfile), (char **) NULL, (char *) NULL,
 		 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
@@ -1036,7 +1035,7 @@ sector *fragment;
     if (dumpfile != (char *) NULL) {
 	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
-	    message("Config error: cannot open restore file\012");	/* LF */
+	    P_message("Config error: cannot open restore file\012");    /* LF */
 	    return FALSE;
 	}
     }
@@ -1051,6 +1050,8 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
+
+    m_static();
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
@@ -1078,7 +1079,6 @@ sector *fragment;
 
     /* initialize swapped data handler */
     d_init(conf[TYPECHECKING].u.num == 2);
-    sd_init(pool);
     *fragment = conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
@@ -1087,7 +1087,6 @@ sector *fragment;
 
     /* initialize call_outs */
     if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
-	ed_finish();
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1103,23 +1102,18 @@ sector *fragment;
     ext_cleanup =  (void (*) P((void))) NULL;
     ext_finish =   (void (*) P((void))) NULL;
 
+    /* remove previously added kfuns */
+    kf_clear();
+
 # ifdef DGD_EXTENSION
     extension_init();
 # endif
-
-    /* initialize memory manager */
-    m_init((size_t) conf[STATIC_CHUNK].u.num,
-    	   (size_t) conf[DYNAMIC_CHUNK].u.num);
 
     /* initialize kfuns */
     kf_init();
 
     /* initialize interpreter */
     i_init(conf[CREATE].u.str, conf[TYPECHECKING].u.num == 2);
-
-    /* initialize scheduler */
-    sch_init();
-    env = sch_env();
 
     /* initialize compiler */
     c_init(conf[AUTO_OBJECT].u.str,
@@ -1128,12 +1122,16 @@ sector *fragment;
 	   dirs,
 	   (int) conf[TYPECHECKING].u.num);
 
+    m_dynamic();
+
+    /* initialize memory manager */
+    m_init((size_t) conf[STATIC_CHUNK].u.num,
+    	   (size_t) conf[DYNAMIC_CHUNK].u.num);
+
     /*
      * create include files
      */
     if (!conf_includes()) {
-	kf_finish();
-	ed_finish();
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1143,9 +1141,7 @@ sector *fragment;
     }
 
     /* load precompiled objects */
-    if (!pc_preload(env, conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
-	kf_finish();
-	ed_finish();
+    if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
 	comm_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
@@ -1157,43 +1153,46 @@ sector *fragment;
     /* initialize dumpfile header */
     conf_dumpinit();
 
-    if (ec_push(env, (ec_ftn) NULL)) {
+    m_static();				/* allocate error context statically */
+    ec_push((ec_ftn) NULL);		/* guard error context */
+    if (ec_push((ec_ftn) NULL)) {
+	message((char *) NULL);
 	endthread();
-	d_clean(env);
-	arr_freeall(env);
 	message("Config error: initialization failed\012");	/* LF */
+	ec_pop();			/* remove guard */
 
-	kf_finish();
-	ed_finish();
 	comm_finish();
+	ed_finish();
 	if (dumpfile != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
 	return FALSE;
     }
+    m_dynamic();
     if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */
-	if (ec_push(env, (ec_ftn) errhandler)) {
-	    error(env, (char *) NULL);
+	if (ec_push((ec_ftn) errhandler)) {
+	    error((char *) NULL);
 	}
-	call_driver_object(env->ie->cframe, "initialize", 0);
-	ec_pop(env);
+	call_driver_object(cframe, "initialize", 0);
+	ec_pop();
     } else {
 	/* restore dump file */
-	conf_restore(env, fd);
+	conf_restore(fd);
 	P_close(fd);
 
 	/* notify mudlib */
-	if (ec_push(env, (ec_ftn) errhandler)) {
-	    error(env, (char *) NULL);
+	if (ec_push((ec_ftn) errhandler)) {
+	    error((char *) NULL);
 	}
-	call_driver_object(env->ie->cframe, "restored", 0);
-	ec_pop(env);
+	call_driver_object(cframe, "restored", 0);
+	ec_pop();
     }
-    ec_pop(env);
-    i_del_value(env, env->ie->cframe->sp++);
+    ec_pop();
+    i_del_value(cframe->sp++);
     endthread();
+    ec_pop();				/* remove guard */
 
     /* start accepting connections */
     comm_listen();
@@ -1268,12 +1267,11 @@ register value *v;
 {
     char *version;
     uindex ncoshort, ncolong;
-    Uint mstat, dummy;
 
     switch (idx) {
     case 0:	/* ST_VERSION */
 	version = VERSION;
-	PUT_STRVAL(v, str_new(f->env, version, (long) strlen(version)));
+	PUT_STRVAL(v, str_new(version, (long) strlen(version)));
 	break;
 
     case 1:	/* ST_STARTTIME */
@@ -1309,23 +1307,19 @@ register value *v;
 	break;
 
     case 9:	/* ST_SMEMSIZE */
-	m_info(&mstat, &dummy, &dummy, &dummy);
-	PUT_INTVAL(v, mstat);
+	PUT_INTVAL(v, m_info()->smemsize);
 	break;
 
     case 10:	/* ST_SMEMUSED */
-	m_info(&dummy, &mstat, &dummy, &dummy);
-	PUT_INTVAL(v, mstat);
+	PUT_INTVAL(v, m_info()->smemused);
 	break;
 
     case 11:	/* ST_DMEMSIZE */
-	m_info(&dummy, &dummy, &mstat, &dummy);
-	PUT_INTVAL(v, mstat);
+	PUT_INTVAL(v, m_info()->dmemsize);
 	break;
 
     case 12:	/* ST_DMEMUSED */
-	m_info(&dummy, &dummy, &dummy, &mstat);
-	PUT_INTVAL(v, mstat);
+	PUT_INTVAL(v, m_info()->dmemused);
 	break;
 
     case 13:	/* ST_OTABSIZE */
@@ -1333,7 +1327,7 @@ register value *v;
 	break;
 
     case 14:	/* ST_NOBJECTS */
-	PUT_INTVAL(v, o_count(f->env));
+	PUT_INTVAL(v, o_count());
 	break;
 
     case 15:	/* ST_COTABSIZE */
@@ -1408,7 +1402,7 @@ register frame *f;
  * DESCRIPTION:	return object resource usage information
  */
 bool conf_objecti(data, obj, idx, v)
-register dataspace *data;
+dataspace *data;
 register object *obj;
 Int idx;
 register value *v;
@@ -1416,9 +1410,8 @@ register value *v;
     register control *ctrl;
     object *prog;
 
-    prog = (obj->flags & O_MASTER) ? obj : OBJR(data->env, obj->u_master);
-    ctrl = (O_UPGRADING(prog)) ?
-	    OBJR(data->env, prog->prev)->ctrl : o_control(data->env, prog);
+    prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->u_master);
+    ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : o_control(prog);
 
     switch (idx) {
     case 0:	/* O_COMPILETIME */
@@ -1434,22 +1427,16 @@ register value *v;
 	break;
 
     case 3:	/* O_NSECTORS */
-	PUT_INTVAL(v, 0);
-	if (obj->flags & O_CREATED) {
-	    data = o_dataspace(data->env, obj);
-	    if (data->sdata != (struct _sdataspace_ *) NULL) {
-		v->u.number += sd_get_dsize(data->sdata);
-	    }
-	}
-	if ((obj->flags & O_MASTER) &&
-	    ctrl->sctrl != (struct _scontrol_ *) NULL) {
-	    v->u.number += sd_get_csize(ctrl->sctrl);
+	PUT_INTVAL(v, (obj->flags & O_CREATED) ?
+		       o_dataspace(obj)->nsectors : 0);
+	if (obj->flags & O_MASTER) {
+	    v->u.number += ctrl->nsectors;
 	}
 	break;
 
     case 4:	/* O_CALLOUTS */
 	PUT_ARRVAL(v, (obj->flags & O_CREATED) ?
-		       d_list_callouts(data, o_dataspace(data->env, obj)) :
+		       d_list_callouts(data, o_dataspace(obj)) :
 		       arr_new(data, 0L));
 	break;
 

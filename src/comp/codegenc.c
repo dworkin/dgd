@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "table.h"
 # include "node.h"
 # include "control.h"
@@ -99,7 +99,7 @@ unsigned short type;
     if ((type & T_REF) != 0) {
 	type = T_ARRAY;
     }
-    output("i_cast(f->env, %s, %u)", what, type);
+    output("i_cast(%s, %u)", what, type);
 }
 
 /*
@@ -244,19 +244,19 @@ bool direct;
 	if(catch_level != 0) {
 	    output("%s->u.number = ", local(i));
 	}
-	output("ivar%d = %s(f->env, ivar%d, ", vars[i], op, vars[i]);
+	output("ivar%d = %s(ivar%d, ", vars[i], op, vars[i]);
 	cg_iexpr(n->r.right, direct);
 	output(")");
     } else {
 	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
-	    output("f->sp->u.number = %s(f->env, f->sp->u.number, ", op);
+	    output("f->sp->u.number = %s(f->sp->u.number, ", op);
 	    cg_iexpr(n, TRUE);
 	    output("), store_int()");
 	} else {
 	    i = tmpval();
-	    output("tv[%d] = %s(f->env, f->sp->u.number, ", i, op);
+	    output("tv[%d] = %s(f->sp->u.number, ", i, op);
 	    cg_iexpr(n, TRUE);
 	    output("), f->sp->u.number = tv[%d], store_int()", op, i);
 	}
@@ -402,7 +402,7 @@ int direct;
 	break;
 
     case N_DIV_INT:
-	output("xdiv(f->env, ");
+	output("xdiv(");
 	cg_ibinop(n, ",", direct);
 	output(")");
 	break;
@@ -452,7 +452,7 @@ int direct;
 	break;
 
     case N_LSHIFT_INT:
-	output("xlshift(f->env, ");
+	output("xlshift(");
 	cg_ibinop(n, ",", direct);
 	output(")");
 	break;
@@ -466,7 +466,7 @@ int direct;
 	break;
 
     case N_MOD_INT:
-	output("xmod(f->env, ");
+	output("xmod(");
 	cg_ibinop(n, ",", direct);
 	output(")");
 	break;
@@ -524,7 +524,7 @@ int direct;
 	break;
 
     case N_RSHIFT_INT:
-	output("xrshift(f->env, ");
+	output("xrshift(");
 	cg_ibinop(n, ",", direct);
 	output(")");
 	break;
@@ -964,13 +964,13 @@ register int state;
 		}
 	    }
 	}
-	output("!ec_push(f->env, (ec_ftn) i_catcherr) ? (");
+	output("!ec_push((ec_ftn) i_catcherr) ? (");
 	catch_level++;
 	cg_expr(n->l.left, POP);
 	--catch_level;
 	if (state == PUSH) {
-	    output(", ec_pop(f->env), *--f->sp = nil_value, 0) : ");
-	    output("(PUSH_STRVAL(f, errorstr(f->env))");
+	    output(", ec_pop(), *--f->sp = nil_value, 0) : ");
+	    output("(PUSH_STRVAL(f, errorstr())");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -980,7 +980,7 @@ register int state;
 	    }
 	    output(", 0))");
 	} else {
-	    output(", ec_pop(f->env), FALSE) : (");
+	    output(", ec_pop(), FALSE) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -1450,7 +1450,7 @@ register int state;
 	    (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_VOID)) {
 	    output(", f->sp++");
 	} else {
-	    output(", i_del_value(f->env, f->sp++)");
+	    output(", i_del_value(f->sp++)");
 	}
 	break;
 
@@ -1548,7 +1548,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = CALLOCA(Int, size);
+    switch_table = ALLOCA(Int, size);
     i = 1;
     do {
 	switch_table[i++] = m->l.left->l.number;
@@ -1565,7 +1565,7 @@ register node *n;
 	switch_table[0] = 0;
     } else {
 	cg_expr(n->r.right->l.left, PUSH);
-	output(";\nif (f->sp->type != T_INT) { i_del_value(f->env, f->sp++);");
+	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
 	output(" goto sw%d; }", ++swcount);
 	output("\nswitch ((f->sp++)->u.number) {\n");
 	switch_table[0] = swcount;
@@ -1580,7 +1580,7 @@ register node *n;
     if (switch_table[0] > 0) {
 	output("sw%d: ;\n", (int) switch_table[0]);
     }
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1608,7 +1608,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = CALLOCA(Int, size);
+    switch_table = ALLOCA(Int, size);
     output("{\nstatic Int swtab[] = {\n");
     outcount = 0;
     i = 1;
@@ -1630,7 +1630,7 @@ register node *n;
 	switch_table[0] = 0;
     } else {
 	cg_expr(n->r.right->l.left, PUSH);
-	output(";\nif (f->sp->type != T_INT) { i_del_value(f->env, f->sp++);");
+	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
 	output(" goto sw%d; }", ++swcount);
 	output("\nswitch (switch_range((f->sp++)->u.number, swtab, %d)) {\n",
 	       size - 1);
@@ -1646,7 +1646,7 @@ register node *n;
     if (switch_table[0] > 0) {
 	output("sw%d: ;\n", (int) switch_table[0]);
     }
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1679,7 +1679,7 @@ register node *n;
 	size++;
     }
     table = switch_table;
-    switch_table = CALLOCA(Int, size);
+    switch_table = ALLOCA(Int, size);
     output(";\n{\nstatic char swtab[] = {\n");
     outcount = 0;
     i = 1;
@@ -1704,8 +1704,7 @@ register node *n;
 	outchar((char) l);
 	m = m->r.right;
     } while (++i < size);
-    output("\n};\n");
-    output("switch (switch_str(f->env, f->sp++, f->p_ctrl, swtab, %d)) {\n",
+    output("\n};\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
 	   size - 1);
     switch_table[0] = 0;
 
@@ -1715,7 +1714,7 @@ register node *n;
     cg_stmt(n->r.right->r.right);
 
     output("}\n}\n");
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1749,7 +1748,7 @@ register int n;
     } while (--n != 0);
 
     while (c != 0) {
-	output("ec_pop(f->env);\n");
+	output("ec_pop();\n");
 	--c;
     }
     if (r != 0) {
@@ -1889,12 +1888,12 @@ register node *n;
 		    }
 		}
 	    }
-	    output("if (!ec_push(f->env, (ec_ftn) i_catcherr)) {\n");
+	    output("if (!ec_push((ec_ftn) i_catcherr)) {\n");
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;
 	    if (!(m->l.left->flags & F_END)) {
-		output("ec_pop(f->env);");
+		output("ec_pop();");
 	    }
 	    output("} else {\n");
 	    if (catch_level == 0) {
@@ -2000,7 +1999,7 @@ unsigned short *size;
     char *prog;
 
     depth += nvar;
-    prog = CALLOC(char, *size = 6);
+    prog = ALLOC(char, *size = 6);
     prog[0] = depth >> 8;
     prog[1] = depth;
     prog[2] = nvar - npar;
@@ -2061,7 +2060,7 @@ void cg_clear()
 	output("\nstatic pcfunc functions[] = {\n");
 	for (i = nfuncs, f = funcnames; i != 0; --i, f++) {
 	    output("LPC_%s,\n", (*f)->text);
-	    str_del(compenv, *f);
+	    str_del(*f);
 	}
 	output("};\n");
     }

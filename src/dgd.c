@@ -3,14 +3,13 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "editor.h"
 # include "call_out.h"
 # include "comm.h"
 # include "node.h"
 # include "compile.h"
-# include "table.h"
 
 static uindex dindex;		/* driver object index */
 static Uint dcount;		/* driver object count */
@@ -32,10 +31,9 @@ int narg;
     object *driver;
     char *driver_name;
 
-    if (dindex == UINDEX_MAX || dcount != (driver=OBJR(f->env, dindex))->count)
-    {
+    if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count) {
 	driver_name = conf_driver();
-	driver = o_find(sch_env(), driver_name, OACC_READ);
+	driver = o_find(driver_name, OACC_READ);
 	if (driver == (object *) NULL) {
 	    driver = c_compile(f, driver_name, (object *) NULL,
 			       (string *) NULL);
@@ -91,20 +89,17 @@ void finish()
  */
 void endthread()
 {
-    lpcenv *env;
-
-    env = sch_env();
     comm_flush();
     if (ext_cleanup != (void (*) P((void))) NULL) {
 	(*ext_cleanup)();
     }
-    d_export(env);
+    d_export();
     o_clean();
-    i_clear(env);
+    i_clear();
     ed_clear();
-    ec_clear(env);
+    ec_clear();
 
-    co_swapcount(d_swapout(sch_env(), fragment));
+    co_swapcount(d_swapout(fragment));
 
     if (stop) {
 	if (ext_finish != (void (*) P((void))) NULL) {
@@ -112,12 +107,8 @@ void endthread()
 	}
 	comm_finish();
 	ed_finish();
-	kf_finish();
 # ifdef DEBUG
 	swap = 1;
-# else
-	d_clean(env);
-	arr_freeall(env);
 # endif
     }
 
@@ -125,8 +116,8 @@ void endthread()
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
-	d_swapout(sch_env(), 1);
-	arr_freeall(env);
+	d_swapout(1);
+	arr_freeall();
 	m_purge();
 	swap = FALSE;
     }
@@ -135,7 +126,7 @@ void endthread()
 	/*
 	 * create a state dump
 	 */
-	d_swapsync(sch_env());
+	d_swapsync();
 	conf_dump();
 	dump = FALSE;
     }
@@ -169,7 +160,6 @@ char **argv;
     bool swrebuild;
     Uint timeout;
     unsigned short mtime;
-    lpcenv *env;
 
     if (argc < 2 || argc > 3) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
@@ -183,17 +173,16 @@ char **argv;
 	return 2;	/* initialization failed */
     }
 
-    env = sch_env();
     for (;;) {
 	/* interrupts */
 	if (intr) {
 	    intr = FALSE;
-	    if (ec_push(env, (ec_ftn) errhandler)) {
+	    if (ec_push((ec_ftn) errhandler)) {
 		endthread();
 	    } else {
-		call_driver_object(env->ie->cframe, "interrupt", 0);
-		i_del_value(env, env->ie->cframe->sp++);
-		ec_pop(env);
+		call_driver_object(cframe, "interrupt", 0);
+		i_del_value(cframe->sp++);
+		ec_pop();
 		endthread();
 	    }
 	}
@@ -212,9 +201,9 @@ char **argv;
 	    timeout = 1;
 	    mtime = 0;
 	}
-	comm_receive(env->ie->cframe, timeout, mtime);
+	comm_receive(cframe, timeout, mtime);
 
 	/* callouts */
-	co_call(env->ie->cframe);
+	co_call(cframe);
     }
 }

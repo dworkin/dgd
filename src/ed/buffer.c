@@ -14,8 +14,8 @@ char *tmpfile;
 {
     register editbuf *eb;
 
-    eb = SALLOC(editbuf, 1);
-    eb->lb = lb_new((struct _linebuf_ *) NULL, tmpfile);
+    eb = ALLOC(editbuf, 1);
+    eb->lb = lb_new((linebuf *) NULL, tmpfile);
     eb->buffer = (block) 0;
     eb->lines = 0;
 
@@ -30,7 +30,7 @@ void eb_del(eb)
 editbuf *eb;
 {
     lb_del(eb->lb);
-    SFREE(eb);
+    FREE(eb);
 }
 
 /*

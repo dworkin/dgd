@@ -42,7 +42,7 @@ register frame *f;
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, flt);
-    flt_floor(f->env, &flt);
+    flt_floor(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -65,7 +65,7 @@ register frame *f;
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, flt);
-    flt_ceil(f->env, &flt);
+    flt_ceil(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -90,7 +90,7 @@ register frame *f;
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_fmod(f->env, &f1, &f2);
+    flt_fmod(&f1, &f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -143,7 +143,7 @@ register frame *f;
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp + 1, flt);
-    flt_ldexp(f->env, &flt, f->sp->u.number);
+    flt_ldexp(&flt, f->sp->u.number);
     f->sp++;
     PUT_FLT(f->sp, flt);
     return 0;
@@ -169,7 +169,7 @@ register frame *f;
 
     i_add_ticks(f, 2);
     GET_FLT(f->sp, f1);
-    flt_modf(f->env, &f1, &f2);
+    flt_modf(&f1, &f2);
     a = arr_new(f->data, 2L);
     PUT_FLTVAL(&a->elts[0], f1);
     PUT_FLTVAL(&a->elts[1], f2);
@@ -196,7 +196,7 @@ register frame *f;
 
     i_add_ticks(f, 21);
     GET_FLT(f->sp, flt);
-    flt_exp(f->env, &flt);
+    flt_exp(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -219,7 +219,7 @@ register frame *f;
 
     i_add_ticks(f, 35);
     GET_FLT(f->sp, flt);
-    flt_log(f->env, &flt);
+    flt_log(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -242,7 +242,7 @@ register frame *f;
 
     i_add_ticks(f, 41);
     GET_FLT(f->sp, flt);
-    flt_log10(f->env, &flt);
+    flt_log10(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -267,7 +267,7 @@ register frame *f;
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_pow(f->env, &f1, &f2);
+    flt_pow(&f1, &f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -290,7 +290,7 @@ register frame *f;
 
     i_add_ticks(f, 11);
     GET_FLT(f->sp, flt);
-    flt_sqrt(f->env, &flt);
+    flt_sqrt(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -313,7 +313,7 @@ register frame *f;
 
     i_add_ticks(f, 25);
     GET_FLT(f->sp, flt);
-    flt_cos(f->env, &flt);
+    flt_cos(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -336,7 +336,7 @@ register frame *f;
 
     i_add_ticks(f, 25);
     GET_FLT(f->sp, flt);
-    flt_sin(f->env, &flt);
+    flt_sin(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -359,7 +359,7 @@ register frame *f;
 
     i_add_ticks(f, 31);
     GET_FLT(f->sp, flt);
-    flt_tan(f->env, &flt);
+    flt_tan(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -382,7 +382,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_acos(f->env, &flt);
+    flt_acos(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -405,7 +405,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_asin(f->env, &flt);
+    flt_asin(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -428,7 +428,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_atan(f->env, &flt);
+    flt_atan(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -453,7 +453,7 @@ register frame *f;
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_atan2(f->env, &f1, &f2);
+    flt_atan2(&f1, &f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -476,7 +476,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_cosh(f->env, &flt);
+    flt_cosh(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -499,7 +499,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_sinh(f->env, &flt);
+    flt_sinh(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }
@@ -522,7 +522,7 @@ register frame *f;
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
-    flt_tanh(f->env, &flt);
+    flt_tanh(&flt);
     PUT_FLT(f->sp, flt);
     return 0;
 }

@@ -50,8 +50,9 @@ clean:
 	rm -f dgd a.out $(OBJ)
 
 
-$(OBJ): ../dgd.h ../config.h ../host.h ../error.h ../alloc.h ../scheduler.h
-$(OBJ): ../str.h ../array.h ../object.h ../xfloat.h ../data.h ../interpret.h
+$(OBJ) comp.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h
+$(OBJ) comp.o: ../str.h ../array.h ../object.h ../xfloat.h ../interpret.h
+control.o optimize.o codegeni.o codegenc.o compile.o csupport.o: ../data.h
 control.o comp.o: ../hash.h ../path.h
 comp.o: ../data.h ../swap.h ../comm.h ../editor.h ../call_out.h
 

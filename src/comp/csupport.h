@@ -46,11 +46,11 @@ extern precomp	*precompiled[];	/* table of precompiled objects */
 extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 
-bool   pc_preload	P((lpcenv*, char*, char*));
+bool   pc_preload	P((char*, char*));
 array *pc_list		P((dataspace*));
 void   pc_control	P((control*, object*));
-bool   pc_dump		P((lpcenv*, int));
-void   pc_restore	P((lpcenv*, int));
+bool   pc_dump		P((int));
+void   pc_restore	P((int));
 
 
 # define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =
@@ -81,11 +81,11 @@ int kf_this_object P((frame*)), kf_call_trace P((frame*)),
 
 void call_kfun		P((frame*, int));
 void call_kfun_arg	P((frame*, int, int));
-Int  xdiv		P((lpcenv*, Int, Int));
-Int  xmod		P((lpcenv*, Int, Int));
-Int  xlshift		P((lpcenv*, Int, Int));
-Int  xrshift		P((lpcenv*, Int, Int));
+Int  xdiv		P((Int, Int));
+Int  xmod		P((Int, Int));
+Int  xlshift		P((Int, Int));
+Int  xrshift		P((Int, Int));
 bool poptruthval	P((frame*));
 void new_rlimits	P((frame*));
 int  switch_range	P((Int, Int*, int));
-int  switch_str		P((lpcenv*, value*, control*, char*, int));
+int  switch_str		P((value*, control*, char*, int));

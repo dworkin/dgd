@@ -3,8 +3,8 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "grammar.h"
 # include "dfa.h"
 # include "srp.h"
@@ -35,8 +35,7 @@ typedef struct _pnchunk_ {
  * NAME:	pnode->new()
  * DESCRIPTION:	create a new pnode
  */
-static pnode *pn_new(env, c, symb, state, text, len, next, list)
-lpcenv *env;
+static pnode *pn_new(c, symb, state, text, len, next, list)
 register pnchunk **c;
 short symb;
 unsigned short state;
@@ -49,7 +48,7 @@ pnode *next, *list;
     if (*c == (pnchunk *) NULL || (*c)->chunksz == PNCHUNKSZ) {
 	register pnchunk *x;
 
-	x = IALLOC(env, pnchunk, 1);
+	x = ALLOC(pnchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -70,8 +69,7 @@ pnode *next, *list;
  * NAME:	pnode->clear()
  * DESCRIPTION:	free all pnodes in memory
  */
-static void pn_clear(env, c)
-register lpcenv *env;
+static void pn_clear(c)
 register pnchunk *c;
 {
     register pnchunk *f;
@@ -79,7 +77,7 @@ register pnchunk *c;
     while (c != (pnchunk *) NULL) {
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
 }
 
@@ -108,8 +106,7 @@ typedef struct {
  * NAME:	snode->new()
  * DESCRIPTION:	create a new snode
  */
-static snode *sn_new(env, list, pn, slist)
-lpcenv *env;
+static snode *sn_new(list, pn, slist)
 register snlist *list;
 pnode *pn;
 snode *slist;
@@ -123,7 +120,7 @@ snode *slist;
 	if (list->snc == (snchunk *) NULL || list->snc->chunksz == SNCHUNKSZ) {
 	    register snchunk *x;
 
-	    x = IALLOC(env, snchunk, 1);
+	    x = ALLOC(snchunk, 1);
 	    x->next = list->snc;
 	    list->snc = x;
 	    x->chunksz = 0;
@@ -184,8 +181,7 @@ snode *sn;
  * NAME:	snode->clear()
  * DESCRIPTION:	free all snodes in memory
  */
-static void sn_clear(env, list)
-register lpcenv *env;
+static void sn_clear(list)
 register snlist *list;
 {
     register snchunk *c, *f;
@@ -194,7 +190,7 @@ register snlist *list;
     while (c != (snchunk *) NULL) {
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
     list->snc = (snchunk *) NULL;
     list->first = list->free = (snode *) NULL;
@@ -213,15 +209,14 @@ typedef struct _strchunk_ {
  * NAME:	strchunk->add()
  * DESCRIPTION:	add a string to the current chunk
  */
-static void sc_add(env, c, str)
-lpcenv *env;
+static void sc_add(c, str)
 register strchunk **c;
 string *str;
 {
     if (*c == (strchunk *) NULL || (*c)->chunksz == STRCHUNKSZ) {
 	strchunk *x;
 
-	x = IALLOC(env, strchunk, 1);
+	x = ALLOC(strchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -234,8 +229,7 @@ string *str;
  * NAME:	strchunk->clean()
  * DESCRIPTION:	remove string chunks, and strings, from memory
  */
-static void sc_clean(env, c)
-register lpcenv *env;
+static void sc_clean(c)
 register strchunk *c;
 {
     register strchunk *f;
@@ -243,11 +237,11 @@ register strchunk *c;
 
     while (c != (strchunk *) NULL) {
 	for (i = c->chunksz; --i >= 0; ) {
-	    str_del(env, c->str[i]);
+	    str_del(c->str[i]);
 	}
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
 }
 
@@ -264,15 +258,14 @@ typedef struct _arrchunk_ {
  * NAME:	arrchunk->add()
  * DESCRIPTION:	add an array to the current chunk
  */
-static void ac_add(env, c, arr)
-lpcenv *env;
+static void ac_add(c, arr)
 arrchunk **c;
 array *arr;
 {
     if (*c == (arrchunk *) NULL || (*c)->chunksz == ARRCHUNKSZ) {
 	arrchunk *x;
 
-	x = IALLOC(env, arrchunk, 1);
+	x = ALLOC(arrchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -285,8 +278,7 @@ array *arr;
  * NAME:	arrchunk->clean()
  * DESCRIPTION:	remove array chunks, and arrays, from memory
  */
-static void ac_clean(env, c)
-register lpcenv *env;
+static void ac_clean(c)
 register arrchunk *c;
 {
     register arrchunk *f;
@@ -294,16 +286,16 @@ register arrchunk *c;
 
     while (c != (arrchunk *) NULL) {
 	for (i = c->chunksz; --i >= 0; ) {
-	    arr_del(env, c->arr[i]);
+	    arr_del(c->arr[i]);
 	}
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
 }
 
 
-typedef struct _parser_ {
+struct _parser_ {
     frame *frame;		/* interpreter stack frame */
     dataspace *data;		/* dataspace for current object */
 
@@ -312,8 +304,8 @@ typedef struct _parser_ {
     char *fastr;		/* DFA string */
     char *lrstr;		/* SRP string */
 
-    struct _dfa_ *fa;		/* (partial) DFA */
-    struct _srp_ *lr;		/* (partial) shift/reduce parser */
+    dfa *fa;			/* (partial) DFA */
+    srp *lr;			/* (partial) shift/reduce parser */
     short ntoken;		/* # of tokens (regexp + string) */
     short nprod;		/* # of nonterminals */
 
@@ -327,7 +319,7 @@ typedef struct _parser_ {
     arrchunk *arrc;		/* array chunk */
 
     Int maxalt;			/* max number of branches */
-} parser;
+};
 
 /*
  * NAME:	parser->new()
@@ -340,7 +332,7 @@ string *source, *grammar;
     register parser *ps;
     register char *p;
 
-    ps = IALLOC(f->env, parser, 1);
+    ps = ALLOC(parser, 1);
     ps->frame = f;
     ps->data = f->data;
     ps->data->parser = ps;
@@ -348,8 +340,8 @@ string *source, *grammar;
     str_ref(ps->grammar = grammar);
     ps->fastr = (char *) NULL;
     ps->lrstr = (char *) NULL;
-    ps->fa = dfa_new(f->env, grammar->text);
-    ps->lr = srp_new(f->env, grammar->text);
+    ps->fa = dfa_new(grammar->text);
+    ps->lr = srp_new(grammar->text);
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
@@ -370,22 +362,21 @@ string *source, *grammar;
  * NAME:	parser->del()
  * DESCRIPTION:	delete parser
  */
-void ps_del(ps, env)
+void ps_del(ps)
 register parser *ps;
-register lpcenv *env;
 {
     ps->data->parser = (parser *) NULL;
-    str_del(env, ps->source);
-    str_del(env, ps->grammar);
+    str_del(ps->source);
+    str_del(ps->grammar);
     if (ps->fastr != (char *) NULL) {
-	IFREE(env, ps->fastr);
+	FREE(ps->fastr);
     }
     if (ps->lrstr != (char *) NULL) {
-	IFREE(env, ps->lrstr);
+	FREE(ps->lrstr);
     }
     dfa_del(ps->fa);
     srp_del(ps->lr);
-    IFREE(env, ps);
+    FREE(ps);
 }
 
 /*
@@ -425,7 +416,7 @@ register char *p;
 	} while (--n != 0);
     }
     n = srp_goto(ps->lr, next->state, symb);
-    pn = pn_new(ps->frame->env, &ps->pnc, symb, n, red, len, next, pn);
+    pn = pn_new(&ps->pnc, symb, n, red, len, next, pn);
 
     /*
      * see if this reduction can be merged with another
@@ -436,9 +427,9 @@ register char *p;
 
 	    if (sn->pn->u.text != (char *) NULL) {
 		/* first alternative */
-		sn->pn->list = pn_new(ps->frame->env, &ps->pnc, symb, n,
-				      sn->pn->u.text, sn->pn->len,
-				      (pnode *) NULL, sn->pn->list);
+		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->u.text,
+				      sn->pn->len, (pnode *) NULL,
+				      sn->pn->list);
 		sn->pn->u.text = (char *) NULL;
 		sn->pn->len = 1;
 	    }
@@ -458,7 +449,7 @@ register char *p;
     /*
      * new reduction
      */
-    ps->states[n] = sn_new(ps->frame->env, &ps->list, pn, ps->states[n]);
+    ps->states[n] = sn_new(&ps->list, pn, ps->states[n]);
 }
 
 /*
@@ -478,8 +469,8 @@ ssizet len;
     if (n >= 0) {
 	/* shift works: add new snode */
 	ps->states[n] = sn_add(&ps->list, sn,
-			       pn_new(ps->frame->env, &ps->pnc, token, n, text,
-				      len, sn->pn, (pnode *) NULL),
+			       pn_new(&ps->pnc, token, n, text, len,
+				      sn->pn, (pnode *) NULL),
 			       ps->states[n]);
 	return;
     }
@@ -511,14 +502,14 @@ bool *toobig;
     if (ps->nstates < ps->nprod) {
 	ps->nstates = ps->nprod;
     }
-    ps->states = IALLOC(ps->frame->env, snode*, ps->nstates);
+    ps->states = ALLOC(snode*, ps->nstates);
     memset(ps->states, '\0', ps->nstates * sizeof(snode*));
     ps->list.first = (snode *) NULL;
 
     /* state 0 */
-    ps->states[0] = sn_new(ps->frame->env, &ps->list,
-			   pn_new(ps->frame->env, &ps->pnc, 0, 0, (char *) NULL,
-				  (ssizet) 0, (pnode *) NULL, (pnode *) NULL),
+    ps->states[0] = sn_new(&ps->list,
+			   pn_new(&ps->pnc, 0, 0, (char *) NULL, (ssizet) 0,
+				  (pnode *) NULL, (pnode *) NULL),
 			   (snode *) NULL);
 
     do {
@@ -529,7 +520,7 @@ bool *toobig;
 	    n = srp_check(ps->lr, sn->pn->state, &nred, &red);
 	    if (n < 0) {
 		/* parser grown to big */
-		IFREE(ps->frame->env, ps->states);
+		FREE(ps->states);
 		*toobig = TRUE;
 		return (pnode *) NULL;
 	    }
@@ -539,8 +530,7 @@ bool *toobig;
 		/* grow tables */
 		stsize = n;
 		stsize <<= 1;
-		ps->states = IREALLOC(ps->frame->env, ps->states, snode*,
-				      ps->nstates, stsize);
+		ps->states = REALLOC(ps->states, snode*, ps->nstates, stsize);
 		memset(ps->states + ps->nstates, '\0',
 		       (stsize - ps->nstates) * sizeof(snode*));
 		ps->nstates = stsize;
@@ -553,8 +543,8 @@ bool *toobig;
 		    if (ps->frame->rlim->noticks) {
 			ps->frame->rlim->ticks = 0x7fffffff;
 		    } else {
-			IFREE(ps->frame->env, ps->states);
-			error(ps->frame->env, "Out of ticks");
+			FREE(ps->states);
+			error("Out of ticks");
 		    }
 		}
 	    }
@@ -565,17 +555,17 @@ bool *toobig;
 	case DFA_EOS:
 	    /* if end of string, return node from state 1 */
 	    sn = ps->states[1];
-	    IFREE(ps->frame->env, ps->states);
+	    FREE(ps->states);
 	    return (sn != (snode *) NULL) ? sn->pn : (pnode *) NULL;
 
 	case DFA_REJECT:
 	    /* bad token */
-	    IFREE(ps->frame->env, ps->states);
-	    error(ps->frame->env, "Bad token at offset %u", str->len - size);
+	    FREE(ps->states);
+	    error("Bad token at offset %u", str->len - size);
 	    return (pnode *) NULL;
 
 	case DFA_TOOBIG:
-	    IFREE(ps->frame->env, ps->states);
+	    FREE(ps->states);
 	    *toobig = TRUE;
 	    return (pnode *) NULL;
 
@@ -595,7 +585,7 @@ bool *toobig;
     /*
      * parsing failed
      */
-    IFREE(ps->frame->env, ps->states);
+    FREE(ps->states);
     return (pnode *) NULL;
 }
 
@@ -610,8 +600,7 @@ bool *toobig;
  * NAME:	parser->flatten()
  * DESCRIPTION:	traverse parse tree, collecting values in a flat array
  */
-static void ps_flatten(env, pn, next, v)
-register lpcenv *env;
+static void ps_flatten(pn, next, v)
 register pnode *pn, *next;
 register value *v;
 {
@@ -624,7 +613,7 @@ register value *v;
 
 	case PN_ARRAY:
 	    v -= pn->len;
-	    i_copy(env, v, d_get_elts(pn->u.arr), (unsigned int) pn->len);
+	    i_copy(v, d_get_elts(pn->u.arr), (unsigned int) pn->len);
 	    break;
 
 	case PN_BRANCH:
@@ -668,8 +657,8 @@ pnode *next;
 	    /*
 	     * token
 	     */
-	    pn->u.str = str_new(ps->frame->env, pn->u.text, (long) pn->len);
-	    sc_add(ps->frame->env, &ps->strc, pn->u.str);
+	    pn->u.str = str_new(pn->u.text, (long) pn->len);
+	    sc_add(&ps->strc, pn->u.str);
 
 	    pn->symbol = PN_STRING;
 	    return pn->len = 1;
@@ -698,29 +687,28 @@ pnode *next;
 		 */
 		a = arr_new(ps->data, (long) len);
 		if (len != 0) {
-		    ps_flatten(ps->frame->env, pn, next, a->elts + len);
+		    ps_flatten(pn, next, a->elts + len);
 		}
 		ps->data->parser = (parser *) NULL;
 
-		if (ec_push(ps->frame->env, (ec_ftn) NULL)) {
+		if (ec_push((ec_ftn) NULL)) {
 		    /* error: restore original parser */
 		    if (ps->data->parser != (parser *) NULL) {
-			ps_del(ps->data->parser, ps->frame->env);
+			ps_del(ps->data->parser);
 		    }
 		    ps->data->parser = ps;
-		    error(ps->frame->env, (char *) NULL); /* pass on error */
+		    error((char *) NULL);	/* pass on error */
 		} else {
 		    PUSH_ARRVAL(ps->frame, a);
-		    call = i_call(ps->frame,
-				  OBJR(ps->frame->env, ps->frame->oindex),
+		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
 				  (array *) NULL, pn->u.text + 2 + n,
 				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
-		    ec_pop(ps->frame->env);
+		    ec_pop();
 		}
 
 		/* restore original parser */
 		if (ps->data->parser != (parser *) NULL) {
-		    ps_del(ps->data->parser, ps->frame->env);
+		    ps_del(ps->data->parser);
 		}
 		ps->data->parser = ps;
 
@@ -732,14 +720,13 @@ pnode *next;
 		    /*
 		     * wrong return type: block branch
 		     */
-		    i_del_value(ps->frame->env, ps->frame->sp++);
+		    i_del_value(ps->frame->sp++);
 		    return -1;
 		}
 
 		pn->symbol = PN_ARRAY;
-		ac_add(ps->frame->env, &ps->arrc,
-		       pn->u.arr = (ps->frame->sp++)->u.array);
-		arr_del(ps->frame->env, pn->u.arr);
+		ac_add(&ps->arrc, pn->u.arr = (ps->frame->sp++)->u.array);
+		arr_del(pn->u.arr);
 		pn->len = pn->u.arr->size;
 	    }
 	    return pn->len;
@@ -764,8 +751,7 @@ pnode *next;
 
 	    /* pass 2: create branch arrays */
 	    if (n != 1) {
-		ac_add(ps->frame->env, &ps->arrc, a = arr_new(ps->data,
-		       (long) n));
+		ac_add(&ps->arrc, a = arr_new(ps->data, (long) n));
 		v = a->elts;
 		memset(v, '\0', n * sizeof(value));
 	    }
@@ -782,7 +768,7 @@ pnode *next;
 			} else {
 			    PUT_ARRVAL(v, arr_new(ps->data, (long) sub->len));
 			    if (sub->len != 0) {
-				ps_flatten(ps->frame->env, sub, next,
+				ps_flatten(sub, next,
 					   v->u.array->elts + sub->len);
 			    }
 			}
@@ -820,7 +806,7 @@ register value *elts;
     register Uint len;
     short fasize, lrsize;
 
-    ps = IALLOC(f->env, parser, 1);
+    ps = ALLOC(parser, 1);
     ps->frame = f;
     ps->data = f->data;
     ps->data->parser = ps;
@@ -833,7 +819,7 @@ register value *elts;
 	for (i = fasize, len = 0; --i >= 0; ) {
 	    len += elts[i].u.string->len;
 	}
-	p = ps->fastr = IALLOC(f->env, char, len);
+	p = ps->fastr = ALLOC(char, len);
 	for (i = fasize; --i >= 0; ) {
 	    memcpy(p, elts->u.string->text, elts->u.string->len);
 	    p += (elts++)->u.string->len;
@@ -844,13 +830,13 @@ register value *elts;
 	len = (elts++)->u.string->len;
 	ps->fastr = (char *) NULL;
     }
-    ps->fa = dfa_load(f->env, ps->grammar->text, p, len);
+    ps->fa = dfa_load(ps->grammar->text, p, len);
 
     if (lrsize > 1) {
 	for (i = lrsize, len = 0; --i >= 0; ) {
 	    len += elts[i].u.string->len;
 	}
-	p = ps->lrstr = IALLOC(f->env, char, len);
+	p = ps->lrstr = ALLOC(char, len);
 	for (i = lrsize; --i >= 0; ) {
 	    memcpy(p, elts->u.string->text, elts->u.string->len);
 	    p += (elts++)->u.string->len;
@@ -861,7 +847,7 @@ register value *elts;
 	len = elts->u.string->len;
 	ps->lrstr = (char *) NULL;
     }
-    ps->lr = srp_load(f->env, ps->grammar->text, p, len);
+    ps->lr = srp_load(ps->grammar->text, p, len);
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
@@ -882,9 +868,8 @@ register value *elts;
  * NAME:	parser->save()
  * DESCRIPTION:	save parse_string data
  */
-void ps_save(ps, env)
+void ps_save(ps)
 register parser *ps;
-register lpcenv *env;
 {
     register value *v;
     register dataspace *data;
@@ -914,12 +899,12 @@ register lpcenv *env;
 
 	/* dfa */
 	if (ps->fastr != (char *) NULL && fastr != ps->fastr) {
-	    IFREE(env, ps->fastr);
+	    FREE(ps->fastr);
 	    ps->fastr = (char *) NULL;
 	}
 	do {
 	    len = (falen > USHRT_MAX) ? USHRT_MAX : falen;
-	    PUT_STRVAL(v, str_new(env, fastr, (long) len));
+	    PUT_STRVAL(v, str_new(fastr, (long) len));
 	    v++;
 	    fastr += len;
 	    falen -= len;
@@ -927,12 +912,12 @@ register lpcenv *env;
 
 	/* srp */
 	if (ps->lrstr != (char *) NULL && lrstr != ps->lrstr) {
-	    IFREE(env, ps->lrstr);
+	    FREE(ps->lrstr);
 	    ps->lrstr = (char *) NULL;
 	}
 	do {
 	    len = (lrlen > USHRT_MAX) ? USHRT_MAX : lrlen;
-	    PUT_STRVAL(v, str_new(env, lrstr, (long) len));
+	    PUT_STRVAL(v, str_new(lrstr, (long) len));
 	    v++;
 	    lrstr += len;
 	    lrlen -= len;
@@ -947,7 +932,7 @@ register lpcenv *env;
  * DESCRIPTION:	parse a string
  */
 array *ps_parse_string(f, source, str, maxalt)
-register frame *f;
+frame *f;
 string *source;
 string *str;
 Int maxalt;
@@ -983,29 +968,29 @@ Int maxalt;
     if (!same) {
 	/* new parser */
 	if (ps != (parser *) NULL) {
-	    ps_del(ps, f->env);
+	    ps_del(ps);
 	}
-	ps = ps_new(f, source, parse_grammar(f->env, source));
+	ps = ps_new(f, source, parse_grammar(source));
     }
 
     /*
      * parse string
      */
     ps->maxalt = maxalt;
-    if (ec_push(f->env, (ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) NULL)) {
 	/*
 	 * error occurred; clean up
 	 */
-	sn_clear(f->env, &ps->list);
-	pn_clear(f->env, ps->pnc);
+	sn_clear(&ps->list);
+	pn_clear(ps->pnc);
 	ps->pnc = (pnchunk *) NULL;
 
-	sc_clean(f->env, ps->strc);
+	sc_clean(ps->strc);
 	ps->strc = (strchunk *) NULL;
-	ac_clean(f->env, ps->arrc);
+	ac_clean(ps->arrc);
 	ps->arrc = (arrchunk *) NULL;
 
-	error(f->env, (char *) NULL);	/* pass on error */
+	error((char *) NULL);	/* pass on error */
     } else {
 	/*
 	 * do the parse thing
@@ -1013,7 +998,7 @@ Int maxalt;
 	i_add_ticks(ps->frame, 400);
 	toobig = FALSE;
 	pn = ps_parse(ps, str, &toobig);
-	sn_clear(f->env, &ps->list);
+	sn_clear(&ps->list);
 
 	/*
 	 * put result in array
@@ -1026,29 +1011,29 @@ Int maxalt;
 	    len = ps_traverse(ps, pn, pn->next);
 	    if (len >= 0) {
 		a = arr_new(data, (long) len);
-		ps_flatten(f->env, pn, pn->next, a->elts + len);
+		ps_flatten(pn, pn->next, a->elts + len);
 	    }
 
 	    /* clean up */
-	    sc_clean(f->env, ps->strc);
+	    sc_clean(ps->strc);
 	    ps->strc = (strchunk *) NULL;
-	    ac_clean(f->env, ps->arrc);
+	    ac_clean(ps->arrc);
 	    ps->arrc = (arrchunk *) NULL;
 	} else if (toobig) {
 	    /*
 	     * lexer or parser has become too big
 	     */
-	    ec_pop(f->env);
-	    pn_clear(f->env, ps->pnc);
+	    ec_pop();
+	    pn_clear(ps->pnc);
 	    ps->data->parser = (parser *) NULL;
-	    ps_del(ps, f->env);
+	    ps_del(ps);
 
-	    error(f->env, "Grammar too large");
+	    error("Grammar too large");
 	}
-	pn_clear(f->env, ps->pnc);
+	pn_clear(ps->pnc);
 	ps->pnc = (pnchunk *) NULL;
 
-	ec_pop(f->env);
+	ec_pop();
 
 	return a;
     }

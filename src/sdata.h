@@ -29,35 +29,35 @@ typedef struct _sstring_ {
 # define SS_LAYOUT	"iti"
 
 
-extern void		sd_init			P((struct _mempool_*));
+extern void		sd_init			(struct _mempool_*);
 
-extern control	       *sd_load_control		P((lpcenv*, object*));
-extern dataspace       *sd_load_dataspace	P((lpcenv*, object*));
+extern control	       *sd_load_control		(lpcenv*, object*);
+extern dataspace       *sd_load_dataspace	(lpcenv*, object*);
 
-extern sector		sd_get_csize		P((struct _scontrol_*));
-extern char	       *sd_get_prog		P((struct _scontrol_*, Uint*));
-extern dstrconst       *sd_get_strconsts	P((struct _scontrol_*));
-extern char	       *sd_get_ctext		P((struct _scontrol_*, Uint*));
-extern dfuncdef        *sd_get_funcdefs		P((struct _scontrol_*));
-extern dvardef	       *sd_get_vardefs		P((struct _scontrol_*));
-extern char	       *sd_get_funcalls		P((struct _scontrol_*));
-extern dsymbol	       *sd_get_symbols		P((struct _scontrol_*));
+extern sector		sd_get_csize		(struct _scontrol_*);
+extern char	       *sd_get_prog		(struct _scontrol_*, Uint*);
+extern dstrconst       *sd_get_strconsts	(struct _scontrol_*);
+extern char	       *sd_get_ctext		(struct _scontrol_*, Uint*);
+extern dfuncdef        *sd_get_funcdefs		(struct _scontrol_*);
+extern dvardef	       *sd_get_vardefs		(struct _scontrol_*);
+extern char	       *sd_get_funcalls		(struct _scontrol_*);
+extern dsymbol	       *sd_get_symbols		(struct _scontrol_*);
 
-extern sector		sd_get_dsize		P((struct _sdataspace_*));
-extern struct _svalue_ *sd_get_svariables	P((struct _sdataspace_*));
-extern struct _sstring_*sd_get_sstrings		P((struct _sdataspace_*));
-extern char	       *sd_get_dtext		P((struct _sdataspace_*,
-						   Uint*));
-extern struct _sarray_ *sd_get_sarrays		P((struct _sdataspace_*));
-extern struct _svalue_ *sd_get_selts		P((struct _sdataspace_*));
-extern void		sd_load_callouts	P((dataspace*));
+extern sector		sd_get_dsize		(struct _sdataspace_*);
+extern struct _svalue_ *sd_get_svariables	(struct _sdataspace_*);
+extern struct _sstring_*sd_get_sstrings		(struct _sdataspace_*);
+extern char	       *sd_get_dtext		(struct _sdataspace_*,
+						 Uint*));
+extern struct _sarray_ *sd_get_sarrays		(struct _sdataspace_*);
+extern struct _svalue_ *sd_get_selts		(struct _sdataspace_*);
+extern void		sd_load_callouts	(dataspace*);
 
-extern void		sd_save_control		P((lpcenv*, control*));
-extern bool		sd_save_dataspace	P((dataspace*, int, Uint*));
-extern void		sd_conv_control		P((unsigned int));
-extern void		sd_conv_dataspace	P((object*, Uint*));
+extern void		sd_save_control		(lpcenv*, control*);
+extern bool		sd_save_dataspace	(dataspace*, int, Uint*);
+extern void		sd_conv_control		(unsigned int);
+extern void		sd_conv_dataspace	(object*, Uint*);
 
-extern void		sd_del_scontrol		P((struct _scontrol_*));
-extern void		sd_del_sdataspace	P((struct _sdataspace_*));
-extern void		sd_free_scontrol	P((struct _scontrol_*));
-extern void		sd_free_sdataspace	P((struct _sdataspace_*));
+extern void		sd_del_scontrol		(struct _scontrol_*);
+extern void		sd_del_sdataspace	(struct _sdataspace_*);
+extern void		sd_free_scontrol	(struct _scontrol_*);
+extern void		sd_free_sdataspace	(struct _sdataspace_*);

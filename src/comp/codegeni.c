@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "table.h"
 # include "node.h"
 # include "control.h"
@@ -40,7 +40,7 @@ int byte;
 	    l = fline;
 	    fline = l->next;
 	} else {
-	    l = CALLOC(linechunk, 1);
+	    l = ALLOC(linechunk, 1);
 	}
 	l->next = (linechunk *) NULL;
 	if (tline != (linechunk *) NULL) {
@@ -128,7 +128,7 @@ static void line_clear()
     for (l = fline; l != (linechunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	CFREE(f);
+	FREE(f);
     }
     fline = (linechunk *) NULL;
 }
@@ -163,7 +163,7 @@ char byte;
 	    l = fcode;
 	    fcode = l->next;
 	} else {
-	    l = CALLOC(codechunk, 1);
+	    l = ALLOC(codechunk, 1);
 	}
 	l->next = (codechunk *) NULL;
 	if (tcode != (codechunk *) NULL) {
@@ -229,7 +229,7 @@ int nlocals;
     if (sz > USHRT_MAX) {
 	c_error("function too large");
     }
-    code = CALLOC(char, sz);
+    code = ALLOC(char, sz);
     *code++ = depth >> 8;
     *code++ = depth;
     *code++ = nlocals;
@@ -269,7 +269,7 @@ static void code_clear()
     for (l = fcode; l != (codechunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	CFREE(f);
+	FREE(f);
     }
     fcode = (codechunk *) NULL;
 
@@ -316,7 +316,7 @@ jmplist *list;
 	    l = fjump;
 	    fjump = l->next;
 	} else {
-	    l = CALLOC(jmpchunk, 1);
+	    l = ALLOC(jmpchunk, 1);
 	}
 	l->next = ljump;
 	ljump = l;
@@ -436,7 +436,7 @@ static void jump_clear()
     for (l = fjump; l != (jmpchunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	CFREE(f);
+	FREE(f);
     }
     fjump = (jmpchunk *) NULL;
 }
@@ -1504,7 +1504,7 @@ register node *n;
     code_byte(sz);
 
     table = switch_table;
-    switch_table = CALLOCA(case_label, size);
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
@@ -1546,7 +1546,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1585,7 +1585,7 @@ register node *n;
     code_byte(sz);
 
     table = switch_table;
-    switch_table = CALLOCA(case_label, size);
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     do {
@@ -1644,7 +1644,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 
@@ -1681,7 +1681,7 @@ register node *n;
     code_word(size);
 
     table = switch_table;
-    switch_table = CALLOCA(case_label, size);
+    switch_table = ALLOCA(case_label, size);
     switch_table[0].jump = jump_addr((jmplist *) NULL);
     i = 1;
     if (m->l.left->type == nil_node) {
@@ -1720,7 +1720,7 @@ register node *n;
     for (i = 0; i < size; i++) {
 	jump_resolve(switch_table[i].jump, switch_table[i].where);
     }
-    CFREEA(switch_table);
+    AFREE(switch_table);
     switch_table = table;
 }
 

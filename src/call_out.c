@@ -4,8 +4,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "call_out.h"
 
 # define CYCBUF_SIZE	128		/* cyclic buffer size, power of 2 */
@@ -23,10 +23,10 @@ typedef struct {
 # define next		time
 # define count		mtime
 
-typedef struct _cbuf_ {
+struct _cbuf_ {
     uindex list;	/* list */
     uindex last;	/* last in list */
-} cbuf;
+};
 
 static char cb_layout[] = "uu";
 
@@ -60,12 +60,12 @@ unsigned int max;
 {
     if (max != 0) {
 	/* only if callouts are enabled */
-	cotab = SALLOC(call_out, max + 1);
+	cotab = ALLOC(call_out, max + 1);
 	cotab[0].time = 0;	/* sentinel for the heap */
 	cotab++;
 	flist = 0;
-	if ((P_time() >> 24) <= 1) {
-	    message("Config error: bad time (early seventies)\012");	/* LF */
+	if (P_time() >> 24 <= 1) {
+	    message("Config error: bad time (early seventies)");
 	    return FALSE;
 	}
 	timestamp = timeout = 0;
@@ -375,8 +375,7 @@ unsigned short *mtime;
  * NAME:	call_out->check()
  * DESCRIPTION:	check if, and how, a new callout can be added
  */
-Uint co_check(env, n, delay, mdelay, tp, mp, qp)
-lpcenv *env;
+Uint co_check(n, delay, mdelay, tp, mp, qp)
 unsigned int n, mdelay;
 Int delay;
 Uint *tp;
@@ -395,7 +394,7 @@ cbuf **qp;
     }
 
     if (queuebrk + (uindex) n == cycbrk || cycbrk - (uindex) n == 1) {
-	error(env, "Too many callouts");
+	error("Too many callouts");
     }
 
     if (delay == 0 && (mdelay == 0 || mdelay == 0xffff)) {
@@ -411,7 +410,7 @@ cbuf **qp;
 	 */
 	t = co_time(mp);
 	if (t + delay + 1 <= t) {
-	    error(env, "Too long delay");
+	    error("Too long delay");
 	}
 	t += delay;
 	if (mdelay != 0xffff) {
@@ -521,7 +520,7 @@ register Uint t;
     } else {
 	/* encoded millisecond */
 	t = decode(t, &m);
-	if (t > time || (t == time && m > mtime)) {
+	if (t > time || t == time && m > mtime) {
 	    return -2 - (t - time) * 1000 - m + mtime;
 	}
     }
@@ -585,8 +584,7 @@ Uint t;
  * NAME:	call_out->list()
  * DESCRIPTION:	adjust callout delays in array
  */
-void co_list(env, a)
-register lpcenv *env;
+void co_list(a)
 array *a;
 {
     register value *v, *w;
@@ -606,9 +604,9 @@ array *a;
 	case 1:
 	    /* encoded millisecond */
 	    t = decode((Uint) w->u.number, &m);
-	    if (t > time || (t == time && m > mtime)) {
-		flt_itof(env, (Int) (t - time) * 1000 + m - mtime, &flt);
-		flt_mult(env, &flt, &thousandth);
+	    if (t > time || t == time && m > mtime) {
+		flt_itof((Int) (t - time) * 1000 + m - mtime, &flt);
+		flt_mult(&flt, &thousandth);
 		PUT_FLTVAL(w, flt);
 	    } else {
 		w->u.number = 0;
@@ -712,7 +710,7 @@ static void co_expire()
  * DESCRIPTION:	call expired callouts
  */
 void co_call(f)
-register frame *f;
+frame *f;
 {
     register uindex i, handle;
     object *obj;
@@ -727,7 +725,7 @@ register frame *f;
 	/*
 	 * callouts to do
 	 */
-	while (ec_push(f->env, (ec_ftn) errhandler)) {
+	while (ec_push((ec_ftn) errhandler)) {
 	    endthread();
 	}
 	while ((i=running.list) != 0) {
@@ -735,19 +733,19 @@ register frame *f;
 	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
 
-	    str = d_get_call_out(o_dataspace(f->env, obj), handle, f, &nargs);
+	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
 	    if (i_call(f, obj, (array *) NULL, str->text, str->len, TRUE,
 		       nargs)) {
 		/* function exists */
-		i_del_value(f->env, f->sp++);
-		str_del(f->env, (f->sp++)->u.string);
+		i_del_value(f->sp++);
+		str_del((f->sp++)->u.string);
 	    } else {
 		/* function doesn't exist */
-		str_del(f->env, (f->sp++)->u.string);
+		str_del((f->sp++)->u.string);
 	    }
 	    endthread();
 	}
-	ec_pop(f->env);
+	ec_pop();
     }
 }
 
@@ -854,8 +852,7 @@ static char dco_layout[] = "uui";
  * NAME:	call_out->dump()
  * DESCRIPTION:	dump callout table
  */
-bool co_dump(env, fd)
-lpcenv *env;
+bool co_dump(fd)
 int fd;
 {
     dump_header dh;
@@ -883,7 +880,7 @@ int fd;
     /* copy callouts */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	dc = IALLOCA(env, dump_callout, n);
+	dc = ALLOCA(dump_callout, n);
 	for (co = cotab, n = queuebrk; n != 0; co++, --n) {
 	    dc->handle = co->handle;
 	    dc->oindex = co->oindex;
@@ -926,7 +923,7 @@ int fd;
 	   P_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 
     if (n != 0) {
-	IFREEA(env, dc);
+	AFREE(dc);
     }
 
     if (nzero != 0) {
@@ -940,8 +937,7 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
-void co_restore(env, fd, t)
-lpcenv *env;
+void co_restore(fd, t)
 int fd;
 register Uint t;
 {
@@ -959,13 +955,13 @@ register Uint t;
     offset = cotabsz - dh.cotabsz;
     cycbrk = dh.cycbrk + offset;
     if (queuebrk > cycbrk + offset || cycbrk == 0) {
-	error(env, "Restored too many callouts");
+	error("Restored too many callouts");
     }
 
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	dc = IALLOCA(env, dump_callout, n);
+	dc = ALLOCA(dump_callout, n);
 	conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
     }
     conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
@@ -997,7 +993,7 @@ register Uint t;
 	    dc++;
 	}
 	dc -= n;
-	IFREEA(env, dc);
+	AFREE(dc);
     }
 
     /* cycle around cyclic buffer */

@@ -1,4 +1,3 @@
-extern void	 c_pool		P((struct _mempool_*));
 extern void	 c_init		P((char*, char*, char*, char**, int));
 extern object	*c_compile	P((frame*, char*, object*, string*));
 extern bool	 c_upgrade	P((object**, unsigned int));

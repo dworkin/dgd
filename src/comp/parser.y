@@ -12,7 +12,6 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
 # include "macro.h"
 # include "token.h"
@@ -160,20 +159,20 @@ opt_inherit_label
 
 ident
 	: IDENTIFIER
-		{ $$ = node_str(str_new(compenv, yytext, (long) yyleng)); }
+		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
 	;
 
 inherit_string
 	: string
 	| inherit_string '+' string
-		{ $$ = node_str(str_add(compenv, $1->l.string, $3->l.string)); }
+		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
 	| '(' inherit_string ')'
 		{ $$ = $2; }
 	;
 
 string
 	: STRING_CONST
-		{ $$ = node_str(str_new(compenv, yytext, (long) yyleng)); }
+		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
 	;
 
 data_declaration
@@ -865,7 +864,7 @@ register unsigned int type;
 	    case N_FLOAT:
 		/* cast float constant to int */
 		NFLT_GET(n, flt);
-		return node_int(flt_ftoi(compenv, &flt));
+		return node_int(flt_ftoi(&flt));
 
 	    case N_STR:
 		/* cast string to int */
@@ -898,13 +897,13 @@ register unsigned int type;
 	    switch (n->type) {
 	    case N_INT:
 		/* cast int constant to float */
-		flt_itof(compenv, n->l.number, &flt);
+		flt_itof(n->l.number, &flt);
 		return node_float(&flt);
 
 	    case N_STR:
 		/* cast string to float */
 		p = n->l.string->text;
-		if (flt_atof(compenv, &p, &flt) &&
+		if (flt_atof(&p, &flt) &&
 		    p == n->l.string->text + n->l.string->len) {
 		    return node_float(&flt);
 		} else {
@@ -932,15 +931,13 @@ register unsigned int type;
 	    case N_INT:
 		/* cast int constant to string */
 		sprintf(buffer, "%ld", (long) n->l.number);
-		return node_str(str_new(compenv, buffer,
-					(long) strlen(buffer)));
+		return node_str(str_new(buffer, (long) strlen(buffer)));
 
 	    case N_FLOAT:
 		/* cast float constant to string */
 		NFLT_GET(n, flt);
 		flt_ftoa(&flt, buffer);
-		return node_str(str_new(compenv, buffer,
-					(long) strlen(buffer)));
+		return node_str(str_new(buffer, (long) strlen(buffer)));
 
 	    default:
 		if (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_MIXED) {
@@ -982,7 +979,7 @@ register node *n1, *n2;
 	    c_error("string index out of range");
 	} else {
 	    n2->l.number =
-		    UCHAR(n1->l.string->text[str_index(compenv, n1->l.string,
+		    UCHAR(n1->l.string->text[str_index(n1->l.string,
 						       (long) n2->l.number)]);
 	}
 	return n2;
@@ -1037,8 +1034,7 @@ register node *n1, *n2, *n3;
 	if (from < 0 || from > to + 1 || to >= n1->l.string->len) {
 	    c_error("invalid string range");
 	} else {
-	    return node_str(str_range(compenv, n1->l.string, (long) from,
-				      (long) to));
+	    return node_str(str_range(n1->l.string, (long) from, (long) to));
 	}
     }
 
@@ -1140,7 +1136,7 @@ char *name;
     if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_mult(compenv, &f1, &f2);
+	flt_mult(&f1, &f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1187,7 +1183,7 @@ char *name;
 	}
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_div(compenv, &f1, &f2);
+	flt_div(&f1, &f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1267,13 +1263,13 @@ char *name;
 	/* f + f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_add(compenv, &f1, &f2);
+	flt_add(&f1, &f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
     if (n1->type == N_STR && n2->type == N_STR) {
 	/* s + s */
-	return node_str(str_add(compenv, n1->l.string, n2->l.string));
+	return node_str(str_add(n1->l.string, n2->l.string));
     }
 
     type = c_tmatch(n1->mod, n2->mod);
@@ -1323,7 +1319,7 @@ char *name;
 	/* f - f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_sub(compenv, &f1, &f2);
+	flt_sub(&f1, &f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1721,7 +1717,7 @@ register node *n1, *n2, *n3;
 	    return n2;
 
 	case N_NIL:
-	    return n1;
+	    return n3;
 	}
     }
 

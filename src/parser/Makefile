@@ -25,7 +25,7 @@ clean:
 	rm -f dgd comp $(OBJ)
 
 
-$(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../scheduler.h
+$(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h
 grammar.o dfa.o: ../hash.h ../str.h
 parse.o: ../str.h ../array.h ../object.h ../interpret.h ../data.h
 

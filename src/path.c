@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "path.h"
 # include "node.h"
 # include "compile.h"
@@ -93,24 +93,23 @@ register char *buf, *from, *file;
  * NAME:	path->ed_read()
  * DESCRIPTION:	resolve an editor read file path
  */
-char *path_ed_read(env, buf, file)
-register lpcenv *env;
+char *path_ed_read(buf, file)
 char *buf, *file;
 {
     register frame *f;
 
-    f = env->ie->cframe;
-    if (OBJR(env, f->oindex)->flags & O_DRIVER) {
+    f = cframe;
+    if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	PUSH_STRVAL(f, str_new(env, file, (long) strlen(file)));
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
 	call_driver_object(f, "path_read", 1);
 	if (f->sp->type != T_STRING) {
-	    i_del_value(env, f->sp++);
+	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->u.string->text);
-	str_del(env, (f->sp++)->u.string);
+	str_del((f->sp++)->u.string);
 	return buf;
     }
 }
@@ -119,24 +118,23 @@ char *buf, *file;
  * NAME:	path->ed_write()
  * DESCRIPTION:	resolve an editor write file path
  */
-char *path_ed_write(env, buf, file)
-register lpcenv *env;
+char *path_ed_write(buf, file)
 char *buf, *file;
 {
     register frame *f;
 
-    f = env->ie->cframe;
-    if (OBJR(env, f->oindex)->flags & O_DRIVER) {
+    f = cframe;
+    if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	PUSH_STRVAL(f, str_new(env, file, (long) strlen(file)));
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
 	call_driver_object(f, "path_write", 1);
 	if (f->sp->type != T_STRING) {
-	    i_del_value(env, f->sp++);
+	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->u.string->text);
-	str_del(env, (f->sp++)->u.string);
+	str_del((f->sp++)->u.string);
 	return buf;
     }
 }
@@ -145,8 +143,7 @@ char *buf, *file;
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */
-char *path_include(env, buf, from, file)
-register lpcenv *env;
+char *path_include(buf, from, file)
 char *buf, *from, *file;
 {
     register frame *f;
@@ -154,20 +151,20 @@ char *buf, *from, *file;
     if (c_autodriver()) {
 	return path_from(buf, from, file);
     }
-    f = env->ie->cframe;
-    PUSH_STRVAL(f, str_new(env, (char *) NULL, strlen(from) + 1L));
+    f = cframe;
+    PUSH_STRVAL(f, str_new((char *) NULL, strlen(from) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, from);
-    PUSH_STRVAL(f, str_new(env, file, (long) strlen(file)));
+    PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
     if (!call_driver_object(f, "path_include", 2)) {
 	f->sp++;
 	return path_from(buf, from, file);
     }
     if (f->sp->type != T_STRING) {
-	i_del_value(env, f->sp++);
+	i_del_value(f->sp++);
 	return (char *) NULL;
     }
     path_resolve(buf, f->sp->u.string->text);
-    str_del(env, (f->sp++)->u.string);
+    str_del((f->sp++)->u.string);
     return buf;
 }

@@ -206,7 +206,7 @@ static bool ipa_init(int maxusers)
 	return FALSE;
     }
 
-    ipahtab = SALLOC(ipaddr*, ipahtabsz = maxusers);
+    ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
     memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
     qhead = qtail = ffirst = flast = lastreq = (ipaddr *) NULL;
     nfree = 0;
@@ -314,7 +314,9 @@ static ipaddr *ipa_new(unsigned long ipnum)
 	/*
 	 * allocate new ipaddr
 	 */
-	ipa = SALLOC(ipaddr, 1);
+	m_static();
+	ipa = ALLOC(ipaddr, 1);
+	m_dynamic();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -432,11 +434,11 @@ static void ipa_lookup()
 
 # define TCPBUFSZ	8192
 
-typedef struct _connection_ {
-    struct _connection_ *next;		/* next in list */
+struct _connection_ {
+    connection *next;			/* next in list */
     short qType;			/* queue type */
-    struct _connection_ *prev;		/* prev in list */
-    struct _connection_ *hash;		/* next in hashed list */
+    connection *prev;			/* prev in list */
+    connection *hash;			/* next in hashed list */
     char dflag;				/* data arrival flag */
     char cflags;			/* closing/closed flags */
     char sflags;			/* status flags */
@@ -447,7 +449,7 @@ typedef struct _connection_ {
     char *udpbuf;			/* UDP read buffer */
     TCPiopb iobuf;			/* I/O parameter buffer */
     struct wdsEntry wds[2];		/* WDS */
-} connection;
+};
 
 # define TCP_DATA	0x01		/* data available */
 # define TCP_CLOSING	0x01		/* shutdown on other side */
@@ -621,7 +623,7 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	tcpbufsz = TCPBUFSZ;
     }
     udpbuf.csCode = UDPCreate;
-    udpbuf.csParam.create.rcvBuff = (Ptr) SALLOC(char, 32768);
+    udpbuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, 32768);
     udpbuf.csParam.create.rcvBuffLen = 32768;
     udpbuf.csParam.create.notifyProc = NULL;
     udpbuf.csParam.create.localPort = b_port;
@@ -629,25 +631,25 @@ bool conn_init(int nusers, unsigned int t_port, unsigned int b_port)
 	P_message("Config error: cannot open UDP port\012");	/* LF */
 	return FALSE;
     }
-    udphtab = SALLOC(connection*, udphtabsz = nusers);
+    udphtab = ALLOC(connection*, udphtabsz = nusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
 
     /* initialize TCP streams */
     if (nusers < 2) {
 	nusers = 2;
     }
-    conn = SALLOC(connection, nusers);
+    conn = ALLOC(connection, nusers);
     while (--nusers >= 0) {
 	/* open TCP stream */
 	conn->iobuf.ioCRefNum = device.ioRefNum;
 	conn->iobuf.csCode = TCPCreate;
-	conn->iobuf.csParam.create.rcvBuff = (Ptr) SALLOC(char, tcpbufsz);
+	conn->iobuf.csParam.create.rcvBuff = (Ptr) ALLOC(char, tcpbufsz);
 	conn->iobuf.csParam.create.rcvBuffLen = tcpbufsz;
 	conn->iobuf.csParam.create.notifyProc = asr;
 	conn->iobuf.csParam.create.userDataPtr = (Ptr) conn;
 	if (PBControlSync((ParmBlkPtr) &conn->iobuf) != noErr) {
 	    /* failed (too many TCP streams?) */
-	    SFREE(conn->iobuf.csParam.create.rcvBuff);
+	    FREE(conn->iobuf.csParam.create.rcvBuff);
 	    break;
 	}
 	conn->iobuf.ioCompletion = tcpcompletion;
@@ -758,7 +760,9 @@ static connection *conn_accept(QHdr *queue, unsigned int portno)
 	conn->ssize = 0;
 	conn->udpbuf = (char *) NULL;
 	conn->wds[0].length = 0;
-	conn->wds[0].ptr = (Ptr) SALLOC(char, tcpbufsz);
+	m_static();
+	conn->wds[0].ptr = (Ptr) ALLOC(char, tcpbufsz);
+	m_dynamic();
 	conn->wds[1].length = 0;
 	conn->wds[1].ptr = NULL;
 	return conn;
@@ -793,7 +797,9 @@ void conn_udp(connection *conn)
 {
     connection **hash;
 
-    conn->udpbuf = SALLOC(char, BINBUF_SIZE);
+    m_static();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+    m_dynamic();
     conn->bufsz = -1;
 
     hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
@@ -878,10 +884,10 @@ void conn_del(connection *conn)
     }
 
     /* prepare for new use */
-    SFREE(conn->wds[0].ptr);
+    FREE(conn->wds[0].ptr);
     conn->iobuf.ioCompletion = tcpcompletion;
     if (conn->udpbuf != (char *) NULL) {
-	SFREE(conn->udpbuf);
+	FREE(conn->udpbuf);
 
 	for (hash = &udphtab[(conn->addr->ipnum ^ conn->port) % udphtabsz];
 	     *hash != conn;

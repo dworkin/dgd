@@ -8,12 +8,10 @@ typedef struct _control_ control;
 typedef struct _dataplane_ dataplane;
 typedef struct _dataspace_ dataspace;
 typedef struct _frame_ frame;
-typedef struct _lpcenv_ lpcenv;
 
 # include "config.h"
 # include "alloc.h"
 # include "error.h"
-# include "scheduler.h"
 
 # define BSET(map, bit)		(map[(bit) >> 3] |= (1 << ((bit) & 7)))
 # define BCLR(map, bit)		(map[(bit) >> 3] &= ~(1 << ((bit) & 7)))

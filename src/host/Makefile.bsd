@@ -44,6 +44,6 @@ connect.c: unix/connect.c
 xfloat.c: simfloat.c
 	cp simfloat.c $@
 
-$(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h ../scheduler.h
+$(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
 connect.o: ../comm.h
 xfloat.o: ../xfloat.h

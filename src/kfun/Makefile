@@ -25,8 +25,8 @@ clean:
 	rm -f dgd comp table.o $(OBJ)
 
 
-$(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../scheduler.h
-$(OBJ): ../str.h ../array.h ../object.h ../xfloat.h ../interpret.h ../data.h
+$(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../str.h ../array.h
+$(OBJ): ../object.h ../xfloat.h ../interpret.h ../data.h
 std.o file.o: ../path.h ../editor.h
 std.o: ../comm.h ../call_out.h
 file.o: ../editor.h

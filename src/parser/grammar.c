@@ -470,8 +470,7 @@ typedef struct _rlchunk_ {
  * NAME:	rulesym->new()
  * DESCRIPTION:	allocate a new rulesym
  */
-static rulesym *rs_new(env, c, rl)
-lpcenv *env;
+static rulesym *rs_new(c, rl)
 register rschunk **c;
 rule *rl;
 {
@@ -480,7 +479,7 @@ rule *rl;
     if (*c == (rschunk *) NULL || (*c)->chunksz == RSCHUNKSZ) {
 	rschunk *x;
 
-	x = IALLOC(env, rschunk, 1);
+	x = ALLOC(rschunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -496,8 +495,7 @@ rule *rl;
  * NAME:	rulesym->clear()
  * DESCRIPTION:	free all rulesyms
  */
-static void rs_clear(env, c)
-register lpcenv *env;
+static void rs_clear(c)
 register rschunk *c;
 {
     register rschunk *f;
@@ -505,7 +503,7 @@ register rschunk *c;
     while (c != (rschunk *) NULL) {
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
 }
 
@@ -513,8 +511,7 @@ register rschunk *c;
  * NAME:	rule->new()
  * DESCRIPTION:	allocate a new rule
  */
-static rule *rl_new(env, c, type)
-lpcenv *env;
+static rule *rl_new(c, type)
 register rlchunk **c;
 int type;
 {
@@ -523,7 +520,7 @@ int type;
     if (*c == (rlchunk *) NULL || (*c)->chunksz == RLCHUNKSZ) {
 	rlchunk *x;
 
-	x = IALLOC(env, rlchunk, 1);
+	x = ALLOC(rlchunk, 1);
 	x->next = *c;
 	*c = x;
 	x->chunksz = 0;
@@ -545,8 +542,7 @@ int type;
  * NAME:	rule->clear()
  * DESCRIPTION:	free all rules
  */
-static void rl_clear(env, c)
-register lpcenv *env;
+static void rl_clear(c)
 register rlchunk *c;
 {
     register rlchunk *f;
@@ -556,18 +552,18 @@ register rlchunk *c;
     while (c != (rlchunk *) NULL) {
 	for (rl = c->rl, i = c->chunksz; i != 0; rl++, --i) {
 	    if (rl->symb != (string *) NULL) {
-		str_del(env, rl->symb);
+		str_del(rl->symb);
 	    }
 	    if (rl->type == RULE_REGEXP && rl->u.rgx != (string *) NULL) {
-		str_del(env, rl->u.rgx);
+		str_del(rl->u.rgx);
 	    }
 	    if (rl->func != (string *) NULL) {
-		str_del(env, rl->func);
+		str_del(rl->func);
 	    }
 	}
 	f = c;
 	c = c->next;
-	IFREE(env, f);
+	FREE(f);
     }
 }
 
@@ -611,9 +607,7 @@ register rlchunk *c;
  * NAME:	make_grammar()
  * DESCRIPTION:	create a pre-processed grammar string
  */
-static string *make_grammar(env, rgxlist, strlist, prodlist, nrgx, nstr, nprod,
-			    size)
-lpcenv *env;
+static string *make_grammar(rgxlist, strlist, prodlist, nrgx, nstr, nprod, size)
 rule *rgxlist, *strlist, *prodlist;
 int nrgx, nstr, nprod;
 long size;
@@ -625,7 +619,7 @@ long size;
     register rulesym *rs;
     register int n;
 
-    gram = str_new(env, (char *) NULL, size);
+    gram = str_new((char *) NULL, size);
 
     /* header */
     p = gram->text;
@@ -737,8 +731,7 @@ long size;
  * NAME:	parse_grammar()
  * DESCRIPTION:	check the grammar, return a pre-processed version
  */
-string *parse_grammar(env, gram)
-register lpcenv *env;
+string *parse_grammar(gram)
 string *gram;
 {
     char buffer[STRINGSZ];
@@ -756,8 +749,8 @@ string *gram;
     register unsigned int len;
 
     /* initialize */
-    ruletab = ht_new(env->mp, PARSERULTABSZ, PARSERULHASHSZ);
-    strtab = ht_new(env->mp, PARSERULTABSZ, PARSERULHASHSZ);
+    ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ);
+    strtab = ht_new(PARSERULTABSZ, PARSERULHASHSZ);
     rschunks = (rschunk *) NULL;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = prodlist = tmplist = (rule *) NULL;
@@ -795,7 +788,7 @@ string *gram;
 		    rgxlist = rl;
 		} else if ((*r)->type == RULE_REGEXP) {
 		    /* new alternative regexp */
-		    rl = rl_new(env, &rlchunks, RULE_REGEXP);
+		    rl = rl_new(&rlchunks, RULE_REGEXP);
 
 		    *((*r)->last) = rl;
 		    (*r)->last = &rl->alt;
@@ -807,8 +800,8 @@ string *gram;
 		}
 	    } else {
 		/* new rule */
-		rl = rl_new(env, &rlchunks, RULE_REGEXP);
-		str_ref(rl->symb = str_new(env, buffer, (long) buflen));
+		rl = rl_new(&rlchunks, RULE_REGEXP);
+		str_ref(rl->symb = str_new(buffer, (long) buflen));
 		rl->chain.name = rl->symb->text;
 		rl->chain.next = (hte *) *r;
 		*r = rl;
@@ -821,7 +814,7 @@ string *gram;
 
 	    switch (gramtok(gram, &glen, buffer, &buflen)) {
 	    case TOK_REGEXP:
-		str_ref(rl->u.rgx = str_new(env, buffer, (long) buflen));
+		str_ref(rl->u.rgx = str_new(buffer, (long) buflen));
 		(*r)->num++;
 		(*r)->len += buflen;
 		size += buflen + 1;
@@ -883,7 +876,7 @@ string *gram;
 		    prodlist = rl;
 		} else if ((*r)->type == RULE_PROD) {
 		    /* new alternative production */
-		    rl = rl_new(env, &rlchunks, RULE_PROD);
+		    rl = rl_new(&rlchunks, RULE_PROD);
 
 		    *((*r)->last) = rl;
 		    (*r)->last = &rl->alt;
@@ -894,8 +887,8 @@ string *gram;
 		}
 	    } else {
 		/* new rule */
-		rl = rl_new(env, &rlchunks, RULE_PROD);
-		str_ref(rl->symb = str_new(env, buffer, (long) buflen));
+		rl = rl_new(&rlchunks, RULE_PROD);
+		str_ref(rl->symb = str_new(buffer, (long) buflen));
 		rl->chain.name = rl->symb->text;
 		rl->chain.next = (hte *) *r;
 		*r = rl;
@@ -919,8 +912,8 @@ string *gram;
 		    r = (rule **) ht_lookup(ruletab, buffer, TRUE);
 		    if (*r == (rule *) NULL) {
 			/* new unknown rule */
-			rl = rl_new(env, &rlchunks, RULE_UNKNOWN);
-			str_ref(rl->symb = str_new(env, buffer, (long) buflen));
+			rl = rl_new(&rlchunks, RULE_UNKNOWN);
+			str_ref(rl->symb = str_new(buffer, (long) buflen));
 			rl->chain.name = rl->symb->text;
 			rl->chain.next = (hte *) *r;
 			*r = rl;
@@ -934,7 +927,7 @@ string *gram;
 			/* previously known rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(env, &rschunks, rl);
+		    *rs = rs_new(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
 		    continue;
@@ -953,8 +946,8 @@ string *gram;
 		    }
 		    if (*r == (rule *) NULL) {
 			/* new string rule */
-			rl = rl_new(env, &rlchunks, RULE_STRING);
-			str_ref(rl->symb = str_new(env, buffer, (long) buflen));
+			rl = rl_new(&rlchunks, RULE_STRING);
+			str_ref(rl->symb = str_new(buffer, (long) buflen));
 			rl->chain.name = rl->symb->text;
 			rl->chain.next = (hte *) *r;
 			*r = rl;
@@ -967,7 +960,7 @@ string *gram;
 			/* existing string rule */
 			rl = *r;
 		    }
-		    *rs = rs_new(env, &rschunks, rl);
+		    *rs = rs_new(&rschunks, rl);
 		    rs = &(*rs)->next;
 		    len += 2;
 		    continue;
@@ -981,7 +974,7 @@ string *gram;
 				ruleno);
 			goto err;
 		    }
-		    str_ref(rrl->func = str_new(env, buffer, (long) buflen));
+		    str_ref(rrl->func = str_new(buffer, (long) buflen));
 		    len += buflen + 1;
 
 		    token = gramtok(gram, &glen, buffer, &buflen);
@@ -1021,12 +1014,12 @@ string *gram;
 		strcpy(buffer, "Grammar too large");
 		goto err;
 	    }
-	    gram = make_grammar(env, rgxlist, strlist, prodlist, nrgx, nstr,
-				nprod, size);
-	    rs_clear(env, rschunks);
-	    rl_clear(env, rlchunks);
-	    ht_del(env->mp, strtab);
-	    ht_del(env->mp, ruletab);
+	    gram = make_grammar(rgxlist, strlist, prodlist, nrgx, nstr, nprod,
+				size);
+	    rs_clear(rschunks);
+	    rl_clear(rlchunks);
+	    ht_del(strtab);
+	    ht_del(ruletab);
 	    return gram;
 
 	case TOK_ERROR:
@@ -1060,9 +1053,9 @@ string *gram;
     }
 
 err:
-    rs_clear(env, rschunks);
-    rl_clear(env, rlchunks);
-    ht_del(env->mp, strtab);
-    ht_del(env->mp, ruletab);
-    error(env, buffer);
+    rs_clear(rschunks);
+    rl_clear(rlchunks);
+    ht_del(strtab);
+    ht_del(ruletab);
+    error(buffer);
 }

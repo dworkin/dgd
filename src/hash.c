@@ -45,15 +45,13 @@ char strhashtab[] = {
  * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
  *		of each string are significant
  */
-hashtab *ht_new(pool, size, maxlen)
-struct _mempool_ *pool;
+hashtab *ht_new(size, maxlen)
 register unsigned int size;
 unsigned int maxlen;
 {
     register hashtab *ht;
 
-    ht = (hashtab *) ALLOC(pool, char,
-			   sizeof(hashtab) + sizeof(hte*) * (size - 1));
+    ht = (hashtab *) ALLOC(char, sizeof(hashtab) + sizeof(hte*) * (size - 1));
     ht->size = size;
     ht->maxlen = maxlen;
     memset(ht->table, '\0', size * sizeof(hte*));
@@ -65,11 +63,10 @@ unsigned int maxlen;
  * NAME:	hashtab->del()
  * DESCRIPTION:	delete a hash table
  */
-void ht_del(pool, ht)
-struct _mempool_ *pool;
+void ht_del(ht)
 hashtab *ht;
 {
-    FREE(pool, ht);
+    FREE(ht);
 }
 
 /*

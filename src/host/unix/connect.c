@@ -120,7 +120,7 @@ int maxusers;
 	read(in, buf, MAXHOSTNAMELEN);
     }
 
-    ipahtab = SALLOC(ipaddr*, ipahtabsz = maxusers);
+    ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
     memset(ipahtab, '\0', ipahtabsz * sizeof(ipaddr*));
     qhead = qtail = ffirst = flast = lastreq = (ipaddr *) NULL;
     nfree = 0;
@@ -224,7 +224,9 @@ struct in_addr *ipnum;
 	/*
 	 * allocate new ipaddr
 	 */
-	ipa = SALLOC(ipaddr, 1);
+	m_static();
+	ipa = ALLOC(ipaddr, 1);
+	m_dynamic();
 
 	/* put in hash table */
 	ipa->link = *hash;
@@ -329,14 +331,14 @@ static void ipa_lookup()
 }
 
 
-typedef struct _connection_ {
+struct _connection_ {
     int fd;				/* file descriptor */
     int bufsz;				/* # bytes in buffer */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* port of connection */
     struct _connection_ *next;		/* next in list */
-} connection;
+};
 
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */
@@ -445,14 +447,14 @@ unsigned int telnet_port, binary_port;
     }
 
     flist = (connection *) NULL;
-    connections = SALLOC(connection, nusers = maxusers);
+    connections = ALLOC(connection, nusers = maxusers);
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = -1;
 	conn->next = flist;
 	flist = conn;
     }
 
-    udphtab = SALLOC(connection*, udphtabsz = maxusers);
+    udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
 
     FD_ZERO(&infds);
@@ -598,7 +600,9 @@ register connection *conn;
 {
     register connection **hash;
 
-    conn->udpbuf = SALLOC(char, BINBUF_SIZE);
+    m_static();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+    m_dynamic();
     conn->bufsz = -1;
 
     hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) % udphtabsz];
@@ -625,7 +629,7 @@ register connection *conn;
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
-	SFREE(conn->udpbuf);
+	FREE(conn->udpbuf);
 
 	for (hash = &udphtab[((Uint) conn->addr->ipnum.s_addr ^ conn->port) %
 			     udphtabsz];

@@ -19,13 +19,12 @@ typedef struct _strhchunk_ {
     strh sh[STR_CHUNK];		/* chunk of strh entries */
 } strhchunk;
 
-typedef struct _strmerge_ {
-    lpcenv *env;		/* LPC environment */
+struct _strmerge_ {
     hashtab *ht;		/* string merge table */
     strh **slink;		/* linked list of merged strings */
     strhchunk *shlist;		/* list of all strh chunks */
     int strhchunksz;		/* size of current strh chunk */
-} strmerge;
+};
 
 
 /*
@@ -33,8 +32,7 @@ typedef struct _strmerge_ {
  * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
  *		case it must be filled in later.
  */
-string *str_alloc(env, text, len)
-lpcenv *env;
+string *str_alloc(text, len)
 char *text;
 register long len;
 {
@@ -42,7 +40,7 @@ register long len;
     string dummy;
 
     /* allocate string struct & text in one block */
-    s = (string *) IALLOC(env, char, dummy.text - (char *) &dummy + 1 + len);
+    s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
     if (text != (char *) NULL && len > 0) {
 	memcpy(s->text, text, (unsigned int) len);
     }
@@ -57,15 +55,14 @@ register long len;
  * NAME:	string->new()
  * DESCRIPTION:	create a new string with size check
  */
-string *str_new(env, text, len)
-lpcenv *env;
+string *str_new(text, len)
 char *text;
 long len;
 {
     if (len > (unsigned long) MAX_STRLEN) {
-	error(env, "String too long");
+	error("String too long");
     }
-    return str_alloc(env, text, len);
+    return str_alloc(text, len);
 }
 
 /*
@@ -73,12 +70,11 @@ long len;
  * DESCRIPTION:	remove a reference from a string. If there are none left, the
  *		string is removed.
  */
-void str_del(env, s)
-lpcenv *env;
+void str_del(s)
 register string *s;
 {
     if (--(s->ref) == 0) {
-	IFREE(env, s);
+	FREE(s);
     }
 }
 
@@ -86,14 +82,12 @@ register string *s;
  * NAME:	string->merge()
  * DESCRIPTION:	create a string merge table
  */
-strmerge *str_merge(env)
-lpcenv *env;
+strmerge *str_merge()
 {
     register strmerge *merge;
 
-    merge = IALLOC(env, strmerge, 1);
-    merge->env = env;
-    merge->ht = ht_new(env->mp, STRMERGETABSZ, STRMERGEHASHSZ);
+    merge = ALLOC(strmerge, 1);
+    merge->ht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ);
     merge->slink = (strh **) NULL;
     merge->shlist = (strhchunk *) NULL;
     merge->strhchunksz = STR_CHUNK;
@@ -128,7 +122,7 @@ register Uint n;
 	    if (merge->strhchunksz == STR_CHUNK) {
 		register strhchunk *l;
 
-		l = IALLOC(merge->env, strhchunk, 1);
+		l = ALLOC(strhchunk, 1);
 		l->next = merge->shlist;
 		merge->shlist = l;
 		merge->strhchunksz = 0;
@@ -167,17 +161,17 @@ strmerge *merge;
 	*h = (strh *) NULL;
 	h = f->link;
     }
-    ht_del(merge->env->mp, merge->ht);
+    ht_del(merge->ht);
 
     for (l = merge->shlist; l != (strhchunk *) NULL; ) {
 	register strhchunk *f;
 
 	f = l;
 	l = l->next;
-	IFREE(merge->env, f);
+	FREE(f);
     }
 
-    IFREE(merge->env, merge);
+    FREE(merge);
 }
 
 
@@ -218,13 +212,12 @@ string *s1, *s2;
  * NAME:	string->add()
  * DESCRIPTION:	add two strings
  */
-string *str_add(env, s1, s2)
-lpcenv *env;
+string *str_add(s1, s2)
 register string *s1, *s2;
 {
     register string *s;
 
-    s = str_new(env, (char *) NULL, (long) s1->len + s2->len);
+    s = str_new((char *) NULL, (long) s1->len + s2->len);
     memcpy(s->text, s1->text, s1->len);
     memcpy(s->text + s1->len, s2->text, s2->len);
 
@@ -235,13 +228,12 @@ register string *s1, *s2;
  * NAME:	string->index()
  * DESCRIPTION:	index a string
  */
-ssizet str_index(env, s, l)
-lpcenv *env;
+ssizet str_index(s, l)
 string *s;
 register long l;
 {
     if (l < 0 || l >= (long) s->len) {
-	error(env, "String index out of range");
+	error("String index out of range");
     }
 
     return l;
@@ -251,13 +243,12 @@ register long l;
  * NAME:	string->ckrange()
  * DESCRIPTION:	check a string subrange
  */
-void str_ckrange(env, s, l1, l2)
-lpcenv *env;
+void str_ckrange(s, l1, l2)
 string *s;
 register long l1, l2;
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
-	error(env, "Invalid string range");
+	error("Invalid string range");
     }
 }
 
@@ -265,14 +256,13 @@ register long l1, l2;
  * NAME:	string->range()
  * DESCRIPTION:	return a subrange of a string
  */
-string *str_range(env, s, l1, l2)
-lpcenv *env;
+string *str_range(s, l1, l2)
 register string *s;
 register long l1, l2;
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
-	error(env, "Invalid string range");
+	error("Invalid string range");
     }
 
-    return str_new(env, s->text + l1, l2 - l1 + 1);
+    return str_new(s->text + l1, l2 - l1 + 1);
 }

@@ -1,34 +1,44 @@
 # ifdef DEBUG
-# define MACROTL	, __FILE__, __LINE__
-# define PROTOTL	, char*, int
+
+# define ALLOC(type, size)						      \
+			((type *) (m_alloc(sizeof(type) * (size_t) (size),    \
+					   __FILE__, __LINE__)))
+# define REALLOC(mem, type, size1, size2)				      \
+			((type *) (m_realloc((char *) (mem),		      \
+					     sizeof(type) * (size_t) (size1), \
+					     sizeof(type) * (size_t) (size2), \
+					     __FILE__, __LINE__)))
+extern char *m_alloc	P((size_t, char*, int));
+extern char *m_realloc	P((char*, size_t, size_t, char*, int));
+
 # else
-# define MACROTL	/* nothing */
-# define PROTOTL	/* nothing */
+
+# define ALLOC(type, size)						      \
+			((type *) (m_alloc(sizeof(type) * (size_t) (size))))
+# define REALLOC(mem, type, size1, size2)				      \
+			((type *) (m_realloc((char *) (mem),		      \
+					     sizeof(type) * (size_t) (size1), \
+					     sizeof(type) * (size_t) (size2))))
+extern char *m_alloc	P((size_t));
+extern char *m_realloc	P((char*, size_t, size_t));
+
 # endif
 
-# define ALLOC(pool, type, size)					      \
-			((type *) (m_alloc((pool),			      \
-					   sizeof(type) * (size_t) (size)     \
-					   MACROTL)))
-# define REALLOC(pool, mem, type, size1, size2)				      \
-			((type *) (m_realloc((pool), (char *) (mem),	      \
-					     sizeof(type) * (size_t) (size1), \
-					     sizeof(type) * (size_t) (size2)  \
-					     MACROTL)))
-# define FREE(pool, mem)						      \
-			m_free((pool), (char *) (mem))
-# define SALLOC(type, size)						      \
-			ALLOC((struct _mempool_ *) NULL, type, size)
-# define SFREE(mem)	FREE((struct _mempool_ *) NULL, mem)
+# define FREE(mem)	m_free((char *) (mem))
 
+extern void  m_init	P((size_t, size_t));
+extern void  m_free	P((char*));
+extern void  m_dynamic	P((void));
+extern void  m_static	P((void));
+extern bool  m_check	P((void));
+extern void  m_purge	P((void));
+extern void  m_finish	P((void));
 
-extern void		 m_init		P((size_t, size_t));
-extern struct _mempool_ *m_new_pool	P((void));
-extern char		*m_alloc	P((struct _mempool_*, size_t PROTOTL));
-extern char		*m_realloc	P((struct _mempool_*, char*, size_t,
-					   size_t PROTOTL));
-extern void		 m_free		P((struct _mempool_*, char*));
-extern bool		 m_check	P((void));
-extern void		 m_purge	P((void));
-extern void		 m_info		P((Uint*, Uint*, Uint*, Uint*));
-extern void		 m_finish	P((void));
+typedef struct {
+    Uint smemsize;	/* static memory size */
+    Uint smemused;	/* static memory used */
+    Uint dmemsize;	/* dynamic memory used */
+    Uint dmemused;	/* dynamic memory used */
+} allocinfo;
+
+extern allocinfo *m_info P((void));

@@ -104,9 +104,8 @@ clean:
 	rm -f dgd $(SRC) $(OBJ) lpc.o
 
 
-$(OBJ) lpc.o: ../dgd.h ../config.h ../host.h ../alloc.h ../error.h
-$(OBJ) lpc.o: ../scheduler.h ../alloc.h ../str.h ../array.h ../object.h
-$(OBJ) lpc.o: ../xfloat.h ../data.h ../interpret.h
+$(OBJ) lpc.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h ../str.h
+$(OBJ) lpc.o: ../array.h ../object.h ../xfloat.h ../interpret.h ../data.h
 
 $(OBJ) lpc.o: ../comp/csupport.h
 

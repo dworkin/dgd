@@ -1,5 +1,5 @@
-struct _parser_;
+typedef struct _parser_ parser;
 
-extern void	ps_del		P((struct _parser_*, lpcenv*));
+extern void	ps_del		P((parser*));
 extern array   *ps_parse_string	P((frame*, string*, string*, Int));
-extern void	ps_save		P((struct _parser_*, lpcenv*));
+extern void	ps_save		P((parser*));

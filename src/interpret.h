@@ -146,11 +146,11 @@
 # define PUT_LWOVAL_NOREF(v, o)	((v)->u.array = (o), (v)->type = T_LWOBJECT)
 # define PUT_LWO(v, o)		(arr_ref((v)->u.array = (o)))
 
-# define VFLT_ISZERO(v)		FLT_ISZERO((v)->oindex, (v)->u.objcnt)
-# define VFLT_ISONE(v)		FLT_ISONE((v)->oindex, (v)->u.objcnt)
-# define VFLT_HASH(v)		((v)->oindex ^ (v)->u.objcnt)
+# define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)
+# define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
+# define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
 
-# define DESTRUCTED(env, v)	(OBJR(env, (v)->oindex)->count != (v)->u.objcnt)
+# define DESTRUCTED(v)	(OBJR((v)->oindex)->count != (v)->u.objcnt)
 
 
 # define C_PRIVATE	0x01
@@ -179,7 +179,6 @@ typedef struct _rlinfo_ {
 
 struct _frame_ {
     frame *prev;		/* previous stack frame */
-    lpcenv *env;		/* LPC execution environment */
     uindex oindex;		/* current object index */
     array *lwobj;		/* lightweight object */
     control *ctrl;		/* object control block */
@@ -190,7 +189,7 @@ struct _frame_ {
     bool external;		/* TRUE if it's an external call */
     bool sos;			/* stack on stack */
     uindex foffset;		/* program function offset */
-    dfuncdef *func;		/* current function */
+    struct _dfuncdef_ *func;	/* current function */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
     value *stack;		/* local value stack */
@@ -205,19 +204,10 @@ struct _frame_ {
     bool atomic;		/* within uncaught atomic code */
 };
 
-typedef struct _intenv_ {
-    value stack[MIN_STACK];	/* initial stack */
-    frame topframe;		/* top frame */
-    rlinfo rlim;		/* top rlimits info */
-    frame *cframe;		/* current frame */
-} intenv;
-
-
 extern void	i_init		P((char*, int));
-extern intenv  *i_new_env	P((lpcenv*));
 extern void	i_ref_value	P((value*));
-extern void	i_del_value	P((lpcenv*, value*));
-extern void	i_copy		P((lpcenv*, value*, value*, unsigned int));
+extern void	i_del_value	P((value*));
+extern void	i_copy		P((value*, value*, unsigned int));
 extern void	i_grow_stack	P((frame*, int));
 extern void	i_push_value	P((frame*, value*));
 extern void	i_pop		P((frame*, int));
@@ -232,7 +222,7 @@ extern void	i_global_lvalue	P((frame*, int, int, int));
 extern void	i_index		P((frame*));
 extern void	i_index_lvalue	P((frame*, int));
 extern char    *i_typename	P((char*, unsigned int));
-extern void	i_cast		P((lpcenv*, value*, unsigned int));
+extern void	i_cast		P((value*, unsigned int));
 extern void	i_fetch		P((frame*));
 extern void	i_store		P((frame*));
 extern Int	i_get_depth	P((frame*));
@@ -252,8 +242,9 @@ extern array   *i_call_trace	P((frame*));
 extern bool	i_call_critical	P((frame*, char*, int, int));
 extern void	i_runtime_error	P((frame*, Int));
 extern frame   *i_restore	P((frame*, Int));
-extern void	i_clear		P((lpcenv*));
+extern void	i_clear		P((void));
 
+extern frame *cframe;
 extern int nil_type;
 extern value zero_int, zero_float, nil_value;
 

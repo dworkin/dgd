@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "control.h"
 # include "csupport.h"
 # include "table.h"
@@ -15,6 +15,10 @@
 # endif
 
 
+static value stack[MIN_STACK];	/* initial stack */
+static frame topframe;		/* top frame */
+static rlinfo rlim;		/* top rlimits info */
+frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 static bool stricttc;		/* strict typechecking */
@@ -32,36 +36,21 @@ void i_init(create, flag)
 char *create;
 int flag;
 {
+    topframe.oindex = OBJ_NONE;
+    topframe.fp = topframe.sp = stack + MIN_STACK;
+    topframe.stack = topframe.lip = stack;
+    rlim.nodepth = TRUE;
+    rlim.noticks = TRUE;
+    topframe.rlim = &rlim;
+    topframe.level = 0;
+    topframe.atomic = FALSE;
+    cframe = &topframe;
+
     creator = create;
     clen = strlen(create);
     stricttc = flag;
 
     nil_value.type = nil_type = (stricttc) ? T_NIL : T_INT;
-}
-
-/*
- * NAME:	interpret->new_env()
- * DESCRIPTION:	create a new interpreter environment
- */
-intenv *i_new_env(env)
-lpcenv *env;
-{
-    register intenv *ie;
-
-    ie = SALLOC(intenv, 1);
-    ie->topframe.prev = (frame *) NULL;
-    ie->topframe.env = env;
-    ie->topframe.oindex = OBJ_NONE;
-    ie->topframe.fp = ie->topframe.sp = ie->stack + MIN_STACK;
-    ie->topframe.stack = ie->topframe.lip = ie->stack;
-    ie->rlim.nodepth = TRUE;
-    ie->rlim.noticks = TRUE;
-    ie->topframe.rlim = &ie->rlim;
-    ie->topframe.level = 0;
-    ie->topframe.atomic = FALSE;
-    ie->cframe = &ie->topframe;
-
-    return ie;
 }
 
 /*
@@ -88,19 +77,18 @@ register value *v;
  * NAME:	interpret->del_value()
  * DESCRIPTION:	dereference a value (not an lvalue)
  */
-void i_del_value(env, v)
-lpcenv *env;
+void i_del_value(v)
 register value *v;
 {
     switch (v->type) {
     case T_STRING:
-	str_del(env, v->u.string);
+	str_del(v->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(env, v->u.array);
+	arr_del(v->u.array);
 	break;
     }
 }
@@ -109,8 +97,7 @@ register value *v;
  * NAME:	interpret->copy()
  * DESCRIPTION:	copy values from one place to another
  */
-void i_copy(env, v, w, len)
-register lpcenv *env;
+void i_copy(v, w, len)
 register value *v, *w;
 register unsigned int len;
 {
@@ -123,7 +110,7 @@ register unsigned int len;
 	    break;
 
 	case T_OBJECT:
-	    if (DESTRUCTED(env, w)) {
+	    if (DESTRUCTED(w)) {
 		*v++ = nil_value;
 		w++;
 		continue;
@@ -132,7 +119,7 @@ register unsigned int len;
 
 	case T_LWOBJECT:
 	    o = d_get_elts(w->u.array);
-	    if (DESTRUCTED(env, o)) {
+	    if (DESTRUCTED(o)) {
 		*v++ = nil_value;
 		w++;
 		continue;
@@ -158,7 +145,7 @@ int size;
 {
     if (f->sp < f->lip + size + MIN_STACK) {
 	register int spsize, lisize;
-	register value *v, *stack;
+	register value *v, *stk;
 	register long offset;
 
 	/*
@@ -167,17 +154,17 @@ int size;
 	spsize = f->fp - f->sp;
 	lisize = f->lip - f->stack;
 	size = ALGN(spsize + lisize + size + MIN_STACK, 8);
-	stack = IALLOC(f->env, value, size);
-	offset = (long) (stack + size) - (long) f->fp;
+	stk = ALLOC(value, size);
+	offset = (long) (stk + size) - (long) f->fp;
 
 	/* move lvalue index stack values */
 	if (lisize != 0) {
-	    memcpy(stack, f->stack, lisize * sizeof(value));
+	    memcpy(stk, f->stack, lisize * sizeof(value));
 	}
-	f->lip = stack + lisize;
+	f->lip = stk + lisize;
 
 	/* move stack values */
-	v = stack + size;
+	v = stk + size;
 	if (spsize != 0) {
 	    memcpy(v - spsize, f->sp, spsize * sizeof(value));
 	    do {
@@ -193,13 +180,13 @@ int size;
 	/* replace old stack */
 	if (f->sos) {
 	    /* stack on stack: alloca'd */
-	    IFREEA(f->env, f->stack);
+	    AFREE(f->stack);
 	    f->sos = FALSE;
-	} else if (f->stack != f->env->ie->stack) {
-	    IFREE(f->env, f->stack);
+	} else if (f->stack != stack) {
+	    FREE(f->stack);
 	}
-	f->stack = stack;
-	f->fp = stack + size;
+	f->stack = stk;
+	f->fp = stk + size;
     }
 }
 
@@ -208,7 +195,7 @@ int size;
  * DESCRIPTION:	push a value on the stack
  */
 void i_push_value(f, v)
-register frame *f;
+frame *f;
 register value *v;
 {
     register value *o;
@@ -220,7 +207,7 @@ register value *v;
 	break;
 
     case T_OBJECT:
-	if (DESTRUCTED(f->env, v)) {
+	if (DESTRUCTED(v)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
@@ -231,7 +218,7 @@ register value *v;
 
     case T_LWOBJECT:
 	o = d_get_elts(v->u.array);
-	if (DESTRUCTED(f->env, o)) {
+	if (DESTRUCTED(o)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
@@ -260,7 +247,7 @@ register int n;
     for (v = f->sp; --n >= 0; v++) {
 	switch (v->type) {
 	case T_STRING:
-	    str_del(f->env, v->u.string);
+	    str_del(v->u.string);
 	    break;
 
 	case T_ALVALUE:
@@ -268,7 +255,7 @@ register int n;
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    arr_del(f->env, v->u.array);
+	    arr_del(v->u.array);
 	    break;
 
 	case T_SLVALUE:
@@ -276,19 +263,19 @@ register int n;
 	    break;
 
 	case T_MLVALUE:
-	    i_del_value(f->env, --f->lip);
-	    arr_del(f->env, v->u.array);
+	    i_del_value(--f->lip);
+	    arr_del(v->u.array);
 	    break;
 
 	case T_SALVALUE:
 	    f->lip -= 2;
-	    arr_del(f->env, v->u.array);
+	    arr_del(v->u.array);
 	    break;
 
 	case T_SMLVALUE:
 	    f->lip -= 2;
-	    i_del_value(f->env, f->lip);
-	    arr_del(f->env, v->u.array);
+	    i_del_value(f->lip);
+	    arr_del(v->u.array);
 	    break;
 	}
     }
@@ -375,7 +362,7 @@ object *obj;
 
 	    case T_LWOBJECT:
 		if (v->u.array->elts[0].u.objcnt == count) {
-		    arr_del(f->env, v->u.array);
+		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
 		break;
@@ -391,7 +378,7 @@ object *obj;
 
 	    case T_LWOBJECT:
 		if (v->u.array->elts[0].u.objcnt == count) {
-		    arr_del(f->env, v->u.array);
+		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
 		break;
@@ -416,7 +403,7 @@ object *obj;
 
 		case T_LWOBJECT:
 		    if (v->u.array->elts[0].u.objcnt == count) {
-			arr_del(f->env, v->u.array);
+			arr_del(v->u.array);
 			*v = nil_value;
 		    }
 		    break;
@@ -436,7 +423,7 @@ frame *f;
 int inherit;
 unsigned int index;
 {
-    PUSH_STRVAL(f, d_get_strconst(f->env, f->p_ctrl, inherit, index));
+    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, inherit, index));
 }
 
 /*
@@ -490,14 +477,14 @@ register unsigned int size;
 	    *--elts = *v++;
 	} while (--size != 0);
 	f->sp = v;
-	if (ec_push(f->env, (ec_ftn) NULL)) {
+	if (ec_push((ec_ftn) NULL)) {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);
-	    arr_del(f->env, a);
-	    error(f->env, (char *) NULL);
+	    arr_del(a);
+	    error((char *) NULL);
 	}
-	map_sort(f->env, a);
-	ec_pop(f->env);
+	map_sort(a);
+	ec_pop();
 	d_ref_imports(a);
     }
     PUSH_MAPVAL(f, a);
@@ -517,7 +504,7 @@ register int n, vtype;
     register value *v;
 
     if (f->sp->type != T_ARRAY) {
-	error(f->env, "Spread of non-array");
+	error("Spread of non-array");
     }
     a = f->sp->u.array;
     if (n < 0 || n > a->size) {
@@ -544,7 +531,7 @@ register int n, vtype;
 	(f->lip++)->u.number = i;
     }
 
-    arr_del(f->env, a);
+    arr_del(a);
     return n - 1;
 }
 
@@ -561,7 +548,7 @@ register int inherit, index;
 	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
     }
     if (f->lwobj == (array *) NULL) {
-	i_push_value(f, &d_get_variables(f->data)[inherit + index]);
+	i_push_value(f, d_get_variable(f->data, inherit + index));
     } else {
 	i_push_value(f, &f->lwobj->elts[2 + inherit + index]);
     }
@@ -583,7 +570,7 @@ int index, vtype;
     if (f->lwobj == (array *) NULL) {
 	(--f->sp)->type = T_LVALUE;
 	f->sp->oindex = vtype;
-	f->sp->u.lval = &d_get_variables(f->data)[inherit + index];
+	f->sp->u.lval = d_get_variable(f->data, inherit + index);
     } else {
 	(--f->sp)->type = T_ALVALUE;
 	f->sp->oindex = vtype;
@@ -610,32 +597,32 @@ register frame *f;
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
-	    i_del_value(f->env, ival);
-	    error(f->env, "Non-numeric string index");
+	    i_del_value(ival);
+	    error("Non-numeric string index");
 	}
-	i = UCHAR(aval->u.string->text[str_index(f->env, aval->u.string,
+	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
 						 (long) ival->u.number)]);
-	str_del(f->env, aval->u.string);
+	str_del(aval->u.string);
 	PUT_INTVAL(aval, i);
 	return;
 
     case T_ARRAY:
 	if (ival->type != T_INT) {
-	    i_del_value(f->env, ival);
-	    error(f->env, "Non-numeric array index");
+	    i_del_value(ival);
+	    error("Non-numeric array index");
 	}
-	val = &d_get_elts(aval->u.array)[arr_index(f->env, aval->u.array,
+	val = &d_get_elts(aval->u.array)[arr_index(aval->u.array,
 						   (long) ival->u.number)];
 	break;
 
     case T_MAPPING:
 	val = map_index(f->data, aval->u.array, ival, (value *) NULL);
-	i_del_value(f->env, ival);
+	i_del_value(ival);
 	break;
 
     default:
-	i_del_value(f->env, ival);
-	error(f->env, "Index on bad type");
+	i_del_value(ival);
+	error("Index on bad type");
     }
 
     a = aval->u.array;
@@ -645,14 +632,14 @@ register frame *f;
 	break;
 
     case T_OBJECT:
-	if (DESTRUCTED(f->env, val)) {
+	if (DESTRUCTED(val)) {
 	    val = &nil_value;
 	}
 	break;
 
     case T_LWOBJECT:
 	ival = d_get_elts(val->u.array);
-	if (DESTRUCTED(f->env, ival)) {
+	if (DESTRUCTED(ival)) {
 	    val = &nil_value;
 	    break;
 	}
@@ -663,7 +650,7 @@ register frame *f;
 	break;
     }
     *aval = *val;
-    arr_del(f->env, a);
+    arr_del(a);
 }
 
 /*
@@ -683,15 +670,15 @@ int vtype;
     switch (lval->type) {
     case T_STRING:
 	/* for instance, "foo"[1] = 'a'; */
-	i_del_value(f->env, ival);
-	error(f->env, "Bad lvalue");
+	i_del_value(ival);
+	error("Bad lvalue");
 
     case T_ARRAY:
 	if (ival->type != T_INT) {
-	    i_del_value(f->env, ival);
-	    error(f->env, "Non-numeric array index");
+	    i_del_value(ival);
+	    error("Non-numeric array index");
 	}
-	i = arr_index(f->env, lval->u.array, (long) ival->u.number);
+	i = arr_index(lval->u.array, (long) ival->u.number);
 	lval->type = T_ALVALUE;
 	lval->oindex = vtype;
 	f->lip->type = T_INT;
@@ -711,10 +698,10 @@ int vtype;
 	switch (lval->u.lval->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric string index");
+		i_del_value(ival);
+		error("Non-numeric string index");
 	    }
-	    i = str_index(f->env, f->lvstr = lval->u.lval->u.string,
+	    i = str_index(f->lvstr = lval->u.lval->u.string,
 			  (long) ival->u.number);
 	    /* indexed string lvalues are not referenced */
 	    lval->type = T_SLVALUE;
@@ -725,10 +712,10 @@ int vtype;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric array index");
+		i_del_value(ival);
+		error("Non-numeric array index");
 	    }
-	    i = arr_index(f->env, lval->u.lval->u.array, (long) ival->u.number);
+	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
 	    arr_ref(lval->u.array = lval->u.lval->u.array);
@@ -750,11 +737,10 @@ int vtype;
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric string index");
+		i_del_value(ival);
+		error("Non-numeric string index");
 	    }
-	    i = str_index(f->env, f->lvstr = val->u.string,
-			  (long) ival->u.number);
+	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SALVALUE;
 	    lval->oindex = vtype;
 	    f->lip->type = T_INT;
@@ -763,12 +749,12 @@ int vtype;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric array index");
+		i_del_value(ival);
+		error("Non-numeric array index");
 	    }
-	    i = arr_index(f->env, val->u.array, (long) ival->u.number);
+	    i = arr_index(val->u.array, (long) ival->u.number);
 	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(f->env, lval->u.array);	/* has to be second */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    f->lip[-1].u.number = i;
@@ -776,7 +762,7 @@ int vtype;
 
 	case T_MAPPING:
 	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(f->env, lval->u.array);	/* has to be second */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_MLVALUE;
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
@@ -790,11 +776,10 @@ int vtype;
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric string index");
+		i_del_value(ival);
+		error("Non-numeric string index");
 	    }
-	    i = str_index(f->env, f->lvstr = val->u.string,
-			  (long) ival->u.number);
+	    i = str_index(f->lvstr = val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
 	    lval->oindex = vtype;
 	    f->lip->type = T_INT;
@@ -803,33 +788,33 @@ int vtype;
 
 	case T_ARRAY:
 	    if (ival->type != T_INT) {
-		i_del_value(f->env, ival);
-		error(f->env, "Non-numeric array index");
+		i_del_value(ival);
+		error("Non-numeric array index");
 	    }
-	    i = arr_index(f->env, val->u.array, (long) ival->u.number);
+	    i = arr_index(val->u.array, (long) ival->u.number);
 	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(f->env, lval->u.array);	/* has to be second */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_ALVALUE;
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
-	    i_del_value(f->env, &f->lip[-1]);
+	    i_del_value(&f->lip[-1]);
 	    f->lip[-1].type = T_INT;
 	    f->lip[-1].u.number = i;
 	    return;
 
 	case T_MAPPING:
 	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(f->env, lval->u.array);	/* has to be second */
+	    arr_del(lval->u.array);	/* has to be second */
 	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
-	    i_del_value(f->env, &f->lip[-1]);
+	    i_del_value(&f->lip[-1]);
 	    f->lip[-1] = *ival;
 	    return;
 	}
 	break;
     }
-    i_del_value(f->env, ival);
-    error(f->env, "Index on bad type");
+    i_del_value(ival);
+    error("Index on bad type");
 }
 
 /*
@@ -862,8 +847,7 @@ register unsigned int type;
  * NAME:	interpret->cast()
  * DESCRIPTION:	cast a value to a type
  */
-void i_cast(env, val, type)
-lpcenv *env;
+void i_cast(val, type)
 register value *val;
 register unsigned int type;
 {
@@ -873,9 +857,9 @@ register unsigned int type;
 	(!VAL_NIL(val) || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
-	    error(env, "Value is not an %s", tnbuf);
+	    error("Value is not an %s", tnbuf);
 	} else {
-	    error(env, "Value is not a %s", tnbuf);
+	    error("Value is not a %s", tnbuf);
 	}
     }
 }
@@ -916,18 +900,17 @@ register frame *f;
  * NAME:	istr()
  * DESCRIPTION:	create a copy of the argument string, with one char replaced
  */
-static value *istr(env, val, str, i, v)
-lpcenv *env;
+static value *istr(val, str, i, v)
 register value *val, *v;
 register string *str;
 ssizet i;
 {
     if (v->type != T_INT) {
-	error(env, "Non-numeric value in indexed string assignment");
+	error("Non-numeric value in indexed string assignment");
     }
 
     PUT_STRVAL_NOREF(val, (str->primary == (strref *) NULL && str->ref == 1) ?
-			   str : str_new(env, str->text, (long) str->len));
+			   str : str_new(str->text, (long) str->len));
     val->u.string->text[i] = v->u.number;
     return val;
 }
@@ -947,7 +930,7 @@ register frame *f;
     lval = f->sp + 1;
     val = f->sp;
     if (lval->oindex != 0) {
-	i_cast(f->env, val, lval->oindex);
+	i_cast(val, lval->oindex);
     }
 
     i_add_ticks(f, 1);
@@ -963,22 +946,22 @@ register frame *f;
 	    /*
 	     * The lvalue was changed.
 	     */
-	    error(f->env, "Lvalue disappeared!");
+	    error("Lvalue disappeared!");
 	}
 	--f->lip;
-	d_assign_var(f->data, v, istr(f->env, &ival, v->u.string, i, val));
+	d_assign_var(f->data, v, istr(&ival, v->u.string, i, val));
 	break;
 
     case T_ALVALUE:
 	a = lval->u.array;
 	d_assign_elt(f->data, a, &d_get_elts(a)[(--f->lip)->u.number], val);
-	arr_del(f->env, a);
+	arr_del(a);
 	break;
 
     case T_MLVALUE:
 	map_index(f->data, a = lval->u.array, &f->lip[-1], val);
-	i_del_value(f->env, --f->lip);
-	arr_del(f->env, a);
+	i_del_value(--f->lip);
+	arr_del(a);
 	break;
 
     case T_SALVALUE:
@@ -989,11 +972,11 @@ register frame *f;
 	    /*
 	     * The lvalue was changed.
 	     */
-	    error(f->env, "Lvalue disappeared!");
+	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(f->data, a, v, istr(f->env, &ival, v->u.string, i, val));
+	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
 	f->lip -= 2;
-	arr_del(f->env, a);
+	arr_del(a);
 	break;
 
     case T_SMLVALUE:
@@ -1004,12 +987,12 @@ register frame *f;
 	    /*
 	     * The lvalue was changed.
 	     */
-	    error(f->env, "Lvalue disappeared!");
+	    error("Lvalue disappeared!");
 	}
-	d_assign_elt(f->data, a, v, istr(f->env, &ival, v->u.string, i, val));
+	d_assign_elt(f->data, a, v, istr(&ival, v->u.string, i, val));
 	f->lip -= 2;
-	i_del_value(f->env, f->lip);
-	arr_del(f->env, a);
+	i_del_value(f->lip);
+	arr_del(a);
 	break;
     }
 }
@@ -1056,9 +1039,9 @@ register frame *f;
 {
     object *obj;
 
-    obj = OBJR(f->env, f->oindex);
+    obj = OBJR(f->oindex);
     if (obj->count == 0) {
-	error(f->env, "Illegal use of rlimits");
+	error("Illegal use of rlimits");
     }
     --f->sp;
     f->sp[0] = f->sp[1];
@@ -1073,9 +1056,9 @@ register frame *f;
     call_driver_object(f, "runtime_rlimits", 3);
 
     if (!VAL_TRUE(f->sp)) {
-	error(f->env, "Illegal use of rlimits");
+	error("Illegal use of rlimits");
     }
-    i_del_value(f->env, f->sp++);
+    i_del_value(f->sp++);
 }
 
 /*
@@ -1088,7 +1071,7 @@ Int depth, t;
 {
     register rlinfo *rlim;
 
-    rlim = IALLOC(f->env, rlinfo, 1);
+    rlim = ALLOC(rlinfo, 1);
     if (depth != 0) {
 	if (depth < 0) {
 	    rlim->nodepth = TRUE;
@@ -1124,7 +1107,7 @@ Int depth, t;
  * DESCRIPTION:	restore rlimits to an earlier state
  */
 void i_set_rlimits(f, rlim)
-register frame *f;
+frame *f;
 register rlinfo *rlim;
 {
     register rlinfo *r, *next;
@@ -1138,7 +1121,7 @@ register rlinfo *rlim;
 	if (!r->noticks) {
 	    next->ticks += r->ticks;
 	}
-	IFREE(f->env, r);
+	FREE(r);
 	r = next;
     }
     f->rlim = rlim;
@@ -1169,7 +1152,7 @@ register value *sp;
 	    }
 	    switch (v->type) {
 	    case T_STRING:
-		str_del(f->env, v->u.string);
+		str_del(v->u.string);
 		break;
 
 	    case T_SLVALUE:
@@ -1181,38 +1164,42 @@ register value *sp;
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
-		arr_del(f->env, v->u.array);
+		arr_del(v->u.array);
 		break;
 
 	    case T_MLVALUE:
-		i_del_value(f->env, --w);
-		arr_del(f->env, v->u.array);
+		i_del_value(--w);
+		arr_del(v->u.array);
 		break;
 
 	    case T_SALVALUE:
 		w -= 2;
-		arr_del(f->env, v->u.array);
+		arr_del(v->u.array);
 		break;
 
 	    case T_SMLVALUE:
 		w -= 2;
-		i_del_value(f->env, w);
-		arr_del(f->env, v->u.array);
+		i_del_value(w);
+		arr_del(v->u.array);
 		break;
 	    }
 	    v++;
 	}
 
 	if (f->lwobj != (array *) NULL) {
-	    arr_del(f->env, f->lwobj);
+	    arr_del(f->lwobj);
 	}
 	if (f->sos) {
 	    /* stack on stack */
-	    IFREEA(f->env, f->stack);
+	    AFREE(f->stack);
 	} else if (f->oindex != OBJ_NONE) {
-	    IFREE(f->env, f->stack);
+	    FREE(f->stack);
 	}
     }
+
+    f->sp = v;
+    f->lip = w;
+    return f;
 }
 
 /*
@@ -1223,6 +1210,8 @@ frame *i_prev_object(f, n)
 register frame *f;
 register int n;
 {
+    object *obj;
+
     while (n >= 0) {
 	/* back to last external call */
 	while (!f->external) {
@@ -1253,7 +1242,7 @@ register int n;
 	--n;
     }
 
-    return OBJR(f->env, f->p_ctrl->oindex)->chain.name;
+    return OBJR(f->p_ctrl->oindex)->chain.name;
 }
 
 /*
@@ -1300,12 +1289,11 @@ int strict;
 	    if (ptype != atype && (atype != T_ARRAY || !(ptype & T_REF))) {
 		if (!VAL_NIL(f->sp + i) || !T_POINTER(ptype)) {
 		    /* wrong type */
-		    error(f->env, "Bad argument %d (%s) for %s %s", nargs - i,
+		    error("Bad argument %d (%s) for %s %s", nargs - i,
 			  i_typename(tnbuf, atype), ftype, name);
 		} else if (strict) {
 		    /* zero argument */
-		    error(f->env, "Bad argument %d for %s %s", nargs - i, ftype,
-			  name);
+		    error("Bad argument %d for %s %s", nargs - i, ftype, name);
 		}
 	    }
 	}
@@ -1524,8 +1512,7 @@ register char *pc;
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
-	cmp = str_cmp(f->sp->u.string,
-		      d_get_strconst(f->env, ctrl, u, FETCH2U(p, u2)));
+	cmp = str_cmp(f->sp->u.string, d_get_strconst(ctrl, u, FETCH2U(p, u2)));
 	if (cmp == 0) {
 	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
@@ -1576,7 +1563,7 @@ register char *pc;
 	    if (f->rlim->noticks) {
 		f->rlim->ticks = 0x7fffffff;
 	    } else {
-		error(f->env, "Out of ticks");
+		error("Out of ticks");
 	    }
 	}
 	instr = FETCH1U(pc);
@@ -1605,20 +1592,18 @@ register char *pc;
 	    break;
 
 	case I_PUSH_STRING:
-	    PUSH_STRVAL(f, d_get_strconst(f->env, f->p_ctrl,
-					  f->p_ctrl->ninherits - 1,
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, f->p_ctrl->ninherits - 1,
 					  FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_NEAR_STRING:
 	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->env, f->p_ctrl, u, FETCH1U(pc)));
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
 	    break;
 
 	case I_PUSH_FAR_STRING:
 	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->env, f->p_ctrl, u,
-					  FETCH2U(pc, u2)));
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH2U(pc, u2)));
 	    break;
 
 	case I_PUSH_LOCAL:
@@ -1676,7 +1661,7 @@ register char *pc;
 	    continue;
 
 	case I_CAST:
-	    i_cast(f->env, f->sp, FETCH1U(pc));
+	    i_cast(f->sp, FETCH1U(pc));
 	    break;
 
 	case I_FETCH:
@@ -1740,11 +1725,11 @@ register char *pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
-		    error(f->env, "Too few arguments for kfun %s", kf->name);
+		    error("Too few arguments for kfun %s", kf->name);
 		} else if (u <= PROTO_NARGS(kf->proto)) {
-		    error(f->env, "Bad argument %d for kfun %s", u, kf->name);
+		    error("Bad argument %d for kfun %s", u, kf->name);
 		} else {
-		    error(f->env, "Too many arguments for kfun %s", kf->name);
+		    error("Too many arguments for kfun %s", kf->name);
 		}
 	    }
 	    break;
@@ -1775,25 +1760,25 @@ register char *pc;
 	    p = f->prog + FETCH2U(pc, u);
 	    atomic = f->atomic;
 	    f->atomic = FALSE;
-	    if (!ec_push(f->env, (ec_ftn) i_catcherr)) {
+	    if (!ec_push((ec_ftn) i_catcherr)) {
 		i_interpret(f, pc);
-		ec_pop(f->env);
+		ec_pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
 	    } else {
 		/* error */
 		f->pc = pc = p;
-		PUSH_STRVAL(f, errorstr(f->env));
+		PUSH_STRVAL(f, errorstr());
 	    }
 	    f->atomic = atomic;
 	    break;
 
 	case I_RLIMITS:
 	    if (f->sp[1].type != T_INT) {
-		error(f->env, "Bad rlimits depth type");
+		error("Bad rlimits depth type");
 	    }
 	    if (f->sp->type != T_INT) {
-		error(f->env, "Bad rlimits ticks type");
+		error("Bad rlimits ticks type");
 	    }
 	    newdepth = f->sp[1].u.number;
 	    newticks = f->sp->u.number;
@@ -1817,7 +1802,7 @@ register char *pc;
 
 	if (instr & I_POP_BIT) {
 	    /* pop the result of the last operation (never an lvalue) */
-	    i_del_value(f->env, f->sp++);
+	    i_del_value(f->sp++);
 	}
     }
 }
@@ -1840,7 +1825,6 @@ int funci;
     value val;
 
     f.prev = prev_f;
-    f.env = prev_f->env;
     if (prev_f->oindex == OBJ_NONE) {
 	/*
 	 * top level call
@@ -1848,7 +1832,7 @@ int funci;
 	f.oindex = obj->index;
 	f.lwobj = (array *) NULL;
 	f.ctrl = obj->ctrl;
-	f.data = o_dataspace(f.env, obj);
+	f.data = o_dataspace(obj);
 	f.external = TRUE;
     } else if (lwobj != (array *) NULL) {
 	/*
@@ -1866,7 +1850,7 @@ int funci;
 	f.oindex = obj->index;
 	f.lwobj = (array *) NULL;
 	f.ctrl = obj->ctrl;
-	f.data = o_dataspace(f.env, obj);
+	f.data = o_dataspace(obj);
 	f.external = TRUE;
     } else {
 	/*
@@ -1881,34 +1865,33 @@ int funci;
     f.depth = prev_f->depth + 1;
     f.rlim = prev_f->rlim;
     if (f.depth >= f.rlim->maxdepth && !f.rlim->nodepth) {
-	error(f.env, "Stack overflow");
+	error("Stack overflow");
     }
     if (f.rlim->ticks < 100) {
 	if (f.rlim->noticks) {
 	    f.rlim->ticks = 0x7fffffff;
 	} else {
-	    error(f.env, "Out of ticks");
+	    error("Out of ticks");
 	}
     }
 
     /* set the program control block */
-    obj = OBJR(f.env, f.ctrl->inherits[p_ctrli].oindex);
+    obj = OBJR(f.ctrl->inherits[p_ctrli].oindex);
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
-    f.p_ctrl = o_control(f.env, obj);
+    f.p_ctrl = o_control(obj);
     f.p_index = p_ctrli + 1;
 
     /* get the function */
     f.func = &d_get_funcdefs(f.p_ctrl)[funci];
     if (f.func->class & C_UNDEFINED) {
-	error(f.env, "Undefined function %s",
-	      d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
-			     f.func->index)->text);
+	error("Undefined function %s",
+	      d_get_strconst(f.p_ctrl, f.func->inherit, f.func->index)->text);
     }
 
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
     if (f.func->class & C_TYPECHECKED) {
 	/* typecheck arguments */
-	i_typecheck(prev_f, d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
+	i_typecheck(prev_f, d_get_strconst(f.p_ctrl, f.func->inherit,
 					   f.func->index)->text,
 		    "function", pc, nargs, FALSE);
     }
@@ -1939,8 +1922,8 @@ int funci;
 		i = nargs;
 		do {
 		    if (i == 0) {
-			error(f.env, "Insufficient arguments for function %s",
-			      d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
+			error("Insufficient arguments for function %s",
+			      d_get_strconst(f.p_ctrl, f.func->inherit,
 					     f.func->index)->text);
 		    }
 		    --i;
@@ -1973,8 +1956,8 @@ int funci;
 	PUSH_ARRVAL(prev_f, a);
     } else if (nargs > n) {
 	if (stricttc) {
-	    error(f.env, "Too many arguments for function %s",
-		  d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
+	    error("Too many arguments for function %s",
+		  d_get_strconst(f.p_ctrl, f.func->inherit,
 				 f.func->index)->text);
 	}
 
@@ -1990,8 +1973,8 @@ int funci;
 	    i = nargs;
 	    do {
 		if (i == 0) {
-		    error(f.env, "Insufficient arguments for function %s",
-			  d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
+		    error("Insufficient arguments for function %s",
+			  d_get_strconst(f.p_ctrl, f.func->inherit,
 					 f.func->index)->text);
 		}
 		--i;
@@ -2023,7 +2006,7 @@ int funci;
     }
     f.sp = prev_f->sp;
     f.nargs = nargs;
-    f.env->ie->cframe = &f;
+    cframe = &f;
     if (f.lwobj != (array *) NULL) {
 	arr_ref(f.lwobj);
     }
@@ -2031,7 +2014,7 @@ int funci;
     /* deal with atomic functions */
     f.level = prev_f->level;
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
-	o_new_plane(f.env);
+	o_new_plane();
 	d_new_plane(f.data, ++f.level);
 	f.atomic = TRUE;
 	if (!f.rlim->noticks) {
@@ -2049,7 +2032,7 @@ int funci;
     if ((obj->flags & O_SPECIAL) != O_SPECIAL ||
 	ext_funcall == (bool (*) P((frame*, int, value*, char*))) NULL ||
 	!(*ext_funcall)(&f, nargs, &val,
-		        d_get_strconst(f.env, f.p_ctrl, f.func->inherit,
+		        d_get_strconst(f.p_ctrl, f.func->inherit,
 				       f.func->index)->text)) {
 	/*
 	 * ordinary function call
@@ -2058,7 +2041,7 @@ int funci;
 	/* create new local stack */
 	f.argp = f.sp;
 	FETCH2U(pc, n);
-	f.stack = f.lip = IALLOCA(f.env, value, n + MIN_STACK + EXTRA_STACK);
+	f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
 	f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
 	f.sos = TRUE;
 
@@ -2096,23 +2079,23 @@ int funci;
 	i_pop(&f, f.fp - f.sp);
 	if (f.sos) {
 		/* still alloca'd */
-	    IFREEA(f.env, f.stack);
+	    AFREE(f.stack);
 	} else {
 	    /* extended and malloced */
-	    IFREE(f.env, f.stack);
+	    FREE(f.stack);
 	}
     }
 
     if (f.lwobj != (array *) NULL) {
-	arr_del(f.env, f.lwobj);
+	arr_del(f.lwobj);
     }
-    f.env->ie->cframe = prev_f;
+    cframe = prev_f;
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
 
     if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
-	d_commit_plane(f.env, f.level, &val);
-	o_commit_plane(f.env);
+	d_commit_plane(f.level, &val);
+	o_commit_plane();
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;
 	}
@@ -2125,7 +2108,7 @@ int funci;
  *		the call succeeded.
  */
 bool i_call(f, obj, lwobj, func, len, call_static, nargs)
-register frame *f;
+frame *f;
 object *obj;
 array *lwobj;
 char *func;
@@ -2141,9 +2124,9 @@ int nargs;
 	uindex oindex;
 
 	oindex = lwobj->elts[0].oindex;
-	obj = OBJR(f->env, oindex);
+	obj = OBJR(oindex);
 	if (obj->update != lwobj->elts[1].u.number) {
-	    d_upgrade_lwobj(f->env, lwobj, obj);
+	    d_upgrade_lwobj(lwobj, obj);
 	}
     } else if (!(obj->flags & O_CREATED)) {
 	/*
@@ -2152,7 +2135,7 @@ int nargs;
 	obj->flags |= O_CREATED;
 	if (func != (char *) NULL &&
 	    i_call(f, obj, (array *) NULL, creator, clen, TRUE, 0)) {
-	    i_del_value(f->env, f->sp++);
+	    i_del_value(f->sp++);
 	}
     }
     if (func == (char *) NULL) {
@@ -2161,15 +2144,15 @@ int nargs;
     }
 
     /* find the function in the symbol table */
-    ctrl = o_control(f->env, obj);
-    symb = ctrl_symb(ctrl, f->env, func, len);
+    ctrl = o_control(obj);
+    symb = ctrl_symb(ctrl, func, len);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
 	i_pop(f, nargs);
 	return FALSE;
     }
 
-    ctrl = OBJR(f->env, ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
+    ctrl = OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->ctrl;
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
@@ -2349,14 +2332,14 @@ dataspace *data;
     v = a->elts;
 
     /* object name */
-    name = o_name(f->env, buffer, OBJR(f->env, f->oindex));
+    name = o_name(buffer, OBJR(f->oindex));
     if (f->lwobj == (array *) NULL) {
-	PUT_STRVAL(v, str = str_new(f->env, (char *) NULL, strlen(name) + 1L));
+	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
 	v++;
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
-	PUT_STRVAL(v, str = str_new(f->env, (char *) NULL, strlen(name) + 4L));
+	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 4L));
 	v++;
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
@@ -2364,15 +2347,14 @@ dataspace *data;
     }
 
     /* program name */
-    name = OBJR(f->env, f->p_ctrl->oindex)->chain.name;
-    PUT_STRVAL(v, str = str_new(f->env, (char *) NULL, strlen(name) + 1L));
+    name = OBJR(f->p_ctrl->oindex)->chain.name;
+    PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';
     strcpy(str->text + 1, name);
 
     /* function name */
-    PUT_STRVAL(v, d_get_strconst(f->env, f->p_ctrl, f->func->inherit,
-				 f->func->index));
+    PUT_STRVAL(v, d_get_strconst(f->p_ctrl, f->func->inherit, f->func->index));
     v++;
 
     /* line number */
@@ -2454,12 +2436,12 @@ int narg, flag;
 
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
-    if (ec_push(f->env, (flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
+    if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) NULL)) {
 	ok = FALSE;
     } else {
 	f->sp -= narg;	/* recover arguments */
 	call_driver_object(f, func, narg);
-	ec_pop(f->env);
+	ec_pop();
 	ok = TRUE;
     }
     i_set_rlimits(f, f->rlim->next);
@@ -2475,15 +2457,14 @@ void i_runtime_error(f, depth)
 register frame *f;
 Int depth;
 {
-    PUSH_STRVAL(f, errorstr(f->env));
+    PUSH_STRVAL(f, errorstr());
     PUSH_INTVAL(f, depth);
     PUSH_INTVAL(f, i_get_ticks(f));
     if (!i_call_critical(f, "runtime_error", 3, FALSE)) {
-	P_message("Error within runtime_error:\012");	/* LF */
-	P_message(errorstr(f->env)->text);
-	P_message("\012");				/* LF */
+	message("Error within runtime_error:\012");	/* LF */
+	message((char *) NULL);
     } else {
-	i_del_value(f->env, f->sp++);
+	i_del_value(f->sp++);
     }
 }
 
@@ -2499,15 +2480,14 @@ Int level;
 
     for (f = ftop; f->level != level; f = f->prev) ;
     if (f != ftop) {
-	PUSH_STRVAL(ftop, errorstr(f->env));
+	PUSH_STRVAL(ftop, errorstr());
 	PUSH_INTVAL(ftop, f->depth);
 	PUSH_INTVAL(ftop, i_get_ticks(ftop));
 	if (!i_call_critical(ftop, "atomic_error", 3, FALSE)) {
-	    P_message("Error within atomic_error:\012");	/* LF */
-	    P_message(errorstr(f->env)->text);
-	    P_message("\012");					/* LF */
+	    message("Error within atomic_error:\012");	/* LF */
+	    message((char *) NULL);
 	} else {
-	    i_del_value(f->env, ftop->sp++);
+	    i_del_value(ftop->sp++);
 	}
 
 	if (f->rlim != ftop->rlim) {
@@ -2517,8 +2497,8 @@ Int level;
 	    f->rlim->ticks *= 2;
 	}
 	i_set_sp(ftop, f->sp);
-	d_discard_plane(f->env, ftop->level);
-	o_discard_plane(f->env);
+	d_discard_plane(ftop->level);
+	o_discard_plane();
     }
 
     return f;
@@ -2528,15 +2508,16 @@ Int level;
  * NAME:	interpret->clear()
  * DESCRIPTION:	clean up the interpreter state
  */
-void i_clear(env)
-register lpcenv *env;
+void i_clear()
 {
     register frame *f;
 
-    f = env->ie->cframe;
-    if (f->stack != env->ie->stack) {
-	IFREE(env, f->stack);
-	f->stack = f->lip = env->ie->stack;
-	f->fp = f->sp = f->stack + MIN_STACK;
+    f = cframe;
+    if (f->stack != stack) {
+	FREE(f->stack);
+	f->fp = f->sp = stack + MIN_STACK;
+	f->stack = f->lip = stack;
     }
+
+    f->rlim = &rlim;
 }

@@ -34,7 +34,7 @@ rxbuf *rx_new()
 {
     rxbuf *rx;
 
-    rx = SALLOC(rxbuf, 1);
+    rx = ALLOC(rxbuf, 1);
     rx->valid = 0;
     return rx;
 }
@@ -46,7 +46,7 @@ rxbuf *rx_new()
 void rx_del(rx)
 rxbuf *rx;
 {
-    SFREE(rx);
+    FREE(rx);
 }
 
 /*

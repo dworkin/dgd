@@ -4,8 +4,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "table.h"
 # include "control.h"
 # include "node.h"
@@ -26,8 +26,7 @@ static char *driver_name;	/* name of driver object */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static bool pc_inherits(env, inh, pcinh, ninherits, compiled)
-register lpcenv *env;
+static bool pc_inherits(inh, pcinh, ninherits, compiled)
 register dinherit *inh;
 register pcinherit *pcinh;
 register int ninherits;
@@ -38,7 +37,7 @@ Uint compiled;
 
     cc = 0;
     while (--ninherits > 0) {
-	obj = o_find(env, pcinh->name, OACC_READ);
+	obj = o_find(pcinh->name, OACC_READ);
 	if (obj == (object *) NULL) {
 	    message("Precompiled: cannot inherit /%s from /%s", pcinh->name,
 		  pcinh[ninherits].name);
@@ -56,7 +55,7 @@ Uint compiled;
 	message("Precompiled: object out of date: /%s", pcinh->name);
 	return FALSE;
     }
-    if (o_find(env, pcinh->name, OACC_READ) != (object *) NULL) {
+    if (o_find(pcinh->name, OACC_READ) != (object *) NULL) {
 	message("Precompiled: object precompiled twice: /%s", pcinh->name);
 	return FALSE;
     }
@@ -98,8 +97,7 @@ register Uint nfuncs;
  * NAME:	pc->obj()
  * DESCRIPTION:	create a precompiled object
  */
-static uindex pc_obj(env, name, inherits, ninherits)
-lpcenv *env;
+static uindex pc_obj(name, inherits, ninherits)
 char *name;
 dinherit *inherits;
 int ninherits;
@@ -109,7 +107,7 @@ int ninherits;
 
     ctrl.inherits = inherits;
     ctrl.ninherits = ninherits;
-    obj = o_new(env, name, &ctrl);
+    obj = o_new(name, &ctrl);
     obj->flags |= O_COMPILED;
     if (strcmp(name, driver_name) == 0) {
 	obj->flags |= O_DRIVER;
@@ -164,8 +162,7 @@ uindex oindex;
  * NAME:	precomp->preload()
  * DESCRIPTION:	preload compiled objects
  */
-bool pc_preload(env, auto_obj, driver_obj)
-register lpcenv *env;
+bool pc_preload(auto_obj, driver_obj)
 char *auto_obj, *driver_obj;
 {
     register precomp **pc, *l;
@@ -184,23 +181,25 @@ char *auto_obj, *driver_obj;
     nprecomps = n;
 
     if (n > 0) {
-	map = SALLOC(uindex, 2 * n);
-	itab = SALLOC(int, n);
-	inherits = SALLOC(dinherit, ninherits);
+	m_static();
+	map = ALLOC(uindex, 2 * n);
+	itab = ALLOC(int, n);
+	inherits = ALLOC(dinherit, ninherits);
 	if (nfuncs > 0) {
-	    pcfunctions = SALLOC(pcfunc, nfuncs);
+	    pcfunctions = ALLOC(pcfunc, nfuncs);
 	}
+	m_dynamic();
 
 	n = ninherits = nfuncs = 0;
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
 
-	    if (!pc_inherits(env, inherits + ninherits, l->inherits,
-			     l->ninherits, l->compiled)) {
+	    if (!pc_inherits(inherits + ninherits, l->inherits, l->ninherits,
+			     l->compiled)) {
 		return FALSE;
 	    }
 	    itab[n] = ninherits;
-	    l->oindex = pc_obj(env, l->inherits[l->ninherits - 1].name,
+	    l->oindex = pc_obj(l->inherits[l->ninherits - 1].name,
 			       inherits + ninherits, l->ninherits);
 	    ninherits += l->ninherits;
 
@@ -222,7 +221,7 @@ char *auto_obj, *driver_obj;
  * DESCRIPTION:	return an array with all precompiled objects
  */
 array *pc_list(data)
-register dataspace *data;
+dataspace *data;
 {
     array *a;
     register object *obj;
@@ -232,8 +231,8 @@ register dataspace *data;
 
     for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->oindex != UINDEX_MAX &&
-	    (obj=OBJR(data->env, (*pc)->oindex))->count != 0 &&
-	    (obj->flags & O_COMPILED)) {
+	    (obj=OBJR((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED))
+	{
 	    n++;
 	}
     }
@@ -242,8 +241,8 @@ register dataspace *data;
     v = a->elts;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->oindex != UINDEX_MAX &&
-	    (obj=OBJR(data->env, (*pc)->oindex))->count != 0 &&
-	    (obj->flags & O_COMPILED)) {
+	    (obj=OBJR((*pc)->oindex))->count != 0 && (obj->flags & O_COMPILED))
+	{
 	    v->type = T_OBJECT;
 	    v->oindex = obj->index;
 	    v->u.objcnt = obj->count;
@@ -335,8 +334,7 @@ static char di_layout[] = "uus";
  * NAME:	precomp->dump()
  * DESCRIPTION:	dump precompiled objects
  */
-bool pc_dump(env, fd)
-lpcenv *env;
+bool pc_dump(fd)
 int fd;
 {
     dump_header dh;
@@ -386,22 +384,22 @@ int fd;
 	/*
 	 * Save only the necessary information.
 	 */
-	dpc = IALLOCA(env, dump_precomp, dh.nprecomps);
-	inh = IALLOCA(env, dump_inherit, dh.ninherits);
+	dpc = ALLOCA(dump_precomp, dh.nprecomps);
+	inh = ALLOCA(dump_inherit, dh.ninherits);
 	if (dh.nstrings != 0) {
-	    strings = IALLOCA(env, dstrconst, dh.nstrings);
+	    strings = ALLOCA(dstrconst, dh.nstrings);
 	    if (dh.stringsz != 0) {
-		stext = IALLOCA(env, char, dh.stringsz);
+		stext = ALLOCA(char, dh.stringsz);
 	    }
 	}
 	if (dh.nfuncdefs != 0) {
-	    funcdefs = IALLOCA(env, dfuncdef, dh.nfuncdefs);
+	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
 	}
 	if (dh.nvardefs != 0) {
-	    vardefs = IALLOCA(env, dvardef, dh.nvardefs);
+	    vardefs = ALLOCA(dvardef, dh.nvardefs);
 	}
 	if (dh.nfuncalls != 0) {
-	    funcalls = IALLOCA(env, char, 2 * dh.nfuncalls);
+	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
 	}
 
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
@@ -489,22 +487,22 @@ int fd;
 	}
 
 	if (dh.nfuncalls != 0) {
-	    IFREEA(env, funcalls);
+	    AFREE(funcalls);
 	}
 	if (dh.nvardefs != 0) {
-	    IFREEA(env, vardefs);
+	    AFREE(vardefs);
 	}
 	if (dh.nfuncdefs != 0) {
-	    IFREEA(env, funcdefs);
+	    AFREE(funcdefs);
 	}
 	if (dh.nstrings != 0) {
 	    if (dh.stringsz != 0) {
-		IFREEA(env, stext);
+		AFREE(stext);
 	    }
-	    IFREEA(env, strings);
+	    AFREE(strings);
 	}
-	IFREEA(env, inh);
-	IFREEA(env, dpc);
+	AFREE(inh);
+	AFREE(dpc);
     }
 
     return ok;
@@ -666,8 +664,7 @@ register int nvardefs;
  * NAME:	precomp->restore()
  * DESCRIPTION:	restore and replace precompiled objects
  */
-void pc_restore(env, fd)
-register lpcenv *env;
+void pc_restore(fd)
 int fd;
 {
     dump_header dh;
@@ -701,30 +698,30 @@ int fd;
 	/*
 	 * Restore old precompiled objects.
 	 */
-	dpc = IALLOCA(env, dump_precomp, dh.nprecomps);
+	dpc = ALLOCA(dump_precomp, dh.nprecomps);
 	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
-	dinh = IALLOCA(env, dump_inherit, dh.ninherits);
+	dinh = ALLOCA(dump_inherit, dh.ninherits);
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
 	if (dh.nstrings != 0) {
-	    strings = IALLOCA(env, dstrconst, dh.nstrings);
+	    strings = ALLOCA(dstrconst, dh.nstrings);
 	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
 	    if (dh.stringsz != 0) {
-		stext = IALLOCA(env, char, dh.stringsz);
+		stext = ALLOCA(char, dh.stringsz);
 		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
 		    fatal("cannot read from dump file");
 		}
 	    }
 	}
 	if (dh.nfuncdefs != 0) {
-	    funcdefs = IALLOCA(env, dfuncdef, dh.nfuncdefs);
+	    funcdefs = ALLOCA(dfuncdef, dh.nfuncdefs);
 	    conf_dread(fd, (char *) funcdefs, DF_LAYOUT, dh.nfuncdefs);
 	}
 	if (dh.nvardefs != 0) {
-	    vardefs = IALLOCA(env, dvardef, dh.nvardefs);
+	    vardefs = ALLOCA(dvardef, dh.nvardefs);
 	    conf_dread(fd, (char *) vardefs, DV_LAYOUT, dh.nvardefs);
 	}
 	if (dh.nfuncalls != 0) {
-	    funcalls = IALLOCA(env, char, 2 * dh.nfuncalls);
+	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
 	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
 		fatal("cannot read from dump file");
 	    }
@@ -737,7 +734,7 @@ int fd;
 	    for (pc = precompiled; ; pc++) {
 		l = *pc;
 		if (l == (precomp *) NULL) {
-		    error(env, "Restored object not precompiled: /%s", name);
+		    error("Restored object not precompiled: /%s", name);
 		}
 		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
 		    hash_add(l->oindex = oindex, pc - precompiled);
@@ -758,7 +755,7 @@ int fd;
 			!varcmp(vardefs, l->vardefs, l->nvardefs) ||
 			memcmp(funcalls, l->funcalls, 2 * l->nfuncalls) != 0) {
 			/* not the same */
-			error(env, "Restored different precompiled object /%s",
+			error("Restored different precompiled object /%s",
 			      name);
 		    }
 		    break;
@@ -775,22 +772,22 @@ int fd;
 	}
 
 	if (dh.nfuncalls != 0) {
-	    IFREEA(env, funcalls - dh.nfuncalls);
+	    AFREE(funcalls - dh.nfuncalls);
 	}
 	if (dh.nvardefs != 0) {
-	    IFREEA(env, vardefs - dh.nvardefs);
+	    AFREE(vardefs - dh.nvardefs);
 	}
 	if (dh.nfuncdefs != 0) {
-	    IFREEA(env, funcdefs - dh.nfuncdefs);
+	    AFREE(funcdefs - dh.nfuncdefs);
 	}
 	if (dh.nstrings != 0) {
 	    if (dh.stringsz != 0) {
-		IFREEA(env, stext - dh.stringsz);
+		AFREE(stext - dh.stringsz);
 	    }
-	    IFREEA(env, strings - dh.nstrings);
+	    AFREE(strings - dh.nstrings);
 	}
-	IFREEA(env, dinh - dh.ninherits);
-	IFREEA(env, dpc - dh.nprecomps);
+	AFREE(dinh - dh.ninherits);
+	AFREE(dpc - dh.nprecomps);
     }
 
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
@@ -798,12 +795,11 @@ int fd;
 	if (l->oindex == UINDEX_MAX) {
 	    register object *obj;
 
-	    obj = o_find(env, name = l->inherits[l->ninherits - 1].name,
-			 OACC_READ);
+	    obj = o_find(name = l->inherits[l->ninherits - 1].name, OACC_READ);
 	    if (obj != (object *) NULL) {
 		register control *ctrl;
 
-		ctrl = o_control(env, obj);
+		ctrl = o_control(obj);
 		if (ctrl->compiled > l->compiled) {
 		    /* interpreted object is more recent */
 		    continue;
@@ -815,7 +811,7 @@ int fd;
 		l->oindex = obj->index;
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 		if (ctrl->nstrings != 0) {
-		    d_get_strconst(env, ctrl, ctrl->ninherits - 1, 0);
+		    d_get_strconst(ctrl, ctrl->ninherits - 1, 0);
 		}
 		if (ctrl->ninherits != l->ninherits ||
 		    ctrl->nstrings != l->nstrings ||
@@ -833,11 +829,10 @@ int fd;
 		    memcmp(d_get_funcalls(ctrl), l->funcalls,
 			   2 * l->nfuncalls) != 0) {
 		    /* not the same */
-		    error(env, "Precompiled object != restored object /%s",
-			  name);
+		    error("Precompiled object != restored object /%s", name);
 		}
 
-		d_del_control(env, ctrl);
+		d_del_control(ctrl);
 		obj->flags |= O_COMPILED;
 		obj->ctrl = (control *) NULL;
 	    } else {
@@ -845,7 +840,7 @@ int fd;
 		 * new precompiled object
 		 */
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
-		l->oindex = pc_obj(env, name, inherits + itab[i], l->ninherits);
+		l->oindex = pc_obj(name, inherits + itab[i], l->ninherits);
 	    }
 	    hash_add(l->oindex, (uindex) i);
 	}
@@ -870,7 +865,7 @@ register int n;
     }
     n = (*kf->func)(f);
     if (n != 0) {
-	error(f->env, "Bad argument %d for kfun %s", n, kf->name);
+	error("Bad argument %d for kfun %s", n, kf->name);
     }
 }
 
@@ -890,7 +885,7 @@ register int n, nargs;
     }
     n = (*kf->func)(f, nargs);
     if (n != 0) {
-	error(f->env, "Bad argument %d for kfun %s", n, kf->name);
+	error("Bad argument %d for kfun %s", n, kf->name);
     }
 }
 
@@ -898,12 +893,11 @@ register int n, nargs;
  * NAME:	xdiv()
  * DESCRIPTION:	perform integer division
  */
-Int xdiv(env, i, d)
-lpcenv *env;
+Int xdiv(i, d)
 register Int i, d;
 {
     if (d == 0) {
-	error(env, "Division by zero");
+	error("Division by zero");
     }
     if ((i | d) < 0) {
 	Int r;
@@ -918,12 +912,11 @@ register Int i, d;
  * NAME:	xmod()
  * DESCRIPTION:	perform integer modulus
  */
-Int xmod(env, i, d)
-lpcenv *env;
+Int xmod(i, d)
 register Int i, d;
 {
     if (d == 0) {
-	error(env, "Modulus by zero");
+	error("Modulus by zero");
     }
     if ((i | d) < 0) {
 	Int r;
@@ -938,13 +931,12 @@ register Int i, d;
  * NAME:	xlshift()
  * DESCRIPTION:	perform left shift
  */
-Int xlshift(env, i, shift)
-lpcenv *env;
+Int xlshift(i, shift)
 register Int i, shift;
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
-	    error(env, "Negative left shift");
+	    error("Negative left shift");
 	}
 	return 0;
     }
@@ -955,13 +947,12 @@ register Int i, shift;
  * NAME:	xrshift()
  * DESCRIPTION:	perform right shift
  */
-Int xrshift(env, i, shift)
-lpcenv *env;
+Int xrshift(i, shift)
 register Int i, shift;
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
-	    error(env, "Negative right shift");
+	    error("Negative right shift");
 	}
 	return 0;
     }
@@ -988,13 +979,13 @@ register frame *f;
 	return !VFLT_ISZERO(f->sp - 1);
 
     case T_STRING:
-	str_del(f->env, f->sp->u.string);
+	str_del(f->sp->u.string);
 	break;
 
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	arr_del(f->env, f->sp->u.array);
+	arr_del(f->sp->u.array);
 	break;
     }
     f->sp++;
@@ -1009,10 +1000,10 @@ void new_rlimits(f)
 register frame *f;
 {
     if (f->sp[1].type != T_INT) {
-	error(f->env, "Bad rlimits depth type");
+	error("Bad rlimits depth type");
     }
     if (f->sp->type != T_INT) {
-	error(f->env, "Bad rlimits ticks type");
+	error("Bad rlimits ticks type");
     }
     f->sp += 2;
 
@@ -1050,8 +1041,7 @@ register int h;
  * NAME:	switch_str()
  * DESCRIPTION:	handle a str switch
  */
-int switch_str(env, v, ctrl, tab, h)
-register lpcenv *env;
+int switch_str(v, ctrl, tab, h)
 value *v;
 register control *ctrl;
 register char *tab;
@@ -1064,7 +1054,7 @@ register int h;
     if (VAL_NIL(v)) {
 	return (tab[0] == 0);
     } else if (v->type != T_STRING) {
-	i_del_value(env, v);
+	i_del_value(v);
 	return 0;
     }
 
@@ -1079,10 +1069,10 @@ register int h;
     do {
 	m = (l + h) >> 1;
 	t = tab + 3 * m;
-	c = str_cmp(s, d_get_strconst(env, ctrl, t[0],
+	c = str_cmp(s, d_get_strconst(ctrl, t[0],
 				      (UCHAR(t[1]) << 8) + UCHAR(t[2])));
 	if (c == 0) {
-	    str_del(env, s);
+	    str_del(s);
 	    return m + 1;	/* found */
 	} else if (c < 0) {
 	    h = m;	/* search in lower half */
@@ -1091,6 +1081,6 @@ register int h;
 	}
     } while (l < h);
 
-    str_del(env, s);
+    str_del(s);
     return 0;		/* not found */
 }

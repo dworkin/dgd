@@ -9,36 +9,37 @@ struct _array_ {
     array *prev, *next;			/* per-object linked list */
 };
 
+typedef struct _arrmerge_ arrmerge;	/* array merge table */
+typedef struct _abchunk_ abchunk;	/* array backup chunk */
+
 extern void		arr_init	P((unsigned int));
-extern struct _arrenv_ *arr_new_env	P((void));
-extern array	       *arr_alloc	P((lpcenv*, unsigned int));
+extern array	       *arr_alloc	P((unsigned int));
 extern array	       *arr_new		P((dataspace*, long));
 extern array	       *arr_ext_new	P((dataspace*, long));
 # define arr_ref(a)	((a)->ref++)
-extern void		arr_del		P((lpcenv*, array*));
-extern void		arr_freelist	P((lpcenv*, array*));
-extern void		arr_freeall	P((lpcenv*));
+extern void		arr_del		P((array*));
+extern void		arr_freelist	P((array*));
+extern void		arr_freeall	P((void));
 
-extern struct _arrmerge_ *arr_merge	P((lpcenv*));
-extern Uint		arr_put		P((struct _arrmerge_*, array*, Uint));
-extern void		arr_clear	P((struct _arrmerge_*));
+extern arrmerge	       *arr_merge	P((void));
+extern Uint		arr_put		P((arrmerge*, array*, Uint));
+extern void		arr_clear	P((arrmerge*));
 
-extern struct _abchunk_*arr_backup	P((lpcenv*, struct _abchunk_*, array*));
-extern void		arr_commit	P((lpcenv*, struct _abchunk_*,
-					   dataplane*, int));
-extern void		arr_discard	P((lpcenv*, struct _abchunk_*));
+extern void		arr_backup	P((abchunk**, array*));
+extern void		arr_commit	P((abchunk**, dataplane*, int));
+extern void		arr_discard	P((abchunk**));
 
 extern array	       *arr_add		P((dataspace*, array*, array*));
 extern array	       *arr_sub		P((dataspace*, array*, array*));
 extern array	       *arr_intersect	P((dataspace*, array*, array*));
 extern array	       *arr_setadd	P((dataspace*, array*, array*));
 extern array	       *arr_setxadd	P((dataspace*, array*, array*));
-extern unsigned short	arr_index	P((lpcenv*, array*, long));
-extern void		arr_ckrange	P((lpcenv*, array*, long, long));
+extern unsigned short	arr_index	P((array*, long));
+extern void		arr_ckrange	P((array*, long, long));
 extern array	       *arr_range	P((dataspace*, array*, long, long));
 
 extern array	       *map_new		P((dataspace*, long));
-extern void		map_sort	P((lpcenv*, array*));
+extern void		map_sort	P((array*));
 extern void		map_compact	P((array*));
 extern unsigned short	map_size	P((array*));
 extern array	       *map_add		P((dataspace*, array*, array*));

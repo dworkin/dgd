@@ -33,20 +33,18 @@ static flt pio4 =	{ 0x0000, 0x7ffe, 0x6487, 0x76a8885cL };
  * NAME:	f_edom()
  * DESCRIPTION:	Domain error
  */
-static void f_edom(env)
-lpcenv *env;
+static void f_edom()
 {
-    error(env, "Math argument");
+    error("Math argument");
 }
 
 /*
  * NAME:	f_erange()
  * DESCRIPTION:	Out of range
  */
-static void f_erange(env)
-lpcenv *env;
+static void f_erange()
 {
-    error(env, "Result too large");
+    error("Result too large");
 }
 
 static void f_sub P((flt*, flt*));
@@ -307,8 +305,7 @@ register flt *a, *b;
  * DESCRIPTION:	a = a / b.  b must be non-zero.  The result is normalized,
  *		but may be out of range.
  */
-static void f_div(env, a, b)
-lpcenv *env;
+static void f_div(a, b)
 register flt *a, *b;
 {
     unsigned short n[3];
@@ -316,7 +313,7 @@ register flt *a, *b;
     register unsigned short divh, i;
 
     if (b->exp == 0) {
-	error(env, "Division by zero");
+	error("Division by zero");
     }
     if (a->exp == 0) {
 	/* a is 0 */
@@ -545,8 +542,7 @@ register flt *a;
  * NAME:	f_ftoi()
  * DESCRIPTION:	convert a flt to an integer, discarding the fractional part
  */
-static Int f_ftoi(env, a)
-lpcenv *env;
+static Int f_ftoi(a)
 register flt *a;
 {
     Uint i;
@@ -557,7 +553,7 @@ register flt *a;
     if (a->exp > BIAS + 30 &&
 	(a->sign == 0 || a->exp != BIAS + 31 || a->high != 0x4000 ||
 	 a->low != 0)) {
-	f_erange(env);
+	f_erange();
     }
 
     i = (((Uint) a->high << 17) | (a->low >> 14)) >> (BIAS + 31 - a->exp);
@@ -569,8 +565,7 @@ register flt *a;
  * NAME:	f_ftoxf()
  * DESCRIPTION:	convert flt to xfloat
  */
-static void f_ftoxf(env, a, f)
-lpcenv *env;
+static void f_ftoxf(a, f)
 register flt *a;
 register xfloat *f;
 {
@@ -599,7 +594,7 @@ register xfloat *f;
 
     /* exponent */
     if (exp > BIAS + 1023) {
-	f_erange(env);
+	f_erange();
     }
     if (exp < BIAS - 1022) {
 	/* underflow */
@@ -667,8 +662,7 @@ static flt tenths[] = {
  *		proper format.  Return TRUE if the operation was successful,
  *		FALSE otherwise.
  */
-bool flt_atof(env, s, f)
-lpcenv *env;
+bool flt_atof(s, f)
 char **s;
 xfloat *f;
 {
@@ -771,7 +765,7 @@ xfloat *f;
 	return FALSE;
     }
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
     *s = p;
     return TRUE;
 }
@@ -902,38 +896,35 @@ char *buffer;
  * NAME:	float->itof()
  * DESCRIPTION:	convert an integer to a float
  */
-void flt_itof(env, i, f)
-lpcenv *env;
+void flt_itof(i, f)
 Int i;
 xfloat *f;
 {
     flt a;
 
     f_itof(i, &a);
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->ftoi()
  * DESCRIPTION:	convert a float to an integer
  */
-Int flt_ftoi(env, f)
-lpcenv *env;
+Int flt_ftoi(f)
 xfloat *f;
 {
     flt a;
 
     f_xftof(f, &a);
     f_round(&a);
-    return f_ftoi(env, &a);
+    return f_ftoi(&a);
 }
 
 /*
  * NAME:	float->add()
  * DESCRIPTION:	add two floats
  */
-void flt_add(env, f1, f2)
-lpcenv *env;
+void flt_add(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b;
@@ -941,15 +932,14 @@ xfloat *f1, *f2;
     f_xftof(f2, &b);
     f_xftof(f1, &a);
     f_add(&a, &b);
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
  * NAME:	float->sub()
  * DESCRIPTION:	subtract a float from a float
  */
-void flt_sub(env, f1, f2)
-lpcenv *env;
+void flt_sub(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b;
@@ -957,15 +947,14 @@ xfloat *f1, *f2;
     f_xftof(f2, &b);
     f_xftof(f1, &a);
     f_sub(&a, &b);
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
  * NAME:	float->mult()
  * DESCRIPTION:	multiply two floats
  */
-void flt_mult(env, f1, f2)
-lpcenv *env;
+void flt_mult(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b;
@@ -973,23 +962,22 @@ xfloat *f1, *f2;
     f_xftof(f1, &a);
     f_xftof(f2, &b);
     f_mult(&a, &b);
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
  * NAME:	float->div()
  * DESCRIPTION:	divide a float by a float
  */
-void flt_div(env, f1, f2)
-lpcenv *env;
+void flt_div(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b;
 
     f_xftof(f2, &b);
     f_xftof(f1, &a);
-    f_div(env, &a, &b);
-    f_ftoxf(env, &a, f1);
+    f_div(&a, &b);
+    f_ftoxf(&a, f1);
 }
 
 /*
@@ -1016,8 +1004,7 @@ register xfloat *f1, *f2;
  * NAME:	float->floor()
  * DESCRIPTION:	round a float downwards
  */
-void flt_floor(env, f)
-lpcenv *env;
+void flt_floor(f)
 xfloat *f;
 {
     flt a, b;
@@ -1028,15 +1015,14 @@ xfloat *f;
     if (b.sign != 0 && f_cmp(&a, &b) != 0) {
 	f_sub(&b, &one);
     }
-    f_ftoxf(env, &b, f);
+    f_ftoxf(&b, f);
 }
 
 /*
  * NAME:	float->ceil()
  * DESCRIPTION:	round a float upwards
  */
-void flt_ceil(env, f)
-lpcenv *env;
+void flt_ceil(f)
 xfloat *f;
 {
     flt a, b;
@@ -1047,22 +1033,21 @@ xfloat *f;
     if (b.sign == 0 && f_cmp(&a, &b) != 0) {
 	f_add(&b, &one);
     }
-    f_ftoxf(env, &b, f);
+    f_ftoxf(&b, f);
 }
 
 /*
  * NAME:	float->fmod()
  * DESCRIPTION:	perform fmod
  */
-void flt_fmod(env, f1, f2)
-lpcenv *env;
+void flt_fmod(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b, c;
 
     f_xftof(f2, &b);
     if (b.exp == 0) {
-	f_edom(env);
+	f_edom();
     }
     f_xftof(f1, &a);
     if (a.exp == 0) {
@@ -1080,7 +1065,7 @@ xfloat *f1, *f2;
 	f_sub(&a, &c);
     }
 
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
@@ -1104,8 +1089,7 @@ register xfloat *f;
  * NAME:	float->ldexp()
  * DESCRIPTION:	make a float from a fraction and an exponent
  */
-void flt_ldexp(env, f, exp)
-lpcenv *env;
+void flt_ldexp(f, exp)
 register xfloat *f;
 register Int exp;
 {
@@ -1119,7 +1103,7 @@ register Int exp;
 	return;
     }
     if (exp > 1023 + 1023) {
-	f_erange(env);
+	f_erange();
     }
     f->high = (f->high & 0x800f) | (exp << 4);
 }
@@ -1128,8 +1112,7 @@ register Int exp;
  * NAME:	float->modf()
  * DESCRIPTION:	split float into fraction and integer part
  */
-void flt_modf(env, f1, f2)
-lpcenv *env;
+void flt_modf(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b;
@@ -1142,8 +1125,8 @@ xfloat *f1, *f2;
 	f_trunc(&b);
 	f_sub(&a, &b);
     }
-    f_ftoxf(env, &a, f1);
-    f_ftoxf(env, &b, f2);
+    f_ftoxf(&a, f1);
+    f_ftoxf(&b, f2);
 }
 
 
@@ -1195,8 +1178,7 @@ register int n;
  * NAME:	f_exp()
  * DESCRIPTION:	internal version of exp(f)
  */
-static void f_exp(env, a)
-lpcenv *env;
+static void f_exp(a)
 register flt *a;
 {
     static flt p[] = {
@@ -1219,7 +1201,7 @@ register flt *a;
     b = *a;
     f_mult(&b, &log2e);
     f_round(&b);
-    n = f_ftoi(env, &b);
+    n = f_ftoi(&b);
     c = b;
     f_mult(&c, &c1);
     f_sub(a, &c);
@@ -1233,7 +1215,7 @@ register flt *a;
     f_mult(a, &c);
     f_poly(&b, q, 3);
     f_sub(&b, a);
-    f_div(env, a, &b);
+    f_div(a, &b);
 
     if (a->exp != 0) {
 	a->exp++;
@@ -1248,8 +1230,7 @@ register flt *a;
  * NAME:	float->exp()
  * DESCRIPTION:	exp(f)
  */
-void flt_exp(env, f)
-lpcenv *env;
+void flt_exp(f)
 xfloat *f;
 {
     flt a;
@@ -1257,16 +1238,16 @@ xfloat *f;
     f_xftof(f, &a);
     if (f_cmp(&a, &maxlog) > 0) {
 	/* overflow */
-	f_erange(env);
+	f_erange();
     }
     if (f_cmp(&a, &minlog) < 0) {
 	/* underflow */
 	a.exp = 0;
     } else {
-	f_exp(env, &a);
+	f_exp(&a);
     }
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 static flt logp[] = {
@@ -1291,8 +1272,7 @@ static flt logq[] = {
  * NAME:	float->log()
  * DESCRIPTION:	log(f)
  */
-void flt_log(env, f)
-register lpcenv *env;
+void flt_log(f)
 xfloat *f;
 {
     static flt r[] = {
@@ -1313,7 +1293,7 @@ xfloat *f;
     f_xftof(f, &a);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
-	f_edom(env);
+	f_edom();
     }
 
     n = a.exp - BIAS + 1;
@@ -1334,14 +1314,14 @@ xfloat *f;
 	}
 	f_add(&b, &half);
 
-	f_div(env, &a, &b);
+	f_div(&a, &b);
 	b = a;
 	f_mult(&b, &b);
 	c = b;
 	f_poly(&b, r, 2);
 	f_mult(&b, &c);
 	f_poly1(&c, s, 2);
-	f_div(env, &b, &c);
+	f_div(&b, &c);
 	f_mult(&b, &a);
 	f_add(&a, &b);
     } else {
@@ -1358,7 +1338,7 @@ xfloat *f;
 	f_mult(&c, &b);
 	d = a;
 	f_poly1(&d, logq, 5);
-	f_div(env, &c, &d);
+	f_div(&c, &d);
 	f_mult(&c, &a);
 	if (b.exp != 0) {
 	    --b.exp;
@@ -1376,15 +1356,14 @@ xfloat *f;
 	f_add(&a, &b);
     }
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->log10()
  * DESCRIPTION:	log10(f)
  */
-void flt_log10(env, f)
-lpcenv *env;
+void flt_log10(f)
 xfloat *f;
 {
     static flt l102a = { 0x0000, 0x7ffd, 0x4d00, 0x00000000L };
@@ -1397,7 +1376,7 @@ xfloat *f;
     f_xftof(f, &a);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
-	f_edom(env);
+	f_edom();
     }
 
     n = a.exp - BIAS + 1;
@@ -1416,7 +1395,7 @@ xfloat *f;
     f_mult(&c, &b);
     d = a;
     f_poly1(&d, logq, 5);
-    f_div(env, &c, &d);
+    f_div(&c, &d);
     f_mult(&c, &a);
     if (b.exp != 0) {
 	--b.exp;
@@ -1437,15 +1416,14 @@ xfloat *f;
     f_mult(&c, &l102a);
     f_add(&a, &c);
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	f_powi()
  * DESCRIPTION:	take a number to an integer power
  */
-static void f_powi(env, a, n)
-lpcenv *env;
+static void f_powi(a, n)
 register flt *a;
 register int n;
 {
@@ -1462,7 +1440,7 @@ register int n;
     if (a->exp == 0) {
 	if (n < 0) {
 	    /* negative power of 0.0 */
-	    f_edom(env);
+	    f_edom();
 	}
 	/* pow(0.0, y) == 0.0 */
 	return;
@@ -1487,7 +1465,7 @@ register int n;
     while ((n >>= 1) != 0) {
 	f_mult(a, a);
 	if (a->exp > BIAS + 1023) {
-	    f_erange(env);
+	    f_erange();
 	}
 	if (n & 1) {
 	    f_mult(&b, a);
@@ -1498,7 +1476,7 @@ register int n;
     b.sign = sign;
     if (neg) {
 	*a = one;
-	f_div(env, a, &b);
+	f_div(a, &b);
     } else {
 	*a = b;
     }
@@ -1508,8 +1486,7 @@ register int n;
  * NAME:	float->pow()
  * DESCRIPTION:	pow(f1, f2)
  */
-void flt_pow(env, f1, f2)
-register lpcenv *env;
+void flt_pow(f1, f2)
 xfloat *f1, *f2;
 {
     static flt p[] = {
@@ -1576,8 +1553,8 @@ xfloat *f1, *f2;
     f_trunc(&c);
     if (f_cmp(&b, &c) == 0 && b.exp < 0x800e) {
 	/* integer power < 32768 */
-	f_powi(env, &a, (int) f_ftoi(env, &c));
-	f_ftoxf(env, &a, f1);
+	f_powi(&a, (int) f_ftoi(&c));
+	f_ftoxf(&a, f1);
 	return;
     }
 
@@ -1585,7 +1562,7 @@ xfloat *f1, *f2;
     if (sign != 0) {
 	if (f_cmp(&b, &c) != 0) {
 	    /* non-integer power of negative number */
-	    f_edom(env);
+	    f_edom();
 	}
 	a.sign = 0;
 	--c.exp;
@@ -1598,7 +1575,7 @@ xfloat *f1, *f2;
     if (a.exp == 0) {
 	if (b.sign != 0) {
 	    /* negative power of 0.0 */
-	    f_edom(env);
+	    f_edom();
 	}
 	/* pow(0.0, y) == 0.0 */
 	return;
@@ -1624,7 +1601,7 @@ xfloat *f1, *f2;
     }
     f_sub(&a, &aloga[i]);
     f_sub(&a, &alogb[i >> 1]);
-    f_div(env, &a, &aloga[i]);
+    f_div(&a, &aloga[i]);
 
     c = a;
     f_mult(&c, &a);
@@ -1633,7 +1610,7 @@ xfloat *f1, *f2;
     f_mult(&d, &c);
     e = a;
     f_poly1(&e, q, 3);
-    f_div(env, &d, &e);
+    f_div(&d, &e);
     f_mult(&d, &a);
     if (c.exp != 0) {
 	--c.exp;
@@ -1706,14 +1683,14 @@ xfloat *f1, *f2;
 	/* exponent >= 16384 */
 	if (d.sign == 0) {
 	    /* overflow */
-	    f_erange(env);
+	    f_erange();
 	}
 	/* underflow */
 	a.exp = 0;
-	f_ftoxf(env, &a, f1);
+	f_ftoxf(&a, f1);
 	return;
     }
-    n = f_ftoi(env, &d);
+    n = f_ftoi(&d);
     f_sub(&b, &c);
     if (b.sign == 0 && b.exp != 0) {
 	n++;
@@ -1733,15 +1710,14 @@ xfloat *f1, *f2;
     }
     a.sign = sign;
 
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
  * NAME:	f_sqrt()
  * DESCRIPTION:	internal version of sqrt(f)
  */
-static void f_sqrt(env, a)
-lpcenv *env;
+static void f_sqrt(a)
 register flt *a;
 {
     static flt c1 = { 0x0000, 0x7ffe, 0x4b8a, 0x371e5fa0L };
@@ -1765,14 +1741,14 @@ register flt *a;
     a->exp += n >> 1;
 
     c = b;
-    f_div(env, &c, a);
+    f_div(&c, a);
     f_add(a, &c);
     --a->exp;
     c = b;
-    f_div(env, &c, a);
+    f_div(&c, a);
     f_add(a, &c);
     --a->exp;
-    f_div(env, &b, a);
+    f_div(&b, a);
     f_add(a, &b);
     --a->exp;
 }
@@ -1781,18 +1757,17 @@ register flt *a;
  * NAME:	float->sqrt()
  * DESCRIPTION:	sqrt(f)
  */
-void flt_sqrt(env, f)
-lpcenv *env;
+void flt_sqrt(f)
 xfloat *f;
 {
     flt a;
 
     f_xftof(f, &a);
     if (a.sign != 0) {
-	f_edom(env);
+	f_edom();
     }
-    f_sqrt(env, &a);
-    f_ftoxf(env, &a, f);
+    f_sqrt(&a);
+    f_ftoxf(&a, f);
 }
 
 static flt sincof[] = {
@@ -1819,8 +1794,7 @@ static flt sc3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
  * NAME:	float->cos()
  * DESCRIPTION:	cos(f)
  */
-void flt_cos(env, f)
-register lpcenv *env;
+void flt_cos(f)
 xfloat *f;
 {
     flt a, b, c;
@@ -1829,14 +1803,14 @@ xfloat *f;
 
     f_xftof(f, &a);
     if (a.exp >= 0x801d) {
-	f_edom(env);
+	f_edom();
     }
 
     a.sign = sign = 0;
     b = a;
-    f_div(env, &b, &pio4);
+    f_div(&b, &pio4);
     f_trunc(&b);
-    n = f_ftoi(env, &b);
+    n = f_ftoi(&b);
     if (n & 1) {
 	n++;
 	f_add(&b, &one);
@@ -1880,15 +1854,14 @@ xfloat *f;
     f_add(&a, &b);
     a.sign ^= sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->sin()
  * DESCRIPTION:	sin(f)
  */
-void flt_sin(env, f)
-register lpcenv *env;
+void flt_sin(f)
 xfloat *f;
 {
     flt a, b, c;
@@ -1897,15 +1870,15 @@ xfloat *f;
 
     f_xftof(f, &a);
     if (a.exp >= 0x801d) {
-	f_edom(env);
+	f_edom();
     }
 
     sign = a.sign;
     a.sign = 0;
     b = a;
-    f_div(env, &b, &pio4);
+    f_div(&b, &pio4);
     f_trunc(&b);
-    n = f_ftoi(env, &b);
+    n = f_ftoi(&b);
     if (n & 1) {
 	n++;
 	f_add(&b, &one);
@@ -1946,15 +1919,14 @@ xfloat *f;
     f_add(&a, &b);
     a.sign ^= sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->tan()
  * DESCRIPTION:	float(f)
  */
-void flt_tan(env, f)
-register lpcenv *env;
+void flt_tan(f)
 xfloat *f;
 {
     static flt p[] = {
@@ -1977,15 +1949,15 @@ xfloat *f;
 
     f_xftof(f, &a);
     if (a.exp >= 0x801d) {
-	f_edom(env);
+	f_edom();
     }
 
     sign = a.sign;
     a.sign = 0;
     b = a;
-    f_div(env, &b, &pio4);
+    f_div(&b, &pio4);
     f_trunc(&b);
-    n = f_ftoi(env, &b);
+    n = f_ftoi(&b);
     if (n & 1) {
 	n++;
 	f_add(&b, &one);
@@ -2007,20 +1979,20 @@ xfloat *f;
 	f_poly(&b, p, 2);
 	f_mult(&b, &c);
 	f_poly1(&c, q, 3);
-	f_div(env, &b, &c);
+	f_div(&b, &c);
 	f_mult(&b, &a);
 	f_add(&a, &b);
     }
 
     if (n & 2) {
 	b = one;
-	f_div(env, &b, &a);
+	f_div(&b, &a);
 	a = b;
 	a.sign ^= 0x8000;
     }
     a.sign ^= sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 static flt ascp[] = {
@@ -2042,8 +2014,7 @@ static flt ascq[] = {
  * NAME:	float->acos()
  * DESCRIPTION:	acos(f)
  */
-void flt_acos(env, f)
-register lpcenv *env;
+void flt_acos(f)
 xfloat *f;
 {
     flt a, b, c;
@@ -2054,7 +2025,7 @@ xfloat *f;
     sign = a.sign;
     a.sign = 0;
     if (f_cmp(&a, &one) > 0) {
-	f_edom(env);
+	f_edom();
     }
 
     if (f_cmp(&a, &half) > 0) {
@@ -2065,7 +2036,7 @@ xfloat *f;
 	    --b.exp;
 	}
 	a = b;
-	f_sqrt(env, &a);
+	f_sqrt(&a);
 	flag = TRUE;
     } else {
 	b = a;
@@ -2078,7 +2049,7 @@ xfloat *f;
 	f_poly(&c, ascp, 4);
 	f_mult(&c, &b);
 	f_poly1(&b, ascq, 4);
-	f_div(env, &c, &b);
+	f_div(&c, &b);
 	f_mult(&c, &a);
 	f_add(&a, &c);
     }
@@ -2102,15 +2073,14 @@ xfloat *f;
 	}
     }
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->asin()
  * DESCRIPTION:	asin(f)
  */
-void flt_asin(env, f)
-register lpcenv *env;
+void flt_asin(f)
 xfloat *f;
 {
     flt a, b, c;
@@ -2121,7 +2091,7 @@ xfloat *f;
     sign = a.sign;
     a.sign = 0;
     if (f_cmp(&a, &one) > 0) {
-	f_edom(env);
+	f_edom();
     }
 
     if (f_cmp(&a, &half) > 0) {
@@ -2132,7 +2102,7 @@ xfloat *f;
 	    --b.exp;
 	}
 	a = b;
-	f_sqrt(env, &a);
+	f_sqrt(&a);
 	flag = TRUE;
     } else {
 	b = a;
@@ -2145,7 +2115,7 @@ xfloat *f;
 	f_poly(&c, ascp, 4);
 	f_mult(&c, &b);
 	f_poly1(&b, ascq, 4);
-	f_div(env, &c, &b);
+	f_div(&c, &b);
 	f_mult(&c, &a);
 	f_add(&a, &c);
     }
@@ -2160,7 +2130,7 @@ xfloat *f;
     }
     a.sign ^= sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 static flt atp[] = {
@@ -2182,8 +2152,7 @@ static flt tp8 = { 0x0000, 0x7ffd, 0x6a09, 0x7333f9e0L };
  * NAME:	float->atan()
  * DESCRIPTION:	atan(f)
  */
-void flt_atan(env, f)
-register lpcenv *env;
+void flt_atan(f)
 xfloat *f;
 {
     flt a, b, c, d, e;
@@ -2196,7 +2165,7 @@ xfloat *f;
     if (f_cmp(&a, &t3p8) > 0) {
 	b = pio2;
 	c = one;
-	f_div(env, &c, &a);
+	f_div(&c, &a);
 	a = c;
 	a.sign = 0x8000;
     } else if (f_cmp(&a, &tp8) > 0) {
@@ -2204,7 +2173,7 @@ xfloat *f;
 	c = a;
 	f_sub(&a, &one);
 	f_add(&c, &one);
-	f_div(env, &a, &c);
+	f_div(&a, &c);
     } else {
 	b.exp = 0;
     }
@@ -2214,22 +2183,21 @@ xfloat *f;
     d = e = c;
     f_poly(&c, atp, 3);
     f_poly1(&d, atq, 3);
-    f_div(env, &c, &d);
+    f_div(&c, &d);
     f_mult(&c, &e);
     f_mult(&c, &a);
     f_add(&c, &b);
     f_add(&a, &c);
     a.sign ^= sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->atan2()
  * DESCRIPTION:	atan2(f)
  */
-void flt_atan2(env, f1, f2)
-register lpcenv *env;
+void flt_atan2(f1, f2)
 xfloat *f1, *f2;
 {
     flt a, b, c, d, e;
@@ -2246,26 +2214,26 @@ xfloat *f1, *f2;
 	a.exp = pio2.exp;
 	a.high = pio2.high;
 	a.low = pio2.low;
-	f_ftoxf(env, &a, f1);
+	f_ftoxf(&a, f1);
 	return;
     }
     if (a.exp == 0) {
 	if (b.sign != 0) {
 	    a = pi;
 	}
-	f_ftoxf(env, &a, f1);
+	f_ftoxf(&a, f1);
 	return;
     }
 
     asign = a.sign;
     bsign = b.sign;
-    f_div(env, &a, &b);
+    f_div(&a, &b);
     a.sign = 0;
 
     if (f_cmp(&a, &t3p8) > 0) {
 	b = pio2;
 	c = one;
-	f_div(env, &c, &a);
+	f_div(&c, &a);
 	a = c;
 	a.sign = 0x8000;
     } else if (f_cmp(&a, &tp8) > 0) {
@@ -2273,7 +2241,7 @@ xfloat *f1, *f2;
 	c = a;
 	f_sub(&a, &one);
 	f_add(&c, &one);
-	f_div(env, &a, &c);
+	f_div(&a, &c);
     } else {
 	b.exp = 0;
     }
@@ -2283,7 +2251,7 @@ xfloat *f1, *f2;
     d = e = c;
     f_poly(&c, atp, 3);
     f_poly1(&d, atq, 3);
-    f_div(env, &c, &d);
+    f_div(&c, &d);
     f_mult(&c, &e);
     f_mult(&c, &a);
     f_add(&c, &b);
@@ -2298,15 +2266,14 @@ xfloat *f1, *f2;
 	}
     }
 
-    f_ftoxf(env, &a, f1);
+    f_ftoxf(&a, f1);
 }
 
 /*
  * NAME:	float->cosh()
  * DESCRIPTION:	cosh(f)
  */
-void flt_cosh(env, f)
-register lpcenv *env;
+void flt_cosh(f)
 xfloat *f;
 {
     flt a, b;
@@ -2314,24 +2281,23 @@ xfloat *f;
     f_xftof(f, &a);
     a.sign = 0;
     if (f_cmp(&a, &maxlog) > 0) {
-	f_erange(env);
+	f_erange();
     }
 
-    f_exp(env, &a);
+    f_exp(&a);
     b = one;
-    f_div(env, &b, &a);
+    f_div(&b, &a);
     f_add(&a, &b);
     --a.exp;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->sinh()
  * DESCRIPTION:	sinh(f)
  */
-void flt_sinh(env, f)
-register lpcenv *env;
+void flt_sinh(f)
 xfloat *f;
 {
     static flt p[] = {
@@ -2350,16 +2316,16 @@ xfloat *f;
 
     f_xftof(f, &a);
     if (f_cmp(&a, &maxlog) > 0 || f_cmp(&a, &minlog) < 0) {
-	f_erange(env);
+	f_erange();
     }
 
     sign = a.sign;
     a.sign = 0;
 
     if (f_cmp(&a, &one) > 0) {
-	f_exp(env, &a);
+	f_exp(&a);
 	b = half;
-	f_div(env, &b, &a);
+	f_div(&b, &a);
 	--a.exp;
 	f_sub(&a, &b);
 	a.sign ^= sign;
@@ -2369,21 +2335,20 @@ xfloat *f;
 	c = d = b;
 	f_poly(&c, p, 3);
 	f_poly1(&d, q, 2);
-	f_div(env, &c, &d);
+	f_div(&c, &d);
 	f_mult(&b, &a);
 	f_mult(&b, &c);
 	f_add(&a, &b);
     }
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }
 
 /*
  * NAME:	float->tanh()
  * DESCRIPTION:	tanh(f)
  */
-void flt_tanh(env, f)
-register lpcenv *env;
+void flt_tanh(f)
 xfloat *f;
 {
     static flt p[] = {
@@ -2412,10 +2377,10 @@ xfloat *f;
 	a.low = one.low;
     } else if (f_cmp(&a, &d625) >= 0) {
 	a.exp++;
-	f_exp(env, &a);
+	f_exp(&a);
 	f_add(&a, &one);
 	b = two;
-	f_div(env, &b, &a);
+	f_div(&b, &a);
 	a = one;
 	f_sub(&a, &b);
     } else {
@@ -2424,12 +2389,12 @@ xfloat *f;
 	c = d = b;
 	f_poly(&c, p, 2);
 	f_poly1(&d, q, 2);
-	f_div(env, &c, &d);
+	f_div(&c, &d);
 	f_mult(&b, &c);
 	f_mult(&b, &a);
 	f_add(&a, &b);
     }
     a.sign = sign;
 
-    f_ftoxf(env, &a, f);
+    f_ftoxf(&a, f);
 }

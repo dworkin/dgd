@@ -86,9 +86,8 @@ char *ptr;
  * NAME:	io_load()
  * DESCRIPTION:	append block read from file after a line
  */
-bool io_load(eb, env, filename, l, iobuf)
+bool io_load(eb, filename, l, iobuf)
 editbuf *eb;
-lpcenv *env;
 char *filename;
 Int l;
 io *iobuf;
@@ -98,7 +97,7 @@ io *iobuf;
     fiocontext x;
 
     /* open file */
-    if (path_ed_read(env, x.filename, filename) == (char *) NULL ||
+    if (path_ed_read(x.filename, filename) == (char *) NULL ||
 	P_stat(x.filename, &sbuf) < 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
 	return FALSE;
     }
@@ -123,12 +122,12 @@ io *iobuf;
     x.iostat->ill = FALSE;
 
     /* add the block to the edit buffer */
-    if (ec_push(env, (ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) NULL)) {
 	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
     eb_add(eb, l, getline, (char *) &x);
-    ec_pop(env);
+    ec_pop();
     P_close(x.fd);
 
     return TRUE;
@@ -174,9 +173,8 @@ register char *text;
  * NAME:	io_save()
  * DESCRIPTION:	write a range of lines to a file
  */
-bool io_save(eb, env, filename, first, last, append, iobuf)
+bool io_save(eb, filename, first, last, append, iobuf)
 editbuf *eb;
-lpcenv *env;
 char *filename;
 Int first, last;
 int append;
@@ -185,7 +183,7 @@ io *iobuf;
     char buf[BUF_SIZE];
     fiocontext x;
 
-    if (path_ed_write(env, x.filename, filename) == (char *) NULL) {
+    if (path_ed_write(x.filename, filename) == (char *) NULL) {
 	return FALSE;
     }
     /* create file */
@@ -210,7 +208,7 @@ io *iobuf;
     x.iostat->ill = FALSE;
 
     /* write range */
-    if (ec_push(env, (ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) NULL)) {
 	P_close(x.fd);
 	error((char *) NULL);	/* pass on error */
     }
@@ -218,7 +216,7 @@ io *iobuf;
     if (P_write(x.fd, x.buffer, x.inbuf) != x.inbuf) {
 	error("error while writing file \"/%s\"", x.filename);
     }
-    ec_pop(env);
+    ec_pop();
     P_close(x.fd);
 
     return TRUE;

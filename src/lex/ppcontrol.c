@@ -115,7 +115,7 @@ static void push()
 	if (ichunksz == ICHUNKSZ) {
 	    register ichunk *l;
 
-	    l = LALLOC(ichunk, 1);
+	    l = ALLOC(ichunk, 1);
 	    l->next = ilist;
 	    ilist = l;
 	    ichunksz = 0;
@@ -160,7 +160,7 @@ void pp_clear()
     for (l = ilist; l != (ichunk *) NULL; ) {
 	f = l;
 	l = l->next;
-	LFREE(f);
+	FREE(f);
     }
     ilist = (ichunk *) NULL;
     mc_clear();
@@ -480,8 +480,8 @@ static void do_include()
 	tk_skiptonl(TRUE);
 
 	/* first try the path direct */
-	if (tk_include(path_include(lexenv, buf, tk_filename(), file),
-		       (char *) NULL, 0)) {
+	if (tk_include(path_include(buf, tk_filename(), file), (char *) NULL,
+		       0)) {
 	    include_level++;
 	    return;
 	}
@@ -498,8 +498,8 @@ static void do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	if (tk_include(path_include(lexenv, buf, tk_filename(), path),
-		       (char *) NULL, 0)) {
+	if (tk_include(path_include(buf, tk_filename(), path), (char *) NULL,
+		       0)) {
 	    include_level++;
 	    return;
 	}
@@ -565,7 +565,7 @@ static void do_define()
 		    break;
 		}
 		if (narg < MAX_NARG) {
-		    arg = LALLOCA(char, strlen(yytext) + 1);
+		    arg = ALLOCA(char, strlen(yytext) + 1);
 		    args[narg++] = strcpy(arg, yytext);
 		} else {
 		    error("too many parameters in macro definition");
@@ -594,7 +594,7 @@ static void do_define()
 		tk_setpp(FALSE);
 		while (narg > 0) {
 		    --narg;
-		    LFREEA(args[narg]);
+		    AFREE(args[narg]);
 		}
 		return;
 	    }
@@ -681,7 +681,7 @@ static void do_define()
 
     for (i = narg; i > 0; ) {
 	--i;
-	LFREEA(args[i]);
+	AFREE(args[i]);
     }
     i = s->len;
     pps_del(s);

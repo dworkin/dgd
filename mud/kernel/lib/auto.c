@@ -120,7 +120,9 @@ nomask void _F_create()
 	    cname = function_object(CREATOR, this_object());
 	    if (cname && sscanf(cname, USR + "/System/%*s") != 0) {
 		/* extra initialisation function */
-		call_other(this_object(), CREATOR, clone);
+		if (call_other(this_object(), CREATOR, clone)) {
+		    return;
+		}
 	    }
 # endif
 	}

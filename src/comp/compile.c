@@ -3,8 +3,8 @@
 # include "array.h"
 # include "object.h"
 # include "xfloat.h"
-# include "data.h"
 # include "interpret.h"
+# include "data.h"
 # include "path.h"
 # include "macro.h"
 # include "token.h"
@@ -55,7 +55,7 @@ static void block_new()
 	if (bchunksz == BLOCK_CHUNK) {
 	    register bchunk *l;
 
-	    l = CALLOC(bchunk, 1);
+	    l = ALLOC(bchunk, 1);
 	    l->next = blist;
 	    blist = l;
 	    bchunksz = 0;
@@ -155,7 +155,7 @@ static void block_clear()
 
 	f = l;
 	l = l->next;
-	CFREE(f);
+	FREE(f);
     }
     blist = (bchunk *) NULL;
     bchunksz = BLOCK_CHUNK;
@@ -206,7 +206,7 @@ loop *prev;
 	if (lchunksz == LOOP_CHUNK) {
 	    register lchunk *lc;
 
-	    lc = CALLOC(lchunk, 1);
+	    lc = ALLOC(lchunk, 1);
 	    lc->next = llist;
 	    llist = lc;
 	    lchunksz = 0;
@@ -249,7 +249,7 @@ static void loop_clear()
 
 	f = l;
 	l = l->next;
-	CFREE(f);
+	FREE(f);
     }
     llist = (lchunk *) NULL;
     lchunksz = LOOP_CHUNK;
@@ -263,7 +263,6 @@ typedef struct _context_ {
     struct _context_ *prev;		/* previous context */
 } context;
 
-struct _mempool_ *comppool;		/* compiler memory pool */
 static context *current;		/* current context */
 static char *auto_object;		/* auto object */
 static char *driver_object;		/* driver object */
@@ -276,18 +275,7 @@ static short ftype;			/* current function type & class */
 static loop *thisloop;			/* current loop */
 static loop *switch_list;		/* list of nested switches */
 static node *case_list;			/* list of case labels */
-lpcenv *compenv;			/* compiler LPC environment */
 extern int nerrors;			/* # of errors during parsing */
-
-/*
- * NAME:	compile->pool()
- * DESCRIPTION:	set compiler memory pool
- */
-void c_pool(pool)
-struct _mempool_ *pool;
-{
-    comppool = pool;
-}
 
 /*
  * NAME:	compile->init()
@@ -365,7 +353,7 @@ int priv;
 	    c_error("illegal inherit from driver object");
 	    return FALSE;
 	}
-	obj = o_find(f->env, file, OACC_READ);
+	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
 	    inheriting = TRUE;
 	    obj = c_compile(f, file, (object *) NULL, (string *) NULL);
@@ -376,10 +364,10 @@ int priv;
 	ncomp = ncompiled;
 
 	/* get associated object */
-	PUSH_STRVAL(f, str_new(f->env, NULL, strlen(current->file) + 1L));
+	PUSH_STRVAL(f, str_new(NULL, strlen(current->file) + 1L));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
-	PUSH_STRVAL(f, str_new(f->env, file, (long) strlen(file)));
+	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
 	PUSH_INTVAL(f, priv);
 
 	strncpy(buf, file, STRINGSZ - 1);
@@ -388,11 +376,11 @@ int priv;
 	if (call_driver_object(f, "inherit_program", 3)) {
 	    inheriting = FALSE;
 	    if (f->sp->type == T_OBJECT) {
-		obj = OBJR(f->env, f->sp->oindex);
+		obj = OBJR(f->sp->oindex);
 		f->sp++;
 	    } else {
 		/* returned value not an object */
-		error(f->env, "Cannot inherit \"%s\"", buf);
+		error("Cannot inherit \"%s\"", buf);
 	    }
 
 	    if (ncomp != ncompiled) {
@@ -403,7 +391,7 @@ int priv;
 	    f->sp++;
 	    inheriting = FALSE;
 	    file = path_from(buf, current->file, file);
-	    obj = o_find(f->env, file, OACC_READ);
+	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
 		inheriting = TRUE;
 		obj = c_compile(f, file, (object *) NULL, (string *) NULL);
@@ -430,7 +418,7 @@ int priv;
  * DESCRIPTION:	compile an LPC file
  */
 object *c_compile(f, file, obj, str)
-register frame *f;
+frame *f;
 register char *file;
 object *obj;
 string *str;
@@ -440,8 +428,6 @@ string *str;
     char file_c[STRINGSZ + 2];
     extern int yyparse P((void));
 
-    compenv = f->env;
-    comppool = f->env->mp;
     iflag = inheriting;
     if (iflag) {
 	register context *cc;
@@ -449,24 +435,23 @@ string *str;
 
 	for (cc = current, n = 0; cc != (context *) NULL; cc = cc->prev, n++) {
 	    if (strcmp(file, cc->file) == 0) {
-		error(f->env, "Cycle in inheritance from \"/%s.c\"",
-		      current->file);
+		error("Cycle in inheritance from \"/%s.c\"", current->file);
 	    }
 	}
 	if (n >= 255) {
-	    error(f->env, "Compilation nesting too deep");
+	    error("Compilation nesting too deep");
 	}
 
 	pp_clear();
 	ctrl_clear();
 	c_clear();
     } else if (current != (context *) NULL) {
-	error(f->env, "Compilation within compilation");
+	error("Compilation within compilation");
     }
 
     c.file = file;
     if (strchr(file, '#') != (char *) NULL) {
-	error(f->env, "Illegal object name \"/%s\"", file);
+	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
     if (str == (string *) NULL) {
@@ -477,13 +462,13 @@ string *str;
     current = &c;
     ncompiled++;
 
-    if (ec_push(f->env, (ec_ftn) NULL)) {
+    if (ec_push((ec_ftn) NULL)) {
 	pp_clear();
 	ctrl_clear();
 	c_clear();
 	inheriting = iflag;
 	current = c.prev;
-	error(f->env, (char *) NULL);
+	error((char *) NULL);
     }
 
     for (;;) {
@@ -495,7 +480,7 @@ string *str;
 	    object *aobj;
 
 	    if (!cg_compiled() &&
-		o_find(f->env, driver_object, OACC_READ) == (object *) NULL) {
+		o_find(driver_object, OACC_READ) == (object *) NULL) {
 		/*
 		 * compile the driver object to do pathname translation
 		 */
@@ -504,7 +489,7 @@ string *str;
 		current = &c;
 	    }
 
-	    aobj = o_find(f->env, auto_object, OACC_READ);
+	    aobj = o_find(auto_object, OACC_READ);
 	    if (aobj == (object *) NULL) {
 		/*
 		 * compile auto object
@@ -515,8 +500,7 @@ string *str;
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
-		error(f->env, "Upgraded auto object while compiling \"/%s\"",
-		      file_c);
+		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
 	    ctrl_init(stricttc);
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
@@ -525,10 +509,10 @@ string *str;
 	if (str != (string *) NULL) {
 	    pp_init(file_c, paths, str->text, str->len, 1);
 	} else if (!pp_init(file_c, paths, (char *) NULL, 0, 1)) {
-	    error(f->env, "Could not compile \"/%s\"", file_c);
+	    error("Could not compile \"/%s\"", file_c);
 	}
 	if (!tk_include(include, (char *) NULL, 0)) {
-	    error(f->env, "Could not include \"/%s\"", include);
+	    error("Could not include \"/%s\"", include);
 	}
 
 	cg_init(c.prev != (context *) NULL);
@@ -537,24 +521,24 @@ string *str;
 
 	    if (obj != (object *) NULL) {
 		if (obj->count == 0) {
-		    error(f->env, "Object destructed during recompilation");
+		    error("Object destructed during recompilation");
 		}
 		if (O_UPGRADING(obj)) {
-		    error(f->env, "Object recompiled during recompilation");
+		    error("Object recompiled during recompilation");
 		}
 		if (O_INHERITED(obj)) {
 		    /* inherited */
-		    error(f->env, "Object inherited during recompilation");
+		    error("Object inherited during recompilation");
 		}
 	    }
-	    if (!o_space(f->env)) {
-		error(f->env, "Too many objects");
+	    if (!o_space()) {
+		error("Too many objects");
 	    }
 
 	    /*
 	     * successfully compiled
 	     */
-	    ec_pop(f->env);
+	    ec_pop();
 	    pp_clear();
 
 	    if (!seen_decls) {
@@ -571,7 +555,7 @@ string *str;
 
 	    if (obj == (object *) NULL) {
 		/* new object */
-		obj = o_new(f->env, file, ctrl);
+		obj = o_new(file, ctrl);
 		if (strcmp(file, driver_object) == 0) {
 		    obj->flags |= O_DRIVER;
 		} else if (strcmp(file, auto_object) == 0) {
@@ -595,7 +579,7 @@ string *str;
 	    c_clear();
 	} else {
 	    /* compilation failed */
-	    error(f->env, "Failed to compile \"/%s\"", file_c);
+	    error("Failed to compile \"/%s\"", file_c);
 	}
     }
 }
@@ -1132,14 +1116,13 @@ node *n1, *n2, *n3;
 	register frame *f;
 
 	f = current->frame;
-	PUSH_STRVAL(f, str_new(f->env, (char *) NULL,
-			       strlen(current->file) + 1L));
+	PUSH_STRVAL(f, str_new((char *) NULL, strlen(current->file) + 1L));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
 	n1 = node_bin(N_RLIMITS, VAL_TRUE(f->sp), node_bin(N_PAIR, 0, n1, n2),
 		      n3);
-	i_del_value(f->env, f->sp++);
+	i_del_value(f->sp++);
     }
 
     if (n3 != (node *) NULL) {
@@ -1296,7 +1279,7 @@ node *expr, *stmt;
 	    /*
 	     * get the labels in an array, and sort them
 	     */
-	    v = CALLOCA(node*, size);
+	    v = ALLOCA(node*, size);
 	    for (i = size, n = case_list; i > 0; n = n->l.left) {
 		if (n->r.right->l.left != (node *) NULL) {
 		    *v++ = n->r.right;
@@ -1379,7 +1362,7 @@ node *expr, *stmt;
 			 * convert range label switch to int label switch
 			 * by adding new labels
 			 */
-			w = CALLOCA(node*, cnt);
+			w = ALLOCA(node*, cnt);
 			for (i = size; i > 0; --i) {
 			    *w++ = *v;
 			    for (l = v[0]->l.left->l.number;
@@ -1392,7 +1375,7 @@ node *expr, *stmt;
 			    }
 			    v++;
 			}
-			CFREEA(v - size);
+			AFREE(v - size);
 			size = cnt;
 			v = w - size;
 		    }
@@ -1409,7 +1392,7 @@ node *expr, *stmt;
 		(*--v)->r.right->mod = i;
 		n = node_bin(N_PAIR, 0, v[0]->l.left, n);
 	    } while (--i > 0);
-	    CFREEA(v);
+	    AFREE(v);
 	    if (switch_list->dflt) {
 		/* add default case */
 		n = node_bin(N_PAIR, 0, (node *) NULL, n);
@@ -1895,8 +1878,7 @@ node *other, *func, *args;
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    return funcall(c_flookup(node_str(str_new(compenv, "call_other", 10L)),
-			     FALSE),
+    return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
 		   node_bin(N_PAIR, 0, other, args));
 }
 
@@ -2135,20 +2117,20 @@ char *format, *a1, *a2, *a3;
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
-	o_find(compenv, driver_object, OACC_READ) != (object *) NULL) {
+	o_find(driver_object, OACC_READ) != (object *) NULL) {
 	register frame *f;
 
 	f = current->frame;
 	fname = tk_filename();
-	PUSH_STRVAL(f, str_new(f->env, NULL, strlen(fname) + 1L));
+	PUSH_STRVAL(f, str_new(NULL, strlen(fname) + 1L));
 	strcpy(f->sp->u.string->text + 1, fname);
 	f->sp->u.string->text[0] = '/';
 	PUSH_INTVAL(f, tk_line());
 	sprintf(buf, format, a1, a2, a3);
-	PUSH_STRVAL(f, str_new(f->env, buf, (long) strlen(buf)));
+	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
-	i_del_value(f->env, f->sp++);
+	i_del_value(f->sp++);
     } else {
 	/* there is no driver object to call; show the error on stderr */
 	sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
