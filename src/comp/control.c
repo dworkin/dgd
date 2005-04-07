@@ -2241,8 +2241,14 @@ register control *ctrl;
 	    u = &list[symb->inherit];
 	    v = &m->elts[u->index];
 	    if (v->u.string == (string *) NULL) {
-		PUT_STRVAL(v, str_new(obj->chain.name,
-				      strlen(obj->chain.name)));
+		string *str;
+		unsigned short len;
+
+		len = strlen(obj->chain.name);
+		str = str_new((char *) NULL, len + 1L);
+		str->text[0] = '/';
+		memcpy(str->text + 1, obj->chain.name, len);
+		PUT_STRVAL(v, str);
 		PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
 		u->count = 0;
 	    }
