@@ -483,10 +483,9 @@ string *keystr;
  * NAME:	P->encrypt_des()
  * DESCRIPTION:	encrypt (or decrypt) a string
  */
-string *P_encrypt_des(f, mesg, keystr)
+string *P_encrypt_des(f, keystr, mesg)
 frame *f;
-string *mesg;
-string *keystr;
+string *keystr, *mesg;
 {
     register Uint L, R, T, *key;
     register char *p, *q;

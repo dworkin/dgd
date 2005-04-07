@@ -1628,3 +1628,5 @@ DGD 1.3
    slash.
  - Introduced hash_string() as a replacement for crypt(), hash_md5() and
    hash_sha1().
+ - Reverse the key & message arguments for encrypt() and decrypt(), to make
+   it easier to extend those functions in the future.

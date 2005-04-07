@@ -2,14 +2,14 @@ NAME
 	decrypt - decrypt a string
 
 SYNOPSIS
-	string decrypt(string cipher, string mesg_or_key, varargs string key)
+	mixed decrypt(string cipher, string key, varargs string mesg)
 
 
 DESCRIPTION
 	For any given cipher, decrypt("CIPHER key", key) returns a key prepared
-	for decryption, and decrypt("CIPHER", str, prepared_key) decrypts a
-	string.  For an unknown cipher, nil is returned.
+	for decryption, and decrypt("CIPHER", prepared_key, str) decrypts a
+	string.
 	The only currently defined cipher is DES.
 
 SEE ALSO
-	kfun/crypt, kfun/decrypt
+	kfun/encrypt

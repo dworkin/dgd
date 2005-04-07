@@ -9,7 +9,7 @@
 # ifdef FUNCDEF
 FUNCDEF("encrypt", kf_encrypt, pt_encrypt)
 # else
-char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_STRING, T_STRING,
+char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
@@ -42,16 +42,15 @@ register int nargs;
 	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
 	}
     }
+    if (str == (string *) NULL) {
+	error("Unknown cipher");
+    }
 
     while (--nargs != 0) {
 	str_del((f->sp++)->u.string);
     }
     str_del(f->sp->u.string);
-    if (str != (string *) NULL) {
-	PUT_STR(f->sp, str);
-    } else {
-	*f->sp = nil_value;
-    }
+    PUT_STR(f->sp, str);
 
     return 0;
 }
@@ -61,7 +60,7 @@ register int nargs;
 # ifdef FUNCDEF
 FUNCDEF("decrypt", kf_decrypt, pt_decrypt)
 # else
-char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_STRING, T_STRING,
+char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
@@ -94,16 +93,15 @@ register int nargs;
 	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
 	}
     }
+    if (str == (string *) NULL) {
+	error("Unknown cipher");
+    }
 
     while (--nargs != 0) {
 	str_del((f->sp++)->u.string);
     }
     str_del(f->sp->u.string);
-    if (str != (string *) NULL) {
-	PUT_STR(f->sp, str);
-    } else {
-	*f->sp = nil_value;
-    }
+    PUT_STR(f->sp, str);
 
     return 0;
 }
