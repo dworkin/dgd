@@ -1626,3 +1626,5 @@ DGD 1.3
  - Add a list of undefined functions to status(obj).
  - the program name in the undefined functions mapping was missing a leading
    slash.
+ - Introduced hash_string() as a replacement for crypt(), hash_md5() and
+   hash_sha1().

@@ -7,48 +7,6 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("crypt", kf_crypt, pt_crypt)
-# else
-char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
-		    T_STRING };
-
-/*
- * NAME:	kfun->crypt()
- * DESCRIPTION:	encrypt a password string
- */
-int kf_crypt(f, nargs)
-register frame *f;
-int nargs;
-{
-    extern char *P_crypt P((char*, char*));
-    static char salts[] =
-	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    char salt[3], *p;
-    
-    if (nargs == 2 && f->sp->u.string->len >= 2) {
-	/* fixed salt */
-	salt[0] = f->sp->u.string->text[0];
-	salt[1] = f->sp->u.string->text[1];
-    } else {
-	/* random salt */
-	salt[0] = salts[P_random() % 64];
-	salt[1] = salts[P_random() % 64];
-    }
-    salt[2] = '\0';
-    if (nargs == 2) {
-	str_del((f->sp++)->u.string);
-    }
-
-    i_add_ticks(f, 900);
-    p = P_crypt(f->sp->u.string->text, salt);
-    str_del(f->sp->u.string);
-    PUT_STR(f->sp, str_new(p, (long) strlen(p)));
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("encrypt", kf_encrypt, pt_encrypt)
 # else
 char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_STRING, T_STRING,
@@ -926,10 +884,42 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_md5", kf_hash_md5, pt_hash_md5)
+FUNCDEF("hash_string", kf_hash_string, pt_hash_string)
 # else
-char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
-		       T_STRING, T_STRING, T_STRING };
+char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+			  T_STRING, T_STRING, T_STRING, T_STRING };
+
+/*
+ * NAME:	hash->crypt()
+ * DESCRIPTION:	hash a string with Unix password crypt
+ */
+static string *hash_crypt(f, passwd, salt)
+register frame *f;
+string *passwd, *salt;
+{
+    extern char *P_crypt P((char*, char*));
+    static char salts[] =
+	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    char s[3];
+
+    if (salt != (string *) NULL && salt->text[0] != '\0' &&
+	salt->text[1] != '\0') {
+	/* fixed salt */
+	s[0] = salt->text[0];
+	s[1] = salt->text[1];
+    } else {
+	Uint n;
+
+	/* random salt */
+	n = P_random();
+	s[0] = salts[n & 63];
+	s[1] = salts[(n >> 8) & 63];
+    }
+    s[2] = '\0';
+
+    i_add_ticks(f, 900);
+    return str_new(P_crypt(passwd->text, s), 13);
+}
 
 # define ROTL(x, s)			(((x) << s) | ((x) >> (32 - s)))
 # define R1(a, b, c, d, Mj, s, ti)	(a += (((c ^ d) & b) ^ d) + Mj + ti, \
@@ -942,10 +932,38 @@ char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 					 a = b + ROTL(a, s))
 
 /*
- * NAME:	md5_block()
+ * NAME:	hash->md5_start()
+ * DESCRIPTION:	MD5 message digest.  See "Applied Cryptography" by Bruce
+ *		Schneier, Second Edition, p. 436-441.
+ */
+static Int hash_md5_start(f, nargs, digest)
+register frame *f;
+register int nargs;
+register Uint *digest;
+{
+    register Int cost;
+
+    /*
+     * These constants must apparently be little-endianized, though AC2 does
+     * not explicitly say so.
+     */
+    digest[0] = 0x67452301L;
+    digest[1] = 0xefcdab89L;
+    digest[2] = 0x98badcfeL;
+    digest[3] = 0x10325476L;
+
+    cost = 3 * nargs + 64;
+    while (--nargs >= 0) {
+	cost += f->sp[nargs].u.string->len;
+    }
+    return cost;
+}
+
+/*
+ * NAME:	hash->md5_block()
  * DESCRIPTION:	add another 512 bit block to the message digest
  */
-static void md5_block(ABCD, block)
+static void hash_md5_block(ABCD, block)
 Uint *ABCD;
 register char *block;
 {
@@ -956,6 +974,7 @@ register char *block;
     for (i = j = 0; i < 16; i++, j += 4) {
 	M[i] = UCHAR(block[j + 0]) | (UCHAR(block[j + 1]) << 8) |
 	       (UCHAR(block[j + 2]) << 16) | (UCHAR(block[j + 3]) << 24);
+
     }
 
     a = ABCD[0];
@@ -1038,88 +1057,22 @@ register char *block;
 }
 
 /*
- * NAME:	kfun->hash_md5()
- * DESCRIPTION:	Compute MD5 message digest.  See "Applied Cryptography" by
- *		Bruce Schneier, Second Edition, p. 436-441.
+ * NAME:	hash->md5_end()
+ * DESCRIPTION:	finish up MD5 hash
  */
-int kf_hash_md5(f, nargs)
-register frame *f;
-int nargs;
+static string *hash_md5_end(digest, buffer, bufsz, length)
+register Uint *digest;
+register char *buffer;
+register unsigned int bufsz;
+register Uint length;
 {
-    char buffer[64];
-    Uint cv[4];
     register int i;
-    register ssizet len;
-    register unsigned short bufsz;
-    register char *p;
-    register Int cost;
-    register Uint length;
-
-    cost = 3 * nargs + 64;
-    for (i = nargs; --i >= 0; ) {
-	cost += f->sp[i].u.string->len;
-    }
-    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
-	f->rlim->ticks = 0;
-	error("Out of ticks");
-    }
-    i_add_ticks(f, cost);
-
-    /*
-     * These constants must apparently be little-endianized, though AC2 does
-     * not explicitly say so.
-     */
-    cv[0] = 0x67452301L;
-    cv[1] = 0xefcdab89L;
-    cv[2] = 0x98badcfeL;
-    cv[3] = 0x10325476L;
-    length = 0;
-    bufsz = 0;
-
-    for (i = nargs; --i >= 0; ) {
-	len = f->sp[i].u.string->len;
-	if (len != 0) {
-	    length += len;
-	    p = f->sp[i].u.string->text;
-	    if (bufsz != 0) {
-		register unsigned short size;
-
-		/* fill buffer and digest */
-		size = 64 - bufsz;
-		if (size > len) {
-		    size = len;
-		}
-		memcpy(buffer + bufsz, p, size);
-		p += size;
-		len -= size;
-		bufsz += size;
-
-		if (bufsz == 64) {
-		    md5_block(cv, buffer);
-		    bufsz = 0;
-		}
-	    }
-
-	    while (len >= 64) {
-		/* digest directly from string */
-		md5_block(cv, p);
-		p += 64;
-		len -= 64;
-	    }
-
-	    if (len != 0) {
-		/* put remainder in buffer */
-		memcpy(buffer, p, bufsz = len);
-	    }
-	}
-	str_del(f->sp[i].u.string);
-    }
 
     /* append padding and digest final block(s) */
     buffer[bufsz++] = 0x80;
     if (bufsz > 56) {
 	memset(buffer + bufsz, '\0', 64 - bufsz);
-	md5_block(cv, buffer);
+	hash_md5_block(digest, buffer);
 	bufsz = 0;
     }
     memset(buffer + bufsz, '\0', 64 - bufsz);
@@ -1128,32 +1081,46 @@ int nargs;
     buffer[58] = length >> 13;
     buffer[59] = length >> 21;
     buffer[60] = length >> 29;
-    md5_block(cv, buffer);
+    hash_md5_block(digest, buffer);
 
     for (bufsz = i = 0; i < 4; bufsz += 4, i++) {
-	buffer[bufsz + 0] = cv[i];
-	buffer[bufsz + 1] = cv[i] >> 8;
-	buffer[bufsz + 2] = cv[i] >> 16;
-	buffer[bufsz + 3] = cv[i] >> 24;
+	buffer[bufsz + 0] = digest[i];
+	buffer[bufsz + 1] = digest[i] >> 8;
+	buffer[bufsz + 2] = digest[i] >> 16;
+	buffer[bufsz + 3] = digest[i] >> 24;
     }
-    f->sp += nargs - 1;
-    PUT_STR(f->sp, str_new(buffer, 16L));
-    return 0;
+    return str_new(buffer, 16L);
 }
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("hash_sha1", kf_hash_sha1, pt_hash_sha1)
-# else
-char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
-			T_STRING, T_STRING, T_STRING };
 
 /*
- * NAME:	sha1_block()
+ * NAME:	hash->sha1_start()
+ * DESCRIPTION:	SHA-1 message digest.  See FIPS 180-2.
+ */
+static Int hash_sha1_start(f, nargs, digest)
+register frame *f;
+register int nargs;
+register Uint *digest;
+{
+    register Int cost;
+
+    digest[0] = 0x67452301L;
+    digest[1] = 0xefcdab89L;
+    digest[2] = 0x98badcfeL;
+    digest[3] = 0x10325476L;
+    digest[4] = 0xc3d2e1f0L;
+
+    cost = 3 * nargs + 64;
+    while (--nargs >= 0) {
+	cost += f->sp[nargs].u.string->len;
+    }
+    return cost;
+}
+
+/*
+ * NAME:	hash->sha1_block()
  * DESCRIPTION:	add another 512 bit block to the message digest
  */
-static void sha1_block(ABCDE, block)
+static void hash_sha1_block(ABCDE, block)
 Uint *ABCDE;
 register char *block;
 {
@@ -1162,9 +1129,9 @@ register char *block;
     register Uint a, b, c, d, e, t;
 
     for (i = j = 0; i < 16; i++, j += 4) {
-	/* big endian */
-	W[i] = (UCHAR(block[j + 0]) << 24) | (UCHAR(block[j + 1]) << 16) |
-	       (UCHAR(block[j + 2]) << 8) | UCHAR(block[j + 3]);
+       W[i] = (UCHAR(block[j + 0]) << 24) | (UCHAR(block[j + 1]) << 16) |
+	      (UCHAR(block[j + 2]) << 8) | UCHAR(block[j + 3]);
+
     }
     while (i < 80) {
 	W[i] = ROTL(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
@@ -1220,51 +1187,73 @@ register char *block;
     ABCDE[4] += e;
 }
 
+
 /*
- * NAME:	kfun->hash_sha1()
- * DESCRIPTION:	Compute SHA-1 message digest.  See FIPS 180-2.
+ * NAME:	hash->sha1_end()
+ * DESCRIPTION:	finish up SHA-1 hash
  */
-int kf_hash_sha1(f, nargs)
-register frame *f;
-int nargs;
+static string *hash_sha1_end(digest, buffer, bufsz, length)
+register Uint *digest, length;
+register char *buffer;
+register unsigned int bufsz;
 {
-    char buffer[64];
-    Uint digest[5];
     register int i;
+
+    /* append padding and digest final block(s) */
+    buffer[bufsz++] = 0x80;
+    if (bufsz > 56) {
+	memset(buffer + bufsz, '\0', 64 - bufsz);
+	hash_sha1_block(digest, buffer);
+	bufsz = 0;
+    }
+    memset(buffer + bufsz, '\0', 64 - bufsz);
+    buffer[59] = length >> 29;
+    buffer[60] = length >> 21;
+    buffer[61] = length >> 13;
+    buffer[62] = length >> 5;
+    buffer[63] = length << 3;
+    hash_sha1_block(digest, buffer);
+
+    for (bufsz = i = 0; i < 5; bufsz += 4, i++) {
+	buffer[bufsz + 0] = digest[i] >> 24;
+	buffer[bufsz + 1] = digest[i] >> 16;
+	buffer[bufsz + 2] = digest[i] >> 8;
+	buffer[bufsz + 3] = digest[i];
+    }
+    return str_new(buffer, 20L);
+}
+
+/*
+ * NAME:	hash->blocks()
+ * DESCRIPTION:	hash string blocks with a given function
+ */
+static Uint hash_blocks(f, nargs, digest, buffer, bufsize, blocksz, hash_block)
+register frame *f;
+register int nargs;
+Uint *digest;
+char *buffer;
+unsigned short *bufsize;
+register unsigned int blocksz;
+void (*hash_block) P((Uint*, char*));
+{
     register ssizet len;
     register unsigned short bufsz;
     register char *p;
     register Int cost;
     register Uint length;
 
-    cost = 3 * nargs + 64;
-    for (i = nargs; --i >= 0; ) {
-	cost += f->sp[i].u.string->len;
-    }
-    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
-	f->rlim->ticks = 0;
-	error("Out of ticks");
-    }
-    i_add_ticks(f, cost);
-
-    digest[0] = 0x67452301L;
-    digest[1] = 0xefcdab89L;
-    digest[2] = 0x98badcfeL;
-    digest[3] = 0x10325476L;
-    digest[4] = 0xc3d2e1f0L;
     length = 0;
     bufsz = 0;
-
-    for (i = nargs; --i >= 0; ) {
-	len = f->sp[i].u.string->len;
+    while (--nargs >= 0) {
+	len = f->sp[nargs].u.string->len;
 	if (len != 0) {
 	    length += len;
-	    p = f->sp[i].u.string->text;
+	    p = f->sp[nargs].u.string->text;
 	    if (bufsz != 0) {
 		register unsigned short size;
 
 		/* fill buffer and digest */
-		size = 64 - bufsz;
+		size = blocksz - bufsz;
 		if (size > len) {
 		    size = len;
 		}
@@ -1273,17 +1262,17 @@ int nargs;
 		len -= size;
 		bufsz += size;
 
-		if (bufsz == 64) {
-		    sha1_block(digest, buffer);
+		if (bufsz == blocksz) {
+		    (*hash_block)(digest, buffer);
 		    bufsz = 0;
 		}
 	    }
 
-	    while (len >= 64) {
+	    while (len >= blocksz) {
 		/* digest directly from string */
-		sha1_block(digest, p);
-		p += 64;
-		len -= 64;
+		(*hash_block)(digest, p);
+		p += blocksz;
+		len -= blocksz;
 	    }
 
 	    if (len != 0) {
@@ -1291,33 +1280,197 @@ int nargs;
 		memcpy(buffer, p, bufsz = len);
 	    }
 	}
-	str_del(f->sp[i].u.string);
+	str_del(f->sp[nargs].u.string);
     }
 
-    /* append padding and digest final block(s) */
-    buffer[bufsz++] = 0x80;
-    if (bufsz > 56) {
-	memset(buffer + bufsz, '\0', 64 - bufsz);
-	sha1_block(digest, buffer);
-	bufsz = 0;
-    }
-    memset(buffer + bufsz, '\0', 64 - bufsz);
-    buffer[59] = length >> 29;	/* big endian */
-    buffer[60] = length >> 21;
-    buffer[61] = length >> 13;
-    buffer[62] = length >> 5;
-    buffer[63] = length << 3;
-    sha1_block(digest, buffer);
+    *bufsize = bufsz;
+    return length;
+}
 
-    for (bufsz = i = 0; i < 5; bufsz += 4, i++) {
-	/* big endian */
-	buffer[bufsz + 0] = digest[i] >> 24;
-	buffer[bufsz + 1] = digest[i] >> 16;
-	buffer[bufsz + 2] = digest[i] >> 8;
-	buffer[bufsz + 3] = digest[i];
+/*
+ * NAME:	kfun->hash_string()
+ * DESCRIPTION:	hash a string
+ */
+int kf_hash_string(f, nargs)
+register frame *f;
+int nargs;
+{
+    register string *str, *salt;
+    char buffer[64];
+    Uint digest[5];
+    Int cost;
+    Uint length;
+    unsigned short bufsz;
+
+    str = f->sp[nargs - 1].u.string;
+    switch (str->text[0]) {
+    case 'c':
+	if (str->len == 5 && strcmp(str->text, "crypt") == 0) {
+	    if (nargs > 3) {
+		return 3;
+	    }
+	    if (nargs == 3) {
+		salt = f->sp->u.string;
+		f->sp++;
+	    } else {
+		salt = (string *) NULL;
+	    }
+	    str = hash_crypt(f, f->sp->u.string, salt);
+	    if (salt != (string *) NULL) {
+		str_del(salt);
+	    }
+	    str_del((f->sp++)->u.string);
+	    str_del(f->sp->u.string);
+	    PUT_STR(f->sp, str);
+	    return 0;
+	}
+	break;
+
+    case 'M':
+	if (str->len == 3 && strcmp(str->text, "MD5") == 0) {
+	    cost = hash_md5_start(f, nargs, digest);
+	    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+		f->rlim->ticks = 0;
+		error("Out of ticks");
+	    }
+	    i_add_ticks(f, cost);
+
+	    length = hash_blocks(f, --nargs, digest, buffer, &bufsz, 64,
+				 &hash_md5_block);
+
+	    f->sp += nargs;
+	    str_del(f->sp->u.string);
+	    PUT_STR(f->sp, hash_md5_end(digest, buffer, bufsz, length));
+	    return 0;
+	}
+	break;
+
+    case 'S':
+	if (str->len == 4 && strcmp(str->text, "SHA1") == 0) {
+	    cost = hash_sha1_start(f, nargs, digest);
+	    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+		f->rlim->ticks = 0;
+		error("Out of ticks");
+	    }
+	    i_add_ticks(f, cost);
+
+	    length = hash_blocks(f, --nargs, digest, buffer, &bufsz, 64,
+				 &hash_sha1_block);
+
+	    f->sp += nargs;
+	    str_del(f->sp->u.string);
+	    PUT_STR(f->sp, hash_sha1_end(digest, buffer, bufsz, length));
+	    return 0;
+	}
+	break;
     }
+
+    error("Unknown hash algorithm");
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("crypt", kf_crypt, pt_crypt)
+# else
+char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
+		    T_STRING };
+
+/*
+ * NAME:	kfun->crypt()
+ * DESCRIPTION:	hash_string("crypt", ...)
+ */
+int kf_crypt(f, nargs)
+register frame *f;
+int nargs;
+{
+    string *salt, *str;
+
+    if (nargs == 2) {
+	salt = f->sp->u.string;
+	f->sp++;
+    } else {
+	salt = (string *) NULL;
+    }
+    str = hash_crypt(f, f->sp->u.string, salt);
+    if (salt != (string *) NULL) {
+	str_del(salt);
+    }
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("hash_md5", kf_hash_md5, pt_hash_md5)
+# else
+char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+		       T_STRING, T_STRING, T_STRING };
+
+/*
+ * NAME:	kfun->hash_md5()
+ * DESCRIPTION:	hash_string("MD5", ...)
+ */
+int kf_hash_md5(f, nargs)
+register frame *f;
+int nargs;
+{
+    char buffer[64];
+    Uint digest[4];
+    Int cost;
+    Uint length;
+    unsigned short bufsz;
+
+    cost = hash_md5_start(f, nargs, digest);
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
+    i_add_ticks(f, cost);
+
+    length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64, &hash_md5_block);
+
     f->sp += nargs - 1;
-    PUT_STR(f->sp, str_new(buffer, 20L));
+    PUT_STR(f->sp, hash_md5_end(digest, buffer, bufsz, length));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("hash_sha1", kf_hash_sha1, pt_hash_sha1)
+# else
+char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+			T_STRING, T_STRING, T_STRING };
+
+/*
+ * NAME:	kfun->hash_sha1()
+ * DESCRIPTION:	hash_string("SHA1", ...)
+ */
+int kf_hash_sha1(f, nargs)
+register frame *f;
+int nargs;
+{
+    char buffer[64];
+    Uint digest[5];
+    Int cost;
+    Uint length;
+    unsigned short bufsz;
+
+    cost = hash_sha1_start(f, nargs, digest);
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
+    i_add_ticks(f, cost);
+
+    length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64,
+			 &hash_sha1_block);
+
+    f->sp += nargs - 1;
+    PUT_STR(f->sp, hash_sha1_end(digest, buffer, bufsz, length));
     return 0;
 }
 # endif

@@ -236,7 +236,7 @@ int receive_message(string str)
 	    break;
 
 	case STATE_LOGIN:
-	    if (crypt(str, password) != password) {
+	    if (hash_string("crypt", str, password) != password) {
 		previous_object()->message("\nBad password.\n");
 		return MODE_DISCONNECT;
 	    }
@@ -254,7 +254,7 @@ int receive_message(string str)
 	    break;
 
 	case STATE_OLDPASSWD:
-	    if (crypt(str, password) != password) {
+	    if (hash_string("crypt", str, password) != password) {
 		message("\nBad password.\n");
 		break;
 	    }
@@ -270,7 +270,7 @@ int receive_message(string str)
 
 	case STATE_NEWPASSWD2:
 	    if (newpasswd == str) {
-		password = crypt(str);
+		password = hash_string("crypt", str);
 		if (wiztool) {
 		    /* save wizards only */
 		    save_object(DEFAULT_USER_DIR + "/" + name + ".pwd");

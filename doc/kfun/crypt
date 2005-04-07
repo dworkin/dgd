@@ -1,17 +1,14 @@
 NAME
-	crypt - encrypt a password string
+	crypt - hash a password string
 
 SYNOPSIS
 	string crypt(string passwd, varargs string salt)
 
 
 DESCRIPTION
-	Encrypt a password, of which only the first 8 characters are
-	significant.  If the optional second argument is given, its first two
-	characters are used to perturb the encryption algorithm additionally;
-	without one, the encryption is perturbed randomly.  The returned
-	string is 13 characters long, the first two of which are equal to the
-	used salt.
+	The same as hash_string("crypt", passwd, salt)
+
+	This kfun is retained for backward compatibility.
 
 SEE ALSO
-	kfun/encrypt, kfun/decrypt
+	kfun/hash_string

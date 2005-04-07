@@ -13,4 +13,4 @@ DESCRIPTION
 	    x^7 + x^5 + x^4 + x^2 + x + 1
 
 SEE ALSO
-	kfun/hash_crc16, kfun/hash_md5, kfun/hash_sha1
+	kfun/hash_crc16, kfun/hash_string

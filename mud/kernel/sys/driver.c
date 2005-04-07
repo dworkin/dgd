@@ -654,9 +654,6 @@ static object inherit_program(string from, string path, int priv)
 	if (objectd) {
 	    objectd->compile_lib(creator, path, nil, TLSVAR3[1 ..]...);
 
-	    if (objectd->forbid_inherit(from, path, priv)) {
-		return nil;	/* second check failed */
-	    }
 	    objectd->compiling(from);
 	}
 	TLSVAR3 = ({ from });
