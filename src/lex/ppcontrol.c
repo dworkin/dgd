@@ -771,6 +771,7 @@ int pp_gettok()
 	    return IDENTIFIER;
 
 	case HASH:
+	case HASH_HASH:
 	    token = '#';
 	    /* fall through */
 	default:

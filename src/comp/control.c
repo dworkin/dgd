@@ -2213,10 +2213,10 @@ register control *ctrl;
      * count the number of undefined functions per program
      */
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
-	ctrl = o_control(OBJR(inherits[symb->inherit].oindex));
-	if ((d_get_funcdefs(ctrl)[symb->index].class & C_UNDEFINED) &&
-	    list[symb->inherit].count++ == 0) {
-	    list[symb->inherit].index = size;
+	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
+	if ((d_get_funcdefs(ctrl)[UCHAR(symb->index)].class & C_UNDEFINED) &&
+	    list[UCHAR(symb->inherit)].count++ == 0) {
+	    list[UCHAR(symb->inherit)].index = size;
 	    size += 2;
 	}
     }
@@ -2234,11 +2234,11 @@ register control *ctrl;
     m = map_new(data, size);
     memset(m->elts, '\0', size * sizeof(value));
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
-	obj = OBJR(inherits[symb->inherit].oindex);
+	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
 	ctrl = o_control(obj);
-	f = d_get_funcdefs(ctrl) + symb->index;
+	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	if (f->class & C_UNDEFINED) {
-	    u = &list[symb->inherit];
+	    u = &list[UCHAR(symb->inherit)];
 	    v = &m->elts[u->index];
 	    if (v->u.string == (string *) NULL) {
 		string *str;

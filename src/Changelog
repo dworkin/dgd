@@ -1630,3 +1630,5 @@ DGD 1.3
    hash_sha1().
  - Reverse the key & message arguments for encrypt() and decrypt(), to make
    it easier to extend those functions in the future.
+ - Fixed a bug in the undefined function code introduced when backported from
+   DGD/MP.
