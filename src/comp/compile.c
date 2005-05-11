@@ -959,7 +959,7 @@ register node *n;
 
     n = opt_stmt(n, &depth);
     if (depth > 0x7fff) {
-	c_error("function requires too much runtime stack space");
+	c_error("function uses too much stack space");
     } else {
 	prog = cg_function(fname, n, nvars, nparams, (unsigned short) depth,
 			   &size);

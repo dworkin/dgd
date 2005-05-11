@@ -82,7 +82,7 @@ nomask void _F_create()
 	    oname = object_name(this_object());
 	    driver = ::find_object(DRIVER);
 	    creator = driver->creator(oname);
-	    clone = !!sscanf(oname, "%*s#%d", number);
+	    clone = !!sscanf(oname, "%s#%d", oname, number);
 	    if (clone) {
 		owner = TLSVAR2;
 	    } else {
@@ -93,7 +93,8 @@ nomask void _F_create()
 		/*
 		 * register object
 		 */
-		if (oname != OBJREGD) {
+		if (oname != BINARY_CONN && oname != TELNET_CONN &&
+		    oname != OBJREGD) {
 		    ::find_object(OBJREGD)->link(this_object(), owner);
 		}
 
@@ -136,8 +137,6 @@ nomask void _F_destruct()
     if (previous_program() == AUTO) {
 	object rsrcd;
 	int i, j;
-
-	::find_object(OBJREGD)->unlink(this_object(), owner);
 
 	rsrcd = ::find_object(RSRCD);
 
@@ -182,11 +181,14 @@ nomask void _F_destruct()
 	    }
 	}
 
-	if (sscanf(object_name(this_object()), "%*s#") != 0) {
-	    /*
-	     * non-clones are handled by driver->remove_program()
-	     */
-	    rsrcd->rsrc_incr(owner, "objects", nil, -1);
+	if (next) {
+	    ::find_object(OBJREGD)->unlink(this_object(), owner);
+	    if (sscanf(object_name(this_object()), "%*s#") != 0) {
+		/*
+		 * non-clones are handled by driver->remove_program()
+		 */
+		rsrcd->rsrc_incr(owner, "objects", nil, -1);
+	    }
 	}
     }
 }
@@ -411,7 +413,7 @@ static object clone_object(string path, varargs string uid)
      * check resource usage
      */
     rsrcd = ::find_object(RSRCD);
-    if (path != RSRCOBJ) {
+    if (path != BINARY_CONN && path != TELNET_CONN && path != RSRCOBJ) {
 	rsrc = rsrcd->rsrc_get(uid, "objects");
 	if (rsrc[RSRC_USAGE] >= rsrc[RSRC_MAX] && rsrc[RSRC_MAX] >= 0) {
 	    error("Too many objects");
@@ -434,7 +436,7 @@ static object clone_object(string path, varargs string uid)
 		 ticks < rsrcd->rsrc_get(uid, "create ticks")[RSRC_MAX])) {
 		error("Insufficient stack or ticks to create object");
 	    }
-	    if (path != RSRCOBJ) {
+	    if (path != BINARY_CONN && path != TELNET_CONN && path != RSRCOBJ) {
 		rsrcd->rsrc_incr(uid, "objects", nil, 1, TRUE);
 	    }
 	    TLSVAR2 = uid;
@@ -1524,6 +1526,7 @@ static string editor(varargs string cmd)
 	    }
 	    driver = ::find_object(DRIVER);
 
+	    TLSVAR2 = nil;
 	    result = (cmd) ? ::editor(cmd) : ::editor();
 	    info = TLSVAR2;
 

@@ -571,6 +571,19 @@ register node **m;
     d1 = opt_expr(&n->l.left, FALSE);
     d2 = opt_expr(&n->r.right, FALSE);
 
+    if (n->type == N_SUM) {
+	if (n->l.left->type == N_RANGE) {
+	    d1 = max2(d1, 3);
+	} else if (n->l.left->type != N_SUM) {
+	    d1++;
+	}
+	if (n->r.right->type == N_RANGE) {
+	    d2 = max2(d2, 3);
+	} else {
+	    d2++;
+	}
+	return d1 + d2;
+    }
     if (n->type == N_ADD) {
 	if (n->r.right->type == N_STR &&
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
@@ -1196,6 +1209,10 @@ bool pop;
 
     d1 = opt_lvalue(n->l.left) + 1;
 
+    if (n->type == N_SUM_EQ) {
+	d1++;
+	return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+    }
     if (n->type == N_ADD_EQ &&
 	(n->mod == T_STRING || (n->mod & T_REF) != 0) &&
 	(n->r.right->mod == T_STRING || (n->r.right->mod & T_REF) != 0 ||
@@ -1922,12 +1939,7 @@ Uint *depth;
 	    side_start(&side, depth);
 	    d2 = opt_cond(&n->l.left, FALSE);
 	    d2 = max2(d2, side_end(&n->l.left, side, (node **) NULL, 0));
-	    if (opt_const(n->l.left) == 0) {
-		n = n->r.right;
-		d = max2(d, d1);
-	    } else {
-		d = max3(d, d1, d2);
-	    }
+	    d = max3(d, d1, d2);
 	    break;
 
 	case N_FOR:

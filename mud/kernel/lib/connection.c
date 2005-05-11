@@ -211,7 +211,6 @@ int message(string str)
 	rlimits (-1; -1) {
 	    int len;
 
-	    buffer = nil;
 	    len = send_message(str);
 	    if (len != strlen(str)) {
 		/*
@@ -220,6 +219,9 @@ int message(string str)
 		buffer = str[len ..];
 		return FALSE;
 	    } else {
+		if (buffer) {
+		    buffer = nil;
+		}
 		return TRUE;
 	    }
 	}

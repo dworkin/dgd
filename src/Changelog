@@ -1632,3 +1632,4 @@ DGD 1.3
    it easier to extend those functions in the future.
  - Fixed a bug in the undefined function code introduced when backported from
    DGD/MP.
+ - Fixed a code optimizer bug.
