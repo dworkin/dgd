@@ -291,9 +291,9 @@ char *text;
     } else {
 	txtsz = 0;
     }
-# ifdef STRUCT_AL
-    lb->blksz = ALGN(lb->blksz, STRUCT_AL);
-# endif
+    if (STRUCT_AL > 2) {
+	lb->blksz = ALGN(lb->blksz, STRUCT_AL);
+    }
 
     /* flush write buffer if needed */
     if (lb->blksz + lb->txtsz + blksz + txtsz > BLOCK_SIZE) {

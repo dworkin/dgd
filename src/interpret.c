@@ -2666,7 +2666,7 @@ int narg, flag;
 
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
-    if (ec_push((flag) ? (ec_ftn) i_catcherr : (ec_ftn) emptyhandler)) {
+    if (ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler)) {
 	ok = FALSE;
     } else {
 	f->sp -= narg;	/* recover arguments */

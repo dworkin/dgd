@@ -1,9 +1,5 @@
 # include "dgd.h"
 
-# ifndef STRUCT_AL
-# define STRUCT_AL	2		/* default memory alignment */
-# endif
-
 # define MAGIC_MASK	0xc0000000L	/* magic number mask */
 # define SIZE_MASK	0x3fffffffL	/* size mask */
 

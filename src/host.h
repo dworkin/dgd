@@ -39,7 +39,6 @@ typedef unsigned int Uint;
 
 # include <alloca.h>
 
-# define STRUCT_AL		4	/* define this if align(struct) > 2 */
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
@@ -90,7 +89,6 @@ typedef unsigned int Uint;
 # include <setjmp.h>
 # include <stdio.h>
 
-# define STRUCT_AL		4	/* define this if align(struct) > 2 */
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 							     (size_t) (size)))
 # define AFREE(ptr)		/* on function return */
@@ -161,8 +159,6 @@ typedef unsigned int Uint;
 
 # define GENERIC_SYSV
 
-# define STRUCT_AL		8	/* define this if align(struct) > 2 */
-
 # include <alloca.h>
 # define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
 							     (size_t) (size)))
@@ -172,10 +168,6 @@ typedef unsigned int Uint;
 
 
 # if defined(DARWIN) || defined(NETBSD) || defined(FREEBSD) || defined(OPENBSD)
-
-# ifdef __alpha__
-# define STRUCT_AL		8	/* define this if align(struct) > 2 */
-# endif
 
 # define GENERIC_BSD
 
@@ -227,9 +219,6 @@ typedef unsigned int Uint;
 # include <setjmp.h>
 # include <stdio.h>
 
-# ifndef STRUCT_AL
-# define STRUCT_AL		4	/* define this if align(struct) > 2 */
-# endif
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)
 # define AFREE(ptr)		FREE(ptr)
@@ -273,9 +262,6 @@ typedef unsigned int Uint;
 # include <setjmp.h>
 # include <stdio.h>
 
-# ifndef STRUCT_AL
-# define STRUCT_AL		4	/* define this if align(struct) > 2 */
-# endif
 # ifndef ALLOCA
 # define ALLOCA(type, size)	ALLOC(type, size)
 # define AFREE(ptr)		FREE(ptr)
@@ -363,6 +349,8 @@ extern bool  P_timeout	P((Uint*, unsigned short*));
 # define FF	'\014'
 # define CR	'\015'
 
+struct _struct_al_ { long l; short s; };
+# define STRUCT_AL	(sizeof(struct _struct_al_) - sizeof(long))
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
 

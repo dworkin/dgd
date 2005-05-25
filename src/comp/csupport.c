@@ -39,8 +39,8 @@ Uint compiled;
     while (--ninherits > 0) {
 	obj = o_find(pcinh->name, OACC_READ);
 	if (obj == (object *) NULL) {
-	    message("Precompiled: cannot inherit /%s from /%s", pcinh->name,
-		  pcinh[ninherits].name);
+	    message("Precompiled: cannot inherit /%s from /%s\012",	/* LF */
+		    pcinh->name, pcinh[ninherits].name);
 	    return FALSE;
 	}
 	inh->oindex = obj->index;
@@ -52,11 +52,13 @@ Uint compiled;
 	(inh++)->varoffset = (pcinh++)->varoffset;
     }
     if (cc > compiled) {
-	message("Precompiled: object out of date: /%s", pcinh->name);
+	message("Precompiled: object out of date: /%s\012",		/* LF */
+		pcinh->name);
 	return FALSE;
     }
     if (o_find(pcinh->name, OACC_READ) != (object *) NULL) {
-	message("Precompiled: object precompiled twice: /%s", pcinh->name);
+	message("Precompiled: object precompiled twice: /%s\012",	/* LF */
+		pcinh->name);
 	return FALSE;
     }
     inh->funcoffset = pcinh->funcoffset;

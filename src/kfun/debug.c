@@ -339,7 +339,7 @@ int func;
 	case I_PUSH_GLOBAL:
 	    codesize = 2;
 	    u = FETCH1U(pc);
-	    d_get_vardefs(env, ctrl);
+	    d_get_vardefs(ctrl);
 	    sprintf(buffer, "PUSH_GLOBAL %s",
 		    d_get_strconst(ctrl, ctrl->vardefs[u].inherit,
 				   ctrl->vardefs[u].index)->text);
@@ -425,7 +425,7 @@ int func;
 	case I_INDEX_LVAL:
 	    if (pop) {
 		pop = 0;
-		pc = typename(env, ctrl, tnbuf, pc);
+		pc = typename(ctrl, tnbuf, pc);
 		sprintf(buffer, "INDEX_LVALUE (%s)", tnbuf);
 		codesize = pc - code;
 		show_instr(buffer);
@@ -447,7 +447,7 @@ int func;
 	    if (pop) {
 		pop = 0;
 		u = FETCH1S(pc);
-		pc = typename(env, ctrl, tnbuf, pc);
+		pc = typename(ctrl, tnbuf, pc);
 		sprintf(buffer, "SPREAD %u (%s)", u, tnbuf);
 	    } else {
 		sprintf(buffer, "SPREAD %u", FETCH1S(pc));
@@ -457,7 +457,7 @@ int func;
 	    break;
 
 	case I_CAST:
-	    pc = typename(env, ctrl, tnbuf, pc);
+	    pc = typename(ctrl, tnbuf, pc);
 	    sprintf(buffer, "CAST %s", tnbuf);
 	    codesize = pc - code;
 	    show_instr(buffer);

@@ -140,9 +140,8 @@ driver, mostly to translate pathnames.
 
 	Called whenever the program of a master object is removed (because
 	the object has been destructed, and all clones and inheriting objects
-	have also been destructed).  As this function is called from code
-	that cannot be allowed to abort or fail, it is called with
-	rlimits (-1; -1) and a catch.
+	have also been destructed).  This function is called with
+	rlimits (-1; -1).
 	The "index" is a unique number for each master object, also
 	available with status(obj), which can help distinguishing between
 	different issues of the same object.
