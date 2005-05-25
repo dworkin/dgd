@@ -1636,3 +1636,4 @@ DGD 1.3
  - Do not force structure alignment through a #define, but handle it
    automatically.
  - Let the ordinary errorhandler deal with errors in remove_program().
+ - Fixed a bug in the listing of undefined private functions.

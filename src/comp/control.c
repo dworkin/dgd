@@ -981,7 +981,6 @@ void ctrl_create()
     progsize = 0;
     nstrs = 0;
     nfdefs = 0;
-    nundefs = 0;
     nvars = 0;
     nclassvars = 0;
     nfcalls = 0;
@@ -2011,6 +2010,7 @@ void ctrl_clear()
     nsymbs = 0;
     nfclash = 0;
     nifcalls = 0;
+    nundefs = 0;
 
     if (newctrl != (control *) NULL) {
 	d_del_control(newctrl);
