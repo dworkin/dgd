@@ -72,7 +72,7 @@ register unsigned int n;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
-    baseplane.ocount = 1;
+    baseplane.ocount = 2;
     baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
     oplane = &baseplane;
     upgraded = (object *) NULL;
@@ -1368,7 +1368,7 @@ int conv_callouts, conv_lwos, conv_ctrls;
 	    counts[*sorted++] = ++i + 1;
 	}
 	AFREE(sorted - i);
-	baseplane.ocount = i + 1;
+	baseplane.ocount = i + 2;
 
 	/*
 	 * convert all control blocks

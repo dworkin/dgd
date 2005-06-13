@@ -96,10 +96,10 @@ nomask void _F_create()
 		if (oname != BINARY_CONN && oname != TELNET_CONN &&
 		    oname != OBJREGD) {
 		    ::find_object(OBJREGD)->link(this_object(), owner);
-		}
 
-		if (clone) {
-		    driver->clone(this_object(), owner);
+		    if (clone) {
+			driver->clone(this_object(), owner);
+		    }
 		}
 	    } else {
 		/*
@@ -253,7 +253,7 @@ static int destruct_object(mixed obj)
      * check privileges
      */
     oname = object_name(obj);
-    if (sscanf(oname, "%*s#-1") != 0) {
+    if (sscanf(oname, "%s#%d", oname, lib) != 0 && lib < 0) {
 	error("Cannot destruct non-persistent object");
     }
     lib = sscanf(oname, "%*s" + INHERITABLE_SUBDIR);
@@ -265,7 +265,9 @@ static int destruct_object(mixed obj)
 
     rlimits (-1; -1) {
 	if (!lib) {
-	    driver->destruct(obj, oowner);
+	    if (oname != BINARY_CONN && oname != TELNET_CONN) {
+		driver->destruct(obj, oowner);
+	    }
 	    obj->_F_destruct();
 	} else {
 	    driver->destruct_lib(object_name(obj), oowner);
