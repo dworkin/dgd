@@ -680,9 +680,10 @@ void comm_flush()
  * NAME:	comm->taccept()
  * DESCRIPTION:	accept a telnet connection
  */
-static void comm_taccept(f, conn)
+static void comm_taccept(f, conn, port)
 register frame *f;
 struct _connection_ *conn;
+int port;
 {
     user *usr;
     object *obj;
@@ -691,6 +692,7 @@ struct _connection_ *conn;
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
     }
+    PUSH_INTVAL(f, port);
     call_driver_object(f, "telnet_connect", 1);
     if (f->sp->type != T_OBJECT) {
 	fatal("driver->telnet_connect() did not return persistent object");
@@ -715,9 +717,10 @@ struct _connection_ *conn;
  * NAME:	comm->baccept()
  * DESCRIPTION:	accept a binary connection
  */
-static void comm_baccept(f, conn)
+static void comm_baccept(f, conn, port)
 register frame *f;
 struct _connection_ *conn;
+int port;
 {
     user *usr;
     object *obj;
@@ -726,6 +729,7 @@ struct _connection_ *conn;
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
     }
+    PUSH_INTVAL(f, port);
     call_driver_object(f, "binary_connect", 1);
     if (f->sp->type != T_OBJECT) {
 	fatal("driver->binary_connect() did not return persistent object");
@@ -793,15 +797,13 @@ unsigned int mtime;
 	     */
 	    conn = conn_tnew6(n);
 	    if (conn != (connection *) NULL) {
-		PUSH_INTVAL(f, n);
-		comm_taccept(f, conn);
+		comm_taccept(f, conn, n);
 		nexttport = (n + 1) % ntport;
 	    }
 	    if (nusers < maxusers) {
 		conn = conn_tnew(n);
 		if (conn != (connection *) NULL) {
-		    PUSH_INTVAL(f, n);
-		    comm_taccept(f, conn);
+		    comm_taccept(f, conn, n);
 		    nexttport = (n + 1) % ntport;
 		}
 	    }
@@ -818,14 +820,12 @@ unsigned int mtime;
 	     */
 	    conn = conn_bnew6(n);
 	    if (conn != (connection *) NULL) {
-		PUSH_INTVAL(f, n);
-		comm_baccept(f, conn);
+		comm_baccept(f, conn, n);
 	    }
 	    if (nusers < maxusers) {
 		conn = conn_bnew(n);
 		if (conn != (connection *) NULL) {
-		    PUSH_INTVAL(f, n);
-		    comm_baccept(f, conn);
+		    comm_baccept(f, conn, n);
 		}
 	    }
 	    n = (n + 1) % nbport;

@@ -2069,7 +2069,7 @@ int nargs;
 		error("Bad argument 2 for kfun +");
 	    }
 	} else if (vtype != T_INT || type == T_ARRAY) {
-	    error("Bad argument %d for kfun +", (i == nargs - 1) ? 1 : 2);
+	    error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
 	} else {
 	    result += v->u.number;
 	}
