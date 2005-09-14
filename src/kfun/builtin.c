@@ -2213,6 +2213,7 @@ register frame *f;
     case T_LWOBJECT:
 	n = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
+	f->sp[1] = nil_value;
 	break;
 
     default:
@@ -2296,6 +2297,7 @@ register frame *f;
 
     case T_LWOBJECT:
 	oindex = d_get_elts(f->sp[1].u.array)->oindex;
+	arr_del(f->sp[1].u.array);
 	break;
 
     default:

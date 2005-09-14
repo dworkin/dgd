@@ -498,7 +498,8 @@ register frame *f;
 
     if (path_string(path, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
-	return 1;
+	*f->sp = nil_value;
+	return 0;
     }
     i_add_ticks(f, 2);
     obj = o_find(path, OACC_READ);

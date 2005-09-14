@@ -1504,21 +1504,16 @@ register unsigned int n;
 		elts[1].type = T_FLOAT;
 		elts[1].oindex = FALSE;
 	    }
-	    if (elts->u.objcnt == count) {
-		if (arr_put(save->amerge, v->u.array, save->narr) == save->narr)
+	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
+		if (elts->u.objcnt == count && elts[1].u.objcnt != obj->update)
 		{
-		    if (elts[1].u.objcnt != obj->update) {
-			d_upgrade_lwobj(v->u.array, obj);
-			elts = v->u.array->elts;
-		    }
-		    if (save->counttab != (Uint *) NULL) {
-			elts[1].u.objcnt = 0;
-		    }
-		    d_arrcount(save, v->u.array);
+		    d_upgrade_lwobj(v->u.array, obj);
+		    elts = v->u.array->elts;
 		}
-	    } else {
-		arr_del(v->u.array);
-		*v = nil_value;
+		if (save->counttab != (Uint *) NULL) {
+		    elts[1].u.objcnt = 0;
+		}
+		d_arrcount(save, v->u.array);
 	    }
 	    break;
 	}
