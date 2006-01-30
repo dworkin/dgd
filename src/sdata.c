@@ -2342,6 +2342,7 @@ int conv;
     ctrl->strsize = header.strsize;
     ctrl->nfuncdefs = UCHAR(header.nfuncdefs);
     ctrl->nvardefs = UCHAR(header.nvardefs);
+    ctrl->nclassvars = UCHAR(header.nclassvars);
     ctrl->nfuncalls = header.nfuncalls;
     ctrl->nsymbols = header.nsymbols;
     ctrl->nvariables = header.nvariables;
@@ -2458,6 +2459,29 @@ int conv;
 		    type = ctrl->vardefs[n].type;
 		    ctrl->vardefs[n].type =
 					(type & T_TYPE) | ((type >> 1) & T_REF);
+		}
+	    } else if (ctrl->nclassvars != 0) {
+		register char *p;
+		register dvardef *vars;
+		register string **strs;
+		register unsigned short n, inherit, u;
+
+		ctrl->classvars = ALLOC(char, ctrl->nclassvars * 3);
+		sw_dreadv(ctrl->classvars, s, ctrl->nclassvars * (Uint) 3,
+			  size);
+		size += ctrl->nclassvars * (Uint) 3;
+		ctrl->cvstrings = strs = ALLOC(string*, ctrl->nvardefs);
+		memset(strs, '\0', ctrl->nvardefs * sizeof(string*));
+		p = ctrl->classvars;
+		for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++)
+		{
+		    if ((vars->type & T_TYPE) == T_CLASS) {
+			inherit = FETCH1U(p);
+			str_ref(*strs = d_get_strconst(ctrl, inherit,
+						       FETCH2U(p, u)));
+			--n;
+		    }
+		    strs++;
 		}
 	    }
 	}
