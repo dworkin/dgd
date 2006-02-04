@@ -2,6 +2,7 @@ typedef struct {
     char *name;			/* name of object */
     unsigned short funcoffset;	/* function call offset */
     unsigned short varoffset;	/* variable offset */
+    bool priv;			/* privately inherited? */
 } pcinherit;
 
 typedef void (*pcfunc) P((frame*));

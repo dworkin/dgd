@@ -49,7 +49,8 @@ Uint compiled;
 	}
 
 	inh->funcoffset = pcinh->funcoffset;
-	(inh++)->varoffset = (pcinh++)->varoffset;
+	inh->varoffset = pcinh->varoffset;
+	(inh++)->priv = (pcinh++)->priv;
     }
     if (cc > compiled) {
 	message("Precompiled: object out of date: /%s\012",		/* LF */
