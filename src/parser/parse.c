@@ -667,16 +667,30 @@ pnode *next;
 	    /*
 	     * production rule
 	     */
-	    pn->symbol = PN_BLOCKED;
 	    len = 0;
-	    for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next) {
-		n = ps_traverse(ps, sub, sub->next);
-		if (n < 0) {
-		    return n;	/* blocked branch */
+	    if (pn->len != 0) {
+		pnode *nodes[255];
+		register pnode **list;
+
+		pn->symbol = PN_BLOCKED;
+
+		/* traverse subtrees in left-to-right order */
+		list = nodes;
+		for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next)
+		{
+		    *list++ = sub;
 		}
-		len += n;
+		for (i = pn->len; i != 0; --i) {
+		    sub = *--list;
+		    n = ps_traverse(ps, sub, sub->next);
+		    if (n < 0) {
+			return n;	/* blocked branch */
+		    }
+		    len += n;
+		}
+
+		pn->symbol = PN_RULE;
 	    }
-	    pn->symbol = PN_RULE;
 
 	    n = UCHAR(pn->u.text[0]) << 1;
 	    if (n == UCHAR(pn->u.text[1])) {

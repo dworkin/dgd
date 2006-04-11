@@ -498,6 +498,7 @@ register frame *f;
 
     if (path_string(path, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
+	str_del(f->sp->u.string);
 	*f->sp = nil_value;
 	return 0;
     }

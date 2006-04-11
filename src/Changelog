@@ -1644,3 +1644,5 @@ DGD 1.3
  - Various reference count issues corrected for light-weight objects.
  - Properly restore object types from a statedump.
  - Include private inheritance information in precompiled objects.
+ - Fixed some refcount problems.
+ - Let parse_string() call LPC functions in left-to-right order.

@@ -108,7 +108,7 @@ typedef char dumpinfo[50];
 
 # define FORMAT_VERSION	5
 
-# define DUMP_VALID	0	/* valud dump flag */
+# define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
 # define DUMP_DRIVER	2	/* 0: vanilla DGD, 1: iChat DGD */
 # define DUMP_TYPECHECK	3	/* global typechecking */

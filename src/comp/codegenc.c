@@ -1508,11 +1508,6 @@ register int state;
 	    output(", f->sp++, !VFLT_ISZERO(f->sp - 1)");
 	    break;
 
-	case T_OBJECT:
-	    output(", f->sp++, f->sp[-1].type == T_OBJECT || ");
-	    output("f->sp[-1].type == T_LWOBJECT");
-	    break;
-
 	default:
 	    output(", poptruthval(f)");
 	    break;
