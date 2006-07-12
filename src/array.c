@@ -17,7 +17,7 @@ typedef struct _arrh_ {
     struct _arrh_ *next;	/* next in hash table chain */
     array *arr;			/* array entry */
     Uint index;			/* building index */
-    struct _arrh_ **link;	/* next in list */
+    struct _arrh_ *link;	/* next in list */
 } arrh;
 
 typedef struct _arrhchunk_ {
@@ -26,10 +26,10 @@ typedef struct _arrhchunk_ {
 } arrhchunk;
 
 struct _arrmerge_ {
-    arrh **ht;			/* array merge table */
-    arrh **alink;		/* linked list of merged arrays */
+    arrh *alink;		/* linked list of merged arrays */
     arrhchunk *ahlist;		/* linked list of all arrh chunks */
     int ahchunksz;		/* size of current arrh chunk */
+    arrh *ht[ARRMERGETABSZ];	/* array merge table */
 };
 
 # define MELT_CHUNK	128
@@ -341,11 +341,10 @@ arrmerge *arr_merge()
     register arrmerge *merge;
 
     merge = ALLOC(arrmerge, 1);
-    merge->ht = ALLOC(arrh*, ARRMERGETABSZ);
-    memset(merge->ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
-    merge->alink = (arrh **) NULL;
+    merge->alink = (arrh *) NULL;
     merge->ahlist = (arrhchunk *) NULL;
     merge->ahchunksz = ARR_CHUNK;
+    memset(&merge->ht, '\0', ARRMERGETABSZ * sizeof(arrh *));
 
     return merge;
 }
@@ -383,7 +382,7 @@ Uint idx;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
     (*h)->link = merge->alink;
-    merge->alink = h;
+    merge->alink = *h;
 
     return idx;
 }
@@ -395,19 +394,14 @@ Uint idx;
 void arr_clear(merge)
 register arrmerge *merge;
 {
-    register arrh **h;
+    register arrh *h;
     register arrhchunk *l;
 
     /* clear hash table */
-    for (h = merge->alink; h != (arrh **) NULL; ) {
-	register arrh *f;
-
-	f = *h;
-	*h = (arrh *) NULL;
-	arr_del(f->arr);
-	h = f->link;
+    for (h = merge->alink; h != (arrh *) NULL; ) {
+	arr_del(h->arr);
+	h = h->link;
     }
-    FREE(merge->ht);
 
     /* free array hash chunks */
     for (l = merge->ahlist; l != (arrhchunk *) NULL; ) {

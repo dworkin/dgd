@@ -600,6 +600,17 @@ static void release()
 
 
 /*
+ * NAME:	initd()
+ * DESCRIPTION:	perform local system initialization
+ */
+object initd()
+{
+    if (previous_program() == DRIVER) {
+	return compile_object(USR_DIR + "/System/initd");
+    }
+}
+
+/*
  * NAME:	prepare_reboot()
  * DESCRIPTION:	prepare for a reboot
  */

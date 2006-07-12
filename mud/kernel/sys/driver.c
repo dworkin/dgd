@@ -408,11 +408,6 @@ private void _initialize(mixed *tls)
     call_other(accessd = load(ACCESSD), "???");
     call_other(userd = load(USERD), "???");
     call_other(load(DEFAULT_WIZTOOL), "???");
-    if (file_size(USR_DIR + "/System/initd.c") != 0) {
-	catch {
-	    initd = load(USR_DIR + "/System/initd");
-	}
-    }
 
     /* initialize other users as resource owners */
     users = (accessd->query_users() - ({ "System" })) | ({ "admin" });
@@ -429,8 +424,14 @@ private void _initialize(mixed *tls)
 		     1);
 
     /* system-specific initialization */
-    if (initd) {
-	call_other(initd, "???");
+    if (file_size(USR_DIR + "/System/initd.c") != 0) {
+	catch {
+	    initd = rsrcd->initd();
+	} : {
+	    message("Initialization failed.\n");
+	    shutdown();
+	    return;
+	}
     }
 
     message("Initialization complete.\n\n");

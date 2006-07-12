@@ -703,6 +703,7 @@ pnode *next;
 		a = arr_new(ps->data, (long) len);
 		if (len != 0) {
 		    ps_flatten(pn, next, a->elts + len);
+		    d_ref_imports(a);
 		}
 		ps->data->parser = (parser *) NULL;
 
@@ -785,6 +786,7 @@ pnode *next;
 			    if (sub->len != 0) {
 				ps_flatten(sub, next,
 					   v->u.array->elts + sub->len);
+				d_ref_imports(v->u.array);
 			    }
 			}
 			v++;
@@ -1027,6 +1029,7 @@ Int maxalt;
 	    if (len >= 0) {
 		a = arr_new(data, (long) len);
 		ps_flatten(pn, pn->next, a->elts + len);
+		d_ref_imports(a);
 	    }
 
 	    /* clean up */

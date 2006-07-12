@@ -1809,6 +1809,8 @@ register unsigned short n;
 		    /*
 		     * first time encountered
 		     */
+		    imp->narr++;
+
 		    if (a->hashed != (struct _maphash_ *) NULL) {
 			map_rmhash(a);
 		    }
@@ -1817,7 +1819,6 @@ register unsigned short n;
 			/*
 			 * move array to new dataspace
 			 */
-			a->primary = &data->base.alocal;
 			a->prev->next = a->next;
 			a->next->prev = a->prev;
 		    } else {
@@ -1827,7 +1828,6 @@ register unsigned short n;
 			a = arr_alloc(a->size);
 			a->tag = val->u.array->tag;
 			a->odcount = val->u.array->odcount;
-			a->primary = &data->base.alocal;
 
 			if (a->size > 0) {
 			    /*
@@ -1842,25 +1842,27 @@ register unsigned short n;
 			 */
 			arr_del(val->u.array);
 			arr_ref(val->u.array = a);
-			imp->narr++;
+
+			/*
+			 * store in itab
+			 */
+			if (i >= imp->itabsz) {
+			    /*
+			     * increase size of itab
+			     */
+			    for (j = imp->itabsz; j <= i; j += j) ;
+			    imp->itab = REALLOC(imp->itab, array*, imp->itabsz,
+						j);
+			    imp->itabsz = j;
+			}
+			arr_put(imp->merge, imp->itab[i] = a, imp->narr++);
 		    }
+
+		    a->primary = &data->base.alocal;
 		    a->prev = &data->alist;
 		    a->next = data->alist.next;
 		    a->next->prev = a;
 		    data->alist.next = a;
-
-		    /*
-		     * store in itab
-		     */
-		    if (i >= imp->itabsz) {
-			/*
-			 * increase size of itab
-			 */
-			for (j = imp->itabsz; j <= i; j += j) ;
-			imp->itab = REALLOC(imp->itab, array*, imp->itabsz, j);
-			imp->itabsz = j;
-		    }
-		    arr_put(imp->merge, imp->itab[i] = a, imp->narr++);
 
 		    if (a->size > 0) {
 			/*
