@@ -146,21 +146,8 @@ register value *lhs;
 		/* swapped in */
 		data->plane->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
-		    register unsigned short n;
-
-		    /* last reference removed */
-		    if (arr->hashmod) {
-			map_compact(data, arr);
-		    } else {
-			d_get_elts(arr);
-		    }
 		    arr->primary->arr = (array *) NULL;
 		    arr->primary = &arr->primary->plane->alocal;
-
-		    for (n = arr->size, lhs = arr->elts; n != 0; --n, lhs++) {
-			del_lhs(data, lhs);
-		    }
-
 		    arr_del(arr);
 		    data->plane->achange++;
 		}
