@@ -146,6 +146,7 @@ register value *lhs;
 		/* swapped in */
 		data->plane->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
+		    d_get_elts(arr);
 		    arr->primary->arr = (array *) NULL;
 		    arr->primary = &arr->primary->plane->alocal;
 		    arr_del(arr);
