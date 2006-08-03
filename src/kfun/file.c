@@ -1166,7 +1166,7 @@ int nargs;
 	/* offset from the end of the file */
 	l += sbuf.st_size;
     }
-    if (l < 0 || l > sbuf.st_size || P_lseek(fd, l, SEEK_SET) < 0) {
+    if (l < 0 || l > sbuf.st_size || (l != 0 && P_lseek(fd, l, SEEK_SET) < 0)) {
 	/* bad offset */
 	P_close(fd);
 	str_del((f->sp++)->u.string);
@@ -1247,7 +1247,8 @@ int nargs;
 	    /* offset from end of file */
 	    l += sbuf.st_size;
 	}
-	if (l < 0 || l > sbuf.st_size || P_lseek(fd, l, SEEK_SET) < 0) {
+	if (l < 0 || l > sbuf.st_size ||
+	    (l != 0 && P_lseek(fd, l, SEEK_SET) < 0)) {
 	    /* bad seek */
 	    P_close(fd);
 	    return 0;

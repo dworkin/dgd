@@ -1650,3 +1650,4 @@ DGD 1.3
  - Speed up the exporting process a little.
  - Finally tracked down a very old bug in array importing that could lead to
    memory corruption.
+ - Only seek on files when needed.
