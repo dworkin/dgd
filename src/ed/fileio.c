@@ -181,9 +181,12 @@ int append;
 io *iobuf;
 {
     char buf[BUF_SIZE];
+    struct stat sbuf;
     fiocontext x;
 
-    if (path_ed_write(x.filename, filename) == (char *) NULL) {
+    if (path_ed_write(x.filename, filename) == (char *) NULL ||
+	(P_stat(x.filename, &sbuf) >= 0 && (sbuf.st_mode & S_IFMT) != S_IFREG))
+    {
 	return FALSE;
     }
     /* create file */

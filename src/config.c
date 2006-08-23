@@ -316,9 +316,6 @@ int fd;
     }
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
-    if (secsize > conf[SECTOR_SIZE].u.num) {
-	error("Cannot restore bigger sector size");
-    }
     if ((rpsize >> 4) > 1) {
 	error("Cannot restore hindex != 1");
     }

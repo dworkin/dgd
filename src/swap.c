@@ -780,6 +780,9 @@ unsigned int secsize;
 	error("Wrong sector size or too many sectors in restore file");
     }
     restoresecsize = secsize;
+    if (secsize > sectorsize) {
+	cbuf = REALLOC(cbuf, char, 0, secsize);
+    }
 
     /* seek beyond swap sectors */
     P_lseek(fd, (dh.ssectors + 1L) * secsize, SEEK_SET);

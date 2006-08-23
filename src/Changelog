@@ -1651,3 +1651,4 @@ DGD 1.3
  - Finally tracked down a very old bug in array importing that could lead to
    memory corruption.
  - Only seek on files when needed.
+ - The sector size may now be decreased as well as increased.

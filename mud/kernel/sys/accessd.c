@@ -175,6 +175,17 @@ string *query_users()
 }
 
 /*
+ * NAME:	save()
+ * DESCRIPTION:	force a save of this object, even in a persistent system
+ */
+void save()
+{
+    if (SYSTEM()) {
+	save_object(ACCESSDATA);
+    }
+}
+
+/*
  * NAME:	set_access()
  * DESCRIPTION:	set access
  */

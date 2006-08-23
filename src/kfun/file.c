@@ -1200,7 +1200,7 @@ int kf_read_file(f, nargs)
 register frame *f;
 int nargs;
 {
-    char file[STRINGSZ];
+    char file[STRINGSZ], *buf;
     struct stat sbuf;
     register Int l, size;
     static int fd;
@@ -1233,8 +1233,8 @@ int nargs;
 	return 0;
     }
     P_fstat(fd, &sbuf);
-    if ((sbuf.st_mode & S_IFMT) != S_IFREG) {
-	/* not a plain file */
+    if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
+	/* don't read from a directory */
 	P_close(fd);
 	return 0;
     }
@@ -1256,24 +1256,31 @@ int nargs;
 	sbuf.st_size -= l;
     }
 
-    if (size == 0 || size > sbuf.st_size) {
+    if (size == 0) {
 	size = sbuf.st_size;
     }
-    if (ec_push((ec_ftn) NULL)) {
-	P_close(fd);
-	error((char *) NULL);	/* pass on error */
-    } else {
-	PUT_STRVAL(f->sp, str_new((char *) NULL, size));
-	ec_pop();
-    }
-    if (size > 0 &&
-	P_read(fd, f->sp->u.string->text, (unsigned int) size) != size) {
-	/* read failed (should never happen, but...) */
+    buf = (size != 0) ? ALLOCA(char, size) : (char *) NULL;
+    if (size > 0 && (size=P_read(fd, buf, (unsigned int) size)) < 0) {
+	/* read failed */
 	P_close(fd);
 	error("Read failed in read_file()");
     }
     P_close(fd);
     i_add_ticks(f, 2 * size);
+
+    if (ec_push((ec_ftn) NULL)) {
+	P_close(fd);
+	if (buf != (char *) NULL) {
+	    AFREE(buf);
+	}
+	error((char *) NULL);	/* pass on error */
+    } else {
+	PUT_STRVAL(f->sp, str_new((char *) buf, size));
+	if (buf != (char *) NULL) {
+	    AFREE(buf);
+	}
+	ec_pop();
+    }
 
     return 0;
 }

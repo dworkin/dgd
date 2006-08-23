@@ -1237,7 +1237,6 @@ void (*hash_block) P((Uint*, char*));
     register ssizet len;
     register unsigned short bufsz;
     register char *p;
-    register Int cost;
     register Uint length;
 
     length = 0;
