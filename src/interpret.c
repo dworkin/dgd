@@ -2435,13 +2435,6 @@ register frame *f;
 	case I_RETURN:
 	    break;
 
-	case I_PUSH_LOCAL_LVAL:
-	case I_PUSH_GLOBAL_LVAL:
-	case I_SPREAD:
-	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
-		pc += 3;
-	    }
-	    /* fall through */
 	case I_PUSH_INT1:
 	case I_PUSH_STRING:
 	case I_PUSH_LOCAL:
@@ -2456,11 +2449,15 @@ register frame *f;
 	    }
 	    break;
 
-	case I_PUSH_FAR_GLOBAL_LVAL:
+	case I_PUSH_LOCAL_LVAL:
+	case I_PUSH_GLOBAL_LVAL:
+	case I_SPREAD:
+	    pc++;
 	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
 		pc += 3;
 	    }
-	    /* fall through */
+	    break;
+
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_FAR_GLOBAL:
 	case I_JUMP:
@@ -2469,6 +2466,13 @@ register frame *f;
 	case I_CALL_AFUNC:
 	case I_CATCH:
 	    pc += 2;
+	    break;
+
+	case I_PUSH_FAR_GLOBAL_LVAL:
+	    pc += 2;
+	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+		pc += 3;
+	    }
 	    break;
 
 	case I_PUSH_FAR_STRING:

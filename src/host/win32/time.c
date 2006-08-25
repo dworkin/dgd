@@ -41,13 +41,15 @@ Uint P_mtime(unsigned short *milli)
  * NAME:	P->ctime()
  * DESCRIPTION:	return time as string
  */
-char *P_ctime(char *buf, Uint t)
+char *P_ctime(char *buf, Uint time)
 {
     int offset;
+    time_t t;
 
     offset = 0;
+    t = time;
     for (offset = 0; t > 2147397248; t -= 883612800, offset += 28) ;
-    memcpy(buf, ctime((time_t *) &t), 26);
+    memcpy(buf, ctime(&t), 26);
     if (offset != 0) {
 	long year;
 
@@ -58,7 +60,7 @@ char *P_ctime(char *buf, Uint t)
 	    /* 2100 is not a leap year */
 	    t -= 378604800;
 	    offset += 12;
-	    memcpy(buf, ctime((time_t *) &t), 26);
+	    memcpy(buf, ctime(&t), 26);
 	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
 	}
 	sprintf(buf + 20, "%ld\012", year);

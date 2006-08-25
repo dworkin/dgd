@@ -1652,3 +1652,5 @@ DGD 1.3
    memory corruption.
  - Only seek on files when needed.
  - The sector size may now be decreased as well as increased.
+ - Line numbers were incorrect when object types were involved.
+ - Handle 64 bit time_t.

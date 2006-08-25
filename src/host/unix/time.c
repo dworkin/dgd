@@ -31,15 +31,17 @@ unsigned short *milli;
  * NAME:	P->ctime()
  * DESCRIPTION:	convert the given time to a string
  */
-char *P_ctime(buf, t)
+char *P_ctime(buf, time)
 char *buf;
-Uint t;
+Uint time;
 {
     register int offset;
+    time_t t;
 
     offset = 0;
+    t = time;
     for (offset = 0; t >= 2147397248L; t -= 883612800L, offset += 28) ;
-    memcpy(buf, ctime((time_t *) &t), 26);
+    memcpy(buf, ctime(&t), 26);
     if (offset != 0) {
 	long year;
 
@@ -50,7 +52,7 @@ Uint t;
 	    /* 2100 is not a leap year */
 	    t -= 378604800L;
 	    offset += 12;
-	    memcpy(buf, ctime((time_t *) &t), 26);
+	    memcpy(buf, ctime(&t), 26);
 	    year = strtol(buf + 20, (char **) NULL, 10) + offset;
 	}
 	sprintf(buf + 20, "%ld\012", year);
