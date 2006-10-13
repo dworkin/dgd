@@ -1113,10 +1113,14 @@ string *class;
 			str->text, (*h)->ohash->chain.name);
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
 		       (*h)->ohash->priv == 0 &&
+		       (ctrl->ninherits != 1 ||
+			(PROTO_CLASS(proto2) & (C_STATIC | C_UNDEFINED)) !=
+								    C_STATIC) &&
 		       PROTO_FTYPE(proto2) != T_IMPLICIT &&
 		       cmp_proto(newctrl, proto, ctrl, proto2)) {
 		/*
 		 * there is no point in replacing an identical prototype
+		 * that is not a static function in the auto object
 		 */
 		return;
 	    } else if ((PROTO_CLASS(proto2) & (C_NOMASK | C_UNDEFINED)) ==

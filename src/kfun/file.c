@@ -1169,8 +1169,7 @@ int nargs;
     if (l < 0 || l > sbuf.st_size || (l != 0 && P_lseek(fd, l, SEEK_SET) < 0)) {
 	/* bad offset */
 	P_close(fd);
-	str_del((f->sp++)->u.string);
-	return 0;
+	return 3;
     }
 
     if (P_write(fd, f->sp->u.string->text, f->sp->u.string->len) ==
@@ -1251,7 +1250,7 @@ int nargs;
 	    (l != 0 && P_lseek(fd, l, SEEK_SET) < 0)) {
 	    /* bad seek */
 	    P_close(fd);
-	    return 0;
+	    return 1;
 	}
 	sbuf.st_size -= l;
     }

@@ -799,56 +799,58 @@ static mixed *expand(string files, int exist, int full)
 	str = files;
 	files = nil;
 	sscanf(str, "%s %s", str, files);
-	file = driver->normalize_path(str, directory, owner);
-	dir = get_dir(file);
+	if (strlen(str) != 0) {
+	    file = driver->normalize_path(str, directory, owner);
+	    dir = get_dir(file);
 
-	if (full || (i=strlen(str)) == 0 || (i=strlen(file) - i) < 0 ||
-	    file[i ..] != str) {
-	    str = file;
-	    strs = explode(file, "/");
-	    file = "/" + implode(strs[.. sizeof(strs) - 2], "/");
-	    if (file != "/") {
-		file += "/";
-	    }
-	} else {
-	    strs = explode("/" + str, "/");
-	    if (sizeof(strs) <= 1) {
-		file = "";
+	    if (full || (i=strlen(str)) == 0 || (i=strlen(file) - i) < 0 ||
+		file[i ..] != str) {
+		str = file;
+		strs = explode(file, "/");
+		file = "/" + implode(strs[.. sizeof(strs) - 2], "/");
+		if (file != "/") {
+		    file += "/";
+		}
 	    } else {
-		file = implode(strs[.. sizeof(strs) - 2], "/") + "/";
+		strs = explode("/" + str, "/");
+		if (sizeof(strs) <= 1) {
+		    file = "";
+		} else {
+		    file = implode(strs[.. sizeof(strs) - 2], "/") + "/";
+		}
 	    }
-	}
 
-	if (!dir) {
-	    if (exist != 0 || files) {
-		message(str + ": Access denied.\n");
-		all[4]++;
-		continue;
-	    }
-	    sz = 0;
-	    dir = ::get_dir(str);
-	    if (sizeof(dir) != 1 || dir[1][0] != -2) {
+	    if (!dir) {
+		if (exist != 0 || files) {
+		    message(str + ": Access denied.\n");
+		    all[4]++;
+		    continue;
+		}
+		sz = 0;
+		dir = ::get_dir(str);
+		if (sizeof(dir) != 1 || dir[1][0] != -2) {
+		    dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ nil }) });
+		}
+	    } else if ((sz=sizeof(strs=dir[0])) == 0) {
+		if (exist > 0 || (exist == 0 && files)) {
+		    message(str + ": No such file or directory.\n");
+		    all[4]++;
+		    continue;
+		}
 		dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ nil }) });
 	    }
-	} else if ((sz=sizeof(strs=dir[0])) == 0) {
-	    if (exist > 0 || (exist == 0 && files)) {
-		message(str + ": No such file or directory.\n");
-		all[4]++;
-		continue;
+
+	    for (i = 0; i < sz; i++) {
+		str = strs[i];
+		strs[i] = (str == ".") ? "/" : file + str;
 	    }
-	    dir = ({ ({ str }), ({ -1 }), ({ 0 }), ({ nil }) });
-	}
 
-	for (i = 0; i < sz; i++) {
-	    str = strs[i];
-	    strs[i] = (str == ".") ? "/" : file + str;
+	    all[0] += dir[0];
+	    all[1] += dir[1];
+	    all[2] += dir[2];
+	    all[3] += dir[3];
+	    all[4] += sizeof(dir[0]);
 	}
-
-	all[0] += dir[0];
-	all[1] += dir[1];
-	all[2] += dir[2];
-	all[3] += dir[3];
-	all[4] += sizeof(dir[0]);
     } while (files);
 
     return all;

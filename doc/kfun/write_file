@@ -14,5 +14,8 @@ DESCRIPTION
 	equal to minus the length of the file.
 	The return value is 1 for success, 0 for failure.
 
+ERRORS
+	If the offset is out of range, an error will result.
+
 SEE ALSO
 	kfun/editor, kfun/read_file
