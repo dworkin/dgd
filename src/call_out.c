@@ -363,7 +363,7 @@ unsigned short *mtime;
 	t = timestamp;
 	*mtime = 0;
     } else if (timestamp < t) {
-	if (running.list == 0 && immediate.list == 0) {
+	if (running.list == 0) {
 	    if (atimeout == 0 || atimeout > t) {
 		timestamp = t;
 	    } else if (timestamp < atimeout - 1) {

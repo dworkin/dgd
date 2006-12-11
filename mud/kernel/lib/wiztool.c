@@ -1736,6 +1736,11 @@ static void cmd_quota(object user, string cmd, string str)
 
 	if (sscanf(str, "%s%d%s", rsrc, limit, str) == 0) {
 	    /* show single resource */
+	    if (sizeof(query_resources() & ({ str })) == 0) {
+		message("No such resource.\n");
+		return;
+	    }
+
 	    message(list_resources("resource", ({ str }),
 				   ({ rsrc_get(who, str) })));
 	} else {
