@@ -1069,7 +1069,7 @@ node *n;
 int type, flags;
 {
     n = node_mon(N_BLOCK, type, n);
-    n->flags |= n->l.left->flags & F_FLOW & ~flags;
+    n->flags |= n->l.left->flags & F_FLOW & ~F_RETURN & ~flags;
     return n;
 }
 

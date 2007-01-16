@@ -158,9 +158,7 @@ void set_user(object obj, string str)
 {
     if (KERNEL()) {
 	user = obj;
-	if (query_ip_number(this_object())) {
-	    set_mode(obj->login(str));
-	}
+	set_mode(obj->login(str));
     }
 }
 

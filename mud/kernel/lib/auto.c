@@ -285,7 +285,7 @@ static object compile_object(string path, varargs string source)
 {
     string oname, uid;
     object driver, rsrcd, obj;
-    int *rsrc, lib, new, stack, ticks;
+    int *rsrc, lib, kernel, new, stack, ticks;
 
     CHECKARG(path, 1, "compile_object");
     if (!this_object()) {
@@ -299,12 +299,13 @@ static object compile_object(string path, varargs string source)
     driver = ::find_object(DRIVER);
     path = driver->normalize_path(path, oname + "/..", creator);
     lib = sscanf(path, "%*s" + INHERITABLE_SUBDIR);
+    kernel = sscanf(path, "/kernel/%*s");
     uid = driver->creator(path);
-    if (uid && creator != "System" &&
-	!::find_object(ACCESSD)->access(oname, path,
-					(sscanf(path, "/kernel/%*s") == 0 &&
-					 lib && !source) ?
-					 READ_ACCESS : WRITE_ACCESS)) {
+    if ((source && kernel) ||
+	(creator != "System" &&
+	 !::find_object(ACCESSD)->access(oname, path,
+					 ((lib || !uid) && !source && !kernel) ?
+					  READ_ACCESS : WRITE_ACCESS))) {
 	error("Access denied");
     }
 

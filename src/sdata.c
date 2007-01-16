@@ -10,7 +10,6 @@
 # include "csupport.h"
 
 
-# define CMPLIMIT		2048	/* compress if >= CMPLIMIT */
 # define PRIV			0x8000	/* in sinherit->varoffset */
 
 typedef struct {
