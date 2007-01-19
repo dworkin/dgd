@@ -1659,3 +1659,5 @@ DGD 1.3
    declaration.
  - Fixed a case where the callout timestamp was not updated properly.
  - Fixed a case where code was incorrectly optimized away.
+ - Fixed a bug which could cause a crash if status(obj) was used on an object
+   immediately after recompiling it.

@@ -2217,7 +2217,8 @@ register control *ctrl;
      * count the number of undefined functions per program
      */
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
-	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
+	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
+	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
 	if ((d_get_funcdefs(ctrl)[UCHAR(symb->index)].class & C_UNDEFINED) &&
 	    list[UCHAR(symb->inherit)].count++ == 0) {
 	    list[UCHAR(symb->inherit)].index = size;
@@ -2239,7 +2240,7 @@ register control *ctrl;
     memset(m->elts, '\0', size * sizeof(value));
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
 	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
-	ctrl = o_control(obj);
+	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
 	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	if (f->class & C_UNDEFINED) {
 	    u = &list[UCHAR(symb->inherit)];
