@@ -23,17 +23,18 @@ void set_object_manager(object objectd)	[System only]
 
 	The given object is about to be compiled.
 
-    * void compile(string owner, object obj, string source, string inherited...)
+    * void compile(string owner, object obj, string *source,
+		   string inherited...)
 
-	The given object has just been compiled.  If source is non-nil, it was
-	compiled from that string.  Called just before the object is
-	initialized with create(0).
+	The given object has just been compiled.  If the source array is not
+	empty, it was compiled from those strings.  Called just before the
+	object is initialized with create(0).
 
-    * void compile_lib(string owner, string path, string source,
+    * void compile_lib(string owner, string path, string *source,
 		       string inherited...)
 
-	The given inheritable object has just been compiled.  If source is
-	non-nil, it was compiled from that string.
+	The given inheritable object has just been compiled.  If the source
+	array is not empty, it was compiled from those strings.
 
     * void compile_failed(string owner, string path)
 
