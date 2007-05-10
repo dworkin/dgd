@@ -202,7 +202,7 @@ void compiling(string path)
 	    }
 	    rsrcd->rsrc_incr("System", "objects", nil, 1, TRUE);
 	    if (objectd) {
-		objectd->compile_lib("System", AUTO, nil);
+		objectd->compile_lib("System", AUTO, ({ }));
 	    }
 	}
 	if (objectd) {
@@ -653,7 +653,7 @@ static object inherit_program(string from, string path, int priv)
 	}
 	rsrcd->rsrc_incr(creator, "objects", nil, 1, TRUE);
 	if (objectd) {
-	    objectd->compile_lib(creator, path, nil, TLSVAR3[1 ..]...);
+	    objectd->compile_lib(creator, path, ({ }), TLSVAR3[1 ..]...);
 
 	    objectd->compiling(from);
 	}
