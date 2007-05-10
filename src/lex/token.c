@@ -15,6 +15,8 @@
 # define TCHUNKSZ	8
 
 typedef struct _tbuf_ {
+    string **strs;		/* input buffer array */
+    int nstr;			/* number of input buffers */
     char *buffer;		/* token buffer */
     char *p;			/* token buffer pointer */
     int inbuf;			/* # chars in token buffer */
@@ -97,6 +99,8 @@ bool eof;
 	}
 	tb = &tlist->t[tchunksz++];
     }
+    tb->strs = (string **) NULL;
+    tb->nstr = 0;
     tb->p = tb->buffer = buffer;
     tb->inbuf = buflen;
     tb->up = tb->ubuf;
@@ -128,6 +132,14 @@ static void pop()
 	if (tb->fd >= 0) {
 	    P_close(tb->fd);
 	    FREE(tb->buffer);
+	} else if (--(tb->nstr) > 0) {
+	    tb->strs++;
+	    tb->p = tb->buffer = tb->strs[0]->text;
+	    tb->inbuf = tb->strs[0]->len;
+	    if (tb->nstr == 1) {
+		tb->eof = TRUE;
+	    }
+	    return;
 	}
 	ibuffer = tbuffer->prev;
 	FREE(tb->u.filename);
@@ -167,14 +179,16 @@ void tk_clear()
  * NAME:	token->include()
  * DESCRIPTION:	push a file on the input stream
  */
-bool tk_include(file, buf, len)
-char *file, *buf;
-register unsigned int len;
+bool tk_include(file, strs, nstr)
+char *file;
+string **strs;
+int nstr;
 {
     int fd;
+    ssizet len;
 
     if (file != (char *) NULL) {
-	if (buf == (char *) NULL) {
+	if (strs == (string **) NULL) {
 	    struct stat sbuf;
 
 	    /* read from file */
@@ -192,9 +206,14 @@ register unsigned int len;
 					 
 	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
-	    /* read from string */
+	    /* read from strings */
+	    push((macro *) NULL, strs[0]->text, strs[0]->len, TRUE);
+	    tbuffer->strs = strs;
+	    tbuffer->nstr = nstr;
+	    if (nstr > 1) {
+		tbuffer->eof = FALSE;
+	    }
 	    fd = -1;
-	    push((macro *) NULL, buf, len, TRUE);
 	}
 
 	ibuffer = tbuffer;

@@ -239,6 +239,9 @@ DGD_OBJECT_CHECKVAL() to check the validity of such an object.
     bool	 DGD_OBJECT_CHECKVAL(DGD_VALUE_T val, DGD_OBJECT_T obj);
     void	 DGD_OBJECT_NAME(char *buffer, DGD_OBJECT_T obj);
 
+Don't modify array elements directly, but use DGD_ARRAY_ASSIGN() to change
+their value.
+
     DGD_ARRAY_T	 DGD_ARRAY_GETVAL(DGD_VALUE_T val);
     void	 DGD_ARRAY_PUTVAL(DGD_VALUE_T val, DGD_ARRAY_T arr);
     DGD_ARRAY_T	 DGD_ARRAY_NEW(DGD_DATASPACE_T data, int size);
@@ -248,7 +251,8 @@ DGD_OBJECT_CHECKVAL() to check the validity of such an object.
 				  int index, DGD_VALUE_T val);
 
 The elements of a mapping may be retrieved as a sorted array of alternate
-index-value pairs with DGD_MAPPING_ELTS().
+index-value pairs with DGD_MAPPING_ELTS().  Don't modify mapping elements
+directly, but ise DGD_MAPPING_ASSIGN() to change their value.
 
     DGD_MAPPING_T DGD_MAPPING_GETVAL(DGD_VALUE_T val);
     void	  DGD_MAPPING_PUTVAL(DGD_VALUE_T val, DGD_MAPPING_T map);

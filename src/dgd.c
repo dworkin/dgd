@@ -35,7 +35,7 @@ int narg;
 	driver = o_find(driver_name, OACC_READ);
 	if (driver == (object *) NULL) {
 	    driver = c_compile(f, driver_name, (object *) NULL,
-			       (string *) NULL, FALSE);
+			       (string **) NULL, 0, FALSE);
 	}
 	dindex = driver->index;
 	dcount = driver->count;

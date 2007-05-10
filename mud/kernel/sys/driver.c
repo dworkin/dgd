@@ -216,7 +216,7 @@ void compiling(string path)
  * NAME:	compile()
  * DESCRIPTION:	object compiled
  */
-void compile(object obj, string owner, string source)
+void compile(object obj, string owner, string source...)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {
@@ -229,7 +229,7 @@ void compile(object obj, string owner, string source)
  * NAME:	compile_lib()
  * DESCRIPTION:	inherited object compiled
  */
-void compile_lib(string path, string owner, string source)
+void compile_lib(string path, string owner, string source...)
 {
     if (previous_program() == AUTO) {
 	if (objectd) {

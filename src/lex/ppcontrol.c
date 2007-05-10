@@ -45,15 +45,15 @@ static ifstate top = {		/* initial ifstate */
  * DESCRIPTION:	initialize preprocessor. Return TRUE if the input file could
  *		be opened.
  */
-bool pp_init(file, id, buffer, buflen, level)
-char *file, **id, *buffer;
-unsigned int buflen;
-int level;
+bool pp_init(file, id, strs, nstr, level)
+char *file, **id;
+string **strs;
+int nstr, level;
 {
     tk_init();
-    if (buffer != (char *) NULL) {
-	tk_include(file, buffer, buflen);
-    } else if (!tk_include(file, (char *) NULL, 0)) {
+    if (strs != (string **) NULL) {
+	tk_include(file, strs, nstr);
+    } else if (!tk_include(file, (string **) NULL, 0)) {
 	tk_clear();
 	return FALSE;
     }
@@ -480,7 +480,7 @@ static void do_include()
 	tk_skiptonl(TRUE);
 
 	/* first try the path direct */
-	if (tk_include(path_include(buf, tk_filename(), file), (char *) NULL,
+	if (tk_include(path_include(buf, tk_filename(), file), (string **) NULL,
 		       0)) {
 	    include_level++;
 	    return;
@@ -498,7 +498,7 @@ static void do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	if (tk_include(path_include(buf, tk_filename(), path), (char *) NULL,
+	if (tk_include(path_include(buf, tk_filename(), path), (string **) NULL,
 		       0)) {
 	    include_level++;
 	    return;

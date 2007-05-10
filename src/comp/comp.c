@@ -258,7 +258,7 @@ char *argv[];
     }
 
     /* compile file */
-    ctrl = c_compile(cframe, file, (object *) NULL, (string *) NULL,
+    ctrl = c_compile(cframe, file, (object *) NULL, (string **) NULL, 0,
 		     FALSE)->ctrl;
     nfuncs = cg_nfuncs();
     ec_pop();

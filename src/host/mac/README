@@ -1,4 +1,4 @@
-To compile DGD on a Mac, you'll need Symantec C 7.0.4 or newer.
+To compile DGD on a Mac up to OS 9, you'll need Symantec C 7.0.4 or newer.
 
 De-binhex dgd.proj.hqx and dgd.rsrc.hqx.  Move the project file up two
 folders (into the src folder), and double-click it to start the Project

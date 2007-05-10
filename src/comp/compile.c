@@ -360,7 +360,8 @@ int priv;
 	}
 	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
-	    obj = c_compile(f, file, (object *) NULL, (string *) NULL, TRUE);
+	    obj = c_compile(f, file, (object *) NULL, (string **) NULL, 0,
+			    TRUE);
 	    return FALSE;
 	}
     } else {
@@ -393,7 +394,7 @@ int priv;
 	    file = path_from(buf, current->file, file);
 	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
-		obj = c_compile(f, file, (object *) NULL, (string *) NULL,
+		obj = c_compile(f, file, (object *) NULL, (string **) NULL, 0,
 				TRUE);
 		return FALSE;
 	    }
@@ -416,11 +417,12 @@ int priv;
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(f, file, obj, str, iflag)
+object *c_compile(f, file, obj, strs, nstr, iflag)
 frame *f;
 register char *file;
 object *obj;
-string *str;
+string **strs;
+int nstr;
 int iflag;
 {
     context c;
@@ -452,7 +454,7 @@ int iflag;
 	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
-    if (str == (string *) NULL) {
+    if (strs == (string **) NULL) {
 	strcat(file_c, ".c");
     }
     c.frame = f;
@@ -480,8 +482,8 @@ int iflag;
 		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(f, driver_object, (object *) NULL, (string *) NULL,
-			  FALSE);
+		c_compile(f, driver_object, (object *) NULL, (string **) NULL,
+			  0, FALSE);
 		current = &c;
 	    }
 
@@ -491,7 +493,7 @@ int iflag;
 		 * compile auto object
 		 */
 		aobj = c_compile(f, auto_object, (object *) NULL,
-				 (string *) NULL, TRUE);
+				 (string **) NULL, 0, TRUE);
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
@@ -501,12 +503,12 @@ int iflag;
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 
-	if (str != (string *) NULL) {
-	    pp_init(file_c, paths, str->text, str->len, 1);
-	} else if (!pp_init(file_c, paths, (char *) NULL, 0, 1)) {
+	if (strs != (string **) NULL) {
+	    pp_init(file_c, paths, strs, nstr, 1);
+	} else if (!pp_init(file_c, paths, (string **) NULL, 0, 1)) {
 	    error("Could not compile \"/%s\"", file_c);
 	}
-	if (!tk_include(include, (char *) NULL, 0)) {
+	if (!tk_include(include, (string **) NULL, 0)) {
 	    error("Could not include \"/%s\"", include);
 	}
 

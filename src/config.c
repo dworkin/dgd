@@ -59,7 +59,8 @@ static config conf[] = {
 # define DUMP_INTERVAL	9
 				{ "dump_interval",	INT_CONST },
 # define DYNAMIC_CHUNK	10
-				{ "dynamic_chunk",	INT_CONST },
+				{ "dynamic_chunk",	INT_CONST, FALSE, FALSE,
+							1024 },
 # define ED_TMPFILE	11
 				{ "ed_tmpfile",		STRING_CONST },
 # define EDITORS	12
@@ -74,7 +75,7 @@ static config conf[] = {
 							2, UINDEX_MAX },
 # define SECTOR_SIZE	16
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
-							512, 8192 },
+							512 },
 # define STATIC_CHUNK	17
 				{ "static_chunk",	INT_CONST },
 # define SWAP_FILE	18
@@ -229,7 +230,11 @@ void conf_dump()
     header[DUMP_STARTTIME + 1] = starttime >> 16;
     header[DUMP_STARTTIME + 2] = starttime >> 8;
     header[DUMP_STARTTIME + 3] = starttime;
-    etime = elapsed + P_time() - boottime;
+    etime = P_time();
+    if (etime < boottime) {
+	etime = boottime;
+    }
+    etime += elapsed - boottime;
     header[DUMP_ELAPSED + 0] = etime >> 24;
     header[DUMP_ELAPSED + 1] = etime >> 16;
     header[DUMP_ELAPSED + 2] = etime >> 8;
@@ -1137,7 +1142,7 @@ sector *fragment;
     /*
      * process config file
      */
-    if (!pp_init(path_native(buf, configfile), (char **) NULL, (char *) NULL,
+    if (!pp_init(path_native(buf, configfile), (char **) NULL, (string **) NULL,
 		 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
 	m_finish();
@@ -1391,6 +1396,7 @@ register value *v;
     char *version;
     uindex ncoshort, ncolong;
     array *a;
+    Uint t;
     register int i;
 
     switch (idx) {
@@ -1408,7 +1414,11 @@ register value *v;
 	break;
 
     case 3:	/* ST_UPTIME */
-	PUT_INTVAL(v, elapsed + P_time() - boottime);
+	t = P_time();
+	if (t < boottime) {
+	    t = boottime;
+	}
+	PUT_INTVAL(v, elapsed + t - boottime);
 	break;
 
     case 4:	/* ST_SWAPSIZE */

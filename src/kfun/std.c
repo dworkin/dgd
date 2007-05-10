@@ -42,7 +42,7 @@ register frame *f;
 	    error("Cannot recompile inherited object");
 	}
     }
-    obj = c_compile(f, file, obj, (string *) NULL,
+    obj = c_compile(f, file, obj, (string **) NULL, 0,
 		    (OBJR(f->oindex)->flags & O_DRIVER) &&
 		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
 					  f->func->index)->text,
@@ -58,8 +58,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("compile_object", kf_compile_object, pt_compile_object)
 # else
-char pt_compile_object[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_OBJECT,
-			     T_STRING, T_STRING };
+char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
+			     T_OBJECT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->compile_object()
@@ -70,11 +70,14 @@ register frame *f;
 int nargs;
 {
     char file[STRINGSZ];
-    register string *str;
+    register value *v;
     register object *obj;
+    register string **strs;
+    register int i;
 
-    str = f->sp[nargs - 1].u.string;
-    if (path_string(file, str->text, str->len) == (char *) NULL) {
+    v = &f->sp[nargs - 1];
+    if (path_string(file, v->u.string->text, v->u.string->len) == (char *) NULL)
+    {
 	return 1;
     }
     obj = o_find(file, OACC_MODIFY);
@@ -89,15 +92,27 @@ int nargs;
 	    error("Cannot recompile inherited object");
 	}
     }
-    str = (nargs == 2) ? f->sp->u.string : (string *) NULL;
-    obj = c_compile(f, file, obj, str,
+    if (--nargs != 0) {
+	strs = ALLOCA(string*, nargs) + nargs;
+	for (i = nargs, v = f->sp; i > 0; --i) {
+	    *--strs = (v++)->u.string;
+	}
+	if (ec_push((ec_ftn) NULL)) {
+	    AFREE(strs);
+	    error((char *) NULL);
+	}
+    } else {
+	strs = (string **) NULL;
+    }
+    obj = c_compile(f, file, obj, strs, nargs,
 		    (OBJR(f->oindex)->flags & O_DRIVER) &&
 		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
 					  f->func->index)->text,
 			   "inherit_program") == 0);
-    if (str != (string *) NULL) {
-	str_del(str);
-	f->sp++;
+    if (nargs != 0) {
+	ec_pop();
+	AFREE(strs);
+	i_pop(f, nargs);
     }
     str_del(f->sp->u.string);
     PUT_OBJVAL(f->sp, obj);

@@ -238,21 +238,22 @@ static int rsrc_incr(string rowner, string name, mixed index, int incr,
  * NAME:	compile_object()
  * DESCRIPTION:	compile_object wrapper
  */
-static object compile_object(string path, varargs string source)
+static object compile_object(string path, string source...)
 {
     int kernel;
 
     path = driver->normalize_path(path, directory, owner);
     kernel = sscanf(path, "/kernel/%*s");
-    if ((source && kernel) ||
+    if ((sizeof(source) != 0 && kernel) ||
 	!access(owner, path,
 		((sscanf(path, "%*s" + INHERITABLE_SUBDIR) != 0 ||
-		  !driver->creator(path)) && !source && !kernel) ?
+		  !driver->creator(path)) && sizeof(source) == 0 && !kernel) ?
 		 READ_ACCESS : WRITE_ACCESS)) {
 	message(path + ": Permission denied.\n");
 	return nil;
     }
-    return (source) ? ::compile_object(path, source) : ::compile_object(path);
+    return (sizeof(source) != 0) ?
+	    ::compile_object(path, source...) : ::compile_object(path);
 }
 
 /*

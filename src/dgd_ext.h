@@ -1,3 +1,6 @@
+# ifndef DGD_EXT_H
+# define DGD_EXT_H
+
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -18,16 +21,22 @@
 /*
  * types
  */
+typedef string *dgd_string_t;
+typedef object *dgd_object_t;
+typedef array *dgd_array_t;
+typedef frame *dgd_frame_t;
+typedef dataspace *dgd_dataspace_t;
+
 # define DGD_INT_T		Int
 # define DGD_FLOAT_T		xfloat
-# define DGD_STRING_T		string*
-# define DGD_OBJECT_T		object*
-# define DGD_ARRAY_T		array*
-# define DGD_MAPPING_T		array*
-# define DGD_LWOBJ_T		array*
+# define DGD_STRING_T		dgd_string_t
+# define DGD_OBJECT_T		dgd_object_t
+# define DGD_ARRAY_T		dgd_array_t
+# define DGD_MAPPING_T		dgd_array_t
+# define DGD_LWOBJ_T		dgd_array_t
 # define DGD_VALUE_T		value
-# define DGD_FRAME_T		frame*
-# define DGD_DATASPACE_T	dataspace*
+# define DGD_FRAME_T		dgd_frame_t
+# define DGD_DATASPACE_T	dgd_dataspace_t
 # define DGD_EXTKFUN_T		extkfunc
 # define DGD_EINDEX_T		eindex
 
@@ -121,7 +130,7 @@
 # define DGD_OBJECT_GETVAL(v)		OBJW((v).oindex)
 # define DGD_OBJECT_PUTVAL(v, o)	PUT_OBJVAL(&(v), (o))
 # define DGD_OBJECT_CHECKVAL(v, o)	((v).u.objcnt == (o)->count)
-# define DGD_OBJECT_DATASPACE(o)	o_data((o))
+# define DGD_OBJECT_DATASPACE(o)	o_dataspace((o))
 # define DGD_OBJECT_NAME(buf, o)	o_name((buf), (o))
 # define DGD_OBJECT_ISSPECIAL(o)	(((o)->flags & O_SPECIAL) != 0)
 # define DGD_OBJECT_ISMARKED(o)		(((o)->flags & O_SPECIAL) == O_SPECIAL)
@@ -162,3 +171,5 @@
 					 OBJR((o)->elts->oindex)->count == \
 							    (o)->elts->u.objcnt)
 # define DGD_LWOBJ_COPY(d, o)		lwo_copy((d), (o))
+
+# endif	/* DGD_EXT_H */
