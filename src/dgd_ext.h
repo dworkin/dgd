@@ -16,7 +16,9 @@
 # define DGD_EXT_KFUN(ekf, n)	kf_ext_kfun((ekf), (n))
 # define DGD_EXT_CALLBACK(r, s, d, f, c, e) \
 				conf_ext_callback((r), (s), (d), (f), (c), (e))
-# define DGD_ERROR(m)		error((m))
+# define DGD_ERROR		error
+# define DGD_ECONTEXT_PUSH()	ec_push((ec_ftn) NULL)
+# define DGD_ECONTEXT_POP()	ec_pop()
 
 /*
  * types

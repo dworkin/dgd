@@ -51,11 +51,22 @@ should be accessed using the relevant DGD_FRAME_* macros listed below, and the
 return value, if any, should be stored in the retval value using one of the
 DGD_RETVAL_* macros.  The default return value is nil.
 
-Kfuns can call DGD_ERROR() to indicate that an error happened.  Errors will
-interrupt the flow of execution, so DGD_ERROR() should be called before any
+Kfuns can call DGD_ERROR() to indicate that an error occurred.  Errors will
+interrupt the flow of execution, so DGD_ERROR() is best called before any
 LPC values are constructed or changed, including the return value of the
-kfun.  Note that at present, the extension interface does not define a way to
-call an LPC function from a kfun.
+kfun.
+
+Errors can be caught in code enclosed between DGD_ECONTEXT_PUSH() and
+DGD_ECONTEXT_POP().  DGD_ECONTEXT_PUSH() creates a new errorcontext, and
+returns TRUE if DGD_ERROR() was called from within the enclosed code.
+DGD_ECONTEXT_POP() clears the current errorcontext, and should only be called
+when no error occurred since DGD_ERROR() also implicitly removes the current
+errorcontext.  DGD_ERROR(NULL) can be used to pass on the last error to the
+surrounding errorcontext.  DGD_ECONTEXT_PUSH() and DGD_ERROR() make use of
+setjmp() and longjmp(), respectively.
+
+Note that at present, the extension interface does not define a way to call an
+LPC function from a kfun.
 
     DGD_OBJECT_T DGD_FRAME_OBJECT(DGD_FRAME_T f);	/* current object */
     DGD_LWOBJ_T  DGD_FRAME_LWOBJ(DGD_FRAME_T f);	/* possible LW object */
@@ -71,7 +82,9 @@ call an LPC function from a kfun.
     void	 DGD_RETVAL_ARR(DGD_VALUE_T *retval, DGD_ARRAY_T arr);
     void	 DGD_RETVAL_MAP(DGD_VALUE_T *retval, DGD_MAPPING_T map);
 
-    void	 DGD_ERROR(char *mesg);
+    void	 DGD_ERROR(char *format, ...);
+    bool	 DGD_ECONTEXT_PUSH(void);
+    void	 DGD_ECONTEXT_POP(void);
 
 The `proto' field of the DGD_EXTKFUN_T struct is a prototype for the function,
 represented as a 0-terminated array of chars.  For example, the LPC prototypes

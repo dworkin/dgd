@@ -57,16 +57,13 @@ void set_object_manager(object objectd)	[System only]
 
 	The last reference to the given program has been removed.
 
-    * string path_special(string compiled)
-
-	If the standard include file contains the line `# include "AUTO"',
-	this function is called so a file can be included that depends on
-	what file is currently being compiled.
-
-    * void include(string from, string path)
+    * mixed include_file(string compiled, string from, string path)
 
 	The file `path' (which might not exist) is about to be included by
-	`from'.
+	`from' during the compilation of 'compiled'.  The returned value can be
+	either a string for the translated path of the include file, or an
+	array of strings, representing the included file itself.  Any other
+	return value will prevent inclusion of the file 'path'.
 
     * int touch(object obj, string function)
 

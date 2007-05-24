@@ -143,28 +143,60 @@ char *buf, *file;
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */
-char *path_include(buf, from, file)
+char *path_include(buf, from, file, strs, nstr)
 char *buf, *from, *file;
+string ***strs;
+int *nstr;
 {
     register frame *f;
+    register int i;
+    register value *v;
+    register string **str;
 
+    *strs = NULL;
+    *nstr = 0;
     if (c_autodriver()) {
 	return path_from(buf, from, file);
     }
+
     f = cframe;
-    PUSH_STRVAL(f, str_new((char *) NULL, strlen(from) + 1L));
-    f->sp->u.string->text[0] = '/';
-    strcpy(f->sp->u.string->text + 1, from);
+    PUSH_STRVAL(f, str_new(from, strlen(from)));
     PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
-    if (!call_driver_object(f, "path_include", 2)) {
+    if (!call_driver_object(f, "include_file", 2)) {
 	f->sp++;
 	return path_from(buf, from, file);
     }
-    if (f->sp->type != T_STRING) {
-	i_del_value(f->sp++);
-	return (char *) NULL;
+
+    if (f->sp->type == T_STRING) {
+	/* simple path */
+	path_resolve(buf, f->sp->u.string->text);
+	str_del((f->sp++)->u.string);
+	return buf;
+    } else if (f->sp->type == T_ARRAY) {
+	/*
+	 * Array of strings.  Check that the array does indeed contain only
+	 * strings, then return it.
+	 */
+	i = f->sp->u.array->size;
+	if (i != 0) {   
+	    v = d_get_elts(f->sp->u.array);
+	    while ((v++)->type == T_STRING) {
+		if (--i == 0) {
+		    *nstr = i = f->sp->u.array->size;
+		    str = ALLOC(string*, i);
+		    do {
+			str_ref(*str++ = (--v)->u.string);
+		    } while (--i != 0);
+		    *strs = str;
+		    arr_del((f->sp++)->u.array);
+ 
+		    /* return the untranslated path, as well */
+		    return path_from(buf, from, file);
+		}
+	    }
+	}
     }
-    path_resolve(buf, f->sp->u.string->text);
-    str_del((f->sp++)->u.string);
-    return buf;
+
+    i_del_value(f->sp++);
+    return (char *) NULL;
 }

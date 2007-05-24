@@ -1808,17 +1808,19 @@ array *m1, *a2;
  * NAME:	mapping->grow()
  * DESCRIPTION:	add an element to a mapping
  */
-static mapelt *map_grow(data, m, hashval)
+static mapelt *map_grow(data, m, hashval, add)
 dataspace *data;
 register array *m;
 unsigned short hashval;
+bool add;
 {
     register maphash *h;
     register mapelt *e;
     register unsigned short i;
 
     h = m->hashed;
-    if ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->sizemod) >= max_size)
+    if (add &&
+	(m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->sizemod) >= max_size)
     {
 	map_compact(data, m);
 	if (m->size >> 1 >= max_size) {
@@ -2057,7 +2059,7 @@ value *val, *elt;
 	/*
 	 * extend mapping
 	 */
-	e = map_grow(data, m, i);
+	e = map_grow(data, m, i, add);
 	if (add) {
 	    e->add = TRUE;
 	    d_assign_elt(data, m, &e->idx, val);

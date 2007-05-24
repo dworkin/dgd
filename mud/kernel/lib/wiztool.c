@@ -417,6 +417,20 @@ static int rename_file(string from, string to)
 }
 
 /*
+ * NAME:	file_info()
+ * DESCRIPTION:	file_info wrapper
+ */
+static mixed *file_info(string path)
+{
+    path = driver->normalize_path(path, directory, owner);
+    if (!access(owner, path, READ_ACCESS)) {
+	message(path + ": Access denied.\n");
+	return nil;
+    }
+    return ::file_info(path);
+}
+
+/*
  * NAME:	get_dir()
  * DESCRIPTION:	get_dir wrapper
  */

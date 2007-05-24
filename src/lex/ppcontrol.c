@@ -460,6 +460,9 @@ static void do_include()
     char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
     register int token;
     register char **idir;
+    char *include;
+    string **strs;
+    int nstr;
 
     if (include_level == 8) {
 	error("#include nesting too deep");
@@ -480,8 +483,8 @@ static void do_include()
 	tk_skiptonl(TRUE);
 
 	/* first try the path direct */
-	if (tk_include(path_include(buf, tk_filename(), file), (string **) NULL,
-		       0)) {
+	include = path_include(buf, tk_filename(), file, &strs, &nstr);
+	if (tk_include(include, strs, nstr)) {
 	    include_level++;
 	    return;
 	}
@@ -498,8 +501,8 @@ static void do_include()
 	strcpy(path, *idir);
 	strcat(path, "/");
 	strcat(path, file);
-	if (tk_include(path_include(buf, tk_filename(), path), (string **) NULL,
-		       0)) {
+	include = path_include(buf, tk_filename(), path, &strs, &nstr);
+	if (tk_include(include, strs, nstr)) {
 	    include_level++;
 	    return;
 	}

@@ -132,14 +132,9 @@ static void pop()
 	if (tb->fd >= 0) {
 	    P_close(tb->fd);
 	    FREE(tb->buffer);
-	} else if (--(tb->nstr) > 0) {
-	    tb->strs++;
-	    tb->p = tb->buffer = tb->strs[0]->text;
-	    tb->inbuf = tb->strs[0]->len;
-	    if (tb->nstr == 1) {
-		tb->eof = TRUE;
-	    }
-	    return;
+	} else if (tb->prev != (tbuf *) NULL) {
+	    str_del(tb->strs[0]);
+	    FREE(tb->strs);
 	}
 	ibuffer = tbuffer->prev;
 	FREE(tb->u.filename);
@@ -207,23 +202,23 @@ int nstr;
 	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
 	    /* read from strings */
+	    --strs;
 	    push((macro *) NULL, strs[0]->text, strs[0]->len, TRUE);
 	    tbuffer->strs = strs;
-	    tbuffer->nstr = nstr;
-	    if (nstr > 1) {
-		tbuffer->eof = FALSE;
-	    }
+	    tbuffer->nstr = --nstr;
 	    fd = -1;
 	}
 
 	ibuffer = tbuffer;
 	ibuffer->fd = fd;
 	len = strlen(file);
-	if (len >= STRINGSZ) {
-	    len = STRINGSZ - 1;
+	if (len >= STRINGSZ - 1) {
+	    len = STRINGSZ - 2;
 	}
-	ibuffer->u.filename = strncpy(ALLOC(char, len + 1), file, len);
-	ibuffer->u.filename[len] = '\0';
+	ibuffer->u.filename = ALLOC(char, len + 2);
+	strncpy(ibuffer->u.filename + 1, file, len);
+	ibuffer->u.filename[0] = '/';
+	ibuffer->u.filename[len + 1] = '\0';
 	ibuffer->line = 1;
 	seen_nl = TRUE;
 
@@ -343,6 +338,15 @@ static int gc()
 		    tb->p = tb->buffer;
 		} else if (backslash) {
 		    return '\\';
+		} else if (tb->nstr != 0) {
+		    if (tb->prev != (tbuf *) NULL) {
+			str_del(tb->strs[0]);
+		    }
+		    --(tb->strs);
+		    --(tb->nstr);
+		    tb->p = tb->buffer = tb->strs[0]->text;
+		    tb->inbuf = tb->strs[0]->len;
+		    continue;
 		} else if (tb->eof) {
 		    return EOF;
 		} else {

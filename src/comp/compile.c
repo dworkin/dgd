@@ -634,9 +634,7 @@ register node *n;
 
 	f = current->frame;
 	p = tk_filename();
-	PUSH_STRVAL(f, str_new((char *) NULL, strlen(p) + 1L));
-	f->sp->u.string->text[0] = '/';
-	strcpy(f->sp->u.string->text + 1, p);
+	PUSH_STRVAL(f, str_new(p, strlen(p)));
 	PUSH_STRVAL(f, n->l.string);
 	call_driver_object(f, "object_type", 2);
 	if (f->sp->type != T_STRING) {
@@ -2214,9 +2212,7 @@ char *format, *a1, *a2, *a3;
 
 	f = current->frame;
 	fname = tk_filename();
-	PUSH_STRVAL(f, str_new(NULL, strlen(fname) + 1L));
-	strcpy(f->sp->u.string->text + 1, fname);
-	f->sp->u.string->text[0] = '/';
+	PUSH_STRVAL(f, str_new(fname, strlen(fname)));
 	PUSH_INTVAL(f, tk_line());
 	sprintf(buf, format, a1, a2, a3);
 	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
@@ -2225,7 +2221,7 @@ char *format, *a1, *a2, *a3;
 	i_del_value(f->sp++);
     } else {
 	/* there is no driver object to call; show the error on stderr */
-	sprintf(buf, "/%s, %u: ", tk_filename(), tk_line());
+	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());
 	sprintf(buf + strlen(buf), format, a1, a2, a3);
 	message("%s\012", buf);     /* LF */
     }

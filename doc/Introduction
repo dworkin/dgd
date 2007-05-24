@@ -58,11 +58,14 @@ driver, mostly to translate pathnames.
 	argument is 1 for private inheritance, 0 otherwise.
 	compile_object() may be called from here.
 
-    string path_include(string file, string path)
+    mixed include_file(string file, string path)
 
-	Used to translate include path <path> upon compilation of the
-	object with filename <file>.  If nil is returned, the file <path>
-	cannot be included.
+	Used to translate include path <path> when included from the file
+	<file>.  The return value can be either string for the translated path,
+	in which case an attempt is made to read the included file from that
+	location, or an array of strings, the concatenation of which represents
+	the included file itself.  If any other value is returned, the file
+	<path> cannot be included.
 
     void recompile(object obj)
 

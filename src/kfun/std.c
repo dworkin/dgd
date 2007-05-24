@@ -93,12 +93,12 @@ int nargs;
 	}
     }
     if (--nargs != 0) {
-	strs = ALLOCA(string*, nargs) + nargs;
+	strs = ALLOCA(string*, nargs);
 	for (i = nargs, v = f->sp; i > 0; --i) {
-	    *--strs = (v++)->u.string;
+	    *strs++ = (v++)->u.string;
 	}
 	if (ec_push((ec_ftn) NULL)) {
-	    AFREE(strs);
+	    AFREE(strs - nargs);
 	    error((char *) NULL);
 	}
     } else {
@@ -111,7 +111,7 @@ int nargs;
 			   "inherit_program") == 0);
     if (nargs != 0) {
 	ec_pop();
-	AFREE(strs);
+	AFREE(strs - nargs);
 	i_pop(f, nargs);
     }
     str_del(f->sp->u.string);

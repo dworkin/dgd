@@ -665,8 +665,32 @@ static object inherit_program(string from, string path, int priv)
 }
 
 /*
+ * NAME:	include_file()
+ * DESCRIPTION:	translate and return an include path, or the contents of the
+ *		file as an array of strings
+ */
+static mixed include_file(string from, string path)
+{
+    if (strlen(path) != 0 && path[0] != '~' && sscanf(path, "%*s/../") == 0 &&
+	(sscanf(path, "/include/%*s") != 0 || sscanf(path, "%*s/") == 0)) {
+	/*
+	 * safe include: skip access check
+	 */
+	if (path[0] != '/') {
+	    path = normalize_path(path, from + "/..", creator(from));
+	}
+    } else {
+	path = normalize_path(path, from + "/..", creator(from));
+	if (!accessd->access(from, path, READ_ACCESS)) {
+	    return nil;
+	}
+    }
+    return (objectd) ? objectd->include_file(TLSVAR3[0], from, path) : path;
+}
+
+/*
  * NAME:	path_include()
- * DESCRIPTION:	translate an include path
+ * DESCRIPTION:	translate an include path (obsolete)
  */
 static string path_include(string from, string path)
 {

@@ -1667,3 +1667,7 @@ DGD 1.3
  - Allow multiple source arguments for compile_object(), to get around the
    maximum string length limitation.  The object will be compiled from the
    concatenated source strings.
+ - Improved errorhandling in the extension interface.
+ - In the driver object, replace path_include() by include_file(), which can
+   return either a path or an array of strings for the include file itself.
+ - Prevent a spurious "Mapping too large to grow" error.
