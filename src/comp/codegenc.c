@@ -1551,6 +1551,76 @@ char c;
 }
 
 /*
+ * NAME:	codegen->startvars()
+ * DESCRIPTION:	handle integer variable declarations
+ */
+static void cg_startvars(n)
+register node *n;
+{
+    if (n != (node *) NULL) {
+	while (n->type == N_PAIR) {
+	    cg_startvars(n->l.left);
+	    n = n->r.right;
+	}
+	if (n->type == N_VAR) {
+	    if (n->mod == T_INT) {
+		output("register Int ivar%d = 0;\n", n->l.number + 1);
+		vars[n->l.number] = n->l.number + 1;
+	    } else {
+		vars[n->l.number] = 0;
+	    }
+	}
+    }
+}
+
+/*
+ * NAME:	codegen->endvars()
+ * DESCRIPTION:	remove integer variables
+ */
+static void cg_endvars(n)
+register node *n;
+{
+    if (n != (node *) NULL) {
+	while (n->type == N_PAIR) {
+	    cg_endvars(n->l.left);
+	    n = n->r.right;
+	}
+	if (n->type == N_VAR && n->mod == T_INT) {
+	    vars[n->l.number] = 0;
+	}
+    }
+}
+
+/*
+ * NAME:      codegen->switch_init()
+ * DESCRIPTION:       handle initializers for a switch
+ */
+static node *cg_switch_init(n)
+node *n;
+{
+    register node *m;
+
+    /*
+     * initializers
+     */
+    m = n->r.right->r.right;
+    if (m->type == N_BLOCK) {
+	m = m->l.left;
+    }
+# ifdef DEBUG
+    if (m->type != N_COMPOUND) {
+	fatal("N_COMPOUND expected");
+    }
+# endif
+    n = m->r.right;
+    cg_startvars(n);
+    cg_stmt(n);
+    m->r.right = NULL;
+
+    return n;
+}
+
+/*
  * NAME:	codegen->switch_int()
  * DESCRIPTION:	generate single label code for a switch statement
  */
@@ -1581,6 +1651,9 @@ register node *n;
 	m = m->r.right;
     } while (i < size);
 
+    output("{");
+    m = cg_switch_init(n);
+
     /*
      * switch expression
      */
@@ -1601,8 +1674,9 @@ register node *n;
      * generate code for body
      */
     cg_stmt(n->r.right->r.right);
+    cg_endvars(m);
 
-    output("}\n");
+    output("}\n}\n");
     if (switch_table[0] > 0) {
 	output("sw%d: ;\n", (int) switch_table[0]);
     }
@@ -1646,6 +1720,8 @@ register node *n;
     } while (++i < size);
     output("\n};\n");
 
+    m = cg_switch_init(n);
+
     /*
      * switch expression
      */
@@ -1667,6 +1743,7 @@ register node *n;
      * generate code for body
      */
     cg_stmt(n->r.right->r.right);
+    cg_endvars(m);
 
     output("}\n}\n");
     if (switch_table[0] > 0) {
@@ -1688,11 +1765,6 @@ register node *n;
     Int *table;
 
     /*
-     * switch expression
-     */
-    cg_expr(n->r.right->l.left, PUSH);
-
-    /*
      * switch table
      */
     m = n->l.left;
@@ -1706,7 +1778,7 @@ register node *n;
     }
     table = switch_table;
     switch_table = ALLOCA(Int, size);
-    output(";\n{\nstatic char swtab[] = {\n");
+    output("{\nstatic char swtab[] = {\n");
     outcount = 0;
     i = 1;
     if (m->l.left->type == nil_node) {
@@ -1730,14 +1802,19 @@ register node *n;
 	outchar((char) l);
 	m = m->r.right;
     } while (++i < size);
-    output("\n};\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
-	   size - 1);
     switch_table[0] = 0;
+    output("\n};\n");
+
+    m = cg_switch_init(n);
+    cg_expr(n->r.right->l.left, PUSH);
+    output(";\nswitch (switch_str(f->sp++, f->p_ctrl, swtab, %d)) {\n",
+	   size - 1);
 
     /*
      * generate code for body
      */
     cg_stmt(n->r.right->r.right);
+    cg_endvars(m);
 
     output("}\n}\n");
     AFREE(switch_table);
@@ -1831,6 +1908,19 @@ register node *n;
 		output("case %ld:\n", (long) switch_table[m->mod]);
 	    }
 	    cg_stmt(m->l.left);
+	    break;
+
+	case N_COMPOUND:
+	    output("{ ");
+	    if (m->r.right != (node *) NULL) {
+		cg_startvars(m->r.right);
+		cg_stmt(m->r.right);
+	    }
+	    cg_stmt(m->l.left);
+	    output("} ");
+	    if (m->r.right != (node *) NULL) {
+		cg_endvars(m->r.right);
+	    }
 	    break;
 
 	case N_CONTINUE:
@@ -2022,7 +2112,7 @@ int nvar, npar;
 unsigned int depth;
 unsigned short *size;
 {
-    register int i, j;
+    register int i;
     char *prog;
 
     depth += nvar;
@@ -2038,20 +2128,18 @@ unsigned short *size;
 	output("\nstatic void LPC_%s(f)\nregister frame *f;\n{\n", fname->text);
 	output("char *p; Int tv[%d];\n", NTMPVAL);
     }
-    j = 0;
-    for (i = 0; i < nvar; i++) {
+    for (i = 0; i < nparam; i++) {
 	if (c_vtype(i) == T_INT) {
-	    vars[i] = ++j;
-	    output("register Int ivar%d = ", j);
-	    if (i < npar) {
-		output("%s->u.number;\n", local(i));
-	    } else {
-		output("0;\n");
-	    }
+	    output("register Int ivar%d = %s->u.number;\n", vars[i] = i + 1,
+		   local(i));
 	} else {
 	    vars[i] = 0;
 	}
     }
+    while (i < nvars) {
+	vars[i++] = 0;
+    }
+
     output("\n");
 
     swcount = 0;

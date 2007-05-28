@@ -15,10 +15,24 @@
 # include "codegen.h"
 # include "compile.h"
 
+# define COND_CHUNK	16
+# define COND_BMAP	((MAX_LOCALS + 1) >> 5)
+
+typedef struct _cond_ {
+    struct _cond_ *prev;	/* surrounding conditional */
+    Uint init[COND_BMAP];	/* initialize variable bitmap */
+} cond;
+
+typedef struct _cchunk_ {
+    struct _cchunk_ *next;	/* next in cond chunk list */
+    cond c[COND_CHUNK];		/* chunk of conds */
+} cchunk;
+
 # define BLOCK_CHUNK	16
 
 typedef struct _block_ {
     int vindex;			/* variable index */
+    int nvars;			/* # variables in this block */
     struct _block_ *prev;	/* surrounding block */
 } block;
 
@@ -30,16 +44,107 @@ typedef struct _bchunk_ {
 typedef struct {
     char *name;			/* variable name */
     short type;			/* variable type */
+    short unset;		/* used before set? */
     string *cvstr;		/* class name */
 } var;
 
+static cchunk *clist;			/* list of all cond chunks */
+static cond *fclist;			/* list of free conditions */
+static cond *thiscond;			/* current condition */
+static int cchunksz = COND_CHUNK;	/* size of current cond chunk */
 static bchunk *blist;			/* list of all block chunks */
 static block *fblist;			/* list of free statement blocks */
 static block *thisblock;		/* current statement block */
 static int bchunksz = BLOCK_CHUNK;	/* size of current block chunk */
+static int vindex;			/* variable index */
 static int nvars;			/* number of local variables */
 static int nparams;			/* number of parameters */
 static var variables[MAX_LOCALS];	/* variables */
+
+/*
+ * NAME:	cond->new()
+ * DESCRIPTION:	create a new condition
+ */
+static void cond_new(c2)
+cond *c2;
+{
+    register cond *c;
+
+    if (fclist != (cond *) NULL) {
+	c = fclist;
+	fclist = c->prev;
+    } else {
+	if (cchunksz == COND_CHUNK) {
+	    register cchunk *cc;
+
+	    cc = ALLOC(cchunk, 1);
+	    cc->next = clist;
+	    clist = cc;
+	    cchunksz = 0;
+	}
+	c = &clist->c[cchunksz++];
+    }
+    c->prev = thiscond;
+    if (c2 != (cond *) NULL) {
+	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
+    } else {
+	memset(c->init, '\0', COND_BMAP * sizeof(Uint));
+    }
+    thiscond = c;
+}
+
+/*
+ * NAME:	cond->del()
+ * DESCRIPTION:	delete the current condition
+ */
+static void cond_del()
+{
+    register cond *c;
+
+    c = thiscond;
+    thiscond = c->prev;
+    c->prev = fclist;
+    fclist = c;
+}
+
+/*
+ * NAME:	cond->match()
+ * DESCRIPTION:	match two init bitmaps
+ */
+static void cond_match(c1, c2, c3)
+cond *c1, *c2, *c3;
+{
+    register Uint *p, *q, *r;
+    register int i;
+
+    p = c1->init;
+    q = c2->init;
+    r = c3->init;
+    for (i = COND_BMAP; i > 0; --i) {
+	*p++ = *q++ & *r++;
+    }
+}
+
+/*
+ * NAME:	cond->clear()
+ * DESCRIPTION:	clean up conditions
+ */
+static void cond_clear()
+{
+    register cchunk *c;
+
+    for (c = clist; c != (cchunk *) NULL; ) {
+	register cchunk *f;
+
+	f = c;
+	c = c->next;
+	FREE(f);
+    }
+    clist = (cchunk *) NULL;
+    fclist = (cond *) NULL;
+    thiscond = (cond *) NULL;
+    cchunksz = COND_CHUNK;
+}
 
 /*
  * NAME:	block->new()
@@ -63,7 +168,14 @@ static void block_new()
 	}
 	b = &blist->b[bchunksz++];
     }
-    b->vindex = (thisblock == (block *) NULL) ? 0 : nvars;
+    if (thisblock == (block *) NULL) {
+	cond_new((cond *) NULL);
+	b->vindex = 0;
+	b->nvars = nparams;
+    } else {
+	b->vindex = vindex;
+	b->nvars = 0;
+    }
     b->prev = thisblock;
     thisblock = b;
 }
@@ -72,34 +184,42 @@ static void block_new()
  * NAME:	block->del()
  * DESCRIPTION:	finish the current block
  */
-static void block_del()
+static void block_del(keep)
+bool keep;
 {
     register block *f;
     register int i;
 
     f = thisblock;
-    for (i = f->vindex; i < nvars; i++) {
-	/*
-	 * Make sure that variables declared in the closing block can no
-	 * longer be used.
-	 */
-	variables[i].name = "-";
+    if (keep) {
+	for (i = f->vindex; i < f->vindex + f->nvars; i++) {
+	    /*
+	     * Make sure that variables declared in the closing block can no
+	     * longer be used.
+	     */
+	    variables[i].name = "-";
+	}
+    } else {
+	vindex = f->vindex;
     }
     thisblock = f->prev;
+    if (thisblock == (block *) NULL) {
+	cond_del();
+    }
     f->prev = fblist;
     fblist = f;
 }
 
 /*
  * NAME:	block->var()
- * DESCRIPTION:	return the index of the local var if found, or MAX_LOCALS
+ * DESCRIPTION:	return the index of the local var if found, or -1
  */
 static int block_var(name)
 char *name;
 {
     register int i;
 
-    for (i = nvars; i > 0; ) {
+    for (i = vindex; i > 0; ) {
 	if (strcmp(variables[--i].name, name) == 0) {
 	    return i;
 	}
@@ -122,7 +242,9 @@ string *cvstr;
 	/* "too many parameters" is checked for elsewhere */
 	variables[nparams].name = name;
 	variables[nparams].type = type;
+	variables[nparams].unset = 0;
 	variables[nparams++].cvstr = cvstr;
+	vindex++;
 	nvars++;
     }
 }
@@ -138,12 +260,18 @@ string *cvstr;
 {
     if (block_var(name) >= thisblock->vindex) {
 	c_error("redeclaration of local variable %s", name);
-    } else if (nvars == MAX_LOCALS) {
+    } else if (vindex == MAX_LOCALS) {
 	c_error("too many local variables");
     } else {
-	variables[nvars].name = name;
-	variables[nvars].type = type;
-	variables[nvars++].cvstr = cvstr;
+	BCLR(thiscond->init, vindex);
+	thisblock->nvars++;
+	variables[vindex].name = name;
+	variables[vindex].type = type;
+	variables[vindex].unset = 0;
+	variables[vindex++].cvstr = cvstr;
+	if (vindex > nvars) {
+	    nvars++;
+	}
     }
 }
 
@@ -166,6 +294,7 @@ static void block_clear()
     bchunksz = BLOCK_CHUNK;
     fblist = (block *) NULL;
     thisblock = (block *) NULL;
+    vindex = 0;
     nvars = 0;
     nparams = 0;
 }
@@ -181,6 +310,7 @@ typedef struct _loop_ {
     Uint ncase;			/* number of case labels */
     unsigned short nesting;	/* rlimits/catch nesting level */
     node *case_list;		/* previous list of case nodes */
+    node *vlist;		/* variable list */
     struct _loop_ *prev;	/* previous loop or switch */
     struct _loop_ *env;		/* enclosing loop */
 } loop;
@@ -312,6 +442,7 @@ static void c_clear()
     thisloop = (loop *) NULL;
     switch_list = (loop *) NULL;
     block_clear();
+    cond_clear();
     node_clear();
     seen_decls = FALSE;
     nesting = 0;
@@ -891,8 +1022,6 @@ register node *type, *n;
 void c_funcbody(n)
 register node *n;
 {
-    register unsigned short i;
-    register node *v, *zero;
     char *prog;
     Uint depth;
     unsigned short size;
@@ -913,50 +1042,6 @@ register node *n;
 	break;
     }
 
-    if (stricttc) {
-	/*
-	 * initialize local ints to 0
-	 */
-	zero = (node *) NULL;
-	for (i = nvars; i > nparams; ) {
-	    if (variables[--i].type == T_INT) {
-		v = node_mon(N_LOCAL, T_INT, (node *) NULL);
-		v->line = fline;
-		v->r.number = i;
-		if (zero == (node *) NULL) {
-		    zero = node_int((Int) 0);
-		    zero->line = fline;
-		}
-		zero = node_bin(N_ASSIGN, T_INT, v, zero);
-		zero->line = fline;
-	    }
-	}
-	if (zero != (node *) NULL) {
-	    n = c_concat(c_exp_stmt(zero), n);
-	}
-    }
-
-    /*
-     * initialize local floats to 0.0
-     */
-    zero = (node *) NULL;
-    for (i = nvars; i > nparams; ) {
-	if (variables[--i].type == T_FLOAT) {
-	    v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
-	    v->line = fline;
-	    v->r.number = i;
-	    if (zero == (node *) NULL) {
-		zero = node_float(&flt);
-		zero->line = fline;
-	    }
-	    zero = node_bin(N_ASSIGN, T_FLOAT, v, zero);
-	    zero->line = fline;
-	}
-    }
-    if (zero != (node *) NULL) {
-	n = c_concat(c_exp_stmt(zero), n);
-    }
-
     n = opt_stmt(n, &depth);
     if (depth > 0x7fff) {
 	c_error("function uses too much stack space");
@@ -966,6 +1051,7 @@ register node *n;
 	ctrl_dprogram(prog, size);
     }
     node_free();
+    vindex = 0;
     nvars = 0;
     nparams = 0;
 }
@@ -981,6 +1067,44 @@ node *type, *n;
     c_decl_list(class, type, n, FALSE);
 }
 
+
+/*
+ * NAME:	compile->startcond()
+ * DESCRIPTION:	start a condition
+ */
+void c_startcond()
+{
+    cond_new(thiscond);
+}
+
+/*
+ * NAME:	compile->startcond2()
+ * DESCRIPTION:	start a second condition
+ */
+void c_startcond2()
+{
+    cond_new(thiscond->prev);
+}
+
+/*
+ * NAME:	compile->endcond()
+ * DESCRIPTION:	end a condition
+ */
+void c_endcond()
+{
+    cond_del();
+}
+
+/*
+ * NAME:	compile->matchcond()
+ * DESCRIPTION:	match and end two conditions
+ */
+void c_matchcond()
+{
+    cond_match(thiscond->prev->prev, thiscond->prev, thiscond);
+    cond_del();
+    cond_del();
+}
 
 /*
  * NAME:	compile->nil()
@@ -1035,12 +1159,24 @@ node *n;
  * NAME:	compile->if()
  * DESCRIPTION:	handle an if statement
  */
-node *c_if(n1, n2, n3)
-register node *n1, *n2, *n3;
+node *c_if(n1, n2)
+register node *n1, *n2;
 {
+    return node_bin(N_IF, 0, n1, node_mon(N_ELSE, 0, n2));
+}
+
+/*
+ * NAME:	compile->endif()
+ * DESCRIPTION:	end an if statement
+ */
+node *c_endif(n1, n3)
+register node *n1, *n3;
+{
+    register node *n2;
     register int flags1, flags2;
 
-    n1 = node_bin(N_IF, 0, n1, node_bin(N_ELSE, 0, n2, n3));
+    n2 = n1->r.right->l.left;
+    n1->r.right->r.right = n3;
     if (n2 != (node *) NULL) {
 	flags1 = n2->flags & F_END;
 	n1->flags |= n2->flags & F_REACH;
@@ -1259,6 +1395,7 @@ int typechecked;
     switch_list->dflt = FALSE;
     switch_list->ncase = 0;
     switch_list->case_list = case_list;
+    switch_list->vlist = (node *) NULL;
     case_list = (node *) NULL;
     switch_list->env = thisloop;
 }
@@ -1304,6 +1441,14 @@ node *expr, *stmt;
     short type, sz;
 
     n = stmt;
+    if (n != (node *) NULL) {
+	n->r.right = switch_list->vlist;
+	if (switch_list->prev != (loop *) NULL) {
+	    switch_list->prev->vlist = c_concat(n->r.right,
+						switch_list->prev->vlist);
+	}
+    }
+
     if (switch_list->type != T_NIL) {
 	if (stmt == (node *) NULL) {
 	    /* empty switch statement */
@@ -1469,6 +1614,9 @@ node *expr, *stmt;
 
     case_list = switch_list->case_list;
     switch_list = loop_del(switch_list);
+    if (switch_list == (loop *) NULL) {
+	vindex = thisblock->vindex + thisblock->nvars;
+    }
 
     return n;
 }
@@ -1691,13 +1839,93 @@ register node *n;
 {
     register int flags;
 
-    block_del();
-    if (n != (node *) NULL && n->type == N_PAIR) {
-	flags = n->flags & (F_REACH | F_END);
-	n = revert_list(n);
-	n->flags = (n->flags & ~F_END) | flags;
+    if (n != (node *) NULL) {
+      if (n->type == N_PAIR) {
+          flags = n->flags & (F_REACH | F_END);
+          n = revert_list(n);
+          n->flags = (n->flags & ~F_END) | flags;
+      }
+      n = node_mon(N_COMPOUND, 0, n);
+      n->flags = n->l.left->flags;
+
+      if (thisblock->nvars != 0) {
+          register node *v, *l, *z, *f, *p;
+          register int i;
+
+          /*
+           * create variable type definitions and implicit initializers
+           */
+          l = z = f = p = (node *) NULL;
+          i = thisblock->vindex;
+          if (i < nparams) {
+              i = nparams;
+          }
+          while (i < thisblock->vindex + thisblock->nvars) {
+              l = c_concat(node_var(variables[i].type, i), l);
+
+              if (variables[i].unset) {
+                  switch (variables[i].type) {
+                  case T_INT:
+                      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
+                      v->line = 0;
+                      v->r.number = i;
+                      if (z == (node *) NULL) {
+                          z = node_int(0);
+                          z->line = 0;
+                      }
+                      z = node_bin(N_ASSIGN, T_INT, v, z);
+                      z->line = 0;
+                      break;
+
+                  case T_FLOAT:
+                      v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
+                      v->line = 0;
+                      v->r.number = i;
+                      if (f == (node *) NULL) {
+                          xfloat flt;
+
+                          FLT_ZERO(flt.high, flt.low);
+                          f = node_float(&flt);
+                          f->line = 0;
+                      }
+                      f = node_bin(N_ASSIGN, T_FLOAT, v, f);
+                      f->line = 0;
+                      break;
+
+                  default:
+                      v = node_mon(N_LOCAL, T_MIXED, (node *) NULL);
+                      v->line = 0;
+                      v->r.number = i;
+                      if (p == (node *) NULL) {
+                          p = node_nil();
+                          p->line = 0;
+                      }
+                      p = node_bin(N_ASSIGN, T_MIXED, v, p);
+                      p->line = 0;
+                      break;
+                  }
+              }
+              i++;
+          }
+
+          /* add vartypes and initializers to compound statement */
+          if (z != (node *) NULL) {
+              l = c_concat(c_exp_stmt(z), l);
+          }
+          if (f != (node *) NULL) {
+              l = c_concat(c_exp_stmt(f), l);
+          }
+          if (p != (node *) NULL) {
+              l = c_concat(c_exp_stmt(p), l);
+          }
+          n->r.right = l;
+          if (switch_list != (loop *) NULL) {
+              switch_list->vlist = c_concat(l, switch_list->vlist);
+          }
+      }
     }
 
+    block_del(switch_list != (loop *) NULL);
     return n;
 }
 
@@ -1761,6 +1989,9 @@ register node *n;
     i = block_var(n->l.string->text);
     if (i >= 0) {
 	/* local var */
+	if (!BTST(thiscond->init, i)) {
+	    variables[i].unset++;
+	}
 	n = node_mon(N_LOCAL, variables[i].type, n);
 	n->class = variables[i].cvstr;
 	n->r.number = i;
@@ -2148,6 +2379,21 @@ char *oper;
     if (!lvalue(n)) {
 	c_error("bad lvalue for %s", oper);
 	return node_mon(N_FAKE, T_MIXED, n);
+    }
+    return n;
+}
+
+/*
+ * NAME:	compile->assign()
+ * DESCRIPTION:	handle an assignment
+ */
+node *c_assign(n)
+register node *n;
+{
+    n = c_lvalue(n, "assignment");
+    if (n->type == N_LOCAL && !BTST(thiscond->init, n->r.number)) {
+	BSET(thiscond->init, n->r.number);
+	--variables[n->r.number].unset;
     }
     return n;
 }

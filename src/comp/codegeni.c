@@ -1509,6 +1509,37 @@ typedef struct {
 static case_label *switch_table;	/* label table for current switch */
 
 /*
+ * NAME:	codegen->switch_start()
+ * DESCRIPTION:	generate code for the start of a switch statement
+ */
+static void cg_switch_start(n)
+node *n;
+{
+    register node *m;
+
+    /* 
+     * initializers
+     */
+    m = n->r.right->r.right;
+    if (m->type == N_BLOCK) {
+	m = m->l.left;
+    }
+# ifdef DEBUG
+    if (m->type != N_COMPOUND) {
+	fatal("N_COMPOUND expected");  
+    }
+# endif
+    cg_stmt(m->r.right);
+    m->r.right = NULL;
+
+    /*
+     * switch expression
+     */
+    cg_expr(n->r.right->l.left, FALSE);
+    code_instr(I_SWITCH | I_POP_BIT, 0);
+}
+
+/*
  * NAME:	codegen->switch_int()
  * DESCRIPTION:	generate single label code for a switch statement
  */
@@ -1519,15 +1550,7 @@ register node *n;
     register int i, size, sz;
     case_label *table;
 
-    /*
-     * switch expression
-     */
-    cg_expr(n->r.right->l.left, FALSE);
-
-    /*
-     * switch table
-     */
-    code_instr(I_SWITCH | I_POP_BIT, 0);
+    cg_switch_start(n);
     code_byte(SWITCH_INT);
     m = n->l.left;
     size = n->mod;
@@ -1600,15 +1623,7 @@ register node *n;
     register int i, size, sz;
     case_label *table;
 
-    /*
-     * switch expression
-     */
-    cg_expr(n->r.right->l.left, FALSE);
-
-    /*
-     * switch table
-     */
-    code_instr(I_SWITCH | I_POP_BIT, 0);
+    cg_switch_start(n);
     code_byte(SWITCH_RANGE);
     m = n->l.left;
     size = n->mod;
@@ -1698,15 +1713,7 @@ register node *n;
     register int i, size;
     case_label *table;
 
-    /*
-     * switch expression
-     */
-    cg_expr(n->r.right->l.left, FALSE);
-
-    /*
-     * switch table
-     */
-    code_instr(I_SWITCH | I_POP_BIT, 0);
+    cg_switch_start(n);
     code_byte(SWITCH_STRING);
     m = n->l.left;
     size = n->mod;
@@ -1813,6 +1820,13 @@ register node *n;
 
 	case N_CASE:
 	    switch_table[m->mod].where = here;
+	    cg_stmt(m->l.left);
+	    break;
+
+	case N_COMPOUND:
+	    if (m->r.right != (node *) NULL) {
+		cg_stmt(m->r.right);
+	    }
 	    cg_stmt(m->l.left);
 	    break;
 

@@ -136,6 +136,24 @@ string *str;
 }
 
 /*
+ * NAME:	node->var()
+ * DESCRIPTION:	create a variable type node
+ */
+node *node_var(type, idx)
+unsigned int type;
+int idx;
+{
+    register node *n;
+
+    n = node_new(0);
+    n->type = N_VAR;
+    n->mod = type;
+    n->l.number = idx;
+
+    return n;
+}
+
+/*
  * NAME:	node->type()
  * DESCRIPTION:	create a type node
  */

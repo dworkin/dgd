@@ -1839,6 +1839,13 @@ register node *n;
 	case N_CASE:
 	    return n;
 
+	case N_COMPOUND:
+	    m->l.left = opt_skip(m->l.left);
+	    if (m->l.left != (node *) NULL) {
+		return n;
+	    }
+	    break;
+
 	case N_DO:
 	case N_FOR:
 	case N_FOREVER:
@@ -1931,6 +1938,17 @@ Uint *depth;
 
 	case N_CASE:
 	    n->l.left = opt_stmt(n->l.left, &d1);
+	    d = max2(d, d1);
+	    break;
+
+	case N_COMPOUND:
+	    n->l.left = opt_stmt(n->l.left, &d1);
+	    if (n->l.left == (node *) NULL) {
+		n = (node *) NULL;
+	    } else if (n->r.right != (node *) NULL) {
+		n->r.right = opt_stmt(n->r.right, &d2);
+		d1 = max2(d1, d2);
+	    }
 	    d = max2(d, d1);
 	    break;
 
@@ -2065,12 +2083,19 @@ Uint *depth;
 	case N_SWITCH_INT:
 	case N_SWITCH_RANGE:
 	case N_SWITCH_STR:
-	    side_start(&side, depth);
-	    d1 = opt_expr(&n->r.right->l.left, FALSE);
-	    d1 = max2(d1, side_end(&n->r.right->l.left, side, (node **) NULL,
-				   0));
-	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d2);
-	    d = max3(d, d1, d2);
+	    n->r.right->r.right = opt_stmt(n->r.right->r.right, &d1);
+	    if (n->r.right->r.right == (node *) NULL) {
+		n = n->r.right;
+		n->type = N_POP;
+		n = opt_stmt(n, &d1);
+		d = max2(d, d1);
+	    } else {
+		side_start(&side, depth);
+		d2 = opt_expr(&n->r.right->l.left, FALSE);
+		d2 = max2(d2, side_end(&n->r.right->l.left, side,
+				       (node **) NULL, 0));
+		d = max3(d, d1, d2);
+	    }
 	    break;
 	}
 

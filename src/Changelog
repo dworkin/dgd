@@ -1671,3 +1671,5 @@ DGD 1.3
  - In the driver object, replace path_include() by include_file(), which can
    return either a path or an array of strings for the include file itself.
  - Prevent a spurious "Mapping too large to grow" error.
+ - Initialize variables which may be used before set each time they come into
+   scope.

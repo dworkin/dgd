@@ -97,14 +97,14 @@ static node *comma	P((node*, node*));
 %type <node> opt_inherit_label string composite_string formals_declaration
 	     formal_declaration_list varargs_formal_declaration
 	     formal_declaration type_specifier data_dcltr function_dcltr dcltr
-	     list_dcltr dcltr_or_stmt_list dcltr_or_stmt stmt compound_stmt
-	     opt_caught_stmt function_name primary_p1_exp primary_p2_exp
-	     postfix_exp prefix_exp cast_exp mult_oper_exp add_oper_exp
-	     shift_oper_exp rel_oper_exp equ_oper_exp bitand_oper_exp
-	     bitxor_oper_exp bitor_oper_exp and_oper_exp or_oper_exp cond_exp
-	     exp list_exp opt_list_exp f_list_exp f_opt_list_exp arg_list
-	     opt_arg_list opt_arg_list_comma assoc_exp assoc_arg_list
-	     opt_assoc_arg_list_comma ident
+	     list_dcltr dcltr_or_stmt_list dcltr_or_stmt if_stmt stmt
+	     compound_stmt opt_caught_stmt function_name primary_p1_exp
+	     primary_p2_exp postfix_exp prefix_exp cast_exp mult_oper_exp
+	     add_oper_exp shift_oper_exp rel_oper_exp equ_oper_exp
+	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
+	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
+	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
+	     assoc_arg_list opt_assoc_arg_list_comma ident
 
 %%
 
@@ -368,24 +368,50 @@ dcltr_or_stmt
 		}
 	;
 
+if_stmt
+	: IF '(' f_list_exp ')'
+		{ c_startcond(); }
+	  stmt	{ $$ = c_if($3, $6); }
+	;
+
 stmt
 	: list_exp ';'
 		{ $$ = c_exp_stmt($1); }
 	| compound_stmt
-	| IF '(' f_list_exp ')' stmt
-		{ $$ = c_if($3, $5, (node *) NULL); }
+	| if_stmt
+		{
+		  c_endcond();
+		  $$ = c_endif($1, (node *) NULL);
+		}
 /* will cause shift/reduce conflict */
-	| IF '(' f_list_exp ')' stmt ELSE stmt
-		{ $$ = c_if($3, $5, $7); }
+	| if_stmt ELSE
+		{ c_startcond2(); }
+	  stmt
+		{
+		  c_matchcond();
+		  $$ = c_endif($1, $4);
+		}
 	| DO	{ c_loop(); }
 	  stmt WHILE '(' f_list_exp ')' ';'
 		{ $$ = c_do($6, $3); }
 	| WHILE '(' f_list_exp ')'
-		{ c_loop(); }
-	  stmt	{ $$ = c_while($3, $6); }
+		{
+		  c_loop();
+		  c_startcond();
+		}
+	  stmt	{
+		  c_endcond();
+		  $$ = c_while($3, $6);
+		}
 	| FOR '(' opt_list_exp ';' f_opt_list_exp ';' opt_list_exp ')'
-		{ c_loop(); }
-	  stmt	{ $$ = c_for(c_exp_stmt($3), $5, c_exp_stmt($7), $10); }
+		{
+		  c_loop();
+		  c_startcond();
+		}
+	  stmt	{
+		  c_endcond();
+		  $$ = c_for(c_exp_stmt($3), $5, c_exp_stmt($7), $10);
+		}
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
 		  if (typechecking) {
@@ -404,15 +430,31 @@ stmt
 		}
 	  compound_stmt
 		{ $$ = c_endrlimits($3, $5, $8); }
-	| CATCH	{ c_startcatch(); }
+	| CATCH	{
+		  c_startcatch();
+		  c_startcond();
+		}
 	  compound_stmt
-		{ c_endcatch(); }
+		{
+		  c_endcond();
+		  c_endcatch();
+		  c_startcond();
+		}
 	  opt_caught_stmt
-		{ $$ = c_donecatch($3, $5); }
+		{
+		  c_endcond();
+		  $$ = c_donecatch($3, $5);
+		}
 	| SWITCH '(' f_list_exp ')'
-		{ c_startswitch($3, typechecking); }
+		{
+		  c_startswitch($3, typechecking);
+		  c_startcond();
+		}
 	  compound_stmt
-		{ $$ = c_endswitch($3, $6); }
+		{
+		  c_endcond();
+		  $$ = c_endswitch($3, $6);
+		}
 	| CASE exp ':'
 		{ $2 = c_case($2, (node *) NULL); }
 	  stmt	{
@@ -463,7 +505,7 @@ compound_stmt
 		}
 	  dcltr_or_stmt_list '}'
 		{
-		  nstatements = 1;	/* any non-zero value will do */
+		  nstatements++;
 		  $$ = c_endcompound($3);
 		}
 	;
@@ -515,8 +557,13 @@ primary_p1_exp
 		{ $$ = $2; }
 	| function_name '(' opt_arg_list ')'
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
-	| CATCH '(' list_exp ')'
-		{ $$ = node_mon(N_CATCH, T_STRING, $3); }
+	| CATCH '('
+		{ c_startcond(); }
+	  list_exp ')'
+		{
+		  c_endcond();
+		  $$ = node_mon(N_CATCH, T_STRING, $4);
+		}
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
@@ -662,14 +709,21 @@ or_oper_exp
 
 cond_exp
 	: or_oper_exp
-	| or_oper_exp '?' list_exp ':' cond_exp
-		{ $$ = quest($1, $3, $5); }
+	| or_oper_exp '?'
+		{ c_startcond(); }
+	  list_exp ':'
+		{ c_startcond2(); }
+	  cond_exp
+		{
+		  c_matchcond();
+		  $$ = quest($1, $4, $7);
+		}
 	;
 
 exp
 	: cond_exp
 	| cond_exp '=' exp
-		{ $$ = assign(c_lvalue($1, "assignment"), $3); }
+		{ $$ = assign(c_assign($1), $3); }
 	| cond_exp PLUS_EQ exp
 		{ $$ = add(N_ADD_EQ, c_lvalue($1, "+="), $3, "+="); }
 	| cond_exp MIN_EQ exp
