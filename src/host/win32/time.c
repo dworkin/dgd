@@ -47,8 +47,8 @@ char *P_ctime(char *buf, Uint time)
     time_t t;
 
     offset = 0;
+    for (offset = 0; time > 2147397248; time -= 883612800, offset += 28) ;
     t = time;
-    for (offset = 0; t > 2147397248; t -= 883612800, offset += 28) ;
     memcpy(buf, ctime(&t), 26);
     if (offset != 0) {
 	long year;

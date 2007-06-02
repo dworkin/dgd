@@ -76,7 +76,7 @@ typedef struct {
 static char sd_layout[] = "dssiiiiuu";
 
 struct _svalue_ {
-    short type;			/* object, number, string, array */
+    char type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
     union {
 	Int number;		/* number */
@@ -86,7 +86,15 @@ struct _svalue_ {
     } u;
 };
 
-static char sv_layout[] = "sui";
+static char sv_layout[] = "cui";
+
+typedef struct {
+    short type;			/* old type */
+    uindex oindex;		/* index in object table */
+    Uint objcnt;		/* number, string, object, array */
+} osvalue;
+
+static char osv_layout[] = "sui";
 
 typedef struct _sarray_ {
     Uint index;			/* index in array value table */
@@ -111,12 +119,20 @@ typedef struct _scallout_ {
     svalue val[4];		/* function name, 3 direct arguments */
 } scallout;
 
-static char sco_layout[] = "iu[sui][sui][sui][sui]";
+static char sco_layout[] = "iu[cui][cui][cui][cui]";
+
+typedef struct {
+    Uint time;			/* time of call */
+    uindex nargs;		/* number of arguments */
+    osvalue val[4];		/* function name, 3 direct arguments */
+} socallout;
+
+static char soc_layout[] = "iu[sui][sui][sui][sui]";
 
 typedef struct {
     Uint time;			/* time of call */
     unsigned short nargs;	/* number of arguments */
-    svalue val[4];		/* function name, 3 direct arguments */
+    osvalue val[4];		/* function name, 3 direct arguments */
 } oscallout;
 
 static char osc_layout[] = "is[sui][sui][sui][sui]";
@@ -2508,6 +2524,29 @@ int conv;
 }
 
 /*
+ * NAME:	data->conv_svalues()
+ * DESCRIPTION:	convert svalues
+ */
+static Uint d_conv_svalues(sv, s, n, size)
+register svalue *sv;
+sector *s;
+Uint n, size;
+{
+    register osvalue *osv;
+    register int i;
+
+    osv = ALLOCA(osvalue, n);
+    size = d_conv((char *) osv, s, osv_layout, n, size);
+    for (i = 0; i < n; i++) {
+	sv->type = osv->type;
+	sv->oindex = osv->oindex;
+	(sv++)->u.objcnt = (osv++)->objcnt;
+    }
+    AFREE(osv - n);
+    return size;
+}
+
+/*
  * NAME:	data->fixobjs()
  * DESCRIPTION:	fix objects in dataspace
  */
@@ -2534,10 +2573,10 @@ register Uint n, *ctab;
  * NAME:	data->conv_dataspace()
  * DESCRIPTION:	convert dataspace
  */
-void d_conv_dataspace(obj, counttab, convert)
+void d_conv_dataspace(obj, counttab, conv_callouts, conv_datas)
 object *obj;
 Uint *counttab;
-int convert;
+int conv_callouts, conv_datas;
 {
     sdataspace header;
     register dataspace *data;
@@ -2569,8 +2608,13 @@ int convert;
 
     /* variables */
     data->svariables = ALLOC(svalue, header.nvariables);
-    size += d_conv((char *) data->svariables, s, sv_layout,
-		   (Uint) header.nvariables, size);
+    if (conv_datas) {
+	size += d_conv_svalues(data->svariables, s, (Uint) header.nvariables,
+			       size);
+    } else {
+	size += d_conv((char *) data->svariables, s, sv_layout,
+		       (Uint) header.nvariables, size);
+    }
     d_fixobjs(data->svariables, (Uint) header.nvariables, counttab);
 
     if (header.narrays != 0) {
@@ -2580,8 +2624,12 @@ int convert;
 		       size);
 	if (header.eltsize != 0) {
 	    data->selts = ALLOC(svalue, header.eltsize);
-	    size += d_conv((char *) data->selts, s, sv_layout, header.eltsize,
-			   size);
+	    if (conv_datas) {
+		size += d_conv_svalues(data->selts, s, header.eltsize, size);
+	    } else {
+		size += d_conv((char *) data->selts, s, sv_layout,
+			       header.eltsize, size);
+	    }
 	    d_fixobjs(data->selts, header.eltsize, counttab);
 	}
     }
@@ -2610,7 +2658,7 @@ int convert;
 	/* callouts */
 	co = data->callouts = ALLOC(dcallout, header.ncallouts);
 	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
-	if (convert) {
+	if (conv_callouts) {
 	    register oscallout *osc;
 
 	    /*
@@ -2621,12 +2669,51 @@ int convert;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = osc->time;
 		sco->nargs = osc->nargs;
-		memcpy(sco->val, osc->val, 4 * sizeof(svalue));
+		sco->val[0].type =     osc->val[0].type;
+		sco->val[0].oindex =   osc->val[0].oindex;
+		sco->val[0].u.objcnt = osc->val[0].objcnt;
+		sco->val[1].type =     osc->val[1].type;
+		sco->val[1].oindex =   osc->val[1].oindex;
+		sco->val[1].u.objcnt = osc->val[1].objcnt;
+		sco->val[2].type =     osc->val[2].type;
+		sco->val[2].oindex =   osc->val[2].oindex;
+		sco->val[2].u.objcnt = osc->val[2].objcnt;
+		sco->val[3].type =     osc->val[3].type;
+		sco->val[3].oindex =   osc->val[3].oindex;
+		sco->val[3].u.objcnt = osc->val[3].objcnt;
 		sco++;
 		osc++;
 	    }
 	    sco -= data->ncallouts;
 	    AFREE(osc - data->ncallouts);
+	} else if (conv_datas) {
+	    register socallout *soc;
+
+	    /*
+	     * convert callouts with old format svalues
+	     */
+	    soc = ALLOCA(socallout, header.ncallouts);
+	    d_conv((char *) soc, s, soc_layout, (Uint) header.ncallouts, size);
+	    for (n = data->ncallouts; n > 0; --n) {
+		sco->time = soc->time;
+		sco->nargs = soc->nargs;
+		sco->val[0].type =     soc->val[0].type;
+		sco->val[0].oindex =   soc->val[0].oindex;
+		sco->val[0].u.objcnt = soc->val[0].objcnt;
+		sco->val[1].type =     soc->val[1].type;
+		sco->val[1].oindex =   soc->val[1].oindex;
+		sco->val[1].u.objcnt = soc->val[1].objcnt;
+		sco->val[2].type =     soc->val[2].type;
+		sco->val[2].oindex =   soc->val[2].oindex;
+		sco->val[2].u.objcnt = soc->val[2].objcnt;
+		sco->val[3].type =     soc->val[3].type;
+		sco->val[3].oindex =   soc->val[3].oindex;
+		sco->val[3].u.objcnt = soc->val[3].objcnt;
+		sco++;
+		soc++;
+	    }
+	    sco -= data->ncallouts;
+	    AFREE(soc - data->ncallouts);
 	} else {
 	    d_conv((char *) data->scallouts, s, sco_layout,
 		   (Uint) header.ncallouts, size);

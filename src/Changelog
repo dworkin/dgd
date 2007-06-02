@@ -1673,3 +1673,5 @@ DGD 1.3
  - Prevent a spurious "Mapping too large to grow" error.
  - Initialize variables which may be used before set each time they come into
    scope.
+ - Handle atomic status properly in precompiled code with a catch.
+ - Update the statedump format for svalues.

@@ -39,8 +39,8 @@ Uint time;
     time_t t;
 
     offset = 0;
+    for (offset = 0; time >= 2147397248L; time -= 883612800L, offset += 28) ;
     t = time;
-    for (offset = 0; t >= 2147397248L; t -= 883612800L, offset += 28) ;
     memcpy(buf, ctime(&t), 26);
     if (offset != 0) {
 	long year;

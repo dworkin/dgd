@@ -107,7 +107,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	5
+# define FORMAT_VERSION	6
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -117,8 +117,8 @@ typedef char dumpinfo[50];
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_STARTTIME	20	/* start time */
 # define DUMP_ELAPSED	24	/* elapsed time */
-# define DUMP_HEADERSZ	28	/* header size */
-# define DUMP_VSTRING	29	/* version string */
+# define DUMP_HEADERSZ	29	/* header size */
+# define DUMP_VSTRING	30	/* version string */
 
 static dumpinfo header;		/* dumpfile header */
 # define s0	(header[ 6])	/* short, msb */
@@ -135,6 +135,7 @@ static dumpinfo header;		/* dumpfile header */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
+# define zero	(header[28])	/* 0 */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -154,6 +155,7 @@ static dumpinfo rheader;	/* restored header */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
+# define rzero	 (rheader[28])	/* 0 */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -205,6 +207,7 @@ static void conf_dumpinit()
     ialign = (char *) &idummy.i - (char *) &idummy.fill;
     palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     zalign = sizeof(alignz);
+    zero = 0;
 
     ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
     talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
@@ -265,7 +268,7 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    bool conv_callouts, conv_lwos, conv_ctrls;
+    bool conv_callouts, conv_lwos, conv_ctrls, conv_datas;
     unsigned int secsize;
     long posn;
 
@@ -274,7 +277,7 @@ int fd;
 	       rheader[DUMP_VERSION] > FORMAT_VERSION) {
 	error("Bad or incompatible restore file header");
     }
-    conv_callouts = conv_lwos = conv_ctrls = FALSE;
+    conv_callouts = conv_lwos = conv_ctrls = conv_datas = FALSE;
     if (rheader[DUMP_VERSION] < 3) {
 	conv_callouts = TRUE;
     }
@@ -284,8 +287,12 @@ int fd;
     if (rheader[DUMP_VERSION] < 5) {
 	conv_ctrls = TRUE;
     }
+    if (rheader[DUMP_VERSION] < 6) {
+	conv_datas = TRUE;
+	rzero = 0;
+    }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
-    if (memcmp(header, rheader, DUMP_TYPE) != 0) {
+    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero != 0) {
 	error("Bad or incompatible restore file header");
     }
 
@@ -331,7 +338,7 @@ int fd;
     o_restore(fd, (uindex) ((conv_lwos) ? 1 << (rusize * 8 - 1) : 0));
 
     posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv(conv_callouts, conv_lwos, conv_ctrls); /* convert all objects */
+    o_conv(conv_callouts, conv_lwos, conv_ctrls, conv_datas); /* convert all */
     P_lseek(fd, posn, SEEK_SET);	/* restore file position */
 
     pc_restore(fd);

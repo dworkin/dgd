@@ -1337,8 +1337,8 @@ cvoid *cv1, *cv2;
  * NAME:	object->conv()
  * DESCRIPTION:	convert all objects, creating a new swap file
  */
-void o_conv(conv_callouts, conv_lwos, conv_ctrls)
-int conv_callouts, conv_lwos, conv_ctrls;
+void o_conv(conv_callouts, conv_lwos, conv_ctrls, conv_datas)
+int conv_callouts, conv_lwos, conv_ctrls, conv_datas;
 {
     register Uint *counts, *sorted;
     register uindex i;
@@ -1385,7 +1385,7 @@ int conv_callouts, conv_lwos, conv_ctrls;
 	 */
 	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
 	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
-		d_conv_dataspace(o, counts, conv_callouts);
+		d_conv_dataspace(o, counts, conv_callouts, conv_datas);
 		o_clean_upgrades();
 		d_swapout(1);
 	    }

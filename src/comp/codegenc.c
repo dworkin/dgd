@@ -988,26 +988,23 @@ register int state;
 		}
 	    }
 	}
-	i = tmpval();
-	output("tv[%d] = f->atomic, f->atomic = FALSE, ", i);
-	output("!ec_push((ec_ftn) i_catcherr) ? (");
+	output("!ec_push((ec_ftn) i_catcherr) ? (f->atomic = FALSE, ");
 	catch_level++;
 	cg_expr(n->l.left, POP);
 	--catch_level;
-	output(", ec_pop(), f->atomic = tv[%d], ", i);
+	output(", ec_pop(), ");
 	if (state == PUSH) {
-	    output("*--f->sp = nil_value, 0) : (f->atomic = tv[%d], ", i);
-	    output("PUSH_STRVAL(f, errorstr())");
+	    output("*--f->sp = nil_value, 0) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
-			output(", ivar%d = %s->u.number", vars[i], local(i));
+			output("ivar%d = %s->u.number, ", vars[i], local(i));
 		    }
 		}
 	    }
-	    output(", 0))");
+	    output("PUSH_STRVAL(f, errorstr()), 0))");
 	} else {
-	    output("FALSE) : (f->atomic = tv[%d], ", i);
+	    output("FALSE) : (");
 	    if (catch_level == 0) {
 		for (i = nvars; i > 0; ) {
 		    if (vars[--i] != 0) {
@@ -2004,7 +2001,7 @@ register node *n;
 		    }
 		}
 	    }
-	    output("if (!ec_push((ec_ftn) i_catcherr)) {\n");
+	    output("if (!ec_push((ec_ftn) i_catcherr)) {f->atomic = FALSE;\n");
 	    catch_level++;
 	    cg_stmt(m->l.left);
 	    --catch_level;

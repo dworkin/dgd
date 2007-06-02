@@ -231,7 +231,7 @@ extern sector		d_swapout	 P((unsigned int));
 extern void		d_swapsync	 P((void));
 extern void		d_upgrade_mem	 P((object*, object*));
 extern void		d_conv_control	 P((unsigned int, int));
-extern void		d_conv_dataspace P((object*, Uint*, int));
+extern void		d_conv_dataspace P((object*, Uint*, int, int));
 
 extern void		d_free_control	 P((control*));
 extern void		d_free_dataspace P((dataspace*));

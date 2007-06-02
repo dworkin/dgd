@@ -823,27 +823,15 @@ static void interrupt()
 }
 
 /*
- * NAME:	runtime_error()
- * DESCRIPTION:	log a runtime error
+ * NAME:	_runtime_error()
+ * DESCRIPTION:	handle runtime error, with proper TLS on the stack
  */
-static void runtime_error(string str, int caught, int ticks)
+private void _runtime_error(mixed tls, string str, int caught, int ticks,
+			    mixed **trace)
 {
-    mixed **trace, tls;
     string line, function, progname, objname;
     int i, sz, len;
     object user;
-
-    trace = call_trace();
-    tls = trace[1][TRACE_FIRSTARG];
-
-    if (caught == 2 && trace[1][TRACE_PROGNAME] == DRIVER) {
-	/* top-level catch in driver object: ignore */
-	caught = 0;
-    } else if (caught != 0 && ticks < 0 &&
-	       sscanf(trace[caught - 1][TRACE_PROGNAME], "/kernel/%*s") != 0) {
-	tls[1] = str;
-	return;
-    }
 
     i = sz = sizeof(trace) - 1;
 
@@ -921,6 +909,36 @@ static void runtime_error(string str, int caught, int ticks)
 	    }
 	}
     }
+}
+
+/*
+ * NAME:	runtime_error()
+ * DESCRIPTION:	log a runtime error
+ */
+static void runtime_error(string str, int caught, int ticks)
+{
+    mixed **trace, tls;
+
+    trace = call_trace();
+
+    if (sizeof(trace) == 1) {
+	/* top-level error */
+	tls = allocate(tls_size);
+    } else {
+	tls = trace[1][TRACE_FIRSTARG];
+	trace[1][TRACE_FIRSTARG] = nil;
+	if (caught == 2 && trace[1][TRACE_PROGNAME] == DRIVER) {
+	    /* top-level catch in driver object: ignore */
+	    caught = 0;
+	} else if (caught != 0 && ticks < 0 &&
+		   sscanf(trace[caught - 1][TRACE_PROGNAME],
+			  "/kernel/%*s") != 0) {
+	    tls[1] = str;
+	    return;
+	}
+    }
+
+    _runtime_error(tls, str, caught, ticks, trace);
 }
 
 /*

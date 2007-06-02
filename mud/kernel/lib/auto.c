@@ -534,6 +534,7 @@ static mixed **call_trace()
     object driver;
 
     trace = ::call_trace();
+    trace[1][TRACE_FIRSTARG] = nil;
     if (creator != "System") {
 	driver = ::find_object(DRIVER);
 	for (i = sizeof(trace) - 1; --i >= 0; ) {

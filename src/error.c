@@ -11,6 +11,7 @@ typedef struct _context_ {
     jmp_buf env;			/* error context */
     frame *f;				/* frame context */
     unsigned short offset;		/* sp offset */
+    bool atomic;			/* atomic status */
     rlinfo *rlim;			/* rlimits info */
     ec_ftn handler;			/* error handler */
     struct _context_ *next;		/* next in linked list */
@@ -49,6 +50,7 @@ ec_ftn handler;
     }
     e->f = cframe;
     e->offset = cframe->fp - cframe->sp;
+    e->atomic = cframe->atomic;
     e->rlim = cframe->rlim;
 
     e->handler = handler;
@@ -71,6 +73,7 @@ void ec_pop()
 	fatal("pop empty error stack");
     }
 # endif
+    cframe->atomic = e->atomic;
     econtext = e->next;
     if (e != &firstcontext) {
 	FREE(e);
@@ -154,6 +157,7 @@ string *str;
 	i_set_rlimits(cframe, econtext->rlim);
     }
     cframe = i_set_sp(cframe, econtext->f->fp - offset);
+    cframe->atomic = econtext->atomic;
     cframe->rlim = econtext->rlim;
     ec_pop();
     longjmp(env, 1);

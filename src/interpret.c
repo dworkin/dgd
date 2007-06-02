@@ -1711,7 +1711,6 @@ register char *pc;
     register kfunc *kf;
     int size;
     Int newdepth, newticks;
-    bool atomic;
 
     size = 0;
 
@@ -1966,9 +1965,8 @@ register char *pc;
 
 	case I_CATCH:
 	    p = f->prog + FETCH2U(pc, u);
-	    atomic = f->atomic;
-	    f->atomic = FALSE;
 	    if (!ec_push((ec_ftn) i_catcherr)) {
+		f->atomic = FALSE;
 		i_interpret(f, pc);
 		ec_pop();
 		pc = f->pc;
@@ -1978,7 +1976,6 @@ register char *pc;
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
-	    f->atomic = atomic;
 	    break;
 
 	case I_RLIMITS:
