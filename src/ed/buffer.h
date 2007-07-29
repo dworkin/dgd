@@ -14,13 +14,12 @@ typedef struct {
 extern editbuf *eb_new		P((char*));
 extern void	eb_del		P((editbuf*));
 extern void	eb_clear	P((editbuf*));
-extern void	eb_add		P((editbuf*, Int, char*(*)(char*), char*));
+extern void	eb_add		P((editbuf*, Int, char*(*)(void)));
 extern block	eb_delete	P((editbuf*, Int, Int));
 extern void	eb_change	P((editbuf*, Int, Int, block));
 extern block	eb_yank		P((editbuf*, Int, Int));
 extern void	eb_put		P((editbuf*, Int, block));
-extern void	eb_range	P((editbuf*, Int, Int, void(*)(char*, char*),
-				   char*, int));
+extern void	eb_range	P((editbuf*, Int, Int, void(*)(char*), int));
 extern void	eb_startblock	P((editbuf*));
 extern void	eb_addblock	P((editbuf*, char*));
 extern void	eb_endblock	P((editbuf*));

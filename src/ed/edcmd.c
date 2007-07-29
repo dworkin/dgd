@@ -38,6 +38,7 @@ extern int  cb_wq	P((cmdbuf*));
 extern int  cb_xit	P((cmdbuf*));
 extern int  cb_set	P((cmdbuf*));
 
+cmdbuf *ccb;		/* editor command buffer */
 
 /*
  * NAME:	cmdbuf->new()
@@ -633,12 +634,12 @@ register cmdbuf *cb;
  * NAME:	find()
  * DESCRIPTION:	match a pattern in a global command
  */
-static void find(ptr, text)
-char *ptr, *text;
+static void find(text)
+char *text;
 {
     register cmdbuf *cb;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
     cb->glob_next++;
     cb->glob_size--;
     if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != cb->reverse) {
@@ -709,8 +710,7 @@ register cmdbuf *cb;
 	    } else {
 		/* search */
 		eb_range(cb->edbuf, cb->glob_next,
-			 cb->glob_next + cb->glob_size - 1, find, (char *) cb,
-			 FALSE);
+			 cb->glob_next + cb->glob_size - 1, find, FALSE);
 	    }
 	} while (cb->glob_size > 0);
 
@@ -829,6 +829,7 @@ register cmdbuf *cb;
 char *command;
 {
     cb->cmd = command;
+    ccb = cb;
 
     for (;;) {
 	if (cb->flags & CB_INSERT) {

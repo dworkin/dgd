@@ -42,7 +42,6 @@ typedef struct _coptable_ {
 typedef struct {
     array **itab;			/* imported array replacement table */
     Uint itabsz;			/* size of table */
-    arrmerge *merge;			/* array merge table */
     Uint narr;				/* # of arrays */
 } arrimport;
 
@@ -1792,7 +1791,7 @@ register unsigned short n;
 		/*
 		 * imported array
 		 */
-		i = arr_put(imp->merge, a, imp->narr);
+		i = arr_put(a, imp->narr);
 		if (i == imp->narr) {
 		    /*
 		     * first time encountered
@@ -1843,7 +1842,7 @@ register unsigned short n;
 						j);
 			    imp->itabsz = j;
 			}
-			arr_put(imp->merge, imp->itab[i] = a, imp->narr++);
+			arr_put(imp->itab[i] = a, imp->narr++);
 		    }
 
 		    a->primary = &data->base.alocal;
@@ -1866,7 +1865,7 @@ register unsigned short n;
 		    arr_del(val->u.array);
 		    val->u.array = a;
 		}
-	    } else if (arr_put(imp->merge, a, imp->narr) == imp->narr) {
+	    } else if (arr_put(a, imp->narr) == imp->narr) {
 		/*
 		 * not previously encountered mapping or array
 		 */
@@ -1900,7 +1899,7 @@ void d_export()
 	for (data = ifirst; data != (dataspace *) NULL; data = data->inext) {
 	    if (data->base.imports != 0) {
 		data->base.imports = 0;
-		imp.merge = arr_merge();
+		arr_merge();
 		imp.narr = 0;
 
 		if (data->variables != (value *) NULL) {
@@ -1936,7 +1935,7 @@ void d_export()
 			co++;
 		    }
 		}
-		arr_clear(imp.merge);	/* clear merge table */
+		arr_clear();	/* clear merge table */
 	    }
 	    data->iprev = (dataspace *) NULL;
 	}

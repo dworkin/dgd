@@ -138,8 +138,6 @@ typedef struct {
 static char osc_layout[] = "is[sui][sui][sui][sui]";
 
 typedef struct {
-    arrmerge *amerge;			/* array merge table */
-    strmerge *smerge;			/* string merge table */
     Uint narr;				/* # of arrays */
     Uint nstr;				/* # of strings */
     Uint arrsize;			/* # of array elements */
@@ -1485,20 +1483,20 @@ register unsigned int n;
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (str_put(save->smerge, v->u.string, save->nstr) == save->nstr) {
+	    if (str_put(v->u.string, save->nstr) == save->nstr) {
 		save->nstr++;
 		save->strsize += v->u.string->len;
 	    }
 	    break;
 
 	case T_ARRAY:
-	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
+	    if (arr_put(v->u.array, save->narr) == save->narr) {
 		d_arrcount(save, v->u.array);
 	    }
 	    break;
 
 	case T_MAPPING:
-	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
+	    if (arr_put(v->u.array, save->narr) == save->narr) {
 		if (v->u.array->hashmod) {
 		    map_compact(v->u.array->primary->data, v->u.array);
 		}
@@ -1519,7 +1517,7 @@ register unsigned int n;
 		elts[1].type = T_FLOAT;
 		elts[1].oindex = FALSE;
 	    }
-	    if (arr_put(save->amerge, v->u.array, save->narr) == save->narr) {
+	    if (arr_put(v->u.array, save->narr) == save->narr) {
 		if (elts->u.objcnt == count && elts[1].u.objcnt != obj->update)
 		{
 		    d_upgrade_lwobj(v->u.array, obj);
@@ -1563,7 +1561,7 @@ register unsigned short n;
 	    break;
 
 	case T_STRING:
-	    i = str_put(save->smerge, v->u.string, save->nstr);
+	    i = str_put(v->u.string, save->nstr);
 	    sv->oindex = 0;
 	    sv->u.string = i;
 	    if (save->sstrings[i].ref++ == 0) {
@@ -1585,7 +1583,7 @@ register unsigned short n;
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
-	    i = arr_put(save->amerge, v->u.array, save->narr);
+	    i = arr_put(v->u.array, save->narr);
 	    sv->oindex = 0;
 	    sv->u.array = i;
 	    save->sarrays[i].ref++;
@@ -1891,8 +1889,8 @@ Uint *counttab;
 	/*
 	 * count the number and sizes of strings and arrays
 	 */
-	save.amerge = arr_merge();
-	save.smerge = str_merge();
+	arr_merge();
+	str_merge();
 	save.narr = 0;
 	save.nstr = 0;
 	save.arrsize = 0;
@@ -2012,8 +2010,8 @@ Uint *counttab;
 	}
 
 	/* clear merge tables */
-	arr_clear(save.amerge);
-	str_clear(save.smerge);
+	arr_clear();
+	str_clear();
 
 	if (swap) {
 	    text = save.stext;

@@ -19,12 +19,10 @@ typedef struct _strhchunk_ {
     strh sh[STR_CHUNK];		/* chunk of strh entries */
 } strhchunk;
 
-struct _strmerge_ {
-    hashtab *ht;		/* string merge table */
-    strh **slink;		/* linked list of merged strings */
-    strhchunk *shlist;		/* list of all strh chunks */
-    int strhchunksz;		/* size of current strh chunk */
-};
+static hashtab *sht;		/* string merge table */
+static strh **slink;		/* linked list of merged strings */
+static strhchunk *shlist;	/* list of all strh chunks */
+static int strhchunksz;		/* size of current strh chunk */
 
 
 /*
@@ -80,33 +78,25 @@ register string *s;
 
 /*
  * NAME:	string->merge()
- * DESCRIPTION:	create a string merge table
+ * DESCRIPTION:	prepare string merge
  */
-strmerge *str_merge()
+void str_merge()
 {
-    register strmerge *merge;
-
-    merge = ALLOC(strmerge, 1);
-    merge->ht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
-    merge->slink = (strh **) NULL;
-    merge->shlist = (strhchunk *) NULL;
-    merge->strhchunksz = STR_CHUNK;
-
-    return merge;
+    sht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
+    strhchunksz = STR_CHUNK;
 }
 
 /*
  * NAME:	string->put()
- * DESCRIPTION:	put a string in a string merge table
+ * DESCRIPTION:	put a string in the string merge table
  */
-Uint str_put(merge, str, n)
-register strmerge *merge;
+Uint str_put(str, n)
 register string *str;
 register Uint n;
 {
     register strh **h;
 
-    h = (strh **) ht_lookup(merge->ht, str->text, FALSE);
+    h = (strh **) ht_lookup(sht, str->text, FALSE);
     for (;;) {
 	/*
 	 * The hasher doesn't handle \0 in strings, and so may not have
@@ -119,21 +109,21 @@ register Uint n;
 	    /*
 	     * Not in the hash table. Make a new entry.
 	     */
-	    if (merge->strhchunksz == STR_CHUNK) {
+	    if (strhchunksz == STR_CHUNK) {
 		register strhchunk *l;
 
 		l = ALLOC(strhchunk, 1);
-		l->next = merge->shlist;
-		merge->shlist = l;
-		merge->strhchunksz = 0;
+		l->next = shlist;
+		shlist = l;
+		strhchunksz = 0;
 	    }
-	    s = *h = &merge->shlist->sh[merge->strhchunksz++];
+	    s = *h = &shlist->sh[strhchunksz++];
 	    s->chain.next = (hte *) NULL;
 	    s->chain.name = str->text;
 	    s->str = str;
 	    s->index = n;
-	    s->link = merge->slink;
-	    merge->slink = h;
+	    s->link = slink;
+	    slink = h;
 
 	    return n;
 	} else if (str_cmp(str, (*h)->str) == 0) {
@@ -146,32 +136,35 @@ register Uint n;
 
 /*
  * NAME:	string->clear()
- * DESCRIPTION:	clear a string merge table
+ * DESCRIPTION:	clear the string merge table
  */
-void str_clear(merge)
-strmerge *merge;
+void str_clear()
 {
-    register strh **h;
-    register strhchunk *l;
+    if (sht != (hashtab *) NULL) {
+	register strh **h;
+	register strhchunk *l;
 
-    for (h = merge->slink; h != (strh **) NULL; ) {
-	register strh *f;
+	for (h = slink; h != (strh **) NULL; ) {
+	    register strh *f;
 
-	f = *h;
-	*h = (strh *) NULL;
-	h = f->link;
+	    f = *h;
+	    *h = (strh *) NULL;
+	    h = f->link;
+	}
+	ht_del(sht);
+
+	for (l = shlist; l != (strhchunk *) NULL; ) {
+	    register strhchunk *f;
+
+	    f = l;
+	    l = l->next;
+	    FREE(f);
+	}
+
+	sht = (hashtab *) NULL;
+	slink = (strh **) NULL;
+	shlist = (strhchunk *) NULL;
     }
-    ht_del(merge->ht);
-
-    for (l = merge->shlist; l != (strhchunk *) NULL; ) {
-	register strhchunk *f;
-
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-
-    FREE(merge);
 }
 
 

@@ -26,16 +26,13 @@ extern void  endblock		P((cmdbuf*));
  * DESCRIPTION:	scan a line for a pattern. If the pattern is found, longjump
  *		out.
  */
-static void find(ptr, text)
-char *ptr, *text;
+static void find(text)
+char *text;
 {
-    register cmdbuf *cb;
-
-    cb = (cmdbuf *) ptr;
-    if (rx_exec(cb->regexp, text, 0, cb->ignorecase) > 0) {
-	longjmp(cb->env, TRUE);
+    if (rx_exec(ccb->regexp, text, 0, ccb->ignorecase) > 0) {
+	longjmp(ccb->env, TRUE);
     }
-    cb->lineno++;
+    ccb->lineno++;
 }
 
 /*
@@ -55,7 +52,7 @@ int reverse;
 
     cb->lineno = 0;
     cb->ignorecase = IGNORECASE(cb->vars);
-    eb_range(cb->edbuf, first, last, find, (char *) cb, reverse);
+    eb_range(cb->edbuf, first, last, find, reverse);
     /* not found */
     return 0;
 }
@@ -66,15 +63,14 @@ int reverse;
  * DESCRIPTION:	output a line of text. The format is decided by flags.
  *		Non-ascii characters (eight bit set) have no special processing.
  */
-static void println(ptr, text)
-char *ptr;
+static void println(text)
 register char *text;
 {
     char buffer[2 * MAX_LINE_SIZE + 14];	/* all ^x + number + list */
     register cmdbuf *cb;
     register char *p;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
 
     if (cb->flags & CB_NUMBER) {
 	sprintf(buffer, "%6ld  ", (long) cb->lineno++);
@@ -141,7 +137,7 @@ register cmdbuf *cb;
     }
 
     cb->lineno = cb->first;
-    eb_range(cb->edbuf, cb->first, cb->last, println, (char *) cb, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, println, FALSE);
     cb->this = cb->last;
     return 0;
 }
@@ -422,14 +418,13 @@ register cmdbuf *cb;
  * NAME:	shift()
  * DESCRIPTION:	shift a line left or right
  */
-static void shift(ptr, text)
-char *ptr;
+static void shift(text)
 register char *text;
 {
     register cmdbuf *cb;
     register int idx;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
 
     /* first determine the number of leading spaces */
     idx = 0;
@@ -487,7 +482,7 @@ register cmdbuf *cb;
     startblock(cb);
     cb->lineno = cb->first - 1;
     cb->flags |= CB_CHANGE;
-    eb_range(cb->edbuf, cb->first, cb->last, shift, (char *) cb, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, shift, FALSE);
     endblock(cb);
 
     return RET_FLAGS;
@@ -553,8 +548,8 @@ char *text;
  *		and last but not least everyone has his own taste of
  *		indentation.
  */
-static void indent(ptr, text)
-char *ptr, *text;
+static void indent(text)
+char *text;
 {
     static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
     static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
@@ -567,7 +562,7 @@ char *ptr, *text;
     char *start;
     bool do_indent;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
 
     do_indent = FALSE;
     idx = 0;
@@ -601,7 +596,7 @@ char *ptr, *text;
 	    noshift(cb, p);
 	    return;
 	} else if (cb->flags & CB_COMMENT) {
-	    shift(ptr, text);	/* use previous shift */
+	    shift(text);	/* use previous shift */
 	} else {
 	    do_indent = TRUE;
 	}
@@ -665,7 +660,7 @@ char *ptr, *text;
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
 			cb->shift = cb->ind[0] - idx;
-			shift(ptr, text);
+			shift(text);
 			do_indent = FALSE;
 		    } else {
 			register char *q;
@@ -801,7 +796,7 @@ char *ptr, *text;
 			/* back up if this is a switch label */
 			cb->shift -= SHIFTWIDTH(cb->vars);
 		    }
-		    shift(ptr, text);
+		    shift(text);
 		    do_indent = FALSE;
 		}
 		/* change indentation after current token */
@@ -859,7 +854,7 @@ register cmdbuf *cb;
     cb->lineno = cb->first - 1;
     cb->flags |= CB_CHANGE;
     cb->flags &= ~(CB_PPCONTROL | CB_COMMENT | CB_JSKEYWORD);
-    eb_range(cb->edbuf, cb->first, cb->last, indent, (char *) cb, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, indent, FALSE);
     endblock(cb);
 
     return 0;
@@ -870,14 +865,13 @@ register cmdbuf *cb;
  * NAME:	join()
  * DESCRIPTION:	join a string to the one already in the join buffer
  */
-static void join(ptr, text)
-char *ptr;
+static void join(text)
 register char *text;
 {
     register cmdbuf *cb;
     register char *p;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
 
     p = cb->buffer + cb->buflen;
     if (cb->buflen != 0 && !(cb->flags & CB_EXCL)) {
@@ -924,7 +918,7 @@ register cmdbuf *cb;
     buf[0] = '\0';
     cb->buffer = buf;
     cb->buflen = 0;
-    eb_range(cb->edbuf, cb->first, cb->last, join, (char *) cb, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, join, FALSE);
 
     /* erase marks for joined lines */
     for (m = cb->mark; m < &cb->mark[26]; m++) {
@@ -1002,8 +996,7 @@ unsigned int size;
  *		N, and the next substitution happens on line N + 2, line N + 1
  *		is joined in the new block also.
  */
-static void subst(ptr, text)
-char *ptr;
+static void subst(text)
 register char *text;
 {
     char line[MAX_LINE_SIZE];
@@ -1014,7 +1007,7 @@ register char *text;
     Int newlines;
     bool found;
 
-    cb = (cmdbuf *) ptr;
+    cb = ccb;
 
     found = FALSE;
     newlines = 0;
@@ -1275,7 +1268,7 @@ register cmdbuf *cb;
     cb->buffer = buf;
     cb->buflen = 0;
     cb->flags &= ~(CB_CURRENTBLK | CB_SKIPPED);
-    eb_range(cb->edbuf, cb->first, cb->last, subst, (char *) cb, FALSE);
+    eb_range(cb->edbuf, cb->first, cb->last, subst, FALSE);
     if (cb->flags & CB_CURRENTBLK) {
 	/* finish current block, if needed */
 	endblock(cb);

@@ -15,7 +15,7 @@
 #   undef INET6		/* ... but turned off */
 #  endif
 # else
-#  ifdef AF_INET6	/* define INET6 if AT_INET6 exists */
+#  ifdef AF_INET6	/* define INET6 if AF_INET6 exists */
 #   define INET6
 #  endif
 # endif

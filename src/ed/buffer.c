@@ -51,14 +51,14 @@ register editbuf *eb;
  *		If this line is 0 the block is inserted before the other lines
  *		in the edit buffer.
  */
-void eb_add(eb, ln, getline, context)
+void eb_add(eb, ln, getline)
 register editbuf *eb;
 register Int ln;
-char *(*getline) P((char*)), *context;
+char *(*getline) P((void));
 {
     register block b;
 
-    b = bk_new(eb->lb, getline, context);
+    b = bk_new(eb->lb, getline);
     if (b != (block) 0) {
 	Int size;
 
@@ -232,15 +232,13 @@ register block b;
  * DESCRIPTION:	output a subrange of the edit buffer, without first making
  *		a subrange block for it
  */
-void eb_range(eb, first, last, putline, context, reverse)
+void eb_range(eb, first, last, putline, reverse)
 register editbuf *eb;
 Int first, last;
-void (*putline) P((char*, char*));
-char *context;
+void (*putline) P((char*));
 int reverse;
 {
-    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, context,
-	   reverse);
+    bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }
 
 /*
@@ -250,16 +248,17 @@ int reverse;
  * Lines are stored in a local buffer, which is flushed into a block when full.
  */
 
+static editbuf *eeb;	/* editor buffer */
+
 /*
  * NAME:	add_line()
  * DESCRIPTION:	return the next line from the lines buffer
  */
-static char *add_line(ptr)
-char *ptr;
+static char *add_line()
 {
     register editbuf *eb;
 
-    eb = (editbuf *) ptr;
+    eb = eeb;
     if (eb->szlines > 0) {
 	char *p;
 	int len;
@@ -282,7 +281,8 @@ register editbuf *eb;
     block b;
 
     eb->llines = eb->llbuf;
-    b = bk_new(eb->lb, add_line, (char *) eb);
+    eeb = eb;
+    b = bk_new(eb->lb, add_line);
     if (eb->flines == (block) 0) {
 	eb->flines = b;
     } else {

@@ -789,8 +789,8 @@ static int call_out(string function, mixed delay, mixed args...)
     /*
      * add callout
      */
-    if (sscanf(oname, "/kernel/%*s/rsrc") != 0) {
-	/* direct callouts for resource management objects */
+    if (sscanf(oname, "/kernel/%*s") != 0) {
+	/* direct callouts for kernel objects */
 	return ::call_out(function, delay, args...);
     }
     catch {

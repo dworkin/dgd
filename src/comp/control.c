@@ -864,7 +864,6 @@ static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *str_list;		/* list of string chunks */
 static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
 static Uint nstrs;			/* # of strings in all string chunks */
-static strmerge *smerge;		/* string merge table */
 static fcchunk *fclist;			/* list of fcall chunks */
 static int fcchunksz = FCALL_CHUNK;	/* size of current fcall chunk */
 static cfunc *functions;		/* defined functions table */
@@ -897,7 +896,7 @@ void ctrl_create()
     new = newctrl->inherits = ALLOC(dinherit, newctrl->ninherits = count + 1);
     new += count;
     nvars = 0;
-    smerge = str_merge();
+    str_merge();
 
     if (ninherits > 0) {
 	register oh *ohash;
@@ -950,7 +949,7 @@ void ctrl_create()
 
 		for (n = ctrl->nstrings; n > 0; ) {
 		    --n;
-		    str_put(smerge, d_get_strconst(ctrl, i, n),
+		    str_put(d_get_strconst(ctrl, i, n),
 			    ((Uint) count << 16) | n);
 		}
 	    } else {
@@ -996,7 +995,7 @@ string *str;
 {
     register Uint desc, new;
 
-    desc = str_put(smerge, str, new = ((Uint) ninherits << 16) | nstrs);
+    desc = str_put(str, new = ((Uint) ninherits << 16) | nstrs);
     if (desc == new) {
 	/*
 	 * it is really a new string
@@ -2020,10 +2019,7 @@ void ctrl_clear()
 	d_del_control(newctrl);
 	newctrl = (control *) NULL;
     }
-    if (smerge != (strmerge *) NULL) {
-	str_clear(smerge);
-	smerge = (strmerge *) NULL;
-    }
+    str_clear();
     while (str_list != (strchunk *) NULL) {
 	register strchunk *l;
 	register string **s;
@@ -2093,7 +2089,6 @@ register control *old, *new;
     register unsigned short j, k;
     register dvardef *v;
     register long n;
-    register strmerge *merge;
     register unsigned short *vmap;
     register dinherit *inh, *inh2;
     register control *ctrl, *ctrl2;
@@ -2113,55 +2108,56 @@ register control *old, *new;
 	}
 	voffset = inh->varoffset + ctrl->nvardefs;
 
-	merge = str_merge();
 	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
 	    if (strcmp(OBJR(inh->oindex)->chain.name,
 		       OBJR(inh2->oindex)->chain.name) == 0) {
 		/*
 		 * put var names from old control block in string merge table
 		 */
+		str_merge();
 		ctrl2 = o_control(OBJR(inh2->oindex));
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
-		    str_put(merge, d_get_strconst(ctrl2, v->inherit, v->index),
+		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),
 			    ((Uint) k << 8) | v->type);
 		}
+
+		/*
+		 * map new variables to old ones
+		 */
+		for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs;
+		     k++, v++) {
+		    n = str_put(d_get_strconst(ctrl, v->inherit, v->index),
+				(Uint) 0);
+		    if (n != 0 &&
+			(((n & 0xff) == v->type &&
+			  ((n & T_TYPE) != T_CLASS ||
+			   str_cmp(ctrl->cvstrings[k],
+				   ctrl2->cvstrings[n >> 8]) == 0)) ||
+			 ((v->type & T_REF) <= (n & T_REF) &&
+			  (v->type & T_TYPE) == T_MIXED))) {
+			*vmap = inh2->varoffset + (n >> 8);
+		    } else {
+			switch (v->type) {
+			case T_INT:
+			    *vmap = NEW_INT;
+			    break;
+
+			case T_FLOAT:
+			    *vmap = NEW_FLOAT;
+			    break;
+
+			default:
+			    *vmap = NEW_POINTER;
+			    break;
+			}
+		    }
+		    vmap++;
+		}
+		str_clear();
 		break;
 	    }
 	}
-
-	/*
-	 * map new variables to old ones
-	 */
-	for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs; k++, v++) {
-	    n = str_put(merge, d_get_strconst(ctrl, v->inherit, v->index),
-			(Uint) 0);
-	    if (n != 0 &&
-		(((n & 0xff) == v->type &&
-		  ((n & T_TYPE) != T_CLASS ||
-		   str_cmp(ctrl->cvstrings[k],
-			   ctrl2->cvstrings[n >> 8]) == 0)) ||
-		 ((v->type & T_REF) <= (n & T_REF) &&
-		  (v->type & T_TYPE) == T_MIXED))) {
-		*vmap = inh2->varoffset + (n >> 8);
-	    } else {
-		switch (v->type) {
-		case T_INT:
-		    *vmap = NEW_INT;
-		    break;
-
-		case T_FLOAT:
-		    *vmap = NEW_FLOAT;
-		    break;
-
-		default:
-		    *vmap = NEW_POINTER;
-		    break;
-		}
-	    }
-	    vmap++;
-	}
-	str_clear(merge);
     }
 
     /*

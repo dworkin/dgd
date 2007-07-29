@@ -375,7 +375,7 @@ int update_ticks(mixed *limits, int ticks)
 	    }
 	    owners[limits[LIM_OWNER]]->update_ticks(ticks,
 						    resources["tick usage"]);
-	    ticks = (limits[LIM_TICKS] >= 0) ?
+	    ticks = (limits[LIM_NEXT] && limits[LIM_TICKS] >= 0) ?
 		     limits[LIM_NEXT][LIM_MAXTICKS] -= ticks : -1;
 	}
 	return ticks;

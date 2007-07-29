@@ -22,9 +22,9 @@ extern void		arr_del		P((array*));
 extern void		arr_freelist	P((array*));
 extern void		arr_freeall	P((void));
 
-extern arrmerge	       *arr_merge	P((void));
-extern Uint		arr_put		P((arrmerge*, array*, Uint));
-extern void		arr_clear	P((arrmerge*));
+extern void		arr_merge	P((void));
+extern Uint		arr_put		P((array*, Uint));
+extern void		arr_clear	P((void));
 
 extern void		arr_backup	P((abchunk**, array*));
 extern void		arr_commit	P((abchunk**, dataplane*, int));

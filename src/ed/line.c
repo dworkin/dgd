@@ -374,16 +374,16 @@ char *text;
  * DESCRIPTION:	read a block of lines from function getline. continue until
  *		getline returns 0. Return the block.
  */
-block bk_new(lb, getline, context)
+block bk_new(lb, getline)
 register linebuf *lb;
-char *(*getline) P((char*)), *context;
+char *(*getline) P((void));
 {
     register blk *bp;
     register char *text;
     blk bb;
 
     /* get first line */
-    text = (*getline)(context);
+    text = (*getline)();
     if (text == (char *) NULL) {
 	return (block) 0;
     }
@@ -396,7 +396,7 @@ char *(*getline) P((char*)), *context;
     bb.index2 = 0;
 
     /* append lines */
-    while ((text=(*getline)(context)) != (char *) NULL) {
+    while ((text=(*getline)()) != (char *) NULL) {
 	bp = bk_putln(lb, bp, text);
 	bb.lines++;
     }
@@ -671,8 +671,7 @@ register Int idx, size;
 		size -= lines;
 
 		do {
-		    (*lb->putline)(lb->context,
-				   lb->buf + *((short *)(bp + 1) + idx++));
+		    (*lb->putline)(lb->buf + *((short *)(bp + 1) + idx++));
 		    bp = bk_load(lb, mid);
 		} while (--lines > 0);
 
@@ -694,8 +693,7 @@ register Int idx, size;
 
 		idx = bp->lines - idx;
 		do {
-		    (*lb->putline)(lb->context,
-				   lb->buf + *((short *)(bp + 1) + --idx));
+		    (*lb->putline)(lb->buf + *((short *)(bp + 1) + --idx));
 		    bp = bk_load(lb, mid);
 		} while (--lines > 0);
 
@@ -714,18 +712,16 @@ register Int idx, size;
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(lb, b, idx, size, putline, context, reverse)
+void bk_put(lb, b, idx, size, putline, reverse)
 register linebuf *lb;
 block b;
 Int idx, size;
-void (*putline) P((char*, char*));
-char *context;
+void (*putline) P((char*));
 int reverse;
 {
     blk *bp;
 
     lb->putline = putline;
-    lb->context = context;
     lb->reverse = reverse;
     bp = bk_load(lb, b);
     bk_put1(lb, bp, (reverse) ? bp->lines - idx - size : idx, size);

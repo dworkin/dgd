@@ -1675,3 +1675,4 @@ DGD 1.3
    scope.
  - Handle atomic status properly in precompiled code with a catch.
  - Update the statedump format for svalues.
+ - Removed some MP changes that have no purpose here.

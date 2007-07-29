@@ -94,7 +94,6 @@ typedef struct {
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
-    arrmerge *merge;		/* array merge table */
     Uint narrays;		/* number of arrays/mappings encountered */
 } savecontext;
 
@@ -186,7 +185,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->merge, a, x->narrays);
+    i = arr_put(a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous array */
 	sprintf(buf, "#%lu", (unsigned long) i);
@@ -256,7 +255,7 @@ array *a;
     register value *v;
     xfloat flt;
 
-    i = arr_put(x->merge, a, x->narrays);
+    i = arr_put(a, x->narrays);
     if (i < x->narrays) {
 	/* same as some previous mapping */
 	sprintf(buf, "@%lu", (unsigned long) i);
@@ -402,7 +401,7 @@ register frame *f;
     x.bufsz = 0;
 
     ctrl = f->ctrl;
-    x.merge = arr_merge();
+    arr_merge();
     x.narrays = 0;
     if (f->lwobj != (array *) NULL) {
 	var = &f->lwobj->elts[2];
@@ -466,7 +465,7 @@ register frame *f;
 	}
     }
 
-    arr_clear(x.merge);
+    arr_clear();
     if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
 	AFREE(x.buffer);

@@ -85,3 +85,5 @@ extern cmdbuf *cb_new     P((char*));
 extern void    cb_del     P((cmdbuf*));
 extern bool    cb_command P((cmdbuf*, char*));
 extern int     cb_edit	  P((cmdbuf*));
+
+extern cmdbuf *ccb;
