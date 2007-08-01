@@ -2108,7 +2108,8 @@ register control *old, *new;
 	}
 	voffset = inh->varoffset + ctrl->nvardefs;
 
-	for (j = old->ninherits, inh2 = old->inherits; j > 0; --j, inh2++) {
+	j = old->ninherits;
+	for (inh2 = old->inherits; ; inh2++) {
 	    if (strcmp(OBJR(inh->oindex)->chain.name,
 		       OBJR(inh2->oindex)->chain.name) == 0) {
 		/*
@@ -2155,6 +2156,30 @@ register control *old, *new;
 		    vmap++;
 		}
 		str_clear();
+		break;
+	    }
+
+	    if (--j == 0) {
+		/*
+		 * new inherited object
+		 */
+		for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs;
+		     k++, v++) {
+		    switch (v->type) {
+		    case T_INT:
+			*vmap = NEW_INT;
+			break;
+
+		    case T_FLOAT:
+			*vmap = NEW_FLOAT;
+			break;
+
+		    default:
+			*vmap = NEW_POINTER;
+			break;
+		    }
+		    vmap++;
+		}
 		break;
 	    }
 	}

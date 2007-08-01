@@ -1676,3 +1676,6 @@ DGD 1.3
  - Handle atomic status properly in precompiled code with a catch.
  - Update the statedump format for svalues.
  - Removed some MP changes that have no purpose here.
+ - Variables from newly inherited objects were not handled properly
+   during upgrades.
+ - Fixed a bug in object type handling in ?:.

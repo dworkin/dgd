@@ -1796,8 +1796,16 @@ register node *n1, *n2, *n3;
     }
 
     n1 = node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
-    if ((type & T_TYPE) == T_CLASS && str_cmp(n2->class, n3->class) == 0) {
-	n1->class = n2->class;
+    if ((type & T_TYPE) == T_CLASS) {
+	if (n2->class == (string *) NULL) {
+	    n1->class = n3->class;
+	} else if (n3->class == (string *) NULL ||
+		   str_cmp(n2->class, n3->class) == 0) {
+	    n1->class = n2->class;
+	} else {
+	    /* downgrade to object */
+	    n1->type = (n1->type & T_REF) | T_OBJECT;
+	}
     }
     return n1;
 }
