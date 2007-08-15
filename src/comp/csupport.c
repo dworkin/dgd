@@ -197,6 +197,11 @@ char *auto_obj, *driver_obj;
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
 
+	    if (l->typechecking != conf_typechecking()) {
+		message("Precompiled object /%s has typechecking level %d",
+			l->inherits[l->ninherits - 1].name, l->typechecking);
+		return FALSE;
+	    }
 	    if (!pc_inherits(inherits + ninherits, l->inherits, l->ninherits,
 			     l->compiled)) {
 		return FALSE;

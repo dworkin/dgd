@@ -80,9 +80,9 @@ static char *get_line()
  * NAME:	io_load()
  * DESCRIPTION:	append block read from file after a line
  */
-bool io_load(eb, filename, l, iobuf)
+bool io_load(eb, fname, l, iobuf)
 editbuf *eb;
-char *filename;
+char *fname;
 Int l;
 io *iobuf;
 {
@@ -90,7 +90,7 @@ io *iobuf;
     struct stat sbuf;
 
     /* open file */
-    if (path_ed_read(filename, filename) == (char *) NULL ||
+    if (path_ed_read(filename, fname) == (char *) NULL ||
 	P_stat(filename, &sbuf) < 0 || (sbuf.st_mode & S_IFMT) != S_IFREG) {
 	return FALSE;
     }
@@ -163,9 +163,9 @@ register char *text;
  * NAME:	io_save()
  * DESCRIPTION:	write a range of lines to a file
  */
-bool io_save(eb, filename, first, last, append, iobuf)
+bool io_save(eb, fname, first, last, append, iobuf)
 editbuf *eb;
-char *filename;
+char *fname;
 Int first, last;
 int append;
 io *iobuf;
@@ -173,7 +173,7 @@ io *iobuf;
     char buf[BUF_SIZE];
     struct stat sbuf;
 
-    if (path_ed_write(filename, filename) == (char *) NULL ||
+    if (path_ed_write(filename, fname) == (char *) NULL ||
 	(P_stat(filename, &sbuf) >= 0 && (sbuf.st_mode & S_IFMT) != S_IFREG))
     {
 	return FALSE;

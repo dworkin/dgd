@@ -316,7 +316,8 @@ char *argv[];
     } else {
 	printf("%u, symbols,\n", ctrl->nsymbols);
     }
-    printf("%u, %u, %u\n", ctrl->nvariables, ctrl->nifdefs, ctrl->nvinit);
+    printf("%u, %u, %u,\n", ctrl->nvariables, ctrl->nifdefs, ctrl->nvinit);
+    printf("%d\n", conf_typechecking());
     printf("};\n# endif\n");
 
     return 0;

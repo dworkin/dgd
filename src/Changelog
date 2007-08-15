@@ -1679,3 +1679,6 @@ DGD 1.3
  - Variables from newly inherited objects were not handled properly
    during upgrades.
  - Fixed a bug in object type handling in ?:.
+ - Forbid running a precompiled object with a different typechecking level than
+   it was compiled with.
+ - Fixed an editor path bug inadvertedly introduced a few patches ago.

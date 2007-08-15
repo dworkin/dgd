@@ -43,6 +43,8 @@ typedef struct {
     unsigned short nvariables;	/* # variables */
     unsigned short nifdefs;	/* # int/float definitions */
     unsigned short nvinit;	/* # variables requiring initialization */
+
+    short typechecking;		/* typechecking level */
 } precomp;
 
 extern precomp	*precompiled[];	/* table of precompiled objects */
