@@ -1682,3 +1682,6 @@ DGD 1.3
  - Forbid running a precompiled object with a different typechecking level than
    it was compiled with.
  - Fixed an editor path bug inadvertedly introduced a few patches ago.
+ - Allow multiple add-on packages to register their extra kfuns.
+ - Fixed a swapping bug that occurred with small cache sizes.
+ - Fixed a bug in restoring objects with class variables.

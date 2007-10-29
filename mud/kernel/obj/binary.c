@@ -6,6 +6,7 @@ inherit LIB_CONN;	/* basic connection object */
 
 object driver;		/* driver object */
 string buffer;		/* buffered input */
+int flushing;		/* pending input flush? */
 
 /*
  * NAME:	create()
@@ -108,8 +109,9 @@ void set_mode(int mode)
 {
     if (KERNEL() || SYSTEM()) {
 	::set_mode(mode);
-	if (mode == MODE_RAW && strlen(buffer) != 0) {
+	if (!flushing && mode == MODE_RAW && strlen(buffer) != 0) {
 	    call_out("flush", 0);
+	    flushing = TRUE;
 	}
     }
 }
@@ -122,6 +124,7 @@ static void flush()
 {
     string str;
 
+    flushing = FALSE;
     if (query_mode() == MODE_RAW && strlen(buffer) != 0) {
 	str = buffer;
 	buffer = "";

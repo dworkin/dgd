@@ -336,6 +336,8 @@ bool fill;
 	    last = h->prev;
 	    if (last != (header *) NULL) {
 		last->next = (header *) NULL;
+	    } else {
+		first = (header *) NULL;
 	    }
 	    save = h->swap;
 	    if (h->dirty) {

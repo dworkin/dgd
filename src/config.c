@@ -44,7 +44,7 @@ static config conf[] = {
 							1, USHRT_MAX },
 # define CACHE_SIZE	3
 				{ "cache_size",		INT_CONST, FALSE, FALSE,
-							2, UINDEX_MAX },
+							1, UINDEX_MAX },
 # define CALL_OUTS	4
 				{ "call_outs",		INT_CONST, FALSE, FALSE,
 							0, UINDEX_MAX - 1 },

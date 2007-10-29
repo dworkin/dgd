@@ -40,6 +40,7 @@ static extfunc *kfext;	/* additional kfun pointers */
  */
 void kf_clear()
 {
+    kfext = (extfunc *) NULL;
     nkfun = sizeof(kforig) / sizeof(kfunc);
 }
 
@@ -141,16 +142,19 @@ register extkfunc *kfadd;
 register int n;
 {
     register kfunc *kf;
+    register extfunc *kfe;
 
-    kfext = ALLOC(extfunc, n) + n;
+    kfext = REALLOC(kfext, extfunc, nkfun - sizeof(kforig) / sizeof(kfunc),
+		    nkfun - sizeof(kforig) / sizeof(kfunc) + n);
     kfadd += n;
     nkfun += n;
     kf = kftab + nkfun;
+    kfe = kfext + nkfun - sizeof(kforig) / sizeof(kfunc);
     while (n != 0) {
 	(--kf)->name = (--kfadd)->name;
 	kf->proto = prototype(kfadd->proto);
 	kf->func = (int (*)()) &kf_callgate;
-	*--kfext = kfadd->func;
+	*--kfe = kfadd->func;
 	--n;
     }
 }
