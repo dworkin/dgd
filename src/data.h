@@ -130,6 +130,7 @@ struct _value_ {
 
 typedef struct {
     Uint time;			/* time of call */
+    unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     value val[4];		/* function name, 3 direct arguments */
 } dcallout;
@@ -206,6 +207,7 @@ struct _dataspace_ {
 /* sdata.c */
 
 extern void		d_init		 P((int));
+extern void		d_init_conv	 P((int, int, int, int));
 
 extern control	       *d_new_control	 P((void));
 extern dataspace       *d_new_dataspace  P((object*));
@@ -230,8 +232,8 @@ extern void		d_get_callouts	 P((dataspace*));
 extern sector		d_swapout	 P((unsigned int));
 extern void		d_swapsync	 P((void));
 extern void		d_upgrade_mem	 P((object*, object*));
-extern void		d_conv_control	 P((unsigned int, int));
-extern void		d_conv_dataspace P((object*, Uint*, int, int));
+extern void		d_restore_obj	 P((object*, Uint*));
+extern void		d_converted	 P((void));
 
 extern void		d_free_control	 P((control*));
 extern void		d_free_dataspace P((dataspace*));
@@ -254,7 +256,7 @@ extern void		d_change_map	P((array*));
 
 extern uindex		d_new_call_out	P((dataspace*, string*, Int,
 					   unsigned int, frame*, int));
-extern Int		d_del_call_out	P((dataspace*, Uint));
+extern Int		d_del_call_out	P((dataspace*, Uint, unsigned short*));
 extern string	       *d_get_call_out	P((dataspace*, unsigned int, frame*,
 					   int*));
 extern array	       *d_list_callouts	P((dataspace*, dataspace*));

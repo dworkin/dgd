@@ -2,6 +2,7 @@
 # include "str.h"
 # include "array.h"
 # include "object.h"
+# include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
 # include "call_out.h"
@@ -169,10 +170,11 @@ register value *lhs;
  * NAME:	data->alloc_call_out()
  * DESCRIPTION:	allocate a new callout
  */
-static uindex d_alloc_call_out(data, handle, time, nargs, v)
+static uindex d_alloc_call_out(data, handle, time, mtime, nargs, v)
 register dataspace *data;
 register uindex handle;
 Uint time;
+unsigned short mtime;
 int nargs;
 register value *v;
 {
@@ -237,6 +239,7 @@ register value *v;
     }
 
     co->time = time;
+    co->mtime = mtime;
     co->nargs = nargs;
     memcpy(co->val, v, sizeof(co->val));
     switch (nargs) {
@@ -633,13 +636,13 @@ bool merge;
 
 		    case COP_REMOVE:
 			co_del(plane->alocal.data->oindex, cop->handle,
-			       cop->rco.time);
+			       cop->rco.time, cop->rco.mtime);
 			ncallout++;
 			break;
 
 		    case COP_REPLACE:
 			co_del(plane->alocal.data->oindex, cop->handle,
-			       cop->rco.time);
+			       cop->rco.time, cop->rco.mtime);
 			co_new(plane->alocal.data->oindex, cop->handle,
 			       cop->time, cop->mtime, cop->queue);
 			cop_commit(cop);
@@ -873,7 +876,7 @@ register dataplane *plane;
 
 	    case COP_REMOVE:
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
-				 cop->rco.nargs, cop->rco.val);
+				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
 		cop_del(plane, c, FALSE);
 		ncallout++;
 		break;
@@ -881,7 +884,7 @@ register dataplane *plane;
 	    case COP_REPLACE:
 		d_free_call_out(data, cop->handle);
 		d_alloc_call_out(data, cop->handle, cop->rco.time,
-				 cop->rco.nargs, cop->rco.val);
+				 cop->rco.mtime, cop->rco.nargs, cop->rco.val);
 		cop_discard(cop);
 		cop_del(plane, c, TRUE);
 		break;
@@ -1236,7 +1239,7 @@ int nargs;
 	break;
     }
     f->sp += nargs;
-    handle = d_alloc_call_out(data, 0, ct, nargs, v);
+    handle = d_alloc_call_out(data, 0, ct, m, nargs, v);
 
     if (data->plane->level == 0) {
 	/*
@@ -1285,13 +1288,15 @@ int nargs;
  * NAME:	data->del_call_out()
  * DESCRIPTION:	remove a callout
  */
-Int d_del_call_out(data, handle)
+Int d_del_call_out(data, handle, mtime)
 dataspace *data;
 Uint handle;
+unsigned short *mtime;
 {
     register dcallout *co;
     Int t;
 
+    *mtime = 0xffff;
     if (handle == 0 || handle > data->ncallouts) {
 	/* no such callout */
 	return -1;
@@ -1306,12 +1311,13 @@ Uint handle;
 	return -1;
     }
 
-    t = co_remaining(co->time);
+    *mtime = co->mtime;
+    t = co_remaining(co->time, mtime);
     if (data->plane->level == 0) {
 	/*
 	 * remove normal callout
 	 */
-	co_del(data->oindex, (uindex) handle, co->time);
+	co_del(data->oindex, (uindex) handle, co->time, co->mtime);
     } else {
 	register dataplane *plane;
 	register copatch **c, *cop;
@@ -1451,6 +1457,7 @@ register dataspace *data;
     register value *v, *v2, *elts;
     array *list, *a;
     uindex max_args;
+    xfloat flt;
 
     if (data->ncallouts == 0) {
 	return arr_new(host, 0L);
@@ -1489,7 +1496,13 @@ register dataspace *data;
 	    PUT_STRVAL(v, co->val[0].u.string);
 	    v++;
 	    /* time */
-	    PUT_INTVAL(v, co->time);
+	    if (co->mtime == 0xffff) {
+		PUT_INTVAL(v, co->time);
+	    } else {
+		flt.low = co->time;
+		flt.high = co->mtime;
+		PUT_FLTVAL(v, flt);
+	    }
 	    v++;
 
 	    /* copy arguments */
@@ -1982,6 +1995,7 @@ register dataspace *data;
     if (data->ncallouts != 0) {
 	register Uint n;
 	register dcallout *co;
+	unsigned short dummy;
 
 	/*
 	 * remove callouts from callout table
@@ -1991,7 +2005,7 @@ register dataspace *data;
 	}
 	for (n = data->ncallouts, co = data->callouts + n; n > 0; --n) {
 	    if ((--co)->val[0].type == T_STRING) {
-		d_del_call_out(data, n);
+		d_del_call_out(data, n, &dummy);
 	    }
 	}
     }

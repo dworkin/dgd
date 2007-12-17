@@ -46,7 +46,7 @@ struct _object_ {
 
 # define OBJ_NONE		UINDEX_MAX
 
-extern void	  o_init		P((unsigned int));
+extern void	  o_init		P((unsigned int, Uint));
 extern object	 *o_oread		P((unsigned int));
 extern object	 *o_owrite		P((unsigned int));
 extern void	  o_new_plane		P((void));
@@ -70,7 +70,7 @@ extern void	  o_clean		P((void));
 extern uindex	  o_count		P((void));
 extern bool	  o_dump		P((int));
 extern void	  o_restore		P((int, unsigned int));
-extern void	  o_conv		P((int, int, int, int));
+extern bool	  o_copy		P((Uint));
 
 extern void	  swapout		P((void));
 extern void	  dump_state		P((void));

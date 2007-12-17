@@ -49,17 +49,25 @@ char *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
 bool swap, dump, stop;		/* global state vars */
 static uindex otabsize;		/* size of object table */
+static uindex uobjects;		/* objects to check for upgrades */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
+static char *omap;		/* object dump bitmap */
+static Uint *counttab;		/* object count table */
 static object *upgraded;	/* list of upgraded objects */
+static uindex dobjects, dobject;/* objects to copy */
+static uindex dchunksz;		/* copy chunk size */
+static Uint dinterval;		/* copy interval */
+static Uint dtime;		/* time copying started */
 Uint odcount;			/* objects destructed count */
 
 /*
  * NAME:	object->init()
  * DESCRIPTION:	initialize the object tables
  */
-void o_init(n)
+void o_init(n, interval)
 register unsigned int n;
+Uint interval;
 {
     otable = ALLOC(object, otabsize = n);
     memset(otable, '\0', n * sizeof(object));
@@ -72,10 +80,15 @@ register unsigned int n;
     baseplane.destruct = baseplane.free = OBJ_NONE;
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
-    baseplane.ocount = 2;
+    baseplane.ocount = 3;
     baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
     oplane = &baseplane;
+    omap = ALLOC(char, (n + 7) >> 3);
+    memset(omap, '\0', (n + 7) >> 3);
+    counttab = ALLOC(Uint, n);
     upgraded = (object *) NULL;
+    uobjects = dobjects = 0;
+    dinterval = (interval + 19) / 20;
     odcount = 1;
     obase = TRUE;
 }
@@ -289,6 +302,7 @@ static object *o_alloc()
     obj->data = (dataspace *) NULL;
     obj->cfirst = SW_UNUSED;
     obj->dfirst = SW_UNUSED;
+    counttab[n] = 0;
 
     return obj;
 }
@@ -898,6 +912,18 @@ int access;
 }
 
 /*
+ * NAME:	object->restore_object()
+ * DESCRIPTION:	restore an object from the dump file
+ */
+static void o_restore_obj(obj)
+register object *obj;
+{
+    BCLR(omap, obj->index);
+    --dobjects;
+    d_restore_obj(obj, counttab);
+}
+
+/*
  * NAME:	object->control()
  * DESCRIPTION:	return the control block for an object
  */
@@ -912,7 +938,11 @@ object *obj;
 	o = OBJR(o->u_master);
     }
     if (o->ctrl == (control *) NULL) {
-	o->ctrl = d_load_control(o);	/* reload */
+	if (BTST(omap, o->index)) {
+	    o_restore_obj(o);
+	} else {
+	    o->ctrl = d_load_control(o);
+	}
     } else {
 	d_ref_control(o->ctrl);
     }
@@ -927,8 +957,11 @@ dataspace *o_dataspace(o)
 register object *o;
 {
     if (o->data == (dataspace *) NULL) {
-	/* load dataspace block */
-	o->data = d_load_dataspace(o);
+	if (BTST(omap, o->index)) {
+	    o_restore_obj(o);
+	} else {
+	    o->data = d_load_dataspace(o);
+	}
     } else {
 	d_ref_dataspace(o->data);
     }
@@ -1137,7 +1170,7 @@ void o_clean()
     swap = baseplane.swap;
     dump = baseplane.dump;
     stop = baseplane.stop;
-    baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
+    baseplane.swap = baseplane.dump = FALSE;
 }
 
 /*
@@ -1160,6 +1193,42 @@ typedef struct {
 static char dh_layout[] = "uuui";
 
 # define CHUNKSZ	16384
+
+/*
+ * NAME:	object->sweep()
+ * DESCRIPTION:	sweep through the object table after a dump or restore
+ */
+static void o_sweep(n)
+register uindex n;
+{
+    register Uint count, *ct;
+    register object *obj;
+
+    uobjects = n;
+    count = 3;
+    for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
+	if (obj->count != 0) {
+	    if (obj->cfirst != SW_UNUSED || obj->dfirst != SW_UNUSED) {
+		BSET(omap, obj->index);
+		dobjects++;
+	    }
+	} else if ((obj->flags & O_MASTER) && obj->u_ref != 0 &&
+		   obj->cfirst != SW_UNUSED) {
+	    BSET(omap, obj->index);
+	    dobjects++;
+	}
+
+	if (obj->count != 0) {
+	    *ct = obj->count;
+	    obj->count = count++;
+	} else {
+	    *ct = 2;
+	}
+    }
+
+    baseplane.ocount = count;
+    odcount = 1;
+}
 
 /*
  * NAME:	object->dump()
@@ -1206,6 +1275,9 @@ int fd;
 	    buflen += len;
 	}
     }
+
+    o_sweep(baseplane.nobjects);
+
     return (buflen == 0 || P_write(fd, buffer, buflen) >= 0);
 }
 
@@ -1242,7 +1314,7 @@ unsigned int rlwobj;
     baseplane.nobjects = dh.nobjects;
     baseplane.nfreeobjs = dh.nfreeobjs;
 
-    /* read object names, and patch all objects and control blocks */
+    /* read object names */
     buflen = 0;
     for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
 	if (rlwobj != 0) {
@@ -1299,127 +1371,91 @@ unsigned int rlwobj;
 		o->flags &= ~O_SPECIAL;
 	    }
 	}
+    }
 
-	/* check memory */
-	if (!m_check()) {
-	    m_purge();
+    o_sweep(baseplane.nobjects);
+
+    for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
+	if ((o->flags & O_SPECIAL) == O_SPECIAL &&
+	    ext_restore != (void (*) P((object*))) NULL) {
+	    (*ext_restore)(o);
+	    d_swapout(1);
 	}
     }
 }
 
-static int cmp P((cvoid*, cvoid*));
-
 /*
- * NAME:	cmp()
- * DESCRIPTION:	compare two objects
+ * NAME:	object->copy()
+ * DESCRIPTION:	copy objects from dump to swap
  */
-static int cmp(cv1, cv2)
-cvoid *cv1, *cv2;
+bool o_copy(time)
+Uint time;
 {
-    register object *o1, *o2;
+    register uindex n;
+    register object *obj, *tmpl;
 
-    /* non-objects first, then objects sorted by count */
-    o1 = OBJ(*((Uint *) cv1));
-    o2 = OBJ(*((Uint *) cv2));
-    if (o1->count == 0) {
-	if (o2->count == 0) {
-	    return (o1 <= o2) ? (o1 < o2) ? -1 : 0 : 1;
-	}
-	return -1;
-    } else if (o2->count == 0) {
-	return 1;
-    } else {
-	return (o1->count <= o2->count) ? (o1->count < o2->count) ? -1 : 0 : 1;
-    }
-}
-
-/*
- * NAME:	object->conv()
- * DESCRIPTION:	convert all objects, creating a new swap file
- */
-void o_conv(conv_callouts, conv_lwos, conv_ctrls, conv_datas)
-int conv_callouts, conv_lwos, conv_ctrls, conv_datas;
-{
-    register Uint *counts, *sorted;
-    register uindex i;
-    register object *o;
-
-    if (baseplane.nobjects != 0) {
-	/*
-	 * create new object count table
-	 */
-	counts = ALLOCA(Uint, baseplane.nobjects);
-	sorted = ALLOCA(Uint, baseplane.nobjects) + baseplane.nobjects;
-	i = baseplane.nobjects;
-	while (i != 0) {
-	    *--sorted = --i;
-	}
-	/* sort by count */
-	qsort(sorted, baseplane.nobjects, sizeof(Uint), cmp);
-	/* skip destructed objects */
-	for (i = 0; i < baseplane.nobjects; i++) {
-	    if (OBJ(*sorted)->count != 0) {
-		break;
+    if (dobjects != 0) {
+	if (time == 0) {
+	    n = 0;  /* copy all objects */
+	} else {
+	    if (dtime == 0) {
+		/* first copy */
+		dtime = time - 1;
+		dobject = 0;
+		if (dinterval == 0) {
+		    dchunksz = SWAPCHUNKSZ;
+		} else {
+		    dchunksz = (dobjects + dinterval - 1) / dinterval;
+		    if (dchunksz == 0) {
+			dchunksz = 1;
+		    }
+		}
 	    }
-	    sorted++;
-	}
-	/* fill in counts table */
-	while (i < baseplane.nobjects) {
-	    counts[*sorted++] = ++i + 1;
-	}
-	AFREE(sorted - i);
-	baseplane.ocount = i + 2;
 
-	/*
-	 * convert all control blocks
-	 */
-	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	    if ((o->count != 0 || ((o->flags & O_MASTER) && o->u_ref != 0)) &&
-		o->cfirst != SW_UNUSED) {
-		d_conv_control(o->index, conv_ctrls);
+	    time -= dtime;
+	    if (dinterval != 0 && time >= dinterval) {
+		n = 0;      /* copy all objects */
+	    } else if ((n=dchunksz * time) < dobjects) {
+		/* copy a portion of remaining objects */
+		n = dobjects - n;
+	    } else {
+		n = 0;      /* copy all objects */
 	    }
 	}
 
-	/*
-	 * convert all data blocks
-	 */
-	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	    if (o->count != 0 && o->dfirst != SW_UNUSED) {
-		d_conv_dataspace(o, counts, conv_callouts, conv_datas);
-		o_clean_upgrades();
+	while (dobjects > n) {
+	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
+	    dobject = obj->index + 1;
+	    o_restore_obj(obj);
+	    if (time == 0) {
 		d_swapout(1);
 	    }
 	}
+    }
+    o_clean();
 
-	/*
-	 * clean up object upgrade templates
-	 */
-	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	    if (o->count != 0 && o->cfirst != SW_UNUSED &&
-		(o->flags & O_LWOBJ) && o_purge_upgrades(o)) {
-		o->prev = OBJ_NONE;
+    if (dobjects == 0) {
+	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
+	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
+		tmpl = obj;
+		while (tmpl->prev != OBJ_NONE && counttab[tmpl->prev] != 2) {
+		    tmpl = OBJ(tmpl->prev);
+		}
+		if (o_purge_upgrades(tmpl)) {
+		    tmpl->prev = OBJ_NONE;
+		}
 	    }
 	}
 	o_clean();
 
-	/*
-	 * last pass over all objects:
-	 * fix count and update fields, handle special objects
-	 */
-	for (i = baseplane.nobjects, o = otable; i > 0; --i, o++, counts++) {
-	    if (o->count != 0) {
-		o->count = *counts;
-	    }
-	    o->update = 0;
-	    if ((o->flags & O_SPECIAL) == O_SPECIAL &&
-		ext_restore != (void (*) P((object*))) NULL) {
-		(*ext_restore)(o);
-		d_swapout(1);
-	    }
-	}
-	AFREE(counts - baseplane.nobjects);
+	d_converted();
+	dtime = 0;
+	return FALSE;
+    } else {
+	return TRUE;
     }
 }
+
 
 /*
  * NAME:	swapout()

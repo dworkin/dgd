@@ -98,10 +98,10 @@ void endthread()
 	/*
 	 * create a state dump
 	 */
-	d_swapsync();
 	conf_dump();
 	dump = FALSE;
 	rebuild = TRUE;
+	dindex = UINDEX_MAX;
     }
 
     if (stop) {
@@ -140,7 +140,8 @@ char **argv;
 
     /* initialize */
     dindex = UINDEX_MAX;
-    swap = dump = rebuild = intr = stop = FALSE;
+    swap = dump = intr = stop = FALSE;
+    rebuild = TRUE;
     rtime = 0;
     if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
 	return 2;	/* initialization failed */
@@ -162,8 +163,9 @@ char **argv;
 	if (rebuild) {
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
-		rebuild = sw_copy(timeout);
+		rebuild = o_copy(timeout);
 		if (rebuild) {
+		    co_swapcount(d_swapout(fragment));
 		    rtime = timeout + 1;
 		    rmtime = mtime;
 		} else {

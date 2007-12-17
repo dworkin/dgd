@@ -107,7 +107,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	6
+# define FORMAT_VERSION	7
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -243,6 +243,8 @@ void conf_dump()
     header[DUMP_ELAPSED + 2] = etime >> 8;
     header[DUMP_ELAPSED + 3] = etime;
 
+    o_copy(0);
+    d_swapout(1);
     fd = sw_dump(conf[DUMP_FILE].u.str);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
@@ -268,18 +270,17 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    bool conv_callouts, conv_lwos, conv_ctrls, conv_datas;
+    bool conv_co1, conv_co2, conv_lwos, conv_ctrls, conv_datas;
     unsigned int secsize;
-    long posn;
 
     if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ ||
 	       rheader[DUMP_VERSION] < 2 ||
 	       rheader[DUMP_VERSION] > FORMAT_VERSION) {
 	error("Bad or incompatible restore file header");
     }
-    conv_callouts = conv_lwos = conv_ctrls = conv_datas = FALSE;
+    conv_co1 = conv_co2 = conv_lwos = conv_ctrls = conv_datas = FALSE;
     if (rheader[DUMP_VERSION] < 3) {
-	conv_callouts = TRUE;
+	conv_co1 = TRUE;
     }
     if (rheader[DUMP_VERSION] < 4) {
 	conv_lwos = TRUE;
@@ -290,6 +291,9 @@ int fd;
     if (rheader[DUMP_VERSION] < 6) {
 	conv_datas = TRUE;
 	rzero = 0;
+    }
+    if (rheader[DUMP_VERSION] < 7) {
+	conv_co2 = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero != 0) {
@@ -336,14 +340,10 @@ int fd;
     sw_restore(fd, secsize);
     kf_restore(fd);
     o_restore(fd, (uindex) ((conv_lwos) ? 1 << (rusize * 8 - 1) : 0));
-
-    posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve current file position */
-    o_conv(conv_callouts, conv_lwos, conv_ctrls, conv_datas); /* convert all */
-    P_lseek(fd, posn, SEEK_SET);	/* restore file position */
-
+    d_init_conv(conv_ctrls, conv_datas, conv_co1, conv_co2);
     pc_restore(fd);
     boottime = P_time();
-    co_restore(fd, boottime);
+    co_restore(fd, boottime, conv_co2);
 }
 
 /*
@@ -1199,14 +1199,13 @@ sector *fragment;
     arr_init((int) conf[ARRAY_SIZE].u.num);
 
     /* initialize objects */
-    o_init((uindex) conf[OBJECTS].u.num);
+    o_init((uindex) conf[OBJECTS].u.num, (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swap device */
     sw_init(conf[SWAP_FILE].u.str,
 	    (sector) conf[SWAP_SIZE].u.num,
 	    (sector) conf[CACHE_SIZE].u.num,
-	    (unsigned int) conf[SECTOR_SIZE].u.num,
-	    (Uint) conf[DUMP_INTERVAL].u.num);
+	    (unsigned int) conf[SECTOR_SIZE].u.num);
 
     /* initialize swapped data handler */
     d_init(conf[TYPECHECKING].u.num == 2);
@@ -1307,6 +1306,7 @@ sector *fragment;
     m_dynamic();
     if (dumpfile == (char *) NULL) {
 	/* initialize mudlib */
+	d_converted();
 	if (ec_push((ec_ftn) errhandler)) {
 	    error((char *) NULL);
 	}
@@ -1315,7 +1315,6 @@ sector *fragment;
     } else {
 	/* restore dump file */
 	conf_restore(fd);
-	P_close(fd);
 
 	/* notify mudlib */
 	if (ec_push((ec_ftn) errhandler)) {

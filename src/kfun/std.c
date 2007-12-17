@@ -1132,8 +1132,8 @@ int nargs;
 	mdelay = 0xffff;
     } else if (f->sp[nargs - 2].type == T_FLOAT) {
 	GET_FLT(&f->sp[nargs - 2], flt1);
-	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &sixty) > 0) {
-	    /* delay < 0.0 or delay > 60.0 */
+	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &max_int) > 0) {
+	    /* delay < 0.0 or delay > MAX_INT */
 	    return 2;
 	}
 	flt_modf(&flt1, &flt2);
@@ -1180,17 +1180,20 @@ int kf_remove_call_out(f)
 register frame *f;
 {
     Int delay;
-    xfloat flt;
+    unsigned short mdelay;
+    xfloat flt1, flt2;
 
     if (f->lwobj != (array *) NULL) {
 	error("remove_call_out() in non-persistent object");
     }
     i_add_ticks(f, 10);
-    delay = d_del_call_out(f->data, (Uint) f->sp->u.number);
-    if (delay < -1) {
-	flt_itof(-2 - delay, &flt);
-	flt_mult(&flt, &thousandth);
-	PUT_FLTVAL(f->sp, flt);
+    delay = d_del_call_out(f->data, (Uint) f->sp->u.number, &mdelay);
+    if (mdelay != 0xffff) {
+	flt_itof(delay, &flt1);
+	flt_itof(mdelay, &flt2);
+	flt_mult(&flt2, &thousandth);
+	flt_add(&flt1, &flt2);
+	PUT_FLTVAL(f->sp, flt1);
     } else {
 	PUT_INT(f->sp, delay);
     }

@@ -420,10 +420,9 @@ int fd;
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
-void sw_init(file, total, cache, secsize, interval)
+void sw_init(file, total, cache, secsize)
 char *file;
 unsigned int total, cache, secsize;
-Uint interval;
 {
 }
 
@@ -488,10 +487,32 @@ Uint size, idx;
 }
 
 /*
+ * NAME:	swap->creadv()
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ */
+void sw_creadv(m, vec, size, idx)
+char *m;
+sector *vec;
+Uint size, idx;
+{
+}
+
+/*
  * NAME:	swap->dreadv()
  * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
  */
 void sw_dreadv(m, vec, size, idx)
+char *m;
+sector *vec;
+Uint size, idx;
+{
+}
+
+/*
+ * NAME:	swap->conv()
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ */
+void sw_conv(m, vec, size, idx)
 char *m;
 sector *vec;
 Uint size, idx;
@@ -782,8 +803,8 @@ cbuf *q;
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a callout
  */
-void co_del(oindex, handle, t)
-unsigned int oindex, handle;
+void co_del(oindex, handle, t, m)
+unsigned int oindex, handle, m;
 Uint t;
 {
 }
@@ -792,8 +813,9 @@ Uint t;
  * NAME:	call_out->remaining()
  * DESCRIPTION:	pretend to return the time remaining before a callout expires
  */
-Int co_remaining(t)
+Int co_remaining(t, m)
 Uint t;
+unsigned short *m;
 {
     return 0;
 }
@@ -823,6 +845,27 @@ frame *f;
 void co_info(n1, n2)
 uindex *n1, *n2;
 {
+}
+
+/*
+ * NAME:	call_out->decode()
+ * DESCRIPTION:	pretend to decode a callout time
+ */
+Uint co_decode(time, mtime)
+Uint time;
+unsigned short *mtime;
+{
+    return 0;
+}
+
+/*
+ * NAME:	call_out->time()
+ * DESCRIPTION:	pretend to return the current time
+ */
+Uint co_time(mtime)
+unsigned short *mtime;
+{
+    return 0;
 }
 
 /*
@@ -857,8 +900,8 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	pretend to restore callout table
  */
-void co_restore(fd, t)
-int fd;
+void co_restore(fd, t, conv)
+int fd, conv;
 Uint t;
 {
 }

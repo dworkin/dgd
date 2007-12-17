@@ -15,7 +15,7 @@ typedef struct {
 
 /* constants */
 
-xfloat sixty =		{ 0x404e, 0x00000000L };	/* 60 */
+xfloat max_int =	{ 0x41df, 0xffffffc0L };	/* 0x7fffffff */
 xfloat thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
 xfloat thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 

@@ -19,6 +19,8 @@ typedef struct {
     uindex mtime;	/* when to call in milliseconds */
 } call_out;
 
+static char co_layout[] = "uuiu";
+
 # define prev		oindex
 # define next		time
 # define count		mtime
@@ -67,10 +69,6 @@ unsigned int max;
 	cotab[0].mtime = 0;
 	cotab++;
 	flist = 0;
-	if (P_time() >> 24 <= 1) {
-	    message("Config error: bad time (early seventies)");
-	    return FALSE;
-	}
 	timestamp = timeout = 0;
 	atimeout = amtime = 0;
 	timediff = 0;
@@ -316,28 +314,16 @@ register Uint t;
 }
 
 /*
- * NAME:	encode()
- * DESCRIPTION:	encode millisecond time
- */
-static Uint encode(time, mtime)
-Uint time;
-unsigned int mtime;
-{
-    return 0x01000000L + (((time - timediff) & 0xff) << 16) + mtime;
-}
-
-/*
- * NAME:	decode()
+ * NAME:	call_out->decode()
  * DESCRIPTION:	decode millisecond time
  */
-static Uint decode(time, mtime)
+Uint co_decode(time, mtime)
 register Uint time;
 unsigned short *mtime;
 {
     *mtime = time & 0xffff;
-    time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff) +
-	   timediff;
-    if (time < timestamp) {
+    time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff);
+    if (time + timediff < timestamp) {
 	time += 0x100;
     }
     return time;
@@ -416,7 +402,7 @@ cbuf **qp;
 	}
 	*qp = &immediate;
 	*tp = t = 0;
-	*mp = 0;
+	*mp = 0xffff;
     } else {
 	/*
 	 * delayed callout
@@ -433,7 +419,7 @@ cbuf **qp;
 		t++;
 	    }
 	} else {
-	    m = 0;
+	    m = 0xffff;
 	}
 
 	if (mdelay == 0xffff && t < timestamp + CYCBUF_SIZE) {
@@ -446,11 +432,7 @@ cbuf **qp;
 	*tp = t;
 	*mp = m;
 
-	if (mdelay == 0xffff) {
-	    t -= timediff;
-	} else {
-	    t = encode(t, m);
-	}
+	t -= timediff;
     }
 
     return t;
@@ -518,25 +500,35 @@ Uint t;
  * NAME:	call_out->remaining()
  * DESCRIPTION:	return the time remaining before a callout expires
  */
-Int co_remaining(t)
+Int co_remaining(t, m)
 register Uint t;
+register unsigned short *m;
 {
     Uint time;
-    unsigned short mtime, m;
+    unsigned short mtime;
 
     time = co_time(&mtime);
-    if (t >> 24 != 1) {
+
+    if (t != 0) {
 	t += timediff;
-	if (t > time) {
+	if (*m == 0xffff) {
+	    if (t > time) {
+		return t - time;
+	    }
+	} else if (t == time && *m > mtime) {
+	    *m -= mtime;
+	} else if (t > time) {
+	    if (*m < mtime) {
+		--t;
+		*m += 1000;
+	    }
+	    *m -= mtime;
 	    return t - time;
-	}
-    } else {
-	/* encoded millisecond */
-	t = decode(t, &m);
-	if (t > time || t == time && m > mtime) {
-	    return -2 - (t - time) * 1000 - m + mtime;
+	} else {
+	    *m = 0xffff;
 	}
     }
+
     return 0;
 }
 
@@ -544,14 +536,17 @@ register Uint t;
  * NAME:	call_out->del()
  * DESCRIPTION:	remove a callout
  */
-void co_del(oindex, handle, t)
-register unsigned int oindex, handle;
+void co_del(oindex, handle, t, m)
+register unsigned int oindex, handle, m;
 Uint t;
 {
     register call_out *l;
 
-    if (t >> 24 != 1) {
+    if (t != 0) {
 	t += timediff;
+    }
+
+    if (m == 0xffff) {
 	/*
 	 * try to find the callout in the cyclic buffer
 	 */
@@ -560,10 +555,7 @@ Uint t;
 	    return;
 	}
     }
-    /*
-     * decode() won't work correctly for times in the past, so always check
-     * the immediate queues for millisecond callouts
-     */
+
     if (t <= timestamp) {
 	/*
 	 * possible immediate callout
@@ -601,39 +593,29 @@ array *a;
 {
     register value *v, *w;
     register unsigned short i;
-    Uint time, t;
-    unsigned short mtime, m;
-    xfloat flt;
+    Uint t;
+    unsigned short m;
+    xfloat flt1, flt2;
 
-    time = co_time(&mtime);
     for (i = a->size, v = a->elts; i != 0; --i, v++) {
 	w = &v->u.array->elts[2];
-	switch ((Uint) w->u.number >> 24) {
-	case 0:
-	    /* immediate */
-	    break;
-
-	case 1:
-	    /* encoded millisecond */
-	    t = decode((Uint) w->u.number, &m);
-	    if (t > time || t == time && m > mtime) {
-		flt_itof((Int) (t - time) * 1000 + m - mtime, &flt);
-		flt_mult(&flt, &thousandth);
-		PUT_FLTVAL(w, flt);
-	    } else {
-		w->u.number = 0;
-	    }
-	    break;
-
-	default:
-	    /* normal */
-	    t = w->u.number + timediff;
-	    if (t > time) {
-		w->u.number = t - time;
-	    } else {
-		w->u.number = 0;
-	    }
-	    break;
+	if (w->type == T_INT) {
+	    t = w->u.number;
+	    m = 0xffff;
+	} else {
+	    GET_FLT(w, flt1);
+	    t = flt1.low;
+	    m = flt1.high;
+	}
+	t = co_remaining(t, &m);
+	if (m == 0xffff) {
+	    PUT_INTVAL(w, t);
+	} else {
+	    flt_itof(t, &flt1);
+	    flt_itof(m, &flt2);
+	    flt_mult(&flt2, &thousandth);
+	    flt_add(&flt1, &flt2);
+	    PUT_FLTVAL(w, flt1);
 	}
     }
 }
@@ -872,8 +854,7 @@ int fd;
 {
     dump_header dh;
     register uindex list, last;
-    register dump_callout *dc;
-    register call_out *co;
+    register call_out *co, *dc;
     register uindex n;
     register cbuf *cb;
     unsigned short m;
@@ -896,12 +877,12 @@ int fd;
     /* copy callouts */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	dc = ALLOCA(dump_callout, n);
+	dc = ALLOCA(call_out, n);
 	for (co = cotab, n = queuebrk; n != 0; co++, --n) {
 	    dc->handle = co->handle;
 	    dc->oindex = co->oindex;
-	    dc->time = (co->mtime != 0) ?
-			encode(co->time, co->mtime) : co->time;
+	    dc->time = co->time;
+	    dc->mtime = co->mtime;
 	    dc++;
 	}
 	for (co = cotab + cycbrk, n = cotabsz - cycbrk; n != 0; co++, --n) {
@@ -935,7 +916,7 @@ int fd;
 
     /* write header and callouts */
     ret = (P_write(fd, (char *) &dh, sizeof(dump_header)) > 0 &&
-	   (n == 0 || P_write(fd, (char *) dc, n * sizeof(dump_callout)) > 0) &&
+	   (n == 0 || P_write(fd, (char *) dc, n * sizeof(call_out)) > 0) &&
 	   P_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(cbuf)) > 0);
 
     if (n != 0) {
@@ -953,12 +934,11 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
-void co_restore(fd, t)
-int fd;
+void co_restore(fd, t, conv)
+int fd, conv;
 register Uint t;
 {
     register uindex n, i, offset, last;
-    register dump_callout *dc;
     register call_out *co;
     register cbuf *cb;
     dump_header dh;
@@ -974,14 +954,6 @@ register Uint t;
 	error("Restored too many callouts");
     }
 
-    /* read tables */
-    n = queuebrk + cotabsz - cycbrk;
-    if (n != 0) {
-	dc = ALLOCA(dump_callout, n);
-	conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
-    }
-    conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
-
     flist = dh.flist;
     nshort = dh.nshort;
     nzero = dh.nlong0 - dh.queuebrk;
@@ -989,29 +961,57 @@ register Uint t;
     t -= dh.timestamp;
     timediff = dh.timediff + t;
 
-    /* copy callouts */
+    /* read tables */
+    n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
-	    co->handle = dc->handle;
-	    co->oindex = dc->oindex;
-	    if (dc->time >> 24 == 1) {
-		co->time = decode(dc->time, &m);
-		co->mtime = m;
-	    } else {
-		co->time = dc->time + t;
-		co->mtime = 0;
+	if (conv) {
+	    register dump_callout *dc;
+
+	    dc = ALLOCA(dump_callout, n);
+	    conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
+
+	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
+		co->handle = dc->handle;
+		co->oindex = dc->oindex;
+		if (dc->time >> 24 == 1) {
+		    co->time = co_decode(dc->time, &m) + timediff;
+		    co->mtime = m;
+		} else {
+		    co->time = dc->time + t;
+		    co->mtime = 0;
+		}
+		dc++;
 	    }
-	    dc++;
+	    for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
+		co->handle = dc->handle;
+		co->oindex = dc->oindex;
+		co->time = dc->time;
+		dc++;
+	    }
+	    AFREE(dc - n);
+	} else {
+	    register call_out *dc;
+
+	    dc = ALLOCA(call_out, n);
+	    conf_dread(fd, (char *) dc, co_layout, (Uint) n);
+
+	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
+		co->handle = dc->handle;
+		co->oindex = dc->oindex;
+		co->time = dc->time + t;
+		co->mtime = dc->mtime;
+		dc++;
+	    }
+	    for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
+		co->handle = dc->handle;
+		co->oindex = dc->oindex;
+		co->time = dc->time;
+		dc++;
+	    }
+	    AFREE(dc - n);
 	}
-	for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
-	    co->handle = dc->handle;
-	    co->oindex = dc->oindex;
-	    co->time = dc->time;
-	    dc++;
-	}
-	dc -= n;
-	AFREE(dc);
     }
+    conf_dread(fd, (char *) buffer, cb_layout, (Uint) CYCBUF_SIZE);
 
     /* cycle around cyclic buffer */
     t &= CYCBUF_MASK;

@@ -45,4 +45,4 @@ extern void	flt_cosh	P((xfloat*));
 extern void	flt_sinh	P((xfloat*));
 extern void	flt_tanh	P((xfloat*));
 
-extern xfloat sixty, thousand, thousandth;
+extern xfloat max_int, thousand, thousandth;
