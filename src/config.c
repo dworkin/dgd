@@ -117,7 +117,7 @@ typedef char dumpinfo[50];
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_STARTTIME	20	/* start time */
 # define DUMP_ELAPSED	24	/* elapsed time */
-# define DUMP_HEADERSZ	29	/* header size */
+# define DUMP_HEADERSZ	30	/* header size */
 # define DUMP_VSTRING	30	/* version string */
 
 static dumpinfo header;		/* dumpfile header */
@@ -135,7 +135,8 @@ static dumpinfo header;		/* dumpfile header */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
-# define zero	(header[28])	/* 0 */
+# define zero1	(header[28])	/* 0 */
+# define zero2	(header[29])	/* 0 */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -155,7 +156,8 @@ static dumpinfo rheader;	/* restored header */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
-# define rzero	 (rheader[28])	/* 0 */
+# define rzero1	 (rheader[28])	/* 0 */
+# define rzero2	 (rheader[29])	/* 0 */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -207,7 +209,7 @@ static void conf_dumpinit()
     ialign = (char *) &idummy.i - (char *) &idummy.fill;
     palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     zalign = sizeof(alignz);
-    zero = 0;
+    zero1 = zero2 = 0;
 
     ualign = (sizeof(uindex) == sizeof(short)) ? salign : ialign;
     talign = (sizeof(ssizet) == sizeof(short)) ? salign : ialign;
@@ -290,13 +292,13 @@ int fd;
     }
     if (rheader[DUMP_VERSION] < 6) {
 	conv_datas = TRUE;
-	rzero = 0;
+	rzero1 = rzero2 = 0;
     }
     if (rheader[DUMP_VERSION] < 7) {
 	conv_co2 = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
-    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero != 0) {
+    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0) {
 	error("Bad or incompatible restore file header");
     }
 

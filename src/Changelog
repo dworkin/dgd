@@ -1688,3 +1688,5 @@ DGD 1.3
  - The limit of 60 seconds delay for millisecond callouts has been removed.
  - Instead of immediately copying the entire state dump when restoring, rebuild
    the swap file gradually.  This allows for fast rebooting.
+ - Fixed another class variable retrieval bug, introduced in the previous
+   patch.

@@ -924,24 +924,23 @@ register control *ctrl;
 {
     if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs != 0) {
 	get_vardefs(ctrl, sw_readv);
-	if (ctrl->nclassvars != 0) {
-	    register char *p;
-	    register dvardef *vars;
-	    register string **strs;
-	    register unsigned short n, inherit, u;
+    }
+    if (ctrl->cvstrings == (string **) NULL && ctrl->nclassvars != 0) {
+	register char *p;
+	register dvardef *vars;
+	register string **strs;
+	register unsigned short n, inherit, u;
 
-	    ctrl->cvstrings = strs = ALLOC(string*, ctrl->nvardefs);
-	    memset(strs, '\0', ctrl->nvardefs * sizeof(string*));
-	    p = ctrl->classvars;
-	    for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++) {
-		if ((vars->type & T_TYPE) == T_CLASS) {
-		    inherit = FETCH1U(p);
-		    str_ref(*strs = d_get_strconst(ctrl, inherit,
-						   FETCH2U(p, u)));
-		    --n;
-		}
-		strs++;
+	ctrl->cvstrings = strs = ALLOC(string*, ctrl->nvardefs);
+	memset(strs, '\0', ctrl->nvardefs * sizeof(string*));
+	p = ctrl->classvars;
+	for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++) {
+	    if ((vars->type & T_TYPE) == T_CLASS) {
+		inherit = FETCH1U(p);
+		str_ref(*strs = d_get_strconst(ctrl, inherit, FETCH2U(p, u)));
+		--n;
 	    }
+	    strs++;
 	}
     }
     return ctrl->vardefs;
