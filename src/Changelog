@@ -1690,3 +1690,4 @@ DGD 1.3
    the swap file gradually.  This allows for fast rebooting.
  - Fixed another class variable retrieval bug, introduced in the previous
    patch.
+ - Get swap_fragment = 0 to work.
