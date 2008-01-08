@@ -1205,6 +1205,7 @@ register uindex n;
     register object *obj;
 
     uobjects = n;
+    dobject = 0;
     count = 3;
     for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
 	if (obj->count != 0) {
@@ -1401,7 +1402,6 @@ Uint time;
 	    if (dtime == 0) {
 		/* first copy */
 		dtime = time - 1;
-		dobject = 0;
 		if (dinterval == 0) {
 		    dchunksz = SWAPCHUNKSZ;
 		} else {

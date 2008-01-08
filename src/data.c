@@ -841,7 +841,7 @@ value *retval;
      * pass 3: deallocate
      */
     for (p = plist; p != clist; p = plist) {
-	p->prev->flags = p->flags & MOD_ALL;
+	p->prev->flags = p->flags & MOD_ALL | MOD_SAVE;
 	p->prev->schange = p->schange;
 	p->prev->achange = p->achange;
 	p->prev->imports = p->imports;

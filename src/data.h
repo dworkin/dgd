@@ -292,6 +292,7 @@ extern void		d_del_dataspace	P((dataspace*));
 # define MOD_CALLOUT		0x10	/* callout changed */
 # define MOD_NEWCALLOUT		0x20	/* new callout added */
 # define PLANE_MERGE		0x40	/* merge planes on commit */
+# define MOD_SAVE		0x80	/* save on next full swapout */
 
 /* data compression */
 # define CMP_TYPE		0x03

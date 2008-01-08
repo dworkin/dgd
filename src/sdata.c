@@ -1937,9 +1937,9 @@ bool swap;
     if (data->parser != (struct _parser_ *) NULL) {
 	ps_save(data->parser);
     }
-    if (swap && data->nsectors == 0) {
+    if (swap && (data->base.flags & MOD_SAVE)) {
 	data->base.flags |= MOD_ALL;
-    } else if (data->base.flags == 0) {
+    } else if (!(data->base.flags & MOD_ALL)) {
 	return FALSE;
     }
 
@@ -2292,7 +2292,11 @@ bool swap;
 	data->base.achange = 0;
     }
 
-    data->base.flags = 0;
+    if (swap) {
+	data->base.flags = 0;
+    } else {
+	data->base.flags = MOD_SAVE;
+    }
     return TRUE;
 }
 

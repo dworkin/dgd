@@ -148,17 +148,6 @@ char **argv;
     }
 
     for (;;) {
-	/* interrupts */
-	if (intr) {
-	    intr = FALSE;
-	    if (!ec_push((ec_ftn) errhandler)) {
-		call_driver_object(cframe, "interrupt", 0);
-		i_del_value(cframe->sp++);
-		ec_pop();
-	    }
-	    endthread();
-	}
-
 	/* rebuild swapfile */
 	if (rebuild) {
 	    timeout = co_time(&mtime);
@@ -172,6 +161,17 @@ char **argv;
 		    rtime = 0;
 		}
 	    }
+	}
+
+	/* interrupts */
+	if (intr) {
+	    intr = FALSE;
+	    if (!ec_push((ec_ftn) errhandler)) {
+		call_driver_object(cframe, "interrupt", 0);
+		i_del_value(cframe->sp++);
+		ec_pop();
+	    }
+	    endthread();
 	}
 
 	/* handle user input */
