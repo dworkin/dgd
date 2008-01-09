@@ -1100,70 +1100,68 @@ int n;
     register connection **hash, *conn;
     register char *p;
 
-    for (;;) {
-	memset(buffer, '\0', UDPHASHSZ);
-	fromlen = sizeof(struct sockaddr_in6);
-	size = recvfrom(udescs[n].in6, buffer, BINBUF_SIZE, 0,
-			(struct sockaddr *) &from, &fromlen);
-	if (size < 0) {
-	    return;
-	}
+    memset(buffer, '\0', UDPHASHSZ);
+    fromlen = sizeof(struct sockaddr_in6);
+    size = recvfrom(udescs[n].in6, buffer, BINBUF_SIZE, 0,
+		    (struct sockaddr *) &from, &fromlen);
+    if (size < 0) {
+	return;
+    }
 
-	hash = &udphtab[(hashmem((char *) &from.sin6_addr,
-				 sizeof(struct in6_addr)) ^
+    hash = &udphtab[(hashmem((char *) &from.sin6_addr,
+			     sizeof(struct in6_addr)) ^
 						from.sin6_port) % udphtabsz];
-	for (;;) {
-	    conn = *hash;
-	    if (conn == (connection *) NULL) {
-		/*
-		 * see if the packet matches an outstanding challenge
-		 */
-		hash = (connection **) ht_lookup(chtab, buffer, FALSE);
-		while ((conn=*hash) != (connection *) NULL &&
-		       memcmp(conn->chain.name, buffer, UDPHASHSZ) == 0) {
-		    if (conn->bufsz == size &&
-			memcmp(conn->udpbuf, buffer, size) == 0 &&
-			conn->addr->ipnum.ipv6 &&
-			memcmp(&conn->addr->ipnum, &from.sin6_addr,
-			       sizeof(struct in6_addr)) == 0) {
-			/*
-			 * attach new UDP channel
-			 */
-			*hash = (connection *) conn->chain.next;
-			conn->chain.name = (char *) NULL;
-			conn->bufsz = 0;
-			conn->uport = from.sin6_port;
-			hash = &udphtab[(hashmem((char *) &from.sin6_addr,
+    for (;;) {
+	conn = *hash;
+	if (conn == (connection *) NULL) {
+	    /*
+	     * see if the packet matches an outstanding challenge
+	     */
+	    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+	    while ((conn=*hash) != (connection *) NULL &&
+		   memcmp(conn->chain.name, buffer, UDPHASHSZ) == 0) {
+		if (conn->bufsz == size &&
+		    memcmp(conn->udpbuf, buffer, size) == 0 &&
+		    conn->addr->ipnum.ipv6 &&
+		    memcmp(&conn->addr->ipnum, &from.sin6_addr,
+			   sizeof(struct in6_addr)) == 0) {
+		    /*
+		     * attach new UDP channel
+		     */
+		    *hash = (connection *) conn->chain.next;
+		    conn->chain.name = (char *) NULL;
+		    conn->bufsz = 0;
+		    conn->uport = from.sin6_port;
+		    hash = &udphtab[(hashmem((char *) &from.sin6_addr,
 			   sizeof(struct in6_addr)) ^ conn->uport) % udphtabsz];
-			conn->chain.next = (hte *) *hash;
-			*hash = conn;
+		    conn->chain.next = (hte *) *hash;
+		    *hash = conn;
 
-			break;
-		    }
-		    hash = (connection **) &conn->chain.next;
+		    break;
 		}
-		break;
+		hash = (connection **) &conn->chain.next;
 	    }
-
-	    if (conn->at == n && conn->uport == from.sin6_port &&
-		memcmp(&conn->addr->ipnum, &from.sin6_addr,
-		       sizeof(struct in6_addr)) == 0) {
-		/*
-		 * packet from known correspondent
-		 */
-		if (conn->bufsz + size <= BINBUF_SIZE - 2) {
-		    p = conn->udpbuf + conn->bufsz;
-		    *p++ = size >> 8;
-		    *p++ = size;
-		    memcpy(p, buffer, size);
-		    conn->bufsz += size + 2;
-		    conn->npkts++;
-		    npackets++;
-		}
-		break;
-	    }
-	    hash = (connection **) &conn->chain.next;
+	    break;
 	}
+
+	if (conn->at == n && conn->uport == from.sin6_port &&
+	    memcmp(&conn->addr->ipnum, &from.sin6_addr,
+		   sizeof(struct in6_addr)) == 0) {
+	    /*
+	     * packet from known correspondent
+	     */
+	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+		p = conn->udpbuf + conn->bufsz;
+		*p++ = size >> 8;
+		*p++ = size;
+		memcpy(p, buffer, size);
+		conn->bufsz += size + 2;
+		conn->npkts++;
+		npackets++;
+	    }
+	    break;
+	}
+	hash = (connection **) &conn->chain.next;
     }
 }
 # endif
@@ -1182,69 +1180,65 @@ int n;
     register connection **hash, *conn;
     register char *p;
 
+    memset(buffer, '\0', UDPHASHSZ);
+    fromlen = sizeof(struct sockaddr_in);
+    size = recvfrom(udescs[n].in4, buffer, BINBUF_SIZE, 0,
+		    (struct sockaddr *) &from, &fromlen);
+    if (size < 0) {
+	return;
+    }
+
+    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz];
     for (;;) {
-	memset(buffer, '\0', UDPHASHSZ);
-	fromlen = sizeof(struct sockaddr_in);
-	size = recvfrom(udescs[n].in4, buffer, BINBUF_SIZE, 0,
-			(struct sockaddr *) &from, &fromlen);
-	if (size < 0) {
-	    return;
-	}
-
-	hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) %
-								    udphtabsz];
-	for (;;) {
-	    conn = *hash;
-	    if (conn == (connection *) NULL) {
-		/*
-		 * see if the packet matches an outstanding challenge
-		 */
-                hash = (connection **) ht_lookup(chtab, buffer, FALSE);
-		while ((conn=*hash) != (connection *) NULL &&
-		       memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
-		    if (conn->bufsz == size &&
-			memcmp(conn->udpbuf, buffer, size) == 0 &&
-			!conn->addr->ipnum.ipv6 &&
-			conn->addr->ipnum.in.addr.s_addr ==
-							from.sin_addr.s_addr) {
-			/*
-			 * attach new UDP channel
-			 */
-			*hash = (connection *) conn->chain.next;
-			conn->chain.name = (char *) NULL;
-			conn->bufsz = 0;
-			conn->uport = from.sin_port;
-			hash = &udphtab[((Uint) from.sin_addr.s_addr ^
+	conn = *hash;
+	if (conn == (connection *) NULL) {
+	    /*
+	     * see if the packet matches an outstanding challenge
+	     */
+	    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+	    while ((conn=*hash) != (connection *) NULL &&
+		   memcmp((*hash)->chain.name, buffer, UDPHASHSZ) == 0) {
+		if (conn->bufsz == size &&
+		    memcmp(conn->udpbuf, buffer, size) == 0 &&
+		    !conn->addr->ipnum.ipv6 &&
+		    conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr) {
+		    /*
+		     * attach new UDP channel
+		     */
+		    *hash = (connection *) conn->chain.next;
+		    conn->chain.name = (char *) NULL;
+		    conn->bufsz = 0;
+		    conn->uport = from.sin_port;
+		    hash = &udphtab[((Uint) from.sin_addr.s_addr ^
 						    conn->uport) % udphtabsz];
-			conn->chain.next = (hte *) *hash;
-			*hash = conn;
+		    conn->chain.next = (hte *) *hash;
+		    *hash = conn;
 
-			break;
-		    }
-		    hash = (connection **) &conn->chain.next;
+		    break;
 		}
-		break;
+		hash = (connection **) &conn->chain.next;
 	    }
-
-	    if (conn->at == n &&
-		conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr &&
-		conn->uport == from.sin_port) {
-		/*
-		 * packet from known correspondent
-		 */
-		if (conn->bufsz + size <= BINBUF_SIZE - 2) {
-		    p = conn->udpbuf + conn->bufsz;
-		    *p++ = size >> 8;
-		    *p++ = size;
-		    memcpy(p, buffer, size);
-		    conn->bufsz += size + 2;
-		    conn->npkts++;
-		    npackets++;
-		}
-		break;
-	    }
-	    hash = (connection **) &conn->chain.next;
+	    break;
 	}
+
+	if (conn->at == n &&
+	    conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr &&
+	    conn->uport == from.sin_port) {
+	    /*
+	     * packet from known correspondent
+	     */
+	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+		p = conn->udpbuf + conn->bufsz;
+		*p++ = size >> 8;
+		*p++ = size;
+		memcpy(p, buffer, size);
+		conn->bufsz += size + 2;
+		conn->npkts++;
+		npackets++;
+	    }
+	    break;
+	}
+	hash = (connection **) &conn->chain.next;
     }
 }
 

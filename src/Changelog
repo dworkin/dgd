@@ -1693,3 +1693,5 @@ DGD 1.3
  - Get swap_fragment = 0 to work.
  - Fixed a bug in creating multiple statedumps in rapid succession.
  - Fixed another swap_fragment = 0 bug.
+ - Don't hang in an infinite loop when a datagram challenge is met with an
+   improper response.
