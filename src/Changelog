@@ -1695,3 +1695,4 @@ DGD 1.3
  - Fixed another swap_fragment = 0 bug.
  - Don't hang in an infinite loop when a datagram challenge is met with an
    improper response.
+ - Fixed a bug in initialized variable handling.

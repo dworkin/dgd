@@ -16,11 +16,11 @@
 # include "compile.h"
 
 # define COND_CHUNK	16
-# define COND_BMAP	((MAX_LOCALS + 1) >> 5)
+# define COND_BMAP	((MAX_LOCALS + 1) >> 3)
 
 typedef struct _cond_ {
     struct _cond_ *prev;	/* surrounding conditional */
-    Uint init[COND_BMAP];	/* initialize variable bitmap */
+    char init[COND_BMAP];	/* initialize variable bitmap */
 } cond;
 
 typedef struct _cchunk_ {
@@ -86,9 +86,9 @@ cond *c2;
     }
     c->prev = thiscond;
     if (c2 != (cond *) NULL) {
-	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
+	memcpy(c->init, c2->init, COND_BMAP);
     } else {
-	memset(c->init, '\0', COND_BMAP * sizeof(Uint));
+	memset(c->init, '\0', COND_BMAP);
     }
     thiscond = c;
 }
@@ -114,7 +114,7 @@ static void cond_del()
 static void cond_match(c1, c2, c3)
 cond *c1, *c2, *c3;
 {
-    register Uint *p, *q, *r;
+    register char *p, *q, *r;
     register int i;
 
     p = c1->init;
