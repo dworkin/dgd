@@ -12,8 +12,8 @@ DESCRIPTION
 	as soon as possible after termination of the current thread.
 	If the delay is an integer, the function will be called after
 	approximately the specified number of seconds.  Otherwise, the delay
-	must be a floating point number less than or equal to 60.0, and the
-	function will be called with a millisecond resolution.
+	must be a floating point number, and the function will be called with a
+	millisecond resolution.
 	The returned value is the callout handle, an integer > 0 which must be
 	used if the callout is to be removed.
 

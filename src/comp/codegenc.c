@@ -1561,7 +1561,9 @@ register node *n;
 	}
 	if (n->type == N_VAR) {
 	    if (n->mod == T_INT) {
-		output("register Int ivar%d = 0;\n", n->l.number + 1);
+		output("register Int ivar%d = (i_del_value(%s), ",
+		       n->l.number + 1, local(n->l.number));
+		output("%s->type = T_INT, 0);\n", local(n->l.number));
 		vars[n->l.number] = n->l.number + 1;
 	    } else {
 		vars[n->l.number] = 0;

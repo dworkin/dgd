@@ -1696,3 +1696,4 @@ DGD 1.3
  - Don't hang in an infinite loop when a datagram challenge is met with an
    improper response.
  - Fixed a bug in initialized variable handling.
+ - Fixed another such bug, in the precompiler.
