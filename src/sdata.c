@@ -2706,7 +2706,7 @@ register Uint n, *ctab;
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->u.objcnt == ctab[v->oindex]) {
+	    if (v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
 		/* fix object count */
 		v->u.objcnt = OBJ(v->oindex)->count;
 	    } else {
