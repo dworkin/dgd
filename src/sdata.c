@@ -2314,23 +2314,11 @@ unsigned int frag;
     register control *ctrl;
 
     count = 0;
-    n = ndata;
-
-    /* perform garbage collection for one dataspace */
-    if (gcdata != (dataspace *) NULL && (frag == 0 || n - 1 >= frag)) {
-	if (d_save_dataspace(gcdata, (frag != 0))) {
-	    count++;
-	    if (frag != 1) {
-		--n;
-	    }
-	}
-	gcdata = gcdata->gcnext;
-    }
 
     if (frag != 0) {
 	/* swap out dataspace blocks */
 	data = dtail;
-	for (n /= frag; n > 0; --n) {
+	for (n = ndata / frag, n -= (n > 0 && frag != 1); n > 0; --n) {
 	    register dataspace *prev;
 
 	    prev = data->prev;
@@ -2359,6 +2347,14 @@ unsigned int frag;
 	    }
 	    ctrl = prev;
 	}
+    }
+
+    /* perform garbage collection for one dataspace */
+    if (gcdata != (dataspace *) NULL) {
+	if (d_save_dataspace(gcdata, (frag != 0)) && frag != 0) {
+	    count++;
+	}
+	gcdata = gcdata->gcnext;
     }
 
     return count;

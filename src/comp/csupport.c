@@ -683,6 +683,7 @@ int fd;
     register Uint i;
     register uindex oindex;
     register char *name;
+    long posn;
 
     if (nprecomps != 0) {
 	/* re-initialize tables before restore */
@@ -801,6 +802,7 @@ int fd;
 	AFREE(dpc - dh.nprecomps);
     }
 
+    posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve seek position */
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
 	l = *pc;
 	if (l->oindex == UINDEX_MAX) {
@@ -861,6 +863,7 @@ int fd;
 	    hash_add(l->oindex, (uindex) i);
 	}
     }
+    P_lseek(fd, posn, SEEK_SET);	/* restore position */
 }
 
 
