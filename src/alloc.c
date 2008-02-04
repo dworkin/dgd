@@ -81,6 +81,7 @@ static clist lchunks[LCHUNKS];		/* lists of large free chunks */
 static unsigned int nlc;		/* # elements in large chunk list */
 static chunk *sflist;			/* list of small unused chunks */
 static int slevel;			/* static level */
+static bool dmem;			/* any dynamic memory allocated? */
 
 /*
  * NAME:	lchunk()
@@ -176,42 +177,38 @@ register size_t size;
     }
 
     /* try current chunk */
-    if (schunk == (chunk *) NULL ||
-	(schunk->size < size && (schunksz != 0 || size <= INIT_MEM))) {
+    if (schunk == (chunk *) NULL || schunk->size < size) {
+	Uint chunksz;
+
 	/*
-	 * allocate default static memory block
+	 * allocate static memory block
 	 */
 	if (schunk != (chunk *) NULL) {
 	    schunk->next = sflist;
 	    sflist = schunk;
 	}
-	schunk = (chunk *) newmem(INIT_MEM, &slist);
-	mstat.smemsize += schunk->size = INIT_MEM;
-	if (schunksz != 0) {
+	chunksz = (size < INIT_MEM) ? INIT_MEM : size;
+	schunk = (chunk *) newmem(chunksz, &slist);
+	mstat.smemsize += schunk->size = chunksz;
+	if (schunksz != 0 && dmem) {
 	    /* fragmentation matters */
 	    P_message("*** Ran out of static memory (increase static_chunk)\012"); /* LF */
 	}
     }
-    if (schunk->size >= size) {
-	if (schunk->size - size <= MOFFSET) {
-	    /* remainder is too small */
-	    c = schunk;
-	    schunk = (chunk *) NULL;
-	} else {
-	    c = schunk;
-	    schunk = (chunk *) ((char *) schunk + size);
-	    if ((schunk->size=c->size - size) <= SSMALL) {
-		/* small chunk */
-		schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
-		schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
-		schunk = (chunk *) NULL;
-	    }
-	    c->size = size;
-	}
+    if (schunk->size - size <= MOFFSET) {
+	/* remainder is too small */
+	c = schunk;
+	schunk = (chunk *) NULL;
     } else {
-	/* allocate static memory directly */
-	c = (chunk *) newmem(size, &slist);
-	mstat.smemsize += c->size = size;
+	c = schunk;
+	schunk = (chunk *) ((char *) schunk + size);
+	if ((schunk->size=c->size - size) <= SSMALL) {
+	    /* small chunk */
+	    schunk->next = schunks[(schunk->size - MOFFSET) / STRUCT_AL -1];
+	    schunks[(schunk->size - MOFFSET) / STRUCT_AL - 1] = schunk;
+	    schunk = (chunk *) NULL;
+	}
+	c->size = size;
     }
 
     if (c->size > SIZE_MASK) {
@@ -537,6 +534,7 @@ register size_t size;
 	c->size = size;
 	return c;
     }
+    dmem = TRUE;
 
     if (size < DLIMIT) {
 	/*
@@ -694,6 +692,7 @@ size_t ssz, dsz;
 	schunk = (chunk *) newmem(schunksz, &slist);
 	mstat.smemsize += schunk->size = schunksz;
     }
+    dmem = FALSE;
 }
 
 
@@ -940,6 +939,7 @@ void m_purge()
     dchunk = (chunk *) NULL;
     dtree = (spnode *) NULL;
     mstat.dmemsize = mstat.dmemused = 0;
+    dmem = FALSE;
 
     if (schunksz != 0 &&
 	(schunk == (chunk *) NULL || schunk->size < schunksz ||

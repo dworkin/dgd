@@ -1159,6 +1159,7 @@ sector *fragment;
     }
     init = conf_config();
     pp_clear();
+    m_purge();
     if (!init) {
 	m_finish();
 	return FALSE;

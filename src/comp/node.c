@@ -58,8 +58,8 @@ unsigned int line;
     n->mod = 0;
     n->line = line;
     n->class = (string *) NULL;
-    n->l.number = 0;
-    n->r.number = 0;
+    n->l.left = (node *) NULL;
+    n->r.right = (node *) NULL;
     return n;
 }
 

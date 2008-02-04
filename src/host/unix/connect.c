@@ -1449,7 +1449,7 @@ unsigned int len;
 # ifdef INET6
 	if (conn->addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
- 
+
 	    memset(&to, '\0', sizeof(struct sockaddr_in6));
 	    to.sin6_family = AF_INET6;
 	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
@@ -1461,7 +1461,7 @@ unsigned int len;
 # endif
 	{
 	    struct sockaddr_in to;
- 
+
 	    memset(&to, '\0', sizeof(struct sockaddr_in));
 	    to.sin_family = AF_INET;
 	    to.sin_addr = conn->addr->ipnum.in.addr;
@@ -1508,7 +1508,6 @@ char *buf;
     {
 	strcpy(buf, inet_ntoa(conn->addr->ipnum.in.addr));
     }
-
 }
 
 /*
