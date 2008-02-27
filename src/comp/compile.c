@@ -1557,7 +1557,7 @@ node *expr, *stmt;
 		}
 
 		if (i == 0 && cnt > size) {
-		    if (cnt > ULONG_MAX / 6L ||
+		    if (cnt > 0xffffffffL / 6 ||
 			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch

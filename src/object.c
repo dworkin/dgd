@@ -56,6 +56,7 @@ static char *omap;		/* object dump bitmap */
 static Uint *counttab;		/* object count table */
 static object *upgraded;	/* list of upgraded objects */
 static uindex dobjects, dobject;/* objects to copy */
+static uindex mobjects;		/* max objects to copy */
 static uindex dchunksz;		/* copy chunk size */
 static Uint dinterval;		/* copy interval */
 static Uint dtime;		/* time copying started */
@@ -87,8 +88,8 @@ Uint interval;
     memset(omap, '\0', (n + 7) >> 3);
     counttab = ALLOC(Uint, n);
     upgraded = (object *) NULL;
-    uobjects = dobjects = 0;
-    dinterval = (interval + 19) / 20;
+    uobjects = dobjects = mobjects = 0;
+    dinterval = (interval * 19) / 20;
     odcount = 1;
     obase = TRUE;
 }
@@ -1226,6 +1227,7 @@ register uindex n;
 	    *ct = 2;
 	}
     }
+    mobjects = dobjects;
 
     baseplane.ocount = count;
     odcount = 1;
@@ -1405,7 +1407,7 @@ Uint time;
 		if (dinterval == 0) {
 		    dchunksz = SWAPCHUNKSZ;
 		} else {
-		    dchunksz = (dobjects + dinterval - 1) / dinterval;
+		    dchunksz = (mobjects + dinterval - 1) / dinterval;
 		    if (dchunksz == 0) {
 			dchunksz = 1;
 		    }
@@ -1415,9 +1417,9 @@ Uint time;
 	    time -= dtime;
 	    if (dinterval != 0 && time >= dinterval) {
 		n = 0;      /* copy all objects */
-	    } else if ((n=dchunksz * time) < dobjects) {
+	    } else if ((n=dchunksz * time) < mobjects) {
 		/* copy a portion of remaining objects */
-		n = dobjects - n;
+		n = mobjects - n;
 	    } else {
 		n = 0;      /* copy all objects */
 	    }
