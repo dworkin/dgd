@@ -2963,12 +2963,14 @@ Uint *counttab;
 	    d_save_control(ctrl);
 	} else {
 	    ctrl = load_control(obj, sw_creadv);
-	    get_prog(ctrl, sw_creadv);
-	    get_strconsts(ctrl, sw_creadv);
-	    get_funcdefs(ctrl, sw_creadv);
-	    get_vardefs(ctrl, sw_creadv);
-	    get_funcalls(ctrl, sw_creadv);
-	    get_symbols(ctrl, sw_creadv);
+	    if (ctrl->vmapsize == 0) {
+		get_prog(ctrl, sw_creadv);
+		get_strconsts(ctrl, sw_creadv);
+		get_funcdefs(ctrl, sw_creadv);
+		get_vardefs(ctrl, sw_creadv);
+		get_funcalls(ctrl, sw_creadv);
+		get_symbols(ctrl, sw_creadv);
+	    }
 	}
 	obj->ctrl = ctrl;
     }

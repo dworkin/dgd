@@ -1706,3 +1706,4 @@ DGD 1.3
  - Fix the datagram challenge bug for Windows and BeOS, too.
  - Fixed a bug that caused the swapfile to be rebuilt much too quickly after
    a statedump.
+ - Fixed a bug in upgrading directly after a statedump.
