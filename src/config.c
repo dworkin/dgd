@@ -1,4 +1,5 @@
 # define INCLUDE_FILE_IO
+# define INCLUDE_CTYPE
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -75,7 +76,7 @@ static config conf[] = {
 							2, UINDEX_MAX },
 # define SECTOR_SIZE	16
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
-							512 },
+							512, 65535 },
 # define STATIC_CHUNK	17
 				{ "static_chunk",	INT_CONST },
 # define SWAP_FILE	18

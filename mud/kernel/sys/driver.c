@@ -685,7 +685,15 @@ static mixed include_file(string from, string path)
 	    return nil;
 	}
     }
-    return (objectd) ? objectd->include_file(TLSVAR3[0], from, path) : path;
+    if (objectd) {
+	mixed result;
+
+	result = objectd->include_file(TLSVAR3[0], from, path);
+	if (sscanf(from, "/kernel/%*s") == 0) {
+	    return result;
+	}
+    }
+    return path;
 }
 
 /*

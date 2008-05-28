@@ -1343,10 +1343,6 @@ register value *sp;
 	    FREE(f->stack);
 	}
     }
-
-    f->sp = v;
-    f->lip = w;
-    return f;
 }
 
 /*
