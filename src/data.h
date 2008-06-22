@@ -207,7 +207,7 @@ struct _dataspace_ {
 /* sdata.c */
 
 extern void		d_init		 P((int));
-extern void		d_init_conv	 P((int, int, int, int));
+extern void		d_init_conv	 P((int, int, int, int, int));
 
 extern control	       *d_new_control	 P((void));
 extern dataspace       *d_new_dataspace  P((object*));

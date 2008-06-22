@@ -70,39 +70,3 @@ char *P_ctime(char *buf, Uint time)
     }
     return buf;
 }
-
-static Uint timeout;
-static unsigned short mtimeout;
-
-/*
- * NAME:        P->timer()
- * DESCRIPTION: set the timer to go off at some time in the future, or disable
- *		it
- */
-void P_timer(Uint t, unsigned int mtime)
-{
-    timeout = t;
-    mtimeout = mtime;
-}
-
-/*
- * NAME:        P->timeout()
- * DESCRIPTION: return TRUE if there is a timeout, FALSE otherwise
- */
-bool P_timeout(Uint *t, unsigned short *mtime)
-{
-    FILETIME ft;
-    SYSTEMTIME st;
-    __int64 time;
-
-    GetSystemTime(&st);
-    SystemTimeToFileTime(&st, &ft);
-    time = ((__int64) ft.dwHighDateTime << 32) + ft.dwLowDateTime - UNIXBIRTH;
-    *t = (Uint) (time / 10000000);
-    *mtime = (unsigned short) ((time % 10000000) / 10000);
-
-    if (timeout == 0) {
-	return FALSE;
-    }
-    return (*t > timeout || (*t == timeout && *mtime >= mtimeout));
-}

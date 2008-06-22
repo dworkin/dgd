@@ -11,7 +11,6 @@ typedef struct _strh_ {
     hte chain;			/* hash table chain */
     string *str;		/* string entry */
     Uint index;			/* building index */
-    struct _strh_ **link;	/* next in list */
 } strh;
 
 typedef struct _strhchunk_ {
@@ -20,7 +19,6 @@ typedef struct _strhchunk_ {
 } strhchunk;
 
 static hashtab *sht;		/* string merge table */
-static strh **slink;		/* linked list of merged strings */
 static strhchunk *shlist;	/* list of all strh chunks */
 static int strhchunksz;		/* size of current strh chunk */
 
@@ -122,8 +120,6 @@ register Uint n;
 	    s->chain.name = str->text;
 	    s->str = str;
 	    s->index = n;
-	    s->link = slink;
-	    slink = h;
 
 	    return n;
 	} else if (str_cmp(str, (*h)->str) == 0) {
@@ -141,16 +137,8 @@ register Uint n;
 void str_clear()
 {
     if (sht != (hashtab *) NULL) {
-	register strh **h;
 	register strhchunk *l;
 
-	for (h = slink; h != (strh **) NULL; ) {
-	    register strh *f;
-
-	    f = *h;
-	    *h = (strh *) NULL;
-	    h = f->link;
-	}
 	ht_del(sht);
 
 	for (l = shlist; l != (strhchunk *) NULL; ) {
@@ -162,7 +150,6 @@ void str_clear()
 	}
 
 	sht = (hashtab *) NULL;
-	slink = (strh **) NULL;
 	shlist = (strhchunk *) NULL;
     }
 }

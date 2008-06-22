@@ -44,8 +44,6 @@ static cbuf immediate;			/* immediate callouts */
 static cbuf cycbuf[CYCBUF_SIZE];	/* cyclic buffer of callout lists */
 static Uint timestamp;			/* cycbuf start time */
 static Uint timeout;			/* time of first callout in cycbuf */
-static Uint atimeout;			/* alarm time in seconds */
-static unsigned short amtime;		/* alarm time in milliseconds */
 static Uint timediff;			/* stored/actual time difference */
 static Uint cotime;			/* callout time */
 static unsigned short comtime;		/* callout millisecond time */
@@ -70,7 +68,6 @@ unsigned int max;
 	cotab++;
 	flist = 0;
 	timestamp = timeout = 0;
-	atimeout = amtime = 0;
 	timediff = 0;
     }
     running.list = immediate.list = 0;
@@ -86,42 +83,6 @@ unsigned int max;
     swaprate1 = swaprate5 = 0;
 
     return TRUE;
-}
-
-/*
- * NAME:	restart()
- * DESCRIPTION:	possibly restart timeout
- */
-static void restart(t)
-register Uint t;
-{
-    register unsigned short m;
-
-    if (t != 0) {
-	if (nshort != nzero) {
-	    /* look for next callout */
-	    while (cycbuf[t & CYCBUF_MASK].list == 0) {
-		t++;
-	    }
-	    timeout = t;
-	} else {
-	    /* no callouts left */
-	    timeout = 0;
-	}
-    }
-
-    t = timeout;
-    m = 0;
-    if (queuebrk != 0 &&
-	(t == 0 || cotab[0].time < t ||
-	 (cotab[0].time == t && cotab[0].mtime < m))) {
-	t = cotab[0].time;
-	m = cotab[0].mtime;
-    }
-
-    if (t != atimeout || m != amtime) {
-	P_timer(atimeout = t, amtime = m);
-    }
 }
 
 /*
@@ -153,9 +114,6 @@ unsigned short m;
     l = &l[i];
     l->time = t;
     l->mtime = m;
-    if (atimeout == 0 || t < atimeout || (t == atimeout && m < amtime)) {
-	restart((Uint) 0);
-    }
     return l;
 }
 
@@ -234,7 +192,7 @@ Uint t;
 	co->count = 1;
 
 	if (t != 0 && (timeout == 0 || t < timeout)) {
-	    restart(t);
+	    timeout = t;
 	}
     } else {
 	/* add to list */
@@ -269,7 +227,14 @@ register Uint t;
 	if (cyc->list != 0) {
 	    l[cyc->list].count = l[i].count - 1;
 	} else if (t != 0 && t == timeout) {
-	    restart(t);
+	    if (nshort != nzero) {
+		while (cycbuf[t & CYCBUF_MASK].list == 0) {
+		    t++;
+		}
+		timeout = t;
+	    } else {
+		timeout = 0;
+	    }
 	}
     } else {
 	if (i == cyc->last) {
@@ -350,10 +315,10 @@ unsigned short *mtime;
 	*mtime = 0;
     } else if (timestamp < t) {
 	if (running.list == 0) {
-	    if (atimeout == 0 || atimeout > t) {
+	    if (timeout == 0 || timeout > t) {
 		timestamp = t;
-	    } else if (timestamp < atimeout - 1) {
-		timestamp = atimeout - 1;
+	    } else if (timestamp < timeout) {
+		timestamp = timeout - 1;
 	    }
 	}
 	if (t > timestamp + 60) {
@@ -632,7 +597,10 @@ static void co_expire()
     Uint t;
     unsigned short m;
 
-    if (P_timeout(&t, &m)) {
+    t = P_mtime(&m);
+    if ((timeout != 0 && timeout <= t) ||
+	(queuebrk != 0 &&
+	 (cotab[0].time < t || (cotab[0].time == t && cotab[0].mtime <= m)))) {
 	while (timestamp < t) {
 	    timestamp++;
 
@@ -681,7 +649,14 @@ static void co_expire()
 	    co->oindex = oindex;
 	}
 
-	restart(t);
+	if (timeout <= timestamp) {
+	    if (nshort != nzero) {
+		for (t = timestamp; cycbuf[t & CYCBUF_MASK].list == 0; t++) ;
+		timeout = t;
+	    } else {
+		timeout = 0;
+	    }
+	}
     }
 
     /* handle swaprate */
@@ -765,15 +740,20 @@ unsigned short *mtime;
 	*mtime = 0;
 	return 0;
     }
-    if ((atimeout | rtime) == 0) {
+    if ((rtime | timeout | queuebrk) == 0) {
 	/* infinite */
 	*mtime = 0xffff;
 	return 0;
     }
-    if (rtime == 0 || rtime > atimeout ||
-	(rtime == atimeout && rmtime > amtime)) {
-	rtime = atimeout;
-	rmtime = amtime;
+    if (timeout != 0 && (rtime == 0 || timeout <= rtime)) {
+	rtime = timeout;
+	rmtime = 0;
+    }
+    if (queuebrk != 0 &&
+	(rtime == 0 || cotab[0].time < rtime ||
+	 (cotab[0].time == rtime && cotab[0].mtime <= rmtime))) {
+	rtime = cotab[0].time;
+	rmtime = cotab[0].mtime;
     }
 
     t = co_time(&m);
@@ -1066,5 +1046,8 @@ register Uint t;
     }
 
     /* restart callouts */
-    restart(timestamp);
+    if (nshort != nzero) {
+	for (t = timestamp; cycbuf[t & CYCBUF_MASK].list == 0; t++) ;
+	timeout = t;
+    }
 }

@@ -4,7 +4,6 @@
 
 static unsigned long timediff;
 static unsigned long timeoffset;
-static long timeout;
 
 /*
  * NAME:	tminit()
@@ -89,40 +88,4 @@ char *P_ctime(char *buf, Uint t)
 	    weekday[date.dayOfWeek - 1], month[date.month - 1], date.day,
 	    date.hour, date.minute, date.second, date.year);
     return buf;
-}
-
-
-/*
- * NAME:	P->timer()
- * DESCRIPTION:	set the timer to go off at some time in the future, or disable
- *		it
- */
-void P_timer(Uint t, unsigned int mtime)
-{
-    if (t == 0) {
-	timeout = 0;
-    } else {
-	timeout = (t - timeoffset) * 60 + mtime * 100L / 1667;
-	if (timeout < 0) {
-	    timeout = 0;
-	}
-    }
-}
-
-/*
- * NAME:	P->timeout()
- * DESCRIPTION:	return TRUE if there is a timeout, FALSE otherwise
- */
-bool P_timeout(Uint *t, unsigned short *mtime)
-{
-    long time;
-
-    time = TickCount();
-    *t = timeoffset + time / 60;
-    *mtime = time % 60 * 1667 / 100;
-
-    if (timeout == 0) {
-	return FALSE;
-    }
-    return (timeout - time <= 0);
 }

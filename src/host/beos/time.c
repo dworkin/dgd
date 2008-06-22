@@ -2,8 +2,6 @@
 # include <sys/time.h>
 # include "dgd.h"
 
-static struct timeval timeout;
-
 /*
  * NAME:	P->time()
  * DESCRIPTION:	return the current time
@@ -53,35 +51,4 @@ char *P_ctime(char *buf, Uint t)
 	sprintf(buf + 20, "%ld\012", year);
     }
     return buf;
-}
-
-/*
- * NAME:	P->timer()
- * DESCRIPTION:	set the timer to go off at some time in the future, or disable
- *		it
- */
-void P_timer(Uint t, unsigned int mtime)
-{
-    timeout.tv_sec = t;
-    timeout.tv_usec = mtime * 1000;
-}
-
-/*
- * NAME:	P->timeout()
- * DESCRIPTION:	return TRUE if there is a timeout, FALSE otherwise
- */
-bool P_timeout(Uint *t, unsigned short *mtime)
-{
-    struct timeval time;
-
-    gettimeofday(&time, (struct timezone *) NULL);
-    *t = time.tv_sec;
-    *mtime = time.tv_usec / 1000;
-
-    if (timeout.tv_sec == 0) {
-	/* timer disabled */
-	return FALSE;
-    }
-    return (time.tv_sec > timeout.tv_sec ||
-	    (time.tv_sec == timeout.tv_sec && time.tv_usec >= timeout.tv_usec));
 }
