@@ -1711,3 +1711,4 @@ DGD 1.3
  - Fixed some compilation warnings under Sun Studio.
  - More type information is saved in statedumps.
  - Callout due time code rewritten.
+ - Get long-term integer callouts to work properly again.

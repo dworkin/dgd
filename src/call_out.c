@@ -414,7 +414,14 @@ cbuf *q;
 {
     register call_out *co;
 
-    co = (q != (cbuf *) NULL) ? newcallout(q, t) : enqueue(t, m);
+    if (q != (cbuf *) NULL) {
+	co = newcallout(q, t);
+    } else {
+	if (m == 0xffff) {
+	    m = 0;
+	}
+	co = enqueue(t, m);
+    }
     co->handle = handle;
     co->oindex = oindex;
 }
