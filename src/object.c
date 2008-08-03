@@ -719,7 +719,7 @@ register frame *f;
     tmpl->count = 0;
     tmpl->update = obj->update;
     tmpl->ctrl = ctrl;
-    ctrl->inherits[ctrl->ninherits - 1].oindex = tmpl->dfirst = obj->index;
+    ctrl->inherits[ctrl->ninherits - 1].oindex = tmpl->cref = obj->index;
 
     /* add reference to inherited objects */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
@@ -1004,7 +1004,7 @@ static void o_clean_upgrades()
 		o->cref = baseplane.destruct;
 		baseplane.destruct = o->index;
 	    }
-	} while (o->dfirst != next->index);
+	} while (next->chain.name == (char *) NULL);
     }
 }
 
@@ -1090,7 +1090,7 @@ void o_clean()
 	o = OBJ(baseplane.upgrade);
 	baseplane.upgrade = (unsigned long) o->chain.next;
 
-	up = OBJ(o->dfirst);
+	up = OBJ(o->cref);
 	if (up->u_ref == 0) {
 	    /* no more instances of object around */
 	    o->cref = baseplane.destruct;
@@ -1113,12 +1113,13 @@ void o_clean()
 		/*
 		 * upgrade variables
 		 */
-		o->cref = up->index;
 		if (o->prev != OBJ_NONE) {
 		    OBJ(o->prev)->cref = o->index;
 		}
 
-		up->update++;
+		if (o->u_ref > 1) {
+		    up->update++;
+		}
 		if (up->count != 0 && up->data == (dataspace *) NULL &&
 		    up->dfirst != SW_UNUSED) {
 		    /* load dataspace (with old control block) */
