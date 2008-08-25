@@ -1714,3 +1714,5 @@ DGD 1.3
  - Get long-term integer callouts to work properly again.
  - During an object upgrade, only change the update field if there are clones
    and/or light-weight objects.
+ - Removed hash_md5() and hash_sha1() for newly compiled objects.  hash_string()
+   should be used instead.

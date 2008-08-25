@@ -1401,7 +1401,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_md5", kf_hash_md5, pt_hash_md5)
+FUNCDEF("(hash_md5)", kf_hash_md5, pt_hash_md5)
 # else
 char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 		       T_STRING, T_STRING, T_STRING };
@@ -1437,7 +1437,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_sha1", kf_hash_sha1, pt_hash_sha1)
+FUNCDEF("(hash_sha1)", kf_hash_sha1, pt_hash_sha1)
 # else
 char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			T_STRING, T_STRING, T_STRING };

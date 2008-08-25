@@ -298,7 +298,13 @@ int fd;
     for (i = 0; i < dh.nkfun; i++) {
 	n = kf_func(buffer + buflen);
 	if (n < 0) {
-	    error("Restored unknown kfun: %s", buffer + buflen);
+	    if (strcmp(buffer + buflen, "hash_md5") == 0) {
+		n = kf_func("(hash_md5)");
+	    } else if (strcmp(buffer + buflen, "hash_sha1") == 0) {
+		n = kf_func("(hash_sha1)");
+	    } else {
+		error("Restored unknown kfun: %s", buffer + buflen);
+	    }
 	}
 	n += KF_BUILTINS - 128;
 	if (kftab[n].func == kf_old_compile_object) {
