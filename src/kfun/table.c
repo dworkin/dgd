@@ -175,30 +175,33 @@ cvoid *cv1, *cv2;
  */
 void kf_init()
 {
-    register int i;
+    register int i, n;
     register char *k1, *k2;
 
     memcpy(kftab, kforig, sizeof(kforig));
     for (i = 0; i < nkfun; i++) {
 	kftab[i].num = i;
     }
-    qsort(kftab + KF_BUILTINS, nkfun - KF_BUILTINS, sizeof(kfunc), kf_cmp);
-    for (i = nkfun, k1 = kfind + nkfun + 128 - KF_BUILTINS, k2 = kfx + nkfun;
-	 i > KF_BUILTINS; ) {
-	*--k1 = --i;
-	*--k2 = i + 128 - KF_BUILTINS;
+    for (i = 0, k1 = kfind, k2 = kfx; i < KF_BUILTINS; i++) {
+	*k1++ = i;
+	*k2++ = i;
     }
-    for (k1 = kfind + KF_BUILTINS; i > 0; ) {
-	*--k1 = --i;
-	*--k2 = i;
+    qsort(kftab + KF_BUILTINS, nkfun - KF_BUILTINS, sizeof(kfunc), kf_cmp);
+    for (n = 0; kftab[i].name[0] == '('; n++) {
+	*k2++ = '\0';
+	i++;
+    }
+    for (k1 = kfind + 128; i < nkfun; i++) {
+	*k1++ = i;
+	*k2++ = i + 128 - KF_BUILTINS - n;
     }
 }
 
 /*
- * NAME:	kfun->func()
- * DESCRIPTION:	search for kfun in the kfun table, return index or -1
+ * NAME:	kfun->index()
+ * DESCRIPTION:	search for kfun in the kfun table, return raw index or -1
  */
-int kf_func(name)
+static int kf_index(name)
 register char *name;
 {
     register unsigned int h, l, m;
@@ -209,7 +212,7 @@ register char *name;
     do {
 	c = strcmp(name, kftab[m = (l + h) >> 1].name);
 	if (c == 0) {
-	    return UCHAR(kfx[m]);	/* found */
+	    return m;	/* found */
 	} else if (c < 0) {
 	    h = m;	/* search in lower half */
 	} else {
@@ -221,6 +224,59 @@ register char *name;
      */
     return -1;
 }
+
+/*
+ * NAME:	kfun->func()
+ * DESCRIPTION:	search for kfun in the kfun table, return index or -1
+ */
+int kf_func(name)
+char *name;
+{
+    register int n;
+
+    n = kf_index(name);
+    if (n >= 0) {
+	n = UCHAR(kfx[n]);
+    }
+    return n;
+}
+
+# ifdef DEBUG
+/*
+ * NAME:	kfun->reclaim()
+ * DESCRIPTION:	reclaim kfun space
+ */
+void kf_reclaim()
+{
+    register int i, n, last;
+
+    /* remove duplicates at the end */
+    for (i = nkfun; --i >= KF_BUILTINS; ) {
+	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
+	if (UCHAR(kfx[n]) == i + 128 - KF_BUILTINS) {
+	    if (++i != nkfun) {
+		message("*** Reclaimed %d kernel function%s\012", nkfun - i,
+			((nkfun - i > 1) ? "s" : ""));
+		nkfun = i;
+	    }
+	    break;
+	}
+    }
+
+    /* copy last to (removed_kfuns) */
+    last = nkfun;
+    for (i = KF_BUILTINS; i < nkfun && kftab[i].name[0] == '('; i++) {
+	if (kfx[i] != '\0') {
+	    message("*** Preparing to reclaim unused kfun %s\012",
+		    kftab[i].name);
+	    n = UCHAR(kfind[--last + 128 - KF_BUILTINS]);
+	    kfx[n] = UCHAR(kfx[i]);
+	    kfind[UCHAR(kfx[n])] = n;
+	    kfx[i] = '\0';
+	}
+    }
+}
+# endif
 
 
 typedef struct {
@@ -238,7 +294,7 @@ static char dh_layout[] = "sss";
 bool kf_dump(fd)
 int fd;
 {
-    register int i;
+    register int i, n;
     register unsigned int len, buflen;
     register kfunc *kf;
     dump_header dh;
@@ -249,8 +305,13 @@ int fd;
     dh.nbuiltin = KF_BUILTINS;
     dh.nkfun = nkfun - KF_BUILTINS;
     dh.kfnamelen = 0;
-    for (i = dh.nkfun, kf = kftab + KF_BUILTINS; i > 0; --i, kf++) {
-	dh.kfnamelen += strlen(kf->name) + 1;
+    for (i = KF_BUILTINS; i < nkfun; i++) {
+	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
+	if (kfx[n] != '\0') {
+	    dh.kfnamelen += strlen(kftab[n].name) + 1;
+	} else {
+	    --dh.nkfun;
+	}
     }
 
     /* write header */
@@ -261,11 +322,14 @@ int fd;
     /* write kfun names */
     buffer = ALLOCA(char, dh.kfnamelen);
     buflen = 0;
-    for (i = 0; i < dh.nkfun; i++) {
-	kf = &KFUN(i + 128);
-	len = strlen(kf->name) + 1;
-	memcpy(buffer + buflen, kf->name, len);
-	buflen += len;
+    for (i = KF_BUILTINS; i < nkfun; i++) {
+	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
+	if (kfx[n] != '\0') {
+	    kf = &kftab[n];
+	    len = strlen(kf->name) + 1;
+	    memcpy(buffer + buflen, kf->name, len);
+	    buflen += len;
+	}
     }
     flag = (P_write(fd, buffer, buflen) >= 0);
     AFREE(buffer);
@@ -277,13 +341,12 @@ int fd;
  * NAME:	kfun->restore()
  * DESCRIPTION:	restore the kfun table
  */
-void kf_restore(fd)
-int fd;
+void kf_restore(fd, oldcomp)
+int fd, oldcomp;
 {
     register int i, n, buflen;
     dump_header dh;
     char *buffer;
-    bool converted;
 
     /* read header */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
@@ -293,28 +356,29 @@ int fd;
     if (P_read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
 	fatal("cannot restore kfun names");
     }
+    memset(kfx + KF_BUILTINS, '\0', nkfun);
     buflen = 0;
-    converted = FALSE;
     for (i = 0; i < dh.nkfun; i++) {
-	n = kf_func(buffer + buflen);
+	n = kf_index(buffer + buflen);
 	if (n < 0) {
 	    if (strcmp(buffer + buflen, "hash_md5") == 0) {
-		n = kf_func("(hash_md5)");
+		n = kf_index("(hash_md5)");
 	    } else if (strcmp(buffer + buflen, "hash_sha1") == 0) {
-		n = kf_func("(hash_sha1)");
+		n = kf_index("(hash_sha1)");
 	    } else {
 		error("Restored unknown kfun: %s", buffer + buflen);
 	    }
 	}
-	n += KF_BUILTINS - 128;
-	if (kftab[n].func == kf_old_compile_object) {
-	    converted = TRUE;
-	} else if (kftab[n].func == kf_compile_object && !converted) {
-	    /* HACK: convert compile_object() */
-	    n = KF_BUILTINS;
+	if (kfx[n] == '\0') {
+	    if (kftab[n].func == kf_old_compile_object) {
+		oldcomp = FALSE;
+	    } else if (kftab[n].func == kf_compile_object && oldcomp) {
+		/* convert compile_object() */
+		n = kf_index("(compile_object)");
+	    }
+	    kfx[n] = i + 128;
 	}
 	kfind[i + 128] = n;
-	kfx[n] = i + 128;
 	buflen += strlen(buffer + buflen) + 1;
     }
     AFREE(buffer);
@@ -326,8 +390,7 @@ int fd;
 	 */
 	n = dh.nkfun + 128;
 	for (i = KF_BUILTINS; i < nkfun; i++) {
-	    if (UCHAR(kfx[i]) >= dh.nkfun + 128 ||
-		UCHAR(kfind[UCHAR(kfx[i])]) != i) {
+	    if (kfx[i] == '\0' && kftab[i].name[0] != '(') {
 		/* new kfun */
 		kfind[n] = i;
 		kfx[i] = n++;

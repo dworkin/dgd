@@ -1716,3 +1716,4 @@ DGD 1.3
    and/or light-weight objects.
  - Removed hash_md5() and hash_sha1() for newly compiled objects.  hash_string()
    should be used instead.
+ - Allow unused kfuns to be reclaimed, using a debugger.

@@ -344,7 +344,7 @@ int fd;
     rpsize &= 0xf;
 
     sw_restore(fd, secsize);
-    kf_restore(fd);
+    kf_restore(fd, conv_co1);
     o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0));
     d_init_conv(conv_ctrl, conv_data, conv_co1, conv_co2, conv_type);
     pc_restore(fd);

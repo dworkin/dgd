@@ -21,8 +21,9 @@ extern void kf_clear	P((void));
 extern void kf_ext_kfun	P((extkfunc*, int));
 extern void kf_init	P((void));
 extern int  kf_func	P((char*));
+extern void kf_reclaim	P((void));
 extern bool kf_dump	P((int));
-extern void kf_restore	P((int));
+extern void kf_restore	P((int, int));
 
 # define KF_ADD		 0
 # define KF_ADD_INT	 1
