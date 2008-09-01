@@ -848,19 +848,28 @@ int fd;
 		    /* not the same */
 		    error("Precompiled object != restored object /%s", name);
 		}
-
 		d_del_control(ctrl);
+		hash_add(l->oindex, (uindex) i);
+
 		obj->flags |= O_COMPILED;
-		obj->ctrl = (control *) NULL;
 		obj->cfirst = SW_UNUSED;
+		obj->ctrl = ctrl = d_new_control();
+		ctrl->oindex = obj->index;
+		pc_control(ctrl, obj);
+		ctrl->flags |= CTRL_COMPILED;
+
+		if (obj->data != (dataspace *) NULL) {
+		    obj->data->ctrl = ctrl;
+		    ctrl->ndata++;
+		}
 	    } else {
 		/*
 		 * new precompiled object
 		 */
 		fixinherits(inherits + itab[i], l->inherits, l->ninherits);
 		l->oindex = pc_obj(name, inherits + itab[i], l->ninherits);
+		hash_add(l->oindex, (uindex) i);
 	    }
-	    hash_add(l->oindex, (uindex) i);
 	}
     }
     P_lseek(fd, posn, SEEK_SET);	/* restore position */
