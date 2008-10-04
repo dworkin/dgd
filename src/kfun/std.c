@@ -410,12 +410,6 @@ register frame *f;
 	}
 	ed_del(obj);
 	break;
-
-    case O_SPECIAL:
-	if (ext_destruct != (void (*) P((object*))) NULL) {
-	    (*ext_destruct)(obj);
-	}
-	break;
     }
     o_del(obj, f);
     return 0;

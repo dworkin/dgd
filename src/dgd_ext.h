@@ -14,11 +14,9 @@
  * interface
  */
 # define DGD_EXT_KFUN(ekf, n)	kf_ext_kfun((ekf), (n))
-# define DGD_EXT_CALLBACK(r, s, d, f, c, e) \
-				conf_ext_callback((r), (s), (d), (f), (c), (e))
-# define DGD_ERROR		error
-# define DGD_ECONTEXT_PUSH()	ec_push((ec_ftn) NULL)
-# define DGD_ECONTEXT_POP()	ec_pop()
+# define DGD_ERROR		dgd_error
+# define DGD_ECONTEXT_PUSH(f)	ec_push((ec_ftn) NULL)
+# define DGD_ECONTEXT_POP(f)	ec_pop()
 
 /*
  * types
@@ -63,9 +61,8 @@ typedef dataspace *dgd_dataspace_t;
 /*
  * frame
  */
-# define DGD_FRAME_OBJECT(f)	OBJW((f)->oindex)
-# define DGD_FRAME_LWOBJ(f)	((f)->lwobj)
-# define DGD_FRAME_PROGRAM(f)	OBJW((f)->p_ctrl->oindex)
+# define DGD_FRAME_OBJECT(f)	(((f)->lwobj == (array *) NULL) ? \
+				  OBJW((f)->oindex) : (object *) NULL)
 # define DGD_FRAME_DATASPACE(f)	((f)->data)
 # define DGD_FRAME_ARG(f, n, i)	(*((f)->sp + (n) - ((i) + 1)))
 # define DGD_FRAME_ATOMIC(f)	((f)->level != 0)
@@ -122,24 +119,19 @@ typedef dataspace *dgd_dataspace_t;
  */
 # define DGD_STRING_GETVAL(v)		((v).u.string)
 # define DGD_STRING_PUTVAL(v, s)	PUT_STRVAL_NOREF(&(v), (s))
-# define DGD_STRING_NEW(t, n)		str_new((t), (long) (n))
+# define DGD_STRING_NEW(f, t, n)	str_new((t), (long) (n))
 # define DGD_STRING_TEXT(s)		((s)->text)
 # define DGD_STRING_LENGTH(s)		((s)->len)
 
 /*
  * object
  */
-# define DGD_OBJECT_GETVAL(v)		OBJW((v).oindex)
 # define DGD_OBJECT_PUTVAL(v, o)	PUT_OBJVAL(&(v), (o))
-# define DGD_OBJECT_CHECKVAL(v, o)	((v).u.objcnt == (o)->count)
-# define DGD_OBJECT_DATASPACE(o)	o_dataspace((o))
-# define DGD_OBJECT_NAME(buf, o)	o_name((buf), (o))
+# define DGD_OBJECT_NAME(f, buf, o)	o_name((buf), (o))
 # define DGD_OBJECT_ISSPECIAL(o)	(((o)->flags & O_SPECIAL) != 0)
 # define DGD_OBJECT_ISMARKED(o)		(((o)->flags & O_SPECIAL) == O_SPECIAL)
 # define DGD_OBJECT_MARK(o)		((o)->flags |= O_SPECIAL)
 # define DGD_OBJECT_UNMARK(o)		((o)->flags &= ~O_SPECIAL)
-# define DGD_OBJECT_GET_EINDEX(o)	((o)->etabi)
-# define DGD_OBJECT_SET_EINDEX(o, e)	((o)->etabi = (e))
 
 /*
  * array
@@ -163,15 +155,5 @@ typedef dataspace *dgd_dataspace_t;
 # define DGD_MAPPING_INDEX(m, i)	(*map_index((m)->primary->data, (m), \
 						    &(i), (value *) NULL))
 # define DGD_MAPPING_ASSIGN(d, m, i, v)	map_index((d), (m), &(i), &(v))
-
-/*
- * light-weight object
- */
-# define DGD_LWOBJ_GETVAL(v)		((v).u.array)
-# define DGD_LWOBJ_PUTVAL(v, o)		PUT_LWOBJ_NOREF(&(v), (o))
-# define DGD_LWOBJ_CHECKVAL(o)		(d_get_elts((o)), \
-					 OBJR((o)->elts->oindex)->count == \
-							    (o)->elts->u.objcnt)
-# define DGD_LWOBJ_COPY(d, o)		lwo_copy((d), (o))
 
 # endif	/* DGD_EXT_H */

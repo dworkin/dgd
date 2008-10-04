@@ -1133,13 +1133,6 @@ static bool conf_includes()
 extern void extension_init	P((void));
 # endif
 
-void (*ext_restore)	P((object*));
-void (*ext_swapout)	P((object*));
-void (*ext_destruct)	P((object*));
-bool (*ext_funcall)	P((frame*, int, value*, char*));
-void (*ext_cleanup)	P((void));
-void (*ext_finish)	P((void));
-
 /*
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
@@ -1232,13 +1225,6 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
-
-    ext_restore =  (void (*) P((object*))) NULL;
-    ext_swapout =  (void (*) P((object*))) NULL;
-    ext_destruct = (void (*) P((object*))) NULL;
-    ext_funcall =  (bool (*) P((frame*, int, value*, char*))) NULL;
-    ext_cleanup =  (void (*) P((void))) NULL;
-    ext_finish =   (void (*) P((void))) NULL;
 
     /* remove previously added kfuns */
     kf_clear();
@@ -1339,26 +1325,6 @@ sector *fragment;
     comm_listen();
 
     return TRUE;
-}
-
-/*
- * NAME:	config->ext_callback()
- * DESCRIPTION:	initialize callbacks for extension interface
- */
-void conf_ext_callback(restore, swapout, destruct, funcall, cleanup, finish)
-void (*restore) P((object*));
-void (*swapout) P((object*));
-void (*destruct) P((object*));
-bool (*funcall) P((frame*, int, value*, char*));
-void (*cleanup) P((void));
-void (*finish) P((void));
-{
-    ext_restore =  restore;
-    ext_swapout =  swapout;
-    ext_destruct = destruct;
-    ext_funcall =  funcall;
-    ext_cleanup =  cleanup;
-    ext_finish =   finish;
 }
 
 /*

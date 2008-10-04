@@ -1718,3 +1718,6 @@ DGD 1.3
    should be used instead.
  - Allow unused kfuns to be reclaimed, using a debugger.
  - Fix a problem with precompiled objects, when restoring interpreted versions.
+ - Automatically handle platforms with unsigned characters.
+ - Removed everything from the extension interface that won't be supported in
+   DGD/MP.

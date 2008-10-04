@@ -1378,14 +1378,6 @@ unsigned int rlwobj;
     }
 
     o_sweep(baseplane.nobjects);
-
-    for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
-	if ((o->flags & O_SPECIAL) == O_SPECIAL &&
-	    ext_restore != (void (*) P((object*))) NULL) {
-	    (*ext_restore)(o);
-	    d_swapout(1);
-	}
-    }
 }
 
 /*

@@ -674,7 +674,8 @@ int tk_gettok()
 		c = gc();
 	    }
 	    if (c == 'e' || c == 'E') {
-		char *q, exp, sign;
+		char *q, exp;
+		int sign;
 
 		/*
 		 * Come here when 'e' or 'E' has been spotted after a number.

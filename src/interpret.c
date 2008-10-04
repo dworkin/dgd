@@ -2205,61 +2205,51 @@ int funci;
 
     i_add_ticks(&f, 10);
 
-    if ((obj->flags & O_SPECIAL) != O_SPECIAL ||
-	ext_funcall == (bool (*) P((frame*, int, value*, char*))) NULL ||
-	!(*ext_funcall)(&f, nargs, &val,
-		        d_get_strconst(f.p_ctrl, f.func->inherit,
-				       f.func->index)->text)) {
-	/*
-	 * ordinary function call
-	 */
+    /* create new local stack */
+    f.argp = f.sp;
+    FETCH2U(pc, n);
+    f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+    f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
+    f.sos = TRUE;
 
-	/* create new local stack */
-	f.argp = f.sp;
-	FETCH2U(pc, n);
-	f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
-	f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
-	f.sos = TRUE;
-
-	/* initialize local variables */
-	n = FETCH1U(pc);
+    /* initialize local variables */
+    n = FETCH1U(pc);
 # ifdef DEBUG
-	nargs = n;
+    nargs = n;
 # endif
-	if (n > 0) {
-	    do {
-		*--f.sp = nil_value;
-	    } while (--n > 0);
-	}
+    if (n > 0) {
+	do {
+	    *--f.sp = nil_value;
+	} while (--n > 0);
+    }
 
-	/* execute code */
-	d_get_funcalls(f.ctrl);	/* make sure they are available */
-	if (f.func->class & C_COMPILED) {
-	    Uint l;
+    /* execute code */
+    d_get_funcalls(f.ctrl);	/* make sure they are available */
+    if (f.func->class & C_COMPILED) {
+	Uint l;
 
-	    /* compiled function */
-	    (*pcfunctions[FETCH3U(pc, l)])(&f);
-	} else {
-	    /* interpreted function */
-	    f.prog = pc += 2;
-	    i_interpret(&f, pc);
-	}
+	/* compiled function */
+	(*pcfunctions[FETCH3U(pc, l)])(&f);
+    } else {
+	/* interpreted function */
+	f.prog = pc += 2;
+	i_interpret(&f, pc);
+    }
 
-	/* clean up stack, move return value to outer stackframe */
-	val = *f.sp++;
+    /* clean up stack, move return value to outer stackframe */
+    val = *f.sp++;
 # ifdef DEBUG
-	if (f.sp != f.fp - nargs || f.lip != f.stack) {
-	    fatal("bad stack pointer after function call");
-	}
+    if (f.sp != f.fp - nargs || f.lip != f.stack) {
+	fatal("bad stack pointer after function call");
+    }
 # endif
-	i_pop(&f, f.fp - f.sp);
-	if (f.sos) {
-		/* still alloca'd */
-	    AFREE(f.stack);
-	} else {
-	    /* extended and malloced */
-	    FREE(f.stack);
-	}
+    i_pop(&f, f.fp - f.sp);
+    if (f.sos) {
+	    /* still alloca'd */
+	AFREE(f.stack);
+    } else {
+	/* extended and malloced */
+	FREE(f.stack);
     }
 
     if (f.lwobj != (array *) NULL) {

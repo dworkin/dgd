@@ -9,9 +9,6 @@
 
 # ifdef BEOS
 
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
 typedef int Int;
 typedef unsigned int Uint;
 
@@ -54,9 +51,6 @@ typedef unsigned int Uint;
 
 
 # ifdef WIN32
-
-# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
 typedef unsigned int Uint;
@@ -107,9 +101,6 @@ extern void dgd_abort(void);
 
 
 # ifdef MACOS
-
-# define UCHAR(c)	((int)((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
 typedef unsigned int Uint;
@@ -191,9 +182,6 @@ typedef unsigned int Uint;
 
 # ifdef GENERIC_BSD
 
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
-
 typedef int Int;
 typedef unsigned int Uint;
 
@@ -230,9 +218,6 @@ typedef unsigned int Uint;
 
 
 # ifdef GENERIC_SYSV
-
-# define UCHAR(c)	((int) ((c) & 0xff))	/* unsigned character */
-# define SCHAR(c)	((char) (c))		/* signed character */
 
 typedef int Int;
 typedef unsigned int Uint;
@@ -351,9 +336,10 @@ struct _struct_al_ { long l; short s; };
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
 
-# ifdef HOST_WITH_UNSIGNED_CHAR
-# undef UCHAR
-# undef SCHAR
+# if defined(CHAR_MAX) && CHAR_MAX == 255
 # define UCHAR(c)	((char) (c))			/* unsigned character */
 # define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
+# else
+# define UCHAR(c)	((int) ((c) & 0xff))		/* unsigned character */
+# define SCHAR(c)	((char) (c))			/* signed character */
 # endif
