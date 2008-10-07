@@ -196,6 +196,21 @@ register control *ctrl;
 }
 
 /*
+ * NAME:	dump_vtypes()
+ * DESCRIPTION:	output the variable types
+ */
+static void dump_vtypes(ctrl)
+register control *ctrl;
+{
+    if (ctrl->nvariables > ctrl->nvardefs) {
+	printf("\nstatic char vtypes[] = {\n");
+	size = 0;
+	dump_chars(ctrl->vtypes, ctrl->nvariables - ctrl->nvardefs);
+	printf("\n};\n");
+    }
+}
+
+/*
  * NAME:	dgd_main()
  * DESCRIPTION:	main routine of the precompiler
  */
@@ -271,6 +286,7 @@ char *argv[];
     dump_vardefs(ctrl);
     dump_funcalls(ctrl);
     dump_symbols(ctrl);
+    dump_vtypes(ctrl);
 
     printf("\nprecomp %s = {\nUINDEX_MAX,\n%d, inherits,\n", tag,
 	   ctrl->ninherits);
@@ -316,7 +332,12 @@ char *argv[];
     } else {
 	printf("%u, symbols,\n", ctrl->nsymbols);
     }
-    printf("%u, %u, %u,\n", ctrl->nvariables, ctrl->nifdefs, ctrl->nvinit);
+    printf("%u,\n", ctrl->nvariables);
+    if (ctrl->nvariables > ctrl->nvardefs) {
+	printf("vtypes,\n");
+    } else {
+	printf("0,\n");
+    }
     printf("%d\n", conf_typechecking());
     printf("};\n# endif\n");
 

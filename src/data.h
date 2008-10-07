@@ -89,8 +89,8 @@ struct _control_ {
     Uint symboffset;		/* o offset of symbol table */
 
     unsigned short nvariables;	/* i/o # variables */
-    unsigned short nifdefs;	/* i/o # int/float definitions */
-    unsigned short nvinit;	/* i/o # variables requiring initialization */
+    char *vtypes;		/* i/o? variable types */
+    Uint vtypeoffset;		/* o offset of variable types */
 
     unsigned short vmapsize;	/* i/o size of variable mapping */
     unsigned short *vmap;	/* variable mapping */
@@ -206,8 +206,8 @@ struct _dataspace_ {
 
 /* sdata.c */
 
-extern void		d_init		 P((int));
-extern void		d_init_conv	 P((int, int, int, int, int));
+extern void		d_init		 P((void));
+extern void		d_init_conv	 P((int, int, int, int, int, int));
 
 extern control	       *d_new_control	 P((void));
 extern dataspace       *d_new_dataspace  P((object*));

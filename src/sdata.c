@@ -14,6 +14,25 @@
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
+    short flags;		/* control flags: compression */
+    short ninherits;		/* # objects in inherit table */
+    Uint compiled;		/* time of compilation */
+    Uint progsize;		/* size of program code */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+} scontrol;
+
+static char sc_layout[] = "dssiisicccusss";
+
+typedef struct {
+    sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
     Uint compiled;		/* time of compilation */
@@ -29,9 +48,9 @@ typedef struct {
     unsigned short nifdefs;	/* # int/float definitions */
     unsigned short nvinit;	/* # variables requiring initialization */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} scontrol;
+} ocontrol;
 
-static char sc_layout[] = "dcciisicccusssss";
+static char oc_layout[] = "dcciisicccusssss";
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -192,8 +211,7 @@ static dataspace *dhead, *dtail;	/* list of dataspace blocks */
 static dataspace *gcdata;		/* next dataspace to garbage collect */
 static sector nctrl;			/* # control blocks */
 static sector ndata;			/* # dataspace blocks */
-static bool nilisnot0;			/* nil != int 0 */
-static bool conv_ctrl;			/* convert control blocks? */
+static bool conv_ctrl1, conv_ctrl2;	/* convert control blocks? */
 static bool conv_data;			/* convert dataspaces? */
 static bool conv_co1, conv_co2;		/* convert callouts? */
 static bool conv_type;			/* convert types? */
@@ -204,15 +222,14 @@ static bool converted;			/* conversion complete? */
  * NAME:	data->init()
  * DESCRIPTION:	initialize swapped data handling
  */
-void d_init(flag)
-int flag;
+void d_init()
 {
     chead = ctail = (control *) NULL;
     dhead = dtail = (dataspace *) NULL;
     gcdata = (dataspace *) NULL;
     nctrl = ndata = 0;
-    nilisnot0 = flag;
-    conv_ctrl = conv_data = conv_co1 = conv_co2 = conv_type = FALSE;
+    conv_ctrl1 = conv_ctrl2 = conv_data = conv_co1 = conv_co2 = conv_type =
+		 FALSE;
     converted = FALSE;
 }
 
@@ -220,10 +237,11 @@ int flag;
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(ctrl, data, callout1, callout2, type)
-int ctrl, data, callout1, callout2, type;
+void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type)
+int ctrl1, ctrl2, data, callout1, callout2, type;
 {
-    conv_ctrl = ctrl;
+    conv_ctrl1 = ctrl1;
+    conv_ctrl2 = ctrl2;
     conv_data = data;
     conv_co1 = callout1;
     conv_co2 = callout2;
@@ -279,8 +297,7 @@ control *d_new_control()
     ctrl->nsymbols = 0;
     ctrl->symbols = (dsymbol *) NULL;
     ctrl->nvariables = 0;
-    ctrl->nifdefs = 0;
-    ctrl->nvinit = 0;
+    ctrl->vtypes = (char *) NULL;
     ctrl->vmapsize = 0;
     ctrl->vmap = (unsigned short *) NULL;
 
@@ -488,11 +505,11 @@ void (*readv) P((char*, sector*, Uint, Uint));
     /* symbol table */
     ctrl->symboffset = size;
     ctrl->nsymbols = header.nsymbols;
+    size += header.nsymbols * (Uint) sizeof(dsymbol);
 
     /* # variables */
+    ctrl->vtypeoffset = size;
     ctrl->nvariables = header.nvariables;
-    ctrl->nifdefs = header.nifdefs;
-    ctrl->nvinit = header.nvinit;
 
     return ctrl;
 }
@@ -1034,6 +1051,34 @@ register control *ctrl;
 }
 
 /*
+ * NAME:	get_vtypes()
+ * DESCRIPTION:	get variable types
+ */
+static void get_vtypes(ctrl, readv)
+register control *ctrl;
+void (*readv) P((char*, sector*, Uint, Uint));
+{
+    if (ctrl->nvariables > ctrl->nvardefs) {
+	ctrl->vtypes = ALLOC(char, ctrl->nvariables - ctrl->nvardefs);
+	(*readv)(ctrl->vtypes, ctrl->sectors, ctrl->nvariables - ctrl->nvardefs,
+		 ctrl->vtypeoffset);
+    }
+}
+
+/*
+ * NAME:	data->get_vtypes()
+ * DESCRIPTION:	get variable types
+ */
+static char *d_get_vtypes(ctrl)
+register control *ctrl;
+{
+    if (ctrl->vtypes == (char *) NULL && ctrl->nvariables > ctrl->nvardefs) {
+	get_vtypes(ctrl, sw_readv);
+    }
+    return ctrl->vtypes;
+}
+
+/*
  * NAME:	data->get_progsize()
  * DESCRIPTION:	get the size of a control block
  */
@@ -1057,7 +1102,8 @@ register control *ctrl;
 	   ctrl->nvardefs * sizeof(dvardef) +
 	   ctrl->nclassvars * (Uint) 3 +
 	   ctrl->nfuncalls * (Uint) 2 +
-	   ctrl->nsymbols * (Uint) sizeof(dsymbol);
+	   ctrl->nsymbols * (Uint) sizeof(dsymbol) +
+	   ctrl->nvariables - ctrl->nvardefs;
 }
 
 
@@ -1250,46 +1296,27 @@ register int n;
  * NAME:	data->new_variables()
  * DESCRIPTION:	initialize variables in a dataspace block
  */
-void d_new_variables(ctrl, variables)
+void d_new_variables(ctrl, val)
 register control *ctrl;
-register value *variables;
+register value *val;
 {
-    register unsigned short nifdefs, nvars, nvinit;
+    register unsigned short n;
+    register char *type;
     register dvardef *var;
-    register dinherit *inh;
 
-    /*
-     * first, initialize all variables to nil
-     */
-    for (nvars = ctrl->nvariables, variables += nvars; nvars > 0; --nvars) {
-	*--variables = nil_value;
+    memset(val, '\0', ctrl->nvariables * sizeof(value));
+    for (n = ctrl->nvariables - ctrl->nvardefs, type = d_get_vtypes(ctrl);
+	 n != 0; --n, type++) {
+	val->type = *type;
+	val++;
     }
-
-    if (ctrl->nvinit != 0) {
-	/*
-	 * explicitly initialize some variables
-	 */
-	nvars = 0;
-	for (nvinit = ctrl->nvinit, inh = ctrl->inherits; nvinit > 0; inh++) {
-	    if (inh->varoffset == nvars) {
-		ctrl = o_control(OBJR(inh->oindex));
-		if (ctrl->nifdefs != 0) {
-		    nvinit -= ctrl->nifdefs;
-		    for (nifdefs = ctrl->nifdefs, var = d_get_vardefs(ctrl);
-			 nifdefs > 0; var++) {
-			if (var->type == T_INT && nilisnot0) {
-			    variables[nvars] = zero_int;
-			    --nifdefs;
-			} else if (var->type == T_FLOAT) {
-			    variables[nvars] = zero_float;
-			    --nifdefs;
-			}
-			nvars++;
-		    }
-		}
-		nvars = inh->varoffset + ctrl->nvardefs;
-	    }
+    for (n = ctrl->nvardefs, var = ctrl->vardefs; n != 0; --n, var++) {
+	if (T_ARITHMETIC(var->type)) {
+	    val->type = var->type;
+	} else {
+	    val->type = nil_type;
 	}
+	val++;
     }
 }
 
@@ -1490,8 +1517,6 @@ register control *ctrl;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
-    header.nifdefs = ctrl->nifdefs;
-    header.nvinit = ctrl->nvinit;
     header.vmapsize = ctrl->vmapsize;
 
     /* create sector space */
@@ -1559,7 +1584,8 @@ register control *ctrl;
 	       UCHAR(header.nvardefs) * sizeof(dvardef) +
 	       UCHAR(header.nclassvars) * (Uint) 3 +
 	       header.nfuncalls * (Uint) 2 +
-	       header.nsymbols * (Uint) sizeof(dsymbol);
+	       header.nsymbols * (Uint) sizeof(dsymbol) +
+	       header.nvariables - UCHAR(header.nvardefs);
     }
     ctrl->nsectors = header.nsectors = d_swapalloc(size, ctrl->nsectors,
 						   &ctrl->sectors);
@@ -1664,6 +1690,13 @@ register control *ctrl;
 	if (header.nsymbols > 0) {
 	    sw_writev((char *) ctrl->symbols, ctrl->sectors,
 		      header.nsymbols * (Uint) sizeof(dsymbol), size);
+	    size += header.nsymbols * sizeof(dsymbol);
+	}
+
+	/* save variable types */
+	if (header.nvariables > UCHAR(header.nvardefs)) {
+	    sw_writev(ctrl->vtypes, ctrl->sectors,
+		      header.nvariables - UCHAR(header.nvardefs), size);
 	}
     }
 }
@@ -2521,14 +2554,14 @@ object *obj;
     /*
      * restore from dump file
      */
-    if (conv_ctrl) {
+    if (conv_ctrl1) {
 	oscontrol oheader;
 
 	size = d_conv((char *) &oheader, &obj->cfirst, os_layout, (Uint) 1,
 		      (Uint) 0);
 	header.nsectors = oheader.nsectors;
-	header.flags = oheader.flags;
-	header.ninherits = oheader.ninherits;
+	header.flags = UCHAR(oheader.flags);
+	header.ninherits = UCHAR(oheader.ninherits);
 	header.compiled = oheader.compiled;
 	header.progsize = oheader.progsize;
 	header.nstrings = oheader.nstrings;
@@ -2539,8 +2572,25 @@ object *obj;
 	header.nfuncalls = oheader.nfuncalls;
 	header.nsymbols = oheader.nsymbols;
 	header.nvariables = oheader.nvariables;
-	header.nifdefs = oheader.nifdefs;
-	header.nvinit = oheader.nvinit;
+	header.vmapsize = oheader.vmapsize;
+    } else if (conv_ctrl2) {
+	ocontrol oheader;
+
+	size = d_conv((char *) &oheader, &obj->cfirst, oc_layout, (Uint) 1,
+		      (Uint) 0);
+	header.nsectors = oheader.nsectors;
+	header.flags = UCHAR(oheader.flags);
+	header.ninherits = UCHAR(oheader.ninherits);
+	header.compiled = oheader.compiled;
+	header.progsize = oheader.progsize;
+	header.nstrings = oheader.nstrings;
+	header.strsize = oheader.strsize;
+	header.nfuncdefs = oheader.nfuncdefs;
+	header.nvardefs = oheader.nvardefs;
+	header.nclassvars = oheader.nclassvars;
+	header.nfuncalls = oheader.nfuncalls;
+	header.nsymbols = oheader.nsymbols;
+	header.nvariables = oheader.nvariables;
 	header.vmapsize = oheader.vmapsize;
     } else {
 	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
@@ -2560,8 +2610,6 @@ object *obj;
     ctrl->nfuncalls = header.nfuncalls;
     ctrl->nsymbols = header.nsymbols;
     ctrl->nvariables = header.nvariables;
-    ctrl->nifdefs = header.nifdefs;
-    ctrl->nvinit = header.nvinit;
     ctrl->vmapsize = header.vmapsize;
 
     /* sectors */
@@ -2630,7 +2678,7 @@ object *obj;
 	    ctrl->funcdefs = ALLOC(dfuncdef, UCHAR(header.nfuncdefs));
 	    size += d_conv((char *) ctrl->funcdefs, ctrl->sectors, DF_LAYOUT,
 			   (Uint) UCHAR(header.nfuncdefs), size);
-	    if (conv_ctrl) {
+	    if (conv_ctrl1) {
 		char *prog, *old, *new;
 		Uint offset, funcsize;
 
@@ -2670,7 +2718,7 @@ object *obj;
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
 	    size += d_conv((char *) ctrl->vardefs, ctrl->sectors, DV_LAYOUT,
 			   (Uint) UCHAR(header.nvardefs), size);
-	    if (conv_ctrl) {
+	    if (conv_ctrl1) {
 		register unsigned short type;
 
 		for (n = 0; n < ctrl->nvardefs; n++) {
@@ -2697,8 +2745,20 @@ object *obj;
 	if (header.nsymbols != 0) {
 	    /* symbol table */
 	    ctrl->symbols = ALLOC(dsymbol, header.nsymbols);
-	    d_conv((char *) ctrl->symbols, ctrl->sectors, DSYM_LAYOUT,
-		   (Uint) header.nsymbols, size);
+	    size += d_conv((char *) ctrl->symbols, ctrl->sectors, DSYM_LAYOUT,
+			   (Uint) header.nsymbols, size);
+	}
+
+	if (header.nvariables > UCHAR(header.nvardefs)) {
+	    /* variable types */
+	    if (conv_ctrl2) {
+		ctrl_mkvtypes(ctrl);
+	    } else {
+		ctrl->vtypes = ALLOC(char, header.nvariables -
+					   UCHAR(header.nvardefs));
+		sw_conv(ctrl->vtypes, ctrl->sectors,
+			header.nvariables - UCHAR(header.nvardefs), size);
+	    }
 	}
     }
 
@@ -3085,6 +3145,7 @@ Uint *counttab;
 		get_vardefs(ctrl, sw_creadv);
 		get_funcalls(ctrl, sw_creadv);
 		get_symbols(ctrl, sw_creadv);
+		get_vtypes(ctrl, sw_creadv);
 	    }
 	}
 	obj->ctrl = ctrl;
@@ -3197,6 +3258,11 @@ register control *ctrl;
 	/* delete symbol table */
 	if (ctrl->symbols != (dsymbol *) NULL) {
 	    FREE(ctrl->symbols);
+	}
+
+	/* delete variable types */
+	if (ctrl->vtypes != (char *) NULL) {
+	    FREE(ctrl->vtypes);
 	}
     }
 

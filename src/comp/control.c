@@ -225,12 +225,10 @@ static void lab_clear()
 static oh *directs[MAX_INHERITS];	/* direct inherit table */
 static int ndirects;			/* # directly inh. objects */
 static int ninherits;			/* # inherited objects */
-static bool countint;			/* TRUE if counting integer variables */
 static bool privinherit;		/* TRUE if private inheritance used */
 static hashtab *vtab;			/* variable merge table */
 static hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
-static unsigned short nvinit;		/* # variables needing initialization */
 static unsigned short nsymbs;		/* # symbols */
 static int nfclash;			/* # prototype clashes */
 static Uint nifcalls;			/* # inherited function calls */
@@ -239,13 +237,11 @@ static Uint nifcalls;			/* # inherited function calls */
  * NAME:	control->init()
  * DESCRIPTION:	initialize control block construction
  */
-void ctrl_init(flag)
-int flag;
+void ctrl_init()
 {
     oh_init();
     vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
     ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
-    countint = flag;
 }
 
 /*
@@ -732,7 +728,6 @@ int priv;
 		 */
 		ohash->obj = o;
 		ohash->index = 2;	/* indirect */
-		nvinit += o_control(o)->nifdefs;
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
@@ -968,7 +963,6 @@ void ctrl_create()
     new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
     new->priv = FALSE;
-    newctrl->nvinit = nvinit;
 
     /*
      * prepare for construction of a new control block
@@ -983,7 +977,6 @@ void ctrl_create()
     nvars = 0;
     nclassvars = 0;
     nfcalls = 0;
-    nvinit = 0;
 }
 
 /*
@@ -1257,10 +1250,6 @@ unsigned int class, type;
 	*p++ = s >> 16;
 	*p++ = s >> 8;
 	*p = s;
-    }
-
-    if ((type == T_INT && countint) || type == T_FLOAT) {
-	nvinit++;
     }
 }
 
@@ -1916,6 +1905,39 @@ static void ctrl_mksymbs()
 }
 
 /*
+ * NAME:	ctrl->mkvtypes()
+ * DESCRIPTION:	make the variable type table for the control block
+ */
+void ctrl_mkvtypes(ctrl)
+register control *ctrl;
+{
+    register char *type;
+    register unsigned short max, nv, n;
+    register dinherit *inh;
+    register dvardef *var;
+
+    max = ctrl->nvariables - ctrl->nvardefs;
+    if (max == 0) {
+	return;
+    }
+
+    ctrl->vtypes = type = ALLOC(char, max);
+    for (nv = 0, inh = ctrl->inherits; nv != max; inh++) {
+	if (inh->varoffset == nv) {
+	    ctrl = o_control(OBJR(inh->oindex));
+	    for (n = ctrl->nvardefs, nv += n, var = d_get_vardefs(ctrl);
+		 n != 0; --n, var++) {
+		if (T_ARITHMETIC(var->type)) {
+		    *type++ = var->type;
+		} else {
+		    *type++ = nil_value.type;
+		}
+	    }
+	}
+    }
+}
+
+/*
  * NAME:	control->symb()
  * DESCRIPTION:	return the entry in the symbol table for func, or NULL
  */
@@ -1982,8 +2004,7 @@ control *ctrl_construct()
     ctrl_mkvars();
     ctrl_mkfcalls();
     ctrl_mksymbs();
-    ctrl->nifdefs = nvinit;
-    ctrl->nvinit += nvinit;
+    ctrl_mkvtypes(ctrl);
     ctrl->compiled = P_time();
 
     newctrl = (control *) NULL;
@@ -2009,7 +2030,6 @@ void ctrl_clear()
     ndirects = 0;
     ninherits = 0;
     privinherit = FALSE;
-    nvinit = 0;
     nsymbs = 0;
     nfclash = 0;
     nifcalls = 0;

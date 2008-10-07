@@ -1,4 +1,4 @@
-extern void		 ctrl_init	P((int));
+extern void		 ctrl_init	P((void));
 extern bool		 ctrl_inherit	P((frame*, char*, object*, string*,
 					   int));
 extern void		 ctrl_create	P((void));
@@ -13,6 +13,7 @@ extern char		*ctrl_fcall	P((string*, string**, long*, int));
 extern unsigned short	 ctrl_gencall	P((long));
 extern unsigned short	 ctrl_var	P((string*, long*, string**));
 extern bool		 ctrl_chkfuncs	P((void));
+extern void		 ctrl_mkvtypes	P((control*));
 extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));
 extern control		*ctrl_construct	P((void));
 extern void		 ctrl_clear	P((void));

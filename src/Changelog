@@ -1721,3 +1721,5 @@ DGD 1.3
  - Automatically handle platforms with unsigned characters.
  - Removed everything from the extension interface that won't be supported in
    DGD/MP.
+ - Include a table of inherited variable types in the control block, for
+   faster object creation.

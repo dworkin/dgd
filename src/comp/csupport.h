@@ -41,8 +41,7 @@ typedef struct {
     dsymbol *symbols;		/* symbols */
 
     unsigned short nvariables;	/* # variables */
-    unsigned short nifdefs;	/* # int/float definitions */
-    unsigned short nvinit;	/* # variables requiring initialization */
+    char *vtypes;		/* variable types */
 
     short typechecking;		/* typechecking level */
 } precomp;

@@ -303,8 +303,7 @@ object *obj;
     ctrl->symbols = l->symbols;
 
     ctrl->nvariables = l->nvariables;
-    ctrl->nifdefs = l->nifdefs;
-    ctrl->nvinit = l->nvinit;
+    ctrl->vtypes = l->vtypes;
 }
 
 

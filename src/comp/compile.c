@@ -603,7 +603,7 @@ int iflag;
 
     for (;;) {
 	if (c_autodriver() != 0) {
-	    ctrl_init(stricttc);
+	    ctrl_init();
 	} else {
 	    object *aobj;
 
@@ -630,7 +630,7 @@ int iflag;
 	    if (O_UPGRADING(aobj)) {
 		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
-	    ctrl_init(stricttc);
+	    ctrl_init();
 	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
 	}
 

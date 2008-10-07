@@ -108,7 +108,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	8
+# define FORMAT_VERSION	9
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -273,7 +273,8 @@ void conf_dump()
 static void conf_restore(fd)
 int fd;
 {
-    bool conv_co1, conv_co2, conv_lwo, conv_ctrl, conv_data, conv_type;
+    bool conv_co1, conv_co2, conv_lwo, conv_ctrl1, conv_ctrl2, conv_data,
+	 conv_type;
     unsigned int secsize;
 
     if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ ||
@@ -281,7 +282,8 @@ int fd;
 	       rheader[DUMP_VERSION] > FORMAT_VERSION) {
 	error("Bad or incompatible restore file header");
     }
-    conv_co1 = conv_co2 = conv_lwo = conv_ctrl = conv_data = conv_type = FALSE;
+    conv_co1 = conv_co2 = conv_lwo = conv_ctrl1 = conv_ctrl2 = conv_data =
+	       conv_type = FALSE;
     if (rheader[DUMP_VERSION] < 3) {
 	conv_co1 = TRUE;
     }
@@ -289,7 +291,7 @@ int fd;
 	conv_lwo = TRUE;
     }
     if (rheader[DUMP_VERSION] < 5) {
-	conv_ctrl = TRUE;
+	conv_ctrl1 = TRUE;
     }
     if (rheader[DUMP_VERSION] < 6) {
 	conv_data = TRUE;
@@ -300,6 +302,9 @@ int fd;
     }
     if (rheader[DUMP_VERSION] < 8) {
 	conv_type = TRUE;
+    }
+    if (rheader[DUMP_VERSION] < 9) {
+	conv_ctrl2 = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0) {
@@ -346,7 +351,8 @@ int fd;
     sw_restore(fd, secsize);
     kf_restore(fd, conv_co1);
     o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0));
-    d_init_conv(conv_ctrl, conv_data, conv_co1, conv_co2, conv_type);
+    d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
+		conv_type);
     pc_restore(fd);
     boottime = P_time();
     co_restore(fd, boottime, conv_co2);
@@ -1208,7 +1214,7 @@ sector *fragment;
 	    (unsigned int) conf[SECTOR_SIZE].u.num);
 
     /* initialize swapped data handler */
-    d_init(conf[TYPECHECKING].u.num == 2);
+    d_init();
     *fragment = conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
