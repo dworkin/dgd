@@ -439,7 +439,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
     ctrl->flags = header.flags;
 
     /* inherits */
-    ctrl->ninherits = UCHAR(header.ninherits);
+    ctrl->ninherits = header.ninherits;
 
     if (header.vmapsize != 0) {
 	/*
@@ -456,7 +456,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
 	register sinherit *sinherits;
 
 	/* load inherits */
-	n = UCHAR(header.ninherits); /* at least one */
+	n = header.ninherits; /* at least one */
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
 	sinherits = ALLOCA(sinherit, n);
 	(*readv)((char *) sinherits, ctrl->sectors, n * (Uint) sizeof(sinherit),
@@ -468,7 +468,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
 	    inherits->varoffset = sinherits->varoffset & ~PRIV;
 	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
 	} while (--n > 0);
-	AFREE(sinherits - UCHAR(header.ninherits));
+	AFREE(sinherits - header.ninherits);
     }
 
     /* compile time */
@@ -1310,7 +1310,7 @@ register value *val;
 	val->type = *type;
 	val++;
     }
-    for (n = ctrl->nvardefs, var = ctrl->vardefs; n != 0; --n, var++) {
+    for (n = ctrl->nvardefs, var = d_get_vardefs(ctrl); n != 0; --n, var++) {
 	if (T_ARITHMETIC(var->type)) {
 	    val->type = var->type;
 	} else {
@@ -1576,7 +1576,7 @@ register control *ctrl;
 	}
 
 	size = sizeof(scontrol) +
-	       UCHAR(header.ninherits) * sizeof(sinherit) +
+	       header.ninherits * sizeof(sinherit) +
 	       header.progsize +
 	       header.nstrings * (Uint) sizeof(dstrconst) +
 	       header.strsize +
@@ -1614,7 +1614,7 @@ register control *ctrl;
     } else {
 	/* save inherits */
 	inherits = ctrl->inherits;
-	sinherits = ALLOCA(sinherit, i = UCHAR(header.ninherits));
+	sinherits = ALLOCA(sinherit, i = header.ninherits);
 	do {
 	    sinherits->oindex = inherits->oindex;
 	    sinherits->funcoffset = inherits->funcoffset;
@@ -1625,10 +1625,10 @@ register control *ctrl;
 	    inherits++;
 	    sinherits++;
 	} while (--i > 0);
-	sinherits -= UCHAR(header.ninherits);
+	sinherits -= header.ninherits;
 	sw_writev((char *) sinherits, ctrl->sectors,
-		  UCHAR(header.ninherits) * (Uint) sizeof(sinherit), size);
-	size += UCHAR(header.ninherits) * sizeof(sinherit);
+		  header.ninherits * (Uint) sizeof(sinherit), size);
+	size += header.ninherits * sizeof(sinherit);
 	AFREE(sinherits);
 
 	/* save program */
@@ -2599,7 +2599,7 @@ object *obj;
     if (header.nvariables >= PRIV) {
 	fatal("too many variables in restored object");
     }
-    ctrl->ninherits = UCHAR(header.ninherits);
+    ctrl->ninherits = header.ninherits;
     ctrl->compiled = header.compiled;
     ctrl->progsize = header.progsize;
     ctrl->nstrings = header.nstrings;
@@ -2630,7 +2630,7 @@ object *obj;
 	register sinherit *sinherits;
 
 	/* inherits */
-	n = UCHAR(header.ninherits); /* at least one */
+	n = header.ninherits; /* at least one */
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
 	sinherits = ALLOCA(sinherit, n);
 	size += d_conv((char *) sinherits, ctrl->sectors, si_layout, (Uint) n,
@@ -2641,7 +2641,7 @@ object *obj;
 	    inherits->varoffset = sinherits->varoffset & ~PRIV;
 	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
 	} while (--n > 0);
-	AFREE(sinherits - UCHAR(header.ninherits));
+	AFREE(sinherits - header.ninherits);
 
 	if (header.progsize != 0) {
 	    /* program */
