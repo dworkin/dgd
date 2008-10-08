@@ -157,8 +157,7 @@ control *ctrl;
 	    putchar('\n');
 	}
     }
-    printf("%u variables, %u ints/floats, %u int/float defs\n",
-	   ctrl->nvariables, ctrl->nvinit, ctrl->nifdefs);
+    printf("%u variables\n", ctrl->nvariables);
 }
 
 static unsigned short addr;

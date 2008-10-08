@@ -728,6 +728,7 @@ int priv;
 		 */
 		ohash->obj = o;
 		ohash->index = 2;	/* indirect */
+		o_control(o);		/* load the control block */
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
