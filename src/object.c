@@ -544,6 +544,7 @@ void o_discard_plane()
 			/* discard new data block */
 			d_del_dataspace(op->obj.data);
 		    }
+		    obj->index = op->obj.index;
 		} else {
 		    /* pass on control block and dataspace */
 		    obj->ctrl = op->obj.ctrl;

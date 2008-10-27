@@ -1725,3 +1725,5 @@ DGD 1.3
    faster object creation.
  - With bugfix in the above.
  - And another one.
+ - Fixed a crash which could occur after the creation of an object is rolled
+   back.
