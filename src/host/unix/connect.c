@@ -101,6 +101,7 @@ register int in, out;
 		len = MAXHOSTNAMELEN - 1;
 	    }
 	    write(out, host->h_name, len);
+	    host->h_name[0] = '\0';
 	} else {
 	    write(out, "", 1);	/* failure */
 	}
