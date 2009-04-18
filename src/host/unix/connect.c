@@ -1502,8 +1502,7 @@ char *buf;
 # ifdef INET6
     /* IPv6: maxlen 39 */
     if (conn->addr->ipnum.ipv6) {
-	inet_ntop(AF_INET6, &conn->addr->ipnum, buf,
-		  sizeof(struct sockaddr_in6));
+	inet_ntop(AF_INET6, &conn->addr->ipnum, buf, 40);
     } else
 # endif
     {

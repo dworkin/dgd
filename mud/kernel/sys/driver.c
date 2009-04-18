@@ -471,10 +471,10 @@ private void _restored(mixed *tls)
     message(status()[ST_VERSION] + "\n");
 
     rsrcd->reboot();
-    call_other(userd, "reboot");
+    userd->reboot();
     if (initd) {
 	catch {
-	    call_other(initd, "reboot");
+	    initd->reboot();
 	}
     }
 

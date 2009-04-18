@@ -1728,3 +1728,4 @@ DGD 1.3
  - Fixed a crash which could occur after the creation of an object is rolled
    back.
  - Work around an IPv6 name lookup problem on Linux.
+ - Display IPv6 IP numbers properly.
