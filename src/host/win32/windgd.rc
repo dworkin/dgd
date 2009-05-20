@@ -136,8 +136,8 @@ CAPTION "About DGD"
 FONT 8, "MS Sans Serif"
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,14,21,20
-    LTEXT           "DGD version 1.2",IDC_STATIC,40,10,75,8,SS_NOPREFIX
-    LTEXT           "© 1993 - 2001 BeeHive Internet Technologies, Inc. All Rights Reserved.",
+    LTEXT           "DGD version 1.3",IDC_STATIC,40,10,75,8,SS_NOPREFIX
+    LTEXT           "© 1993 - 2009 Dworkin B.V. All Rights Reserved.",
                     IDC_STATIC,40,23,164,17
     DEFPUSHBUTTON   "OK",IDOK,212,7,32,14,WS_GROUP
     LTEXT           "Permission is granted to copy the source and executables made therefrom, but any commercial distribution or use whatsoever is not allowed. Commercial distribution or use refers to any distribution or use from which",
@@ -162,8 +162,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,0
- PRODUCTVERSION 1,2,0,0
+ FILEVERSION 1,3,0,0
+ PRODUCTVERSION 1,3,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -180,12 +180,14 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "BeeHive Internet Technologies, Inc.\0"
             VALUE "FileDescription", "DGD Application\0"
-            VALUE "FileVersion", "1.2\0"
+            VALUE "FileVersion", "1.3\0"
             VALUE "InternalName", "DGD\0"
-            VALUE "LegalCopyright", "© 1993 - 2001 BeeHive Internet Technologies, Inc. All Rights Reserved.\0"
+            VALUE "LegalCopyright", "© 1993 - 2009 Dworkin B.V. All Rights Reserved.\0"
+            VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "DGD.EXE\0"
             VALUE "ProductName", "DGD Application\0"
-            VALUE "ProductVersion", "1.2\0"
+            VALUE "ProductVersion", "1.3\0"
+            VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"

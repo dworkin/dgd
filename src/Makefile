@@ -3,7 +3,7 @@
 #
 HOST=	DARWIN
 DEFINES=-D$(HOST) #-DDUMP_FUNCS
-DEBUG=	-g -DDEBUG
+DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=

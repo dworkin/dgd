@@ -1729,3 +1729,4 @@ DGD 1.3
    back.
  - Work around an IPv6 name lookup problem on Linux.
  - Display IPv6 IP numbers properly.
+ - Bring non-unix platforms up to date.

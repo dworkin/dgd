@@ -463,8 +463,7 @@ void DGD::AboutRequested(void)
     view->SetFontAndColor(&font);
     about->AddChild(view);
     sprintf(buf, "\
-DGD %s\n© 1993 - 2001 BeeHive Internet Technologies, Inc. \
-All Rights Reserved.", VERSION);
+DGD %s\n© 1993 - 2009 Dworkin B.V. All Rights Reserved.", VERSION);
     view->SetText(buf);
     view = new BTextView(BRect(0, ABOUT_INDENT, ABOUT_WIDTH, ABOUT_HEIGHT),
 			 NULL,
