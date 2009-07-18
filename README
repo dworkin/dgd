@@ -17,9 +17,7 @@ This distribution is organized as follows:
 
 bin		Installation binaries will be created here (Unix & BeOS).
 doc		Documentation, still very incomplete.
-mud		A minimal mudlib called the kernel library, which is
-		distributed together with, but not part of DGD.  The kernel
-		library is in the public domain.
+mud		A place to put the mudlib.
 src		Where the source of DGD resides, and where you issue your
 		`make' command on Unix or BeOS.
 src/host/*	Subdirectories for various platform-dependent files.

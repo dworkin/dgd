@@ -926,7 +926,7 @@ register unsigned int type;
  * NAME:	interpret->instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-bool i_instanceof(f, oindex, class)
+int i_instanceof(f, oindex, class)
 register frame *f;
 unsigned int oindex;
 Uint class;
@@ -948,7 +948,7 @@ Uint class;
 	h->class == class && h->iindex < ctrl->ninherits) {
 	oindex = ctrl->inherits[h->iindex].oindex;
 	if (strcmp(OBJR(oindex)->chain.name, prog) == 0) {
-	    return TRUE;	/* found it */
+	    return (ctrl->inherits[h->iindex].priv) ? -1 : 1;	/* found it */
 	}
     }
 
@@ -956,14 +956,13 @@ Uint class;
     for (i = ctrl->ninherits, inh = ctrl->inherits + i; i != 0; ) {
 	--i;
 	--inh;
-	i_add_ticks(f, 2);
 	if (strcmp(prog, OBJR(inh->oindex)->chain.name) == 0) {
 	    /* found it; update hashtable */
 	    h->ocount = obj->count;
 	    h->coindex = f->p_ctrl->oindex;
 	    h->class = class;
 	    h->iindex = i;
-	    return TRUE;
+	    return (ctrl->inherits[i].priv) ? -1 : 1;
 	}
     }
     return FALSE;

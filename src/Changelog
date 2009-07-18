@@ -1730,3 +1730,7 @@ DGD 1.3
  - Work around an IPv6 name lookup problem on Linux.
  - Display IPv6 IP numbers properly.
  - Bring non-unix platforms up to date.
+
+DGD 1.4
+
+ - The instanceof operator '<-' now returns -1 for private inheritance.

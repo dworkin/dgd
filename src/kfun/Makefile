@@ -3,7 +3,7 @@
 #
 HOST=	DARWIN
 DEFINES=-D$(HOST)
-DEBUG=	-g -DDEBUG
+DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
 LINTFLAGS=-abcehpruz

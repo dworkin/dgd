@@ -2288,7 +2288,7 @@ int kf_instanceof(f)
 register frame *f;
 {
     uindex oindex;
-    bool flag;
+    int instance;
 
     switch (f->sp[1].type) {
     case T_OBJECT:
@@ -2303,9 +2303,9 @@ register frame *f;
     default:
 	kf_argerror(KF_INSTANCEOF, 1);
     }
-    flag = i_instanceof(f, oindex, f->sp->u.number);
+    instance = i_instanceof(f, oindex, f->sp->u.number);
     f->sp++;
-    PUT_INTVAL(f->sp, flag);
+    PUT_INTVAL(f->sp, instance);
     return 0;
 }
 # endif
