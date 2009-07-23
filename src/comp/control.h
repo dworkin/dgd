@@ -1,6 +1,7 @@
 extern void		 ctrl_init	P((void));
 extern bool		 ctrl_inherit	P((frame*, char*, object*, string*,
 					   int));
+extern void		 ctrl_convert	P((control*));
 extern void		 ctrl_create	P((void));
 extern long		 ctrl_dstring	P((string*));
 extern void		 ctrl_dproto	P((string*, char*, string*));

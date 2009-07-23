@@ -4,6 +4,7 @@ typedef struct _svalue_ svalue;
 
 typedef struct {
     uindex oindex;		/* inherited object */
+    uindex progoffset;		/* program offset */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
     bool priv;			/* privately inherited? */
@@ -55,6 +56,10 @@ struct _control_ {
 
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
+    short progindex;		/* i/o program index */
+
+    uindex imapsz;		/* i/o inherit map size */
+    char *imap;			/* i/o inherit map */
 
     Uint compiled;		/* time of compilation */
 
@@ -207,7 +212,7 @@ struct _dataspace_ {
 /* sdata.c */
 
 extern void		d_init		 P((void));
-extern void		d_init_conv	 P((int, int, int, int, int, int));
+extern void		d_init_conv	 P((int, int, int, int, int, int, int));
 
 extern control	       *d_new_control	 P((void));
 extern dataspace       *d_new_dataspace  P((object*));
@@ -279,6 +284,7 @@ extern void		d_del_dataspace	P((dataspace*));
 # define CTRL_UNDEFINED		0x10	/* has undefined functions */
 # define CTRL_COMPILED		0x20	/* precompiled control block */
 # define CTRL_VARMAP		0x40	/* varmap updated */
+# define CTRL_CONVERTED		0x80	/* converted control block */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */

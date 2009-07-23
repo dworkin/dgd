@@ -1095,7 +1095,7 @@ register int state;
 		       n->l.left->l.string->text, p);
 	    } else {
 		output("i_funcall(f, (object *) NULL, (array *) NULL, ");
-		output("f->p_index - %d, %d/*%s*/, %s)",
+		output("UCHAR(f->ctrl->imap[f->p_index + %d]), %d/*%s*/, %s)",
 		       ((int) n->r.number >> 8) & 0xff,
 		       ((int) n->r.number) & 0xff,
 		       n->l.left->l.string->text, p);

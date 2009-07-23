@@ -10,7 +10,27 @@
 # include "csupport.h"
 
 
-# define PRIV			0x8000	/* in sinherit->varoffset */
+# define PRIV			0x0001	/* in sinherit->flags */
+
+typedef struct {
+    sector nsectors;		/* # sectors in part one */
+    short flags;		/* control flags: compression */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint compiled;		/* time of compilation */
+    Uint progsize;		/* size of program code */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+} scontrol;
+
+static char sc_layout[] = "dssuiisicccusss";
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -27,9 +47,9 @@ typedef struct {
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} scontrol;
+} xscontrol;
 
-static char sc_layout[] = "dssiisicccusss";
+static char xsc_layout[] = "dssiisicccusss";
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -74,11 +94,21 @@ static char os_layout[] = "dcciisiccusssss";
 
 typedef struct {
     uindex oindex;		/* index in object table */
+    uindex progoffset;		/* program offset */
     uindex funcoffset;		/* function call offset */
-    unsigned short varoffset;	/* variable offset + private bit */
+    unsigned short varoffset;	/* variable offset */
+    unsigned short flags;	/* bit flags */
 } sinherit;
 
-static char si_layout[] = "uus";
+static char si_layout[] = "uuuss";
+
+typedef struct {
+    uindex oindex;		/* index in object table */
+    uindex funcoffset;		/* function call offset */
+    unsigned short varoffset;	/* variable offset + private bit */
+} osinherit;
+
+static char osi_layout[] = "uus";
 
 typedef struct {
     sector nsectors;		/* number of sectors in data space */
@@ -215,6 +245,7 @@ static bool conv_ctrl1, conv_ctrl2;	/* convert control blocks? */
 static bool conv_data;			/* convert dataspaces? */
 static bool conv_co1, conv_co2;		/* convert callouts? */
 static bool conv_type;			/* convert types? */
+static bool conv_inherit;		/* convert inherits? */
 static bool converted;			/* conversion complete? */
 
 
@@ -237,8 +268,8 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type)
-int ctrl1, ctrl2, data, callout1, callout2, type;
+void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type, inherit)
+int ctrl1, ctrl2, data, callout1, callout2, type, inherit;
 {
     conv_ctrl1 = ctrl1;
     conv_ctrl2 = ctrl2;
@@ -246,6 +277,7 @@ int ctrl1, ctrl2, data, callout1, callout2, type;
     conv_co1 = callout1;
     conv_co2 = callout2;
     conv_type = type;
+    conv_inherit = inherit;
 }
 
 /*
@@ -278,6 +310,9 @@ control *d_new_control()
     ctrl->oindex = UINDEX_MAX;
     ctrl->ninherits = 0;
     ctrl->inherits = (dinherit *) NULL;
+    ctrl->imapsz = 0;
+    ctrl->imap = (char *) NULL;
+    ctrl->progindex = 0;
     ctrl->compiled = 0;
     ctrl->progsize = 0;
     ctrl->prog = (char *) NULL;
@@ -464,11 +499,24 @@ void (*readv) P((char*, sector*, Uint, Uint));
 	size += n * sizeof(sinherit);
 	do {
 	    inherits->oindex = sinherits->oindex;
+	    inherits->progoffset = sinherits->progoffset;
 	    inherits->funcoffset = sinherits->funcoffset;
-	    inherits->varoffset = sinherits->varoffset & ~PRIV;
-	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
+	    inherits->varoffset = sinherits->varoffset;
+	    (inherits++)->priv = (sinherits++)->flags;
 	} while (--n > 0);
 	AFREE(sinherits - header.ninherits);
+
+	/* load iindices */
+	ctrl->imapsz = header.imapsz;
+	ctrl->imap = ALLOC(char, header.imapsz);
+	(*readv)(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
+	size += ctrl->imapsz;
+
+	if ((header.flags & CTRL_CONVERTED) && header.ninherits > 1) {
+	    ctrl->progindex = 1;
+	} else {
+	    ctrl->progindex = header.ninherits - 1;
+	}
     }
 
     /* compile time */
@@ -1095,6 +1143,7 @@ register control *ctrl;
     }
 
     return ctrl->ninherits * sizeof(dinherit) +
+	   ctrl->imapsz +
 	   ctrl->progsize +
 	   ctrl->nstrings * (Uint) sizeof(dstrconst) +
 	   ctrl->strsize +
@@ -1505,8 +1554,9 @@ register control *ctrl;
      */
 
     /* create header */
-    header.flags = ctrl->flags & CTRL_UNDEFINED;
+    header.flags = ctrl->flags & (CTRL_UNDEFINED | CTRL_CONVERTED);
     header.ninherits = ctrl->ninherits;
+    header.imapsz = ctrl->imapsz;
     header.compiled = ctrl->compiled;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
@@ -1577,6 +1627,7 @@ register control *ctrl;
 
 	size = sizeof(scontrol) +
 	       header.ninherits * sizeof(sinherit) +
+	       header.imapsz +
 	       header.progsize +
 	       header.nstrings * (Uint) sizeof(dstrconst) +
 	       header.strsize +
@@ -1617,11 +1668,10 @@ register control *ctrl;
 	sinherits = ALLOCA(sinherit, i = header.ninherits);
 	do {
 	    sinherits->oindex = inherits->oindex;
+	    sinherits->progoffset = inherits->progoffset;
 	    sinherits->funcoffset = inherits->funcoffset;
 	    sinherits->varoffset = inherits->varoffset;
-	    if (inherits->priv) {
-		sinherits->varoffset |= PRIV;
-	    }
+	    sinherits->flags = inherits->priv;
 	    inherits++;
 	    sinherits++;
 	} while (--i > 0);
@@ -1630,6 +1680,10 @@ register control *ctrl;
 		  header.ninherits * (Uint) sizeof(sinherit), size);
 	size += header.ninherits * sizeof(sinherit);
 	AFREE(sinherits);
+
+	/* save iindices */
+	sw_writev(ctrl->imap, ctrl->sectors, ctrl->imapsz, size);
+	size += ctrl->imapsz;
 
 	/* save program */
 	if (header.progsize > 0) {
@@ -2562,6 +2616,7 @@ object *obj;
 	header.nsectors = oheader.nsectors;
 	header.flags = UCHAR(oheader.flags);
 	header.ninherits = UCHAR(oheader.ninherits);
+	header.imapsz = 0;
 	header.compiled = oheader.compiled;
 	header.progsize = oheader.progsize;
 	header.nstrings = oheader.nstrings;
@@ -2581,6 +2636,27 @@ object *obj;
 	header.nsectors = oheader.nsectors;
 	header.flags = UCHAR(oheader.flags);
 	header.ninherits = UCHAR(oheader.ninherits);
+	header.imapsz = 0;
+	header.compiled = oheader.compiled;
+	header.progsize = oheader.progsize;
+	header.nstrings = oheader.nstrings;
+	header.strsize = oheader.strsize;
+	header.nfuncdefs = oheader.nfuncdefs;
+	header.nvardefs = oheader.nvardefs;
+	header.nclassvars = oheader.nclassvars;
+	header.nfuncalls = oheader.nfuncalls;
+	header.nsymbols = oheader.nsymbols;
+	header.nvariables = oheader.nvariables;
+	header.vmapsize = oheader.vmapsize;
+    } else if (conv_inherit) {
+	xscontrol oheader;
+
+	size = d_conv((char *) &oheader, &obj->cfirst, xsc_layout, (Uint) 1,
+		      (Uint) 0);
+	header.nsectors = oheader.nsectors;
+	header.flags = oheader.flags;
+	header.ninherits = oheader.ninherits;
+	header.imapsz = 0;
 	header.compiled = oheader.compiled;
 	header.progsize = oheader.progsize;
 	header.nstrings = oheader.nstrings;
@@ -2596,10 +2672,8 @@ object *obj;
 	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
 		      (Uint) 0);
     }
-    if (header.nvariables >= PRIV) {
-	fatal("too many variables in restored object");
-    }
     ctrl->ninherits = header.ninherits;
+    ctrl->imapsz = header.imapsz;
     ctrl->compiled = header.compiled;
     ctrl->progsize = header.progsize;
     ctrl->nstrings = header.nstrings;
@@ -2627,21 +2701,43 @@ object *obj;
 	       size);
     } else {
 	register dinherit *inherits;
-	register sinherit *sinherits;
 
 	/* inherits */
 	n = header.ninherits; /* at least one */
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
-	sinherits = ALLOCA(sinherit, n);
-	size += d_conv((char *) sinherits, ctrl->sectors, si_layout, (Uint) n,
-		       size);
-	do {
-	    inherits->oindex = sinherits->oindex;
-	    inherits->funcoffset = sinherits->funcoffset;
-	    inherits->varoffset = sinherits->varoffset & ~PRIV;
-	    (inherits++)->priv = (((sinherits++)->varoffset & PRIV) != 0);
-	} while (--n > 0);
-	AFREE(sinherits - header.ninherits);
+	if (conv_inherit) {
+	    register osinherit *osinherits;
+
+	    osinherits = ALLOCA(osinherit, n);
+	    size += d_conv((char *) osinherits, ctrl->sectors, osi_layout,
+			   (Uint) n, size);
+	    do {
+		inherits->oindex = osinherits->oindex;
+		inherits->progoffset = 0;
+		inherits->funcoffset = osinherits->funcoffset;
+		inherits->varoffset = osinherits->varoffset & 0x7fff;
+		(inherits++)->priv = ((osinherits++)->varoffset & 0x8000) != 0;
+	    } while (--n > 0);
+	    AFREE(osinherits - header.ninherits);
+	} else {
+	    register sinherit *sinherits;
+
+	    sinherits = ALLOCA(sinherit, n);
+	    size += d_conv((char *) sinherits, ctrl->sectors, si_layout,
+			   (Uint) n, size);
+	    do {
+		inherits->oindex = sinherits->oindex;
+		inherits->progoffset = sinherits->progoffset;
+		inherits->funcoffset = sinherits->funcoffset;
+		inherits->varoffset = sinherits->varoffset;
+		(inherits++)->priv = (sinherits++)->flags;
+	    } while (--n > 0);
+	    AFREE(sinherits - header.ninherits);
+
+	    ctrl->imap = ALLOC(char, header.imapsz);
+	    sw_conv(ctrl->imap, ctrl->sectors, header.imapsz, size);
+	    size += header.imapsz;
+	}
 
 	if (header.progsize != 0) {
 	    /* program */
@@ -2759,6 +2855,17 @@ object *obj;
 		sw_conv(ctrl->vtypes, ctrl->sectors,
 			header.nvariables - UCHAR(header.nvardefs), size);
 	    }
+	}
+
+	if (conv_inherit) {
+	    obj->ctrl = ctrl;
+	    ctrl_convert(ctrl);
+	    ctrl->flags |= CTRL_CONVERTED;
+	    if (header.ninherits > 1) {
+		ctrl->progindex = 1;
+	    }
+	} else {
+	    ctrl->progindex = header.ninherits - 1;
 	}
     }
 
@@ -3227,6 +3334,11 @@ register control *ctrl;
 
 	if (ctrl->prog != (char *) NULL) {
 	    FREE(ctrl->prog);
+	}
+
+	/* delete inherit indices */
+	if (ctrl->imap != (char *) NULL) {
+	    FREE(ctrl->imap);
 	}
 
 	/* delete string constants */

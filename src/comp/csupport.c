@@ -48,6 +48,7 @@ Uint compiled;
 	    cc = precompiled[inh->oindex]->compiled;
 	}
 
+	inh->progoffset = pcinh->progoffset;
 	inh->funcoffset = pcinh->funcoffset;
 	inh->varoffset = pcinh->varoffset;
 	(inh++)->priv = (pcinh++)->priv;
@@ -62,8 +63,10 @@ Uint compiled;
 		pcinh->name);
 	return FALSE;
     }
+    inh->progoffset = pcinh->progoffset;
     inh->funcoffset = pcinh->funcoffset;
     inh->varoffset = pcinh->varoffset;
+    inh->priv = pcinh->priv;
 
     return TRUE;
 }
@@ -280,6 +283,10 @@ object *obj;
     ctrl->ninherits = l->ninherits;
     ctrl->inherits = inherits + itab[i];
 
+    ctrl->imapsz = l->imapsz;
+    ctrl->imap = l->imap;
+    ctrl->progindex = l->ninherits - 1;
+
     ctrl->compiled = l->compiled;
 
     ctrl->progsize = l->progsize;
@@ -310,6 +317,7 @@ object *obj;
 typedef struct {
     uindex nprecomps;		/* # precompiled objects */
     Uint ninherits;		/* total # inherits */
+    Uint imapsz;		/* total imap size */
     Uint nstrings;		/* total # strings */
     Uint stringsz;		/* total strings size */
     Uint nfuncdefs;		/* total # funcdefs */
@@ -317,11 +325,24 @@ typedef struct {
     Uint nfuncalls;		/* total # function calls */
 } dump_header;
 
-static char dh_layout[] = "uiiiiii";
+static char dh_layout[] = "uiiiiiii";
+
+typedef struct {
+    uindex nprecomps;		/* # precompiled objects */
+    Uint ninherits;		/* total # inherits */
+    Uint nstrings;		/* total # strings */
+    Uint stringsz;		/* total strings size */
+    Uint nfuncdefs;		/* total # funcdefs */
+    Uint nvardefs;		/* total # vardefs */
+    Uint nfuncalls;		/* total # function calls */
+} odump_header;
+
+static char odh_layout[] = "uiiiiii";
 
 typedef struct {
     Uint compiled;		/* compile time */
     short ninherits;		/* # inherits */
+    uindex imapsz;		/* imap size */
     unsigned short nstrings;	/* # strings */
     Uint stringsz;		/* strings size */
     short nfuncdefs;		/* # funcdefs */
@@ -330,15 +351,17 @@ typedef struct {
     short nvariables;		/* # variables */
 } dump_precomp;
 
-static char dp_layout[] = "ississus";
+static char dp_layout[] = "isusissus";
 
 typedef struct {
     uindex oindex;		/* object index */
+    uindex progoffset;		/* program offset */
     uindex funcoffset;		/* function offset */
     unsigned short varoffset;	/* variable offset */
+    bool priv;			/* privately inherited? */
 } dump_inherit;
 
-static char di_layout[] = "uus";
+static char di_layout[] = "uuusc";
 
 /*
  * NAME:	precomp->dump()
@@ -354,6 +377,7 @@ int fd;
 
     dh.nprecomps = 0;
     dh.ninherits = 0;
+    dh.imapsz = 0;
     dh.nstrings = 0;
     dh.stringsz = 0;
     dh.nfuncdefs = 0;
@@ -366,6 +390,7 @@ int fd;
 	    ((obj=OBJ((*pc)->oindex))->flags & O_COMPILED) && obj->u_ref != 0) {
 	    dh.nprecomps++;
 	    dh.ninherits += (*pc)->ninherits;
+	    dh.imapsz += (*pc)->imapsz;
 	    dh.nstrings += (*pc)->nstrings;
 	    dh.stringsz += (*pc)->stringsz;
 	    dh.nfuncdefs += (*pc)->nfuncdefs;
@@ -386,6 +411,7 @@ int fd;
 	register int i;
 	dump_inherit *inh;
 	dinherit *inh2;
+	char *imap;
 	dstrconst *strings;
 	char *stext, *funcalls;
 	dfuncdef *funcdefs;
@@ -396,6 +422,7 @@ int fd;
 	 */
 	dpc = ALLOCA(dump_precomp, dh.nprecomps);
 	inh = ALLOCA(dump_inherit, dh.ninherits);
+	imap = ALLOCA(char, dh.imapsz);
 	if (dh.nstrings != 0) {
 	    strings = ALLOCA(dstrconst, dh.nstrings);
 	    if (dh.stringsz != 0) {
@@ -418,6 +445,7 @@ int fd;
 		obj->u_ref != 0) {
 		dpc->compiled = (*pc)->compiled;
 		dpc->ninherits = (*pc)->ninherits;
+		dpc->imapsz = (*pc)->imapsz;
 		dpc->nstrings = (*pc)->nstrings;
 		dpc->stringsz = (*pc)->stringsz;
 		dpc->nfuncdefs = (*pc)->nfuncdefs;
@@ -428,9 +456,14 @@ int fd;
 		inh2 = inherits + itab[pc - precompiled];
 		for (i = dpc->ninherits; i > 0; --i) {
 		    inh->oindex = inh2->oindex;
+		    inh->progoffset = inh2->progoffset;
 		    inh->funcoffset = inh2->funcoffset;
-		    (inh++)->varoffset = (inh2++)->varoffset;
+		    inh->varoffset = inh2->varoffset;
+		    (inh++)->priv = (inh2++)->priv;
 		}
+
+		memcpy(imap, (*pc)->imap, dpc->imapsz);
+		imap += dpc->imapsz;
 
 		if (dpc->nstrings > 0) {
 		    memcpy(strings, (*pc)->sstrings,
@@ -470,6 +503,7 @@ int fd;
 
 	dpc -= dh.nprecomps;
 	inh -= dh.ninherits;
+	imap -= dh.imapsz;
 	strings -= dh.nstrings;
 	stext -= dh.stringsz;
 	funcdefs -= dh.nfuncdefs;
@@ -480,6 +514,7 @@ int fd;
 					dh.nprecomps * sizeof(dump_precomp) ||
 	    P_write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
 					dh.ninherits * sizeof(dump_inherit) ||
+	    P_write(fd, imap, dh.imapsz) != dh.imapsz ||
 	    (dh.nstrings != 0 &&
 	     P_write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
 					    dh.nstrings * sizeof(dstrconst)) ||
@@ -511,6 +546,7 @@ int fd;
 	    }
 	    AFREE(strings);
 	}
+	AFREE(imap);
 	AFREE(inh);
 	AFREE(dpc);
     }
@@ -551,8 +587,10 @@ register int ninherits;
 {
     do {
 	if (dinh->oindex != inh->oindex ||
+	    dinh->progoffset != inh->progoffset ||
 	    dinh->funcoffset != inh->funcoffset ||
-	    dinh->varoffset != inh->varoffset) {
+	    dinh->varoffset != inh->varoffset ||
+	    dinh->priv != inh->priv) {
 	    return FALSE;
 	}
 	dinh++;
@@ -571,8 +609,10 @@ register int ninherits;
 {
     do {
 	if (dinh->oindex != inh->oindex ||
+	    dinh->progoffset != inh->progoffset ||
 	    dinh->funcoffset != inh->funcoffset ||
-	    dinh->varoffset != inh->varoffset) {
+	    dinh->varoffset != inh->varoffset ||
+	    dinh->priv != inh->priv) {
 	    return FALSE;
 	}
 	dinh++;
@@ -674,8 +714,8 @@ register int nvardefs;
  * NAME:	precomp->restore()
  * DESCRIPTION:	restore and replace precompiled objects
  */
-void pc_restore(fd)
-int fd;
+void pc_restore(fd, conv)
+int fd, conv;
 {
     dump_header dh;
     register precomp *l, **pc;
@@ -695,11 +735,22 @@ int fd;
     }
 
     /* read header */
-    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    if (conv) {
+	odump_header odh;
+
+	conf_dread(fd, (char *) &odh, odh_layout, (Uint) 1);
+	if (nprecomps != 0 || odh.nprecomps != 0) {
+	    fatal("precompiled objects during conversion");
+	}
+	dh.nprecomps = 0;
+    } else {
+	conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    }
 
     if (dh.nprecomps != 0) {
 	register dump_precomp *dpc;
 	register dump_inherit *dinh;
+	register char *imap;
 	register dstrconst *strings;
 	register char *stext;
 	register dfuncdef *funcdefs;
@@ -713,6 +764,10 @@ int fd;
 	conf_dread(fd, (char *) dpc, dp_layout, (Uint) dh.nprecomps);
 	dinh = ALLOCA(dump_inherit, dh.ninherits);
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
+	imap = ALLOCA(char, dh.imapsz);
+	if (P_read(fd, imap, dh.imapsz) != dh.imapsz) {
+	    fatal("cannot read from dump file");
+	}
 	if (dh.nstrings != 0) {
 	    strings = ALLOCA(dstrconst, dh.nstrings);
 	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
@@ -752,6 +807,7 @@ int fd;
 		    fixinherits(inherits + itab[pc - precompiled], l->inherits,
 				l->ninherits);
 		    if (dpc->ninherits != l->ninherits ||
+			dpc->imapsz != l->imapsz ||
 			dpc->nstrings != l->nstrings ||
 			dpc->stringsz != l->stringsz ||
 			dpc->nfuncdefs != l->nfuncdefs ||
@@ -759,6 +815,7 @@ int fd;
 			dpc->nfuncalls != l->nfuncalls ||
 			!inh1cmp(dinh, inherits + itab[pc - precompiled],
 				 l->ninherits) ||
+			memcmp(imap, l->imap, l->imapsz) != 0 ||
 			!dstrcmp(strings, l->sstrings, l->nstrings) ||
 			memcmp(stext, l->stext, l->stringsz) != 0 ||
 			!func1cmp(funcdefs, l->funcdefs, l->program,
@@ -774,6 +831,7 @@ int fd;
 	    }
 
 	    dinh += dpc->ninherits;
+	    imap += dpc->imapsz;
 	    strings += dpc->nstrings;
 	    stext += dpc->stringsz;
 	    funcdefs += dpc->nfuncdefs;
@@ -797,6 +855,7 @@ int fd;
 	    }
 	    AFREE(strings - dh.nstrings);
 	}
+	AFREE(imap - dh.imapsz);
 	AFREE(dinh - dh.ninherits);
 	AFREE(dpc - dh.nprecomps);
     }
@@ -826,6 +885,7 @@ int fd;
 		    d_get_strconst(ctrl, ctrl->ninherits - 1, 0);
 		}
 		if (ctrl->ninherits != l->ninherits ||
+		    ctrl->imapsz != l->imapsz ||
 		    ctrl->nstrings != l->nstrings ||
 		    ctrl->strsize != l->stringsz ||
 		    ctrl->nfuncdefs != l->nfuncdefs ||
@@ -834,6 +894,7 @@ int fd;
 		    ctrl->nfuncalls != l->nfuncalls ||
 		    !inh2cmp(ctrl->inherits, inherits + itab[pc - precompiled],
 			     l->ninherits) ||
+		    memcmp(ctrl->imap, l->imap, l->imapsz) != 0 ||
 		    !dstrcmp(ctrl->sstrings, l->sstrings, l->nstrings) ||
 		    memcmp(ctrl->stext, l->stext, l->stringsz) != 0 ||
 		    !func2cmp(d_get_funcdefs(ctrl), l->funcdefs,

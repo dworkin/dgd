@@ -14,7 +14,7 @@
 typedef struct _oh_ {		/* object hash table */
     hte chain;			/* hash table chain */
     object *obj;		/* object */
-    short index;		/* -1: direct; 0: new; 1: indirect */
+    short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
     struct _oh_ **next;		/* next in linked list */
 } oh;
@@ -48,7 +48,7 @@ char *name;
 	*h = ALLOC(oh, 1);
 	(*h)->chain.next = (hte *) NULL;
 	(*h)->chain.name = name;
-	(*h)->index = 0;		/* new object */
+	(*h)->index = -1;		/* new object */
 	(*h)->priv = 0;
 	(*h)->next = olist;
 	olist = h;
@@ -221,9 +221,9 @@ static void lab_clear()
 
 
 # define MAX_INHERITS		255
+# define MAX_VARIABLES		(USHRT_MAX - 2)
 
-static oh *directs[MAX_INHERITS];	/* direct inherit table */
-static int ndirects;			/* # directly inh. objects */
+static oh *inherits[MAX_INHERITS];	/* inherited objects */
 static int ninherits;			/* # inherited objects */
 static bool privinherit;		/* TRUE if private inheritance used */
 static hashtab *vtab;			/* variable merge table */
@@ -671,14 +671,14 @@ int priv;
 	lab_new(label, ohash);
     }
 
-    if (ohash->index == 0) {
+    if (ohash->index < 0) {
 	/*
 	 * new inherited object
 	 */
 	ctrl = o_control(obj);
 	inh = ctrl->inherits;
-	if (ndirects != 0 && strcmp(OBJR(inh->oindex)->chain.name,
-				    directs[0]->obj->chain.name) != 0) {
+	if (ninherits != 0 && strcmp(OBJR(inh->oindex)->chain.name,
+				     inherits[0]->obj->chain.name) != 0) {
 	    c_error("inherited different auto objects");
 	}
 
@@ -722,12 +722,11 @@ int priv;
 	    --inh;
 	    o = OBJR(inh->oindex);
 	    ohash = oh_new(o->chain.name);
-	    if (ohash->index == 0) {
+	    if (ohash->index < 0) {
 		/*
 		 * inherit a new object
 		 */
 		ohash->obj = o;
-		ohash->index = 2;	/* indirect */
 		o_control(o);		/* load the control block */
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
@@ -745,43 +744,30 @@ int priv;
 		 */
 		c_error("inherited different instances of /%s", o->chain.name);
 		return TRUE;
-	    } else {
-		if (ohash->index < 0 && !(o->flags & O_AUTO)) {
-		    /*
-		     * Inherit an object which previously was inherited
-		     * directly (but is not the auto object). Mark it as
-		     * indirect now.
-		     */
-		    ohash->index = 1;	/* indirect, but immediate */
-		    ninherits -= o->ctrl->ninherits - 1;
+	    } else if (!inh->priv && ohash->priv > priv) {
+		/*
+		 * add to function and variable table
+		 */
+		if (ohash->priv == 2) {
+		    ctrl_vardefs(ohash, o->ctrl);
 		}
-
-		if (!inh->priv && ohash->priv > priv) {
-		    /*
-		     * add to function and variable table
-		     */
-		    if (ohash->priv == 2) {
-			ctrl_vardefs(ohash, o->ctrl);
-		    }
-		    ohash->priv = priv;
-		    ctrl_funcdefs(ohash, o->ctrl);
-		}
+		ohash->priv = priv;
+		ctrl_funcdefs(ohash, o->ctrl);
 	    }
 	}
 
-	i = ctrl->ninherits;
-	if (i > 1) {
+	for (i = ctrl->ninherits; i > 0; --i) {
 	    /*
-	     * Don't count the auto object, unless it is the auto object
-	     * only.
+	     * add to the inherited array
 	     */
-	    --i;
+	    ohash = oh_new(OBJR(inh->oindex)->chain.name);
+	    if (ohash->index < 0) {
+		ohash->index = ninherits;
+		inherits[ninherits++] = ohash;
+	    }
+	    inh++;
 	}
-	ninherits += i;
-	ohash = oh_new(obj->chain.name);
-	directs[ndirects++] = ohash;
-	ohash->index = -1;	/* direct */
-	ohash->priv = priv;
+
 	if (priv) {
 	    privinherit = TRUE;
 	}
@@ -791,40 +777,30 @@ int priv;
 	 * inherited two objects with same name
 	 */
 	c_error("inherited different instances of /%s", obj->chain.name);
-    } else {
-	if (ohash->index == 2) {
-	    /*
-	     * not inherited directly before
-	     */
-	    directs[ndirects++] = ohash;
-	    ohash->index = 1;	/* indirect, but immediate */
-	}
-
-	if (ohash->priv > priv) {
-	    /*
-	     * previously inherited with greater privateness; process all
-	     * objects inherited by this object
-	     */
-	    ctrl = o_control(obj);
-	    for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
-		--inh;
-		o = OBJR(inh->oindex);
-		ohash = oh_new(o->chain.name);
-		if (!inh->priv && ohash->priv > priv) {
-		    /*
-		     * add to function and variable table
-		     */
-		    if (ohash->priv == 2) {
-			ctrl_vardefs(ohash, o->ctrl);
-		    }
-		    ohash->priv = priv;
-		    ctrl_funcdefs(ohash, o->ctrl);
+    } else if (ohash->priv > priv) {
+	/*
+	 * previously inherited with greater privateness; process all
+	 * objects inherited by this object
+	 */
+	ctrl = o_control(obj);
+	for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
+	    --inh;
+	    o = OBJR(inh->oindex);
+	    ohash = oh_new(o->chain.name);
+	    if (!inh->priv && ohash->priv > priv) {
+		/*
+		 * add to function and variable table
+		 */
+		if (ohash->priv == 2) {
+		    ctrl_vardefs(ohash, o->ctrl);
 		}
+		ohash->priv = priv;
+		ctrl_funcdefs(ohash, o->ctrl);
 	    }
 	}
     }
 
-    if (ninherits >= MAX_INHERITS || ndirects == MAX_INHERITS) {
+    if (ninherits >= MAX_INHERITS) {
 	c_error("too many objects inherited");
     }
 
@@ -873,6 +849,81 @@ static int nclassvars;			/* # classvars */
 static Uint nfcalls;			/* # function calls */
 
 /*
+ * NAME:	control->imap()
+ * DESCRIPTION:	initialize inherit map
+ */
+static void ctrl_imap(ctrl)
+register control *ctrl;
+{
+    register dinherit *inh;
+    register int i, j, n, imapsz;
+    register control *ctrl2;
+
+    imapsz = ctrl->ninherits;
+    for (n = imapsz - 1, inh = &ctrl->inherits[n]; n > 0; ) {
+	--n;
+	(--inh)->progoffset = imapsz;
+	ctrl2 = OBJR(inh->oindex)->ctrl;
+	for (i = 0; i < ctrl2->ninherits; i++) {
+	    ctrl->imap[imapsz++] = oh_new(OBJR(ctrl2->inherits[UCHAR(ctrl2->imap[i])].oindex)->chain.name)->index;
+	}
+	for (j = ctrl->ninherits - n; --j > 0; ) {
+	    if (memcmp(ctrl->imap + inh->progoffset,
+		       ctrl->imap + inh[j].progoffset, i) == 0) {
+		/* merge with table of inheriting object */
+		inh->progoffset = inh[j].progoffset;
+		imapsz -= i;
+		break;
+	    }
+	}
+    }
+    ctrl->imap = REALLOC(ctrl->imap, char, ctrl->imapsz, imapsz);
+    ctrl->imapsz = imapsz;
+}
+
+/*
+ * NAME:	control->convert()
+ * DESCRIPTION:	convert inherits
+ */
+void ctrl_convert(ctrl)
+register control *ctrl;
+{
+    register int n, imapsz;
+    register oh *ohash;
+    register dinherit *inh;
+    object *obj;
+    hashtab *xotab;
+    oh **xolist;
+
+    xotab = otab;
+    xolist = olist;
+    oh_init();
+    olist = (oh **) NULL;
+
+    imapsz = 0;
+    for (n = 0, inh = ctrl->inherits; n < ctrl->ninherits; n++, inh++) {
+	obj = OBJR(inh->oindex);
+	ohash = oh_new(obj->chain.name);
+	if (ohash->index < 0) {
+	    ohash->obj = obj;
+	    ohash->index = n;
+	}
+	imapsz += o_control(obj)->ninherits;
+    }
+    ctrl->imap = ALLOC(char, ctrl->imapsz = imapsz);
+    imapsz = 0;
+    for (n = ctrl->ninherits, inh = ctrl->inherits; n > 0; --n, inh++) {
+	ctrl->imap[imapsz++] = n;
+    }
+    ctrl->imap[0] = 0;
+    ctrl_imap(ctrl);
+
+    oh_clear();
+    olist = xolist;
+    otab = xotab;
+}
+
+/*
  * NAME:	control->create()
  * DESCRIPTION:	make an initial control block
  */
@@ -882,88 +933,58 @@ void ctrl_create()
     register control *ctrl;
     register unsigned short n;
     register int i, count;
+    register oh *ohash;
 
     /*
      * create a new control block
      */
     newohash = oh_new("/");		/* unique name */
-    newohash->index = count = ninherits;
+    newohash->index = ninherits;
     newctrl = d_new_control();
-    new = newctrl->inherits = ALLOC(dinherit, newctrl->ninherits = count + 1);
-    new += count;
+    new = newctrl->inherits =
+	  ALLOC(dinherit, newctrl->ninherits = ninherits + 1);
+    newctrl->imap = ALLOC(char, (ninherits + 2) * (ninherits + 1) / 2);
+    newctrl->progindex = ninherits;
     nvars = 0;
     str_merge();
 
-    if (ninherits > 0) {
-	register oh *ohash;
-
-	/*
-	 * initialize the virtually inherited objects
-	 */
-	for (n = ndirects; n > 0; ) {
-	    register dinherit *old;
-
-	    ohash = directs[--n];
-	    if (ohash->index < 0) {		/* directly inherited */
-		ctrl = ohash->obj->ctrl;
-		i = ctrl->ninherits - 1;
-		old = ctrl->inherits + i;
-		/*
-		 * do this ctrl->ninherits - 1 times, but at least once
-		 */
-		do {
-		    ohash = oh_new(OBJR(old->oindex)->chain.name);
-		    --old;
-		    (--new)->oindex = ohash->obj->index;
-		    ohash->index = --count;	/* may happen more than once */
-		} while (--i > 0);
-	    }
-	}
-
-	/*
-	 * Fix function offsets and variable offsets, and collect all string
-	 * constants from inherited objects and put them in the string merge
-	 * table.
-	 */
-	for (count = 0; count < ninherits; count++) {
-	    ohash = oh_new(OBJR(new->oindex)->chain.name);
-	    i = ohash->index;
-	    if (i == count) {
-		ctrl = ohash->obj->ctrl;
-		i = ctrl->ninherits - 1;
-		new->funcoffset = nifcalls;
-		n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
-		nifcalls += n;
-		if (nifcalls > UINDEX_MAX && nifcalls - n <= UINDEX_MAX) {
-		    c_error("inherited too many function calls");
-		}
-		new->varoffset = nvars;
-		nvars += ctrl->nvardefs;
-		if (nvars > 32767 && nvars - ctrl->nvardefs <= 32767) {
-		    c_error("inherited too many variables");
-		}
-
-		for (n = ctrl->nstrings; n > 0; ) {
-		    --n;
-		    str_put(d_get_strconst(ctrl, i, n),
-			    ((Uint) count << 16) | n);
-		}
-	    } else {
-		new->funcoffset = newctrl->inherits[i].funcoffset;
-		new->varoffset = newctrl->inherits[i].varoffset;
-	    }
-	    new->priv = (ohash->priv != 0);
-	    new++;
-	}
-    }
-
     /*
-     * stats for new object
+     * Fix function offsets and variable offsets, and collect all string
+     * constants from inherited objects and put them in the string merge
+     * table.
      */
+    for (count = 0; count < ninherits; count++) {
+	newctrl->imap[count] = count;
+	ohash = inherits[count];
+	new->oindex = ohash->obj->index;
+	ctrl = ohash->obj->ctrl;
+	i = ctrl->ninherits - 1;
+	new->funcoffset = nifcalls;
+	n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
+	if (nifcalls > UINDEX_MAX - n) {
+	    c_error("inherited too many function calls");
+	}
+	nifcalls += n;
+	new->varoffset = nvars;
+	if (nvars > MAX_VARIABLES - ctrl->nvardefs) {
+	    c_error("inherited too many variables");
+	}
+	nvars += ctrl->nvardefs;
+
+	for (n = ctrl->nstrings; n > 0; ) {
+	    --n;
+	    str_put(d_get_strconst(ctrl, i, n), ((Uint) count << 16) | n);
+	}
+	new->priv = (ohash->priv != 0);
+	new++;
+    }
+    newctrl->imap[count] = count;
     new->oindex = UINDEX_MAX;
+    new->progoffset = 0;
     new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
     new->priv = FALSE;
+    ctrl_imap(newctrl);
 
     /*
      * prepare for construction of a new control block
@@ -1231,7 +1252,7 @@ unsigned int class, type;
 	    return;
 	}
     }
-    if (nvars == 255 || newctrl->nvariables + nvars == 32767) {
+    if (nvars == 255 || newctrl->nvariables + nvars == MAX_VARIABLES) {
 	c_error("too many variables declared");
     }
 
@@ -1334,8 +1355,7 @@ long *call;
 	c_error("undefined function %s::%s", label, str->text);
 	return (char *) NULL;
     }
-    inherit = (ohash->index == 0) ? 0 : ninherits + 1 - ohash->index;
-    *call = ((long) DFCALL << 24) | ((long) inherit << 8) | index;
+    *call = ((long) DFCALL << 24) | ((long) ohash->index << 8) | index;
     proto = ctrl->prog + ctrl->funcdefs[index].offset;
 
     if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
@@ -1428,9 +1448,7 @@ int typechecking;
 	if (h->ohash->index == 0) {
 	    *call = ((long) DFCALL << 24) | h->index;
 	} else {
-	    *call = ((long) DFCALL << 24) |
-		    ((ninherits + 1L - h->ohash->index) << 8) |
-		    h->index;
+	    *call = ((long) DFCALL << 24) | ((long) h->ohash->index << 8) | h->index;
 	}
     } else {
 	/* ordinary function call */
@@ -1508,7 +1526,7 @@ long *ref;
     if (h->ohash->index == 0 && ninherits != 0) {
 	*ref = h->index;
     } else {
-	*ref = ((ninherits + 1L - h->ohash->index) << 8) | h->index;
+	*ref = ((long) h->ohash->index << 8) | h->index;
     }
     *cvstr = h->cvstr;
     return h->ct;	/* the variable type */
@@ -1730,7 +1748,8 @@ static void ctrl_mkfcalls()
 	if (ohash->index == i) {
 	    register char *ofc;
 	    register dfuncdef *f;
-	    register control *ctrl, *ctrl2;
+	    register control *ctrl;
+	    register object *obj;
 	    register uindex j, n;
 
 	    /*
@@ -1742,20 +1761,25 @@ static void ctrl_mkfcalls()
 	    ofc = d_get_funcalls(ctrl) + 2L * ctrl->inherits[j].funcoffset;
 	    for (n = ctrl->nfuncalls - ctrl->inherits[j].funcoffset; n > 0; --n)
 	    {
-		ctrl2 = OBJR(ctrl->inherits[UCHAR(ofc[0])].oindex)->ctrl;
-		f = &ctrl2->funcdefs[UCHAR(ofc[1])];
+		j = UCHAR(ofc[0]);
+		obj = OBJR(ctrl->inherits[j].oindex);
+		f = &obj->ctrl->funcdefs[UCHAR(ofc[1])];
 		if (inh->priv || (f->class & C_PRIVATE) ||
 		    (f->class & (C_NOMASK | C_UNDEFINED)) == C_NOMASK ||
 		    ((f->class & (C_STATIC | C_UNDEFINED)) == C_STATIC &&
-		     ofc[0] == 0)) {
+		     j == 0)) {
 		    /*
 		     * keep old call
 		     */
-		    *fc++ = (ofc[0] == 0) ? 0 : ofc[0] + i - j;
+		    if (j != 0) {
+			j = oh_new(obj->chain.name)->index;
+		    }
+		    *fc++ = j;
 		    *fc++ = ofc[1];
 		} else {
 		    h = *(vfh **) ht_lookup(ftab,
-					    d_get_strconst(ctrl2, f->inherit,
+					    d_get_strconst(obj->ctrl,
+							   f->inherit,
 							   f->index)->text,
 					    FALSE);
 		    if (h->ohash->index == ninherits &&
@@ -2028,7 +2052,6 @@ void ctrl_clear()
     }
     lab_clear();
 
-    ndirects = 0;
     ninherits = 0;
     privinherit = FALSE;
     nsymbs = 0;

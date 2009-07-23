@@ -108,7 +108,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[50];
 
-# define FORMAT_VERSION	9
+# define FORMAT_VERSION	10
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
@@ -274,7 +274,7 @@ static void conf_restore(fd)
 int fd;
 {
     bool conv_co1, conv_co2, conv_lwo, conv_ctrl1, conv_ctrl2, conv_data,
-	 conv_type;
+	 conv_type, conv_inherit;
     unsigned int secsize;
 
     if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ ||
@@ -283,7 +283,7 @@ int fd;
 	error("Bad or incompatible restore file header");
     }
     conv_co1 = conv_co2 = conv_lwo = conv_ctrl1 = conv_ctrl2 = conv_data =
-	       conv_type = FALSE;
+	       conv_type = conv_inherit = FALSE;
     if (rheader[DUMP_VERSION] < 3) {
 	conv_co1 = TRUE;
     }
@@ -305,6 +305,9 @@ int fd;
     }
     if (rheader[DUMP_VERSION] < 9) {
 	conv_ctrl2 = TRUE;
+    }
+    if (rheader[DUMP_VERSION] < 10) {
+	conv_inherit = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0) {
@@ -352,8 +355,8 @@ int fd;
     kf_restore(fd, conv_co1);
     o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0));
     d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
-		conv_type);
-    pc_restore(fd);
+		conv_type, conv_inherit);
+    pc_restore(fd, conv_inherit);
     boottime = P_time();
     co_restore(fd, boottime, conv_co2);
 }

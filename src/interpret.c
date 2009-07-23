@@ -597,9 +597,8 @@ register frame *f;
 register int inherit, index;
 {
     i_add_ticks(f, 4);
-    if (inherit != 0) {
-	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
-    }
+    inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
+    inherit = f->ctrl->inherits[inherit].varoffset;
     if (f->lwobj == (array *) NULL) {
 	i_push_value(f, d_get_variable(f->data, inherit + index));
     } else {
@@ -618,9 +617,8 @@ int index, vtype;
 Uint class;
 {
     i_add_ticks(f, 4);
-    if (inherit != 0) {
-	inherit = f->ctrl->inherits[f->p_index - inherit].varoffset;
-    }
+    inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
+    inherit = f->ctrl->inherits[inherit].varoffset;
     if (f->lwobj == (array *) NULL) {
 	(--f->sp)->type = T_LVALUE;
 	f->sp->oindex = vtype;
@@ -1768,7 +1766,7 @@ register char *pc;
 	    break;
 
 	case I_PUSH_GLOBAL:
-	    i_global(f, 1, FETCH1U(pc));
+	    i_global(f, f->p_ctrl->progindex, FETCH1U(pc));
 	    break;
 
 	case I_PUSH_FAR_GLOBAL:
@@ -1803,7 +1801,7 @@ register char *pc;
 	    } else {
 		instr = 0;
 	    }
-	    i_global_lvalue(f, 1, u, instr, l);
+	    i_global_lvalue(f, f->p_ctrl->progindex, u, instr, l);
 	    continue;
 
 	case I_PUSH_FAR_GLOBAL_LVAL:
@@ -1944,7 +1942,7 @@ register char *pc;
 	    break;
 
 	case I_CALL_DFUNC:
-	    u = f->p_index - FETCH1U(pc);
+	    u = UCHAR(f->ctrl->imap[f->p_index + FETCH1U(pc)]);
 	    u2 = FETCH1U(pc);
 	    i_funcall(f, (object *) NULL, (array *) NULL, u, u2,
 		      FETCH1U(pc) + size);
@@ -2080,7 +2078,7 @@ int funci;
     obj = OBJR(f.ctrl->inherits[p_ctrli].oindex);
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
     f.p_ctrl = o_control(obj);
-    f.p_index = p_ctrli + 1;
+    f.p_index = f.ctrl->inherits[p_ctrli].progoffset;
 
     /* get the function */
     f.func = &d_get_funcdefs(f.p_ctrl)[funci];

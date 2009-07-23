@@ -1,6 +1,7 @@
 typedef struct {
     char *name;			/* name of object */
-    unsigned short funcoffset;	/* function call offset */
+    uindex progoffset;		/* program offset */
+    uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
     bool priv;			/* privately inherited? */
 } pcinherit;
@@ -12,6 +13,9 @@ typedef struct {
 
     short ninherits;		/* # of inherits */
     pcinherit *inherits;	/* inherits */
+
+    uindex imapsz;		/* inherit map size */
+    char *imap;			/* inherit map */
 
     Uint compiled;		/* compile time */
 
@@ -54,7 +58,7 @@ bool   pc_preload	P((char*, char*));
 array *pc_list		P((dataspace*));
 void   pc_control	P((control*, object*));
 bool   pc_dump		P((int));
-void   pc_restore	P((int));
+void   pc_restore	P((int, int));
 
 
 # define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =

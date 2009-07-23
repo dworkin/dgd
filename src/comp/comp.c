@@ -59,11 +59,29 @@ register control *ctrl;
 
     printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("{ \"%s\", %u, %u, %d },\n",
+	printf("{ \"%s\", %u, %u, %u, %d },\n",
 	       OBJ(ctrl->inherits[i].oindex)->chain.name,
+	       ctrl->inherits[i].progoffset,
 	       ctrl->inherits[i].funcoffset,
 	       ctrl->inherits[i].varoffset,
 	       ctrl->inherits[i].priv);
+    }
+    printf("};\n");
+}
+
+/*
+ * NAME:	dump_imap()
+ * DESCRIPTION:	output imap table
+ */
+static void dump_imap(ctrl)
+register control *ctrl;
+{
+    register int i;
+
+    printf("\nstatic char imap[] = {\n");
+    size = 0;
+    for (i = 0; i < ctrl->imapsz; i++) {
+	dump_int(ctrl->imap[i]);
     }
     printf("};\n");
 }
@@ -280,6 +298,7 @@ char *argv[];
 
     /* dump tables */
     dump_inherits(ctrl);
+    dump_imap(ctrl);
     dump_program(ctrl);
     dump_strings(ctrl);
     dump_funcdefs(ctrl);
@@ -290,6 +309,7 @@ char *argv[];
 
     printf("\nprecomp %s = {\nUINDEX_MAX,\n%d, inherits,\n", tag,
 	   ctrl->ninherits);
+    printf("%u, imap,\n", ctrl->imapsz);
     printf("%ldL,\n", (long) ctrl->compiled);
     if (ctrl->progsize == 0) {
 	printf("0, 0,\n");
@@ -430,8 +450,8 @@ int fd;
     return TRUE;
 }
 
-void pc_restore(fd)
-int fd;
+void pc_restore(fd, conv)
+int fd, conv;
 {
 }
 
