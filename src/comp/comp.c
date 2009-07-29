@@ -83,7 +83,7 @@ register control *ctrl;
     for (i = 0; i < ctrl->imapsz; i++) {
 	dump_int(ctrl->imap[i]);
     }
-    printf("};\n");
+    printf("\n};\n");
 }
 
 /*

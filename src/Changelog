@@ -1735,3 +1735,4 @@ DGD 1.4
 
  - The instanceof operator '<-' now returns -1 for private inheritance.
  - Compress the table of inherited objects.
+ - Prevent inheritance table overflow.

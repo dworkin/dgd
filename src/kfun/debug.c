@@ -80,9 +80,7 @@ control *ctrl;
 
     printf("inherits:\n");
     for (i = 0; i < ctrl->ninherits; i++) {
-	printf("  /%s (%u, %u)\n", OBJR(ctrl->inherits[i].oindex)->chain.name,
-	       ctrl->inherits[i].funcoffset,
-	       ctrl->inherits[i].varoffset);
+	printf("  /%s\n", OBJR(ctrl->inherits[i].oindex)->chain.name);
     }
     printf("progsize: %lu\n", (unsigned long) ctrl->progsize);
     if (ctrl->nstrings > 0) {
@@ -124,37 +122,6 @@ control *ctrl;
 		       d_get_strconst(ctrl, ctrl->vardefs[i].inherit,
 				      ctrl->vardefs[i].index)->text);
 	    }
-	}
-    }
-    if (ctrl->nfuncalls > 0) {
-	d_get_funcalls(ctrl);
-	printf("funcalls:\n");
-	for (i = 0; i < ctrl->nfuncalls; i++) {
-	    control *c2;
-	    dfuncdef *f;
-
-	    c2 = o_control(OBJR(ctrl->inherits[UCHAR(ctrl->funcalls[2 * i])].oindex));
-	    f = d_get_funcdefs(c2) + UCHAR(ctrl->funcalls[2 * i + 1]);
-	    printf("%3u: %s(%d, %d)\n", i,
-		   d_get_strconst(c2, f->inherit, f->index)->text,
-		   UCHAR(ctrl->funcalls[2 * i]),
-		   UCHAR(ctrl->funcalls[2 * i + 1]));
-	}
-    }
-    if (ctrl->nsymbols > 0) {
-	d_get_symbols(ctrl);
-	printf("symbols:\n");
-	for (i = 0; i < ctrl->nsymbols; i++) {
-	    control *c2;
-	    dfuncdef *f;
-	    char *name;
-
-	    printf("%3u: (%u) ", i, ctrl->symbols[i].next);
-	    c2 = o_control(OBJR(ctrl->inherits[UCHAR(ctrl->symbols[i].inherit)].oindex));
-	    f = d_get_funcdefs(c2) + UCHAR(ctrl->symbols[i].index);
-	    name = d_get_strconst(c2, f->inherit, f->index)->text;
-	    show_proto(c2, name, d_get_prog(c2) + f->offset);
-	    putchar('\n');
 	}
     }
     printf("%u variables\n", ctrl->nvariables);

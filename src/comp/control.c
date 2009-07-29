@@ -223,7 +223,7 @@ static void lab_clear()
 # define MAX_INHERITS		255
 # define MAX_VARIABLES		(USHRT_MAX - 2)
 
-static oh *inherits[MAX_INHERITS];	/* inherited objects */
+static oh *inherits[MAX_INHERITS * 2];	/* inherited objects */
 static int ninherits;			/* # inherited objects */
 static bool privinherit;		/* TRUE if private inheritance used */
 static hashtab *vtab;			/* variable merge table */
