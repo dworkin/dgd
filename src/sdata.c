@@ -2672,6 +2672,7 @@ object *obj;
 	size = d_conv((char *) &header, &obj->cfirst, sc_layout, (Uint) 1,
 		      (Uint) 0);
     }
+    ctrl->flags = header.flags;
     ctrl->ninherits = header.ninherits;
     ctrl->imapsz = header.imapsz;
     ctrl->compiled = header.compiled;
@@ -2861,6 +2862,8 @@ object *obj;
 	    obj->ctrl = ctrl;
 	    ctrl_convert(ctrl);
 	    ctrl->flags |= CTRL_CONVERTED;
+	}
+	if (ctrl->flags & CTRL_CONVERTED) {
 	    if (header.ninherits > 1) {
 		ctrl->progindex = 1;
 	    }
