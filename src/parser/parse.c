@@ -340,7 +340,7 @@ string *source, *grammar;
     str_ref(ps->grammar = grammar);
     ps->fastr = (char *) NULL;
     ps->lrstr = (char *) NULL;
-    ps->fa = dfa_new(grammar->text);
+    ps->fa = dfa_new(source->text, grammar->text);
     ps->lr = srp_new(grammar->text);
 
     ps->pnc = (pnchunk *) NULL;
@@ -351,9 +351,9 @@ string *source, *grammar;
     ps->arrc = (arrchunk *) NULL;
 
     p = grammar->text;
-    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9])) << 8) + UCHAR(p[6]) +
-		 UCHAR(p[10]);
-    ps->nprod = (UCHAR(p[11]) << 8) + UCHAR(p[12]);
+    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9]) + UCHAR(p[11])) << 8) +
+		 UCHAR(p[6]) + UCHAR(p[10]) + UCHAR(p[12]);
+    ps->nprod = (UCHAR(p[13]) << 8) + UCHAR(p[14]);
 
     return ps;
 }
@@ -847,7 +847,7 @@ register value *elts;
 	len = (elts++)->u.string->len;
 	ps->fastr = (char *) NULL;
     }
-    ps->fa = dfa_load(ps->grammar->text, p, len);
+    ps->fa = dfa_load(ps->source->text, ps->grammar->text, p, len);
 
     if (lrsize > 1) {
 	for (i = lrsize, len = 0; --i >= 0; ) {

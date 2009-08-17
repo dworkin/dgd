@@ -5,20 +5,22 @@
 # include "grammar.h"
 
 # define STORE2(p, n)	((p)[0] = (n) >> 8, (p)[1] = (n))
+# define STORE3(p, n)	((p)[0] = (n) >> 16, (p)[1] = (n) >> 8, (p)[2] = (n))
 
 # define TOK_NULL	0	/* nothing */
 # define TOK_REGEXP	1	/* regular expression */
 # define TOK_STRING	2	/* string */
-# define TOK_PRODSYM	3	/* left hand of production rule */
-# define TOK_TOKSYM	4	/* left hand of token rule */
-# define TOK_SYMBOL	5	/* symbol in rhs of production rule */
-# define TOK_QUEST	6	/* question mark */
-# define TOK_ERROR	7	/* bad token */
-# define TOK_BADREGEXP  8	/* malformed regular expression */
-# define TOK_TOOBIGRGX  9	/* too big regular expression */
-# define TOK_BADSTRING 10	/* malformed string constant */
-# define TOK_TOOBIGSTR 11	/* string constant too long */
-# define TOK_TOOBIGSYM 12	/* symbol too long */
+# define TOK_ESTRING	3	/* string */
+# define TOK_PRODSYM	4	/* left hand of production rule */
+# define TOK_TOKSYM	5	/* left hand of token rule */
+# define TOK_SYMBOL	6	/* symbol in rhs of production rule */
+# define TOK_QUEST	7	/* question mark */
+# define TOK_ERROR	8	/* bad token */
+# define TOK_BADREGEXP  9	/* malformed regular expression */
+# define TOK_TOOBIGRGX 10	/* too big regular expression */
+# define TOK_BADSTRING 11	/* malformed string constant */
+# define TOK_TOOBIGSTR 12	/* string constant too long */
+# define TOK_TOOBIGSYM 13	/* symbol too long */
 
 typedef struct {
     unsigned short type;	/* node type */
@@ -145,7 +147,7 @@ unsigned int *buflen;
 {
     rgxnode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
-    int paren, thisnode, topnode, lastnode;
+    int paren, thisnode, topnode, lastnode, strtok;
     ssizet offset;
     register char *p;
     char *q;
@@ -351,6 +353,7 @@ unsigned int *buflen;
 	case '\'':
 	    /* string */
 	    p++;
+	    strtok = TOK_STRING;
 	    len = 0;
 	    while (*p != '\'') {
 		if (size == 0) {
@@ -361,6 +364,9 @@ unsigned int *buflen;
 		    /* escaped character */
 		    if (size == 0) {
 			return TOK_BADSTRING;
+		    }
+		    if (len != 0) {
+			strtok = TOK_ESTRING;
 		    }
 		    --size;
 		    p++;
@@ -378,7 +384,7 @@ unsigned int *buflen;
 	    *buffer = '\0';
 	    *buflen = len;
 	    *strlen = size - 1;
-	    return TOK_STRING;
+	    return strtok;
 
 	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
 	case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
@@ -442,7 +448,7 @@ typedef struct _rule_ {
     string *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
-    unsigned short len;		/* length of rule, or offset in grammar */
+    Uint len;			/* length of rule, or offset in grammar */
     union {
 	string *rgx;		/* regular expression */
 	rulesym *syms;		/* linked list of rule elements */
@@ -576,19 +582,25 @@ register rlchunk *c;
 /*
  * Internal grammar string description:
  *
- * header	[1]	version number
+ * header	[2]	version number
  *		[x][y]	whitespace rule or -1
  *		[x][y]	nomatch rule or -1
  *		[x][y]	# regexp rules
  *		[x][y]	# total regexp rules (+ alternatives)
  *		[x][y]	# string rules
+ *		[x][y]	# escaped string rules
  *		[x][y]	# production rules (first is starting rule)
  *		[x][y]	# total production rules (+ alternatives)
  *
  * rgx offset	[x][y]	regexp rule offsets
  *		...
  *
- * str offset	[x][y]	string rule offsets
+ * str offset	[...]	str:
+ *			[x][y][z] offset in source
+ *			[x]	  length of string
+ *		...
+ *
+ * estr offset	[x][y]	string rule offsets
  *		...
  *
  * prod offset	[x][y]	production rule offsets
@@ -613,9 +625,10 @@ register rlchunk *c;
  * NAME:	make_grammar()
  * DESCRIPTION:	create a pre-processed grammar string
  */
-static string *make_grammar(rgxlist, strlist, prodlist, nrgx, nstr, nprod, size)
-rule *rgxlist, *strlist, *prodlist;
-int nrgx, nstr, nprod;
+static string *make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx, nstr,
+			    nestr, nprod, size)
+rule *rgxlist, *strlist, *estrlist, *prodlist;
+int nrgx, nstr, nestr, nprod;
 long size;
 {
     int start, prod1;
@@ -634,11 +647,12 @@ long size;
     STORE2(p, -1); p += 2;	/* nomatch rule */
     STORE2(p, nrgx); p += 4;	/* # regular expression rules */
     STORE2(p, nstr); p += 2;	/* # string rules */
+    STORE2(p, nestr); p += 2;	/* # escaped string rules */
     nprod++;			/* +1 for start rule */
     STORE2(p, nprod);		/* # production rules */
-    n = nrgx + nstr + nprod;
-    prod1 = nrgx + nstr + 1;
-    q = p + 4 + (n << 1);
+    n = nrgx + nstr + nestr + nprod;
+    prod1 = nrgx + nstr + nestr + 1;
+    q = p + 4 + ((n + nstr) << 1);
     p = gram->text + size;
 
     /* determine production rule offsets */
@@ -659,13 +673,18 @@ long size;
     start = size;
 
     /* deal with strings */
-    for (rl = strlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = estrlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= rl->symb->len + 1;
 	p -= rl->symb->len + 1;
 	q -= 2; STORE2(q, size);
 	rl->num = --n;
 	*p = rl->symb->len;
 	memcpy(p + 1, rl->symb->text, rl->symb->len);
+    }
+    for (rl = strlist; rl != (rule *) NULL; rl = rl->next) {
+	*--q = rl->symb->len;
+	q -= 3; STORE3(q, rl->len);
+	rl->num = --n;
     }
 
     /* deal with regexps */
@@ -727,7 +746,7 @@ long size;
     *p++ = prod1 >> 8;
     *p   = prod1;
 
-    p = gram->text + 13;
+    p = gram->text + 15;
     STORE2(p, nprod);
 
     return gram;
@@ -744,8 +763,8 @@ string *gram;
     hashtab *ruletab, *strtab;
     rschunk *rschunks;
     rlchunk *rlchunks;
-    rule *rgxlist, *strlist, *prodlist, *tmplist, *rr, *rrl;
-    int token, ruleno, nrgx, nstr, nprod;
+    rule *rgxlist, *strlist, *estrlist, *prodlist, *tmplist, *rr, *rrl;
+    int token, ruleno, nrgx, nstr, nestr, nprod;
     ssizet glen;
     unsigned int buflen;
     bool nomatch;
@@ -765,9 +784,9 @@ string *gram;
     strtab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     rschunks = (rschunk *) NULL;
     rlchunks = (rlchunk *) NULL;
-    rgxlist = strlist = prodlist = tmplist = (rule *) NULL;
-    nrgx = nstr = nprod = 0;
-    size = 15 + 8;	/* size of header + start rule */
+    rgxlist = strlist = estrlist = prodlist = tmplist = (rule *) NULL;
+    nrgx = nstr = nestr = nprod = 0;
+    size = 17 + 8;	/* size of header + start rule */
     glen = gram->len;
     nomatch = FALSE;
 
@@ -945,6 +964,7 @@ string *gram;
 		    continue;
 
 		case TOK_STRING:
+		case TOK_ESTRING:
 		    /*
 		     * string
 		     */
@@ -963,11 +983,19 @@ string *gram;
 			rl->chain.name = rl->symb->text;
 			rl->chain.next = (hte *) *r;
 			*r = rl;
-			size += 3 + buflen;
-			nstr++;
 
-			rl->next = strlist;
-			strlist = rl;
+			if (token == TOK_STRING) {
+			    size += 4;
+			    nstr++;
+			    rl->len = gram->len - glen - buflen - 1;
+			    rl->next = strlist;
+			    strlist = rl;
+			} else {
+			    size += 3 + buflen;
+			    nestr++;
+			    rl->next = estrlist;
+			    estrlist = rl;
+			}
 		    } else {
 			/* existing string rule */
 			rl = *r;
@@ -1026,8 +1054,8 @@ string *gram;
 		strcpy(buffer, "Grammar too large");
 		goto err;
 	    }
-	    gram = make_grammar(rgxlist, strlist, prodlist, nrgx, nstr, nprod,
-				size);
+	    gram = make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx,
+				nstr, nestr, nprod, size);
 	    rs_clear(rschunks);
 	    rl_clear(rlchunks);
 	    ht_del(strtab);

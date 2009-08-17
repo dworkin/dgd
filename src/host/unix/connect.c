@@ -95,13 +95,16 @@ register int in, out;
 	}
 
 	if (host != (struct hostent *) NULL) {
+	    register char *name;
+
 	    /* write host name */
-	    len = strlen(host->h_name);
+	    name = (char *) host->h_name;
+	    len = strlen(name);
 	    if (len >= MAXHOSTNAMELEN) {
 		len = MAXHOSTNAMELEN - 1;
 	    }
-	    write(out, host->h_name, len);
-	    host->h_name[0] = '\0';
+	    write(out, name, len);
+	    name[0] = '\0';
 	} else {
 	    write(out, "", 1);	/* failure */
 	}

@@ -843,8 +843,10 @@ Uint *ptab, *nposn;
 
 
 struct _dfa_ {
+    char *source;		/* source grammar */
     char *grammar;		/* reference grammar */
     char *strings;		/* offset of strings in grammar */
+    unsigned short nsstrings;	/* # strings in source grammar */
     short whitespace;		/* whitespace rule or -1 */
     short nomatch;		/* nomatch rule or -1 */
 
@@ -884,7 +886,8 @@ struct _dfa_ {
  * NAME:	dfa->new()
  * DESCRIPTION:	create new dfa instance
  */
-dfa *dfa_new(grammar)
+dfa *dfa_new(source, grammar)
+char *source;
 register char *grammar;
 {
     char posn[258];
@@ -896,12 +899,14 @@ register char *grammar;
     fa = ALLOC(dfa, 1);
 
     /* grammar info */
+    fa->source = source;
     fa->grammar = grammar;
     fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
     fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
     fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
-    nstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
-    fa->strings = grammar + 15 + (fa->nregexp << 1);
+    fa->nsstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    nstrings = fa->nsstrings + (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
+    fa->strings = grammar + 17 + (fa->nregexp << 1);
 
     /* size info */
     fa->modified = TRUE;
@@ -955,7 +960,7 @@ register char *grammar;
     state->ntrans = state->len = 0;
     state->final = -1;
     state->alloc = FALSE;
-    grammar += 15;
+    grammar += 17;
     /* initial positions */
     if (state->nposn == 0 && state->nstr == 0) {
 	/* no valid transitions from initial state */
@@ -1108,8 +1113,8 @@ register unsigned short limit;
  * NAME:	dfa->load()
  * DESCRIPTION:	load dfa from string
  */
-dfa *dfa_load(grammar, str, len)
-char *grammar, *str;
+dfa *dfa_load(source, grammar, str, len)
+char *source, *grammar, *str;
 Uint len;
 {
     register dfa *fa;
@@ -1119,19 +1124,21 @@ Uint len;
     unsigned short nstrings;
 
     if (str[0] != DFA_VERSION) {
-	return dfa_new(grammar);
+	return dfa_new(source, grammar);
     }
 
     fa = ALLOC(dfa, 1);
     fa->dfastr = buf = str;
 
     /* grammar info */
+    fa->source = source;
     fa->grammar = grammar;
     fa->whitespace = (UCHAR(grammar[1]) << 8) + UCHAR(grammar[2]);
     fa->nomatch = (UCHAR(grammar[3]) << 8) + UCHAR(grammar[4]);
     fa->nregexp = (UCHAR(grammar[5]) << 8) + UCHAR(grammar[6]);
-    nstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
-    fa->strings = grammar + 15 + (fa->nregexp << 1);
+    fa->nsstrings = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    nstrings = fa->nsstrings + (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
+    fa->strings = grammar + 17 + (fa->nregexp << 1);
 
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
@@ -1405,9 +1412,17 @@ Uint *ecset, *cset;
 
     /* strings */
     for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
-	p = fa->strings + (*s << 1);
-	p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-	n = UCHAR(p[newstate->len]);
+	if (*s < fa->nsstrings) {
+	    p = fa->strings + (*s << 2);
+	    n = UCHAR(fa->source[(UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) +
+				 UCHAR(p[2]) + state->len]);
+	    p += 3;
+	} else {
+	    p = fa->strings + (fa->nsstrings << 2) +
+		((*s - fa->nsstrings) << 1);
+	    p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
+	    n = UCHAR(p[newstate->len]);
+	}
 	if (ecset[n >> 5] & (1 << (n & 31))) {
 	    if (newstate->len == UCHAR(p[0])) {
 		/* end of string */
@@ -1455,9 +1470,16 @@ dfastate *state;
 
     /* construct character sets for all string chars */
     for (i = state->nstr, s = STRA(state); i > 0; --i, s++) {
-	p = fa->strings + (*s << 1);
-	p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
-	n = UCHAR(p[1 + state->len]);
+	if (*s < fa->nsstrings) {
+	    p = fa->strings + (*s << 2);
+	    p = fa->source + (UCHAR(p[0]) << 16) + (UCHAR(p[1]) << 8) +
+		UCHAR(p[2]);
+	} else {
+	    p = fa->strings + (fa->nsstrings << 2) +
+		((*s - fa->nsstrings) << 1);
+	    p = fa->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]) + 1;
+	}
+	n = UCHAR(p[state->len]);
 	memset(cset, '\0', 32);
 	cset[n >> 5] |= 1 << (n & 31);
 	iset[n >> 5] |= 1 << (n & 31);	/* also add to input set */

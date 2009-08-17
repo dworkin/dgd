@@ -392,6 +392,7 @@ register slchunk *c;
 
 struct _srp_ {
     char *grammar;		/* grammar */
+    unsigned short nsstring;	/* # of source grammar strings */
     unsigned short ntoken;	/* # of tokens (regexp & string) */
     unsigned short nprod;	/* # of nonterminals */
 
@@ -445,10 +446,12 @@ char *grammar;
 
     /* grammar info */
     lr->grammar = grammar;
-    lr->ntoken = ((UCHAR(grammar[5]) + UCHAR(grammar[9])) << 8) +
-		 UCHAR(grammar[6]) + UCHAR(grammar[10]);
-    lr->nprod = (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
-    nrule = (UCHAR(grammar[13]) << 8) + UCHAR(grammar[14]);
+    lr->nsstring = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    lr->ntoken = lr->nsstring +
+		 ((UCHAR(grammar[5]) + UCHAR(grammar[11])) << 8) +
+		 UCHAR(grammar[6]) + UCHAR(grammar[12]);
+    lr->nprod = (UCHAR(grammar[13]) << 8) + UCHAR(grammar[14]);
+    nrule = (UCHAR(grammar[15]) << 8) + UCHAR(grammar[16]);
 
     /* sizes */
     lr->srpstr = (char *) NULL;
@@ -470,7 +473,7 @@ char *grammar;
     lr->itc = (itchunk *) NULL;
 
     /* state 0 */
-    p = grammar + 15 + (lr->ntoken << 1);
+    p = grammar + 17 + ((lr->ntoken + lr->nsstring) << 1);
     p = grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
     lr->states[0].items = it_new(&lr->itc, p + 2, lr->ntoken, 0, (item *) NULL);
     lr->states[0].nitem = 1;
@@ -596,9 +599,11 @@ Uint len;
 
     /* grammar info */
     lr->grammar = grammar;
-    lr->ntoken = ((UCHAR(grammar[5]) + UCHAR(grammar[9])) << 8) +
-		 UCHAR(grammar[6]) + UCHAR(grammar[10]);
-    lr->nprod = (UCHAR(grammar[11]) << 8) + UCHAR(grammar[12]);
+    lr->nsstring = (UCHAR(grammar[9]) << 8) + UCHAR(grammar[10]);
+    lr->ntoken = lr->nsstring +
+		 ((UCHAR(grammar[5]) + UCHAR(grammar[11])) << 8) +
+		 UCHAR(grammar[6]) + UCHAR(grammar[12]);
+    lr->nprod = (UCHAR(grammar[13]) << 8) + UCHAR(grammar[14]);
 
     lr->srpstr = buf = str;
 
@@ -667,7 +672,7 @@ register srp *lr;
     Uint nrule;
     char *buf;
 
-    nrule = (UCHAR(lr->grammar[13]) << 8) + UCHAR(lr->grammar[14]);
+    nrule = (UCHAR(lr->grammar[15]) << 8) + UCHAR(lr->grammar[16]);
 
     buf = lr->tmpstr;
     lr->nitem = ((Uint) UCHAR(buf[1]) << 16) + (UCHAR(buf[2]) << 8) +
@@ -983,7 +988,7 @@ srpstate *state;
 	    p += i;
 	    n = (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 	    if (n >= lr->ntoken) {
-		p = lr->grammar + 15 + (n << 1);
+		p = lr->grammar + 17 + ((n + lr->nsstring) << 1);
 		p = lr->grammar + (UCHAR(p[0]) << 8) + UCHAR(p[1]);
 		for (i = (UCHAR(p[0]) << 8) + UCHAR(p[1]), p += 2; i > 0; --i) {
 		    it_add(&lr->itc, &state->items, p, n, 0, FALSE);
