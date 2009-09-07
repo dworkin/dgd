@@ -1740,3 +1740,4 @@ DGD 1.4
    or later.
  - Handle more string constants in parse_string() grammars.
  - Work around a cygwin compilation problem.
+ - Prevent a crash when attempting to read a too-large chunk from a file.

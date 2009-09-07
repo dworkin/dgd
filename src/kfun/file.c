@@ -1254,30 +1254,28 @@ int nargs;
 	sbuf.st_size -= l;
     }
 
-    if (size == 0) {
+    if (size == 0 || size > sbuf.st_size) {
 	size = sbuf.st_size;
+    }
+    if (size > (Uint) MAX_STRLEN) {
+	P_close(fd);
+	error("String too long");
     }
     buf = (size != 0) ? ALLOCA(char, size) : (char *) NULL;
     if (size > 0 && (size=P_read(fd, buf, (unsigned int) size)) < 0) {
 	/* read failed */
 	P_close(fd);
+	if (buf != (char *) NULL) {
+	    AFREE(buf);
+	}
 	error("Read failed in read_file()");
     }
     P_close(fd);
     i_add_ticks(f, 2 * size);
 
-    if (ec_push((ec_ftn) NULL)) {
-	P_close(fd);
-	if (buf != (char *) NULL) {
-	    AFREE(buf);
-	}
-	error((char *) NULL);	/* pass on error */
-    } else {
-	PUT_STRVAL(f->sp, str_new((char *) buf, size));
-	if (buf != (char *) NULL) {
-	    AFREE(buf);
-	}
-	ec_pop();
+    PUT_STRVAL(f->sp, str_new((char *) buf, size));
+    if (buf != (char *) NULL) {
+	AFREE(buf);
     }
 
     return 0;
