@@ -561,7 +561,7 @@ static void cg_fetch(n)
 node *n;
 {
     cg_lvalue(n, (node *) NULL);
-    code_instr(I_FETCH, 0);
+    code_instr(I_DUP, 0);
     if (n->type == N_CAST) {
 	cg_cast(n);
     }
@@ -954,11 +954,7 @@ register int pop;
     case N_INSTANCEOF:
 	cg_expr(n->l.left, FALSE);
 	l = ctrl_dstring(n->r.right->l.string) & 0xffffffL;
-	if (l == 0) {
-	    code_instr(I_PUSH_ZERO, n->line);
-	} else if (l == 1) {
-	    code_instr(I_PUSH_ONE, n->line);
-	} else if (l >= -128 && l <= 127) {
+	if (l >= -128 && l <= 127) {
 	    code_instr(I_PUSH_INT1, n->line);
 	    code_byte(l);
 	} else {
@@ -970,11 +966,7 @@ register int pop;
 	break;
 
     case N_INT:
-	if (n->l.number == 0) {
-	    code_instr(I_PUSH_ZERO, n->line);
-	} else if (n->l.number == 1) {
-	    code_instr(I_PUSH_ONE, n->line);
-	} else if (n->l.number >= -128 && n->l.number <= 127) {
+	if (n->l.number >= -128 && n->l.number <= 127) {
 	    code_instr(I_PUSH_INT1, n->line);
 	    code_byte((int) n->l.number);
 	} else {
@@ -989,11 +981,13 @@ register int pop;
 	    jlist = true_list;
 	    true_list = (jmplist *) NULL;
 	    cg_cond(n, TRUE);
-	    code_instr(I_PUSH_ZERO, 0);
+	    code_instr(I_PUSH_INT1, 0);
+	    code_byte(0);
 	    j2list = jump(I_JUMP, (jmplist *) NULL);
 	    jump_resolve(true_list, here);
 	    true_list = jlist;
-	    code_instr(I_PUSH_ONE, 0);
+	    code_instr(I_PUSH_INT1, 0);
+	    code_byte(1);
 	    jump_resolve(j2list, here);
 	} else {
 	    jlist = false_list;
@@ -1027,11 +1021,13 @@ register int pop;
 	    jlist = false_list;
 	    false_list = (jmplist *) NULL;
 	    cg_cond(n, FALSE);
-	    code_instr(I_PUSH_ONE, 0);
+	    code_instr(I_PUSH_INT1, 0);
+	    code_byte(1);
 	    j2list = jump(I_JUMP, (jmplist *) NULL);
 	    jump_resolve(false_list, here);
 	    false_list = jlist;
-	    code_instr(I_PUSH_ZERO, 0);
+	    code_instr(I_PUSH_INT1, 0);
+	    code_byte(0);
 	    jump_resolve(j2list, here);
 	} else {
 	    jlist = true_list;

@@ -7,7 +7,7 @@
 # endif
 
 # ifdef FUNCDEF
-FUNCDEF("editor", kf_editor, pt_editor)
+FUNCDEF("editor", kf_editor, pt_editor, 0)
 # else
 char pt_editor[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING, T_STRING };
 
@@ -55,7 +55,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("query_editor", kf_query_editor, pt_query_editor)
+FUNCDEF("query_editor", kf_query_editor, pt_query_editor, 0)
 # else
 char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 			   T_OBJECT };
@@ -88,7 +88,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("save_object", kf_save_object, pt_save_object)
+FUNCDEF("save_object", kf_save_object, pt_save_object, 0)
 # else
 typedef struct {
     int fd;			/* save/restore file descriptor */
@@ -489,7 +489,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("restore_object", kf_restore_object, pt_restore_object)
+FUNCDEF("restore_object", kf_restore_object, pt_restore_object, 0)
 # else
 # define ACHUNKSZ	16
 
@@ -1120,7 +1120,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("write_file", kf_write_file, pt_write_file)
+FUNCDEF("write_file", kf_write_file, pt_write_file, 0)
 # else
 char pt_write_file[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_INT, T_STRING,
 			 T_STRING, T_INT };
@@ -1185,7 +1185,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("read_file", kf_read_file, pt_read_file)
+FUNCDEF("read_file", kf_read_file, pt_read_file, 0)
 # else
 char pt_read_file[] = { C_TYPECHECKED | C_STATIC, 1, 2, 0, 9, T_STRING,
 			T_STRING, T_INT, T_INT };
@@ -1284,7 +1284,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("rename_file", kf_rename_file, pt_rename_file)
+FUNCDEF("rename_file", kf_rename_file, pt_rename_file, 0)
 # else
 char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT,
 			  T_STRING, T_STRING };
@@ -1318,7 +1318,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("remove_file", kf_remove_file, pt_remove_file)
+FUNCDEF("remove_file", kf_remove_file, pt_remove_file, 0)
 # else
 char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			  T_STRING };
@@ -1349,7 +1349,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("make_dir", kf_make_dir, pt_make_dir)
+FUNCDEF("make_dir", kf_make_dir, pt_make_dir, 0)
 # else
 char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
@@ -1379,7 +1379,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("remove_dir", kf_remove_dir, pt_remove_dir)
+FUNCDEF("remove_dir", kf_remove_dir, pt_remove_dir, 0)
 # else
 char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			 T_STRING };
@@ -1410,7 +1410,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("get_dir", kf_get_dir, pt_get_dir)
+FUNCDEF("get_dir", kf_get_dir, pt_get_dir, 0)
 # else
 /*
  * NAME:	match()

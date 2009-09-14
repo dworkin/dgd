@@ -19,7 +19,7 @@
 # define I_AGGREGATE		16	/* 1 unsigned, 2 unsigned */
 # define I_SPREAD		17	/* 1 signed */
 # define I_CAST			18	/* 1 unsigned */
-# define I_FETCH		19
+# define I_DUP			19
 # define I_STORE		20
 # define I_JUMP			21	/* 2 unsigned */
 # define I_JUMP_ZERO		22	/* 2 unsigned */
@@ -224,7 +224,7 @@ extern void	i_index_lvalue	P((frame*, int, Uint));
 extern char    *i_typename	P((char*, unsigned int));
 extern int	i_instanceof	P((frame*, unsigned int, Uint));
 extern void	i_cast		P((frame*, value*, unsigned int, Uint));
-extern void	i_fetch		P((frame*));
+extern void	i_dup		P((frame*));
 extern void	i_store		P((frame*));
 extern Int	i_get_depth	P((frame*));
 extern Int	i_get_ticks	P((frame*));

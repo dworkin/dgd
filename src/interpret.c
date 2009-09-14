@@ -1004,10 +1004,10 @@ Uint class;
 }
 
 /*
- * NAME:	interpret->fetch()
- * DESCRIPTION:	fetch the value of an lvalue
+ * NAME:	interpret->dup()
+ * DESCRIPTION:	duplicate the value of an lvalue
  */
-void i_fetch(f)
+void i_dup(f)
 register frame *f;
 {
     switch (f->sp->type) {
@@ -1863,8 +1863,8 @@ register char *pc;
 	    i_cast(f, f->sp, u, l);
 	    break;
 
-	case I_FETCH:
-	    i_fetch(f);
+	case I_DUP:
+	    i_dup(f);
 	    break;
 
 	case I_STORE:
@@ -2410,7 +2410,7 @@ register frame *f;
 	case I_PUSH_ZERO:
 	case I_PUSH_ONE:
 	case I_INDEX:
-	case I_FETCH:
+	case I_DUP:
 	case I_STORE:
 	case I_RETURN:
 	    break;

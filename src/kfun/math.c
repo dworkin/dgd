@@ -4,7 +4,7 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("fabs", kf_fabs, pt_fabs)
+FUNCDEF("fabs", kf_fabs, pt_fabs, 0)
 # else
 char pt_fabs[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -27,7 +27,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("floor", kf_floor, pt_floor)
+FUNCDEF("floor", kf_floor, pt_floor, 0)
 # else
 char pt_floor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -50,7 +50,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("ceil", kf_ceil, pt_ceil)
+FUNCDEF("ceil", kf_ceil, pt_ceil, 0)
 # else
 char pt_ceil[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -73,7 +73,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("fmod", kf_fmod, pt_fmod)
+FUNCDEF("fmod", kf_fmod, pt_fmod, 0)
 # else
 char pt_fmod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 		   T_FLOAT };
@@ -99,7 +99,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("frexp", kf_frexp, pt_frexp)
+FUNCDEF("frexp", kf_frexp, pt_frexp, 0)
 # else
 char pt_frexp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 		    (1 << REFSHIFT) | T_MIXED, T_FLOAT };
@@ -129,7 +129,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("ldexp", kf_ldexp, pt_ldexp)
+FUNCDEF("ldexp", kf_ldexp, pt_ldexp, 0)
 # else
 char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 		    T_INT };
@@ -154,7 +154,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("modf", kf_modf, pt_modf)
+FUNCDEF("modf", kf_modf, pt_modf, 0)
 # else
 char pt_modf[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 		   (1 << REFSHIFT) | T_FLOAT, T_FLOAT };
@@ -183,7 +183,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("exp", kf_exp, pt_exp)
+FUNCDEF("exp", kf_exp, pt_exp, 0)
 # else
 char pt_exp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -206,7 +206,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("log", kf_log, pt_log)
+FUNCDEF("log", kf_log, pt_log, 0)
 # else
 char pt_log[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -229,7 +229,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("log10", kf_log10, pt_log10)
+FUNCDEF("log10", kf_log10, pt_log10, 0)
 # else
 char pt_log10[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -252,7 +252,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("pow", kf_pow, pt_pow)
+FUNCDEF("pow", kf_pow, pt_pow, 0)
 # else
 char pt_pow[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 		  T_FLOAT };
@@ -278,7 +278,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("sqrt", kf_sqrt, pt_sqrt)
+FUNCDEF("sqrt", kf_sqrt, pt_sqrt, 0)
 # else
 char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -301,7 +301,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("cos", kf_cos, pt_cos)
+FUNCDEF("cos", kf_cos, pt_cos, 0)
 # else
 char pt_cos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -324,7 +324,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("sin", kf_sin, pt_sin)
+FUNCDEF("sin", kf_sin, pt_sin, 0)
 # else
 char pt_sin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -347,7 +347,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("tan", kf_tan, pt_tan)
+FUNCDEF("tan", kf_tan, pt_tan, 0)
 # else
 char pt_tan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -370,7 +370,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("acos", kf_acos, pt_acos)
+FUNCDEF("acos", kf_acos, pt_acos, 0)
 # else
 char pt_acos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -393,7 +393,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asin", kf_asin, pt_asin)
+FUNCDEF("asin", kf_asin, pt_asin, 0)
 # else
 char pt_asin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -416,7 +416,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("atan", kf_atan, pt_atan)
+FUNCDEF("atan", kf_atan, pt_atan, 0)
 # else
 char pt_atan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -439,7 +439,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("atan2", kf_atan2, pt_atan2)
+FUNCDEF("atan2", kf_atan2, pt_atan2, 0)
 # else
 char pt_atan2[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 		    T_FLOAT };
@@ -465,7 +465,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("cosh", kf_cosh, pt_cosh)
+FUNCDEF("cosh", kf_cosh, pt_cosh, 0)
 # else
 char pt_cosh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -488,7 +488,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("sinh", kf_sinh, pt_sinh)
+FUNCDEF("sinh", kf_sinh, pt_sinh, 0)
 # else
 char pt_sinh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
@@ -511,7 +511,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("tanh", kf_tanh, pt_tanh)
+FUNCDEF("tanh", kf_tanh, pt_tanh, 0)
 # else
 char pt_tanh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 

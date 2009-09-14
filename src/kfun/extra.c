@@ -7,7 +7,7 @@
 
 
 # ifdef FUNCDEF
-FUNCDEF("encrypt", kf_encrypt, pt_encrypt)
+FUNCDEF("encrypt", kf_encrypt, pt_encrypt, 0)
 # else
 char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -58,7 +58,7 @@ register int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("decrypt", kf_decrypt, pt_decrypt)
+FUNCDEF("decrypt", kf_decrypt, pt_decrypt, 0)
 # else
 char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -109,7 +109,7 @@ register int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("ctime", kf_ctime, pt_ctime)
+FUNCDEF("ctime", kf_ctime, pt_ctime, 0)
 # else
 char pt_ctime[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING, T_INT };
 
@@ -132,7 +132,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("explode", kf_explode, pt_explode)
+FUNCDEF("explode", kf_explode, pt_explode, 0)
 # else
 char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
 		      T_STRING | (1 << REFSHIFT), T_STRING, T_STRING };
@@ -237,7 +237,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("implode", kf_implode, pt_implode)
+FUNCDEF("implode", kf_implode, pt_implode, 0)
 # else
 char pt_implode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 		      T_STRING | (1 << REFSHIFT), T_STRING };
@@ -298,7 +298,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("random", kf_random, pt_random)
+FUNCDEF("random", kf_random, pt_random, 0)
 # else
 char pt_random[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -317,7 +317,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("sscanf", kf_sscanf, pt_sscanf)
+FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 0)
 # else
 char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
 		     T_STRING, T_STRING, T_LVALUE };
@@ -629,7 +629,7 @@ no_match:
 
 
 # ifdef FUNCDEF
-FUNCDEF("parse_string", kf_parse_string, pt_parse_string)
+FUNCDEF("parse_string", kf_parse_string, pt_parse_string, 0)
 # else
 char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9,
 			   T_MIXED | (1 << REFSHIFT), T_STRING, T_STRING,
@@ -676,7 +676,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_crc16", kf_hash_crc16, pt_hash_crc16)
+FUNCDEF("hash_crc16", kf_hash_crc16, pt_hash_crc16, 0)
 # else
 char pt_hash_crc16[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			 T_INT, T_STRING, T_STRING };
@@ -769,7 +769,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_crc32", kf_hash_crc32, pt_hash_crc32)
+FUNCDEF("hash_crc32", kf_hash_crc32, pt_hash_crc32, 0)
 # else
 char pt_hash_crc32[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			 T_INT, T_STRING, T_STRING };
@@ -882,7 +882,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("hash_string", kf_hash_string, pt_hash_string)
+FUNCDEF("hash_string", kf_hash_string, pt_hash_string, 0)
 # else
 char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
 			  T_STRING, T_STRING, T_STRING, T_STRING };
@@ -1368,7 +1368,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("crypt", kf_crypt, pt_crypt)
+FUNCDEF("crypt", kf_crypt, pt_crypt, 0)
 # else
 char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
 		    T_STRING };
@@ -1401,7 +1401,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("(hash_md5)", kf_hash_md5, pt_hash_md5)
+FUNCDEF("0.hash_md5", kf_hash_md5, pt_hash_md5, 0)
 # else
 char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 		       T_STRING, T_STRING, T_STRING };
@@ -1437,7 +1437,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("(hash_sha1)", kf_hash_sha1, pt_hash_sha1)
+FUNCDEF("0.hash_sha1", kf_hash_sha1, pt_hash_sha1, 0)
 # else
 char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
 			T_STRING, T_STRING, T_STRING };
@@ -1474,7 +1474,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_add", kf_asn_add, pt_asn_add)
+FUNCDEF("asn_add", kf_asn_add, pt_asn_add, 0)
 # else
 char pt_asn_add[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
@@ -1500,7 +1500,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_sub", kf_asn_sub, pt_asn_sub)
+FUNCDEF("asn_sub", kf_asn_sub, pt_asn_sub, 0)
 # else
 char pt_asn_sub[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
@@ -1526,7 +1526,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_cmp", kf_asn_cmp, pt_asn_cmp)
+FUNCDEF("asn_cmp", kf_asn_cmp, pt_asn_cmp, 0)
 # else
 char pt_asn_cmp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
 		      T_STRING };
@@ -1551,7 +1551,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_mult", kf_asn_mult, pt_asn_mult)
+FUNCDEF("asn_mult", kf_asn_mult, pt_asn_mult, 0)
 # else
 char pt_asn_mult[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		       T_STRING, T_STRING };
@@ -1577,7 +1577,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_div", kf_asn_div, pt_asn_div)
+FUNCDEF("asn_div", kf_asn_div, pt_asn_div, 0)
 # else
 char pt_asn_div[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
@@ -1603,7 +1603,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_mod", kf_asn_mod, pt_asn_mod)
+FUNCDEF("asn_mod", kf_asn_mod, pt_asn_mod, 0)
 # else
 char pt_asn_mod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };
@@ -1628,7 +1628,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_pow", kf_asn_pow, pt_asn_pow)
+FUNCDEF("asn_pow", kf_asn_pow, pt_asn_pow, 0)
 # else
 char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 		      T_STRING, T_STRING };
@@ -1654,7 +1654,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift)
+FUNCDEF("asn_lshift", kf_asn_lshift, pt_asn_lshift, 0)
 # else
 char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
 			 T_STRING, T_INT, T_STRING };
@@ -1680,7 +1680,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_rshift", kf_asn_rshift, pt_asn_rshift)
+FUNCDEF("asn_rshift", kf_asn_rshift, pt_asn_rshift, 0)
 # else
 char pt_asn_rshift[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 			 T_STRING, T_INT };
@@ -1705,7 +1705,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_and", kf_asn_and, pt_asn_and)
+FUNCDEF("asn_and", kf_asn_and, pt_asn_and, 0)
 # else
 char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };
@@ -1730,7 +1730,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_or", kf_asn_or, pt_asn_or)
+FUNCDEF("asn_or", kf_asn_or, pt_asn_or, 0)
 # else
 char pt_asn_or[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		     T_STRING };
@@ -1755,7 +1755,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("asn_xor", kf_asn_xor, pt_asn_xor)
+FUNCDEF("asn_xor", kf_asn_xor, pt_asn_xor, 0)
 # else
 char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 		      T_STRING };

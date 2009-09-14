@@ -192,7 +192,7 @@ static void cg_fetch(n)
 node *n;
 {
     cg_lvalue(n, (node *) NULL);
-    output(", i_fetch(f), ");
+    output(", i_dup(f), ");
     if (n->type == N_CAST) {
 	cg_cast("f->sp", n->mod, n->class);
 	comma();

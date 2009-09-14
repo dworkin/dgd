@@ -1741,3 +1741,6 @@ DGD 1.4
  - Handle more string constants in parse_string() grammars.
  - Work around a cygwin compilation problem.
  - Prevent a crash when attempting to read a too-large chunk from a file.
+ - Stop generating instructions I_PUSH_ZERO and I_PUSH_ONE, allowing them to
+   be recycled in the future.
+ - Kfuns now have a version number, to simplify upgrading.

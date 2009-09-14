@@ -2,7 +2,7 @@ NAME
 	dump_state - create a state dump
 
 SYNOPSIS
-	void dump_state()
+	void dump_state(varargs int dummy)
 
 
 DESCRIPTION

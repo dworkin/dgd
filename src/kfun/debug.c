@@ -429,9 +429,9 @@ int func;
 	    show_instr(buffer);
 	    break;
 
-	case I_FETCH:
+	case I_DUP:
 	    codesize = 1;
-	    show_instr("FETCH");
+	    show_instr("DUP");
 	    break;
 
 	case I_STORE:
@@ -652,7 +652,7 @@ int func;
 
 
 # ifdef FUNCDEF
-FUNCDEF("dump_object", kf_dump_object, pt_dump_object)
+FUNCDEF("dump_object", kf_dump_object, pt_dump_object, 0)
 # else
 char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 			  T_OBJECT };
@@ -677,7 +677,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("dump_function", kf_dump_function, pt_dump_function)
+FUNCDEF("dump_function", kf_dump_function, pt_dump_function, 0)
 # else
 char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_VOID,
 			    T_OBJECT, T_STRING };

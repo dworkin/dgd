@@ -2,6 +2,7 @@ typedef struct {
     char *name;		/* function name */
     char *proto;	/* prototype */
     int (*func)();	/* function address */
+    short version;	/* version number */
     short num;		/* kfun number */
 } kfunc;
 

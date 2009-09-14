@@ -42,7 +42,7 @@ char *buffer;
 
 
 # ifdef FUNCDEF
-FUNCDEF("+", kf_add, pt_add)
+FUNCDEF("+", kf_add, pt_add, 0)
 # else
 char pt_add[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -178,7 +178,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("+", kf_add_int, pt_add_int)
+FUNCDEF("+", kf_add_int, pt_add_int, 0)
 # else
 char pt_add_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -197,7 +197,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("++", kf_add1, pt_add1)
+FUNCDEF("++", kf_add1, pt_add1, 0)
 # else
 char pt_add1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -227,7 +227,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("++", kf_add1_int, pt_add1_int)
+FUNCDEF("++", kf_add1_int, pt_add1_int, 0)
 # else
 char pt_add1_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -245,7 +245,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("&", kf_and, pt_and)
+FUNCDEF("&", kf_and, pt_and, 0)
 # else
 char pt_and[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -300,7 +300,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("&", kf_and_int, pt_and_int)
+FUNCDEF("&", kf_and_int, pt_and_int, 0)
 # else
 char pt_and_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -319,7 +319,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("/", kf_div, pt_div)
+FUNCDEF("/", kf_div, pt_div, 0)
 # else
 char pt_div[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -371,7 +371,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("/", kf_div_int, pt_div_int)
+FUNCDEF("/", kf_div_int, pt_div_int, 0)
 # else
 char pt_div_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -404,7 +404,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("==", kf_eq, pt_eq)
+FUNCDEF("==", kf_eq, pt_eq, 0)
 # else
 char pt_eq[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -474,7 +474,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("==", kf_eq_int, pt_eq_int)
+FUNCDEF("==", kf_eq_int, pt_eq_int, 0)
 # else
 char pt_eq_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -493,7 +493,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">=", kf_ge, pt_ge)
+FUNCDEF(">=", kf_ge, pt_ge, 0)
 # else
 char pt_ge[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -541,7 +541,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">=", kf_ge_int, pt_ge_int)
+FUNCDEF(">=", kf_ge_int, pt_ge_int, 0)
 # else
 char pt_ge_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -560,7 +560,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">", kf_gt, pt_gt)
+FUNCDEF(">", kf_gt, pt_gt, 0)
 # else
 char pt_gt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -608,7 +608,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">", kf_gt_int, pt_gt_int)
+FUNCDEF(">", kf_gt_int, pt_gt_int, 0)
 # else
 char pt_gt_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -627,7 +627,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<=", kf_le, pt_le)
+FUNCDEF("<=", kf_le, pt_le, 0)
 # else
 char pt_le[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -675,7 +675,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<=", kf_le_int, pt_le_int)
+FUNCDEF("<=", kf_le_int, pt_le_int, 0)
 # else
 char pt_le_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -694,7 +694,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<<", kf_lshift, pt_lshift)
+FUNCDEF("<<", kf_lshift, pt_lshift, 0)
 # else
 char pt_lshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -726,7 +726,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<<", kf_lshift_int, pt_lshift_int)
+FUNCDEF("<<", kf_lshift_int, pt_lshift_int, 0)
 # else
 char pt_lshift_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -752,7 +752,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<", kf_lt, pt_lt)
+FUNCDEF("<", kf_lt, pt_lt, 0)
 # else
 char pt_lt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -800,7 +800,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<", kf_lt_int, pt_lt_int)
+FUNCDEF("<", kf_lt_int, pt_lt_int, 0)
 # else
 char pt_lt_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -819,7 +819,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("%", kf_mod, pt_mod)
+FUNCDEF("%", kf_mod, pt_mod, 0)
 # else
 char pt_mod[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -858,7 +858,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("%", kf_mod_int, pt_mod_int)
+FUNCDEF("%", kf_mod_int, pt_mod_int, 0)
 # else
 char pt_mod_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -891,7 +891,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("*", kf_mult, pt_mult)
+FUNCDEF("*", kf_mult, pt_mult, 0)
 # else
 char pt_mult[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -930,7 +930,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("*", kf_mult_int, pt_mult_int)
+FUNCDEF("*", kf_mult_int, pt_mult_int, 0)
 # else
 char pt_mult_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -949,7 +949,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!=", kf_ne, pt_ne)
+FUNCDEF("!=", kf_ne, pt_ne, 0)
 # else
 char pt_ne[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 
@@ -1019,7 +1019,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!=", kf_ne_int, pt_ne_int)
+FUNCDEF("!=", kf_ne_int, pt_ne_int, 0)
 # else
 char pt_ne_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1038,7 +1038,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("~", kf_neg, pt_neg)
+FUNCDEF("~", kf_neg, pt_neg, 0)
 # else
 char pt_neg[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -1059,7 +1059,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("~", kf_neg_int, pt_neg_int)
+FUNCDEF("~", kf_neg_int, pt_neg_int, 0)
 # else
 char pt_neg_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -1077,7 +1077,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_not, pt_not)
+FUNCDEF("!", kf_not, pt_not, 0)
 # else
 char pt_not[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
@@ -1119,7 +1119,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!", kf_not_int, pt_not)
+FUNCDEF("!", kf_not_int, pt_not, 0)
 # else
 /*
  * NAME:	kfun->not_int()
@@ -1135,7 +1135,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("|", kf_or, pt_or)
+FUNCDEF("|", kf_or, pt_or, 0)
 # else
 char pt_or[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1179,7 +1179,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("|", kf_or_int, pt_or_int)
+FUNCDEF("|", kf_or_int, pt_or_int, 0)
 # else
 char pt_or_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1198,7 +1198,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangeft, pt_rangeft)
+FUNCDEF("[]", kf_rangeft, pt_rangeft, 0)
 # else
 char pt_rangeft[] = { C_STATIC, 3, 0, 0, 9, T_MIXED, T_MIXED, T_MIXED,
 		      T_MIXED };
@@ -1258,7 +1258,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangef, pt_rangef)
+FUNCDEF("[]", kf_rangef, pt_rangef, 0)
 # else
 char pt_rangef[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1314,7 +1314,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ranget, pt_ranget)
+FUNCDEF("[]", kf_ranget, pt_ranget, 0)
 # else
 char pt_ranget[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1368,7 +1368,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_range, pt_range)
+FUNCDEF("[]", kf_range, pt_range, 0)
 # else
 char pt_range[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -1416,7 +1416,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">>", kf_rshift, pt_rshift)
+FUNCDEF(">>", kf_rshift, pt_rshift, 0)
 # else
 char pt_rshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1448,7 +1448,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF(">>", kf_rshift_int, pt_rshift_int)
+FUNCDEF(">>", kf_rshift_int, pt_rshift_int, 0)
 # else
 char pt_rshift_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1474,7 +1474,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("-", kf_sub, pt_sub)
+FUNCDEF("-", kf_sub, pt_sub, 0)
 # else
 char pt_sub[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1546,7 +1546,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("-", kf_sub_int, pt_sub_int)
+FUNCDEF("-", kf_sub_int, pt_sub_int, 0)
 # else
 char pt_sub_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1565,7 +1565,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("--", kf_sub1, pt_sub1)
+FUNCDEF("--", kf_sub1, pt_sub1, 0)
 # else
 char pt_sub1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -1595,7 +1595,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("--", kf_sub1_int, pt_sub1_int)
+FUNCDEF("--", kf_sub1_int, pt_sub1_int, 0)
 # else
 char pt_sub1_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -1613,7 +1613,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("(float)", kf_tofloat, pt_tofloat)
+FUNCDEF("(float)", kf_tofloat, pt_tofloat, 0)
 # else
 char pt_tofloat[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_MIXED };
 
@@ -1655,7 +1655,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("(int)", kf_toint, pt_toint)
+FUNCDEF("(int)", kf_toint, pt_toint, 0)
 # else
 char pt_toint[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
@@ -1698,7 +1698,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tst, pt_tst)
+FUNCDEF("!!", kf_tst, pt_tst, 0)
 # else
 char pt_tst[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
 
@@ -1740,7 +1740,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("!!", kf_tst_int, pt_tst)
+FUNCDEF("!!", kf_tst_int, pt_tst, 0)
 # else
 /*
  * NAME:	kfun->tst_int()
@@ -1756,7 +1756,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin, pt_umin)
+FUNCDEF("unary -", kf_umin, pt_umin, 0)
 # else
 char pt_umin[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -1790,7 +1790,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin_int, pt_umin_int)
+FUNCDEF("unary -", kf_umin_int, pt_umin_int, 0)
 # else
 char pt_umin_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -1808,7 +1808,7 @@ frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("^", kf_xor, pt_xor)
+FUNCDEF("^", kf_xor, pt_xor, 0)
 # else
 char pt_xor[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1852,7 +1852,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("^", kf_xor_int, pt_xor_int)
+FUNCDEF("^", kf_xor_int, pt_xor_int, 0)
 # else
 char pt_xor_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
 
@@ -1871,7 +1871,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("(string)", kf_tostring, pt_tostring)
+FUNCDEF("(string)", kf_tostring, pt_tostring, 0)
 # else
 char pt_tostring[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_MIXED };
 
@@ -1907,7 +1907,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangeft, pt_ckrangeft)
+FUNCDEF("[]", kf_ckrangeft, pt_ckrangeft, 0)
 # else
 char pt_ckrangeft[] = { C_STATIC, 3, 0, 0, 9, T_INT, T_MIXED, T_INT, T_INT };
 
@@ -1940,7 +1940,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangef, pt_ckrangef)
+FUNCDEF("[]", kf_ckrangef, pt_ckrangef, 0)
 # else
 char pt_ckrangef[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
 
@@ -1974,7 +1974,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckranget, pt_ckranget)
+FUNCDEF("[]", kf_ckranget, pt_ckranget, 0)
 # else
 char pt_ckranget[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
 
@@ -2006,7 +2006,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("sum", kf_sum, pt_sum)
+FUNCDEF("sum", kf_sum, pt_sum, 0)
 # else
 char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
 
@@ -2168,7 +2168,7 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("status", kf_status_idx, pt_status_idx)
+FUNCDEF("status", kf_status_idx, pt_status_idx, 0)
 # else
 char pt_status_idx[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_INT };
 
@@ -2192,7 +2192,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("status", kf_statuso_idx, pt_statuso_idx)
+FUNCDEF("status", kf_statuso_idx, pt_statuso_idx, 0)
 # else
 char pt_statuso_idx[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_OBJECT, T_INT };
 
@@ -2217,7 +2217,7 @@ register frame *f;
 	break;
 
     default:
-	return 1;
+	kf_argerror(KF_STATUSO_IDX, 1);
     }
     if (f->sp->type != T_INT) {
 	error("Non-numeric array index");
@@ -2233,7 +2233,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("call_trace", kf_calltr_idx, pt_calltr_idx)
+FUNCDEF("call_trace", kf_calltr_idx, pt_calltr_idx, 0)
 # else
 char pt_calltr_idx[] = { C_STATIC, 1, 0, 0, 7, T_MIXED | (1 << REFSHIFT),
 			 T_INT };
@@ -2258,7 +2258,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("nil", kf_nil, pt_nil)
+FUNCDEF("nil", kf_nil, pt_nil, 0)
 # else
 char pt_nil[] = { C_STATIC, 0, 0, 0, 6, T_NIL };
 
@@ -2276,7 +2276,7 @@ register frame *f;
 
 
 # ifdef FUNCDEF
-FUNCDEF("<-", kf_instanceof, pt_instanceof)
+FUNCDEF("<-", kf_instanceof, pt_instanceof, 0)
 # else
 char pt_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
 
