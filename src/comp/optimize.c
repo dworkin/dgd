@@ -1548,8 +1548,19 @@ int pop;
 	return opt_asgnexp(m, pop);
 
     case N_ASSIGN:
-	d1 = opt_lvalue(n->l.left);
-	return max2(d1, ((d1 < 4) ? d1 : 4) + opt_expr(&n->r.right, FALSE));
+	if (n->l.left->type == N_AGGR) {
+	    d2 = 0;
+	    for (n = n->l.left->l.left; n->type == N_PAIR; n = n->r.right) {
+		d1 = opt_lvalue(n->l.left);
+		d2 += (d1 < 4) ? d1 : 4;
+	    }
+	    d1 = opt_lvalue(n);
+	    d2 += (d1 < 4) ? d1 : 4;
+	    return d2 + max2(2, opt_expr(&(*m)->r.right, FALSE));
+	} else {
+	    d1 = opt_lvalue(n->l.left);
+	    return max2(d1, ((d1 < 4) ? d1 : 4) + opt_expr(&n->r.right, FALSE));
+	}
 
     case N_COMMA:
 	side_add(m, opt_expr(&n->l.left, TRUE));

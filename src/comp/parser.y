@@ -1818,26 +1818,70 @@ static node *assign(n1, n2)
 register node *n1, *n2;
 {
     char tnbuf1[17], tnbuf2[17];
+    register node *n, *m;
+    register unsigned short type;
 
-    if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
+    if (n1->type == N_AGGR) {
 	/*
-	 * typechecked
+	 * ({ a, b }) = array;
 	 */
-	if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
-	    c_error("incompatible types for = (%s, %s)",
-		    i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
-	} else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
-		   (n1->mod == T_CLASS &&
-		    (n2->mod != T_CLASS || str_cmp(n1->class, n2->class) != 0)))
-	{
-	    n2 = node_mon(N_CAST, n1->mod, n2);
-	    n2->class = n1->class;
+	if (typechecking) {
+	    type = n2->mod;
+	    if ((n2->mod & T_REF) != 0) {
+		type -= 1 << REFSHIFT;
+		if (type != T_MIXED) {
+		    n = node_mon(N_TYPE, type, (node *) NULL);
+		    n->class = n2->class;
+		    n1->r.right = n;
+		}
+	    } else if (type != T_MIXED) {
+		c_error("incompatible types for = (%s, %s)",
+			i_typename(tnbuf1, n1->mod),
+			i_typename(tnbuf2, type));
+		type = T_MIXED;
+	    }
+  
+	    n = n1->l.left;
+	    while (n != (node *) NULL) {
+		if (n->type == N_PAIR) {
+		    m = n->l.left;
+		    n = n->r.right;
+		} else {
+		    m = n;
+		    n = (node *) NULL;
+		}
+		if (c_tmatch(m->mod, type) == T_NIL) {
+		    c_error("incompatible types for = (%s, %s)",
+			    i_typename(tnbuf1, m->mod),
+			    i_typename(tnbuf2, type));
+		}
+	    }
 	}
-    }
+	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
+	n1->class = n2->class;
+	return n1;
+    } else {
+	if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
+	    /*
+	     * typechecked
+	     */
+	    if (c_tmatch(n1->mod, n2->mod) == T_NIL) {
+		c_error("incompatible types for = (%s, %s)",
+			i_typename(tnbuf1, n1->mod),
+			i_typename(tnbuf2, n2->mod));
+	    } else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
+		       (n1->mod == T_CLASS &&
+			(n2->mod != T_CLASS ||
+			 str_cmp(n1->class, n2->class) != 0))) {
+		n2 = node_mon(N_CAST, n1->mod, n2);
+		n2->class = n1->class;
+	    }
+	}
 
-    n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
-    n2->class = n1->class;
-    return n2;
+	n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
+	n2->class = n1->class;
+	return n2;
+    }
 }
 
 /*

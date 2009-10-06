@@ -706,6 +706,45 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->lval_aggr()
+ * DESCRIPTION:	generate code for an lvalue aggregate
+ */
+static int cg_lval_aggr(n, type)
+register node *n, *type;
+{
+    register int i;
+
+    for (i = 1; n->type == N_PAIR; i++) {
+	cg_lvalue(n->l.left, (type != (node *) NULL) ? type : n->l.left);
+	comma();
+	n = n->r.right;
+    }
+    cg_lvalue(n, (type != (node *) NULL) ? type : n);
+    comma();
+    return i;
+}
+
+/*
+ * NAME:	codegen->lval_locals()
+ * DESCRIPTION:	copy changed values to local integer vars
+ */
+static void cg_lval_locals(n)
+register node *n;
+{
+    register int i;
+
+    while (n->type == N_PAIR) {
+	if (n->l.left->type == N_LOCAL && vars[i = n->l.left->r.number] != 0) {
+	    output(", ivar%d = %s->u.number", vars[i], local(i));
+	}
+	n = n->r.right;
+    }
+    if (n->type == N_LOCAL && vars[i = n->r.number] != 0) {
+	output(", ivar%d = %s->u.number", vars[i], local(i));
+    }
+}
+
+/*
  * NAME:	codegen->sumargs()
  * DESCRIPTION:	generate code for summand arguments
  */
@@ -954,23 +993,33 @@ register int state;
 	break;
 
     case N_ASSIGN:
-	if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
-	    cg_iasgn(n->r.right, "=", (int) n->l.left->r.number,
-		     (state != PUSH && state != TRUTHVAL));
-	    if (state == PUSH) {
-		output(", PUSH_NUMBER ivar%d", vars[n->l.left->r.number]);
+	if (n->l.left->type == N_AGGR) {
+	    i = cg_lval_aggr(n->l.left->l.left, n->l.left->r.right);
+	    cg_expr(n->r.right, PUSH);
+	    output(", PUSH_NUMBER %d, ", i);
+	    kfun("store_aggr");
+	    if (catch_level == 0) {
+		cg_lval_locals(n->l.left->l.left);
 	    }
-	    return;
-	}
-	if (n->r.right->type == N_CAST) {
-	    cg_lvalue(n->l.left, n->r.right);
-	    n->r.right = n->r.right->l.left;
 	} else {
-	    cg_lvalue(n->l.left, (node *) NULL);
+	    if (n->l.left->type == N_LOCAL && vars[n->l.left->r.number] != 0) {
+		cg_iasgn(n->r.right, "=", (int) n->l.left->r.number,
+			 (state != PUSH && state != TRUTHVAL));
+		if (state == PUSH) {
+		    output(", PUSH_NUMBER ivar%d", vars[n->l.left->r.number]);
+		}
+		return;
+	    }
+	    if (n->r.right->type == N_CAST) {
+		cg_lvalue(n->l.left, n->r.right);
+		n->r.right = n->r.right->l.left;
+	    } else {
+		cg_lvalue(n->l.left, (node *) NULL);
+	    }
+	    comma();
+	    cg_expr(n->r.right, PUSH);
+	    store();
 	}
-	comma();
-	cg_expr(n->r.right, PUSH);
-	store();
 	break;
 
     case N_CAST:

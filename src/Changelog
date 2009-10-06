@@ -1744,3 +1744,5 @@ DGD 1.4
  - Stop generating instructions I_PUSH_ZERO and I_PUSH_ONE, allowing them to
    be recycled in the future.
  - Kfuns now have a version number, to simplify upgrading.
+ - Allow ({ a, b }) = array; to facilitate returning multiple values from a
+   function.

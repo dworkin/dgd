@@ -624,6 +624,23 @@ register node *n;
 }
 
 /*
+ * NAME:	codegen->lval_aggr()
+ * DESCRIPTION:	generate code for an lvalue aggregate
+ */
+static int cg_lval_aggr(n, type)
+register node *n, *type;
+{
+    register int i;
+
+    for (i = 1; n->type == N_PAIR; i++, n = n->r.right) {
+	cg_lvalue(n->l.left, (type != (node *) NULL) ? type : n->l.left);
+    }
+    cg_lvalue(n, (type != (node *) NULL) ? type : n);
+
+    return i;
+}
+
+/*
  * NAME:	codegen->sumargs()
  * DESCRIPTION:	generate code for summand arguments
  */
@@ -814,14 +831,28 @@ register int pop;
 	break;
 
     case N_ASSIGN:
-	if (n->r.right->type == N_CAST) {
-	    cg_lvalue(n->l.left, n->r.right);
-	    cg_expr(n->r.right->l.left, FALSE);
-	} else {
-	    cg_lvalue(n->l.left, (node *) NULL);
+	if (n->l.left->type == N_AGGR) {
+	    l = cg_lval_aggr(n->l.left->l.left, n->l.left->r.right);
 	    cg_expr(n->r.right, FALSE);
+	    if (l <= 127) {
+		code_instr(I_PUSH_INT1, n->line);
+		code_byte(l);
+	    } else {
+		code_instr(I_PUSH_INT4, n->line);
+		code_word(l >> 16);
+		code_word(l);
+	    }
+	    code_kfun(KF_STORE_AGGR, n->line);
+	} else {
+	    if (n->r.right->type == N_CAST) {
+		cg_lvalue(n->l.left, n->r.right);
+		cg_expr(n->r.right->l.left, FALSE);
+	    } else {
+		cg_lvalue(n->l.left, (node *) NULL);
+		cg_expr(n->r.right, FALSE);
+	    }
+	    code_instr(I_STORE, n->line);
 	}
-	code_instr(I_STORE, n->line);
 	break;
 
     case N_CAST:

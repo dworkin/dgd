@@ -2309,3 +2309,45 @@ register frame *f;
     return 0;
 }
 # endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("=", kf_store_aggr, pt_store_aggr, 0)
+# else
+unsigned char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
+				  T_MIXED | (1 << REFSHIFT), T_INT };
+
+/*
+ * NAME:	kfun->store_aggr()
+ * DESCRIPTION:	store array elements in lvalues on the stack, which will also
+ *		be popped
+ */
+int kf_store_aggr(f)
+register frame *f;
+{
+    register int n, i;
+    register value *v;
+    value val;
+ 
+    n = f->sp[0].u.number;
+    if (f->sp[1].type != T_ARRAY || f->sp[1].u.array->size != n) {
+	kf_argerror(KF_STORE_AGGR, 2);
+    }
+    val = *++(f->sp);
+    for (i = 0; i < n; i++) {
+	f->sp[i] = f->sp[i + 1];
+    }
+    f->sp[n] = val;
+
+    for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
+	*--(f->sp) = *--v;
+	i_ref_value(v);
+	i_store(f);
+	i_del_value(v);
+	f->sp += 2;
+    }
+
+    return 0;
+}
+# endif
+

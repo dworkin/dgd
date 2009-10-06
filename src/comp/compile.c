@@ -2384,16 +2384,52 @@ char *oper;
 }
 
 /*
+ * NAME:      compile->lval_aggr()
+ * DESCRIPTION:       check an aggregate of lvalues
+ */
+static void c_lval_aggr(n)
+register node **n;
+{
+    register node **m;
+
+    if (*n == (node *) NULL) {
+      c_error("no lvalues in aggregate");
+    } else {
+      while (n != (node **) NULL) {
+          if ((*n)->type == N_PAIR) {
+              m = &(*n)->l.left;
+              n = &(*n)->r.right;
+          } else {
+              m = n;
+              n = (node **) NULL;
+          }
+          if (!lvalue(*m)) {
+              c_error("bad lvalue in aggregate");
+              *m = node_mon(N_FAKE, T_MIXED, *m);
+          }
+          if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
+              BSET(thiscond->init, (*m)->r.number);
+              --variables[(*m)->r.number].unset;
+          }
+      }
+    }
+}
+
+/*
  * NAME:	compile->assign()
  * DESCRIPTION:	handle an assignment
  */
 node *c_assign(n)
 register node *n;
 {
-    n = c_lvalue(n, "assignment");
-    if (n->type == N_LOCAL && !BTST(thiscond->init, n->r.number)) {
-	BSET(thiscond->init, n->r.number);
-	--variables[n->r.number].unset;
+    if (n->type == N_AGGR) {
+	c_lval_aggr(&n->l.left);
+    } else {
+	n = c_lvalue(n, "assignment");
+	if (n->type == N_LOCAL && !BTST(thiscond->init, n->r.number)) {
+	    BSET(thiscond->init, n->r.number);
+	    --variables[n->r.number].unset;
+	}
     }
     return n;
 }
