@@ -13,6 +13,7 @@ extern char		*ctrl_ifcall	P((string*, char*, string**, long*));
 extern char		*ctrl_fcall	P((string*, string**, long*, int));
 extern unsigned short	 ctrl_gencall	P((long));
 extern unsigned short	 ctrl_var	P((string*, long*, string**));
+extern int		 ctrl_ninherits	P((void));
 extern bool		 ctrl_chkfuncs	P((void));
 extern void		 ctrl_mkvtypes	P((control*));
 extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));

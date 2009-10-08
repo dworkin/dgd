@@ -492,7 +492,7 @@ register node *n, *type;
 	break;
 
     case N_GLOBAL:
-	if ((n->r.number >> 8) == 1) {
+	if ((n->r.number >> 8) == ctrl_ninherits()) {
 	    code_instr(I_PUSH_GLOBAL_LVAL | typeflag, n->line);
 	    code_byte((int) n->r.number);
 	} else {
@@ -513,7 +513,7 @@ register node *n, *type;
 	    break;
 
 	case N_GLOBAL:
-	    if ((m->r.number >> 8) == 1) {
+	    if ((m->r.number >> 8) == ctrl_ninherits()) {
 		code_instr(I_PUSH_GLOBAL_LVAL, m->line);
 		code_byte((int) m->r.number);
 	    } else {
@@ -955,7 +955,7 @@ register int pop;
 	break;
 
     case N_GLOBAL:
-	if ((n->r.number >> 8) == 1) {
+	if ((n->r.number >> 8) == ctrl_ninherits()) {
 	    code_instr(I_PUSH_GLOBAL, n->line);
 	    code_byte((int) n->r.number);
 	} else {

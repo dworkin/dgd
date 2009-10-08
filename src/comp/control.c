@@ -1532,6 +1532,15 @@ long *ref;
     return h->ct;	/* the variable type */
 }
 
+/*
+ * NAME:	ctrl->ninherits()
+ * DESCRIPTION:	return the number of objects inherited
+ */
+int ctrl_ninherits()
+{
+    return ninherits;
+}
+
 
 /*
  * NAME:	control->chkfuncs()
