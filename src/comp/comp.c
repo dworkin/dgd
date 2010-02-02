@@ -287,8 +287,8 @@ char *argv[];
 	    (unsigned short) P_random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
-    printf("\n * DGD is copyright by BeeHive Internet Technologies, Inc.\n");
-    printf(" * See the file \"Copyright\" for details.\n *\n");
+    printf("\n * DGD is Copyright by Dworkin B.V. and is released under the\n");
+    printf(" * terms of the GNU Affero General Public License.\n *\n");
     printf(" * File: \"/%s.c\"\n */\n", file);
 
     printf("\n# ifdef TAG\nTAG(%s)\n# else\n", tag);
