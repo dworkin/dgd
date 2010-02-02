@@ -1,8 +1,8 @@
-This file was written for release 1.3 of DGD.
+This file was written for release 1.4 of DGD, Dworkin's Game Driver.
 
-DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS,
-BeOS and many versions of Unix.  Binaries and source for the latest stable
-release of DGD can be found at:
+DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
+and many versions of Unix.  Binaries and source for the latest stable release
+of DGD can be found at:
 
     http://ftp.dworkin.nl/dgd/
 
@@ -15,11 +15,11 @@ Please report bugs to <felix@dworkin.nl>.
 
 This distribution is organized as follows:
 
-bin		Installation binaries will be created here (Unix & BeOS).
+bin		Installation binaries will be created here (Unix).
 doc		Documentation, still very incomplete.
 mud		A place to put the mudlib.
 src		Where the source of DGD resides, and where you issue your
-		`make' command on Unix or BeOS.
+		`make' command on Unix.
 src/host/*	Subdirectories for various platform-dependent files.
 tmp		The place where temporary files, such as the swap file, are
 		created by DGD.
@@ -28,54 +28,4 @@ See the file doc/Platforms for help on compiling DGD on various platforms.
 Also consult the src/host/*/README file for your platform, if there is one.
 
 
-The following significant changes have been made since version 1.2 (for
-a full list, consult the file src/Changelog):
-
- - Create light-weight objects with the kfun new_object().  Light-weight
-   objects are similar to clones, but are deallocated automatically when no
-   longer referenced.
- - Object variables can now be declared with a type:
-
-    object "/path/to/object" obj;
-
-   Furthermore, "<-" can be used as an instanceof operator:
-
-    if (obj <- "/path/to/object") {
-	/* ... */
-    }
-
- - In the configuration file, telnet_port and binary_port can now be
-   mappings:
-
-    telnet_port = ([ "*":6047, "hostname.mydomain":6048, "::1":6049 ]);
-
-   This can be used to listen on multiple ports.
- - A new configuration parameter, dump_interval, specifies the expected
-   time between state dumps in seconds.  DGD uses this as a guide to how
-   fast to rebuild the swapfile.
- - compile_object() can compile an object from a string as well as a file.
- - Encryption, decryption and support for arbitrary size numbers has been
-   added, sufficient to efficiently implement ssh in LPC.
- - Calls to an object can be trapped with call_touch().
- - Garbage collection is now fully automatic.
- - Starting DGD with a statedump is now much faster.
- - IPv6 is supported.
-
-
-DGD 1.3 will restore statedumps from previous versions.  However, the
-following incompatibilities exist:
-
- - hash_md5() has been replaced by hash_string("MD5", ...).  Restored
-   objects will still work, but must switch to hash_string() when
-   recompiled.
- - In the driver object, path_include() was replaced by include_file().
-   To switch safely, recompile the driver object with the following code
-   just below path_include():
-
-    string include_file(string from, string path)
-    {
-	return path_include(from, path);
-    }
-
-It is <not> possible to restore a statedump created by DGD 1.3 with an
-earlier version.
+This version of DGD is released under the GNU Affero General Public License.

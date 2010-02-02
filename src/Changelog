@@ -1748,3 +1748,6 @@ DGD 1.4
    function.
  - Generate the proper references to inherited global variables, which could
    be wrong since 1.3.2.
+ - Removed support for platforms MacOS (pre-OSX) and BeOS.
+ - Remove character filtering for telnet connections.
+ - Code released under GNU AGPL.

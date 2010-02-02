@@ -1,4 +1,4 @@
-   DGD, which stands for Dworkin's Generic Driver, is a mud server that
+   DGD, which stands for Dworkin's Game Driver, is a mud server that
 uses the same overall design as the LP server made by Lars Pensjö.
 However, there are several important differences: DGD uses less memory
 because it is disk-based; it can dump state and later restart from a

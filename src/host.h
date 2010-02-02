@@ -1,3 +1,21 @@
+/*
+ * This file is part of DGD, http://www.dworkin.nl/dgd/
+ * Copyright (C) 1993-2010 Dworkin B.V.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 # if defined(__STDC__) || defined(__cplusplus)
 #  define P(proto)	proto
 #  define cvoid		const void
@@ -5,49 +23,6 @@
 #  define P(proto)	()
 #  define cvoid		char
 # endif
-
-
-# ifdef BEOS
-
-typedef int Int;
-typedef unsigned int Uint;
-
-# include <limits.h>
-# include <sys/types.h>
-# include <unistd.h>
-
-# ifdef INCLUDE_FILE_IO
-# include <fcntl.h>
-# include <sys/stat.h>
-# endif
-
-# ifdef INCLUDE_CTYPE
-# include <ctype.h>
-# endif
-
-# ifdef INCLUDE_TELNET
-# include "host/telnet.h"
-# endif
-
-# include <stdlib.h>
-# include <string.h>
-# include <setjmp.h>
-# include <stdio.h>
-
-# include <alloca.h>
-
-# define ALLOCA(type, size)	((type *) alloca(sizeof(type) * \
-							     (size_t) (size)))
-# define AFREE(ptr)		/* on function return */
-
-# define FS_BLOCK_SIZE		8192
-
-# define bool			dgd_bool
-# define string			dgd_string
-# define exit			dgd_exit
-# define abort			dgd_abort
-
-# endif /* BEOS */
 
 
 # ifdef WIN32
@@ -98,26 +73,6 @@ extern void dgd_exit(int);
 extern void dgd_abort(void);
 
 # endif	/* WIN32 */
-
-
-# ifdef MACOS
-
-typedef int Int;
-typedef unsigned int Uint;
-
-# include <limits.h>
-# include "macdgd.h"
-
-# ifdef INCLUDE_TELNET
-# include "telnet.h"
-# endif
-
-# define ALLOCA(type, size)	ALLOC(type, size)
-# define AFREE(ptr)		FREE(ptr)
-
-# define FS_BLOCK_SIZE		2048
-
-# endif	/* MACOS */
 
 
 # ifdef SUNOS4
@@ -274,7 +229,7 @@ extern void  P_message	P((char*));
 # endif
 
 # ifdef INCLUDE_FILE_IO
-# if defined(GENERIC_BSD) || defined(GENERIC_SYSV) || defined(BEOS)
+# if defined(GENERIC_BSD) || defined(GENERIC_SYSV)
 	/* no filename translation */
 # define path_native(buf, path)	(path)
 
