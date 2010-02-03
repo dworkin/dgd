@@ -1,16 +1,13 @@
 This file was written for release 1.4 of DGD, Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
-and many versions of Unix.  Binaries and source for the latest stable release
-of DGD can be found at:
+and many versions of Unix.  The source repository for DGD can be found at:
 
-    http://ftp.dworkin.nl/dgd/
+    http://code.google.com/p/dgd-osr/
 
 DGD's home page is at:
 
     http://www.dworkin.nl/dgd/
-
-Please report bugs to <felix@dworkin.nl>.
 
 
 This distribution is organized as follows:
