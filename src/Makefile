@@ -17,7 +17,7 @@
 #
 HOST=	DARWIN
 DEFINES=-D$(HOST) #-DDUMP_FUNCS
-DEBUG=	-O -g
+DEBUG=	-ggdb -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
