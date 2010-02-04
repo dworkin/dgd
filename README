@@ -1,28 +1,7 @@
-This file was written for release 1.4 of DGD, Dworkin's Game Driver.
+The "baseline" branch tracks changes from DGDMP, only.  As such, it will
+gradually be left behind by the trunk version.  Most changes from the
+"baseline" branch will however be incorporated in the trunk version.
 
-DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
-and many versions of Unix.  The source repository for DGD can be found at:
+You can check out the "baseline" branch with the following command:
 
-    http://code.google.com/p/dgd-osr/
-
-DGD's home page is at:
-
-    http://www.dworkin.nl/dgd/
-
-
-This distribution is organized as follows:
-
-bin		Installation binaries will be created here (Unix).
-doc		Documentation, still very incomplete.
-mud		A place to put the mudlib.
-src		Where the source of DGD resides, and where you issue your
-		`make' command on Unix.
-src/host/*	Subdirectories for various platform-dependent files.
-tmp		The place where temporary files, such as the swap file, are
-		created by DGD.
-
-See the file doc/Platforms for help on compiling DGD on various platforms.
-Also consult the src/host/*/README file for your platform, if there is one.
-
-
-This version of DGD is released under the GNU Affero General Public License.
+    svn co https://dgd-osr.svn.sourceforge.net/svnroot/dgd-osr/branches/baseline dgd-baseline
