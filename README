@@ -1,4 +1,5 @@
-This file was written for release 1.4 of DGD, Dworkin's Game Driver.
+This file was written for the closures branch of release 1.4 of DGD, 
+Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
 and many versions of Unix.  The source repository for DGD can be found at:
@@ -7,8 +8,11 @@ and many versions of Unix.  The source repository for DGD can be found at:
 
 DGD's home page is at:
 
-    http://www.dworkin.nl/dgd/
+    http://dgd-osr.sourceforge.net/
 
+This specific branch of DGD is used to develop a closures extension to DGD
+It is also known as the fluffy branch. It is intended as an optional
+extention to DGD to facilitate porting mudlibs developed for other drivers.
 
 This distribution is organized as follows:
 
