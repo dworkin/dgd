@@ -1,5 +1,5 @@
 #
-# This file is part of DGD, http://www.dworkin.nl/dgd/
+# This file is part of DGD, http://dgd-osr.sourceforge.net/
 # Copyright (C) 1993-2010 Dworkin B.V.
 #
 # This program is free software: you can redistribute it and/or modify
