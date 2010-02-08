@@ -148,14 +148,14 @@ static dumpinfo header;		/* dumpfile header */
 # define i3	(header[11])	/* Int, lsb */
 # define utsize	(header[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define desize	(header[13])	/* sizeof(sector) + sizeof(eindex) */
-# define psize	(header[14])	/* sizeof(char*) */
+# define psize	(header[14])	/* sizeof(char*), upper nibble reserved */
 # define calign	(header[15])	/* align(char) */
 # define salign	(header[16])	/* align(short) */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
-# define zero1	(header[28])	/* 0 */
-# define zero2	(header[29])	/* 0 */
+# define zero1	(header[28])	/* reserved (0) */
+# define zero2	(header[29])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -169,14 +169,14 @@ static dumpinfo rheader;	/* restored header */
 # define ri3	(rheader[11])	/* Int, lsb */
 # define rutsize (rheader[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define rdesize (rheader[13])	/* sizeof(sector) + sizeof(eindex) */
-# define rpsize	(rheader[14])	/* sizeof(char*) */
+# define rpsize	(rheader[14])	/* sizeof(char*), upper nibble reserved */
 # define rcalign (rheader[15])	/* align(char) */
 # define rsalign (rheader[16])	/* align(short) */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
-# define rzero1	 (rheader[28])	/* 0 */
-# define rzero2	 (rheader[29])	/* 0 */
+# define rzero1	 (rheader[28])	/* reserved (0) */
+# define rzero2	 (rheader[29])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -365,7 +365,7 @@ int fd;
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if ((rpsize >> 4) > 1) {
-	error("Cannot restore hindex != 1");
+	error("Cannot restore hindex > 1");	/* DGDMP only */
     }
     rpsize &= 0xf;
 
