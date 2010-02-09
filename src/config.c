@@ -92,6 +92,33 @@ static config conf[] = {
 # define OBJECTS	15
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
+#ifdef NETWORK_EXTENSIONS
+# define PORTS          16 
+                                { "ports",              INT_CONST, FALSE, FALSE, 1, 32 },
+# define SECTOR_SIZE	17
+				{ "sector_size",	INT_CONST, FALSE, FALSE,
+							512, 65535 },
+# define STATIC_CHUNK	18
+				{ "static_chunk",	INT_CONST },
+# define SWAP_FILE	19
+				{ "swap_file",		STRING_CONST },
+# define SWAP_FRAGMENT	20
+				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
+							0, SW_UNUSED },
+# define SWAP_SIZE	21
+				{ "swap_size",		INT_CONST, FALSE, FALSE,
+							1024, SW_UNUSED },
+# define TELNET_PORT	22
+				{ "telnet_port",	'[', FALSE, FALSE,
+							1, USHRT_MAX },
+# define TYPECHECKING	23
+				{ "typechecking",	INT_CONST, FALSE, FALSE,
+							0, 2 },
+# define USERS		24
+				{ "users",		INT_CONST, FALSE, FALSE,
+							1, 192 },
+# define NR_OPTIONS	25
+#else
 # define SECTOR_SIZE	16
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
@@ -100,21 +127,23 @@ static config conf[] = {
 # define SWAP_FILE	18
 				{ "swap_file",		STRING_CONST },
 # define SWAP_FRAGMENT	19
-				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
+				{ "swap_fragment",      INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
 # define SWAP_SIZE	20
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
 # define TELNET_PORT	21
-				{ "telnet_port",	'[', FALSE, FALSE,
+				{ "telnet_port",        '[', FALSE, FALSE,
 							1, USHRT_MAX },
 # define TYPECHECKING	22
-				{ "typechecking",	INT_CONST, FALSE, FALSE,
+				{ "typechecking",       INT_CONST, FALSE, FALSE,
 							0, 2 },
 # define USERS		23
 				{ "users",		INT_CONST, FALSE, FALSE,
 							1, EINDEX_MAX },
 # define NR_OPTIONS	24
+#endif
+
 };
 
 
@@ -148,14 +177,14 @@ static dumpinfo header;		/* dumpfile header */
 # define i3	(header[11])	/* Int, lsb */
 # define utsize	(header[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define desize	(header[13])	/* sizeof(sector) + sizeof(eindex) */
-# define psize	(header[14])	/* sizeof(char*) */
+# define psize	(header[14])	/* sizeof(char*), upper nibble reserved */
 # define calign	(header[15])	/* align(char) */
 # define salign	(header[16])	/* align(short) */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
-# define zero1	(header[28])	/* 0 */
-# define zero2	(header[29])	/* 0 */
+# define zero1	(header[28])	/* reserved (0) */
+# define zero2	(header[29])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -169,14 +198,14 @@ static dumpinfo rheader;	/* restored header */
 # define ri3	(rheader[11])	/* Int, lsb */
 # define rutsize (rheader[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define rdesize (rheader[13])	/* sizeof(sector) + sizeof(eindex) */
-# define rpsize	(rheader[14])	/* sizeof(char*) */
+# define rpsize	(rheader[14])	/* sizeof(char*), upper nibble reserved */
 # define rcalign (rheader[15])	/* align(char) */
 # define rsalign (rheader[16])	/* align(short) */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
-# define rzero1	 (rheader[28])	/* 0 */
-# define rzero2	 (rheader[29])	/* 0 */
+# define rzero1	 (rheader[28])	/* reserved (0) */
+# define rzero2	 (rheader[29])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -365,7 +394,7 @@ int fd;
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if ((rpsize >> 4) > 1) {
-	error("Cannot restore hindex != 1");
+	error("Cannot restore hindex > 1");	/* DGDMP only */
     }
     rpsize &= 0xf;
 
@@ -753,7 +782,9 @@ static bool conf_config()
 	}
 
 	l = 0;
+
 	h = NR_OPTIONS;
+
 	for (;;) {
 	    c = strcmp(yytext, conf[m = (l + h) >> 1].name);
 	    if (c == 0) {
@@ -1211,6 +1242,9 @@ sector *fragment;
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
+#ifdef NETWORK_EXTENSIONS
+                   (int) conf[PORTS].u.num,
+#endif
 		   thosts, bhosts,
 		   tports, bports,
 		   ntports, nbports)) {
@@ -1348,9 +1382,10 @@ sector *fragment;
     endthread();
     ec_pop();				/* remove guard */
 
+#ifndef NETWORK_EXTENSIONS
     /* start accepting connections */
     comm_listen();
-
+#endif
     return TRUE;
 }
 

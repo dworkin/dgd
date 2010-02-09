@@ -1,0 +1,53 @@
+This file lists all changes to the DGD open source release.
+
+All changes prior to this release on 2010-02-03 can be found
+in doc/Changelog.Dworkin
+
+2010-02-09
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Imported the Network patches for DGD.
+
+  Contributed by:
+  Richard Braakman <dark@xs4all.nl>
+  Erwin Harte <dgd-net@harte.is-here.com>
+  Neil McBride <sarak@castinian.org>
+  Michael Bergbauer <dgd-network@noname.franken.de>
+  Bart van Leeuwen <aidil@wotf.org>
+
+  see doc/net/ for more information.
+
+  src/Makefile
+  src/comm.c 
+  src/comm.h 
+  src/config.c 
+  src/host/unix/connect.c
+  src/lex/ppcontrol.c
+  src/comp/comp.c
+  src/kfun/std.c
+
+2010-02-08
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix.
+
+  src/config.c
+
+2010-02-07
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Add support for // style comments
+  
+  src/lex/token.c
+
+2010-02-03
+
+  Dworkin B.V. (felix@dworkin.nl)
+
+  Release under the GNU AGPL
+
+  All files.
+

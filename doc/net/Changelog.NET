@@ -1,0 +1,43 @@
+1.2.144-NET-01
+
+- Updated to DGD 1.2.144
+
+1.2.144-NET-02
+
+- Properly decrease the number of pending connects when a connection fails
+- Prevent pending connections from hogging the CPU
+
+1.2.144-NET-03
+
+- New config file statement: 'ports = num;' to set the number of ports that
+  can be used.
+- Deal with running out of users properly for incoming connections.
+
+1.2.157-NET-04
+
+- Fixed two cases of port numbers using network byte order instead of host
+  byte order. This concerns inbound tcp connections and udp datagrams
+- Fixed a segment violation in send_datagram() 
+- Changed udp datagram queueing, it needs to be implemented in lpc
+
+1.2.157-NET-05
+
+- Fixed a crash when using query_ip_number() or query_ip_name() on a port
+  object.
+
+1.3-NET-06
+
+- Fixed a bug in handling connections that have been closed with close_user()
+- Check for valid file descriptor in conn_check_connected()
+- Corrected outdated information in the Copyright.NET file
+- Removed the I3 example code, please checkout svn://wotf.org/gurbalib/ for a 
+  working and maintained example of an intermud 3 client and related support code.
+
+1.3.1-NET-0.7
+- Made the precompiler work again.
+- Fixed size of ayt buffer
+- Removed kernel lib
+
+1.4-NET-0.8
+- Released as AGPL
+
