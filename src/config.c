@@ -92,7 +92,6 @@ static config conf[] = {
 # define OBJECTS	15
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-#ifdef NETWORK_EXTENSIONS
 # define PORTS          16 
                                 { "ports",              INT_CONST, FALSE, FALSE, 1, 32 },
 # define SECTOR_SIZE	17
@@ -118,32 +117,6 @@ static config conf[] = {
 				{ "users",		INT_CONST, FALSE, FALSE,
 							1, 192 },
 # define NR_OPTIONS	25
-#else
-# define SECTOR_SIZE	16
-				{ "sector_size",	INT_CONST, FALSE, FALSE,
-							512, 65535 },
-# define STATIC_CHUNK	17
-				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	18
-				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	19
-				{ "swap_fragment",      INT_CONST, FALSE, FALSE,
-							0, SW_UNUSED },
-# define SWAP_SIZE	20
-				{ "swap_size",		INT_CONST, FALSE, FALSE,
-							1024, SW_UNUSED },
-# define TELNET_PORT	21
-				{ "telnet_port",        '[', FALSE, FALSE,
-							1, USHRT_MAX },
-# define TYPECHECKING	22
-				{ "typechecking",       INT_CONST, FALSE, FALSE,
-							0, 2 },
-# define USERS		23
-				{ "users",		INT_CONST, FALSE, FALSE,
-							1, EINDEX_MAX },
-# define NR_OPTIONS	24
-#endif
-
 };
 
 
@@ -967,6 +940,13 @@ static bool conf_config()
 	if (!conf[l].set) {
 	    char buffer[64];
 
+#ifndef NETWORK_EXTENSIONS
+            /* don't complain about the ports option not being
+               specified if the network extensions are disabled */
+            if( strncmp( conf[l].name, "ports" , 5 ) == 0 ) {
+                continue;
+            }
+#endif
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
 	    conferr(buffer);
 	    return FALSE;

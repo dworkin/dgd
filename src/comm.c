@@ -16,19 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * comm.c $Revision$
- *
- * Modified comm.c for use with the networking package
- *
- * Original by Dworkin (dworkin@dworkin.nl)
- * This version by Aidil (aidil@wotf.org)
- *
- * This file includes work by many others, see the included Copyright.NET file.
- * If that file is not included, please contact me (aidil@wotf.org) and inform
- * me about where you got the file from.
- *
- */
 # define INCLUDE_TELNET
 # include "dgd.h"
 # include "str.h"
@@ -38,9 +25,7 @@
 # include "data.h"
 # include "comm.h"
 # include "version.h"
-#ifdef NETWORK_EXTENSIONS
 # include <errno.h>
-#endif
 
 # ifndef TELOPT_LINEMODE
 # define TELOPT_LINEMODE	34	/* linemode option */
@@ -1686,13 +1671,11 @@ dataspace *data;
 #ifdef NETWORK_EXTENSIONS
 	    if (OBJR(usr->oindex)->count != 0
 		&& ( !((f=usr->flags & CF_PORT) || ports) || f &&ports)) {
-		n++;
-	    }
 #else
-	    if (OBJR(usr->oindex)->count != 0) {
+            if (OBJR(usr->oindex)->count != 0) {
+#endif
 		n++;
 	    }
-#endif
 	}
     }
 
@@ -1702,17 +1685,13 @@ dataspace *data;
 #ifdef NETWORK_EXTENSIONS
 	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0
 	    && ( !((f=usr->flags & CF_PORT) || ports) || f &&ports)) {
-	    PUT_OBJVAL(v, obj);
-	    v++;
-	    --n;
-	}
 #else
-	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
+        if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
+#endif
 	    PUT_OBJVAL(v, obj);
 	    v++;
 	    --n;
 	}
-#endif
     }
     return a;
 }

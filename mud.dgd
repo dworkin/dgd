@@ -1,17 +1,17 @@
 telnet_port	= 6047;			/* telnet port number */
 binary_port	= 6048;			/* binary port number */
-directory	= "/home/bart/phantasmal/dgd/mud";/* base directory (MUST be absolute) */
+directory	= "/home/dworkin/dgd/mud";/* base directory (MUST be absolute) */
 users		= 40;			/* max # of users */
 editors		= 40;			/* max # of editor sessions */
-ports           = 8;                    /* max # of open ports */
+ports           = 16;                   /* max number of open ports (for network extensions)
 ed_tmpfile	= "../tmp/ed";		/* proto editor tmpfile */
 swap_file	= "../tmp/swap";	/* swap file */
-swap_size	= 65535;		/* # sectors in swap file */
-cache_size	= 1200;			/* # sectors in swap cache */
-sector_size	= 4096;			/* swap sector size */
-swap_fragment	= 50;			/* fragment to swap out */
-static_chunk	= 258048;		/* static memory chunk */
-dynamic_chunk	= 1044480;		/* dynamic memory chunk */
+swap_size	= 1024;			/* # sectors in swap file */
+cache_size	= 50;			/* # sectors in swap cache */
+sector_size	= 512;			/* swap sector size */
+swap_fragment	= 32;			/* fragment to swap out */
+static_chunk	= 64512;		/* static memory chunk */
+dynamic_chunk	= 261120;		/* dynamic memory chunk */
 dump_file	= "../dump";		/* dump file */
 dump_interval	= 3600;			/* dump interval in seconds */
 
@@ -23,5 +23,5 @@ driver_object	= "/kernel/sys/driver";	/* driver object */
 create		= "_F_create";		/* name of create function */
 
 array_size	= 1000;			/* max array size */
-objects		= 50000;			/* max # of objects */
+objects		= 500;			/* max # of objects */
 call_outs	= 100;			/* max # of call_outs */
