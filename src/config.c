@@ -943,7 +943,7 @@ static bool conf_config()
 #ifndef NETWORK_EXTENSIONS
             /* don't complain about the ports option not being
                specified if the network extensions are disabled */
-            if( strncmp( conf[l].name, "ports" , 5 ) == 0 ) {
+            if( strcmp( conf[l].name, "ports" ) == 0 ) {
                 continue;
             }
 #endif
