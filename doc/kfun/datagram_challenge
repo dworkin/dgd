@@ -15,6 +15,9 @@ ERRORS
 	An error will result if a challenge has already been set for the
 	current object.
 
+NOTES
+        This kfun is not active when the network extensions are enabled.
+
 SEE ALSO
 	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,
 	kfun/this_user, kfun/users

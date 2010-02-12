@@ -16,6 +16,10 @@ DESCRIPTION
 ERRORS
 	An error will result if the current object has no datagram channel.
 
+NOTES
+        This kfun is not used when the network extensions are enabled,
+        see send_datagram.net instead.
+
 SEE ALSO
 	kfun/datagram_challenge, kfun/query_ip_name, kfun/query_ip_number,
 	kfun/send_message, kfun/this_user, kfun/users

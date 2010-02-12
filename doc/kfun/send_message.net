@@ -1,0 +1,29 @@
+NAME
+	send_message - send a message to a user
+
+SYNOPSIS
+	int send_message(string message)
+	int send_message(int echo)
+
+
+DESCRIPTION
+	In the first form, send a message to the user associated with the
+	current object.  In the second form, user input echoing will be
+	turned off or on, the value of echo being zero or non-zero,
+	respectively.  Used by the driver object, send_message() will write
+	the message on stderr.
+	For binary connections, send_message() will return the length of the
+	string if it could be sent right away, a number indicating how much of
+	the string could be sent immediately, or -1 otherwise.  If only part of
+	the string could be sent initially, message_done() will be called in
+	the user object when the remainder has also been sent.  If
+	send_message() is used to send new data before all of the pending data
+	from a previous call has been sent, the pending data is discarded.
+	For telnet connections, send_message() will always return the length
+	of the string sent.
+
+NOTES
+        This kfun is only active when the network extensions are enabled.
+        See send_message when not using the network extensions.
+SEE ALSO
+	kfun/query_ip_number, kfun/this_user, kfun/users

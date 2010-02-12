@@ -92,29 +92,31 @@ static config conf[] = {
 # define OBJECTS	15
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define SECTOR_SIZE	16
+# define PORTS          16 
+                                { "ports",              INT_CONST, FALSE, FALSE, 1, 32 },
+# define SECTOR_SIZE	17
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
-# define STATIC_CHUNK	17
+# define STATIC_CHUNK	18
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	18
+# define SWAP_FILE	19
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	19
+# define SWAP_FRAGMENT	20
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	20
+# define SWAP_SIZE	21
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	21
+# define TELNET_PORT	22
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	22
+# define TYPECHECKING	23
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		23
+# define USERS		24
 				{ "users",		INT_CONST, FALSE, FALSE,
-							1, EINDEX_MAX },
-# define NR_OPTIONS	24
+							1, 192 },
+# define NR_OPTIONS	25
 };
 
 
@@ -753,7 +755,9 @@ static bool conf_config()
 	}
 
 	l = 0;
+
 	h = NR_OPTIONS;
+
 	for (;;) {
 	    c = strcmp(yytext, conf[m = (l + h) >> 1].name);
 	    if (c == 0) {
@@ -936,6 +940,13 @@ static bool conf_config()
 	if (!conf[l].set) {
 	    char buffer[64];
 
+#ifndef NETWORK_EXTENSIONS
+            /* don't complain about the ports option not being
+               specified if the network extensions are disabled */
+            if( strcmp( conf[l].name, "ports" ) == 0 ) {
+                continue;
+            }
+#endif
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
 	    conferr(buffer);
 	    return FALSE;
@@ -1211,6 +1222,9 @@ sector *fragment;
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
+#ifdef NETWORK_EXTENSIONS
+                   (int) conf[PORTS].u.num,
+#endif
 		   thosts, bhosts,
 		   tports, bports,
 		   ntports, nbports)) {
@@ -1348,9 +1362,10 @@ sector *fragment;
     endthread();
     ec_pop();				/* remove guard */
 
+#ifndef NETWORK_EXTENSIONS
     /* start accepting connections */
     comm_listen();
-
+#endif
     return TRUE;
 }
 

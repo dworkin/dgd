@@ -1,0 +1,40 @@
+DGD Network extensions
+
+The network extensions allow LPC code to open ports for
+listening, to make outbound tcp connections, and to 
+send and receive udp without the restrictions dgd normally
+puts on this.
+
+The network extensions are disabled by default, and must be
+turned on at compile time by adding -DNETWORK_EXTENSIONS
+to the DEFINES in the Makefile so:
+
+  DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DDUMP_FUNCS
+
+becomes
+
+  DEFINES=-D$(HOST) -DNETWORK_EXTENSIONS #-DDUMP_FUNCS
+
+Turning on the network extensions may turn your mud into
+a viable platform for attacking other systems, so care
+should be taken to properly secure access to the related
+kfuns.
+
+When enabling the network extensions, DGD's mechanism for
+listening for inbound connections changes, your lib must
+be ready for this.
+
+See svn://wotf.org/kernellib-net/ for an example.
+
+Also, the network extensions disable ipv6 support.
+
+The network extensions add and change a number of kfuns:
+
+  connect
+  open_port
+  ports
+  send_message
+  send_datagram
+
+And disable the datagram_challange kfun.
+
