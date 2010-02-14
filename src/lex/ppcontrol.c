@@ -78,8 +78,8 @@ int nstr, level;
     mc_init();
     special_define();
     mc_define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
-#ifdef NETWORK_EXTENSION
-    mc_define("__NETWORK_EXTENSION__", (char *) NULL, -1);
+#ifdef NETWORK_EXTENSIONS
+    mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
 #endif 
     pps_init();
     include_level = level;
