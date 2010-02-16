@@ -106,8 +106,7 @@ register Uint nfuncs;
 	p = program + funcdefs->offset;
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
 	    p += PROTO_SIZE(p);
-	    index = nfuncs + ((UCHAR(p[3]) << 16) | (UCHAR(p[4]) << 8) |
-			      UCHAR(p[5]));
+	    index = nfuncs + UCHAR(p[5]);
 	    p[3] = index >> 16;
 	    p[4] = index >> 8;
 	    p[5] = index;
