@@ -2212,8 +2212,8 @@ unsigned short *size;
     cg_stmt(n);
 
     output("}\n");
-    prog[3] = nfuncs >> 16;
-    prog[4] = nfuncs >> 8;
+    prog[3] = 0;
+    prog[4] = 0;
     prog[5] = nfuncs++;
 
     return prog;
