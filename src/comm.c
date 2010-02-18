@@ -106,7 +106,7 @@ static uindex this_user;	/* current user */
 static int ntport, nbport;	/* # telnet/binary ports */
 static int nexttport;		/* next telnet port to check */
 static int nextbport;		/* next binary port to check */
-static char ayt[20];		/* are you there? */
+static char ayt[22];		/* are you there? */
 
 /*
  * NAME:	comm->init()
