@@ -1,4 +1,5 @@
-This file was written for release 1.4 of DGD, Dworkin's Game Driver.
+This file was written for the xpatch branch of release 1.4.1 of DGD, 
+Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
 and many versions of Unix.  The source repository for DGD can be found at:
@@ -9,6 +10,8 @@ DGD's home page is at:
 
     http://dgd-osr.sourceforge.net/
 
+The xpatch branch exists for testing eXternal patches, that is, patches
+submitted by people outside the DGD project.
 
 This distribution is organized as follows:
 
