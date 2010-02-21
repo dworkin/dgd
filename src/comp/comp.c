@@ -631,7 +631,7 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-#ifndef NETWORK_EXTENSION
+#ifndef NETWORK_EXTENSIONS
 bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
 int n, ntelnet, nbinary;
 #else
@@ -765,7 +765,7 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
-#ifndef NETWORK_EXTENSION
+#ifndef NETWORK_EXTENSIONS
 array *comm_users(data)
 dataspace *data;
 {
