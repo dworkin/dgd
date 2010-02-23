@@ -361,7 +361,6 @@ bool telnet;
 	usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
 	*usr->inbuf++ = LF;	/* sentinel */
 	m_dynamic();
-	addtoflush(usr, arr);
 
 	arr->elts[0].u.number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
@@ -977,15 +976,14 @@ int port;
     f->sp++;
     usr = comm_new(f, obj, conn, TRUE);
     ec_pop();
-    endthread();
 
     usr->flags |= CF_PROMPT;
     addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
     this_user = obj->index;
     if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
-	endthread();
     }
+    endthread();
     this_user = OBJ_NONE;
 }
 
@@ -1014,13 +1012,12 @@ int port;
     f->sp++;
     usr = comm_new(f, obj, conn, FALSE);
     ec_pop();
-    endthread();
 
     this_user = obj->index;
     if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
-	endthread();
     }
+    endthread();
     this_user = OBJ_NONE;
 }
 
