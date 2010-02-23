@@ -3,6 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-23
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix
+
+  src/comm.c
+
 2010-02-21
 
   Greg Lewis
