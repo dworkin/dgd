@@ -8,8 +8,10 @@ in doc/Changelog.Dworkin
   Bart van Leeuwen (aidil@wotf.org)
 
   Merged latest changes from Felix
+  Fixed typo in documentation
 
   src/comm.c
+  doc/Extensions
 
 2010-02-21
 
