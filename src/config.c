@@ -1207,6 +1207,26 @@ sector *fragment;
 	}
     }
 
+    /* sanity check config file settings */
+    
+    /* make sure that we can handle the swapfile size */
+    
+    {
+        off_t oswapsize;
+        unsigned long long ullswapsize;
+        
+	oswapsize = (off_t) (sector) conf[SWAP_SIZE].u.num
+	    * (unsigned int) conf[SECTOR_SIZE].u.num;
+
+	ullswapsize = (unsigned long long) (sector) conf[SWAP_SIZE].u.num
+	    * (unsigned int) conf[SECTOR_SIZE].u.num;
+
+	if (oswapsize != ullswapsize) {
+	    P_message("Config error: swap file size overflow.\012");
+	    return FALSE;
+        }
+    }
+
     /* change directory */
     if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */

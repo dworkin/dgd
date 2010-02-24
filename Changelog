@@ -8,10 +8,13 @@ in doc/Changelog.Dworkin
   Raymond Jennings
 
   Change file offsets from long to off_t for swap/dump file
+  Add sanity check to ensure the configured swapfile size fits
+  in a file offset.
 
   src/swap.c
   src/comp/csupport.c
   src/host.h
+  src/config.c
 
 2010-02-23
 
