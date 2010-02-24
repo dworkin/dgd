@@ -3,6 +3,16 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-24
+  
+  Raymond Jennings
+
+  Change file offsets from long to off_t for swap/dump file
+
+  src/swap.c
+  src/comp/csupport.c
+  src/host.h
+
 2010-02-23
 
   Bart van Leeuwen (aidil@wotf.org)

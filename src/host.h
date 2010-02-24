@@ -248,13 +248,14 @@ extern void  P_message	P((char*));
 # define P_chdir	chdir
 # else
 	/* filename translation */
+typedef long off_t;
 extern char *path_native	P((char*, char*));
 
 extern int P_open	P((char*, int, int));
 extern int P_close	P((int));
 extern int P_read	P((int, char*, int));
 extern int P_write	P((int, char*, int));
-extern long P_lseek	P((int, long, int));
+extern off_t P_lseek	P((int, off_t, int));
 extern int P_fstat	P((int, struct stat*));
 extern int P_stat	P((char*, struct stat*));
 extern int P_access	P((char*, int));
