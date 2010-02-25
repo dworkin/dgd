@@ -3,6 +3,17 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-25
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Added a note about DGD_TYPE_MIXED to the documentation
+  Fixed a bug in prototype generation for the extension
+  interface
+
+  doc/Extensions
+  src/kfun/table.c
+
 2010-02-24
   
   Raymond Jennings
@@ -21,8 +32,10 @@ in doc/Changelog.Dworkin
   Bart van Leeuwen (aidil@wotf.org)
 
   Merged latest changes from Felix
+  Fixed typo in documentation
 
   src/comm.c
+  doc/Extensions
 
 2010-02-21
 
