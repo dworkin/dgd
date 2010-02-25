@@ -117,6 +117,7 @@ The building blocks for prototypes are:
     DGD_TYPE_OBJECT
     DGD_TYPE_ARRAY_OF(dgd_type)
     DGD_TYPE_MAPPING
+    DGD_TYPE_MIXED
     DGD_TYPE_VARARGS
     DGD_TYPE_ELLIPSIS
 
@@ -219,8 +220,11 @@ directly, but ise DGD_MAPPING_ASSIGN() to change their value.
     void	  DGD_MAPPING_ASSIGN(DGD_DATASPACE_T data, DGD_MAPPING_T map,
 				     DGD_VALUE_T index, DGD_VALUE_T val);
 
+5. Notes
 
-5. Example
+  DGD_TYPE_MIXED can only be used in function prototypes.
+
+6. Example
 
 The following code implements a lower_case() kfun.
 

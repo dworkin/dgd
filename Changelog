@@ -3,6 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-25
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Added a note about DGD_TYPE_MIXED to the documentation
+
+  doc/Extensions
+
 2010-02-23
 
   Bart van Leeuwen (aidil@wotf.org)
