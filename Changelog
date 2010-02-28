@@ -10,6 +10,7 @@ in doc/Changelog.Dworkin
   Assume long long works on all platforms, and change the Uuint
   define accordingly. Change the swapfile size check to use 
   Uuint instead of long long.
+  Small change and fix to swap file size sanity check.
 
   src/host.h
   src/config.c

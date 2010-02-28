@@ -1211,20 +1211,15 @@ sector *fragment;
     
     /* make sure that we can handle the swapfile size */
     
-    {
-        off_t oswapsize;
-        Uuint ullswapsize;
-        
-	oswapsize = (off_t) (sector) conf[SWAP_SIZE].u.num
-	    * (unsigned int) conf[SECTOR_SIZE].u.num;
-
-	ullswapsize = (Uuint) (sector) conf[SWAP_SIZE].u.num
-	    * (unsigned int) conf[SECTOR_SIZE].u.num;
-
-	if (oswapsize != ullswapsize) {
-	    P_message("Config error: swap file size overflow.\012");
-	    return FALSE;
+    if( ((off_t) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) !=
+        ((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) 
+    ) {
+        P_message("Config error: swap file size overflow.\012");
+        if (dumpfile != (char *) NULL) {
+            p_close(fd);
         }
+        m_finish();
+        return FALSE;
     }
 
     /* change directory */
