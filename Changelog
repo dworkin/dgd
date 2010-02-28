@@ -3,6 +3,17 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-28
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Assume long long works on all platforms, and change the Uuint
+  define accordingly. Change the swapfile size check to use 
+  Uuint instead of long long.
+
+  src/host.h
+  src/config.c
+
 2010-02-25
 
   Bart van Leeuwen (aidil@wotf.org)

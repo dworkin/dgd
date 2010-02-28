@@ -218,8 +218,14 @@ typedef char bool;
 # define FALSE		0
 # endif
 
-# if defined(__GNUC__) && __GNUC__ >= 2
+/*
+ * We assume this works on all compilers, but know it
+ * doesn't on gcc before 2.x (does anyone use that anyway?)
+ */
+# if !defined(__GNUC__) || __GNUC__ >= 2
 # define Uuint unsigned long long
+# else
+# error No long long support available?
 # endif
 
 extern void  P_message	P((char*));

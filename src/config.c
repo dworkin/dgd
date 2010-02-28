@@ -1213,12 +1213,12 @@ sector *fragment;
     
     {
         off_t oswapsize;
-        unsigned long long ullswapsize;
+        Uuint ullswapsize;
         
 	oswapsize = (off_t) (sector) conf[SWAP_SIZE].u.num
 	    * (unsigned int) conf[SECTOR_SIZE].u.num;
 
-	ullswapsize = (unsigned long long) (sector) conf[SWAP_SIZE].u.num
+	ullswapsize = (Uuint) (sector) conf[SWAP_SIZE].u.num
 	    * (unsigned int) conf[SECTOR_SIZE].u.num;
 
 	if (oswapsize != ullswapsize) {
