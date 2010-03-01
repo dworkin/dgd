@@ -218,8 +218,14 @@ typedef char bool;
 # define FALSE		0
 # endif
 
-# if defined(__GNUC__) && __GNUC__ >= 2
+/*
+ * We assume this works on all compilers, but know it
+ * doesn't on gcc before 2.x (does anyone use that anyway?)
+ */
+# if !defined(__GNUC__) || __GNUC__ >= 2
 # define Uuint unsigned long long
+# else
+# error No long long support available?
 # endif
 
 extern void  P_message	P((char*));
@@ -248,13 +254,14 @@ extern void  P_message	P((char*));
 # define P_chdir	chdir
 # else
 	/* filename translation */
+typedef long off_t;
 extern char *path_native	P((char*, char*));
 
 extern int P_open	P((char*, int, int));
 extern int P_close	P((int));
 extern int P_read	P((int, char*, int));
 extern int P_write	P((int, char*, int));
-extern long P_lseek	P((int, long, int));
+extern off_t P_lseek	P((int, off_t, int));
 extern int P_fstat	P((int, struct stat*));
 extern int P_stat	P((char*, struct stat*));
 extern int P_access	P((char*, int));

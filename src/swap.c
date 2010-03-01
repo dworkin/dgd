@@ -303,7 +303,7 @@ bool restore, fill;
 		if (swap < 0) {
 		    sw_create();
 		}
-		P_lseek(swap, (save + 1L) * sectorsize, SEEK_SET);
+		P_lseek(swap, (off_t) (save + 1L) * sectorsize, SEEK_SET);
 		if (P_write(swap, (char *) (h + 1), sectorsize) < 0) {
 		    fatal("cannot write swap file");
 		}
@@ -323,7 +323,7 @@ bool restore, fill;
 		/*
 		 * load the sector from the dump file
 		 */
-		P_lseek(dump, (load + 1L) * sectorsize, SEEK_SET);
+		P_lseek(dump, (off_t) (load + 1L) * sectorsize, SEEK_SET);
 		if (P_read(dump, (char *) (h + 1), sectorsize) <= 0) {
 		    fatal("cannot read dump file");
 		}
@@ -331,7 +331,7 @@ bool restore, fill;
 		/*
 		 * load the sector from the swap file
 		 */
-		P_lseek(swap, (load + 1L) * sectorsize, SEEK_SET);
+		P_lseek(swap, (off_t) (load + 1L) * sectorsize, SEEK_SET);
 		if (P_read(swap, (char *) (h + 1), sectorsize) <= 0) {
 		    fatal("cannot read swap file");
 		}
@@ -483,7 +483,7 @@ register Uint size, idx;
     do {
 	len = (size > restoresecsize - idx) ? restoresecsize - idx : size;
 	if (*vec != cached) {
-	    P_lseek(dump, (map[*vec] + 1L) * restoresecsize, SEEK_SET);
+	    P_lseek(dump, (off_t) (map[*vec] + 1L) * restoresecsize, SEEK_SET);
 	    if (P_read(dump, cbuf, restoresecsize) <= 0) {
 		fatal("cannot read dump file");
 	    }
@@ -580,7 +580,7 @@ char *dumpfile;
 		}
 		h->swap = sec;
 	    }
-	    P_lseek(swap, (sec + 1L) * sectorsize, SEEK_SET);
+	    P_lseek(swap, (off_t) (sec + 1L) * sectorsize, SEEK_SET);
 	    if (P_write(swap, (char *) (h + 1), sectorsize) < 0) {
 		fatal("cannot write swap file");
 	    }
@@ -636,13 +636,13 @@ char *dumpfile;
     dh.ssectors = ssectors;
     dh.nfree = nfree;
     dh.mfree = mfree;
-    P_lseek(dump, sectorsize - (long) sizeof(dump_header), SEEK_SET);
+    P_lseek(dump, sectorsize - (off_t) sizeof(dump_header), SEEK_SET);
     if (P_write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
 	fatal("cannot write swap header to dump file");
     }
 
     /* write map */
-    P_lseek(dump, (ssectors + 1L) * sectorsize, SEEK_SET);
+    P_lseek(dump, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
     if (P_write(dump, (char *) map, nsectors * sizeof(sector)) < 0) {
 	fatal("cannot write sector map to dump file");
     }
@@ -671,7 +671,7 @@ unsigned int secsize;
     dump_header dh;
 
     /* restore swap header */
-    P_lseek(fd, (long) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
+    P_lseek(fd, (off_t) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize || dh.nsectors > swapsize) {
 	error("Wrong sector size or too many sectors in restore file");
@@ -682,7 +682,7 @@ unsigned int secsize;
     }
 
     /* seek beyond swap sectors */
-    P_lseek(fd, (dh.ssectors + 1L) * secsize, SEEK_SET);
+    P_lseek(fd, (off_t) (dh.ssectors + 1L) * secsize, SEEK_SET);
 
     /* restore swap map */
     conf_dread(fd, (char *) map, "d", (Uint) dh.nsectors);

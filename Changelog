@@ -3,13 +3,41 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-02-28/2010-03-01
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Assume long long works on all platforms, and change the Uuint
+  define accordingly. Change the swapfile size check to use 
+  Uuint instead of long long.
+  Small change and fix to swap file size sanity check.
+
+  src/host.h
+  src/config.c
+
 2010-02-25
 
   Bart van Leeuwen (aidil@wotf.org)
 
   Added a note about DGD_TYPE_MIXED to the documentation
+  Fixed a bug in prototype generation for the extension
+  interface
 
   doc/Extensions
+  src/kfun/table.c
+
+2010-02-24
+  
+  Raymond Jennings
+
+  Change file offsets from long to off_t for swap/dump file
+  Add sanity check to ensure the configured swapfile size fits
+  in a file offset.
+
+  src/swap.c
+  src/comp/csupport.c
+  src/host.h
+  src/config.c
 
 2010-02-23
 
