@@ -1199,27 +1199,24 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
+
+    /* make sure that we can handle the swapfile size */
+    if( ((off_t) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) !=
+        ((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num)
+    ) {
+        P_message("Config error: swap file size overflow.\012");
+        m_finish();
+        return FALSE;
+    }
+
+    /* try to open the dumpfile if one was provided */
     if (dumpfile != (char *) NULL) {
 	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    P_message("Config error: cannot open restore file\012");    /* LF */
+            m_finish();
 	    return FALSE;
 	}
-    }
-
-    /* sanity check config file settings */
-    
-    /* make sure that we can handle the swapfile size */
-    
-    if( ((off_t) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) !=
-        ((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) 
-    ) {
-        P_message("Config error: swap file size overflow.\012");
-        if (dumpfile != (char *) NULL) {
-            p_close(fd);
-        }
-        m_finish();
-        return FALSE;
     }
 
     /* change directory */
