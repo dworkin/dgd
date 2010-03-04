@@ -3,6 +3,16 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-04
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Import latest changes from Felix: Let status() return 
+  large numbers as floats.
+
+  src/alloc.h
+  src/config.c
+
 2010-02-28/2010-03-01
 
   Bart van Leeuwen (aidil@wotf.org)

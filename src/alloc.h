@@ -53,10 +53,10 @@ extern void  m_purge	P((void));
 extern void  m_finish	P((void));
 
 typedef struct {
-    Uint smemsize;	/* static memory size */
-    Uint smemused;	/* static memory used */
-    Uint dmemsize;	/* dynamic memory used */
-    Uint dmemused;	/* dynamic memory used */
+    size_t smemsize;	/* static memory size */
+    size_t smemused;	/* static memory used */
+    size_t dmemsize;	/* dynamic memory used */
+    size_t dmemused;	/* dynamic memory used */
 } allocinfo;
 
 extern allocinfo *m_info P((void));
