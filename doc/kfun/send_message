@@ -19,10 +19,6 @@ DESCRIPTION
 	buffer has fully drained, message_done() will not be called before the
 	output buffer has emptied completely.
 
-NOTES
-        This kfun is not active when the network extensions are used. See
-        send_message.net instead.
-
 SEE ALSO
 	kfun/datagram_challenge, kfun/query_ip_name, kfun/query_ip_number,
 	kfun/send_datagram, kfun/this_user, kfun/users
