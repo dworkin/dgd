@@ -119,9 +119,9 @@ char *proto;
 		    class |= C_TYPECHECKED;
 		}
 		if (varargs) {
-		    nargs++;
-		} else {
 		    vargs++;
+		} else {
+		    nargs++;
 		}
 	    }
 	    p++;

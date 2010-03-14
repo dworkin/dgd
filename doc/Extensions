@@ -66,21 +66,21 @@ setjmp() and longjmp(), respectively.
 Note that at present, the extension interface does not define a way to call an
 LPC function from a kfun.
 
-    DGD_OBJECT_T DGD_FRAME_OBJECT(DGD_FRAME_T f);	/* current object */
-    DGD_DATA_T   DGD_FRAME_DATASPACE(DGD_FRAME_T f);	/* current dataspace */
-    DGD_VALUE_T  DGD_FRAME_ARG(DGD_FRAME_T f, int nargs, int n);/* argument n */
-    bool	 DGD_FRAME_ATOMIC(DGD_FRAME_T f);	/* atomic? */
+    DGD_OBJECT_T      DGD_FRAME_OBJECT(DGD_FRAME_T f);	/* current object */
+    DGD_DATASPACE_T   DGD_FRAME_DATASPACE(DGD_FRAME_T f);	/* current dataspace */
+    DGD_VALUE_T       DGD_FRAME_ARG(DGD_FRAME_T f, int nargs, int n);/* argument n */
+    bool	      DGD_FRAME_ATOMIC(DGD_FRAME_T f);	/* atomic? */
 
-    void	 DGD_RETVAL_INT(DGD_VALUE_T *retval, DGD_INT_T num);
-    void	 DGD_RETVAL_FLT(DGD_VALUE_T *retval, DGD_FLOAT_T flt);
-    void	 DGD_RETVAL_STR(DGD_VALUE_T *retval, DGD_STRING_T str);
-    void	 DGD_RETVAL_OBJ(DGD_VALUE_T *retval, DGD_OBJECT_T obj);
-    void	 DGD_RETVAL_ARR(DGD_VALUE_T *retval, DGD_ARRAY_T arr);
-    void	 DGD_RETVAL_MAP(DGD_VALUE_T *retval, DGD_MAPPING_T map);
+    void	      DGD_RETVAL_INT(DGD_VALUE_T *retval, DGD_INT_T num);
+    void	      DGD_RETVAL_FLT(DGD_VALUE_T *retval, DGD_FLOAT_T flt);
+    void	      DGD_RETVAL_STR(DGD_VALUE_T *retval, DGD_STRING_T str);
+    void	      DGD_RETVAL_OBJ(DGD_VALUE_T *retval, DGD_OBJECT_T obj);
+    void	      DGD_RETVAL_ARR(DGD_VALUE_T *retval, DGD_ARRAY_T arr);
+    void	      DGD_RETVAL_MAP(DGD_VALUE_T *retval, DGD_MAPPING_T map);
 
-    void	 DGD_ERROR(DGD_FRAME_T f, char *format, ...);
-    bool	 DGD_ECONTEXT_PUSH(DGD_FRAME_T f);
-    void	 DGD_ECONTEXT_POP(DGD_FRAME_T f);
+    void	      DGD_ERROR(DGD_FRAME_T f, char *format, ...);
+    bool	      DGD_ECONTEXT_PUSH(DGD_FRAME_T f);
+    void	      DGD_ECONTEXT_POP(DGD_FRAME_T f);
 
 The `proto' field of the DGD_EXTKFUN_T struct is a prototype for the function,
 represented as a 0-terminated array of chars.  For example, the LPC prototypes
@@ -117,6 +117,7 @@ The building blocks for prototypes are:
     DGD_TYPE_OBJECT
     DGD_TYPE_ARRAY_OF(dgd_type)
     DGD_TYPE_MAPPING
+    DGD_TYPE_MIXED
     DGD_TYPE_VARARGS
     DGD_TYPE_ELLIPSIS
 
@@ -219,8 +220,11 @@ directly, but ise DGD_MAPPING_ASSIGN() to change their value.
     void	  DGD_MAPPING_ASSIGN(DGD_DATASPACE_T data, DGD_MAPPING_T map,
 				     DGD_VALUE_T index, DGD_VALUE_T val);
 
+5. Notes
 
-5. Example
+  DGD_TYPE_MIXED can only be used in function prototypes.
+
+6. Example
 
 The following code implements a lower_case() kfun.
 

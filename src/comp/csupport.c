@@ -106,8 +106,7 @@ register Uint nfuncs;
 	p = program + funcdefs->offset;
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
 	    p += PROTO_SIZE(p);
-	    index = nfuncs + ((UCHAR(p[3]) << 16) | (UCHAR(p[4]) << 8) |
-			      UCHAR(p[5]));
+	    index = nfuncs + UCHAR(p[5]);
 	    p[3] = index >> 16;
 	    p[4] = index >> 8;
 	    p[5] = index;
@@ -740,7 +739,7 @@ int fd, conv;
     register Uint i;
     register uindex oindex;
     register char *name;
-    long posn;
+    off_t posn;
 
     if (nprecomps != 0) {
 	/* re-initialize tables before restore */
@@ -878,7 +877,7 @@ int fd, conv;
 	AFREE(dpc - dh.nprecomps);
     }
 
-    posn = P_lseek(fd, 0L, SEEK_CUR);	/* preserve seek position */
+    posn = P_lseek(fd, (off_t)0, SEEK_CUR);	/* preserve seek position */
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
 	l = *pc;
 	if (l->oindex == UINDEX_MAX) {

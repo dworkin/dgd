@@ -28,6 +28,11 @@
 # include "hash.h"
 # include "comm.h"
 
+#ifdef NETWORK_EXTENSIONS
+#undef INET6
+#undef AF_INET6
+#endif
+
 # ifdef INET6		/* INET6 defined */
 #  if INET6 == 0
 #   undef INET6		/* ... but turned off */
@@ -68,6 +73,9 @@ typedef struct _ipaddr_ {
 } ipaddr;
 
 static int in = -1, out = -1;		/* pipe to/from name resolver */
+#ifdef NETWORK_EXTENSIONS
+static int addrtype;                    /* network address family */
+#endif
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -75,6 +83,10 @@ static ipaddr *ffirst, *flast;		/* free list */
 static int nfree;			/* # in free list */
 static ipaddr *lastreq;			/* last request */
 static bool busy;			/* name resolver busy */
+
+#ifdef NETWORK_EXTENSIONS
+connection *conn_accept(connection * conn);
+#endif
 
 
 /*
@@ -412,7 +424,6 @@ static void ipa_lookup()
     }
 }
 
-
 struct _connection_ {
     hte chain;				/* UDP challenge hash chain */
     int fd;				/* file descriptor */
@@ -559,7 +570,12 @@ unsigned short *tports, *bports;
 	return FALSE;
     }
 
+#ifdef NETWORK_EXTENSIONS
+    addrtype = PF_INET;
+#endif
+
     nusers = 0;
+    
     maxfd = 0;
     FD_ZERO(&infds);
     FD_ZERO(&outfds);
@@ -568,6 +584,7 @@ unsigned short *tports, *bports;
     npackets = 0;
     closed = 0;
 
+#ifndef NETWORK_EXTENSIONS
     ntdescs = ntports;
     if (ntports != 0) {
 	tdescs = ALLOC(portdesc, ntports);
@@ -580,6 +597,7 @@ unsigned short *tports, *bports;
 	udescs = ALLOC(portdesc, nbports);
 	memset(udescs, -1, nbports * sizeof(portdesc));
     }
+#endif
 
 # ifdef INET6
     memset(&sin6, '\0', sizeof(sin6));
@@ -716,16 +734,22 @@ unsigned short *tports, *bports;
     }
 
     flist = (connection *) NULL;
+#ifndef NETWORK_EXTENSIONS
     connections = ALLOC(connection, nusers = maxusers);
+#else
+    connections = ALLOC(connection, nusers = maxusers+1);
+#endif
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = -1;
 	conn->chain.next = (hte *) flist;
 	flist = conn;
     }
 
+#ifndef NETWORK_EXTENSIONS
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
     chtab = ht_new(maxusers, UDPHASHSZ, TRUE);
+#endif
 
     return TRUE;
 }
@@ -770,6 +794,7 @@ void conn_finish()
     ipa_finish();
 }
 
+#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	conn->listen()
  * DESCRIPTION:	start listening on telnet port and binary port
@@ -897,6 +922,7 @@ int portfd, port;
 }
 # endif
 
+/* #ifndef NETWORK_EXTENSIONS */
 /*
  * NAME:	conn->accept()
  * DESCRIPTION:	accept a new ipv4 connection
@@ -939,6 +965,7 @@ int portfd, port;
 
     return conn;
 }
+/* #endif */
 
 /*
  * NAME:	conn->tnew6()
@@ -1003,6 +1030,7 @@ connection *conn_bnew(int port)
     }
     return (connection *) NULL;
 }
+#endif
 
 /*
  * NAME:	conn->udp()
@@ -1084,7 +1112,14 @@ register connection *conn;
 	npackets -= conn->npkts;
 	FREE(conn->udpbuf);
     }
+#ifndef NETWORK_EXTENSIONS
     ipa_del(conn->addr);
+#else
+    if (conn->addr != (ipaddr *) NULL)
+    {
+      ipa_del(conn->addr);
+    }
+#endif
     conn->chain.next = (hte *) flist;
     flist = conn;
 }
@@ -1471,7 +1506,7 @@ unsigned int len;
 # ifdef INET6
 	if (conn->addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
-
+ 
 	    memset(&to, '\0', sizeof(struct sockaddr_in6));
 	    to.sin6_family = AF_INET6;
 	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
@@ -1483,7 +1518,7 @@ unsigned int len;
 # endif
 	{
 	    struct sockaddr_in to;
-
+ 
 	    memset(&to, '\0', sizeof(struct sockaddr_in));
 	    to.sin_family = AF_INET;
 	    to.sin_addr = conn->addr->ipnum.in.addr;
@@ -1494,6 +1529,45 @@ unsigned int len;
     }
     return -1;
 }
+
+#ifdef NETWORK_EXTENSIONS
+int conn_udpsend(conn, buf, len, addr, port)
+register connection *conn;
+char *buf;
+unsigned int len;
+char *addr;
+unsigned short port;
+{
+    struct sockaddr_in to;
+
+    to.sin_family=addrtype;
+    inet_aton(addr, &to.sin_addr); /* should have been checked for valid 
+				      addresses already, so it should not
+				      fail */
+    to.sin_port = htons(port);
+    if (!sendto(conn->fd, buf, len, 0, (struct sockaddr *) &to,
+		sizeof(struct sockaddr_in)))
+    {
+	if (errno==EAGAIN) {
+	    return -1;
+	}
+	perror("sendto");
+	return -2;
+    }
+    return 0;
+}
+
+/*
+ * NAME:	conn->checkaddr()
+ * DESCRIPTION:	checks for valid ip address
+ */
+int conn_checkaddr(ip)
+char *ip;
+{
+    struct in_addr dummy;
+    return inet_aton(ip, &dummy);
+}
+#endif
 
 /*
  * NAME:	conn->wrdone()
@@ -1529,6 +1603,7 @@ char *buf;
     {
 	strcpy(buf, inet_ntoa(conn->addr->ipnum.in.addr));
     }
+
 }
 
 /*
@@ -1545,3 +1620,333 @@ char *buf;
 	conn_ipnum(conn, buf);
     }
 }
+
+#ifdef NETWORK_EXTENSIONS
+ /*
+  * Name:        conn->openlisten()
+  * DESCRIPTION: open a new listening connection
+  */
+ connection *
+ conn_openlisten(protocol, port)
+ unsigned char protocol;
+ unsigned short port;
+ {
+     struct sockaddr_in sin;  
+     connection *conn;
+     int on, n, sock,sz;
+     
+ 
+     switch (protocol){
+     case P_TCP:
+ 	sock=socket(addrtype, SOCK_STREAM, 0);
+ 	if (sock<0){
+ 	    perror("socket");
+ 	    return NULL;
+ 	}
+ 	on=1;
+ 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+ 		       sizeof(on))<0){
+ 	    perror("setsockopt");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ #ifdef SO_OOBINLINE
+ 	on=1;
+ 	if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+ 		       sizeof(on))<0) {
+ 	    perror("setsockopt");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ #endif
+ 	memset(&sin, '\0', sizeof(sin));
+ 	sin.sin_port = htons(port);
+ 	sin.sin_family = addrtype;
+ 	sin.sin_addr.s_addr = INADDR_ANY;
+ 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+ 	    perror("bind");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ 
+ 	if (listen(sock,64)) {
+ 	    perror("listen");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ 
+ 	FD_SET(sock, &infds);
+ 	if (maxfd < sock) {
+ 	    maxfd = sock;
+ 	}
+ 	
+ 	conn=flist;
+ 	flist = (connection *) conn->chain.next;
+ 	conn->fd=sock;
+ 	sz=sizeof(sin);
+ 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
+ 	conn->at=ntohs(sin.sin_port);
+ 	return conn;
+     case P_UDP:
+ 	sock=socket(addrtype, SOCK_DGRAM, 0);
+ 	if (sock<0) {
+ 	    perror("socket");
+ 	    return NULL;
+ 	}
+ 	on=0;
+ 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
+ 		       sizeof(on))<0) {
+ 	    perror("setsockopt");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ 	memset(&sin, '\0', sizeof(sin));
+ 	sin.sin_port=htons(port);
+ 	sin.sin_family=addrtype;
+ 	sin.sin_addr.s_addr=INADDR_ANY;
+ 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+ 	    perror("bind");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ 	if (fcntl(sock, F_SETFL, FNDELAY)) {
+ 	    perror("fcntl");
+ 	    close(sock);
+ 	    return NULL;
+ 	}
+ 	FD_SET(sock, &infds);
+ 	if (maxfd < sock) {
+ 	    maxfd=sock;
+ 	}
+ 	conn=flist;
+ 	flist=(connection *) conn->chain.next;
+ 	conn->fd=sock;
+ 	sz=sizeof(sin);
+ 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
+ 	conn->at=ntohs(sin.sin_port);
+ 	return conn;
+     default:
+ 	return NULL;
+     }
+   
+ }
+ /*
+  * NAME:	conn->port()
+  * DESCRIPTION:	return the port number of a connection
+  */
+ int conn_at(conn)
+ connection *conn;
+ {
+     return conn->at;
+ }
+ 
+ /*
+  * NAME:	conn->accept()
+  * DESCRIPTION:	return a new connction structure
+  */
+ connection *conn_accept(conn)
+ connection *conn;
+ {
+     int fd, len;
+     struct sockaddr_in sin;
+     in46addr addr;
+     register connection *newconn;
+ 
+     if (!FD_ISSET(conn->fd, &readfds)) {
+ 	return (connection *) NULL;
+     }
+     
+     len = sizeof(sin);
+     fd = accept(conn->fd, (struct sockaddr *) &sin, &len);
+     if (fd < 0) {
+ 	return (connection *) NULL;
+     }
+     if (fcntl(fd, F_SETFL, FNDELAY)) {
+ 	perror("fcntl");
+ 	close(fd);
+ 	return NULL;
+     }
+ 
+     newconn=flist;
+     flist=(connection *)newconn->chain.next;
+     newconn->fd=fd;
+     newconn->chain.name = (char *) NULL;
+     newconn->udpbuf=(char *) NULL;
+     addr.in.addr = sin.sin_addr;
+     addr.ipv6 = FALSE;
+     newconn->addr = ipa_new(&addr);
+     /* newconn->addr=ipa_new(&sin.sin_addr);  */
+     newconn->at=ntohs(sin.sin_port);
+     FD_SET(fd, &infds);
+     FD_SET(fd, &outfds);
+     FD_CLR(fd, &readfds);
+     FD_SET(fd, &writefds);
+     if (fd > maxfd) {
+ 	maxfd=fd;
+     }
+
+     return newconn;
+ }
+ 
+ 
+ connection *conn_connect(addr, port)
+ char *addr;
+ unsigned short port;
+ {
+     register connection * conn;
+     register int sock;
+     int on;
+     long arg;
+
+     struct sockaddr_in sin;
+     in46addr inaddr;
+ 
+     if(flist == (connection *) NULL) {
+        return NULL;
+     }
+
+     sock=socket(addrtype, SOCK_STREAM, 0);
+     if (sock<0) {
+ 	perror("socket");
+ 	return NULL;
+     }
+     on=1;
+     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on, 
+ 		   sizeof(on))<0) {
+ 	perror("setsockopt");
+ 	return NULL;
+     }
+ #ifdef SO_OOBINLINE
+     on=1;
+     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+ 		   sizeof(on))<0) {
+ 	perror("setsockopt");
+ 	return NULL;
+     }
+ #endif
+     if( (arg = fcntl(sock, F_GETFL, NULL)) < 0) {
+        perror("fcntl");
+        return NULL;
+     }
+     arg |= O_NONBLOCK;
+     if( fcntl(sock, F_SETFL, arg) < 0) {
+        perror("fcntl");
+        return NULL;
+     }
+
+     memset(&sin, '\0', sizeof(sin));
+     sin.sin_port = htons(port);
+     sin.sin_family = addrtype;
+     if (!inet_aton(addr, &sin.sin_addr)) {
+ 	perror("inet_aton");
+ 	return NULL;
+     }
+     if (connect(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0 &&
+                    errno != EINPROGRESS) {
+ 	perror("connect");
+ 	return NULL;
+     }
+     
+     conn=flist;
+     flist=(connection *)conn->chain.next;
+     conn->fd=sock;
+     conn->chain.name = (char *) NULL;
+     conn->udpbuf=(char *) NULL;
+     inaddr.in.addr = sin.sin_addr;
+     inaddr.ipv6 = FALSE;
+     conn->addr = ipa_new(&inaddr);
+     conn->at=sin.sin_port;
+     FD_SET(sock, &infds);
+     FD_SET(sock, &outfds);
+     FD_CLR(sock, &readfds);
+     FD_SET(sock, &writefds);
+     if (sock > maxfd) {
+ 	maxfd=sock;
+     }
+     return conn;
+ }
+ 
+ int conn_udpreceive(conn, buffer, size, host, port)
+ connection *conn;
+ char *buffer;
+ int size;
+ char **host;
+ int *port;
+ {
+     if (FD_ISSET(conn->fd, &readfds)) {
+ 	struct sockaddr_in from;
+ 	int fromlen, sz;
+ 
+ 	fromlen=sizeof(struct sockaddr_in);
+ 	sz=recvfrom(conn->fd, buffer, size, 0, (struct sockaddr *) &from,
+ 		    &fromlen);
+ 	if (sz<0) {
+ 	    perror("recvfrom");
+ 	    return sz;
+ 	}
+ 	*host=inet_ntoa(from.sin_addr);
+ 	*port=ntohs(from.sin_port);
+ 	return sz;
+     }
+     return -1;
+ }
+
+
+ /*
+  * check for a connection in pending state and see if it is connected.
+  */
+ int conn_check_connected(conn)
+ connection * conn;
+ {
+     Uint t;
+     unsigned int mtime;
+     int retval;
+     int optval;
+     fd_set fdwrite;
+     socklen_t lon;
+     struct timeval timeout;
+
+     t = 0;
+     mtime = 0;
+
+     /*
+      * indicate that our fd became invalid.
+      */
+     if(conn->fd < 0) {
+       return -2;
+     }
+
+     FD_ZERO(&fdwrite);
+     FD_SET(conn->fd,&fdwrite);
+
+     timeout.tv_sec = t;
+     timeout.tv_usec = mtime * 1000L;
+
+     retval = select(conn->fd + 1, NULL, &fdwrite, NULL, &timeout);
+
+     /*
+      * Delayed connect completed, check for errors
+      */
+     if(retval > 0) {
+         lon = sizeof(int);
+         /*
+          * Get error state for the socket
+          */
+         if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (void*)(&optval), &lon) < 0) {
+             return -1;
+         }
+         if (optval != 0) {
+             errno = optval;
+             return -1;
+         } else {
+             errno = 0;
+             return 1;
+         }
+     } else if(retval < 0) {
+         return -1;
+     }
+     return 0;
+ }
+
+ #endif
+ 

@@ -396,44 +396,75 @@ static int gc()
 }
 
 /*
+ * NAME:        skip_comment()
+ * DESCRIPTION: skip a single comment
+ */
+static void skip_comment()
+{ 
+    register int c;
+
+    do {
+        do {
+            c = gc();
+            if (c == EOF) {
+                error("EOF in comment");
+                return;
+            }
+        } while (c != '*');
+
+        do {
+            c = gc();
+        } while (c == '*');
+    } while (c != '/');
+}
+
+/*
+ * NAME:        skip_alt_comment()
+ * DESCRIPTION: skip c++ style comment
+ */
+static void skip_alt_comment()
+{
+    register int c;
+
+    do {
+        c = gc();
+    } while( ( c != EOF ) && ( c != '\n' ) );
+}
+
+/*
  * NAME:	comment()
  * DESCRIPTION:	skip comments and white space
  */
-static void comment()
+static void comment(flag)
+int flag;
 {
     register int c;
 
     for (;;) {
-	/* first skip this comment */
-	do {
-	    do {
-		c = gc();
-		if (c == EOF) {
-		    error("EOF in comment");
-		    return;
-		}
-	    } while (c != '*');
-	    do {
-		c = gc();
-	    } while (c == '*');
-	} while (c != '/');
+        /* first skip the current comment */
+        if( flag) {
+           skip_alt_comment();
+        } else {
+           skip_comment();
+        }
 
-	/* skip following whitespace */
-	do {
-	    c = gc();
-	} while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
+        /* skip any whitespace */
+        do {
+            c = gc();
+        } while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
 
-	/* check if a new comment starts after this one */
+        /* check if a new comment follows */
 	if (c != '/') {
 	    uc(c);
 	    break;
 	}
 	c = gc();
-	if (c != '*') {
+	if ( ( c != '*' ) && ( c != '/' )) {
 	    uc(c);
 	    uc('/');
 	    break;
 	}
+        flag = ( c == '/' );
     }
 }
 
@@ -616,8 +647,8 @@ int tk_gettok()
 	/* check for comment after white space */
 	if (c == '/') {
 	    c = gc();
-	    if (c == '*') {
-		comment();
+	    if (c == '*' || c == '/') {
+		comment( c == '/' );
 	    } else {
 		uc(c);
 		uc('/');
@@ -776,8 +807,8 @@ int tk_gettok()
 
     case '/':
 	c = gc();
-	if (c == '*') {
-	    comment();
+	if (c == '*' || c == '/') {
+            comment( c == '/' );
 	    yyleng = 1;
 	    *p = '\0';
 	    return p[-1] = ' ';
@@ -1097,9 +1128,9 @@ register macro *mc;
 	    token = gc();
 	    if (token == '/') {
 		token = gc();
-		if (token == '*') {
-		    comment();
-		    token = gc();
+		if ( ( token == '*' ) || ( token == '/' ) ) {
+		    comment( token == '/' );
+                    token = gc();
 		} else {
 		    uc(token);
 		}

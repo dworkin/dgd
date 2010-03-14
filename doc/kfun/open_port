@@ -1,0 +1,53 @@
+NAME
+	open_port - associate an object with an tcp/udp port
+
+SYNOPSIS
+	int open_port(string protocol, varargs int port)
+
+DESCRIPTION
+	Open a port on the host machine and connect it to this object, which
+        is then known as a "port object".  The protocol may be any of "tcp",
+        "udp", or "telnet".  Port objects behave differently, depending on
+        the protocol. If the port number is omitted (meaning that the kfun
+        is called with only _one_ argument) a random unused port will be
+        selected.
+
+	When a port is first opened, open(int port) is called in its port
+        object.  When it is closed for any reason, close(int force) is 
+	called in its port object, force indicaton whether we closed the
+	connection with close_user (set to 1) or if something else
+	closed the connection (set to 0).
+
+	Destructing a port object will close its port first.                 
+
+	In a telnet or tcp port,
+             connection(string ipnumber, int port)
+        will be called whenever a client connects to it.  This function
+        should return an object that will then be known as a "user object"
+
+	In an udp port,        
+            receive_datagram(string data, string ipnumber, int port)
+        will be called whenever a datagram arrives on its port.  The
+        ipnumber and port will be those of the sender.  UDP port objects
+        may also send datagrams.
+
+ERRORS                         
+        An error will result if the object was already has a connection,
+        port, or editor associated with it.
+        If the number of existing port and connection objects is equal
+        to the value of status()[ST_UTABSIZE], calling open_port() results
+        in an error.                                                           
+        If it is immediately apparent that the port cannot be opened,
+        an error will be reported.  In such a case, neither open() nor
+        close() will be called in the port object.
+
+NOTES
+        This kfun is only active when the network extensions are enabled.
+
+SEE ALSO
+        kfun/ports, kfun/send_datagram, kfun/send_message, kfun/connect
+	kfun/close_user
+
+
+
+

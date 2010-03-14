@@ -92,29 +92,31 @@ static config conf[] = {
 # define OBJECTS	15
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define SECTOR_SIZE	16
+# define PORTS          16 
+                                { "ports",              INT_CONST, FALSE, FALSE, 1, 32 },
+# define SECTOR_SIZE	17
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
-# define STATIC_CHUNK	17
+# define STATIC_CHUNK	18
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	18
+# define SWAP_FILE	19
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	19
+# define SWAP_FRAGMENT	20
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	20
+# define SWAP_SIZE	21
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	21
+# define TELNET_PORT	22
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	22
+# define TYPECHECKING	23
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		23
+# define USERS		24
 				{ "users",		INT_CONST, FALSE, FALSE,
-							1, EINDEX_MAX },
-# define NR_OPTIONS	24
+							1, 192 },
+# define NR_OPTIONS	25
 };
 
 
@@ -148,14 +150,14 @@ static dumpinfo header;		/* dumpfile header */
 # define i3	(header[11])	/* Int, lsb */
 # define utsize	(header[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define desize	(header[13])	/* sizeof(sector) + sizeof(eindex) */
-# define psize	(header[14])	/* sizeof(char*) */
+# define psize	(header[14])	/* sizeof(char*), upper nibble reserved */
 # define calign	(header[15])	/* align(char) */
 # define salign	(header[16])	/* align(short) */
 # define ialign	(header[17])	/* align(Int) */
 # define palign	(header[18])	/* align(char*) */
 # define zalign	(header[19])	/* align(struct) */
-# define zero1	(header[28])	/* 0 */
-# define zero2	(header[29])	/* 0 */
+# define zero1	(header[28])	/* reserved (0) */
+# define zero2	(header[29])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -169,14 +171,14 @@ static dumpinfo rheader;	/* restored header */
 # define ri3	(rheader[11])	/* Int, lsb */
 # define rutsize (rheader[12])	/* sizeof(uindex) + sizeof(ssizet) */
 # define rdesize (rheader[13])	/* sizeof(sector) + sizeof(eindex) */
-# define rpsize	(rheader[14])	/* sizeof(char*) */
+# define rpsize	(rheader[14])	/* sizeof(char*), upper nibble reserved */
 # define rcalign (rheader[15])	/* align(char) */
 # define rsalign (rheader[16])	/* align(short) */
 # define rialign (rheader[17])	/* align(Int) */
 # define rpalign (rheader[18])	/* align(char*) */
 # define rzalign (rheader[19])	/* align(struct) */
-# define rzero1	 (rheader[28])	/* 0 */
-# define rzero2	 (rheader[29])	/* 0 */
+# define rzero1	 (rheader[28])	/* reserved (0) */
+# define rzero2	 (rheader[29])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -365,7 +367,7 @@ int fd;
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if ((rpsize >> 4) > 1) {
-	error("Cannot restore hindex != 1");
+	error("Cannot restore hindex > 1");	/* DGDMP only */
     }
     rpsize &= 0xf;
 
@@ -753,7 +755,9 @@ static bool conf_config()
 	}
 
 	l = 0;
+
 	h = NR_OPTIONS;
+
 	for (;;) {
 	    c = strcmp(yytext, conf[m = (l + h) >> 1].name);
 	    if (c == 0) {
@@ -936,6 +940,13 @@ static bool conf_config()
 	if (!conf[l].set) {
 	    char buffer[64];
 
+#ifndef NETWORK_EXTENSIONS
+            /* don't complain about the ports option not being
+               specified if the network extensions are disabled */
+            if( strcmp( conf[l].name, "ports" ) == 0 ) {
+                continue;
+            }
+#endif
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
 	    conferr(buffer);
 	    return FALSE;
@@ -1188,10 +1199,22 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
+
+    /* make sure that we can handle the swapfile size */
+    if( ((off_t) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) !=
+        ((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num)
+    ) {
+        P_message("Config error: swap file size overflow.\012");
+        m_finish();
+        return FALSE;
+    }
+
+    /* try to open the dumpfile if one was provided */
     if (dumpfile != (char *) NULL) {
 	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    P_message("Config error: cannot open restore file\012");    /* LF */
+            m_finish();
 	    return FALSE;
 	}
     }
@@ -1211,6 +1234,9 @@ sector *fragment;
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
+#ifdef NETWORK_EXTENSIONS
+                   (int) conf[PORTS].u.num,
+#endif
 		   thosts, bhosts,
 		   tports, bports,
 		   ntports, nbports)) {
@@ -1348,9 +1374,10 @@ sector *fragment;
     endthread();
     ec_pop();				/* remove guard */
 
+#ifndef NETWORK_EXTENSIONS
     /* start accepting connections */
     comm_listen();
-
+#endif
     return TRUE;
 }
 
@@ -1388,6 +1415,27 @@ int conf_typechecking()
 unsigned short conf_array_size()
 {
     return conf[ARRAY_SIZE].u.num;
+}
+
+/*
+ * NAME:	putval()
+ * DESCRIPTION:	store a size_t as an integer or as a float approximation
+ */
+static void putval(v, n)
+value *v;
+size_t n;
+{
+    xfloat f1, f2;
+
+    if (n <= 0x7fffffffL) {
+	PUT_INTVAL(v, n);
+    } else {
+	flt_itof((Int) (n >> 31), &f1);
+	flt_ldexp(&f1, (Int) 31);
+	flt_itof((Int) (n & 0x7fffffffL), &f2);
+	flt_add(&f1, &f2);
+	PUT_FLTVAL(v, f1);
+    }
 }
 
 /*
@@ -1448,19 +1496,19 @@ register value *v;
 	break;
 
     case 9:	/* ST_SMEMSIZE */
-	PUT_INTVAL(v, m_info()->smemsize);
+	putval(v, m_info()->smemsize);
 	break;
 
     case 10:	/* ST_SMEMUSED */
-	PUT_INTVAL(v, m_info()->smemused);
+	putval(v, m_info()->smemused);
 	break;
 
     case 11:	/* ST_DMEMSIZE */
-	PUT_INTVAL(v, m_info()->dmemsize);
+	putval(v, m_info()->dmemsize);
 	break;
 
     case 12:	/* ST_DMEMUSED */
-	PUT_INTVAL(v, m_info()->dmemused);
+	putval(v, m_info()->dmemused);
 	break;
 
     case 13:	/* ST_OTABSIZE */

@@ -1,0 +1,23 @@
+NAME
+	send_datagram - send a message on the datagram channel
+
+SYNOPSIS
+	int send_datagram(string message, string ip, int port)
+
+
+DESCRIPTION
+	Send a message on the datagram channel of an udp port object.  
+        Before a datagram can be sent or received, the object must open
+        an udp port. This port can be used for sending and receiving udp
+        packets to and from multiple hosts at the same time.
+
+ERRORS
+	An error will result if the current object has no open udp port
+
+NOTES
+        This kfun is only used when the network extensions are enabled.
+        When not using the network extensions, see send_datagram instead.
+
+SEE ALSO
+	kfun/open_port, kfun/query_ip_name, kfun/query_ip_number,
+	kfun/ports

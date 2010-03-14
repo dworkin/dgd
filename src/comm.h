@@ -16,6 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef NETWORK_EXTENSIONS
+# define  P_TCP      6
+# define  P_UDP      17
+# define  P_TELNET   1
+#endif
+
 typedef struct _connection_ connection;
 
 extern bool	   conn_init	 P((int, char**, char**, unsigned short*,
@@ -39,8 +45,13 @@ extern bool	   conn_wrdone	 P((connection*));
 extern void	   conn_ipnum	 P((connection*, char*));
 extern void	   conn_ipname	 P((connection*, char*));
 
-extern bool	comm_init	P((int, char**, char**, unsigned short*,
+#ifdef NETWORK_EXTENSIONS
+extern bool	comm_init	P((int, int, char**, char**, unsigned short*,
+#else
+extern bool	comm_init    P((int, char**, char**, unsigned short*,
+#endif
 				   unsigned short*, int, int));
+
 extern void	comm_finish	P((void));
 extern void	comm_listen	P((void));
 extern int	comm_send	P((object*, string*));
@@ -54,4 +65,10 @@ extern string  *comm_ip_number	P((object*));
 extern string  *comm_ip_name	P((object*));
 extern void	comm_close	P((frame*, object*));
 extern object  *comm_user	P((void));
+#ifdef NETWORK_EXTENSIONS
+extern bool     comm_is_connection P((object*));
+extern array   *comm_users      P((dataspace *, bool));
+#else
 extern array   *comm_users	P((dataspace*));
+#endif
+

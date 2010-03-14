@@ -631,8 +631,13 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
+#ifndef NETWORK_EXTENSIONS
 bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
 int n, ntelnet, nbinary;
+#else
+bool comm_init(n, p, thosts, bhosts, tports, bports, ntelnet, nbinary)
+int n, p, ntelnet, nbinary;
+#endif
 char **thosts, **bhosts;
 unsigned short *tports, *bports;
 {
@@ -760,11 +765,57 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
+#ifndef NETWORK_EXTENSIONS
 array *comm_users(data)
 dataspace *data;
 {
     return (array *) NULL;
 }
+#else
+array *comm_users(data, ports)
+dataspace *data;
+bool ports;
+{
+    return (array *) NULL;
+}
+
+/*
+ * NAME:        comm->is_connection()
+ * DESCRIPTION: pretend to test if an object is a connection
+ */
+bool comm_is_connection(obj)
+object *obj;
+{
+    return FALSE;
+}
+
+void comm_openport(f, obj, protocol, portnr)
+frame *f;
+object *obj;
+unsigned char protocol;
+unsigned short portnr;
+{
+}
+
+void
+comm_connect(f, obj, addr, protocol, port)
+frame *f;
+object *obj;
+char *addr;
+unsigned char protocol;
+unsigned short port;
+{
+}
+
+int comm_senddatagram(obj, str, ip, port)
+object * obj;
+string * str;
+string * ip;
+int port;
+{
+    return 0;
+}
+#endif
 
 /*
  * NAME:	ed->init()

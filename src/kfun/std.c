@@ -637,7 +637,11 @@ register frame *f;
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
+#ifdef NETWORK_EXTENSIONS
+        if (comm_is_connection(obj)) {
+#else
 	if ((obj->flags & O_SPECIAL) == O_USER) {
+#endif
 	    PUT_STRVAL(f->sp, comm_ip_number(obj));
 	    return 0;
 	}
@@ -668,7 +672,11 @@ register frame *f;
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
+#ifdef NETWORK_EXTENSIONS
+        if (comm_is_connection(obj)) {
+#else
 	if ((obj->flags & O_SPECIAL) == O_USER) {
+#endif
 	    PUT_STRVAL(f->sp, comm_ip_name(obj));
 	    return 0;
 	}
@@ -694,7 +702,11 @@ char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
 int kf_users(f)
 register frame *f;
 {
+#ifdef NETWORK_EXTENSIONS
+    PUSH_ARRVAL(f, comm_users(f->data, FALSE));
+#else
     PUSH_ARRVAL(f, comm_users(f->data));
+#endif
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
 }
@@ -985,7 +997,7 @@ register frame *f;
 }
 # endif
 
-
+#ifndef NETWORK_EXTENSIONS
 # ifdef FUNCDEF
 FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram, 0)
 # else
@@ -994,7 +1006,7 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 
 /*
  * NAME:	kfun->send_datagram()
- * DESCRIPTION:	send a datagram to a user
+ * DESCRIPTION:	send a datagram to a user (non networkpackage function)
  */
 int kf_send_datagram(f)
 register frame *f;
@@ -1042,7 +1054,7 @@ register frame *f;
     return 0;
 }
 # endif
-
+# endif
 
 # ifdef FUNCDEF
 FUNCDEF("block_input", kf_block_input, pt_block_input, 0)
@@ -1276,6 +1288,214 @@ int nargs;
     return 0;
 }
 # endif
+
+#ifdef NETWORK_EXTENSIONS
+# ifdef FUNCDEF
+FUNCDEF("open_port", kf_open_port, pt_open_port, 0)
+#else
+char pt_open_port[] = { C_TYPECHECKED | C_STATIC ,1 ,1 ,0 ,8,
+		   T_VOID, T_STRING, T_INT};
+    
+/* 
+ * NAME:        kfun->open_port
+ * DESCRIPTION: open a listening port
+ */
+int kf_open_port(f, nargs)
+register frame *f;
+int nargs;
+{
+    unsigned short port;
+    unsigned char protocol;
+    char *protoname;
+    object *obj;
+
+    if (f->lwobj != (array *) NULL) {
+	error("open_port() in non-persistent object");
+    }
+    obj = OBJW(f->oindex);
+    
+    if (obj->count == 0) {
+	error("open_port() in destructed object");
+    }
+    
+    if (obj->flags & O_SPECIAL) {
+	error("open_port() in special purpose object");
+    }
+
+    if (f->level != 0) {
+	error("open_port() within atomic function");
+    }
+
+    port=0;
+    if (nargs==2)
+    {
+       port=f->sp->u.number;
+       if ((port < 1)) /* || (port > 65535)) */ {
+         error("Port number not in allowed range");
+       }
+       f->sp++;
+    }
+    protoname=f->sp->u.string->text;
+    if (!strcmp(protoname,"tcp")) {
+	protocol=P_TCP;
+    } else if (!strcmp(protoname, "udp")) {
+	protocol=P_UDP;
+    } else if (!strcmp(protoname, "telnet")){
+	protocol=P_TELNET;
+    } else {
+	error("Unkown protocol");
+    }
+    str_del(f->sp->u.string);
+    comm_openport(f, obj, protocol, port);
+    *f->sp=nil_value;
+    return 0;
+}    
+#endif
+
+# ifdef FUNCDEF
+FUNCDEF("connect", kf_connect, pt_connect, 0)
+#else
+char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
+		      T_VOID, T_STRING, T_INT, T_STRING };
+    
+/*
+ * NAME:        kfun->connect
+ * DESCRIPTION: connect to a server
+ */
+int kf_connect(f, nargs)
+register frame *f;
+int nargs;
+{
+    char * addr, proto, *protoname;
+    unsigned short port;
+    object *obj;
+
+    if (f->lwobj != (array *) NULL) {
+	error("connect() in non-persistent object");
+    }
+    obj = OBJW(f->oindex);
+    
+    if (obj->count == 0) {
+	error("connect() in destructed object");
+    }
+    
+    if (obj->flags & O_SPECIAL) {
+	error("connect() in special purpose object");
+    }
+
+    if (f->level != 0) {
+	error("connect() within atomic function");
+    }
+
+    if (nargs==3) {
+	protoname=f->sp->u.string->text;
+	if (!strcmp(protoname, "tcp")) {
+	    proto=P_TCP;
+	} else if (!strcmp(protoname, "telnet")) {
+	    proto=P_TELNET;
+	}
+	else
+	    return 3;
+	str_del((f->sp++)->u.string);
+    }
+
+    port=(f->sp++)->u.number;
+    if (port < 1) /* || port > 65535) */ {
+	error("Port number out of range");
+    }
+    addr=f->sp->u.string->text;
+
+    comm_connect(f, obj, addr, proto, port);
+    *f->sp=nil_value;
+    return 0;
+}    
+#endif
+
+# ifdef FUNCDEF
+FUNCDEF("ports", kf_ports, pt_ports, 0)
+# else
+char pt_ports[] = { C_STATIC, 0,0,0,6,T_OBJECT | (1 << REFSHIFT)};
+
+/*
+ * NAME:	kfun->ports()
+ * DESCRIPTION:	return the array of port objects
+ */
+int kf_ports(f)
+register frame *f;
+{
+    PUSH_ARRVAL(f, comm_users(f->data, TRUE));
+    i_add_ticks(f, f->sp->u.array->size);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("close_user", kf_close_user, pt_close_user, 0)
+# else 
+char pt_close_user[] = { C_STATIC,0,0,0,6, T_VOID};
+/*
+ * NAME:	kfun->close_user()
+ * DESCRIPTION:	return the array of port objects
+ */
+int kf_close_user(f)
+register frame *f;
+{
+    register object *obj;
+
+    if (f->lwobj != (array *) NULL) {
+	error("close_user() in non-persistent object");
+    }
+
+    obj = OBJW(f->oindex);
+    
+    if (!((obj->flags & O_SPECIAL) == O_USER)) {
+	error("close_user() for non user-object");
+    }
+    
+    if (f->level != 0) {
+	error("close_user() in atomic function");
+    }
+    
+    comm_close(f, obj);
+    *--f->sp = nil_value;
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram, 0)
+# else 
+char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 3,0,0,9,T_INT, 
+			     T_STRING, T_STRING, T_INT};
+/*
+ * NAME:	kfun->send_datagram()
+ * DESCRIPTION:	send a udp datagram (Network Package Function)
+ */
+int kf_send_datagram(f)
+register frame *f;
+{
+    register object *obj;
+    int num;
+    string *str,*ip;
+    int port;
+    
+    num=0;
+    obj=OBJW(f->oindex);
+    port=(f->sp++)->u.number;
+    ip=(f->sp++)->u.string;
+    str=f->sp->u.string;
+    if (f->lwobj == (array *) NULL) {
+	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
+	    num = comm_senddatagram(obj, str, ip, port);
+	}
+    }
+    str_del(ip);
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, num);
+    return 0;
+}
+# endif
+#endif
 
 
 # ifdef FUNCDEF

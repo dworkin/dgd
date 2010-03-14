@@ -1,0 +1,143 @@
+This file lists all changes to the DGD open source release.
+
+All changes prior to this release on 2010-02-03 can be found
+in doc/Changelog.Dworkin
+
+2010-03-04
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Import latest changes from Felix: Let status() return 
+  large numbers as floats.
+
+  src/alloc.h
+  src/config.c
+
+2010-02-28/2010-03-01
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Assume long long works on all platforms, and change the Uuint
+  define accordingly. Change the swapfile size check to use 
+  Uuint instead of long long.
+  Small change and fix to swap file size sanity check.
+
+  src/host.h
+  src/config.c
+
+2010-02-25
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Added a note about DGD_TYPE_MIXED to the documentation
+  Fixed a bug in prototype generation for the extension
+  interface
+
+  doc/Extensions
+  src/kfun/table.c
+
+2010-02-24
+  
+  Raymond Jennings
+
+  Change file offsets from long to off_t for swap/dump file
+  Add sanity check to ensure the configured swapfile size fits
+  in a file offset.
+
+  src/swap.c
+  src/comp/csupport.c
+  src/host.h
+  src/config.c
+
+2010-02-23
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix
+  Fixed typo in documentation
+
+  src/comm.c
+  doc/Extensions
+
+2010-02-21
+
+  Greg Lewis
+
+  Unbreak the precompiler when network extensions are enabled
+
+  src/comp/comp.c
+
+2010-02-19
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  DGD 1.4.1
+
+  src/version.h
+  src/comm.c
+
+2010-02-16
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix.
+
+  src/comp/codegenc.c
+  src/comp/csupport.c
+
+2010-02-14
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Imported fix from net branch
+
+  src/lex/ppcontrol.c
+
+2010-02-12
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Imported the Network patches for DGD.
+
+  Contributed by:
+  Richard Braakman <dark@xs4all.nl>
+  Erwin Harte <dgd-net@harte.is-here.com>
+  Neil McBride <sarak@castinian.org>
+  Michael Bergbauer <dgd-network@noname.franken.de>
+  Bart van Leeuwen <aidil@wotf.org>
+
+  see doc/net/ for more information.
+
+  src/Makefile
+  src/comm.c 
+  src/comm.h 
+  src/config.c 
+  src/host/unix/connect.c
+  src/lex/ppcontrol.c
+  src/comp/comp.c
+  src/kfun/std.c
+
+2010-02-08
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix.
+
+  src/config.c
+
+2010-02-07
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Add support for // style comments
+  
+  src/lex/token.c
+
+2010-02-03
+
+  Dworkin B.V. (felix@dworkin.nl)
+
+  Release under the GNU AGPL
+
+  All files.
+
