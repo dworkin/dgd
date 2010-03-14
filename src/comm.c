@@ -113,17 +113,17 @@ static char ayt[22];		/* are you there? */
  * DESCRIPTION:	initialize communications
  */
 #ifdef NETWORK_EXTENSIONS
-bool comm_init(n, p, thosts, bhosts, tports, bports, ntelnet, nbinary)
-int n, p, ntelnet, nbinary;
+bool comm_init(int n, int p, char **thosts, char **bhosts, 
+	unsigned short *tports, unsigned short *bports, 
+	int ntelnet, int nbinary)
 #else
-bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
-int n, ntelnet, nbinary;
+bool comm_init(int n, char **thosts, char **bhosts, 
+	unsigned short *tports, unsigned short *bports, 
+	int ntelnet, int nbinary)
 #endif
-char **thosts, **bhosts;
-unsigned short *tports, *bports;
 {
-    register int i;
-    register user *usr;
+    int i;
+    user *usr;
 
 #ifdef NETWORK_EXTENSIONS
     maxusers = n;
@@ -171,20 +171,18 @@ unsigned short *tports, *bports;
 }
 
 #ifdef NETWORK_EXTENSIONS
-void comm_openport(f, obj, protocol, portnr)
-frame *f;
-object *obj;
-unsigned char protocol;
-unsigned short portnr;
+void comm_openport(frame *f, object *obj, unsigned char protocol, 
+	unsigned short portnr)
 {
-    register connection *conn;
+    connection *conn;
     uindex olduser;
     short flags;
-    register user *usr;
+    user *usr;
     dataspace *data;
     array *arr;
     value val;
-    int i;
+
+    flags = 0;
 
     if (nports >= maxports) 
 	error("Max number of port objects exceeded");
@@ -243,7 +241,7 @@ unsigned short portnr;
     }
     usr->oindex=obj->index;
     obj->flags |= O_USER;
-    obj->etabi = usr-users;
+    obj->etabi = (eindex) (usr-users);
     usr->conn = conn;
     usr->outbuf = (string *) NULL;
     usr->osdone = 0;
@@ -284,9 +282,7 @@ void comm_listen()
  * NAME:	addtoflush()
  * DESCRIPTION:	add a user to the flush list
  */
-static void addtoflush(usr, arr)
-register user *usr;
-register array *arr;
+static void addtoflush(user *usr, array *arr)
 {
     usr->flags |= CF_FLUSH;
     usr->flush = flush;
@@ -303,15 +299,11 @@ register array *arr;
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static user *comm_new(f, obj, conn, telnet)
-frame *f;
-object *obj;
-connection *conn;
-bool telnet;
+static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 {
-    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
-			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
-    register user *usr;
+    static char init[] = { IAC, WONT, TELOPT_ECHO,
+			   IAC, DO,   TELOPT_LINEMODE };
+    user *usr;
     dataspace *data;
     array *arr;
     value val;
@@ -347,7 +339,7 @@ bool telnet;
 
     usr->oindex = obj->index;
     obj->flags |= O_USER;
-    obj->etabi = usr - users;
+    obj->etabi = (eindex) (usr - users);
     usr->conn = conn;
     usr->outbuf = (string *) NULL;
     usr->osdone = 0;
@@ -375,16 +367,11 @@ bool telnet;
 
 #ifdef NETWORK_EXTENSIONS
 void
-comm_connect(f, obj, addr, protocol, port)
-frame *f;
-object *obj;
-char *addr;
-unsigned char protocol;
-unsigned short port;
+comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
+	unsigned short port)
 {
-    register connection *conn;
-    register user *usr;
-    uindex olduser;
+    connection *conn;
+    user *usr;
     
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
@@ -400,16 +387,12 @@ unsigned short port;
     usr->flags |= CF_OPENDING;
 }
 
-int comm_senddatagram(obj, str, ip, port)
-object * obj;
-string * str;
-string * ip;
-int port;
+int comm_senddatagram(object *obj, string *str, string *ip, int port)
 {
-    register user *usr;
+    user *usr;
     dataspace *data;
     array *arr;
-    register value *v1, *v2, *v3, *v4;
+    value *v1, *v2, *v3;
     value val;
     
     usr = &users[EINDEX(obj->etabi)];
@@ -443,11 +426,7 @@ int port;
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
  */
-static void comm_del(f, usr, obj, destruct)
-register frame *f;
-register user *usr;
-object *obj;
-bool destruct;
+static void comm_del(frame *f, user *usr, object *obj, bool destruct)
 {
     dataspace *data;
     uindex olduser;
@@ -495,14 +474,12 @@ bool destruct;
  * NAME:	comm->challenge()
  * DESCRIPTION:	set the UDP challenge for a binary connection
  */
-void comm_challenge(obj, str)
-object *obj;
-string *str;
+void comm_challenge(object *obj, string *str)
 {
-    register user *usr;
+    user *usr;
     dataspace *data;
     array *arr;
-    register value *v;
+    value *v;
     value val;
 
     usr = &users[obj->etabi];
@@ -527,17 +504,13 @@ string *str;
  * NAME:	comm->write()
  * DESCRIPTION:	add bytes to output buffer
  */
-static int comm_write(usr, obj, str, text, len)
-register user *usr;
-object *obj;
-register string *str;
-char *text;
-unsigned int len;
+static int comm_write(user *usr, object *obj, string *str, char *text, 
+	unsigned int len)
 {
     dataspace *data;
     array *arr;
-    register value *v;
-    register ssizet osdone, olen;
+    value *v;
+    ssizet osdone, olen;
     value val;
 
     arr = d_get_extravar(data = o_dataspace(obj))->u.array;
@@ -582,17 +555,15 @@ unsigned int len;
  * NAME:	comm->send()
  * DESCRIPTION:	send a message to a user
  */
-int comm_send(obj, str)
-object *obj;
-string *str;
+int comm_send(object *obj, string *str)
 {
-    register user *usr;
+    user *usr;
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
-	register char *p, *q;
-	register unsigned int len, size, n, length;
+	char *p, *q;
+	unsigned int len, size, n, length;
 
 	/*
 	 * telnet connection
@@ -636,7 +607,7 @@ string *str;
 		/*
 		 * double the telnet IAC character
 		 */
-		*q++ = (char) IAC;
+		*q++ = IAC;
 		size++;
 	    } else if (*p == LF) {
 		/*
@@ -661,14 +632,12 @@ string *str;
  * NAME:	comm->udpsend()
  * DESCRIPTION:	send a message on the UDP channel of a binary connection
  */
-int comm_udpsend(obj, str)
-object *obj;
-string *str;
+int comm_udpsend(object *obj, string *str)
 {
-    register user *usr;
+    user *usr;
     dataspace *data;
     array *arr;
-    register value *v;
+    value *v;
     value val;
 
     usr = &users[EINDEX(obj->etabi)];
@@ -699,14 +668,12 @@ string *str;
  * NAME:	comm->echo()
  * DESCRIPTION:	turn on/off input echoing for a user
  */
-bool comm_echo(obj, echo)
-object *obj;
-int echo;
+bool comm_echo(object *obj, int echo)
 {
-    register user *usr;
-    register dataspace *data;
+    user *usr;
+    dataspace *data;
     array *arr;
-    register value *v;
+    value *v;
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
@@ -731,14 +698,12 @@ int echo;
  * NAME:	comm->block()
  * DESCRIPTION:	suspend or release input from a user
  */
-void comm_block(obj, block)
-object *obj;
-int block;
+void comm_block(object *obj, int block)
 {
-    register user *usr;
-    register dataspace *data;
+    user *usr;
+    dataspace *data;
     array *arr;
-    register value *v;
+    value *v;
 
     usr = &users[EINDEX(obj->etabi)];
     arr = d_get_extravar(data = obj->data)->u.array;
@@ -756,16 +721,14 @@ int block;
 }
 
 #ifdef NETWORK_EXTENSIONS
-static void comm_udpflush(usr, obj, data, arr)
-register user *usr;
-object *obj;
-dataspace *data;
-array *arr;
+static void comm_udpflush(user *usr, object *obj, dataspace *data, array *arr)
 {
-    register value *v;
-    register int i,j;
-    register char *buf;
+    value *v;
+    char *buf;
     int res;
+
+    UNREFERENCED_PARAMETER(data);
+    UNREFERENCED_PARAMETER(obj);
 
     v=d_get_elts(arr);
     if (!conn_wrdone(usr->conn)) {
@@ -791,14 +754,12 @@ array *arr;
  * NAME:	comm->uflush()
  * DESCRIPTION:	flush output buffers for a single user only
  */
-static void comm_uflush(usr, obj, data, arr)
-register user *usr;
-object *obj;
-register dataspace *data;
-array *arr;
+static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
 {
-    register value *v;
-    register int n;
+    value *v;
+    int n;
+
+    UNREFERENCED_PARAMETER(obj);
 
     v = d_get_elts(arr);
 
@@ -816,7 +777,7 @@ array *arr;
 		    odone++;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
-		usr->osdone = n;
+		usr->osdone = (ssizet) n;
 	    } else {
 		/* wait for conn_read() to discover the problem */
 		usr->flags &= ~CF_OUTPUT;
@@ -844,10 +805,10 @@ array *arr;
  */
 void comm_flush()
 {
-    register user *usr;
+    user *usr;
     object *obj;
     array *arr;
-    register value *v;
+    value *v;
 
     while (flush != (user *) NULL) {
 	usr = flush;
@@ -864,7 +825,7 @@ void comm_flush()
 		char buf[3];
 
 		/* change echo */
-		buf[0] = (char) IAC;
+		buf[0] = IAC;
 		buf[1] = (v->u.number & CF_ECHO) ? WONT : WILL;
 		buf[2] = TELOPT_ECHO;
 		if (comm_write(usr, obj, (string *) NULL, buf, 3) != 0) {
@@ -875,7 +836,7 @@ void comm_flush()
 		usr->flags &= ~CF_PROMPT;
 		if ((usr->flags & CF_GA) && v[1].type == T_STRING &&
 		    usr->outbuf != v[1].u.string) {
-		    static char ga[] = { (char) IAC, (char) GA };
+		    static char ga[] = { IAC, GA };
 
 		    /* append go-ahead */
 		    comm_write(usr, obj, (string *) NULL, ga, 2);
@@ -912,7 +873,7 @@ void comm_flush()
 	    d_wipe_extravar(obj->data);
 	    conn_del(usr->conn);
 #ifdef NETWORK_EXTENSIONS
-	    if (usr->flags & (CF_TELNET|CF_PORT) == CF_TELNET) {
+	    if ((usr->flags & (CF_TELNET|CF_PORT)) == CF_TELNET) {
 #else
 	    if (usr->flags & CF_TELNET) {
 #endif
@@ -955,10 +916,7 @@ void comm_flush()
  * NAME:	comm->taccept()
  * DESCRIPTION:	accept a telnet connection
  */
-static void comm_taccept(f, conn, port)
-register frame *f;
-struct _connection_ *conn;
-int port;
+static void comm_taccept(frame *f, struct _connection_ *conn, int port)
 {
     user *usr;
     object *obj;
@@ -991,10 +949,7 @@ int port;
  * NAME:	comm->baccept()
  * DESCRIPTION:	accept a binary connection
  */
-static void comm_baccept(f, conn, port)
-register frame *f;
-struct _connection_ *conn;
-int port;
+static void comm_baccept(frame *f, struct _connection_ *conn, int port)
 {
     user *usr;
     object *obj;
@@ -1025,25 +980,24 @@ int port;
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-void comm_receive(f, timeout, mtime)
-register frame *f;
-Uint timeout;
-unsigned int mtime;
+void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
-    static char tm[] =		{ (char) IAC, (char) WONT, (char) TELOPT_TM };
-    static char will_sga[] =	{ (char) IAC, (char) WILL, (char) TELOPT_SGA };
-    static char wont_sga[] =	{ (char) IAC, (char) WONT, (char) TELOPT_SGA };
-    static char mode_edit[] =	{ (char) IAC, (char) SB,
-				  (char) TELOPT_LINEMODE, (char) LM_MODE,
-				  (char) MODE_EDIT, (char) IAC, (char) SE };
+    static char tm[] =		{ IAC, WONT, TELOPT_TM };
+    static char will_sga[] =	{ IAC, WILL, TELOPT_SGA };
+    static char wont_sga[] =	{ IAC, WONT, TELOPT_SGA };
+    static char mode_edit[] =	{ IAC, SB,
+				  TELOPT_LINEMODE, LM_MODE,
+				  MODE_EDIT, IAC, SE };
     char buffer[BINBUF_SIZE];
-    connection *conn;
     object *obj;
-    register user *usr;
-    register int n, i, state, nls;
-    register char *p, *q;
+    user *usr;
+    int n, i, state, nls;
+    char *p, *q;
+#ifndef NETWORK_EXTENSIONS
+    connection *conn;
+#endif
 
     if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
@@ -1491,9 +1445,9 @@ unsigned int mtime;
 		    p++;
 		    --n;
 		}
-		usr->state = state;
-		usr->newlines = nls;
-		usr->inbufsz = q - usr->inbuf;
+		usr->state = (char) state;
+		usr->newlines = (short) nls;
+		usr->inbufsz = (ssizet) (q - usr->inbuf);
 		if (nls == 0) {
 		    continue;
 		}
@@ -1506,7 +1460,7 @@ unsigned int mtime;
 		--newlines;
 		n = p - usr->inbuf;
 		p++;			/* skip \n */
-		usr->inbufsz -= n + 1;
+		usr->inbufsz -= (ssizet) (n + 1);
 
 		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
 		for (n = usr->inbufsz; n != 0; --n) {
@@ -1589,8 +1543,7 @@ unsigned int mtime;
  * NAME:	comm->ip_number()
  * DESCRIPTION:	return the ip number of a user (as a string)
  */
-string *comm_ip_number(obj)
-object *obj;
+string *comm_ip_number(object *obj)
 {
     char ipnum[40];
 
@@ -1602,8 +1555,7 @@ object *obj;
  * NAME:	comm->ip_name()
  * DESCRIPTION:	return the ip name of a user
  */
-string *comm_ip_name(obj)
-object *obj;
+string *comm_ip_name(object *obj)
 {
     char ipname[1024];
 
@@ -1615,9 +1567,7 @@ object *obj;
  * NAME:	comm->close()
  * DESCRIPTION:	remove a user
  */
-void comm_close(f, obj)
-frame *f;
-object *obj;
+void comm_close(frame *f, object *obj)
 {
     comm_del(f, &users[EINDEX(obj->etabi)], obj, TRUE);
 }
@@ -1639,23 +1589,20 @@ object *comm_user()
  * DESCRIPTION:	return an array with all user objects
  */
 #ifdef NETWORK_EXTENSIONS
-array *comm_users(data, ports)
-dataspace *data;
-bool ports;
+array *comm_users(dataspace *data, bool ports)
 #else
-array *comm_users(data)
-dataspace *data;
+array *comm_users(dataspace *data)
 #endif
 {
     array *a;
 #ifdef NETWORK_EXTENSIONS
-    register int i, n, f;
+    int i, n, f;
 #else
-    register int i, n;
+    int i, n;
 #endif
-    register user *usr;
-    register value *v;
-    register object *obj;
+    user *usr;
+    value *v;
+    object *obj;
 
     n = 0;
 #ifdef NETWORK_EXTENSIONS
@@ -1698,10 +1645,9 @@ dataspace *data;
  * NAME:        comm->is_connection()
  * DESCRIPTION: is this REALLY a user object?
  */
-bool comm_is_connection(obj)
-object *obj;
+bool comm_is_connection(object *obj)
 {
-    register user *usr;
+    user *usr;
 
     if((obj->flags & O_SPECIAL) == O_USER) {
       usr = &users[EINDEX(obj->etabi)];

@@ -46,19 +46,17 @@ static int strhchunksz;		/* size of current strh chunk */
  * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
  *		case it must be filled in later.
  */
-string *str_alloc(text, len)
-char *text;
-register long len;
+string *str_alloc(char *text, long len)
 {
-    register string *s;
+    string *s;
     string dummy;
 
     /* allocate string struct & text in one block */
     s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
     if (text != (char *) NULL && len > 0) {
-	memcpy(s->text, text, (unsigned int) len);
+	memcpy(s->text, text, (Uint) len);
     }
-    s->text[s->len = len] = '\0';
+    s->text[s->len = (ssizet) len] = '\0';
     s->ref = 0;
     s->primary = (strref *) NULL;
 
@@ -69,9 +67,7 @@ register long len;
  * NAME:	string->new()
  * DESCRIPTION:	create a new string with size check
  */
-string *str_new(text, len)
-char *text;
-long len;
+string *str_new(char *text, long len)
 {
     if (len > (unsigned long) MAX_STRLEN) {
 	error("String too long");
@@ -84,8 +80,7 @@ long len;
  * DESCRIPTION:	remove a reference from a string. If there are none left, the
  *		string is removed.
  */
-void str_del(s)
-register string *s;
+void str_del(string *s)
 {
     if (--(s->ref) == 0) {
 	FREE(s);
@@ -106,11 +101,9 @@ void str_merge()
  * NAME:	string->put()
  * DESCRIPTION:	put a string in the string merge table
  */
-Uint str_put(str, n)
-register string *str;
-register Uint n;
+Uint str_put(string *str, Uint n)
 {
-    register strh **h;
+    strh **h;
 
     h = (strh **) ht_lookup(sht, str->text, FALSE);
     for (;;) {
@@ -120,13 +113,13 @@ register Uint n;
 	 * the end is reached, or until a match is found using str_cmp().
 	 */
 	if (*h == (strh *) NULL) {
-	    register strh *s;
+	    strh *s;
 
 	    /*
 	     * Not in the hash table. Make a new entry.
 	     */
 	    if (strhchunksz == STR_CHUNK) {
-		register strhchunk *l;
+		strhchunk *l;
 
 		l = ALLOC(strhchunk, 1);
 		l->next = shlist;
@@ -155,12 +148,12 @@ register Uint n;
 void str_clear()
 {
     if (sht != (hashtab *) NULL) {
-	register strhchunk *l;
+	strhchunk *l;
 
 	ht_del(sht);
 
 	for (l = shlist; l != (strhchunk *) NULL; ) {
-	    register strhchunk *f;
+	    strhchunk *f;
 
 	    f = l;
 	    l = l->next;
@@ -177,14 +170,13 @@ void str_clear()
  * NAME:	string->cmp()
  * DESCRIPTION:	compare two strings
  */
-int str_cmp(s1, s2)
-string *s1, *s2;
+int str_cmp(string *s1, string *s2)
 {
     if (s1 == s2) {
 	return 0;
     } else {
-	register ssizet len;
-	register char *p, *q;
+	ssizet len;
+	char *p, *q;
 	long cmplen;
 	int cmp;
 
@@ -210,10 +202,9 @@ string *s1, *s2;
  * NAME:	string->add()
  * DESCRIPTION:	add two strings
  */
-string *str_add(s1, s2)
-register string *s1, *s2;
+string *str_add(string *s1, string *s2)
 {
-    register string *s;
+    string *s;
 
     s = str_new((char *) NULL, (long) s1->len + s2->len);
     memcpy(s->text, s1->text, s1->len);
@@ -226,24 +217,20 @@ register string *s1, *s2;
  * NAME:	string->index()
  * DESCRIPTION:	index a string
  */
-ssizet str_index(s, l)
-string *s;
-register long l;
+ssizet str_index(string *s, long l)
 {
     if (l < 0 || l >= (long) s->len) {
 	error("String index out of range");
     }
 
-    return l;
+    return (ssizet) l;
 }
 
 /*
  * NAME:	string->ckrange()
  * DESCRIPTION:	check a string subrange
  */
-void str_ckrange(s, l1, l2)
-string *s;
-register long l1, l2;
+void str_ckrange(string *s, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
 	error("Invalid string range");
@@ -254,9 +241,7 @@ register long l1, l2;
  * NAME:	string->range()
  * DESCRIPTION:	return a subrange of a string
  */
-string *str_range(s, l1, l2)
-register string *s;
-register long l1, l2;
+string *str_range(string *s, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
 	error("Invalid string range");

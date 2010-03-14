@@ -66,10 +66,7 @@ void kf_clear()
  * NAME:	kfun->callgate()
  * DESCRIPTION:	extra kfun call gate
  */
-static int kf_callgate(f, nargs, kf)
-frame *f;
-int nargs;
-kfunc *kf;
+static int kf_callgate(frame *f, int nargs, kfunc *kf)
 {
     value val;
 
@@ -85,15 +82,14 @@ kfunc *kf;
  * NAME:	prototype()
  * DESCRIPTION:	construct proper prototype for new kfun
  */
-static char *prototype(proto)
-char *proto;
+static char *prototype(char *proto)
 {
-    register char *p, *q;
-    register int nargs, vargs;
-    int class, type;
+    char *p, *q;
+    int nargs, vargs;
+    int tclass, type;
     bool varargs;
 
-    class = C_STATIC;
+    tclass = C_STATIC;
     type = *proto++;
     p = proto;
     nargs = vargs = 0;
@@ -105,7 +101,7 @@ char *proto;
 	    if (*p == T_VARARGS) {
 		/* varargs or ellipsis */
 		if (p[1] == '\0') {
-		    class |= C_ELLIPSIS;
+		    tclass |= C_ELLIPSIS;
 		    if (!varargs) {
 			--nargs;
 			vargs++;
@@ -116,7 +112,7 @@ char *proto;
 	    } else {
 		if (*p != T_MIXED) {
 		    /* non-mixed arguments: typecheck this function */
-		    class |= C_TYPECHECKED;
+		    tclass |= C_TYPECHECKED;
 		}
 		if (varargs) {
 		    vargs++;
@@ -131,12 +127,12 @@ char *proto;
     /* allocate new prototype */
     p = proto;
     q = proto = ALLOC(char, 6 + nargs + vargs);
-    *q++ = class;
-    *q++ = nargs;
-    *q++ = vargs;
+    *q++ = (char) tclass;
+    *q++ = (char) nargs;
+    *q++ = (char) vargs;
     *q++ = 0;
-    *q++ = 6 + nargs + vargs;
-    *q++ = type;
+    *q++ = (char) (6 + nargs + vargs);
+    *q++ = (char) type;
 
     /* pass 2: fill in new prototype */
     if (*p != T_VOID) {
@@ -155,12 +151,10 @@ char *proto;
  * NAME:	kfun->ext_kfun()
  * DESCRIPTION:	add new kfuns
  */
-void kf_ext_kfun(kfadd, n)
-register extkfunc *kfadd;
-register int n;
+void kf_ext_kfun(extkfunc *kfadd, int n)
 {
-    register kfunc *kf;
-    register extfunc *kfe;
+    kfunc *kf;
+    extfunc *kfe;
 
     kfext = REALLOC(kfext, extfunc, nkfun - sizeof(kforig) / sizeof(kfunc),
 		    nkfun - sizeof(kforig) / sizeof(kfunc) + n);
@@ -182,8 +176,7 @@ register int n;
  * NAME:	kfun->cmp()
  * DESCRIPTION:	compare two kftable entries
  */
-static int kf_cmp(cv1, cv2)
-cvoid *cv1, *cv2;
+static int kf_cmp(cvoid *cv1, cvoid *cv2)
 {
     return strcmp(((kfunc *) cv1)->name, ((kfunc *) cv2)->name);
 }
@@ -194,25 +187,26 @@ cvoid *cv1, *cv2;
  */
 void kf_init()
 {
-    register int i, n;
-    register char *k1, *k2;
+    int i, n;
+    char *k1, *k2;
 
     memcpy(kftab, kforig, sizeof(kforig));
     for (i = 0; i < nkfun; i++) {
-	kftab[i].num = i;
+	kftab[i].num = (short) i;
     }
     for (i = 0, k1 = kfind, k2 = kfx; i < KF_BUILTINS; i++) {
-	*k1++ = i;
-	*k2++ = i;
+	*k1++ = (char) i;
+	*k2++ = (char) i;
     }
-    qsort(kftab + KF_BUILTINS, nkfun - KF_BUILTINS, sizeof(kfunc), kf_cmp);
+    qsort((void *) (kftab + KF_BUILTINS), (size_t) (nkfun - KF_BUILTINS), 
+	  sizeof(kfunc), kf_cmp);
     for (n = 0; kftab[i].name[1] == '.'; n++) {
 	*k2++ = '\0';
 	i++;
     }
     for (k1 = kfind + 128; i < nkfun; i++) {
-	*k1++ = i;
-	*k2++ = i + 128 - KF_BUILTINS - n;
+	*k1++ = (char) i;
+	*k2++ = (char) (i + 128 - KF_BUILTINS - n);
     }
 }
 
@@ -220,11 +214,10 @@ void kf_init()
  * NAME:	kfun->index()
  * DESCRIPTION:	search for kfun in the kfun table, return raw index or -1
  */
-static int kf_index(name)
-register char *name;
+static int kf_index(char *name)
 {
-    register unsigned int h, l, m;
-    register int c;
+    Uint h, l, m;
+    int c;
 
     l = KF_BUILTINS;
     h = nkfun;
@@ -248,10 +241,9 @@ register char *name;
  * NAME:	kfun->func()
  * DESCRIPTION:	search for kfun in the kfun table, return index or -1
  */
-int kf_func(name)
-char *name;
+int kf_func(char *name)
 {
-    register int n;
+    int n;
 
     n = kf_index(name);
     if (n >= 0) {
@@ -266,7 +258,7 @@ char *name;
  */
 void kf_reclaim()
 {
-    register int i, n, last;
+    int i, n, last;
 
     /* skip already-removed kfuns */
     for (last = nkfun; kfind[--last + 128 - KF_BUILTINS] == '\0'; ) ;
@@ -291,7 +283,7 @@ void kf_reclaim()
 		    kftab[i].name);
 	    n = UCHAR(kfind[last-- + 128 - KF_BUILTINS]);
 	    kfx[n] = UCHAR(kfx[i]);
-	    kfind[UCHAR(kfx[n])] = n;
+	    kfind[UCHAR(kfx[n])] = (char) n;
 	    kfx[i] = '\0';
 	}
     }
@@ -310,24 +302,23 @@ static char dh_layout[] = "sss";
  * NAME:	kfun->dump()
  * DESCRIPTION:	dump the kfun table
  */
-bool kf_dump(fd)
-int fd;
+bool kf_dump(int fd)
 {
-    register int i, n;
-    register unsigned int len, buflen;
-    register kfunc *kf;
+    int i, n;
+    unsigned int len, buflen;
+    kfunc *kf;
     dump_header dh;
     char *buffer;
     bool flag;
 
     /* prepare header */
     dh.nbuiltin = KF_BUILTINS;
-    dh.nkfun = nkfun - KF_BUILTINS;
+    dh.nkfun = (short) (nkfun - KF_BUILTINS);
     dh.kfnamelen = 0;
     for (i = KF_BUILTINS; i < nkfun; i++) {
 	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
 	if (kfx[n] != '\0') {
-	    dh.kfnamelen += strlen(kftab[n].name) + 1;
+	    dh.kfnamelen += (short) (strlen(kftab[n].name) + 1);
 	    if (kftab[n].name[1] != '.') {
 		dh.kfnamelen += 2;
 	    }
@@ -349,7 +340,7 @@ int fd;
 	if (kfx[n] != '\0') {
 	    kf = &kftab[n];
 	    if (kf->name[1] != '.') {
-		buffer[buflen++] = '0' + kf->version;
+		buffer[buflen++] = (char) ('0' + kf->version);
 		buffer[buflen++] = '.';
 	    }
 	    len = strlen(kf->name) + 1;
@@ -367,10 +358,9 @@ int fd;
  * NAME:	kfun->restore()
  * DESCRIPTION:	restore the kfun table
  */
-void kf_restore(fd, oldcomp)
-int fd, oldcomp;
+void kf_restore(int fd, int oldcomp)
 {
-    register int i, n, buflen;
+    int i, n, buflen;
     dump_header dh;
     char *buffer;
 
@@ -417,8 +407,8 @@ int fd, oldcomp;
 		n = kf_index("0.compile_object");
 	    }
 	}
-	kfx[n] = i + 128;
-	kfind[i + 128] = n;
+	kfx[n] = (char) (i + 128);
+	kfind[i + 128] = (char) n;
 	buflen += strlen(buffer + buflen) + 1;
     }
     AFREE(buffer);
@@ -432,8 +422,8 @@ int fd, oldcomp;
 	for (i = KF_BUILTINS; i < nkfun; i++) {
 	    if (kfx[i] == '\0' && kftab[i].name[1] != '.') {
 		/* new kfun */
-		kfind[n] = i;
-		kfx[i] = n++;
+		kfind[n] = (char) i;
+		kfx[i] = (char) n++;
 	    }
 	}
     }

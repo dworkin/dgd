@@ -24,11 +24,17 @@
 #  define cvoid		char
 # endif
 
+# ifndef UNREFERENCED_PARAMETER
+#  define UNREFERENCED_PARAMETER(P)	(void)(P)
+# endif
 
 # ifdef WIN32
 
 typedef int Int;
 typedef unsigned int Uint;
+
+#undef cvoid
+typedef const void cvoid;
 
 # include <limits.h>
 # include <sys\types.h>
@@ -66,11 +72,6 @@ typedef unsigned int Uint;
 
 # define Uuint			unsigned __int64
 # define bool			dgd_bool
-# define exit			dgd_exit
-# define abort			dgd_abort
-
-extern void dgd_exit(int);
-extern void dgd_abort(void);
 
 # endif	/* WIN32 */
 
@@ -222,10 +223,12 @@ typedef char bool;
  * We assume this works on all compilers, but know it
  * doesn't on gcc before 2.x (does anyone use that anyway?)
  */
-# if !defined(__GNUC__) || __GNUC__ >= 2
-# define Uuint unsigned long long
-# else
-# error No long long support available?
+# ifndef Uuint
+#  if !defined(__GNUC__) || __GNUC__ >= 2
+#   define Uuint unsigned long long
+#  else
+#   error No long long support available?
+#  endif
 # endif
 
 extern void  P_message	P((char*));

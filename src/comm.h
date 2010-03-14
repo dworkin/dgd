@@ -47,10 +47,11 @@ extern void	   conn_ipname	 P((connection*, char*));
 
 #ifdef NETWORK_EXTENSIONS
 extern bool	comm_init	P((int, int, char**, char**, unsigned short*,
-#else
-extern bool	comm_init    P((int, char**, char**, unsigned short*,
-#endif
 				   unsigned short*, int, int));
+#else
+extern bool	comm_init	P((int, char**, char**, unsigned short*,
+				   unsigned short*, int, int));
+#endif
 
 extern void	comm_finish	P((void));
 extern void	comm_listen	P((void));
@@ -66,9 +67,23 @@ extern string  *comm_ip_name	P((object*));
 extern void	comm_close	P((frame*, object*));
 extern object  *comm_user	P((void));
 #ifdef NETWORK_EXTENSIONS
+extern void	comm_openport	P((frame *f, object *obj, unsigned char protocol, 
+				   unsigned short portnr));
+extern void	comm_connect	P((frame *f, object *obj, char *addr, 
+				   unsigned char protocol, unsigned short port));
+extern connection *conn_connect P((char *addr, unsigned short port));
+extern int 	comm_senddatagram P((object *obj, string *str, string *ip, int port));
+extern connection * conn_openlisten P((unsigned char protocol, unsigned short port));
+extern int 	conn_at		P((connection *conn));
+extern int 	conn_checkaddr	P((char *ip));
+extern int 	conn_udpsend	P((connection *conn, char *buf, unsigned int len, 
+				   char *addr, unsigned short port));
+extern int 	conn_check_connected P((connection *conn));
+extern int 	conn_udpreceive P((connection *conn, char *buffer, int size, char **host, 
+	 			   int *port));
+extern connection *conn_accept	P((connection * conn));
 extern bool     comm_is_connection P((object*));
 extern array   *comm_users      P((dataspace *, bool));
 #else
 extern array   *comm_users	P((dataspace*));
 #endif
-

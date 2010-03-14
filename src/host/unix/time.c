@@ -33,8 +33,7 @@ Uint P_time()
  * NAME:	P->mtime()
  * DESCRIPTION:	return the current time in milliseconds
  */
-Uint P_mtime(milli)
-unsigned short *milli;
+Uint P_mtime(unsigned short *milli)
 {
     struct timeval time;
 
@@ -47,9 +46,7 @@ unsigned short *milli;
  * NAME:	P->ctime()
  * DESCRIPTION:	convert the given time to a string
  */
-char *P_ctime(buf, time)
-char *buf;
-Uint time;
+char *P_ctime(char *buf, Uint time)
 {
     register int offset;
     time_t t;

@@ -33,9 +33,7 @@ static void term()
  * NAME:	main()
  * DESCRIPTION:	main program
  */
-int main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     P_srandom((long) P_time());
     signal(SIGPIPE, SIG_IGN);
@@ -47,8 +45,7 @@ char *argv[];
  * NAME:	P->message()
  * DESCRIPTION:	show message
  */
-void P_message(mess)
-char *mess;
+void P_message(char *mess)
 {
     fputs(mess, stderr);
     fflush(stderr);

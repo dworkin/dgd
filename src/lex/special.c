@@ -50,8 +50,7 @@ void special_define()
  * NAME:	special_replace()
  * DESCRIPTION:	return the expandation of a predefined macro
  */
-char *special_replace(name)
-register char *name;
+char *special_replace(char *name)
 {
     static char buf[STRINGSZ + 3];
 

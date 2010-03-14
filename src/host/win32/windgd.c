@@ -16,32 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# ifndef __AFXWIN_H__
-# error include 'stdafx.h' before including this file for PCH
-# endif
+#include "dgd.h"
 
-# include "resource.h"
+int main(int argc, char **argv)
+{
+    return dgd_main(argc, argv);
+}
 
-
-class CWindgdApp : public CWinApp {
-// Overrides
-	//{{AFX_VIRTUAL(CWindgdApp)
-	public:
-	virtual BOOL InitInstance();
-	virtual BOOL SaveAllModified();
-	//}}AFX_VIRTUAL
-
-// Implementation
-
-	//{{AFX_MSG(CWindgdApp)
-	afx_msg void OnAppAbout();
-	afx_msg void OnDgdConfig();
-	afx_msg void OnUpdateDgdConfig(CCmdUI* pCmdUI);
-	afx_msg void OnDgdRestore();
-	afx_msg void OnUpdateDgdRestore(CCmdUI* pCmdUI);
-	afx_msg void OnDgdStart();
-	afx_msg void OnUpdateDgdStart(CCmdUI* pCmdUI);
-	afx_msg void OnAppExit();
-	//}}AFX_MSG
-    DECLARE_MESSAGE_MAP()
-};
+/*
+ * NAME:    P->message()
+ * DESCRIPTION: show message
+ */
+void P_message(char *mess)
+{
+    fputs(mess, stdout);
+    fflush(stdout);
+}

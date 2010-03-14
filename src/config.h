@@ -28,7 +28,7 @@ typedef unsigned short ssizet;
 # define SSIZET_MAX	USHRT_MAX
 
 /* eindex can be anything */
-typedef char eindex;
+typedef unsigned char eindex;
 # define EINDEX_MAX	UCHAR_MAX
 # define EINDEX(e)	UCHAR(e)
 

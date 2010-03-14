@@ -196,6 +196,8 @@ int P_mkdir(char *path, int mode)
 {
     char buf[STRINGSZ];
 
+    UNREFERENCED_PARAMETER(mode);
+
     if (path_file(buf, path) == (char *) NULL) {
 	return -1;
     }

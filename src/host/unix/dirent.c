@@ -25,8 +25,7 @@ static DIR *d;
  * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-bool P_opendir(dir)
-char *dir;
+bool P_opendir(char *dir)
 {
     d = opendir(dir);
     return (d != (DIR *) NULL);
@@ -38,7 +37,7 @@ char *dir;
  */
 char *P_readdir()
 {
-    register struct dirent *de;
+    struct dirent *de;
 
     do {
 	de = readdir(d);

@@ -207,28 +207,28 @@ static void conf_dumpinit()
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
     header[DUMP_DRIVER] = 0;			/* vanilla DGD */
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
-    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
-    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
+    header[DUMP_TYPECHECK] = (char) conf[TYPECHECKING].u.num;
+    header[DUMP_SECSIZE + 0] = (char) conf[SECTOR_SIZE].u.num >> 8;
+    header[DUMP_SECSIZE + 1] = (char) conf[SECTOR_SIZE].u.num;
     strcpy(header + DUMP_VSTRING, VERSION);
 
     starttime = boottime = P_time();
 
     s = 0x1234;
     i = 0x12345678L;
-    s0 = strchr((char *) &s, 0x12) - (char *) &s;
-    s1 = strchr((char *) &s, 0x34) - (char *) &s;
-    i0 = strchr((char *) &i, 0x12) - (char *) &i;
-    i1 = strchr((char *) &i, 0x34) - (char *) &i;
-    i2 = strchr((char *) &i, 0x56) - (char *) &i;
-    i3 = strchr((char *) &i, 0x78) - (char *) &i;
+    s0 = (char) (strchr((char *) &s, 0x12) - (char *) &s);
+    s1 = (char) (strchr((char *) &s, 0x34) - (char *) &s);
+    i0 = (char) (strchr((char *) &i, 0x12) - (char *) &i);
+    i1 = (char) (strchr((char *) &i, 0x34) - (char *) &i);
+    i2 = (char) (strchr((char *) &i, 0x56) - (char *) &i);
+    i3 = (char) (strchr((char *) &i, 0x78) - (char *) &i);
     utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
     desize = sizeof(sector) | (sizeof(eindex) << 4);
     psize = sizeof(char*) | (sizeof(char) << 4);
-    calign = (char *) &cdummy.c - (char *) &cdummy.fill;
-    salign = (char *) &sdummy.s - (char *) &sdummy.fill;
-    ialign = (char *) &idummy.i - (char *) &idummy.fill;
-    palign = (char *) &pdummy.p - (char *) &pdummy.fill;
+    calign = (char) ((char *) &cdummy.c - (char *) &cdummy.fill);
+    salign = (char) ((char *) &sdummy.s - (char *) &sdummy.fill);
+    ialign = (char) ((char *) &idummy.i - (char *) &idummy.fill);
+    palign = (char) ((char *) &pdummy.p - (char *) &pdummy.fill);
     zalign = sizeof(alignz);
     zero1 = zero2 = 0;
 
@@ -251,20 +251,20 @@ void conf_dump()
     int fd;
     Uint etime;
 
-    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    header[DUMP_TYPECHECK] = (char) conf[TYPECHECKING].u.num;
     header[DUMP_STARTTIME + 0] = starttime >> 24;
-    header[DUMP_STARTTIME + 1] = starttime >> 16;
-    header[DUMP_STARTTIME + 2] = starttime >> 8;
-    header[DUMP_STARTTIME + 3] = starttime;
+    header[DUMP_STARTTIME + 1] = (char) (starttime >> 16);
+    header[DUMP_STARTTIME + 2] = (char) (starttime >> 8);
+    header[DUMP_STARTTIME + 3] = (char) (starttime);
     etime = P_time();
     if (etime < boottime) {
 	etime = boottime;
     }
     etime += elapsed - boottime;
     header[DUMP_ELAPSED + 0] = etime >> 24;
-    header[DUMP_ELAPSED + 1] = etime >> 16;
-    header[DUMP_ELAPSED + 2] = etime >> 8;
-    header[DUMP_ELAPSED + 3] = etime;
+    header[DUMP_ELAPSED + 1] = (char) (etime >> 16);
+    header[DUMP_ELAPSED + 2] = (char) (etime >> 8);
+    header[DUMP_ELAPSED + 3] = (char) (etime);
 
     o_copy(0);
     d_swapout(1);
@@ -290,8 +290,7 @@ void conf_dump()
  * NAME:	conf->restore()
  * DESCRIPTION:	restore system state from file
  */
-static void conf_restore(fd)
-int fd;
+static void conf_restore(int fd)
 {
     bool conv_co1, conv_co2, conv_lwo, conv_ctrl1, conv_ctrl2, conv_data,
 	 conv_type, conv_inherit;
@@ -389,16 +388,16 @@ int fd;
  *		0x00ff0000 size
  *		0xff000000 alignment
  */
-Uint conf_dsize(layout)
-char *layout;
+Uint conf_dsize(char *layout)
 {
-    register char *p;
-    register Uint sz, rsz, al, ral;
-    register Uint size, rsize, align, ralign;
+    char *p;
+    Uint sz, rsz, al, ral;
+    Uint size, rsize, align, ralign;
 
     p = layout;
     size = rsize = 0;
     align = ralign = 1;
+    sz = rsz = al = ral = 0;
 
     for (;;) {
 	switch (*p++) {
@@ -505,13 +504,10 @@ char *layout;
  * NAME:	conf_dconv()
  * DESCRIPTION:	convert structs from dumpfile format
  */
-Uint conf_dconv(buf, rbuf, layout, n)
-register char *buf, *rbuf;
-char *layout;
-Uint n;
+Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
 {
-    register Uint i, ri, j, size, rsize;
-    register char *p;
+    Uint i, ri, j, size, rsize;
+    char *p;
 
     rsize = conf_dsize(layout);
     size = (rsize >> 16) & 0xff;
@@ -553,8 +549,8 @@ Uint n;
 		} else {
 		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = j;
-		    buf[i + i1] = j;
+		    buf[i + i0] = (char) j;
+		    buf[i + i1] = (char) j;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
@@ -612,8 +608,8 @@ Uint n;
 		} else {
 		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = j;
-		    buf[i + i1] = j;
+		    buf[i + i0] = (char) j;
+		    buf[i + i1] = (char) j;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
@@ -687,13 +683,10 @@ Uint n;
  * NAME:	conf->dread()
  * DESCRIPTION:	read from dumpfile
  */
-void conf_dread(fd, buf, layout, n)
-int fd;
-char *buf, *layout;
-register Uint n;
+void conf_dread(int fd, char *buf, char *layout, Uint n)
 {
     char buffer[16384];
-    register unsigned int i, size, rsize;
+    unsigned int i, size, rsize;
     Uint tmp;
 
     tmp = conf_dsize(layout);
@@ -704,7 +697,7 @@ register Uint n;
 	if (i > n) {
 	    i = n;
 	}
-	if (P_read(fd, buffer, i * rsize) != i * rsize) {
+	if (P_read(fd, buffer, i * rsize) != (int) (i * rsize)) {
 	    fatal("cannot read from dump file");
 	}
 	conf_dconv(buf, buffer, layout, (Uint) i);
@@ -725,8 +718,7 @@ static int ntports, nbports;
  * NAME:	conferr()
  * DESCRIPTION:	error during the configuration phase
  */
-static void conferr(err)
-char *err;
+static void conferr(char *err)
 {
     message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
 }
@@ -738,8 +730,8 @@ char *err;
 static bool conf_config()
 {
     char buf[STRINGSZ];
-    register char *p;
-    register int h, l, m, c;
+    char *p;
+    int h, l, m, c;
     char **hosts;
     unsigned short *ports;
 
@@ -794,26 +786,26 @@ static bool conf_config()
 
 	switch (c) {
 	case INT_CONST:
-	    if (yylval.number < conf[m].low ||
-		(conf[m].high != 0 && yylval.number > conf[m].high)) {
+	    if ((Uint) yylval.number < conf[m].low ||
+		(conf[m].high != 0 && (Uint) yylval.number > conf[m].high)) {
 		conferr("int value out of range");
 		return FALSE;
 	    }
 	    switch (m) {
 	    case BINARY_PORT:
 		bhosts[0] = (char *) NULL;
-		bports[0] = yylval.number;
+		bports[0] = (unsigned short) yylval.number;
 		nbports = 1;
 		break;
 
 	    case TELNET_PORT:
 		thosts[0] = (char *) NULL;
-		tports[0] = yylval.number;
+		tports[0] = (unsigned short) yylval.number;
 		ntports = 1;
 		break;
 
 	    default:
-		conf[m].u.num = yylval.number;
+		conf[m].u.num = (unsigned short) yylval.number;
 		break;
 	    }
 	    break;
@@ -907,7 +899,7 @@ static bool conf_config()
 			conferr("int value out of range");
 			return FALSE;
 		    }
-		    ports[l++] = yylval.number;
+		    ports[l++] = (unsigned short) yylval.number;
 		    if ((c=pp_gettok()) == ']') {
 			break;
 		    }
@@ -965,8 +957,7 @@ static unsigned int bufsz;	/* buffer size */
  * NAME:	config->open()
  * DESCRIPTION:	create a new file
  */
-static bool copen(file)
-char *file;
+static bool copen(char *file)
 {
     char fname[STRINGSZ];
 
@@ -984,10 +975,9 @@ char *file;
  * NAME:	config->put()
  * DESCRIPTION:	write a string to a file
  */
-static void cputs(str)
-register char *str;
+static void cputs(char *str)
 {
-    register unsigned int len, chunk;
+    unsigned int len, chunk;
 
     len = strlen(str);
     while (bufsz + len > BUF_SIZE) {
@@ -1010,7 +1000,7 @@ register char *str;
  */
 static bool cclose()
 {
-    if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
+    if (bufsz > 0 && (unsigned int) P_write(fd, obuf, bufsz) != bufsz) {
 	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
 	P_close(fd);
 	return FALSE;
@@ -1175,13 +1165,13 @@ extern void extension_init	P((void));
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(configfile, dumpfile, fragment)
-char *configfile, *dumpfile;
-sector *fragment;
+bool conf_init(char *configfile, char *dumpfile, sector *fragment)
 {
     char buf[STRINGSZ];
     int fd;
     bool init;
+
+    fd = -1;
 
     /*
      * process config file
@@ -1262,7 +1252,7 @@ sector *fragment;
 
     /* initialize swapped data handler */
     d_init();
-    *fragment = conf[SWAP_FRAGMENT].u.num;
+    *fragment = (sector) conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,
@@ -1414,16 +1404,14 @@ int conf_typechecking()
  */
 unsigned short conf_array_size()
 {
-    return conf[ARRAY_SIZE].u.num;
+    return (unsigned short) conf[ARRAY_SIZE].u.num;
 }
 
 /*
  * NAME:	putval()
  * DESCRIPTION:	store a size_t as an integer or as a float approximation
  */
-static void putval(v, n)
-value *v;
-size_t n;
+static void putval(value *v, size_t n)
 {
     xfloat f1, f2;
 
@@ -1442,16 +1430,13 @@ size_t n;
  * NAME:	config->statusi()
  * DESCRIPTION:	return resource usage information
  */
-bool conf_statusi(f, idx, v)
-register frame *f;
-Int idx;
-register value *v;
+bool conf_statusi(frame *f, Int idx, value *v)
 {
     char *version;
     uindex ncoshort, ncolong;
     array *a;
     Uint t;
-    register int i;
+    int i;
 
     switch (idx) {
     case 0:	/* ST_VERSION */
@@ -1593,11 +1578,10 @@ register value *v;
  * NAME:	config->status()
  * DESCRIPTION:	return an array with information about resource usage
  */
-array *conf_status(f)
-register frame *f;
+array *conf_status(frame *f)
 {
-    register value *v;
-    register Int i;
+    value *v;
+    Int i;
     array *a;
 
     if (ec_push((ec_ftn) NULL)) {
@@ -1618,13 +1602,9 @@ register frame *f;
  * NAME:	config->objecti()
  * DESCRIPTION:	return object resource usage information
  */
-bool conf_objecti(data, obj, idx, v)
-dataspace *data;
-register object *obj;
-Int idx;
-register value *v;
+bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
 {
-    register control *ctrl;
+    control *ctrl;
     object *prog;
     array *a;
 
@@ -1688,12 +1668,10 @@ register value *v;
  * NAME:	config->object()
  * DESCRIPTION:	return resource usage of an object
  */
-array *conf_object(data, obj)
-register dataspace *data;
-register object *obj;
+array *conf_object(dataspace *data, object *obj)
 {
-    register value *v;
-    register Int i;
+    value *v;
+    Int i;
     array *a;
 
     a = arr_ext_new(data, 7L);
@@ -1715,11 +1693,10 @@ register object *obj;
  * NAME:	strtoint()
  * DESCRIPTION:	retrieve an Int from a string (utility function)
  */
-Int strtoint(str)
-char **str;
+Int strtoint(char **str)
 {
-    register char *p;
-    register Int i;
+    char *p;
+    Int i;
     Int sign;
 
     p = *str;

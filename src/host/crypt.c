@@ -273,12 +273,10 @@ static char out[64] = {
  * NAME:	P->setkey()
  * DESCRIPTION:	prepare a key for encryption or decryption
  */
-static void P_setkey(keys, k)
-register Uint *keys;
-register char *k;
+static void P_setkey(Uint *keys, char *k)
 {
-    register Uint L, R, A, B, T;
-    register int i;
+    Uint L, R, A, B, T;
+    int i;
 
     L  = UCHAR(*k++ << 1); L <<= 8;
     L |= UCHAR(*k++ << 1); L <<= 8;
@@ -338,13 +336,12 @@ register char *k;
  * NAME:	P->crypt()
  * DESCRIPTION:	Unix password encryption.
  */
-char *P_crypt(passwd, salt)
-char *passwd, *salt;
+char *P_crypt(char *passwd, char *salt)
 {
     static char result[14];
-    register Uint L, R, T, X, *key;
-    register int i, j;
-    register char *p;
+    Uint L, R, T, X, *key;
+    int i, j;
+    char *p;
     Uint keys[32], E[2];
 
     /* fetch password data */
@@ -427,13 +424,11 @@ char *passwd, *salt;
  * NAME:	P->encrypt_des_key()
  * DESCRIPTION:	return a DES key prepared for encryption
  */
-string *P_encrypt_des_key(f, keystr)
-frame *f;
-string *keystr;
+string *P_encrypt_des_key(frame *f, string *keystr)
 {
-    register Uint k, *key;
-    register char *p;
-    register int i;
+    Uint k, *key;
+    char *p;
+    int i;
     Uint keys[32];
     string *str;
 
@@ -449,9 +444,9 @@ string *keystr;
     for (i = 31; i >= 0; --i) {
 	k = *key++;
 	*p++ = k >> 24;
-	*p++ = k >> 16;
-	*p++ = k >> 8;
-	*p++ = k;
+	*p++ = (char) (k >> 16);
+	*p++ = (char) (k >> 8);
+	*p++ = (char) k;
     }
 
     return str;
@@ -461,13 +456,11 @@ string *keystr;
  * NAME:	P->decrypt_des_key()
  * DESCRIPTION:	return a DES key prepared for decryption
  */
-string *P_decrypt_des_key(f, keystr)
-frame *f;
-string *keystr;
+string *P_decrypt_des_key(frame *f, string *keystr)
 {
-    register Uint k, *key;
-    register char *p;
-    register int i;
+    Uint k, *key;
+    char *p;
+    int i;
     Uint keys[32];
     string *str;
 
@@ -484,14 +477,14 @@ string *keystr;
 	key -= 2;
 	k = key[0];
 	*p++ = k >> 24;
-	*p++ = k >> 16;
-	*p++ = k >> 8;
-	*p++ = k;
+	*p++ = (char) (k >> 16);
+	*p++ = (char) (k >> 8);
+	*p++ = (char) k;
 	k = key[1];
 	*p++ = k >> 24;
-	*p++ = k >> 16;
-	*p++ = k >> 8;
-	*p++ = k;
+	*p++ = (char) (k >> 16);
+	*p++ = (char) (k >> 8);
+	*p++ = (char) k;
     }
 
     return str;
@@ -501,14 +494,12 @@ string *keystr;
  * NAME:	P->encrypt_des()
  * DESCRIPTION:	encrypt (or decrypt) a string
  */
-string *P_encrypt_des(f, keystr, mesg)
-frame *f;
-string *keystr, *mesg;
+string *P_encrypt_des(frame *f, string *keystr, string *mesg)
 {
-    register Uint L, R, T, *key;
-    register char *p, *q;
-    register int i;
-    register ssizet len;
+    Uint L, R, T, *key;
+    char *p, *q;
+    int i;
+    ssizet len;
     Uint keys[32];
     string *str;
 
@@ -591,13 +582,13 @@ string *keystr, *mesg;
 	EXG2(R, L, T,  4, 0x0f0f0f0fL);
 
 	*q++ = R >> 24;
-	*q++ = R >> 16;
-	*q++ = R >> 8;
-	*q++ = R;
+	*q++ = (char) (R >> 16);
+	*q++ = (char) (R >> 8);
+	*q++ = (char) R;
 	*q++ = L >> 24;
-	*q++ = L >> 16;
-	*q++ = L >> 8;
-	*q++ = L;
+	*q++ = (char) (L >> 16);
+	*q++ = (char) (L >> 8);
+	*q++ = (char) L;
     }
 
     if (len != 0) {
@@ -659,13 +650,13 @@ string *keystr, *mesg;
 	EXG2(R, L, T,  4, 0x0f0f0f0fL);
 
 	*q++ = R >> 24;
-	*q++ = R >> 16;
-	*q++ = R >> 8;
-	*q++ = R;
+	*q++ = (char) (R >> 16);
+	*q++ = (char) (R >> 8);
+	*q++ = (char) R;
 	*q++ = L >> 24;
-	*q++ = L >> 16;
-	*q++ = L >> 8;
-	*q++ = L;
+	*q++ = (char) (L >> 16);
+	*q++ = (char) (L >> 8);
+	*q++ = (char) L;
     }
 
     return str;

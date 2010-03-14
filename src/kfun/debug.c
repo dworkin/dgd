@@ -24,8 +24,7 @@
 
 # ifdef DUMP_FUNCS
 # ifndef FUNCDEF
-static void showclass(class)
-register short class;
+static void showclass(short class)
 {
     if (class & C_COMPILED) printf("compiled ");
     if (class & C_TYPECHECKED) printf("typechecked ");
@@ -36,10 +35,7 @@ register short class;
     if (class & C_NOMASK) printf("nomask ");
 }
 
-static char *typename(ctrl, buffer, proto)
-control *ctrl;
-char *buffer;
-register char *proto;
+static char *typename(control *ctrl, char *buffer, char *proto)
 {
     char tnbuf[17], *p;
     Uint class;
@@ -58,9 +54,7 @@ register char *proto;
     return proto;
 }
 
-static void show_proto(ctrl, func, proto)
-control *ctrl;
-char *func, *proto;
+static void show_proto(control *ctrl, char *func, char *proto)
 {
     char buffer[STRINGSZ * 2];
     int c, i, n, v;
@@ -90,11 +84,10 @@ char *func, *proto;
     putchar(')');
 }
 
-static void showctrl(ctrl)
-control *ctrl;
+static void showctrl(control *ctrl)
 {
     char tnbuf[17];
-    register unsigned short i;
+    unsigned short i;
 
     printf("inherits:\n");
     for (i = 0; i < ctrl->ninherits; i++) {
@@ -152,10 +145,9 @@ static char *code, *pc;
 static bool pop;
 static int codesize;
 
-static void show_instr(s)
-char *s;
+static void show_instr(char *s)
 {
-    register int size;
+    int size;
 
     printf("%04x\t", addr);
     if (line != newline) {
@@ -208,14 +200,12 @@ char *s;
     fflush(stdout);
 }
 
-void disasm(ctrl, func)
-control *ctrl;
-int func;
+void disasm(control *ctrl, int func)
 {
     char *pc, *end, *linenumbers, tnbuf[STRINGSZ * 2], buffer[1000];
     control *cc;
-    register unsigned short u, u2, u3;
-    register unsigned long l;
+    unsigned short u, u2, u3;
+    unsigned long l;
     unsigned short a, progsize;
     int sz;
     xfloat flt;
@@ -520,7 +510,7 @@ int func;
 		show_instr(buffer);
 		a += 2;
 		while (u > 0) {
-		    register long h;
+		    long h;
 
 		    switch (sz) {
 		    case 4:
@@ -675,8 +665,7 @@ FUNCDEF("dump_object", kf_dump_object, pt_dump_object, 0)
 char pt_dump_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 			  T_OBJECT };
 
-int kf_dump_object(f)
-frame *f;
+int kf_dump_object(frame *f)
 {
     uindex n;
 
@@ -700,8 +689,7 @@ FUNCDEF("dump_function", kf_dump_function, pt_dump_function, 0)
 char pt_dump_function[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_VOID,
 			    T_OBJECT, T_STRING };
 
-int kf_dump_function(f)
-frame *f;
+int kf_dump_function(frame *f)
 {
     uindex n;
     control *ctrl;

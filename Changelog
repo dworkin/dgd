@@ -3,6 +3,20 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-14
+
+  Stephen Spiller (aka Kalinash)
+
+  Rebuilt the Windows project file to be a console application and
+  to use Visual Studio 2010. Please see src/host/win32/README for
+  more information.
+
+  Converted K&R style function definitions to ANSI style.
+
+  Cleaned up compiler warnings so default builds will build with
+  no warnings on Windows and Unix.  The one exception being the bison
+  generated parser.
+
 2010-03-04
 
   Bart van Leeuwen (aidil@wotf.org)

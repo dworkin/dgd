@@ -61,8 +61,7 @@ rxbuf *rx_new()
  * NAME:	rxbuf->del()
  * DESCRIPTION:	Delete a regular expression buffer.
  */
-void rx_del(rx)
-rxbuf *rx;
+void rx_del(rxbuf *rx)
 {
     FREE(rx);
 }
@@ -74,11 +73,9 @@ rxbuf *rx;
  *		There are two gotos in this function. Reading the source
  *		code is considered harmful.
  */
-char *rx_comp(rx, pattern)
-rxbuf *rx;
-char *pattern;
+char *rx_comp(rxbuf *rx, char *pattern)
 {
-    register char *p, *m, *prevcode, *prevpat, *cclass, *eoln;
+    char *p, *m, *prevcode, *prevpat, *cclass, *eoln;
     char letter, c, dummy, braclist[NSUBEXP];
     int brac, depth;
 
@@ -184,7 +181,7 @@ char *pattern;
 		p++;
 	    }
 	    if (letter == '^') {
-		register int i;
+		int i;
 
 		/* invert the whole cclass */
 		i = CCLSIZE;
@@ -205,8 +202,8 @@ char *pattern;
 			*prevpat = LSTAR;
 		    }
 		} else if (prevpat[1] == CCLASS) {
-		    register char *ccl2;
-		    register int i;
+		    char *ccl2;
+		    int i;
 
 		    i = CCLSIZE;
 		    ccl2 = CCL_BUF(rx, i);
@@ -220,7 +217,7 @@ char *pattern;
 	    }
 	    prevcode = prevpat = m;
 	    *m++ = CCLASS;
-	    *m++ = CCL_CODE(rx, cclass);
+	    *m++ = (char) CCL_CODE(rx, cclass);
 	    break;
 
 	case '\\':
@@ -244,7 +241,7 @@ char *pattern;
 		}
 		prevcode = m;
 		*m++ = LBRAC;
-		*m++ = braclist[depth++] = brac++;
+		*m++ = (char) (braclist[depth++] = (char) brac++);
 		break;
 
 	    case ')':
@@ -319,13 +316,9 @@ char *pattern;
  * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
  *		success.
  */
-static bool match(rx, text, ic, m, t)
-rxbuf *rx;
-char *text;
-bool ic;
-register char *m, *t;
+static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 {
-    register char *p, *cclass, code, c;
+    char *p, *cclass, code, c;
 
     for (;;) {
 	switch (code = *m++) {
@@ -360,7 +353,7 @@ register char *m, *t;
 	    cclass = CCL_BUF(rx, *m++);
 	    if (CCL(cclass, &, *t) == 0) {
 		if (ic) {
-		    c = tolower(*t);
+		    c = (char) tolower(*t);
 		    if (CCL(cclass, &, c)) {
 			break;
 		    }
@@ -394,10 +387,10 @@ register char *m, *t;
 			p++;
 		    }
 		} else {
-		    c = tolower(*p);
+		    c = (char) tolower(*p);
 		    while (CCL(cclass, &, c)) {
 			p++;
-			c = tolower(*p);
+			c = (char) tolower(*p);
 		    }
 		}
 		break;
@@ -454,11 +447,7 @@ register char *m, *t;
  *		pattern is invalid, 0 if no match was found, or 1 if a match
  *		was found.
  */
-int rx_exec(rx, text, idx, ic)
-register rxbuf *rx;
-register char *text;
-register int idx;
-int ic;
+int rx_exec(rxbuf *rx, char *text, int idx, int ic)
 {
     rx->start = (char *) NULL;
     if (!rx->valid) {
@@ -467,18 +456,18 @@ int ic;
 
     if (rx->anchor) {
 	/* the easy case */
-	if (idx || !match(rx, text, ic, rx->buffer, text)) {
+	if (idx || !match(rx, text, (bool) ic, rx->buffer, text)) {
 	    return 0;
 	}
     } else {
 	for (;;) {
 	    if (rx->firstc != '\0') {
-		register char *p;
+		char *p;
 
 		/* find the first character of the pattern in the string */
 		p = strchr(text + idx, rx->firstc);
 		if (ic) {
-		    register char *q;
+		    char *q;
 
 		    q = strchr(text + idx, toupper(rx->firstc));
 		    if (q != (char*) NULL && (p == (char *) NULL || p > q)) {
@@ -491,7 +480,7 @@ int ic;
 		    return 0;
 		}
 	    }
-	    if (match(rx, text + idx, ic, rx->buffer, text + idx)) {
+	    if (match(rx, text + idx, (bool) ic, rx->buffer, text + idx)) {
 		break;
 	    }
 	    /* if no match, try the next character in the string */

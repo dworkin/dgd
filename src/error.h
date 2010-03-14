@@ -27,6 +27,6 @@ extern void	ec_pop		P((void));
 extern void	serror		P((string*));
 extern string  *errorstr	P((void));
 
-extern void	message		();
-extern void	error		();
-extern void	fatal		();
+extern void	message		P((char *, ...));
+extern void	error		P((char *, ...));
+extern void	fatal		P((char *, ...));

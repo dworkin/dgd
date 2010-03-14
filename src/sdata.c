@@ -286,16 +286,15 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type, inherit)
-int ctrl1, ctrl2, data, callout1, callout2, type, inherit;
+void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int type, int inherit)
 {
-    conv_ctrl1 = ctrl1;
-    conv_ctrl2 = ctrl2;
-    conv_data = data;
-    conv_co1 = callout1;
-    conv_co2 = callout2;
-    conv_type = type;
-    conv_inherit = inherit;
+    conv_ctrl1 = (bool) ctrl1;
+    conv_ctrl2 = (bool) ctrl2;
+    conv_data = (bool) data;
+    conv_co1 = (bool) callout1;
+    conv_co2 = (bool) callout2;
+    conv_type = (bool) type;
+    conv_inherit = (bool) inherit;
 }
 
 /*
@@ -304,7 +303,7 @@ int ctrl1, ctrl2, data, callout1, callout2, type, inherit;
  */
 control *d_new_control()
 {
-    register control *ctrl;
+    control *ctrl;
 
     ctrl = ALLOC(control, 1);
     if (chead != (control *) NULL) {
@@ -361,10 +360,9 @@ control *d_new_control()
  * NAME:	data->alloc_dataspace()
  * DESCRIPTION:	allocate a new dataspace block
  */
-static dataspace *d_alloc_dataspace(obj)
-object *obj;
+static dataspace *d_alloc_dataspace(object *obj)
 {
-    register dataspace *data;
+    dataspace *data;
 
     data = ALLOC(dataspace, 1);
     if (dhead != (dataspace *) NULL) {
@@ -448,10 +446,9 @@ object *obj;
  * NAME:	data->new_dataspace()
  * DESCRIPTION:	create a new dataspace block
  */
-dataspace *d_new_dataspace(obj)
-object *obj;
+dataspace *d_new_dataspace(object *obj)
 {
-    register dataspace *data;
+    dataspace *data;
 
     data = d_alloc_dataspace(obj);
     data->base.flags = MOD_VARIABLE;
@@ -466,13 +463,11 @@ object *obj;
  * NAME:	load_control()
  * DESCRIPTION:	load a control block
  */
-static control *load_control(obj, readv)
-register object *obj;
-void (*readv) P((char*, sector*, Uint, Uint));
+static control *load_control(object *obj, void (*readv) P((char*, sector*, Uint, Uint)))
 {
-    register control *ctrl;
+    control *ctrl;
     scontrol header;
-    register Uint size;
+    Uint size;
 
     ctrl = d_new_control();
     ctrl->oindex = obj->index;
@@ -504,9 +499,9 @@ void (*readv) P((char*, sector*, Uint, Uint));
 	(*readv)((char *) ctrl->vmap, ctrl->sectors,
 		 header.vmapsize * (Uint) sizeof(unsigned short), size);
     } else {
-	register int n;
-	register dinherit *inherits;
-	register sinherit *sinherits;
+	int n;
+	dinherit *inherits;
+	sinherit *sinherits;
 
 	/* load inherits */
 	n = header.ninherits; /* at least one */
@@ -520,7 +515,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
 	    inherits->progoffset = sinherits->progoffset;
 	    inherits->funcoffset = sinherits->funcoffset;
 	    inherits->varoffset = sinherits->varoffset;
-	    (inherits++)->priv = (sinherits++)->flags;
+	    (inherits++)->priv = (bool)  (sinherits++)->flags;
 	} while (--n > 0);
 	AFREE(sinherits - header.ninherits);
 
@@ -584,8 +579,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->load_control()
  * DESCRIPTION:	load a control block from the swap device
  */
-control *d_load_control(obj)
-register object *obj;
+control *d_load_control(object *obj)
 {
     control *ctrl;
 
@@ -607,13 +601,11 @@ register object *obj;
  * NAME:	load_dataspace()
  * DESCRIPTION:	load the dataspace header block
  */
-static dataspace *load_dataspace(obj, readv)
-object *obj;
-void (*readv) P((char*, sector*, Uint, Uint));
+static dataspace *load_dataspace(object *obj, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     sdataspace header;
-    register dataspace *data;
-    register Uint size;
+    dataspace *data;
+    Uint size;
 
     data = d_alloc_dataspace(obj);
     data->ctrl = o_control(obj);
@@ -664,8 +656,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->load_dataspace()
  * DESCRIPTION:	load the dataspace header block of an object from swap
  */
-dataspace *d_load_dataspace(obj)
-object *obj;
+dataspace *d_load_dataspace(object *obj)
 {
     dataspace *data;
 
@@ -683,8 +674,7 @@ object *obj;
  * NAME:	data->ref_control()
  * DESCRIPTION:	reference control block
  */
-void d_ref_control(ctrl)
-register control *ctrl;
+void d_ref_control(control *ctrl)
 {
     if (ctrl != chead) {
 	/* move to head of list */
@@ -705,8 +695,7 @@ register control *ctrl;
  * NAME:	data->ref_dataspace()
  * DESCRIPTION:	reference data block
  */
-void d_ref_dataspace(data)
-register dataspace *data;
+void d_ref_dataspace(dataspace *data)
 {
     if (data != dhead) {
 	/* move to head of list */
@@ -728,14 +717,12 @@ register dataspace *data;
  * NAME:	compress()
  * DESCRIPTION:	compress data
  */
-static Uint compress(data, text, size)
-char *data, *text;
-register Uint size;
+static Uint compress(char *data, char *text, Uint size)
 {
     char htab[16384];
-    register unsigned short buf, bufsize, x;
-    register char *p, *q;
-    register Uint cspace;
+    unsigned short buf, bufsize, x;
+    char *p, *q;
+    Uint cspace;
 
     if (size <= 4 + 1) {
 	/* can't get smaller than this */
@@ -750,9 +737,9 @@ register Uint size;
     p = text;
     q = data;
     *q++ = size >> 24;
-    *q++ = size >> 16;
-    *q++ = size >> 8;
-    *q++ = size;
+    *q++ = (char) (size >> 16);
+    *q++ = (char) (size >> 8);
+    *q++ = (char) size;
     cspace = size - 4;
 
     while (size != 0) {
@@ -771,14 +758,14 @@ register Uint size;
 		if ((Int) (cspace-=2) <= 0) {
 		    return 0;	/* out of space */
 		}
-		*q++ = buf;
+		*q++ = (char) buf;
 		*q++ = buf >> 8;
 		bufsize = 0;
 	    } else {
 		if (--cspace == 0) {
 		    return 0;	/* out of space */
 		}
-		*q++ = buf >> (16 - bufsize);
+		*q++ = (char) (buf >> (16 - bufsize));
 		bufsize -= 8;
 	    }
 	}
@@ -790,7 +777,7 @@ register Uint size;
 	    return 0;	/* compression did not reduce size */
 	}
 	/* add last incomplete byte */
-	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
+	*q++ = (char) ((buf >> (16 - bufsize)) + (0xff << bufsize));
     }
 
     return (long) q - (long) data;
@@ -800,16 +787,12 @@ register Uint size;
  * NAME:	decompress()
  * DESCRIPTION:	read and decompress data from the swap file
  */
-static char *decompress(sectors, readv, size, offset, dsize)
-sector *sectors;
-void (*readv) P((char*, sector*, Uint, Uint));
-Uint size, offset;
-Uint *dsize;
+static char *decompress(sector *sectors, void (*readv) P((char*, sector*, Uint, Uint)), Uint size, Uint offset, Uint *dsize)
 {
     char buffer[8192], htab[16384];
-    register unsigned short buf, bufsize, x;
-    register Uint n;
-    register char *p, *q;
+    unsigned short buf, bufsize, x;
+    Uint n;
+    char *p, *q;
 
     buf = bufsize = 0;
     x = 0;
@@ -847,7 +830,7 @@ Uint *dsize;
 		--n;
 		buf += UCHAR(*p++) << bufsize;
 
-		*q = htab[x] = buf >> 1;
+		*q = (char) (htab[x] = (char) (buf >> 1));
 		buf >>= 9;
 	    } else {
 		*q = htab[x];
@@ -876,9 +859,7 @@ Uint *dsize;
  * NAME:	get_prog()
  * DESCRIPTION:	get the program
  */
-static void get_prog(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_prog(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->progsize != 0) {
 	if (ctrl->flags & CTRL_PROGCMP) {
@@ -896,8 +877,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_prog()
  * DESCRIPTION:	get the program
  */
-char *d_get_prog(ctrl)
-register control *ctrl;
+char *d_get_prog(control *ctrl)
 {
     if (ctrl->prog == (char *) NULL && ctrl->progsize != 0) {
 	get_prog(ctrl, sw_readv);
@@ -909,9 +889,7 @@ register control *ctrl;
  * NAME:	get_stext()
  * DESCRIPTION:	load strings text
  */
-static void get_stext(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_stext(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     /* load strings text */
     if (ctrl->flags & CTRL_STRCMP) {
@@ -931,9 +909,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	get_strconsts()
  * DESCRIPTION:	load string constants
  */
-static void get_strconsts(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_strconsts(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nstrings != 0) {
 	/* load strings */
@@ -950,10 +926,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_strconst()
  * DESCRIPTION:	get a string constant
  */
-string *d_get_strconst(ctrl, inherit, idx)
-register control *ctrl;
-register int inherit;
-unsigned int idx;
+string *d_get_strconst(control *ctrl, int inherit, Uint idx)
 {
     if (UCHAR(inherit) < ctrl->ninherits - 1) {
 	/* get the proper control block */
@@ -971,7 +944,7 @@ unsigned int idx;
     }
 
     if (ctrl->strings[idx] == (string *) NULL) {
-	register string *str;
+	string *str;
 
 	str = str_alloc(ctrl->stext + ctrl->sstrings[idx].index,
 			(long) ctrl->sstrings[idx].len);
@@ -985,9 +958,7 @@ unsigned int idx;
  * NAME:	get_funcdefs()
  * DESCRIPTION:	load function definitions
  */
-static void get_funcdefs(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_funcdefs(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nfuncdefs != 0) {
 	ctrl->funcdefs = ALLOC(dfuncdef, ctrl->nfuncdefs);
@@ -1000,8 +971,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_funcdefs()
  * DESCRIPTION:	get function definitions
  */
-dfuncdef *d_get_funcdefs(ctrl)
-register control *ctrl;
+dfuncdef *d_get_funcdefs(control *ctrl)
 {
     if (ctrl->funcdefs == (dfuncdef *) NULL && ctrl->nfuncdefs != 0) {
 	get_funcdefs(ctrl, sw_readv);
@@ -1013,9 +983,7 @@ register control *ctrl;
  * NAME:	get_vardefs()
  * DESCRIPTION:	load variable definitions
  */
-static void get_vardefs(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_vardefs(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nvardefs != 0) {
 	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
@@ -1033,17 +1001,16 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_vardefs()
  * DESCRIPTION:	get variable definitions
  */
-dvardef *d_get_vardefs(ctrl)
-register control *ctrl;
+dvardef *d_get_vardefs(control *ctrl)
 {
     if (ctrl->vardefs == (dvardef *) NULL && ctrl->nvardefs != 0) {
 	get_vardefs(ctrl, sw_readv);
     }
     if (ctrl->cvstrings == (string **) NULL && ctrl->nclassvars != 0) {
-	register char *p;
-	register dvardef *vars;
-	register string **strs;
-	register unsigned short n, inherit, u;
+	char *p;
+	dvardef *vars;
+	string **strs;
+	unsigned short n, inherit, u;
 
 	ctrl->cvstrings = strs = ALLOC(string*, ctrl->nvardefs);
 	memset(strs, '\0', ctrl->nvardefs * sizeof(string*));
@@ -1064,9 +1031,7 @@ register control *ctrl;
  * NAME:	get_funcalls()
  * DESCRIPTION:	get function call table
  */
-static void get_funcalls(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_funcalls(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nfuncalls != 0) {
 	ctrl->funcalls = ALLOC(char, 2L * ctrl->nfuncalls);
@@ -1079,8 +1044,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_funcalls()
  * DESCRIPTION:	get function call table
  */
-char *d_get_funcalls(ctrl)
-register control *ctrl;
+char *d_get_funcalls(control *ctrl)
 {
     if (ctrl->funcalls == (char *) NULL && ctrl->nfuncalls != 0) {
 	get_funcalls(ctrl, sw_readv);
@@ -1092,9 +1056,7 @@ register control *ctrl;
  * NAME:	get_symbols()
  * DESCRIPTION:	get symbol table
  */
-static void get_symbols(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_symbols(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nsymbols > 0) {
 	ctrl->symbols = ALLOC(dsymbol, ctrl->nsymbols);
@@ -1107,8 +1069,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_symbols()
  * DESCRIPTION:	get symbol table
  */
-dsymbol *d_get_symbols(ctrl)
-register control *ctrl;
+dsymbol *d_get_symbols(control *ctrl)
 {
     if (ctrl->symbols == (dsymbol *) NULL && ctrl->nsymbols > 0) {
 	get_symbols(ctrl, sw_readv);
@@ -1120,9 +1081,7 @@ register control *ctrl;
  * NAME:	get_vtypes()
  * DESCRIPTION:	get variable types
  */
-static void get_vtypes(ctrl, readv)
-register control *ctrl;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_vtypes(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (ctrl->nvariables > ctrl->nvardefs) {
 	ctrl->vtypes = ALLOC(char, ctrl->nvariables - ctrl->nvardefs);
@@ -1135,8 +1094,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_vtypes()
  * DESCRIPTION:	get variable types
  */
-static char *d_get_vtypes(ctrl)
-register control *ctrl;
+static char *d_get_vtypes(control *ctrl)
 {
     if (ctrl->vtypes == (char *) NULL && ctrl->nvariables > ctrl->nvardefs) {
 	get_vtypes(ctrl, sw_readv);
@@ -1148,8 +1106,7 @@ register control *ctrl;
  * NAME:	data->get_progsize()
  * DESCRIPTION:	get the size of a control block
  */
-Uint d_get_progsize(ctrl)
-register control *ctrl;
+Uint d_get_progsize(control *ctrl)
 {
     if (ctrl->progsize != 0 && ctrl->prog == (char *) NULL &&
 	(ctrl->flags & CTRL_PROGCMP)) {
@@ -1178,9 +1135,7 @@ register control *ctrl;
  * NAME:	get_strings()
  * DESCRIPTION:	load strings for dataspace
  */
-static void get_strings(data, readv)
-register dataspace *data;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_strings(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (data->nstrings != 0) {
 	/* load strings */
@@ -1207,16 +1162,14 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_string()
  * DESCRIPTION:	get a string from the dataspace
  */
-static string *d_get_string(data, idx)
-register dataspace *data;
-register Uint idx;
+static string *d_get_string(dataspace *data, Uint idx)
 {
     if (data->plane->strings == (strref *) NULL ||
 	data->plane->strings[idx].str == (string *) NULL) {
-	register string *str;
-	register strref *s;
-	register dataplane *p;
-	register Uint i;
+	string *str;
+	strref *s;
+	dataplane *p;
+	Uint i;
 
 	if (data->sstrings == (sstring *) NULL) {
 	    get_strings(data, sw_readv);
@@ -1252,9 +1205,7 @@ register Uint idx;
  * NAME:	get_arrays()
  * DESCRIPTION:	load arrays for dataspace
  */
-static void get_arrays(data, readv)
-register dataspace *data;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_arrays(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (data->narrays != 0) {
 	/* load arrays */
@@ -1268,16 +1219,14 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_array()
  * DESCRIPTION:	get an array from the dataspace
  */
-static array *d_get_array(data, idx)
-register dataspace *data;
-register Uint idx;
+static array *d_get_array(dataspace *data, Uint idx)
 {
     if (data->plane->arrays == (arrref *) NULL ||
 	data->plane->arrays[idx].arr == (array *) NULL) {
-	register array *arr;
-	register arrref *a;
-	register dataplane *p;
-	register Uint i;
+	array *arr;
+	arrref *a;
+	dataplane *p;
+	Uint i;
 
 	if (data->sarrays == (sarray *) NULL) {
 	    /* load arrays */
@@ -1320,11 +1269,7 @@ register Uint idx;
  * NAME:	data->get_values()
  * DESCRIPTION:	get values from the dataspace
  */
-static void d_get_values(data, sv, v, n)
-register dataspace *data;
-register svalue *sv;
-register value *v;
-register int n;
+static void d_get_values(dataspace *data, svalue *sv, value *v, int n)
 {
     while (n > 0) {
 	v->modified = FALSE;
@@ -1363,13 +1308,11 @@ register int n;
  * NAME:	data->new_variables()
  * DESCRIPTION:	initialize variables in a dataspace block
  */
-void d_new_variables(ctrl, val)
-register control *ctrl;
-register value *val;
+void d_new_variables(control *ctrl, value *val)
 {
-    register unsigned short n;
-    register char *type;
-    register dvardef *var;
+    unsigned short n;
+    char *type;
+    dvardef *var;
 
     memset(val, '\0', ctrl->nvariables * sizeof(value));
     for (n = ctrl->nvariables - ctrl->nvardefs, type = d_get_vtypes(ctrl);
@@ -1379,9 +1322,9 @@ register value *val;
     }
     for (n = ctrl->nvardefs, var = d_get_vardefs(ctrl); n != 0; --n, var++) {
 	if (T_ARITHMETIC(var->type)) {
-	    val->type = var->type;
+	    val->type = (char) var->type;
 	} else {
-	    val->type = nil_type;
+	    val->type = (char) nil_type;
 	}
 	val++;
     }
@@ -1391,9 +1334,7 @@ register value *val;
  * NAME:	get_variables()
  * DESCRIPTION:	load variables
  */
-static void get_variables(data, readv)
-register dataspace *data;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_variables(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     data->svariables = ALLOC(svalue, data->nvariables);
     (*readv)((char *) data->svariables, data->sectors,
@@ -1404,9 +1345,7 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_variable()
  * DESCRIPTION:	get a variable from the dataspace
  */
-value *d_get_variable(data, idx)
-register dataspace *data;
-register unsigned int idx;
+value *d_get_variable(dataspace *data, unsigned int idx)
 {
     if (data->variables == (value *) NULL) {
 	/* create room for variables */
@@ -1435,9 +1374,7 @@ register unsigned int idx;
  * NAME:	get_elts()
  * DESCRIPTION:	load elements
  */
-static void get_elts(data, readv)
-register dataspace *data;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_elts(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (data->eltsize != 0) {
 	/* load array elements */
@@ -1452,14 +1389,13 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_elts()
  * DESCRIPTION:	get the elements of an array
  */
-value *d_get_elts(arr)
-register array *arr;
+value *d_get_elts(array *arr)
 {
-    register value *v;
+    value *v;
 
     v = arr->elts;
     if (v == (value *) NULL && arr->size != 0) {
-	register dataspace *data;
+	dataspace *data;
 	Uint idx;
 
 	data = arr->primary->data;
@@ -1478,9 +1414,7 @@ register array *arr;
  * NAME:	get_callouts()
  * DESCRIPTION:	load callouts from swap
  */
-static void get_callouts(data, readv)
-register dataspace *data;
-void (*readv) P((char*, sector*, Uint, Uint));
+static void get_callouts(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
 {
     if (data->ncallouts != 0) {
 	data->scallouts = ALLOC(scallout, data->ncallouts);
@@ -1493,12 +1427,11 @@ void (*readv) P((char*, sector*, Uint, Uint));
  * NAME:	data->get_callouts()
  * DESCRIPTION:	load callouts from swap
  */
-void d_get_callouts(data)
-register dataspace *data;
+void d_get_callouts(dataspace *data)
 {
-    register scallout *sco;
-    register dcallout *co;
-    register uindex n;
+    scallout *sco;
+    dcallout *co;
+    uindex n;
 
     if (data->scallouts == (scallout *) NULL) {
 	get_callouts(data, sw_readv);
@@ -1526,11 +1459,9 @@ register dataspace *data;
  * NAME:	data->swapalloc()
  * DESCRIPTION:	allocate swapspace for something
  */
-static sector d_swapalloc(size, nsectors, sectors)
-Uint size;
-register sector nsectors, **sectors;
+static sector d_swapalloc(Uint size, sector nsectors, sector **sectors)
 {
-    register sector n, *s;
+    sector n, *s;
 
     s = *sectors;
     if (nsectors != 0) {
@@ -1557,15 +1488,17 @@ register sector nsectors, **sectors;
  * NAME:	data->save_control()
  * DESCRIPTION:	save the control block
  */
-static void d_save_control(ctrl)
-register control *ctrl;
+static void d_save_control(control *ctrl)
 {
     scontrol header;
     char *prog, *stext, *text;
     dstrconst *sstrings;
-    register Uint size, i;
-    register sinherit *sinherits;
-    register dinherit *inherits;
+    Uint size, i;
+    sinherit *sinherits;
+    dinherit *inherits;
+
+    sstrings = NULL;
+    prog = stext = text = NULL;
 
     /*
      * Save a control block.
@@ -1579,9 +1512,9 @@ register control *ctrl;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
     header.strsize = ctrl->strsize;
-    header.nfuncdefs = ctrl->nfuncdefs;
-    header.nvardefs = ctrl->nvardefs;
-    header.nclassvars = ctrl->nclassvars;
+    header.nfuncdefs = (char) ctrl->nfuncdefs;
+    header.nvardefs = (char) ctrl->nvardefs;
+    header.nclassvars = (char) ctrl->nclassvars;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
@@ -1608,10 +1541,10 @@ register control *ctrl;
 	sstrings = ctrl->sstrings;
 	stext = ctrl->stext;
 	if (header.nstrings > 0 && sstrings == (dstrconst *) NULL) {
-	    register string **strs;
-	    register Uint strsize;
-	    register dstrconst *s;
-	    register char *t;
+	    string **strs;
+	    Uint strsize;
+	    dstrconst *s;
+	    char *t;
 
 	    sstrings = ALLOCA(dstrconst, header.nstrings);
 	    if (header.strsize > 0) {
@@ -1780,7 +1713,7 @@ static void d_count P((savedata*, value*, unsigned int));
  * NAME:	data->arrcount()
  * DESCRIPTION:	count the number of arrays and strings in an array
  */
-static void d_arrcount(register savedata *save, register array *arr)
+static void d_arrcount(savedata *save, array *arr)
 {
     arr->prev->next = arr->next;
     arr->next->prev = arr->prev;
@@ -1805,13 +1738,10 @@ static void d_arrcount(register savedata *save, register array *arr)
  * NAME:	data->count()
  * DESCRIPTION:	count the number of arrays and strings in an object
  */
-static void d_count(save, v, n)
-register savedata *save;
-register value *v;
-register unsigned int n;
+static void d_count(savedata *save, value *v, Uint n)
 {
-    register object *obj;
-    register value *elts;
+    object *obj;
+    value *elts;
     Uint count;
 
     while (n > 0) {
@@ -1867,13 +1797,9 @@ register unsigned int n;
  * NAME:	data->save()
  * DESCRIPTION:	save the values in an object
  */
-static void d_save(save, sv, v, n)
-register savedata *save;
-register svalue *sv;
-register value *v;
-register unsigned short n;
+static void d_save(savedata *save, svalue *sv, value *v, unsigned short n)
 {
-    register Uint i;
+    Uint i;
 
     while (n > 0) {
 	sv->pad = '\0';
@@ -1930,11 +1856,7 @@ register unsigned short n;
  * NAME:	data->put_values()
  * DESCRIPTION:	save modified values as svalues
  */
-static void d_put_values(data, sv, v, n)
-register dataspace *data;
-register svalue *sv;
-register value *v;
-register unsigned short n;
+static void d_put_values(dataspace *data, svalue *sv, value *v, unsigned short n)
 {
     while (n > 0) {
 	if (v->modified) {
@@ -1980,10 +1902,9 @@ register unsigned short n;
  * NAME:	data->free_values()
  * DESCRIPTION:	free values in a dataspace block
  */
-static void d_free_values(data)
-register dataspace *data;
+static void d_free_values(dataspace *data)
 {
-    register Uint i;
+    Uint i;
 
     /* free parse_string data */
     if (data->parser != (struct _parser_ *) NULL) {
@@ -1993,7 +1914,7 @@ register dataspace *data;
 
     /* free variables */
     if (data->variables != (value *) NULL) {
-	register value *v;
+	value *v;
 
 	for (i = data->nvariables, v = data->variables; i > 0; --i, v++) {
 	    i_del_value(v);
@@ -2005,9 +1926,9 @@ register dataspace *data;
 
     /* free callouts */
     if (data->callouts != (dcallout *) NULL) {
-	register dcallout *co;
-	register value *v;
-	register int j;
+	dcallout *co;
+	value *v;
+	int j;
 
 	for (i = data->ncallouts, co = data->callouts; i > 0; --i, co++) {
 	    v = co->val;
@@ -2028,7 +1949,7 @@ register dataspace *data;
 
     /* free arrays */
     if (data->base.arrays != (arrref *) NULL) {
-	register arrref *a;
+	arrref *a;
 
 	for (i = data->narrays, a = data->base.arrays; i > 0; --i, a++) {
 	    if (a->arr != (array *) NULL) {
@@ -2042,7 +1963,7 @@ register dataspace *data;
 
     /* free strings */
     if (data->base.strings != (strref *) NULL) {
-	register strref *s;
+	strref *s;
 
 	for (i = data->nstrings, s = data->base.strings; i > 0; --i, s++) {
 	    if (s->str != (string *) NULL) {
@@ -2068,12 +1989,10 @@ register dataspace *data;
  * NAME:	data->save_dataspace()
  * DESCRIPTION:	save all values in a dataspace block
  */
-static bool d_save_dataspace(data, swap)
-register dataspace *data;
-bool swap;
+static bool d_save_dataspace(dataspace *data, bool swap)
 {
     sdataspace header;
-    register Uint n;
+    Uint n;
 
     if (data->parser != (struct _parser_ *) NULL) {
 	ps_save(data->parser);
@@ -2105,8 +2024,8 @@ bool swap;
 	    }
 	}
 	if (data->base.flags & MOD_ARRAYREF) {
-	    register sarray *sa;
-	    register arrref *a;
+	    sarray *sa;
+	    arrref *a;
 
 	    /*
 	     * references to arrays changed
@@ -2129,7 +2048,7 @@ bool swap;
 	    }
 	}
 	if (data->base.flags & MOD_ARRAY) {
-	    register arrref *a;
+	    arrref *a;
 	    Uint idx;
 
 	    /*
@@ -2154,8 +2073,8 @@ bool swap;
 	    }
 	}
 	if (data->base.flags & MOD_STRINGREF) {
-	    register sstring *ss;
-	    register strref *s;
+	    sstring *ss;
+	    strref *s;
 
 	    /*
 	     * string references changed
@@ -2178,8 +2097,8 @@ bool swap;
 	    }
 	}
 	if (data->base.flags & MOD_CALLOUT) {
-	    register scallout *sco;
-	    register dcallout *co;
+	    scallout *sco;
+	    dcallout *co;
 
 	    sco = data->scallouts;
 	    co = data->callouts;
@@ -2216,9 +2135,9 @@ bool swap;
     } else {
 	savedata save;
 	char *text;
-	register Uint size;
-	register array *arr;
-	register sarray *sarr;
+	Uint size;
+	array *arr;
+	sarray *sarr;
 
 	/*
 	 * count the number and sizes of strings and arrays
@@ -2239,7 +2158,7 @@ bool swap;
 	d_count(&save, data->variables, data->nvariables);
 
 	if (data->ncallouts > 0) {
-	    register dcallout *co;
+	    dcallout *co;
 
 	    if (data->callouts == (dcallout *) NULL) {
 		d_get_callouts(data);
@@ -2261,7 +2180,7 @@ bool swap;
 		    }
 		}
 	    }
-	    data->ncallouts = n;
+	    data->ncallouts = (uindex) n;
 	    if (n == 0) {
 		/* all callouts removed */
 		FREE(data->callouts);
@@ -2309,8 +2228,8 @@ bool swap;
 
 	d_save(&save, data->svariables, data->variables, data->nvariables);
 	if (header.ncallouts > 0) {
-	    register scallout *sco;
-	    register dcallout *co;
+	    scallout *sco;
+	    dcallout *co;
 
 	    sco = data->scallouts;
 	    co = data->callouts;
@@ -2447,20 +2366,19 @@ bool swap;
  * DESCRIPTION:	Swap out a portion of the control and dataspace blocks in
  *		memory.  Return the number of dataspace blocks swapped out.
  */
-sector d_swapout(frag)
-unsigned int frag;
+sector d_swapout(unsigned int frag)
 {
-    register sector n, count;
-    register dataspace *data;
-    register control *ctrl;
+    sector n, count;
+    dataspace *data;
+    control *ctrl;
 
     count = 0;
 
     if (frag != 0) {
 	/* swap out dataspace blocks */
 	data = dtail;
-	for (n = ndata / frag, n -= (n > 0 && frag != 1); n > 0; --n) {
-	    register dataspace *prev;
+	for (n = (sector) (ndata / frag), n -= (n > 0 && frag != 1); n > 0; --n) {
+	    dataspace *prev;
 
 	    prev = data->prev;
 	    if (d_save_dataspace(data, TRUE)) {
@@ -2473,8 +2391,8 @@ unsigned int frag;
 
 	/* swap out control blocks */
 	ctrl = ctail;
-	for (n = nctrl / frag; n > 0; --n) {
-	    register control *prev;
+	for (n = (sector) (nctrl / frag); n > 0; --n) {
+	    control *prev;
 
 	    prev = ctrl->prev;
 	    if (ctrl->ndata == 0) {
@@ -2506,28 +2424,27 @@ unsigned int frag;
  * DESCRIPTION:	upgrade all obj and all objects cloned from obj that have
  *		dataspaces in memory
  */
-void d_upgrade_mem(tmpl, new)
-register object *tmpl, *new;
+void d_upgrade_mem(object *tmpl, object *newob)
 {
-    register dataspace *data;
-    register unsigned int nvar;
-    register unsigned short *vmap;
-    register object *obj;
+    dataspace *data;
+    Uint nvar;
+    unsigned short *vmap;
+    object *obj;
 
     nvar = tmpl->ctrl->vmapsize;
     vmap = tmpl->ctrl->vmap;
 
     for (data = dtail; data != (dataspace *) NULL; data = data->prev) {
 	obj = OBJ(data->oindex);
-	if ((obj == new ||
-	     (!(obj->flags & O_MASTER) && obj->u_master == new->index)) &&
+	if ((obj == newob ||
+	     (!(obj->flags & O_MASTER) && obj->u_master == newob->index)) &&
 	    obj->count != 0) {
 	    /* upgrade clone */
 	    if (nvar != 0) {
 		d_upgrade_data(data, nvar, vmap, tmpl);
 	    }
 	    data->ctrl->ndata--;
-	    data->ctrl = new->ctrl;
+	    data->ctrl = newob->ctrl;
 	    data->ctrl->ndata++;
 	}
     }
@@ -2537,10 +2454,7 @@ register object *tmpl, *new;
  * NAME:	data->conv()
  * DESCRIPTION:	convert something from the dump file
  */
-static Uint d_conv(m, vec, layout, n, idx)
-char *m, *layout;
-sector *vec;
-Uint n, idx;
+static Uint d_conv(char *m, sector *vec, char *layout, Uint n, Uint idx)
 {
     Uint bufsize;
     char *buf;
@@ -2558,23 +2472,22 @@ Uint n, idx;
  * NAME:	data->conv_proto()
  * DESCRIPTION:	convert a prototype to the new standard
  */
-static void d_conv_proto(old, new)
-char **old, **new;
+static void d_conv_proto(char **old, char **newp)
 {
-    register char *p, *args;
-    register unsigned short i, n, type;
-    unsigned short class, nargs, vargs;
+    char *p, *args;
+    unsigned short i, n, type;
+    unsigned short tclass, nargs, vargs;
     bool varargs;
 
     p = *old;
-    class = UCHAR(*p++);
+    tclass = UCHAR(*p++);
     type = UCHAR(*p++);
     n = UCHAR(*p++);
 
-    varargs = (class & C_VARARGS);
-    class &= ~C_VARARGS;
+    varargs = (tclass & C_VARARGS);
+    tclass &= ~C_VARARGS;
     nargs = vargs = 0;
-    args = &PROTO_FTYPE(*new);
+    args = &PROTO_FTYPE(*newp);
     *args++ = (type & T_TYPE) | ((type >> 1) & T_REF);
 
     for (i = 0; i < n; i++) {
@@ -2586,7 +2499,7 @@ char **old, **new;
 	type = UCHAR(*p++);
 	if (type & T_VARARGS) {
 	    if (i == n - 1) {
-		class |= C_ELLIPSIS;
+		tclass |= C_ELLIPSIS;
 		if (!varargs) {
 		    --nargs;
 		    vargs++;
@@ -2598,27 +2511,26 @@ char **old, **new;
     }
 
     *old = p;
-    p = *new;
-    *new = args;
+    p = *newp;
+    *newp = args;
 
-    PROTO_CLASS(p) = class;
-    PROTO_NARGS(p) = nargs;
-    PROTO_VARGS(p) = vargs;
+    PROTO_CLASS(p) = (char) tclass;
+    PROTO_NARGS(p) = (char) nargs;
+    PROTO_VARGS(p) = (char) vargs;
     PROTO_HSIZE(p) = (6 + n) >> 8;
-    PROTO_LSIZE(p) = 6 + n;
+    PROTO_LSIZE(p) = (char) (6 + n);
 }
 
 /*
  * NAME:	data->conv_control()
  * DESCRIPTION:	convert control block
  */
-static control *d_conv_control(obj)
-object *obj;
+static control *d_conv_control(object *obj)
 {
     scontrol header;
-    register control *ctrl;
-    register Uint size;
-    register unsigned int n;
+    control *ctrl;
+    Uint size;
+    unsigned int n;
 
     ctrl = d_new_control();
     ctrl->oindex = obj->index;
@@ -2719,13 +2631,13 @@ object *obj;
 	d_conv((char *) ctrl->vmap, ctrl->sectors, "s", (Uint) header.vmapsize,
 	       size);
     } else {
-	register dinherit *inherits;
+	dinherit *inherits;
 
 	/* inherits */
 	n = header.ninherits; /* at least one */
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
 	if (conv_inherit) {
-	    register osinherit *osinherits;
+	    osinherit *osinherits;
 
 	    osinherits = ALLOCA(osinherit, n);
 	    size += d_conv((char *) osinherits, ctrl->sectors, osi_layout,
@@ -2739,7 +2651,7 @@ object *obj;
 	    } while (--n > 0);
 	    AFREE(osinherits - header.ninherits);
 	} else {
-	    register sinherit *sinherits;
+	    sinherit *sinherits;
 
 	    sinherits = ALLOCA(sinherit, n);
 	    size += d_conv((char *) sinherits, ctrl->sectors, si_layout,
@@ -2749,7 +2661,7 @@ object *obj;
 		inherits->progoffset = sinherits->progoffset;
 		inherits->funcoffset = sinherits->funcoffset;
 		inherits->varoffset = sinherits->varoffset;
-		(inherits++)->priv = (sinherits++)->flags;
+		(inherits++)->priv = (bool) (sinherits++)->flags;
 	    } while (--n > 0);
 	    AFREE(sinherits - header.ninherits);
 
@@ -2794,37 +2706,37 @@ object *obj;
 	    size += d_conv((char *) ctrl->funcdefs, ctrl->sectors, DF_LAYOUT,
 			   (Uint) UCHAR(header.nfuncdefs), size);
 	    if (conv_ctrl1) {
-		char *prog, *old, *new;
+		char *prog, *old, *newp;
 		Uint offset, funcsize;
 
 		/*
 		 * convert restored program to new prototype standard
 		 */
 		prog = ALLOC(char, ctrl->progsize + (Uint) 3 * ctrl->nfuncdefs);
-		new = prog;
+		newp = prog;
 		for (n = 0; n < ctrl->nfuncdefs; n++) {
 		    /* convert prototype */
 		    old = ctrl->prog + ctrl->funcdefs[n].offset;
-		    ctrl->funcdefs[n].offset = new - prog;
-		    d_conv_proto(&old, &new);
+		    ctrl->funcdefs[n].offset = newp - prog;
+		    d_conv_proto(&old, &newp);
 
 		    /* copy program */
 		    offset = old - ctrl->prog;
-		    if (n < ctrl->nfuncdefs - 1) {
+		    if (n < (Uint) (ctrl->nfuncdefs - 1)) {
 			funcsize = ctrl->funcdefs[n + 1].offset - offset;
 		    } else {
 			funcsize = ctrl->progsize - offset;
 		    }
 		    if (funcsize != 0) {
-			memcpy(new, old, funcsize);
-			new += funcsize;
+			memcpy(newp, old, funcsize);
+			newp += funcsize;
 		    }
 		}
 
 		/* replace program */
 		FREE(ctrl->prog);
 		ctrl->prog = prog;
-		ctrl->progsize = new - prog;
+		ctrl->progsize = newp - prog;
 	    }
 	}
 
@@ -2834,7 +2746,7 @@ object *obj;
 	    size += d_conv((char *) ctrl->vardefs, ctrl->sectors, DV_LAYOUT,
 			   (Uint) UCHAR(header.nvardefs), size);
 	    if (conv_ctrl1) {
-		register unsigned short type;
+		unsigned short type;
 
 		for (n = 0; n < ctrl->nvardefs; n++) {
 		    type = ctrl->vardefs[n].type;
@@ -2897,10 +2809,7 @@ object *obj;
  * NAME:	data->copy_osvalues()
  * DESCRIPTION:	copy osvalues to svalues
  */
-static void d_copy_osvalues(sv, osv, n)
-register svalue *sv;
-register osvalue *osv;
-register Uint n;
+static void d_copy_osvalues(svalue *sv, osvalue *osv, Uint n)
 {
     while (n > 0) {
 	sv->type = osv->type;
@@ -2915,13 +2824,10 @@ register Uint n;
  * NAME:	data->copy_oosvalues()
  * DESCRIPTION:	copy oosvalues to svalues
  */
-static void d_copy_oosvalues(sv, oosv, n)
-register svalue *sv;
-register oosvalue *oosv;
-register Uint n;
+static void d_copy_oosvalues(svalue *sv, oosvalue *oosv, Uint n)
 {
     while (n > 0) {
-	sv->type = oosv->type;
+	sv->type = (char) oosv->type;
 	sv->pad = '\0';
 	sv->oindex = oosv->oindex;
 	(sv++)->u.objcnt = (oosv++)->objcnt;
@@ -2933,10 +2839,7 @@ register Uint n;
  * NAME:	data->conv_osvalues()
  * DESCRIPTION:	convert old svalues
  */
-static Uint d_conv_osvalues(sv, s, n, size)
-svalue *sv;
-sector *s;
-Uint n, size;
+static Uint d_conv_osvalues(svalue *sv, sector *s, Uint n, Uint size)
 {
     osvalue *osv;
 
@@ -2951,10 +2854,7 @@ Uint n, size;
  * NAME:	data->conv_oosvalues()
  * DESCRIPTION:	convert old old svalues
  */
-static Uint d_conv_oosvalues(sv, s, n, size)
-svalue *sv;
-sector *s;
-Uint n, size;
+static Uint d_conv_oosvalues(svalue *sv, sector *s, Uint n, Uint size)
 {
     oosvalue *oosv;
 
@@ -2969,13 +2869,10 @@ Uint n, size;
  * NAME:	data->conv_osarrays()
  * DESCRIPTION:	convert old sarrays
  */
-static Uint d_conv_osarrays(sa, s, n, size)
-register sarray *sa;
-sector *s;
-Uint n, size;
+static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
 {
-    register osarray *osa;
-    register int i;
+    osarray *osa;
+    Uint i;
 
     osa = ALLOCA(osarray, n);
     size = d_conv((char *) osa, s, osa_layout, n, size);
@@ -2994,9 +2891,7 @@ Uint n, size;
  * NAME:	data->fixobjs()
  * DESCRIPTION:	fix objects in dataspace
  */
-static void d_fixobjs(v, n, ctab)
-register svalue *v;
-register Uint n, *ctab;
+static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
@@ -3017,13 +2912,10 @@ register Uint n, *ctab;
  * NAME:	data->fixdata()
  * DESCRIPTION:	fix a dataspace
  */
-static void d_fixdata(data, obj, counttab)
-register dataspace *data;
-object *obj;
-Uint *counttab;
+static void d_fixdata(dataspace *data, object *obj, Uint *counttab)
 {
-    register scallout *sco;
-    register unsigned int n;
+    scallout *sco;
+    unsigned int n;
 
     d_fixobjs(data->svariables, (Uint) data->nvariables, counttab);
     d_fixobjs(data->selts, data->eltsize, counttab);
@@ -3048,14 +2940,14 @@ Uint *counttab;
  * NAME:	data->conv_datapace()
  * DESCRIPTION:	convert dataspace
  */
-static dataspace *d_conv_dataspace(obj, counttab)
-object *obj;
-Uint *counttab;
+static dataspace *d_conv_dataspace(object *obj, Uint *counttab)
 {
     sdataspace header;
-    register dataspace *data;
-    register Uint size;
-    register unsigned int n;
+    dataspace *data;
+    Uint size;
+    unsigned int n;
+
+    UNREFERENCED_PARAMETER(counttab);
 
     data = d_alloc_dataspace(obj);
 
@@ -3136,14 +3028,14 @@ Uint *counttab;
     }
 
     if (header.ncallouts != 0) {
-	register scallout *sco;
+	scallout *sco;
 	unsigned short dummy;
 
 	/* callouts */
 	co_time(&dummy);
 	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
 	if (conv_co1) {
-	    register oscallout *osc;
+	    oscallout *osc;
 
 	    /*
 	     * convert old format callouts
@@ -3166,7 +3058,7 @@ Uint *counttab;
 	    sco -= data->ncallouts;
 	    AFREE(osc - data->ncallouts);
 	} else if (conv_data) {
-	    register socallout *soc;
+	    socallout *soc;
 
 	    /*
 	     * convert callouts with old format svalues
@@ -3189,7 +3081,7 @@ Uint *counttab;
 	    sco -= data->ncallouts;
 	    AFREE(soc - data->ncallouts);
 	} else if (conv_co2) {
-	    register calloutos *cos;
+	    calloutos *cos;
 
 	    /*
 	     * convert callouts with encoded millitimes
@@ -3212,7 +3104,7 @@ Uint *counttab;
 	    sco -= data->ncallouts;
 	    AFREE(cos - data->ncallouts);
 	} else if (conv_type) {
-	    register calloutso *cso;
+	    calloutso *cso;
 
 	    /*
 	     * convert callouts with encoded millitimes
@@ -3247,12 +3139,10 @@ Uint *counttab;
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(obj, counttab)
-register object *obj;
-Uint *counttab;
+void d_restore_obj(object *obj, Uint *counttab)
 {
-    register control *ctrl;
-    register dataspace *data;
+    control *ctrl;
+    dataspace *data;
 
     if (obj->flags & O_COMPILED) {
 	ctrl = d_new_control();
@@ -3309,11 +3199,10 @@ void d_converted()
  * NAME:	data->free_control()
  * DESCRIPTION:	remove the control block from memory
  */
-void d_free_control(ctrl)
-register control *ctrl;
+void d_free_control(control *ctrl)
 {
-    register string **strs;
-    register unsigned short i;
+    string **strs;
+    unsigned short i;
 
     /* delete strings */
     if (ctrl->strings != (string **) NULL) {
@@ -3424,8 +3313,7 @@ register control *ctrl;
  * NAME:	data->free_dataspace()
  * DESCRIPTION:	remove the dataspace block from memory
  */
-void d_free_dataspace(data)
-register dataspace *data;
+void d_free_dataspace(dataspace *data)
 {
     /* free values */
     d_free_values(data);

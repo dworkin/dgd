@@ -31,10 +31,9 @@
  * NAME:	path->resolve()
  * DESCRIPTION:	resolve a path
  */
-char *path_resolve(buf, file)
-char *buf, *file;
+char *path_resolve(char *buf, char *file)
 {
-    register char *p, *q, *d;
+    char *p, *q, *d;
 
     strncpy(buf, file, STRINGSZ - 1);
     buf[STRINGSZ - 1] = '\0';
@@ -81,9 +80,7 @@ char *buf, *file;
  * NAME:	path_string()
  * DESCRIPTION:	check and resolve a string path
  */
-char *path_string(buf, file, len)
-char *buf, *file;
-unsigned int len;
+char *path_string(char *buf, char *file, unsigned int len)
 {
     if (len >= STRINGSZ || strlen(file) != len) {
 	return (char *) NULL;
@@ -95,8 +92,7 @@ unsigned int len;
  * NAME:	path->from()
  * DESCRIPTION:	resolve a (possibly relative) path
  */
-char *path_from(buf, from, file)
-register char *buf, *from, *file;
+char *path_from(char *buf, char *from, char *file)
 {
     char buf2[STRINGSZ];
 
@@ -111,10 +107,9 @@ register char *buf, *from, *file;
  * NAME:	path->ed_read()
  * DESCRIPTION:	resolve an editor read file path
  */
-char *path_ed_read(buf, file)
-char *buf, *file;
+char *path_ed_read(char *buf, char *file)
 {
-    register frame *f;
+    frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
@@ -136,10 +131,9 @@ char *buf, *file;
  * NAME:	path->ed_write()
  * DESCRIPTION:	resolve an editor write file path
  */
-char *path_ed_write(buf, file)
-char *buf, *file;
+char *path_ed_write(char *buf, char *file)
 {
-    register frame *f;
+    frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
@@ -161,15 +155,12 @@ char *buf, *file;
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */
-char *path_include(buf, from, file, strs, nstr)
-char *buf, *from, *file;
-string ***strs;
-int *nstr;
+char *path_include(char *buf, char *from, char *file, string ***strs, int *nstr)
 {
-    register frame *f;
-    register int i;
-    register value *v;
-    register string **str;
+    frame *f;
+    int i;
+    value *v;
+    string **str;
 
     *strs = NULL;
     *nstr = 0;

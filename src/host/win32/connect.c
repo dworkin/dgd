@@ -67,6 +67,8 @@ static void ipa_run(void *dummy)
     struct hostent *host;
     int len;
 
+    UNREFERENCED_PARAMETER(dummy);
+
     while (recv(out, buf, sizeof(in46addr), 0) > 0) {
 	/* lookup host */
 	if (((in46addr *) &buf)->ipv6) {
@@ -391,11 +393,8 @@ void conn_intr(void)
  * NAME:	conn->port6()
  * DESCRIPTION:	open an IPv6 port
  */
-static int conn_port6(fd, type, sin6, port)
-register SOCKET *fd;
-int type;
-struct sockaddr_in6 *sin6;
-unsigned short port;
+static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6, 
+	unsigned short port)
 {
     int on;
 
@@ -430,11 +429,8 @@ unsigned short port;
  * NAME:	conn->port()
  * DESCRIPTION:	open an IPv4 port
  */
-static int conn_port(fd, type, sin, port)
-register SOCKET *fd;
-int type;
-struct sockaddr_in *sin;
-unsigned short port;
+static int conn_port(SOCKET *fd, int type, struct sockaddr_in *sin, 
+	unsigned short port)
 {
     int on;
 
@@ -830,7 +826,7 @@ static connection *conn_accept6(SOCKET portfd, int port)
     addr.in.addr6 = sin6.sin6_addr;
     addr.ipv6 = TRUE;
     conn->addr = ipa_new(&addr);
-    conn->at = port;
+    conn->at = (unsigned short) port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -872,7 +868,7 @@ static connection *conn_accept(SOCKET portfd, int port)
     addr.in.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
     conn->addr = ipa_new(&addr);
-    conn->at = port;
+    conn->at = (unsigned short) port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -945,11 +941,11 @@ connection *conn_bnew(int port)
  * NAME:	conn->udp()
  * DESCRIPTION:	set the challenge for attaching a UDP channel
  */
-bool conn_udp(register connection *conn, char *challenge,
-	      register unsigned int len)
+bool conn_udp(connection *conn, char *challenge,
+	      unsigned int len)
 {
     char buffer[UDPHASHSZ];
-    register connection **hash;
+    connection **hash;
 
     if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
 	return FALSE;	/* invalid challenge */
@@ -1046,9 +1042,9 @@ static void conn_udprecv6(int n)
     char buffer[BINBUF_SIZE];
     struct sockaddr_in6 from;
     int fromlen;
-    register int size;
-    register connection **hash, *conn;
-    register char *p;
+    int size;
+    connection **hash, *conn;
+    char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in6);
@@ -1102,8 +1098,8 @@ static void conn_udprecv6(int n)
 	     */
 	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
 		p = conn->udpbuf + conn->bufsz;
-		*p++ = size >> 8;
-		*p++ = size;
+		*p++ = (char) (size >> 8);
+		*p++ = (char) size;
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
@@ -1124,9 +1120,9 @@ static void conn_udprecv(int n)
     char buffer[BINBUF_SIZE];
     struct sockaddr_in from;
     int fromlen;
-    register int size;
-    register connection **hash, *conn;
-    register char *p;
+    int size;
+    connection **hash, *conn;
+    char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in);
@@ -1177,8 +1173,8 @@ static void conn_udprecv(int n)
 	     */
 	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
 		p = conn->udpbuf + conn->bufsz;
-		*p++ = size >> 8;
-		*p++ = size;
+		*p++ = (char) (size >> 8);
+		*p++ = (char) size;
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
@@ -1310,10 +1306,10 @@ int conn_read(connection *conn, char *buf, unsigned int len)
  * NAME:	conn->udpread()
  * DESCRIPTION:	read a message from a UDP channel
  */
-int conn_udpread(register connection *conn, char *buf, unsigned int len)
+int conn_udpread(connection *conn, char *buf, unsigned int len)
 {
-    register unsigned short size, n;
-    register char *p, *q;
+    unsigned short size, n;
+    char *p, *q;
 
     while (conn->bufsz != 0) {
 	/* udp buffer is not empty */
@@ -1325,7 +1321,7 @@ int conn_udpread(register connection *conn, char *buf, unsigned int len)
 	--conn->npkts;
 	--npackets;
 	conn->bufsz -= size + 2;
-	for (p = conn->udpbuf, q = p + size + 2, n = conn->bufsz; n != 0; --n) {
+	for (p = conn->udpbuf, q = p + size + 2, n = (unsigned short) conn->bufsz; n != 0; --n) {
 	    *p++ = *q++;
 	}
 	if (len == size) {
