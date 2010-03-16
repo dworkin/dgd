@@ -3,6 +3,15 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-16
+
+  Stephen Spiller (aka Kalinash)
+
+  Ported the NETWORK_EXTENSIONS to the Windows project. Add this
+  define to the project options to enable it.  Also needed to
+  set the stack size to 8M from the default of 1M to allow the
+  mudlist to parse.
+
 2010-03-15
 
   Stephen Spiller (aka Kalinash)
