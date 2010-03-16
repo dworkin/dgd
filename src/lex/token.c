@@ -390,7 +390,7 @@ static int gc()
  */
 static void skip_comment()
 { 
-    register int c;
+    int c;
 
     do {
         do {
@@ -413,7 +413,7 @@ static void skip_comment()
  */
 static void skip_alt_comment()
 {
-    register int c;
+    int c;
 
     do {
         c = gc();

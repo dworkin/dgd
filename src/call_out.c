@@ -1032,7 +1032,7 @@ void co_restore(int fd, Uint t, int conv)
 	    n = 0;
 	    last = cb->list;
 	    do {
-		last = (uindex) cotab[last].next;
+		last = cotab[last].next;
 		n++;
 	    } while (last != 0);
 	    cotab[cb->list].count = n;

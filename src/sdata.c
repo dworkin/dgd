@@ -830,7 +830,7 @@ static char *decompress(sector *sectors, void (*readv) (char*, sector*, Uint, Ui
 		--n;
 		buf += UCHAR(*p++) << bufsize;
 
-		*q = htab[x] = (char) (buf >> 1);
+		*q = htab[x] = buf >> 1;
 		buf >>= 9;
 	    } else {
 		*q = htab[x];

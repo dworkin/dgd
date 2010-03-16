@@ -1070,7 +1070,7 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
 	}
 	v1++;
     }
-    num = (unsigned short) (v - v3);
+    num = v - v3;
 
     /* sort copy of 1st array */
     v1 -= a1->size;
