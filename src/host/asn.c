@@ -173,8 +173,8 @@ static int asi_cmp(Uint *a, Uint *b, Uint sizea, Uint sizeb)
 # define asi_mult1(c, a, b)	{				\
 				    Uuint _t;			\
 				    _t = (Uuint) (a) * (b);	\
-				    (c)[0] = (Uint) _t;		\
-				    (c)[1] = (Uint) (_t >> 32);	\
+				    (c)[0] = _t;		\
+				    (c)[1] = _t >> 32;		\
 				}
 # else
 static void asi_mult1(Uint *c, Uint a, Uint b)
@@ -325,8 +325,8 @@ static bool asi_mult_row(Uint *c, Uint *a, Uint b, Uint size)
 # define asi_sqr1(b, a)	{				\
 			    Uuint _t;			\
 			    _t = (Uuint) (a) * (a);	\
-			    (b)[0] = (Uint) _t;		\
-			    (b)[1] = (Uint) (_t >> 32);	\
+			    (b)[0] = _t;		\
+			    (b)[1] = _t >> 32;		\
 			}
 # else
 static void asi_sqr1(Uint *b, Uint a)
@@ -679,14 +679,14 @@ static string *asi_numtostr(Uint *num, Uint size, bool minus)
 	*text++ = (minus) ? 0xff : 0x00;
     }
     do {
-	*text++ = (char) (bits >> (--len << 3));
+	*text++ = bits >> (--len << 3);
     } while (len != 0);
     while (size != 0) {
 	bits = *--num;
 	*text++ = bits >> 24;
-	*text++ = (char) (bits >> 16);
-	*text++ = (char) (bits >> 8);
-	*text++ = (char) bits;
+	*text++ = bits >> 16;
+	*text++ = bits >> 8;
+	*text++ = bits;
 	--size;
     }
 
@@ -1376,7 +1376,7 @@ static void asn_powqmod(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint size
     tab[0] = xx;	/* sentinel */
     memcpy(tab[1] = ALLOCA(Uint, sizemod), xx, sizemod * sizeof(Uint));
 
-    n0 = -(int) asn_wordinv(mod[0]);
+    n0 = -asn_wordinv(mod[0]);
     window = wsize = zsize = 0;
     b += sizeb;
     e = *--b;
@@ -1801,7 +1801,7 @@ string *asn_rshift(frame *f, string *s, Int shift)
     a = ALLOCA(Uint, (s->len >> 2) + 2);
     asi_strtonum(a, s, &sizea, &minusa);
     i_add_ticks(f, 4 + sizea);
-    if ((Uint) (shift >> 5) >= sizea) {
+    if (shift >> 5 >= sizea) {
 	a[0] = 0;
 	sizea = 1;
     } else if (shift != 0) {

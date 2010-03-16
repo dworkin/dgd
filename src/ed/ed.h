@@ -18,7 +18,7 @@
 
 # include "dgd.h"
 
-extern void output();
-extern void ed_error();
+extern void output(char *, ...);
+extern void ed_error(char *, ...);
 
 # define error	ed_error

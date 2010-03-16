@@ -36,9 +36,9 @@
 # define TOPTRUTHVAL	4
 
 static void output();
-static void cg_iexpr P((node*, int));
-static void cg_expr P((node*, int));
-static void cg_stmt P((node*));
+static void cg_iexpr (node*, int);
+static void cg_expr (node*, int);
+static void cg_stmt (node*);
 
 static bool skip;		/* no output for current code? */
 static int vars[MAX_LOCALS];	/* local variable types */

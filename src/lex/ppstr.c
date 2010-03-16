@@ -127,7 +127,7 @@ int pps_ccat(str *sb, int c)
     if (sb->len < 0 || c == '\0' || sb->len + 1 >= sb->size) {
 	return sb->len = -1;
     }
-    sb->buffer[sb->len++] = (char) c;
+    sb->buffer[sb->len++] = c;
     sb->buffer[sb->len] = '\0';
     return sb->len;
 }

@@ -281,7 +281,7 @@ static void ctrl_vardefs(oh *ohash, control *ctrl)
 		} else {
 		    cvstr = (string *) NULL;
 		}
-		vfh_new(str, ohash, v->type, cvstr, (short) n, h);
+		vfh_new(str, ohash, v->type, cvstr, n, h);
 	    } else {
 	       /* duplicate variable */
 	       c_error("multiple inheritance of variable %s (/%s, /%s)",
@@ -301,10 +301,10 @@ static bool cmp_class(control *ctrl1, Uint s1, control *ctrl2, Uint s2)
     if (ctrl1 == ctrl2 && s1 == s2) {
 	return TRUE;	/* the same */
     }
-    if (ctrl1->compiled == 0 && (s1 >> 16) == (Uint) ninherits) {
+    if (ctrl1->compiled == 0 && (s1 >> 16) == ninherits) {
 	return FALSE;	/* one is new, and therefore different */
     }
-    if (ctrl2->compiled == 0 && (s2 >> 16) == (Uint) ninherits) {
+    if (ctrl2->compiled == 0 && (s2 >> 16) == ninherits) {
 	return FALSE;	/* one is new, and therefore different */
     }
     return !str_cmp(d_get_strconst(ctrl1, s1 >> 16, s1 & 0xffff),
@@ -562,7 +562,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 
 	if (inhflag) {
 	    /* insert new prototype at the beginning */
-	    vfh_new(str, ohash, (unsigned short) -1, (string *) NULL, (short) idx, h);
+	    vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	    h = (vfh **) &(*h)->chain.next;
 	} else if (!(PROTO_CLASS(prot1) & C_UNDEFINED)) {
 	    /* add the new prototype to the count */
@@ -592,12 +592,12 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 		    --nfclash;
 		} else {
 		    /* adjust it */
-		    (*h)->index = (short) nfunc;
+		    (*h)->index = nfunc;
 		    h = (vfh **) &(*h)->chain.next;
 		}
 	    } else if (nfunc + npriv > 1) {
 		/* add new clash marker as first entry */
-		vfh_new(str, (oh *) NULL, 0, (string *) NULL, (short) nfunc, h);
+		vfh_new(str, (oh *) NULL, 0, (string *) NULL, nfunc, h);
 		nfclash++;
 		h = (vfh **) &(*h)->chain.next;
 	    }
@@ -606,9 +606,9 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/* add new prototype, undefined at the end */
 	if (!inhflag) {
 	    if (PROTO_CLASS(prot1) & C_UNDEFINED) {
-		vfh_new(str, ohash, (unsigned short) -1, (string *) NULL, (short) idx, l);
+		vfh_new(str, ohash, -1, (string *) NULL, idx, l);
 	    } else {
-		vfh_new(str, ohash, (unsigned short) -1, (string *) NULL, (short) idx, h);
+		vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	    }
 	}
     }
@@ -724,7 +724,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
-		    ohash->priv = (short) priv;
+		    ohash->priv = priv;
 		    /*
 		     * add functions and variables from this object
 		     */
@@ -744,7 +744,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 		if (ohash->priv == 2) {
 		    ctrl_vardefs(ohash, o->ctrl);
 		}
-		ohash->priv = (short) priv;
+		ohash->priv = priv;
 		ctrl_funcdefs(ohash, o->ctrl);
 	    }
 	}
@@ -755,7 +755,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 	     */
 	    ohash = oh_new(OBJR(inh->oindex)->chain.name);
 	    if (ohash->index < 0) {
-		ohash->index = (short) ninherits;
+		ohash->index = ninherits;
 		inherits[ninherits++] = ohash;
 	    }
 	    inh++;
@@ -787,7 +787,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 		if (ohash->priv == 2) {
 		    ctrl_vardefs(ohash, o->ctrl);
 		}
-		ohash->priv = (short) priv;
+		ohash->priv = priv;
 		ctrl_funcdefs(ohash, o->ctrl);
 	    }
 	}
@@ -854,10 +854,10 @@ static void ctrl_imap(control *ctrl)
     imapsz = ctrl->ninherits;
     for (n = imapsz - 1, inh = &ctrl->inherits[n]; n > 0; ) {
 	--n;
-	(--inh)->progoffset = (uindex) imapsz;
+	(--inh)->progoffset = imapsz;
 	ctrl2 = OBJR(inh->oindex)->ctrl;
 	for (i = 0; i < ctrl2->ninherits; i++) {
-	    ctrl->imap[imapsz++] = (char) oh_new(OBJR(ctrl2->inherits[UCHAR(ctrl2->imap[i])].oindex)->chain.name)->index;
+	    ctrl->imap[imapsz++] = oh_new(OBJR(ctrl2->inherits[UCHAR(ctrl2->imap[i])].oindex)->chain.name)->index;
 	}
 	for (j = ctrl->ninherits - n; --j > 0; ) {
 	    if (memcmp(ctrl->imap + inh->progoffset,
@@ -870,7 +870,7 @@ static void ctrl_imap(control *ctrl)
 	}
     }
     ctrl->imap = REALLOC(ctrl->imap, char, ctrl->imapsz, imapsz);
-    ctrl->imapsz = (uindex) imapsz;
+    ctrl->imapsz = imapsz;
 }
 
 /*
@@ -897,14 +897,14 @@ void ctrl_convert(control *ctrl)
 	ohash = oh_new(obj->chain.name);
 	if (ohash->index < 0) {
 	    ohash->obj = obj;
-	    ohash->index = (short) n;
+	    ohash->index = n;
 	}
 	imapsz += o_control(obj)->ninherits;
     }
-    ctrl->imap = ALLOC(char, ctrl->imapsz = (uindex) imapsz);
+    ctrl->imap = ALLOC(char, ctrl->imapsz = imapsz);
     imapsz = 0;
     for (n = ctrl->ninherits, inh = ctrl->inherits; n > 0; --n, inh++) {
-	ctrl->imap[imapsz++] = (char) n;
+	ctrl->imap[imapsz++] = n;
     }
     ctrl->imap[0] = 0;
     ctrl_imap(ctrl);
@@ -930,12 +930,12 @@ void ctrl_create()
      * create a new control block
      */
     newohash = oh_new("/");		/* unique name */
-    newohash->index = (short) ninherits;
+    newohash->index = ninherits;
     newctrl = d_new_control();
     new = newctrl->inherits =
-	  ALLOC(dinherit, newctrl->ninherits = (short) (ninherits + 1));
+	  ALLOC(dinherit, newctrl->ninherits = ninherits + 1);
     newctrl->imap = ALLOC(char, (ninherits + 2) * (ninherits + 1) / 2);
-    newctrl->progindex = (short) ninherits;
+    newctrl->progindex = ninherits;
     nvars = 0;
     str_merge();
 
@@ -945,14 +945,14 @@ void ctrl_create()
      * table.
      */
     for (count = 0; count < ninherits; count++) {
-	newctrl->imap[count] = (char) count;
+	newctrl->imap[count] = count;
 	ohash = inherits[count];
 	new->oindex = ohash->obj->index;
 	ctrl = ohash->obj->ctrl;
 	i = ctrl->ninherits - 1;
-	new->funcoffset = (uindex) nifcalls;
+	new->funcoffset = nifcalls;
 	n = ctrl->nfuncalls - ctrl->inherits[i].funcoffset;
-	if (nifcalls > (Uint) (UINDEX_MAX - n)) {
+	if (nifcalls > UINDEX_MAX - n) {
 	    c_error("inherited too many function calls");
 	}
 	nifcalls += n;
@@ -969,10 +969,10 @@ void ctrl_create()
 	new->priv = (ohash->priv != 0);
 	new++;
     }
-    newctrl->imap[count] = (char) count;
+    newctrl->imap[count] = count;
     new->oindex = UINDEX_MAX;
     new->progoffset = 0;
-    new->funcoffset = (uindex) nifcalls;
+    new->funcoffset = nifcalls;
     new->varoffset = newctrl->nvariables = nvars;
     new->priv = FALSE;
     ctrl_imap(newctrl);
@@ -1019,7 +1019,7 @@ long ctrl_dstring(string *str)
 	}
 	nstrs++;
     }
-    if (desc >> 16 == (Uint) ninherits) {
+    if (desc >> 16 == ninherits) {
 	desc |= 0x01000000L;	/* mark it as new */
     }
     return desc;
@@ -1170,7 +1170,7 @@ void ctrl_dproto(string *str, char *proto, string *class)
     /*
      * Actual definition.
      */
-    vfh_new(str, newohash, (unsigned short) -1, (string *) NULL, (short) nfdefs, h);
+    vfh_new(str, newohash, -1, (string *) NULL, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].name = str->text;
@@ -1183,8 +1183,8 @@ void ctrl_dproto(string *str, char *proto, string *class)
     progsize += i;
     func = &functions[nfdefs++].func;
     func->class = PROTO_CLASS(proto);
-    func->inherit = (char) (s >> 16);
-    func->index = (unsigned short) s;
+    func->inherit = s >> 16;
+    func->index = s;
 }
 
 /*
@@ -1204,7 +1204,7 @@ void ctrl_dfunc(string *str, char *proto, string *class)
 void ctrl_dprogram(char *prog, unsigned int size)
 {
     functions[fdef].prog = prog;
-    functions[fdef].progsize = (unsigned short) size;
+    functions[fdef].progsize = size;
     progsize += size;
 }
 
@@ -1238,21 +1238,21 @@ void ctrl_dvar(string *str, unsigned int class, unsigned int type, string *cvstr
     }
 
     /* actually define the variable */
-    vfh_new(str, newohash, (unsigned short) type, cvstr, nvars, h);
+    vfh_new(str, newohash, type, cvstr, nvars, h);
     s = ctrl_dstring(str);
     var = &variables[nvars];
-    var->class = (char) class;
-    var->inherit = (char) (s >> 16);
-    var->index = (unsigned short) s;
-    var->type = (unsigned short) type;
+    var->class = class;
+    var->inherit = s >> 16;
+    var->index = s;
+    var->type = type;
     cvstrings[nvars++] = cvstr;
     if (cvstr != (string *) NULL) {
 	str_ref(cvstr);
 	s = ctrl_dstring(cvstr);
 	p = classvars + nclassvars++ * 3;
-	*p++ = (char) (s >> 16);
-	*p++ = (char) (s >> 8);
-	*p = (char) s;
+	*p++ = s >> 16;
+	*p++ = s >> 8;
+	*p = s;
     }
 }
 
@@ -1286,7 +1286,7 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	     * It may seem strange to allow label::kfun, but remember that they
 	     * are supposed to be inherited by the auto object.
 	     */
-	    index = (short) kf_func(str->text);
+	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
 		*call = ((long) KFCALL << 24) | index;
@@ -1301,13 +1301,13 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	vfh *h;
 
 	/* check if the function exists */
-	inherit = (short) ninherits;
+	inherit = ninherits;
 	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
 	if (h == (vfh *) NULL || (h->ohash == newohash &&
 	    ((h=(vfh *) h->chain.next) == (vfh *) NULL ||
 	     strcmp(h->chain.name, str->text) != 0))) {
 
-	    index = (short) kf_func(str->text);
+	    index = kf_func(str->text);
 	    if (index >= 0) {
 		/* kfun call */
 		*call = ((long) KFCALL << 24) | index;
@@ -1366,7 +1366,7 @@ char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
 	/*
 	 * undefined function
 	 */
-	kf = (short) kf_func(str->text);
+	kf = kf_func(str->text);
 	if (kf >= 0) {
 	    /* kfun call */
 	    *call = ((long) KFCALL << 24) | kf;
@@ -1471,7 +1471,7 @@ unsigned short ctrl_gencall(long call)
 	if (nifcalls + nfcalls == UINDEX_MAX) {
 	    c_error("too many function calls");
 	}
-	h->ct = (unsigned short) nfcalls++;
+	h->ct = nfcalls++;
     }
     return h->ct;
 }
@@ -1528,7 +1528,7 @@ bool ctrl_chkfuncs()
 	 * private undefined prototypes
 	 */
 	c_error("undefined private functions:");
-	for (f = functions, i = (unsigned short) nundefs; i != 0; f++) {
+	for (f = functions, i = nundefs; i != 0; f++) {
 	    if ((f->func.class & (C_PRIVATE | C_UNDEFINED)) ==
 						    (C_PRIVATE | C_UNDEFINED)) {
 		c_error("  %s", f->name);
@@ -1545,7 +1545,7 @@ bool ctrl_chkfuncs()
 	bool clash;
 
 	clash = FALSE;
-	for (t = ftab->table, sz = (unsigned short) ftab->size; sz > 0; t++, --sz) {
+	for (t = ftab->table, sz = ftab->size; sz > 0; t++, --sz) {
 	    for (f = (vfh **) t; *f != (vfh *) NULL; ) {
 		if ((*f)->ohash == (oh *) NULL) {
 		    /*
@@ -1622,10 +1622,10 @@ static void ctrl_mkstrings()
     long strsize;
 
     strsize = 0;
-    if ((newctrl->nstrings = (unsigned short) nstrs) != 0) {
+    if ((newctrl->nstrings = nstrs) != 0) {
 	newctrl->strings = ALLOC(string*, newctrl->nstrings);
 	s = newctrl->strings + nstrs;
-	i = (unsigned short) strchunksz;
+	i = strchunksz;
 	for (l = str_list; l != (strchunk *) NULL; ) {
 	    while (i > 0) {
 		*--s = l->s[--i];	/* already referenced */
@@ -1655,7 +1655,7 @@ static void ctrl_mkfuncs()
     unsigned int len;
 
     newctrl->progsize = progsize;
-    if ((newctrl->nfuncdefs = (unsigned short) nfdefs) != 0) {
+    if ((newctrl->nfuncdefs = nfdefs) != 0) {
 	p = newctrl->prog = ALLOC(char, progsize);
 	d = newctrl->funcdefs = ALLOC(dfuncdef, nfdefs);
 	f = functions;
@@ -1684,7 +1684,7 @@ static void ctrl_mkvars()
     if ((newctrl->nvardefs = nvars) != 0) {
 	newctrl->vardefs = ALLOC(dvardef, nvars);
 	memcpy(newctrl->vardefs, variables, nvars * sizeof(dvardef));
-	if ((newctrl->nclassvars = (unsigned short) nclassvars) != 0) {
+	if ((newctrl->nclassvars = nclassvars) != 0) {
 	    unsigned short i;
 	    string **s;
 
@@ -1714,7 +1714,7 @@ static void ctrl_mkfcalls()
     dinherit *inh;
     oh *ohash;
 
-    newctrl->nfuncalls = (uindex) (nifcalls + nfcalls);
+    newctrl->nfuncalls = nifcalls + nfcalls;
     if (newctrl->nfuncalls == 0) {
 	return;
     }
@@ -1755,7 +1755,7 @@ static void ctrl_mkfcalls()
 		    if (j != 0) {
 			j = oh_new(obj->chain.name)->index;
 		    }
-		    *fc++ = (char) j;
+		    *fc++ = j;
 		    *fc++ = ofc[1];
 		} else {
 		    h = *(vfh **) ht_lookup(ftab,
@@ -1771,8 +1771,8 @@ static void ctrl_mkfcalls()
 			 */
 			h = (vfh *) h->chain.next;
 		    }
-		    *fc++ = (char) h->ohash->index;
-		    *fc++ = (char) h->index;
+		    *fc++ = h->ohash->index;
+		    *fc++ = h->index;
 		}
 		ofc += 2;
 	    }
@@ -1787,8 +1787,8 @@ static void ctrl_mkfcalls()
     for (l = fclist; l != (fcchunk *) NULL; l = l->next) {
 	do {
 	    h = *(vfh **) ht_lookup(ftab, l->f[--i], FALSE);
-	    *--fc = (char) h->index;
-	    *--fc = (char) h->ohash->index;
+	    *--fc = h->index;
+	    *--fc = h->ohash->index;
 	} while (i != 0);
 	i = FCALL_CHUNK;
     }
@@ -1811,7 +1811,7 @@ static void ctrl_mksymbs()
     /* initialize */
     symtab = newctrl->symbols = ALLOC(dsymbol, nsymbs);
     for (i = nsymbs; i > 0; --i) {
-	symtab->next = (unsigned short) -1;	/* mark as unused */
+	symtab->next = -1;	/* mark as unused */
 	symtab++;
     }
     symtab = newctrl->symbols;
@@ -1869,15 +1869,15 @@ static void ctrl_mksymbs()
 		    /*
 		     * new entry
 		     */
-		    symtab[x].inherit = (char) i;
-		    symtab[x].index = (char) n;
+		    symtab[x].inherit = i;
+		    symtab[x].index = n;
 		    symtab[x].next = x;
 		} else {
 		    /*
 		     * collision
 		     */
-		    coll[ncoll].inherit = (char) i;
-		    coll[ncoll].index = (char) n;
+		    coll[ncoll].inherit = i;
+		    coll[ncoll].index = n;
 		    coll[ncoll++].next = x;
 		}
 		if (f->class & C_UNDEFINED) {
@@ -1933,7 +1933,7 @@ void ctrl_mkvtypes(control *ctrl)
 	    for (n = ctrl->nvardefs, nv += n, var = d_get_vardefs(ctrl);
 		 n != 0; --n, var++) {
 		if (T_ARITHMETIC(var->type)) {
-		    *type++ = (char) var->type;
+		    *type++ = var->type;
 		} else {
 		    *type++ = nil_value.type;
 		}
@@ -1981,8 +1981,8 @@ dsymbol *ctrl_symb(control *ctrl, char *func, unsigned int len)
 	    j = symb1->index;
 	    symb1->inherit = symb->inherit;
 	    symb1->index = symb->index;
-	    symb->inherit = (char) i;
-	    symb->index = (char) j;
+	    symb->inherit = i;
+	    symb->index = j;
 	    return (f->class & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
 	}
     }
@@ -2157,7 +2157,7 @@ unsigned short *ctrl_varmap(control *old, control *new)
 				   ctrl2->cvstrings[n >> 8]) == 0)) ||
 			 ((v->type & T_REF) <= (n & T_REF) &&
 			  (v->type & T_TYPE) == T_MIXED))) {
-			*vmap = (unsigned short) (inh2->varoffset + (n >> 8));
+			*vmap = inh2->varoffset + (n >> 8);
 		    } else {
 			switch (v->type) {
 			case T_INT:
@@ -2260,7 +2260,7 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
 	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
 	if ((d_get_funcdefs(ctrl)[UCHAR(symb->index)].class & C_UNDEFINED) &&
 	    list[UCHAR(symb->inherit)].count++ == 0) {
-	    list[UCHAR(symb->inherit)].index = (char) size;
+	    list[UCHAR(symb->inherit)].index = size;
 	    size += 2;
 	}
     }
@@ -2288,7 +2288,7 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
 		string *str;
 		unsigned short len;
 
-		len = (unsigned short) strlen(obj->chain.name);
+		len = strlen(obj->chain.name);
 		str = str_new((char *) NULL, len + 1L);
 		str->text[0] = '/';
 		memcpy(str->text + 1, obj->chain.name, len);

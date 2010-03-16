@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void  cg_init		P((int));
-extern bool  cg_compiled	P((void));
-extern char *cg_function	P((string*, node*, int, int, unsigned int,
-				   unsigned short*));
-extern int   cg_nfuncs		P((void));
-extern void  cg_clear		P((void));
+extern void  cg_init		(int);
+extern bool  cg_compiled	(void);
+extern char *cg_function	(string*, node*, int, int, unsigned int,
+				   unsigned short*);
+extern int   cg_nfuncs		(void);
+extern void  cg_clear		(void);

@@ -35,13 +35,13 @@ typedef struct _frame_ frame;
 # define BCLR(map, bit)		(map[(bit) >> 3] &= ~(1 << ((bit) & 7)))
 # define BTST(map, bit)		(map[(bit) >> 3] & (1 << ((bit) & 7)))
 
-extern bool call_driver_object	P((frame*, char*, int));
-extern void interrupt		P((void));
-extern void endthread		P((void));
-extern void errhandler		P((frame*, Int));
+extern bool call_driver_object	(frame*, char*, int);
+extern void interrupt		(void);
+extern void endthread		(void);
+extern void errhandler		(frame*, Int);
 # ifdef DGD_EXTENSION
 extern void dgd_error		();
 # endif
-extern int  dgd_main		P((int, char**));
+extern int  dgd_main		(int, char**);
 
 extern bool intr;

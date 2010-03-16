@@ -23,6 +23,7 @@
 # include "interpret.h"
 # include "edcmd.h"
 # include "editor.h"
+# include <stdarg.h>
 
 typedef struct _editor_ {
     cmdbuf *ed;			/* editor instance */
@@ -117,7 +118,7 @@ void ed_new(object *obj)
 	error("Too many editor instances");
     }
     flist = e->next;
-    obj->etabi = newed = (eindex) (e - editors);
+    obj->etabi = newed = e - editors;
     obj->flags |= O_EDITOR;
 
     sprintf(tmp, "%s%05u", tmpedfile, EINDEX(obj->etabi));
@@ -158,7 +159,7 @@ static void ed_handler(frame *f, Int depth)
     UNREFERENCED_PARAMETER(depth);
 }
 
-extern void output();
+extern void output(char *, ...);
 
 /*
  * NAME:	ed->command()
@@ -216,12 +217,14 @@ char *ed_status(object *obj)
  * NAME:	output()
  * DESCRIPTION:	handle output from the editor
  */
-void output(char *f, char *a1, char *a2, char *a3)
+void output(char *f, ...)
 {
+    va_list args;
     char buf[2 * MAX_LINE_SIZE + 15];
     Uint len;
 
-    sprintf(buf, f, a1, a2, a3);
+    va_start(args, f);
+    vsprintf(buf, f, args);
     len = strlen(buf);
     if (outbufsz + len > USHRT_MAX) {
 	error("Editor output string too long");
@@ -234,10 +237,12 @@ void output(char *f, char *a1, char *a2, char *a3)
  * NAME:	ed_error()
  * DESCRIPTION:	handle an editor internal error
  */
-void ed_error(char *f, char *a1, char *a2, char *a3)
+void ed_error(char *f, ...)
 {
+    va_list args;
     if (f != (char *) NULL) {
 	internal = TRUE;
     }
-    error(f, a1,a2, a3);
+    va_start(args, f);
+    error(f, args);
 }

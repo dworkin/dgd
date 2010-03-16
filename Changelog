@@ -3,6 +3,16 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-15
+
+  Stephen Spiller (aka Kalinash)
+
+  Removed the explicit casting as it was causing problems.
+  Removed the dreaded P() macros.  You must now use a modern compiler for
+  building dgd (sorry Amiga!).
+  Also included a filters file and solution file for the windows build
+  project which makes things look a lot nicer in the project explorer.
+
 2010-03-14
 
   Stephen Spiller (aka Kalinash)

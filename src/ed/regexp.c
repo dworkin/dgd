@@ -217,7 +217,7 @@ char *rx_comp(rxbuf *rx, char *pattern)
 	    }
 	    prevcode = prevpat = m;
 	    *m++ = CCLASS;
-	    *m++ = (char) CCL_CODE(rx, cclass);
+	    *m++ = CCL_CODE(rx, cclass);
 	    break;
 
 	case '\\':
@@ -241,7 +241,7 @@ char *rx_comp(rxbuf *rx, char *pattern)
 		}
 		prevcode = m;
 		*m++ = LBRAC;
-		*m++ = (char) (braclist[depth++] = (char) brac++);
+		*m++ = braclist[depth++] = brac++;
 		break;
 
 	    case ')':
@@ -353,7 +353,7 @@ static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 	    cclass = CCL_BUF(rx, *m++);
 	    if (CCL(cclass, &, *t) == 0) {
 		if (ic) {
-		    c = (char) tolower(*t);
+		    c = tolower(*t);
 		    if (CCL(cclass, &, c)) {
 			break;
 		    }
@@ -387,10 +387,10 @@ static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 			p++;
 		    }
 		} else {
-		    c = (char) tolower(*p);
+		    c = tolower(*p);
 		    while (CCL(cclass, &, c)) {
 			p++;
-			c = (char) tolower(*p);
+			c = tolower(*p);
 		    }
 		}
 		break;
@@ -456,7 +456,7 @@ int rx_exec(rxbuf *rx, char *text, int idx, int ic)
 
     if (rx->anchor) {
 	/* the easy case */
-	if (idx || !match(rx, text, (bool) ic, rx->buffer, text)) {
+	if (idx || !match(rx, text, ic, rx->buffer, text)) {
 	    return 0;
 	}
     } else {
@@ -480,7 +480,7 @@ int rx_exec(rxbuf *rx, char *text, int idx, int ic)
 		    return 0;
 		}
 	    }
-	    if (match(rx, text + idx, (bool) ic, rx->buffer, text + idx)) {
+	    if (match(rx, text + idx, ic, rx->buffer, text + idx)) {
 		break;
 	    }
 	    /* if no match, try the next character in the string */

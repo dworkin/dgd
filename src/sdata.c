@@ -288,13 +288,13 @@ void d_init()
  */
 void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int type, int inherit)
 {
-    conv_ctrl1 = (bool) ctrl1;
-    conv_ctrl2 = (bool) ctrl2;
-    conv_data = (bool) data;
-    conv_co1 = (bool) callout1;
-    conv_co2 = (bool) callout2;
-    conv_type = (bool) type;
-    conv_inherit = (bool) inherit;
+    conv_ctrl1 = ctrl1;
+    conv_ctrl2 = ctrl2;
+    conv_data = data;
+    conv_co1 = callout1;
+    conv_co2 = callout2;
+    conv_type = type;
+    conv_inherit = inherit;
 }
 
 /*
@@ -463,7 +463,7 @@ dataspace *d_new_dataspace(object *obj)
  * NAME:	load_control()
  * DESCRIPTION:	load a control block
  */
-static control *load_control(object *obj, void (*readv) P((char*, sector*, Uint, Uint)))
+static control *load_control(object *obj, void (*readv) (char*, sector*, Uint, Uint))
 {
     control *ctrl;
     scontrol header;
@@ -515,7 +515,7 @@ static control *load_control(object *obj, void (*readv) P((char*, sector*, Uint,
 	    inherits->progoffset = sinherits->progoffset;
 	    inherits->funcoffset = sinherits->funcoffset;
 	    inherits->varoffset = sinherits->varoffset;
-	    (inherits++)->priv = (bool)  (sinherits++)->flags;
+	    (inherits++)->priv = (sinherits++)->flags;
 	} while (--n > 0);
 	AFREE(sinherits - header.ninherits);
 
@@ -601,7 +601,7 @@ control *d_load_control(object *obj)
  * NAME:	load_dataspace()
  * DESCRIPTION:	load the dataspace header block
  */
-static dataspace *load_dataspace(object *obj, void (*readv) P((char*, sector*, Uint, Uint)))
+static dataspace *load_dataspace(object *obj, void (*readv) (char*, sector*, Uint, Uint))
 {
     sdataspace header;
     dataspace *data;
@@ -737,9 +737,9 @@ static Uint compress(char *data, char *text, Uint size)
     p = text;
     q = data;
     *q++ = size >> 24;
-    *q++ = (char) (size >> 16);
-    *q++ = (char) (size >> 8);
-    *q++ = (char) size;
+    *q++ = size >> 16;
+    *q++ = size >> 8;
+    *q++ = size;
     cspace = size - 4;
 
     while (size != 0) {
@@ -758,14 +758,14 @@ static Uint compress(char *data, char *text, Uint size)
 		if ((Int) (cspace-=2) <= 0) {
 		    return 0;	/* out of space */
 		}
-		*q++ = (char) buf;
+		*q++ = buf;
 		*q++ = buf >> 8;
 		bufsize = 0;
 	    } else {
 		if (--cspace == 0) {
 		    return 0;	/* out of space */
 		}
-		*q++ = (char) (buf >> (16 - bufsize));
+		*q++ = buf >> (16 - bufsize);
 		bufsize -= 8;
 	    }
 	}
@@ -777,7 +777,7 @@ static Uint compress(char *data, char *text, Uint size)
 	    return 0;	/* compression did not reduce size */
 	}
 	/* add last incomplete byte */
-	*q++ = (char) ((buf >> (16 - bufsize)) + (0xff << bufsize));
+	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
     }
 
     return (long) q - (long) data;
@@ -787,7 +787,7 @@ static Uint compress(char *data, char *text, Uint size)
  * NAME:	decompress()
  * DESCRIPTION:	read and decompress data from the swap file
  */
-static char *decompress(sector *sectors, void (*readv) P((char*, sector*, Uint, Uint)), Uint size, Uint offset, Uint *dsize)
+static char *decompress(sector *sectors, void (*readv) (char*, sector*, Uint, Uint), Uint size, Uint offset, Uint *dsize)
 {
     char buffer[8192], htab[16384];
     unsigned short buf, bufsize, x;
@@ -830,7 +830,7 @@ static char *decompress(sector *sectors, void (*readv) P((char*, sector*, Uint, 
 		--n;
 		buf += UCHAR(*p++) << bufsize;
 
-		*q = (char) (htab[x] = (char) (buf >> 1));
+		*q = htab[x] = (char) (buf >> 1);
 		buf >>= 9;
 	    } else {
 		*q = htab[x];
@@ -859,7 +859,7 @@ static char *decompress(sector *sectors, void (*readv) P((char*, sector*, Uint, 
  * NAME:	get_prog()
  * DESCRIPTION:	get the program
  */
-static void get_prog(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_prog(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->progsize != 0) {
 	if (ctrl->flags & CTRL_PROGCMP) {
@@ -889,7 +889,7 @@ char *d_get_prog(control *ctrl)
  * NAME:	get_stext()
  * DESCRIPTION:	load strings text
  */
-static void get_stext(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_stext(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     /* load strings text */
     if (ctrl->flags & CTRL_STRCMP) {
@@ -909,7 +909,7 @@ static void get_stext(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint
  * NAME:	get_strconsts()
  * DESCRIPTION:	load string constants
  */
-static void get_strconsts(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_strconsts(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nstrings != 0) {
 	/* load strings */
@@ -958,7 +958,7 @@ string *d_get_strconst(control *ctrl, int inherit, Uint idx)
  * NAME:	get_funcdefs()
  * DESCRIPTION:	load function definitions
  */
-static void get_funcdefs(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_funcdefs(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nfuncdefs != 0) {
 	ctrl->funcdefs = ALLOC(dfuncdef, ctrl->nfuncdefs);
@@ -983,7 +983,7 @@ dfuncdef *d_get_funcdefs(control *ctrl)
  * NAME:	get_vardefs()
  * DESCRIPTION:	load variable definitions
  */
-static void get_vardefs(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_vardefs(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nvardefs != 0) {
 	ctrl->vardefs = ALLOC(dvardef, ctrl->nvardefs);
@@ -1031,7 +1031,7 @@ dvardef *d_get_vardefs(control *ctrl)
  * NAME:	get_funcalls()
  * DESCRIPTION:	get function call table
  */
-static void get_funcalls(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_funcalls(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nfuncalls != 0) {
 	ctrl->funcalls = ALLOC(char, 2L * ctrl->nfuncalls);
@@ -1056,7 +1056,7 @@ char *d_get_funcalls(control *ctrl)
  * NAME:	get_symbols()
  * DESCRIPTION:	get symbol table
  */
-static void get_symbols(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_symbols(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nsymbols > 0) {
 	ctrl->symbols = ALLOC(dsymbol, ctrl->nsymbols);
@@ -1081,7 +1081,7 @@ dsymbol *d_get_symbols(control *ctrl)
  * NAME:	get_vtypes()
  * DESCRIPTION:	get variable types
  */
-static void get_vtypes(control *ctrl, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_vtypes(control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (ctrl->nvariables > ctrl->nvardefs) {
 	ctrl->vtypes = ALLOC(char, ctrl->nvariables - ctrl->nvardefs);
@@ -1135,7 +1135,7 @@ Uint d_get_progsize(control *ctrl)
  * NAME:	get_strings()
  * DESCRIPTION:	load strings for dataspace
  */
-static void get_strings(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_strings(dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (data->nstrings != 0) {
 	/* load strings */
@@ -1205,7 +1205,7 @@ static string *d_get_string(dataspace *data, Uint idx)
  * NAME:	get_arrays()
  * DESCRIPTION:	load arrays for dataspace
  */
-static void get_arrays(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_arrays(dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (data->narrays != 0) {
 	/* load arrays */
@@ -1322,9 +1322,9 @@ void d_new_variables(control *ctrl, value *val)
     }
     for (n = ctrl->nvardefs, var = d_get_vardefs(ctrl); n != 0; --n, var++) {
 	if (T_ARITHMETIC(var->type)) {
-	    val->type = (char) var->type;
+	    val->type = var->type;
 	} else {
-	    val->type = (char) nil_type;
+	    val->type = nil_type;
 	}
 	val++;
     }
@@ -1334,7 +1334,7 @@ void d_new_variables(control *ctrl, value *val)
  * NAME:	get_variables()
  * DESCRIPTION:	load variables
  */
-static void get_variables(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_variables(dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
 {
     data->svariables = ALLOC(svalue, data->nvariables);
     (*readv)((char *) data->svariables, data->sectors,
@@ -1374,7 +1374,7 @@ value *d_get_variable(dataspace *data, unsigned int idx)
  * NAME:	get_elts()
  * DESCRIPTION:	load elements
  */
-static void get_elts(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_elts(dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (data->eltsize != 0) {
 	/* load array elements */
@@ -1414,7 +1414,7 @@ value *d_get_elts(array *arr)
  * NAME:	get_callouts()
  * DESCRIPTION:	load callouts from swap
  */
-static void get_callouts(dataspace *data, void (*readv) P((char*, sector*, Uint, Uint)))
+static void get_callouts(dataspace *data, void (*readv) (char*, sector*, Uint, Uint))
 {
     if (data->ncallouts != 0) {
 	data->scallouts = ALLOC(scallout, data->ncallouts);
@@ -1512,9 +1512,9 @@ static void d_save_control(control *ctrl)
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
     header.strsize = ctrl->strsize;
-    header.nfuncdefs = (char) ctrl->nfuncdefs;
-    header.nvardefs = (char) ctrl->nvardefs;
-    header.nclassvars = (char) ctrl->nclassvars;
+    header.nfuncdefs = ctrl->nfuncdefs;
+    header.nvardefs = ctrl->nvardefs;
+    header.nclassvars = ctrl->nclassvars;
     header.nfuncalls = ctrl->nfuncalls;
     header.nsymbols = ctrl->nsymbols;
     header.nvariables = ctrl->nvariables;
@@ -1707,7 +1707,7 @@ static void d_save_control(control *ctrl)
 }
 
 
-static void d_count P((savedata*, value*, unsigned int));
+static void d_count (savedata*, value*, unsigned int);
 
 /*
  * NAME:	data->arrcount()
@@ -2180,7 +2180,7 @@ static bool d_save_dataspace(dataspace *data, bool swap)
 		    }
 		}
 	    }
-	    data->ncallouts = (uindex) n;
+	    data->ncallouts = n;
 	    if (n == 0) {
 		/* all callouts removed */
 		FREE(data->callouts);
@@ -2377,7 +2377,7 @@ sector d_swapout(unsigned int frag)
     if (frag != 0) {
 	/* swap out dataspace blocks */
 	data = dtail;
-	for (n = (sector) (ndata / frag), n -= (n > 0 && frag != 1); n > 0; --n) {
+	for (n = ndata / frag, n -= (n > 0 && frag != 1); n > 0; --n) {
 	    dataspace *prev;
 
 	    prev = data->prev;
@@ -2391,7 +2391,7 @@ sector d_swapout(unsigned int frag)
 
 	/* swap out control blocks */
 	ctrl = ctail;
-	for (n = (sector) (nctrl / frag); n > 0; --n) {
+	for (n = nctrl / frag; n > 0; --n) {
 	    control *prev;
 
 	    prev = ctrl->prev;
@@ -2514,11 +2514,11 @@ static void d_conv_proto(char **old, char **newp)
     p = *newp;
     *newp = args;
 
-    PROTO_CLASS(p) = (char) tclass;
-    PROTO_NARGS(p) = (char) nargs;
-    PROTO_VARGS(p) = (char) vargs;
+    PROTO_CLASS(p) = tclass;
+    PROTO_NARGS(p) = nargs;
+    PROTO_VARGS(p) = vargs;
     PROTO_HSIZE(p) = (6 + n) >> 8;
-    PROTO_LSIZE(p) = (char) (6 + n);
+    PROTO_LSIZE(p) = 6 + n;
 }
 
 /*
@@ -2661,7 +2661,7 @@ static control *d_conv_control(object *obj)
 		inherits->progoffset = sinherits->progoffset;
 		inherits->funcoffset = sinherits->funcoffset;
 		inherits->varoffset = sinherits->varoffset;
-		(inherits++)->priv = (bool) (sinherits++)->flags;
+		(inherits++)->priv = (sinherits++)->flags;
 	    } while (--n > 0);
 	    AFREE(sinherits - header.ninherits);
 
@@ -2722,7 +2722,7 @@ static control *d_conv_control(object *obj)
 
 		    /* copy program */
 		    offset = old - ctrl->prog;
-		    if (n < (Uint) (ctrl->nfuncdefs - 1)) {
+		    if (n < ctrl->nfuncdefs - 1) {
 			funcsize = ctrl->funcdefs[n + 1].offset - offset;
 		    } else {
 			funcsize = ctrl->progsize - offset;
@@ -2827,7 +2827,7 @@ static void d_copy_osvalues(svalue *sv, osvalue *osv, Uint n)
 static void d_copy_oosvalues(svalue *sv, oosvalue *oosv, Uint n)
 {
     while (n > 0) {
-	sv->type = (char) oosv->type;
+	sv->type = oosv->type;
 	sv->pad = '\0';
 	sv->oindex = oosv->oindex;
 	(sv++)->u.objcnt = (oosv++)->objcnt;

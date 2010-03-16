@@ -124,7 +124,7 @@ void opt_init()
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
 }
 
-static Uint opt_expr P((node**, int));
+static Uint opt_expr (node**, int);
 
 /*
  * NAME:	optimize->lvalue()
@@ -1543,7 +1543,7 @@ static Uint opt_expr(node **m, int pop)
     case N_SUM_EQ:
     case N_XOR_EQ:
     case N_XOR_EQ_INT:
-	return opt_asgnexp(m, (bool) pop);
+	return opt_asgnexp(m, pop);
 
     case N_ASSIGN:
 	if (n->l.left->type == N_AGGR) {

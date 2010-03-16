@@ -418,7 +418,7 @@ static void ps_reduce(parser *ps, pnode *pn, char *p)
 	    if (sn->pn->u.text != (char *) NULL) {
 		/* first alternative */
 		sn->pn->list = pn_new(&ps->pnc, symb, n, sn->pn->u.text,
-				      (ssizet) sn->pn->len, (pnode *) NULL,
+				      sn->pn->len, (pnode *) NULL,
 				      sn->pn->list);
 		sn->pn->u.text = (char *) NULL;
 		sn->pn->len = 1;
@@ -455,7 +455,7 @@ static void ps_shift(parser *ps, snode *sn, short token, char *text, ssizet len)
     if (n >= 0) {
 	/* shift works: add new snode */
 	ps->states[n] = sn_add(&ps->list, sn,
-			       pn_new(&ps->pnc, token, (unsigned short) n, text, len,
+			       pn_new(&ps->pnc, token, n, text, len,
 			       sn->pn, (pnode *) NULL),
 			       ps->states[n]);
 	return;
@@ -877,8 +877,8 @@ void ps_save(parser *ps)
 
     if (save) {
 	data = ps->data;
-	fasize = (short) (1 + (falen - 1) / USHRT_MAX);
-	lrsize = (short) (1 + (lrlen - 1) / USHRT_MAX);
+	fasize = 1 + (falen - 1) / USHRT_MAX;
+	lrsize = 1 + (lrlen - 1) / USHRT_MAX;
 	PUT_ARRVAL_NOREF(&val, arr_new(data, 3L + fasize + lrsize));
 
 	/* grammar */

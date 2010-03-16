@@ -180,7 +180,7 @@ static void save_string(savecontext *x, string *str)
     put(x, buf, size + 1);
 }
 
-static void save_mapping	P((savecontext*, array*));
+static void save_mapping (savecontext*, array*);
 
 /*
  * NAME:	save_array()
@@ -471,7 +471,7 @@ int kf_save_object(frame *f)
     }
 
     arr_clear();
-    if (x.bufsz > 0 && (Uint) P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
+    if (x.bufsz > 0 && P_write(x.fd, x.buffer, x.bufsz) != x.bufsz) {
 	P_close(x.fd);
 	AFREE(x.buffer);
 	P_unlink(tmp);
@@ -526,7 +526,7 @@ static void ac_put(restcontext *x, short type, array *a)
 	x->alist = l;
 	x->achunksz = 0;
     }
-    x->alist->a[x->achunksz].type = (char) type;
+    x->alist->a[x->achunksz].type = type;
     x->alist->a[x->achunksz++].u.array = a;
     x->narrays++;
 }
@@ -635,7 +635,7 @@ static char *restore_number(restcontext *x, char *buf, value *val)
 	    if (isdigit(*p)) {
 		flt.high += *p - '0';
 	    } else {
-		flt.high += (unsigned short) (toupper(*p) + 10 - 'A');
+		flt.high += toupper(*p) + 10 - 'A';
 	    }
 	}
 	if ((flt.high & 0x7ff0) == 0x7ff0) {
@@ -700,8 +700,8 @@ static char *restore_string(restcontext *x, char *buf, value *val)
     return p + 1;
 }
 
-static char *restore_value	P((restcontext*, char*, value*));
-static char *restore_mapping	P((restcontext*, char*, value*));
+static char *restore_value	(restcontext*, char*, value*);
+static char *restore_mapping	(restcontext*, char*, value*);
 
 /*
  * NAME:	restore_array()
@@ -1511,12 +1511,12 @@ static bool getinfo(char *path, char *file, fileinfo *finf)
     } else {
 	finf->size = sbuf.st_size;
     }
-    finf->time = (Int) sbuf.st_mtime;
+    finf->time = sbuf.st_mtime;
 
     return TRUE;
 }
 
-static int cmp P((cvoid*, cvoid*));
+static int cmp (cvoid*, cvoid*);
 
 /*
  * NAME:	cmp()

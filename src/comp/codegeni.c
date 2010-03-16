@@ -69,7 +69,7 @@ static void line_byte(int byte)
 	lchunksz = 0;
     }
 
-    tline->info[lchunksz++] = (char) byte;
+    tline->info[lchunksz++] = byte;
     line_info_size++;
 }
 
@@ -199,7 +199,7 @@ static void code_byte(char byte)
 static void code_word(unsigned short word)
 {
     code_byte(word >> 8);
-    code_byte((char) word);
+    code_byte(word);
 }
 
 /*
@@ -208,7 +208,7 @@ static void code_word(unsigned short word)
  */
 static void code_instr(int i, unsigned short line)
 {
-    code_byte((char) (i | (line_fix(line) << I_LINE_SHIFT)));
+    code_byte(i | (line_fix(line) << I_LINE_SHIFT));
     last_instruction = &tcode->code[cchunksz - 1];
 }
 
@@ -219,7 +219,7 @@ static void code_instr(int i, unsigned short line)
 static void code_kfun(int kf, unsigned short line)
 {
     code_instr(I_CALL_KFUNC, line);
-    code_byte((char) kf);
+    code_byte(kf);
 }
 
 /*
@@ -232,18 +232,17 @@ static char *code_make(unsigned short depth, int nlocals, unsigned short *size)
     char *code;
     Uint sz;
 
-    sz = 5 + here + line_info_size;
-    *size = (unsigned short) sz;
+    *size = sz = 5 + here + line_info_size;
 
     if (sz > USHRT_MAX) {
 	c_error("function too large");
     }
     code = ALLOC(char, sz);
     *code++ = depth >> 8;
-    *code++ = (char) depth;
-    *code++ = (char) nlocals;
-    *code++ = (char) (here >> 8);
-    *code++ = (char) here;
+    *code++ = depth;
+    *code++ = nlocals;
+    *code++ = here >> 8;
+    *code++ = here;
 
     /* collect all code blocks in one large block */
     for (l = lcode; l != tcode; l = l->next) {
@@ -382,8 +381,8 @@ static void jump_make(char *code)
 	j = &l->jump[i];
 	do {
 	    --j;
-	    code[j->where    ] = (char) (j->to >> 8);
-	    code[j->where + 1] = (char) (j->to);
+	    code[j->where    ] = j->to >> 8;
+	    code[j->where + 1] = j->to;
 	    if ((code[j->to] & I_INSTR_MASK) == I_JUMP) {
 		/*
 		 * add to jump-to-jump list
@@ -420,8 +419,8 @@ static void jump_make(char *code)
 	/*
 	 * jump to final destination
 	 */
-	code[j->where    ] = (char) (to >> 8);
-	code[j->where + 1] = (char) to;
+	code[j->where    ] = to >> 8;
+	code[j->where + 1] = to;
     }
 
     ljump = (jmpchunk *) NULL;
@@ -445,9 +444,9 @@ static void jump_clear()
 }
 
 
-static void cg_expr P((node*, int));
-static void cg_cond P((node*, int));
-static void cg_stmt P((node*));
+static void cg_expr (node*, int);
+static void cg_cond (node*, int);
+static void cg_stmt (node*);
 
 static int nparams;		/* number of parameters */
 
@@ -463,12 +462,12 @@ static void cg_cast(node *n)
     if ((n->mod & T_REF) != 0) {
 	n->mod = T_ARRAY;
     }
-    code_byte((char) n->mod);
+    code_byte(n->mod);
     if (n->mod == T_CLASS) {
 	l = ctrl_dstring(n->class);
-	code_byte((char) (l >> 16));
-	code_byte((char) (l >> 8));
-	code_byte((char) l);
+	code_byte(l >> 16);
+	code_byte(l >> 8);
+	code_byte(l);
     }
 }
 
@@ -489,16 +488,16 @@ static void cg_lvalue(node *n, node *type)
     switch (n->type) {
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL_LVAL | typeflag, n->line);
-	code_byte((char) (nparams - (int) n->r.number - 1));
+	code_byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_GLOBAL:
 	if ((n->r.number >> 8) == ctrl_ninherits()) {
 	    code_instr(I_PUSH_GLOBAL_LVAL | typeflag, n->line);
-	    code_byte((char) n->r.number);
+	    code_byte((int) n->r.number);
 	} else {
 	    code_instr(I_PUSH_FAR_GLOBAL_LVAL | typeflag, n->line);
-	    code_word((unsigned short) n->r.number);
+	    code_word((int) n->r.number);
 	}
 	break;
 
@@ -510,16 +509,16 @@ static void cg_lvalue(node *n, node *type)
 	switch (m->type) {
 	case N_LOCAL:
 	    code_instr(I_PUSH_LOCAL_LVAL, m->line);
-	    code_byte((char) (nparams - (int) m->r.number - 1));
+	    code_byte(nparams - (int) m->r.number - 1);
 	    break;
 
 	case N_GLOBAL:
 	    if ((m->r.number >> 8) == ctrl_ninherits()) {
 		code_instr(I_PUSH_GLOBAL_LVAL, m->line);
-		code_byte((char) m->r.number);
+		code_byte((int) m->r.number);
 	    } else {
 		code_instr(I_PUSH_FAR_GLOBAL_LVAL, m->line);
-		code_word((char) m->r.number);
+		code_word((int) m->r.number);
 	    }
 	    break;
 
@@ -542,14 +541,14 @@ static void cg_lvalue(node *n, node *type)
 	if ((type->mod & T_REF) != 0) {
 	    type->mod = T_ARRAY;
 	}
-	code_byte((char) type->mod);
+	code_byte(type->mod);
 	if (type->mod == T_CLASS) {
 	    long l;
 
 	    l = ctrl_dstring(type->class);
-	    code_byte((char) (l >> 16));
-	    code_byte((char) (l >> 8));
-	    code_byte((char) l);
+	    code_byte(l >> 16);
+	    code_byte(l >> 8);
+	    code_byte(l);
 	}
     }
 }
@@ -706,17 +705,17 @@ static int cg_funargs(node *n, bool lv)
 	if (lv && type != T_MIXED) {
 	    /* typechecked lvalues */
 	    code_instr(I_SPREAD | I_TYPE_BIT, n->line);
-	    code_byte((char) n->mod);
-	    code_byte((char) ((type & T_REF) ? T_ARRAY : type));
+	    code_byte(n->mod);
+	    code_byte((type & T_REF) ? T_ARRAY : type);
 	    if (type == T_CLASS) {
 		l = ctrl_dstring(n->l.left->class);
-		code_byte((char) (l >> 16));
-		code_byte((char) (l >> 8));
-		code_byte((char) l);
+		code_byte(l >> 16);
+		code_byte(l >> 8);
+		code_byte(l);
 	    }
 	} else {
 	    code_instr(I_SPREAD, n->line);
-	    code_byte((char) n->mod);
+	    code_byte(n->mod);
 	}
     } else {
 	cg_expr(n, FALSE);
@@ -789,11 +788,11 @@ static void cg_expr(node *n, int pop)
 
     case N_AGGR:
 	if (n->mod == T_MAPPING) {
-	    i = (unsigned short) cg_map_aggr(n->l.left);
+	    i = cg_map_aggr(n->l.left);
 	    code_instr(I_AGGREGATE, n->line);
 	    code_byte(1);
 	} else {
-	    i = (unsigned short) cg_aggr(n->l.left);
+	    i = cg_aggr(n->l.left);
 	    code_instr(I_AGGREGATE, n->line);
 	    code_byte(0);
 	}
@@ -826,11 +825,11 @@ static void cg_expr(node *n, int pop)
 	    cg_expr(n->r.right, FALSE);
 	    if (l <= 127) {
 		code_instr(I_PUSH_INT1, n->line);
-		code_byte((char) l);
+		code_byte(l);
 	    } else {
 		code_instr(I_PUSH_INT4, n->line);
-		code_word((unsigned short) (l >> 16));
-		code_word((unsigned short) l);
+		code_word(l >> 16);
+		code_word(l);
 	    }
 	    code_kfun(KF_STORE_AGGR, n->line);
 	} else {
@@ -898,17 +897,17 @@ static void cg_expr(node *n, int pop)
 	code_instr(I_PUSH_FLOAT, n->line);
 	code_word(n->l.fhigh);
 	code_word((int) (n->r.flow >> 16));
-	code_word((unsigned short) n->r.flow);
+	code_word((int) n->r.flow);
 	break;
 
     case N_FUNC:
-	i = (unsigned short) cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL);
+	i = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
 	    code_kfun((int) n->r.number, n->line);
 	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
-		code_byte((char) i);
+		code_byte(i);
 	    }
 	    break;
 
@@ -916,18 +915,18 @@ static void cg_expr(node *n, int pop)
 	    if ((n->r.number & 0xff00) == 0) {
 		/* auto object */
 		code_instr(I_CALL_AFUNC, n->line);
-		code_byte((char) n->r.number);
+		code_byte((int) n->r.number);
 	    } else {
 		code_instr(I_CALL_DFUNC, n->line);
-		code_word((unsigned short) n->r.number);
+		code_word((int) n->r.number);
 	    }
-	    code_byte((char) i);
+	    code_byte(i);
 	    break;
 
 	case FCALL:
 	    code_instr(I_CALL_FUNC, n->line);
 	    code_word(ctrl_gencall((long) n->r.number));
-	    code_byte((char) i);
+	    code_byte(i);
 	    break;
 	}
 	break;
@@ -947,10 +946,10 @@ static void cg_expr(node *n, int pop)
     case N_GLOBAL:
 	if ((n->r.number >> 8) == ctrl_ninherits()) {
 	    code_instr(I_PUSH_GLOBAL, n->line);
-	    code_byte((char) n->r.number);
+	    code_byte((int) n->r.number);
 	} else {
 	    code_instr(I_PUSH_FAR_GLOBAL, n->line);
-	    code_word((unsigned short) n->r.number);
+	    code_word((int) n->r.number);
 	}
 	break;
 
@@ -977,11 +976,11 @@ static void cg_expr(node *n, int pop)
 	l = ctrl_dstring(n->r.right->l.string) & 0xffffffL;
 	if (l >= -128 && l <= 127) {
 	    code_instr(I_PUSH_INT1, n->line);
-	    code_byte((char) l);
+	    code_byte(l);
 	} else {
 	    code_instr(I_PUSH_INT4, n->line);
 	    code_word(l >> 16);
-	    code_word((unsigned short) l);
+	    code_word(l);
 	}
 	code_kfun(KF_INSTANCEOF, n->line);
 	break;
@@ -989,11 +988,11 @@ static void cg_expr(node *n, int pop)
     case N_INT:
 	if (n->l.number >= -128 && n->l.number <= 127) {
 	    code_instr(I_PUSH_INT1, n->line);
-	    code_byte((char) n->l.number);
+	    code_byte((int) n->l.number);
 	} else {
 	    code_instr(I_PUSH_INT4, n->line);
 	    code_word((int) (n->l.number >> 16));
-	    code_word((unsigned short) n->l.number);
+	    code_word((int) n->l.number);
 	}
 	break;
 
@@ -1034,7 +1033,7 @@ static void cg_expr(node *n, int pop)
 
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL, n->line);
-	code_byte((char) (nparams - (int) n->r.number - 1));
+	code_byte(nparams - (int) n->r.number - 1);
 	break;
 
     case N_LOR:
@@ -1248,15 +1247,15 @@ static void cg_expr(node *n, int pop)
 	l = ctrl_dstring(n->l.string);
 	if ((l & 0x01000000L) && (unsigned short) l < 256) {
 	    code_instr(I_PUSH_STRING, n->line);
-	    code_byte((char) l);
+	    code_byte((int) l);
 	} else if ((unsigned short) l < 256) {
 	    code_instr(I_PUSH_NEAR_STRING, n->line);
-	    code_byte((char) (l >> 16));
-	    code_byte((char) l);
+	    code_byte((int) (l >> 16));
+	    code_byte((int) l);
 	} else {
 	    code_instr(I_PUSH_FAR_STRING, n->line);
-	    code_byte((char) (l >> 16));
-	    code_word((char) l);
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
 	}
 	break;
 
@@ -1324,18 +1323,18 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_SUM:
-	i = (unsigned short) cg_sumargs(n);
+	i = cg_sumargs(n);
 	code_kfun(KF_SUM, 0);
-	code_byte((char) i);
+	code_byte(i);
 	break;
 
     case N_SUM_EQ:
 	cg_fetch(n->l.left);
 	code_instr(I_PUSH_INT1, 0);
 	code_byte(-2);
-	i = (unsigned short) cg_sumargs(n->r.right) + 1;
+	i = cg_sumargs(n->r.right) + 1;
 	code_kfun(KF_SUM, 0);
-	code_byte((char) i);
+	code_byte(i);
 	code_instr(I_STORE, 0);
 	break;
 
@@ -1575,8 +1574,8 @@ static void cg_switch_int(node *n)
 	/* implicit default */
 	size++;
     }
-    code_word((unsigned short) size);
-    code_byte((char) sz);
+    code_word(size);
+    code_byte(sz);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
@@ -1590,16 +1589,16 @@ static void cg_switch_int(node *n)
 	case 4:
 	    code_word((int) (l >> 16));
 	case 2:
-	    code_word((unsigned short) l);
+	    code_word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((char) (l >> 16));
-	    code_word((unsigned short) l);
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((char) l);
+	    code_byte((int) l);
 	    break;
 	}
 	switch_table[i++].jump = jump_addr((jmplist *) NULL);
@@ -1647,8 +1646,8 @@ static void cg_switch_range(node *n)
 	/* implicit default */
 	size++;
     }
-    code_word((unsigned short) size);
-    code_byte((char) sz);
+    code_word(size);
+    code_byte(sz);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
@@ -1662,16 +1661,16 @@ static void cg_switch_range(node *n)
 	case 4:
 	    code_word((int) (l >> 16));
 	case 2:
-	    code_word((unsigned short) l);
+	    code_word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((char) (l >> 16));
-	    code_word((unsigned short) l);
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((char) l);
+	    code_byte((int) l);
 	    break;
 	}
 	l = m->l.left->r.number;
@@ -1679,16 +1678,16 @@ static void cg_switch_range(node *n)
 	case 4:
 	    code_word((int) (l >> 16));
 	case 2:
-	    code_word((unsigned short) l);
+	    code_word((int) l);
 	    break;
 
 	case 3:
-	    code_byte((char) (l >> 16));
-	    code_word((unsigned short) l);
+	    code_byte((int) (l >> 16));
+	    code_word((int) l);
 	    break;
 
 	case 1:
-	    code_byte((char) l);
+	    code_byte((int) l);
 	    break;
 	}
 	switch_table[i++].jump = jump_addr((jmplist *) NULL);
@@ -1735,7 +1734,7 @@ static void cg_switch_str(node *n)
 	/* implicit default */
 	size++;
     }
-    code_word((unsigned short) size);
+    code_word(size);
 
     table = switch_table;
     switch_table = ALLOCA(case_label, size);
@@ -1756,8 +1755,8 @@ static void cg_switch_str(node *n)
 	Int l;
 
 	l = ctrl_dstring(m->l.left->l.string);
-	code_byte((char) (l >> 16));
-	code_word((unsigned short) l);
+	code_byte((int) (l >> 16));
+	code_word((int) l);
 	switch_table[i++].jump = jump_addr((jmplist *) NULL);
 	m = m->r.right;
     }
@@ -1888,7 +1887,7 @@ static void cg_stmt(node *n)
 	    cg_expr(m->l.left->l.left, FALSE);
 	    cg_expr(m->l.left->r.right, FALSE);
 	    code_instr(I_RLIMITS, 0);
-	    code_byte((char) m->mod);
+	    code_byte(m->mod);
 	    cg_stmt(m->r.right);
 	    if (!(m->flags & F_END)) {
 		code_instr(I_RETURN, 0);
@@ -2036,7 +2035,7 @@ char *cg_function(string *fname, node *n, int nvar, int npar,
 
     nparams = npar;
     cg_stmt(n);
-    prog = code_make((unsigned short) (depth + nvar - npar), nvar - npar, size);
+    prog = code_make(depth + nvar - npar, nvar - npar, size);
     jump_make(prog + 5);
     nfuncs++;
 

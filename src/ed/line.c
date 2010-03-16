@@ -326,7 +326,7 @@ static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
 	lb->txtsz += txtsz;
 	txtsz = BLOCK_SIZE - lb->txtsz;
 	strcpy(lb->wb->buf + txtsz, text);
-	*((short *)(bp2 + 1)) = (short) txtsz;
+	*((short *)(bp2 + 1)) = txtsz;
     }
 
     return bp2;
@@ -369,7 +369,7 @@ static blk *bk_putln(linebuf *lb, blk *bp, char *text)
     lb->txtsz += txtsz;
     txtsz = BLOCK_SIZE - lb->txtsz;
     strcpy(lb->wb->buf + txtsz, text);
-    ((short *)(bp + 1)) [bp->lines++] = (short) txtsz;
+    ((short *)(bp + 1)) [bp->lines++] = txtsz;
 
     lb->blksz += blksz;
 
@@ -381,7 +381,7 @@ static blk *bk_putln(linebuf *lb, blk *bp, char *text)
  * DESCRIPTION:	read a block of lines from function getline. continue until
  *		getline returns 0. Return the block.
  */
-block bk_new(linebuf *lb, char *(*getline) P((void)))
+block bk_new(linebuf *lb, char *(*getline)())
 {
     blk *bp;
     char *text;
@@ -506,10 +506,10 @@ static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 	    bb1.index2 = 0;
 	} else {
 	    bb1.llast = mid;
-	    bb1.index2 = (short) (bp->lines - size);
+	    bb1.index2 = bp->lines - size;
 	}
 	bb2.lfirst = mid;
-	bb2.index1 = (short) size;
+	bb2.index1 = size;
 
 	/* block 1 */
 	if (b1 != (block *) NULL) {
@@ -706,12 +706,13 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline) P((char*)), int reverse)
+void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline)(char*), 
+	int reverse)
 {
     blk *bp;
 
     lb->putline = putline;
-    lb->reverse = (bool) reverse;
+    lb->reverse = reverse;
     bp = bk_load(lb, b);
     bk_put1(lb, bp, (reverse) ? bp->lines - idx - size : idx, size);
 }

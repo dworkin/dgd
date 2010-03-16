@@ -71,9 +71,9 @@ void i_init(char *create, int flag)
 
     creator = create;
     clen = strlen(create);
-    stricttc = (bool) flag;
+    stricttc = flag;
 
-    nil_value.type = (char) (nil_type = (stricttc) ? T_NIL : T_INT);
+    nil_value.type = nil_type = (stricttc) ? T_NIL : T_INT;
 }
 
 /*
@@ -566,7 +566,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     /* lvalues */
     for (n = a->size; i < n; i++) {
 	(--f->sp)->type = T_ALVALUE;
-	f->sp->oindex = (uindex) vtype;
+	f->sp->oindex = vtype;
 	f->sp->u.array = a;
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = i;
@@ -607,11 +607,11 @@ void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint class)
     inherit = f->ctrl->inherits[inherit].varoffset;
     if (f->lwobj == (array *) NULL) {
 	(--f->sp)->type = T_LVALUE;
-	f->sp->oindex = (uindex) vtype;
+	f->sp->oindex = vtype;
 	f->sp->u.lval = d_get_variable(f->data, inherit + index);
     } else {
 	(--f->sp)->type = T_ALVALUE;
-	f->sp->oindex = (uindex) vtype;
+	f->sp->oindex = vtype;
 	arr_ref(f->sp->u.array = f->lwobj);
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = 2 + inherit + index;
@@ -721,14 +721,14 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	}
 	i = arr_index(lval->u.array, (long) ival->u.number);
 	lval->type = T_ALVALUE;
-	lval->oindex = (uindex) vtype;
+	lval->oindex = vtype;
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = i;
 	break;
 
     case T_MAPPING:
 	lval->type = T_MLVALUE;
-	lval->oindex = (uindex) vtype;
+	lval->oindex = vtype;
 	*f->lip++ = *ival;
 	break;
 
@@ -744,9 +744,9 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    }
 	    i = str_index(lval->u.lval->u.string, (long) ival->u.number);
 	    lval->type = T_SLVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    f->lip->type = T_STRING;
-	    f->lip->oindex = (uindex) i;
+	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = lval->u.lval->u.string);
 	    break;
 
@@ -757,7 +757,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    }
 	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
 	    lval->type = T_ALVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    arr_ref(lval->u.array = lval->u.lval->u.array);
 	    f->lip->type = T_INT;
 	    (f->lip++)->u.number = i;
@@ -765,7 +765,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 
 	case T_MAPPING:
 	    lval->type = T_MLVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    arr_ref(lval->u.array = lval->u.lval->u.array);
 	    *f->lip++ = *ival;
 	    break;
@@ -786,9 +786,9 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    }
 	    i = str_index(val->u.string, (long) ival->u.number);
 	    lval->type = T_SALVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    f->lip->type = T_STRING;
-	    f->lip->oindex = (uindex) i;
+	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = val->u.string);
 	    break;
 
@@ -800,7 +800,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    i = arr_index(val->u.array, (long) ival->u.number);
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(lval->u.array);	/* has to be second */
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    f->lip[-1].u.number = i;
 	    break;
@@ -809,7 +809,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_MLVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    f->lip[-1] = *ival;
 	    break;
@@ -830,9 +830,9 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    }
 	    i = str_index(val->u.string, (long) ival->u.number);
 	    lval->type = T_SMLVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    f->lip->type = T_STRING;
-	    f->lip->oindex = (uindex) i;
+	    f->lip->oindex = i;
 	    str_ref((f->lip++)->u.string = val->u.string);
 	    break;
 
@@ -845,7 +845,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(lval->u.array);	/* has to be second */
 	    lval->type = T_ALVALUE;
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    i_del_value(&f->lip[-1]);
 	    f->lip[-1].type = T_INT;
@@ -855,7 +855,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	case T_MAPPING:
 	    arr_ref(val->u.array);	/* has to be first */
 	    arr_del(lval->u.array);	/* has to be second */
-	    lval->oindex = (uindex) vtype;
+	    lval->oindex = vtype;
 	    lval->u.array = val->u.array;
 	    i_del_value(&f->lip[-1]);
 	    f->lip[-1] = *ival;
@@ -966,7 +966,7 @@ void i_cast(frame *f, value *val, unsigned int type, Uint class)
 	}
 	type = T_OBJECT;
     }
-    if (val->type != (char) type && (val->type != T_LWOBJECT || type != T_OBJECT) &&
+    if (val->type != type && (val->type != T_LWOBJECT || type != T_OBJECT) &&
 	(!VAL_NIL(val) || !T_POINTER(type))) {
 	i_typename(tnbuf, type);
 	if (strchr("aeiuoy", tnbuf[0]) != (char *) NULL) {
@@ -1018,7 +1018,7 @@ static value *istr(value *val, string *str, ssizet i, value *v)
 
     PUT_STRVAL_NOREF(val, (str->primary == (strref *) NULL && str->ref == 1) ?
 			   str : str_new(str->text, (long) str->len));
-    val->u.string->text[i] = (char) v->u.number;
+    val->u.string->text[i] = v->u.number;
     return val;
 }
 
@@ -1854,7 +1854,7 @@ static void i_interpret(frame *f, char *pc)
 	    kf = &KFUN(FETCH1U(pc));
 	    if (PROTO_VARGS(kf->proto) != 0) {
 		/* variable # of arguments */
-		u = (unsigned short) (FETCH1U(pc) + size);
+		u = FETCH1U(pc) + size;
 		size = 0;
 	    } else {
 		/* fixed # of arguments */
@@ -1864,7 +1864,7 @@ static void i_interpret(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
-	    u = (unsigned short) (*kf->func)(f, u, kf);
+	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
 		    error("Too few arguments for kfun %s", kf->name);
@@ -2115,7 +2115,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 	pc += PROTO_SIZE(pc);
     }
     f.sp = prev_f->sp;
-    f.nargs = (unsigned short) nargs;
+    f.nargs = nargs;
     cframe = &f;
     if (f.lwobj != (array *) NULL) {
 	arr_ref(f.lwobj);
@@ -2162,10 +2162,8 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     if (f.func->class & C_COMPILED) {
 	Uint l;
 
-	FETCH3U(pc, l);
-
 	/* compiled function */
-	(*pcfunctions[l])(&f);
+	(*pcfunctions[FETCH3U(pc, l)])(&f);
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;
@@ -2318,7 +2316,7 @@ static unsigned short i_line(frame *f)
     while (pc < f->pc) {
 	instr = FETCH1U(pc);
 
-	offset = (short) (instr >> I_LINE_SHIFT);
+	offset = instr >> I_LINE_SHIFT;
 	if (offset <= 2) {
 	    /* simple offset */
 	    line += offset;
@@ -2524,7 +2522,7 @@ bool i_call_tracei(frame *ftop, Int idx, value *v)
 	return FALSE;
     }
 
-    for (f = ftop, n -= (unsigned short) (idx + 1); n != 0; f = f->prev, --n) ;
+    for (f = ftop, n -= idx + 1; n != 0; f = f->prev, --n) ;
     PUT_ARRVAL(v, i_func_trace(f, ftop->data));
     return TRUE;
 }
@@ -2557,9 +2555,8 @@ array *i_call_trace(frame *ftop)
  */
 static void emptyhandler(frame *f, Int depth)
 {
-    /* reference parameters */
-    f;
-    depth;
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(depth);
 }
 
 /*

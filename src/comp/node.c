@@ -72,7 +72,7 @@ node *node_new(unsigned int line)
     n->type = N_INT;
     n->flags = 0;
     n->mod = 0;
-    n->line = (unsigned short) line;
+    n->line = line;
     n->class = (string *) NULL;
     n->l.left = (node *) NULL;
     n->r.right = (node *) NULL;
@@ -122,9 +122,9 @@ node *node_nil()
     node *n;
 
     n = node_new(tk_line());
-    n->type = (char) nil_node;
+    n->type = nil_node;
     n->flags = F_CONST;
-    n->mod = (unsigned short) nil_type;
+    n->mod = nil_type;
     n->l.number = 0;
 
     return n;
@@ -158,7 +158,7 @@ node *node_var(unsigned int type, int idx)
 
     n = node_new(0);
     n->type = N_VAR;
-    n->mod = (unsigned short) type;
+    n->mod = type;
     n->l.number = idx;
 
     return n;
@@ -174,7 +174,7 @@ node *node_type(int type, string *tclass)
 
     n = node_new(tk_line());
     n->type = N_TYPE;
-    n->mod = (unsigned short) type;
+    n->mod = type;
     n->class = tclass;
     if (tclass != (string *) NULL) {
 	str_ref(tclass);
@@ -193,7 +193,7 @@ node *node_fcall(int mod, string *tclass, char *func, Int call)
 
     n = node_new(tk_line());
     n->type = N_FUNC;
-    n->mod = (unsigned short) mod;
+    n->mod = mod;
     n->class = tclass;
     n->l.ptr = func;
     n->r.number = call;
@@ -210,8 +210,8 @@ node *node_mon(int type, int mod, node *left)
     node *n;
 
     n = node_new(tk_line());
-    n->type = (char) type;
-    n->mod = (unsigned short) mod;
+    n->type = type;
+    n->mod = mod;
     n->l.left = left;
     n->r.right = (node *) NULL;
 
@@ -227,8 +227,8 @@ node *node_bin(int type, int mod, node *left, node *right)
     node *n;
 
     n = node_new(tk_line());
-    n->type = (char) type;
-    n->mod = (unsigned short) mod;
+    n->type = type;
+    n->mod = mod;
     n->l.left = left;
     n->r.right = right;
 

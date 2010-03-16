@@ -168,11 +168,11 @@ static char *it_save(item *it, char *buf, char *grammar)
 
     while (it != (item *) NULL) {
 	offset = it->ref - grammar;
-	*buf++ = (char) offset >> 8;
-	*buf++ = (char) offset;
+	*buf++ = offset >> 8;
+	*buf++ = offset;
 	*buf++ = it->ruleno >> 8;
-	*buf++ = (char) it->ruleno;
-	*buf++ = (char) it->offset;
+	*buf++ = it->ruleno;
+	*buf++ = it->offset;
 	it = it->next;
     }
 
@@ -282,17 +282,17 @@ static char *ss_load(char *buf, char **rbuf, srpstate *state)
 static char *ss_save(srpstate *state, char *buf, char **rbuf)
 {
     *buf++ = state->nitem >> 8;
-    *buf++ = (char) state->nitem;
+    *buf++ = state->nitem;
     *buf++ = state->nred >> 8;
-    *buf++ = (char) state->nred;
-    *buf++ = (char) (state->shoffset >> 16);
-    *buf++ = (char) (state->shoffset >> 8);
-    *buf++ = (char) state->shoffset;
-    *buf++ = (char) (state->gtoffset >> 16);
-    *buf++ = (char) (state->gtoffset >> 8);
-    *buf++ = (char) state->gtoffset;
+    *buf++ = state->nred;
+    *buf++ = state->shoffset >> 16;
+    *buf++ = state->shoffset >> 8;
+    *buf++ = state->shoffset;
+    *buf++ = state->gtoffset >> 16;
+    *buf++ = state->gtoffset >> 8;
+    *buf++ = state->gtoffset;
     *buf++ = state->shcheck >> 8;
-    *buf++ = (char) state->shcheck;
+    *buf++ = state->shcheck;
 
     if (state->nred > 0) {
 	memcpy(*rbuf, REDA(state), state->nred * 4);
@@ -714,18 +714,18 @@ bool srp_save(srp *lr, char **str, Uint *len)
     /* header */
     *buf++ = SRP_VERSION;
     *buf++ = lr->nstates >> 8;
-    *buf++ = (char) lr->nstates;
+    *buf++ = lr->nstates;
     *buf++ = lr->nexpanded >> 8;
-    *buf++ = (char) lr->nexpanded;
-    *buf++ = (char) (lr->nred >> 16);
-    *buf++ = (char) (lr->nred >> 8);
-    *buf++ = (char) lr->nred;
-    *buf++ = (char) (lr->gap >> 16);
-    *buf++ = (char) (lr->gap >> 8);
-    *buf++ = (char) lr->gap;
-    *buf++ = (char) (lr->spread >> 16);
-    *buf++ = (char) (lr->spread >> 8);
-    *buf++ = (char) lr->spread;
+    *buf++ = lr->nexpanded;
+    *buf++ = lr->nred >> 16;
+    *buf++ = lr->nred >> 8;
+    *buf++ = lr->nred;
+    *buf++ = lr->gap >> 16;
+    *buf++ = lr->gap >> 8;
+    *buf++ = lr->gap;
+    *buf++ = lr->spread >> 16;
+    *buf++ = lr->spread >> 8;
+    *buf++ = lr->spread;
 
     /* save states */
     rbuf = buf + lr->nstates * 12;
@@ -751,12 +751,12 @@ bool srp_save(srp *lr, char **str, Uint *len)
 
     /* tmp header */
     *buf++ = 0;
-    *buf++ = (char) (lr->nitem >> 16);
-    *buf++ = (char) (lr->nitem >> 8);
-    *buf++ = (char) lr->nitem;
-    *buf++ = (char) (lr->nshift >> 16);
-    *buf++ = (char) (lr->nshift >> 8);
-    *buf++ = (char) lr->nshift;
+    *buf++ = lr->nitem >> 16;
+    *buf++ = lr->nitem >> 8;
+    *buf++ = lr->nitem;
+    *buf++ = lr->nshift >> 16;
+    *buf++ = lr->nshift >> 8;
+    *buf++ = lr->nshift;
 
     /* save items */
     for (i = lr->nstates, state = lr->states; i > 0; --i, state++) {
@@ -788,12 +788,12 @@ static Int srp_pack(srp *lr, unsigned short *check, unsigned short *from, unsign
     shifts = ALLOCA(char, j = (Uint) 4 * n + 7);
     p = shifts + 5;
     *p++ = n >> 8;
-    *p++ = (char) n;
+    *p++ = n;
     for (i = 0; i < n; i++) {
 	*p++ = from[i] >> 8;
-	*p++ = (char) from[i];
+	*p++ = from[i];
 	*p++ = to[i] >> 8;
-	*p++ = (char) to[i];
+	*p++ = to[i];
     }
     sl = sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, shifts, j);
     if (sl->shifts != NOSHIFT) {
@@ -886,19 +886,19 @@ next:
 	j = from[--n] * 2 + offset;
 	p = &lr->data[j];
 	*p++ = to[n] >> 8;
-	*p = (char) to[n];
+	*p = to[n];
 	p = &lr->check[j];
 	*p++ = *check >> 8;
-	*p = (char) *check;
+	*p = *check;
     } while (n != 0);
 
     p = lr->shtab + sl->shifts;
     offset /= 2;
     *p++ = *check >> 8;
-    *p++ = (char) *check;
-    *p++ = (char) (offset >> 16);
-    *p++ = (char) (offset >> 8);
-    *p = (char) offset;
+    *p++ = *check;
+    *p++ = offset >> 16;
+    *p++ = offset >> 8;
+    *p = offset;
     return offset;
 }
 
@@ -990,12 +990,12 @@ static srpstate *srp_expand(srp *lr, srpstate *state)
 	p = it->ref;
 	if (it->offset == UCHAR(p[1])) {
 	    /* reduction */
-	    n = (unsigned short) (p - lr->grammar);
+	    n = p - lr->grammar;
 	    p = &REDA(state)[(Uint) nred++ << 2];
 	    *p++ = n >> 8;
-	    *p++ = (char) n;
+	    *p++ = n;
 	    *p++ = it->ruleno >> 8;
-	    *p = (char) it->ruleno;
+	    *p = it->ruleno;
 	} else {
 	    /* shift/goto */
 	    p += 2 + it->offset;
@@ -1061,7 +1061,7 @@ static srpstate *srp_expand(srp *lr, srpstate *state)
 		unsigned short save;
 
 		/* grow table */
-		save = (unsigned short) (state - lr->states);
+		save = state - lr->states;
 		lr->states = REALLOC(lr->states, srpstate, lr->nstates,
 				     lr->sttsize <<= 1);
 		state = lr->states + save;
@@ -1073,14 +1073,14 @@ static srpstate *srp_expand(srp *lr, srpstate *state)
      * add shifts and gotos to packed mapping
      */
     if (nshift != 0) {
-	state->shcheck = (unsigned short) (state - lr->states);
+	state->shcheck = state - lr->states;
 	state->shoffset = srp_pack(lr, &state->shcheck, tokens, targets + ngoto,
 				   nshift);
     }
     if (ngoto != 0) {
 	unsigned short dummy;
 
-	dummy = (unsigned short) -258;
+	dummy = -258;
 	state->gtoffset = srp_pack(lr, &dummy, symbols, targets, ngoto);
     }
     AFREE(targets);
@@ -1108,7 +1108,7 @@ short srp_check(srp *lr, unsigned int num, unsigned short *nredp, char **redp)
 	    /*
 	     * too much temporary data: attempt to expand all states
 	     */
-	    save = (unsigned short) (state - lr->states);
+	    save = state - lr->states;
 	    for (state = lr->states; lr->nstates != lr->nexpanded; state++) {
 		if (lr->nstates > SHRT_MAX ||
 		    lr->srpsize > (Uint) MAX_AUTOMSZ * USHRT_MAX) {

@@ -69,8 +69,8 @@ hashtab *ht_new(unsigned int size, unsigned int maxlen, int mem)
 
     ht = (hashtab *) ALLOC(char, sizeof(hashtab) + sizeof(hte*) * (size - 1));
     ht->size = size;
-    ht->maxlen = (unsigned short) maxlen;
-    ht->mem = (bool) mem;
+    ht->maxlen = maxlen;
+    ht->mem = mem;
     memset(ht->table, '\0', size * sizeof(hte*));
 
     return ht;

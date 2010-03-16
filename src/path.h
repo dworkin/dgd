@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern char *path_resolve	P((char*, char*));
-extern char *path_string	P((char*, char*, unsigned int));
-extern char *path_from		P((char*, char*, char*));
-extern char *path_ed_read	P((char*, char*));
-extern char *path_ed_write	P((char*, char*));
-extern char *path_include	P((char*, char*, char*, string***, int*));
+extern char *path_resolve	(char*, char*);
+extern char *path_string	(char*, char*, unsigned int);
+extern char *path_from		(char*, char*, char*);
+extern char *path_ed_read	(char*, char*);
+extern char *path_ed_write	(char*, char*);
+extern char *path_include	(char*, char*, char*, string***, int*);

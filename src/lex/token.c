@@ -222,7 +222,7 @@ bool tk_include(char *file, string **strs, int nstr)
 
 	ibuffer = tbuffer;
 	ibuffer->fd = fd;
-	len = (ssizet) strlen(file);
+	len = strlen(file);
 	if (len >= STRINGSZ - 1) {
 	    len = STRINGSZ - 2;
 	}
@@ -300,7 +300,7 @@ void tk_setfilename(char *file)
  */
 void tk_header(int incl)
 {
-    do_include = (bool) incl;
+    do_include = incl;
 }
 
 /*
@@ -316,7 +316,7 @@ void tk_setpp(int pp)
 # define uc(c)	{ \
 		    if ((c) != EOF) { \
 			if ((c) == LF && tbuffer == ibuffer) ibuffer->line--; \
-			*(tbuffer->up)++ = (char)(c); \
+			*(tbuffer->up)++ = (c); \
 		    } \
 		}
 
@@ -465,7 +465,7 @@ static char *tk_esc(char *p)
 {
     int c, i, n;
 
-    switch (c = *p++ = (char) gc()) {
+    switch (c = *p++ = gc()) {
     case 'a': c = BEL; break;
     case 'b': c = BS; break;
     case 't': c = HT; break;
@@ -486,7 +486,7 @@ static char *tk_esc(char *p)
 	n = 3;
 	--p;
 	do {
-	    *p++ = (char) c;
+	    *p++ = c;
 	    i <<= 3;
 	    i += c - '0';
 	    c = gc();
@@ -502,7 +502,7 @@ static char *tk_esc(char *p)
 	    i = 0;
 	    n = 3;
 	    do {
-		*p++ = (char) c;
+		*p++ = c;
 		i <<= 4;
 		if (isdigit(c)) {
 		    i += c - '0';
@@ -547,13 +547,13 @@ static int tk_string(char quote)
 	if (c == quote) {
 	    if (pp_level > 0) {
 		/* keep the quotes if not on top level */
-		*p++ = (char) c;
+		*p++ = c;
 	    }
 	    break;
 	} else if (c == '\\') {
 	    if (pp_level > 0 || do_include) {
 		/* recognize, but do not translate escape sequence */
-		*p++ = (char) c;
+		*p++ = c;
 		p = tk_esc(p);
 		c = *--p;
 	    } else {
@@ -568,7 +568,7 @@ static int tk_string(char quote)
 	    uc(c);
 	    break;
 	}
-	*p++ = (char) c;
+	*p++ = c;
 	if (p > yyend - 4) {
 	    n += p - (yyend - 4);
 	    p = yyend - 4;
@@ -596,7 +596,7 @@ int tk_gettok()
     bool is_float, badoctal;
 
 # define TEST(x, tok)	if (c == x) { c = tok; break; }
-# define CHECK(x, tok)	c = gc(); *p++ = (char) c; TEST(x, tok); --p; uc(c)
+# define CHECK(x, tok)	c = gc(); *p++ = c; TEST(x, tok); --p; uc(c)
 
     result = 0;
     overflow = FALSE;
@@ -605,7 +605,7 @@ int tk_gettok()
     yyend = yytext + MAX_LINE_SIZE - 1;
     p = yytext;
     c = gc();
-    *p++ = (char) c;
+    *p++ = c;
     switch (c) {
     case LF:
 	if (tbuffer == ibuffer) {
@@ -668,7 +668,7 @@ int tk_gettok()
 
     case '&':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('&', LAND);
 	TEST('=', AND_EQ);
 	--p; uc(c);
@@ -682,7 +682,7 @@ int tk_gettok()
 
     case '+':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('+', PLUS_PLUS);
 	TEST('=', PLUS_EQ);
 	--p; uc(c);
@@ -691,7 +691,7 @@ int tk_gettok()
 
     case '-':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('>', RARROW);
 	TEST('-', MIN_MIN);
 	TEST('=', MIN_EQ);
@@ -710,7 +710,7 @@ int tk_gettok()
 	    is_float = TRUE;
 	    while (isdigit(c)) {
 		if (p < yyend) {
-		    *p++ = (char) c;
+		    *p++ = c;
 		}
 		c = gc();
 	    }
@@ -722,16 +722,16 @@ int tk_gettok()
 		 * Come here when 'e' or 'E' has been spotted after a number.
 		 */
 	    exponent:
-		exp = (char) c;
+		exp = c;
 		sign = 0;
 		q = p;
 		if (p < yyend) {
-		    *p++ = (char) c;
+		    *p++ = c;
 		}
 		c = gc();
 		if (c == '+' || c == '-') {
 		    if (p < yyend) {
-			*p++ = (char) c;
+			*p++ = c;
 		    }
 		    sign = c;
 		    c = gc();
@@ -739,7 +739,7 @@ int tk_gettok()
 		if (isdigit(c)) {
 		    do {
 			if (p < yyend) {
-			    *p++ = (char) c;
+			    *p++ = c;
 			}
 			c = gc();
 		    } while (isdigit(c));
@@ -788,7 +788,7 @@ int tk_gettok()
 	    }
 	    break;
 	} else if (c == '.') {
-	    *p++ = (char) c;
+	    *p++ = c;
 	    CHECK('.', ELLIPSIS);
 	    c = DOT_DOT;
 	} else {
@@ -805,7 +805,7 @@ int tk_gettok()
 	    *p = '\0';
 	    return p[-1] = ' ';
 	}
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('=', DIV_EQ);
 	--p; uc(c);
 	c = '/';
@@ -823,7 +823,7 @@ int tk_gettok()
 	    return tk_string('>');
 	}
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('=', LE);
 	TEST('-', LARROW);
 	if (c == '<') {
@@ -842,7 +842,7 @@ int tk_gettok()
 
     case '>':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('=', GE);
 	if (c == '>') {
 	    CHECK('=', RSHIFT_EQ);
@@ -860,7 +860,7 @@ int tk_gettok()
 
     case '|':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	TEST('|', LOR);
 	TEST('=', OR_EQ);
 	--p; uc(c);
@@ -871,12 +871,12 @@ int tk_gettok()
 	badoctal = FALSE;
 	c = gc();
 	if (c == 'x' || c == 'X') {
-	    *p++ = (char) c;
+	    *p++ = c;
 	    c = gc();
 	    if (isxdigit(c)) {
 		do {
 		    if (p < yyend) {
-			*p++ = (char) c;
+			*p++ = c;
 		    }
 		    if (result > 0x0fffffffL) {
 			overflow = TRUE;
@@ -902,7 +902,7 @@ int tk_gettok()
 		    badoctal = TRUE;
 		}
 		if (p < yyend) {
-		    *p++ = (char) c;
+		    *p++ = c;
 		}
 		if (result > 0x1fffffffL) {
 		    overflow = TRUE;
@@ -915,7 +915,7 @@ int tk_gettok()
 
 	    if (c == '.') {
 		if (p < yyend) {
-		    *p++ = (char) c;
+		    *p++ = c;
 		}
 		c = gc();
 		if (c != '.') {
@@ -952,14 +952,14 @@ int tk_gettok()
 		break;
 	    }
 	    if (p < yyend) {
-		*p++ = (char) c;
+		*p++ = c;
 	    }
 	}
 	yynumber = result;
 
 	if (c == '.') {
 	    if (p < yyend) {
-		*p++ = (char) c;
+		*p++ = c;
 	    }
 	    c = gc();
 	    if (c != '.') {
@@ -996,7 +996,7 @@ int tk_gettok()
 		break;
 	    }
 	    if (p < yyend) {
-		*p++ = (char) c;
+		*p++ = c;
 	    }
 	}
 	uc(c);
@@ -1008,7 +1008,7 @@ int tk_gettok()
 
     case '\'':
 	c = gc();
-	*p++ = (char) c;
+	*p++ = c;
 	if (c == '\'') {
 	    if (pp_level == 0) {
 		error("too short character constant");
@@ -1025,7 +1025,7 @@ int tk_gettok()
 		yynumber = c;
 	    }
 	    c = gc();
-	    *p++ = (char) c;
+	    *p++ = c;
 	    if (c != '\'') {
 		if (pp_level == 0) {
 		    error("illegal character constant");

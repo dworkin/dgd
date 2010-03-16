@@ -156,8 +156,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <MinimalRebuild>true</MinimalRebuild>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
@@ -165,7 +164,8 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;YYFREE=free;YYMALLOC=malloc;;;;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4127;4310</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4127;4310;4244;4018;4389;4245;4702;4146;4709</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -183,15 +183,15 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;YYFREE=free;YYMALLOC=malloc;;;;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>4127;4310</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4127;4310;4244;4018;4389;4245;4702;4146;4709</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

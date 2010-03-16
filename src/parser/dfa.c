@@ -157,7 +157,7 @@ static int cs_eclass(Uint *cset, char *eclass, int class)
 		    c += 8;
 		}
 		if (x & 1) {
-		    eclass[c] = (char) class;
+		    eclass[c] = class;
 		    n++;
 		}
 		x >>= 1;
@@ -285,7 +285,7 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
     } else {
 	n = 0;
 	for (p = trans; *p != '\0'; p++) {
-	    for (i = UCHAR(*p); ; i = (unsigned short) (place + 1)) {
+	    for (i = UCHAR(*p); ; i = place + 1) {
 		place = UCHAR(rgx[i]) + 1;
 		if (!a[place]) {
 		    a[place] = TRUE;
@@ -293,12 +293,12 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
 			switch (rgx[place]) {
 			case '|':
 			    /* branch */
-			    b[n++] = (char) (place + 2);
+			    b[n++] = place + 2;
 			    continue;
 
 			case '+':
 			    /* pattern+ */
-			    b[n++] = (char) (place + 2);
+			    b[n++] = place + 2;
 			    if (place < i) {
 				continue;
 			    }
@@ -311,7 +311,7 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
 				 i = j, j >>= 1) {
 				heap[i] = heap[j];
 			    }
-			    heap[i] = (char) place;
+			    heap[i] = place;
 			    break;
 			}
 		    }
@@ -333,13 +333,13 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
 		    switch (rgx[place]) {
 		    case '|':
 			/* branch */
-			q[n++] = (char) (place + 2);
+			q[n++] = place + 2;
 			q[n++] = UCHAR(rgx[place + 1]) + 1;
 			continue;
 
 		    case '+':
 			/* pattern+ */
-			q[n++] = (char) (place + 2);
+			q[n++] = place + 2;
 			continue;
 		    }
 
@@ -349,7 +349,7 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
 			 i = j, j >>= 1) {
 			heap[i] = heap[j];
 		    }
-		    heap[i] = (char) place;
+		    heap[i] = place;
 		}
 	    }
 	} while (*p != '\0');
@@ -370,7 +370,7 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
 	    }
 	    heap[i] = heap[j];
 	}
-	heap[i] = (char) n;
+	heap[i] = n;
     }
     *p = '\0';
 
@@ -538,7 +538,7 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
 	    break;
 	}
 	if (found != 0) {
-	    *t++ = (char) (p - rp->rgx + 1);
+	    *t++ = p - rp->rgx + 1;
 	}
     }
     *t = '\0';
@@ -578,15 +578,15 @@ static char *rp_save(rgxposn *rp, char *buf, char *grammar)
 {
     unsigned short rgx;
 
-    rgx = (unsigned short) (rp->rgx - grammar);
+    rgx = rp->rgx - grammar;
     *buf++ = rgx >> 8;
-    *buf++ = (char) rgx;
+    *buf++ = rgx;
     *buf++ = rp->ruleno >> 8;
-    *buf++ = (char) rp->ruleno;
+    *buf++ = rp->ruleno;
     if (rp->final) {
 	*buf++ = '\0';
     }
-    *buf++ = (char) rp->size;
+    *buf++ = rp->size;
     memcpy(buf, rp->chain.name, rp->size + 3);
     return buf + rp->size + 3;
 }
@@ -749,7 +749,7 @@ static char *ds_loadtmp(dfastate *state, char *sbuf, char *pbuf, hashtab *htab, 
 static char *ds_save(dfastate *state, char *buf)
 {
     buf[0] = state->final >> 8;
-    buf[1] = (char) state->final;
+    buf[1] = state->final;
     buf += 2;
     if (state->ntrans == 0) {
 	*buf++ = TRANS_NONE;
@@ -775,10 +775,10 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
     Uint n;
 
     *sbuf++ = state->nposn >> 8;
-    *sbuf++ = (char) state->nposn;
+    *sbuf++ = state->nposn;
     *sbuf++ = state->nstr >> 8;
-    *sbuf++ = (char) state->nstr;
-    *sbuf++ = (char) state->len;
+    *sbuf++ = state->nstr;
+    *sbuf++ = state->len;
 
     rrp = POSNA(state);
     for (i = state->nposn; i > 0; --i) {
@@ -788,15 +788,15 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
 	    *pbuf = rp_save(rp, *pbuf, grammar);
 	}
 	n = ptab[rp->nposn];
-	*sbuf++ = (char) (n >> 16);
-	*sbuf++ = (char) (n >> 8);
-	*sbuf++ = (char) n;
+	*sbuf++ = n >> 16;
+	*sbuf++ = n >> 8;
+	*sbuf++ = n;
     }
 
     s = STRA(state);
     for (i = state->nstr; i > 0; --i) {
 	*sbuf++ = *s >> 8;
-	*sbuf++ = (char) *s++;
+	*sbuf++ = *s++;
     }
 
     return sbuf;
@@ -914,7 +914,7 @@ dfa *dfa_new(char *source, char *grammar)
     state->str.a = (nstrings > 2) ?
 		    ALLOC(unsigned short, nstrings) : (unsigned short *) NULL;
     state->trans = (char *) NULL;
-    state->nposn = (unsigned short) fa->nposn;
+    state->nposn = fa->nposn;
     state->nstr = nstrings;
     state->ntrans = state->len = 0;
     state->final = -1;
@@ -943,7 +943,7 @@ dfa *dfa_new(char *source, char *grammar)
 		if (final && state->final < 0) {
 		    state->final = i;
 		}
-		posn[0] = (char) (1 + j / 255);
+		posn[0] = 1 + j / 255;
 		posn[1] = 1 + j % 255;
 		*rrp++ = rp_new(fa->posnhtab, posn, size, &fa->rpc, rgx,
 				(Uint) j++, i, final);
@@ -1220,12 +1220,12 @@ bool dfa_save(dfa *fa, char **str, Uint *len)
 		 ALLOC(char, *len = fa->dfasize + fa->tmpssize + fa->tmppsize);
     *buf++ = DFA_VERSION;
     *buf++ = fa->nstates >> 8;
-    *buf++ = (char) fa->nstates;
+    *buf++ = fa->nstates;
     *buf++ = fa->nexpanded >> 8;
-    *buf++ = (char) fa->nexpanded;
+    *buf++ = fa->nexpanded;
     *buf++ = fa->endstates >> 8;
-    *buf++ = (char) fa->endstates;
-    *buf++ = (char) (fa->ecnum - 1);
+    *buf++ = fa->endstates;
+    *buf++ = fa->ecnum - 1;
     memcpy(buf, fa->eclass, 256);
     buf += 256;
 
@@ -1246,9 +1246,9 @@ bool dfa_save(dfa *fa, char **str, Uint *len)
     fa->tmpstr = buf;
     pbuf = buf + fa->tmpssize;
     *buf++ = 0;
-    *buf++ = (char) (fa->nposn >> 16);
-    *buf++ = (char) (fa->nposn >> 8);
-    *buf++ = (char) fa->nposn;
+    *buf++ = fa->nposn >> 16;
+    *buf++ = fa->nposn >> 8;
+    *buf++ = fa->nposn;
     memcpy(buf, fa->ecsplit, fa->ecnum);
     buf += fa->ecnum;
 
@@ -1289,9 +1289,9 @@ static void dfa_ecsplit(dfa *fa, Uint *iset, Uint *cset, Uint ncset)
 		 */
 		memcpy(fa->ecset + (n << 3), ec1, sizeof(ec1));
 		memcpy(fa->ecset + (fa->ecnum << 3), ec2, sizeof(ec2));
-		fa->ecsplit[fa->ecnum] = (char) n;
+		fa->ecsplit[fa->ecnum] = n;
 		fa->ecmembers[n] -= fa->ecmembers[fa->ecnum] =
-				    (char) cs_eclass(ec2, fa->eclass, fa->ecnum);
+				    cs_eclass(ec2, fa->eclass, fa->ecnum);
 		fa->ecnum++;
 		fa->dfasize += fa->nexpanded << 1;
 		fa->tmpssize++;
@@ -1378,7 +1378,7 @@ static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate,
 	}
     }
 
-    return (unsigned short) posnsize;
+    return posnsize;
 }
 
 /*
@@ -1525,7 +1525,7 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
 	}
 
 	*p++ = n >> 8;
-	*p++ = (char) n;
+	*p++ = n;
     }
 
     if (state->nstr != 0) {
@@ -1586,7 +1586,7 @@ short dfa_scan(dfa *fa, string *str, ssizet *strlen, char **token, ssizet *len)
 			 * too much temporary data: attempt to expand
 			 * all states
 			 */
-			save = (unsigned short) (state - fa->states);
+			save = state - fa->states;
 			for (state = &fa->states[1];
 			     fa->nstates != fa->nexpanded + fa->endstates;
 			     state++) {

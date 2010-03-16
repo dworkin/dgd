@@ -64,35 +64,35 @@ struct _object_ {
 
 # define OBJ_NONE		UINDEX_MAX
 
-extern void	  o_init		P((unsigned int, Uint));
-extern object	 *o_oread		P((unsigned int));
-extern object	 *o_owrite		P((unsigned int));
-extern void	  o_new_plane		P((void));
-extern void	  o_commit_plane	P((void));
-extern void	  o_discard_plane	P((void));
+extern void	  o_init		(unsigned int, Uint);
+extern object	 *o_oread		(unsigned int);
+extern object	 *o_owrite		(unsigned int);
+extern void	  o_new_plane		(void);
+extern void	  o_commit_plane	(void);
+extern void	  o_discard_plane	(void);
 
-extern bool	  o_space		P((void));
-extern object	 *o_new			P((char*, control*));
-extern object	 *o_clone		P((object*));
-extern void	  o_lwobj		P((object*));
-extern void	  o_upgrade		P((object*, control*, frame*));
-extern void	  o_upgraded		P((object*, object*));
-extern void	  o_del			P((object*, frame*));
+extern bool	  o_space		(void);
+extern object	 *o_new			(char*, control*);
+extern object	 *o_clone		(object*);
+extern void	  o_lwobj		(object*);
+extern void	  o_upgrade		(object*, control*, frame*);
+extern void	  o_upgraded		(object*, object*);
+extern void	  o_del			(object*, frame*);
 
-extern char	 *o_name		P((char*, object*));
-extern object	 *o_find		P((char*, int));
-extern control   *o_control		P((object*));
-extern dataspace *o_dataspace		P((object*));
+extern char	 *o_name		(char*, object*);
+extern object	 *o_find		(char*, int);
+extern control   *o_control		(object*);
+extern dataspace *o_dataspace		(object*);
 
-extern void	  o_clean		P((void));
-extern uindex	  o_count		P((void));
-extern bool	  o_dump		P((int));
-extern void	  o_restore		P((int, unsigned int));
-extern bool	  o_copy		P((Uint));
+extern void	  o_clean		(void);
+extern uindex	  o_count		(void);
+extern bool	  o_dump		(int);
+extern void	  o_restore		(int, unsigned int);
+extern bool	  o_copy		(Uint);
 
-extern void	  swapout		P((void));
-extern void	  dump_state		P((void));
-extern void	  finish		P((void));
+extern void	  swapout		(void);
+extern void	  dump_state		(void);
+extern void	  finish		(void);
 
 extern object    *otable;
 extern char	 *ocmap;

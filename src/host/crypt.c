@@ -477,14 +477,14 @@ string *P_decrypt_des_key(frame *f, string *keystr)
 	key -= 2;
 	k = key[0];
 	*p++ = k >> 24;
-	*p++ = (char) (k >> 16);
-	*p++ = (char) (k >> 8);
-	*p++ = (char) k;
+	*p++ = k >> 16;
+	*p++ = k >> 8;
+	*p++ = k;
 	k = key[1];
 	*p++ = k >> 24;
-	*p++ = (char) (k >> 16);
-	*p++ = (char) (k >> 8);
-	*p++ = (char) k;
+	*p++ = k >> 16;
+	*p++ = k >> 8;
+	*p++ = k;
     }
 
     return str;
@@ -582,13 +582,13 @@ string *P_encrypt_des(frame *f, string *keystr, string *mesg)
 	EXG2(R, L, T,  4, 0x0f0f0f0fL);
 
 	*q++ = R >> 24;
-	*q++ = (char) (R >> 16);
-	*q++ = (char) (R >> 8);
-	*q++ = (char) R;
+	*q++ = R >> 16;
+	*q++ = R >> 8;
+	*q++ = R;
 	*q++ = L >> 24;
-	*q++ = (char) (L >> 16);
-	*q++ = (char) (L >> 8);
-	*q++ = (char) L;
+	*q++ = L >> 16;
+	*q++ = L >> 8;
+	*q++ = L;
     }
 
     if (len != 0) {
@@ -650,13 +650,13 @@ string *P_encrypt_des(frame *f, string *keystr, string *mesg)
 	EXG2(R, L, T,  4, 0x0f0f0f0fL);
 
 	*q++ = R >> 24;
-	*q++ = (char) (R >> 16);
-	*q++ = (char) (R >> 8);
-	*q++ = (char) R;
+	*q++ = R >> 16;
+	*q++ = R >> 8;
+	*q++ = R;
 	*q++ = L >> 24;
-	*q++ = (char) (L >> 16);
-	*q++ = (char) (L >> 8);
-	*q++ = (char) L;
+	*q++ = L >> 16;
+	*q++ = L >> 8;
+	*q++ = L;
     }
 
     return str;

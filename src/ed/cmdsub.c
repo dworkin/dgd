@@ -25,18 +25,18 @@
  * This file defines the command subroutines for edcmd.c
  */
 
-extern char *skipst		P((char*));
-extern char *pattern		P((char*, int, char*));
-extern void  cb_count		P((cmdbuf*));
-extern void  not_in_global	P((cmdbuf*));
-extern void  cb_do		P((cmdbuf*, Int));
-extern void  cb_buf		P((cmdbuf*, block));
-extern void  add		P((cmdbuf*, Int, block, Int));
-extern block delete		P((cmdbuf*, Int, Int));
-extern void  change		P((cmdbuf*, Int, Int, block));
-extern void  startblock		P((cmdbuf*));
-extern void  addblock		P((cmdbuf*, char*));
-extern void  endblock		P((cmdbuf*));
+extern char *skipst		(char*);
+extern char *pattern		(char*, int, char*);
+extern void  cb_count		(cmdbuf*);
+extern void  not_in_global	(cmdbuf*);
+extern void  cb_do		(cmdbuf*, Int);
+extern void  cb_buf		(cmdbuf*, block);
+extern void  add		(cmdbuf*, Int, block, Int);
+extern block delete		(cmdbuf*, Int, Int);
+extern void  change		(cmdbuf*, Int, Int, block);
+extern void  startblock		(cmdbuf*);
+extern void  addblock		(cmdbuf*, char*);
+extern void  endblock		(cmdbuf*);
 
 
 /*
@@ -65,7 +65,7 @@ Int cb_search(cmdbuf *cb, Int first, Int last, int reverse)
     }
 
     cb->lineno = 0;
-    cb->ignorecase = (bool) IGNORECASE(cb->vars);
+    cb->ignorecase = IGNORECASE(cb->vars);
     eb_range(cb->edbuf, first, last, find, reverse);
     /* not found */
     return 0;
@@ -491,7 +491,7 @@ static int cb_shift(cmdbuf *cb)
  */
 int cb_lshift(cmdbuf *cb)
 {
-    cb->shift = (short) -SHIFTWIDTH(cb->vars);
+    cb->shift = -SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
 }
 
@@ -501,7 +501,7 @@ int cb_lshift(cmdbuf *cb)
  */
 int cb_rshift(cmdbuf *cb)
 {
-    cb->shift = (short) SHIFTWIDTH(cb->vars);
+    cb->shift = SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
 }
 
@@ -651,7 +651,7 @@ static void indent(char *text)
 		    cb->flags |= CB_COMMENT;
 		    if (do_indent) {
 			/* this line hasn't been indented yet */
-			cb->shift = (short) (cb->ind[0] - idx);
+			cb->shift = cb->ind[0] - idx;
 			shift(text);
 			do_indent = FALSE;
 		    } else {
@@ -673,7 +673,7 @@ static void indent(char *text)
 				idx2++;
 			    }
 			}
-			cb->shift = (short) (idx2 - idx);
+			cb->shift = idx2 - idx;
 		    }
 		    p++;
 		    continue;
@@ -777,16 +777,16 @@ static void indent(char *text)
 		}
 		/* shift the current line, if appropriate */
 		if (do_indent) {
-		    cb->shift = (short) (i - idx);
+		    cb->shift = i - idx;
 		    if (i > 0 && token != RHOOK &&
 		      (*sp == LOPERATOR || *sp == LHOOK)) {
 			/* half indent after ( [ ({ (HACK!) */
-			cb->shift += (short) (SHIFTWIDTH(cb->vars) / 2);
+			cb->shift += SHIFTWIDTH(cb->vars) / 2;
 		    } else if (token == TOKEN && *sp == LBRACKET &&
 		      (strcmp(ident, "case") == 0 ||
 		      strcmp(ident, "default") == 0)) {
 			/* back up if this is a switch label */
-			cb->shift -= (short) SHIFTWIDTH(cb->vars);
+			cb->shift -= SHIFTWIDTH(cb->vars);
 		    }
 		    shift(text);
 		    do_indent = FALSE;
@@ -802,7 +802,7 @@ static void indent(char *text)
 		    i -= SHIFTWIDTH(cb->vars);
 		}
 
-		*--sp = (char) token;
+		*--sp = token;
 		*--ip = i;
 		break;
 	    }
@@ -947,12 +947,12 @@ static void sub(cmdbuf *cb, char *text, unsigned int size)
     p = cb->buffer + cb->buflen;
     q = text;
     if (cb->flags & CB_TLOWER) {	/* lowercase one letter */
-	*p++ = (char) tolower(*q);
+	*p++ = tolower(*q);
 	q++;
 	cb->flags &= ~CB_TLOWER;
 	--i;
     } else if (cb->flags & CB_TUPPER) {	/* uppercase one letter */
-	*p++ = (char) toupper(*q);
+	*p++ = toupper(*q);
 	q++;
 	cb->flags &= ~CB_TUPPER;
 	--i;
@@ -960,13 +960,13 @@ static void sub(cmdbuf *cb, char *text, unsigned int size)
 
     if (cb->flags & CB_LOWER) {		/* lowercase string */
 	while (i > 0) {
-	    *p++ = (char) tolower(*q);
+	    *p++ = tolower(*q);
 	    q++;
 	    --i;
 	}
     } else if (cb->flags & CB_UPPER) {		/* uppercase string */
 	while (i > 0) {
-	    *p++ = (char) toupper(*q);
+	    *p++ = toupper(*q);
 	    q++;
 	    --i;
 	}

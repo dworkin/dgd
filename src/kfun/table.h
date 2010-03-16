@@ -29,20 +29,20 @@ extern char  kfind[];	/* kfun indirection table */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
 
-typedef void (*extfunc) P((frame*, int, value*));
+typedef void (*extfunc) (frame*, int, value*);
 typedef struct {
     char *name;		/* added kfun name */
     char *proto;	/* simplified prototype */
     extfunc func;	/* function address */
 } extkfunc;
 
-extern void kf_clear	P((void));
-extern void kf_ext_kfun	P((extkfunc*, int));
-extern void kf_init	P((void));
-extern int  kf_func	P((char*));
-extern void kf_reclaim	P((void));
-extern bool kf_dump	P((int));
-extern void kf_restore	P((int, int));
+extern void kf_clear	(void);
+extern void kf_ext_kfun	(extkfunc*, int);
+extern void kf_init	(void);
+extern int  kf_func	(char*);
+extern void kf_reclaim	(void);
+extern bool kf_dump	(int);
+extern void kf_restore	(int, int);
 
 # define KF_ADD		 0
 # define KF_ADD_INT	 1

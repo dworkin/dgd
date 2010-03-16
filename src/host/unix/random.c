@@ -18,7 +18,7 @@
 
 # include "dgd.h"
 
-extern long random	P((void));
+extern long random	(void);
 
 /*
  * NAME:	P->srandom()

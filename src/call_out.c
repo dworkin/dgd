@@ -89,7 +89,7 @@ bool co_init(unsigned int max)
     }
     running.list = immediate.list = 0;
     memset(cycbuf, '\0', sizeof(cycbuf));
-    cycbrk = cotabsz = (uindex) max;
+    cycbrk = cotabsz = max;
     queuebrk = 0;
     nzero = nshort = 0;
     cotime = 0;
@@ -182,7 +182,7 @@ static call_out *newcallout(cbuf *list, Uint t)
     if (flist != 0) {
 	/* get callout from free list */
 	i = flist;
-	flist = (uindex) cotab[i].next;
+	flist = cotab[i].next;
     } else {
 	/* allocate new callout */
 # ifdef DEBUG
@@ -232,7 +232,7 @@ static void freecallout(cbuf *cyc, uindex j, uindex i, Uint t)
 
     l = cotab;
     if (i == j) {
-	cyc->list = (uindex) l[i].next;
+	cyc->list = l[i].next;
 	if (cyc->list != 0) {
 	    l[cyc->list].count = l[i].count - 1;
 	} else if (t != 0 && t == timeout) {
@@ -265,7 +265,7 @@ static void freecallout(cbuf *cyc, uindex j, uindex i, Uint t)
 	    /* followed by free callout */
 	    if (cycbrk == flist) {
 		/* first in the free list */
-		flist = (uindex) l->next;
+		flist = l->next;
 	    } else {
 		/* connect previous to next */
 		cotab[l->prev].next = l->next;
@@ -380,7 +380,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	}
 	t += delay;
 	if (mdelay != 0xffff) {
-	    m = (unsigned short) (*mp + mdelay);
+	    m = *mp + mdelay;
 	    if (m >= 1000) {
 		m -= 1000;
 		t++;
@@ -420,10 +420,10 @@ void co_new(unsigned int oindex, unsigned int handle, Uint t,
 	if (m == 0xffff) {
 	    m = 0;
 	}
-	co = enqueue(t, (unsigned short) m);
+	co = enqueue(t, m);
     }
-    co->handle = (uindex) handle;
-    co->oindex = (uindex) oindex;
+    co->handle = handle;
+    co->oindex = oindex;
 }
 
 /*
@@ -451,7 +451,7 @@ static bool rmshort(cbuf *cyc, uindex i, uindex handle, Uint t)
 	     * list contains more than 1 element
 	     */
 	    j = k;
-	    k = (uindex) l[j].next;
+	    k = l[j].next;
 	    do {
 		if (l[k].oindex == i && l[k].handle == handle) {
 		    /* found it */
@@ -459,7 +459,7 @@ static bool rmshort(cbuf *cyc, uindex i, uindex handle, Uint t)
 		    return TRUE;
 		}
 		j = k;
-	    } while ((k = (uindex) l[j].next) != 0);
+	    } while ((k = l[j].next) != 0);
 	}
     }
     return FALSE;
@@ -516,7 +516,7 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 	 * try to find the callout in the cyclic buffer
 	 */
 	if (t > timestamp && t < timestamp + CYCBUF_SIZE &&
-	    rmshort(&cycbuf[t & CYCBUF_MASK], (uindex) oindex, (uindex) handle, t)) {
+	    rmshort(&cycbuf[t & CYCBUF_MASK], oindex, handle, t)) {
 	    return;
 	}
     }
@@ -525,8 +525,8 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 	/*
 	 * possible immediate callout
 	 */
-	if (rmshort(&immediate, (uindex) oindex, (uindex) handle, 0) ||
-	    rmshort(&running, (uindex) oindex, (uindex) handle, 0)) {
+	if (rmshort(&immediate, oindex, handle, 0) ||
+	    rmshort(&running, oindex, handle, 0)) {
 	    return;
 	}
     }
@@ -542,7 +542,7 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 	}
 # endif
 	if (l->oindex == oindex && l->handle == handle) {
-	    dequeue((uindex) (l - cotab));
+	    dequeue(l - cotab);
 	    return;
 	}
 	l++;
@@ -761,7 +761,7 @@ Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 	m -= 1000;
 	t++;
     }
-    *mtime = (unsigned short) (rmtime - m);
+    *mtime = rmtime - m;
     return rtime - t;
 }
 
@@ -886,7 +886,7 @@ bool co_dump(int fd)
 	    last = immediate.last;
 	}
 	cb = &cycbuf[timestamp & CYCBUF_MASK];
-	last = (uindex) (dc[last + n - cotabsz].next = cb->list);
+	last = dc[last + n - cotabsz].next = cb->list;
 	cb->list = list;
     }
 
@@ -1018,11 +1018,11 @@ void co_restore(int fd, Uint t, int conv)
 	cb = &cycbuf[timestamp & CYCBUF_MASK];
 	immediate.list = cb->list;
 	for (i = nzero - 1, last = cb->list; i != 0; --i) {
-	    last = (uindex) cotab[last].next;
+	    last = cotab[last].next;
 	}
 	immediate.last = last;
 	cotab[immediate.list].count = nzero;
-	cb->list = (uindex) cotab[last].next;
+	cb->list = cotab[last].next;
 	cotab[last].next = 0;
     }
 

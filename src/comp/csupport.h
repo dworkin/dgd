@@ -24,7 +24,7 @@ typedef struct {
     bool priv;			/* privately inherited? */
 } pcinherit;
 
-typedef void (*pcfunc) P((frame*));
+typedef void (*pcfunc) (frame*);
 
 typedef struct {
     uindex oindex;		/* precompiled object */
@@ -72,11 +72,11 @@ extern precomp	*precompiled[];	/* table of precompiled objects */
 extern pcfunc	*pcfunctions;	/* table of precompiled functions */
 
 
-bool   pc_preload	P((char*, char*));
-array *pc_list		P((dataspace*));
-void   pc_control	P((control*, object*));
-bool   pc_dump		P((int));
-void   pc_restore	P((int, int));
+bool   pc_preload	(char*, char*);
+array *pc_list		(dataspace*);
+void   pc_control	(control*, object*);
+bool   pc_dump		(int);
+void   pc_restore	(int, int);
 
 
 # define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =
@@ -91,29 +91,29 @@ void   pc_restore	P((int, int));
 /*
  * prototypes for kfuns that might be called directly from precompiled code
  */
-int kf_add P((frame*)), kf_add1 P((frame*)), kf_and P((frame*)),
-    kf_div P((frame*)), kf_eq P((frame*)), kf_ge P((frame*)), kf_gt P((frame*)),
-    kf_le P((frame*)), kf_lshift P((frame*)), kf_lt P((frame*)),
-    kf_mod P((frame*)), kf_mult P((frame*)), kf_ne P((frame*)),
-    kf_neg P((frame*)), kf_not P((frame*)), kf_or P((frame*)),
-    kf_rangeft P((frame*)), kf_rangef P((frame*)), kf_ranget P((frame*)),
-    kf_range P((frame*)), kf_rshift P((frame*)), kf_sub P((frame*)),
-    kf_sub1 P((frame*)), kf_tofloat P((frame*)), kf_toint P((frame*)),
-    kf_tst P((frame*)), kf_umin P((frame*)), kf_xor P((frame*)),
-    kf_tostring P((frame*)), kf_ckrangeft P((frame*)), kf_ckrangef P((frame*)),
-    kf_ckranget P((frame*)), kf_sum P((frame*, int));
+int kf_add (frame*), kf_add1 (frame*), kf_and (frame*),
+    kf_div (frame*), kf_eq (frame*), kf_ge (frame*), kf_gt (frame*),
+    kf_le (frame*), kf_lshift (frame*), kf_lt (frame*),
+    kf_mod (frame*), kf_mult (frame*), kf_ne (frame*),
+    kf_neg (frame*), kf_not (frame*), kf_or (frame*),
+    kf_rangeft (frame*), kf_rangef (frame*), kf_ranget (frame*),
+    kf_range (frame*), kf_rshift (frame*), kf_sub (frame*),
+    kf_sub1 (frame*), kf_tofloat (frame*), kf_toint (frame*),
+    kf_tst (frame*), kf_umin (frame*), kf_xor (frame*),
+    kf_tostring (frame*), kf_ckrangeft (frame*), kf_ckrangef (frame*),
+    kf_ckranget (frame*), kf_sum (frame*, int);
 
-int kf_this_object P((frame*)), kf_call_trace P((frame*)),
-    kf_this_user P((frame*)), kf_users P((frame*)), kf_time P((frame*)),
-    kf_swapout P((frame*)), kf_dump_state P((frame*)), kf_shutdown P((frame*));
+int kf_this_object (frame*), kf_call_trace (frame*),
+    kf_this_user (frame*), kf_users (frame*), kf_time (frame*),
+    kf_swapout (frame*), kf_dump_state (frame*), kf_shutdown (frame*);
 
-void call_kfun		P((frame*, int));
-void call_kfun_arg	P((frame*, int, int));
-Int  xdiv		P((Int, Int));
-Int  xmod		P((Int, Int));
-Int  xlshift		P((Int, Int));
-Int  xrshift		P((Int, Int));
-bool poptruthval	P((frame*));
-void new_rlimits	P((frame*));
-int  switch_range	P((Int, Int*, int));
-int  switch_str		P((value*, control*, char*, int));
+void call_kfun		(frame*, int);
+void call_kfun_arg	(frame*, int, int);
+Int  xdiv		(Int, Int);
+Int  xmod		(Int, Int);
+Int  xlshift		(Int, Int);
+Int  xrshift		(Int, Int);
+bool poptruthval	(frame*);
+void new_rlimits	(frame*);
+int  switch_range	(Int, Int*, int);
+int  switch_str		(value*, control*, char*, int);

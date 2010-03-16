@@ -65,7 +65,7 @@ static void f_erange()
     error("Result too large");
 }
 
-static void f_sub P((flt*, flt*));
+static void f_sub (flt*, flt*);
 
 /*
  * NAME:	f_add()
@@ -294,7 +294,7 @@ static void f_mult(flt *a, flt *b)
     m >>= 15;
     m += ahbh;
     l |= m << 17;
-    ah = (short) m >> 14;
+    ah = m >> 14;
 
     a->sign ^= b->sign;
     a->exp += b->exp - BIAS;
@@ -375,7 +375,7 @@ static void f_div(flt *a, flt *b)
 	    }
 	}
 
-	n[--i] = (unsigned short) q;
+	n[--i] = q;
 	if (i == 0) {
 	    break;
 	}
@@ -412,7 +412,7 @@ static void f_div(flt *a, flt *b)
     }
     low &= 0x7ffffffcL;
 
-    a->high = (unsigned short) high;
+    a->high = high;
     a->low = low;
 }
 
@@ -568,7 +568,7 @@ static Int f_ftoi(flt *a)
 
     i = (((Uint) a->high << 17) | (a->low >> 14)) >> (BIAS + 31 - a->exp);
 
-    return (int) ((a->sign == 0) ? i : -(int) i);
+    return (a->sign == 0) ? i : -i;
 }
 
 /*
@@ -1096,7 +1096,7 @@ void flt_ldexp(xfloat *f, Int exp)
     if (exp > 1023 + 1023) {
 	f_erange();
     }
-    f->high = (unsigned short) ((f->high & 0x800f) | (exp << 4));
+    f->high = (f->high & 0x800f) | (exp << 4);
 }
 
 /*
@@ -1186,7 +1186,7 @@ static void f_exp(flt *a)
     b = *a;
     f_mult(&b, &log2e);
     f_round(&b);
-    n = (short) f_ftoi(&b);
+    n = f_ftoi(&b);
     c = b;
     f_mult(&c, &c1);
     f_sub(a, &c);
@@ -1685,7 +1685,7 @@ void flt_pow(xfloat *f1, xfloat *f2)
     f_mult(&a, &aloga[n]);
     f_add(&a, &aloga[n]);
     if (a.exp != 0) {
-	a.exp += (unsigned short) i;
+	a.exp += i;
     }
     a.sign = sign;
 
@@ -1716,7 +1716,7 @@ static void f_sqrt(flt *a)
     if (n & 1) {
 	f_mult(a, &sqrt2);
     }
-    a->exp += (unsigned short) n >> 1;
+    a->exp += n >> 1;
 
     c = b;
     f_div(&c, a);

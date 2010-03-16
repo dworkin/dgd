@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-string *asn_add	   P((frame*, string*, string*, string*));
-string *asn_sub	   P((frame*, string*, string*, string*));
-int     asn_cmp    P((frame*, string*, string*));
-string *asn_mult   P((frame*, string*, string*, string*));
-string *asn_div	   P((frame*, string*, string*, string*));
-string *asn_mod	   P((frame*, string*, string*));
-string *asn_pow	   P((frame*, string*, string*, string*));
-string *asn_lshift P((frame*, string*, Int, string*));
-string *asn_rshift P((frame*, string*, Int));
-string *asn_and    P((frame*, string*, string*));
-string *asn_or     P((frame*, string*, string*));
-string *asn_xor    P((frame*, string*, string*));
+string *asn_add	   (frame*, string*, string*, string*);
+string *asn_sub	   (frame*, string*, string*, string*);
+int     asn_cmp    (frame*, string*, string*);
+string *asn_mult   (frame*, string*, string*, string*);
+string *asn_div	   (frame*, string*, string*, string*);
+string *asn_mod	   (frame*, string*, string*);
+string *asn_pow	   (frame*, string*, string*, string*);
+string *asn_lshift (frame*, string*, Int, string*);
+string *asn_rshift (frame*, string*, Int);
+string *asn_and    (frame*, string*, string*);
+string *asn_or     (frame*, string*, string*);
+string *asn_xor    (frame*, string*, string*);

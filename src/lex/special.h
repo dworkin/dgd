@@ -16,5 +16,5 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void  special_define	P((void));
-extern char *special_replace	P((char*));
+extern void  special_define	(void);
+extern char *special_replace	(char*);

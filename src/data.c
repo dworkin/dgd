@@ -230,7 +230,7 @@ static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
 		    if (co->co_next != 0) {
 			data->callouts[co->co_next - 1].co_prev = handle;
 		    }
-		    handle = (uindex) (co - data->callouts + 1);
+		    handle = co - data->callouts + 1;
 		}
 		data->plane->flags |= MOD_CALLOUT;
 	    } else {
@@ -249,7 +249,7 @@ static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
 
     co->time = time;
     co->mtime = mtime;
-    co->nargs = (uindex) nargs;
+    co->nargs = nargs;
     memcpy(co->val, v, sizeof(co->val));
     switch (nargs) {
     default:
@@ -300,7 +300,7 @@ static void d_free_call_out(dataspace *data, unsigned int handle)
 	data->callouts[n - 1].co_prev = handle;
     }
     co->co_next = n;
-    data->fcallouts = (uindex) handle;
+    data->fcallouts = handle;
 
     data->plane->flags |= MOD_CALLOUT;
 }
@@ -369,8 +369,8 @@ static copatch *cop_new(dataplane *plane, copatch **c, int type,
     }
 
     /* initialize */
-    cop->type = (short) type;
-    cop->handle = (uindex) handle;
+    cop->type = type;
+    cop->handle = handle;
     if (type == COP_ADD) {
 	cop->aco = *co;
     } else {
@@ -380,7 +380,7 @@ static copatch *cop_new(dataplane *plane, copatch **c, int type,
 	i_ref_value(v++);
     }
     cop->time = time;
-    cop->mtime = (unsigned short) mtime;
+    cop->mtime = mtime;
     cop->plane = plane;
     cop->queue = q;
 
@@ -436,7 +436,7 @@ static void cop_replace(copatch *cop, dcallout *co, Uint time,
 	i_ref_value(v++);
     }
     cop->time = time;
-    cop->mtime = (unsigned short) mtime;
+    cop->mtime = mtime;
     cop->queue = q;
 }
 
@@ -1390,7 +1390,7 @@ string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
 	data->callouts[n - 1].co_prev = handle;
     }
     co->co_next = n;
-    data->fcallouts = (uindex) handle;
+    data->fcallouts = handle;
 
     data->plane->flags |= MOD_CALLOUT;
     return str;
@@ -1499,7 +1499,7 @@ array *d_list_callouts(dataspace *host, dataspace *data)
  */
 void d_set_varmap(control *ctrl, unsigned int nvar, unsigned short *vmap)
 {
-    ctrl->vmapsize = (unsigned short) nvar;
+    ctrl->vmapsize = nvar;
     ctrl->vmap = vmap;
 
     /* varmap modified */
@@ -1561,7 +1561,7 @@ void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap,
     vars = d_get_variable(data, 0);
 
     /* map variables */
-    for (n = (unsigned short) nvar, v = ALLOC(value, n); n > 0; --n) {
+    for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
 	    *v++ = zero_int;
@@ -1603,7 +1603,7 @@ void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap,
 	    FREE(data->svariables);
 	    data->svariables = (svalue *) NULL;
 	}
-	data->nvariables = (unsigned short) nvar;
+	data->nvariables = nvar;
 	data->base.achange++;	/* force rebuild on swapout */
     }
 

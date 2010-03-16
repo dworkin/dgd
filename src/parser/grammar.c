@@ -67,7 +67,7 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
     while (thisnode >= 0) {
 	/* connect from previous */
 	while (last >= 0) {
-	    buffer[UCHAR(node[last].len)] = (char) len;
+	    buffer[UCHAR(node[last].len)] = len;
 	    last = (short) node[last].left;
 	}
 
@@ -81,8 +81,8 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 				 (UCHAR(node[thisnode].offset) << 16),
 		   UCHAR(node[thisnode].len));
 	    len += UCHAR(node[thisnode].len);
-	    node[thisnode].len = (char) len++;
-	    node[thisnode].left = (unsigned char) last;
+	    node[thisnode].len = len++;
+	    node[thisnode].left = last;
 	    last = thisnode;
 	    thisnode = (short) node[thisnode].right;
 	    break;
@@ -107,12 +107,12 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 			 &last);
 	    if (node[thisnode].right != '?') {
 		while (last >= 0) {
-		    buffer[UCHAR(node[last].len)] = (char) n;
+		    buffer[UCHAR(node[last].len)] = n;
 		    last = (short) node[last].left;
 		}
 	    }
-	    node[thisnode].len = (char) (n + 1);
-	    node[thisnode].left = (unsigned short) last;
+	    node[thisnode].len = n + 1;
+	    node[thisnode].left = last;
 	    *lastp = thisnode;
 	    return len;
 
@@ -126,12 +126,12 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
 	    n = len++;
 	    len = rgxtok(buffer, len, str, node, node[thisnode].left,
 			 &last);
-	    buffer[n] = (char) len;
+	    buffer[n] = len;
 	    n = -1;
 	    len = rgxtok(buffer, len, str, node, node[thisnode].right, &n);
 	    while (n >= 0) {
 		thisnode = (short) node[n].left;
-		node[n].left = (unsigned short) last;
+		node[n].left = last;
 		last = n;
 		n = thisnode;
 	    }
@@ -206,7 +206,7 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		    }
 		    node[++lastnode] = node[thisnode];
 		    node[thisnode].type = RGX_STAR;
-		    node[thisnode].left = (unsigned short) lastnode;
+		    node[thisnode].left = lastnode;
 		    node[thisnode].right = *p;
 		    break;
 
@@ -220,7 +220,7 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 			return TOK_TOOBIGRGX;
 		    }
 		    node[thisnode = ++lastnode].type = RGX_ALT;
-		    node[thisnode].left = (unsigned short) topnode;
+		    node[thisnode].left = topnode;
 		    topnode = thisnode;
 		    break;
 
@@ -235,14 +235,14 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		    } else if (node[thisnode].type == RGX_CHAR ||
 			       node[thisnode].type == RGX_ALT) {
 			/* auto-link from previous node */
-			node[thisnode].right = (unsigned short) ++lastnode;
+			node[thisnode].right = ++lastnode;
 			thisnode = lastnode;
 		    } else {
 			/* concatenate with previous node */
 			node[++lastnode] = node[thisnode];
 			node[thisnode].type = RGX_CONCAT;
-			node[thisnode].left = (unsigned short) lastnode;
-			node[thisnode].right = (unsigned short) ++lastnode;
+			node[thisnode].left = lastnode;
+			node[thisnode].right = ++lastnode;
 			thisnode = lastnode;
 		    }
 		    node[thisnode].type = RGX_PAREN;
@@ -259,7 +259,7 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 			return TOK_BADREGEXP;
 		    }
 		    thisnode = nstack[--paren];
-		    node[thisnode].left = (unsigned short) topnode;
+		    node[thisnode].left = topnode;
 		    topnode = nstack[--paren];
 		    break;
 
@@ -273,14 +273,14 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		    } else if (node[thisnode].type == RGX_CHAR ||
 			       node[thisnode].type == RGX_ALT) {
 			/* auto-link from previous node */
-			node[thisnode].right = (unsigned short) ++lastnode;
+			node[thisnode].right = ++lastnode;
 			thisnode = lastnode;
 		    } else {
 			/* concatenate with previous node */
 			node[++lastnode] = node[thisnode];
 			node[thisnode].type = RGX_CONCAT;
-			node[thisnode].left = (unsigned short) lastnode;
-			node[thisnode].right = (unsigned short) ++lastnode;
+			node[thisnode].left = lastnode;
+			node[thisnode].right = ++lastnode;
 			thisnode = lastnode;
 		    }
 
@@ -332,15 +332,15 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		    }
 
 		    node[thisnode].type = RGX_CHAR;
-		    offset = (ssizet) (q - str->text);
+		    offset = q - str->text;
 		    node[thisnode].left = offset;
 #if SSIZET_MAX > USHRT_MAX
 		    node[thisnode].offset = offset >> 16;
 #else
 		    node[thisnode].offset = 0;
 #endif
-		    node[thisnode].right = (unsigned short) -1;
-		    node[thisnode].len = (char) (p - q + 1);
+		    node[thisnode].right = -1;
+		    node[thisnode].len = p - q + 1;
 		    len += p - q + 2;
 		    if (len >= STRINGSZ) {
 			return TOK_TOOBIGRGX;
@@ -356,7 +356,7 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 	    thisnode = -1;
 	    len = rgxtok(buffer, 0, str->text, node, topnode, &thisnode);
 	    while (thisnode >= 0) {
-		buffer[UCHAR(node[thisnode].len)] = (char) (len - 1);
+		buffer[UCHAR(node[thisnode].len)] = len - 1;
 		thisnode = (short) node[thisnode].left;
 	    }
 	    buffer[len] = '\0';
@@ -548,7 +548,7 @@ static rule *rl_new(rlchunk **c, int type)
     }
     rl = &(*c)->rl[(*c)->chunksz++];
     rl->symb = (string *) NULL;
-    rl->type = (short) type;
+    rl->type = type;
     rl->num = 0;
     rl->len = 0;
     rl->u.syms = (rulesym *) NULL;
@@ -650,11 +650,11 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     *p++ = GRAM_VERSION;	/* version number */
     STORE2(p, -1); p += 2;	/* whitespace rule */
     STORE2(p, -1); p += 2;	/* nomatch rule */
-    STORE2(p, (char) nrgx); p += 4;	/* # regular expression rules */
-    STORE2(p, (char) nstr); p += 2;	/* # string rules */
-    STORE2(p, (char) nestr); p += 2;	/* # escaped string rules */
+    STORE2(p, nrgx); p += 4;	/* # regular expression rules */
+    STORE2(p, nstr); p += 2;	/* # string rules */
+    STORE2(p, nestr); p += 2;	/* # escaped string rules */
     nprod++;			/* +1 for start rule */
-    STORE2(p, (char) nprod);		/* # production rules */
+    STORE2(p, nprod);		/* # production rules */
     n = nrgx + nstr + nestr + nprod;
     prod1 = nrgx + nstr + nestr + 1;
     q = p + 4 + ((n + nstr) << 1);
@@ -664,16 +664,16 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     for (rl = prodlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= (rl->num << 1) + rl->len + 2;
 	p -= (rl->num << 1) + rl->len + 2;
-	q -= 2; STORE2(q, (char) size);
-	STORE2(p, (char) rl->num);
-	rl->num = (unsigned short) --n;
+	q -= 2; STORE2(q, size);
+	STORE2(p, rl->num);
+	rl->num = --n;
 	rl->len = size;
     }
 
     /* start rule offset */
     size -= 6;
     p -= 6;
-    q -= 2; STORE2(q, (char) size);
+    q -= 2; STORE2(q, size);
     --n;
     start = size;
 
@@ -681,44 +681,44 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     for (rl = estrlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= rl->symb->len + 1;
 	p -= rl->symb->len + 1;
-	q -= 2; STORE2(q, (char) size);
-	rl->num = (unsigned short) --n;
-	*p = (char) rl->symb->len;
+	q -= 2; STORE2(q, size);
+	rl->num = --n;
+	*p = rl->symb->len;
 	memcpy(p + 1, rl->symb->text, rl->symb->len);
     }
     for (rl = strlist; rl != (rule *) NULL; rl = rl->next) {
-	*--q = (char) rl->symb->len;
-	q -= 3; STORE3(q, (char) rl->len);
-	rl->num = (unsigned short) --n;
+	*--q = rl->symb->len;
+	q -= 3; STORE3(q, rl->len);
+	rl->num = --n;
     }
 
     /* deal with regexps */
     nrgx = 0;
     for (rl = rgxlist; rl != (rule *) NULL; rl = rl->next) {
 	size -= rl->num + rl->len + 2;
-	q -= 2; STORE2(q, (char) size);
+	q -= 2; STORE2(q, size);
 	p = gram->text + size;
-	STORE2(p, (char) rl->num);
-	rl->num = (unsigned short) --n;
+	STORE2(p, rl->num);
+	rl->num = --n;
 	p += 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
 	    if (r->u.rgx != (string *) NULL) {
-		*p++ = (char) r->u.rgx->len;
+		*p++ = r->u.rgx->len;
 		memcpy(p, r->u.rgx->text, r->u.rgx->len);
 		p += r->u.rgx->len;
 		nrgx++;
 	    } else {
 		/* nomatch */
-		STORE2(gram->text + 3, (char) n);
+		STORE2(gram->text + 3, n);
 	    }
 	}
 	if (rl->symb->len == 10 && strcmp(rl->symb->text, "whitespace") == 0) {
 	    p = gram->text + 1;
-	    STORE2(p, (char) n);
+	    STORE2(p, n);
 	}
     }
     p = gram->text + 7;
-    STORE2(p, (char) nrgx);		/* total regular expressions */
+    STORE2(p, nrgx);		/* total regular expressions */
 
     /* fill in production rules */
     nprod = 1;
@@ -728,15 +728,15 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	    p = q + 2;
 	    n = 0;
 	    for (rs = r->u.syms; rs != (rulesym *) NULL; rs = rs->next) {
-		STORE2(p, (char) rs->rule->num); p += 2;
+		STORE2(p, rs->rule->num); p += 2;
 		n++;
 	    }
 	    if (r->func != (string *) NULL) {
 		memcpy(p, r->func->text, r->func->len + 1);
 		p += r->func->len + 1;
 	    }
-	    *q++ = (char) n;
-	    *q = (char) (p - q - 1);
+	    *q++ = n;
+	    *q = p - q - 1;
 	    q = p;
 	    nprod++;
 	}
@@ -748,11 +748,11 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     *p++ = 1;
     *p++ = 1;
     *p++ = 2;
-    *p++ = (char) (prod1 >> 8);
-    *p   = (char) prod1;
+    *p++ = prod1 >> 8;
+    *p   = prod1;
 
     p = gram->text + 15;
-    STORE2(p, (char) nprod);
+    STORE2(p, nprod);
 
     return gram;
 }

@@ -55,7 +55,9 @@ typedef struct _user_ {
     ssizet osdone;		/* bytes of output string done */
 } user;
 
-
+#ifdef NETWORK_EXTENSIONS
+extern connection *conn_accept(connection *conn);
+#endif
 
 /* flags */
 # define CF_BINARY	0x00	/* binary connection */
@@ -241,7 +243,7 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
     }
     usr->oindex=obj->index;
     obj->flags |= O_USER;
-    obj->etabi = (eindex) (usr-users);
+    obj->etabi = usr-users;
     usr->conn = conn;
     usr->outbuf = (string *) NULL;
     usr->osdone = 0;
@@ -301,8 +303,8 @@ static void addtoflush(user *usr, array *arr)
  */
 static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 {
-    static char init[] = { IAC, WONT, TELOPT_ECHO,
-			   IAC, DO,   TELOPT_LINEMODE };
+    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
+			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
     user *usr;
     dataspace *data;
     array *arr;
@@ -339,7 +341,7 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 
     usr->oindex = obj->index;
     obj->flags |= O_USER;
-    obj->etabi = (eindex) (usr - users);
+    obj->etabi = usr - users;
     usr->conn = conn;
     usr->outbuf = (string *) NULL;
     usr->osdone = 0;
@@ -607,7 +609,7 @@ int comm_send(object *obj, string *str)
 		/*
 		 * double the telnet IAC character
 		 */
-		*q++ = IAC;
+		*q++ = (char) IAC;
 		size++;
 	    } else if (*p == LF) {
 		/*
@@ -777,7 +779,7 @@ static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
 		    odone++;
 		    d_assign_elt(data, arr, &v[1], &nil_value);
 		}
-		usr->osdone = (ssizet) n;
+		usr->osdone = n;
 	    } else {
 		/* wait for conn_read() to discover the problem */
 		usr->flags &= ~CF_OUTPUT;
@@ -825,7 +827,7 @@ void comm_flush()
 		char buf[3];
 
 		/* change echo */
-		buf[0] = IAC;
+		buf[0] = (char) IAC;
 		buf[1] = (v->u.number & CF_ECHO) ? WONT : WILL;
 		buf[2] = TELOPT_ECHO;
 		if (comm_write(usr, obj, (string *) NULL, buf, 3) != 0) {
@@ -836,7 +838,7 @@ void comm_flush()
 		usr->flags &= ~CF_PROMPT;
 		if ((usr->flags & CF_GA) && v[1].type == T_STRING &&
 		    usr->outbuf != v[1].u.string) {
-		    static char ga[] = { IAC, GA };
+		    static char ga[] = { (char) IAC, (char) GA };
 
 		    /* append go-ahead */
 		    comm_write(usr, obj, (string *) NULL, ga, 2);
@@ -984,12 +986,12 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
-    static char tm[] =		{ IAC, WONT, TELOPT_TM };
-    static char will_sga[] =	{ IAC, WILL, TELOPT_SGA };
-    static char wont_sga[] =	{ IAC, WONT, TELOPT_SGA };
-    static char mode_edit[] =	{ IAC, SB,
-				  TELOPT_LINEMODE, LM_MODE,
-				  MODE_EDIT, IAC, SE };
+    static char tm[] =		{ (char) IAC, (char) WONT, (char) TELOPT_TM };
+    static char will_sga[] =	{ (char) IAC, (char) WILL, (char) TELOPT_SGA };
+    static char wont_sga[] =	{ (char) IAC, (char) WONT, (char) TELOPT_SGA };
+    static char mode_edit[] =	{ (char) IAC, (char) SB,
+				  (char) TELOPT_LINEMODE, (char) LM_MODE,
+				  (char) MODE_EDIT, (char) IAC, (char) SE };
     char buffer[BINBUF_SIZE];
     object *obj;
     user *usr;
@@ -1445,9 +1447,9 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    p++;
 		    --n;
 		}
-		usr->state = (char) state;
-		usr->newlines = (short) nls;
-		usr->inbufsz = (ssizet) (q - usr->inbuf);
+		usr->state = state;
+		usr->newlines = nls;
+		usr->inbufsz = q - usr->inbuf;
 		if (nls == 0) {
 		    continue;
 		}
@@ -1460,7 +1462,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		--newlines;
 		n = p - usr->inbuf;
 		p++;			/* skip \n */
-		usr->inbufsz -= (ssizet) (n + 1);
+		usr->inbufsz -= n + 1;
 
 		PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
 		for (n = usr->inbufsz; n != 0; --n) {

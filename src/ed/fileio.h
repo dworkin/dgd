@@ -24,5 +24,5 @@ typedef struct {
     bool ill;	/* incomplete last line */
 } io;
 
-extern bool io_load P((editbuf*, char*, Int, io*));
-extern bool io_save P((editbuf*, char*, Int, Int, int, io*));
+extern bool io_load (editbuf*, char*, Int, io*);
+extern bool io_save (editbuf*, char*, Int, Int, int, io*);

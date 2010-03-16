@@ -22,8 +22,8 @@ typedef struct _dfa_ dfa;
 # define DFA_REJECT	-2
 # define DFA_TOOBIG	-3
 
-extern dfa     *dfa_new		P((char*, char*));
-extern void	dfa_del		P((dfa*));
-extern dfa     *dfa_load	P((char*, char*, char*, Uint));
-extern bool	dfa_save	P((dfa*, char**, Uint*));
-extern short	dfa_scan	P((dfa*, string*, ssizet*, char**, ssizet*));
+extern dfa     *dfa_new		(char*, char*);
+extern void	dfa_del		(dfa*);
+extern dfa     *dfa_load	(char*, char*, char*, Uint);
+extern bool	dfa_save	(dfa*, char**, Uint*);
+extern short	dfa_scan	(dfa*, string*, ssizet*, char**, ssizet*);

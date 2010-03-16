@@ -26,8 +26,8 @@
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
-extern char *m_alloc	P((size_t, char*, int));
-extern char *m_realloc	P((char*, size_t, size_t, char*, int));
+extern char *m_alloc	(size_t, char*, int);
+extern char *m_realloc	(char*, size_t, size_t, char*, int);
 
 # else
 
@@ -37,20 +37,20 @@ extern char *m_realloc	P((char*, size_t, size_t, char*, int));
 			((type *) (m_realloc((char *) (mem),		      \
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2))))
-extern char *m_alloc	P((size_t));
-extern char *m_realloc	P((char*, size_t, size_t));
+extern char *m_alloc	(size_t);
+extern char *m_realloc	(char*, size_t, size_t);
 
 # endif
 
 # define FREE(mem)	m_free((char *) (mem))
 
-extern void  m_init	P((size_t, size_t));
-extern void  m_free	P((char*));
-extern void  m_dynamic	P((void));
-extern void  m_static	P((void));
-extern bool  m_check	P((void));
-extern void  m_purge	P((void));
-extern void  m_finish	P((void));
+extern void  m_init	(size_t, size_t);
+extern void  m_free	(char*);
+extern void  m_dynamic	(void);
+extern void  m_static	(void);
+extern bool  m_check	(void);
+extern void  m_purge	(void);
+extern void  m_finish	(void);
 
 typedef struct {
     size_t smemsize;	/* static memory size */
@@ -59,4 +59,4 @@ typedef struct {
     size_t dmemused;	/* dynamic memory used */
 } allocinfo;
 
-extern allocinfo *m_info P((void));
+extern allocinfo *m_info (void);

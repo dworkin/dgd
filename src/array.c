@@ -135,7 +135,7 @@ array *arr_alloc(unsigned int size)
 	}
 	a = &aclist->a[achunksz++];
     }
-    a->size = (unsigned short) size;
+    a->size = size;
     a->hashmod = FALSE;
     a->elts = (value *) NULL;
     a->ref = 0;
@@ -153,7 +153,7 @@ array *arr_new(dataspace *data, long size)
 {
     array *a;
 
-    if ((unsigned long) size > max_size) {
+    if (size > max_size) {
 	error("Array too large");
     }
     a = arr_alloc((unsigned short) size);
@@ -433,7 +433,7 @@ static void backup(abchunk **ac, array *a, value *elts, unsigned int size,
 
     ab = &c->ab[c->chunksz++];
     ab->arr = a;
-    ab->size = (unsigned short) size;
+    ab->size = size;
     ab->original = elts;
     ab->plane = plane;
 }
@@ -635,7 +635,7 @@ array *arr_add(dataspace *data, array *a1, array *a2)
     return a;
 }
 
-static int cmp P((cvoid*, cvoid*));
+static int cmp (cvoid*, cvoid*);
 
 /*
  * NAME:	cmp()
@@ -698,7 +698,7 @@ static int search(value *v1, value *v2, unsigned short h, int step, bool place)
     value *v3;
     unsigned short mask;
 
-    mask = (unsigned short) -step;
+    mask = -step;
     l = 0;
     while (l < h) {
 	m = ((l + h) >> 1) & mask;
@@ -719,7 +719,7 @@ static int search(value *v1, value *v2, unsigned short h, int step, bool place)
 		 */
 		/* search forward */
 		for (;;) {
-		    m += (unsigned short) step;
+		    m += step;
 		    v3 += step;
 		    if (m == h || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
@@ -739,7 +739,7 @@ static int search(value *v1, value *v2, unsigned short h, int step, bool place)
 		    if (m == l || !T_INDEXED(v3->type)) {
 			break;	/* out of range */
 		    }
-		    m -= (unsigned short) step;
+		    m -= step;
 		    if (v1->u.array == v3->u.array) {
 			return m;	/* found the right one */
 		    }
@@ -753,7 +753,7 @@ static int search(value *v1, value *v2, unsigned short h, int step, bool place)
 	} else if (c < 0) {
 	    h = m;		/* search in lower half */
 	} else {
-	    l = (unsigned short) (m + step);	/* search in upper half */
+	    l = (m + step);	/* search in upper half */
 	}
     }
     /*
@@ -839,7 +839,7 @@ array *arr_sub(dataspace *data, array *a1, array *a2)
     }
     AFREE(v2);	/* free copy of values of subtrahend */
 
-    a3->size = (unsigned short) (v3 - a3->elts);
+    a3->size = v3 - a3->elts;
     if (a3->size == 0) {
 	FREE(a3->elts);
 	a3->elts = (value *) NULL;
@@ -916,7 +916,7 @@ array *arr_intersect(dataspace *data, array *a1, array *a2)
     }
     AFREE(v2);	/* free copy of values of 2nd array */
 
-    a3->size = (unsigned short) (v3 - a3->elts);
+    a3->size = v3 - a3->elts;
     if (a3->size == 0) {
 	FREE(a3->elts);
 	a3->elts = (value *) NULL;
@@ -1001,8 +1001,8 @@ array *arr_setadd(dataspace *data, array *a1, array *a2)
     }
     AFREE(v1);	/* free copy of values of 1st array */
 
-    n = (unsigned short) (v - v3);
-    if ((unsigned long) (size + n) > max_size) {
+    n = v - v3;
+    if ((long) size + n > max_size) {
 	AFREE(v3);
 	error("Array too large");
     }
@@ -1074,7 +1074,7 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
 
     /* sort copy of 1st array */
     v1 -= a1->size;
-    qsort(v1, size = (unsigned short) (w - v1), sizeof(value), cmp);
+    qsort(v1, size = w - v1, sizeof(value), cmp);
 
     v = v2;
     w = a2->elts;
@@ -1088,8 +1088,8 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
 	w++;
     }
 
-    n = (unsigned short) (v - v2);
-    if ((unsigned long) (num + n) > max_size) {
+    n = v - v2;
+    if ((long) num + n > max_size) {
 	AFREE(v3);
 	AFREE(v2);
 	AFREE(v1);
@@ -1116,7 +1116,7 @@ unsigned short arr_index(array *a, long l)
     if (l < 0 || l >= (long) a->size) {
 	error("Array index out of range");
     }
-    return (unsigned short) l;
+    return l;
 }
 
 /*
@@ -1157,7 +1157,7 @@ array *map_new(dataspace *data, long size)
 {
     array *m;
 
-    if ((unsigned long) size > max_size << 1) {
+    if (size > max_size << 1) {
 	error("Mapping too large");
     }
     m = arr_alloc((unsigned short) size);
@@ -1572,7 +1572,7 @@ array *map_add(dataspace *data, array *m1, array *m2)
     i_copy(v3, v2, n2);
     v3 += n2;
 
-    m3->size = (unsigned short) (v3 - m3->elts);
+    m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
@@ -1658,7 +1658,7 @@ array *map_sub(dataspace *data, array *m1, array *a2)
     i_copy(v3, v1, n1);
     v3 += n1;
 
-    m3->size = (unsigned short) (v3 - m3->elts);
+    m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
@@ -1740,7 +1740,7 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
     }
     AFREE(v2 - (size - n2));
 
-    m3->size = (unsigned short) (v3 - m3->elts);
+    m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
 	m3->elts = (value *) NULL;
@@ -1762,10 +1762,10 @@ static mapelt *map_grow(dataspace *data, array *m, unsigned short hashval, bool 
 
     h = m->hashed;
     if (add &&
-	(unsigned long) ((m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->sizemod)) >= max_size)
+	(m->size >> 1) + ((h == (maphash *) NULL) ? 0 : h->sizemod) >= max_size)
     {
 	map_compact(data, m);
-	if ((unsigned long) (m->size >> 1) >= max_size) {
+	if (m->size >> 1 >= max_size) {
 	    error("Mapping too large to grow");
 	}
     }
@@ -1869,11 +1869,11 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 	break;
 
     case T_INT:
-	i = (unsigned short) val->u.number;
+	i = val->u.number;
 	break;
 
     case T_FLOAT:
-	i = (unsigned short) VFLT_HASH(val);
+	i = VFLT_HASH(val);
 	break;
 
     case T_STRING:
@@ -2029,11 +2029,11 @@ array *map_range(dataspace *data, array *m, value *v1, value *v2)
     map_compact(data, m);
 
     /* determine subrange */
-    from = (unsigned short) ((v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE));
+    from = (v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
     if (v2 == (value *) NULL) {
 	to = m->size;
     } else {
-	to = (unsigned short) search(v2, m->elts, m->size, 2, TRUE);
+	to = search(v2, m->elts, m->size, 2, TRUE);
 	if (to < m->size && cmp(v2, &m->elts[to]) == 0 &&
 	    (!T_INDEXED(v2->type) || v2->u.array == m->elts[to].u.array)) {
 	    /*

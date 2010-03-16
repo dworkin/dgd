@@ -67,7 +67,7 @@ jmp_buf *_ec_push_(ec_ftn handler)
 	e = ALLOC(context, 1);
     }
     e->f = cframe;
-    e->offset = (unsigned short) (cframe->fp - cframe->sp);
+    e->offset = cframe->fp - cframe->sp;
     e->atomic = cframe->atomic;
     e->rlim = cframe->rlim;
 

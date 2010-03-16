@@ -32,6 +32,7 @@
 # include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
+# include <stdarg.h>
 
 # define COND_CHUNK	16
 # define COND_BMAP	((MAX_LOCALS + 1) >> 3)
@@ -432,7 +433,7 @@ void c_init(char *a, char *d, char *i, char **p, int tc)
     driver_object = d;
     include = i;
     paths = p;
-    typechecking = (bool) (tc | cg_compiled());
+    typechecking = tc | cg_compiled();
 }
 
 /*
@@ -547,7 +548,7 @@ bool c_inherit(char *file, node *label, int priv)
 			priv);
 }
 
-extern int yyparse P((void));
+extern int yyparse (void);
 
 /*
  * NAME:	compile->compile()
@@ -807,7 +808,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	class &= ~C_VARARGS;
 	varargs = TRUE;
     }
-    t = (char) type->mod;
+    t = type->mod;
     if ((t & T_TYPE) == T_NIL) {
 	/* don't typecheck this function */
 	typechecked = FALSE;
@@ -835,9 +836,9 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	*p++ = t;
 	if ((t & T_TYPE) == T_CLASS) {
 	    l = ctrl_dstring(type->class);
-	    *p++ = (char) (l >> 16);
-	    *p++ = (char) (l >> 8);
-	    *p++ = (char) l;
+	    *p++ = l >> 16;
+	    *p++ = l >> 8;
+	    *p++ = l;
 	}
 	if (formals == (node *) NULL) {
 	    break;
@@ -854,7 +855,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	    type = formals;
 	    formals = (node *) NULL;
 	}
-	t = (char) type->mod;
+	t = type->mod;
 	if ((t & T_TYPE) == T_NIL) {
 	    if (typechecked) {
 		c_error("missing type for parameter %s", type->l.string->text);
@@ -896,12 +897,12 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	}
     }
 
-    PROTO_CLASS(proto) = (char) class;
-    PROTO_NARGS(proto) = (char) nargs;
-    PROTO_VARGS(proto) = (char) vargs;
+    PROTO_CLASS(proto) = class;
+    PROTO_NARGS(proto) = nargs;
+    PROTO_VARGS(proto) = vargs;
     nargs = p - proto;
-    PROTO_HSIZE(proto) = (char) (nargs >> 8);
-    PROTO_LSIZE(proto) = (char) nargs;
+    PROTO_HSIZE(proto) = nargs >> 8;
+    PROTO_LSIZE(proto) = nargs;
 
     /* define prototype */
     if (function) {
@@ -980,7 +981,7 @@ void c_global(unsigned int class, node *type, node *n)
 	ctrl_create();
 	seen_decls = TRUE;
     }
-    c_decl_list((unsigned short) class, type, n, TRUE);
+    c_decl_list(class, type, n, TRUE);
 }
 
 static string *fname;		/* name of current function */
@@ -997,7 +998,7 @@ void c_function(unsigned int class, node *type, node *n)
 	seen_decls = TRUE;
     }
     type->mod |= n->mod;
-    c_decl_func((unsigned short) class, type, fname = n->l.left->l.string, n->r.right, TRUE);
+    c_decl_func(class, type, fname = n->l.left->l.string, n->r.right, TRUE);
 }
 
 /*
@@ -1046,7 +1047,7 @@ void c_funcbody(node *n)
  */
 void c_local(unsigned int class, node *type, node *n)
 {
-    c_decl_list((unsigned short) class, type, n, FALSE);
+    c_decl_list(class, type, n, FALSE);
 }
 
 
@@ -1365,7 +1366,7 @@ void c_startswitch(node *n, int typechecked)
     switch_list->env = thisloop;
 }
 
-static int cmp P((cvoid*, cvoid*));
+static int cmp (cvoid*, cvoid*);
 
 /*
  * NAME:	cmp()
@@ -1420,7 +1421,7 @@ node *c_endswitch(node *expr, node *stmt)
 	    c_error("unreachable code in switch");
 	} else if (switch_list->ncase > 0x7fff) {
 	    c_error("too many cases in switch");
-	} else if ((size=(unsigned short)(switch_list->ncase - switch_list->dflt)) == 0) {
+	} else if ((size=switch_list->ncase - switch_list->dflt) == 0) {
 	    if (switch_list->ncase == 0) {
 		/* can happen when recovering from syntax error */
 		n = c_exp_stmt(expr);
@@ -1521,7 +1522,7 @@ node *c_endswitch(node *expr, node *stmt)
 
 		if (i == 0 && cnt > size) {
 		    if (cnt > 0xffffffffL / 6 ||
-			(sz + 2L) * cnt > (unsigned short) ((2 * sz + 2L) * size)) {
+			(sz + 2L) * cnt > (2 * sz + 2L) * size) {
 			/*
 			 * no point in changing the type of switch
 			 */
@@ -1545,7 +1546,7 @@ node *c_endswitch(node *expr, node *stmt)
 			    v++;
 			}
 			AFREE(v - size);
-			size = (unsigned short) cnt;
+			size = cnt;
 			v = w - size;
 		    }
 		}
@@ -1802,7 +1803,7 @@ node *c_endcompound(node *n)
       if (n->type == N_PAIR) {
           flags = n->flags & (F_REACH | F_END);
           n = revert_list(n);
-          n->flags = (char) ((n->flags & ~F_END) | flags);
+          n->flags = (n->flags & ~F_END) | flags;
       }
       n = node_mon(N_COMPOUND, 0, n);
       n->flags = n->l.left->flags;
@@ -2058,7 +2059,7 @@ static node *funcall(node *call, node *args)
 	    spread = n;
 	    while (n <= nargs) {
 		if (*argp == T_LVALUE) {
-		    (*arg)->mod = (unsigned short) (n - spread);
+		    (*arg)->mod = n - spread;
 		    /* KFCALL => KFCALL_LVAL */
 		    func->r.number |= (long) KFCALL_LVAL << 24;
 		    break;
@@ -2384,7 +2385,7 @@ unsigned short c_tmatch(unsigned int type1, unsigned int type2)
 	return T_NIL;
     }
     if (type1 == type2) {
-	return (unsigned short) type1;	/* identical types (including T_CLASS) */
+	return type1;	/* identical types (including T_CLASS) */
     }
     if ((type1 & T_TYPE) == T_CLASS) {
 	type1 = (type1 & T_REF) | T_OBJECT;
@@ -2393,7 +2394,7 @@ unsigned short c_tmatch(unsigned int type1, unsigned int type2)
 	type2 = (type2 & T_REF) | T_OBJECT;
     }
     if (type1 == type2) {
-	return (unsigned short) type1;	/* identical types (excluding T_CLASS) */
+	return type1;	/* identical types (excluding T_CLASS) */
     }
     if (type1 == T_VOID || type2 == T_VOID) {
 	/* void doesn't match with anything else, not even with mixed */
@@ -2404,14 +2405,14 @@ unsigned short c_tmatch(unsigned int type1, unsigned int type2)
 	if (type1 == T_MIXED && (type2 & T_REF) != 0) {
 	    type1 |= 1 << REFSHIFT;	/* mixed <-> int * */
 	}
-	return (unsigned short) type1;
+	return type1;
     }
     if ((type2 & T_TYPE) == T_MIXED && (type2 & T_REF) <= (type1 & T_REF)) {
 	/* int <-> mixed,  int * <-> mixed *,  int ** <-> mixed * */
 	if (type2 == T_MIXED && (type1 & T_REF) != 0) {
 	    type2 |= 1 << REFSHIFT;	/* int * <-> mixed */
 	}
-	return (unsigned short) type2;
+	return type2;
     }
     return T_NIL;
 }
@@ -2420,8 +2421,9 @@ unsigned short c_tmatch(unsigned int type1, unsigned int type2)
  * NAME:	compile->error()
  * DESCRIPTION:	Call the driver object with the supplied error message.
  */
-void c_error(char *format, char *a1, char *a2, char *a3)
+void c_error(char *format, ...)
 {
+    va_list args;
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
@@ -2432,7 +2434,8 @@ void c_error(char *format, char *a1, char *a2, char *a3)
 	fname = tk_filename();
 	PUSH_STRVAL(f, str_new(fname, strlen(fname)));
 	PUSH_INTVAL(f, tk_line());
-	sprintf(buf, format, a1, a2, a3);
+	va_start(args, format);
+	vsprintf(buf, format, args);
 	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
@@ -2440,7 +2443,8 @@ void c_error(char *format, char *a1, char *a2, char *a3)
     } else {
 	/* there is no driver object to call; show the error on stderr */
 	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());
-	sprintf(buf + strlen(buf), format, a1, a2, a3);
+	va_start(args, format);
+	vsprintf(buf + strlen(buf), format, args);
 	message("%s\012", buf);     /* LF */
     }
 

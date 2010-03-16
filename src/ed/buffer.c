@@ -66,7 +66,7 @@ void eb_clear(editbuf *eb)
  *		If this line is 0 the block is inserted before the other lines
  *		in the edit buffer.
  */
-void eb_add(editbuf *eb, Int ln, char *(*getline) P((void)))
+void eb_add(editbuf *eb, Int ln, char *(*getline) ())
 {
     block b;
 
@@ -234,7 +234,7 @@ void eb_put(editbuf *eb, Int ln, block b)
  * DESCRIPTION:	output a subrange of the edit buffer, without first making
  *		a subrange block for it
  */
-void eb_range(editbuf *eb, Int first, Int last, void (*putline) P((char*)), int reverse)
+void eb_range(editbuf *eb, Int first, Int last, void (*putline) (char*), int reverse)
 {
     bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }

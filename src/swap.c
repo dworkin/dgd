@@ -57,8 +57,8 @@ void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
 
     /* allocate and initialize all tables */
     swapfile = file;
-    swapsize = (sector) total;
-    cachesize = (sector) cache;
+    swapsize = total;
+    cachesize = cache;
     sectorsize = secsize;
     slotsize = sizeof(header) + secsize;
     mem = ALLOC(char, slotsize * cache);
@@ -76,7 +76,7 @@ void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     mfree = SW_UNUSED;
     sfree = SW_UNUSED;
     lfree = h = (header *) mem;
-    for (i = (sector) cache - 1; i > 0; --i) {
+    for (i = cache - 1; i > 0; --i) {
 	h->sec = SW_UNUSED;
 	h->next = (header *) ((char *) h + slotsize);
 	h = h->next;
@@ -305,7 +305,7 @@ static header *sw_load(sector sec, bool restore, bool fill)
 	/*
 	 * The slot has been reserved. Update map.
 	 */
-	map[sec] = (sector) (((long) h - (long) mem) / slotsize);
+	map[sec] = ((long) h - (long) mem) / slotsize;
 
 	if (load != SW_UNUSED) {
 	    if (restore) {
@@ -481,7 +481,7 @@ sector sw_mapsize(unsigned int size)
     /* calculate the number of sectors required */
     n = 0;
     for (;;) {
-	i = (sector) ((size + n * sizeof(sector) + sectorsize - 1) / sectorsize);
+	i =(size + n * sizeof(sector) + sectorsize - 1) / sectorsize;
 	if (n == i) {
 	    return n;
 	}
@@ -621,7 +621,7 @@ int sw_dump(char *dumpfile)
 
     /* fix the sector map */
     for (h = last; h != (header *) NULL; h = h->prev) {
-	map[h->sec] = (sector) (((long) h - (long) mem) / slotsize);
+	map[h->sec] = ((long) h - (long) mem) / slotsize;
 	h->dirty = FALSE;
     }
 

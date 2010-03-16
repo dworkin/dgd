@@ -26,8 +26,8 @@
 # ifdef FUNCDEF
 FUNCDEF("encrypt", kf_encrypt, pt_encrypt, 0)
 # else
-extern string *P_encrypt_des_key P((frame*, string*));
-extern string *P_encrypt_des P((frame*, string*, string*));
+extern string *P_encrypt_des_key (frame*, string*);
+extern string *P_encrypt_des (frame*, string*, string*);
 
 char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -76,7 +76,7 @@ int kf_encrypt(frame *f, int nargs)
 # ifdef FUNCDEF
 FUNCDEF("decrypt", kf_decrypt, pt_decrypt, 0)
 # else
-extern string *P_decrypt_des_key P((frame*, string*));
+extern string *P_decrypt_des_key (frame*, string*);
 
 char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -503,7 +503,7 @@ int kf_sscanf(frame *f, int nargs)
 		    slen = 0;
 		} else {
 		    /* get # of chars to match after string */
-		    for (x = format, size = 0; (Uint) (x - format) != flen;
+		    for (x = format, size = 0; x - format != flen;
 			 x++, size++) {
 			x = (char *) memchr(x, '%', flen - (x - format));
 			if (x == (char *) NULL) {
@@ -887,7 +887,7 @@ int kf_hash_crc32(frame *f, int nargs)
 # ifdef FUNCDEF
 FUNCDEF("hash_string", kf_hash_string, pt_hash_string, 0)
 # else
-extern char *P_crypt P((char*, char*));
+extern char *P_crypt (char*, char*);
 
 char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
 			  T_STRING, T_STRING, T_STRING, T_STRING };
@@ -1067,18 +1067,18 @@ static string *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint
 	bufsz = 0;
     }
     memset(buffer + bufsz, '\0', 64 - bufsz);
-    buffer[56] = (char) (length << 3);
-    buffer[57] = (char) (length >> 5);
-    buffer[58] = (char) (length >> 13);
-    buffer[59] = (char) (length >> 21);
-    buffer[60] = (char) (length >> 29);
+    buffer[56] = length << 3;
+    buffer[57] = length >> 5;
+    buffer[58] = length >> 13;
+    buffer[59] = length >> 21;
+    buffer[60] = length >> 29;
     hash_md5_block(digest, buffer);
 
     for (bufsz = i = 0; i < 4; bufsz += 4, i++) {
-	buffer[bufsz + 0] = (char) digest[i];
-	buffer[bufsz + 1] = (char) (digest[i] >> 8);
-	buffer[bufsz + 2] = (char) (digest[i] >> 16);
-	buffer[bufsz + 3] =(char) ( digest[i] >> 24);
+	buffer[bufsz + 0] = digest[i];
+	buffer[bufsz + 1] = digest[i] >> 8;
+	buffer[bufsz + 2] = digest[i] >> 16;
+	buffer[bufsz + 3] = digest[i] >> 24;
     }
     return str_new(buffer, 16L);
 }
@@ -1190,18 +1190,18 @@ static string *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
 	bufsz = 0;
     }
     memset(buffer + bufsz, '\0', 64 - bufsz);
-    buffer[59] = (char) (length >> 29);
-    buffer[60] = (char) (length >> 21);
-    buffer[61] = (char) (length >> 13);
-    buffer[62] = (char) (length >> 5);
-    buffer[63] = (char) (length << 3);
+    buffer[59] = length >> 29;
+    buffer[60] = length >> 21;
+    buffer[61] = length >> 13;
+    buffer[62] = length >> 5;
+    buffer[63] = length << 3;
     hash_sha1_block(digest, buffer);
 
     for (bufsz = i = 0; i < 5; bufsz += 4, i++) {
-	buffer[bufsz + 0] = (char) (digest[i] >> 24);
-	buffer[bufsz + 1] = (char) (digest[i] >> 16);
-	buffer[bufsz + 2] = (char) (digest[i] >> 8);
-	buffer[bufsz + 3] = (char) digest[i];
+	buffer[bufsz + 0] = digest[i] >> 24;
+	buffer[bufsz + 1] = digest[i] >> 16;
+	buffer[bufsz + 2] = digest[i] >> 8;
+	buffer[bufsz + 3] = digest[i];
     }
     return str_new(buffer, 20L);
 }
@@ -1212,7 +1212,7 @@ static string *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
  */
 static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer, 
 	unsigned short *bufsize, unsigned int blocksz, 
-	void (*hash_block) P((Uint*, char*)))
+	void (*hash_block) (Uint*, char*))
 {
     ssizet len;
     unsigned short bufsz;
@@ -1230,7 +1230,7 @@ static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
 		unsigned short size;
 
 		/* fill buffer and digest */
-		size = (unsigned short) (blocksz - bufsz);
+		size = blocksz - bufsz;
 		if (size > len) {
 		    size = len;
 		}
@@ -1249,7 +1249,7 @@ static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
 		/* digest directly from string */
 		(*hash_block)(digest, p);
 		p += blocksz;
-		len -= (ssizet) blocksz;
+		len -= blocksz;
 	    }
 
 	    if (len != 0) {

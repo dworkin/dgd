@@ -57,21 +57,21 @@ typedef struct _node_ {
 # define F_VARARGS	0x04	/* varargs in parameter list */
 # define F_ELLIPSIS	0x08	/* ellipsis in parameter list */
 
-extern void  node_init	P((int));
-extern node *node_new	P((unsigned int));
-extern node *node_int	P((Int));
-extern node *node_float	P((xfloat*));
-extern node *node_nil	P((void));
-extern node *node_str	P((string*));
-extern node *node_var	P((unsigned int, int));
-extern node *node_type	P((int, string*));
-extern node *node_fcall	P((int, string*, char*, Int));
-extern node *node_mon	P((int, int, node*));
-extern node *node_bin	P((int, int, node*, node*));
-extern void  node_toint	P((node*, Int));
-extern void  node_tostr	P((node*, string*));
-extern void  node_free	P((void));
-extern void  node_clear	P((void));
+extern void  node_init	(int);
+extern node *node_new	(unsigned int);
+extern node *node_int	(Int);
+extern node *node_float	(xfloat*);
+extern node *node_nil	(void);
+extern node *node_str	(string*);
+extern node *node_var	(unsigned int, int);
+extern node *node_type	(int, string*);
+extern node *node_fcall	(int, string*, char*, Int);
+extern node *node_mon	(int, int, node*);
+extern node *node_bin	(int, int, node*, node*);
+extern void  node_toint	(node*, Int);
+extern void  node_tostr	(node*, string*);
+extern void  node_free	(void);
+extern void  node_clear	(void);
 
 # define N_ADD			  1
 # define N_ADD_INT		  2

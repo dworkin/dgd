@@ -826,7 +826,7 @@ static connection *conn_accept6(SOCKET portfd, int port)
     addr.in.addr6 = sin6.sin6_addr;
     addr.ipv6 = TRUE;
     conn->addr = ipa_new(&addr);
-    conn->at = (unsigned short) port;
+    conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -868,7 +868,7 @@ static connection *conn_accept(SOCKET portfd, int port)
     addr.in.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
     conn->addr = ipa_new(&addr);
-    conn->at = (unsigned short) port;
+    conn->at = port;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
@@ -1098,8 +1098,8 @@ static void conn_udprecv6(int n)
 	     */
 	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
 		p = conn->udpbuf + conn->bufsz;
-		*p++ = (char) (size >> 8);
-		*p++ = (char) size;
+		*p++ = size >> 8;
+		*p++ = size;
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
@@ -1173,8 +1173,8 @@ static void conn_udprecv(int n)
 	     */
 	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
 		p = conn->udpbuf + conn->bufsz;
-		*p++ = (char) (size >> 8);
-		*p++ = (char) size;
+		*p++ = size >> 8;
+		*p++ = size;
 		memcpy(p, buffer, size);
 		conn->bufsz += size + 2;
 		conn->npkts++;
@@ -1321,7 +1321,7 @@ int conn_udpread(connection *conn, char *buf, unsigned int len)
 	--conn->npkts;
 	--npackets;
 	conn->bufsz -= size + 2;
-	for (p = conn->udpbuf, q = p + size + 2, n = (unsigned short) conn->bufsz; n != 0; --n) {
+	for (p = conn->udpbuf, q = p + size + 2, n = conn->bufsz; n != 0; --n) {
 	    *p++ = *q++;
 	}
 	if (len == size) {

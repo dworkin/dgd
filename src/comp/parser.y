@@ -45,32 +45,32 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
-static void  t_void	P((node*));
-static bool  t_unary	P((node*, char*));
-static node *uassign	P((int, node*, char*));
-static node *cast	P((node*, node*));
-static node *idx	P((node*, node*));
-static node *range	P((node*, node*, node*));
-static node *bini	P((int, node*, node*, char*));
-static node *bina	P((int, node*, node*, char*));
-static node *mult	P((int, node*, node*, char*));
-static node *mdiv	P((int, node*, node*, char*));
-static node *mod	P((int, node*, node*, char*));
-static node *add	P((int, node*, node*, char*));
-static node *sub	P((int, node*, node*, char*));
-static node *umin	P((node*));
-static node *lshift	P((int, node*, node*, char*));
-static node *rshift	P((int, node*, node*, char*));
-static node *rel	P((int, node*, node*, char*));
-static node *eq		P((node*, node*));
-static node *and	P((int, node*, node*, char*));
-static node *xor	P((int, node*, node*, char*));
-static node *or		P((int, node*, node*, char*));
-static node *land	P((node*, node*));
-static node *lor	P((node*, node*));
-static node *quest	P((node*, node*, node*));
-static node *assign	P((node*, node*));
-static node *comma	P((node*, node*));
+static void  t_void	(node*);
+static bool  t_unary	(node*, char*);
+static node *uassign	(int, node*, char*);
+static node *cast	(node*, node*);
+static node *idx	(node*, node*);
+static node *range	(node*, node*, node*);
+static node *bini	(int, node*, node*, char*);
+static node *bina	(int, node*, node*, char*);
+static node *mult	(int, node*, node*, char*);
+static node *mdiv	(int, node*, node*, char*);
+static node *mod	(int, node*, node*, char*);
+static node *add	(int, node*, node*, char*);
+static node *sub	(int, node*, node*, char*);
+static node *umin	(node*);
+static node *lshift	(int, node*, node*, char*);
+static node *rshift	(int, node*, node*, char*);
+static node *rel	(int, node*, node*, char*);
+static node *eq		(node*, node*);
+static node *and	(int, node*, node*, char*);
+static node *xor	(int, node*, node*, char*);
+static node *or		(int, node*, node*, char*);
+static node *land	(node*, node*);
+static node *lor	(node*, node*);
+static node *quest	(node*, node*, node*);
+static node *assign	(node*, node*);
+static node *comma	(node*, node*);
 
 %}
 

@@ -207,28 +207,28 @@ static void conf_dumpinit()
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
     header[DUMP_DRIVER] = 0;			/* vanilla DGD */
-    header[DUMP_TYPECHECK] = (char) conf[TYPECHECKING].u.num;
-    header[DUMP_SECSIZE + 0] = (char) conf[SECTOR_SIZE].u.num >> 8;
-    header[DUMP_SECSIZE + 1] = (char) conf[SECTOR_SIZE].u.num;
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
+    header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
+    header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
     strcpy(header + DUMP_VSTRING, VERSION);
 
     starttime = boottime = P_time();
 
     s = 0x1234;
     i = 0x12345678L;
-    s0 = (char) (strchr((char *) &s, 0x12) - (char *) &s);
-    s1 = (char) (strchr((char *) &s, 0x34) - (char *) &s);
-    i0 = (char) (strchr((char *) &i, 0x12) - (char *) &i);
-    i1 = (char) (strchr((char *) &i, 0x34) - (char *) &i);
-    i2 = (char) (strchr((char *) &i, 0x56) - (char *) &i);
-    i3 = (char) (strchr((char *) &i, 0x78) - (char *) &i);
+    s0 = strchr((char *) &s, 0x12) - (char *) &s;
+    s1 = strchr((char *) &s, 0x34) - (char *) &s;
+    i0 = strchr((char *) &i, 0x12) - (char *) &i;
+    i1 = strchr((char *) &i, 0x34) - (char *) &i;
+    i2 = strchr((char *) &i, 0x56) - (char *) &i;
+    i3 = strchr((char *) &i, 0x78) - (char *) &i;
     utsize = sizeof(uindex) | (sizeof(ssizet) << 4);
     desize = sizeof(sector) | (sizeof(eindex) << 4);
     psize = sizeof(char*) | (sizeof(char) << 4);
-    calign = (char) ((char *) &cdummy.c - (char *) &cdummy.fill);
-    salign = (char) ((char *) &sdummy.s - (char *) &sdummy.fill);
-    ialign = (char) ((char *) &idummy.i - (char *) &idummy.fill);
-    palign = (char) ((char *) &pdummy.p - (char *) &pdummy.fill);
+    calign = (char *) &cdummy.c - (char *) &cdummy.fill;
+    salign = (char *) &sdummy.s - (char *) &sdummy.fill;
+    ialign = (char *) &idummy.i - (char *) &idummy.fill;
+    palign = (char *) &pdummy.p - (char *) &pdummy.fill;
     zalign = sizeof(alignz);
     zero1 = zero2 = 0;
 
@@ -251,20 +251,20 @@ void conf_dump()
     int fd;
     Uint etime;
 
-    header[DUMP_TYPECHECK] = (char) conf[TYPECHECKING].u.num;
+    header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_STARTTIME + 0] = starttime >> 24;
-    header[DUMP_STARTTIME + 1] = (char) (starttime >> 16);
-    header[DUMP_STARTTIME + 2] = (char) (starttime >> 8);
-    header[DUMP_STARTTIME + 3] = (char) (starttime);
+    header[DUMP_STARTTIME + 1] = starttime >> 16;
+    header[DUMP_STARTTIME + 2] = starttime >> 8;
+    header[DUMP_STARTTIME + 3] = starttime;
     etime = P_time();
     if (etime < boottime) {
 	etime = boottime;
     }
     etime += elapsed - boottime;
     header[DUMP_ELAPSED + 0] = etime >> 24;
-    header[DUMP_ELAPSED + 1] = (char) (etime >> 16);
-    header[DUMP_ELAPSED + 2] = (char) (etime >> 8);
-    header[DUMP_ELAPSED + 3] = (char) (etime);
+    header[DUMP_ELAPSED + 1] = etime >> 16;
+    header[DUMP_ELAPSED + 2] = etime >> 8;
+    header[DUMP_ELAPSED + 3] = etime;
 
     o_copy(0);
     d_swapout(1);
@@ -549,8 +549,8 @@ Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
 		} else {
 		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = (char) j;
-		    buf[i + i1] = (char) j;
+		    buf[i + i0] = j;
+		    buf[i + i1] = j;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
@@ -608,8 +608,8 @@ Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
 		} else {
 		    j = (UCHAR(rbuf[ri + rs0] & rbuf[ri + rs1]) == 0xff) ?
 			 -1 : 0;
-		    buf[i + i0] = (char) j;
-		    buf[i + i1] = (char) j;
+		    buf[i + i0] = j;
+		    buf[i + i1] = j;
 		    buf[i + i2] = rbuf[ri + rs0];
 		    buf[i + i3] = rbuf[ri + rs1];
 		}
@@ -786,26 +786,26 @@ static bool conf_config()
 
 	switch (c) {
 	case INT_CONST:
-	    if ((Uint) yylval.number < conf[m].low ||
-		(conf[m].high != 0 && (Uint) yylval.number > conf[m].high)) {
+	    if (yylval.number < conf[m].low ||
+		(conf[m].high != 0 && yylval.number > conf[m].high)) {
 		conferr("int value out of range");
 		return FALSE;
 	    }
 	    switch (m) {
 	    case BINARY_PORT:
 		bhosts[0] = (char *) NULL;
-		bports[0] = (unsigned short) yylval.number;
+		bports[0] = yylval.number;
 		nbports = 1;
 		break;
 
 	    case TELNET_PORT:
 		thosts[0] = (char *) NULL;
-		tports[0] = (unsigned short) yylval.number;
+		tports[0] = yylval.number;
 		ntports = 1;
 		break;
 
 	    default:
-		conf[m].u.num = (unsigned short) yylval.number;
+		conf[m].u.num = yylval.number;
 		break;
 	    }
 	    break;
@@ -899,7 +899,7 @@ static bool conf_config()
 			conferr("int value out of range");
 			return FALSE;
 		    }
-		    ports[l++] = (unsigned short) yylval.number;
+		    ports[l++] = yylval.number;
 		    if ((c=pp_gettok()) == ']') {
 			break;
 		    }
@@ -1000,7 +1000,7 @@ static void cputs(char *str)
  */
 static bool cclose()
 {
-    if (bufsz > 0 && (unsigned int) P_write(fd, obuf, bufsz) != bufsz) {
+    if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
 	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
 	P_close(fd);
 	return FALSE;
@@ -1158,7 +1158,7 @@ static bool conf_includes()
 
 
 # ifdef DGD_EXTENSION
-extern void extension_init	P((void));
+extern void extension_init (void);
 # endif
 
 /*
@@ -1252,7 +1252,7 @@ bool conf_init(char *configfile, char *dumpfile, sector *fragment)
 
     /* initialize swapped data handler */
     d_init();
-    *fragment = (sector) conf[SWAP_FRAGMENT].u.num;
+    *fragment = conf[SWAP_FRAGMENT].u.num;
 
     /* initalize editor */
     ed_init(conf[ED_TMPFILE].u.str,
@@ -1404,7 +1404,7 @@ int conf_typechecking()
  */
 unsigned short conf_array_size()
 {
-    return (unsigned short) conf[ARRAY_SIZE].u.num;
+    return conf[ARRAY_SIZE].u.num;
 }
 
 /*

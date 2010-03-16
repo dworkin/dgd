@@ -143,7 +143,7 @@ static void push()
     s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;
-    s->level = (char) (include_level + 1);
+    s->level = include_level + 1;
     s->prev = ifs;
     ifs = s;
 }

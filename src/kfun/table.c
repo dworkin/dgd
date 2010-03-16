@@ -127,12 +127,12 @@ static char *prototype(char *proto)
     /* allocate new prototype */
     p = proto;
     q = proto = ALLOC(char, 6 + nargs + vargs);
-    *q++ = (char) tclass;
-    *q++ = (char) nargs;
-    *q++ = (char) vargs;
+    *q++ = tclass;
+    *q++ = nargs;
+    *q++ = vargs;
     *q++ = 0;
-    *q++ = (char) (6 + nargs + vargs);
-    *q++ = (char) type;
+    *q++ = 6 + nargs + vargs;
+    *q++ = type;
 
     /* pass 2: fill in new prototype */
     if (*p != T_VOID) {
@@ -192,21 +192,21 @@ void kf_init()
 
     memcpy(kftab, kforig, sizeof(kforig));
     for (i = 0; i < nkfun; i++) {
-	kftab[i].num = (short) i;
+	kftab[i].num = i;
     }
     for (i = 0, k1 = kfind, k2 = kfx; i < KF_BUILTINS; i++) {
-	*k1++ = (char) i;
-	*k2++ = (char) i;
+	*k1++ = i;
+	*k2++ = i;
     }
-    qsort((void *) (kftab + KF_BUILTINS), (size_t) (nkfun - KF_BUILTINS), 
+    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS, 
 	  sizeof(kfunc), kf_cmp);
     for (n = 0; kftab[i].name[1] == '.'; n++) {
 	*k2++ = '\0';
 	i++;
     }
     for (k1 = kfind + 128; i < nkfun; i++) {
-	*k1++ = (char) i;
-	*k2++ = (char) (i + 128 - KF_BUILTINS - n);
+	*k1++ = i;
+	*k2++ = i + 128 - KF_BUILTINS - n;
     }
 }
 
@@ -283,7 +283,7 @@ void kf_reclaim()
 		    kftab[i].name);
 	    n = UCHAR(kfind[last-- + 128 - KF_BUILTINS]);
 	    kfx[n] = UCHAR(kfx[i]);
-	    kfind[UCHAR(kfx[n])] = (char) n;
+	    kfind[UCHAR(kfx[n])] = n;
 	    kfx[i] = '\0';
 	}
     }
@@ -313,12 +313,12 @@ bool kf_dump(int fd)
 
     /* prepare header */
     dh.nbuiltin = KF_BUILTINS;
-    dh.nkfun = (short) (nkfun - KF_BUILTINS);
+    dh.nkfun = nkfun - KF_BUILTINS;
     dh.kfnamelen = 0;
     for (i = KF_BUILTINS; i < nkfun; i++) {
 	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
 	if (kfx[n] != '\0') {
-	    dh.kfnamelen += (short) (strlen(kftab[n].name) + 1);
+	    dh.kfnamelen += strlen(kftab[n].name) + 1;
 	    if (kftab[n].name[1] != '.') {
 		dh.kfnamelen += 2;
 	    }
@@ -340,7 +340,7 @@ bool kf_dump(int fd)
 	if (kfx[n] != '\0') {
 	    kf = &kftab[n];
 	    if (kf->name[1] != '.') {
-		buffer[buflen++] = (char) ('0' + kf->version);
+		buffer[buflen++] = '0' + kf->version;
 		buffer[buflen++] = '.';
 	    }
 	    len = strlen(kf->name) + 1;
@@ -407,8 +407,8 @@ void kf_restore(int fd, int oldcomp)
 		n = kf_index("0.compile_object");
 	    }
 	}
-	kfx[n] = (char) (i + 128);
-	kfind[i + 128] = (char) n;
+	kfx[n] = i + 128;
+	kfind[i + 128] = n;
 	buflen += strlen(buffer + buflen) + 1;
     }
     AFREE(buffer);
@@ -422,8 +422,8 @@ void kf_restore(int fd, int oldcomp)
 	for (i = KF_BUILTINS; i < nkfun; i++) {
 	    if (kfx[i] == '\0' && kftab[i].name[1] != '.') {
 		/* new kfun */
-		kfind[n] = (char) i;
-		kfx[i] = (char) n++;
+		kfind[n] = i;
+		kfx[i] = n++;
 	    }
 	}
     }

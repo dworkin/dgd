@@ -1285,7 +1285,7 @@ int kf_open_port(frame *f, int nargs)
     port=0;
     if (nargs==2)
     {
-       port = (unsigned short) f->sp->u.number;
+       port = f->sp->u.number;
        if ((port < 1)) /* || (port > 65535)) */ {
          error("Port number not in allowed range");
        }
@@ -1355,7 +1355,7 @@ int kf_connect(frame *f, int nargs)
 	str_del((f->sp++)->u.string);
     }
 
-    port = (unsigned short) (f->sp++)->u.number;
+    port = (f->sp++)->u.number;
     if (port < 1) /* || port > 65535) */ {
 	error("Port number out of range");
     }

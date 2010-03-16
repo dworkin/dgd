@@ -101,9 +101,9 @@ static void pc_funcdefs(char *program, dfuncdef *funcdefs,
 	if (!(PROTO_CLASS(p) & C_UNDEFINED)) {
 	    p += PROTO_SIZE(p);
 	    index = nfuncs + UCHAR(p[5]);
-	    p[3] = (char) (index >> 16);
-	    p[4] = (char) (index >> 8);
-	    p[5] = (char) index;
+	    p[3] = index >> 16;
+	    p[4] = index >> 8;
+	    p[5] = index;
 	}
 	funcdefs++;
 	--nfuncdefs;
@@ -120,7 +120,7 @@ static uindex pc_obj(char *name, dinherit *inherits, int ninherits)
     object *obj;
 
     ctrl.inherits = inherits;
-    ctrl.ninherits = (short) ninherits;
+    ctrl.ninherits = ninherits;
     obj = o_new(name, &ctrl);
     obj->flags |= O_COMPILED;
     if (strcmp(name, driver_name) == 0) {
@@ -520,23 +520,23 @@ bool pc_dump(int fd)
 	funcalls -= 2 * dh.nfuncalls;
 
 	if (P_write(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
-				(int) (dh.nprecomps * sizeof(dump_precomp)) ||
+				dh.nprecomps * sizeof(dump_precomp) ||
 	    P_write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
-				(int) (dh.ninherits * sizeof(dump_inherit)) ||
-	    P_write(fd, imap, dh.imapsz) != (int) dh.imapsz ||
+				dh.ninherits * sizeof(dump_inherit) ||
+	    P_write(fd, imap, dh.imapsz) != dh.imapsz ||
 	    (dh.nstrings != 0 &&
 	     P_write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
-				    (int) (dh.nstrings * sizeof(dstrconst))) ||
+				    dh.nstrings * sizeof(dstrconst)) ||
 	    (dh.stringsz != 0 &&
-	     P_write(fd, stext, dh.stringsz) != (int) dh.stringsz) ||
+	     P_write(fd, stext, dh.stringsz) != dh.stringsz) ||
 	    (dh.nfuncdefs != 0 &&
 	     P_write(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
-				    (int) (dh.nfuncdefs * sizeof(dfuncdef))) ||
+				    dh.nfuncdefs * sizeof(dfuncdef)) ||
 	    (dh.nvardefs != 0 &&
 	     P_write(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
-				    (int) (dh.nvardefs * sizeof(dvardef))) ||
+				    dh.nvardefs * sizeof(dvardef)) ||
 	    (dh.nfuncalls != 0 &&
-	     P_write(fd, funcalls, 2 * dh.nfuncalls) != (int) (2 * dh.nfuncalls))) {
+	     P_write(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls)) {
 	    ok = FALSE;
 	}
 
@@ -763,7 +763,7 @@ void pc_restore(int fd, int conv)
 	dinh = ALLOCA(dump_inherit, dh.ninherits);
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
 	imap = ALLOCA(char, dh.imapsz);
-	if (P_read(fd, imap, dh.imapsz) != (int) dh.imapsz) {
+	if (P_read(fd, imap, dh.imapsz) != dh.imapsz) {
 	    fatal("cannot read from dump file");
 	}
 	if (dh.nstrings != 0) {
@@ -771,7 +771,7 @@ void pc_restore(int fd, int conv)
 	    conf_dread(fd, (char *) strings, DSTR_LAYOUT, dh.nstrings);
 	    if (dh.stringsz != 0) {
 		stext = ALLOCA(char, dh.stringsz);
-		if (P_read(fd, stext, dh.stringsz) != (int) dh.stringsz) {
+		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
 		    fatal("cannot read from dump file");
 		}
 	    }
@@ -786,7 +786,7 @@ void pc_restore(int fd, int conv)
 	}
 	if (dh.nfuncalls != 0) {
 	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
-	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != (int) (2 * dh.nfuncalls)) {
+	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
 		fatal("cannot read from dump file");
 	    }
 	}
@@ -801,7 +801,7 @@ void pc_restore(int fd, int conv)
 		    error("Restored object not precompiled: /%s", name);
 		}
 		if (strcmp(name, l->inherits[l->ninherits - 1].name) == 0) {
-		    hash_add(l->oindex = oindex, (uindex) (pc - precompiled));
+		    hash_add(l->oindex = oindex, pc - precompiled);
 		    fixinherits(inherits + itab[pc - precompiled], l->inherits,
 				l->ninherits);
 		    if (dpc->ninherits != l->ninherits ||

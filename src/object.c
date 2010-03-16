@@ -86,7 +86,7 @@ Uint odcount;			/* objects destructed count */
  */
 void o_init(unsigned int n, Uint interval)
 {
-    otable = ALLOC(object, otabsize = (uindex) n);
+    otable = ALLOC(object, otabsize = n);
     memset(otable, '\0', n * sizeof(object));
     ocmap = ALLOC(char, (n + 7) >> 3);
     memset(ocmap, '\0', (n + 7) >> 3);
@@ -1320,7 +1320,7 @@ void o_restore(int fd, unsigned int rlwobj)
 		}
 		len = (dh.onamelen > CHUNKSZ - buflen) ?
 		       CHUNKSZ - buflen : dh.onamelen;
-		if ((Uint) P_read(fd, buffer + buflen, len) != len) {
+		if (P_read(fd, buffer + buflen, len) != len) {
 		    fatal("cannot restore object names");
 		}
 		dh.onamelen -= len;
@@ -1383,7 +1383,7 @@ bool o_copy(Uint time)
 		if (dinterval == 0) {
 		    dchunksz = SWAPCHUNKSZ;
 		} else {
-		    dchunksz = (uindex) ((mobjects + dinterval - 1) / dinterval);
+		    dchunksz = (mobjects + dinterval - 1) / dinterval;
 		    if (dchunksz == 0) {
 			dchunksz = 1;
 		    }
@@ -1393,7 +1393,7 @@ bool o_copy(Uint time)
 	    time -= dtime;
 	    if (dinterval != 0 && time >= dinterval) {
 		n = 0;      /* copy all objects */
-	    } else if ((n = (uindex) (dchunksz * time)) < mobjects) {
+	    } else if ((n = dchunksz * time) < mobjects) {
 		/* copy a portion of remaining objects */
 		n = mobjects - n;
 	    } else {

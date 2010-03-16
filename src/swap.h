@@ -16,19 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void	sw_init		P((char*, unsigned int, unsigned int,
-				   unsigned int));
-extern void	sw_finish	P((void));
-extern void	sw_newv		P((sector*, unsigned int));
-extern void	sw_wipev	P((sector*, unsigned int));
-extern void	sw_delv		P((sector*, unsigned int));
-extern void	sw_readv	P((char*, sector*, Uint, Uint));
-extern void	sw_writev	P((char*, sector*, Uint, Uint));
-extern void	sw_creadv	P((char*, sector*, Uint, Uint));
-extern void	sw_dreadv	P((char*, sector*, Uint, Uint));
-extern void	sw_conv		P((char*, sector*, Uint, Uint));
-extern sector	sw_mapsize	P((unsigned int));
-extern sector	sw_count	P((void));
-extern bool	sw_copy		P((Uint));
-extern int	sw_dump		P((char*));
-extern void	sw_restore	P((int, unsigned int));
+extern void	sw_init		(char*, unsigned int, unsigned int,
+				   unsigned int);
+extern void	sw_finish	(void);
+extern void	sw_newv		(sector*, unsigned int);
+extern void	sw_wipev	(sector*, unsigned int);
+extern void	sw_delv		(sector*, unsigned int);
+extern void	sw_readv	(char*, sector*, Uint, Uint);
+extern void	sw_writev	(char*, sector*, Uint, Uint);
+extern void	sw_creadv	(char*, sector*, Uint, Uint);
+extern void	sw_dreadv	(char*, sector*, Uint, Uint);
+extern void	sw_conv		(char*, sector*, Uint, Uint);
+extern sector	sw_mapsize	(unsigned int);
+extern sector	sw_count	(void);
+extern bool	sw_copy		(Uint);
+extern int	sw_dump		(char*);
+extern void	sw_restore	(int, unsigned int);

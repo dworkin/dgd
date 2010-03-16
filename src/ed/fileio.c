@@ -213,7 +213,7 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
 	error((char *) NULL);	/* pass on error */
     }
     eb_range(eb, first, last, put_line, FALSE);
-    if (P_write(ffd, buffer, inbuf) != (int) inbuf) {
+    if (P_write(ffd, buffer, inbuf) != inbuf) {
 	error("error while writing file \"/%s\"", filename);
     }
     ec_pop();

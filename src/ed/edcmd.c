@@ -27,34 +27,34 @@
 /*
  * These functions are in cmdsub.c
  */
-extern Int  cb_search	P((cmdbuf*, Int, Int, int));
-extern int  cb_print	P((cmdbuf*));
-extern int  cb_list	P((cmdbuf*));
-extern int  cb_number	P((cmdbuf*));
-extern int  cb_page	P((cmdbuf*));
-extern int  cb_assign	P((cmdbuf*));
-extern int  cb_mark	P((cmdbuf*));
-extern int  cb_append	P((cmdbuf*));
-extern int  cb_insert	P((cmdbuf*));
-extern int  cb_change	P((cmdbuf*));
-extern int  cb_delete	P((cmdbuf*));
-extern int  cb_copy	P((cmdbuf*));
-extern int  cb_move	P((cmdbuf*));
-extern int  cb_put	P((cmdbuf*));
-extern int  cb_yank	P((cmdbuf*));
-extern int  cb_lshift	P((cmdbuf*));
-extern int  cb_rshift	P((cmdbuf*));
-extern int  cb_indent	P((cmdbuf*));
-extern int  cb_join	P((cmdbuf*));
-extern int  cb_subst	P((cmdbuf*));
-extern int  cb_file	P((cmdbuf*));
-extern int  cb_read	P((cmdbuf*));
-extern int  cb_edit	P((cmdbuf*));
-extern int  cb_quit	P((cmdbuf*));
-extern int  cb_write	P((cmdbuf*));
-extern int  cb_wq	P((cmdbuf*));
-extern int  cb_xit	P((cmdbuf*));
-extern int  cb_set	P((cmdbuf*));
+extern Int  cb_search	(cmdbuf*, Int, Int, int);
+extern int  cb_print	(cmdbuf*);
+extern int  cb_list	(cmdbuf*);
+extern int  cb_number	(cmdbuf*);
+extern int  cb_page	(cmdbuf*);
+extern int  cb_assign	(cmdbuf*);
+extern int  cb_mark	(cmdbuf*);
+extern int  cb_append	(cmdbuf*);
+extern int  cb_insert	(cmdbuf*);
+extern int  cb_change	(cmdbuf*);
+extern int  cb_delete	(cmdbuf*);
+extern int  cb_copy	(cmdbuf*);
+extern int  cb_move	(cmdbuf*);
+extern int  cb_put	(cmdbuf*);
+extern int  cb_yank	(cmdbuf*);
+extern int  cb_lshift	(cmdbuf*);
+extern int  cb_rshift	(cmdbuf*);
+extern int  cb_indent	(cmdbuf*);
+extern int  cb_join	(cmdbuf*);
+extern int  cb_subst	(cmdbuf*);
+extern int  cb_file	(cmdbuf*);
+extern int  cb_read	(cmdbuf*);
+extern int  cb_edit	(cmdbuf*);
+extern int  cb_quit	(cmdbuf*);
+extern int  cb_write	(cmdbuf*);
+extern int  cb_wq	(cmdbuf*);
+extern int  cb_xit	(cmdbuf*);
+extern int  cb_set	(cmdbuf*);
 
 cmdbuf *ccb;		/* editor command buffer */
 
@@ -685,7 +685,7 @@ int cb_global(cmdbuf *cb)
 	}
 	cb->flags |= CB_GLOBAL;
 	cb->reverse = (cb->flags & CB_EXCL) != 0;
-	cb->ignorecase = (bool) IGNORECASE(cb->vars);
+	cb->ignorecase = IGNORECASE(cb->vars);
 	cb->glob_next = cb->first;
 	cb->glob_size = cb->last - cb->first + 1;
 

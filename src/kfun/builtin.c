@@ -2075,7 +2075,7 @@ int kf_sum(frame *f, int nargs)
 		    result = 0;
 		} else if (nonint < i) {
 		    num = kf_itoa(v->u.number, buffer);
-		    len = (ssizet) strlen(num);
+		    len = strlen(num);
 		    size -= len;
 		    memcpy(s->text + size, num, len);
 		    result = 0;
@@ -2084,7 +2084,7 @@ int kf_sum(frame *f, int nargs)
 		}
 	    } else {
 		/* subrange */
-		len = (ssizet) (v->u.number - v[1].u.number + 1);
+		len = (v->u.number - v[1].u.number + 1);
 		size -= len;
 		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
 		       len);
@@ -2111,13 +2111,13 @@ int kf_sum(frame *f, int nargs)
 		e2 = d_get_elts(v->u.array) + len;
 	    } else if (v->u.number < -2) {
 		/* aggregate */
-		for (len = (ssizet) (-3 - v->u.number); len > 0; --len) {
+		for (len = -3 - v->u.number; len > 0; --len) {
 		    *--e1 = *++v;
 		}
 		continue;
 	    } else {
 		/* subrange */
-		len = (ssizet) (v->u.number - v[1].u.number + 1);
+		len = v->u.number - v[1].u.number + 1;
 		e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
 		v += 2;
 	    }
