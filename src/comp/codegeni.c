@@ -2031,7 +2031,7 @@ char *cg_function(string *fname, node *n, int nvar, int npar,
 {
     char *prog;
 
-    fname; /* unreferened parameter */
+    UNREFERENCED_PARAMETER(fname);
 
     nparams = npar;
     cg_stmt(n);
