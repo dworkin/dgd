@@ -570,7 +570,7 @@ int sw_dump(char *dumpfile)
  * NAME:	swap->restore()
  * DESCRIPTION:	pretend to restore swap file
  */
-void sw_restore(int fd, unsinged int secsize)
+void sw_restore(int fd, unsigned int secsize)
 {
 }
 
@@ -799,7 +799,7 @@ bool co_init(unsigned int max)
  * DESCRIPTION:	pretend to check a new callout
  */
 Uint co_check(unsigned int n, Int delay, unsigned int mdelay, 
-	Uint **tp, unsigned shor t*mp, cbuf **qp)
+	Uint **tp, unsigned short *mp, cbuf **qp)
 {
     return 0;
 }
