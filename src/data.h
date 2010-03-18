@@ -229,71 +229,71 @@ struct _dataspace_ {
 
 /* sdata.c */
 
-extern void		d_init		 P((void));
-extern void		d_init_conv	 P((int, int, int, int, int, int, int));
+extern void		d_init		 (void);
+extern void		d_init_conv	 (int, int, int, int, int, int, int);
 
-extern control	       *d_new_control	 P((void));
-extern dataspace       *d_new_dataspace  P((object*));
-extern control	       *d_load_control	 P((object*));
-extern dataspace       *d_load_dataspace P((object*));
-extern void		d_ref_control	 P((control*));
-extern void		d_ref_dataspace  P((dataspace*));
+extern control	       *d_new_control	 (void);
+extern dataspace       *d_new_dataspace  (object*);
+extern control	       *d_load_control	 (object*);
+extern dataspace       *d_load_dataspace (object*);
+extern void		d_ref_control	 (control*);
+extern void		d_ref_dataspace  (dataspace*);
 
-extern char	       *d_get_prog	 P((control*));
-extern string	       *d_get_strconst	 P((control*, int, unsigned int));
-extern dfuncdef        *d_get_funcdefs	 P((control*));
-extern dvardef	       *d_get_vardefs	 P((control*));
-extern char	       *d_get_funcalls	 P((control*));
-extern dsymbol	       *d_get_symbols	 P((control*));
-extern Uint		d_get_progsize	 P((control*));
+extern char	       *d_get_prog	 (control*);
+extern string	       *d_get_strconst	 (control*, int, unsigned int);
+extern dfuncdef        *d_get_funcdefs	 (control*);
+extern dvardef	       *d_get_vardefs	 (control*);
+extern char	       *d_get_funcalls	 (control*);
+extern dsymbol	       *d_get_symbols	 (control*);
+extern Uint		d_get_progsize	 (control*);
 
-extern void		d_new_variables	 P((control*, value*));
-extern value	       *d_get_variable	 P((dataspace*, unsigned int));
-extern value	       *d_get_elts	 P((array*));
-extern void		d_get_callouts	 P((dataspace*));
+extern void		d_new_variables	 (control*, value*);
+extern value	       *d_get_variable	 (dataspace*, unsigned int);
+extern value	       *d_get_elts	 (array*);
+extern void		d_get_callouts	 (dataspace*);
 
-extern sector		d_swapout	 P((unsigned int));
-extern void		d_swapsync	 P((void));
-extern void		d_upgrade_mem	 P((object*, object*));
-extern void		d_restore_obj	 P((object*, Uint*));
-extern void		d_converted	 P((void));
+extern sector		d_swapout	 (unsigned int);
+extern void		d_swapsync	 (void);
+extern void		d_upgrade_mem	 (object*, object*);
+extern void		d_restore_obj	 (object*, Uint*);
+extern void		d_converted	 (void);
 
-extern void		d_free_control	 P((control*));
-extern void		d_free_dataspace P((dataspace*));
+extern void		d_free_control	 (control*);
+extern void		d_free_dataspace (dataspace*);
 
 /* data.c */
 
-extern void		d_new_plane	P((dataspace*, Int));
-extern void		d_commit_plane	P((Int, value*));
-extern void		d_discard_plane	P((Int));
-extern abchunk	      **d_commit_arr	P((array*, dataplane*, dataplane*));
-extern void		d_discard_arr	P((array*, dataplane*));
+extern void		d_new_plane	(dataspace*, Int);
+extern void		d_commit_plane	(Int, value*);
+extern void		d_discard_plane	(Int);
+extern abchunk	      **d_commit_arr	(array*, dataplane*, dataplane*);
+extern void		d_discard_arr	(array*, dataplane*);
 
-extern void		d_ref_imports	P((array*));
-extern void		d_assign_var	P((dataspace*, value*, value*));
-extern value	       *d_get_extravar	P((dataspace*));
-extern void		d_set_extravar	P((dataspace*, value*));
-extern void		d_wipe_extravar	P((dataspace*));
-extern void		d_assign_elt	P((dataspace*, array*, value*, value*));
-extern void		d_change_map	P((array*));
+extern void		d_ref_imports	(array*);
+extern void		d_assign_var	(dataspace*, value*, value*);
+extern value	       *d_get_extravar	(dataspace*);
+extern void		d_set_extravar	(dataspace*, value*);
+extern void		d_wipe_extravar	(dataspace*);
+extern void		d_assign_elt	(dataspace*, array*, value*, value*);
+extern void		d_change_map	(array*);
 
-extern uindex		d_new_call_out	P((dataspace*, string*, Int,
-					   unsigned int, frame*, int));
-extern Int		d_del_call_out	P((dataspace*, Uint, unsigned short*));
-extern string	       *d_get_call_out	P((dataspace*, unsigned int, frame*,
-					   int*));
-extern array	       *d_list_callouts	P((dataspace*, dataspace*));
+extern uindex		d_new_call_out	(dataspace*, string*, Int,
+					   unsigned int, frame*, int);
+extern Int		d_del_call_out	(dataspace*, Uint, unsigned short*);
+extern string	       *d_get_call_out	(dataspace*, unsigned int, frame*,
+					   int*);
+extern array	       *d_list_callouts	(dataspace*, dataspace*);
 
-extern void		d_set_varmap	P((control*, unsigned int,
-					   unsigned short*));
-extern void		d_upgrade_data	P((dataspace*, unsigned int,
-					   unsigned short*, object*));
-extern void		d_upgrade_clone	P((dataspace*));
-extern object	       *d_upgrade_lwobj	P((array*, object*));
-extern void		d_export	P((void));
+extern void		d_set_varmap	(control*, unsigned int,
+					   unsigned short*);
+extern void		d_upgrade_data	(dataspace*, unsigned int,
+					   unsigned short*, object*);
+extern void		d_upgrade_clone	(dataspace*);
+extern object	       *d_upgrade_lwobj	(array*, object*);
+extern void		d_export	(void);
 
-extern void		d_del_control	P((control*));
-extern void		d_del_dataspace	P((dataspace*));
+extern void		d_del_control	(control*);
+extern void		d_del_dataspace	(dataspace*);
 
 
 /* bit values for ctrl->flags */

@@ -34,7 +34,7 @@ vars *va_new()
 	{ "shiftwidth",	"sw",	4 },
 	{ "window",	"wi",	20 },
     };
-    register vars *v;
+    vars *v;
 
     v = ALLOC(vars, NUMBER_OF_VARS);
     memcpy(v, dflt, sizeof(dflt));
@@ -46,8 +46,7 @@ vars *va_new()
  * NAME:	vars->del()
  * DESCRIPTION:	delete a variable buffer
  */
-void va_del(v)
-vars *v;
+void va_del(vars *v)
 {
     FREE(v);
 }
@@ -56,12 +55,10 @@ vars *v;
  * NAME:	vars->set()
  * DESCRIPTION:	set the value of a variable.
  */
-void va_set(v, option)
-register vars *v;
-register char *option;
+void va_set(vars *v, char *option)
 {
-    register char *val;
-    register Int i;
+    char *val;
+    Int i;
 
     if (strncmp(option, "no", 2) == 0) {
 	option += 2;
@@ -98,8 +95,7 @@ register char *option;
  * NAME:	vars->show()
  * DESCRIPTION:	show all variables
  */
-void va_show(v)
-register vars *v;
+void va_show(vars *v)
 {
     output("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
     output("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */

@@ -25,8 +25,7 @@
  * NAME:	kfun->argerror()
  * DESCRIPTION:	handle an argument error in a builtin kfun
  */
-static void kf_argerror(kfun, n)
-int kfun, n;
+static void kf_argerror(int kfun, int n)
 {
     error("Bad argument %d for kfun %s", n, kftab[kfun].name);
 }
@@ -35,12 +34,10 @@ int kfun, n;
  * NAME:	kfun->itoa()
  * DESCRIPTION:	convert an Int to a string
  */
-static char *kf_itoa(i, buffer)
-Int i;
-char *buffer;
+static char *kf_itoa(Int i, char *buffer)
 {
-    register Uint u;
-    register char *p;
+    Uint u;
+    char *p;
 
     u = (i >= 0) ? i : -i;
 
@@ -68,11 +65,10 @@ char pt_add[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->add()
  * DESCRIPTION:	value + value
  */
-int kf_add(f)
-register frame *f;
+int kf_add(frame *f)
 {
-    register string *str;
-    register array *a;
+    string *str;
+    array *a;
     char *num, buffer[18];
     xfloat f1, f2;
     long l;
@@ -191,6 +187,7 @@ register frame *f;
     }
 
     kf_argerror(KF_ADD, 2);
+    return 0;
 }
 # endif
 
@@ -204,8 +201,7 @@ char pt_add_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->add_int()
  * DESCRIPTION:	int + int
  */
-int kf_add_int(f)
-register frame *f;
+int kf_add_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number + f->sp->u.number);
     f->sp++;
@@ -223,8 +219,7 @@ char pt_add1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  * NAME:	kfun->add1()
  * DESCRIPTION:	value++
  */
-int kf_add1(f)
-register frame *f;
+int kf_add1(frame *f)
 {
     xfloat f1, f2;
 
@@ -253,8 +248,7 @@ char pt_add1_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->add1_int()
  * DESCRIPTION:	int++
  */
-int kf_add1_int(f)
-frame *f;
+int kf_add1_int(frame *f)
 {
     PUT_INT(f->sp, f->sp->u.number + 1);
     return 0;
@@ -271,8 +265,7 @@ char pt_and[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->and()
  * DESCRIPTION:	value & value
  */
-int kf_and(f)
-register frame *f;
+int kf_and(frame *f)
 {
     array *a;
 
@@ -313,6 +306,7 @@ register frame *f;
     }
 
     kf_argerror(KF_AND, 2);
+    return 0;
 }
 # endif
 
@@ -326,8 +320,7 @@ char pt_and_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->and_int()
  * DESCRIPTION:	int & int
  */
-int kf_and_int(f)
-register frame *f;
+int kf_and_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number & f->sp->u.number);
     f->sp++;
@@ -345,10 +338,9 @@ char pt_div[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->div()
  * DESCRIPTION:	mixed / mixed
  */
-int kf_div(f)
-register frame *f;
+int kf_div(frame *f)
 {
-    register Int i, d;
+    Int i, d;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
@@ -384,6 +376,8 @@ register frame *f;
     default:
 	kf_argerror(KF_DIV, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -397,10 +391,9 @@ char pt_div_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->div()
  * DESCRIPTION:	int / int
  */
-int kf_div_int(f)
-register frame *f;
+int kf_div_int(frame *f)
 {
-    register Int i, d;
+    Int i, d;
 
     i = f->sp[1].u.number;
     d = f->sp->u.number;
@@ -430,10 +423,9 @@ char pt_eq[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->eq()
  * DESCRIPTION:	value == value
  */
-int kf_eq(f)
-register frame *f;
+int kf_eq(frame *f)
 {
-    register bool flag;
+    bool flag;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
@@ -500,8 +492,7 @@ char pt_eq_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->eq_int()
  * DESCRIPTION:	int == int
  */
-int kf_eq_int(f)
-register frame *f;
+int kf_eq_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number == f->sp->u.number));
     f->sp++;
@@ -519,8 +510,7 @@ char pt_ge[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->ge()
  * DESCRIPTION:	value >= value
  */
-int kf_ge(f)
-register frame *f;
+int kf_ge(frame *f)
 {
     xfloat f1, f2;
     bool flag;
@@ -554,6 +544,8 @@ register frame *f;
     default:
 	kf_argerror(KF_GE, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -567,8 +559,7 @@ char pt_ge_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->ge_int()
  * DESCRIPTION:	int >= int
  */
-int kf_ge_int(f)
-register frame *f;
+int kf_ge_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
     f->sp++;
@@ -586,8 +577,7 @@ char pt_gt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->gt()
  * DESCRIPTION:	value > value
  */
-int kf_gt(f)
-register frame *f;
+int kf_gt(frame *f)
 {
     xfloat f1, f2;
     bool flag;
@@ -621,6 +611,8 @@ register frame *f;
     default:
 	kf_argerror(KF_GT, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -634,8 +626,7 @@ char pt_gt_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->gt_int()
  * DESCRIPTION:	int > int
  */
-int kf_gt_int(f)
-register frame *f;
+int kf_gt_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
     f->sp++;
@@ -653,8 +644,7 @@ char pt_le[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->le()
  * DESCRIPTION:	value <= value
  */
-int kf_le(f)
-register frame *f;
+int kf_le(frame *f)
 {
     xfloat f1, f2;
     bool flag;
@@ -688,6 +678,8 @@ register frame *f;
     default:
 	kf_argerror(KF_LE, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -701,8 +693,7 @@ char pt_le_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->le_int()
  * DESCRIPTION:	int <= int
  */
-int kf_le_int(f)
-register frame *f;
+int kf_le_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
     f->sp++;
@@ -720,8 +711,7 @@ char pt_lshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->lshift()
  * DESCRIPTION:	int << int
  */
-int kf_lshift(f)
-register frame *f;
+int kf_lshift(frame *f)
 {
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_LSHIFT, 1);
@@ -752,8 +742,7 @@ char pt_lshift_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->lshift_int()
  * DESCRIPTION:	int << int
  */
-int kf_lshift_int(f)
-register frame *f;
+int kf_lshift_int(frame *f)
 {
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
@@ -778,8 +767,7 @@ char pt_lt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->lt()
  * DESCRIPTION:	value < value
  */
-int kf_lt(f)
-register frame *f;
+int kf_lt(frame *f)
 {
     xfloat f1, f2;
     bool flag;
@@ -813,6 +801,8 @@ register frame *f;
     default:
 	kf_argerror(KF_LT, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -826,8 +816,7 @@ char pt_lt_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->lt_int()
  * DESCRIPTION:	int < int
  */
-int kf_lt_int(f)
-register frame *f;
+int kf_lt_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
     f->sp++;
@@ -845,10 +834,9 @@ char pt_mod[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->mod()
  * DESCRIPTION:	int % int
  */
-int kf_mod(f)
-register frame *f;
+int kf_mod(frame *f)
 {
-    register Int i, d;
+    Int i, d;
 
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_MOD, 1);
@@ -884,10 +872,9 @@ char pt_mod_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->mod_int()
  * DESCRIPTION:	int % int
  */
-int kf_mod_int(f)
-register frame *f;
+int kf_mod_int(frame *f)
 {
-    register Int i, d;
+    Int i, d;
 
     i = f->sp[1].u.number;
     d = f->sp->u.number;
@@ -917,8 +904,7 @@ char pt_mult[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->mult()
  * DESCRIPTION:	mixed * mixed
  */
-int kf_mult(f)
-register frame *f;
+int kf_mult(frame *f)
 {
     xfloat f1, f2;
 
@@ -943,6 +929,8 @@ register frame *f;
     default:
 	kf_argerror(KF_MULT, 1);
     }
+
+    return 0;
 }
 # endif
 
@@ -956,8 +944,7 @@ char pt_mult_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->mult_int()
  * DESCRIPTION:	int * int
  */
-int kf_mult_int(f)
-register frame *f;
+int kf_mult_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
     f->sp++;
@@ -975,10 +962,9 @@ char pt_ne[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  * NAME:	kfun->ne()
  * DESCRIPTION:	value != value
  */
-int kf_ne(f)
-register frame *f;
+int kf_ne(frame *f)
 {
-    register bool flag;
+    bool flag;
     xfloat f1, f2;
 
     if (f->sp[1].type != f->sp->type) {
@@ -1045,8 +1031,7 @@ char pt_ne_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->ne_int()
  * DESCRIPTION:	int != int
  */
-int kf_ne_int(f)
-register frame *f;
+int kf_ne_int(frame *f)
 {
     PUT_INT(&f->sp[1], (f->sp[1].u.number != f->sp->u.number));
     f->sp++;
@@ -1064,8 +1049,7 @@ char pt_neg[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->neg()
  * DESCRIPTION:	~ int
  */
-int kf_neg(f)
-register frame *f;
+int kf_neg(frame *f)
 {
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_NEG, 1);
@@ -1085,8 +1069,7 @@ char pt_neg_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->neg_int()
  * DESCRIPTION:	~ int
  */
-int kf_neg_int(f)
-frame *f;
+int kf_neg_int(frame *f)
 {
     PUT_INT(f->sp, ~f->sp->u.number);
     return 0;
@@ -1103,8 +1086,7 @@ char pt_not[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  * NAME:	kfun->not()
  * DESCRIPTION:	! value
  */
-int kf_not(f)
-register frame *f;
+int kf_not(frame *f)
 {
     switch (f->sp->type) {
     case T_NIL:
@@ -1143,8 +1125,7 @@ FUNCDEF("!", kf_not_int, pt_not, 0)
  * NAME:	kfun->not_int()
  * DESCRIPTION:	! int
  */
-int kf_not_int(f)
-frame *f;
+int kf_not_int(frame *f)
 {
     PUT_INT(f->sp, !f->sp->u.number);
     return 0;
@@ -1161,8 +1142,7 @@ char pt_or[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->or()
  * DESCRIPTION:	value | value
  */
-int kf_or(f)
-register frame *f;
+int kf_or(frame *f)
 {
     array *a;
 
@@ -1192,6 +1172,7 @@ register frame *f;
     }
 
     kf_argerror(KF_OR, 2);
+    return 0;
 }
 # endif
 
@@ -1205,8 +1186,7 @@ char pt_or_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->or_int()
  * DESCRIPTION:	int | int
  */
-int kf_or_int(f)
-register frame *f;
+int kf_or_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number | f->sp->u.number);
     f->sp++;
@@ -1224,8 +1204,7 @@ char pt_rangeft[] = { C_STATIC, 3, 0, 0, 9, T_MIXED, T_MIXED, T_MIXED,
  * NAME:	kfun->rangeft()
  * DESCRIPTION:	value [ int .. int ]
  */
-int kf_rangeft(f)
-register frame *f;
+int kf_rangeft(frame *f)
 {
     string *str;
     array *a;
@@ -1284,8 +1263,7 @@ char pt_rangef[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->rangef()
  * DESCRIPTION:	value [ int .. ]
  */
-int kf_rangef(f)
-register frame *f;
+int kf_rangef(frame *f)
 {
     string *str;
     array *a;
@@ -1340,8 +1318,7 @@ char pt_ranget[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->ranget()
  * DESCRIPTION:	value [ .. int ]
  */
-int kf_ranget(f)
-register frame *f;
+int kf_ranget(frame *f)
 {
     string *str;
     array *a;
@@ -1394,8 +1371,7 @@ char pt_range[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  * NAME:	kfun->range()
  * DESCRIPTION:	value [ .. ]
  */
-int kf_range(f)
-register frame *f;
+int kf_range(frame *f)
 {
     string *str;
     array *a;
@@ -1442,8 +1418,7 @@ char pt_rshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->rshift()
  * DESCRIPTION:	int >> int
  */
-int kf_rshift(f)
-register frame *f;
+int kf_rshift(frame *f)
 {
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_RSHIFT, 1);
@@ -1474,8 +1449,7 @@ char pt_rshift_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->rshift_int()
  * DESCRIPTION:	int >> int
  */
-int kf_rshift_int(f)
-register frame *f;
+int kf_rshift_int(frame *f)
 {
     if ((f->sp->u.number & ~31) != 0) {
 	if (f->sp->u.number < 0) {
@@ -1500,8 +1474,7 @@ char pt_sub[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->sub()
  * DESCRIPTION:	value - value
  */
-int kf_sub(f)
-register frame *f;
+int kf_sub(frame *f)
 {
     xfloat f1, f2;
 
@@ -1559,6 +1532,7 @@ register frame *f;
     }
 
     kf_argerror(KF_SUB, 2);
+    return 0;
 }
 # endif
 
@@ -1572,8 +1546,7 @@ char pt_sub_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->sub_int()
  * DESCRIPTION:	int - int
  */
-int kf_sub_int(f)
-register frame *f;
+int kf_sub_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number - f->sp->u.number);
     f->sp++;
@@ -1591,8 +1564,7 @@ char pt_sub1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  * NAME:	kfun->sub1()
  * DESCRIPTION:	value--
  */
-int kf_sub1(f)
-register frame *f;
+int kf_sub1(frame *f)
 {
     xfloat f1, f2;
 
@@ -1621,8 +1593,7 @@ char pt_sub1_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->sub1_int()
  * DESCRIPTION:	int--
  */
-int kf_sub1_int(f)
-frame *f;
+int kf_sub1_int(frame *f)
 {
     PUT_INT(f->sp, f->sp->u.number - 1);
     return 0;
@@ -1639,8 +1610,7 @@ char pt_tofloat[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_MIXED };
  * NAME:	kfun->tofloat()
  * DESCRIPTION:	convert to float
  */
-int kf_tofloat(f)
-register frame *f;
+int kf_tofloat(frame *f)
 {
     xfloat flt;
 
@@ -1681,8 +1651,7 @@ char pt_toint[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  * NAME:	kfun->toint()
  * DESCRIPTION:	convert to integer
  */
-int kf_toint(f)
-register frame *f;
+int kf_toint(frame *f)
 {
     xfloat flt;
 
@@ -1724,8 +1693,7 @@ char pt_tst[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  * NAME:	kfun->tst()
  * DESCRIPTION:	!! value
  */
-int kf_tst(f)
-register frame *f;
+int kf_tst(frame *f)
 {
     switch (f->sp->type) {
     case T_NIL:
@@ -1764,8 +1732,7 @@ FUNCDEF("!!", kf_tst_int, pt_tst, 0)
  * NAME:	kfun->tst_int()
  * DESCRIPTION:	!! int
  */
-int kf_tst_int(f)
-frame *f;
+int kf_tst_int(frame *f)
 {
     PUT_INT(f->sp, (f->sp->u.number != 0));
     return 0;
@@ -1782,8 +1749,7 @@ char pt_umin[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  * NAME:	kfun->umin()
  * DESCRIPTION:	- mixed
  */
-int kf_umin(f)
-register frame *f;
+int kf_umin(frame *f)
 {
     xfloat flt;
 
@@ -1803,6 +1769,7 @@ register frame *f;
     }
 
     kf_argerror(KF_UMIN, 1);
+    return 0;
 }
 # endif
 
@@ -1816,8 +1783,7 @@ char pt_umin_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->umin_int()
  * DESCRIPTION:	- int
  */
-int kf_umin_int(f)
-frame *f;
+int kf_umin_int(frame *f)
 {
     PUT_INT(f->sp, -f->sp->u.number);
     return 0;
@@ -1834,8 +1800,7 @@ char pt_xor[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  * NAME:	kfun->xor()
  * DESCRIPTION:	value ^ value
  */
-int kf_xor(f)
-register frame *f;
+int kf_xor(frame *f)
 {
     array *a;
 
@@ -1865,6 +1830,7 @@ register frame *f;
     }
 
     kf_argerror(KF_XOR, 2);
+    return 0;
 }
 # endif
 
@@ -1878,8 +1844,7 @@ char pt_xor_int[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  * NAME:	kfun->xor_int()
  * DESCRIPTION:	int ^ int
  */
-int kf_xor_int(f)
-register frame *f;
+int kf_xor_int(frame *f)
 {
     PUT_INT(&f->sp[1], f->sp[1].u.number ^ f->sp->u.number);
     f->sp++;
@@ -1897,11 +1862,12 @@ char pt_tostring[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_MIXED };
  * NAME:	kfun->tostring()
  * DESCRIPTION:	cast an int or float to a string
  */
-int kf_tostring(f)
-register frame *f;
+int kf_tostring(frame *f)
 {
     char *num, buffer[18];
     xfloat flt;
+
+    num = NULL;
 
     i_add_ticks(f, 2);
     if (f->sp->type == T_INT) {
@@ -1934,8 +1900,7 @@ char pt_ckrangeft[] = { C_STATIC, 3, 0, 0, 9, T_INT, T_MIXED, T_INT, T_INT };
  * DESCRIPTION:	Check a [ from .. to ] subrange.
  *		This function doesn't pop its arguments and returns nothing.
  */
-int kf_ckrangeft(f)
-register frame *f;
+int kf_ckrangeft(frame *f)
 {
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_CKRANGEFT, 2);
@@ -1967,8 +1932,7 @@ char pt_ckrangef[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
  * DESCRIPTION:	Check a [ from .. ] subrange, add missing index.
  *		This function doesn't pop its arguments.
  */
-int kf_ckrangef(f)
-register frame *f;
+int kf_ckrangef(frame *f)
 {
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_CKRANGEF, 2);
@@ -2001,8 +1965,7 @@ char pt_ckranget[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
  * DESCRIPTION:	Check a [ .. to ] subrange, add missing index.
  *		This function doesn't pop its arguments.
  */
-int kf_ckranget(f)
-register frame *f;
+int kf_ckranget(frame *f)
 {
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_CKRANGET, 2);
@@ -2032,19 +1995,17 @@ char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
  * NAME:	kfun->sum()
  * DESCRIPTION:	perform a summand operation
  */
-int kf_sum(f, nargs)
-register frame *f;
-int nargs;
+int kf_sum(frame *f, int nargs)
 {
     char buffer[12], *num;
     string *s;
     array *a;
-    register value *v, *e1, *e2;
-    register int i, type, vtype, nonint;
-    register long size;
-    register ssizet len;
-    register Int result;
-    register long isize;
+    value *v, *e1, *e2;
+    int i, type, vtype, nonint;
+    long size;
+    ssizet len;
+    Int result;
+    long isize;
 
     /*
      * pass 1: check the types of everything and calculate the size
@@ -2123,7 +2084,7 @@ int nargs;
 		}
 	    } else {
 		/* subrange */
-		len = v->u.number - v[1].u.number + 1;
+		len = (v->u.number - v[1].u.number + 1);
 		size -= len;
 		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
 		       len);
@@ -2194,8 +2155,7 @@ char pt_status_idx[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_INT };
  * NAME:	kfun->status_idx()
  * DESCRIPTION:	return status()[idx]
  */
-int kf_status_idx(f)
-register frame *f;
+int kf_status_idx(frame *f)
 {
     if (f->sp->type != T_INT) {
 	error("Non-numeric array index");
@@ -2218,10 +2178,11 @@ char pt_statuso_idx[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_OBJECT, T_INT };
  * NAME:	kfun->statuso_idx()
  * DESCRIPTION:	return status(obj)[idx]
  */
-int kf_statuso_idx(f)
-register frame *f;
+int kf_statuso_idx(frame *f)
 {
     uindex n;
+
+    n = 0;
 
     switch (f->sp[1].type) {
     case T_OBJECT:
@@ -2260,8 +2221,7 @@ char pt_calltr_idx[] = { C_STATIC, 1, 0, 0, 7, T_MIXED | (1 << REFSHIFT),
  * NAME:	kfun->calltr_idx()
  * DESCRIPTION:	return call_trace()[idx]
  */
-int kf_calltr_idx(f)
-register frame *f;
+int kf_calltr_idx(frame *f)
 {
     if (f->sp->type != T_INT) {
 	error("Non-numeric array index");
@@ -2284,8 +2244,7 @@ char pt_nil[] = { C_STATIC, 0, 0, 0, 6, T_NIL };
  * NAME:	kfun->nil()
  * DESCRIPTION:	return nil
  */
-int kf_nil(f)
-register frame *f;
+int kf_nil(frame *f)
 {
     *--f->sp = nil_value;
     return 0;
@@ -2302,11 +2261,12 @@ char pt_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
  * NAME:	kfun->instanceof()
  * DESCRIPTION:	instanceof
  */
-int kf_instanceof(f)
-register frame *f;
+int kf_instanceof(frame *f)
 {
     uindex oindex;
     int instance;
+
+    oindex = 0;
 
     switch (f->sp[1].type) {
     case T_OBJECT:
@@ -2340,11 +2300,10 @@ unsigned char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
  * DESCRIPTION:	store array elements in lvalues on the stack, which will also
  *		be popped
  */
-int kf_store_aggr(f)
-register frame *f;
+int kf_store_aggr(frame *f)
 {
-    register int n, i;
-    register value *v;
+    int n, i;
+    value *v;
     value val;
  
     n = f->sp[0].u.number;

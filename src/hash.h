@@ -32,11 +32,11 @@ typedef struct {
 } hashtab;
 
 extern char		strhashtab[];
-extern unsigned short	hashstr		P((char*, unsigned int));
-extern unsigned short	hashmem		P((char*, unsigned int));
+extern unsigned short	hashstr		(char*, unsigned int);
+extern unsigned short	hashmem		(char*, unsigned int);
 
-extern hashtab	       *ht_new		P((unsigned int, unsigned int, int));
-extern void		ht_del		P((hashtab*));
-extern hte	      **ht_lookup	P((hashtab*, char*, int));
+extern hashtab	       *ht_new		(unsigned int, unsigned int, int);
+extern void		ht_del		(hashtab*);
+extern hte	      **ht_lookup	(hashtab*, char*, int);
 
 # endif /* H_HASH */

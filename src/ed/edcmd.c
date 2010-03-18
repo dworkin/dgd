@@ -27,34 +27,34 @@
 /*
  * These functions are in cmdsub.c
  */
-extern Int  cb_search	P((cmdbuf*, Int, Int, int));
-extern int  cb_print	P((cmdbuf*));
-extern int  cb_list	P((cmdbuf*));
-extern int  cb_number	P((cmdbuf*));
-extern int  cb_page	P((cmdbuf*));
-extern int  cb_assign	P((cmdbuf*));
-extern int  cb_mark	P((cmdbuf*));
-extern int  cb_append	P((cmdbuf*));
-extern int  cb_insert	P((cmdbuf*));
-extern int  cb_change	P((cmdbuf*));
-extern int  cb_delete	P((cmdbuf*));
-extern int  cb_copy	P((cmdbuf*));
-extern int  cb_move	P((cmdbuf*));
-extern int  cb_put	P((cmdbuf*));
-extern int  cb_yank	P((cmdbuf*));
-extern int  cb_lshift	P((cmdbuf*));
-extern int  cb_rshift	P((cmdbuf*));
-extern int  cb_indent	P((cmdbuf*));
-extern int  cb_join	P((cmdbuf*));
-extern int  cb_subst	P((cmdbuf*));
-extern int  cb_file	P((cmdbuf*));
-extern int  cb_read	P((cmdbuf*));
-extern int  cb_edit	P((cmdbuf*));
-extern int  cb_quit	P((cmdbuf*));
-extern int  cb_write	P((cmdbuf*));
-extern int  cb_wq	P((cmdbuf*));
-extern int  cb_xit	P((cmdbuf*));
-extern int  cb_set	P((cmdbuf*));
+extern Int  cb_search	(cmdbuf*, Int, Int, int);
+extern int  cb_print	(cmdbuf*);
+extern int  cb_list	(cmdbuf*);
+extern int  cb_number	(cmdbuf*);
+extern int  cb_page	(cmdbuf*);
+extern int  cb_assign	(cmdbuf*);
+extern int  cb_mark	(cmdbuf*);
+extern int  cb_append	(cmdbuf*);
+extern int  cb_insert	(cmdbuf*);
+extern int  cb_change	(cmdbuf*);
+extern int  cb_delete	(cmdbuf*);
+extern int  cb_copy	(cmdbuf*);
+extern int  cb_move	(cmdbuf*);
+extern int  cb_put	(cmdbuf*);
+extern int  cb_yank	(cmdbuf*);
+extern int  cb_lshift	(cmdbuf*);
+extern int  cb_rshift	(cmdbuf*);
+extern int  cb_indent	(cmdbuf*);
+extern int  cb_join	(cmdbuf*);
+extern int  cb_subst	(cmdbuf*);
+extern int  cb_file	(cmdbuf*);
+extern int  cb_read	(cmdbuf*);
+extern int  cb_edit	(cmdbuf*);
+extern int  cb_quit	(cmdbuf*);
+extern int  cb_write	(cmdbuf*);
+extern int  cb_wq	(cmdbuf*);
+extern int  cb_xit	(cmdbuf*);
+extern int  cb_set	(cmdbuf*);
 
 cmdbuf *ccb;		/* editor command buffer */
 
@@ -62,10 +62,9 @@ cmdbuf *ccb;		/* editor command buffer */
  * NAME:	cmdbuf->new()
  * DESCRIPTION:	create and initialize a command edit buffer
  */
-cmdbuf *cb_new(tmpfile)
-char *tmpfile;
+cmdbuf *cb_new(char *tmpfile)
 {
-    register cmdbuf *cb;
+    cmdbuf *cb;
 
     m_static();
     cb = ALLOC(cmdbuf, 1);
@@ -84,8 +83,7 @@ char *tmpfile;
  * NAME:	cmdbuf->del()
  * DESCRIPTION:	delete a command edit buffer
  */
-void cb_del(cb)
-register cmdbuf *cb;
+void cb_del(cmdbuf *cb)
 {
     eb_del(cb->edbuf);
     rx_del(cb->regexp);
@@ -98,8 +96,7 @@ register cmdbuf *cb;
  * DESCRIPTION:	skip white space in a string. return a pointer to the first
  *		character after the white space (could be '\0')
  */
-char *skipst(p)
-register char *p;
+char *skipst(char *p)
 {
     while (*p == ' ' || *p == HT) {
 	p++;
@@ -111,12 +108,10 @@ register char *p;
  * NAME:	pattern()
  * DESCRIPTION:	scan a pattern and copy it to a buffer.
  */
-char *pattern(pat, delim, buffer)
-char *pat, *buffer;
-int delim;
+char *pattern(char *pat, int delim, char *buffer)
 {
-    register char *p;
-    register unsigned int size;
+    char *p;
+    unsigned int size;
 
     p = pat;
     while (*p != '\0') {
@@ -160,9 +155,7 @@ int delim;
  * NAME:	cmdbuf->pattern()
  * DESCRIPTION:	compile a regular expression, up to a delimeter
  */
-static void cb_pattern(cb, delim)
-register cmdbuf *cb;
-char delim;
+static void cb_pattern(cmdbuf *cb, char delim)
 {
     char buffer[STRINGSZ];
 
@@ -186,12 +179,10 @@ char delim;
  * DESCRIPTION:	parse an address. First is the first line to search from if the
  *		address is a search pattern.
  */
-static Int cb_address(cb, first)
-register cmdbuf *cb;
-Int first;
+static Int cb_address(cmdbuf *cb, Int first)
 {
-    register Int l;
-    register char *p;
+    Int l;
+    char *p;
 
     l = 0;
 
@@ -280,7 +271,7 @@ Int first;
 
     cb->cmd = skipst(cb->cmd);
     while (cb->cmd[0] == '+' || cb->cmd[0] == '-') {
-	register Int r;
+	Int r;
 
 	p = skipst(cb->cmd + 1);
 	if (!isdigit(*p)) {
@@ -310,8 +301,7 @@ Int first;
  * DESCRIPTION:	parse line range from the command buffer. Valid range for an
  *		address is 0-$
  */
-static void cb_range(cb)
-register cmdbuf *cb;
+static void cb_range(cmdbuf *cb)
 {
     cb->first = -1;
     cb->last = -1;
@@ -345,14 +335,13 @@ register cmdbuf *cb;
  * DESCRIPTION:	set the line range according to the (optional) count in the
  *		command buffer
  */
-void cb_count(cb)
-register cmdbuf *cb;
+void cb_count(cmdbuf *cb)
 {
-    register char *p;
+    char *p;
 
     p = cb->cmd;
     if (isdigit(*p)) {
-	register Int count;
+	Int count;
 
 	count = 0;
 	do {
@@ -375,8 +364,7 @@ register cmdbuf *cb;
  * NAME:	not_in_global()
  * DESCRIPTION:	error if currently executing a global command
  */
-void not_in_global(cb)
-cmdbuf *cb;
+void not_in_global(cmdbuf *cb)
 {
     if (cb->flags & CB_GLOBAL) {
 	error("Command not allowed in global");
@@ -387,9 +375,7 @@ cmdbuf *cb;
  * NAME:	cmdbuf->do()
  * DESCRIPTION:	copy the present command buffer status in the undo buffer
  */
-void cb_do(cb, this)
-register cmdbuf *cb;
-Int this;
+void cb_do(cmdbuf *cb, Int this)
 {
     cb->undo = cb->edbuf->buffer;
     cb->uthis = this;
@@ -401,8 +387,7 @@ Int this;
  * DESCRIPTION:	undo the effects of a previous command by exchanging the
  *		command buffer status with the undo buffer
  */
-int cb_undo(cb)
-register cmdbuf *cb;
+int cb_undo(cmdbuf *cb)
 {
     block b;
     Int this, mark[26];
@@ -436,12 +421,10 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->buf()
  * DESCRIPTION:	put a block in the appropriate buffers
  */
-void cb_buf(cb, b)
-register cmdbuf *cb;
-register block b;
+void cb_buf(cmdbuf *cb, block b)
 {
     if (isupper(cb->a_buffer)) {
-	register block *zbuf;
+	block *zbuf;
 
 	/*
 	 * copy or append to named buffer
@@ -472,12 +455,9 @@ register block b;
  * NAME:	add()
  * DESCRIPTION:	add a block of lines to the edit buffer
  */
-void add(cb, ln, b, size)
-register cmdbuf *cb;
-register Int ln, size;
-block b;
+void add(cmdbuf *cb, Int ln, block b, Int size)
 {
-    register Int *m;
+    Int *m;
 
     /* global checks */
     if (cb->flags & CB_GLOBAL) {
@@ -504,11 +484,9 @@ block b;
  * NAME:	delete()
  * DESCRIPTION:	delete a block of lines from the edit buffer
  */
-block delete(cb, first, last)
-register cmdbuf *cb;
-register Int first, last;
+block delete(cmdbuf *cb, Int first, Int last)
 {
-    register Int size, *m;
+    Int size, *m;
 
     size = last - first + 1;
 
@@ -550,12 +528,9 @@ register Int first, last;
  * NAME:	change()
  * DESCRIPTION:	replace a subrange of lines by a block
  */
-void change(cb, first, last, b)
-register cmdbuf *cb;
-register Int first, last;
-block b;
+void change(cmdbuf *cb, Int first, Int last, block b)
 {
-    register Int offset, *m;
+    Int offset, *m;
 
     offset = last - first + 1;
     if (b != (block) 0) {
@@ -598,8 +573,7 @@ block b;
  * NAME:	startblock()
  * DESCRIPTION:	start a block of lines
  */
-void startblock(cb)
-cmdbuf *cb;
+void startblock(cmdbuf *cb)
 {
     eb_startblock(cb->edbuf);
 }
@@ -608,9 +582,7 @@ cmdbuf *cb;
  * NAME:	addblock()
  * DESCRIPTION:	add a line to the current block of lines
  */
-void addblock(cb, text)
-cmdbuf *cb;
-char *text;
+void addblock(cmdbuf *cb, char *text)
 {
     eb_addblock(cb->edbuf, text);
 }
@@ -619,8 +591,7 @@ char *text;
  * NAME:	endblock()
  * DESCRIPTION:	finish the current block
  */
-void endblock(cb)
-register cmdbuf *cb;
+void endblock(cmdbuf *cb)
 {
     eb_endblock(cb->edbuf);
 
@@ -652,10 +623,9 @@ register cmdbuf *cb;
  * NAME:	find()
  * DESCRIPTION:	match a pattern in a global command
  */
-static void find(text)
-char *text;
+static void find(char *text)
 {
-    register cmdbuf *cb;
+    cmdbuf *cb;
 
     cb = ccb;
     cb->glob_next++;
@@ -669,10 +639,9 @@ char *text;
  * NAME:	cmdbuf->global()
  * DESCRIPTION:	do a global command
  */
-int cb_global(cb)
-register cmdbuf *cb;
+int cb_global(cmdbuf *cb)
 {
-    register char *p;
+    char *p;
     char buffer[STRINGSZ], delim;
     block undo;
     Int uthis, umark[26];
@@ -761,8 +730,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->vglobal()
  * DESCRIPTION:	v == g!
  */
-int cb_vglobal(cb)
-cmdbuf *cb;
+int cb_vglobal(cmdbuf *cb)
 {
     cb->flags |= CB_EXCL;
     return cb_global(cb);
@@ -842,9 +810,7 @@ static cmd ed_commands[] = {
  *		did not terminate the editor. Multiple commands may be
  *		specified, separated by |
  */
-bool cb_command(cb, command)
-register cmdbuf *cb;
-char *command;
+bool cb_command(cmdbuf *cb, char *command)
 {
     cb->cmd = command;
     ccb = cb;
@@ -864,8 +830,8 @@ char *command;
 		addblock(cb, command);
 	    }
 	} else {
-	    register cmd *cm;
-	    register char *p;
+	    cmd *cm;
+	    char *p;
 	    int ltype, ret;
 
 	    cb->flags &= ~(CB_EXCL | CB_NUMBER | CB_LIST);

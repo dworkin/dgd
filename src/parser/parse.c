@@ -53,18 +53,12 @@ typedef struct _pnchunk_ {
  * NAME:	pnode->new()
  * DESCRIPTION:	create a new pnode
  */
-static pnode *pn_new(c, symb, state, text, len, next, list)
-register pnchunk **c;
-short symb;
-unsigned short state;
-char *text;
-ssizet len;
-pnode *next, *list;
+static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, ssizet len, pnode *next, pnode *list)
 {
-    register pnode *pn;
+    pnode *pn;
 
     if (*c == (pnchunk *) NULL || (*c)->chunksz == PNCHUNKSZ) {
-	register pnchunk *x;
+	pnchunk *x;
 
 	x = ALLOC(pnchunk, 1);
 	x->next = *c;
@@ -87,10 +81,9 @@ pnode *next, *list;
  * NAME:	pnode->clear()
  * DESCRIPTION:	free all pnodes in memory
  */
-static void pn_clear(c)
-register pnchunk *c;
+static void pn_clear(pnchunk *c)
 {
-    register pnchunk *f;
+    pnchunk *f;
 
     while (c != (pnchunk *) NULL) {
 	f = c;
@@ -124,19 +117,16 @@ typedef struct {
  * NAME:	snode->new()
  * DESCRIPTION:	create a new snode
  */
-static snode *sn_new(list, pn, slist)
-register snlist *list;
-pnode *pn;
-snode *slist;
+static snode *sn_new(snlist *list, pnode *pn, snode *slist)
 {
-    register snode *sn;
+    snode *sn;
 
     if (list->free != (snode *) NULL) {
 	sn = list->free;
 	list->free = sn->next;
     } else {
 	if (list->snc == (snchunk *) NULL || list->snc->chunksz == SNCHUNKSZ) {
-	    register snchunk *x;
+	    snchunk *x;
 
 	    x = ALLOC(snchunk, 1);
 	    x->next = list->snc;
@@ -163,11 +153,7 @@ snode *slist;
  * NAME:	snode->add()
  * DESCRIPTION:	add an existing snode to a list
  */
-static snode *sn_add(list, sn, pn, slist)
-register snlist *list;
-register snode *sn;
-pnode *pn;
-snode *slist;
+static snode *sn_add(snlist *list, snode *sn, pnode *pn, snode *slist)
 {
     if (list->first == (snode *) NULL) {
 	list->first = list->last = sn;
@@ -187,9 +173,7 @@ snode *slist;
  * NAME:	snode->del()
  * DESCRIPTION:	put an existing node in the free list
  */
-static void sn_del(list, sn)
-snlist *list;
-snode *sn;
+static void sn_del(snlist *list, snode *sn)
 {
     sn->next = list->free;
     list->free = sn;
@@ -199,10 +183,9 @@ snode *sn;
  * NAME:	snode->clear()
  * DESCRIPTION:	free all snodes in memory
  */
-static void sn_clear(list)
-register snlist *list;
+static void sn_clear(snlist *list)
 {
-    register snchunk *c, *f;
+    snchunk *c, *f;
 
     c = list->snc;
     while (c != (snchunk *) NULL) {
@@ -227,9 +210,7 @@ typedef struct _strchunk_ {
  * NAME:	strchunk->add()
  * DESCRIPTION:	add a string to the current chunk
  */
-static void sc_add(c, str)
-register strchunk **c;
-string *str;
+static void sc_add(strchunk **c, string *str)
 {
     if (*c == (strchunk *) NULL || (*c)->chunksz == STRCHUNKSZ) {
 	strchunk *x;
@@ -247,11 +228,10 @@ string *str;
  * NAME:	strchunk->clean()
  * DESCRIPTION:	remove string chunks, and strings, from memory
  */
-static void sc_clean(c)
-register strchunk *c;
+static void sc_clean(strchunk *c)
 {
-    register strchunk *f;
-    register int i;
+    strchunk *f;
+    int i;
 
     while (c != (strchunk *) NULL) {
 	for (i = c->chunksz; --i >= 0; ) {
@@ -276,9 +256,7 @@ typedef struct _arrchunk_ {
  * NAME:	arrchunk->add()
  * DESCRIPTION:	add an array to the current chunk
  */
-static void ac_add(c, arr)
-arrchunk **c;
-array *arr;
+static void ac_add(arrchunk **c, array *arr)
 {
     if (*c == (arrchunk *) NULL || (*c)->chunksz == ARRCHUNKSZ) {
 	arrchunk *x;
@@ -296,11 +274,10 @@ array *arr;
  * NAME:	arrchunk->clean()
  * DESCRIPTION:	remove array chunks, and arrays, from memory
  */
-static void ac_clean(c)
-register arrchunk *c;
+static void ac_clean(arrchunk *c)
 {
-    register arrchunk *f;
-    register int i;
+    arrchunk *f;
+    int i;
 
     while (c != (arrchunk *) NULL) {
 	for (i = c->chunksz; --i >= 0; ) {
@@ -343,12 +320,10 @@ struct _parser_ {
  * NAME:	parser->new()
  * DESCRIPTION:	create a new parser instance
  */
-static parser *ps_new(f, source, grammar)
-frame *f;
-string *source, *grammar;
+static parser *ps_new(frame *f, string *source, string *grammar)
 {
-    register parser *ps;
-    register char *p;
+    parser *ps;
+    char *p;
 
     ps = ALLOC(parser, 1);
     ps->frame = f;
@@ -380,8 +355,7 @@ string *source, *grammar;
  * NAME:	parser->del()
  * DESCRIPTION:	delete parser
  */
-void ps_del(ps)
-register parser *ps;
+void ps_del(parser *ps)
 {
     ps->data->parser = (parser *) NULL;
     str_del(ps->source);
@@ -401,15 +375,12 @@ register parser *ps;
  * NAME:	parser->reduce()
  * DESCRIPTION:	perform a reduction
  */
-static void ps_reduce(ps, pn, p)
-register parser *ps;
-pnode *pn;
-register char *p;
+static void ps_reduce(parser *ps, pnode *pn, char *p)
 {
-    register snode *sn;
-    register pnode *next;
-    register unsigned short n;
-    register short symb;
+    snode *sn;
+    pnode *next;
+    unsigned short n;
+    short symb;
     char *red;
     ssizet len;
 
@@ -442,7 +413,7 @@ register char *p;
     i_add_ticks(ps->frame, 2);
     for (sn = ps->states[n]; sn != (snode *) NULL; sn = sn->slist) {
 	if (sn->pn->symbol == symb && sn->pn->next == next) {
-	    register pnode **ppn;
+	    pnode **ppn;
 
 	    if (sn->pn->u.text != (char *) NULL) {
 		/* first alternative */
@@ -476,21 +447,16 @@ register char *p;
  * NAME:	parser->shift()
  * DESCRIPTION:	perform a shift
  */
-static void ps_shift(ps, sn, token, text, len)
-register parser *ps;
-snode *sn;
-short token;
-char *text;
-ssizet len;
+static void ps_shift(parser *ps, snode *sn, short token, char *text, ssizet len)
 {
-    register int n;
+    int n;
 
     n = srp_shift(ps->lr, sn->pn->state, token);
     if (n >= 0) {
 	/* shift works: add new snode */
 	ps->states[n] = sn_add(&ps->list, sn,
 			       pn_new(&ps->pnc, token, n, text, len,
-				      sn->pn, (pnode *) NULL),
+			       sn->pn, (pnode *) NULL),
 			       ps->states[n]);
 	return;
     }
@@ -503,13 +469,10 @@ ssizet len;
  * NAME:	parser->parse()
  * DESCRIPTION:	parse a string, return a parse tangle
  */
-static pnode *ps_parse(ps, str, toobig)
-register parser *ps;
-string *str;
-bool *toobig;
+static pnode *ps_parse(parser *ps, string *str, bool *toobig)
 {
-    register snode *sn;
-    register short n;
+    snode *sn;
+    short n;
     snode *next;
     char *ttext;
     ssizet size, tlen;
@@ -619,9 +582,7 @@ bool *toobig;
  * NAME:	parser->flatten()
  * DESCRIPTION:	traverse parse tree, collecting values in a flat array
  */
-static void ps_flatten(pn, next, v)
-register pnode *pn, *next;
-register value *v;
+static void ps_flatten(pnode *pn, pnode *next, value *v)
 {
     do {
 	switch (pn->symbol) {
@@ -656,17 +617,17 @@ register value *v;
  * NAME:	parser->traverse()
  * DESCRIPTION:	traverse the parse tree, returning the size
  */
-static Int ps_traverse(ps, pn, next)
-register parser *ps;
-register pnode *pn;
-pnode *next;
+static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 {
-    register Int n;
-    register pnode *sub;
-    register Uint len, i;
-    register value *v;
+    Int n;
+    pnode *sub;
+    Uint len, i;
+    value *v;
     array *a;
     bool call;
+
+    a = NULL;
+    v = NULL;
 
     if (pn->symbol >= 0) {
 	/*
@@ -688,7 +649,7 @@ pnode *next;
 	    len = 0;
 	    if (pn->len != 0) {
 		pnode *nodes[255];
-		register pnode **list;
+		pnode **list;
 
 		pn->symbol = PN_BLOCKED;
 
@@ -831,14 +792,12 @@ pnode *next;
  * NAME:	parser->load()
  * DESCRIPTION:	load parse_string data
  */
-static parser *ps_load(f, elts)
-frame *f;
-register value *elts;
+static parser *ps_load(frame *f, value *elts)
 {
-    register parser *ps;
-    register char *p;
-    register short i;
-    register Uint len;
+    parser *ps;
+    char *p;
+    short i;
+    Uint len;
     short fasize, lrsize;
 
     ps = ALLOC(parser, 1);
@@ -903,12 +862,11 @@ register value *elts;
  * NAME:	parser->save()
  * DESCRIPTION:	save parse_string data
  */
-void ps_save(ps)
-register parser *ps;
+void ps_save(parser *ps)
 {
-    register value *v;
-    register dataspace *data;
-    register Uint len;
+    value *v;
+    dataspace *data;
+    Uint len;
     value val;
     short fasize, lrsize;
     char *fastr, *lrstr;
@@ -966,14 +924,10 @@ register parser *ps;
  * NAME:	parse_string()
  * DESCRIPTION:	parse a string
  */
-array *ps_parse_string(f, source, str, maxalt)
-frame *f;
-string *source;
-string *str;
-Int maxalt;
+array *ps_parse_string(frame *f, string *source, string *str, Int maxalt)
 {
-    register dataspace *data;
-    register parser *ps;
+    dataspace *data;
+    parser *ps;
     value *val;
     bool same, toobig;
     pnode *pn;
@@ -1073,4 +1027,6 @@ Int maxalt;
 
 	return a;
     }
+
+    return NULL;
 }

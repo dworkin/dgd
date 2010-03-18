@@ -28,7 +28,7 @@ typedef unsigned short ssizet;
 # define SSIZET_MAX	USHRT_MAX
 
 /* eindex can be anything */
-typedef char eindex;
+typedef unsigned char eindex;
 # define EINDEX_MAX	UCHAR_MAX
 # define EINDEX(e)	UCHAR(e)
 
@@ -86,21 +86,21 @@ typedef char eindex;
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
 
-extern bool		conf_init	P((char*, char*, sector*));
-extern char	       *conf_base_dir	P((void));
-extern char	       *conf_driver	P((void));
-extern int		conf_typechecking P((void));
-extern unsigned short	conf_array_size	P((void));
+extern bool		conf_init	(char*, char*, sector*);
+extern char	       *conf_base_dir	(void);
+extern char	       *conf_driver	(void);
+extern int		conf_typechecking (void);
+extern unsigned short	conf_array_size	(void);
 
-extern void   conf_dump		P((void));
-extern Uint   conf_dsize	P((char*));
-extern Uint   conf_dconv	P((char*, char*, char*, Uint));
-extern void   conf_dread	P((int, char*, char*, Uint));
+extern void   conf_dump		(void);
+extern Uint   conf_dsize	(char*);
+extern Uint   conf_dconv	(char*, char*, char*, Uint);
+extern void   conf_dread	(int, char*, char*, Uint);
 
-extern bool   conf_statusi	P((frame*, Int, value*));
-extern array *conf_status	P((frame*));
-extern bool   conf_objecti	P((dataspace*, object*, Int, value*));
-extern array *conf_object	P((dataspace*, object*));
+extern bool   conf_statusi	(frame*, Int, value*);
+extern array *conf_status	(frame*);
+extern bool   conf_objecti	(dataspace*, object*, Int, value*);
+extern array *conf_object	(dataspace*, object*);
 
 /* utility functions */
-extern Int strtoint		P((char**));
+extern Int strtoint		(char**);

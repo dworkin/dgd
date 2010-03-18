@@ -41,8 +41,7 @@ static int size;		/* current size of the dumped line */
  * NAME:	dump_int()
  * DESCRIPTION:	output a number
  */
-static void dump_int(n)
-int n;
+static void dump_int(int n)
 {
     if (size == 16) {
 	putchar('\n');
@@ -56,9 +55,7 @@ int n;
  * NAME:	dump_chars()
  * DESCRIPTION:	output a range of characters
  */
-static void dump_chars(p, n)
-register char *p;
-register unsigned int n;
+static void dump_chars(char *p, unsigned int n)
 {
     while (n > 0) {
 	dump_int(*p++);
@@ -70,10 +67,9 @@ register unsigned int n;
  * NAME:	dump_inherits()
  * DESCRIPTION:	output the inherited objects
  */
-static void dump_inherits(ctrl)
-register control *ctrl;
+static void dump_inherits(control *ctrl)
 {
-    register int i;
+    int i;
 
     printf("\nstatic pcinherit inherits[] = {\n");
     for (i = 0; i < ctrl->ninherits; i++) {
@@ -91,10 +87,9 @@ register control *ctrl;
  * NAME:	dump_imap()
  * DESCRIPTION:	output imap table
  */
-static void dump_imap(ctrl)
-register control *ctrl;
+static void dump_imap(control *ctrl)
 {
-    register int i;
+    int i;
 
     printf("\nstatic char imap[] = {\n");
     size = 0;
@@ -108,8 +103,7 @@ register control *ctrl;
  * NAME:	dump_program()
  * DESCRIPTION:	output the program
  */
-static void dump_program(ctrl)
-control *ctrl;
+static void dump_program(control *ctrl)
 {
     if (ctrl->progsize != 0) {
 	printf("\nstatic char program[] = {\n");
@@ -123,11 +117,10 @@ control *ctrl;
  * NAME:	dump_strings()
  * DESCRIPTION:	output the strings
  */
-static void dump_strings(ctrl)
-register control *ctrl;
+static void dump_strings(control *ctrl)
 {
-    register int i;
-    register long len;
+    int i;
+    long len;
 
     if (ctrl->nstrings != 0) {
 	printf("\nstatic dstrconst sstrings[] = {\n");
@@ -149,10 +142,9 @@ register control *ctrl;
  * NAME:	dump_funcdefs()
  * DESCRIPTION:	output the function definitions
  */
-static void dump_funcdefs(ctrl)
-register control *ctrl;
+static void dump_funcdefs(control *ctrl)
 {
-    register int i;
+    int i;
 
     if (ctrl->nfuncdefs != 0) {
 	printf("\nstatic dfuncdef funcdefs[] = {\n");
@@ -171,10 +163,9 @@ register control *ctrl;
  * NAME:	dump_vardefs()
  * DESCRIPTION:	output the variable definitions
  */
-static void dump_vardefs(ctrl)
-register control *ctrl;
+static void dump_vardefs(control *ctrl)
 {
-    register int i;
+    int i;
 
     if (ctrl->nvardefs != 0) {
 	printf("\nstatic dvardef vardefs[] = {\n");
@@ -199,8 +190,7 @@ register control *ctrl;
  * NAME:	dump_funcalls()
  * DESCRIPTION:	output the function call table
  */
-static void dump_funcalls(ctrl)
-register control *ctrl;
+static void dump_funcalls(control *ctrl)
 {
     if (ctrl->nfuncalls > 0) {
 	printf("\nstatic char funcalls[] = {\n");
@@ -214,10 +204,9 @@ register control *ctrl;
  * NAME:	dump_symbols()
  * DESCRIPTION:	output the symbol table
  */
-static void dump_symbols(ctrl)
-register control *ctrl;
+static void dump_symbols(control *ctrl)
 {
-    register uindex i;
+    uindex i;
 
     if (ctrl->nsymbols != 0) {
 	printf("\nstatic dsymbol symbols[] = {\n");
@@ -235,8 +224,7 @@ register control *ctrl;
  * NAME:	dump_vtypes()
  * DESCRIPTION:	output the variable types
  */
-static void dump_vtypes(ctrl)
-register control *ctrl;
+static void dump_vtypes(control *ctrl)
 {
     if (ctrl->nvariables > ctrl->nvardefs) {
 	printf("\nstatic char vtypes[] = {\n");
@@ -250,14 +238,12 @@ register control *ctrl;
  * NAME:	dgd_main()
  * DESCRIPTION:	main routine of the precompiler
  */
-int dgd_main(argc, argv)
-int argc;
-char *argv[];
+int dgd_main(int argc, char *argv[])
 {
     char buf[STRINGSZ], tag[9];
-    register unsigned int len;
-    register control *ctrl;
-    register char *file;
+    unsigned int len;
+    control *ctrl;
+    char *file;
     int nfuncs;
     sector fragment;
 
@@ -391,10 +377,7 @@ char *argv[];
  * NAME:	call_driver_object()
  * DESCRIPTION:	pretend to call a function in the driver object
  */
-bool call_driver_object(f, func, narg)
-register frame *f;
-char *func;
-int narg;
+bool call_driver_object(frame *f, char *func, int narg)
 {
     i_pop(f, narg);
     (--f->sp)->type = T_INT;
@@ -406,15 +389,13 @@ int narg;
  * NAME:	errhandler()
  * DESCRIPTION:	pretend to have a default error handler
  */
-void errhandler(f, depth)
-frame *f;
-Int depth;
+void errhandler(frame *f, Int depth)
 {
 }
 
 /*
  * NAME:	interrupt()
- * DESCRIPTION:	pretend to register an interrupt
+ * DESCRIPTION:	pretend to an interrupt
  */
 void interrupt()
 {
@@ -436,8 +417,7 @@ pcfunc *pcfunctions;	/* dummy */
  * NAME:	pc_preload()
  * DESCRIPTION:	pretend to preload compiled objects
  */
-bool pc_preload(auto_name, driver_name)
-char *auto_name, *driver_name;
+bool pc_preload(char *auto_name, char *driver_name)
 {
     return TRUE;
 }
@@ -446,8 +426,7 @@ char *auto_name, *driver_name;
  * NAME:	pc_list()
  * DESCRIPTION:	pretend to return a list of precompiled objects
  */
-array *pc_list(data)
-dataspace *data;
+array *pc_list(dataspace *data)
 {
     return (array *) NULL;
 }
@@ -456,20 +435,16 @@ dataspace *data;
  * NAME:	pc_control()
  * DESCRIPTION:	pretend to initialize the control block of a compiled object
  */
-void pc_control(ctrl, obj)
-control *ctrl;
-object *obj;
+void pc_control(control *ctrl, object *obj)
 {
 }
 
-bool pc_dump(fd)
-int fd;
+bool pc_dump(int fd)
 {
     return TRUE;
 }
 
-void pc_restore(fd, conv)
-int fd, conv;
+void pc_restore(int fd, int conv)
 {
 }
 
@@ -479,9 +454,7 @@ int fd, conv;
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
-void sw_init(file, total, cache, secsize)
-char *file;
-unsigned int total, cache, secsize;
+void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
 }
 
@@ -497,9 +470,7 @@ void sw_finish()
  * NAME:	swap->newv()
  * DESCRIPTION:	pretend to create a new vector of sectors
  */
-void sw_newv(vec, size)
-sector *vec;
-unsigned int size;
+void sw_newv(sector *vec, unsigned int size)
 {
 }
 
@@ -507,9 +478,7 @@ unsigned int size;
  * NAME:	swap->wipev()
  * DESCRIPTION:	pretend to wipe a vector of sectors
  */
-void sw_wipev(vec, size)
-sector *vec;
-unsigned int size;
+void sw_wipev(sector *vec, unsigned int size)
 {
 }
 
@@ -517,9 +486,7 @@ unsigned int size;
  * NAME:	swap->delv()
  * DESCRIPTION:	pretend to delete a vector of sectors
  */
-void sw_delv(vec, size)
-sector *vec;
-unsigned int size;
+void sw_delv(sector *vec, unsigned int size)
 {
 }
 
@@ -527,10 +494,7 @@ unsigned int size;
  * NAME:	swap->readv()
  * DESCRIPTION:	pretend to read bytes from a vector of sectors
  */
-void sw_readv(m, vec, size, idx)
-char *m;
-sector *vec;
-Uint size, idx;
+void sw_readv(char *m, sector *vec, Uint size, Uint idx)
 {
 }
 
@@ -538,10 +502,7 @@ Uint size, idx;
  * NAME:	swap->writev()
  * DESCRIPTION:	pretend to write bytes to a vector of sectors
  */
-void sw_writev(m, vec, size, idx)
-char *m;
-sector *vec;
-Uint size, idx;
+void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 {
 }
 
@@ -549,10 +510,7 @@ Uint size, idx;
  * NAME:	swap->creadv()
  * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
  */
-void sw_creadv(m, vec, size, idx)
-char *m;
-sector *vec;
-Uint size, idx;
+void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 {
 }
 
@@ -560,10 +518,7 @@ Uint size, idx;
  * NAME:	swap->dreadv()
  * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
  */
-void sw_dreadv(m, vec, size, idx)
-char *m;
-sector *vec;
-Uint size, idx;
+void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {
 }
 
@@ -571,10 +526,7 @@ Uint size, idx;
  * NAME:	swap->conv()
  * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
  */
-void sw_conv(m, vec, size, idx)
-char *m;
-sector *vec;
-Uint size, idx;
+void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 {
 }
 
@@ -582,8 +534,7 @@ Uint size, idx;
  * NAME:	swap->mapsize()
  * DESCRIPTION:	pretend to count the number of sectors required for size bytes
  */
-sector sw_mapsize(size)
-Uint size;
+sector sw_mapsize(Uint size)
 {
     return 0;
 }
@@ -601,8 +552,7 @@ sector sw_count()
  * NAME:	swap->copy()
  * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
  */
-bool sw_copy(time)
-Uint time;
+bool sw_copy(Uint time)
 {
     return FALSE;
 }
@@ -611,8 +561,7 @@ Uint time;
  * NAME:	swap->dump()
  * DESCRIPTION:	pretend to dump swap file
  */
-int sw_dump(dumpfile)
-char *dumpfile;
+int sw_dump(char *dumpfile)
 {
     return 0;
 }
@@ -621,9 +570,7 @@ char *dumpfile;
  * NAME:	swap->restore()
  * DESCRIPTION:	pretend to restore swap file
  */
-void sw_restore(fd, secsize)
-int fd;
-unsigned int secsize;
+void sw_restore(int fd, unsigned int secsize)
 {
 }
 
@@ -631,15 +578,15 @@ unsigned int secsize;
  * NAME:	comm->init()
  * DESCRIPTION:	pretend to initialize communications
  */
-#ifndef NETWORK_EXTENSIONS
-bool comm_init(n, thosts, bhosts, tports, bports, ntelnet, nbinary)
-int n, ntelnet, nbinary;
+#ifdef NETWORK_EXTENSIONS
+bool comm_init(int n, int p, char **thosts, char **bhosts, 
+	unsigned short *tports, unsigned short *bports, 
+	int ntelnet, int nbinary)
 #else
-bool comm_init(n, p, thosts, bhosts, tports, bports, ntelnet, nbinary)
-int n, p, ntelnet, nbinary;
+bool comm_init(int n, char **thosts, char **bhosts, 
+	unsigned short *tports, unsigned short *bports, 
+	int ntelnet, int nbinary)
 #endif
-char **thosts, **bhosts;
-unsigned short *tports, *bports;
 {
     return TRUE;
 }
@@ -657,9 +604,7 @@ void comm_finish()
  * NAME:	comm->finish()
  * DESCRIPTION:	pretend to set the datagram challenge
  */
-void comm_challenge(obj, str)
-object *obj;
-string *str;
+void comm_challenge(object *obj, string *str)
 {  
 }
 
@@ -675,9 +620,7 @@ void comm_listen()
  * NAME:	comm->send()
  * DESCRIPTION:	pretend to send a message to a user
  */
-int comm_send(obj, str)
-object *obj;
-string *str;
+int comm_send(object *obj, string *str)
 {
     return 0;
 }
@@ -686,9 +629,7 @@ string *str;
  * NAME:	comm->udpsend()
  * DESCRIPTION:	pretend to send a message on the UDP channel of a connection
  */
-int comm_udpsend(obj, str)
-object *obj;
-string *str;
+int comm_udpsend(object *obj, string *str)
 {
     return 0;
 }
@@ -697,9 +638,7 @@ string *str;
  * NAME:	comm->echo()
  * DESCRIPTION:	pretend to turn on/off input echoing for a user
  */
-bool comm_echo(obj, echo)
-object *obj;
-int echo;
+bool comm_echo(object *obj, int echo)
 {
     return FALSE;
 }
@@ -716,9 +655,7 @@ void comm_flush()
  * NAME:	comm->block()
  * DESCRIPTION:	pretend to suspend or release input from a user
  */
-void comm_block(obj, flag)
-object *obj;
-int flag;
+void comm_block(object *obj, int flag)
 {
 }
 
@@ -726,8 +663,7 @@ int flag;
  * NAME:	comm->ip_number()
  * DESCRIPTION:	pretend to return the ip number of a user (as a string)
  */
-string *comm_ip_number(obj)
-object *obj;
+string *comm_ip_number(object *obj)
 {
     return (string *) NULL;
 }
@@ -736,8 +672,7 @@ object *obj;
  * NAME:	comm->ip_name()
  * DESCRIPTION:	pretend to return the ip name of a user
  */
-string *comm_ip_name(obj)
-object *obj;
+string *comm_ip_name(object *obj)
 {
     return (string *) NULL;
 }
@@ -746,9 +681,7 @@ object *obj;
  * NAME:	comm->close()
  * DESCRIPTION:	pretend to remove a user
  */
-void comm_close(f, obj)
-frame *f;
-object *obj;
+void comm_close(frame *f, object *obj)
 {
 }
 
@@ -766,15 +699,12 @@ object *comm_user()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
 #ifndef NETWORK_EXTENSIONS
-array *comm_users(data)
-dataspace *data;
+array *comm_users(dataspace *data)
 {
     return (array *) NULL;
 }
 #else
-array *comm_users(data, ports)
-dataspace *data;
-bool ports;
+array *comm_users(dataspace *data, bool ports)
 {
     return (array *) NULL;
 }
@@ -783,35 +713,23 @@ bool ports;
  * NAME:        comm->is_connection()
  * DESCRIPTION: pretend to test if an object is a connection
  */
-bool comm_is_connection(obj)
-object *obj;
+bool comm_is_connection(object *obj)
 {
     return FALSE;
 }
 
-void comm_openport(f, obj, protocol, portnr)
-frame *f;
-object *obj;
-unsigned char protocol;
-unsigned short portnr;
+void comm_openport(frame *f, object *obj, unsigned char protocol, 
+	unsigned short port)
 {
 }
 
 void
-comm_connect(f, obj, addr, protocol, port)
-frame *f;
-object *obj;
-char *addr;
-unsigned char protocol;
-unsigned short port;
+comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
+	unsigned short port)
 {
 }
 
-int comm_senddatagram(obj, str, ip, port)
-object * obj;
-string * str;
-string * ip;
-int port;
+int comm_senddatagram(object *obj, string *str, string *ip, int port)
 {
     return 0;
 }
@@ -821,9 +739,7 @@ int port;
  * NAME:	ed->init()
  * DESCRIPTION:	pretend to initialize editor handling
  */
-void ed_init(tmp, num)
-char *tmp;
-int num;
+void ed_init(char *tmp, int num)
 {
 }
 
@@ -839,8 +755,7 @@ void ed_finish()
  * NAME:	ed->new()
  * DESCRIPTION:	pretend to start a new editor
  */
-void ed_new(obj)
-object *obj;
+void ed_new(object *obj)
 {
 }
 
@@ -848,8 +763,7 @@ object *obj;
  * NAME:	ed->del()
  * DESCRIPTION:	pretend to delete an editor instance
  */
-void ed_del(obj)
-object *obj;
+void ed_del(object *obj)
 {
 }
 
@@ -857,9 +771,7 @@ object *obj;
  * NAME:	ed->command()
  * DESCRIPTION:	pretend to handle an editor command
  */
-string *ed_command(obj, cmd)
-object *obj;
-char *cmd;
+string *ed_command(object *obj, char *cmd)
 {
     return (string *) NULL;
 }
@@ -868,8 +780,7 @@ char *cmd;
  * NAME:	ed->status()
  * DESCRIPTION:	pretend to return the editor status of an object
  */
-char *ed_status(obj)
-object *obj;
+char *ed_status(object *obj)
 {
     return (char *) NULL;
 }
@@ -878,8 +789,7 @@ object *obj;
  * NAME:	call_out->init()
  * DESCRIPTION:	pretend to initialize callout handling
  */
-bool co_init(max)
-unsigned int max;
+bool co_init(unsigned int max)
 {
     return TRUE;
 }
@@ -888,12 +798,8 @@ unsigned int max;
  * NAME:	call_out->check()
  * DESCRIPTION:	pretend to check a new callout
  */
-Uint co_check(n, delay, mdelay, tp, mp, qp)
-unsigned int n, mdelay;
-Int delay;
-Uint *tp;
-unsigned short *mp;
-cbuf **qp;
+Uint co_check(unsigned int n, Int delay, unsigned int mdelay, 
+	Uint **tp, unsigned short *mp, cbuf **qp)
 {
     return 0;
 }
@@ -902,10 +808,8 @@ cbuf **qp;
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new callout
  */
-void co_new(oindex, handle, t, m, q)
-unsigned int oindex, handle, m;
-Uint t;
-cbuf *q;
+void co_new(unsigned int oindex, unsigned int handle, Uint t, 
+	unsigned int m, cbuf *q)
 {
 }
 
@@ -913,9 +817,8 @@ cbuf *q;
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a callout
  */
-void co_del(oindex, handle, t, m)
-unsigned int oindex, handle, m;
-Uint t;
+void co_del(unsigned int oindex, unsigned int handle, Uint t, 
+	unsigned int m)
 {
 }
 
@@ -923,9 +826,7 @@ Uint t;
  * NAME:	call_out->remaining()
  * DESCRIPTION:	pretend to return the time remaining before a callout expires
  */
-Int co_remaining(t, m)
-Uint t;
-unsigned short *m;
+Int co_remaining(Uint t, unsigned short *m)
 {
     return 0;
 }
@@ -934,8 +835,7 @@ unsigned short *m;
  * NAME:	call_out->list()
  * DESCRIPTION:	pretend to adjust callout delays in an array
  */
-void co_list(a)
-array *a;
+void co_list(array *a)
 {
 }
 
@@ -943,8 +843,7 @@ array *a;
  * NAME:	call_out->call()
  * DESCRIPTION:	pretend to call expired callouts
  */
-void co_call(f)
-frame *f;
+void co_call(frame *f)
 {
 }
 
@@ -952,8 +851,7 @@ frame *f;
  * NAME:	call_out->info()
  * DESCRIPTION:	pretend to return information about callouts
  */
-void co_info(n1, n2)
-uindex *n1, *n2;
+void co_info(uindex *n1, uindex *n2)
 {
 }
 
@@ -961,9 +859,7 @@ uindex *n1, *n2;
  * NAME:	call_out->decode()
  * DESCRIPTION:	pretend to decode a callout time
  */
-Uint co_decode(time, mtime)
-Uint time;
-unsigned short *mtime;
+Uint co_decode(Uint time, unsigned short mtime)
 {
     return 0;
 }
@@ -972,8 +868,7 @@ unsigned short *mtime;
  * NAME:	call_out->time()
  * DESCRIPTION:	pretend to return the current time
  */
-Uint co_time(mtime)
-unsigned short *mtime;
+Uint co_time(unsigned short *mtime)
 {
     return 0;
 }
@@ -1000,8 +895,7 @@ long co_swaprate5()
  * NAME:	call_out->dump()
  * DESCRIPTION:	pretend to dump callout table
  */
-bool co_dump(fd)
-int fd;
+bool co_dump(int fd)
 {
     return FALSE;
 }
@@ -1010,8 +904,6 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	pretend to restore callout table
  */
-void co_restore(fd, t, conv)
-int fd, conv;
-Uint t;
+void co_restore(int fd, Uint t, int conv)
 {
 }

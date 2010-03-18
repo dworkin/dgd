@@ -1,6 +1,13 @@
-To compile DGD on Win32, you'll need Visual C++ 6.0 or later, with a recent
-platform SDK update.
+To compile DGD on Windows you need to have Visual Studio 2010 or Visual C++ Express 2010.
 
-On my NT4 system, DGD has to be explicitly linked with a library called
-NAFXCW.LIB.  But using VC++ 6.0 on XP, this library is (apparently) linked
-with implicitly; you may have to remove it from the project configuration.
+Look for it here:
+http://www.microsoft.com/vs
+
+You also will need to install GnuWin's Bison.
+
+Look for it here:
+http://gnuwin32.sourceforge.net/packages/bison.htm
+
+I recommend installing to a path with no spaces in it since the current version chokes on spaces.  You will also need to add the location of Bison.exe to your global PATH.
+
+DGD for Windows is a console application and should be run just as it is on Unix-type operating systems.

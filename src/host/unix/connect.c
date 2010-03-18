@@ -84,21 +84,16 @@ static int nfree;			/* # in free list */
 static ipaddr *lastreq;			/* last request */
 static bool busy;			/* name resolver busy */
 
-#ifdef NETWORK_EXTENSIONS
-connection *conn_accept(connection * conn);
-#endif
-
 
 /*
  * NAME:	ipaddr->run()
  * DESCRIPTION:	host name lookup sub-program
  */
-static void ipa_run(in, out)
-register int in, out;
+static void ipa_run(int in, int out)
 {
     char buf[sizeof(in46addr)];
     struct hostent *host;
-    register int len;
+    int len;
 
     signal(SIGINT, SIG_IGN);
     signal(SIGTRAP, SIG_IGN);
@@ -125,7 +120,7 @@ register int in, out;
 	}
 
 	if (host != (struct hostent *) NULL) {
-	    register char *name;
+	    char *name;
 
 	    /* write host name */
 	    name = (char *) host->h_name;
@@ -147,8 +142,7 @@ register int in, out;
  * NAME:	ipaddr->init()
  * DESCRIPTION:	initialize name lookup
  */
-static bool ipa_init(maxusers)
-int maxusers;
+static bool ipa_init(int maxusers)
 {
     if (in < 0) {
 	int fd[4], pid;
@@ -210,10 +204,9 @@ static void ipa_finish()
  * NAME:	ipaddr->new()
  * DESCRIPTION:	return a new ipaddr
  */
-static ipaddr *ipa_new(ipnum)
-in46addr *ipnum;
+static ipaddr *ipa_new(in46addr *ipnum)
 {
-    register ipaddr *ipa, **hash;
+    ipaddr *ipa, **hash;
 
     /* check hash table */
 # ifdef INET6
@@ -280,7 +273,7 @@ in46addr *ipnum;
     }
 
     if (nfree >= NFREE) {
-	register ipaddr **h;
+	ipaddr **h;
 
 	/*
 	 * use first ipaddr in free list
@@ -355,8 +348,7 @@ in46addr *ipnum;
  * NAME:	ipaddr->del()
  * DESCRIPTION:	delete an ipaddr
  */
-static void ipa_del(ipa)
-register ipaddr *ipa;
+static void ipa_del(ipaddr *ipa)
 {
     if (--ipa->ref == 0) {
 	if (ipa->prev != (ipaddr *) NULL || qhead == ipa) {
@@ -393,7 +385,7 @@ register ipaddr *ipa;
  */
 static void ipa_lookup()
 {
-    register ipaddr *ipa;
+    ipaddr *ipa;
 
     if (lastreq != (ipaddr *) NULL) {
 	/* read ip name */
@@ -464,11 +456,7 @@ static int closed;			/* #fds closed in write */
  * NAME:	conn->port6()
  * DESCRIPTION:	open an IPv6 port
  */
-static int conn_port6(fd, type, sin6, port)
-register int *fd;
-int type;
-struct sockaddr_in6 *sin6;
-unsigned int port;
+static int conn_port6(int *fd, int type, struct sockaddr_in6 *sin6, unsigned int port)
 {
     int on;
 
@@ -508,11 +496,7 @@ unsigned int port;
  * NAME:	conn->port()
  * DESCRIPTION:	open an IPv4 port
  */
-static int conn_port(fd, type, sin, port)
-register int *fd;
-int type;
-struct sockaddr_in *sin;
-unsigned int port;
+static int conn_port(int *fd, int type, struct sockaddr_in *sin, unsigned int port)
 {
     int on;
 
@@ -551,18 +535,17 @@ unsigned int port;
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(maxusers, thosts, bhosts, tports, bports, ntports, nbports)
-int maxusers, ntports, nbports;
-char **thosts, **bhosts;
-unsigned short *tports, *bports;
+bool conn_init(int maxusers, char **thosts, char **bhosts, 
+	unsigned short *tports, unsigned short *bports, int ntports, 
+	int nbports)
 {
 # ifdef INET6
     struct sockaddr_in6 sin6;
 # endif
     struct sockaddr_in sin;
     struct hostent *host;
-    register int n;
-    register connection *conn;
+    int n;
+    connection *conn;
     bool ipv6, ipv4;
     int err;
 
@@ -760,8 +743,8 @@ unsigned short *tports, *bports;
  */
 void conn_finish()
 {
-    register int n;
-    register connection *conn;
+    int n;
+    connection *conn;
 
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	if (conn->fd >= 0) {
@@ -801,7 +784,7 @@ void conn_finish()
  */
 void conn_listen()
 {
-    register int n;
+    int n;
 
     for (n = 0; n < ntdescs; n++) {
 	if (tdescs[n].in6 >= 0) {
@@ -876,13 +859,13 @@ void conn_listen()
  * NAME:	conn->accept6()
  * DESCRIPTION:	accept a new ipv6 connection
  */
-static connection *conn_accept6(portfd, port)
-int portfd, port;
+static connection *conn_accept6(int portfd, int port)
 {
-    int fd, len;
+    int fd;
+    unsigned int len;
     struct sockaddr_in6 sin6;
     in46addr addr;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(portfd, &readfds)) {
 	return (connection *) NULL;
@@ -927,13 +910,13 @@ int portfd, port;
  * NAME:	conn->accept()
  * DESCRIPTION:	accept a new ipv4 connection
  */
-static connection *conn_accept(portfd, port)
-int portfd, port;
+static connection *conn_accept(int portfd, int port)
 {
-    int fd, len;
+    int fd;
+    unsigned int len;
     struct sockaddr_in sin;
     in46addr addr;
-    register connection *conn;
+    connection *conn;
 
     if (!FD_ISSET(portfd, &readfds)) {
 	return (connection *) NULL;
@@ -1036,13 +1019,10 @@ connection *conn_bnew(int port)
  * NAME:	conn->udp()
  * DESCRIPTION:	set the challenge for attaching a UDP channel
  */
-bool conn_udp(conn, challenge, len)
-register connection *conn;
-char *challenge;
-register unsigned int len;
+bool conn_udp(connection *conn, char *challenge, unsigned int len)
 {
     char buffer[UDPHASHSZ];
-    register connection **hash;
+    connection **hash;
 
     if (len == 0 || len > BINBUF_SIZE || conn->udpbuf != (char *) NULL) {
 	return FALSE;	/* invalid challenge */
@@ -1079,10 +1059,9 @@ register unsigned int len;
  * NAME:	conn->del()
  * DESCRIPTION:	delete a connection
  */
-void conn_del(conn)
-register connection *conn;
+void conn_del(connection *conn)
 {
-    register connection **hash;
+    connection **hash;
 
     if (conn->fd >= 0) {
 	close(conn->fd);
@@ -1128,9 +1107,7 @@ register connection *conn;
  * NAME:	conn->block()
  * DESCRIPTION:	block or unblock input from connection
  */
-void conn_block(conn, flag)
-register connection *conn;
-int flag;
+void conn_block(connection *conn, int flag)
 {
     if (conn->fd >= 0) {
 	if (flag) {
@@ -1147,15 +1124,14 @@ int flag;
  * NAME:	conn->udprecv6()
  * DESCRIPTION:	receive an UDP packet
  */
-static void conn_udprecv6(n)
-int n;
+static void conn_udprecv6(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in6 from;
-    int fromlen;
-    register int size;
-    register connection **hash, *conn;
-    register char *p;
+    unsigned int fromlen;
+    int size;
+    connection **hash, *conn;
+    char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in6);
@@ -1227,15 +1203,14 @@ int n;
  * NAME:	conn->udprecv()
  * DESCRIPTION:	receive an UDP packet
  */
-static void conn_udprecv(n)
-int n;
+static void conn_udprecv(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in from;
-    int fromlen;
-    register int size;
-    register connection **hash, *conn;
-    register char *p;
+    unsigned int fromlen;
+    int size;
+    connection **hash, *conn;
+    char *p;
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in);
@@ -1303,13 +1278,11 @@ int n;
  * NAME:	conn->select()
  * DESCRIPTION:	wait for input from connections
  */
-int conn_select(t, mtime)
-Uint t;
-unsigned int mtime;
+int conn_select(Uint t, unsigned int mtime)
 {
     struct timeval timeout;
     int retval;
-    register int n;
+    int n;
 
     /*
      * First, check readability and writability for binary sockets with pending
@@ -1388,8 +1361,7 @@ unsigned int mtime;
  * NAME:	conn->udpcheck()
  * DESCRIPTION:	check if UDP challenge met
  */
-bool conn_udpcheck(conn)
-connection *conn;
+bool conn_udpcheck(connection *conn)
 {
     return (conn->chain.name == (char *) NULL);
 }
@@ -1398,10 +1370,7 @@ connection *conn;
  * NAME:	conn->read()
  * DESCRIPTION:	read from a connection
  */
-int conn_read(conn, buf, len)
-connection *conn;
-char *buf;
-unsigned int len;
+int conn_read(connection *conn, char *buf, unsigned int len)
 {
     int size;
 
@@ -1427,13 +1396,10 @@ unsigned int len;
  * NAME:	conn->udpread()
  * DESCRIPTION:	read a message from a UDP channel
  */
-int conn_udpread(conn, buf, len)
-register connection *conn;
-char *buf;
-unsigned int len;
+int conn_udpread(connection *conn, char *buf, unsigned int len)
 {
-    register unsigned short size, n;
-    register char *p, *q;
+    unsigned short size, n;
+    char *p, *q;
 
     while (conn->bufsz != 0) {
 	/* udp buffer is not empty */
@@ -1458,10 +1424,7 @@ unsigned int len;
  * NAME:	conn->write()
  * DESCRIPTION:	write to a connection; return the amount of bytes written
  */
-int conn_write(conn, buf, len)
-register connection *conn;
-char *buf;
-unsigned int len;
+int conn_write(connection *conn, char *buf, unsigned int len)
 {
     int size;
 
@@ -1497,10 +1460,7 @@ unsigned int len;
  * NAME:	conn->udpwrite()
  * DESCRIPTION:	write a message to a UDP channel
  */
-int conn_udpwrite(conn, buf, len)
-register connection *conn;
-char *buf;
-unsigned int len;
+int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 {
     if (conn->fd >= 0) {
 # ifdef INET6
@@ -1531,12 +1491,8 @@ unsigned int len;
 }
 
 #ifdef NETWORK_EXTENSIONS
-int conn_udpsend(conn, buf, len, addr, port)
-register connection *conn;
-char *buf;
-unsigned int len;
-char *addr;
-unsigned short port;
+int conn_udpsend(connection *conn, char *buf, unsigned int len, char *addr, 
+	unsigned short port)
 {
     struct sockaddr_in to;
 
@@ -1561,8 +1517,7 @@ unsigned short port;
  * NAME:	conn->checkaddr()
  * DESCRIPTION:	checks for valid ip address
  */
-int conn_checkaddr(ip)
-char *ip;
+int conn_checkaddr(char *ip)
 {
     struct in_addr dummy;
     return inet_aton(ip, &dummy);
@@ -1573,8 +1528,7 @@ char *ip;
  * NAME:	conn->wrdone()
  * DESCRIPTION:	return TRUE if a connection is ready for output
  */
-bool conn_wrdone(conn)
-connection *conn;
+bool conn_wrdone(connection *conn)
 {
     if (conn->fd < 0 || !FD_ISSET(conn->fd, &waitfds)) {
 	return TRUE;
@@ -1590,9 +1544,7 @@ connection *conn;
  * NAME:	conn->ipnum()
  * DESCRIPTION:	return the ip number of a connection
  */
-void conn_ipnum(conn, buf)
-connection *conn;
-char *buf;
+void conn_ipnum(connection *conn, char *buf)
 {
 # ifdef INET6
     /* IPv6: maxlen 39 */
@@ -1610,9 +1562,7 @@ char *buf;
  * NAME:	conn->ipname()
  * DESCRIPTION:	return the ip name of a connection
  */
-void conn_ipname(conn, buf)
-connection *conn;
-char *buf;
+void conn_ipname(connection *conn, char *buf)
 {
     if (conn->addr->name[0] != '\0') {
 	strcpy(buf, conn->addr->name);
@@ -1627,13 +1577,12 @@ char *buf;
   * DESCRIPTION: open a new listening connection
   */
  connection *
- conn_openlisten(protocol, port)
- unsigned char protocol;
- unsigned short port;
+ conn_openlisten(unsigned char protocol, unsigned short port)
  {
      struct sockaddr_in sin;  
      connection *conn;
-     int on, n, sock,sz;
+     int on, n, sock;
+     unsigned int sz;
      
  
      switch (protocol){
@@ -1734,8 +1683,7 @@ char *buf;
   * NAME:	conn->port()
   * DESCRIPTION:	return the port number of a connection
   */
- int conn_at(conn)
- connection *conn;
+ int conn_at(connection *conn)
  {
      return conn->at;
  }
@@ -1744,13 +1692,13 @@ char *buf;
   * NAME:	conn->accept()
   * DESCRIPTION:	return a new connction structure
   */
- connection *conn_accept(conn)
- connection *conn;
+ connection *conn_accept(connection *conn)
  {
-     int fd, len;
+     int fd;
+     unsigned int len;
      struct sockaddr_in sin;
      in46addr addr;
-     register connection *newconn;
+     connection *newconn;
  
      if (!FD_ISSET(conn->fd, &readfds)) {
  	return (connection *) NULL;
@@ -1789,12 +1737,10 @@ char *buf;
  }
  
  
- connection *conn_connect(addr, port)
- char *addr;
- unsigned short port;
+ connection *conn_connect(char *addr, unsigned short port)
  {
-     register connection * conn;
-     register int sock;
+     connection * conn;
+     int sock;
      int on;
      long arg;
 
@@ -1866,16 +1812,13 @@ char *buf;
      return conn;
  }
  
- int conn_udpreceive(conn, buffer, size, host, port)
- connection *conn;
- char *buffer;
- int size;
- char **host;
- int *port;
+ int conn_udpreceive(connection *conn, char *buffer, int size, char **host, 
+	 int *port)
  {
      if (FD_ISSET(conn->fd, &readfds)) {
  	struct sockaddr_in from;
- 	int fromlen, sz;
+ 	unsigned int fromlen;
+	int sz;
  
  	fromlen=sizeof(struct sockaddr_in);
  	sz=recvfrom(conn->fd, buffer, size, 0, (struct sockaddr *) &from,
@@ -1895,8 +1838,7 @@ char *buf;
  /*
   * check for a connection in pending state and see if it is connected.
   */
- int conn_check_connected(conn)
- connection * conn;
+ int conn_check_connected(connection *conn)
  {
      Uint t;
      unsigned int mtime;
@@ -1949,4 +1891,3 @@ char *buf;
  }
 
  #endif
- 

@@ -63,12 +63,9 @@ char strhashtab[] = {
  * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
  *		of each string are significant
  */
-hashtab *ht_new(size, maxlen, mem)
-register unsigned int size;
-unsigned int maxlen;
-int mem;
+hashtab *ht_new(unsigned int size, unsigned int maxlen, int mem)
 {
-    register hashtab *ht;
+    hashtab *ht;
 
     ht = (hashtab *) ALLOC(char, sizeof(hashtab) + sizeof(hte*) * (size - 1));
     ht->size = size;
@@ -83,8 +80,7 @@ int mem;
  * NAME:	hashtab->del()
  * DESCRIPTION:	delete a hash table
  */
-void ht_del(ht)
-hashtab *ht;
+void ht_del(hashtab *ht)
 {
     FREE(ht);
 }
@@ -95,11 +91,9 @@ hashtab *ht;
  *		an unsigned modulo size.
  *		Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned short hashstr(s, len)
-register char *s;
-register unsigned int len;
+unsigned short hashstr(char *s, unsigned int len)
 {
-    register char h, l;
+    char h, l;
 
     h = l = 0;
     while (*s != '\0' && len > 0) {
@@ -114,11 +108,9 @@ register unsigned int len;
  * NAME:	hashmem()
  * DESCRIPTION:	hash memory
  */
-unsigned short hashmem(s, len)
-register char *s;
-register unsigned int len;
+unsigned short hashmem(char *s, unsigned int len)
 {
-    register char h, l;
+    char h, l;
 
     h = l = 0;
     while (len > 0) {
@@ -134,12 +126,9 @@ register unsigned int len;
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-hte **ht_lookup(ht, name, move)
-hashtab *ht;
-register char *name;
-int move;
+hte **ht_lookup(hashtab *ht, char *name, int move)
 {
-    register hte **first, **e, *next;
+    hte **first, **e, *next;
 
     if (ht->mem) {
 	first = e = &(ht->table[hashmem(name, ht->maxlen) % ht->size]);

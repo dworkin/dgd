@@ -16,29 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void		 ctrl_init	P((void));
-extern bool		 ctrl_inherit	P((frame*, char*, object*, string*,
-					   int));
-extern void		 ctrl_convert	P((control*));
-extern void		 ctrl_create	P((void));
-extern long		 ctrl_dstring	P((string*));
-extern void		 ctrl_dproto	P((string*, char*, string*));
-extern void		 ctrl_dfunc	P((string*, char*, string*));
-extern void		 ctrl_dprogram	P((char*, unsigned int));
-extern void		 ctrl_dvar	P((string*, unsigned int,
-					   unsigned int, string*));
-extern char		*ctrl_ifcall	P((string*, char*, string**, long*));
-extern char		*ctrl_fcall	P((string*, string**, long*, int));
-extern unsigned short	 ctrl_gencall	P((long));
-extern unsigned short	 ctrl_var	P((string*, long*, string**));
-extern int		 ctrl_ninherits	P((void));
-extern bool		 ctrl_chkfuncs	P((void));
-extern void		 ctrl_mkvtypes	P((control*));
-extern dsymbol		*ctrl_symb	P((control*, char*, unsigned int));
-extern control		*ctrl_construct	P((void));
-extern void		 ctrl_clear	P((void));
-extern unsigned short	*ctrl_varmap	P((control*, control*));
-extern array		*ctrl_undefined	P((dataspace*, control*));
+extern void		 ctrl_init	(void);
+extern bool		 ctrl_inherit	(frame*, char*, object*, string*,
+					   int);
+extern void		 ctrl_convert	(control*);
+extern void		 ctrl_create	(void);
+extern long		 ctrl_dstring	(string*);
+extern void		 ctrl_dproto	(string*, char*, string*);
+extern void		 ctrl_dfunc	(string*, char*, string*);
+extern void		 ctrl_dprogram	(char*, unsigned int);
+extern void		 ctrl_dvar	(string*, unsigned int,
+					   unsigned int, string*);
+extern char		*ctrl_ifcall	(string*, char*, string**, long*);
+extern char		*ctrl_fcall	(string*, string**, long*, int);
+extern unsigned short	 ctrl_gencall	(long);
+extern unsigned short	 ctrl_var	(string*, long*, string**);
+extern int		 ctrl_ninherits	(void);
+extern bool		 ctrl_chkfuncs	(void);
+extern void		 ctrl_mkvtypes	(control*);
+extern dsymbol		*ctrl_symb	(control*, char*, unsigned int);
+extern control		*ctrl_construct	(void);
+extern void		 ctrl_clear	(void);
+extern unsigned short	*ctrl_varmap	(control*, control*);
+extern array		*ctrl_undefined	(dataspace*, control*);
 
 # define PROTO_CLASS(prot)	((prot)[0])
 # define PROTO_NARGS(prot)	((prot)[1])

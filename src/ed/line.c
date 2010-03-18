@@ -93,13 +93,11 @@ typedef struct {
  *		If a new line buffer is created, arg 2 is the tmp file name.
  *		Return the new/refreshed line buffer.
  */
-linebuf *lb_new(lb, filename)
-register linebuf *lb;
-char *filename;
+linebuf *lb_new(linebuf *lb, char *filename)
 {
     char buf[STRINGSZ];
-    register int i;
-    register btbuf *bt;
+    int i;
+    btbuf *bt;
 
     if (lb != (linebuf *) NULL) {
 	/* refresh; close the old tmpfile */
@@ -145,12 +143,11 @@ char *filename;
  * NAME:	linebuf->del()
  * DESCRIPTION:	delete a line buffer
  */
-void lb_del(lb)
-register linebuf *lb;
+void lb_del(linebuf *lb)
 {
     char buf[STRINGSZ];
-    register int i;
-    register btbuf *bt;
+    int i;
+    btbuf *bt;
 
     /* close tmpfile */
     lb_inact(lb);
@@ -174,8 +171,7 @@ register linebuf *lb;
  *		as possible. A further operation on the line buffer will
  *		re-activate it.
  */
-void lb_inact(lb)
-register linebuf *lb;
+void lb_inact(linebuf *lb)
 {
     /* close tmpfile, to save descriptors */
     if (lb->fd >= 0) {
@@ -189,8 +185,7 @@ register linebuf *lb;
  * DESCRIPTION:	make the line buffer active, this has to be done before each
  *		operation on the tmpfile
  */
-static void lb_act(lb)
-register linebuf *lb;
+static void lb_act(linebuf *lb)
 {
     char buf[STRINGSZ];
 
@@ -206,8 +201,7 @@ register linebuf *lb;
  * NAME:	linebuf->write()
  * DESCRIPTION:	Write the output buffer to the tmpfile.
  */
-static void lb_write(lb)
-register linebuf *lb;
+static void lb_write(linebuf *lb)
 {
     if (lb->blksz > 0) {
 	long offset;
@@ -239,11 +233,9 @@ register linebuf *lb;
  * DESCRIPTION:	return a pointer to the blk struct of arg 1. If needed, it is
  *		loaded in memory first.
  */
-static blk *bk_load(lb, b)
-register linebuf *lb;
-block b;
+static blk *bk_load(linebuf *lb, block b)
 {
-    register btbuf *bt;
+    btbuf *bt;
 
     /* check the write buffer */
     bt = lb->wb;
@@ -266,7 +258,7 @@ block b;
 	    }
 
 	    if (b >= bt->offset && b < bt->offset + BLOCK_SIZE) {
-		register btbuf *rd;
+		btbuf *rd;
 
 		rd = lb->wb->next;
 		if (bt != rd) {
@@ -293,13 +285,11 @@ block b;
  * DESCRIPTION:	put blk in write buffer. if text is non-zero, it is a chain
  *		block with lines following it. return the copy in the buffer.
  */
-static blk *bk_putblk(lb, bp, text)
-register linebuf *lb;
-blk *bp;
-char *text;
+static blk *bk_putblk(linebuf *lb, blk *bp, char *text)
 {
-    register blk *bp2;
-    register int blksz, txtsz;
+    blk *bp2;
+    int blksz, txtsz;
+    size_t strcsz;
 
     /* determine blocksize and textsize */
     blksz = sizeof(blk);
@@ -309,7 +299,9 @@ char *text;
     } else {
 	txtsz = 0;
     }
-    if (STRUCT_AL > 2) {
+
+    strcsz = STRUCT_AL;
+    if (strcsz > 2) {
 	lb->blksz = ALGN(lb->blksz, STRUCT_AL);
     }
 
@@ -346,12 +338,9 @@ char *text;
  *		block becomes too large for the buffer, continue it in a new
  *		buffer. Return the new current block.
  */
-static blk *bk_putln(lb, bp, text)
-register linebuf *lb;
-register blk *bp;
-char *text;
+static blk *bk_putln(linebuf *lb, blk *bp, char *text)
 {
-    register int blksz, txtsz;
+    int blksz, txtsz;
 
     /* determine blocksize and textsize */
     blksz = sizeof(short);
@@ -392,12 +381,10 @@ char *text;
  * DESCRIPTION:	read a block of lines from function getline. continue until
  *		getline returns 0. Return the block.
  */
-block bk_new(lb, getline)
-register linebuf *lb;
-char *(*getline) P((void));
+block bk_new(linebuf *lb, char *(*getline)())
 {
-    register blk *bp;
-    register char *text;
+    blk *bp;
+    char *text;
     blk bb;
 
     /* get first line */
@@ -431,9 +418,7 @@ char *(*getline) P((void));
  * NAME:	linebuf->size()
  * DESCRIPTION:	return the size of a block
  */
-Int bk_size(lb, b)
-linebuf *lb;
-block b;
+Int bk_size(linebuf *lb, block b)
 {
     return bk_load(lb, b)->lines;
 }
@@ -443,14 +428,12 @@ block b;
  * DESCRIPTION:	split blk in two, arg 3 is size of first block
  *		(local for bk_split)
  */
-static void bk_split1(lb, bp, size, b1, b2)
-register linebuf *lb;
-register blk *bp;
-register Int size;
-block *b1, *b2;
+static void bk_split1(linebuf *lb, blk *bp, Int size, block *b1, block *b2)
 {
-    register Int lines;
-    register Int first, last;
+    Int lines;
+    Int first, last;
+
+    first = 0;
 
     if (bp->type == CAT) {
 	/* block consists of two concatenated blocks */
@@ -482,7 +465,7 @@ block *b1, *b2;
 	}
     } else {
 	blk bb1, bb2;
-	register Int offset, mid;
+	Int offset, mid;
 
 	/* block is a (sub)range block */
 	lines = bp->lines;
@@ -546,10 +529,7 @@ block *b1, *b2;
  * NAME:	linebuf->split()
  * DESCRIPTION:	split block in two, arg 3 is size of first block
  */
-void bk_split(lb, b, size, b1, b2)
-linebuf *lb;
-block b, *b1, *b2;
-Int size;
+void bk_split(linebuf *lb, block b, Int size, block *b1, block *b2)
 {
     bk_split1(lb, bk_load(lb, b), size, b1, b2);
 }
@@ -558,11 +538,9 @@ Int size;
  * NAME:	linebuf->cat()
  * DESCRIPTION:	return the concatenation of the arguments
  */
-block bk_cat(lb, b1, b2)
-register linebuf *lb;
-block b1, b2;
+block bk_cat(linebuf *lb, block b1, block b2)
 {
-    register blk *bp1, *bp2;
+    blk *bp1, *bp2;
     unsigned short depth1, depth2;
     blk bb;
 
@@ -619,12 +597,9 @@ block b1, b2;
  * DESCRIPTION:	output of a subrange of a blk
  *		(local for bk_put)
  */
-static void bk_put1(lb, bp, idx, size)
-register linebuf *lb;
-register blk *bp;
-register Int idx, size;
+static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
 {
-    register Int lines, last;
+    Int lines, last;
 
     lines = bp->lines;
 
@@ -652,8 +627,9 @@ register Int idx, size;
 	    bk_put1(lb, bk_load(lb, last), idx, size);
 	}
     } else {
-	register Int first, offset, mid;
+	Int first, offset, mid;
 
+	first = 0;
 	last = bp->llast + BLOCK_SIZE;
 	lines += bp->index1;
 	if (!lb->reverse) {
@@ -730,12 +706,8 @@ register Int idx, size;
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(lb, b, idx, size, putline, reverse)
-register linebuf *lb;
-block b;
-Int idx, size;
-void (*putline) P((char*));
-int reverse;
+void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline)(char*), 
+	int reverse)
 {
     blk *bp;
 

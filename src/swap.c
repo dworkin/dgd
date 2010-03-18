@@ -50,13 +50,10 @@ static sector ssectors;			/* sectors actually in swap file */
  * NAME:	swap->init()
  * DESCRIPTION:	initialize the swap device
  */
-void sw_init(file, total, cache, secsize)
-char *file;
-register unsigned int total, cache;
-unsigned int secsize;
+void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
-    register header *h;
-    register sector i;
+    header *h;
+    sector i;
 
     /* allocate and initialize all tables */
     swapfile = file;
@@ -132,9 +129,7 @@ static void sw_create()
  * NAME:	swap->newv()
  * DESCRIPTION:	initialize a new vector of sectors
  */
-void sw_newv(vec, size)
-register sector *vec;
-register unsigned int size;
+void sw_newv(sector *vec, unsigned int size)
 {
     while (mfree != SW_UNUSED) {
 	/* reuse a previously deleted sector */
@@ -161,12 +156,10 @@ register unsigned int size;
  * NAME:	swap->wipev()
  * DESCRIPTION:	wipe a vector of sectors
  */
-void sw_wipev(vec, size)
-register sector *vec;
-register unsigned int size;
+void sw_wipev(sector *vec, unsigned int size)
 {
-    register sector sec, i;
-    register header *h;
+    sector sec, i;
+    header *h;
 
     vec += size;
     while (size > 0) {
@@ -193,12 +186,10 @@ register unsigned int size;
  * NAME:	swap->delv()
  * DESCRIPTION:	delete a vector of swap sectors
  */
-void sw_delv(vec, size)
-register sector *vec;
-register unsigned int size;
+void sw_delv(sector *vec, unsigned int size)
 {
-    register sector sec, i;
-    register header *h;
+    sector sec, i;
+    header *h;
 
     /*
      * note: sectors must have been wiped before being deleted!
@@ -251,12 +242,10 @@ register unsigned int size;
  * DESCRIPTION:	reserve a swap slot for sector sec. If fill == TRUE, load it
  *		from the swap file if appropriate.
  */
-static header *sw_load(sec, restore, fill)
-sector sec;
-bool restore, fill;
+static header *sw_load(sector sec, bool restore, bool fill)
 {
-    register header *h;
-    register sector load, save;
+    header *h;
+    sector load, save;
 
     load = map[sec];
     if (load >= cachesize ||
@@ -377,12 +366,9 @@ bool restore, fill;
  * NAME:	swap->readv()
  * DESCRIPTION:	read bytes from a vector of sectors
  */
-void sw_readv(m, vec, size, idx)
-register char *m;
-register sector *vec;
-register Uint size, idx;
+void sw_readv(char *m, sector *vec, Uint size, Uint idx)
 {
-    register unsigned int len;
+    unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -398,13 +384,10 @@ register Uint size, idx;
  * NAME:	swap->writev()
  * DESCRIPTION:	write bytes to a vector of sectors
  */
-void sw_writev(m, vec, size, idx)
-register char *m;
-register sector *vec;
-register Uint size, idx;
+void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 {
-    register header *h;
-    register unsigned int len;
+    header *h;
+    unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -422,13 +405,10 @@ register Uint size, idx;
  * NAME:	swap->creadv()
  * DESCRIPTION:	restore ctrl bytes from a vector of sectors in dump file
  */
-void sw_creadv(m, vec, size, idx)
-register char *m;
-register sector *vec;
-register Uint size, idx;
+void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 {
-    register header *h;
-    register unsigned int len;
+    header *h;
+    unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -447,13 +427,10 @@ register Uint size, idx;
  * NAME:	swap->dreadv()
  * DESCRIPTION:	restore data bytes from a vector of sectors in dump file
  */
-void sw_dreadv(m, vec, size, idx)
-register char *m;
-register sector *vec;
-register Uint size, idx;
+void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {
-    register header *h;
-    register unsigned int len;
+    header *h;
+    unsigned int len;
 
     vec += idx / sectorsize;
     idx %= sectorsize;
@@ -471,12 +448,9 @@ register Uint size, idx;
  * NAME:	swap->conv()
  * DESCRIPTION:	restore converted bytes from a vector of sectors in dump file
  */
-void sw_conv(m, vec, size, idx)
-register char *m;
-register sector *vec;
-register Uint size, idx;
+void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 {
-    register unsigned int len;
+    unsigned int len;
 
     vec += idx / restoresecsize;
     idx %= restoresecsize;
@@ -500,10 +474,9 @@ register Uint size, idx;
  * NAME:	swap->mapsize()
  * DESCRIPTION:	count the number of sectors required for size bytes + a map
  */
-sector sw_mapsize(size)
-unsigned int size;
+sector sw_mapsize(unsigned int size)
 {
-    register sector i, n;
+    sector i, n;
 
     /* calculate the number of sectors required */
     n = 0;
@@ -540,13 +513,12 @@ static char dh_layout[] = "idddd";
  * NAME:	swap->dump()
  * DESCRIPTION:	dump swap file
  */
-int sw_dump(dumpfile)
-char *dumpfile;
+int sw_dump(char *dumpfile)
 {
-    register header *h;
-    register sector sec;
+    header *h;
+    sector sec;
     char buffer[STRINGSZ + 4], buf1[STRINGSZ], buf2[STRINGSZ], *p, *q;
-    register sector n;
+    sector n;
     dump_header dh;
 
     if (dump >= 0) {
@@ -664,9 +636,7 @@ char *dumpfile;
  * NAME:	swap->restore()
  * DESCRIPTION:	restore dump file
  */
-void sw_restore(fd, secsize)
-int fd;
-unsigned int secsize;
+void sw_restore(int fd, unsigned int secsize)
 {
     dump_header dh;
 

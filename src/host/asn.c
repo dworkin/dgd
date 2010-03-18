@@ -28,10 +28,9 @@
  * NAME:	asi->add()
  * DESCRIPTION:	a += b (sizea >= sizeb)
  */
-static bool asi_add(a, b, sizea, sizeb)
-register Uint *a, *b, sizea, sizeb;
+static bool asi_add(Uint *a, Uint *b, Uint sizea, Uint sizeb)
 {
-    register Uint tmp, carry;
+    Uint tmp, carry;
 
     sizea -= sizeb;
     carry = 0;
@@ -45,17 +44,16 @@ register Uint *a, *b, sizea, sizeb;
 	--sizea;
     }
 
-    return carry;
+    return (bool) carry;
 }
 
 /*
  * NAME:	asi->sub()
  * DESCRIPTION:	a -= b (a >= b, sizea >= sizeb)
  */
-static bool asi_sub(a, b, sizea, sizeb)
-register Uint *a, *b, sizea, sizeb;
+static bool asi_sub(Uint *a, Uint *b, Uint sizea, Uint sizeb)
 {
-    register Uint tmp, borrow;
+    Uint tmp, borrow;
 
     sizea -= sizeb;
     borrow = 0;
@@ -69,17 +67,16 @@ register Uint *a, *b, sizea, sizeb;
 	--sizea;
     }
 
-    return borrow;
+    return (bool) borrow;
 }
 
 /*
  * NAME:	asi->lshift()
  * DESCRIPTION:	a <<= lshift, lshift != 0
  */
-static void asi_lshift(a, size, lshift)
-register Uint *a, size, lshift;
+static void asi_lshift(Uint *a, Uint size, Uint lshift)
 {
-    register Uint offset, rshift, tmp, bits;
+    Uint offset, rshift, tmp, bits;
 
     offset = (lshift + 31) >> 5;
     lshift &= 0x1f;
@@ -115,10 +112,9 @@ register Uint *a, size, lshift;
  * NAME:	asi->rshift()
  * DESCRIPTION:	a >>= rshift, rshift != 0
  */
-static void asi_rshift(a, size, rshift)
-register Uint *a, size, rshift;
+static void asi_rshift(Uint *a, Uint size, Uint rshift)
 {
-    register Uint offset, lshift, tmp, bits;
+    Uint offset, lshift, tmp, bits;
 
     offset = (rshift + 31) >> 5;
     rshift &= 0x1f;
@@ -151,8 +147,7 @@ register Uint *a, size, rshift;
  * NAME:	asi->cmp()
  * DESCRIPTION:	compare a and b (sizea >= sizeb)
  */
-static int asi_cmp(a, b, sizea, sizeb)
-register Uint *a, *b, sizea, sizeb;
+static int asi_cmp(Uint *a, Uint *b, Uint sizea, Uint sizeb)
 {
     a += sizea;
     while (sizea > sizeb) {
@@ -175,18 +170,17 @@ register Uint *a, *b, sizea, sizeb;
 }
 
 # ifdef Uuint
-# define asi_mult1(c, a, b)	do {				\
+# define asi_mult1(c, a, b)	{				\
 				    Uuint _t;			\
 				    _t = (Uuint) (a) * (b);	\
 				    (c)[0] = _t;		\
 				    (c)[1] = _t >> 32;		\
-				} while (0)
+				}
 # else
-static void asi_mult1(c, a, b)
-Uint *c, a, b;
+static void asi_mult1(Uint *c, Uint a, Uint b)
 {
-    register unsigned short a0, a1, b0, b1;
-    register Uint t0, t1;
+    unsigned short a0, a1, b0, b1;
+    Uint t0, t1;
 
     a0 = a;
     a1 = a >> 16;
@@ -210,8 +204,7 @@ Uint *c, a, b;
  * DESCRIPTION:	c = a * b (sizea - sizeb <= 1)
  *		sizeof(t) = (sizea + sizeb) << 1
  */
-static void asi_mult(c, t, a, b, sizea1, sizeb1)
-register Uint *c, *t, *a, *b, sizea1, sizeb1;
+static void asi_mult(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea1, Uint sizeb1)
 {
     if (sizeb1 == 1) {
 	/* sizea <= 2, sizeb == 1 */
@@ -225,7 +218,7 @@ register Uint *c, *t, *a, *b, sizea1, sizeb1;
 	    c[2] = t[1];
 	}
     } else {
-	register Uint sizeab0, sizet2, sizet3, *t2;
+	Uint sizeab0, sizet2, sizet3, *t2;
 	bool minus;
 
 	t2 = t + ((sizea1 + sizeb1) << 1);
@@ -307,10 +300,9 @@ register Uint *c, *t, *a, *b, sizea1, sizeb1;
  * NAME:	asi->mult_row()
  * DESCRIPTION:	c += a * word
  */
-static bool asi_mult_row(c, a, b, size)
-register Uint *c, *a, b, size;
+static bool asi_mult_row(Uint *c, Uint *a, Uint b, Uint size)
 {
-    register Uint s, carry;
+    Uint s, carry;
     Uint t[2];
 
     s = 0;
@@ -326,22 +318,21 @@ register Uint *c, *a, b, size;
     } while (--size != 0);
 
     carry = ((s += carry) < carry);
-    return carry + ((*c += s) < s);
+    return (bool) (carry + ((*c += s) < s));
 }
 
 # ifdef Uuint
-# define asi_sqr1(b, a)	do {				\
+# define asi_sqr1(b, a)	{				\
 			    Uuint _t;			\
 			    _t = (Uuint) (a) * (a);	\
 			    (b)[0] = _t;		\
 			    (b)[1] = _t >> 32;		\
-			} while (0)
+			}
 # else
-static void asi_sqr1(b, a)
-Uint *b, a;
+static void asi_sqr1(Uint *b, Uint a)
 {
-    register unsigned short a0, a1;
-    register Uint t0, t1;
+    unsigned short a0, a1;
+    Uint t0, t1;
 
     a0 = a;
     a1 = a >> 16;
@@ -363,13 +354,12 @@ Uint *b, a;
  * DESCRIPTION:	b = a * a
  *		sizeof(t) = sizea << 2
  */
-static void asi_sqr(b, t, a, sizea1)
-register Uint *b, *t, *a, sizea1;
+static void asi_sqr(Uint *b, Uint *t, Uint *a, Uint sizea1)
 {
     if (sizea1 == 1) {
 	asi_sqr1(b, a[0]);
     } else {
-	register Uint sizea0, sizet2, *t2;
+	Uint sizea0, sizet2, *t2;
 
 	t2 = t + (sizea1 << 2);
 	sizea0 = sizea1 >> 1;
@@ -411,10 +401,9 @@ register Uint *b, *t, *a, sizea1;
 # ifdef Uuint
 # define asi_div1(a, b)		((((Uuint) (a)[1] << 32) | (a)[0]) / (b))
 # else
-static Uint asi_div1(aa, b)
-Uint *aa, b;
+static Uint asi_div1(Uint *aa, Uint b)
 {
-    register Uint q1, q0;
+    Uint q1, q0;
     Uint a[2], t[2], c[2];
 
     a[0] = aa[0];
@@ -455,11 +444,9 @@ Uint *aa, b;
  * DESCRIPTION:	c1 = a / b, c0 = a % b (a >= b, b != 0)
  *		sizeof(t) = (sizeb << 1) + 1
  */
-static Uint *asi_div(c, t, a, b, sizea, sizeb)
-Uint *c;
-register Uint *t, *a, *b, sizea, sizeb;
+static Uint *asi_div(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint sizeb)
 {
-    register Uint d, q, shift;
+    Uint d, q, shift;
 
     /* copy values */
     if (a != c) {
@@ -529,15 +516,11 @@ register Uint *t, *a, *b, sizea, sizeb;
  * NAME:	asi->strtonum()
  * DESCRIPTION:	convert a string to an ASI
  */
-static void asi_strtonum(num, str, sz, minus)
-register Uint *num;
-string *str;
-Uint *sz;
-bool *minus;
+static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
 {
-    register ssizet len;
-    register char *text;
-    register Uint *tmp, size, bits;
+    ssizet len;
+    char *text;
+    Uint *tmp, size, bits;
 
     len = str->len;
     text = str->text;
@@ -641,14 +624,11 @@ bool *minus;
  * NAME:	asi->numtostr()
  * DESCRIPTION:	convert an ASI to a string
  */
-static string *asi_numtostr(num, size, minus)
-register Uint *num;
-register Uint size;
-bool minus;
+static string *asi_numtostr(Uint *num, Uint size, bool minus)
 {
-    register ssizet len;
-    register Uint bits;
-    register char *text;
+    ssizet len;
+    Uint bits;
+    char *text;
     Uint *tmp;
     bool prefix;
     string *str;
@@ -721,9 +701,7 @@ bool minus;
  * NAME:	asn->ticks()
  * DESCRIPTION:	count ticks for operation, return TRUE if out of ticks
  */
-static bool asn_ticks(f, ticks)
-register frame *f;
-Uint ticks;
+static bool asn_ticks(frame *f, Uint ticks)
 {
     i_add_ticks(f, ticks);
     if (f->rlim->ticks < 0) {
@@ -740,11 +718,9 @@ Uint ticks;
  * NAME:	asn->add()
  * DESCRIPTION:	add two ASIs
  */
-string *asn_add(f, s1, s2, s3)
-frame *f;
-string *s1, *s2, *s3;
+string *asn_add(frame *f, string *s1, string *s2, string *s3)
 {
-    register Uint *a, *b, *c;
+    Uint *a, *b, *c;
     Uint *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb, minusc;
     string *str;
@@ -819,11 +795,9 @@ string *s1, *s2, *s3;
  * NAME:	asn->sub()
  * DESCRIPTION:	subtract one ASI from another
  */
-string *asn_sub(f, s1, s2, s3)
-frame *f;
-string *s1, *s2, *s3;
+string *asn_sub(frame *f, string *s1, string *s2, string *s3)
 {
-    register Uint *a, *b, *c;
+    Uint *a, *b, *c;
     Uint *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb, minusc;
     string *str;
@@ -898,9 +872,7 @@ string *s1, *s2, *s3;
  * NAME:	asn->cmp()
  * DESCRIPTION:	compare one ASI with another
  */
-int asn_cmp(f, s1, s2)
-frame *f;
-string *s1, *s2;
+int asn_cmp(frame *f, string *s1, string *s2)
 {
     Uint *a, *b, sizea, sizeb;
     bool minusa, minusb;
@@ -942,11 +914,9 @@ string *s1, *s2;
  * NAME:	asn->mult()
  * DESCRIPTION:	multiply one ASI with another
  */
-string *asn_mult(f, s1, s2, s3)
-frame *f;
-string *s1, *s2, *s3;
+string *asn_mult(frame *f, string *s1, string *s2, string *s3)
 {
-    register Uint *a, *b, *c, *t1, *t2;
+    Uint *a, *b, *c, *t1, *t2;
     Uint *aa, *bb, *cc, *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb;
     string *str;
@@ -1024,11 +994,9 @@ string *s1, *s2, *s3;
  * NAME:	asn->div()
  * DESCRIPTION:	divide one ASI by another
  */
-string *asn_div(f, s1, s2, s3)
-frame *f;
-string *s1, *s2, *s3;
+string *asn_div(frame *f, string *s1, string *s2, string *s3)
 {
-    register Uint *a, *b, *c, *d, *t;
+    Uint *a, *b, *c, *d, *t;
     Uint *mod, sizea, sizeb, sizemod;
     bool minusa, minusb;
     string *str;
@@ -1096,11 +1064,9 @@ string *s1, *s2, *s3;
  * NAME:	asn->mod()
  * DESCRIPTION:	take the modulus of an ASI
  */
-string *asn_mod(f, s1, s2)
-frame *f;
-string *s1, *s2;
+string *asn_mod(frame *f, string *s1, string *s2)
 {
-    register Uint *a, *b, *c, *t;
+    Uint *a, *b, *c, *t;
     Uint sizea, sizeb;
     bool minusa, minusb;
     string *str;
@@ -1145,11 +1111,10 @@ string *s1, *s2;
  *		From "Applied Cryptography" by Bruce Schneier, Second Edition, 
  *		page 247.
  */
-static bool asn_modinv(c, sizec, a, b, sizea, sizeb)
-Uint *c, *sizec, *a, *b, sizea, sizeb;
+static bool asn_modinv(Uint *c, Uint *sizec, Uint *a, Uint *b, Uint sizea, Uint sizeb)
 {
-    register Uint *a1, *b1, *g1, *a2, *b2, *g2;
-    register Uint sizea1, sizeb1, sizeg1, sizea2, sizeb2, sizeg2;
+    Uint *a1, *b1, *g1, *a2, *b2, *g2;
+    Uint sizea1, sizeb1, sizeg1, sizea2, sizeb2, sizeg2;
     bool inverse;
 
     if (!((a[0] | b[0]) & 1)) {
@@ -1227,7 +1192,7 @@ Uint *c, *sizec, *a, *b, sizea, sizeb;
 	    }
 	    if (!(g2[0] & 1) || sizeg1 < sizeg2 ||
 		asi_cmp(g1, g2, sizeg1, sizeg2) < 0) {
-		register Uint *t, sizet;
+		Uint *t, sizet;
 
 		/* a1 <=> a2, b1 <=> b2, g1 <=> g2 */
 		t = a1; sizet = sizea1;
@@ -1333,10 +1298,9 @@ Uint *c, *sizec, *a, *b, sizea, sizeb;
  * NAME:	asn->wordinv()
  * DESCRIPTION:	compute an inverse modulo the word size (for odd n)
  */
-static Uint asn_wordinv(n)
-register Uint n;
+static Uint asn_wordinv(Uint n)
 {
-    register Uint n1, mask, i;
+    Uint n1, mask, i;
 
     n1 = 1;
     mask = 0x3;
@@ -1357,11 +1321,9 @@ register Uint n;
  * DESCRIPTION:	compute the Montgomery product of a and b
  *		sizeof(t) = (size + 1) << 1
  */
-static void asn_monpro(c, t, a, b, n, size, n0)
-register Uint *c, size, n0;
-Uint *t, *a, *b, *n;
+static void asn_monpro(Uint *c, Uint *t, Uint *a, Uint *b, Uint *n, Uint size, Uint n0)
 {
-    register Uint i, j, m, *d, carry;
+    Uint i, j, m, *d, carry;
 
     if (a == b) {
 	asi_sqr(c, t, a, size);
@@ -1392,11 +1354,9 @@ Uint *t, *a, *b, *n;
  * DESCRIPTION:	compute a ** b % mod (a > 1, b > 1, (mod & 1) != 0)
  *		sizeof(t) = (sizemod + 1) << 1
  */
-static void asn_powqmod(c, t, a, b, mod, sizea, sizeb, sizemod)
-Uint *c, *a, *b, *mod, sizea, sizeb;
-register Uint *t, sizemod;
+static void asn_powqmod(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint sizea, Uint sizeb, Uint sizemod)
 {
-    register Uint bit, e, window, wsize, zsize, n0, *x, *xx, *y, *yy;
+    Uint bit, e, window, wsize, zsize, n0, *x, *xx, *y, *yy;
     Uint *tab[1 << WINDOWSZ];
 
     /* allocate */
@@ -1494,11 +1454,9 @@ register Uint *t, sizemod;
  * DESCRIPTION:	compute a ** b, (all operations in size words)
  *		sizeof(t) = (size + 1) << 1
  */
-static void asn_pow2mod(c, t, a, b, sizea, size)
-register Uint *c, *t, *b, size;
-Uint *a, sizea;
+static void asn_pow2mod(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint size)
 {
-    register Uint *x, *y, *z, e, bit, sizeb;
+    Uint *x, *y, *z, e, bit, sizeb;
 
     x = ALLOCA(Uint, size);
     y = ALLOCA(Uint, size << 1);
@@ -1560,8 +1518,7 @@ Uint *a, sizea;
  * DESCRIPTION:	compute a ** b % mod (a >= 0, b >= 0)
  *		sizeof(t) == (sizemod + 2) << 1
  */
-static void asn_power(c, t, a, b, mod, sizea, sizeb, sizemod)
-Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
+static void asn_power(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint sizea, Uint sizeb, Uint sizemod)
 {
     if (sizeb == 1 && b[0] == 0) {
 	/* a ** 0 = 1 */
@@ -1589,7 +1546,7 @@ Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
 	 */
 	asn_powqmod(c, t, a, b, mod, sizea, sizeb, sizemod);
     } else {
-	register Uint size, i, *x, *y, *z;
+	Uint size, i, *x, *y, *z;
 	Uint *q, *qinv, sizeq;
 
 	/*
@@ -1683,11 +1640,9 @@ Uint *c, *t, *a, *b, *mod, sizea, sizeb, sizemod;
  * NAME:	asn->pow()
  * DESCRIPTION:	compute a power of an ASI
  */
-string *asn_pow(f, s1, s2, s3)
-frame *f;
-string *s1, *s2, *s3;
+string *asn_pow(frame *f, string *s1, string *s2, string *s3)
 {
-    register Uint *a, *b, *c, *t;
+    Uint *a, *b, *c, *t;
     Uint *mod, sizea, sizeb, sizemod, ticks1, ticks2;
     bool minusa, minusb;
     string *str;
@@ -1757,12 +1712,9 @@ string *s1, *s2, *s3;
  * NAME:	asn->lshift()
  * DESCRIPTION:	left shift an ASI
  */
-string *asn_lshift(f, s1, shift, s2)
-frame *f;
-string *s1, *s2;
-Int shift;
+string *asn_lshift(frame *f, string *s1, Int shift, string *s2)
 {
-    register Uint *a, *b, *c, *t, size;
+    Uint *a, *b, *c, *t, size;
     Uint *mod, sizea, sizemod;
     bool minusa;
     string *str;
@@ -1836,12 +1788,9 @@ Int shift;
  * NAME:	asn->rshift()
  * DESCRIPTION:	right shift the ASI
  */
-string *asn_rshift(f, s, shift)
-frame *f;
-string *s;
-Int shift;
+string *asn_rshift(frame *f, string *s, Int shift)
 {
-    register Uint *a;
+    Uint *a;
     Uint sizea;
     bool minusa;
     string *str;
@@ -1868,12 +1817,10 @@ Int shift;
  * NAME:	asn->and()
  * DESCRIPTION:	logical and of two strings
  */
-string *asn_and(f, s1, s2)
-frame *f;
-string *s1, *s2;
+string *asn_and(frame *f, string *s1, string *s2)
 {
-    register char *p, *q, *r;
-    register ssizet i, j;
+    char *p, *q, *r;
+    ssizet i, j;
     string *str;
 
     if (s1->len < s2->len) {
@@ -1914,12 +1861,10 @@ string *s1, *s2;
  * NAME:	asn->or()
  * DESCRIPTION:	logical or of two strings
  */
-string *asn_or(f, s1, s2)
-frame *f;
-string *s1, *s2;
+string *asn_or(frame *f, string *s1, string *s2)
 {
-    register char *p, *q, *r;
-    register ssizet i, j;
+    char *p, *q, *r;
+    ssizet i, j;
     string *str;
 
     if (s1->len < s2->len) {
@@ -1960,12 +1905,10 @@ string *s1, *s2;
  * NAME:	asn->xor()
  * DESCRIPTION:	logical xor of two strings
  */
-string *asn_xor(f, s1, s2)
-frame *f;
-string *s1, *s2;
+string *asn_xor(frame *f, string *s1, string *s2)
 {
-    register char *p, *q, *r;
-    register ssizet i, j;
+    char *p, *q, *r;
+    ssizet i, j;
     string *str;
  
     if (s1->len < s2->len) {

@@ -75,8 +75,7 @@ static Uint swaprate5;			/* swaprate per 5 minutes */
  * NAME:	call_out->init()
  * DESCRIPTION:	initialize callout handling
  */
-bool co_init(max)
-unsigned int max;
+bool co_init(unsigned int max)
 {
     if (max != 0) {
 	/* only if callouts are enabled */
@@ -107,12 +106,10 @@ unsigned int max;
  * NAME:	enqueue()
  * DESCRIPTION:	put a callout in the queue
  */
-static call_out *enqueue(t, m)
-register Uint t;
-unsigned short m;
+static call_out *enqueue(Uint t, unsigned short m)
 {
-    register uindex i, j;
-    register call_out *l;
+    uindex i, j;
+    call_out *l;
 
     /*
      * create a free spot in the heap, and sift it upward
@@ -139,13 +136,12 @@ unsigned short m;
  * NAME:	dequeue()
  * DESCRIPTION:	remove a callout from the queue
  */
-static void dequeue(i)
-register uindex i;
+static void dequeue(uindex i)
 {
-    register Uint t;
-    register short m;
-    register uindex j;
-    register call_out *l;
+    Uint t;
+    short m;
+    uindex j;
+    call_out *l;
 
     l = cotab - 1;
     i++;
@@ -178,12 +174,10 @@ register uindex i;
  * NAME:	newcallout()
  * DESCRIPTION:	allocate a new callout for the cyclic buffer
  */
-static call_out *newcallout(list, t)
-register cbuf *list;
-Uint t;
+static call_out *newcallout(cbuf *list, Uint t)
 {
-    register uindex i;
-    register call_out *co;
+    uindex i;
+    call_out *co;
 
     if (flist != 0) {
 	/* get callout from free list */
@@ -227,12 +221,9 @@ Uint t;
  * NAME:	freecallout()
  * DESCRIPTION:	remove a callout from the cyclic buffer
  */
-static void freecallout(cyc, j, i, t)
-register cbuf *cyc;
-register uindex j, i;
-register Uint t;
+static void freecallout(cbuf *cyc, uindex j, uindex i, Uint t)
 {
-    register call_out *l;
+    call_out *l;
 
     --nshort;
     if (t == 0) {
@@ -300,9 +291,7 @@ register Uint t;
  * NAME:	call_out->decode()
  * DESCRIPTION:	decode millisecond time
  */
-Uint co_decode(time, mtime)
-register Uint time;
-unsigned short *mtime;
+Uint co_decode(Uint time, unsigned short *mtime)
 {
     *mtime = time & 0xffff;
     time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff);
@@ -316,8 +305,7 @@ unsigned short *mtime;
  * NAME:	call_out->time()
  * DESCRIPTION:	get the current (adjusted) time
  */
-Uint co_time(mtime)
-unsigned short *mtime;
+Uint co_time(unsigned short *mtime)
 {
     Uint t;
 
@@ -354,15 +342,11 @@ unsigned short *mtime;
  * NAME:	call_out->check()
  * DESCRIPTION:	check if, and how, a new callout can be added
  */
-Uint co_check(n, delay, mdelay, tp, mp, qp)
-unsigned int n, mdelay;
-Int delay;
-Uint *tp;
-unsigned short *mp;
-cbuf **qp;
+Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp, 
+	unsigned short *mp, cbuf **qp)
 {
-    register Uint t;
-    register unsigned short m;
+    Uint t;
+    unsigned short m;
 
     if (cotabsz == 0) {
 	/*
@@ -425,12 +409,10 @@ cbuf **qp;
  * NAME:	call_out->new()
  * DESCRIPTION:	add a callout
  */
-void co_new(oindex, handle, t, m, q)
-unsigned int oindex, handle, m;
-Uint t;
-cbuf *q;
+void co_new(unsigned int oindex, unsigned int handle, Uint t, 
+	unsigned int m, cbuf *q)
 {
-    register call_out *co;
+    call_out *co;
 
     if (q != (cbuf *) NULL) {
 	co = newcallout(q, t);
@@ -448,13 +430,10 @@ cbuf *q;
  * NAME:	rmshort()
  * DESCRIPTION:	remove a short-term callout
  */
-static bool rmshort(cyc, i, handle, t)
-register cbuf *cyc;
-register uindex i, handle;
-Uint t;
+static bool rmshort(cbuf *cyc, uindex i, uindex handle, Uint t)
 {
-    register uindex j, k;
-    register call_out *l;
+    uindex j, k;
+    call_out *l;
 
     k = cyc->list;
     if (k != 0) {
@@ -480,7 +459,7 @@ Uint t;
 		    return TRUE;
 		}
 		j = k;
-	    } while ((k=l[j].next) != 0);
+	    } while ((k = l[j].next) != 0);
 	}
     }
     return FALSE;
@@ -490,9 +469,7 @@ Uint t;
  * NAME:	call_out->remaining()
  * DESCRIPTION:	return the time remaining before a callout expires
  */
-Int co_remaining(t, m)
-register Uint t;
-register unsigned short *m;
+Int co_remaining(Uint t, unsigned short *m)
 {
     Uint time;
     unsigned short mtime;
@@ -526,11 +503,9 @@ register unsigned short *m;
  * NAME:	call_out->del()
  * DESCRIPTION:	remove a callout
  */
-void co_del(oindex, handle, t, m)
-register unsigned int oindex, handle, m;
-Uint t;
+void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 {
-    register call_out *l;
+    call_out *l;
 
     if (t != 0) {
 	t += timediff;
@@ -578,11 +553,10 @@ Uint t;
  * NAME:	call_out->list()
  * DESCRIPTION:	adjust callout delays in array
  */
-void co_list(a)
-array *a;
+void co_list(array *a)
 {
-    register value *v, *w;
-    register unsigned short i;
+    value *v, *w;
+    unsigned short i;
     Uint t;
     unsigned short m;
     xfloat flt1, flt2;
@@ -616,9 +590,9 @@ array *a;
  */
 static void co_expire()
 {
-    register call_out *co;
-    register uindex handle, oindex, i;
-    register cbuf *cyc;
+    call_out *co;
+    uindex handle, oindex, i;
+    cbuf *cyc;
     Uint t;
     unsigned short m;
 
@@ -700,10 +674,9 @@ static void co_expire()
  * NAME:	call_out->call()
  * DESCRIPTION:	call expired callouts
  */
-void co_call(f)
-frame *f;
+void co_call(frame *f)
 {
-    register uindex i, handle;
+    uindex i, handle;
     object *obj;
     string *str;
     int nargs;
@@ -741,8 +714,7 @@ frame *f;
  * NAME:	call_out->info()
  * DESCRIPTION:	give information about callouts
  */
-void co_info(n1, n2)
-uindex *n1, *n2;
+void co_info(uindex *n1, uindex *n2)
 {
     *n1 = nshort;
     *n2 = queuebrk;
@@ -752,10 +724,7 @@ uindex *n1, *n2;
  * NAME:	call_out->delay()
  * DESCRIPTION:	return the time until the next timeout
  */
-Uint co_delay(rtime, rmtime, mtime)
-register Uint rtime;
-register unsigned int rmtime;
-unsigned short *mtime;
+Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 {
     Uint t;
     unsigned short m;
@@ -800,8 +769,7 @@ unsigned short *mtime;
  * NAME:	call_out->swapcount()
  * DESCRIPTION:	keep track of the number of objects swapped out
  */
-void co_swapcount(count)
-unsigned int count;
+void co_swapcount(unsigned int count)
 {
     swaprate1 += count;
     swaprate5 += count;
@@ -854,16 +822,19 @@ static char dco_layout[] = "uui";
  * NAME:	call_out->dump()
  * DESCRIPTION:	dump callout table
  */
-bool co_dump(fd)
-int fd;
+bool co_dump(int fd)
 {
     dump_header dh;
-    register uindex list, last;
-    register call_out *co, *dc;
-    register uindex n;
-    register cbuf *cb;
+    uindex list, last;
+    call_out *co, *dc;
+    uindex n;
+    cbuf *cb;
     unsigned short m;
     bool ret;
+
+    dc = NULL;
+    cb = NULL;
+    last = 0;
 
     /* update timestamp */
     co_time(&m);
@@ -939,13 +910,11 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
-void co_restore(fd, t, conv)
-int fd, conv;
-register Uint t;
+void co_restore(int fd, Uint t, int conv)
 {
-    register uindex n, i, offset, last;
-    register call_out *co;
-    register cbuf *cb;
+    uindex n, i, offset, last;
+    call_out *co;
+    cbuf *cb;
     dump_header dh;
     cbuf buffer[CYCBUF_SIZE];
     unsigned short m;
@@ -970,7 +939,7 @@ register Uint t;
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
 	if (conv) {
-	    register dump_callout *dc;
+	    dump_callout *dc;
 
 	    dc = ALLOCA(dump_callout, n);
 	    conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
@@ -995,7 +964,7 @@ register Uint t;
 	    }
 	    AFREE(dc - n);
 	} else {
-	    register call_out *dc;
+	    call_out *dc;
 
 	    dc = ALLOCA(call_out, n);
 	    conf_dread(fd, (char *) dc, co_layout, (Uint) n);

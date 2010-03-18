@@ -28,7 +28,7 @@ typedef struct {
 
 # define NUMBER_OF_VARS	3
 
-extern vars *va_new  P((void));
-extern void  va_del  P((vars*));
-extern void  va_set  P((vars*, char*));
-extern void  va_show P((vars*));
+extern vars *va_new  (void);
+extern void  va_del  (vars*);
+extern void  va_set  (vars*, char*);
+extern void  va_show (vars*);

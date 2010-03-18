@@ -65,18 +65,17 @@ static void f_erange()
     error("Result too large");
 }
 
-static void f_sub P((flt*, flt*));
+static void f_sub (flt*, flt*);
 
 /*
  * NAME:	f_add()
  * DESCRIPTION:	a = a + b.  The result is normalized, but not guaranteed to 
  *		be in range.
  */
-static void f_add(a, b)
-register flt *a, *b;
+static void f_add(flt *a, flt *b)
 {
-    register unsigned short h, n;
-    register Uint l;
+    unsigned short h, n;
+    Uint l;
     flt tmp;
 
     if (b->exp == 0) {
@@ -147,11 +146,10 @@ register flt *a, *b;
  * DESCRIPTION:	a = a - b.  The result is normalized, but not guaranteed to be
  *		in range.
  */
-static void f_sub(a, b)
-register flt *a, *b;
+static void f_sub(flt *a, flt *b)
 {
-    register unsigned short h, n;
-    register Uint l;
+    unsigned short h, n;
+    Uint l;
     flt tmp;
 
     if (b->exp == 0) {
@@ -258,11 +256,10 @@ register flt *a, *b;
  * NAME:	f_mult()
  * DESCRIPTION:	a = a * b.  The result is normalized, but may be out of range.
  */
-static void f_mult(a, b)
-register flt *a, *b;
+static void f_mult(flt *a, flt *b)
 {
-    register Uint m, l, albl, ambm, ahbh;
-    register short al, am, ah, bl, bm, bh;
+    Uint m, l, albl, ambm, ahbh;
+    short al, am, ah, bl, bm, bh;
 
     if (a->exp == 0) {
 	/* a is 0 */
@@ -326,12 +323,11 @@ register flt *a, *b;
  * DESCRIPTION:	a = a / b.  b must be non-zero.  The result is normalized,
  *		but may be out of range.
  */
-static void f_div(a, b)
-register flt *a, *b;
+static void f_div(flt *a, flt *b)
 {
     unsigned short n[3];
-    register Uint numh, numl, divl, high, low, q;
-    register unsigned short divh, i;
+    Uint numh, numl, divl, high, low, q;
+    unsigned short divh, i;
 
     if (b->exp == 0) {
 	error("Division by zero");
@@ -424,8 +420,7 @@ register flt *a, *b;
  * NAME:	f_trunc()
  * DESCRIPTION:	truncate a flt
  */
-static void f_trunc(a)
-register flt *a;
+static void f_trunc(flt *a)
 {
     static unsigned short maskh[] = {
 		0x4000, 0x6000, 0x7000, 0x7800, 0x7c00, 0x7e00, 0x7f00,
@@ -462,8 +457,7 @@ register flt *a;
  * NAME:	f_37bits()
  * DESCRIPTION:	round a flt to 37 binary digits of precision
  */
-static void f_37bits(a)
-register flt *a;
+static void f_37bits(flt *a)
 {
     if ((Int) (a->low += 0x100) < 0) {
 	a->low = 0;
@@ -480,8 +474,7 @@ register flt *a;
  * NAME:	f_round()
  * DESCRIPTION:	round off a flt
  */
-static void f_round(a)
-register flt *a;
+static void f_round(flt *a)
 {
     static flt half = { 0, 0x7ffe, 0x4000, 0x00000000L };
 
@@ -494,8 +487,7 @@ register flt *a;
  * NAME:	f_cmp()
  * DESCRIPTION:	compate two flts
  */
-static int f_cmp(a, b)
-register flt *a, *b;
+static int f_cmp(flt *a, flt *b)
 {
     if (a->exp == 0) {
 	if (b->exp == 0) {
@@ -526,12 +518,10 @@ register flt *a, *b;
  * NAME:	f_itof()
  * DESCRIPTION:	convert an integer to a flt
  */
-static void f_itof(i, a)
-Int i;
-register flt *a;
+static void f_itof(Int i, flt *a)
 {
-    register Uint n;
-    register unsigned short shift;
+    Uint n;
+    unsigned short shift;
 
     /* deal with zero and sign */
     if (i == 0) {
@@ -563,8 +553,7 @@ register flt *a;
  * NAME:	f_ftoi()
  * DESCRIPTION:	convert a flt to an integer, discarding the fractional part
  */
-static Int f_ftoi(a)
-register flt *a;
+static Int f_ftoi(flt *a)
 {
     Uint i;
 
@@ -586,13 +575,11 @@ register flt *a;
  * NAME:	f_ftoxf()
  * DESCRIPTION:	convert flt to xfloat
  */
-static void f_ftoxf(a, f)
-register flt *a;
-register xfloat *f;
+static void f_ftoxf(flt *a, xfloat *f)
 {
-    register unsigned short exp;
-    register unsigned short high;
-    register Uint low;
+    unsigned short exp;
+    unsigned short high;
+    Uint low;
 
     exp = a->exp;
     if (exp == 0) {
@@ -632,11 +619,9 @@ register xfloat *f;
  * NAME:	f_xftof()
  * DESCRIPTION:	convert xfloat to flt
  */
-static void f_xftof(f, a)
-register xfloat *f;
-register flt *a;
+static void f_xftof(xfloat *f, flt *a)
 {
-    register unsigned short exp;
+    unsigned short exp;
 
     a->sign = f->high & 0x8000;
     exp = (f->high >> 4) & 0x07ff;
@@ -683,13 +668,12 @@ static flt tenths[] = {
  *		proper format.  Return TRUE if the operation was successful,
  *		FALSE otherwise.
  */
-bool flt_atof(s, f)
-char **s;
-xfloat *f;
+bool flt_atof(char **s, xfloat *f)
 {
-    flt a, b, c, *t;
-    register unsigned short e, h;
-    register char *p;
+    flt a = { 0 };
+    flt b, c, *t;
+    unsigned short e, h;
+    char *p;
 
     p = *s;
 
@@ -795,16 +779,14 @@ xfloat *f;
  * NAME:	float->ftoa()
  * DESCRIPTION:	convert a float to a string
  */
-void flt_ftoa(f, buffer)
-xfloat *f;
-char *buffer;
+void flt_ftoa(xfloat *f, char *buffer)
 {
     static flt tenmillion =	{ 0, 0x8016, 0x4c4b, 0x20000000L };
-    register unsigned short i;
-    register short e;
-    register Uint n;
-    register char *p;
-    register flt *t, *t2;
+    unsigned short i;
+    short e;
+    Uint n;
+    char *p;
+    flt *t, *t2;
     char digits[9];
     flt a;
 
@@ -917,9 +899,7 @@ char *buffer;
  * NAME:	float->itof()
  * DESCRIPTION:	convert an integer to a float
  */
-void flt_itof(i, f)
-Int i;
-xfloat *f;
+void flt_itof(Int i, xfloat *f)
 {
     flt a;
 
@@ -931,8 +911,7 @@ xfloat *f;
  * NAME:	float->ftoi()
  * DESCRIPTION:	convert a float to an integer
  */
-Int flt_ftoi(f)
-xfloat *f;
+Int flt_ftoi(xfloat *f)
 {
     flt a;
 
@@ -945,8 +924,7 @@ xfloat *f;
  * NAME:	float->add()
  * DESCRIPTION:	add two floats
  */
-void flt_add(f1, f2)
-xfloat *f1, *f2;
+void flt_add(xfloat *f1, xfloat *f2)
 {
     flt a, b;
 
@@ -960,8 +938,7 @@ xfloat *f1, *f2;
  * NAME:	float->sub()
  * DESCRIPTION:	subtract a float from a float
  */
-void flt_sub(f1, f2)
-xfloat *f1, *f2;
+void flt_sub(xfloat *f1, xfloat *f2)
 {
     flt a, b;
 
@@ -975,8 +952,7 @@ xfloat *f1, *f2;
  * NAME:	float->mult()
  * DESCRIPTION:	multiply two floats
  */
-void flt_mult(f1, f2)
-xfloat *f1, *f2;
+void flt_mult(xfloat *f1, xfloat *f2)
 {
     flt a, b;
 
@@ -990,8 +966,7 @@ xfloat *f1, *f2;
  * NAME:	float->div()
  * DESCRIPTION:	divide a float by a float
  */
-void flt_div(f1, f2)
-xfloat *f1, *f2;
+void flt_div(xfloat *f1, xfloat *f2)
 {
     flt a, b;
 
@@ -1005,8 +980,7 @@ xfloat *f1, *f2;
  * NAME:	float->cmp()
  * DESCRIPTION:	compare two xfloats
  */
-int flt_cmp(f1, f2)
-register xfloat *f1, *f2;
+int flt_cmp(xfloat *f1, xfloat *f2)
 {
     if ((short) (f1->high ^ f2->high) < 0) {
 	return ((short) f1->high < 0) ? -1 : 1;
@@ -1025,8 +999,7 @@ register xfloat *f1, *f2;
  * NAME:	float->floor()
  * DESCRIPTION:	round a float downwards
  */
-void flt_floor(f)
-xfloat *f;
+void flt_floor(xfloat *f)
 {
     flt a, b;
 
@@ -1043,8 +1016,7 @@ xfloat *f;
  * NAME:	float->ceil()
  * DESCRIPTION:	round a float upwards
  */
-void flt_ceil(f)
-xfloat *f;
+void flt_ceil(xfloat *f)
 {
     flt a, b;
 
@@ -1061,8 +1033,7 @@ xfloat *f;
  * NAME:	float->fmod()
  * DESCRIPTION:	perform fmod
  */
-void flt_fmod(f1, f2)
-xfloat *f1, *f2;
+void flt_fmod(xfloat *f1, xfloat *f2)
 {
     flt a, b, c;
     unsigned short sign;
@@ -1095,8 +1066,7 @@ xfloat *f1, *f2;
  * NAME:	float->frexp()
  * DESCRIPTION:	split a float into a fraction and an exponent
  */
-Int flt_frexp(f)
-register xfloat *f;
+Int flt_frexp(xfloat *f)
 {
     short e;
 
@@ -1112,9 +1082,7 @@ register xfloat *f;
  * NAME:	float->ldexp()
  * DESCRIPTION:	make a float from a fraction and an exponent
  */
-void flt_ldexp(f, exp)
-register xfloat *f;
-register Int exp;
+void flt_ldexp(xfloat *f, Int exp)
 {
     if (f->high == 0) {
 	return;
@@ -1135,8 +1103,7 @@ register Int exp;
  * NAME:	float->modf()
  * DESCRIPTION:	split float into fraction and integer part
  */
-void flt_modf(f1, f2)
-xfloat *f1, *f2;
+void flt_modf(xfloat *f1, xfloat *f2)
 {
     flt a, b;
 
@@ -1162,9 +1129,7 @@ xfloat *f1, *f2;
  * NAME:	f_poly()
  * DESCRIPTION:	evaluate polynomial
  */
-static void f_poly(x, coef, n)
-register flt *x, *coef;
-register int n;
+static void f_poly(flt *x, flt *coef, int n)
 {
     flt result;
 
@@ -1181,9 +1146,7 @@ register int n;
  * NAME:	f_poly1()
  * DESCRIPTION:	evaluate polynomial with coefficient of x ** (n + 1) == 1.0.
  */
-static void f_poly1(x, coef, n)
-register flt *x, *coef;
-register int n;
+static void f_poly1(flt *x, flt *coef, int n)
 {
     flt result;
 
@@ -1201,8 +1164,7 @@ register int n;
  * NAME:	f_exp()
  * DESCRIPTION:	internal version of exp(f)
  */
-static void f_exp(a)
-register flt *a;
+static void f_exp(flt *a)
 {
     static flt p[] = {
 	{ 0x0000, 0x7ff2, 0x4228, 0x01073370L },
@@ -1219,7 +1181,7 @@ register flt *a;
     static flt c1 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
     static flt c2 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
     flt b, c;
-    register short n;
+    short n;
 
     b = *a;
     f_mult(&b, &log2e);
@@ -1253,8 +1215,7 @@ register flt *a;
  * NAME:	float->exp()
  * DESCRIPTION:	exp(f)
  */
-void flt_exp(f)
-xfloat *f;
+void flt_exp(xfloat *f)
 {
     flt a;
 
@@ -1295,8 +1256,7 @@ static flt logq[] = {
  * NAME:	float->log()
  * DESCRIPTION:	log(f)
  */
-void flt_log(f)
-xfloat *f;
+void flt_log(xfloat *f)
 {
     static flt r[] = {
 	{ 0x8000, 0x7ffe, 0x6510, 0x7bb8d81cL },
@@ -1311,7 +1271,7 @@ xfloat *f;
     static flt c1 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
     static flt c2 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
     flt a, b, c, d;
-    register short n;
+    short n;
 
     f_xftof(f, &a);
     if (a.sign != 0 || a.exp == 0) {
@@ -1386,15 +1346,14 @@ xfloat *f;
  * NAME:	float->log10()
  * DESCRIPTION:	log10(f)
  */
-void flt_log10(f)
-xfloat *f;
+void flt_log10(xfloat *f)
 {
     static flt l102a = { 0x0000, 0x7ffd, 0x4d00, 0x00000000L };
     static flt l102b = { 0x0000, 0x7ff3, 0x4135, 0x04fbcff8L };
     static flt l10ea = { 0x0000, 0x7ffd, 0x6f00, 0x00000000L };
     static flt l10eb = { 0x0000, 0x7ff4, 0x5bd8, 0x549b9438L };
     flt a, b, c, d;
-    register short n;
+    short n;
 
     f_xftof(f, &a);
     if (a.sign != 0 || a.exp == 0) {
@@ -1446,9 +1405,7 @@ xfloat *f;
  * NAME:	f_powi()
  * DESCRIPTION:	take a number to an integer power
  */
-static void f_powi(a, n)
-register flt *a;
-register int n;
+static void f_powi(flt *a, int n)
 {
     flt b;
     unsigned short sign;
@@ -1509,8 +1466,7 @@ register int n;
  * NAME:	float->pow()
  * DESCRIPTION:	pow(f1, f2)
  */
-void flt_pow(f1, f2)
-xfloat *f1, *f2;
+void flt_pow(xfloat *f1, xfloat *f2)
 {
     static flt p[] = {
 	{ 0x0000, 0x7ffd, 0x7f6e, 0x32feb6b8L },
@@ -1566,7 +1522,7 @@ xfloat *f1, *f2;
     static flt log2ea = { 0x0000, 0x7ffd, 0x7154, 0x3b295c18L };
     static flt sixteenth = { 0x0000, 0x7ffb, 0x4000, 0x00000000L };
     flt a, b, c, d, e;
-    register int n, i;
+    int n, i;
     unsigned short sign;
 
     f_xftof(f1, &a);
@@ -1740,14 +1696,13 @@ xfloat *f1, *f2;
  * NAME:	f_sqrt()
  * DESCRIPTION:	internal version of sqrt(f)
  */
-static void f_sqrt(a)
-register flt *a;
+static void f_sqrt(flt *a)
 {
     static flt c1 = { 0x0000, 0x7ffe, 0x4b8a, 0x371e5fa0L };
     static flt c2 = { 0x0000, 0x7ffd, 0x6ad4, 0x55de691cL };
     static flt sqrt2 = { 0x0000, 0x7fff, 0x5a82, 0x3cccfe78L };
     flt b, c;
-    register int n;
+    int n;
 
     if (a->exp == 0) {
 	return;
@@ -1780,8 +1735,7 @@ register flt *a;
  * NAME:	float->sqrt()
  * DESCRIPTION:	sqrt(f)
  */
-void flt_sqrt(f)
-xfloat *f;
+void flt_sqrt(xfloat *f)
 {
     flt a;
 
@@ -1817,11 +1771,10 @@ static flt sc3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
  * NAME:	float->cos()
  * DESCRIPTION:	cos(f)
  */
-void flt_cos(f)
-xfloat *f;
+void flt_cos(xfloat *f)
 {
     flt a, b, c;
-    register int n;
+    int n;
     unsigned short sign;
 
     f_xftof(f, &a);
@@ -1884,11 +1837,10 @@ xfloat *f;
  * NAME:	float->sin()
  * DESCRIPTION:	sin(f)
  */
-void flt_sin(f)
-xfloat *f;
+void flt_sin(xfloat *f)
 {
     flt a, b, c;
-    register int n;
+    int n;
     unsigned short sign;
 
     f_xftof(f, &a);
@@ -1949,8 +1901,7 @@ xfloat *f;
  * NAME:	float->tan()
  * DESCRIPTION:	float(f)
  */
-void flt_tan(f)
-xfloat *f;
+void flt_tan(xfloat *f)
 {
     static flt p[] = {
 	{ 0x8000, 0x800c, 0x664b, 0x31a49e80L },
@@ -1967,7 +1918,7 @@ xfloat *f;
     static flt p2 = { 0x0000, 0x7fe6, 0x5110, 0x5a000000L };
     static flt p3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
     flt a, b, c;
-    register int n;
+    int n;
     unsigned short sign;
 
     f_xftof(f, &a);
@@ -2037,8 +1988,7 @@ static flt ascq[] = {
  * NAME:	float->acos()
  * DESCRIPTION:	acos(f)
  */
-void flt_acos(f)
-xfloat *f;
+void flt_acos(xfloat *f)
 {
     flt a, b, c;
     unsigned short sign;
@@ -2103,8 +2053,7 @@ xfloat *f;
  * NAME:	float->asin()
  * DESCRIPTION:	asin(f)
  */
-void flt_asin(f)
-xfloat *f;
+void flt_asin(xfloat *f)
 {
     flt a, b, c;
     unsigned short sign;
@@ -2175,8 +2124,7 @@ static flt tp8 = { 0x0000, 0x7ffd, 0x6a09, 0x7333f9e0L };
  * NAME:	float->atan()
  * DESCRIPTION:	atan(f)
  */
-void flt_atan(f)
-xfloat *f;
+void flt_atan(xfloat *f)
 {
     flt a, b, c, d, e;
     unsigned short sign;
@@ -2220,8 +2168,7 @@ xfloat *f;
  * NAME:	float->atan2()
  * DESCRIPTION:	atan2(f)
  */
-void flt_atan2(f1, f2)
-xfloat *f1, *f2;
+void flt_atan2(xfloat *f1, xfloat *f2)
 {
     flt a, b, c, d, e;
     unsigned short asign, bsign;
@@ -2296,8 +2243,7 @@ xfloat *f1, *f2;
  * NAME:	float->cosh()
  * DESCRIPTION:	cosh(f)
  */
-void flt_cosh(f)
-xfloat *f;
+void flt_cosh(xfloat *f)
 {
     flt a, b;
 
@@ -2320,8 +2266,7 @@ xfloat *f;
  * NAME:	float->sinh()
  * DESCRIPTION:	sinh(f)
  */
-void flt_sinh(f)
-xfloat *f;
+void flt_sinh(xfloat *f)
 {
     static flt p[] = {
 	{ 0x8000, 0x7ffe, 0x650d, 0x3fd17678L },
@@ -2371,8 +2316,7 @@ xfloat *f;
  * NAME:	float->tanh()
  * DESCRIPTION:	tanh(f)
  */
-void flt_tanh(f)
-xfloat *f;
+void flt_tanh(xfloat *f)
 {
     static flt p[] = {
 	{ 0x8000, 0x7ffe, 0x7b71, 0x3755fae0L },

@@ -27,10 +27,9 @@
  * NAME:	editbuf->new()
  * DESCRIPTION:	create a new edit buffer
  */
-editbuf *eb_new(tmpfile)
-char *tmpfile;
+editbuf *eb_new(char *tmpfile)
 {
-    register editbuf *eb;
+    editbuf *eb;
 
     eb = ALLOC(editbuf, 1);
     eb->lb = lb_new((linebuf *) NULL, tmpfile);
@@ -44,8 +43,7 @@ char *tmpfile;
  * NAME:	editbuf->del()
  * DESCRIPTION:	delete an edit buffer
  */
-void eb_del(eb)
-editbuf *eb;
+void eb_del(editbuf *eb)
 {
     lb_del(eb->lb);
     FREE(eb);
@@ -55,8 +53,7 @@ editbuf *eb;
  * NAME:	editbuf->clear()
  * DESCRIPTION:	reinitialize an edit buffer
  */
-void eb_clear(eb)
-register editbuf *eb;
+void eb_clear(editbuf *eb)
 {
     lb_new(eb->lb, (char *) NULL);
     eb->buffer = (block) 0;
@@ -69,12 +66,9 @@ register editbuf *eb;
  *		If this line is 0 the block is inserted before the other lines
  *		in the edit buffer.
  */
-void eb_add(eb, ln, getline)
-register editbuf *eb;
-register Int ln;
-char *(*getline) P((void));
+void eb_add(editbuf *eb, Int ln, char *(*getline) ())
 {
-    register block b;
+    block b;
 
     b = bk_new(eb->lb, getline);
     if (b != (block) 0) {
@@ -108,9 +102,7 @@ char *(*getline) P((void));
  * NAME:	editbuf->delete()
  * DESCRIPTION:	delete a subrange of lines in the edit buffer
  */
-block eb_delete(eb, first, last)
-register editbuf *eb;
-register Int first, last;
+block eb_delete(editbuf *eb, Int first, Int last)
 {
     block head, mid, tail;
     Int size;
@@ -143,10 +135,7 @@ register Int first, last;
  * NAME:	editbuf->change()
  * DESCRIPTION:	change a subrange of lines in the edit buffer
  */
-void eb_change(eb, first, last, b)
-register editbuf *eb;
-register Int first, last;
-register block b;
+void eb_change(editbuf *eb, Int first, Int last, block b)
 {
     Int size;
     block head, tail;
@@ -192,9 +181,7 @@ register block b;
  * NAME:	editbuf->yank()
  * DESCRIPTION:	return a subrange block of the edit buffer
  */
-block eb_yank(eb, first, last)
-register editbuf *eb;
-register Int first, last;
+block eb_yank(editbuf *eb, Int first, Int last)
 {
     block head, mid, tail;
 
@@ -215,10 +202,7 @@ register Int first, last;
  * DESCRIPTION:	put a block after a line in the edit buffer. The block is
  *		supplied immediately.
  */
-void eb_put(eb, ln, b)
-register editbuf *eb;
-register Int ln;
-register block b;
+void eb_put(editbuf *eb, Int ln, block b)
 {
     Int size;
 
@@ -250,11 +234,7 @@ register block b;
  * DESCRIPTION:	output a subrange of the edit buffer, without first making
  *		a subrange block for it
  */
-void eb_range(eb, first, last, putline, reverse)
-register editbuf *eb;
-Int first, last;
-void (*putline) P((char*));
-int reverse;
+void eb_range(editbuf *eb, Int first, Int last, void (*putline) (char*), int reverse)
 {
     bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }
@@ -274,7 +254,7 @@ static editbuf *eeb;	/* editor buffer */
  */
 static char *add_line()
 {
-    register editbuf *eb;
+    editbuf *eb;
 
     eb = eeb;
     if (eb->szlines > 0) {
@@ -293,8 +273,7 @@ static char *add_line()
  * NAME:	flush_line()
  * DESCRIPTION:	flush the lines buffer into a block
  */
-static void flush_line(eb)
-register editbuf *eb;
+static void flush_line(editbuf *eb)
 {
     block b;
 
@@ -312,8 +291,7 @@ register editbuf *eb;
  * NAME:	editbuf->startblock()
  * DESCRIPTION:	start a block of lines
  */
-void eb_startblock(eb)
-register editbuf *eb;
+void eb_startblock(editbuf *eb)
 {
     eb->flines = (block) 0;
     eb->szlines = 0;
@@ -323,11 +301,9 @@ register editbuf *eb;
  * NAME:	editbuf->addblock()
  * DESCRIPTION:	add a line to the current block of lines
  */
-void eb_addblock(eb, text)
-register editbuf *eb;
-register char *text;
+void eb_addblock(editbuf *eb, char *text)
 {
-    register int len;
+    int len;
 
     len = strlen(text) + 1;
 
@@ -342,8 +318,7 @@ register char *text;
  * NAME:	editbuf->endblock()
  * DESCRIPTION:	finish the current block
  */
-void eb_endblock(eb)
-register editbuf *eb;
+void eb_endblock(editbuf *eb)
 {
     if (eb->szlines > 0) {
 	flush_line(eb);

@@ -23,6 +23,7 @@
 # include "interpret.h"
 # include "edcmd.h"
 # include "editor.h"
+# include <stdarg.h>
 
 typedef struct _editor_ {
     cmdbuf *ed;			/* editor instance */
@@ -43,11 +44,9 @@ static bool internal;		/* flag editor internal error */
  * NAME:	ed->init()
  * DESCRIPTION:	initialize editor handling
  */
-void ed_init(tmp, num)
-char *tmp;
-register int num;
+void ed_init(char *tmp, int num)
 {
-    register editor *e, *f;
+    editor *e, *f;
 
     tmpedfile = tmp;
     f = (editor *) NULL;
@@ -71,8 +70,8 @@ register int num;
  */
 void ed_finish()
 {
-    register int i;
-    register editor *e;
+    int i;
+    editor *e;
 
     for (i = neditors, e = editors; i > 0; --i, e++) {
 	if (e->ed != (cmdbuf *) NULL) {
@@ -105,11 +104,10 @@ static void check_recursion()
  * NAME:	ed->new()
  * DESCRIPTION:	start a new editor
  */
-void ed_new(obj)
-object *obj;
+void ed_new(object *obj)
 {
     char tmp[STRINGSZ + 3];
-    register editor *e;
+    editor *e;
 
     check_recursion();
     if (EINDEX(newed) != EINDEX_MAX) {
@@ -131,10 +129,9 @@ object *obj;
  * NAME:	ed->del()
  * DESCRIPTION:	delete an editor instance
  */
-void ed_del(obj)
-object *obj;
+void ed_del(object *obj)
 {
-    register editor *e;
+    editor *e;
 
     check_recursion();
     e = &editors[EINDEX(obj->etabi)];
@@ -152,26 +149,25 @@ object *obj;
  * NAME:	ed->handler()
  * DESCRIPTION:	fake error handler
  */
-static void ed_handler(f, depth)
-frame *f;
-Int depth;
+static void ed_handler(frame *f, Int depth)
 {
     /*
      * This function just exists to prevent the higher level error handler
      * from being called.
      */
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(depth);
 }
+
+extern void output(char *, ...);
 
 /*
  * NAME:	ed->command()
  * DESCRIPTION:	handle an editor command
  */
-string *ed_command(obj, cmd)
-object *obj;
-char *cmd;
+string *ed_command(object *obj, char *cmd)
 {
-    register editor *e;
-    extern void output();
+    editor *e;
 
     check_recursion();
     if (strchr(cmd, LF) != (char *) NULL) {
@@ -211,8 +207,7 @@ char *cmd;
  * NAME:	ed->status()
  * DESCRIPTION:	return the editor status of an object
  */
-char *ed_status(obj)
-object *obj;
+char *ed_status(object *obj)
 {
     return (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) ?
 	    "insert" : "command";
@@ -222,13 +217,14 @@ object *obj;
  * NAME:	output()
  * DESCRIPTION:	handle output from the editor
  */
-void output(f, a1, a2, a3)
-char *f, *a1, *a2, *a3;
+void output(char *f, ...)
 {
+    va_list args;
     char buf[2 * MAX_LINE_SIZE + 15];
     Uint len;
 
-    sprintf(buf, f, a1, a2, a3);
+    va_start(args, f);
+    vsprintf(buf, f, args);
     len = strlen(buf);
     if (outbufsz + len > USHRT_MAX) {
 	error("Editor output string too long");
@@ -241,11 +237,12 @@ char *f, *a1, *a2, *a3;
  * NAME:	ed_error()
  * DESCRIPTION:	handle an editor internal error
  */
-void ed_error(f, a1, a2, a3)
-char *f, *a1, *a2, *a3;
+void ed_error(char *f, ...)
 {
+    va_list args;
     if (f != (char *) NULL) {
 	internal = TRUE;
     }
-    error(f, a1,a2, a3);
+    va_start(args, f);
+    error(f, args);
 }

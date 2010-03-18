@@ -33,8 +33,8 @@ typedef struct _macro_ {
 
 # define MAX_REPL_SIZE	(4 * MAX_LINE_SIZE)
 
-extern void   mc_init	P((void));
-extern void   mc_clear  P((void));
-extern void   mc_define P((char*, char*, int));
-extern void   mc_undef  P((char*));
-extern macro *mc_lookup P((char*));
+extern void   mc_init	(void);
+extern void   mc_clear  (void);
+extern void   mc_define (char*, char*, int);
+extern void   mc_undef  (char*);
+extern macro *mc_lookup (char*);

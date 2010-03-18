@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void	ed_init		P((char*, int));
-extern void	ed_finish	P((void));
-extern void	ed_clear	P((void));
-extern void	ed_new		P((object*));
-extern void	ed_del		P((object*));
-extern string  *ed_command	P((object*, char*));
-extern char    *ed_status	P((object*));
+extern void	ed_init		(char*, int);
+extern void	ed_finish	(void);
+extern void	ed_clear	(void);
+extern void	ed_new		(object*);
+extern void	ed_del		(object*);
+extern string  *ed_command	(object*, char*);
+extern char    *ed_status	(object*);

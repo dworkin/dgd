@@ -99,8 +99,7 @@ static arrh *aht[ARRMERGETABSZ];/* array merge table */
  * NAME:	array->init()
  * DESCRIPTION:	initialize array handling
  */
-void arr_init(size)
-unsigned int size;
+void arr_init(unsigned int size)
 {
     max_size = size;
     tag = 0;
@@ -116,10 +115,9 @@ unsigned int size;
  * NAME:	array->alloc()
  * DESCRIPTION:	create a new array
  */
-array *arr_alloc(size)
-unsigned int size;
+array *arr_alloc(unsigned int size)
 {
-    register array *a;
+    array *a;
 
     if (flist != (array *) NULL) {
 	/* from free list */
@@ -127,7 +125,7 @@ unsigned int size;
 	flist = a->next;
     } else {
 	if (achunksz == ARR_CHUNK) {
-	    register arrchunk *l;
+	    arrchunk *l;
 
 	    /* new chunk */
 	    l = ALLOC(arrchunk, 1);
@@ -151,11 +149,9 @@ unsigned int size;
  * NAME:	array->new()
  * DESCRIPTION:	create a new array
  */
-array *arr_new(data, size)
-dataspace *data;
-register long size;
+array *arr_new(dataspace *data, long size)
 {
-    register array *a;
+    array *a;
 
     if (size > max_size) {
 	error("Array too large");
@@ -179,12 +175,10 @@ register long size;
  * DESCRIPTION:	return an array, initialized for the benefit of the extension
  *		interface
  */
-array *arr_ext_new(data, size)
-dataspace *data;
-long size;
+array *arr_ext_new(dataspace *data, long size)
 {
-    register int i;
-    register value *v;
+    int i;
+    value *v;
     array *a;
 
     a = arr_new(data, size);
@@ -199,12 +193,11 @@ long size;
  * DESCRIPTION:	remove a reference from an array or mapping.  If none are
  *		left, the array/mapping is removed.
  */
-void arr_del(a)
-register array *a;
+void arr_del(array *a)
 {
     if (--(a->ref) == 0) {
-	register value *v;
-	register unsigned short i;
+	value *v;
+	unsigned short i;
 	static array *dlist;
 
 	a->prev->next = a->next;
@@ -226,7 +219,7 @@ register array *a;
 	    }
 
 	    if (a->hashed != (maphash *) NULL) {
-		register mapelt *e, *n, **t;
+		mapelt *e, *n, **t;
 
 		/*
 		 * delete the hashtable of a mapping
@@ -259,13 +252,12 @@ register array *a;
  * NAME:	array->freelist()
  * DESCRIPTION:	free all left-over arrays in a dataspace
  */
-void arr_freelist(alist)
-array *alist;
+void arr_freelist(array *alist)
 {
-    register array *a;
-    register value *v;
-    register unsigned short i;
-    register mapelt *e, *n, **t;
+    array *a;
+    value *v;
+    unsigned short i;
+    mapelt *e, *n, **t;
 
     a = alist;
     do {
@@ -315,12 +307,12 @@ array *alist;
 void arr_freeall()
 {
 # ifdef DEBUG
-    register arrchunk *ac;
-    register meltchunk *mc;
+    arrchunk *ac;
+    meltchunk *mc;
 
     /* free array chunks */
     for (ac = aclist; ac != (arrchunk *) NULL; ) {
-	register arrchunk *f;
+	arrchunk *f;
 
 	f = ac;
 	ac = ac->next;
@@ -335,7 +327,7 @@ void arr_freeall()
 # ifdef DEBUG
     /* free mapping element chunks */
     for (mc = meltlist; mc != (meltchunk *) NULL; ) {
-	register meltchunk *f;
+	meltchunk *f;
 
 	f = mc;
 	mc = mc->next;
@@ -363,11 +355,9 @@ void arr_merge()
  * NAME:	array->put()
  * DESCRIPTION:	Put an array in the merge table, and return its "index".
  */
-Uint arr_put(a, idx)
-register array *a;
-Uint idx;
+Uint arr_put(array *a, Uint idx)
 {
-    register arrh **h;
+    arrh **h;
 
     for (h = &aht[(unsigned long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
 	 h = &(*h)->next) {
@@ -379,7 +369,7 @@ Uint idx;
      * Add a new entry to the hash table.
      */
     if (ahchunksz == ARR_CHUNK) {
-	register arrhchunk *l;
+	arrhchunk *l;
 
 	l = ALLOC(arrhchunk, 1);
 	l->next = ahlist;
@@ -402,8 +392,8 @@ Uint idx;
  */
 void arr_clear()
 {
-    register arrh *h;
-    register arrhchunk *l;
+    arrh *h;
+    arrhchunk *l;
 
     /* clear hash table */
     for (h = alink; h != (arrh *) NULL; ) {
@@ -413,7 +403,7 @@ void arr_clear()
 
     /* free array hash chunks */
     for (l = ahlist; l != (arrhchunk *) NULL; ) {
-	register arrhchunk *f;
+	arrhchunk *f;
 
 	f = l;
 	l = l->next;
@@ -426,15 +416,11 @@ void arr_clear()
  * NAME:	backup()
  * DESCRIPTION:	add an array backup to the backup chunk
  */
-static void backup(ac, a, elts, size, plane)
-register abchunk **ac;
-register array *a;
-value *elts;
-unsigned int size;
-dataplane *plane;
+static void backup(abchunk **ac, array *a, value *elts, unsigned int size, 
+	dataplane *plane)
 {
-    register abchunk *c;
-    register arrbak *ab;
+    abchunk *c;
+    arrbak *ab;
 
     if (*ac == (abchunk *) NULL || (*ac)->chunksz == ABCHUNKSZ) {
 	c = ALLOC(abchunk, 1);
@@ -456,12 +442,10 @@ dataplane *plane;
  * NAME:	array->backup()
  * DESCRIPTION:	make a backup of the current elements of an array or mapping
  */
-void arr_backup(ac, a)
-abchunk **ac;
-register array *a;
+void arr_backup(abchunk **ac, array *a)
 {
-    register value *elts;
-    register unsigned short i;
+    value *elts;
+    unsigned short i;
 
 # ifdef DEBUG
     if (a->hashmod) {
@@ -496,14 +480,11 @@ register array *a;
  * NAME:	array->commit()
  * DESCRIPTION:	commit current array values and discard originals
  */
-void arr_commit(ac, plane, merge)
-abchunk **ac;
-dataplane *plane;
-int merge;
+void arr_commit(abchunk **ac, dataplane *plane, int merge)
 {
-    register abchunk *c, *n;
-    register arrbak *ab;
-    register short i;
+    abchunk *c, *n;
+    arrbak *ab;
+    short i;
 
     c = *ac;
     if (merge) {
@@ -519,8 +500,8 @@ int merge;
 		    backup(ac, ab->arr, ab->original, ab->size, ab->plane);
 		} else {
 		    if (ab->original != (value *) NULL) {
-			register value *v;
-			register unsigned short j;
+			value *v;
+			unsigned short j;
 
 			for (v = ab->original, j = ab->size; j != 0; v++, --j) {
 			    i_del_value(v);
@@ -544,14 +525,13 @@ int merge;
  * NAME:	array->discard()
  * DESCRIPTION:	restore originals and discard current values
  */
-void arr_discard(ac)
-abchunk **ac;
+void arr_discard(abchunk **ac)
 {
-    register abchunk *c, *n;
-    register arrbak *ab;
-    register short i;
-    register array *a;
-    register unsigned short j;
+    abchunk *c, *n;
+    arrbak *ab;
+    short i;
+    array *a;
+    unsigned short j;
 
     for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
 	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
@@ -559,7 +539,7 @@ abchunk **ac;
 	    d_discard_arr(a, ab->plane);
 
 	    if (a->elts != (value *) NULL) {
-		register value *v;
+		value *v;
 
 		for (v = a->elts, j = a->size; j != 0; v++, --j) {
 		    i_del_value(v);
@@ -568,7 +548,7 @@ abchunk **ac;
 	    }
 
 	    if (a->hashed != (maphash *) NULL) {
-		register mapelt *e, *n, **t;
+		mapelt *e, *n, **t;
 
 		for (j = a->hashed->size, t = a->hashed->table; j > 0; t++) {
 		    for (e = *t; e != (mapelt *) NULL; e = n) {
@@ -602,13 +582,10 @@ abchunk **ac;
  * NAME:	copytmp()
  * DESCRIPTION:	make temporary copies of values
  */
-static void copytmp(data, v1, a)
-register dataspace *data;
-register value *v1;
-register array *a;
+static void copytmp(dataspace *data, value *v1, array *a)
 {
-    register value *v2, *o;
-    register unsigned short n;
+    value *v2, *o;
+    unsigned short n;
 
     v2 = d_get_elts(a);
     if (a->odcount == odcount) {
@@ -646,11 +623,9 @@ register array *a;
  * NAME:	array->add()
  * DESCRIPTION:	add two arrays
  */
-array *arr_add(data, a1, a2)
-dataspace *data;
-register array *a1, *a2;
+array *arr_add(dataspace *data, array *a1, array *a2)
 {
-    register array *a;
+    array *a;
 
     a = arr_new(data, (long) a1->size + a2->size);
     i_copy(a->elts, d_get_elts(a1), a1->size);
@@ -660,17 +635,16 @@ register array *a1, *a2;
     return a;
 }
 
-static int cmp P((cvoid*, cvoid*));
+static int cmp (cvoid*, cvoid*);
 
 /*
  * NAME:	cmp()
  * DESCRIPTION:	compare two values
  */
-static int cmp(cv1, cv2)
-cvoid *cv1, *cv2;
+static int cmp(cvoid *cv1, cvoid *cv2)
 {
-    register value *v1, *v2;
-    register int i;
+    value *v1, *v2;
+    int i;
     xfloat f1, f2;
 
     v1 = (value *) cv1;
@@ -709,22 +683,20 @@ cvoid *cv1, *cv2;
 		(v1->u.array->tag < v2->u.array->tag) ? -1 : 0 :
 		1;
     }
+
+    return 0;
 }
 
 /*
  * NAME:	search()
  * DESCRIPTION:	search for a value in an array
  */
-static int search(v1, v2, h, step, place)
-register value *v1, *v2;
-register unsigned short h;
-register int step;		/* 1 for arrays, 2 for mappings */
-bool place;
+static int search(value *v1, value *v2, unsigned short h, int step, bool place)
 {
-    register unsigned short l, m;
-    register Int c;
-    register value *v3;
-    register unsigned short mask;
+    unsigned short l, m;
+    Int c;
+    value *v3;
+    unsigned short mask;
 
     mask = -step;
     l = 0;
@@ -781,7 +753,7 @@ bool place;
 	} else if (c < 0) {
 	    h = m;		/* search in lower half */
 	} else {
-	    l = m + step;	/* search in upper half */
+	    l = (m + step);	/* search in upper half */
 	}
     }
     /*
@@ -794,13 +766,11 @@ bool place;
  * NAME:	array->sub()
  * DESCRIPTION:	subtract one array from another
  */
-array *arr_sub(data, a1, a2)
-dataspace *data;
-array *a1, *a2;
+array *arr_sub(dataspace *data, array *a1, array *a2)
 {
-    register value *v1, *v2, *v3, *o;
-    register array *a3;
-    register unsigned short n, size;
+    value *v1, *v2, *v3, *o;
+    array *a3;
+    unsigned short n, size;
 
     if (a2->size == 0) {
 	/*
@@ -883,13 +853,11 @@ array *a1, *a2;
  * NAME:	array->intersect()
  * DESCRIPTION:	A - (A - B).  If A and B are sets, the result is a set also.
  */
-array *arr_intersect(data, a1, a2)
-dataspace *data;
-array *a1, *a2;
+array *arr_intersect(dataspace *data, array *a1, array *a2)
 {
-    register value *v1, *v2, *v3, *o;
-    register array *a3;
-    register unsigned short n, size;
+    value *v1, *v2, *v3, *o;
+    array *a3;
+    unsigned short n, size;
 
     if (a1->size == 0 || a2->size == 0) {
 	/* array & ({ }) */
@@ -962,14 +930,12 @@ array *a1, *a2;
  * NAME:	array->setadd()
  * DESCRIPTION:	A + (B - A).  If A and B are sets, the result is a set also.
  */
-array *arr_setadd(data, a1, a2)
-dataspace *data;
-array *a1, *a2;
+array *arr_setadd(dataspace *data, array *a1, array *a2)
 {
-    register value *v, *v1, *v2, *o;
+    value *v, *v1, *v2, *o;
     value *v3;
-    register array *a3;
-    register unsigned short n, size;
+    array *a3;
+    unsigned short n, size;
 
     if (a1->size == 0) {
 	/* ({ }) | array */
@@ -1055,14 +1021,12 @@ array *a1, *a2;
  * DESCRIPTION:	(A - B) + (B - A).  If A and B are sets, the result is a set
  *		also.
  */
-array *arr_setxadd(data, a1, a2)
-dataspace *data;
-array *a1, *a2;
+array *arr_setxadd(dataspace *data, array *a1, array *a2)
 {
-    register value *v, *w, *v1, *v2;
+    value *v, *w, *v1, *v2;
     value *v3;
-    register array *a3;
-    register unsigned short n, size;
+    array *a3;
+    unsigned short n, size;
     unsigned short num;
 
     if (a1->size == 0) {
@@ -1147,9 +1111,7 @@ array *a1, *a2;
  * NAME:	array->index()
  * DESCRIPTION:	index an array
  */
-unsigned short arr_index(a, l)
-register array *a;
-register long l;
+unsigned short arr_index(array *a, long l)
 {
     if (l < 0 || l >= (long) a->size) {
 	error("Array index out of range");
@@ -1161,9 +1123,7 @@ register long l;
  * NAME:	array->ckrange()
  * DESCRIPTION:	check an array subrange
  */
-void arr_ckrange(a, l1, l2)
-array *a;
-register long l1, l2;
+void arr_ckrange(array *a, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
@@ -1174,12 +1134,9 @@ register long l1, l2;
  * NAME:	array->range()
  * DESCRIPTION:	return a subrange of an array
  */
-array *arr_range(data, a, l1, l2)
-dataspace *data;
-register array *a;
-register long l1, l2;
+array *arr_range(dataspace *data, array *a, long l1, long l2)
 {
-    register array *range;
+    array *range;
 
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
@@ -1196,9 +1153,7 @@ register long l1, l2;
  * NAME:	mapping->new()
  * DESCRIPTION:	create a new mapping
  */
-array *map_new(data, size)
-dataspace *data;
-register long size;
+array *map_new(dataspace *data, long size)
 {
     array *m;
 
@@ -1223,11 +1178,10 @@ register long size;
  * NAME:	mapping->sort()
  * DESCRIPTION:	prune and sort a mapping
  */
-void map_sort(m)
-register array *m;
+void map_sort(array *m)
 {
-    register unsigned short i, sz;
-    register value *v, *w;
+    unsigned short i, sz;
+    value *v, *w;
 
     for (i = m->size, sz = 0, v = w = m->elts; i > 0; i -= 2) {
 	if (!VAL_NIL(v + 1)) {
@@ -1261,14 +1215,11 @@ register array *m;
  * NAME:	mapping->dehash()
  * DESCRIPTION:	commit changes from the hash table to the array part
  */
-static void map_dehash(data, m, clean)
-register dataspace *data;
-register array *m;
-bool clean;
+static void map_dehash(dataspace *data, array *m, bool clean)
 {
-    register unsigned short size, i, j;
-    register value *v1, *v2, *v3;
-    register mapelt *e, **t, **p;
+    unsigned short size, i, j;
+    value *v1, *v2, *v3;
+    mapelt *e, **t, **p;
 
     if (clean && m->size != 0) {
 	/*
@@ -1498,12 +1449,11 @@ bool clean;
  * NAME:	map->rmhash()
  * DESCRIPTION:	delete hash table of mapping
  */
-void map_rmhash(m)
-register array *m;
+void map_rmhash(array *m)
 {
     if (m->hashed != (maphash *) NULL) {
-	register unsigned short i;
-	register mapelt *e, *n, **t;
+	unsigned short i;
+	mapelt *e, *n, **t;
 
 	if (m->hashmod) {
 	    map_dehash(m->primary->data, m, FALSE);
@@ -1526,9 +1476,7 @@ register array *m;
  * DESCRIPTION:	compact a mapping: copy new elements from the hash table into
  *		the array, and remove destructed objects
  */
-void map_compact(data, m)
-register dataspace *data;
-register array *m;
+void map_compact(dataspace *data, array *m)
 {
     if (m->hashmod || m->odcount != odcount) {
 	if (m->hashmod &&
@@ -1545,9 +1493,7 @@ register array *m;
  * NAME:	mapping->size()
  * DESCRIPTION:	return the size of a mapping
  */
-unsigned short map_size(data, m)
-dataspace *data;
-register array *m;
+unsigned short map_size(dataspace *data, array *m)
 {
     map_compact(data, m);
     return m->size >> 1;
@@ -1557,13 +1503,11 @@ register array *m;
  * NAME:	mapping->add()
  * DESCRIPTION:	add two mappings
  */
-array *map_add(data, m1, m2)
-dataspace *data;
-array *m1, *m2;
+array *map_add(dataspace *data, array *m1, array *m2)
 {
-    register value *v1, *v2, *v3;
-    register unsigned short n1, n2;
-    register Int c;
+    value *v1, *v2, *v3;
+    unsigned short n1, n2;
+    Int c;
     array *m3;
 
     map_compact(data, m1);
@@ -1590,8 +1534,8 @@ array *m1, *m2;
 	    if (c == 0) {
 		/* equal elements? */
 		if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		    register value *v;
-		    register unsigned short n;
+		    value *v;
+		    unsigned short n;
 
 		    /*
 		     * The array tags are the same, but the arrays are not.
@@ -1642,13 +1586,11 @@ array *m1, *m2;
  * NAME:	mapping->sub()
  * DESCRIPTION:	subtract an array from a mapping
  */
-array *map_sub(data, m1, a2)
-dataspace *data;
-array *m1, *a2;
+array *map_sub(dataspace *data, array *m1, array *a2)
 {
-    register value *v1, *v2, *v3;
-    register unsigned short n1, n2, size;
-    register Int c;
+    value *v1, *v2, *v3;
+    unsigned short n1, n2, size;
+    Int c;
     array *m3;
 
     map_compact(data, m1);
@@ -1682,8 +1624,8 @@ array *m1, *a2;
 	} else {
 	    /* equal elements? */
 	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		register value *v;
-		register unsigned short n;
+		value *v;
+		unsigned short n;
 
 		/*
 		 * The array tags are the same, but the arrays are not.
@@ -1730,13 +1672,11 @@ array *m1, *a2;
  * NAME:	mapping->intersect()
  * DESCRIPTION:	intersect a mapping with an array
  */
-array *map_intersect(data, m1, a2)
-dataspace *data;
-array *m1, *a2;
+array *map_intersect(dataspace *data, array *m1, array *a2)
 {
-    register value *v1, *v2, *v3;
-    register unsigned short n1, n2, size;
-    register Int c;
+    value *v1, *v2, *v3;
+    unsigned short n1, n2, size;
+    Int c;
     array *m3;
 
     map_compact(data, m1);
@@ -1767,8 +1707,8 @@ array *m1, *a2;
 	} else {
 	    /* equal elements? */
 	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		register value *v;
-		register unsigned short n;
+		value *v;
+		unsigned short n;
 
 		/*
 		 * The array tags are the same, but the arrays are not.
@@ -1814,15 +1754,11 @@ array *m1, *a2;
  * NAME:	mapping->grow()
  * DESCRIPTION:	add an element to a mapping
  */
-static mapelt *map_grow(data, m, hashval, add)
-dataspace *data;
-register array *m;
-unsigned short hashval;
-bool add;
+static mapelt *map_grow(dataspace *data, array *m, unsigned short hashval, bool add)
 {
-    register maphash *h;
-    register mapelt *e;
-    register unsigned short i;
+    maphash *h;
+    mapelt *e;
+    unsigned short i;
 
     h = m->hashed;
     if (add &&
@@ -1845,8 +1781,8 @@ bool add;
 	h->tablesize = MTABLE_SIZE;
 	memset(h->table, '\0', MTABLE_SIZE * sizeof(mapelt*));
     } else if (h->size << 2 >= h->tablesize * 3) {
-	register mapelt *n, **t;
-	register unsigned short j;
+	mapelt *n, **t;
+	unsigned short j;
 
 	/*
 	 * extend hash table for this mapping
@@ -1881,7 +1817,7 @@ bool add;
 	fmelt = e->next;
     } else {
 	if (meltchunksz == MELT_CHUNK) {
-	    register meltchunk *l;
+	    meltchunk *l;
 
 	    /* new chunk */
 	    l = ALLOC(meltchunk, 1);
@@ -1907,14 +1843,13 @@ bool add;
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
  *		perform an assignment; otherwise return the indexed value.
  */
-value *map_index(data, m, val, elt)
-dataspace *data;
-register array *m;
-value *val, *elt;
+value *map_index(dataspace *data, array *m, value *val, value *elt)
 {
-    register unsigned short i;
-    register mapelt *e, **p;
+    unsigned short i;
+    mapelt *e, **p;
     bool del, add, hash;
+
+    i = 0;
 
     if (elt != (value *) NULL && VAL_NIL(elt)) {
 	elt = (value *) NULL;
@@ -2012,8 +1947,8 @@ value *val, *elt;
 
     add = TRUE;
     if (m->size > 0) {
-	register int n;
-	register value *v;
+	int n;
+	value *v;
 
 	n = search(val, d_get_elts(m), m->size, 2, FALSE);
 	if (n >= 0) {
@@ -2086,13 +2021,10 @@ value *val, *elt;
  * NAME:	mapping->range()
  * DESCRIPTION:	return a mapping value subrange
  */
-array *map_range(data, m, v1, v2)
-dataspace *data;
-array *m;
-register value *v1, *v2;
+array *map_range(dataspace *data, array *m, value *v1, value *v2)
 {
-    register unsigned short from, to;
-    register array *range;
+    unsigned short from, to;
+    array *range;
 
     map_compact(data, m);
 
@@ -2126,13 +2058,11 @@ register value *v1, *v2;
  * NAME:	mapping->indices()
  * DESCRIPTION:	return the indices of a mapping
  */
-array *map_indices(data, m)
-dataspace *data;
-array *m;
+array *map_indices(dataspace *data, array *m)
 {
-    register array *indices;
-    register value *v1, *v2;
-    register unsigned short n;
+    array *indices;
+    value *v1, *v2;
+    unsigned short n;
 
     map_compact(data, m);
     indices = arr_new(data, (long) (n = m->size >> 1));
@@ -2150,13 +2080,11 @@ array *m;
  * NAME:	mapping->values()
  * DESCRIPTION:	return the values of a mapping
  */
-array *map_values(data, m)
-dataspace *data;
-array *m;
+array *map_values(dataspace *data, array *m)
 {
-    register array *values;
-    register value *v1, *v2;
-    register unsigned short n;
+    array *values;
+    value *v1, *v2;
+    unsigned short n;
 
     map_compact(data, m);
     values = arr_new(data, (long) (n = m->size >> 1));
@@ -2175,12 +2103,10 @@ array *m;
  * NAME:	lwobject->new()
  * DESCRIPTION:	create a new light-weight object
  */
-array *lwo_new(data, obj)
-dataspace *data;
-register object *obj;
+array *lwo_new(dataspace *data, object *obj)
 {
-    register control *ctrl;
-    register array *a;
+    control *ctrl;
+    array *a;
     xfloat flt;
 
     o_lwobj(obj);
@@ -2206,11 +2132,9 @@ register object *obj;
  * NAME:	lwobject->copy()
  * DESCRIPTION:	copy a light-weight object
  */
-array *lwo_copy(data, a)
-dataspace *data;
-array *a;
+array *lwo_copy(dataspace *data, array *a)
 {
-    register array *copy;
+    array *copy;
 
     copy = arr_alloc(a->size);
     i_copy(copy->elts = ALLOC(value, a->size), a->elts, a->size);

@@ -63,10 +63,7 @@ static ifstate top = {		/* initial ifstate */
  * DESCRIPTION:	initialize preprocessor. Return TRUE if the input file could
  *		be opened.
  */
-bool pp_init(file, id, strs, nstr, level)
-char *file, **id;
-string **strs;
-int nstr, level;
+bool pp_init(char *file, char **id, string **strs, int nstr, int level)
 {
     tk_init();
     if (strs != (string **) NULL) {
@@ -77,7 +74,7 @@ int nstr, level;
     }
     mc_init();
     special_define();
-    mc_define("__DGD__", "\0111\011", -1);	/* HT 1 HT */
+    mc_define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
 #ifdef NETWORK_EXTENSIONS
     mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
 #endif 
@@ -125,7 +122,7 @@ int nstr, level;
  */
 static void push()
 {
-    register ifstate *s;
+    ifstate *s;
 
     if (flist != (ifstate *) NULL) {
 	/* from free list */
@@ -134,7 +131,7 @@ static void push()
     } else {
 	/* allocate new one */
 	if (ichunksz == ICHUNKSZ) {
-	    register ichunk *l;
+	    ichunk *l;
 
 	    l = ALLOC(ichunk, 1);
 	    l->next = ilist;
@@ -157,7 +154,7 @@ static void push()
  */
 static void pop()
 {
-    register ifstate *s;
+    ifstate *s;
 
     s = ifs;
     ifs = ifs->prev;
@@ -172,7 +169,7 @@ static void pop()
  */
 void pp_clear()
 {
-    register ichunk *l, *f;
+    ichunk *l, *f;
 
     pps_clear();
     while (ifs != &top) {
@@ -194,7 +191,7 @@ void pp_clear()
  */
 static int wsgettok()
 {
-    register int token;
+    int token;
 
     do {
 	token = tk_gettok();
@@ -209,8 +206,8 @@ static int wsgettok()
  */
 static int mcgtok()
 {
-    register int token;
-    register macro *mc;
+    int token;
+    macro *mc;
 
     for (;;) {
 	token = tk_gettok();
@@ -230,7 +227,7 @@ static int mcgtok()
  */
 static int wsmcgtok()
 {
-    register int token;
+    int token;
 
     do {
 	token = mcgtok();
@@ -253,7 +250,7 @@ static int expr_keep;	/* single character unget buffer for expr_get() */
 static int expr_get()
 {
     char buf[MAX_LINE_SIZE];
-    register int token;
+    int token;
 
     if (expr_uncng()) {
 	/* the unget buffer is not empty */
@@ -298,11 +295,10 @@ static int expr_get()
  * NAME:	eval_expr()
  * DESCRIPTION:	evaluate an expression following #if
  */
-static long eval_expr(priority)
-int priority;
+static long eval_expr(int priority)
 {
-    register int token;
-    register long expr, expr2;
+    int token;
+    long expr, expr2;
 
     token = expr_get();
     if (token == '(') {
@@ -408,9 +404,7 @@ int priority;
  * DESCRIPTION:	return a number in the range 1..12 specifying which preprocessor
  *		directive the argument is, or 0 if it isn't.
  */
-static int pptokenz(key, len)
-register char *key;
-register unsigned int len;
+static int pptokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
       "else", "error", "line", "elif", "endif", "if", "define",
@@ -436,9 +430,7 @@ register unsigned int len;
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
-static int tokenz(key, len)
-register char *key;
-register unsigned int len;
+static int tokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
       "string", "nomask", "nil", "break", "else", "case", "while",
@@ -460,9 +452,7 @@ register unsigned int len;
  * DESCRIPTION:	an error has occured, print appropriate errormessage and skip
  *		till \n found
  */
-static void unexpected(token, wanted, directive)
-int token;
-char *wanted, *directive;
+static void unexpected(int token, char *wanted, char *directive)
 {
     if (token == LF) {
 	error("missing %s in #%s", wanted, directive);
@@ -479,8 +469,8 @@ char *wanted, *directive;
 static void do_include()
 {
     char file[MAX_LINE_SIZE], path[STRINGSZ + MAX_LINE_SIZE], buf[STRINGSZ];
-    register int token;
-    register char **idir;
+    int token;
+    char **idir;
     char *include;
     string **strs;
     int nstr;
@@ -536,9 +526,7 @@ static void do_include()
  * DESCRIPTION:	return the index in the parameter list if the supplied token is
  *		a parameter, -1 otherwise
  */
-static int argnum(args, narg, token)
-register char **args;
-register int narg, token;
+static int argnum(char **args, int narg, int token)
 {
     if (token == IDENTIFIER) {
 	while (narg > 0) {
@@ -557,8 +545,8 @@ register int narg, token;
 static void do_define()
 {
     char name[MAX_LINE_SIZE], buf[MAX_REPL_SIZE], *args[MAX_NARG], *arg;
-    register int token, i, narg, errcount;
-    register str *s;
+    int token, i, narg, errcount;
+    str *s;
     bool seen_space;
 
     token = wsgettok();
@@ -728,8 +716,8 @@ static void do_define()
  */
 int pp_gettok()
 {
-    register int token;
-    register macro *mc;
+    int token;
+    macro *mc;
 
     for (;;) {
 	if (ifs->skipping) {
@@ -909,7 +897,7 @@ int pp_gettok()
 		case PP_ERROR:
 		    if (!ifs->skipping) {
 			char buf[MAX_LINE_SIZE];
-			register str *s;
+			str *s;
 
 			s = pps_new(buf, sizeof(buf));
 			tk_setpp(TRUE);

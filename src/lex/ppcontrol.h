@@ -16,6 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern bool  pp_init	P((char*, char**, string**, int, int));
-extern void  pp_clear	P((void));
-extern int   pp_gettok	P((void));
+extern bool  pp_init	(char*, char**, string**, int, int);
+extern void  pp_clear	(void);
+extern int   pp_gettok	(void);

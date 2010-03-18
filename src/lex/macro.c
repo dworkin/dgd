@@ -54,8 +54,8 @@ void mc_init()
  */
 void mc_clear()
 {
-    register macro *m;
-    register mchunk *l, *f;
+    macro *m;
+    mchunk *l, *f;
 
     if (mt != (hashtab *) NULL) {
 	ht_del(mt);
@@ -83,11 +83,9 @@ void mc_clear()
  * NAME:	macro->define()
  * DESCRIPTION:	define a macro
  */
-void mc_define(name, replace, narg)
-register char *name, *replace;
-int narg;
+void mc_define(char *name, char *replace, int narg)
 {
-    register macro **m;
+    macro **m;
 
     m = (macro **) ht_lookup(mt, name, FALSE);
     if (*m != (macro *) NULL) {
@@ -104,7 +102,7 @@ int narg;
 	} else {
 	    /* allocate new macro */
 	    if (mchunksz == MCHUNKSZ) {
-		register mchunk *l;
+		mchunk *l;
 
 		l = ALLOC(mchunk, 1);
 		l->next = mlist;
@@ -132,10 +130,9 @@ int narg;
  * NAME:	macro->undef()
  * DESCRIPTION:	undefine a macro
  */
-void mc_undef(name)
-char *name;
+void mc_undef(char *name)
 {
-    register macro **m, *mac;
+    macro **m, *mac;
 
     m = (macro **) ht_lookup(mt, name, FALSE);
     if (*m != (macro *) NULL) {
@@ -159,8 +156,7 @@ char *name;
  * DESCRIPTION:	lookup a macro definition in the macro table. Return &NULL if
  *		the macro is not found.
  */
-macro *mc_lookup(name)
-char *name;
+macro *mc_lookup(char *name)
 {
     return *(macro **) ht_lookup(mt, name, TRUE);
 }

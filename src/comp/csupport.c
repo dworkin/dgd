@@ -44,14 +44,11 @@ static char *driver_name;	/* name of driver object */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static bool pc_inherits(inh, pcinh, ninherits, compiled)
-register dinherit *inh;
-register pcinherit *pcinh;
-register int ninherits;
-Uint compiled;
+static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits, 
+	Uint compiled)
 {
-    register Uint cc;
-    register object *obj;
+    Uint cc;
+    object *obj;
 
     cc = 0;
     while (--ninherits > 0) {
@@ -93,14 +90,11 @@ Uint compiled;
  * NAME:	precomp->funcdefs()
  * DESCRIPTION:	handle function definitions
  */
-static void pc_funcdefs(program, funcdefs, nfuncdefs, nfuncs)
-char *program;
-register dfuncdef *funcdefs;
-register unsigned short nfuncdefs;
-register Uint nfuncs;
+static void pc_funcdefs(char *program, dfuncdef *funcdefs, 
+	unsigned short nfuncdefs, Uint nfuncs)
 {
-    register char *p;
-    register Uint index;
+    char *p;
+    Uint index;
 
     while (nfuncdefs > 0) {
 	p = program + funcdefs->offset;
@@ -120,13 +114,10 @@ register Uint nfuncs;
  * NAME:	pc->obj()
  * DESCRIPTION:	create a precompiled object
  */
-static uindex pc_obj(name, inherits, ninherits)
-char *name;
-dinherit *inherits;
-int ninherits;
+static uindex pc_obj(char *name, dinherit *inherits, int ninherits)
 {
     control ctrl;
-    register object *obj;
+    object *obj;
 
     ctrl.inherits = inherits;
     ctrl.ninherits = ninherits;
@@ -146,10 +137,9 @@ int ninherits;
  * NAME:	hash_add()
  * DESCRIPTION:	add object->elt to hash table
  */
-static void hash_add(oindex, elt)
-uindex oindex, elt;
+static void hash_add(uindex oindex, uindex elt)
 {
-    register uindex i, j;
+    uindex i, j;
 
     i = oindex % nprecomps;
     if (map[2 * i] == nprecomps) {
@@ -168,10 +158,9 @@ uindex oindex, elt;
  * NAME:	hash_find()
  * DESCRIPTION:	find element in hash table
  */
-static uindex hash_find(oindex)
-uindex oindex;
+static uindex hash_find(uindex oindex)
 {
-    register uindex i;
+    uindex i;
     uindex j;
 
     i = oindex % nprecomps;
@@ -185,17 +174,17 @@ uindex oindex;
  * NAME:	precomp->preload()
  * DESCRIPTION:	preload compiled objects
  */
-bool pc_preload(auto_obj, driver_obj)
-char *auto_obj, *driver_obj;
+bool pc_preload(char *auto_obj, char *driver_obj)
 {
-    register precomp **pc, *l;
-    register uindex n, ninherits;
-    register Uint nfuncs;
+    precomp **pc, *l;
+    uindex n, ninherits;
+    Uint nfuncs;
 
     auto_name = auto_obj;
     driver_name = driver_obj;
 
-    n = ninherits = nfuncs = 0;
+    n = ninherits = 0;
+    nfuncs = 0;
     for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	n++;
 	ninherits += (*pc)->ninherits;
@@ -213,7 +202,8 @@ char *auto_obj, *driver_obj;
 	}
 	m_dynamic();
 
-	n = ninherits = nfuncs = 0;
+	n = ninherits = 0;
+	nfuncs = 0;
 	for (pc = precompiled; *pc != (precomp *) NULL; pc++) {
 	    l = *pc;
 
@@ -248,14 +238,13 @@ char *auto_obj, *driver_obj;
  * NAME:	precomp->list()
  * DESCRIPTION:	return an array with all precompiled objects
  */
-array *pc_list(data)
-dataspace *data;
+array *pc_list(dataspace *data)
 {
     array *a;
-    register object *obj;
-    register uindex n;
-    register value *v;
-    register precomp **pc;
+    object *obj;
+    uindex n;
+    value *v;
+    precomp **pc;
 
     for (pc = precompiled, n = 0; *pc != (precomp *) NULL; pc++) {
 	if ((*pc)->oindex != UINDEX_MAX &&
@@ -288,11 +277,9 @@ dataspace *data;
  * NAME:	precomp->control()
  * DESCRIPTION:	initialize the control block of a precompiled object
  */
-void pc_control(ctrl, obj)
-register control *ctrl;
-object *obj;
+void pc_control(control *ctrl, object *obj)
 {
-    register precomp *l;
+    precomp *l;
     uindex i;
 
     l = precompiled[i = hash_find(obj->index)];
@@ -384,12 +371,11 @@ static char di_layout[] = "uuusc";
  * NAME:	precomp->dump()
  * DESCRIPTION:	dump precompiled objects
  */
-bool pc_dump(fd)
-int fd;
+bool pc_dump(int fd)
 {
     dump_header dh;
-    register precomp **pc;
-    register object *obj;
+    precomp **pc;
+    object *obj;
     bool ok;
 
     dh.nprecomps = 0;
@@ -424,8 +410,8 @@ int fd;
     ok = TRUE;
 
     if (dh.nprecomps != 0) {
-	register dump_precomp *dpc;
-	register int i;
+	dump_precomp *dpc;
+	int i;
 	dump_inherit *inh;
 	dinherit *inh2;
 	char *imap;
@@ -433,6 +419,12 @@ int fd;
 	char *stext, *funcalls;
 	dfuncdef *funcdefs;
 	dvardef *vardefs;
+
+	strings = NULL;
+	stext = NULL;
+	funcdefs = NULL;
+	vardefs = NULL;
+	funcalls = NULL;
 
 	/*
 	 * Save only the necessary information.
@@ -528,21 +520,21 @@ int fd;
 	funcalls -= 2 * dh.nfuncalls;
 
 	if (P_write(fd, (char *) dpc, dh.nprecomps * sizeof(dump_precomp)) !=
-					dh.nprecomps * sizeof(dump_precomp) ||
+				dh.nprecomps * sizeof(dump_precomp) ||
 	    P_write(fd, (char *) inh, dh.ninherits * sizeof(dump_inherit)) !=
-					dh.ninherits * sizeof(dump_inherit) ||
+				dh.ninherits * sizeof(dump_inherit) ||
 	    P_write(fd, imap, dh.imapsz) != dh.imapsz ||
 	    (dh.nstrings != 0 &&
 	     P_write(fd, (char *) strings, dh.nstrings * sizeof(dstrconst)) !=
-					    dh.nstrings * sizeof(dstrconst)) ||
+				    dh.nstrings * sizeof(dstrconst)) ||
 	    (dh.stringsz != 0 &&
 	     P_write(fd, stext, dh.stringsz) != dh.stringsz) ||
 	    (dh.nfuncdefs != 0 &&
 	     P_write(fd, (char *) funcdefs, dh.nfuncdefs * sizeof(dfuncdef)) !=
-					    dh.nfuncdefs * sizeof(dfuncdef)) ||
+				    dh.nfuncdefs * sizeof(dfuncdef)) ||
 	    (dh.nvardefs != 0 &&
 	     P_write(fd, (char *) vardefs, dh.nvardefs * sizeof(dvardef)) !=
-					    dh.nvardefs * sizeof(dvardef)) ||
+				    dh.nvardefs * sizeof(dvardef)) ||
 	    (dh.nfuncalls != 0 &&
 	     P_write(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls)) {
 	    ok = FALSE;
@@ -576,13 +568,10 @@ int fd;
  * DESCRIPTION:	fix the inherited object pointers that may be wrong after
  *		a restore
  */
-static void fixinherits(inh, pcinh, ninherits)
-register dinherit *inh;
-register pcinherit *pcinh;
-register int ninherits;
+static void fixinherits(dinherit *inh, pcinherit *pcinh, int ninherits)
 {
-    register char *name;
-    register precomp **pc;
+    char *name;
+    precomp **pc;
 
     do {
 	name = (pcinh++)->name;
@@ -597,10 +586,7 @@ register int ninherits;
  * NAME:	inh1cmp()
  * DESCRIPTION:	compare inherited object lists
  */
-static bool inh1cmp(dinh, inh, ninherits)
-register dump_inherit *dinh;
-register dinherit *inh;
-register int ninherits;
+static bool inh1cmp(dump_inherit *dinh, dinherit *inh, int ninherits)
 {
     do {
 	if (dinh->oindex != inh->oindex ||
@@ -620,9 +606,7 @@ register int ninherits;
  * NAME:	inh2cmp()
  * DESCRIPTION:	compare inherited object lists
  */
-static bool inh2cmp(dinh, inh, ninherits)
-register dinherit *dinh, *inh;
-register int ninherits;
+static bool inh2cmp(dinherit *dinh, dinherit *inh, int ninherits)
 {
     do {
 	if (dinh->oindex != inh->oindex ||
@@ -642,9 +626,7 @@ register int ninherits;
  * NAME:	dstrcmp()
  * DESCRIPTION:	compare string tables
  */
-static bool dstrcmp(dstrings, strings, nstrings)
-register dstrconst *dstrings, *strings;
-register int nstrings;
+static bool dstrcmp(dstrconst *dstrings, dstrconst *strings, int nstrings)
 {
     while (nstrings != 0) {
 	if (dstrings->index != strings->index ||
@@ -662,10 +644,8 @@ register int nstrings;
  * NAME:	func1cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func1cmp(dfuncdefs, funcdefs, prog, nfuncdefs)
-register dfuncdef *dfuncdefs, *funcdefs;
-register char *prog;
-register int nfuncdefs;
+static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog, 
+	int nfuncdefs)
 {
     while (nfuncdefs != 0) {
 	if (dfuncdefs->class != funcdefs->class ||
@@ -685,10 +665,8 @@ register int nfuncdefs;
  * NAME:	func2cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func2cmp(dfuncdefs, funcdefs, dprog, prog, nfuncdefs)
-register dfuncdef *dfuncdefs, *funcdefs;
-register char *dprog, *prog;
-register int nfuncdefs;
+static bool func2cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *dprog, 
+	char *prog, int nfuncdefs)
 {
     while (nfuncdefs != 0) {
 	if (dfuncdefs->class != (funcdefs->class & ~C_COMPILED) ||
@@ -709,9 +687,7 @@ register int nfuncdefs;
  * NAME:	varcmp()
  * DESCRIPTION:	compare variable tables
  */
-static bool varcmp(dvardefs, vardefs, nvardefs)
-register dvardef *dvardefs, *vardefs;
-register int nvardefs;
+static bool varcmp(dvardef *dvardefs, dvardef *vardefs, int nvardefs)
 {
     while (nvardefs != 0) {
 	if (dvardefs->class != vardefs->class ||
@@ -731,14 +707,13 @@ register int nvardefs;
  * NAME:	precomp->restore()
  * DESCRIPTION:	restore and replace precompiled objects
  */
-void pc_restore(fd, conv)
-int fd, conv;
+void pc_restore(int fd, int conv)
 {
-    dump_header dh;
-    register precomp *l, **pc;
-    register Uint i;
-    register uindex oindex;
-    register char *name;
+    dump_header dh = {0};
+    precomp *l, **pc;
+    Uint i;
+    uindex oindex;
+    char *name;
     off_t posn;
 
     if (nprecomps != 0) {
@@ -765,14 +740,20 @@ int fd, conv;
     }
 
     if (dh.nprecomps != 0) {
-	register dump_precomp *dpc;
-	register dump_inherit *dinh;
-	register char *imap;
-	register dstrconst *strings;
-	register char *stext;
-	register dfuncdef *funcdefs;
-	register dvardef *vardefs;
-	register char *funcalls;
+	dump_precomp *dpc;
+	dump_inherit *dinh;
+	char *imap;
+	dstrconst *strings;
+	char *stext;
+	dfuncdef *funcdefs;
+	dvardef *vardefs;
+	char *funcalls;
+
+	strings = NULL;
+	stext = NULL;
+	funcdefs = NULL;
+	vardefs = NULL;
+	funcalls = NULL;
 
 	/*
 	 * Restore old precompiled objects.
@@ -881,11 +862,11 @@ int fd, conv;
     for (pc = precompiled, i = 0; *pc != (precomp *) NULL; pc++, i++) {
 	l = *pc;
 	if (l->oindex == UINDEX_MAX) {
-	    register object *obj;
+	    object *obj;
 
 	    obj = o_find(name = l->inherits[l->ninherits - 1].name, OACC_READ);
 	    if (obj != (object *) NULL) {
-		register control *ctrl;
+		control *ctrl;
 
 		ctrl = o_control(obj);
 		if (ctrl->compiled > l->compiled) {
@@ -957,11 +938,9 @@ int fd, conv;
  * NAME:	call_kfun()
  * DESCRIPTION:	call a kernel function
  */
-void call_kfun(f, n)
-frame *f;
-register int n;
+void call_kfun(frame *f, int n)
 {
-    register kfunc *kf;
+    kfunc *kf;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
@@ -978,11 +957,9 @@ register int n;
  * NAME:	call_kfun_arg()
  * DESCRIPTION:	call a kernel function with variable # of arguments
  */
-void call_kfun_arg(f, n, nargs)
-frame *f;
-register int n, nargs;
+void call_kfun_arg(frame *f, int n, int nargs)
 {
-    register kfunc *kf;
+    kfunc *kf;
 
     kf = &kftab[n];
     if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
@@ -999,8 +976,7 @@ register int n, nargs;
  * NAME:	xdiv()
  * DESCRIPTION:	perform integer division
  */
-Int xdiv(i, d)
-register Int i, d;
+Int xdiv(Int i, Int d)
 {
     if (d == 0) {
 	error("Division by zero");
@@ -1018,8 +994,7 @@ register Int i, d;
  * NAME:	xmod()
  * DESCRIPTION:	perform integer modulus
  */
-Int xmod(i, d)
-register Int i, d;
+Int xmod(Int i, Int d)
 {
     if (d == 0) {
 	error("Modulus by zero");
@@ -1037,8 +1012,7 @@ register Int i, d;
  * NAME:	xlshift()
  * DESCRIPTION:	perform left shift
  */
-Int xlshift(i, shift)
-register Int i, shift;
+Int xlshift(Int i, Int shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
@@ -1053,8 +1027,7 @@ register Int i, shift;
  * NAME:	xrshift()
  * DESCRIPTION:	perform right shift
  */
-Int xrshift(i, shift)
-register Int i, shift;
+Int xrshift(Int i, Int shift)
 {
     if ((shift & ~31) != 0) {
 	if (shift < 0) {
@@ -1069,8 +1042,7 @@ register Int i, shift;
  * NAME:	poptruthval()
  * DESCRIPTION:	pop a truth value from the stack
  */
-bool poptruthval(f)
-register frame *f;
+bool poptruthval(frame *f)
 {
     switch (f->sp->type) {
     case T_NIL:
@@ -1102,8 +1074,7 @@ register frame *f;
  * NAME:	new_rlimits()   
  * DESCRIPTION:	handle rlimits
  */
-void new_rlimits(f)
-register frame *f;
+void new_rlimits(frame *f)
 {
     if (f->sp[1].type != T_INT) {
 	error("Bad rlimits depth type");
@@ -1120,12 +1091,10 @@ register frame *f;
  * NAME:	switch_range()
  * DESCRIPTION:	handle a range switch
  */
-int switch_range(i, tab, h)
-register Int i, *tab;
-register int h;
+int switch_range(Int i, Int *tab, int h)
 {
-    register int l, m;
-    register Int *t;
+    int l, m;
+    Int *t;
 
     l = 0;
     do {
@@ -1147,15 +1116,11 @@ register int h;
  * NAME:	switch_str()
  * DESCRIPTION:	handle a str switch
  */
-int switch_str(v, ctrl, tab, h)
-value *v;
-register control *ctrl;
-register char *tab;
-register int h;
+int switch_str(value *v, control *ctrl, char *tab, int h)
 {
-    register int l, m, c;
-    register char *t;
-    register string *s;
+    int l, m, c;
+    char *t;
+    string *s;
 
     if (VAL_NIL(v)) {
 	return (tab[0] == 0);

@@ -39,19 +39,19 @@ typedef struct {
     char *buf;				/* current low-level buffer */
     int blksz;				/* block size in write buffer */
     int txtsz;				/* text size in write buffer */
-    void (*putline) P((char*));		/* output line function */
+    void (*putline) (char*);		/* output line function */
     bool reverse;			/* for bk_put() */
     btbuf *wb;				/* write buffer */
     btbuf bt[NR_EDBUFS];		/* read & write buffers */
 } linebuf;
 
-extern linebuf *lb_new	  P((linebuf*, char*));
-extern void	lb_del	  P((linebuf*));
-extern void	lb_inact  P((linebuf*));
+extern linebuf *lb_new	  (linebuf*, char*);
+extern void	lb_del	  (linebuf*);
+extern void	lb_inact  (linebuf*);
 
-extern block	bk_new	  P((linebuf*, char*(*)(void)));
+extern block	bk_new	  (linebuf*, char*(*)());
 # define	bk_del(linebuf, block)	/* nothing */
-extern Int	bk_size	  P((linebuf*, block));
-extern void	bk_split  P((linebuf*, block, Int, block*, block*));
-extern block	bk_cat	  P((linebuf*, block, block));
-extern void	bk_put	  P((linebuf*, block, Int, Int, void(*)(char*), int));
+extern Int	bk_size	  (linebuf*, block);
+extern void	bk_split  (linebuf*, block, Int, block*, block*);
+extern block	bk_cat	  (linebuf*, block, block);
+extern void	bk_put	  (linebuf*, block, Int, Int, void(*)(char*), int);

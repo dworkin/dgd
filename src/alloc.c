@@ -55,9 +55,7 @@ static allocinfo mstat;		/* memory statistics */
  * NAME:	newmem()
  * DESCRIPTION:	allocate new memory
  */
-static char *newmem(size, list)
-size_t size;
-char **list;
+static char *newmem(size_t size, char **list)
 {
     char *mem;
 
@@ -105,11 +103,9 @@ static bool dmem;			/* any dynamic memory allocated? */
  * NAME:	lchunk()
  * DESCRIPTION:	get the address of a list of large chunks
  */
-static chunk **lchunk(size, new)
-register size_t size;
-bool new;
+static chunk **lchunk(size_t size, bool new)
 {
-    register unsigned int h, l, m;
+    unsigned int h, l, m;
 
     l = m = 0;
     h = nlc;
@@ -143,14 +139,13 @@ bool new;
  * NAME:	salloc()
  * DESCRIPTION:	allocate static memory
  */
-static chunk *salloc(size)
-register size_t size;
+static chunk *salloc(size_t size)
 {
-    register chunk *c;
+    chunk *c;
 
     /* try lists of free chunks */
     if (size >= SLIMIT) {
-	register chunk **lc;
+	chunk **lc;
 
 	lc = lchunk(size, FALSE);
 	if (lc != (chunk **) NULL && *lc != (chunk *) NULL) {
@@ -173,7 +168,7 @@ register size_t size;
 	    c = sflist;
 	    sflist = c->next;
 	} else {
-	    register chunk *n;
+	    chunk *n;
 
 	    /* split the chunk in two */
 	    c = sflist;
@@ -239,15 +234,14 @@ register size_t size;
  * NAME:	sfree()
  * DESCRIPTION:	free static memory
  */
-static void sfree(c)
-register chunk *c;
+static void sfree(chunk *c)
 {
     if (c->size < SLIMIT) {
 	/* small chunk */
 	c->next = schunks[(c->size - MOFFSET) / STRUCT_AL - 1];
 	schunks[(c->size - MOFFSET) / STRUCT_AL - 1] = c;
     } else {
-	register chunk **lc;
+	chunk **lc;
 
 	/* large chunk */
 	lc = lchunk(c->size, TRUE);
@@ -293,12 +287,11 @@ static spnode *dtree;		/* splay tree of large dynamic free chunks */
  * NAME:	insert()
  * DESCRIPTION:	insert a chunk in the splay tree
  */
-static void insert(c)
-chunk *c;
+static void insert(chunk *c)
 {
-    register spnode *n, *t;
-    register spnode *l, *r;
-    register Uint size;
+    spnode *n, *t;
+    spnode *l, *r;
+    Uint size;
 
     n = dtree;
     dtree = t = (spnode *) c;
@@ -374,12 +367,11 @@ chunk *c;
  * NAME:	seek()
  * DESCRIPTION:	find a chunk of the proper size in the splay tree
  */
-static chunk *seek(size)
-register Uint size;
+static chunk *seek(Uint size)
 {
     spnode dummy;
-    register spnode *n, *t;
-    register spnode *l, *r;
+    spnode *n, *t;
+    spnode *l, *r;
 
     if ((n=dtree) == (spnode *) NULL) {
 	/* empty splay tree */
@@ -476,11 +468,10 @@ register Uint size;
  * NAME:	delete()
  * DESCRIPTION:	delete a chunk from the splay tree
  */
-static void delete(c)
-chunk *c;
+static void delete(chunk *c)
 {
-    register spnode *t, *r;
-    register spnode *p, *n;
+    spnode *t, *r;
+    spnode *p, *n;
 
     n = (spnode *) c;
     p = n->parent;
@@ -537,12 +528,11 @@ static chunk *dchunk;		/* chunk of small chunks */
  * NAME:	dalloc()
  * DESCRIPTION:	allocate dynamic memory
  */
-static chunk *dalloc(size)
-register size_t size;
+static chunk *dalloc(size_t size)
 {
-    register chunk *c;
-    register char *p;
-    register size_t sz;
+    chunk *c;
+    char *p;
+    size_t sz;
 
     if (dchunksz == 0) {
 	/*
@@ -635,10 +625,9 @@ register size_t size;
  * NAME:	dfree()
  * DESCRIPTION:	free dynamic memory
  */
-static void dfree(c)
-register chunk *c;
+static void dfree(chunk *c)
 {
-    register char *p;
+    char *p;
 
     if (dchunksz == 0) {
 	/*
@@ -697,8 +686,7 @@ register chunk *c;
  * NAME:	mem->init()
  * DESCRIPTION:	initialize memory manager
  */
-void m_init(ssz, dsz)
-size_t ssz, dsz;
+void m_init(size_t ssz, size_t dsz)
 {
     schunksz = ALGN(ssz, STRUCT_AL);
     dchunksz = ALGN(dsz, STRUCT_AL);
@@ -723,16 +711,12 @@ static header *hlist;			/* list of all dynamic memory chunks */
  * DESCRIPTION:	allocate memory
  */
 # ifdef DEBUG
-char *m_alloc(size, file, line)
-register size_t size;
-char *file;
-int line;
+char *m_alloc(size_t size, char *file, int line)
 # else
-char *m_alloc(size)
-register size_t size;
+char *m_alloc(size_t size)
 # endif
 {
-    register chunk *c;
+    chunk *c;
 
 # ifdef DEBUG
     if (size == 0) {
@@ -773,10 +757,9 @@ register size_t size;
  * NAME:	mem->free()
  * DESCRIPTION:	free memory
  */
-void m_free(mem)
-char *mem;
+void m_free(char *mem)
 {
-    register chunk *c;
+    chunk *c;
 
     c = (chunk *) (mem - MOFFSET);
     if ((c->size & MAGIC_MASK) == SM_MAGIC) {
@@ -807,17 +790,12 @@ char *mem;
  * DESCRIPTION:	reallocate memory
  */
 # ifdef DEBUG
-char *m_realloc(mem, size1, size2, file, line)
-char *mem, *file;
-register size_t size1, size2;
-int line;
+char *m_realloc(char *mem, size_t size1, size_t size2, char *file, int line)
 # else
-char *m_realloc(mem, size1, size2)
-char *mem;
-register size_t size1, size2;
+char *m_realloc(char *mem, size_t size1, size_t size2)
 # endif
 {
-    register chunk *c1, *c2;
+    chunk *c1, *c2;
 
     if (mem == (char *) NULL) {
 	if (size2 == 0) {
@@ -918,12 +896,12 @@ bool m_check()
  */
 void m_purge()
 {
-    register char *p;
+    char *p;
 
 # ifdef DEBUG
     while (hlist != (header *) NULL) {
 	char buf[160];
-	register size_t n;
+	size_t n;
 
 	n = (hlist->size & SIZE_MASK) - MOFFSET;
 	if (n >= DLIMIT) {
@@ -989,7 +967,7 @@ allocinfo *m_info()
  */
 void m_finish()
 {
-    register char *p;
+    char *p;
 
     schunksz = 0;
     dchunksz = 0;

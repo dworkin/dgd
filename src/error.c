@@ -24,6 +24,7 @@
 # include "data.h"
 # include "interpret.h"
 # include "comm.h"
+# include <stdarg.h>
 
 typedef struct _context_ {
     jmp_buf env;			/* error context */
@@ -56,10 +57,9 @@ void ec_clear()
  * NAME:	errcontext->_push_()
  * DESCRIPTION:	push and return the current errorcontext
  */
-jmp_buf *_ec_push_(handler)
-ec_ftn handler;
+jmp_buf *_ec_push_(ec_ftn handler)
 {
-    register context *e;
+    context *e;
 
     if (econtext == (context *) NULL) {
 	e = &firstcontext;
@@ -83,7 +83,7 @@ ec_ftn handler;
  */
 void ec_pop()
 {
-    register context *e;
+    context *e;
 
     e = econtext;
 # ifdef DEBUG
@@ -104,10 +104,10 @@ void ec_pop()
  * NAME:	errorcontext->handler()
  * DESCRIPTION:	dummy handler for previously handled error
  */
-static void ec_handler(f, depth)
-frame *f;
-Int depth;
+static void ec_handler(frame *f, Int depth)
 {
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(depth);
 }
 
 /*
@@ -123,11 +123,10 @@ string *errorstr()
  * NAME:	serror()
  * DESCRIPTION:	cause an error, with a string argument
  */
-void serror(str)
-string *str;
+void serror(string *str)
 {
     jmp_buf env;
-    register context *e;
+    context *e;
     int offset;
     ec_ftn handler;
 
@@ -185,13 +184,14 @@ string *str;
  * NAME:	error()
  * DESCRIPTION:	cause an error
  */
-void error(format, arg1, arg2, arg3, arg4, arg5, arg6)
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void error(char *format, ...)
 {
+    va_list args;
     char ebuf[4 * STRINGSZ];
 
     if (format != (char *) NULL) {
-	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+	va_start(args, format);
+	vsprintf(ebuf, format, args);
 	serror(str_new(ebuf, (long) strlen(ebuf)));
     } else {
 	serror((string *) NULL);
@@ -203,14 +203,16 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
  * DESCRIPTION:	a fatal error has been encountered; terminate the program and
  *		dump a core if possible
  */
-void fatal(format, arg1, arg2, arg3, arg4, arg5, arg6)
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void fatal(char *format, ...)
 {
     static short count;
+    va_list args;
     char ebuf1[STRINGSZ], ebuf2[STRINGSZ];
 
     if (count++ == 0) {
-	sprintf(ebuf1, format, arg1, arg2, arg3, arg4, arg5, arg6);
+	va_start(args, format);
+	vsprintf(ebuf1, format, args);
+
 	sprintf(ebuf2, "Fatal error: %s\012", ebuf1);	/* LF */
 
 	P_message(ebuf2);	/* show message */
@@ -224,9 +226,9 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
  * NAME:	message()
  * DESCRIPTION:	issue a message on stderr
  */
-void message(format, arg1, arg2, arg3, arg4, arg5, arg6)
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void message(char *format, ...)
 {
+    va_list args;
     char ebuf[4 * STRINGSZ];
 
     if (format == (char *) NULL) {
@@ -241,7 +243,8 @@ char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
 	    strcpy(ebuf, "[too long error string]\012");
 	}
     } else {
-	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+	va_start(args, format);
+	vsprintf(ebuf, format, args);
     }
     P_message(ebuf);	/* show message */
 }

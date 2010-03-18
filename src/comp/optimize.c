@@ -33,8 +33,7 @@
  * NAME:	max2()
  * DESCRIPTION:	return the maximum of two numbers
  */
-static Uint max2(a, b)
-Uint a, b;
+static Uint max2(Uint a, Uint b)
 {
     return (a > b) ? a : b;
 }
@@ -43,8 +42,7 @@ Uint a, b;
  * NAME:	max3()
  * DESCRIPTION:	return the maximum of three numbers
  */
-static Uint max3(a, b, c)
-register Uint a, b, c;
+static Uint max3(Uint a, Uint b, Uint c)
 {
     return (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);
 }
@@ -56,9 +54,7 @@ static Uint sidedepth;
  * NAME:	side->start()
  * DESCRIPTION:	start a side expression
  */
-static node **side_start(n, depth)
-node **n;
-Uint *depth;
+static node **side_start(node **n, Uint *depth)
 {
     node **old;
 
@@ -74,9 +70,7 @@ Uint *depth;
  * NAME:	side->add()
  * DESCRIPTION:	deal with a side expression
  */
-static void side_add(n, depth)
-node **n;
-Uint depth;
+static void side_add(node **n, Uint depth)
 {
     node *m;
 
@@ -97,9 +91,7 @@ Uint depth;
  * NAME:	side->end()
  * DESCRIPTION:	end a side expression
  */
-static Uint side_end(n, side, oldside, olddepth)
-node **n, *side, **oldside;
-Uint olddepth;
+static Uint side_end(node **n, node *side, node **oldside, Uint olddepth)
 {
     Uint depth;
 
@@ -132,16 +124,15 @@ void opt_init()
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
 }
 
-static Uint opt_expr P((node**, int));
+static Uint opt_expr (node**, int);
 
 /*
  * NAME:	optimize->lvalue()
  * DESCRIPTION:	optimize an lvalue
  */
-static Uint opt_lvalue(n)
-register node *n;
+static Uint opt_lvalue(node *n)
 {
-    register node *m;
+    node *m;
 
     if (n->type == N_CAST) {
 	n = n->l.left;
@@ -180,10 +171,9 @@ register node *n;
  * NAME:	optimize->binconst()
  * DESCRIPTION:	optimize a binary operator constant expression
  */
-static Uint opt_binconst(m)
-node **m;
+static Uint opt_binconst(node **m)
 {
-    register node *n;
+    node *n;
     xfloat f1, f2;
     bool flag;
 
@@ -399,10 +389,9 @@ node **m;
  * NAME:	optimize->tst()
  * DESCRIPTION:	optimize a tst operation
  */
-static node *opt_tst(n)
-register node *n;
+static node *opt_tst(node *n)
 {
-    register node *m;
+    node *m;
 
     switch (n->type) {
     case N_INT:
@@ -456,10 +445,9 @@ register node *n;
  * NAME:	optimize->not()
  * DESCRIPTION:	optimize a not operation
  */
-static node *opt_not(n)
-register node *n;
+static node *opt_not(node *n)
 {
-    register node *m;
+    node *m;
 
     switch (n->type) {
     case N_INT:
@@ -564,10 +552,9 @@ register node *n;
  * NAME:	optimize->binop()
  * DESCRIPTION:	optimize a binary operator expression
  */
-static Uint opt_binop(m)
-register node **m;
+static Uint opt_binop(node **m)
 {
-    register node *n, *t;
+    node *n, *t;
     Uint d1, d2, d;
     xfloat f1, f2;
 
@@ -1079,11 +1066,9 @@ register node **m;
  * NAME:	optimize->asgnexp()
  * DESCRIPTION:	optimize an assignment expression
  */
-static Uint opt_asgnexp(m, pop)
-register node **m;
-bool pop;
+static Uint opt_asgnexp(node **m, bool pop)
 {
-    register node *n;
+    node *n;
     Uint d1, d2;
 
     n = *m;
@@ -1272,8 +1257,7 @@ bool pop;
  * NAME:	optimize->ctest()
  * DESCRIPTION:	test a constant expression
  */
-static bool opt_ctest(n)
-register node *n;
+static bool opt_ctest(node *n)
 {
     if (n->type != N_INT) {
 	node_toint(n, (Int) (n->type != N_NIL &&
@@ -1286,9 +1270,7 @@ register node *n;
  * NAME:	optimize->cond()
  * DESCRIPTION:	optimize a condition
  */
-static Uint opt_cond(m, pop)
-register node **m;
-int pop;
+static Uint opt_cond(node **m, int pop)
 {
     Uint d;
 
@@ -1303,12 +1285,10 @@ int pop;
  * NAME:	optimize->expr()
  * DESCRIPTION:	optimize an expression
  */
-static Uint opt_expr(m, pop)
-register node **m;
-int pop;
+static Uint opt_expr(node **m, int pop)
 {
-    register Uint d1, d2, i;
-    register node *n;
+    Uint d1, d2, i;
+    node *n;
     node **oldside, *side;
     Uint olddepth;
 
@@ -1807,14 +1787,14 @@ int pop;
 # ifdef DEBUG
     fatal("unknown expression type %d", n->type);
 # endif
+    return 0;
 }
 
 /*
  * NAME:	optimize->const()
  * DESCRIPTION:	check if a condition is a constant
  */
-static int opt_const(n)
-register node *n;
+static int opt_const(node *n)
 {
     if (n->type == N_COMMA) {
 	n = n->r.right;
@@ -1841,10 +1821,9 @@ register node *n;
  * NAME:	optimize->skip()
  * DESCRIPTION:	skip a statement
  */
-static node *opt_skip(n)
-register node *n;
+static node *opt_skip(node *n)
 {
-    register node *m;
+    node *m;
 
     if (n == (node *) NULL || !(n->flags & F_REACH)) {
 	return (node *) NULL;
@@ -1935,14 +1914,12 @@ register node *n;
  * NAME:	optimize->stmt()
  * DESCRIPTION:	optimize a statement
  */
-node *opt_stmt(first, depth)
-node *first;
-Uint *depth;
+node *opt_stmt(node *first, Uint *depth)
 {
-    register node *n, **m, **prev;
-    register Uint d;
+    node *n, **m, **prev;
+    Uint d;
     Uint d1, d2;
-    register int i;
+    int i;
     node *side;
 
 

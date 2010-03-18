@@ -51,7 +51,7 @@ void pps_init()
  */
 void pps_clear()
 {
-    register schunk *l, *f;
+    schunk *l, *f;
 
     for (l = slist; l != (schunk *) NULL; ) {
 	f = l;
@@ -65,11 +65,9 @@ void pps_clear()
  * NAME:	str->new()
  * DESCRIPTION:	make a new string with length 0.
  */
-str *pps_new(buf, sz)
-char *buf;
-int sz;
+str *pps_new(char *buf, int sz)
 {
-    register str *sb;
+    str *sb;
 
     if (flist != (str *) NULL) {
 	/* from free list */
@@ -78,7 +76,7 @@ int sz;
     } else {
 	/* allocate new string */
 	if (schunksz == SCHUNKSZ) {
-	    register schunk *l;
+	    schunk *l;
 
 	    l = ALLOC(schunk, 1);
 	    l->next = slist;
@@ -99,8 +97,7 @@ int sz;
  * NAME:	str->del()
  * DESCRIPTION:	delete a string
  */
-void pps_del(sb)
-str *sb;
+void pps_del(str *sb)
 {
     sb->buffer = (char *) flist;
     flist = sb;
@@ -110,11 +107,9 @@ str *sb;
  * NAME:	str->scat()
  * DESCRIPTION:	append a string. The length becomes -1 if the result is too long
  */
-int pps_scat(sb, s)
-register str *sb;
-char *s;
+int pps_scat(str *sb, char *s)
 {
-    register int l;
+    int l;
 
     if (sb->len < 0 || sb->len + (l = strlen(s)) >= sb->size) {
 	return sb->len = -1;
@@ -127,9 +122,7 @@ char *s;
  * NAME:	str->ccat()
  * DESCRIPTION:	append a char. The length becomes -1 if the result is too long
  */
-int pps_ccat(sb, c)
-register str *sb;
-int c;
+int pps_ccat(str *sb, int c)
 {
     if (sb->len < 0 || c == '\0' || sb->len + 1 >= sb->size) {
 	return sb->len = -1;

@@ -42,8 +42,7 @@ int nil_node;				/* N_NIL or N_INT */
  * NAME:	node->init()
  * DESCRIPTION:	initialize node handling
  */
-void node_init(flag)
-int flag;
+void node_init(int flag)
 {
     nil_node = (flag) ? N_NIL : N_INT;
 }
@@ -52,13 +51,12 @@ int flag;
  * NAME:	node->new()
  * DESCRIPTION:	create a new node
  */
-node *node_new(line)
-unsigned int line;
+node *node_new(unsigned int line)
 {
-    register node *n;
+    node *n;
 
     if (chunksize == NODE_CHUNK) {
-	register nodelist *l;
+	nodelist *l;
 
 	if (flist != (nodelist *) NULL) {
 	    l = flist;
@@ -85,10 +83,9 @@ unsigned int line;
  * NAME:	node->int()
  * DESCRIPTION:	create an integer node
  */
-node *node_int(num)
-Int num;
+node *node_int(Int num)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = N_INT;
@@ -103,10 +100,9 @@ Int num;
  * NAME:	node->float()
  * DESCRIPTION:	create a float node
  */
-node *node_float(flt)
-xfloat *flt;
+node *node_float(xfloat *flt)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = N_FLOAT;
@@ -123,7 +119,7 @@ xfloat *flt;
  */
 node *node_nil()
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = nil_node;
@@ -138,10 +134,9 @@ node *node_nil()
  * NAME:	node->str()
  * DESCRIPTION:	create a string node
  */
-node *node_str(str)
-string *str;
+node *node_str(string *str)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = N_STR;
@@ -157,11 +152,9 @@ string *str;
  * NAME:	node->var()
  * DESCRIPTION:	create a variable type node
  */
-node *node_var(type, idx)
-unsigned int type;
-int idx;
+node *node_var(unsigned int type, int idx)
 {
-    register node *n;
+    node *n;
 
     n = node_new(0);
     n->type = N_VAR;
@@ -175,18 +168,16 @@ int idx;
  * NAME:	node->type()
  * DESCRIPTION:	create a type node
  */
-node *node_type(type, class)
-int type;
-string *class;
+node *node_type(int type, string *tclass)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = N_TYPE;
     n->mod = type;
-    n->class = class;
-    if (class != (string *) NULL) {
-	str_ref(class);
+    n->class = tclass;
+    if (tclass != (string *) NULL) {
+	str_ref(tclass);
     }
 
     return n;
@@ -196,18 +187,14 @@ string *class;
  * NAME:	node->fcall()
  * DESCRIPTION:	create a function call node
  */
-node *node_fcall(mod, class, func, call)
-int mod;
-string *class;
-char *func;
-Int call;
+node *node_fcall(int mod, string *tclass, char *func, Int call)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = N_FUNC;
     n->mod = mod;
-    n->class = class;
+    n->class = tclass;
     n->l.ptr = func;
     n->r.number = call;
 
@@ -218,11 +205,9 @@ Int call;
  * NAME:	node->mon()
  * DESCRIPTION:	create a node for a monadic operator
  */
-node *node_mon(type, mod, left)
-int type, mod;
-node *left;
+node *node_mon(int type, int mod, node *left)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = type;
@@ -237,11 +222,9 @@ node *left;
  * NAME:	node->bin()
  * DESCRIPTION:	create a node for a binary operator
  */
-node *node_bin(type, mod, left, right)
-int type, mod;
-node *left, *right;
+node *node_bin(int type, int mod, node *left, node *right)
 {
-    register node *n;
+    node *n;
 
     n = node_new(tk_line());
     n->type = type;
@@ -256,9 +239,7 @@ node *left, *right;
  * NAME:	node->toint()
  * DESCRIPTION:	convert node type to integer constant
  */
-void node_toint(n, i)
-register node *n;
-Int i;
+void node_toint(node *n, Int i)
 {
     if (n->type == N_STR) {
 	str_del(n->l.string);
@@ -274,9 +255,7 @@ Int i;
  * NAME:	node->tostr()
  * DESCRIPTION:	convert node type to string constant
  */
-void node_tostr(n, str)
-register node *n;
-string *str;
+void node_tostr(node *n, string *str)
 {
     str_ref(str);
     if (n->type == N_STR) {
@@ -295,13 +274,13 @@ string *str;
  */
 void node_free()
 {
-    register nodelist *l;
-    register int i;
+    nodelist *l;
+    int i;
 
     i = chunksize;
     for (l = list; l != (nodelist *) NULL; ) {
-	register node *n;
-	register nodelist *f;
+	node *n;
+	nodelist *f;
 
 	n = &l->n[i];
 	do {
@@ -331,11 +310,11 @@ void node_free()
  */
 void node_clear()
 {
-    register nodelist *l;
+    nodelist *l;
 
     node_free();
     for (l = flist; l != (nodelist *) NULL; ) {
-	register nodelist *f;
+	nodelist *f;
 
 	f = l;
 	l = l->next;

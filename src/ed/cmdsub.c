@@ -25,18 +25,18 @@
  * This file defines the command subroutines for edcmd.c
  */
 
-extern char *skipst		P((char*));
-extern char *pattern		P((char*, int, char*));
-extern void  cb_count		P((cmdbuf*));
-extern void  not_in_global	P((cmdbuf*));
-extern void  cb_do		P((cmdbuf*, Int));
-extern void  cb_buf		P((cmdbuf*, block));
-extern void  add		P((cmdbuf*, Int, block, Int));
-extern block delete		P((cmdbuf*, Int, Int));
-extern void  change		P((cmdbuf*, Int, Int, block));
-extern void  startblock		P((cmdbuf*));
-extern void  addblock		P((cmdbuf*, char*));
-extern void  endblock		P((cmdbuf*));
+extern char *skipst		(char*);
+extern char *pattern		(char*, int, char*);
+extern void  cb_count		(cmdbuf*);
+extern void  not_in_global	(cmdbuf*);
+extern void  cb_do		(cmdbuf*, Int);
+extern void  cb_buf		(cmdbuf*, block);
+extern void  add		(cmdbuf*, Int, block, Int);
+extern block delete		(cmdbuf*, Int, Int);
+extern void  change		(cmdbuf*, Int, Int, block);
+extern void  startblock		(cmdbuf*);
+extern void  addblock		(cmdbuf*, char*);
+extern void  endblock		(cmdbuf*);
 
 
 /*
@@ -44,8 +44,7 @@ extern void  endblock		P((cmdbuf*));
  * DESCRIPTION:	scan a line for a pattern. If the pattern is found, longjump
  *		out.
  */
-static void find(text)
-char *text;
+static void find(char *text)
 {
     if (rx_exec(ccb->regexp, text, 0, ccb->ignorecase) > 0) {
 	longjmp(ccb->env, TRUE);
@@ -58,10 +57,7 @@ char *text;
  * DESCRIPTION:	search a range of lines for the occurance of a pattern. When
  *		found, jump out immediately.
  */
-Int cb_search(cb, first, last, reverse)
-cmdbuf *cb;
-Int first, last;
-int reverse;
+Int cb_search(cmdbuf *cb, Int first, Int last, int reverse)
 {
     if (setjmp(cb->env)) {
 	/* found */
@@ -81,12 +77,11 @@ int reverse;
  * DESCRIPTION:	output a line of text. The format is decided by flags.
  *		Non-ascii characters (eight bit set) have no special processing.
  */
-static void println(text)
-register char *text;
+static void println(char *text)
 {
     char buffer[2 * MAX_LINE_SIZE + 14];	/* all ^x + number + list */
-    register cmdbuf *cb;
-    register char *p;
+    cmdbuf *cb;
+    char *p;
 
     cb = ccb;
 
@@ -127,10 +122,9 @@ register char *text;
  *		the flags. Afterwards, the current line is set to the last line
  *		printed.
  */
-int cb_print(cb)
-register cmdbuf *cb;
+int cb_print(cmdbuf *cb)
 {
-    register char *p;
+    char *p;
 
     /* handle flags right now */
     p = cb->cmd;
@@ -164,8 +158,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->list()
  * DESCRIPTION:	output a range of lines in a hopefully unambiguous format
  */
-int cb_list(cb)
-cmdbuf *cb;
+int cb_list(cmdbuf *cb)
 {
     cb->flags |= CB_LIST;
     return cb_print(cb);
@@ -175,8 +168,7 @@ cmdbuf *cb;
  * NAME:	cmdbuf->number()
  * DESCRIPTION:	output a range of lines preceded by line numbers
  */
-int cb_number(cb)
-cmdbuf *cb;
+int cb_number(cmdbuf *cb)
 {
     cb->flags |= CB_NUMBER;
     return cb_print(cb);
@@ -186,10 +178,9 @@ cmdbuf *cb;
  * NAME:	cmdbuf->page()
  * DESCRIPTION:	show a page of lines
  */
-int cb_page(cb)
-register cmdbuf *cb;
+int cb_page(cmdbuf *cb)
 {
-    register Int offset, window;
+    Int offset, window;
 
     if (cb->edbuf->lines == 0) {
 	error("No lines in buffer");
@@ -239,8 +230,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->assign()
  * DESCRIPTION:	show the specified line number
  */
-int cb_assign(cb)
-register cmdbuf *cb;
+int cb_assign(cmdbuf *cb)
 {
     output("%ld\012",
 	   (long) (cb->first < 0) ? cb->edbuf->lines : cb->first);	/* LF */
@@ -252,8 +242,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->mark()
  * DESCRIPTION:	set a mark in the range [a-z] to line number
  */
-int cb_mark(cb)
-register cmdbuf *cb;
+int cb_mark(cmdbuf *cb)
 {
     if (!islower(cb->cmd[0])) {
 	error("Mark must specify a letter");
@@ -267,8 +256,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->append()
  * DESCRIPTION:	append a block of lines, read from user, to edit buffer
  */
-int cb_append(cb)
-register cmdbuf *cb;
+int cb_append(cmdbuf *cb)
 {
     not_in_global(cb);
     cb_do(cb, cb->first);
@@ -282,8 +270,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->insert()
  * DESCRIPTION:	insert a block of lines in the edit buffer
  */
-int cb_insert(cb)
-cmdbuf *cb;
+int cb_insert(cmdbuf *cb)
 {
     not_in_global(cb);
     if (cb->first > 0) {
@@ -296,10 +283,9 @@ cmdbuf *cb;
  * NAME:	cmdbuf->change()
  * DESCRIPTION:	change a subrange of lines in the edit buffer
  */
-int cb_change(cb)
-cmdbuf *cb;
+int cb_change(cmdbuf *cb)
 {
-    register Int *m;
+    Int *m;
 
     not_in_global(cb);
     cb_do(cb, cb->first);
@@ -321,8 +307,7 @@ cmdbuf *cb;
  * NAME:	cmdbuf->delete()
  * DESCRIPTION:	delete a subrange of lines in the edit buffer
  */
-int cb_delete(cb)
-register cmdbuf *cb;
+int cb_delete(cmdbuf *cb)
 {
     cb_do(cb, cb->first);
 
@@ -337,8 +322,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->copy()
  * DESCRIPTION:	copy a subrange of lines in the edit buffer
  */
-int cb_copy(cb)
-register cmdbuf *cb;
+int cb_copy(cmdbuf *cb)
 {
     cb_do(cb, cb->a_addr);
     add(cb, cb->a_addr, eb_yank(cb->edbuf, cb->first, cb->last),
@@ -353,11 +337,10 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->move()
  * DESCRIPTION:	move a subrange of lines in the edit buffer
  */
-int cb_move(cb)
-register cmdbuf *cb;
+int cb_move(cmdbuf *cb)
 {
     Int mark[26];
-    register Int offset, *m1, *m2;
+    Int offset, *m1, *m2;
 
     if (cb->a_addr >= cb->first - 1 && cb->a_addr <= cb->last) {
 	error("Move to moved line");
@@ -397,10 +380,9 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->put()
  * DESCRIPTION:	put a block in the edit buffer
  */
-int cb_put(cb)
-register cmdbuf *cb;
+int cb_put(cmdbuf *cb)
 {
-    register block b;
+    block b;
 
     if (isalpha(cb->a_buffer)) {
 	/* 'a' and 'A' both refer to buffer 'a' */
@@ -424,8 +406,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->yank()
  * DESCRIPTION:	yank a block of lines from the edit buffer
  */
-int cb_yank(cb)
-register cmdbuf *cb;
+int cb_yank(cmdbuf *cb)
 {
     cb_buf(cb, eb_yank(cb->edbuf, cb->first, cb->last));
     return 0;
@@ -436,11 +417,10 @@ register cmdbuf *cb;
  * NAME:	shift()
  * DESCRIPTION:	shift a line left or right
  */
-static void shift(text)
-register char *text;
+static void shift(char *text)
 {
-    register cmdbuf *cb;
-    register int idx;
+    cmdbuf *cb;
+    int idx;
 
     cb = ccb;
 
@@ -462,7 +442,7 @@ register char *text;
 	idx += cb->shift;
 	if (idx < MAX_LINE_SIZE) {
 	    char buffer[MAX_LINE_SIZE];
-	    register char *p;
+	    char *p;
 
 	    p = buffer;
 	    /* fill with leading ws */
@@ -493,8 +473,7 @@ register char *text;
  * NAME:	cmdbuf->shift()
  * DESCRIPTION:	shift a range of lines left or right
  */
-static int cb_shift(cb)
-register cmdbuf *cb;
+static int cb_shift(cmdbuf *cb)
 {
     cb_do(cb, cb->first);
     startblock(cb);
@@ -510,8 +489,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->lshift()
  * DESCRIPTION:	shift a range of lines to the left
  */
-int cb_lshift(cb)
-register cmdbuf *cb;
+int cb_lshift(cmdbuf *cb)
 {
     cb->shift = -SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
@@ -521,8 +499,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->rshift()
  * DESCRIPTION:	shift a range of lines to the right
  */
-int cb_rshift(cb)
-register cmdbuf *cb;
+int cb_rshift(cmdbuf *cb)
 {
     cb->shift = SHIFTWIDTH(cb->vars);
     return cb_shift(cb);
@@ -550,9 +527,7 @@ register cmdbuf *cb;
  * NAME:	noshift()
  * DESCRIPTION:	add this line to the current block without shifting it
  */
-static void noshift(cb, text)
-cmdbuf *cb;
-char *text;
+static void noshift(cmdbuf *cb, char *text)
 {
     addblock(cb, text);
     cb->lineno++;
@@ -566,17 +541,16 @@ char *text;
  *		and last but not least everyone has his own taste of
  *		indentation.
  */
-static void indent(text)
-char *text;
+static void indent(char *text)
 {
     static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
     static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
-    register cmdbuf *cb;
-    register char *p, *sp;
-    register int *ip, idx;
-    register int top, token;
+    cmdbuf *cb;
+    char *p, *sp;
+    int *ip, idx;
+    int top, token;
     char *start;
     bool do_indent;
 
@@ -681,8 +655,8 @@ char *text;
 			shift(text);
 			do_indent = FALSE;
 		    } else {
-			register char *q;
-			register int idx2;
+			char *q;
+			int idx2;
 
 			/*
 			 * find how much the comment has shifted, so the same
@@ -746,7 +720,7 @@ char *text;
 
 	    default:
 		if (isalpha(*--p) || *p == '_') {
-		    register char *q;
+		    char *q;
 
 		    /* Identifier. See if it's a keyword. */
 		    q = ident;
@@ -782,7 +756,7 @@ char *text;
 	    }
 
 	    if (f[top] <= g[token]) {	/* shift the token on the stack */
-		register int i;
+		int i;
 
 		if (sp == cb->stackbot) {
 		    /* out of stack. Finish already indented block. */
@@ -853,8 +827,7 @@ char *text;
  * NAME:	cmdbuf->indent()
  * DESCRIPTION:	indent a range of lines
  */
-int cb_indent(cb)
-register cmdbuf *cb;
+int cb_indent(cmdbuf *cb)
 {
     char s[STACKSZ];
     int i[STACKSZ];
@@ -883,11 +856,10 @@ register cmdbuf *cb;
  * NAME:	join()
  * DESCRIPTION:	join a string to the one already in the join buffer
  */
-static void join(text)
-register char *text;
+static void join(char *text)
 {
-    register cmdbuf *cb;
-    register char *p;
+    cmdbuf *cb;
+    char *p;
 
     cb = ccb;
 
@@ -914,11 +886,10 @@ register char *text;
  * NAME:	cmdbuf->join()
  * DESCRIPTION:	join a range of lines in the edit buffer
  */
-int cb_join(cb)
-register cmdbuf *cb;
+int cb_join(cmdbuf *cb)
 {
     char buf[MAX_LINE_SIZE + 1];
-    register Int *m;
+    Int *m;
 
     if (cb->edbuf->lines == 0) {
 	error("No lines in buffer");
@@ -958,13 +929,10 @@ register cmdbuf *cb;
  * NAME:	sub()
  * DESCRIPTION:	add a string to the current substitute buffer
  */
-static void sub(cb, text, size)
-register cmdbuf *cb;
-char *text;
-unsigned int size;
+static void sub(cmdbuf *cb, char *text, unsigned int size)
 {
-    register char *p, *q;
-    register unsigned int i;
+    char *p, *q;
+    unsigned int i;
 
     i = size;
     if (cb->buflen + i >= MAX_LINE_SIZE) {
@@ -1014,14 +982,13 @@ unsigned int size;
  *		N, and the next substitution happens on line N + 2, line N + 1
  *		is joined in the new block also.
  */
-static void subst(text)
-register char *text;
+static void subst(char *text)
 {
     char line[MAX_LINE_SIZE];
-    register cmdbuf *cb;
-    register int idx, size;
-    register char *p;
-    register Int *k, *l;
+    cmdbuf *cb;
+    int idx, size;
+    char *p;
+    Int *k, *l;
     Int newlines;
     bool found;
 
@@ -1211,14 +1178,13 @@ register char *text;
  * NAME:	cmdbuf->substitute()
  * DESCRIPTION:	do substitutions on a range of lines
  */
-int cb_subst(cb)
-register cmdbuf *cb;
+int cb_subst(cmdbuf *cb)
 {
     char buf[MAX_LINE_SIZE], delim;
     Int m[26];
     Int edit;
-    register char *p;
-    register Int *k, *l;
+    char *p;
+    Int *k, *l;
 
     delim = cb->cmd[0];
     if (delim == '\0' || strchr("0123456789gpl#-+", delim) != (char*) NULL) {
@@ -1227,7 +1193,7 @@ register cmdbuf *cb;
 	    error("No previous substitute to repeat");
 	}
     } else if (!isalpha(delim)) {
-	register char *q;
+	char *q;
 
 	/* get search pattern */
 	p = pattern(cb->cmd + 1, delim, cb->search);
@@ -1313,11 +1279,9 @@ register cmdbuf *cb;
  * DESCRIPTION:	copy a string to another buffer, unless it has length 0 or
  *		is too long
  */
-static bool getfname(cb, buffer)
-register cmdbuf *cb;
-char *buffer;
+static bool getfname(cmdbuf *cb, char *buffer)
 {
-    register char *p, *q;
+    char *p, *q;
 
     /* find the end of the filename */
     p = strchr(cb->cmd, ' ');
@@ -1352,8 +1316,7 @@ char *buffer;
  * NAME:	cmdbuf->file()
  * DESCRIPTION:	get/set the file name & current line, etc.
  */
-int cb_file(cb)
-register cmdbuf *cb;
+int cb_file(cmdbuf *cb)
 {
     not_in_global(cb);
 
@@ -1386,8 +1349,7 @@ register cmdbuf *cb;
  * NAME:	io->show()
  * DESCRIPTION:	show statistics on the file just read/written
  */
-static void io_show(iob)
-register io *iob;
+static void io_show(io *iob)
 {
     output("%ld lines, %ld characters", (long) iob->lines,
 	   (long) (iob->chars + iob->zero - iob->split - iob->ill));
@@ -1407,8 +1369,7 @@ register io *iob;
  * NAME:	cmdbuf->read()
  * DESCRIPTION:	insert a file in the current edit buffer
  */
-int cb_read(cb)
-register cmdbuf *cb;
+int cb_read(cmdbuf *cb)
 {
     char buffer[STRINGSZ];
     io iob;
@@ -1441,8 +1402,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->edit()
  * DESCRIPTION:	edit a new file
  */
-int cb_edit(cb)
-register cmdbuf *cb;
+int cb_edit(cmdbuf *cb)
 {
     io iob;
 
@@ -1487,8 +1447,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->quit()
  * DESCRIPTION:	quit editing
  */
-int cb_quit(cb)
-cmdbuf *cb;
+int cb_quit(cmdbuf *cb)
 {
     not_in_global(cb);
 
@@ -1503,8 +1462,7 @@ cmdbuf *cb;
  * NAME:	cmdbuf->write()
  * DESCRIPTION:	write a range of lines to a file
  */
-int cb_write(cb)
-register cmdbuf *cb;
+int cb_write(cmdbuf *cb)
 {
     char buffer[STRINGSZ];
     bool append;
@@ -1555,8 +1513,7 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->wq()
  * DESCRIPTION:	write a range of lines to a file and quit
  */
-int cb_wq(cb)
-cmdbuf *cb;
+int cb_wq(cmdbuf *cb)
 {
     cb->first = 1;
     cb->last = cb->edbuf->lines;
@@ -1568,8 +1525,7 @@ cmdbuf *cb;
  * NAME:	cmdbuf->xit()
  * DESCRIPTION:	write to the current file if modified, and quit
  */
-int cb_xit(cb)
-register cmdbuf *cb;
+int cb_xit(cmdbuf *cb)
 {
     if (cb->edit > 0) {
 	cb->flags |= CB_EXCL;
@@ -1586,11 +1542,10 @@ register cmdbuf *cb;
  * NAME:	cmdbuf->set()
  * DESCRIPTION:	get/set variable(s)
  */
-int cb_set(cb)
-register cmdbuf *cb;
+int cb_set(cmdbuf *cb)
 {
     char buffer[STRINGSZ];
-    register char *p, *q;
+    char *p, *q;
 
     not_in_global(cb);
 

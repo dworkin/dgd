@@ -99,9 +99,9 @@ typedef struct {
 # define RET_QUIT	1
 # define RET_FLAGS	2
 
-extern cmdbuf *cb_new     P((char*));
-extern void    cb_del     P((cmdbuf*));
-extern bool    cb_command P((cmdbuf*, char*));
-extern int     cb_edit	  P((cmdbuf*));
+extern cmdbuf *cb_new     (char*);
+extern void    cb_del     (cmdbuf*);
+extern bool    cb_command (cmdbuf*, char*);
+extern int     cb_edit	  (cmdbuf*);
 
 extern cmdbuf *ccb;

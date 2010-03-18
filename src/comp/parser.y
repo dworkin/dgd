@@ -45,32 +45,32 @@ static int ndeclarations;	/* number of declarations */
 static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
-static void  t_void	P((node*));
-static bool  t_unary	P((node*, char*));
-static node *uassign	P((int, node*, char*));
-static node *cast	P((node*, node*));
-static node *idx	P((node*, node*));
-static node *range	P((node*, node*, node*));
-static node *bini	P((int, node*, node*, char*));
-static node *bina	P((int, node*, node*, char*));
-static node *mult	P((int, node*, node*, char*));
-static node *mdiv	P((int, node*, node*, char*));
-static node *mod	P((int, node*, node*, char*));
-static node *add	P((int, node*, node*, char*));
-static node *sub	P((int, node*, node*, char*));
-static node *umin	P((node*));
-static node *lshift	P((int, node*, node*, char*));
-static node *rshift	P((int, node*, node*, char*));
-static node *rel	P((int, node*, node*, char*));
-static node *eq		P((node*, node*));
-static node *and	P((int, node*, node*, char*));
-static node *xor	P((int, node*, node*, char*));
-static node *or		P((int, node*, node*, char*));
-static node *land	P((node*, node*));
-static node *lor	P((node*, node*));
-static node *quest	P((node*, node*, node*));
-static node *assign	P((node*, node*));
-static node *comma	P((node*, node*));
+static void  t_void	(node*);
+static bool  t_unary	(node*, char*);
+static node *uassign	(int, node*, char*);
+static node *cast	(node*, node*);
+static node *idx	(node*, node*);
+static node *range	(node*, node*, node*);
+static node *bini	(int, node*, node*, char*);
+static node *bina	(int, node*, node*, char*);
+static node *mult	(int, node*, node*, char*);
+static node *mdiv	(int, node*, node*, char*);
+static node *mod	(int, node*, node*, char*);
+static node *add	(int, node*, node*, char*);
+static node *sub	(int, node*, node*, char*);
+static node *umin	(node*);
+static node *lshift	(int, node*, node*, char*);
+static node *rshift	(int, node*, node*, char*);
+static node *rel	(int, node*, node*, char*);
+static node *eq		(node*, node*);
+static node *and	(int, node*, node*, char*);
+static node *xor	(int, node*, node*, char*);
+static node *or		(int, node*, node*, char*);
+static node *land	(node*, node*);
+static node *lor	(node*, node*);
+static node *quest	(node*, node*, node*);
+static node *assign	(node*, node*);
+static node *comma	(node*, node*);
 
 %}
 
@@ -847,8 +847,7 @@ opt_assoc_arg_list_comma
  * NAME:	t_void()
  * DESCRIPTION:	if the argument is of type void, an error will result
  */
-static void t_void(n)
-register node *n;
+static void t_void(node *n)
 {
     if (n != (node *) NULL && n->mod == T_VOID) {
 	c_error("void value not ignored");
@@ -860,9 +859,7 @@ register node *n;
  * NAME:	t_unary()
  * DESCRIPTION:	typecheck the argument of a unary operator
  */
-static bool t_unary(n, name)
-register node *n;
-char *name;
+static bool t_unary(node *n, char *name)
 {
     char tnbuf[17];
 
@@ -880,10 +877,7 @@ char *name;
  * NAME:	uassign()
  * DESCRIPTION:	handle a unary assignment operator
  */
-static node *uassign(op, n, name)
-int op;
-register node *n;
-char *name;
+static node *uassign(int op, node *n, char *name)
 {
     t_unary(n, name);
     return node_mon((n->mod == T_INT) ? op + 1 : op, n->mod, c_lvalue(n, name));
@@ -893,8 +887,7 @@ char *name;
  * NAME:	cast()
  * DESCRIPTION:	cast an expression to a type
  */
-static node *cast(n, type)
-register node *n, *type;
+static node *cast(node *n, node *type)
 {
     xfloat flt;
     Int i;
@@ -1030,11 +1023,10 @@ register node *n, *type;
  * NAME:	idx()
  * DESCRIPTION:	handle the [ ] operator
  */
-static node *idx(n1, n2)
-register node *n1, *n2;
+static node *idx(node *n1, node *n2)
 {
     char tnbuf[17];
-    register unsigned short type;
+    unsigned short type;
 
     if (n1->type == N_STR && n2->type == N_INT) {
 	/* str [ int ] */
@@ -1086,8 +1078,7 @@ register node *n1, *n2;
  * NAME:	range()
  * DESCRIPTION:	handle the [ .. ] operator
  */
-static node *range(n1, n2, n3)
-register node *n1, *n2, *n3;
+static node *range(node *n1, node *n2, node *n3)
 {
     if (n1->type == N_STR && (n2 == (node *) NULL || n2->type == N_INT) &&
 	(n3 == (node *) NULL || n3->type == N_INT)) {
@@ -1126,10 +1117,7 @@ register node *n1, *n2, *n3;
  * NAME:	bini()
  * DESCRIPTION:	handle a binary int operator
  */
-static node *bini(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *bini(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[17], tnbuf2[17];
 
@@ -1152,13 +1140,10 @@ char *name;
  * NAME:	bina()
  * DESCRIPTION:	handle a binary arithmetic operator
  */
-static node *bina(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *bina(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[17], tnbuf2[17];
-    register unsigned short type;
+    unsigned short type;
 
     t_void(n1);
     t_void(n2);
@@ -1186,10 +1171,7 @@ char *name;
  * NAME:	mult()
  * DESCRIPTION:	handle the * *= operators
  */
-static node *mult(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *mult(int op, node *n1, node *n2, char *name)
 {
     xfloat f1, f2;
 
@@ -1212,15 +1194,12 @@ char *name;
  * NAME:	mdiv()
  * DESCRIPTION:	handle the / /= operators
  */
-static node *mdiv(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *mdiv(int op, node *n1, node *n2, char *name)
 {
     xfloat f1, f2;
 
     if (n1->type == N_INT && n2->type == N_INT) {
-	register Int i, d;
+	Int i, d;
 
 	/* i / i */
 	i = n1->l.number;
@@ -1260,13 +1239,10 @@ char *name;
  * NAME:	mod()
  * DESCRIPTION:	handle the % %= operators
  */
-static node *mod(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *mod(int op, node *n1, node *n2, char *name)
 {
     if (n1->type == N_INT && n2->type == N_INT) {
-	register Int i, d;
+	Int i, d;
 
 	/* i % i */
 	i = n1->l.number;
@@ -1295,14 +1271,11 @@ char *name;
  * DESCRIPTION:	handle the + += operators, possibly rearranging the order
  *		of the expression
  */
-static node *add(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *add(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
-    register unsigned short type;
+    unsigned short type;
 
     t_void(n1);
     t_void(n2);
@@ -1363,14 +1336,11 @@ char *name;
  * NAME:	sub()
  * DESCRIPTION:	handle the - -= operators
  */
-static node *sub(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *sub(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
-    register unsigned short type;
+    unsigned short type;
 
     t_void(n1);
     t_void(n2);
@@ -1415,8 +1385,7 @@ char *name;
  * NAME:	umin()
  * DESCRIPTION:	handle unary minus
  */
-static node *umin(n)
-register node *n;
+static node *umin(node *n)
 {
     xfloat flt;
 
@@ -1435,10 +1404,7 @@ register node *n;
  * NAME:	lshift()
  * DESCRIPTION:	handle the << <<= operators
  */
-static node *lshift(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *lshift(int op, node *n1, node *n2, char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1460,10 +1426,7 @@ char *name;
  * NAME:	rshift()
  * DESCRIPTION:	handle the >> >>= operators
  */
-static node *rshift(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *rshift(int op, node *n1, node *n2, char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1485,10 +1448,7 @@ char *name;
  * NAME:	rel()
  * DESCRIPTION:	handle the < > <= >= operators
  */
-static node *rel(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *rel(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[17], tnbuf2[17];
 
@@ -1571,8 +1531,7 @@ char *name;
  * NAME:	eq()
  * DESCRIPTION:	handle the == operator
  */
-static node *eq(n1, n2)
-register node *n1, *n2;
+static node *eq(node *n1, node *n2)
 {
     char tnbuf1[17], tnbuf2[17];
     xfloat f1, f2;
@@ -1644,12 +1603,9 @@ register node *n1, *n2;
  * NAME:	and()
  * DESCRIPTION:	handle the & &= operators
  */
-static node *and(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *and(int op, node *n1, node *n2, char *name)
 {
-    register unsigned short type;
+    unsigned short type;
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i & i */
@@ -1671,12 +1627,9 @@ char *name;
  * NAME:	xor()
  * DESCRIPTION:	handle the ^ ^= operators
  */
-static node *xor(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *xor(int op, node *n1, node *n2, char *name)
 {
-    register unsigned short type;
+    unsigned short type;
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i ^ i */
@@ -1697,12 +1650,9 @@ char *name;
  * NAME:	or()
  * DESCRIPTION:	handle the | |= operators
  */
-static node *or(op, n1, n2, name)
-int op;
-register node *n1, *n2;
-char *name;
+static node *or(int op, node *n1, node *n2, char *name)
 {
-    register unsigned short type;
+    unsigned short type;
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i | i */
@@ -1723,8 +1673,7 @@ char *name;
  * NAME:	land()
  * DESCRIPTION:	handle the && operator
  */
-static node *land(n1, n2)
-register node *n1, *n2;
+static node *land(node *n1, node *n2)
 {
     t_void(n1);
     t_void(n2);
@@ -1743,8 +1692,7 @@ register node *n1, *n2;
  * NAME:	lor()
  * DESCRIPTION:	handle the || operator
  */
-static node *lor(n1, n2)
-register node *n1, *n2;
+static node *lor(node *n1, node *n2)
 {
     t_void(n1);
     t_void(n2);
@@ -1763,10 +1711,9 @@ register node *n1, *n2;
  * NAME:	quest()
  * DESCRIPTION:	handle the ? : operator
  */
-static node *quest(n1, n2, n3)
-register node *n1, *n2, *n3;
+static node *quest(node *n1, node *n2, node *n3)
 {
-    register unsigned short type;
+    unsigned short type;
 
     t_void(n1);
 
@@ -1832,12 +1779,11 @@ register node *n1, *n2, *n3;
  * NAME:	assign()
  * DESCRIPTION:	handle the assignment operator
  */
-static node *assign(n1, n2)
-register node *n1, *n2;
+static node *assign(node *n1, node *n2)
 {
     char tnbuf1[17], tnbuf2[17];
-    register node *n, *m;
-    register unsigned short type;
+    node *n, *m;
+    unsigned short type;
 
     if (n1->type == N_AGGR) {
 	/*
@@ -1907,8 +1853,7 @@ register node *n1, *n2;
  * DESCRIPTION:	handle the comma operator, rearranging the order of the
  *		expression if needed
  */
-static node *comma(n1, n2)
-register node *n1, *n2;
+static node *comma(node *n1, node *n2)
 {
     if (n2->type == N_COMMA) {
 	/* a, (b, c) --> (a, b), c */

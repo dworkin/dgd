@@ -18,15 +18,14 @@
 
 # include "dgd.h"
 
-extern void srand48	P((long));
-extern long lrand48	P((void));
+extern void srand48	(long);
+extern long lrand48	(void);
 
 /*
  * NAME:	P->srandom()
  * DESCRIPTION:	set the random seed
  */
-void P_srandom(s)
-long s;
+void P_srandom(long s)
 {
     srand48(s);
 }

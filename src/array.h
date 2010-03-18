@@ -31,44 +31,44 @@ struct _array_ {
 typedef struct _arrmerge_ arrmerge;	/* array merge table */
 typedef struct _abchunk_ abchunk;	/* array backup chunk */
 
-extern void		arr_init	P((unsigned int));
-extern array	       *arr_alloc	P((unsigned int));
-extern array	       *arr_new		P((dataspace*, long));
-extern array	       *arr_ext_new	P((dataspace*, long));
+extern void		arr_init	(unsigned int);
+extern array	       *arr_alloc	(unsigned int);
+extern array	       *arr_new		(dataspace*, long);
+extern array	       *arr_ext_new	(dataspace*, long);
 # define arr_ref(a)	((a)->ref++)
-extern void		arr_del		P((array*));
-extern void		arr_freelist	P((array*));
-extern void		arr_freeall	P((void));
+extern void		arr_del		(array*);
+extern void		arr_freelist	(array*);
+extern void		arr_freeall	(void);
 
-extern void		arr_merge	P((void));
-extern Uint		arr_put		P((array*, Uint));
-extern void		arr_clear	P((void));
+extern void		arr_merge	(void);
+extern Uint		arr_put		(array*, Uint);
+extern void		arr_clear	(void);
 
-extern void		arr_backup	P((abchunk**, array*));
-extern void		arr_commit	P((abchunk**, dataplane*, int));
-extern void		arr_discard	P((abchunk**));
+extern void		arr_backup	(abchunk**, array*);
+extern void		arr_commit	(abchunk**, dataplane*, int);
+extern void		arr_discard	(abchunk**);
 
-extern array	       *arr_add		P((dataspace*, array*, array*));
-extern array	       *arr_sub		P((dataspace*, array*, array*));
-extern array	       *arr_intersect	P((dataspace*, array*, array*));
-extern array	       *arr_setadd	P((dataspace*, array*, array*));
-extern array	       *arr_setxadd	P((dataspace*, array*, array*));
-extern unsigned short	arr_index	P((array*, long));
-extern void		arr_ckrange	P((array*, long, long));
-extern array	       *arr_range	P((dataspace*, array*, long, long));
+extern array	       *arr_add		(dataspace*, array*, array*);
+extern array	       *arr_sub		(dataspace*, array*, array*);
+extern array	       *arr_intersect	(dataspace*, array*, array*);
+extern array	       *arr_setadd	(dataspace*, array*, array*);
+extern array	       *arr_setxadd	(dataspace*, array*, array*);
+extern unsigned short	arr_index	(array*, long);
+extern void		arr_ckrange	(array*, long, long);
+extern array	       *arr_range	(dataspace*, array*, long, long);
 
-extern array	       *map_new		P((dataspace*, long));
-extern void		map_sort	P((array*));
-extern void		map_rmhash	P((array*));
-extern void		map_compact	P((dataspace*, array*));
-extern unsigned short	map_size	P((dataspace*, array*));
-extern array	       *map_add		P((dataspace*, array*, array*));
-extern array	       *map_sub		P((dataspace*, array*, array*));
-extern array	       *map_intersect	P((dataspace*, array*, array*));
-extern value	       *map_index	P((dataspace*, array*, value*, value*));
-extern array	       *map_range	P((dataspace*, array*, value*, value*));
-extern array	       *map_indices	P((dataspace*, array*));
-extern array	       *map_values	P((dataspace*, array*));
+extern array	       *map_new		(dataspace*, long);
+extern void		map_sort	(array*);
+extern void		map_rmhash	(array*);
+extern void		map_compact	(dataspace*, array*);
+extern unsigned short	map_size	(dataspace*, array*);
+extern array	       *map_add		(dataspace*, array*, array*);
+extern array	       *map_sub		(dataspace*, array*, array*);
+extern array	       *map_intersect	(dataspace*, array*, array*);
+extern value	       *map_index	(dataspace*, array*, value*, value*);
+extern array	       *map_range	(dataspace*, array*, value*, value*);
+extern array	       *map_indices	(dataspace*, array*);
+extern array	       *map_values	(dataspace*, array*);
 
-extern array	       *lwo_new		P((dataspace*, object*));
-extern array	       *lwo_copy	P((dataspace*, array*));
+extern array	       *lwo_new		(dataspace*, object*);
+extern array	       *lwo_copy	(dataspace*, array*);

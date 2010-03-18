@@ -58,11 +58,7 @@ typedef struct {
  * NAME:	rgxtok()
  * DESCRIPTION:	construct pre-parsed regular expression
  */
-static int rgxtok(buffer, len, str, node, thisnode, lastp)
-char *buffer, *str;
-register int len, thisnode;
-register rgxnode *node;
-int *lastp;
+static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode, int *lastp)
 {
     int last, n;
 
@@ -157,20 +153,16 @@ int *lastp;
  * NAME:	gramtok()
  * DESCRIPTION:	get a token from the grammar string
  */
-static int gramtok(str, strlen, buffer, buflen)
-string *str;
-ssizet *strlen;
-register char *buffer;
-unsigned int *buflen;
+static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *buflen)
 {
     rgxnode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
     int paren, thisnode, topnode, lastnode, strtok;
     ssizet offset;
-    register char *p;
+    char *p;
     char *q;
-    register ssizet size;
-    register unsigned int len;
+    ssizet size;
+    unsigned int len;
 
     size = *strlen;
     p = str->text + str->len - size;
@@ -255,8 +247,8 @@ unsigned int *buflen;
 		    }
 		    node[thisnode].type = RGX_PAREN;
 
-		    nstack[paren++] = topnode;
-		    nstack[paren++] = thisnode;
+		    nstack[paren++] = (short) topnode;
+		    nstack[paren++] = (short) thisnode;
 		    topnode = thisnode = -1;
 		    break;
 
@@ -342,7 +334,11 @@ unsigned int *buflen;
 		    node[thisnode].type = RGX_CHAR;
 		    offset = q - str->text;
 		    node[thisnode].left = offset;
+#if SSIZET_MAX > USHRT_MAX
 		    node[thisnode].offset = offset >> 16;
+#else
+		    node[thisnode].offset = 0;
+#endif
 		    node[thisnode].right = -1;
 		    node[thisnode].len = p - q + 1;
 		    len += p - q + 2;
@@ -500,11 +496,9 @@ typedef struct _rlchunk_ {
  * NAME:	rulesym->new()
  * DESCRIPTION:	allocate a new rulesym
  */
-static rulesym *rs_new(c, rl)
-register rschunk **c;
-rule *rl;
+static rulesym *rs_new(rschunk **c, rule *rl)
 {
-    register rulesym *rs;
+    rulesym *rs;
 
     if (*c == (rschunk *) NULL || (*c)->chunksz == RSCHUNKSZ) {
 	rschunk *x;
@@ -525,10 +519,9 @@ rule *rl;
  * NAME:	rulesym->clear()
  * DESCRIPTION:	free all rulesyms
  */
-static void rs_clear(c)
-register rschunk *c;
+static void rs_clear(rschunk *c)
 {
-    register rschunk *f;
+    rschunk *f;
 
     while (c != (rschunk *) NULL) {
 	f = c;
@@ -541,11 +534,9 @@ register rschunk *c;
  * NAME:	rule->new()
  * DESCRIPTION:	allocate a new rule
  */
-static rule *rl_new(c, type)
-register rlchunk **c;
-int type;
+static rule *rl_new(rlchunk **c, int type)
 {
-    register rule *rl;
+    rule *rl;
 
     if (*c == (rlchunk *) NULL || (*c)->chunksz == RLCHUNKSZ) {
 	rlchunk *x;
@@ -572,12 +563,11 @@ int type;
  * NAME:	rule->clear()
  * DESCRIPTION:	free all rules
  */
-static void rl_clear(c)
-register rlchunk *c;
+static void rl_clear(rlchunk *c)
 {
-    register rlchunk *f;
-    register rule *rl;
-    register int i;
+    rlchunk *f;
+    rule *rl;
+    int i;
 
     while (c != (rlchunk *) NULL) {
 	for (rl = c->rl, i = c->chunksz; i != 0; rl++, --i) {
@@ -643,18 +633,15 @@ register rlchunk *c;
  * NAME:	make_grammar()
  * DESCRIPTION:	create a pre-processed grammar string
  */
-static string *make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx, nstr,
-			    nestr, nprod, size)
-rule *rgxlist, *strlist, *estrlist, *prodlist;
-int nrgx, nstr, nestr, nprod;
-long size;
+static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist, 
+			    int nrgx, int nstr, int nestr, int nprod, long size)
 {
     int start, prod1;
     string *gram;
-    register char *p, *q;
-    register rule *rl, *r;
-    register rulesym *rs;
-    register int n;
+    char *p, *q;
+    rule *rl, *r;
+    rulesym *rs;
+    int n;
 
     gram = str_new((char *) NULL, size);
 
@@ -774,8 +761,7 @@ long size;
  * NAME:	parse_grammar()
  * DESCRIPTION:	check the grammar, return a pre-processed version
  */
-string *parse_grammar(gram)
-string *gram;
+string *parse_grammar(string *gram)
 {
     char buffer[STRINGSZ];
     hashtab *ruletab, *strtab;
@@ -786,10 +772,10 @@ string *gram;
     ssizet glen;
     unsigned int buflen;
     bool nomatch;
-    register rulesym **rs;
-    register rule *rl, **r;
-    register long size;
-    register unsigned int len;
+    rulesym **rs;
+    rule *rl, **r;
+    long size;
+    unsigned int len;
 
 # if MAX_STRLEN > 0xffffffL
     if (gram->len > 0xffffffL) {
@@ -1116,4 +1102,5 @@ err:
     ht_del(strtab);
     ht_del(ruletab);
     error(buffer);
+    return NULL;
 }

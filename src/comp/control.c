@@ -53,10 +53,9 @@ static void oh_init()
  * NAME:	oh->new()
  * DESCRIPTION:	put an object in the hash table
  */
-static oh *oh_new(name)
-char *name;
+static oh *oh_new(char *name)
 {
-    register oh **h;
+    oh **h;
 
     h = (oh **) ht_lookup(otab, name, FALSE);
     if (*h == (oh *) NULL) {
@@ -81,7 +80,7 @@ char *name;
  */
 static void oh_clear()
 {
-    register oh **h, *f;
+    oh **h, *f;
 
     for (h = olist; h != (oh **) NULL; ) {
 	f = *h;
@@ -120,18 +119,13 @@ static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(str, ohash, ct, cvstr, idx, addr)
-string *str;
-oh *ohash;
-unsigned short ct;
-string *cvstr;
-short idx;
-vfh **addr;
+static void vfh_new(string *str, oh *ohash, unsigned short ct, 
+	string *cvstr, short idx, vfh **addr)
 {
-    register vfh *h;
+    vfh *h;
 
     if (vfhchunksz == VFH_CHUNK) {
-	register vfhchunk *l;
+	vfhchunk *l;
 
 	l = ALLOC(vfhchunk, 1);
 	l->next = vfhclist;
@@ -158,8 +152,8 @@ vfh **addr;
  */
 static void vfh_clear()
 {
-    register vfhchunk *l, *f;
-    register vfh *vf;
+    vfhchunk *l, *f;
+    vfh *vf;
 
     for (l = vfhclist; l != (vfhchunk *) NULL; ) {
 	for (vf = l->vf; vfhchunksz != 0; vf++, --vfhchunksz) {
@@ -189,11 +183,9 @@ static lab *labels;		/* list of labeled inherited objects */
  * NAME:	lab->new()
  * DESCRIPTION:	declare a new inheritance label
  */
-static void lab_new(str, ohash)
-string *str;
-oh *ohash;
+static void lab_new(string *str, oh *ohash)
 {
-    register lab *l;
+    lab *l;
 
     l = ALLOC(lab, 1);
     str_ref(l->str = str);
@@ -206,10 +198,9 @@ oh *ohash;
  * NAME:	lab->find()
  * DESCRIPTION:	find a labeled object in the list
  */
-static oh *lab_find(name)
-char *name;
+static oh *lab_find(char *name)
 {
-    register lab *l;
+    lab *l;
 
     for (l = labels; l != (lab *) NULL; l = l->next) {
 	if (strcmp(l->str->text, name) == 0) {
@@ -225,7 +216,7 @@ char *name;
  */
 static void lab_clear()
 {
-    register lab *l, *f;
+    lab *l, *f;
 
     l = labels;
     while (l != (lab *) NULL) {
@@ -267,14 +258,12 @@ void ctrl_init()
  * DESCRIPTION:	put variable definitions from an inherited object into the
  *		variable merge table
  */
-static void ctrl_vardefs(ohash, ctrl)
-oh *ohash;
-register control *ctrl;
+static void ctrl_vardefs(oh *ohash, control *ctrl)
 {
-    register dvardef *v;
-    register int n;
-    register string *str, *cvstr;
-    register vfh **h;
+    dvardef *v;
+    int n;
+    string *str, *cvstr;
+    vfh **h;
 
     v = d_get_vardefs(ctrl);
     for (n = 0; n < ctrl->nvardefs; n++) {
@@ -307,9 +296,7 @@ register control *ctrl;
  * NAME:	comp_class()
  * DESCRIPTION:	compare two class strings
  */
-static bool cmp_class(ctrl1, s1, ctrl2, s2)
-register control *ctrl1, *ctrl2;
-register Uint s1, s2;
+static bool cmp_class(control *ctrl1, Uint s1, control *ctrl2, Uint s2)
 {
     if (ctrl1 == ctrl2 && s1 == s2) {
 	return TRUE;	/* the same */
@@ -328,13 +315,11 @@ register Uint s1, s2;
  * NAME:	cmp_proto()
  * DESCRIPTION:	Compare two prototypes. Return TRUE if equal.
  */
-static bool cmp_proto(ctrl1, prot1, ctrl2, prot2)
-control *ctrl1, *ctrl2;
-register char *prot1, *prot2;
+static bool cmp_proto(control *ctrl1, char *prot1, control *ctrl2, char *prot2)
 {
-    register int i;
-    register char c1, c2;
-    register Uint s1, s2;
+    int i;
+    char c1, c2;
+    Uint s1, s2;
 
     /* check if either prototype is implicit */
     if (PROTO_FTYPE(prot1) == T_IMPLICIT || PROTO_FTYPE(prot2) == T_IMPLICIT) {
@@ -396,13 +381,10 @@ register char *prot1, *prot2;
  * DESCRIPTION:	put a function definition from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdef(ctrl, idx, ohash)
-register control *ctrl;
-register int idx;
-oh *ohash;
+static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 {
-    register vfh **h, **l;
-    register dfuncdef *f;
+    vfh **h, **l;
+    dfuncdef *f;
     string *str;
 
     f = &ctrl->funcdefs[idx];
@@ -432,8 +414,8 @@ oh *ohash;
 	    nsymbs++;
 	}
     } else {
-	register dinherit *inh;
-	register int n;
+	dinherit *inh;
+	int n;
 	object *o;
 	char *prot1, *prot2;
 	bool privflag, inhflag, firstsym;
@@ -637,12 +619,10 @@ oh *ohash;
  * DESCRIPTION:	put function definitions from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdefs(ohash, ctrl)
-register oh *ohash;
-register control *ctrl;
+static void ctrl_funcdefs(oh *ohash, control *ctrl)
 {
-    register short n;
-    register dfuncdef *f;
+    short n;
+    dfuncdef *f;
 
     d_get_prog(ctrl);
     for (n = 0, f = d_get_funcdefs(ctrl); n < ctrl->nfuncdefs; n++, f++) {
@@ -656,18 +636,13 @@ register control *ctrl;
  * NAME:	control->inherit()
  * DESCRIPTION:	inherit an object
  */
-bool ctrl_inherit(f, from, obj, label, priv)
-register frame *f;
-char *from;
-object *obj;
-string *label;
-int priv;
+bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 {
-    register oh *ohash;
-    register control *ctrl;
+    oh *ohash;
+    control *ctrl;
     dinherit *inh;
-    register int i;
-    register object *o;
+    int i;
+    object *o;
 
     if (!(obj->flags & O_MASTER)) {
 	c_error("cannot inherit cloned object");
@@ -870,12 +845,11 @@ static Uint nfcalls;			/* # function calls */
  * NAME:	control->imap()
  * DESCRIPTION:	initialize inherit map
  */
-static void ctrl_imap(ctrl)
-register control *ctrl;
+static void ctrl_imap(control *ctrl)
 {
-    register dinherit *inh;
-    register int i, j, n, imapsz;
-    register control *ctrl2;
+    dinherit *inh;
+    int i, j, n, imapsz;
+    control *ctrl2;
 
     imapsz = ctrl->ninherits;
     for (n = imapsz - 1, inh = &ctrl->inherits[n]; n > 0; ) {
@@ -903,12 +877,11 @@ register control *ctrl;
  * NAME:	control->convert()
  * DESCRIPTION:	convert inherits
  */
-void ctrl_convert(ctrl)
-register control *ctrl;
+void ctrl_convert(control *ctrl)
 {
-    register int n, imapsz;
-    register oh *ohash;
-    register dinherit *inh;
+    int n, imapsz;
+    oh *ohash;
+    dinherit *inh;
     object *obj;
     hashtab *xotab;
     oh **xolist;
@@ -947,11 +920,11 @@ register control *ctrl;
  */
 void ctrl_create()
 {
-    register dinherit *new;
-    register control *ctrl;
-    register unsigned short n;
-    register int i, count;
-    register oh *ohash;
+    dinherit *new;
+    control *ctrl;
+    unsigned short n;
+    int i, count;
+    oh *ohash;
 
     /*
      * create a new control block
@@ -1023,10 +996,9 @@ void ctrl_create()
  * NAME:	control->dstring()
  * DESCRIPTION:	define a new (?) string constant
  */
-long ctrl_dstring(str)
-string *str;
+long ctrl_dstring(string *str)
 {
-    register Uint desc, new;
+    Uint desc, new;
 
     desc = str_put(str, new = ((Uint) ninherits << 16) | nstrs);
     if (desc == new) {
@@ -1034,7 +1006,7 @@ string *str;
 	 * it is really a new string
 	 */
 	if (strchunksz == STRING_CHUNK) {
-	    register strchunk *l;
+	    strchunk *l;
 
 	    l = ALLOC(strchunk, 1);
 	    l->next = str_list;
@@ -1057,15 +1029,12 @@ string *str;
  * NAME:	control->dproto()
  * DESCRIPTION:	define a new function prototype
  */
-void ctrl_dproto(str, proto, class)
-register string *str;
-register char *proto;
-string *class;
+void ctrl_dproto(string *str, char *proto, string *class)
 {
-    register vfh **h, **l;
-    register dfuncdef *func;
-    register char *proto2;
-    register control *ctrl;
+    vfh **h, **l;
+    dfuncdef *func;
+    char *proto2;
+    control *ctrl;
     int i;
     long s;
 
@@ -1222,9 +1191,7 @@ string *class;
  * NAME:	control->dfunc()
  * DESCRIPTION:	define a new function
  */
-void ctrl_dfunc(str, proto, class)
-string *str, *class;
-char *proto;
+void ctrl_dfunc(string *str, char *proto, string *class)
 {
     fdef = nfdefs;
     ctrl_dproto(str, proto, class);
@@ -1234,9 +1201,7 @@ char *proto;
  * NAME:	control->dprogram()
  * DESCRIPTION:	define a function body
  */
-void ctrl_dprogram(prog, size)
-char *prog;
-unsigned int size;
+void ctrl_dprogram(char *prog, unsigned int size)
 {
     functions[fdef].prog = prog;
     functions[fdef].progsize = size;
@@ -1247,14 +1212,12 @@ unsigned int size;
  * NAME:	control->dvar()
  * DESCRIPTION:	define a variable
  */
-void ctrl_dvar(str, class, type, cvstr)
-string *str, *cvstr;
-unsigned int class, type;
+void ctrl_dvar(string *str, unsigned int class, unsigned int type, string *cvstr)
 {
-    register vfh **h;
-    register dvardef *var;
-    register char *p;
-    register long s;
+    vfh **h;
+    dvardef *var;
+    char *p;
+    long s;
 
     h = (vfh **) ht_lookup(vtab, str->text, FALSE);
     if (*h != (vfh *) NULL) {
@@ -1297,21 +1260,18 @@ unsigned int class, type;
  * NAME:	control->ifcall()
  * DESCRIPTION:	call an inherited function
  */
-char *ctrl_ifcall(str, label, cfstr, call)
-string *str, **cfstr;
-char *label;
-long *call;
+char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 {
-    register control *ctrl;
-    register oh *ohash;
-    register short index;
+    control *ctrl;
+    oh *ohash;
+    short index;
     short inherit;
     char *proto;
 
     *cfstr = (string *) NULL;
 
     if (label != (char *) NULL) {
-	register dsymbol *symb;
+	dsymbol *symb;
 
 	/* first check if the label exists */
 	ohash = lab_find(label);
@@ -1338,7 +1298,7 @@ long *call;
 	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
 	index = UCHAR(symb->index);
     } else {
-	register vfh *h;
+	vfh *h;
 
 	/* check if the function exists */
 	inherit = ninherits;
@@ -1377,8 +1337,8 @@ long *call;
     proto = ctrl->prog + ctrl->funcdefs[index].offset;
 
     if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
-	register char *p;
-	register Uint class;
+	char *p;
+	Uint class;
  
 	p = &PROTO_FTYPE(proto) + 1;
 	FETCH3U(p, class);
@@ -1391,12 +1351,9 @@ long *call;
  * NAME:	control->fcall()
  * DESCRIPTION:	call a function
  */
-char *ctrl_fcall(str, cfstr, call, typechecking)
-string *str, **cfstr;
-long *call;
-int typechecking;
+char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
 {
-    register vfh *h;
+    vfh *h;
     char *proto;
 
     *cfstr = (string *) NULL;
@@ -1404,7 +1361,7 @@ int typechecking;
     h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     if (h == (vfh *) NULL) {
 	static char uproto[] = { (char) C_UNDEFINED, 0, 0, 0, 6, T_IMPLICIT };
-	register short kf;
+	short kf;
 
 	/*
 	 * undefined function
@@ -1437,8 +1394,8 @@ int typechecking;
 	return (char *) NULL;
     } else {
 	control *ctrl;
-	register char *p;
-	register Uint class;
+	char *p;
+	Uint class;
 
 	/*
 	 * call to inherited function
@@ -1479,10 +1436,9 @@ int typechecking;
  * NAME:	control->gencall()
  * DESCRIPTION:	generate a function call
  */
-unsigned short ctrl_gencall(call)
-long call;
+unsigned short ctrl_gencall(long call)
 {
-    register vfh *h;
+    vfh *h;
     char *name;
     short inherit, index;
 
@@ -1504,7 +1460,7 @@ long call;
 	 * add to function call table
 	 */
 	if (fcchunksz == FCALL_CHUNK) {
-	    register fcchunk *l;
+	    fcchunk *l;
 
 	    l = ALLOC(fcchunk, 1);
 	    l->next = fclist;
@@ -1524,11 +1480,9 @@ long call;
  * NAME:	control->var()
  * DESCRIPTION:	handle a variable reference
  */
-unsigned short ctrl_var(str, ref, cvstr)
-string *str, **cvstr;
-long *ref;
+unsigned short ctrl_var(string *str, long *ref, string **cvstr)
 {
-    register vfh *h;
+    vfh *h;
 
     /* check if the variable exists */
     h = *(vfh **) ht_lookup(vtab, str->text, TRUE);
@@ -1567,8 +1521,8 @@ int ctrl_ninherits()
 bool ctrl_chkfuncs()
 {
     if (nundefs != 0) {
-	register cfunc *f;
-	register unsigned short i;
+	cfunc *f;
+	unsigned short i;
 
 	/*
 	 * private undefined prototypes
@@ -1585,9 +1539,9 @@ bool ctrl_chkfuncs()
     }
 
     if (nfclash != 0 || privinherit) {
-	register hte **t;
-	register unsigned short sz;
-	register vfh **f, **n;
+	hte **t;
+	unsigned short sz;
+	vfh **f, **n;
 	bool clash;
 
 	clash = FALSE;
@@ -1662,10 +1616,10 @@ bool ctrl_chkfuncs()
  */
 static void ctrl_mkstrings()
 {
-    register string **s;
-    register strchunk *l, *f;
-    register unsigned short i;
-    register long strsize;
+    string **s;
+    strchunk *l, *f;
+    unsigned short i;
+    long strsize;
 
     strsize = 0;
     if ((newctrl->nstrings = nstrs) != 0) {
@@ -1694,11 +1648,11 @@ static void ctrl_mkstrings()
  */
 static void ctrl_mkfuncs()
 {
-    register char *p;
-    register dfuncdef *d;
-    register cfunc *f;
-    register int i;
-    register unsigned int len;
+    char *p;
+    dfuncdef *d;
+    cfunc *f;
+    int i;
+    unsigned int len;
 
     newctrl->progsize = progsize;
     if ((newctrl->nfuncdefs = nfdefs) != 0) {
@@ -1731,8 +1685,8 @@ static void ctrl_mkvars()
 	newctrl->vardefs = ALLOC(dvardef, nvars);
 	memcpy(newctrl->vardefs, variables, nvars * sizeof(dvardef));
 	if ((newctrl->nclassvars = nclassvars) != 0) {
-	    register unsigned short i;
-	    register string **s;
+	    unsigned short i;
+	    string **s;
 
 	    newctrl->cvstrings = ALLOC(string*, nvars * sizeof(string*));
 	    memcpy(newctrl->cvstrings, cvstrings, nvars * sizeof(string*));
@@ -1753,10 +1707,10 @@ static void ctrl_mkvars()
  */
 static void ctrl_mkfcalls()
 {
-    register char *fc;
-    register int i;
-    register vfh *h;
-    register fcchunk *l;
+    char *fc;
+    int i;
+    vfh *h;
+    fcchunk *l;
     dinherit *inh;
     oh *ohash;
 
@@ -1773,11 +1727,11 @@ static void ctrl_mkfcalls()
 	 */
 	ohash = oh_new(OBJR(inh->oindex)->chain.name);
 	if (ohash->index == i) {
-	    register char *ofc;
-	    register dfuncdef *f;
-	    register control *ctrl;
-	    register object *obj;
-	    register uindex j, n;
+	    char *ofc;
+	    dfuncdef *f;
+	    control *ctrl;
+	    object *obj;
+	    uindex j, n;
 
 	    /*
 	     * build the function call segment, based on the function call
@@ -1846,8 +1800,8 @@ static void ctrl_mkfcalls()
  */
 static void ctrl_mksymbs()
 {
-    register unsigned short i, n, x, ncoll;
-    register dsymbol *symtab, *coll;
+    unsigned short i, n, x, ncoll;
+    dsymbol *symtab, *coll;
     dinherit *inh;
 
     if ((newctrl->nsymbols = nsymbs) == 0) {
@@ -1869,8 +1823,8 @@ static void ctrl_mksymbs()
      * object once.
      */
     for (i = 0, inh = newctrl->inherits; i <= ninherits; i++, inh++) {
-	register dfuncdef *f;
-	register control *ctrl;
+	dfuncdef *f;
+	control *ctrl;
 
 	if (i == ninherits) {
 	    ctrl = newctrl;
@@ -1882,8 +1836,8 @@ static void ctrl_mksymbs()
 	}
 
 	for (f = ctrl->funcdefs, n = 0; n < ctrl->nfuncdefs; f++, n++) {
-	    register vfh *h;
-	    register char *name;
+	    vfh *h;
+	    char *name;
 
 	    if ((f->class & C_PRIVATE) ||
 		(i == 0 && ninherits != 0 &&
@@ -1960,13 +1914,12 @@ static void ctrl_mksymbs()
  * NAME:	ctrl->mkvtypes()
  * DESCRIPTION:	make the variable type table for the control block
  */
-void ctrl_mkvtypes(ctrl)
-register control *ctrl;
+void ctrl_mkvtypes(control *ctrl)
 {
-    register char *type;
-    register unsigned short max, nv, n;
-    register dinherit *inh;
-    register dvardef *var;
+    char *type;
+    unsigned short max, nv, n;
+    dinherit *inh;
+    dvardef *var;
 
     max = ctrl->nvariables - ctrl->nvardefs;
     if (max == 0) {
@@ -1993,15 +1946,12 @@ register control *ctrl;
  * NAME:	control->symb()
  * DESCRIPTION:	return the entry in the symbol table for func, or NULL
  */
-dsymbol *ctrl_symb(ctrl, func, len)
-register control *ctrl;
-char *func;
-unsigned int len;
+dsymbol *ctrl_symb(control *ctrl, char *func, unsigned int len)
 {
-    register dsymbol *symb;
-    register dfuncdef *f;
-    register unsigned int i, j;
-    register string *str;
+    dsymbol *symb;
+    dfuncdef *f;
+    unsigned int i, j;
+    string *str;
     dsymbol *symtab, *symb1;
     dinherit *inherits;
 
@@ -2046,7 +1996,7 @@ unsigned int len;
  */
 control *ctrl_construct()
 {
-    register control *ctrl;
+    control *ctrl;
 
     ctrl = newctrl;
     ctrl->nvariables += nvars;
@@ -2092,8 +2042,8 @@ void ctrl_clear()
     }
     str_clear();
     while (str_list != (strchunk *) NULL) {
-	register strchunk *l;
-	register string **s;
+	strchunk *l;
+	string **s;
 
 	l = str_list;
 	s = &l->s[strchunksz];
@@ -2105,7 +2055,7 @@ void ctrl_clear()
 	FREE(l);
     }
     while (fclist != (fcchunk *) NULL) {
-	register fcchunk *l;
+	fcchunk *l;
 
 	l = fclist;
 	fclist = l->next;
@@ -2113,8 +2063,8 @@ void ctrl_clear()
     }
     fcchunksz = FCALL_CHUNK;
     if (functions != (cfunc *) NULL) {
-	register int i;
-	register cfunc *f;
+	int i;
+	cfunc *f;
 
 	for (i = nfdefs, f = functions; i > 0; --i, f++) {
 	    FREE(f->proto);
@@ -2133,8 +2083,8 @@ void ctrl_clear()
 	variables = (dvardef *) NULL;
     }
     if (cvstrings != (string **) NULL) {
-	register unsigned short i;
-	register string **s;
+	unsigned short i;
+	string **s;
 
 	for (i = nvars, s = cvstrings; i != 0; --i, s++) {
 	    if (*s != (string *) NULL) {
@@ -2154,15 +2104,14 @@ void ctrl_clear()
  * NAME:	control->varmap()
  * DESCRIPTION:	create a variable mapping from the old control block to the new
  */
-unsigned short *ctrl_varmap(old, new)
-register control *old, *new;
+unsigned short *ctrl_varmap(control *old, control *new)
 {
-    register unsigned short j, k;
-    register dvardef *v;
-    register long n;
-    register unsigned short *vmap;
-    register dinherit *inh, *inh2;
-    register control *ctrl, *ctrl2;
+    unsigned short j, k;
+    dvardef *v;
+    long n;
+    unsigned short *vmap;
+    dinherit *inh, *inh2;
+    control *ctrl, *ctrl2;
     unsigned short i, voffset;
 
     /*
@@ -2278,20 +2227,18 @@ register control *old, *new;
  * NAME:	control->undefined()
  * DESCRIPTION:	list the undefined functions in a program
  */
-array *ctrl_undefined(data, ctrl)
-register dataspace *data;
-register control *ctrl;
+array *ctrl_undefined(dataspace *data, control *ctrl)
 {
     typedef struct {
 	short count;		/* number of undefined functions */
 	short index;		/* index in inherits list */
     } ulist;
-    register ulist *u, *list;
-    register short i;
-    register dsymbol *symb;
-    register dfuncdef *f;
-    register value *v;
-    register object *obj;
+    ulist *u, *list;
+    short i;
+    dsymbol *symb;
+    dfuncdef *f;
+    value *v;
+    object *obj;
     dinherit *inherits;
     dsymbol *symtab;
     unsigned short nsymbols;

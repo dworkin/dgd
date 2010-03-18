@@ -16,19 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void		 tk_init	P((void));
-extern void		 tk_clear	P((void));
-extern bool		 tk_include	P((char*, string**, int));
-extern void		 tk_endinclude	P((void));
-extern unsigned short	 tk_line	P((void));
-extern char		*tk_filename	P((void));
-extern void		 tk_setline	P((unsigned int));
-extern void		 tk_setfilename	P((char*));
-extern void		 tk_header	P((int));
-extern void		 tk_setpp	P((int));
-extern int		 tk_gettok	P((void));
-extern void		 tk_skiptonl	P((int));
-extern int		 tk_expand	P((macro*));
+extern void		 tk_init	(void);
+extern void		 tk_clear	(void);
+extern bool		 tk_include	(char*, string**, int);
+extern void		 tk_endinclude	(void);
+extern unsigned short	 tk_line	(void);
+extern char		*tk_filename	(void);
+extern void		 tk_setline	(unsigned short);
+extern void		 tk_setfilename	(char*);
+extern void		 tk_header	(int);
+extern void		 tk_setpp	(int);
+extern int		 tk_gettok	(void);
+extern void		 tk_skiptonl	(int);
+extern int		 tk_expand	(macro*);
 
 extern char *yytext;
 extern int yyleng;

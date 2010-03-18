@@ -23,17 +23,17 @@ struct _string_ {
     char text[1];		/* actual characters following this struct */
 };
 
-extern string	       *str_alloc	P((char*, long));
-extern string	       *str_new		P((char*, long));
+extern string	       *str_alloc	(char*, long);
+extern string	       *str_new		(char*, long);
 # define str_ref(s)	((s)->ref++)
-extern void		str_del		P((string*));
+extern void		str_del		(string*);
 
-extern void		str_merge	P((void));
-extern Uint		str_put		P((string*, Uint));
-extern void		str_clear	P((void));
+extern void		str_merge	(void);
+extern Uint		str_put		(string*, Uint);
+extern void		str_clear	(void);
 
-extern int		str_cmp		P((string*, string*));
-extern string	       *str_add		P((string*, string*));
-extern ssizet		str_index	P((string*, long));
-extern void		str_ckrange	P((string*, long, long));
-extern string	       *str_range	P((string*, long, long));
+extern int		str_cmp		(string*, string*);
+extern string	       *str_add		(string*, string*);
+extern ssizet		str_index	(string*, long);
+extern void		str_ckrange	(string*, long, long);
+extern string	       *str_range	(string*, long, long);

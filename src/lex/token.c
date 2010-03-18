@@ -93,13 +93,9 @@ void tk_init()
  * DESCRIPTION:	Push a buffer on the token input stream. If eof is false, then
  *		the buffer will automatically be dropped when all is read.
  */
-static void push(mc, buffer, buflen, eof)
-macro *mc;
-char *buffer;
-unsigned int buflen;
-bool eof;
+static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 {
-    register tbuf *tb;
+    tbuf *tb;
 
     if (flist != (tbuf *) NULL) {
 	/* from free list */
@@ -108,7 +104,7 @@ bool eof;
     } else {
 	/* allocate new one */
 	if (tchunksz == TCHUNKSZ) {
-	    register tchunk *l;
+	    tchunk *l;
 
 	    l = ALLOC(tchunk, 1);
 	    l->next = tlist;
@@ -136,7 +132,7 @@ bool eof;
  */
 static void pop()
 {
-    register tbuf *tb;
+    tbuf *tb;
 
     tb = tbuffer;
     if (tb->fd < -1) {
@@ -169,7 +165,7 @@ static void pop()
  */
 void tk_clear()
 {
-    register tchunk *l, *f;
+    tchunk *l, *f;
 
     while (tbuffer != (tbuf *) NULL) {
 	pop();
@@ -192,10 +188,7 @@ void tk_clear()
  * NAME:	token->include()
  * DESCRIPTION:	push a file on the input stream
  */
-bool tk_include(file, strs, nstr)
-char *file;
-string **strs;
-int nstr;
+bool tk_include(char *file, string **strs, int nstr)
 {
     int fd;
     ssizet len;
@@ -278,8 +271,7 @@ char *tk_filename()
  * NAME:	token->setline()
  * DESCRIPTION:	set the current line number
  */
-void tk_setline(line)
-unsigned int line;
+void tk_setline(unsigned short line)
 {
     ibuffer->line = line;
 }
@@ -288,10 +280,9 @@ unsigned int line;
  * NAME:	token->setfilename()
  * DESCRIPTION:	set the current file name
  */
-void tk_setfilename(file)
-char *file;
+void tk_setfilename(char *file)
 {
-    register unsigned int len;
+    unsigned int len;
 
     len = strlen(file);
     if (len >= STRINGSZ) {
@@ -307,8 +298,7 @@ char *file;
  * DESCRIPTION:	set the current include string mode. if TRUE, '<' will be
  *		specially processed.
  */
-void tk_header(incl)
-int incl;
+void tk_header(int incl)
 {
     do_include = incl;
 }
@@ -318,18 +308,17 @@ int incl;
  * DESCRIPTION:	if the argument is true, do not translate escape sequences in
  *		strings, and don't report errors.
  */
-void tk_setpp(pp)
-int pp;
+void tk_setpp(int pp)
 {
     pp_level = (int) pp;
 }
 
-# define uc(c)	do { \
+# define uc(c)	{ \
 		    if ((c) != EOF) { \
 			if ((c) == LF && tbuffer == ibuffer) ibuffer->line--; \
 			*(tbuffer->up)++ = (c); \
 		    } \
-		} while (FALSE)
+		}
 
 /*
  * NAME:	gc()
@@ -337,9 +326,9 @@ int pp;
  */
 static int gc()
 {
-    register tbuf *tb;
-    register int c;
-    register bool backslash;
+    tbuf *tb;
+    int c;
+    bool backslash;
 
     tb = tbuffer;
     backslash = FALSE;
@@ -401,7 +390,7 @@ static int gc()
  */
 static void skip_comment()
 { 
-    register int c;
+    int c;
 
     do {
         do {
@@ -424,7 +413,7 @@ static void skip_comment()
  */
 static void skip_alt_comment()
 {
-    register int c;
+    int c;
 
     do {
         c = gc();
@@ -435,10 +424,9 @@ static void skip_alt_comment()
  * NAME:	comment()
  * DESCRIPTION:	skip comments and white space
  */
-static void comment(flag)
-int flag;
+static void comment(int flag)
 {
-    register int c;
+    int c;
 
     for (;;) {
         /* first skip the current comment */
@@ -461,7 +449,8 @@ int flag;
 	c = gc();
 	if ( ( c != '*' ) && ( c != '/' )) {
 	    uc(c);
-	    uc('/');
+	    c = '/';
+	    uc(c);
 	    break;
 	}
         flag = ( c == '/' );
@@ -472,10 +461,9 @@ int flag;
  * NAME:	token->esc()
  * DESCRIPTION:	handle an escaped character, leaving the value in yynumber
  */
-static char *tk_esc(p)
-register char *p;
+static char *tk_esc(char *p)
 {
-    register int c, i, n;
+    int c, i, n;
 
     switch (c = *p++ = gc()) {
     case 'a': c = BEL; break;
@@ -540,11 +528,10 @@ register char *p;
  * DESCRIPTION:	handle a string. If pp_level > 0, don't translate escape
  *		sequences.
  */
-static int tk_string(quote)
-char quote;
+static int tk_string(char quote)
 {
-    register char *p;
-    register int c, n;
+    char *p;
+    int c, n;
 
     p = yytext;
     if (pp_level > 0) {
@@ -602,14 +589,14 @@ char quote;
  */
 int tk_gettok()
 {
-    register int c;
-    register long result;
-    register char *p;
-    register bool overflow;
+    int c;
+    long result;
+    char *p;
+    bool overflow;
     bool is_float, badoctal;
 
 # define TEST(x, tok)	if (c == x) { c = tok; break; }
-# define CHECK(x, tok)	*p++ = c = gc(); TEST(x, tok); --p; uc(c)
+# define CHECK(x, tok)	c = gc(); *p++ = c; TEST(x, tok); --p; uc(c)
 
     result = 0;
     overflow = FALSE;
@@ -617,7 +604,8 @@ int tk_gettok()
     yytext = (yytext == yytext1) ? yytext2 : yytext1;
     yyend = yytext + MAX_LINE_SIZE - 1;
     p = yytext;
-    *p++ = c = gc();
+    c = gc();
+    *p++ = c;
     switch (c) {
     case LF:
 	if (tbuffer == ibuffer) {
@@ -651,7 +639,8 @@ int tk_gettok()
 		comment( c == '/' );
 	    } else {
 		uc(c);
-		uc('/');
+		c = '/';
+		uc(c);
 	    }
 	} else {
 	    uc(c);
@@ -678,7 +667,8 @@ int tk_gettok()
 	break;
 
     case '&':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('&', LAND);
 	TEST('=', AND_EQ);
 	--p; uc(c);
@@ -691,7 +681,8 @@ int tk_gettok()
 	break;
 
     case '+':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('+', PLUS_PLUS);
 	TEST('=', PLUS_EQ);
 	--p; uc(c);
@@ -699,7 +690,8 @@ int tk_gettok()
 	break;
 
     case '-':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('>', RARROW);
 	TEST('-', MIN_MIN);
 	TEST('=', MIN_EQ);
@@ -830,7 +822,8 @@ int tk_gettok()
 	    seen_nl = FALSE;
 	    return tk_string('>');
 	}
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('=', LE);
 	TEST('-', LARROW);
 	if (c == '<') {
@@ -848,7 +841,8 @@ int tk_gettok()
 	break;
 
     case '>':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('=', GE);
 	if (c == '>') {
 	    CHECK('=', RSHIFT_EQ);
@@ -865,7 +859,8 @@ int tk_gettok()
 	break;
 
     case '|':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	TEST('|', LOR);
 	TEST('=', OR_EQ);
 	--p; uc(c);
@@ -1012,7 +1007,8 @@ int tk_gettok()
 	break;
 
     case '\'':
-	*p++ = c = gc();
+	c = gc();
+	*p++ = c;
 	if (c == '\'') {
 	    if (pp_level == 0) {
 		error("too short character constant");
@@ -1028,7 +1024,8 @@ int tk_gettok()
 	    } else {
 		yynumber = c;
 	    }
-	    *p++ = c = gc();
+	    c = gc();
+	    *p++ = c;
 	    if (c != '\'') {
 		if (pp_level == 0) {
 		    error("illegal character constant");
@@ -1055,8 +1052,7 @@ int tk_gettok()
  * DESCRIPTION:	skip tokens until a newline or EOF is found. If the argument is
  *		TRUE, only whitespace is allowed.
  */
-void tk_skiptonl(ws)
-int ws;
+void tk_skiptonl(int ws)
 {
     pp_level++;
     for (;;) {
@@ -1091,13 +1087,12 @@ int ws;
  *			0 if the macro is ftn-like and the call isn't
  *			1 if the macro was expanded
  */
-int tk_expand(mc)
-register macro *mc;
+int tk_expand(macro *mc)
 {
-    register int token;
+    int token;
 
     if (tbuffer != ibuffer) {
-	register tbuf *tb;
+	tbuf *tb;
 
 	token = gc();
 	if (token == LF) {
@@ -1117,8 +1112,8 @@ register macro *mc;
 
     if (mc->narg >= 0) {
 	char *args[MAX_NARG], *arg, ppbuf[MAX_REPL_SIZE];
-	register int narg;
-	register str *s;
+	int narg;
+	str *s;
 	unsigned short startline, line;
 	int errcount;
 
@@ -1252,7 +1247,7 @@ register macro *mc;
 		    token = gc();
 		    narg = token & MA_NARG;
 		    if (token & MA_STRING) {
-			register char *p;
+			char *p;
 
 			/* copy it, inserting \ before \ and " */
 			push((macro *) NULL, args[narg], strlen(args[narg]),

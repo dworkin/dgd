@@ -32,6 +32,7 @@
 # include "optimize.h"
 # include "codegen.h"
 # include "compile.h"
+# include <stdarg.h>
 
 # define COND_CHUNK	16
 # define COND_BMAP	((MAX_LOCALS + 1) >> 3)
@@ -83,17 +84,16 @@ static var variables[MAX_LOCALS];	/* variables */
  * NAME:	cond->new()
  * DESCRIPTION:	create a new condition
  */
-static void cond_new(c2)
-cond *c2;
+static void cond_new(cond *c2)
 {
-    register cond *c;
+    cond *c;
 
     if (fclist != (cond *) NULL) {
 	c = fclist;
 	fclist = c->prev;
     } else {
 	if (cchunksz == COND_CHUNK) {
-	    register cchunk *cc;
+	    cchunk *cc;
 
 	    cc = ALLOC(cchunk, 1);
 	    cc->next = clist;
@@ -117,7 +117,7 @@ cond *c2;
  */
 static void cond_del()
 {
-    register cond *c;
+    cond *c;
 
     c = thiscond;
     thiscond = c->prev;
@@ -129,11 +129,10 @@ static void cond_del()
  * NAME:	cond->match()
  * DESCRIPTION:	match two init bitmaps
  */
-static void cond_match(c1, c2, c3)
-cond *c1, *c2, *c3;
+static void cond_match(cond *c1, cond *c2, cond *c3)
 {
-    register char *p, *q, *r;
-    register int i;
+    char *p, *q, *r;
+    int i;
 
     p = c1->init;
     q = c2->init;
@@ -149,10 +148,10 @@ cond *c1, *c2, *c3;
  */
 static void cond_clear()
 {
-    register cchunk *c;
+    cchunk *c;
 
     for (c = clist; c != (cchunk *) NULL; ) {
-	register cchunk *f;
+	cchunk *f;
 
 	f = c;
 	c = c->next;
@@ -170,14 +169,14 @@ static void cond_clear()
  */
 static void block_new()
 {
-    register block *b;
+    block *b;
 
     if (fblist != (block *) NULL) {
 	b = fblist;
 	fblist = b->prev;
     } else {
 	if (bchunksz == BLOCK_CHUNK) {
-	    register bchunk *l;
+	    bchunk *l;
 
 	    l = ALLOC(bchunk, 1);
 	    l->next = blist;
@@ -202,11 +201,10 @@ static void block_new()
  * NAME:	block->del()
  * DESCRIPTION:	finish the current block
  */
-static void block_del(keep)
-bool keep;
+static void block_del(bool keep)
 {
-    register block *f;
-    register int i;
+    block *f;
+    int i;
 
     f = thisblock;
     if (keep) {
@@ -232,10 +230,9 @@ bool keep;
  * NAME:	block->var()
  * DESCRIPTION:	return the index of the local var if found, or -1
  */
-static int block_var(name)
-char *name;
+static int block_var(char *name)
 {
-    register int i;
+    int i;
 
     for (i = vindex; i > 0; ) {
 	if (strcmp(variables[--i].name, name) == 0) {
@@ -249,10 +246,7 @@ char *name;
  * NAME:	block->pdef()
  * DESCRIPTION:	declare a function parameter
  */
-static void block_pdef(name, type, cvstr)
-char *name;
-short type;
-string *cvstr;
+static void block_pdef(char *name, short type, string *cvstr)
 {
     if (block_var(name) >= 0) {
 	c_error("redeclaration of parameter %s", name);
@@ -271,10 +265,7 @@ string *cvstr;
  * NAME:	block->vdef()
  * DESCRIPTION:	declare a local variable
  */
-static void block_vdef(name, type, cvstr)
-char *name;
-short type;
-string *cvstr;
+static void block_vdef(char *name, short type, string *cvstr)
 {
     if (block_var(name) >= thisblock->vindex) {
 	c_error("redeclaration of local variable %s", name);
@@ -299,10 +290,10 @@ string *cvstr;
  */
 static void block_clear()
 {
-    register bchunk *l;
+    bchunk *l;
 
     for (l = blist; l != (bchunk *) NULL; ) {
-	register bchunk *f;
+	bchunk *f;
 
 	f = l;
 	l = l->next;
@@ -347,17 +338,16 @@ static unsigned short nesting;	/* current rlimits/catch nesting level */
  * NAME:	loop->new()
  * DESCRIPTION:	create a new loop
  */
-static loop *loop_new(prev)
-loop *prev;
+static loop *loop_new(loop *prev)
 {
-    register loop *l;
+    loop *l;
 
     if (fllist != (loop *) NULL) {
 	l = fllist;
 	fllist = l->prev;
     } else {
 	if (lchunksz == LOOP_CHUNK) {
-	    register lchunk *lc;
+	    lchunk *lc;
 
 	    lc = ALLOC(lchunk, 1);
 	    lc->next = llist;
@@ -377,10 +367,9 @@ loop *prev;
  * NAME:	loop->del()
  * DESCRIPTION:	delete a loop
  */
-static loop *loop_del(l)
-register loop *l;
+static loop *loop_del(loop *l)
 {
-    register loop *f;
+    loop *f;
 
     f = l;
     l = l->prev;
@@ -395,10 +384,10 @@ register loop *l;
  */
 static void loop_clear()
 {
-    register lchunk *l;
+    lchunk *l;
 
     for (l = llist; l != (lchunk *) NULL; ) {
-	register lchunk *f;
+	lchunk *f;
 
 	f = l;
 	l = l->next;
@@ -435,9 +424,7 @@ extern int nerrors;			/* # of errors during parsing */
  * NAME:	compile->init()
  * DESCRIPTION:	initialize the compiler
  */
-void c_init(a, d, i, p, tc)
-char *a, *d, *i, **p;
-int tc;
+void c_init(char *a, char *d, char *i, char **p, int tc)
 {
     stricttc = (tc == 2);
     node_init(stricttc);
@@ -482,15 +469,14 @@ static long ncompiled;		/* # objects compiled */
  * DESCRIPTION:	Inherit an object in the object currently being compiled.
  *		Return TRUE if compilation can continue, or FALSE otherwise.
  */
-bool c_inherit(file, label, priv)
-register char *file;
-node *label;
-int priv;
+bool c_inherit(char *file, node *label, int priv)
 {
     char buf[STRINGSZ];
-    register object *obj;
-    register frame *f;
+    object *obj;
+    frame *f;
     long ncomp;
+
+    obj = NULL;
 
     if (strcmp(current->file, auto_object) == 0) {
 	c_error("cannot inherit from auto object");
@@ -562,25 +548,21 @@ int priv;
 			priv);
 }
 
+extern int yyparse (void);
+
 /*
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(f, file, obj, strs, nstr, iflag)
-frame *f;
-register char *file;
-object *obj;
-string **strs;
-int nstr;
-int iflag;
+object *c_compile(frame *f, char *file, object *obj, string **strs, 
+	int nstr, int iflag)
 {
     context c;
     char file_c[STRINGSZ + 2];
-    extern int yyparse P((void));
 
     if (iflag) {
-	register context *cc;
-	register int n;
+	context *cc;
+	int n;
 
 	for (cc = current, n = 0; cc != (context *) NULL; cc = cc->prev, n++) {
 	    if (strcmp(file, cc->file) == 0) {
@@ -750,10 +732,9 @@ int c_autodriver()
  * NAME:	revert_list()
  * DESCRIPTION:	revert a "linked list" of nodes
  */
-static node *revert_list(n)
-register node *n;
+static node *revert_list(node *n)
 {
-    register node *m;
+    node *m;
 
     if (n != (node *) NULL && n->type == N_PAIR) {
 	while ((m=n->l.left)->type == N_PAIR) {
@@ -772,14 +753,13 @@ register node *n;
  * NAME:	compile->objecttype()
  * DESCRIPTION:	handle an object type
  */
-string *c_objecttype(n)
-register node *n;
+string *c_objecttype(node *n)
 {
     char path[STRINGSZ];
 
     if (!cg_compiled()) {
 	char *p;
-	register frame *f;
+	frame *f;
 
 	f = current->frame;
 	p = tk_filename();
@@ -805,17 +785,14 @@ register node *n;
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(class, type, str, formals, function)
-unsigned short class;
-register node *type, *formals;
-string *str;
-bool function;
+static void c_decl_func(unsigned short class, node *type, string *str, 
+	node *formals, bool function)
 {
     char proto[5 + (MAX_LOCALS + 1) * 3];
     char tnbuf[17];
-    register char *p, t;
-    register int nargs, vargs;
-    register long l;
+    char *p, t;
+    int nargs, vargs;
+    long l;
     bool typechecked, varargs;
 
     varargs = FALSE;
@@ -944,11 +921,8 @@ bool function;
  * NAME:	compile->decl_var()
  * DESCRIPTION:	declare a variable
  */
-static void c_decl_var(class, type, str, global)
-unsigned short class;
-node *type;
-string *str;
-bool global;
+static void c_decl_var(unsigned short class, node *type, string *str, 
+	bool global)
 {
     char tnbuf[17];
 
@@ -974,12 +948,10 @@ bool global;
  * NAME:	compile->decl_list()
  * DESCRIPTION:	handle a list of declarations
  */
-static void c_decl_list(class, type, list, global)
-register unsigned short class;
-register node *type, *list;
-bool global;
+static void c_decl_list(unsigned short class, node *type, node *list, 
+	bool global)
 {
-    register node *n;
+    node *n;
 
     list = revert_list(list);	/* for proper order of err mesgs */
     while (list != (node *) NULL) {
@@ -1003,9 +975,7 @@ bool global;
  * NAME:	compile->global()
  * DESCRIPTION:	handle a global declaration
  */
-void c_global(class, type, n)
-unsigned int class;
-node *type, *n;
+void c_global(unsigned int class, node *type, node *n)
 {
     if (!seen_decls) {
 	ctrl_create();
@@ -1021,9 +991,7 @@ static unsigned short fline;	/* first line of function */
  * NAME:	compile->function()
  * DESCRIPTION:	create a function
  */
-void c_function(class, type, n)
-unsigned int class;
-register node *type, *n;
+void c_function(unsigned int class, node *type, node *n)
 {
     if (!seen_decls) {
 	ctrl_create();
@@ -1037,8 +1005,7 @@ register node *type, *n;
  * NAME:	compile->funcbody()
  * DESCRIPTION:	create a function body
  */
-void c_funcbody(n)
-register node *n;
+void c_funcbody(node *n)
 {
     char *prog;
     Uint depth;
@@ -1078,9 +1045,7 @@ register node *n;
  * NAME:	compile->local()
  * DESCRIPTION:	handle local declarations
  */
-void c_local(class, type, n)
-unsigned int class;
-node *type, *n;
+void c_local(unsigned int class, node *type, node *n)
 {
     c_decl_list(class, type, n, FALSE);
 }
@@ -1128,8 +1093,7 @@ void c_matchcond()
  * NAME:	compile->nil()
  * DESCRIPTION:	check if an expression has the value nil
  */
-bool c_nil(n)
-register node *n;
+bool c_nil(node *n)
 {
     if (n->type == N_COMMA) {
 	/* the parser always generates comma expressions as (a, b), c */
@@ -1142,8 +1106,7 @@ register node *n;
  * NAME:	compile->concat()
  * DESCRIPTION:	concatenate two statements
  */
-node *c_concat(n1, n2)
-register node *n1, *n2;
+node *c_concat(node *n1, node *n2)
 {
     node *n;
 
@@ -1164,8 +1127,7 @@ register node *n1, *n2;
  * NAME:	compile->exp_stmt()
  * DESCRIPTION:	reduce an expression to a statement
  */
-node *c_exp_stmt(n)
-node *n;
+node *c_exp_stmt(node *n)
 {
     if (n != (node *) NULL) {
 	return node_mon(N_POP, 0, n);
@@ -1177,8 +1139,7 @@ node *n;
  * NAME:	compile->if()
  * DESCRIPTION:	handle an if statement
  */
-node *c_if(n1, n2)
-register node *n1, *n2;
+node *c_if(node *n1, node *n2)
 {
     return node_bin(N_IF, 0, n1, node_mon(N_ELSE, 0, n2));
 }
@@ -1187,11 +1148,10 @@ register node *n1, *n2;
  * NAME:	compile->endif()
  * DESCRIPTION:	end an if statement
  */
-node *c_endif(n1, n3)
-register node *n1, *n3;
+node *c_endif(node *n1, node *n3)
 {
-    register node *n2;
-    register int flags1, flags2;
+    node *n2;
+    int flags1, flags2;
 
     n2 = n1->r.right->l.left;
     n1->r.right->r.right = n3;
@@ -1218,9 +1178,7 @@ register node *n1, *n3;
  * NAME:	compile->block()
  * DESCRIPTION:	create a scope block for break or continue
  */
-static node *c_block(n, type, flags)
-node *n;
-int type, flags;
+static node *c_block(node *n, int type, int flags)
 {
     n = node_mon(N_BLOCK, type, n);
     n->flags |= n->l.left->flags & F_FLOW & ~F_RETURN & ~flags;
@@ -1240,8 +1198,7 @@ void c_loop()
  * NAME:	compile->reloop()
  * DESCRIPTION:	loop back a loop
  */
-static node *c_reloop(n)
-node *n;
+static node *c_reloop(node *n)
 {
     return (thisloop->cont) ? c_block(n, N_CONTINUE, F_END) : n;
 }
@@ -1250,8 +1207,7 @@ node *n;
  * NAME:	compile->endloop()
  * DESCRIPTION:	end a loop
  */
-static node *c_endloop(n)
-node *n;
+static node *c_endloop(node *n)
 {
     if (thisloop->brk) {
 	n = c_block(n, N_BREAK, F_BREAK);
@@ -1264,8 +1220,7 @@ node *n;
  * NAME:	compile->do()
  * DESCRIPTION:	end a do-while loop
  */
-node *c_do(n1, n2)
-register node *n1, *n2;
+node *c_do(node *n1, node *n2)
 {
     n1 = node_bin(N_DO, 0, n1, n2 = c_reloop(n2));
     if (n2 != (node *) NULL) {
@@ -1278,8 +1233,7 @@ register node *n1, *n2;
  * NAME:	compile->while()
  * DESCRIPTION:	end a while loop
  */
-node *c_while(n1, n2)
-register node *n1, *n2;
+node *c_while(node *n1, node *n2)
 {
     n1 = node_bin(N_FOR, 0, n1, n2 = c_reloop(n2));
     if (n2 != (node *) NULL) {
@@ -1292,9 +1246,7 @@ register node *n1, *n2;
  * NAME:	compile->for()
  * DESCRIPTION:	end a for loop
  */
-node *c_for(n1, n2, n3, n4)
-register node *n2, *n4;
-node *n1, *n3;
+node *c_for(node *n1, node *n2, node *n3, node *n4)
 {
     n4 = c_reloop(n4);
     n2 = node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
@@ -1319,8 +1271,7 @@ void c_startrlimits()
  * NAME:	compile->endrlimits()
  * DESCRIPTION:	handle statements with resource limitations
  */
-node *c_endrlimits(n1, n2, n3)
-node *n1, *n2, *n3;
+node *c_endrlimits(node *n1, node *n2, node *n3)
 {
     --nesting;
 
@@ -1328,7 +1279,7 @@ node *n1, *n2, *n3;
 	strcmp(current->file, auto_object) == 0) {
 	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
     } else {
-	register frame *f;
+	frame *f;
 
 	f = current->frame;
 	PUSH_STRVAL(f, str_new((char *) NULL, strlen(current->file) + 1L));
@@ -1368,11 +1319,10 @@ void c_endcatch()
  * NAME:	compile->donecatch()
  * DESCRIPTION:	handle statements within catch
  */
-node *c_donecatch(n1, n2)
-register node *n1, *n2;
+node *c_donecatch(node *n1, node *n2)
 {
-    register node *n;
-    register int flags1, flags2;
+    node *n;
+    int flags1, flags2;
 
     n = node_bin(N_CATCH, 0, n1, n2);
     if (n1 != (node *) NULL) {
@@ -1397,9 +1347,7 @@ register node *n1, *n2;
  * NAME:	compile->startswitch()
  * DESCRIPTION:	start a switch statement
  */
-void c_startswitch(n, typechecked)
-register node *n;
-int typechecked;
+void c_startswitch(node *n, int typechecked)
 {
     char tnbuf[17];
 
@@ -1418,16 +1366,15 @@ int typechecked;
     switch_list->env = thisloop;
 }
 
-static int cmp P((cvoid*, cvoid*));
+static int cmp (cvoid*, cvoid*);
 
 /*
  * NAME:	cmp()
  * DESCRIPTION:	compare two case label nodes
  */
-static int cmp(cv1, cv2)
-cvoid *cv1, *cv2;
+static int cmp(cvoid *cv1, cvoid *cv2)
 {
-    register node **n1, **n2;
+    node **n1, **n2;
 
     n1 = (node **) cv1;
     n2 = (node **) cv2;
@@ -1448,14 +1395,13 @@ cvoid *cv1, *cv2;
  * NAME:	compile->endswitch()
  * DESCRIPTION:	end a switch
  */
-node *c_endswitch(expr, stmt)
-node *expr, *stmt;
+node *c_endswitch(node *expr, node *stmt)
 {
     char tnbuf[17];
-    register node **v, **w, *n;
-    register unsigned short i, size;
-    register long l;
-    register unsigned long cnt;
+    node **v, **w, *n;
+    unsigned short i, size;
+    long l;
+    unsigned long cnt;
     short type, sz;
 
     n = stmt;
@@ -1643,8 +1589,7 @@ node *expr, *stmt;
  * NAME:	compile->case()
  * DESCRIPTION:	handle a case label
  */
-node *c_case(n1, n2)
-register node *n1, *n2;
+node *c_case(node *n1, node *n2)
 {
     if (switch_list == (loop *) NULL) {
 	c_error("case label not inside switch");
@@ -1726,7 +1671,7 @@ register node *n1, *n2;
  */
 node *c_default()
 {
-    register node *n;
+    node *n;
 
     n = (node *) NULL;
     if (switch_list == (loop *) NULL) {
@@ -1754,7 +1699,7 @@ node *c_default()
  */
 node *c_break()
 {
-    register loop *l;
+    loop *l;
     node *n;
 
     l = switch_list;
@@ -1796,9 +1741,7 @@ node *c_continue()
  * NAME:	compile->return()
  * DESCRIPTION:	handle a return statement
  */
-node *c_return(n, typechecked)
-register node *n;
-int typechecked;
+node *c_return(node *n, int typechecked)
 {
     char tnbuf1[17], tnbuf2[17];
 
@@ -1852,10 +1795,9 @@ void c_startcompound()
  * NAME:	compile->endcompound()
  * DESCRIPTION:	end a compound statement
  */
-node *c_endcompound(n)
-register node *n;
+node *c_endcompound(node *n)
 {
-    register int flags;
+    int flags;
 
     if (n != (node *) NULL) {
       if (n->type == N_PAIR) {
@@ -1867,8 +1809,8 @@ register node *n;
       n->flags = n->l.left->flags;
 
       if (thisblock->nvars != 0) {
-          register node *v, *l, *z, *f, *p;
-          register int i;
+          node *v, *l, *z, *f, *p;
+          int i;
 
           /*
            * create variable type definitions and implicit initializers
@@ -1951,9 +1893,7 @@ register node *n;
  * NAME:	compile->flookup()
  * DESCRIPTION:	look up a local function, inherited function or kfun
  */
-node *c_flookup(n, typechecked)
-register node *n;
-int typechecked;
+node *c_flookup(node *n, int typechecked)
 {
     char *proto;
     string *class;
@@ -1969,8 +1909,7 @@ int typechecked;
  * NAME:	compile->iflookup()
  * DESCRIPTION:	look up an inherited function
  */
-node *c_iflookup(n, label)
-node *n, *label;
+node *c_iflookup(node *n, node *label)
 {
     char *proto;
     string *class;
@@ -1988,9 +1927,7 @@ node *n, *label;
  * NAME:	compile->aggregate()
  * DESCRIPTION:	create an aggregate
  */
-node *c_aggregate(n, type)
-node *n;
-unsigned int type;
+node *c_aggregate(node *n, unsigned int type)
 {
     return node_mon(N_AGGR, type, revert_list(n));
 }
@@ -1999,10 +1936,9 @@ unsigned int type;
  * NAME:	compile->variable()
  * DESCRIPTION:	create a reference to a variable
  */
-node *c_variable(n)
-register node *n;
+node *c_variable(node *n)
 {
-    register int i;
+    int i;
 
     i = block_var(n->l.string->text);
     if (i >= 0) {
@@ -2031,8 +1967,7 @@ register node *n;
  * NAME:	compile->vtype()
  * DESCRIPTION:	return the type of a variable
  */
-short c_vtype(i)
-int i;
+short c_vtype(int i)
 {
     return variables[i].type;
 }
@@ -2041,8 +1976,7 @@ int i;
  * NAME:	lvalue()
  * DESCRIPTION:	check if a value can be an lvalue
  */
-static bool lvalue(n)
-register node *n;
+static bool lvalue(node *n)
 {
     if (n->type == N_CAST && n->mod == n->l.left->mod) {
 	/* only an implicit cast is allowed */
@@ -2064,12 +1998,11 @@ register node *n;
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
-static node *funcall(call, args)
-node *call, *args;
+static node *funcall(node *call, node *args)
 {
     char tnbuf[17];
-    register int n, nargs, t;
-    register node *func, **argv, **arg;
+    int n, nargs, t;
+    node *func, **argv, **arg;
     char *argp, *proto, *fname;
     bool typechecked, ellipsis;
     int spread;
@@ -2171,8 +2104,7 @@ node *call, *args;
  * NAME:	compile->funcall()
  * DESCRIPTION:	handle a function call
  */
-node *c_funcall(func, args)
-node *func, *args;
+node *c_funcall(node *func, node *args)
 {
     return funcall(func, revert_list(args));
 }
@@ -2181,8 +2113,7 @@ node *func, *args;
  * NAME:	compile->arrow()
  * DESCRIPTION:	handle ->
  */
-node *c_arrow(other, func, args)
-node *other, *func, *args;
+node *c_arrow(node *other, node *func, node *args)
 {
     if (args == (node *) NULL) {
 	args = func;
@@ -2197,9 +2128,7 @@ node *other, *func, *args;
  * NAME:	compile->instanceof()
  * DESCRIPTION:	handle <-
  */
-node *c_instanceof(n, prog)
-register node *n;
-register node *prog;
+node *c_instanceof(node *n, node *prog)
 {
     string *str;
 
@@ -2216,9 +2145,7 @@ register node *prog;
  * NAME:	compile->checkcall()
  * DESCRIPTION:	check return value of a system call
  */
-node *c_checkcall(n, typechecked)
-register node *n;
-int typechecked;
+node *c_checkcall(node *n, int typechecked)
 {
     if (n->type == N_FUNC && (n->r.number >> 24) == FCALL) {
 	if (typechecked) {
@@ -2245,8 +2172,7 @@ int typechecked;
  * NAME:	compile->tst()
  * DESCRIPTION:	handle a condition
  */
-node *c_tst(n)
-register node *n;
+node *c_tst(node *n)
 {
     switch (n->type) {
     case N_INT:
@@ -2292,8 +2218,7 @@ register node *n;
  * NAME:	compile->not()
  * DESCRIPTION:	handle a !condition
  */
-node *c_not(n)
-register node *n;
+node *c_not(node *n)
 {
     switch (n->type) {
     case N_INT:
@@ -2390,9 +2315,7 @@ register node *n;
  * NAME:	compile->lvalue()
  * DESCRIPTION:	handle an lvalue
  */
-node *c_lvalue(n, oper)
-node *n;
-char *oper;
+node *c_lvalue(node *n, char *oper)
 {
     if (!lvalue(n)) {
 	c_error("bad lvalue for %s", oper);
@@ -2405,10 +2328,9 @@ char *oper;
  * NAME:      compile->lval_aggr()
  * DESCRIPTION:       check an aggregate of lvalues
  */
-static void c_lval_aggr(n)
-register node **n;
+static void c_lval_aggr(node **n)
 {
-    register node **m;
+    node **m;
 
     if (*n == (node *) NULL) {
       c_error("no lvalues in aggregate");
@@ -2437,8 +2359,7 @@ register node **n;
  * NAME:	compile->assign()
  * DESCRIPTION:	handle an assignment
  */
-node *c_assign(n)
-register node *n;
+node *c_assign(node *n)
 {
     if (n->type == N_AGGR) {
 	c_lval_aggr(&n->l.left);
@@ -2457,8 +2378,7 @@ register node *n;
  * DESCRIPTION:	See if the two supplied types are compatible. If so, return the
  *		combined type. If not, return T_NIL.
  */
-unsigned short c_tmatch(type1, type2)
-register unsigned int type1, type2;
+unsigned short c_tmatch(unsigned int type1, unsigned int type2)
 {
     if (type1 == T_NIL || type2 == T_NIL) {
 	/* nil doesn't match with anything else */
@@ -2501,20 +2421,21 @@ register unsigned int type1, type2;
  * NAME:	compile->error()
  * DESCRIPTION:	Call the driver object with the supplied error message.
  */
-void c_error(format, a1, a2, a3)
-char *format, *a1, *a2, *a3;
+void c_error(char *format, ...)
 {
+    va_list args;
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
 	o_find(driver_object, OACC_READ) != (object *) NULL) {
-	register frame *f;
+	frame *f;
 
 	f = current->frame;
 	fname = tk_filename();
 	PUSH_STRVAL(f, str_new(fname, strlen(fname)));
 	PUSH_INTVAL(f, tk_line());
-	sprintf(buf, format, a1, a2, a3);
+	va_start(args, format);
+	vsprintf(buf, format, args);
 	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
@@ -2522,7 +2443,8 @@ char *format, *a1, *a2, *a3;
     } else {
 	/* there is no driver object to call; show the error on stderr */
 	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());
-	sprintf(buf + strlen(buf), format, a1, a2, a3);
+	va_start(args, format);
+	vsprintf(buf + strlen(buf), format, args);
 	message("%s\012", buf);     /* LF */
     }
 

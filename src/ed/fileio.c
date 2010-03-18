@@ -42,8 +42,8 @@ static char filename[STRINGSZ];	/* file name */
  */
 static char *get_line()
 {
-    register char c, *p, *bp;
-    register int i;
+    char c, *p, *bp;
+    int i;
 
     if (iostat->ill) {
 	/* previous line was incomplete, therefore the last */
@@ -98,11 +98,7 @@ static char *get_line()
  * NAME:	io_load()
  * DESCRIPTION:	append block read from file after a line
  */
-bool io_load(eb, fname, l, iobuf)
-editbuf *eb;
-char *fname;
-Int l;
-io *iobuf;
+bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
 {
     char b[MAX_LINE_SIZE], buf[BUF_SIZE];
     struct stat sbuf;
@@ -148,17 +144,16 @@ io *iobuf;
  * NAME:	put_line()
  * DESCRIPTION:	write a line to a file
  */
-static void put_line(text)
-register char *text;
+static void put_line(char *text)
 {
-    register unsigned int len;
+    unsigned int len;
 
     len = strlen(text);
     iostat->lines += 1;
     iostat->chars += len + 1;
     while (inbuf + len >= BUF_SIZE) {	/* flush buffer */
 	if (inbuf != BUF_SIZE) {	/* room left for a piece of line */
-	    register unsigned int chunk;
+	    unsigned int chunk;
 
 	    chunk = BUF_SIZE - inbuf;
 	    memcpy(buffer + inbuf, text, chunk);
@@ -181,12 +176,7 @@ register char *text;
  * NAME:	io_save()
  * DESCRIPTION:	write a range of lines to a file
  */
-bool io_save(eb, fname, first, last, append, iobuf)
-editbuf *eb;
-char *fname;
-Int first, last;
-int append;
-io *iobuf;
+bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobuf)
 {
     char buf[BUF_SIZE];
     struct stat sbuf;

@@ -16,15 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# if defined(__STDC__) || defined(__cplusplus)
-#  define P(proto)	proto
-#  define cvoid		const void
-# else
-#  define P(proto)	()
-#  define cvoid		char
-# endif
-
-
 # ifdef WIN32
 
 typedef int Int;
@@ -66,11 +57,6 @@ typedef unsigned int Uint;
 
 # define Uuint			unsigned __int64
 # define bool			dgd_bool
-# define exit			dgd_exit
-# define abort			dgd_abort
-
-extern void dgd_exit(int);
-extern void dgd_abort(void);
 
 # endif	/* WIN32 */
 
@@ -222,13 +208,15 @@ typedef char bool;
  * We assume this works on all compilers, but know it
  * doesn't on gcc before 2.x (does anyone use that anyway?)
  */
-# if !defined(__GNUC__) || __GNUC__ >= 2
-# define Uuint unsigned long long
-# else
-# error No long long support available?
+# ifndef Uuint
+#  if !defined(__GNUC__) || __GNUC__ >= 2
+#   define Uuint unsigned long long
+#  else
+#   error No long long support available?
+#  endif
 # endif
 
-extern void  P_message	P((char*));
+extern void  P_message	(char*);
 
 # ifndef O_BINARY
 # define O_BINARY	0
@@ -255,34 +243,34 @@ extern void  P_message	P((char*));
 # else
 	/* filename translation */
 typedef long off_t;
-extern char *path_native	P((char*, char*));
+extern char *path_native	(char*, char*);
 
-extern int P_open	P((char*, int, int));
-extern int P_close	P((int));
-extern int P_read	P((int, char*, int));
-extern int P_write	P((int, char*, int));
-extern off_t P_lseek	P((int, off_t, int));
-extern int P_fstat	P((int, struct stat*));
-extern int P_stat	P((char*, struct stat*));
-extern int P_access	P((char*, int));
-extern int P_unlink	P((char*));
-extern int P_rename	P((char*, char*));
-extern int P_mkdir	P((char*, int));
-extern int P_rmdir	P((char*));
-extern int P_chdir	P((char*));
+extern int P_open	(char*, int, int);
+extern int P_close	(int);
+extern int P_read	(int, char*, int);
+extern int P_write	(int, char*, int);
+extern off_t P_lseek	(int, off_t, int);
+extern int P_fstat	(int, struct stat*);
+extern int P_stat	(char*, struct stat*);
+extern int P_access	(char*, int);
+extern int P_unlink	(char*);
+extern int P_rename	(char*, char*);
+extern int P_mkdir	(char*, int);
+extern int P_rmdir	(char*);
+extern int P_chdir	(char*);
 # endif
 # endif /* INCLUDE_FILE_IO */
 
-extern bool  P_opendir	P((char*));
-extern char *P_readdir	P((void));
-extern void  P_closedir	P((void));
+extern bool  P_opendir	(char*);
+extern char *P_readdir	(void);
+extern void  P_closedir	(void);
 
-extern void  P_srandom	P((long));
-extern long  P_random	P((void));
+extern void  P_srandom	(long);
+extern long  P_random	(void);
 
-extern Uint  P_time	P((void));
-extern Uint  P_mtime	P((unsigned short*));
-extern char *P_ctime	P((char*, Uint));
+extern Uint  P_time	(void);
+extern Uint  P_mtime	(unsigned short*);
+extern char *P_ctime	(char*, Uint);
 
 /* these must be the same on all hosts */
 # define BEL	'\007'
@@ -305,3 +293,9 @@ struct _struct_al_ { long l; short s; };
 # define UCHAR(c)	((int) ((c) & 0xff))		/* unsigned character */
 # define SCHAR(c)	((char) (c))			/* signed character */
 # endif
+
+# ifndef UNREFERENCED_PARAMETER
+#  define UNREFERENCED_PARAMETER(P)	(void)(P)
+# endif
+
+typedef const void cvoid;
