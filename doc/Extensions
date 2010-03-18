@@ -188,7 +188,7 @@ To convert in the other direction, use the following code:
 
     DGD_STRING_T DGD_STRING_GETVAL(DGD_VALUE_T val);
     void	 DGD_STRING_PUTVAL(DGD_VALUE_T val, DGD_STRING_T str);
-    DGD_STRING_T DGD_STRING_NEW(DGD_FRAME_T f, char *text, int len);
+    DGD_STRING_T DGD_STRING_NEW(DGD_DATASPACE_T data, char *text, int len);
     char	*DGD_STRING_TEXT(DGD_STRING_T str);
     unsigned int DGD_STRING_LENGTH(DGD_STRING_T str);
 
@@ -204,6 +204,7 @@ their value.
     void	 DGD_ARRAY_PUTVAL(DGD_VALUE_T val, DGD_ARRAY_T arr);
     DGD_ARRAY_T	 DGD_ARRAY_NEW(DGD_DATASPACE_T data, int size);
     DGD_VALUE_T *DGD_ARRAY_ELTS(DGD_ARRAY_T arr);
+    unsigned int DGD_ARRAY_SIZE(DGD_ARRAY_T arr);
     DGD_VALUE_T	 DGD_ARRAY_INDEX(DGD_ARRAY_T arr, int i);
     void	 DGD_ARRAY_ASSIGN(DGD_DATASPACE_T data, DGD_ARRAY_T arr,
 				  int index, DGD_VALUE_T val);
@@ -216,6 +217,7 @@ directly, but ise DGD_MAPPING_ASSIGN() to change their value.
     void	  DGD_MAPPING_PUTVAL(DGD_VALUE_T val, DGD_MAPPING_T map);
     DGD_MAPPING_T DGD_MAPPING_NEW(DGD_DATASPACE_T data);
     DGD_VALUE_T  *DGD_MAPPING_ELTS(DGD_MAPPING_T map);
+    unsigned int  DGD_MAPPING_SIZE(DGD_ARRAY_T map);
     DGD_VALUE_T   DGD_MAPPING_INDEX(DGD_MAPPING_T map, DGD_VALUE_T index);
     void	  DGD_MAPPING_ASSIGN(DGD_DATASPACE_T data, DGD_MAPPING_T map,
 				     DGD_VALUE_T index, DGD_VALUE_T val);
@@ -234,6 +236,7 @@ static void lower_case(DGD_FRAME_T f, int nargs, DGD_VALUE_T *retval)
 {
     DGD_VALUE_T val;
     DGD_STRING_T str;
+    DGD_DATASPACE_T data;
     char *p;
     unsigned int i;
 
@@ -242,7 +245,8 @@ static void lower_case(DGD_FRAME_T f, int nargs, DGD_VALUE_T *retval)
     str = DGD_STRING_GETVAL(val);
 
     /* make a copy */
-    str = DGD_STRING_NEW(f, DGD_STRING_TEXT(str), DGD_STRING_LENGTH(str));
+    data = DGD_FRAME_DATASPACE(f);
+    str = DGD_STRING_NEW(data, DGD_STRING_TEXT(str), DGD_STRING_LENGTH(str));
 
     /* turn to lowercase */
     p = DGD_STRING_TEXT(str);

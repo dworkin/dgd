@@ -799,7 +799,7 @@ bool co_init(unsigned int max)
  * DESCRIPTION:	pretend to check a new callout
  */
 Uint co_check(unsigned int n, Int delay, unsigned int mdelay, 
-	Uint **tp, unsigned short *mp, cbuf **qp)
+	Uint *tp, unsigned short *mp, cbuf **qp)
 {
     return 0;
 }
@@ -859,7 +859,7 @@ void co_info(uindex *n1, uindex *n2)
  * NAME:	call_out->decode()
  * DESCRIPTION:	pretend to decode a callout time
  */
-Uint co_decode(Uint time, unsigned short mtime)
+Uint co_decode(Uint time, unsigned short *mtime)
 {
     return 0;
 }

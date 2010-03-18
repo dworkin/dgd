@@ -1,0 +1,37 @@
+A few useful notes for compiling DGD
+
+DGD's build process is very simple, and doesn't have
+a configure script.
+
+DGD can be compiled on Unix alike systems and on Windows,
+see doc/Platforms for more information. Also see 
+src/host/win32/README for additional information regarding
+the Windows build.
+
+There are a few things you can enable/disable by adding the
+proper defines to the Makefile on Unix systems, or to your
+project on Visual Studio.
+
+
+NETWORK_EXTENSIONS            Enable extended network functionality
+                              (outgoing connections, opening ports
+                              from LPC code)
+
+DUMP_FUNCS                    Enable dump_function and dump_object
+                              kfuns. Output from those kfuns goes to
+                              stderr, they can provide interesting
+                              information for those interested in DGD's
+                              virtual machine and bytecode interpreter
+                              as well as for debugging some problems.
+
+DGD_EXTENSION                 Enable the DGD extension interface, see
+                              doc/Extensions for more information about
+                              the extension interface.
+
+_FILE_OFFSET_BITS             Linux/Solaris only. Normally this is
+                              defined in host.h as _FILE_OFFSET_BITS=64
+                              You can override this from the Makefile
+                              if for some reason you need 32 bit file
+                              offsets. Note that this limits the size
+                              of the swap and dump files to 2GB.
+ 
