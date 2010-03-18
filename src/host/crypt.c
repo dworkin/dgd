@@ -444,9 +444,9 @@ string *P_encrypt_des_key(frame *f, string *keystr)
     for (i = 31; i >= 0; --i) {
 	k = *key++;
 	*p++ = k >> 24;
-	*p++ = (char) (k >> 16);
-	*p++ = (char) (k >> 8);
-	*p++ = (char) k;
+	*p++ = k >> 16;
+	*p++ = k >> 8;
+	*p++ = k;
     }
 
     return str;

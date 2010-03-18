@@ -1060,7 +1060,7 @@ static string *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint
     int i;
 
     /* append padding and digest final block(s) */
-    buffer[bufsz++] = (char) 0x80;
+    buffer[bufsz++] = 0x80;
     if (bufsz > 56) {
 	memset(buffer + bufsz, '\0', 64 - bufsz);
 	hash_md5_block(digest, buffer);
@@ -1183,7 +1183,7 @@ static string *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
     int i;
 
     /* append padding and digest final block(s) */
-    buffer[bufsz++] = (char) 0x80;
+    buffer[bufsz++] = 0x80;
     if (bufsz > 56) {
 	memset(buffer + bufsz, '\0', 64 - bufsz);
 	hash_sha1_block(digest, buffer);

@@ -223,7 +223,7 @@ ssizet str_index(string *s, long l)
 	error("String index out of range");
     }
 
-    return (ssizet) l;
+    return l;
 }
 
 /*

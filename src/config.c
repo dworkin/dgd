@@ -697,7 +697,7 @@ void conf_dread(int fd, char *buf, char *layout, Uint n)
 	if (i > n) {
 	    i = n;
 	}
-	if (P_read(fd, buffer, i * rsize) != (int) (i * rsize)) {
+	if (P_read(fd, buffer, i * rsize) != i * rsize) {
 	    fatal("cannot read from dump file");
 	}
 	conf_dconv(buf, buffer, layout, (Uint) i);
