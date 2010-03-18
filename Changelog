@@ -3,6 +3,17 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-18
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Enabled large swapfile support for Solaris and Linux for
+  default build, added some documentation on the various
+  defines available for modifying the build.
+
+  src/host.h
+  doc/Compiling
+
 2010-03-16
 
   Stephen Spiller (aka Kalinash)
