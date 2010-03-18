@@ -137,9 +137,9 @@ typedef dataspace *dgd_dataspace_t;
  */
 # define DGD_STRING_GETVAL(v)		((v).u.string)
 # define DGD_STRING_PUTVAL(v, s)	PUT_STRVAL_NOREF(&(v), (s))
-# define DGD_STRING_NEW(f, t, n)	str_new((t), (long) (n))
+# define DGD_STRING_NEW(d, t, n)	str_new((t), (long) (n))
 # define DGD_STRING_TEXT(s)		((s)->text)
-# define DGD_STRING_LENGTH(s)		((s)->len)
+# define DGD_STRING_LENGTH(s)		((unsigned int) (s)->len)
 
 /*
  * object
@@ -158,7 +158,7 @@ typedef dataspace *dgd_dataspace_t;
 # define DGD_ARRAY_PUTVAL(v, a)		PUT_ARRVAL_NOREF(&(v), (a))
 # define DGD_ARRAY_NEW(d, n)		arr_ext_new((d), (long) (n))
 # define DGD_ARRAY_ELTS(a)		d_get_elts((a))
-# define DGD_ARRAY_SIZE(a)		((a)->size)
+# define DGD_ARRAY_SIZE(a)		((unsigned int) (a)->size)
 # define DGD_ARRAY_INDEX(a, i)		(d_get_elts((a))[(i)])
 # define DGD_ARRAY_ASSIGN(d, a, i, v)	d_assign_elt((d), (a), \
 						    &d_get_elts((a))[(i)], &(v))
@@ -169,7 +169,7 @@ typedef dataspace *dgd_dataspace_t;
 # define DGD_MAPPING_PUTVAL(v, m)	PUT_MAPVAL_NOREF(&(v), (m))
 # define DGD_MAPPING_NEW(d)		map_new((d), 0L)
 # define DGD_MAPPING_ELTS(m)		(map_compact((m)), d_get_elts((m)))
-# define DGD_MAPPING_SIZE(m)		map_size((m))
+# define DGD_MAPPING_SIZE(m)		((unsigned int) map_size((m)))
 # define DGD_MAPPING_INDEX(m, i)	(*map_index((m)->primary->data, (m), \
 						    &(i), (value *) NULL))
 # define DGD_MAPPING_ASSIGN(d, m, i, v)	map_index((d), (m), &(i), &(v))
