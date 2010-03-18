@@ -76,7 +76,7 @@ typedef unsigned int Uint;
 # ifdef SOLARIS
 
 # if !defined( _FILE_OFFSET_BITS )
-# define _FILE_OFFSET_BITS=64   /* 64 bit file offsets */
+# define _FILE_OFFSET_BITS	64   /* 64 bit file offsets */
 # endif
 
 # define GENERIC_SYSV
@@ -117,7 +117,7 @@ typedef unsigned int Uint;
 # ifdef LINUX
 
 # if !defined( _FILE_OFFSET_BITS )
-# define _FILE_OFFSET_BITS=64   /* 64 bit file offsets */
+# define _FILE_OFFSET_BITS	64   /* 64 bit file offsets */
 # endif
 
 # define GENERIC_SYSV
