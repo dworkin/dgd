@@ -11,8 +11,13 @@ in doc/Changelog.Dworkin
   default build, added some documentation on the various
   defines available for modifying the build.
 
+  Imported change from baseline: Cleanup extension interface
+  and document some more macros
+
   src/host.h
+  src/dgd_ext.h
   doc/Compiling
+  doc/Extensions
 
 2010-03-16
 
