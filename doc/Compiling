@@ -9,7 +9,7 @@ src/host/win32/README for additional information regarding
 the Windows build.
 
 There are a few things you can enable/disable by adding the
-proper defines to the Makefil on Unix systems, or to your
+proper defines to the Makefile on Unix systems, or to your
 project on Visual Studio.
 
 
