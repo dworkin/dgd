@@ -1,0 +1,214 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\alloc.c" />
+    <ClCompile Include="..\..\array.c" />
+    <ClCompile Include="..\..\call_out.c" />
+    <ClCompile Include="..\..\comm.c" />
+    <ClCompile Include="..\..\comp\codegeni.c" />
+    <ClCompile Include="..\..\comp\compile.c" />
+    <ClCompile Include="..\..\comp\control.c" />
+    <ClCompile Include="..\..\comp\csupport.c" />
+    <ClCompile Include="..\..\comp\node.c" />
+    <ClCompile Include="..\..\comp\optimize.c" />
+    <ClCompile Include="..\..\comp\parser.c" />
+    <ClCompile Include="..\..\config.c" />
+    <ClCompile Include="..\..\data.c" />
+    <ClCompile Include="..\..\dgd.c" />
+    <ClCompile Include="..\..\editor.c" />
+    <ClCompile Include="..\..\ed\buffer.c" />
+    <ClCompile Include="..\..\ed\cmdsub.c" />
+    <ClCompile Include="..\..\ed\edcmd.c" />
+    <ClCompile Include="..\..\ed\fileio.c" />
+    <ClCompile Include="..\..\ed\line.c" />
+    <ClCompile Include="..\..\ed\regexp.c" />
+    <ClCompile Include="..\..\ed\vars.c" />
+    <ClCompile Include="..\..\error.c" />
+    <ClCompile Include="..\..\hash.c" />
+    <ClCompile Include="..\..\interpret.c" />
+    <ClCompile Include="..\..\kfun\builtin.c" />
+    <ClCompile Include="..\..\kfun\debug.c" />
+    <ClCompile Include="..\..\kfun\extra.c" />
+    <ClCompile Include="..\..\kfun\file.c" />
+    <ClCompile Include="..\..\kfun\math.c" />
+    <ClCompile Include="..\..\kfun\std.c" />
+    <ClCompile Include="..\..\kfun\table.c" />
+    <ClCompile Include="..\..\lex\macro.c" />
+    <ClCompile Include="..\..\lex\ppcontrol.c" />
+    <ClCompile Include="..\..\lex\ppstr.c" />
+    <ClCompile Include="..\..\lex\special.c" />
+    <ClCompile Include="..\..\lex\token.c" />
+    <ClCompile Include="..\..\lpc\lpc.c" />
+    <ClCompile Include="..\..\object.c" />
+    <ClCompile Include="..\..\parser\dfa.c" />
+    <ClCompile Include="..\..\parser\grammar.c" />
+    <ClCompile Include="..\..\parser\parse.c" />
+    <ClCompile Include="..\..\parser\srp.c" />
+    <ClCompile Include="..\..\path.c" />
+    <ClCompile Include="..\..\sdata.c" />
+    <ClCompile Include="..\..\str.c" />
+    <ClCompile Include="..\..\swap.c" />
+    <ClCompile Include="..\asn.c" />
+    <ClCompile Include="..\crypt.c" />
+    <ClCompile Include="..\simfloat.c" />
+    <ClCompile Include="connect.c" />
+    <ClCompile Include="dosfile.c" />
+    <ClCompile Include="local.c" />
+    <ClCompile Include="time.c" />
+    <ClCompile Include="windgd.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\alloc.h" />
+    <ClInclude Include="..\..\array.h" />
+    <ClInclude Include="..\..\asn.h" />
+    <ClInclude Include="..\..\call_out.h" />
+    <ClInclude Include="..\..\comm.h" />
+    <ClInclude Include="..\..\comp\codegen.h" />
+    <ClInclude Include="..\..\comp\comp.h" />
+    <ClInclude Include="..\..\comp\compile.h" />
+    <ClInclude Include="..\..\comp\control.h" />
+    <ClInclude Include="..\..\comp\csupport.h" />
+    <ClInclude Include="..\..\comp\node.h" />
+    <ClInclude Include="..\..\comp\optimize.h" />
+    <ClInclude Include="..\..\comp\parser.h" />
+    <ClInclude Include="..\..\config.h" />
+    <ClInclude Include="..\..\data.h" />
+    <ClInclude Include="..\..\dgd.h" />
+    <ClInclude Include="..\..\dgd_ext.h" />
+    <ClInclude Include="..\..\editor.h" />
+    <ClInclude Include="..\..\ed\buffer.h" />
+    <ClInclude Include="..\..\ed\ed.h" />
+    <ClInclude Include="..\..\ed\edcmd.h" />
+    <ClInclude Include="..\..\ed\fileio.h" />
+    <ClInclude Include="..\..\ed\line.h" />
+    <ClInclude Include="..\..\ed\regexp.h" />
+    <ClInclude Include="..\..\ed\vars.h" />
+    <ClInclude Include="..\..\error.h" />
+    <ClInclude Include="..\..\hash.h" />
+    <ClInclude Include="..\..\host.h" />
+    <ClInclude Include="..\..\interpret.h" />
+    <ClInclude Include="..\..\kfun\kfun.h" />
+    <ClInclude Include="..\..\kfun\table.h" />
+    <ClInclude Include="..\..\lex\lex.h" />
+    <ClInclude Include="..\..\lex\macro.h" />
+    <ClInclude Include="..\..\lex\ppcontrol.h" />
+    <ClInclude Include="..\..\lex\ppstr.h" />
+    <ClInclude Include="..\..\lex\special.h" />
+    <ClInclude Include="..\..\lex\token.h" />
+    <ClInclude Include="..\..\object.h" />
+    <ClInclude Include="..\..\parser\dfa.h" />
+    <ClInclude Include="..\..\parser\grammar.h" />
+    <ClInclude Include="..\..\parser\parse.h" />
+    <ClInclude Include="..\..\parser\srp.h" />
+    <ClInclude Include="..\..\path.h" />
+    <ClInclude Include="..\..\str.h" />
+    <ClInclude Include="..\..\swap.h" />
+    <ClInclude Include="..\..\version.h" />
+    <ClInclude Include="..\..\xfloat.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\comp\parser.y" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D35360AA-B87E-4F90-AD31-183DAB9EFAF0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>dgd</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(ProjectDir)..\..\;$(ProjectDir)..\..\comp;$(ProjectDir)..\..\ed;$(ProjectDir);$(ProjectDir)..\..\kfun;$(ProjectDir)..\..\lex;$(ProjectDir)..\..\lpc;$(ProjectDir)..\..\parser;$(IncludePath)</IncludePath>
+    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <MinimalRebuild>true</MinimalRebuild>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>NETWORK_EXTENSIONS;WIN32;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;YYFREE=free;YYMALLOC=malloc;;;;;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4127;4310;4244;4018;4389;4245;4702;4146;4709;4706</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>8192000</StackReserveSize>
+    </Link>
+    <CustomBuildStep>
+      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>parser.c;parser.h</Outputs>
+      <Message>Building Parser...</Message>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NETWORK_EXTENSIONS;WIN32;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;YYFREE=free;YYMALLOC=malloc;;;;;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4127;4310;4244;4018;4389;4245;4702;4146;4709;4706</DisableSpecificWarnings>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>8192000</StackReserveSize>
+    </Link>
+    <CustomBuildStep>
+      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Message>Building Parser...</Message>
+      <Outputs>parser.c;parser.h</Outputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
