@@ -481,7 +481,7 @@ sector sw_mapsize(unsigned int size)
     /* calculate the number of sectors required */
     n = 0;
     for (;;) {
-	i =(size + n * sizeof(sector) + sectorsize - 1) / sectorsize;
+	i = (size + n * sizeof(sector) + sectorsize - 1) / sectorsize;
 	if (n == i) {
 	    return n;
 	}

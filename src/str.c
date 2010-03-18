@@ -54,7 +54,7 @@ string *str_alloc(char *text, long len)
     /* allocate string struct & text in one block */
     s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
     if (text != (char *) NULL && len > 0) {
-	memcpy(s->text, text, len);
+	memcpy(s->text, text, (unsigned int) len);
     }
     s->text[s->len = len] = '\0';
     s->ref = 0;

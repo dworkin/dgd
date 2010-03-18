@@ -403,7 +403,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/*
 	 * New function (-1: no calls to it yet)
 	 */
-	vfh_new(str, ohash, (unsigned short) -1, (string *) NULL, (short) idx, h);
+	vfh_new(str, ohash, -1, (string *) NULL, idx, h);
 	if (ohash->priv == 0 &&
 	    (ctrl->ninherits != 1 ||
 	     (f->class & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
