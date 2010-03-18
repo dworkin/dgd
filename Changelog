@@ -3,6 +3,25 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-19
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  DGD 1.4.2
+
+  src/version.h
+
+2010-03-18
+
+  Stephen Spiller (aka Kalinash)
+
+  Removed some extraneous casts
+
+  src/config.c
+  src/host/crypt.c
+  src/kfun/extra.c
+  src/str.c
+
 2010-03-18
 
   Bart van Leeuwen (aidil@wotf.org)
