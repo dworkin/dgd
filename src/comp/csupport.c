@@ -968,7 +968,7 @@ register int n;
 	i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto,
 		    PROTO_NARGS(kf->proto), TRUE);
     }
-    n = (*kf->func)(f);
+    n = (*kf->func)(f, PROTO_NARGS(kf->proto), kf);
     if (n != 0) {
 	error("Bad argument %d for kfun %s", n, kf->name);
     }
@@ -989,7 +989,7 @@ register int n, nargs;
 	i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, nargs,
 		    TRUE);
     }
-    n = (*kf->func)(f, nargs);
+    n = (*kf->func)(f, nargs, kf);
     if (n != 0) {
 	error("Bad argument %d for kfun %s", n, kf->name);
     }
