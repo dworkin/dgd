@@ -774,6 +774,7 @@ void o_del(object *obj, frame *f)
 	error("Destructing destructed object");
     }
     i_odest(f, obj);	/* wipe out occurrances on the stack */
+    o_dataspace(obj);	/* load dataspace now */
     obj->count = 0;
     odcount++;
 
@@ -1029,10 +1030,6 @@ void o_clean()
 	baseplane.clean = (unsigned long) o->chain.next;
 
 	/* free dataspace block (if it exists) */
-	if (o->data == (dataspace *) NULL && o->dfirst != SW_UNUSED) {
-	    /* reload dataspace block (sectors are needed) */
-	    o->data = d_load_dataspace(o);
-	}
 	if (o->data != (dataspace *) NULL) {
 	    d_del_dataspace(o->data);
 	}

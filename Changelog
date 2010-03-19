@@ -7,6 +7,19 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen (aidil@wotf.org)
 
+  Merged latest changes from Felix:
+  - Add dummy errorhandler function for extension interface.
+  - Load dataspace of destructed objects from a safer place. 
+  - Properly call add-on kfuns from precompiled code. 
+
+  src/object.c
+  src/comp/comp.c
+  src/comp/csupport.c
+
+2010-03-19
+
+  Bart van Leeuwen (aidil@wotf.org)
+
   DGD 1.4.2
 
   src/version.h
