@@ -398,9 +398,7 @@ void errhandler(frame *f, Int depth)
  * NAME:	dgd_error()
  * DESCRIPTION:	pretend to handle errors for the extension interface
  */
-void dgd_error(f, format, arg1, arg2, arg3, arg4, arg5, arg6)
-frame *f;
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void dgd_error(frame *f, char *format, ...)
 {
 }
 # endif

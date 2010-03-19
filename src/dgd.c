@@ -28,6 +28,7 @@
 # include "comm.h"
 # include "node.h"
 # include "compile.h"
+# include <stdarg.h>
 
 static uindex dindex;		/* driver object index */
 static Uint dcount;		/* driver object count */
@@ -135,14 +136,14 @@ void errhandler(frame *f, Int depth)
  * NAME:	dgd_error()
  * DESCRIPTION:	error handler for the extension interface
  */
-void dgd_error(f, format, arg1, arg2, arg3, arg4, arg5, arg6)
-frame *f;
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
+void dgd_error(frame *f, char *format,... )
 {
+    va_list args;
     char ebuf[4 * STRINGSZ];
 
     if (format != (char *) NULL) {
-	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
+        va_start(args, format);
+	vsprintf(ebuf, format, args);
 	serror(str_new(ebuf, (long) strlen(ebuf)));
     } else {
 	serror((string *) NULL);

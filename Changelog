@@ -12,6 +12,10 @@ in doc/Changelog.Dworkin
   - Load dataspace of destructed objects from a safer place. 
   - Properly call add-on kfuns from precompiled code. 
 
+  Properly protoized dgd_error()
+
+  src/dgd.h
+  src/dgd.c
   src/object.c
   src/comp/comp.c
   src/comp/csupport.c
