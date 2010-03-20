@@ -799,7 +799,7 @@ frame *f;
 	error("Destructing destructed object");
     }
     i_odest(f, obj);	/* wipe out occurrances on the stack */
-    if (obj->data == NULL && obj->dfirst != SW_UNUSED) {
+    if (obj->data == (dataspace *) NULL && obj->dfirst != SW_UNUSED) {
 	o_dataspace(obj);	/* load dataspace now */
     }
     obj->count = 0;
