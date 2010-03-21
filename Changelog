@@ -3,6 +3,18 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-21
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix:
+  - Allocate compression buffers on the heap, rather than on the stack.
+  - Call co_swapcount() at the right time when rebuilding, and keep casting NULL.
+
+  src/object.c
+  src/sdata.c
+  src/dgd.c
+
 2010-03-19
 
   Bart van Leeuwen (aidil@wotf.org)
@@ -10,6 +22,7 @@ in doc/Changelog.Dworkin
   Merged latest changes from Felix:
   - Add dummy errorhandler function for extension interface.
   - Load dataspace of destructed objects from a safer place. 
+    - but only when it actually exists
   - Properly call add-on kfuns from precompiled code. 
 
   Properly protoized dgd_error()

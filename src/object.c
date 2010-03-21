@@ -774,7 +774,9 @@ void o_del(object *obj, frame *f)
 	error("Destructing destructed object");
     }
     i_odest(f, obj);	/* wipe out occurrances on the stack */
-    o_dataspace(obj);	/* load dataspace now */
+    if (obj->data == (dataspace *) NULL && obj->dfirst != SW_UNUSED) {
+	o_dataspace(obj);	/* load dataspace now */
+    }
     obj->count = 0;
     odcount++;
 

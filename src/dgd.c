@@ -182,8 +182,8 @@ int dgd_main(int argc, char **argv)
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
 		rebuild = o_copy(timeout);
+		co_swapcount(d_swapout(fragment));
 		if (rebuild) {
-		    co_swapcount(d_swapout(fragment));
 		    rtime = timeout + 1;
 		    rmtime = mtime;
 		} else {
