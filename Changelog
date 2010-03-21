@@ -5,6 +5,18 @@ in doc/Changelog.Dworkin
 
 2010-03-21
 
+  Stephen Spiller (aka Kalinash)
+
+  Added a Sleep() call to the Windows network extensions code
+  for the case where there are no open descriptors.  This was
+  causing 100% cpu utilization.
+
+  Fixed a spurious cast reported by Shentino.
+
+  src/parser/grammar.c
+  src/host/win32/connect.c
+
+
   Bart van Leeuwen (aidil@wotf.org)
 
   Merged latest changes from Felix:
