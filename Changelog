@@ -10,10 +10,14 @@ in doc/Changelog.Dworkin
   Merged latest changes from Felix:
   - Allocate compression buffers on the heap, rather than on the stack.
   - Call co_swapcount() at the right time when rebuilding, and keep casting NULL.
+  - Avoid generating integer comma-expressions with side effects.
 
   src/object.c
   src/sdata.c
   src/dgd.c
+  src/comp/codegenc.c
+  src/comp/csupport.c
+  src/comp/csupport.h
 
 2010-03-19
 

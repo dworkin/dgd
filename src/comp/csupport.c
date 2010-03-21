@@ -935,6 +935,68 @@ void pc_restore(int fd, int conv)
 
 
 /*
+ * NAME:	push_number()
+ * DESCRIPTION:	push a number on the stack
+ */
+Int push_number(frame *f, Int i)
+{
+    (--f->sp)->type = T_INT;
+    return f->sp->u.number = i;
+}
+
+/*
+ * NAME:	push_lvalue()
+ * DESCRIPTION:	push an lvalue on the stack
+ */
+void push_lvalue(frame *f, value *v, unsigned int t)
+{
+    (--f->sp)->type = T_LVALUE;
+    f->sp->oindex = t;
+    f->sp->u.lval = v;
+}
+
+/*
+ * NAME:	push_lvclass()
+ * DESCRIPTION:	push an lvalue class on the stack
+ */
+void push_lvclass(frame *f, Int t)
+{
+    f->lip->type = T_INT;
+    (f->lip++)->u.number = t;
+}
+
+/*
+ * NAME:	pop_number()
+ * DESCRIPTION:	pop a number from the stack
+ */
+Int pop_number(frame *f)
+{
+    return (f->sp++)->u.number;
+}
+
+/*
+ * NAME:	store_value()
+ * DESCRIPTION:	store a value
+ */
+void store_value(frame *f)
+{
+    i_store(f);
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * NAME:	store_int()
+ * DESCRIPTION:	store an integer value
+ */
+Int store_int(frame *f)
+{
+    i_store(f);
+    f->sp += 2;
+    return f->sp[-2].u.number;
+}
+
+/*
  * NAME:	call_kfun()
  * DESCRIPTION:	call a kernel function
  */
