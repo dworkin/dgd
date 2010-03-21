@@ -247,8 +247,8 @@ static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *bufl
 		    }
 		    node[thisnode].type = RGX_PAREN;
 
-		    nstack[paren++] = (short) topnode;
-		    nstack[paren++] = (short) thisnode;
+		    nstack[paren++] = topnode;
+		    nstack[paren++] = thisnode;
 		    topnode = thisnode = -1;
 		    break;
 

@@ -1262,6 +1262,12 @@ int conn_select(Uint t, unsigned int mtime)
 			(struct timeval *) NULL);
     }
     if (retval == SOCKET_ERROR) {
+	if (WSAGetLastError() == WSAEINVAL) {
+	    /* The select() call didn't wait because there are no open
+	       fds, so we force a sleep to keep from pegging the cpu */
+	    Sleep(1000);
+	}
+
 	FD_ZERO(&readfds);
 	retval = 0;
     }
