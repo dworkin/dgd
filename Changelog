@@ -16,6 +16,39 @@ in doc/Changelog.Dworkin
   src/parser/grammar.c
   src/host/win32/connect.c
 
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix:
+  - Allocate compression buffers on the heap, rather than on the stack.
+  - Call co_swapcount() at the right time when rebuilding, and keep casting NULL.
+  - Avoid generating integer comma-expressions with side effects.
+
+  src/object.c
+  src/sdata.c
+  src/dgd.c
+  src/comp/codegenc.c
+  src/comp/csupport.c
+  src/comp/csupport.h
+
+2010-03-19
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merged latest changes from Felix:
+  - Add dummy errorhandler function for extension interface.
+  - Load dataspace of destructed objects from a safer place. 
+    - but only when it actually exists
+  - Properly call add-on kfuns from precompiled code. 
+
+  Properly protoized dgd_error()
+
+  src/dgd.h
+  src/dgd.c
+  src/object.c
+  src/comp/comp.c
+  src/comp/csupport.c
+
 2010-03-19
 
   Bart van Leeuwen (aidil@wotf.org)

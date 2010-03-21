@@ -393,6 +393,16 @@ void errhandler(frame *f, Int depth)
 {
 }
 
+# ifdef DGD_EXTENSION
+/*
+ * NAME:	dgd_error()
+ * DESCRIPTION:	pretend to handle errors for the extension interface
+ */
+void dgd_error(frame *f, char *format, ...)
+{
+}
+# endif
+
 /*
  * NAME:	interrupt()
  * DESCRIPTION:	pretend to an interrupt

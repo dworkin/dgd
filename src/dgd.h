@@ -40,7 +40,7 @@ extern void interrupt		(void);
 extern void endthread		(void);
 extern void errhandler		(frame*, Int);
 # ifdef DGD_EXTENSION
-extern void dgd_error		();
+extern void dgd_error		(frame*, char*, ...);
 # endif
 extern int  dgd_main		(int, char**);
 

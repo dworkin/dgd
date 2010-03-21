@@ -1527,13 +1527,13 @@ static void d_save_control(control *ctrl)
     } else {
 	prog = ctrl->prog;
 	if (header.progsize >= CMPLIMIT) {
-	    prog = ALLOCA(char, header.progsize);
+	    prog = ALLOC(char, header.progsize);
 	    size = compress(prog, ctrl->prog, header.progsize);
 	    if (size != 0) {
 		header.flags |= CMP_PRED;
 		header.progsize = size;
 	    } else {
-		AFREE(prog);
+		FREE(prog);
 		prog = ctrl->prog;
 	    }
 	}
@@ -1565,13 +1565,13 @@ static void d_save_control(control *ctrl)
 
 	text = stext;
 	if (header.strsize >= CMPLIMIT) {
-	    text = ALLOCA(char, header.strsize);
+	    text = ALLOC(char, header.strsize);
 	    size = compress(text, stext, header.strsize);
 	    if (size != 0) {
 		header.flags |= CMP_PRED << 2;
 		header.strsize = size;
 	    } else {
-		AFREE(text);
+		FREE(text);
 		text = stext;
 	    }
 	}
@@ -1641,7 +1641,7 @@ static void d_save_control(control *ctrl)
 	    sw_writev(prog, ctrl->sectors, (Uint) header.progsize, size);
 	    size += header.progsize;
 	    if (prog != ctrl->prog) {
-		AFREE(prog);
+		FREE(prog);
 	    }
 	}
 
@@ -1654,7 +1654,7 @@ static void d_save_control(control *ctrl)
 		sw_writev(text, ctrl->sectors, header.strsize, size);
 		size += header.strsize;
 		if (text != stext) {
-		    AFREE(text);
+		    FREE(text);
 		}
 		if (stext != ctrl->stext) {
 		    AFREE(stext);
@@ -2269,13 +2269,13 @@ static bool d_save_dataspace(dataspace *data, bool swap)
 	if (swap) {
 	    text = save.stext;
 	    if (header.strsize >= CMPLIMIT) {
-		text = ALLOCA(char, header.strsize);
+		text = ALLOC(char, header.strsize);
 		size = compress(text, save.stext, header.strsize);
 		if (size != 0) {
 		    header.flags |= CMP_PRED;
 		    header.strsize = size;
 		} else {
-		    AFREE(text);
+		    FREE(text);
 		    text = save.stext;
 		}
 	    }
@@ -2327,7 +2327,7 @@ static bool d_save_dataspace(dataspace *data, bool swap)
 		    sw_writev(text, data->sectors, header.strsize, size);
 		    size += header.strsize;
 		    if (text != save.stext) {
-			AFREE(text);
+			FREE(text);
 		    }
 		}
 	    }

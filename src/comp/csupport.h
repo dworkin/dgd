@@ -79,13 +79,6 @@ bool   pc_dump		(int);
 void   pc_restore	(int, int);
 
 
-# define PUSH_NUMBER		(--f->sp)->type = T_INT, f->sp->u.number =
-# define push_lvalue(v, t)	((--f->sp)->type = T_LVALUE, \
-				 f->sp->oindex = (t), f->sp->u.lval = (v))
-# define push_lvclass(l)	(f->lip->type = T_INT, \
-				 (f->lip++)->u.number = (l))
-# define store()		(i_store(f), f->sp[1] = f->sp[0], f->sp++)
-# define store_int()		(i_store(f), f->sp += 2, f->sp[-2].u.number)
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])
 
 /*
@@ -107,6 +100,12 @@ int kf_this_object (frame*), kf_call_trace (frame*),
     kf_this_user (frame*), kf_users (frame*), kf_time (frame*),
     kf_swapout (frame*), kf_dump_state (frame*), kf_shutdown (frame*);
 
+Int  push_number        (frame*, Int);
+void push_lvalue        (frame*, value*, unsigned int);
+void push_lvclass       (frame*, Int);
+Int  pop_number         (frame*);
+void store_value        (frame*);
+Int  store_int          (frame*);
 void call_kfun		(frame*, int);
 void call_kfun_arg	(frame*, int, int);
 Int  xdiv		(Int, Int);
