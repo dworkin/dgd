@@ -1,5 +1,6 @@
 New types can be added using builtin light-weight objects.  These types
-have a name that starts with "/builtin", like: /builtin/type#-1
+have a name that starts with "/builtin", like: /builtin/type#-1 (this
+is configurable with the BIPREFIX define in config.h).
 
 To add a type, reserve a positive number for it in object.h, like
 
@@ -11,7 +12,7 @@ Then give it a name in o_builtin_name():
     {
 	switch (type) {
 	case BUILTIN_TYPE:
-	    return "builtin/type";
+	    return BIPREFIX "type";
 	default:
 	    fatal("unknown builtin type %d", type);
 	}
