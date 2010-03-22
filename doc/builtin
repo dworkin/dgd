@@ -49,7 +49,7 @@ A function to create a light-weight object of this type could look like this:
 	str = str_new("some info", 9);
 	PUT_STRVAL(&a->elts[3], str);
 
-	/* put the return value on the stack */
+	/* push the return value on the stack */
 	PUSH_LWOVAL(f, a);
 	return 0;
     }

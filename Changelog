@@ -8,8 +8,8 @@ in doc/Changelog.Dworkin
   Felix Croes (felix@dworkin.nl)
 
   Added generalized builtin type support as an extension of light-weight
-  objects.  Builtin types are be LWOs with a name like /builtin/type#-1.
-  Compiling an object with a name that starts with /builtin/ is now
+  objects.  Builtin types are LWOs with a name like /builtin/type#-1.
+  Compilation of an object with a name that starts with /builtin/ is now
   forbidden.
 
   doc/builtin
