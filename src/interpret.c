@@ -138,7 +138,7 @@ void i_copy(value *v, value *w, unsigned int len)
 
 	case T_LWOBJECT:
 	    o = d_get_elts(w->u.array);
-	    if (DESTRUCTED(o)) {
+	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		*v++ = nil_value;
 		w++;
 		continue;
@@ -233,7 +233,7 @@ void i_push_value(frame *f, value *v)
 
     case T_LWOBJECT:
 	o = d_get_elts(v->u.array);
-	if (DESTRUCTED(o)) {
+	if (o->type == T_OBJECT && DESTRUCTED(o)) {
 	    /*
 	     * can't wipe out the original, since it may be a value from a
 	     * mapping
@@ -411,7 +411,8 @@ void i_odest(frame *prev, object *obj)
 		break;
 
 	    case T_LWOBJECT:
-		if (v->u.array->elts[0].u.objcnt == count) {
+		if (v->u.array->elts[0].type == T_OBJECT &&
+		    v->u.array->elts[0].u.objcnt == count) {
 		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
@@ -427,7 +428,8 @@ void i_odest(frame *prev, object *obj)
 		break;
 
 	    case T_LWOBJECT:
-		if (v->u.array->elts[0].u.objcnt == count) {
+		if (v->u.array->elts[0].type == T_OBJECT &&
+		    v->u.array->elts[0].u.objcnt == count) {
 		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
@@ -452,7 +454,8 @@ void i_odest(frame *prev, object *obj)
 		    break;
 
 		case T_LWOBJECT:
-		    if (v->u.array->elts[0].u.objcnt == count) {
+		    if (v->u.array->elts[0].type == T_OBJECT &&
+			v->u.array->elts[0].u.objcnt == count) {
 			arr_del(v->u.array);
 			*v = nil_value;
 		    }
@@ -682,7 +685,7 @@ void i_index(frame *f)
 
     case T_LWOBJECT:
 	ival = d_get_elts(val->u.array);
-	if (DESTRUCTED(ival)) {
+	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
 	    val = &nil_value;
 	    break;
 	}
@@ -902,6 +905,15 @@ char *i_typename(char *buf, unsigned int type)
 }
 
 /*
+ * NAME:	interpret->classname()
+ * DESCRIPTION:	return the name of a class
+ */
+char *i_classname(frame *f, Uint class)
+{
+    return d_get_strconst(f->p_ctrl, class >> 16, class & 0xffff)->text;
+}
+
+/*
  * NAME:	interpret->instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
@@ -917,7 +929,7 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
     /* first try hash table */
     obj = OBJR(oindex);
     ctrl = o_control(obj);
-    prog = d_get_strconst(f->p_ctrl, class >> 16, class & 0xffff)->text;
+    prog = i_classname(f, class);
     h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ class) %
 								    INHASHSZ];
     if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
@@ -951,16 +963,27 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
 void i_cast(frame *f, value *val, unsigned int type, Uint class)
 {
     char tnbuf[8];
+    value *elts;
 
     if (type == T_CLASS) {
-	if (val->type == T_OBJECT || val->type == T_LWOBJECT) {
-	    if (!i_instanceof(f,
-			      (val->type == T_OBJECT) ?
-			       val->oindex : d_get_elts(val->u.array)->oindex,
-			       class)) {
-		error("Value is not of object type /%s",
-		      d_get_strconst(f->p_ctrl, class >> 16,
-				     class & 0xffff)->text);
+	if (val->type == T_OBJECT) {
+	    if (!i_instanceof(f, val->oindex, class)) {
+		error("Value is not of object type /%s", i_classname(f, class));
+	    }
+	    return;
+	} else if (val->type == T_LWOBJECT) {
+	    elts = d_get_elts(val->u.array);
+	    if (elts->type == T_OBJECT) {
+		if (!i_instanceof(f, elts->oindex, class)) {
+		    error("Value is not of object type /%s",
+			  i_classname(f, class));
+		}
+	    } else if (strcmp(o_builtin_name(elts->u.number),
+			      i_classname(f, class)) != 0) {
+		/*
+		 * builtin types can only be cast to their own type
+		 */
+		error("Value is not of object type /%s", i_classname(f, class));
 	    }
 	    return;
 	}
@@ -1350,6 +1373,7 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
     char *args;
     bool ellipsis;
     Uint class;
+    value *elts;
 
     class = 0;
     i = nargs;
@@ -1382,13 +1406,23 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
 	    }
 	    if ((ptype & T_TYPE) == T_CLASS && ptype == T_CLASS &&
 		atype == T_OBJECT) {
-		if (!i_instanceof(prog_f,
-				  (f->sp[i].type == T_OBJECT) ?
-				   f->sp[i].oindex :
-				   d_get_elts(f->sp[i].u.array)->oindex,
-				  class)) {
-		    error("Bad object argument %d for function %s",
-			  nargs - i, name);
+		if (f->sp[i].type == T_OBJECT) {
+		    if (!i_instanceof(prog_f, f->sp[i].oindex, class)) {
+			error("Bad object argument %d for function %s",
+			      nargs - i, name);
+		    }
+		} else {
+		    elts = d_get_elts(f->sp[i].u.array);
+		    if (elts->type == T_OBJECT) {
+			if (!i_instanceof(prog_f, elts->oindex, class)) {
+			    error("Bad object argument %d for function %s",
+				  nargs - i, name);
+			}
+		    } else if (strcmp(o_builtin_name(elts->u.number),
+				      i_classname(prog_f, class)) != 0) {
+			error("Bad object argument %d for function %s",
+			      nargs - i, name);
+		    }
 		}
 		continue;
 	    }
@@ -2219,11 +2253,16 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 	xfloat flt;
 	value val;
 
-	oindex = lwobj->elts[0].oindex;
-	obj = OBJR(oindex);
 	GET_FLT(&lwobj->elts[1], flt);
-	if (obj->update != flt.low) {
-	    d_upgrade_lwobj(lwobj, obj);
+	if (lwobj->elts[0].type == T_OBJECT) {
+	    /*
+	     * ordinary light-weight object: upgrade first if needed
+	     */
+	    oindex = lwobj->elts[0].oindex;
+	    obj = OBJR(oindex);
+	    if (obj->update != flt.low) {
+		d_upgrade_lwobj(lwobj, obj);
+	    }
 	}
 	if (flt.high != FALSE) {
 	    /*
@@ -2241,6 +2280,11 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 		PUT_FLT(&lwobj->elts[1], flt);
 	    }
 	    i_del_value(f->sp++);
+	}
+	if (lwobj->elts[0].type == T_INT) {
+	    /* no calling of functions in builtin types (right?) */
+	    i_pop(f, nargs);
+	    return FALSE;
 	}
     } else if (!(obj->flags & O_TOUCHED)) {
 	/*

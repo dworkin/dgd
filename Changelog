@@ -3,6 +3,28 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  Added generalized builtin type support as an extension of light-weight
+  objects.  Builtin types are be LWOs with a name like /builtin/type#-1.
+  Compiling an object with a name that starts with /builtin/ is now
+  forbidden.
+
+  doc/builtin
+  src/array.c
+  src/data.c
+  src/object.c
+  src/object.h
+  src/sdata.c
+  src/interpret.c
+  src/interpret.h
+  src/comp/compile.c
+  src/kfun/builtin.c
+  src/kfun/debug.c
+  src/kfun/std.c
+
 2010-03-21
 
   Stephen Spiller (aka Kalinash)

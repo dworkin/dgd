@@ -609,7 +609,7 @@ static void copytmp(dataspace *data, value *v1, array *a)
 
 	    case T_LWOBJECT:
 		o = d_get_elts(v2->u.array);
-		if (DESTRUCTED(o)) {
+		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    d_assign_elt(data, a, v2, &nil_value);
 		}
 		break;
@@ -821,7 +821,7 @@ array *arr_sub(dataspace *data, array *a1, array *a2)
 
 	    case T_LWOBJECT:
 		o = d_get_elts(v1->u.array);
-		if (DESTRUCTED(o)) {
+		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
 		}
@@ -898,7 +898,7 @@ array *arr_intersect(dataspace *data, array *a1, array *a2)
 
 	    case T_LWOBJECT:
 		o = d_get_elts(v1->u.array);
-		if (DESTRUCTED(o)) {
+		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(a1->primary->data, a1, v1, &nil_value);
 		}
@@ -984,7 +984,7 @@ array *arr_setadd(dataspace *data, array *a1, array *a2)
 
 	    case T_LWOBJECT:
 		o = d_get_elts(v2->u.array);
-		if (DESTRUCTED(o)) {
+		if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		    /* replace destructed object by nil */
 		    d_assign_elt(a2->primary->data, a2, v2, &nil_value);
 		}
@@ -1242,7 +1242,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 
 	    case T_LWOBJECT:
 		v3 = d_get_elts(v2->u.array);
-		if (DESTRUCTED(v3)) {
+		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * index is destructed object
 		     */
@@ -1266,7 +1266,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 
 	    case T_LWOBJECT:
 		v3 = d_get_elts(v2[1].u.array);
-		if (DESTRUCTED(v3)) {
+		if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 		    /*
 		     * value is destructed object
 		     */
@@ -1321,7 +1321,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 
 		    case T_LWOBJECT:
 			v3 = d_get_elts(e->idx.u.array);
-			if (DESTRUCTED(v3)) {
+			if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 			    /*
 			     * index is destructed object
 			     */
@@ -1354,7 +1354,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 
 		    case T_LWOBJECT:
 			v3 = d_get_elts(e->val.u.array);
-			if (DESTRUCTED(v3)) {
+			if (v3->type == T_OBJECT && DESTRUCTED(v3)) {
 			    /*
 			     * value is destructed object
 			     */

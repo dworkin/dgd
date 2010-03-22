@@ -1770,19 +1770,23 @@ static void d_count(savedata *save, value *v, Uint n)
 
 	case T_LWOBJECT:
 	    elts = d_get_elts(v->u.array);
-	    obj = OBJ(elts->oindex);
-	    count = obj->count;
-	    if (elts[1].type == T_INT) {
-		/* convert to new LWO type */
-		elts[1].type = T_FLOAT;
-		elts[1].oindex = FALSE;
-	    }
-	    if (arr_put(v->u.array, save->narr) == save->narr) {
-		if (elts->u.objcnt == count && elts[1].u.objcnt != obj->update)
-		{
-		    d_upgrade_lwobj(v->u.array, obj);
-		    elts = v->u.array->elts;
+	    if (elts->type == T_OBJECT) {
+		obj = OBJ(elts->oindex);
+		count = obj->count;
+		if (elts[1].type == T_INT) {
+		    /* convert to new LWO type */
+		    elts[1].type = T_FLOAT;
+		    elts[1].oindex = FALSE;
 		}
+		if (arr_put(v->u.array, save->narr) == save->narr) {
+		    if (elts->u.objcnt == count &&
+			elts[1].u.objcnt != obj->update) {
+			d_upgrade_lwobj(v->u.array, obj);
+			elts = v->u.array->elts;
+		    }
+		    d_arrcount(save, v->u.array);
+		}
+	    } else if (arr_put(v->u.array, save->narr) == save->narr) {
 		d_arrcount(save, v->u.array);
 	    }
 	    break;
