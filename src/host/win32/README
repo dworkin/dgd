@@ -8,6 +8,6 @@ You also will need to install GnuWin's Bison.
 Look for it here:
 http://gnuwin32.sourceforge.net/packages/bison.htm
 
-I recommend installing to a path with no spaces in it since the current version chokes on spaces.  You will also need to add the location of Bison.exe to your global PATH.
+The location of Bison.exe will need to be added to your path.  It is recommended that you install it to a locaiton with no spaces in the path since bison will not function correctly otherwise.  If you do install to a location such as "c:\program files\gnuwin32", then you must use the 8.3 form of the path "c:\progra~1\gnuwin32" instead.
 
 DGD for Windows is a console application and should be run just as it is on Unix-type operating systems.

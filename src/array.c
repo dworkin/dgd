@@ -1981,7 +1981,7 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 		    m->elts = (value *) NULL;
 		} else {
 		    /* move tail */
-		    memcpy(v, v + 2, (m->size - n) * sizeof(value));
+		    memmove(v, v + 2, (m->size - n) * sizeof(value));
 		}
 		d_change_map(m);
 		return &nil_value;

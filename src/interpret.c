@@ -62,6 +62,8 @@ void i_init(char *create, int flag)
     topframe.oindex = OBJ_NONE;
     topframe.fp = topframe.sp = stack + MIN_STACK;
     topframe.stack = topframe.lip = stack;
+    rlim.maxdepth = 0;
+    rlim.ticks = 0;
     rlim.nodepth = TRUE;
     rlim.noticks = TRUE;
     topframe.rlim = &rlim;

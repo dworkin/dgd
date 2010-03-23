@@ -3,6 +3,22 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-23
+
+  Bart van Leeuwen
+
+  Merged changes from Felix: 
+  - Fix some issues pointed out by valgrind.
+
+  src/array.c
+  src/interpret.c
+
+  Stephen Spiller (aka Kalinash)
+
+  Documentation updated
+
+  src/host/win32/README
+
 2010-03-21
 
   Stephen Spiller (aka Kalinash)
