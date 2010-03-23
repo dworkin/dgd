@@ -313,6 +313,11 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
     if (obj->flags & O_SPECIAL) {
 	error("User object is already special purpose");
     }
+
+    if (obj->flags & O_DRIVER) {
+        error("Cannot use driver object as user object");
+    }
+
     /* initialize dataspace before the object receives the user role */
     if (!O_HASDATA(obj) &&
 	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {

@@ -1278,6 +1278,10 @@ int kf_open_port(frame *f, int nargs)
 	error("open_port() in special purpose object");
     }
 
+    if (obj->flags & O_DRIVER) {
+        error("open_port() in driver object");
+    }
+
     if (f->level != 0) {
 	error("open_port() within atomic function");
     }

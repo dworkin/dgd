@@ -1994,7 +1994,8 @@ static bool d_save_dataspace(dataspace *data, bool swap)
     sdataspace header;
     Uint n;
 
-    if (data->parser != (struct _parser_ *) NULL) {
+    if (data->parser != (struct _parser_ *) NULL &&
+	!(OBJ(data->oindex)->flags & O_SPECIAL)) {
 	ps_save(data->parser);
     }
     if (swap && (data->base.flags & MOD_SAVE)) {

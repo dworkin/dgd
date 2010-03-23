@@ -7,11 +7,18 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen
 
+  Forbid using the driver object as user or port object
+
   Merged changes from Felix: 
+  - Don't save the parse_string automatons in an object that has in the
+    meanwhile been made special.
   - Fix some issues pointed out by valgrind.
 
   src/array.c
   src/interpret.c
+  src/sdata.c
+  src/kfun/std.c
+  src/comm.c
 
   Stephen Spiller (aka Kalinash)
 
