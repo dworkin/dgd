@@ -557,7 +557,7 @@ int kf_function_object(frame *f)
 	arr_del(f->sp->u.array);
 	obj = OBJR(n);
     } else {
-	/* no probing of functions in builtin types (right?) */
+	/* no user-probeable functions within (right?) */
 	arr_del((f->sp++)->u.array);
 	str_del(f->sp->u.string);
 	*f->sp = nil_value;
@@ -1509,7 +1509,7 @@ int kf_status(frame *f, int nargs)
 	    n = f->sp->u.array->elts[0].oindex;
 	    arr_del(f->sp->u.array);
 	} else {
-	    /* no information about builtin types (right?) */
+	    /* no user-visible parts within (right?) */
 	    arr_del(f->sp->u.array);
 	    *f->sp = nil_value;
 	    return 0;

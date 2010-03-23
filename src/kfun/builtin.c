@@ -2195,7 +2195,7 @@ int kf_statuso_idx(frame *f)
 	    arr_del(f->sp[1].u.array);
 	    f->sp[1] = nil_value;
 	} else {
-	    /* no information about builtin types (right?) */
+	    /* no user-visible parts within (right?) */
 	    error("Index on bad type");
 	}
 	break;

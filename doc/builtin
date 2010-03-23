@@ -58,8 +58,8 @@ A function to create a light-weight object of this type could look like this:
 
 Ordinary light-weight objects will have an object as the first element of
 their array.  For builtin types, the first element must be an integer,
-the type number, and the second element is reserved and must be
-initialized as xfloat 0.0.
+the type number; the second element is reserved and must be initialized
+to xfloat 0.0.
 
 For the third element, a version number for your type is suggested, in case
 you decide to change the way your type is build and want to convert old
@@ -70,3 +70,6 @@ that can be probed with function_object(), or information about them that
 can be returned with status().  If you do want them to have any of that,
 edit the source code for the functions i_call(), kf_function_object(),
 kf_status() and kf_statuso_idx().
+
+At compile time, a node of a builtin type should have modifier T_OBJECT,
+and a class string built from the base name, as returned by o_builtin_name().

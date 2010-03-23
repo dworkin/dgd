@@ -3,7 +3,7 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
-2010-03-22
+2010-03-22/2010-03-23
 
   Felix Croes (felix@dworkin.nl)
 
@@ -14,6 +14,7 @@ in doc/Changelog.Dworkin
 
   doc/builtin
   src/array.c
+  src/config.h
   src/data.c
   src/object.c
   src/object.h

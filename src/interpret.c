@@ -2282,7 +2282,7 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 	    i_del_value(f->sp++);
 	}
 	if (lwobj->elts[0].type == T_INT) {
-	    /* no calling of functions in builtin types (right?) */
+	    /* no user-callable functions within (right?) */
 	    i_pop(f, nargs);
 	    return FALSE;
 	}
