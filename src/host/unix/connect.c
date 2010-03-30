@@ -905,7 +905,6 @@ static connection *conn_accept6(int portfd, int port)
 }
 # endif
 
-/* #ifndef NETWORK_EXTENSIONS */
 /*
  * NAME:	conn->accept()
  * DESCRIPTION:	accept a new ipv4 connection
@@ -948,7 +947,6 @@ static connection *conn_accept(int portfd, int port)
 
     return conn;
 }
-/* #endif */
 
 /*
  * NAME:	conn->tnew6()
@@ -1013,7 +1011,6 @@ connection *conn_bnew(int port)
     }
     return (connection *) NULL;
 }
-#endif
 
 /*
  * NAME:	conn->udp()
@@ -1054,6 +1051,7 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
 
     return TRUE;
 }
+#endif
 
 /*
  * NAME:	conn->del()
@@ -1357,6 +1355,7 @@ int conn_select(Uint t, unsigned int mtime)
     return retval;
 }
 
+#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	conn->udpcheck()
  * DESCRIPTION:	check if UDP challenge met
@@ -1365,6 +1364,7 @@ bool conn_udpcheck(connection *conn)
 {
     return (conn->chain.name == (char *) NULL);
 }
+#endif
 
 /*
  * NAME:	conn->read()

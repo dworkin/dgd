@@ -3,6 +3,18 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-03-30
+
+  Bart van Leeuwen
+
+  Remove conn_udp and conn_udpcheck when network extensions are 
+  enabled.
+
+  src/comm.h
+  src/comm.c
+  src/host/unix/connect.c
+  src/host/win32/connect.c
+  
 2010-03-23
 
   Bart van Leeuwen

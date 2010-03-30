@@ -27,16 +27,20 @@ typedef struct _connection_ connection;
 extern bool	   conn_init	 (int, char**, char**, unsigned short*,
 				    unsigned short*, int, int);
 extern void	   conn_finish	 (void);
+#ifndef NETWORK_EXTENSIONS
 extern void	   conn_listen	 (void);
 extern connection *conn_tnew6	 (int);
 extern connection *conn_tnew	 (int);
 extern connection *conn_bnew6	 (int);
 extern connection *conn_bnew	 (int);
 extern bool	   conn_udp	 (connection*, char*, unsigned int);
+#endif
 extern void	   conn_del	 (connection*);
 extern void	   conn_block	 (connection*, int);
 extern int	   conn_select	 (Uint, unsigned int);
+#ifndef NETWORK_EXTENSIONS
 extern bool	   conn_udpcheck (connection*);
+#endif
 extern int	   conn_read	 (connection*, char*, unsigned int);
 extern int	   conn_udpread	 (connection*, char*, unsigned int);
 extern int	   conn_write	 (connection*, char*, unsigned int);

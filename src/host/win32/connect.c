@@ -955,7 +955,6 @@ connection *conn_bnew(int port)
     }
     return (connection *) NULL;
 }
-#endif /* NETWORK_EXTENSIONS */
 
 /*
  * NAME:	conn->udp()
@@ -997,6 +996,7 @@ bool conn_udp(connection *conn, char *challenge,
 
     return TRUE;
 }
+#endif /* NETWORK_EXTENSIONS */
 
 /*
  * NAME:	conn->del()
@@ -1300,6 +1300,7 @@ int conn_select(Uint t, unsigned int mtime)
     return retval;
 }
 
+#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	conn->udpcheck()
  * DESCRIPTION:	check if UDP challenge met
@@ -1308,6 +1309,7 @@ bool conn_udpcheck(connection *conn)
 {
     return (conn->chain.name == (char *) NULL);
 }
+#endif
 
 /*
  * NAME:	conn->read()
