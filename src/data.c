@@ -1376,7 +1376,7 @@ string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
 
 	case T_LWOBJECT:
 	    o = d_get_elts(v->u.array);
-	    if (DESTRUCTED(o)) {
+	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		arr_del(v->u.array);
 		*v = nil_value;
 	    }

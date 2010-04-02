@@ -479,9 +479,15 @@ int kf_object_name(frame *f)
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
-	n = f->sp->u.array->elts[0].oindex;
-	arr_del(f->sp->u.array);
-	name = o_name(buffer, OBJR(n));
+	if (f->sp->u.array->elts[0].type == T_OBJECT) {
+	    /* ordinary light-weight object */
+	    n = f->sp->u.array->elts[0].oindex;
+	    arr_del(f->sp->u.array);
+	    name = o_name(buffer, OBJR(n));
+	} else {
+	    /* builtin type */
+	    name = o_builtin_name(f->sp->u.array->elts[0].u.number);
+	}
 	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 4L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
@@ -546,10 +552,16 @@ int kf_function_object(frame *f)
     i_add_ticks(f, 2);
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-    } else {
+    } else if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	n = f->sp->u.array->elts[0].oindex;
 	arr_del(f->sp->u.array);
 	obj = OBJR(n);
+    } else {
+	/* no user-probeable functions within (right?) */
+	arr_del((f->sp++)->u.array);
+	str_del(f->sp->u.string);
+	*f->sp = nil_value;
+	return 0;
     }
     f->sp++;
     symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
@@ -1497,9 +1509,14 @@ int kf_status(frame *f, int nargs)
     } else {
 	if (f->sp->type == T_OBJECT) {
 	    n = f->sp->oindex;
-	} else {
+	} else if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	    n = f->sp->u.array->elts[0].oindex;
 	    arr_del(f->sp->u.array);
+	} else {
+	    /* no user-visible parts within (right?) */
+	    arr_del(f->sp->u.array);
+	    *f->sp = nil_value;
+	    return 0;
 	}
 	a = conf_object(f->data, OBJR(n));
     }

@@ -2190,9 +2190,14 @@ int kf_statuso_idx(frame *f)
 	break;
 
     case T_LWOBJECT:
-	n = f->sp[1].u.array->elts[0].oindex;
-	arr_del(f->sp[1].u.array);
-	f->sp[1] = nil_value;
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    n = f->sp[1].u.array->elts[0].oindex;
+	    arr_del(f->sp[1].u.array);
+	    f->sp[1] = nil_value;
+	} else {
+	    /* no user-visible parts within (right?) */
+	    error("Index on bad type");
+	}
 	break;
 
     default:
@@ -2264,6 +2269,7 @@ char pt_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
 int kf_instanceof(frame *f)
 {
     uindex oindex;
+    value *elts;
     int instance;
 
     oindex = 0;
@@ -2274,7 +2280,19 @@ int kf_instanceof(frame *f)
 	break;
 
     case T_LWOBJECT:
-	oindex = d_get_elts(f->sp[1].u.array)->oindex;
+	elts = d_get_elts(f->sp[1].u.array);
+	if (elts->type != T_OBJECT) {
+	    /*
+	     * builtin types can only be an instance of their own type
+	     */
+	    instance = (strcmp(o_builtin_name(elts->u.number),
+			       i_classname(f, f->sp->u.number)) == 0);
+	    f->sp++;
+	    arr_del(f->sp->u.array);
+	    PUT_INTVAL(f->sp, instance);
+	    return 0;
+	}
+	oindex = elts->oindex;
 	arr_del(f->sp[1].u.array);
 	break;
 
