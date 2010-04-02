@@ -16,13 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct _cbuf_ cbuf;
-
 extern bool	co_init		P((unsigned int));
 extern Uint	co_check	P((unsigned int, Int, unsigned int,
-				   Uint*, unsigned short*, cbuf**));
+				   Uint*, unsigned short*, uindex**));
 extern void	co_new		P((unsigned int, unsigned int, Uint,
-				   unsigned int, cbuf*));
+				   unsigned int, uindex*));
 extern Int	co_remaining	P((Uint, unsigned short*));
 extern void	co_del		P((unsigned int, unsigned int, Uint,
 				   unsigned int));
@@ -36,4 +34,4 @@ extern void	co_swapcount	P((unsigned int));
 extern long	co_swaprate1 	P((void));
 extern long	co_swaprate5 	P((void));
 extern bool	co_dump		P((int));
-extern void	co_restore	P((int, Uint, int));
+extern void	co_restore	P((int, Uint, int, int));

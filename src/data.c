@@ -38,7 +38,7 @@ typedef struct _copatch_ {
     dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
-    cbuf *queue;		/* callout queue */
+    uindex *queue;		/* callout queue */
     struct _copatch_ *next;	/* next in linked list */
     dcallout aco;		/* added callout */
     dcallout rco;		/* removed callout */
@@ -358,7 +358,7 @@ int type;
 unsigned int handle, mtime;
 register dcallout *co;
 Uint time;
-cbuf *q;
+uindex *q;
 {
     register coptable *tab;
     register copatch *cop;
@@ -450,7 +450,7 @@ register copatch *cop;
 register dcallout *co;
 Uint time;
 unsigned int mtime;
-cbuf *q;
+uindex *q;
 {
     register int i;
     register value *v;
@@ -1227,12 +1227,12 @@ int nargs;
 {
     Uint ct, t;
     unsigned short m;
-    cbuf *q;
+    uindex *q;
     value v[4];
     uindex handle;
 
     ct = co_check(ncallout, delay, mdelay, &t, &m, &q);
-    if (ct == 0 && q == (cbuf *) NULL) {
+    if (ct == 0 && q == (uindex *) NULL) {
 	/* callouts are disabled */
 	return 0;
     }
@@ -1356,7 +1356,7 @@ unsigned short *mtime;
 	    if (cop == (copatch *) NULL || cop->plane != plane) {
 		/* delete new */
 		cop_new(plane, cc, COP_REMOVE, (uindex) handle, co, (Uint) 0, 0,
-			(cbuf *) NULL);
+			(uindex *) NULL);
 		break;
 	    }
 	    if (cop->handle == handle) {
