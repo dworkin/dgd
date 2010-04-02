@@ -3,6 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-04-02
+
+  Bart van Leeuwen
+
+  DGD 1.4.3
+
+  src/version.h
+
 2010-03-30
 
   Bart van Leeuwen
