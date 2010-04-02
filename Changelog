@@ -7,6 +7,35 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen
 
+  Merged generic builtin type support, original Changelog message:
+
+  2010-03-22/2010-03-23
+
+  Felix Croes (felix@dworkin.nl)
+
+  Added generalized builtin type support as an extension of light-weight
+  objects.  Builtin types are LWOs with a name like /builtin/type#-1.
+  Compilation of an object with a name that starts with /builtin/ is now
+  forbidden.
+
+  doc/builtin
+  src/array.c
+  src/config.h
+  src/data.c
+  src/object.c
+  src/object.h
+  src/sdata.c
+  src/interpret.c
+  src/interpret.h
+  src/comp/compile.c
+  src/kfun/builtin.c
+  src/kfun/debug.c
+  src/kfun/std.c
+
+2010-04-02
+
+  Bart van Leeuwen
+
   DGD 1.4.3
 
   src/version.h
@@ -45,29 +74,6 @@ in doc/Changelog.Dworkin
   Documentation updated
 
   src/host/win32/README
-
-2010-03-22/2010-03-23
-
-  Felix Croes (felix@dworkin.nl)
-
-  Added generalized builtin type support as an extension of light-weight
-  objects.  Builtin types are LWOs with a name like /builtin/type#-1.
-  Compilation of an object with a name that starts with /builtin/ is now
-  forbidden.
-
-  doc/builtin
-  src/array.c
-  src/config.h
-  src/data.c
-  src/object.c
-  src/object.h
-  src/sdata.c
-  src/interpret.c
-  src/interpret.h
-  src/comp/compile.c
-  src/kfun/builtin.c
-  src/kfun/debug.c
-  src/kfun/std.c
 
 2010-03-21
 
