@@ -3,6 +3,19 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-04-03
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merge latest changes from Felix: 
+  - Add an extra field to saved callouts for DGDMP compatibility.                                         
+    Dumpfile format version bumped to 11.
+
+  src/call_out.c
+  src/call_out.h
+  src/config.c
+  src/data.c
+
 2010-04-02/2010-04-03
 
   Felix Croes (felix@dworkin.nl)
