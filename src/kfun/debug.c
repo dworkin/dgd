@@ -701,7 +701,7 @@ int kf_dump_function(frame *f)
 
     if (f->sp[1].type == T_OBJECT) {
 	n = f->sp[1].oindex;
-    } else {
+    } else if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
 	n = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
     } else {
