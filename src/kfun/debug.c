@@ -671,9 +671,13 @@ int kf_dump_object(frame *f)
 
     if (f->sp->type == T_OBJECT) {
 	n = f->sp->oindex;
-    } else {
+    } else if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	n = f->sp->u.array->elts[0].oindex;
 	arr_del(f->sp->u.array);
+    } else {
+	arr_del(f->sp->u.array);
+	*f->sp = nil_value;
+	return 0;
     }
     showctrl(o_control(OBJR(n)));
     fflush(stdout);
@@ -697,9 +701,14 @@ int kf_dump_function(frame *f)
 
     if (f->sp[1].type == T_OBJECT) {
 	n = f->sp[1].oindex;
-    } else {
+    } else if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
 	n = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
+    } else {
+	str_del((f->sp++)->u.string);
+	arr_del(f->sp->u.array);
+	*f->sp = nil_value;
+	return 0;
     }
     ctrl = o_control(OBJR(n));
     symb = ctrl_symb(ctrl, f->sp->u.string->text, f->sp->u.string->len);

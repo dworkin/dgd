@@ -313,6 +313,11 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
     if (obj->flags & O_SPECIAL) {
 	error("User object is already special purpose");
     }
+
+    if (obj->flags & O_DRIVER) {
+        error("Cannot use driver object as user object");
+    }
+
     /* initialize dataspace before the object receives the user role */
     if (!O_HASDATA(obj) &&
 	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
@@ -793,9 +798,11 @@ static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
     if (v[2].type == T_STRING) {
 	if (usr->flags & CF_UDP) {
 	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
+#ifndef NETWORK_EXTENSIONS
 	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
 	{
 	    usr->flags |= CF_UDP;
+#endif
 	}
 	d_assign_elt(data, arr, &v[2], &nil_value);
     }
@@ -1484,6 +1491,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	    /*
 	     * binary connection
 	     */
+#ifndef NETWORK_EXTENSIONS
 	    if (usr->flags & CF_UDP) {
 		if (usr->flags & CF_UDPDATA) {
 		    n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
@@ -1511,6 +1519,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    this_user = OBJ_NONE;
 		}
 	    }
+#endif
 
 	    n = conn_read(usr->conn, p = buffer, BINBUF_SIZE);
 	    if (n <= 0) {

@@ -240,6 +240,7 @@ extern void	i_global_lvalue	(frame*, int, int, int, Uint);
 extern void	i_index		(frame*);
 extern void	i_index_lvalue	(frame*, int, Uint);
 extern char    *i_typename	(char*, unsigned int);
+extern char    *i_classname	(frame*, Uint);
 extern int	i_instanceof	(frame*, unsigned int, Uint);
 extern void	i_cast		(frame*, value*, unsigned int, Uint);
 extern void	i_dup		(frame*);

@@ -38,7 +38,7 @@ typedef struct _copatch_ {
     dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
-    cbuf *queue;		/* callout queue */
+    uindex *queue;		/* callout queue */
     struct _copatch_ *next;	/* next in linked list */
     dcallout aco;		/* added callout */
     dcallout rco;		/* removed callout */
@@ -340,7 +340,7 @@ static void cop_clean(dataplane *plane)
  */
 static copatch *cop_new(dataplane *plane, copatch **c, int type, 
 	unsigned int handle, dcallout *co, Uint time, unsigned int mtime, 
-	cbuf *q)
+	uindex *q)
 {
     coptable *tab;
     copatch *cop;
@@ -425,7 +425,7 @@ static void cop_del(dataplane *plane, copatch **c, bool del)
  * DESCRIPTION:	replace one callout patch with another
  */
 static void cop_replace(copatch *cop, dcallout *co, Uint time, 
-	unsigned int mtime, cbuf *q)
+	unsigned int mtime, uindex *q)
 {
     int i;
     value *v;
@@ -1167,12 +1167,12 @@ uindex d_new_call_out(dataspace *data, string *func, Int delay,
 {
     Uint ct, t;
     unsigned short m;
-    cbuf *q;
+    uindex *q;
     value v[4];
     uindex handle;
 
     ct = co_check(ncallout, delay, mdelay, &t, &m, &q);
-    if (ct == 0 && q == (cbuf *) NULL) {
+    if (ct == 0 && q == (uindex *) NULL) {
 	/* callouts are disabled */
 	return 0;
     }
@@ -1293,7 +1293,7 @@ Int d_del_call_out(dataspace *data, Uint handle, unsigned short *mtime)
 	    if (cop == (copatch *) NULL || cop->plane != plane) {
 		/* delete new */
 		cop_new(plane, cc, COP_REMOVE, (uindex) handle, co, (Uint) 0, 0,
-			(cbuf *) NULL);
+			(uindex *) NULL);
 		break;
 	    }
 	    if (cop->handle == handle) {
@@ -1376,7 +1376,7 @@ string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
 
 	case T_LWOBJECT:
 	    o = d_get_elts(v->u.array);
-	    if (DESTRUCTED(o)) {
+	    if (o->type == T_OBJECT && DESTRUCTED(o)) {
 		arr_del(v->u.array);
 		*v = nil_value;
 	    }

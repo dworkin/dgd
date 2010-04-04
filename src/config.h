@@ -85,6 +85,9 @@ typedef unsigned char eindex;
 # define VFMERGEHASHSZ	10	/* # characters in function/variables to hash */
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
+/* builtin type prefix */
+# define BIPREFIX	"builtin/"
+# define BIPREFIXLEN	8
 
 extern bool		conf_init	(char*, char*, sector*);
 extern char	       *conf_base_dir	(void);

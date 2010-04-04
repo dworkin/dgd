@@ -80,6 +80,7 @@ extern void	  o_upgraded		(object*, object*);
 extern void	  o_del			(object*, frame*);
 
 extern char	 *o_name		(char*, object*);
+extern char	 *o_builtin_name	(Int);
 extern object	 *o_find		(char*, int);
 extern control   *o_control		(object*);
 extern dataspace *o_dataspace		(object*);

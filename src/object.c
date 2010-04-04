@@ -835,6 +835,24 @@ char *o_name(char *name, object *o)
 }
 
 /*
+ * NAME:	object->builtin_name()
+ * DESCRIPTION:	return the base name of a builtin type
+ */
+char *o_builtin_name(Int type)
+{
+    /*
+     * builtin types have names like: /builtin/type#-1
+     * the base name is then: builtin/type
+     */
+    switch (type) {
+# ifdef DEBUG
+    default:
+	fatal("unknown builtin type %d", type);
+# endif
+    }
+}
+
+/*
  * NAME:	object->find()
  * DESCRIPTION:	find an object by name
  */

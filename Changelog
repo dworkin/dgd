@@ -3,6 +3,85 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-04-03
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Merge latest changes from Felix: 
+  - Add an extra field to saved callouts for DGDMP compatibility.                                         
+    Dumpfile format version bumped to 11.
+
+  src/call_out.c
+  src/call_out.h
+  src/config.c
+  src/data.c
+
+2010-04-02/2010-04-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  Added generalized builtin type support as an extension of light-weight
+  objects.  Builtin types are LWOs with a name like /builtin/type#-1.
+  Compilation of an object with a name that starts with /builtin/ is now
+  forbidden.
+
+  doc/builtin
+  src/array.c
+  src/config.h
+  src/data.c
+  src/object.c
+  src/object.h
+  src/sdata.c
+  src/interpret.c
+  src/interpret.h
+  src/comp/compile.c
+  src/kfun/builtin.c
+  src/kfun/debug.c
+  src/kfun/std.c
+
+2010-04-02
+
+  Bart van Leeuwen
+
+  DGD 1.4.3
+
+  src/version.h
+
+2010-03-30
+
+  Bart van Leeuwen
+
+  Remove conn_udp and conn_udpcheck when network extensions are 
+  enabled.
+
+  src/comm.h
+  src/comm.c
+  src/host/unix/connect.c
+  src/host/win32/connect.c
+  
+2010-03-23
+
+  Bart van Leeuwen
+
+  Forbid using the driver object as user or port object
+
+  Merged changes from Felix: 
+  - Don't save the parse_string automatons in an object that has in the
+    meanwhile been made special.
+  - Fix some issues pointed out by valgrind.
+
+  src/array.c
+  src/interpret.c
+  src/sdata.c
+  src/kfun/std.c
+  src/comm.c
+
+  Stephen Spiller (aka Kalinash)
+
+  Documentation updated
+
+  src/host/win32/README
+
 2010-03-21
 
   Stephen Spiller (aka Kalinash)

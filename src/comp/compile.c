@@ -581,7 +581,8 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
     }
 
     c.file = file;
-    if (strchr(file, '#') != (char *) NULL) {
+    if (strncmp(file, BIPREFIX, BIPREFIXLEN) == 0 ||
+	strchr(file, '#') != (char *) NULL) {
 	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
