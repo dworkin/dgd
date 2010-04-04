@@ -2190,14 +2190,9 @@ int kf_statuso_idx(frame *f)
 	break;
 
     case T_LWOBJECT:
-	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
-	    n = f->sp[1].u.array->elts[0].oindex;
-	    arr_del(f->sp[1].u.array);
-	    f->sp[1] = nil_value;
-	} else {
-	    /* no user-visible parts within (right?) */
-	    error("Index on bad type");
-	}
+	n = f->sp[1].u.array->elts[0].oindex;
+	arr_del(f->sp[1].u.array);
+	f->sp[1] = nil_value;
 	break;
 
     default:
@@ -2269,7 +2264,6 @@ char pt_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
 int kf_instanceof(frame *f)
 {
     uindex oindex;
-    value *elts;
     int instance;
 
     oindex = 0;
@@ -2280,19 +2274,7 @@ int kf_instanceof(frame *f)
 	break;
 
     case T_LWOBJECT:
-	elts = d_get_elts(f->sp[1].u.array);
-	if (elts->type != T_OBJECT) {
-	    /*
-	     * builtin types can only be an instance of their own type
-	     */
-	    instance = (strcmp(o_builtin_name(elts->u.number),
-			       i_classname(f, f->sp->u.number)) == 0);
-	    f->sp++;
-	    arr_del(f->sp->u.array);
-	    PUT_INTVAL(f->sp, instance);
-	    return 0;
-	}
-	oindex = elts->oindex;
+	oindex = d_get_elts(f->sp[1].u.array)->oindex;
 	arr_del(f->sp[1].u.array);
 	break;
 
@@ -2346,3 +2328,291 @@ int kf_store_aggr(frame *f)
 }
 # endif
 
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_float, pt_add_float, 0)
+# else
+char pt_add_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->add_float()
+ * DESCRIPTION:	float + float
+ */
+int kf_add_float(frame *f)
+{
+    xfloat f1,f2;
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_add(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("++", kf_add1_float, pt_add1_float, 0)
+# else
+char pt_add1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->add1_float()
+ * DESCRIPTION:	float++
+ */
+int kf_add1_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f1);
+    FLT_ONE(f2.high, f2.low);
+    flt_add(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("/", kf_div_float, pt_div_float, 0)
+# else
+char pt_div_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->div_float()
+ * DESCRIPTION:	float / float
+ */
+int kf_div_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_div(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("==", kf_eq_float, pt_eq_float, 0)
+# else
+char pt_eq_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->eq_float()
+ * DESCRIPTION:	float == float
+ */
+int kf_eq_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) == 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF(">=", kf_ge_float, pt_ge_float, 0)
+# else
+char pt_ge_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->ge_float()
+ * DESCRIPTION:	float >= float
+ */
+int kf_ge_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) >= 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF(">", kf_gt_float, pt_gt_float, 0)
+# else
+char pt_gt_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->gt_float()
+ * DESCRIPTION:	float > float
+ */
+int kf_gt_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) > 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("<=", kf_le_float, pt_le_float, 0)
+# else
+char pt_le_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->le_float()
+ * DESCRIPTION:	float <= float
+ */
+int kf_le_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) <= 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("<", kf_lt_float, pt_lt_float, 0)
+# else
+char pt_lt_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->lt_float()
+ * DESCRIPTION:	float < float
+ */
+int kf_lt_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) < 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("*", kf_mult_float, pt_mult_float, 0)
+# else
+char pt_mult_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->mult_float()
+ * DESCRIPTION:	float * float
+ */
+int kf_mult_float(frame *f)
+{
+    xfloat f1,f2;
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_mult(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("!=", kf_ne_float, pt_ne_float, 0)
+# else
+char pt_ne_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->ne_float()
+ * DESCRIPTION:	float != float
+ */
+int kf_ne_float(frame *f)
+{
+    xfloat f1,f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) != 0));
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("-", kf_sub_float, pt_sub_float, 0)
+# else
+char pt_sub_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->sub_float()
+ * DESCRIPTION:	float - float
+ */
+int kf_sub_float(frame *f)
+{
+    xfloat f1,f2;
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_sub(&f2, &f1);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("--", kf_sub1_float, pt_sub1_float, 0)
+# else
+char pt_sub1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->sub1_float()
+ * DESCRIPTION:	float--
+ */
+int kf_sub1_float(frame *f)
+{
+    xfloat f1, f2;
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f1);
+    FLT_ONE(f2.high, f2.low);
+    flt_sub(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("!!", kf_tst_float, pt_tst, 0)
+# else
+/*
+ * NAME:	kfun->tst_float()
+ * DESCRIPTION:	!! float
+ */
+int kf_tst_float(frame *f)
+{
+    PUT_INTVAL(f->sp, !VFLT_ISZERO(f->sp));
+	return 0;
+}
+# endif
+
+# ifdef FUNCDEF
+FUNCDEF("unary -", kf_umin_float, pt_umin_float, 0)
+# else
+char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->umin_float()
+ * DESCRIPTION:	- float
+ */
+int kf_umin_float(frame *f)
+{
+    xfloat flt;     
+    i_add_ticks(f, 1);
+    if (!VFLT_ISZERO(f->sp)) {
+        GET_FLT(f->sp, flt);
+	FLT_NEG(flt.high, flt.low);
+	PUT_FLT(f->sp, flt);
+    }
+    return 0;
+}
+# endif

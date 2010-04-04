@@ -105,5 +105,19 @@ extern void kf_restore	(int, int);
 # define KF_NIL		58
 # define KF_INSTANCEOF	59
 # define KF_STORE_AGGR	60
+# define KF_ADD_FLOAT 	61
+# define KF_ADD1_FLOAT 	62
+# define KF_DIV_FLOAT 	63
+# define KF_EQ_FLOAT 	64
+# define KF_GE_FLOAT 	65
+# define KF_GT_FLOAT 	66
+# define KF_LE_FLOAT	67
+# define KF_LT_FLOAT	68
+# define KF_MULT_FLOAT	69
+# define KF_NE_FLOAT	70
+# define KF_SUB_FLOAT	71
+# define KF_SUB1_FLOAT	72
+# define KF_TST_FLOAT	73
+# define KF_UMIN_FLOAT	74 
 
-# define KF_BUILTINS	61
+# define KF_BUILTINS	75
