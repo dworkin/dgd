@@ -769,11 +769,11 @@ static void cg_expr(node *n, int pop)
     case N_ADD_FLOAT:
 	cg_expr(n->l.left, FALSE);
 	if (n->r.right->type == N_FLOAT) {
-	    if (n->r.right->l.number == 1) {
+	    if (NFLT_ISONE(n->r.right)) {
 		code_kfun(KF_ADD1_FLOAT, n->line);
 		break;
 	    }
-	    if (n->r.right->l.number == -1) {
+	    if (NFLT_ISMONE(n->r.right)) {
 		code_kfun(KF_SUB1_FLOAT, n->line);
 		break;
 	    }
@@ -1388,11 +1388,11 @@ static void cg_expr(node *n, int pop)
 	} else {
 	    cg_expr(n->l.left, FALSE);
 	    if (n->r.right->type == N_FLOAT) {
-		if (n->r.right->l.number == 1) {
+		if (NFLT_ISONE(n->r.right)) {
 		    code_kfun(KF_SUB1_FLOAT, n->line);
 		    break;
 		}
-		if (n->r.right->l.number == -1) {
+		if (NFLT_ISMONE(n->r.right)) {
 		    code_kfun(KF_ADD1_FLOAT, n->line);
 		    break;
 		}
