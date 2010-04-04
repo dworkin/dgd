@@ -1,4 +1,4 @@
-The "baseline" branch tracks changes from DGDMP, only.  As such, it will
+The "baseline" branch tracks changes from Hydra, only.  As such, it will
 gradually be left behind by the trunk version.  Most changes from the
 "baseline" branch will however be incorporated in the trunk version.
 
