@@ -3,6 +3,18 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-04-05
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Documentation change.
+
+  Merge latest changes from Felix:
+  - reflect name change from DGDMP to Hydra
+
+  doc/Introduction
+  src/config.c
+
 2010-04-03
 
   Bart van Leeuwen (aidil@wotf.org)

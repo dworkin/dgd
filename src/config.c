@@ -369,7 +369,7 @@ static void conf_restore(int fd)
     secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
 	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if ((rpsize >> 4) > 1) {
-	error("Cannot restore hindex > 1");	/* DGDMP only */
+	error("Cannot restore hindex > 1");	/* Hydra only */
     }
     rpsize &= 0xf;
 

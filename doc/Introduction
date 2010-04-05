@@ -265,5 +265,8 @@ objects		int	The maximum number of objects.
 call_outs	int	The maximum number of simultaneously active
 			callouts.
 
-   Examples of the auto object, driver object and config file are present
-in the kernel library, which is distributed with DGD.
+Examples of the auto and driver objects can be found the kernel library
+which is available from http://ftp.dworkin.nl/kernellib/
+
+Another example of those objects can be found in Gurbalib, available from
+http://wotf.org/downloads/gurba/
