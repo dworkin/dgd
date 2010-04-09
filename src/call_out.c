@@ -1099,7 +1099,7 @@ register Uint t;
 	}
 	if (immediate != 0) {
 	    immediate += offset;
-	    nzero == cotab[immediate].count;
+	    nzero += cotab[immediate].count;
 	}
     }
 
