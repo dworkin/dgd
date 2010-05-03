@@ -867,7 +867,6 @@ static char dco_layout[] = "uui";
 bool co_dump(int fd)
 {
     dump_header dh;
-    call_out *co;
     unsigned short m;
 
     /* update timestamp */
@@ -1066,7 +1065,7 @@ void co_restore(int fd, Uint t, int conv, int conv2)
 	}
 	if (immediate != 0) {
 	    immediate += offset;
-	    nzero == cotab[immediate].count;
+	    nzero += cotab[immediate].count;
 	}
     }
 
