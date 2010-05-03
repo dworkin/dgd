@@ -850,6 +850,7 @@ char *o_builtin_name(Int type)
 	fatal("unknown builtin type %d", type);
 # endif
     }
+    return NULL;
 }
 
 /*

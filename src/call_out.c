@@ -867,7 +867,6 @@ static char dco_layout[] = "uui";
 bool co_dump(int fd)
 {
     dump_header dh;
-    call_out *co;
     unsigned short m;
 
     /* update timestamp */
