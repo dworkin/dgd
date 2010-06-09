@@ -39,9 +39,6 @@ extern bool call_driver_object	P((frame*, char*, int));
 extern void interrupt		P((void));
 extern void endthread		P((void));
 extern void errhandler		P((frame*, Int));
-# ifdef DGD_EXTENSION
-extern void dgd_error		();
-# endif
 extern int  dgd_main		P((int, char**));
 
 extern bool intr;

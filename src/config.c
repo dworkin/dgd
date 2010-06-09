@@ -1159,8 +1159,8 @@ static bool conf_includes()
 }
 
 
-# ifdef DGD_EXTENSION
-extern void extension_init	P((void));
+# ifdef LPC_EXTENSION
+extern void ext_dgd	P((void));
 # endif
 
 /*
@@ -1259,8 +1259,8 @@ sector *fragment;
     /* remove previously added kfuns */
     kf_clear();
 
-# ifdef DGD_EXTENSION
-    extension_init();
+# ifdef LPC_EXTENSION
+    ext_dgd();
 # endif
 
     /* initialize kfuns */

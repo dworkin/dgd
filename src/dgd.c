@@ -134,26 +134,6 @@ Int depth;
     i_runtime_error(f, (Int) 0);
 }
 
-# ifdef DGD_EXTENSION
-/*
- * NAME:	dgd_error()
- * DESCRIPTION:	error handler for the extension interface
- */
-void dgd_error(f, format, arg1, arg2, arg3, arg4, arg5, arg6)
-frame *f;
-char *format, *arg1, *arg2, *arg3, *arg4, *arg5, *arg6;
-{
-    char ebuf[4 * STRINGSZ];
-
-    if (format != (char *) NULL) {
-	sprintf(ebuf, format, arg1, arg2, arg3, arg4, arg5, arg6);
-	serror(str_new(ebuf, (long) strlen(ebuf)));
-    } else {
-	serror((string *) NULL);
-    }
-}
-# endif
-
 /*
  * NAME:	dgd_main()
  * DESCRIPTION:	the main loop of DGD

@@ -30,11 +30,11 @@ YACC=	yacc
 BIN=	../bin
 
 SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
-	path.c editor.c comm.c call_out.c interpret.c config.c dgd.c
+	path.c editor.c comm.c call_out.c interpret.c config.c ext.c dgd.c
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
-	path.o editor.o comm.o call_out.o interpret.o config.o dgd.o
+	path.o editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
-	interpret.o config.o
+	interpret.o config.o ext.o
 
 a.out:	$(OBJ) always
 	cd comp; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
