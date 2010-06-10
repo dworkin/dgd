@@ -29,7 +29,7 @@ char *module, *symbol;
 {
     char *h;
 
-    h = dlopen(module, RTLD_NOW | RTLD_LOCAL | RTLD_FIRST);
+    h = dlopen(module, RTLD_NOW | RTLD_LOCAL);
     if (h == (char *) NULL) {
 	return (char *) NULL;
     }
