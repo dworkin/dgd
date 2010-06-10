@@ -177,7 +177,7 @@ char **argv;
     swap = dump = intr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[0], (argc == 3) ? argv[1] : (char *) NULL, module,
+    if (!conf_init(argv[0], (argc == 2) ? argv[1] : (char *) NULL, module,
 		   &fragment)) {
 	return 2;	/* initialization failed */
     }
