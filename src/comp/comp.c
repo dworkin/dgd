@@ -310,15 +310,10 @@ char *argv[];
 	    (unsigned short) P_random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
-    printf("\n * DGD is Copyright by Dworkin B.V. and is released under the\n");
-    printf(" * terms of the GNU Affero General Public License.\n *\n");
-    printf(" * File: \"/%s.c\"\n */\n", file);
+    printf("\n *\n * Original file: \"/%s.c\"\n */\n", file);
 
     printf("\n# ifdef TAG\nTAG(%s)\n# else\n", tag);
-    printf("# include \"dgd.h\"\n# include \"str.h\"\n");
-    printf("# include \"array.h\"\n# include \"object.h\"\n");
-    printf("# include \"interpret.h\"\n# include \"data.h\"\n");
-    printf("# include \"xfloat.h\"\n# include \"csupport.h\"\n");
+    printf("# include \"lpc_ext.h\"\n");
 
     if (ec_push((ec_ftn) NULL)) {
 	message("Failed to compile \"%s.c\"\012", file);	/* LF */
