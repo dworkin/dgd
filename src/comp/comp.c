@@ -258,25 +258,48 @@ char *argv[];
     register unsigned int len;
     register control *ctrl;
     register char *file;
+    char *program, *module;
     int nfuncs;
     sector fragment;
 
-    file = argv[2];
-    if ((argc != 3 && argc != 4) ||
+    --argc;
+    program = *argv++;
+    module = (char *) NULL;
+# ifdef LPC_EXTENSION
+    if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
+	if (argv[0][2] == '\0') {
+	    --argc;
+	    argv++;
+	    module = argv[0];
+	} else {
+	    module = argv[0] + 2;
+	}
+	--argc;
+	argv++;
+    }
+# endif
+    file = argv[1];
+    if ((argc != 2 && argc != 3) ||
 	(len=strlen(file)) < 2 || file[len - 2] != '.' || file[len - 1] != 'c')
     {
-	P_message("usage: precomp config_file lpc_file [c_file]\012");	/* LF */
+# ifdef LPC_EXTENSION
+	message("usage: %s [-e module] config_file lpc_file [c_file]\012",/*LF*/
+		program);
+# else
+	message("usage: %s config_file lpc_file [c_file]\012",		/* LF */
+		program);
+# endif
 	return 2;
     }
 
     /* open output file */
-    if (argc == 4 && freopen(argv[3], "w", stdout) == (FILE *) NULL) {
+    if (argc == 3 && freopen(argv[2], "w", stdout) == (FILE *) NULL) {
 	P_message("cannot open output file\012");	/* LF */
 	return 2;
     }
 
     /* initialize */
-    if (!conf_init(argv[1], (char *) NULL, &fragment)) {
+    if (!conf_init(argv[0], (char *) NULL, module, &fragment)) {
 	P_message("Initialization failed\012");	/* LF */
 	return 2;
     }
@@ -301,9 +324,9 @@ char *argv[];
 	message("Failed to compile \"%s.c\"\012", file);	/* LF */
 	printf("\n# error Error while compiling\n");
 	fclose(stdout);
-	if (argc == 4) {
+	if (argc == 3) {
 	    /* remove output file: may fail if path is not absolute */
-	    unlink(argv[3]);
+	    unlink(argv[2]);
 	}
 	return 1;
     }
@@ -842,7 +865,7 @@ unsigned int n, mdelay;
 Int delay;
 Uint *tp;
 unsigned short *mp;
-cbuf **qp;
+uindex **qp;
 {
     return 0;
 }
@@ -854,7 +877,7 @@ cbuf **qp;
 void co_new(oindex, handle, t, m, q)
 unsigned int oindex, handle, m;
 Uint t;
-cbuf *q;
+uindex *q;
 {
 }
 
@@ -959,8 +982,8 @@ int fd;
  * NAME:	call_out->restore()
  * DESCRIPTION:	pretend to restore callout table
  */
-void co_restore(fd, t, conv)
-int fd, conv;
+void co_restore(fd, t, conv, conv2)
+int fd, conv, conv2;
 Uint t;
 {
 }

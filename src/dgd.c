@@ -142,13 +142,13 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
-    char *module;
+    char *program, *module;
     Uint rtime, timeout;
     unsigned short rmtime, mtime;
 
     --argc;
-    argv++;
-    module = NULL;
+    program = *argv++;
+    module = (char *) NULL;
 # ifdef LPC_EXTENSION
     if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
 	if (argv[0][2] == '\0') {
@@ -161,16 +161,16 @@ char **argv;
 	--argc;
 	argv++;
     }
-    if (argc < 1 || argc > 2) {
-	P_message("Usage: dgd [-e module] config_file [dump_file]\012");/* LF */
-	return 2;
-    }
-# else
-    if (argc < 1 || argc > 2) {
-	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
-	return 2;
-    }
 # endif
+    if (argc < 1 || argc > 2) {
+# ifdef LPC_EXTENSION
+	message("Usage: %s [-e module] config_file [dump_file]\012",	/* LF */
+		program);
+# else
+	message("Usage: %s config_file [dump_file]\012", program);	/* LF */
+# endif
+	return 2;
+    }
 
     /* initialize */
     dindex = UINDEX_MAX;
