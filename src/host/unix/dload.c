@@ -20,6 +20,9 @@
 
 # include "dgd.h"
 # include <dlfcn.h>
+# ifdef SOLARIS
+# include <link.h>
+# endif
 
 char *P_dload(module, symbol)
 char *module, *symbol;
