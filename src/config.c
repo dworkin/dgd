@@ -1160,15 +1160,15 @@ static bool conf_includes()
 
 
 # ifdef LPC_EXTENSION
-extern void ext_dgd	P((void));
+extern bool ext_dgd	P((char*));
 # endif
 
 /*
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(configfile, dumpfile, fragment)
-char *configfile, *dumpfile;
+bool conf_init(configfile, dumpfile, module, fragment)
+char *configfile, *dumpfile, *module;
 sector *fragment;
 {
     char buf[STRINGSZ];
@@ -1199,6 +1199,26 @@ sector *fragment;
 	}
     }
 
+    m_static();
+
+    /* remove previously added kfuns */
+    kf_clear();
+
+# ifdef LPC_EXTENSION
+    if (module != (char *) NULL && !ext_dgd(module)) {
+	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
+		module);
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
+	m_finish();
+	return FALSE;
+    }
+# endif
+
+    /* initialize kfuns */
+    kf_init();
+
     /* change directory */
     if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */
@@ -1209,8 +1229,6 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
-
-    m_static();
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
@@ -1255,16 +1273,6 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
-
-    /* remove previously added kfuns */
-    kf_clear();
-
-# ifdef LPC_EXTENSION
-    ext_dgd();
-# endif
-
-    /* initialize kfuns */
-    kf_init();
 
     /* initialize interpreter */
     i_init(conf[CREATE].u.str, conf[TYPECHECKING].u.num == 2);

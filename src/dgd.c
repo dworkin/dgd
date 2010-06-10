@@ -142,20 +142,43 @@ int dgd_main(argc, argv)
 int argc;
 char **argv;
 {
+    char *module;
     Uint rtime, timeout;
     unsigned short rmtime, mtime;
 
-    if (argc < 2 || argc > 3) {
+    --argc;
+    argv++;
+    module = NULL;
+# ifdef LPC_EXTENSION
+    if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
+	if (argv[0][2] == '\0') {
+	    --argc;
+	    argv++;
+	    module = argv[0];
+	} else {
+	    module = argv[0] + 2;
+	}
+	--argc;
+	argv++;
+    }
+    if (argc < 1 || argc > 2) {
+	P_message("Usage: dgd [-e module] config_file [dump_file]\012");/* LF */
+	return 2;
+    }
+# else
+    if (argc < 1 || argc > 2) {
 	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
 	return 2;
     }
+# endif
 
     /* initialize */
     dindex = UINDEX_MAX;
     swap = dump = intr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
+    if (!conf_init(argv[0], (argc == 3) ? argv[1] : (char *) NULL, module,
+		   &fragment)) {
 	return 2;	/* initialization failed */
     }
 

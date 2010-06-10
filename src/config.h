@@ -86,7 +86,7 @@ typedef char eindex;
 # define NTMPVAL	32	/* # of temporary values for LPC->C code */
 
 
-extern bool		conf_init	P((char*, char*, sector*));
+extern bool		conf_init	P((char*, char*, char*, sector*));
 extern char	       *conf_base_dir	P((void));
 extern char	       *conf_driver	P((void));
 extern int		conf_typechecking P((void));

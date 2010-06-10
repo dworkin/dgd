@@ -421,7 +421,8 @@ char *mesg;
  * NAME:	ext->dgd()
  * DESCRIPTION:	initialize extension interface
  */
-void ext_dgd()
+bool ext_dgd(module)
+char *module;
 {
     char *ext_ext[1];
     char *ext_frame[4];
@@ -436,7 +437,12 @@ void ext_dgd()
     char *ext_runtime[1];
     char **ftabs[11];
     int sizes[11];
-    extern int ext_init P((int, int, char**[], int[]));
+    int (*init) P((int, int, char**[], int[]));
+
+    init = (int (*) P((int, int, char**[], int[]))) P_dload(module, "ext_init");
+    if (init == NULL) {
+	return FALSE;
+    }
 
     ext_ext[0] = (char *) &kf_ext_kfun;
     ext_frame[0] = (char *) &ext_frame_object;
@@ -489,8 +495,9 @@ void ext_dgd()
     ftabs[ 9] = ext_mapping;	sizes[ 9] = 6;
     ftabs[10] = ext_runtime;	sizes[10] = 1;
 
-    if (!ext_init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes)) {
+    if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes)) {
 	fatal("incompatible runtime extension");
     }
+    return TRUE;
 }
 # endif	/* LPC_EXTENSION */
