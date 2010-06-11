@@ -21,7 +21,7 @@ DEBUG=	-ggdb -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-LIBS=	# -ldl
+LIBS=	#-ldl
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
@@ -98,7 +98,7 @@ clean:
 path.o config.o dgd.o: comp/node.h comp/compile.h
 config.o data.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
-config.o sdata.o interpret.o: comp/control.h
+config.o sdata.o interpret.o ext.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
@@ -106,17 +106,16 @@ editor.o: ed/edcmd.h
 
 data.o: parser/parse.h
 
-interpret.o: kfun/table.h
+interpret.o ext.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
-array.o data.o call_out.o interpret.o path.o config.o dgd.o: xfloat.h
+editor.o call_out.o interpret.o config.o ext.o dgd.o: str.h array.h object.h
+array.o data.o call_out.o interpret.o path.o config.o ext.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-interpret.o config.o dgd.o: interpret.h
+interpret.o config.o ext.o dgd.o: interpret.h
 error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h
-interpret.o: data.h
-config.o dgd.o: data.h
+interpret.o config.o ext.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
