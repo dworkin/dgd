@@ -454,12 +454,12 @@ object *obj;
  * NAME:	ext->object_name()
  * DESCRIPTION:	store the name of an object
  */
-static void ext_object_name(f, obj, buf)
+static char *ext_object_name(f, obj, buf)
 frame *f;
 object *obj;
 char *buf;
 {
-    o_name(buf, obj);
+    return o_name(buf, obj);
 }
 
 /*
