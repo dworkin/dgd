@@ -28,7 +28,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	5
+# define EXTENSION_MINOR	6
 
 
 /*
@@ -345,7 +345,7 @@ register Int i, shift;
  * NAME:	ext->float_getval()
  * DESCRIPTION:	retrieve a float from a value
  */
-static double ext_float_getval(val)
+static long double ext_float_getval(val)
 value *val;
 {
     xfloat flt;
@@ -357,7 +357,7 @@ value *val;
     } else {
 	d = ldexp((double) (0x10 | (flt.high & 0xf)), 32);
 	d = ldexp(d + flt.low, ((flt.high >> 4) & 0x7ff) - 1023 - 36);
-	return (flt.high >> 15) ? -d : d;
+	return (long double) ((flt.high >> 15) ? -d : d);
     }
 }
 
@@ -365,14 +365,16 @@ value *val;
  * NAME:	ext->float_putval()
  * DESCRIPTION:	store a float in a value
  */
-static void ext_float_putval(val, d)
+static void ext_float_putval(val, ld)
 value *val;
-double d;
+long double ld;
 {
+    double d;
     xfloat flt;
     bool sign;
     int e;
 
+    d = (double) ld;
     if (d == 0.0) {
 	flt.high = 0;
 	flt.low = 0;
