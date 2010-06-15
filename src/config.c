@@ -124,20 +124,20 @@ typedef struct { char fill; Int i;	} aligni;
 typedef struct { char fill; char *p;	} alignp;
 typedef struct { char c;		} alignz;
 
-typedef char dumpinfo[50];
-
-# define FORMAT_VERSION	11
+# define FORMAT_VERSION	12
 
 # define DUMP_VALID	0	/* valid dump flag */
 # define DUMP_VERSION	1	/* dump file version number */
-# define DUMP_DRIVER	2	/* 0: vanilla DGD, 1: iChat DGD */
+# define DUMP_MODEL	2	/* 0: vanilla DGD, 1: iChat DGD */
 # define DUMP_TYPECHECK	3	/* global typechecking */
 # define DUMP_SECSIZE	4	/* sector size */
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
-# define DUMP_STARTTIME	20	/* start time */
-# define DUMP_ELAPSED	24	/* elapsed time */
-# define DUMP_HEADERSZ	30	/* header size */
-# define DUMP_VSTRING	30	/* version string */
+# define DUMP_STARTTIME	28	/* start time */
+# define DUMP_ELAPSED	32	/* elapsed time */
+# define DUMP_HEADERSZ	40	/* header size */
+# define DUMP_VSTRING	40	/* version string */
+
+typedef char dumpinfo[64];
 
 static dumpinfo header;		/* dumpfile header */
 # define s0	(header[ 6])	/* short, msb */
@@ -146,16 +146,18 @@ static dumpinfo header;		/* dumpfile header */
 # define i1	(header[ 9])
 # define i2	(header[10])
 # define i3	(header[11])	/* Int, lsb */
-# define utsize	(header[12])	/* sizeof(uindex) + sizeof(ssizet) */
-# define desize	(header[13])	/* sizeof(sector) + sizeof(eindex) */
-# define psize	(header[14])	/* sizeof(char*), upper nibble reserved */
-# define calign	(header[15])	/* align(char) */
-# define salign	(header[16])	/* align(short) */
-# define ialign	(header[17])	/* align(Int) */
-# define palign	(header[18])	/* align(char*) */
-# define zalign	(header[19])	/* align(struct) */
-# define zero1	(header[28])	/* reserved (0) */
-# define zero2	(header[29])	/* reserved (0) */
+# define utsize	(header[20])	/* sizeof(uindex) + sizeof(ssizet) */
+# define desize	(header[21])	/* sizeof(sector) + sizeof(eindex) */
+# define psize	(header[22])	/* sizeof(char*), upper nibble reserved */
+# define calign	(header[23])	/* align(char) */
+# define salign	(header[24])	/* align(short) */
+# define ialign	(header[25])	/* align(Int) */
+# define palign	(header[26])	/* align(char*) */
+# define zalign	(header[27])	/* align(struct) */
+# define zero1	(header[36])	/* reserved (0) */
+# define zero2	(header[37])	/* reserved (0) */
+# define zero3	(header[38])	/* reserved (0) */
+# define zero4	(header[39])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -167,16 +169,18 @@ static dumpinfo rheader;	/* restored header */
 # define ri1	(rheader[ 9])
 # define ri2	(rheader[10])
 # define ri3	(rheader[11])	/* Int, lsb */
-# define rutsize (rheader[12])	/* sizeof(uindex) + sizeof(ssizet) */
-# define rdesize (rheader[13])	/* sizeof(sector) + sizeof(eindex) */
-# define rpsize	(rheader[14])	/* sizeof(char*), upper nibble reserved */
-# define rcalign (rheader[15])	/* align(char) */
-# define rsalign (rheader[16])	/* align(short) */
-# define rialign (rheader[17])	/* align(Int) */
-# define rpalign (rheader[18])	/* align(char*) */
-# define rzalign (rheader[19])	/* align(struct) */
-# define rzero1	 (rheader[28])	/* reserved (0) */
-# define rzero2	 (rheader[29])	/* reserved (0) */
+# define rutsize (rheader[20])	/* sizeof(uindex) + sizeof(ssizet) */
+# define rdesize (rheader[21])	/* sizeof(sector) + sizeof(eindex) */
+# define rpsize	(rheader[22])	/* sizeof(char*), upper nibble reserved */
+# define rcalign (rheader[23])	/* align(char) */
+# define rsalign (rheader[24])	/* align(short) */
+# define rialign (rheader[25])	/* align(Int) */
+# define rpalign (rheader[26])	/* align(char*) */
+# define rzalign (rheader[27])	/* align(struct) */
+# define rzero1	 (rheader[36])	/* reserved (0) */
+# define rzero2	 (rheader[37])	/* reserved (0) */
+# define rzero3	 (rheader[38])	/* reserved (0) */
+# define rzero4	 (rheader[39])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -204,7 +208,7 @@ static void conf_dumpinit()
 
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
     header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
-    header[DUMP_DRIVER] = 0;			/* vanilla DGD */
+    header[DUMP_MODEL] = 0;			/* vanilla DGD */
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
     header[DUMP_SECSIZE + 1] = conf[SECTOR_SIZE].u.num;
@@ -330,8 +334,13 @@ int fd;
     if (rheader[DUMP_VERSION] < 11) {
 	conv_co3 = TRUE;
     }
+    if (rheader[DUMP_VERSION] < 12) {
+	memmove(rheader + 20, rheader + 12, 18);
+	rzero3 = rzero4 = 0;
+    }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
-    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0) {
+    if (memcmp(header, rheader, DUMP_TYPE) != 0 ||
+	rzero1 != 0 || rzero2 != 0 || rzero3 != 0 || rzero4 != 0) {
 	error("Bad or incompatible restore file header");
     }
 
