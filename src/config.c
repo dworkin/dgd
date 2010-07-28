@@ -135,7 +135,7 @@ typedef struct { char c;		} alignz;
 # define DUMP_STARTTIME	28	/* start time */
 # define DUMP_ELAPSED	32	/* elapsed time */
 # define DUMP_HEADERSZ	40	/* header size */
-# define DUMP_VSTRING	40	/* version string */
+# define DUMP_VSTRING	42	/* version string */
 
 typedef char dumpinfo[64];
 
