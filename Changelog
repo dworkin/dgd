@@ -3,6 +3,52 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-07-30
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Correct URLs in comments imported from baseline
+  - Windows support for dynamic loading
+  - Silence compilation warnings when compiled with VS2010 (and even more)
+  - Remove dgd_ext.h from win32 project files
+  - Use a hardcoded definition for voidfp on Windows
+
+    src/config.c
+    src/ext.c
+    src/host.h
+    src/lpc/lpc_ext.h
+    src/host/unix/dload.c
+    src/host/win32/dgd.vcxproj
+    src/host/win32/dgd.vcxproj.filters
+    src/host/win32/dload.c
+
+2010-06-23
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  - Imported dynamic linking support for extensions from
+    baseline branch
+
+    doc/Extensions (removed)
+    src/config.c
+    src/config.h
+    src/host/Makefile.sysv
+    src/host/unix/dload.c
+    src/host/Makefile.bsd
+    src/host/Makefile
+    src/Makefile
+    src/dgd.c
+    src/ext.c
+    src/dgd.h
+    src/comp/comp.c
+    src/comp/codegenc.c
+    src/comp/csupport.c
+    src/comp/csupport.h
+    src/kfun/table.c
+    src/host.h
+    src/dgd_ext.h (removed)
+    src/lpc/lpc_ext.h
+
 2010-05-03
 
   Stephen Spiller (aka Kalinash)

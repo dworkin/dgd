@@ -34,6 +34,7 @@
     <ClCompile Include="..\..\ed\regexp.c" />
     <ClCompile Include="..\..\ed\vars.c" />
     <ClCompile Include="..\..\error.c" />
+    <ClCompile Include="..\..\ext.c" />
     <ClCompile Include="..\..\hash.c" />
     <ClCompile Include="..\..\interpret.c" />
     <ClCompile Include="..\..\kfun\builtin.c" />
@@ -62,6 +63,7 @@
     <ClCompile Include="..\crypt.c" />
     <ClCompile Include="..\simfloat.c" />
     <ClCompile Include="connect.c" />
+    <ClCompile Include="dload.c" />
     <ClCompile Include="dosfile.c" />
     <ClCompile Include="local.c" />
     <ClCompile Include="time.c" />
@@ -84,7 +86,6 @@
     <ClInclude Include="..\..\config.h" />
     <ClInclude Include="..\..\data.h" />
     <ClInclude Include="..\..\dgd.h" />
-    <ClInclude Include="..\..\dgd_ext.h" />
     <ClInclude Include="..\..\editor.h" />
     <ClInclude Include="..\..\ed\buffer.h" />
     <ClInclude Include="..\..\ed\ed.h" />

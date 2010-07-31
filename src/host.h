@@ -34,6 +34,7 @@ typedef unsigned int Uint;
 # define F_OK	0
 # define R_OK	4
 # define W_OK	2
+
 # endif
 
 # ifdef INCLUDE_CTYPE
@@ -57,6 +58,9 @@ typedef unsigned int Uint;
 
 # define Uuint			unsigned __int64
 # define bool			dgd_bool
+
+typedef int (__stdcall *_voidfp)();
+# define voidfp			_voidfp
 
 # endif	/* WIN32 */
 
@@ -272,6 +276,14 @@ extern int P_chdir	(char*);
 extern bool  P_opendir	(char*);
 extern char *P_readdir	(void);
 extern void  P_closedir	(void);
+
+# ifndef voidfp
+# define voidfp		void *
+# endif
+
+# ifdef LPC_EXTENSION
+extern voidfp P_dload	(char*, char*);
+# endif
 
 extern void  P_srandom	(long);
 extern long  P_random	(void);
