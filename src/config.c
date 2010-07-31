@@ -1226,7 +1226,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     /* remove previously added kfuns */
     kf_clear();
 
-    (void) module;
+    UNREFERENCED_PARAMETER(module);
 # ifdef LPC_EXTENSION
     if (module != (char *) NULL && !ext_dgd(module)) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/

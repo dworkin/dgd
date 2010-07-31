@@ -24,14 +24,14 @@
 # include <link.h>
 # endif
 
-void *P_dload(char *module, char *symbol)
+voidf *P_dload(char *module, char *symbol)
 {
     void *h;
 
     h = dlopen(module, RTLD_NOW | RTLD_LOCAL);
     if (h == (void *) NULL) {
-	return (void *) NULL;
+	return (voidf *) NULL;
     }
-    return (void *) dlsym(h, symbol);
+    return (voidf *) dlsym(h, symbol);
 }
 # endif /* LPC_EXTENSION */

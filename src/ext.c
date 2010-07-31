@@ -225,7 +225,7 @@ static value *ext_value_temp(dataspace *data)
 {
     static value temp;
 
-    (void) data;
+    UNREFERENCED_PARAMETER(data);
     return &temp;
 }
 
@@ -381,7 +381,7 @@ static void ext_string_putval(value *val, string *str)
  */
 static string *ext_string_new(dataspace *data, char *text, int len)
 {
-    (void) data;
+    UNREFERENCED_PARAMETER(data);
     return str_new(text, len);
 }
 
@@ -418,7 +418,7 @@ static void ext_object_putval(value *val, object *obj)
  */
 static char *ext_object_name(frame *f, object *obj, char *buf)
 {
-    (void) f;
+    UNREFERENCED_PARAMETER(f);
     return o_name(buf, obj);
 }
 
@@ -574,7 +574,7 @@ static int ext_mapping_size(array *m)
  */
 static void ext_runtime_error(frame *f, char *mesg)
 {
-    (void) f;
+    UNREFERENCED_PARAMETER(f);
     error(mesg);
 }
 
@@ -673,65 +673,65 @@ int ext_runtime_sswitch(frame *f, char *tab, int h)
  */
 bool ext_dgd(char *module)
 {
-    voidfp ext_ext[1];
-    voidfp ext_frame[4];
-    voidfp ext_data[2];
-    voidfp ext_value[3];
-    voidfp ext_int[2];
-    voidfp ext_float[2];
-    voidfp ext_string[5];
-    voidfp ext_object[6];
-    voidfp ext_array[6];
-    voidfp ext_mapping[7];
-    voidfp ext_runtime[1];
-    voidfp *ftabs[11];
+    voidf *ext_ext[1];
+    voidf *ext_frame[4];
+    voidf *ext_data[2];
+    voidf *ext_value[3];
+    voidf *ext_int[2];
+    voidf *ext_float[2];
+    voidf *ext_string[5];
+    voidf *ext_object[6];
+    voidf *ext_array[6];
+    voidf *ext_mapping[7];
+    voidf *ext_runtime[1];
+    voidf **ftabs[11];
     int sizes[11];
-    int (*init) (int, int, voidfp*[], int[]);
+    int (*init) (int, int, voidf**[], int[]);
 
-    init = (int (*) (int, int, voidfp*[], int[])) P_dload(module, "ext_init");
+    init = (int (*) (int, int, voidf**[], int[])) P_dload(module, "ext_init");
     if (init == NULL) {
 	return FALSE;
     }
 
-    ext_ext[0] = (voidfp) &kf_ext_kfun;
-    ext_frame[0] = (voidfp) &ext_frame_object;
-    ext_frame[1] = (voidfp) &ext_frame_dataspace;
-    ext_frame[2] = (voidfp) &ext_frame_arg;
-    ext_frame[3] = (voidfp) &ext_frame_atomic;
-    ext_data[0] = (voidfp) &d_get_extravar;
-    ext_data[1] = (voidfp) &d_set_extravar;
-    ext_value[0] = (voidfp) &ext_value_type;
-    ext_value[1] = (voidfp) &ext_value_nil;
-    ext_value[2] = (voidfp) &ext_value_temp;
-    ext_int[0] = (voidfp) &ext_int_getval;
-    ext_int[1] = (voidfp) &ext_int_putval;
-    ext_float[0] = (voidfp) &ext_float_getval;
-    ext_float[1] = (voidfp) &ext_float_putval;
-    ext_string[0] = (voidfp) &ext_string_getval;
-    ext_string[1] = (voidfp) &ext_string_putval;
-    ext_string[2] = (voidfp) &ext_string_new;
-    ext_string[3] = (voidfp) &ext_string_text;
-    ext_string[4] = (voidfp) &ext_string_length;
-    ext_object[0] = (voidfp) &ext_object_putval;
-    ext_object[1] = (voidfp) &ext_object_name;
-    ext_object[2] = (voidfp) &ext_object_isspecial;
-    ext_object[3] = (voidfp) &ext_object_ismarked;
-    ext_object[4] = (voidfp) &ext_object_mark;
-    ext_object[5] = (voidfp) &ext_object_unmark;
-    ext_array[0] = (voidfp) &ext_array_getval;
-    ext_array[1] = (voidfp) &ext_array_putval;
-    ext_array[2] = (voidfp) &ext_array_new;
-    ext_array[3] = (voidfp) &ext_array_index;
-    ext_array[4] = (voidfp) &ext_array_assign;
-    ext_array[5] = (voidfp) &ext_array_size;
-    ext_mapping[0] = (voidfp) &ext_array_getval;
-    ext_mapping[1] = (voidfp) &ext_mapping_putval;
-    ext_mapping[2] = (voidfp) &ext_mapping_new;
-    ext_mapping[3] = (voidfp) &ext_mapping_index;
-    ext_mapping[4] = (voidfp) &ext_mapping_assign;
-    ext_mapping[5] = (voidfp) &ext_mapping_enum;
-    ext_mapping[6] = (voidfp) &ext_mapping_size;
-    ext_runtime[0] = (voidfp) &ext_runtime_error;
+    ext_ext[0] = (voidf *) &kf_ext_kfun;
+    ext_frame[0] = (voidf *) &ext_frame_object;
+    ext_frame[1] = (voidf *) &ext_frame_dataspace;
+    ext_frame[2] = (voidf *) &ext_frame_arg;
+    ext_frame[3] = (voidf *) &ext_frame_atomic;
+    ext_data[0] = (voidf *) &d_get_extravar;
+    ext_data[1] = (voidf *) &d_set_extravar;
+    ext_value[0] = (voidf *) &ext_value_type;
+    ext_value[1] = (voidf *) &ext_value_nil;
+    ext_value[2] = (voidf *) &ext_value_temp;
+    ext_int[0] = (voidf *) &ext_int_getval;
+    ext_int[1] = (voidf *) &ext_int_putval;
+    ext_float[0] = (voidf *) &ext_float_getval;
+    ext_float[1] = (voidf *) &ext_float_putval;
+    ext_string[0] = (voidf *) &ext_string_getval;
+    ext_string[1] = (voidf *) &ext_string_putval;
+    ext_string[2] = (voidf *) &ext_string_new;
+    ext_string[3] = (voidf *) &ext_string_text;
+    ext_string[4] = (voidf *) &ext_string_length;
+    ext_object[0] = (voidf *) &ext_object_putval;
+    ext_object[1] = (voidf *) &ext_object_name;
+    ext_object[2] = (voidf *) &ext_object_isspecial;
+    ext_object[3] = (voidf *) &ext_object_ismarked;
+    ext_object[4] = (voidf *) &ext_object_mark;
+    ext_object[5] = (voidf *) &ext_object_unmark;
+    ext_array[0] = (voidf *) &ext_array_getval;
+    ext_array[1] = (voidf *) &ext_array_putval;
+    ext_array[2] = (voidf *) &ext_array_new;
+    ext_array[3] = (voidf *) &ext_array_index;
+    ext_array[4] = (voidf *) &ext_array_assign;
+    ext_array[5] = (voidf *) &ext_array_size;
+    ext_mapping[0] = (voidf *) &ext_array_getval;
+    ext_mapping[1] = (voidf *) &ext_mapping_putval;
+    ext_mapping[2] = (voidf *) &ext_mapping_new;
+    ext_mapping[3] = (voidf *) &ext_mapping_index;
+    ext_mapping[4] = (voidf *) &ext_mapping_assign;
+    ext_mapping[5] = (voidf *) &ext_mapping_enum;
+    ext_mapping[6] = (voidf *) &ext_mapping_size;
+    ext_runtime[0] = (voidf *) &ext_runtime_error;
 
     ftabs[ 0] = ext_ext;	sizes[ 0] = 1;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;

@@ -7,6 +7,7 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
+  Slightly prettified the casts that shut up VS2010.
   Note previous merges:
   - Merge from baseline: store version string at offset 42 in dumpfile
   - Merge from xpatch: changes from 2010-06-23 to 2010-07-30

@@ -17,14 +17,15 @@
  */
 
 # include <windows.h>
+# include "dgd.h"
 
-FARPROC P_dload(char *module, char *symbol)
+voidf *P_dload(char *module, char *symbol)
 {
     HMODULE h;
 
     h = LoadLibrary(module);
-    if (h == NULL) {
-	return (void *) NULL;
+    if (h == (void *) NULL) {
+	return (voidf *) NULL;
     }
-    return GetProcAddress(h, symbol);
+    return (voidf *) GetProcAddress(h, symbol);
 }
