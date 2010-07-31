@@ -3,6 +3,16 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-07-31
+
+  Felix Croes (felix@dworkin.nl)
+
+  Note previous merges:
+  - Merge from baseline: store version string at offset 42 in dumpfile
+  - Merge from xpatch: changes from 2010-06-23 to 2010-07-30
+
+  Dumpfile format version bumped to 12.
+
 2010-07-30
 
   Felix Croes (felix@dworkin.nl)
