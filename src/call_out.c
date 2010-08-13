@@ -659,10 +659,7 @@ static void co_expire()
 		    last = (first->count == 1) ? first : &cotab[first->last];
 		    last->next = i;
 		    first->count += cotab[i].count;
-		    if (cotab[i].count != 1) {
-			i = cotab[i].last;
-		    }
-		    first->last = i;
+		    first->last = (cotab[i].count == 1) ? i : cotab[i].last;
 		}
 		nzero += cotab[i].count;
 	    }
