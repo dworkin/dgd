@@ -51,8 +51,8 @@ typedef struct {
 struct _objplane_ {
     hashtab *htab;		/* object name hash table */
     optable *optab;		/* object patch table */
-    unsigned long clean;	/* list of objects to clean */
-    unsigned long upgrade;	/* list of upgrade objects */
+    uintptr_t clean;		/* list of objects to clean */
+    uintptr_t upgrade;		/* list of upgrade objects */
     uindex destruct;		/* destructed object list */
     uindex free;		/* free object list */
     uindex nobjects;		/* number of objects in object table */

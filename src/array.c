@@ -359,7 +359,7 @@ Uint arr_put(array *a, Uint idx)
 {
     arrh **h;
 
-    for (h = &aht[(unsigned long) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
+    for (h = &aht[(uintptr_t) a % ARRMERGETABSZ]; *h != (arrh *) NULL;
 	 h = &(*h)->next) {
 	if ((*h)->arr == a) {
 	    return (*h)->index;
@@ -1887,7 +1887,7 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
     case T_ARRAY:
     case T_MAPPING:
     case T_LWOBJECT:
-	i = (unsigned short) ((unsigned long) val->u.array >> 3);
+	i = (unsigned short) ((uintptr_t) val->u.array >> 3);
 	break;
     }
 

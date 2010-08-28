@@ -80,7 +80,7 @@ typedef struct {
 # define index2	u.s.u_index2
 
 # define BLOCK(lb, blk)	\
-	(block) ((lb)->wb->offset + (long) (blk) - (long) (lb)->wb->buf)
+	(block) ((lb)->wb->offset + (intptr_t) (blk) - (intptr_t) (lb)->wb->buf)
 
 # define EDFULLTREE	0x8000
 # define EDDEPTH	0x7fff

@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-08-28
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Use (intptr_t) rather than (long) when casting a pointer.
+
 2010-08-22
 
   Bart van Leeuwen (aidil@wotf.org)

@@ -696,7 +696,7 @@ static char *restore_string(restcontext *x, char *buf, value *val)
 	*q++ = *p;
     }
 
-    PUT_STRVAL_NOREF(val, str_new(buf, (long) q - (long) buf));
+    PUT_STRVAL_NOREF(val, str_new(buf, (intptr_t) q - (intptr_t) buf));
     return p + 1;
 }
 

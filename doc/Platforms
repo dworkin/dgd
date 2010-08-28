@@ -31,7 +31,6 @@ In general, platforms must meet the following requirements:
 
  - shorts should be 2 bytes wide
  - integers should be 4 bytes wide
- - longs should be at least as wide as pointers
  - all pointer types must be equally wide
  - two's complement should be used to represent negative numbers
  - the value of NULL must be 0.
