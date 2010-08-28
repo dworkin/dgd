@@ -8,6 +8,10 @@ in doc/Changelog.Dworkin
   Felix Croes (felix@dworkin.nl)
 
   - Use (intptr_t) rather than (long) when casting a pointer.
+  - Base STRUCT_AL on the alignment of jmp_buf.
+  - Add x64 as a platform to the Windows project files, and note how to
+    use a separate 46 bit SDK.
+  - Add DEBUG as a macro to Debug configurations on all Windows platforms.
 
 2010-08-22
 
