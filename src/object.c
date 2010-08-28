@@ -1048,7 +1048,7 @@ void o_clean()
 
     while (baseplane.clean != OBJ_NONE) {
 	o = OBJ(baseplane.clean);
-	baseplane.clean = (unsigned long) o->chain.next;
+	baseplane.clean = (uintptr_t) o->chain.next;
 
 	/* free dataspace block (if it exists) */
 	if (o->data != (dataspace *) NULL) {
@@ -1092,7 +1092,7 @@ void o_clean()
 	control *ctrl;
 
 	o = OBJ(baseplane.upgrade);
-	baseplane.upgrade = (unsigned long) o->chain.next;
+	baseplane.upgrade = (uintptr_t) o->chain.next;
 
 	up = OBJ(o->cref);
 	if (up->u_ref == 0) {
