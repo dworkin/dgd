@@ -299,8 +299,8 @@ extern char *P_ctime	(char*, Uint);
 # define FF	'\014'
 # define CR	'\015'
 
-struct _struct_al_ { long l; short s; };
-# define STRUCT_AL	(sizeof(struct _struct_al_) - sizeof(long))
+struct _struct_al_ { jmp_buf buf; short s; };
+# define STRUCT_AL	(sizeof(struct _struct_al_) - sizeof(jmp_buf))
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
 
