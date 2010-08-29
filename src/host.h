@@ -21,6 +21,7 @@
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys\types.h>
 # include <malloc.h>
@@ -138,6 +139,7 @@ typedef int (__stdcall _voidf_)();
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -175,6 +177,7 @@ typedef unsigned int Uint;
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
