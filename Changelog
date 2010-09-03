@@ -7,9 +7,10 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen (aidil@wotf.org)
 
-  Imported fix from baseline.
+  Imported fix from baseline and tagged 1.4.5
 
   src/object.c
+  src/version.h
 
 2010-08-28
 
