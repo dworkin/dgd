@@ -219,7 +219,11 @@ static object *o_oaccess(unsigned int index, int access)
 	}
 
 	/* create new patch on current plane */
-	return &op_new(oplane, oo, o, &o->obj)->obj;
+	o = op_new(oplane, oo, o, obj = &o->obj);
+	if (obj->chain.name != (char *) NULL && obj->count != 0) {
+	    *ht_lookup(oplane->htab, obj->chain.name, FALSE) = (hte *) &o->obj;
+	}
+	return &o->obj;
     } else {
 	/*
 	 * first patch for object
