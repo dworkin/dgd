@@ -118,6 +118,6 @@ clean:
 $(OBJ) lpc.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h ../str.h
 $(OBJ) lpc.o: ../array.h ../object.h ../xfloat.h ../interpret.h ../data.h
 
-$(OBJ) lpc.o: ../comp/csupport.h
+$(OBJ) lpc.o: lpc_ext.h
 
 lpc.o:	lpc.c list $(OBJ)
