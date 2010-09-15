@@ -1,8 +1,8 @@
-			DGD editor reference guide
+			    editor reference guide
 
 
-   The DGD editor is line oriented.  It has two different modes, Command Mode
-and Insert Mode.  In Command Mode, commands may be given that affect a range of
+   The editor is line oriented.  It has two different modes, Command Mode and
+Insert Mode.  In Command Mode, commands may be given that affect a range of
 lines in the main buffer.  In Insert Mode, new lines may be added to the main
 buffer.  Apart from the main buffer, lines may be copied to and from 26
 secondary buffers.

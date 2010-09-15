@@ -2,21 +2,21 @@
 
 1. Introduction
 
-The parse_string() utility for DGD parses strings as follows: first, the
-string is broken up into two types of smaller strings, called "tokens" and
-"whitespace".  Next, the resulting array of tokens (whitespace is ignored) is
-parsed as a sentence in the language defined by a formal grammar.  For any
-valid parsings, LPC functions are called as appropriate, which may transform
-the array of tokens, or indicate that a particular parsing of the string
-is yet to be considered invalid.  Finally, the resultant array of tokens, if
-any, is returned by the function.
+The parse_string() utility parses strings as follows: first, the string is
+broken up into two types of smaller strings, called "tokens" and "whitespace".
+Next, the resulting array of tokens (whitespace is ignored) is parsed as a
+sentence in the language defined by a formal grammar.  For any valid parsings,
+LPC functions are called as appropriate, which may transform the array of
+tokens, or indicate that a particular parsing of the string is yet to be
+considered invalid.  Finally, the resultant array of tokens, if any, is
+returned by the function.
 
 Regular expressions are used to define tokens and whitespace, and the language
 of those tokens is defined by a context-free grammar, which can be enhanced
 with LPC function calls.  Token/whitespace definitions and language definition
 together are called "the grammar".
 
-Internally, DGD generates two partial automatons for each grammar, one to
+Internally, two partial automatons are generated for each grammar, one to
 match tokens and one to parse a sentence of tokens.  Only those parts of the
 automatons are generated that are required to parse the sentences seen so far;
 this effect is cumulative for successive calls in each object, ensuring that
