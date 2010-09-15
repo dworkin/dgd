@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 ws2_32.lib nafxcw.lib /nologo /subsystem:windows /machine:I386 /out:".\Release\dgd.exe"
+# ADD LINK32 ws2_32.lib nafxcw.lib /nologo /subsystem:windows /machine:I386 /out:".\Release\windgd.exe"
 
 !ELSEIF  "$(CFG)" == "windgd - Win32 Debug"
 
@@ -81,7 +81,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386
-# ADD LINK32 ws2_32.lib /nologo /subsystem:windows /debug /machine:I386 /out:".\Debug\dgd.exe"
+# ADD LINK32 ws2_32.lib nafxcwd.lib /nologo /subsystem:windows /debug /machine:I386 /out:".\Debug\windgd.exe"
 
 !ENDIF 
 
@@ -183,6 +183,10 @@ SOURCE=..\..\editor.c
 # Begin Source File
 
 SOURCE=..\..\error.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\ext.c
 # End Source File
 # Begin Source File
 
