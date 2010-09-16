@@ -165,7 +165,7 @@ void i_grow_stack(frame *f, int size)
     if (f->sp < f->lip + size + MIN_STACK) {
 	int spsize, lisize;
 	value *v, *stk;
-	long offset;
+	intptr_t offset;
 
 	/*
 	 * extend the local stack
