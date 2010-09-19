@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-09-16/2010-09-19
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Use intptr_t in one more case.
+  - Remove obsolete advice from doc/Platforms.
+
 2010-09-12
 
   Felix Croes (felix@dworkin.nl)
