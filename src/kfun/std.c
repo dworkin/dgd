@@ -1406,7 +1406,7 @@ FUNCDEF("close_user", kf_close_user, pt_close_user, 0)
 char pt_close_user[] = { C_STATIC,0,0,0,6, T_VOID};
 /*
  * NAME:	kfun->close_user()
- * DESCRIPTION:	return the array of port objects
+ * DESCRIPTION:	close connection and demote user object
  */
 int kf_close_user(frame *f)
 {

@@ -8,7 +8,7 @@ SOLARIS		SunOS 5.x.  In src/Makefile set LIBS to -lsocket -lnsl.  Older
 		versions also require src/host/Makefile.sysv to be copied to
 		src/host/Makefile.
 DECALPHA	DEC Alpha.  Copy src/host/Makefile.sysv to src/host/Makefile.
-WIN32		Windows NT or Windows 95.  Follow the instructions in
+WIN32		Windows 95 or later.  Follow the instructions in
 		src/host/win32/README.
 GENERIC_BSD	BSD Unix.
 GENERIC_SYSV	SYSV Unix.  Copy src/host/Makefile.sysv to src/host/Makefile.
@@ -17,21 +17,13 @@ For other platforms, you can either try to use the closest of the above, or
 add your own host support to the src/host.h file.  There are some systems
 which are not supported directly yet, but for which porting is easy:
 
-NeXT	use GENERIC_BSD, but in src/host/Makefile replace dirent.* by direct.*
-ULTRIX	use GENERIC_BSD
-AIX	use GENERIC_SYSV, but compile with -DHOST_WITH_UNSIGNED_CHAR (AIX
-	characters are unsigned), also add #include <sys/select.h> to
+AIX	use GENERIC_SYSV, and add #include <sys/select.h> to
 	src/host/unix/connect.c
-
-Things may become more difficult if you want to port DGD to a different
-type of host.  If you want to do your own port and you need some advice,
-contact me.
 
 In general, platforms must meet the following requirements:
 
  - shorts should be 2 bytes wide
  - integers should be 4 bytes wide
- - longs should be at least as wide as pointers
  - all pointer types must be equally wide
  - two's complement should be used to represent negative numbers
  - the value of NULL must be 0.

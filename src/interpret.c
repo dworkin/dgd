@@ -165,7 +165,7 @@ void i_grow_stack(frame *f, int size)
     if (f->sp < f->lip + size + MIN_STACK) {
 	int spsize, lisize;
 	value *v, *stk;
-	long offset;
+	intptr_t offset;
 
 	/*
 	 * extend the local stack
@@ -174,7 +174,7 @@ void i_grow_stack(frame *f, int size)
 	lisize = f->lip - f->stack;
 	size = ALGN(spsize + lisize + size + MIN_STACK, 8);
 	stk = ALLOC(value, size);
-	offset = (long) (stk + size) - (long) f->fp;
+	offset = (intptr_t) (stk + size) - (intptr_t) f->fp;
 
 	/* move lvalue index stack values */
 	if (lisize != 0) {
@@ -190,7 +190,7 @@ void i_grow_stack(frame *f, int size)
 		--v;
 		if ((v->type == T_LVALUE || v->type == T_SLVALUE) &&
 		    v->u.lval >= f->sp && v->u.lval < f->fp) {
-		    v->u.lval = (value *) ((long) v->u.lval + offset);
+		    v->u.lval = (value *) ((intptr_t) v->u.lval + offset);
 		}
 	    } while (--spsize > 0);
 	}

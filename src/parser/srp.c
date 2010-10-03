@@ -206,7 +206,7 @@ typedef struct {
  */
 static unsigned short ss_hash(unsigned short *htab, Uint htabsize, srpstate *states, unsigned short idx)
 {
-    unsigned long h;
+    Uint h;
     srpstate *newstate;
     item *it, *it2;
     srpstate *s;
@@ -216,7 +216,7 @@ static unsigned short ss_hash(unsigned short *htab, Uint htabsize, srpstate *sta
     newstate = &states[idx];
     h = 0;
     for (it = newstate->items; it != (item *) NULL; it = it->next) {
-	h ^= (long) it->ref;
+	h ^= (uintptr_t) it->ref;
 	h = (h >> 3) ^ (h << 29) ^ it->offset;
     }
 
@@ -625,7 +625,7 @@ srp *srp_load(char *grammar, char *str, Uint len)
 
     /* sizes */
     lr->nitem = 0;
-    lr->srpsize = (long) buf - (long) str;
+    lr->srpsize = (intptr_t) buf - (intptr_t) str;
     lr->tmpsize = len - lr->srpsize;
     lr->modified = lr->allocated = FALSE;
 
@@ -682,7 +682,7 @@ static void srp_loadtmp(srp *lr)
     for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
 	n = (Uint) 4 * ((UCHAR(p[5]) << 8) + UCHAR(p[6])) + 7;
 	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
-							(long) p - (long) buf;
+						(intptr_t) p - (intptr_t) buf;
     }
 }
 

@@ -131,39 +131,41 @@ void errhandler(frame *f, Int depth)
     i_runtime_error(f, (Int) 0);
 }
 
-# ifdef DGD_EXTENSION
-/*
- * NAME:	dgd_error()
- * DESCRIPTION:	error handler for the extension interface
- */
-void dgd_error(frame *f, char *format,... )
-{
-    va_list args;
-    char ebuf[4 * STRINGSZ];
-
-    if (format != (char *) NULL) {
-        va_start(args, format);
-	vsprintf(ebuf, format, args);
-	serror(str_new(ebuf, (long) strlen(ebuf)));
-    } else {
-	serror((string *) NULL);
-    }
-}
-# endif
-
 /*
  * NAME:	dgd_main()
  * DESCRIPTION:	the main loop of DGD
  */
 int dgd_main(int argc, char **argv)
 {
+    char *program, *module;
     Uint rtime, timeout;
     unsigned short rmtime, mtime;
 
     rmtime = 0;
 
-    if (argc < 2 || argc > 3) {
-	P_message("Usage: dgd config_file [dump_file]\012");	/* LF */
+    --argc;
+    program = *argv++;
+    module = (char *) NULL;
+# ifdef LPC_EXTENSION
+    if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
+	if (argv[0][2] == '\0') {
+	    --argc;
+	    argv++;
+	    module = argv[0];
+	} else {
+	    module = argv[0] + 2;
+	}
+	--argc;
+	argv++;
+    }
+# endif
+    if (argc < 1 || argc > 2) {
+# ifdef LPC_EXTENSION
+	message("Usage: %s [-e module] config_file [dump_file]\012",    /* LF */
+		program);
+# else
+	message("Usage: %s config_file [dump_file]\012", program);      /* LF */
+# endif
 	return 2;
     }
 
@@ -172,7 +174,8 @@ int dgd_main(int argc, char **argv)
     swap = dump = intr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[1], (argc == 3) ? argv[2] : (char *) NULL, &fragment)) {
+    if (!conf_init(argv[0], (argc == 2) ? argv[1] : (char *) NULL, module,
+		   &fragment)) {
 	return 2;	/* initialization failed */
     }
 

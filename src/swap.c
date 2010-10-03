@@ -305,7 +305,7 @@ static header *sw_load(sector sec, bool restore, bool fill)
 	/*
 	 * The slot has been reserved. Update map.
 	 */
-	map[sec] = ((long) h - (long) mem) / slotsize;
+	map[sec] = ((intptr_t) h - (intptr_t) mem) / slotsize;
 
 	if (load != SW_UNUSED) {
 	    if (restore) {
@@ -621,7 +621,7 @@ int sw_dump(char *dumpfile)
 
     /* fix the sector map */
     for (h = last; h != (header *) NULL; h = h->prev) {
-	map[h->sec] = ((long) h - (long) mem) / slotsize;
+	map[h->sec] = ((intptr_t) h - (intptr_t) mem) / slotsize;
 	h->dirty = FALSE;
     }
 

@@ -780,7 +780,7 @@ static Uint compress(char *data, char *text, Uint size)
 	*q++ = (buf >> (16 - bufsize)) + (0xff << bufsize);
     }
 
-    return (long) q - (long) data;
+    return (intptr_t) q - (intptr_t) data;
 }
 
 /*

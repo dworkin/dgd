@@ -622,7 +622,7 @@ typedef struct {
  */
 static unsigned short ds_hash(unsigned short *htab, Uint htabsize, dfastate *states, unsigned short idx)
 {
-    unsigned long x;
+    Uint x;
     rgxposn **posn;
     unsigned short n, *str;
     dfastate *newstate, *ds;
@@ -632,10 +632,10 @@ static unsigned short ds_hash(unsigned short *htab, Uint htabsize, dfastate *sta
     newstate = &states[idx];
     x = newstate->len ^ newstate->final;
     for (n = newstate->nposn, posn = POSNA(newstate); n > 0; --n) {
-	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *posn++;
+	x = (x >> 3) ^ (x << 29) ^ (uintptr_t) *posn++;
     }
     for (n = newstate->nstr, str = STRA(newstate); n > 0; --n) {
-	x = (x >> 3) ^ (x << 29) ^ (unsigned long) *str++;
+	x = (x >> 3) ^ (x << 29) ^ (uintptr_t) *str++;
     }
 
     /* check state hash table */
@@ -784,7 +784,7 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
     for (i = state->nposn; i > 0; --i) {
 	rp = *rrp++;
 	if (rp->nposn == *nposn) {
-	    ptab[(*nposn)++] = (long) *pbuf - (long) pbase;
+	    ptab[(*nposn)++] = (intptr_t) *pbuf - (intptr_t) pbase;
 	    *pbuf = rp_save(rp, *pbuf, grammar);
 	}
 	n = ptab[rp->nposn];
@@ -1131,7 +1131,7 @@ dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
     fa->tmpstr = buf;
 
     /* size info */
-    fa->dfasize = (long) buf - (long) str;
+    fa->dfasize = (intptr_t) buf - (intptr_t) str;
     fa->tmpssize = 0;
     fa->tmppsize = len - fa->dfasize;
     fa->modified = fa->allocated = FALSE;
@@ -1188,7 +1188,7 @@ static void dfa_loadtmp(dfa *fa)
     }
 
     /* size info */
-    fa->tmpssize = (long) buf - (long) fa->tmpstr;
+    fa->tmpssize = (intptr_t) buf - (intptr_t) fa->tmpstr;
     fa->tmppsize -= fa->tmpssize;
 }
 

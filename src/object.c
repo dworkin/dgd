@@ -51,8 +51,8 @@ typedef struct {
 struct _objplane_ {
     hashtab *htab;		/* object name hash table */
     optable *optab;		/* object patch table */
-    unsigned long clean;	/* list of objects to clean */
-    unsigned long upgrade;	/* list of upgrade objects */
+    uintptr_t clean;		/* list of objects to clean */
+    uintptr_t upgrade;		/* list of upgrade objects */
     uindex destruct;		/* destructed object list */
     uindex free;		/* free object list */
     uindex nobjects;		/* number of objects in object table */
@@ -219,7 +219,11 @@ static object *o_oaccess(unsigned int index, int access)
 	}
 
 	/* create new patch on current plane */
-	return &op_new(oplane, oo, o, &o->obj)->obj;
+	o = op_new(oplane, oo, o, obj = &o->obj);
+	if (obj->chain.name != (char *) NULL && obj->count != 0) {
+	    *ht_lookup(oplane->htab, obj->chain.name, FALSE) = (hte *) &o->obj;
+	}
+	return &o->obj;
     } else {
 	/*
 	 * first patch for object
@@ -1048,7 +1052,7 @@ void o_clean()
 
     while (baseplane.clean != OBJ_NONE) {
 	o = OBJ(baseplane.clean);
-	baseplane.clean = (unsigned long) o->chain.next;
+	baseplane.clean = (uintptr_t) o->chain.next;
 
 	/* free dataspace block (if it exists) */
 	if (o->data != (dataspace *) NULL) {
@@ -1092,7 +1096,7 @@ void o_clean()
 	control *ctrl;
 
 	o = OBJ(baseplane.upgrade);
-	baseplane.upgrade = (unsigned long) o->chain.next;
+	baseplane.upgrade = (uintptr_t) o->chain.next;
 
 	up = OBJ(o->cref);
 	if (up->u_ref == 0) {

@@ -72,6 +72,7 @@ static int kf_callgate(frame *f, int nargs, kfunc *kf)
 
     val = nil_value;
     (*kfext[kf->num - sizeof(kforig) / sizeof(kfunc)])(f, nargs, &val);
+    i_ref_value(&val);
     i_pop(f, nargs);
     *--f->sp = val;
 

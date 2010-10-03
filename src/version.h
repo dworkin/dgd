@@ -16,4 +16,4 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# define VERSION	"DGD 1.4.3"
+# define VERSION	"DGD 1.4.5"

@@ -21,6 +21,7 @@
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys\types.h>
 # include <malloc.h>
@@ -34,6 +35,7 @@ typedef unsigned int Uint;
 # define F_OK	0
 # define R_OK	4
 # define W_OK	2
+
 # endif
 
 # ifdef INCLUDE_CTYPE
@@ -57,6 +59,9 @@ typedef unsigned int Uint;
 
 # define Uuint			unsigned __int64
 # define bool			dgd_bool
+
+typedef int (__stdcall _voidf_)();
+# define voidf			_voidf_
 
 # endif	/* WIN32 */
 
@@ -134,6 +139,7 @@ typedef unsigned int Uint;
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -171,6 +177,7 @@ typedef unsigned int Uint;
 typedef int Int;
 typedef unsigned int Uint;
 
+# include <stdint.h>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -273,6 +280,12 @@ extern bool  P_opendir	(char*);
 extern char *P_readdir	(void);
 extern void  P_closedir	(void);
 
+# ifndef voidf
+# define voidf		void
+# endif
+
+extern voidf *P_dload	(char*, char*);
+
 extern void  P_srandom	(long);
 extern long  P_random	(void);
 
@@ -289,8 +302,8 @@ extern char *P_ctime	(char*, Uint);
 # define FF	'\014'
 # define CR	'\015'
 
-struct _struct_al_ { long l; short s; };
-# define STRUCT_AL	(sizeof(struct _struct_al_) - sizeof(long))
+struct _struct_al_ { jmp_buf buf; short s; };
+# define STRUCT_AL	(sizeof(struct _struct_al_) - sizeof(jmp_buf))
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
 

@@ -3,6 +3,115 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2010-09-16/2010-09-19
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Use intptr_t in one more case.
+  - Remove obsolete advice from doc/Platforms.
+
+2010-09-12
+
+  Felix Croes (felix@dworkin.nl)
+
+  Handle Ctrl-C, and forced program termination in general, on Windows.
+
+2010-09-03
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Imported fix from baseline and tagged 1.4.5
+
+  src/object.c
+  src/version.h
+
+2010-08-28
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Use (intptr_t) rather than (long) when casting a pointer.
+  - Base STRUCT_AL on the alignment of jmp_buf.
+  - Add x64 as a platform to the Windows project files, and note how to
+    use a separate 64 bit SDK.
+  - Add DEBUG as a macro to Debug configurations on all Windows platforms.
+
+2010-08-22
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Imported fix from baseline.
+  Added documentation for close_user kfun (network extensions)
+  and fixed comment.
+
+  src/call_out.c
+  src/kfun/std.c
+  doc/kfun/close_user
+
+2010-08-01
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  Tagged DGD 1.4.4
+
+  src/version.h
+
+2010-07-31
+
+  Felix Croes (felix@dworkin.nl)
+
+  Slightly prettified the casts that shut up VS2010.
+  Note previous merges:
+  - Merge from baseline: store version string at offset 42 in dumpfile
+  - Merge from xpatch: changes from 2010-06-23 to 2010-07-30
+
+  Dumpfile format version bumped to 12.
+
+2010-07-30
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Correct URLs in comments imported from baseline
+  - Windows support for dynamic loading
+  - Silence compilation warnings when compiled with VS2010 (and even more)
+  - Remove dgd_ext.h from win32 project files
+  - Use a hardcoded definition for voidfp on Windows
+
+    src/config.c
+    src/ext.c
+    src/host.h
+    src/lpc/lpc_ext.h
+    src/host/unix/dload.c
+    src/host/win32/dgd.vcxproj
+    src/host/win32/dgd.vcxproj.filters
+    src/host/win32/dload.c
+
+2010-06-23
+
+  Bart van Leeuwen (aidil@wotf.org)
+
+  - Imported dynamic linking support for extensions from
+    baseline branch
+
+    doc/Extensions (removed)
+    src/config.c
+    src/config.h
+    src/host/Makefile.sysv
+    src/host/unix/dload.c
+    src/host/Makefile.bsd
+    src/host/Makefile
+    src/Makefile
+    src/dgd.c
+    src/ext.c
+    src/dgd.h
+    src/comp/comp.c
+    src/comp/codegenc.c
+    src/comp/csupport.c
+    src/comp/csupport.h
+    src/kfun/table.c
+    src/host.h
+    src/dgd_ext.h (removed)
+    src/lpc/lpc_ext.h
+
 2010-05-03
 
   Stephen Spiller (aka Kalinash)

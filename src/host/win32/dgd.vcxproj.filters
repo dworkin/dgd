@@ -70,6 +70,9 @@
     <ClCompile Include="..\..\error.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\ext.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\hash.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -154,6 +157,9 @@
     <ClCompile Include="connect.c">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
+    <ClCompile Include="dload.c">
+      <Filter>Source Files\host\win32</Filter>
+    </ClCompile>
     <ClCompile Include="dosfile.c">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
@@ -214,9 +220,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\dgd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\dgd_ext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\editor.h">

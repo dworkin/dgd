@@ -16,31 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <windows.h>
-#include "dgd.h"
+# ifdef LPC_EXTENSION
 
-extern void conn_intr(void);
+# include "dgd.h"
+# include <dlfcn.h>
+# ifdef SOLARIS
+# include <link.h>
+# endif
 
-BOOL WINAPI handler(DWORD type)
+voidf *P_dload(char *module, char *symbol)
 {
-    UNREFERENCED_PARAMETER(type);
-    interrupt();
-    conn_intr();
-    return TRUE;
-}
+    void *h;
 
-int main(int argc, char **argv)
-{
-    SetConsoleCtrlHandler(handler, TRUE);
-    return dgd_main(argc, argv);
+    h = dlopen(module, RTLD_NOW | RTLD_LOCAL);
+    if (h == (void *) NULL) {
+	return (voidf *) NULL;
+    }
+    return (voidf *) dlsym(h, symbol);
 }
-
-/*
- * NAME:    P->message()
- * DESCRIPTION: show message
- */
-void P_message(char *mess)
-{
-    fputs(mess, stdout);
-    fflush(stdout);
-}
+# endif /* LPC_EXTENSION */

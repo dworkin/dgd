@@ -16,12 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DDUMP_FUNCS
+DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DLPC_EXTENSION #-DDUMP_FUNCS
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-LIBS=
+LIBS=	#-ldl
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
@@ -30,11 +30,11 @@ YACC=	yacc
 BIN=	../bin
 
 SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
-	path.c editor.c comm.c call_out.c interpret.c config.c dgd.c
+	path.c editor.c comm.c call_out.c interpret.c config.c ext.c dgd.c
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
-	path.o editor.o comm.o call_out.o interpret.o config.o dgd.o
+	path.o editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
-	interpret.o config.o
+	interpret.o config.o ext.o
 
 a.out:	$(OBJ) always
 	cd comp; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
@@ -98,7 +98,7 @@ clean:
 path.o config.o dgd.o: comp/node.h comp/compile.h
 config.o data.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
-config.o sdata.o interpret.o: comp/control.h
+config.o sdata.o interpret.o ext.o: comp/control.h
 
 config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
@@ -106,17 +106,16 @@ editor.o: ed/edcmd.h
 
 data.o: parser/parse.h
 
-interpret.o: kfun/table.h
+interpret.o ext.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
 error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o interpret.o config.o dgd.o: str.h array.h object.h
-array.o data.o call_out.o interpret.o path.o config.o dgd.o: xfloat.h
+editor.o call_out.o interpret.o config.o ext.o dgd.o: str.h array.h object.h
+array.o data.o call_out.o interpret.o path.o config.o ext.o dgd.o: xfloat.h
 error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-interpret.o config.o dgd.o: interpret.h
+interpret.o config.o ext.o dgd.o: interpret.h
 error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h
-interpret.o: data.h
-config.o dgd.o: data.h
+interpret.o config.o ext.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h

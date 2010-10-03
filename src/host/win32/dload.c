@@ -16,31 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <windows.h>
-#include "dgd.h"
+# include <windows.h>
+# include "dgd.h"
 
-extern void conn_intr(void);
-
-BOOL WINAPI handler(DWORD type)
+voidf *P_dload(char *module, char *symbol)
 {
-    UNREFERENCED_PARAMETER(type);
-    interrupt();
-    conn_intr();
-    return TRUE;
-}
+    HMODULE h;
 
-int main(int argc, char **argv)
-{
-    SetConsoleCtrlHandler(handler, TRUE);
-    return dgd_main(argc, argv);
-}
-
-/*
- * NAME:    P->message()
- * DESCRIPTION: show message
- */
-void P_message(char *mess)
-{
-    fputs(mess, stdout);
-    fflush(stdout);
+    h = LoadLibrary(module);
+    if (h == (void *) NULL) {
+	return (voidf *) NULL;
+    }
+    return (voidf *) GetProcAddress(h, symbol);
 }
