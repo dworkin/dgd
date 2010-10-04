@@ -170,6 +170,10 @@ SOURCE=..\..\dgd.c
 # End Source File
 # Begin Source File
 
+SOURCE=dload.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\dosfile.c
 # End Source File
 # Begin Source File
