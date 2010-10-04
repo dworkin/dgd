@@ -35,6 +35,7 @@ static int		dgd_running;	/* now running */
 static int		dgd_fatal;	/* aborted with fatal error */
 static CString		dgd_config;
 static CString		dgd_restore;
+static CString		dgd_module;
 
 extern "C" {
 
@@ -90,20 +91,21 @@ void dgd_abort()
 static void run_dgd(void *dummy)
 {
     int argc;
-    char *argv[4];
+    char *argv[6];
 
     P_srandom(P_time());
 
     argv[0] = "dgd";
-    argv[1] = (char *) (LPCTSTR) dgd_config;
-    if (dgd_restore.IsEmpty()) {
-	argc = 2;
-	argv[2] = (char *) NULL;
-    } else {
-	argc = 3;
-	argv[2] = (char *) (LPCTSTR) dgd_restore;
-	argv[3] = (char *) NULL;
+    argc = 1;
+    if (!dgd_module.IsEmpty()) {
+	argv[argc++] = "-e";
+	argv[argc++] = (char *) (LPCTSTR) dgd_module;
     }
+    argv[argc++] = (char *) (LPCTSTR) dgd_config;
+    if (!dgd_restore.IsEmpty()) {
+	argv[argc++] = (char *) (LPCTSTR) dgd_restore;
+    }
+    argv[argc] = (char *) NULL;
 
     dgd_exit(dgd_main(argc, argv));
 }
@@ -157,7 +159,30 @@ BOOL CWindgdApp::InitInstance()
     /* parse command line */
     CString copy = m_lpCmdLine;
     cmdline = (char *) (LPCTSTR) copy;
-    if (cmdline[0] != '\0' && cmdline[0] != '-' && cmdline[0] != '/') {
+    if (cmdline[0] != '\0') {
+	p = cmdline + strlen(cmdline);
+	if (cmdline[0] == '"' && p[-1] == '"') {
+	    /* remove quotes around argument */
+	    cmdline++;
+	    p[-1] = '\0';
+	}
+	if (cmdline[0] == '-' || cmdline[0] == '/') {
+	    if (cmdline[1] == 'e') {
+		cmdline += 2;
+		if (cmdline[0] == ' ') {
+		    cmdline++;
+		}
+		dgd_module = cmdline;
+		p = strchr(cmdline, ' ');
+		if (p == NULL) {
+		    return TRUE;
+		}
+		*p++ = '\0';
+		cmdline = p;
+	    } else {
+		return TRUE;
+	    }
+	}
 	p = strchr(cmdline, ' ');
 	if (p != NULL) {
 	    *p++ = '\0';
@@ -168,12 +193,6 @@ BOOL CWindgdApp::InitInstance()
 		    *p = '\0';
 		}
 	    }
-	}
-	p = cmdline + strlen(cmdline);
-	if (cmdline[0] == '"' && p[-1] == '"') {
-	    /* remove quotes around argument */
-	    cmdline++;
-	    p[-1] = '\0';
 	}
 	dgd_config = cmdline;
 	argstart = TRUE;
