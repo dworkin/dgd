@@ -134,7 +134,7 @@ typedef struct { char c;		} alignz;
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
 # define DUMP_STARTTIME	28	/* start time */
 # define DUMP_ELAPSED	32	/* elapsed time */
-# define DUMP_HEADERSZ	40	/* header size */
+# define DUMP_HEADERSZ	42	/* header size */
 # define DUMP_VSTRING	42	/* version string */
 
 typedef char dumpinfo[64];
@@ -158,6 +158,8 @@ static dumpinfo header;		/* dumpfile header */
 # define zero2	(header[37])	/* reserved (0) */
 # define zero3	(header[38])	/* reserved (0) */
 # define zero4	(header[39])	/* reserved (0) */
+# define zero5	(header[40])	/* reserved (0) */
+# define zero6	(header[41])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -181,6 +183,8 @@ static dumpinfo rheader;	/* restored header */
 # define rzero2	 (rheader[37])	/* reserved (0) */
 # define rzero3	 (rheader[38])	/* reserved (0) */
 # define rzero4	 (rheader[39])	/* reserved (0) */
+# define rzero5	 (rheader[40])	/* reserved (0) */
+# define rzero6	 (rheader[41])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -336,11 +340,11 @@ int fd;
     }
     if (rheader[DUMP_VERSION] < 12) {
 	memmove(rheader + 20, rheader + 12, 18);
-	rzero3 = rzero4 = 0;
+	rzero3 = rzero4 = rzero5 = rzero6 = 0;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
-    if (memcmp(header, rheader, DUMP_TYPE) != 0 ||
-	rzero1 != 0 || rzero2 != 0 || rzero3 != 0 || rzero4 != 0) {
+    if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
+	rzero3 != 0 || rzero4 != 0 || rzero5 != 0 || rzero6 != 0) {
 	error("Bad or incompatible restore file header");
     }
 
