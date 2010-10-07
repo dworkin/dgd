@@ -172,12 +172,13 @@ BOOL CWindgdApp::InitInstance()
 		if (cmdline[0] == ' ') {
 		    cmdline++;
 		}
-		dgd_module = cmdline;
 		p = strchr(cmdline, ' ');
 		if (p == NULL) {
+		    dgd_module = cmdline;
 		    return TRUE;
 		}
 		*p++ = '\0';
+		dgd_module = cmdline;
 		cmdline = p;
 	    } else {
 		return TRUE;
@@ -188,10 +189,6 @@ BOOL CWindgdApp::InitInstance()
 	    *p++ = '\0';
 	    if (*p != '\0') {
 		dgd_restore = p;
-		p = strchr(cmdline, ' ');
-		if (p != NULL) {
-		    *p = '\0';
-		}
 	    }
 	}
 	dgd_config = cmdline;
