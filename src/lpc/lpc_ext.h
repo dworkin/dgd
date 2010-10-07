@@ -70,6 +70,10 @@ int  ext_runtime_sswitch	P((frame*, char*, int));
  * at runtime.
  */
 
+# define lpc_frame_local(f, n)	((f)->fp - (n))
+# define lpc_frame_arg(f, n)	((f)->argp + (n))
+# define lpc_frame_top_value(f)	((f)->sp)
+# define lpc_frame_top_int(f)	((f)->sp->u.number)
 # define i_foffset(n)		(&f->ctrl->funcalls[2L * (f->foffset + (n))])
 
 /*
