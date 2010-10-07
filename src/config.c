@@ -1172,9 +1172,7 @@ static bool conf_includes()
 }
 
 
-# ifdef LPC_EXTENSION
 extern bool ext_dgd	P((char*));
-# endif
 
 /*
  * NAME:	config->init()
@@ -1217,7 +1215,6 @@ sector *fragment;
     /* remove previously added kfuns */
     kf_clear();
 
-# ifdef LPC_EXTENSION
     if (module != (char *) NULL && !ext_dgd(module)) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
@@ -1227,7 +1224,6 @@ sector *fragment;
 	m_finish();
 	return FALSE;
     }
-# endif
 
     /* initialize kfuns */
     kf_init();

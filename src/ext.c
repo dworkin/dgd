@@ -741,7 +741,6 @@ register int h;
     return 0;		/* not found */
 }
 
-# ifdef LPC_EXTENSION
 /*
  * NAME:	ext->dgd()
  * DESCRIPTION:	initialize extension interface
@@ -826,4 +825,3 @@ char *module;
     }
     return TRUE;
 }
-# endif	/* LPC_EXTENSION */

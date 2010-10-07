@@ -21,7 +21,7 @@
 
 /*
  * NAME:	P->dload()
- * DESCRIPTION:	foo
+ * DESCRIPTION:	load module
  */
 char *P_dload(char *module, char *symbol)
 {
