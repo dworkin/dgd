@@ -2212,7 +2212,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("status", kf_statuso_idx, pt_statuso_idx, 0)
 # else
-char pt_statuso_idx[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_OBJECT, T_INT };
+char pt_statuso_idx[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_INT };
 
 /*
  * NAME:	kfun->statuso_idx()
@@ -2224,6 +2224,17 @@ register frame *f;
     uindex n;
 
     switch (f->sp[1].type) {
+    case T_INT:
+	if (f->sp[1].u.number != 0) {
+	    error("Index on bad type");
+	}
+	i_add_ticks(f, 6);
+	if (!conf_statusi(f, f->sp->u.number, &f->sp[1])) {
+	    error("Index out of range");
+	}
+	f->sp++;
+	return 0;
+
     case T_OBJECT:
 	n = f->sp[1].oindex;
 	break;
