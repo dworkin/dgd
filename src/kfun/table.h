@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+typedef void (*extfunc) P((frame*, int, value*));
 typedef struct {
     char *name;		/* function name */
     char *proto;	/* prototype */
     int (*func)();	/* function address */
+    extfunc ext;	/* extension */
     short version;	/* version number */
-    short num;		/* kfun number */
 } kfunc;
 
 extern kfunc kftab[];	/* kfun table */
@@ -30,7 +31,6 @@ extern int   nkfun;	/* # kfuns */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
 
-typedef void (*extfunc) P((frame*, int, value*));
 typedef struct {
     char *name;		/* added kfun name */
     char *proto;	/* simplified prototype */
