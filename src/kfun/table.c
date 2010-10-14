@@ -49,7 +49,7 @@ static kfunc kforig[] = {
 kfunc kftab[256];	/* kfun tab */
 char kfind[256];	/* n -> index */
 static char kfx[256];	/* index -> n */
-static int nkfun;	/* # kfuns */
+int nkfun;		/* # kfuns */
 static extfunc *kfext;	/* additional kfun pointers */
 
 /*
