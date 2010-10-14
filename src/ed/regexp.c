@@ -319,9 +319,9 @@ char *pattern;
  * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
  *		success.
  */
-static bool match(rx, text, ic, m, t)
+static bool match(rx, start, text, ic, m, t)
 rxbuf *rx;
-char *text;
+char *start, *text;
 bool ic;
 register char *m, *t;
 {
@@ -408,7 +408,7 @@ register char *m, *t;
 	    } else {
 		/* try all possible lengths of the starred pattern */
 		while (p > t) {
-		    if (match(rx, text, ic, m, p)) {
+		    if (match(rx, start, text, ic, m, p)) {
 			return TRUE;
 		    }
 		    --p;
@@ -418,7 +418,7 @@ register char *m, *t;
 
 	case SOW:
 	    /* start of word */
-	    if ((t != text && (isalnum(t[-1]) || t[-1] == '_'))
+	    if ((t != start && (isalnum(t[-1]) || t[-1] == '_'))
 	      || (!isalpha(*t) && *t != '_')) {
 		return FALSE;
 	    }
@@ -427,7 +427,7 @@ register char *m, *t;
 	case EOW:
 	    /* end of word */
 	    if ((!isalnum(t[-1]) && t[-1] != '_')
-	      || (isalpha(*t) || *t == '_')) {
+	      || (isalnum(*t) || *t == '_')) {
 		return FALSE;
 	    }
 	    continue;
@@ -467,7 +467,7 @@ int ic;
 
     if (rx->anchor) {
 	/* the easy case */
-	if (idx || !match(rx, text, ic, rx->buffer, text)) {
+	if (idx || !match(rx, text, text, ic, rx->buffer, text)) {
 	    return 0;
 	}
     } else {
@@ -491,7 +491,7 @@ int ic;
 		    return 0;
 		}
 	    }
-	    if (match(rx, text + idx, ic, rx->buffer, text + idx)) {
+	    if (match(rx, text, text + idx, ic, rx->buffer, text + idx)) {
 		break;
 	    }
 	    /* if no match, try the next character in the string */
