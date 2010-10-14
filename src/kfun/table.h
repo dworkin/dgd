@@ -25,9 +25,9 @@ typedef struct {
     short version;	/* version number */
 } kfunc;
 
-extern kfunc kftab[];	/* kfun table */
-extern char  kfind[];	/* kfun indirection table */
-extern int   nkfun;	/* # kfuns */
+extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */
+extern char  kfind[];					/* indirection table */
+extern int   nkfun, ne, nd, nh;				/* # kfuns */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
 

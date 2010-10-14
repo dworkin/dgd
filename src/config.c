@@ -1189,6 +1189,24 @@ static bool conf_includes()
 	    cputs(buffer);
 	}
     }
+    cputs("\012\012/*\012 * Supported ciphers and hashing algorithms.\012 */");
+    cputs("\012\012# define ENCRYPT_CIPHERS\t");
+    for (i = 0; i < ne; i++) {
+	sprintf(buffer, "\"%s\", ", kfenc[i].name);
+	cputs(buffer);
+    }
+    cputs("\012# define DECRYPT_CIPHERS\t");
+    for (i = 0; i < nd; i++) {
+	sprintf(buffer, "\"%s\", ", kfdec[i].name);
+	cputs(buffer);
+    }
+    cputs("\012# define HASH_ALGORITHMS\t");
+    for (i = 0; i < nh; i++) {
+	sprintf(buffer, "\"%s\", ", kfhsh[i].name);
+	cputs(buffer);
+    }
+    cputs("\012");
+
     return cclose();
 }
 

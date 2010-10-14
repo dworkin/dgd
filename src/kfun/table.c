@@ -47,13 +47,12 @@ static kfunc kforig[] = {
 };
 
 kfunc kftab[256];	/* kfun tab */
-static kfunc kfenc[128];/* encryption */
-static kfunc kfdec[128];/* decryption */
-static kfunc kfhsh[128];/* hashing */
+kfunc kfenc[128];	/* encryption */
+kfunc kfdec[128];	/* decryption */
+kfunc kfhsh[128];	/* hashing */
 char kfind[256];	/* n -> index */
 static char kfx[256];	/* index -> n */
-int nkfun;		/* # kfuns */
-static int ne, nd, nh;	/* # addons */
+int nkfun, ne, nd, nh;	/* # kfuns */
 
 /*
  * NAME:	kfun->clear()
