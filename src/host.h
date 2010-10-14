@@ -270,9 +270,7 @@ extern bool  P_opendir	P((char*));
 extern char *P_readdir	P((void));
 extern void  P_closedir	P((void));
 
-# ifdef LPC_EXTENSION
 extern char *P_dload	P((char*, char*));
-# endif
 
 extern void  P_srandom	P((long));
 extern long  P_random	P((void));
