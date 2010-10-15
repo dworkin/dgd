@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST) #-DDUMP_FUNCS
+DEFINES=-D$(HOST)
 DEBUG=	-ggdb -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)

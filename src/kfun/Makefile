@@ -23,8 +23,8 @@ CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
 
-SRC=	builtin.c std.c file.c math.c extra.c debug.c
-OBJ=	builtin.o std.o file.o math.o extra.o debug.o
+SRC=	builtin.c std.c file.c math.c extra.c
+OBJ=	builtin.o std.o file.o math.o extra.o
 
 dgd:	table.o $(OBJ)
 	@for i in table.o $(OBJ); do echo kfun/$$i; done > dgd
@@ -47,10 +47,9 @@ file.o: ../editor.h
 extra.o: ../asn.h
 
 std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
-debug.o: ../comp/control.h
 
 extra.o: ../parser/parse.h
 
 $(OBJ): kfun.h
-builtin.o debug.o: table.h
+builtin.o: table.h
 table.o: table.h $(OBJ)

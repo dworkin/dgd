@@ -158,10 +158,6 @@ SOURCE=..\..\data.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\kfun\debug.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\parser\dfa.c
 # End Source File
 # Begin Source File
