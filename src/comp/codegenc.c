@@ -68,7 +68,7 @@ static int tmpval()
 static char *local(n)
 register int n;
 {
-    static char buffer[16];
+    static char buffer[32];
 
     n = nparam - n - 1;
     if (n < 0) {
