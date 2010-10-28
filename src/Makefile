@@ -16,12 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DLPC_EXTENSION #-DDUMP_FUNCS
+DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DDUMP_FUNCS
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-LIBS=	#-ldl
+LIBS=	-ldl
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)

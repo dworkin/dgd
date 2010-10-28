@@ -1490,7 +1490,7 @@ int kf_shutdown(frame *f)
 FUNCDEF("status", kf_status, pt_status, 0)
 # else
 char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
-		     T_MIXED | (1 << REFSHIFT), T_OBJECT };
+		     T_MIXED | (1 << REFSHIFT), T_MIXED };
 
 /*
  * NAME:	kfun->status()
@@ -1507,18 +1507,29 @@ int kf_status(frame *f, int nargs)
 	a = conf_status(f);
 	--f->sp;
     } else {
-	if (f->sp->type == T_OBJECT) {
+	switch (f->sp->type) {
+	case T_INT:
+	    if (f->sp->u.number != 0) {
+		*f->sp = nil_value;
+		return 0;
+	    }
+	    a = conf_status(f);
+	    break;
+
+	case T_OBJECT:
 	    n = f->sp->oindex;
-	} else if (f->sp->u.array->elts[0].type == T_OBJECT) {
+	    a = conf_object(f->data, OBJR(n));
+	    break;
+
+	case T_LWOBJECT:
 	    n = f->sp->u.array->elts[0].oindex;
 	    arr_del(f->sp->u.array);
-	} else {
-	    /* no user-visible parts within (right?) */
-	    arr_del(f->sp->u.array);
-	    *f->sp = nil_value;
-	    return 0;
+	    a = conf_object(f->data, OBJR(n));
+	    break;
+
+	default:
+	    return 1;
 	}
-	a = conf_object(f->data, OBJR(n));
     }
     PUT_ARRVAL(f->sp, a);
     return 0;

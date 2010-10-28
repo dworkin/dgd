@@ -250,7 +250,6 @@ int dgd_main(int argc, char *argv[])
     --argc;
     program = *argv++;
     module = (char *) NULL;
-# ifdef LPC_EXTENSION
     if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
 	if (argv[0][2] == '\0') {
 	    --argc;
@@ -262,18 +261,12 @@ int dgd_main(int argc, char *argv[])
 	--argc;
 	argv++;
     }
-# endif
     file = argv[1];
     if ((argc != 2 && argc != 3) ||
 	(len=strlen(file)) < 2 || file[len - 2] != '.' || file[len - 1] != 'c')
     {
-# ifdef LPC_EXTENSION
 	message("usage: %s [-e module] config_file lpc_file [c_file]\012",/*LF*/
 		program);
-# else
-	message("usage: %s config_file lpc_file [c_file]\012",          /* LF */
-		program);
-# endif
 	return 2;
     }
 

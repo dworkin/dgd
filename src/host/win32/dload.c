@@ -19,7 +19,11 @@
 # include <windows.h>
 # include "dgd.h"
 
-voidf *P_dload(char *module, char *symbol)
+/*
+ * NAME:	P->dload()
+ * DESCRIPTION:	load module
+ */
+char *P_dload(char *module, char *symbol)
 {
     HMODULE h;
 

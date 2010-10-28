@@ -16,8 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# ifdef LPC_EXTENSION
-
 # include "dgd.h"
 # include <dlfcn.h>
 # ifdef SOLARIS
@@ -34,4 +32,3 @@ voidf *P_dload(char *module, char *symbol)
     }
     return (voidf *) dlsym(h, symbol);
 }
-# endif /* LPC_EXTENSION */

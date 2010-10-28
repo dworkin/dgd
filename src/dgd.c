@@ -146,7 +146,6 @@ int dgd_main(int argc, char **argv)
     --argc;
     program = *argv++;
     module = (char *) NULL;
-# ifdef LPC_EXTENSION
     if (argc > 1 && argv[0][0] == '-' && argv[0][1] == 'e') {
 	if (argv[0][2] == '\0') {
 	    --argc;
@@ -158,14 +157,9 @@ int dgd_main(int argc, char **argv)
 	--argc;
 	argv++;
     }
-# endif
     if (argc < 1 || argc > 2) {
-# ifdef LPC_EXTENSION
 	message("Usage: %s [-e module] config_file [dump_file]\012",    /* LF */
 		program);
-# else
-	message("Usage: %s config_file [dump_file]\012", program);      /* LF */
-# endif
 	return 2;
     }
 

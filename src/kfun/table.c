@@ -23,7 +23,7 @@
 /*
  * prototypes
  */
-# define FUNCDEF(name, func, proto, v)	extern int func(); extern char proto[];
+# define FUNCDEF(name, func, proto, v) extern int func(); extern char proto[];
 # include "builtin.c"
 # include "std.c"
 # include "file.c"
@@ -36,7 +36,7 @@
  * kernel function table
  */
 static kfunc kforig[] = {
-# define FUNCDEF(name, func, proto, v)	{ name, proto, func, v, 0 },
+# define FUNCDEF(name, func, proto, v) { name, proto, func, (extfunc) NULL, v },
 # include "builtin.c"
 # include "std.c"
 # include "file.c"
@@ -47,10 +47,12 @@ static kfunc kforig[] = {
 };
 
 kfunc kftab[256];	/* kfun tab */
+kfunc kfenc[128];	/* encryption */
+kfunc kfdec[128];	/* decryption */
+kfunc kfhsh[128];	/* hashing */
 char kfind[256];	/* n -> index */
 static char kfx[256];	/* index -> n */
-static int nkfun;	/* # kfuns */
-static extfunc *kfext;	/* additional kfun pointers */
+int nkfun, ne, nd, nh;	/* # kfuns */
 
 /*
  * NAME:	kfun->clear()
@@ -58,8 +60,27 @@ static extfunc *kfext;	/* additional kfun pointers */
  */
 void kf_clear()
 {
-    kfext = (extfunc *) NULL;
+    extern void kf_enc(frame *, int, value *);
+    extern void kf_enc_key(frame *, int, value *);
+    extern void kf_dec(frame *, int, value *);
+    extern void kf_dec_key(frame *, int, value *);
+    extern void kf_xcrypt(frame *, int, value *);
+    extern void kf_md5(frame *, int, value *);
+    extern void kf_sha1(frame *, int, value *);
+    static char proto[] = { T_VOID, 0 };
+    static extkfunc builtin[] = {
+	{ "encrypt DES", proto, kf_enc },
+	{ "encrypt DES key", proto, kf_enc_key },
+	{ "decrypt DES", proto, kf_dec },
+	{ "decrypt DES key", proto, kf_dec_key },
+	{ "hash MD5", proto, kf_md5 },
+	{ "hash SHA1", proto, kf_sha1 },
+	{ "hash crypt", proto, kf_xcrypt }
+    };
+
     nkfun = sizeof(kforig) / sizeof(kfunc);
+    ne = nd = nh = 0;
+    kf_ext_kfun(builtin, 7);
 }
 
 /*
@@ -71,7 +92,7 @@ static int kf_callgate(frame *f, int nargs, kfunc *kf)
     value val;
 
     val = nil_value;
-    (*kfext[kf->num - sizeof(kforig) / sizeof(kfunc)])(f, nargs, &val);
+    (kf->ext)(f, nargs, &val);
     i_ref_value(&val);
     i_pop(f, nargs);
     *--f->sp = val;
@@ -154,22 +175,26 @@ static char *prototype(char *proto)
  */
 void kf_ext_kfun(extkfunc *kfadd, int n)
 {
-    kfunc *kf;
-    extfunc *kfe;
+    register kfunc *kf;
 
-    kfext = REALLOC(kfext, extfunc, nkfun - sizeof(kforig) / sizeof(kfunc),
-		    nkfun - sizeof(kforig) / sizeof(kfunc) + n);
-    kfadd += n;
-    nkfun += n;
-    kf = kftab + nkfun;
-    kfe = kfext + nkfun - sizeof(kforig) / sizeof(kfunc);
-    while (n != 0) {
-	(--kf)->name = (--kfadd)->name;
+    for (; n != 0; kfadd++, --n) {
+	if (strncmp(kfadd->name, "encrypt ", 8) == 0) {
+	    kf = &kfenc[ne++];
+	    kf->name = kfadd->name + 8;
+	} else if (strncmp(kfadd->name, "decrypt ", 8) == 0) {
+	    kf = &kfdec[nd++];
+	    kf->name = kfadd->name + 8;
+	} else if (strncmp(kfadd->name, "hash ", 5) == 0) {
+	    kf = &kfhsh[nh++];
+	    kf->name = kfadd->name + 5;
+	} else {
+	    kf = &kftab[nkfun++];
+	    kf->name = kfadd->name;
+	}
 	kf->proto = prototype(kfadd->proto);
 	kf->func = (int (*)()) &kf_callgate;
+	kf->ext = kfadd->func;
 	kf->version = 0;
-	*--kfe = kfadd->func;
-	--n;
     }
 }
 
@@ -192,15 +217,15 @@ void kf_init()
     char *k1, *k2;
 
     memcpy(kftab, kforig, sizeof(kforig));
-    for (i = 0; i < nkfun; i++) {
-	kftab[i].num = i;
-    }
     for (i = 0, k1 = kfind, k2 = kfx; i < KF_BUILTINS; i++) {
 	*k1++ = i;
 	*k2++ = i;
     }
     qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS, 
 	  sizeof(kfunc), kf_cmp);
+    qsort(kfenc, ne, sizeof(kfunc), kf_cmp);
+    qsort(kfdec, nd, sizeof(kfunc), kf_cmp);
+    qsort(kfhsh, nh, sizeof(kfunc), kf_cmp);
     for (n = 0; kftab[i].name[1] == '.'; n++) {
 	*k2++ = '\0';
 	i++;
@@ -215,15 +240,13 @@ void kf_init()
  * NAME:	kfun->index()
  * DESCRIPTION:	search for kfun in the kfun table, return raw index or -1
  */
-static int kf_index(char *name)
+static int kf_index(kfunc *kf, unsigned int l, unsigned int h, char *name)
 {
-    Uint h, l, m;
-    int c;
+    register unsigned int m;
+    register int c;
 
-    l = KF_BUILTINS;
-    h = nkfun;
     do {
-	c = strcmp(name, kftab[m = (l + h) >> 1].name);
+	c = strcmp(name, kf[m = (l + h) >> 1].name);
 	if (c == 0) {
 	    return m;	/* found */
 	} else if (c < 0) {
@@ -246,11 +269,74 @@ int kf_func(char *name)
 {
     int n;
 
-    n = kf_index(name);
+    n = kf_index(kftab, KF_BUILTINS, nkfun, name);
     if (n >= 0) {
 	n = UCHAR(kfx[n]);
     }
     return n;
+}
+
+/*
+ * NAME:	kfun->encrypt()
+ * DESCRIPTION:	encrypt a string
+ */
+int kf_encrypt(frame *f, int nargs)
+{
+    value val;
+    int n;
+
+    n = kf_index(kfenc, 0, ne, f->sp[nargs - 1].u.string->text);
+    if (n < 0) {
+	error("Unknown cipher");
+    }
+    val = nil_value;
+    (kfenc[n].ext)(f, nargs - 1, &val);
+    i_ref_value(&val);
+    i_pop(f, nargs);
+    *--f->sp = val;
+    return 0;
+}
+
+/*
+ * NAME:	kfun->decrypt()
+ * DESCRIPTION:	decrypt a string
+ */
+int kf_decrypt(frame *f, int nargs)
+{
+    value val;
+    int n;
+
+    n = kf_index(kfdec, 0, nd, f->sp[nargs - 1].u.string->text);
+    if (n < 0) {
+	error("Unknown cipher");
+    }
+    val = nil_value;
+    (kfdec[n].ext)(f, nargs - 1, &val);
+    i_ref_value(&val);
+    i_pop(f, nargs);
+    *--f->sp = val;
+    return 0;
+}
+
+/*
+ * NAME:	kfun->hash_string()
+ * DESCRIPTION:	hash a string
+ */
+int kf_hash_string(frame *f, int nargs)
+{
+    value val;
+    int n;
+
+    n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].u.string->text);
+    if (n < 0) {
+        error("Unknown hash algorithm");
+    }
+    val = nil_value;
+    (kfhsh[n].ext)(f, nargs - 1, &val);
+    i_ref_value(&val);
+    i_pop(f, nargs);
+    *--f->sp = val;
+    return 0;
 }
 
 /*
@@ -377,35 +463,35 @@ void kf_restore(int fd, int oldcomp)
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
 	if (buffer[buflen + 1] == '.') {
-	    n = kf_index(buffer + buflen + 2);
+	    n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen + 2);
 	    if (n < 0 || kftab[n].version != buffer[buflen] - '0') {
-		n = kf_index(buffer + buflen);
+		n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 		if (n < 0) {
 		    error("Restored unknown kfun: %s", buffer + buflen);
 		}
 	    }
 	} else {
-	    n = kf_index(buffer + buflen);
+	    n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 	    if (n < 0) {
 		if (strcmp(buffer + buflen, "(compile_object)") == 0) {
-		    n = kf_index("0.compile_object");
+		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.compile_object");
 		} else if (strcmp(buffer + buflen, "hash_md5") == 0 ||
 			   strcmp(buffer + buflen, "(hash_md5)") == 0) {
-		    n = kf_index("0.hash_md5");
+		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.hash_md5");
 		} else if (strcmp(buffer + buflen, "hash_sha1") == 0 ||
 			   strcmp(buffer + buflen, "(hash_sha1)") == 0) {
-		    n = kf_index("0.hash_sha1");
+		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.hash_sha1");
 		} else {
 		    error("Restored unknown kfun: %s", buffer + buflen);
 		}
 	    }
 	    if (kftab[n].func == kf_dump_state) {
-		n = kf_index("0.dump_state");
+		n = kf_index(kftab, KF_BUILTINS, nkfun, "0.dump_state");
 	    } else if (kftab[n].func == kf_old_compile_object) {
 		oldcomp = FALSE;
 	    } else if (kftab[n].func == kf_compile_object && oldcomp) {
 		/* convert compile_object() */
-		n = kf_index("0.compile_object");
+		n = kf_index(kftab, KF_BUILTINS, nkfun, "0.compile_object");
 	    }
 	}
 	kfx[n] = i + 128;

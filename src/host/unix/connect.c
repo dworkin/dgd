@@ -608,13 +608,15 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 # ifdef AI_DEFAULT
 		host = getipnodebyname(thosts[n], AF_INET6, 0, &err);
 		if (host != (struct hostent *) NULL) {
-		    memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
-		    ipv6 = TRUE;
+		    if (host->h_length != 4) {
+			memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
+			ipv6 = TRUE;
+		    }
 		    freehostent(host);
 		}
 # else
 		host = gethostbyname2(thosts[n], AF_INET6);
-		if (host != (struct hostent *) NULL) {
+		if (host != (struct hostent *) NULL && host->h_length != 4) {
 		    memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
 		    ipv6 = TRUE;
 		}
@@ -667,13 +669,15 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 # ifdef AI_DEFAULT
 		host = getipnodebyname(bhosts[n], AF_INET6, 0, &err);
 		if (host != (struct hostent *) NULL) {
-		    memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
-		    ipv6 = TRUE;
+		    if (host->h_length != 4) {
+			memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
+			ipv6 = TRUE;
+		    }
 		    freehostent(host);
 		}
 # else
 		host = gethostbyname2(bhosts[n], AF_INET6);
-		if (host != (struct hostent *) NULL) {
+		if (host != (struct hostent *) NULL && host->h_length != 4) {
 		    memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
 		    ipv6 = TRUE;
 		}

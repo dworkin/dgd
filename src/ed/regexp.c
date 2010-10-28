@@ -316,7 +316,7 @@ char *rx_comp(rxbuf *rx, char *pattern)
  * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
  *		success.
  */
-static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
+static bool match(rxbuf *rx, char *start, char *text, bool ic, char *m, char *t)
 {
     char *p, *cclass, code, c;
 
@@ -401,7 +401,7 @@ static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 	    } else {
 		/* try all possible lengths of the starred pattern */
 		while (p > t) {
-		    if (match(rx, text, ic, m, p)) {
+		    if (match(rx, start, text, ic, m, p)) {
 			return TRUE;
 		    }
 		    --p;
@@ -411,7 +411,7 @@ static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 
 	case SOW:
 	    /* start of word */
-	    if ((t != text && (isalnum(t[-1]) || t[-1] == '_'))
+	    if ((t != start && (isalnum(t[-1]) || t[-1] == '_'))
 	      || (!isalpha(*t) && *t != '_')) {
 		return FALSE;
 	    }
@@ -420,7 +420,7 @@ static bool match(rxbuf *rx, char *text, bool ic, char *m, char *t)
 	case EOW:
 	    /* end of word */
 	    if ((!isalnum(t[-1]) && t[-1] != '_')
-	      || (isalpha(*t) || *t == '_')) {
+	      || (isalnum(*t) || *t == '_')) {
 		return FALSE;
 	    }
 	    continue;
@@ -456,7 +456,7 @@ int rx_exec(rxbuf *rx, char *text, int idx, int ic)
 
     if (rx->anchor) {
 	/* the easy case */
-	if (idx || !match(rx, text, ic, rx->buffer, text)) {
+	if (idx || !match(rx, text, text, ic, rx->buffer, text)) {
 	    return 0;
 	}
     } else {
@@ -480,7 +480,7 @@ int rx_exec(rxbuf *rx, char *text, int idx, int ic)
 		    return 0;
 		}
 	    }
-	    if (match(rx, text + idx, ic, rx->buffer, text + idx)) {
+	    if (match(rx, text, text + idx, ic, rx->buffer, text + idx)) {
 		break;
 	    }
 	    /* if no match, try the next character in the string */

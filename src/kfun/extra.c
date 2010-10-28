@@ -33,42 +33,33 @@ char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->encrypt()
- * DESCRIPTION:	encrypt a string
+ * NAME:	kfun->enc_key()
+ * DESCRIPTION:	prepare a key for encryption
  */
-int kf_encrypt(frame *f, int nargs)
+void kf_enc_key(frame *f, int nargs, value *val)
 {
     string *str;
 
-    str = (string *) NULL;
-    if (nargs == 2) {
-	if (f->sp[1].u.string->len == 7 &&
-	    strcmp(f->sp[1].u.string->text, "DES key") == 0) {
-	    /*
-	     * prepare key for encryption
-	     */
-	    str = P_encrypt_des_key(f, f->sp->u.string);
-	}
-    } else {
-	if (f->sp[2].u.string->len == 3 &&
-	    strcmp(f->sp[2].u.string->text, "DES") == 0) {
-	    /*
-	     * encrypt
-	     */
-	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
-	}
+    if (nargs != 1) {
+	error("Too many arguments for kfun encrypt");
     }
-    if (str == (string *) NULL) {
-	error("Unknown cipher");
-    }
+    str = P_encrypt_des_key(f, f->sp->u.string);
+    PUT_STRVAL_NOREF(val, str);
+}
 
-    while (--nargs != 0) {
-	str_del((f->sp++)->u.string);
-    }
-    str_del(f->sp->u.string);
-    PUT_STR(f->sp, str);
+/*
+ * NAME:	kfun->enc()
+ * DESCRIPTION:	encrypt
+ */
+void kf_enc(frame *f, int nargs, value *val)
+{
+    string *str;
 
-    return 0;
+    if (nargs != 2) {
+	error("Too few arguments for kfun encrypt");
+    }
+    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+    PUT_STRVAL_NOREF(val, str);
 }
 # endif
 
@@ -82,42 +73,34 @@ char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
 
 /*
- * NAME:	kfun->decrypt()
- * DESCRIPTION:	decrypt a string
+ * NAME:	kfun->dec_key()
+ * DESCRIPTION:	prepare a key for decryption
  */
-int kf_decrypt(frame *f, int nargs)
+void kf_dec_key(frame *f, int nargs, value *val)
 {
     string *str;
 
-    str = (string *) NULL;
-    if (nargs == 2) {
-	if (f->sp[1].u.string->len == 7 &&
-	    strcmp(f->sp[1].u.string->text, "DES key") == 0) {
-	    /*
-	     * prepare key for decryption
-	     */
-	    str = P_decrypt_des_key(f, f->sp->u.string);
-	}
-    } else {
-	if (f->sp[2].u.string->len == 3 &&
-	    strcmp(f->sp[2].u.string->text, "DES") == 0) {
-	    /*
-	     * decrypt
-	     */
-	    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
-	}
+    if (nargs != 1) {
+	error("Too many arguments for kfun decrypt");
     }
-    if (str == (string *) NULL) {
-	error("Unknown cipher");
-    }
+    str = P_decrypt_des_key(f, f->sp->u.string);
+    PUT_STRVAL_NOREF(val, str);
+}
 
-    while (--nargs != 0) {
-	str_del((f->sp++)->u.string);
-    }
-    str_del(f->sp->u.string);
-    PUT_STR(f->sp, str);
+/*
+ * NAME:	kfun->dec()
+ * DESCRIPTION:	decrypt
+ */
+void kf_dec(frame *f, int nargs, value *val)
+{
+    string *str;
 
-    return 0;
+    if (nargs != 2) {
+	error("Too few arguments for kfun decrypt");
+    }
+    /* Given the proper key, DES is its own inverse */
+    str = P_encrypt_des(f, f->sp[1].u.string, f->sp->u.string);
+    PUT_STRVAL_NOREF(val, str);
 }
 # endif
 
@@ -893,20 +876,23 @@ char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
 			  T_STRING, T_STRING, T_STRING, T_STRING };
 
 /*
- * NAME:	hash->crypt()
+ * NAME:	kfun->xcrypt()
  * DESCRIPTION:	hash a string with Unix password crypt
  */
-static string *hash_crypt(frame *f, string *passwd, string *salt)
+void kf_xcrypt(frame *f, int nargs, value *val)
 {
     static char salts[] =
 	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     char s[3];
+    string *str;
 
-    if (salt != (string *) NULL && salt->text[0] != '\0' &&
-	salt->text[1] != '\0') {
+    if (nargs > 2) {
+	error("Too many arguments for kfun hash_string");
+    }
+    if (nargs == 2 && f->sp->u.string->len >= 2) {
 	/* fixed salt */
-	s[0] = salt->text[0];
-	s[1] = salt->text[1];
+	s[0] = f->sp->u.string->text[0];
+	s[1] = f->sp->u.string->text[1];
     } else {
 	Uint n;
 
@@ -918,7 +904,8 @@ static string *hash_crypt(frame *f, string *passwd, string *salt)
     s[2] = '\0';
 
     i_add_ticks(f, 900);
-    return str_new(P_crypt(passwd->text, s), 13);
+    str = str_new(P_crypt(f->sp[nargs - 1].u.string->text, s), 13);
+    PUT_STRVAL_NOREF(val, str);
 }
 
 # define ROTL(x, s)			(((x) << s) | ((x) >> (32 - s)))
@@ -1257,7 +1244,6 @@ static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
 		memcpy(buffer, p, bufsz = len);
 	    }
 	}
-	str_del(f->sp[nargs].u.string);
     }
 
     *bufsize = bufsz;
@@ -1265,83 +1251,54 @@ static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
 }
 
 /*
- * NAME:	kfun->hash_string()
- * DESCRIPTION:	hash a string
+ * NAME:	kfun->md5()
+ * DESCRIPTION:	compute MD5 hash
  */
-int kf_hash_string(frame *f, int nargs)
+void kf_md5(frame *f, int nargs, value *val)
 {
-    string *str, *salt;
     char buffer[64];
     Uint digest[5];
     Int cost;
     Uint length;
     unsigned short bufsz;
+    string *str;
 
-    str = f->sp[nargs - 1].u.string;
-    switch (str->text[0]) {
-    case 'c':
-	if (str->len == 5 && strcmp(str->text, "crypt") == 0) {
-	    if (nargs > 3) {
-		return 3;
-	    }
-	    if (nargs == 3) {
-		salt = f->sp->u.string;
-		f->sp++;
-	    } else {
-		salt = (string *) NULL;
-	    }
-	    str = hash_crypt(f, f->sp->u.string, salt);
-	    if (salt != (string *) NULL) {
-		str_del(salt);
-	    }
-	    str_del((f->sp++)->u.string);
-	    str_del(f->sp->u.string);
-	    PUT_STR(f->sp, str);
-	    return 0;
-	}
-	break;
-
-    case 'M':
-	if (str->len == 3 && strcmp(str->text, "MD5") == 0) {
-	    cost = hash_md5_start(f, nargs, digest);
-	    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
-		f->rlim->ticks = 0;
-		error("Out of ticks");
-	    }
-	    i_add_ticks(f, cost);
-
-	    length = hash_blocks(f, --nargs, digest, buffer, &bufsz, 64,
-				 &hash_md5_block);
-
-	    f->sp += nargs;
-	    str_del(f->sp->u.string);
-	    PUT_STR(f->sp, hash_md5_end(digest, buffer, bufsz, length));
-	    return 0;
-	}
-	break;
-
-    case 'S':
-	if (str->len == 4 && strcmp(str->text, "SHA1") == 0) {
-	    cost = hash_sha1_start(f, nargs, digest);
-	    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
-		f->rlim->ticks = 0;
-		error("Out of ticks");
-	    }
-	    i_add_ticks(f, cost);
-
-	    length = hash_blocks(f, --nargs, digest, buffer, &bufsz, 64,
-				 &hash_sha1_block);
-
-	    f->sp += nargs;
-	    str_del(f->sp->u.string);
-	    PUT_STR(f->sp, hash_sha1_end(digest, buffer, bufsz, length));
-	    return 0;
-	}
-	break;
+    cost = hash_md5_start(f, nargs, digest);
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
     }
+    i_add_ticks(f, cost);
 
-    error("Unknown hash algorithm");
-    return 0;
+    length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64, &hash_md5_block);
+    str = hash_md5_end(digest, buffer, bufsz, length);
+    PUT_STRVAL_NOREF(val, str);
+}
+
+/*
+ * NAME:	kfun->sha1()
+ * DESCRIPTION:	compute SHA1 hash
+ */
+void kf_sha1(frame *f, int nargs, value *val)
+{
+    char buffer[64];
+    Uint digest[5];
+    Int cost;
+    Uint length;
+    unsigned short bufsz;
+    string *str;
+
+    cost = hash_sha1_start(f, nargs, digest);
+    if (!f->rlim->noticks && f->rlim->ticks <= cost) {
+	f->rlim->ticks = 0;
+	error("Out of ticks");
+    }
+    i_add_ticks(f, cost);
+
+    length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64,
+			 &hash_sha1_block);
+    str = hash_sha1_end(digest, buffer, bufsz, length);
+    PUT_STRVAL_NOREF(val, str);
 }
 # endif
 
@@ -1358,20 +1315,12 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
  */
 int kf_crypt(frame *f, int nargs)
 {
-    string *salt, *str;
+    value val;
 
-    if (nargs == 2) {
-	salt = f->sp->u.string;
-	f->sp++;
-    } else {
-	salt = (string *) NULL;
-    }
-    str = hash_crypt(f, f->sp->u.string, salt);
-    if (salt != (string *) NULL) {
-	str_del(salt);
-    }
-    str_del(f->sp->u.string);
-    PUT_STR(f->sp, str);
+    kf_xcrypt(f, nargs, &val);
+    i_ref_value(&val);
+    i_pop(f, nargs);
+    *--f->sp = val;
     return 0;
 }
 # endif
@@ -1404,8 +1353,8 @@ int kf_hash_md5(frame *f, int nargs)
 
     length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64, &hash_md5_block);
 
-    f->sp += nargs - 1;
-    PUT_STR(f->sp, hash_md5_end(digest, buffer, bufsz, length));
+    i_pop(f, nargs);
+    PUSH_STRVAL(f, hash_md5_end(digest, buffer, bufsz, length));
     return 0;
 }
 # endif
@@ -1439,8 +1388,8 @@ int kf_hash_sha1(frame *f, int nargs)
     length = hash_blocks(f, nargs, digest, buffer, &bufsz, 64,
 			 &hash_sha1_block);
 
-    f->sp += nargs - 1;
-    PUT_STR(f->sp, hash_sha1_end(digest, buffer, bufsz, length));
+    i_pop(f, nargs);
+    PUSH_STRVAL(f, hash_sha1_end(digest, buffer, bufsz, length));
     return 0;
 }
 # endif

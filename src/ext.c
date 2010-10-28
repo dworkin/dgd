@@ -666,7 +666,6 @@ int ext_runtime_sswitch(frame *f, char *tab, int h)
     return 0;		/* not found */
 }
 
-# ifdef LPC_EXTENSION
 /*
  * NAME:	ext->dgd()
  * DESCRIPTION:	initialize extension interface
@@ -750,4 +749,3 @@ bool ext_dgd(char *module)
     }
     return TRUE;
 }
-# endif	/* LPC_EXTENSION */

@@ -58,7 +58,7 @@ typedef unsigned char eindex;
 # define UDPHASHSZ	10	/* # characters in UDP challenge to hash */
 
 /* interpreter */
-# define MIN_STACK	3	/* minimal stack, # arguments in driver calls */
+# define MIN_STACK	5	/* minimal stack, # arguments in driver calls */
 # define EXTRA_STACK	32	/* extra space in stack frames */
 # define MAX_STRLEN	SSIZET_MAX	/* max string length, >= 65535 */
 # define INHASHSZ	4096	/* instanceof hashtable size */

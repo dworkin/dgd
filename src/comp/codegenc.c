@@ -68,13 +68,13 @@ static int tmpval()
  */
 static char *local(int n)
 {
-    static char buffer[16];
+    static char buffer[32];
 
     n = nparam - n - 1;
     if (n < 0) {
-	sprintf(buffer, "(f->fp - %d)", -n);
+	sprintf(buffer, "lpc_frame_local(f, %d)", -n);
     } else {
-	sprintf(buffer, "(f->argp + %d)", n);
+	sprintf(buffer, "lpc_frame_arg(f, %d)", n);
     }
     return buffer;
 }
@@ -206,7 +206,7 @@ static void cg_fetch(node *n)
     cg_lvalue(n, (node *) NULL);
     output(", i_dup(f), ");
     if (n->type == N_CAST) {
-	cg_cast("f->sp", n->mod, n->class);
+	cg_cast("lpc_frame_top_value(f)", n->mod, n->class);
 	comma();
     }
 }
@@ -220,13 +220,13 @@ static void cg_iasgn(node *n, char *op, int i, bool direct)
     if (i < 0) {
 	/* assignment on stack */
 	if (n->type == N_INT) {
-	    output("f->sp->u.number %s ", op);
+	    output("lpc_frame_top_int(f) %s ", op);
 	    cg_iexpr(n, TRUE);
 	} else {
 	    i = tmpval();
 	    output("tv[%d] = ", i);
 	    cg_iexpr(n, TRUE);
-	    output(", f->sp->u.number %s tv[%d]", op, i);
+	    output(", lpc_frame_top_int(f) %s tv[%d]", op, i);
 	}
     } else {
 	/* assignment to var */
@@ -273,12 +273,12 @@ static void cg_ifasgnop(node *n, char *op, bool direct)
 	cg_fetch(n->l.left);
 	n = n->r.right;
 	if (n->type == N_INT) {
-	    output("f->sp->u.number = %s(f->sp->u.number, ", op);
+	    output("f->sp->u.number = %s(lpc_frame_top_int(f), ", op);
 	    cg_iexpr(n, TRUE);
 	    output("), lpc_frame_store_int(f)");
 	} else {
 	    i = tmpval();
-	    output("tv[%d] = %s(f->sp->u.number, ", i, op);
+	    output("tv[%d] = %s(lpc_frame_top_int(f), ", i, op);
 	    cg_iexpr(n, TRUE);
 	    output("), f->sp->u.number = tv[%d], lpc_frame_store_int(f)", op,
 		   i);
@@ -638,12 +638,12 @@ static void cg_asgnop(node *n, char *op)
 	comma();
 	kfun(op);
 	comma();
-	cg_cast("f->sp", T_INT, (string *) NULL);
+	cg_cast("lpc_frame_top_value(f)", T_INT, (string *) NULL);
 	comma();
 	if (catch_level != 0) {
 	    output("%s->u.number = ", local((int) n->l.left->r.number));
 	}
-	output("ivar%d = f->sp->u.number", vars[n->l.left->r.number]);
+	output("ivar%d = lpc_frame_top_int(f)", vars[n->l.left->r.number]);
     } else {
 	cg_fetch(n->l.left);
 	cg_expr(n->r.right, PUSH);
@@ -1010,7 +1010,7 @@ static void cg_expr(node *n, int state)
     case N_CAST:
 	cg_expr(n->l.left, PUSH);
 	comma();
-	cg_cast("f->sp", n->mod, n->class);
+	cg_cast("lpc_frame_top_value(f)", n->mod, n->class);
 	break;
 
     case N_CATCH:
@@ -1698,7 +1698,7 @@ static void cg_switch_int(node *n)
 	cg_expr(n->r.right->l.left, PUSH);
 	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
 	output(" goto sw%d; }", ++swcount);
-	output("\nswitch ((f->sp++)->u.number) {\n");
+	output("\nswitch (lpc_frame_pop_int(f)) {\n");
 	switch_table[0] = swcount;
     }
 
@@ -1765,7 +1765,7 @@ static void cg_switch_range(node *n)
 	cg_expr(n->r.right->l.left, PUSH);
 	output(";\nif (f->sp->type != T_INT) { i_del_value(f->sp++);");
 	output(" goto sw%d; }", ++swcount);
-	output("\nswitch (lpc_runtime_rswitch((f->sp++)->u.number, swtab, ");
+	output("\nswitch (lpc_runtime_rswitch(lpc_frame_pop_int(f), swtab, ");
 	output("%d)) {\n", size - 1);
 	switch_table[0] = swcount;
     }

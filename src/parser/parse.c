@@ -39,6 +39,7 @@ typedef struct _pnode_ {
     } u;
     struct _pnode_ *next;	/* next in linked list */
     struct _pnode_ *list;	/* list of nodes for reduction */
+    struct _pnode_ *trav;	/* traverse list */
 } pnode;
 
 # define PNCHUNKSZ	256
@@ -648,24 +649,24 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 	     */
 	    len = 0;
 	    if (pn->len != 0) {
-		pnode *nodes[255];
-		pnode **list;
+		pnode *trav;
 
 		pn->symbol = PN_BLOCKED;
 
 		/* traverse subtrees in left-to-right order */
-		list = nodes;
+		trav = (pnode *) NULL;
 		for (i = pn->len, sub = pn->list; i != 0; --i, sub = sub->next)
 		{
-		    *list++ = sub;
+		    sub->trav = trav;
+		    trav = sub;
 		}
 		for (i = pn->len; i != 0; --i) {
-		    sub = *--list;
-		    n = ps_traverse(ps, sub, sub->next);
+		    n = ps_traverse(ps, trav, trav->next);
 		    if (n < 0) {
 			return n;	/* blocked branch */
 		    }
 		    len += n;
+		    trav = trav->trav;
 		}
 
 		pn->symbol = PN_RULE;

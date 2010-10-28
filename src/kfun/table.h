@@ -16,20 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+typedef void (*extfunc)(frame *, int, value *);
 typedef struct {
     char *name;		/* function name */
     char *proto;	/* prototype */
     int (*func)();	/* function address */
+    extfunc ext;	/* extension */
     short version;	/* version number */
-    short num;		/* kfun number */
 } kfunc;
 
-extern kfunc kftab[];	/* kfun table */
-extern char  kfind[];	/* kfun indirection table */
+extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */
+extern char  kfind[];					/* indirection table */
+extern int   nkfun, ne, nd, nh;				/* # kfuns */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
 
-typedef void (*extfunc) (frame*, int, value*);
 typedef struct {
     char *name;		/* added kfun name */
     char *proto;	/* simplified prototype */
