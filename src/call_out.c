@@ -687,9 +687,14 @@ void co_call(frame *f)
     object *obj;
     string *str;
     int nargs;
+#ifdef CO_THROTTLE
+    int quota;
 
-    co_expire();
+    quota = CO_THROTTLE;
+#endif
+
     if (running == 0) {
+	co_expire();
 	running = immediate;
 	immediate = 0;
     }
@@ -701,7 +706,11 @@ void co_call(frame *f)
 	while (ec_push((ec_ftn) errhandler)) {
 	    endthread();
 	}
+#ifdef CO_THROTTLE
+	while ((i=running) != 0 && (quota-- >= 0)) {
+#else
 	while ((i=running) != 0) {
+#endif
 	    handle = cotab[i].handle;
 	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
