@@ -1,18 +1,17 @@
 NAME
-        ports - return the array of port objects
+	ports - return the array of port objects
 
 SYNOPSIS
-        object *ports()
+	object *ports()
 
 
 DESCRIPTION
-        Return an array containing the objects associated with the
-        currently open ports.
+	Return an array containing the objects associated with the
+	currently open ports.
 
 NOTES
-        This kfun is only active when the network extensions are 
-        enabled.
+	This kfun is only active when the network extensions are 
+	enabled.
 
 SEE ALSO
-        kfun/open_port, kfun/users
-
+	kfun/open_port, kfun/users

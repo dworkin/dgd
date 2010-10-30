@@ -16,7 +16,7 @@ ERRORS
 	current object.
 
 NOTES
-        This kfun is not active when the network extensions are enabled.
+	This kfun is not active when the network extensions are enabled.
 
 SEE ALSO
 	kfun/query_ip_name, kfun/query_ip_number, kfun/send_datagram,
