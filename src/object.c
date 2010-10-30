@@ -1303,7 +1303,7 @@ void o_restore(int fd, unsigned int rlwobj)
     char *p;
     dump_header dh;
     char buffer[CHUNKSZ];
-    
+
     p = NULL;
 
     /*
