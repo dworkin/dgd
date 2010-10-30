@@ -148,8 +148,8 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen (aidil@wotf.org)
 
-  Merge latest changes from Felix: 
-  - Add an extra field to saved callouts for DGDMP compatibility.                                         
+  Merge latest changes from Felix:
+  - Add an extra field to saved callouts for DGDMP compatibility.
     Dumpfile format version bumped to 11.
 
   src/call_out.c
@@ -199,7 +199,7 @@ in doc/Changelog.Dworkin
   src/comm.c
   src/host/unix/connect.c
   src/host/win32/connect.c
-  
+
 2010-03-23
 
   Bart van Leeuwen
@@ -364,8 +364,8 @@ in doc/Changelog.Dworkin
   src/kfun/table.c
 
 2010-02-24
-  
-  Raymond Jennings
+
+  Raymond Jennings (shentino@gmail.com)
 
   Change file offsets from long to off_t for swap/dump file
   Add sanity check to ensure the configured swapfile size fits
@@ -436,9 +436,9 @@ in doc/Changelog.Dworkin
   see doc/net/ for more information.
 
   src/Makefile
-  src/comm.c 
-  src/comm.h 
-  src/config.c 
+  src/comm.c
+  src/comm.h
+  src/config.c
   src/host/unix/connect.c
   src/lex/ppcontrol.c
   src/comp/comp.c
@@ -457,7 +457,7 @@ in doc/Changelog.Dworkin
   Bart van Leeuwen (aidil@wotf.org)
 
   Add support for // style comments
-  
+
   src/lex/token.c
 
 2010-02-03

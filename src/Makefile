@@ -15,17 +15,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
+HOST=	LINUX
 DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DDUMP_FUNCS
-DEBUG=	-O -g
+DEBUG=
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
+ENVCFLAGS:=$(CFLAGS)
+CFLAGS=-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS) $(ENVCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
-DMAKE=	make
 YACC=	yacc
 BIN=	../bin
 
@@ -37,14 +37,14 @@ COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
 a.out:	$(OBJ) always
-	cd comp; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
-	cd lex; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd parser; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lpc; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
@@ -60,13 +60,13 @@ install: $(BIN)/driver
 
 lint:
 	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
-	@cd comp; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd lex; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd ed; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd parser; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd kfun; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd lpc; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd host; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd comp; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd lex; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd ed; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd parser; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd kfun; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd lpc; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
+	@cd host; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
@@ -78,21 +78,21 @@ ed.sub:	$(EDOBJ)
 	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
 comp/parser.h: comp/parser.y
-	cd comp; $(DMAKE) 'YACC=$(YACC)' parser.h
+	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
 comp/a.out:
-	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
+	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			  'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
-	cd comp; $(DMAKE) clean
-	cd lex; $(DMAKE) clean
-	cd ed; $(DMAKE) clean
-	cd parser; $(DMAKE) clean
-	cd kfun; $(DMAKE) clean
-	cd lpc; $(DMAKE) clean
-	cd host; $(DMAKE) clean
+	cd comp; $(MAKE) clean
+	cd lex; $(MAKE) clean
+	cd ed; $(MAKE) clean
+	cd parser; $(MAKE) clean
+	cd kfun; $(MAKE) clean
+	cd lpc; $(MAKE) clean
+	cd host; $(MAKE) clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h

@@ -1,22 +1,21 @@
 NAME
-        close_user - demote user object and close connection
+	close_user - demote user object and close connection
 
 SYNOPSIS
-        void close_user()
+	void close_user()
 
 
 DESCRIPTION
-        Demotes the current user object (turning it into a regular
-        persistent object) and closes its connection.
+	Demotes the current user object (turning it into a regular
+	persistent object) and closes its connection.
 
-ERRORS                                                                         
-        An error will result if the object is not a user object or
-        when this kfun is called from atomic code.
+ERRORS
+	An error will result if the object is not a user object or
+	when this kfun is called from atomic code.
 
 NOTES
-        This kfun is only active when the network extensions are enabled.
+	This kfun is only active when the network extensions are enabled.
 
 SEE ALSO
-        kfun/open_port, kfun/send_message, kfun/send_datagram, 
+	kfun/open_port, kfun/send_message, kfun/send_datagram, 
 	kfun/connect
-
