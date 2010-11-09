@@ -1582,7 +1582,7 @@ cvoid *cv1, *cv2;
 char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 		      T_MIXED | (2 << REFSHIFT), T_STRING };
 
-# define FILEINFO_CHUNK	128
+# define FILEINFO_CHUNK	1024
 
 /*
  * NAME:	kfun->get_dir()
@@ -1610,7 +1610,7 @@ frame *f;
 	*pat++ = '\0';
     }
 
-    ftable = ALLOCA(fileinfo, ftabsz = FILEINFO_CHUNK);
+    ftable = ALLOC(fileinfo, ftabsz = FILEINFO_CHUNK);
     nfiles = 0;
     if (strpbrk(pat, "?*[\\") == (char *) NULL &&
 	getinfo(file, pat, &ftable[0])) {
@@ -1630,10 +1630,10 @@ frame *f;
 		    if (nfiles == ftabsz) {
 			fileinfo *tmp;
 
-			tmp = ALLOCA(fileinfo, ftabsz + FILEINFO_CHUNK);
+			tmp = ALLOC(fileinfo, ftabsz + FILEINFO_CHUNK);
 			memcpy(tmp, ftable, ftabsz * sizeof(fileinfo));
 			ftabsz += FILEINFO_CHUNK;
-			AFREE(ftable);
+			FREE(ftable);
 			ftable = tmp;
 		    }
 		    ftable[nfiles++] = finf;
@@ -1672,7 +1672,7 @@ frame *f;
 	}
 	ftable -= nfiles;
     }
-    AFREE(ftable);
+    FREE(ftable);
 
     return 0;
 }
