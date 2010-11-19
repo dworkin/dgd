@@ -707,7 +707,7 @@ void co_call(frame *f)
 	    endthread();
 	}
 #ifdef CO_THROTTLE
-	while ((i=running) != 0 && (quota-- >= 0)) {
+	while ((i=running) != 0 && (quota-- > 0)) {
 #else
 	while ((i=running) != 0) {
 #endif
