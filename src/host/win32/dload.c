@@ -23,7 +23,7 @@
  * NAME:	P->dload()
  * DESCRIPTION:	load module
  */
-char *P_dload(char *module, char *symbol)
+voidf *P_dload(char *module, char *symbol)
 {
     HMODULE h;
 
