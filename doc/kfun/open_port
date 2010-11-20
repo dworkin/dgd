@@ -13,7 +13,7 @@ DESCRIPTION
 	selected.
 
 	When a port is first opened, open(int port) is called in its port
-	object.  When it is closed for any reason, close(int force) is 
+	object.  When it is closed for any reason, close(int force) is
 	called in its port object, force indicaton whether we closed the
 	connection with close_user (set to 1) or if something else
 	closed the connection (set to 0).

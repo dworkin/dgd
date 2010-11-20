@@ -1583,7 +1583,7 @@ void conn_ipname(connection *conn, char *buf)
 connection *
 conn_openlisten(unsigned char protocol, unsigned short port)
 {
-    struct sockaddr_in sin;  
+    struct sockaddr_in sin;
     connection *conn;
     int on, n, sock;
     unsigned int sz;
@@ -1632,7 +1632,7 @@ conn_openlisten(unsigned char protocol, unsigned short port)
 	if (maxfd < sock) {
 	    maxfd = sock;
 	}
-	
+
 	conn=flist;
 	flist = (connection *) conn->chain.next;
 	conn->fd=sock;
@@ -1816,7 +1816,7 @@ connection *conn_connect(char *addr, unsigned short port)
     return conn;
 }
 
-int conn_udpreceive(connection *conn, char *buffer, int size, char **host, 
+int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
 	 int *port)
 {
     if (FD_ISSET(conn->fd, &readfds)) {

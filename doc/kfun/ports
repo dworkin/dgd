@@ -10,7 +10,7 @@ DESCRIPTION
 	currently open ports.
 
 NOTES
-	This kfun is only active when the network extensions are 
+	This kfun is only active when the network extensions are
 	enabled.
 
 SEE ALSO
