@@ -2,6 +2,8 @@ The "baseline" branch tracks changes from Hydra, only.  As such, it will
 gradually be left behind by the trunk version.  Most changes from the
 "baseline" branch will however be incorporated in the trunk version.
 
-You can check out the "baseline" branch with the following command:
+You can add the "baseline" branch to an existing DGD git repository
+with the following commands:
 
-    svn co https://dgd-osr.svn.sourceforge.net/svnroot/dgd-osr/branches/baseline dgd-baseline
+    git remote add -t baseline -f dworkin git://dgd-osr.git.sourceforge.net/gitroot/dgd-osr/dworkin
+    git branch --track baseline remotes/dworkin/baseline
