@@ -688,6 +688,9 @@ void co_call(frame *f)
     string *str;
     int nargs;
 #ifdef CO_THROTTLE
+#   if (CO_THROTTLE < 1)
+#	error Invalid CO_THROTTLE setting
+#   endif
     int quota;
 
     quota = CO_THROTTLE;
