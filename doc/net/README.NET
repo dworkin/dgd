@@ -36,5 +36,4 @@ The network extensions add and change a number of kfuns:
   send_message
   send_datagram
 
-And disable the datagram_challange kfun.
-
+And disable the datagram_challenge kfun.
