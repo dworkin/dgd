@@ -34,4 +34,8 @@ _FILE_OFFSET_BITS             Linux/Solaris only. Normally this is
                               if for some reason you need 32 bit file
                               offsets. Note that this limits the size
                               of the swap and dump files to 2GB.
- 
+
+CO_THROTTLE                   Enables callout throttling.  Set it to the
+                              maximum number of callouts to run per I/O
+                              task.  This can be useful for preventing
+                              callout bombs from jamming your mud.
