@@ -1267,7 +1267,7 @@ int nargs;
 	    (l != 0 && P_lseek(fd, l, SEEK_SET) < 0)) {
 	    /* bad seek */
 	    P_close(fd);
-	    return 1;
+	    return 2;
 	}
 	sbuf.st_size -= l;
     }
