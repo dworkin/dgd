@@ -1,0 +1,13 @@
+bin/driver
+bin/driver.old
+*.o
+dgd
+src/a.out
+src/comp/parser.[ch]
+src/host/local.c
+src/host/random.c
+src/host/dirent.c
+src/host/dload.c
+src/host/time.c
+src/host/connect.c
+src/host/xfloat.c
