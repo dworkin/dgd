@@ -1904,7 +1904,8 @@ static void i_interpret(frame *f, char *pc)
 	    if (u != 0) {
 		if ((short) u < 0) {
 		    error("Too few arguments for kfun %s", kf->name);
-		} else if (u <= PROTO_NARGS(kf->proto)) {
+		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
+		{
 		    error("Bad argument %d for kfun %s", u, kf->name);
 		} else {
 		    error("Too many arguments for kfun %s", kf->name);
