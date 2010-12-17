@@ -11,3 +11,11 @@ src/host/dload.c
 src/host/time.c
 src/host/connect.c
 src/host/xfloat.c
+src/host/win32/Debug
+src/host/win32/Release
+src/host/win32/x64
+src/host/win32/ipch
+src/host/win32/dgd.opensdf
+src/host/win32/dgd.sdf
+src/host/win32/dgd.suo
+src/host/win32/dgd.vcxproj.user
