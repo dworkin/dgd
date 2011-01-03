@@ -3,6 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-01-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  - LIBS=-ldl in src/comp/Makefile.
+  - Add an explicit copyright statement in all files for changes made since
+    the open source release.
+
 2010-12-16/2010-12-17
 
   Felix Croes (felix@dworkin.nl)
