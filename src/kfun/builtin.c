@@ -2343,8 +2343,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("=", kf_store_aggr, pt_store_aggr, 0)
 # else
-unsigned char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
-				  T_MIXED | (1 << REFSHIFT), T_INT };
+char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
+			 T_MIXED | (1 << REFSHIFT), T_INT };
 
 /*
  * NAME:	kfun->store_aggr()
@@ -2384,8 +2384,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_float, pt_add_float, 0)
 # else
-unsigned char pt_add_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
-				 T_FLOAT };
+char pt_add_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->add_float()
@@ -2410,8 +2409,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_float_string, pt_add_float_string, 0)
 # else
-unsigned char pt_add_float_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_FLOAT,
-					T_STRING };
+char pt_add_float_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_FLOAT,
+			       T_STRING };
 
 /*
  * NAME:	kfun->add_float_string()
@@ -2442,8 +2441,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_int_string, pt_add_int_string, 0)
 # else
-unsigned char pt_add_int_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_INT,
-				      T_STRING };
+char pt_add_int_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->add_int_string()
@@ -2472,8 +2470,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_string, pt_add_string, 0)
 # else
-unsigned char pt_add_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
-				  T_STRING };
+char pt_add_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->add_string()
@@ -2498,8 +2495,8 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_string_float, pt_add_string_float, 0)
 # else
-unsigned char pt_add_string_float[] = { C_STATIC, 2, 0, 0, 8, T_STRING,
-					T_STRING, T_FLOAT };
+char pt_add_string_float[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
+			       T_FLOAT };
 
 /*
  * NAME:	kfun->add_string_float()
@@ -2529,8 +2526,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("+", kf_add_string_int, pt_add_string_int, 0)
 # else
-unsigned char pt_add_string_int[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
-				      T_INT };
+char pt_add_string_int[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
 
 /*
  * NAME:	kfun->add_string_int()
@@ -2558,7 +2554,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("++", kf_add1_float, pt_add1_float, 0)
 # else
-unsigned char pt_add1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char pt_add1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->add1_float()
@@ -2582,8 +2578,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("/", kf_div_float, pt_div_float, 0)
 # else
-unsigned char pt_div_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
-				 T_FLOAT };
+char pt_div_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->div_float()
@@ -2609,7 +2604,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("==", kf_eq_float, pt_eq_float, 0)
 # else
-unsigned char pt_eq_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_eq_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->eq_float()
@@ -2633,8 +2628,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("==", kf_eq_string, pt_eq_string, 0)
 # else
-unsigned char pt_eq_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_eq_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->eq_string()
@@ -2659,7 +2653,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF(">=", kf_ge_float, pt_ge_float, 0)
 # else
-unsigned char pt_ge_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_ge_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->ge_float()
@@ -2683,8 +2677,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF(">=", kf_ge_string, pt_ge_string, 0)
 # else
-unsigned char pt_ge_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_ge_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->ge_string()
@@ -2709,7 +2702,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF(">", kf_gt_float, pt_gt_float, 0)
 # else
-unsigned char pt_gt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_gt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->add_float()
@@ -2733,8 +2726,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF(">", kf_gt_string, pt_gt_string, 0)
 # else
-unsigned char pt_gt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_gt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->add_string()
@@ -2759,7 +2751,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("<=", kf_le_float, pt_le_float, 0)
 # else
-unsigned char pt_le_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_le_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->le_float()
@@ -2783,8 +2775,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("<=", kf_le_string, pt_le_string, 0)
 # else
-unsigned char pt_le_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_le_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->le_float()
@@ -2809,7 +2800,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("<", kf_lt_float, pt_lt_float, 0)
 # else
-unsigned char pt_lt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_lt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->lt_float()
@@ -2833,8 +2824,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("<", kf_lt_string, pt_lt_string, 0)
 # else
-unsigned char pt_lt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_lt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->lt_string()
@@ -2859,8 +2849,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("*", kf_mult_float, pt_mult_float, 0)
 # else
-unsigned char pt_mult_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
-				  T_FLOAT };
+char pt_mult_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->mult_float()
@@ -2885,7 +2874,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!=", kf_ne_float, pt_ne_float, 0)
 # else
-unsigned char pt_ne_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+char pt_ne_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->ne_float()
@@ -2909,8 +2898,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!=", kf_ne_string, pt_ne_string, 0)
 # else
-unsigned char pt_ne_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
-				 T_STRING };
+char pt_ne_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING, T_STRING };
 
 /*
  * NAME:	kfun->ne_string()
@@ -2935,7 +2923,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!=", kf_not_float, pt_not_float, 0)
 # else
-unsigned char pt_not_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+char pt_not_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
 
 /*
  * NAME:	kfun->not_float()
@@ -2953,7 +2941,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!=", kf_not_string, pt_not_string, 0)
 # else
-unsigned char pt_not_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
+char pt_not_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->not_string()
@@ -2972,8 +2960,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("-", kf_sub_float, pt_sub_float, 0)
 # else
-unsigned char pt_sub_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
-				 T_FLOAT };
+char pt_sub_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->sub_float()
@@ -2998,7 +2985,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("--", kf_sub1_float, pt_sub1_float, 0)
 # else
-unsigned char pt_sub1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char pt_sub1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->sub1_float()
@@ -3022,7 +3009,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!!", kf_tst_float, pt_tst_float, 0)
 # else
-unsigned char pt_tst_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+char pt_tst_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
 
 /*
  * NAME:	kfun->tst_float()
@@ -3040,7 +3027,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("!!", kf_tst_string, pt_tst_string, 0)
 # else
-unsigned char pt_tst_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
+char pt_tst_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 
 /*
  * NAME:	kfun->tst_string()
@@ -3059,7 +3046,7 @@ register frame *f;
 # ifdef FUNCDEF
 FUNCDEF("unary -", kf_umin_float, pt_umin_float, 0)
 # else
-unsigned char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 
 /*
  * NAME:	kfun->umin_float()
