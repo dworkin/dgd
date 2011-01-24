@@ -35,6 +35,7 @@ static int *itab;		/* inherit index table */
 static uindex *map;		/* object -> precompiled */
 static uindex nprecomps;	/* # precompiled objects */
 
+precomp *precompiled[] = { (precomp *) NULL };
 pcfunc *pcfunctions;		/* table of precompiled functions */
 
 static char *auto_name;		/* name of auto object */

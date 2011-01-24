@@ -42,12 +42,10 @@ a.out:	$(OBJ) always
 	cd ed; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd parser; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
 	cd host; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
-	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
-	      `cat host/dgd` $(LIBS)
+	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat host/dgd` \
+	      $(LIBS)
 
 always:
 	@rm -f a.out
@@ -65,7 +63,6 @@ lint:
 	@cd ed; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 	@cd parser; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 	@cd kfun; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd lpc; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 	@cd host; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 
 comp.sub: $(COMPOBJ)
@@ -80,10 +77,6 @@ ed.sub:	$(EDOBJ)
 comp/parser.h: comp/parser.y
 	cd comp; $(DMAKE) 'YACC=$(YACC)' parser.h
 
-comp/a.out:
-	cd comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			  'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
-
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
 	cd comp; $(DMAKE) clean
@@ -91,7 +84,6 @@ clean:
 	cd ed; $(DMAKE) clean
 	cd parser; $(DMAKE) clean
 	cd kfun; $(DMAKE) clean
-	cd lpc; $(DMAKE) clean
 	cd host; $(DMAKE) clean
 
 
