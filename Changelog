@@ -7,6 +7,13 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
+  - Cherry-pick extra builtin kfuns from baseline.
+  - Merge Silenus' jit branch to make use of the new kfuns.
+
+2011-01-24
+
+  Felix Croes (felix@dworkin.nl)
+
   Released 1.4.6.
 
 2011-01-03
