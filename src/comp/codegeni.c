@@ -767,12 +767,33 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_ADD_INT, n->line);
 	break;
 
+    case N_ADD_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	if (n->r.right->type == N_FLOAT) {
+	    if (NFLT_ISONE(n->r.right)) {
+		code_kfun(KF_ADD1_FLT, n->line);
+		break;
+	    }
+	    if (NFLT_ISMONE(n->r.right)) {
+		code_kfun(KF_SUB1_FLT, n->line);
+		break;
+	    }
+	}
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_ADD_FLT, n->line);
+	break;
+	
+	
     case N_ADD_EQ:
 	cg_asgnop(n, KF_ADD);
 	break;
 
     case N_ADD_EQ_INT:
 	cg_asgnop(n, KF_ADD_INT);
+	break;
+	
+    case N_ADD_EQ_FLOAT:
+	cg_asgnop(n, KF_ADD_FLT);
 	break;
 
     case N_ADD_EQ_1:
@@ -784,6 +805,12 @@ static void cg_expr(node *n, int pop)
     case N_ADD_EQ_1_INT:
 	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1_INT, 0);
+	code_instr(I_STORE, 0);
+	break;
+	
+    case N_ADD_EQ_1_FLOAT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_ADD1_FLT, 0);
 	code_instr(I_STORE, 0);
 	break;
 
@@ -873,6 +900,12 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_DIV_INT, n->line);
 	break;
+	
+    case N_DIV_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_DIV_FLT, n->line);
+	break;
 
     case N_DIV_EQ:
 	cg_asgnop(n, KF_DIV);
@@ -894,6 +927,12 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_EQ_INT, n->line);
 	break;
 
+    case N_EQ_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_EQ_FLT, n->line);
+	break;	
+	
     case N_FLOAT:
 	code_instr(I_PUSH_FLOAT, n->line);
 	code_word(n->l.fhigh);
@@ -944,6 +983,12 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_GE_INT, n->line);
 	break;
 
+    case N_GE_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_GE_FLT, n->line);
+	break;
+	
     case N_GLOBAL:
 	if ((n->r.number >> 8) == ctrl_ninherits()) {
 	    code_instr(I_PUSH_GLOBAL, n->line);
@@ -964,6 +1009,12 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_GT_INT, n->line);
+	break;
+
+    case N_GT_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_GT_FLT, n->line);
 	break;
 
     case N_INDEX:
@@ -1031,7 +1082,13 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LE_INT, n->line);
 	break;
-
+	
+    case N_LE_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_LE_FLT, n->line);
+	break;
+	
     case N_LOCAL:
 	code_instr(I_PUSH_LOCAL, n->line);
 	code_byte(nparams - (int) n->r.number - 1);
@@ -1091,6 +1148,12 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LT_INT, n->line);
 	break;
+	
+    case N_LT_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_LT_FLT, n->line);
+	break;
 
     case N_LVALUE:
 	cg_lvalue(n->l.left, n->l.left);
@@ -1127,6 +1190,12 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_MULT_INT, n->line);
 	break;
+	
+    case N_MULT_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_MULT_FLT, n->line);
+	break;
 
     case N_MULT_EQ:
 	cg_asgnop(n, KF_MULT);
@@ -1134,6 +1203,10 @@ static void cg_expr(node *n, int pop)
 
     case N_MULT_EQ_INT:
 	cg_asgnop(n, KF_MULT_INT);
+	break;
+	
+    case N_MULT_EQ_FLOAT:
+	cg_asgnop(n, KF_MULT_FLT);
 	break;
 
     case N_NE:
@@ -1146,6 +1219,12 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_NE_INT, n->line);
+	break;
+	
+    case N_NE_FLOAT:
+	cg_expr(n->l.left, FALSE);
+	cg_expr(n->r.right, FALSE);
+	code_kfun(KF_NE_FLT, n->line);
 	break;
 
     case N_NIL:
@@ -1302,6 +1381,27 @@ static void cg_expr(node *n, int pop)
 	    code_kfun(KF_SUB_INT, n->line);
 	}
 	break;
+	
+        case N_SUB_FLOAT:
+	if (n->l.left->type == N_FLOAT && n->l.left->l.number == 0) {
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_UMIN_FLT, n->line);
+	} else {
+	    cg_expr(n->l.left, FALSE);
+	    if (n->r.right->type == N_FLOAT) {
+		if (NFLT_ISONE(n->r.right)) {
+		    code_kfun(KF_SUB1_FLT, n->line);
+		    break;
+		}
+		if (NFLT_ISMONE(n->r.right)) {
+		    code_kfun(KF_ADD1_FLT, n->line);
+		    break;
+		}
+	    }
+	    cg_expr(n->r.right, FALSE);
+	    code_kfun(KF_SUB_FLT, n->line);
+	}
+	break;
 
     case N_SUB_EQ:
 	cg_asgnop(n, KF_SUB);
@@ -1309,6 +1409,10 @@ static void cg_expr(node *n, int pop)
 
     case N_SUB_EQ_INT:
 	cg_asgnop(n, KF_SUB_INT);
+	break;
+	
+    case N_SUB_EQ_FLOAT:
+	cg_asgnop(n, KF_SUB);
 	break;
 
     case N_SUB_EQ_1:
@@ -1322,6 +1426,13 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_SUB1_INT, 0);
 	code_instr(I_STORE, 0);
 	break;
+	
+    case N_SUB_EQ_1_FLOAT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_SUB1_FLT, 0);
+	code_instr(I_STORE, 0);
+	break;
+
 
     case N_SUM:
 	i = cg_sumargs(n);
@@ -1356,7 +1467,13 @@ static void cg_expr(node *n, int pop)
 
     case N_TST:
 	cg_expr(n->l.left, FALSE);
-	code_kfun((n->l.left->mod == T_INT) ? KF_TST_INT : KF_TST, n->line);
+	if( n->l.left->mod == T_INT ) {
+	    code_kfun(KF_TST_INT, n->line);
+	} else if( n->l.left->mod == T_FLOAT ){
+	    code_kfun(KF_TST_FLT, n->line);
+	} else {
+	    code_kfun(KF_TST, n->line);
+	}
 	break;
 
     case N_XOR:
@@ -1405,7 +1522,13 @@ static void cg_expr(node *n, int pop)
 	cg_fetch(n->l.left);
 	code_kfun(KF_SUB1, 0);
 	code_instr(I_STORE, 0);
-	code_kfun((n->mod == T_INT) ? KF_ADD1_INT : KF_ADD1, 0);
+	if( n->mod == T_INT ) {
+	    code_kfun(KF_ADD1_INT, 0);
+	} else if( n->mod == T_FLOAT ) {
+	    code_kfun(KF_ADD1_FLT, 0);
+	} else {
+	    code_kfun(KF_ADD1, 0);
+	}
 	break;
 
     case N_MIN_MIN_INT:
@@ -1414,12 +1537,25 @@ static void cg_expr(node *n, int pop)
 	code_instr(I_STORE, 0);
 	code_kfun(KF_ADD1_INT, 0);
 	break;
+	
+    case N_MIN_MIN_FLOAT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_SUB1_FLT, 0);
+	code_instr(I_STORE, 0);
+	code_kfun(KF_ADD1_FLT, 0);
+	break;
 
     case N_PLUS_PLUS:
 	cg_fetch(n->l.left);
 	code_kfun(KF_ADD1, 0);
 	code_instr(I_STORE, 0);
-	code_kfun((n->mod == T_INT) ? KF_SUB1_INT : KF_SUB1, 0);
+	if( n->mod == T_INT ) {
+	    code_kfun(KF_SUB1_INT, 0);
+	} else if( n->mod == T_FLOAT ) {
+	    code_kfun(KF_SUB1_FLT, 0);
+	} else {
+	    code_kfun(KF_SUB1, 0);
+	}
 	break;
 
     case N_PLUS_PLUS_INT:
@@ -1427,6 +1563,13 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_ADD1_INT, 0);
 	code_instr(I_STORE, 0);
 	code_kfun(KF_SUB1_INT, 0);
+	break;
+	
+    case N_PLUS_PLUS_FLOAT:
+	cg_fetch(n->l.left);
+	code_kfun(KF_ADD1_FLT, 0);
+	code_instr(I_STORE, 0);
+	code_kfun(KF_SUB1_FLT, 0);
 	break;
 
 # ifdef DEBUG

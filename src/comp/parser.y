@@ -1137,6 +1137,7 @@ static node *bini(int op, node *n1, node *n2, char *name)
     return node_bin(op, T_INT, n1, n2);
 }
 
+
 /*
  * NAME:	bina()
  * DESCRIPTION:	handle a binary arithmetic operator
@@ -1163,6 +1164,29 @@ static node *bina(int op, node *n1, node *n2, char *name)
 	type = T_INT;
     } else if (n1->mod == T_FLOAT || n2->mod == T_FLOAT) {
 	type = T_FLOAT;
+        switch(op) {
+            case N_ADD: 
+	    case N_ADD_EQ: 
+	    case N_ADD_EQ_1: 
+	    case N_DIV:
+	    case N_DIV_EQ:
+            case N_EQ:
+            case N_GE:
+            case N_GT:
+            case N_LE:
+            case N_LT:
+            case N_MULT:
+	    case N_MULT_EQ:
+            case N_NE:
+            case N_SUB_EQ_1:
+            case N_SUB_EQ:
+            case N_MIN_MIN:
+            case N_PLUS_PLUS:
+	        op+=2;
+                break;
+            default:
+                break;
+        }
     }
 
     return node_bin(op, type, n1, n2);
