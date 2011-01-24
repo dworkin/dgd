@@ -2380,3 +2380,702 @@ register frame *f;
 }
 # endif
 
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_float, pt_add_float, 0)
+# else
+unsigned char pt_add_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+				 T_FLOAT };
+
+/*
+ * NAME:	kfun->add_float()
+ * DESCRIPTION:	float + float
+ */
+int kf_add_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_add(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_float_string, pt_add_float_string, 0)
+# else
+unsigned char pt_add_float_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_FLOAT,
+					T_STRING };
+
+/*
+ * NAME:	kfun->add_float_string()
+ * DESCRIPTION:	float + string
+ */
+int kf_add_float_string(f)
+register frame *f;
+{
+    char buffer[18];
+    xfloat flt;
+    string *str;
+    long l;
+
+    i_add_ticks(f, 3);
+    GET_FLT(&f->sp[1], flt);
+    flt_ftoa(&flt, buffer);
+    str = str_new((char *) NULL, (l=strlen(buffer)) + f->sp->u.string->len);
+    strcpy(str->text, buffer);
+    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
+    str_del(f->sp->u.string);
+    f->sp++;
+    PUT_STRVAL(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_int_string, pt_add_int_string, 0)
+# else
+unsigned char pt_add_int_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_INT,
+				      T_STRING };
+
+/*
+ * NAME:	kfun->add_int_string()
+ * DESCRIPTION:	int + string
+ */
+int kf_add_int_string(f)
+register frame *f;
+{
+    char buffer[10], *num;
+    string *str;
+    long l;
+
+    i_add_ticks(f, 2);
+    num = kf_itoa(f->sp[1].u.number, buffer);
+    str = str_new((char *) NULL, (l=strlen(num)) + f->sp->u.string->len);
+    strcpy(str->text, num);
+    memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
+    str_del(f->sp->u.string);
+    f->sp++;
+    PUT_STRVAL(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_string, pt_add_string, 0)
+# else
+unsigned char pt_add_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
+				  T_STRING };
+
+/*
+ * NAME:	kfun->add_string()
+ * DESCRIPTION:	string + string
+ */
+int kf_add_string(f)
+register frame *f;
+{
+    string *str;
+
+    i_add_ticks(f, 2);
+    str = str_add(f->sp[1].u.string, f->sp->u.string);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_string_float, pt_add_string_float, 0)
+# else
+unsigned char pt_add_string_float[] = { C_STATIC, 2, 0, 0, 8, T_STRING,
+					T_STRING, T_FLOAT };
+
+/*
+ * NAME:	kfun->add_string_float()
+ * DESCRIPTION:	string + float
+ */
+int kf_add_string_float(f)
+register frame *f;
+{
+    char buffer[18];
+    xfloat flt;
+    string *str;
+
+    i_add_ticks(f, 3);
+    GET_FLT(f->sp, flt);
+    flt_ftoa(&flt, buffer);
+    f->sp++;
+    str = str_new((char *) NULL, f->sp->u.string->len + (long) strlen(buffer));
+    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
+    strcpy(str->text + f->sp->u.string->len, buffer);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("+", kf_add_string_int, pt_add_string_int, 0)
+# else
+unsigned char pt_add_string_int[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
+				      T_INT };
+
+/*
+ * NAME:	kfun->add_string_int()
+ * DESCRIPTION:	string + int
+ */
+int kf_add_string_int(f)
+register frame *f;
+{
+    char buffer[10], *num;
+    string *str;
+
+    i_add_ticks(f, 2);
+    num = kf_itoa(f->sp->u.number, buffer);
+    f->sp++;
+    str = str_new((char *) NULL, f->sp->u.string->len + (long) strlen(num));
+    memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
+    strcpy(str->text + f->sp->u.string->len, num);
+    str_del(f->sp->u.string);
+    PUT_STR(f->sp, str);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("++", kf_add1_float, pt_add1_float, 0)
+# else
+unsigned char pt_add1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->add1_float()
+ * DESCRIPTION:	float++
+ */
+int kf_add1_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f1);
+    FLT_ONE(f2.high, f2.low);
+    flt_add(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("/", kf_div_float, pt_div_float, 0)
+# else
+unsigned char pt_div_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+				 T_FLOAT };
+
+/*
+ * NAME:	kfun->div_float()
+ * DESCRIPTION:	float / float
+ */
+int kf_div_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_div(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("==", kf_eq_float, pt_eq_float, 0)
+# else
+unsigned char pt_eq_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->eq_float()
+ * DESCRIPTION:	float == float
+ */
+int kf_eq_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) == 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("==", kf_eq_string, pt_eq_string, 0)
+# else
+unsigned char pt_eq_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->eq_string()
+ * DESCRIPTION:	string == string
+ */
+int kf_eq_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) == 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF(">=", kf_ge_float, pt_ge_float, 0)
+# else
+unsigned char pt_ge_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->ge_float()
+ * DESCRIPTION:	float >= float
+ */
+int kf_ge_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) >= 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF(">=", kf_ge_string, pt_ge_string, 0)
+# else
+unsigned char pt_ge_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->ge_string()
+ * DESCRIPTION:	string >= string
+ */
+int kf_ge_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) >= 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF(">", kf_gt_float, pt_gt_float, 0)
+# else
+unsigned char pt_gt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->add_float()
+ * DESCRIPTION:	float > float
+ */
+int kf_gt_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) > 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF(">", kf_gt_string, pt_gt_string, 0)
+# else
+unsigned char pt_gt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->add_string()
+ * DESCRIPTION:	string > string
+ */
+int kf_gt_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) > 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("<=", kf_le_float, pt_le_float, 0)
+# else
+unsigned char pt_le_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->le_float()
+ * DESCRIPTION:	float <= float
+ */
+int kf_le_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) <= 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("<=", kf_le_string, pt_le_string, 0)
+# else
+unsigned char pt_le_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->le_float()
+ * DESCRIPTION:	string <= string
+ */
+int kf_le_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) <= 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("<", kf_lt_float, pt_lt_float, 0)
+# else
+unsigned char pt_lt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->lt_float()
+ * DESCRIPTION:	float < float
+ */
+int kf_lt_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) < 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("<", kf_lt_string, pt_lt_string, 0)
+# else
+unsigned char pt_lt_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->lt_string()
+ * DESCRIPTION:	string < string
+ */
+int kf_lt_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) < 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("*", kf_mult_float, pt_mult_float, 0)
+# else
+unsigned char pt_mult_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+				  T_FLOAT };
+
+/*
+ * NAME:	kfun->mult_float()
+ * DESCRIPTION:	float * float
+ */
+int kf_mult_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_mult(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!=", kf_ne_float, pt_ne_float, 0)
+# else
+unsigned char pt_ne_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->ne_float()
+ * DESCRIPTION:	float != float
+ */
+int kf_ne_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) != 0));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!=", kf_ne_string, pt_ne_string, 0)
+# else
+unsigned char pt_ne_string[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
+				 T_STRING };
+
+/*
+ * NAME:	kfun->ne_string()
+ * DESCRIPTION:	string != string
+ */
+int kf_ne_string(f)
+register frame *f;
+{
+    bool flag;
+
+    i_add_ticks(f, 2);
+    flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) != 0);
+    str_del(f->sp->u.string);
+    f->sp++;
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, flag);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!=", kf_not_float, pt_not_float, 0)
+# else
+unsigned char pt_not_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+
+/*
+ * NAME:	kfun->not_float()
+ * DESCRIPTION:	! float
+ */
+int kf_not_float(f)
+register frame *f;
+{
+    PUT_INTVAL(f->sp, VFLT_ISZERO(f->sp));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!=", kf_not_string, pt_not_string, 0)
+# else
+unsigned char pt_not_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
+
+/*
+ * NAME:	kfun->not_string()
+ * DESCRIPTION:	! string
+ */
+int kf_not_string(f)
+register frame *f;
+{
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, FALSE);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("-", kf_sub_float, pt_sub_float, 0)
+# else
+unsigned char pt_sub_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
+				 T_FLOAT };
+
+/*
+ * NAME:	kfun->sub_float()
+ * DESCRIPTION:	float - float
+ */
+int kf_sub_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f2);
+    f->sp++;
+    GET_FLT(f->sp, f1);
+    flt_sub(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("--", kf_sub1_float, pt_sub1_float, 0)
+# else
+unsigned char pt_sub1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->sub1_float()
+ * DESCRIPTION:	float--
+ */
+int kf_sub1_float(f)
+register frame *f;
+{
+    xfloat f1, f2;
+
+    i_add_ticks(f, 1);
+    GET_FLT(f->sp, f1);
+    FLT_ONE(f2.high, f2.low);
+    flt_sub(&f1, &f2);
+    PUT_FLT(f->sp, f1);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!!", kf_tst_float, pt_tst_float, 0)
+# else
+unsigned char pt_tst_float[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_FLOAT };
+
+/*
+ * NAME:	kfun->tst_float()
+ * DESCRIPTION:	!! float
+ */
+int kf_tst_float(f)
+register frame *f;
+{
+    PUT_INTVAL(f->sp, !VFLT_ISZERO(f->sp));
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("!!", kf_tst_string, pt_tst_string, 0)
+# else
+unsigned char pt_tst_string[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
+
+/*
+ * NAME:	kfun->tst_string()
+ * DESCRIPTION:	!! string
+ */
+int kf_tst_string(f)
+register frame *f;
+{
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, TRUE);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("unary -", kf_umin_float, pt_umin_float, 0)
+# else
+unsigned char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
+
+/*
+ * NAME:	kfun->umin_float()
+ * DESCRIPTION:	- float
+ */
+int kf_umin_float(f)
+register frame *f;
+{
+    xfloat flt;
+
+    i_add_ticks(f, 1);
+    if (!VFLT_ISZERO(f->sp)) {
+	GET_FLT(f->sp, flt);
+	FLT_NEG(flt.high, flt.low);
+	PUT_FLT(f->sp, flt);
+    }
+    return 0;
+}
+# endif
