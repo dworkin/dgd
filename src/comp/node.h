@@ -81,8 +81,8 @@ extern void  node_clear	(void);
 # define N_ADD_EQ_INT		  5
 # define N_ADD_EQ_FLOAT		  6
 # define N_ADD_EQ_1		  7
-# define N_ADD_EQ_1_INT	  	  8
-# define N_ADD_EQ_1_FLOAT         9
+# define N_ADD_EQ_1_INT		  8
+# define N_ADD_EQ_1_FLOAT	  9
 # define N_AGGR			 10
 # define N_AND			 11
 # define N_AND_INT		 12
@@ -101,7 +101,7 @@ extern void  node_clear	(void);
 # define N_DIV_INT		 25
 # define N_DIV_FLOAT		 26
 # define N_DIV_EQ		 27
-# define N_DIV_EQ_INT		 28	
+# define N_DIV_EQ_INT		 28
 # define N_DIV_EQ_FLOAT		 29
 # define N_DO			 30
 # define N_ELSE			 31
