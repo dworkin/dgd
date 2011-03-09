@@ -460,7 +460,7 @@ void kf_restore(int fd, int oldcomp)
     if (P_read(fd, buffer, (unsigned int) dh.kfnamelen) < 0) {
 	fatal("cannot restore kfun names");
     }
-    memset(kfx + KF_BUILTINS, '\0', nkfun);
+    memset(kfx + KF_BUILTINS, '\0', nkfun - KF_BUILTINS);
     buflen = 0;
     for (i = 0; i < dh.nkfun; i++) {
 	if (buffer[buflen + 1] == '.') {
