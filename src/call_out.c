@@ -322,7 +322,7 @@ Uint co_time(unsigned short *mtime)
 	return cotime;
     }
 
-    t = P_mtime(mtime);
+    t = P_mtime(mtime) - timediff;
     if (t < timestamp) {
 	/* clock turned back? */
 	t = timestamp;
@@ -343,7 +343,7 @@ Uint co_time(unsigned short *mtime)
     }
 
     comtime = *mtime;
-    return cotime = t;
+    return cotime = t + timediff;
 }
 
 /*
@@ -382,7 +382,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	/*
 	 * delayed callout
 	 */
-	t = co_time(mp);
+	t = co_time(mp) - timediff;
 	if (t + delay + 1 <= t) {
 	    error("Too long delay");
 	}
@@ -406,8 +406,6 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	}
 	*tp = t;
 	*mp = m;
-
-	t -= timediff;
     }
 
     return t;
@@ -515,10 +513,6 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
 {
     call_out *l;
 
-    if (t != 0) {
-	t += timediff;
-    }
-
     if (m == 0xffff) {
 	/*
 	 * try to find the callout in the cyclic buffer
@@ -603,7 +597,7 @@ static void co_expire()
     Uint t;
     unsigned short m;
 
-    t = P_mtime(&m);
+    t = P_mtime(&m) - timediff;
     if ((timeout != 0 && timeout <= t) ||
 	(queuebrk != 0 &&
 	 (cotab[0].time < t || (cotab[0].time == t && cotab[0].mtime <= m)))) {
@@ -761,6 +755,9 @@ Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 	*mtime = 0xffff;
 	return 0;
     }
+    if (rtime != 0) {
+	rtime -= timediff;
+    }
     if (timeout != 0 && (rtime == 0 || timeout <= rtime)) {
 	rtime = timeout;
 	rmtime = 0;
@@ -770,6 +767,9 @@ Uint co_delay(Uint rtime, unsigned int rmtime, unsigned short *mtime)
 	 (cotab[0].time == rtime && cotab[0].mtime <= rmtime))) {
 	rtime = cotab[0].time;
 	rmtime = cotab[0].mtime;
+    }
+    if (rtime != 0) {
+	rtime += timediff;
     }
 
     t = co_time(&m);
@@ -908,7 +908,7 @@ bool co_dump(int fd)
  * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
-void co_restore(int fd, Uint t, int conv, int conv2)
+void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 {
     uindex n, i, offset, last;
     call_out *co;
@@ -917,6 +917,7 @@ void co_restore(int fd, Uint t, int conv, int conv2)
     unsigned short m;
 
     /* read and check header */
+    timediff = t;
     if (conv2) {
 	conv_header ch;
 
@@ -927,9 +928,8 @@ void co_restore(int fd, Uint t, int conv, int conv2)
 	flist = ch.flist;
 	nshort = ch.nshort;
 	nzero = ch.nlong0 - ch.queuebrk;
-	timestamp = t;
-	t -= ch.timestamp;
-	timediff = ch.timediff + t;
+	timestamp = ch.timestamp;
+	t = -ch.timediff;
     } else {
 	dump_header dh;
 
@@ -941,10 +941,11 @@ void co_restore(int fd, Uint t, int conv, int conv2)
 	nshort = dh.nshort;
 	running = dh.running;
 	immediate = dh.immediate;
-	timestamp = t;
-	t -= dh.timestamp;
-	timediff = dh.timediff + t;
+	timestamp = dh.timestamp;
+	t = (conv_time) ? -dh.timediff : 0;
     }
+    timestamp += t;
+    timediff -= timestamp;
     if (queuebrk > cycbrk || cycbrk == 0) {
 	error("Restored too many callouts");
     }
@@ -962,7 +963,7 @@ void co_restore(int fd, Uint t, int conv, int conv2)
 		co->handle = dc->handle;
 		co->oindex = dc->oindex;
 		if (dc->time >> 24 == 1) {
-		    co->time = co_decode(dc->time, &m) + timediff;
+		    co->time = co_decode(dc->time, &m);
 		    co->mtime = m;
 		} else {
 		    co->time = dc->time + t;

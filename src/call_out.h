@@ -35,4 +35,4 @@ extern void	co_swapcount	(unsigned int);
 extern long	co_swaprate1 	(void);
 extern long	co_swaprate5 	(void);
 extern bool	co_dump		(int);
-extern void	co_restore	(int, Uint, int, int);
+extern void	co_restore	(int, Uint, int, int, int);
