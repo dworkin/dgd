@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, http://dgd-osr.sourceforge.net/
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+# Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -17,12 +17,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST) #-DNETWORK_EXTENSIONS #-DDUMP_FUNCS #-DCO_THROTTLE=50
+DEFINES=-D$(HOST)	#-DNETWORK_EXTENSIONS #-DDUMP_FUNCS #-DCO_THROTTLE=50
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-LIBS=	-ldl
+LIBS=	-ldl		# FreeBSD may require "make HOST=FREEBSD LIBS="
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
