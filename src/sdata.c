@@ -35,8 +35,9 @@ typedef struct {
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
     uindex imapsz;		/* inherit map size */
-    Uint compiled;		/* time of compilation */
     Uint progsize;		/* size of program code */
+    Uint compiled;		/* time of compilation */
+    unsigned short comphigh;	/* time of compilation high word */
     unsigned short nstrings;	/* # strings in string constant table */
     Uint strsize;		/* size of string constant table */
     char nfuncdefs;		/* # entries in function definition table */
@@ -48,7 +49,27 @@ typedef struct {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 } scontrol;
 
-static char sc_layout[] = "dssuiisicccusss";
+static char sc_layout[] = "dssuiissicccusss";
+
+typedef struct {
+    sector nsectors;		/* # sectors in part one */
+    short flags;		/* control flags: compression */
+    short ninherits;		/* # objects in inherit table */
+    uindex imapsz;		/* inherit map size */
+    Uint compiled;		/* time of compilation */
+    Uint progsize;		/* size of program code */
+    unsigned short nstrings;	/* # strings in string constant table */
+    Uint strsize;		/* size of string constant table */
+    char nfuncdefs;		/* # entries in function definition table */
+    char nvardefs;		/* # entries in variable definition table */
+    char nclassvars;		/* # class variables */
+    uindex nfuncalls;		/* # entries in function call table */
+    unsigned short nsymbols;	/* # entries in symbol table */
+    unsigned short nvariables;	/* # variables */
+    unsigned short vmapsize;	/* size of variable map, or 0 for none */
+} tscontrol;
+
+static char tsc_layout[] = "dssuiisicccusss";
 
 typedef struct {
     sector nsectors;		/* # sectors in part one */
@@ -201,12 +222,22 @@ static char ss_layout[] = "iti";
 
 typedef struct _scallout_ {
     Uint time;			/* time of call */
+    unsigned short htime;	/* time of call, high word */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
 } scallout;
 
-static char sco_layout[] = "isu[ccui][ccui][ccui][ccui]";
+static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
+
+typedef struct {
+    Uint time;			/* time of call */
+    unsigned short mtime;	/* time of call milliseconds */
+    uindex nargs;		/* number of arguments */
+    svalue val[4];		/* function name, 3 direct arguments */
+} tscallout;
+
+static char tco_layout[] = "isu[ccui][ccui][ccui][ccui]";
 
 typedef struct {
     Uint time;			/* time of call */
@@ -264,6 +295,7 @@ static bool conv_data;			/* convert dataspaces? */
 static bool conv_co1, conv_co2;		/* convert callouts? */
 static bool conv_type;			/* convert types? */
 static bool conv_inherit;		/* convert inherits? */
+static bool conv_time;			/* convert time? */
 static bool converted;			/* conversion complete? */
 
 
@@ -278,7 +310,7 @@ void d_init()
     gcdata = (dataspace *) NULL;
     nctrl = ndata = 0;
     conv_ctrl1 = conv_ctrl2 = conv_data = conv_co1 = conv_co2 = conv_type =
-		 FALSE;
+		 conv_time = FALSE;
     converted = FALSE;
 }
 
@@ -286,8 +318,8 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type, inherit)
-int ctrl1, ctrl2, data, callout1, callout2, type, inherit;
+void d_init_conv(ctrl1, ctrl2, data, callout1, callout2, type, inherit, time)
+int ctrl1, ctrl2, data, callout1, callout2, type, inherit, time;
 {
     conv_ctrl1 = ctrl1;
     conv_ctrl2 = ctrl2;
@@ -296,6 +328,7 @@ int ctrl1, ctrl2, data, callout1, callout2, type, inherit;
     conv_co2 = callout2;
     conv_type = type;
     conv_inherit = inherit;
+    conv_time = time;
 }
 
 /*
@@ -1576,6 +1609,7 @@ register control *ctrl;
     header.ninherits = ctrl->ninherits;
     header.imapsz = ctrl->imapsz;
     header.compiled = ctrl->compiled;
+    header.comphigh = 0;
     header.progsize = ctrl->progsize;
     header.nstrings = ctrl->nstrings;
     header.strsize = ctrl->strsize;
@@ -2186,6 +2220,7 @@ bool swap;
 	    co = data->callouts;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
+		sco->htime = 0;
 		sco->mtime = co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
@@ -2317,6 +2352,7 @@ bool swap;
 	    co = data->callouts;
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = co->time;
+		sco->htime = 0;
 		sco->mtime = co->mtime;
 		sco->nargs = co->nargs;
 		if (co->val[0].type == T_STRING) {
@@ -2676,6 +2712,26 @@ object *obj;
 	header.flags = oheader.flags;
 	header.ninherits = oheader.ninherits;
 	header.imapsz = 0;
+	header.compiled = oheader.compiled;
+	header.progsize = oheader.progsize;
+	header.nstrings = oheader.nstrings;
+	header.strsize = oheader.strsize;
+	header.nfuncdefs = oheader.nfuncdefs;
+	header.nvardefs = oheader.nvardefs;
+	header.nclassvars = oheader.nclassvars;
+	header.nfuncalls = oheader.nfuncalls;
+	header.nsymbols = oheader.nsymbols;
+	header.nvariables = oheader.nvariables;
+	header.vmapsize = oheader.vmapsize;
+    } else if (conv_time) {
+	tscontrol oheader;
+
+	size = d_conv((char *) &oheader, &obj->cfirst, tsc_layout, (Uint) 1,
+		      (Uint) 0);
+	header.nsectors = oheader.nsectors;
+	header.flags = oheader.flags;
+	header.ninherits = oheader.ninherits;
+	header.imapsz = oheader.imapsz;
 	header.compiled = oheader.compiled;
 	header.progsize = oheader.progsize;
 	header.nstrings = oheader.nstrings;
@@ -3159,6 +3215,7 @@ Uint *counttab;
 		    sco->time = osc->time;
 		    sco->mtime = 0xffff;
 		}
+		sco->htime = 0;
 		sco->nargs = osc->nargs;
 		d_copy_oosvalues(sco->val, osc->val, 4);
 		sco++;
@@ -3182,6 +3239,7 @@ Uint *counttab;
 		    sco->time = soc->time;
 		    sco->mtime = 0xffff;
 		}
+		sco->htime = 0;
 		sco->nargs = soc->nargs;
 		d_copy_oosvalues(sco->val, soc->val, 4);
 		sco++;
@@ -3205,6 +3263,7 @@ Uint *counttab;
 		    sco->time = cos->time;
 		    sco->mtime = 0xffff;
 		}
+		sco->htime = 0;
 		sco->nargs = cos->nargs;
 		d_copy_osvalues(sco->val, cos->val, 4);
 		sco++;
@@ -3223,6 +3282,7 @@ Uint *counttab;
 		   (Uint) header.ncallouts, size);
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = cso->time;
+		sco->htime = 0;
 		sco->mtime = cso->mtime;
 		sco->nargs = cso->nargs;
 		d_copy_osvalues(sco->val, cso->val, 4);
@@ -3231,6 +3291,26 @@ Uint *counttab;
 	    }
 	    sco -= data->ncallouts;
 	    AFREE(cso - data->ncallouts);
+	} else if (conv_time) {
+	    register tscallout *tco;
+
+	    /*
+	     * convert callouts without htime
+	     */
+	    tco = ALLOCA(tscallout, header.ncallouts);
+	    d_conv((char *) tco, data->sectors, tco_layout,
+		   (Uint) header.ncallouts, size);
+	    for (n = data->ncallouts; n > 0; --n) {
+		sco->time = tco->time;
+		sco->htime = 0;
+		sco->mtime = tco->mtime;
+		sco->nargs = tco->nargs;
+		memcpy(sco->val, tco->val, 4 * sizeof(svalue));
+		sco++;
+		tco++;
+	    }
+	    sco -= data->ncallouts;
+	    AFREE(tco - data->ncallouts);
 
 	} else {
 	    d_conv((char *) data->scallouts, data->sectors, sco_layout,
