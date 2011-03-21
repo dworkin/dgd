@@ -394,7 +394,7 @@ static void conf_restore(int fd)
     kf_restore(fd, conv_co1);
     o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0));
     d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
-		conv_type, conv_inherit);
+		conv_type, conv_inherit, conv_time);
     pc_restore(fd, conv_inherit);
     boottime = P_time();
     co_restore(fd, boottime, conv_co2, conv_co3, conv_time);

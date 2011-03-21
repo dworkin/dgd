@@ -827,11 +827,27 @@ typedef struct {
     uindex nshort;		/* # of short-term callouts */
     uindex running;		/* running callouts */
     uindex immediate;		/* immediate callouts list */
+    unsigned short hstamp;	/* timestamp high word */
+    unsigned short hdiff;	/* timediff high word */
     Uint timestamp;		/* time the last alarm came */
     Uint timediff;		/* accumulated time difference */
 } dump_header;
 
-static char dh_layout[] = "uuuuuuuii";
+static char dh_layout[] = "uuuuuuussii";
+
+typedef struct {
+    uindex cotabsz;		/* callout table size */
+    uindex queuebrk;		/* queue brk */
+    uindex cycbrk;		/* cyclic buffer brk */
+    uindex flist;		/* free list index */
+    uindex nshort;		/* # of short-term callouts */
+    uindex running;		/* running callouts */
+    uindex immediate;		/* immediate callouts list */
+    Uint timestamp;		/* time the last alarm came */
+    Uint timediff;		/* accumulated time difference */
+} old_header;
+
+static char oh_layout[] = "uuuuuuuii";
 
 typedef struct {
     uindex cotabsz;		/* callout table size */
@@ -891,6 +907,8 @@ bool co_dump(int fd)
     dh.nshort = nshort;
     dh.running = running;
     dh.immediate = immediate;
+    dh.hstamp = 0;
+    dh.hdiff = 0;
     dh.timestamp = timestamp;
     dh.timediff = timediff;
 
@@ -930,6 +948,19 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	nzero = ch.nlong0 - ch.queuebrk;
 	timestamp = ch.timestamp;
 	t = -ch.timediff;
+    } else if (conv_time) {
+	old_header oh;
+
+	conf_dread(fd, (char *) &oh, oh_layout, (Uint) 1);
+	queuebrk = oh.queuebrk;
+	offset = cotabsz - oh.cotabsz;
+	cycbrk = oh.cycbrk + offset;
+	flist = oh.flist;
+	nshort = oh.nshort;
+	running = oh.running;
+	immediate = oh.immediate;
+	timestamp = oh.timestamp;
+	t = -oh.timediff;
     } else {
 	dump_header dh;
 
@@ -942,7 +973,7 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	running = dh.running;
 	immediate = dh.immediate;
 	timestamp = dh.timestamp;
-	t = (conv_time) ? -dh.timediff : 0;
+	t = 0;
     }
     timestamp += t;
     timediff -= timestamp;
