@@ -371,6 +371,10 @@ static void conf_restore(int fd)
     if (resize == 0) {
 	resize = sizeof(char);			/* backward compat */
     }
+    if ((rcalign >> 4) > 2) {
+	error("Cannot restore arrsize > 2");
+    }
+    rcalign &= 0xf;
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
     rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
     rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
