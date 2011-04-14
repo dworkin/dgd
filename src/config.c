@@ -372,6 +372,7 @@ int fd;
     if ((rcalign >> 4) != 0) {
 	error("Cannot restore arrsize > 2");
     }
+    rialign &= 0xf;
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
     rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
     rdalign = (rdsize == sizeof(short)) ? rsalign : rialign;
@@ -1085,6 +1086,8 @@ static bool conf_includes()
     cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
     cputs("# define O_UNDEFINED\t6\t/* undefined functions */\012");
+    cputs("# define O_INHERITED\t7\t/* object inherited? */\012");
+    cputs("# define O_INSTANTIATED\t8\t/* object instantiated? */\012");
 
     cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -1727,6 +1730,15 @@ register value *v;
 	}
 	break;
 
+    case 7:	/* O_INHERITED */
+	PUT_INTVAL(v, ((obj->flags & O_MASTER) && !O_UPGRADING(obj) &&
+		       O_INHERITED(obj)));
+	break;
+
+    case 8:	/* O_INSTANTIATED */
+	PUT_INTVAL(v, O_HASDATA(obj));
+	break;
+
     default:
 	return FALSE;
     }
@@ -1746,13 +1758,13 @@ register object *obj;
     register Int i;
     array *a;
 
-    a = arr_ext_new(data, 7L);
+    a = arr_ext_new(data, 9L);
     if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);
     }
-    for (i = 0, v = a->elts; i < 7; i++, v++) {
+    for (i = 0, v = a->elts; i < 9; i++, v++) {
 	conf_objecti(data, obj, i, v);
     }
     ec_pop();
