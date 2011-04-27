@@ -374,6 +374,9 @@ static void conf_restore(int fd)
     if ((rcalign >> 4) != 0) {
 	error("Cannot restore arrsize > 2");
     }
+    if ((rsalign >> 4) != 0) {
+	error("Cannot restore Int size > 4");
+    }
     rialign &= 0xf;
     rualign = (rusize == sizeof(short)) ? rsalign : rialign;
     rtalign = (rtsize == sizeof(short)) ? rsalign : rialign;
