@@ -189,7 +189,7 @@ static void save_mapping (savecontext*, array*);
  */
 static void save_array(savecontext *x, array *a)
 {
-    char buf[16];
+    char buf[18];
     Uint i;
     value *v;
     xfloat flt;
@@ -256,7 +256,7 @@ static void save_array(savecontext *x, array *a)
  */
 static void save_mapping(savecontext *x, array *a)
 {
-    char buf[16];
+    char buf[18];
     Uint i;
     uindex n;
     value *v;
@@ -378,7 +378,7 @@ int kf_save_object(frame *f)
     control *ctrl;
     string *str;
     dinherit *inh;
-    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
+    char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     xfloat flt;
 
