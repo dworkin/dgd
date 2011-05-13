@@ -2450,7 +2450,7 @@ char pt_add_int_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_INT, T_STRING };
 int kf_add_int_string(f)
 register frame *f;
 {
-    char buffer[10], *num;
+    char buffer[12], *num;
     string *str;
     long l;
 
@@ -2535,7 +2535,7 @@ char pt_add_string_int[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING, T_INT };
 int kf_add_string_int(f)
 register frame *f;
 {
-    char buffer[10], *num;
+    char buffer[12], *num;
     string *str;
 
     i_add_ticks(f, 2);
