@@ -3,6 +3,19 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-04-06/2011-05-13
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Deal with explicit arrsize in dumpfile header.
+  - Add O_INHERITED and O_INSTANTIATED to status(obj).
+  - Get the precompiler to compile again.
+  - Generate proper code for the new builtin kfuns.
+  - Deal with explicit LPC int size in dumpfile header.
+  - Ensure that buffers for int=>str conversion are large enough.
+  - Include one more digit of precision when converting a float to string.
+  - Set FLT_DIG to 11, the correct value.
+
 2011-03-22
 
   Felix Croes (felix@dworkin.nl)
