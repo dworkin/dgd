@@ -198,7 +198,7 @@ static void save_array(x, a)
 register savecontext *x;
 array *a;
 {
-    char buf[16];
+    char buf[18];
     register Uint i;
     register value *v;
     xfloat flt;
@@ -267,7 +267,7 @@ static void save_mapping(x, a)
 register savecontext *x;
 array *a;
 {
-    char buf[16];
+    char buf[18];
     register Uint i;
     register uindex n;
     register value *v;
@@ -390,7 +390,7 @@ register frame *f;
     register control *ctrl;
     register string *str;
     register dinherit *inh;
-    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
+    char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     xfloat flt;
 

@@ -1153,7 +1153,7 @@ static bool conf_includes()
     cputs("# define FLT_RADIX\t2\t\t\t/* binary */\012");
     cputs("# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
     cputs("# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
-    cputs("# define FLT_DIG\t10\t\t\t/* decimal digits of precision*/\012");
+    cputs("# define FLT_DIG\t11\t\t\t/* decimal digits of precision*/\012");
     cputs("# define FLT_MANT_DIG\t36\t\t\t/* binary digits of precision */\012");
     cputs("# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
     cputs("# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
