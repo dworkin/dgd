@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-05-18
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add an optional dummy argument to shutdown().
+
 2011-04-06/2011-05-13
 
   Felix Croes (felix@dworkin.nl)
