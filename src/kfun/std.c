@@ -1279,17 +1279,41 @@ int nargs;
 
 
 # ifdef FUNCDEF
-FUNCDEF("shutdown", kf_shutdown, pt_shutdown, 0)
+FUNCDEF("0.shutdown", kf_old_shutdown, pt_old_shutdown, 0)
 # else
-char pt_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
+char pt_old_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
+
+/*
+ * NAME:	kfun->old_shutdown()
+ * DESCRIPTION:	shut down the mud
+ */
+int kf_old_shutdown(f)
+frame *f;
+{
+    finish();
+
+    *--f->sp = nil_value;
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("shutdown", kf_shutdown, pt_shutdown, 1)
+# else
+char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 
 /*
  * NAME:	kfun->shutdown()
  * DESCRIPTION:	shut down the mud
  */
-int kf_shutdown(f)
+int kf_shutdown(f, nargs)
 frame *f;
+int nargs;
 {
+    if (nargs != 0) {
+	f->sp++;
+    }
     finish();
 
     *--f->sp = nil_value;
