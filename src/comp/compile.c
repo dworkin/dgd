@@ -1507,7 +1507,7 @@ node *c_endswitch(node *expr, node *stmt)
 		/* determine the number of bytes per case */
 		l = v[0]->l.left->l.number;
 		if (l < 0) {
-		    l = 1 - l;
+		    l = -1 - l;
 		}
 		if (l < w[0]->l.left->r.number) {
 		    l = w[0]->l.left->r.number;
