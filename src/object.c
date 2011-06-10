@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -80,6 +80,7 @@ static uindex dchunksz;		/* copy chunk size */
 static Uint dinterval;		/* copy interval */
 static Uint dtime;		/* time copying started */
 Uint odcount;			/* objects destructed count */
+static uindex rotabsize;	/* size of object table at restore */
 
 /*
  * NAME:	object->init()
@@ -937,7 +938,7 @@ static void o_restore_obj(object *obj)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, counttab, baseplane.nobjects);
+    d_restore_obj(obj, counttab, rotabsize);
 }
 
 /*
@@ -1267,6 +1268,12 @@ int uindex_compare(const void *pa, const void *pb)
 void o_trim()
 {
     uindex nfree = baseplane.nfreeobjs;
+
+    if (!nfree) {
+	/* nothing to trim */
+	return;
+    }
+
     uindex npurge = 0;
     uindex *entries = ALLOC(uindex, nfree);
     uindex i;
@@ -1305,11 +1312,7 @@ void o_trim()
     FREE(entries);
 
 #ifdef DEBUG
-    char name[1024];
-
     fprintf(stderr, "%i objects purged\n", npurge);
-    fprintf(stderr, "Name of top used object: /%s\n",
-	o_name(name, otable + baseplane.nobjects - 1));
 #endif
 }
 
@@ -1359,6 +1362,7 @@ bool o_dump(int fd)
     }
 
     o_sweep(baseplane.nobjects);
+    rotabsize = baseplane.nobjects;
 
     return (buflen == 0 || P_write(fd, buffer, buflen) >= 0);
 }
@@ -1390,7 +1394,7 @@ void o_restore(int fd, unsigned int rlwobj)
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 
     if (dh.nobjects > otabsize) {
-	error("Too many objects in restore file (%d)", dh.nobjects);
+	error("Too many objects in restore file (%u)", dh.nobjects);
     }
 
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
@@ -1459,6 +1463,7 @@ void o_restore(int fd, unsigned int rlwobj)
 
     o_trim();
     o_sweep(baseplane.nobjects);
+    rotabsize = baseplane.nobjects;
 }
 
 /*
