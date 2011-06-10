@@ -25,4 +25,3 @@ create		= "_F_create";		/* name of create function */
 array_size	= 1000;			/* max array size */
 objects		= 500;			/* max # of objects */
 call_outs	= 100;			/* max # of call_outs */
-
