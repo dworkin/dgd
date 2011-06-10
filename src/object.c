@@ -1308,7 +1308,7 @@ void o_trim()
     char name[1024];
 
     fprintf(stderr, "%i objects purged\n", npurge);
-    fprintf(stderr, "Name of top used object: %s\n",
+    fprintf(stderr, "Name of top used object: /%s\n",
 	o_name(name, otable + baseplane.nobjects - 1));
 #endif
 }
