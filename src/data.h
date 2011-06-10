@@ -257,7 +257,7 @@ extern void		d_get_callouts	 (dataspace*);
 extern sector		d_swapout	 (unsigned int);
 extern void		d_swapsync	 (void);
 extern void		d_upgrade_mem	 (object*, object*);
-extern void		d_restore_obj	 (object*, Uint*);
+extern void		d_restore_obj	 (object*, Uint*, uindex);
 extern void		d_converted	 (void);
 
 extern void		d_free_control	 (control*);

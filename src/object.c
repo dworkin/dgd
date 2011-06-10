@@ -937,7 +937,7 @@ static void o_restore_obj(object *obj)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, counttab);
+    d_restore_obj(obj, counttab, baseplane.nobjects);
 }
 
 /*
@@ -1243,6 +1243,77 @@ static void o_sweep(uindex n)
 }
 
 /*
+ * NAME:	uindex_compare
+ * DESCRIPTION: used by qsort to compare entries
+ */
+int uindex_compare(const void *pa, const void *pb)
+{
+    uindex a = *(uindex *)pa;
+    uindex b = *(uindex *)pb;
+
+    if (a > b) {
+	return 1;
+    } else if (a < b) {
+	return -1;
+    } else {
+	return 0;
+    }
+}
+
+/*
+ * NAME:	object->trim()
+ * DESCRIPTION:	trim free objects from the end of the object table
+ */
+void o_trim()
+{
+    uindex nfree = baseplane.nfreeobjs;
+    uindex npurge = 0;
+    uindex *entries = ALLOC(uindex, nfree);
+    uindex i;
+    uindex j = baseplane.free;
+
+    /* 1. prepare a list of free objects */
+    for (i = 0; i < nfree; i++) {
+        entries[i] = j;
+        j = otable[j].prev;
+    }
+
+    /* 2. sort indices from low to high */
+    qsort(entries, nfree, sizeof(uindex), uindex_compare);
+
+    /* 3. trim the object table */
+    while (nfree > 0 && entries[nfree - 1] == baseplane.nobjects - 1) {
+	nfree--;
+	npurge++;
+	baseplane.nobjects--;
+	baseplane.nfreeobjs--;
+    }
+
+    memset(otable + baseplane.nobjects, '\0', npurge * sizeof(object));
+
+    /* 4. relink remaining free objects from low to high */
+    j = OBJ_NONE;
+
+    for (i = 0; i < nfree; i++) {
+	uindex n = entries[nfree - i - 1];
+	otable[n].prev = j;
+	j = n;
+    }
+
+    baseplane.free = j;
+
+    FREE(entries);
+
+#ifdef DEBUG
+    char name[1024];
+
+    fprintf(stderr, "%i objects purged\n", npurge);
+    fprintf(stderr, "Name of top used object: %s\n",
+	o_name(name, otable + baseplane.nobjects - 1));
+#endif
+}
+
+/*
  * NAME:	object->dump()
  * DESCRIPTION:	dump the object table
  */
@@ -1317,9 +1388,11 @@ void o_restore(int fd, unsigned int rlwobj)
 
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+
     if (dh.nobjects > otabsize) {
-	error("Too many objects in restore file");
+	error("Too many objects in restore file (%d)", dh.nobjects);
     }
+
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     baseplane.free = dh.free;
     baseplane.nobjects = dh.nobjects;
@@ -1384,6 +1457,7 @@ void o_restore(int fd, unsigned int rlwobj)
 	}
     }
 
+    o_trim();
     o_sweep(baseplane.nobjects);
 }
 

@@ -2953,15 +2953,16 @@ static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
  * NAME:	data->fixobjs()
  * DESCRIPTION:	fix objects in dataspace
  */
-static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
+static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
+	    if (v->oindex < nobjects && v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
 		/* fix object count */
 		v->u.objcnt = OBJ(v->oindex)->count;
 	    } else {
 		/* destructed object; mark as invalid */
+		v->oindex = 0;
 		v->u.objcnt = 1;
 	    }
 	}
@@ -2974,19 +2975,19 @@ static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
  * NAME:	data->fixdata()
  * DESCRIPTION:	fix a dataspace
  */
-static void d_fixdata(dataspace *data, object *obj, Uint *counttab)
+static void d_fixdata(dataspace *data, object *obj, Uint *counttab, uindex nobjects)
 {
     scallout *sco;
     unsigned int n;
 
-    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab);
-    d_fixobjs(data->selts, data->eltsize, counttab);
+    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab, nobjects);
+    d_fixobjs(data->selts, data->eltsize, counttab, nobjects);
     for (n = data->ncallouts, sco = data->scallouts; n > 0; --n, sco++) {
 	if (sco->val[0].type == T_STRING) {
 	    if (sco->nargs > 3) {
-		d_fixobjs(sco->val, (Uint) 4, counttab);
+		d_fixobjs(sco->val, (Uint) 4, counttab, nobjects);
 	    } else {
-		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab);
+		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab, nobjects);
 	    }
 	}
     }
@@ -3225,7 +3226,7 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab)
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(object *obj, Uint *counttab)
+void d_restore_obj(object *obj, Uint *counttab, uindex nobjects)
 {
     control *ctrl;
     dataspace *data;
@@ -3268,7 +3269,7 @@ void d_restore_obj(object *obj, Uint *counttab)
 	    get_callouts(data, sw_dreadv);
 	}
 	obj->data = data;
-	d_fixdata(data, obj, counttab);
+	d_fixdata(data, obj, counttab, nobjects);
     }
 }
 
