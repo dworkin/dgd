@@ -46,7 +46,7 @@ typedef struct _arrhchunk_ {
 # define MELT_CHUNK	128
 
 typedef struct _mapelt_ {
-    unsigned short hashval;	/* hash value of index */
+    Uint hashval;		/* hash value of index */
     bool add;			/* new element? */
     value idx;			/* index */
     value val;			/* value */
@@ -61,7 +61,7 @@ typedef struct _meltchunk_ {
 typedef struct _maphash_ {
     unsigned short size;	/* # elements in hash table */
     unsigned short sizemod;	/* mapping size modification */
-    unsigned short tablesize;	/* actual hash table size */
+    Uint tablesize;		/* actual hash table size */
     mapelt *table[1];		/* hash table */
 } maphash;
 
@@ -1817,12 +1817,12 @@ array *m1, *a2;
 static mapelt *map_grow(data, m, hashval, add)
 dataspace *data;
 register array *m;
-unsigned short hashval;
+Uint hashval;
 bool add;
 {
     register maphash *h;
     register mapelt *e;
-    register unsigned short i;
+    register Uint i;
 
     h = m->hashed;
     if (add &&
@@ -1912,7 +1912,7 @@ dataspace *data;
 register array *m;
 value *val, *elt;
 {
-    register unsigned short i;
+    register Uint i;
     register mapelt *e, **p;
     bool del, add, hash;
 
