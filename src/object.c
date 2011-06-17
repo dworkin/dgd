@@ -1268,16 +1268,20 @@ int uindex_compare(const void *pa, const void *pb)
 void o_trim()
 {
     uindex nfree = baseplane.nfreeobjs;
+    uindex npurge;
+    uindex *entries;
+    uindex i;
+    uindex j;
 
     if (!nfree) {
 	/* nothing to trim */
 	return;
     }
 
-    uindex npurge = 0;
-    uindex *entries = ALLOC(uindex, nfree);
-    uindex i;
-    uindex j = baseplane.free;
+     npurge = 0;
+     entries = ALLOC(uindex, nfree);
+     
+     j = baseplane.free;
 
     /* 1. prepare a list of free objects */
     for (i = 0; i < nfree; i++) {
