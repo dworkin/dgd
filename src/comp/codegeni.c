@@ -915,6 +915,10 @@ static void cg_expr(node *n, int pop)
 	cg_asgnop(n, KF_DIV_INT);
 	break;
 
+    case N_DIV_EQ_FLOAT:
+	cg_asgnop(n, KF_DIV_FLT);
+	break;
+
     case N_EQ:
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);

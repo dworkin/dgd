@@ -7,7 +7,8 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
-  Fixed a bug in optimizing floating point assignment operators.
+  - Fixed a bug in optimizing floating point assignment operators.
+  - Generate proper code for floating point /=.
 
 2011-06-12
 
