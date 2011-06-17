@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1079,6 +1079,7 @@ static Uint opt_asgnexp(node **m, bool pop)
 	n->l.left->mod == n->r.right->mod) {
 	switch (n->type) {
 	case N_ADD_EQ:
+	case N_ADD_EQ_FLOAT:
 	    if (NFLT_ISZERO(n->r.right)) {
 		*m = n->l.left;
 		return opt_expr(m, pop);
@@ -1120,12 +1121,14 @@ static Uint opt_asgnexp(node **m, bool pop)
 	    break;
 
 	case N_MULT_EQ:
+	case N_MULT_EQ_FLOAT:
 	    if (NFLT_ISZERO(n->r.right)) {
 		n->type = N_ASSIGN;
 		return opt_expr(m, pop);
 	    }
 	    /* fall through */
 	case N_DIV_EQ:
+	case N_DIV_EQ_FLOAT:
 	    if (NFLT_ISONE(n->r.right)) {
 		*m = n->l.left;
 		return opt_expr(m, pop);
@@ -1173,6 +1176,7 @@ static Uint opt_asgnexp(node **m, bool pop)
 	    break;
 
 	case N_SUB_EQ:
+	case N_SUB_EQ_FLOAT:
 	    if (NFLT_ISZERO(n->r.right)) {
 		*m = n->l.left;
 		return opt_expr(m, pop);
@@ -1525,22 +1529,26 @@ static Uint opt_expr(node **m, int pop)
 
     case N_ADD_EQ:
     case N_ADD_EQ_INT:
+    case N_ADD_EQ_FLOAT:
     case N_AND_EQ:
     case N_AND_EQ_INT:
     case N_DIV_EQ:
     case N_DIV_EQ_INT:
+    case N_DIV_EQ_FLOAT:
     case N_LSHIFT_EQ:
     case N_LSHIFT_EQ_INT:
     case N_MOD_EQ:
     case N_MOD_EQ_INT:
     case N_MULT_EQ:
     case N_MULT_EQ_INT:
+    case N_MULT_EQ_FLOAT:
     case N_OR_EQ:
     case N_OR_EQ_INT:
     case N_RSHIFT_EQ:
     case N_RSHIFT_EQ_INT:
     case N_SUB_EQ:
     case N_SUB_EQ_INT:
+    case N_SUB_EQ_FLOAT:
     case N_SUM_EQ:
     case N_XOR_EQ:
     case N_XOR_EQ_INT:
