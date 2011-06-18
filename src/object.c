@@ -1278,10 +1278,10 @@ void o_trim()
 	return;
     }
 
-     npurge = 0;
-     entries = ALLOC(uindex, nfree);
-     
-     j = baseplane.free;
+    npurge = 0;
+    entries = ALLOC(uindex, nfree);
+
+    j = baseplane.free;
 
     /* 1. prepare a list of free objects */
     for (i = 0; i < nfree; i++) {
