@@ -1564,8 +1564,8 @@ int kf_status(frame *f, int nargs)
 # ifdef FUNCDEF
 FUNCDEF("new.function", kf_new_function, pt_new_function, 0)
 # else
-char pt_new_function[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
-			   T_OBJECT, T_OBJECT, T_STRING, T_MIXED };
+char pt_new_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
+			   T_STRING, T_MIXED };
 
 /*
  * NAME:        kfun->new_function()
@@ -1576,19 +1576,31 @@ int kf_new_function(frame *f, int nargs)
     array *a;
     xfloat flt;
     value *v, *elts;
+    object *obj;
 
-    a = arr_new(f->data, 3 + nargs);
+    a = arr_new(f->data, 4 + nargs);
+    elts = a->elts;
 
-    PUT_INTVAL(&a->elts[0], BUILTIN_FUNCTION);
+    PUT_INTVAL(&elts[0], BUILTIN_FUNCTION);
     flt.high = 0;
     flt.low = 0;
-    PUT_FLTVAL(&a->elts[1], flt);
-    PUT_INTVAL(&a->elts[2], 0);
+    PUT_FLTVAL(&elts[1], flt);
+    PUT_INTVAL(&elts[2], 0);
+    obj = OBJR(f->oindex);
+    if (obj->count != 0) {
+	if (f->lwobj == (array *) NULL) {
+	    PUT_OBJVAL(&elts[3], obj);
+	} else {
+	    PUT_LWOVAL(&elts[3], f->lwobj);
+	}
+    } else {
+	elts[3] = nil_value;
+    }
 
     v = f->sp;
-    elts = a->elts + 3;
+    elts += a->size;
     do {
-	*elts++ = *v++;
+	*--elts = *v++;
     } while (--nargs != 0);
     d_ref_imports(a);
     f->sp = v;
@@ -1611,32 +1623,33 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
  */
 int kf_call_function(frame *f, int nargs)
 {
+    array *a;
     value *elts, *v, *w;
     int n;
 
     --nargs;
     if (f->sp[nargs].type != T_LWOBJECT ||
-	(elts=d_get_elts(f->sp[nargs].u.array))[0].type != T_INT ||
+	(elts=d_get_elts(a=f->sp[nargs].u.array))[0].type != T_INT ||
 	elts[0].u.number != BUILTIN_FUNCTION) {
-	error("Not a function");
+	error("Bad argument 1 for kfun *");
     }
     if (DESTRUCTED(&elts[3])) {
 	error("Function in destructed object");
     }
 
     /* insert stored arguments on the stack */
-    n = f->sp[nargs].u.array->size - 5;
+    n = a->size - 5;
     if (n > 0) {
 	i_grow_stack(f, n);
-	memmove(f->sp - n, f->sp, n * sizeof(value));
+	memmove(f->sp - n, f->sp, nargs * sizeof(value));
 	f->sp -= n;
 
 	v = f->sp + nargs;
 	nargs += n;
-	w = elts + 5;
+	w = elts + a->size;
 	do {
-	    i_ref_value(w);
-	    *v++ = *w++;
+	    i_ref_value(--w);
+	    *v++ = *w;
 	} while (--n != 0);
     }
 
@@ -1645,7 +1658,7 @@ int kf_call_function(frame *f, int nargs)
 	error("Function not found");
     }
 
-    arr_del(f->sp[1].u.array);
+    arr_del(a);
     f->sp[1] = f->sp[0];
     f->sp++;
     return 0;

@@ -2151,9 +2151,16 @@ node *c_address(node *func, node *args)
  * NAME:	compile->call()
  * DESCRIPTION:	handle (*func)()
  */
-node *c_call(node *func, node *args)
+node *c_call(node *func, node *args, int typechecked)
 {
 # ifdef FUNCTIONP
+    if (typechecked && func->mod != T_MIXED) {
+	if (func->mod != T_OBJECT ||
+	    (func->class != NULL &&
+	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	    c_error("bad argument 1 for function * (needs function)");
+	}
+    }
     if (args == (node *) NULL) {
 	args = func;
     } else {

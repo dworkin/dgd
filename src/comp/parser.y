@@ -584,7 +584,7 @@ primary_p1_exp
 	| '&' ident '(' opt_arg_list ')'
 		{ $$ = c_address($2, $4); }
 	| '(' '*' cast_exp ')' '(' opt_arg_list ')'
-		{ $$ = c_call($3, $6); }
+		{ $$ = c_call($3, $6, typechecking); }
 	| CATCH '('
 		{ c_startcond(); }
 	  list_exp ')'
