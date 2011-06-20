@@ -851,6 +851,11 @@ char *o_builtin_name(Int type)
      * the base name is then: builtin/type
      */
     switch (type) {
+# ifdef FUNCTIONP
+    case BUILTIN_FUNCTION:
+	return BIPREFIX "function";
+# endif
+
 # ifdef DEBUG
     default:
 	fatal("unknown builtin type %d", type);

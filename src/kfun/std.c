@@ -1558,3 +1558,97 @@ int kf_status(frame *f, int nargs)
     return 0;
 }
 # endif
+
+
+# ifdef FUNCTIONP
+# ifdef FUNCDEF
+FUNCDEF("new.function", kf_new_function, pt_new_function, 0)
+# else
+char pt_new_function[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
+			   T_OBJECT, T_OBJECT, T_STRING, T_MIXED };
+
+/*
+ * NAME:        kfun->new_function()
+ * DESCRIPTION: create a new function
+ */
+int kf_new_function(frame *f, int nargs)
+{
+    array *a;
+    xfloat flt;
+    value *v, *elts;
+
+    a = arr_new(f->data, 3 + nargs);
+
+    PUT_INTVAL(&a->elts[0], BUILTIN_FUNCTION);
+    flt.high = 0;
+    flt.low = 0;
+    PUT_FLTVAL(&a->elts[1], flt);
+    PUT_INTVAL(&a->elts[2], 0);
+
+    v = f->sp;
+    elts = a->elts + 3;
+    do {
+	*elts++ = *v++;
+    } while (--nargs != 0);
+    d_ref_imports(a);
+    f->sp = v;
+
+    PUSH_LWOVAL(f, a);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("call.function", kf_call_function, pt_call_function, 0)
+# else
+char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
+			    T_OBJECT, T_MIXED };
+
+/*
+ * NAME:        kfun->call_function()
+ * DESCRIPTION: call a function
+ */
+int kf_call_function(frame *f, int nargs)
+{
+    value *elts, *v, *w;
+    int n;
+
+    --nargs;
+    if (f->sp[nargs].type != T_LWOBJECT ||
+	(elts=d_get_elts(f->sp[nargs].u.array))[0].type != T_INT ||
+	elts[0].u.number != BUILTIN_FUNCTION) {
+	error("Not a function");
+    }
+    if (DESTRUCTED(&elts[3])) {
+	error("Function in destructed object");
+    }
+
+    /* insert stored arguments on the stack */
+    n = f->sp[nargs].u.array->size - 5;
+    if (n > 0) {
+	i_grow_stack(f, n);
+	memmove(f->sp - n, f->sp, n * sizeof(value));
+	f->sp -= n;
+
+	v = f->sp + nargs;
+	nargs += n;
+	w = elts + 5;
+	do {
+	    i_ref_value(w);
+	    *v++ = *w++;
+	} while (--n != 0);
+    }
+
+    if (!i_call(f, OBJR(elts[3].oindex), NULL, elts[4].u.string->text,
+		elts[4].u.string->len, TRUE, nargs)) {
+	error("Function not found");
+    }
+
+    arr_del(f->sp[1].u.array);
+    f->sp[1] = f->sp[0];
+    f->sp++;
+    return 0;
+}
+# endif
+# endif

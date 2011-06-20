@@ -100,3 +100,8 @@ extern object    *otable;
 extern char	 *ocmap;
 extern bool	  obase, swap, dump, stop;
 extern Uint	  odcount;
+
+
+# ifdef FUNCTIONP
+# define BUILTIN_FUNCTION	0
+# endif
