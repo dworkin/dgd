@@ -321,8 +321,9 @@ type_specifier
 		{ $$ = node_type(T_MAPPING, (string *) NULL); }
 	| FUNCTION
 		{
-		  $$ = node_type(T_OBJECT,
-				 str_new(BIPREFIX "function", BIPREFIXLEN + 7));
+		  $$ = node_str(str_new("/" BIPREFIX "function",
+					BIPREFIXLEN + 9));
+		  $$ = node_type(T_CLASS, c_objecttype($$));
 		}
 	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
