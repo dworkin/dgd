@@ -319,6 +319,11 @@ type_specifier
 		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
 	| MAPPING
 		{ $$ = node_type(T_MAPPING, (string *) NULL); }
+	| FUNCTION
+		{
+		  $$ = node_type(T_OBJECT,
+				 str_new(BIPREFIX "function", BIPREFIXLEN + 7));
+		}
 	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
 	;
@@ -576,6 +581,10 @@ primary_p1_exp
 		{ $$ = $2; }
 	| function_name '(' opt_arg_list ')'
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
+	| '&' ident '(' opt_arg_list ')'
+		{ $$ = c_address($2, $4); }
+	| '(' '*' cast_exp ')' '(' opt_arg_list ')'
+		{ $$ = c_call($3, $6); }
 	| CATCH '('
 		{ c_startcond(); }
 	  list_exp ')'

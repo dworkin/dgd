@@ -2127,6 +2127,46 @@ node *c_arrow(node *other, node *func, node *args)
 }
 
 /*
+ * NAME:	compile->address()
+ * DESCRIPTION:	handle &
+ */
+node *c_address(node *func, node *args)
+{
+# ifdef FUNCTIONP
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
+    }
+    func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
+		   args);
+    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    return func;
+# else
+    c_error("syntax error");
+# endif
+}
+
+/*
+ * NAME:	compile->call()
+ * DESCRIPTION:	handle (*func)()
+ */
+node *c_call(node *func, node *args)
+{
+# ifdef FUNCTIONP
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
+    }
+    return funcall(c_flookup(node_str(str_new("call.function", 13L)), FALSE),
+		   args);
+# else
+    c_error("syntax error");
+# endif
+}
+
+/*
  * NAME:	compile->instanceof()
  * DESCRIPTION:	handle <-
  */
