@@ -2000,7 +2000,7 @@ static bool lvalue(node *n)
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
-static node *funcall(node *call, node *args)
+static node *funcall(node *call, node *args, int funcptr)
 {
     char tnbuf[17];
     int n, nargs, t;
@@ -2024,6 +2024,17 @@ static node *funcall(node *call, node *args)
     call->r.right = args;
     argv = &call->r.right;
 
+# ifdef CLOSURES
+    if (funcptr) {
+	if (func->r.number >> 24 == KFCALL) {
+	    c_error("cannot create pointer to kfun");
+	}
+	if (PROTO_CLASS(proto) & C_PRIVATE) {
+	    c_error("cannot create pointer to private function");
+	}
+    }
+# endif
+
     /*
      * check function arguments
      */
@@ -2033,7 +2044,7 @@ static node *funcall(node *call, node *args)
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
-	    if (n <= PROTO_NARGS(proto)) {
+	    if (n <= PROTO_NARGS(proto) && !funcptr) {
 		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
@@ -2108,7 +2119,7 @@ static node *funcall(node *call, node *args)
  */
 node *c_funcall(node *func, node *args)
 {
-    return funcall(func, revert_list(args));
+    return funcall(func, revert_list(args), FALSE);
 }
 
 /*
@@ -2123,23 +2134,26 @@ node *c_arrow(node *other, node *func, node *args)
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
     return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
-		   node_bin(N_PAIR, 0, other, args));
+		   node_bin(N_PAIR, 0, other, args), FALSE);
 }
 
 /*
  * NAME:	compile->address()
  * DESCRIPTION:	handle &func()
  */
-node *c_address(node *func, node *args)
+node *c_address(node *func, node *args, int typechecked)
 {
 # ifdef CLOSURES
+    args = revert_list(args);
+    funcall(c_flookup(func, typechecked), args, TRUE);	/* check only */
+
     if (args == (node *) NULL) {
 	args = func;
     } else {
-	args = node_bin(N_PAIR, 0, func, revert_list(args));
+	args = node_bin(N_PAIR, 0, func, args);
     }
     func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
-		   args);
+		   args, FALSE);
     func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
@@ -2167,7 +2181,7 @@ node *c_call(node *func, node *args, int typechecked)
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
     return funcall(c_flookup(node_str(str_new("call.function", 13L)), FALSE),
-		   args);
+		   args, FALSE);
 # else
     c_error("syntax error");
 # endif

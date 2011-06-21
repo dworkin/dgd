@@ -64,7 +64,7 @@ extern node	*c_variable	(node*);
 extern short	 c_vtype	(int);
 extern node	*c_funcall	(node*, node*);
 extern node	*c_arrow	(node*, node*, node*);
-extern node	*c_address	(node*, node*);
+extern node	*c_address	(node*, node*, int);
 extern node	*c_call		(node*, node*, int);
 extern node	*c_instanceof	(node*, node*);
 extern node	*c_checkcall	(node*, int);
