@@ -241,7 +241,7 @@ static void dump_vtypes(control *ctrl)
  */
 int dgd_main(int argc, char *argv[])
 {
-    char buf[STRINGSZ], tag[9];
+    char buf[STRINGSZ], tag[14];
     unsigned int len;
     control *ctrl;
     char *program, *module, *file;
@@ -285,8 +285,7 @@ int dgd_main(int argc, char *argv[])
 
     len = strlen(file = path_resolve(buf, file));
     file[len - 2] = '\0';
-    sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
-	    (unsigned short) P_random());
+    sprintf(tag, "T%04x%08lx", hashstr(file, len), P_random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
     printf("\n *\n * Original file: \"/%s.c\"\n */\n", file);

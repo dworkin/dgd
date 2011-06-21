@@ -3,6 +3,15 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-06-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  - On startup, seed the random number generator with the time in milliseconds.
+  - Assume that modern compilers can handle symbols longer than 8 characters,
+    and let the precompiler generate a longer unique tag per generated output
+    file.
+
 2011-06-17
 
   Felix Croes (felix@dworkin.nl)

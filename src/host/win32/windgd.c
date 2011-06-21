@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -32,6 +32,11 @@ BOOL WINAPI handler(DWORD type)
 
 int main(int argc, char **argv)
 {
+    long seed;
+    unsigned short mtime;
+
+    seed = P_mtime(&mtime);
+    P_srandom(seed ^ ((long) mtime << 22));
     SetConsoleCtrlHandler(handler, TRUE);
     return dgd_main(argc, argv);
 }
