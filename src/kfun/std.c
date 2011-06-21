@@ -1623,8 +1623,9 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
  */
 int kf_call_function(frame *f, int nargs)
 {
-    array *a;
+    array *a, *lwobj;
     value *elts, *v, *w;
+    object *obj;
     int n;
 
     --nargs;
@@ -1633,8 +1634,19 @@ int kf_call_function(frame *f, int nargs)
 	elts[0].u.number != BUILTIN_FUNCTION) {
 	error("Bad argument 1 for kfun *");
     }
-    if (DESTRUCTED(&elts[3])) {
-	error("Function in destructed object");
+    if (elts[3].type == T_OBJECT) {
+	if (DESTRUCTED(&elts[3])) {
+	    error("Function in destructed object");
+	}
+	obj = OBJR(elts[3].oindex);
+	lwobj = NULL;
+    } else {
+	obj = NULL;
+	lwobj = elts[3].u.array;
+	v = d_get_elts(lwobj);
+	if (v->type == T_OBJECT && DESTRUCTED(v)) {
+	    error("Function in destructed object");
+	}
     }
 
     /* insert stored arguments on the stack */
@@ -1653,8 +1665,8 @@ int kf_call_function(frame *f, int nargs)
 	} while (--n != 0);
     }
 
-    if (!i_call(f, OBJR(elts[3].oindex), NULL, elts[4].u.string->text,
-		elts[4].u.string->len, TRUE, nargs)) {
+    if (!i_call(f, obj, lwobj, elts[4].u.string->text, elts[4].u.string->len,
+		TRUE, nargs)) {
 	error("Function not found");
     }
 
