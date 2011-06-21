@@ -1581,11 +1581,16 @@ int kf_new_function(frame *f, int nargs)
     a = arr_new(f->data, 4 + nargs);
     elts = a->elts;
 
+    /* these two fields are required for builtin types */
     PUT_INTVAL(&elts[0], BUILTIN_FUNCTION);
     flt.high = 0;
     flt.low = 0;
     PUT_FLTVAL(&elts[1], flt);
+
+    /* version number: recommended for builtin types */
     PUT_INTVAL(&elts[2], 0);
+
+    /* object, function name, arg1, ..., argn */
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
 	if (f->lwobj == (array *) NULL) {
@@ -1594,9 +1599,8 @@ int kf_new_function(frame *f, int nargs)
 	    PUT_LWOVAL(&elts[3], f->lwobj);
 	}
     } else {
-	elts[3] = nil_value;
+	elts[3] = nil_value;	/* postpone error until function is called */
     }
-
     v = f->sp;
     elts += a->size;
     do {
@@ -1634,24 +1638,33 @@ int kf_call_function(frame *f, int nargs)
 	elts[0].u.number != BUILTIN_FUNCTION) {
 	error("Bad argument 1 for kfun *");
     }
-    if (elts[3].type == T_OBJECT) {
+
+    switch (elts[3].type) {
+    case T_OBJECT:
 	if (DESTRUCTED(&elts[3])) {
 	    error("Function in destructed object");
 	}
 	obj = OBJR(elts[3].oindex);
 	lwobj = NULL;
-    } else {
+	break;
+
+    case T_LWOBJECT:
 	obj = NULL;
 	lwobj = elts[3].u.array;
 	v = d_get_elts(lwobj);
 	if (v->type == T_OBJECT && DESTRUCTED(v)) {
 	    error("Function in destructed object");
 	}
+	break;
+
+    default:
+	error("Function in destructed object");
+	break;
     }
 
-    /* insert stored arguments on the stack */
+    /* insert bound arguments on the stack */
     n = a->size - 5;
-    if (n > 0) {
+    if (n != 0) {
 	i_grow_stack(f, n);
 	memmove(f->sp - n, f->sp, nargs * sizeof(value));
 	f->sp -= n;

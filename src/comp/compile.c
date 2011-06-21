@@ -2128,7 +2128,7 @@ node *c_arrow(node *other, node *func, node *args)
 
 /*
  * NAME:	compile->address()
- * DESCRIPTION:	handle &
+ * DESCRIPTION:	handle &func()
  */
 node *c_address(node *func, node *args)
 {
