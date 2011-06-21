@@ -2132,7 +2132,7 @@ node *c_arrow(node *other, node *func, node *args)
  */
 node *c_address(node *func, node *args)
 {
-# ifdef FUNCTIONP
+# ifdef CLOSURES
     if (args == (node *) NULL) {
 	args = func;
     } else {
@@ -2153,7 +2153,7 @@ node *c_address(node *func, node *args)
  */
 node *c_call(node *func, node *args, int typechecked)
 {
-# ifdef FUNCTIONP
+# ifdef CLOSURES
     if (typechecked && func->mod != T_MIXED) {
 	if (func->mod != T_OBJECT ||
 	    (func->class != NULL &&

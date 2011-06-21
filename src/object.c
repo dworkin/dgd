@@ -851,7 +851,7 @@ char *o_builtin_name(Int type)
      * the base name is then: builtin/type
      */
     switch (type) {
-# ifdef FUNCTIONP
+# ifdef CLOSURES
     case BUILTIN_FUNCTION:
 	return BIPREFIX "function";
 # endif

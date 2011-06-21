@@ -1560,7 +1560,7 @@ int kf_status(frame *f, int nargs)
 # endif
 
 
-# ifdef FUNCTIONP
+# ifdef CLOSURES
 # ifdef FUNCDEF
 FUNCDEF("new.function", kf_new_function, pt_new_function, 0)
 # else
