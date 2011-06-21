@@ -2162,6 +2162,32 @@ node *c_address(node *func, node *args, int typechecked)
 }
 
 /*
+ * NAME:	compile->extend()
+ * DESCRIPTION:	handle &(*func)()
+ */
+node *c_extend(node *func, node *args, int typechecked)
+{
+# ifdef CLOSURES
+    if (typechecked && func->mod != T_MIXED) {
+	if (func->mod != T_OBJECT ||
+	    (func->class != NULL &&
+	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	    c_error("bad argument 1 for function * (needs function)");
+	}
+    }
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
+    }
+    return funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
+		   args, FALSE);
+# else
+    c_error("syntax error");
+# endif
+}
+
+/*
  * NAME:	compile->call()
  * DESCRIPTION:	handle (*func)()
  */

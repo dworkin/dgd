@@ -1616,6 +1616,52 @@ int kf_new_function(frame *f, int nargs)
 
 
 # ifdef FUNCDEF
+FUNCDEF("extend.function", kf_extend_function, pt_extend_function, 0)
+# else
+char pt_extend_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
+			      T_OBJECT, T_MIXED };
+
+/*
+ * NAME:        kfun->extend_function()
+ * DESCRIPTION: extend a function
+ */
+int kf_extend_function(frame *f, int nargs)
+{
+    array *a;
+    value *v, *elts;
+    int n;
+
+    --nargs;
+    if (f->sp[nargs].type != T_LWOBJECT ||
+	(elts=d_get_elts(a=f->sp[nargs].u.array))[0].type != T_INT ||
+	elts[0].u.number != BUILTIN_FUNCTION) {
+	error("Bad argument 1 for kfun *");
+    }
+
+    if (nargs != 0) {
+	/*
+	 * add arguments to function
+	 */
+	n = a->size;
+	a = arr_new(f->data, n + nargs);
+	i_copy(a->elts, elts, n);
+
+	v = f->sp;
+	elts = a->elts + a->size;
+	do {
+	    *--elts = *v++;
+	} while (--nargs != 0);
+	arr_del(v->u.array);
+	arr_ref(v->u.array = a);
+	f->sp = v;
+    }
+
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
 FUNCDEF("call.function", kf_call_function, pt_call_function, 0)
 # else
 char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
