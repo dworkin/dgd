@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST)	#-DNETWORK_EXTENSIONS #-DDUMP_FUNCS #-DCO_THROTTLE=50
+DEFINES=-D$(HOST)	# -DNETWORK_EXTENSIONS -DCLOSURES -DCO_THROTTLE=50 -DDUMP_FUNCS
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)

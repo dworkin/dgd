@@ -79,9 +79,9 @@ static node *comma	(node*, node*);
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token STRING NOMASK NIL BREAK ELSE CASE WHILE DEFAULT STATIC CONTINUE INT
-       RLIMITS FLOAT FOR INHERIT VOID IF CATCH SWITCH VARARGS MAPPING PRIVATE
-       DO RETURN ATOMIC MIXED OBJECT
+%token VARARGS NOMASK MAPPING BREAK ELSE CASE FLOAT PRIVATE STATIC CONTINUE
+       DEFAULT FUNCTION IF STRING INT FOR DO WHILE INHERIT OBJECT RLIMITS
+       RETURN CATCH SWITCH MIXED NIL VOID ATOMIC
 
 /*
  * composite tokens
@@ -319,6 +319,12 @@ type_specifier
 		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
 	| MAPPING
 		{ $$ = node_type(T_MAPPING, (string *) NULL); }
+	| FUNCTION
+		{
+		  $$ = node_str(str_new("/" BIPREFIX "function",
+					BIPREFIXLEN + 9));
+		  $$ = node_type(T_CLASS, c_objecttype($$));
+		}
 	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
 	;
@@ -576,6 +582,12 @@ primary_p1_exp
 		{ $$ = $2; }
 	| function_name '(' opt_arg_list ')'
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
+	| '&' ident '(' opt_arg_list ')'
+		{ $$ = c_address($2, $4, typechecking); }
+	| '&' '(' '*' cast_exp ')' '(' opt_arg_list ')'
+		{ $$ = c_extend($4, $7, typechecking); }
+	| '(' '*' cast_exp ')' '(' opt_arg_list ')'
+		{ $$ = c_call($3, $6, typechecking); }
 	| CATCH '('
 		{ c_startcond(); }
 	  list_exp ')'
