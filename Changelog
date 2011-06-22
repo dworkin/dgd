@@ -3,6 +3,22 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-06-20/2011-06-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  Implement minimal support for function pointers (compile with -DCLOSURES).
+  When enabled, 'function' is a reserved keyword, and the operators & and *
+  have an additional role:
+
+    function foo;
+
+    foo = &func();		/* pointer to func */
+    (*foo)(1, 2, 3);		/* call func(1, 2, 3) */
+    foo = &func(4);		/* pointer to func with one fixed argument */
+    foo = &(*foo)(5, 6);	/* add second and third fixed argument */
+    (*foo)();			/* call func(4, 5, 6) */
+
 2011-06-22
 
   Felix Croes (felix@dworkin.nl)
