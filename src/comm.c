@@ -1630,10 +1630,10 @@ array *comm_users(dataspace *data)
     v = a->elts;
     for (usr = users; n > 0; usr++) {
 #ifdef NETWORK_EXTENSIONS
-	if (usr->oindex != OBJ_NONE && (obj = OBJR(usr->oindex))->count != 0
+	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0
 	    && (!((f = usr->flags & CF_PORT) || ports) || f && ports)) {
 #else
-	if (usr->oindex != OBJ_NONE && (obj = OBJR(usr->oindex))->count != 0) {
+	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
 #endif
 	    PUT_OBJVAL(v, obj);
 	    v++;
