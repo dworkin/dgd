@@ -165,7 +165,7 @@ bool comm_init(int n, char **thosts, char **bhosts,
     nexttport = nextbport = 0;
 
 #ifdef NETWORK_EXTENSIONS
-    return conn_init(n+p, thosts, bhosts, tports, bports, ntport = ntelnet,
+    return conn_init(n + p, thosts, bhosts, tports, bports, ntport = ntelnet,
 		     nbport = nbinary);
 #else
     return conn_init(n, thosts, bhosts, tports, bports, ntport = ntelnet,
@@ -193,14 +193,14 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
     switch (protocol)
     {
     case P_TELNET:
-	flags=CF_TELNET|CF_PORT;
-	protocol=P_TCP;
+	flags = CF_TELNET | CF_PORT;
+	protocol = P_TCP;
 	break;
     case P_UDP:
-	flags=CF_DATAGRAM|CF_PORT;
+	flags = CF_DATAGRAM | CF_PORT;
 	break;
     case P_TCP:
-	flags=CF_PORT;
+	flags = CF_PORT;
 	break;
     default:
 	error("Unknown protocol");
@@ -388,7 +388,7 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
     if (conn == (connection *) NULL)
 	error("Can't connect to server");
 
-    usr = comm_new(f,obj, conn, (protocol == P_TELNET));
+    usr = comm_new(f, obj, conn, (protocol == P_TELNET));
     addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
     opending++;
     usr->flags |= CF_OPENDING;
@@ -1617,7 +1617,7 @@ array *comm_users(dataspace *data)
 	    --i;
 #ifdef NETWORK_EXTENSIONS
 	    if (OBJR(usr->oindex)->count != 0
-		&& (!((f = usr->flags & CF_PORT) || ports) || f && ports)) {
+		&& (!((f=usr->flags & CF_PORT) || ports) || f && ports)) {
 #else
 	    if (OBJR(usr->oindex)->count != 0) {
 #endif
@@ -1631,7 +1631,7 @@ array *comm_users(dataspace *data)
     for (usr = users; n > 0; usr++) {
 #ifdef NETWORK_EXTENSIONS
 	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0
-	    && (!((f = usr->flags & CF_PORT) || ports) || f && ports)) {
+	    && (!((f=usr->flags & CF_PORT) || ports) || f && ports)) {
 #else
 	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
 #endif
