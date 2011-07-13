@@ -954,7 +954,7 @@ void m_purge()
 
 /*
  * NAME:	mem->info()
- * DESCRIPTION:	return informaton about memory usage
+ * DESCRIPTION:	return information about memory usage
  */
 allocinfo *m_info()
 {
