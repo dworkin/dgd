@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -473,11 +473,13 @@ static int conn_port6(int *fd, int type, struct sockaddr_in6 *sin6, unsigned int
 	perror("setsockopt");
 	return FALSE;
     }
+# if defined(IPPROTO6) && defined(IPV6_V6ONLY)
     on = 1;
     if (setsockopt(*fd, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) < 0) {
 	perror("setsockopt");
 	return FALSE;
     }
+# endif
 # ifdef SO_OOBINLINE
     if (type == SOCK_STREAM) {
 	on = 1;
