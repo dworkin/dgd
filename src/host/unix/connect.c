@@ -473,7 +473,7 @@ static int conn_port6(int *fd, int type, struct sockaddr_in6 *sin6, unsigned int
 	perror("setsockopt");
 	return FALSE;
     }
-# if defined(IPPROTO6) && defined(IPV6_V6ONLY)
+# if defined(IPPROTO_IPV6) && defined(IPV6_V6ONLY)
     on = 1;
     if (setsockopt(*fd, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) < 0) {
 	perror("setsockopt");
