@@ -473,6 +473,11 @@ static int conn_port6(int *fd, int type, struct sockaddr_in6 *sin6, unsigned int
 	perror("setsockopt");
 	return FALSE;
     }
+    on = 1;
+    if (setsockopt(*fd, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof(on)) < 0) {
+	perror("setsockopt");
+	return FALSE;
+    }
 # ifdef SO_OOBINLINE
     if (type == SOCK_STREAM) {
 	on = 1;

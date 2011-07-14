@@ -3,6 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-07-14
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Make sure that IPv6 sockets only bind to IPv6 addresses, to handle
+  case where the operating system defaults to binding both IPv4 and IPv6,
+  causing an EADDRINUSE in listen().
+
 2011-07-13
 
   Raymond Jennings (shentino@gmail.com)
