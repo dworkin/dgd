@@ -81,7 +81,7 @@ int login_dgd(char *hostname, int port, int in, int out)
 	 */
 	FD_SET(in, &fds);
 	FD_SET(sock, &fds);
-	if (select(2, &fds, NULL, NULL, NULL) <= 0) {
+	if (select(sock + 1, &fds, NULL, NULL, NULL) <= 0) {
 	    perror("select");
 	    close(sock);
 	    return -1;

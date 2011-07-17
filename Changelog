@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-07-17
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add a small and simple relay program that can be used to connect the server
+  to an external program.
+
 2011-07-14
 
   Raymond Jennings (shentino@gmail.com)
