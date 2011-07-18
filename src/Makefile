@@ -53,19 +53,13 @@ a.out:	$(OBJ) always
 always:
 	@rm -f a.out
 
-all:	a.out relay/a.out
-
-relay/a.out:
-	cd relay; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' a.out
+all:	a.out
 
 $(BIN)/driver: a.out
 	-mv $(BIN)/driver $(BIN)/driver.old
 	cp a.out $(BIN)/driver
 
-$(BIN)/relay:
-	cd relay; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' install
-
-install: $(BIN)/driver $(BIN)/relay
+install: $(BIN)/driver
 
 lint:
 	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
@@ -76,7 +70,6 @@ lint:
 	@cd kfun; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 	@cd lpc; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 	@cd host; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
-	@cd relay; $(DMAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint 
 
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
@@ -103,7 +96,6 @@ clean:
 	cd kfun; $(DMAKE) clean
 	cd lpc; $(DMAKE) clean
 	cd host; $(DMAKE) clean
-	cd relay; $(DMAKE) clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h

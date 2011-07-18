@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-07-18
+
+  Felix Croes (felix@dworkin.nl)
+
+  Remove relay program again, this will be part of the LPC extensions project
+  instead.
+
 2011-07-17
 
   Felix Croes (felix@dworkin.nl)

@@ -20,4 +20,3 @@ src/host/win32/dgd.opensdf
 src/host/win32/dgd.sdf
 src/host/win32/dgd.suo
 src/host/win32/dgd.vcxproj.user
-src/relay/a.out
