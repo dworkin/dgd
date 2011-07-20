@@ -277,10 +277,12 @@ static Uint opt_binconst(node **m)
 
 	switch (n->type) {
 	case N_ADD:
+	case N_ADD_FLOAT:
 	    flt_add(&f1, &f2);
 	    break;
 
 	case N_DIV:
+	case N_DIV_FLOAT:
 	    if (NFLT_ISZERO(n->r.right)) {
 		return 2;	/* runtime error: division by 0.0 */
 	    }
@@ -288,34 +290,42 @@ static Uint opt_binconst(node **m)
 	    break;
 
 	case N_EQ:
+	case N_EQ_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) == 0));
 	    break;
 
 	case N_GE:
+	case N_GE_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) >= 0));
 	    break;
 
 	case N_GT:
+	case N_GT_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) > 0));
 	    break;
 
 	case N_LE:
+	case N_LE_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) <= 0));
 	    break;
 
 	case N_LT:
+	case N_LT_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) < 0));
 	    break;
 
 	case N_MULT:
+	case N_MULT_FLOAT:
 	    flt_mult(&f1, &f2);
 	    break;
 
 	case N_NE:
+	case N_NE_FLOAT:
 	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) != 0));
 	    break;
 
 	case N_SUB:
+	case N_SUB_FLOAT:
 	    flt_sub(&f1, &f2);
 	    break;
 
@@ -416,16 +426,22 @@ static node *opt_tst(node *n)
     case N_LAND:
     case N_EQ:
     case N_EQ_INT:
+    case N_EQ_FLOAT:
     case N_NE:
     case N_NE_INT:
+    case N_NE_FLOAT:
     case N_GT:
     case N_GT_INT:
+    case N_GT_FLOAT:
     case N_GE:
     case N_GE_INT:
+    case N_GE_FLOAT:
     case N_LT:
     case N_LT_INT:
+    case N_LT_FLOAT:
     case N_LE:
     case N_LE_INT:
+    case N_LE_FLOAT:
 	return n;
 
     case N_COMMA:
@@ -495,12 +511,20 @@ static node *opt_not(node *n)
 	n->type = N_NE_INT;
 	return n;
 
+    case N_EQ_FLOAT:
+	n->type = N_NE_FLOAT;
+	return n;
+
     case N_NE:
 	n->type = N_EQ;
 	return n;
 
     case N_NE_INT:
 	n->type = N_EQ_INT;
+	return n;
+
+    case N_NE_FLOAT:
+	n->type = N_EQ_FLOAT;
 	return n;
 
     case N_GT:
@@ -511,12 +535,20 @@ static node *opt_not(node *n)
 	n->type = N_LE_INT;
 	return n;
 
+    case N_GT_FLOAT:
+	n->type = N_LE_FLOAT;
+	return n;
+
     case N_GE:
 	n->type = N_LT;
 	return n;
 
     case N_GE_INT:
 	n->type = N_LT_INT;
+	return n;
+
+    case N_GE_FLOAT:
+	n->type = N_LT_FLOAT;
 	return n;
 
     case N_LT:
@@ -527,12 +559,20 @@ static node *opt_not(node *n)
 	n->type = N_GE_INT;
 	return n;
 
+    case N_LT_FLOAT:
+	n->type = N_GE_FLOAT;
+	return n;
+
     case N_LE:
 	n->type = N_GT;
 	return n;
 
     case N_LE_INT:
 	n->type = N_GT_INT;
+	return n;
+
+    case N_LE_FLOAT:
+	n->type = N_GT_FLOAT;
 	return n;
 
     case N_COMMA:
@@ -663,14 +703,18 @@ static Uint opt_binop(node **m)
 	    }
 	    /* fall through */
 	case N_ADD_INT:
+	case N_ADD_FLOAT:
 	case N_AND:
 	case N_AND_INT:
 	case N_EQ:
 	case N_EQ_INT:
+	case N_EQ_FLOAT:
 	case N_MULT:
 	case N_MULT_INT:
+	case N_MULT_FLOAT:
 	case N_NE:
 	case N_NE_INT:
+	case N_NE_FLOAT:
 	case N_OR:
 	case N_OR_INT:
 	case N_XOR:
@@ -699,11 +743,13 @@ static Uint opt_binop(node **m)
 	switch (n->type) {
 	case N_EQ:
 	case N_EQ_INT:
+	case N_EQ_FLOAT:
 	    *m = opt_not(n->l.left);
 	    return d1;
 
 	case N_NE:
 	case N_NE_INT:
+	case N_NE_FLOAT:
 	    *m = opt_tst(n->l.left);
 	    return d1;
 	}
@@ -719,8 +765,8 @@ static Uint opt_binop(node **m)
 		(n->l.left->r.right->flags & F_CONST)) {
 		/* (x . c1) . c2 */
 		switch (n->type) {
-		case N_ADD:
-		case N_SUB:
+		case N_ADD_FLOAT:
+		case N_SUB_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
 		    flt_add(&f1, &f2);
@@ -744,8 +790,8 @@ static Uint opt_binop(node **m)
 		    d = d1;
 		    break;
 
-		case N_DIV:
-		case N_MULT:
+		case N_DIV_FLOAT:
+		case N_MULT_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
 		    flt_mult(&f1, &f2);
@@ -775,8 +821,8 @@ static Uint opt_binop(node **m)
 		}
 	    } else {
 		switch (n->type) {
-		case N_ADD:
-		    if (n->l.left->type == N_SUB) {
+		case N_ADD_FLOAT:
+		    if (n->l.left->type == N_SUB_FLOAT) {
 			if (n->l.left->l.left->type == N_FLOAT) {
 			    /* (c1 - x) + c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
@@ -817,8 +863,8 @@ static Uint opt_binop(node **m)
 		    }
 		    break;
 
-		case N_DIV:
-		    if (n->l.left->type == N_MULT &&
+		case N_DIV_FLOAT:
+		    if (n->l.left->type == N_MULT_FLOAT &&
 			n->l.left->r.right->type == N_FLOAT &&
 			!NFLT_ISZERO(n->r.right)) {
 			/* (x * c1) / c2 */
@@ -831,8 +877,8 @@ static Uint opt_binop(node **m)
 		    }
 		    break;
 
-		case N_MULT:
-		    if (n->l.left->type == N_DIV) {
+		case N_MULT_FLOAT:
+		    if (n->l.left->type == N_DIV_FLOAT) {
 			if (n->l.left->l.left->type == N_FLOAT) {
 			    /* (c1 / x) * c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
@@ -855,8 +901,8 @@ static Uint opt_binop(node **m)
 		    }
 		    break;
 
-		case N_SUB:
-		    if (n->l.left->type == N_ADD &&
+		case N_SUB_FLOAT:
+		    if (n->l.left->type == N_ADD_FLOAT &&
 			n->l.left->r.right->type == N_FLOAT) {
 			/* (x + c1) - c2 */
 			NFLT_GET(n->l.left->r.right, f1);
@@ -882,8 +928,8 @@ static Uint opt_binop(node **m)
 	} else if (n->l.left->flags & F_CONST) {
 	    /* c . x */
 	    switch (n->type) {
-	    case N_SUB:
-		if (n->r.right->type == N_SUB) {
+	    case N_SUB_FLOAT:
+		if (n->r.right->type == N_SUB_FLOAT) {
 		    if (n->r.right->l.left->type == N_FLOAT) {
 			/* c1 - (c2 - x) */
 			NFLT_GET(n->l.left, f1);
@@ -903,7 +949,7 @@ static Uint opt_binop(node **m)
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
 		    }
-		} else if (n->r.right->type == N_ADD &&
+		} else if (n->r.right->type == N_ADD_FLOAT &&
 			   n->r.right->r.right->type == N_FLOAT) {
 		    /* c1 - (x + c2) */
 		    NFLT_GET(n->l.left, f1);
@@ -942,8 +988,8 @@ static Uint opt_binop(node **m)
 		}
 		break;
 
-	    case N_DIV:
-		if (n->r.right->type == N_DIV) {
+	    case N_DIV_FLOAT:
+		if (n->r.right->type == N_DIV_FLOAT) {
 		    if (n->r.right->l.left->type == N_FLOAT &&
 			!NFLT_ISZERO(n->r.right->l.left)) {
 			/* c1 / (c2 / x) */
@@ -964,7 +1010,7 @@ static Uint opt_binop(node **m)
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
 		    }
-		} else if (n->r.right->type == N_MULT &&
+		} else if (n->r.right->type == N_MULT_FLOAT &&
 			   n->r.right->r.right->type == N_FLOAT &&
 			   !NFLT_ISZERO(n->r.right->r.right)) {
 		    /* c1 / (x * c2) */
@@ -983,7 +1029,9 @@ static Uint opt_binop(node **m)
 	if (T_ARITHMETIC(n->l.left->mod) && (n->r.right->flags & F_CONST)) {
 	    switch (n->type) {
 	    case N_ADD:
+	    case N_ADD_FLOAT:
 	    case N_SUB:
+	    case N_SUB_FLOAT:
 		if (NFLT_ISZERO(n->r.right)) {
 		    *m = n->l.left;
 		    d = d1;
@@ -1013,12 +1061,14 @@ static Uint opt_binop(node **m)
 		break;
 
 	    case N_MULT:
+	    case N_MULT_FLOAT:
 		if (NFLT_ISZERO(n->r.right)) {
 		    n->type = N_COMMA;
 		    return opt_expr(m, FALSE);
 		}
 		/* fall through */
 	    case N_DIV:
+	    case N_DIV_FLOAT:
 		if (NFLT_ISONE(n->r.right)) {
 		    *m = n->l.left;
 		    d = d1;
@@ -1085,11 +1135,11 @@ static Uint opt_asgnexp(node **m, bool pop)
 		return opt_expr(m, pop);
 	    }
 	    if (NFLT_ISONE(n->r.right)) {
-		n->type = N_ADD_EQ_1;
+		n->type = N_ADD_EQ_1_FLOAT;
 		return opt_lvalue(n->l.left) + 1;
 	    }
 	    if (NFLT_ISMONE(n->r.right)) {
-		n->type = N_SUB_EQ_1;
+		n->type = N_SUB_EQ_1_FLOAT;
 		return opt_lvalue(n->l.left) + 1;
 	    }
 	    break;
@@ -1182,11 +1232,11 @@ static Uint opt_asgnexp(node **m, bool pop)
 		return opt_expr(m, pop);
 	    }
 	    if (NFLT_ISONE(n->r.right)) {
-		n->type = N_SUB_EQ_1;
+		n->type = N_SUB_EQ_1_FLOAT;
 		return opt_lvalue(n->l.left) + 1;
 	    }
 	    if (NFLT_ISMONE(n->r.right)) {
-		n->type = N_ADD_EQ_1;
+		n->type = N_ADD_EQ_1_FLOAT;
 		return opt_lvalue(n->l.left) + 1;
 	    }
 	    break;
@@ -1347,8 +1397,10 @@ static Uint opt_expr(node **m, int pop)
 
     case N_ADD_EQ_1:
     case N_ADD_EQ_1_INT:
+    case N_ADD_EQ_1_FLOAT:
     case N_SUB_EQ_1:
     case N_SUB_EQ_1_INT:
+    case N_SUB_EQ_1_FLOAT:
 	return opt_lvalue(n->l.left) + 1;
 
     case N_MIN_MIN:
@@ -1363,6 +1415,12 @@ static Uint opt_expr(node **m, int pop)
 	}
 	return opt_lvalue(n->l.left) + 1;
 
+    case N_MIN_MIN_FLOAT:
+	if (pop) {
+	    n->type = N_SUB_EQ_1_FLOAT;
+	}
+	return opt_lvalue(n->l.left) + 1;
+
     case N_PLUS_PLUS:
 	if (pop) {
 	    n->type = N_ADD_EQ_1;
@@ -1372,6 +1430,12 @@ static Uint opt_expr(node **m, int pop)
     case N_PLUS_PLUS_INT:
 	if (pop) {
 	    n->type = N_ADD_EQ_1_INT;
+	}
+	return opt_lvalue(n->l.left) + 1;
+
+    case N_PLUS_PLUS_FLOAT:
+	if (pop) {
+	    n->type = N_ADD_EQ_1_FLOAT;
 	}
 	return opt_lvalue(n->l.left) + 1;
 
@@ -1440,18 +1504,28 @@ static Uint opt_expr(node **m, int pop)
 	}
 	/* fall through */
     case N_ADD_INT:
+    case N_ADD_FLOAT:
     case N_AND_INT:
+    case N_DIV_FLOAT:
     case N_EQ_INT:
+    case N_EQ_FLOAT:
     case N_GE_INT:
+    case N_GE_FLOAT:
     case N_GT_INT:
+    case N_GT_FLOAT:
     case N_LE_INT:
+    case N_LE_FLOAT:
     case N_LSHIFT_INT:
     case N_LT_INT:
+    case N_LT_FLOAT:
     case N_MULT_INT:
+    case N_MULT_FLOAT:
     case N_NE_INT:
+    case N_NE_FLOAT:
     case N_OR_INT:
     case N_RSHIFT_INT:
     case N_SUB_INT:
+    case N_SUB_FLOAT:
     case N_XOR_INT:
 	if (pop) {
 	    d1 = opt_expr(&n->l.left, TRUE);
