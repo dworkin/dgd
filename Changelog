@@ -3,6 +3,15 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-07-20
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Fixups in networking code.
+
+  - Prevent a potential dangling pointer
+  - Plug a potential memory leak
+
 2011-07-14
 
   Raymond Jennings (shentino@gmail.com)
@@ -66,8 +75,8 @@ in doc/Changelog.Dworkin
 
   Raymond Jennings (shentino@gmail.com)
 
-  Whitespace fix in sample config file.
-  Trim object table on restore.
+  - Whitespace fix in sample config file.
+  - Trim object table on restore.
 
 2011-05-19
 
@@ -158,9 +167,8 @@ in doc/Changelog.Dworkin
 
   Raymond Jennings (shentino@gmail.com)
 
-  - Added callout throttling.  Simply -DCO_THROTTLE in the
-    top Makefile with the number of callouts to execute in between
-    checks for I/O.
+  Added callout throttling.  Simply -DCO_THROTTLE in the top Makefile
+  with the number of callouts to execute in between checks for I/O.
 
 2010-10-13/2010-11-18
 
