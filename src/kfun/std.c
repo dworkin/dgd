@@ -1258,14 +1258,14 @@ int kf_dump_state(frame *f, int nargs)
 }
 # endif
 
-#ifdef NETWORK_EXTENSIONS
+# ifdef NETWORK_EXTENSIONS
 # ifdef FUNCDEF
 FUNCDEF("open_port", kf_open_port, pt_open_port, 0)
-#else
-char pt_open_port[] = { C_TYPECHECKED | C_STATIC ,1 ,1 ,0 ,8,
+# else
+char pt_open_port[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8,
 		   T_VOID, T_STRING, T_INT};
-    
-/* 
+
+/*
  * NAME:        kfun->open_port
  * DESCRIPTION: open a listening port
  */
@@ -1282,62 +1282,61 @@ int kf_open_port(frame *f, int nargs)
 	error("open_port() in non-persistent object");
     }
     obj = OBJW(f->oindex);
-    
+
     if (obj->count == 0) {
 	error("open_port() in destructed object");
     }
-    
+
     if (obj->flags & O_SPECIAL) {
 	error("open_port() in special purpose object");
     }
 
     if (obj->flags & O_DRIVER) {
-        error("open_port() in driver object");
+	error("open_port() in driver object");
     }
 
     if (f->level != 0) {
 	error("open_port() within atomic function");
     }
 
-    port=0;
-    if (nargs==2)
-    {
-       port = f->sp->u.number;
-       if ((port < 1)) /* || (port > 65535)) */ {
-         error("Port number not in allowed range");
-       }
-       f->sp++;
+    port = 0;
+    if (nargs == 2) {
+	port = f->sp->u.number;
+	if (port < 1) /* || (port > 65535)) */ {
+	    error("Port number not in allowed range");
+	}
+	f->sp++;
     }
-    protoname=f->sp->u.string->text;
+    protoname = f->sp->u.string->text;
     if (!strcmp(protoname,"tcp")) {
-	protocol=P_TCP;
+	protocol = P_TCP;
     } else if (!strcmp(protoname, "udp")) {
-	protocol=P_UDP;
+	protocol = P_UDP;
     } else if (!strcmp(protoname, "telnet")){
-	protocol=P_TELNET;
+	protocol = P_TELNET;
     } else {
-	error("Unkown protocol");
+	error("Unknown protocol");
     }
     str_del(f->sp->u.string);
     comm_openport(f, obj, protocol, port);
-    *f->sp=nil_value;
+    *f->sp = nil_value;
     return 0;
-}    
-#endif
+}
+# endif
 
 # ifdef FUNCDEF
 FUNCDEF("connect", kf_connect, pt_connect, 0)
-#else
+# else
 char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
 		      T_VOID, T_STRING, T_INT, T_STRING };
-    
+
 /*
  * NAME:        kfun->connect
  * DESCRIPTION: connect to a server
  */
 int kf_connect(frame *f, int nargs)
 {
-    char * addr, proto, *protoname;
+    char *addr, proto, *protoname;
     unsigned short port;
     object *obj;
 
@@ -1347,11 +1346,11 @@ int kf_connect(frame *f, int nargs)
 	error("connect() in non-persistent object");
     }
     obj = OBJW(f->oindex);
-    
+
     if (obj->count == 0) {
 	error("connect() in destructed object");
     }
-    
+
     if (obj->flags & O_SPECIAL) {
 	error("connect() in special purpose object");
     }
@@ -1360,12 +1359,12 @@ int kf_connect(frame *f, int nargs)
 	error("connect() within atomic function");
     }
 
-    if (nargs==3) {
-	protoname=f->sp->u.string->text;
+    if (nargs == 3) {
+	protoname = f->sp->u.string->text;
 	if (!strcmp(protoname, "tcp")) {
-	    proto=P_TCP;
+	    proto = P_TCP;
 	} else if (!strcmp(protoname, "telnet")) {
-	    proto=P_TELNET;
+	    proto = P_TELNET;
 	}
 	else
 	    return 3;
@@ -1376,18 +1375,18 @@ int kf_connect(frame *f, int nargs)
     if (port < 1) /* || port > 65535) */ {
 	error("Port number out of range");
     }
-    addr=f->sp->u.string->text;
+    addr = f->sp->u.string->text;
 
     comm_connect(f, obj, addr, proto, port);
-    *f->sp=nil_value;
+    *f->sp = nil_value;
     return 0;
-}    
-#endif
+}
+# endif
 
 # ifdef FUNCDEF
 FUNCDEF("ports", kf_ports, pt_ports, 0)
 # else
-char pt_ports[] = { C_STATIC, 0,0,0,6,T_OBJECT | (1 << REFSHIFT)};
+char pt_ports[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT)};
 
 /*
  * NAME:	kfun->ports()
@@ -1403,8 +1402,8 @@ int kf_ports(frame *f)
 
 # ifdef FUNCDEF
 FUNCDEF("close_user", kf_close_user, pt_close_user, 0)
-# else 
-char pt_close_user[] = { C_STATIC,0,0,0,6, T_VOID};
+# else
+char pt_close_user[] = { C_STATIC, 0, 0, 0, 6, T_VOID};
 /*
  * NAME:	kfun->close_user()
  * DESCRIPTION:	close connection and demote user object
@@ -1418,15 +1417,15 @@ int kf_close_user(frame *f)
     }
 
     obj = OBJW(f->oindex);
-    
+
     if (!((obj->flags & O_SPECIAL) == O_USER)) {
 	error("close_user() for non user-object");
     }
-    
+
     if (f->level != 0) {
 	error("close_user() in atomic function");
     }
-    
+
     comm_close(f, obj);
     *--f->sp = nil_value;
     return 0;
@@ -1435,7 +1434,7 @@ int kf_close_user(frame *f)
 
 # ifdef FUNCDEF
 FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram, 0)
-# else 
+# else
 char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 3,0,0,9,T_INT, 
 			     T_STRING, T_STRING, T_INT};
 /*
@@ -1448,12 +1447,12 @@ int kf_send_datagram(frame *f)
     int num;
     string *str,*ip;
     int port;
-    
-    num=0;
-    obj=OBJW(f->oindex);
-    port=(f->sp++)->u.number;
-    ip=(f->sp++)->u.string;
-    str=f->sp->u.string;
+
+    num = 0;
+    obj = OBJW(f->oindex);
+    port = (f->sp++)->u.number;
+    ip = (f->sp++)->u.string;
+    str = f->sp->u.string;
     if (f->lwobj == (array *) NULL) {
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    num = comm_senddatagram(obj, str, ip, port);
@@ -1465,7 +1464,7 @@ int kf_send_datagram(frame *f)
     return 0;
 }
 # endif
-#endif
+# endif
 
 
 # ifdef FUNCDEF
