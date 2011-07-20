@@ -1318,8 +1318,8 @@ int kf_open_port(frame *f, int nargs)
 	error("Unknown protocol");
     }
     str_del(f->sp->u.string);
-    comm_openport(f, obj, protocol, port);
     *f->sp = nil_value;
+    comm_openport(f, obj, protocol, port);
     return 0;
 }
 # endif
