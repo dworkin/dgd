@@ -1378,6 +1378,7 @@ int kf_connect(frame *f, int nargs)
     addr = f->sp->u.string->text;
 
     comm_connect(f, obj, addr, proto, port);
+    str_del(f->sp->u.string);
     *f->sp = nil_value;
     return 0;
 }
