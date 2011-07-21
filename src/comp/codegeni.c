@@ -956,14 +956,8 @@ static void cg_expr(node *n, int pop)
 	    break;
 
 	case DFCALL:
-	    if ((n->r.number & 0xff00) == 0) {
-		/* auto object */
-		code_instr(I_CALL_AFUNC, n->line);
-		code_byte((int) n->r.number);
-	    } else {
-		code_instr(I_CALL_DFUNC, n->line);
-		code_word((int) n->r.number);
-	    }
+	    code_instr(I_CALL_DFUNC, n->line);
+	    code_word((int) n->r.number);
 	    code_byte(i);
 	    break;
 
