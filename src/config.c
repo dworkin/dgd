@@ -1342,10 +1342,17 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     o_init((uindex) conf[OBJECTS].u.num, (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swap device */
-    sw_init(conf[SWAP_FILE].u.str,
+    if (!sw_init(conf[SWAP_FILE].u.str,
 	    (sector) conf[SWAP_SIZE].u.num,
 	    (sector) conf[CACHE_SIZE].u.num,
-	    (unsigned int) conf[SECTOR_SIZE].u.num);
+	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
+	comm_finish();
+	if (dumpfile != (char *) NULL) {
+	    P_close(fd);
+	}
+	m_finish();
+	return FALSE;
+    }
 
     /* initialize swapped data handler */
     d_init();
