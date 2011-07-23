@@ -730,6 +730,9 @@ char *m_alloc(size_t size)
 	size = ALGN(sizeof(chunk), STRUCT_AL);
     }
 # endif
+    if (size > SIZE_MASK) {
+	fatal("size too big in m_alloc");
+    }
     if (slevel > 0) {
 	c = salloc(size);
 	mstat.smemused += c->size;
