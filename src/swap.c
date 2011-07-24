@@ -64,7 +64,7 @@ bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     slotsize = sizeof(header) + secsize;
 
     /* sanity check */
-    if (cache >= total || (Uuint)cache * slotsize > 0x3FFFFFFF) {
+    if (cache >= total || ((cache * slotsize) / cache != slotsize) {
 	P_message("Config error: swap cache too big\012"); /* LF */
 	return 0;
     }
