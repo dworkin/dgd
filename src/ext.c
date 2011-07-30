@@ -537,7 +537,7 @@ static array *ext_mapping_new(dataspace *data)
  */
 static value *ext_mapping_index(array *m, value *idx)
 {
-    return map_index(m->primary->data, m, idx, NULL);
+    return map_index(m->primary->data, m, idx, (value *) NULL, (value *) NULL);
 }
 
 /*
@@ -547,7 +547,7 @@ static value *ext_mapping_index(array *m, value *idx)
 static void ext_mapping_assign(dataspace *data, array *m, value *idx,
 			       value *val)
 {
-    map_index(data, m, idx, val);
+    map_index(data, m, idx, val, (value *) NULL);
 }
 
 /*

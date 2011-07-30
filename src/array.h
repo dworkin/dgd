@@ -66,7 +66,8 @@ extern unsigned short	map_size	(dataspace*, array*);
 extern array	       *map_add		(dataspace*, array*, array*);
 extern array	       *map_sub		(dataspace*, array*, array*);
 extern array	       *map_intersect	(dataspace*, array*, array*);
-extern value	       *map_index	(dataspace*, array*, value*, value*);
+extern value	       *map_index	(dataspace*, array*, value*, value*,
+					 value*);
 extern array	       *map_range	(dataspace*, array*, value*, value*);
 extern array	       *map_indices	(dataspace*, array*);
 extern array	       *map_values	(dataspace*, array*);

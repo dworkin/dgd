@@ -665,7 +665,8 @@ void i_index(frame *f)
 	break;
 
     case T_MAPPING:
-	val = map_index(f->data, aval->u.array, ival, (value *) NULL);
+	val = map_index(f->data, aval->u.array, ival, (value *) NULL,
+			(value *) NULL);
 	i_del_value(ival);
 	break;
 
@@ -827,7 +828,8 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 	break;
 
     case T_MLVALUE:
-	val = map_index(f->data, lval->u.array, &f->lip[-1], (value *) NULL);
+	val = map_index(f->data, lval->u.array, &f->lip[-1], (value *) NULL,
+			(value *) NULL);
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
@@ -1020,7 +1022,7 @@ void i_dup(frame *f)
 
     case T_MLVALUE:
 	i_push_value(f, map_index(f->data, f->sp->u.array, &f->lip[-1],
-				  (value *) NULL));
+				  (value *) NULL, (value *) NULL));
 	break;
 
     default:
@@ -1090,7 +1092,7 @@ void i_store(frame *f)
 	break;
 
     case T_MLVALUE:
-	map_index(f->data, a = lval->u.array, &f->lip[-1], val);
+	map_index(f->data, a = lval->u.array, &f->lip[-1], val, (value *) NULL);
 	i_del_value(--f->lip);
 	arr_del(a);
 	break;
@@ -1106,7 +1108,8 @@ void i_store(frame *f)
 
     case T_SMLVALUE:
 	map_index(f->data, a = lval->u.array, &f->lip[-2],
-		  istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val));
+		  istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val),
+		  (value *) NULL);
 	str_del((--f->lip)->u.string);
 	i_del_value(--f->lip);
 	arr_del(a);

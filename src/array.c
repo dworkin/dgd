@@ -1844,7 +1844,8 @@ static mapelt *map_grow(dataspace *data, array *m, Uint hashval, bool add)
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
  *		perform an assignment; otherwise return the indexed value.
  */
-value *map_index(dataspace *data, array *m, value *val, value *elt)
+value *map_index(dataspace *data, array *m, value *val, value *elt,
+		 value *verify)
 {
     Uint i;
     mapelt *e, **p;
@@ -1902,7 +1903,10 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 		 * found in the hashtable
 		 */
 		hash = TRUE;
-		if (elt != (value *) NULL) {
+		if (elt != (value *) NULL &&
+		    (verify == (value *) NULL ||
+		     (e->val.type == T_STRING &&
+		      e->val.u.string == verify->u.string))) {
 		    /*
 		     * change element
 		     */
@@ -1957,7 +1961,10 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 	     * found in the array
 	     */
 	    v = &m->elts[n];
-	    if (elt != (value *) NULL) {
+	    if (elt != (value *) NULL &&
+		(verify == (value *) NULL ||
+		 (v[1].type == T_STRING && v[1].u.string == verify->u.string)))
+	    {
 		/*
 		 * change the element
 		 */
