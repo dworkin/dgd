@@ -384,7 +384,7 @@ static void jump_make(char *code)
 	    --j;
 	    code[j->where    ] = j->to >> 8;
 	    code[j->where + 1] = j->to;
-	    if ((code[j->to] & I_INSTR_MASK) == I_JUMP) {
+	    if ((code[j->to] & I_EINSTR_MASK) == I_JUMP) {
 		/*
 		 * add to jump-to-jump list
 		 */
@@ -407,7 +407,7 @@ static void jump_make(char *code)
 	 */
 	where = j->where;
 	to = j->to;
-	while ((code[to] & I_INSTR_MASK) == I_JUMP && to != where - 1) {
+	while ((code[to] & I_EINSTR_MASK) == I_JUMP && to != where - 1) {
 	    /*
 	     * Change to jump across the next jump.  If there is a loop, it
 	     * will eventually result in a jump to itself.
@@ -568,15 +568,108 @@ static void cg_fetch(node *n)
 }
 
 /*
+ * NAME:	codegen->lvalue2()
+ * DESCRIPTION:	generate code for an lvalue
+ */
+static void cg_lvalue2(node *n, int fetch)
+{
+    node *m, *l;
+
+    m = n;
+    if (m->type == N_CAST) {
+	m = m->l.left;
+    }
+    if (m->type == N_INDEX) {
+	l = m->l.left;
+	if (l->type == N_CAST) {
+	    l = l->l.left;
+	}
+	if (l->type == N_INDEX) {
+	    cg_expr(l->l.left, FALSE);
+	    cg_expr(l->r.right, FALSE);
+	    code_instr(I_INDEX2, l->line);
+	} else {
+	    cg_expr(l, FALSE);
+	}
+	if (m->l.left->type == N_CAST) {
+	    cg_cast(m->l.left);
+	}
+	cg_expr(m->r.right, FALSE);
+	if (fetch) {
+	    code_instr(I_INDEX2, n->line);
+	    if (n->type == N_CAST) {
+		cg_cast(n);
+	    }
+	}
+    } else if (fetch) {
+	cg_expr(n, FALSE);
+    }
+}
+
+/*
+ * NAME:	codegen->store()
+ * DESCRIPTION:	generate code for a store
+ */
+static void cg_store(node *n)
+{
+    if (n->type == N_CAST) {
+	n = n->l.left;
+    }
+    switch (n->type) {
+    case N_LOCAL:
+	code_instr(I_STORE_LOCAL, n->line);
+	code_byte(nparams - (int) n->r.number - 1);
+	break;
+
+    case N_GLOBAL:
+	if ((n->r.number >> 8) == ctrl_ninherits()) {
+	    code_instr(I_STORE_GLOBAL, n->line);
+	} else {
+	    code_instr(I_STORE_FAR_GLOBAL, n->line);
+	    code_byte(n->r.number >> 8);
+	}
+	code_byte(n->r.number);
+	break;
+
+    case N_INDEX:
+	n = n->l.left;
+	if (n->type == N_CAST) {
+	    n = n->l.left;
+	}
+	switch (n->type) {
+	case N_LOCAL:
+	    code_instr(I_STORE_LOCAL_INDEX, n->line);
+	    code_byte(nparams - (int) n->r.number - 1);
+	    break;
+
+	case N_GLOBAL:
+	    code_instr(I_STORE_GLOBAL_INDEX, n->line);
+	    code_byte(n->r.number >> 8);
+	    code_byte(n->r.number);
+	    break;
+
+	case N_INDEX:
+	    code_instr(I_STORE_INDEX_INDEX, n->line);
+	    break;
+
+	default:
+	    code_instr(I_STORE_INDEX, n->line);
+	    break;
+	}
+	break;
+    }
+}
+
+/*
  * NAME:	codegen->asgnop()
  * DESCRIPTION:	generate code for an assignment operator
  */
 static void cg_asgnop(node *n, int op)
 {
-    cg_fetch(n->l.left);
+    cg_lvalue2(n->l.left, TRUE);
     cg_expr(n->r.right, FALSE);
     code_kfun(op, n->line);
-    code_instr(I_STORE, 0);
+    cg_store(n->l.left);
 }
 
 /*
@@ -861,14 +954,9 @@ static void cg_expr(node *n, int pop)
 	    }
 	    code_kfun(KF_STORE_AGGR, n->line);
 	} else {
-	    if (n->r.right->type == N_CAST) {
-		cg_lvalue(n->l.left, n->r.right);
-		cg_expr(n->r.right->l.left, FALSE);
-	    } else {
-		cg_lvalue(n->l.left, (node *) NULL);
-		cg_expr(n->r.right, FALSE);
-	    }
-	    code_instr(I_STORE, n->line);
+	    cg_lvalue2(n->l.left, FALSE);
+	    cg_expr(n->r.right, FALSE);
+	    cg_store(n->l.left);
 	}
 	break;
 
@@ -1577,6 +1665,22 @@ static void cg_expr(node *n, int pop)
     }
 
     if (pop) {
+	if (*last_instruction & I_POP_BIT) {			/* XXX */
+	    switch (*last_instruction & I_EINSTR_MASK) {
+	    case I_STORE_LOCAL:
+	    case I_STORE_GLOBAL:
+	    case I_STORE_FAR_GLOBAL:
+	    case I_STORE_INDEX:
+	    case I_STORE_LOCAL_INDEX:
+	    case I_STORE_INDEX_INDEX:
+		*last_instruction += 1;
+		break;
+
+	    case I_STORE_GLOBAL_INDEX:
+		*last_instruction = I_STORE_GLOBAL_INDEX_POP;
+		break;
+	    }
+	} else
 	*last_instruction |= I_POP_BIT;
     }
 }

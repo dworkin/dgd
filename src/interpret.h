@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -51,6 +51,24 @@
 # define I_CATCH		29	/* 2 unsigned */
 # define I_RLIMITS		30
 # define I_RETURN		31
+
+# define I_EINSTR_MASK		0x3f	/* extended instruction mask */
+
+# define I_STORE_LOCAL		32	/* 1 signed */
+# define I_STORE_LOCAL_POP	33	/* 1 signed */
+# define I_STORE_GLOBAL		34	/* 1 unsigned */
+# define I_STORE_GLOBAL_POP	35	/* 1 unsigned */
+# define I_STORE_FAR_GLOBAL	36	/* 2 unsigned, 1 unsigned */
+# define I_STORE_FAR_GLOBAL_POP	37	/* 2 unsigned, 1 unsigned */
+# define I_STORE_INDEX		38
+# define I_STORE_INDEX_POP	39
+# define I_STORE_LOCAL_INDEX		40	/* 1 signed */
+# define I_STORE_LOCAL_INDEX_POP	41	/* 1 signed */
+# define I_STORE_GLOBAL_INDEX		51	/* 2 unsigned, 1 unsigned */
+# define I_STORE_GLOBAL_INDEX_POP	53	/* 2 unsigned, 1 unsigned */
+# define I_STORE_INDEX_INDEX		62
+# define I_STORE_INDEX_INDEX_POP	63
+# define I_INDEX2			42
 
 # define I_LINE_MASK		0xc0	/* line add bits */
 # define I_POP_BIT		0x20	/* pop 1 after instruction */

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -704,6 +704,68 @@ void i_index(frame *f)
 }
 
 /*
+ * NAME:	interpret->index2()
+ * DESCRIPTION:	index a value
+ */
+void i_index2(frame *f, value *aval, value *ival, value *val)
+{
+    int i;
+
+    i_add_ticks(f, 2);
+    switch (aval->type) {
+    case T_STRING:
+	if (ival->type != T_INT) {
+	    i_del_value(ival);
+	    error("Non-numeric string index");
+	}
+	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
+						 ival->u.number)]);
+	PUT_INTVAL(val, i);
+	return;
+
+    case T_ARRAY:
+	if (ival->type != T_INT) {
+	    i_del_value(ival);
+	    error("Non-numeric array index");
+	}
+	*val = d_get_elts(aval->u.array)[arr_index(aval->u.array,
+						   ival->u.number)];
+	break;
+
+    case T_MAPPING:
+	*val = *map_index(f->data, aval->u.array, ival, NULL, NULL);
+	break;
+
+    default:
+	error("Index on bad type");
+    }
+
+    switch (val->type) {
+    case T_STRING:
+	str_ref(val->u.string);
+	break;
+
+    case T_OBJECT:
+	if (DESTRUCTED(val)) {
+	    *val = nil_value;
+	}
+	break;
+
+    case T_LWOBJECT:
+	ival = d_get_elts(val->u.array);
+	if (DESTRUCTED(ival)) {
+	    *val = nil_value;
+	    break;
+	}
+	/* fall through */
+    case T_ARRAY:
+    case T_MAPPING:
+	arr_ref(val->u.array);
+	break;
+    }
+}
+
+/*
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
@@ -1007,7 +1069,7 @@ void i_cast(frame *f, value *val, unsigned int type, Uint class)
 
 /*
  * NAME:	interpret->dup()
- * DESCRIPTION:	duplicate the value of an lvalue
+ * DESCRIPTION:	duplicate a value on the stack
  */
 void i_dup(frame *f)
 {
@@ -1025,11 +1087,17 @@ void i_dup(frame *f)
 				  (value *) NULL, (value *) NULL));
 	break;
 
-    default:
+    case T_SLVALUE:
+    case T_SALVALUE:
+    case T_SMLVALUE:
 	/*
          * Indexed string.
          */
 	PUSH_INTVAL(f, UCHAR(f->lip[-1].u.string->text[f->lip[-1].oindex]));
+	break;
+
+    default:
+	i_push_value(f, f->sp);
 	break;
     }
 }
@@ -1114,6 +1182,207 @@ void i_store(frame *f)
 	i_del_value(--f->lip);
 	arr_del(a);
 	break;
+    }
+}
+
+/*
+ * NAME:	interpret->store_local()
+ * DESCRIPTION:	assign a value to a local variable
+ */
+void i_store_local(frame *f, int local, value *val)
+{
+    i_add_ticks(f, 1);
+    d_assign_var(f->data, (local < 0) ? f->fp + local : f->argp + local, val);
+}
+
+/*
+ * NAME:	interpret->store_global()
+ * DESCRIPTION:	assign a value to a global variable
+ */
+void i_store_global(frame *f, int inherit, int index, value *val)
+{
+    unsigned short offset;
+
+    i_add_ticks(f, 5);
+    inherit = f->ctrl->imap[f->p_index + inherit];
+    offset = f->ctrl->inherits[inherit].varoffset + index;
+    if (f->lwobj == NULL) {
+	d_assign_var(f->data, d_get_variable(f->data, offset), val);
+    } else {
+	d_assign_elt(f->data, f->lwobj, &f->lwobj->elts[2 + offset], val);
+    }
+}
+
+/*
+ * NAME:	interpret->store_index()
+ * DESCRIPTION:	perform an indexed assignment
+ */
+bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
+{
+    string *str;
+    array *arr;
+
+    i_add_ticks(f, 3);
+    switch (aval->type) {
+    case T_STRING:
+	if (ival->type != T_INT) {
+	    error("Non-numeric string index");
+	}
+	if (val->type != T_INT) {
+	    error("Non-numeric value in indexed string assignment");
+	}
+	str = str_new(aval->u.string->text, aval->u.string->len);
+	str->text[str_index(str, ival->u.number)] = val->u.number;
+	PUT_STRVAL(var, str);
+	str_del(aval->u.string);
+	return TRUE;
+
+    case T_ARRAY:
+	if (ival->type != T_INT) {
+	    error("Non-numeric array index");
+	}
+	arr = aval->u.array;
+	aval = &d_get_elts(arr)[arr_index(arr, ival->u.number)];
+	if (var->type != T_STRING ||
+	    (aval->type == T_STRING && var->u.string == aval->u.string)) {
+	    d_assign_elt(f->data, arr, aval, val);
+	}
+	arr_del(arr);
+	break;
+
+    case T_MAPPING:
+	arr = aval->u.array;
+	if (var->type != T_STRING) {
+	    var = NULL;
+	}
+	map_index(f->data, arr, ival, val, var);
+	i_del_value(ival);
+	arr_del(arr);
+	break;
+
+    default:
+	error("Index on bad type");
+    }
+
+    return FALSE;
+}
+
+/*
+ * NAME:	interpret->store_local_index()
+ * DESCRIPTION:	perform an indexed assignment
+ */
+void i_store_local_index(frame *f, int local, value *aval, value *ival,
+			 value *val)
+{
+    value *var;
+    string *str;
+    array *arr;
+    value sval;
+
+    i_add_ticks(f, 3);
+    switch (aval->type) {
+    case T_STRING:
+	if (ival->type != T_INT) {
+	    error("Non-numeric string index");
+	}
+	if (val->type != T_INT) {
+	    error("Non-numeric value in indexed string assignment");
+	}
+	var = (local < 0) ? f->fp + local : f->argp + local;
+	if (var->type == T_STRING && var->u.string == aval->u.string) {
+	    str = str_new(aval->u.string->text, aval->u.string->len);
+	    str->text[str_index(str, ival->u.number)] = val->u.number;
+	    PUT_STRVAL_NOREF(&sval, str);
+	    d_assign_var(f->data, var, &sval);
+	}
+	str_del(aval->u.string);
+	break;
+
+    case T_ARRAY:
+	if (ival->type != T_INT) {
+	    error("Non-numeric array index");
+	}
+	arr = aval->u.array;
+	d_assign_elt(f->data, arr,
+		     &d_get_elts(arr)[arr_index(arr, ival->u.number)],
+		     val);
+	arr_del(arr);
+	break;
+
+    case T_MAPPING:
+	arr = aval->u.array;
+	map_index(f->data, arr, ival, val, NULL);
+	i_del_value(ival);
+	arr_del(arr);
+	break;
+
+    default:
+	error("Index on bad type");
+    }
+}
+
+/*
+ * NAME:	interpret->store_global_index()
+ * DESCRIPTION:	perform an indexed assignment
+ */
+void i_store_global_index(frame *f, int inherit, int index, value *aval,
+			  value *ival, value *val)
+{
+    value *var;
+    string *str;
+    array *arr;
+    unsigned short offset;
+    value sval;
+
+    i_add_ticks(f, 3);
+    switch (aval->type) {
+    case T_STRING:
+	if (ival->type != T_INT) {
+	    error("Non-numeric string index");
+	}
+	if (val->type != T_INT) {
+	    error("Non-numeric value in indexed string assignment");
+	}
+	inherit = f->ctrl->imap[f->p_index + inherit];
+	offset = f->ctrl->inherits[inherit].varoffset + index;
+	if (f->lwobj == NULL) {
+	    var = d_get_variable(f->data, offset);
+	} else {
+	    var = &f->lwobj->elts[2 + offset];
+	}
+	if (var->type == T_STRING && var->u.string == aval->u.string) {
+	    str = str_new(aval->u.string->text, aval->u.string->len);
+	    str->text[str_index(str, ival->u.number)] = val->u.number;
+	    PUT_STRVAL_NOREF(&sval, str);
+	    if (f->lwobj == NULL) {
+		d_assign_var(f->data, var, &sval);
+	    } else {
+		d_assign_elt(f->data, f->lwobj, var, &sval);
+	    }
+	}
+	str_del(aval->u.string);
+	break;
+
+    case T_ARRAY:
+	if (ival->type != T_INT) {
+	    error("Non-numeric array index");
+	}
+	arr = aval->u.array;
+	d_assign_elt(f->data, arr,
+		     &d_get_elts(arr)[arr_index(arr, ival->u.number)],
+		     val);
+	arr_del(arr);
+	break;
+
+    case T_MAPPING:
+	arr = aval->u.array;
+	map_index(f->data, arr, ival, val, NULL);
+	i_del_value(ival);
+	arr_del(arr);
+	break;
+
+    default:
+	error("Index on bad type");
     }
 }
 
@@ -1674,10 +1943,10 @@ void i_catcherr(frame *f, Int depth)
 }
 
 /*
- * NAME:	interpret->interpret()
- * DESCRIPTION:	Main interpreter function. Interpret stack machine code.
+ * NAME:	interpret->interpret0()
+ * DESCRIPTION:	Old interpreter function. Interpret stack machine code.
  */
-static void i_interpret(frame *f, char *pc)
+static void i_interpret0(frame *f, char *pc)
 {
     unsigned short instr, u, u2;
     Uint l;
@@ -1943,7 +2212,7 @@ static void i_interpret(frame *f, char *pc)
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		f->atomic = FALSE;
-		i_interpret(f, pc);
+		i_interpret0(f, pc);
 		ec_pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
@@ -1972,7 +2241,421 @@ static void i_interpret(frame *f, char *pc)
 	    }
 
 	    i_new_rlimits(f, newdepth, newticks);
-	    i_interpret(f, pc);
+	    i_interpret0(f, pc);
+	    pc = f->pc;
+	    i_set_rlimits(f, f->rlim->next);
+	    break;
+
+	case I_RETURN:
+	    return;
+	}
+
+	if (instr & I_POP_BIT) {
+	    /* pop the result of the last operation (never an lvalue) */
+	    i_del_value(f->sp++);
+	}
+    }
+}
+
+/*
+ * NAME:	interpret->interpret1()
+ * DESCRIPTION:	Main interpreter function v1. Interpret stack machine code.
+ */
+static void i_interpret1(frame *f, char *pc)
+{
+    unsigned short instr, u, u2;
+    Uint l;
+    char *p;
+    kfunc *kf;
+    int size;
+    Int newdepth, newticks;
+    value val;
+
+    size = 0;
+    l = 0;
+
+    for (;;) {
+# ifdef DEBUG
+	if (f->sp < f->lip + MIN_STACK) {
+	    fatal("out of value stack");
+	}
+# endif
+	if (--f->rlim->ticks <= 0) {
+	    if (f->rlim->noticks) {
+		f->rlim->ticks = 0x7fffffff;
+	    } else {
+		error("Out of ticks");
+	    }
+	}
+	instr = FETCH1U(pc);
+	f->pc = pc;
+
+	switch (instr & I_EINSTR_MASK) {
+	case I_PUSH_ZERO:
+	    PUSH_INTVAL(f, 0);
+	    break;
+
+	case I_PUSH_ONE:
+	    PUSH_INTVAL(f, 1);
+	    break;
+
+	case I_PUSH_INT1:
+	    PUSH_INTVAL(f, FETCH1S(pc));
+	    break;
+
+	case I_PUSH_INT4:
+	    PUSH_INTVAL(f, FETCH4S(pc, l));
+	    break;
+
+	case I_PUSH_FLOAT:
+	    FETCH2U(pc, u);
+	    PUSH_FLTCONST(f, u, FETCH4U(pc, l));
+	    break;
+
+	case I_PUSH_STRING:
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, f->p_ctrl->ninherits - 1,
+					  FETCH1U(pc)));
+	    break;
+
+	case I_PUSH_NEAR_STRING:
+	    u = FETCH1U(pc);
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
+	    break;
+
+	case I_PUSH_FAR_STRING:
+	    u = FETCH1U(pc);
+	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH2U(pc, u2)));
+	    break;
+
+	case I_PUSH_LOCAL:
+	    u = FETCH1S(pc);
+	    i_push_value(f, ((short) u < 0) ? f->fp + (short) u : f->argp + u);
+	    break;
+
+	case I_PUSH_GLOBAL:
+	    i_global(f, f->p_ctrl->progindex, FETCH1U(pc));
+	    break;
+
+	case I_PUSH_FAR_GLOBAL:
+	    u = FETCH1U(pc);
+	    i_global(f, u, FETCH1U(pc));
+	    break;
+
+	case I_PUSH_LOCAL_LVAL:
+	case I_PUSH_LOCAL_LVAL | I_TYPE_BIT:
+	    u = FETCH1S(pc);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		    f->lip->type = T_INT;
+		    (f->lip++)->u.number = l;
+		}
+	    } else {
+		instr = 0;
+	    }
+	    (--f->sp)->type = T_LVALUE;
+	    f->sp->oindex = instr;
+	    f->sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
+	    continue;
+
+	case I_PUSH_GLOBAL_LVAL:
+	case I_PUSH_GLOBAL_LVAL | I_TYPE_BIT:
+	    u = FETCH1U(pc);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_global_lvalue(f, f->p_ctrl->progindex, u, instr, l);
+	    continue;
+
+	case I_PUSH_FAR_GLOBAL_LVAL:
+	case I_PUSH_FAR_GLOBAL_LVAL | I_TYPE_BIT:
+	    u = FETCH1U(pc);
+	    u2 = FETCH1U(pc);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_global_lvalue(f, u, u2, instr, l);
+	    continue;
+
+	case I_INDEX:
+	case I_INDEX | I_POP_BIT:
+	    i_index(f);
+	    break;
+
+	case I_INDEX_LVAL:
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    i_index_lvalue(f, instr, l);
+	    continue;
+
+	case I_INDEX2:
+	    --f->sp;
+	    i_index2(f, f->sp + 2, f->sp + 1, f->sp);
+	    continue;
+
+	case I_AGGREGATE:
+	case I_AGGREGATE | I_POP_BIT:
+	    if (FETCH1U(pc) == 0) {
+		i_aggregate(f, FETCH2U(pc, u));
+	    } else {
+		i_map_aggregate(f, FETCH2U(pc, u));
+	    }
+	    break;
+
+	case I_SPREAD:
+	case I_SPREAD | I_TYPE_BIT:
+	    u = FETCH1S(pc);
+	    if (instr & I_TYPE_BIT) {
+		instr = FETCH1U(pc);
+		if (instr == T_CLASS) {
+		    FETCH3U(pc, l);
+		}
+	    } else {
+		instr = 0;
+	    }
+	    size = i_spread(f, (short) u, instr, l);
+	    continue;
+
+	case I_CAST:
+	case I_CAST | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    if (u == T_CLASS) {
+		FETCH3U(pc, l);
+	    }
+	    i_cast(f, f->sp, u, l);
+	    break;
+
+	case I_DUP:
+	    i_dup(f);
+	    break;
+
+	case I_STORE:
+	case I_STORE | I_POP_BIT:
+	    i_store(f);
+	    f->sp[1] = f->sp[0];
+	    f->sp++;
+	    break;
+
+	case I_STORE_LOCAL:
+	case I_STORE_LOCAL_POP:
+	    i_store_local(f, FETCH1S(pc), f->sp);
+	    if ((instr & I_EINSTR_MASK) == I_STORE_LOCAL_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_GLOBAL:
+	case I_STORE_GLOBAL_POP:
+	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc), f->sp);
+	    if ((instr & I_EINSTR_MASK) == I_STORE_GLOBAL_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_FAR_GLOBAL:
+	case I_STORE_FAR_GLOBAL_POP:
+	    u = FETCH1U(pc);
+	    i_store_global(f, u, FETCH1U(pc), f->sp);
+	    if ((instr & I_EINSTR_MASK) == I_STORE_FAR_GLOBAL_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_INDEX:
+	case I_STORE_INDEX_POP:
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    if ((instr & I_EINSTR_MASK) == I_STORE_INDEX_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_LOCAL_INDEX:
+	case I_STORE_LOCAL_INDEX_POP:
+	    i_store_local_index(f, FETCH1S(pc), f->sp + 2, f->sp + 1, f->sp);
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    if ((instr & I_EINSTR_MASK) == I_STORE_LOCAL_INDEX_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_GLOBAL_INDEX:
+	case I_STORE_GLOBAL_INDEX_POP:
+	    u = FETCH1U(pc);
+	    i_store_global_index(f, u, FETCH1U(pc), f->sp + 2, f->sp + 1,
+				 f->sp);
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    if ((instr & I_EINSTR_MASK) == I_STORE_GLOBAL_INDEX_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_STORE_INDEX_INDEX:
+	case I_STORE_INDEX_INDEX_POP:
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, &val);
+		str_del(val.u.string);
+	    } else {
+		i_del_value(f->sp + 3);
+		i_del_value(f->sp + 4);
+	    }
+	    f->sp[4] = f->sp[0];
+	    f->sp += 4;
+	    if ((instr & I_EINSTR_MASK) == I_STORE_INDEX_INDEX_POP) {
+		i_del_value(f->sp++);
+	    }
+	    continue;
+
+	case I_JUMP:
+	    p = f->prog + FETCH2U(pc, u);
+	    pc = p;
+	    break;
+
+	case I_JUMP_ZERO:
+	case I_JUMP_ZERO | I_POP_BIT:
+	    p = f->prog + FETCH2U(pc, u);
+	    if (!VAL_TRUE(f->sp)) {
+		pc = p;
+	    }
+	    break;
+
+	case I_JUMP_NONZERO:
+	case I_JUMP_NONZERO | I_POP_BIT:
+	    p = f->prog + FETCH2U(pc, u);
+	    if (VAL_TRUE(f->sp)) {
+		pc = p;
+	    }
+	    break;
+
+	case I_SWITCH:
+	case I_SWITCH | I_POP_BIT:
+	    switch (FETCH1U(pc)) {
+	    case SWITCH_INT:
+		pc = f->prog + i_switch_int(f, pc);
+		break;
+
+	    case SWITCH_RANGE:
+		pc = f->prog + i_switch_range(f, pc);
+		break;
+
+	    case SWITCH_STRING:
+		pc = f->prog + i_switch_str(f, pc);
+		break;
+	    }
+	    break;
+
+	case I_CALL_KFUNC:
+	case I_CALL_KFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH1U(pc));
+	    if (PROTO_VARGS(kf->proto) != 0) {
+		/* variable # of arguments */
+		u = FETCH1U(pc) + size;
+		size = 0;
+	    } else {
+		/* fixed # of arguments */
+		u = PROTO_NARGS(kf->proto);
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		if ((short) u < 0) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
+		{
+		    error("Bad argument %d for kfun %s", u, kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    break;
+
+	case I_CALL_AFUNC:
+	case I_CALL_AFUNC | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    i_funcall(f, (object *) NULL, (array *) NULL, 0, u,
+		      FETCH1U(pc) + size);
+	    size = 0;
+	    break;
+
+	case I_CALL_DFUNC:
+	case I_CALL_DFUNC | I_POP_BIT:
+	    u = UCHAR(f->ctrl->imap[f->p_index + FETCH1U(pc)]);
+	    u2 = FETCH1U(pc);
+	    i_funcall(f, (object *) NULL, (array *) NULL, u, u2,
+		      FETCH1U(pc) + size);
+	    size = 0;
+	    break;
+
+	case I_CALL_FUNC:
+	case I_CALL_FUNC | I_POP_BIT:
+	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
+	    i_funcall(f, (object *) NULL, (array *) NULL, UCHAR(p[0]),
+		      UCHAR(p[1]), FETCH1U(pc) + size);
+	    size = 0;
+	    break;
+
+	case I_CATCH:
+	case I_CATCH | I_POP_BIT:
+	    p = f->prog + FETCH2U(pc, u);
+	    if (!ec_push((ec_ftn) i_catcherr)) {
+		f->atomic = FALSE;
+		i_interpret1(f, pc);
+		ec_pop();
+		pc = f->pc;
+		*--f->sp = nil_value;
+	    } else {
+		/* error */
+		f->pc = pc = p;
+		PUSH_STRVAL(f, errorstr());
+	    }
+	    break;
+
+	case I_RLIMITS:
+	    if (f->sp[1].type != T_INT) {
+		error("Bad rlimits depth type");
+	    }
+	    if (f->sp->type != T_INT) {
+		error("Bad rlimits ticks type");
+	    }
+	    newdepth = f->sp[1].u.number;
+	    newticks = f->sp->u.number;
+	    if (!FETCH1U(pc)) {
+		/* runtime check */
+		i_check_rlimits(f);
+	    } else {
+		/* pop limits */
+		f->sp += 2;
+	    }
+
+	    i_new_rlimits(f, newdepth, newticks);
+	    i_interpret1(f, pc);
 	    pc = f->pc;
 	    i_set_rlimits(f, f->rlim->next);
 	    break;
@@ -2208,7 +2891,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     } else {
 	/* interpreted function */
 	f.prog = pc += 2;
-	i_interpret(&f, pc);
+	i_interpret1(&f, pc);
     }
 
     /* clean up stack, move return value to outer stackframe */
