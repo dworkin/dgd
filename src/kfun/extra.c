@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -313,8 +313,8 @@ int kf_random(frame *f)
 # ifdef FUNCDEF
 FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 0)
 # else
-char pt_sscanf[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
-		     T_STRING, T_STRING, T_LVALUE };
+char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
+		     T_STRING, T_LVALUE };
 
 /*
  * NAME:	match
@@ -382,19 +382,29 @@ int kf_sscanf(frame *f, int nargs)
     Int i;
     xfloat flt;
     bool skip;
+    value *top;
 
     size = 0;
     x = NULL;
 
-    if (nargs > MAX_LOCALS + 2) {
+    if (nargs < 2) {
+	return -1;
+    }
+    nargs -= 2;
+    if (nargs > MAX_LOCALS) {
 	return 4;
     }
-    s = f->sp[nargs - 1].u.string->text;
-    slen = f->sp[nargs - 1].u.string->len;
-    nargs -= 2;
-    format = f->sp[nargs].u.string->text;
-    flen = f->sp[nargs].u.string->len;
-    i_reverse(f, nargs);
+    top = i_reverse(f, nargs);
+    if (top[1].type != T_STRING) {
+	return 1;
+    }
+    s = top[1].u.string->text;
+    slen = top[1].u.string->len;
+    if (top[0].type != T_STRING) {
+	return 2;
+    }
+    format = top[0].u.string->text;
+    flen = top[0].u.string->len;
 
     i_add_ticks(f, 8 * nargs);
     matches = 0;
@@ -529,9 +539,13 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_STRVAL(f, str_new(s, (long) size));
+# if 0
 		i_store(f);
 		f->sp->u.string->ref--;
 		f->sp += 2;
+# else
+		i_store2(f);
+# endif
 	    }
 	    s = x;
 	    break;
@@ -556,8 +570,12 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_INTVAL(f, i);
+# if 0
 		i_store(f);
 		f->sp += 2;
+# else
+		i_store2(f);
+# endif
 	    }
 	    break;
 
@@ -580,8 +598,12 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_FLTVAL(f, flt);
+# if 0
 		i_store(f);
 		f->sp += 2;
+# else
+		i_store2(f);
+# endif
 	    }
 	    break;
 
@@ -596,8 +618,12 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_INTVAL(f, UCHAR(*s));
+# if 0
 		i_store(f);
 		f->sp += 2;
+# else
+		i_store2(f);
+# endif
 	    }
 	    s++;
 	    --slen;
@@ -610,12 +636,8 @@ int kf_sscanf(frame *f, int nargs)
     }
 
 no_match:
-    if (nargs > 0) {
-	i_pop(f, nargs);	/* pop superfluous arguments */
-    }
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
-    PUT_INTVAL(f->sp, matches);
+    i_pop(f, top - f->sp + 2);
+    PUSH_INTVAL(f, matches);
     return 0;
 }
 # endif

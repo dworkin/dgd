@@ -75,6 +75,13 @@
 # define I_TYPE_BIT		I_POP_BIT /* lvalue typechecks assignment */
 # define I_LINE_SHIFT		6
 
+# define LVAL_LOCAL		0
+# define LVAL_GLOBAL		1
+# define LVAL_INDEX		2
+# define LVAL_LOCAL_INDEX	3
+# define LVAL_GLOBAL_INDEX	4
+# define LVAL_INDEX_INDEX	5
+
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
 # define FETCH1U(pc)	UCHAR(*(pc)++)
@@ -248,7 +255,7 @@ extern void	i_copy		(value*, value*, unsigned int);
 extern void	i_grow_stack	(frame*, int);
 extern void	i_push_value	(frame*, value*);
 extern void	i_pop		(frame*, int);
-extern void	i_reverse	(frame*, int);
+extern value   *i_reverse	(frame*, int);
 extern void	i_odest		(frame*, object*);
 extern void	i_string	(frame*, int, unsigned int);
 extern void	i_aggregate	(frame*, unsigned int);

@@ -1455,7 +1455,7 @@ static Uint opt_expr(node **m, int pop)
 	    m = &n->r.right;
 	    n = n->l.left;
 	    i += (n->type == N_LVALUE ||
-		  (n->type == N_COMMA && n->r.right->type == N_LVALUE)) ? 4 : 1;
+		  (n->type == N_COMMA && n->r.right->type == N_LVALUE)) ? 6 : 1;
 	    n = *m;
 	}
 	if (n->type == N_SPREAD) {
@@ -1463,7 +1463,13 @@ static Uint opt_expr(node **m, int pop)
 	}
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_expr(m, FALSE);
-	return max3(d1, i + d2, i + side_end(m, side, oldside, olddepth));
+	d1 = max3(d1, i + d2, i + side_end(m, side, oldside, olddepth));
+	n = *m;
+	if (n->type == N_LVALUE ||
+	    (n->type == N_COMMA && n->r.right->type == N_LVALUE)) {
+	    d1 += 2;
+	}
+	return d1;
 
     case N_INSTANCEOF:
 	return opt_expr(&n->l.left, FALSE) + 1;
@@ -1633,10 +1639,10 @@ static Uint opt_expr(node **m, int pop)
 	    d2 = 0;
 	    for (n = n->l.left->l.left; n->type == N_PAIR; n = n->r.right) {
 		d1 = opt_lvalue(n->l.left);
-		d2 += (d1 < 4) ? d1 : 4;
+		d2 += 2 + ((d1 < 4) ? d1 : 4);
 	    }
 	    d1 = opt_lvalue(n);
-	    d2 += (d1 < 4) ? d1 : 4;
+	    d2 += 2 + ((d1 < 4) ? d1 : 4);
 	    return d2 + max2(2, opt_expr(&(*m)->r.right, FALSE));
 	} else {
 	    d1 = opt_lvalue(n->l.left);

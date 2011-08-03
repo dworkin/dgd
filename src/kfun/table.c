@@ -134,8 +134,13 @@ static char *prototype(char *proto)
 		varargs = TRUE;
 	    } else {
 		if (*p != T_MIXED) {
-		    /* non-mixed arguments: typecheck this function */
-		    tclass |= C_TYPECHECKED;
+		    if (*p == T_LVALUE) {
+			/* lvalue arguments: turn off typechecking */
+			tclass &= ~C_TYPECHECKED;
+		    } else {
+			/* non-mixed arguments: typecheck this function */
+			tclass |= C_TYPECHECKED;
+		    }
 		}
 		if (varargs) {
 		    vargs++;

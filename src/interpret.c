@@ -324,8 +324,9 @@ void i_pop(frame *f, int n)
  * NAME:	interpret->reverse()
  * DESCRIPTION:	reverse the order of arguments on the stack
  */
-void i_reverse(frame *f, int n)
+value *i_reverse(frame *f, int n)
 {
+# if 0
     value sp[MAX_LOCALS];
     value lip[3 * MAX_LOCALS];
     value *v1, *v2, *w1, *w2;
@@ -387,6 +388,62 @@ void i_reverse(frame *f, int n)
 	    memcpy(w2, lip, n * sizeof(value));
 	}
     }
+# else
+    value stack[MAX_LOCALS * 6];
+    value *v, *w;
+    int size;
+
+    v = f->sp;
+    if (n == 1) {
+	switch (v->u.number >> 28) {
+	case LVAL_LOCAL:
+	case LVAL_GLOBAL:
+	    size = 1;
+	    break;
+
+	case LVAL_INDEX:
+	case LVAL_LOCAL_INDEX:
+	case LVAL_GLOBAL_INDEX:
+	    size = 3;
+	    break;
+
+	case LVAL_INDEX_INDEX:
+	    size = 5;
+	    break;
+	}
+	size += (((v->u.number >> 24) & 0xf) == T_CLASS);
+	v += size;
+    } else if (n > 1) {
+	w = stack + sizeof(stack) / sizeof(value);
+	do {
+	    switch (v->u.number >> 28) {
+	    case LVAL_LOCAL:
+	    case LVAL_GLOBAL:
+		size = 1;
+		break;
+
+	    case LVAL_INDEX:
+	    case LVAL_LOCAL_INDEX:
+	    case LVAL_GLOBAL_INDEX:
+		size = 3;
+		break;
+
+	    case LVAL_INDEX_INDEX:
+		size = 5;
+		break;
+	    }
+	    size += (((v->u.number >> 24) & 0xf) == T_CLASS);
+
+	    w -= size;
+	    memcpy(w, v, size * sizeof(value));
+	    v += size;
+	} while (--n != 0);
+
+	memcpy(f->sp, w, (v - f->sp) * sizeof(value));
+    }
+
+    return v;
+# endif
 }
 
 /*
@@ -1189,7 +1246,7 @@ void i_store(frame *f)
  * NAME:	interpret->store_local()
  * DESCRIPTION:	assign a value to a local variable
  */
-void i_store_local(frame *f, int local, value *val)
+static void i_store_local(frame *f, int local, value *val)
 {
     i_add_ticks(f, 1);
     d_assign_var(f->data, (local < 0) ? f->fp + local : f->argp + local, val);
@@ -1268,122 +1325,71 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 }
 
 /*
- * NAME:	interpret->store_local_index()
- * DESCRIPTION:	perform an indexed assignment
+ * NAME:	interpret->store2()
+ * DESCRIPTION:	Perform an assignment.
  */
-void i_store_local_index(frame *f, int local, value *aval, value *ival,
-			 value *val)
+void i_store2(frame *f)
 {
-    value *var;
-    string *str;
-    array *arr;
-    value sval;
+    Uint lval;
+    long l;
+    int type;
+    value var, *val;
 
-    i_add_ticks(f, 3);
-    switch (aval->type) {
-    case T_STRING:
-	if (ival->type != T_INT) {
-	    error("Non-numeric string index");
-	}
-	if (val->type != T_INT) {
-	    error("Non-numeric value in indexed string assignment");
-	}
-	var = (local < 0) ? f->fp + local : f->argp + local;
-	if (var->type == T_STRING && var->u.string == aval->u.string) {
-	    str = str_new(aval->u.string->text, aval->u.string->len);
-	    str->text[str_index(str, ival->u.number)] = val->u.number;
-	    PUT_STRVAL_NOREF(&sval, str);
-	    d_assign_var(f->data, var, &sval);
-	}
-	str_del(aval->u.string);
-	break;
-
-    case T_ARRAY:
-	if (ival->type != T_INT) {
-	    error("Non-numeric array index");
-	}
-	arr = aval->u.array;
-	d_assign_elt(f->data, arr,
-		     &d_get_elts(arr)[arr_index(arr, ival->u.number)],
-		     val);
-	arr_del(arr);
-	break;
-
-    case T_MAPPING:
-	arr = aval->u.array;
-	map_index(f->data, arr, ival, val, NULL);
-	i_del_value(ival);
-	arr_del(arr);
-	break;
-
-    default:
-	error("Index on bad type");
+    val = f->sp++;
+    lval = (f->sp++)->u.number;
+    type = (lval >> 24) & 0xf;
+    if (type == T_CLASS) {
+	l = (f->sp++)->u.number;
     }
-}
-
-/*
- * NAME:	interpret->store_global_index()
- * DESCRIPTION:	perform an indexed assignment
- */
-void i_store_global_index(frame *f, int inherit, int index, value *aval,
-			  value *ival, value *val)
-{
-    value *var;
-    string *str;
-    array *arr;
-    unsigned short offset;
-    value sval;
-
-    i_add_ticks(f, 3);
-    switch (aval->type) {
-    case T_STRING:
-	if (ival->type != T_INT) {
-	    error("Non-numeric string index");
-	}
-	if (val->type != T_INT) {
-	    error("Non-numeric value in indexed string assignment");
-	}
-	inherit = f->ctrl->imap[f->p_index + inherit];
-	offset = f->ctrl->inherits[inherit].varoffset + index;
-	if (f->lwobj == NULL) {
-	    var = d_get_variable(f->data, offset);
-	} else {
-	    var = &f->lwobj->elts[2 + offset];
-	}
-	if (var->type == T_STRING && var->u.string == aval->u.string) {
-	    str = str_new(aval->u.string->text, aval->u.string->len);
-	    str->text[str_index(str, ival->u.number)] = val->u.number;
-	    PUT_STRVAL_NOREF(&sval, str);
-	    if (f->lwobj == NULL) {
-		d_assign_var(f->data, var, &sval);
-	    } else {
-		d_assign_elt(f->data, f->lwobj, var, &sval);
-	    }
-	}
-	str_del(aval->u.string);
-	break;
-
-    case T_ARRAY:
-	if (ival->type != T_INT) {
-	    error("Non-numeric array index");
-	}
-	arr = aval->u.array;
-	d_assign_elt(f->data, arr,
-		     &d_get_elts(arr)[arr_index(arr, ival->u.number)],
-		     val);
-	arr_del(arr);
-	break;
-
-    case T_MAPPING:
-	arr = aval->u.array;
-	map_index(f->data, arr, ival, val, NULL);
-	i_del_value(ival);
-	arr_del(arr);
-	break;
-
-    default:
-	error("Index on bad type");
+    if (type != T_MIXED) {
+	i_cast(f, val, type, l);
     }
+
+    switch (lval >> 28) {
+    case LVAL_LOCAL:
+	i_store_local(f, SCHAR(lval), val);
+	break;
+
+    case LVAL_GLOBAL:
+	i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val);
+	break;
+
+    case LVAL_INDEX:
+	var = nil_value;
+	if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
+	    str_del(var.u.string);
+	}
+	f->sp += 2;
+	break;
+
+    case LVAL_LOCAL_INDEX:
+	var = nil_value;
+	if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
+	    i_store_local(f, SCHAR(lval), &var);
+	    str_del(var.u.string);
+	}
+	f->sp += 2;
+	break;
+
+    case LVAL_GLOBAL_INDEX:
+	var = nil_value;
+	if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
+	    i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val);
+	    str_del(var.u.string);
+	}
+	f->sp += 2;
+	break;
+
+    case LVAL_INDEX_INDEX:
+	var = nil_value;
+	if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
+	    i_store_index(f, f->sp + 1, f->sp + 3, f->sp + 2, &var);
+	    str_del(var.u.string);
+	}
+	f->sp += 4;
+	break;
+    }
+    i_del_value(val);
 }
 
 /*
@@ -2493,7 +2499,12 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX_POP:
-	    i_store_local_index(f, FETCH1S(pc), f->sp + 2, f->sp + 1, f->sp);
+	    u = FETCH1S(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		i_store_local(f, u, &val);
+		str_del(val.u.string);
+	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
 	    if ((instr & I_EINSTR_MASK) == I_STORE_LOCAL_INDEX_POP) {
@@ -2504,8 +2515,12 @@ static void i_interpret1(frame *f, char *pc)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX_POP:
 	    u = FETCH1U(pc);
-	    i_store_global_index(f, u, FETCH1U(pc), f->sp + 2, f->sp + 1,
-				 f->sp);
+	    u2 = FETCH1U(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		i_store_global(f, u, u2, &val);
+		str_del(val.u.string);
+	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
 	    if ((instr & I_EINSTR_MASK) == I_STORE_GLOBAL_INDEX_POP) {
