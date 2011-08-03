@@ -482,7 +482,7 @@ static int cg_type(node *n, long *l)
     if (type == T_CLASS) {
 	*l = ctrl_dstring(n->class);
     }
-    return type;
+    return (type != T_MIXED) ? type : 0;
 }
 
 /*

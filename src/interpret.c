@@ -1333,17 +1333,20 @@ void i_store2(frame *f)
     Uint lval;
     long l;
     int type;
-    value var, *val;
+    value var, *val, *tmp;
 
-    val = f->sp++;
-    lval = (f->sp++)->u.number;
+    val = f->sp + 1;
+    lval = (val++)->u.number;
     type = (lval >> 24) & 0xf;
     if (type == T_CLASS) {
-	l = (f->sp++)->u.number;
+	l = (val++)->u.number;
     }
-    if (type != T_MIXED) {
-	i_cast(f, val, type, l);
+    if (type != 0) {
+	i_cast(f, f->sp, type, l);
     }
+    tmp = f->sp;
+    f->sp = val;
+    val = tmp;
 
     switch (lval >> 28) {
     case LVAL_LOCAL:
