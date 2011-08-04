@@ -65,9 +65,9 @@
 # define I_PUSH_FAR_GLOBAL	0x26	/* 2 unsigned, 1 unsigned */
 # define I_INDEX		0x07
 # define I_INDEX2		0x08
-# define I_SPREAD		0x28	/* 1 signed, 1 unsigned (+ 4 unsigned)*/
+# define I_SPREAD		0x28	/* 1 signed (+ 1+4 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
-# define I_CAST			0x0a	/* 1 unsigned (+ 4 unsigned) */
+# define I_CAST			0x0a	/* 1+4 unsigned */
 # define I_STORE_LOCAL		0x11	/* 1 signed */
 # define I_STORE_GLOBAL		0x12	/* 1 unsigned */
 # define I_STORE_FAR_GLOBAL	0x13	/* 2 unsigned, 1 unsigned */

@@ -791,18 +791,20 @@ static int cg_funargs(node *n, bool lv)
 	cg_expr(n->l.left, FALSE);
 	code_instr(I_SPREAD, n->line);
 	code_byte(n->mod);
-	type = n->l.left->mod & ~(1 << REFSHIFT);
-	if (lv && type != T_MIXED) {
-	    /* typechecked lvalues */
-	    code_byte((type & T_REF) ? T_ARRAY : type);
-	    if (type == T_CLASS) {
-		l = ctrl_dstring(n->l.left->class);
+	if (lv) {
+	    type = n->l.left->mod & ~(1 << REFSHIFT);
+	    if (type != T_MIXED) {
+		/* typechecked lvalues */
+		code_byte((type & T_REF) ? T_ARRAY : type);
+		if (type == T_CLASS) {
+		    l = ctrl_dstring(n->l.left->class);
+		    code_byte(0);
+		    code_byte(l >> 16);
+		    code_word(l);
+		}
+	    } else {
 		code_byte(0);
-		code_byte(l >> 16);
-		code_word(l);
 	    }
-	} else {
-	    code_byte(0);
 	}
     } else {
 	cg_expr(n, FALSE);

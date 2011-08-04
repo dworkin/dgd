@@ -612,8 +612,9 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     if (a->size > 0) {
 	i_add_ticks(f, a->size);
-	i_grow_stack(f, (a->size << 1) - n - 1);
-	a->ref += a->size - n;
+	i = a->size - n;
+	a->ref += i;
+	i_grow_stack(f, n + i * (3 + (vtype == T_CLASS)));
     }
     f->sp++;
 
@@ -623,15 +624,13 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	(--f->sp)->type = T_ALVALUE;
-	f->sp->oindex = vtype;
-	f->sp->u.array = a;
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = i;
+	--f->sp;
+	PUT_ARRVAL_NOREF(f->sp, a);
+	PUSH_INTVAL(f, i);
 	if (vtype == T_CLASS) {
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = class;
+	    PUSH_INTVAL(f, class);
 	}
+	PUSH_INTVAL(f, (LVAL_INDEX << 28) | (vtype << 24));
     }
 
     arr_del(a);
@@ -2358,9 +2357,13 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
-	    u2 = FETCH1U(pc);
-	    if (u2 == T_CLASS) {
-		FETCH4U(pc, l);
+	    if ((short) u >= 0) {
+		u2 = FETCH1U(pc);
+		if (u2 == T_CLASS) {
+		    FETCH4U(pc, l);
+		}
+	    } else {
+		u2 = 0;
 	    }
 	    size = i_spread(f, (short) u, u2, l);
 	    continue;
