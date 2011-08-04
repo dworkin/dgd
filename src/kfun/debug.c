@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -248,29 +248,29 @@ void disasm(control *ctrl, int func)
 	    }
 	}
 	switch (FETCH1U(pc) & I_INSTR_MASK) {
-	case I_PUSH_ZERO:
+	case II_PUSH_ZERO:
 	    codesize = 1;
 	    show_instr("PUSH_ZERO");
 	    break;
 
-	case I_PUSH_ONE:
+	case II_PUSH_ONE:
 	    codesize = 1;
 	    show_instr("PUSH_ONE");
 	    break;
 
-	case I_PUSH_INT1:
+	case II_PUSH_INT1:
 	    codesize = 2;
 	    sprintf(buffer, "PUSH_INT1 %d", FETCH1S(pc));
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_INT4:
+	case II_PUSH_INT4:
 	    codesize = 5;
 	    sprintf(buffer, "PUSH_INT4 %ld", FETCH4S(pc, l));
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_FLOAT:
+	case II_PUSH_FLOAT:
 	    codesize = 7;
 	    flt.high = FETCH2U(pc, u);
 	    flt.low = FETCH4U(pc, l);
@@ -279,7 +279,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_STRING:
+	case II_PUSH_STRING:
 	    codesize = 2;
 	    u = FETCH1U(pc);
 	    sprintf(buffer, "PUSH_STRING \"%s\"",
@@ -287,7 +287,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_NEAR_STRING:
+	case II_PUSH_NEAR_STRING:
 	    codesize = 3;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
@@ -296,7 +296,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_FAR_STRING:
+	case II_PUSH_FAR_STRING:
 	    codesize = 4;
 	    u = FETCH1U(pc);
 	    FETCH2U(pc, u2);
@@ -305,13 +305,13 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_LOCAL:
+	case II_PUSH_LOCAL:
 	    codesize = 2;
 	    sprintf(buffer, "PUSH_LOCAL %d", FETCH1S(pc));
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_GLOBAL:
+	case II_PUSH_GLOBAL:
 	    codesize = 2;
 	    u = FETCH1U(pc);
 	    d_get_vardefs(ctrl);
@@ -321,7 +321,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_FAR_GLOBAL:
+	case II_PUSH_FAR_GLOBAL:
 	    codesize = 3;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
@@ -333,7 +333,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_LOCAL_LVAL:
+	case II_PUSH_LOCAL_LVAL:
 	    if (pop) {
 		pop = 0;
 		u = FETCH1S(pc);
@@ -346,7 +346,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_GLOBAL_LVAL:
+	case II_PUSH_GLOBAL_LVAL:
 	    if (pop) {
 		pop = 0;
 		u = FETCH1U(pc);
@@ -367,7 +367,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_PUSH_FAR_GLOBAL_LVAL:
+	case II_PUSH_FAR_GLOBAL_LVAL:
 	    if (pop) {
 		pop = 0;
 		u = FETCH1U(pc);
@@ -392,12 +392,12 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_INDEX:
+	case II_INDEX:
 	    codesize = 1;
 	    show_instr("INDEX");
 	    break;
 
-	case I_INDEX_LVAL:
+	case II_INDEX_LVAL:
 	    if (pop) {
 		pop = 0;
 		pc = typename(ctrl, tnbuf, pc);
@@ -410,7 +410,7 @@ void disasm(control *ctrl, int func)
 	    }
 	    break;
 
-	case I_AGGREGATE:
+	case II_AGGREGATE:
 	    codesize = 4;
 	    u = FETCH1U(pc);
 	    sprintf(buffer, "AGGREGATE %s %u", (u) ? "mapping" : "array",
@@ -418,7 +418,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_SPREAD:
+	case II_SPREAD:
 	    if (pop) {
 		pop = 0;
 		u = FETCH1S(pc);
@@ -431,42 +431,42 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_CAST:
+	case II_CAST:
 	    pc = typename(ctrl, tnbuf, pc);
 	    sprintf(buffer, "CAST %s", tnbuf);
 	    codesize = pc - code;
 	    show_instr(buffer);
 	    break;
 
-	case I_DUP:
+	case II_DUP:
 	    codesize = 1;
 	    show_instr("DUP");
 	    break;
 
-	case I_STORE:
+	case II_STORE:
 	    codesize = 1;
 	    show_instr("STORE");
 	    break;
 
-	case I_JUMP:
+	case II_JUMP:
 	    codesize = 3;
 	    sprintf(buffer, "JUMP %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
-	case I_JUMP_ZERO:
+	case II_JUMP_ZERO:
 	    codesize = 3;
 	    sprintf(buffer, "JUMP_ZERO %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
-	case I_JUMP_NONZERO:
+	case II_JUMP_NONZERO:
 	    codesize = 3;
 	    sprintf(buffer, "JUMP_NONZERO %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
-	case I_SWITCH:
+	case II_SWITCH:
 	    switch (FETCH1U(pc)) {
 	    case 0:
 		codesize = 4;
@@ -574,7 +574,7 @@ void disasm(control *ctrl, int func)
 	    }
 	    break;
 
-	case I_CALL_KFUNC:
+	case II_CALL_KFUNC:
 	    u = FETCH1U(pc);
 	    if (PROTO_VARGS(KFUN(u).proto) != 0) {
 		codesize = 3;
@@ -589,7 +589,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_CALL_AFUNC:
+	case II_CALL_AFUNC:
 	    codesize = 3;
 	    u = FETCH1U(pc);
 	    cc = OBJR(ctrl->inherits[0].oindex)->ctrl;
@@ -601,7 +601,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_CALL_DFUNC:
+	case II_CALL_DFUNC:
 	    codesize = 4;
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
@@ -614,7 +614,7 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_CALL_FUNC:
+	case II_CALL_FUNC:
 	    codesize = 4;
 	    FETCH2U(pc, u);
 	    u += ctrl->inherits[ctrl->ninherits - 1].funcoffset;
@@ -629,19 +629,19 @@ void disasm(control *ctrl, int func)
 	    show_instr(buffer);
 	    break;
 
-	case I_CATCH:
+	case II_CATCH:
 	    codesize = 3;
 	    sprintf(buffer, "CATCH %04x", FETCH2U(pc, u));
 	    show_instr(buffer);
 	    break;
 
-	case I_RLIMITS:
+	case II_RLIMITS:
 	    codesize = 2;
 	    sprintf(buffer, "RLIMITS%s", (!FETCH1U(pc)) ? " (checked)" : "");
 	    show_instr(buffer);
 	    break;
 
-	case I_RETURN:
+	case II_RETURN:
 	    codesize = 1;
 	    show_instr("RETURN");
 	    break;

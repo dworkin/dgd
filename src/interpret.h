@@ -19,56 +19,73 @@
 
 # define I_INSTR_MASK		0x1f	/* instruction mask */
 
-# define I_PUSH_ZERO		 0
-# define I_PUSH_ONE		 1
-# define I_PUSH_INT1		 2	/* 1 signed */
-# define I_PUSH_INT4		 3	/* 4 signed */
-# define I_PUSH_FLOAT		 4	/* 6 unsigned */
-# define I_PUSH_STRING		 5	/* 1 unsigned */
-# define I_PUSH_NEAR_STRING	 6	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_FAR_STRING	 7	/* 1 unsigned, 2 unsigned */
-# define I_PUSH_LOCAL		 8	/* 1 signed */
-# define I_PUSH_GLOBAL		 9	/* 1 unsigned */
-# define I_PUSH_FAR_GLOBAL	10	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_LOCAL_LVAL	11	/* 1 signed */
-# define I_PUSH_GLOBAL_LVAL	12	/* 1 unsigned */
-# define I_PUSH_FAR_GLOBAL_LVAL	13	/* 1 unsigned, 1 unsigned */
-# define I_INDEX		14
-# define I_INDEX_LVAL		15
-# define I_AGGREGATE		16	/* 1 unsigned, 2 unsigned */
-# define I_SPREAD		17	/* 1 signed */
-# define I_CAST			18	/* 1 unsigned */
-# define I_DUP			19
-# define I_STORE		20
-# define I_JUMP			21	/* 2 unsigned */
-# define I_JUMP_ZERO		22	/* 2 unsigned */
-# define I_JUMP_NONZERO		23	/* 2 unsigned */
-# define I_SWITCH		24	/* n */
-# define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
-# define I_CATCH		29	/* 2 unsigned */
-# define I_RLIMITS		30
-# define I_RETURN		31
+# define II_PUSH_ZERO		  0
+# define II_PUSH_ONE		  1
+# define II_PUSH_INT1		  2	/* 1 signed */
+# define II_PUSH_INT4		  3	/* 4 signed */
+# define II_PUSH_FLOAT		  4	/* 6 unsigned */
+# define II_PUSH_STRING		  5	/* 1 unsigned */
+# define II_PUSH_NEAR_STRING	  6	/* 1 unsigned, 1 unsigned */
+# define II_PUSH_FAR_STRING	  7	/* 1 unsigned, 2 unsigned */
+# define II_PUSH_LOCAL		  8	/* 1 signed */
+# define II_PUSH_GLOBAL		  9	/* 1 unsigned */
+# define II_PUSH_FAR_GLOBAL	 10	/* 1 unsigned, 1 unsigned */
+# define II_PUSH_LOCAL_LVAL	 11	/* 1 signed */
+# define II_PUSH_GLOBAL_LVAL	 12	/* 1 unsigned */
+# define II_PUSH_FAR_GLOBAL_LVAL 13	/* 1 unsigned, 1 unsigned */
+# define II_INDEX		 14
+# define II_INDEX_LVAL		 15
+# define II_AGGREGATE		 16	/* 1 unsigned, 2 unsigned */
+# define II_SPREAD		 17	/* 1 signed */
+# define II_CAST		 18	/* 1 unsigned */
+# define II_DUP			 19
+# define II_STORE		 20
+# define II_JUMP		 21	/* 2 unsigned */
+# define II_JUMP_ZERO		 22	/* 2 unsigned */
+# define II_JUMP_NONZERO	 23	/* 2 unsigned */
+# define II_SWITCH		 24	/* n */
+# define II_CALL_KFUNC		 25	/* 1 unsigned (+ 1 unsigned) */
+# define II_CALL_AFUNC		 26	/* 1 unsigned, 1 unsigned */
+# define II_CALL_DFUNC		 27	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define II_CALL_FUNC		 28	/* 2 unsigned, 1 unsigned */
+# define II_CATCH		 29	/* 2 unsigned */
+# define II_RLIMITS		 30
+# define II_RETURN		 31
 
 # define I_EINSTR_MASK		0x3f	/* extended instruction mask */
 
-# define I_STORE_LOCAL		32	/* 1 signed */
-# define I_STORE_LOCAL_POP	33	/* 1 signed */
-# define I_STORE_GLOBAL		34	/* 1 unsigned */
-# define I_STORE_GLOBAL_POP	35	/* 1 unsigned */
-# define I_STORE_FAR_GLOBAL	36	/* 2 unsigned, 1 unsigned */
-# define I_STORE_FAR_GLOBAL_POP	37	/* 2 unsigned, 1 unsigned */
-# define I_STORE_INDEX		38
-# define I_STORE_INDEX_POP	39
-# define I_STORE_LOCAL_INDEX		40	/* 1 signed */
-# define I_STORE_LOCAL_INDEX_POP	41	/* 1 signed */
-# define I_STORE_GLOBAL_INDEX		51	/* 2 unsigned, 1 unsigned */
-# define I_STORE_GLOBAL_INDEX_POP	53	/* 2 unsigned, 1 unsigned */
-# define I_STORE_INDEX_INDEX		62
-# define I_STORE_INDEX_INDEX_POP	63
-# define I_INDEX2			42
+# define I_PUSH_INT1		0x00	/* 1 signed */
+# define I_PUSH_INT4		0x01	/* 4 signed */
+# define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
+# define I_PUSH_STRING		0x04	/* 1 unsigned */
+# define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
+# define I_PUSH_FAR_STRING	0x05	/* 2 unsigned, 2 unsigned */
+# define I_PUSH_LOCAL		0x25	/* 1 signed */
+# define I_PUSH_GLOBAL		0x06	/* 1 unsigned */
+# define I_PUSH_FAR_GLOBAL	0x26	/* 2 unsigned, 1 unsigned */
+# define I_INDEX		0x07
+# define I_INDEX2		0x08
+# define I_SPREAD		0x28	/* 1 signed, 1 unsigned (+ 4 unsigned)*/
+# define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
+# define I_CAST			0x0a	/* 1 unsigned (+ 4 unsigned) */
+# define I_STORE_LOCAL		0x11	/* 1 signed */
+# define I_STORE_GLOBAL		0x12	/* 1 unsigned */
+# define I_STORE_FAR_GLOBAL	0x13	/* 2 unsigned, 1 unsigned */
+# define I_STORE_INDEX		0x14
+# define I_STORE_LOCAL_INDEX	0x15	/* 1 signed */
+# define I_STORE_GLOBAL_INDEX	0x16	/* 2 unsigned, 1 unsigned */
+# define I_STORE_INDEX_INDEX	0x17
+# define I_JUMP_ZERO		0x18	/* 2 unsigned */
+# define I_JUMP_NONZERO		0x38	/* 2 unsigned */
+# define I_JUMP			0x19	/* 2 unsigned */
+# define I_SWITCH		0x39	/* n */
+# define I_CALL_KFUNC		0x1a	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_AFUNC		0x1b	/* 1 unsigned, 1 unsigned */
+# define I_CALL_DFUNC		0x1c	/* 2 unsigned, 1 unsigned, 1 unsigned */
+# define I_CALL_FUNC		0x1d	/* 2 unsigned, 1 unsigned */
+# define I_CATCH		0x1e	/* 2 unsigned */
+# define I_RLIMITS		0x1f
+# define I_RETURN		0x3f
 
 # define I_LINE_MASK		0xc0	/* line add bits */
 # define I_POP_BIT		0x20	/* pop 1 after instruction */

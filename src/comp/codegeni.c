@@ -498,9 +498,9 @@ static void cg_cast(node *n)
     type = cg_type(n, &l);
     code_byte(type);
     if (type == T_CLASS) {
+	code_byte(0);
 	code_byte(l >> 16);
-	code_byte(l >> 8);
-	code_byte(l);
+	code_word(l);
     }
 }
 
@@ -617,6 +617,7 @@ static void cg_store(node *n)
 	    code_instr(I_STORE_GLOBAL, n->line);
 	} else {
 	    code_instr(I_STORE_FAR_GLOBAL, n->line);
+	    code_byte(0);
 	    code_byte(n->r.number >> 8);
 	}
 	code_byte(n->r.number);
@@ -635,8 +636,8 @@ static void cg_store(node *n)
 
 	case N_GLOBAL:
 	    code_instr(I_STORE_GLOBAL_INDEX, n->line);
-	    code_byte(n->r.number >> 8);
-	    code_byte(n->r.number);
+	    code_byte(0);
+	    code_word(n->r.number);
 	    break;
 
 	case N_INDEX:
@@ -788,21 +789,20 @@ static int cg_funargs(node *n, bool lv)
 	long l;
 
 	cg_expr(n->l.left, FALSE);
+	code_instr(I_SPREAD, n->line);
+	code_byte(n->mod);
 	type = n->l.left->mod & ~(1 << REFSHIFT);
 	if (lv && type != T_MIXED) {
 	    /* typechecked lvalues */
-	    code_instr(I_SPREAD | I_TYPE_BIT, n->line);
-	    code_byte(n->mod);
 	    code_byte((type & T_REF) ? T_ARRAY : type);
 	    if (type == T_CLASS) {
 		l = ctrl_dstring(n->l.left->class);
+		code_byte(0);
 		code_byte(l >> 16);
-		code_byte(l >> 8);
-		code_byte(l);
+		code_word(l);
 	    }
 	} else {
-	    code_instr(I_SPREAD, n->line);
-	    code_byte(n->mod);
+	    code_byte(0);
 	}
     } else {
 	cg_expr(n, FALSE);
@@ -1019,7 +1019,7 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_FLOAT:
-	code_instr(I_PUSH_FLOAT, n->line);
+	code_instr(I_PUSH_FLOAT6, n->line);
 	code_word(n->l.fhigh);
 	code_word((int) (n->r.flow >> 16));
 	code_word((int) n->r.flow);
@@ -1037,8 +1037,15 @@ static void cg_expr(node *n, int pop)
 	    break;
 
 	case DFCALL:
-	    code_instr(I_CALL_DFUNC, n->line);
-	    code_word((int) n->r.number);
+	    if ((n->r.number & 0xff00) == 0) {
+		/* auto object */
+		code_instr(I_CALL_AFUNC, n->line);
+		code_byte((int) n->r.number);
+	    } else {
+		code_instr(I_CALL_DFUNC, n->line);
+		code_byte(0);
+		code_word((int) n->r.number);
+	    }
 	    code_byte(i);
 	    break;
 
@@ -1074,6 +1081,7 @@ static void cg_expr(node *n, int pop)
 	    code_byte((int) n->r.number);
 	} else {
 	    code_instr(I_PUSH_FAR_GLOBAL, n->line);
+	    code_byte(0);
 	    code_word((int) n->r.number);
 	}
 	break;
@@ -1414,6 +1422,7 @@ static void cg_expr(node *n, int pop)
 	    code_byte((int) l);
 	} else {
 	    code_instr(I_PUSH_FAR_STRING, n->line);
+	    code_byte(0);
 	    code_byte((int) (l >> 16));
 	    code_word((int) l);
 	}
@@ -1659,22 +1668,6 @@ static void cg_expr(node *n, int pop)
     }
 
     if (pop) {
-	if (*last_instruction & I_POP_BIT) {			/* XXX */
-	    switch (*last_instruction & I_EINSTR_MASK) {
-	    case I_STORE_LOCAL:
-	    case I_STORE_GLOBAL:
-	    case I_STORE_FAR_GLOBAL:
-	    case I_STORE_INDEX:
-	    case I_STORE_LOCAL_INDEX:
-	    case I_STORE_INDEX_INDEX:
-		*last_instruction += 1;
-		break;
-
-	    case I_STORE_GLOBAL_INDEX:
-		*last_instruction = I_STORE_GLOBAL_INDEX_POP;
-		break;
-	    }
-	} else
 	*last_instruction |= I_POP_BIT;
     }
 }
@@ -1745,9 +1738,9 @@ static void cg_cond(node *n, int jmptrue)
 	default:
 	    cg_expr(n, FALSE);
 	    if (jmptrue) {
-		true_list = jump(I_JUMP_NONZERO | I_POP_BIT, true_list);
+		true_list = jump(I_JUMP_NONZERO, true_list);
 	    } else {
-		false_list = jump(I_JUMP_ZERO | I_POP_BIT, false_list);
+		false_list = jump(I_JUMP_ZERO, false_list);
 	    }
 	    break;
 	}
@@ -1789,7 +1782,7 @@ static void cg_switch_start(node *n)
      * switch expression
      */
     cg_expr(n->r.right->l.left, FALSE);
-    code_instr(I_SWITCH | I_POP_BIT, 0);
+    code_instr(I_SWITCH, 0);
 }
 
 /*
