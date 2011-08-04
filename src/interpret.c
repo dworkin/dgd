@@ -630,7 +630,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
 	f->sp->u.array = a;
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = i;
-	if (vtype == T_CLASS) { 
+	if (vtype == T_CLASS) {
 	    f->lip->type = T_INT;
 	    (f->lip++)->u.number = class;
 	}
@@ -3169,7 +3169,9 @@ static unsigned short i_line1(frame *f)
 	    break;
 
 	case I_SPREAD:
-	    pc++;
+	    if (FETCH1S(pc) < 0) {
+		break;
+	    }
 	    /* fall through */
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
