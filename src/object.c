@@ -779,7 +779,7 @@ void o_del(object *obj, frame *f)
 	/* can happen if object selfdestructs in close()-on-destruct */
 	error("Destructing destructed object");
     }
-    i_odest(f, obj);	/* wipe out occurrances on the stack */
+    i_odest(f, obj);	/* wipe out occurrences on the stack */
     if (obj->data == (dataspace *) NULL && obj->dfirst != SW_UNUSED) {
 	o_dataspace(obj);	/* load dataspace now */
     }
