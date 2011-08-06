@@ -59,21 +59,21 @@
 # define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
 # define I_PUSH_STRING		0x04	/* 1 unsigned */
 # define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_FAR_STRING	0x05	/* 2 unsigned, 2 unsigned */
+# define I_PUSH_FAR_STRING	0x05	/* 1 unsigned, 2 unsigned */
 # define I_PUSH_LOCAL		0x25	/* 1 signed */
 # define I_PUSH_GLOBAL		0x06	/* 1 unsigned */
-# define I_PUSH_FAR_GLOBAL	0x26	/* 2 unsigned, 1 unsigned */
+# define I_PUSH_FAR_GLOBAL	0x26	/* 1 unsigned, 1 unsigned */
 # define I_INDEX		0x07
 # define I_INDEX2		0x08
-# define I_SPREAD		0x28	/* 1 signed (+ 1+4 unsigned) */
+# define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
-# define I_CAST			0x0a	/* 1+4 unsigned */
+# define I_CAST			0x0a	/* 1+3 unsigned */
 # define I_STORE_LOCAL		0x11	/* 1 signed */
 # define I_STORE_GLOBAL		0x12	/* 1 unsigned */
-# define I_STORE_FAR_GLOBAL	0x13	/* 2 unsigned, 1 unsigned */
+# define I_STORE_FAR_GLOBAL	0x13	/* 1 unsigned, 1 unsigned */
 # define I_STORE_INDEX		0x14
 # define I_STORE_LOCAL_INDEX	0x15	/* 1 signed */
-# define I_STORE_GLOBAL_INDEX	0x16	/* 2 unsigned, 1 unsigned */
+# define I_STORE_GLOBAL_INDEX	0x16	/* 1 unsigned, 1 unsigned */
 # define I_STORE_INDEX_INDEX	0x17
 # define I_JUMP_ZERO		0x18	/* 2 unsigned */
 # define I_JUMP_NONZERO		0x38	/* 2 unsigned */
@@ -81,7 +81,7 @@
 # define I_SWITCH		0x39	/* n */
 # define I_CALL_KFUNC		0x1a	/* 1 unsigned (+ 1 unsigned) */
 # define I_CALL_AFUNC		0x1b	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		0x1c	/* 2 unsigned, 1 unsigned, 1 unsigned */
+# define I_CALL_DFUNC		0x1c	/* 1 unsigned, 1 unsigned, 1 unsigned */
 # define I_CALL_FUNC		0x1d	/* 2 unsigned, 1 unsigned */
 # define I_CATCH		0x1e	/* 2 unsigned */
 # define I_RLIMITS		0x1f
