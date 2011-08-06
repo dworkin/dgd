@@ -627,25 +627,25 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-# if 0
-	(--f->sp)->type = T_ALVALUE;
-	f->sp->oindex = vtype;
-	f->sp->u.array = a;
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = i;
-	if (vtype == T_CLASS) {
+	if (f->p_ctrl->flags & CTRL_OLDVM) {
+	    (--f->sp)->type = T_ALVALUE;
+	    f->sp->oindex = vtype;
+	    f->sp->u.array = a;
 	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = class;
+	    (f->lip++)->u.number = i;
+	    if (vtype == T_CLASS) {
+		f->lip->type = T_INT;
+		(f->lip++)->u.number = class;
+	    }
+	} else {
+	    --f->sp;
+	    PUT_ARRVAL_NOREF(f->sp, a);
+	    PUSH_INTVAL(f, i);
+	    if (vtype == T_CLASS) {
+		PUSH_INTVAL(f, class);
+	    }
+	    PUSH_INTVAL(f, (LVAL_INDEX << 28) | (vtype << 24));
 	}
-# else
-	--f->sp;
-	PUT_ARRVAL_NOREF(f->sp, a);
-	PUSH_INTVAL(f, i);
-	if (vtype == T_CLASS) {
-	    PUSH_INTVAL(f, class);
-	}
-	PUSH_INTVAL(f, (LVAL_INDEX << 28) | (vtype << 24));
-# endif
     }
 
     arr_del(a);
