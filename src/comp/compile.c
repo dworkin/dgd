@@ -790,7 +790,7 @@ string *c_objecttype(node *n)
 static void c_decl_func(unsigned short class, node *type, string *str, 
 	node *formals, bool function)
 {
-    char proto[5 + (MAX_LOCALS + 1) * 3];
+    char proto[5 + (MAX_LOCALS + 1) * 4];
     char tnbuf[17];
     char *p, t;
     int nargs, vargs;

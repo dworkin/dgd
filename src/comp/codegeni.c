@@ -498,7 +498,6 @@ static void cg_cast(node *n)
     type = cg_type(n, &l);
     code_byte(type);
     if (type == T_CLASS) {
-	code_byte(0);
 	code_byte(l >> 16);
 	code_word(l);
     }
@@ -617,7 +616,6 @@ static void cg_store(node *n)
 	    code_instr(I_STORE_GLOBAL, n->line);
 	} else {
 	    code_instr(I_STORE_FAR_GLOBAL, n->line);
-	    code_byte(0);
 	    code_byte(n->r.number >> 8);
 	}
 	code_byte(n->r.number);
@@ -636,7 +634,6 @@ static void cg_store(node *n)
 
 	case N_GLOBAL:
 	    code_instr(I_STORE_GLOBAL_INDEX, n->line);
-	    code_byte(0);
 	    code_word(n->r.number);
 	    break;
 
@@ -798,7 +795,6 @@ static int cg_funargs(node *n, bool lv)
 		code_byte((type & T_REF) ? T_ARRAY : type);
 		if (type == T_CLASS) {
 		    l = ctrl_dstring(n->l.left->class);
-		    code_byte(0);
 		    code_byte(l >> 16);
 		    code_word(l);
 		}
@@ -1045,7 +1041,6 @@ static void cg_expr(node *n, int pop)
 		code_byte((int) n->r.number);
 	    } else {
 		code_instr(I_CALL_DFUNC, n->line);
-		code_byte(0);
 		code_word((int) n->r.number);
 	    }
 	    code_byte(i);
@@ -1083,7 +1078,6 @@ static void cg_expr(node *n, int pop)
 	    code_byte((int) n->r.number);
 	} else {
 	    code_instr(I_PUSH_FAR_GLOBAL, n->line);
-	    code_byte(0);
 	    code_word((int) n->r.number);
 	}
 	break;
@@ -1424,7 +1418,6 @@ static void cg_expr(node *n, int pop)
 	    code_byte((int) l);
 	} else {
 	    code_instr(I_PUSH_FAR_STRING, n->line);
-	    code_byte(0);
 	    code_byte((int) (l >> 16));
 	    code_word((int) l);
 	}

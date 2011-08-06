@@ -539,13 +539,7 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_STRVAL(f, str_new(s, (long) size));
-# if 0
 		i_store(f);
-		f->sp->u.string->ref--;
-		f->sp += 2;
-# else
-		i_store2(f);
-# endif
 	    }
 	    s = x;
 	    break;
@@ -570,12 +564,7 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_INTVAL(f, i);
-# if 0
 		i_store(f);
-		f->sp += 2;
-# else
-		i_store2(f);
-# endif
 	    }
 	    break;
 
@@ -598,12 +587,7 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_FLTVAL(f, flt);
-# if 0
 		i_store(f);
-		f->sp += 2;
-# else
-		i_store2(f);
-# endif
 	    }
 	    break;
 
@@ -618,12 +602,7 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_INTVAL(f, UCHAR(*s));
-# if 0
 		i_store(f);
-		f->sp += 2;
-# else
-		i_store2(f);
-# endif
 	    }
 	    s++;
 	    --slen;

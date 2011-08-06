@@ -1539,7 +1539,7 @@ static void d_save_control(control *ctrl)
      */
 
     /* create header */
-    header.flags = ctrl->flags & (CTRL_UNDEFINED | CTRL_CONVERTED);
+    header.flags = ctrl->flags & (CTRL_UNDEFINED | CTRL_CONVERTED | CTRL_OLDVM);
     header.ninherits = ctrl->ninherits;
     header.imapsz = ctrl->imapsz;
     header.compiled = ctrl->compiled;

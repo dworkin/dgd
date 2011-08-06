@@ -47,12 +47,12 @@ typedef struct _dfuncdef_ {
 
 typedef struct {
     char class;			/* variable class */
+    char type;			/* variable type */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
-    unsigned short type;	/* variable type */
 } dvardef;
 
-# define DV_LAYOUT	"ccss"
+# define DV_LAYOUT	"cccs"
 
 typedef struct {
     char inherit;		/* function object index */
@@ -299,12 +299,13 @@ extern void		d_del_dataspace	(dataspace*);
 
 
 /* bit values for ctrl->flags */
-# define CTRL_PROGCMP		0x03	/* program compressed */
-# define CTRL_STRCMP		0x0c	/* strings compressed */
-# define CTRL_UNDEFINED		0x10	/* has undefined functions */
-# define CTRL_COMPILED		0x20	/* precompiled control block */
-# define CTRL_VARMAP		0x40	/* varmap updated */
-# define CTRL_CONVERTED		0x80	/* converted control block */
+# define CTRL_PROGCMP		0x003	/* program compressed */
+# define CTRL_STRCMP		0x00c	/* strings compressed */
+# define CTRL_UNDEFINED		0x010	/* has undefined functions */
+# define CTRL_COMPILED		0x020	/* precompiled control block */
+# define CTRL_VARMAP		0x040	/* varmap updated */
+# define CTRL_CONVERTED		0x080	/* converted control block */
+# define CTRL_OLDVM		0x100	/* uses old VM */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */
