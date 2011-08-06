@@ -3183,7 +3183,7 @@ static unsigned short i_line1(frame *f)
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
 	    if (FETCH1U(pc) == T_CLASS) {
-		pc += 4;
+		pc += 3;
 	    }
 	    break;
 
