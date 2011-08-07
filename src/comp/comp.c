@@ -171,11 +171,11 @@ static void dump_vardefs(control *ctrl)
     if (ctrl->nvardefs != 0) {
 	printf("\nstatic dvardef vardefs[] = {\n");
 	for (i = 0; i < ctrl->nvardefs; i++) {
-	    printf("{ %d, %d, %u, %u },\n",
+	    printf("{ %d, %d, %d, %u },\n",
 		   ctrl->vardefs[i].class,
+		   ctrl->vardefs[i].type,
 		   ctrl->vardefs[i].inherit,
-		   ctrl->vardefs[i].index,
-		   ctrl->vardefs[i].type);
+		   ctrl->vardefs[i].index);
 	}
 	printf("};\n");
 	if (ctrl->nclassvars != 0) {
@@ -466,6 +466,7 @@ void pc_restore(int fd, int conv)
  */
 bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
+    return TRUE;
 }
 
 /*

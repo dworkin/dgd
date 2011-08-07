@@ -321,7 +321,7 @@ void i_pop(frame *f, int n)
  */
 value *i_reverse(frame *f, int n)
 {
-    if (f->p_ctrl->flags & CTRL_OLDVM) {
+    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
 	value sp[MAX_LOCALS];
 	value lip[3 * MAX_LOCALS];
 	value *v1, *v2, *w1, *w2;
@@ -1275,7 +1275,7 @@ void i_store(frame *f)
     value *val;
     Uint class;
 
-    if (f->p_ctrl->flags & CTRL_OLDVM) {
+    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
 	value *lval;
 	array *a;
 	value ival;

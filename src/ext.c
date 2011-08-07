@@ -147,8 +147,8 @@ int ext_frame_pop_truthval(frame *f)
 void ext_frame_store(frame *f)
 {
     i_store(f);
-    f->sp[1] = f->sp[0];
-    f->sp++;
+    --f->sp;
+    f->sp[0] = f->sp[-1];
 }
 
 /*
@@ -158,7 +158,6 @@ void ext_frame_store(frame *f)
 Int ext_frame_store_int(frame *f)
 {
     i_store(f);
-    f->sp += 2;
     return f->sp[-2].u.number;
 }
 
