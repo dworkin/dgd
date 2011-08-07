@@ -232,7 +232,7 @@ struct _dataspace_ {
 
 extern void		d_init		 (void);
 extern void		d_init_conv	 (int, int, int, int, int, int, int,
-					    int);
+					    int, int);
 
 extern control	       *d_new_control	 (void);
 extern dataspace       *d_new_dataspace  (object*);

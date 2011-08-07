@@ -151,6 +151,15 @@ typedef struct {
 static char osi_layout[] = "uus";
 
 typedef struct {
+    char class;			/* variable class */
+    char inherit;		/* variable name inherit index */
+    unsigned short index;	/* variable name index */
+    unsigned short type;	/* variable type */
+} ovardef;
+
+# define OV_LAYOUT	"ccss"
+
+typedef struct {
     sector nsectors;		/* number of sectors in data space */
     short flags;		/* dataspace flags: compression */
     unsigned short nvariables;	/* number of variables */
@@ -297,6 +306,7 @@ static bool conv_co1, conv_co2;		/* convert callouts? */
 static bool conv_type;			/* convert types? */
 static bool conv_inherit;		/* convert inherits? */
 static bool conv_time;			/* convert time? */
+static bool conv_vm;			/* convert VM? */
 static bool converted;			/* conversion complete? */
 
 
@@ -311,7 +321,7 @@ void d_init()
     gcdata = (dataspace *) NULL;
     nctrl = ndata = 0;
     conv_ctrl1 = conv_ctrl2 = conv_data = conv_co1 = conv_co2 = conv_type =
-		 conv_time = FALSE;
+		 conv_time = conv_vm = FALSE;
     converted = FALSE;
 }
 
@@ -319,7 +329,7 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int type, int inherit, int time)
+void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int type, int inherit, int time, int vm)
 {
     conv_ctrl1 = ctrl1;
     conv_ctrl2 = ctrl2;
@@ -329,6 +339,7 @@ void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int
     conv_type = type;
     conv_inherit = inherit;
     conv_time = time;
+    conv_vm = vm;
 }
 
 /*
@@ -2665,6 +2676,9 @@ static control *d_conv_control(object *obj)
 		      (Uint) 0);
     }
     ctrl->flags = header.flags;
+    if (conv_vm) {
+	ctrl->flags |= CTRL_OLDVM;
+    }
     ctrl->ninherits = header.ninherits;
     ctrl->imapsz = header.imapsz;
     ctrl->compiled = header.compiled;
@@ -2805,8 +2819,23 @@ static control *d_conv_control(object *obj)
 	if (header.nvardefs != 0) {
 	    /* variable definitions */
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
-	    size += d_conv((char *) ctrl->vardefs, ctrl->sectors, DV_LAYOUT,
-			   (Uint) UCHAR(header.nvardefs), size);
+	    if (conv_vm) {
+		ovardef *ov;
+
+		ov = ALLOC(ovardef, ctrl->nvardefs);
+		size += d_conv((char *) ov, ctrl->sectors, OV_LAYOUT,
+			       (Uint) ctrl->nvardefs, size);
+		for (n = 0; n < ctrl->nvardefs; n++) {
+		    ctrl->vardefs[n].class = ov[n].class;
+		    ctrl->vardefs[n].type = ov[n].type;
+		    ctrl->vardefs[n].inherit = ov[n].inherit;
+		    ctrl->vardefs[n].index = ov[n].index;
+		}
+		FREE(ov);
+	    } else {
+		size += d_conv((char *) ctrl->vardefs, ctrl->sectors, DV_LAYOUT,
+			       (Uint) UCHAR(header.nvardefs), size);
+	    }
 	    if (conv_ctrl1) {
 		unsigned short type;
 

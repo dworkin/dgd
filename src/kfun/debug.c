@@ -212,6 +212,9 @@ void disasm(control *ctrl, int func)
     xfloat flt;
     char fltbuf[18];
 
+    if (!(ctrl->flags & CTRL_OLDVM)) {
+	return;
+    }
     pc = d_get_prog(ctrl) + d_get_funcdefs(ctrl)[func].offset;
     show_proto(ctrl, d_get_strconst(ctrl, ctrl->funcdefs[func].inherit,
 				    ctrl->funcdefs[func].index)->text, pc);
