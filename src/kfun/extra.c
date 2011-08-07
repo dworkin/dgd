@@ -382,7 +382,7 @@ int kf_sscanf(frame *f, int nargs)
     Int i;
     xfloat flt;
     bool skip;
-    value *top;
+    value *top, *v;
 
     size = 0;
     x = NULL;
@@ -539,7 +539,9 @@ int kf_sscanf(frame *f, int nargs)
 		}
 		--nargs;
 		PUSH_STRVAL(f, str_new(s, (long) size));
+		v = f->sp;
 		i_store(f);
+		v->u.string->ref--;
 	    }
 	    s = x;
 	    break;

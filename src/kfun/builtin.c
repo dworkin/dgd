@@ -2349,6 +2349,7 @@ int kf_store_aggr(frame *f)
     for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
 	i_push_value(f, --v);
 	i_store(f);
+	i_del_value(v);
     }
     *--f->sp = val;
     ec_pop();

@@ -1401,7 +1401,6 @@ void i_store(frame *f)
 	    break;
 	}
     }
-    i_del_value(val);
 }
 
 /*
@@ -2138,8 +2137,8 @@ static void i_interpret0(frame *f, char *pc)
 
 	case II_STORE:
 	    i_store(f);
-	    f->sp[1] = f->sp[0];
-	    f->sp++;
+	    --f->sp;
+	    f->sp[0] = f->sp[-1];
 	    break;
 
 	case II_JUMP:
@@ -2264,7 +2263,7 @@ static void i_interpret0(frame *f, char *pc)
 	    i_set_rlimits(f, f->rlim->next);
 	    break;
 
-	case I_RETURN:
+	case II_RETURN:
 	    return;
 	}
 
