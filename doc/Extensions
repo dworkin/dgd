@@ -1,0 +1,7 @@
+DGD is capable of loading kfun extensions when it starts up:
+
+    dgd -e kfun_module config_file
+
+The kfun module must be an LPC extension, as specified in:
+
+    http://lpc-ext.sourceforge.net/

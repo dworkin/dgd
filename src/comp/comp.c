@@ -464,7 +464,7 @@ void pc_restore(int fd, int conv)
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
-void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
+bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
 }
 
