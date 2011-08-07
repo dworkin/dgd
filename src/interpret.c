@@ -627,7 +627,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	if (f->p_ctrl->flags & CTRL_OLDVM) {
+	if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
 	    (--f->sp)->type = T_ALVALUE;
 	    f->sp->oindex = vtype;
 	    f->sp->u.array = a;
