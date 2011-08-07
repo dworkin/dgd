@@ -1319,10 +1319,6 @@ void o_trim()
     baseplane.free = j;
 
     FREE(entries);
-
-#ifdef DEBUG
-    fprintf(stderr, "%i objects purged\n", npurge);
-#endif
 }
 
 /*
