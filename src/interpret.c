@@ -446,7 +446,7 @@ value *i_reverse(frame *f, int n)
 
 /*
  * NAME:	interpret->odest()
- * DESCRIPTION:	replace all occurrances of an object on the stack by nil
+ * DESCRIPTION:	replace all occurrences of an object on the stack by nil
  */
 void i_odest(frame *prev, object *obj)
 {
