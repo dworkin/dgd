@@ -1269,7 +1269,7 @@ static Uint opt_asgnexp(node **m, bool pop)
 
     if (n->type == N_SUM_EQ) {
 	d1++;
-	return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+	return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
     }
     if (n->type == N_ADD_EQ &&
 	(n->mod == T_STRING || (n->mod & T_REF) != 0) &&
@@ -1287,13 +1287,13 @@ static Uint opt_asgnexp(node **m, bool pop)
 	    }
 	    n->type = N_SUM_EQ;
 	    d1++;				/* add (-2) */
-	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
 
 	case N_AGGR:
 	    d2++;				/* add (-2) */
 	    n->type = N_SUM_EQ;
 	    d1++;				/* add (-2) */
-	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
 
 	case N_RANGE:
 	    d2 = max2(d2, 3);			/* at least 3 */
@@ -1301,11 +1301,11 @@ static Uint opt_asgnexp(node **m, bool pop)
 	case N_SUM:
 	    n->type = N_SUM_EQ;
 	    d1++;				/* add (-2) */
-	    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
+	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
 	}
     }
 
-    return max2(d1, ((d1 < 4) ? d1 : 4) + d2);
+    return max2(d1, ((d1 < 5) ? d1 : 5) + d2);
 }
 
 /*
