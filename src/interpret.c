@@ -28,6 +28,11 @@
 # include "csupport.h"
 # include "table.h"
 
+# ifdef DEBUG
+# undef EXTRA_STACK
+# define EXTRA_STACK  0
+# endif
+
 typedef struct _inhash_ {
     Uint ocount;		/* object count */
     uindex iindex;		/* inherit index */
