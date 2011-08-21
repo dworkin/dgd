@@ -292,7 +292,7 @@ void conf_dump()
     }
 
     P_lseek(fd, 0L, SEEK_SET);
-    P_write(fd, header, sizeof(dumpinfo));
+    (void) P_write(fd, header, sizeof(dumpinfo));
 }
 
 /*
@@ -1014,7 +1014,7 @@ static void cputs(char *str)
     while (bufsz + len > BUF_SIZE) {
 	chunk = BUF_SIZE - bufsz;
 	memcpy(obuf + bufsz, str, chunk);
-	P_write(fd, obuf, BUF_SIZE);
+	(void) P_write(fd, obuf, BUF_SIZE);
 	str += chunk;
 	len -= chunk;
 	bufsz = 0;

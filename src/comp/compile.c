@@ -2157,7 +2157,11 @@ node *c_address(node *func, node *args, int typechecked)
     func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
+    return (node *) NULL;
 # endif
 }
 
@@ -2183,7 +2187,11 @@ node *c_extend(node *func, node *args, int typechecked)
     return funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
 		   args, FALSE);
 # else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
+    return (node *) NULL;
 # endif
 }
 
@@ -2209,7 +2217,11 @@ node *c_call(node *func, node *args, int typechecked)
     return funcall(c_flookup(node_str(str_new("call.function", 13L)), FALSE),
 		   args, FALSE);
 # else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
+    return (node *) NULL;
 # endif
 }
 

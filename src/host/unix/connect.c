@@ -129,10 +129,10 @@ static void ipa_run(int in, int out)
 	    if (len >= MAXHOSTNAMELEN) {
 		len = MAXHOSTNAMELEN - 1;
 	    }
-	    write(out, name, len);
+	    (void) write(out, name, len);
 	    name[0] = '\0';
 	} else {
-	    write(out, "", 1);	/* failure */
+	    (void) write(out, "", 1);	/* failure */
 	}
     }
 
@@ -181,7 +181,7 @@ static bool ipa_init(int maxusers)
 	char buf[MAXHOSTNAMELEN];
 
 	/* discard ip name */
-	read(in, buf, MAXHOSTNAMELEN);
+	(void) read(in, buf, MAXHOSTNAMELEN);
     }
 
     ipahtab = ALLOC(ipaddr*, ipahtabsz = maxusers);
@@ -254,7 +254,7 @@ static ipaddr *ipa_new(in46addr *ipnum)
 		ipa->prev == (ipaddr *) NULL && ipa != qhead) {
 		if (!busy) {
 		    /* send query to name resolver */
-		    write(out, (char *) ipnum, sizeof(in46addr));
+		    (void) write(out, (char *) ipnum, sizeof(in46addr));
 		    lastreq = ipa;
 		    busy = TRUE;
 		} else {
@@ -328,7 +328,7 @@ static ipaddr *ipa_new(in46addr *ipnum)
 
     if (!busy) {
 	/* send query to name resolver */
-	write(out, (char *) ipnum, sizeof(in46addr));
+	(void) write(out, (char *) ipnum, sizeof(in46addr));
 	lastreq = ipa;
 	busy = TRUE;
     } else {
@@ -395,13 +395,13 @@ static void ipa_lookup()
 	char buf[MAXHOSTNAMELEN];
 
 	/* discard ip name */
-	read(in, buf, MAXHOSTNAMELEN);
+	(void) read(in, buf, MAXHOSTNAMELEN);
     }
 
     /* if request queue not empty, write new query */
     if (qhead != (ipaddr *) NULL) {
 	ipa = qhead;
-	write(out, (char *) &ipa->ipnum, sizeof(in46addr));
+	(void) write(out, (char *) &ipa->ipnum, sizeof(in46addr));
 	qhead = ipa->next;
 	if (qhead == (ipaddr *) NULL) {
 	    qtail = (ipaddr *) NULL;

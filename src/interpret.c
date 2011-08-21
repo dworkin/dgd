@@ -1353,6 +1353,8 @@ void i_store(frame *f)
 	type = (lval >> 24) & 0xf;
 	if (type == T_CLASS) {
 	    class = (val++)->u.number;
+	} else {
+	    class = 0;
 	}
 	if (type != 0) {
 	    i_cast(f, f->sp, type, class);

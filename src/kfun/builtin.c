@@ -2332,7 +2332,7 @@ char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
  */
 int kf_store_aggr(frame *f)
 {
-    int n, i;
+    int n;
     value *v;
     value val;
  

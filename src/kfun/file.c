@@ -124,7 +124,7 @@ static void put(savecontext *x, char *buf, unsigned int len)
     while (x->bufsz + len > BUF_SIZE) {
 	chunk = BUF_SIZE - x->bufsz;
 	memcpy(x->buffer + x->bufsz, buf, chunk);
-	P_write(x->fd, x->buffer, BUF_SIZE);
+	(void) P_write(x->fd, x->buffer, BUF_SIZE);
 	buf += chunk;
 	len -= chunk;
 	x->bufsz = 0;
