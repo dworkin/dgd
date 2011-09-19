@@ -539,7 +539,7 @@ static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
 	 * negative
 	 */
 	while (*text == '\xff') {
-	    *text++;
+	    text++;
 	    if (--len == 0) {
 		/* -1 */
 		num[0] = 1;
