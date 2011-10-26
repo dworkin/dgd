@@ -757,6 +757,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		    if (n == 1) {
 			/* sole branch */
 			sub->next = pn->next;
+			sub->trav = pn->trav;
 			*pn = *sub;
 			return pn->len;
 		    } else {
