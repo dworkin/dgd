@@ -3,6 +3,16 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-08-09/2011-11-01
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Correct some stack depth calculations for the new VM.
+  - Reenable unforgiving stack overflow checking in DEBUG mode.
+  - Fix various compilation warnings.
+  - Preserve traverse link when copying a parser node.
+  - Release 1.4.12.
+
 2011-08-07
 
   Felix Croes (felix@dworkin.nl)
