@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2011-11-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix typo in extension interface.
+
 2011-08-09/2011-11-01
 
   Felix Croes (felix@dworkin.nl)
