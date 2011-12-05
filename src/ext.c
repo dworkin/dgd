@@ -455,7 +455,7 @@ static void ext_object_mark(object *obj)
  */
 static void ext_object_unmark(object *obj)
 {
-    obj->flags &= O_SPECIAL;
+    obj->flags &= ~O_SPECIAL;
 }
 
 /*
