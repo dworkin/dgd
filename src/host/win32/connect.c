@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -49,9 +49,7 @@ typedef struct _ipaddr_ {
 
 static SOCKET in = INVALID_SOCKET;	/* connection from name resolver */
 static SOCKET out = INVALID_SOCKET;	/* connection to name resolver */
-#ifdef NETWORK_EXTENSIONS
 static int addrtype;                    /* network address family */
-#endif
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -503,9 +501,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	return FALSE;
     }
 
-#ifdef NETWORK_EXTENSIONS
     addrtype = PF_INET;
-#endif
 
     nusers = 0;
     FD_ZERO(&infds);
@@ -1517,6 +1513,140 @@ void conn_ipname(connection *conn, char *buf)
 	conn_ipnum(conn, buf);
     }
 }
+ 
+connection *conn_connect(char *addr, unsigned short port)
+{
+     connection * conn;
+     int sock;
+     int on;
+     unsigned long nonblock;
+
+     struct sockaddr_in sin;
+     in46addr inaddr;
+ 
+     if(flist == (connection *) NULL) {
+        return NULL;
+     }
+
+     sock=socket(addrtype, SOCK_STREAM, 0);
+     if (sock<0) {
+ 	P_message("socket");
+ 	return NULL;
+     }
+     on=1;
+     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on, 
+ 		   sizeof(on))<0) {
+ 	P_message("setsockopt");
+ 	return NULL;
+     }
+     on=1;
+     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
+ 		   sizeof(on))<0) {
+ 	P_message("setsockopt");
+ 	return NULL;
+     }
+     nonblock = TRUE;
+     if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
+	P_message("ioctlsocket");
+ 	closesocket(sock);
+ 	return NULL;
+     }
+
+     memset(&sin, '\0', sizeof(sin));
+     sin.sin_port = htons(port);
+     sin.sin_family = addrtype;
+     sin.sin_addr.s_addr = inet_addr(addr);
+     if (sin.sin_addr.s_addr == INADDR_NONE ||
+	     sin.sin_addr.s_addr == INADDR_ANY) {
+ 	P_message("inet_addr");
+ 	return NULL;
+     }
+     if (connect(sock, (struct sockaddr *) &sin, sizeof(sin)) == SOCKET_ERROR) {
+	int err;
+
+	err = WSAGetLastError();
+
+	if (err != WSAEWOULDBLOCK) {
+ 	    P_message("connect");
+ 	    return NULL;
+	}
+     }
+     
+     conn=flist;
+     flist=(connection *)conn->chain.next;
+     conn->fd=sock;
+     conn->chain.name = (char *) NULL;
+     conn->udpbuf=(char *) NULL;
+     inaddr.in.addr = sin.sin_addr;
+     inaddr.ipv6 = FALSE;
+     conn->addr = ipa_new(&inaddr);
+     conn->at=sin.sin_port;
+     FD_SET(sock, &infds);
+     FD_SET(sock, &outfds);
+     FD_CLR(sock, &readfds);
+     FD_SET(sock, &writefds);
+     return conn;
+}
+
+/*
+ * check for a connection in pending state and see if it is connected.
+ */
+int conn_check_connected(connection *conn, bool *refused)
+{
+     Uint t;
+     unsigned int mtime;
+     int retval;
+     int optval;
+     fd_set fdwrite;
+     socklen_t lon;
+     struct timeval timeout;
+
+     t = 0;
+     mtime = 0;
+
+     /*
+      * indicate that our fd became invalid.
+      */
+     if(conn->fd < 0) {
+       return -2;
+     }
+
+     FD_ZERO(&fdwrite);
+     FD_SET(conn->fd,&fdwrite);
+
+     timeout.tv_sec = t;
+     timeout.tv_usec = mtime * 1000L;
+
+     retval = select(conn->fd + 1, NULL, &fdwrite, NULL, &timeout);
+
+     /*
+      * Delayed connect completed, check for errors
+      */
+     if(retval > 0) {
+         lon = sizeof(int);
+         /*
+          * Get error state for the socket
+          */
+	 *refused = FALSE;
+         if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (void*)(&optval), &lon) < 0) {
+             return -1;
+         }
+         if (optval != 0) {
+	     if (optval == WSAECONNREFUSED || optval == ERROR_CONNECTION_REFUSED) {
+		*refused = TRUE;
+	     }
+             errno = optval;
+             return -1;
+         } else {
+             errno = 0;
+             return 1;
+         }
+     } else if(retval < 0) {
+         return -1;
+     }
+     return 0;
+}
+
 
 #ifdef NETWORK_EXTENSIONS
  /*
@@ -1676,81 +1806,6 @@ void conn_ipname(connection *conn, char *buf)
      return newconn;
  }
  
- 
- connection *conn_connect(char *addr, unsigned short port)
- {
-     connection * conn;
-     int sock;
-     int on;
-     unsigned long nonblock;
-
-     struct sockaddr_in sin;
-     in46addr inaddr;
- 
-     if(flist == (connection *) NULL) {
-        return NULL;
-     }
-
-     sock=socket(addrtype, SOCK_STREAM, 0);
-     if (sock<0) {
- 	P_message("socket");
- 	return NULL;
-     }
-     on=1;
-     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on, 
- 		   sizeof(on))<0) {
- 	P_message("setsockopt");
- 	return NULL;
-     }
-     on=1;
-     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
- 		   sizeof(on))<0) {
- 	P_message("setsockopt");
- 	return NULL;
-     }
-     nonblock = TRUE;
-     if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
-	P_message("ioctlsocket");
- 	closesocket(sock);
- 	return NULL;
-     }
-
-     memset(&sin, '\0', sizeof(sin));
-     sin.sin_port = htons(port);
-     sin.sin_family = addrtype;
-     sin.sin_addr.s_addr = inet_addr(addr);
-     if (sin.sin_addr.s_addr == INADDR_NONE ||
-	     sin.sin_addr.s_addr == INADDR_ANY) {
- 	P_message("inet_addr");
- 	return NULL;
-     }
-     if (connect(sock, (struct sockaddr *) &sin, sizeof(sin)) == SOCKET_ERROR) {
-	int err;
-
-	err = WSAGetLastError();
-
-	if (err != WSAEWOULDBLOCK) {
- 	    P_message("connect");
- 	    return NULL;
-	}
-     }
-     
-     conn=flist;
-     flist=(connection *)conn->chain.next;
-     conn->fd=sock;
-     conn->chain.name = (char *) NULL;
-     conn->udpbuf=(char *) NULL;
-     inaddr.in.addr = sin.sin_addr;
-     inaddr.ipv6 = FALSE;
-     conn->addr = ipa_new(&inaddr);
-     conn->at=sin.sin_port;
-     FD_SET(sock, &infds);
-     FD_SET(sock, &outfds);
-     FD_CLR(sock, &readfds);
-     FD_SET(sock, &writefds);
-     return conn;
- }
- 
  int conn_udpreceive(connection *conn, char *buffer, int size, char **host, 
 	 int *port)
  {
@@ -1772,61 +1827,4 @@ void conn_ipname(connection *conn, char *buf)
      }
      return -1;
  }
-
-
- /*
-  * check for a connection in pending state and see if it is connected.
-  */
- int conn_check_connected(connection *conn)
- {
-     Uint t;
-     unsigned int mtime;
-     int retval;
-     int optval;
-     fd_set fdwrite;
-     socklen_t lon;
-     struct timeval timeout;
-
-     t = 0;
-     mtime = 0;
-
-     /*
-      * indicate that our fd became invalid.
-      */
-     if(conn->fd < 0) {
-       return -2;
-     }
-
-     FD_ZERO(&fdwrite);
-     FD_SET(conn->fd,&fdwrite);
-
-     timeout.tv_sec = t;
-     timeout.tv_usec = mtime * 1000L;
-
-     retval = select(conn->fd + 1, NULL, &fdwrite, NULL, &timeout);
-
-     /*
-      * Delayed connect completed, check for errors
-      */
-     if(retval > 0) {
-         lon = sizeof(int);
-         /*
-          * Get error state for the socket
-          */
-         if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (void*)(&optval), &lon) < 0) {
-             return -1;
-         }
-         if (optval != 0) {
-             errno = optval;
-             return -1;
-         } else {
-             errno = 0;
-             return 1;
-         }
-     } else if(retval < 0) {
-         return -1;
-     }
-     return 0;
- }
-
  #endif

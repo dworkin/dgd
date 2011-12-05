@@ -1258,6 +1258,71 @@ int kf_dump_state(frame *f, int nargs)
 }
 # endif
 
+# ifdef FUNCDEF
+FUNCDEF("connect", kf_connect, pt_connect, 0)
+# else
+# ifdef NETWORK_EXTENSIONS
+char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
+		      T_VOID, T_STRING, T_INT, T_STRING };
+# else
+char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
+		      T_VOID, T_STRING, T_INT };
+# endif
+
+/*
+ * NAME:        kfun->connect
+ * DESCRIPTION: connect to a server
+ */
+int kf_connect(frame *f, int nargs)
+{
+    char *addr, proto, *protoname;
+    unsigned short port;
+    object *obj;
+
+    proto = 0;
+
+    if (f->lwobj != (array *) NULL) {
+	error("connect() in non-persistent object");
+    }
+    obj = OBJW(f->oindex);
+
+    if (obj->count == 0) {
+	error("connect() in destructed object");
+    }
+
+    if (obj->flags & O_SPECIAL) {
+	error("connect() in special purpose object");
+    }
+
+    if (f->level != 0) {
+	error("connect() within atomic function");
+    }
+
+    if (nargs == 3) {
+	protoname = f->sp->u.string->text;
+	if (!strcmp(protoname, "tcp")) {
+	    proto = P_TCP;
+	} else if (!strcmp(protoname, "telnet")) {
+	    proto = P_TELNET;
+	}
+	else
+	    return 3;
+	str_del((f->sp++)->u.string);
+    }
+
+    port = (f->sp++)->u.number;
+    if (port < 1) /* || port > 65535) */ {
+	error("Port number out of range");
+    }
+    addr = f->sp->u.string->text;
+
+    comm_connect(f, obj, addr, proto, port);
+    str_del(f->sp->u.string);
+    *f->sp = nil_value;
+    return 0;
+}
+# endif
+
 # ifdef NETWORK_EXTENSIONS
 # ifdef FUNCDEF
 FUNCDEF("open_port", kf_open_port, pt_open_port, 0)
@@ -1320,66 +1385,6 @@ int kf_open_port(frame *f, int nargs)
     str_del(f->sp->u.string);
     *f->sp = nil_value;
     comm_openport(f, obj, protocol, port);
-    return 0;
-}
-# endif
-
-# ifdef FUNCDEF
-FUNCDEF("connect", kf_connect, pt_connect, 0)
-# else
-char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 1, 0, 9,
-		      T_VOID, T_STRING, T_INT, T_STRING };
-
-/*
- * NAME:        kfun->connect
- * DESCRIPTION: connect to a server
- */
-int kf_connect(frame *f, int nargs)
-{
-    char *addr, proto, *protoname;
-    unsigned short port;
-    object *obj;
-
-    proto = 0;
-
-    if (f->lwobj != (array *) NULL) {
-	error("connect() in non-persistent object");
-    }
-    obj = OBJW(f->oindex);
-
-    if (obj->count == 0) {
-	error("connect() in destructed object");
-    }
-
-    if (obj->flags & O_SPECIAL) {
-	error("connect() in special purpose object");
-    }
-
-    if (f->level != 0) {
-	error("connect() within atomic function");
-    }
-
-    if (nargs == 3) {
-	protoname = f->sp->u.string->text;
-	if (!strcmp(protoname, "tcp")) {
-	    proto = P_TCP;
-	} else if (!strcmp(protoname, "telnet")) {
-	    proto = P_TELNET;
-	}
-	else
-	    return 3;
-	str_del((f->sp++)->u.string);
-    }
-
-    port = (f->sp++)->u.number;
-    if (port < 1) /* || port > 65535) */ {
-	error("Port number out of range");
-    }
-    addr = f->sp->u.string->text;
-
-    comm_connect(f, obj, addr, proto, port);
-    str_del(f->sp->u.string);
-    *f->sp = nil_value;
     return 0;
 }
 # endif

@@ -41,11 +41,7 @@ typedef struct _user_ {
     struct _user_ *prev;	/* preceding user */
     struct _user_ *next;	/* next user */
     struct _user_ *flush;	/* next in flush list */
-#ifdef NETWORK_EXTENSIONS
     short flags;		/* connection flags */
-#else
-    char flags;			/* connection flags */
-#endif
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
@@ -76,8 +72,8 @@ extern connection *conn_accept(connection *conn);
 #ifdef NETWORK_EXTENSIONS
 # define CF_PORT	0x0100	/* port (listening) connection */
 # define CF_DATAGRAM	0x0200	/* independent UDP socket */
-# define CF_OPENDING	0x0400	/* waiting for connect() to complete */
 #endif
+# define CF_OPENDING	0x0400	/* waiting for connect() to complete */
 
 /* state */
 # define TS_DATA	0
@@ -102,9 +98,7 @@ static int nports;		/* # of ports */
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
-#ifdef NETWORK_EXTENSIONS
 static short opending;		/* # of users with connect() pending */
-#endif
 static uindex this_user;	/* current user */
 static int ntport, nbport;	/* # telnet/binary ports */
 static int nexttport;		/* next telnet port to check */
@@ -156,8 +150,8 @@ bool comm_init(int n, char **thosts, char **bhosts,
     nusers = odone = newlines = 0;
 #ifdef NETWORK_EXTENSIONS
     nports = 0;
-    opending = 0;
 #endif
+    opending = 0;
     this_user = OBJ_NONE;
 
     sprintf(ayt, "\15\12[%s]\15\12", VERSION);
@@ -373,7 +367,6 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
     return usr;
 }
 
-#ifdef NETWORK_EXTENSIONS
 void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
@@ -394,6 +387,7 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
     usr->flags |= CF_OPENDING;
 }
 
+#ifdef NETWORK_EXTENSIONS
 int comm_senddatagram(object *obj, string *str, string *ip, int port)
 {
     user *usr;
@@ -449,12 +443,10 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
     /* make sure opending gets decreased if we were still waiting for
      * connection esteblishment when receiving a close event.
      */
-#ifdef NETWORK_EXTENSIONS
     if (usr->flags & CF_OPENDING) {
         opending--;
         usr->flags &= ~CF_OPENDING;
     }
-#endif
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
 	this_user = olduser;
@@ -1005,20 +997,14 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 
     if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
-#ifdef NETWORK_EXTENSIONS
     } else if (opending != 0) {
 	timeout = 0;
 	if (mtime > 250) {
 	    mtime = 250;
 	}
-#endif
     }
     n = conn_select(timeout, mtime);
-#ifdef NETWORK_EXTENSIONS
     if ((n <= 0) && (newlines == 0) && (odone == 0) && (opending == 0)) {
-#else
-    if (n <= 0 && newlines == 0 && odone == 0) {
-#endif
 	/*
 	 * call_out to do, or timeout
 	 */
@@ -1089,14 +1075,14 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	obj = OBJ(usr->oindex);
 
 
-#ifdef NETWORK_EXTENSIONS
 	/*
 	 * Check if we have an event pending from connect() and if so, handle it.
 	 */
 	if (usr->flags & CF_OPENDING) {
 	    int retval;
 	    uindex old_user;
-	    retval = conn_check_connected(usr->conn);
+	    bool refused;
+	    retval = conn_check_connected(usr->conn, &refused);
 	    /*
 	     * Something happened to the connection..
 	     * its either connected or in error state now.
@@ -1104,12 +1090,17 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	    if (retval != 0) {
 		opending--;
 		usr->flags &= ~CF_OPENDING;
+		if (!(usr->flags & CF_FLUSH)) {
+		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		}
+		obj->flags &= ~O_USER;
 		old_user = this_user;
 		this_user = obj->index;
 		/*
 		 * Error, report it to the user object.
 		 */
 		if (retval < 0) {
+#ifdef NETWORK_EXTENSIONS
 		    if (retval == -1) {
 			PUSH_STRVAL(f, str_new(strerror(errno), strlen(strerror(errno))));
 		    } else {
@@ -1119,6 +1110,12 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    if (i_call(f, obj, (array *) NULL, "receive_error", 13, TRUE, 1)) {
 			i_del_value(f->sp++);
 		    }
+#else
+		    PUSH_INTVAL(f, refused);
+		    if (i_call(f, obj, (array *) NULL, "unconnected", 11, TRUE, 1)) {
+			i_del_value(f->sp++);
+		    }
+#endif
 		    endthread();
 		/*
 		 * Connection completed, call open in the user object.
@@ -1137,7 +1134,6 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	     */
 	    continue;
 	}
-#endif
 	if (usr->flags & CF_OUTPUT) {
 	    dataspace *data;
 

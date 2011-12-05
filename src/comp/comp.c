@@ -734,17 +734,17 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
 {
 }
 
-void
-comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
-	unsigned short port)
-{
-}
-
 int comm_senddatagram(object *obj, string *str, string *ip, int port)
 {
     return 0;
 }
 #endif
+
+void
+comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
+	unsigned short port)
+{
+}
 
 /*
  * NAME:	ed->init()

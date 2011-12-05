@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,11 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef NETWORK_EXTENSIONS
 # define  P_TCP      6
 # define  P_UDP      17
 # define  P_TELNET   1
-#endif
 
 typedef struct _connection_ connection;
 
@@ -71,19 +69,19 @@ extern string  *comm_ip_number	(object*);
 extern string  *comm_ip_name	(object*);
 extern void	comm_close	(frame*, object*);
 extern object  *comm_user	(void);
-#ifdef NETWORK_EXTENSIONS
-extern void	comm_openport	(frame *f, object *obj, unsigned char protocol, 
-				   unsigned short portnr);
 extern void	comm_connect	(frame *f, object *obj, char *addr, 
 				   unsigned char protocol, unsigned short port);
 extern connection *conn_connect (char *addr, unsigned short port);
+extern int 	conn_check_connected (connection *conn, bool*);
+#ifdef NETWORK_EXTENSIONS
+extern void	comm_openport	(frame *f, object *obj, unsigned char protocol, 
+				   unsigned short portnr);
 extern int 	comm_senddatagram (object *obj, string *str, string *ip, int port);
 extern connection * conn_openlisten (unsigned char protocol, unsigned short port);
 extern int 	conn_at		(connection *conn);
 extern int 	conn_checkaddr	(char *ip);
 extern int 	conn_udpsend	(connection *conn, char *buf, unsigned int len, 
 				   char *addr, unsigned short port);
-extern int 	conn_check_connected (connection *conn);
 extern int 	conn_udpreceive (connection *conn, char *buffer, int size, char **host, 
 	 			   int *port);
 extern bool     comm_is_connection (object*);

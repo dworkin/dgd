@@ -1,0 +1,25 @@
+NAME
+	connect - initiate a tcp connection
+
+SYNOPSIS
+	void connect(string ipnumber, int port)
+
+
+DESCRIPTION
+	Initiate a telnet or tcp connection to the specified host and port,
+	and associate the connection with this object when it is established.
+
+	When the connection succeeds, open() will be called in obj.  If it
+	fails or times out, unconnected() will be called in obj.  After the
+	connection is established, obj will be a normal user object.
+
+ERRORS
+	An error will result if the object was already has a connection,
+	port, or editor associated with it.
+	If the number of existing port and connection objects is equal
+	to the value of status()[ST_UTABSIZE], calling connect() results
+	in an error.
+
+SEE ALSO
+	kfun/open_port, kfun/send_message, kfun/send_datagram,
+	kfun/close_user
