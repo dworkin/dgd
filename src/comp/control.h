@@ -57,4 +57,4 @@ extern array		*ctrl_undefined	(dataspace*, control*);
 # define KFCALL			0
 # define KFCALL_LVAL		1
 # define DFCALL			2
-# define FCALL			3
+# define FCALL			4
