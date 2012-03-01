@@ -240,24 +240,39 @@ A <I>Declaration</I> can be a
 <I><A HREF="#fuction declaration">function declaration</A></I>.
 
  <H3> <A NAME="variable declaration"> 3.4.1. Variable declaration </A> </H3>
-A variable declaration has the following form: TYPE Identifier;<BR>
+A variable declaration has the following form:
+<I><A HREF="#types">TYPE</A></I> Identifier;<BR>
 If you have multiple variables of the same time, you can seperate them by a
 coma to keep them on the same line:  TYPE Identifier1, Identifier2;
 <BR>
 Examples:
 <PRE>
 	int x;
-	mixed *bing;
+	mixed bing;
 	float a, b;
 </PRE>
- <H3> <A NAME="array declaration"> 3.4.2. Array declaration </A> </H3>
 
- <H3> <A NAME="function declaration"> 3.4.3. Function declaration </A> </H3>
+ <H3> <A NAME="types"> 3.4.2. Types</A> </H3>
+
+The following types are supported:
+<PRE>
+	nil, int, float, string, object, mapping, mixed, lwobject, void
+</PRE>
+
+ <H3> <A NAME="array declaration"> 3.4.3. Array declaration </A> </H3>
+
+Examples:
+<PRE>
+	int x[5];
+	string *strings;
+</PRE>
+
+ <H3> <A NAME="function declaration"> 3.4.4. Function declaration </A> </H3>
 A function declaration can be a 
 <I><A HREF="#function prototype">function prototype</A></I>, or a 
 <I><A HREF="#function definition">function definition</A></I>.
   
- <H3> <A NAME="function prototype"> 3.4.3.1. Function prototype </A> </H3>
+ <H3> <A NAME="function prototype"> 3.4.4.1. Function prototype </A> </H3>
 A prototype is used to reserve a name for a function, and specify the
 number of parameters you need to give it as well as define what the function
 will return, without defining the actual function.  It allows the driver
@@ -267,7 +282,7 @@ that looks like this later".
 
 A function prototype has the form: TYPE Identifier(PARAMS);
 
- <H3> <A NAME="function definition"> 3.4.3.2. Function definition </A> </H3>
+ <H3> <A NAME="function definition"> 3.4.4.2. Function definition </A> </H3>
 
 A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 
