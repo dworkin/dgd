@@ -219,10 +219,15 @@ The following are operators:
 
 
  <H3> <A NAME="punctuators"> 3.1.7. Punctuators </A> </H3>
-The following are punctuators: 
+Punctuators are like a '.' in a sentance, there are a variety of punctuators
+but they are only used in key places.  For example when your defining a 
+variable, you might type: <B>int x, y;</B>.  The ';' is a punctuator that 
+says this is the end of this statement.  The ',' says I have another int
+that I want to define.  The following are some of the punctuators you will see: 
 <PRE>
 	, ; :
 </PRE>
+We'll introduce them as we need them, because they need context to make sense.
 
  <H3> 3.2. Expressions </H3>
 
@@ -230,7 +235,8 @@ The following are punctuators:
 
  <H3> 3.4. Declarations </H3>
 A <I>Declaration</I> can be a 
-<I><A HREF="#varaible declaration">variable declaration</A></I>, or a 
+<I><A HREF="#varaible declaration">variable declaration</A></I>,  
+<I><A HREF="#array declaration">array declaration</A></I>,  
 <I><A HREF="#fuction declaration">function declaration</A></I>.
 
  <H3> <A NAME="variable declaration"> 3.4.1. Variable declaration </A> </H3>
@@ -244,13 +250,14 @@ Examples:
 	mixed *bing;
 	float a, b;
 </PRE>
+ <H3> <A NAME="array declaration"> 3.4.2. Array declaration </A> </H3>
 
- <H3> <A NAME="function declaration"> 3.4.2. Function declaration </A> </H3>
+ <H3> <A NAME="function declaration"> 3.4.3. Function declaration </A> </H3>
 A function declaration can be a 
 <I><A HREF="#function prototype">function prototype</A></I>, or a 
 <I><A HREF="#function definition">function definition</A></I>.
   
- <H3> <A NAME="function prototype"> 3.4.2.1 Function prototype </A> </H3>
+ <H3> <A NAME="function prototype"> 3.4.3.1. Function prototype </A> </H3>
 A prototype is used to reserve a name for a function, and specify the
 number of parameters you need to give it as well as define what the function
 will return, without defining the actual function.  It allows the driver
@@ -260,7 +267,7 @@ that looks like this later".
 
 A function prototype has the form: TYPE Identifier(PARAMS);
 
- <H3> <A NAME="function definition"> 3.4.2.2 Function definition </A> </H3>
+ <H3> <A NAME="function definition"> 3.4.3.2. Function definition </A> </H3>
 
 A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 
