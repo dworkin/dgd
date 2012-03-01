@@ -70,11 +70,16 @@ formfeeds and comments.
  <H3> 3.1.2. Comments </H3>
 
 A comment is a sequence of characters starting with the characters <TT>/*</TT>
-and terminated by the characters <TT>*/</TT>.  All characters in between are
+and terminated by the characters <TT>*/</TT>, or a sequence of characters that 
+starts with // and terminated by a new line.  All characters in between are
 part of the comment.  Comments count as whitespace separating tokens, and
 may not be nested.  The sequence <TT>/*</TT> does not start a comment if it
 is part of a string.
-
+<PRE>
+Examples: // This is a comment
+	  /* This is another 
+                     comment */
+</PRE>
 
  <H3> <A NAME="identifiers"> 3.1.3. Identifiers </A> </H3>
 
@@ -214,12 +219,50 @@ The following are operators:
 
 
  <H3> <A NAME="punctuators"> 3.1.7. Punctuators </A> </H3>
+The following are punctuators: 
+<PRE>
+	, ; :
+</PRE>
 
  <H3> 3.2. Expressions </H3>
 
  <H3> 3.3. Constant expressions </H3>
 
  <H3> 3.4. Declarations </H3>
+A <I>Declaration</I> can be a 
+<I><A HREF="#varaible declaration">variable declaration</A></I>, or a 
+<I><A HREF="#fuction declaration">function declaration</A></I>.
+
+ <H3> <A NAME="variable declaration"> 3.4.1. Variable declaration </A> </H3>
+A variable declaration has the following form: TYPE Identifier;<BR>
+If you have multiple variables of the same time, you can seperate them by a
+coma to keep them on the same line:  TYPE Identifier1, Identifier2;
+<BR>
+Examples:
+<PRE>
+	int x;
+	mixed *bing;
+	float a, b;
+</PRE>
+
+ <H3> <A NAME="function declaration"> 3.4.2. Function declaration </A> </H3>
+A function declaration can be a 
+<I><A HREF="#function prototype">function prototype</A></I>, or a 
+<I><A HREF="#function definition">function definition</A></I>.
+  
+ <H3> <A NAME="function prototype"> 3.4.2.1 Function prototype </A> </H3>
+A prototype is used to reserve a name for a function, and specify the
+number of parameters you need to give it as well as define what the function
+will return, without defining the actual function.  It allows the driver
+to put the function in the symbol table even though it does not know what the 
+function is yet.  It is basically saying "hey I'm going to make a function 
+that looks like this later".
+
+A function prototype has the form: TYPE Identifier(PARAMS);
+
+ <H3> <A NAME="function definition"> 3.4.2.2 Function definition </A> </H3>
+
+A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 
  <H3> 3.5. Statements </H3>
 
