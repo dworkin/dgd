@@ -290,6 +290,36 @@ A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 
  <H3> 3.6. Inheritance </H3>
 
+Inheritance is one of the key building blocks of lpc.  The mudlib defines
+some standard objects.  For example, maybe your mudlib has: 
+/std/object.c, /std/room.c or /std/monster.c.
+You can use these building blocks by inheriting them.<BR>
+Example:
+<PRE>
+	inherit "/std/room.c";
+	void create( void ) {
+		::create();
+		set_short("The void");
+		set_long("A vast nothingness.");
+	}
+</PRE>
+
+Because we have inherited our standard room, we get all of the code
+in our room file for free.  Because our room code has a function for
+set_long, we do not need to define set_long, we can just call it.
+This makes programming in lpc much more readable and maintainable.
+If we want to we can override our set_long function by defining a new
+function with the same name.  In the above example, we have wrote
+over the create function.  With a new function that sets a short and
+long description for our room.  the :: operator is used to call a function
+that is defined at a higher level.  So ::create(); says first call
+the create function that was defined before this create function.
+So its important to call ::create(); so that we do not have to
+duplicate all of the code in /std/room.c's create function.
+We can just call ::create(); and then after that make any additional
+modifications we want to make.  If we don't care about the previously
+defined create function we can remove the ::create(); call.
+
  <H3> 3.7. Preprocessing directives </H3>
 
 </BODY>
