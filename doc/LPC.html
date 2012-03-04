@@ -322,5 +322,58 @@ defined create function we can remove the ::create(); call.
 
  <H3> 3.7. Preprocessing directives </H3>
 
+Preprocessor commands start with a #, these commands, get run before compile
+time.  They are used to optionally compile bits of code and or to instruct
+the compiler how to do something.  Many times they are used to make things
+more portable.  The following preprocessor directives are recoginized: 
+<I><A HREF="#predefine">define</A></I>,
+<I><A HREF="#preundef">undef</A></I>,
+<I><A HREF="#preinclude">include</A></I>,
+<I><A HREF="#preif">if</A></I>,
+<I><A HREF="#preendif">endif</A></I>,
+<I><A HREF="#preelse">else</A></I>,
+<I><A HREF="#preelif">elif</A></I>,
+<I><A HREF="#preifdef">ifdef</A></I>,
+<I><A HREF="#preifndef">ifndef</A></I>,
+<I><A HREF="#prepragma">pragma</A></I>,
+<I><A HREF="#preline">line</A></I>,
+<I><A HREF="#preerror">error</A></I>
+
+ <H3> <A NAME="predefine"> 3.7.1. #define</A></H3>
+
+
+ <H3> <A NAME="preundef"> 3.7.2. #undef</A></H3>
+
+
+ <H3> <A NAME="preinclude"> 3.7.3. #include</A></H3>
+
+
+ <H3> <A NAME="preif"> 3.7.4. #if</A></H3>
+
+
+ <H3> <A NAME="preendif"> 3.7.5. #endif</A></H3>
+
+
+ <H3> <A NAME="preelse"> 3.7.6. #else</A></H3>
+
+
+ <H3> <A NAME="preelif"> 3.7.7. #elif</A></H3>
+
+
+ <H3> <A NAME="preifdef"> 3.7.8. #ifdef</A></H3>
+
+
+ <H3> <A NAME="preifndef"> 3.7.9. #ifndef</A></H3>
+
+
+ <H3> <A NAME="prepragma"> 3.7.10. #pragma</A></H3>
+
+
+ <H3> <A NAME="preline"> 3.7.11. #line</A></H3>
+
+
+ <H3> <A NAME="preerror"> 3.7.12. #error</A></H3>
+
+
 </BODY>
 </HTML>
