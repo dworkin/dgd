@@ -417,6 +417,17 @@ it and or maybe send a warning.
 
  <H3> <A NAME="preline"> 3.7.11. #line</A></H3>
 
+Used to override the driver's automatic detection of line# and or filename.
+Currenlty the code says line# is always ignored.  I think this is suppose
+to be used to get around bugs, you probably want to avoid this unless
+you find a situation where you really need it.
+
+<PRE>
+Examples:
+#line 22 "myfile.c"
+#line "myfile.c"
+#line 22
+</PRE>
 
  <H3> <A NAME="preerror"> 3.7.12. #error</A></H3>
 
