@@ -341,12 +341,49 @@ more portable.  The following preprocessor directives are recoginized:
 
  <H3> <A NAME="predefine"> 3.7.1. #define</A></H3>
 
+You use #define lots of times in a header file (filename.h)
+to make it easy to change certain values.  The syntax for
+a define looks like this: 
+<PRE>
+#define Identifier VALUE
+#define Identifier
+</PRE>
+If VALUE is omitted, it sets the define to 1
+<PRE>
+Examples:
+#define MAX_STR 255
+#define DICTIONARY_SIZE 2000
+#define DEFAULT_PORT 4000
+#define DEBUGGING_ON
+</PRE>
 
  <H3> <A NAME="preundef"> 3.7.2. #undef</A></H3>
+
+You use #undef to undefine a previously defined item.  The syntax
+for undef is:
+<PRE>
+#undef Identifier
+Examples:
+#undef MAX_STR
+#undef DEFAULT_PORT
+</PRE>
 
 
  <H3> <A NAME="preinclude"> 3.7.3. #include</A></H3>
 
+You use #include to include a header in a file.  A header file in general
+usually has special definitions and function prototypes.  For example if you
+were writing a NETWORK header, you might have a definition for a 
+default network port, and function propotypes for connect, disconect etc..
+Header files are kind of like an API for the software you write.
+They make it simple to change important settings and explain how you use
+a library.  In general they should not include code in the header file.
+The syntaxt for an include looks like this:
+<PRE>
+#include "filename";
+Example:
+#include "/std/include/room.h";
+</PRE>
 
  <H3> <A NAME="preif"> 3.7.4. #if</A></H3>
 
@@ -368,6 +405,15 @@ more portable.  The following preprocessor directives are recoginized:
 
  <H3> <A NAME="prepragma"> 3.7.10. #pragma</A></H3>
 
+You use #pragma to pass a flag to the driver.  In general
+This is used for platform specific code. DGD currently ignore's
+#pragma statements.  The syntax for Pragma is:
+<PRE>
+#pragma STRING
+</PRE>
+Note: the STRING is deterimined by the DRIVER its not something you can
+just make up.  If the DRIVER does not recoginize a STRING it will just ignore
+it and or maybe send a warning.
 
  <H3> <A NAME="preline"> 3.7.11. #line</A></H3>
 
