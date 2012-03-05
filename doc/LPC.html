@@ -1,14 +1,13 @@
 NOTE:
 
-This file is still so incomplete as to be useless.  There is no
-reference documentation for LPC as yet.  Sorry.
-
+This file is a work in progress, so when in doubt look at the source code.
+It should give you the general idea, but it still needs a lot of love.
 
 <HTML>
 
 <HEAD>
  <TITLE>
- The LPC Reference Manual
+ The (DGD)LPC Reference Manual
  </TITLE>
 
 </HEAD>
@@ -207,7 +206,6 @@ constants</A></I>.
  <H3> <A NAME="operators"> 3.1.6. Operators </A> </H3>
 
 The following are operators:
-
  <PRE>
 	[   ]   (   )   -&gt;
 	++  --  +   -   ~   !   ... catch
@@ -216,7 +214,6 @@ The following are operators:
 	=   *=  /=  %=  +=  -=  &lt;&lt;= &gt;&gt;= &amp;=  ^=  |=
 	,
  </PRE>
-
 
  <H3> <A NAME="punctuators"> 3.1.7. Punctuators </A> </H3>
 Punctuators are like a '.' in a sentence, there are a variety of punctuators
@@ -368,7 +365,6 @@ Examples:
 #undef DEFAULT_PORT
 </PRE>
 
-
  <H3> <A NAME="preinclude"> 3.7.3. #include</A></H3>
 
 You use #include to include a header in a file.  A header file in general
@@ -430,7 +426,13 @@ Examples:
 </PRE>
 
  <H3> <A NAME="preerror"> 3.7.12. #error</A></H3>
-
+Call an error message, This is usually based on some condition that is
+external to the #error command, example:
+<PRE>
+#ifdef APSTUDIO_INVOKED
+        #error this file is not editable by Microsoft Visual C++
+#endif 
+</PRE>
 
 </BODY>
 </HTML>
