@@ -74,10 +74,11 @@ starts with // and terminated by a new line.  All characters in between are
 part of the comment.  Comments count as whitespace separating tokens, and
 may not be nested.  The sequence <TT>/*</TT> does not start a comment if it
 is part of a string.
+Examples:
 <PRE>
-Examples: // This is a comment
-	  /* This is another 
-                     comment */
+	// This is a comment
+	/* This is another 
+		comment */
 </PRE>
 
  <H3> <A NAME="identifiers"> 3.1.3. Identifiers </A> </H3>
@@ -348,7 +349,9 @@ a library.  In general they should not include code in the header file.
 The syntaxt for an include looks like this:
 <PRE>
 #include "filename";
+</PRE>
 Example:
+<PRE>
 #include "/std/include/room.h";
 </PRE>
 
@@ -361,9 +364,9 @@ a define looks like this:
 #define Identifier VALUE
 #define Identifier
 </PRE>
-If VALUE is omitted, it sets the define to 1
-<PRE>
+If VALUE is omitted, it sets the define to 1<BR>
 Examples:
+<PRE>
 #define MAX_STR 255
 #define DICTIONARY_SIZE 2000
 #define DEFAULT_PORT 4000
@@ -376,7 +379,9 @@ You use #undef to undefine a previously defined item.  The syntax
 for undef is:
 <PRE>
 #undef Identifier
+</PRE>
 Examples:
+<PRE>
 #undef MAX_STR
 #undef DEFAULT_PORT
 </PRE>
@@ -398,7 +403,12 @@ Then it will evaluate the code until it hits a #endif  If there is no
 #endif the driver will throw an error.  Note: #endif is used in multiple
 places to designate then end of a block of code, its sometimes hard to keep
 track of it all so its good to add a comment saying this #endif goes with
-the Identifer you specify.
+the Identifer you specify.  Note, ifdef does not actually check the
+value of your Identifer, it just checks to see if it is defined.
+Something can be defined as 0 for example and ifdef will still say
+yes its defined.  If you want to check the value of something that is
+defined, you will want to use a more complicated #if statement, which
+you can find more info on later in the document.
 
 Example:
 <PRE>
@@ -408,8 +418,9 @@ Example:
 </PRE>
 
  <H3> <A NAME="preifndef"> 3.7.5. #ifndef</A></H3>
-Ifndef works the same way as ifdef but it only gets called if the string
+Ifndef works the same way as ifdef but it only gets called if the Identifier
 you specify is not defined.
+
 Example:
 <PRE>
 #ifndef DEBUG
@@ -418,6 +429,25 @@ Example:
 </PRE>
 
  <H3> <A NAME="preif"> 3.7.6. #if, #else, #elif</A></H3>
+An if statement is used for more complicated tests, you can test
+the value of a defined item, or for variations etc...  It works
+similar to the if conditional statement but at the preprocessor level.
+Examples:
+<PRE>
+#if defined(DEBUG) || defined(VERBOSE)
+	write("Welcome to VERBOSE MODE!\n");
+#endif
+
+#if DEBUG == 3
+	write("Were in really verbose MODE.\n");
+#elif DEBUG == 2
+	write("Were in verbose MODE.\n");
+#elif DEBUG == 1
+	write("were in semi verbose MODE.\n");
+#else
+	write("Were in quiet MODE.\n");
+#endif
+</PRE>
 
  <H3> <A NAME="prepragma"> 3.7.7. #pragma</A></H3>
 
@@ -436,7 +466,13 @@ it and or maybe send a warning.
 Used to override the driver's automatic detection of line# and or filename.
 Currenlty the code says line# is always ignored.  I think this is suppose
 to be used to get around bugs, you probably want to avoid this unless
-you find a situation where you really need it.
+you find a situation where you really need it.  If your familiar with
+FLEX, BISON and or YACC, you know that sometimes your code is generated
+on the fly and you could use #line to tell people the real file and
+position in the file they are interested in looking at for debugging purposes, 
+instead of the generated code which only exists for a short time.  
+(If you don't know what I'm explaining, you probably do not need to 
+worry about it.)
 
 <PRE>
 Examples:
