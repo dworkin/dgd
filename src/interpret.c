@@ -1253,7 +1253,6 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 	str = str_new(aval->u.string->text, aval->u.string->len);
 	str->text[str_index(str, ival->u.number)] = val->u.number;
 	PUT_STRVAL(var, str);
-	str_del(aval->u.string);
 	return TRUE;
 
     case T_ARRAY:
