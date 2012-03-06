@@ -323,20 +323,36 @@ Preprocessor commands start with a #, these commands, get run before compile
 time.  They are used to optionally compile bits of code and or to instruct
 the compiler how to do something.  Many times they are used to make things
 more portable.  The following preprocessor directives are recoginized: 
+<I><A HREF="#preinclude">include</A></I>,
 <I><A HREF="#predefine">define</A></I>,
 <I><A HREF="#preundef">undef</A></I>,
-<I><A HREF="#preinclude">include</A></I>,
-<I><A HREF="#preif">if</A></I>,
-<I><A HREF="#preendif">endif</A></I>,
-<I><A HREF="#preelse">else</A></I>,
-<I><A HREF="#preelif">elif</A></I>,
 <I><A HREF="#preifdef">ifdef</A></I>,
 <I><A HREF="#preifndef">ifndef</A></I>,
+<I><A HREF="#preif">if</A></I>,
+<I><A HREF="#preifdef">endif</A></I>,
+<I><A HREF="#pre">else</A></I>,
+<I><A HREF="#pre">elif</A></I>,
 <I><A HREF="#prepragma">pragma</A></I>,
 <I><A HREF="#preline">line</A></I>,
 <I><A HREF="#preerror">error</A></I>
 
- <H3> <A NAME="predefine"> 3.7.1. #define</A></H3>
+ <H3> <A NAME="preinclude"> 3.7.1. #include</A></H3>
+
+You use #include to include a header in a file.  A header file in general
+usually has special definitions and function prototypes.  For example if you
+were writing a NETWORK header, you might have a definition for a 
+default network port, and function propotypes for connect, disconect etc..
+Header files are kind of like an API for the software you write.
+They make it simple to change important settings and explain how you use
+a library.  In general they should not include code in the header file.
+The syntaxt for an include looks like this:
+<PRE>
+#include "filename";
+Example:
+#include "/std/include/room.h";
+</PRE>
+
+ <H3> <A NAME="predefine"> 3.7.2. #define</A></H3>
 
 You use #define lots of times in a header file (filename.h)
 to make it easy to change certain values.  The syntax for
@@ -354,7 +370,7 @@ Examples:
 #define DEBUGGING_ON
 </PRE>
 
- <H3> <A NAME="preundef"> 3.7.2. #undef</A></H3>
+ <H3> <A NAME="preundef"> 3.7.3. #undef</A></H3>
 
 You use #undef to undefine a previously defined item.  The syntax
 for undef is:
@@ -365,41 +381,45 @@ Examples:
 #undef DEFAULT_PORT
 </PRE>
 
- <H3> <A NAME="preinclude"> 3.7.3. #include</A></H3>
+ <H3> <A NAME="preifdef"> 3.7.4. #ifdef, #endif</A></H3>
 
-You use #include to include a header in a file.  A header file in general
-usually has special definitions and function prototypes.  For example if you
-were writing a NETWORK header, you might have a definition for a 
-default network port, and function propotypes for connect, disconect etc..
-Header files are kind of like an API for the software you write.
-They make it simple to change important settings and explain how you use
-a library.  In general they should not include code in the header file.
-The syntaxt for an include looks like this:
+Ifdef is used to instruct the driver to optionally evaluate some code.
+While we are explaining ifdef we also need to introduce #endif since it
+is needed to complete an ifdef statement.
+#ifdef has the following syntax:
 <PRE>
-#include "filename";
+#ifdef Identifer
+(insert your code here)
+#endif
+</PRE>
+So if whatever Identifer you have specified is defined to some value 
+(with an #define, or it can also be passed to the driver at runtime)
+Then it will evaluate the code until it hits a #endif  If there is no
+#endif the driver will throw an error.  Note: #endif is used in multiple
+places to designate then end of a block of code, its sometimes hard to keep
+track of it all so its good to add a comment saying this #endif goes with
+the Identifer you specify.
+
 Example:
-#include "/std/include/room.h";
+<PRE>
+#ifdef DEBUG
+	write("Were in debugging mode.\n");
+#endif // DEBUG
 </PRE>
 
- <H3> <A NAME="preif"> 3.7.4. #if</A></H3>
+ <H3> <A NAME="preifndef"> 3.7.5. #ifndef</A></H3>
+Ifndef works the same way as ifdef but it only gets called if the string
+you specify is not defined.
+Example:
+<PRE>
+#ifndef DEBUG
+	#define DEBUG 1
+#endif
+</PRE>
 
+ <H3> <A NAME="preif"> 3.7.6. #if, #else, #elif</A></H3>
 
- <H3> <A NAME="preendif"> 3.7.5. #endif</A></H3>
-
-
- <H3> <A NAME="preelse"> 3.7.6. #else</A></H3>
-
-
- <H3> <A NAME="preelif"> 3.7.7. #elif</A></H3>
-
-
- <H3> <A NAME="preifdef"> 3.7.8. #ifdef</A></H3>
-
-
- <H3> <A NAME="preifndef"> 3.7.9. #ifndef</A></H3>
-
-
- <H3> <A NAME="prepragma"> 3.7.10. #pragma</A></H3>
+ <H3> <A NAME="prepragma"> 3.7.7. #pragma</A></H3>
 
 You use #pragma to pass a flag to the driver.  In general
 This is used for platform specific code. DGD currently ignore's
@@ -411,7 +431,7 @@ Note: the STRING is deterimined by the DRIVER its not something you can
 just make up.  If the DRIVER does not recoginize a STRING it will just ignore
 it and or maybe send a warning.
 
- <H3> <A NAME="preline"> 3.7.11. #line</A></H3>
+ <H3> <A NAME="preline"> 3.7.8. #line</A></H3>
 
 Used to override the driver's automatic detection of line# and or filename.
 Currenlty the code says line# is always ignored.  I think this is suppose
@@ -425,7 +445,7 @@ Examples:
 #line 22
 </PRE>
 
- <H3> <A NAME="preerror"> 3.7.12. #error</A></H3>
+ <H3> <A NAME="preerror"> 3.7.9. #error</A></H3>
 Call an error message, This is usually based on some condition that is
 external to the #error command, example:
 <PRE>
