@@ -74,6 +74,7 @@ starts with // and terminated by a new line.  All characters in between are
 part of the comment.  Comments count as whitespace separating tokens, and
 may not be nested.  The sequence <TT>/*</TT> does not start a comment if it
 is part of a string.
+<BR>
 Examples:
 <PRE>
 	// This is a comment
@@ -258,7 +259,7 @@ The following types are supported:
 </PRE>
 
  <H3> <A NAME="array declaration"> 3.4.3. Array declaration </A> </H3>
-
+<BR>
 Examples:
 <PRE>
 	int x[5];
@@ -291,7 +292,8 @@ A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 Inheritance is one of the key building blocks of lpc.  The mudlib defines
 some standard objects.  For example, maybe your mudlib has: 
 /std/object.c, /std/room.c or /std/monster.c.
-You can use these building blocks by inheriting them.<BR>
+You can use these building blocks by inheriting them.
+<BR>
 Example:
 <PRE>
 	inherit "/std/room.c";
@@ -364,7 +366,8 @@ a define looks like this:
 #define Identifier VALUE
 #define Identifier
 </PRE>
-If VALUE is omitted, it sets the define to 1<BR>
+If VALUE is omitted, it sets the define to 1
+<BR>
 Examples:
 <PRE>
 #define MAX_STR 255
@@ -409,7 +412,7 @@ Something can be defined as 0 for example and ifdef will still say
 yes its defined.  If you want to check the value of something that is
 defined, you will want to use a more complicated #if statement, which
 you can find more info on later in the document.
-
+<BR>
 Example:
 <PRE>
 #ifdef DEBUG
@@ -420,7 +423,7 @@ Example:
  <H3> <A NAME="preifndef"> 3.7.5. #ifndef</A></H3>
 Ifndef works the same way as ifdef but it only gets called if the Identifier
 you specify is not defined.
-
+<BR>
 Example:
 <PRE>
 #ifndef DEBUG
@@ -432,6 +435,7 @@ Example:
 An if statement is used for more complicated tests, you can test
 the value of a defined item, or for variations etc...  It works
 similar to the if conditional statement but at the preprocessor level.
+<BR>
 Examples:
 <PRE>
 #if defined(DEBUG) || defined(VERBOSE)
@@ -473,9 +477,9 @@ position in the file they are interested in looking at for debugging purposes,
 instead of the generated code which only exists for a short time.  
 (If you don't know what I'm explaining, you probably do not need to 
 worry about it.)
-
-<PRE>
+<BR>
 Examples:
+<PRE>
 #line 22 "myfile.c"
 #line "myfile.c"
 #line 22
@@ -483,7 +487,9 @@ Examples:
 
  <H3> <A NAME="preerror"> 3.7.9. #error</A></H3>
 Call an error message, This is usually based on some condition that is
-external to the #error command, example:
+external to the #error command,
+<BR>
+Example:
 <PRE>
 #ifdef APSTUDIO_INVOKED
         #error this file is not editable by Microsoft Visual C++
