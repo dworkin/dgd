@@ -366,7 +366,9 @@ a define looks like this:
 #define Identifier VALUE
 #define Identifier
 </PRE>
-If VALUE is omitted, it sets the define to 1
+If VALUE is omitted, it defines the Identifier but your not sure
+what the value is.  It may be nil, or it may be 1, or it may be something 
+else depending on implementation of the driver.
 <BR>
 Examples:
 <PRE>
@@ -442,11 +444,11 @@ Examples:
 	write("Welcome to VERBOSE MODE!\n");
 #endif
 
-#if DEBUG == 3
+#if (3 == DEBUG)
 	write("Were in really verbose MODE.\n");
-#elif DEBUG == 2
+#elif (2 == DEBUG)
 	write("Were in verbose MODE.\n");
-#elif DEBUG == 1
+#elif (1 == DEBUG)
 	write("were in semi verbose MODE.\n");
 #else
 	write("Were in quiet MODE.\n");
