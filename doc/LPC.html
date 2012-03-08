@@ -325,7 +325,7 @@ defined create function we can remove the ::create(); call.
 Preprocessor commands start with a #, these commands, get run before compile
 time.  They are used to optionally compile bits of code and or to instruct
 the compiler how to do something.  Many times they are used to make things
-more portable.  The following preprocessor directives are recoginized: 
+more portable.  The following preprocessor directives are recognized: 
 <I><A HREF="#preinclude">include</A></I>,
 <I><A HREF="#predefine">define</A></I>,
 <I><A HREF="#preundef">undef</A></I>,
@@ -344,11 +344,11 @@ more portable.  The following preprocessor directives are recoginized:
 You use #include to include a header in a file.  A header file in general
 usually has special definitions and function prototypes.  For example if you
 were writing a NETWORK header, you might have a definition for a 
-default network port, and function propotypes for connect, disconect etc..
+default network port, and function prototypes for connect, disconnect etc..
 Header files are kind of like an API for the software you write.
 They make it simple to change important settings and explain how you use
 a library.  In general they should not include code in the header file.
-The syntaxt for an include looks like this:
+The syntax for an include looks like this:
 <PRE>
 #include "filename";
 </PRE>
@@ -398,18 +398,18 @@ While we are explaining ifdef we also need to introduce #endif since it
 is needed to complete an ifdef statement.
 #ifdef has the following syntax:
 <PRE>
-#ifdef Identifer
+#ifdef Identifier
 (insert your code here)
 #endif
 </PRE>
-So if whatever Identifer you have specified is defined to some value 
+So if whatever Identifier you have specified is defined to some value 
 (with an #define, or it can also be passed to the driver at runtime)
 Then it will evaluate the code until it hits a #endif  If there is no
 #endif the driver will throw an error.  Note: #endif is used in multiple
 places to designate then end of a block of code, its sometimes hard to keep
 track of it all so its good to add a comment saying this #endif goes with
-the Identifer you specify.  Note, ifdef does not actually check the
-value of your Identifer, it just checks to see if it is defined.
+the Identifier you specify.  Note, ifdef does not actually check the
+value of your Identifier, it just checks to see if it is defined.
 Something can be defined as 0 for example and ifdef will still say
 yes its defined.  If you want to check the value of something that is
 defined, you will want to use a more complicated #if statement, which
@@ -458,19 +458,19 @@ Examples:
  <H3> <A NAME="prepragma"> 3.7.7. #pragma</A></H3>
 
 You use #pragma to pass a flag to the driver.  In general
-This is used for platform specific code. DGD currently ignore's
+This is used for platform specific code. DGD currently ignores
 #pragma statements.  The syntax for Pragma is:
 <PRE>
 #pragma STRING
 </PRE>
-Note: the STRING is deterimined by the DRIVER its not something you can
-just make up.  If the DRIVER does not recoginize a STRING it will just ignore
+Note: the STRING is determined by the DRIVER its not something you can
+just make up.  If the DRIVER does not recognize a STRING it will just ignore
 it and or maybe send a warning.
 
  <H3> <A NAME="preline"> 3.7.8. #line</A></H3>
 
 Used to override the driver's automatic detection of line# and or filename.
-Currenlty the code says line# is always ignored.  I think this is suppose
+Currently the code says line# is always ignored.  I think this is suppose
 to be used to get around bugs, you probably want to avoid this unless
 you find a situation where you really need it.  If your familiar with
 FLEX, BISON and or YACC, you know that sometimes your code is generated
