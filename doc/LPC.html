@@ -292,9 +292,15 @@ A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 Inheritance is one of the key building blocks of lpc.  The mudlib defines
 some standard objects.  For example, maybe your mudlib has: 
 /std/object.c, /std/room.c or /std/monster.c.
-You can use these building blocks by inheriting them.
-<BR>
-Example:
+You can use these building blocks by inheriting them.  The inherit syntax
+can have the following syntax:
+<PRE>
+inherit "FILENAME";
+inierit Identifier "FILENAME";
+</PRE>
+You can use an Identifer if your inheriting from multiple objects and want to
+explicitly call functions from one of them.
+Examples:
 <PRE>
 	inherit "/std/room.c";
 	void create( void ) {
@@ -302,6 +308,17 @@ Example:
 		set_short("The void");
 		set_long("A vast nothingness.");
 	}
+or you can also do something like this:
+
+	inherit room "/std/room.c";
+	inherit ob "/std/object.c";
+	void create( void ) {
+		room::create();
+		ob::create();
+		set_short("The void");
+		set_long("A vast nothingness.");
+	}
+	
 </PRE>
 
 Because we have inherited our standard room, we get all of the code
