@@ -367,11 +367,16 @@ They make it simple to change important settings and explain how you use
 a library.  In general they should not include code in the header file.
 The syntax for an include looks like this:
 <PRE>
-#include "filename";
+#include &ltfile.h&gt
+#include "filename.h"
 </PRE>
-Example:
+In general, the first case is for a standard header in the default search path
+and ""'s are used to include your own header.  It starts by searching the
+current directory.
+Examples:
 <PRE>
-#include "/std/include/room.h";
+#include &ltstd.h&gt
+#include "room.h"
 </PRE>
 
  <H3> <A NAME="predefine"> 3.7.2. #define</A></H3>
