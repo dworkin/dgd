@@ -652,8 +652,11 @@ void sw_restore(int fd, unsigned int secsize)
     /* restore swap header */
     P_lseek(fd, (off_t) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
-    if (dh.secsize != secsize || dh.nsectors > swapsize) {
-	error("Wrong sector size or too many sectors in restore file");
+    if (dh.secsize != secsize) {
+	error("Wrong sector size (%d)", dh.secsize);
+    }
+    if (dh.nsectors > swapsize) {
+	error("Too many sectors in restore file (%d)", dh.nsectors);
     }
     restoresecsize = secsize;
     if (secsize > sectorsize) {
