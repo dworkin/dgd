@@ -258,7 +258,42 @@ The following types are supported:
 	nil, int, float, string, object, mapping, mixed, lwobject, void
 </PRE>
 
-There are also type modifiers: private, static, atomic
+<h3> <a name="type modifers"> Type Modifiers </a> </h3>
+Type modifiers appear before a type and provide special instructions
+to the driver for how handle the special type.  A type can have multiple
+modifiers associated with it.
+
+There are the following type modifiers: 
+<i><a href="#private">private</a></i>, 
+<i><a href="#static">static</a></i>, 
+<i><a href="#nomask">nomask</a></i>, 
+<i><a href="#atomic">atomic</a></i>
+
+ <H3> <A NAME="private"> 3.4.3. Type Modifiers: private </A> </H3>
+
+Private types are only accessable by the object in which they are
+defined.
+
+ <H3> <A NAME="static"> 3.4.3. Type Modifers: static </A> </H3>
+ <H3> <A NAME="static"> 3.4.3. Type Modifers: nomask </A> </H3>
+
+The nomask type modifier is only valid for functions, it
+makes it so that you can not redefine a function.  To put it another way,
+a child object can not have a function with the same name, it will use 
+the parents version of the function.
+
+ <H3> <A NAME="atomic"> 3.4.3. Type Modifers: atomic </A> </H3>
+
+The atomic type modifier is only valid for functions, it
+makes it so that if an error occurs durring the function, the
+driver will roll everything back to before the function was called.
+It's a saftey net of sorts.  If its modifying an object and half way
+through it has a problem, the object will get reset to its state
+before the function call.  Atomic functions have a couple of drawbacks.
+They are forbidden from working with files in any way(renaming, writing, 
+reading, etc...).  They also have some overhead, they take twice as many
+ticks as they would if they were not declared atomic.
+
 
  <H3> <A NAME="array declaration"> 3.4.3. Array declaration </A> </H3>
 <BR>
@@ -294,14 +329,21 @@ A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
 Inheritance is one of the key building blocks of lpc.  The mudlib defines
 some standard objects.  For example, maybe your mudlib has: 
 /std/object.c, /std/room.c or /std/monster.c.
-You can use these building blocks by inheriting them.  The inherit syntax
-can have the following syntax:
+You can use these building blocks by inheriting them.  Inherit statements
+must come before any other code, including #include preprocessor statements.
+
+The inherit syntax can have the following syntax:
 <PRE>
 inherit "FILENAME";
 inierit Identifier "FILENAME";
+private inherit "FILENAME";
+private inierit Identifier "FILENAME";
 </PRE>
 You can use an Identifer if your inheriting from multiple objects and want to
-explicitly call functions from one of them.
+explicitly call functions from one of them.  The private option will make it
+so that only this object will have access to the variables and functions
+inherited by the inherit statement.
+
 Examples:
 <PRE>
 	inherit "/std/room.c";
