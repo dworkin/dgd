@@ -334,15 +334,15 @@ must come before any other code, including #include preprocessor statements.
 
 The inherit syntax can have the following syntax:
 <PRE>
-inherit "FILENAME";
-inierit Identifier "FILENAME";
-private inherit "FILENAME";
-private inierit Identifier "FILENAME";
+[priviate] inherit "FILENAME";
+[priviate] inierit Identifier "FILENAME";
 </PRE>
 You can use an Identifer if your inheriting from multiple objects and want to
 explicitly call functions from one of them.  The private option will make it
 so that only this object will have access to the variables and functions
-inherited by the inherit statement.
+inherited by the inherit statement.  You will not be able to access them
+from a call_other function, or if you inherit this object, you will not
+have access to the privately inherited stuff.
 
 Examples:
 <PRE>
