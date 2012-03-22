@@ -236,7 +236,7 @@ We'll introduce them as we need them, because they need context to make sense.
 A <I>Declaration</I> can be a 
 <I><A HREF="#varaible declaration">variable declaration</A></I>,  
 <I><A HREF="#array declaration">array declaration</A></I>,  
-<I><A HREF="#fuction declaration">function declaration</A></I>.
+<I><A HREF="#function declaration">function declaration</A></I>.
 
  <H3> <A NAME="variable declaration"> 3.4.1. Variable declaration </A> </H3>
 A variable declaration has the following form:
@@ -254,9 +254,28 @@ Examples:
  <H3> <A NAME="types"> 3.4.2. Types</A> </H3>
 
 The following types are supported:
-<PRE>
-	nil, int, float, string, object, mapping, mixed, lwobject, void
-</PRE>
+<UL>
+	<i><a href="#typenil">nil</a></i>, 
+	<i><a href="#typeint">int</a></i>, 
+	<i><a href="#typefloat">float</a></i>, 
+	<i><a href="#typestring">string</a></i>, 
+	<i><a href="#typeobj">object</a></i>, 
+	<i><a href="#typemap">mapping</a></i>, 
+	<i><a href="#typemixed">mixed</a></i>, 
+	<i><a href="#typevoid">void</a></i>
+</UL>
+
+Types can also have <i><a href="type modifiers">Type Modifiers</a></i> 
+which will change how the variable or function works.
+
+ <H3> <A NAME="types"> 3.4.2.1 Types: nil</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.2 Types: int</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.3 Types: float</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.4 Types: string</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.5 Types: object</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.6 Types: mapping</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.7 Types: mixed</A> </H3>
+ <H3> <A NAME="types"> 3.4.2.8 Types: void</A> </H3>
 
 <h3> <a name="type modifers"> Type Modifiers </a> </h3>
 Type modifiers appear before a type and provide special instructions
@@ -271,10 +290,23 @@ There are the following type modifiers:
 
  <H3> <A NAME="private"> 3.4.3. Type Modifiers: private </A> </H3>
 
-Private types are only accessable by the object in which they are
-defined.
+The private type modifier is valid for both functions and variables.
+When a variable or fuction is marked as private,  it becomes only accessable 
+by the object in which it is defined.  Not even child objects that inherit
+this object will be able to access them.  You can use private functions
+and variables to insure that others access your data the way
+you want them to access it.  
 
  <H3> <A NAME="static"> 3.4.3. Type Modifers: static </A> </H3>
+
+The static type modifier behaves differently for variables and functions.
+
+For variables that are declared as static, the variable will be defined
+globally for that object, and it will not be saved when save_object is called.
+
+For functions that are declared as static, the function will only be available
+to the object and it's children.
+
  <H3> <A NAME="static"> 3.4.3. Type Modifers: nomask </A> </H3>
 
 The nomask type modifier is only valid for functions, it
