@@ -269,13 +269,39 @@ Types can also have <i><a href="type modifiers">Type Modifiers</a></i>
 which will change how the variable or function works.
 
  <H3> <A NAME="types"> 3.4.2.1 Types: nil</A> </H3>
+
+Nil is a special value, its not actually a type but it is the value
+of a uninialized variable.  So you can see if a variable is undefined by
+seeing if it is equal to nil.
+
  <H3> <A NAME="types"> 3.4.2.2 Types: int</A> </H3>
+
+Declares the variable to be an integer, for a function it says the
+function will return an integer. See 
+<I><A HREF="#integer constants">integer constant</A></I> for valid integers.
+
  <H3> <A NAME="types"> 3.4.2.3 Types: float</A> </H3>
+
+Declares the variable to be a float, for a function it says the 
+function will return a float. See
+<I><A HREF="#floating constants">floating constant</A></I> for valid floats.
+
  <H3> <A NAME="types"> 3.4.2.4 Types: string</A> </H3>
+
+Declares the variable to be a string, for a function it says the
+function will return a string. See
+<I><A HREF="#string constants">string constant</A></I> for valid strings.
+
  <H3> <A NAME="types"> 3.4.2.5 Types: object</A> </H3>
+
  <H3> <A NAME="types"> 3.4.2.6 Types: mapping</A> </H3>
+
  <H3> <A NAME="types"> 3.4.2.7 Types: mixed</A> </H3>
+
  <H3> <A NAME="types"> 3.4.2.8 Types: void</A> </H3>
+
+The void type is only valid for functions.  It says that the function
+does not return anything.
 
 <h3> <a name="type modifers"> Type Modifiers </a> </h3>
 Type modifiers appear before a type and provide special instructions
