@@ -294,7 +294,21 @@ function will return a string. See
 
  <H3> <A NAME="types"> 3.4.2.5 Types: object</A> </H3>
 
+Declares the variable to be an object.  The driver deals with objects as a
+basic type.  If you create a room, a monster, a player, or a sword, all of these are considered objects to the driver.  For a function it says the function
+will return an object.
+
  <H3> <A NAME="types"> 3.4.2.6 Types: mapping</A> </H3>
+
+A mapping is similar to an <i><a href="array declaration">array</a></i>, 
+execpt you get to name your indices.  
+It is also sometimes called an associative array or a hash.  
+Think of it as a key/value pair.  Example:
+<PRE>
+	mapping location;
+	location['fred'] = 'home';
+	write("Fred is " + location['fred'] + ".\n");
+</PRE>
 
  <H3> <A NAME="types"> 3.4.2.7 Types: mixed</A> </H3>
 
