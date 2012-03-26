@@ -312,10 +312,18 @@ Think of it as a key/value pair.  Example:
 
  <H3> <A NAME="types"> 3.4.2.7 Types: mixed</A> </H3>
 
+The mixed type is used when a function will take multiple types, you can
+use the typeof function to find out what type the variable is currently
+using.  A good example of using a mixed type would be if a function
+returns a string or an int depending on what gets passed in.  You want to
+avoid using the mixed type to just get around type checking, limit it to
+cases where its truely useful to have multiple types.
+
  <H3> <A NAME="types"> 3.4.2.8 Types: void</A> </H3>
 
 The void type is only valid for functions.  It says that the function
-does not return anything.
+does not return anything.  You can also use void to say that a function has
+no <i><a href="#parameters">paramaeters</a></i> passed into it.
 
 <h3> <a name="type modifers"> Type Modifiers </a> </h3>
 Type modifiers appear before a type and provide special instructions
@@ -368,6 +376,18 @@ ticks as they would if they were not declared atomic.
 
 
  <H3> <A NAME="array declaration"> 3.4.3. Array declaration </A> </H3>
+
+An array is an extension of a basic type in lpc, which turns it into an 
+ordered list.  You can denote an array in two ways: 
+basic_type *Identifier;  or basic_type Identifier[NUMBER];
+
+In the first your saying you want an array of basic_type but your not sure
+how big it is.  In the second, your saying you want the array to have NUMBER
+elements in it.  When indexing an element in an array you start at 0.  So
+if you declare an array 'myarray' to have 5 elements, they would be 
+addressed like this:
+myarray[0], myarray[1], myarray[2], myarray[3], myarray[4]
+
 <BR>
 Examples:
 <PRE>
@@ -388,11 +408,11 @@ to put the function in the symbol table even though it does not know what the
 function is yet.  It is basically saying "hey I'm going to make a function 
 that looks like this later".
 
-A function prototype has the form: TYPE Identifier(PARAMS);
+A function prototype has the form: type Identifier(paramaters);
 
  <H3> <A NAME="function definition"> 3.4.4.2. Function definition </A> </H3>
 
-A function definition has the form: TYPE Identifier(PARAMS) { STATEMENTS }
+A function definition has the form: type Identifier(paramaters) { statements }
 
  <H3> 3.5. Statements </H3>
 
