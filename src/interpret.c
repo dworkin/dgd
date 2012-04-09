@@ -1193,27 +1193,42 @@ static value *istr(value *val, string *str, ssizet i, value *v)
  * NAME:	interpret->store_local()
  * DESCRIPTION:	assign a value to a local variable
  */
-static void i_store_local(frame *f, int local, value *val)
+static void i_store_local(frame *f, int local, value *val, value *verify)
 {
+    value *var;
+
     i_add_ticks(f, 1);
-    d_assign_var(f->data, (local < 0) ? f->fp + local : f->argp + local, val);
+    var = (local < 0) ? f->fp + local : f->argp + local;
+    if (verify == NULL ||
+	(var->type == T_STRING && var->u.string == verify->u.string)) {
+	d_assign_var(f->data, var, val);
+    }
 }
 
 /*
  * NAME:	interpret->store_global()
  * DESCRIPTION:	assign a value to a global variable
  */
-void i_store_global(frame *f, int inherit, int index, value *val)
+void i_store_global(frame *f, int inherit, int index, value *val, value *verify)
 {
     unsigned short offset;
+    value *var;
 
     i_add_ticks(f, 5);
     inherit = f->ctrl->imap[f->p_index + inherit];
     offset = f->ctrl->inherits[inherit].varoffset + index;
     if (f->lwobj == NULL) {
-	d_assign_var(f->data, d_get_variable(f->data, offset), val);
+	var = d_get_variable(f->data, offset);
+	if (verify == NULL ||
+	    (var->type == T_STRING && var->u.string == verify->u.string)) {
+	    d_assign_var(f->data, var, val);
+	}
     } else {
-	d_assign_elt(f->data, f->lwobj, &f->lwobj->elts[2 + offset], val);
+	var = &f->lwobj->elts[2 + offset];
+	if (verify == NULL ||
+	    (var->type == T_STRING && var->u.string == verify->u.string)) {
+	    d_assign_elt(f->data, f->lwobj, var, val);
+	}
     }
 }
 
@@ -1238,7 +1253,6 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 	str = str_new(aval->u.string->text, aval->u.string->len);
 	str->text[str_index(str, ival->u.number)] = val->u.number;
 	PUT_STRVAL(var, str);
-	str_del(aval->u.string);
 	return TRUE;
 
     case T_ARRAY:
@@ -1365,16 +1379,17 @@ void i_store(frame *f)
 
 	switch (lval >> 28) {
 	case LVAL_LOCAL:
-	    i_store_local(f, SCHAR(lval), val);
+	    i_store_local(f, SCHAR(lval), val, NULL);
 	    break;
 
 	case LVAL_GLOBAL:
-	    i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val);
+	    i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val, NULL);
 	    break;
 
 	case LVAL_INDEX:
 	    var = nil_value;
 	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
+		str_del(f->sp[1].u.string);
 		str_del(var.u.string);
 	    }
 	    f->sp += 2;
@@ -1383,7 +1398,8 @@ void i_store(frame *f)
 	case LVAL_LOCAL_INDEX:
 	    var = nil_value;
 	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		i_store_local(f, SCHAR(lval), &var);
+		i_store_local(f, SCHAR(lval), &var, f->sp + 1);
+		str_del(f->sp[1].u.string);
 		str_del(var.u.string);
 	    }
 	    f->sp += 2;
@@ -1392,7 +1408,9 @@ void i_store(frame *f)
 	case LVAL_GLOBAL_INDEX:
 	    var = nil_value;
 	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val);
+		i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val,
+			       f->sp + 1);
+		str_del(f->sp[1].u.string);
 		str_del(var.u.string);
 	    }
 	    f->sp += 2;
@@ -1402,6 +1420,7 @@ void i_store(frame *f)
 	    var = nil_value;
 	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
 		i_store_index(f, f->sp + 1, f->sp + 3, f->sp + 2, &var);
+		str_del(f->sp[1].u.string);
 		str_del(var.u.string);
 	    }
 	    f->sp += 4;
@@ -2400,24 +2419,26 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
-	    i_store_local(f, FETCH1S(pc), f->sp);
+	    i_store_local(f, FETCH1S(pc), f->sp, NULL);
 	    break;
 
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
-	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc), f->sp);
+	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc), f->sp,
+			   NULL);
 	    break;
 
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    i_store_global(f, u, FETCH1U(pc), f->sp);
+	    i_store_global(f, u, FETCH1U(pc), f->sp, NULL);
 	    break;
 
 	case I_STORE_INDEX:
 	case I_STORE_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		str_del(f->sp[2].u.string);
 		str_del(val.u.string);
 	    }
 	    f->sp[2] = f->sp[0];
@@ -2429,7 +2450,8 @@ static void i_interpret1(frame *f, char *pc)
 	    u = FETCH1S(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
-		i_store_local(f, (short) u, &val);
+		i_store_local(f, (short) u, &val, f->sp + 2);
+		str_del(f->sp[2].u.string);
 		str_del(val.u.string);
 	    }
 	    f->sp[2] = f->sp[0];
@@ -2442,7 +2464,8 @@ static void i_interpret1(frame *f, char *pc)
 	    u2 = FETCH1U(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
-		i_store_global(f, u, u2, &val);
+		i_store_global(f, u, u2, &val, f->sp + 2);
+		str_del(f->sp[2].u.string);
 		str_del(val.u.string);
 	    }
 	    f->sp[2] = f->sp[0];
@@ -2454,6 +2477,7 @@ static void i_interpret1(frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, &val);
+		str_del(f->sp[2].u.string);
 		str_del(val.u.string);
 	    } else {
 		i_del_value(f->sp + 3);

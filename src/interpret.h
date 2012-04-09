@@ -288,7 +288,7 @@ extern char    *i_classname	(frame*, Uint);
 extern int	i_instanceof	(frame*, unsigned int, Uint);
 extern void	i_cast		(frame*, value*, unsigned int, Uint);
 extern void	i_dup		(frame*);
-extern void	i_store_global	(frame*, int, int, value*);
+extern void	i_store_global	(frame*, int, int, value*, value*);
 extern bool	i_store_index	(frame*, value*, value*, value*, value*);
 extern void	i_store		(frame*);
 extern Int	i_get_depth	(frame*);

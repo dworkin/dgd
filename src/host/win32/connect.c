@@ -541,12 +541,12 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	/* telnet ports */
 	ipv6 = FALSE;
 	ipv4 = FALSE;
+	sin6.sin6_family = AF_INET6;
 	if (thosts[n] == (char *) NULL) {
 	    sin6.sin6_addr = in6addr_any;
 	    sin.sin_addr.s_addr = INADDR_ANY;
 	    ipv6 = ipv4 = TRUE;
 	} else {
-	    sin6.sin6_family = AF_INET6;
 	    length = sizeof(struct sockaddr_in6);
 	    if (WSAStringToAddress(thosts[n], AF_INET6,
 				   (LPWSAPROTOCOL_INFO) NULL,
@@ -605,12 +605,12 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	/* binary ports */
 	ipv6 = FALSE;
 	ipv4 = FALSE;
+	sin6.sin6_family = AF_INET6;
 	if (bhosts[n] == (char *) NULL) {
 	    sin6.sin6_addr = in6addr_any;
 	    sin.sin_addr.s_addr = INADDR_ANY;
 	    ipv6 = ipv4 = TRUE;
 	} else {
-	    sin6.sin6_family = AF_INET6;
 	    length = sizeof(struct sockaddr_in6);
 	    if (WSAStringToAddress(bhosts[n], AF_INET6,
 				   (LPWSAPROTOCOL_INFO) NULL,
