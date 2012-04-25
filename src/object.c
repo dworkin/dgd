@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1272,34 +1272,32 @@ int uindex_compare(const void *pa, const void *pb)
  */
 void o_trim()
 {
-    uindex nfree = baseplane.nfreeobjs;
     uindex npurge;
     uindex *entries;
     uindex i;
     uindex j;
 
-    if (!nfree) {
+    if (!baseplane.nfreeobjs) {
 	/* nothing to trim */
 	return;
     }
 
     npurge = 0;
-    entries = ALLOC(uindex, nfree);
+    entries = ALLOC(uindex, baseplane.nfreeobjs);
 
     j = baseplane.free;
 
     /* 1. prepare a list of free objects */
-    for (i = 0; i < nfree; i++) {
+    for (i = 0; i < baseplane.nfreeobjs; i++) {
         entries[i] = j;
         j = otable[j].prev;
     }
 
     /* 2. sort indices from low to high */
-    qsort(entries, nfree, sizeof(uindex), uindex_compare);
+    qsort(entries, baseplane.nfreeobjs, sizeof(uindex), uindex_compare);
 
     /* 3. trim the object table */
-    while (nfree > 0 && entries[nfree - 1] == baseplane.nobjects - 1) {
-	nfree--;
+    while (baseplane.nfreeobjs > 0 && entries[baseplane.nfreeobjs - 1] == baseplane.nobjects - 1) {
 	npurge++;
 	baseplane.nobjects--;
 	baseplane.nfreeobjs--;
@@ -1310,14 +1308,13 @@ void o_trim()
     /* 4. relink remaining free objects from low to high */
     j = OBJ_NONE;
 
-    for (i = 0; i < nfree; i++) {
-	uindex n = entries[nfree - i - 1];
+    for (i = 0; i < baseplane.nfreeobjs; i++) {
+	uindex n = entries[baseplane.nfreeobjs - i - 1];
 	otable[n].prev = j;
 	j = n;
     }
 
     baseplane.free = j;
-
     FREE(entries);
 }
 
