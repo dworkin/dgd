@@ -361,8 +361,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\comp\parser.y">
+    <CustomBuild Include="..\..\comp\parser.y">
       <Filter>Source Files\comp</Filter>
-    </None>
+    </CustomBuild>
   </ItemGroup>
 </Project>

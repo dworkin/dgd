@@ -126,7 +126,21 @@
     <ClInclude Include="..\..\xfloat.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\comp\parser.y" />
+    <CustomBuild Include="..\..\comp\parser.y">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building LPC parser</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building LPC parser</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building LPC parser</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building LPC parser</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D35360AA-B87E-4F90-AD31-183DAB9EFAF0}</ProjectGuid>
@@ -207,13 +221,6 @@
       <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8192000</StackReserveSize>
     </Link>
-    <CustomBuildStep>
-      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
-    </CustomBuildStep>
-    <CustomBuildStep>
-      <Outputs>parser.c;parser.h</Outputs>
-      <Message>Building Parser...</Message>
-    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -233,13 +240,6 @@
       <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8192000</StackReserveSize>
     </Link>
-    <CustomBuildStep>
-      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
-    </CustomBuildStep>
-    <CustomBuildStep>
-      <Outputs>parser.c;parser.h</Outputs>
-      <Message>Building Parser...</Message>
-    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -262,11 +262,6 @@
       <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8192000</StackReserveSize>
     </Link>
-    <CustomBuildStep>
-      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
-      <Message>Building Parser...</Message>
-      <Outputs>parser.c;parser.h</Outputs>
-    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -289,11 +284,6 @@
       <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <StackReserveSize>8192000</StackReserveSize>
     </Link>
-    <CustomBuildStep>
-      <Command>Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
-      <Message>Building Parser...</Message>
-      <Outputs>parser.c;parser.h</Outputs>
-    </CustomBuildStep>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
