@@ -3,6 +3,32 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-04-25
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Create a proper CustomBuild step for parser.y on Windows.
+  - Fix up Changelog.
+  - 1.4.14
+
+2012-02-29/2012-04-09
+
+  Kent Mein (mein@cs.umn.edu)
+
+  Improving LPC.html.
+
+2012-04-04
+
+  Felix Croes (felix@dworkin.nl)
+
+  Remove reference to BeeHive Internet Technologies from LPC.html.
+
+2012-04-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  Reset address femily each time WSAStringToAddress erases it.
+
 2012-03-18
 
   Raymond Jennings (shentino@gmail.com)
@@ -14,6 +40,24 @@ in doc/Changelog.Dworkin
   Raymond Jennings (shentino@gmail.com)
 
   More verbose reporting of swap file or swap sector size problems.
+
+2012-03-06
+
+  Felix Croes (felix@dworkin.nl)
+
+  Bugfix in previous commit: string freed twice.
+
+2012-03-05
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix a corner case for indexed string assignment.
+
+2012-01-29
+
+  Neil McBride (neil@mcbridefamily.org)
+
+  Add the missing empty directories I'm used to seeing in DGD.
 
 2012-01-26
 
