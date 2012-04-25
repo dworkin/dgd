@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -519,6 +519,76 @@ typedef struct {
 static char dh_layout[] = "idddd";
 
 /*
+ * NAME:	sector_compare
+ * DESCRIPTION: used by qsort to compare entries
+ */
+int sector_compare(const void *pa, const void *pb)
+{
+    sector a = *(sector *)pa;
+    sector b = *(sector *)pb;
+
+    if (a > b) {
+	return 1;
+    } else if (a < b) {
+	return -1;
+    } else {
+	return 0;
+    }
+}
+
+/*
+ * NAME:	swap->trim()
+ * DESCRIPTION:	trim free sectors from the end of the sector map
+ */
+void sw_trim()
+{
+    sector npurge;
+    sector *entries;
+    sector i;
+    sector j;
+
+    if (!nfree) {
+	/* nothing to trim */
+	return;
+    }
+
+    npurge = 0;
+    entries = ALLOC(sector, nfree);
+
+    j = mfree;
+
+    /* 1. prepare a list of free sectors */
+    for (i = 0; i < nfree; i++) {
+        entries[i] = j;
+        j = map[j];
+    }
+
+    /* 2. sort indices from low to high */
+    qsort(entries, nfree, sizeof(sector), sector_compare);
+
+    /* 3. trim the object table */
+    while (nfree > 0 && entries[nfree - 1] == nsectors - 1) {
+	npurge++;
+	nsectors--;
+	nfree--;
+    }
+
+    memset(map + nsectors, '\0', npurge * sizeof(sector));
+
+    /* 4. relink remaining free sectors from low to high */
+    j = SW_UNUSED;
+
+    for (i = 0; i < nfree; i++) {
+	uindex n = entries[nfree - i - 1];
+	map[n] = j;
+	j = n;
+    }
+
+    mfree = j;
+    FREE(entries);
+}
+
+/*
  * NAME:	swap->dump()
  * DESCRIPTION:	dump swap file
  */
@@ -568,6 +638,8 @@ int sw_dump(char *dumpfile)
 	}
 	map[h->sec] = sec;
     }
+
+    sw_trim();
 
     /* move to dumpfile */
     P_close(swap);
