@@ -222,10 +222,6 @@ SOURCE=.\local.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\lpc\lpc.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\lex\macro.c
 # End Source File
 # Begin Source File
