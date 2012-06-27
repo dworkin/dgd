@@ -1,0 +1,3 @@
+[submodule "lpc-doc"]
+	path = lpc-doc
+	url = git://lpc-doc.git.sourceforge.net/gitroot/lpc-doc/lpc-doc

@@ -1,9 +1,0 @@
-NAME
-	shutdown - shutdown the system
-
-SYNOPSIS
-	void shutdown()
-
-
-DESCRIPTION
-	Shut down the system after the current user typed command has finished.
