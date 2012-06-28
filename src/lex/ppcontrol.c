@@ -423,28 +423,29 @@ static int pptokenz(char *key, unsigned int len)
     return len;
 }
 
-# define FIRST_KEYWORD	VARARGS
+# define FIRST_KEYWORD	NIL
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..28 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..29 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
 static int tokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
-      "varargs", "nomask", "mapping", "break", "else", "case", "float",
-      "private", "static", "continue", "default", "function", "if", "string",
-      "int", "for", "do", "while", "inherit", "object", "rlimits", "return",
-      "catch", "switch", "mixed", "nil", "void", "atomic"
+      "nil", "break", "do", "mapping", "else", "case", "object",
+      "default", "static", "continue", "int", "float", "rlimits", "for",
+      "inherit", "if", "goto", "return", "mixed", "string", "while",
+      "function", "catch", "switch", "void", "private", "atomic",
+      "nomask", "varargs"
     };
     static char value[] = {
-      20,  6,  1,  2,  0,  0,  6, 16, 10,  0, 20, 19, 17,
-       3, 12,  0,  0, 12,  1,  1,  0, 20, 12,  0,  0,  0
+      19, 11,  1,  0,  0,  6, 12, 16,  7,  0, 14, 19, 13,
+       7,  0, 18,  0,  4,  1,  0,  0, 20, 15,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 28;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 29;
     if (strcmp(keyword[len], key) == 0) {
 # ifndef CLOSURES
 	if (len == FUNCTION - FIRST_KEYWORD) {
