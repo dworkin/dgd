@@ -1825,7 +1825,7 @@ node *c_endcompound(node *n)
           while (i < thisblock->vindex + thisblock->nvars) {
               l = c_concat(node_var(variables[i].type, i), l);
 
-              if (variables[i].unset) {
+              if (switch_list != (loop *) NULL || variables[i].unset) {
                   switch (variables[i].type) {
                   case T_INT:
                       v = node_mon(N_LOCAL, T_INT, (node *) NULL);
