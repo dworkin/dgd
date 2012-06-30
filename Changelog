@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-06-29
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Use passive dataspace and control block allocation during swap rebuild
+  to prevent object cache pollution.
+
 2012-06-28
 
   Felix Croes (felix@dworkin.nl)

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -36,6 +36,7 @@ static Uint dcount;		/* driver object count */
 static sector fragment;		/* swap fragment parameter */
 static bool rebuild;		/* rebuild swapfile? */
 bool intr;			/* received an interrupt? */
+bool passive;			/* passive LRU allocation */
 
 /*
  * NAME:	call_driver_object()
@@ -179,7 +180,9 @@ int dgd_main(int argc, char **argv)
 	if (rebuild) {
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
+		passive = TRUE;
 		rebuild = o_copy(timeout);
+		passive = FALSE;
 		co_swapcount(d_swapout(fragment));
 		if (rebuild) {
 		    rtime = timeout + 1;

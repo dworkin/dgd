@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -352,11 +352,19 @@ control *d_new_control()
 
     ctrl = ALLOC(control, 1);
     if (chead != (control *) NULL) {
-	/* insert at beginning of list */
-	chead->prev = ctrl;
-	ctrl->prev = (control *) NULL;
-	ctrl->next = chead;
-	chead = ctrl;
+	if (passive) {
+	    /* insert at end of list */
+	    chead->next = ctrl;
+	    ctrl->next = (control *) NULL;
+	    ctrl->prev = ctail;
+	    ctail = ctrl;
+	} else {
+	    /* insert at beginning of list */
+	    chead->prev = ctrl;
+	    ctrl->prev = (control *) NULL;
+	    ctrl->next = chead;
+	    chead = ctrl;
+	}
     } else {
 	/* list was empty */
 	ctrl->prev = ctrl->next = (control *) NULL;
@@ -411,11 +419,19 @@ static dataspace *d_alloc_dataspace(object *obj)
 
     data = ALLOC(dataspace, 1);
     if (dhead != (dataspace *) NULL) {
-	/* insert at beginning of list */
-	dhead->prev = data;
-	data->prev = (dataspace *) NULL;
-	data->next = dhead;
-	dhead = data;
+	if (passive) {
+	    /* insert at beginning of list */
+	    dtail->next = data;
+	    data->next = (dataspace *) NULL;
+	    data->prev = dtail;
+	    dtail = data;
+	} else {
+	    /* insert at beginning of list */
+	    dhead->prev = data;
+	    data->prev = (dataspace *) NULL;
+	    data->next = dhead;
+	    dhead = data;
+	}
 	data->gcprev = gcdata->gcprev;
 	data->gcnext = gcdata;
 	data->gcprev->gcnext = data;
@@ -721,6 +737,10 @@ dataspace *d_load_dataspace(object *obj)
  */
 void d_ref_control(control *ctrl)
 {
+    if (passive) {
+	return;
+    }
+
     if (ctrl != chead) {
 	/* move to head of list */
 	ctrl->prev->next = ctrl->next;
@@ -742,6 +762,10 @@ void d_ref_control(control *ctrl)
  */
 void d_ref_dataspace(dataspace *data)
 {
+    if (passive) {
+	return;
+    }
+
     if (data != dhead) {
 	/* move to head of list */
 	data->prev->next = data->next;
