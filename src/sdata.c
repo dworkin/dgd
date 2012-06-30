@@ -354,7 +354,7 @@ control *d_new_control()
     if (chead != (control *) NULL) {
 	if (passive) {
 	    /* insert at end of list */
-	    chead->next = ctrl;
+	    ctail->next = ctrl;
 	    ctrl->next = (control *) NULL;
 	    ctrl->prev = ctail;
 	    ctail = ctrl;
