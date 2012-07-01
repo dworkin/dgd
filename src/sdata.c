@@ -420,7 +420,7 @@ static dataspace *d_alloc_dataspace(object *obj)
     data = ALLOC(dataspace, 1);
     if (dhead != (dataspace *) NULL) {
 	if (passive) {
-	    /* insert at beginning of list */
+	    /* insert at end of list */
 	    dtail->next = data;
 	    data->next = (dataspace *) NULL;
 	    data->prev = dtail;
