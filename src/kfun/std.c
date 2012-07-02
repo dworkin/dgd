@@ -1504,6 +1504,9 @@ char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 int kf_shutdown(frame *f, int nargs)
 {
     if (nargs != 0) {
+	if (f->sp->u.number != 0) {
+	    error("Hotbooting disabled");	/* always */
+	}
 	f->sp++;
     }
     finish();
