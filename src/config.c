@@ -116,7 +116,7 @@ static config conf[] = {
 							0, 2 },
 # define USERS		24
 				{ "users",		INT_CONST, FALSE, FALSE,
-							1, 192 },
+							1, EINDEX_MAX },
 # define NR_OPTIONS	25
 };
 
