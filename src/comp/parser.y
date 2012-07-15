@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -440,7 +440,7 @@ stmt
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
 		  if (typechecking) {
-		      char tnbuf[17];
+		      char tnbuf[TNBUFSIZE];
 
 		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
 			  c_error("bad type for stack rlimit (%s)",
@@ -642,7 +642,7 @@ prefix_exp
 		  $$ = $2;
 		  t_void($$);
 		  if (typechecking && $$->mod != T_INT && $$->mod != T_MIXED) {
-		      char tnbuf[17];
+		      char tnbuf[TNBUFSIZE];
 
 		      c_error("bad argument type for ~ (%s)",
 			      i_typename(tnbuf, $$->mod));
@@ -874,7 +874,7 @@ static void t_void(node *n)
  */
 static bool t_unary(node *n, char *name)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     t_void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
@@ -1038,7 +1038,7 @@ static node *cast(node *n, node *type)
  */
 static node *idx(node *n1, node *n2)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     unsigned short type;
 
     if (n1->type == N_STR && n2->type == N_INT) {
@@ -1108,7 +1108,7 @@ static node *range(node *n1, node *n2, node *n3)
     }
 
     if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
-	char tnbuf[17];
+	char tnbuf[TNBUFSIZE];
 
 	/* indices */
 	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
@@ -1132,7 +1132,7 @@ static node *range(node *n1, node *n2, node *n3)
  */
 static node *bini(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     t_void(n1);
     t_void(n2);
@@ -1156,7 +1156,7 @@ static node *bini(int op, node *n1, node *n2, char *name)
  */
 static node *bina(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
 
     t_void(n1);
@@ -1310,7 +1310,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
  */
 static node *add(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     unsigned short type;
 
@@ -1375,7 +1375,7 @@ static node *add(int op, node *n1, node *n2, char *name)
  */
 static node *sub(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     unsigned short type;
 
@@ -1487,7 +1487,7 @@ static node *rshift(int op, node *n1, node *n2, char *name)
  */
 static node *rel(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     t_void(n1);
     t_void(n2);
@@ -1570,7 +1570,7 @@ static node *rel(int op, node *n1, node *n2, char *name)
  */
 static node *eq(node *n1, node *n2)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     int op;
 
@@ -1818,7 +1818,7 @@ static node *quest(node *n1, node *n2, node *n3)
  */
 static node *assign(node *n1, node *n2)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     node *n, *m;
     unsigned short type;
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,7 +38,7 @@ static void showclass(short class)
 
 static char *typename(control *ctrl, char *buffer, char *proto)
 {
-    char tnbuf[17], *p;
+    char tnbuf[TNBUFSIZE], *p;
     Uint class;
 
     if ((*proto & T_TYPE) == T_CLASS) {
@@ -87,7 +87,7 @@ static void show_proto(control *ctrl, char *func, char *proto)
 
 static void showctrl(control *ctrl)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     unsigned short i;
 
     printf("inherits:\n");

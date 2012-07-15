@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -153,6 +153,7 @@
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
 			  "array", "mapping", "lwobject", "mixed", "void" }
+# define TNBUFSIZE	24
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
 # define VAL_TRUE(v)	((v)->u.number != 0 || (v)->type > T_FLOAT ||	\

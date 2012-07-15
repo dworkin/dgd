@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -791,7 +791,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	node *formals, bool function)
 {
     char proto[5 + (MAX_LOCALS + 1) * 4];
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     char *p, t;
     int nargs, vargs;
     long l;
@@ -926,7 +926,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 static void c_decl_var(unsigned short class, node *type, string *str, 
 	bool global)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     if ((type->mod & T_TYPE) == T_VOID) {
 	c_error("invalid type for variable %s (%s)", str->text,
@@ -1351,7 +1351,7 @@ node *c_donecatch(node *n1, node *n2)
  */
 void c_startswitch(node *n, int typechecked)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
@@ -1399,7 +1399,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
  */
 node *c_endswitch(node *expr, node *stmt)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     node **v, **w, *n;
     unsigned short i, size;
     long l;
@@ -1745,7 +1745,7 @@ node *c_continue()
  */
 node *c_return(node *n, int typechecked)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     if (n == (node *) NULL) {
 	if (typechecked && ftype != T_VOID) {
@@ -2002,7 +2002,7 @@ static bool lvalue(node *n)
  */
 static node *funcall(node *call, node *args, int funcptr)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     int n, nargs, t;
     node *func, **argv, **arg;
     char *argp, *proto, *fname;
