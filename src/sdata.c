@@ -3321,7 +3321,7 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
 	if (data != (dataspace *) NULL && data != dtail) {
 	    if (dhead == data) {
 		dhead = data->next;
-		dhead->prev = (control *) NULL;
+		dhead->prev = (dataspace *) NULL;
 	    } else {
 		data->prev->next = data->next;
 		data->next->prev = data->prev;
