@@ -36,7 +36,6 @@ static Uint dcount;		/* driver object count */
 static sector fragment;		/* swap fragment parameter */
 static bool rebuild;		/* rebuild swapfile? */
 bool intr;			/* received an interrupt? */
-bool passive;			/* passive LRU allocation */
 
 /*
  * NAME:	call_driver_object()
@@ -180,9 +179,7 @@ int dgd_main(int argc, char **argv)
 	if (rebuild) {
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
-		passive = TRUE;
 		rebuild = o_copy(timeout);
-		passive = FALSE;
 		co_swapcount(d_swapout(fragment));
 		if (rebuild) {
 		    rtime = timeout + 1;

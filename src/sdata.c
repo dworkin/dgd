@@ -352,19 +352,11 @@ control *d_new_control()
 
     ctrl = ALLOC(control, 1);
     if (chead != (control *) NULL) {
-	if (passive) {
-	    /* insert at end of list */
-	    ctail->next = ctrl;
-	    ctrl->next = (control *) NULL;
-	    ctrl->prev = ctail;
-	    ctail = ctrl;
-	} else {
-	    /* insert at beginning of list */
-	    chead->prev = ctrl;
-	    ctrl->prev = (control *) NULL;
-	    ctrl->next = chead;
-	    chead = ctrl;
-	}
+	/* insert at beginning of list */
+	chead->prev = ctrl;
+	ctrl->prev = (control *) NULL;
+	ctrl->next = chead;
+	chead = ctrl;
     } else {
 	/* list was empty */
 	ctrl->prev = ctrl->next = (control *) NULL;
@@ -419,19 +411,11 @@ static dataspace *d_alloc_dataspace(object *obj)
 
     data = ALLOC(dataspace, 1);
     if (dhead != (dataspace *) NULL) {
-	if (passive) {
-	    /* insert at end of list */
-	    dtail->next = data;
-	    data->next = (dataspace *) NULL;
-	    data->prev = dtail;
-	    dtail = data;
-	} else {
-	    /* insert at beginning of list */
-	    dhead->prev = data;
-	    data->prev = (dataspace *) NULL;
-	    data->next = dhead;
-	    dhead = data;
-	}
+	/* insert at beginning of list */
+	dhead->prev = data;
+	data->prev = (dataspace *) NULL;
+	data->next = dhead;
+	dhead = data;
 	data->gcprev = gcdata->gcprev;
 	data->gcnext = gcdata;
 	data->gcprev->gcnext = data;
@@ -737,10 +721,6 @@ dataspace *d_load_dataspace(object *obj)
  */
 void d_ref_control(control *ctrl)
 {
-    if (passive) {
-	return;
-    }
-
     if (ctrl != chead) {
 	/* move to head of list */
 	ctrl->prev->next = ctrl->next;
@@ -762,10 +742,6 @@ void d_ref_control(control *ctrl)
  */
 void d_ref_dataspace(dataspace *data)
 {
-    if (passive) {
-	return;
-    }
-
     if (data != dhead) {
 	/* move to head of list */
 	data->prev->next = data->next;
@@ -3279,11 +3255,13 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab)
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(object *obj, Uint *counttab, uindex nobjects)
+void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
 {
     control *ctrl;
     dataspace *data;
 
+    ctrl = (control *) NULL;
+    data = (dataspace *) NULL;
     if (obj->flags & O_COMPILED) {
 	ctrl = d_new_control();
 	ctrl->oindex = obj->index;
@@ -3323,6 +3301,26 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects)
 	}
 	obj->data = data;
 	d_fixdata(data, obj, counttab, nobjects);
+    }
+
+    if (passive) {
+	/* swap these out first */
+	if (ctrl != (control *) NULL && ctrl != ctail) {
+	    chead = ctrl->next;
+	    chead->prev = (control *) NULL;
+	    ctail->next = ctrl;
+	    ctrl->prev = ctail;
+	    ctrl->next = (control *) NULL;
+	    ctail = ctrl;
+	}
+	if (data != (dataspace *) NULL && data != dtail) {
+	    dhead = data->next;
+	    dhead->prev = (dataspace *) NULL;
+	    dtail->next = data;
+	    data->prev = dtail;
+	    data->next = (dataspace *) NULL;
+	    dtail = data;
+	}
     }
 }
 

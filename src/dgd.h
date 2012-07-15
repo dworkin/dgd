@@ -43,4 +43,3 @@ extern void errhandler		(frame*, Int);
 extern int  dgd_main		(int, char**);
 
 extern bool intr;
-extern bool passive;

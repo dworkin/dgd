@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -257,7 +257,7 @@ extern void		d_get_callouts	 (dataspace*);
 extern sector		d_swapout	 (unsigned int);
 extern void		d_swapsync	 (void);
 extern void		d_upgrade_mem	 (object*, object*);
-extern void		d_restore_obj	 (object*, Uint*, uindex);
+extern void		d_restore_obj	 (object*, Uint*, uindex, bool);
 extern void		d_converted	 (void);
 
 extern void		d_free_control	 (control*);

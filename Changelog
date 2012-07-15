@@ -3,6 +3,15 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-07-15
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Hotbooting is always disabled for DGD.
+  - Fix performing a substitution inside an editor global command.
+  - Somehow, the maximum number of users got set to 192?
+  - Make the "passive" hack less aggressive.
+
 2012-06-29
 
   Raymond Jennings (shentino@gmail.com)
