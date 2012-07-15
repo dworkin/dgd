@@ -3286,9 +3286,9 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
 	}
 	obj->ctrl = ctrl;
     }
-    
+
     /* restore dataspace block */
-    if (OBJ(obj->index)->count != 0 && OBJ(obj->index)->dfirst != SW_UNUSED) { 
+    if (OBJ(obj->index)->count != 0 && OBJ(obj->index)->dfirst != SW_UNUSED) {
 	if (!converted) {
 	    data = d_conv_dataspace(obj, counttab);
 	} else {
@@ -3306,16 +3306,26 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
     if (passive) {
 	/* swap these out first */
 	if (ctrl != (control *) NULL && ctrl != ctail) {
-	    chead = ctrl->next;
-	    chead->prev = (control *) NULL;
+	    if (chead == ctrl) {
+		chead = ctrl->next;
+		chead->prev = (control *) NULL;
+	    } else {
+		ctrl->prev->next = ctrl->next;
+		ctrl->next->prev = ctrl->prev;
+	    }
 	    ctail->next = ctrl;
 	    ctrl->prev = ctail;
 	    ctrl->next = (control *) NULL;
 	    ctail = ctrl;
 	}
 	if (data != (dataspace *) NULL && data != dtail) {
-	    dhead = data->next;
-	    dhead->prev = (dataspace *) NULL;
+	    if (dhead == data) {
+		dhead = data->next;
+		dhead->prev = (control *) NULL;
+	    } else {
+		data->prev->next = data->next;
+		data->next->prev = data->prev;
+	    }
 	    dtail->next = data;
 	    data->prev = dtail;
 	    data->next = (dataspace *) NULL;

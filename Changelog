@@ -5,6 +5,12 @@ in doc/Changelog.Dworkin
 
 2012-07-15
 
+  Raymond Jennings
+
+  - Fix erroneous assumption made during a passive restore.
+
+2012-07-15
+
   Felix Croes (felix@dworkin.nl)
 
   - Hotbooting is always disabled for DGD.
