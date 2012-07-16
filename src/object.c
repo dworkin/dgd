@@ -939,11 +939,11 @@ object *o_find(char *name, int access)
  * NAME:	object->restore_object()
  * DESCRIPTION:	restore an object from the dump file
  */
-static void o_restore_obj(object *obj, bool cpassive, bool dpassive)
+static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, counttab, rotabsize, cpassive, dpassive);
+    d_restore_obj(obj, counttab, rotabsize, cactive, dactive);
 }
 
 /*
@@ -961,7 +961,7 @@ control *o_control(object *obj)
     }
     if (o->ctrl == (control *) NULL) {
 	if (BTST(omap, o->index)) {
-	    o_restore_obj(o, FALSE, TRUE);
+	    o_restore_obj(o, TRUE, FALSE);
 	} else {
 	    o->ctrl = d_load_control(o);
 	}
@@ -979,7 +979,7 @@ dataspace *o_dataspace(object *o)
 {
     if (o->data == (dataspace *) NULL) {
 	if (BTST(omap, o->index)) {
-	    o_restore_obj(o, FALSE, FALSE);
+	    o_restore_obj(o, TRUE, TRUE);
 	} else {
 	    o->data = d_load_dataspace(o);
 	}
@@ -1508,7 +1508,7 @@ bool o_copy(Uint time)
 	while (dobjects > n) {
 	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
 	    dobject = obj->index + 1;
-	    o_restore_obj(obj, TRUE, TRUE);
+	    o_restore_obj(obj, FALSE, FALSE);
 	    if (time == 0) {
 		d_swapout(1);
 	    }

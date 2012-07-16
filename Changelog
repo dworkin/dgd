@@ -7,6 +7,12 @@ in doc/Changelog.Dworkin
 
   Raymond Jennings (shentino@gmail.com)
 
+  Call it "active" instead of "passive" so it is easier to understand.
+
+2012-07-16
+
+  Raymond Jennings (shentino@gmail.com)
+
   Allow separate passive specifications for an object dataspace and control.
 
 2012-07-16
