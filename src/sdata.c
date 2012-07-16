@@ -3255,7 +3255,7 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab)
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
+void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cpassive, bool dpassive)
 {
     control *ctrl;
     dataspace *data;
@@ -3303,8 +3303,8 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
 	d_fixdata(data, obj, counttab, nobjects);
     }
 
-    if (passive) {
-	/* swap these out first */
+    if (cpassive) {
+	/* swap this out first */
 	if (ctrl != (control *) NULL && ctrl != ctail) {
 	    if (chead == ctrl) {
 		chead = ctrl->next;
@@ -3318,6 +3318,9 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool passive)
 	    ctrl->next = (control *) NULL;
 	    ctail = ctrl;
 	}
+    }
+    if (dpassive) {
+	/* swap this out first */
 	if (data != (dataspace *) NULL && data != dtail) {
 	    if (dhead == data) {
 		dhead = data->next;

@@ -5,6 +5,12 @@ in doc/Changelog.Dworkin
 
 2012-07-16
 
+  Raymond Jennings (shentino@gmail.com)
+
+  Allow separate passive specifications for an object dataspace and control.
+
+2012-07-16
+
   Felix Croes (felix@dworkin.nl)
 
   - Fix the fix.
@@ -14,7 +20,7 @@ in doc/Changelog.Dworkin
 
   Raymond Jennings
 
-  - Fix erroneous assumption made during a passive restore.
+  Fix erroneous assumption made during a passive restore.
 
 2012-07-15
 
