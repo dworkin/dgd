@@ -396,6 +396,7 @@ value *i_reverse(frame *f, int n)
 	value *v, *w;
 	int size;
 
+	size = 0;
 	v = f->sp;
 	if (n == 1) {
 	    switch (v->u.number >> 28) {
