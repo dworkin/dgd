@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-08-12
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add a missing call to endthread() in NETWORK_EXTENSIONS code, which really
+  isn't stable yet.
+
 2012-08-08
 
   Raymond Jennings (shentino@gmail.com)
