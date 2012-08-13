@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1364,6 +1364,9 @@ static Uint opt_expr(node **m, int pop)
     case N_CATCH:
 	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, TRUE);
+	if (d1 == 0) {
+	    n->l.left = (node *) NULL;
+	}
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
 	    *m = node_nil();
@@ -1669,7 +1672,14 @@ static Uint opt_expr(node **m, int pop)
 
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
+	if (d2 == 0) {
+	    n->r.right = (node *) NULL;
+	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
+	if (d2 == 0) {
+	    *m = n->l.left;
+	    return opt_expr(m, TRUE);
+	}
 	if (n->r.right->flags & F_CONST) {
 	    if (pop) {
 		*m = n->l.left;
@@ -1712,7 +1722,14 @@ static Uint opt_expr(node **m, int pop)
 
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_cond(&n->r.right, pop);
+	if (d2 == 0) {
+	    n->r.right = (node *) NULL;
+	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
+	if (d2 == 0) {
+	    *m = n->l.left;
+	    return opt_expr(m, TRUE);
+	}
 	if (n->r.right->flags & F_CONST) {
 	    if (pop) {
 		*m = n->l.left;
@@ -1763,12 +1780,18 @@ static Uint opt_expr(node **m, int pop)
 	n = n->r.right;
 	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, pop);
+	if (d1 == 0) {
+	    n->l.left = (node *) NULL;
+	}
 	d1 = max2(d1, side_end(&n->l.left, side, oldside, olddepth));
 	if (d1 == 0) {
 	    n->l.left = (node *) NULL;
 	}
 	oldside = side_start(&side, &olddepth);
 	d2 = opt_expr(&n->r.right, pop);
+	if (d2 == 0) {
+	    n->r.right = (node *) NULL;
+	}
 	d2 = max2(d2, side_end(&n->r.right, side, oldside, olddepth));
 	if (d2 == 0) {
 	    n->r.right = (node *) NULL;
@@ -2085,6 +2108,9 @@ node *opt_stmt(node *first, Uint *depth)
 	    if (n->l.left != (node *) NULL) {
 		side_start(&side, depth);
 		d1 = opt_expr(&n->l.left, TRUE);
+		if (d1 == 0) {
+		    n->l.left = (node *) NULL;
+		}
 		d1 = max2(d1, side_end(&n->l.left, side, (node **) NULL, 0));
 		if (d1 == 0) {
 		    n->l.left = (node *) NULL;
