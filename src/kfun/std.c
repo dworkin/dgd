@@ -1367,7 +1367,7 @@ int kf_open_port(frame *f, int nargs)
     port = 0;
     if (nargs == 2) {
 	port = f->sp->u.number;
-	if (port < 1) /* || (port > 65535)) */ {
+	if (port < 0) /* || (port > 65535)) */ {
 	    error("Port number not in allowed range");
 	}
 	f->sp++;
