@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1703,6 +1703,8 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	conn = flist;
 	flist = (connection *) conn->chain.next;
 	conn->fd = sock;
+	conn->chain.name = (char *) NULL;
+	conn->udpbuf = (char *) NULL;
 	sz = sizeof(sin);
 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
 	conn->at = ntohs(sin.sin_port);
@@ -1740,6 +1742,8 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	conn = flist;
 	flist = (connection *) conn->chain.next;
 	conn->fd = sock;
+	conn->chain.name = (char *) NULL;
+	conn->udpbuf = (char *) NULL;
 	sz = sizeof(sin);
 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
 	conn->at = ntohs(sin.sin_port);

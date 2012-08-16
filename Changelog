@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-08-16
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix some more buggy NETWORK_EXTENSIONS code.
+
 2012-08-13
 
   Felix Croes (felix@dworkin.nl)
