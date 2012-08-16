@@ -7,7 +7,8 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
-  Fix some more buggy NETWORK_EXTENSIONS code.
+  - Fix some more buggy NETWORK_EXTENSIONS code.
+  - And even more.
 
 2012-08-13
 
