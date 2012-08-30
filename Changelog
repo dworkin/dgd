@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-08-30
+
+  Ulrich Strauss (miraculix@xyllomer.de)
+
+  Re-Enable open of any free port number. Needed for passive ftp
+
 2012-08-16
 
   Felix Croes (felix@dworkin.nl)
