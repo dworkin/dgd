@@ -5,6 +5,13 @@ in doc/Changelog.Dworkin
 
 2012-08-30
 
+  Raymond Jennings (shentino@gmail.com)
+
+  Also trim the object table after a snapshot
+  if we aren't about to shut down.
+
+2012-08-30
+
   Ulrich Strauss (miraculix@xyllomer.de)
 
   Re-Enable open of any free port number. Needed for passive ftp

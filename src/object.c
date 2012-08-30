@@ -1363,6 +1363,9 @@ bool o_dump(int fd)
 	}
     }
 
+    if (!stop) {
+	o_trim();
+    }
     o_sweep(baseplane.nobjects);
     rotabsize = baseplane.nobjects;
 
