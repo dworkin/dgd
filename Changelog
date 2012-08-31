@@ -7,8 +7,9 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
-  Allow DGD to restore hotboot snapshots from Hydra, treating them as plain
-  snapshots.
+  - Allow DGD to restore hotboot snapshots from Hydra, treating them as plain
+    snapshots.
+  - Release 1.4.15.
 
 2012-08-30
 
@@ -34,7 +35,7 @@ in doc/Changelog.Dworkin
 
   Felix Croes (felix@dworkin.nl)
 
-  Generate proper code for catch(foo, bar, "gnu"); 
+  Generate proper code for catch(foo, bar, "gnu");
 
 2012-08-12
 
