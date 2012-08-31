@@ -355,6 +355,7 @@ static void conf_restore(int fd)
 	conv_vm = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
+    rzero5 &= ~0x02;	/* ignore Hydra hotboot flag */
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
 	rzero3 != 0 || rzero4 != 0 || rzero5 != 0 || rzero6 != 0) {
 	error("Bad or incompatible restore file header");

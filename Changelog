@@ -3,6 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-08-31
+
+  Felix Croes (felix@dworkin.nl)
+
+  Allow DGD to restore hotboot snapshots from Hydra, treating them as plain
+  snapshots.
+
 2012-08-30
 
   Raymond Jennings (shentino@gmail.com)
