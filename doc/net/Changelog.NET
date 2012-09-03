@@ -17,7 +17,7 @@
 
 - Fixed two cases of port numbers using network byte order instead of host
   byte order. This concerns inbound tcp connections and udp datagrams
-- Fixed a segment violation in send_datagram() 
+- Fixed a segment violation in send_datagram()
 - Changed udp datagram queueing, it needs to be implemented in lpc
 
 1.2.157-NET-05
@@ -30,7 +30,7 @@
 - Fixed a bug in handling connections that have been closed with close_user()
 - Check for valid file descriptor in conn_check_connected()
 - Corrected outdated information in the Copyright.NET file
-- Removed the I3 example code, please checkout svn://wotf.org/gurbalib/ for a 
+- Removed the I3 example code, please checkout svn://wotf.org/gurbalib/ for a
   working and maintained example of an intermud 3 client and related support code.
 
 1.3.1-NET-0.7

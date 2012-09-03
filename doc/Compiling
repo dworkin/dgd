@@ -4,7 +4,7 @@ DGD's build process is very simple, and doesn't have
 a configure script.
 
 DGD can be compiled on Unix alike systems and on Windows,
-see doc/Platforms for more information. Also see 
+see doc/Platforms for more information. Also see
 src/host/win32/README for additional information regarding
 the Windows build.
 

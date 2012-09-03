@@ -1,7 +1,7 @@
 DGD Network extensions
 
 The network extensions allow LPC code to open ports for
-listening, to make outbound tcp connections, and to 
+listening, to make outbound tcp connections, and to
 send and receive udp without the restrictions dgd normally
 puts on this.
 
