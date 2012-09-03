@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -350,7 +350,7 @@ Uint co_time(unsigned short *mtime)
  * NAME:	call_out->check()
  * DESCRIPTION:	check if, and how, a new callout can be added
  */
-Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp, 
+Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
 	unsigned short *mp, uindex **qp)
 {
     Uint t;
@@ -415,7 +415,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay, Uint *tp,
  * NAME:	call_out->new()
  * DESCRIPTION:	add a callout
  */
-void co_new(unsigned int oindex, unsigned int handle, Uint t, 
+void co_new(unsigned int oindex, unsigned int handle, Uint t,
 	unsigned int m, uindex *q)
 {
     call_out *co;

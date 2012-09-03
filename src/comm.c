@@ -110,12 +110,12 @@ static char ayt[22];		/* are you there? */
  * DESCRIPTION:	initialize communications
  */
 #ifdef NETWORK_EXTENSIONS
-bool comm_init(int n, int p, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, int p, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #else
-bool comm_init(int n, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #endif
 {
@@ -168,7 +168,7 @@ bool comm_init(int n, char **thosts, char **bhosts,
 }
 
 #ifdef NETWORK_EXTENSIONS
-void comm_openport(frame *f, object *obj, unsigned char protocol, 
+void comm_openport(frame *f, object *obj, unsigned char protocol,
 	unsigned short portnr)
 {
     connection *conn;
@@ -181,7 +181,7 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
 
     flags = 0;
 
-    if (nports >= maxports) 
+    if (nports >= maxports)
 	error("Max number of port objects exceeded");
 
     switch (protocol)
@@ -503,7 +503,7 @@ void comm_challenge(object *obj, string *str)
  * NAME:	comm->write()
  * DESCRIPTION:	add bytes to output buffer
  */
-static int comm_write(user *usr, object *obj, string *str, char *text, 
+static int comm_write(user *usr, object *obj, string *str, char *text,
 	unsigned int len)
 {
     dataspace *data;
@@ -1236,7 +1236,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		endthread();
 
 		newusr->flags |= CF_PROMPT;
-		addtoflush(newusr, 
+		addtoflush(newusr,
 			   d_get_extravar(o_dataspace(obj))->u.array);
 		olduser = this_user;
 		this_user = obj->index;

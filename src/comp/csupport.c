@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,7 @@ static char *driver_name;	/* name of driver object */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits, 
+static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits,
 	Uint compiled)
 {
     Uint cc;
@@ -91,7 +91,7 @@ static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits,
  * NAME:	precomp->funcdefs()
  * DESCRIPTION:	handle function definitions
  */
-static void pc_funcdefs(char *program, dfuncdef *funcdefs, 
+static void pc_funcdefs(char *program, dfuncdef *funcdefs,
 	unsigned short nfuncdefs, Uint nfuncs)
 {
     char *p;
@@ -645,7 +645,7 @@ static bool dstrcmp(dstrconst *dstrings, dstrconst *strings, int nstrings)
  * NAME:	func1cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog, 
+static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog,
 	int nfuncdefs)
 {
     while (nfuncdefs != 0) {
@@ -666,7 +666,7 @@ static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog,
  * NAME:	func2cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func2cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *dprog, 
+static bool func2cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *dprog,
 	char *prog, int nfuncdefs)
 {
     while (nfuncdefs != 0) {

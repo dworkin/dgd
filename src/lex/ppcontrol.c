@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -78,7 +78,7 @@ bool pp_init(char *file, char **id, string **strs, int nstr, int level)
     mc_define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
 #ifdef NETWORK_EXTENSIONS
     mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
-#endif 
+#endif
     pps_init();
     include_level = level;
     ifs = &top;

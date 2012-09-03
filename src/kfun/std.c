@@ -1441,7 +1441,7 @@ int kf_close_user(frame *f)
 # ifdef FUNCDEF
 FUNCDEF("send_datagram", kf_send_datagram, pt_send_datagram, 0)
 # else
-char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 3,0,0,9,T_INT, 
+char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 3,0,0,9,T_INT,
 			     T_STRING, T_STRING, T_INT};
 /*
  * NAME:	kfun->send_datagram()

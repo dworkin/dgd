@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -185,7 +185,7 @@ static void del_lhs(dataspace *data, value *lhs)
  * NAME:	data->alloc_call_out()
  * DESCRIPTION:	allocate a new callout
  */
-static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time, 
+static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
 	unsigned short mtime, int nargs, value *v)
 {
     dcallout *co;
@@ -339,8 +339,8 @@ static void cop_clean(dataplane *plane)
  * NAME:	copatch->new()
  * DESCRIPTION:	create a new callout patch
  */
-static copatch *cop_new(dataplane *plane, copatch **c, int type, 
-	unsigned int handle, dcallout *co, Uint time, unsigned int mtime, 
+static copatch *cop_new(dataplane *plane, copatch **c, int type,
+	unsigned int handle, dcallout *co, Uint time, unsigned int mtime,
 	uindex *q)
 {
     coptable *tab;
@@ -425,7 +425,7 @@ static void cop_del(dataplane *plane, copatch **c, bool del)
  * NAME:	copatch->replace()
  * DESCRIPTION:	replace one callout patch with another
  */
-static void cop_replace(copatch *cop, dcallout *co, Uint time, 
+static void cop_replace(copatch *cop, dcallout *co, Uint time,
 	unsigned int mtime, uindex *q)
 {
     int i;
@@ -1163,7 +1163,7 @@ void d_change_map(array *map)
  * NAME:	data->new_call_out()
  * DESCRIPTION:	add a new callout
  */
-uindex d_new_call_out(dataspace *data, string *func, Int delay, 
+uindex d_new_call_out(dataspace *data, string *func, Int delay,
 	unsigned int mdelay, frame *f, int nargs)
 {
     Uint ct, t;
@@ -1318,7 +1318,7 @@ Int d_del_call_out(dataspace *data, Uint handle, unsigned short *mtime)
  * NAME:	data->get_call_out()
  * DESCRIPTION:	get a callout
  */
-string *d_get_call_out(dataspace *data, unsigned int handle, frame *f, 
+string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
 	int *nargs)
 {
     string *str;
@@ -1551,7 +1551,7 @@ static unsigned short *d_get_varmap(object **obj, Uint update, unsigned short *n
  * NAME:	data->upgrade_data()
  * DESCRIPTION:	upgrade the dataspace for one object
  */
-void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap, 
+void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap,
 	object *tmpl)
 {
     value *v;
@@ -1688,7 +1688,7 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
 
     vmap -= nvar;
     if (vmap != obj->ctrl->vmap) {
-	FREE(vmap);  
+	FREE(vmap);
     }
 
     v = lwobj->elts + 2;
@@ -1727,7 +1727,7 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
  * NAME:	data->import()
  * DESCRIPTION:	copy imported arrays to current dataspace
  */
-static void d_import(arrimport *imp, dataspace *data, value *val, 
+static void d_import(arrimport *imp, dataspace *data, value *val,
 	unsigned short n)
 {
     while (n > 0) {

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -590,12 +590,12 @@ void sw_restore(int fd, unsigned int secsize)
  * DESCRIPTION:	pretend to initialize communications
  */
 #ifdef NETWORK_EXTENSIONS
-bool comm_init(int n, int p, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, int p, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #else
-bool comm_init(int n, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #endif
 {
@@ -616,7 +616,7 @@ void comm_finish()
  * DESCRIPTION:	pretend to set the datagram challenge
  */
 void comm_challenge(object *obj, string *str)
-{  
+{
 }
 
 /*
@@ -729,7 +729,7 @@ bool comm_is_connection(object *obj)
     return FALSE;
 }
 
-void comm_openport(frame *f, object *obj, unsigned char protocol, 
+void comm_openport(frame *f, object *obj, unsigned char protocol,
 	unsigned short port)
 {
 }
@@ -741,7 +741,7 @@ int comm_senddatagram(object *obj, string *str, string *ip, int port)
 #endif
 
 void
-comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
+comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
 }
@@ -809,7 +809,7 @@ bool co_init(unsigned int max)
  * NAME:	call_out->check()
  * DESCRIPTION:	pretend to check a new callout
  */
-Uint co_check(unsigned int n, Int delay, unsigned int mdelay, 
+Uint co_check(unsigned int n, Int delay, unsigned int mdelay,
 	Uint *tp, unsigned short *mp, uindex **qp)
 {
     return 0;
@@ -819,7 +819,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay,
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new callout
  */
-void co_new(unsigned int oindex, unsigned int handle, Uint t, 
+void co_new(unsigned int oindex, unsigned int handle, Uint t,
 	unsigned int m, uindex *q)
 {
 }
@@ -828,7 +828,7 @@ void co_new(unsigned int oindex, unsigned int handle, Uint t,
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a callout
  */
-void co_del(unsigned int oindex, unsigned int handle, Uint t, 
+void co_del(unsigned int oindex, unsigned int handle, Uint t,
 	unsigned int m)
 {
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -210,7 +210,7 @@ bool tk_include(char *file, string **strs, int nstr)
 		P_close(fd);
 		return FALSE;
 	    }
-					 
+
 	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
 	    /* read from strings */
@@ -390,7 +390,7 @@ static int gc()
  * DESCRIPTION: skip a single comment
  */
 static void skip_comment()
-{ 
+{
     int c;
 
     do {

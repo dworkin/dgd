@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -228,7 +228,7 @@ void kf_init()
 	*k1++ = i;
 	*k2++ = i;
     }
-    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS, 
+    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS,
 	  sizeof(kfunc), kf_cmp);
     qsort(kfenc, ne, sizeof(kfunc), kf_cmp);
     qsort(kfdec, nd, sizeof(kfunc), kf_cmp);

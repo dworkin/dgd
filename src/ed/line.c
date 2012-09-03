@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,7 @@
 
 /*
  *   The blocks in a line buffer are written in a temporary file, and read back
- * if needed. There are at least 3 temporary file buffers: a write buffer and 
+ * if needed. There are at least 3 temporary file buffers: a write buffer and
  * two read buffers. If a block is not in one of those buffers, it is loaded
  * in the read buffer that wasn't used in the last read buffer access.
  *   The write buffer is filled with blocks on one side and text on the other.
@@ -707,7 +707,7 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline)(char*), 
+void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline)(char*),
 	int reverse)
 {
     blk *bp;

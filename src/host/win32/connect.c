@@ -395,7 +395,7 @@ void conn_intr(void)
  * NAME:	conn->port6()
  * DESCRIPTION:	open an IPv6 port
  */
-static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6, 
+static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
 	unsigned short port)
 {
     int on;
@@ -431,7 +431,7 @@ static int conn_port6(SOCKET *fd, int type, struct sockaddr_in6 *sin6,
  * NAME:	conn->port()
  * DESCRIPTION:	open an IPv4 port
  */
-static int conn_port(SOCKET *fd, int type, struct sockaddr_in *sin, 
+static int conn_port(SOCKET *fd, int type, struct sockaddr_in *sin,
 	unsigned short port)
 {
     int on;
@@ -907,7 +907,7 @@ connection *conn_tnew6(int port)
     }
     return (connection *) NULL;
 }
- 
+
 /*
  * NAME:	conn->bnew6()
  * DESCRIPTION:	accept a new binary connection
@@ -1437,7 +1437,7 @@ int conn_udpsend(connection *conn, char *buf, unsigned int len, char *addr,
     struct sockaddr_in to;
 
     to.sin_family = addrtype;
-    to.sin_addr.s_addr = inet_addr(addr);  /* should have been checked for valid 
+    to.sin_addr.s_addr = inet_addr(addr);  /* should have been checked for valid
 					      addresses already, so it should not
 					      fail */
     to.sin_port = htons(port);

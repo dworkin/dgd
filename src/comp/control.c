@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -120,7 +120,7 @@ static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(string *str, oh *ohash, unsigned short ct, 
+static void vfh_new(string *str, oh *ohash, unsigned short ct,
 	string *cvstr, short idx, vfh **addr)
 {
     vfh *h;
@@ -394,7 +394,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/*
 	 * privately inherited nomask function is not allowed
 	 */
-	c_error("private inherit of nomask function %s (/%s)", str->text, 
+	c_error("private inherit of nomask function %s (/%s)", str->text,
 		ohash->chain.name);
 	return;
     }
@@ -1340,7 +1340,7 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
     if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
 	char *p;
 	Uint class;
- 
+
 	p = &PROTO_FTYPE(proto) + 1;
 	FETCH3U(p, class);
 	*cfstr = d_get_strconst(ctrl, class >> 16, class & 0xffff);

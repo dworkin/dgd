@@ -2898,7 +2898,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len, 
+bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 	int call_static, int nargs)
 {
     dsymbol *symb;

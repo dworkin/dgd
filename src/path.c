@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -188,7 +188,7 @@ char *path_include(char *buf, char *from, char *file, string ***strs, int *nstr)
 	 * strings, then return it.
 	 */
 	i = f->sp->u.array->size;
-	if (i != 0) {   
+	if (i != 0) {
 	    v = d_get_elts(f->sp->u.array);
 	    while ((v++)->type == T_STRING) {
 		if (--i == 0) {
@@ -199,7 +199,7 @@ char *path_include(char *buf, char *from, char *file, string ***strs, int *nstr)
 		    } while (--i != 0);
 		    *strs = str;
 		    arr_del((f->sp++)->u.array);
- 
+
 		    /* return the untranslated path, as well */
 		    return path_from(buf, from, file);
 		}

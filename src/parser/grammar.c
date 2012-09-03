@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -626,7 +626,7 @@ static void rl_clear(rlchunk *c)
  *		[x]	number of symbols in rule	}
  *		[x]	length of rule			}
  *		[...]	rule:				} ...
- *			[x][y] 	token or rule ...	}
+ *			[x][y]	token or rule ...	}
  *			[...]	optional: function name	}
  */
 
@@ -634,7 +634,7 @@ static void rl_clear(rlchunk *c)
  * NAME:	make_grammar()
  * DESCRIPTION:	create a pre-processed grammar string
  */
-static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist, 
+static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist,
 			    int nrgx, int nstr, int nestr, int nprod, long size)
 {
     int start, prod1;

@@ -541,8 +541,8 @@ static int conn_port(int *fd, int type, struct sockaddr_in *sin, unsigned int po
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(int maxusers, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, int ntports, 
+bool conn_init(int maxusers, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports, int ntports,
 	int nbports)
 {
 # ifdef INET6
@@ -1474,7 +1474,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 # ifdef INET6
 	if (conn->addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
- 
+
 	    memset(&to, '\0', sizeof(struct sockaddr_in6));
 	    to.sin6_family = AF_INET6;
 	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
@@ -1486,7 +1486,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 # endif
 	{
 	    struct sockaddr_in to;
- 
+
 	    memset(&to, '\0', sizeof(struct sockaddr_in));
 	    to.sin_family = AF_INET;
 	    to.sin_addr = conn->addr->ipnum.in.addr;
@@ -1499,13 +1499,13 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 }
 
 #ifdef NETWORK_EXTENSIONS
-int conn_udpsend(connection *conn, char *buf, unsigned int len, char *addr, 
+int conn_udpsend(connection *conn, char *buf, unsigned int len, char *addr,
 	unsigned short port)
 {
     struct sockaddr_in to;
 
     to.sin_family=addrtype;
-    inet_aton(addr, &to.sin_addr); /* should have been checked for valid 
+    inet_aton(addr, &to.sin_addr); /* should have been checked for valid
 				      addresses already, so it should not
 				      fail */
     to.sin_port = htons(port);
@@ -1599,7 +1599,7 @@ connection *conn_connect(char *addr, unsigned short port)
 	return NULL;
     }
     on = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on, 
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
 	return NULL;

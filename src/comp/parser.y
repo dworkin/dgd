@@ -201,7 +201,7 @@ data_declaration
 
 function_declaration
 	: class_specifier_list type_specifier function_dcltr
-		{ 
+		{
 		  typechecking = TRUE;
 		  c_function($1, $2, $3);
 		}
@@ -1177,9 +1177,9 @@ static node *bina(int op, node *n1, node *n2, char *name)
     } else if (n1->mod == T_FLOAT || n2->mod == T_FLOAT) {
 	type = T_FLOAT;
         switch(op) {
-	    case N_ADD: 
-	    case N_ADD_EQ: 
-	    case N_ADD_EQ_1: 
+	    case N_ADD:
+	    case N_ADD_EQ:
+	    case N_ADD_EQ_1:
 	    case N_DIV:
 	    case N_DIV_EQ:
 	    case N_EQ:

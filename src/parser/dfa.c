@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1042,7 +1042,7 @@ static void dfa_extend(dfa *fa, dfastate *state, unsigned short limit)
  *		[x]	# equivalence classes
  * eclass	[...]	1 - 256 equivalence classes
  *
- * state 	[x][y]	final				} ...
+ * state	[x][y]	final				} ...
  *		[...]	optional: transitions		}
  *
  *
@@ -1054,7 +1054,7 @@ static void dfa_extend(dfa *fa, dfastate *state, unsigned short limit)
  *
  * state	[x][y]	# positions			}
  *		[x][y]	# strings			}
- * 		[x]	len				} ...
+ *		[x]	len				} ...
  *		[...]	position data			}
  *		[...]	string data			}
  *

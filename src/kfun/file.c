@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -572,7 +572,7 @@ static void restore_error(restcontext *x, char *err)
 {
     error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
 }
- 
+
 /*
  * NAME:	restore_int()
  * DESCRIPTION:	restore an integer
@@ -713,7 +713,7 @@ static char *restore_array(restcontext *x, char *buf, value *val)
     unsigned short i;
     value *v;
     array *a;
-    
+
     /* match ({ */
     if (*buf++ != '(' || *buf++ != '{') {
 	restore_error(x, "'({' expected");
@@ -763,7 +763,7 @@ static char *restore_mapping(restcontext *x, char *buf, value *val)
     unsigned short i;
     value *v;
     array *a;
-    
+
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
 	restore_error(x, "'([' expected");

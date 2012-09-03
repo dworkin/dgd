@@ -95,7 +95,7 @@ static config conf[] = {
 # define OBJECTS	16
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define PORTS		17 
+# define PORTS		17
 				{ "ports",		INT_CONST, FALSE, FALSE,
 							1, 32 },
 # define SECTOR_SIZE	18
@@ -523,7 +523,7 @@ Uint conf_dsize(char *layout)
 		ralign = ALGN(ralign, rzalign);
 	    }
 	    return ALGN(rsize, ralign) |
-	    	   (ralign << 8) |
+		   (ralign << 8) |
 		   (ALGN(size, align) << 16) |
 		   (align << 24);
 	}
@@ -1412,7 +1412,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 
     /* initialize memory manager */
     m_init((size_t) conf[STATIC_CHUNK].u.num,
-    	   (size_t) conf[DYNAMIC_CHUNK].u.num);
+	   (size_t) conf[DYNAMIC_CHUNK].u.num);
 
     /*
      * create include files

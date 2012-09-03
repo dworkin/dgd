@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1758,7 +1758,7 @@ static void cg_switch_start(node *n)
 {
     node *m;
 
-    /* 
+    /*
      * initializers
      */
     m = n->r.right->r.right;
@@ -1767,7 +1767,7 @@ static void cg_switch_start(node *n)
     }
 # ifdef DEBUG
     if (m->type != N_COMPOUND) {
-	fatal("N_COMPOUND expected");  
+	fatal("N_COMPOUND expected");
     }
 # endif
     cg_stmt(m->r.right);
@@ -2254,7 +2254,7 @@ bool cg_compiled()
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */
-char *cg_function(string *fname, node *n, int nvar, int npar, 
+char *cg_function(string *fname, node *n, int nvar, int npar,
 	unsigned int depth, unsigned short *size)
 {
     char *prog;

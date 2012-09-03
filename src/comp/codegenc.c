@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -160,7 +160,7 @@ static void cg_lvalue(node *n, node *type)
 
     case N_GLOBAL:
 	output("i_global_lvalue(f, %d, %d/*%s*/, %d, %ld)",
-	       ((int) n->r.number >> 8) & 0xff, 
+	       ((int) n->r.number >> 8) & 0xff,
 	       ((int) n->r.number) & 0xff, n->l.left->l.string->text, t, l);
 	break;
 
@@ -999,7 +999,7 @@ static void cg_expr(node *n, int state)
 	kfun("add1");
 	store();
 	break;
-	
+
     case N_ADD_EQ_1_FLOAT:
 	cg_fetch(n->l.left);
 	kfun("add1_float");
@@ -2276,7 +2276,7 @@ bool cg_compiled()
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */
-char *cg_function(string *fname, node *n, int nvar, int npar, 
+char *cg_function(string *fname, node *n, int nvar, int npar,
 	unsigned int depth, unsigned short *size)
 {
     int i;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -146,7 +146,7 @@ extern void  node_clear	(void);
 # define N_MULT_INT		 70
 # define N_MULT_FLOAT		 71
 # define N_MULT_EQ		 72
-# define N_MULT_EQ_INT	 	 73
+# define N_MULT_EQ_INT		 73
 # define N_MULT_EQ_FLOAT	 74
 # define N_NE			 75
 # define N_NE_INT		 76
@@ -174,7 +174,7 @@ extern void  node_clear	(void);
 # define N_SUB_FLOAT		 98
 # define N_SUB_EQ		 99
 # define N_SUB_EQ_INT		100
-# define N_SUB_EQ_FLOAT		101 
+# define N_SUB_EQ_FLOAT		101
 # define N_SUB_EQ_1		102
 # define N_SUB_EQ_1_INT		103
 # define N_SUB_EQ_1_FLOAT	104

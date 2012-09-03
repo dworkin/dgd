@@ -3,6 +3,12 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+2012-08-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  Whitespace cleanup.
+
 2012-08-31
 
   Felix Croes (felix@dworkin.nl)
@@ -613,7 +619,7 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen
 
-  Remove conn_udp and conn_udpcheck when network extensions are 
+  Remove conn_udp and conn_udpcheck when network extensions are
   enabled.
 
   src/comm.h
@@ -627,7 +633,7 @@ in doc/Changelog.Dworkin
 
   Forbid using the driver object as user or port object
 
-  Merged changes from Felix: 
+  Merged changes from Felix:
   - Don't save the parse_string automatons in an object that has in the
     meanwhile been made special.
   - Fix some issues pointed out by valgrind.
@@ -678,9 +684,9 @@ in doc/Changelog.Dworkin
 
   Merged latest changes from Felix:
   - Add dummy errorhandler function for extension interface.
-  - Load dataspace of destructed objects from a safer place. 
+  - Load dataspace of destructed objects from a safer place.
     - but only when it actually exists
-  - Properly call add-on kfuns from precompiled code. 
+  - Properly call add-on kfuns from precompiled code.
 
   Properly protoized dgd_error()
 
@@ -755,7 +761,7 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen (aidil@wotf.org)
 
-  Import latest changes from Felix: Let status() return 
+  Import latest changes from Felix: Let status() return
   large numbers as floats.
 
   src/alloc.h
@@ -766,7 +772,7 @@ in doc/Changelog.Dworkin
   Bart van Leeuwen (aidil@wotf.org)
 
   Assume long long works on all platforms, and change the Uuint
-  define accordingly. Change the swapfile size check to use 
+  define accordingly. Change the swapfile size check to use
   Uuint instead of long long.
   Small change and fix to swap file size sanity check.
 

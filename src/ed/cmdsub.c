@@ -769,7 +769,7 @@ static void indent(char *text)
 		/* handle indentation */
 		i = *ip;
 		/* if needed, reduce indentation prior to shift */
-		if ((token == LBRACKET && 
+		if ((token == LBRACKET &&
 		  (*sp == ROPERATOR || *sp == ELSE || *sp == DO)) ||
 		  token == RBRACKET ||
 		  (token == IF && *sp == ELSE)) {

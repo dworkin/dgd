@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -763,13 +763,13 @@ static cmd ed_commands[] = {
     { CM_LNNONE,			'=', (char *) NULL,
 							cb_assign },
     { CM_LNDOT | CM_COUNT,		'c', "change",	cb_change },
-    { CM_LNDOT | CM_BUFFER | CM_COUNT, 	'd', "delete",	cb_delete },
+    { CM_LNDOT | CM_BUFFER | CM_COUNT,	'd', "delete",	cb_delete },
     { CM_LNNONE | CM_EXCL,		'e', "edit",	cb_edit },
     { CM_LNNONE,			'f', "file",	cb_file },
     { CM_LNRNG | CM_EXCL,		'g', "global",	cb_global },
     { CM_LN0 | CM_BUFFER,		 0,  "put",	cb_put },
     { CM_LN0,				'i', "insert",	cb_insert },
-    { CM_LNNONE | CM_EXCL | CM_COUNT, 	'j', "join",	cb_join },
+    { CM_LNNONE | CM_EXCL | CM_COUNT,	'j', "join",	cb_join },
     { CM_LNDOT,				'k', "mark",	cb_mark },
     { CM_LNDOT | CM_COUNT,		'l', "list",	cb_list },
     { CM_LNDOT | CM_ADDR,		'm', "move",	cb_move },

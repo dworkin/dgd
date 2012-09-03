@@ -555,7 +555,7 @@ extern int yyparse (void);
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(frame *f, char *file, object *obj, string **strs, 
+object *c_compile(frame *f, char *file, object *obj, string **strs,
 	int nstr, int iflag)
 {
     context c;
@@ -787,7 +787,7 @@ string *c_objecttype(node *n)
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(unsigned short class, node *type, string *str, 
+static void c_decl_func(unsigned short class, node *type, string *str,
 	node *formals, bool function)
 {
     char proto[5 + (MAX_LOCALS + 1) * 4];
@@ -923,7 +923,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_var()
  * DESCRIPTION:	declare a variable
  */
-static void c_decl_var(unsigned short class, node *type, string *str, 
+static void c_decl_var(unsigned short class, node *type, string *str,
 	bool global)
 {
     char tnbuf[TNBUFSIZE];
@@ -950,7 +950,7 @@ static void c_decl_var(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_list()
  * DESCRIPTION:	handle a list of declarations
  */
-static void c_decl_list(unsigned short class, node *type, node *list, 
+static void c_decl_list(unsigned short class, node *type, node *list,
 	bool global)
 {
     node *n;

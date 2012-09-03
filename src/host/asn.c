@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, http://dgd-osr.sourceforge.net/
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the file Changelog for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -697,7 +697,7 @@ static string *asi_numtostr(Uint *num, Uint size, bool minus)
     return str;
 }
 
-  
+
 /*
  * NAME:	asn->ticks()
  * DESCRIPTION:	count ticks for operation, return TRUE if out of ticks
@@ -1109,7 +1109,7 @@ string *asn_mod(frame *f, string *s1, string *s2)
 /*
  * NAME:	asn->modinv()
  * DESCRIPTION:	Compute the multiplicative inverse of a modulo b.
- *		From "Applied Cryptography" by Bruce Schneier, Second Edition, 
+ *		From "Applied Cryptography" by Bruce Schneier, Second Edition,
  *		page 247.
  */
 static bool asn_modinv(Uint *c, Uint *sizec, Uint *a, Uint *b, Uint sizea, Uint sizeb)
@@ -1911,7 +1911,7 @@ string *asn_xor(frame *f, string *s1, string *s2)
     char *p, *q, *r;
     ssizet i, j;
     string *str;
- 
+
     if (s1->len < s2->len) {
 	i = s1->len;
 	j = s2->len - i;

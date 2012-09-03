@@ -558,7 +558,7 @@ void srp_del(srp *lr)
  *		[x][y]		rule number			} ...
  *		[x]		offset in rule			}
  *
- * shift 	[...]		shift table
+ * shift	[...]		shift table
  */
 
 /*
@@ -680,7 +680,7 @@ static void srp_loadtmp(srp *lr)
     memcpy(lr->shtab, buf, lr->nshift);
     lr->shhtab = ALLOC(shlink*, lr->shhsize);
     memset(lr->shhtab, '\0', lr->shhsize * sizeof(shlink*));
-    for (i = 0, p = buf; i != lr->nshift; i += n, p += n) { 
+    for (i = 0, p = buf; i != lr->nshift; i += n, p += n) {
 	n = (Uint) 4 * ((UCHAR(p[5]) << 8) + UCHAR(p[6])) + 7;
 	sl_hash(lr->shhtab, lr->shhsize, &lr->slc, lr->shtab, p, n)->shifts =
 						(intptr_t) p - (intptr_t) buf;
