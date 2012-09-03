@@ -631,11 +631,7 @@ int kf_query_ip_number(frame *f)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-#ifdef NETWORK_EXTENSIONS
         if (comm_is_connection(obj)) {
-#else
-	if ((obj->flags & O_SPECIAL) == O_USER) {
-#endif
 	    PUT_STRVAL(f->sp, comm_ip_number(obj));
 	    return 0;
 	}
@@ -665,11 +661,7 @@ int kf_query_ip_name(frame *f)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-#ifdef NETWORK_EXTENSIONS
         if (comm_is_connection(obj)) {
-#else
-	if ((obj->flags & O_SPECIAL) == O_USER) {
-#endif
 	    PUT_STRVAL(f->sp, comm_ip_name(obj));
 	    return 0;
 	}
@@ -694,11 +686,7 @@ char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
  */
 int kf_users(frame *f)
 {
-#ifdef NETWORK_EXTENSIONS
-    PUSH_ARRVAL(f, comm_users(f->data, FALSE));
-#else
     PUSH_ARRVAL(f, comm_users(f->data));
-#endif
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
 }
@@ -1366,10 +1354,10 @@ int kf_open_port(frame *f, int nargs)
 
     port = 0;
     if (nargs == 2) {
-	port = f->sp->u.number;
-	if (port < 0) /* || (port > 65535)) */ {
+	if (f->sp->u.number < 0 || f->sp->u.number > 65535) {
 	    error("Port number not in allowed range");
 	}
+	port = f->sp->u.number;
 	f->sp++;
     }
     protoname = f->sp->u.string->text;
@@ -1400,7 +1388,7 @@ char pt_ports[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT)};
  */
 int kf_ports(frame *f)
 {
-    PUSH_ARRVAL(f, comm_users(f->data, TRUE));
+    PUSH_ARRVAL(f, comm_ports(f->data));
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
 }

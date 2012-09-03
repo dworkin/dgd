@@ -47,6 +47,17 @@ extern int	   conn_udpwrite (connection*, char*, unsigned int);
 extern bool	   conn_wrdone	 (connection*);
 extern void	   conn_ipnum	 (connection*, char*);
 extern void	   conn_ipname	 (connection*, char*);
+extern connection *conn_connect	 (char*, unsigned short);
+extern int	   conn_check_connected (connection*, bool*);
+# ifdef NETWORK_EXTENSIONS
+extern connection *conn_openlisten (unsigned char, unsigned short);
+extern int	   conn_at	 (connection*);
+extern int	   conn_checkaddr (char*);
+extern int	   conn_udpsend	 (connection*, char*, unsigned int, char*,
+				   unsigned short);
+extern int	   conn_udpreceive (connection*, char*, int, char**, int*);
+extern connection *conn_accept	 (connection*);
+# endif
 
 #ifdef NETWORK_EXTENSIONS
 extern bool	comm_init	(int, int, char**, char**, unsigned short*,
@@ -71,21 +82,11 @@ extern void	comm_close	(frame*, object*);
 extern object  *comm_user	(void);
 extern void	comm_connect	(frame *f, object *obj, char *addr,
 				   unsigned char protocol, unsigned short port);
-extern connection *conn_connect (char *addr, unsigned short port);
-extern int	conn_check_connected (connection *conn, bool*);
 #ifdef NETWORK_EXTENSIONS
 extern void	comm_openport	(frame *f, object *obj, unsigned char protocol,
 				   unsigned short portnr);
 extern int	comm_senddatagram (object *obj, string *str, string *ip, int port);
-extern connection * conn_openlisten (unsigned char protocol, unsigned short port);
-extern int	conn_at		(connection *conn);
-extern int	conn_checkaddr	(char *ip);
-extern int	conn_udpsend	(connection *conn, char *buf, unsigned int len,
-				   char *addr, unsigned short port);
-extern int	conn_udpreceive (connection *conn, char *buffer, int size, char **host,
-				   int *port);
-extern bool     comm_is_connection (object*);
-extern array   *comm_users      (dataspace *, bool);
-#else
-extern array   *comm_users	(dataspace*);
+extern array   *comm_ports      (dataspace*);
 #endif
+extern array   *comm_users	(dataspace*);
+extern bool     comm_is_connection (object*);

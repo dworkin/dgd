@@ -26,7 +26,7 @@
 # include "hash.h"
 # include "comm.h"
 
-# define MAXHOSTNAMELEN	256
+# define MAXHOSTNAMELEN	1025
 
 # define NFREE		32
 
@@ -1029,14 +1029,9 @@ void conn_del(connection *conn)
 	npackets -= conn->npkts;
 	FREE(conn->udpbuf);
     }
-#ifndef NETWORK_EXTENSIONS
-    ipa_del(conn->addr);
-#else
-    if (conn->addr != (ipaddr *) NULL)
-    {
+    if (conn->addr != (ipaddr *) NULL) {
       ipa_del(conn->addr);
     }
-#endif
     conn->chain.next = (hte *) flist;
     flist = conn;
 }

@@ -709,24 +709,15 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
-#ifndef NETWORK_EXTENSIONS
 array *comm_users(dataspace *data)
 {
     return (array *) NULL;
 }
-#else
-array *comm_users(dataspace *data, bool ports)
+
+#ifdef NETWORK_EXTENSIONS
+array *comm_ports(dataspace *data)
 {
     return (array *) NULL;
-}
-
-/*
- * NAME:        comm->is_connection()
- * DESCRIPTION: pretend to test if an object is a connection
- */
-bool comm_is_connection(object *obj)
-{
-    return FALSE;
 }
 
 void comm_openport(frame *f, object *obj, unsigned char protocol,
@@ -740,10 +731,22 @@ int comm_senddatagram(object *obj, string *str, string *ip, int port)
 }
 #endif
 
-void
-comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
+/*
+ * NAME:	comm->connect()
+ * DESCRIPTION:	pretend to establish an outbound connection
+ */
+void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
+}
+
+/*
+ * NAME:        comm->is_connection()
+ * DESCRIPTION: pretend to test if an object is a connection
+ */
+bool comm_is_connection(object *obj)
+{
+    return FALSE;
 }
 
 /*
