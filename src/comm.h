@@ -47,8 +47,8 @@ extern int	   conn_udpwrite (connection*, char*, unsigned int);
 extern bool	   conn_wrdone	 (connection*);
 extern void	   conn_ipnum	 (connection*, char*);
 extern void	   conn_ipname	 (connection*, char*);
-extern void	  *conn_host	 (char*, int*);
-extern connection *conn_connect	 (void*, int, unsigned short);
+extern void	  *conn_host	 (char*, unsigned short, int*);
+extern connection *conn_connect	 (void*, int);
 extern int	   conn_check_connected (connection*, bool*);
 # ifdef NETWORK_EXTENSIONS
 extern connection *conn_openlisten (unsigned char, unsigned short);

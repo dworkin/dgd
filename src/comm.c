@@ -366,12 +366,12 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
 
-    host = conn_host(addr, &len);
+    host = conn_host(addr, port, &len);
     if (host == (void *) NULL) {
 	error("Host not found");
     }
 
-    conn = conn_connect(host, len, port);
+    conn = conn_connect(host, len);
     if (conn == (connection *) NULL)
 	error("Can't connect to server");
 

@@ -1513,7 +1513,7 @@ void conn_ipname(connection *conn, char *buf)
  * NAME:	conn->host()
  * DESCRIPTION:	look up a host
  */
-void *conn_host(char *addr, int *len)
+void *conn_host(char *addr, unsigned short port, int *len)
 {
     struct hostent *host;
     static union {
@@ -1523,6 +1523,7 @@ void *conn_host(char *addr, int *len)
 
     memset(&inaddr.sin, '\0', sizeof(struct sockaddr_in));
     inaddr.sin.sin_family = AF_INET;
+    inaddr.sin.sin_port = htons(port);
     *len = sizeof(struct sockaddr_in);
     if ((inaddr.sin.sin_addr.s_addr=inet_addr(addr)) != INADDR_NONE) {
 	return &inaddr;
@@ -1536,6 +1537,7 @@ void *conn_host(char *addr, int *len)
 
     memset(&inaddr.sin6, '\0', sizeof(struct sockaddr_in6));
     inaddr.sin6.sin6_family = AF_INET6;
+    inaddr.sin6.sin6_port = htons(port);
     *len = sizeof(struct sockaddr_in6);
     if (WSAStringToAddress(addr, AF_INET, (LPWSAPROTOCOL_INFO) NULL,
 			   (struct sockaddr *) &inaddr.sin6, len) == 0) {
@@ -1562,7 +1564,7 @@ void *conn_host(char *addr, int *len)
  * NAME:        conn->connect()
  * DESCRIPTION: establish an oubound connection
  */
-connection *conn_connect(void *addr, int len, unsigned short port)
+connection *conn_connect(void *addr, int len)
 {
     connection *conn;
     int sock;
@@ -1598,7 +1600,6 @@ connection *conn_connect(void *addr, int len, unsigned short port)
 	return NULL;
     }
 
-    ((struct sockaddr_in *) addr)->sin_port = htons(port);
     if (connect(sock, (struct sockaddr *) addr, len) == SOCKET_ERROR) {
 	int err;
 
