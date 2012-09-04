@@ -1282,6 +1282,7 @@ int kf_connect(frame *f, int nargs)
 	error("connect() in special purpose object");
     }
 
+# ifdef NETWORK_EXTENSIONS
     if (f->level != 0) {
 	error("connect() within atomic function");
     }
@@ -1297,11 +1298,12 @@ int kf_connect(frame *f, int nargs)
 	    return 3;
 	str_del((f->sp++)->u.string);
     }
+# endif
 
-    port = (f->sp++)->u.number;
-    if (port < 1) /* || port > 65535) */ {
+    if (f->sp->u.number < 1 || f->sp->u.number > 65535) {
 	error("Port number out of range");
     }
+    port = (f->sp++)->u.number;
     addr = f->sp->u.string->text;
 
     comm_connect(f, obj, addr, proto, port);

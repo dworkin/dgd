@@ -86,6 +86,7 @@ static user *users;		/* array of users */
 static user *lastuser;		/* last user checked */
 static user *freeuser;		/* linked list of free users */
 static user *flush;		/* flush list */
+static user *outbound;		/* pending outbound list */
 static int maxusers;		/* max # of users */
 #ifdef NETWORK_EXTENSIONS
 static int maxports;		/* max # of ports */
@@ -135,7 +136,7 @@ bool comm_init(int n, char **thosts, char **bhosts,
 
     freeuser = usr;
     lastuser = (user *) NULL;
-    flush = (user *) NULL;
+    flush = outbound = (user *) NULL;
     nusers = odone = newlines = 0;
 #ifdef NETWORK_EXTENSIONS
     nports = 0;
@@ -277,21 +278,14 @@ static void addtoflush(user *usr, array *arr)
 }
 
 /*
- * NAME:	comm->new()
- * DESCRIPTION:	accept a new connection
+ * NAME:	comm->setup()
+ * DESCRIPTION:	setup a user
  */
-static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
+static array *comm_setup(user *usr, frame *f, object *obj)
 {
-    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
-			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
-    user *usr;
     dataspace *data;
     array *arr;
     value val;
-
-    if (obj->flags & O_SPECIAL) {
-	error("User object is already special purpose");
-    }
 
     if (obj->flags & O_DRIVER) {
 	error("Cannot use driver object as user object");
@@ -301,6 +295,44 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
     if (!O_HASDATA(obj) &&
 	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
+    }
+
+    d_wipe_extravar(data = o_dataspace(obj));
+    arr = arr_new(data, 3L);
+    arr->elts[0] = zero_int;
+    arr->elts[1] = arr->elts[2] = nil_value;
+    PUT_ARRVAL_NOREF(&val, arr);
+    d_set_extravar(data, &val);
+
+    usr->oindex = obj->index;
+    obj->flags |= O_USER;
+    obj->etabi = usr - users;
+    usr->conn = NULL;
+    usr->outbuf = (string *) NULL;
+    usr->osdone = 0;
+    usr->flags = 0;
+
+    return arr;
+}
+
+/*
+ * NAME:	comm->new()
+ * DESCRIPTION:	accept a new connection
+ */
+static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
+{
+    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
+			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
+    user *usr;
+    array *arr;
+    value val;
+
+    if (obj->flags & O_SPECIAL) {
+	error("User object is already special purpose");
+    }
+
+    if (obj->flags & O_DRIVER) {
+	error("Cannot use driver object as user object");
     }
 
     usr = freeuser;
@@ -316,19 +348,8 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 	lastuser = usr;
     }
 
-    d_wipe_extravar(data = o_dataspace(obj));
-    arr = arr_new(data, 3L);
-    arr->elts[0] = zero_int;
-    arr->elts[1] = arr->elts[2] = nil_value;
-    PUT_ARRVAL_NOREF(&val, arr);
-    d_set_extravar(data, &val);
-
-    usr->oindex = obj->index;
-    obj->flags |= O_USER;
-    obj->etabi = usr - users;
+    arr = comm_setup(usr, f, obj);
     usr->conn = conn;
-    usr->outbuf = (string *) NULL;
-    usr->osdone = 0;
     if (telnet) {
 	/* initialize connection */
 	usr->flags = CF_TELNET | CF_ECHO | CF_OUTPUT;
@@ -342,9 +363,7 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 
 	arr->elts[0].u.number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
-	d_assign_elt(data, arr, &arr->elts[1], &val);
-    } else {
-	usr->flags = 0;
+	d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     }
     nusers++;
 
@@ -360,23 +379,40 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 {
     void *host;
     int len;
-    connection *conn;
     user *usr;
+    array *arr;
+    value val;
 
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
 
     host = conn_host(addr, port, &len);
     if (host == (void *) NULL) {
-	error("Host not found");
+	error("Unknown address");
     }
 
-    conn = conn_connect(host, len);
-    if (conn == (connection *) NULL)
-	error("Can't connect to server");
+    for (usr = outbound; ; usr = usr->flush) {
+	if (usr == (user *) NULL) {
+	    usr = comm_new(f, obj, (connection *) NULL, (protocol == P_TELNET));
+	    arr = d_get_extravar(obj->data)->u.array;
+	    usr->flush = outbound;
+	    outbound = usr;
+	    break;
+	}
+	if ((OBJR(usr->oindex)->flags & O_SPECIAL) != O_USER) {
+	    /*
+	     * a previous outbound connection was undone, reuse it
+	     */
+	    arr_del(usr->extra);
+	    arr = comm_setup(usr, f, obj);
+	    break;
+	}
+    }
 
-    usr = comm_new(f, obj, conn, (protocol == P_TELNET));
-    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+    PUT_STRVAL_NOREF(&val, str_new(host, len));
+    d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+    usr->flags |= CF_FLUSH;
+    arr_ref(usr->extra = arr);
     opending++;
     usr->flags |= CF_OPENDING;
 }
@@ -801,6 +837,29 @@ void comm_flush()
     array *arr;
     value *v;
 
+    while (outbound != (user *) NULL) {
+	usr = outbound;
+	outbound = usr->flush;
+
+	arr = usr->extra;
+	obj = OBJ(usr->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER) {
+	    /* connect */
+	    usr->conn = conn_connect(arr->elts[1].u.string->text,
+				     arr->elts[1].u.string->len);
+	    if (usr->conn == (connection *) NULL) {
+		fatal("can't connect to server");
+	    }
+
+	    arr_del(arr);
+	    usr->flags &= ~CF_FLUSH;
+	} else {
+	    /* discard */
+	    usr->flush = flush;
+	    flush = usr;
+	}
+    }
+
     while (flush != (user *) NULL) {
 	usr = flush;
 	flush = usr->flush;
@@ -862,7 +921,9 @@ void comm_flush()
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
 	    d_wipe_extravar(obj->data);
-	    conn_del(usr->conn);
+	    if (usr->conn != (connection *) NULL) {
+		conn_del(usr->conn);
+	    }
 #ifdef NETWORK_EXTENSIONS
 	    if ((usr->flags & (CF_TELNET | CF_PORT)) == CF_TELNET) {
 #else

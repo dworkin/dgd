@@ -12,6 +12,7 @@ in doc/Changelog.Dworkin
   - Don't poll for outbound connection status.
   - Don't list pending outbound connections in users(), and don't let
     query_ip_number() and query_ip_name() return a host address/name for them.
+  - Enable connect() in atomic code, if NETWORK_EXTENSIONS is not defined.
 
 2012-09-03
 
