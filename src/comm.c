@@ -358,14 +358,20 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
+    void *host;
+    int len;
     connection *conn;
     user *usr;
 
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
 
-    conn = conn_connect(addr, port);
+    host = conn_host(addr, &len);
+    if (host == (void *) NULL) {
+	error("Host not found");
+    }
 
+    conn = conn_connect(host, len, port);
     if (conn == (connection *) NULL)
 	error("Can't connect to server");
 

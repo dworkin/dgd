@@ -3,7 +3,14 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
-2012-08-03
+2012-09-04
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Let connect work with hostnames and IPv6.
+  - Use waitfds to see when the connection becomes ready.
+
+2012-09-03
 
   Felix Croes (felix@dworkin.nl)
 
