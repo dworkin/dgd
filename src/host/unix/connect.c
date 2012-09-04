@@ -1588,6 +1588,19 @@ void *conn_host(char *addr, int *len)
 # endif
     } inaddr;
 
+    memset(&inaddr.sin, '\0', sizeof(struct sockaddr_in));
+    inaddr.sin.sin_family = AF_INET;
+    *len = sizeof(struct sockaddr_in);
+    if ((inaddr.sin.sin_addr.s_addr=inet_addr(addr)) != INADDR_NONE) {
+	return &inaddr;
+    } else {
+	host = gethostbyname(addr);
+	if (host != (struct hostent *) NULL) {
+	    memcpy(&inaddr.sin.sin_addr, host->h_addr, host->h_length);
+	    return &inaddr;
+	}
+    }
+
 # ifdef INET6
     memset(&inaddr.sin6, '\0', sizeof(struct sockaddr_in6));
     inaddr.sin6.sin6_family = AF_INET6;
@@ -1616,19 +1629,6 @@ void *conn_host(char *addr, int *len)
 	}
     }
 # endif
-
-    memset(&inaddr.sin, '\0', sizeof(struct sockaddr_in));
-    inaddr.sin.sin_family = AF_INET;
-    *len = sizeof(struct sockaddr_in);
-    if ((inaddr.sin.sin_addr.s_addr=inet_addr(addr)) != INADDR_NONE) {
-	return &inaddr;
-    } else {
-	host = gethostbyname(addr);
-	if (host != (struct hostent *) NULL) {
-	    memcpy(&inaddr.sin.sin_addr, host->h_addr, host->h_length);
-	    return &inaddr;
-	}
-    }
 
     return (void *) NULL;
 }
