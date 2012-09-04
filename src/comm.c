@@ -1630,9 +1630,11 @@ array *comm_users(dataspace *data)
 		continue;
 	    }
 #endif
-	    --i;
-	    if (OBJR(usr->oindex)->count != 0) {
-		n++;
+	    if (!(usr->flags & CF_OPENDING)) {
+		--i;
+		if (OBJR(usr->oindex)->count != 0) {
+		    n++;
+		}
 	    }
 	}
     }
@@ -1646,9 +1648,11 @@ array *comm_users(dataspace *data)
 		continue;
 	    }
 #endif
-	    PUT_OBJVAL(v, obj);
-	    v++;
-	    --n;
+	    if (!(usr->flags & CF_OPENDING)) {
+		PUT_OBJVAL(v, obj);
+		v++;
+		--n;
+	    }
 	}
     }
     return a;
@@ -1669,7 +1673,9 @@ bool comm_is_connection(object *obj)
 	    return FALSE;
 	}
 # endif
-	return TRUE;
+	if (!(usr->flags & CF_OPENDING)) {
+	    return TRUE;
+	}
     }
     return FALSE;
 }

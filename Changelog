@@ -10,6 +10,8 @@ in doc/Changelog.Dworkin
   - Let connect work with hostnames and IPv6.
   - Use waitfds to see when the connection becomes ready.
   - Don't poll for outbound connection status.
+  - Don't list pending outbound connections in users(), and don't let
+    query_ip_number() and query_ip_name() return a host address/name for them.
 
 2012-09-03
 
