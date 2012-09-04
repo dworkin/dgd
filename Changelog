@@ -9,6 +9,7 @@ in doc/Changelog.Dworkin
 
   - Let connect work with hostnames and IPv6.
   - Use waitfds to see when the connection becomes ready.
+  - Don't poll for outbound connection status.
 
 2012-09-03
 

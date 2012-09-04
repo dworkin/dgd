@@ -992,11 +992,6 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 
     if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
-    } else if (opending != 0) {
-	timeout = 0;
-	if (mtime > 250) {
-	    mtime = 250;
-	}
     }
     n = conn_select(timeout, mtime);
     if ((n <= 0) && (newlines == 0) && (odone == 0) && (opending == 0)) {
