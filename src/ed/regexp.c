@@ -420,7 +420,7 @@ static bool match(rxbuf *rx, char *start, char *text, bool ic, char *m, char *t)
 
 	case EOW:
 	    /* end of word */
-	    if ((!isalnum(t[-1]) && t[-1] != '_')
+	    if (t == start || (!isalnum(t[-1]) && t[-1] != '_')
 	      || (isalnum(*t) || *t == '_')) {
 		return FALSE;
 	    }
