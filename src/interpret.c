@@ -2554,6 +2554,28 @@ static void i_interpret1(frame *f, char *pc)
 	    }
 	    break;
 
+	case I_CALL_CKFUNC:
+	case I_CALL_CKFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH1U(pc));
+	    u = FETCH1U(pc) + size;
+	    size = 0;
+	    if (u != PROTO_NARGS(kf->proto)) {
+		if (u < PROTO_NARGS(kf->proto)) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		error("Bad argument %d for kfun %s", u, kf->name);
+	    }
+	    break;
+
 	case I_CALL_AFUNC:
 	case I_CALL_AFUNC | I_POP_BIT:
 	    u = FETCH1U(pc);
@@ -3202,6 +3224,8 @@ static unsigned short i_line1(frame *f)
 	case I_STORE_GLOBAL | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
+	case I_CALL_CKFUNC:
+	case I_CALL_CKFUNC | I_POP_BIT:
 	case I_RLIMITS:
 	    pc++;
 	    break;

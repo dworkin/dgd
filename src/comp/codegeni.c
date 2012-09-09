@@ -770,10 +770,11 @@ static int cg_sumargs(node *n)
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static int cg_funargs(node *n, bool lv)
+static int cg_funargs(node *n, bool lv, bool *spread)
 {
     int i;
 
+    *spread = FALSE;
     if (n == (node *) NULL) {
 	return 0;
     }
@@ -802,6 +803,7 @@ static int cg_funargs(node *n, bool lv)
 		code_byte(0);
 	    }
 	}
+	*spread = TRUE;
     } else {
 	cg_expr(n, FALSE);
     }
@@ -817,6 +819,7 @@ static void cg_expr(node *n, int pop)
     jmplist *jlist, *j2list;
     unsigned short i;
     long l;
+    bool spread;
 
     switch (n->type) {
     case N_ADD:
@@ -1024,13 +1027,20 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_FUNC:
-	i = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL);
+	i = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL,
+		       &spread);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
-	    code_kfun((int) n->r.number, n->line);
 	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
+		code_kfun((int) n->r.number, n->line);
 		code_byte(i);
+	    } else if (spread) {
+		code_instr(I_CALL_CKFUNC, n->line);
+		code_byte((int) n->r.number);
+		code_byte(i);
+	    } else {
+		code_kfun((int) n->r.number, n->line);
 	    }
 	    break;
 

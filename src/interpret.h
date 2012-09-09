@@ -68,6 +68,7 @@
 # define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
+# define I_CALL_CKFUNC		0x10	/* 1 unsigned, 1 unsigned */
 # define I_STORE_LOCAL		0x11	/* 1 signed */
 # define I_STORE_GLOBAL		0x12	/* 1 unsigned */
 # define I_STORE_FAR_GLOBAL	0x13	/* 1 unsigned, 1 unsigned */
