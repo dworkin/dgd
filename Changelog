@@ -10,6 +10,7 @@ in doc/Changelog.Dworkin
 
   - Introduce a new instruction to handle all cases of kfun(array...).
   - Correct the floating point maxlog constant.
+  - Silence warnings in VS2012.
 
 2012-09-04
 

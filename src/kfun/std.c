@@ -1263,10 +1263,11 @@ char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
  */
 int kf_connect(frame *f, int nargs)
 {
-    char *addr, proto, *protoname;
+    char *addr, proto;
     unsigned short port;
     object *obj;
 
+    UNREFERENCED_PARAMETER(nargs);
     proto = 0;
 
     if (f->lwobj != (array *) NULL) {
@@ -1288,6 +1289,8 @@ int kf_connect(frame *f, int nargs)
     }
 
     if (nargs == 3) {
+	char *protoname;
+
 	protoname = f->sp->u.string->text;
 	if (!strcmp(protoname, "tcp")) {
 	    proto = P_TCP;
