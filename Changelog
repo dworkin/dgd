@@ -3,11 +3,13 @@ This file lists all changes to the DGD open source release.
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
-2012-09-09
+
+2012-09-09/2012-09-13
 
   Felix Croes (felix@dworkin.nl)
 
-  Introduce a new instruction to handle all cases of kfun(array...).
+  - Introduce a new instruction to handle all cases of kfun(array...).
+  - Correct the floating point maxlog constant.
 
 2012-09-04
 
