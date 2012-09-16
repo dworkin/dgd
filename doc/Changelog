@@ -1,8 +1,17 @@
-This file lists all changes to the DGD open source release.
+This file lists all changes to the DGD open source release from 2010-02-03 to
+2012-09-16.
 
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
 
+
+2012-09-16
+
+  Felix Croes (felix@dworkin.nl)
+
+  Switch the main repository to Github.
+  Since Github has excellent web display tools, a separate Changelog is no
+  longer maintained.
 
 2012-09-09/2012-09-13
 
