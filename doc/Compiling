@@ -13,6 +13,8 @@ proper defines to the Makefile on Unix systems, or to your
 project on Visual Studio.
 
 
+SLASHSLASH		      C++ style // comments in LPC code.
+
 NETWORK_EXTENSIONS            Enable extended network functionality
                               (outgoing connections, opening ports
                               from LPC code)

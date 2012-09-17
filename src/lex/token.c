@@ -418,20 +418,20 @@ static void skip_alt_comment()
 
     do {
         c = gc();
-    } while( ( c != EOF ) && ( c != '\n' ) );
+    } while (c != LF && c != EOF);
 }
 
 /*
  * NAME:	comment()
  * DESCRIPTION:	skip comments and white space
  */
-static void comment(int flag)
+static void comment(bool flag)
 {
     int c;
 
     for (;;) {
         /* first skip the current comment */
-        if( flag) {
+        if (flag) {
            skip_alt_comment();
         } else {
            skip_comment();
@@ -448,13 +448,18 @@ static void comment(int flag)
 	    break;
 	}
 	c = gc();
-	if ( ( c != '*' ) && ( c != '/' )) {
+	if (c == '*') {
+	    flag = FALSE;
+# ifdef SLASHSLASH
+	} else if (c == '/') {
+	    flag = TRUE;
+# endif
+	} else {
 	    uc(c);
 	    c = '/';
 	    uc(c);
 	    break;
 	}
-        flag = ( c == '/' );
     }
 }
 
@@ -636,8 +641,12 @@ int tk_gettok()
 	/* check for comment after white space */
 	if (c == '/') {
 	    c = gc();
-	    if (c == '*' || c == '/') {
-		comment( c == '/' );
+	    if (c == '*') {
+		comment(FALSE);
+# ifdef SLASHSLASH
+	    } else if (c == '/') {
+		comment(TRUE);
+# endif
 	    } else {
 		uc(c);
 		c = '/';
@@ -800,11 +809,18 @@ int tk_gettok()
 
     case '/':
 	c = gc();
-	if (c == '*' || c == '/') {
-            comment( c == '/' );
+	if (c == '*') {
+            comment(FALSE);
 	    yyleng = 1;
 	    *p = '\0';
 	    return p[-1] = ' ';
+# ifdef SLASHSLASH
+	} else if (c == '/') {
+	    comment(TRUE);
+	    yyleng = 1;
+	    *p = '\0';
+	    return p[-1] = ' ';
+# endif
 	}
 	*p++ = c;
 	TEST('=', DIV_EQ);
@@ -1124,9 +1140,14 @@ int tk_expand(macro *mc)
 	    token = gc();
 	    if (token == '/') {
 		token = gc();
-		if ( ( token == '*' ) || ( token == '/' ) ) {
-		    comment( token == '/' );
+		if (token == '*') {
+		    comment(FALSE);
                     token = gc();
+# ifdef SLASHSLASH
+		} else if (token == '/') {
+		    comment(TRUE);
+                    token = gc();
+# endif
 		} else {
 		    uc(token);
 		}
