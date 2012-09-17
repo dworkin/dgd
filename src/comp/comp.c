@@ -519,7 +519,7 @@ void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->creadv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -527,7 +527,7 @@ void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->dreadv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -535,7 +535,7 @@ void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->conv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -561,7 +561,7 @@ sector sw_count()
 
 /*
  * NAME:	swap->copy()
- * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
+ * DESCRIPTION:	pretend to copy a vector of sectors to a snapshot
  */
 bool sw_copy(Uint time)
 {
@@ -570,9 +570,9 @@ bool sw_copy(Uint time)
 
 /*
  * NAME:	swap->dump()
- * DESCRIPTION:	pretend to dump swap file
+ * DESCRIPTION:	pretend to create snapshot
  */
-int sw_dump(char *dumpfile)
+int sw_dump(char *snapshot)
 {
     return 0;
 }

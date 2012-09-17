@@ -133,7 +133,7 @@ typedef struct { char c;		} alignz;
 # define FORMAT_VERSION	14
 
 # define DUMP_VALID	0	/* valid dump flag */
-# define DUMP_VERSION	1	/* dump file version number */
+# define DUMP_VERSION	1	/* snapshot version number */
 # define DUMP_MODEL	2	/* 0: vanilla DGD, 1: iChat DGD */
 # define DUMP_TYPECHECK	3	/* global typechecking */
 # define DUMP_SECSIZE	4	/* sector size */
@@ -145,7 +145,7 @@ typedef struct { char c;		} alignz;
 
 typedef char dumpinfo[64];
 
-static dumpinfo header;		/* dumpfile header */
+static dumpinfo header;		/* snapshot header */
 # define s0	(header[ 6])	/* short, msb */
 # define s1	(header[ 7])	/* short, lsb */
 # define i0	(header[ 8])	/* Int, msb */
@@ -205,7 +205,7 @@ static Uint boottime;		/* boot time */
 
 /*
  * NAME:	conf->dumpinit()
- * DESCRIPTION:	initialize dump file information
+ * DESCRIPTION:	initialize snapshot information
  */
 static void conf_dumpinit()
 {
@@ -217,7 +217,7 @@ static void conf_dumpinit()
     alignp pdummy;
 
     header[DUMP_VALID] = TRUE;			/* valid dump flag */
-    header[DUMP_VERSION] = FORMAT_VERSION;	/* dump file version number */
+    header[DUMP_VERSION] = FORMAT_VERSION;	/* snapshot version number */
     header[DUMP_MODEL] = 0;			/* vanilla DGD */
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_SECSIZE + 0] = conf[SECTOR_SIZE].u.num >> 8;
@@ -418,8 +418,8 @@ static void conf_restore(int fd)
 /*
  * NAME:	conf->dsize()
  * DESCRIPTION:	compute the size and alignment of a struct
- *		0x000000ff size in dump file
- *		0x0000ff00 alignment in dump file
+ *		0x000000ff size in snapshot
+ *		0x0000ff00 alignment in snapshot
  *		0x00ff0000 size
  *		0xff000000 alignment
  */
@@ -537,7 +537,7 @@ Uint conf_dsize(char *layout)
 
 /*
  * NAME:	conf_dconv()
- * DESCRIPTION:	convert structs from dumpfile format
+ * DESCRIPTION:	convert structs from snapshot format
  */
 Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
 {
@@ -716,7 +716,7 @@ Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
 
 /*
  * NAME:	conf->dread()
- * DESCRIPTION:	read from dumpfile
+ * DESCRIPTION:	read from snapshot
  */
 void conf_dread(int fd, char *buf, char *layout, Uint n)
 {
@@ -733,7 +733,7 @@ void conf_dread(int fd, char *buf, char *layout, Uint n)
 	    i = n;
 	}
 	if (P_read(fd, buffer, i * rsize) != i * rsize) {
-	    fatal("cannot read from dump file");
+	    fatal("cannot read from snapshot");
 	}
 	conf_dconv(buf, buffer, layout, (Uint) i);
 	buf += size * i;
@@ -1260,7 +1260,7 @@ extern bool ext_dgd (char*);
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
+bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 {
     char buf[STRINGSZ];
     int fd, i;
@@ -1294,9 +1294,9 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	return FALSE;
     }
 
-    /* try to open the dumpfile if one was provided */
-    if (dumpfile != (char *) NULL) {
-	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
+    /* try to open the snapshot if one was provided */
+    if (snapshot != (char *) NULL) {
+	fd = P_open(path_native(buf, snapshot), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    P_message("Config error: cannot open restore file\012");    /* LF */
 	    m_finish();
@@ -1313,7 +1313,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	if (!ext_dgd(modules[i])) {
 	    message("Config error: cannot load runtime extension \"%s\"\012",
 		    modules[i]);
-	    if (dumpfile != (char *) NULL) {
+	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
 	    m_finish();
@@ -1323,7 +1323,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     if (module != (char *) NULL && !ext_dgd(module)) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1337,7 +1337,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */
 		conf[DIRECTORY].u.str);
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1353,7 +1353,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 		   tports, bports,
 		   ntports, nbports)) {
 	comm_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1372,7 +1372,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	    (sector) conf[CACHE_SIZE].u.num,
 	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
 	comm_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1391,7 +1391,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
 	sw_finish();
 	comm_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1420,7 +1420,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     if (!conf_includes()) {
 	sw_finish();
 	comm_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
@@ -1431,14 +1431,14 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
 	sw_finish();
 	comm_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
 	return FALSE;
     }
 
-    /* initialize dumpfile header */
+    /* initialize snapshot header */
     conf_dumpinit();
 
     m_static();				/* allocate error context statically */
@@ -1452,14 +1452,14 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	sw_finish();
 	comm_finish();
 	ed_finish();
-	if (dumpfile != (char *) NULL) {
+	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
 	m_finish();
 	return FALSE;
     }
     m_dynamic();
-    if (dumpfile == (char *) NULL) {
+    if (snapshot == (char *) NULL) {
 	/* initialize mudlib */
 	d_converted();
 	if (ec_push((ec_ftn) errhandler)) {
@@ -1468,7 +1468,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	call_driver_object(cframe, "initialize", 0);
 	ec_pop();
     } else {
-	/* restore dump file */
+	/* restore snapshot */
 	conf_restore(fd);
 
 	/* notify mudlib */

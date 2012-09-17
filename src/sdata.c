@@ -2505,7 +2505,7 @@ void d_upgrade_mem(object *tmpl, object *newob)
 
 /*
  * NAME:	data->conv()
- * DESCRIPTION:	convert something from the dump file
+ * DESCRIPTION:	convert something from the snapshot
  */
 static Uint d_conv(char *m, sector *vec, char *layout, Uint n, Uint idx)
 {
@@ -2589,7 +2589,7 @@ static control *d_conv_control(object *obj)
     ctrl->oindex = obj->index;
 
     /*
-     * restore from dump file
+     * restore from snapshot
      */
     if (conv_ctrl1) {
 	oscontrol oheader;
@@ -3044,7 +3044,7 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab)
     data = d_alloc_dataspace(obj);
 
     /*
-     * restore from dump file
+     * restore from snapshot
      */
     size = d_conv((char *) &header, &obj->dfirst, sd_layout, (Uint) 1,
 		  (Uint) 0);
@@ -3339,7 +3339,7 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cactive, b
 
 /*
  * NAME:	data->converted()
- * DESCRIPTION:	dumpfile conversion is complete
+ * DESCRIPTION:	snapshot conversion is complete
  */
 void d_converted()
 {

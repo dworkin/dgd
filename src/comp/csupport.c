@@ -765,7 +765,7 @@ void pc_restore(int fd, int conv)
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
 	imap = ALLOCA(char, dh.imapsz);
 	if (P_read(fd, imap, dh.imapsz) != dh.imapsz) {
-	    fatal("cannot read from dump file");
+	    fatal("cannot read from snapshot");
 	}
 	if (dh.nstrings != 0) {
 	    strings = ALLOCA(dstrconst, dh.nstrings);
@@ -773,7 +773,7 @@ void pc_restore(int fd, int conv)
 	    if (dh.stringsz != 0) {
 		stext = ALLOCA(char, dh.stringsz);
 		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
-		    fatal("cannot read from dump file");
+		    fatal("cannot read from snapshot");
 		}
 	    }
 	}
@@ -788,7 +788,7 @@ void pc_restore(int fd, int conv)
 	if (dh.nfuncalls != 0) {
 	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
 	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
-		fatal("cannot read from dump file");
+		fatal("cannot read from snapshot");
 	    }
 	}
 

@@ -31,7 +31,7 @@ typedef struct _header_ {	/* swap slot header */
 
 static char *swapfile;			/* swap file name */
 static int swap;			/* swap file descriptor */
-static int dump;			/* dump file descriptor */
+static int dump;			/* snapshot descriptor */
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap free map */
 static sector mfree, sfree;		/* free sector lists */
@@ -319,11 +319,11 @@ static header *sw_load(sector sec, bool restore, bool fill)
 	if (load != SW_UNUSED) {
 	    if (restore) {
 		/*
-		 * load the sector from the dump file
+		 * load the sector from the snapshot
 		 */
 		P_lseek(dump, (off_t) (load + 1L) * sectorsize, SEEK_SET);
 		if (P_read(dump, (char *) (h + 1), sectorsize) <= 0) {
-		    fatal("cannot read dump file");
+		    fatal("cannot read snapshot");
 		}
 	    } else if (fill) {
 		/*
@@ -412,7 +412,7 @@ void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->creadv()
- * DESCRIPTION:	restore ctrl bytes from a vector of sectors in dump file
+ * DESCRIPTION:	restore ctrl bytes from a vector of sectors in snapshot
  */
 void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -434,7 +434,7 @@ void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->dreadv()
- * DESCRIPTION:	restore data bytes from a vector of sectors in dump file
+ * DESCRIPTION:	restore data bytes from a vector of sectors in snapshot
  */
 void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -455,7 +455,7 @@ void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->conv()
- * DESCRIPTION:	restore converted bytes from a vector of sectors in dump file
+ * DESCRIPTION:	restore converted bytes from a vector of sectors in snapshot
  */
 void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -468,7 +468,7 @@ void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 	if (*vec != cached) {
 	    P_lseek(dump, (off_t) (map[*vec] + 1L) * restoresecsize, SEEK_SET);
 	    if (P_read(dump, cbuf, restoresecsize) <= 0) {
-		fatal("cannot read dump file");
+		fatal("cannot read snapshot");
 	    }
 	    map[cached = *vec] = SW_UNUSED;
 	}
@@ -590,9 +590,9 @@ void sw_trim()
 
 /*
  * NAME:	swap->dump()
- * DESCRIPTION:	dump swap file
+ * DESCRIPTION:	create snapshot
  */
-int sw_dump(char *dumpfile)
+int sw_dump(char *snapshot)
 {
     header *h;
     sector sec;
@@ -603,8 +603,8 @@ int sw_dump(char *dumpfile)
     if (dump >= 0) {
 	P_close(dump);
     }
-    p = path_native(buf1, dumpfile);
-    sprintf(buffer, "%s.old", dumpfile);
+    p = path_native(buf1, snapshot);
+    sprintf(buffer, "%s.old", snapshot);
     q = path_native(buf2, buffer);
     P_unlink(q);
     P_rename(p, q);
@@ -641,14 +641,14 @@ int sw_dump(char *dumpfile)
 
     sw_trim();
 
-    /* move to dumpfile */
+    /* move to snapshot */
     P_close(swap);
     q = path_native(buf2, swapfile);
     if (P_rename(q, p) < 0) {
 	/*
-	 * The rename failed.  Attempt to copy the dumpfile instead.
+	 * The rename failed.  Attempt to copy the snapshot instead.
 	 * This will take a long, long while, so keep the swapfile and
-	 * dumpfile on the same file system if at all possible.
+	 * snapshot on the same file system if at all possible.
 	 */
 	swap = P_open(q, O_RDWR | O_BINARY, 0);
 	dump = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
@@ -660,7 +660,7 @@ int sw_dump(char *dumpfile)
 	    fatal("cannot read swap file");
 	}
 	if (P_write(dump, cbuf, sectorsize) < 0) {
-	    fatal("cannot write dump file");
+	    fatal("cannot write snapshot");
 	}
 	/* copy swap sectors */
 	for (n = ssectors; n > 0; --n) {
@@ -668,17 +668,17 @@ int sw_dump(char *dumpfile)
 		fatal("cannot read swap file");
 	    }
 	    if (P_write(dump, cbuf, sectorsize) < 0) {
-		fatal("cannot write dump file");
+		fatal("cannot write snapshot");
 	    }
 	}
 	P_close(swap);
     } else {
 	/*
-	 * The rename succeeded; reopen the new dumpfile.
+	 * The rename succeeded; reopen the new snapshot.
 	 */
 	dump = P_open(p, O_RDWR | O_BINARY, 0);
 	if (dump < 0) {
-	    fatal("cannot reopen dump file");
+	    fatal("cannot reopen snapshot");
 	}
     }
     swap = -1;
@@ -691,13 +691,13 @@ int sw_dump(char *dumpfile)
     dh.mfree = mfree;
     P_lseek(dump, sectorsize - (off_t) sizeof(dump_header), SEEK_SET);
     if (P_write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
-	fatal("cannot write swap header to dump file");
+	fatal("cannot write swap header to snapshot");
     }
 
     /* write map */
     P_lseek(dump, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
     if (P_write(dump, (char *) map, nsectors * sizeof(sector)) < 0) {
-	fatal("cannot write sector map to dump file");
+	fatal("cannot write sector map to snapshot");
     }
 
     /* fix the sector map */
@@ -715,7 +715,7 @@ int sw_dump(char *dumpfile)
 
 /*
  * NAME:	swap->restore()
- * DESCRIPTION:	restore dump file
+ * DESCRIPTION:	restore snapshot
  */
 void sw_restore(int fd, unsigned int secsize)
 {

@@ -937,7 +937,7 @@ object *o_find(char *name, int access)
 
 /*
  * NAME:	object->restore_object()
- * DESCRIPTION:	restore an object from the dump file
+ * DESCRIPTION:	restore an object from the snapshot
  */
 static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {

@@ -107,7 +107,7 @@ void endthread()
 
     if (dump) {
 	/*
-	 * create a state dump
+	 * create a snapshot
 	 */
 	conf_dump();
 	dump = FALSE;
@@ -159,7 +159,7 @@ int dgd_main(int argc, char **argv)
 	argv++;
     }
     if (argc < 1 || argc > 2) {
-	message("Usage: %s [-e module] config_file [dump_file]\012",    /* LF */
+	message("Usage: %s [-e module] config_file [snapshot]\012",     /* LF */
 		program);
 	return 2;
     }

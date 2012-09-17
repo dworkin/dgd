@@ -508,7 +508,7 @@ void kf_restore(int fd, int oldcomp)
     if (dh.nkfun < nkfun - KF_BUILTINS) {
 	/*
 	 * There are more kfuns in the current driver than in the driver
-	 * which created the dump file: deal with those new kfuns.
+	 * which created the snapshot: deal with those new kfuns.
 	 */
 	n = dh.nkfun + 128;
 	for (i = KF_BUILTINS; i < nkfun; i++) {
