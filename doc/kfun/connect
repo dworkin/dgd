@@ -23,7 +23,8 @@ ERRORS
 	in an error.
 
 NOTES
-	This kfun is only active when the network extensions are enabled.
+	This version of the kfun is only active when the network extensions are
+	enabled.
 
 SEE ALSO
 	kfun/open_port, kfun/send_message, kfun/send_datagram,

@@ -15,8 +15,8 @@ ERRORS
 	An error will result if the current object has no open udp port
 
 NOTES
-	This kfun is only used when the network extensions are enabled.
-	When not using the network extensions, see send_datagram instead.
+	This version of the kfun is only used when the network extensions are
+	enabled.
 
 SEE ALSO
 	kfun/open_port, kfun/query_ip_name, kfun/query_ip_number,
