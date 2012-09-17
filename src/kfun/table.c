@@ -30,7 +30,6 @@
 # include "file.c"
 # include "math.c"
 # include "extra.c"
-# include "debug.c"
 # undef FUNCDEF
 
 /*
@@ -43,7 +42,6 @@ static kfunc kforig[] = {
 # include "file.c"
 # include "math.c"
 # include "extra.c"
-# include "debug.c"
 # undef FUNCDEF
 };
 
