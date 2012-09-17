@@ -19,6 +19,19 @@ NETWORK_EXTENSIONS            Enable extended network functionality
                               (outgoing connections, opening ports
                               from LPC code)
 
+CLOSURES		      Function pointers, implemented as a builtin
+			      type.  See doc/builtin for information
+			      about adding builtin types.
+			      CLOSURES allows taking the address of a
+			      function with &func(), and calling the
+			      function that a function pointer refers to
+			      with (*func)().  When creating a pointer to
+			      a function, function arguments may be
+			      included: &func("foo").  More function
+			      arguments can be added when the function is
+			      called, or in constructing a new pointer:
+			      &(*func)("bar")
+
 _FILE_OFFSET_BITS             Linux/Solaris only. Normally this is
                               defined in host.h as _FILE_OFFSET_BITS=64
                               You can override this from the Makefile
