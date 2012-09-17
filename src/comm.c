@@ -474,8 +474,8 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
      * connection esteblishment when receiving a close event.
      */
     if (usr->flags & CF_OPENDING) {
-        opending--;
-        usr->flags &= ~CF_OPENDING;
+	opending--;
+	usr->flags &= ~CF_OPENDING;
     }
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
@@ -767,7 +767,7 @@ static void comm_udpflush(user *usr, object *obj, dataspace *data, array *arr)
     res = conn_udpsend(usr->conn, buf, strlen(buf), v[2].u.string->text,
 	(unsigned short) v[3].u.number);
     if (res == -1) {
-         /* EAGAIN occured, datagram could not be sent */
+	 /* EAGAIN occured, datagram could not be sent */
     }
     usr->flags &= ~CF_OUTPUT;
     usr->flags |= CF_ODONE;
@@ -915,7 +915,7 @@ void comm_flush()
 	    } else
 #endif
 	    comm_uflush(usr, obj, obj->data, arr);
-        }
+	}
 	/*
 	 * disconnect
 	 */
@@ -1720,7 +1720,7 @@ array *comm_users(dataspace *data)
 }
 
 /*
- * NAME:        comm->is_connection()
+ * NAME:	comm->is_connection()
  * DESCRIPTION: is this REALLY a user object?
  */
 bool comm_is_connection(object *obj)

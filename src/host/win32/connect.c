@@ -49,7 +49,7 @@ typedef struct _ipaddr_ {
 
 static SOCKET in = INVALID_SOCKET;	/* connection from name resolver */
 static SOCKET out = INVALID_SOCKET;	/* connection to name resolver */
-static int addrtype;                    /* network address family */
+static int addrtype;			/* network address family */
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -1037,7 +1037,7 @@ void conn_del(connection *conn)
 }
 
 /*
- * NAME:        conn->block()
+ * NAME:	conn->block()
  * DESCRIPTION: block or unblock input from connection
  */
 void conn_block(connection *conn, int flag)
@@ -1561,7 +1561,7 @@ void *conn_host(char *addr, unsigned short port, int *len)
 }
 
 /*
- * NAME:        conn->connect()
+ * NAME:	conn->connect()
  * DESCRIPTION: establish an oubound connection
  */
 connection *conn_connect(void *addr, int len)
@@ -1679,7 +1679,7 @@ int conn_check_connected(connection *conn, bool *refused)
 
 #ifdef NETWORK_EXTENSIONS
 /*
- * Name:        conn->openlisten()
+ * Name:	conn->openlisten()
  * DESCRIPTION: open a new listening connection
  */
 connection *conn_openlisten(unsigned char protocol, unsigned short port)

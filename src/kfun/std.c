@@ -631,7 +631,7 @@ int kf_query_ip_number(frame *f)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-        if (comm_is_connection(obj)) {
+	if (comm_is_connection(obj)) {
 	    PUT_STRVAL(f->sp, comm_ip_number(obj));
 	    return 0;
 	}
@@ -661,7 +661,7 @@ int kf_query_ip_name(frame *f)
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
-        if (comm_is_connection(obj)) {
+	if (comm_is_connection(obj)) {
 	    PUT_STRVAL(f->sp, comm_ip_name(obj));
 	    return 0;
 	}
@@ -1258,7 +1258,7 @@ char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
 # endif
 
 /*
- * NAME:        kfun->connect
+ * NAME:	kfun->connect
  * DESCRIPTION: connect to a server
  */
 int kf_connect(frame *f, int nargs)
@@ -1324,7 +1324,7 @@ char pt_open_port[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8,
 		   T_VOID, T_STRING, T_INT};
 
 /*
- * NAME:        kfun->open_port
+ * NAME:	kfun->open_port
  * DESCRIPTION: open a listening port
  */
 int kf_open_port(frame *f, int nargs)
@@ -1569,7 +1569,7 @@ char pt_new_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
 			   T_STRING, T_MIXED };
 
 /*
- * NAME:        kfun->new_function()
+ * NAME:	kfun->new_function()
  * DESCRIPTION: create a new function
  */
 int kf_new_function(frame *f, int nargs)
@@ -1623,7 +1623,7 @@ char pt_extend_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
 			      T_OBJECT, T_MIXED };
 
 /*
- * NAME:        kfun->extend_function()
+ * NAME:	kfun->extend_function()
  * DESCRIPTION: extend a function
  */
 int kf_extend_function(frame *f, int nargs)
@@ -1669,7 +1669,7 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
 			    T_OBJECT, T_MIXED };
 
 /*
- * NAME:        kfun->call_function()
+ * NAME:	kfun->call_function()
  * DESCRIPTION: call a function
  */
 int kf_call_function(frame *f, int nargs)

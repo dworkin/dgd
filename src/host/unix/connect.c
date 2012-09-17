@@ -74,7 +74,7 @@ typedef struct _ipaddr_ {
 } ipaddr;
 
 static int in = -1, out = -1;		/* pipe to/from name resolver */
-static int addrtype;                    /* network address family */
+static int addrtype;			/* network address family */
 static ipaddr **ipahtab;		/* ip address hash table */
 static unsigned int ipahtabsz;		/* hash table size */
 static ipaddr *qhead, *qtail;		/* request queue */
@@ -1681,7 +1681,7 @@ connection *conn_connect(void *addr, int len)
     }
 
     if (connect(sock, (struct sockaddr *) addr, len) < 0 &&
-                   errno != EINPROGRESS) {
+		   errno != EINPROGRESS) {
 	perror("connect");
 	return NULL;
     }
@@ -1759,7 +1759,7 @@ int conn_check_connected(connection *conn, bool *refused)
 
 #ifdef NETWORK_EXTENSIONS
 /*
- * Name:        conn->openlisten()
+ * Name:	conn->openlisten()
  * DESCRIPTION: open a new listening connection
  */
 connection *conn_openlisten(unsigned char protocol, unsigned short port)

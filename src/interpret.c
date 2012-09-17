@@ -1163,8 +1163,8 @@ void i_dup(frame *f)
     case T_SALVALUE:
     case T_SMLVALUE:
 	/*
-         * Indexed string.
-         */
+	 * Indexed string.
+	 */
 	PUSH_INTVAL(f, UCHAR(f->lip[-1].u.string->text[f->lip[-1].oindex]));
 	break;
 

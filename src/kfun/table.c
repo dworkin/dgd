@@ -334,7 +334,7 @@ int kf_hash_string(frame *f, int nargs)
 
     n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].u.string->text);
     if (n < 0) {
-        error("Unknown hash algorithm");
+	error("Unknown hash algorithm");
     }
     val = nil_value;
     (kfhsh[n].ext)(f, nargs - 1, &val);

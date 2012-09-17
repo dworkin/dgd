@@ -559,8 +559,8 @@ void sw_trim()
 
     /* 1. prepare a list of free sectors */
     for (i = 0; i < nfree; i++) {
-        entries[i] = j;
-        j = map[j];
+	entries[i] = j;
+	j = map[j];
     }
 
     /* 2. sort indices from low to high */

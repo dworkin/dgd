@@ -1176,7 +1176,7 @@ static node *bina(int op, node *n1, node *n2, char *name)
 	type = T_INT;
     } else if (n1->mod == T_FLOAT || n2->mod == T_FLOAT) {
 	type = T_FLOAT;
-        switch(op) {
+	switch(op) {
 	    case N_ADD:
 	    case N_ADD_EQ:
 	    case N_ADD_EQ_1:
@@ -1293,7 +1293,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
 	    d = -d;
 	}
 	if (i < 0) {
-            n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
+	    n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
 	} else {
 	    n1->l.number = ((Uint) i) % ((Uint) d);
 	}

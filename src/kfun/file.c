@@ -915,7 +915,7 @@ int kf_restore_object(frame *f)
     }
     if (P_read(fd, buffer, (unsigned int) sbuf.st_size) != sbuf.st_size) {
 	/* read failed (should never happen, but...) */
-        P_close(fd);
+	P_close(fd);
 	if (onstack) {
 	    AFREE(buffer);
 	} else {

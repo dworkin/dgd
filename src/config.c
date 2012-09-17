@@ -974,11 +974,11 @@ static bool conf_config()
 	    char buffer[64];
 
 #ifndef NETWORK_EXTENSIONS
-            /* don't complain about the ports option not being
-               specified if the network extensions are disabled */
+	    /* don't complain about the ports option not being
+	       specified if the network extensions are disabled */
 	    if (l == PORTS) {
-                continue;
-            }
+		continue;
+	    }
 #endif
 	    sprintf(buffer, "unspecified option %s", conf[l].name);
 	    conferr(buffer);
@@ -1287,11 +1287,11 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 
     /* make sure that we can handle the swapfile size */
     if( ((off_t) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num) !=
-        ((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num)
+	((Uuint) (sector) conf[SWAP_SIZE].u.num * (unsigned int) conf[SECTOR_SIZE].u.num)
     ) {
-        P_message("Config error: swap file size overflow.\012");
-        m_finish();
-        return FALSE;
+	P_message("Config error: swap file size overflow.\012");
+	m_finish();
+	return FALSE;
     }
 
     /* try to open the dumpfile if one was provided */
@@ -1299,7 +1299,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
 	fd = P_open(path_native(buf, dumpfile), O_RDONLY | O_BINARY, 0);
 	if (fd < 0) {
 	    P_message("Config error: cannot open restore file\012");    /* LF */
-            m_finish();
+	    m_finish();
 	    return FALSE;
 	}
     }
@@ -1347,7 +1347,7 @@ bool conf_init(char *configfile, char *dumpfile, char *module, sector *fragment)
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
 #ifdef NETWORK_EXTENSIONS
-                   (int) conf[PORTS].u.num,
+		   (int) conf[PORTS].u.num,
 #endif
 		   thosts, bhosts,
 		   tports, bports,

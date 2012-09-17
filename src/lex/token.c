@@ -386,7 +386,7 @@ static int gc()
 }
 
 /*
- * NAME:        skip_comment()
+ * NAME:	skip_comment()
  * DESCRIPTION: skip a single comment
  */
 static void skip_comment()
@@ -394,22 +394,22 @@ static void skip_comment()
     int c;
 
     do {
-        do {
-            c = gc();
-            if (c == EOF) {
-                error("EOF in comment");
-                return;
-            }
-        } while (c != '*');
+	do {
+	    c = gc();
+	    if (c == EOF) {
+		error("EOF in comment");
+		return;
+	    }
+	} while (c != '*');
 
-        do {
-            c = gc();
-        } while (c == '*');
+	do {
+	    c = gc();
+	} while (c == '*');
     } while (c != '/');
 }
 
 /*
- * NAME:        skip_alt_comment()
+ * NAME:	skip_alt_comment()
  * DESCRIPTION: skip c++ style comment
  */
 static void skip_alt_comment()
@@ -417,7 +417,7 @@ static void skip_alt_comment()
     int c;
 
     do {
-        c = gc();
+	c = gc();
     } while (c != LF && c != EOF);
 }
 
@@ -430,19 +430,19 @@ static void comment(bool flag)
     int c;
 
     for (;;) {
-        /* first skip the current comment */
-        if (flag) {
-           skip_alt_comment();
-        } else {
-           skip_comment();
-        }
+	/* first skip the current comment */
+	if (flag) {
+	   skip_alt_comment();
+	} else {
+	   skip_comment();
+	}
 
-        /* skip any whitespace */
-        do {
-            c = gc();
-        } while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
+	/* skip any whitespace */
+	do {
+	    c = gc();
+	} while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
 
-        /* check if a new comment follows */
+	/* check if a new comment follows */
 	if (c != '/') {
 	    uc(c);
 	    break;
@@ -810,7 +810,7 @@ int tk_gettok()
     case '/':
 	c = gc();
 	if (c == '*') {
-            comment(FALSE);
+	    comment(FALSE);
 	    yyleng = 1;
 	    *p = '\0';
 	    return p[-1] = ' ';
@@ -1142,11 +1142,11 @@ int tk_expand(macro *mc)
 		token = gc();
 		if (token == '*') {
 		    comment(FALSE);
-                    token = gc();
+		    token = gc();
 # ifdef SLASHSLASH
 		} else if (token == '/') {
 		    comment(TRUE);
-                    token = gc();
+		    token = gc();
 # endif
 		} else {
 		    uc(token);

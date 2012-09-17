@@ -845,7 +845,7 @@ static char *cg_funargs(node *n, bool lv)
 }
 
 /*
- * NAME:        codegen->locals()
+ * NAME:	codegen->locals()
  * DESCRIPTION: propagate values between local variables and ivars
  */
 static void cg_locals(node *n, bool vtoi)

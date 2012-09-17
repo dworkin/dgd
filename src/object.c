@@ -1289,8 +1289,8 @@ void o_trim()
 
     /* 1. prepare a list of free objects */
     for (i = 0; i < baseplane.nfreeobjs; i++) {
-        entries[i] = j;
-        j = otable[j].prev;
+	entries[i] = j;
+	j = otable[j].prev;
     }
 
     /* 2. sort indices from low to high */

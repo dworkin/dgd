@@ -620,7 +620,7 @@ void comm_challenge(object *obj, string *str)
 }
 
 /*
- * NAME:        comm->listen()
+ * NAME:	comm->listen()
  * DESCRIPTION: pretend to start listening on telnet port and binary port
  */
 void comm_listen()
@@ -741,7 +741,7 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 }
 
 /*
- * NAME:        comm->is_connection()
+ * NAME:	comm->is_connection()
  * DESCRIPTION: pretend to test if an object is a connection
  */
 bool comm_is_connection(object *obj)

@@ -1803,87 +1803,87 @@ node *c_endcompound(node *n)
 
     if (n != (node *) NULL) {
       if (n->type == N_PAIR) {
-          flags = n->flags & (F_REACH | F_END);
-          n = revert_list(n);
-          n->flags = (n->flags & ~F_END) | flags;
+	  flags = n->flags & (F_REACH | F_END);
+	  n = revert_list(n);
+	  n->flags = (n->flags & ~F_END) | flags;
       }
       n = node_mon(N_COMPOUND, 0, n);
       n->flags = n->l.left->flags;
 
       if (thisblock->nvars != 0) {
-          node *v, *l, *z, *f, *p;
-          int i;
+	  node *v, *l, *z, *f, *p;
+	  int i;
 
-          /*
-           * create variable type definitions and implicit initializers
-           */
-          l = z = f = p = (node *) NULL;
-          i = thisblock->vindex;
-          if (i < nparams) {
-              i = nparams;
-          }
-          while (i < thisblock->vindex + thisblock->nvars) {
-              l = c_concat(node_var(variables[i].type, i), l);
+	  /*
+	   * create variable type definitions and implicit initializers
+	   */
+	  l = z = f = p = (node *) NULL;
+	  i = thisblock->vindex;
+	  if (i < nparams) {
+	      i = nparams;
+	  }
+	  while (i < thisblock->vindex + thisblock->nvars) {
+	      l = c_concat(node_var(variables[i].type, i), l);
 
-              if (switch_list != (loop *) NULL || variables[i].unset) {
-                  switch (variables[i].type) {
-                  case T_INT:
-                      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (z == (node *) NULL) {
-                          z = node_int(0);
-                          z->line = 0;
-                      }
-                      z = node_bin(N_ASSIGN, T_INT, v, z);
-                      z->line = 0;
-                      break;
+	      if (switch_list != (loop *) NULL || variables[i].unset) {
+		  switch (variables[i].type) {
+		  case T_INT:
+		      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (z == (node *) NULL) {
+			  z = node_int(0);
+			  z->line = 0;
+		      }
+		      z = node_bin(N_ASSIGN, T_INT, v, z);
+		      z->line = 0;
+		      break;
 
-                  case T_FLOAT:
-                      v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (f == (node *) NULL) {
-                          xfloat flt;
+		  case T_FLOAT:
+		      v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (f == (node *) NULL) {
+			  xfloat flt;
 
-                          FLT_ZERO(flt.high, flt.low);
-                          f = node_float(&flt);
-                          f->line = 0;
-                      }
-                      f = node_bin(N_ASSIGN, T_FLOAT, v, f);
-                      f->line = 0;
-                      break;
+			  FLT_ZERO(flt.high, flt.low);
+			  f = node_float(&flt);
+			  f->line = 0;
+		      }
+		      f = node_bin(N_ASSIGN, T_FLOAT, v, f);
+		      f->line = 0;
+		      break;
 
-                  default:
-                      v = node_mon(N_LOCAL, T_MIXED, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (p == (node *) NULL) {
-                          p = node_nil();
-                          p->line = 0;
-                      }
-                      p = node_bin(N_ASSIGN, T_MIXED, v, p);
-                      p->line = 0;
-                      break;
-                  }
-              }
-              i++;
-          }
+		  default:
+		      v = node_mon(N_LOCAL, T_MIXED, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (p == (node *) NULL) {
+			  p = node_nil();
+			  p->line = 0;
+		      }
+		      p = node_bin(N_ASSIGN, T_MIXED, v, p);
+		      p->line = 0;
+		      break;
+		  }
+	      }
+	      i++;
+	  }
 
-          /* add vartypes and initializers to compound statement */
-          if (z != (node *) NULL) {
-              l = c_concat(c_exp_stmt(z), l);
-          }
-          if (f != (node *) NULL) {
-              l = c_concat(c_exp_stmt(f), l);
-          }
-          if (p != (node *) NULL) {
-              l = c_concat(c_exp_stmt(p), l);
-          }
-          n->r.right = l;
-          if (switch_list != (loop *) NULL) {
-              switch_list->vlist = c_concat(l, switch_list->vlist);
-          }
+	  /* add vartypes and initializers to compound statement */
+	  if (z != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(z), l);
+	  }
+	  if (f != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(f), l);
+	  }
+	  if (p != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(p), l);
+	  }
+	  n->r.right = l;
+	  if (switch_list != (loop *) NULL) {
+	      switch_list->vlist = c_concat(l, switch_list->vlist);
+	  }
       }
     }
 
@@ -2437,21 +2437,21 @@ static void c_lval_aggr(node **n)
       c_error("no lvalues in aggregate");
     } else {
       while (n != (node **) NULL) {
-          if ((*n)->type == N_PAIR) {
-              m = &(*n)->l.left;
-              n = &(*n)->r.right;
-          } else {
-              m = n;
-              n = (node **) NULL;
-          }
-          if (!lvalue(*m)) {
-              c_error("bad lvalue in aggregate");
-              *m = node_mon(N_FAKE, T_MIXED, *m);
-          }
-          if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
-              BSET(thiscond->init, (*m)->r.number);
-              --variables[(*m)->r.number].unset;
-          }
+	  if ((*n)->type == N_PAIR) {
+	      m = &(*n)->l.left;
+	      n = &(*n)->r.right;
+	  } else {
+	      m = n;
+	      n = (node **) NULL;
+	  }
+	  if (!lvalue(*m)) {
+	      c_error("bad lvalue in aggregate");
+	      *m = node_mon(N_FAKE, T_MIXED, *m);
+	  }
+	  if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
+	      BSET(thiscond->init, (*m)->r.number);
+	      --variables[(*m)->r.number].unset;
+	  }
       }
     }
 }
