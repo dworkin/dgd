@@ -256,6 +256,10 @@ extern void		d_get_callouts	 (dataspace*);
 
 extern sector		d_swapout	 (unsigned int);
 extern void		d_upgrade_mem	 (object*, object*);
+extern control	       *d_restore_ctrl	 (object*,
+					  void(*)(char*, sector*, Uint, Uint));
+extern dataspace       *d_restore_data	 (object*, Uint*, uindex,
+					  void(*)(char*, sector*, Uint, Uint));
 extern void		d_restore_obj	 (object*, Uint*, uindex, bool, bool);
 extern void		d_converted	 (void);
 
