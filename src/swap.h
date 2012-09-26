@@ -25,7 +25,6 @@ extern void	sw_wipev	(sector*, unsigned int);
 extern void	sw_delv		(sector*, unsigned int);
 extern void	sw_readv	(char*, sector*, Uint, Uint);
 extern void	sw_writev	(char*, sector*, Uint, Uint);
-extern void	sw_creadv	(char*, sector*, Uint, Uint);
 extern void	sw_dreadv	(char*, sector*, Uint, Uint);
 extern void	sw_conv		(char*, sector*, Uint, Uint);
 extern sector	sw_mapsize	(unsigned int);

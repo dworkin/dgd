@@ -411,30 +411,8 @@ void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
- * NAME:	swap->creadv()
- * DESCRIPTION:	restore ctrl bytes from a vector of sectors in snapshot
- */
-void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
-{
-    header *h;
-    unsigned int len;
-
-    vec += idx / sectorsize;
-    idx %= sectorsize;
-    do {
-	len = (size > sectorsize - idx) ? sectorsize - idx : size;
-	h = sw_load(*vec++, TRUE, FALSE);
-	h->swap = SW_UNUSED;
-	h->dirty = TRUE;
-	memcpy(m, (char *) (h + 1) + idx, len);
-	idx = 0;
-	m += len;
-    } while ((size -= len) > 0);
-}
-
-/*
  * NAME:	swap->dreadv()
- * DESCRIPTION:	restore data bytes from a vector of sectors in snapshot
+ * DESCRIPTION:	restore bytes from a vector of sectors in snapshot
  */
 void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {

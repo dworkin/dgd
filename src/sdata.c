@@ -3272,7 +3272,6 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
     } else if (obj->cfirst != SW_UNUSED) {
 	if (!converted) {
 	    ctrl = d_conv_control(obj, &sw_conv);
-	    d_save_control(ctrl);
 	} else {
 	    ctrl = load_control(obj, readv);
 	    if (ctrl->vmapsize == 0) {
@@ -3285,6 +3284,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
 		get_vtypes(ctrl, readv);
 	    }
 	}
+	d_save_control(ctrl);
 	obj->ctrl = ctrl;
     }
 
@@ -3327,7 +3327,7 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cactive, b
     control *ctrl;
     dataspace *data;
 
-    ctrl = d_restore_ctrl(obj, sw_creadv);
+    ctrl = d_restore_ctrl(obj, sw_dreadv);
     data = d_restore_data(obj, counttab, nobjects, sw_dreadv);
 
     if (!cactive) {
