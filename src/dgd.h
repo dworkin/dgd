@@ -32,9 +32,13 @@ typedef struct _frame_ frame;
 # include "alloc.h"
 # include "error.h"
 
-# define BSET(map, bit)		(map[(bit) >> 3] |= (1 << ((bit) & 7)))
-# define BCLR(map, bit)		(map[(bit) >> 3] &= ~(1 << ((bit) & 7)))
-# define BTST(map, bit)		(map[(bit) >> 3] & (1 << ((bit) & 7)))
+# define BOFF(bit)		((bit) >> 5)
+# define BBIT(bit)		(1 << ((bit) & 31))
+# define BMAP(size)		BOFF((size) + 31)
+
+# define BSET(map, bit)		(map[BOFF(bit)] |= BBIT(bit))
+# define BCLR(map, bit)		(map[BOFF(bit)] &= ~BBIT(bit))
+# define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
 extern bool call_driver_object	(frame*, char*, int);
 extern void interrupt		(void);

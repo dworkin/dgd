@@ -64,14 +64,14 @@ struct _objplane_ {
 };
 
 object *otable;			/* object table */
-char *ocmap;			/* object change map */
+Uint *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
 bool swap, dump, stop;		/* global state vars */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
-static char *omap;		/* object dump bitmap */
+static Uint *omap;		/* object dump bitmap */
 static Uint *counttab;		/* object count table */
 static object *upgraded;	/* list of upgraded objects */
 static uindex dobjects, dobject;/* objects to copy */
@@ -90,8 +90,8 @@ void o_init(unsigned int n, Uint interval)
 {
     otable = ALLOC(object, otabsize = n);
     memset(otable, '\0', n * sizeof(object));
-    ocmap = ALLOC(char, (n + 7) >> 3);
-    memset(ocmap, '\0', (n + 7) >> 3);
+    ocmap = ALLOC(Uint, BMAP(n));
+    memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
     baseplane.htab = ht_new(n >> 2, OBJHASHSZ, FALSE);
     baseplane.optab = (optable *) NULL;
@@ -102,8 +102,8 @@ void o_init(unsigned int n, Uint interval)
     baseplane.ocount = 3;
     baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
     oplane = &baseplane;
-    omap = ALLOC(char, (n + 7) >> 3);
-    memset(omap, '\0', (n + 7) >> 3);
+    omap = ALLOC(Uint, BMAP(n));
+    memset(omap, '\0', BMAP(n) * sizeof(Uint));
     counttab = ALLOC(Uint, n);
     upgraded = (object *) NULL;
     uobjects = dobjects = mobjects = 0;

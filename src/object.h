@@ -97,7 +97,7 @@ extern void	  dump_state		(void);
 extern void	  finish		(void);
 
 extern object    *otable;
-extern char	 *ocmap;
+extern Uint	 *ocmap;
 extern bool	  obase, swap, dump, stop;
 extern Uint	  odcount;
 
