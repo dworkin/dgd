@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -24,9 +24,26 @@ CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
 
-SRC=	local.c random.c dirent.c dload.c time.c connect.c xfloat.c
-OBJ=	local.o random.o dirent.o dload.o time.o connect.o crypt.o xfloat.o asn.o
-SUBOBJ=	local.o random.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+ifeq ($(HOST),LINUX)
+  SYSV_STYLE=1
+endif
+ifeq ($(HOST),SOLARIS)
+  SYSV_STYLE=1
+endif
+ifeq ($(HOST),DECALPHA)
+  SYSV_STYLE=1
+endif
+
+SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
+SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+ifdef SYSVSTYLE
+  SRC+=lrand48.c
+  SUBOBJ+=lrand48.o
+else
+  SRC+=random.c
+  SUBOBJ+=random.o
+endif
+OBJ=	$(SUBOBJ) connect.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
@@ -45,6 +62,9 @@ local.c: unix/local.c
 	cp unix/$@ $@
 
 random.c: unix/random.c
+	cp unix/$@ $@
+
+lrand48.c: unix/lrand48.c
 	cp unix/$@ $@
 
 dirent.c: unix/dirent.c

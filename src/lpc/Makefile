@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,6 @@ CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LIBS=
 LINTFLAGS=-abcehpruz
 CC=	gcc
-DMAKE=	make
 YACC=	yacc
 PRECOMP=../comp/a.out
 CONFIG=	../../mud.dgd
@@ -51,8 +50,8 @@ lint:
 #$(SRC):	$(PRECOMP)
 
 $(PRECOMP):
-	cd ../comp; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
-			     'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
+	cd ../comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+			    'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 driver.c: $(MUDLIB)/kernel/sys/driver.c
 	$(PRECOMP) $(CONFIG) /kernel/sys/driver.c $@
