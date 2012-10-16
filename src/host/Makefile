@@ -33,6 +33,9 @@ endif
 ifeq ($(HOST),DECALPHA)
   SYSV_STYLE=1
 endif
+ifeq ($(HOST),GENERIC_SYSV)
+  SYSV_STYLE=1
+endif
 
 SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
 SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
