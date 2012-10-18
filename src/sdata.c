@@ -3271,7 +3271,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
 	ctrl->flags |= CTRL_COMPILED;
     } else if (obj->cfirst != SW_UNUSED) {
 	if (!converted) {
-	    ctrl = d_conv_control(obj, &sw_conv);
+	    ctrl = d_conv_control(obj, readv);
 	} else {
 	    ctrl = load_control(obj, readv);
 	    if (ctrl->vmapsize == 0) {
@@ -3295,14 +3295,15 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
  * NAME:	data->restore_data()
  * DESCRIPTION:	restore a dataspace
  */
-dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects, void (*readv) (char*, sector*, Uint, Uint))
+dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
+			  void (*readv) (char*, sector*, Uint, Uint))
 {
     dataspace *data;
 
     data = (dataspace *) NULL;
     if (OBJ(obj->index)->count != 0 && OBJ(obj->index)->dfirst != SW_UNUSED) {
 	if (!converted) {
-	    data = d_conv_dataspace(obj, counttab, &sw_conv);
+	    data = d_conv_dataspace(obj, counttab, readv);
 	} else {
 	    data = load_dataspace(obj, readv);
 	    get_variables(data, readv);
@@ -3327,8 +3328,13 @@ void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cactive, b
     control *ctrl;
     dataspace *data;
 
-    ctrl = d_restore_ctrl(obj, sw_dreadv);
-    data = d_restore_data(obj, counttab, nobjects, sw_dreadv);
+    if (!converted) {
+	ctrl = d_restore_ctrl(obj, sw_conv);
+	data = d_restore_data(obj, counttab, nobjects, sw_conv);
+    } else {
+	ctrl = d_restore_ctrl(obj, sw_dreadv);
+	data = d_restore_data(obj, counttab, nobjects, sw_dreadv);
+    }
 
     if (!cactive) {
 	/* swap this out first */
