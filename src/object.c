@@ -1420,9 +1420,6 @@ bool o_dump(int fd, bool incr)
     }
 
     if (!incr) {
-	if (!stop) {
-	    o_trim();
-	}
 	o_sweep(baseplane.nobjects);
 	o_recount(baseplane.nobjects);
 	rotabsize = baseplane.nobjects;
@@ -1525,7 +1522,6 @@ void o_restore(int fd, unsigned int rlwobj)
 	}
     }
 
-    o_trim();
     o_sweep(baseplane.nobjects);
     o_recount(baseplane.nobjects);
     rotabsize = baseplane.nobjects;
