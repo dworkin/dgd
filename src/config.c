@@ -164,7 +164,7 @@ static dumpinfo header;		/* snapshot header */
 # define zero2	(header[37])	/* reserved (0) */
 # define zero3	(header[38])	/* reserved (0) */
 # define zero4	(header[39])	/* reserved (0) */
-# define zero5	(header[40])	/* reserved (0) */
+# define dflags	(header[40])	/* flags */
 # define zero6	(header[41])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
@@ -189,7 +189,7 @@ static dumpinfo rheader;	/* restored header */
 # define rzero2	 (rheader[37])	/* reserved (0) */
 # define rzero3	 (rheader[38])	/* reserved (0) */
 # define rzero4	 (rheader[39])	/* reserved (0) */
-# define rzero5	 (rheader[40])	/* reserved (0) */
+# define rdflags (rheader[40])	/* flags */
 # define rzero6	 (rheader[41])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
@@ -258,7 +258,7 @@ static void conf_dumpinit()
  * NAME:	conf->dump()
  * DESCRIPTION:	dump system state on file
  */
-void conf_dump()
+void conf_dump(bool incr)
 {
     int fd;
     Uint etime;
@@ -278,13 +278,16 @@ void conf_dump()
     header[DUMP_ELAPSED + 2] = etime >> 8;
     header[DUMP_ELAPSED + 3] = etime;
 
-    o_copy(0);
+    if (!incr) {
+	o_copy(0);
+    }
     d_swapout(1);
-    fd = sw_dump(conf[DUMP_FILE].u.str);
+    dflags = (o_dobjects() > 0);
+    fd = sw_dump(conf[DUMP_FILE].u.str, dflags);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
-    if (!o_dump(fd)) {
+    if (!o_dump(fd, incr)) {
 	fatal("failed to dump object table");
     }
     if (!pc_dump(fd)) {
@@ -294,8 +297,7 @@ void conf_dump()
 	fatal("failed to dump callout table");
     }
 
-    P_lseek(fd, 0L, SEEK_SET);
-    (void) P_write(fd, header, sizeof(dumpinfo));
+    sw_dump2(header, sizeof(dumpinfo), incr);
 }
 
 /*
@@ -346,7 +348,7 @@ static void conf_restore(int fd)
     }
     if (rheader[DUMP_VERSION] < 12) {
 	memmove(rheader + 20, rheader + 12, 18);
-	rzero3 = rzero4 = rzero5 = rzero6 = 0;
+	rzero3 = rzero4 = rdflags = rzero6 = 0;
     }
     if (rheader[DUMP_VERSION] < 13) {
 	conv_time = TRUE;
@@ -355,9 +357,9 @@ static void conf_restore(int fd)
 	conv_vm = TRUE;
     }
     rheader[DUMP_VERSION] = FORMAT_VERSION;
-    rzero5 &= ~0x02;	/* ignore Hydra hotboot flag */
+    rdflags &= ~0x02;	/* ignore Hydra hotboot flag */
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
-	rzero3 != 0 || rzero4 != 0 || rzero5 != 0 || rzero6 != 0) {
+	rzero3 != 0 || rzero4 != 0 || rdflags != 0 || rzero6 != 0) {
 	error("Bad or incompatible restore file header");
     }
 

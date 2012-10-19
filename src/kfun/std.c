@@ -1217,7 +1217,7 @@ char pt_old_dump_state[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  */
 int kf_old_dump_state(frame *f)
 {
-    dump_state();
+    dump_state(FALSE);
 
     *--f->sp = nil_value;
     return 0;
@@ -1236,12 +1236,18 @@ char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
  */
 int kf_dump_state(frame *f, int nargs)
 {
-    if (nargs != 0) {
-	f->sp++;
-    }
-    dump_state();
+    bool incr;
 
-    *--f->sp = nil_value;
+    if (nargs == 0) {
+	incr = FALSE;
+	--f->sp;
+    } else {
+	incr = (f->sp->u.number != 0);
+    }
+    *f->sp = nil_value;
+
+    dump_state(incr);
+
     return 0;
 }
 # endif

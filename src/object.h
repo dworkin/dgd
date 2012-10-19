@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -88,17 +88,18 @@ extern dataspace *o_dataspace		(object*);
 
 extern void	  o_clean		(void);
 extern uindex	  o_count		(void);
-extern bool	  o_dump		(int);
+extern uindex	  o_dobjects		(void);
+extern bool	  o_dump		(int, bool);
 extern void	  o_restore		(int, unsigned int);
 extern bool	  o_copy		(Uint);
 
 extern void	  swapout		(void);
-extern void	  dump_state		(void);
+extern void	  dump_state		(bool);
 extern void	  finish		(void);
 
 extern object    *otable;
 extern Uint	 *ocmap;
-extern bool	  obase, swap, dump, stop;
+extern bool	  obase, swap, dump, incr, stop;
 extern Uint	  odcount;
 
 

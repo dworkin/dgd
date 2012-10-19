@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -96,7 +96,7 @@ extern char	       *conf_driver	(void);
 extern int		conf_typechecking (void);
 extern unsigned short	conf_array_size	(void);
 
-extern void   conf_dump		(void);
+extern void   conf_dump		(bool);
 extern Uint   conf_dsize	(char*);
 extern Uint   conf_dconv	(char*, char*, char*, Uint);
 extern void   conf_dread	(int, char*, char*, Uint);

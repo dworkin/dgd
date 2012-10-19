@@ -109,10 +109,12 @@ void endthread()
 	/*
 	 * create a snapshot
 	 */
-	conf_dump();
+	conf_dump(incr);
 	dump = FALSE;
-	rebuild = TRUE;
-	dindex = UINDEX_MAX;
+	if (!incr) {
+	    rebuild = TRUE;
+	    dindex = UINDEX_MAX;
+	}
     }
 
     if (stop) {

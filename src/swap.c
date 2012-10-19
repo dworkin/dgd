@@ -46,6 +46,8 @@ static sector swapsize, cachesize;	/* # of sectors in swap and cache */
 static sector nsectors;			/* total swap sectors */
 static sector nfree;			/* # free sectors */
 static sector ssectors;			/* sectors actually in swap file */
+static sector sbarrier;			/* swap sector barrier */
+static bool swapping;			/* currently using a swapfile? */
 
 /*
  * NAME:	swap->init()
@@ -78,6 +80,7 @@ bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     /* 0 sectors allocated */
     nsectors = 0;
     ssectors = 0;
+    sbarrier = 0;
     nfree = 0;
 
     /* init free sector maps */
@@ -97,6 +100,7 @@ bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     last = (header *) NULL;
 
     swap = dump = -1;
+    swapping = TRUE;
     return 1;
 }
 
@@ -180,7 +184,7 @@ void sw_wipev(sector *vec, unsigned int size)
 	} else {
 	    map[sec] = SW_UNUSED;
 	}
-	if (i != SW_UNUSED) {
+	if (i != SW_UNUSED && i >= sbarrier) {
 	    /*
 	     * free sector in swap file
 	     */
@@ -286,11 +290,14 @@ static header *sw_load(sector sec, bool restore, bool fill)
 		 * Dump the sector to swap file
 		 */
 
-		if (save == SW_UNUSED) {
+		if (save == SW_UNUSED || save < sbarrier) {
 		    /*
 		     * allocate new sector in swap file
 		     */
 		    if (sfree == SW_UNUSED) {
+			if (ssectors == SW_UNUSED) {
+			    fatal("out of sectors");
+			}
 			save = ssectors++;
 		    } else {
 			save = sfree;
@@ -570,22 +577,13 @@ void sw_trim()
  * NAME:	swap->dump()
  * DESCRIPTION:	create snapshot
  */
-int sw_dump(char *snapshot)
+int sw_dump(char *snapshot, bool keep)
 {
     header *h;
     sector sec;
     char buffer[STRINGSZ + 4], buf1[STRINGSZ], buf2[STRINGSZ], *p, *q;
     sector n;
-    dump_header dh;
 
-    if (dump >= 0) {
-	P_close(dump);
-    }
-    p = path_native(buf1, snapshot);
-    sprintf(buffer, "%s.old", snapshot);
-    q = path_native(buf2, buffer);
-    P_unlink(q);
-    P_rename(p, q);
     if (swap < 0) {
 	sw_create();
     }
@@ -597,11 +595,14 @@ int sw_dump(char *snapshot)
 	    /*
 	     * Dump the sector to swap file
 	     */
-	    if (sec == SW_UNUSED) {
+	    if (sec == SW_UNUSED || sec < sbarrier) {
 		/*
 		 * allocate new sector in swap file
 		 */
 		if (sfree == SW_UNUSED) {
+		    if (ssectors == SW_UNUSED) {
+			fatal("out of sectors");
+		    }
 		    sec = ssectors++;
 		} else {
 		    sec = sfree;
@@ -619,62 +620,64 @@ int sw_dump(char *snapshot)
 
     sw_trim();
 
-    /* move to snapshot */
-    P_close(swap);
-    q = path_native(buf2, swapfile);
-    if (P_rename(q, p) < 0) {
-	/*
-	 * The rename failed.  Attempt to copy the snapshot instead.
-	 * This will take a long, long while, so keep the swapfile and
-	 * snapshot on the same file system if at all possible.
-	 */
-	swap = P_open(q, O_RDWR | O_BINARY, 0);
-	dump = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
-	if (swap < 0 || dump < 0) {
-	    fatal("cannot move swap file");
-	}
-	/* copy initial sector */
-	if (P_read(swap, cbuf, sectorsize) <= 0) {
-	    fatal("cannot read swap file");
-	}
-	if (P_write(dump, cbuf, sectorsize) < 0) {
-	    fatal("cannot write snapshot");
-	}
-	/* copy swap sectors */
-	for (n = ssectors; n > 0; --n) {
-	    if (P_read(swap, cbuf, sectorsize) <= 0) {
+    if (dump >= 0 && !keep) {
+	P_close(dump);
+	dump = -1;
+    }
+    if (swapping) {
+	p = path_native(buf1, snapshot);
+	sprintf(buffer, "%s.old", snapshot);
+	q = path_native(buf2, buffer);
+	P_unlink(q);
+	P_rename(p, q);
+
+	/* move to snapshot */
+	P_close(swap);
+	q = path_native(buf2, swapfile);
+	if (P_rename(q, p) < 0) {
+	    int old;
+
+	    /*
+	     * The rename failed.  Attempt to copy the snapshot instead.
+	     * This will take a long, long while, so keep the swapfile and
+	     * snapshot on the same file system if at all possible.
+	     */
+	    old = P_open(q, O_RDWR | O_BINARY, 0);
+	    swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
+	    if (old < 0 || swap < 0) {
+		fatal("cannot move swap file");
+	    }
+	    /* copy initial sector */
+	    if (P_read(old, cbuf, sectorsize) <= 0) {
 		fatal("cannot read swap file");
 	    }
-	    if (P_write(dump, cbuf, sectorsize) < 0) {
+	    if (P_write(swap, cbuf, sectorsize) < 0) {
 		fatal("cannot write snapshot");
 	    }
+	    /* copy swap sectors */
+	    for (n = ssectors; n > 0; --n) {
+		if (P_read(old, cbuf, sectorsize) <= 0) {
+		    fatal("cannot read swap file");
+		}
+		if (P_write(swap, cbuf, sectorsize) < 0) {
+		    fatal("cannot write snapshot");
+		}
+	    }
+	    P_close(old);
+	} else {
+	    /*
+	     * The rename succeeded; reopen the new snapshot.
+	     */
+	    swap = P_open(p, O_RDWR | O_BINARY, 0);
+	    if (swap < 0) {
+		fatal("cannot reopen snapshot");
+	    }
 	}
-	P_close(swap);
-    } else {
-	/*
-	 * The rename succeeded; reopen the new snapshot.
-	 */
-	dump = P_open(p, O_RDWR | O_BINARY, 0);
-	if (dump < 0) {
-	    fatal("cannot reopen snapshot");
-	}
-    }
-    swap = -1;
-
-    /* write header */
-    dh.secsize = sectorsize;
-    dh.nsectors = nsectors;
-    dh.ssectors = ssectors;
-    dh.nfree = nfree;
-    dh.mfree = mfree;
-    P_lseek(dump, sectorsize - (off_t) sizeof(dump_header), SEEK_SET);
-    if (P_write(dump, (char *) &dh, sizeof(dump_header)) < 0) {
-	fatal("cannot write swap header to snapshot");
     }
 
     /* write map */
-    P_lseek(dump, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (P_write(dump, (char *) map, nsectors * sizeof(sector)) < 0) {
+    P_lseek(swap, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
+    if (P_write(swap, (char *) map, nsectors * sizeof(sector)) < 0) {
 	fatal("cannot write sector map to snapshot");
     }
 
@@ -684,11 +687,86 @@ int sw_dump(char *snapshot)
 	h->dirty = FALSE;
     }
 
-    ssectors = 0;
+    return swap;
+}
+
+/*
+ * NAME:	swap->dump2()
+ * DESCRIPTION:	finish snapshot
+ */
+void sw_dump2(char *header, int size, bool incr)
+{
+    static off_t prev;
+    register off_t sectors;
+    Uint offset;
+    dump_header dh;
+    char save[4];
+
+    memset(cbuf, '\0', sectorsize);
+
+    if (!swapping || incr) {
+	/* extend */
+	sectors = P_lseek(swap, 0, SEEK_CUR);
+	offset = sectors % sectorsize;
+	sectors /= sectorsize;
+	if (offset != 0) {
+	    if (P_write(swap, cbuf, sectorsize - offset) < 0) {
+		fatal("cannot extend swap file");
+	    }
+	    sectors++;
+	}
+    }
+
+    if (swapping) {
+	P_lseek(swap, 0, SEEK_SET);
+	prev = 0;
+    }
+
+    /* write header */
+    memcpy(cbuf, header, size);
+    dh.secsize = sectorsize;
+    dh.nsectors = nsectors;
+    dh.ssectors = ssectors;
+    dh.nfree = nfree;
+    dh.mfree = mfree;
+    memcpy(cbuf + sectorsize - sizeof(dump_header), &dh, sizeof(dump_header));
+    if (P_write(swap, cbuf, sectorsize) < 0) {
+	fatal("cannot write snapshot header");
+    }
+
+    if (!swapping) {
+	/* let the previous header refer to the current one */
+	save[0] = sectors >> 24;
+	save[1] = sectors >> 16;
+	save[2] = sectors >> 8;
+	save[3] = sectors;
+	P_lseek(swap, prev * sectorsize + size - sizeof(save), SEEK_SET);
+	if (P_write(swap, save, sizeof(save)) < 0) {
+	    fatal("cannot write offset");
+	}
+	prev = sectors;
+    }
+
+    if (incr) {
+	/* incremental snapshot */
+	if (swapping) {
+	    --sectors;
+	}
+	if (sectors > SW_UNUSED) {
+	    sectors = SW_UNUSED;
+	}
+	sbarrier = ssectors = sectors;
+	swapping = FALSE;
+    } else {
+	/* full snapshot */
+	dump = swap;
+	swap = -1;
+	sbarrier = ssectors = 0;
+	swapping = TRUE;
+	restoresecsize = sectorsize;
+    }
     sfree = SW_UNUSED;
     cached = SW_UNUSED;
-
-    return dump;
 }
 
 /*

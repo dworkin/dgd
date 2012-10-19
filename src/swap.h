@@ -30,5 +30,6 @@ extern void	sw_conv		(char*, sector*, Uint, Uint);
 extern sector	sw_mapsize	(unsigned int);
 extern sector	sw_count	(void);
 extern bool	sw_copy		(Uint);
-extern int	sw_dump		(char*);
+extern int	sw_dump		(char*, bool);
+extern void	sw_dump2	(char*, int, bool);
 extern void	sw_restore	(int, unsigned int);
