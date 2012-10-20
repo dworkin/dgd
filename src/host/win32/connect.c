@@ -98,6 +98,8 @@ static void ipa_run(void *dummy)
 	    send(out, "", 1, 0);	/* failure */
 	}
     }
+    closesocket(out);
+    out = INVALID_SOCKET;
 }
 
 /*
@@ -134,7 +136,6 @@ static void ipa_finish(void)
 {
     closesocket(in);
     in = INVALID_SOCKET;
-    out = INVALID_SOCKET;
 }
 
 /*
