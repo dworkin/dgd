@@ -246,6 +246,7 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
  */
 void comm_finish()
 {
+    conn_clear();
     conn_finish();
 }
 

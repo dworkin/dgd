@@ -697,13 +697,20 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 }
 
 /*
+ * NAME:	conn->clear()
+ * DESCRIPTION:	clean up connections
+ */
+void conn_clear(void)
+{
+    ipa_finish();
+}
+
+/*
  * NAME:	conn->finish()
  * DESCRIPTION:	terminate connections
  */
 void conn_finish(void)
 {
-    ipa_finish();
-
     WSACleanup();
 }
 
@@ -1570,7 +1577,6 @@ connection *conn_connect(void *addr, int len)
     int sock;
     int on;
     unsigned long nonblock;
-    in46addr inaddr;
 
     if (flist == (connection *) NULL) {
        return NULL;
@@ -1616,14 +1622,7 @@ connection *conn_connect(void *addr, int len)
     conn->fd = sock;
     conn->chain.name = (char *) NULL;
     conn->udpbuf = (char *) NULL;
-    inaddr.ipv6 = FALSE;
-    if (((struct sockaddr_in6 *) addr)->sin6_family == AF_INET6) {
-	inaddr.in.addr6 = ((struct sockaddr_in6 *) addr)->sin6_addr;
-	inaddr.ipv6 = TRUE;
-    } else {
-	inaddr.in.addr = ((struct sockaddr_in *) addr)->sin_addr;
-    }
-    conn->addr = ipa_new(&inaddr);
+    conn->addr = (ipaddr *) NULL;
     conn->at = 0;
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
@@ -1671,6 +1670,20 @@ int conn_check_connected(connection *conn, bool *refused)
 	errno = optval;
 	return -1;
     } else {
+	struct sockaddr_in6 sin;
+	socklen_t len;
+	in46addr inaddr;
+
+	len = sizeof(sin);
+	getpeername(conn->fd, (struct sockaddr *) &sin, &len);
+	inaddr.ipv6 = FALSE;
+	if (sin.sin6_family == AF_INET6) {
+	    inaddr.in.addr6 = sin.sin6_addr;
+	    inaddr.ipv6 = TRUE;
+	} else {
+	    inaddr.in.addr = ((struct sockaddr_in *) &sin)->sin_addr;
+	}
+	conn->addr = ipa_new(&inaddr);
 	errno = 0;
 	return 1;
     }

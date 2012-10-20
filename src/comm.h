@@ -25,6 +25,7 @@ typedef struct _connection_ connection;
 
 extern bool	   conn_init	 (int, char**, char**, unsigned short*,
 				    unsigned short*, int, int);
+extern void	   conn_clear	 (void);
 extern void	   conn_finish	 (void);
 #ifndef NETWORK_EXTENSIONS
 extern void	   conn_listen	 (void);

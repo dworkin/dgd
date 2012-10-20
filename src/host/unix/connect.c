@@ -746,19 +746,13 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 }
 
 /*
- * NAME:	conn->finish()
- * DESCRIPTION:	terminate connections
+ * NAME:	conn->clear()
+ * DESCRIPTION:	clean up connections
  */
-void conn_finish()
+void conn_clear()
 {
     int n;
-    connection *conn;
 
-    for (n = nusers, conn = connections; n > 0; --n, conn++) {
-	if (conn->fd >= 0) {
-	    close(conn->fd);
-	}
-    }
     for (n = 0; n < ntdescs; n++) {
 	if (tdescs[n].in6 >= 0) {
 	    close(tdescs[n].in6);
@@ -783,6 +777,22 @@ void conn_finish()
     }
 
     ipa_finish();
+}
+
+/*
+ * NAME:	conn->finish()
+ * DESCRIPTION:	terminate connections
+ */
+void conn_finish()
+{
+    int n;
+    connection *conn;
+
+    for (n = nusers, conn = connections; n > 0; --n, conn++) {
+	if (conn->fd >= 0) {
+	    close(conn->fd);
+	}
+    }
 }
 
 #ifndef NETWORK_EXTENSIONS
@@ -1645,7 +1655,6 @@ connection *conn_connect(void *addr, int len)
     int sock;
     int on;
     long arg;
-    in46addr inaddr;
 
     if (flist == (connection *) NULL) {
        return NULL;
@@ -1691,15 +1700,7 @@ connection *conn_connect(void *addr, int len)
     conn->fd = sock;
     conn->chain.name = (char *) NULL;
     conn->udpbuf = (char *) NULL;
-    inaddr.ipv6 = FALSE;
-# ifdef INET6
-    if (((struct sockaddr_in6 *) addr)->sin6_family == AF_INET6) {
-	inaddr.in.addr6 = ((struct sockaddr_in6 *) addr)->sin6_addr;
-	inaddr.ipv6 = TRUE;
-    } else
-# endif
-    inaddr.in.addr = ((struct sockaddr_in *) addr)->sin_addr;
-    conn->addr = ipa_new(&inaddr);
+    conn->addr = (ipaddr *) NULL;
     conn->at = 0;
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
@@ -1751,6 +1752,25 @@ int conn_check_connected(connection *conn, bool *refused)
 	errno = optval;
 	return -1;
     } else {
+# ifdef INET6
+	struct sockaddr_in6 sin;
+# else
+	struct sockaddr_in sin;
+# endif
+	int len;
+	in46addr inaddr;
+
+	len = sizeof(sin);
+	getpeername(conn->fd, (struct sockaddr *) &sin, &len);
+	inaddr.ipv6 = FALSE;
+# ifdef INET6
+	if (sin.sin6_family == AF_INET6) {
+	    inaddr.in.addr6 = sin.sin6_addr;
+	    inaddr.ipv6 = TRUE;
+	} else
+# endif
+	inaddr.in.addr = ((struct sockaddr_in *) &sin)->sin_addr;
+	conn->addr = ipa_new(&inaddr);
 	errno = 0;
 	return 1;
     }
