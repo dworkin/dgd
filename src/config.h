@@ -93,6 +93,7 @@ typedef unsigned char eindex;
 extern bool		conf_init	(char*, char*, char*, char*, sector*);
 extern char	       *conf_base_dir	(void);
 extern char	       *conf_driver	(void);
+extern char	      **conf_hotboot	(void);
 extern int		conf_typechecking (void);
 extern unsigned short	conf_array_size	(void);
 

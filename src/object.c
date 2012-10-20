@@ -59,14 +59,14 @@ struct _objplane_ {
     uindex nobjects;		/* number of objects in object table */
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
-    bool swap, dump, incr, stop;/* state vars */
+    bool swap, dump, incr, stop, boot; /* state vars */
     struct _objplane_ *prev;	/* previous object plane */
 };
 
 object *otable;			/* object table */
 Uint *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
-bool swap, dump, incr, stop;	/* global state vars */
+bool swap, dump, incr, stop, boot; /* global state vars */
 static bool recount;		/* object counts recalculated? */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
@@ -101,7 +101,8 @@ void o_init(unsigned int n, Uint interval)
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
     baseplane.ocount = 3;
-    baseplane.swap = baseplane.dump = baseplane.incr = baseplane.stop = FALSE;
+    baseplane.swap = baseplane.dump = baseplane.incr = baseplane.stop =
+		     baseplane.boot = FALSE;
     oplane = &baseplane;
     omap = ALLOC(Uint, BMAP(n));
     memset(omap, '\0', BMAP(n) * sizeof(Uint));
@@ -350,6 +351,7 @@ void o_new_plane()
     p->dump = oplane->dump;
     p->incr = oplane->incr;
     p->stop = oplane->stop;
+    p->boot = oplane->boot;
     p->prev = oplane;
     oplane = p;
 
@@ -484,6 +486,7 @@ void o_commit_plane()
     prev->dump = oplane->dump;
     prev->incr = oplane->incr;
     prev->stop = oplane->stop;
+    prev->boot = oplane->boot;
     FREE(oplane);
     oplane = prev;
 
@@ -1193,6 +1196,7 @@ void o_clean()
     dump = baseplane.dump;
     incr = baseplane.incr;
     stop = baseplane.stop;
+    boot = baseplane.boot;
     baseplane.swap = baseplane.dump = baseplane.incr = FALSE;
 }
 
@@ -1716,7 +1720,11 @@ void dump_state(bool incr)
  * NAME:	finish()
  * DESCRIPTION:	indicate that the program must finish
  */
-void finish()
+void finish(bool boot)
 {
+    if (boot && !oplane->dump) {
+	error("Hotbooting without snapshot");
+    }
     oplane->stop = TRUE;
+    oplane->boot = boot;
 }

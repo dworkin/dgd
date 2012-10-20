@@ -95,11 +95,11 @@ extern bool	  o_copy		(Uint);
 
 extern void	  swapout		(void);
 extern void	  dump_state		(bool);
-extern void	  finish		(void);
+extern void	  finish		(bool);
 
 extern object    *otable;
 extern Uint	 *ocmap;
-extern bool	  obase, swap, dump, incr, stop;
+extern bool	  obase, swap, dump, incr, stop, boot;
 extern Uint	  odcount;
 
 

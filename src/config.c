@@ -86,41 +86,43 @@ static config conf[] = {
 # define EDITORS	12
 				{ "editors",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
-# define INCLUDE_DIRS	13
+# define HOTBOOT	13
+				{ "hotboot",		'(' },
+# define INCLUDE_DIRS	14
 				{ "include_dirs",	'(' },
-# define INCLUDE_FILE	14
+# define INCLUDE_FILE	15
 				{ "include_file",	STRING_CONST, TRUE },
-# define MODULES	15
+# define MODULES	16
 				{ "modules",		'(' },
-# define OBJECTS	16
+# define OBJECTS	17
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define PORTS		17
+# define PORTS		18
 				{ "ports",		INT_CONST, FALSE, FALSE,
 							1, 32 },
-# define SECTOR_SIZE	18
+# define SECTOR_SIZE	19
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
-# define STATIC_CHUNK	19
+# define STATIC_CHUNK	20
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	20
+# define SWAP_FILE	21
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	21
+# define SWAP_FRAGMENT	22
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	22
+# define SWAP_SIZE	23
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	23
+# define TELNET_PORT	24
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	24
+# define TYPECHECKING	25
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		25
+# define USERS		26
 				{ "users",		INT_CONST, FALSE, FALSE,
 							1, EINDEX_MAX },
-# define NR_OPTIONS	26
+# define NR_OPTIONS	27
 };
 
 
@@ -790,7 +792,7 @@ void conf_dread(int fd, char *buf, char *layout, Uint n)
 # define MAX_PORTS	32
 # define MAX_STRINGS	32
 
-static char *dirs[MAX_STRINGS], *modules[MAX_STRINGS];
+static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS], *modules[MAX_STRINGS];
 static char *bhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], tports[MAX_PORTS];
 static int ntports, nbports;
@@ -909,10 +911,10 @@ static bool conf_config()
 		return FALSE;
 	    }
 	    l = 0;
-	    if (m == INCLUDE_DIRS) {
-		strs = dirs;
-	    } else {
-		strs = modules;
+	    switch (m) {
+	    case HOTBOOT:	strs = hotboot; break;
+	    case INCLUDE_DIRS:	strs = dirs; break;
+	    case MODULES:	strs = modules; break;
 	    }
 	    for (;;) {
 		if (pp_gettok() != STRING_CONST) {
@@ -1015,7 +1017,7 @@ static bool conf_config()
     }
 
     for (l = 0; l < NR_OPTIONS; l++) {
-	if (!conf[l].set && l != MODULES) {
+	if (!conf[l].set && l != HOTBOOT && l != MODULES) {
 	    char buffer[64];
 
 #ifndef NETWORK_EXTENSIONS
@@ -1587,6 +1589,15 @@ char *conf_base_dir()
 char *conf_driver()
 {
     return conf[DRIVER_OBJECT].u.str;
+}
+
+/*
+ * NAME:	config->hotboot()
+ * DESCRIPTION:	return the hotboot executable
+ */
+char **conf_hotboot()
+{
+    return (conf[HOTBOOT].set) ? hotboot : (char **) NULL;
 }
 
 /*

@@ -1483,7 +1483,7 @@ char pt_old_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  */
 int kf_old_shutdown(frame *f)
 {
-    finish();
+    finish(FALSE);
 
     *--f->sp = nil_value;
     return 0;
@@ -1502,13 +1502,16 @@ char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
  */
 int kf_shutdown(frame *f, int nargs)
 {
+    bool boot;
+
     if (nargs != 0) {
-	if (f->sp->u.number != 0) {
-	    error("Hotbooting disabled");	/* always */
+	boot = (f->sp->u.number != 0);
+	if (boot && conf_hotboot() == (char **) NULL) {
+	    error("Hotbooting is disabled");
 	}
 	f->sp++;
     }
-    finish();
+    finish(boot);
 
     *--f->sp = nil_value;
     return 0;
