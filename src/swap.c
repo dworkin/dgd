@@ -31,7 +31,7 @@ typedef struct _header_ {	/* swap slot header */
 
 static char *swapfile;			/* swap file name */
 static int swap;			/* swap file descriptor */
-static int dump;			/* snapshot descriptor */
+static int dump, dump2;			/* snapshot descriptors */
 static char *mem;			/* swap slots in memory */
 static sector *map, *smap;		/* sector map, swap free map */
 static sector mfree, sfree;		/* free sector lists */
@@ -465,6 +465,33 @@ void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
+ * NAME:	swap->conv2()
+ * DESCRIPTION:	restore bytes from a vector of sectors in secondary snapshot
+ */
+void sw_conv2(char *m, sector *vec, Uint size, Uint idx)
+{
+    unsigned int len;
+
+    vec += idx / restoresecsize;
+    idx %= restoresecsize;
+    do {
+	len = (size > restoresecsize - idx) ? restoresecsize - idx : size;
+	if (*vec != cached) {
+	    P_lseek(dump2, (off_t) (map[*vec] + 1L) * restoresecsize,
+		    SEEK_SET);
+	    if (P_read(dump2, cbuf, restoresecsize) <= 0) {
+		fatal("cannot read secondary snapshot");
+	    }
+	    map[cached = *vec] = SW_UNUSED;
+	}
+	vec++;
+	memcpy(m, cbuf + idx, len);
+	idx = 0;
+	m += len;
+    } while ((size -= len) > 0);
+}
+
+/*
  * NAME:	swap->mapsize()
  * DESCRIPTION:	count the number of sectors required for size bytes + a map
  */
@@ -778,7 +805,7 @@ void sw_restore(int fd, unsigned int secsize)
     dump_header dh;
 
     /* restore swap header */
-    P_lseek(fd, (off_t) secsize - (conf_dsize(dh_layout) & 0xff), SEEK_SET);
+    P_lseek(fd, -(off_t) (conf_dsize(dh_layout) & 0xff), SEEK_CUR);
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.secsize != secsize) {
 	error("Wrong sector size (%d)", dh.secsize);
@@ -801,4 +828,13 @@ void sw_restore(int fd, unsigned int secsize)
     nfree = dh.nfree;
 
     dump = fd;
+}
+
+/*
+ * NAME:	swap->restore2()
+ * DESCRIPTION:	restore secondary snapshot
+ */
+void sw_restore2(int fd)
+{
+    dump2 = fd;
 }

@@ -138,9 +138,9 @@ typedef struct { char c;		} alignz;
 # define DUMP_TYPECHECK	3	/* global typechecking */
 # define DUMP_SECSIZE	4	/* sector size */
 # define DUMP_TYPE	4	/* first XX bytes, dump type */
+# define DUMP_HEADERSZ	28	/* header size */
 # define DUMP_STARTTIME	28	/* start time */
 # define DUMP_ELAPSED	32	/* elapsed time */
-# define DUMP_HEADERSZ	42	/* header size */
 # define DUMP_VSTRING	42	/* version string */
 
 typedef char dumpinfo[64];
@@ -263,6 +263,7 @@ void conf_dump(bool incr)
     int fd;
     Uint etime;
 
+    header[DUMP_VERSION] = FORMAT_VERSION;
     header[DUMP_TYPECHECK] = conf[TYPECHECKING].u.num;
     header[DUMP_STARTTIME + 0] = starttime >> 24;
     header[DUMP_STARTTIME + 1] = starttime >> 16;
@@ -301,20 +302,47 @@ void conf_dump(bool incr)
 }
 
 /*
+ * NAME:	conf->header()
+ * DESCRIPTION:	restore a snapshot header
+ */
+static unsigned int conf_header(int fd, dumpinfo h)
+{
+    unsigned int secsize;
+    off_t offset;
+
+    for (;;) {
+	if (P_read(fd, h, sizeof(dumpinfo)) != sizeof(dumpinfo) ||
+		   h[DUMP_VALID] != 1 ||
+		   h[DUMP_VERSION] < 2 ||
+		   h[DUMP_VERSION] > FORMAT_VERSION) {
+	    error("Bad or incompatible restore file header");
+	}
+	secsize = (UCHAR(h[DUMP_SECSIZE + 0]) << 8) |
+		   UCHAR(h[DUMP_SECSIZE + 1]);
+	offset = (UCHAR(h[sizeof(dumpinfo) - 4]) << 24) |
+		 (UCHAR(h[sizeof(dumpinfo) - 3]) << 16) |
+		 (UCHAR(h[sizeof(dumpinfo) - 2]) << 8) |
+		  UCHAR(h[sizeof(dumpinfo) - 1]);
+	if (offset == 0) {
+	    P_lseek(fd, secsize - sizeof(dumpinfo), SEEK_CUR);
+	    return secsize;
+	}
+
+	P_lseek(fd, offset * secsize, SEEK_SET);
+    }
+}
+
+/*
  * NAME:	conf->restore()
  * DESCRIPTION:	restore system state from file
  */
-static void conf_restore(int fd)
+static void conf_restore(int fd, int fd2)
 {
     bool conv_co1, conv_co2, conv_co3, conv_lwo, conv_ctrl1, conv_ctrl2,
     conv_data, conv_type, conv_inherit, conv_time, conv_vm;
     unsigned int secsize;
 
-    if (P_read(fd, rheader, DUMP_HEADERSZ) != DUMP_HEADERSZ ||
-	       rheader[DUMP_VERSION] < 2 ||
-	       rheader[DUMP_VERSION] > FORMAT_VERSION) {
-	error("Bad or incompatible restore file header");
-    }
+    secsize = conf_header(fd, rheader);
     conv_co1 = conv_co2 = conv_co3 = conv_lwo = conv_ctrl1 = conv_ctrl2 =
 	       conv_data = conv_type = conv_inherit = conv_time = conv_vm =
 	       FALSE;
@@ -356,11 +384,24 @@ static void conf_restore(int fd)
     if (rheader[DUMP_VERSION] < 14) {
 	conv_vm = TRUE;
     }
-    rheader[DUMP_VERSION] = FORMAT_VERSION;
+    header[DUMP_VERSION] = rheader[DUMP_VERSION];
     rdflags &= ~0x02;	/* ignore Hydra hotboot flag */
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
-	rzero3 != 0 || rzero4 != 0 || rdflags != 0 || rzero6 != 0) {
+	rzero3 != 0 || rzero4 != 0 || rdflags > 1 || rzero6 != 0) {
 	error("Bad or incompatible restore file header");
+    }
+    if (rdflags != 0) {
+	dumpinfo h;
+
+	/* secondary snapshot required */
+	if (fd2 < 0) {
+	    error("Missing secondary snapshot");
+	}
+	conf_header(fd2, h);
+	if (memcmp(rheader, h, DUMP_HEADERSZ) != 0) {
+	    error("Secondary snapshot has different type");
+	}
+	sw_restore2(fd2);
     }
 
     starttime = (UCHAR(rheader[DUMP_STARTTIME + 0]) << 24) |
@@ -400,8 +441,6 @@ static void conf_restore(int fd)
 	sizeof(sector) < rdsize) {
 	error("Cannot restore uindex, ssizet or sector of greater width");
     }
-    secsize = (UCHAR(rheader[DUMP_SECSIZE + 0]) << 8) |
-	       UCHAR(rheader[DUMP_SECSIZE + 1]);
     if ((rpsize >> 4) > 1) {
 	error("Cannot restore hindex > 1");	/* Hydra only */
     }
@@ -409,12 +448,16 @@ static void conf_restore(int fd)
 
     sw_restore(fd, secsize);
     kf_restore(fd, conv_co1);
-    o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0));
+    o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0), rdflags);
     d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
 		conv_type, conv_inherit, conv_time, conv_vm);
     pc_restore(fd, conv_inherit);
     boottime = P_time();
     co_restore(fd, boottime, conv_co2, conv_co3, conv_time);
+
+    if (fd2 >= 0) {
+	P_close(fd2);
+    }
 }
 
 /*
@@ -1262,13 +1305,14 @@ extern bool ext_dgd (char*);
  * NAME:	config->init()
  * DESCRIPTION:	initialize the driver
  */
-bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
+bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
+	       sector *fragment)
 {
     char buf[STRINGSZ];
-    int fd, i;
+    int fd, fd2, i;
     bool init;
 
-    fd = -1;
+    fd = fd2 = -1;
 
     /*
      * process config file
@@ -1305,6 +1349,14 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 	    return FALSE;
 	}
     }
+    if (snapshot2 != (char *) NULL) {
+	fd2 = P_open(path_native(buf, snapshot2), O_RDONLY | O_BINARY, 0);
+	if (fd2 < 0) {
+	    P_message("Config error: cannot open secondary restore file\012");    /* LF */
+	    m_finish();
+	    return FALSE;
+	}
+    }
 
     m_static();
 
@@ -1315,6 +1367,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 	if (!ext_dgd(modules[i])) {
 	    message("Config error: cannot load runtime extension \"%s\"\012",
 		    modules[i]);
+	    if (snapshot2 != (char *) NULL) {
+		P_close(fd2);
+	    }
 	    if (snapshot != (char *) NULL) {
 		P_close(fd);
 	    }
@@ -1325,6 +1380,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
     if (module != (char *) NULL && !ext_dgd(module)) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1339,6 +1397,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
     if (P_chdir(path_native(buf, conf[DIRECTORY].u.str)) < 0) {
 	message("Config error: bad base directory \"%s\"\012",	/* LF */
 		conf[DIRECTORY].u.str);
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1355,6 +1416,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 		   tports, bports,
 		   ntports, nbports)) {
 	comm_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1374,6 +1438,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 	    (sector) conf[CACHE_SIZE].u.num,
 	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
 	comm_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1393,6 +1460,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
     if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
 	sw_finish();
 	comm_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1422,6 +1492,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
     if (!conf_includes()) {
 	sw_finish();
 	comm_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1433,6 +1506,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
     if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
 	sw_finish();
 	comm_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1454,6 +1530,9 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 	sw_finish();
 	comm_finish();
 	ed_finish();
+	if (snapshot2 != (char *) NULL) {
+	    P_close(fd2);
+	}
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
@@ -1471,7 +1550,7 @@ bool conf_init(char *configfile, char *snapshot, char *module, sector *fragment)
 	ec_pop();
     } else {
 	/* restore snapshot */
-	conf_restore(fd);
+	conf_restore(fd, fd2);
 
 	/* notify mudlib */
 	if (ec_push((ec_ftn) errhandler)) {

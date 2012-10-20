@@ -3022,12 +3022,6 @@ static void d_fixdata(dataspace *data, object *obj, Uint *counttab, uindex nobje
 	    }
 	}
     }
-
-    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master)->update) {
-	/* handle object upgrading right away */
-	d_upgrade_clone(data);
-    }
-    data->base.flags |= MOD_ALL;
 }
 
 /*
@@ -3313,7 +3307,16 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
 	    get_callouts(data, readv);
 	}
 	obj->data = data;
-	d_fixdata(data, obj, counttab, nobjects);
+	if (counttab != (Uint *) NULL) {
+	    d_fixdata(data, obj, counttab, nobjects);
+	}
+
+	if (!(obj->flags & O_MASTER) &&
+	    obj->update != OBJ(obj->u_master)->update) {
+	    /* handle object upgrading right away */
+	    d_upgrade_clone(data);
+	}
+	data->base.flags |= MOD_ALL;
     }
 
     return data;

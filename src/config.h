@@ -90,7 +90,7 @@ typedef unsigned char eindex;
 # define BIPREFIX	"builtin/"
 # define BIPREFIXLEN	8
 
-extern bool		conf_init	(char*, char*, char*, sector*);
+extern bool		conf_init	(char*, char*, char*, char*, sector*);
 extern char	       *conf_base_dir	(void);
 extern char	       *conf_driver	(void);
 extern int		conf_typechecking (void);

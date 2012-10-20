@@ -90,7 +90,7 @@ extern void	  o_clean		(void);
 extern uindex	  o_count		(void);
 extern uindex	  o_dobjects		(void);
 extern bool	  o_dump		(int, bool);
-extern void	  o_restore		(int, unsigned int);
+extern void	  o_restore		(int, unsigned int, bool);
 extern bool	  o_copy		(Uint);
 
 extern void	  swapout		(void);

@@ -160,8 +160,8 @@ int dgd_main(int argc, char **argv)
 	--argc;
 	argv++;
     }
-    if (argc < 1 || argc > 2) {
-	message("Usage: %s [-e module] config_file [snapshot]\012",     /* LF */
+    if (argc < 1 || argc > 3) {
+	message("Usage: %s [-e module] config_file [[partial_snapshot] snapshot]\012",     /* LF */
 		program);
 	return 2;
     }
@@ -171,7 +171,8 @@ int dgd_main(int argc, char **argv)
     swap = dump = intr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[0], (argc == 2) ? argv[1] : (char *) NULL, module,
+    if (!conf_init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
+		   (argc > 2) ? argv[2] : (char *) NULL, module,
 		   &fragment)) {
 	return 2;	/* initialization failed */
     }

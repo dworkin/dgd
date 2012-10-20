@@ -67,6 +67,7 @@ object *otable;			/* object table */
 Uint *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
 bool swap, dump, incr, stop;	/* global state vars */
+static bool recount;		/* object counts recalculated? */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
 static objplane baseplane;	/* base object plane */
@@ -110,6 +111,7 @@ void o_init(unsigned int n, Uint interval)
     dinterval = (interval * 19) / 20;
     odcount = 1;
     obase = TRUE;
+    recount = TRUE;
 }
 
 
@@ -945,7 +947,8 @@ static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, counttab, rotabsize, cactive, dactive);
+    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, rotabsize, cactive,
+		  dactive);
 }
 
 /*
@@ -1222,10 +1225,10 @@ typedef struct {
 static char dh_layout[] = "uuui";
 
 typedef struct {
-    uindex dobjects;	/* objects left to copy */
-    uindex dobjects2;
-    uindex dobject;	/* object to copy */
-    uindex dobject2;
+    uindex nctrl;	/* objects left to copy */
+    uindex ndata;
+    uindex cobject;	/* object to copy */
+    uindex dobject;
     Uint count;		/* object count */
 } map_header;
 
@@ -1262,7 +1265,7 @@ static void o_sweep(uindex n)
  * NAME:	object->recount()
  * DESCRIPTION:	update object counts
  */
-static void o_recount(uindex n)
+static Uint o_recount(uindex n)
 {
     Uint count, *ct;
     object *obj;
@@ -1277,8 +1280,8 @@ static void o_recount(uindex n)
 	}
     }
 
-    baseplane.ocount = count;
     odcount = 1;
+    recount = TRUE;
 }
 
 /*
@@ -1404,24 +1407,28 @@ bool o_dump(int fd, bool incr)
 	/*
 	 * partial snapshot: write bitmap and counts
 	 */
-	mh.dobjects = dobjects;
-	mh.dobjects2 = dobjects;
+	mh.nctrl = dobjects;
+	mh.ndata = dobjects;
+	mh.cobject = dobject;
 	mh.dobject = dobject;
-	mh.dobject2 = dobject;
-	mh.count = baseplane.ocount;
+	mh.count = 0;
+	if (recount) {
+	    mh.count = baseplane.ocount;
+	}
 	if (P_write(fd, &mh, sizeof(map_header)) < 0 ||
 	    P_write(fd, omap + BOFF(dobject),
 		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
 	    P_write(fd, omap + BOFF(dobject),
 		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
-	    P_write(fd, counttab, dh.nobjects * sizeof(Uint)) < 0) {
+	    (mh.count != 0 &&
+	     P_write(fd, counttab, dh.nobjects * sizeof(Uint)) < 0)) {
 	    return FALSE;
 	}
     }
 
     if (!incr) {
 	o_sweep(baseplane.nobjects);
-	o_recount(baseplane.nobjects);
+	baseplane.ocount = o_recount(baseplane.nobjects);
 	rotabsize = baseplane.nobjects;
     }
 
@@ -1432,11 +1439,11 @@ bool o_dump(int fd, bool incr)
  * NAME:	object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(int fd, unsigned int rlwobj)
+void o_restore(int fd, unsigned int rlwobj, bool part)
 {
     uindex i;
     object *o;
-    Uint len, buflen;
+    Uint len, buflen, count;
     char *p;
     dump_header dh;
     char buffer[CHUNKSZ];
@@ -1523,7 +1530,94 @@ void o_restore(int fd, unsigned int rlwobj)
     }
 
     o_sweep(baseplane.nobjects);
-    o_recount(baseplane.nobjects);
+
+    if (part) {
+	map_header mh;
+	off_t offset;
+	Uint *cmap, *dmap;
+	uindex nctrl, ndata;
+
+	conf_dread(fd, (char *) &mh, mh_layout, (Uint) 1);
+	nctrl = mh.nctrl;
+	ndata = mh.ndata;
+	count = mh.count;
+
+	cmap = dmap = (Uint *) NULL;
+	if (nctrl != 0) {
+	    cmap = ALLOC(Uint, BMAP(dh.nobjects));
+	    memset(cmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
+	    conf_dread(fd, (char *) (cmap + BOFF(mh.cobject)), "i",
+		       BMAP(dh.nobjects) - BOFF(mh.cobject));
+	}
+	if (ndata != 0) {
+	    dmap = ALLOC(Uint, BMAP(dh.nobjects));
+	    memset(dmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
+	    conf_dread(fd, (char *) (dmap + BOFF(mh.dobject)), "i",
+		       BMAP(dh.nobjects) - BOFF(mh.dobject));
+	}
+
+	if (count != 0) {
+	    conf_dread(fd, (char *) counttab, "i", dh.nobjects);
+	    recount = FALSE;
+	} else {
+	    count = o_recount(baseplane.nobjects);
+	}
+
+	/*
+	 * copy all objects from the secondary restore file
+	 */
+	offset = P_lseek(fd, (off_t) 0, SEEK_CUR);
+	i = mh.cobject;
+	while (nctrl > 0) {
+	    while (!BTST(cmap, i)) {
+		i++;
+	    }
+	    BCLR(cmap, i);
+
+	    o = OBJ(i);
+	    if (o->cfirst != SW_UNUSED) {
+		if (BTST(omap, i)) {
+		    BCLR(omap, i);
+		    --dobjects;
+		}
+		d_restore_ctrl(o, &sw_conv2);
+		d_swapout(1);
+	    }
+	    i++;
+	    --nctrl;
+	}
+	i = mh.dobject;
+	while (ndata > 0) {
+	    while (!BTST(dmap, i)) {
+		i++;
+	    }
+	    BCLR(dmap, i);
+
+	    o = OBJ(i);
+	    if (o->dfirst != SW_UNUSED) {
+		if (BTST(omap, i)) {
+		    BCLR(omap, i);
+		    --dobjects;
+		}
+		d_restore_data(o, counttab, dh.nobjects, &sw_conv2);
+		d_swapout(1);
+	    }
+	    i++;
+	    --ndata;
+	}
+
+	if (cmap != (Uint *) NULL) {
+	    FREE(cmap);
+	}
+	if (dmap != (Uint *) NULL) {
+	    FREE(dmap);
+	}
+	P_lseek(fd, offset, SEEK_SET);
+    } else {
+	count = o_recount(baseplane.nobjects);
+    }
+
+    baseplane.ocount = count;
     rotabsize = baseplane.nobjects;
 }
 
