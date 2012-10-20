@@ -1282,6 +1282,7 @@ static Uint o_recount(uindex n)
 
     odcount = 1;
     recount = TRUE;
+    return count;
 }
 
 /*
