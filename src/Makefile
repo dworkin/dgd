@@ -39,9 +39,12 @@ ifndef HOST
   ifndef HOST
     $(error HOST is undefined)
   endif
+else
+  ifeq ($(HOST),opensuse)
+    HOST=LINUX
+  endif
 endif
 
-HOST=	DARWIN
 DEFINES=-D$(HOST)	# -DSLASHSLASH -DNETWORK_EXTENSIONS -DCLOSURES -DCO_THROTTLE=50
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
