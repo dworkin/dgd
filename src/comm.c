@@ -95,7 +95,6 @@ static int nports;		/* # of ports */
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
-static short opending;		/* # of users with connect() pending */
 static uindex this_user;	/* current user */
 static int ntport, nbport;	/* # telnet/binary ports */
 static int nexttport;		/* next telnet port to check */
@@ -141,7 +140,6 @@ bool comm_init(int n, char **thosts, char **bhosts,
 #ifdef NETWORK_EXTENSIONS
     nports = 0;
 #endif
-    opending = 0;
     this_user = OBJ_NONE;
 
     sprintf(ayt, "\15\12[%s]\15\12", VERSION);
@@ -413,7 +411,6 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
     d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
     arr_ref(usr->extra = arr);
-    opending++;
     usr->flags |= CF_OPENDING;
 }
 
@@ -469,13 +466,6 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
 	    addtoflush(usr, d_get_extravar(data)->u.array);
 	}
 	obj->flags &= ~O_USER;
-    }
-    /* make sure opending gets decreased if we were still waiting for
-     * connection esteblishment when receiving a close event.
-     */
-    if (usr->flags & CF_OPENDING) {
-	opending--;
-	usr->flags &= ~CF_OPENDING;
     }
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
@@ -1055,7 +1045,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	timeout = mtime = 0;
     }
     n = conn_select(timeout, mtime);
-    if ((n <= 0) && (newlines == 0) && (odone == 0) && (opending == 0)) {
+    if ((n <= 0) && (newlines == 0) && (odone == 0)) {
 	/*
 	 * call_out to do, or timeout
 	 */
@@ -1139,7 +1129,6 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	     * its either connected or in error state now.
 	     */
 	    if (retval != 0) {
-		opending--;
 		usr->flags &= ~CF_OPENDING;
 # ifndef NETWORK_EXTENSIONS
 		if (!(usr->flags & CF_FLUSH)) {
