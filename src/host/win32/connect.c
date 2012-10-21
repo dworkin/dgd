@@ -353,8 +353,8 @@ struct _connection_ {
     int npkts;				/* # packets in buffer */
     char *udpbuf;			/* datagram buffer */
     ipaddr *addr;			/* internet address of connection */
-    unsigned short uport;		/* UDP port of connection */
-    unsigned short at;			/* port connection was accepted at */
+    unsigned short port;		/* UDP port of connection */
+    short at;				/* port connection was accepted at */
     struct _connection_ *next;		/* next in list */
 };
 
@@ -1025,10 +1025,10 @@ void conn_del(connection *conn)
 	    hash = (connection **) ht_lookup(chtab, conn->chain.name, FALSE);
 	} else if (conn->addr->ipnum.ipv6) {
 	    hash = &udphtab[(hashmem((char *) &conn->addr->ipnum,
-			sizeof(struct in6_addr)) ^ conn->uport) % udphtabsz];
+			sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 	} else {
 	    hash = &udphtab[((Uint) conn->addr->ipnum.in.addr.s_addr ^
-						    conn->uport) % udphtabsz];
+						    conn->port) % udphtabsz];
 	}
 	while (*hash != conn) {
 	    hash = (connection **) &(*hash)->chain.next;
@@ -1104,9 +1104,9 @@ static void conn_udprecv6(int n)
 		    *hash = (connection *) conn->chain.next;
 		    conn->chain.name = (char *) NULL;
 		    conn->bufsz = 0;
-		    conn->uport = from.sin6_port;
+		    conn->port = from.sin6_port;
 		    hash = &udphtab[(hashmem((char *) &from.sin6_addr,
-			   sizeof(struct in6_addr)) ^ conn->uport) % udphtabsz];
+			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 		    conn->chain.next = (hte *) *hash;
 		    *hash = conn;
 
@@ -1117,7 +1117,7 @@ static void conn_udprecv6(int n)
 	    break;
 	}
 
-	if (conn->at == n && conn->uport == from.sin6_port &&
+	if (conn->at == n && conn->port == from.sin6_port &&
 	    memcmp(&conn->addr->ipnum, &from.sin6_addr,
 		   sizeof(struct in6_addr)) == 0) {
 	    /*
@@ -1179,9 +1179,9 @@ static void conn_udprecv(int n)
 		    *hash = (connection *) conn->chain.next;
 		    conn->chain.name = (char *) NULL;
 		    conn->bufsz = 0;
-		    conn->uport = from.sin_port;
+		    conn->port = from.sin_port;
 		    hash = &udphtab[((Uint) from.sin_addr.s_addr ^
-						    conn->uport) % udphtabsz];
+						    conn->port) % udphtabsz];
 		    conn->chain.next = (hte *) *hash;
 		    *hash = conn;
 
@@ -1194,7 +1194,7 @@ static void conn_udprecv(int n)
 
 	if (conn->at == n &&
 	    conn->addr->ipnum.in.addr.s_addr == from.sin_addr.s_addr &&
-	    conn->uport == from.sin_port) {
+	    conn->port == from.sin_port) {
 	    /*
 	     * packet from known correspondent
 	     */
@@ -1417,7 +1417,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 	    to.sin6_family = AF_INET6;
 	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
 		   sizeof(struct in6_addr));
-	    to.sin6_port = conn->uport;
+	    to.sin6_port = conn->port;
 	    return sendto(udescs[conn->at].in6, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in6));
 	} else {
@@ -1425,7 +1425,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 
 	    to.sin_family = AF_INET;
 	    to.sin_addr.s_addr = conn->addr->ipnum.in.addr.s_addr;
-	    to.sin_port = conn->uport;
+	    to.sin_port = conn->port;
 	    return sendto(udescs[conn->at].in4, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in));
 	}
@@ -1624,7 +1624,7 @@ connection *conn_connect(void *addr, int len)
     conn->chain.name = (char *) NULL;
     conn->udpbuf = (char *) NULL;
     conn->addr = (ipaddr *) NULL;
-    conn->at = 0;
+    conn->at = -1;
     FD_SET(sock, &infds);
     FD_SET(sock, &outfds);
     FD_CLR(sock, &readfds);
@@ -1751,7 +1751,8 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	conn->addr = (ipaddr *) NULL;
 	sz = sizeof(sin);
 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
-	conn->at = ntohs(sin.sin_port);
+	conn->port = ntohs(sin.sin_port);
+	conn->at = -1;
 	return conn;
     case P_UDP:
 	sock = socket(addrtype, SOCK_DGRAM, 0);
@@ -1791,7 +1792,8 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	conn->addr = (ipaddr *) NULL;
 	sz = sizeof(sin);
 	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
-	conn->at = ntohs(sin.sin_port);
+	conn->port = ntohs(sin.sin_port);
+	conn->at = -1;
 	return conn;
     default:
 	return NULL;
@@ -1803,7 +1805,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
  */
 int conn_at(connection *conn)
 {
-    return conn->at;
+    return conn->port;
 }
 
 /*
@@ -1843,8 +1845,8 @@ connection *conn_accept(connection *conn)
     addr.in.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
     newconn->addr = ipa_new(&addr);
-    /* newconn->addr=ipa_new(&sin.sin_addr);  */
-    newconn->at = ntohs(sin.sin_port);
+    newconn->port = ntohs(sin.sin_port);
+    newconn->at = -1;
     FD_SET(fd, &infds);
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
