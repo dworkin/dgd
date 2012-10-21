@@ -39,7 +39,7 @@ endif
 
 SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
 SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
-ifdef SYSVSTYLE
+ifdef SYSV_STYLE
   SRC+=lrand48.c
   SUBOBJ+=lrand48.o
 else
