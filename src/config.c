@@ -292,9 +292,6 @@ void conf_dump(bool incr, bool boot)
     if (o_dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
     }
-    if (boot) {
-	dflags |= FLAGS_HOTBOOT;
-    }
     fd = sw_dump(conf[DUMP_FILE].u.str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
@@ -308,8 +305,11 @@ void conf_dump(bool incr, bool boot)
     if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
     }
-    if (boot && !comm_dump(fd)) {
-	fatal("failed to dump users");
+    if (boot) {
+	boot = comm_dump(fd);
+	if (boot) {
+	    dflags |= FLAGS_HOTBOOT;
+	}
     }
 
     sw_dump2(header, sizeof(dumpinfo), incr);

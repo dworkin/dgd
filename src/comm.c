@@ -1804,8 +1804,10 @@ bool comm_dump(int fd)
 		*bufs++ = usr->inbuf;
 		if (!conn_export(usr->conn, &du->fd, &du->port, &du->at,
 				 &npkts, &ubufsz, bufs++, &du->cflags)) {
+		    /* no hotbooting support */
 		    FREE(du);
-		    return TRUE;
+		    FREE(bufs - 2);
+		    return FALSE;
 		}
 		du->npkts = npkts;
 		du->ubufsz = ubufsz;
@@ -1822,7 +1824,7 @@ bool comm_dump(int fd)
 
     /* write header */
     if (P_write(fd, &dh, sizeof(dump_header)) != sizeof(dump_header)) {
-	return FALSE;
+	fatal("failed to dump user header");
     }
 
     if (nusers != 0) {
@@ -1830,7 +1832,7 @@ bool comm_dump(int fd)
 	 * write users
 	 */
 	if (P_write(fd, du, nusers * sizeof(duser)) != nusers * sizeof(duser)) {
-	    return FALSE;
+	    fatal("failed to dump users");
 	}
 
 	if (dh.tbufsz != 0) {
@@ -1863,13 +1865,13 @@ bool comm_dump(int fd)
 	 */
 	if (dh.tbufsz != 0) {
 	    if (P_write(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
-		return FALSE;
+		fatal("failed to dump telnet buffers");
 	    }
 	    FREE(tbuf);
 	}
 	if (dh.ubufsz != 0) {
 	    if (P_write(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
-		return FALSE;
+		fatal("failed to dump UDP buffers");
 	    }
 	    FREE(ubuf);
 	}
