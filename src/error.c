@@ -217,8 +217,6 @@ void fatal(char *format, ...)
 	sprintf(ebuf2, "Fatal error: %s\012", ebuf1);	/* LF */
 
 	P_message(ebuf2);	/* show message */
-
-	comm_finish();
     }
     abort();
 }

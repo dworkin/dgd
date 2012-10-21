@@ -256,6 +256,7 @@ extern void  P_message	(char*);
 # define P_mkdir	mkdir
 # define P_rmdir	rmdir
 # define P_chdir	chdir
+# define P_execv	execv
 # else
 	/* filename translation */
 typedef long off_t;
@@ -274,6 +275,7 @@ extern int P_rename	(char*, char*);
 extern int P_mkdir	(char*, int);
 extern int P_rmdir	(char*);
 extern int P_chdir	(char*);
+extern int P_execv	(char*, char**);
 # endif
 # endif /* INCLUDE_FILE_IO */
 

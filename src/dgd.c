@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -88,7 +89,7 @@ void endthread()
     co_swapcount(d_swapout(fragment));
 
     if (stop) {
-	comm_finish();
+	comm_clear();
 	ed_finish();
 # ifdef DEBUG
 	swap = 1;
@@ -109,7 +110,7 @@ void endthread()
 	/*
 	 * create a snapshot
 	 */
-	conf_dump(incr);
+	conf_dump(incr, boot);
 	dump = FALSE;
 	if (!incr) {
 	    rebuild = TRUE;
@@ -119,8 +120,21 @@ void endthread()
 
     if (stop) {
 	sw_finish();
+
+	if (boot) {
+	    char **hotboot;
+
+	    /*
+	     * attempt to hotboot
+	     */
+	    hotboot = conf_hotboot();
+	    P_execv(hotboot[0], hotboot);
+	    message("Hotboot failed\012");	/* LF */
+	}
+
+	comm_finish();
 	m_finish();
-	exit(0);
+	exit(boot);
     }
 }
 

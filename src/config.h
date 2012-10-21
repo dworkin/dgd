@@ -97,7 +97,7 @@ extern char	      **conf_hotboot	(void);
 extern int		conf_typechecking (void);
 extern unsigned short	conf_array_size	(void);
 
-extern void   conf_dump		(bool);
+extern void   conf_dump		(bool, bool);
 extern Uint   conf_dsize	(char*);
 extern Uint   conf_dconv	(char*, char*, char*, Uint);
 extern void   conf_dread	(int, char*, char*, Uint);

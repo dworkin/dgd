@@ -290,3 +290,13 @@ void P_closedir(void)
 	_findclose(d);
     }
 }
+
+/*
+ * NAME:	P->execv()
+ * DESCRIPTION:	execute a program
+ */
+int P_execv(char *path, char **argv)
+{
+    P_message("Hotbooting not supported on Windows\012");	/* LF */
+    return -1;
+}

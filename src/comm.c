@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# define INCLUDE_FILE_IO
 # define INCLUDE_TELNET
 # include "dgd.h"
 # include "str.h"
@@ -239,12 +240,20 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
 #endif
 
 /*
+ * NAME:	comm->clear()
+ * DESCRIPTION:	clean up connections
+ */
+void comm_clear()
+{
+    conn_clear();
+}
+
+/*
  * NAME:	comm->finish()
  * DESCRIPTION:	terminate connections
  */
 void comm_finish()
 {
-    conn_clear();
     conn_finish();
 }
 
@@ -1729,4 +1738,258 @@ bool comm_is_connection(object *obj)
 	}
     }
     return FALSE;
+}
+
+typedef struct {
+    short version;		/* hotboot version */
+    Uint nusers;		/* # users */
+    Uint tbufsz;		/* total telnet buffer size */
+    Uint ubufsz;		/* total UDP buffer size */
+} dump_header;
+
+static char dh_layout[] = "siii";
+
+typedef struct {
+    uindex oindex;		/* object index */
+    short flags;		/* user flags */
+    char state;			/* user state */
+    char cflags;		/* connection flags */
+    short newlines;		/* # newlines in input buffer */
+    Uint tbufsz;		/* telnet buffer size */
+    Uint osdone;		/* amount of output string done */
+    Int fd;			/* file descriptor */
+    Uint npkts;			/* # packets in UDP buffer */
+    Uint ubufsz;		/* UDB buffer size */
+    unsigned short port;	/* connection port */
+    short at;			/* connected at */
+} duser;
+
+static char du_layout[] = "usccsiiiiiss";
+
+/*
+ * NAME:	comm->dump()
+ * DESCRIPTION:	save users
+ */
+bool comm_dump(int fd)
+{
+    dump_header dh;
+    duser *du;
+    char **bufs, *tbuf, *ubuf;
+    user *usr;
+    int i;
+
+    /* header */
+    dh.version = 0;
+    dh.nusers = nusers;
+    dh.tbufsz = 0;
+    dh.ubufsz = 0;
+
+    /*
+     * gather information about users
+     */
+    if (nusers != 0) {
+	du = ALLOC(duser, nusers);
+	bufs = ALLOC(char*, 2 * nusers);
+
+	for (i = nusers, usr = users; i > 0; usr++) {
+	    if (usr->oindex != OBJ_NONE) {
+		int npkts, ubufsz;
+
+		du->oindex = usr->oindex;
+		du->flags = usr->flags;
+		du->state = usr->state;
+		du->newlines = usr->newlines;
+		du->tbufsz = usr->inbufsz;
+		du->osdone = usr->osdone;
+		*bufs++ = usr->inbuf;
+		if (!conn_export(usr->conn, &du->fd, &du->port, &du->at,
+				 &npkts, &ubufsz, bufs++, &du->cflags)) {
+		    FREE(du);
+		    return TRUE;
+		}
+		du->npkts = npkts;
+		du->ubufsz = ubufsz;
+		dh.tbufsz += du->tbufsz;
+		dh.ubufsz += du->ubufsz;
+
+		du++;
+		--i;
+	    }
+	}
+	du -= nusers;
+	bufs -= 2 * nusers;
+    }
+
+    /* write header */
+    if (P_write(fd, &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+	return FALSE;
+    }
+
+    if (nusers != 0) {
+	/*
+	 * write users
+	 */
+	if (P_write(fd, du, nusers * sizeof(duser)) != nusers * sizeof(duser)) {
+	    return FALSE;
+	}
+
+	if (dh.tbufsz != 0) {
+	    tbuf = ALLOC(char, dh.tbufsz);
+	}
+	if (dh.ubufsz != 0) {
+	    ubuf = ALLOC(char, dh.ubufsz);
+	}
+
+	/*
+	 * copy buffer content
+	 */
+	for (i = nusers; i > 0; --i, du++) {
+	    if (du->tbufsz != 0) {
+		memcpy(tbuf, *bufs, du->tbufsz);
+		tbuf += du->tbufsz;
+	    }
+	    bufs++;
+	    if (du->ubufsz != 0) {
+		memcpy(ubuf, *bufs, du->ubufsz);
+		ubuf += du->ubufsz;
+	    }
+	    bufs++;
+	}
+	tbuf -= dh.tbufsz;
+	ubuf -= dh.ubufsz;
+
+	/*
+	 * write buffer content
+	 */
+	if (dh.tbufsz != 0) {
+	    if (P_write(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
+		return FALSE;
+	    }
+	    FREE(tbuf);
+	}
+	if (dh.ubufsz != 0) {
+	    if (P_write(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
+		return FALSE;
+	    }
+	    FREE(ubuf);
+	}
+
+	FREE(du - nusers);
+	FREE(bufs - 2 * nusers);
+    }
+
+    return TRUE;
+}
+
+/*
+ * NAME:	comm->restore()
+ * DESCRIPTION:	restore users
+ */
+bool comm_restore(int fd)
+{
+    dump_header dh;
+    duser *du;
+    char *tbuf, *ubuf;
+    int i;
+    user *usr;
+    connection *conn;
+
+    /* read header */
+    conf_dread(fd, (char *) &dh, dh_layout, 1);
+    if (dh.nusers > maxusers) {
+	fatal("too many users");
+    }
+
+    if (dh.nusers != 0) {
+	/* read users and buffers */
+	du = ALLOC(duser, dh.nusers);
+	conf_dread(fd, (char *) du, du_layout, dh.nusers);
+	if (dh.tbufsz != 0) {
+	    tbuf = ALLOC(char, dh.tbufsz);
+	    if (P_read(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
+		fatal("cannot read telnet buffer");
+	    }
+	}
+	if (dh.ubufsz != 0) {
+	    ubuf = ALLOC(char, dh.ubufsz);
+	    if (P_read(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
+		fatal("cannot read UDP buffer");
+	    }
+	}
+
+	for (i = dh.nusers; i > 0; --i) {
+	    /* import connection */
+	    conn = conn_import(du->fd, du->port, du->at, du->npkts, du->ubufsz,
+			       ubuf, du->cflags, (du->flags & CF_TELNET) != 0);
+	    if (conn == (connection *) NULL) {
+		if (nusers == 0) {
+		    if (dh.ubufsz != 0) {
+			FREE(ubuf);
+		    }
+		    if (dh.tbufsz != 0) {
+			FREE(tbuf);
+		    }
+		    FREE(du);
+		    return FALSE;
+		}
+		fatal("cannot restore user");
+	    }
+	    ubuf += du->ubufsz;
+
+	    /* allocate user */
+	    usr = freeuser;
+	    freeuser = usr->next;
+	    if (lastuser != (user *) NULL) {
+		usr->prev = lastuser->prev;
+		usr->prev->next = usr;
+		usr->next = lastuser;
+		lastuser->prev = usr;
+	    } else {
+		usr->prev = usr;
+		usr->next = usr;
+		lastuser = usr;
+	    }
+	    nusers++;
+
+	    /* initialize user */
+	    usr->oindex = du->oindex;
+	    OBJ(usr->oindex)->etabi = usr - users;
+	    OBJ(usr->oindex)->flags |= O_USER;
+	    usr->flags = du->flags;
+	    if (usr->flags & CF_ODONE) {
+		odone++;
+	    }
+	    usr->state = du->state;
+	    usr->newlines = du->newlines;
+	    newlines += usr->newlines;
+	    usr->conn = conn;
+	    if (usr->flags & CF_TELNET) {
+		m_static();
+		usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
+		*usr->inbuf++ = LF;	/* sentinel */
+		m_dynamic();
+	    } else {
+		usr->inbuf = (char *) NULL;
+	    }
+	    usr->extra = (array *) NULL;
+	    usr->outbuf = (string *) NULL;
+	    usr->inbufsz = du->tbufsz;
+	    if (usr->inbufsz != 0) {
+		memcpy(usr->inbuf, tbuf, usr->inbufsz);
+		tbuf += usr->inbufsz;
+	    }
+	    usr->osdone = du->osdone;
+
+	    du++;
+	}
+	if (dh.ubufsz != 0) {
+	    FREE(ubuf - dh.ubufsz);
+	}
+	if (dh.tbufsz != 0) {
+	    FREE(tbuf - dh.tbufsz);
+	}
+	FREE(du - dh.nusers);
+    }
+
+    return TRUE;
 }

@@ -73,6 +73,7 @@ extern bool	comm_init	(int, char**, char**, unsigned short*,
 				   unsigned short*, int, int);
 #endif
 
+extern void	comm_clear	(void);
 extern void	comm_finish	(void);
 extern void	comm_listen	(void);
 extern int	comm_send	(object*, string*);
@@ -96,3 +97,5 @@ extern array   *comm_ports      (dataspace*);
 #endif
 extern array   *comm_users	(dataspace*);
 extern bool     comm_is_connection (object*);
+extern bool	comm_dump	(int);
+extern bool	comm_restore	(int);

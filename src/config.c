@@ -145,6 +145,9 @@ typedef struct { char c;		} alignz;
 # define DUMP_ELAPSED	32	/* elapsed time */
 # define DUMP_VSTRING	42	/* version string */
 
+# define FLAGS_PARTIAL	0x01	/* partial snapshot */
+# define FLAGS_HOTBOOT	0x04	/* hotboot snapshot */
+
 typedef char dumpinfo[64];
 
 static dumpinfo header;		/* snapshot header */
@@ -167,7 +170,7 @@ static dumpinfo header;		/* snapshot header */
 # define zero3	(header[38])	/* reserved (0) */
 # define zero4	(header[39])	/* reserved (0) */
 # define dflags	(header[40])	/* flags */
-# define zero6	(header[41])	/* reserved (0) */
+# define zero5	(header[41])	/* reserved (0) */
 static int ualign;		/* align(uindex) */
 static int talign;		/* align(ssizet) */
 static int dalign;		/* align(sector) */
@@ -192,7 +195,7 @@ static dumpinfo rheader;	/* restored header */
 # define rzero3	 (rheader[38])	/* reserved (0) */
 # define rzero4	 (rheader[39])	/* reserved (0) */
 # define rdflags (rheader[40])	/* flags */
-# define rzero6	 (rheader[41])	/* reserved (0) */
+# define rzero5	 (rheader[41])	/* reserved (0) */
 static int rusize;		/* sizeof(uindex) */
 static int rtsize;		/* sizeof(ssizet) */
 static int rdsize;		/* sizeof(sector) */
@@ -260,7 +263,7 @@ static void conf_dumpinit()
  * NAME:	conf->dump()
  * DESCRIPTION:	dump system state on file
  */
-void conf_dump(bool incr)
+void conf_dump(bool incr, bool boot)
 {
     int fd;
     Uint etime;
@@ -285,8 +288,14 @@ void conf_dump(bool incr)
 	o_copy(0);
     }
     d_swapout(1);
-    dflags = (o_dobjects() > 0);
-    fd = sw_dump(conf[DUMP_FILE].u.str, dflags);
+    dflags = 0;
+    if (o_dobjects() > 0) {
+	dflags |= FLAGS_PARTIAL;
+    }
+    if (boot) {
+	dflags |= FLAGS_HOTBOOT;
+    }
+    fd = sw_dump(conf[DUMP_FILE].u.str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
@@ -298,6 +307,9 @@ void conf_dump(bool incr)
     }
     if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
+    }
+    if (boot && !comm_dump(fd)) {
+	fatal("failed to dump users");
     }
 
     sw_dump2(header, sizeof(dumpinfo), incr);
@@ -338,7 +350,7 @@ static unsigned int conf_header(int fd, dumpinfo h)
  * NAME:	conf->restore()
  * DESCRIPTION:	restore system state from file
  */
-static void conf_restore(int fd, int fd2)
+static bool conf_restore(int fd, int fd2)
 {
     bool conv_co1, conv_co2, conv_co3, conv_lwo, conv_ctrl1, conv_ctrl2,
     conv_data, conv_type, conv_inherit, conv_time, conv_vm;
@@ -378,7 +390,7 @@ static void conf_restore(int fd, int fd2)
     }
     if (rheader[DUMP_VERSION] < 12) {
 	memmove(rheader + 20, rheader + 12, 18);
-	rzero3 = rzero4 = rdflags = rzero6 = 0;
+	rzero3 = rzero4 = rdflags = rzero5 = 0;
     }
     if (rheader[DUMP_VERSION] < 13) {
 	conv_time = TRUE;
@@ -387,12 +399,11 @@ static void conf_restore(int fd, int fd2)
 	conv_vm = TRUE;
     }
     header[DUMP_VERSION] = rheader[DUMP_VERSION];
-    rdflags &= ~0x02;	/* ignore Hydra hotboot flag */
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
-	rzero3 != 0 || rzero4 != 0 || rdflags > 1 || rzero6 != 0) {
+	rzero3 != 0 || rzero4 != 0 || rzero5 != 0) {
 	error("Bad or incompatible restore file header");
     }
-    if (rdflags != 0) {
+    if (rdflags & FLAGS_PARTIAL) {
 	dumpinfo h;
 
 	/* secondary snapshot required */
@@ -450,7 +461,8 @@ static void conf_restore(int fd, int fd2)
 
     sw_restore(fd, secsize);
     kf_restore(fd, conv_co1);
-    o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0), rdflags);
+    o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0),
+	      rdflags & FLAGS_PARTIAL);
     d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
 		conv_type, conv_inherit, conv_time, conv_vm);
     pc_restore(fd, conv_inherit);
@@ -460,6 +472,8 @@ static void conf_restore(int fd, int fd2)
     if (fd2 >= 0) {
 	P_close(fd2);
     }
+
+    return ((rdflags & FLAGS_HOTBOOT) && comm_restore(fd));
 }
 
 /*
@@ -1417,6 +1431,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 		   thosts, bhosts,
 		   tports, bports,
 		   ntports, nbports)) {
+	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1439,6 +1454,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    (sector) conf[SWAP_SIZE].u.num,
 	    (sector) conf[CACHE_SIZE].u.num,
 	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
+	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1461,6 +1477,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /* initialize call_outs */
     if (!co_init((uindex) conf[CALL_OUTS].u.num)) {
 	sw_finish();
+	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1493,6 +1510,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
      */
     if (!conf_includes()) {
 	sw_finish();
+	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1507,6 +1525,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /* load precompiled objects */
     if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
 	sw_finish();
+	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {
 	    P_close(fd2);
@@ -1530,6 +1549,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	ec_pop();			/* remove guard */
 
 	sw_finish();
+	comm_clear();
 	comm_finish();
 	ed_finish();
 	if (snapshot2 != (char *) NULL) {
@@ -1551,14 +1571,21 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	call_driver_object(cframe, "initialize", 0);
 	ec_pop();
     } else {
+	bool hotbooted;
+
 	/* restore snapshot */
-	conf_restore(fd, fd2);
+	hotbooted = conf_restore(fd, fd2);
 
 	/* notify mudlib */
 	if (ec_push((ec_ftn) errhandler)) {
 	    error((char *) NULL);
 	}
-	call_driver_object(cframe, "restored", 0);
+	if (hotbooted) {
+	    PUSH_INTVAL(cframe, TRUE);
+	    call_driver_object(cframe, "restored", 1);
+	} else {
+	    call_driver_object(cframe, "restored", 0);
+	}
 	ec_pop();
     }
     ec_pop();
