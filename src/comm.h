@@ -60,6 +60,10 @@ extern int	   conn_udpsend	 (connection*, char*, unsigned int, char*,
 extern int	   conn_udpreceive (connection*, char*, int, char**, int*);
 extern connection *conn_accept	 (connection*);
 # endif
+extern bool	   conn_export	 (connection*, int*, unsigned short*, short*,
+				  int*, int*, char**, char*);
+extern connection *conn_import	 (int, unsigned short, short, int, int, char*,
+				  char, bool);
 
 #ifdef NETWORK_EXTENSIONS
 extern bool	comm_init	(int, int, char**, char**, unsigned short*,

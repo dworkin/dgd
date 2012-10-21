@@ -1877,3 +1877,23 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
     return -1;
 }
 #endif
+
+/*
+ * NAME:	conn->export()
+ * DESCRIPTION:	export a connection
+ */
+bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
+		 int *npkts, int *bufsz, char **buf, char *flags)
+{
+    return FALSE;
+}
+
+/*
+ * NAME:	conn->import()
+ * DESCRIPTION:	import a connection
+ */
+connection *conn_import(int fd, unsigned short port, short at, int npkts,
+			int bufsz, char *buf, char flags, bool telnet)
+{
+    return (connection *) NULL;
+}

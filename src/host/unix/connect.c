@@ -1974,3 +1974,153 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
 }
 
 #endif
+
+# define CONN_READF	0x01	/* read flag set */
+# define CONN_WRITEF	0x02	/* write flag set */
+# define CONN_WAITF	0x04	/* wait flag set */
+# define CONN_UCHAL	0x08	/* UDP challenge issued */
+# define CONN_UCHAN	0x10	/* UDP channel established */
+# define CONN_ADDR	0x20	/* has an address */
+
+/*
+ * NAME:	conn->export()
+ * DESCRIPTION:	export a connection
+ */
+bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
+		 int *npkts, int *bufsz, char **buf, char *flags)
+{
+    *fd = conn->fd;
+    *port = conn->port;
+    if (conn->fd >= 0) {
+	*flags = 0;
+	*at = conn->at;
+	*npkts = conn->npkts;
+	*bufsz = conn->bufsz;
+	*buf = conn->udpbuf;
+	if (FD_ISSET(conn->fd, &readfds)) {
+	    *flags |= CONN_READF;
+	}
+	if (FD_ISSET(conn->fd, &writefds)) {
+	    *flags |= CONN_WRITEF;
+	}
+	if (FD_ISSET(conn->fd, &waitfds)) {
+	    *flags |= CONN_WAITF;
+	}
+	if (conn->udpbuf != (char *) NULL) {
+	    if (conn->chain.name != NULL) {
+		*flags |= CONN_UCHAL;
+	    } else {
+		*flags |= CONN_UCHAN;
+	    }
+	}
+	if (conn->addr != (ipaddr *) NULL) {
+	    *flags |= CONN_ADDR;
+	}
+    }
+
+    return TRUE;
+}
+
+/*
+ * NAME:	conn->import()
+ * DESCRIPTION:	import a connection
+ */
+connection *conn_import(int fd, unsigned short port, short at, int npkts,
+			int bufsz, char *buf, char flags, bool telnet)
+{
+# ifdef INET6
+    struct sockaddr_in6 sin;
+# else
+    struct sockaddr_in sin;
+# endif
+    int len;
+    in46addr inaddr;
+    connection *conn;
+
+    if (fd >= 0) {
+	len = sizeof(sin);
+	if (getpeername(fd, (struct sockaddr *) &sin, &len) != 0) {
+	    if (errno != ENOTCONN || (flags & CONN_ADDR)) {
+		return (connection *) NULL;
+	    }
+	} else {
+	    inaddr.ipv6 = FALSE;
+# ifdef INET6
+	    if (sin.sin6_family == AF_INET6) {
+		inaddr.in.addr6 = sin.sin6_addr;
+		inaddr.ipv6 = TRUE;
+	    } else
+# endif
+	    inaddr.in.addr = ((struct sockaddr_in *) &sin)->sin_addr;
+	}
+    } else {
+	closed++;
+    }
+
+    conn = flist;
+    flist = (connection *) conn->chain.next;
+    conn->fd = fd;
+    conn->chain.name = (char *) NULL;
+    conn->udpbuf = (char *) NULL;
+    conn->addr = (ipaddr *) NULL;
+    conn->bufsz = 0;
+    conn->npkts = 0;
+    conn->port = port;
+    conn->at = -1;
+
+    if (fd >= 0) {
+	FD_SET(fd, &infds);
+	FD_SET(fd, &outfds);
+	if (flags & CONN_READF) {
+	    FD_SET(fd, &readfds);
+	}
+	if (flags & CONN_WRITEF) {
+	    FD_SET(fd, &writefds);
+	}
+	if (flags & CONN_WAITF) {
+	    FD_SET(fd, &waitfds);
+	}
+	if (fd > maxfd) {
+	    maxfd = fd;
+	}
+
+	if (at >= 0 && at >= ((telnet) ? ntdescs : nbdescs)) {
+	    at = -1;
+	}
+	conn->at = at;
+	if (flags & CONN_ADDR) {
+	    conn->addr = ipa_new(&inaddr);
+	}
+
+# ifndef NETWORK_EXTENSIONS
+	if (at >= 0) {
+	    if (flags & CONN_UCHAL) {
+		conn_udp(conn, buf, bufsz);
+	    }
+	    if (flags & CONN_UCHAN) {
+		connection **hash;
+
+		conn->bufsz = bufsz;
+		m_static();
+		conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+		m_dynamic();
+		memcpy(conn->udpbuf, buf, bufsz);
+# ifdef INET6
+		if (inaddr.ipv6) {
+		    hash = &udphtab[(hashmem((char *) &inaddr.in.addr6,
+			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
+		} else
+# endif
+		hash = &udphtab[((Uint) inaddr.in.addr.s_addr ^ conn->port) %
+								    udphtabsz];
+		conn->chain.next = (hte *) *hash;
+		*hash = conn;
+	    }
+	    conn->npkts = npkts;
+	    npackets += npkts;
+	}
+# endif
+    }
+
+    return conn;
+}
