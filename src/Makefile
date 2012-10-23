@@ -16,33 +16,27 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+OS=$(shell uname -s)
+ifeq ($(OS),Darwin)
+  HOST=DARWIN
+endif
+ifeq ($(OS),Linux)
+  HOST=LINUX
+endif
+ifeq ($(OS),FreeBSD)
+  HOST=FREEBSD
+endif
+ifeq ($(OS),NetBSD)
+  HOST=FREEBSD
+endif
+ifeq ($(OS),OpenBSD)
+  HOST=FREEBSD
+endif
+ifeq ($(OS),SunOS)
+  HOST=SOLARIS
+endif
 ifndef HOST
-  OS=$(shell uname -s)
-  ifeq ($(OS),Darwin)
-    HOST=DARWIN
-  endif
-  ifeq ($(OS),Linux)
-    HOST=LINUX
-  endif
-  ifeq ($(OS),FreeBSD)
-    HOST=FREEBSD
-  endif
-  ifeq ($(OS),NetBSD)
-    HOST=FREEBSD
-  endif
-  ifeq ($(OS),OpenBSD)
-    HOST=FREEBSD
-  endif
-  ifeq ($(OS),SunOS)
-    HOST=SOLARIS
-  endif
-  ifndef HOST
-    $(error HOST is undefined)
-  endif
-else
-  ifeq ($(HOST),opensuse)
-    HOST=LINUX
-  endif
+  $(error HOST is undefined)
 endif
 
 DEFINES=-D$(HOST)	# -DSLASHSLASH -DNETWORK_EXTENSIONS -DCLOSURES -DCO_THROTTLE=50
