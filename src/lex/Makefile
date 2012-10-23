@@ -16,8 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
-DEFINES=-D$(HOST)
+DEFINES=-D$(MYHOSTTYPE)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)

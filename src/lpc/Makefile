@@ -16,8 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
-DEFINES=-D$(HOST)
+DEFINES=-D$(MYHOSTTYPE)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
@@ -50,8 +49,9 @@ lint:
 #$(SRC):	$(PRECOMP)
 
 $(PRECOMP):
-	cd ../comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			    'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
+	cd ../comp; $(MAKE) 'CC=$(CC)' 'MYHOSTTYPE=$(MYHOSTTYPE)' \
+			'CCFLAGS=$(CCFLAGS)' \
+			'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 driver.c: $(MUDLIB)/kernel/sys/driver.c
 	$(PRECOMP) $(CONFIG) /kernel/sys/driver.c $@

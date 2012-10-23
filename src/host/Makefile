@@ -16,24 +16,23 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
-DEFINES=-D$(HOST)
+DEFINES=-D$(MYHOSTTYPE)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
 
-ifeq ($(HOST),LINUX)
+ifeq ($(MYHOSTTYPE),LINUX)
   SYSV_STYLE=1
 endif
-ifeq ($(HOST),SOLARIS)
+ifeq ($(MYHOSTTYPE),SOLARIS)
   SYSV_STYLE=1
 endif
-ifeq ($(HOST),DECALPHA)
+ifeq ($(MYHOSTTYPE),DECALPHA)
   SYSV_STYLE=1
 endif
-ifeq ($(HOST),GENERIC_SYSV)
+ifeq ($(MYHOSTTYPE),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 

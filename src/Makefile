@@ -16,36 +16,36 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-ifndef HOST
+ifndef MYHOSTTYPE
   OS=$(shell uname -s)
   ifeq ($(OS),Darwin)
-    HOST=DARWIN
+    MYHOSTTYPE=DARWIN
   endif
   ifeq ($(OS),Linux)
-    HOST=LINUX
+    MYHOSTTYPE=LINUX
   endif
   ifeq ($(OS),FreeBSD)
-    HOST=FREEBSD
+    MYHOSTTYPE=FREEBSD
   endif
   ifeq ($(OS),NetBSD)
-    HOST=FREEBSD
+    MYHOSTTYPE=FREEBSD
   endif
   ifeq ($(OS),OpenBSD)
-    HOST=FREEBSD
+    MYHOSTTYPE=FREEBSD
   endif
   ifeq ($(OS),SunOS)
-    HOST=SOLARIS
+    MYHOSTTYPE=SOLARIS
   endif
-  ifndef HOST
-    $(error HOST is undefined)
+  ifndef MYHOSTTYPE
+    $(error MYHOSTTYPE is undefined)
   endif
 else
-  ifeq ($(HOST),opensuse)
-    HOST=LINUX
+  ifeq ($(MYHOSTTYPE),opensuse)
+    MYHOSTTYPE=LINUX
   endif
 endif
 
-DEFINES=-D$(HOST)	# -DSLASHSLASH -DNETWORK_EXTENSIONS -DCLOSURES -DCO_THROTTLE=50
+DEFINES=-D$(MYHOSTTYPE)	# -DSLASHSLASH -DNETWORK_EXTENSIONS -DCLOSURES -DCO_THROTTLE=50
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
@@ -57,10 +57,10 @@ LD=	$(CC)
 YACC=	yacc
 BIN=	../bin
 
-ifeq ($(HOST),FREEBSD)
+ifeq ($(MYHOSTTYPE),FREEBSD)
   LIBS=
 endif
-ifeq ($(HOST),SOLARIS)
+ifeq ($(MYHOSTTYPE),SOLARIS)
   LIBS+=-lsocket -lnsl
 endif
 
@@ -77,9 +77,11 @@ a.out:	$(OBJ) always
 	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+	cd lpc; $(MAKE) 'CC=$(CC)' 'MYHOSTTYPE=$(MYHOSTTYPE)' \
+			'CCFLAGS=$(CCFLAGS)' \
 			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(MAKE) 'CC=$(CC)' 'MYHOSTTYPE=$(MYHOSTTYPE)' \
+			'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
@@ -118,8 +120,9 @@ comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
 comp/a.out:
-	cd comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			 'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
+	cd comp; $(MAKE) 'CC=$(CC)' 'MYHOSTTYPE=$(MYHOSTTYPE)' \
+			'CCFLAGS=$(CCFLAGS)' \
+			'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
 
 clean:
 	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
