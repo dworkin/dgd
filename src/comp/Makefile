@@ -16,7 +16,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-DEFINES=-D$(MYHOSTTYPE)
+HOST=	DARWIN
+DEFINES=-D$(HOST)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
@@ -39,8 +40,7 @@ a.out:	$(COMPOBJ) always
 	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../host; $(MAKE) 'CC=$(CC)' 'MYHOSTTYPE=$(MYHOSTTYPE)' \
-		'CCFLAGS=$(CCFLAGS)' sub
+	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
 	      `cat ../host/sub` $(LIBS)
