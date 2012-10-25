@@ -60,8 +60,9 @@ typedef struct {
 	struct in6_addr addr6;		/* IPv6 addr */
 # endif
 	struct in_addr addr;		/* IPv4 addr */
+	int fd;				/* file descriptor */
     } in;
-    bool ipv6;				/* IPv6? */
+    char ipv6;				/* IPv6? */
 } in46addr;
 
 typedef struct _ipaddr_ {
@@ -100,6 +101,11 @@ static void ipa_run(int in, int out)
     signal(SIGTSTP, SIG_IGN);
 
     while (read(in, buf, sizeof(in46addr)) > 0) {
+	if (((in46addr *) &buf)->ipv6 > 1) {
+	    /* close fd copied after hotboot */
+	    close(((in46addr *) &buf)->in.fd);
+	    continue;
+	}
 	/* lookup host */
 # ifdef INET6
 	if (((in46addr *) &buf)->ipv6) {
@@ -199,6 +205,19 @@ static void ipa_finish()
 {
     close(out);
     close(in);
+}
+
+/*
+ * NAME:	ipaddr->close()
+ * DESCRIPTION:	close a fd duplicated after a hotboot
+ */
+static void ipa_close(int fd)
+{
+    in46addr ipnum;
+
+    ipnum.ipv6 = 2;
+    ipnum.in.fd = fd;
+    (void) write(out, &ipnum, sizeof(in46addr));
 }
 
 /*
@@ -2044,6 +2063,7 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 		return (connection *) NULL;
 	    }
 	} else {
+	    ipa_close(fd);
 	    inaddr.ipv6 = FALSE;
 # ifdef INET6
 	    if (sin.sin6_family == AF_INET6) {
