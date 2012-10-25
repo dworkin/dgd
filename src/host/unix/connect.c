@@ -2059,7 +2059,7 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
     if (fd >= 0) {
 	len = sizeof(sin);
 	if (getpeername(fd, (struct sockaddr *) &sin, &len) != 0) {
-	    if (errno != ENOTCONN || (flags & CONN_ADDR)) {
+	    if (errno == EBADF || errno == ENOTCONN || (flags & CONN_ADDR)) {
 		return (connection *) NULL;
 	    }
 	} else {
