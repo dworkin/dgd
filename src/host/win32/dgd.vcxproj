@@ -46,7 +46,6 @@
     <ClCompile Include="..\..\hash.c" />
     <ClCompile Include="..\..\interpret.c" />
     <ClCompile Include="..\..\kfun\builtin.c" />
-    <ClCompile Include="..\..\kfun\debug.c" />
     <ClCompile Include="..\..\kfun\extra.c" />
     <ClCompile Include="..\..\kfun\file.c" />
     <ClCompile Include="..\..\kfun\math.c" />

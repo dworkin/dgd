@@ -82,9 +82,6 @@
     <ClCompile Include="..\..\kfun\builtin.c">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\debug.c">
-      <Filter>Source Files\kfun</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\kfun\extra.c">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>

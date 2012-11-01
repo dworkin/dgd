@@ -1283,18 +1283,24 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	inherit = ohash->index;
 	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
 	if (symb == (dsymbol *) NULL) {
-	    /*
-	     * It may seem strange to allow label::kfun, but remember that they
-	     * are supposed to be inherited by the auto object.
-	     */
-	    index = kf_func(str->text);
-	    if (index >= 0) {
-		/* kfun call */
-		*call = ((long) KFCALL << 24) | index;
-		return KFUN(index).proto;
+	    if (ctrl->ninherits != 1) {
+		ohash = inherits[0];
+		symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
 	    }
-	    c_error("undefined function %s::%s", label, str->text);
-	    return (char *) NULL;
+	    if (symb == (dsymbol *) NULL) {
+		/*
+		 * It may seem strange to allow label::kfun, but remember that
+		 * they are supposed to be inherited by the auto object.
+		 */
+		index = kf_func(str->text);
+		if (index >= 0) {
+		    /* kfun call */
+		    *call = ((long) KFCALL << 24) | index;
+		    return KFUN(index).proto;
+		}
+		c_error("undefined function %s::%s", label, str->text);
+		return (char *) NULL;
+	    }
 	}
 	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
 	index = UCHAR(symb->index);
