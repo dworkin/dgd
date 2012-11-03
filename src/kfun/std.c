@@ -1510,6 +1510,8 @@ int kf_shutdown(frame *f, int nargs)
 	    error("Hotbooting is disabled");
 	}
 	f->sp++;
+    } else {
+	boot = FALSE;
     }
     finish(boot);
 
