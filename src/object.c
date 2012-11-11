@@ -1677,12 +1677,17 @@ bool o_copy(Uint time)
     if (dobjects == 0) {
 	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
-		tmpl = obj;
-		while (tmpl->prev != OBJ_NONE && counttab[tmpl->prev] != 2) {
-		    tmpl = OBJ(tmpl->prev);
-		}
-		if (o_purge_upgrades(tmpl)) {
-		    tmpl->prev = OBJ_NONE;
+		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))
+		{
+		    if (!(OBJ(tmpl->prev)->flags & O_LWOBJ)) {
+			break;
+		    }
+		    if (counttab[tmpl->prev] == 2) {
+			if (o_purge_upgrades(tmpl)) {
+			    tmpl->prev = OBJ_NONE;
+			}
+			break;
+		    }
 		}
 	    }
 	}

@@ -1140,11 +1140,9 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	     */
 	    if (retval != 0) {
 		usr->flags &= ~CF_OPENDING;
-# ifndef NETWORK_EXTENSIONS
 		if (!(usr->flags & CF_FLUSH)) {
 		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
 		}
-# endif
 		old_user = this_user;
 		this_user = obj->index;
 		/*
