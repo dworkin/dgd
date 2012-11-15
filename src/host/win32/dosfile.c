@@ -297,6 +297,8 @@ void P_closedir(void)
  */
 int P_execv(char *path, char **argv)
 {
+    UNREFERENCED_PARAMETER(path);
+    UNREFERENCED_PARAMETER(argv);
     P_message("Hotbooting not supported on Windows\012");	/* LF */
     return -1;
 }
