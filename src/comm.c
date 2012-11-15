@@ -1899,6 +1899,8 @@ bool comm_restore(int fd)
     user *usr;
     connection *conn;
 
+    tbuf = ubuf = (char *) NULL;
+
     /* read header */
     conf_dread(fd, (char *) &dh, dh_layout, 1);
     if (dh.nusers > maxusers) {
