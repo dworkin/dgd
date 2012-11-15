@@ -1420,13 +1420,13 @@ bool o_dump(int fd, bool incr)
 	if (recount) {
 	    mh.count = baseplane.ocount;
 	}
-	if (P_write(fd, &mh, sizeof(map_header)) < 0 ||
-	    P_write(fd, omap + BOFF(dobject),
+	if (P_write(fd, (char *) &mh, sizeof(map_header)) < 0 ||
+	    P_write(fd, (char *) (omap + BOFF(dobject)),
 		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
-	    P_write(fd, omap + BOFF(dobject),
+	    P_write(fd, (char *) (omap + BOFF(dobject)),
 		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
 	    (mh.count != 0 &&
-	     P_write(fd, counttab, dh.nobjects * sizeof(Uint)) < 0)) {
+	     P_write(fd, (char *) counttab, dh.nobjects * sizeof(Uint)) < 0)) {
 	    return FALSE;
 	}
     }

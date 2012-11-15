@@ -3006,7 +3006,7 @@ static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
  * NAME:	data->fixdata()
  * DESCRIPTION:	fix a dataspace
  */
-static void d_fixdata(dataspace *data, object *obj, Uint *counttab, uindex nobjects)
+static void d_fixdata(dataspace *data, Uint *counttab, uindex nobjects)
 {
     scallout *sco;
     unsigned int n;
@@ -3308,7 +3308,7 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
 	}
 	obj->data = data;
 	if (counttab != (Uint *) NULL) {
-	    d_fixdata(data, obj, counttab, nobjects);
+	    d_fixdata(data, counttab, nobjects);
 	}
 
 	if (!(obj->flags & O_MASTER) &&
