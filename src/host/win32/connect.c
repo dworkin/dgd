@@ -1885,6 +1885,14 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
 bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
 		 int *npkts, int *bufsz, char **buf, char *flags)
 {
+    UNREFERENCED_PARAMETER(conn);
+    UNREFERENCED_PARAMETER(fd);
+    UNREFERENCED_PARAMETER(port);
+    UNREFERENCED_PARAMETER(at);
+    UNREFERENCED_PARAMETER(npkts);
+    UNREFERENCED_PARAMETER(bufsz);
+    UNREFERENCED_PARAMETER(buf);
+    UNREFERENCED_PARAMETER(flags);
     return FALSE;
 }
 
@@ -1895,5 +1903,13 @@ bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
 connection *conn_import(int fd, unsigned short port, short at, int npkts,
 			int bufsz, char *buf, char flags, bool telnet)
 {
+    UNREFERENCED_PARAMETER(fd);
+    UNREFERENCED_PARAMETER(port);
+    UNREFERENCED_PARAMETER(at);
+    UNREFERENCED_PARAMETER(npkts);
+    UNREFERENCED_PARAMETER(bufsz);
+    UNREFERENCED_PARAMETER(buf);
+    UNREFERENCED_PARAMETER(flags);
+    UNREFERENCED_PARAMETER(telnet);
     return (connection *) NULL;
 }

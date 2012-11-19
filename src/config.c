@@ -836,6 +836,7 @@ static bool conf_config()
 	conf[--h].set = FALSE;
     }
     memset(dirs, '\0', sizeof(dirs));
+    strs = (char **) NULL;
 
     while ((c=pp_gettok()) != EOF) {
 	if (c != IDENTIFIER) {

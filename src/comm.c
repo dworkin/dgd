@@ -1776,6 +1776,10 @@ bool comm_dump(int fd)
     user *usr;
     int i;
 
+    du = (duser *) NULL;
+    bufs = (char **) NULL;
+    tbuf = ubuf = (char *) NULL;
+
     /* header */
     dh.version = 0;
     dh.nusers = nusers;
@@ -1821,7 +1825,7 @@ bool comm_dump(int fd)
     }
 
     /* write header */
-    if (P_write(fd, &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+    if (P_write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
 	fatal("failed to dump user header");
     }
 
@@ -1829,7 +1833,8 @@ bool comm_dump(int fd)
 	/*
 	 * write users
 	 */
-	if (P_write(fd, du, nusers * sizeof(duser)) != nusers * sizeof(duser)) {
+	if (P_write(fd, (char *) du, nusers * sizeof(duser)) !=
+						    nusers * sizeof(duser)) {
 	    fatal("failed to dump users");
 	}
 
@@ -1893,6 +1898,8 @@ bool comm_restore(int fd)
     int i;
     user *usr;
     connection *conn;
+
+    tbuf = ubuf = (char *) NULL;
 
     /* read header */
     conf_dread(fd, (char *) &dh, dh_layout, 1);
