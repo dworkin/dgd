@@ -278,7 +278,7 @@ int dgd_main(int argc, char *argv[])
     }
 
     /* initialize */
-    if (!conf_init(argv[0], (char *) NULL, module, &fragment)) {
+    if (!conf_init(argv[0], (char *) NULL, (char *) NULL, module, &fragment)) {
 	P_message("Initialization failed\012");	/* LF */
 	return 2;
     }
@@ -542,6 +542,14 @@ void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 }
 
 /*
+ * NAME:	swap->conv2()
+ * DESCRIPTION:	pretend to restore bytes from a vector of sectors in the secondary snapshot
+ */
+void sw_conv2(char *m, sector *vec, Uint size, Uint idx)
+{
+}
+
+/*
  * NAME:	swap->mapsize()
  * DESCRIPTION:	pretend to count the number of sectors required for size bytes
  */
@@ -572,9 +580,17 @@ bool sw_copy(Uint time)
  * NAME:	swap->dump()
  * DESCRIPTION:	pretend to create snapshot
  */
-int sw_dump(char *snapshot)
+int sw_dump(char *snapshot, bool keep)
 {
     return 0;
+}
+
+/*
+ * NAME:	swap->dump2()
+ * DESCRIPTION:	pretend to finish snapshot
+ */
+void sw_dump2(char *header, int size, bool incr)
+{
 }
 
 /*
@@ -582,6 +598,14 @@ int sw_dump(char *snapshot)
  * DESCRIPTION:	pretend to restore swap file
  */
 void sw_restore(int fd, unsigned int secsize)
+{
+}
+
+/*
+ * NAME:	swap->restore2()
+ * DESCRIPTION:	pretend to restore secondary snapshot
+ */
+void sw_restore2(int fd)
 {
 }
 
@@ -600,6 +624,14 @@ bool comm_init(int n, char **thosts, char **bhosts,
 #endif
 {
     return TRUE;
+}
+
+/*
+ * NAME:        comm->clear()
+ * DESCRIPTION: pretend to clean up connections
+ */
+void comm_clear()
+{
 }
 
 /*
@@ -747,6 +779,24 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 bool comm_is_connection(object *obj)
 {
     return FALSE;
+}
+
+/*
+ * NAME:        comm->dump()
+ * DESCRIPTION: pretend to save users
+ */
+bool comm_dump(int fd)
+{
+    return TRUE;
+}
+
+/*
+ * NAME:        comm->restore()
+ * DESCRIPTION: pretend to restore users
+ */
+bool comm_restore(int fd)
+{
+    return TRUE;
 }
 
 /*
