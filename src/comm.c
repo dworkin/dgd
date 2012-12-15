@@ -851,6 +851,7 @@ void comm_flush()
 		fatal("can't connect to server");
 	    }
 
+	    d_assign_elt(obj->data, arr, &arr->elts[1], &nil_value);
 	    arr_del(arr);
 	    usr->flags &= ~CF_FLUSH;
 	} else {
