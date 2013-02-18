@@ -2107,7 +2107,14 @@ static node *funcall(node *call, node *args, int funcptr)
 	}
     }
     if (args != (node *) NULL && PROTO_FTYPE(proto) != T_IMPLICIT) {
-	c_error("too many arguments for function %s", fname);
+	if (args->type == N_SPREAD) {
+	    t = args->l.left->mod;
+	    if (t != T_MIXED && (t & T_REF) == 0) {
+		c_error("ellipsis requires array");
+	    }
+	} else {
+	    c_error("too many arguments for function %s", fname);
+	}
     }
 
     return func;
