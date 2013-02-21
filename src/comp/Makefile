@@ -34,18 +34,26 @@ OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o \
 DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
-a.out:	$(COMPOBJ) always
-	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
+a.out:	$(COMPOBJ) ../comp.sub ../lex/comp ../parser/comp ../kfun/comp \
+	../host/sub
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
 	      `cat ../host/sub` $(LIBS)
 
-always:
-	@rm -f a.out
+../comp.sub::
+	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
+
+../lex/comp::
+	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../parser/comp::
+	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../kfun/comp::
+	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../host/sub::
+	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
 
 dgd:	$(DGDOBJ)
 	@for i in $(DGDOBJ); do echo comp/$$i; done > dgd

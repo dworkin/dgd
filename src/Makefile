@@ -64,21 +64,32 @@ OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
-a.out:	$(OBJ) always
-	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
-	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd lpc/dgd host/dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
 
-always:
-	@rm -f a.out
+comp/dgd::
+	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+
+lex/dgd::
+	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+ed/dgd::
+	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+parser/dgd::
+	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+kfun/dgd::
+	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+lpc/dgd::
+	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
+
+host/dgd::
+	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 all:	a.out
 
