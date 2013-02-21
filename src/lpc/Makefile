@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,6 @@ DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
 LIBS=
-LINTFLAGS=-abcehpruz
 CC=	gcc
 YACC=	yacc
 PRECOMP=../comp/a.out
@@ -43,9 +42,6 @@ OBJ=
 
 dgd:	$(OBJ) lpc.o
 	@for i in $(OBJ) lpc.o; do echo lpc/$$i; done > dgd
-
-lint:
-	lint $(LINTFLAGS) $(CFLAGS) lpc.c
 
 #$(SRC):	$(PRECOMP)
 

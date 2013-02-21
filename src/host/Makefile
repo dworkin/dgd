@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,6 @@ DEFINES=-D$(HOST)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
-LINTFLAGS=-abcehpruz
 CC=	gcc
 
 ifeq ($(HOST),LINUX)
@@ -50,9 +49,6 @@ OBJ=	$(SUBOBJ) connect.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
-
-lint:
-	lint $(LINTFLAGS) $(CFLAGS) $(SRC) crypt.c
 
 sub:	$(SUBOBJ)
 	@for i in $(SUBOBJ); do echo ../host/$$i; done > sub
