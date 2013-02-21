@@ -37,24 +37,24 @@ ifeq ($(HOST),GENERIC_SYSV)
 endif
 
 SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
-SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+COMPOBJ=local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
 ifdef SYSV_STYLE
   SRC+=lrand48.c
-  SUBOBJ+=lrand48.o
+  COMPOBJ+=lrand48.o
 else
   SRC+=random.c
-  SUBOBJ+=random.o
+  COMPOBJ+=random.o
 endif
-OBJ=	$(SUBOBJ) connect.o
+OBJ=	$(COMPOBJ) connect.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
 
-sub:	$(SUBOBJ)
-	@for i in $(SUBOBJ); do echo ../host/$$i; done > sub
+comp:	$(COMPOBJ)
+	@for i in $(COMPOBJ); do echo ../host/$$i; done > comp
 
 clean:
-	rm -f dgd sub $(SRC) $(OBJ)
+	rm -f dgd comp $(SRC) $(OBJ)
 
 
 local.c: unix/local.c

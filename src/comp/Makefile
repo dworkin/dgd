@@ -35,10 +35,10 @@ DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
 a.out:	$(COMPOBJ) ../comp.sub ../lex/comp ../parser/comp ../kfun/comp \
-	../host/sub
+	../host/comp
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
-	      `cat ../host/sub` $(LIBS)
+	      `cat ../host/comp` $(LIBS)
 
 ../comp.sub::
 	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub

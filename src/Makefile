@@ -102,12 +102,6 @@ install: $(BIN)/driver
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
 
-lex.sub: $(LEXOBJ)
-	@for i in $(LEXOBJ); do echo ../$$i; done > lex.sub
-
-ed.sub:	$(EDOBJ)
-	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
-
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
