@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2011,2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -854,9 +854,9 @@ static parser *ps_load(frame *f, value *elts)
     ps->arrc = (arrchunk *) NULL;
 
     p = ps->grammar->text;
-    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9])) << 8) + UCHAR(p[6]) +
-		 UCHAR(p[10]);
-    ps->nprod = (UCHAR(p[11]) << 8) + UCHAR(p[12]);
+    ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9]) + UCHAR(p[11])) << 8) +
+		 UCHAR(p[6]) + UCHAR(p[10]) + UCHAR(p[12]);
+    ps->nprod = (UCHAR(p[13]) << 8) + UCHAR(p[14]);
 
     return ps;
 }
