@@ -117,7 +117,7 @@ clean:
 	cd parser; $(MAKE) clean
 	cd kfun; $(MAKE) clean
 	cd lpc; $(MAKE) clean
-	cd host; $(MAKE) clean
+	cd host; $(MAKE) 'HOST=$(HOST)' clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h
