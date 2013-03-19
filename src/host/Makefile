@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,6 @@ DEFINES=-D$(HOST)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
-LINTFLAGS=-abcehpruz
 CC=	gcc
 
 ifeq ($(HOST),LINUX)
@@ -38,27 +37,24 @@ ifeq ($(HOST),GENERIC_SYSV)
 endif
 
 SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
-SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+COMPOBJ=local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
 ifdef SYSV_STYLE
   SRC+=lrand48.c
-  SUBOBJ+=lrand48.o
+  COMPOBJ+=lrand48.o
 else
   SRC+=random.c
-  SUBOBJ+=random.o
+  COMPOBJ+=random.o
 endif
-OBJ=	$(SUBOBJ) connect.o
+OBJ=	$(COMPOBJ) connect.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
 
-lint:
-	lint $(LINTFLAGS) $(CFLAGS) $(SRC) crypt.c
-
-sub:	$(SUBOBJ)
-	@for i in $(SUBOBJ); do echo ../host/$$i; done > sub
+comp:	$(COMPOBJ)
+	@for i in $(COMPOBJ); do echo ../host/$$i; done > comp
 
 clean:
-	rm -f dgd sub $(SRC) $(OBJ)
+	rm -f dgd comp $(SRC) $(OBJ)
 
 
 local.c: unix/local.c

@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,6 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
 YACC=	yacc
@@ -65,21 +64,32 @@ OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
-a.out:	$(OBJ) always
-	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
-	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd lpc/dgd host/dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
 
-always:
-	@rm -f a.out
+comp/dgd::
+	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+
+lex/dgd::
+	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+ed/dgd::
+	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+parser/dgd::
+	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+kfun/dgd::
+	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+
+lpc/dgd::
+	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
+
+host/dgd::
+	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 all:	a.out
 
@@ -89,24 +99,8 @@ $(BIN)/driver: a.out
 
 install: $(BIN)/driver
 
-lint:
-	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
-	@cd comp; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd lex; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd ed; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd parser; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd kfun; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd lpc; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd host; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
-
-lex.sub: $(LEXOBJ)
-	@for i in $(LEXOBJ); do echo ../$$i; done > lex.sub
-
-ed.sub:	$(EDOBJ)
-	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
@@ -123,7 +117,7 @@ clean:
 	cd parser; $(MAKE) clean
 	cd kfun; $(MAKE) clean
 	cd lpc; $(MAKE) clean
-	cd host; $(MAKE) clean
+	cd host; $(MAKE) 'HOST=$(HOST)' clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h

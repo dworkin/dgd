@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
 YACC=	yacc
@@ -35,21 +34,26 @@ OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o \
 DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
-a.out:	$(COMPOBJ) always
-	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
+a.out:	$(COMPOBJ) ../comp.sub ../lex/comp ../parser/comp ../kfun/comp \
+	../host/comp
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
-	      `cat ../host/sub` $(LIBS)
+	      `cat ../host/comp` $(LIBS)
 
-always:
-	@rm -f a.out
+../comp.sub::
+	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
 
-lint:
-	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
+../lex/comp::
+	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../parser/comp::
+	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../kfun/comp::
+	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+
+../host/sub::
+	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
 
 dgd:	$(DGDOBJ)
 	@for i in $(DGDOBJ); do echo comp/$$i; done > dgd
