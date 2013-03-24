@@ -1140,7 +1140,7 @@ void o_clean()
 		    OBJ(o->prev)->cref = o->index;
 		}
 
-		if (o->u_ref > 1) {
+		if (o->u_ref > (up->count != 0)) {
 		    up->update++;
 		}
 		if (up->count != 0 && up->data == (dataspace *) NULL &&
