@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2011,2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,7 +27,7 @@ typedef struct {
 } kfunc;
 
 extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */
-extern char  kfind[];					/* indirection table */
+extern kfindex kfind[];					/* indirection table */
 extern int   nkfun, ne, nd, nh;				/* # kfuns */
 
 # define KFUN(kf)	(kftab[UCHAR(kfind[kf])])

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -219,8 +219,28 @@ static void code_instr(int i, unsigned short line)
  */
 static void code_kfun(int kf, unsigned short line)
 {
-    code_instr(I_CALL_KFUNC, line);
-    code_byte(kf);
+    if (kf < 256) {
+	code_instr(I_CALL_KFUNC, line);
+	code_byte(kf);
+    } else {
+	code_instr(I_CALL_EFUNC, line);
+	code_word(kf);
+    }
+}
+
+/*
+ * NAME:	code->ckfun()
+ * DESCRIPTION:	generate code for a builtin kfun
+ */
+static void code_ckfun(int kf, unsigned short line)
+{
+    if (kf < 256) {
+	code_instr(I_CALL_CKFUNC, line);
+	code_byte(kf);
+    } else {
+	code_instr(I_CALL_CEFUNC, line);
+	code_word(kf);
+    }
 }
 
 /*
@@ -1036,8 +1056,7 @@ static void cg_expr(node *n, int pop)
 		code_kfun((int) n->r.number, n->line);
 		code_byte(i);
 	    } else if (spread) {
-		code_instr(I_CALL_CKFUNC, n->line);
-		code_byte((int) n->r.number);
+		code_ckfun((int) n->r.number, n->line);
 		code_byte(i);
 	    } else {
 		code_kfun((int) n->r.number, n->line);

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -68,6 +68,8 @@
 # define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
+# define I_CALL_EFUNC		0x0e	/* 2 unsigned (+ 1 unsigned) */
+# define I_CALL_CEFUNC		0x0f	/* 2 unsigned, 1 unsigned */
 # define I_CALL_CKFUNC		0x10	/* 1 unsigned, 1 unsigned */
 # define I_STORE_LOCAL		0x11	/* 1 signed */
 # define I_STORE_GLOBAL		0x12	/* 1 unsigned */

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2554,9 +2554,59 @@ static void i_interpret1(frame *f, char *pc)
 	    }
 	    break;
 
+	case I_CALL_EFUNC:
+	case I_CALL_EFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH2U(pc, u));
+	    if (PROTO_VARGS(kf->proto) != 0) {
+		/* variable # of arguments */
+		u = FETCH1U(pc) + size;
+		size = 0;
+	    } else {
+		/* fixed # of arguments */
+		u = PROTO_NARGS(kf->proto);
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		if ((short) u < 0) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
+		{
+		    error("Bad argument %d for kfun %s", u, kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    break;
+
 	case I_CALL_CKFUNC:
 	case I_CALL_CKFUNC | I_POP_BIT:
 	    kf = &KFUN(FETCH1U(pc));
+	    u = FETCH1U(pc) + size;
+	    size = 0;
+	    if (u != PROTO_NARGS(kf->proto)) {
+		if (u < PROTO_NARGS(kf->proto)) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		error("Bad argument %d for kfun %s", u, kf->name);
+	    }
+	    break;
+
+	case I_CALL_CEFUNC:
+	case I_CALL_CEFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH2U(pc, u));
 	    u = FETCH1U(pc) + size;
 	    size = 0;
 	    if (u != PROTO_NARGS(kf->proto)) {
@@ -3224,8 +3274,6 @@ static unsigned short i_line1(frame *f)
 	case I_STORE_GLOBAL | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
-	case I_CALL_CKFUNC:
-	case I_CALL_CKFUNC | I_POP_BIT:
 	case I_RLIMITS:
 	    pc++;
 	    break;
@@ -3242,6 +3290,13 @@ static unsigned short i_line1(frame *f)
 	    }
 	    break;
 
+	case I_CALL_EFUNC:
+	case I_CALL_EFUNC | I_POP_BIT:
+	    if (PROTO_VARGS(KFUN(FETCH2U(pc, u)).proto) != 0) {
+		pc++;
+	    }
+	    break;
+
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL:
@@ -3253,6 +3308,8 @@ static unsigned short i_line1(frame *f)
 	case I_JUMP:
 	case I_CALL_AFUNC:
 	case I_CALL_AFUNC | I_POP_BIT:
+	case I_CALL_CKFUNC:
+	case I_CALL_CKFUNC | I_POP_BIT:
 	case I_CATCH:
 	case I_CATCH | I_POP_BIT:
 	    pc += 2;
@@ -3265,6 +3322,8 @@ static unsigned short i_line1(frame *f)
 	case I_CALL_DFUNC | I_POP_BIT:
 	case I_CALL_FUNC:
 	case I_CALL_FUNC | I_POP_BIT:
+	case I_CALL_CEFUNC:
+	case I_CALL_CEFUNC | I_POP_BIT:
 	    pc += 3;
 	    break;
 
