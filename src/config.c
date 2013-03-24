@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1167,8 +1167,6 @@ static bool conf_includes()
     cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
     cputs("# define O_UNDEFINED\t6\t/* undefined functions */\012");
-    cputs("# define O_INHERITED\t7\t/* object inherited? */\012");
-    cputs("# define O_INSTANTIATED\t8\t/* object instantiated? */\012");
 
     cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -1896,15 +1894,6 @@ bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
 	}
 	break;
 
-    case 7:	/* O_INHERITED */
-	PUT_INTVAL(v, ((obj->flags & O_MASTER) && !O_UPGRADING(obj) &&
-		       O_INHERITED(obj)));
-	break;
-
-    case 8:	/* O_INSTANTIATED */
-	PUT_INTVAL(v, O_HASDATA(obj));
-	break;
-
     default:
 	return FALSE;
     }
@@ -1922,13 +1911,13 @@ array *conf_object(dataspace *data, object *obj)
     Int i;
     array *a;
 
-    a = arr_ext_new(data, 9L);
+    a = arr_ext_new(data, 7L);
     if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);
     }
-    for (i = 0, v = a->elts; i < 9; i++, v++) {
+    for (i = 0, v = a->elts; i < 7; i++, v++) {
 	conf_objecti(data, obj, i, v);
     }
     ec_pop();
