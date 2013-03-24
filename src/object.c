@@ -1307,6 +1307,7 @@ int uindex_compare(const void *pa, const void *pb)
     }
 }
 
+# if 0	/* unused */
 /*
  * NAME:	object->trim()
  * DESCRIPTION:	trim free objects from the end of the object table
@@ -1358,6 +1359,7 @@ void o_trim()
     baseplane.free = j;
     FREE(entries);
 }
+# endif
 
 /*
  * NAME:	object->dump()
