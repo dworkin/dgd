@@ -422,9 +422,7 @@ static void skip_alt_comment()
 	    return;
 	}
     } while (c != LF);
-    if (pp_level > 0) {
-	uc(c);
-    }
+    uc(c);
 }
 
 /*
