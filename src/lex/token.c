@@ -418,7 +418,13 @@ static void skip_alt_comment()
 
     do {
 	c = gc();
-    } while (c != LF && c != EOF);
+	if (c == EOF) {
+	    return;
+	}
+    } while (c != LF);
+    if (pp_level > 0) {
+	uc(c);
+    }
 }
 
 /*
