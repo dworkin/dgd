@@ -30,7 +30,7 @@ extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */
 extern kfindex kfind[];					/* indirection table */
 extern int   nkfun, ne, nd, nh;				/* # kfuns */
 
-# define KFUN(kf)	(kftab[UCHAR(kfind[kf])])
+# define KFUN(kf)	(kftab[kfind[kf]])
 
 typedef struct {
     char *name;		/* added kfun name */
