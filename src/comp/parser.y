@@ -1623,7 +1623,7 @@ static node *eq(node *n1, node *n2)
     }
 
     op = N_EQ;
-    if (n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED &&
+    if (c_tmatch(n1->mod, n2->mod) == T_NIL &&
 	(!c_nil(n1) || !T_POINTER(n2->mod)) &&
 	(!c_nil(n2) || !T_POINTER(n1->mod))) {
 	if (typechecking) {
