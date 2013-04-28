@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -313,6 +313,7 @@ Int ext_int_rshift(Int i, Int shift)
     return (Uint) i >> shift;
 }
 
+# ifndef NOFLOAT
 /*
  * NAME:	ext->float_getval()
  * DESCRIPTION:	retrieve a float from a value
@@ -356,6 +357,7 @@ static void ext_float_putval(value *val, long double ld)
     }
     PUT_FLTVAL(val, flt);
 }
+# endif
 
 /*
  * NAME:	ext->string_getval()
@@ -704,8 +706,13 @@ bool ext_dgd(char *module)
     ext_value[2] = (voidf *) &ext_value_temp;
     ext_int[0] = (voidf *) &ext_int_getval;
     ext_int[1] = (voidf *) &ext_int_putval;
+# ifndef NOFLOAT
     ext_float[0] = (voidf *) &ext_float_getval;
     ext_float[1] = (voidf *) &ext_float_putval;
+# else
+    ext_float[0] = (voidf *) NULL;
+    ext_float[1] = (voidf *) NULL;
+# endif
     ext_string[0] = (voidf *) &ext_string_getval;
     ext_string[1] = (voidf *) &ext_string_putval;
     ext_string[2] = (voidf *) &ext_string_new;
