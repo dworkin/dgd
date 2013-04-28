@@ -55,8 +55,11 @@
 # define I_EINSTR_MASK		0x3f	/* extended instruction mask */
 
 # define I_PUSH_INT1		0x00	/* 1 signed */
+# define I_PUSH_INT2		0x20	/* 2 signed */
 # define I_PUSH_INT4		0x01	/* 4 signed */
+# define I_PUSH_INT8		0x21	/* reserved */
 # define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
+# define I_PUSH_FLOAT12		0x23	/* reserved */
 # define I_PUSH_STRING		0x04	/* 1 unsigned */
 # define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
 # define I_PUSH_FAR_STRING	0x05	/* 1 unsigned, 2 unsigned */

@@ -2339,6 +2339,10 @@ static void i_interpret1(frame *f, char *pc)
 	    PUSH_INTVAL(f, FETCH1S(pc));
 	    continue;
 
+	case I_PUSH_INT2:
+	    PUSH_INTVAL(f, FETCH2S(pc, u));
+	    continue;
+
 	case I_PUSH_INT4:
 	    PUSH_INTVAL(f, FETCH4S(pc, l));
 	    continue;
