@@ -19,6 +19,9 @@ NETWORK_EXTENSIONS	      Enable extended network functionality
 			      (outgoing connections, opening ports
 			      from LPC code)
 
+NOFLOAT			      Compile without host floats (LPC floats will
+			      still work).
+
 CLOSURES		      Function pointers, implemented as a builtin
 			      type.  See doc/builtin for information
 			      about adding builtin types.
