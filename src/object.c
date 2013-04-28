@@ -1307,60 +1307,6 @@ int uindex_compare(const void *pa, const void *pb)
     }
 }
 
-# if 0	/* unused */
-/*
- * NAME:	object->trim()
- * DESCRIPTION:	trim free objects from the end of the object table
- */
-void o_trim()
-{
-    uindex npurge;
-    uindex *entries;
-    uindex i;
-    uindex j;
-
-    if (!baseplane.nfreeobjs) {
-	/* nothing to trim */
-	return;
-    }
-
-    npurge = 0;
-    entries = ALLOC(uindex, baseplane.nfreeobjs);
-
-    j = baseplane.free;
-
-    /* 1. prepare a list of free objects */
-    for (i = 0; i < baseplane.nfreeobjs; i++) {
-	entries[i] = j;
-	j = otable[j].prev;
-    }
-
-    /* 2. sort indices from low to high */
-    qsort(entries, baseplane.nfreeobjs, sizeof(uindex), uindex_compare);
-
-    /* 3. trim the object table */
-    while (baseplane.nfreeobjs > 0 && entries[baseplane.nfreeobjs - 1] == baseplane.nobjects - 1) {
-	npurge++;
-	baseplane.nobjects--;
-	baseplane.nfreeobjs--;
-    }
-
-    memset(otable + baseplane.nobjects, '\0', npurge * sizeof(object));
-
-    /* 4. relink remaining free objects from low to high */
-    j = OBJ_NONE;
-
-    for (i = 0; i < baseplane.nfreeobjs; i++) {
-	uindex n = entries[baseplane.nfreeobjs - i - 1];
-	otable[n].prev = j;
-	j = n;
-    }
-
-    baseplane.free = j;
-    FREE(entries);
-}
-# endif
-
 /*
  * NAME:	object->dump()
  * DESCRIPTION:	dump the object table
