@@ -3301,6 +3301,7 @@ static unsigned short i_line1(frame *f)
 	    }
 	    break;
 
+	case I_PUSH_INT2:
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL:
