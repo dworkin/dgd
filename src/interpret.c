@@ -1101,7 +1101,7 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
  */
 void i_cast(frame *f, value *val, unsigned int type, Uint class)
 {
-    char tnbuf[8];
+    char tnbuf[TNBUFSIZE];
     value *elts;
 
     if (type == T_CLASS) {
@@ -1687,7 +1687,7 @@ char *i_prev_program(frame *f, int n)
  */
 void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, int nargs, int strict)
 {
-    char tnbuf[8];
+    char tnbuf[TNBUFSIZE];
     int i, n, atype, ptype;
     char *args;
     bool ellipsis;

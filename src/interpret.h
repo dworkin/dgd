@@ -158,7 +158,7 @@
 # define T_INDEXED(t)	((t) >= T_ARRAY)   /* T_ARRAY, T_MAPPING, T_LWOBJECT */
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
-			  "array", "mapping", "lwobject", "mixed", "void" }
+			  "array", "mapping", "object", "mixed", "void" }
 # define TNBUFSIZE	24
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
