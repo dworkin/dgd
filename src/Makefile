@@ -61,13 +61,11 @@ SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
 	path.c editor.c comm.c call_out.c interpret.c config.c ext.c dgd.c
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 	path.o editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
-COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
-	interpret.o config.o ext.o
 
-a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd lpc/dgd host/dgd
+a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd host/dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
-	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
-	      `cat host/dgd` $(LIBS)
+	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat host/dgd` \
+	      $(LIBS)
 
 comp/dgd::
 	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
@@ -84,9 +82,6 @@ parser/dgd::
 kfun/dgd::
 	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 
-lpc/dgd::
-	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
 
 host/dgd::
 	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
@@ -99,24 +94,16 @@ $(BIN)/driver: a.out
 
 install: $(BIN)/driver
 
-comp.sub: $(COMPOBJ)
-	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
-
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
-comp/a.out:
-	cd comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			 'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
-
 clean:
-	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
+	rm -f a.out $(OBJ)
 	cd comp; $(MAKE) clean
 	cd lex; $(MAKE) clean
 	cd ed; $(MAKE) clean
 	cd parser; $(MAKE) clean
 	cd kfun; $(MAKE) clean
-	cd lpc; $(MAKE) clean
 	cd host; $(MAKE) 'HOST=$(HOST)' clean
 
 

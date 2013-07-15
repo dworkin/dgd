@@ -2922,19 +2922,11 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 
     /* execute code */
     d_get_funcalls(f.ctrl);	/* make sure they are available */
-    if (f.func->class & C_COMPILED) {
-	Uint l;
-
-	/* compiled function */
-	(*pcfunctions[FETCH3U(pc, l)])(&f);
+    f.prog = pc += 2;
+    if (f.p_ctrl->flags & CTRL_OLDVM) {
+	i_interpret0(&f, pc);
     } else {
-	/* interpreted function */
-	f.prog = pc += 2;
-	if (f.p_ctrl->flags & CTRL_OLDVM) {
-	    i_interpret0(&f, pc);
-	} else {
-	    i_interpret1(&f, pc);
-	}
+	i_interpret1(&f, pc);
     }
 
     /* clean up stack, move return value to outer stackframe */

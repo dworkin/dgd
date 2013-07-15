@@ -29,11 +29,8 @@ OBJ=	builtin.o std.o file.o math.o extra.o
 dgd:	table.o $(OBJ)
 	@for i in table.o $(OBJ); do echo kfun/$$i; done > dgd
 
-comp:	table.o $(OBJ)
-	@for i in table.o $(OBJ); do echo ../kfun/$$i; done > comp
-
 clean:
-	rm -f dgd comp table.o $(OBJ)
+	rm -f dgd table.o $(OBJ)
 
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../str.h ../array.h

@@ -29,11 +29,8 @@ OBJ=	grammar.o dfa.o srp.o parse.o
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo parser/$$i; done > dgd
 
-comp:	$(OBJ)
-	@for i in $(OBJ); do echo ../parser/$$i; done > comp
-
 clean:
-	rm -f dgd comp $(OBJ)
+	rm -f dgd $(OBJ)
 
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h
