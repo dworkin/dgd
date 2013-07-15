@@ -1214,10 +1214,7 @@ static bool conf_includes()
     cputs("# define CHAR_MIN\t\t0\t\t/* min character value */\012");
     cputs("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
     cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
-    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
-    sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size (obsolete) */\012",
-	    MAX_STRLEN);
-    cputs(buffer);
+    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012");
     if (!cclose()) {
 	return FALSE;
     }
