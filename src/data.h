@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -289,8 +289,7 @@ extern string	       *d_get_call_out	(dataspace*, unsigned int, frame*,
 					   int*);
 extern array	       *d_list_callouts	(dataspace*, dataspace*);
 
-extern void		d_set_varmap	(control*, unsigned int,
-					   unsigned short*);
+extern void		d_set_varmap	(control*, unsigned short*);
 extern void		d_upgrade_data	(dataspace*, unsigned int,
 					   unsigned short*, object*);
 extern void		d_upgrade_clone	(dataspace*);
