@@ -1163,6 +1163,15 @@ void o_clean()
 	    o->cfirst = up->cfirst;
 	    up->cfirst = SW_UNUSED;
 
+	    /* swap vmap back to template */
+	    ctrl->vmap = up->ctrl->vmap;
+	    ctrl->vmapsize = up->ctrl->vmapsize;
+	    if (ctrl->vmapsize != 0) {
+		ctrl->flags |= CTRL_VARMAP;
+	    }
+	    up->ctrl->vmap = (unsigned short *) NULL;
+	    up->ctrl->vmapsize = 0;
+
 	    if (ctrl->ndata != 0) {
 		/* upgrade all dataspaces in memory */
 		d_upgrade_mem(o, up);

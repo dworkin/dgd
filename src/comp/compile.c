@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -697,7 +697,7 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
 		o_upgrade(obj, ctrl, f);
 		vmap = ctrl_varmap(obj->ctrl, ctrl);
 		if (vmap != (unsigned short *) NULL) {
-		    d_set_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
+		    d_set_varmap(ctrl, vmap);
 		}
 	    }
 	    return obj;
