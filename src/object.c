@@ -1132,7 +1132,7 @@ void o_clean()
 	    }
 	    ctrl = up->ctrl;
 
-	    if (ctrl->vmapsize != 0 && o->u_ref != 0) {
+	    if (o->ctrl->vmapsize != 0 && o->u_ref != 0) {
 		/*
 		 * upgrade variables
 		 */
