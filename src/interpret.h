@@ -288,7 +288,7 @@ extern int	i_spread	(frame*, int, int, Uint);
 extern void	i_global	(frame*, int, int);
 extern void	i_global_lvalue	(frame*, int, int, int, Uint);
 extern void	i_index		(frame*);
-extern void	i_index2	(frame*, value*, value*, value*);
+extern void	i_index2	(frame*, value*, value*, value*, bool);
 extern void	i_index_lvalue	(frame*, int, Uint);
 extern char    *i_typename	(char*, unsigned int);
 extern char    *i_classname	(frame*, Uint);

@@ -779,7 +779,7 @@ void i_index(frame *f)
  * NAME:	interpret->index2()
  * DESCRIPTION:	index a value
  */
-void i_index2(frame *f, value *aval, value *ival, value *val)
+void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
 {
     int i;
 
@@ -792,6 +792,9 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 	}
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
 						 ival->u.number)]);
+	if (!keep) {
+	    str_del(aval->u.string);
+	}
 	PUT_INTVAL(val, i);
 	return;
 
@@ -806,6 +809,9 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 
     case T_MAPPING:
 	*val = *map_index(f->data, aval->u.array, ival, NULL, NULL);
+	if (!keep) {
+	    i_del_value(ival);
+	}
 	break;
 
     default:
@@ -834,6 +840,10 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
     case T_MAPPING:
 	arr_ref(val->u.array);
 	break;
+    }
+
+    if (!keep) {
+	arr_del(aval->u.array);
     }
 }
 
@@ -2383,12 +2393,13 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_INDEX:
 	case I_INDEX | I_POP_BIT:
-	    i_index(f);
+	    i_index2(f, f->sp + 1, f->sp, &val, FALSE);
+	    *++f->sp = val;
 	    break;
 
 	case I_INDEX2:
 	    --f->sp;
-	    i_index2(f, f->sp + 2, f->sp + 1, f->sp);
+	    i_index2(f, f->sp + 2, f->sp + 1, f->sp, TRUE);
 	    continue;
 
 	case I_AGGREGATE:
