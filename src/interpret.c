@@ -702,6 +702,24 @@ void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint class)
 }
 
 /*
+ * NAME:	interpret->operator()
+ * DESCRIPTION:	index or indexed assignment
+ */
+static void i_operator(frame *f, array *lwobj, char *op, int nargs, value *var,
+		       value *idx, value *val)
+{
+    i_push_value(f, idx);
+    if (nargs > 1) {
+	i_push_value(f, val);
+    }
+    if (!i_call(f, (object *) NULL, lwobj, op, strlen(op), TRUE, nargs)) {
+	error("Index on bad type");
+    }
+
+    *var = *f->sp++;
+}
+
+/*
  * NAME:	interpret->index()
  * DESCRIPTION:	index a value, REPLACING it with the indexed value
  */
@@ -809,6 +827,13 @@ void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
 
     case T_MAPPING:
 	*val = *map_index(f->data, aval->u.array, ival, NULL, NULL);
+	if (!keep) {
+	    i_del_value(ival);
+	}
+	break;
+
+    case T_LWOBJECT:
+	i_operator(f, aval->u.array, "[]", 1, val, ival, (value *) NULL);
 	if (!keep) {
 	    i_del_value(ival);
 	}
@@ -1285,6 +1310,14 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 	    var = NULL;
 	}
 	map_index(f->data, arr, ival, val, var);
+	i_del_value(ival);
+	arr_del(arr);
+	break;
+
+    case T_LWOBJECT:
+	arr = aval->u.array;
+	i_operator(f, arr, "[]=", 2, var, ival, val);
+	i_del_value(var);
 	i_del_value(ival);
 	arr_del(arr);
 	break;

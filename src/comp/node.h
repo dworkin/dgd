@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -67,6 +67,7 @@ extern node *node_str	(string*);
 extern node *node_var	(unsigned int, int);
 extern node *node_type	(int, string*);
 extern node *node_fcall	(int, string*, char*, Int);
+extern node *node_op	(char*);
 extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);
@@ -199,4 +200,7 @@ extern void  node_clear	(void);
 # define N_PLUS_PLUS		123
 # define N_PLUS_PLUS_INT	124
 # define N_PLUS_PLUS_FLOAT	125
+# define N_NEG			126
+# define N_UMIN			127
+
 extern int nil_node;

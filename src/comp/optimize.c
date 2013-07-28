@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -139,28 +139,21 @@ static Uint opt_lvalue(node *n)
 	n = n->l.left;
     }
     switch (n->type) {
-    case N_GLOBAL:
-	return 3;
-
     case N_INDEX:
 	m = n->l.left;
 	if (m->type == N_CAST) {
 	    m = m->l.left;
 	}
 	switch (m->type) {
-	case N_GLOBAL:
-	    /* global_strval[x] = 'c'; */
-	    return opt_expr(&n->r.right, FALSE) + 3;
-
 	case N_INDEX:
 	    /* strarray[x][y] = 'c'; */
-	    return max3(opt_expr(&m->l.left, FALSE),
-			opt_expr(&m->r.right, FALSE) + 1,
-			opt_expr(&n->r.right, FALSE) + 4);
+	    return max2(max2(opt_expr(&m->l.left, FALSE),
+			     opt_expr(&m->r.right, FALSE) + 1),
+			max2(opt_expr(&n->r.right, FALSE) + 3, 8));
 
 	default:
-	    return max2(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE) + 2);
+	    return max3(opt_expr(&n->l.left, FALSE),
+			opt_expr(&n->r.right, FALSE) + 1, 6);
 	}
 
     default:
@@ -1361,6 +1354,10 @@ static Uint opt_expr(node **m, int pop)
     case N_CAST:
 	return opt_expr(&n->l.left, FALSE);
 
+    case N_NEG:
+    case N_UMIN:
+	return max2(opt_expr(&n->l.left, FALSE), 2);
+
     case N_CATCH:
 	oldside = side_start(&side, &olddepth);
 	d1 = opt_expr(&n->l.left, TRUE);
@@ -1607,8 +1604,8 @@ static Uint opt_expr(node **m, int pop)
 		return opt_expr(m, pop);
 	    }
 	}
-	return max2(opt_expr(&n->l.left, FALSE),
-		    opt_expr(&n->r.right, FALSE) + 1);
+	return max3(opt_expr(&n->l.left, FALSE),
+		    opt_expr(&n->r.right, FALSE) + 1, 3);
 
     case N_ADD_EQ:
     case N_ADD_EQ_INT:
@@ -1843,8 +1840,9 @@ static Uint opt_expr(node **m, int pop)
 		node_tostr(n, str_range(n->l.left->l.string, from, to));
 		return !pop;
 	    }
+	    return d1;
 	}
-	return d1;
+	return max2(d1, 3);
 
     case N_AGGR:
 	if (n->mod == T_MAPPING) {

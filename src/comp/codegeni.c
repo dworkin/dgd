@@ -1343,6 +1343,11 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_NE_FLT, n->line);
 	break;
 
+    case N_NEG:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_NEG, n->line);
+	break;
+
     case N_NIL:
 	code_kfun(KF_NIL, n->line);
 	break;
@@ -1590,6 +1595,11 @@ static void cg_expr(node *n, int pop)
 	} else {
 	    code_kfun(KF_TST, n->line);
 	}
+	break;
+
+    case N_UMIN:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_UMIN, n->line);
 	break;
 
     case N_XOR:
