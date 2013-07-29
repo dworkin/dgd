@@ -1331,14 +1331,7 @@ static node *mdiv(int op, node *n1, node *n2, char *name)
 	    c_error("division by zero");
 	    return n1;
 	}
-	if ((d | i) < 0) {
-	    Int r;
-
-	    r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	    n1->l.number = ((i ^ d) < 0) ? -r : r;
-	} else {
-	    n1->l.number = ((Uint) i) / ((Uint) d);
-	}
+	n1->l.number = i / d;
 	return n1;
     } else if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	/* f / f */
@@ -1374,14 +1367,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
 	    c_error("modulus by zero");
 	    return n1;
 	}
-	if (d < 0) {
-	    d = -d;
-	}
-	if (i < 0) {
-	    n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
-	} else {
-	    n1->l.number = ((Uint) i) % ((Uint) d);
-	}
+	n1->l.number = i % d;
 	return n1;
     }
 
