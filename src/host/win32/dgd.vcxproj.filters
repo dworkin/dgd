@@ -112,9 +112,6 @@
     <ClCompile Include="..\..\lex\token.c">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lpc\lpc.c">
-      <Filter>Source Files\lpc</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\object.c">
       <Filter>Source Files</Filter>
     </ClCompile>

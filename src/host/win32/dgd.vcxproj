@@ -56,7 +56,6 @@
     <ClCompile Include="..\..\lex\ppstr.c" />
     <ClCompile Include="..\..\lex\special.c" />
     <ClCompile Include="..\..\lex\token.c" />
-    <ClCompile Include="..\..\lpc\lpc.c" />
     <ClCompile Include="..\..\object.c" />
     <ClCompile Include="..\..\parser\dfa.c" />
     <ClCompile Include="..\..\parser\grammar.c" />
