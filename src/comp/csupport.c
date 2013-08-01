@@ -60,6 +60,8 @@ array *pc_list(dataspace *data)
  */
 void pc_control(control *ctrl, object *obj)
 {
+    UNREFERENCED_PARAMETER(ctrl);
+    UNREFERENCED_PARAMETER(obj);
 }
 
 
