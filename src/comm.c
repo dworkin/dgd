@@ -1689,8 +1689,8 @@ array *comm_users(dataspace *data)
 		continue;
 	    }
 #endif
+	    --i;
 	    if (!(usr->flags & CF_OPENDING)) {
-		--i;
 		if (OBJR(usr->oindex)->count != 0) {
 		    n++;
 		}
