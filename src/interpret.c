@@ -825,7 +825,7 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 
     case T_LWOBJECT:
 	ival = d_get_elts(val->u.array);
-	if (DESTRUCTED(ival)) {
+	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
 	    *val = nil_value;
 	    break;
 	}
