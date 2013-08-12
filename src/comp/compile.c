@@ -2161,6 +2161,7 @@ node *c_address(node *func, node *args, int typechecked)
     }
     func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
 		   args, FALSE);
+    func->mod = T_CLASS;
     func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
@@ -2168,7 +2169,7 @@ node *c_address(node *func, node *args, int typechecked)
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 
@@ -2180,8 +2181,8 @@ node *c_extend(node *func, node *args, int typechecked)
 {
 # ifdef CLOSURES
     if (typechecked && func->mod != T_MIXED) {
-	if (func->mod != T_OBJECT ||
-	    (func->class != NULL &&
+	if (func->mod != T_OBJECT &&
+	    (func->mod != T_CLASS ||
 	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
@@ -2191,14 +2192,17 @@ node *c_extend(node *func, node *args, int typechecked)
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    return funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
+    func = funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
 		   args, FALSE);
+    func->mod = T_CLASS;
+    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    return func;
 # else
     UNREFERENCED_PARAMETER(func);
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 
@@ -2210,8 +2214,8 @@ node *c_call(node *func, node *args, int typechecked)
 {
 # ifdef CLOSURES
     if (typechecked && func->mod != T_MIXED) {
-	if (func->mod != T_OBJECT ||
-	    (func->class != NULL &&
+	if (func->mod != T_OBJECT &&
+	    (func->mod != T_CLASS ||
 	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
@@ -2228,7 +2232,7 @@ node *c_call(node *func, node *args, int typechecked)
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 
