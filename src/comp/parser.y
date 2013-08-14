@@ -1427,12 +1427,13 @@ static node *add(int op, node *n1, node *n2, char *name)
 	}
     } else if (type == T_INT) {
 	op++;
-    } else if (op == N_ADD_EQ) {
+    } else if (op == N_ADD_EQ && n1->mod != n2->mod) {
+	type = n1->mod;
 	if (n1->mod == T_INT) {
 	    n2 = node_mon(N_CAST, T_INT, n2);
 	    type = T_INT;
 	    op++;
-	} else if (n1->mod == T_FLOAT && n2->mod != T_FLOAT) {
+	} else if (n1->mod == T_FLOAT) {
 	    n2 = node_mon(N_CAST, T_FLOAT, n2);
 	    type = T_FLOAT;
 	}
