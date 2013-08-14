@@ -1275,7 +1275,11 @@ static bool conf_includes()
 	    sprintf(buffer, "# define kf_%s\t\t%d\012", kftab[i].name,
 		    kftab[i].version);
 	    for (p = buffer + 9; *p != '\0'; p++) {
-		*p = toupper(*p);
+		if (*p == '.') {
+		    *p = '_';
+		} else {
+		    *p = toupper(*p);
+		}
 	    }
 	    cputs(buffer);
 	}
