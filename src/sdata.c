@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2984,11 +2984,11 @@ static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
  * NAME:	data->fixobjs()
  * DESCRIPTION:	fix objects in dataspace
  */
-static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
+static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->oindex < nobjects && v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
+	    if (v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
 		/* fix object count */
 		v->u.objcnt = OBJ(v->oindex)->count;
 	    } else {
@@ -3006,19 +3006,19 @@ static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
  * NAME:	data->fixdata()
  * DESCRIPTION:	fix a dataspace
  */
-static void d_fixdata(dataspace *data, Uint *counttab, uindex nobjects)
+static void d_fixdata(dataspace *data, Uint *counttab)
 {
     scallout *sco;
     unsigned int n;
 
-    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab, nobjects);
-    d_fixobjs(data->selts, data->eltsize, counttab, nobjects);
+    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab);
+    d_fixobjs(data->selts, data->eltsize, counttab);
     for (n = data->ncallouts, sco = data->scallouts; n > 0; --n, sco++) {
 	if (sco->val[0].type == T_STRING) {
 	    if (sco->nargs > 3) {
-		d_fixobjs(sco->val, (Uint) 4, counttab, nobjects);
+		d_fixobjs(sco->val, (Uint) 4, counttab);
 	    } else {
-		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab, nobjects);
+		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab);
 	    }
 	}
     }
@@ -3289,7 +3289,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
  * NAME:	data->restore_data()
  * DESCRIPTION:	restore a dataspace
  */
-dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
+dataspace *d_restore_data(object *obj, Uint *counttab,
 			  void (*readv) (char*, sector*, Uint, Uint))
 {
     dataspace *data;
@@ -3308,7 +3308,7 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
 	}
 	obj->data = data;
 	if (counttab != (Uint *) NULL) {
-	    d_fixdata(data, counttab, nobjects);
+	    d_fixdata(data, counttab);
 	}
 
 	if (!(obj->flags & O_MASTER) &&
@@ -3326,17 +3326,17 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cactive, bool dactive)
+void d_restore_obj(object *obj, Uint *counttab, bool cactive, bool dactive)
 {
     control *ctrl;
     dataspace *data;
 
     if (!converted) {
 	ctrl = d_restore_ctrl(obj, sw_conv);
-	data = d_restore_data(obj, counttab, nobjects, sw_conv);
+	data = d_restore_data(obj, counttab, sw_conv);
     } else {
 	ctrl = d_restore_ctrl(obj, sw_dreadv);
-	data = d_restore_data(obj, counttab, nobjects, sw_dreadv);
+	data = d_restore_data(obj, counttab, sw_dreadv);
     }
 
     if (!cactive) {

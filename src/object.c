@@ -950,8 +950,7 @@ static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, rotabsize, cactive,
-		  dactive);
+    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, cactive, dactive);
 }
 
 /*
@@ -1299,24 +1298,6 @@ static Uint o_recount(uindex n)
 }
 
 /*
- * NAME:	uindex_compare
- * DESCRIPTION: used by qsort to compare entries
- */
-int uindex_compare(const void *pa, const void *pb)
-{
-    uindex a = *(uindex *)pa;
-    uindex b = *(uindex *)pb;
-
-    if (a > b) {
-	return 1;
-    } else if (a < b) {
-	return -1;
-    } else {
-	return 0;
-    }
-}
-
-/*
  * NAME:	object->dump()
  * DESCRIPTION:	dump the object table
  */
@@ -1561,7 +1542,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 		    BCLR(omap, i);
 		    --dobjects;
 		}
-		d_restore_data(o, counttab, dh.nobjects, &sw_conv2);
+		d_restore_data(o, counttab, &sw_conv2);
 		d_swapout(1);
 	    }
 	    i++;
