@@ -89,7 +89,7 @@ host/dgd::
 all:	a.out
 
 $(BIN)/driver: a.out
-	-mv $(BIN)/driver $(BIN)/driver.old
+	-@[ ! -e ${BIN}/driver ] || mv ${BIN}/driver ${BIN}/driver.old
 	cp a.out $(BIN)/driver
 
 install: $(BIN)/driver
