@@ -574,7 +574,9 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
     int n;
     connection *conn;
     bool ipv6, ipv4;
+# ifdef AI_DEFAULT
     int err;
+# endif
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
