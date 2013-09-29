@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -574,7 +574,9 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
     int n;
     connection *conn;
     bool ipv6, ipv4;
+# ifdef AI_DEFAULT
     int err;
+# endif
 
     if (!ipa_init(maxusers)) {
 	return FALSE;
@@ -1778,7 +1780,7 @@ int conn_check_connected(connection *conn, bool *refused)
 # else
 	struct sockaddr_in sin;
 # endif
-	int len;
+	socklen_t len;
 	in46addr inaddr;
 
 	len = sizeof(sin);
@@ -2052,7 +2054,7 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 # else
     struct sockaddr_in sin;
 # endif
-    int len;
+    socklen_t len;
     in46addr inaddr;
     connection *conn;
 

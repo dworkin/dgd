@@ -592,7 +592,7 @@ int comm_send(object *obj, string *str)
     if (usr->flags & CF_TELNET) {
 	char outbuf[OUTBUF_SIZE];
 	char *p, *q;
-	unsigned int len, size, n, length;
+	unsigned int len, size, n;
 
 	/*
 	 * telnet connection
@@ -601,7 +601,6 @@ int comm_send(object *obj, string *str)
 	len = str->len;
 	q = outbuf;
 	size = 0;
-	length = 0;
 	for (;;) {
 	    if (len == 0 || size >= OUTBUF_SIZE - 1 || UCHAR(*p) == IAC) {
 		n = comm_write(usr, obj, (string *) NULL, outbuf, size);
@@ -1004,7 +1003,6 @@ static void comm_taccept(frame *f, struct _connection_ *conn, int port)
  */
 static void comm_baccept(frame *f, struct _connection_ *conn, int port)
 {
-    user *usr;
     object *obj;
 
     if (ec_push((ec_ftn) NULL)) {
@@ -1018,7 +1016,7 @@ static void comm_baccept(frame *f, struct _connection_ *conn, int port)
     }
     obj = OBJ(f->sp->oindex);
     f->sp++;
-    usr = comm_new(f, obj, conn, FALSE);
+    comm_new(f, obj, conn, FALSE);
     ec_pop();
 
     this_user = obj->index;
