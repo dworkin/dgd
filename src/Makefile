@@ -121,7 +121,7 @@ clean:
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h
-config.o data.o interpret.o: comp/csupport.h
+config.o data.o sdata.o interpret.o: comp/csupport.h
 config.o: comp/parser.h
 config.o sdata.o interpret.o ext.o: comp/control.h
 
@@ -129,22 +129,23 @@ config.o: lex/macro.h lex/token.h lex/ppcontrol.h
 
 editor.o: ed/edcmd.h
 
-data.o: parser/parse.h
+data.o sdata.o: parser/parse.h
 
 interpret.o ext.o: kfun/table.h
 
 $(OBJ):	dgd.h config.h host.h alloc.h error.h
-error.o str.o array.o object.o data.o path.o comm.o: str.h array.h object.h
-editor.o call_out.o interpret.o config.o ext.o dgd.o: str.h array.h object.h
+error.o str.o array.o object.o data.o sdata.o path.o: str.h array.h object.h
+comm.o editor.o call_out.o interpret.o config.o ext.o: str.h array.h object.h
+dgd.o: str.h array.h object.h
 array.o data.o call_out.o interpret.o path.o config.o ext.o dgd.o: xfloat.h
-error.o array.o object.o data.o path.o editor.o comm.o call_out.o: interpret.h
-interpret.o config.o ext.o dgd.o: interpret.h
-error.o str.o array.o object.o data.o path.o comm.o call_out.o: data.h
+error.o array.o object.o data.o sdata.o path.o editor.o comm.o: interpret.h
+call_out.o interpret.o config.o ext.o dgd.o: interpret.h
+error.o str.o array.o object.o data.o sdata.o path.o comm.o call_out.o: data.h
 interpret.o config.o ext.o dgd.o: data.h
 path.o config.o: path.h
 hash.o str.o: hash.h
 swap.o object.o data.o: swap.h
 editor.o config.o dgd.o: editor.h
-call_out.o config.o dgd.o: call_out.h
+data.o sdata.o call_out.o config.o dgd.o: call_out.h
 error.o comm.o config.o dgd.o: comm.h
 comm.o config.o: version.h
