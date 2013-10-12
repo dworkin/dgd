@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-bool   pc_preload	(char*, char*);
 array *pc_list		(dataspace*);
 bool   pc_dump		(int);
 void   pc_restore	(int, int);

@@ -1522,21 +1522,6 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	return FALSE;
     }
 
-    /* load precompiled objects */
-    if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
-	sw_finish();
-	comm_clear();
-	comm_finish();
-	if (snapshot2 != (char *) NULL) {
-	    P_close(fd2);
-	}
-	if (snapshot != (char *) NULL) {
-	    P_close(fd);
-	}
-	m_finish();
-	return FALSE;
-    }
-
     /* initialize snapshot header */
     conf_dumpinit();
 
