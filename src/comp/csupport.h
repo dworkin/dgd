@@ -19,6 +19,5 @@
 
 bool   pc_preload	(char*, char*);
 array *pc_list		(dataspace*);
-void   pc_control	(control*, object*);
 bool   pc_dump		(int);
 void   pc_restore	(int, int);

@@ -626,20 +626,7 @@ static control *load_control(object *obj, void (*readv) (char*, sector*, Uint, U
  */
 control *d_load_control(object *obj)
 {
-    control *ctrl;
-
-    if (obj->flags & O_COMPILED) {
-	ctrl = d_new_control();
-	ctrl->oindex = obj->index;
-
-	/* initialize control block of compiled object */
-	pc_control(ctrl, obj);
-	ctrl->flags |= CTRL_COMPILED;
-    } else {
-	ctrl = load_control(obj, sw_readv);
-    }
-
-    return ctrl;
+    return load_control(obj, sw_readv);
 }
 
 /*
@@ -2449,8 +2436,7 @@ sector d_swapout(unsigned int frag)
 
 	    prev = ctrl->prev;
 	    if (ctrl->ndata == 0) {
-		if ((ctrl->sectors == (sector *) NULL &&
-		     !(ctrl->flags & CTRL_COMPILED)) ||
+		if (ctrl->sectors == (sector *) NULL ||
 		    (ctrl->flags & CTRL_VARMAP)) {
 		    d_save_control(ctrl);
 		}
@@ -3257,13 +3243,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
     control *ctrl;
 
     ctrl = (control *) NULL;
-    if (obj->flags & O_COMPILED) {
-	ctrl = d_new_control();
-	ctrl->oindex = obj->index;
-	obj->ctrl = ctrl;
-	pc_control(ctrl, obj);
-	ctrl->flags |= CTRL_COMPILED;
-    } else if (obj->cfirst != SW_UNUSED) {
+    if (obj->cfirst != SW_UNUSED) {
 	if (!converted) {
 	    ctrl = d_conv_control(obj, readv);
 	} else {
@@ -3418,61 +3398,59 @@ void d_free_control(control *ctrl)
 	FREE(ctrl->vmap);
     }
 
-    if (!(ctrl->flags & CTRL_COMPILED)) {
-	/* delete sectors */
-	if (ctrl->sectors != (sector *) NULL) {
-	    FREE(ctrl->sectors);
-	}
+    /* delete sectors */
+    if (ctrl->sectors != (sector *) NULL) {
+	FREE(ctrl->sectors);
+    }
 
-	if (ctrl->inherits != (dinherit *) NULL) {
-	    /* delete inherits */
-	    FREE(ctrl->inherits);
-	}
+    if (ctrl->inherits != (dinherit *) NULL) {
+	/* delete inherits */
+	FREE(ctrl->inherits);
+    }
 
-	if (ctrl->prog != (char *) NULL) {
-	    FREE(ctrl->prog);
-	}
+    if (ctrl->prog != (char *) NULL) {
+	FREE(ctrl->prog);
+    }
 
-	/* delete inherit indices */
-	if (ctrl->imap != (char *) NULL) {
-	    FREE(ctrl->imap);
-	}
+    /* delete inherit indices */
+    if (ctrl->imap != (char *) NULL) {
+	FREE(ctrl->imap);
+    }
 
-	/* delete string constants */
-	if (ctrl->sstrings != (dstrconst *) NULL) {
-	    FREE(ctrl->sstrings);
-	}
-	if (ctrl->stext != (char *) NULL) {
-	    FREE(ctrl->stext);
-	}
+    /* delete string constants */
+    if (ctrl->sstrings != (dstrconst *) NULL) {
+	FREE(ctrl->sstrings);
+    }
+    if (ctrl->stext != (char *) NULL) {
+	FREE(ctrl->stext);
+    }
 
-	/* delete function definitions */
-	if (ctrl->funcdefs != (dfuncdef *) NULL) {
-	    FREE(ctrl->funcdefs);
-	}
+    /* delete function definitions */
+    if (ctrl->funcdefs != (dfuncdef *) NULL) {
+	FREE(ctrl->funcdefs);
+    }
 
-	/* delete variable definitions */
-	if (ctrl->vardefs != (dvardef *) NULL) {
-	    FREE(ctrl->vardefs);
-	    if (ctrl->classvars != (char *) NULL) {
-		FREE(ctrl->classvars);
-	    }
+    /* delete variable definitions */
+    if (ctrl->vardefs != (dvardef *) NULL) {
+	FREE(ctrl->vardefs);
+	if (ctrl->classvars != (char *) NULL) {
+	    FREE(ctrl->classvars);
 	}
+    }
 
-	/* delete function call table */
-	if (ctrl->funcalls != (char *) NULL) {
-	    FREE(ctrl->funcalls);
-	}
+    /* delete function call table */
+    if (ctrl->funcalls != (char *) NULL) {
+	FREE(ctrl->funcalls);
+    }
 
-	/* delete symbol table */
-	if (ctrl->symbols != (dsymbol *) NULL) {
-	    FREE(ctrl->symbols);
-	}
+    /* delete symbol table */
+    if (ctrl->symbols != (dsymbol *) NULL) {
+	FREE(ctrl->symbols);
+    }
 
-	/* delete variable types */
-	if (ctrl->vtypes != (char *) NULL) {
-	    FREE(ctrl->vtypes);
-	}
+    /* delete variable types */
+    if (ctrl->vtypes != (char *) NULL) {
+	FREE(ctrl->vtypes);
     }
 
     if (ctrl != chead) {

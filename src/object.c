@@ -1119,7 +1119,6 @@ void o_clean()
 	    baseplane.destruct = o->index;
 	} else {
 	    /* upgrade objects */
-	    up->flags &= ~O_COMPILED;
 	    up->cref -= 2;
 	    o->u_ref = up->cref;
 	    if (up->flags & O_LWOBJ) {

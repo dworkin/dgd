@@ -54,16 +54,6 @@ array *pc_list(dataspace *data)
     return arr_new(data, 0L);
 }
 
-/*
- * NAME:	precomp->control()
- * DESCRIPTION:	initialize the control block of a precompiled object
- */
-void pc_control(control *ctrl, object *obj)
-{
-    UNREFERENCED_PARAMETER(ctrl);
-    UNREFERENCED_PARAMETER(obj);
-}
-
 
 typedef struct {
     uindex nprecomps;		/* # precompiled objects */

@@ -326,7 +326,7 @@ void i_pop(frame *f, int n)
  */
 value *i_reverse(frame *f, int n)
 {
-    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+    if (f->p_ctrl->flags & CTRL_OLDVM) {
 	value sp[MAX_LOCALS];
 	value lip[3 * MAX_LOCALS];
 	value *v1, *v2, *w1, *w2;
@@ -633,7 +633,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+	if (f->p_ctrl->flags & CTRL_OLDVM) {
 	    (--f->sp)->type = T_ALVALUE;
 	    f->sp->oindex = vtype;
 	    f->sp->u.array = a;
@@ -1338,7 +1338,7 @@ void i_store(frame *f)
     value *val;
     Uint class;
 
-    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+    if (f->p_ctrl->flags & CTRL_OLDVM) {
 	value *lval;
 	array *a;
 	value ival;
