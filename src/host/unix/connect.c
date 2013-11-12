@@ -1712,11 +1712,7 @@ connection *conn_connect(void *addr, int len)
        return NULL;
     }
 
-    if (connect(sock, (struct sockaddr *) addr, len) < 0 &&
-		   errno != EINPROGRESS) {
-	perror("connect");
-	return NULL;
-    }
+    connect(sock, (struct sockaddr *) addr, len);
 
     conn = flist;
     flist = (connection *) conn->chain.next;
