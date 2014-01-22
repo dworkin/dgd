@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -630,6 +630,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	} else {
 # ifdef INET6
 	    if (inet_pton(AF_INET6, thosts[n], &sin6) > 0) {
+		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
 # ifdef AI_DEFAULT
@@ -691,6 +692,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	} else {
 # ifdef INET6
 	    if (inet_pton(AF_INET6, bhosts[n], &sin6) > 0) {
+		sin6.sin6_family = AF_INET6;
 		ipv6 = TRUE;
 	    } else {
 # ifdef AI_DEFAULT
@@ -1638,9 +1640,10 @@ void *conn_host(char *addr, unsigned short port, int *len)
 # ifdef INET6
     memset(&inaddr.sin6, '\0', sizeof(struct sockaddr_in6));
     inaddr.sin6.sin6_family = AF_INET6;
-    inaddr.sin6.sin6_port = htons(port);
     *len = sizeof(struct sockaddr_in6);
     if (inet_pton(AF_INET6, addr, &inaddr.sin6) > 0) {
+	inaddr.sin6.sin6_family = AF_INET6;
+	inaddr.sin6.sin6_port = htons(port);
 	return &inaddr;
     } else {
 # ifdef AI_DEFAULT
@@ -1656,6 +1659,7 @@ void *conn_host(char *addr, unsigned short port, int *len)
 # ifdef AI_DEFAULT
 		freehostent(host);
 # endif
+		inaddr.sin6.sin6_port = htons(port);
 		return &inaddr;
 	    }
 # ifdef AI_DEFAULT
