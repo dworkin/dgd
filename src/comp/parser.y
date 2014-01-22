@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1186,7 +1186,7 @@ static node *range(node *n1, node *n2, node *n3)
 	type = T_OBJECT;
     } else if (n1->mod == T_MAPPING) {
 	type = T_MAPPING;
-    } else if (typechecking) {
+    } else if (typechecking && n1->mod != T_MIXED) {
 	char tnbuf[TNBUFSIZE];
 
 	/* indices */
