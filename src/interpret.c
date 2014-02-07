@@ -1543,6 +1543,7 @@ void i_new_rlimits(frame *f, Int depth, Int t)
     rlinfo *rlim;
 
     rlim = ALLOC(rlinfo, 1);
+    memset(rlim, '\0', sizeof(rlinfo));
     if (depth != 0) {
 	if (depth < 0) {
 	    rlim->nodepth = TRUE;
