@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1032,7 +1032,7 @@ static bool conf_config()
     }
 
     for (l = 0; l < NR_OPTIONS; l++) {
-	if (!conf[l].set && l != HOTBOOT && l != MODULES) {
+	if (!conf[l].set && l != HOTBOOT && l != MODULES && l != CACHE_SIZE) {
 	    char buffer[64];
 
 #ifndef NETWORK_EXTENSIONS
@@ -1327,6 +1327,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     char buf[STRINGSZ];
     int fd, fd2, i;
     bool init;
+    sector cache;
 
     fd = fd2 = -1;
 
@@ -1450,9 +1451,10 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     o_init((uindex) conf[OBJECTS].u.num, (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swap device */
+    cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].u.num : 100);
     if (!sw_init(conf[SWAP_FILE].u.str,
 	    (sector) conf[SWAP_SIZE].u.num,
-	    (sector) conf[CACHE_SIZE].u.num,
+	    cache,
 	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
 	comm_clear();
 	comm_finish();
