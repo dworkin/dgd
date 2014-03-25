@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1997,6 +1997,7 @@ static void i_interpret0(frame *f, char *pc)
     char *p;
     kfunc *kf;
     int size;
+    bool atomic;
     Int newdepth, newticks;
 
     size = 0;
@@ -2253,6 +2254,7 @@ static void i_interpret0(frame *f, char *pc)
 	    break;
 
 	case II_CATCH:
+	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		f->atomic = FALSE;
@@ -2265,6 +2267,7 @@ static void i_interpret0(frame *f, char *pc)
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
+	    f->atomic = atomic;
 	    break;
 
 	case II_RLIMITS:
@@ -2312,6 +2315,7 @@ static void i_interpret1(frame *f, char *pc)
     char *p;
     kfunc *kf;
     int size;
+    bool atomic;
     Int newdepth, newticks;
     value val;
 
@@ -2658,6 +2662,7 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_CATCH:
 	case I_CATCH | I_POP_BIT:
+	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		f->atomic = FALSE;
@@ -2670,6 +2675,7 @@ static void i_interpret1(frame *f, char *pc)
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
+	    f->atomic = atomic;
 	    break;
 
 	case I_RLIMITS:
