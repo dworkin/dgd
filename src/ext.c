@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,7 +29,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	6
+# define EXTENSION_MINOR	7
 
 
 /*
@@ -389,7 +389,7 @@ static void ext_runtime_error(frame *f, char *mesg)
  */
 bool ext_dgd(char *module)
 {
-    voidf *ext_ext[1];
+    voidf *ext_ext[2];
     voidf *ext_frame[4];
     voidf *ext_data[2];
     voidf *ext_value[3];
@@ -410,6 +410,7 @@ bool ext_dgd(char *module)
     }
 
     ext_ext[0] = (voidf *) &kf_ext_kfun;
+    ext_ext[1] = (voidf *) NULL;
     ext_frame[0] = (voidf *) &ext_frame_object;
     ext_frame[1] = (voidf *) &ext_frame_dataspace;
     ext_frame[2] = (voidf *) &ext_frame_arg;
@@ -454,7 +455,7 @@ bool ext_dgd(char *module)
     ext_mapping[6] = (voidf *) &ext_mapping_size;
     ext_runtime[0] = (voidf *) &ext_runtime_error;
 
-    ftabs[ 0] = ext_ext;	sizes[ 0] = 1;
+    ftabs[ 0] = ext_ext;	sizes[ 0] = 2;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
     ftabs[ 2] = ext_data;	sizes[ 2] = 2;
     ftabs[ 3] = ext_value;	sizes[ 3] = 3;
