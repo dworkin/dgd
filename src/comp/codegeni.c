@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -311,6 +311,7 @@ static void code_clear()
 typedef struct _jmplist_ {
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
+    node *label;			/* label to jump to */
     struct _jmplist_ *next;		/* next in list */
 } jmplist;
 
@@ -326,6 +327,7 @@ static jmplist *true_list;		/* list of true jumps */
 static jmplist *false_list;		/* list of false jumps */
 static jmplist *break_list;		/* list of break jumps */
 static jmplist *continue_list;		/* list of continue jumps */
+static jmplist *goto_list;		/* list of goto jumps */
 
 /*
  * NAME:	jump->addr()
@@ -390,6 +392,10 @@ static void jump_make(char *code)
     jmplist *j;
     int i;
     jmplist *jmpjmp;
+
+    for (j = goto_list; j != (jmplist *) NULL; j = j->next) {
+	j->to = j->label->mod;
+    }
 
     i = jchunksz;
     jmpjmp = (jmplist *) NULL;
@@ -456,6 +462,7 @@ static void jump_clear()
 {
     jmpchunk *l, *f;
 
+    goto_list = (jmplist *) NULL;
     for (l = fjump; l != (jmpchunk *) NULL; ) {
 	f = l;
 	l = l->next;
@@ -2151,6 +2158,19 @@ static void cg_stmt(node *n)
 	    }
 	    cg_stmt(m->r.right);
 	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
+	    break;
+
+	case N_GOTO:
+	    while (m->mod > 0) {
+		code_instr(I_RETURN, 0);
+		m->mod--;
+	    }
+	    goto_list = jump(I_JUMP, goto_list);
+	    goto_list->label = m->r.right;
+	    break;
+
+	case N_LABEL:
+	    m->mod = here;
 	    break;
 
 	case N_RLIMITS:

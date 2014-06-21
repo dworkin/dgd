@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -295,7 +295,7 @@ void node_free()
 	n = &l->n[i];
 	do {
 	    --n;
-	    if (n->type == N_STR) {
+	    if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
 		/*
 		 * only strings are deleted here
 		 */

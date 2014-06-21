@@ -559,6 +559,13 @@ stmt
 		      $$ = $4;
 		  }
 		}
+	| ident ':'
+		{ $<node>2 = c_label($1); }
+	  stmt	{ $$ = c_concat($<node>2, $4); }
+	| GOTO ident ';'
+		{
+		  $$ = c_goto($2);
+		}
 	| BREAK ';'
 		{
 		  $$ = c_break();
