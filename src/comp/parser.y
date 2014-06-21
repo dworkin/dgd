@@ -152,12 +152,12 @@ top_level_declarations
 	;
 
 top_level_declaration
-	: opt_private INHERIT opt_inherit_label composite_string ';'
+	: opt_private INHERIT opt_inherit_label opt_object composite_string ';'
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
 		  } else if (nerrors > 0 ||
-			     !c_inherit($4->l.string->text, $3, $1 != 0)) {
+			     !c_inherit($5->l.string->text, $3, $1 != 0)) {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.
@@ -328,6 +328,11 @@ type_specifier
 		}
 	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
+	;
+
+opt_object
+	: /* empty */
+	| OBJECT
 	;
 
 star_list
@@ -657,10 +662,10 @@ primary_p1_exp
 		  t_void($1);
 		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
 		}
-	| primary_p2_exp LARROW string
-		{ $$ = c_instanceof($1, $3); }
-	| primary_p2_exp LARROW '(' composite_string ')'
+	| primary_p2_exp LARROW opt_object string
 		{ $$ = c_instanceof($1, $4); }
+	| primary_p2_exp LARROW opt_object '(' composite_string ')'
+		{ $$ = c_instanceof($1, $5); }
 	;
 
 primary_p2_exp
