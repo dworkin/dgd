@@ -638,7 +638,7 @@ object *o_new(char *name, control *ctrl)
     /* add reference to all inherited objects */
     o->u_ref = 0;	/* increased to 1 in following loop */
     inh = ctrl->inherits;
-    for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
+    for (i = ctrl->ninherits; i > 0; --i, inh++) {
 	OBJW(inh->oindex)->u_ref++;
     }
 
