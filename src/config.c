@@ -789,7 +789,12 @@ void conf_dread(int fd, char *buf, char *layout, Uint n)
     size = (tmp >> 16) & 0xff;
     rsize = tmp & 0xff;
     while (n != 0) {
-	i = sizeof(buffer) / rsize;
+	if (rsize == 0) {
+		i = 0;
+	} else {
+		i = sizeof(buffer) / rsize;
+	}
+
 	if (i > n) {
 	    i = n;
 	}
