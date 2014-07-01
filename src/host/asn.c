@@ -613,7 +613,6 @@ static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
 	    } while (--len != 0);
 	    *num++ = bits;
 	}
-	num -= size;
 
 	*sz = size;
 	*minus = FALSE;
