@@ -1462,7 +1462,6 @@ static void asn_pow2mod(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint siz
     /* x = a reduced to size words */
     if (sizea >= size) {
 	memcpy(x, a, size * sizeof(Uint));
-	sizea = size;
     } else {
 	memcpy(x, a, sizea * sizeof(Uint));
 	memset(x + sizea, '\0', (size - sizea) * sizeof(Uint));
