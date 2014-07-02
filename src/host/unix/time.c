@@ -53,7 +53,7 @@ char *P_ctime(char *buf, Uint time)
     time_t t;
 
     offset = 0;
-    for (offset = 0; time >= 2147397248L; time -= 883612800L, offset += 28) ;
+    for ( ; time >= 2147397248L; time -= 883612800L, offset += 28) ;
     t = time;
     memcpy(buf, ctime(&t), 26);
     if (offset != 0) {

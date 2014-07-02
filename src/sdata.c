@@ -1815,7 +1815,6 @@ static void d_count(savedata *save, value *v, Uint n)
 		    if (elts->u.objcnt == count &&
 			elts[1].u.objcnt != obj->update) {
 			d_upgrade_lwobj(v->u.array, obj);
-			elts = v->u.array->elts;
 		    }
 		    d_arrcount(save, v->u.array);
 		}
@@ -3131,7 +3130,6 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab,
 		sco++;
 		osc++;
 	    }
-	    sco -= data->ncallouts;
 	    AFREE(osc - data->ncallouts);
 	} else if (conv_data) {
 	    socallout *soc;
@@ -3155,7 +3153,6 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab,
 		sco++;
 		soc++;
 	    }
-	    sco -= data->ncallouts;
 	    AFREE(soc - data->ncallouts);
 	} else if (conv_co2) {
 	    calloutos *cos;
@@ -3179,7 +3176,6 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab,
 		sco++;
 		cos++;
 	    }
-	    sco -= data->ncallouts;
 	    AFREE(cos - data->ncallouts);
 	} else if (conv_type) {
 	    calloutso *cso;
@@ -3199,7 +3195,6 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab,
 		sco++;
 		cso++;
 	    }
-	    sco -= data->ncallouts;
 	    AFREE(cso - data->ncallouts);
 	} else if (conv_time) {
 	    register tscallout *tco;
@@ -3219,7 +3214,6 @@ static dataspace *d_conv_dataspace(object *obj, Uint *counttab,
 		sco++;
 		tco++;
 	    }
-	    sco -= data->ncallouts;
 	    AFREE(tco - data->ncallouts);
 
 	} else {

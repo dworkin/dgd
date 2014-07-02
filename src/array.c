@@ -1434,7 +1434,6 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 	    memcpy(v3, v2, j * sizeof(value));
 	    v3 += j;
 
-	    v2 -= (size - j);
 	    if (m->size > 0) {
 		FREE(m->elts);
 	    }

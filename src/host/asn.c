@@ -613,7 +613,6 @@ static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
 	    } while (--len != 0);
 	    *num++ = bits;
 	}
-	num -= size;
 
 	*sz = size;
 	*minus = FALSE;
@@ -918,7 +917,7 @@ int asn_cmp(frame *f, string *s1, string *s2)
 string *asn_mult(frame *f, string *s1, string *s2, string *s3)
 {
     Uint *a, *b, *c, *t1, *t2;
-    Uint *aa, *bb, *cc, *mod, sizea, sizeb, sizec, sizemod;
+    Uint *cc, *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb;
     string *str;
 
@@ -929,9 +928,9 @@ string *asn_mult(frame *f, string *s1, string *s2, string *s3)
 	error("Invalid modulus");
     }
 
-    aa = a = ALLOCA(Uint, (s1->len >> 2) + 2);
+    a = ALLOCA(Uint, (s1->len >> 2) + 2);
     asi_strtonum(a, s1, &sizea, &minusa);
-    bb = b = ALLOCA(Uint, (s2->len >> 2) + 2);
+    b = ALLOCA(Uint, (s2->len >> 2) + 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
     if (asn_ticks(f, 4 + sizea * sizeb)) {
 	AFREE(b);
@@ -973,8 +972,6 @@ string *asn_mult(frame *f, string *s1, string *s2, string *s3)
 	if (asn_ticks(f, sizemod * (sizec - sizemod + 10))) {
 	    AFREE(t1);
 	    AFREE(cc);
-	    AFREE(bb);
-	    AFREE(aa);
 	    AFREE(mod);
 	    error("Out of ticks");
 	}
@@ -985,8 +982,6 @@ string *asn_mult(frame *f, string *s1, string *s2, string *s3)
     AFREE(t1);
     AFREE(cc);
 
-    AFREE(bb);
-    AFREE(aa);
     AFREE(mod);
     return str;
 }
@@ -1466,7 +1461,6 @@ static void asn_pow2mod(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint siz
     /* x = a reduced to size words */
     if (sizea >= size) {
 	memcpy(x, a, size * sizeof(Uint));
-	sizea = size;
     } else {
 	memcpy(x, a, sizea * sizeof(Uint));
 	memset(x + sizea, '\0', (size - sizea) * sizeof(Uint));
