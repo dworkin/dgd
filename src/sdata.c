@@ -1815,7 +1815,6 @@ static void d_count(savedata *save, value *v, Uint n)
 		    if (elts->u.objcnt == count &&
 			elts[1].u.objcnt != obj->update) {
 			d_upgrade_lwobj(v->u.array, obj);
-			elts = v->u.array->elts;
 		    }
 		    d_arrcount(save, v->u.array);
 		}
