@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,13 +45,13 @@ static kfunc kforig[] = {
 # undef FUNCDEF
 };
 
-kfunc kftab[256];	/* kfun tab */
-kfunc kfenc[128];	/* encryption */
-kfunc kfdec[128];	/* decryption */
-kfunc kfhsh[128];	/* hashing */
-char kfind[256];	/* n -> index */
-static char kfx[256];	/* index -> n */
-int nkfun, ne, nd, nh;	/* # kfuns */
+kfunc kftab[KFTAB_SIZE];	/* kfun tab */
+kfunc kfenc[KFCRYPT_SIZE];	/* encryption */
+kfunc kfdec[KFCRYPT_SIZE];	/* decryption */
+kfunc kfhsh[KFCRYPT_SIZE];	/* hashing */
+kfindex kfind[KFTAB_SIZE];	/* n -> index */
+static kfindex kfx[KFTAB_SIZE];	/* index -> n */
+int nkfun, ne, nd, nh;		/* # kfuns */
 
 extern void kf_enc(frame *, int, value *);
 extern void kf_enc_key(frame *, int, value *);
@@ -219,7 +219,7 @@ static int kf_cmp(cvoid *cv1, cvoid *cv2)
 void kf_init()
 {
     int i, n;
-    char *k1, *k2;
+    kfindex *k1, *k2;
 
     memcpy(kftab, kforig, sizeof(kforig));
     for (i = 0, k1 = kfind, k2 = kfx; i < KF_BUILTINS; i++) {
@@ -276,7 +276,7 @@ int kf_func(char *name)
 
     n = kf_index(kftab, KF_BUILTINS, nkfun, name);
     if (n >= 0) {
-	n = UCHAR(kfx[n]);
+	n = kfx[n];
     }
     return n;
 }
@@ -357,8 +357,8 @@ void kf_reclaim()
 
     /* remove duplicates at the end */
     for (i = last; i >= KF_BUILTINS; --i) {
-	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
-	if (UCHAR(kfx[n]) == i + 128 - KF_BUILTINS) {
+	n = kfind[i + 128 - KF_BUILTINS];
+	if (kfx[n] == i + 128 - KF_BUILTINS) {
 	    if (i != last) {
 		message("*** Reclaimed %d kernel function%s\012", last - i,
 			((last - i > 1) ? "s" : ""));
@@ -373,9 +373,9 @@ void kf_reclaim()
 	if (kfx[i] != '\0') {
 	    message("*** Preparing to reclaim unused kfun %s\012",
 		    kftab[i].name);
-	    n = UCHAR(kfind[last-- + 128 - KF_BUILTINS]);
-	    kfx[n] = UCHAR(kfx[i]);
-	    kfind[UCHAR(kfx[n])] = n;
+	    n = kfind[last-- + 128 - KF_BUILTINS];
+	    kfx[n] = kfx[i];
+	    kfind[kfx[n]] = n;
 	    kfx[i] = '\0';
 	}
     }
@@ -408,7 +408,7 @@ bool kf_dump(int fd)
     dh.nkfun = nkfun - KF_BUILTINS;
     dh.kfnamelen = 0;
     for (i = KF_BUILTINS; i < nkfun; i++) {
-	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
+	n = kfind[i + 128 - KF_BUILTINS];
 	if (kfx[n] != '\0') {
 	    dh.kfnamelen += strlen(kftab[n].name) + 1;
 	    if (kftab[n].name[1] != '.') {
@@ -428,7 +428,7 @@ bool kf_dump(int fd)
     buffer = ALLOCA(char, dh.kfnamelen);
     buflen = 0;
     for (i = KF_BUILTINS; i < nkfun; i++) {
-	n = UCHAR(kfind[i + 128 - KF_BUILTINS]);
+	n = kfind[i + 128 - KF_BUILTINS];
 	if (kfx[n] != '\0') {
 	    kf = &kftab[n];
 	    if (kf->name[1] != '.') {

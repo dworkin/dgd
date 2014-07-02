@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -54,6 +54,8 @@ typedef struct _block_ {
     int vindex;			/* variable index */
     int nvars;			/* # variables in this block */
     struct _block_ *prev;	/* surrounding block */
+    node *gotos;		/* gotos in this block */
+    node *labels;		/* labels in this block */
 } block;
 
 typedef struct _bchunk_ {
@@ -195,7 +197,31 @@ static void block_new()
 	b->nvars = 0;
     }
     b->prev = thisblock;
+    b->gotos = (node *) NULL;
+    b->labels = (node *) NULL;
     thisblock = b;
+}
+
+/*
+ * NAME:	block->goto()
+ * DESCRIPTION:	resolve gotos in this block
+ */
+static void block_goto(node *g)
+{
+    block *b;
+    node *l;
+
+    for (b = thisblock; b != (block *) NULL; b = b->prev) {
+	for (l = b->labels; l != (node *) NULL; l = l->r.right) {
+	    if (str_cmp(l->l.string, g->l.string) == 0) {
+		g->mod -= l->mod;
+		g->r.right = l;
+		return;
+	    }
+	}
+    }
+
+    c_error("unknown label: %s", g->l.string->text);
 }
 
 /*
@@ -204,8 +230,14 @@ static void block_new()
  */
 static void block_del(bool keep)
 {
+    node *g, *r;
     block *f;
     int i;
+
+    for (g = thisblock->gotos; g != (node *) NULL; g = r) {
+	r = g->r.right;
+	block_goto(g);
+    }
 
     f = thisblock;
     if (keep) {
@@ -697,7 +729,7 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
 		o_upgrade(obj, ctrl, f);
 		vmap = ctrl_varmap(obj->ctrl, ctrl);
 		if (vmap != (unsigned short *) NULL) {
-		    d_set_varmap(obj->ctrl, ctrl->nvariables + 1, vmap);
+		    d_set_varmap(ctrl, vmap);
 		}
 	    }
 	    return obj;
@@ -1183,7 +1215,7 @@ node *c_endif(node *n1, node *n3)
 static node *c_block(node *n, int type, int flags)
 {
     n = node_mon(N_BLOCK, type, n);
-    n->flags |= n->l.left->flags & F_FLOW & ~F_RETURN & ~flags;
+    n->flags |= n->l.left->flags & F_FLOW & ~F_EXIT & ~flags;
     return n;
 }
 
@@ -1239,7 +1271,7 @@ node *c_while(node *n1, node *n2)
 {
     n1 = node_bin(N_FOR, 0, n1, n2 = c_reloop(n2));
     if (n2 != (node *) NULL) {
-	n1->flags |= n2->flags & F_FLOW & ~(F_ENTRY | F_RETURN);
+	n1->flags |= n2->flags & F_FLOW & ~(F_ENTRY | F_EXIT);
     }
     return c_endloop(n1);
 }
@@ -1254,7 +1286,7 @@ node *c_for(node *n1, node *n2, node *n3, node *n4)
     n2 = node_bin((n2 == (node *) NULL) ? N_FOREVER : N_FOR,
 		  0, n2, c_concat(n4, n3));
     if (n4 != (node *) NULL) {
-	n2->flags = n4->flags & F_FLOW & ~(F_ENTRY | F_RETURN);
+	n2->flags = n4->flags & F_FLOW & ~(F_ENTRY | F_EXIT);
     }
 
     return c_concat(n1, c_endloop(n2));
@@ -1662,7 +1694,7 @@ node *c_case(node *n1, node *n2)
 
     switch_list->ncase++;
     n2 = node_mon(N_CASE, 0, (node *) NULL);
-    n2->flags |= F_ENTRY | F_REACH;
+    n2->flags |= F_ENTRY | F_CASE;
     case_list = node_bin(N_PAIR, 0, case_list, node_bin(N_PAIR, 0, n1, n2));
     return n2;
 }
@@ -1687,11 +1719,51 @@ node *c_default()
 	switch_list->ncase++;
 	switch_list->dflt = TRUE;
 	n = node_mon(N_CASE, 0, (node *) NULL);
-	n->flags |= F_ENTRY | F_REACH;
+	n->flags |= F_ENTRY | F_CASE;
 	case_list = node_bin(N_PAIR, 0, case_list,
 			     node_bin(N_PAIR, 0, (node *) NULL, n));
     }
 
+    return n;
+}
+
+/*
+ * NAME:	compile->label()
+ * DESCRIPTION:	add a label
+ */
+node *c_label(node *n)
+{
+    block *b;
+    node *l;
+
+    for (b = thisblock; b != (block *) NULL; b = b->prev) {
+	for (l = b->labels; l != (node *) NULL; l = l->r.right) {
+	    if (str_cmp(n->l.string, l->l.string) == 0) {
+		c_error("redeclaration of label: %s", n->l.string->text);
+		return NULL;
+	    }
+	}
+    }
+
+    n->r.right = thisblock->labels;
+    thisblock->labels = n;
+    n->type = N_LABEL;
+    n->mod = nesting;
+    n->flags = F_ENTRY | F_LABEL;
+    return n;
+}
+
+/*
+ * NAME:	compile->goto()
+ * DESCRIPTION:	handle goto
+ */
+node *c_goto(node *n)
+{
+    n->r.right = thisblock->gotos;
+    thisblock->gotos = n;
+    n->type = N_GOTO;
+    n->mod = nesting;
+    n->flags = F_EXIT;
     return n;
 }
 
@@ -1777,7 +1849,7 @@ node *c_return(node *n, int typechecked)
     }
 
     n = node_mon(N_RETURN, nesting, n);
-    n->flags |= F_RETURN;
+    n->flags |= F_EXIT;
     return n;
 }
 
@@ -1802,13 +1874,13 @@ node *c_endcompound(node *n)
     int flags;
 
     if (n != (node *) NULL) {
+      flags = n->flags & (F_REACH | F_END);
       if (n->type == N_PAIR) {
-	  flags = n->flags & (F_REACH | F_END);
 	  n = revert_list(n);
 	  n->flags = (n->flags & ~F_END) | flags;
       }
       n = node_mon(N_COMPOUND, 0, n);
-      n->flags = n->l.left->flags;
+      n->flags = n->l.left->flags & ~F_LABEL;
 
       if (thisblock->nvars != 0) {
 	  node *v, *l, *z, *f, *p;
@@ -1825,7 +1897,8 @@ node *c_endcompound(node *n)
 	  while (i < thisblock->vindex + thisblock->nvars) {
 	      l = c_concat(node_var(variables[i].type, i), l);
 
-	      if (switch_list != (loop *) NULL || variables[i].unset) {
+	      if (switch_list != (loop *) NULL || (flags & F_LABEL) ||
+		  variables[i].unset) {
 		  switch (variables[i].type) {
 		  case T_INT:
 		      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
@@ -2161,6 +2234,7 @@ node *c_address(node *func, node *args, int typechecked)
     }
     func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
 		   args, FALSE);
+    func->mod = T_CLASS;
     func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
@@ -2168,7 +2242,7 @@ node *c_address(node *func, node *args, int typechecked)
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 
@@ -2180,8 +2254,8 @@ node *c_extend(node *func, node *args, int typechecked)
 {
 # ifdef CLOSURES
     if (typechecked && func->mod != T_MIXED) {
-	if (func->mod != T_OBJECT ||
-	    (func->class != NULL &&
+	if (func->mod != T_OBJECT &&
+	    (func->mod != T_CLASS ||
 	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
@@ -2191,14 +2265,17 @@ node *c_extend(node *func, node *args, int typechecked)
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    return funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
+    func = funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
 		   args, FALSE);
+    func->mod = T_CLASS;
+    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    return func;
 # else
     UNREFERENCED_PARAMETER(func);
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 
@@ -2210,8 +2287,8 @@ node *c_call(node *func, node *args, int typechecked)
 {
 # ifdef CLOSURES
     if (typechecked && func->mod != T_MIXED) {
-	if (func->mod != T_OBJECT ||
-	    (func->class != NULL &&
+	if (func->mod != T_OBJECT &&
+	    (func->mod != T_CLASS ||
 	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
@@ -2228,7 +2305,7 @@ node *c_call(node *func, node *args, int typechecked)
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(typechecked);
     c_error("syntax error");
-    return (node *) NULL;
+    return node_mon(N_FAKE, T_MIXED, (node *) NULL);
 # endif
 }
 

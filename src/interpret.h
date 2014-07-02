@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -55,8 +55,11 @@
 # define I_EINSTR_MASK		0x3f	/* extended instruction mask */
 
 # define I_PUSH_INT1		0x00	/* 1 signed */
+# define I_PUSH_INT2		0x20	/* 2 signed */
 # define I_PUSH_INT4		0x01	/* 4 signed */
+# define I_PUSH_INT8		0x21	/* reserved */
 # define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
+# define I_PUSH_FLOAT12		0x23	/* reserved */
 # define I_PUSH_STRING		0x04	/* 1 unsigned */
 # define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
 # define I_PUSH_FAR_STRING	0x05	/* 1 unsigned, 2 unsigned */
@@ -68,6 +71,8 @@
 # define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
+# define I_CALL_EFUNC		0x0e	/* 2 unsigned (+ 1 unsigned) */
+# define I_CALL_CEFUNC		0x0f	/* 2 unsigned, 1 unsigned */
 # define I_CALL_CKFUNC		0x10	/* 1 unsigned, 1 unsigned */
 # define I_STORE_LOCAL		0x11	/* 1 signed */
 # define I_STORE_GLOBAL		0x12	/* 1 unsigned */
@@ -153,7 +158,7 @@
 # define T_INDEXED(t)	((t) >= T_ARRAY)   /* T_ARRAY, T_MAPPING, T_LWOBJECT */
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
-			  "array", "mapping", "lwobject", "mixed", "void" }
+			  "array", "mapping", "object", "mixed", "void" }
 # define TNBUFSIZE	24
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
@@ -283,7 +288,7 @@ extern int	i_spread	(frame*, int, int, Uint);
 extern void	i_global	(frame*, int, int);
 extern void	i_global_lvalue	(frame*, int, int, int, Uint);
 extern void	i_index		(frame*);
-extern void	i_index2	(frame*, value*, value*, value*);
+extern void	i_index2	(frame*, value*, value*, value*, bool);
 extern void	i_index_lvalue	(frame*, int, Uint);
 extern char    *i_typename	(char*, unsigned int);
 extern char    *i_classname	(frame*, Uint);

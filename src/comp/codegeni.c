@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -219,8 +219,28 @@ static void code_instr(int i, unsigned short line)
  */
 static void code_kfun(int kf, unsigned short line)
 {
-    code_instr(I_CALL_KFUNC, line);
-    code_byte(kf);
+    if (kf < 256) {
+	code_instr(I_CALL_KFUNC, line);
+	code_byte(kf);
+    } else {
+	code_instr(I_CALL_EFUNC, line);
+	code_word(kf);
+    }
+}
+
+/*
+ * NAME:	code->ckfun()
+ * DESCRIPTION:	generate code for a builtin kfun
+ */
+static void code_ckfun(int kf, unsigned short line)
+{
+    if (kf < 256) {
+	code_instr(I_CALL_CKFUNC, line);
+	code_byte(kf);
+    } else {
+	code_instr(I_CALL_CEFUNC, line);
+	code_word(kf);
+    }
 }
 
 /*
@@ -291,6 +311,7 @@ static void code_clear()
 typedef struct _jmplist_ {
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
+    node *label;			/* label to jump to */
     struct _jmplist_ *next;		/* next in list */
 } jmplist;
 
@@ -306,6 +327,7 @@ static jmplist *true_list;		/* list of true jumps */
 static jmplist *false_list;		/* list of false jumps */
 static jmplist *break_list;		/* list of break jumps */
 static jmplist *continue_list;		/* list of continue jumps */
+static jmplist *goto_list;		/* list of goto jumps */
 
 /*
  * NAME:	jump->addr()
@@ -370,6 +392,10 @@ static void jump_make(char *code)
     jmplist *j;
     int i;
     jmplist *jmpjmp;
+
+    for (j = goto_list; j != (jmplist *) NULL; j = j->next) {
+	j->to = j->label->mod;
+    }
 
     i = jchunksz;
     jmpjmp = (jmplist *) NULL;
@@ -436,6 +462,7 @@ static void jump_clear()
 {
     jmpchunk *l, *f;
 
+    goto_list = (jmplist *) NULL;
     for (l = fjump; l != (jmpchunk *) NULL; ) {
 	f = l;
 	l = l->next;
@@ -460,6 +487,9 @@ static void cg_int(Int l)
     if (l >= -128 && l <= 127) {
 	code_instr(I_PUSH_INT1, 0);
 	code_byte(l);
+    } else if (l >= -32768 && l <= 32767) {
+	code_instr(I_PUSH_INT2, 0);
+	code_word(l);
     } else {
 	code_instr(I_PUSH_INT4, 0);
 	code_word(l >> 16);
@@ -1036,8 +1066,7 @@ static void cg_expr(node *n, int pop)
 		code_kfun((int) n->r.number, n->line);
 		code_byte(i);
 	    } else if (spread) {
-		code_instr(I_CALL_CKFUNC, n->line);
-		code_byte((int) n->r.number);
+		code_ckfun((int) n->r.number, n->line);
 		code_byte(i);
 	    } else {
 		code_kfun((int) n->r.number, n->line);
@@ -1321,6 +1350,11 @@ static void cg_expr(node *n, int pop)
 	code_kfun(KF_NE_FLT, n->line);
 	break;
 
+    case N_NEG:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_NEG, n->line);
+	break;
+
     case N_NIL:
 	code_kfun(KF_NIL, n->line);
 	break;
@@ -1568,6 +1602,11 @@ static void cg_expr(node *n, int pop)
 	} else {
 	    code_kfun(KF_TST, n->line);
 	}
+	break;
+
+    case N_UMIN:
+	cg_expr(n->l.left, FALSE);
+	code_kfun(KF_UMIN, n->line);
 	break;
 
     case N_XOR:
@@ -2119,6 +2158,19 @@ static void cg_stmt(node *n)
 	    }
 	    cg_stmt(m->r.right);
 	    jump_resolve(jump(I_JUMP, (jmplist *) NULL), where);
+	    break;
+
+	case N_GOTO:
+	    while (m->mod > 0) {
+		code_instr(I_RETURN, 0);
+		m->mod--;
+	    }
+	    goto_list = jump(I_JUMP, goto_list);
+	    goto_list->label = m->r.right;
+	    break;
+
+	case N_LABEL:
+	    m->mod = here;
 	    break;
 
 	case N_RLIMITS:

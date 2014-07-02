@@ -1,10 +1,10 @@
 A few useful notes for compiling DGD
 
 DGD's build process is very simple, and doesn't have
-a configure script.
+a configure script.  Platforms are detected in
+src/Makefile.
 
-DGD can be compiled on Unix alike systems and on Windows,
-see doc/Platforms for more information. Also see
+DGD can be compiled on Unix-like systems and on Windows.  See
 src/host/win32/README for additional information regarding
 the Windows build.
 
@@ -18,6 +18,9 @@ SLASHSLASH		      C++ style // comments in LPC code.
 NETWORK_EXTENSIONS	      Enable extended network functionality
 			      (outgoing connections, opening ports
 			      from LPC code)
+
+NOFLOAT			      Compile without host floats (LPC floats will
+			      still work).
 
 CLOSURES		      Function pointers, implemented as a builtin
 			      type.  See doc/builtin for information

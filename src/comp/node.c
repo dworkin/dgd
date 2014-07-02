@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -203,6 +203,15 @@ node *node_fcall(int mod, string *tclass, char *func, Int call)
 }
 
 /*
+ * NAME:	node->op()
+ * DESCRIPTION:	create an operator node
+ */
+node *node_op(char *op)
+{
+    return node_str(str_new(op, strlen(op)));
+}
+
+/*
  * NAME:	node->mon()
  * DESCRIPTION:	create a node for a monadic operator
  */
@@ -286,7 +295,7 @@ void node_free()
 	n = &l->n[i];
 	do {
 	    --n;
-	    if (n->type == N_STR) {
+	    if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
 		/*
 		 * only strings are deleted here
 		 */

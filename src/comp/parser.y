@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -48,7 +48,8 @@ static bool typechecking;	/* does the current function have it? */
 
 static void  t_void	(node*);
 static bool  t_unary	(node*, char*);
-static node *uassign	(int, node*, char*);
+static node *prefix	(int, node*, char*);
+static node *postfix	(int, node*, char*);
 static node *cast	(node*, node*);
 static node *idx	(node*, node*);
 static node *range	(node*, node*, node*);
@@ -79,9 +80,9 @@ static node *comma	(node*, node*);
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token NIL BREAK DO MAPPING ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT
-       FLOAT RLIMITS FOR INHERIT IF GOTO RETURN MIXED STRING WHILE FUNCTION
-       CATCH SWITCH VOID PRIVATE ATOMIC NOMASK VARARGS
+%token GOTO MAPPING NOMASK BREAK ELSE CASE FOR FLOAT STATIC CONTINUE RLIMITS
+       DEFAULT DO MIXED OBJECT RETURN FUNCTION OPERATOR IF INT PRIVATE CATCH
+       SWITCH INHERIT WHILE ATOMIC STRING VOID VARARGS NIL
 
 /*
  * composite tokens
@@ -115,15 +116,15 @@ static node *comma	(node*, node*);
 	     opt_private non_private star_list
 %type <node> opt_inherit_label string composite_string formals_declaration
 	     formal_declaration_list varargs_formal_declaration
-	     formal_declaration type_specifier data_dcltr function_dcltr dcltr
-	     list_dcltr dcltr_or_stmt_list dcltr_or_stmt if_stmt stmt
-	     compound_stmt opt_caught_stmt function_name primary_p1_exp
-	     primary_p2_exp postfix_exp prefix_exp cast_exp mult_oper_exp
-	     add_oper_exp shift_oper_exp rel_oper_exp equ_oper_exp
-	     bitand_oper_exp bitxor_oper_exp bitor_oper_exp and_oper_exp
-	     or_oper_exp cond_exp exp list_exp opt_list_exp f_list_exp
-	     f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma assoc_exp
-	     assoc_arg_list opt_assoc_arg_list_comma ident
+	     formal_declaration type_specifier data_dcltr operator
+	     function_name function_dcltr dcltr list_dcltr dcltr_or_stmt_list
+	     dcltr_or_stmt if_stmt stmt compound_stmt opt_caught_stmt
+	     function_call primary_p1_exp primary_p2_exp postfix_exp prefix_exp
+	     cast_exp mult_oper_exp add_oper_exp shift_oper_exp rel_oper_exp
+	     equ_oper_exp bitand_oper_exp bitxor_oper_exp bitor_oper_exp
+	     and_oper_exp or_oper_exp cond_exp exp list_exp opt_list_exp
+	     f_list_exp f_opt_list_exp arg_list opt_arg_list opt_arg_list_comma
+	     assoc_exp assoc_arg_list opt_assoc_arg_list_comma ident
 
 %%
 
@@ -151,12 +152,12 @@ top_level_declarations
 	;
 
 top_level_declaration
-	: opt_private INHERIT opt_inherit_label composite_string ';'
+	: opt_private INHERIT opt_inherit_label opt_object composite_string ';'
 		{
 		  if (ndeclarations > 0) {
 		      c_error("inherit must precede all declarations");
 		  } else if (nerrors > 0 ||
-			     !c_inherit($4->l.string->text, $3, $1 != 0)) {
+			     !c_inherit($5->l.string->text, $3, $1 != 0)) {
 		      /*
 		       * The object to be inherited may have been compiled;
 		       * abort this compilation and possibly restart later.
@@ -329,6 +330,11 @@ type_specifier
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
 	;
 
+opt_object
+	: /* empty */
+	| OBJECT
+	;
+
 star_list
 	: /* empty */
 		{ $$ = 0; }
@@ -349,8 +355,56 @@ data_dcltr
 		}
 	;
 
+operator
+	: OPERATOR '+'
+		{ $$ = node_op("+"); }
+	| OPERATOR '-'
+		{ $$ = node_op("-"); }
+	| OPERATOR '*'
+		{ $$ = node_op("*"); }
+	| OPERATOR '/'
+		{ $$ = node_op("/"); }
+	| OPERATOR '%'
+		{ $$ = node_op("%"); }
+	| OPERATOR '&'
+		{ $$ = node_op("&"); }
+	| OPERATOR '^'
+		{ $$ = node_op("^"); }
+	| OPERATOR '|'
+		{ $$ = node_op("|"); }
+	| OPERATOR '<'
+		{ $$ = node_op("<"); }
+	| OPERATOR '>'
+		{ $$ = node_op(">"); }
+	| OPERATOR LE
+		{ $$ = node_op("<="); }
+	| OPERATOR GE
+		{ $$ = node_op(">="); }
+	| OPERATOR LSHIFT
+		{ $$ = node_op("<<"); }
+	| OPERATOR RSHIFT
+		{ $$ = node_op(">>"); }
+	| OPERATOR '~'
+		{ $$ = node_op("~"); }
+	| OPERATOR PLUS_PLUS
+		{ $$ = node_op("++"); }
+	| OPERATOR MIN_MIN
+		{ $$ = node_op("--"); }
+	| OPERATOR '[' ']'
+		{ $$ = node_op("[]"); }
+	| OPERATOR '[' ']' '='
+		{ $$ = node_op("[]="); }
+	| OPERATOR '[' DOT_DOT ']'
+		{ $$ = node_op("[..]"); }
+	;
+
+function_name
+	: ident
+	| operator
+	;
+
 function_dcltr
-	: star_list ident '(' formals_declaration ')'
+	: star_list function_name '(' formals_declaration ')'
 		{ $$ = node_bin(N_FUNC, ($1 << REFSHIFT) & T_REF, $2, $4); }
 	;
 
@@ -510,6 +564,13 @@ stmt
 		      $$ = $4;
 		  }
 		}
+	| ident ':'
+		{ $<node>2 = c_label($1); }
+	  stmt	{ $$ = c_concat($<node>2, $4); }
+	| GOTO ident ';'
+		{
+		  $$ = c_goto($2);
+		}
 	| BREAK ';'
 		{
 		  $$ = c_break();
@@ -542,11 +603,12 @@ opt_caught_stmt
 		{ $$ = $2; }
 	;
 
-function_name
-	: ident	{ $$ = c_flookup($1, typechecking); }
-	| COLON_COLON ident
+function_call
+	: function_name
+		{ $$ = c_flookup($1, typechecking); }
+	| COLON_COLON function_name
 		{ $$ = c_iflookup($2, (node *) NULL); }
-	| ident COLON_COLON ident
+	| function_name COLON_COLON function_name
 		{ $$ = c_iflookup($3, $1); }
 	;
 
@@ -580,7 +642,7 @@ primary_p1_exp
 		}
 	| '(' list_exp ')'
 		{ $$ = $2; }
-	| function_name '(' opt_arg_list ')'
+	| function_call '(' opt_arg_list ')'
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
 	| '&' ident '(' opt_arg_list ')'
 		{ $$ = c_address($2, $4, typechecking); }
@@ -600,10 +662,10 @@ primary_p1_exp
 		  t_void($1);
 		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
 		}
-	| primary_p2_exp LARROW string
-		{ $$ = c_instanceof($1, $3); }
-	| primary_p2_exp LARROW '(' composite_string ')'
+	| primary_p2_exp LARROW opt_object string
 		{ $$ = c_instanceof($1, $4); }
+	| primary_p2_exp LARROW opt_object '(' composite_string ')'
+		{ $$ = c_instanceof($1, $5); }
 	;
 
 primary_p2_exp
@@ -617,17 +679,17 @@ primary_p2_exp
 postfix_exp
 	: primary_p2_exp
 	| postfix_exp PLUS_PLUS
-		{ $$ = uassign(N_PLUS_PLUS, $1, "++"); }
+		{ $$ = postfix(N_PLUS_PLUS, $1, "++"); }
 	| postfix_exp MIN_MIN
-		{ $$ = uassign(N_MIN_MIN, $1, "--"); }
+		{ $$ = postfix(N_MIN_MIN, $1, "--"); }
 	;
 
 prefix_exp
 	: postfix_exp
 	| PLUS_PLUS cast_exp
-		{ $$ = uassign(N_ADD_EQ_1, $2, "++"); }
+		{ $$ = prefix(N_ADD_EQ_1, $2, "++"); }
 	| MIN_MIN cast_exp
-		{ $$ = uassign(N_SUB_EQ_1, $2, "--"); }
+		{ $$ = prefix(N_SUB_EQ_1, $2, "--"); }
 	| '-' cast_exp
 		{ $$ = umin($2); }
 	| '+' cast_exp
@@ -641,14 +703,18 @@ prefix_exp
 		{
 		  $$ = $2;
 		  t_void($$);
-		  if (typechecking && $$->mod != T_INT && $$->mod != T_MIXED) {
-		      char tnbuf[TNBUFSIZE];
-
-		      c_error("bad argument type for ~ (%s)",
-			      i_typename(tnbuf, $$->mod));
-		      $$->mod = T_MIXED;
-		  } else {
+		  if ($$->mod == T_INT) {
 		      $$ = xor(N_XOR, $$, node_int((Int) -1), "^");
+		  } else if ($$->mod == T_OBJECT || $$->mod == T_CLASS) {
+		      $$ = node_mon(N_NEG, T_OBJECT, $$);
+		  } else {
+		      if (typechecking && $$->mod != T_MIXED) {
+			  char tnbuf[TNBUFSIZE];
+
+			  c_error("bad argument type for ~ (%s)",
+				  i_typename(tnbuf, $$->mod));
+		      }
+		      $$ = node_mon(N_NEG, T_MIXED, $$);
 		  }
 		}
 	;
@@ -887,13 +953,30 @@ static bool t_unary(node *n, char *name)
 }
 
 /*
- * NAME:	uassign()
- * DESCRIPTION:	handle a unary assignment operator
+ * NAME:	postfix()
+ * DESCRIPTION:	handle a postfix assignment operator
  */
-static node *uassign(int op, node *n, char *name)
+static node *postfix(int op, node *n, char *name)
 {
     t_unary(n, name);
     return node_mon((n->mod == T_INT) ? op + 1 : op, n->mod, c_lvalue(n, name));
+}
+
+/*
+ * NAME:	prefix()
+ * DESCRIPTION:	handle a prefix assignment operator
+ */
+static node *prefix(int op, node *n, char *name)
+{
+    unsigned short type;
+
+    if (n->mod == T_OBJECT || n->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else {
+	t_unary(n, name);
+	type = n->mod;
+    }
+    return node_mon(op, type, c_lvalue(n, name));
 }
 
 /*
@@ -1079,7 +1162,8 @@ static node *idx(node *n1, node *n2)
 	}
 	type = T_INT;
     } else {
-	if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
+	if (typechecking && n1->mod != T_OBJECT && n1->mod != T_CLASS &&
+	    n1->mod != T_MAPPING && n1->mod != T_MIXED) {
 	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
 	}
 	type = T_MIXED;
@@ -1093,6 +1177,8 @@ static node *idx(node *n1, node *n2)
  */
 static node *range(node *n1, node *n2, node *n3)
 {
+    unsigned short type;
+
     if (n1->type == N_STR && (n2 == (node *) NULL || n2->type == N_INT) &&
 	(n3 == (node *) NULL || n3->type == N_INT)) {
 	Int from, to;
@@ -1107,7 +1193,12 @@ static node *range(node *n1, node *n2, node *n3)
 	}
     }
 
-    if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
+    type = T_MIXED;
+    if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else if (n1->mod == T_MAPPING) {
+	type = T_MAPPING;
+    } else if (typechecking && n1->mod != T_MIXED) {
 	char tnbuf[TNBUFSIZE];
 
 	/* indices */
@@ -1118,12 +1209,14 @@ static node *range(node *n1, node *n2, node *n3)
 	    c_error("bad index type (%s)", i_typename(tnbuf, n3->mod));
 	}
 	/* range */
-	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING) {
+	if ((n1->mod & T_REF) == 0 && n1->mod != T_STRING && n1->mod != T_MIXED)
+	{
 	    c_error("bad indexed type (%s)", i_typename(tnbuf, n1->mod));
 	}
+	type = n1->mod;
     }
 
-    return node_bin(N_RANGE, n1->mod, n1, node_bin(N_PAIR, 0, n2, n3));
+    return node_bin(N_RANGE, type, n1, node_bin(N_PAIR, 0, n2, n3));
 }
 
 /*
@@ -1133,20 +1226,24 @@ static node *range(node *n1, node *n2, node *n3)
 static node *bini(int op, node *n1, node *n2, char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
+    unsigned short type;
 
     t_void(n1);
     t_void(n2);
 
-    if (typechecking &&
-	((n1->mod != T_INT && n1->mod != T_MIXED) ||
-	 (n2->mod != T_INT && n2->mod != T_MIXED))) {
+    type = T_MIXED;
+    if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else if (n1->mod == T_INT && (n2->mod == T_INT || n2->mod == T_MIXED)) {
+	type = T_INT;
+    } else if (typechecking && n1->mod != T_MIXED) {
 	c_error("bad argument types for %s (%s, %s)", name,
 		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
     }
     if (n1->mod == T_INT && n2->mod == T_INT) {
 	op++;
     }
-    return node_bin(op, T_INT, n1, n2);
+    return node_bin(op, type, n1, n2);
 }
 
 
@@ -1163,18 +1260,15 @@ static node *bina(int op, node *n1, node *n2, char *name)
     t_void(n2);
 
     type = T_MIXED;
-    if (typechecking &&
-	((n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED) ||
-	 (!T_ARITHMETIC(n1->mod) && n1->mod != T_MIXED) ||
-	 (!T_ARITHMETIC(n2->mod) && n2->mod != T_MIXED))) {
-	c_error("bad argument types for %s (%s, %s)", name,
-		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
-    } else if (n1->mod == T_INT || n2->mod == T_INT) {
+    if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else if (n1->mod == T_INT && (n2->mod == T_INT || n2->mod == T_MIXED)) {
 	if (n1->mod == T_INT && n2->mod == T_INT) {
 	    op++;
 	}
 	type = T_INT;
-    } else if (n1->mod == T_FLOAT || n2->mod == T_FLOAT) {
+    } else if (n1->mod == T_FLOAT && (n2->mod == T_FLOAT || n2->mod == T_MIXED))
+    {
 	type = T_FLOAT;
 	switch(op) {
 	    case N_ADD:
@@ -1199,6 +1293,9 @@ static node *bina(int op, node *n1, node *n2, char *name)
 	    default:
 		break;
 	}
+    } else if (typechecking && n1->mod != T_MIXED) {
+	c_error("bad argument types for %s (%s, %s)", name,
+		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
     }
 
     return node_bin(op, type, n1, n2);
@@ -1246,14 +1343,7 @@ static node *mdiv(int op, node *n1, node *n2, char *name)
 	    c_error("division by zero");
 	    return n1;
 	}
-	if ((d | i) < 0) {
-	    Int r;
-
-	    r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	    n1->l.number = ((i ^ d) < 0) ? -r : r;
-	} else {
-	    n1->l.number = ((Uint) i) / ((Uint) d);
-	}
+	n1->l.number = i / d;
 	return n1;
     } else if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	/* f / f */
@@ -1289,14 +1379,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
 	    c_error("modulus by zero");
 	    return n1;
 	}
-	if (d < 0) {
-	    d = -d;
-	}
-	if (i < 0) {
-	    n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
-	} else {
-	    n1->l.number = ((Uint) i) % ((Uint) d);
-	}
+	n1->l.number = i % d;
 	return n1;
     }
 
@@ -1323,8 +1406,7 @@ static node *add(int op, node *n1, node *n2, char *name)
 	    n2 = cast(n2, node_type(T_STRING, (string *) NULL));
 	}
     } else if (n2->mod == T_STRING && op == N_ADD) {
-	if (n1->mod == T_INT || n1->mod == T_FLOAT ||
-	    (n1->mod == T_MIXED && typechecking)) {
+	if (n1->mod == T_INT || n1->mod == T_FLOAT) {
 	    n1 = cast(n1, node_type(T_STRING, (string *) NULL));
 	}
     }
@@ -1347,8 +1429,9 @@ static node *add(int op, node *n1, node *n2, char *name)
 	return node_str(str_add(n1->l.string, n2->l.string));
     }
 
-    type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_NIL || type == T_OBJECT || type == T_CLASS) {
+    if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else if ((type=c_tmatch(n1->mod, n2->mod)) == T_NIL) {
 	type = T_MIXED;
 	if (typechecking) {
 	    c_error("bad argument types for %s (%s, %s)", name,
@@ -1356,12 +1439,13 @@ static node *add(int op, node *n1, node *n2, char *name)
 	}
     } else if (type == T_INT) {
 	op++;
-    } else if (op == N_ADD_EQ) {
+    } else if (op == N_ADD_EQ && n1->mod != n2->mod) {
+	type = n1->mod;
 	if (n1->mod == T_INT) {
 	    n2 = node_mon(N_CAST, T_INT, n2);
 	    type = T_INT;
 	    op++;
-	} else if (n1->mod == T_FLOAT && n2->mod != T_FLOAT) {
+	} else if (n1->mod == T_FLOAT) {
 	    n2 = node_mon(N_CAST, T_FLOAT, n2);
 	    type = T_FLOAT;
 	}
@@ -1396,9 +1480,10 @@ static node *sub(int op, node *n1, node *n2, char *name)
 	return n1;
     }
 
-    type = c_tmatch(n1->mod, n2->mod);
-    if (type == T_NIL || type == T_STRING || type == T_OBJECT ||
-	type == T_CLASS || type == T_MAPPING) {
+    if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
+	type = T_OBJECT;
+    } else if ((type=c_tmatch(n1->mod, n2->mod)) == T_NIL || type == T_STRING ||
+	       type == T_MAPPING) {
 	if ((type=n1->mod) != T_MAPPING ||
 	    (n2->mod != T_MIXED && (n2->mod & T_REF) == 0)) {
 	    type = T_MIXED;
@@ -1411,7 +1496,7 @@ static node *sub(int op, node *n1, node *n2, char *name)
     } else if (type == T_INT) {
 	op++;
     } else if (type == T_MIXED) {
-	type = (n1->mod == T_MIXED) ? n2->mod : n1->mod;
+	type = n1->mod;
     } else if (n1->mod == T_MIXED && (n2->mod & T_REF)) {
 	type = T_MIXED;
     }
@@ -1426,7 +1511,11 @@ static node *umin(node *n)
 {
     xfloat flt;
 
-    if (t_unary(n, "unary -")) {
+    if (n->mod == T_OBJECT || n->mod == T_CLASS) {
+	return node_mon(N_UMIN, T_OBJECT, n);
+    } else if (n->mod == T_MIXED) {
+	return node_mon(N_UMIN, T_MIXED, n);
+    } else if (t_unary(n, "unary -")) {
 	if (n->mod == T_FLOAT) {
 	    FLT_ZERO(flt.high, flt.low);
 	    n = sub(N_SUB, node_float(&flt), n, "-");
@@ -1552,9 +1641,9 @@ static node *rel(int op, node *n1, node *n2, char *name)
 	}
     }
 
-    if (typechecking &&
-	((n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED) ||
-	 (!T_ARITHSTR(n1->mod) && n1->mod != T_MIXED) ||
+    if (n1->mod != T_OBJECT && n1->mod != T_CLASS && n1->mod != T_MIXED &&
+	typechecking &&
+	((n1->mod != n2->mod && n2->mod != T_MIXED) || !T_ARITHSTR(n1->mod) ||
 	 (!T_ARITHSTR(n2->mod) && n2->mod != T_MIXED))) {
 	c_error("bad argument types for %s (%s, %s)", name,
 		i_typename(tnbuf1, n1->mod), i_typename(tnbuf2, n2->mod));
@@ -1623,7 +1712,7 @@ static node *eq(node *n1, node *n2)
     }
 
     op = N_EQ;
-    if (n1->mod != n2->mod && n1->mod != T_MIXED && n2->mod != T_MIXED &&
+    if (c_tmatch(n1->mod, n2->mod) == T_NIL &&
 	(!c_nil(n1) || !T_POINTER(n2->mod)) &&
 	(!c_nil(n2) || !T_POINTER(n1->mod))) {
 	if (typechecking) {

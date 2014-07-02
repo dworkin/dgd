@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -326,7 +326,7 @@ void i_pop(frame *f, int n)
  */
 value *i_reverse(frame *f, int n)
 {
-    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+    if (f->p_ctrl->flags & CTRL_OLDVM) {
 	value sp[MAX_LOCALS];
 	value lip[3 * MAX_LOCALS];
 	value *v1, *v2, *w1, *w2;
@@ -633,7 +633,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+	if (f->p_ctrl->flags & CTRL_OLDVM) {
 	    (--f->sp)->type = T_ALVALUE;
 	    f->sp->oindex = vtype;
 	    f->sp->u.array = a;
@@ -699,6 +699,24 @@ void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint class)
 	f->lip->type = T_INT;
 	(f->lip++)->u.number = class;
     }
+}
+
+/*
+ * NAME:	interpret->operator()
+ * DESCRIPTION:	index or indexed assignment
+ */
+static void i_operator(frame *f, array *lwobj, char *op, int nargs, value *var,
+		       value *idx, value *val)
+{
+    i_push_value(f, idx);
+    if (nargs > 1) {
+	i_push_value(f, val);
+    }
+    if (!i_call(f, (object *) NULL, lwobj, op, strlen(op), TRUE, nargs)) {
+	error("Index on bad type");
+    }
+
+    *var = *f->sp++;
 }
 
 /*
@@ -779,7 +797,7 @@ void i_index(frame *f)
  * NAME:	interpret->index2()
  * DESCRIPTION:	index a value
  */
-void i_index2(frame *f, value *aval, value *ival, value *val)
+void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
 {
     int i;
 
@@ -792,6 +810,9 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 	}
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
 						 ival->u.number)]);
+	if (!keep) {
+	    str_del(aval->u.string);
+	}
 	PUT_INTVAL(val, i);
 	return;
 
@@ -806,6 +827,16 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 
     case T_MAPPING:
 	*val = *map_index(f->data, aval->u.array, ival, NULL, NULL);
+	if (!keep) {
+	    i_del_value(ival);
+	}
+	break;
+
+    case T_LWOBJECT:
+	i_operator(f, aval->u.array, "[]", 1, val, ival, (value *) NULL);
+	if (!keep) {
+	    i_del_value(ival);
+	}
 	break;
 
     default:
@@ -825,7 +856,7 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
 
     case T_LWOBJECT:
 	ival = d_get_elts(val->u.array);
-	if (DESTRUCTED(ival)) {
+	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
 	    *val = nil_value;
 	    break;
 	}
@@ -834,6 +865,10 @@ void i_index2(frame *f, value *aval, value *ival, value *val)
     case T_MAPPING:
 	arr_ref(val->u.array);
 	break;
+    }
+
+    if (!keep) {
+	arr_del(aval->u.array);
     }
 }
 
@@ -1101,7 +1136,7 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
  */
 void i_cast(frame *f, value *val, unsigned int type, Uint class)
 {
-    char tnbuf[8];
+    char tnbuf[TNBUFSIZE];
     value *elts;
 
     if (type == T_CLASS) {
@@ -1279,6 +1314,14 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 	arr_del(arr);
 	break;
 
+    case T_LWOBJECT:
+	arr = aval->u.array;
+	i_operator(f, arr, "[]=", 2, var, ival, val);
+	i_del_value(var);
+	i_del_value(ival);
+	arr_del(arr);
+	break;
+
     default:
 	error("Index on bad type");
     }
@@ -1295,7 +1338,7 @@ void i_store(frame *f)
     value *val;
     Uint class;
 
-    if (f->p_ctrl->flags & (CTRL_OLDVM | CTRL_COMPILED)) {
+    if (f->p_ctrl->flags & CTRL_OLDVM) {
 	value *lval;
 	array *a;
 	value ival;
@@ -1500,6 +1543,7 @@ void i_new_rlimits(frame *f, Int depth, Int t)
     rlinfo *rlim;
 
     rlim = ALLOC(rlinfo, 1);
+    memset(rlim, '\0', sizeof(rlinfo));
     if (depth != 0) {
 	if (depth < 0) {
 	    rlim->nodepth = TRUE;
@@ -1687,7 +1731,7 @@ char *i_prev_program(frame *f, int n)
  */
 void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, int nargs, int strict)
 {
-    char tnbuf[8];
+    char tnbuf[TNBUFSIZE];
     int i, n, atype, ptype;
     char *args;
     bool ellipsis;
@@ -1997,6 +2041,7 @@ static void i_interpret0(frame *f, char *pc)
     char *p;
     kfunc *kf;
     int size;
+    bool atomic;
     Int newdepth, newticks;
 
     size = 0;
@@ -2253,6 +2298,7 @@ static void i_interpret0(frame *f, char *pc)
 	    break;
 
 	case II_CATCH:
+	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		f->atomic = FALSE;
@@ -2265,6 +2311,7 @@ static void i_interpret0(frame *f, char *pc)
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
+	    f->atomic = atomic;
 	    break;
 
 	case II_RLIMITS:
@@ -2312,6 +2359,7 @@ static void i_interpret1(frame *f, char *pc)
     char *p;
     kfunc *kf;
     int size;
+    bool atomic;
     Int newdepth, newticks;
     value val;
 
@@ -2337,6 +2385,10 @@ static void i_interpret1(frame *f, char *pc)
 	switch (instr & I_EINSTR_MASK) {
 	case I_PUSH_INT1:
 	    PUSH_INTVAL(f, FETCH1S(pc));
+	    continue;
+
+	case I_PUSH_INT2:
+	    PUSH_INTVAL(f, FETCH2S(pc, u));
 	    continue;
 
 	case I_PUSH_INT4:
@@ -2379,12 +2431,13 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_INDEX:
 	case I_INDEX | I_POP_BIT:
-	    i_index(f);
+	    i_index2(f, f->sp + 1, f->sp, &val, FALSE);
+	    *++f->sp = val;
 	    break;
 
 	case I_INDEX2:
 	    --f->sp;
-	    i_index2(f, f->sp + 2, f->sp + 1, f->sp);
+	    i_index2(f, f->sp + 2, f->sp + 1, f->sp, TRUE);
 	    continue;
 
 	case I_AGGREGATE:
@@ -2554,9 +2607,59 @@ static void i_interpret1(frame *f, char *pc)
 	    }
 	    break;
 
+	case I_CALL_EFUNC:
+	case I_CALL_EFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH2U(pc, u));
+	    if (PROTO_VARGS(kf->proto) != 0) {
+		/* variable # of arguments */
+		u = FETCH1U(pc) + size;
+		size = 0;
+	    } else {
+		/* fixed # of arguments */
+		u = PROTO_NARGS(kf->proto);
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		if ((short) u < 0) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
+		{
+		    error("Bad argument %d for kfun %s", u, kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    break;
+
 	case I_CALL_CKFUNC:
 	case I_CALL_CKFUNC | I_POP_BIT:
 	    kf = &KFUN(FETCH1U(pc));
+	    u = FETCH1U(pc) + size;
+	    size = 0;
+	    if (u != PROTO_NARGS(kf->proto)) {
+		if (u < PROTO_NARGS(kf->proto)) {
+		    error("Too few arguments for kfun %s", kf->name);
+		} else {
+		    error("Too many arguments for kfun %s", kf->name);
+		}
+	    }
+	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
+		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+			    TRUE);
+	    }
+	    u = (*kf->func)(f, u, kf);
+	    if (u != 0) {
+		error("Bad argument %d for kfun %s", u, kf->name);
+	    }
+	    break;
+
+	case I_CALL_CEFUNC:
+	case I_CALL_CEFUNC | I_POP_BIT:
+	    kf = &KFUN(FETCH2U(pc, u));
 	    u = FETCH1U(pc) + size;
 	    size = 0;
 	    if (u != PROTO_NARGS(kf->proto)) {
@@ -2604,6 +2707,7 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_CATCH:
 	case I_CATCH | I_POP_BIT:
+	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
 	    if (!ec_push((ec_ftn) i_catcherr)) {
 		f->atomic = FALSE;
@@ -2616,6 +2720,7 @@ static void i_interpret1(frame *f, char *pc)
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
 	    }
+	    f->atomic = atomic;
 	    break;
 
 	case I_RLIMITS:
@@ -2868,19 +2973,11 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 
     /* execute code */
     d_get_funcalls(f.ctrl);	/* make sure they are available */
-    if (f.func->class & C_COMPILED) {
-	Uint l;
-
-	/* compiled function */
-	(*pcfunctions[FETCH3U(pc, l)])(&f);
+    f.prog = pc += 2;
+    if (f.p_ctrl->flags & CTRL_OLDVM) {
+	i_interpret0(&f, pc);
     } else {
-	/* interpreted function */
-	f.prog = pc += 2;
-	if (f.p_ctrl->flags & CTRL_OLDVM) {
-	    i_interpret0(&f, pc);
-	} else {
-	    i_interpret1(&f, pc);
-	}
+	i_interpret1(&f, pc);
     }
 
     /* clean up stack, move return value to outer stackframe */
@@ -3224,8 +3321,6 @@ static unsigned short i_line1(frame *f)
 	case I_STORE_GLOBAL | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
-	case I_CALL_CKFUNC:
-	case I_CALL_CKFUNC | I_POP_BIT:
 	case I_RLIMITS:
 	    pc++;
 	    break;
@@ -3242,6 +3337,14 @@ static unsigned short i_line1(frame *f)
 	    }
 	    break;
 
+	case I_CALL_EFUNC:
+	case I_CALL_EFUNC | I_POP_BIT:
+	    if (PROTO_VARGS(KFUN(FETCH2U(pc, u)).proto) != 0) {
+		pc++;
+	    }
+	    break;
+
+	case I_PUSH_INT2:
 	case I_PUSH_NEAR_STRING:
 	case I_PUSH_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL:
@@ -3253,6 +3356,8 @@ static unsigned short i_line1(frame *f)
 	case I_JUMP:
 	case I_CALL_AFUNC:
 	case I_CALL_AFUNC | I_POP_BIT:
+	case I_CALL_CKFUNC:
+	case I_CALL_CKFUNC | I_POP_BIT:
 	case I_CATCH:
 	case I_CATCH | I_POP_BIT:
 	    pc += 2;
@@ -3265,6 +3370,8 @@ static unsigned short i_line1(frame *f)
 	case I_CALL_DFUNC | I_POP_BIT:
 	case I_CALL_FUNC:
 	case I_CALL_FUNC | I_POP_BIT:
+	case I_CALL_CEFUNC:
+	case I_CALL_CEFUNC | I_POP_BIT:
 	    pc += 3;
 	    break;
 

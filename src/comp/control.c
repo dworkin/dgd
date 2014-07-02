@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1266,7 +1266,6 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
     control *ctrl;
     oh *ohash;
     short index;
-    short inherit;
     char *proto;
 
     *cfstr = (string *) NULL;
@@ -1280,7 +1279,6 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	    c_error("undefined label %s", label);
 	    return (char *) NULL;
 	}
-	inherit = ohash->index;
 	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
 	if (symb == (dsymbol *) NULL) {
 	    if (ctrl->ninherits != 1) {
@@ -1308,7 +1306,6 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	vfh *h;
 
 	/* check if the function exists */
-	inherit = ninherits;
 	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
 	if (h == (vfh *) NULL || (h->ohash == newohash &&
 	    ((h=(vfh *) h->chain.next) == (vfh *) NULL ||

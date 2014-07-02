@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1498,13 +1498,10 @@ array *d_list_callouts(dataspace *host, dataspace *data)
  * NAME:	data->set_varmap()
  * DESCRIPTION:	add a variable mapping to a control block
  */
-void d_set_varmap(control *ctrl, unsigned int nvar, unsigned short *vmap)
+void d_set_varmap(control *ctrl, unsigned short *vmap)
 {
-    ctrl->vmapsize = nvar;
+    ctrl->vmapsize = ctrl->nvariables + 1;
     ctrl->vmap = vmap;
-
-    /* varmap modified */
-    ctrl->flags |= CTRL_VARMAP;
 }
 
 /*

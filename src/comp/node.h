@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@
  */
 
 typedef struct _node_ {
-    char type;			/* type of node */
+    unsigned char type;		/* type of node */
     char flags;			/* bitflags */
     unsigned short mod;		/* modifier */
     unsigned short line;	/* line number */
@@ -47,14 +47,15 @@ typedef struct _node_ {
 # define NFLT_NEG(n)	FLT_NEG((n)->l.fhigh, (n)->r.flow)
 
 # define F_CONST	0x01	/* constant expression */
-# define F_SIDEFX	0x02	/* expression has side effect */
-# define F_ENTRY	0x04	/* (first) statement has case/default entry */
-# define F_REACH	0x08	/* statement block has case/default entry */
+# define F_ENTRY	0x02	/* (first) statement has case/default entry */
+# define F_CASE		0x04	/* statement block has case/default entry */
+# define F_LABEL	0x08	/* statement block has label entry */
+# define F_REACH	(F_CASE | F_LABEL)
 # define F_BREAK	0x10	/* break */
 # define F_CONTINUE	0x20	/* continue */
-# define F_RETURN	0x40	/* return */
-# define F_END		(F_BREAK | F_CONTINUE | F_RETURN)
-# define F_FLOW		(F_ENTRY | F_REACH | F_END)
+# define F_EXIT		0x40	/* return/goto */
+# define F_END		(F_BREAK | F_CONTINUE | F_EXIT)
+# define F_FLOW		(F_ENTRY | F_CASE | F_END)
 # define F_VARARGS	0x04	/* varargs in parameter list */
 # define F_ELLIPSIS	0x08	/* ellipsis in parameter list */
 
@@ -67,6 +68,7 @@ extern node *node_str	(string*);
 extern node *node_var	(unsigned int, int);
 extern node *node_type	(int, string*);
 extern node *node_fcall	(int, string*, char*, Int);
+extern node *node_op	(char*);
 extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);
@@ -199,4 +201,9 @@ extern void  node_clear	(void);
 # define N_PLUS_PLUS		123
 # define N_PLUS_PLUS_INT	124
 # define N_PLUS_PLUS_FLOAT	125
+# define N_NEG			126
+# define N_UMIN			127
+# define N_GOTO			128
+# define N_LABEL		129
+
 extern int nil_node;

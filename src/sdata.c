@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -626,20 +626,7 @@ static control *load_control(object *obj, void (*readv) (char*, sector*, Uint, U
  */
 control *d_load_control(object *obj)
 {
-    control *ctrl;
-
-    if (obj->flags & O_COMPILED) {
-	ctrl = d_new_control();
-	ctrl->oindex = obj->index;
-
-	/* initialize control block of compiled object */
-	pc_control(ctrl, obj);
-	ctrl->flags |= CTRL_COMPILED;
-    } else {
-	ctrl = load_control(obj, sw_readv);
-    }
-
-    return ctrl;
+    return load_control(obj, sw_readv);
 }
 
 /*
@@ -2449,8 +2436,7 @@ sector d_swapout(unsigned int frag)
 
 	    prev = ctrl->prev;
 	    if (ctrl->ndata == 0) {
-		if ((ctrl->sectors == (sector *) NULL &&
-		     !(ctrl->flags & CTRL_COMPILED)) ||
+		if (ctrl->sectors == (sector *) NULL ||
 		    (ctrl->flags & CTRL_VARMAP)) {
 		    d_save_control(ctrl);
 		}
@@ -2984,11 +2970,11 @@ static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
  * NAME:	data->fixobjs()
  * DESCRIPTION:	fix objects in dataspace
  */
-static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
+static void d_fixobjs(svalue *v, Uint n, Uint *ctab)
 {
     while (n != 0) {
 	if (v->type == T_OBJECT) {
-	    if (v->oindex < nobjects && v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
+	    if (v->u.objcnt == ctab[v->oindex] && OBJ(v->oindex)->count != 0) {
 		/* fix object count */
 		v->u.objcnt = OBJ(v->oindex)->count;
 	    } else {
@@ -3006,19 +2992,19 @@ static void d_fixobjs(svalue *v, Uint n, Uint *ctab, uindex nobjects)
  * NAME:	data->fixdata()
  * DESCRIPTION:	fix a dataspace
  */
-static void d_fixdata(dataspace *data, Uint *counttab, uindex nobjects)
+static void d_fixdata(dataspace *data, Uint *counttab)
 {
     scallout *sco;
     unsigned int n;
 
-    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab, nobjects);
-    d_fixobjs(data->selts, data->eltsize, counttab, nobjects);
+    d_fixobjs(data->svariables, (Uint) data->nvariables, counttab);
+    d_fixobjs(data->selts, data->eltsize, counttab);
     for (n = data->ncallouts, sco = data->scallouts; n > 0; --n, sco++) {
 	if (sco->val[0].type == T_STRING) {
 	    if (sco->nargs > 3) {
-		d_fixobjs(sco->val, (Uint) 4, counttab, nobjects);
+		d_fixobjs(sco->val, (Uint) 4, counttab);
 	    } else {
-		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab, nobjects);
+		d_fixobjs(sco->val, sco->nargs + (Uint) 1, counttab);
 	    }
 	}
     }
@@ -3257,13 +3243,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
     control *ctrl;
 
     ctrl = (control *) NULL;
-    if (obj->flags & O_COMPILED) {
-	ctrl = d_new_control();
-	ctrl->oindex = obj->index;
-	obj->ctrl = ctrl;
-	pc_control(ctrl, obj);
-	ctrl->flags |= CTRL_COMPILED;
-    } else if (obj->cfirst != SW_UNUSED) {
+    if (obj->cfirst != SW_UNUSED) {
 	if (!converted) {
 	    ctrl = d_conv_control(obj, readv);
 	} else {
@@ -3289,7 +3269,7 @@ control *d_restore_ctrl(object *obj, void (*readv) (char*, sector*, Uint, Uint))
  * NAME:	data->restore_data()
  * DESCRIPTION:	restore a dataspace
  */
-dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
+dataspace *d_restore_data(object *obj, Uint *counttab,
 			  void (*readv) (char*, sector*, Uint, Uint))
 {
     dataspace *data;
@@ -3308,7 +3288,7 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
 	}
 	obj->data = data;
 	if (counttab != (Uint *) NULL) {
-	    d_fixdata(data, counttab, nobjects);
+	    d_fixdata(data, counttab);
 	}
 
 	if (!(obj->flags & O_MASTER) &&
@@ -3326,17 +3306,17 @@ dataspace *d_restore_data(object *obj, Uint *counttab, uindex nobjects,
  * NAME:	data->restore_obj()
  * DESCRIPTION:	restore an object
  */
-void d_restore_obj(object *obj, Uint *counttab, uindex nobjects, bool cactive, bool dactive)
+void d_restore_obj(object *obj, Uint *counttab, bool cactive, bool dactive)
 {
     control *ctrl;
     dataspace *data;
 
     if (!converted) {
 	ctrl = d_restore_ctrl(obj, sw_conv);
-	data = d_restore_data(obj, counttab, nobjects, sw_conv);
+	data = d_restore_data(obj, counttab, sw_conv);
     } else {
 	ctrl = d_restore_ctrl(obj, sw_dreadv);
-	data = d_restore_data(obj, counttab, nobjects, sw_dreadv);
+	data = d_restore_data(obj, counttab, sw_dreadv);
     }
 
     if (!cactive) {
@@ -3418,61 +3398,59 @@ void d_free_control(control *ctrl)
 	FREE(ctrl->vmap);
     }
 
-    if (!(ctrl->flags & CTRL_COMPILED)) {
-	/* delete sectors */
-	if (ctrl->sectors != (sector *) NULL) {
-	    FREE(ctrl->sectors);
-	}
+    /* delete sectors */
+    if (ctrl->sectors != (sector *) NULL) {
+	FREE(ctrl->sectors);
+    }
 
-	if (ctrl->inherits != (dinherit *) NULL) {
-	    /* delete inherits */
-	    FREE(ctrl->inherits);
-	}
+    if (ctrl->inherits != (dinherit *) NULL) {
+	/* delete inherits */
+	FREE(ctrl->inherits);
+    }
 
-	if (ctrl->prog != (char *) NULL) {
-	    FREE(ctrl->prog);
-	}
+    if (ctrl->prog != (char *) NULL) {
+	FREE(ctrl->prog);
+    }
 
-	/* delete inherit indices */
-	if (ctrl->imap != (char *) NULL) {
-	    FREE(ctrl->imap);
-	}
+    /* delete inherit indices */
+    if (ctrl->imap != (char *) NULL) {
+	FREE(ctrl->imap);
+    }
 
-	/* delete string constants */
-	if (ctrl->sstrings != (dstrconst *) NULL) {
-	    FREE(ctrl->sstrings);
-	}
-	if (ctrl->stext != (char *) NULL) {
-	    FREE(ctrl->stext);
-	}
+    /* delete string constants */
+    if (ctrl->sstrings != (dstrconst *) NULL) {
+	FREE(ctrl->sstrings);
+    }
+    if (ctrl->stext != (char *) NULL) {
+	FREE(ctrl->stext);
+    }
 
-	/* delete function definitions */
-	if (ctrl->funcdefs != (dfuncdef *) NULL) {
-	    FREE(ctrl->funcdefs);
-	}
+    /* delete function definitions */
+    if (ctrl->funcdefs != (dfuncdef *) NULL) {
+	FREE(ctrl->funcdefs);
+    }
 
-	/* delete variable definitions */
-	if (ctrl->vardefs != (dvardef *) NULL) {
-	    FREE(ctrl->vardefs);
-	    if (ctrl->classvars != (char *) NULL) {
-		FREE(ctrl->classvars);
-	    }
+    /* delete variable definitions */
+    if (ctrl->vardefs != (dvardef *) NULL) {
+	FREE(ctrl->vardefs);
+	if (ctrl->classvars != (char *) NULL) {
+	    FREE(ctrl->classvars);
 	}
+    }
 
-	/* delete function call table */
-	if (ctrl->funcalls != (char *) NULL) {
-	    FREE(ctrl->funcalls);
-	}
+    /* delete function call table */
+    if (ctrl->funcalls != (char *) NULL) {
+	FREE(ctrl->funcalls);
+    }
 
-	/* delete symbol table */
-	if (ctrl->symbols != (dsymbol *) NULL) {
-	    FREE(ctrl->symbols);
-	}
+    /* delete symbol table */
+    if (ctrl->symbols != (dsymbol *) NULL) {
+	FREE(ctrl->symbols);
+    }
 
-	/* delete variable types */
-	if (ctrl->vtypes != (char *) NULL) {
-	    FREE(ctrl->vtypes);
-	}
+    /* delete variable types */
+    if (ctrl->vtypes != (char *) NULL) {
+	FREE(ctrl->vtypes);
     }
 
     if (ctrl != chead) {

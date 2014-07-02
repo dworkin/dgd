@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,6 +29,94 @@
 static void kf_argerror(int kfun, int n)
 {
     error("Bad argument %d for kfun %s", n, kftab[kfun].name);
+}
+
+/*
+ * NAME:	kfun->op_unary()
+ * DESCRIPTION:	handle unary operator
+ */
+static void kf_op_unary(register frame *f, int kfun)
+{
+    if (!i_call(f, (object *) NULL, f->sp->u.array, kftab[kfun].name,
+		strlen(kftab[kfun].name), TRUE, 0)) {
+	kf_argerror(kfun, 1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object",
+	      kftab[kfun].name);
+    }
+
+    arr_del(f->sp[1].u.array);
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * NAME:	kfun->op_binary()
+ * DESCRIPTION:	handle binary operator
+ */
+static void kf_op_binary(register frame *f, int kfun)
+{
+    if (VAL_NIL(f->sp)) {
+	kf_argerror(kfun, 2);
+    }
+
+    if (!i_call(f, (object *) NULL, f->sp[1].u.array, kftab[kfun].name,
+		strlen(kftab[kfun].name), TRUE, 1)) {
+	kf_argerror(kfun, 1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object",
+	      kftab[kfun].name);
+    }
+
+    arr_del(f->sp[1].u.array);
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * NAME:	kfun->op_compare()
+ * DESCRIPTION:	handle compare operator
+ */
+static void kf_op_compare(register frame *f, int kfun)
+{
+    if (VAL_NIL(f->sp)) {
+	kf_argerror(kfun, 2);
+    }
+
+    if (!i_call(f, (object *) NULL, f->sp[1].u.array, kftab[kfun].name,
+		strlen(kftab[kfun].name), TRUE, 1)) {
+	kf_argerror(kfun, 1);
+    }
+    if (f->sp->type != T_INT || (f->sp->u.number & ~1)) {
+	error("operator %s did not return a truth value",
+	      kftab[kfun].name);
+    }
+
+    arr_del(f->sp[1].u.array);
+    f->sp[1] = f->sp[0];
+    f->sp++;
+}
+
+/*
+ * NAME:	kfun->op_ternary()
+ * DESCRIPTION:	handle ternary operator
+ */
+static void kf_op_ternary(register frame *f, int kfun)
+{
+    if (!i_call(f, (object *) NULL, f->sp[2].u.array, kftab[kfun].name,
+		strlen(kftab[kfun].name), TRUE, 2)) {
+	kf_argerror(kfun, 1);
+    }
+    if (f->sp->type != T_LWOBJECT || f->sp->u.array->elts[0].type != T_OBJECT) {
+	error("operator %s did not return a light-weight object",
+	      kftab[kfun].name);
+    }
+
+    arr_del(f->sp[1].u.array);
+    f->sp[1] = f->sp[0];
+    f->sp++;
 }
 
 /*
@@ -183,6 +271,12 @@ int kf_add(frame *f)
 	}
 	break;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_ADD);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_ADD, 1);
     }
@@ -232,6 +326,9 @@ int kf_add1(frame *f)
 	FLT_ONE(f2.high, f2.low);
 	flt_add(&f1, &f2);
 	PUT_FLT(f->sp, f1);
+    } else if (f->sp->type == T_LWOBJECT &&
+	       f->sp->u.array->elts[0].type == T_OBJECT) {
+	kf_op_unary(f, KF_ADD1);
     } else {
 	kf_argerror(KF_ADD1, 1);
     }
@@ -302,6 +399,12 @@ int kf_and(frame *f)
 	}
 	break;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_AND);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_AND, 1);
     }
@@ -344,28 +447,24 @@ int kf_div(frame *f)
     Int i, d;
     xfloat f1, f2;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_DIV, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_DIV, 2);
+	}
 	i = f->sp[1].u.number;
 	d = f->sp->u.number;
 	if (d == 0) {
 	    error("Division by zero");
 	}
-	if ((i | d) < 0) {
-	    Int r;
-
-	    r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	    PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
-	} else {
-	    PUT_INT(&f->sp[1], ((Uint) i) / ((Uint) d));
-	}
+	PUT_INT(&f->sp[1], i / d);
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_DIV, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -374,6 +473,12 @@ int kf_div(frame *f)
 	PUT_FLT(f->sp, f1);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_DIV);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_DIV, 1);
     }
@@ -401,14 +506,7 @@ int kf_div_int(frame *f)
     if (d == 0) {
 	error("Division by zero");
     }
-    if ((i | d) < 0) {
-	Int r;
-
-	r = ((Uint) ((i < 0) ? -i : i)) / ((Uint) ((d < 0) ? -d : d));
-	PUT_INT(&f->sp[1], ((i ^ d) < 0) ? -r : r);
-    } else {
-	PUT_INT(&f->sp[1], ((Uint) i) / ((Uint) d));
-    }
+    PUT_INT(&f->sp[1], i / d);
     f->sp++;
     return 0;
 }
@@ -516,16 +614,19 @@ int kf_ge(frame *f)
     xfloat f1, f2;
     bool flag;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_GE, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_GE, 2);
+	}
 	PUT_INT(&f->sp[1], (f->sp[1].u.number >= f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_GE, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -534,6 +635,9 @@ int kf_ge(frame *f)
 	return 0;
 
     case T_STRING:
+	if (f->sp->type != T_STRING) {
+	    kf_argerror(KF_GE, 2);
+	}
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) >= 0);
 	str_del(f->sp->u.string);
@@ -542,6 +646,12 @@ int kf_ge(frame *f)
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_compare(f, KF_GE);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_GE, 1);
     }
@@ -583,16 +693,19 @@ int kf_gt(frame *f)
     xfloat f1, f2;
     bool flag;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_GT, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_GT, 2);
+	}
 	PUT_INT(&f->sp[1], (f->sp[1].u.number > f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_GT, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -601,6 +714,9 @@ int kf_gt(frame *f)
 	return 0;
 
     case T_STRING:
+	if (f->sp->type != T_STRING) {
+	    kf_argerror(KF_GT, 2);
+	}
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) > 0);
 	str_del(f->sp->u.string);
@@ -609,6 +725,12 @@ int kf_gt(frame *f)
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_compare(f, KF_GT);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_GT, 1);
     }
@@ -650,16 +772,19 @@ int kf_le(frame *f)
     xfloat f1, f2;
     bool flag;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_LE, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_LE, 2);
+	}
 	PUT_INT(&f->sp[1], (f->sp[1].u.number <= f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_LE, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -668,6 +793,9 @@ int kf_le(frame *f)
 	return 0;
 
     case T_STRING:
+	if (f->sp->type != T_STRING) {
+	    kf_argerror(KF_LE, 2);
+	}
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) <= 0);
 	str_del(f->sp->u.string);
@@ -676,6 +804,12 @@ int kf_le(frame *f)
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_compare(f, KF_LE);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_LE, 1);
     }
@@ -706,7 +840,7 @@ int kf_le_int(frame *f)
 # ifdef FUNCDEF
 FUNCDEF("<<", kf_lshift, pt_lshift, 0)
 # else
-char pt_lshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
+char pt_lshift[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->lshift()
@@ -714,6 +848,11 @@ char pt_lshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  */
 int kf_lshift(frame *f)
 {
+    if (f->sp[1].type == T_LWOBJECT &&
+	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	kf_op_binary(f, KF_LSHIFT);
+	return 0;
+    }
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_LSHIFT, 1);
     }
@@ -773,16 +912,19 @@ int kf_lt(frame *f)
     xfloat f1, f2;
     bool flag;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_LT, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_LT, 2);
+	}
 	PUT_INT(&f->sp[1], (f->sp[1].u.number < f->sp->u.number));
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_LT, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -791,6 +933,9 @@ int kf_lt(frame *f)
 	return 0;
 
     case T_STRING:
+	if (f->sp->type != T_STRING) {
+	    kf_argerror(KF_LT, 2);
+	}
 	i_add_ticks(f, 2);
 	flag = (str_cmp(f->sp[1].u.string, f->sp->u.string) < 0);
 	str_del(f->sp->u.string);
@@ -799,6 +944,12 @@ int kf_lt(frame *f)
 	PUT_INTVAL(f->sp, flag);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_compare(f, KF_LT);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_LT, 1);
     }
@@ -829,7 +980,7 @@ int kf_lt_int(frame *f)
 # ifdef FUNCDEF
 FUNCDEF("%", kf_mod, pt_mod, 0)
 # else
-char pt_mod[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
+char pt_mod[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->mod()
@@ -839,6 +990,11 @@ int kf_mod(frame *f)
 {
     Int i, d;
 
+    if (f->sp[1].type == T_LWOBJECT &&
+	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	kf_op_binary(f, KF_MOD);
+	return 0;
+    }
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_MOD, 1);
     }
@@ -850,14 +1006,7 @@ int kf_mod(frame *f)
     if (d == 0) {
 	error("Modulus by zero");
     }
-    if (d < 0) {
-	d = -d;
-    }
-    if (i < 0) {
-	PUT_INT(&f->sp[1], - (Int) (((Uint) -i) % ((Uint) d)));
-    } else {
-	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
-    }
+    PUT_INT(&f->sp[1], i % d);
     f->sp++;
     return 0;
 }
@@ -882,14 +1031,7 @@ int kf_mod_int(frame *f)
     if (d == 0) {
 	error("Modulus by zero");
     }
-    if (d < 0) {
-	d = -d;
-    }
-    if (i < 0) {
-	PUT_INT(&f->sp[1], - (Int) (((Uint) -i) % ((Uint) d)));
-    } else {
-	PUT_INT(&f->sp[1], ((Uint) i) % ((Uint) d));
-    }
+    PUT_INT(&f->sp[1], i % d);
     f->sp++;
     return 0;
 }
@@ -909,16 +1051,19 @@ int kf_mult(frame *f)
 {
     xfloat f1, f2;
 
-    if (f->sp[1].type != f->sp->type) {
-	kf_argerror(KF_MULT, 2);
-    }
-    switch (f->sp->type) {
+    switch (f->sp[1].type) {
     case T_INT:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_MULT, 2);
+	}
 	PUT_INT(&f->sp[1], f->sp[1].u.number * f->sp->u.number);
 	f->sp++;
 	return 0;
 
     case T_FLOAT:
+	if (f->sp->type != T_FLOAT) {
+	    kf_argerror(KF_MULT, 2);
+	}
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f2);
 	f->sp++;
@@ -927,6 +1072,12 @@ int kf_mult(frame *f)
 	PUT_FLT(f->sp, f1);
 	return 0;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_MULT);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_MULT, 1);
     }
@@ -1044,7 +1195,7 @@ int kf_ne_int(frame *f)
 # ifdef FUNCDEF
 FUNCDEF("~", kf_neg, pt_neg, 0)
 # else
-char pt_neg[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
+char pt_neg[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->neg()
@@ -1052,6 +1203,11 @@ char pt_neg[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  */
 int kf_neg(frame *f)
 {
+    if (f->sp->type == T_LWOBJECT &&
+	f->sp->u.array->elts[0].type == T_OBJECT) {
+	kf_op_unary(f, KF_NEG);
+	return 0;
+    }
     if (f->sp->type != T_INT) {
 	kf_argerror(KF_NEG, 1);
     }
@@ -1168,6 +1324,12 @@ int kf_or(frame *f)
 	}
 	break;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_OR);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_OR, 1);
     }
@@ -1197,7 +1359,7 @@ int kf_or_int(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangeft, pt_rangeft, 0)
+FUNCDEF("[..]", kf_rangeft, pt_rangeft, 0)
 # else
 char pt_rangeft[] = { C_STATIC, 3, 0, 0, 9, T_MIXED, T_MIXED, T_MIXED,
 		      T_MIXED };
@@ -1220,15 +1382,27 @@ int kf_rangeft(frame *f)
 
 	return 0;
     }
+    if (f->sp[2].type == T_LWOBJECT &&
+	f->sp[2].u.array->elts[0].type == T_OBJECT) {
+	if (VAL_NIL(f->sp + 1)) {
+	    kf_argerror(KF_RANGEFT, 2);
+	}
+	if (VAL_NIL(f->sp)) {
+	    kf_argerror(KF_RANGEFT, 3);
+	}
+	kf_op_ternary(f, KF_RANGEFT);
 
-    if (f->sp[1].type != T_INT) {
-	kf_argerror(KF_RANGEFT, 2);
+	return 0;
     }
-    if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGEFT, 3);
-    }
+
     switch (f->sp[2].type) {
     case T_STRING:
+	if (f->sp[1].type != T_INT) {
+	    kf_argerror(KF_RANGEFT, 2);
+	}
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGEFT, 3);
+	}
 	i_add_ticks(f, 2);
 	str = str_range(f->sp[2].u.string, (long) f->sp[1].u.number,
 			(long) f->sp->u.number);
@@ -1238,6 +1412,12 @@ int kf_rangeft(frame *f)
 	break;
 
     case T_ARRAY:
+	if (f->sp[1].type != T_INT) {
+	    kf_argerror(KF_RANGEFT, 2);
+	}
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGEFT, 3);
+	}
 	a = arr_range(f->data, f->sp[2].u.array, (long) f->sp[1].u.number,
 		      (long) f->sp->u.number);
 	i_add_ticks(f, a->size);
@@ -1256,7 +1436,7 @@ int kf_rangeft(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_rangef, pt_rangef, 0)
+FUNCDEF("[..]", kf_rangef, pt_rangef, 0)
 # else
 char pt_rangef[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1278,12 +1458,22 @@ int kf_rangef(frame *f)
 
 	return 0;
     }
+    if (f->sp[1].type == T_LWOBJECT &&
+	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (VAL_NIL(f->sp)) {
+	    kf_argerror(KF_RANGEF, 2);
+	}
+	*--f->sp = nil_value;
+	kf_op_ternary(f, KF_RANGEF);
 
-    if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGEF, 2);
+	return 0;
     }
+
     switch (f->sp[1].type) {
     case T_STRING:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGEF, 2);
+	}
 	i_add_ticks(f, 2);
 	str = str_range(f->sp[1].u.string, (long) f->sp->u.number,
 			f->sp[1].u.string->len - 1L);
@@ -1293,6 +1483,9 @@ int kf_rangef(frame *f)
 	break;
 
     case T_ARRAY:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGEF, 2);
+	}
 	a = arr_range(f->data, f->sp[1].u.array, (long) f->sp->u.number,
 		      f->sp[1].u.array->size - 1L);
 	i_add_ticks(f, a->size);
@@ -1311,7 +1504,7 @@ int kf_rangef(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ranget, pt_ranget, 0)
+FUNCDEF("[..]", kf_ranget, pt_ranget, 0)
 # else
 char pt_ranget[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
@@ -1333,12 +1526,24 @@ int kf_ranget(frame *f)
 
 	return 0;
     }
+    if (f->sp[1].type == T_LWOBJECT &&
+	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	if (VAL_NIL(f->sp)) {
+	    kf_argerror(KF_RANGET, 2);
+	}
+	--f->sp;
+	f->sp[0] = f->sp[1];
+	f->sp[1] = nil_value;
+	kf_op_ternary(f, KF_RANGET);
 
-    if (f->sp->type != T_INT) {
-	kf_argerror(KF_RANGET, 2);
+	return 0;
     }
+
     switch (f->sp[1].type) {
     case T_STRING:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGET, 2);
+	}
 	i_add_ticks(f, 2);
 	str = str_range(f->sp[1].u.string, 0L, (long) f->sp->u.number);
 	f->sp++;
@@ -1347,6 +1552,9 @@ int kf_ranget(frame *f)
 	break;
 
     case T_ARRAY:
+	if (f->sp->type != T_INT) {
+	    kf_argerror(KF_RANGET, 2);
+	}
 	a = arr_range(f->data, f->sp[1].u.array, 0L, (long) f->sp->u.number);
 	i_add_ticks(f, a->size);
 	f->sp++;
@@ -1364,7 +1572,7 @@ int kf_ranget(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_range, pt_range, 0)
+FUNCDEF("[..]", kf_range, pt_range, 0)
 # else
 char pt_range[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -1382,6 +1590,14 @@ int kf_range(frame *f)
 	i_add_ticks(f, f->sp->u.array->size);
 	arr_del(f->sp->u.array);
 	PUT_MAP(f->sp, a);
+
+	return 0;
+    }
+    if (f->sp->type == T_LWOBJECT &&
+	f->sp->u.array->elts[0].type == T_OBJECT) {
+	*--f->sp = nil_value;
+	*--f->sp = nil_value;
+	kf_op_ternary(f, KF_RANGE);
 
 	return 0;
     }
@@ -1413,7 +1629,7 @@ int kf_range(frame *f)
 # ifdef FUNCDEF
 FUNCDEF(">>", kf_rshift, pt_rshift, 0)
 # else
-char pt_rshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
+char pt_rshift[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 
 /*
  * NAME:	kfun->rshift()
@@ -1421,6 +1637,11 @@ char pt_rshift[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_INT, T_INT };
  */
 int kf_rshift(frame *f)
 {
+    if (f->sp[1].type == T_LWOBJECT &&
+	f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	kf_op_binary(f, KF_RSHIFT);
+	return 0;
+    }
     if (f->sp[1].type != T_INT) {
 	kf_argerror(KF_RSHIFT, 1);
     }
@@ -1528,6 +1749,12 @@ int kf_sub(frame *f)
 	}
 	break;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_SUB);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_SUB, 1);
     }
@@ -1577,6 +1804,9 @@ int kf_sub1(frame *f)
 	FLT_ONE(f2.high, f2.low);
 	flt_sub(&f1, &f2);
 	PUT_FLT(f->sp, f1);
+    } else if (f->sp->type == T_LWOBJECT &&
+	       f->sp->u.array->elts[0].type == T_OBJECT) {
+	kf_op_unary(f, KF_SUB1);
     } else {
 	kf_argerror(KF_SUB1, 1);
     }
@@ -1742,7 +1972,7 @@ int kf_tst_int(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin, pt_umin, 0)
+FUNCDEF("-", kf_umin, pt_umin, 0)
 # else
 char pt_umin[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
 
@@ -1767,6 +1997,13 @@ int kf_umin(frame *f)
 	    PUT_FLT(f->sp, flt);
 	}
 	return 0;
+
+    case T_LWOBJECT:
+	if (f->sp->u.array->elts[0].type == T_OBJECT) {
+	    kf_op_unary(f, KF_UMIN);
+	    return 0;
+	}
+	break;
     }
 
     kf_argerror(KF_UMIN, 1);
@@ -1776,7 +2013,7 @@ int kf_umin(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin_int, pt_umin_int, 0)
+FUNCDEF("-", kf_umin_int, pt_umin_int, 0)
 # else
 char pt_umin_int[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
 
@@ -1826,6 +2063,12 @@ int kf_xor(frame *f)
 	}
 	break;
 
+    case T_LWOBJECT:
+	if (f->sp[1].u.array->elts[0].type == T_OBJECT) {
+	    kf_op_binary(f, KF_XOR);
+	    return 0;
+	}
+	/* fall through */
     default:
 	kf_argerror(KF_XOR, 1);
     }
@@ -1892,7 +2135,7 @@ int kf_tostring(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangeft, pt_ckrangeft, 0)
+FUNCDEF("[..]", kf_ckrangeft, pt_ckrangeft, 0)
 # else
 char pt_ckrangeft[] = { C_STATIC, 3, 0, 0, 9, T_INT, T_MIXED, T_INT, T_INT };
 
@@ -1924,7 +2167,7 @@ int kf_ckrangeft(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckrangef, pt_ckrangef, 0)
+FUNCDEF("[..]", kf_ckrangef, pt_ckrangef, 0)
 # else
 char pt_ckrangef[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
 
@@ -1957,7 +2200,7 @@ int kf_ckrangef(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("[]", kf_ckranget, pt_ckranget, 0)
+FUNCDEF("[..]", kf_ckranget, pt_ckranget, 0)
 # else
 char pt_ckranget[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_INT };
 
@@ -2995,7 +3238,7 @@ int kf_tst_string(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("unary -", kf_umin_float, pt_umin_float, 0)
+FUNCDEF("-", kf_umin_float, pt_umin_float, 0)
 # else
 char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 

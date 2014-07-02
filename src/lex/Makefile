@@ -32,11 +32,8 @@ OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo lex/$$i; done > dgd
 
-comp:	$(OBJ)
-	@for i in $(OBJ); do echo ../lex/$$i; done > comp
-
 clean:
-	rm -f dgd comp $(OBJ)
+	rm -f dgd $(OBJ)
 
 
 $(OBJ): lex.h ../config.h ../host.h ../alloc.h ../str.h ../xfloat.h

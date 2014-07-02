@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1032,7 +1032,7 @@ static bool conf_config()
     }
 
     for (l = 0; l < NR_OPTIONS; l++) {
-	if (!conf[l].set && l != HOTBOOT && l != MODULES) {
+	if (!conf[l].set && l != HOTBOOT && l != MODULES && l != CACHE_SIZE) {
 	    char buffer[64];
 
 #ifndef NETWORK_EXTENSIONS
@@ -1167,8 +1167,6 @@ static bool conf_includes()
     cputs("# define O_CALLOUTS\t4\t/* callouts in object */\012");
     cputs("# define O_INDEX\t5\t/* unique ID for master object */\012");
     cputs("# define O_UNDEFINED\t6\t/* undefined functions */\012");
-    cputs("# define O_INHERITED\t7\t/* object inherited? */\012");
-    cputs("# define O_INSTANTIATED\t8\t/* object instantiated? */\012");
 
     cputs("\012# define CO_HANDLE\t0\t/* callout handle */\012");
     cputs("# define CO_FUNCTION\t1\t/* function name */\012");
@@ -1216,10 +1214,7 @@ static bool conf_includes()
     cputs("# define CHAR_MIN\t\t0\t\t/* min character value */\012");
     cputs("# define CHAR_MAX\t\t255\t\t/* max character value */\012\012");
     cputs("# define INT_MIN\t\t0x80000000\t/* -2147483648 */\012");
-    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012\012");
-    sprintf(buffer, "# define MAX_STRING_SIZE\t%u\t\t/* max string size (obsolete) */\012",
-	    MAX_STRLEN);
-    cputs(buffer);
+    cputs("# define INT_MAX\t\t2147483647\t/* max integer value */\012");
     if (!cclose()) {
 	return FALSE;
     }
@@ -1277,7 +1272,11 @@ static bool conf_includes()
 	    sprintf(buffer, "# define kf_%s\t\t%d\012", kftab[i].name,
 		    kftab[i].version);
 	    for (p = buffer + 9; *p != '\0'; p++) {
-		*p = toupper(*p);
+		if (*p == '.') {
+		    *p = '_';
+		} else {
+		    *p = toupper(*p);
+		}
 	    }
 	    cputs(buffer);
 	}
@@ -1328,6 +1327,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     char buf[STRINGSZ];
     int fd, fd2, i;
     bool init;
+    sector cache;
 
     fd = fd2 = -1;
 
@@ -1451,9 +1451,10 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     o_init((uindex) conf[OBJECTS].u.num, (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swap device */
+    cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].u.num : 100);
     if (!sw_init(conf[SWAP_FILE].u.str,
 	    (sector) conf[SWAP_SIZE].u.num,
-	    (sector) conf[CACHE_SIZE].u.num,
+	    cache,
 	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
 	comm_clear();
 	comm_finish();
@@ -1510,21 +1511,6 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
      * create include files
      */
     if (!conf_includes()) {
-	sw_finish();
-	comm_clear();
-	comm_finish();
-	if (snapshot2 != (char *) NULL) {
-	    P_close(fd2);
-	}
-	if (snapshot != (char *) NULL) {
-	    P_close(fd);
-	}
-	m_finish();
-	return FALSE;
-    }
-
-    /* load precompiled objects */
-    if (!pc_preload(conf[AUTO_OBJECT].u.str, conf[DRIVER_OBJECT].u.str)) {
 	sw_finish();
 	comm_clear();
 	comm_finish();
@@ -1896,15 +1882,6 @@ bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
 	}
 	break;
 
-    case 7:	/* O_INHERITED */
-	PUT_INTVAL(v, ((obj->flags & O_MASTER) && !O_UPGRADING(obj) &&
-		       O_INHERITED(obj)));
-	break;
-
-    case 8:	/* O_INSTANTIATED */
-	PUT_INTVAL(v, O_HASDATA(obj));
-	break;
-
     default:
 	return FALSE;
     }
@@ -1922,13 +1899,13 @@ array *conf_object(dataspace *data, object *obj)
     Int i;
     array *a;
 
-    a = arr_ext_new(data, 9L);
+    a = arr_ext_new(data, 7L);
     if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);
     }
-    for (i = 0, v = a->elts; i < 9; i++, v++) {
+    for (i = 0, v = a->elts; i < 7; i++, v++) {
 	conf_objecti(data, obj, i, v);
     }
     ec_pop();

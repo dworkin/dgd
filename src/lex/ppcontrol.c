@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -423,29 +423,29 @@ static int pptokenz(char *key, unsigned int len)
     return len;
 }
 
-# define FIRST_KEYWORD	NIL
+# define FIRST_KEYWORD	GOTO
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..29 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..30 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
 static int tokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
-      "nil", "break", "do", "mapping", "else", "case", "object",
-      "default", "static", "continue", "int", "float", "rlimits", "for",
-      "inherit", "if", "goto", "return", "mixed", "string", "while",
-      "function", "catch", "switch", "void", "private", "atomic",
-      "nomask", "varargs"
+      "goto", "mapping", "nomask", "break", "else", "case", "for", "float",
+      "static", "continue", "rlimits", "default", "do", "mixed", "object",
+      "return", "function", "operator", "if", "int", "private", "catch",
+      "switch", "inherit", "while", "atomic", "string", "void", "varargs",
+      "nil"
     };
     static char value[] = {
-      19, 11,  1,  0,  0,  6, 12, 16,  7,  0, 14, 19, 13,
-       7,  0, 18,  0,  4,  1,  0,  0, 20, 15,  0,  0,  0
+      18,  9,  1,  3,  0,  1, 19, 15, 15,  0, 19, 19,  5,
+       7,  7, 13,  0,  2,  1,  1,  0, 20, 19,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 29;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 30;
     if (strcmp(keyword[len], key) == 0) {
 # ifndef CLOSURES
 	if (len == FUNCTION - FIRST_KEYWORD) {

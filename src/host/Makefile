@@ -50,11 +50,8 @@ OBJ=	$(COMPOBJ) connect.o
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
 
-comp:	$(COMPOBJ)
-	@for i in $(COMPOBJ); do echo ../host/$$i; done > comp
-
 clean:
-	rm -f dgd comp $(SRC) $(OBJ)
+	rm -f dgd $(SRC) $(OBJ)
 
 
 local.c: unix/local.c

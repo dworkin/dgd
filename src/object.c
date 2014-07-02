@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -707,7 +707,7 @@ static void o_delete(object *o, frame *f)
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
 	o = OBJW(inh->oindex);
 	if (--(o->u_ref) == 0) {
-	    o_delete(OBJW(inh->oindex), f);
+	    o_delete(o, f);
 	}
     }
 }
@@ -750,7 +750,7 @@ void o_upgrade(object *obj, control *ctrl, frame *f)
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
 	obj = OBJW(inh->oindex);
 	if (--(obj->u_ref) == 0) {
-	    o_delete(OBJW(inh->oindex), f);
+	    o_delete(obj, f);
 	}
     }
 }
@@ -797,7 +797,7 @@ void o_del(object *obj, frame *f)
 	/* remove from object name hash table */
 	*ht_lookup(oplane->htab, obj->chain.name, FALSE) = obj->chain.next;
 
-	if (--(obj->u_ref) == 0) {
+	if (--(obj->u_ref) == 0 && !O_UPGRADING(obj)) {
 	    o_delete(obj, f);
 	}
     } else {
@@ -805,8 +805,8 @@ void o_del(object *obj, frame *f)
 
 	master = OBJW(obj->u_master);
 	master->cref--;
-	if (--(master->u_ref) == 0) {
-	    o_delete(OBJW(master->index), f);
+	if (--(master->u_ref) == 0 && !O_UPGRADING(master)) {
+	    o_delete(master, f);
 	}
     }
 
@@ -950,8 +950,7 @@ static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, rotabsize, cactive,
-		  dactive);
+    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, cactive, dactive);
 }
 
 /*
@@ -1120,7 +1119,6 @@ void o_clean()
 	    baseplane.destruct = o->index;
 	} else {
 	    /* upgrade objects */
-	    up->flags &= ~O_COMPILED;
 	    up->cref -= 2;
 	    o->u_ref = up->cref;
 	    if (up->flags & O_LWOBJ) {
@@ -1132,7 +1130,7 @@ void o_clean()
 	    }
 	    ctrl = up->ctrl;
 
-	    if (ctrl->vmapsize != 0 && o->u_ref != 0) {
+	    if (o->ctrl->vmapsize != 0 && o->u_ref != 0) {
 		/*
 		 * upgrade variables
 		 */
@@ -1140,7 +1138,7 @@ void o_clean()
 		    OBJ(o->prev)->cref = o->index;
 		}
 
-		if (o->u_ref > 1) {
+		if (o->u_ref > (up->count != 0)) {
 		    up->update++;
 		}
 		if (up->count != 0 && up->data == (dataspace *) NULL &&
@@ -1162,6 +1160,15 @@ void o_clean()
 	    ctrl->oindex = o->index;
 	    o->cfirst = up->cfirst;
 	    up->cfirst = SW_UNUSED;
+
+	    /* swap vmap back to template */
+	    ctrl->vmap = up->ctrl->vmap;
+	    ctrl->vmapsize = up->ctrl->vmapsize;
+	    if (ctrl->vmapsize != 0) {
+		ctrl->flags |= CTRL_VARMAP;
+	    }
+	    up->ctrl->vmap = (unsigned short *) NULL;
+	    up->ctrl->vmapsize = 0;
 
 	    if (ctrl->ndata != 0) {
 		/* upgrade all dataspaces in memory */
@@ -1287,76 +1294,6 @@ static Uint o_recount(uindex n)
     odcount = 1;
     recount = TRUE;
     return count;
-}
-
-/*
- * NAME:	uindex_compare
- * DESCRIPTION: used by qsort to compare entries
- */
-int uindex_compare(const void *pa, const void *pb)
-{
-    uindex a = *(uindex *)pa;
-    uindex b = *(uindex *)pb;
-
-    if (a > b) {
-	return 1;
-    } else if (a < b) {
-	return -1;
-    } else {
-	return 0;
-    }
-}
-
-/*
- * NAME:	object->trim()
- * DESCRIPTION:	trim free objects from the end of the object table
- */
-void o_trim()
-{
-    uindex npurge;
-    uindex *entries;
-    uindex i;
-    uindex j;
-
-    if (!baseplane.nfreeobjs) {
-	/* nothing to trim */
-	return;
-    }
-
-    npurge = 0;
-    entries = ALLOC(uindex, baseplane.nfreeobjs);
-
-    j = baseplane.free;
-
-    /* 1. prepare a list of free objects */
-    for (i = 0; i < baseplane.nfreeobjs; i++) {
-	entries[i] = j;
-	j = otable[j].prev;
-    }
-
-    /* 2. sort indices from low to high */
-    qsort(entries, baseplane.nfreeobjs, sizeof(uindex), uindex_compare);
-
-    /* 3. trim the object table */
-    while (baseplane.nfreeobjs > 0 && entries[baseplane.nfreeobjs - 1] == baseplane.nobjects - 1) {
-	npurge++;
-	baseplane.nobjects--;
-	baseplane.nfreeobjs--;
-    }
-
-    memset(otable + baseplane.nobjects, '\0', npurge * sizeof(object));
-
-    /* 4. relink remaining free objects from low to high */
-    j = OBJ_NONE;
-
-    for (i = 0; i < baseplane.nfreeobjs; i++) {
-	uindex n = entries[baseplane.nfreeobjs - i - 1];
-	otable[n].prev = j;
-	j = n;
-    }
-
-    baseplane.free = j;
-    FREE(entries);
 }
 
 /*
@@ -1604,7 +1541,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 		    BCLR(omap, i);
 		    --dobjects;
 		}
-		d_restore_data(o, counttab, dh.nobjects, &sw_conv2);
+		d_restore_data(o, counttab, &sw_conv2);
 		d_swapout(1);
 	    }
 	    i++;
@@ -1667,14 +1604,13 @@ bool o_copy(Uint time)
 	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
 	    dobject = obj->index + 1;
 	    o_restore_obj(obj, FALSE, FALSE);
-	    if (time == 0) {
-		d_swapout(1);
-	    }
 	}
     }
     o_clean();
 
     if (dobjects == 0) {
+	d_swapout(1);
+
 	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
 		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))

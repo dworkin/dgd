@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -258,9 +258,9 @@ extern sector		d_swapout	 (unsigned int);
 extern void		d_upgrade_mem	 (object*, object*);
 extern control	       *d_restore_ctrl	 (object*,
 					  void(*)(char*, sector*, Uint, Uint));
-extern dataspace       *d_restore_data	 (object*, Uint*, uindex,
+extern dataspace       *d_restore_data	 (object*, Uint*,
 					  void(*)(char*, sector*, Uint, Uint));
-extern void		d_restore_obj	 (object*, Uint*, uindex, bool, bool);
+extern void		d_restore_obj	 (object*, Uint*, bool, bool);
 extern void		d_converted	 (void);
 
 extern void		d_free_control	 (control*);
@@ -289,8 +289,7 @@ extern string	       *d_get_call_out	(dataspace*, unsigned int, frame*,
 					   int*);
 extern array	       *d_list_callouts	(dataspace*, dataspace*);
 
-extern void		d_set_varmap	(control*, unsigned int,
-					   unsigned short*);
+extern void		d_set_varmap	(control*, unsigned short*);
 extern void		d_upgrade_data	(dataspace*, unsigned int,
 					   unsigned short*, object*);
 extern void		d_upgrade_clone	(dataspace*);
@@ -305,7 +304,6 @@ extern void		d_del_dataspace	(dataspace*);
 # define CTRL_PROGCMP		0x003	/* program compressed */
 # define CTRL_STRCMP		0x00c	/* strings compressed */
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
-# define CTRL_COMPILED		0x020	/* precompiled control block */
 # define CTRL_VARMAP		0x040	/* varmap updated */
 # define CTRL_CONVERTED		0x080	/* converted control block */
 # define CTRL_OLDVM		0x100	/* uses old VM */
