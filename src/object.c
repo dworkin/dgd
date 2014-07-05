@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -637,7 +637,6 @@ object *o_new(char *name, control *ctrl)
 
     /* add reference to all inherited objects */
     o->u_ref = 0;	/* increased to 1 in following loop */
-    inh = ctrl->inherits;
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
 	OBJW(inh->oindex)->u_ref++;
     }

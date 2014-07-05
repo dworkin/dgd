@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -65,7 +65,6 @@ char *P_ctime(char *buf, Uint time)
     int offset;
     time_t t;
 
-    offset = 0;
     for (offset = 0; time > 2147397248; time -= 883612800, offset += 28) ;
     t = time;
     memcpy(buf, ctime(&t), 26);
