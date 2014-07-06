@@ -528,8 +528,7 @@ bool c_inherit(char *file, node *label, int priv)
 	}
 	obj = o_find(file, OACC_READ);
 	if (obj == (object *) NULL) {
-	    obj = c_compile(f, file, (object *) NULL, (string **) NULL, 0,
-			    TRUE);
+	    c_compile(f, file, (object *) NULL, (string **) NULL, 0, TRUE);
 	    return FALSE;
 	}
     } else {
@@ -562,8 +561,7 @@ bool c_inherit(char *file, node *label, int priv)
 	    file = path_from(buf, current->file, file);
 	    obj = o_find(file, OACC_READ);
 	    if (obj == (object *) NULL) {
-		obj = c_compile(f, file, (object *) NULL, (string **) NULL, 0,
-				TRUE);
+		c_compile(f, file, (object *) NULL, (string **) NULL, 0, TRUE);
 		return FALSE;
 	    }
 	}
