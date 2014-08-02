@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -423,29 +423,29 @@ static int pptokenz(char *key, unsigned int len)
     return len;
 }
 
-# define FIRST_KEYWORD	GOTO
+# define FIRST_KEYWORD	VOID
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..30 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..31 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
 static int tokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
-      "goto", "mapping", "nomask", "break", "else", "case", "for", "float",
-      "static", "continue", "rlimits", "default", "do", "mixed", "object",
-      "return", "function", "operator", "if", "int", "private", "catch",
-      "switch", "inherit", "while", "atomic", "string", "void", "varargs",
-      "nil"
+      "void", "inherit", "mapping", "break", "else", "case", "nil", "for",
+      "static", "continue", "private", "function", "rlimits", "return",
+      "operator", "float", "do", "if", "object", "goto", "string", "while",
+      "new", "varargs", "catch", "switch", "nomask", "atomic", "int",
+      "default", "mixed",
     };
     static char value[] = {
-      18,  9,  1,  3,  0,  1, 19, 15, 15,  0, 19, 19,  5,
-       7,  7, 13,  0,  2,  1,  1,  0, 20, 19,  0,  0,  0
+      20, 12,  1, 12,  0,  0, 13, 18, 15,  0, 17,  0, 13,
+       3,  2,  3,  0,  4,  1, 10,  0, 15, 16,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 30;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 31;
     if (strcmp(keyword[len], key) == 0) {
 # ifndef CLOSURES
 	if (len == FUNCTION - FIRST_KEYWORD) {

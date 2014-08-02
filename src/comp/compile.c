@@ -2308,6 +2308,21 @@ node *c_call(node *func, node *args, int typechecked)
 }
 
 /*
+ * NAME:	compile->new_object()
+ * DESCRIPTION:	handle new
+ */
+node *c_new_object(node *o, node *args)
+{
+    if (args != (node *) NULL) {
+	args = node_bin(N_PAIR, 0, o, revert_list(args));
+    } else {
+	args = o;
+    }
+    return funcall(c_flookup(node_str(str_new("new_object", 10L)), FALSE),
+		   args, FALSE);
+}
+
+/*
  * NAME:	compile->instanceof()
  * DESCRIPTION:	handle <-
  */

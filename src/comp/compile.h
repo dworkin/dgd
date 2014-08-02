@@ -69,6 +69,7 @@ extern node	*c_arrow	(node*, node*, node*);
 extern node	*c_address	(node*, node*, int);
 extern node	*c_extend	(node*, node*, int);
 extern node	*c_call		(node*, node*, int);
+extern node	*c_new_object	(node*, node*);
 extern node	*c_instanceof	(node*, node*);
 extern node	*c_checkcall	(node*, int);
 extern node	*c_tst		(node*);

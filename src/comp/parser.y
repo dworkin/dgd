@@ -80,9 +80,9 @@ static node *comma	(node*, node*);
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token GOTO MAPPING NOMASK BREAK ELSE CASE FOR FLOAT STATIC CONTINUE RLIMITS
-       DEFAULT DO MIXED OBJECT RETURN FUNCTION OPERATOR IF INT PRIVATE CATCH
-       SWITCH INHERIT WHILE ATOMIC STRING VOID VARARGS NIL
+%token VOID INHERIT MAPPING BREAK ELSE CASE NIL FOR STATIC CONTINUE PRIVATE
+       FUNCTION RLIMITS RETURN OPERATOR FLOAT DO IF OBJECT GOTO STRING WHILE
+       NEW VARARGS CATCH SWITCH NOMASK ATOMIC INT DEFAULT MIXED
 
 /*
  * composite tokens
@@ -657,6 +657,14 @@ primary_p1_exp
 		  c_endcond();
 		  $$ = node_mon(N_CATCH, T_STRING, $4);
 		}
+	| NEW opt_object string
+		{ $$ = c_new_object($3, (node *) NULL); }
+	| NEW opt_object '(' composite_string ')'
+		{ $$ = c_new_object($4, (node *) NULL); }
+	| NEW opt_object string '(' opt_arg_list ')'
+		{ $$ = c_new_object($3, $5); }
+	| NEW opt_object '(' composite_string ')' '(' opt_arg_list ')'
+		{ $$ = c_new_object($4, $7); };
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
