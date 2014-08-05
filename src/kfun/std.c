@@ -90,6 +90,7 @@ int kf_compile_object(frame *f, int nargs)
     object *obj;
     string **strs;
     int i;
+    bool iflag;
 
     v = &f->sp[nargs - 1];
     if (path_string(file, v->u.string->text, v->u.string->len) == (char *) NULL)
@@ -120,11 +121,17 @@ int kf_compile_object(frame *f, int nargs)
     } else {
 	strs = (string **) NULL;
     }
-    obj = c_compile(f, file, obj, strs, nargs,
-		    (OBJR(f->oindex)->flags & O_DRIVER) &&
-		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
-					  f->func->index)->text,
-			   "inherit_program") == 0);
+    if (OBJR(f->oindex)->flags & O_DRIVER) {
+	frame *xf;
+
+	for (xf = f; !xf->external; xf = xf->prev) ;
+	iflag = (strcmp(d_get_strconst(xf->p_ctrl, xf->func->inherit,
+				       xf->func->index)->text,
+			"inherit_program") == 0);
+    } else {
+	iflag = FALSE;
+    }
+    obj = c_compile(f, file, obj, strs, nargs, iflag);
     if (nargs != 0) {
 	ec_pop();
 	AFREE(strs - nargs);
