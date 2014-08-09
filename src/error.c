@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010,2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -112,6 +112,18 @@ static void ec_handler(frame *f, Int depth)
 }
 
 /*
+ * NAME:	set_errorstr()
+ * DESCRIPTION:	set the current error string
+ */
+void set_errorstr(string *err)
+{
+    if (errstr != (string *) NULL) {
+	str_del(errstr);
+    }
+    str_ref(errstr = err);
+}
+
+/*
  * NAME:	errorstr()
  * DESCRIPTION:	return the current error string
  */
@@ -132,10 +144,7 @@ void serror(string *str)
     ec_ftn handler;
 
     if (str != (string *) NULL) {
-	if (errstr != (string *) NULL) {
-	    str_del(errstr);
-	}
-	str_ref(errstr = str);
+	set_errorstr(str);
 # ifdef DEBUG
     } else if (errstr == (string *) NULL) {
 	fatal("no error string");

@@ -3575,6 +3575,9 @@ void i_runtime_error(frame *f, Int depth)
 	message("Error within runtime_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
+	if (f->sp->type == T_STRING) {
+	    set_errorstr(f->sp->u.string);
+	}
 	i_del_value(f->sp++);
     }
 }
@@ -3596,6 +3599,9 @@ void i_atomic_error(frame *ftop, Int level)
 	message("Error within atomic_error:\012");	/* LF */
 	message((char *) NULL);
     } else {
+	if (ftop->sp->type == T_STRING) {
+	    set_errorstr(ftop->sp->u.string);
+	}
 	i_del_value(ftop->sp++);
     }
 }
