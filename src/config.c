@@ -1198,6 +1198,14 @@ static bool conf_includes()
     cputs(buffer);
     sprintf(buffer, "# define T_MAPPING\t%d\012", T_MAPPING);
     cputs(buffer);
+# ifdef TYPEOFDETAIL
+
+#ifdef CLOSURES
+    sprintf(buffer, "# define T_FUNCTION\t%d\012", T_FUNCTION);
+    cputs(buffer);
+# endif
+
+#endif
     if (!cclose()) {
 	return FALSE;
     }

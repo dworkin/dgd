@@ -135,6 +135,15 @@
 # define T_OBJECT	0x04
 # define T_ARRAY	0x05	/* value type only */
 # define T_MAPPING	0x06
+
+# ifdef TYPEOFDETAIL        /* Mask for Detailed Typeof */
+
+# ifdef CLOSURES
+# define T_FUNCTION 0x07    /* Closure builtin mask */
+# endif
+
+# endif
+
 # define T_LWOBJECT	0x07	/* runtime only */
 # define T_CLASS	0x07	/* typechecking only */
 # define T_MIXED	0x08	/* declaration type only */

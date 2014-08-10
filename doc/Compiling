@@ -39,3 +39,9 @@ CO_THROTTLE		      Enables callout throttling.  Set it to the
 			      maximum number of callouts to run per I/O
 			      task.  This can be useful for preventing
 			      callout bombs from jamming your mud.
+
+TYPEOFDETAIL     Allows the KFUN 'typeof' to differentiate
+                 builtin types as more than simply
+                 objects.  Adds to types.h in the
+                 standard include directory for LPC.
+                 See information on builtin types for more details.
