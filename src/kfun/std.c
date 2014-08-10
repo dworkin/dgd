@@ -907,8 +907,31 @@ char pt_typeof[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  */
 int kf_typeof(frame *f)
 {
+    char returntype; 
     i_del_value(f->sp);
-    PUT_INTVAL(f->sp, (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type);
+# ifdef TYPEOFDETAIL
+    if(f->sp->type == T_LWOBJECT)
+    {
+        switch(f->sp->u.array->elts[0].u.number)
+        {
+# ifdef CLOSURES
+            case BUILTIN_FUNCTION:
+                returntype = T_FUNCTION;
+                break;
+# endif
+            default:
+                returntype = T_OBJECT;
+                break;
+        }
+    }
+    else
+    {
+        returntype = f->sp->type;
+    }
+# else
+    returntype = (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type;
+# endif
+    PUT_INTVAL(f->sp, returntype);
     return 0;
 }
 # endif

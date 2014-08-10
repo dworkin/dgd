@@ -73,3 +73,13 @@ kf_status() and kf_statuso_idx().
 
 At compile time, a node of a builtin type should have modifier T_OBJECT,
 and a class string built from the base name, as returned by o_builtin_name().
+
+If TYPEOFDETAIL was enabled at compile time, then user defined builtin
+types will return a unique integer when called by the kfun typeof.  If
+nothing extra is configured above creating the builtin type as above,
+it will return T_OBJECT by default as if it was not enabled.
+
+To configure the custom typeof definition:
+    -- Review interpret.h to add the BUILTIN types
+    -- Review config.c to add the type.h defines for the LPC typeof kfun
+    -- Review kfun/std.c to add case statements for custom builtin types
