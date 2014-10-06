@@ -29,7 +29,7 @@
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
-# define EXTENSION_MINOR	7
+# define EXTENSION_MINOR	8
 
 
 /*
@@ -387,7 +387,7 @@ static void ext_runtime_error(frame *f, char *mesg)
  * NAME:	ext->dgd()
  * DESCRIPTION:	initialize extension interface
  */
-bool ext_dgd(char *module)
+bool ext_dgd(char *module, char *config)
 {
     voidf *ext_ext[2];
     voidf *ext_frame[4];
@@ -402,9 +402,10 @@ bool ext_dgd(char *module)
     voidf *ext_runtime[1];
     voidf **ftabs[11];
     int sizes[11];
-    int (*init) (int, int, voidf**[], int[]);
+    int (*init) (int, int, voidf**[], int[], char*);
 
-    init = (int (*) (int, int, voidf**[], int[])) P_dload(module, "ext_init");
+    init = (int (*) (int, int, voidf**[], int[], char*)) P_dload(module,
+								 "ext_init");
     if (init == NULL) {
 	return FALSE;
     }
@@ -467,7 +468,7 @@ bool ext_dgd(char *module)
     ftabs[ 9] = ext_mapping;	sizes[ 9] = 7;
     ftabs[10] = ext_runtime;	sizes[10] = 1;
 
-    if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes)) {
+    if (!init(EXTENSION_MAJOR, EXTENSION_MINOR, ftabs, sizes, config)) {
 	fatal("incompatible runtime extension");
     }
     return TRUE;

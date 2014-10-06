@@ -93,7 +93,7 @@ static config conf[] = {
 # define INCLUDE_FILE	15
 				{ "include_file",	STRING_CONST, TRUE },
 # define MODULES	16
-				{ "modules",		'(' },
+				{ "modules",		']' },
 # define OBJECTS	17
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
@@ -806,7 +806,8 @@ void conf_dread(int fd, char *buf, char *layout, Uint n)
 # define MAX_PORTS	32
 # define MAX_STRINGS	32
 
-static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS], *modules[MAX_STRINGS];
+static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS];
+static char *modules[MAX_STRINGS], *modconf[MAX_STRINGS];
 static char *bhosts[MAX_PORTS], *thosts[MAX_PORTS];
 static unsigned short bports[MAX_PORTS], tports[MAX_PORTS];
 static int ntports, nbports;
@@ -873,8 +874,8 @@ static bool conf_config()
 		conferr("syntax error");
 		return FALSE;
 	    } else if (conf[m].type != '[' || c != INT_CONST) {
-		if (conf[m].type == '[' && c == '(') {
-		    c = '[';
+		if ((conf[m].type == '[' || conf[m].type == ']') && c == '(') {
+		    c = conf[m].type;
 		} else {
 		    conferr("bad value type");
 		    return FALSE;
@@ -929,7 +930,6 @@ static bool conf_config()
 	    switch (m) {
 	    case HOTBOOT:	strs = hotboot; break;
 	    case INCLUDE_DIRS:	strs = dirs; break;
-	    case MODULES:	strs = modules; break;
 	    }
 	    for (;;) {
 		if (pp_gettok() != STRING_CONST) {
@@ -1022,6 +1022,55 @@ static bool conf_config()
 	    } else {
 		nbports = l;
 	    }
+	    break;
+
+	case ']':
+	    if (pp_gettok() != '[') {
+		conferr("'[' expected");
+		return FALSE;
+	    }
+	    l = 0;
+	    if ((c=pp_gettok()) != ']') {
+		for (;;) {
+		    if (l == MAX_STRINGS - 1) {
+			conferr("mapping too large");
+			return FALSE;
+		    }
+		    if (c != STRING_CONST) {
+			conferr("string expected");
+			return FALSE;
+		    }
+		    m_static();
+		    modules[l] = strcpy(ALLOC(char, strlen(yytext) + 1),
+					yytext);
+		    m_dynamic();
+		    if (pp_gettok() != ':') {
+			conferr("':' expected");
+			return FALSE;
+		    }
+		    if (pp_gettok() != STRING_CONST) {
+			conferr("string expected");
+			return FALSE;
+		    }
+		    m_static();
+		    modconf[l++] = strcpy(ALLOC(char, strlen(yytext) + 1),
+					  yytext);
+		    m_dynamic();
+		    if ((c=pp_gettok()) == ']') {
+			break;
+		    }
+		    if (c != ',') {
+			conferr("',' expected");
+			return FALSE;
+		    }
+		    c = pp_gettok();
+		}
+	    }
+	    if (pp_gettok() != ')') {
+		conferr("')' expected");
+		return FALSE;
+	    }
+	    modules[l] = modconf[l] = (char *) NULL;
 	    break;
 	}
 	conf[m].set = TRUE;
@@ -1315,7 +1364,7 @@ static bool conf_includes()
 }
 
 
-extern bool ext_dgd (char*);
+extern bool ext_dgd (char*, char*);
 
 /*
  * NAME:	config->init()
@@ -1381,7 +1430,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     kf_clear();
 
     for (i = 0; modules[i] != NULL; i++) {
-	if (!ext_dgd(modules[i])) {
+	if (!ext_dgd(modules[i], modconf[i])) {
 	    message("Config error: cannot load runtime extension \"%s\"\012",
 		    modules[i]);
 	    if (snapshot2 != (char *) NULL) {
@@ -1394,7 +1443,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    return FALSE;
 	}
     }
-    if (module != (char *) NULL && !ext_dgd(module)) {
+    if (module != (char *) NULL && !ext_dgd(module, NULL)) {
 	message("Config error: cannot load runtime extension \"%s\"\012",/* LF*/
 		module);
 	if (snapshot2 != (char *) NULL) {
