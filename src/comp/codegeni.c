@@ -663,8 +663,13 @@ static void cg_store(node *n)
 	    break;
 
 	case N_GLOBAL:
-	    code_instr(I_STORE_GLOBAL_INDEX, n->line);
-	    code_word(n->r.number);
+	    if ((n->r.number >> 8) == ctrl_ninherits()) {
+		code_instr(I_STORE_GLOBAL_INDEX, n->line);
+	    } else {
+		code_instr(I_STORE_FAR_GLOBAL_INDEX, n->line);
+		code_byte(n->r.number >> 8);
+	    }
+	    code_byte(n->r.number);
 	    break;
 
 	case N_INDEX:

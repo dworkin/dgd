@@ -2515,6 +2515,19 @@ static void i_interpret1(frame *f, char *pc)
 	case I_STORE_GLOBAL_INDEX:
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    u = FETCH1U(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
+		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, f->sp + 2);
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_FAR_GLOBAL_INDEX:
+	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
+	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
@@ -3321,6 +3334,8 @@ static unsigned short i_line1(frame *f)
 	case I_STORE_GLOBAL | I_POP_BIT:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
+	case I_STORE_GLOBAL_INDEX:
+	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	case I_RLIMITS:
 	    pc++;
 	    break;
@@ -3349,8 +3364,8 @@ static unsigned short i_line1(frame *f)
 	case I_PUSH_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
-	case I_STORE_GLOBAL_INDEX:
-	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
+	case I_STORE_FAR_GLOBAL_INDEX:
+	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	case I_JUMP_ZERO:
 	case I_JUMP_NONZERO:
 	case I_JUMP:
