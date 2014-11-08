@@ -2358,7 +2358,7 @@ static void i_interpret1(frame *f, char *pc)
     Uint l;
     char *p;
     kfunc *kf;
-    int size;
+    int size, instance;
     bool atomic;
     Int newdepth, newticks;
     value val;
@@ -2469,6 +2469,26 @@ static void i_interpret1(frame *f, char *pc)
 		FETCH3U(pc, l);
 	    }
 	    i_cast(f, f->sp, u, l);
+	    break;
+
+	case I_INSTANCEOF:
+	case I_INSTANCEOF | I_POP_BIT:
+	    FETCH3U(pc, l);
+	    switch (f->sp->type) {
+	    case T_OBJECT:
+		instance = i_instanceof(f, f->sp->oindex, l);
+		break;
+
+	    case T_LWOBJECT:
+		instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
+		arr_del(f->sp->u.array);
+		break;
+
+	    default:
+		error("Instance of bad type");
+	    }
+
+	    PUT_INTVAL(f->sp, instance);
 	    break;
 
 	case I_STORE_LOCAL:
@@ -3381,6 +3401,8 @@ static unsigned short i_line1(frame *f)
 	case I_PUSH_FAR_STRING:
 	case I_AGGREGATE:
 	case I_AGGREGATE | I_POP_BIT:
+	case I_INSTANCEOF:
+	case I_INSTANCEOF | I_POP_BIT:
 	case I_CALL_DFUNC:
 	case I_CALL_DFUNC | I_POP_BIT:
 	case I_CALL_FUNC:

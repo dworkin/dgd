@@ -1152,16 +1152,10 @@ static void cg_expr(node *n, int pop)
 
     case N_INSTANCEOF:
 	cg_expr(n->l.left, FALSE);
+	code_instr(I_INSTANCEOF, n->line);
 	l = ctrl_dstring(n->r.right->l.string) & 0xffffffL;
-	if (l >= -128 && l <= 127) {
-	    code_instr(I_PUSH_INT1, n->line);
-	    code_byte(l);
-	} else {
-	    code_instr(I_PUSH_INT4, n->line);
-	    code_word(l >> 16);
-	    code_word(l);
-	}
-	code_kfun(KF_INSTANCEOF, n->line);
+	code_byte(l >> 16);
+	code_word(l);
 	break;
 
     case N_INT:

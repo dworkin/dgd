@@ -71,6 +71,7 @@
 # define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
+# define I_INSTANCEOF		0x0b	/* 1 unsigned, 2 unsigned */
 # define I_STORE_GLOBAL_INDEX	0x0d	/* 1 unsigned */
 # define I_CALL_EFUNC		0x0e	/* 2 unsigned (+ 1 unsigned) */
 # define I_CALL_CEFUNC		0x0f	/* 2 unsigned, 1 unsigned */
@@ -105,6 +106,9 @@
 # define LVAL_LOCAL_INDEX	3
 # define LVAL_GLOBAL_INDEX	4
 # define LVAL_INDEX_INDEX	5
+
+# define VERSION_VM_MAJOR	2
+# define VERSION_VM_MINOR	0
 
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
