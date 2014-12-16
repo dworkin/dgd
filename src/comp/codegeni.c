@@ -1068,13 +1068,13 @@ static void cg_expr(node *n, int pop)
 	case KFCALL:
 	case KFCALL_LVAL:
 	    if (PROTO_VARGS(KFUN((short) n->r.number).proto) != 0) {
-		code_kfun((int) n->r.number, n->line);
+		code_kfun((short) n->r.number, n->line);
 		code_byte(i);
 	    } else if (spread) {
-		code_ckfun((int) n->r.number, n->line);
+		code_ckfun((short) n->r.number, n->line);
 		code_byte(i);
 	    } else {
-		code_kfun((int) n->r.number, n->line);
+		code_kfun((short) n->r.number, n->line);
 	    }
 	    break;
 
