@@ -448,7 +448,7 @@ static void f_trunc(flt *a)
 
     if (a->exp < BIAS) {
 	a->exp = 0;
-    } else if (a->exp < BIAS + NBITS) {
+    } else if (a->exp < BIAS + NBITS - 1) {
 	a->high &= maskh[a->exp - BIAS];
 	a->low &= maskl[a->exp - BIAS];
     }
