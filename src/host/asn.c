@@ -941,7 +941,7 @@ string *asn_mult(frame *f, string *s1, string *s2, string *s3)
     }
 
     sizec = sizea + sizeb;
-    cc = c = ALLOCA(Uint, sizec);
+    cc = c = ALLOCA(Uint, sizec + 1);
     t1 = ALLOCA(Uint, (sizec << 1) + sizec);
     t2 = t1 + sizec;
     memset(c, '\0', sizec * sizeof(Uint));
