@@ -1696,6 +1696,7 @@ connection *conn_connect(void *addr, int len)
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
+	close(sock);
 	return NULL;
     }
 #ifdef SO_OOBINLINE
@@ -1703,16 +1704,19 @@ connection *conn_connect(void *addr, int len)
     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
 		   sizeof(on)) < 0) {
 	perror("setsockopt");
+	close(sock);
 	return NULL;
     }
 #endif
     if ((arg = fcntl(sock, F_GETFL, NULL)) < 0) {
        perror("fcntl");
+       close(sock);
        return NULL;
     }
     arg |= O_NONBLOCK;
     if (fcntl(sock, F_SETFL, arg) < 0) {
        perror("fcntl");
+       close(sock);
        return NULL;
     }
 

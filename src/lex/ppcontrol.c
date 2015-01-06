@@ -45,7 +45,7 @@ typedef struct _ichunk_ {
 } ichunk;
 
 static char **idirs;		/* include directory array */
-static char pri[NR_TOKENS];	/* operator priority table */
+static char pri[NR_TOKENS + 1];	/* operator priority table */
 static bool init_pri;		/* has the priority table been initialized? */
 static int include_level;	/* current #include level */
 static ichunk *ilist;		/* list of ifstate chunks */
@@ -88,27 +88,27 @@ bool pp_init(char *file, char **id, string **strs, int nstr, int level)
 
     if (!init_pri) {
 	/* #if operator priority table */
-	pri['~']    =
-	pri['!']    = UNARY;
-	pri['*']    =
-	pri['/']    =
-	pri['%']    = 11;
-	pri['+']    =
-	pri['-']    = UNARY | 10;
-	pri[LSHIFT] =
-	pri[RSHIFT] = 9;
-	pri['<']    =
-	pri['>']    =
-	pri[LE]     =
-	pri[GE]     = 8;
-	pri[EQ]     =
-	pri[NE]     = 7;
-	pri['&']    = 6;
-	pri['^']    = 5;
-	pri['|']    = 4;
-	pri[LAND]   = 3;
-	pri[LOR]    = 2;
-	pri['?']    = 1;
+	pri['~' + 1]    =
+	pri['!' + 1]    = UNARY;
+	pri['*' + 1]    =
+	pri['/' + 1]    =
+	pri['%' + 1]    = 11;
+	pri['+' + 1]    =
+	pri['-' + 1]    = UNARY | 10;
+	pri[LSHIFT + 1] =
+	pri[RSHIFT + 1] = 9;
+	pri['<' + 1]    =
+	pri['>' + 1]    =
+	pri[LE + 1]     =
+	pri[GE + 1]     = 8;
+	pri[EQ + 1]     =
+	pri[NE + 1]     = 7;
+	pri['&' + 1]    = 6;
+	pri['^' + 1]    = 5;
+	pri['|' + 1]    = 4;
+	pri[LAND + 1]   = 3;
+	pri[LOR + 1]    = 2;
+	pri['?' + 1]    = 1;
 
 	init_pri = TRUE;
     }
@@ -310,7 +310,7 @@ static long eval_expr(int priority)
 	    error("missing ) in conditional control");
 	    expr_unget(token);
 	}
-    } else if (pri[token] & UNARY) {
+    } else if (pri[token + 1] & UNARY) {
 	/* unary operator */
 	expr = eval_expr(11);
 	switch (token) {
@@ -333,7 +333,7 @@ static long eval_expr(int priority)
     for (;;) {
 	/* get (binary) operator, ), : or \n */
 	token = expr_get();
-	expr2 = pri[token] & ~UNARY;
+	expr2 = pri[token + 1] & ~UNARY;
 	if (expr2 == 0 || priority >= expr2) {
 	    expr_unget(token);
 	    break;	/* return current expression */

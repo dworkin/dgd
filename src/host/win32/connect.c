@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1592,12 +1592,14 @@ connection *conn_connect(void *addr, int len)
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
 		   sizeof(on)) < 0) {
 	P_message("setsockopt");
+	closesocket(sock);
 	return NULL;
     }
     on = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
 		   sizeof(on)) < 0) {
 	P_message("setsockopt");
+	closesocket(sock);
 	return NULL;
     }
     nonblock = TRUE;
@@ -1769,7 +1771,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	}
 	nonblock = TRUE;
 	if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
-	P_message("ioctlsocket");
+	    P_message("ioctlsocket");
 	    closesocket(sock);
 	    return NULL;
 	}
