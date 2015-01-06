@@ -1372,6 +1372,9 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	fd2 = P_open(path_native(buf, snapshot2), O_RDONLY | O_BINARY, 0);
 	if (fd2 < 0) {
 	    P_message("Config error: cannot open secondary restore file\012");    /* LF */
+	    if (snapshot != (char *) NULL) {
+		P_close(fd);
+	    }
 	    m_finish();
 	    return FALSE;
 	}
