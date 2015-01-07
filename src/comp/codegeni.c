@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -524,12 +524,14 @@ static void cg_cast(node *n)
     int type;
     long l;
 
-    code_instr(I_CAST, 0);
     type = cg_type(n, &l);
-    code_byte(type);
-    if (type == T_CLASS) {
-	code_byte(l >> 16);
-	code_word(l);
+    if (type != 0) {
+	code_instr(I_CAST, 0);
+	code_byte(type);
+	if (type == T_CLASS) {
+	    code_byte(l >> 16);
+	    code_word(l);
+	}
     }
 }
 
@@ -537,10 +539,12 @@ static void cg_cast(node *n)
  * NAME:	codegen->lvalue()
  * DESCRIPTION:	generate code for an lvalue
  */
-static void cg_lvalue(node *n, int fetch)
+static int cg_lvalue(node *n, int fetch)
 {
+    int stack;
     node *m, *l;
 
+    stack = 0;
     m = n;
     if (m->type == N_CAST) {
 	m = m->l.left;
@@ -554,76 +558,27 @@ static void cg_lvalue(node *n, int fetch)
 	    cg_expr(l->l.left, FALSE);
 	    cg_expr(l->r.right, FALSE);
 	    code_instr(I_INDEX2, l->line);
+	    stack += 2;
 	} else {
 	    cg_expr(l, FALSE);
 	}
 	if (m->l.left->type == N_CAST) {
 	    cg_cast(m->l.left);
 	}
+	stack += 2;
 	cg_expr(m->r.right, FALSE);
 	if (fetch) {
 	    code_instr(I_INDEX2, n->line);
 	    if (n->type == N_CAST) {
 		cg_cast(n);
 	    }
+	    stack++;
 	}
     } else if (fetch) {
 	cg_expr(n, FALSE);
+	stack++;
     }
-}
-
-/*
- * NAME:	codegen->lvalue2()
- * DESCRIPTION:	generate storage code for an lvalue
- */
-static void cg_lvalue2(register node *n, node *t)
-{
-    int type;
-    long l;
-
-    type = cg_type((t != NULL) ? t : n, &l);
-    if (type == T_CLASS) {
-	cg_int(l);
-    }
-
-    if (n->type == N_CAST) {
-	n = n->l.left;
-    }
-    switch (n->type) {
-    case N_LOCAL:
-	cg_int((LVAL_LOCAL << 28) | (type << 24) |
-	       UCHAR(nparams - (int) n->r.number - 1));
-	break;
-
-    case N_GLOBAL:
-	cg_int((LVAL_GLOBAL << 28) | (type << 24) | n->r.number);
-	break;
-
-    case N_INDEX:
-	n = n->l.left;
-	if (n->type == N_CAST) {
-	    n = n->l.left;
-	}
-	switch (n->type) {
-	case N_LOCAL:
-	    cg_int((LVAL_LOCAL_INDEX << 28) | (type << 24) |
-		   UCHAR(nparams - (int) n->r.number - 1));
-	    break;
-
-	case N_GLOBAL:
-	    cg_int((LVAL_GLOBAL_INDEX << 28) | (type << 24) | n->r.number);
-	    break;
-
-	case N_INDEX:
-	    cg_int((LVAL_INDEX_INDEX << 28) | (type << 24));
-	    break;
-
-	default:
-	    cg_int((LVAL_INDEX << 28) | (type << 24));
-	    break;
-	}
-	break;
-    }
+    return stack;
 }
 
 /*
@@ -740,18 +695,47 @@ static int cg_map_aggr(node *n)
  * NAME:	codegen->lval_aggr()
  * DESCRIPTION:	generate code for an lvalue aggregate
  */
-static int cg_lval_aggr(node *n, node *type)
+static int cg_lval_aggr(node **l)
 {
     int i;
+    node *n, *m;
 
-    for (i = 1; n->type == N_PAIR; i++, n = n->r.right) {
-	cg_lvalue(n->l.left, FALSE);
-	cg_lvalue2(n->l.left, type);
+    i = 1;
+    n = *l;
+    if (n->type == N_PAIR) {
+	for (;;) {
+	    cg_lvalue(n->l.left, FALSE);
+	    i++;
+	    m = n->r.right;
+	    if (m->type != N_PAIR) {
+		break;
+	    }
+	    /* (a, (b, c)) => ((a, b), c) */
+	    n->r.right = m->l.left;
+	    m->l.left = n;
+	    n = m;
+	}
+	*l = n;
+	n = m;
     }
     cg_lvalue(n, FALSE);
-    cg_lvalue2(n, type);
 
     return i;
+}
+
+/*
+ * NAME:	CodeGen->store_aggr()
+ * DESCRIPTION:	generate stores for an lvalue aggregate
+ */
+static void cg_store_aggr(node *n)
+{
+    while (n->type == N_PAIR) {
+	cg_cast(n->r.right);
+	cg_store(n->r.right);
+	n = n->l.left;
+    }
+    cg_cast(n);
+    cg_store(n);
 }
 
 /*
@@ -805,44 +789,101 @@ static int cg_sumargs(node *n)
  * NAME:	codegen->funargs()
  * DESCRIPTION:	generate code for function arguments
  */
-static int cg_funargs(node *n, bool lv, bool *spread)
+static int cg_funargs(node **l, int *nargs, bool *spread)
 {
-    int i;
+    register node *n, *m;
+    register int stack;
 
     *spread = FALSE;
+    n = *l;
+    *l = (node *) NULL;
+    *nargs = 0;
     if (n == (node *) NULL) {
 	return 0;
     }
-    for (i = 1; n->type == N_PAIR; i++) {
-	cg_expr(n->l.left, FALSE);
+
+    stack = 0;
+    while (n->type == N_PAIR) {
+	m = n;
 	n = n->r.right;
+	if (m->l.left->type == N_LVALUE) {
+	    stack += cg_lvalue(m->l.left->l.left, FALSE);
+	    if (*l != (node *) NULL) {
+		(*l)->r.right = m->l.left;
+		m->l.left = *l;
+	    }
+	    *l = m;
+	    (*nargs)++;
+	} else {
+	    cg_expr(m->l.left, FALSE);
+	    stack++;
+	}
     }
+    if (n->type == N_SPREAD) {
+	cg_expr(n->l.left, FALSE);
+	stack++;
+	code_instr(I_SPREAD, n->line);
+	code_byte(-(short) n->mod - 2);
+	if ((short) n->mod >= 0) {
+	    if (*l == (node *) NULL) {
+		*l = n;
+	    }
+	    (*nargs)++;
+	}
+	*spread = TRUE;
+    } else if (n->type == N_LVALUE) {
+	stack += cg_lvalue(n->l.left, FALSE);
+	if (*l == (node *) NULL) {
+	    *l = n;
+	}
+	(*nargs)++;
+    } else {
+	cg_expr(n, FALSE);
+	stack++;
+    }
+    return stack;
+}
+
+/*
+ * NAME:	codegen->storearg()
+ * DESCRIPTION:	generate storage code for one lvalue argument
+ */
+static void cg_storearg(node *n)
+{
     if (n->type == N_SPREAD) {
 	int type;
 	long l;
 
-	cg_expr(n->l.left, FALSE);
 	code_instr(I_SPREAD, n->line);
 	code_byte(n->mod);
-	if (lv) {
-	    type = n->l.left->mod & ~(1 << REFSHIFT);
-	    if (type != T_MIXED) {
-		/* typechecked lvalues */
-		code_byte((type & T_REF) ? T_ARRAY : type);
-		if (type == T_CLASS) {
-		    l = ctrl_dstring(n->l.left->class);
-		    code_byte(l >> 16);
-		    code_word(l);
-		}
-	    } else {
-		code_byte(0);
-	    }
+	n = n->l.left;
+	if (n->mod & T_REF) {
+	    n->mod -= (1 << REFSHIFT);
 	}
-	*spread = TRUE;
+	type = cg_type(n, &l);
+	code_byte(type);
+	if (type == T_CLASS) {
+	    code_byte(l >> 16);
+	    code_word(l);
+	}
     } else {
-	cg_expr(n, FALSE);
+	/* N_LVALUE */
+	cg_cast(n->l.left);
+	cg_store(n->l.left);
     }
-    return i;
+}
+
+/*
+ * NAME:	codegen->storeargs()
+ * DESCRIPTION:	generate storage code for lvalue arguments
+ */
+static void cg_storeargs(node *n)
+{
+    while (n->type == N_PAIR) {
+	cg_storearg(n->r.right);
+	n = n->l.left;
+    }
+    cg_storearg(n);
 }
 
 /*
@@ -854,6 +895,8 @@ static void cg_expr(node *n, int pop)
     jmplist *jlist, *j2list;
     unsigned short i;
     long l;
+    node *args;
+    int nargs;
     bool spread;
 
     switch (n->type) {
@@ -971,17 +1014,11 @@ static void cg_expr(node *n, int pop)
 
     case N_ASSIGN:
 	if (n->l.left->type == N_AGGR) {
-	    l = cg_lval_aggr(n->l.left->l.left, n->l.left->r.right);
+	    l = cg_lval_aggr(&n->l.left->l.left);
 	    cg_expr(n->r.right, FALSE);
-	    if (l <= 127) {
-		code_instr(I_PUSH_INT1, n->line);
-		code_byte(l);
-	    } else {
-		code_instr(I_PUSH_INT4, n->line);
-		code_word(l >> 16);
-		code_word(l);
-	    }
-	    code_kfun(KF_STORE_AGGR, n->line);
+	    code_instr(I_STORES, n->line);
+	    code_byte(l);
+	    cg_store_aggr(n->l.left->l.left);
 	} else {
 	    cg_lvalue(n->l.left, FALSE);
 	    cg_expr(n->r.right, FALSE);
@@ -1062,8 +1099,8 @@ static void cg_expr(node *n, int pop)
 	break;
 
     case N_FUNC:
-	i = cg_funargs(n->l.left->r.right, (n->r.number >> 24) & KFCALL_LVAL,
-		       &spread);
+	args = n->l.left->r.right;
+	i = cg_funargs(&args, &nargs, &spread);
 	switch (n->r.number >> 24) {
 	case KFCALL:
 	case KFCALL_LVAL:
@@ -1076,7 +1113,18 @@ static void cg_expr(node *n, int pop)
 	    } else {
 		code_kfun((short) n->r.number, n->line);
 	    }
-	    break;
+	    if (pop) {
+		*last_instruction |= I_POP_BIT;
+	    }
+	    if ((n->r.number >> 24) == KFCALL_LVAL) {
+		/* generate stores */
+		code_instr(I_STORES, n->line);
+		code_byte(nargs);
+		if (args != (node *) NULL) {
+		    cg_storeargs(args);
+		}
+	    }
+	    return;
 
 	case DFCALL:
 	    if ((n->r.number & 0xff00) == 0) {
@@ -1274,11 +1322,6 @@ static void cg_expr(node *n, int pop)
 	cg_expr(n->l.left, FALSE);
 	cg_expr(n->r.right, FALSE);
 	code_kfun(KF_LT_FLT, n->line);
-	break;
-
-    case N_LVALUE:
-	cg_lvalue(n->l.left, FALSE);
-	cg_lvalue2(n->l.left, n->l.left);
 	break;
 
     case N_MOD:

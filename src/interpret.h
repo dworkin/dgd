@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -72,6 +72,7 @@
 # define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
 # define I_CAST			0x0a	/* 1+3 unsigned */
 # define I_INSTANCEOF		0x0b	/* 1 unsigned, 2 unsigned */
+# define I_STORES		0x0c	/* 1 unsigned */
 # define I_STORE_GLOBAL_INDEX	0x0d	/* 1 unsigned */
 # define I_CALL_EFUNC		0x0e	/* 2 unsigned (+ 1 unsigned) */
 # define I_CALL_CEFUNC		0x0f	/* 2 unsigned, 1 unsigned */
@@ -108,7 +109,7 @@
 # define LVAL_INDEX_INDEX	5
 
 # define VERSION_VM_MAJOR	2
-# define VERSION_VM_MINOR	0
+# define VERSION_VM_MINOR	1
 
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
@@ -289,7 +290,7 @@ extern void	i_odest		(frame*, object*);
 extern void	i_string	(frame*, int, unsigned int);
 extern void	i_aggregate	(frame*, unsigned int);
 extern void	i_map_aggregate	(frame*, unsigned int);
-extern int	i_spread	(frame*, int, int, Uint);
+extern int	i_spread1	(frame*, int);
 extern void	i_global	(frame*, int, int);
 extern void	i_global_lvalue	(frame*, int, int, int, Uint);
 extern void	i_index		(frame*);
@@ -303,6 +304,7 @@ extern void	i_dup		(frame*);
 extern void	i_store_global	(frame*, int, int, value*, value*);
 extern bool	i_store_index	(frame*, value*, value*, value*, value*);
 extern void	i_store		(frame*);
+extern void	i_lvalues	(frame*);
 extern Int	i_get_depth	(frame*);
 extern Int	i_get_ticks	(frame*);
 extern void	i_new_rlimits	(frame*, Int, Int);

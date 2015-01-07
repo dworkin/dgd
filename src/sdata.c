@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1537,7 +1537,8 @@ static void d_save_control(control *ctrl)
      */
 
     /* create header */
-    header.flags = ctrl->flags & (CTRL_UNDEFINED | CTRL_CONVERTED | CTRL_OLDVM);
+    header.flags = ctrl->flags & (CTRL_UNDEFINED | CTRL_CONVERTED |
+				  CTRL_VM_1_0 | CTRL_VM_2_1);
     header.ninherits = ctrl->ninherits;
     header.imapsz = ctrl->imapsz;
     header.compiled = ctrl->compiled;
@@ -2664,7 +2665,7 @@ static control *d_conv_control(object *obj,
     }
     ctrl->flags = header.flags;
     if (conv_vm) {
-	ctrl->flags |= CTRL_OLDVM;
+	ctrl->flags |= CTRL_VM_1_0;
     }
     ctrl->ninherits = header.ninherits;
     ctrl->imapsz = header.imapsz;

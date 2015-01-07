@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2144,8 +2144,6 @@ static node *funcall(node *call, node *args, int funcptr)
 	    while (n <= nargs) {
 		if (*argp == T_LVALUE) {
 		    (*arg)->mod = n - spread;
-		    /* KFCALL => KFCALL_LVAL */
-		    func->r.number |= (long) KFCALL_LVAL << 24;
 		    break;
 		}
 		if (typechecked && c_tmatch(t, *argp) == T_NIL) {
@@ -2162,8 +2160,6 @@ static node *funcall(node *call, node *args, int funcptr)
 			n, fname);
 	    }
 	    *arg = node_mon(N_LVALUE, (*arg)->mod, *arg);
-	    /* only kfuns can have lvalue parameters */
-	    func->r.number |= (long) KFCALL_LVAL << 24;
 	} else if ((typechecked || (*arg)->mod == T_VOID) &&
 		   c_tmatch((*arg)->mod, t) == T_NIL &&
 		   (!c_nil(*arg) || !T_POINTER(t))) {
@@ -2186,6 +2182,11 @@ static node *funcall(node *call, node *args, int funcptr)
 	} else {
 	    c_error("too many arguments for function %s", fname);
 	}
+    }
+
+    if (proto[PROTO_SIZE(proto) - 1] == T_LVALUE) {
+	/* kfuns can have lvalue parameters */
+	func->r.number |= (long) KFCALL_LVAL << 24;
     }
 
     return func;

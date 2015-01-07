@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2012,2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -311,10 +311,10 @@ int kf_random(frame *f)
 
 
 # ifdef FUNCDEF
-FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 0)
+FUNCDEF("0.sscanf", kf_old_sscanf, pt_old_sscanf, 0)
 # else
-char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
-		     T_STRING, T_LVALUE };
+char pt_old_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
+			 T_STRING, T_LVALUE };
 
 /*
  * NAME:	match
@@ -369,10 +369,10 @@ static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
 }
 
 /*
- * NAME:	kfun->sscanf()
+ * NAME:	kfun->old_sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_sscanf(frame *f, int nargs)
+int kf_old_sscanf(frame *f, int nargs)
 {
     unsigned int flen, slen, size;
     char *format, *x;
@@ -619,6 +619,297 @@ int kf_sscanf(frame *f, int nargs)
 no_match:
     i_pop(f, top - f->sp + 2);
     PUSH_INTVAL(f, matches);
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("sscanf", kf_sscanf, pt_sscanf, 1)
+# else
+char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
+		     T_STRING, T_LVALUE };
+
+/*
+ * NAME:	kfun->sscanf()
+ * DESCRIPTION:	scan a string
+ */
+int kf_sscanf(frame *f, int nargs)
+{
+    struct {
+	char type;			/* int, float or string */
+	union {
+	    unsigned short fhigh;	/* high word of float */
+	    ssizet len;			/* length of string */
+	} o;
+	union {
+	    Int number;			/* number */
+	    Uint flow;			/* low longword of float */
+	    char *text;			/* text of string */
+	} u;
+    } results[MAX_LOCALS];
+    unsigned int flen, slen, size;
+    char *format, *x;
+    unsigned int fl, sl;
+    int matches;
+    char *s;
+    Int i;
+    xfloat flt;
+    bool skip;
+    value *top, *elts;
+    array *a;
+
+    size = 0;
+    x = NULL;
+
+    if (nargs < 2) {
+	return -1;
+    }
+    top = f->sp + nargs - 2;
+    if (top[1].type != T_STRING) {
+	return 1;
+    }
+    s = top[1].u.string->text;
+    slen = top[1].u.string->len;
+    if (top[0].type != T_STRING) {
+	return 2;
+    }
+    format = top[0].u.string->text;
+    flen = top[0].u.string->len;
+
+    matches = 0;
+    nargs = 0;
+
+    while (flen > 0) {
+	if (format[0] != '%' || format[1] == '%') {
+	    /* match initial part */
+	    fl = flen;
+	    sl = slen;
+	    if (!match(format, s, &fl, &sl) || fl == flen) {
+		goto no_match;
+	    }
+	    format += fl;
+	    flen -= fl;
+	    s += sl;
+	    slen -= sl;
+	}
+
+	/* skip first % */
+	format++;
+	--flen;
+
+	/*
+	 * check for %*
+	 */
+	if (*format == '*') {
+	    /* no assignment */
+	    format++;
+	    --flen;
+	    skip = TRUE;
+	} else {
+	    skip = FALSE;
+	}
+
+	--flen;
+	switch (*format++) {
+	case 's':
+	    /* %s */
+	    if (format[0] == '%' && format[1] != '%') {
+		switch ((format[1] == '*') ? format[2] : format[1]) {
+		case 'd':
+		    /*
+		     * %s%d
+		     */
+		    size = slen;
+		    x = s;
+		    while (!isdigit(*x)) {
+			if (slen == 0) {
+			    goto no_match;
+			}
+			if (x[0] == '-' && isdigit(x[1])) {
+			    break;
+			}
+			x++;
+			--slen;
+		    }
+		    size -= slen;
+		    break;
+
+		case 'f':
+		    /*
+		     * %s%f
+		     */
+		    size = slen;
+		    x = s;
+		    while (!isdigit(*x)) {
+			if (slen == 0) {
+			    goto no_match;
+			}
+			if ((x[0] == '-' || x[0] == '.') && isdigit(x[1])) {
+			    break;
+			}
+			x++;
+			--slen;
+		    }
+		    size -= slen;
+		    break;
+
+		default:
+		    error("Bad sscanf format string");
+		}
+	    } else {
+		/*
+		 * %s followed by non-%
+		 */
+		if (flen == 0) {
+		    /* match whole string */
+		    size = slen;
+		    x = s + slen;
+		    slen = 0;
+		} else {
+		    /* get # of chars to match after string */
+		    for (x = format, size = 0; x - format != flen;
+			 x++, size++) {
+			x = (char *) memchr(x, '%', flen - (x - format));
+			if (x == (char *) NULL) {
+			    x = format + flen;
+			    break;
+			} else if (x[1] != '%') {
+			    break;
+			}
+		    }
+		    size = (x - format) - size;
+
+		    x = s;
+		    for (;;) {
+			sl = slen - (x - s);
+			if (sl < size) {
+			    goto no_match;
+			}
+			x = (char *) memchr(x, format[0], sl - size + 1);
+			if (x == (char *) NULL) {
+			    goto no_match;
+			}
+			fl = flen;
+			if (match(format, x, &fl, &sl)) {
+			    format += fl;
+			    flen -= fl;
+			    size = x - s;
+			    x += sl;
+			    slen -= size + sl;
+			    break;
+			}
+			x++;
+		    }
+		}
+	    }
+
+	    i_add_ticks(f, 8);
+	    if (!skip) {
+		results[nargs].type = T_STRING;
+		results[nargs].o.len = size;
+		results[nargs].u.text = s;
+		nargs++;
+	    }
+	    s = x;
+	    break;
+
+	case 'd':
+	    /* %d */
+	    x = s;
+	    while (slen != 0 && *x == ' ') {
+		x++;
+		--slen;
+	    }
+	    s = x;
+	    i = strtoint(&s);
+	    if (s == x) {
+		goto no_match;
+	    }
+	    slen -= (s - x);
+
+	    i_add_ticks(f, 8);
+	    if (!skip) {
+		results[nargs].type = T_INT;
+		results[nargs].u.number = i;
+		nargs++;
+	    }
+	    break;
+
+	case 'f':
+	    /* %f */
+	    x = s;
+	    while (slen != 0 && *x == ' ') {
+		x++;
+		--slen;
+	    }
+	    s = x;
+	    if (!flt_atof(&s, &flt) || s == x) {
+		goto no_match;
+	    }
+	    slen -= (s - x);
+
+	    i_add_ticks(f, 8);
+	    if (!skip) {
+		results[nargs].type = T_FLOAT;
+		results[nargs].o.fhigh = flt.high;
+		results[nargs].u.flow = flt.low;
+		nargs++;
+	    }
+	    break;
+
+	case 'c':
+	    /* %c */
+	    if (slen == 0) {
+		goto no_match;
+	    }
+	    i_add_ticks(f, 8);
+	    if (!skip) {
+		results[nargs].type = T_INT;
+		results[nargs].u.number = UCHAR(*s);
+		nargs++;
+	    }
+	    s++;
+	    --slen;
+	    break;
+
+	default:
+	    error("Bad sscanf format string");
+	}
+	matches++;
+    }
+
+no_match:
+    a = arr_new(f->data, nargs);
+    for (elts = a->elts, size = 0; size < nargs; elts++, size++) {
+	switch (results[size].type) {
+	case T_INT:
+	    PUT_INTVAL(elts, results[size].u.number);
+	    break;
+
+	case T_FLOAT:
+	    flt.high = results[size].o.fhigh;
+	    flt.low = results[size].u.flow;
+	    PUT_FLTVAL(elts, flt);
+	    break;
+
+	case T_STRING:
+	    PUT_STRVAL(elts,
+		       str_new(results[size].u.text, results[size].o.len));
+	    break;
+	}
+    }
+
+    str_del(top[0].u.string);
+    str_del(top[1].u.string);
+    memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(value));
+    f->sp++;
+
+    PUT_ARRVAL(f->sp, a);
+    i_lvalues(f);
+    arr_del(a);
+
+    PUT_INTVAL(f->sp, matches);
     return 0;
 }
 # endif

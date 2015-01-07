@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -326,7 +326,7 @@ void i_pop(frame *f, int n)
  */
 value *i_reverse(frame *f, int n)
 {
-    if (f->p_ctrl->flags & CTRL_OLDVM) {
+    if (f->p_ctrl->flags & CTRL_VM_1_0) {
 	value sp[MAX_LOCALS];
 	value lip[3 * MAX_LOCALS];
 	value *v1, *v2, *w1, *w2;
@@ -601,11 +601,11 @@ void i_map_aggregate(frame *f, unsigned int size)
 }
 
 /*
- * NAME:	interpret->spread()
+ * NAME:	interpret->spread0()
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-int i_spread(frame *f, int n, int vtype, Uint class)
+static int i_spread0(frame *f, int n, int vtype, Uint class)
 {
     array *a;
     int i;
@@ -633,7 +633,7 @@ int i_spread(frame *f, int n, int vtype, Uint class)
     }
     /* lvalues */
     for (n = a->size; i < n; i++) {
-	if (f->p_ctrl->flags & CTRL_OLDVM) {
+	if (f->p_ctrl->flags & CTRL_VM_1_0) {
 	    (--f->sp)->type = T_ALVALUE;
 	    f->sp->oindex = vtype;
 	    f->sp->u.array = a;
@@ -656,6 +656,52 @@ int i_spread(frame *f, int n, int vtype, Uint class)
 
     arr_del(a);
     return n - 1;
+}
+
+/*
+ * NAME:	interpret->spread1()
+ * DESCRIPTION:	push the values in an array on the stack, return the number of
+ *		extra arguments pushed
+ */
+int i_spread1(frame *f, int n)
+{
+    array *a;
+    int i;
+    value *v;
+
+    if (f->sp->type != T_ARRAY) {
+	error("Spread of non-array");
+    }
+    a = f->sp->u.array;
+
+    if (n < 0) {
+	/* no lvalues */
+	n = a->size;
+	i_add_ticks(f, n);
+	f->sp++;
+	i_grow_stack(f, n);
+	for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
+	    i_push_value(f, v);
+	}
+	arr_del(a);
+
+	return n - 1;
+    } else {
+	/* including lvalues */
+	if (n > a->size) {
+	    n = a->size;
+	}
+	i_add_ticks(f, n);
+	i_grow_stack(f, n);
+	f->sp++;
+	for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
+	    i_push_value(f, v);
+	}
+	--f->sp;
+	PUT_ARRVAL_NOREF(f->sp, a);
+
+	return n;
+    }
 }
 
 /*
@@ -1338,7 +1384,7 @@ void i_store(frame *f)
     value *val;
     Uint class;
 
-    if (f->p_ctrl->flags & CTRL_OLDVM) {
+    if (f->p_ctrl->flags & CTRL_VM_1_0) {
 	value *lval;
 	array *a;
 	value ival;
@@ -1470,6 +1516,277 @@ void i_store(frame *f)
 	    f->sp += 4;
 	    break;
 	}
+    }
+}
+
+/*
+ * NAME:	interpret->stores()
+ * DESCRIPTION:	perform a sequence of special stores
+ */
+static void i_stores(frame *f, int skip, int assign)
+{
+    char *pc;
+    unsigned short u, u2, instr;
+    Uint class;
+    value val;
+
+    pc = f->pc;
+    instr = 0;
+
+    /*
+     * stores to skip
+     */
+    while (skip != 0) {
+	instr = FETCH1U(pc);
+	switch (instr & I_INSTR_MASK) {
+	case I_CAST:
+	case I_CAST | I_POP_BIT:
+	    if (FETCH1U(pc) == T_CLASS) {
+		pc += 3;
+	    }
+	    continue;
+
+	case I_STORE_LOCAL:
+	case I_STORE_LOCAL | I_POP_BIT:
+	case I_STORE_GLOBAL:
+	case I_STORE_GLOBAL | I_POP_BIT:
+	    pc++;
+	    break;
+
+	case I_STORE_FAR_GLOBAL:
+	case I_STORE_FAR_GLOBAL | I_POP_BIT:
+	    pc += 2;
+	    break;
+
+	case I_STORE_INDEX:
+	case I_STORE_INDEX | I_POP_BIT:
+	    i_del_value(&f->sp[1]);
+	    i_del_value(&f->sp[2]);
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_LOCAL_INDEX:
+	case I_STORE_LOCAL_INDEX | I_POP_BIT:
+	case I_STORE_GLOBAL_INDEX:
+	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
+	    pc++;
+	    i_del_value(&f->sp[1]);
+	    f->sp[1] = f->sp[0];
+	    f->sp++;
+	    break;
+
+	case I_STORE_FAR_GLOBAL_INDEX:
+	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
+	    pc += 2;
+	    i_del_value(&f->sp[1]);
+	    f->sp[1] = f->sp[0];
+	    f->sp++;
+	    break;
+
+	case I_STORE_INDEX_INDEX:
+	case I_STORE_INDEX_INDEX | I_POP_BIT:
+	    i_del_value(&f->sp[1]);
+	    i_del_value(&f->sp[2]);
+	    i_del_value(&f->sp[3]);
+	    i_del_value(&f->sp[4]);
+	    f->sp[4] = f->sp[0];
+	    f->sp += 4;
+	    break;
+
+# ifdef DEBUG
+	default:
+	    fatal("invalid store");
+# endif
+	}
+	--skip;
+    }
+
+    /*
+     * stores to perform
+     */
+    while (assign != 0) {
+	instr = FETCH1U(pc);
+	switch (instr & I_INSTR_MASK) {
+	case I_CAST:
+	case I_CAST | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    if (u == T_CLASS) {
+		FETCH3U(pc, class);
+	    }
+	    i_cast(f, &f->sp->u.array->elts[assign - 1], u, class);
+	    continue;
+
+	case I_STORE_LOCAL:
+	case I_STORE_LOCAL | I_POP_BIT:
+	    i_store_local(f, FETCH1S(pc), &f->sp->u.array->elts[assign - 1],
+			  (value *) NULL);
+	    break;
+
+	case I_STORE_GLOBAL:
+	case I_STORE_GLOBAL | I_POP_BIT:
+	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc),
+			   &f->sp->u.array->elts[assign - 1], (value *) NULL);
+	    break;
+
+	case I_STORE_FAR_GLOBAL:
+	case I_STORE_FAR_GLOBAL | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    i_store_global(f, u, FETCH1U(pc),
+			   &f->sp->u.array->elts[assign - 1], (value *) NULL);
+	    break;
+
+	case I_STORE_INDEX:
+	case I_STORE_INDEX | I_POP_BIT:
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
+			      &f->sp->u.array->elts[assign - 1])) {
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_LOCAL_INDEX:
+	case I_STORE_LOCAL_INDEX | I_POP_BIT:
+	    u = FETCH1S(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
+			      &f->sp->u.array->elts[assign - 1])) {
+		i_store_local(f, (short) u, &val, &f->sp[2]);
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_GLOBAL_INDEX:
+	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
+			      &f->sp->u.array->elts[assign - 1])) {
+		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, &f->sp[2]);
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_FAR_GLOBAL_INDEX:
+	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
+	    u = FETCH1U(pc);
+	    u2 = FETCH1U(pc);
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
+			      &f->sp->u.array->elts[assign - 1])) {
+		i_store_global(f, u, u2, &val, &f->sp[2]);
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    }
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
+	    break;
+
+	case I_STORE_INDEX_INDEX:
+	case I_STORE_INDEX_INDEX | I_POP_BIT:
+	    val = nil_value;
+	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
+			      &f->sp->u.array->elts[assign - 1])) {
+		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, &val);
+		str_del(f->sp[2].u.string);
+		str_del(val.u.string);
+	    } else {
+		i_del_value(f->sp + 3);
+		i_del_value(f->sp + 4);
+	    }
+	    f->sp[4] = f->sp[0];
+	    f->sp += 4;
+	    break;
+
+# ifdef DEBUG
+	default:
+	    fatal("invalid store");
+# endif
+	}
+	--assign;
+    }
+
+    if (instr & I_POP_BIT) {
+	arr_del(f->sp->u.array);
+	f->sp++;
+    }
+
+    f->pc = pc;
+}
+
+/*
+ * NAME:	interpret->lvalues()
+ * DESCRIPTION:	perform assignments for lvalue arguments
+ */
+void i_lvalues(frame *f)
+{
+    char *pc;
+    int n, offset, type;
+    unsigned short nassign, nspread;
+    Uint class;
+
+    pc = f->pc;
+# ifdef DEBUG
+    if ((FETCH1U(pc) & I_INSTR_MASK) != I_STORES) {
+	fatal("stores expected");
+    }
+# else
+    pc++;
+# endif
+    n = FETCH1U(pc);
+    f->pc = pc;
+
+    if (n != 0) {
+	nassign = f->sp->u.array->size;
+
+	if ((FETCH1U(pc) & I_INSTR_MASK) == I_SPREAD) {
+	    /*
+	     * lvalue spread
+	     */
+	    offset = FETCH1U(pc);
+	    type = FETCH1U(pc);
+	    if (type == T_CLASS) {
+		FETCH3U(pc, class);
+	    }
+	    f->pc = pc;
+
+	    if (--n < nassign && f->sp[1].u.array->size > offset) {
+		nspread = f->sp[1].u.array->size - offset;
+		if (nspread >= nassign - n) {
+		    nspread = nassign - n;
+		    i_add_ticks(f, nspread * 3);
+		    while (nspread != 0) {
+			--nassign;
+			if (type != 0) {
+			    i_cast(f, &f->sp->u.array->elts[nassign], type,
+				   class);
+			}
+			--nspread;
+			d_assign_elt(f->data, f->sp[1].u.array,
+				     &f->sp[1].u.array->elts[offset + nspread],
+				     &f->sp->u.array->elts[nassign]);
+		    }
+		}
+	    }
+
+	    arr_del(f->sp[1].u.array);
+	    f->sp[1] = f->sp[0];
+	    f->sp++;
+	}
+
+	if (n < nassign) {
+	    error("Missing lvalue");
+	}
+	i_stores(f, n - nassign, nassign);
     }
 }
 
@@ -2192,7 +2509,7 @@ static void i_interpret0(frame *f, char *pc)
 	    } else {
 		instr = 0;
 	    }
-	    size = i_spread(f, (short) u, instr, l);
+	    size = i_spread0(f, (short) u, instr, l);
 	    continue;
 
 	case II_CAST:
@@ -2262,6 +2579,7 @@ static void i_interpret0(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
+	    f->pc = pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
@@ -2273,6 +2591,7 @@ static void i_interpret0(frame *f, char *pc)
 		    error("Too many arguments for kfun %s", kf->name);
 		}
 	    }
+	    pc = f->pc;
 	    break;
 
 	case II_CALL_AFUNC:
@@ -2451,6 +2770,10 @@ static void i_interpret1(frame *f, char *pc)
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
+	    if (f->p_ctrl->flags & CTRL_VM_2_1) {
+		size = i_spread1(f, (short) u);
+		continue;
+	    }
 	    if ((short) u >= 0) {
 		u2 = FETCH1U(pc);
 		if (u2 == T_CLASS) {
@@ -2459,7 +2782,7 @@ static void i_interpret1(frame *f, char *pc)
 	    } else {
 		u2 = 0;
 	    }
-	    size = i_spread(f, (short) u, u2, l);
+	    size = i_spread0(f, (short) u, u2, l);
 	    continue;
 
 	case I_CAST:
@@ -2490,6 +2813,17 @@ static void i_interpret1(frame *f, char *pc)
 
 	    PUT_INTVAL(f->sp, instance);
 	    break;
+
+	case I_STORES:
+	    u = FETCH1U(pc);
+	    if (f->sp->type != T_ARRAY || u > f->sp->u.array->size) {
+		error("Wrong number of lvalues");
+	    }
+	    d_get_elts(f->sp->u.array);
+	    f->pc = pc;
+	    i_stores(f, 0, u);
+	    pc = f->pc;
+	    continue;
 
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
@@ -2627,6 +2961,7 @@ static void i_interpret1(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
+	    f->pc = pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
@@ -2638,6 +2973,7 @@ static void i_interpret1(frame *f, char *pc)
 		    error("Too many arguments for kfun %s", kf->name);
 		}
 	    }
+	    pc = f->pc;
 	    break;
 
 	case I_CALL_EFUNC:
@@ -2655,6 +2991,7 @@ static void i_interpret1(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
+	    f->pc = pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		if ((short) u < 0) {
@@ -2666,6 +3003,7 @@ static void i_interpret1(frame *f, char *pc)
 		    error("Too many arguments for kfun %s", kf->name);
 		}
 	    }
+	    pc = f->pc;
 	    break;
 
 	case I_CALL_CKFUNC:
@@ -2684,10 +3022,12 @@ static void i_interpret1(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
+	    f->pc = pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		error("Bad argument %d for kfun %s", u, kf->name);
 	    }
+	    pc = f->pc;
 	    break;
 
 	case I_CALL_CEFUNC:
@@ -2706,10 +3046,12 @@ static void i_interpret1(frame *f, char *pc)
 		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
+	    f->pc = pc;
 	    u = (*kf->func)(f, u, kf);
 	    if (u != 0) {
 		error("Bad argument %d for kfun %s", u, kf->name);
 	    }
+	    pc = f->pc;
 	    break;
 
 	case I_CALL_AFUNC:
@@ -3007,7 +3349,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     /* execute code */
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     f.prog = pc += 2;
-    if (f.p_ctrl->flags & CTRL_OLDVM) {
+    if (f.p_ctrl->flags & CTRL_VM_1_0) {
 	i_interpret0(&f, pc);
     } else {
 	i_interpret1(&f, pc);
@@ -3352,6 +3694,7 @@ static unsigned short i_line1(frame *f)
 	case I_STORE_LOCAL | I_POP_BIT:
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
+	case I_STORES:
 	case I_STORE_LOCAL_INDEX:
 	case I_STORE_LOCAL_INDEX | I_POP_BIT:
 	case I_STORE_GLOBAL_INDEX:
@@ -3505,7 +3848,7 @@ static array *i_func_trace(frame *f, dataspace *data)
 
     /* line number */
     PUT_INTVAL(v, (f->func->class & C_COMPILED) ? 0 :
-		   (f->p_ctrl->flags & CTRL_OLDVM) ? i_line0(f) : i_line1(f));
+		   (f->p_ctrl->flags & CTRL_VM_1_0) ? i_line0(f) : i_line1(f));
     v++;
 
     /* external flag */

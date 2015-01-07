@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -147,17 +147,17 @@ static Uint opt_lvalue(node *n)
 	switch (m->type) {
 	case N_INDEX:
 	    /* strarray[x][y] = 'c'; */
-	    return max2(max2(opt_expr(&m->l.left, FALSE),
-			     opt_expr(&m->r.right, FALSE) + 1),
-			max2(opt_expr(&n->r.right, FALSE) + 3, 8));
+	    return max3(opt_expr(&m->l.left, FALSE),
+			opt_expr(&m->r.right, FALSE) + 1,
+			opt_expr(&n->r.right, FALSE) + 3);
 
 	default:
-	    return max3(opt_expr(&n->l.left, FALSE),
-			opt_expr(&n->r.right, FALSE) + 1, 6);
+	    return max2(opt_expr(&n->l.left, FALSE),
+			opt_expr(&n->r.right, FALSE) + 1);
 	}
 
     default:
-	return 2;
+	return 0;
     }
 }
 
