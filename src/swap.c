@@ -531,76 +531,6 @@ typedef struct {
 static char dh_layout[] = "idddd";
 
 /*
- * NAME:	sector_compare
- * DESCRIPTION: used by qsort to compare entries
- */
-int sector_compare(const void *pa, const void *pb)
-{
-    sector a = *(sector *)pa;
-    sector b = *(sector *)pb;
-
-    if (a > b) {
-	return 1;
-    } else if (a < b) {
-	return -1;
-    } else {
-	return 0;
-    }
-}
-
-/*
- * NAME:	swap->trim()
- * DESCRIPTION:	trim free sectors from the end of the sector map
- */
-void sw_trim()
-{
-    sector npurge;
-    sector *entries;
-    sector i;
-    sector j;
-
-    if (!nfree) {
-	/* nothing to trim */
-	return;
-    }
-
-    npurge = 0;
-    entries = ALLOC(sector, nfree);
-
-    j = mfree;
-
-    /* 1. prepare a list of free sectors */
-    for (i = 0; i < nfree; i++) {
-	entries[i] = j;
-	j = map[j];
-    }
-
-    /* 2. sort indices from low to high */
-    qsort(entries, nfree, sizeof(sector), sector_compare);
-
-    /* 3. trim the object table */
-    while (nfree > 0 && entries[nfree - 1] == nsectors - 1) {
-	npurge++;
-	nsectors--;
-	nfree--;
-    }
-
-    memset(map + nsectors, '\0', npurge * sizeof(sector));
-
-    /* 4. relink remaining free sectors from low to high */
-    j = SW_UNUSED;
-
-    for (i = 0; i < nfree; i++) {
-	uindex n = entries[nfree - i - 1];
-	map[n] = j;
-	j = n;
-    }
-
-    mfree = j;
-    FREE(entries);
-}
-
-/*
  * NAME:	swap->dump()
  * DESCRIPTION:	create snapshot
  */
@@ -644,8 +574,6 @@ int sw_dump(char *snapshot, bool keep)
 	}
 	map[h->sec] = sec;
     }
-
-    sw_trim();
 
     if (dump >= 0 && !keep) {
 	P_close(dump);
