@@ -789,7 +789,7 @@ string *c_objecttype(node *n)
 {
     char path[STRINGSZ];
 
-    if (!cg_compiled()) {
+    if (c_autodriver() == 0) {
 	char *p;
 	frame *f;
 
