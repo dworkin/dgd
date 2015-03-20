@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -157,7 +157,7 @@ node *node_var(unsigned int type, int idx)
 {
     node *n;
 
-    n = node_new(0);
+    n = node_new(tk_line());
     n->type = N_VAR;
     n->mod = type;
     n->l.number = idx;
