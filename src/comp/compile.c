@@ -2635,6 +2635,7 @@ void c_error(char *format, ...)
 	PUSH_INTVAL(f, tk_line());
 	va_start(args, format);
 	vsprintf(buf, format, args);
+	va_end(args);
 	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
@@ -2644,6 +2645,7 @@ void c_error(char *format, ...)
 	sprintf(buf, "%s, %u: ", tk_filename(), tk_line());
 	va_start(args, format);
 	vsprintf(buf + strlen(buf), format, args);
+	va_end(args);
 	message("%s\012", buf);     /* LF */
     }
 

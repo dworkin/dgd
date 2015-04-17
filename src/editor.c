@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -226,6 +226,7 @@ void output(char *f, ...)
 
     va_start(args, f);
     vsprintf(buf, f, args);
+    va_end(args);
     len = strlen(buf);
     if (outbufsz + len > USHRT_MAX) {
 	error("Editor output string too long");
@@ -246,4 +247,5 @@ void ed_error(char *f, ...)
     }
     va_start(args, f);
     error(f, args);
+    va_end(args);
 }
