@@ -1907,6 +1907,7 @@ static void cg_switch_int(node *n)
 	switch (sz) {
 	case 4:
 	    code_word((int) (l >> 16));
+	    /* fall through */
 	case 2:
 	    code_word((int) l);
 	    break;
@@ -1979,6 +1980,7 @@ static void cg_switch_range(node *n)
 	switch (sz) {
 	case 4:
 	    code_word((int) (l >> 16));
+	    /* fall through */
 	case 2:
 	    code_word((int) l);
 	    break;
@@ -1996,6 +1998,7 @@ static void cg_switch_range(node *n)
 	switch (sz) {
 	case 4:
 	    code_word((int) (l >> 16));
+	    /* fall through */
 	case 2:
 	    code_word((int) l);
 	    break;

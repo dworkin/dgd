@@ -277,6 +277,7 @@ void i_pop(frame *f, int n)
 		--f->lip;
 	    }
 	    --f->lip;
+	    /* fall through */
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
@@ -1958,6 +1959,7 @@ frame *i_set_sp(frame *ftop, value *sp)
 		    --w;
 		}
 		--w;
+		/* fall through */
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:

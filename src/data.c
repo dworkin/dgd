@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -255,10 +255,13 @@ static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
     switch (nargs) {
     default:
 	ref_rhs(data, &v[3]);
+	/* fall through */
     case 2:
 	ref_rhs(data, &v[2]);
+	/* fall through */
     case 1:
 	ref_rhs(data, &v[1]);
+	/* fall through */
     case 0:
 	ref_rhs(data, &v[0]);
 	break;
@@ -283,12 +286,15 @@ static void d_free_call_out(dataspace *data, unsigned int handle)
     default:
 	del_lhs(data, &v[3]);
 	i_del_value(&v[3]);
+	/* fall through */
     case 2:
 	del_lhs(data, &v[2]);
 	i_del_value(&v[2]);
+	/* fall through */
     case 1:
 	del_lhs(data, &v[1]);
 	i_del_value(&v[1]);
+	/* fall through */
     case 0:
 	del_lhs(data, &v[0]);
 	str_del(v[0].u.string);
