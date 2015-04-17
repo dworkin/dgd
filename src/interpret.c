@@ -1539,7 +1539,7 @@ static void i_stores(frame *f, int skip, int assign)
      */
     while (skip != 0) {
 	instr = FETCH1U(pc);
-	switch (instr & I_INSTR_MASK) {
+	switch (instr & I_EINSTR_MASK) {
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
 	    if (FETCH1U(pc) == T_CLASS) {
@@ -1608,7 +1608,7 @@ static void i_stores(frame *f, int skip, int assign)
      */
     while (assign != 0) {
 	instr = FETCH1U(pc);
-	switch (instr & I_INSTR_MASK) {
+	switch (instr & I_EINSTR_MASK) {
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
 	    u = FETCH1U(pc);
@@ -1749,7 +1749,7 @@ void i_lvalues(frame *f)
     if (n != 0) {
 	nassign = f->sp->u.array->size;
 
-	if ((FETCH1U(pc) & I_INSTR_MASK) == I_SPREAD) {
+	if ((FETCH1U(pc) & I_EINSTR_MASK) == I_SPREAD) {
 	    /*
 	     * lvalue spread
 	     */
