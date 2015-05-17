@@ -1573,16 +1573,18 @@ static void i_stores(frame *f, int skip, int assign)
 	case I_STORE_GLOBAL_INDEX | I_POP_BIT:
 	    pc++;
 	    i_del_value(&f->sp[1]);
-	    f->sp[1] = f->sp[0];
-	    f->sp++;
+	    i_del_value(&f->sp[2]);
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
 	    break;
 
 	case I_STORE_FAR_GLOBAL_INDEX:
 	case I_STORE_FAR_GLOBAL_INDEX | I_POP_BIT:
 	    pc += 2;
 	    i_del_value(&f->sp[1]);
-	    f->sp[1] = f->sp[0];
-	    f->sp++;
+	    i_del_value(&f->sp[2]);
+	    f->sp[2] = f->sp[0];
+	    f->sp += 2;
 	    break;
 
 	case I_STORE_INDEX_INDEX:
