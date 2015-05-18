@@ -1885,9 +1885,9 @@ void i_new_rlimits(frame *f, Int depth, Int t)
 	    rlim->noticks = FALSE;
 	}
     } else {
-	f->rlim->ticks = 0;
 	rlim->ticks = f->rlim->ticks;
 	rlim->noticks = f->rlim->noticks;
+	f->rlim->ticks = 0;
     }
 
     rlim->next = f->rlim;
