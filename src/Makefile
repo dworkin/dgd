@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -88,11 +88,11 @@ host/dgd::
 
 all:	a.out
 
-$(BIN)/driver: a.out
-	-mv $(BIN)/driver $(BIN)/driver.old
-	cp a.out $(BIN)/driver
+$(BIN)/dgd: a.out
+	-mv $(BIN)/dgd $(BIN)/dgd.old
+	cp a.out $(BIN)/dgd
 
-install: $(BIN)/driver
+install: $(BIN)/dgd
 
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
