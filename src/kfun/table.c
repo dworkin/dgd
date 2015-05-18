@@ -19,6 +19,7 @@
 
 # define INCLUDE_FILE_IO
 # include "kfun.h"
+# include "control.h"
 # include "table.h"
 
 /*
@@ -239,6 +240,40 @@ void kf_init()
 	*k1++ = i;
 	*k2++ = i + 128 - KF_BUILTINS - n;
     }
+}
+
+extern void ext_kfuns(kfindex*, char*, int);
+
+/*
+ * NAME:	kfun->jit()
+ * DESCRIPTION:	prepare JIT compiler
+ */
+void kf_jit()
+{
+    int size, i;
+    char *protos, *proto;
+
+    for (size = 0, i = 0; i < nkfun; i++) {
+	if (kfx[i] != 0 || i == 0) {
+	    size += PROTO_SIZE(kftab[i].proto);
+	} else {
+	    size++;
+	}
+    }
+    protos = ALLOCA(char, size);
+    for (i = 0; i < nkfun; i++) {
+	if (kfx[i] != 0 || i == 0) {
+	    proto = kftab[i].proto;
+	    memcpy(protos, proto, PROTO_SIZE(proto));
+	    protos += PROTO_SIZE(proto);
+	} else {
+	    *protos++ = '\0';
+	}
+    }
+
+    protos -= size;
+    ext_kfuns(kfind, protos, nkfun);
+    AFREE(protos);
 }
 
 /*
