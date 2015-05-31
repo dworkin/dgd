@@ -411,7 +411,7 @@ void ext_kfuns(kfindex *map, char *protos, int nkfun)
                                    (uint16_t *) map, nkfun + 128 - KF_BUILTINS,
                                    (uint8_t *) protos, nkfun))
     {
-        compile = (voidf *) NULL;
+        compile = NULL;
     }
 }
 
@@ -421,7 +421,7 @@ void ext_kfuns(kfindex *map, char *protos, int nkfun)
  */
 void ext_compile(object *obj, char *ftypes, char *vtypes)
 {
-    if (compile != (voidf *) NULL) {
+    if (compile != NULL) {
         control *ctrl;
 
         ctrl = obj->ctrl;
