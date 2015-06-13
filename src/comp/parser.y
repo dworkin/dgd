@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -664,7 +664,7 @@ primary_p1_exp
 	| NEW opt_object string '(' opt_arg_list ')'
 		{ $$ = c_new_object($3, $5); }
 	| NEW opt_object '(' composite_string ')' '(' opt_arg_list ')'
-		{ $$ = c_new_object($4, $7); };
+		{ $$ = c_new_object($4, $7); }
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
