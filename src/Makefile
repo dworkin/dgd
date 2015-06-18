@@ -68,23 +68,23 @@ a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd host/dgd
 	      $(LIBS)
 
 comp/dgd::
-	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+	$(MAKE) -C comp 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
 
 lex/dgd::
-	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C lex 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 ed/dgd::
-	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C ed 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 parser/dgd::
-	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C parser 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 kfun/dgd::
-	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C kfun 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 
 host/dgd::
-	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C host 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 all:	a.out
 
@@ -95,16 +95,16 @@ $(BIN)/dgd: a.out
 install: $(BIN)/dgd
 
 comp/parser.h: comp/parser.y
-	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
+	$(MAKE) -C comp 'YACC=$(YACC)' parser.h
 
 clean:
 	rm -f a.out $(OBJ)
-	cd comp; $(MAKE) clean
-	cd lex; $(MAKE) clean
-	cd ed; $(MAKE) clean
-	cd parser; $(MAKE) clean
-	cd kfun; $(MAKE) clean
-	cd host; $(MAKE) 'HOST=$(HOST)' clean
+	$(MAKE) -C comp clean
+	$(MAKE) -C lex clean
+	$(MAKE) -C ed clean
+	$(MAKE) -C parser clean
+	$(MAKE) -C kfun clean
+	$(MAKE) -C host 'HOST=$(HOST)' clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h

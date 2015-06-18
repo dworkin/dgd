@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010,2013 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -16,18 +16,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
-DEFINES=-D$(HOST)
-DEBUG=	-O -g
-CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
-LDFLAGS=
-LIBS=
-CC=	gcc
-LD=	$(CC)
 
 SRC=	line.c buffer.c fileio.c regexp.c vars.c edcmd.c cmdsub.c
 OBJ=	line.o buffer.o fileio.o regexp.o vars.o edcmd.o cmdsub.o
+
+all:
+	@echo Please run make from the src directory.
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo ed/$$i; done > dgd

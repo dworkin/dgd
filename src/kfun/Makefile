@@ -16,15 +16,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-HOST=	DARWIN
-DEFINES=-D$(HOST)
-DEBUG=	-O -g
-CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
-CC=	gcc
 
 SRC=	builtin.c std.c file.c math.c extra.c
 OBJ=	builtin.o std.o file.o math.o extra.o
+
+all:
+	@echo Please run make from the src directory.
 
 dgd:	table.o $(OBJ)
 	@for i in table.o $(OBJ); do echo kfun/$$i; done > dgd
