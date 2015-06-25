@@ -2807,7 +2807,12 @@ static void i_interpret1(frame *f, char *pc)
 		break;
 
 	    case T_LWOBJECT:
-		instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
+                if (f->sp->u.array->elts->type != T_OBJECT) {
+		    instance = (strcmp(o_builtin_name(f->sp->u.array->elts->u.number),
+			       i_classname(f, l)) == 0);
+		} else {
+		    instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
+		}
 		arr_del(f->sp->u.array);
 		break;
 
