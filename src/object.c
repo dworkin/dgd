@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -81,7 +81,6 @@ static uindex dchunksz;		/* copy chunk size */
 static Uint dinterval;		/* copy interval */
 static Uint dtime;		/* time copying started */
 Uint odcount;			/* objects destructed count */
-static uindex rotabsize;	/* size of object table at restore */
 
 /*
  * NAME:	object->init()
@@ -1370,7 +1369,6 @@ bool o_dump(int fd, bool incr)
     if (!incr) {
 	o_sweep(baseplane.nobjects);
 	baseplane.ocount = o_recount(baseplane.nobjects);
-	rotabsize = baseplane.nobjects;
     }
 
     return TRUE;
@@ -1559,7 +1557,6 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
     }
 
     baseplane.ocount = count;
-    rotabsize = baseplane.nobjects;
 }
 
 /*
