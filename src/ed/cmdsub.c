@@ -1552,9 +1552,6 @@ int cb_set(cmdbuf *cb)
     not_in_global(cb);
 
     p = cb->cmd;
-    if (strlen(p) >= STRINGSZ) {
-	p[STRINGSZ - 1] = '\0';	/* must fit in the buffer */
-    }
     if (*p == '\0') {
 	/* no arguments */
 	va_show(cb->vars);
@@ -1562,7 +1559,8 @@ int cb_set(cmdbuf *cb)
 	do {
 	    /* copy argument */
 	    q = buffer;
-	    while (*p != '\0' && *p != ' ' && *p != HT) {
+	    while (*p != '\0' && *p != ' ' && *p != HT &&
+		   q != buffer + STRINGSZ - 2) {
 		*q++ = *p++;
 	    }
 	    *q = '\0';
