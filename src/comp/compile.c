@@ -522,7 +522,7 @@ bool c_inherit(char *file, node *label, int priv)
 	 * the driver object can only inherit the auto object
 	 */
 	file = path_resolve(buf, file);
-	if (!strcmp(file, auto_object) == 0) {
+	if (strcmp(file, auto_object) != 0) {
 	    c_error("illegal inherit from driver object");
 	    return FALSE;
 	}
@@ -817,7 +817,7 @@ string *c_objecttype(node *n)
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(unsigned short class, node *type, string *str,
+static void c_decl_func(unsigned short sclass, node *type, string *str,
 	node *formals, bool function)
 {
     char proto[5 + (MAX_LOCALS + 1) * 4];
@@ -830,14 +830,14 @@ static void c_decl_func(unsigned short class, node *type, string *str,
     varargs = FALSE;
 
     /* check for some errors */
-    if ((class & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
+    if ((sclass & (C_PRIVATE | C_NOMASK)) == (C_PRIVATE | C_NOMASK)) {
 	c_error("private contradicts nomask");
     }
-    if (class & C_VARARGS) {
+    if (sclass & C_VARARGS) {
 	if (stricttc) {
 	    c_error("varargs must be in parameter list");
 	}
-	class &= ~C_VARARGS;
+	sclass &= ~C_VARARGS;
 	varargs = TRUE;
     }
     t = type->mod;
@@ -856,18 +856,18 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 
     /* handle function arguments */
     ftype = t;
-    fclass = type->class;
+    fclass = type->sclass;
     p = &PROTO_FTYPE(proto);
     nargs = vargs = 0;
 
     if (formals != (node *) NULL && (formals->flags & F_ELLIPSIS)) {
-	class |= C_ELLIPSIS;
+	sclass |= C_ELLIPSIS;
     }
     formals = revert_list(formals);
     for (;;) {
 	*p++ = t;
 	if ((t & T_TYPE) == T_CLASS) {
-	    l = ctrl_dstring(type->class);
+	    l = ctrl_dstring(type->sclass);
 	    *p++ = l >> 16;
 	    *p++ = l >> 8;
 	    *p++ = l;
@@ -899,7 +899,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	    t = T_MIXED;
 	} else if (typechecked && t != T_MIXED) {
 	    /* only bother to typecheck functions with non-mixed arguments */
-	    class |= C_TYPECHECKED;
+	    sclass |= C_TYPECHECKED;
 	}
 	if (type->flags & F_VARARGS) {
 	    if (varargs) {
@@ -907,7 +907,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	    }
 	    varargs = TRUE;
 	}
-	if (formals == (node *) NULL && (class & C_ELLIPSIS)) {
+	if (formals == (node *) NULL && (sclass & C_ELLIPSIS)) {
 	    /* ... */
 	    varargs = TRUE;
 	    if (((t + (1 << REFSHIFT)) & T_REF) == 0) {
@@ -916,10 +916,10 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	    }
 	    if (function) {
 		block_pdef(type->l.string->text, t + (1 << REFSHIFT),
-			   type->class);
+			   type->sclass);
 	    }
 	} else if (function) {
-	    block_pdef(type->l.string->text, t, type->class);
+	    block_pdef(type->l.string->text, t, type->sclass);
 	}
 
 	if (!varargs) {
@@ -929,7 +929,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
 	}
     }
 
-    PROTO_CLASS(proto) = class;
+    PROTO_CLASS(proto) = sclass;
     PROTO_NARGS(proto) = nargs;
     PROTO_VARGS(proto) = vargs;
     nargs = p - proto;
@@ -953,7 +953,7 @@ static void c_decl_func(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_var()
  * DESCRIPTION:	declare a variable
  */
-static void c_decl_var(unsigned short class, node *type, string *str,
+static void c_decl_var(unsigned short sclass, node *type, string *str,
 	bool global)
 {
     char tnbuf[TNBUFSIZE];
@@ -964,15 +964,15 @@ static void c_decl_var(unsigned short class, node *type, string *str,
 	type->mod = T_MIXED;
     }
     if (global) {
-	if (class & (C_ATOMIC | C_NOMASK | C_VARARGS)) {
+	if (sclass & (C_ATOMIC | C_NOMASK | C_VARARGS)) {
 	    c_error("invalid class for variable %s", str->text);
 	}
-	ctrl_dvar(str, class, type->mod, type->class);
+	ctrl_dvar(str, sclass, type->mod, type->sclass);
     } else {
-	if (class != 0) {
+	if (sclass != 0) {
 	    c_error("invalid class for variable %s", str->text);
 	}
-	block_vdef(str->text, type->mod, type->class);
+	block_vdef(str->text, type->mod, type->sclass);
     }
 }
 
@@ -980,7 +980,7 @@ static void c_decl_var(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_list()
  * DESCRIPTION:	handle a list of declarations
  */
-static void c_decl_list(unsigned short class, node *type, node *list,
+static void c_decl_list(unsigned short sclass, node *type, node *list,
 	bool global)
 {
     node *n;
@@ -996,9 +996,9 @@ static void c_decl_list(unsigned short class, node *type, node *list,
 	}
 	type->mod = (type->mod & T_TYPE) | n->mod;
 	if (n->type == N_FUNC) {
-	    c_decl_func(class, type, n->l.left->l.string, n->r.right, FALSE);
+	    c_decl_func(sclass, type, n->l.left->l.string, n->r.right, FALSE);
 	} else {
-	    c_decl_var(class, type, n->l.string, global);
+	    c_decl_var(sclass, type, n->l.string, global);
 	}
     }
 }
@@ -1007,13 +1007,13 @@ static void c_decl_list(unsigned short class, node *type, node *list,
  * NAME:	compile->global()
  * DESCRIPTION:	handle a global declaration
  */
-void c_global(unsigned int class, node *type, node *n)
+void c_global(unsigned int sclass, node *type, node *n)
 {
     if (!seen_decls) {
 	ctrl_create();
 	seen_decls = TRUE;
     }
-    c_decl_list(class, type, n, TRUE);
+    c_decl_list(sclass, type, n, TRUE);
 }
 
 static string *fname;		/* name of current function */
@@ -1023,14 +1023,14 @@ static unsigned short fline;	/* first line of function */
  * NAME:	compile->function()
  * DESCRIPTION:	create a function
  */
-void c_function(unsigned int class, node *type, node *n)
+void c_function(unsigned int sclass, node *type, node *n)
 {
     if (!seen_decls) {
 	ctrl_create();
 	seen_decls = TRUE;
     }
     type->mod |= n->mod;
-    c_decl_func(class, type, fname = n->l.left->l.string, n->r.right, TRUE);
+    c_decl_func(sclass, type, fname = n->l.left->l.string, n->r.right, TRUE);
 }
 
 /*
@@ -1077,9 +1077,9 @@ void c_funcbody(node *n)
  * NAME:	compile->local()
  * DESCRIPTION:	handle local declarations
  */
-void c_local(unsigned int class, node *type, node *n)
+void c_local(unsigned int sclass, node *type, node *n)
 {
-    c_decl_list(class, type, n, FALSE);
+    c_decl_list(sclass, type, n, FALSE);
 }
 
 
@@ -1837,12 +1837,12 @@ node *c_return(node *n, int typechecked)
 		    i_typename(tnbuf1, ftype), i_typename(tnbuf2, n->mod));
 	} else if ((ftype != T_MIXED && n->mod == T_MIXED) ||
 		   (ftype == T_CLASS &&
-		    (n->mod != T_CLASS || str_cmp(fclass, n->class) != 0))) {
+		    (n->mod != T_CLASS || str_cmp(fclass, n->sclass) != 0))) {
 	    /*
 	     * typecheck at runtime
 	     */
 	    n = node_mon(N_CAST, ftype, n);
-	    n->class = fclass;
+	    n->sclass = fclass;
 	}
     }
 
@@ -1969,12 +1969,12 @@ node *c_endcompound(node *n)
 node *c_flookup(node *n, int typechecked)
 {
     char *proto;
-    string *class;
+    string *sclass;
     long call;
 
-    proto = ctrl_fcall(n->l.string, &class, &call, typechecked);
+    proto = ctrl_fcall(n->l.string, &sclass, &call, typechecked);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		  node_fcall(PROTO_FTYPE(proto), class, proto, (Int) call);
+		  node_fcall(PROTO_FTYPE(proto), sclass, proto, (Int) call);
     return n;
 }
 
@@ -1985,14 +1985,14 @@ node *c_flookup(node *n, int typechecked)
 node *c_iflookup(node *n, node *label)
 {
     char *proto;
-    string *class;
+    string *sclass;
     long call;
 
     proto = ctrl_ifcall(n->l.string, (label != (node *) NULL) ?
 				     label->l.string->text : (char *) NULL,
-			&class, &call);
+			&sclass, &call);
     n->r.right = (proto == (char *) NULL) ? (node *) NULL :
-		  node_fcall(PROTO_FTYPE(proto), class, proto, (Int) call);
+		  node_fcall(PROTO_FTYPE(proto), sclass, proto, (Int) call);
     return n;
 }
 
@@ -2020,17 +2020,17 @@ node *c_variable(node *n)
 	    variables[i].unset++;
 	}
 	n = node_mon(N_LOCAL, variables[i].type, n);
-	n->class = variables[i].cvstr;
+	n->sclass = variables[i].cvstr;
 	n->r.number = i;
     } else {
-	string *class;
+	string *sclass;
 	long ref;
 
 	/*
 	 * try a global variable
 	 */
-	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &class), n);
-	n->class = class;
+	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
+	n->sclass = sclass;
 	n->r.number = ref;
     }
     return n;
@@ -2234,7 +2234,7 @@ node *c_address(node *func, node *args, int typechecked)
     func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2255,7 +2255,7 @@ node *c_extend(node *func, node *args, int typechecked)
     if (typechecked && func->mod != T_MIXED) {
 	if (func->mod != T_OBJECT &&
 	    (func->mod != T_CLASS ||
-	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	     strcmp(func->sclass->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
     }
@@ -2267,7 +2267,7 @@ node *c_extend(node *func, node *args, int typechecked)
     func = funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2288,7 +2288,7 @@ node *c_call(node *func, node *args, int typechecked)
     if (typechecked && func->mod != T_MIXED) {
 	if (func->mod != T_OBJECT &&
 	    (func->mod != T_CLASS ||
-	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	     strcmp(func->sclass->text, BIPREFIX "function") != 0)) {
 	    c_error("bad argument 1 for function * (needs function)");
 	}
     }
@@ -2353,7 +2353,7 @@ node *c_checkcall(node *n, int typechecked)
 		 * make sure the return value is as it should be
 		 */
 		n = node_mon(N_CAST, n->mod, n);
-		n->class = n->l.left->class;
+		n->sclass = n->l.left->sclass;
 	    }
 	} else {
 	    /* could be anything */

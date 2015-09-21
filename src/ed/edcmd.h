@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,7 +56,7 @@ typedef struct {
     short flags;		/* status flags */
     Int edit;			/* number of edits on file */
 
-    Int this;			/* current line number */
+    Int cthis;			/* current line number */
     Int othis;			/* current line number after last operation */
     Int first;			/* first line number of current range */
     Int last;			/* last line number of current range */

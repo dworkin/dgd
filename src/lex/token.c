@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -289,7 +289,7 @@ void tk_setfilename(char *file)
     if (len >= STRINGSZ) {
 	len = STRINGSZ - 1;
     }
-    ibuffer->u.filename = memcpy(REALLOC(ibuffer->u.filename, char, 0, len + 1),
+    ibuffer->u.filename = (char *) memcpy(REALLOC(ibuffer->u.filename, char, 0, len + 1),
 				 file, len);
     ibuffer->u.filename[len] = '\0';
 }

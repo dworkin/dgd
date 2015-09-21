@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012,2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,6 +20,7 @@
 # ifndef FUNCDEF
 # define INCLUDE_CTYPE
 # include "kfun.h"
+# include "table.h"
 # include "parse.h"
 # include "asn.h"
 # endif
@@ -115,7 +116,7 @@ char pt_ctime[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING, T_INT };
  * NAME:	kfun->ctime()
  * DESCRIPTION:	convert a time value to a string
  */
-int kf_ctime(frame *f)
+int kf_ctime(frame *f, int n, kfunc *kf)
 {
     char buf[26];
 
@@ -138,7 +139,7 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
  * NAME:	kfun->explode()
  * DESCRIPTION:	explode a string
  */
-int kf_explode(frame *f)
+int kf_explode(frame *f, int n, kfunc *kf)
 {
     unsigned int len, slen, size;
     char *p, *s;
@@ -242,7 +243,7 @@ char pt_implode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
  * NAME:	kfun->implode()
  * DESCRIPTION:	implode an array
  */
-int kf_implode(frame *f)
+int kf_implode(frame *f, int n, kfunc *kf)
 {
     long len;
     unsigned int i, slen;
@@ -301,7 +302,7 @@ char pt_random[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->random()
  * DESCRIPTION:	return a random number
  */
-int kf_random(frame *f)
+int kf_random(frame *f, int n, kfunc *kf)
 {
     i_add_ticks(f, 1);
     PUT_INT(f->sp, (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0);
@@ -372,7 +373,7 @@ static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
  * NAME:	kfun->old_sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_old_sscanf(frame *f, int nargs)
+int kf_old_sscanf(frame *f, int nargs, kfunc *kf)
 {
     unsigned int flen, slen, size;
     char *format, *x;
@@ -634,7 +635,7 @@ char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
  * NAME:	kfun->sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_sscanf(frame *f, int nargs)
+int kf_sscanf(frame *f, int nargs, kfunc *kf)
 {
     struct {
 	char type;			/* int, float or string */
@@ -926,7 +927,7 @@ char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9,
  * NAME:	kfun->parse_string()
  * DESCRIPTION:	parse a string
  */
-int kf_parse_string(frame *f, int nargs)
+int kf_parse_string(frame *f, int nargs, kfunc *kf)
 {
     Int maxalt;
     array *a;
@@ -981,7 +982,7 @@ char pt_hash_crc16[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  *		    XorOut:	0000
  *		    Check:	29B1
  */
-int kf_hash_crc16(frame *f, int nargs)
+int kf_hash_crc16(frame *f, int nargs, kfunc *kf)
 {
     static unsigned short crctab[] = {
 	0x0000, 0x2110, 0x4220, 0x6330, 0x8440, 0xa550, 0xc660, 0xe770,
@@ -1072,7 +1073,7 @@ char pt_hash_crc32[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  *		    XorOut:	FFFFFFFF
  *		    Check:	CBF43926
  */
-int kf_hash_crc32(frame *f, int nargs)
+int kf_hash_crc32(frame *f, int nargs, kfunc *kf)
 {
     static Uint crctab[] = {
 	0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
@@ -1608,7 +1609,7 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->crypt()
  * DESCRIPTION:	hash_string("crypt", ...)
  */
-int kf_crypt(frame *f, int nargs)
+int kf_crypt(frame *f, int nargs, kfunc *kf)
 {
     value val;
 
@@ -1631,7 +1632,7 @@ char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  * NAME:	kfun->hash_md5()
  * DESCRIPTION:	hash_string("MD5", ...)
  */
-int kf_hash_md5(frame *f, int nargs)
+int kf_hash_md5(frame *f, int nargs, kfunc *kf)
 {
     char buffer[64];
     Uint digest[4];
@@ -1665,7 +1666,7 @@ char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  * NAME:	kfun->hash_sha1()
  * DESCRIPTION:	hash_string("SHA1", ...)
  */
-int kf_hash_sha1(frame *f, int nargs)
+int kf_hash_sha1(frame *f, int nargs, kfunc *kf)
 {
     char buffer[64];
     Uint digest[5];
@@ -1700,7 +1701,7 @@ char pt_asn_add[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_add()
  * DESCRIPTION:	add two arbitrary precision numbers
  */
-int kf_asn_add(frame *f)
+int kf_asn_add(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1725,7 +1726,7 @@ char pt_asn_sub[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_sub()
  * DESCRIPTION:	subtract arbitrary precision numbers
  */
-int kf_asn_sub(frame *f)
+int kf_asn_sub(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1750,7 +1751,7 @@ char pt_asn_cmp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
  * NAME:	kfun->asn_cmp()
  * DESCRIPTION:	subtract arbitrary precision numbers
  */
-int kf_asn_cmp(frame *f)
+int kf_asn_cmp(frame *f, int n, kfunc *kf)
 {
     int cmp;
 
@@ -1774,7 +1775,7 @@ char pt_asn_mult[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_mult()
  * DESCRIPTION:	multiply arbitrary precision numbers
  */
-int kf_asn_mult(frame *f)
+int kf_asn_mult(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1799,7 +1800,7 @@ char pt_asn_div[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_div()
  * DESCRIPTION:	divide arbitrary precision numbers
  */
-int kf_asn_div(frame *f)
+int kf_asn_div(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1824,7 +1825,7 @@ char pt_asn_mod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_mod()
  * DESCRIPTION:	modulus of arbitrary precision number
  */
-int kf_asn_mod(frame *f)
+int kf_asn_mod(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1848,7 +1849,7 @@ char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_pow()
  * DESCRIPTION:	power of an arbitrary precision number
  */
-int kf_asn_pow(frame *f)
+int kf_asn_pow(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1873,7 +1874,7 @@ char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
  * NAME:	kfun->asn_lshift()
  * DESCRIPTION:	left shift an arbitrary precision number
  */
-int kf_asn_lshift(frame *f)
+int kf_asn_lshift(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1898,7 +1899,7 @@ char pt_asn_rshift[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
  * NAME:	kfun->asn_rshift()
  * DESCRIPTION:	right shift of arbitrary precision number
  */
-int kf_asn_rshift(frame *f)
+int kf_asn_rshift(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1922,7 +1923,7 @@ char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_and()
  * DESCRIPTION:	logical and of arbitrary precision numbers
  */
-int kf_asn_and(frame *f)
+int kf_asn_and(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1946,7 +1947,7 @@ char pt_asn_or[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_or()
  * DESCRIPTION:	logical or of arbitrary precision numbers
  */
-int kf_asn_or(frame *f)
+int kf_asn_or(frame *f, int n, kfunc *kf)
 {
     string *str;
 
@@ -1970,7 +1971,7 @@ char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_xor()
  * DESCRIPTION:	logical xor of arbitrary precision numbers
  */
-int kf_asn_xor(frame *f)
+int kf_asn_xor(frame *f, int n, kfunc *kf)
 {
     string *str;
 

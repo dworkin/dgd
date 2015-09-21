@@ -74,7 +74,7 @@ node *node_new(unsigned int line)
     n->flags = 0;
     n->mod = 0;
     n->line = line;
-    n->class = (string *) NULL;
+    n->sclass = (string *) NULL;
     n->l.left = (node *) NULL;
     n->r.right = (node *) NULL;
     return n;
@@ -176,7 +176,7 @@ node *node_type(int type, string *tclass)
     n = node_new(tk_line());
     n->type = N_TYPE;
     n->mod = type;
-    n->class = tclass;
+    n->sclass = tclass;
     if (tclass != (string *) NULL) {
 	str_ref(tclass);
     }
@@ -195,7 +195,7 @@ node *node_fcall(int mod, string *tclass, char *func, Int call)
     n = node_new(tk_line());
     n->type = N_FUNC;
     n->mod = mod;
-    n->class = tclass;
+    n->sclass = tclass;
     n->l.ptr = func;
     n->r.number = call;
 
@@ -253,8 +253,8 @@ void node_toint(node *n, Int i)
 {
     if (n->type == N_STR) {
 	str_del(n->l.string);
-    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
-	str_del(n->class);
+    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+	str_del(n->sclass);
     }
     n->type = N_INT;
     n->flags = F_CONST;
@@ -270,8 +270,8 @@ void node_tostr(node *n, string *str)
     str_ref(str);
     if (n->type == N_STR) {
 	str_del(n->l.string);
-    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
-	str_del(n->class);
+    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+	str_del(n->sclass);
     }
     n->type = N_STR;
     n->flags = F_CONST;
@@ -300,8 +300,8 @@ void node_free()
 		 * only strings are deleted here
 		 */
 		str_del(n->l.string);
-	    } else if (n->type == N_TYPE && n->class != (string *) NULL) {
-		str_del(n->class);
+	    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+		str_del(n->sclass);
 	    }
 	} while (--i > 0);
 	i = NODE_CHUNK;

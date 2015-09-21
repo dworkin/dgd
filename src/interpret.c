@@ -37,7 +37,7 @@ typedef struct _inhash_ {
     Uint ocount;		/* object count */
     uindex iindex;		/* inherit index */
     uindex coindex;		/* class name program reference */
-    Uint class;			/* class name string reference */
+    Uint sclass;		/* class name string reference */
 } inhash;
 
 static value stack[MIN_STACK];	/* initial stack */
@@ -506,7 +506,7 @@ void i_odest(frame *prev, object *obj)
 	if (prev == (frame *) NULL) {
 	    break;
 	}
-	if ((f->func->class & C_ATOMIC) && !prev->atomic) {
+	if ((f->func->sclass & C_ATOMIC) && !prev->atomic) {
 	    /*
 	     * wipe out objects in arguments to atomic function call
 	     */
@@ -606,7 +606,7 @@ void i_map_aggregate(frame *f, unsigned int size)
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-static int i_spread0(frame *f, int n, int vtype, Uint class)
+static int i_spread0(frame *f, int n, int vtype, Uint sclass)
 {
     array *a;
     int i;
@@ -642,14 +642,14 @@ static int i_spread0(frame *f, int n, int vtype, Uint class)
 	    (f->lip++)->u.number = i;
 	    if (vtype == T_CLASS) {
 		f->lip->type = T_INT;
-		(f->lip++)->u.number = class;
+		(f->lip++)->u.number = sclass;
 	    }
 	} else {
 	    --f->sp;
 	    PUT_ARRVAL_NOREF(f->sp, a);
 	    PUSH_INTVAL(f, i);
 	    if (vtype == T_CLASS) {
-		PUSH_INTVAL(f, class);
+		PUSH_INTVAL(f, sclass);
 	    }
 	    PUSH_INTVAL(f, (LVAL_INDEX << 28) | (vtype << 24));
 	}
@@ -725,7 +725,7 @@ void i_global(frame *f, int inherit, int index)
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint class)
+void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint sclass)
 {
     i_add_ticks(f, 4);
     inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
@@ -744,7 +744,7 @@ void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint class)
 
     if (vtype == T_CLASS) {
 	f->lip->type = T_INT;
-	(f->lip++)->u.number = class;
+	(f->lip++)->u.number = sclass;
     }
 }
 
@@ -923,7 +923,7 @@ void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(frame *f, int vtype, Uint class)
+void i_index_lvalue(frame *f, int vtype, Uint sclass)
 {
     int i;
     value *lval, *ival, *val;
@@ -1094,7 +1094,7 @@ void i_index_lvalue(frame *f, int vtype, Uint class)
 
     if (vtype == T_CLASS) {
 	f->lip->type = T_INT;
-	(f->lip++)->u.number = class;
+	(f->lip++)->u.number = sclass;
     }
 }
 
@@ -1129,16 +1129,16 @@ char *i_typename(char *buf, unsigned int type)
  * NAME:	interpret->classname()
  * DESCRIPTION:	return the name of a class
  */
-char *i_classname(frame *f, Uint class)
+char *i_classname(frame *f, Uint sclass)
 {
-    return d_get_strconst(f->p_ctrl, class >> 16, class & 0xffff)->text;
+    return d_get_strconst(f->p_ctrl, sclass >> 16, sclass & 0xffff)->text;
 }
 
 /*
  * NAME:	interpret->instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-int i_instanceof(frame *f, unsigned int oindex, Uint class)
+int i_instanceof(frame *f, unsigned int oindex, Uint sclass)
 {
     inhash *h;
     char *prog;
@@ -1150,11 +1150,11 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
     /* first try hash table */
     obj = OBJR(oindex);
     ctrl = o_control(obj);
-    prog = i_classname(f, class);
-    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ class) %
+    prog = i_classname(f, sclass);
+    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ sclass) %
 								    INHASHSZ];
     if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
-	h->class == class && h->iindex < ctrl->ninherits) {
+	h->sclass == sclass && h->iindex < ctrl->ninherits) {
 	oindex = ctrl->inherits[h->iindex].oindex;
 	if (strcmp(OBJR(oindex)->chain.name, prog) == 0) {
 	    return (ctrl->inherits[h->iindex].priv) ? -1 : 1;	/* found it */
@@ -1169,7 +1169,7 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
 	    /* found it; update hashtable */
 	    h->ocount = obj->count;
 	    h->coindex = f->p_ctrl->oindex;
-	    h->class = class;
+	    h->sclass = sclass;
 	    h->iindex = i;
 	    return (ctrl->inherits[i].priv) ? -1 : 1;
 	}
@@ -1181,30 +1181,30 @@ int i_instanceof(frame *f, unsigned int oindex, Uint class)
  * NAME:	interpret->cast()
  * DESCRIPTION:	cast a value to a type
  */
-void i_cast(frame *f, value *val, unsigned int type, Uint class)
+void i_cast(frame *f, value *val, unsigned int type, Uint sclass)
 {
     char tnbuf[TNBUFSIZE];
     value *elts;
 
     if (type == T_CLASS) {
 	if (val->type == T_OBJECT) {
-	    if (!i_instanceof(f, val->oindex, class)) {
-		error("Value is not of object type /%s", i_classname(f, class));
+	    if (!i_instanceof(f, val->oindex, sclass)) {
+		error("Value is not of object type /%s", i_classname(f, sclass));
 	    }
 	    return;
 	} else if (val->type == T_LWOBJECT) {
 	    elts = d_get_elts(val->u.array);
 	    if (elts->type == T_OBJECT) {
-		if (!i_instanceof(f, elts->oindex, class)) {
+		if (!i_instanceof(f, elts->oindex, sclass)) {
 		    error("Value is not of object type /%s",
-			  i_classname(f, class));
+			  i_classname(f, sclass));
 		}
 	    } else if (strcmp(o_builtin_name(elts->u.number),
-			      i_classname(f, class)) != 0) {
+			      i_classname(f, sclass)) != 0) {
 		/*
 		 * builtin types can only be cast to their own type
 		 */
-		error("Value is not of object type /%s", i_classname(f, class));
+		error("Value is not of object type /%s", i_classname(f, sclass));
 	    }
 	    return;
 	}
@@ -1383,7 +1383,7 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
 void i_store(frame *f)
 {
     value *val;
-    Uint class;
+    Uint sclass;
 
     if (f->p_ctrl->flags & CTRL_VM_1_0) {
 	value *lval;
@@ -1395,11 +1395,11 @@ void i_store(frame *f)
 	if (lval->oindex != 0) {
 	    if (lval->oindex == T_CLASS) {
 		--f->lip;
-		class = f->lip->u.number;
+		sclass = f->lip->u.number;
 	    } else {
-		class = 0;
+		sclass = 0;
 	    }
-	    i_cast(f, val, lval->oindex, class);
+	    i_cast(f, val, lval->oindex, sclass);
 	}
 
 	i_add_ticks(f, 1);
@@ -1457,12 +1457,12 @@ void i_store(frame *f)
 	lval = (val++)->u.number;
 	type = (lval >> 24) & 0xf;
 	if (type == T_CLASS) {
-	    class = (val++)->u.number;
+	    sclass = (val++)->u.number;
 	} else {
-	    class = 0;
+	    sclass = 0;
 	}
 	if (type != 0) {
-	    i_cast(f, f->sp, type, class);
+	    i_cast(f, f->sp, type, sclass);
 	}
 	tmp = f->sp;
 	f->sp = val;
@@ -1528,7 +1528,7 @@ static void i_stores(frame *f, int skip, int assign)
 {
     char *pc;
     unsigned short u, u2, instr;
-    Uint class;
+    Uint sclass;
     value val;
 
     pc = f->pc;
@@ -1615,9 +1615,9 @@ static void i_stores(frame *f, int skip, int assign)
 	case I_CAST | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    if (u == T_CLASS) {
-		FETCH3U(pc, class);
+		FETCH3U(pc, sclass);
 	    }
-	    i_cast(f, &f->sp->u.array->elts[assign - 1], u, class);
+	    i_cast(f, &f->sp->u.array->elts[assign - 1], u, sclass);
 	    continue;
 
 	case I_STORE_LOCAL:
@@ -1735,7 +1735,7 @@ void i_lvalues(frame *f)
     char *pc;
     int n, offset, type;
     unsigned short nassign, nspread;
-    Uint class;
+    Uint sclass;
 
     pc = f->pc;
 # ifdef DEBUG
@@ -1758,7 +1758,7 @@ void i_lvalues(frame *f)
 	    offset = FETCH1U(pc);
 	    type = FETCH1U(pc);
 	    if (type == T_CLASS) {
-		FETCH3U(pc, class);
+		FETCH3U(pc, sclass);
 	    }
 	    f->pc = pc;
 
@@ -1771,7 +1771,7 @@ void i_lvalues(frame *f)
 			--nassign;
 			if (type != 0) {
 			    i_cast(f, &f->sp->u.array->elts[nassign], type,
-				   class);
+				   sclass);
 			}
 			--nspread;
 			d_assign_elt(f->data, f->sp[1].u.array,
@@ -2056,10 +2056,10 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
     int i, n, atype, ptype;
     char *args;
     bool ellipsis;
-    Uint class;
+    Uint sclass;
     value *elts;
 
-    class = 0;
+    sclass = 0;
     i = nargs;
     n = PROTO_NARGS(proto) + PROTO_VARGS(proto);
     ellipsis = (PROTO_CLASS(proto) & C_ELLIPSIS);
@@ -2068,7 +2068,7 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
 	--i;
 	ptype = *args++;
 	if ((ptype & T_TYPE) == T_CLASS) {
-	    FETCH3U(args, class);
+	    FETCH3U(args, sclass);
 	}
 	if (n == 1 && ellipsis) {
 	    if (ptype == T_MIXED || ptype == T_LVALUE) {
@@ -2091,19 +2091,19 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
 	    if ((ptype & T_TYPE) == T_CLASS && ptype == T_CLASS &&
 		atype == T_OBJECT) {
 		if (f->sp[i].type == T_OBJECT) {
-		    if (!i_instanceof(prog_f, f->sp[i].oindex, class)) {
+		    if (!i_instanceof(prog_f, f->sp[i].oindex, sclass)) {
 			error("Bad object argument %d for function %s",
 			      nargs - i, name);
 		    }
 		} else {
 		    elts = d_get_elts(f->sp[i].u.array);
 		    if (elts->type == T_OBJECT) {
-			if (!i_instanceof(prog_f, elts->oindex, class)) {
+			if (!i_instanceof(prog_f, elts->oindex, sclass)) {
 			    error("Bad object argument %d for function %s",
 				  nargs - i, name);
 			}
 		    } else if (strcmp(o_builtin_name(elts->u.number),
-				      i_classname(prog_f, class)) != 0) {
+				      i_classname(prog_f, sclass)) != 0) {
 			error("Bad object argument %d for function %s",
 			      nargs - i, name);
 		    }
@@ -3217,13 +3217,13 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 
     /* get the function */
     f.func = &d_get_funcdefs(f.p_ctrl)[funci];
-    if (f.func->class & C_UNDEFINED) {
+    if (f.func->sclass & C_UNDEFINED) {
 	error("Undefined function %s",
 	      d_get_strconst(f.p_ctrl, f.func->inherit, f.func->index)->text);
     }
 
     pc = d_get_prog(f.p_ctrl) + f.func->offset;
-    if (f.func->class & C_TYPECHECKED) {
+    if (f.func->sclass & C_TYPECHECKED) {
 	/* typecheck arguments */
 	i_typecheck(prev_f, &f,
 		    d_get_strconst(f.p_ctrl, f.func->inherit,
@@ -3321,7 +3321,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 
     /* deal with atomic functions */
     f.level = prev_f->level;
-    if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
+    if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
 	o_new_plane();
 	d_new_plane(f.data, ++f.level);
 	f.atomic = TRUE;
@@ -3387,7 +3387,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     i_pop(prev_f, f.nargs);
     *--prev_f->sp = val;
 
-    if ((f.func->class & C_ATOMIC) && !prev_f->atomic) {
+    if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
 	d_commit_plane(f.level, &val);
 	o_commit_plane();
 	if (!f.rlim->noticks) {
@@ -3486,7 +3486,7 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
     fdef = &d_get_funcdefs(ctrl)[UCHAR(symb->index)];
 
     /* check if the function can be called */
-    if (!call_static && (fdef->class & C_STATIC) &&
+    if (!call_static && (fdef->sclass & C_STATIC) &&
 	((lwobj != (array *) NULL) ?
 	 lwobj != f->lwobj : f->oindex != obj->index)) {
 	i_pop(f, nargs);
@@ -3856,7 +3856,7 @@ static array *i_func_trace(frame *f, dataspace *data)
     v++;
 
     /* line number */
-    PUT_INTVAL(v, (f->func->class & C_COMPILED) ? 0 :
+    PUT_INTVAL(v, (f->func->sclass & C_COMPILED) ? 0 :
 		   (f->p_ctrl->flags & CTRL_VM_1_0) ? i_line0(f) : i_line1(f));
     v++;
 

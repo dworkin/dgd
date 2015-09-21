@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -417,7 +417,7 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	}
     }
 
-    PUT_STRVAL_NOREF(&val, str_new(host, len));
+    PUT_STRVAL_NOREF(&val, str_new((char *) host, len));
     d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
     arr_ref(usr->extra = arr);

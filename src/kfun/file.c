@@ -21,6 +21,7 @@
 # define INCLUDE_FILE_IO
 # define INCLUDE_CTYPE
 # include "kfun.h"
+# include "table.h"
 # include "path.h"
 # include "editor.h"
 # endif
@@ -34,7 +35,7 @@ char pt_editor[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING, T_STRING };
  * NAME:	kfun->editor()
  * DESCRIPTION:	handle an editor command
  */
-int kf_editor(frame *f, int nargs)
+int kf_editor(frame *f, int nargs, kfunc *kf)
 {
     object *obj;
     string *str;
@@ -81,7 +82,7 @@ char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  * NAME:	kfun->query_editor()
  * DESCRIPTION:	query the editing status of an object
  */
-int kf_query_editor(frame *f)
+int kf_query_editor(frame *f, int n, kfunc *kf)
 {
     object *obj;
     char *status;
@@ -369,7 +370,7 @@ char pt_save_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
  * NAME:	kfun->save_object()
  * DESCRIPTION:	save the variables of the current object
  */
-int kf_save_object(frame *f)
+int kf_save_object(frame *f, int n, kfunc *kf)
 {
     static unsigned short count;
     unsigned short i, j, nvars;
@@ -429,7 +430,7 @@ int kf_save_object(frame *f)
 		continue;
 	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
-		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
+		if (!(v->sclass & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT && VAL_TRUE(var)) {
 		    /*
 		     * don't save object values, nil or 0
@@ -869,7 +870,7 @@ char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->restore_object()
  * DESCRIPTION:	restore the variables of the current object from file
  */
-int kf_restore_object(frame *f)
+int kf_restore_object(frame *f, int n, kfunc *kf)
 {
     struct stat sbuf;
     int i, j;
@@ -950,7 +951,7 @@ int kf_restore_object(frame *f)
 		continue;
 	    }
 	    for (j = ctrl->nvardefs, v = d_get_vardefs(ctrl); j > 0; --j, v++) {
-		if (!(v->class & C_STATIC) && var->type != T_OBJECT &&
+		if (!(v->sclass & C_STATIC) && var->type != T_OBJECT &&
 		    var->type != T_LWOBJECT) {
 		    d_assign_var(data, var,
 				 (v->type == T_INT) ?
@@ -1047,7 +1048,7 @@ int kf_restore_object(frame *f)
 			checkpoint = nvars;	/* from here */
 		    }
 
-		    if (!(v->class & C_STATIC) &&
+		    if (!(v->sclass & C_STATIC) &&
 			strcmp(name, d_get_strconst(ctrl, v->inherit,
 						    v->index)->text) == 0) {
 			value tmp;
@@ -1109,7 +1110,7 @@ char pt_write_file[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_INT, T_STRING,
  * NAME:	kfun->write_file()
  * DESCRIPTION:	write a string to a file
  */
-int kf_write_file(frame *f, int nargs)
+int kf_write_file(frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ];
     struct stat sbuf;
@@ -1172,7 +1173,7 @@ char pt_read_file[] = { C_TYPECHECKED | C_STATIC, 1, 2, 0, 9, T_STRING,
  * NAME:	kfun->read_file()
  * DESCRIPTION:	read a string from file
  */
-int kf_read_file(frame *f, int nargs)
+int kf_read_file(frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ], *buf;
     struct stat sbuf;
@@ -1269,7 +1270,7 @@ char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT,
  * NAME:	kfun->rename_file()
  * DESCRIPTION:	rename a file
  */
-int kf_rename_file(frame *f)
+int kf_rename_file(frame *f, int n, kfunc *kf)
 {
     char from[STRINGSZ], to[STRINGSZ];
 
@@ -1302,7 +1303,7 @@ char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->remove_file()
  * DESCRIPTION:	remove a file
  */
-int kf_remove_file(frame *f)
+int kf_remove_file(frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1331,7 +1332,7 @@ char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
  * NAME:	kfun->make_dir()
  * DESCRIPTION:	create a directory
  */
-int kf_make_dir(frame *f)
+int kf_make_dir(frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1361,7 +1362,7 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->remove_dir()
  * DESCRIPTION:	remove an empty directory
  */
-int kf_remove_dir(frame *f)
+int kf_remove_dir(frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1539,7 +1540,7 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->get_dir()
  * DESCRIPTION:	get directory filelist + info
  */
-int kf_get_dir(frame *f)
+int kf_get_dir(frame *f, int n, kfunc *kf)
 {
     unsigned int i, nfiles, ftabsz;
     fileinfo *ftable;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -797,9 +797,11 @@ int pp_gettok()
 	    token = '#';
 	    /* fall through */
 	default:
-	    error((token >= 32 && token < 127) ?
-		   "illegal character: '%c'" : "illegal character: 0x%02x",
-		  token);
+	    if (token >= 32 && token < 127) {
+		error("illegal character: '%c'", token);
+	    } else {
+		error("illegal character: 0x%02x", token);
+	    }
 	    break;
 
 	case '#':

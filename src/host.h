@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -59,7 +59,6 @@ typedef unsigned int Uint;
 # define FS_BLOCK_SIZE		2048
 
 # define Uuint			unsigned __int64
-# define bool			dgd_bool
 
 typedef int (__stdcall _voidf_)();
 # define voidf			_voidf_
@@ -214,7 +213,7 @@ typedef unsigned int Uint;
 # endif	/* GENERIC_SYSV */
 
 
-typedef char bool;
+# include <stdbool.h>
 # ifndef TRUE
 # define TRUE		1
 # define FALSE		0

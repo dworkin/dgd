@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -104,7 +104,7 @@ static bool dmem;			/* any dynamic memory allocated? */
  * NAME:	lchunk()
  * DESCRIPTION:	get the address of a list of large chunks
  */
-static chunk **lchunk(size_t size, bool new)
+static chunk **lchunk(size_t size, bool alloc)
 {
     unsigned int h, l, m;
 
@@ -121,7 +121,7 @@ static chunk **lchunk(size_t size, bool new)
 	}
     }
 
-    if (!new) {
+    if (!alloc) {
 	return (chunk **) NULL;		/* not found */
     }
     /* make a new list */
@@ -466,10 +466,10 @@ static chunk *seek(Uint size)
 }
 
 /*
- * NAME:	delete()
+ * NAME:	del()
  * DESCRIPTION:	delete a chunk from the splay tree
  */
-static void delete(chunk *c)
+static void del(chunk *c)
 {
     spnode *t, *r;
     spnode *p, *n;
@@ -582,7 +582,7 @@ static chunk *dalloc(size_t size)
 	/*
 	 * remove from free list
 	 */
-	delete(c);
+	del(c);
     } else {
 	/*
 	 * get new dynamic chunk
@@ -657,7 +657,7 @@ static void dfree(chunk *c)
 		fatal("corrupted memory chunk");
 	    }
 # endif
-	    delete((chunk *) p);
+	    del((chunk *) p);
 	    ((chunk *) p)->size += c->size;
 	    c = (chunk *) p;
 	    *((size_t *) (p + c->size - SIZETSIZE)) = c->size;
@@ -674,7 +674,7 @@ static void dfree(chunk *c)
 	    fatal("corrupted memory chunk");
 	}
 # endif
-	delete((chunk *) p);
+	del((chunk *) p);
 	c->size += ((chunk *) p)->size;
 	*((size_t *) ((char *) c + c->size - SIZETSIZE)) = c->size;
     }

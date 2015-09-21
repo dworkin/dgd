@@ -75,7 +75,7 @@ cmdbuf *cb_new(char *tmpfile)
     cb->vars = va_new();
     m_dynamic();
 
-    cb->this = 0;
+    cb->cthis = 0;
     cb->undo = (block) -1;	/* not 0! */
     return cb;
 }
@@ -210,7 +210,7 @@ static Int cb_address(cmdbuf *cb, Int first)
 	/* fall through */
     case '+':
     case '-':
-	l = cb->this;
+	l = cb->cthis;
 	break;
 
     case '$':
@@ -316,17 +316,17 @@ static void cb_range(cmdbuf *cb)
 	cb->last = cb->edbuf->lines;
 	cb->cmd = skipst(cb->cmd + 1);
     } else {
-	cb->first = cb_address(cb, cb->this);
+	cb->first = cb_address(cb, cb->cthis);
 	if (cb->cmd[0] == ',' || cb->cmd[0] == ';') {
 	    if (cb->first < 0) {
-		cb->first = cb->this;
+		cb->first = cb->cthis;
 	    } else if (cb->cmd[0] == ';') {
-		cb->this = cb->first;
+		cb->cthis = cb->first;
 	    }
 	    cb->cmd = skipst(cb->cmd + 1);
-	    cb->last = cb_address(cb, cb->this);
+	    cb->last = cb_address(cb, cb->cthis);
 	    if (cb->last < 0) {
-		cb->last = cb->this;
+		cb->last = cb->cthis;
 	    }
 	}
     }
@@ -353,7 +353,7 @@ void cb_count(cmdbuf *cb)
 	cb->cmd = skipst(p);
 
 	if (cb->first < 0) {
-	    cb->first = cb->this;
+	    cb->first = cb->cthis;
 	}
 	cb->last = cb->first + count - 1;
 	if (cb->last < cb->first || cb->last > cb->edbuf->lines) {
@@ -377,10 +377,10 @@ void not_in_global(cmdbuf *cb)
  * NAME:	cmdbuf->do()
  * DESCRIPTION:	copy the present command buffer status in the undo buffer
  */
-void cb_do(cmdbuf *cb, Int this)
+void cb_do(cmdbuf *cb, Int cthis)
 {
     cb->undo = cb->edbuf->buffer;
-    cb->uthis = this;
+    cb->uthis = cthis;
     memcpy(cb->umark, cb->mark, sizeof(cb->mark));
 }
 
@@ -392,7 +392,7 @@ void cb_do(cmdbuf *cb, Int this)
 int cb_undo(cmdbuf *cb)
 {
     block b;
-    Int this, mark[26];
+    Int cthis, mark[26];
 
     not_in_global(cb);
     if (cb->undo == (block) -1) {
@@ -404,12 +404,12 @@ int cb_undo(cmdbuf *cb)
     cb->edbuf->lines = (b == (block) 0) ? 0 : bk_size(cb->edbuf->lb, b);
     cb->edbuf->buffer = b;
 
-    this = cb->uthis;
-    if (this == 0 && b != (block) 0) {
-	this = 1;
+    cthis = cb->uthis;
+    if (cthis == 0 && b != (block) 0) {
+	cthis = 1;
     }
     cb->uthis = cb->othis;
-    cb->this = cb->othis = this;
+    cb->cthis = cb->othis = cthis;
 
     memcpy(mark, cb->umark, sizeof(mark));
     memcpy(cb->umark, cb->mark, sizeof(mark));
@@ -479,14 +479,14 @@ void add(cmdbuf *cb, Int ln, block b, Int size)
 	}
     }
 
-    cb->this = cb->othis = ln + size;
+    cb->cthis = cb->othis = ln + size;
 }
 
 /*
- * NAME:	delete()
+ * NAME:	dellines()
  * DESCRIPTION:	delete a block of lines from the edit buffer
  */
-block delete(cmdbuf *cb, Int first, Int last)
+block dellines(cmdbuf *cb, Int first, Int last)
 {
     Int size, *m;
 
@@ -521,7 +521,7 @@ block delete(cmdbuf *cb, Int first, Int last)
     if (last == cb->edbuf->lines) {
 	cb->othis--;
     }
-    cb->this = cb->othis;
+    cb->cthis = cb->othis;
 
     return eb_delete(cb->edbuf, first, last);
 }
@@ -562,9 +562,9 @@ void change(cmdbuf *cb, Int first, Int last, block b)
     }
 
     cb->othis = first;
-    cb->this = last - offset;
-    if (cb->this == 0 && last != cb->edbuf->lines) {
-	cb->this = 1;
+    cb->cthis = last - offset;
+    if (cb->cthis == 0 && last != cb->edbuf->lines) {
+	cb->cthis = 1;
     }
 
     eb_change(cb->edbuf, first, last, b);
@@ -601,18 +601,18 @@ void endblock(cmdbuf *cb)
 	if (cb->first <= cb->last) {
 	    change(cb, cb->first, cb->last, cb->edbuf->flines);
 	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
-	    cb->this = cb->othis = 1;
+	    cb->cthis = cb->othis = 1;
 	} else {
-	    cb->this = cb->othis = cb->first;
+	    cb->cthis = cb->othis = cb->first;
 	}
     } else {
 	if (cb->edbuf->flines != (block) 0) {
 	    add(cb, cb->first, cb->edbuf->flines,
 		bk_size(cb->edbuf->lb, cb->edbuf->flines));
 	} else if (cb->first == 0 && cb->edbuf->lines != 0) {
-	    cb->this = cb->othis = 1;
+	    cb->cthis = cb->othis = 1;
 	} else {
-	    cb->this = cb->othis = cb->first;
+	    cb->cthis = cb->othis = cb->first;
 	}
     }
 
@@ -694,7 +694,7 @@ int cb_global(cmdbuf *cb)
 	do {
 	    if (setjmp(cb->env)) {
 		/* found: do the commands */
-		cb->this = cb->glob_next - 1;
+		cb->cthis = cb->glob_next - 1;
 		cb_command(cb, p);
 	    } else {
 		/* search */
@@ -740,10 +740,10 @@ int cb_vglobal(cmdbuf *cb)
 
 
 typedef struct {
-    char flags;		/* type of command */
-    char chr;		/* first char of command */
-    char *cmd;		/* full command string */
-    int (*ftn)();	/* command function */
+    char flags;			/* type of command */
+    char chr;			/* first char of command */
+    char *cmd;			/* full command string */
+    int (*ftn)(cmdbuf*);	/* command function */
 } cmd;
 
 # define CM_LNMASK	0x03
@@ -848,11 +848,11 @@ bool cb_command(cmdbuf *cb, char *command)
 	    cb->cmd = skipst(cb->cmd);
 	    if (cb->cmd[0] == '\0') {
 		/* no command: print next line */
-		if (cb->this == cb->edbuf->lines) {
+		if (cb->cthis == cb->edbuf->lines) {
 		    error("End-of-file");
 		}
 		cm = &ed_commands['p' - 'a'];
-		cb->first = cb->last = cb->this + 1;
+		cb->first = cb->last = cb->cthis + 1;
 	    } else {
 		/* parse [range] */
 		cb_range(cb);
@@ -943,7 +943,7 @@ bool cb_command(cmdbuf *cb, char *command)
 
 		/* CM_ADDR */
 		if (cm->flags & CM_ADDR) {
-		    cb->a_addr = cb_address(cb, cb->this);
+		    cb->a_addr = cb_address(cb, cb->cthis);
 		    if (cb->a_addr < 0) {
 			error("Command requires a trailing address");
 		    }
@@ -968,7 +968,7 @@ bool cb_command(cmdbuf *cb, char *command)
 	    case CM_LNDOT:
 	    case CM_LN0:
 		if (cb->first < 0) {
-		    cb->first = cb->this;
+		    cb->first = cb->cthis;
 		}
 		if (cb->last < 0) {
 		    cb->last = cb->first;
@@ -1000,11 +1000,11 @@ bool cb_command(cmdbuf *cb, char *command)
 		for (;;) {
 		    switch (*p++) {
 		    case '-':
-			--cb->this;
+			--cb->cthis;
 			continue;
 
 		    case '+':
-			cb->this++;
+			cb->cthis++;
 			continue;
 
 		    case 'p':
@@ -1023,15 +1023,15 @@ bool cb_command(cmdbuf *cb, char *command)
 		    break;
 		}
 
-		if (cb->this <= 0) {
-		    cb->this = 1;
+		if (cb->cthis <= 0) {
+		    cb->cthis = 1;
 		}
-		if (cb->this > cb->edbuf->lines) {
-		    cb->this = cb->edbuf->lines;
+		if (cb->cthis > cb->edbuf->lines) {
+		    cb->cthis = cb->edbuf->lines;
 		}
-		if (cb->this != 0 && !(cb->flags & CB_GLOBAL)) {
+		if (cb->cthis != 0 && !(cb->flags & CB_GLOBAL)) {
 		    /* no autoprint in global */
-		    cb->first = cb->last = cb->this;
+		    cb->first = cb->last = cb->cthis;
 		    cb_print(cb);
 		}
 		p = skipst(cb->cmd);

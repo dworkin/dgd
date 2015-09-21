@@ -210,8 +210,11 @@ string *ed_command(object *obj, char *cmd)
  */
 char *ed_status(object *obj)
 {
-    return (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) ?
-	    "insert" : "command";
+    if (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) {
+	return "insert";
+    } else {
+	return "command";
+    }
 }
 
 /*

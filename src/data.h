@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013,2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,7 +37,7 @@ typedef struct {
 # define DSTR_LAYOUT	"it"
 
 typedef struct _dfuncdef_ {
-    char class;			/* function class */
+    char sclass;		/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */
     Uint offset;		/* offset in program text */
@@ -46,7 +46,7 @@ typedef struct _dfuncdef_ {
 # define DF_LAYOUT	"ccsi"
 
 typedef struct {
-    char class;			/* variable class */
+    char sclass;		/* variable class */
     char type;			/* variable type */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */

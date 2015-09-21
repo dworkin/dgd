@@ -18,12 +18,12 @@
  */
 
 typedef void (*extfunc)(frame *, int, value *);
-typedef struct {
-    char *name;		/* function name */
-    char *proto;	/* prototype */
-    int (*func)();	/* function address */
-    extfunc ext;	/* extension */
-    short version;	/* version number */
+typedef struct kfunc {
+    char *name;						/* function name */
+    char *proto;					/* prototype */
+    int (*func)(frame*, int, struct kfunc*);		/* function address */
+    extfunc ext;					/* extension */
+    short version;					/* version number */
 } kfunc;
 
 extern kfunc kftab[], kfenc[], kfdec[], kfhsh[];	/* kfun tables */

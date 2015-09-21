@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,6 +19,7 @@
 
 # ifndef FUNCDEF
 # include "kfun.h"
+# include "table.h"
 # endif
 
 
@@ -31,7 +32,7 @@ char pt_fabs[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->fabs()
  * DESCRIPTION:	return the absolute value of a float
  */
-int kf_fabs(frame *f)
+int kf_fabs(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -53,7 +54,7 @@ char pt_floor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->floor()
  * DESCRIPTION:	round the argument downwards
  */
-int kf_floor(frame *f)
+int kf_floor(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -75,7 +76,7 @@ char pt_ceil[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->ceil()
  * DESCRIPTION:	round the argument upwards
  */
-int kf_ceil(frame *f)
+int kf_ceil(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -98,7 +99,7 @@ char pt_fmod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
  * NAME:	kfun->fmod()
  * DESCRIPTION:	compute fmod
  */
-int kf_fmod(frame *f)
+int kf_fmod(frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
 
@@ -123,7 +124,7 @@ char pt_frexp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->frexp()
  * DESCRIPTION:	split a float into a fraction and an exponent
  */
-int kf_frexp(frame *f)
+int kf_frexp(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
     Int num;
@@ -152,7 +153,7 @@ char pt_ldexp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
  * NAME:	kfun->ldexp()
  * DESCRIPTION:	make a float from a fraction and an exponent
  */
-int kf_ldexp(frame *f)
+int kf_ldexp(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -176,7 +177,7 @@ char pt_modf[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->modf()
  * DESCRIPTION:	split float into fraction and integer part
  */
-int kf_modf(frame *f)
+int kf_modf(frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
     array *a;
@@ -203,7 +204,7 @@ char pt_exp[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->exp()
  * DESCRIPTION:	compute exp
  */
-int kf_exp(frame *f)
+int kf_exp(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -225,7 +226,7 @@ char pt_log[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->log()
  * DESCRIPTION:	compute log
  */
-int kf_log(frame *f)
+int kf_log(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -247,7 +248,7 @@ char pt_log10[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->log10()
  * DESCRIPTION:	compute log10
  */
-int kf_log10(frame *f)
+int kf_log10(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -270,7 +271,7 @@ char pt_pow[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
  * NAME:	kfun->pow()
  * DESCRIPTION:	compute pow
  */
-int kf_pow(frame *f)
+int kf_pow(frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
 
@@ -294,7 +295,7 @@ char pt_sqrt[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->sqrt()
  * DESCRIPTION:	compute sqrt
  */
-int kf_sqrt(frame *f)
+int kf_sqrt(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -316,7 +317,7 @@ char pt_cos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->cos()
  * DESCRIPTION:	compute cos
  */
-int kf_cos(frame *f)
+int kf_cos(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -338,7 +339,7 @@ char pt_sin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->sin()
  * DESCRIPTION:	compute sin
  */
-int kf_sin(frame *f)
+int kf_sin(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -360,7 +361,7 @@ char pt_tan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->tan()
  * DESCRIPTION:	compute tan
  */
-int kf_tan(frame *f)
+int kf_tan(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -382,7 +383,7 @@ char pt_acos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->acos()
  * DESCRIPTION:	compute acos
  */
-int kf_acos(frame *f)
+int kf_acos(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -404,7 +405,7 @@ char pt_asin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->asin()
  * DESCRIPTION:	compute asin
  */
-int kf_asin(frame *f)
+int kf_asin(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -426,7 +427,7 @@ char pt_atan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->atan()
  * DESCRIPTION:	compute atan
  */
-int kf_atan(frame *f)
+int kf_atan(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -449,7 +450,7 @@ char pt_atan2[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
  * NAME:	kfun->atan2()
  * DESCRIPTION:	compute atan2
  */
-int kf_atan2(frame *f)
+int kf_atan2(frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
 
@@ -473,7 +474,7 @@ char pt_cosh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->cosh()
  * DESCRIPTION:	compute cosh
  */
-int kf_cosh(frame *f)
+int kf_cosh(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -495,7 +496,7 @@ char pt_sinh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->sinh()
  * DESCRIPTION:	compute sinh
  */
-int kf_sinh(frame *f)
+int kf_sinh(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
@@ -517,7 +518,7 @@ char pt_tanh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  * NAME:	kfun->tanh()
  * DESCRIPTION:	compute tanh
  */
-int kf_tanh(frame *f)
+int kf_tanh(frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 

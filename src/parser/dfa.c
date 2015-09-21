@@ -143,7 +143,7 @@ static int cs_firstc(Uint *cset, int c)
  * NAME:	charset->eclass()
  * DESCRIPTION:	convert a charset into an equivalence class
  */
-static int cs_eclass(Uint *cset, char *eclass, int class)
+static int cs_eclass(Uint *cset, char *eclass, int sclass)
 {
     int n, c;
     Uint x;
@@ -158,7 +158,7 @@ static int cs_eclass(Uint *cset, char *eclass, int class)
 		    c += 8;
 		}
 		if (x & 1) {
-		    eclass[c] = class;
+		    eclass[c] = sclass;
 		    n++;
 		}
 		x >>= 1;

@@ -151,7 +151,7 @@ typedef struct {
 static char osi_layout[] = "uus";
 
 typedef struct {
-    char class;			/* variable class */
+    char sclass;		/* variable class */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
     unsigned short type;	/* variable type */
@@ -2814,7 +2814,7 @@ static control *d_conv_control(object *obj,
 		size += d_conv((char *) ov, ctrl->sectors, OV_LAYOUT,
 			       (Uint) ctrl->nvardefs, size, readv);
 		for (n = 0; n < ctrl->nvardefs; n++) {
-		    ctrl->vardefs[n].class = ov[n].class;
+		    ctrl->vardefs[n].sclass = ov[n].sclass;
 		    ctrl->vardefs[n].type = ov[n].type;
 		    ctrl->vardefs[n].inherit = ov[n].inherit;
 		    ctrl->vardefs[n].index = ov[n].index;

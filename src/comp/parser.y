@@ -65,9 +65,9 @@ static node *lshift	(int, node*, node*, char*);
 static node *rshift	(int, node*, node*, char*);
 static node *rel	(int, node*, node*, char*);
 static node *eq		(node*, node*);
-static node *and	(int, node*, node*, char*);
-static node *xor	(int, node*, node*, char*);
-static node *or		(int, node*, node*, char*);
+static node *_and	(int, node*, node*, char*);
+static node *_xor	(int, node*, node*, char*);
+static node *_or	(int, node*, node*, char*);
 static node *land	(node*, node*);
 static node *lor	(node*, node*);
 static node *quest	(node*, node*, node*);
@@ -264,7 +264,7 @@ formal_declaration
 		{
 		  $$ = $2;
 		  $$->mod |= $1->mod;
-		  $$->class = $1->class;
+		  $$->sclass = $1->sclass;
 		}
 	| ident {
 		  $$ = $1;
@@ -633,7 +633,7 @@ primary_p1_exp
 			   * functions...
 			   */
 			  $$ = node_mon(N_CAST, $$->mod, $$);
-			  $$->class = $$->l.left->class;
+			  $$->sclass = $$->l.left->sclass;
 		      }
 		  } else {
 		      /* the variable could be anything */
@@ -712,7 +712,7 @@ prefix_exp
 		  $$ = $2;
 		  t_void($$);
 		  if ($$->mod == T_INT) {
-		      $$ = xor(N_XOR, $$, node_int((Int) -1), "^");
+		      $$ = _xor(N_XOR, $$, node_int((Int) -1), "^");
 		  } else if ($$->mod == T_OBJECT || $$->mod == T_CLASS) {
 		      $$ = node_mon(N_NEG, T_OBJECT, $$);
 		  } else {
@@ -785,19 +785,19 @@ equ_oper_exp
 bitand_oper_exp
 	: equ_oper_exp
 	| bitand_oper_exp '&' equ_oper_exp
-		{ $$ = and(N_AND, $1, $3, "&"); }
+		{ $$ = _and(N_AND, $1, $3, "&"); }
 	;
 
 bitxor_oper_exp
 	: bitand_oper_exp
 	| bitxor_oper_exp '^' bitand_oper_exp
-		{ $$ = xor(N_XOR, $1, $3, "^"); }
+		{ $$ = _xor(N_XOR, $1, $3, "^"); }
 	;
 
 bitor_oper_exp
 	: bitxor_oper_exp
 	| bitor_oper_exp '|' bitxor_oper_exp
-		{ $$ = or(N_OR, $1, $3, "|"); }
+		{ $$ = _or(N_OR, $1, $3, "|"); }
 	;
 
 and_oper_exp
@@ -844,11 +844,11 @@ exp
 	| cond_exp RSHIFT_EQ exp
 		{ $$ = rshift(N_RSHIFT_EQ, c_lvalue($1, ">>="), $3, ">>="); }
 	| cond_exp AND_EQ exp
-		{ $$ = and(N_AND_EQ, c_lvalue($1, "&="), $3, "&="); }
+		{ $$ = _and(N_AND_EQ, c_lvalue($1, "&="), $3, "&="); }
 	| cond_exp XOR_EQ exp
-		{ $$ = xor(N_XOR_EQ, c_lvalue($1, "^="), $3, "^="); }
+		{ $$ = _xor(N_XOR_EQ, c_lvalue($1, "^="), $3, "^="); }
 	| cond_exp OR_EQ exp
-		{ $$ = or(N_OR_EQ, c_lvalue($1, "|="), $3, "|="); }
+		{ $$ = _or(N_OR_EQ, c_lvalue($1, "|="), $3, "|="); }
 	;
 
 list_exp
@@ -1111,14 +1111,14 @@ static node *cast(node *n, node *type)
 	    } else {
 		n->mod = type->mod;
 	    }
-	    n->class = type->class;
+	    n->sclass = type->sclass;
 	}
-    } else if (type->mod == T_CLASS && str_cmp(type->class, n->class) != 0) {
+    } else if (type->mod == T_CLASS && str_cmp(type->sclass, n->sclass) != 0) {
 	/*
 	 * cast to different object class
 	 */
 	n = node_mon(N_CAST, type->mod, n);
-	n->class = type->class;
+	n->sclass = type->sclass;
     }
     return n;
 }
@@ -1156,7 +1156,7 @@ static node *idx(node *n1, node *n2)
 	    if (type != T_MIXED) {
 		/* you can't trust these arrays */
 		n2 = node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
-		n2->class = n1->class;
+		n2->sclass = n1->sclass;
 		return n2;
 	    }
 	}
@@ -1734,10 +1734,10 @@ static node *eq(node *n1, node *n2)
 }
 
 /*
- * NAME:	and()
+ * NAME:	_and()
  * DESCRIPTION:	handle the & &= operators
  */
-static node *and(int op, node *n1, node *n2, char *name)
+static node *_and(int op, node *n1, node *n2, char *name)
 {
     unsigned short type;
 
@@ -1758,10 +1758,10 @@ static node *and(int op, node *n1, node *n2, char *name)
 }
 
 /*
- * NAME:	xor()
+ * NAME:	_xor()
  * DESCRIPTION:	handle the ^ ^= operators
  */
-static node *xor(int op, node *n1, node *n2, char *name)
+static node *_xor(int op, node *n1, node *n2, char *name)
 {
     unsigned short type;
 
@@ -1781,10 +1781,10 @@ static node *xor(int op, node *n1, node *n2, char *name)
 }
 
 /*
- * NAME:	or()
+ * NAME:	_or()
  * DESCRIPTION:	handle the | |= operators
  */
-static node *or(int op, node *n1, node *n2, char *name)
+static node *_or(int op, node *n1, node *n2, char *name)
 {
     unsigned short type;
 
@@ -1896,11 +1896,11 @@ static node *quest(node *n1, node *n2, node *n3)
 
     n1 = node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
     if ((type & T_TYPE) == T_CLASS) {
-	if (n2->class == (string *) NULL) {
-	    n1->class = n3->class;
-	} else if (n3->class == (string *) NULL ||
-		   str_cmp(n2->class, n3->class) == 0) {
-	    n1->class = n2->class;
+	if (n2->sclass == (string *) NULL) {
+	    n1->sclass = n3->sclass;
+	} else if (n3->sclass == (string *) NULL ||
+		   str_cmp(n2->sclass, n3->sclass) == 0) {
+	    n1->sclass = n2->sclass;
 	} else {
 	    /* downgrade to object */
 	    n1->type = (n1->type & T_REF) | T_OBJECT;
@@ -1929,7 +1929,7 @@ static node *assign(node *n1, node *n2)
 		type -= 1 << REFSHIFT;
 		if (type != T_MIXED) {
 		    n = node_mon(N_TYPE, type, (node *) NULL);
-		    n->class = n2->class;
+		    n->sclass = n2->sclass;
 		    n1->r.right = n;
 		}
 	    } else if (type != T_MIXED) {
@@ -1956,7 +1956,7 @@ static node *assign(node *n1, node *n2)
 	    }
 	}
 	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
-	n1->class = n2->class;
+	n1->sclass = n2->sclass;
 	return n1;
     } else {
 	if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
@@ -1970,14 +1970,14 @@ static node *assign(node *n1, node *n2)
 	    } else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
 		       (n1->mod == T_CLASS &&
 			(n2->mod != T_CLASS ||
-			 str_cmp(n1->class, n2->class) != 0))) {
+			 str_cmp(n1->sclass, n2->sclass) != 0))) {
 		n2 = node_mon(N_CAST, n1->mod, n2);
-		n2->class = n1->class;
+		n2->sclass = n1->sclass;
 	    }
 	}
 
 	n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
-	n2->class = n1->class;
+	n2->sclass = n1->sclass;
 	return n2;
     }
 }
@@ -1995,7 +1995,7 @@ static node *comma(node *n1, node *n2)
 	return n2;
     } else {
 	n1 = node_bin(N_COMMA, n2->mod, n1, n2);
-	n1->class = n2->class;
+	n1->sclass = n2->sclass;
 	return n1;
     }
 }

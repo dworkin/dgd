@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013,2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,7 @@
 /*
  * prototypes
  */
-# define FUNCDEF(name, func, proto, v) extern int func(); extern char proto[];
+# define FUNCDEF(name, func, proto, v) extern int func(frame*, int, struct kfunc*); extern char proto[];
 # include "builtin.c"
 # include "std.c"
 # include "file.c"
@@ -198,7 +198,7 @@ void kf_ext_kfun(extkfunc *kfadd, int n)
 	    kf->name = kfadd->name;
 	}
 	kf->proto = prototype(kfadd->proto);
-	kf->func = (int (*)()) &kf_callgate;
+	kf->func = &kf_callgate;
 	kf->ext = kfadd->func;
 	kf->version = 0;
     }
@@ -320,7 +320,7 @@ int kf_func(char *name)
  * NAME:	kfun->encrypt()
  * DESCRIPTION:	encrypt a string
  */
-int kf_encrypt(frame *f, int nargs)
+int kf_encrypt(frame *f, int nargs, kfunc *func)
 {
     value val;
     int n;
@@ -341,7 +341,7 @@ int kf_encrypt(frame *f, int nargs)
  * NAME:	kfun->decrypt()
  * DESCRIPTION:	decrypt a string
  */
-int kf_decrypt(frame *f, int nargs)
+int kf_decrypt(frame *f, int nargs, kfunc *func)
 {
     value val;
     int n;
@@ -362,7 +362,7 @@ int kf_decrypt(frame *f, int nargs)
  * NAME:	kfun->hash_string()
  * DESCRIPTION:	hash a string
  */
-int kf_hash_string(frame *f, int nargs)
+int kf_hash_string(frame *f, int nargs, kfunc *func)
 {
     value val;
     int n;

@@ -33,7 +33,7 @@ extern void  not_in_global	(cmdbuf*);
 extern void  cb_do		(cmdbuf*, Int);
 extern void  cb_buf		(cmdbuf*, block);
 extern void  add		(cmdbuf*, Int, block, Int);
-extern block delete		(cmdbuf*, Int, Int);
+extern block dellines		(cmdbuf*, Int, Int);
 extern void  change		(cmdbuf*, Int, Int, block);
 extern void  startblock		(cmdbuf*);
 extern void  addblock		(cmdbuf*, char*);
@@ -151,7 +151,7 @@ int cb_print(cmdbuf *cb)
 
     cb->lineno = cb->first;
     eb_range(cb->edbuf, cb->first, cb->last, println, FALSE);
-    cb->this = cb->last;
+    cb->cthis = cb->last;
     return 0;
 }
 
@@ -191,7 +191,7 @@ int cb_page(cmdbuf *cb)
     switch (*(cb->cmd)++) {
     default:	/* next line */
 	cb->cmd--;
-	cb->this++;
+	cb->cthis++;
 	/* fall through */
     case '+':	/* top */
 	offset = 0;
@@ -208,7 +208,7 @@ int cb_page(cmdbuf *cb)
 
     /* set first */
     if (cb->first < 0) {
-	cb->first = cb->this;
+	cb->first = cb->cthis;
     }
     cb->first += offset;
     if (cb->first <= 0) {
@@ -313,7 +313,7 @@ int cb_delete(cmdbuf *cb)
 {
     cb_do(cb, cb->first);
 
-    cb_buf(cb, delete(cb, cb->first, cb->last));
+    cb_buf(cb, dellines(cb, cb->first, cb->last));
 
     cb->edit++;
 
@@ -364,7 +364,7 @@ int cb_move(cmdbuf *cb)
 	    *m1 = 0;
 	}
     }
-    add(cb, cb->a_addr, delete(cb, cb->first, cb->last),
+    add(cb, cb->a_addr, dellines(cb, cb->first, cb->last),
       cb->last - cb->first + 1);
     /* copy back adjusted marks of moved lines */
     for (m1 = mark, m2 = cb->mark; m1 < &mark[26]; m1++, m2++) {
@@ -897,7 +897,7 @@ int cb_join(cmdbuf *cb)
 	error("No lines in buffer");
     }
     if (cb->first < 0) {
-	cb->first = cb->this;
+	cb->first = cb->cthis;
     }
     if (cb->last < 0) {
 	cb->last = (cb->first == cb->edbuf->lines) ? cb->first : cb->first + 1;
@@ -905,7 +905,7 @@ int cb_join(cmdbuf *cb)
 
     cb_do(cb, cb->first);
 
-    cb->this = cb->othis = cb->first;
+    cb->cthis = cb->othis = cb->first;
     buf[0] = '\0';
     cb->buffer = buf;
     cb->buflen = 0;
@@ -942,7 +942,7 @@ static void sub(cmdbuf *cb, char *text, unsigned int size)
 	    /* finish already processed block */
 	    endblock(cb);
 	}
-	cb->this = cb->othis = cb->lineno;
+	cb->cthis = cb->othis = cb->lineno;
 	error("Line overflow in substitute");
     }
 
@@ -1340,9 +1340,9 @@ int cb_file(cmdbuf *cb)
 	output(" [Modified]");
     }
     output(" line %ld of %ld --%d%%--\012", /* LF */
-	   (long) cb->this, (long) cb->edbuf->lines,
+	   (long) cb->cthis, (long) cb->edbuf->lines,
 	   (cb->edbuf->lines == 0) ? 0 :
-				(int) ((100 * cb->this) / cb->edbuf->lines));
+				(int) ((100 * cb->cthis) / cb->edbuf->lines));
 
     return 0;
 }
@@ -1395,7 +1395,7 @@ int cb_read(cmdbuf *cb)
     io_show(&iob);
 
     cb->edit++;
-    cb->this = cb->first + iob.lines;
+    cb->cthis = cb->first + iob.lines;
 
     return 0;
 }
@@ -1424,7 +1424,7 @@ int cb_edit(cmdbuf *cb)
     m_dynamic();
     cb->flags &= ~CB_NOIMAGE;
     cb->edit = 0;
-    cb->first = cb->this = 0;
+    cb->first = cb->cthis = 0;
     memset(cb->mark, '\0', sizeof(cb->mark));
     cb->buf = 0;
     memset(cb->zbuf, '\0', sizeof(cb->zbuf));
@@ -1440,7 +1440,7 @@ int cb_edit(cmdbuf *cb)
 	cb->flags |= CB_NOIMAGE;
     }
 
-    cb->this = iob.lines;
+    cb->cthis = iob.lines;
 
     return 0;
 }

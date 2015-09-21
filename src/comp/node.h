@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,7 @@ typedef struct _node_ {
     char flags;			/* bitflags */
     unsigned short mod;		/* modifier */
     unsigned short line;	/* line number */
-    string *class;		/* object class */
+    string *sclass;		/* object class */
     union {
 	Int number;		/* numeric value */
 	unsigned short fhigh;	/* high word of float */
