@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,7 @@ typedef struct {
     char *name;		/* long variable name */
     char *sname;	/* short variable name */
     Int val;		/* value */
-} vars;
+} Vars;
 
 # define IGNORECASE(v)	(v[0].val)
 # define SHIFTWIDTH(v)	(v[1].val)
@@ -29,7 +29,7 @@ typedef struct {
 
 # define NUMBER_OF_VARS	3
 
-extern vars *va_new  (void);
-extern void  va_del  (vars*);
-extern void  va_set  (vars*, char*);
-extern void  va_show (vars*);
+extern Vars *va_new  (void);
+extern void  va_del  (Vars*);
+extern void  va_set  (Vars*, char*);
+extern void  va_show (Vars*);

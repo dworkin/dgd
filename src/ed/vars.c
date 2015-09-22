@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,38 +25,38 @@
  */
 
 /*
- * NAME:	vars->new()
+ * NAME:	Vars->new()
  * DESCRIPTION:	allocate and initialize a variable buffer
  */
-vars *va_new()
+Vars *va_new()
 {
-    static vars dflt[] = {
+    static Vars dflt[] = {
 	{ "ignorecase",	"ic",	FALSE },
 	{ "shiftwidth",	"sw",	4 },
 	{ "window",	"wi",	20 },
     };
-    vars *v;
+    Vars *v;
 
-    v = ALLOC(vars, NUMBER_OF_VARS);
+    v = ALLOC(Vars, NUMBER_OF_VARS);
     memcpy(v, dflt, sizeof(dflt));
 
     return v;
 }
 
 /*
- * NAME:	vars->del()
+ * NAME:	Vars->del()
  * DESCRIPTION:	delete a variable buffer
  */
-void va_del(vars *v)
+void va_del(Vars *v)
 {
     FREE(v);
 }
 
 /*
- * NAME:	vars->set()
+ * NAME:	Vars->set()
  * DESCRIPTION:	set the value of a variable.
  */
-void va_set(vars *v, char *option)
+void va_set(Vars *v, char *option)
 {
     char *val;
     Int i;
@@ -93,10 +93,10 @@ void va_set(vars *v, char *option)
 }
 
 /*
- * NAME:	vars->show()
+ * NAME:	Vars->show()
  * DESCRIPTION:	show all variables
  */
-void va_show(vars *v)
+void va_show(Vars *v)
 {
     output("%signorecase\011",   ((v++)->val) ? "" : "no");	/* HT */
     output("shiftwidth=%ld\011", (long) (v++)->val);		/* HT */
