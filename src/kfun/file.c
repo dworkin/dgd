@@ -35,12 +35,12 @@ char pt_editor[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING, T_STRING };
  * NAME:	kfun->editor()
  * DESCRIPTION:	handle an editor command
  */
-int kf_editor(frame *f, int nargs, kfunc *kf)
+int kf_editor(Frame *f, int nargs, kfunc *kf)
 {
-    object *obj;
-    string *str;
+    Object *obj;
+    String *str;
 
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("editor() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -61,7 +61,7 @@ int kf_editor(frame *f, int nargs, kfunc *kf)
     } else {
 	str = ed_command(obj, f->sp->u.string->text);
 	str_del(f->sp->u.string);
-	if (str != (string *) NULL) {
+	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
 	    *f->sp = nil_value;
@@ -82,9 +82,9 @@ char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  * NAME:	kfun->query_editor()
  * DESCRIPTION:	query the editing status of an object
  */
-int kf_query_editor(frame *f, int n, kfunc *kf)
+int kf_query_editor(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     char *status;
 
     if (f->sp->type == T_OBJECT) {
@@ -140,7 +140,7 @@ static void put(savecontext *x, char *buf, unsigned int len)
  * NAME:	save_string()
  * DESCRIPTION:	save a string
  */
-static void save_string(savecontext *x, string *str)
+static void save_string(savecontext *x, String *str)
 {
     char buf[STRINGSZ];
     char *p, *q, c;
@@ -182,17 +182,17 @@ static void save_string(savecontext *x, string *str)
     put(x, buf, size + 1);
 }
 
-static void save_mapping (savecontext*, array*);
+static void save_mapping (savecontext*, Array*);
 
 /*
  * NAME:	save_array()
  * DESCRIPTION:	save an array
  */
-static void save_array(savecontext *x, array *a)
+static void save_array(savecontext *x, Array *a)
 {
     char buf[18];
     Uint i;
-    value *v;
+    Value *v;
     xfloat flt;
 
     i = arr_put(a, x->narrays);
@@ -255,12 +255,12 @@ static void save_array(savecontext *x, array *a)
  * NAME:	save_mapping()
  * DESCRIPTION:	save a mapping
  */
-static void save_mapping(savecontext *x, array *a)
+static void save_mapping(savecontext *x, Array *a)
 {
     char buf[18];
     Uint i;
     uindex n;
-    value *v;
+    Value *v;
     xfloat flt;
 
     i = arr_put(a, x->narrays);
@@ -370,14 +370,14 @@ char pt_save_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
  * NAME:	kfun->save_object()
  * DESCRIPTION:	save the variables of the current object
  */
-int kf_save_object(frame *f, int n, kfunc *kf)
+int kf_save_object(Frame *f, int n, kfunc *kf)
 {
     static unsigned short count;
     unsigned short i, j, nvars;
-    value *var;
+    Value *var;
     dvardef *v;
-    control *ctrl;
-    string *str;
+    Control *ctrl;
+    String *str;
     dinherit *inh;
     char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
@@ -410,7 +410,7 @@ int kf_save_object(frame *f, int n, kfunc *kf)
     ctrl = f->ctrl;
     arr_merge();
     x.narrays = 0;
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
 	var = d_get_variable(f->data, 0);
@@ -502,12 +502,12 @@ FUNCDEF("restore_object", kf_restore_object, pt_restore_object, 0)
 
 typedef struct _achunk_ {
     struct _achunk_ *next;	/* next in list */
-    value a[ACHUNKSZ];		/* chunk of arrays */
+    Value a[ACHUNKSZ];		/* chunk of arrays */
 } achunk;
 
 typedef struct {
     int line;			/* current line number */
-    frame *f;			/* interpreter frame */
+    Frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
     int achunksz;		/* size of current array chunk */
     Uint narrays;		/* # of arrays/mappings */
@@ -518,7 +518,7 @@ typedef struct {
  * NAME:	achunk->put()
  * DESCRIPTION:	put an array into the array chunks
  */
-static void ac_put(restcontext *x, short type, array *a)
+static void ac_put(restcontext *x, short type, Array *a)
 {
     if (x->achunksz == ACHUNKSZ) {
 	achunk *l;
@@ -537,7 +537,7 @@ static void ac_put(restcontext *x, short type, array *a)
  * NAME:	achunk->get()
  * DESCRIPTION:	get an array from the array chunks
  */
-static value *ac_get(restcontext *x, Uint n)
+static Value *ac_get(restcontext *x, Uint n)
 {
     Uint sz;
     achunk *l;
@@ -578,7 +578,7 @@ static void restore_error(restcontext *x, char *err)
  * NAME:	restore_int()
  * DESCRIPTION:	restore an integer
  */
-static char *restore_int(restcontext *x, char *buf, value *val)
+static char *restore_int(restcontext *x, char *buf, Value *val)
 {
     char *p;
 
@@ -595,7 +595,7 @@ static char *restore_int(restcontext *x, char *buf, value *val)
  * NAME:	restore_number()
  * DESCRIPTION:	restore a number
  */
-static char *restore_number(restcontext *x, char *buf, value *val)
+static char *restore_number(restcontext *x, char *buf, Value *val)
 {
     char *p;
     int i;
@@ -672,7 +672,7 @@ static char *restore_number(restcontext *x, char *buf, value *val)
  * NAME:	restore_string()
  * DESCRIPTION:	restore a string
  */
-static char *restore_string(restcontext *x, char *buf, value *val)
+static char *restore_string(restcontext *x, char *buf, Value *val)
 {
     char *p, *q;
 
@@ -702,18 +702,18 @@ static char *restore_string(restcontext *x, char *buf, value *val)
     return p + 1;
 }
 
-static char *restore_value	(restcontext*, char*, value*);
-static char *restore_mapping	(restcontext*, char*, value*);
+static char *restore_value	(restcontext*, char*, Value*);
+static char *restore_mapping	(restcontext*, char*, Value*);
 
 /*
  * NAME:	restore_array()
  * DESCRIPTION:	restore an array
  */
-static char *restore_array(restcontext *x, char *buf, value *val)
+static char *restore_array(restcontext *x, char *buf, Value *val)
 {
     unsigned short i;
-    value *v;
-    array *a;
+    Value *v;
+    Array *a;
 
     /* match ({ */
     if (*buf++ != '(' || *buf++ != '{') {
@@ -759,11 +759,11 @@ static char *restore_array(restcontext *x, char *buf, value *val)
  * NAME:	restore_mapping()
  * DESCRIPTION:	restore a mapping
  */
-static char *restore_mapping(restcontext *x, char *buf, value *val)
+static char *restore_mapping(restcontext *x, char *buf, Value *val)
 {
     unsigned short i;
-    value *v;
-    array *a;
+    Value *v;
+    Array *a;
 
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
@@ -815,7 +815,7 @@ static char *restore_mapping(restcontext *x, char *buf, value *val)
  * NAME:	restore_value()
  * DESCRIPTION:	restore a value
  */
-static char *restore_value(restcontext *x, char *buf, value *val)
+static char *restore_value(restcontext *x, char *buf, Value *val)
 {
     switch (*buf) {
     case '"':
@@ -870,19 +870,19 @@ char pt_restore_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->restore_object()
  * DESCRIPTION:	restore the variables of the current object from file
  */
-int kf_restore_object(frame *f, int n, kfunc *kf)
+int kf_restore_object(Frame *f, int n, kfunc *kf)
 {
     struct stat sbuf;
     int i, j;
     unsigned short nvars, checkpoint;
     char *buf;
-    value *var;
+    Value *var;
     dvardef *v;
-    control *ctrl;
-    dataspace *data;
+    Control *ctrl;
+    Dataspace *data;
     dinherit *inh;
     restcontext x;
-    object *obj;
+    Object *obj;
     int fd;
     char *buffer, *name;
     bool onstack, pending;
@@ -932,7 +932,7 @@ int kf_restore_object(frame *f, int n, kfunc *kf)
      */
     ctrl = o_control(obj);
     data = f->data;
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
     } else {
 	var = d_get_variable(data, 0);
@@ -982,7 +982,7 @@ int kf_restore_object(frame *f, int n, kfunc *kf)
 	error((char *) NULL);	/* pass on error */
     }
     for (;;) {
-	if (f->lwobj != (array *) NULL) {
+	if (f->lwobj != (Array *) NULL) {
 	    var = &f->lwobj->elts[2];
 	} else {
 	    var = data->variables;
@@ -1051,7 +1051,7 @@ int kf_restore_object(frame *f, int n, kfunc *kf)
 		    if (!(v->sclass & C_STATIC) &&
 			strcmp(name, d_get_strconst(ctrl, v->inherit,
 						    v->index)->text) == 0) {
-			value tmp;
+			Value tmp;
 
 			/*
 			 * found the proper variable to restore
@@ -1065,7 +1065,7 @@ int kf_restore_object(frame *f, int n, kfunc *kf)
 			    i_del_value(&tmp);
 			    restore_error(&x, "value has wrong type");
 			}
-			if (f->lwobj != (array *) NULL) {
+			if (f->lwobj != (Array *) NULL) {
 			    d_assign_elt(data, f->lwobj, var, &tmp);
 			} else {
 			    d_assign_var(data, var, &tmp);
@@ -1110,7 +1110,7 @@ char pt_write_file[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_INT, T_STRING,
  * NAME:	kfun->write_file()
  * DESCRIPTION:	write a string to a file
  */
-int kf_write_file(frame *f, int nargs, kfunc *kf)
+int kf_write_file(Frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ];
     struct stat sbuf;
@@ -1173,7 +1173,7 @@ char pt_read_file[] = { C_TYPECHECKED | C_STATIC, 1, 2, 0, 9, T_STRING,
  * NAME:	kfun->read_file()
  * DESCRIPTION:	read a string from file
  */
-int kf_read_file(frame *f, int nargs, kfunc *kf)
+int kf_read_file(Frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ], *buf;
     struct stat sbuf;
@@ -1270,7 +1270,7 @@ char pt_rename_file[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT,
  * NAME:	kfun->rename_file()
  * DESCRIPTION:	rename a file
  */
-int kf_rename_file(frame *f, int n, kfunc *kf)
+int kf_rename_file(Frame *f, int n, kfunc *kf)
 {
     char from[STRINGSZ], to[STRINGSZ];
 
@@ -1303,7 +1303,7 @@ char pt_remove_file[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->remove_file()
  * DESCRIPTION:	remove a file
  */
-int kf_remove_file(frame *f, int n, kfunc *kf)
+int kf_remove_file(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1332,7 +1332,7 @@ char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
  * NAME:	kfun->make_dir()
  * DESCRIPTION:	create a directory
  */
-int kf_make_dir(frame *f, int n, kfunc *kf)
+int kf_make_dir(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1362,7 +1362,7 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->remove_dir()
  * DESCRIPTION:	remove an empty directory
  */
-int kf_remove_dir(frame *f, int n, kfunc *kf)
+int kf_remove_dir(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
@@ -1488,7 +1488,7 @@ static int match(char *pat, char *text)
 }
 
 typedef struct _fileinfo_ {
-    string *name;		/* file name */
+    String *name;		/* file name */
     Int size;			/* file size */
     Int time;			/* file time */
 } fileinfo;
@@ -1540,13 +1540,13 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->get_dir()
  * DESCRIPTION:	get directory filelist + info
  */
-int kf_get_dir(frame *f, int n, kfunc *kf)
+int kf_get_dir(Frame *f, int n, kfunc *kf)
 {
     unsigned int i, nfiles, ftabsz;
     fileinfo *ftable;
     char *file, *dir, *pat, buf[STRINGSZ], dirbuf[STRINGSZ];
     fileinfo finf;
-    array *a;
+    Array *a;
 
     file = path_string(buf, f->sp->u.string->text, f->sp->u.string->len);
 
@@ -1609,7 +1609,7 @@ int kf_get_dir(frame *f, int n, kfunc *kf)
     i_add_ticks(f, 1000 + 5 * nfiles);
 
     if (nfiles != 0) {
-	value *n, *s, *t;
+	Value *n, *s, *t;
 
 	qsort(ftable, nfiles, sizeof(fileinfo), cmp);
 	n = a->elts[0].u.array->elts;

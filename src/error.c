@@ -29,7 +29,7 @@
 
 typedef struct _context_ {
     jmp_buf env;			/* error context */
-    frame *f;				/* frame context */
+    Frame *f;				/* frame context */
     unsigned short offset;		/* sp offset */
     bool atomic;			/* atomic status */
     rlinfo *rlim;			/* rlimits info */
@@ -40,7 +40,7 @@ typedef struct _context_ {
 static context firstcontext;		/* bottom context */
 static context *econtext;		/* current error context */
 static context *atomicec;		/* first context beyond atomic */
-static string *errstr;			/* current error string */
+static String *errstr;			/* current error string */
 
 /*
  * NAME:	errcontext->clear()
@@ -48,9 +48,9 @@ static string *errstr;			/* current error string */
  */
 void ec_clear()
 {
-    if (errstr != (string *) NULL) {
+    if (errstr != (String *) NULL) {
 	str_del(errstr);
-	errstr = (string *) NULL;
+	errstr = (String *) NULL;
     }
 }
 
@@ -105,7 +105,7 @@ void ec_pop()
  * NAME:	errorcontext->handler()
  * DESCRIPTION:	dummy handler for previously handled error
  */
-static void ec_handler(frame *f, Int depth)
+static void ec_handler(Frame *f, Int depth)
 {
     UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(depth);
@@ -115,9 +115,9 @@ static void ec_handler(frame *f, Int depth)
  * NAME:	set_errorstr()
  * DESCRIPTION:	set the current error string
  */
-void set_errorstr(string *err)
+void set_errorstr(String *err)
 {
-    if (errstr != (string *) NULL) {
+    if (errstr != (String *) NULL) {
 	str_del(errstr);
     }
     str_ref(errstr = err);
@@ -127,7 +127,7 @@ void set_errorstr(string *err)
  * NAME:	errorstr()
  * DESCRIPTION:	return the current error string
  */
-string *errorstr()
+String *errorstr()
 {
     return errstr;
 }
@@ -136,17 +136,17 @@ string *errorstr()
  * NAME:	serror()
  * DESCRIPTION:	cause an error, with a string argument
  */
-void serror(string *str)
+void serror(String *str)
 {
     jmp_buf env;
     context *e;
     int offset;
     ec_ftn handler;
 
-    if (str != (string *) NULL) {
+    if (str != (String *) NULL) {
 	set_errorstr(str);
 # ifdef DEBUG
-    } else if (errstr == (string *) NULL) {
+    } else if (errstr == (String *) NULL) {
 	fatal("no error string");
 # endif
     }
@@ -205,7 +205,7 @@ void error(char *format, ...)
 	serror(str_new(ebuf, (long) strlen(ebuf)));
 	va_end(args);
     } else {
-	serror((string *) NULL);
+	serror((String *) NULL);
     }
 }
 
@@ -243,7 +243,7 @@ void message(char *format, ...)
 
     if (format == (char *) NULL) {
 # ifdef DEBUG
-	if (errstr == (string *) NULL) {
+	if (errstr == (String *) NULL) {
 	    fatal("no error string");
 	}
 # endif

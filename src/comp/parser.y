@@ -216,7 +216,7 @@ function_declaration
 		{
 		  typechecking = c_typechecking();
 		  c_function($1, node_type((typechecking) ? T_VOID : T_NIL,
-					   (string *) NULL),
+					   (String *) NULL),
 			     node_bin(N_FUNC, 0, $2, $4));
 		}
 	  compound_stmt
@@ -310,24 +310,24 @@ non_private
 	;
 
 type_specifier
-	: INT	{ $$ = node_type(T_INT, (string *) NULL); }
-	| FLOAT	{ $$ = node_type(T_FLOAT, (string *) NULL); }
+	: INT	{ $$ = node_type(T_INT, (String *) NULL); }
+	| FLOAT	{ $$ = node_type(T_FLOAT, (String *) NULL); }
 	| STRING
-		{ $$ = node_type(T_STRING, (string *) NULL); }
+		{ $$ = node_type(T_STRING, (String *) NULL); }
 	| OBJECT
-		{ $$ = node_type(T_OBJECT, (string *) NULL); }
+		{ $$ = node_type(T_OBJECT, (String *) NULL); }
 	| OBJECT composite_string
 		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
 	| MAPPING
-		{ $$ = node_type(T_MAPPING, (string *) NULL); }
+		{ $$ = node_type(T_MAPPING, (String *) NULL); }
 	| FUNCTION
 		{
 		  $$ = node_str(str_new("/" BIPREFIX "function",
 					BIPREFIXLEN + 9));
 		  $$ = node_type(T_CLASS, c_objecttype($$));
 		}
-	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
-	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
+	| MIXED	{ $$ = node_type(T_MIXED, (String *) NULL); }
+	| VOID	{ $$ = node_type(T_VOID, (String *) NULL); }
 	;
 
 opt_object
@@ -1411,11 +1411,11 @@ static node *add(int op, node *n1, node *n2, char *name)
     if (n1->mod == T_STRING) {
 	if (n2->mod == T_INT || n2->mod == T_FLOAT ||
 	    (n2->mod == T_MIXED && typechecking)) {
-	    n2 = cast(n2, node_type(T_STRING, (string *) NULL));
+	    n2 = cast(n2, node_type(T_STRING, (String *) NULL));
 	}
     } else if (n2->mod == T_STRING && op == N_ADD) {
 	if (n1->mod == T_INT || n1->mod == T_FLOAT) {
-	    n1 = cast(n1, node_type(T_STRING, (string *) NULL));
+	    n1 = cast(n1, node_type(T_STRING, (String *) NULL));
 	}
     }
 
@@ -1896,9 +1896,9 @@ static node *quest(node *n1, node *n2, node *n3)
 
     n1 = node_bin(N_QUEST, type, n1, node_bin(N_PAIR, 0, n2, n3));
     if ((type & T_TYPE) == T_CLASS) {
-	if (n2->sclass == (string *) NULL) {
+	if (n2->sclass == (String *) NULL) {
 	    n1->sclass = n3->sclass;
-	} else if (n3->sclass == (string *) NULL ||
+	} else if (n3->sclass == (String *) NULL ||
 		   str_cmp(n2->sclass, n3->sclass) == 0) {
 	    n1->sclass = n2->sclass;
 	} else {

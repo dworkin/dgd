@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,23 +42,23 @@ bool intr;			/* received an interrupt? */
  * NAME:	call_driver_object()
  * DESCRIPTION:	call a function in the driver object
  */
-bool call_driver_object(frame *f, char *func, int narg)
+bool call_driver_object(Frame *f, char *func, int narg)
 {
-    object *driver;
+    Object *driver;
     char *driver_name;
 
     if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count ||
 	!(driver->flags & O_DRIVER)) {
 	driver_name = conf_driver();
 	driver = o_find(driver_name, OACC_READ);
-	if (driver == (object *) NULL) {
-	    driver = c_compile(f, driver_name, (object *) NULL,
-			       (string **) NULL, 0, FALSE);
+	if (driver == (Object *) NULL) {
+	    driver = c_compile(f, driver_name, (Object *) NULL,
+			       (String **) NULL, 0, FALSE);
 	}
 	dindex = driver->index;
 	dcount = driver->count;
     }
-    if (!i_call(f, driver, (array *) NULL, func, strlen(func), TRUE, narg)) {
+    if (!i_call(f, driver, (Array *) NULL, func, strlen(func), TRUE, narg)) {
 	fatal("missing function in driver object: %s", func);
     }
     return TRUE;
@@ -142,7 +142,7 @@ void endthread()
  * NAME:	errhandler()
  * DESCRIPTION:	default error handler
  */
-void errhandler(frame *f, Int depth)
+void errhandler(Frame *f, Int depth)
 {
     UNREFERENCED_PARAMETER(depth);
     i_runtime_error(f, (Int) 0);

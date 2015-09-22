@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -555,9 +555,9 @@ void co_del(unsigned int oindex, unsigned int handle, Uint t, unsigned int m)
  * NAME:	call_out->list()
  * DESCRIPTION:	adjust callout delays in array
  */
-void co_list(array *a)
+void co_list(Array *a)
 {
-    value *v, *w;
+    Value *v, *w;
     unsigned short i;
     Uint t;
     unsigned short m;
@@ -676,11 +676,11 @@ static void co_expire()
  * NAME:	call_out->call()
  * DESCRIPTION:	call expired callouts
  */
-void co_call(frame *f)
+void co_call(Frame *f)
 {
     uindex i, handle;
-    object *obj;
-    string *str;
+    Object *obj;
+    String *str;
     int nargs;
 #ifdef CO_THROTTLE
 #   if (CO_THROTTLE < 1)
@@ -714,7 +714,7 @@ void co_call(frame *f)
 	    freecallout(&running, i, i, 0);
 
 	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
-	    if (i_call(f, obj, (array *) NULL, str->text, str->len, TRUE,
+	    if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 		       nargs)) {
 		/* function exists */
 		i_del_value(f->sp++);

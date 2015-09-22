@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,14 +19,14 @@
 
 # include "host.h"
 
-typedef struct _string_ string;
-typedef struct _array_ array;
-typedef struct _object_ object;
-typedef struct _value_ value;
-typedef struct _control_ control;
-typedef struct _dataplane_ dataplane;
-typedef struct _dataspace_ dataspace;
-typedef struct _frame_ frame;
+typedef struct _string_ String;
+typedef struct _array_ Array;
+typedef struct _object_ Object;
+typedef struct _value_ Value;
+typedef struct _control_ Control;
+typedef struct _dataplane_ Dataplane;
+typedef struct _dataspace_ Dataspace;
+typedef struct _frame_ Frame;
 
 # include "config.h"
 # include "alloc.h"
@@ -40,10 +40,10 @@ typedef struct _frame_ frame;
 # define BCLR(map, bit)		(map[BOFF(bit)] &= ~BBIT(bit))
 # define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
-extern bool call_driver_object	(frame*, char*, int);
+extern bool call_driver_object	(Frame*, char*, int);
 extern void interrupt		(void);
 extern void endthread		(void);
-extern void errhandler		(frame*, Int);
+extern void errhandler		(Frame*, Int);
 extern int  dgd_main		(int, char**);
 
 extern bool intr;

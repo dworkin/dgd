@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,7 +19,7 @@
 
 extern void		 tk_init	(void);
 extern void		 tk_clear	(void);
-extern bool		 tk_include	(char*, string**, int);
+extern bool		 tk_include	(char*, String**, int);
 extern void		 tk_endinclude	(void);
 extern unsigned short	 tk_line	(void);
 extern char		*tk_filename	(void);

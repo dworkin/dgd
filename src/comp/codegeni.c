@@ -2361,7 +2361,7 @@ bool cg_compiled()
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */
-char *cg_function(string *fname, node *n, int nvar, int npar,
+char *cg_function(String *fname, node *n, int nvar, int npar,
 	unsigned int depth, unsigned short *size)
 {
     char *prog;

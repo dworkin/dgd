@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -76,26 +76,26 @@ extern bool	comm_init	(int, char**, char**, unsigned short*,
 extern void	comm_clear	(void);
 extern void	comm_finish	(void);
 extern void	comm_listen	(void);
-extern int	comm_send	(object*, string*);
-extern int	comm_udpsend	(object*, string*);
-extern bool	comm_echo	(object*, int);
-extern void	comm_challenge	(object*, string*);
+extern int	comm_send	(Object*, String*);
+extern int	comm_udpsend	(Object*, String*);
+extern bool	comm_echo	(Object*, int);
+extern void	comm_challenge	(Object*, String*);
 extern void	comm_flush	(void);
-extern void	comm_block	(object*, int);
-extern void	comm_receive	(frame*, Uint, unsigned int);
-extern string  *comm_ip_number	(object*);
-extern string  *comm_ip_name	(object*);
-extern void	comm_close	(frame*, object*);
-extern object  *comm_user	(void);
-extern void	comm_connect	(frame *f, object *obj, char *addr,
+extern void	comm_block	(Object*, int);
+extern void	comm_receive	(Frame*, Uint, unsigned int);
+extern String  *comm_ip_number	(Object*);
+extern String  *comm_ip_name	(Object*);
+extern void	comm_close	(Frame*, Object*);
+extern Object  *comm_user	(void);
+extern void	comm_connect	(Frame *f, Object *obj, char *addr,
 				   unsigned char protocol, unsigned short port);
 #ifdef NETWORK_EXTENSIONS
-extern void	comm_openport	(frame *f, object *obj, unsigned char protocol,
+extern void	comm_openport	(Frame *f, Object *obj, unsigned char protocol,
 				   unsigned short portnr);
-extern int	comm_senddatagram (object *obj, string *str, string *ip, int port);
-extern array   *comm_ports      (dataspace*);
+extern int	comm_senddatagram (Object *obj, String *str, String *ip, int port);
+extern Array   *comm_ports      (Dataspace*);
 #endif
-extern array   *comm_users	(dataspace*);
-extern bool     comm_is_connection (object*);
+extern Array   *comm_users	(Dataspace*);
+extern bool     comm_is_connection (Object*);
 extern bool	comm_dump	(int);
 extern bool	comm_restore	(int);

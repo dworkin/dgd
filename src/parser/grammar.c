@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -154,7 +154,7 @@ static int rgxtok(char *buffer, int len, char *str, rgxnode *node, int thisnode,
  * NAME:	gramtok()
  * DESCRIPTION:	get a token from the grammar string
  */
-static int gramtok(string *str, ssizet *strlen, char *buffer, unsigned int *buflen)
+static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *buflen)
 {
     rgxnode node[2 * STRINGSZ];
     short nstack[STRINGSZ];
@@ -460,15 +460,15 @@ typedef struct _rulesym_ {
 
 typedef struct _rule_ {
     hte chain;			/* hash table chain */
-    string *symb;		/* rule symbol */
+    String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
     Uint len;			/* length of rule, or offset in grammar */
     union {
-	string *rgx;		/* regular expression */
+	String *rgx;		/* regular expression */
 	rulesym *syms;		/* linked list of rule elements */
     } u;
-    string *func;		/* optional LPC function */
+    String *func;		/* optional LPC function */
     struct _rule_ *alt, **last;	/* first and last in alternatives list */
     struct _rule_ *next;	/* next in linked list */
 } rule;
@@ -548,12 +548,12 @@ static rule *rl_new(rlchunk **c, int type)
 	x->chunksz = 0;
     }
     rl = &(*c)->rl[(*c)->chunksz++];
-    rl->symb = (string *) NULL;
+    rl->symb = (String *) NULL;
     rl->type = type;
     rl->num = 0;
     rl->len = 0;
     rl->u.syms = (rulesym *) NULL;
-    rl->func = (string *) NULL;
+    rl->func = (String *) NULL;
     rl->alt = rl->next = (rule *) NULL;
     rl->last = &rl->alt;
 
@@ -572,13 +572,13 @@ static void rl_clear(rlchunk *c)
 
     while (c != (rlchunk *) NULL) {
 	for (rl = c->rl, i = c->chunksz; i != 0; rl++, --i) {
-	    if (rl->symb != (string *) NULL) {
+	    if (rl->symb != (String *) NULL) {
 		str_del(rl->symb);
 	    }
-	    if (rl->type == RULE_REGEXP && rl->u.rgx != (string *) NULL) {
+	    if (rl->type == RULE_REGEXP && rl->u.rgx != (String *) NULL) {
 		str_del(rl->u.rgx);
 	    }
-	    if (rl->func != (string *) NULL) {
+	    if (rl->func != (String *) NULL) {
 		str_del(rl->func);
 	    }
 	}
@@ -634,11 +634,11 @@ static void rl_clear(rlchunk *c)
  * NAME:	make_grammar()
  * DESCRIPTION:	create a pre-processed grammar string
  */
-static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist,
+static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *prodlist,
 			    int nrgx, int nstr, int nestr, int nprod, long size)
 {
     int start, prod1;
-    string *gram;
+    String *gram;
     char *p, *q;
     rule *rl, *r;
     rulesym *rs;
@@ -703,7 +703,7 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	rl->num = --n;
 	p += 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
-	    if (r->u.rgx != (string *) NULL) {
+	    if (r->u.rgx != (String *) NULL) {
 		*p++ = r->u.rgx->len;
 		memcpy(p, r->u.rgx->text, r->u.rgx->len);
 		p += r->u.rgx->len;
@@ -732,7 +732,7 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 		STORE2(p, rs->rule->num); p += 2;
 		n++;
 	    }
-	    if (r->func != (string *) NULL) {
+	    if (r->func != (String *) NULL) {
 		memcpy(p, r->func->text, r->func->len + 1);
 		p += r->func->len + 1;
 	    }
@@ -762,7 +762,7 @@ static string *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
  * NAME:	parse_grammar()
  * DESCRIPTION:	check the grammar, return a pre-processed version
  */
-string *parse_grammar(string *gram)
+String *parse_grammar(String *gram)
 {
     char buffer[STRINGSZ];
     hashtab *ruletab, *strtab;
@@ -873,7 +873,7 @@ string *parse_grammar(string *gram)
 			goto err;
 		    }
 		    nomatch = TRUE;
-		    rl->u.rgx = (string *) NULL;
+		    rl->u.rgx = (String *) NULL;
 		    break;
 		}
 		/* fall through */

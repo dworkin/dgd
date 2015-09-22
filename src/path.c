@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -110,7 +110,7 @@ char *path_from(char *buf, char *from, char *file)
  */
 char *path_ed_read(char *buf, char *file)
 {
-    frame *f;
+    Frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
@@ -134,7 +134,7 @@ char *path_ed_read(char *buf, char *file)
  */
 char *path_ed_write(char *buf, char *file)
 {
-    frame *f;
+    Frame *f;
 
     f = cframe;
     if (OBJR(f->oindex)->flags & O_DRIVER) {
@@ -156,12 +156,12 @@ char *path_ed_write(char *buf, char *file)
  * NAME:	path->include()
  * DESCRIPTION:	resolve an include path
  */
-char *path_include(char *buf, char *from, char *file, string ***strs, int *nstr)
+char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 {
-    frame *f;
+    Frame *f;
     int i;
-    value *v;
-    string **str;
+    Value *v;
+    String **str;
 
     *strs = NULL;
     *nstr = 0;
@@ -193,7 +193,7 @@ char *path_include(char *buf, char *from, char *file, string ***strs, int *nstr)
 	    while ((v++)->type == T_STRING) {
 		if (--i == 0) {
 		    *nstr = i = f->sp->u.array->size;
-		    str = ALLOC(string*, i);
+		    str = ALLOC(String*, i);
 		    do {
 			str_ref(*str++ = (--v)->u.string);
 		    } while (--i != 0);

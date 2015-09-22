@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,15 +19,15 @@
 
 # define ec_push(cleanup)	setjmp(*_ec_push_(cleanup))
 
-typedef void  (*ec_ftn)		(frame*, Int);
+typedef void  (*ec_ftn)		(Frame*, Int);
 
 extern void	ec_clear	(void);
 extern jmp_buf *_ec_push_	(ec_ftn);
 extern void	ec_pop		(void);
 
-extern void	serror		(string*);
-extern void	set_errorstr	(string*);
-extern string  *errorstr	(void);
+extern void	serror		(String*);
+extern void	set_errorstr	(String*);
+extern String  *errorstr	(void);
 
 extern void	message		(char *, ...);
 extern void	error		(char *, ...);

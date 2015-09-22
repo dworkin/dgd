@@ -47,8 +47,8 @@ typedef struct _user_ {
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
     char *inbuf;		/* input buffer */
-    array *extra;		/* object's extra value */
-    string *outbuf;		/* output buffer string */
+    Array *extra;		/* object's extra value */
+    String *outbuf;		/* output buffer string */
     ssizet inbufsz;		/* bytes in input buffer */
     ssizet osdone;		/* bytes of output string done */
 } user;
@@ -152,16 +152,16 @@ bool comm_init(int n, char **thosts, char **bhosts,
 }
 
 #ifdef NETWORK_EXTENSIONS
-void comm_openport(frame *f, object *obj, unsigned char protocol,
+void comm_openport(Frame *f, Object *obj, unsigned char protocol,
 	unsigned short portnr)
 {
     connection *conn;
     uindex olduser;
     short flags;
     user *usr;
-    dataspace *data;
-    array *arr;
-    value val;
+    Dataspace *data;
+    Array *arr;
+    Value val;
 
     flags = 0;
 
@@ -224,14 +224,14 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
     obj->flags |= O_USER;
     obj->etabi = usr-users;
     usr->conn = conn;
-    usr->outbuf = (string *) NULL;
+    usr->outbuf = (String *) NULL;
     usr->osdone = 0;
     usr->flags = flags;
     olduser = this_user;
     this_user = obj->index;
     (--f->sp)->type = T_INT;
     f->sp->u.number = conn_at(conn);
-    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 1)) {
+    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 1)) {
 	i_del_value(f->sp++);
     }
     nports++;
@@ -272,7 +272,7 @@ void comm_listen()
  * NAME:	addtoflush()
  * DESCRIPTION:	add a user to the flush list
  */
-static void addtoflush(user *usr, array *arr)
+static void addtoflush(user *usr, Array *arr)
 {
     usr->flags |= CF_FLUSH;
     usr->flush = flush;
@@ -289,11 +289,11 @@ static void addtoflush(user *usr, array *arr)
  * NAME:	comm->setup()
  * DESCRIPTION:	setup a user
  */
-static array *comm_setup(user *usr, frame *f, object *obj)
+static Array *comm_setup(user *usr, Frame *f, Object *obj)
 {
-    dataspace *data;
-    array *arr;
-    value val;
+    Dataspace *data;
+    Array *arr;
+    Value val;
 
     if (obj->flags & O_DRIVER) {
 	error("Cannot use driver object as user object");
@@ -301,7 +301,7 @@ static array *comm_setup(user *usr, frame *f, object *obj)
 
     /* initialize dataspace before the object receives the user role */
     if (!O_HASDATA(obj) &&
-	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+	i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
 
@@ -316,7 +316,7 @@ static array *comm_setup(user *usr, frame *f, object *obj)
     obj->flags |= O_USER;
     obj->etabi = usr - users;
     usr->conn = NULL;
-    usr->outbuf = (string *) NULL;
+    usr->outbuf = (String *) NULL;
     usr->osdone = 0;
     usr->flags = 0;
 
@@ -327,13 +327,13 @@ static array *comm_setup(user *usr, frame *f, object *obj)
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
+static user *comm_new(Frame *f, Object *obj, connection *conn, bool telnet)
 {
     static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
 			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
     user *usr;
-    array *arr;
-    value val;
+    Array *arr;
+    Value val;
 
     if (obj->flags & O_SPECIAL) {
 	error("User object is already special purpose");
@@ -382,14 +382,14 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
  * NAME:	comm->connect()
  * DESCRIPTION:	attempt to establish an outbound connection
  */
-void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
+void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
     void *host;
     int len;
     user *usr;
-    array *arr;
-    value val;
+    Array *arr;
+    Value val;
 
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
@@ -425,13 +425,13 @@ void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 }
 
 #ifdef NETWORK_EXTENSIONS
-int comm_senddatagram(object *obj, string *str, string *ip, int port)
+int comm_senddatagram(Object *obj, String *str, String *ip, int port)
 {
     user *usr;
-    dataspace *data;
-    array *arr;
-    value *v1, *v2, *v3;
-    value val;
+    Dataspace *data;
+    Array *arr;
+    Value *v1, *v2, *v3;
+    Value val;
 
     usr = &users[EINDEX(obj->etabi)];
 
@@ -464,9 +464,9 @@ int comm_senddatagram(object *obj, string *str, string *ip, int port)
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
  */
-static void comm_del(frame *f, user *usr, object *obj, bool destruct)
+static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
 {
-    dataspace *data;
+    Dataspace *data;
     uindex olduser;
 
     data = o_dataspace(obj);
@@ -484,7 +484,7 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
     } else {
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
-	if (i_call(f, obj, (array *) NULL, "close", 5, TRUE, 1)) {
+	if (i_call(f, obj, (Array *) NULL, "close", 5, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	}
 	this_user = olduser;
@@ -503,13 +503,13 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
  * NAME:	comm->challenge()
  * DESCRIPTION:	set the UDP challenge for a binary connection
  */
-void comm_challenge(object *obj, string *str)
+void comm_challenge(Object *obj, String *str)
 {
     user *usr;
-    dataspace *data;
-    array *arr;
-    value *v;
-    value val;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
+    Value val;
 
     usr = &users[obj->etabi];
     if (usr->flags & CF_TELNET) {
@@ -533,14 +533,14 @@ void comm_challenge(object *obj, string *str)
  * NAME:	comm->write()
  * DESCRIPTION:	add bytes to output buffer
  */
-static int comm_write(user *usr, object *obj, string *str, char *text,
+static int comm_write(user *usr, Object *obj, String *str, char *text,
 	unsigned int len)
 {
-    dataspace *data;
-    array *arr;
-    value *v;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
     ssizet osdone, olen;
-    value val;
+    Value val;
 
     arr = d_get_extravar(data = o_dataspace(obj))->u.array;
     if (!(usr->flags & CF_FLUSH)) {
@@ -570,7 +570,7 @@ static int comm_write(user *usr, object *obj, string *str, char *text,
 	    --odone;
 	}
 	usr->flags |= CF_OUTPUT;
-	if (str == (string *) NULL) {
+	if (str == (String *) NULL) {
 	    str = str_new(text, (long) len);
 	}
     }
@@ -584,7 +584,7 @@ static int comm_write(user *usr, object *obj, string *str, char *text,
  * NAME:	comm->send()
  * DESCRIPTION:	send a message to a user
  */
-int comm_send(object *obj, string *str)
+int comm_send(Object *obj, String *str)
 {
     user *usr;
 
@@ -603,7 +603,7 @@ int comm_send(object *obj, string *str)
 	size = 0;
 	for (;;) {
 	    if (len == 0 || size >= OUTBUF_SIZE - 1 || UCHAR(*p) == IAC) {
-		n = comm_write(usr, obj, (string *) NULL, outbuf, size);
+		n = comm_write(usr, obj, (String *) NULL, outbuf, size);
 		if (n != size) {
 		    /*
 		     * count how many bytes of original string were written
@@ -660,13 +660,13 @@ int comm_send(object *obj, string *str)
  * NAME:	comm->udpsend()
  * DESCRIPTION:	send a message on the UDP channel of a binary connection
  */
-int comm_udpsend(object *obj, string *str)
+int comm_udpsend(Object *obj, String *str)
 {
     user *usr;
-    dataspace *data;
-    array *arr;
-    value *v;
-    value val;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
+    Value val;
 
     usr = &users[EINDEX(obj->etabi)];
     if ((usr->flags & (CF_TELNET | CF_UDP)) != CF_UDP) {
@@ -696,19 +696,19 @@ int comm_udpsend(object *obj, string *str)
  * NAME:	comm->echo()
  * DESCRIPTION:	turn on/off input echoing for a user
  */
-bool comm_echo(object *obj, int echo)
+bool comm_echo(Object *obj, int echo)
 {
     user *usr;
-    dataspace *data;
-    array *arr;
-    value *v;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
     if (usr->flags & CF_TELNET) {
 	arr = d_get_extravar(data = obj->data)->u.array;
 	v = d_get_elts(arr);
 	if (echo != (v->u.number & CF_ECHO) >> 1) {
-	    value val;
+	    Value val;
 
 	    if (!(usr->flags & CF_FLUSH)) {
 		addtoflush(usr, arr);
@@ -726,18 +726,18 @@ bool comm_echo(object *obj, int echo)
  * NAME:	comm->block()
  * DESCRIPTION:	suspend or release input from a user
  */
-void comm_block(object *obj, int block)
+void comm_block(Object *obj, int block)
 {
     user *usr;
-    dataspace *data;
-    array *arr;
-    value *v;
+    Dataspace *data;
+    Array *arr;
+    Value *v;
 
     usr = &users[EINDEX(obj->etabi)];
     arr = d_get_extravar(data = obj->data)->u.array;
     v = d_get_elts(arr);
     if (block != (v->u.number & CF_BLOCKED) >> 4) {
-	value val;
+	Value val;
 
 	if (!(usr->flags & CF_FLUSH)) {
 	    addtoflush(usr, arr);
@@ -749,9 +749,9 @@ void comm_block(object *obj, int block)
 }
 
 #ifdef NETWORK_EXTENSIONS
-static void comm_udpflush(user *usr, object *obj, dataspace *data, array *arr)
+static void comm_udpflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 {
-    value *v;
+    Value *v;
     char *buf;
     int res;
 
@@ -778,9 +778,9 @@ static void comm_udpflush(user *usr, object *obj, dataspace *data, array *arr)
  * NAME:	comm->uflush()
  * DESCRIPTION:	flush output buffers for a single user only
  */
-static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
+static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
 {
-    value *v;
+    Value *v;
     int n;
 
     UNREFERENCED_PARAMETER(obj);
@@ -832,9 +832,9 @@ static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
 void comm_flush()
 {
     user *usr;
-    object *obj;
-    array *arr;
-    value *v;
+    Object *obj;
+    Array *arr;
+    Value *v;
 
     while (outbound != (user *) NULL) {
 	usr = outbound;
@@ -878,7 +878,7 @@ void comm_flush()
 		buf[0] = (char) IAC;
 		buf[1] = (v->u.number & CF_ECHO) ? WONT : WILL;
 		buf[2] = TELOPT_ECHO;
-		if (comm_write(usr, obj, (string *) NULL, buf, 3) != 0) {
+		if (comm_write(usr, obj, (String *) NULL, buf, 3) != 0) {
 		    usr->flags ^= CF_ECHO;
 		}
 	    }
@@ -889,7 +889,7 @@ void comm_flush()
 		    static char ga[] = { (char) IAC, (char) GA };
 
 		    /* append go-ahead */
-		    comm_write(usr, obj, (string *) NULL, ga, 2);
+		    comm_write(usr, obj, (String *) NULL, ga, 2);
 		}
 	    }
 	}
@@ -901,12 +901,12 @@ void comm_flush()
 	/*
 	 * write
 	 */
-	if (usr->outbuf != (string *) NULL) {
+	if (usr->outbuf != (String *) NULL) {
 	    if (usr->outbuf != v[1].u.string) {
 		usr->osdone = 0;	/* new mesg before buffer drained */
 	    }
 	    str_del(usr->outbuf);
-	    usr->outbuf = (string *) NULL;
+	    usr->outbuf = (String *) NULL;
 	}
 	if (usr->flags & CF_OUTPUT) {
 #ifdef NETWORK_EXTENSIONS
@@ -968,10 +968,10 @@ void comm_flush()
  * NAME:	comm->taccept()
  * DESCRIPTION:	accept a telnet connection
  */
-static void comm_taccept(frame *f, struct _connection_ *conn, int port)
+static void comm_taccept(Frame *f, struct _connection_ *conn, int port)
 {
     user *usr;
-    object *obj;
+    Object *obj;
 
     if (ec_push((ec_ftn) NULL)) {
 	conn_del(conn);		/* delete connection */
@@ -990,7 +990,7 @@ static void comm_taccept(frame *f, struct _connection_ *conn, int port)
     usr->flags |= CF_PROMPT;
     addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
     this_user = obj->index;
-    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
     endthread();
@@ -1001,9 +1001,9 @@ static void comm_taccept(frame *f, struct _connection_ *conn, int port)
  * NAME:	comm->baccept()
  * DESCRIPTION:	accept a binary connection
  */
-static void comm_baccept(frame *f, struct _connection_ *conn, int port)
+static void comm_baccept(Frame *f, struct _connection_ *conn, int port)
 {
-    object *obj;
+    Object *obj;
 
     if (ec_push((ec_ftn) NULL)) {
 	conn_del(conn);		/* delete connection */
@@ -1020,7 +1020,7 @@ static void comm_baccept(frame *f, struct _connection_ *conn, int port)
     ec_pop();
 
     this_user = obj->index;
-    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
     endthread();
@@ -1031,7 +1031,7 @@ static void comm_baccept(frame *f, struct _connection_ *conn, int port)
  * NAME:	comm->receive()
  * DESCRIPTION:	receive a message from a user
  */
-void comm_receive(frame *f, Uint timeout, unsigned int mtime)
+void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 {
     static char intr[] =	{ '\177' };
     static char brk[] =		{ '\034' };
@@ -1042,7 +1042,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 				  (char) TELOPT_LINEMODE, (char) LM_MODE,
 				  (char) MODE_EDIT, (char) IAC, (char) SE };
     char buffer[BINBUF_SIZE];
-    object *obj;
+    Object *obj;
     user *usr;
     int n, i, state, nls;
     char *p, *q;
@@ -1156,12 +1156,12 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 			PUSH_STRVAL(f, str_new("socket unexpectedly closed", 26));
 		    }
 
-		    if (i_call(f, obj, (array *) NULL, "receive_error", 13, TRUE, 1)) {
+		    if (i_call(f, obj, (Array *) NULL, "receive_error", 13, TRUE, 1)) {
 			i_del_value(f->sp++);
 		    }
 #else
 		    PUSH_INTVAL(f, refused);
-		    if (i_call(f, obj, (array *) NULL, "unconnected", 11, TRUE, 1)) {
+		    if (i_call(f, obj, (Array *) NULL, "unconnected", 11, TRUE, 1)) {
 			i_del_value(f->sp++);
 		    }
 #endif
@@ -1170,7 +1170,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		 * Connection completed, call open in the user object.
 		 */
 		} else if (retval > 0) {
-		    if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+		    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 			i_del_value(f->sp++);
 		    }
 		    endthread();
@@ -1184,7 +1184,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	    continue;
 	}
 	if (usr->flags & CF_OUTPUT) {
-	    dataspace *data;
+	    Dataspace *data;
 
 	    data = o_dataspace(obj);
 	    comm_uflush(usr, obj, data, d_get_extravar(data)->u.array);
@@ -1199,13 +1199,13 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	     * message_done for tcp, datagram_done for udp
 	     */
 	    if (usr->flags & CF_DATAGRAM) {
-		if (i_call(f, obj, (array *) NULL, "datagram_done", 13, TRUE, 0)) {
+		if (i_call(f, obj, (Array *) NULL, "datagram_done", 13, TRUE, 0)) {
 		    i_del_value(f->sp++);
 		    endthread();
 		}
 	    } else
 #endif
-	    if (i_call(f, obj, (array *) NULL, "message_done", 12, TRUE, 0)) {
+	    if (i_call(f, obj, (Array *) NULL, "message_done", 12, TRUE, 0)) {
 		i_del_value(f->sp++);
 		endthread();
 	    }
@@ -1229,7 +1229,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		PUSH_STRVAL(f, str_new(buffer, (long) n));
 		PUSH_STRVAL(f, str_new(addr, strlen(addr)));
 		PUSH_INTVAL(f, port);
-		if (i_call(f, obj, (array *) NULL, "receive_datagram", 16,
+		if (i_call(f, obj, (Array *) NULL, "receive_datagram", 16,
 			   TRUE, 3)) {
 		    i_del_value(f->sp++);
 		    endthread();
@@ -1264,7 +1264,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		PUT_STRVAL(f->sp, str_new(ip, strlen(ip)));
 		(--f->sp)->type = T_INT;
 		f->sp->u.number = conn_at(conn);
-		if (!i_call(f, OBJ(usr->oindex), (array *) NULL, "connection",
+		if (!i_call(f, OBJ(usr->oindex), (Array *) NULL, "connection",
 			    10, TRUE, 2)) {
 		    conn_del(conn);
 		    error("Missing connection()-function");
@@ -1284,7 +1284,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 			   d_get_extravar(o_dataspace(obj))->u.array);
 		olduser = this_user;
 		this_user = obj->index;
-		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
+		if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 		    i_del_value(f->sp++);
 		    endthread();
 		}
@@ -1414,19 +1414,19 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 			    break;
 
 			case IP:
-			    comm_write(usr, obj, (string *) NULL, intr,
+			    comm_write(usr, obj, (String *) NULL, intr,
 				       sizeof(intr));
 			    state = TS_DATA;
 			    break;
 
 			case BREAK:
-			    comm_write(usr, obj, (string *) NULL, brk,
+			    comm_write(usr, obj, (String *) NULL, brk,
 				       sizeof(brk));
 			    state = TS_DATA;
 			    break;
 
 			case AYT:
-			    comm_write(usr, obj, (string *) NULL, ayt,
+			    comm_write(usr, obj, (String *) NULL, ayt,
 				       strlen(ayt));
 			    state = TS_DATA;
 			    break;
@@ -1440,11 +1440,11 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 
 		    case TS_DO:
 			if (UCHAR(*p) == TELOPT_TM) {
-			    comm_write(usr, obj, (string *) NULL, tm,
+			    comm_write(usr, obj, (String *) NULL, tm,
 				       sizeof(tm));
 			} else if (UCHAR(*p) == TELOPT_SGA) {
 			    usr->flags &= ~CF_GA;
-			    comm_write(usr, obj, (string *) NULL, will_sga,
+			    comm_write(usr, obj, (String *) NULL, will_sga,
 				       sizeof(will_sga));
 			}
 			state = TS_DATA;
@@ -1453,7 +1453,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    case TS_DONT:
 			if (UCHAR(*p) == TELOPT_SGA) {
 			    usr->flags |= CF_GA;
-			    comm_write(usr, obj, (string *) NULL, wont_sga,
+			    comm_write(usr, obj, (String *) NULL, wont_sga,
 				       sizeof(wont_sga));
 			}
 			state = TS_DATA;
@@ -1462,7 +1462,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    case TS_WILL:
 			if (UCHAR(*p) == TELOPT_LINEMODE) {
 			    /* linemode confirmed; now request editing */
-			    comm_write(usr, obj, (string *) NULL, mode_edit,
+			    comm_write(usr, obj, (String *) NULL, mode_edit,
 				       sizeof(mode_edit));
 			}
 			/* fall through */
@@ -1536,7 +1536,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 			 */
 			PUSH_STRVAL(f, str_new(buffer, (long) n));
 			this_user = obj->index;
-			if (i_call(f, obj, (array *) NULL, "receive_datagram",
+			if (i_call(f, obj, (Array *) NULL, "receive_datagram",
 				   16, TRUE, 1)) {
 			    i_del_value(f->sp++);
 			    endthread();
@@ -1546,7 +1546,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		} else if (conn_udpcheck(usr->conn)) {
 		    usr->flags |= CF_UDPDATA;
 		    this_user = obj->index;
-		    if (i_call(f, obj, (array *) NULL, "open_datagram", 13,
+		    if (i_call(f, obj, (Array *) NULL, "open_datagram", 13,
 			       TRUE, 0)) {
 			i_del_value(f->sp++);
 			endthread();
@@ -1573,7 +1573,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	}
 
 	this_user = obj->index;
-	if (i_call(f, obj, (array *) NULL, "receive_message", 15, TRUE, 1)) {
+	if (i_call(f, obj, (Array *) NULL, "receive_message", 15, TRUE, 1)) {
 	    i_del_value(f->sp++);
 	    endthread();
 	}
@@ -1589,7 +1589,7 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
  * NAME:	comm->ip_number()
  * DESCRIPTION:	return the ip number of a user (as a string)
  */
-string *comm_ip_number(object *obj)
+String *comm_ip_number(Object *obj)
 {
     char ipnum[40];
 
@@ -1601,7 +1601,7 @@ string *comm_ip_number(object *obj)
  * NAME:	comm->ip_name()
  * DESCRIPTION:	return the ip name of a user
  */
-string *comm_ip_name(object *obj)
+String *comm_ip_name(Object *obj)
 {
     char ipname[1024];
 
@@ -1613,7 +1613,7 @@ string *comm_ip_name(object *obj)
  * NAME:	comm->close()
  * DESCRIPTION:	remove a user
  */
-void comm_close(frame *f, object *obj)
+void comm_close(Frame *f, Object *obj)
 {
     comm_del(f, &users[EINDEX(obj->etabi)], obj, TRUE);
 }
@@ -1622,12 +1622,12 @@ void comm_close(frame *f, object *obj)
  * NAME:	comm->user()
  * DESCRIPTION:	return the current user
  */
-object *comm_user()
+Object *comm_user()
 {
-    object *obj;
+    Object *obj;
 
     return (this_user != OBJ_NONE && (obj=OBJR(this_user))->count != 0) ?
-	    obj : (object *) NULL;
+	    obj : (Object *) NULL;
 }
 
 # ifdef NETWORK_EXTENSIONS
@@ -1635,13 +1635,13 @@ object *comm_user()
  * NAME:	comm->ports()
  * DESCRIPTION:	return an array with all port objects
  */
-array *comm_ports(dataspace *data)
+Array *comm_ports(Dataspace *data)
 {
-    array *a;
+    Array *a;
     int i, n;
     user *usr;
-    value *v;
-    object *obj;
+    Value *v;
+    Object *obj;
 
     n = 0;
     for (i = nports, usr = users; i > 0; usr++) {
@@ -1671,13 +1671,13 @@ array *comm_ports(dataspace *data)
  * NAME:	comm->users()
  * DESCRIPTION:	return an array with all user objects
  */
-array *comm_users(dataspace *data)
+Array *comm_users(Dataspace *data)
 {
-    array *a;
+    Array *a;
     int i, n;
     user *usr;
-    value *v;
-    object *obj;
+    Value *v;
+    Object *obj;
 
     n = 0;
     for (i = nusers, usr = users; i > 0; usr++) {
@@ -1719,7 +1719,7 @@ array *comm_users(dataspace *data)
  * NAME:	comm->is_connection()
  * DESCRIPTION: is this REALLY a user object?
  */
-bool comm_is_connection(object *obj)
+bool comm_is_connection(Object *obj)
 {
     user *usr;
 
@@ -1977,8 +1977,8 @@ bool comm_restore(int fd)
 	    } else {
 		usr->inbuf = (char *) NULL;
 	    }
-	    usr->extra = (array *) NULL;
-	    usr->outbuf = (string *) NULL;
+	    usr->extra = (Array *) NULL;
+	    usr->outbuf = (String *) NULL;
 	    usr->inbufsz = du->tbufsz;
 	    if (usr->inbufsz != 0) {
 		memcpy(usr->inbuf, tbuf, usr->inbufsz);

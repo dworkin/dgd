@@ -105,7 +105,7 @@ static void check_recursion()
  * NAME:	ed->new()
  * DESCRIPTION:	start a new editor
  */
-void ed_new(object *obj)
+void ed_new(Object *obj)
 {
     char tmp[STRINGSZ + 3];
     editor *e;
@@ -130,7 +130,7 @@ void ed_new(object *obj)
  * NAME:	ed->del()
  * DESCRIPTION:	delete an editor instance
  */
-void ed_del(object *obj)
+void ed_del(Object *obj)
 {
     editor *e;
 
@@ -150,7 +150,7 @@ void ed_del(object *obj)
  * NAME:	ed->handler()
  * DESCRIPTION:	fake error handler
  */
-static void ed_handler(frame *f, Int depth)
+static void ed_handler(Frame *f, Int depth)
 {
     /*
      * This function just exists to prevent the higher level error handler
@@ -166,7 +166,7 @@ extern void output(char *, ...);
  * NAME:	ed->command()
  * DESCRIPTION:	handle an editor command
  */
-string *ed_command(object *obj, char *cmd)
+String *ed_command(Object *obj, char *cmd)
 {
     editor *e;
 
@@ -199,7 +199,7 @@ string *ed_command(object *obj, char *cmd)
     }
 
     if (outbufsz == 0) {
-	return (string *) NULL;
+	return (String *) NULL;
     }
     return str_new(outbuf, (long) outbufsz);
 }
@@ -208,7 +208,7 @@ string *ed_command(object *obj, char *cmd)
  * NAME:	ed->status()
  * DESCRIPTION:	return the editor status of an object
  */
-char *ed_status(object *obj)
+char *ed_status(Object *obj)
 {
     if (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) {
 	return "insert";

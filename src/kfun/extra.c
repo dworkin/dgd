@@ -28,8 +28,8 @@
 # ifdef FUNCDEF
 FUNCDEF("encrypt", kf_encrypt, pt_encrypt, 0)
 # else
-extern string *P_encrypt_des_key (frame*, string*);
-extern string *P_encrypt_des (frame*, string*, string*);
+extern String *P_encrypt_des_key (Frame*, String*);
+extern String *P_encrypt_des (Frame*, String*, String*);
 
 char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -38,9 +38,9 @@ char pt_encrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
  * NAME:	kfun->enc_key()
  * DESCRIPTION:	prepare a key for encryption
  */
-void kf_enc_key(frame *f, int nargs, value *val)
+void kf_enc_key(Frame *f, int nargs, Value *val)
 {
-    string *str;
+    String *str;
 
     if (nargs != 1) {
 	error("Too many arguments for kfun encrypt");
@@ -53,9 +53,9 @@ void kf_enc_key(frame *f, int nargs, value *val)
  * NAME:	kfun->enc()
  * DESCRIPTION:	encrypt
  */
-void kf_enc(frame *f, int nargs, value *val)
+void kf_enc(Frame *f, int nargs, Value *val)
 {
-    string *str;
+    String *str;
 
     if (nargs != 2) {
 	error("Too few arguments for kfun encrypt");
@@ -69,7 +69,7 @@ void kf_enc(frame *f, int nargs, value *val)
 # ifdef FUNCDEF
 FUNCDEF("decrypt", kf_decrypt, pt_decrypt, 0)
 # else
-extern string *P_decrypt_des_key (frame*, string*);
+extern String *P_decrypt_des_key (Frame*, String*);
 
 char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
 		      T_STRING, T_STRING };
@@ -78,9 +78,9 @@ char pt_decrypt[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9, T_MIXED, T_STRING,
  * NAME:	kfun->dec_key()
  * DESCRIPTION:	prepare a key for decryption
  */
-void kf_dec_key(frame *f, int nargs, value *val)
+void kf_dec_key(Frame *f, int nargs, Value *val)
 {
-    string *str;
+    String *str;
 
     if (nargs != 1) {
 	error("Too many arguments for kfun decrypt");
@@ -93,9 +93,9 @@ void kf_dec_key(frame *f, int nargs, value *val)
  * NAME:	kfun->dec()
  * DESCRIPTION:	decrypt
  */
-void kf_dec(frame *f, int nargs, value *val)
+void kf_dec(Frame *f, int nargs, Value *val)
 {
-    string *str;
+    String *str;
 
     if (nargs != 2) {
 	error("Too few arguments for kfun decrypt");
@@ -116,7 +116,7 @@ char pt_ctime[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING, T_INT };
  * NAME:	kfun->ctime()
  * DESCRIPTION:	convert a time value to a string
  */
-int kf_ctime(frame *f, int n, kfunc *kf)
+int kf_ctime(Frame *f, int n, kfunc *kf)
 {
     char buf[26];
 
@@ -139,12 +139,12 @@ char pt_explode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8,
  * NAME:	kfun->explode()
  * DESCRIPTION:	explode a string
  */
-int kf_explode(frame *f, int n, kfunc *kf)
+int kf_explode(Frame *f, int n, kfunc *kf)
 {
     unsigned int len, slen, size;
     char *p, *s;
-    value *v;
-    array *a;
+    Value *v;
+    Array *a;
 
     p = f->sp[1].u.string->text;
     len = f->sp[1].u.string->len;
@@ -243,13 +243,13 @@ char pt_implode[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
  * NAME:	kfun->implode()
  * DESCRIPTION:	implode an array
  */
-int kf_implode(frame *f, int n, kfunc *kf)
+int kf_implode(Frame *f, int n, kfunc *kf)
 {
     long len;
     unsigned int i, slen;
     char *p, *s;
-    value *v;
-    string *str;
+    Value *v;
+    String *str;
 
     s = f->sp->u.string->text;
     slen = f->sp->u.string->len;
@@ -302,7 +302,7 @@ char pt_random[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  * NAME:	kfun->random()
  * DESCRIPTION:	return a random number
  */
-int kf_random(frame *f, int n, kfunc *kf)
+int kf_random(Frame *f, int n, kfunc *kf)
 {
     i_add_ticks(f, 1);
     PUT_INT(f->sp, (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0);
@@ -373,7 +373,7 @@ static bool match(char *f, char *s, unsigned int *flenp, unsigned int *slenp)
  * NAME:	kfun->old_sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_old_sscanf(frame *f, int nargs, kfunc *kf)
+int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
 {
     unsigned int flen, slen, size;
     char *format, *x;
@@ -383,7 +383,7 @@ int kf_old_sscanf(frame *f, int nargs, kfunc *kf)
     Int i;
     xfloat flt;
     bool skip;
-    value *top, *v;
+    Value *top, *v;
 
     size = 0;
     x = NULL;
@@ -635,7 +635,7 @@ char pt_sscanf[] = { C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT, T_STRING,
  * NAME:	kfun->sscanf()
  * DESCRIPTION:	scan a string
  */
-int kf_sscanf(frame *f, int nargs, kfunc *kf)
+int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 {
     struct {
 	char type;			/* int, float or string */
@@ -657,8 +657,8 @@ int kf_sscanf(frame *f, int nargs, kfunc *kf)
     Int i;
     xfloat flt;
     bool skip;
-    value *top, *elts;
-    array *a;
+    Value *top, *elts;
+    Array *a;
 
     size = 0;
     x = NULL;
@@ -903,7 +903,7 @@ no_match:
 
     str_del(top[0].u.string);
     str_del(top[1].u.string);
-    memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(value));
+    memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(Value));
     f->sp++;
 
     PUT_ARRVAL(f->sp, a);
@@ -927,10 +927,10 @@ char pt_parse_string[] = { C_TYPECHECKED | C_STATIC, 2, 1, 0, 9,
  * NAME:	kfun->parse_string()
  * DESCRIPTION:	parse a string
  */
-int kf_parse_string(frame *f, int nargs, kfunc *kf)
+int kf_parse_string(Frame *f, int nargs, kfunc *kf)
 {
     Int maxalt;
-    array *a;
+    Array *a;
 
     if (nargs > 2) {
 	maxalt = (f->sp++)->u.number + 1;
@@ -949,7 +949,7 @@ int kf_parse_string(frame *f, int nargs, kfunc *kf)
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
 
-    if (a != (array *) NULL) {
+    if (a != (Array *) NULL) {
 	/* return parse tree */
 	PUT_ARRVAL(f->sp, a);
     } else {
@@ -982,7 +982,7 @@ char pt_hash_crc16[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  *		    XorOut:	0000
  *		    Check:	29B1
  */
-int kf_hash_crc16(frame *f, int nargs, kfunc *kf)
+int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
 {
     static unsigned short crctab[] = {
 	0x0000, 0x2110, 0x4220, 0x6330, 0x8440, 0xa550, 0xc660, 0xe770,
@@ -1073,7 +1073,7 @@ char pt_hash_crc32[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  *		    XorOut:	FFFFFFFF
  *		    Check:	CBF43926
  */
-int kf_hash_crc32(frame *f, int nargs, kfunc *kf)
+int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
 {
     static Uint crctab[] = {
 	0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
@@ -1175,12 +1175,12 @@ char pt_hash_string[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
  * NAME:	kfun->xcrypt()
  * DESCRIPTION:	hash a string with Unix password crypt
  */
-void kf_xcrypt(frame *f, int nargs, value *val)
+void kf_xcrypt(Frame *f, int nargs, Value *val)
 {
     static char salts[] =
 	    "0123456789./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     char s[3];
-    string *str;
+    String *str;
 
     if (nargs > 2) {
 	error("Too many arguments for kfun hash_string");
@@ -1219,7 +1219,7 @@ void kf_xcrypt(frame *f, int nargs, value *val)
  * DESCRIPTION:	MD5 message digest.  See "Applied Cryptography" by Bruce
  *		Schneier, Second Edition, p. 436-441.
  */
-static Int hash_md5_start(frame *f, int nargs, Uint *digest)
+static Int hash_md5_start(Frame *f, int nargs, Uint *digest)
 {
     Int cost;
 
@@ -1338,7 +1338,7 @@ static void hash_md5_block(Uint *ABCD, char *block)
  * NAME:	hash->md5_end()
  * DESCRIPTION:	finish up MD5 hash
  */
-static string *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
+static String *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
 {
     int i;
 
@@ -1370,7 +1370,7 @@ static string *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint
  * NAME:	hash->sha1_start()
  * DESCRIPTION:	SHA-1 message digest.  See FIPS 180-2.
  */
-static Int hash_sha1_start(frame *f, int nargs, Uint *digest)
+static Int hash_sha1_start(Frame *f, int nargs, Uint *digest)
 {
     Int cost;
 
@@ -1461,7 +1461,7 @@ static void hash_sha1_block(Uint *ABCDE, char *block)
  * NAME:	hash->sha1_end()
  * DESCRIPTION:	finish up SHA-1 hash
  */
-static string *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
+static String *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uint length)
 {
     int i;
 
@@ -1493,7 +1493,7 @@ static string *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
  * NAME:	hash->blocks()
  * DESCRIPTION:	hash string blocks with a given function
  */
-static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
+static Uint hash_blocks(Frame *f, int nargs, Uint *digest, char *buffer,
 	unsigned short *bufsize, unsigned int blocksz,
 	void (*hash_block) (Uint*, char*))
 {
@@ -1550,14 +1550,14 @@ static Uint hash_blocks(frame *f, int nargs, Uint *digest, char *buffer,
  * NAME:	kfun->md5()
  * DESCRIPTION:	compute MD5 hash
  */
-void kf_md5(frame *f, int nargs, value *val)
+void kf_md5(Frame *f, int nargs, Value *val)
 {
     char buffer[64];
     Uint digest[5];
     Int cost;
     Uint length;
     unsigned short bufsz;
-    string *str;
+    String *str;
 
     cost = hash_md5_start(f, nargs, digest);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
@@ -1575,14 +1575,14 @@ void kf_md5(frame *f, int nargs, value *val)
  * NAME:	kfun->sha1()
  * DESCRIPTION:	compute SHA1 hash
  */
-void kf_sha1(frame *f, int nargs, value *val)
+void kf_sha1(Frame *f, int nargs, Value *val)
 {
     char buffer[64];
     Uint digest[5];
     Int cost;
     Uint length;
     unsigned short bufsz;
-    string *str;
+    String *str;
 
     cost = hash_sha1_start(f, nargs, digest);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
@@ -1609,9 +1609,9 @@ char pt_crypt[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->crypt()
  * DESCRIPTION:	hash_string("crypt", ...)
  */
-int kf_crypt(frame *f, int nargs, kfunc *kf)
+int kf_crypt(Frame *f, int nargs, kfunc *kf)
 {
-    value val;
+    Value val;
 
     kf_xcrypt(f, nargs, &val);
     i_ref_value(&val);
@@ -1632,7 +1632,7 @@ char pt_hash_md5[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  * NAME:	kfun->hash_md5()
  * DESCRIPTION:	hash_string("MD5", ...)
  */
-int kf_hash_md5(frame *f, int nargs, kfunc *kf)
+int kf_hash_md5(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[64];
     Uint digest[4];
@@ -1666,7 +1666,7 @@ char pt_hash_sha1[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  * NAME:	kfun->hash_sha1()
  * DESCRIPTION:	hash_string("SHA1", ...)
  */
-int kf_hash_sha1(frame *f, int nargs, kfunc *kf)
+int kf_hash_sha1(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[64];
     Uint digest[5];
@@ -1701,9 +1701,9 @@ char pt_asn_add[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_add()
  * DESCRIPTION:	add two arbitrary precision numbers
  */
-int kf_asn_add(frame *f, int n, kfunc *kf)
+int kf_asn_add(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_add(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1726,9 +1726,9 @@ char pt_asn_sub[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_sub()
  * DESCRIPTION:	subtract arbitrary precision numbers
  */
-int kf_asn_sub(frame *f, int n, kfunc *kf)
+int kf_asn_sub(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_sub(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1751,7 +1751,7 @@ char pt_asn_cmp[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_STRING,
  * NAME:	kfun->asn_cmp()
  * DESCRIPTION:	subtract arbitrary precision numbers
  */
-int kf_asn_cmp(frame *f, int n, kfunc *kf)
+int kf_asn_cmp(Frame *f, int n, kfunc *kf)
 {
     int cmp;
 
@@ -1775,9 +1775,9 @@ char pt_asn_mult[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_mult()
  * DESCRIPTION:	multiply arbitrary precision numbers
  */
-int kf_asn_mult(frame *f, int n, kfunc *kf)
+int kf_asn_mult(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_mult(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1800,9 +1800,9 @@ char pt_asn_div[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_div()
  * DESCRIPTION:	divide arbitrary precision numbers
  */
-int kf_asn_div(frame *f, int n, kfunc *kf)
+int kf_asn_div(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_div(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1825,9 +1825,9 @@ char pt_asn_mod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_mod()
  * DESCRIPTION:	modulus of arbitrary precision number
  */
-int kf_asn_mod(frame *f, int n, kfunc *kf)
+int kf_asn_mod(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_mod(f, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1849,9 +1849,9 @@ char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
  * NAME:	kfun->asn_pow()
  * DESCRIPTION:	power of an arbitrary precision number
  */
-int kf_asn_pow(frame *f, int n, kfunc *kf)
+int kf_asn_pow(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_pow(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1874,9 +1874,9 @@ char pt_asn_lshift[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING,
  * NAME:	kfun->asn_lshift()
  * DESCRIPTION:	left shift an arbitrary precision number
  */
-int kf_asn_lshift(frame *f, int n, kfunc *kf)
+int kf_asn_lshift(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_lshift(f, f->sp[2].u.string, f->sp[1].u.number, f->sp->u.string);
     str_del(f->sp->u.string);
@@ -1899,9 +1899,9 @@ char pt_asn_rshift[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
  * NAME:	kfun->asn_rshift()
  * DESCRIPTION:	right shift of arbitrary precision number
  */
-int kf_asn_rshift(frame *f, int n, kfunc *kf)
+int kf_asn_rshift(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_rshift(f, f->sp[1].u.string, f->sp->u.number);
     f->sp++;
@@ -1923,9 +1923,9 @@ char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_and()
  * DESCRIPTION:	logical and of arbitrary precision numbers
  */
-int kf_asn_and(frame *f, int n, kfunc *kf)
+int kf_asn_and(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_and(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
@@ -1947,9 +1947,9 @@ char pt_asn_or[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_or()
  * DESCRIPTION:	logical or of arbitrary precision numbers
  */
-int kf_asn_or(frame *f, int n, kfunc *kf)
+int kf_asn_or(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_or(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
@@ -1971,9 +1971,9 @@ char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
  * NAME:	kfun->asn_xor()
  * DESCRIPTION:	logical xor of arbitrary precision numbers
  */
-int kf_asn_xor(frame *f, int n, kfunc *kf)
+int kf_asn_xor(Frame *f, int n, kfunc *kf)
 {
-    string *str;
+    String *str;
 
     str = asn_xor(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);

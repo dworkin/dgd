@@ -32,7 +32,7 @@ typedef struct _objpatch_ {
     objplane *plane;			/* plane that patch is on */
     struct _objpatch_ *prev;		/* previous patch */
     struct _objpatch_ *next;		/* next in linked list */
-    object obj;				/* new object value */
+    Object obj;				/* new object value */
 } objpatch;
 
 # define OPCHUNKSZ		32
@@ -63,7 +63,7 @@ struct _objplane_ {
     struct _objplane_ *prev;	/* previous object plane */
 };
 
-object *otable;			/* object table */
+Object *otable;			/* object table */
 Uint *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
 bool swap, dump, incr, stop, boot; /* global state vars */
@@ -74,7 +74,7 @@ static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
 static Uint *omap;		/* object dump bitmap */
 static Uint *counttab;		/* object count table */
-static object *upgraded;	/* list of upgraded objects */
+static Object *upgraded;	/* list of upgraded objects */
 static uindex dobjects, dobject;/* objects to copy */
 static uindex mobjects;		/* max objects to copy */
 static uindex dchunksz;		/* copy chunk size */
@@ -83,13 +83,13 @@ static Uint dtime;		/* time copying started */
 Uint odcount;			/* objects destructed count */
 
 /*
- * NAME:	object->init()
+ * NAME:	Object->init()
  * DESCRIPTION:	initialize the object tables
  */
 void o_init(unsigned int n, Uint interval)
 {
-    otable = ALLOC(object, otabsize = n);
-    memset(otable, '\0', n * sizeof(object));
+    otable = ALLOC(Object, otabsize = n);
+    memset(otable, '\0', n * sizeof(Object));
     ocmap = ALLOC(Uint, BMAP(n));
     memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
@@ -106,7 +106,7 @@ void o_init(unsigned int n, Uint interval)
     omap = ALLOC(Uint, BMAP(n));
     memset(omap, '\0', BMAP(n) * sizeof(Uint));
     counttab = ALLOC(Uint, n);
-    upgraded = (object *) NULL;
+    upgraded = (Object *) NULL;
     uobjects = dobjects = mobjects = 0;
     dinterval = (interval * 19) / 20;
     odcount = 1;
@@ -147,7 +147,7 @@ static void op_clean(objplane *plane)
  * NAME:	objpatch->new()
  * DESCRIPTION:	create a new object patch
  */
-static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, object *obj)
+static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, Object *obj)
 {
     optable *tab;
     objpatch *op;
@@ -185,7 +185,7 @@ static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, object *o
 
 /*
  * NAME:	objpatch->del()
- * DESCRIPTION:	delete an object patch
+ * DESCRIPTION:	delete an Object patch
  */
 static void op_del(objplane *plane, objpatch **o)
 {
@@ -204,13 +204,13 @@ static void op_del(objplane *plane, objpatch **o)
 
 
 /*
- * NAME:	object->oaccess()
+ * NAME:	Object->oaccess()
  * DESCRIPTION:	access to object from atomic code
  */
-static object *o_oaccess(unsigned int index, int access)
+static Object *o_oaccess(unsigned int index, int access)
 {
     objpatch *o, **oo;
-    object *obj;
+    Object *obj;
 
     if (BTST(ocmap, index)) {
 	/*
@@ -260,25 +260,25 @@ static object *o_oaccess(unsigned int index, int access)
 }
 
 /*
- * NAME:	object->oread()
+ * NAME:	Object->oread()
  * DESCRIPTION:	read access to object in patch table
  */
-object *o_oread(unsigned int index)
+Object *o_oread(unsigned int index)
 {
     return o_oaccess(index, OACC_READ);
 }
 
 /*
- * NAME:	object->owrite()
+ * NAME:	Object->owrite()
  * DESCRIPTION:	write access to object in atomic code
  */
-object *o_owrite(unsigned int index)
+Object *o_owrite(unsigned int index)
 {
     return o_oaccess(index, OACC_MODIFY);
 }
 
 /*
- * NAME:	object->space()
+ * NAME:	Object->space()
  * DESCRIPTION:	check if there's space for another object
  */
 bool o_space()
@@ -287,13 +287,13 @@ bool o_space()
 }
 
 /*
- * NAME:	object->alloc()
+ * NAME:	Object->alloc()
  * DESCRIPTION:	allocate a new object
  */
-static object *o_alloc()
+static Object *o_alloc()
 {
     uindex n;
-    object *obj;
+    Object *obj;
 
     if (oplane->free != OBJ_NONE) {
 	/* get space from free object list */
@@ -312,8 +312,8 @@ static object *o_alloc()
 
     OBJ(n)->index = OBJ_NONE;
     obj->index = n;
-    obj->ctrl = (control *) NULL;
-    obj->data = (dataspace *) NULL;
+    obj->ctrl = (Control *) NULL;
+    obj->data = (Dataspace *) NULL;
     obj->cfirst = SW_UNUSED;
     obj->dfirst = SW_UNUSED;
     counttab[n] = 0;
@@ -323,7 +323,7 @@ static object *o_alloc()
 
 
 /*
- * NAME:	object->new_plane()
+ * NAME:	Object->new_plane()
  * DESCRIPTION:	create a new object plane
  */
 void o_new_plane()
@@ -358,7 +358,7 @@ void o_new_plane()
 }
 
 /*
- * NAME:	object->commit_plane()
+ * NAME:	Object->commit_plane()
  * DESCRIPTION:	commit the current object plane
  */
 void o_commit_plane()
@@ -366,7 +366,7 @@ void o_commit_plane()
     objplane *prev;
     objpatch **t, **o, *op;
     int i;
-    object *obj;
+    Object *obj;
 
 
     prev = oplane->prev;
@@ -493,18 +493,18 @@ void o_commit_plane()
 }
 
 /*
- * NAME:	object->discard_plane()
+ * NAME:	Object->discard_plane()
  * DESCRIPTION:	discard the current object plane without committing it
  */
 void o_discard_plane()
 {
     objpatch **o, *op;
     int i;
-    object *obj, *clist;
+    Object *obj, *clist;
     objplane *p;
 
     if (oplane->optab != (optable *) NULL) {
-	clist = (object *) NULL;
+	clist = (Object *) NULL;
 	for (i = OBJPATCHHTABSZ, o = oplane->optab->op; --i >= 0; o++) {
 	    while (*o != (objpatch *) NULL && (*o)->plane == oplane) {
 		op = *o;
@@ -553,11 +553,11 @@ void o_discard_plane()
 		     * discard newly created object
 		     */
 		    if ((op->obj.flags & O_MASTER) &&
-			op->obj.ctrl != (control *) NULL) {
+			op->obj.ctrl != (Control *) NULL) {
 			op->obj.chain.next = (hte *) clist;
 			clist = &op->obj;
 		    }
-		    if (op->obj.data != (dataspace *) NULL) {
+		    if (op->obj.data != (Dataspace *) NULL) {
 			/* discard new data block */
 			d_del_dataspace(op->obj.data);
 		    }
@@ -572,9 +572,9 @@ void o_discard_plane()
 	}
 
 	/* discard new control blocks */
-	while (clist != (object *) NULL) {
+	while (clist != (Object *) NULL) {
 	    obj = clist;
-	    clist = (object *) obj->chain.next;
+	    clist = (Object *) obj->chain.next;
 	    d_del_control(obj->ctrl);
 	}
     }
@@ -599,12 +599,12 @@ void o_discard_plane()
 
 
 /*
- * NAME:	object->new()
+ * NAME:	Object->new()
  * DESCRIPTION:	create a new object
  */
-object *o_new(char *name, control *ctrl)
+Object *o_new(char *name, Control *ctrl)
 {
-    object *o;
+    Object *o;
     dinherit *inh;
     int i;
     hte **h;
@@ -644,12 +644,12 @@ object *o_new(char *name, control *ctrl)
 }
 
 /*
- * NAME:	object->clone()
+ * NAME:	Object->clone()
  * DESCRIPTION:	clone an object
  */
-object *o_clone(object *master)
+Object *o_clone(Object *master)
 {
-    object *o;
+    Object *o;
 
     /* allocate object */
     o = o_alloc();
@@ -667,21 +667,21 @@ object *o_clone(object *master)
 }
 
 /*
- * NAME:	object->lwobj()
+ * NAME:	Object->lwobj()
  * DESCRIPTION:	create light-weight instance of object
  */
-void o_lwobj(object *obj)
+void o_lwobj(Object *obj)
 {
     obj->flags |= O_LWOBJ;
 }
 
 /*
- * NAME:	object->delete()
+ * NAME:	Object->delete()
  * DESCRIPTION:	the last reference to a master object was removed
  */
-static void o_delete(object *o, frame *f)
+static void o_delete(Object *o, Frame *f)
 {
-    control *ctrl;
+    Control *ctrl;
     dinherit *inh;
     int i;
 
@@ -711,12 +711,12 @@ static void o_delete(object *o, frame *f)
 }
 
 /*
- * NAME:	object->upgrade()
+ * NAME:	Object->upgrade()
  * DESCRIPTION:	upgrade an object to a new program
  */
-void o_upgrade(object *obj, control *ctrl, frame *f)
+void o_upgrade(Object *obj, Control *ctrl, Frame *f)
 {
-    object *tmpl;
+    Object *tmpl;
     dinherit *inh;
     int i;
 
@@ -754,10 +754,10 @@ void o_upgrade(object *obj, control *ctrl, frame *f)
 }
 
 /*
- * NAME:	object->upgraded()
+ * NAME:	Object->upgraded()
  * DESCRIPTION:	an object has been upgraded
  */
-void o_upgraded(object *tmpl, object *onew)
+void o_upgraded(Object *tmpl, Object *onew)
 {
 # ifdef DEBUG
     if (onew->count == 0) {
@@ -775,17 +775,17 @@ void o_upgraded(object *tmpl, object *onew)
 }
 
 /*
- * NAME:	object->del()
+ * NAME:	Object->del()
  * DESCRIPTION:	delete an object
  */
-void o_del(object *obj, frame *f)
+void o_del(Object *obj, Frame *f)
 {
     if (obj->count == 0) {
 	/* can happen if object selfdestructs in close()-on-destruct */
 	error("Destructing destructed object");
     }
     i_odest(f, obj);	/* wipe out occurrences on the stack */
-    if (obj->data == (dataspace *) NULL && obj->dfirst != SW_UNUSED) {
+    if (obj->data == (Dataspace *) NULL && obj->dfirst != SW_UNUSED) {
 	o_dataspace(obj);	/* load dataspace now */
     }
     obj->count = 0;
@@ -799,7 +799,7 @@ void o_del(object *obj, frame *f)
 	    o_delete(obj, f);
 	}
     } else {
-	object *master;
+	Object *master;
 
 	master = OBJW(obj->u_master);
 	master->cref--;
@@ -815,10 +815,10 @@ void o_del(object *obj, frame *f)
 
 
 /*
- * NAME:	object->name()
+ * NAME:	Object->name()
  * DESCRIPTION:	return the name of an object
  */
-char *o_name(char *name, object *o)
+char *o_name(char *name, Object *o)
 {
     if (o->chain.name != (char *) NULL) {
 	return o->chain.name;
@@ -846,7 +846,7 @@ char *o_name(char *name, object *o)
 }
 
 /*
- * NAME:	object->builtin_name()
+ * NAME:	Object->builtin_name()
  * DESCRIPTION:	return the base name of a builtin type
  */
 char *o_builtin_name(Int type)
@@ -870,19 +870,19 @@ char *o_builtin_name(Int type)
 }
 
 /*
- * NAME:	object->find()
+ * NAME:	Object->find()
  * DESCRIPTION:	find an object by name
  */
-object *o_find(char *name, int access)
+Object *o_find(char *name, int access)
 {
-    object *o;
+    Object *o;
     unsigned long number;
     char *hash;
 
     hash = strchr(name, '#');
     if (hash != (char *) NULL) {
 	char *p;
-	object *m;
+	Object *m;
 
 	/*
 	 * Look for a cloned object, which cannot be found directly in the
@@ -893,18 +893,18 @@ object *o_find(char *name, int access)
 	p = hash + 1;
 	if (*p == '\0' || (p[0] == '0' && p[1] != '\0')) {
 	    /* don't accept "filename#" or "filename#01" */
-	    return (object *) NULL;
+	    return (Object *) NULL;
 	}
 
 	/* convert the string to a number */
 	number = 0;
 	do {
 	    if (!isdigit(*p)) {
-		return (object *) NULL;
+		return (Object *) NULL;
 	    }
 	    number = number * 10 + *p++ - '0';
 	    if (number >= oplane->nobjects) {
-		return (object *) NULL;
+		return (Object *) NULL;
 	    }
 	} while (*p != '\0');
 
@@ -915,16 +915,16 @@ object *o_find(char *name, int access)
 	    /*
 	     * no entry, not a clone, or object name doesn't match
 	     */
-	    return (object *) NULL;
+	    return (Object *) NULL;
 	}
     } else {
 	/* look it up in the hash table */
 	if (oplane->htab == (hashtab *) NULL ||
-	    (o = (object *) *ht_lookup(oplane->htab, name, TRUE)) ==
-							    (object *) NULL) {
+	    (o = (Object *) *ht_lookup(oplane->htab, name, TRUE)) ==
+							    (Object *) NULL) {
 	    if (oplane != &baseplane) {
-		o = (object *) *ht_lookup(baseplane.htab, name, FALSE);
-		if (o != (object *) NULL) {
+		o = (Object *) *ht_lookup(baseplane.htab, name, FALSE);
+		if (o != (Object *) NULL) {
 		    number = o->index;
 		    o = (access == OACC_READ)? OBJR(number) : OBJW(number);
 		    if (o->count != 0) {
@@ -932,7 +932,7 @@ object *o_find(char *name, int access)
 		    }
 		}
 	    }
-	    return (object *) NULL;
+	    return (Object *) NULL;
 	}
 	number = o->index;
     }
@@ -941,10 +941,10 @@ object *o_find(char *name, int access)
 }
 
 /*
- * NAME:	object->restore_object()
+ * NAME:	Object->restore_object()
  * DESCRIPTION:	restore an object from the snapshot
  */
-static void o_restore_obj(object *obj, bool cactive, bool dactive)
+static void o_restore_obj(Object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
@@ -952,19 +952,19 @@ static void o_restore_obj(object *obj, bool cactive, bool dactive)
 }
 
 /*
- * NAME:	object->control()
+ * NAME:	Object->control()
  * DESCRIPTION:	return the control block for an object
  */
-control *o_control(object *obj)
+Control *o_control(Object *obj)
 {
-    object *o;
+    Object *o;
 
     o = obj;
     if (!(o->flags & O_MASTER)) {
 	/* get control block of master object */
 	o = OBJR(o->u_master);
     }
-    if (o->ctrl == (control *) NULL) {
+    if (o->ctrl == (Control *) NULL) {
 	if (BTST(omap, o->index)) {
 	    o_restore_obj(o, TRUE, FALSE);
 	} else {
@@ -977,12 +977,12 @@ control *o_control(object *obj)
 }
 
 /*
- * NAME:	object->dataspace()
+ * NAME:	Object->dataspace()
  * DESCRIPTION:	return the dataspace block for an object
  */
-dataspace *o_dataspace(object *o)
+Dataspace *o_dataspace(Object *o)
 {
-    if (o->data == (dataspace *) NULL) {
+    if (o->data == (Dataspace *) NULL) {
 	if (BTST(omap, o->index)) {
 	    o_restore_obj(o, TRUE, TRUE);
 	} else {
@@ -995,16 +995,16 @@ dataspace *o_dataspace(object *o)
 }
 
 /*
- * NAME:	object->clean_upgrades()
+ * NAME:	Object->clean_upgrades()
  * DESCRIPTION:	clean up upgrade templates
  */
 static void o_clean_upgrades()
 {
-    object *o, *next;
+    Object *o, *next;
     Uint count;
 
-    while ((next=upgraded) != (object *) NULL) {
-	upgraded = (object *) next->chain.next;
+    while ((next=upgraded) != (Object *) NULL) {
+	upgraded = (Object *) next->chain.next;
 
 	count = next->count;
 	next->count = 0;
@@ -1034,10 +1034,10 @@ static void o_clean_upgrades()
 }
 
 /*
- * NAME:	object->purge_upgrades()
+ * NAME:	Object->purge_upgrades()
  * DESCRIPTION:	purge the LW dross from upgrade templates
  */
-static bool o_purge_upgrades(object *o)
+static bool o_purge_upgrades(Object *o)
 {
     bool purged;
 
@@ -1055,19 +1055,19 @@ static bool o_purge_upgrades(object *o)
 }
 
 /*
- * NAME:	object->clean()
+ * NAME:	Object->clean()
  * DESCRIPTION:	clean up the object table
  */
 void o_clean()
 {
-    object *o;
+    Object *o;
 
     while (baseplane.clean != OBJ_NONE) {
 	o = OBJ(baseplane.clean);
 	baseplane.clean = (uintptr_t) o->chain.next;
 
 	/* free dataspace block (if it exists) */
-	if (o->data != (dataspace *) NULL) {
+	if (o->data != (Dataspace *) NULL) {
 	    d_del_dataspace(o->data);
 	}
 
@@ -1077,7 +1077,7 @@ void o_clean()
 		o->prev = OBJ_NONE;
 	    }
 	} else {
-	    object *tmpl;
+	    Object *tmpl;
 
 	    /* check if clone still had to be upgraded */
 	    tmpl = OBJW(o->u_master);
@@ -1104,8 +1104,8 @@ void o_clean()
     o_clean_upgrades();		/* 1st time */
 
     while (baseplane.upgrade != OBJ_NONE) {
-	object *up;
-	control *ctrl;
+	Object *up;
+	Control *ctrl;
 
 	o = OBJ(baseplane.upgrade);
 	baseplane.upgrade = (uintptr_t) o->chain.next;
@@ -1139,7 +1139,7 @@ void o_clean()
 		if (o->u_ref > (up->count != 0)) {
 		    up->update++;
 		}
-		if (up->count != 0 && up->data == (dataspace *) NULL &&
+		if (up->count != 0 && up->data == (Dataspace *) NULL &&
 		    up->dfirst != SW_UNUSED) {
 		    /* load dataspace (with old control block) */
 		    up->data = d_load_dataspace(up);
@@ -1206,7 +1206,7 @@ void o_clean()
 }
 
 /*
- * NAME:	object->count()
+ * NAME:	Object->count()
  * DESCRIPTION:	return the number of objects in use
  */
 uindex o_count()
@@ -1215,7 +1215,7 @@ uindex o_count()
 }
 
 /*
- * NAME:	object->dobjects()
+ * NAME:	Object->dobjects()
  * DESCRIPTION:	return the number of objects left to copy
  */
 uindex o_dobjects()
@@ -1246,12 +1246,12 @@ static char mh_layout[] = "uuuui";
 # define CHUNKSZ	16384
 
 /*
- * NAME:	object->sweep()
+ * NAME:	Object->sweep()
  * DESCRIPTION:	sweep through the object table after a dump or restore
  */
 static void o_sweep(uindex n)
 {
-    object *obj;
+    Object *obj;
 
     uobjects = n;
     dobject = 0;
@@ -1271,13 +1271,13 @@ static void o_sweep(uindex n)
 }
 
 /*
- * NAME:	object->recount()
+ * NAME:	Object->recount()
  * DESCRIPTION:	update object counts
  */
 static Uint o_recount(uindex n)
 {
     Uint count, *ct;
-    object *obj;
+    Object *obj;
 
     count = 3;
     for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
@@ -1295,13 +1295,13 @@ static Uint o_recount(uindex n)
 }
 
 /*
- * NAME:	object->dump()
+ * NAME:	Object->dump()
  * DESCRIPTION:	dump the object table
  */
 bool o_dump(int fd, bool incr)
 {
     uindex i;
-    object *o;
+    Object *o;
     unsigned int len, buflen;
     dump_header dh;
     map_header mh;
@@ -1320,7 +1320,7 @@ bool o_dump(int fd, bool incr)
 
     /* write header and objects */
     if (P_write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
-	P_write(fd, (char *) otable, baseplane.nobjects * sizeof(object)) < 0) {
+	P_write(fd, (char *) otable, baseplane.nobjects * sizeof(Object)) < 0) {
 	return FALSE;
     }
 
@@ -1375,13 +1375,13 @@ bool o_dump(int fd, bool incr)
 }
 
 /*
- * NAME:	object->restore()
+ * NAME:	Object->restore()
  * DESCRIPTION:	restore the object table
  */
 void o_restore(int fd, unsigned int rlwobj, bool part)
 {
     uindex i;
-    object *o;
+    Object *o;
     Uint len, buflen, count;
     char *p;
     dump_header dh;
@@ -1560,13 +1560,13 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 }
 
 /*
- * NAME:	object->copy()
+ * NAME:	Object->copy()
  * DESCRIPTION:	copy objects from dump to swap
  */
 bool o_copy(Uint time)
 {
     uindex n;
-    object *obj, *tmpl;
+    Object *obj, *tmpl;
 
     if (dobjects != 0) {
 	if (time == 0) {

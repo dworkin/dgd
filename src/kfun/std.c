@@ -40,17 +40,17 @@ char pt_old_compile_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
  * NAME:	kfun->old_compile_object()
  * DESCRIPTION:	compile an object
  */
-int kf_old_compile_object(frame *f, int n, kfunc *kf)
+int kf_old_compile_object(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
-    object *obj;
+    Object *obj;
 
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
     }
     obj = o_find(file, OACC_MODIFY);
-    if (obj != (object *) NULL) {
+    if (obj != (Object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
 	    error("Cannot recompile cloned object");
 	}
@@ -61,7 +61,7 @@ int kf_old_compile_object(frame *f, int n, kfunc *kf)
 	    error("Cannot recompile inherited object");
 	}
     }
-    obj = c_compile(f, file, obj, (string **) NULL, 0,
+    obj = c_compile(f, file, obj, (String **) NULL, 0,
 		    (OBJR(f->oindex)->flags & O_DRIVER) &&
 		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
 					  f->func->index)->text,
@@ -84,12 +84,12 @@ char pt_compile_object[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 1, 1, 0, 8,
  * NAME:	kfun->compile_object()
  * DESCRIPTION:	compile an object
  */
-int kf_compile_object(frame *f, int nargs, kfunc *kf)
+int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ];
-    value *v;
-    object *obj;
-    string **strs;
+    Value *v;
+    Object *obj;
+    String **strs;
     int i;
     bool iflag;
 
@@ -99,7 +99,7 @@ int kf_compile_object(frame *f, int nargs, kfunc *kf)
 	return 1;
     }
     obj = o_find(file, OACC_MODIFY);
-    if (obj != (object *) NULL) {
+    if (obj != (Object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
 	    error("Cannot recompile cloned object");
 	}
@@ -111,7 +111,7 @@ int kf_compile_object(frame *f, int nargs, kfunc *kf)
 	}
     }
     if (--nargs != 0) {
-	strs = ALLOCA(string*, nargs);
+	strs = ALLOCA(String*, nargs);
 	for (i = nargs, v = f->sp; i > 0; --i) {
 	    *strs++ = (v++)->u.string;
 	}
@@ -120,10 +120,10 @@ int kf_compile_object(frame *f, int nargs, kfunc *kf)
 	    error((char *) NULL);
 	}
     } else {
-	strs = (string **) NULL;
+	strs = (String **) NULL;
     }
     if (OBJR(f->oindex)->flags & O_DRIVER) {
-	frame *xf;
+	Frame *xf;
 
 	for (xf = f; !xf->external; xf = xf->prev) ;
 	iflag = (strcmp(d_get_strconst(xf->p_ctrl, xf->func->inherit,
@@ -156,14 +156,14 @@ char pt_call_other[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9,
  * NAME:	kfun->call_other()
  * DESCRIPTION:	call a function in another object
  */
-int kf_call_other(frame *f, int nargs, kfunc *kf)
+int kf_call_other(Frame *f, int nargs, kfunc *kf)
 {
-    value *val;
-    object *obj;
-    array *lwobj;
+    Value *val;
+    Object *obj;
+    Array *lwobj;
 
-    obj = (object *) NULL;
-    lwobj = (array *) NULL;
+    obj = (Object *) NULL;
+    lwobj = (Array *) NULL;
     val = &f->sp[nargs - 1];
     if (val->type == T_STRING) {
 	*--f->sp = *val;
@@ -218,11 +218,11 @@ char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
  * NAME:	kfun->call_touch()
  * DESCRIPTION:	prepare to call a function when this object is next touched
  */
-int kf_call_touch(frame *f, int n, kfunc *kf)
+int kf_call_touch(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     xfloat flt;
-    value val, *elts;
+    Value val, *elts;
 
     if (f->sp->type == T_LWOBJECT) {
 	elts = d_get_elts(f->sp->u.array);
@@ -253,14 +253,14 @@ char pt_this_object[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
  * NAME:	kfun->this_object()
  * DESCRIPTION:	return the current object
  */
-int kf_this_object(frame *f, int n, kfunc *kf)
+int kf_this_object(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     --f->sp;
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	if (f->lwobj == (array *) NULL) {
+	if (f->lwobj == (Array *) NULL) {
 	    PUT_OBJVAL(f->sp, obj);
 	} else {
 	    PUT_LWOVAL(f->sp, f->lwobj);
@@ -283,10 +283,10 @@ char pt_previous_object[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_OBJECT,
  * NAME:	kfun->previous_object()
  * DESCRIPTION:	return the previous object in the call_other chain
  */
-int kf_previous_object(frame *f, int nargs, kfunc *kf)
+int kf_previous_object(Frame *f, int nargs, kfunc *kf)
 {
-    frame *prev;
-    object *obj;
+    Frame *prev;
+    Object *obj;
 
     if (nargs == 0) {
 	*--f->sp = nil_value;
@@ -295,10 +295,10 @@ int kf_previous_object(frame *f, int nargs, kfunc *kf)
     }
 
     prev = i_prev_object(f, (int) f->sp->u.number);
-    if (prev != (frame *) NULL) {
+    if (prev != (Frame *) NULL) {
 	obj = OBJR(prev->oindex);
 	if (obj->count != 0) {
-	    if (prev->lwobj == (array *) NULL) {
+	    if (prev->lwobj == (Array *) NULL) {
 		PUT_OBJVAL(f->sp, obj);
 	    } else {
 		PUT_LWOVAL(f->sp, prev->lwobj);
@@ -323,10 +323,10 @@ char pt_previous_program[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING,
  * NAME:	kfun->previous_program()
  * DESCRIPTION:	return the previous program in the function call chain
  */
-int kf_previous_program(frame *f, int nargs, kfunc *kf)
+int kf_previous_program(Frame *f, int nargs, kfunc *kf)
 {
     char *prog;
-    string *str;
+    String *str;
 
     if (nargs == 0) {
 	*--f->sp = nil_value;
@@ -356,7 +356,7 @@ char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
  * NAME:	kfun->call_trace()
  * DESCRIPTION:	return the entire call_other chain
  */
-int kf_call_trace(frame *f, int n, kfunc *kf)
+int kf_call_trace(Frame *f, int n, kfunc *kf)
 {
     PUSH_ARRVAL(f, i_call_trace(f));
     return 0;
@@ -374,9 +374,9 @@ char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
  * NAME:	kfun->clone_object()
  * DESCRIPTION:	clone a new object
  */
-int kf_clone_object(frame *f, int n, kfunc *kf)
+int kf_clone_object(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     if (f->sp->type == T_LWOBJECT) {
 	error("Cloning from a non-persistent object");
@@ -387,7 +387,7 @@ int kf_clone_object(frame *f, int n, kfunc *kf)
     }
     obj = o_clone(obj);
     PUT_OBJ(f->sp, obj);
-    if (i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
+    if (i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
     return 0;
@@ -405,9 +405,9 @@ char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
  * NAME:	kfun->destruct_object()
  * DESCRIPTION:	destruct an object
  */
-int kf_destruct_object(frame *f, int n, kfunc *kf)
+int kf_destruct_object(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     if (f->sp->type == T_LWOBJECT) {
 	error("Destructing a non-persistent object");
@@ -441,10 +441,10 @@ char pt_new_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
  * NAME:	kfun->new_object()
  * DESCRIPTION:	create a new non-persistent object
  */
-int kf_new_object(frame *f, int n, kfunc *kf)
+int kf_new_object(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
-    array *a;
+    Object *obj;
+    Array *a;
 
     if (f->sp->type == T_OBJECT) {
 	if (!((obj=OBJW(f->sp->oindex))->flags & O_MASTER)) {
@@ -452,7 +452,7 @@ int kf_new_object(frame *f, int n, kfunc *kf)
 	}
 
 	PUT_LWOVAL(f->sp, lwo_new(f->data, obj));
-	if (i_call(f, (object *) NULL, f->sp->u.array, (char *) NULL, 0, TRUE,
+	if (i_call(f, (Object *) NULL, f->sp->u.array, (char *) NULL, 0, TRUE,
 		   0)) {
 	    i_del_value(f->sp++);
 	}
@@ -476,10 +476,10 @@ char pt_object_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  * NAME:	kfun->object_name()
  * DESCRIPTION:	return the name of an object
  */
-int kf_object_name(frame *f, int nargs, kfunc *kf)
+int kf_object_name(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[STRINGSZ + 12], *name;
-    string *str;
+    String *str;
     uindex n;
 
     if (f->sp->type == T_OBJECT) {
@@ -517,10 +517,10 @@ char pt_find_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
  * NAME:	kfun->find_object()
  * DESCRIPTION:	find the loaded object for a given object name
  */
-int kf_find_object(frame *f, int n, kfunc *kf)
+int kf_find_object(Frame *f, int n, kfunc *kf)
 {
     char path[STRINGSZ];
-    object *obj;
+    Object *obj;
 
     if (path_string(path, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
@@ -531,7 +531,7 @@ int kf_find_object(frame *f, int n, kfunc *kf)
     i_add_ticks(f, 2);
     obj = o_find(path, OACC_READ);
     str_del(f->sp->u.string);
-    if (obj != (object *) NULL) {
+    if (obj != (Object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
     } else {
 	*f->sp = nil_value;
@@ -551,9 +551,9 @@ char pt_function_object[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
  * NAME:	kfun->function_object()
  * DESCRIPTION:	return the name of the program a function is in
  */
-int kf_function_object(frame *f, int nargs, kfunc *kf)
+int kf_function_object(Frame *f, int nargs, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     uindex n;
     dsymbol *symb;
     char *name;
@@ -578,7 +578,7 @@ int kf_function_object(frame *f, int nargs, kfunc *kf)
     str_del(f->sp->u.string);
 
     if (symb != (dsymbol *) NULL) {
-	object *o;
+	Object *o;
 
 	o = OBJR(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].sclass & C_STATIC) ||
@@ -608,12 +608,12 @@ char pt_this_user[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT };
  * NAME:	kfun->this_user()
  * DESCRIPTION:	return the current user object (if any)
  */
-int kf_this_user(frame *f, int n, kfunc *kf)
+int kf_this_user(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     obj = comm_user();
-    if (obj != (object *) NULL) {
+    if (obj != (Object *) NULL) {
 	PUSH_OBJVAL(f, obj);
     } else {
 	*--f->sp = nil_value;
@@ -633,9 +633,9 @@ char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  * NAME:	kfun->query_ip_number()
  * DESCRIPTION:	return the ip number of a user
  */
-int kf_query_ip_number(frame *f, int n, kfunc *kf)
+int kf_query_ip_number(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
@@ -663,9 +663,9 @@ char pt_query_ip_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  * NAME:	kfun->query_ip_name()
  * DESCRIPTION:	return the ip name of a user
  */
-int kf_query_ip_name(frame *f, int n, kfunc *kf)
+int kf_query_ip_name(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
@@ -692,7 +692,7 @@ char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
  * NAME:	kfun->users()
  * DESCRIPTION:	return the array of users
  */
-int kf_users(frame *f, int n, kfunc *kf)
+int kf_users(Frame *f, int n, kfunc *kf)
 {
     PUSH_ARRVAL(f, comm_users(f->data));
     i_add_ticks(f, f->sp->u.array->size);
@@ -710,7 +710,7 @@ char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
  * NAME:	kfun->strlen()
  * DESCRIPTION:	return the length of a string
  */
-int kf_strlen(frame *f, int n, kfunc *kf)
+int kf_strlen(Frame *f, int n, kfunc *kf)
 {
     ssizet len;
 
@@ -732,10 +732,10 @@ char pt_allocate[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->allocate()
  * DESCRIPTION:	allocate an array
  */
-int kf_allocate(frame *f, int n, kfunc *kf)
+int kf_allocate(Frame *f, int n, kfunc *kf)
 {
     int i;
-    value *v;
+    Value *v;
 
     if (f->sp->u.number < 0) {
 	return 1;
@@ -760,10 +760,10 @@ char pt_allocate_int[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->allocate_int()
  * DESCRIPTION:	allocate an array of integers
  */
-int kf_allocate_int(frame *f, int n, kfunc *kf)
+int kf_allocate_int(Frame *f, int n, kfunc *kf)
 {
     int i;
-    value *v;
+    Value *v;
 
     if (f->sp->u.number < 0) {
 	return 1;
@@ -788,10 +788,10 @@ char pt_allocate_float[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->allocate_float()
  * DESCRIPTION:	allocate an array
  */
-int kf_allocate_float(frame *f, int n, kfunc *kf)
+int kf_allocate_float(Frame *f, int n, kfunc *kf)
 {
     int i;
-    value *v;
+    Value *v;
 
     if (f->sp->u.number < 0) {
 	return 1;
@@ -816,7 +816,7 @@ char pt_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->sizeof()
  * DESCRIPTION:	return the size of an array
  */
-int kf_sizeof(frame *f, int n, kfunc *kf)
+int kf_sizeof(Frame *f, int n, kfunc *kf)
 {
     unsigned short size;
 
@@ -838,9 +838,9 @@ char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->map_indices()
  * DESCRIPTION:	return the array of mapping indices
  */
-int kf_map_indices(frame *f, int n, kfunc *kf)
+int kf_map_indices(Frame *f, int n, kfunc *kf)
 {
-    array *a;
+    Array *a;
 
     a = map_indices(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
@@ -861,9 +861,9 @@ char pt_map_values[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->map_values()
  * DESCRIPTION:	return the array of mapping values
  */
-int kf_map_values(frame *f, int n, kfunc *kf)
+int kf_map_values(Frame *f, int n, kfunc *kf)
 {
-    array *a;
+    Array *a;
 
     a = map_values(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
@@ -884,7 +884,7 @@ char pt_map_sizeof[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->map_sizeof()
  * DESCRIPTION:	return the number of index/value pairs in a mapping
  */
-int kf_map_sizeof(frame *f, int n, kfunc *kf)
+int kf_map_sizeof(Frame *f, int n, kfunc *kf)
 {
     unsigned short size;
 
@@ -906,7 +906,7 @@ char pt_typeof[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  * NAME:	kfun->typeof()
  * DESCRIPTION:	return the type of a value
  */
-int kf_typeof(frame *f, int n, kfunc *kf)
+int kf_typeof(Frame *f, int n, kfunc *kf)
 {
     i_del_value(f->sp);
     PUT_INTVAL(f->sp, (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type);
@@ -924,7 +924,7 @@ char pt_error[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_STRING };
  * NAME:	kfun->error()
  * DESCRIPTION:	cause an error
  */
-int kf_error(frame *f, int n, kfunc *kf)
+int kf_error(Frame *f, int n, kfunc *kf)
 {
     serror(f->sp->u.string);
     return 0;
@@ -941,9 +941,9 @@ char pt_send_message[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  * NAME:	kfun->send_message()
  * DESCRIPTION:	send a message to a user
  */
-int kf_send_message(frame *f, int n, kfunc *kf)
+int kf_send_message(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     int num;
 
     if (f->sp->type != T_STRING && f->sp->type != T_INT) {
@@ -951,7 +951,7 @@ int kf_send_message(frame *f, int n, kfunc *kf)
     }
 
     num = 0;
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	obj = OBJR(f->oindex);
 	if (obj->count != 0) {
 	    if ((obj->flags & O_SPECIAL) == O_USER) {
@@ -985,13 +985,13 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
  * NAME:	kfun->send_datagram()
  * DESCRIPTION:	send a datagram to a user (non networkpackage function)
  */
-int kf_send_datagram(frame *f, int n, kfunc *kf)
+int kf_send_datagram(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     int num;
 
     num = 0;
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    num = comm_udpsend(obj, f->sp->u.string);
@@ -1014,11 +1014,11 @@ char pt_datagram_challenge[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
  * NAME:	kfun->datagram_challenge()
  * DESCRIPTION:	set the challenge for a datagram connection to attach
  */
-int kf_datagram_challenge(frame *f, int n, kfunc *kf)
+int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    comm_challenge(obj, f->sp->u.string);
@@ -1040,11 +1040,11 @@ char pt_block_input[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_INT };
  * NAME:	kfun->block_input()
  * DESCRIPTION:	block input for the current object
  */
-int kf_block_input(frame *f, int n, kfunc *kf)
+int kf_block_input(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	obj = OBJR(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    comm_block(obj, f->sp->u.number != 0);
@@ -1065,7 +1065,7 @@ char pt_time[] = { C_STATIC, 0, 0, 0, 6, T_INT };
  * NAME:	kfun->time()
  * DESCRIPTION:	return the current time
  */
-int kf_time(frame *f, int n, kfunc *kf)
+int kf_time(Frame *f, int n, kfunc *kf)
 {
     PUSH_INTVAL(f, P_time());
     return 0;
@@ -1082,9 +1082,9 @@ char pt_millitime[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (1 << REFSHIFT) };
  * NAME:	kfun->millitime()
  * DESCRIPTION:	return the current time in milliseconds
  */
-int kf_millitime(frame *f, int n, kfunc *kf)
+int kf_millitime(Frame *f, int n, kfunc *kf)
 {
-    array *a;
+    Array *a;
     unsigned short milli;
     xfloat flt;
 
@@ -1110,7 +1110,7 @@ char pt_call_out[] = { C_TYPECHECKED | C_STATIC | C_ELLIPSIS, 2, 1, 0, 9, T_INT,
  * NAME:	kfun->call_out()
  * DESCRIPTION:	start a call_out
  */
-int kf_call_out(frame *f, int nargs, kfunc *kf)
+int kf_call_out(Frame *f, int nargs, kfunc *kf)
 {
     Int delay;
     Uint mdelay;
@@ -1137,7 +1137,7 @@ int kf_call_out(frame *f, int nargs, kfunc *kf)
     } else {
 	return 2;
     }
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("call_out() in non-persistent object");
     }
 
@@ -1170,13 +1170,13 @@ char pt_remove_call_out[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_MIXED,
  * NAME:	kfun->remove_call_out()
  * DESCRIPTION:	remove a call_out
  */
-int kf_remove_call_out(frame *f, int n, kfunc *kf)
+int kf_remove_call_out(Frame *f, int n, kfunc *kf)
 {
     Int delay;
     unsigned short mdelay;
     xfloat flt1, flt2;
 
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("remove_call_out() in non-persistent object");
     }
     i_add_ticks(f, 10);
@@ -1204,7 +1204,7 @@ char pt_swapout[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  * NAME:	kfun->swapout()
  * DESCRIPTION:	swap out all objects
  */
-int kf_swapout(frame *f, int n, kfunc *kf)
+int kf_swapout(Frame *f, int n, kfunc *kf)
 {
     swapout();
 
@@ -1223,7 +1223,7 @@ char pt_old_dump_state[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  * NAME:	kfun->old_dump_state()
  * DESCRIPTION:	dump state
  */
-int kf_old_dump_state(frame *f, int n, kfunc *kf)
+int kf_old_dump_state(Frame *f, int n, kfunc *kf)
 {
     dump_state(FALSE);
 
@@ -1242,7 +1242,7 @@ char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
  * NAME:	kfun->dump_state()
  * DESCRIPTION:	dump state
  */
-int kf_dump_state(frame *f, int nargs, kfunc *kf)
+int kf_dump_state(Frame *f, int nargs, kfunc *kf)
 {
     bool incr;
 
@@ -1275,16 +1275,16 @@ char pt_connect[] = { C_TYPECHECKED | C_STATIC , 2, 0, 0, 8,
  * NAME:	kfun->connect
  * DESCRIPTION: connect to a server
  */
-int kf_connect(frame *f, int nargs, kfunc *kf)
+int kf_connect(Frame *f, int nargs, kfunc *kf)
 {
     char *addr, proto;
     unsigned short port;
-    object *obj;
+    Object *obj;
 
     UNREFERENCED_PARAMETER(nargs);
     proto = 0;
 
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("connect() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -1341,7 +1341,7 @@ char pt_open_port[] = { C_TYPECHECKED | C_STATIC, 1, 1, 0, 8,
  * NAME:	kfun->open_port
  * DESCRIPTION: open a listening port
  */
-int kf_open_port(frame *f, int nargs, kfunc *kf)
+int kf_open_port(Frame *f, int nargs, kfunc *kf)
 {
     unsigned short port;
     unsigned char protocol;
@@ -1350,7 +1350,7 @@ int kf_open_port(frame *f, int nargs, kfunc *kf)
 
     protocol = 0;
 
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("open_port() in non-persistent object");
     }
     obj = OBJW(f->oindex);
@@ -1405,7 +1405,7 @@ char pt_ports[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT)};
  * NAME:	kfun->ports()
  * DESCRIPTION:	return the array of port objects
  */
-int kf_ports(frame *f, int n, kfunc *kf)
+int kf_ports(Frame *f, int n, kfunc *kf)
 {
     PUSH_ARRVAL(f, comm_ports(f->data));
     i_add_ticks(f, f->sp->u.array->size);
@@ -1421,11 +1421,11 @@ char pt_close_user[] = { C_STATIC, 0, 0, 0, 6, T_VOID};
  * NAME:	kfun->close_user()
  * DESCRIPTION:	close connection and demote user object
  */
-int kf_close_user(frame *f, int n, kfunc *kf)
+int kf_close_user(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
 
-    if (f->lwobj != (array *) NULL) {
+    if (f->lwobj != (Array *) NULL) {
 	error("close_user() in non-persistent object");
     }
 
@@ -1454,11 +1454,11 @@ char pt_send_datagram[] = { C_TYPECHECKED | C_STATIC, 3,0,0,9,T_INT,
  * NAME:	kfun->send_datagram()
  * DESCRIPTION:	send a udp datagram (Network Package Function)
  */
-int kf_send_datagram(frame *f, int n, kfunc *kf)
+int kf_send_datagram(Frame *f, int n, kfunc *kf)
 {
-    object *obj;
+    Object *obj;
     int num;
-    string *str,*ip;
+    String *str,*ip;
     int port;
 
     num = 0;
@@ -1466,7 +1466,7 @@ int kf_send_datagram(frame *f, int n, kfunc *kf)
     port = (f->sp++)->u.number;
     ip = (f->sp++)->u.string;
     str = f->sp->u.string;
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
 	    num = comm_senddatagram(obj, str, ip, port);
 	}
@@ -1489,7 +1489,7 @@ char pt_old_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  * NAME:	kfun->old_shutdown()
  * DESCRIPTION:	shut down the mud
  */
-int kf_old_shutdown(frame *f, int n, kfunc *kf)
+int kf_old_shutdown(Frame *f, int n, kfunc *kf)
 {
     finish(FALSE);
 
@@ -1508,7 +1508,7 @@ char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
  * NAME:	kfun->shutdown()
  * DESCRIPTION:	shut down the mud
  */
-int kf_shutdown(frame *f, int nargs, kfunc *kf)
+int kf_shutdown(Frame *f, int nargs, kfunc *kf)
 {
     bool boot;
 
@@ -1540,9 +1540,9 @@ char pt_status[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7,
  * DESCRIPTION:	return an array with status information about the gamedriver
  *		or an object
  */
-int kf_status(frame *f, int nargs, kfunc *kf)
+int kf_status(Frame *f, int nargs, kfunc *kf)
 {
-    array *a;
+    Array *a;
     uindex n;
 
     i_add_ticks(f, 100);
@@ -1591,12 +1591,12 @@ char pt_new_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
  * NAME:	kfun->new_function()
  * DESCRIPTION: create a new function
  */
-int kf_new_function(frame *f, int nargs, kfunc *kf)
+int kf_new_function(Frame *f, int nargs, kfunc *kf)
 {
-    array *a;
+    Array *a;
     xfloat flt;
-    value *v, *elts;
-    object *obj;
+    Value *v, *elts;
+    Object *obj;
 
     a = arr_new(f->data, 4 + nargs);
     elts = a->elts;
@@ -1613,7 +1613,7 @@ int kf_new_function(frame *f, int nargs, kfunc *kf)
     /* object, function name, arg1, ..., argn */
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
-	if (f->lwobj == (array *) NULL) {
+	if (f->lwobj == (Array *) NULL) {
 	    PUT_OBJVAL(&elts[3], obj);
 	} else {
 	    PUT_LWOVAL(&elts[3], f->lwobj);
@@ -1645,10 +1645,10 @@ char pt_extend_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
  * NAME:	kfun->extend_function()
  * DESCRIPTION: extend a function
  */
-int kf_extend_function(frame *f, int nargs, kfunc *kf)
+int kf_extend_function(Frame *f, int nargs, kfunc *kf)
 {
-    array *a;
-    value *v, *elts;
+    Array *a;
+    Value *v, *elts;
     int n;
 
     --nargs;
@@ -1691,11 +1691,11 @@ char pt_call_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_MIXED,
  * NAME:	kfun->call_function()
  * DESCRIPTION: call a function
  */
-int kf_call_function(frame *f, int nargs, kfunc *kf)
+int kf_call_function(Frame *f, int nargs, kfunc *kf)
 {
-    array *a, *lwobj;
-    value *elts, *v, *w;
-    object *obj;
+    Array *a, *lwobj;
+    Value *elts, *v, *w;
+    Object *obj;
     int n;
 
     --nargs;
@@ -1732,7 +1732,7 @@ int kf_call_function(frame *f, int nargs, kfunc *kf)
     n = a->size - 5;
     if (n != 0) {
 	i_grow_stack(f, n);
-	memmove(f->sp - n, f->sp, nargs * sizeof(value));
+	memmove(f->sp - n, f->sp, nargs * sizeof(Value));
 	f->sp -= n;
 
 	v = f->sp + nargs;

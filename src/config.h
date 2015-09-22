@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -106,10 +106,10 @@ extern Uint   conf_dsize	(char*);
 extern Uint   conf_dconv	(char*, char*, char*, Uint);
 extern void   conf_dread	(int, char*, char*, Uint);
 
-extern bool   conf_statusi	(frame*, Int, value*);
-extern array *conf_status	(frame*);
-extern bool   conf_objecti	(dataspace*, object*, Int, value*);
-extern array *conf_object	(dataspace*, object*);
+extern bool   conf_statusi	(Frame*, Int, Value*);
+extern Array *conf_status	(Frame*);
+extern bool   conf_objecti	(Dataspace*, Object*, Int, Value*);
+extern Array *conf_object	(Dataspace*, Object*);
 
 /* utility functions */
 extern Int strtoint		(char**);

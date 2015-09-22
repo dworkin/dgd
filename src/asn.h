@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,15 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-string *asn_add	   (frame*, string*, string*, string*);
-string *asn_sub	   (frame*, string*, string*, string*);
-int     asn_cmp    (frame*, string*, string*);
-string *asn_mult   (frame*, string*, string*, string*);
-string *asn_div	   (frame*, string*, string*, string*);
-string *asn_mod	   (frame*, string*, string*);
-string *asn_pow	   (frame*, string*, string*, string*);
-string *asn_lshift (frame*, string*, Int, string*);
-string *asn_rshift (frame*, string*, Int);
-string *asn_and    (frame*, string*, string*);
-string *asn_or     (frame*, string*, string*);
-string *asn_xor    (frame*, string*, string*);
+String *asn_add	   (Frame*, String*, String*, String*);
+String *asn_sub	   (Frame*, String*, String*, String*);
+int     asn_cmp    (Frame*, String*, String*);
+String *asn_mult   (Frame*, String*, String*, String*);
+String *asn_div	   (Frame*, String*, String*, String*);
+String *asn_mod	   (Frame*, String*, String*);
+String *asn_pow	   (Frame*, String*, String*, String*);
+String *asn_lshift (Frame*, String*, Int, String*);
+String *asn_rshift (Frame*, String*, Int);
+String *asn_and    (Frame*, String*, String*);
+String *asn_or     (Frame*, String*, String*);
+String *asn_xor    (Frame*, String*, String*);

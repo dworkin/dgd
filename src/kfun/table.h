@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef void (*extfunc)(frame *, int, value *);
+typedef void (*extfunc)(Frame *, int, Value *);
 typedef struct kfunc {
     char *name;						/* function name */
     char *proto;					/* prototype */
-    int (*func)(frame*, int, struct kfunc*);		/* function address */
+    int (*func)(Frame*, int, struct kfunc*);		/* function address */
     extfunc ext;					/* extension */
     short version;					/* version number */
 } kfunc;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -425,13 +425,13 @@ char *P_crypt(char *passwd, char *salt)
  * NAME:	P->encrypt_des_key()
  * DESCRIPTION:	return a DES key prepared for encryption
  */
-string *P_encrypt_des_key(frame *f, string *keystr)
+String *P_encrypt_des_key(Frame *f, String *keystr)
 {
     Uint k, *key;
     char *p;
     int i;
     Uint keys[32];
-    string *str;
+    String *str;
 
     if (keystr->len != 8) {
 	error("Wrong key length");
@@ -457,13 +457,13 @@ string *P_encrypt_des_key(frame *f, string *keystr)
  * NAME:	P->decrypt_des_key()
  * DESCRIPTION:	return a DES key prepared for decryption
  */
-string *P_decrypt_des_key(frame *f, string *keystr)
+String *P_decrypt_des_key(Frame *f, String *keystr)
 {
     Uint k, *key;
     char *p;
     int i;
     Uint keys[32];
-    string *str;
+    String *str;
 
     if (keystr->len != 8) {
 	error("Wrong key length");
@@ -495,14 +495,14 @@ string *P_decrypt_des_key(frame *f, string *keystr)
  * NAME:	P->encrypt_des()
  * DESCRIPTION:	encrypt (or decrypt) a string
  */
-string *P_encrypt_des(frame *f, string *keystr, string *mesg)
+String *P_encrypt_des(Frame *f, String *keystr, String *mesg)
 {
     Uint L, R, T, *key;
     char *p, *q;
     int i;
     ssizet len;
     Uint keys[32];
-    string *str;
+    String *str;
 
     if (keystr->len != 32 * sizeof(Uint)) {
 	error("Wrong key length");

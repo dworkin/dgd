@@ -25,7 +25,7 @@
 /*
  * prototypes
  */
-# define FUNCDEF(name, func, proto, v) extern int func(frame*, int, struct kfunc*); extern char proto[];
+# define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, struct kfunc*); extern char proto[];
 # include "builtin.c"
 # include "std.c"
 # include "file.c"
@@ -54,13 +54,13 @@ kfindex kfind[KFTAB_SIZE];	/* n -> index */
 static kfindex kfx[KFTAB_SIZE];	/* index -> n */
 int nkfun, ne, nd, nh;		/* # kfuns */
 
-extern void kf_enc(frame *, int, value *);
-extern void kf_enc_key(frame *, int, value *);
-extern void kf_dec(frame *, int, value *);
-extern void kf_dec_key(frame *, int, value *);
-extern void kf_xcrypt(frame *, int, value *);
-extern void kf_md5(frame *, int, value *);
-extern void kf_sha1(frame *, int, value *);
+extern void kf_enc(Frame *, int, Value *);
+extern void kf_enc_key(Frame *, int, Value *);
+extern void kf_dec(Frame *, int, Value *);
+extern void kf_dec_key(Frame *, int, Value *);
+extern void kf_xcrypt(Frame *, int, Value *);
+extern void kf_md5(Frame *, int, Value *);
+extern void kf_sha1(Frame *, int, Value *);
 
 /*
  * NAME:	kfun->clear()
@@ -88,9 +88,9 @@ void kf_clear()
  * NAME:	kfun->callgate()
  * DESCRIPTION:	extra kfun call gate
  */
-static int kf_callgate(frame *f, int nargs, kfunc *kf)
+static int kf_callgate(Frame *f, int nargs, kfunc *kf)
 {
-    value val;
+    Value val;
 
     val = nil_value;
     (kf->ext)(f, nargs, &val);
@@ -320,9 +320,9 @@ int kf_func(char *name)
  * NAME:	kfun->encrypt()
  * DESCRIPTION:	encrypt a string
  */
-int kf_encrypt(frame *f, int nargs, kfunc *func)
+int kf_encrypt(Frame *f, int nargs, kfunc *func)
 {
-    value val;
+    Value val;
     int n;
 
     n = kf_index(kfenc, 0, ne, f->sp[nargs - 1].u.string->text);
@@ -341,9 +341,9 @@ int kf_encrypt(frame *f, int nargs, kfunc *func)
  * NAME:	kfun->decrypt()
  * DESCRIPTION:	decrypt a string
  */
-int kf_decrypt(frame *f, int nargs, kfunc *func)
+int kf_decrypt(Frame *f, int nargs, kfunc *func)
 {
-    value val;
+    Value val;
     int n;
 
     n = kf_index(kfdec, 0, nd, f->sp[nargs - 1].u.string->text);
@@ -362,9 +362,9 @@ int kf_decrypt(frame *f, int nargs, kfunc *func)
  * NAME:	kfun->hash_string()
  * DESCRIPTION:	hash a string
  */
-int kf_hash_string(frame *f, int nargs, kfunc *func)
+int kf_hash_string(Frame *f, int nargs, kfunc *func)
 {
-    value val;
+    Value val;
     int n;
 
     n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].u.string->text);

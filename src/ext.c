@@ -36,7 +36,7 @@
  * NAME:	ext->frame_object()
  * DESCRIPTION:	return the current object
  */
-static object *ext_frame_object(frame *f)
+static Object *ext_frame_object(Frame *f)
 {
     return (f->lwobj == NULL) ? OBJW(f->oindex) : NULL;
 }
@@ -45,7 +45,7 @@ static object *ext_frame_object(frame *f)
  * NAME:	ext->frame_dataspace()
  * DESCRIPTION:	return the current dataspace
  */
-static dataspace *ext_frame_dataspace(frame *f)
+static Dataspace *ext_frame_dataspace(Frame *f)
 {
     return f->data;
 }
@@ -54,7 +54,7 @@ static dataspace *ext_frame_dataspace(frame *f)
  * NAME:	ext->frame_arg()
  * DESCRIPTION:	return the given argument
  */
-static value *ext_frame_arg(frame *f, int nargs, int arg)
+static Value *ext_frame_arg(Frame *f, int nargs, int arg)
 {
     return f->sp + nargs - arg - 1;
 }
@@ -63,7 +63,7 @@ static value *ext_frame_arg(frame *f, int nargs, int arg)
  * NAME:	ext->frame_atomic()
  * DESCRIPTION:	running atomically?
  */
-static int ext_frame_atomic(frame *f)
+static int ext_frame_atomic(Frame *f)
 {
     return (f->level != 0);
 }
@@ -72,7 +72,7 @@ static int ext_frame_atomic(frame *f)
  * NAME:	ext->value_type()
  * DESCRIPTION:	return the type of a value
  */
-static int ext_value_type(value *val)
+static int ext_value_type(Value *val)
 {
     return val->type;
 }
@@ -81,7 +81,7 @@ static int ext_value_type(value *val)
  * NAME:	ext->value_nil()
  * DESCRIPTION:	return nil
  */
-static value *ext_value_nil()
+static Value *ext_value_nil()
 {
     return &nil_value;
 }
@@ -90,9 +90,9 @@ static value *ext_value_nil()
  * NAME:	ext->value_temp()
  * DESCRIPTION:	return a scratch value
  */
-static value *ext_value_temp(dataspace *data)
+static Value *ext_value_temp(Dataspace *data)
 {
-    static value temp;
+    static Value temp;
 
     UNREFERENCED_PARAMETER(data);
     return &temp;
@@ -102,7 +102,7 @@ static value *ext_value_temp(dataspace *data)
  * NAME:	ext->int_getval()
  * DESCRIPTION:	retrieve an int from a value
  */
-static Int ext_int_getval(value *val)
+static Int ext_int_getval(Value *val)
 {
     return val->u.number;
 }
@@ -111,7 +111,7 @@ static Int ext_int_getval(value *val)
  * NAME:	ext->int_putval()
  * DESCRIPTION:	store an int in a value
  */
-static void ext_int_putval(value *val, Int i)
+static void ext_int_putval(Value *val, Int i)
 {
     PUT_INTVAL(val, i);
 }
@@ -121,7 +121,7 @@ static void ext_int_putval(value *val, Int i)
  * NAME:	ext->float_getval()
  * DESCRIPTION:	retrieve a float from a value
  */
-static long double ext_float_getval(value *val)
+static long double ext_float_getval(Value *val)
 {
     xfloat flt;
     register double d;
@@ -140,7 +140,7 @@ static long double ext_float_getval(value *val)
  * NAME:	ext->float_putval()
  * DESCRIPTION:	store a float in a value
  */
-static void ext_float_putval(value *val, long double ld)
+static void ext_float_putval(Value *val, long double ld)
 {
     double d;
     xfloat flt;
@@ -166,7 +166,7 @@ static void ext_float_putval(value *val, long double ld)
  * NAME:	ext->string_getval()
  * DESCRIPTION:	retrieve a string from a value
  */
-static string *ext_string_getval(value *val)
+static String *ext_string_getval(Value *val)
 {
     return val->u.string;
 }
@@ -175,7 +175,7 @@ static string *ext_string_getval(value *val)
  * NAME:	ext->string_putval()
  * DESCRIPTION:	store a string in a value
  */
-static void ext_string_putval(value *val, string *str)
+static void ext_string_putval(Value *val, String *str)
 {
     PUT_STRVAL_NOREF(val, str);
 }
@@ -184,7 +184,7 @@ static void ext_string_putval(value *val, string *str)
  * NAME:	ext->string_new()
  * DESCRIPTION:	create a new string
  */
-static string *ext_string_new(dataspace *data, char *text, int len)
+static String *ext_string_new(Dataspace *data, char *text, int len)
 {
     UNREFERENCED_PARAMETER(data);
     return str_new(text, len);
@@ -194,7 +194,7 @@ static string *ext_string_new(dataspace *data, char *text, int len)
  * NAME:	ext->string_text()
  * DESCRIPTION:	return string text
  */
-static char *ext_string_text(string *str)
+static char *ext_string_text(String *str)
 {
     return str->text;
 }
@@ -203,7 +203,7 @@ static char *ext_string_text(string *str)
  * NAME:	ext->string_length()
  * DESCRIPTION:	return string length
  */
-static int ext_string_length(string *str)
+static int ext_string_length(String *str)
 {
     return str->len;
 }
@@ -212,7 +212,7 @@ static int ext_string_length(string *str)
  * NAME:	ext->object_putval()
  * DESCRIPTION:	store an object in a value
  */
-static void ext_object_putval(value *val, object *obj)
+static void ext_object_putval(Value *val, Object *obj)
 {
     PUT_OBJVAL(val, obj);
 }
@@ -221,7 +221,7 @@ static void ext_object_putval(value *val, object *obj)
  * NAME:	ext->object_name()
  * DESCRIPTION:	store the name of an object
  */
-static char *ext_object_name(frame *f, object *obj, char *buf)
+static char *ext_object_name(Frame *f, Object *obj, char *buf)
 {
     UNREFERENCED_PARAMETER(f);
     return o_name(buf, obj);
@@ -231,7 +231,7 @@ static char *ext_object_name(frame *f, object *obj, char *buf)
  * NAME:	ext->object_isspecial()
  * DESCRIPTION:	return TRUE if the given object is special, FALSE otherwise
  */
-static int ext_object_isspecial(object *obj)
+static int ext_object_isspecial(Object *obj)
 {
     return ((obj->flags & O_SPECIAL) != 0);
 }
@@ -240,7 +240,7 @@ static int ext_object_isspecial(object *obj)
  * NAME:	ext->object_ismarked()
  * DESCRIPTION:	return TRUE if the given object is marked, FALSE otherwise
  */
-static int ext_object_ismarked(object *obj)
+static int ext_object_ismarked(Object *obj)
 {
     return ((obj->flags & O_SPECIAL) == O_SPECIAL);
 }
@@ -249,7 +249,7 @@ static int ext_object_ismarked(object *obj)
  * NAME:	ext->object_mark()
  * DESCRIPTION:	mark the given object
  */
-static void ext_object_mark(object *obj)
+static void ext_object_mark(Object *obj)
 {
     obj->flags |= O_SPECIAL;
 }
@@ -258,7 +258,7 @@ static void ext_object_mark(object *obj)
  * NAME:	ext->object_unmark()
  * DESCRIPTION:	unmark the given object
  */
-static void ext_object_unmark(object *obj)
+static void ext_object_unmark(Object *obj)
 {
     obj->flags &= ~O_SPECIAL;
 }
@@ -267,7 +267,7 @@ static void ext_object_unmark(object *obj)
  * NAME:	ext->array_getval()
  * DESCRIPTION:	retrieve an array from a value
  */
-static array *ext_array_getval(value *val)
+static Array *ext_array_getval(Value *val)
 {
     return val->u.array;
 }
@@ -276,7 +276,7 @@ static array *ext_array_getval(value *val)
  * NAME:	ext->array_putval()
  * DESCRIPTION:	store an array in a value
  */
-static void ext_array_putval(value *val, array *a)
+static void ext_array_putval(Value *val, Array *a)
 {
     PUT_ARRVAL_NOREF(val, a);
 }
@@ -285,7 +285,7 @@ static void ext_array_putval(value *val, array *a)
  * NAME:	ext->array_new()
  * DESCRIPTION:	create a new array
  */
-static array *ext_array_new(dataspace *data, int size)
+static Array *ext_array_new(Dataspace *data, int size)
 {
     return arr_ext_new(data, size);
 }
@@ -294,7 +294,7 @@ static array *ext_array_new(dataspace *data, int size)
  * NAME:	ext->array_index()
  * DESCRIPTION:	return an array element
  */
-static value *ext_array_index(array *a, int i)
+static Value *ext_array_index(Array *a, int i)
 {
     return &d_get_elts(a)[i];
 }
@@ -303,7 +303,7 @@ static value *ext_array_index(array *a, int i)
  * NAME:	ext->array_assign()
  * DESCRIPTION:	assign a value to an array element
  */
-static void ext_array_assign(dataspace *data, array *a, int i, value *val)
+static void ext_array_assign(Dataspace *data, Array *a, int i, Value *val)
 {
     d_assign_elt(data, a, &d_get_elts(a)[i], val);
 }
@@ -312,7 +312,7 @@ static void ext_array_assign(dataspace *data, array *a, int i, value *val)
  * NAME:	ext->array_size()
  * DESCRIPTION:	return the size of an array
  */
-static int ext_array_size(array *a)
+static int ext_array_size(Array *a)
 {
     return a->size;
 }
@@ -321,7 +321,7 @@ static int ext_array_size(array *a)
  * NAME:	ext->mapping_putval()
  * DESCRIPTION:	store a mapping in a value
  */
-static void ext_mapping_putval(value *val, array *m)
+static void ext_mapping_putval(Value *val, Array *m)
 {
     PUT_MAPVAL_NOREF(val, m);
 }
@@ -330,7 +330,7 @@ static void ext_mapping_putval(value *val, array *m)
  * NAME:	ext->mapping_new()
  * DESCRIPTION:	create a new mapping
  */
-static array *ext_mapping_new(dataspace *data)
+static Array *ext_mapping_new(Dataspace *data)
 {
     return map_new(data, 0);
 }
@@ -339,26 +339,26 @@ static array *ext_mapping_new(dataspace *data)
  * NAME:	ext->mapping_index()
  * DESCRIPTION:	return a value from a mapping
  */
-static value *ext_mapping_index(array *m, value *idx)
+static Value *ext_mapping_index(Array *m, Value *idx)
 {
-    return map_index(m->primary->data, m, idx, (value *) NULL, (value *) NULL);
+    return map_index(m->primary->data, m, idx, (Value *) NULL, (Value *) NULL);
 }
 
 /*
  * NAME:	ext->mapping_assign()
  * DESCRIPTION:	assign to a mapping value
  */
-static void ext_mapping_assign(dataspace *data, array *m, value *idx,
-			       value *val)
+static void ext_mapping_assign(Dataspace *data, Array *m, Value *idx,
+			       Value *val)
 {
-    map_index(data, m, idx, val, (value *) NULL);
+    map_index(data, m, idx, val, (Value *) NULL);
 }
 
 /*
  * NAME:	ext->mapping_enum()
  * DESCRIPTION:	return the nth enumerated index
  */
-static value *ext_mapping_enum(array *m, int i)
+static Value *ext_mapping_enum(Array *m, int i)
 {
     map_compact(m->primary->data, m);
     return &d_get_elts(m)[i];
@@ -368,7 +368,7 @@ static value *ext_mapping_enum(array *m, int i)
  * NAME:	ext->mapping_size()
  * DESCRIPTION:	return the size of a mapping
  */
-static int ext_mapping_size(array *m)
+static int ext_mapping_size(Array *m)
 {
     return map_size(m->primary->data, m);
 }
@@ -377,7 +377,7 @@ static int ext_mapping_size(array *m)
  * NAME:	ext->runtime_error()
  * DESCRIPTION:	handle an error at runtime
  */
-static void ext_runtime_error(frame *f, char *mesg)
+static void ext_runtime_error(Frame *f, char *mesg)
 {
     UNREFERENCED_PARAMETER(f);
     error(mesg);
@@ -419,10 +419,10 @@ void ext_kfuns(kfindex *map, char *protos, int nkfun)
  * NAME:        ext->compile()
  * DESCRIPTION: JIT compile an object
  */
-void ext_compile(object *obj, char *ftypes, char *vtypes)
+void ext_compile(Object *obj, char *ftypes, char *vtypes)
 {
     if (compile != NULL) {
-        control *ctrl;
+        Control *ctrl;
 
         ctrl = obj->ctrl;
         (*compile)(obj->index, obj->count, ctrl->ninherits,

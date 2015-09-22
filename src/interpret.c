@@ -40,19 +40,19 @@ typedef struct _inhash_ {
     Uint sclass;		/* class name string reference */
 } inhash;
 
-static value stack[MIN_STACK];	/* initial stack */
-static frame topframe;		/* top frame */
+static Value stack[MIN_STACK];	/* initial stack */
+static Frame topframe;		/* top frame */
 static rlinfo rlim;		/* top rlimits info */
-frame *cframe;			/* current frame */
+Frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 static bool stricttc;		/* strict typechecking */
 static inhash ihash[INHASHSZ];	/* instanceof hashtable */
 
 int nil_type;			/* type of nil value */
-value zero_int = { T_INT, TRUE };
-value zero_float = { T_FLOAT, TRUE };
-value nil_value = { T_NIL, TRUE };
+Value zero_int = { T_INT, TRUE };
+Value zero_float = { T_FLOAT, TRUE };
+Value nil_value = { T_NIL, TRUE };
 
 /*
  * NAME:	interpret->init()
@@ -83,7 +83,7 @@ void i_init(char *create, int flag)
  * NAME:	interpret->ref_value()
  * DESCRIPTION:	reference a value
  */
-void i_ref_value(value *v)
+void i_ref_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
@@ -102,7 +102,7 @@ void i_ref_value(value *v)
  * NAME:	interpret->del_value()
  * DESCRIPTION:	dereference a value (not an lvalue)
  */
-void i_del_value(value *v)
+void i_del_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
@@ -121,9 +121,9 @@ void i_del_value(value *v)
  * NAME:	interpret->copy()
  * DESCRIPTION:	copy values from one place to another
  */
-void i_copy(value *v, value *w, unsigned int len)
+void i_copy(Value *v, Value *w, unsigned int len)
 {
-    value *o;
+    Value *o;
 
     for ( ; len != 0; --len) {
 	switch (w->type) {
@@ -161,11 +161,11 @@ void i_copy(value *v, value *w, unsigned int len)
  * DESCRIPTION:	check if there is room on the stack for new values; if not,
  *		make space
  */
-void i_grow_stack(frame *f, int size)
+void i_grow_stack(Frame *f, int size)
 {
     if (f->sp < f->lip + size + MIN_STACK) {
 	int spsize, lisize;
-	value *v, *stk;
+	Value *v, *stk;
 	intptr_t offset;
 
 	/*
@@ -174,24 +174,24 @@ void i_grow_stack(frame *f, int size)
 	spsize = f->fp - f->sp;
 	lisize = f->lip - f->stack;
 	size = ALGN(spsize + lisize + size + MIN_STACK, 8);
-	stk = ALLOC(value, size);
+	stk = ALLOC(Value, size);
 	offset = (intptr_t) (stk + size) - (intptr_t) f->fp;
 
 	/* move lvalue index stack values */
 	if (lisize != 0) {
-	    memcpy(stk, f->stack, lisize * sizeof(value));
+	    memcpy(stk, f->stack, lisize * sizeof(Value));
 	}
 	f->lip = stk + lisize;
 
 	/* move stack values */
 	v = stk + size;
 	if (spsize != 0) {
-	    memcpy(v - spsize, f->sp, spsize * sizeof(value));
+	    memcpy(v - spsize, f->sp, spsize * sizeof(Value));
 	    do {
 		--v;
 		if ((v->type == T_LVALUE || v->type == T_SLVALUE) &&
 		    v->u.lval >= f->sp && v->u.lval < f->fp) {
-		    v->u.lval = (value *) ((intptr_t) v->u.lval + offset);
+		    v->u.lval = (Value *) ((intptr_t) v->u.lval + offset);
 		}
 	    } while (--spsize > 0);
 	}
@@ -214,9 +214,9 @@ void i_grow_stack(frame *f, int size)
  * NAME:	interpret->push_value()
  * DESCRIPTION:	push a value on the stack
  */
-void i_push_value(frame *f, value *v)
+void i_push_value(Frame *f, Value *v)
 {
-    value *o;
+    Value *o;
 
     *--f->sp = *v;
     switch (v->type) {
@@ -256,9 +256,9 @@ void i_push_value(frame *f, value *v)
  * NAME:	interpret->pop()
  * DESCRIPTION:	pop a number of values (can be lvalues) from the stack
  */
-void i_pop(frame *f, int n)
+void i_pop(Frame *f, int n)
 {
-    value *v;
+    Value *v;
 
     for (v = f->sp; --n >= 0; v++) {
 	switch (v->type) {
@@ -325,13 +325,13 @@ void i_pop(frame *f, int n)
  * NAME:	interpret->reverse()
  * DESCRIPTION:	reverse the order of arguments on the stack
  */
-value *i_reverse(frame *f, int n)
+Value *i_reverse(Frame *f, int n)
 {
     if (f->p_ctrl->flags & CTRL_VM_1_0) {
-	value sp[MAX_LOCALS];
-	value lip[3 * MAX_LOCALS];
-	value *v1, *v2, *w1, *w2;
-	value *top;
+	Value sp[MAX_LOCALS];
+	Value lip[3 * MAX_LOCALS];
+	Value *v1, *v2, *w1, *w2;
+	Value *top;
 
 	top = f->sp + n;
 	if (n > 1) {
@@ -342,7 +342,7 @@ value *i_reverse(frame *f, int n)
 	    v2 = sp;
 	    w1 = lip;
 	    w2 = f->lip;
-	    memcpy(v2, v1, n * sizeof(value));
+	    memcpy(v2, v1, n * sizeof(Value));
 	    v1 += n;
 
 	    do {
@@ -388,13 +388,13 @@ value *i_reverse(frame *f, int n)
 	     */
 	    n = f->lip - w2;
 	    if (n > 1) {
-		memcpy(w2, lip, n * sizeof(value));
+		memcpy(w2, lip, n * sizeof(Value));
 	    }
 	}
 	return top;
     } else {
-	value stack[MAX_LOCALS * 6];
-	value *v, *w;
+	Value stack[MAX_LOCALS * 6];
+	Value *v, *w;
 	int size;
 
 	size = 0;
@@ -419,7 +419,7 @@ value *i_reverse(frame *f, int n)
 	    size += (((v->u.number >> 24) & 0xf) == T_CLASS);
 	    v += size;
 	} else if (n > 1) {
-	    w = stack + sizeof(stack) / sizeof(value);
+	    w = stack + sizeof(stack) / sizeof(Value);
 	    do {
 		switch (v->u.number >> 28) {
 		case LVAL_LOCAL:
@@ -440,11 +440,11 @@ value *i_reverse(frame *f, int n)
 		size += (((v->u.number >> 24) & 0xf) == T_CLASS);
 
 		w -= size;
-		memcpy(w, v, size * sizeof(value));
+		memcpy(w, v, size * sizeof(Value));
 		v += size;
 	    } while (--n != 0);
 
-	    memcpy(f->sp, w, (v - f->sp) * sizeof(value));
+	    memcpy(f->sp, w, (v - f->sp) * sizeof(Value));
 	}
 
 	return v;
@@ -455,11 +455,11 @@ value *i_reverse(frame *f, int n)
  * NAME:	interpret->odest()
  * DESCRIPTION:	replace all occurrences of an object on the stack by nil
  */
-void i_odest(frame *prev, object *obj)
+void i_odest(Frame *prev, Object *obj)
 {
-    frame *f;
+    Frame *f;
     Uint count;
-    value *v;
+    Value *v;
     unsigned short n;
 
     count = obj->count;
@@ -503,7 +503,7 @@ void i_odest(frame *prev, object *obj)
 	}
 
 	prev = f->prev;
-	if (prev == (frame *) NULL) {
+	if (prev == (Frame *) NULL) {
 	    break;
 	}
 	if ((f->func->sclass & C_ATOMIC) && !prev->atomic) {
@@ -536,7 +536,7 @@ void i_odest(frame *prev, object *obj)
  * NAME:	interpret->string()
  * DESCRIPTION:	push a string constant on the stack
  */
-void i_string(frame *f, int inherit, unsigned int index)
+void i_string(Frame *f, int inherit, unsigned int index)
 {
     PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, inherit, index));
 }
@@ -545,14 +545,14 @@ void i_string(frame *f, int inherit, unsigned int index)
  * NAME:	interpret->aggregate()
  * DESCRIPTION:	create an array on the stack
  */
-void i_aggregate(frame *f, unsigned int size)
+void i_aggregate(Frame *f, unsigned int size)
 {
-    array *a;
+    Array *a;
 
     if (size == 0) {
 	a = arr_new(f->data, 0L);
     } else {
-	value *v, *elts;
+	Value *v, *elts;
 
 	i_add_ticks(f, size);
 	a = arr_new(f->data, (long) size);
@@ -571,14 +571,14 @@ void i_aggregate(frame *f, unsigned int size)
  * NAME:	interpret->map_aggregate()
  * DESCRIPTION:	create a mapping on the stack
  */
-void i_map_aggregate(frame *f, unsigned int size)
+void i_map_aggregate(Frame *f, unsigned int size)
 {
-    array *a;
+    Array *a;
 
     if (size == 0) {
 	a = map_new(f->data, 0L);
     } else {
-	value *v, *elts;
+	Value *v, *elts;
 
 	i_add_ticks(f, size);
 	a = map_new(f->data, (long) size);
@@ -606,11 +606,11 @@ void i_map_aggregate(frame *f, unsigned int size)
  * DESCRIPTION:	push the values in an array on the stack, return the size
  *		of the array - 1
  */
-static int i_spread0(frame *f, int n, int vtype, Uint sclass)
+static int i_spread0(Frame *f, int n, int vtype, Uint sclass)
 {
-    array *a;
+    Array *a;
     int i;
-    value *v;
+    Value *v;
 
     if (f->sp->type != T_ARRAY) {
 	error("Spread of non-array");
@@ -664,11 +664,11 @@ static int i_spread0(frame *f, int n, int vtype, Uint sclass)
  * DESCRIPTION:	push the values in an array on the stack, return the number of
  *		extra arguments pushed
  */
-int i_spread1(frame *f, int n)
+int i_spread1(Frame *f, int n)
 {
-    array *a;
+    Array *a;
     int i;
-    value *v;
+    Value *v;
 
     if (f->sp->type != T_ARRAY) {
 	error("Spread of non-array");
@@ -709,12 +709,12 @@ int i_spread1(frame *f, int n)
  * NAME:	interpret->global()
  * DESCRIPTION:	push a global value on the stack
  */
-void i_global(frame *f, int inherit, int index)
+void i_global(Frame *f, int inherit, int index)
 {
     i_add_ticks(f, 4);
     inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
     inherit = f->ctrl->inherits[inherit].varoffset;
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	i_push_value(f, d_get_variable(f->data, inherit + index));
     } else {
 	i_push_value(f, &f->lwobj->elts[2 + inherit + index]);
@@ -725,12 +725,12 @@ void i_global(frame *f, int inherit, int index)
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint sclass)
+void i_global_lvalue(Frame *f, int inherit, int index, int vtype, Uint sclass)
 {
     i_add_ticks(f, 4);
     inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
     inherit = f->ctrl->inherits[inherit].varoffset;
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	(--f->sp)->type = T_LVALUE;
 	f->sp->oindex = vtype;
 	f->sp->u.lval = d_get_variable(f->data, inherit + index);
@@ -752,14 +752,14 @@ void i_global_lvalue(frame *f, int inherit, int index, int vtype, Uint sclass)
  * NAME:	interpret->operator()
  * DESCRIPTION:	index or indexed assignment
  */
-static void i_operator(frame *f, array *lwobj, char *op, int nargs, value *var,
-		       value *idx, value *val)
+static void i_operator(Frame *f, Array *lwobj, char *op, int nargs, Value *var,
+		       Value *idx, Value *val)
 {
     i_push_value(f, idx);
     if (nargs > 1) {
 	i_push_value(f, val);
     }
-    if (!i_call(f, (object *) NULL, lwobj, op, strlen(op), TRUE, nargs)) {
+    if (!i_call(f, (Object *) NULL, lwobj, op, strlen(op), TRUE, nargs)) {
 	error("Index on bad type");
     }
 
@@ -770,11 +770,11 @@ static void i_operator(frame *f, array *lwobj, char *op, int nargs, value *var,
  * NAME:	interpret->index()
  * DESCRIPTION:	index a value, REPLACING it with the indexed value
  */
-void i_index(frame *f)
+void i_index(Frame *f)
 {
     int i;
-    value *aval, *ival, *val;
-    array *a;
+    Value *aval, *ival, *val;
+    Array *a;
 
     val = NULL;
     i_add_ticks(f, 2);
@@ -802,8 +802,8 @@ void i_index(frame *f)
 	break;
 
     case T_MAPPING:
-	val = map_index(f->data, aval->u.array, ival, (value *) NULL,
-			(value *) NULL);
+	val = map_index(f->data, aval->u.array, ival, (Value *) NULL,
+			(Value *) NULL);
 	i_del_value(ival);
 	break;
 
@@ -844,7 +844,7 @@ void i_index(frame *f)
  * NAME:	interpret->index2()
  * DESCRIPTION:	index a value
  */
-void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
+void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 {
     int i;
 
@@ -880,7 +880,7 @@ void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
 	break;
 
     case T_LWOBJECT:
-	i_operator(f, aval->u.array, "[]", 1, val, ival, (value *) NULL);
+	i_operator(f, aval->u.array, "[]", 1, val, ival, (Value *) NULL);
 	if (!keep) {
 	    i_del_value(ival);
 	}
@@ -923,10 +923,10 @@ void i_index2(frame *f, value *aval, value *ival, value *val, bool keep)
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(frame *f, int vtype, Uint sclass)
+void i_index_lvalue(Frame *f, int vtype, Uint sclass)
 {
     int i;
-    value *lval, *ival, *val;
+    Value *lval, *ival, *val;
 
     i_add_ticks(f, 2);
     ival = f->sp++;
@@ -1044,8 +1044,8 @@ void i_index_lvalue(frame *f, int vtype, Uint sclass)
 	break;
 
     case T_MLVALUE:
-	val = map_index(f->data, lval->u.array, &f->lip[-1], (value *) NULL,
-			(value *) NULL);
+	val = map_index(f->data, lval->u.array, &f->lip[-1], (Value *) NULL,
+			(Value *) NULL);
 	switch (val->type) {
 	case T_STRING:
 	    if (ival->type != T_INT) {
@@ -1129,7 +1129,7 @@ char *i_typename(char *buf, unsigned int type)
  * NAME:	interpret->classname()
  * DESCRIPTION:	return the name of a class
  */
-char *i_classname(frame *f, Uint sclass)
+char *i_classname(Frame *f, Uint sclass)
 {
     return d_get_strconst(f->p_ctrl, sclass >> 16, sclass & 0xffff)->text;
 }
@@ -1138,14 +1138,14 @@ char *i_classname(frame *f, Uint sclass)
  * NAME:	interpret->instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-int i_instanceof(frame *f, unsigned int oindex, Uint sclass)
+int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
 {
     inhash *h;
     char *prog;
     unsigned short i;
     dinherit *inh;
-    object *obj;
-    control *ctrl;
+    Object *obj;
+    Control *ctrl;
 
     /* first try hash table */
     obj = OBJR(oindex);
@@ -1181,10 +1181,10 @@ int i_instanceof(frame *f, unsigned int oindex, Uint sclass)
  * NAME:	interpret->cast()
  * DESCRIPTION:	cast a value to a type
  */
-void i_cast(frame *f, value *val, unsigned int type, Uint sclass)
+void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 {
     char tnbuf[TNBUFSIZE];
-    value *elts;
+    Value *elts;
 
     if (type == T_CLASS) {
 	if (val->type == T_OBJECT) {
@@ -1225,7 +1225,7 @@ void i_cast(frame *f, value *val, unsigned int type, Uint sclass)
  * NAME:	interpret->dup()
  * DESCRIPTION:	duplicate a value on the stack
  */
-void i_dup(frame *f)
+void i_dup(Frame *f)
 {
     switch (f->sp->type) {
     case T_LVALUE:
@@ -1238,7 +1238,7 @@ void i_dup(frame *f)
 
     case T_MLVALUE:
 	i_push_value(f, map_index(f->data, f->sp->u.array, &f->lip[-1],
-				  (value *) NULL, (value *) NULL));
+				  (Value *) NULL, (Value *) NULL));
 	break;
 
     case T_SLVALUE:
@@ -1260,7 +1260,7 @@ void i_dup(frame *f)
  * NAME:	istr()
  * DESCRIPTION:	create a copy of the argument string, with one char replaced
  */
-static value *istr(value *val, string *str, ssizet i, value *v)
+static Value *istr(Value *val, String *str, ssizet i, Value *v)
 {
     if (v->type != T_INT) {
 	error("Non-numeric value in indexed string assignment");
@@ -1276,9 +1276,9 @@ static value *istr(value *val, string *str, ssizet i, value *v)
  * NAME:	interpret->store_local()
  * DESCRIPTION:	assign a value to a local variable
  */
-static void i_store_local(frame *f, int local, value *val, value *verify)
+static void i_store_local(Frame *f, int local, Value *val, Value *verify)
 {
-    value *var;
+    Value *var;
 
     i_add_ticks(f, 1);
     var = (local < 0) ? f->fp + local : f->argp + local;
@@ -1292,10 +1292,10 @@ static void i_store_local(frame *f, int local, value *val, value *verify)
  * NAME:	interpret->store_global()
  * DESCRIPTION:	assign a value to a global variable
  */
-void i_store_global(frame *f, int inherit, int index, value *val, value *verify)
+void i_store_global(Frame *f, int inherit, int index, Value *val, Value *verify)
 {
     unsigned short offset;
-    value *var;
+    Value *var;
 
     i_add_ticks(f, 5);
     inherit = f->ctrl->imap[f->p_index + inherit];
@@ -1319,10 +1319,10 @@ void i_store_global(frame *f, int inherit, int index, value *val, value *verify)
  * NAME:	interpret->store_index()
  * DESCRIPTION:	perform an indexed assignment
  */
-bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
+bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 {
-    string *str;
-    array *arr;
+    String *str;
+    Array *arr;
 
     i_add_ticks(f, 3);
     switch (aval->type) {
@@ -1380,15 +1380,15 @@ bool i_store_index(frame *f, value *var, value *aval, value *ival, value *val)
  * NAME:	interpret->store()
  * DESCRIPTION:	Perform an assignment.
  */
-void i_store(frame *f)
+void i_store(Frame *f)
 {
-    value *val;
+    Value *val;
     Uint sclass;
 
     if (f->p_ctrl->flags & CTRL_VM_1_0) {
-	value *lval;
-	array *a;
-	value ival;
+	Value *lval;
+	Array *a;
+	Value ival;
 
 	lval = f->sp + 1;
 	val = f->sp;
@@ -1423,7 +1423,7 @@ void i_store(frame *f)
 
 	case T_MLVALUE:
 	    map_index(f->data, a = lval->u.array, &f->lip[-1], val,
-		      (value *) NULL);
+		      (Value *) NULL);
 	    i_del_value(--f->lip);
 	    arr_del(a);
 	    break;
@@ -1441,7 +1441,7 @@ void i_store(frame *f)
 	case T_SMLVALUE:
 	    map_index(f->data, a = lval->u.array, &f->lip[-2],
 		      istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val),
-		      (value *) NULL);
+		      (Value *) NULL);
 	    str_del((--f->lip)->u.string);
 	    i_del_value(--f->lip);
 	    arr_del(a);
@@ -1451,7 +1451,7 @@ void i_store(frame *f)
     } else {
 	Uint lval;
 	int type;
-	value var, *val, *tmp;
+	Value var, *val, *tmp;
 
 	val = f->sp + 1;
 	lval = (val++)->u.number;
@@ -1524,12 +1524,12 @@ void i_store(frame *f)
  * NAME:	interpret->stores()
  * DESCRIPTION:	perform a sequence of special stores
  */
-static void i_stores(frame *f, int skip, int assign)
+static void i_stores(Frame *f, int skip, int assign)
 {
     char *pc;
     unsigned short u, u2, instr;
     Uint sclass;
-    value val;
+    Value val;
 
     pc = f->pc;
     instr = 0;
@@ -1623,20 +1623,20 @@ static void i_stores(frame *f, int skip, int assign)
 	case I_STORE_LOCAL:
 	case I_STORE_LOCAL | I_POP_BIT:
 	    i_store_local(f, FETCH1S(pc), &f->sp->u.array->elts[assign - 1],
-			  (value *) NULL);
+			  (Value *) NULL);
 	    break;
 
 	case I_STORE_GLOBAL:
 	case I_STORE_GLOBAL | I_POP_BIT:
 	    i_store_global(f, f->p_ctrl->ninherits - 1, FETCH1U(pc),
-			   &f->sp->u.array->elts[assign - 1], (value *) NULL);
+			   &f->sp->u.array->elts[assign - 1], (Value *) NULL);
 	    break;
 
 	case I_STORE_FAR_GLOBAL:
 	case I_STORE_FAR_GLOBAL | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    i_store_global(f, u, FETCH1U(pc),
-			   &f->sp->u.array->elts[assign - 1], (value *) NULL);
+			   &f->sp->u.array->elts[assign - 1], (Value *) NULL);
 	    break;
 
 	case I_STORE_INDEX:
@@ -1730,7 +1730,7 @@ static void i_stores(frame *f, int skip, int assign)
  * NAME:	interpret->lvalues()
  * DESCRIPTION:	perform assignments for lvalue arguments
  */
-void i_lvalues(frame *f)
+void i_lvalues(Frame *f)
 {
     char *pc;
     int n, offset, type;
@@ -1797,7 +1797,7 @@ void i_lvalues(frame *f)
  * NAME:	interpret->get_depth()
  * DESCRIPTION:	get the remaining stack depth (-1: infinite)
  */
-Int i_get_depth(frame *f)
+Int i_get_depth(Frame *f)
 {
     rlinfo *rlim;
 
@@ -1812,7 +1812,7 @@ Int i_get_depth(frame *f)
  * NAME:	interpret->get_ticks()
  * DESCRIPTION:	get the remaining ticks (-1: infinite)
  */
-Int i_get_ticks(frame *f)
+Int i_get_ticks(Frame *f)
 {
     rlinfo *rlim;
 
@@ -1828,9 +1828,9 @@ Int i_get_ticks(frame *f)
  * NAME:	interpret->check_rlimits()
  * DESCRIPTION:	check if this rlimits call is valid
  */
-static void i_check_rlimits(frame *f)
+static void i_check_rlimits(Frame *f)
 {
-    object *obj;
+    Object *obj;
 
     obj = OBJR(f->oindex);
     if (obj->count == 0) {
@@ -1839,7 +1839,7 @@ static void i_check_rlimits(frame *f)
     --f->sp;
     f->sp[0] = f->sp[1];
     f->sp[1] = f->sp[2];
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	PUT_OBJVAL(&f->sp[2], obj);
     } else {
 	PUT_LWOVAL(&f->sp[2], f->lwobj);
@@ -1858,7 +1858,7 @@ static void i_check_rlimits(frame *f)
  * NAME:	interpret->new_rlimits()
  * DESCRIPTION:	create new rlimits scope
  */
-void i_new_rlimits(frame *f, Int depth, Int t)
+void i_new_rlimits(Frame *f, Int depth, Int t)
 {
     rlinfo *rlim;
 
@@ -1898,7 +1898,7 @@ void i_new_rlimits(frame *f, Int depth, Int t)
  * NAME:	interpret->set_rlimits()
  * DESCRIPTION:	restore rlimits to an earlier state
  */
-void i_set_rlimits(frame *f, rlinfo *rlim)
+void i_set_rlimits(Frame *f, rlinfo *rlim)
 {
     rlinfo *r, *next;
 
@@ -1921,10 +1921,10 @@ void i_set_rlimits(frame *f, rlinfo *rlim)
  * NAME:	interpret->set_sp()
  * DESCRIPTION:	set the current stack pointer
  */
-frame *i_set_sp(frame *ftop, value *sp)
+Frame *i_set_sp(Frame *ftop, Value *sp)
 {
-    value *v, *w;
-    frame *f;
+    Value *v, *w;
+    Frame *f;
 
     for (f = ftop; ; f = f->prev) {
 	v = f->sp;
@@ -1997,7 +1997,7 @@ frame *i_set_sp(frame *ftop, value *sp)
 	    v++;
 	}
 
-	if (f->lwobj != (array *) NULL) {
+	if (f->lwobj != (Array *) NULL) {
 	    arr_del(f->lwobj);
 	}
 	if (f->sos) {
@@ -2013,7 +2013,7 @@ frame *i_set_sp(frame *ftop, value *sp)
  * NAME:	interpret->prev_object()
  * DESCRIPTION:	return the nth previous object in the call_other chain
  */
-frame *i_prev_object(frame *f, int n)
+Frame *i_prev_object(Frame *f, int n)
 {
     while (n >= 0) {
 	/* back to last external call */
@@ -2022,7 +2022,7 @@ frame *i_prev_object(frame *f, int n)
 	}
 	f = f->prev;
 	if (f->oindex == OBJ_NONE) {
-	    return (frame *) NULL;
+	    return (Frame *) NULL;
 	}
 	--n;
     }
@@ -2033,7 +2033,7 @@ frame *i_prev_object(frame *f, int n)
  * NAME:	interpret->prev_program()
  * DESCRIPTION:	return the nth previous program in the function call chain
  */
-char *i_prev_program(frame *f, int n)
+char *i_prev_program(Frame *f, int n)
 {
     while (n >= 0) {
 	f = f->prev;
@@ -2050,14 +2050,14 @@ char *i_prev_program(frame *f, int n)
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, int nargs, int strict)
+void i_typecheck(Frame *f, Frame *prog_f, char *name, char *ftype, char *proto, int nargs, int strict)
 {
     char tnbuf[TNBUFSIZE];
     int i, n, atype, ptype;
     char *args;
     bool ellipsis;
     Uint sclass;
-    value *elts;
+    Value *elts;
 
     sclass = 0;
     i = nargs;
@@ -2128,7 +2128,7 @@ void i_typecheck(frame *f, frame *prog_f, char *name, char *ftype, char *proto, 
  * NAME:	interpret->switch_int()
  * DESCRIPTION:	handle an int switch
  */
-static unsigned short i_switch_int(frame *f, char *pc)
+static unsigned short i_switch_int(Frame *f, char *pc)
 {
     unsigned short h, l, m, sz, dflt;
     Int num;
@@ -2212,7 +2212,7 @@ static unsigned short i_switch_int(frame *f, char *pc)
  * NAME:	interpret->switch_range()
  * DESCRIPTION:	handle a range switch
  */
-static unsigned short i_switch_range(frame *f, char *pc)
+static unsigned short i_switch_range(Frame *f, char *pc)
 {
     unsigned short h, l, m, sz, dflt;
     Int num;
@@ -2303,12 +2303,12 @@ static unsigned short i_switch_range(frame *f, char *pc)
  * NAME:	interpret->switch_str()
  * DESCRIPTION:	handle a string switch
  */
-static unsigned short i_switch_str(frame *f, char *pc)
+static unsigned short i_switch_str(Frame *f, char *pc)
 {
     unsigned short h, l, m, u, u2, dflt;
     int cmp;
     char *p;
-    control *ctrl;
+    Control *ctrl;
 
     FETCH2U(pc, h);
     FETCH2U(pc, dflt);
@@ -2346,7 +2346,7 @@ static unsigned short i_switch_str(frame *f, char *pc)
  * NAME:	interpret->catcherr()
  * DESCRIPTION:	handle caught error
  */
-void i_catcherr(frame *f, Int depth)
+void i_catcherr(Frame *f, Int depth)
 {
     i_runtime_error(f, depth);
 }
@@ -2355,7 +2355,7 @@ void i_catcherr(frame *f, Int depth)
  * NAME:	interpret->interpret0()
  * DESCRIPTION:	Old interpreter function. Interpret stack machine code.
  */
-static void i_interpret0(frame *f, char *pc)
+static void i_interpret0(Frame *f, char *pc)
 {
     unsigned short instr, u, u2;
     Uint l;
@@ -2580,7 +2580,7 @@ static void i_interpret0(frame *f, char *pc)
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    f->pc = pc;
@@ -2600,7 +2600,7 @@ static void i_interpret0(frame *f, char *pc)
 
 	case II_CALL_AFUNC:
 	    u = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, (array *) NULL, 0, u,
+	    i_funcall(f, (Object *) NULL, (Array *) NULL, 0, u,
 		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
@@ -2608,14 +2608,14 @@ static void i_interpret0(frame *f, char *pc)
 	case II_CALL_DFUNC:
 	    u = UCHAR(f->ctrl->imap[f->p_index + FETCH1U(pc)]);
 	    u2 = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, (array *) NULL, u, u2,
+	    i_funcall(f, (Object *) NULL, (Array *) NULL, u, u2,
 		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
 
 	case II_CALL_FUNC:
 	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall(f, (object *) NULL, (array *) NULL, UCHAR(p[0]),
+	    i_funcall(f, (Object *) NULL, (Array *) NULL, UCHAR(p[0]),
 		      UCHAR(p[1]), FETCH1U(pc) + size);
 	    size = 0;
 	    break;
@@ -2675,7 +2675,7 @@ static void i_interpret0(frame *f, char *pc)
  * NAME:	interpret->interpret1()
  * DESCRIPTION:	Main interpreter function v1. Interpret stack machine code.
  */
-static void i_interpret1(frame *f, char *pc)
+static void i_interpret1(Frame *f, char *pc)
 {
     unsigned short instr, u, u2;
     Uint l;
@@ -2684,7 +2684,7 @@ static void i_interpret1(frame *f, char *pc)
     int size, instance;
     bool atomic;
     Int newdepth, newticks;
-    value val;
+    Value val;
 
     size = 0;
     l = 0;
@@ -2967,7 +2967,7 @@ static void i_interpret1(frame *f, char *pc)
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    f->pc = pc;
@@ -2997,7 +2997,7 @@ static void i_interpret1(frame *f, char *pc)
 		u = PROTO_NARGS(kf->proto);
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    f->pc = pc;
@@ -3028,7 +3028,7 @@ static void i_interpret1(frame *f, char *pc)
 		}
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    f->pc = pc;
@@ -3052,7 +3052,7 @@ static void i_interpret1(frame *f, char *pc)
 		}
 	    }
 	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (frame *) NULL, kf->name, "kfun", kf->proto, u,
+		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
 			    TRUE);
 	    }
 	    f->pc = pc;
@@ -3066,7 +3066,7 @@ static void i_interpret1(frame *f, char *pc)
 	case I_CALL_AFUNC:
 	case I_CALL_AFUNC | I_POP_BIT:
 	    u = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, (array *) NULL, 0, u,
+	    i_funcall(f, (Object *) NULL, (Array *) NULL, 0, u,
 		      FETCH1U(pc) + size);
 	    size = 0;
 	    break;
@@ -3075,7 +3075,7 @@ static void i_interpret1(frame *f, char *pc)
 	case I_CALL_DFUNC | I_POP_BIT:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    i_funcall(f, (object *) NULL, (array *) NULL,
+	    i_funcall(f, (Object *) NULL, (Array *) NULL,
 		      UCHAR(f->ctrl->imap[f->p_index + u]), u2,
 		      FETCH1U(pc) + size);
 	    size = 0;
@@ -3084,7 +3084,7 @@ static void i_interpret1(frame *f, char *pc)
 	case I_CALL_FUNC:
 	case I_CALL_FUNC | I_POP_BIT:
 	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall(f, (object *) NULL, (array *) NULL, UCHAR(p[0]),
+	    i_funcall(f, (Object *) NULL, (Array *) NULL, UCHAR(p[0]),
 		      UCHAR(p[1]), FETCH1U(pc) + size);
 	    size = 0;
 	    break;
@@ -3150,13 +3150,13 @@ static void i_interpret1(frame *f, char *pc)
  * DESCRIPTION:	Call a function in an object. The arguments must be on the
  *		stack already.
  */
-void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci, int nargs)
+void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci, int nargs)
 {
     char *pc;
     unsigned short n;
-    frame f;
+    Frame f;
     bool ellipsis;
-    value val;
+    Value val;
 
     f.prev = prev_f;
     if (prev_f->oindex == OBJ_NONE) {
@@ -3164,11 +3164,11 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 	 * top level call
 	 */
 	f.oindex = obj->index;
-	f.lwobj = (array *) NULL;
+	f.lwobj = (Array *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
-    } else if (lwobj != (array *) NULL) {
+    } else if (lwobj != (Array *) NULL) {
 	/*
 	 * call_other to lightweight object
 	 */
@@ -3177,12 +3177,12 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 	f.ctrl = obj->ctrl;
 	f.data = lwobj->primary->data;
 	f.external = TRUE;
-    } else if (obj != (object *) NULL) {
+    } else if (obj != (Object *) NULL) {
 	/*
 	 * call_other to persistent object
 	 */
 	f.oindex = obj->index;
-	f.lwobj = (array *) NULL;
+	f.lwobj = (Array *) NULL;
 	f.ctrl = obj->ctrl;
 	f.data = o_dataspace(obj);
 	f.external = TRUE;
@@ -3284,8 +3284,8 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 	    }
 	}
     } else if (ellipsis) {
-	value *v;
-	array *a;
+	Value *v;
+	Array *a;
 
 	/* put additional arguments in array */
 	nargs -= n - 1;
@@ -3315,7 +3315,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     f.sp = prev_f->sp;
     f.nargs = nargs;
     cframe = &f;
-    if (f.lwobj != (array *) NULL) {
+    if (f.lwobj != (Array *) NULL) {
 	arr_ref(f.lwobj);
     }
 
@@ -3340,7 +3340,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
     /* create new local stack */
     f.argp = f.sp;
     FETCH2U(pc, n);
-    f.stack = f.lip = ALLOCA(value, n + MIN_STACK + EXTRA_STACK);
+    f.stack = f.lip = ALLOCA(Value, n + MIN_STACK + EXTRA_STACK);
     f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
     f.sos = TRUE;
 
@@ -3380,7 +3380,7 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
 	FREE(f.stack);
     }
 
-    if (f.lwobj != (array *) NULL) {
+    if (f.lwobj != (Array *) NULL) {
 	arr_del(f.lwobj);
     }
     cframe = prev_f;
@@ -3401,17 +3401,17 @@ void i_funcall(frame *prev_f, object *obj, array *lwobj, int p_ctrli, int funci,
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
+bool i_call(Frame *f, Object *obj, Array *lwobj, char *func, unsigned int len,
 	int call_static, int nargs)
 {
     dsymbol *symb;
     dfuncdef *fdef;
-    control *ctrl;
+    Control *ctrl;
 
-    if (lwobj != (array *) NULL) {
+    if (lwobj != (Array *) NULL) {
 	uindex oindex;
 	xfloat flt;
-	value val;
+	Value val;
 
 	GET_FLT(&lwobj->elts[1], flt);
 	if (lwobj->elts[0].type == T_OBJECT) {
@@ -3463,7 +3463,7 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 	} else {
 	    obj->data = d_new_dataspace(obj);
 	    if (func != (char *) NULL &&
-		i_call(f, obj, (array *) NULL, creator, clen, TRUE, 0)) {
+		i_call(f, obj, (Array *) NULL, creator, clen, TRUE, 0)) {
 		i_del_value(f->sp++);
 	    }
 	}
@@ -3487,7 +3487,7 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
 
     /* check if the function can be called */
     if (!call_static && (fdef->sclass & C_STATIC) &&
-	((lwobj != (array *) NULL) ?
+	((lwobj != (Array *) NULL) ?
 	 lwobj != f->lwobj : f->oindex != obj->index)) {
 	i_pop(f, nargs);
 	return FALSE;
@@ -3504,7 +3504,7 @@ bool i_call(frame *f, object *obj, array *lwobj, char *func, unsigned int len,
  * DESCRIPTION:	return the line number the program counter of the specified
  *		frame is at
  */
-static unsigned short i_line0(frame *f)
+static unsigned short i_line0(Frame *f)
 {
     char *pc, *numbers;
     int instr;
@@ -3646,7 +3646,7 @@ static unsigned short i_line0(frame *f)
  * DESCRIPTION:	return the line number the program counter of the specified
  *		frame is at
  */
-static unsigned short i_line1(frame *f)
+static unsigned short i_line1(Frame *f)
 {
     char *pc, *numbers;
     int instr;
@@ -3807,15 +3807,15 @@ static unsigned short i_line1(frame *f)
  * NAME:	interpret->func_trace()
  * DESCRIPTION:	return the trace of a single function
  */
-static array *i_func_trace(frame *f, dataspace *data)
+static Array *i_func_trace(Frame *f, Dataspace *data)
 {
     char buffer[STRINGSZ + 12];
-    value *v;
-    string *str;
+    Value *v;
+    String *str;
     char *name;
     unsigned short n;
-    value *args;
-    array *a;
+    Value *args;
+    Array *a;
     unsigned short max_args;
 
     max_args = conf_array_size() - 5;
@@ -3831,7 +3831,7 @@ static array *i_func_trace(frame *f, dataspace *data)
 
     /* object name */
     name = o_name(buffer, OBJR(f->oindex));
-    if (f->lwobj == (array *) NULL) {
+    if (f->lwobj == (Array *) NULL) {
 	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
 	v++;
 	str->text[0] = '/';
@@ -3879,9 +3879,9 @@ static array *i_func_trace(frame *f, dataspace *data)
  * NAME:	interpret->call_tracei()
  * DESCRIPTION:	get the trace of a single function
  */
-bool i_call_tracei(frame *ftop, Int idx, value *v)
+bool i_call_tracei(Frame *ftop, Int idx, Value *v)
 {
-    frame *f;
+    Frame *f;
     unsigned short n;
 
     for (f = ftop, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
@@ -3898,12 +3898,12 @@ bool i_call_tracei(frame *ftop, Int idx, value *v)
  * NAME:	interpret->call_trace()
  * DESCRIPTION:	return the function call trace
  */
-array *i_call_trace(frame *ftop)
+Array *i_call_trace(Frame *ftop)
 {
-    frame *f;
-    value *v;
+    Frame *f;
+    Value *v;
     unsigned short n;
-    array *a;
+    Array *a;
 
     for (f = ftop, n = 0; f->oindex != OBJ_NONE; f = f->prev, n++) ;
     a = arr_new(ftop->data, (long) n);
@@ -3920,7 +3920,7 @@ array *i_call_trace(frame *ftop)
  * NAME:	emptyhandler()
  * DESCRIPTION:	fake error handler
  */
-static void emptyhandler(frame *f, Int depth)
+static void emptyhandler(Frame *f, Int depth)
 {
     UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(depth);
@@ -3932,7 +3932,7 @@ static void emptyhandler(frame *f, Int depth)
  *		The function is called with rlimits (-1; -1) and errors
  *		caught.
  */
-bool i_call_critical(frame *f, char *func, int narg, int flag)
+bool i_call_critical(Frame *f, char *func, int narg, int flag)
 {
     bool ok;
 
@@ -3955,7 +3955,7 @@ bool i_call_critical(frame *f, char *func, int narg, int flag)
  * NAME:	interpret->runtime_error()
  * DESCRIPTION:	handle a runtime error
  */
-void i_runtime_error(frame *f, Int depth)
+void i_runtime_error(Frame *f, Int depth)
 {
     PUSH_STRVAL(f, errorstr());
     PUSH_INTVAL(f, depth);
@@ -3975,9 +3975,9 @@ void i_runtime_error(frame *f, Int depth)
  * NAME:	interpret->atomic_error()
  * DESCRIPTION:	handle error in atomic code
  */
-void i_atomic_error(frame *ftop, Int level)
+void i_atomic_error(Frame *ftop, Int level)
 {
-    frame *f;
+    Frame *f;
 
     for (f = ftop; f->level != level; f = f->prev) ;
 
@@ -3999,9 +3999,9 @@ void i_atomic_error(frame *ftop, Int level)
  * NAME:	interpret->restore()
  * DESCRIPTION:	restore state to given level
  */
-frame *i_restore(frame *ftop, Int level)
+Frame *i_restore(Frame *ftop, Int level)
 {
-    frame *f;
+    Frame *f;
 
     for (f = ftop; f->level != level; f = f->prev) ;
 
@@ -4024,7 +4024,7 @@ frame *i_restore(frame *ftop, Int level)
  */
 void i_clear()
 {
-    frame *f;
+    Frame *f;
 
     f = cframe;
     if (f->stack != stack) {

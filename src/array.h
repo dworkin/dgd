@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,54 +23,54 @@ struct _array_ {
     Uint ref;				/* number of references */
     Uint tag;				/* used in sorting */
     Uint odcount;			/* last destructed object count */
-    value *elts;			/* elements */
+    Value *elts;			/* elements */
     struct _maphash_ *hashed;		/* hashed mapping elements */
     struct _arrref_ *primary;		/* primary reference */
-    array *prev, *next;			/* per-object linked list */
+    Array *prev, *next;			/* per-object linked list */
 };
 
 typedef struct _arrmerge_ arrmerge;	/* array merge table */
 typedef struct _abchunk_ abchunk;	/* array backup chunk */
 
 extern void		arr_init	(unsigned int);
-extern array	       *arr_alloc	(unsigned int);
-extern array	       *arr_new		(dataspace*, long);
-extern array	       *arr_ext_new	(dataspace*, long);
+extern Array	       *arr_alloc	(unsigned int);
+extern Array	       *arr_new		(Dataspace*, long);
+extern Array	       *arr_ext_new	(Dataspace*, long);
 # define arr_ref(a)	((a)->ref++)
-extern void		arr_del		(array*);
-extern void		arr_freelist	(array*);
+extern void		arr_del		(Array*);
+extern void		arr_freelist	(Array*);
 extern void		arr_freeall	(void);
 
 extern void		arr_merge	(void);
-extern Uint		arr_put		(array*, Uint);
+extern Uint		arr_put		(Array*, Uint);
 extern void		arr_clear	(void);
 
-extern void		arr_backup	(abchunk**, array*);
-extern void		arr_commit	(abchunk**, dataplane*, int);
+extern void		arr_backup	(abchunk**, Array*);
+extern void		arr_commit	(abchunk**, Dataplane*, int);
 extern void		arr_discard	(abchunk**);
 
-extern array	       *arr_add		(dataspace*, array*, array*);
-extern array	       *arr_sub		(dataspace*, array*, array*);
-extern array	       *arr_intersect	(dataspace*, array*, array*);
-extern array	       *arr_setadd	(dataspace*, array*, array*);
-extern array	       *arr_setxadd	(dataspace*, array*, array*);
-extern unsigned short	arr_index	(array*, long);
-extern void		arr_ckrange	(array*, long, long);
-extern array	       *arr_range	(dataspace*, array*, long, long);
+extern Array	       *arr_add		(Dataspace*, Array*, Array*);
+extern Array	       *arr_sub		(Dataspace*, Array*, Array*);
+extern Array	       *arr_intersect	(Dataspace*, Array*, Array*);
+extern Array	       *arr_setadd	(Dataspace*, Array*, Array*);
+extern Array	       *arr_setxadd	(Dataspace*, Array*, Array*);
+extern unsigned short	arr_index	(Array*, long);
+extern void		arr_ckrange	(Array*, long, long);
+extern Array	       *arr_range	(Dataspace*, Array*, long, long);
 
-extern array	       *map_new		(dataspace*, long);
-extern void		map_sort	(array*);
-extern void		map_rmhash	(array*);
-extern void		map_compact	(dataspace*, array*);
-extern unsigned short	map_size	(dataspace*, array*);
-extern array	       *map_add		(dataspace*, array*, array*);
-extern array	       *map_sub		(dataspace*, array*, array*);
-extern array	       *map_intersect	(dataspace*, array*, array*);
-extern value	       *map_index	(dataspace*, array*, value*, value*,
-					 value*);
-extern array	       *map_range	(dataspace*, array*, value*, value*);
-extern array	       *map_indices	(dataspace*, array*);
-extern array	       *map_values	(dataspace*, array*);
+extern Array	       *map_new		(Dataspace*, long);
+extern void		map_sort	(Array*);
+extern void		map_rmhash	(Array*);
+extern void		map_compact	(Dataspace*, Array*);
+extern unsigned short	map_size	(Dataspace*, Array*);
+extern Array	       *map_add		(Dataspace*, Array*, Array*);
+extern Array	       *map_sub		(Dataspace*, Array*, Array*);
+extern Array	       *map_intersect	(Dataspace*, Array*, Array*);
+extern Value	       *map_index	(Dataspace*, Array*, Value*, Value*,
+					 Value*);
+extern Array	       *map_range	(Dataspace*, Array*, Value*, Value*);
+extern Array	       *map_indices	(Dataspace*, Array*);
+extern Array	       *map_values	(Dataspace*, Array*);
 
-extern array	       *lwo_new		(dataspace*, object*);
-extern array	       *lwo_copy	(dataspace*, array*);
+extern Array	       *lwo_new		(Dataspace*, Object*);
+extern Array	       *lwo_copy	(Dataspace*, Array*);

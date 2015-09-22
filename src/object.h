@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,8 +30,8 @@ struct _object_ {
     Uint count;			/* object creation count */
     Uint update;		/* object update count */
     Uint ref;			/* ref count (if master object) */
-    control *ctrl;		/* control block (master object only) */
-    dataspace *data;		/* dataspace block */
+    Control *ctrl;		/* control block (master object only) */
+    Dataspace *data;		/* dataspace block */
     sector cfirst;		/* first sector of control block */
     sector dfirst;		/* first sector of dataspace block */
 };
@@ -56,7 +56,7 @@ struct _object_ {
 
 # define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
 # define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
-# define O_HASDATA(o)		((o)->data != (dataspace *) NULL || \
+# define O_HASDATA(o)		((o)->data != (Dataspace *) NULL || \
 				 (o)->dfirst != SW_UNUSED)
 
 # define OACC_READ		0x00	/* read access */
@@ -65,25 +65,25 @@ struct _object_ {
 # define OBJ_NONE		UINDEX_MAX
 
 extern void	  o_init		(unsigned int, Uint);
-extern object	 *o_oread		(unsigned int);
-extern object	 *o_owrite		(unsigned int);
+extern Object	 *o_oread		(unsigned int);
+extern Object	 *o_owrite		(unsigned int);
 extern void	  o_new_plane		(void);
 extern void	  o_commit_plane	(void);
 extern void	  o_discard_plane	(void);
 
 extern bool	  o_space		(void);
-extern object	 *o_new			(char*, control*);
-extern object	 *o_clone		(object*);
-extern void	  o_lwobj		(object*);
-extern void	  o_upgrade		(object*, control*, frame*);
-extern void	  o_upgraded		(object*, object*);
-extern void	  o_del			(object*, frame*);
+extern Object	 *o_new			(char*, Control*);
+extern Object	 *o_clone		(Object*);
+extern void	  o_lwobj		(Object*);
+extern void	  o_upgrade		(Object*, Control*, Frame*);
+extern void	  o_upgraded		(Object*, Object*);
+extern void	  o_del			(Object*, Frame*);
 
-extern char	 *o_name		(char*, object*);
+extern char	 *o_name		(char*, Object*);
 extern char	 *o_builtin_name	(Int);
-extern object	 *o_find		(char*, int);
-extern control   *o_control		(object*);
-extern dataspace *o_dataspace		(object*);
+extern Object	 *o_find		(char*, int);
+extern Control   *o_control		(Object*);
+extern Dataspace *o_dataspace		(Object*);
 
 extern void	  o_clean		(void);
 extern uindex	  o_count		(void);
@@ -96,7 +96,7 @@ extern void	  swapout		(void);
 extern void	  dump_state		(bool);
 extern void	  finish		(bool);
 
-extern object    *otable;
+extern Object    *otable;
 extern Uint	 *ocmap;
 extern bool	  obase, swap, dump, incr, stop, boot;
 extern Uint	  odcount;

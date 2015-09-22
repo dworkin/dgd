@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011,2013 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,8 +35,8 @@ typedef struct _pnode_ {
     Uint len;			/* token/reduction length or subtree size */
     union {
 	char *text;		/* token/reduction text */
-	string *str;		/* token string */
-	array *arr;		/* rule array */
+	String *str;		/* token string */
+	Array *arr;		/* rule array */
     } u;
     struct _pnode_ *next;	/* next in linked list */
     struct _pnode_ *list;	/* list of nodes for reduction */
@@ -205,14 +205,14 @@ static void sn_clear(snlist *list)
 typedef struct _strchunk_ {
     int chunksz;		/* size of chunk */
     struct _strchunk_ *next;	/* next in linked list */
-    string *str[STRCHUNKSZ];	/* strings */
+    String *str[STRCHUNKSZ];	/* strings */
 } strchunk;
 
 /*
  * NAME:	strchunk->add()
  * DESCRIPTION:	add a string to the current chunk
  */
-static void sc_add(strchunk **c, string *str)
+static void sc_add(strchunk **c, String *str)
 {
     if (*c == (strchunk *) NULL || (*c)->chunksz == STRCHUNKSZ) {
 	strchunk *x;
@@ -251,14 +251,14 @@ static void sc_clean(strchunk *c)
 typedef struct _arrchunk_ {
     int chunksz;		/* size of chunk */
     struct _arrchunk_ *next;	/* next in linked list */
-    array *arr[ARRCHUNKSZ];	/* arrays */
+    Array *arr[ARRCHUNKSZ];	/* arrays */
 } arrchunk;
 
 /*
  * NAME:	arrchunk->add()
  * DESCRIPTION:	add an array to the current chunk
  */
-static void ac_add(arrchunk **c, array *arr)
+static void ac_add(arrchunk **c, Array *arr)
 {
     if (*c == (arrchunk *) NULL || (*c)->chunksz == ARRCHUNKSZ) {
 	arrchunk *x;
@@ -293,11 +293,11 @@ static void ac_clean(arrchunk *c)
 
 
 struct _parser_ {
-    frame *frame;		/* interpreter stack frame */
-    dataspace *data;		/* dataspace for current object */
+    Frame *frame;		/* interpreter stack frame */
+    Dataspace *data;		/* dataspace for current object */
 
-    string *source;		/* grammar source */
-    string *grammar;		/* preprocessed grammar */
+    String *source;		/* grammar source */
+    String *grammar;		/* preprocessed grammar */
     char *fastr;		/* DFA string */
     char *lrstr;		/* SRP string */
 
@@ -322,7 +322,7 @@ struct _parser_ {
  * NAME:	parser->new()
  * DESCRIPTION:	create a new parser instance
  */
-static parser *ps_new(frame *f, string *source, string *grammar)
+static parser *ps_new(Frame *f, String *source, String *grammar)
 {
     parser *ps;
     char *p;
@@ -471,7 +471,7 @@ static void ps_shift(parser *ps, snode *sn, short token, char *text, ssizet len)
  * NAME:	parser->parse()
  * DESCRIPTION:	parse a string, return a parse tangle
  */
-static pnode *ps_parse(parser *ps, string *str, bool *toobig)
+static pnode *ps_parse(parser *ps, String *str, bool *toobig)
 {
     snode *sn;
     short n;
@@ -584,7 +584,7 @@ static pnode *ps_parse(parser *ps, string *str, bool *toobig)
  * NAME:	parser->flatten()
  * DESCRIPTION:	traverse parse tree, collecting values in a flat array
  */
-static void ps_flatten(pnode *pn, pnode *next, value *v)
+static void ps_flatten(pnode *pn, pnode *next, Value *v)
 {
     do {
 	switch (pn->symbol) {
@@ -624,8 +624,8 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
     Int n;
     pnode *sub;
     Uint len, i;
-    value *v;
-    array *a;
+    Value *v;
+    Array *a;
     bool call;
 
     a = NULL;
@@ -698,7 +698,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		} else {
 		    PUSH_ARRVAL(ps->frame, a);
 		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
-				  (array *) NULL, pn->u.text + 2 + n,
+				  (Array *) NULL, pn->u.text + 2 + n,
 				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
 		    ec_pop();
 		}
@@ -750,7 +750,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 	    if (n != 1) {
 		ac_add(&ps->arrc, a = arr_new(ps->data, (long) n));
 		v = a->elts;
-		memset(v, '\0', n * sizeof(value));
+		memset(v, '\0', n * sizeof(Value));
 	    }
 	    for (sub = pn->list, i = n; i != 0; sub = sub->next) {
 		if (sub->symbol != PN_BLOCKED) {
@@ -795,7 +795,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
  * NAME:	parser->load()
  * DESCRIPTION:	load parse_string data
  */
-static parser *ps_load(frame *f, value *elts)
+static parser *ps_load(Frame *f, Value *elts)
 {
     parser *ps;
     char *p;
@@ -867,10 +867,10 @@ static parser *ps_load(frame *f, value *elts)
  */
 void ps_save(parser *ps)
 {
-    value *v;
-    dataspace *data;
+    Value *v;
+    Dataspace *data;
     Uint len;
-    value val;
+    Value val;
     short fasize, lrsize;
     char *fastr, *lrstr;
     Uint falen, lrlen;
@@ -927,14 +927,14 @@ void ps_save(parser *ps)
  * NAME:	parse_string()
  * DESCRIPTION:	parse a string
  */
-array *ps_parse_string(frame *f, string *source, string *str, Int maxalt)
+Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 {
-    dataspace *data;
+    Dataspace *data;
     parser *ps;
-    value *val;
+    Value *val;
     bool same, toobig;
     pnode *pn;
-    array *a;
+    Array *a;
     Int len;
 
     /*
@@ -995,7 +995,7 @@ array *ps_parse_string(frame *f, string *source, string *str, Int maxalt)
 	/*
 	 * put result in array
 	 */
-	a = (array *) NULL;
+	a = (Array *) NULL;
 	if (pn != (pnode *) NULL) {
 	    /*
 	     * valid parse tree was created

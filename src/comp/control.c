@@ -32,7 +32,7 @@
 
 typedef struct _oh_ {		/* object hash table */
     hte chain;			/* hash table chain */
-    object *obj;		/* object */
+    Object *obj;		/* object */
     short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
     struct _oh_ **next;		/* next in linked list */
@@ -101,9 +101,9 @@ static void oh_clear()
 
 typedef struct _vfh_ {		/* variable/function hash table */
     hte chain;			/* hash table chain */
-    string *str;		/* name string */
+    String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
-    string *cvstr;		/* class variable string */
+    String *cvstr;		/* class variable string */
     unsigned short ct;		/* function call, or variable type */
     short index;		/* definition table index */
 } vfh;
@@ -120,8 +120,8 @@ static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(string *str, oh *ohash, unsigned short ct,
-	string *cvstr, short idx, vfh **addr)
+static void vfh_new(String *str, oh *ohash, unsigned short ct,
+	String *cvstr, short idx, vfh **addr)
 {
     vfh *h;
 
@@ -140,7 +140,7 @@ static void vfh_new(string *str, oh *ohash, unsigned short ct,
     str_ref(h->str = str);
     h->ohash = ohash;
     h->cvstr = cvstr;
-    if (cvstr != (string *) NULL) {
+    if (cvstr != (String *) NULL) {
 	str_ref(cvstr);
     }
     h->ct = ct;
@@ -159,7 +159,7 @@ static void vfh_clear()
     for (l = vfhclist; l != (vfhchunk *) NULL; ) {
 	for (vf = l->vf; vfhchunksz != 0; vf++, --vfhchunksz) {
 	    str_del(vf->str);
-	    if (vf->cvstr != (string *) NULL) {
+	    if (vf->cvstr != (String *) NULL) {
 		str_del(vf->cvstr);
 	    }
 	}
@@ -173,7 +173,7 @@ static void vfh_clear()
 
 
 typedef struct _lab_ {
-    string *str;		/* label */
+    String *str;		/* label */
     oh *ohash;			/* entry in hash table */
     struct _lab_ *next;		/* next label */
 } lab;
@@ -184,7 +184,7 @@ static lab *labels;		/* list of labeled inherited objects */
  * NAME:	lab->new()
  * DESCRIPTION:	declare a new inheritance label
  */
-static void lab_new(string *str, oh *ohash)
+static void lab_new(String *str, oh *ohash)
 {
     lab *l;
 
@@ -244,7 +244,7 @@ static int nfclash;			/* # prototype clashes */
 static Uint nifcalls;			/* # inherited function calls */
 
 /*
- * NAME:	control->init()
+ * NAME:	Control->init()
  * DESCRIPTION:	initialize control block construction
  */
 void ctrl_init()
@@ -255,15 +255,15 @@ void ctrl_init()
 }
 
 /*
- * NAME:	control->vardefs()
+ * NAME:	Control->vardefs()
  * DESCRIPTION:	put variable definitions from an inherited object into the
  *		variable merge table
  */
-static void ctrl_vardefs(oh *ohash, control *ctrl)
+static void ctrl_vardefs(oh *ohash, Control *ctrl)
 {
     dvardef *v;
     int n;
-    string *str, *cvstr;
+    String *str, *cvstr;
     vfh **h;
 
     v = d_get_vardefs(ctrl);
@@ -280,7 +280,7 @@ static void ctrl_vardefs(oh *ohash, control *ctrl)
 		if (ctrl->nclassvars != 0) {
 		    cvstr = ctrl->cvstrings[n];
 		} else {
-		    cvstr = (string *) NULL;
+		    cvstr = (String *) NULL;
 		}
 		vfh_new(str, ohash, v->type, cvstr, n, h);
 	    } else {
@@ -297,7 +297,7 @@ static void ctrl_vardefs(oh *ohash, control *ctrl)
  * NAME:	comp_class()
  * DESCRIPTION:	compare two class strings
  */
-static bool cmp_class(control *ctrl1, Uint s1, control *ctrl2, Uint s2)
+static bool cmp_class(Control *ctrl1, Uint s1, Control *ctrl2, Uint s2)
 {
     if (ctrl1 == ctrl2 && s1 == s2) {
 	return TRUE;	/* the same */
@@ -316,7 +316,7 @@ static bool cmp_class(control *ctrl1, Uint s1, control *ctrl2, Uint s2)
  * NAME:	cmp_proto()
  * DESCRIPTION:	Compare two prototypes. Return TRUE if equal.
  */
-static bool cmp_proto(control *ctrl1, char *prot1, control *ctrl2, char *prot2)
+static bool cmp_proto(Control *ctrl1, char *prot1, Control *ctrl2, char *prot2)
 {
     int i;
     char c1, c2;
@@ -378,15 +378,15 @@ static bool cmp_proto(control *ctrl1, char *prot1, control *ctrl2, char *prot2)
 }
 
 /*
- * NAME:	control->funcdef()
+ * NAME:	Control->funcdef()
  * DESCRIPTION:	put a function definition from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
+static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 {
     vfh **h, **l;
     dfuncdef *f;
-    string *str;
+    String *str;
 
     f = &ctrl->funcdefs[idx];
     str = d_get_strconst(ctrl, f->inherit, f->index);
@@ -404,7 +404,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/*
 	 * New function (-1: no calls to it yet)
 	 */
-	vfh_new(str, ohash, -1, (string *) NULL, idx, h);
+	vfh_new(str, ohash, -1, (String *) NULL, idx, h);
 	if (ohash->priv == 0 &&
 	    (ctrl->ninherits != 1 ||
 	     (f->sclass & (C_STATIC | C_UNDEFINED)) != C_STATIC)) {
@@ -417,7 +417,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
     } else {
 	dinherit *inh;
 	int n;
-	object *o;
+	Object *o;
 	char *prot1, *prot2;
 	bool privflag, inhflag, firstsym;
 	int nfunc, npriv;
@@ -563,7 +563,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 
 	if (inhflag) {
 	    /* insert new prototype at the beginning */
-	    vfh_new(str, ohash, -1, (string *) NULL, idx, h);
+	    vfh_new(str, ohash, -1, (String *) NULL, idx, h);
 	    h = (vfh **) &(*h)->chain.next;
 	} else if (!(PROTO_CLASS(prot1) & C_UNDEFINED)) {
 	    /* add the new prototype to the count */
@@ -598,7 +598,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 		}
 	    } else if (nfunc + npriv > 1) {
 		/* add new clash marker as first entry */
-		vfh_new(str, (oh *) NULL, 0, (string *) NULL, nfunc, h);
+		vfh_new(str, (oh *) NULL, 0, (String *) NULL, nfunc, h);
 		nfclash++;
 		h = (vfh **) &(*h)->chain.next;
 	    }
@@ -607,20 +607,20 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/* add new prototype, undefined at the end */
 	if (!inhflag) {
 	    if (PROTO_CLASS(prot1) & C_UNDEFINED) {
-		vfh_new(str, ohash, -1, (string *) NULL, idx, l);
+		vfh_new(str, ohash, -1, (String *) NULL, idx, l);
 	    } else {
-		vfh_new(str, ohash, -1, (string *) NULL, idx, h);
+		vfh_new(str, ohash, -1, (String *) NULL, idx, h);
 	    }
 	}
     }
 }
 
 /*
- * NAME:	control->funcdefs()
+ * NAME:	Control->funcdefs()
  * DESCRIPTION:	put function definitions from an inherited object into
  *		the function merge table
  */
-static void ctrl_funcdefs(oh *ohash, control *ctrl)
+static void ctrl_funcdefs(oh *ohash, Control *ctrl)
 {
     short n;
     dfuncdef *f;
@@ -634,16 +634,16 @@ static void ctrl_funcdefs(oh *ohash, control *ctrl)
 }
 
 /*
- * NAME:	control->inherit()
+ * NAME:	Control->inherit()
  * DESCRIPTION:	inherit an object
  */
-bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
+bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 {
     oh *ohash;
-    control *ctrl;
+    Control *ctrl;
     dinherit *inh;
     int i;
-    object *o;
+    Object *o;
 
     if (!(obj->flags & O_MASTER)) {
 	c_error("cannot inherit cloned object");
@@ -655,7 +655,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
     }
 
     ohash = oh_new(obj->chain.name);
-    if (label != (string *) NULL) {
+    if (label != (String *) NULL) {
 	/*
 	 * use a label
 	 */
@@ -806,7 +806,7 @@ bool ctrl_inherit(frame *f, char *from, object *obj, string *label, int priv)
 
 typedef struct _strchunk_ {
     struct _strchunk_ *next;		/* next in string chunk list */
-    string *s[STRING_CHUNK];		/* chunk of strings */
+    String *s[STRING_CHUNK];		/* chunk of strings */
 } strchunk;
 
 # define FCALL_CHUNK	64
@@ -820,12 +820,12 @@ typedef struct _cfunc_ {
     dfuncdef func;			/* function name/type */
     char *name;				/* function name */
     char *proto;			/* function prototype */
-    string *cfstr;			/* function class string */
+    String *cfstr;			/* function class string */
     char *prog;				/* function program */
     unsigned short progsize;		/* function program size */
 } cfunc;
 
-static control *newctrl;		/* the new control block */
+static Control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
 static strchunk *str_list;		/* list of string chunks */
 static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
@@ -837,20 +837,20 @@ static int nfdefs, fdef;		/* # defined functions, current func */
 static int nundefs;			/* # private undefined prototypes */
 static Uint progsize;			/* size of all programs and protos */
 static dvardef *variables;		/* defined variables */
-static string **cvstrings;		/* variable class strings */
+static String **cvstrings;		/* variable class strings */
 static char *classvars;			/* class variables */
 static int nclassvars;			/* # classvars */
 static Uint nfcalls;			/* # function calls */
 
 /*
- * NAME:	control->imap()
+ * NAME:	Control->imap()
  * DESCRIPTION:	initialize inherit map
  */
-static void ctrl_imap(control *ctrl)
+static void ctrl_imap(Control *ctrl)
 {
     dinherit *inh;
     int i, j, n, imapsz;
-    control *ctrl2;
+    Control *ctrl2;
 
     imapsz = ctrl->ninherits;
     for (n = imapsz - 1, inh = &ctrl->inherits[n]; n > 0; ) {
@@ -875,15 +875,15 @@ static void ctrl_imap(control *ctrl)
 }
 
 /*
- * NAME:	control->convert()
+ * NAME:	Control->convert()
  * DESCRIPTION:	convert inherits
  */
-void ctrl_convert(control *ctrl)
+void ctrl_convert(Control *ctrl)
 {
     int n, imapsz;
     oh *ohash;
     dinherit *inh;
-    object *obj;
+    Object *obj;
     hashtab *xotab;
     oh **xolist;
 
@@ -916,13 +916,13 @@ void ctrl_convert(control *ctrl)
 }
 
 /*
- * NAME:	control->create()
+ * NAME:	Control->create()
  * DESCRIPTION:	make an initial control block
  */
 void ctrl_create()
 {
     dinherit *inh;
-    control *ctrl;
+    Control *ctrl;
     unsigned short n;
     int i, count;
     oh *ohash;
@@ -984,7 +984,7 @@ void ctrl_create()
      */
     functions = ALLOC(cfunc, 256);
     variables = ALLOC(dvardef, 256);
-    cvstrings = ALLOC(string*, 256 * sizeof(string*));
+    cvstrings = ALLOC(String*, 256 * sizeof(String*));
     classvars = ALLOC(char, 256 * 3);
     progsize = 0;
     nstrs = 0;
@@ -995,10 +995,10 @@ void ctrl_create()
 }
 
 /*
- * NAME:	control->dstring()
+ * NAME:	Control->dstring()
  * DESCRIPTION:	define a new (?) string constant
  */
-long ctrl_dstring(string *str)
+long ctrl_dstring(String *str)
 {
     Uint desc, ndesc;
 
@@ -1028,15 +1028,15 @@ long ctrl_dstring(string *str)
 }
 
 /*
- * NAME:	control->dproto()
+ * NAME:	Control->dproto()
  * DESCRIPTION:	define a new function prototype
  */
-void ctrl_dproto(string *str, char *proto, string *sclass)
+void ctrl_dproto(String *str, char *proto, String *sclass)
 {
     vfh **h, **l;
     dfuncdef *func;
     char *proto2;
-    control *ctrl;
+    Control *ctrl;
     int i;
     long s;
 
@@ -1090,11 +1090,11 @@ void ctrl_dproto(string *str, char *proto, string *sclass)
 		functions[fdef = (*h)->index].proto =
 			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.sclass = PROTO_CLASS(proto);
-		if (functions[fdef].cfstr != (string *) NULL) {
+		if (functions[fdef].cfstr != (String *) NULL) {
 		    str_del(functions[fdef].cfstr);
 		}
 		functions[fdef].cfstr = sclass;
-		if (sclass != (string *) NULL) {
+		if (sclass != (String *) NULL) {
 		    str_ref(sclass);
 		}
 	    }
@@ -1172,13 +1172,13 @@ void ctrl_dproto(string *str, char *proto, string *sclass)
     /*
      * Actual definition.
      */
-    vfh_new(str, newohash, -1, (string *) NULL, nfdefs, h);
+    vfh_new(str, newohash, -1, (String *) NULL, nfdefs, h);
     s = ctrl_dstring(str);
     i = PROTO_SIZE(proto);
     functions[nfdefs].name = str->text;
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].cfstr = sclass;
-    if (sclass != (string *) NULL) {
+    if (sclass != (String *) NULL) {
 	str_ref(sclass);
     }
     functions[nfdefs].progsize = 0;
@@ -1190,17 +1190,17 @@ void ctrl_dproto(string *str, char *proto, string *sclass)
 }
 
 /*
- * NAME:	control->dfunc()
+ * NAME:	Control->dfunc()
  * DESCRIPTION:	define a new function
  */
-void ctrl_dfunc(string *str, char *proto, string *sclass)
+void ctrl_dfunc(String *str, char *proto, String *sclass)
 {
     fdef = nfdefs;
     ctrl_dproto(str, proto, sclass);
 }
 
 /*
- * NAME:	control->dprogram()
+ * NAME:	Control->dprogram()
  * DESCRIPTION:	define a function body
  */
 void ctrl_dprogram(char *prog, unsigned int size)
@@ -1211,10 +1211,10 @@ void ctrl_dprogram(char *prog, unsigned int size)
 }
 
 /*
- * NAME:	control->dvar()
+ * NAME:	Control->dvar()
  * DESCRIPTION:	define a variable
  */
-void ctrl_dvar(string *str, unsigned int sclass, unsigned int type, string *cvstr)
+void ctrl_dvar(String *str, unsigned int sclass, unsigned int type, String *cvstr)
 {
     vfh **h;
     dvardef *var;
@@ -1248,7 +1248,7 @@ void ctrl_dvar(string *str, unsigned int sclass, unsigned int type, string *cvst
     var->index = s;
     var->type = type;
     cvstrings[nvars++] = cvstr;
-    if (cvstr != (string *) NULL) {
+    if (cvstr != (String *) NULL) {
 	str_ref(cvstr);
 	s = ctrl_dstring(cvstr);
 	p = classvars + nclassvars++ * 3;
@@ -1259,17 +1259,17 @@ void ctrl_dvar(string *str, unsigned int sclass, unsigned int type, string *cvst
 }
 
 /*
- * NAME:	control->ifcall()
+ * NAME:	Control->ifcall()
  * DESCRIPTION:	call an inherited function
  */
-char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
+char *ctrl_ifcall(String *str, char *label, String **cfstr, long *call)
 {
-    control *ctrl;
+    Control *ctrl;
     oh *ohash;
     short index;
     char *proto;
 
-    *cfstr = (string *) NULL;
+    *cfstr = (String *) NULL;
 
     if (label != (char *) NULL) {
 	dsymbol *symb;
@@ -1353,15 +1353,15 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 }
 
 /*
- * NAME:	control->fcall()
+ * NAME:	Control->fcall()
  * DESCRIPTION:	call a function
  */
-char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
+char *ctrl_fcall(String *str, String **cfstr, long *call, int typechecking)
 {
     vfh *h;
     char *proto;
 
-    *cfstr = (string *) NULL;
+    *cfstr = (String *) NULL;
 
     h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     if (h == (vfh *) NULL) {
@@ -1383,7 +1383,7 @@ char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
 	    c_error("too many undefined functions");
 	    return (char *) NULL;
 	}
-	ctrl_dproto(str, proto = uproto, (string *) NULL);
+	ctrl_dproto(str, proto = uproto, (String *) NULL);
 	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
     } else if (h->ohash == newohash) {
 	/*
@@ -1398,7 +1398,7 @@ char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
 	c_error("ambiguous call to function %s", str->text);
 	return (char *) NULL;
     } else {
-	control *ctrl;
+	Control *ctrl;
 	char *p;
 	Uint sclass;
 
@@ -1438,7 +1438,7 @@ char *ctrl_fcall(string *str, string **cfstr, long *call, int typechecking)
 }
 
 /*
- * NAME:	control->gencall()
+ * NAME:	Control->gencall()
  * DESCRIPTION:	generate a function call
  */
 unsigned short ctrl_gencall(long call)
@@ -1452,7 +1452,7 @@ unsigned short ctrl_gencall(long call)
     if (inherit == ninherits) {
 	name = functions[index].name;
     } else {
-	control *ctrl;
+	Control *ctrl;
 	dfuncdef *f;
 
 	ctrl = OBJR(newctrl->inherits[inherit].oindex)->ctrl;
@@ -1482,10 +1482,10 @@ unsigned short ctrl_gencall(long call)
 }
 
 /*
- * NAME:	control->var()
+ * NAME:	Control->var()
  * DESCRIPTION:	handle a variable reference
  */
-unsigned short ctrl_var(string *str, long *ref, string **cvstr)
+unsigned short ctrl_var(String *str, long *ref, String **cvstr)
 {
     vfh *h;
 
@@ -1495,7 +1495,7 @@ unsigned short ctrl_var(string *str, long *ref, string **cvstr)
 	c_error("undeclared variable %s", str->text);
 	if (nvars < 255) {
 	    /* don't repeat this error */
-	    ctrl_dvar(str, 0, T_MIXED, (string *) NULL);
+	    ctrl_dvar(str, 0, T_MIXED, (String *) NULL);
 	}
 	return T_MIXED;
     }
@@ -1520,7 +1520,7 @@ int ctrl_ninherits()
 
 
 /*
- * NAME:	control->chkfuncs()
+ * NAME:	Control->chkfuncs()
  * DESCRIPTION:	check function definitions
  */
 bool ctrl_chkfuncs()
@@ -1616,19 +1616,19 @@ bool ctrl_chkfuncs()
 
 
 /*
- * NAME:	control->mkstrings()
+ * NAME:	Control->mkstrings()
  * DESCRIPTION:	create the string table for the new control block
  */
 static void ctrl_mkstrings()
 {
-    string **s;
+    String **s;
     strchunk *l, *f;
     unsigned short i;
     long strsize;
 
     strsize = 0;
     if ((newctrl->nstrings = nstrs) != 0) {
-	newctrl->strings = ALLOC(string*, newctrl->nstrings);
+	newctrl->strings = ALLOC(String*, newctrl->nstrings);
 	s = newctrl->strings + nstrs;
 	i = strchunksz;
 	for (l = str_list; l != (strchunk *) NULL; ) {
@@ -1648,7 +1648,7 @@ static void ctrl_mkstrings()
 }
 
 /*
- * NAME:	control->mkfuncs()
+ * NAME:	Control->mkfuncs()
  * DESCRIPTION:	make the function definition table for the control block
  */
 static void ctrl_mkfuncs()
@@ -1681,7 +1681,7 @@ static void ctrl_mkfuncs()
 }
 
 /*
- * NAME:	control->mkvars()
+ * NAME:	Control->mkvars()
  * DESCRIPTION:	make the variable definition table for the control block
  */
 static void ctrl_mkvars()
@@ -1691,12 +1691,12 @@ static void ctrl_mkvars()
 	memcpy(newctrl->vardefs, variables, nvars * sizeof(dvardef));
 	if ((newctrl->nclassvars = nclassvars) != 0) {
 	    unsigned short i;
-	    string **s;
+	    String **s;
 
-	    newctrl->cvstrings = ALLOC(string*, nvars * sizeof(string*));
-	    memcpy(newctrl->cvstrings, cvstrings, nvars * sizeof(string*));
+	    newctrl->cvstrings = ALLOC(String*, nvars * sizeof(String*));
+	    memcpy(newctrl->cvstrings, cvstrings, nvars * sizeof(String*));
 	    for (i = nvars, s = newctrl->cvstrings; i != 0; --i, s++) {
-		if (*s != (string *) NULL) {
+		if (*s != (String *) NULL) {
 		    str_ref(*s);
 		}
 	    }
@@ -1707,7 +1707,7 @@ static void ctrl_mkvars()
 }
 
 /*
- * NAME:	control->mkfcalls()
+ * NAME:	Control->mkfcalls()
  * DESCRIPTION:	make the function call table for the control block
  */
 static void ctrl_mkfcalls()
@@ -1734,8 +1734,8 @@ static void ctrl_mkfcalls()
 	if (ohash->index == i) {
 	    char *ofc;
 	    dfuncdef *f;
-	    control *ctrl;
-	    object *obj;
+	    Control *ctrl;
+	    Object *obj;
 	    uindex j, n;
 
 	    /*
@@ -1800,7 +1800,7 @@ static void ctrl_mkfcalls()
 }
 
 /*
- * NAME:	control->mksymbs()
+ * NAME:	Control->mksymbs()
  * DESCRIPTION:	make the symbol table for the control block
  */
 static void ctrl_mksymbs()
@@ -1829,7 +1829,7 @@ static void ctrl_mksymbs()
      */
     for (i = 0, inh = newctrl->inherits; i <= ninherits; i++, inh++) {
 	dfuncdef *f;
-	control *ctrl;
+	Control *ctrl;
 
 	if (i == ninherits) {
 	    ctrl = newctrl;
@@ -1919,7 +1919,7 @@ static void ctrl_mksymbs()
  * NAME:	ctrl->mkvtypes()
  * DESCRIPTION:	make the variable type table for the control block
  */
-void ctrl_mkvtypes(control *ctrl)
+void ctrl_mkvtypes(Control *ctrl)
 {
     char *type;
     unsigned short max, nv, n;
@@ -1948,15 +1948,15 @@ void ctrl_mkvtypes(control *ctrl)
 }
 
 /*
- * NAME:	control->symb()
+ * NAME:	Control->symb()
  * DESCRIPTION:	return the entry in the symbol table for func, or NULL
  */
-dsymbol *ctrl_symb(control *ctrl, char *func, unsigned int len)
+dsymbol *ctrl_symb(Control *ctrl, char *func, unsigned int len)
 {
     dsymbol *symb;
     dfuncdef *f;
     unsigned int i, j;
-    string *str;
+    String *str;
     dsymbol *symtab, *symb1;
     dinherit *inherits;
 
@@ -1995,13 +1995,13 @@ dsymbol *ctrl_symb(control *ctrl, char *func, unsigned int len)
 }
 
 /*
- * NAME:	control->construct()
+ * NAME:	Control->construct()
  * DESCRIPTION:	construct and return a control block for the object just
  *		compiled
  */
-control *ctrl_construct()
+Control *ctrl_construct()
 {
-    control *ctrl;
+    Control *ctrl;
 
     ctrl = newctrl;
     ctrl->nvariables += nvars;
@@ -2014,12 +2014,12 @@ control *ctrl_construct()
     ctrl_mkvtypes(ctrl);
     ctrl->compiled = P_time();
 
-    newctrl = (control *) NULL;
+    newctrl = (Control *) NULL;
     return ctrl;
 }
 
 /*
- * NAME:	control->clear()
+ * NAME:	Control->clear()
  * DESCRIPTION:	clean up
  */
 void ctrl_clear()
@@ -2041,14 +2041,14 @@ void ctrl_clear()
     nifcalls = 0;
     nundefs = 0;
 
-    if (newctrl != (control *) NULL) {
+    if (newctrl != (Control *) NULL) {
 	d_del_control(newctrl);
-	newctrl = (control *) NULL;
+	newctrl = (Control *) NULL;
     }
     str_clear();
     while (str_list != (strchunk *) NULL) {
 	strchunk *l;
-	string **s;
+	String **s;
 
 	l = str_list;
 	s = &l->s[strchunksz];
@@ -2076,7 +2076,7 @@ void ctrl_clear()
 	    if (f->progsize != 0) {
 		FREE(f->prog);
 	    }
-	    if (f->cfstr != (string *) NULL) {
+	    if (f->cfstr != (String *) NULL) {
 		str_del(f->cfstr);
 	    }
 	}
@@ -2087,17 +2087,17 @@ void ctrl_clear()
 	FREE(variables);
 	variables = (dvardef *) NULL;
     }
-    if (cvstrings != (string **) NULL) {
+    if (cvstrings != (String **) NULL) {
 	unsigned short i;
-	string **s;
+	String **s;
 
 	for (i = nvars, s = cvstrings; i != 0; --i, s++) {
-	    if (*s != (string *) NULL) {
+	    if (*s != (String *) NULL) {
 		str_del(*s);
 	    }
 	}
 	FREE(cvstrings);
-	cvstrings = (string **) NULL;
+	cvstrings = (String **) NULL;
     }
     if (classvars != (char *) NULL) {
 	FREE(classvars);
@@ -2106,17 +2106,17 @@ void ctrl_clear()
 }
 
 /*
- * NAME:	control->varmap()
+ * NAME:	Control->varmap()
  * DESCRIPTION:	create a variable mapping from the old control block to the new
  */
-unsigned short *ctrl_varmap(control *octrl, control *nctrl)
+unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 {
     unsigned short j, k;
     dvardef *v;
     long n;
     unsigned short *vmap;
     dinherit *inh, *inh2;
-    control *ctrl, *ctrl2;
+    Control *ctrl, *ctrl2;
     unsigned short i, voffset;
 
     /*
@@ -2229,10 +2229,10 @@ unsigned short *ctrl_varmap(control *octrl, control *nctrl)
 }
 
 /*
- * NAME:	control->undefined()
+ * NAME:	Control->undefined()
  * DESCRIPTION:	list the undefined functions in a program
  */
-array *ctrl_undefined(dataspace *data, control *ctrl)
+Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 {
     typedef struct {
 	short count;		/* number of undefined functions */
@@ -2242,13 +2242,13 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
     short i;
     dsymbol *symb;
     dfuncdef *f;
-    value *v;
-    object *obj;
+    Value *v;
+    Object *obj;
     dinherit *inherits;
     dsymbol *symtab;
     unsigned short nsymbols;
     long size;
-    array *m;
+    Array *m;
 
     list = ALLOCA(ulist, ctrl->ninherits);
     memset(list, '\0', ctrl->ninherits * sizeof(ulist));
@@ -2270,9 +2270,9 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
 	}
     }
 
-    m = (array *) NULL;
+    m = (Array *) NULL;
     if (ec_push((ec_ftn) NULL)) {
-	if (m != (array *) NULL) {
+	if (m != (Array *) NULL) {
 	    /* discard mapping */
 	    arr_ref(m);
 	    arr_del(m);
@@ -2281,7 +2281,7 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
 	error((char *) NULL);	/* pass on error */
     }
     m = map_new(data, size);
-    memset(m->elts, '\0', size * sizeof(value));
+    memset(m->elts, '\0', size * sizeof(Value));
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
 	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
 	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
@@ -2289,8 +2289,8 @@ array *ctrl_undefined(dataspace *data, control *ctrl)
 	if (f->sclass & C_UNDEFINED) {
 	    u = &list[UCHAR(symb->inherit)];
 	    v = &m->elts[u->index];
-	    if (v->u.string == (string *) NULL) {
-		string *str;
+	    if (v->u.string == (String *) NULL) {
+		String *str;
 		unsigned short len;
 
 		len = strlen(obj->chain.name);

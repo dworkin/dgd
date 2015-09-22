@@ -63,7 +63,7 @@ typedef struct {
 # define DSYM_LAYOUT	"ccs"
 
 struct _control_ {
-    control *prev, *next;
+    Control *prev, *next;
     uindex ndata;		/* # of data blocks using this control block */
 
     sector nsectors;		/* o # of sectors */
@@ -87,7 +87,7 @@ struct _control_ {
     Uint progoffset;		/* o program text offset */
 
     unsigned short nstrings;	/* i/o # strings */
-    string **strings;		/* i/o? string table */
+    String **strings;		/* i/o? string table */
     dstrconst *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     Uint strsize;		/* o sstrings text size */
@@ -100,7 +100,7 @@ struct _control_ {
     unsigned short nvardefs;	/* i/o # variable definitions */
     unsigned short nclassvars;	/* i/o # class variable definitions */
     dvardef *vardefs;		/* i/o? variable definitions */
-    string **cvstrings;		/* variable class strings */
+    String **cvstrings;		/* variable class strings */
     char *classvars;		/* variable classes */
     Uint vardoffset;		/* o offset of variable definition table */
 
@@ -126,15 +126,15 @@ struct _control_ {
 # define NEW_VAR(x)		((x) >= NEW_POINTER)
 
 typedef struct _strref_ {
-    string *str;		/* string value */
-    dataspace *data;		/* dataspace this string is in */
+    String *str;		/* string value */
+    Dataspace *data;		/* dataspace this string is in */
     Uint ref;			/* # of refs */
 } strref;
 
 typedef struct _arrref_ {
-    array *arr;			/* array value */
-    dataplane *plane;		/* value plane this array is in */
-    dataspace *data;		/* dataspace this array is in */
+    Array *arr;			/* array value */
+    Dataplane *plane;		/* value plane this array is in */
+    Dataspace *data;		/* dataspace this array is in */
     short state;		/* state of mapping */
     Uint ref;			/* # of refs */
 } arrref;
@@ -146,9 +146,9 @@ struct _value_ {
     union {
 	Int number;		/* number */
 	Uint objcnt;		/* object creation count */
-	string *string;		/* string */
-	array *array;		/* array or mapping */
-	value *lval;		/* lvalue: variable */
+	String *string;		/* string */
+	Array *array;		/* array or mapping */
+	Value *lval;		/* lvalue: variable */
     } u;
 };
 
@@ -156,7 +156,7 @@ typedef struct {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
-    value val[4];		/* function name, 3 direct arguments */
+    Value val[4];		/* function name, 3 direct arguments */
 } dcallout;
 
 # define co_prev	time
@@ -170,33 +170,33 @@ struct _dataplane_ {
     long achange;		/* # array changes */
     long imports;		/* # array imports */
 
-    value *original;		/* original variables */
+    Value *original;		/* original variables */
     arrref alocal;		/* primary of new local arrays */
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
     strref *strings;		/* i/o? string constant table */
     struct _coptable_ *coptab;	/* callout patch table */
 
-    dataplane *prev;		/* previous in per-dataspace linked list */
-    dataplane *plist;		/* next in per-level linked list */
+    Dataplane *prev;		/* previous in per-dataspace linked list */
+    Dataplane *plist;		/* next in per-level linked list */
 };
 
 struct _dataspace_ {
-    dataspace *prev, *next;	/* swap list */
-    dataspace *gcprev, *gcnext;	/* garbage collection list */
+    Dataspace *prev, *next;	/* swap list */
+    Dataspace *gcprev, *gcnext;	/* garbage collection list */
 
-    dataspace *iprev;		/* previous in import list */
-    dataspace *inext;		/* next in import list */
+    Dataspace *iprev;		/* previous in import list */
+    Dataspace *inext;		/* next in import list */
 
     sector *sectors;		/* o vector of sectors */
     sector nsectors;		/* o # sectors */
 
     short flags;		/* various bitflags */
-    control *ctrl;		/* control block */
+    Control *ctrl;		/* control block */
     uindex oindex;		/* object this dataspace belongs to */
 
     unsigned short nvariables;	/* o # variables */
-    value *variables;		/* i/o variables */
+    Value *variables;		/* i/o variables */
     struct _svalue_ *svariables;/* o svariables */
     Uint varoffset;		/* o offset of variables in data space */
 
@@ -204,7 +204,7 @@ struct _dataspace_ {
     Uint eltsize;		/* o total size of array elements */
     struct _sarray_ *sarrays;	/* o sarrays */
     struct _svalue_ *selts;	/* o sarray elements */
-    array alist;		/* array linked list sentinel */
+    Array alist;		/* array linked list sentinel */
     Uint arroffset;		/* o offset of array table in data space */
 
     Uint nstrings;		/* i/o # strings */
@@ -219,8 +219,8 @@ struct _dataspace_ {
     struct _scallout_ *scallouts; /* o scallouts */
     Uint cooffset;		/* offset of callout table */
 
-    dataplane base;		/* basic value plane */
-    dataplane *plane;		/* current value plane */
+    Dataplane base;		/* basic value plane */
+    Dataplane *plane;		/* current value plane */
 
     struct _parser_ *parser;	/* parse_string data */
 };
@@ -234,70 +234,70 @@ extern void		d_init		 (void);
 extern void		d_init_conv	 (int, int, int, int, int, int, int,
 					    int, int);
 
-extern control	       *d_new_control	 (void);
-extern dataspace       *d_new_dataspace  (object*);
-extern control	       *d_load_control	 (object*);
-extern dataspace       *d_load_dataspace (object*);
-extern void		d_ref_control	 (control*);
-extern void		d_ref_dataspace  (dataspace*);
+extern Control	       *d_new_control	 (void);
+extern Dataspace       *d_new_dataspace  (Object*);
+extern Control	       *d_load_control	 (Object*);
+extern Dataspace       *d_load_dataspace (Object*);
+extern void		d_ref_control	 (Control*);
+extern void		d_ref_dataspace  (Dataspace*);
 
-extern char	       *d_get_prog	 (control*);
-extern string	       *d_get_strconst	 (control*, int, unsigned int);
-extern dfuncdef        *d_get_funcdefs	 (control*);
-extern dvardef	       *d_get_vardefs	 (control*);
-extern char	       *d_get_funcalls	 (control*);
-extern dsymbol	       *d_get_symbols	 (control*);
-extern Uint		d_get_progsize	 (control*);
+extern char	       *d_get_prog	 (Control*);
+extern String	       *d_get_strconst	 (Control*, int, unsigned int);
+extern dfuncdef        *d_get_funcdefs	 (Control*);
+extern dvardef	       *d_get_vardefs	 (Control*);
+extern char	       *d_get_funcalls	 (Control*);
+extern dsymbol	       *d_get_symbols	 (Control*);
+extern Uint		d_get_progsize	 (Control*);
 
-extern void		d_new_variables	 (control*, value*);
-extern value	       *d_get_variable	 (dataspace*, unsigned int);
-extern value	       *d_get_elts	 (array*);
-extern void		d_get_callouts	 (dataspace*);
+extern void		d_new_variables	 (Control*, Value*);
+extern Value	       *d_get_variable	 (Dataspace*, unsigned int);
+extern Value	       *d_get_elts	 (Array*);
+extern void		d_get_callouts	 (Dataspace*);
 
 extern sector		d_swapout	 (unsigned int);
-extern void		d_upgrade_mem	 (object*, object*);
-extern control	       *d_restore_ctrl	 (object*,
+extern void		d_upgrade_mem	 (Object*, Object*);
+extern Control	       *d_restore_ctrl	 (Object*,
 					  void(*)(char*, sector*, Uint, Uint));
-extern dataspace       *d_restore_data	 (object*, Uint*,
+extern Dataspace       *d_restore_data	 (Object*, Uint*,
 					  void(*)(char*, sector*, Uint, Uint));
-extern void		d_restore_obj	 (object*, Uint*, bool, bool);
+extern void		d_restore_obj	 (Object*, Uint*, bool, bool);
 extern void		d_converted	 (void);
 
-extern void		d_free_control	 (control*);
-extern void		d_free_dataspace (dataspace*);
+extern void		d_free_control	 (Control*);
+extern void		d_free_dataspace (Dataspace*);
 
 /* data.c */
 
-extern void		d_new_plane	(dataspace*, Int);
-extern void		d_commit_plane	(Int, value*);
+extern void		d_new_plane	(Dataspace*, Int);
+extern void		d_commit_plane	(Int, Value*);
 extern void		d_discard_plane	(Int);
-extern abchunk	      **d_commit_arr	(array*, dataplane*, dataplane*);
-extern void		d_discard_arr	(array*, dataplane*);
+extern abchunk	      **d_commit_arr	(Array*, Dataplane*, Dataplane*);
+extern void		d_discard_arr	(Array*, Dataplane*);
 
-extern void		d_ref_imports	(array*);
-extern void		d_assign_var	(dataspace*, value*, value*);
-extern value	       *d_get_extravar	(dataspace*);
-extern void		d_set_extravar	(dataspace*, value*);
-extern void		d_wipe_extravar	(dataspace*);
-extern void		d_assign_elt	(dataspace*, array*, value*, value*);
-extern void		d_change_map	(array*);
+extern void		d_ref_imports	(Array*);
+extern void		d_assign_var	(Dataspace*, Value*, Value*);
+extern Value	       *d_get_extravar	(Dataspace*);
+extern void		d_set_extravar	(Dataspace*, Value*);
+extern void		d_wipe_extravar	(Dataspace*);
+extern void		d_assign_elt	(Dataspace*, Array*, Value*, Value*);
+extern void		d_change_map	(Array*);
 
-extern uindex		d_new_call_out	(dataspace*, string*, Int,
-					   unsigned int, frame*, int);
-extern Int		d_del_call_out	(dataspace*, Uint, unsigned short*);
-extern string	       *d_get_call_out	(dataspace*, unsigned int, frame*,
+extern uindex		d_new_call_out	(Dataspace*, String*, Int,
+					   unsigned int, Frame*, int);
+extern Int		d_del_call_out	(Dataspace*, Uint, unsigned short*);
+extern String	       *d_get_call_out	(Dataspace*, unsigned int, Frame*,
 					   int*);
-extern array	       *d_list_callouts	(dataspace*, dataspace*);
+extern Array	       *d_list_callouts	(Dataspace*, Dataspace*);
 
-extern void		d_set_varmap	(control*, unsigned short*);
-extern void		d_upgrade_data	(dataspace*, unsigned int,
-					   unsigned short*, object*);
-extern void		d_upgrade_clone	(dataspace*);
-extern object	       *d_upgrade_lwobj	(array*, object*);
+extern void		d_set_varmap	(Control*, unsigned short*);
+extern void		d_upgrade_data	(Dataspace*, unsigned int,
+					   unsigned short*, Object*);
+extern void		d_upgrade_clone	(Dataspace*);
+extern Object	       *d_upgrade_lwobj	(Array*, Object*);
 extern void		d_export	(void);
 
-extern void		d_del_control	(control*);
-extern void		d_del_dataspace	(dataspace*);
+extern void		d_del_control	(Control*);
+extern void		d_del_dataspace	(Dataspace*);
 
 
 /* bit values for ctrl->flags */

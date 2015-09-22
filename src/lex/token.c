@@ -34,7 +34,7 @@
 # define TCHUNKSZ	8
 
 typedef struct _tbuf_ {
-    string **strs;		/* input buffer array */
+    String **strs;		/* input buffer array */
     int nstr;			/* number of input buffers */
     char *buffer;		/* token buffer */
     char *p;			/* token buffer pointer */
@@ -114,7 +114,7 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 	}
 	tb = &tlist->t[tchunksz++];
     }
-    tb->strs = (string **) NULL;
+    tb->strs = (String **) NULL;
     tb->nstr = 0;
     tb->p = tb->buffer = buffer;
     tb->inbuf = buflen;
@@ -189,13 +189,13 @@ void tk_clear()
  * NAME:	token->include()
  * DESCRIPTION:	push a file on the input stream
  */
-bool tk_include(char *file, string **strs, int nstr)
+bool tk_include(char *file, String **strs, int nstr)
 {
     int fd;
     ssizet len;
 
     if (file != (char *) NULL) {
-	if (strs == (string **) NULL) {
+	if (strs == (String **) NULL) {
 	    struct stat sbuf;
 
 	    /* read from file */

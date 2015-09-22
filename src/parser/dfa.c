@@ -1553,7 +1553,7 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
  *				-2	Invalid token
  *				-3	DFA too large (deallocate)
  */
-short dfa_scan(dfa *fa, string *str, ssizet *strlen, char **token, ssizet *len)
+short dfa_scan(dfa *fa, String *str, ssizet *strlen, char **token, ssizet *len)
 {
     ssizet size;
     unsigned short eclass;

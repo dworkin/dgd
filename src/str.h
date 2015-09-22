@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,17 +24,17 @@ struct _string_ {
     char text[1];		/* actual characters following this struct */
 };
 
-extern string	       *str_alloc	(char*, long);
-extern string	       *str_new		(char*, long);
+extern String	       *str_alloc	(char*, long);
+extern String	       *str_new		(char*, long);
 # define str_ref(s)	((s)->ref++)
-extern void		str_del		(string*);
+extern void		str_del		(String*);
 
 extern void		str_merge	(void);
-extern Uint		str_put		(string*, Uint);
+extern Uint		str_put		(String*, Uint);
 extern void		str_clear	(void);
 
-extern int		str_cmp		(string*, string*);
-extern string	       *str_add		(string*, string*);
-extern ssizet		str_index	(string*, long);
-extern void		str_ckrange	(string*, long, long);
-extern string	       *str_range	(string*, long, long);
+extern int		str_cmp		(String*, String*);
+extern String	       *str_add		(String*, String*);
+extern ssizet		str_index	(String*, long);
+extern void		str_ckrange	(String*, long, long);
+extern String	       *str_range	(String*, long, long);

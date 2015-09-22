@@ -67,7 +67,7 @@ typedef struct {
     char *name;			/* variable name */
     short type;			/* variable type */
     short unset;		/* used before set? */
-    string *cvstr;		/* class name */
+    String *cvstr;		/* class name */
 } var;
 
 static cchunk *clist;			/* list of all cond chunks */
@@ -279,7 +279,7 @@ static int block_var(char *name)
  * NAME:	block->pdef()
  * DESCRIPTION:	declare a function parameter
  */
-static void block_pdef(char *name, short type, string *cvstr)
+static void block_pdef(char *name, short type, String *cvstr)
 {
     if (block_var(name) >= 0) {
 	c_error("redeclaration of parameter %s", name);
@@ -298,7 +298,7 @@ static void block_pdef(char *name, short type, string *cvstr)
  * NAME:	block->vdef()
  * DESCRIPTION:	declare a local variable
  */
-static void block_vdef(char *name, short type, string *cvstr)
+static void block_vdef(char *name, short type, String *cvstr)
 {
     if (block_var(name) >= thisblock->vindex) {
 	c_error("redeclaration of local variable %s", name);
@@ -434,7 +434,7 @@ static void loop_clear()
 
 typedef struct _context_ {
     char *file;				/* file to compile */
-    frame *frame;			/* current interpreter stack frame */
+    Frame *frame;			/* current interpreter stack frame */
     struct _context_ *prev;		/* previous context */
 } context;
 
@@ -447,7 +447,7 @@ static bool stricttc;			/* strict typechecking */
 static bool typechecking;		/* is current function typechecked? */
 static bool seen_decls;			/* seen any declarations yet? */
 static short ftype;			/* current function type & class */
-static string *fclass;			/* function class string */
+static String *fclass;			/* function class string */
 static loop *thisloop;			/* current loop */
 static loop *switch_list;		/* list of nested switches */
 static node *case_list;			/* list of case labels */
@@ -505,8 +505,8 @@ static long ncompiled;		/* # objects compiled */
 bool c_inherit(char *file, node *label, int priv)
 {
     char buf[STRINGSZ];
-    object *obj;
-    frame *f;
+    Object *obj;
+    Frame *f;
     long ncomp;
 
     obj = NULL;
@@ -527,8 +527,8 @@ bool c_inherit(char *file, node *label, int priv)
 	    return FALSE;
 	}
 	obj = o_find(file, OACC_READ);
-	if (obj == (object *) NULL) {
-	    c_compile(f, file, (object *) NULL, (string **) NULL, 0, TRUE);
+	if (obj == (Object *) NULL) {
+	    c_compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
 	    return FALSE;
 	}
     } else {
@@ -560,8 +560,8 @@ bool c_inherit(char *file, node *label, int priv)
 	    f->sp++;
 	    file = path_from(buf, current->file, file);
 	    obj = o_find(file, OACC_READ);
-	    if (obj == (object *) NULL) {
-		c_compile(f, file, (object *) NULL, (string **) NULL, 0, TRUE);
+	    if (obj == (Object *) NULL) {
+		c_compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
 		return FALSE;
 	    }
 	}
@@ -575,7 +575,7 @@ bool c_inherit(char *file, node *label, int priv)
 
     return ctrl_inherit(current->frame, current->file, obj,
 			(label == (node *) NULL) ?
-			 (string *) NULL : label->l.string,
+			 (String *) NULL : label->l.string,
 			priv);
 }
 
@@ -585,7 +585,7 @@ extern int yyparse (void);
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(frame *f, char *file, object *obj, string **strs,
+Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	int nstr, int iflag)
 {
     context c;
@@ -617,7 +617,7 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
 	error("Illegal object name \"/%s\"", file);
     }
     strcpy(file_c, file);
-    if (strs == (string **) NULL) {
+    if (strs == (String **) NULL) {
 	strcat(file_c, ".c");
     }
     c.frame = f;
@@ -637,49 +637,49 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
 	if (c_autodriver() != 0) {
 	    ctrl_init();
 	} else {
-	    object *aobj;
+	    Object *aobj;
 
 	    if (!cg_compiled() &&
-		o_find(driver_object, OACC_READ) == (object *) NULL) {
+		o_find(driver_object, OACC_READ) == (Object *) NULL) {
 		/*
 		 * compile the driver object to do pathname translation
 		 */
 		current = (context *) NULL;
-		c_compile(f, driver_object, (object *) NULL, (string **) NULL,
+		c_compile(f, driver_object, (Object *) NULL, (String **) NULL,
 			  0, FALSE);
 		current = &c;
 	    }
 
 	    aobj = o_find(auto_object, OACC_READ);
-	    if (aobj == (object *) NULL) {
+	    if (aobj == (Object *) NULL) {
 		/*
 		 * compile auto object
 		 */
-		aobj = c_compile(f, auto_object, (object *) NULL,
-				 (string **) NULL, 0, TRUE);
+		aobj = c_compile(f, auto_object, (Object *) NULL,
+				 (String **) NULL, 0, TRUE);
 	    }
 	    /* inherit auto object */
 	    if (O_UPGRADING(aobj)) {
 		error("Upgraded auto object while compiling \"/%s\"", file_c);
 	    }
 	    ctrl_init();
-	    ctrl_inherit(c.frame, file, aobj, (string *) NULL, FALSE);
+	    ctrl_inherit(c.frame, file, aobj, (String *) NULL, FALSE);
 	}
 
-	if (strs != (string **) NULL) {
+	if (strs != (String **) NULL) {
 	    pp_init(file_c, paths, strs, nstr, 1);
-	} else if (!pp_init(file_c, paths, (string **) NULL, 0, 1)) {
+	} else if (!pp_init(file_c, paths, (String **) NULL, 0, 1)) {
 	    error("Could not compile \"/%s\"", file_c);
 	}
-	if (!tk_include(include, (string **) NULL, 0)) {
+	if (!tk_include(include, (String **) NULL, 0)) {
 	    error("Could not include \"/%s\"", include);
 	}
 
 	cg_init(c.prev != (context *) NULL);
 	if (yyparse() == 0 && ctrl_chkfuncs()) {
-	    control *ctrl;
+	    Control *ctrl;
 
-	    if (obj != (object *) NULL) {
+	    if (obj != (Object *) NULL) {
 		if (obj->count == 0) {
 		    error("Object destructed during recompilation");
 		}
@@ -712,7 +712,7 @@ object *c_compile(frame *f, char *file, object *obj, string **strs,
 	    c_clear();
 	    current = c.prev;
 
-	    if (obj == (object *) NULL) {
+	    if (obj == (Object *) NULL) {
 		/* new object */
 		obj = o_new(file, ctrl);
 		if (strcmp(file, driver_object) == 0) {
@@ -785,13 +785,13 @@ static node *revert_list(node *n)
  * NAME:	compile->objecttype()
  * DESCRIPTION:	handle an object type
  */
-string *c_objecttype(node *n)
+String *c_objecttype(node *n)
 {
     char path[STRINGSZ];
 
     if (c_autodriver() == 0) {
 	char *p;
-	frame *f;
+	Frame *f;
 
 	f = current->frame;
 	p = tk_filename();
@@ -817,7 +817,7 @@ string *c_objecttype(node *n)
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(unsigned short sclass, node *type, string *str,
+static void c_decl_func(unsigned short sclass, node *type, String *str,
 	node *formals, bool function)
 {
     char proto[5 + (MAX_LOCALS + 1) * 4];
@@ -953,7 +953,7 @@ static void c_decl_func(unsigned short sclass, node *type, string *str,
  * NAME:	compile->decl_var()
  * DESCRIPTION:	declare a variable
  */
-static void c_decl_var(unsigned short sclass, node *type, string *str,
+static void c_decl_var(unsigned short sclass, node *type, String *str,
 	bool global)
 {
     char tnbuf[TNBUFSIZE];
@@ -1016,7 +1016,7 @@ void c_global(unsigned int sclass, node *type, node *n)
     c_decl_list(sclass, type, n, TRUE);
 }
 
-static string *fname;		/* name of current function */
+static String *fname;		/* name of current function */
 static unsigned short fline;	/* first line of function */
 
 /*
@@ -1311,7 +1311,7 @@ node *c_endrlimits(node *n1, node *n2, node *n3)
 	strcmp(current->file, auto_object) == 0) {
 	n1 = node_bin(N_RLIMITS, 1, node_bin(N_PAIR, 0, n1, n2), n3);
     } else {
-	frame *f;
+	Frame *f;
 
 	f = current->frame;
 	PUSH_STRVAL(f, str_new((char *) NULL, strlen(current->file) + 1L));
@@ -1969,7 +1969,7 @@ node *c_endcompound(node *n)
 node *c_flookup(node *n, int typechecked)
 {
     char *proto;
-    string *sclass;
+    String *sclass;
     long call;
 
     proto = ctrl_fcall(n->l.string, &sclass, &call, typechecked);
@@ -1985,7 +1985,7 @@ node *c_flookup(node *n, int typechecked)
 node *c_iflookup(node *n, node *label)
 {
     char *proto;
-    string *sclass;
+    String *sclass;
     long call;
 
     proto = ctrl_ifcall(n->l.string, (label != (node *) NULL) ?
@@ -2023,7 +2023,7 @@ node *c_variable(node *n)
 	n->sclass = variables[i].cvstr;
 	n->r.number = i;
     } else {
-	string *sclass;
+	String *sclass;
 	long ref;
 
 	/*
@@ -2329,7 +2329,7 @@ node *c_new_object(node *o, node *args)
  */
 node *c_instanceof(node *n, node *prog)
 {
-    string *str;
+    String *str;
 
     if (n->mod != T_MIXED && n->mod != T_OBJECT && n->mod != T_CLASS) {
 	c_error("bad argument 1 for function <- (needs object)");
@@ -2626,8 +2626,8 @@ void c_error(char *format, ...)
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
-	o_find(driver_object, OACC_READ) != (object *) NULL) {
-	frame *f;
+	o_find(driver_object, OACC_READ) != (Object *) NULL) {
+	Frame *f;
 
 	f = current->frame;
 	fname = tk_filename();

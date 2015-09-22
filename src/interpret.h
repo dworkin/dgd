@@ -253,12 +253,12 @@ typedef struct _rlinfo_ {
 } rlinfo;
 
 struct _frame_ {
-    frame *prev;		/* previous stack frame */
+    Frame *prev;		/* previous stack frame */
     uindex oindex;		/* current object index */
-    array *lwobj;		/* lightweight object */
-    control *ctrl;		/* object control block */
-    dataspace *data;		/* dataspace of current object */
-    control *p_ctrl;		/* program control block */
+    Array *lwobj;		/* lightweight object */
+    Control *ctrl;		/* object control block */
+    Dataspace *data;		/* dataspace of current object */
+    Control *p_ctrl;		/* program control block */
     unsigned short p_index;	/* program index */
     unsigned short nargs;	/* # arguments */
     bool external;		/* TRUE if it's an external call */
@@ -267,11 +267,11 @@ struct _frame_ {
     struct _dfuncdef_ *func;	/* current function */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
-    value *stack;		/* local value stack */
-    value *sp;			/* stack pointer */
-    value *lip;			/* lvalue index pointer */
-    value *argp;		/* argument pointer (previous sp) */
-    value *fp;			/* frame pointer (at end of local stack) */
+    Value *stack;		/* local value stack */
+    Value *sp;			/* stack pointer */
+    Value *lip;			/* lvalue index pointer */
+    Value *argp;		/* argument pointer (previous sp) */
+    Value *fp;			/* frame pointer (at end of local stack) */
     Int depth;			/* stack depth */
     rlinfo *rlim;		/* rlimits info */
     Int level;			/* plane level */
@@ -279,55 +279,55 @@ struct _frame_ {
 };
 
 extern void	i_init		(char*, int);
-extern void	i_ref_value	(value*);
-extern void	i_del_value	(value*);
-extern void	i_copy		(value*, value*, unsigned int);
-extern void	i_grow_stack	(frame*, int);
-extern void	i_push_value	(frame*, value*);
-extern void	i_pop		(frame*, int);
-extern value   *i_reverse	(frame*, int);
-extern void	i_odest		(frame*, object*);
-extern void	i_string	(frame*, int, unsigned int);
-extern void	i_aggregate	(frame*, unsigned int);
-extern void	i_map_aggregate	(frame*, unsigned int);
-extern int	i_spread1	(frame*, int);
-extern void	i_global	(frame*, int, int);
-extern void	i_global_lvalue	(frame*, int, int, int, Uint);
-extern void	i_index		(frame*);
-extern void	i_index2	(frame*, value*, value*, value*, bool);
-extern void	i_index_lvalue	(frame*, int, Uint);
+extern void	i_ref_value	(Value*);
+extern void	i_del_value	(Value*);
+extern void	i_copy		(Value*, Value*, unsigned int);
+extern void	i_grow_stack	(Frame*, int);
+extern void	i_push_value	(Frame*, Value*);
+extern void	i_pop		(Frame*, int);
+extern Value   *i_reverse	(Frame*, int);
+extern void	i_odest		(Frame*, Object*);
+extern void	i_string	(Frame*, int, unsigned int);
+extern void	i_aggregate	(Frame*, unsigned int);
+extern void	i_map_aggregate	(Frame*, unsigned int);
+extern int	i_spread1	(Frame*, int);
+extern void	i_global	(Frame*, int, int);
+extern void	i_global_lvalue	(Frame*, int, int, int, Uint);
+extern void	i_index		(Frame*);
+extern void	i_index2	(Frame*, Value*, Value*, Value*, bool);
+extern void	i_index_lvalue	(Frame*, int, Uint);
 extern char    *i_typename	(char*, unsigned int);
-extern char    *i_classname	(frame*, Uint);
-extern int	i_instanceof	(frame*, unsigned int, Uint);
-extern void	i_cast		(frame*, value*, unsigned int, Uint);
-extern void	i_dup		(frame*);
-extern void	i_store_global	(frame*, int, int, value*, value*);
-extern bool	i_store_index	(frame*, value*, value*, value*, value*);
-extern void	i_store		(frame*);
-extern void	i_lvalues	(frame*);
-extern Int	i_get_depth	(frame*);
-extern Int	i_get_ticks	(frame*);
-extern void	i_new_rlimits	(frame*, Int, Int);
-extern void	i_set_rlimits	(frame*, rlinfo*);
-extern frame   *i_set_sp	(frame*, value*);
-extern frame   *i_prev_object	(frame*, int);
-extern char    *i_prev_program	(frame*, int);
-extern void	i_typecheck	(frame*, frame*, char*, char*, char*, int,
+extern char    *i_classname	(Frame*, Uint);
+extern int	i_instanceof	(Frame*, unsigned int, Uint);
+extern void	i_cast		(Frame*, Value*, unsigned int, Uint);
+extern void	i_dup		(Frame*);
+extern void	i_store_global	(Frame*, int, int, Value*, Value*);
+extern bool	i_store_index	(Frame*, Value*, Value*, Value*, Value*);
+extern void	i_store		(Frame*);
+extern void	i_lvalues	(Frame*);
+extern Int	i_get_depth	(Frame*);
+extern Int	i_get_ticks	(Frame*);
+extern void	i_new_rlimits	(Frame*, Int, Int);
+extern void	i_set_rlimits	(Frame*, rlinfo*);
+extern Frame   *i_set_sp	(Frame*, Value*);
+extern Frame   *i_prev_object	(Frame*, int);
+extern char    *i_prev_program	(Frame*, int);
+extern void	i_typecheck	(Frame*, Frame*, char*, char*, char*, int,
 				   int);
-extern void	i_catcherr	(frame*, Int);
-extern void	i_funcall	(frame*, object*, array*, int, int, int);
-extern bool	i_call		(frame*, object*, array*, char*, unsigned int,
+extern void	i_catcherr	(Frame*, Int);
+extern void	i_funcall	(Frame*, Object*, Array*, int, int, int);
+extern bool	i_call		(Frame*, Object*, Array*, char*, unsigned int,
 				   int, int);
-extern bool	i_call_tracei	(frame*, Int, value*);
-extern array   *i_call_trace	(frame*);
-extern bool	i_call_critical	(frame*, char*, int, int);
-extern void	i_runtime_error	(frame*, Int);
-extern void	i_atomic_error	(frame*, Int);
-extern frame   *i_restore	(frame*, Int);
+extern bool	i_call_tracei	(Frame*, Int, Value*);
+extern Array   *i_call_trace	(Frame*);
+extern bool	i_call_critical	(Frame*, char*, int, int);
+extern void	i_runtime_error	(Frame*, Int);
+extern void	i_atomic_error	(Frame*, Int);
+extern Frame   *i_restore	(Frame*, Int);
 extern void	i_clear		(void);
 
-extern frame *cframe;
+extern Frame *cframe;
 extern int nil_type;
-extern value zero_int, zero_float, nil_value;
+extern Value zero_int, zero_float, nil_value;
 
 # define i_add_ticks(f, t)	((f)->rlim->ticks -= (t))

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@
 extern void	ed_init		(char*, int);
 extern void	ed_finish	(void);
 extern void	ed_clear	(void);
-extern void	ed_new		(object*);
-extern void	ed_del		(object*);
-extern string  *ed_command	(object*, char*);
-extern char    *ed_status	(object*);
+extern void	ed_new		(Object*);
+extern void	ed_del		(Object*);
+extern String  *ed_command	(Object*, char*);
+extern char    *ed_status	(Object*);

@@ -1383,7 +1383,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     /*
      * process config file
      */
-    if (!pp_init(path_native(buf, configfile), (char **) NULL, (string **) NULL,
+    if (!pp_init(path_native(buf, configfile), (char **) NULL, (String **) NULL,
 		 0, 0)) {
 	message("Config error: cannot open config file\012");	/* LF */
 	m_finish();
@@ -1690,7 +1690,7 @@ unsigned short conf_array_size()
  * NAME:	putval()
  * DESCRIPTION:	store a size_t as an integer or as a float approximation
  */
-static void putval(value *v, size_t n)
+static void putval(Value *v, size_t n)
 {
     xfloat f1, f2;
 
@@ -1709,11 +1709,11 @@ static void putval(value *v, size_t n)
  * NAME:	config->statusi()
  * DESCRIPTION:	return resource usage information
  */
-bool conf_statusi(frame *f, Int idx, value *v)
+bool conf_statusi(Frame *f, Int idx, Value *v)
 {
     char *version;
     uindex ncoshort, ncolong;
-    array *a;
+    Array *a;
     Uint t;
     int i;
 
@@ -1823,7 +1823,7 @@ bool conf_statusi(frame *f, Int idx, value *v)
 
     case 24:	/* ST_PRECOMPILED */
 	a = pc_list(f->data);
-	if (a != (array *) NULL) {
+	if (a != (Array *) NULL) {
 	    PUT_ARRVAL(v, a);
 	} else {
 	    *v = nil_value;
@@ -1857,11 +1857,11 @@ bool conf_statusi(frame *f, Int idx, value *v)
  * NAME:	config->status()
  * DESCRIPTION:	return an array with information about resource usage
  */
-array *conf_status(frame *f)
+Array *conf_status(Frame *f)
 {
-    value *v;
+    Value *v;
     Int i;
-    array *a;
+    Array *a;
 
     if (ec_push((ec_ftn) NULL)) {
 	arr_ref(a);
@@ -1881,11 +1881,11 @@ array *conf_status(frame *f)
  * NAME:	config->objecti()
  * DESCRIPTION:	return object resource usage information
  */
-bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
+bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 {
-    control *ctrl;
-    object *prog;
-    array *a;
+    Control *ctrl;
+    Object *prog;
+    Array *a;
 
     prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->u_master);
     ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : o_control(prog);
@@ -1913,7 +1913,7 @@ bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
     case 4:	/* O_CALLOUTS */
 	if (O_HASDATA(obj)) {
 	    a = d_list_callouts(data, o_dataspace(obj));
-	    if (a != (array *) NULL) {
+	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {
 		*v = nil_value;
@@ -1947,11 +1947,11 @@ bool conf_objecti(dataspace *data, object *obj, Int idx, value *v)
  * NAME:	config->object()
  * DESCRIPTION:	return resource usage of an object
  */
-array *conf_object(dataspace *data, object *obj)
+Array *conf_object(Dataspace *data, Object *obj)
 {
-    value *v;
+    Value *v;
     Int i;
-    array *a;
+    Array *a;
 
     a = arr_ext_new(data, 7L);
     if (ec_push((ec_ftn) NULL)) {

@@ -22,11 +22,11 @@ typedef struct _node_ {
     char flags;			/* bitflags */
     unsigned short mod;		/* modifier */
     unsigned short line;	/* line number */
-    string *sclass;		/* object class */
+    String *sclass;		/* object class */
     union {
 	Int number;		/* numeric value */
 	unsigned short fhigh;	/* high word of float */
-	string *string;		/* string value */
+	String *string;		/* string value */
 	char *ptr;		/* character pointer */
 	struct _node_ *left;	/* left child */
     } l;
@@ -64,15 +64,15 @@ extern node *node_new	(unsigned int);
 extern node *node_int	(Int);
 extern node *node_float	(xfloat*);
 extern node *node_nil	(void);
-extern node *node_str	(string*);
+extern node *node_str	(String*);
 extern node *node_var	(unsigned int, int);
-extern node *node_type	(int, string*);
-extern node *node_fcall	(int, string*, char*, Int);
+extern node *node_type	(int, String*);
+extern node *node_fcall	(int, String*, char*, Int);
 extern node *node_op	(char*);
 extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);
-extern void  node_tostr	(node*, string*);
+extern void  node_tostr	(node*, String*);
 extern void  node_free	(void);
 extern void  node_clear	(void);
 

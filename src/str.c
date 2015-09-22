@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,7 +28,7 @@
 
 typedef struct _strh_ {
     hte chain;			/* hash table chain */
-    string *str;		/* string entry */
+    String *str;		/* string entry */
     Uint index;			/* building index */
 } strh;
 
@@ -43,17 +43,17 @@ static int strhchunksz;		/* size of current strh chunk */
 
 
 /*
- * NAME:	string->alloc()
+ * NAME:	String->alloc()
  * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
  *		case it must be filled in later.
  */
-string *str_alloc(char *text, long len)
+String *str_alloc(char *text, long len)
 {
-    string *s;
-    string dummy;
+    String *s;
+    String dummy;
 
     /* allocate string struct & text in one block */
-    s = (string *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
+    s = (String *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
     if (text != (char *) NULL && len > 0) {
 	memcpy(s->text, text, (unsigned int) len);
     }
@@ -65,10 +65,10 @@ string *str_alloc(char *text, long len)
 }
 
 /*
- * NAME:	string->new()
+ * NAME:	String->new()
  * DESCRIPTION:	create a new string with size check
  */
-string *str_new(char *text, long len)
+String *str_new(char *text, long len)
 {
     if (len > (unsigned long) MAX_STRLEN) {
 	error("String too long");
@@ -77,11 +77,11 @@ string *str_new(char *text, long len)
 }
 
 /*
- * NAME:	string->del()
+ * NAME:	String->del()
  * DESCRIPTION:	remove a reference from a string. If there are none left, the
  *		string is removed.
  */
-void str_del(string *s)
+void str_del(String *s)
 {
     if (--(s->ref) == 0) {
 	FREE(s);
@@ -89,7 +89,7 @@ void str_del(string *s)
 }
 
 /*
- * NAME:	string->merge()
+ * NAME:	String->merge()
  * DESCRIPTION:	prepare string merge
  */
 void str_merge()
@@ -99,10 +99,10 @@ void str_merge()
 }
 
 /*
- * NAME:	string->put()
+ * NAME:	String->put()
  * DESCRIPTION:	put a string in the string merge table
  */
-Uint str_put(string *str, Uint n)
+Uint str_put(String *str, Uint n)
 {
     strh **h;
 
@@ -143,7 +143,7 @@ Uint str_put(string *str, Uint n)
 }
 
 /*
- * NAME:	string->clear()
+ * NAME:	String->clear()
  * DESCRIPTION:	clear the string merge table
  */
 void str_clear()
@@ -168,10 +168,10 @@ void str_clear()
 
 
 /*
- * NAME:	string->cmp()
+ * NAME:	String->cmp()
  * DESCRIPTION:	compare two strings
  */
-int str_cmp(string *s1, string *s2)
+int str_cmp(String *s1, String *s2)
 {
     if (s1 == s2) {
 	return 0;
@@ -200,12 +200,12 @@ int str_cmp(string *s1, string *s2)
 }
 
 /*
- * NAME:	string->add()
+ * NAME:	String->add()
  * DESCRIPTION:	add two strings
  */
-string *str_add(string *s1, string *s2)
+String *str_add(String *s1, String *s2)
 {
-    string *s;
+    String *s;
 
     s = str_new((char *) NULL, (long) s1->len + s2->len);
     memcpy(s->text, s1->text, s1->len);
@@ -215,10 +215,10 @@ string *str_add(string *s1, string *s2)
 }
 
 /*
- * NAME:	string->index()
+ * NAME:	String->index()
  * DESCRIPTION:	index a string
  */
-ssizet str_index(string *s, long l)
+ssizet str_index(String *s, long l)
 {
     if (l < 0 || l >= (long) s->len) {
 	error("String index out of range");
@@ -228,10 +228,10 @@ ssizet str_index(string *s, long l)
 }
 
 /*
- * NAME:	string->ckrange()
+ * NAME:	String->ckrange()
  * DESCRIPTION:	check a string subrange
  */
-void str_ckrange(string *s, long l1, long l2)
+void str_ckrange(String *s, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
 	error("Invalid string range");
@@ -239,10 +239,10 @@ void str_ckrange(string *s, long l1, long l2)
 }
 
 /*
- * NAME:	string->range()
+ * NAME:	String->range()
  * DESCRIPTION:	return a subrange of a string
  */
-string *str_range(string *s, long l1, long l2)
+String *str_range(String *s, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
 	error("Invalid string range");

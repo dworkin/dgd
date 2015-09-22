@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,28 +18,28 @@
  */
 
 extern void		 ctrl_init	(void);
-extern bool		 ctrl_inherit	(frame*, char*, object*, string*,
+extern bool		 ctrl_inherit	(Frame*, char*, Object*, String*,
 					   int);
-extern void		 ctrl_convert	(control*);
+extern void		 ctrl_convert	(Control*);
 extern void		 ctrl_create	(void);
-extern long		 ctrl_dstring	(string*);
-extern void		 ctrl_dproto	(string*, char*, string*);
-extern void		 ctrl_dfunc	(string*, char*, string*);
+extern long		 ctrl_dstring	(String*);
+extern void		 ctrl_dproto	(String*, char*, String*);
+extern void		 ctrl_dfunc	(String*, char*, String*);
 extern void		 ctrl_dprogram	(char*, unsigned int);
-extern void		 ctrl_dvar	(string*, unsigned int,
-					   unsigned int, string*);
-extern char		*ctrl_ifcall	(string*, char*, string**, long*);
-extern char		*ctrl_fcall	(string*, string**, long*, int);
+extern void		 ctrl_dvar	(String*, unsigned int,
+					   unsigned int, String*);
+extern char		*ctrl_ifcall	(String*, char*, String**, long*);
+extern char		*ctrl_fcall	(String*, String**, long*, int);
 extern unsigned short	 ctrl_gencall	(long);
-extern unsigned short	 ctrl_var	(string*, long*, string**);
+extern unsigned short	 ctrl_var	(String*, long*, String**);
 extern int		 ctrl_ninherits	(void);
 extern bool		 ctrl_chkfuncs	(void);
-extern void		 ctrl_mkvtypes	(control*);
-extern dsymbol		*ctrl_symb	(control*, char*, unsigned int);
-extern control		*ctrl_construct	(void);
+extern void		 ctrl_mkvtypes	(Control*);
+extern dsymbol		*ctrl_symb	(Control*, char*, unsigned int);
+extern Control		*ctrl_construct	(void);
 extern void		 ctrl_clear	(void);
-extern unsigned short	*ctrl_varmap	(control*, control*);
-extern array		*ctrl_undefined	(dataspace*, control*);
+extern unsigned short	*ctrl_varmap	(Control*, Control*);
+extern Array		*ctrl_undefined	(Dataspace*, Control*);
 
 # define PROTO_CLASS(prot)	((prot)[0])
 # define PROTO_NARGS(prot)	((prot)[1])

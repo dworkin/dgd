@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -517,7 +517,7 @@ static Uint *asi_div(Uint *c, Uint *t, Uint *a, Uint *b, Uint sizea, Uint sizeb)
  * NAME:	asi->strtonum()
  * DESCRIPTION:	convert a string to an ASI
  */
-static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
+static void asi_strtonum(Uint *num, String *str, Uint *sz, bool *minus)
 {
     ssizet len;
     char *text;
@@ -624,14 +624,14 @@ static void asi_strtonum(Uint *num, string *str, Uint *sz, bool *minus)
  * NAME:	asi->numtostr()
  * DESCRIPTION:	convert an ASI to a string
  */
-static string *asi_numtostr(Uint *num, Uint size, bool minus)
+static String *asi_numtostr(Uint *num, Uint size, bool minus)
 {
     ssizet len;
     Uint bits;
     char *text;
     Uint *tmp;
     bool prefix;
-    string *str;
+    String *str;
 
     /*
      * skip leading zeroes
@@ -701,7 +701,7 @@ static string *asi_numtostr(Uint *num, Uint size, bool minus)
  * NAME:	asn->ticks()
  * DESCRIPTION:	count ticks for operation, return TRUE if out of ticks
  */
-static bool asn_ticks(frame *f, Uint ticks)
+static bool asn_ticks(Frame *f, Uint ticks)
 {
     i_add_ticks(f, ticks);
     if (f->rlim->ticks < 0) {
@@ -718,12 +718,12 @@ static bool asn_ticks(frame *f, Uint ticks)
  * NAME:	asn->add()
  * DESCRIPTION:	add two ASIs
  */
-string *asn_add(frame *f, string *s1, string *s2, string *s3)
+String *asn_add(Frame *f, String *s1, String *s2, String *s3)
 {
     Uint *a, *b, *c;
     Uint *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb, minusc;
-    string *str;
+    String *str;
 
     mod = ALLOCA(Uint, (s3->len >> 2) + 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
@@ -795,12 +795,12 @@ string *asn_add(frame *f, string *s1, string *s2, string *s3)
  * NAME:	asn->sub()
  * DESCRIPTION:	subtract one ASI from another
  */
-string *asn_sub(frame *f, string *s1, string *s2, string *s3)
+String *asn_sub(Frame *f, String *s1, String *s2, String *s3)
 {
     Uint *a, *b, *c;
     Uint *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb, minusc;
-    string *str;
+    String *str;
 
     mod = ALLOCA(Uint, (s3->len >> 2) + 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
@@ -872,7 +872,7 @@ string *asn_sub(frame *f, string *s1, string *s2, string *s3)
  * NAME:	asn->cmp()
  * DESCRIPTION:	compare one ASI with another
  */
-int asn_cmp(frame *f, string *s1, string *s2)
+int asn_cmp(Frame *f, String *s1, String *s2)
 {
     Uint *a, *b, sizea, sizeb;
     bool minusa, minusb;
@@ -914,12 +914,12 @@ int asn_cmp(frame *f, string *s1, string *s2)
  * NAME:	asn->mult()
  * DESCRIPTION:	multiply one ASI with another
  */
-string *asn_mult(frame *f, string *s1, string *s2, string *s3)
+String *asn_mult(Frame *f, String *s1, String *s2, String *s3)
 {
     Uint *a, *b, *c, *t1, *t2;
     Uint *aa, *bb, *cc, *mod, sizea, sizeb, sizec, sizemod;
     bool minusa, minusb;
-    string *str;
+    String *str;
 
     mod = ALLOCA(Uint, (s3->len >> 2) + 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
@@ -994,12 +994,12 @@ string *asn_mult(frame *f, string *s1, string *s2, string *s3)
  * NAME:	asn->div()
  * DESCRIPTION:	divide one ASI by another
  */
-string *asn_div(frame *f, string *s1, string *s2, string *s3)
+String *asn_div(Frame *f, String *s1, String *s2, String *s3)
 {
     Uint *a, *b, *c, *d, *t;
     Uint *mod, sizea, sizeb, sizemod;
     bool minusa, minusb;
-    string *str;
+    String *str;
 
     mod = ALLOCA(Uint, (s3->len >> 2) + 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
@@ -1064,12 +1064,12 @@ string *asn_div(frame *f, string *s1, string *s2, string *s3)
  * NAME:	asn->mod()
  * DESCRIPTION:	take the modulus of an ASI
  */
-string *asn_mod(frame *f, string *s1, string *s2)
+String *asn_mod(Frame *f, String *s1, String *s2)
 {
     Uint *a, *b, *c, *t;
     Uint sizea, sizeb;
     bool minusa, minusb;
-    string *str;
+    String *str;
 
     b = ALLOCA(Uint, (s2->len >> 2) + 2);
     asi_strtonum(b, s2, &sizeb, &minusb);
@@ -1639,12 +1639,12 @@ static void asn_power(Uint *c, Uint *t, Uint *a, Uint *b, Uint *mod, Uint sizea,
  * NAME:	asn->pow()
  * DESCRIPTION:	compute a power of an ASI
  */
-string *asn_pow(frame *f, string *s1, string *s2, string *s3)
+String *asn_pow(Frame *f, String *s1, String *s2, String *s3)
 {
     Uint *a, *b, *c, *t;
     Uint *mod, sizea, sizeb, sizemod, ticks1, ticks2;
     bool minusa, minusb;
-    string *str;
+    String *str;
 
     mod = ALLOCA(Uint, (s3->len >> 2) + 2);
     asi_strtonum(mod, s3, &sizemod, &minusa);
@@ -1711,12 +1711,12 @@ string *asn_pow(frame *f, string *s1, string *s2, string *s3)
  * NAME:	asn->lshift()
  * DESCRIPTION:	left shift an ASI
  */
-string *asn_lshift(frame *f, string *s1, Int shift, string *s2)
+String *asn_lshift(Frame *f, String *s1, Int shift, String *s2)
 {
     Uint *a, *b, *c, *t, size;
     Uint *mod, sizea, sizemod;
     bool minusa;
-    string *str;
+    String *str;
 
     if (shift < 0) {
 	error("Negative left shift");
@@ -1787,12 +1787,12 @@ string *asn_lshift(frame *f, string *s1, Int shift, string *s2)
  * NAME:	asn->rshift()
  * DESCRIPTION:	right shift the ASI
  */
-string *asn_rshift(frame *f, string *s, Int shift)
+String *asn_rshift(Frame *f, String *s, Int shift)
 {
     Uint *a;
     Uint sizea;
     bool minusa;
-    string *str;
+    String *str;
 
     if (shift < 0) {
 	error("Negative right shift");
@@ -1816,11 +1816,11 @@ string *asn_rshift(frame *f, string *s, Int shift)
  * NAME:	asn->and()
  * DESCRIPTION:	logical and of two strings
  */
-string *asn_and(frame *f, string *s1, string *s2)
+String *asn_and(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;
-    string *str;
+    String *str;
 
     if (s1->len < s2->len) {
 	i = s1->len;
@@ -1860,11 +1860,11 @@ string *asn_and(frame *f, string *s1, string *s2)
  * NAME:	asn->or()
  * DESCRIPTION:	logical or of two strings
  */
-string *asn_or(frame *f, string *s1, string *s2)
+String *asn_or(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;
-    string *str;
+    String *str;
 
     if (s1->len < s2->len) {
 	i = s1->len;
@@ -1904,11 +1904,11 @@ string *asn_or(frame *f, string *s1, string *s2)
  * NAME:	asn->xor()
  * DESCRIPTION:	logical xor of two strings
  */
-string *asn_xor(frame *f, string *s1, string *s2)
+String *asn_xor(Frame *f, String *s1, String *s2)
 {
     char *p, *q, *r;
     ssizet i, j;
-    string *str;
+    String *str;
 
     if (s1->len < s2->len) {
 	i = s1->len;

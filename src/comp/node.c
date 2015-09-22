@@ -74,7 +74,7 @@ node *node_new(unsigned int line)
     n->flags = 0;
     n->mod = 0;
     n->line = line;
-    n->sclass = (string *) NULL;
+    n->sclass = (String *) NULL;
     n->l.left = (node *) NULL;
     n->r.right = (node *) NULL;
     return n;
@@ -135,7 +135,7 @@ node *node_nil()
  * NAME:	node->str()
  * DESCRIPTION:	create a string node
  */
-node *node_str(string *str)
+node *node_str(String *str)
 {
     node *n;
 
@@ -169,7 +169,7 @@ node *node_var(unsigned int type, int idx)
  * NAME:	node->type()
  * DESCRIPTION:	create a type node
  */
-node *node_type(int type, string *tclass)
+node *node_type(int type, String *tclass)
 {
     node *n;
 
@@ -177,7 +177,7 @@ node *node_type(int type, string *tclass)
     n->type = N_TYPE;
     n->mod = type;
     n->sclass = tclass;
-    if (tclass != (string *) NULL) {
+    if (tclass != (String *) NULL) {
 	str_ref(tclass);
     }
 
@@ -188,7 +188,7 @@ node *node_type(int type, string *tclass)
  * NAME:	node->fcall()
  * DESCRIPTION:	create a function call node
  */
-node *node_fcall(int mod, string *tclass, char *func, Int call)
+node *node_fcall(int mod, String *tclass, char *func, Int call)
 {
     node *n;
 
@@ -253,7 +253,7 @@ void node_toint(node *n, Int i)
 {
     if (n->type == N_STR) {
 	str_del(n->l.string);
-    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
 	str_del(n->sclass);
     }
     n->type = N_INT;
@@ -265,12 +265,12 @@ void node_toint(node *n, Int i)
  * NAME:	node->tostr()
  * DESCRIPTION:	convert node type to string constant
  */
-void node_tostr(node *n, string *str)
+void node_tostr(node *n, String *str)
 {
     str_ref(str);
     if (n->type == N_STR) {
 	str_del(n->l.string);
-    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
 	str_del(n->sclass);
     }
     n->type = N_STR;
@@ -300,7 +300,7 @@ void node_free()
 		 * only strings are deleted here
 		 */
 		str_del(n->l.string);
-	    } else if (n->type == N_TYPE && n->sclass != (string *) NULL) {
+	    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
 		str_del(n->sclass);
 	    }
 	} while (--i > 0);

@@ -64,12 +64,12 @@ static ifstate top = {		/* initial ifstate */
  * DESCRIPTION:	initialize preprocessor. Return TRUE if the input file could
  *		be opened.
  */
-bool pp_init(char *file, char **id, string **strs, int nstr, int level)
+bool pp_init(char *file, char **id, String **strs, int nstr, int level)
 {
     tk_init();
-    if (strs != (string **) NULL) {
+    if (strs != (String **) NULL) {
 	tk_include(file, strs, nstr);
-    } else if (!tk_include(file, (string **) NULL, 0)) {
+    } else if (!tk_include(file, (String **) NULL, 0)) {
 	tk_clear();
 	return FALSE;
     }
@@ -482,7 +482,7 @@ static void do_include()
     int token;
     char **idir;
     char *include;
-    string **strs;
+    String **strs;
     int nstr;
 
     if (include_level == 8) {

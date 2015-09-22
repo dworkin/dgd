@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,12 +29,12 @@
 
 typedef struct _arrchunk_ {
     struct _arrchunk_ *next;	/* next in list */
-    array a[ARR_CHUNK];		/* chunk of arrays */
+    Array a[ARR_CHUNK];		/* chunk of arrays */
 } arrchunk;
 
 typedef struct _arrh_ {
     struct _arrh_ *next;	/* next in hash table chain */
-    array *arr;			/* array entry */
+    Array *arr;			/* array entry */
     Uint index;			/* building index */
     struct _arrh_ *link;	/* next in list */
 } arrh;
@@ -49,8 +49,8 @@ typedef struct _arrhchunk_ {
 typedef struct _mapelt_ {
     Uint hashval;		/* hash value of index */
     bool add;			/* new element? */
-    value idx;			/* index */
-    value val;			/* value */
+    Value idx;			/* index */
+    Value val;			/* value */
     struct _mapelt_ *next;	/* next in hash table */
 } mapelt;
 
@@ -71,10 +71,10 @@ typedef struct _maphash_ {
 # define ABCHUNKSZ	32
 
 typedef struct arrbak {
-    array *arr;			/* array backed up */
+    Array *arr;			/* array backed up */
     unsigned short size;	/* original size (of mapping) */
-    value *original;		/* original elements */
-    dataplane *plane;		/* original dataplane */
+    Value *original;		/* original elements */
+    Dataplane *plane;		/* original dataplane */
 } arrbak;
 
 struct _abchunk_ {
@@ -87,7 +87,7 @@ static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
 static arrchunk *aclist;	/* linked list of all array chunks */
 static int achunksz;		/* size of current array chunk */
-static array *flist;		/* free array list */
+static Array *flist;		/* free array list */
 static mapelt *fmelt;		/* free mapelt list */
 static meltchunk *meltlist;	/* linked list of all mapelt chunks */
 static int meltchunksz;		/* size of current mapelt chunk */
@@ -97,7 +97,7 @@ static int ahchunksz;		/* size of current arrh chunk */
 static arrh *aht[ARRMERGETABSZ];/* array merge table */
 
 /*
- * NAME:	array->init()
+ * NAME:	Array->init()
  * DESCRIPTION:	initialize array handling
  */
 void arr_init(unsigned int size)
@@ -106,21 +106,21 @@ void arr_init(unsigned int size)
     tag = 0;
     aclist = (arrchunk *) NULL;
     achunksz = ARR_CHUNK;
-    flist = (array *) NULL;
+    flist = (Array *) NULL;
     fmelt = (mapelt *) NULL;
     meltlist = (meltchunk *) NULL;
     meltchunksz = MELT_CHUNK;
 }
 
 /*
- * NAME:	array->alloc()
+ * NAME:	Array->alloc()
  * DESCRIPTION:	create a new array
  */
-array *arr_alloc(unsigned int size)
+Array *arr_alloc(unsigned int size)
 {
-    array *a;
+    Array *a;
 
-    if (flist != (array *) NULL) {
+    if (flist != (Array *) NULL) {
 	/* from free list */
 	a = flist;
 	flist = a->next;
@@ -138,7 +138,7 @@ array *arr_alloc(unsigned int size)
     }
     a->size = size;
     a->hashmod = FALSE;
-    a->elts = (value *) NULL;
+    a->elts = (Value *) NULL;
     a->ref = 0;
     a->odcount = 0;			/* if swapped in, check objects */
     a->hashed = (maphash *) NULL;	/* only used for mappings */
@@ -147,19 +147,19 @@ array *arr_alloc(unsigned int size)
 }
 
 /*
- * NAME:	array->new()
+ * NAME:	Array->new()
  * DESCRIPTION:	create a new array
  */
-array *arr_new(dataspace *data, long size)
+Array *arr_new(Dataspace *data, long size)
 {
-    array *a;
+    Array *a;
 
     if (size > max_size) {
 	error("Array too large");
     }
     a = arr_alloc((unsigned short) size);
     if (size > 0) {
-	a->elts = ALLOC(value, size);
+	a->elts = ALLOC(Value, size);
     }
     a->tag = tag++;
     a->odcount = odcount;
@@ -172,15 +172,15 @@ array *arr_new(dataspace *data, long size)
 }
 
 /*
- * NAME:	array->ext_new()
+ * NAME:	Array->ext_new()
  * DESCRIPTION:	return an array, initialized for the benefit of the extension
  *		interface
  */
-array *arr_ext_new(dataspace *data, long size)
+Array *arr_ext_new(Dataspace *data, long size)
 {
     int i;
-    value *v;
-    array *a;
+    Value *v;
+    Array *a;
 
     a = arr_new(data, size);
     for (i = size, v = a->elts; i != 0; --i, v++) {
@@ -190,21 +190,21 @@ array *arr_ext_new(dataspace *data, long size)
 }
 
 /*
- * NAME:	array->del()
+ * NAME:	Array->del()
  * DESCRIPTION:	remove a reference from an array or mapping.  If none are
  *		left, the array/mapping is removed.
  */
-void arr_del(array *a)
+void arr_del(Array *a)
 {
     if (--(a->ref) == 0) {
-	value *v;
+	Value *v;
 	unsigned short i;
-	static array *dlist;
+	static Array *dlist;
 
 	a->prev->next = a->next;
 	a->next->prev = a->prev;
-	a->prev = (array *) NULL;
-	if (dlist != (array *) NULL) {
+	a->prev = (Array *) NULL;
+	if (dlist != (Array *) NULL) {
 	    dlist->prev = a;
 	    dlist = a;
 	    return;
@@ -212,7 +212,7 @@ void arr_del(array *a)
 	dlist = a;
 
 	do {
-	    if ((v=a->elts) != (value *) NULL) {
+	    if ((v=a->elts) != (Value *) NULL) {
 		for (i = a->size; i > 0; --i) {
 		    i_del_value(v++);
 		}
@@ -243,26 +243,26 @@ void arr_del(array *a)
 	    a->next = flist;
 	    flist = a;
 	    a = a->prev;
-	} while (a != (array *) NULL);
+	} while (a != (Array *) NULL);
 
-	dlist = (array *) NULL;
+	dlist = (Array *) NULL;
     }
 }
 
 /*
- * NAME:	array->freelist()
+ * NAME:	Array->freelist()
  * DESCRIPTION:	free all left-over arrays in a dataspace
  */
-void arr_freelist(array *alist)
+void arr_freelist(Array *alist)
 {
-    array *a;
-    value *v;
+    Array *a;
+    Value *v;
     unsigned short i;
     mapelt *e, *n, **t;
 
     a = alist;
     do {
-	if ((v=a->elts) != (value *) NULL) {
+	if ((v=a->elts) != (Value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
 		if (v->type == T_STRING) {
 		    str_del(v->u.string);
@@ -302,7 +302,7 @@ void arr_freelist(array *alist)
 }
 
 /*
- * NAME:	array->freeall()
+ * NAME:	Array->freeall()
  * DESCRIPTION:	free all array chunks and mapping element chunks
  */
 void arr_freeall()
@@ -323,7 +323,7 @@ void arr_freeall()
     aclist = (arrchunk *) NULL;
     achunksz = ARR_CHUNK;
 
-    flist = (array *) NULL;
+    flist = (Array *) NULL;
 
 # ifdef DEBUG
     /* free mapping element chunks */
@@ -341,7 +341,7 @@ void arr_freeall()
 }
 
 /*
- * NAME:	array->merge()
+ * NAME:	Array->merge()
  * DESCRIPTION:	prepare the array merge table
  */
 void arr_merge()
@@ -353,10 +353,10 @@ void arr_merge()
 }
 
 /*
- * NAME:	array->put()
+ * NAME:	Array->put()
  * DESCRIPTION:	Put an array in the merge table, and return its "index".
  */
-Uint arr_put(array *a, Uint idx)
+Uint arr_put(Array *a, Uint idx)
 {
     arrh **h;
 
@@ -388,7 +388,7 @@ Uint arr_put(array *a, Uint idx)
 }
 
 /*
- * NAME:	array->clear()
+ * NAME:	Array->clear()
  * DESCRIPTION:	clear the array merge table
  */
 void arr_clear()
@@ -417,8 +417,8 @@ void arr_clear()
  * NAME:	backup()
  * DESCRIPTION:	add an array backup to the backup chunk
  */
-static void backup(abchunk **ac, array *a, value *elts, unsigned int size,
-	dataplane *plane)
+static void backup(abchunk **ac, Array *a, Value *elts, unsigned int size,
+	Dataplane *plane)
 {
     abchunk *c;
     arrbak *ab;
@@ -440,12 +440,12 @@ static void backup(abchunk **ac, array *a, value *elts, unsigned int size,
 }
 
 /*
- * NAME:	array->backup()
+ * NAME:	Array->backup()
  * DESCRIPTION:	make a backup of the current elements of an array or mapping
  */
-void arr_backup(abchunk **ac, array *a)
+void arr_backup(abchunk **ac, Array *a)
 {
-    value *elts;
+    Value *elts;
     unsigned short i;
 
 # ifdef DEBUG
@@ -454,7 +454,7 @@ void arr_backup(abchunk **ac, array *a)
     }
 # endif
     if (a->size != 0) {
-	memcpy(elts = ALLOC(value, a->size), a->elts, a->size * sizeof(value));
+	memcpy(elts = ALLOC(Value, a->size), a->elts, a->size * sizeof(Value));
 	for (i = a->size; i != 0; --i) {
 	    switch (elts->type) {
 	    case T_STRING:
@@ -471,17 +471,17 @@ void arr_backup(abchunk **ac, array *a)
 	}
 	elts -= a->size;
     } else {
-	elts = (value *) NULL;
+	elts = (Value *) NULL;
     }
     backup(ac, a, elts, a->size, a->primary->plane);
     arr_ref(a);
 }
 
 /*
- * NAME:	array->commit()
+ * NAME:	Array->commit()
  * DESCRIPTION:	commit current array values and discard originals
  */
-void arr_commit(abchunk **ac, dataplane *plane, int merge)
+void arr_commit(abchunk **ac, Dataplane *plane, int merge)
 {
     abchunk *c, *n;
     arrbak *ab;
@@ -500,8 +500,8 @@ void arr_commit(abchunk **ac, dataplane *plane, int merge)
 		    /* backup on previous plane */
 		    backup(ac, ab->arr, ab->original, ab->size, ab->plane);
 		} else {
-		    if (ab->original != (value *) NULL) {
-			value *v;
+		    if (ab->original != (Value *) NULL) {
+			Value *v;
 			unsigned short j;
 
 			for (v = ab->original, j = ab->size; j != 0; v++, --j) {
@@ -523,7 +523,7 @@ void arr_commit(abchunk **ac, dataplane *plane, int merge)
 }
 
 /*
- * NAME:	array->discard()
+ * NAME:	Array->discard()
  * DESCRIPTION:	restore originals and discard current values
  */
 void arr_discard(abchunk **ac)
@@ -531,7 +531,7 @@ void arr_discard(abchunk **ac)
     abchunk *c, *n;
     arrbak *ab;
     short i;
-    array *a;
+    Array *a;
     unsigned short j;
 
     for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
@@ -539,8 +539,8 @@ void arr_discard(abchunk **ac)
 	    a = ab->arr;
 	    d_discard_arr(a, ab->plane);
 
-	    if (a->elts != (value *) NULL) {
-		value *v;
+	    if (a->elts != (Value *) NULL) {
+		Value *v;
 
 		for (v = a->elts, j = a->size; j != 0; v++, --j) {
 		    i_del_value(v);
@@ -583,9 +583,9 @@ void arr_discard(abchunk **ac)
  * NAME:	copytmp()
  * DESCRIPTION:	make temporary copies of values
  */
-static void copytmp(dataspace *data, value *v1, array *a)
+static void copytmp(Dataspace *data, Value *v1, Array *a)
 {
-    value *v2, *o;
+    Value *v2, *o;
     unsigned short n;
 
     v2 = d_get_elts(a);
@@ -593,7 +593,7 @@ static void copytmp(dataspace *data, value *v1, array *a)
 	/*
 	 * no need to check for destructed objects
 	 */
-	memcpy(v1, v2, a->size * sizeof(value));
+	memcpy(v1, v2, a->size * sizeof(Value));
     } else {
 	/*
 	 * Copy and check for destructed objects.  If destructed objects are
@@ -621,12 +621,12 @@ static void copytmp(dataspace *data, value *v1, array *a)
 }
 
 /*
- * NAME:	array->add()
+ * NAME:	Array->add()
  * DESCRIPTION:	add two arrays
  */
-array *arr_add(dataspace *data, array *a1, array *a2)
+Array *arr_add(Dataspace *data, Array *a1, Array *a2)
 {
-    array *a;
+    Array *a;
 
     a = arr_new(data, (long) a1->size + a2->size);
     i_copy(a->elts, d_get_elts(a1), a1->size);
@@ -644,12 +644,12 @@ static int cmp (cvoid*, cvoid*);
  */
 static int cmp(cvoid *cv1, cvoid *cv2)
 {
-    value *v1, *v2;
+    Value *v1, *v2;
     int i;
     xfloat f1, f2;
 
-    v1 = (value *) cv1;
-    v2 = (value *) cv2;
+    v1 = (Value *) cv1;
+    v2 = (Value *) cv2;
     i = v1->type - v2->type;
     if (i != 0) {
 	return i;	/* order by type */
@@ -692,11 +692,11 @@ static int cmp(cvoid *cv1, cvoid *cv2)
  * NAME:	search()
  * DESCRIPTION:	search for a value in an array
  */
-static int search(value *v1, value *v2, unsigned short h, int step, bool place)
+static int search(Value *v1, Value *v2, unsigned short h, int step, bool place)
 {
     unsigned short l, m;
     Int c;
-    value *v3;
+    Value *v3;
     unsigned short mask;
 
     mask = -step;
@@ -764,13 +764,13 @@ static int search(value *v1, value *v2, unsigned short h, int step, bool place)
 }
 
 /*
- * NAME:	array->sub()
+ * NAME:	Array->sub()
  * DESCRIPTION:	subtract one array from another
  */
-array *arr_sub(dataspace *data, array *a1, array *a2)
+Array *arr_sub(Dataspace *data, Array *a1, Array *a2)
 {
-    value *v1, *v2, *v3, *o;
-    array *a3;
+    Value *v1, *v2, *v3, *o;
+    Array *a3;
     unsigned short n, size;
 
     if (a2->size == 0) {
@@ -793,8 +793,8 @@ array *arr_sub(dataspace *data, array *a1, array *a2)
     size = a2->size;
 
     /* copy and sort values of subtrahend */
-    copytmp(data, v2 = ALLOCA(value, size), a2);
-    qsort(v2, size, sizeof(value), cmp);
+    copytmp(data, v2 = ALLOCA(Value, size), a2);
+    qsort(v2, size, sizeof(Value), cmp);
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
@@ -843,7 +843,7 @@ array *arr_sub(dataspace *data, array *a1, array *a2)
     a3->size = v3 - a3->elts;
     if (a3->size == 0) {
 	FREE(a3->elts);
-	a3->elts = (value *) NULL;
+	a3->elts = (Value *) NULL;
     }
 
     d_ref_imports(a3);
@@ -851,13 +851,13 @@ array *arr_sub(dataspace *data, array *a1, array *a2)
 }
 
 /*
- * NAME:	array->intersect()
+ * NAME:	Array->intersect()
  * DESCRIPTION:	A - (A - B).  If A and B are sets, the result is a set also.
  */
-array *arr_intersect(dataspace *data, array *a1, array *a2)
+Array *arr_intersect(Dataspace *data, Array *a1, Array *a2)
 {
-    value *v1, *v2, *v3, *o;
-    array *a3;
+    Value *v1, *v2, *v3, *o;
+    Array *a3;
     unsigned short n, size;
 
     if (a1->size == 0 || a2->size == 0) {
@@ -870,8 +870,8 @@ array *arr_intersect(dataspace *data, array *a1, array *a2)
     size = a2->size;
 
     /* copy and sort values of 2nd array */
-    copytmp(data, v2 = ALLOCA(value, size), a2);
-    qsort(v2, size, sizeof(value), cmp);
+    copytmp(data, v2 = ALLOCA(Value, size), a2);
+    qsort(v2, size, sizeof(Value), cmp);
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
@@ -920,7 +920,7 @@ array *arr_intersect(dataspace *data, array *a1, array *a2)
     a3->size = v3 - a3->elts;
     if (a3->size == 0) {
 	FREE(a3->elts);
-	a3->elts = (value *) NULL;
+	a3->elts = (Value *) NULL;
     }
 
     d_ref_imports(a3);
@@ -928,14 +928,14 @@ array *arr_intersect(dataspace *data, array *a1, array *a2)
 }
 
 /*
- * NAME:	array->setadd()
+ * NAME:	Array->setadd()
  * DESCRIPTION:	A + (B - A).  If A and B are sets, the result is a set also.
  */
-array *arr_setadd(dataspace *data, array *a1, array *a2)
+Array *arr_setadd(Dataspace *data, Array *a1, Array *a2)
 {
-    value *v, *v1, *v2, *o;
-    value *v3;
-    array *a3;
+    Value *v, *v1, *v2, *o;
+    Value *v3;
+    Array *a3;
     unsigned short n, size;
 
     if (a1->size == 0) {
@@ -954,11 +954,11 @@ array *arr_setadd(dataspace *data, array *a1, array *a2)
     }
 
     /* make room for elements to add */
-    v3 = ALLOCA(value, a2->size);
+    v3 = ALLOCA(Value, a2->size);
 
     /* copy and sort values of 1st array */
-    copytmp(data, v1 = ALLOCA(value, size = a1->size), a1);
-    qsort(v1, size, sizeof(value), cmp);
+    copytmp(data, v1 = ALLOCA(Value, size = a1->size), a1);
+    qsort(v1, size, sizeof(Value), cmp);
 
     v = v3;
     v2 = d_get_elts(a2);
@@ -1018,15 +1018,15 @@ array *arr_setadd(dataspace *data, array *a1, array *a2)
 }
 
 /*
- * NAME:	array->setxadd()
+ * NAME:	Array->setxadd()
  * DESCRIPTION:	(A - B) + (B - A).  If A and B are sets, the result is a set
  *		also.
  */
-array *arr_setxadd(dataspace *data, array *a1, array *a2)
+Array *arr_setxadd(Dataspace *data, Array *a1, Array *a2)
 {
-    value *v, *w, *v1, *v2;
-    value *v3;
-    array *a3;
+    Value *v, *w, *v1, *v2;
+    Value *v3;
+    Array *a3;
     unsigned short n, size;
     unsigned short num;
 
@@ -1046,14 +1046,14 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
     }
 
     /* copy values of 1st array */
-    copytmp(data, v1 = ALLOCA(value, size = a1->size), a1);
+    copytmp(data, v1 = ALLOCA(Value, size = a1->size), a1);
 
     /* copy and sort values of 2nd array */
-    copytmp(data, v2 = ALLOCA(value, size = a2->size), a2);
-    qsort(v2, size, sizeof(value), cmp);
+    copytmp(data, v2 = ALLOCA(Value, size = a2->size), a2);
+    qsort(v2, size, sizeof(Value), cmp);
 
     /* room for first half of result */
-    v3 = ALLOCA(value, a1->size);
+    v3 = ALLOCA(Value, a1->size);
 
     v = v3;
     w = v1;
@@ -1075,7 +1075,7 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
 
     /* sort copy of 1st array */
     v1 -= a1->size;
-    qsort(v1, size = w - v1, sizeof(value), cmp);
+    qsort(v1, size = w - v1, sizeof(Value), cmp);
 
     v = v2;
     w = a2->elts;
@@ -1109,10 +1109,10 @@ array *arr_setxadd(dataspace *data, array *a1, array *a2)
 }
 
 /*
- * NAME:	array->index()
+ * NAME:	Array->index()
  * DESCRIPTION:	index an array
  */
-unsigned short arr_index(array *a, long l)
+unsigned short arr_index(Array *a, long l)
 {
     if (l < 0 || l >= (long) a->size) {
 	error("Array index out of range");
@@ -1121,10 +1121,10 @@ unsigned short arr_index(array *a, long l)
 }
 
 /*
- * NAME:	array->ckrange()
+ * NAME:	Array->ckrange()
  * DESCRIPTION:	check an array subrange
  */
-void arr_ckrange(array *a, long l1, long l2)
+void arr_ckrange(Array *a, long l1, long l2)
 {
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
@@ -1132,12 +1132,12 @@ void arr_ckrange(array *a, long l1, long l2)
 }
 
 /*
- * NAME:	array->range()
+ * NAME:	Array->range()
  * DESCRIPTION:	return a subrange of an array
  */
-array *arr_range(dataspace *data, array *a, long l1, long l2)
+Array *arr_range(Dataspace *data, Array *a, long l1, long l2)
 {
-    array *range;
+    Array *range;
 
     if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) a->size) {
 	error("Invalid array range");
@@ -1154,16 +1154,16 @@ array *arr_range(dataspace *data, array *a, long l1, long l2)
  * NAME:	mapping->new()
  * DESCRIPTION:	create a new mapping
  */
-array *map_new(dataspace *data, long size)
+Array *map_new(Dataspace *data, long size)
 {
-    array *m;
+    Array *m;
 
     if (size > max_size << 1) {
 	error("Mapping too large");
     }
     m = arr_alloc((unsigned short) size);
     if (size > 0) {
-	m->elts = ALLOC(value, size);
+	m->elts = ALLOC(Value, size);
     }
     m->tag = tag++;
     m->odcount = odcount;
@@ -1179,10 +1179,10 @@ array *map_new(dataspace *data, long size)
  * NAME:	mapping->sort()
  * DESCRIPTION:	prune and sort a mapping
  */
-void map_sort(array *m)
+void map_sort(Array *m)
 {
     unsigned short i, sz;
-    value *v, *w;
+    Value *v, *w;
 
     for (i = m->size, sz = 0, v = w = m->elts; i > 0; i -= 2) {
 	if (!VAL_NIL(v + 1)) {
@@ -1197,7 +1197,7 @@ void map_sort(array *m)
     }
 
     if (sz != 0) {
-	qsort(v = m->elts, i = sz >> 1, 2 * sizeof(value), cmp);
+	qsort(v = m->elts, i = sz >> 1, 2 * sizeof(Value), cmp);
 	while (--i != 0) {
 	    if (cmp((cvoid *) v, (cvoid *) &v[2]) == 0 &&
 		(!T_INDEXED(v->type) || v->u.array == v[2].u.array)) {
@@ -1207,7 +1207,7 @@ void map_sort(array *m)
 	}
     } else if (m->size > 0) {
 	FREE(m->elts);
-	m->elts = (value *) NULL;
+	m->elts = (Value *) NULL;
     }
     m->size = sz;
 }
@@ -1216,10 +1216,10 @@ void map_sort(array *m)
  * NAME:	mapping->dehash()
  * DESCRIPTION:	commit changes from the hash table to the array part
  */
-static void map_dehash(dataspace *data, array *m, bool clean)
+static void map_dehash(Dataspace *data, Array *m, bool clean)
 {
     unsigned short size, i, j;
-    value *v1, *v2, *v3;
+    Value *v1, *v2, *v3;
     mapelt *e, **t, **p;
 
     if (clean && m->size != 0) {
@@ -1288,7 +1288,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 	    m->size = size;
 	    if (size == 0) {
 		FREE(m->elts);
-		m->elts = (value *) NULL;
+		m->elts = (Value *) NULL;
 	    }
 	}
     }
@@ -1299,7 +1299,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 	 * merge copy of hashtable with sorted array
 	 */
 	size = m->hashed->size;
-	v2 = ALLOCA(value, size << 1);
+	v2 = ALLOCA(Value, size << 1);
 	t = m->hashed->table;
 	if (clean) {
 	    for (i = size, size = j = 0; i > 0; ) {
@@ -1407,13 +1407,13 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 
 	if (size != 0) {
 	    size <<= 1;
-	    qsort(v2 -= size, size >> 1, sizeof(value) << 1, cmp);
+	    qsort(v2 -= size, size >> 1, sizeof(Value) << 1, cmp);
 
 	    /*
 	     * merge the two value arrays
 	     */
 	    v1 = m->elts;
-	    v3 = ALLOC(value, m->size + size);
+	    v3 = ALLOC(Value, m->size + size);
 	    for (i = m->size, j = size; i > 0 && j > 0; ) {
 		if (cmp(v1, v2) <= 0) {
 		    *v3++ = *v1++;
@@ -1429,9 +1429,9 @@ static void map_dehash(dataspace *data, array *m, bool clean)
 	    /*
 	     * copy tails of arrays
 	     */
-	    memcpy(v3, v1, i * sizeof(value));
+	    memcpy(v3, v1, i * sizeof(Value));
 	    v3 += i;
-	    memcpy(v3, v2, j * sizeof(value));
+	    memcpy(v3, v2, j * sizeof(Value));
 	    v3 += j;
 
 	    v2 -= (size - j);
@@ -1450,7 +1450,7 @@ static void map_dehash(dataspace *data, array *m, bool clean)
  * NAME:	map->rmhash()
  * DESCRIPTION:	delete hash table of mapping
  */
-void map_rmhash(array *m)
+void map_rmhash(Array *m)
 {
     if (m->hashed != (maphash *) NULL) {
 	unsigned short i;
@@ -1477,7 +1477,7 @@ void map_rmhash(array *m)
  * DESCRIPTION:	compact a mapping: copy new elements from the hash table into
  *		the array, and remove destructed objects
  */
-void map_compact(dataspace *data, array *m)
+void map_compact(Dataspace *data, Array *m)
 {
     if (m->hashmod || m->odcount != odcount) {
 	if (m->hashmod &&
@@ -1494,7 +1494,7 @@ void map_compact(dataspace *data, array *m)
  * NAME:	mapping->size()
  * DESCRIPTION:	return the size of a mapping
  */
-unsigned short map_size(dataspace *data, array *m)
+unsigned short map_size(Dataspace *data, Array *m)
 {
     map_compact(data, m);
     return m->size >> 1;
@@ -1504,12 +1504,12 @@ unsigned short map_size(dataspace *data, array *m)
  * NAME:	mapping->add()
  * DESCRIPTION:	add two mappings
  */
-array *map_add(dataspace *data, array *m1, array *m2)
+Array *map_add(Dataspace *data, Array *m1, Array *m2)
 {
-    value *v1, *v2, *v3;
+    Value *v1, *v2, *v3;
     unsigned short n1, n2;
     Int c;
-    array *m3;
+    Array *m3;
 
     map_compact(data, m1);
     map_compact(data, m2);
@@ -1535,7 +1535,7 @@ array *map_add(dataspace *data, array *m1, array *m2)
 	    if (c == 0) {
 		/* equal elements? */
 		if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		    value *v;
+		    Value *v;
 		    unsigned short n;
 
 		    /*
@@ -1576,7 +1576,7 @@ array *map_add(dataspace *data, array *m1, array *m2)
     m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
-	m3->elts = (value *) NULL;
+	m3->elts = (Value *) NULL;
     }
 
     d_ref_imports(m3);
@@ -1587,12 +1587,12 @@ array *map_add(dataspace *data, array *m1, array *m2)
  * NAME:	mapping->sub()
  * DESCRIPTION:	subtract an array from a mapping
  */
-array *map_sub(dataspace *data, array *m1, array *a2)
+Array *map_sub(Dataspace *data, Array *m1, Array *a2)
 {
-    value *v1, *v2, *v3;
+    Value *v1, *v2, *v3;
     unsigned short n1, n2, size;
     Int c;
-    array *m3;
+    Array *m3;
 
     map_compact(data, m1);
     m3 = map_new(data, (long) m1->size);
@@ -1608,8 +1608,8 @@ array *map_sub(dataspace *data, array *m1, array *a2)
     }
 
     /* copy and sort values of array */
-    copytmp(data, v2 = ALLOCA(value, size), a2);
-    qsort(v2, size, sizeof(value), cmp);
+    copytmp(data, v2 = ALLOCA(Value, size), a2);
+    qsort(v2, size, sizeof(Value), cmp);
 
     v1 = m1->elts;
     v3 = m3->elts;
@@ -1625,7 +1625,7 @@ array *map_sub(dataspace *data, array *m1, array *a2)
 	} else {
 	    /* equal elements? */
 	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		value *v;
+		Value *v;
 		unsigned short n;
 
 		/*
@@ -1662,7 +1662,7 @@ array *map_sub(dataspace *data, array *m1, array *a2)
     m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
-	m3->elts = (value *) NULL;
+	m3->elts = (Value *) NULL;
     }
 
     d_ref_imports(m3);
@@ -1673,12 +1673,12 @@ array *map_sub(dataspace *data, array *m1, array *a2)
  * NAME:	mapping->intersect()
  * DESCRIPTION:	intersect a mapping with an array
  */
-array *map_intersect(dataspace *data, array *m1, array *a2)
+Array *map_intersect(Dataspace *data, Array *m1, Array *a2)
 {
-    value *v1, *v2, *v3;
+    Value *v1, *v2, *v3;
     unsigned short n1, n2, size;
     Int c;
-    array *m3;
+    Array *m3;
 
     map_compact(data, m1);
     if ((size=a2->size) == 0) {
@@ -1692,8 +1692,8 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
     }
 
     /* copy and sort values of array */
-    copytmp(data, v2 = ALLOCA(value, size), a2);
-    qsort(v2, size, sizeof(value), cmp);
+    copytmp(data, v2 = ALLOCA(Value, size), a2);
+    qsort(v2, size, sizeof(Value), cmp);
 
     v1 = m1->elts;
     v3 = m3->elts;
@@ -1708,7 +1708,7 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
 	} else {
 	    /* equal elements? */
 	    if (T_INDEXED(v1->type) && v1->u.array != v2->u.array) {
-		value *v;
+		Value *v;
 		unsigned short n;
 
 		/*
@@ -1744,7 +1744,7 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
     m3->size = v3 - m3->elts;
     if (m3->size == 0) {
 	FREE(m3->elts);
-	m3->elts = (value *) NULL;
+	m3->elts = (Value *) NULL;
     }
 
     d_ref_imports(m3);
@@ -1755,7 +1755,7 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
  * NAME:	mapping->grow()
  * DESCRIPTION:	add an element to a mapping
  */
-static mapelt *map_grow(dataspace *data, array *m, Uint hashval, bool add)
+static mapelt *map_grow(Dataspace *data, Array *m, Uint hashval, bool add)
 {
     maphash *h;
     mapelt *e;
@@ -1844,8 +1844,8 @@ static mapelt *map_grow(dataspace *data, array *m, Uint hashval, bool add)
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
  *		perform an assignment; otherwise return the indexed value.
  */
-value *map_index(dataspace *data, array *m, value *val, value *elt,
-		 value *verify)
+Value *map_index(Dataspace *data, Array *m, Value *val, Value *elt,
+		 Value *verify)
 {
     Uint i;
     mapelt *e, **p;
@@ -1853,8 +1853,8 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
 
     i = 0;
 
-    if (elt != (value *) NULL && VAL_NIL(elt)) {
-	elt = (value *) NULL;
+    if (elt != (Value *) NULL && VAL_NIL(elt)) {
+	elt = (Value *) NULL;
 	del = TRUE;
     } else {
 	del = FALSE;
@@ -1903,8 +1903,8 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
 		 * found in the hashtable
 		 */
 		hash = TRUE;
-		if (elt != (value *) NULL &&
-		    (verify == (value *) NULL ||
+		if (elt != (Value *) NULL &&
+		    (verify == (Value *) NULL ||
 		     (e->val.type == T_STRING &&
 		      e->val.u.string == verify->u.string))) {
 		    /*
@@ -1953,7 +1953,7 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
     add = TRUE;
     if (m->size > 0) {
 	int n;
-	value *v;
+	Value *v;
 
 	n = search(val, d_get_elts(m), m->size, 2, FALSE);
 	if (n >= 0) {
@@ -1961,8 +1961,8 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
 	     * found in the array
 	     */
 	    v = &m->elts[n];
-	    if (elt != (value *) NULL &&
-		(verify == (value *) NULL ||
+	    if (elt != (Value *) NULL &&
+		(verify == (Value *) NULL ||
 		 (v[1].type == T_STRING && v[1].u.string == verify->u.string)))
 	    {
 		/*
@@ -1986,10 +1986,10 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
 		if (m->size == 0) {
 		    /* last element removed */
 		    FREE(m->elts);
-		    m->elts = (value *) NULL;
+		    m->elts = (Value *) NULL;
 		} else {
 		    /* move tail */
-		    memmove(v, v + 2, (m->size - n) * sizeof(value));
+		    memmove(v, v + 2, (m->size - n) * sizeof(Value));
 		}
 		d_change_map(m);
 		return &nil_value;
@@ -2000,7 +2000,7 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
 	}
     }
 
-    if (elt == (value *) NULL) {
+    if (elt == (Value *) NULL) {
 	return &nil_value;	/* not found */
     }
 
@@ -2029,16 +2029,16 @@ value *map_index(dataspace *data, array *m, value *val, value *elt,
  * NAME:	mapping->range()
  * DESCRIPTION:	return a mapping value subrange
  */
-array *map_range(dataspace *data, array *m, value *v1, value *v2)
+Array *map_range(Dataspace *data, Array *m, Value *v1, Value *v2)
 {
     unsigned short from, to;
-    array *range;
+    Array *range;
 
     map_compact(data, m);
 
     /* determine subrange */
-    from = (v1 == (value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
-    if (v2 == (value *) NULL) {
+    from = (v1 == (Value *) NULL) ? 0 : search(v1, m->elts, m->size, 2, TRUE);
+    if (v2 == (Value *) NULL) {
 	to = m->size;
     } else {
 	to = search(v2, m->elts, m->size, 2, TRUE);
@@ -2066,10 +2066,10 @@ array *map_range(dataspace *data, array *m, value *v1, value *v2)
  * NAME:	mapping->indices()
  * DESCRIPTION:	return the indices of a mapping
  */
-array *map_indices(dataspace *data, array *m)
+Array *map_indices(Dataspace *data, Array *m)
 {
-    array *indices;
-    value *v1, *v2;
+    Array *indices;
+    Value *v1, *v2;
     unsigned short n;
 
     map_compact(data, m);
@@ -2088,10 +2088,10 @@ array *map_indices(dataspace *data, array *m)
  * NAME:	mapping->values()
  * DESCRIPTION:	return the values of a mapping
  */
-array *map_values(dataspace *data, array *m)
+Array *map_values(Dataspace *data, Array *m)
 {
-    array *values;
-    value *v1, *v2;
+    Array *values;
+    Value *v1, *v2;
     unsigned short n;
 
     map_compact(data, m);
@@ -2111,16 +2111,16 @@ array *map_values(dataspace *data, array *m)
  * NAME:	lwobject->new()
  * DESCRIPTION:	create a new light-weight object
  */
-array *lwo_new(dataspace *data, object *obj)
+Array *lwo_new(Dataspace *data, Object *obj)
 {
-    control *ctrl;
-    array *a;
+    Control *ctrl;
+    Array *a;
     xfloat flt;
 
     o_lwobj(obj);
     ctrl = o_control(obj);
     a = arr_alloc(ctrl->nvariables + 2);
-    a->elts = ALLOC(value, ctrl->nvariables + 2);
+    a->elts = ALLOC(Value, ctrl->nvariables + 2);
     PUT_OBJVAL(&a->elts[0], obj);
     flt.high = FALSE;
     flt.low = obj->update;
@@ -2140,12 +2140,12 @@ array *lwo_new(dataspace *data, object *obj)
  * NAME:	lwobject->copy()
  * DESCRIPTION:	copy a light-weight object
  */
-array *lwo_copy(dataspace *data, array *a)
+Array *lwo_copy(Dataspace *data, Array *a)
 {
-    array *copy;
+    Array *copy;
 
     copy = arr_alloc(a->size);
-    i_copy(copy->elts = ALLOC(value, a->size), a->elts, a->size);
+    i_copy(copy->elts = ALLOC(Value, a->size), a->elts, a->size);
     copy->tag = tag++;
     copy->odcount = odcount;
     copy->primary = &data->plane->alocal;

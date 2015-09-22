@@ -36,7 +36,7 @@
 typedef struct _copatch_ {
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
-    dataplane *plane;		/* dataplane */
+    Dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
     uindex *queue;		/* callout queue */
@@ -60,24 +60,24 @@ typedef struct _coptable_ {
 } coptable;
 
 typedef struct {
-    array **itab;			/* imported array replacement table */
+    Array **itab;			/* imported array replacement table */
     Uint itabsz;			/* size of table */
     Uint narr;				/* # of arrays */
 } arrimport;
 
-static dataplane *plist;		/* list of dataplanes */
+static Dataplane *plist;		/* list of dataplanes */
 static uindex ncallout;			/* # callouts added */
-static dataspace *ifirst;		/* list of dataspaces with imports */
+static Dataspace *ifirst;		/* list of dataspaces with imports */
 
 
 /*
  * NAME:	ref_rhs()
  * DESCRIPTION:	reference the right-hand side in an assignment
  */
-static void ref_rhs(dataspace *data, value *rhs)
+static void ref_rhs(Dataspace *data, Value *rhs)
 {
-    string *str;
-    array *arr;
+    String *str;
+    Array *arr;
 
     switch (rhs->type) {
     case T_STRING:
@@ -98,7 +98,7 @@ static void ref_rhs(dataspace *data, value *rhs)
 	arr = rhs->u.array;
 	if (arr->primary->data == data) {
 	    /* in this object */
-	    if (arr->primary->arr != (array *) NULL) {
+	    if (arr->primary->arr != (Array *) NULL) {
 		/* swapped in */
 		arr->primary->ref++;
 		data->plane->flags |= MOD_ARRAYREF;
@@ -109,11 +109,11 @@ static void ref_rhs(dataspace *data, value *rhs)
 	} else {
 	    /* not in this object: ref imported array */
 	    if (data->plane->imports++ == 0 && ifirst != data &&
-		data->iprev == (dataspace *) NULL) {
+		data->iprev == (Dataspace *) NULL) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
+		data->iprev = (Dataspace *) NULL;
 		data->inext = ifirst;
-		if (ifirst != (dataspace *) NULL) {
+		if (ifirst != (Dataspace *) NULL) {
 		    ifirst->iprev = data;
 		}
 		ifirst = data;
@@ -128,10 +128,10 @@ static void ref_rhs(dataspace *data, value *rhs)
  * NAME:	del_lhs()
  * DESCRIPTION:	delete the left-hand side in an assignment
  */
-static void del_lhs(dataspace *data, value *lhs)
+static void del_lhs(Dataspace *data, Value *lhs)
 {
-    string *str;
-    array *arr;
+    String *str;
+    Array *arr;
 
     switch (lhs->type) {
     case T_STRING:
@@ -139,7 +139,7 @@ static void del_lhs(dataspace *data, value *lhs)
 	if (str->primary != (strref *) NULL && str->primary->data == data) {
 	    /* in this object */
 	    if (--(str->primary->ref) == 0) {
-		str->primary->str = (string *) NULL;
+		str->primary->str = (String *) NULL;
 		str->primary = (strref *) NULL;
 		str_del(str);
 		data->plane->schange++;	/* last reference removed */
@@ -157,12 +157,12 @@ static void del_lhs(dataspace *data, value *lhs)
 	arr = lhs->u.array;
 	if (arr->primary->data == data) {
 	    /* in this object */
-	    if (arr->primary->arr != (array *) NULL) {
+	    if (arr->primary->arr != (Array *) NULL) {
 		/* swapped in */
 		data->plane->flags |= MOD_ARRAYREF;
 		if ((--(arr->primary->ref) & ~ARR_MOD) == 0) {
 		    d_get_elts(arr);
-		    arr->primary->arr = (array *) NULL;
+		    arr->primary->arr = (Array *) NULL;
 		    arr->primary = &arr->primary->plane->alocal;
 		    arr_del(arr);
 		    data->plane->achange++;
@@ -185,8 +185,8 @@ static void del_lhs(dataspace *data, value *lhs)
  * NAME:	data->alloc_call_out()
  * DESCRIPTION:	allocate a new callout
  */
-static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
-	unsigned short mtime, int nargs, value *v)
+static uindex d_alloc_call_out(Dataspace *data, uindex handle, Uint time,
+	unsigned short mtime, int nargs, Value *v)
 {
     dcallout *co;
 
@@ -274,10 +274,10 @@ static uindex d_alloc_call_out(dataspace *data, uindex handle, Uint time,
  * NAME:	data->free_call_out()
  * DESCRIPTION:	free a callout
  */
-static void d_free_call_out(dataspace *data, unsigned int handle)
+static void d_free_call_out(Dataspace *data, unsigned int handle)
 {
     dcallout *co;
-    value *v;
+    Value *v;
     uindex n;
 
     co = &data->callouts[handle - 1];
@@ -317,7 +317,7 @@ static void d_free_call_out(dataspace *data, unsigned int handle)
  * NAME:	copatch->init()
  * DESCRIPTION:	initialize copatch table
  */
-static void cop_init(dataplane *plane)
+static void cop_init(Dataplane *plane)
 {
     memset(plane->coptab = ALLOC(coptable, 1), '\0', sizeof(coptable));
 }
@@ -326,7 +326,7 @@ static void cop_init(dataplane *plane)
  * NAME:	copatch->clean()
  * DESCRIPTION:	free copatch table
  */
-static void cop_clean(dataplane *plane)
+static void cop_clean(Dataplane *plane)
 {
     copchunk *c, *f;
 
@@ -345,14 +345,14 @@ static void cop_clean(dataplane *plane)
  * NAME:	copatch->new()
  * DESCRIPTION:	create a new callout patch
  */
-static copatch *cop_new(dataplane *plane, copatch **c, int type,
+static copatch *cop_new(Dataplane *plane, copatch **c, int type,
 	unsigned int handle, dcallout *co, Uint time, unsigned int mtime,
 	uindex *q)
 {
     coptable *tab;
     copatch *cop;
     int i;
-    value *v;
+    Value *v;
 
     /* allocate */
     tab = plane->coptab;
@@ -400,12 +400,12 @@ static copatch *cop_new(dataplane *plane, copatch **c, int type,
  * NAME:	copatch->del()
  * DESCRIPTION:	delete a callout patch
  */
-static void cop_del(dataplane *plane, copatch **c, bool del)
+static void cop_del(Dataplane *plane, copatch **c, bool del)
 {
     copatch *cop;
     dcallout *co;
     int i;
-    value *v;
+    Value *v;
     coptable *tab;
 
     /* remove from hash table */
@@ -435,7 +435,7 @@ static void cop_replace(copatch *cop, dcallout *co, Uint time,
 	unsigned int mtime, uindex *q)
 {
     int i;
-    value *v;
+    Value *v;
 
     cop->type = COP_REPLACE;
     cop->aco = *co;
@@ -454,7 +454,7 @@ static void cop_replace(copatch *cop, dcallout *co, Uint time,
 static void cop_commit(copatch *cop)
 {
     int i;
-    value *v;
+    Value *v;
 
     cop->type = COP_ADD;
     for (i = (cop->rco.nargs > 3) ? 4 : cop->rco.nargs + 1, v = cop->rco.val;
@@ -470,7 +470,7 @@ static void cop_commit(copatch *cop)
 static void cop_release(copatch *cop)
 {
     int i;
-    value *v;
+    Value *v;
 
     cop->type = COP_REMOVE;
     for (i = (cop->aco.nargs > 3) ? 4 : cop->aco.nargs + 1, v = cop->aco.val;
@@ -494,12 +494,12 @@ static void cop_discard(copatch *cop)
  * NAME:	data->new_plane()
  * DESCRIPTION:	create a new dataplane
  */
-void d_new_plane(dataspace *data, Int level)
+void d_new_plane(Dataspace *data, Int level)
 {
-    dataplane *p;
+    Dataplane *p;
     Uint i;
 
-    p = ALLOC(dataplane, 1);
+    p = ALLOC(Dataplane, 1);
 
     p->level = level;
     p->flags = data->plane->flags;
@@ -508,8 +508,8 @@ void d_new_plane(dataspace *data, Int level)
     p->imports = data->plane->imports;
 
     /* copy value information from previous plane */
-    p->original = (value *) NULL;
-    p->alocal.arr = (array *) NULL;
+    p->original = (Value *) NULL;
+    p->alocal.arr = (Array *) NULL;
     p->alocal.plane = p;
     p->alocal.data = data;
     p->alocal.state = AR_CHANGED;
@@ -520,12 +520,12 @@ void d_new_plane(dataspace *data, Int level)
 
 	p->arrays = ALLOC(arrref, i = data->narrays);
 	for (a = p->arrays, b = data->plane->arrays; i != 0; a++, b++, --i) {
-	    if (b->arr != (array *) NULL) {
+	    if (b->arr != (Array *) NULL) {
 		*a = *b;
 		a->arr->primary = a;
 		arr_ref(a->arr);
 	    } else {
-		a->arr = (array *) NULL;
+		a->arr = (Array *) NULL;
 	    }
 	}
     } else {
@@ -538,12 +538,12 @@ void d_new_plane(dataspace *data, Int level)
 
 	p->strings = ALLOC(strref, i = data->nstrings);
 	for (s = p->strings, t = data->plane->strings; i != 0; s++, t++, --i) {
-	    if (t->str != (string *) NULL) {
+	    if (t->str != (String *) NULL) {
 		*s = *t;
 		s->str->primary = s;
 		str_ref(s->str);
 	    } else {
-		s->str = (string *) NULL;
+		s->str = (String *) NULL;
 	    }
 	}
     } else {
@@ -560,14 +560,14 @@ void d_new_plane(dataspace *data, Int level)
  * NAME:	commit_values()
  * DESCRIPTION:	commit non-swapped arrays among the values
  */
-static void commit_values(value *v, unsigned int n, Int level)
+static void commit_values(Value *v, unsigned int n, Int level)
 {
-    array *arr;
+    Array *arr;
 
     while (n != 0) {
 	if (T_INDEXED(v->type)) {
 	    arr = v->u.array;
-	    if (arr->primary->arr == (array *) NULL &&
+	    if (arr->primary->arr == (Array *) NULL &&
 		arr->primary->plane->level > level) {
 		if (arr->hashmod) {
 		    map_compact(arr->primary->data, arr);
@@ -586,9 +586,9 @@ static void commit_values(value *v, unsigned int n, Int level)
  * NAME:	commit_callouts()
  * DESCRIPTION:	commit callout patches to previous plane
  */
-static void commit_callouts(dataplane *plane, bool merge)
+static void commit_callouts(Dataplane *plane, bool merge)
 {
-    dataplane *prev;
+    Dataplane *prev;
     copatch **c, **n, *cop;
     copatch **t, **next;
     int i;
@@ -714,27 +714,27 @@ static void commit_callouts(dataplane *plane, bool merge)
  * NAME:	data->commit_plane()
  * DESCRIPTION:	commit the current data plane
  */
-void d_commit_plane(Int level, value *retval)
+void d_commit_plane(Int level, Value *retval)
 {
-    dataplane *p, *commit, **r, **cr;
-    dataspace *data;
-    value *v;
+    Dataplane *p, *commit, **r, **cr;
+    Dataspace *data;
+    Value *v;
     Uint i;
-    dataplane *clist;
+    Dataplane *clist;
 
     /*
      * pass 1: construct commit planes
      */
-    clist = (dataplane *) NULL;
+    clist = (Dataplane *) NULL;
     cr = &clist;
-    for (r = &plist, p = *r; p != (dataplane *) NULL && p->level == level;
+    for (r = &plist, p = *r; p != (Dataplane *) NULL && p->level == level;
 	 r = &p->plist, p = *r) {
 	if (p->prev->level != level - 1) {
 	    /* insert commit plane */
-	    commit = ALLOC(dataplane, 1);
+	    commit = ALLOC(Dataplane, 1);
 	    commit->level = level - 1;
-	    commit->original = (value *) NULL;
-	    commit->alocal.arr = (array *) NULL;
+	    commit->original = (Value *) NULL;
+	    commit->alocal.arr = (Array *) NULL;
 	    commit->alocal.plane = commit;
 	    commit->alocal.data = p->alocal.data;
 	    commit->alocal.state = AR_CHANGED;
@@ -751,7 +751,7 @@ void d_commit_plane(Int level, value *retval)
 	    p->flags |= PLANE_MERGE;
 	}
     }
-    if (clist != (dataplane *) NULL) {
+    if (clist != (Dataplane *) NULL) {
 	/* insert commit planes in plane list */
 	*cr = p;
 	*r = clist;
@@ -766,8 +766,8 @@ void d_commit_plane(Int level, value *retval)
 	 * commit changes to previous plane
 	 */
 	data = p->alocal.data;
-	if (p->original != (value *) NULL) {
-	    if (p->level == 1 || p->prev->original != (value *) NULL) {
+	if (p->original != (Value *) NULL) {
+	    if (p->level == 1 || p->prev->original != (Value *) NULL) {
 		/* free backed-up variable values */
 		for (v = p->original, i = data->nvariables; i != 0; v++, --i) {
 		    i_del_value(v);
@@ -797,7 +797,7 @@ void d_commit_plane(Int level, value *retval)
 
 		/* remove old array refs */
 		for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
-		    if (a->arr != (array *) NULL) {
+		    if (a->arr != (Array *) NULL) {
 			if (a->arr->primary == &p->alocal) {
 			    a->arr->primary = &p->prev->alocal;
 			}
@@ -814,7 +814,7 @@ void d_commit_plane(Int level, value *retval)
 		/* remove old string refs */
 		for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i)
 		{
-		    if (s->str != (string *) NULL) {
+		    if (s->str != (String *) NULL) {
 			str_del(s->str);
 		    }
 		}
@@ -843,10 +843,10 @@ void d_commit_plane(Int level, value *retval)
  * NAME:	discard_callouts()
  * DESCRIPTION:	discard callout patches on current plane, restoring old callouts
  */
-static void discard_callouts(dataplane *plane)
+static void discard_callouts(Dataplane *plane)
 {
     copatch *cop, **c, **t;
-    dataspace *data;
+    Dataspace *data;
     int i;
 
     data = plane->alocal.data;
@@ -886,12 +886,12 @@ static void discard_callouts(dataplane *plane)
  */
 void d_discard_plane(Int level)
 {
-    dataplane *p;
-    dataspace *data;
-    value *v;
+    Dataplane *p;
+    Dataspace *data;
+    Value *v;
     Uint i;
 
-    for (p = plist; p != (dataplane *) NULL && p->level == level; p = p->plist)
+    for (p = plist; p != (Dataplane *) NULL && p->level == level; p = p->plist)
     {
 	/*
 	 * discard changes except for callout mods
@@ -899,13 +899,13 @@ void d_discard_plane(Int level)
 	p->prev->flags |= p->flags & (MOD_CALLOUT | MOD_NEWCALLOUT);
 
 	data = p->alocal.data;
-	if (p->original != (value *) NULL) {
+	if (p->original != (Value *) NULL) {
 	    /* restore original variable values */
 	    for (v = data->variables, i = data->nvariables; i != 0; --i, v++) {
 		i_del_value(v);
 	    }
 	    memcpy(data->variables, p->original,
-		   data->nvariables * sizeof(value));
+		   data->nvariables * sizeof(Value));
 	    FREE(p->original);
 	}
 
@@ -925,14 +925,14 @@ void d_discard_plane(Int level)
 
 	    /* delete new array refs */
 	    for (a = p->arrays, i = data->narrays; i != 0; a++, --i) {
-		if (a->arr != (array *) NULL) {
+		if (a->arr != (Array *) NULL) {
 		    arr_del(a->arr);
 		}
 	    }
 	    FREE(p->arrays);
 	    /* fix old ones */
 	    for (a = p->prev->arrays, i = data->narrays; i != 0; a++, --i) {
-		if (a->arr != (array *) NULL) {
+		if (a->arr != (Array *) NULL) {
 		    a->arr->primary = a;
 		}
 	    }
@@ -943,14 +943,14 @@ void d_discard_plane(Int level)
 
 	    /* delete new string refs */
 	    for (s = p->strings, i = data->nstrings; i != 0; s++, --i) {
-		if (s->str != (string *) NULL) {
+		if (s->str != (String *) NULL) {
 		    str_del(s->str);
 		}
 	    }
 	    FREE(p->strings);
 	    /* fix old ones */
 	    for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i) {
-		if (s->str != (string *) NULL) {
+		if (s->str != (String *) NULL) {
 		    s->str->primary = s;
 		}
 	    }
@@ -967,14 +967,14 @@ void d_discard_plane(Int level)
  * NAME:	data->commit_arr()
  * DESCRIPTION:	commit array to previous plane
  */
-abchunk **d_commit_arr(array *arr, dataplane *prev, dataplane *old)
+abchunk **d_commit_arr(Array *arr, Dataplane *prev, Dataplane *old)
 {
     if (arr->primary->plane != prev) {
 	if (arr->hashmod) {
 	    map_compact(arr->primary->data, arr);
 	}
 
-	if (arr->primary->arr == (array *) NULL) {
+	if (arr->primary->arr == (Array *) NULL) {
 	    arr->primary = &prev->alocal;
 	} else {
 	    arr->primary->plane = prev;
@@ -989,7 +989,7 @@ abchunk **d_commit_arr(array *arr, dataplane *prev, dataplane *old)
  * NAME:	data->discard_arr()
  * DESCRIPTION:	restore array to previous plane
  */
-void d_discard_arr(array *arr, dataplane *plane)
+void d_discard_arr(Array *arr, Dataplane *plane)
 {
     /* swapped-in arrays will be fixed later */
     arr->primary = &plane->alocal;
@@ -1000,22 +1000,22 @@ void d_discard_arr(array *arr, dataplane *plane)
  * NAME:	data->ref_imports()
  * DESCRIPTION:	check the elements of an array for imports
  */
-void d_ref_imports(array *arr)
+void d_ref_imports(Array *arr)
 {
-    dataspace *data;
+    Dataspace *data;
     unsigned short n;
-    value *v;
+    Value *v;
 
     data = arr->primary->data;
     for (n = arr->size, v = arr->elts; n > 0; --n, v++) {
 	if (T_INDEXED(v->type) && data != v->u.array->primary->data) {
 	    /* mark as imported */
 	    if (data->plane->imports++ == 0 && ifirst != data &&
-		data->iprev == (dataspace *) NULL) {
+		data->iprev == (Dataspace *) NULL) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
+		data->iprev = (Dataspace *) NULL;
 		data->inext = ifirst;
-		if (ifirst != (dataspace *) NULL) {
+		if (ifirst != (Dataspace *) NULL) {
 		    ifirst->iprev = data;
 		}
 		ifirst = data;
@@ -1028,15 +1028,15 @@ void d_ref_imports(array *arr)
  * NAME:	data->assign_var()
  * DESCRIPTION:	assign a value to a variable
  */
-void d_assign_var(dataspace *data, value *var, value *val)
+void d_assign_var(Dataspace *data, Value *var, Value *val)
 {
     if (var >= data->variables && var < data->variables + data->nvariables) {
 	if (data->plane->level != 0 &&
-	    data->plane->original == (value *) NULL) {
+	    data->plane->original == (Value *) NULL) {
 	    /*
 	     * back up variables
 	     */
-	    i_copy(data->plane->original = ALLOC(value, data->nvariables),
+	    i_copy(data->plane->original = ALLOC(Value, data->nvariables),
 		   data->variables, data->nvariables);
 	}
 	ref_rhs(data, val);
@@ -1055,7 +1055,7 @@ void d_assign_var(dataspace *data, value *var, value *val)
  * NAME:	data->get_extravar()
  * DESCRIPTION:	get an object's special value
  */
-value *d_get_extravar(dataspace *data)
+Value *d_get_extravar(Dataspace *data)
 {
     return d_get_variable(data, data->nvariables - 1);
 }
@@ -1064,7 +1064,7 @@ value *d_get_extravar(dataspace *data)
  * NAME:	data->set_extravar()
  * DESCRIPTION:	set an object's special value
  */
-void d_set_extravar(dataspace *data, value *val)
+void d_set_extravar(Dataspace *data, Value *val)
 {
     d_assign_var(data, d_get_variable(data, data->nvariables - 1), val);
 }
@@ -1073,7 +1073,7 @@ void d_set_extravar(dataspace *data, value *val)
  * NAME:	data->wipe_extravar()
  * DESCRIPTION:	wipe out an object's special value
  */
-void d_wipe_extravar(dataspace *data)
+void d_wipe_extravar(Dataspace *data)
 {
     d_assign_var(data, d_get_variable(data, data->nvariables - 1), &nil_value);
 
@@ -1090,7 +1090,7 @@ void d_wipe_extravar(dataspace *data)
  * NAME:	data->assign_elt()
  * DESCRIPTION:	assign a value to an array element
  */
-void d_assign_elt(dataspace *data, array *arr, value *elt, value *val)
+void d_assign_elt(Dataspace *data, Array *arr, Value *elt, Value *val)
 {
     if (data->plane->level != arr->primary->data->plane->level) {
 	/*
@@ -1105,14 +1105,14 @@ void d_assign_elt(dataspace *data, array *arr, value *elt, value *val)
 	 * backup array's current elements
 	 */
 	arr_backup(&data->plane->achunk, arr);
-	if (arr->primary->arr != (array *) NULL) {
+	if (arr->primary->arr != (Array *) NULL) {
 	    arr->primary->plane = data->plane;
 	} else {
 	    arr->primary = &data->plane->alocal;
 	}
     }
 
-    if (arr->primary->arr != (array *) NULL) {
+    if (arr->primary->arr != (Array *) NULL) {
 	/*
 	 * the array is in the loaded dataspace of some object
 	 */
@@ -1126,11 +1126,11 @@ void d_assign_elt(dataspace *data, array *arr, value *elt, value *val)
 	if (T_INDEXED(val->type) && data != val->u.array->primary->data) {
 	    /* mark as imported */
 	    if (data->plane->imports++ == 0 && ifirst != data &&
-		data->iprev == (dataspace *) NULL) {
+		data->iprev == (Dataspace *) NULL) {
 		/* add to imports list */
-		data->iprev = (dataspace *) NULL;
+		data->iprev = (Dataspace *) NULL;
 		data->inext = ifirst;
-		if (ifirst != (dataspace *) NULL) {
+		if (ifirst != (Dataspace *) NULL) {
 		    ifirst->iprev = data;
 		}
 		ifirst = data;
@@ -1153,7 +1153,7 @@ void d_assign_elt(dataspace *data, array *arr, value *elt, value *val)
  * NAME:	data->change_map()
  * DESCRIPTION:	mark a mapping as changed in size
  */
-void d_change_map(array *map)
+void d_change_map(Array *map)
 {
     arrref *a;
 
@@ -1169,13 +1169,13 @@ void d_change_map(array *map)
  * NAME:	data->new_call_out()
  * DESCRIPTION:	add a new callout
  */
-uindex d_new_call_out(dataspace *data, string *func, Int delay,
-	unsigned int mdelay, frame *f, int nargs)
+uindex d_new_call_out(Dataspace *data, String *func, Int delay,
+	unsigned int mdelay, Frame *f, int nargs)
 {
     Uint ct, t;
     unsigned short m;
     uindex *q;
-    value v[4];
+    Value v[4];
     uindex handle;
 
     ct = co_check(ncallout, delay, mdelay, &t, &m, &q);
@@ -1199,7 +1199,7 @@ uindex d_new_call_out(dataspace *data, string *func, Int delay,
 	v[1] = f->sp[0];
 	v[2] = f->sp[1];
 	PUT_ARRVAL(&v[3], arr_new(data, nargs - 2L));
-	memcpy(v[3].u.array->elts, f->sp + 2, (nargs - 2) * sizeof(value));
+	memcpy(v[3].u.array->elts, f->sp + 2, (nargs - 2) * sizeof(Value));
 	d_ref_imports(v[3].u.array);
 	break;
     }
@@ -1212,7 +1212,7 @@ uindex d_new_call_out(dataspace *data, string *func, Int delay,
 	 */
 	co_new(data->oindex, handle, t, m, q);
     } else {
-	dataplane *plane;
+	Dataplane *plane;
 	copatch **c, *cop;
 	dcallout *co;
 	copatch **cc;
@@ -1253,7 +1253,7 @@ uindex d_new_call_out(dataspace *data, string *func, Int delay,
  * NAME:	data->del_call_out()
  * DESCRIPTION:	remove a callout
  */
-Int d_del_call_out(dataspace *data, Uint handle, unsigned short *mtime)
+Int d_del_call_out(Dataspace *data, Uint handle, unsigned short *mtime)
 {
     dcallout *co;
     Int t;
@@ -1281,7 +1281,7 @@ Int d_del_call_out(dataspace *data, Uint handle, unsigned short *mtime)
 	 */
 	co_del(data->oindex, (uindex) handle, co->time, co->mtime);
     } else {
-	dataplane *plane;
+	Dataplane *plane;
 	copatch **c, *cop;
 	copatch **cc;
 
@@ -1324,12 +1324,12 @@ Int d_del_call_out(dataspace *data, Uint handle, unsigned short *mtime)
  * NAME:	data->get_call_out()
  * DESCRIPTION:	get a callout
  */
-string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
+String *d_get_call_out(Dataspace *data, unsigned int handle, Frame *f,
 	int *nargs)
 {
-    string *str;
+    String *str;
     dcallout *co;
-    value *v, *o;
+    Value *v, *o;
     uindex n;
 
     if (data->callouts == (dcallout *) NULL) {
@@ -1360,10 +1360,10 @@ string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
     default:
 	n = co->nargs - 2;
 	f->sp -= n;
-	memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(value));
+	memcpy(f->sp, d_get_elts(v[3].u.array), n * sizeof(Value));
 	del_lhs(data, &v[3]);
 	FREE(v[3].u.array->elts);
-	v[3].u.array->elts = (value *) NULL;
+	v[3].u.array->elts = (Value *) NULL;
 	arr_del(v[3].u.array);
 	del_lhs(data, &v[2]);
 	*--f->sp = v[2];
@@ -1407,12 +1407,12 @@ string *d_get_call_out(dataspace *data, unsigned int handle, frame *f,
  * NAME:	data->list_callouts()
  * DESCRIPTION:	list all call_outs in an object
  */
-array *d_list_callouts(dataspace *host, dataspace *data)
+Array *d_list_callouts(Dataspace *host, Dataspace *data)
 {
     uindex n, count, size;
     dcallout *co;
-    value *v, *v2, *elts;
-    array *list, *a;
+    Value *v, *v2, *elts;
+    Array *list, *a;
     uindex max_args;
     xfloat flt;
 
@@ -1429,7 +1429,7 @@ array *d_list_callouts(dataspace *host, dataspace *data)
 	--count;
     }
     if (count > conf_array_size()) {
-	return (array *) NULL;
+	return (Array *) NULL;
     }
 
     list = arr_new(host, (long) count);
@@ -1504,7 +1504,7 @@ array *d_list_callouts(dataspace *host, dataspace *data)
  * NAME:	data->set_varmap()
  * DESCRIPTION:	add a variable mapping to a control block
  */
-void d_set_varmap(control *ctrl, unsigned short *vmap)
+void d_set_varmap(Control *ctrl, unsigned short *vmap)
 {
     ctrl->vmapsize = ctrl->nvariables + 1;
     ctrl->vmap = vmap;
@@ -1514,9 +1514,9 @@ void d_set_varmap(control *ctrl, unsigned short *vmap)
  * NAME:	data->get_varmap()
  * DESCRIPTION:	get the variable mapping for an object
  */
-static unsigned short *d_get_varmap(object **obj, Uint update, unsigned short *nvariables)
+static unsigned short *d_get_varmap(Object **obj, Uint update, unsigned short *nvariables)
 {
-    object *tmpl;
+    Object *tmpl;
     unsigned short nvar, *vmap;
 
     tmpl = OBJ((*obj)->prev);
@@ -1554,18 +1554,18 @@ static unsigned short *d_get_varmap(object **obj, Uint update, unsigned short *n
  * NAME:	data->upgrade_data()
  * DESCRIPTION:	upgrade the dataspace for one object
  */
-void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap,
-	object *tmpl)
+void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
+	Object *tmpl)
 {
-    value *v;
+    Value *v;
     unsigned short n;
-    value *vars;
+    Value *vars;
 
     /* make sure variables are in memory */
     vars = d_get_variable(data, 0);
 
     /* map variables */
-    for (n = nvar, v = ALLOC(value, n); n > 0; --n) {
+    for (n = nvar, v = ALLOC(Value, n); n > 0; --n) {
 	switch (*vmap) {
 	case NEW_INT:
 	    *v++ = zero_int;
@@ -1618,9 +1618,9 @@ void d_upgrade_data(dataspace *data, unsigned int nvar, unsigned short *vmap,
  * NAME:	data->upgrade_clone()
  * DESCRIPTION:	upgrade a clone object
  */
-void d_upgrade_clone(dataspace *data)
+void d_upgrade_clone(Dataspace *data)
 {
-    object *obj;
+    Object *obj;
     unsigned short *vmap, nvar;
     Uint update;
 
@@ -1641,14 +1641,14 @@ void d_upgrade_clone(dataspace *data)
  * NAME:	data->upgrade_lwobj()
  * DESCRIPTION:	upgrade a non-persistent object
  */
-object *d_upgrade_lwobj(array *lwobj, object *obj)
+Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 {
     arrref *a;
     unsigned short n;
-    value *v;
+    Value *v;
     Uint update;
     unsigned short nvar, *vmap;
-    value *vars;
+    Value *vars;
 
     a = lwobj->primary;
     update = obj->update;
@@ -1656,7 +1656,7 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
     --nvar;
 
     /* map variables */
-    v = ALLOC(value, nvar + 2);
+    v = ALLOC(Value, nvar + 2);
     *v++ = lwobj->elts[0];
     *v = lwobj->elts[1];
     (v++)->u.objcnt = update;
@@ -1678,7 +1678,7 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
 
 	default:
 	    *v = vars[*vmap];
-	    if (a->arr != (array *) NULL) {
+	    if (a->arr != (Array *) NULL) {
 		ref_rhs(a->data, v);
 	    }
 	    i_ref_value(v);
@@ -1695,13 +1695,13 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
     }
 
     v = lwobj->elts + 2;
-    if (a->arr != (array *) NULL) {
+    if (a->arr != (Array *) NULL) {
 	/* swapped-in */
 	if (a->state == AR_UNCHANGED) {
-	    dataplane *p;
+	    Dataplane *p;
 
 	    a->state = AR_CHANGED;
-	    for (p = a->data->plane; p != (dataplane *) NULL; p = p->prev) {
+	    for (p = a->data->plane; p != (Dataplane *) NULL; p = p->prev) {
 		p->achange++;
 	    }
 	}
@@ -1730,12 +1730,12 @@ object *d_upgrade_lwobj(array *lwobj, object *obj)
  * NAME:	data->import()
  * DESCRIPTION:	copy imported arrays to current dataspace
  */
-static void d_import(arrimport *imp, dataspace *data, value *val,
+static void d_import(arrimport *imp, Dataspace *data, Value *val,
 	unsigned short n)
 {
     while (n > 0) {
 	if (T_INDEXED(val->type)) {
-	    array *a;
+	    Array *a;
 	    Uint i, j;
 
 	    a = val->u.array;
@@ -1772,7 +1772,7 @@ static void d_import(arrimport *imp, dataspace *data, value *val,
 			    /*
 			     * copy elements
 			     */
-			    i_copy(a->elts = ALLOC(value, a->size),
+			    i_copy(a->elts = ALLOC(Value, a->size),
 				   d_get_elts(val->u.array), a->size);
 			}
 
@@ -1790,7 +1790,7 @@ static void d_import(arrimport *imp, dataspace *data, value *val,
 			     * increase size of itab
 			     */
 			    for (j = imp->itabsz; j <= i; j += j) ;
-			    imp->itab = REALLOC(imp->itab, array*, imp->itabsz,
+			    imp->itab = REALLOC(imp->itab, Array*, imp->itabsz,
 						j);
 			    imp->itabsz = j;
 			}
@@ -1825,7 +1825,7 @@ static void d_import(arrimport *imp, dataspace *data, value *val,
 		if (a->hashed != (struct _maphash_ *) NULL) {
 		    map_rmhash(a);
 		    d_import(imp, data, a->elts, a->size);
-		} else if (a->elts != (value *) NULL) {
+		} else if (a->elts != (Value *) NULL) {
 		    d_import(imp, data, a->elts, a->size);
 		}
 	    }
@@ -1841,20 +1841,20 @@ static void d_import(arrimport *imp, dataspace *data, value *val,
  */
 void d_export()
 {
-    dataspace *data;
+    Dataspace *data;
     Uint n;
     arrimport imp;
 
-    if (ifirst != (dataspace *) NULL) {
-	imp.itab = ALLOC(array*, imp.itabsz = 64);
+    if (ifirst != (Dataspace *) NULL) {
+	imp.itab = ALLOC(Array*, imp.itabsz = 64);
 
-	for (data = ifirst; data != (dataspace *) NULL; data = data->inext) {
+	for (data = ifirst; data != (Dataspace *) NULL; data = data->inext) {
 	    if (data->base.imports != 0) {
 		data->base.imports = 0;
 		arr_merge();
 		imp.narr = 0;
 
-		if (data->variables != (value *) NULL) {
+		if (data->variables != (Value *) NULL) {
 		    d_import(&imp, data, data->variables, data->nvariables);
 		}
 		if (data->base.arrays != (arrref *) NULL) {
@@ -1862,13 +1862,13 @@ void d_export()
 
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
-			if (a->arr != (array *) NULL) {
+			if (a->arr != (Array *) NULL) {
 			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
 				/* mapping */
 				map_rmhash(a->arr);
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
-			    } else if (a->arr->elts != (value *) NULL) {
+			    } else if (a->arr->elts != (Value *) NULL) {
 				d_import(&imp, data, a->arr->elts,
 					 a->arr->size);
 			    }
@@ -1889,9 +1889,9 @@ void d_export()
 		}
 		arr_clear();	/* clear merge table */
 	    }
-	    data->iprev = (dataspace *) NULL;
+	    data->iprev = (Dataspace *) NULL;
 	}
-	ifirst = (dataspace *) NULL;
+	ifirst = (Dataspace *) NULL;
 
 	FREE(imp.itab);
     }
@@ -1902,7 +1902,7 @@ void d_export()
  * NAME:	data->del_control()
  * DESCRIPTION:	delete a control block from swap and memory
  */
-void d_del_control(control *ctrl)
+void d_del_control(Control *ctrl)
 {
     if (ctrl->sectors != (sector *) NULL) {
 	sw_wipev(ctrl->sectors, ctrl->nsectors);
@@ -1915,17 +1915,17 @@ void d_del_control(control *ctrl)
  * NAME:	data->del_dataspace()
  * DESCRIPTION:	delete a dataspace block from swap and memory
  */
-void d_del_dataspace(dataspace *data)
+void d_del_dataspace(Dataspace *data)
 {
-    if (data->iprev != (dataspace *) NULL) {
+    if (data->iprev != (Dataspace *) NULL) {
 	data->iprev->inext = data->inext;
-	if (data->inext != (dataspace *) NULL) {
+	if (data->inext != (Dataspace *) NULL) {
 	    data->inext->iprev = data->iprev;
 	}
     } else if (ifirst == data) {
 	ifirst = data->inext;
-	if (ifirst != (dataspace *) NULL) {
-	    ifirst->iprev = (dataspace *) NULL;
+	if (ifirst != (Dataspace *) NULL) {
+	    ifirst->iprev = (Dataspace *) NULL;
 	}
     }
 
