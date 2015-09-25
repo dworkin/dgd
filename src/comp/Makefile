@@ -16,10 +16,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-CFLAGS=	-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
+CXXFLAGS=-I. -I.. -I../lex -I../parser -I../kfun $(CCFLAGS)
 
-SRC=	node.c parser.c control.c optimize.c codegeni.c compile.c csupport.c
-OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
+SRC=	node.cpp parser.cpp control.cpp optimize.cpp codegen.cpp compile.cpp \
+	csupport.cpp
+OBJ=	node.o parser.o control.o optimize.o codegen.o compile.o csupport.o
 
 all:
 	@echo Please run make from the src directory.
@@ -27,9 +28,9 @@ all:
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo comp/$$i; done > dgd
 
-parser.c parser.h: parser.y
+parser.cpp parser.h: parser.y
 	$(YACC) -d parser.y
-	mv y.tab.c parser.c
+	mv y.tab.c parser.cpp
 	mv y.tab.h parser.h
 
 clean:
@@ -38,20 +39,20 @@ clean:
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../error.h ../alloc.h
 $(OBJ): ../str.h ../array.h ../object.h ../xfloat.h ../interpret.h
-control.o optimize.o codegeni.o compile.o csupport.o: ../data.h
+control.o optimize.o codegen.o compile.o csupport.o: ../data.h
 control.o: ../hash.h ../path.h
 
 node.o parser.o compile.o: ../lex/macro.h ../lex/token.h
 parser.o compile.o: ../lex/ppcontrol.h
 
-control.o optimize.o codegeni.o csupport.o: ../kfun/table.h
+control.o optimize.o codegen.o csupport.o: ../kfun/table.h
 
 $(OBJ): comp.h
-node.o parser.o optimize.o control.o codegeni.o: node.h
+node.o parser.o optimize.o control.o codegen.o: node.h
 compile.o csupport.o: node.h
-control.o optimize.o codegeni.o compile.o csupport.o: control.h
-codegeni.o compile.o: codegen.h
-parser.o control.o optimize.o codegeni.o compile.o: compile.h
+control.o optimize.o codegen.o compile.o csupport.o: control.h
+codegen.o compile.o: codegen.h
+parser.o control.o optimize.o codegen.o compile.o: compile.h
 csupport.o: compile.h
 optimize.o compile.o: optimize.h
 csupport.o: csupport.h

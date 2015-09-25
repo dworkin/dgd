@@ -1,169 +1,169 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\..\alloc.c">
+    <ClCompile Include="..\..\alloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\array.c">
+    <ClCompile Include="..\..\array.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\call_out.c">
+    <ClCompile Include="..\..\call_out.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comm.c">
+    <ClCompile Include="..\..\comm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\codegeni.c">
+    <ClCompile Include="..\..\comp\codegen.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\compile.c">
+    <ClCompile Include="..\..\comp\compile.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\control.c">
+    <ClCompile Include="..\..\comp\control.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\csupport.c">
+    <ClCompile Include="..\..\comp\csupport.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\node.c">
+    <ClCompile Include="..\..\comp\node.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\optimize.c">
+    <ClCompile Include="..\..\comp\optimize.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\comp\parser.c">
+    <ClCompile Include="..\..\comp\parser.cpp">
       <Filter>Source Files\comp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\config.c">
+    <ClCompile Include="..\..\config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\data.c">
+    <ClCompile Include="..\..\data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\dgd.c">
+    <ClCompile Include="..\..\dgd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\editor.c">
+    <ClCompile Include="..\..\editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\buffer.c">
+    <ClCompile Include="..\..\ed\buffer.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\cmdsub.c">
+    <ClCompile Include="..\..\ed\cmdsub.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\edcmd.c">
+    <ClCompile Include="..\..\ed\edcmd.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\fileio.c">
+    <ClCompile Include="..\..\ed\fileio.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\line.c">
+    <ClCompile Include="..\..\ed\line.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\regexp.c">
+    <ClCompile Include="..\..\ed\regexp.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ed\vars.c">
+    <ClCompile Include="..\..\ed\vars.cpp">
       <Filter>Source Files\ed</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\error.c">
+    <ClCompile Include="..\..\error.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ext.c">
+    <ClCompile Include="..\..\ext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\hash.c">
+    <ClCompile Include="..\..\hash.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\interpret.c">
+    <ClCompile Include="..\..\interpret.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\builtin.c">
+    <ClCompile Include="..\..\kfun\builtin.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\extra.c">
+    <ClCompile Include="..\..\kfun\extra.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\file.c">
+    <ClCompile Include="..\..\kfun\file.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\math.c">
+    <ClCompile Include="..\..\kfun\math.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\std.c">
+    <ClCompile Include="..\..\kfun\std.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\table.c">
+    <ClCompile Include="..\..\kfun\table.cpp">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lex\macro.c">
+    <ClCompile Include="..\..\lex\macro.cpp">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lex\ppcontrol.c">
+    <ClCompile Include="..\..\lex\ppcontrol.cpp">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lex\ppstr.c">
+    <ClCompile Include="..\..\lex\ppstr.cpp">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lex\special.c">
+    <ClCompile Include="..\..\lex\special.cpp">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lex\token.c">
+    <ClCompile Include="..\..\lex\token.cpp">
       <Filter>Source Files\lex</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\object.c">
+    <ClCompile Include="..\..\object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\parser\dfa.c">
+    <ClCompile Include="..\..\parser\dfa.cpp">
       <Filter>Source Files\parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\parser\grammar.c">
+    <ClCompile Include="..\..\parser\grammar.cpp">
       <Filter>Source Files\parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\parser\parse.c">
+    <ClCompile Include="..\..\parser\parse.cpp">
       <Filter>Source Files\parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\parser\srp.c">
+    <ClCompile Include="..\..\parser\srp.cpp">
       <Filter>Source Files\parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\path.c">
+    <ClCompile Include="..\..\path.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\sdata.c">
+    <ClCompile Include="..\..\sdata.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\str.c">
+    <ClCompile Include="..\..\str.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\swap.c">
+    <ClCompile Include="..\..\swap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\asn.c">
+    <ClCompile Include="..\asn.cpp">
       <Filter>Source Files\host</Filter>
     </ClCompile>
-    <ClCompile Include="..\crypt.c">
+    <ClCompile Include="..\crypt.cpp">
       <Filter>Source Files\host</Filter>
     </ClCompile>
-    <ClCompile Include="..\simfloat.c">
+    <ClCompile Include="..\simfloat.cpp">
       <Filter>Source Files\host</Filter>
     </ClCompile>
-    <ClCompile Include="connect.c">
+    <ClCompile Include="connect.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
-    <ClCompile Include="dload.c">
+    <ClCompile Include="dload.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
-    <ClCompile Include="dosfile.c">
+    <ClCompile Include="dosfile.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
-    <ClCompile Include="local.c">
+    <ClCompile Include="local.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
-    <ClCompile Include="time.c">
+    <ClCompile Include="time.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
-    <ClCompile Include="windgd.c">
+    <ClCompile Include="windgd.cpp">
       <Filter>Source Files\host\win32</Filter>
     </ClCompile>
   </ItemGroup>

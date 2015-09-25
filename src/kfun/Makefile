@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-CFLAGS=	-I. -I.. -I../comp -I../parser $(CCFLAGS)
+CXXFLAGS=-I. -I.. -I../comp -I../parser $(CCFLAGS)
 
-SRC=	builtin.c std.c file.c math.c extra.c
+SRC=	builtin.cpp std.cpp file.cpp math.cpp extra.cpp
 OBJ=	builtin.o std.o file.o math.o extra.o
 
 all:

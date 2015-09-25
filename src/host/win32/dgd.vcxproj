@@ -19,61 +19,61 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\alloc.c" />
-    <ClCompile Include="..\..\array.c" />
-    <ClCompile Include="..\..\call_out.c" />
-    <ClCompile Include="..\..\comm.c" />
-    <ClCompile Include="..\..\comp\codegeni.c" />
-    <ClCompile Include="..\..\comp\compile.c" />
-    <ClCompile Include="..\..\comp\control.c" />
-    <ClCompile Include="..\..\comp\csupport.c" />
-    <ClCompile Include="..\..\comp\node.c" />
-    <ClCompile Include="..\..\comp\optimize.c" />
-    <ClCompile Include="..\..\comp\parser.c" />
-    <ClCompile Include="..\..\config.c" />
-    <ClCompile Include="..\..\data.c" />
-    <ClCompile Include="..\..\dgd.c" />
-    <ClCompile Include="..\..\editor.c" />
-    <ClCompile Include="..\..\ed\buffer.c" />
-    <ClCompile Include="..\..\ed\cmdsub.c" />
-    <ClCompile Include="..\..\ed\edcmd.c" />
-    <ClCompile Include="..\..\ed\fileio.c" />
-    <ClCompile Include="..\..\ed\line.c" />
-    <ClCompile Include="..\..\ed\regexp.c" />
-    <ClCompile Include="..\..\ed\vars.c" />
-    <ClCompile Include="..\..\error.c" />
-    <ClCompile Include="..\..\ext.c" />
-    <ClCompile Include="..\..\hash.c" />
-    <ClCompile Include="..\..\interpret.c" />
-    <ClCompile Include="..\..\kfun\builtin.c" />
-    <ClCompile Include="..\..\kfun\extra.c" />
-    <ClCompile Include="..\..\kfun\file.c" />
-    <ClCompile Include="..\..\kfun\math.c" />
-    <ClCompile Include="..\..\kfun\std.c" />
-    <ClCompile Include="..\..\kfun\table.c" />
-    <ClCompile Include="..\..\lex\macro.c" />
-    <ClCompile Include="..\..\lex\ppcontrol.c" />
-    <ClCompile Include="..\..\lex\ppstr.c" />
-    <ClCompile Include="..\..\lex\special.c" />
-    <ClCompile Include="..\..\lex\token.c" />
-    <ClCompile Include="..\..\object.c" />
-    <ClCompile Include="..\..\parser\dfa.c" />
-    <ClCompile Include="..\..\parser\grammar.c" />
-    <ClCompile Include="..\..\parser\parse.c" />
-    <ClCompile Include="..\..\parser\srp.c" />
-    <ClCompile Include="..\..\path.c" />
-    <ClCompile Include="..\..\sdata.c" />
-    <ClCompile Include="..\..\str.c" />
-    <ClCompile Include="..\..\swap.c" />
-    <ClCompile Include="..\asn.c" />
-    <ClCompile Include="..\crypt.c" />
-    <ClCompile Include="..\simfloat.c" />
-    <ClCompile Include="connect.c" />
-    <ClCompile Include="dload.c" />
-    <ClCompile Include="dosfile.c" />
-    <ClCompile Include="local.c" />
-    <ClCompile Include="time.c" />
-    <ClCompile Include="windgd.c" />
+    <ClCompile Include="..\..\alloc.cpp" />
+    <ClCompile Include="..\..\array.cpp" />
+    <ClCompile Include="..\..\call_out.cpp" />
+    <ClCompile Include="..\..\comm.cpp" />
+    <ClCompile Include="..\..\comp\codegen.cpp" />
+    <ClCompile Include="..\..\comp\compile.cpp" />
+    <ClCompile Include="..\..\comp\control.cpp" />
+    <ClCompile Include="..\..\comp\csupport.cpp" />
+    <ClCompile Include="..\..\comp\node.cpp" />
+    <ClCompile Include="..\..\comp\optimize.cpp" />
+    <ClCompile Include="..\..\comp\parser.cpp" />
+    <ClCompile Include="..\..\config.cpp" />
+    <ClCompile Include="..\..\data.cpp" />
+    <ClCompile Include="..\..\dgd.cpp" />
+    <ClCompile Include="..\..\editor.cpp" />
+    <ClCompile Include="..\..\ed\buffer.cpp" />
+    <ClCompile Include="..\..\ed\cmdsub.cpp" />
+    <ClCompile Include="..\..\ed\edcmd.cpp" />
+    <ClCompile Include="..\..\ed\fileio.cpp" />
+    <ClCompile Include="..\..\ed\line.cpp" />
+    <ClCompile Include="..\..\ed\regexp.cpp" />
+    <ClCompile Include="..\..\ed\vars.cpp" />
+    <ClCompile Include="..\..\error.cpp" />
+    <ClCompile Include="..\..\ext.cpp" />
+    <ClCompile Include="..\..\hash.cpp" />
+    <ClCompile Include="..\..\interpret.cpp" />
+    <ClCompile Include="..\..\kfun\builtin.cpp" />
+    <ClCompile Include="..\..\kfun\extra.cpp" />
+    <ClCompile Include="..\..\kfun\file.cpp" />
+    <ClCompile Include="..\..\kfun\math.cpp" />
+    <ClCompile Include="..\..\kfun\std.cpp" />
+    <ClCompile Include="..\..\kfun\table.cpp" />
+    <ClCompile Include="..\..\lex\macro.cpp" />
+    <ClCompile Include="..\..\lex\ppcontrol.cpp" />
+    <ClCompile Include="..\..\lex\ppstr.cpp" />
+    <ClCompile Include="..\..\lex\special.cpp" />
+    <ClCompile Include="..\..\lex\token.cpp" />
+    <ClCompile Include="..\..\object.cpp" />
+    <ClCompile Include="..\..\parser\dfa.cpp" />
+    <ClCompile Include="..\..\parser\grammar.cpp" />
+    <ClCompile Include="..\..\parser\parse.cpp" />
+    <ClCompile Include="..\..\parser\srp.cpp" />
+    <ClCompile Include="..\..\path.cpp" />
+    <ClCompile Include="..\..\sdata.cpp" />
+    <ClCompile Include="..\..\str.cpp" />
+    <ClCompile Include="..\..\swap.cpp" />
+    <ClCompile Include="..\asn.cpp" />
+    <ClCompile Include="..\crypt.cpp" />
+    <ClCompile Include="..\simfloat.cpp" />
+    <ClCompile Include="connect.cpp" />
+    <ClCompile Include="dload.cpp" />
+    <ClCompile Include="dosfile.cpp" />
+    <ClCompile Include="local.cpp" />
+    <ClCompile Include="time.cpp" />
+    <ClCompile Include="windgd.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\alloc.h" />
@@ -126,18 +126,18 @@
   <ItemGroup>
     <CustomBuild Include="..\..\comp\parser.y">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building LPC parser</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building LPC parser</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building LPC parser</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.c"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Bison.exe -Wnone -d "$(ProjectDir)..\..\comp\parser.y" -o "$(ProjectDir)..\..\comp\parser.cpp"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building LPC parser</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\comp\parser.c;..\..\comp\parser.h;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\comp\parser.cpp;..\..\comp\parser.h;%(Outputs)</Outputs>
     </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">

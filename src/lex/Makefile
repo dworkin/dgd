@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-CFLAGS=	-I. -I.. -I../comp $(CCFLAGS)
+CXXFLAGS=-I. -I.. -I../comp $(CCFLAGS)
 
-SRC=	macro.c ppstr.c token.c special.c ppcontrol.c
+SRC=	macro.cpp ppstr.cpp token.cpp special.cpp ppcontrol.cpp
 OBJ=	macro.o ppstr.o token.o special.o ppcontrol.o
 
 all:

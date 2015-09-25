@@ -42,10 +42,10 @@ endif
 DEFINES=-D$(HOST)	# -DSLASHSLASH -DNETWORK_EXTENSIONS -DNOFLOAT -DCLOSURES -DCO_THROTTLE=50
 DEBUG=	-g -DDEBUG
 CCFLAGS=$(DEFINES) $(DEBUG)
-CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
+CXXFLAGS=-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-CC=	gcc
+CC=	g++
 LD=	$(CC)
 YACC=	yacc
 BIN=	../bin
@@ -57,8 +57,9 @@ ifeq ($(HOST),SOLARIS)
   LIBS+=-lsocket -lnsl
 endif
 
-SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
-	path.c editor.c comm.c call_out.c interpret.c config.c ext.c dgd.c
+SRC=	alloc.cpp error.cpp hash.cpp swap.cpp str.cpp array.cpp object.cpp \
+	sdata.cpp data.cpp path.cpp editor.cpp comm.cpp call_out.cpp \
+	interpret.cpp config.cpp ext.cpp dgd.cpp
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 	path.o editor.o comm.o call_out.o interpret.o config.o ext.o dgd.o
 

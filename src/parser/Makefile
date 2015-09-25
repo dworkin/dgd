@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-CFLAGS=	-I. -I.. $(CCFLAGS)
+CXXFLAGS=-I. -I.. $(CCFLAGS)
 
-SRC=	grammar.c dfa.c srp.c parse.c
+SRC=	grammar.cpp dfa.cpp srp.cpp parse.cpp
 OBJ=	grammar.o dfa.o srp.o parse.o
 
 all:

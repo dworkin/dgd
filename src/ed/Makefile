@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-CFLAGS=	-I. -I.. $(CCFLAGS)
+CXXFLAGS=-I. -I.. $(CCFLAGS)
 
-SRC=	line.c buffer.c fileio.c regexp.c vars.c edcmd.c cmdsub.c
+SRC=	line.cpp buffer.cpp fileio.cpp regexp.cpp vars.cpp edcmd.cpp cmdsub.cpp
 OBJ=	line.o buffer.o fileio.o regexp.o vars.o edcmd.o cmdsub.o
 
 all:

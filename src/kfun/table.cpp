@@ -26,11 +26,11 @@
  * prototypes
  */
 # define FUNCDEF(name, func, proto, v) extern int func(Frame*, int, struct kfunc*); extern char proto[];
-# include "builtin.c"
-# include "std.c"
-# include "file.c"
-# include "math.c"
-# include "extra.c"
+# include "builtin.cpp"
+# include "std.cpp"
+# include "file.cpp"
+# include "math.cpp"
+# include "extra.cpp"
 # undef FUNCDEF
 
 /*
@@ -38,11 +38,11 @@
  */
 static kfunc kforig[] = {
 # define FUNCDEF(name, func, proto, v) { name, proto, func, (extfunc) NULL, v },
-# include "builtin.c"
-# include "std.c"
-# include "file.c"
-# include "math.c"
-# include "extra.c"
+# include "builtin.cpp"
+# include "std.cpp"
+# include "file.cpp"
+# include "math.cpp"
+# include "extra.cpp"
 # undef FUNCDEF
 };
 
