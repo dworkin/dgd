@@ -236,7 +236,7 @@ static rgxposn *rp_new(hashtab *htab, char *posn, unsigned short size, rpchunk *
 
     rp = rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
     if (rp->nposn == nposn) {
-	strcpy(rp->chain.name = ALLOC(char, size + 3), posn);
+	rp->chain.name = strcpy(ALLOC(char, size + 3), posn);
 	rp->alloc = TRUE;
     }
     return rp;
@@ -395,7 +395,8 @@ static Uint bits[] = {
  */
 static void rp_cset(rgxposn *rp, Uint *cset)
 {
-    char *p, *q;
+    char *p;
+    const char *q;
     int c, n, x;
     bool negate;
 
@@ -472,7 +473,8 @@ static void rp_cset(rgxposn *rp, Uint *cset)
 static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
 {
     char trans[256];
-    char *p, *q;
+    char *p;
+    const char *q;
     int c, n, x;
     char *t;
     Uint found;

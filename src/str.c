@@ -47,7 +47,7 @@ static int strhchunksz;		/* size of current strh chunk */
  * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
  *		case it must be filled in later.
  */
-String *str_alloc(char *text, long len)
+String *str_alloc(const char *text, long len)
 {
     String *s;
     String dummy;
@@ -68,7 +68,7 @@ String *str_alloc(char *text, long len)
  * NAME:	String->new()
  * DESCRIPTION:	create a new string with size check
  */
-String *str_new(char *text, long len)
+String *str_new(const char *text, long len)
 {
     if (len > (unsigned long) MAX_STRLEN) {
 	error("String too long");

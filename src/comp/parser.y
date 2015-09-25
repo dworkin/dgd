@@ -47,27 +47,27 @@ static int nstatements;		/* number of statements in current function */
 static bool typechecking;	/* does the current function have it? */
 
 static void  t_void	(node*);
-static bool  t_unary	(node*, char*);
-static node *prefix	(int, node*, char*);
-static node *postfix	(int, node*, char*);
+static bool  t_unary	(node*, const char*);
+static node *prefix	(int, node*, const char*);
+static node *postfix	(int, node*, const char*);
 static node *cast	(node*, node*);
 static node *idx	(node*, node*);
 static node *range	(node*, node*, node*);
-static node *bini	(int, node*, node*, char*);
-static node *bina	(int, node*, node*, char*);
-static node *mult	(int, node*, node*, char*);
-static node *mdiv	(int, node*, node*, char*);
-static node *mod	(int, node*, node*, char*);
-static node *add	(int, node*, node*, char*);
-static node *sub	(int, node*, node*, char*);
+static node *bini	(int, node*, node*, const char*);
+static node *bina	(int, node*, node*, const char*);
+static node *mult	(int, node*, node*, const char*);
+static node *mdiv	(int, node*, node*, const char*);
+static node *mod	(int, node*, node*, const char*);
+static node *add	(int, node*, node*, const char*);
+static node *sub	(int, node*, node*, const char*);
 static node *umin	(node*);
-static node *lshift	(int, node*, node*, char*);
-static node *rshift	(int, node*, node*, char*);
-static node *rel	(int, node*, node*, char*);
+static node *lshift	(int, node*, node*, const char*);
+static node *rshift	(int, node*, node*, const char*);
+static node *rel	(int, node*, node*, const char*);
 static node *eq		(node*, node*);
-static node *_and	(int, node*, node*, char*);
-static node *_xor	(int, node*, node*, char*);
-static node *_or	(int, node*, node*, char*);
+static node *_and	(int, node*, node*, const char*);
+static node *_xor	(int, node*, node*, const char*);
+static node *_or	(int, node*, node*, const char*);
 static node *land	(node*, node*);
 static node *lor	(node*, node*);
 static node *quest	(node*, node*, node*);
@@ -946,7 +946,7 @@ static void t_void(node *n)
  * NAME:	t_unary()
  * DESCRIPTION:	typecheck the argument of a unary operator
  */
-static bool t_unary(node *n, char *name)
+static bool t_unary(node *n, const char *name)
 {
     char tnbuf[TNBUFSIZE];
 
@@ -964,7 +964,7 @@ static bool t_unary(node *n, char *name)
  * NAME:	postfix()
  * DESCRIPTION:	handle a postfix assignment operator
  */
-static node *postfix(int op, node *n, char *name)
+static node *postfix(int op, node *n, const char *name)
 {
     t_unary(n, name);
     return node_mon((n->mod == T_INT) ? op + 1 : op, n->mod, c_lvalue(n, name));
@@ -974,7 +974,7 @@ static node *postfix(int op, node *n, char *name)
  * NAME:	prefix()
  * DESCRIPTION:	handle a prefix assignment operator
  */
-static node *prefix(int op, node *n, char *name)
+static node *prefix(int op, node *n, const char *name)
 {
     unsigned short type;
 
@@ -1231,7 +1231,7 @@ static node *range(node *n1, node *n2, node *n3)
  * NAME:	bini()
  * DESCRIPTION:	handle a binary int operator
  */
-static node *bini(int op, node *n1, node *n2, char *name)
+static node *bini(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
@@ -1259,7 +1259,7 @@ static node *bini(int op, node *n1, node *n2, char *name)
  * NAME:	bina()
  * DESCRIPTION:	handle a binary arithmetic operator
  */
-static node *bina(int op, node *n1, node *n2, char *name)
+static node *bina(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
@@ -1313,7 +1313,7 @@ static node *bina(int op, node *n1, node *n2, char *name)
  * NAME:	mult()
  * DESCRIPTION:	handle the * *= operators
  */
-static node *mult(int op, node *n1, node *n2, char *name)
+static node *mult(int op, node *n1, node *n2, const char *name)
 {
     xfloat f1, f2;
 
@@ -1336,7 +1336,7 @@ static node *mult(int op, node *n1, node *n2, char *name)
  * NAME:	mdiv()
  * DESCRIPTION:	handle the / /= operators
  */
-static node *mdiv(int op, node *n1, node *n2, char *name)
+static node *mdiv(int op, node *n1, node *n2, const char *name)
 {
     xfloat f1, f2;
 
@@ -1374,7 +1374,7 @@ static node *mdiv(int op, node *n1, node *n2, char *name)
  * NAME:	mod()
  * DESCRIPTION:	handle the % %= operators
  */
-static node *mod(int op, node *n1, node *n2, char *name)
+static node *mod(int op, node *n1, node *n2, const char *name)
 {
     if (n1->type == N_INT && n2->type == N_INT) {
 	Int i, d;
@@ -1399,7 +1399,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
  * DESCRIPTION:	handle the + += operators, possibly rearranging the order
  *		of the expression
  */
-static node *add(int op, node *n1, node *n2, char *name)
+static node *add(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
@@ -1465,7 +1465,7 @@ static node *add(int op, node *n1, node *n2, char *name)
  * NAME:	sub()
  * DESCRIPTION:	handle the - -= operators
  */
-static node *sub(int op, node *n1, node *n2, char *name)
+static node *sub(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
@@ -1538,7 +1538,7 @@ static node *umin(node *n)
  * NAME:	lshift()
  * DESCRIPTION:	handle the << <<= operators
  */
-static node *lshift(int op, node *n1, node *n2, char *name)
+static node *lshift(int op, node *n1, node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1560,7 +1560,7 @@ static node *lshift(int op, node *n1, node *n2, char *name)
  * NAME:	rshift()
  * DESCRIPTION:	handle the >> >>= operators
  */
-static node *rshift(int op, node *n1, node *n2, char *name)
+static node *rshift(int op, node *n1, node *n2, const char *name)
 {
     if (n2->type == N_INT) {
 	if (n2->l.number < 0) {
@@ -1582,7 +1582,7 @@ static node *rshift(int op, node *n1, node *n2, char *name)
  * NAME:	rel()
  * DESCRIPTION:	handle the < > <= >= operators
  */
-static node *rel(int op, node *n1, node *n2, char *name)
+static node *rel(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
@@ -1737,7 +1737,7 @@ static node *eq(node *n1, node *n2)
  * NAME:	_and()
  * DESCRIPTION:	handle the & &= operators
  */
-static node *_and(int op, node *n1, node *n2, char *name)
+static node *_and(int op, node *n1, node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1761,7 +1761,7 @@ static node *_and(int op, node *n1, node *n2, char *name)
  * NAME:	_xor()
  * DESCRIPTION:	handle the ^ ^= operators
  */
-static node *_xor(int op, node *n1, node *n2, char *name)
+static node *_xor(int op, node *n1, node *n2, const char *name)
 {
     unsigned short type;
 
@@ -1784,7 +1784,7 @@ static node *_xor(int op, node *n1, node *n2, char *name)
  * NAME:	_or()
  * DESCRIPTION:	handle the | |= operators
  */
-static node *_or(int op, node *n1, node *n2, char *name)
+static node *_or(int op, node *n1, node *n2, const char *name)
 {
     unsigned short type;
 

@@ -407,7 +407,7 @@ static long eval_expr(int priority)
  */
 static int pptokenz(char *key, unsigned int len)
 {
-    static char *keyword[] = {
+    static const char *keyword[] = {
       "else", "error", "line", "elif", "endif", "if", "define",
       "include", "ifdef", "ifndef", "undef", "pragma"
     };
@@ -433,7 +433,7 @@ static int pptokenz(char *key, unsigned int len)
  */
 static int tokenz(char *key, unsigned int len)
 {
-    static char *keyword[] = {
+    static const char *keyword[] = {
       "void", "inherit", "mapping", "break", "else", "case", "nil", "for",
       "static", "continue", "private", "function", "rlimits", "return",
       "operator", "float", "do", "if", "object", "goto", "string", "while",
@@ -462,7 +462,7 @@ static int tokenz(char *key, unsigned int len)
  * DESCRIPTION:	an error has occured, print appropriate errormessage and skip
  *		till \n found
  */
-static void unexpected(int token, char *wanted, char *directive)
+static void unexpected(int token, const char *wanted, const char *directive)
 {
     if (token == LF) {
 	error("missing %s in #%s", wanted, directive);

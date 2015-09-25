@@ -206,7 +206,7 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
  * NAME:	node->op()
  * DESCRIPTION:	create an operator node
  */
-node *node_op(char *op)
+node *node_op(const char *op)
 {
     return node_str(str_new(op, strlen(op)));
 }

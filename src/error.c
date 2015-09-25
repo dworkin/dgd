@@ -194,7 +194,7 @@ void serror(String *str)
  * NAME:	error()
  * DESCRIPTION:	cause an error
  */
-void error(char *format, ...)
+void error(const char *format, ...)
 {
     va_list args;
     char ebuf[4 * STRINGSZ];
@@ -214,7 +214,7 @@ void error(char *format, ...)
  * DESCRIPTION:	a fatal error has been encountered; terminate the program and
  *		dump a core if possible
  */
-void fatal(char *format, ...)
+void fatal(const char *format, ...)
 {
     static short count;
     va_list args;
@@ -236,7 +236,7 @@ void fatal(char *format, ...)
  * NAME:	message()
  * DESCRIPTION:	issue a message on stderr
  */
-void message(char *format, ...)
+void message(const char *format, ...)
 {
     va_list args;
     char ebuf[4 * STRINGSZ];

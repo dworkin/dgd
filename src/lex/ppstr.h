@@ -27,5 +27,5 @@ extern void pps_init	(void);
 extern void pps_clear	(void);
 extern str *pps_new	(char*, int);
 extern void pps_del	(str*);
-extern int  pps_scat	(str*, char*);
+extern int  pps_scat	(str*, const char*);
 extern int  pps_ccat	(str*, int);

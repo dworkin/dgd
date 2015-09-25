@@ -160,7 +160,7 @@ static void ed_handler(Frame *f, Int depth)
     UNREFERENCED_PARAMETER(depth);
 }
 
-extern void output(char *, ...);
+extern void output(const char *, ...);
 
 /*
  * NAME:	ed->command()
@@ -208,7 +208,7 @@ String *ed_command(Object *obj, char *cmd)
  * NAME:	ed->status()
  * DESCRIPTION:	return the editor status of an object
  */
-char *ed_status(Object *obj)
+const char *ed_status(Object *obj)
 {
     if (editors[EINDEX(obj->etabi)].ed->flags & CB_INSERT) {
 	return "insert";
@@ -221,7 +221,7 @@ char *ed_status(Object *obj)
  * NAME:	output()
  * DESCRIPTION:	handle output from the editor
  */
-void output(char *f, ...)
+void output(const char *f, ...)
 {
     va_list args;
     char buf[2 * MAX_LINE_SIZE + 15];
@@ -242,7 +242,7 @@ void output(char *f, ...)
  * NAME:	ed_error()
  * DESCRIPTION:	handle an editor internal error
  */
-void ed_error(char *f, ...)
+void ed_error(const char *f, ...)
 {
     va_list args;
     if (f != (char *) NULL) {

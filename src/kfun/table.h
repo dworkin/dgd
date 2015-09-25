@@ -19,7 +19,7 @@
 
 typedef void (*extfunc)(Frame *, int, Value *);
 typedef struct kfunc {
-    char *name;						/* function name */
+    const char *name;					/* function name */
     char *proto;					/* prototype */
     int (*func)(Frame*, int, struct kfunc*);		/* function address */
     extfunc ext;					/* extension */
@@ -33,7 +33,7 @@ extern int   nkfun, ne, nd, nh;				/* # kfuns */
 # define KFUN(kf)	(kftab[kfind[kf]])
 
 typedef struct {
-    char *name;		/* added kfun name */
+    const char *name;	/* added kfun name */
     char *proto;	/* simplified prototype */
     extfunc func;	/* function address */
 } extkfunc;
@@ -42,7 +42,7 @@ extern void kf_clear	(void);
 extern void kf_ext_kfun	(extkfunc*, int);
 extern void kf_init	(void);
 extern void kf_jit	(void);
-extern int  kf_func	(char*);
+extern int  kf_func	(const char*);
 extern void kf_reclaim	(void);
 extern bool kf_dump	(int);
 extern void kf_restore	(int, int);

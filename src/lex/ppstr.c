@@ -108,7 +108,7 @@ void pps_del(str *sb)
  * NAME:	str->scat()
  * DESCRIPTION:	append a string. The length becomes -1 if the result is too long
  */
-int pps_scat(str *sb, char *s)
+int pps_scat(str *sb, const char *s)
 {
     int l;
 

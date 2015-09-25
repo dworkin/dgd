@@ -26,7 +26,7 @@ static DIR *d;
  * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-bool P_opendir(char *dir)
+bool P_opendir(const char *dir)
 {
     d = opendir(dir);
     return (d != (DIR *) NULL);

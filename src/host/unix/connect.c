@@ -1090,7 +1090,7 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
     conn->udpbuf = ALLOC(char, BINBUF_SIZE);
     m_dynamic();
     memset(conn->udpbuf, '\0', UDPHASHSZ);
-    memcpy(conn->chain.name = conn->udpbuf, challenge, conn->bufsz = len);
+    conn->chain.name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
 
     return TRUE;
 }

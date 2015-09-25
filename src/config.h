@@ -102,9 +102,9 @@ extern int		conf_typechecking (void);
 extern unsigned short	conf_array_size	(void);
 
 extern void   conf_dump		(bool, bool);
-extern Uint   conf_dsize	(char*);
-extern Uint   conf_dconv	(char*, char*, char*, Uint);
-extern void   conf_dread	(int, char*, char*, Uint);
+extern Uint   conf_dsize	(const char*);
+extern Uint   conf_dconv	(char*, char*, const char*, Uint);
+extern void   conf_dread	(int, char*, const char*, Uint);
 
 extern bool   conf_statusi	(Frame*, Int, Value*);
 extern Array *conf_status	(Frame*);

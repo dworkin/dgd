@@ -616,7 +616,7 @@ Object *o_new(char *name, Control *ctrl)
     if (obase) {
 	m_static();
     }
-    strcpy(o->chain.name = ALLOC(char, strlen(name) + 1), name);
+    o->chain.name = strcpy(ALLOC(char, strlen(name) + 1), name);
     if (obase) {
 	m_dynamic();
     } else if (oplane->htab == (hashtab *) NULL) {
@@ -818,7 +818,7 @@ void o_del(Object *obj, Frame *f)
  * NAME:	Object->name()
  * DESCRIPTION:	return the name of an object
  */
-char *o_name(char *name, Object *o)
+const char *o_name(char *name, Object *o)
 {
     if (o->chain.name != (char *) NULL) {
 	return o->chain.name;
@@ -1435,7 +1435,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 		p = buffer;
 	    }
 	    m_static();
-	    strcpy(o->chain.name = ALLOC(char, len = strlen(p) + 1), p);
+	    o->chain.name = strcpy(ALLOC(char, len = strlen(p) + 1), p);
 	    m_dynamic();
 
 	    if (o->count != 0) {

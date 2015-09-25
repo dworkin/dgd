@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -707,8 +707,8 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
  * NAME:	linebuf->put()
  * DESCRIPTION:	output of a subrange of a block
  */
-void bk_put(linebuf *lb, block b, Int idx, Int size, void (*putline)(char*),
-	int reverse)
+void bk_put(linebuf *lb, block b, Int idx, Int size,
+	    void (*putline)(const char*), int reverse)
 {
     blk *bp;
 

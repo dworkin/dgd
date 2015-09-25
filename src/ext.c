@@ -221,7 +221,7 @@ static void ext_object_putval(Value *val, Object *obj)
  * NAME:	ext->object_name()
  * DESCRIPTION:	store the name of an object
  */
-static char *ext_object_name(Frame *f, Object *obj, char *buf)
+static const char *ext_object_name(Frame *f, Object *obj, char *buf)
 {
     UNREFERENCED_PARAMETER(f);
     return o_name(buf, obj);
@@ -458,10 +458,10 @@ bool ext_dgd(char *module, char *config)
     voidf *ext_runtime[1];
     voidf **ftabs[11];
     int sizes[11];
-    int (*init) (int, int, voidf**[], int[], char*);
+    int (*init) (int, int, voidf**[], int[], const char*);
 
-    init = (int (*) (int, int, voidf**[], int[], char*)) P_dload(module,
-								 "ext_init");
+    init = (int (*) (int, int, voidf**[], int[], const char*))
+						    P_dload(module, "ext_init");
     if (init == NULL) {
 	return FALSE;
     }

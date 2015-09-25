@@ -752,8 +752,8 @@ void i_global_lvalue(Frame *f, int inherit, int index, int vtype, Uint sclass)
  * NAME:	interpret->operator()
  * DESCRIPTION:	index or indexed assignment
  */
-static void i_operator(Frame *f, Array *lwobj, char *op, int nargs, Value *var,
-		       Value *idx, Value *val)
+static void i_operator(Frame *f, Array *lwobj, const char *op, int nargs,
+		       Value *var, Value *idx, Value *val)
 {
     i_push_value(f, idx);
     if (nargs > 1) {
@@ -1104,7 +1104,7 @@ void i_index_lvalue(Frame *f, int vtype, Uint sclass)
  */
 char *i_typename(char *buf, unsigned int type)
 {
-    static char *name[] = TYPENAMES;
+    static const char *name[] = TYPENAMES;
 
     if ((type & T_TYPE) == T_CLASS) {
 	type = (type & T_REF) | T_OBJECT;
@@ -2033,7 +2033,7 @@ Frame *i_prev_object(Frame *f, int n)
  * NAME:	interpret->prev_program()
  * DESCRIPTION:	return the nth previous program in the function call chain
  */
-char *i_prev_program(Frame *f, int n)
+const char *i_prev_program(Frame *f, int n)
 {
     while (n >= 0) {
 	f = f->prev;
@@ -2050,7 +2050,8 @@ char *i_prev_program(Frame *f, int n)
  * NAME:	interpret->typecheck()
  * DESCRIPTION:	check the argument types given to a function
  */
-void i_typecheck(Frame *f, Frame *prog_f, char *name, char *ftype, char *proto, int nargs, int strict)
+void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
+		 char *proto, int nargs, int strict)
 {
     char tnbuf[TNBUFSIZE];
     int i, n, atype, ptype;
@@ -3401,8 +3402,8 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
  * DESCRIPTION:	Attempt to call a function in an object. Return TRUE if
  *		the call succeeded.
  */
-bool i_call(Frame *f, Object *obj, Array *lwobj, char *func, unsigned int len,
-	int call_static, int nargs)
+bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
+	    unsigned int len, int call_static, int nargs)
 {
     dsymbol *symb;
     dfuncdef *fdef;
@@ -3812,7 +3813,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     char buffer[STRINGSZ + 12];
     Value *v;
     String *str;
-    char *name;
+    const char *name;
     unsigned short n;
     Value *args;
     Array *a;
@@ -3932,7 +3933,7 @@ static void emptyhandler(Frame *f, Int depth)
  *		The function is called with rlimits (-1; -1) and errors
  *		caught.
  */
-bool i_call_critical(Frame *f, char *func, int narg, int flag)
+bool i_call_critical(Frame *f, const char *func, int narg, int flag)
 {
     bool ok;
 

@@ -21,7 +21,7 @@ extern void	 c_init		(char*, char*, char*, char**, int);
 extern Object	*c_compile	(Frame*, char*, Object*, String**, int, int);
 extern bool	 c_upgrade	(Object**, unsigned int);
 extern int	 c_autodriver	(void);
-extern void	 c_error	(char *, ...);
+extern void	 c_error	(const char *, ...);
 
 extern bool	 c_typechecking	(void);
 extern bool	 c_inherit	(char*, node*, int);
@@ -74,6 +74,6 @@ extern node	*c_instanceof	(node*, node*);
 extern node	*c_checkcall	(node*, int);
 extern node	*c_tst		(node*);
 extern node	*c_not		(node*);
-extern node	*c_lvalue	(node*, char*);
+extern node	*c_lvalue	(node*, const char*);
 extern node	*c_assign	(node*);
 extern unsigned short c_tmatch	(unsigned int, unsigned int);

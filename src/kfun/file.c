@@ -85,7 +85,7 @@ char pt_query_editor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 int kf_query_editor(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
-    char *status;
+    const char *status;
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
@@ -118,7 +118,7 @@ typedef struct {
  * NAME:	put()
  * DESCRIPTION:	output a number of characters
  */
-static void put(savecontext *x, char *buf, unsigned int len)
+static void put(savecontext *x, const char *buf, unsigned int len)
 {
     unsigned int chunk;
 
@@ -569,7 +569,7 @@ static void ac_clear(restcontext *x)
  * NAME:	restore_error()
  * DESCRIPTION:	handle an error while restoring
  */
-static void restore_error(restcontext *x, char *err)
+static void restore_error(restcontext *x, const char *err)
 {
     error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
 }
@@ -1544,7 +1544,8 @@ int kf_get_dir(Frame *f, int n, kfunc *kf)
 {
     unsigned int i, nfiles, ftabsz;
     fileinfo *ftable;
-    char *file, *dir, *pat, buf[STRINGSZ], dirbuf[STRINGSZ];
+    char *file, *pat, buf[STRINGSZ], dirbuf[STRINGSZ];
+    const char *dir;
     fileinfo finf;
     Array *a;
 

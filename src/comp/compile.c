@@ -64,7 +64,7 @@ typedef struct _bchunk_ {
 } bchunk;
 
 typedef struct {
-    char *name;			/* variable name */
+    const char *name;		/* variable name */
     short type;			/* variable type */
     short unset;		/* used before set? */
     String *cvstr;		/* class name */
@@ -2514,7 +2514,7 @@ node *c_not(node *n)
  * NAME:	compile->lvalue()
  * DESCRIPTION:	handle an lvalue
  */
-node *c_lvalue(node *n, char *oper)
+node *c_lvalue(node *n, const char *oper)
 {
     if (!lvalue(n)) {
 	c_error("bad lvalue for %s", oper);
@@ -2620,7 +2620,7 @@ unsigned short c_tmatch(unsigned int type1, unsigned int type2)
  * NAME:	compile->error()
  * DESCRIPTION:	Call the driver object with the supplied error message.
  */
-void c_error(char *format, ...)
+void c_error(const char *format, ...)
 {
     va_list args;
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */

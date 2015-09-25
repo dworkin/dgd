@@ -40,7 +40,7 @@ typedef struct _frame_ Frame;
 # define BCLR(map, bit)		(map[BOFF(bit)] &= ~BBIT(bit))
 # define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
-extern bool call_driver_object	(Frame*, char*, int);
+extern bool call_driver_object	(Frame*, const char*, int);
 extern void interrupt		(void);
 extern void endthread		(void);
 extern void errhandler		(Frame*, Int);

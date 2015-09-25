@@ -68,7 +68,7 @@ extern node *node_str	(String*);
 extern node *node_var	(unsigned int, int);
 extern node *node_type	(int, String*);
 extern node *node_fcall	(int, String*, char*, Int);
-extern node *node_op	(char*);
+extern node *node_op	(const char*);
 extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);

@@ -45,7 +45,7 @@
 # define CB_TLOWER	0x2000
 
 typedef struct {
-    char *cmd;			/* command to do */
+    const char *cmd;		/* command to do */
     editbuf *edbuf;		/* edit buffer */
     rxbuf *regexp;		/* current regular expression */
     Vars *vars;			/* variables */
@@ -102,7 +102,7 @@ typedef struct {
 
 extern cmdbuf *cb_new     (char*);
 extern void    cb_del     (cmdbuf*);
-extern bool    cb_command (cmdbuf*, char*);
+extern bool    cb_command (cmdbuf*, const char*);
 extern int     cb_edit	  (cmdbuf*);
 
 extern cmdbuf *ccb;

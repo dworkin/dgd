@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,7 +40,7 @@ typedef struct {
     char *buf;				/* current low-level buffer */
     int blksz;				/* block size in write buffer */
     int txtsz;				/* text size in write buffer */
-    void (*putline) (char*);		/* output line function */
+    void (*putline) (const char*);	/* output line function */
     bool reverse;			/* for bk_put() */
     btbuf *wb;				/* write buffer */
     btbuf bt[NR_EDBUFS];		/* read & write buffers */
@@ -55,4 +55,5 @@ extern block	bk_new	  (linebuf*, char*(*)());
 extern Int	bk_size	  (linebuf*, block);
 extern void	bk_split  (linebuf*, block, Int, block*, block*);
 extern block	bk_cat	  (linebuf*, block, block);
-extern void	bk_put	  (linebuf*, block, Int, Int, void(*)(char*), int);
+extern void	bk_put	  (linebuf*, block, Int, Int, void(*)(const char*),
+			   int);

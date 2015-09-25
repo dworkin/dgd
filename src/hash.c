@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -92,7 +92,7 @@ void ht_del(hashtab *ht)
  *		an unsigned modulo size.
  *		Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned short hashstr(char *s, unsigned int len)
+unsigned short hashstr(const char *s, unsigned int len)
 {
     char h, l;
 
@@ -109,7 +109,7 @@ unsigned short hashstr(char *s, unsigned int len)
  * NAME:	hashmem()
  * DESCRIPTION:	hash memory
  */
-unsigned short hashmem(char *s, unsigned int len)
+unsigned short hashmem(const char *s, unsigned int len)
 {
     char h, l;
 
@@ -127,7 +127,7 @@ unsigned short hashmem(char *s, unsigned int len)
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-hte **ht_lookup(hashtab *ht, char *name, int move)
+hte **ht_lookup(hashtab *ht, const char *name, int move)
 {
     hte **first, **e, *next;
 

@@ -325,7 +325,7 @@ char pt_previous_program[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_STRING,
  */
 int kf_previous_program(Frame *f, int nargs, kfunc *kf)
 {
-    char *prog;
+    const char *prog;
     String *str;
 
     if (nargs == 0) {
@@ -478,7 +478,8 @@ char pt_object_name[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
  */
 int kf_object_name(Frame *f, int nargs, kfunc *kf)
 {
-    char buffer[STRINGSZ + 12], *name;
+    char buffer[STRINGSZ + 12];
+    const char *name;
     String *str;
     uindex n;
 
@@ -556,7 +557,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     Object *obj;
     uindex n;
     dsymbol *symb;
-    char *name;
+    const char *name;
 
     i_add_ticks(f, 2);
     if (f->sp->type == T_OBJECT) {

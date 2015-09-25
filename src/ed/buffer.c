@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -235,7 +235,8 @@ void eb_put(editbuf *eb, Int ln, block b)
  * DESCRIPTION:	output a subrange of the edit buffer, without first making
  *		a subrange block for it
  */
-void eb_range(editbuf *eb, Int first, Int last, void (*putline) (char*), int reverse)
+void eb_range(editbuf *eb, Int first, Int last, void (*putline) (const char*),
+	      int reverse)
 {
     bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }
@@ -302,7 +303,7 @@ void eb_startblock(editbuf *eb)
  * NAME:	editbuf->addblock()
  * DESCRIPTION:	add a line to the current block of lines
  */
-void eb_addblock(editbuf *eb, char *text)
+void eb_addblock(editbuf *eb, const char *text)
 {
     int len;
 

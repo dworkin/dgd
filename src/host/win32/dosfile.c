@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,7 +29,7 @@
  * NAME:	path_native()
  * DESCRIPTION:	deal with a path that's already native
  */
-char *path_native(char *to, char *from)
+char *path_native(char *to, const char *from)
 {
     to[0] = '/';	/* mark as native */
     strncpy(to + 1, from, STRINGSZ - 1);
@@ -41,7 +41,7 @@ char *path_native(char *to, char *from)
  * NAME:	path_file()
  * DESCRIPTION:	translate a path into a native file name
  */
-static char *path_file(char *buf, char *path)
+static char *path_file(char *buf, const char *path)
 {
     bool valid;
 
@@ -76,7 +76,7 @@ static char *path_file(char *buf, char *path)
  * NAME:	P->open()
  * DESCRIPTION:	open a file
  */
-int P_open(char *file, int flags, int mode)
+int P_open(const char *file, int flags, int mode)
 {
     char buf[STRINGSZ];
 
@@ -108,7 +108,7 @@ int P_read(int fd, char *buf, int nbytes)
  * NAME:	P_write()
  * DESCRIPTION:	write to a file
  */
-int P_write(int fd, char *buf, int nbytes)
+int P_write(int fd, const char *buf, int nbytes)
 {
     return _write(fd, buf, nbytes);
 }
@@ -126,7 +126,7 @@ long P_lseek(int fd, long offset, int whence)
  * NAME:	P->stat()
  * DESCRIPTION:	get information about a file
  */
-int P_stat(char *path, struct stat *sb)
+int P_stat(const char *path, struct stat *sb)
 {
     char buf[STRINGSZ];
 
@@ -149,7 +149,7 @@ int P_fstat(int fd, struct stat *sb)
  * NAME:	P->unlink()
  * DESCRIPTION:	remove a file (but not a directory)
  */
-int P_unlink(char *path)
+int P_unlink(const char *path)
 {
     char buf[STRINGSZ];
 
@@ -164,7 +164,7 @@ int P_unlink(char *path)
  * NAME:	P->rename()
  * DESCRIPTION:	rename a file
  */
-int P_rename(char *from, char *to)
+int P_rename(const char *from, const char *to)
 {
     char buf1[STRINGSZ], buf2[STRINGSZ];
 
@@ -179,7 +179,7 @@ int P_rename(char *from, char *to)
  * NAME:	P_access()
  * DESCRIPTION:	check access on a file
  */
-int P_access(char *path, int mode)
+int P_access(const char *path, int mode)
 {
     char buf[STRINGSZ];
 
@@ -193,7 +193,7 @@ int P_access(char *path, int mode)
  * NAME:	P->mkdir()
  * DESCRIPTION:	create a directory
  */
-int P_mkdir(char *path, int mode)
+int P_mkdir(const char *path, int mode)
 {
     char buf[STRINGSZ];
 
@@ -210,7 +210,7 @@ int P_mkdir(char *path, int mode)
  * NAME:	P_rmdir()
  * DESCRIPTION:	remove an empty directory
  */
-int P_rmdir(char *path)
+int P_rmdir(const char *path)
 {
     char buf[STRINGSZ];
 
@@ -225,7 +225,7 @@ int P_rmdir(char *path)
  * NAME:	P->chdir()
  * DESCRIPTION:	change the current directory (and drive)
  */
-int P_chdir(char *dir)
+int P_chdir(const char *dir)
 {
     char buf[STRINGSZ];
 
@@ -245,7 +245,7 @@ static struct _finddata_t fdata;
  * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-char P_opendir(char *dir)
+char P_opendir(const char *dir)
 {
     char path[_MAX_PATH + 2];
 
@@ -295,7 +295,7 @@ void P_closedir(void)
  * NAME:	P->execv()
  * DESCRIPTION:	execute a program
  */
-int P_execv(char *path, char **argv)
+int P_execv(const char *path, char **argv)
 {
     UNREFERENCED_PARAMETER(path);
     UNREFERENCED_PARAMETER(argv);

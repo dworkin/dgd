@@ -58,12 +58,14 @@ void va_del(Vars *v)
  */
 void va_set(Vars *v, char *option)
 {
+    char buffer[2];
     char *val;
     Int i;
 
     if (strncmp(option, "no", 2) == 0) {
 	option += 2;
-	val = "0";
+	strcpy(buffer, "0");
+	val = buffer;
     } else {
 	val = strchr(option, '=');
 	if (val != (char *) NULL) {

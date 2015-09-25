@@ -18,4 +18,4 @@
  */
 
 extern void  special_define	(void);
-extern char *special_replace	(char*);
+extern char *special_replace	(const char*);

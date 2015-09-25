@@ -54,7 +54,7 @@ static void oh_init()
  * NAME:	oh->new()
  * DESCRIPTION:	put an object in the hash table
  */
-static oh *oh_new(char *name)
+static oh *oh_new(const char *name)
 {
     oh **h;
 
@@ -199,7 +199,7 @@ static void lab_new(String *str, oh *ohash)
  * NAME:	lab->find()
  * DESCRIPTION:	find a labeled object in the list
  */
-static oh *lab_find(char *name)
+static oh *lab_find(const char *name)
 {
     lab *l;
 
@@ -1262,7 +1262,7 @@ void ctrl_dvar(String *str, unsigned int sclass, unsigned int type, String *cvst
  * NAME:	Control->ifcall()
  * DESCRIPTION:	call an inherited function
  */
-char *ctrl_ifcall(String *str, char *label, String **cfstr, long *call)
+char *ctrl_ifcall(String *str, const char *label, String **cfstr, long *call)
 {
     Control *ctrl;
     oh *ohash;
@@ -1951,7 +1951,7 @@ void ctrl_mkvtypes(Control *ctrl)
  * NAME:	Control->symb()
  * DESCRIPTION:	return the entry in the symbol table for func, or NULL
  */
-dsymbol *ctrl_symb(Control *ctrl, char *func, unsigned int len)
+dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
 {
     dsymbol *symb;
     dfuncdef *f;

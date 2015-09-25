@@ -79,7 +79,7 @@ extern void	  o_upgrade		(Object*, Control*, Frame*);
 extern void	  o_upgraded		(Object*, Object*);
 extern void	  o_del			(Object*, Frame*);
 
-extern char	 *o_name		(char*, Object*);
+extern const char	 *o_name		(char*, Object*);
 extern char	 *o_builtin_name	(Int);
 extern Object	 *o_find		(char*, int);
 extern Control   *o_control		(Object*);

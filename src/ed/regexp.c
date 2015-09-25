@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -74,9 +74,10 @@ void rx_del(rxbuf *rx)
  *		There are two gotos in this function. Reading the source
  *		code is considered harmful.
  */
-char *rx_comp(rxbuf *rx, char *pattern)
+const char *rx_comp(rxbuf *rx, const char *pattern)
 {
-    char *p, *m, *prevcode, *prevpat, *cclass, *eoln;
+    const char *p;
+    char *m, *prevcode, *prevpat, *cclass, *eoln;
     char letter, c, dummy, braclist[NSUBEXP];
     int brac, depth;
 
@@ -317,9 +318,11 @@ char *rx_comp(rxbuf *rx, char *pattern)
  * DESCRIPTION:	match the text (t) against the pattern (m). Return 1 if
  *		success.
  */
-static bool match(rxbuf *rx, char *start, char *text, bool ic, char *m, char *t)
+static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
+		  char *m, const char *t)
 {
-    char *p, *cclass, code, c;
+    const char *p;
+    char *cclass, code, c;
 
     for (;;) {
 	switch (code = *m++) {
@@ -448,7 +451,7 @@ static bool match(rxbuf *rx, char *start, char *text, bool ic, char *m, char *t)
  *		pattern is invalid, 0 if no match was found, or 1 if a match
  *		was found.
  */
-int rx_exec(rxbuf *rx, char *text, int idx, int ic)
+int rx_exec(rxbuf *rx, const char *text, int idx, int ic)
 {
     rx->start = (char *) NULL;
     if (!rx->valid) {

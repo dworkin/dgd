@@ -23,7 +23,7 @@
 # include <link.h>
 # endif
 
-voidf *P_dload(char *module, char *symbol)
+voidf *P_dload(char *module, const char *symbol)
 {
     void *h;
 

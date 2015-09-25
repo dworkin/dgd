@@ -24,7 +24,7 @@
  * NAME:	P->dload()
  * DESCRIPTION:	load module
  */
-voidf *P_dload(char *module, char *symbol)
+voidf *P_dload(char *module, const char *symbol)
 {
     HMODULE h;
 

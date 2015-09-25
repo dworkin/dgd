@@ -231,7 +231,7 @@ typedef unsigned int Uint;
 #  endif
 # endif
 
-extern void  P_message	(char*);
+extern void  P_message	(const char*);
 
 # ifndef O_BINARY
 # define O_BINARY	0
@@ -259,26 +259,26 @@ extern void  P_message	(char*);
 # else
 	/* filename translation */
 typedef long off_t;
-extern char *path_native	(char*, char*);
+extern char *path_native	(char*, const char*);
 
-extern int P_open	(char*, int, int);
+extern int P_open	(const char*, int, int);
 extern int P_close	(int);
 extern int P_read	(int, char*, int);
-extern int P_write	(int, char*, int);
+extern int P_write	(int, const char*, int);
 extern off_t P_lseek	(int, off_t, int);
 extern int P_fstat	(int, struct stat*);
-extern int P_stat	(char*, struct stat*);
-extern int P_access	(char*, int);
-extern int P_unlink	(char*);
-extern int P_rename	(char*, char*);
-extern int P_mkdir	(char*, int);
-extern int P_rmdir	(char*);
-extern int P_chdir	(char*);
-extern int P_execv	(char*, char**);
+extern int P_stat	(const char*, struct stat*);
+extern int P_access	(const char*, int);
+extern int P_unlink	(const char*);
+extern int P_rename	(const char*, const char*);
+extern int P_mkdir	(const char*, int);
+extern int P_rmdir	(const char*);
+extern int P_chdir	(const char*);
+extern int P_execv	(const char*, char**);
 # endif
 # endif /* INCLUDE_FILE_IO */
 
-extern bool  P_opendir	(char*);
+extern bool  P_opendir	(const char*);
 extern char *P_readdir	(void);
 extern void  P_closedir	(void);
 
@@ -286,7 +286,7 @@ extern void  P_closedir	(void);
 # define voidf		void
 # endif
 
-extern voidf *P_dload	(char*, char*);
+extern voidf *P_dload	(char*, const char*);
 
 extern void  P_srandom	(long);
 extern long  P_random	(void);

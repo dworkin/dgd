@@ -18,8 +18,8 @@
  */
 
 typedef struct {
-    char *name;		/* long variable name */
-    char *sname;	/* short variable name */
+    const char *name;	/* long variable name */
+    const char *sname;	/* short variable name */
     Int val;		/* value */
 } Vars;
 

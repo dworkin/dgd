@@ -42,7 +42,7 @@ bool intr;			/* received an interrupt? */
  * NAME:	call_driver_object()
  * DESCRIPTION:	call a function in the driver object
  */
-bool call_driver_object(Frame *f, char *func, int narg)
+bool call_driver_object(Frame *f, const char *func, int narg)
 {
     Object *driver;
     char *driver_name;

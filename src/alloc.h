@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,8 +27,8 @@
 					     sizeof(type) * (size_t) (size1), \
 					     sizeof(type) * (size_t) (size2), \
 					     __FILE__, __LINE__)))
-extern char *m_alloc	(size_t, char*, int);
-extern char *m_realloc	(char*, size_t, size_t, char*, int);
+extern char *m_alloc	(size_t, const char*, int);
+extern char *m_realloc	(char*, size_t, size_t, const char*, int);
 
 # else
 

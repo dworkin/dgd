@@ -45,7 +45,7 @@ int main(int argc, char **argv)
  * NAME:    P->message()
  * DESCRIPTION: show message
  */
-void P_message(char *mess)
+void P_message(const char *mess)
 {
     fputs(mess, stdout);
     fflush(stdout);

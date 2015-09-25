@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,7 +38,7 @@ extern block	eb_delete	(editbuf*, Int, Int);
 extern void	eb_change	(editbuf*, Int, Int, block);
 extern block	eb_yank		(editbuf*, Int, Int);
 extern void	eb_put		(editbuf*, Int, block);
-extern void	eb_range	(editbuf*, Int, Int, void(*)(char*), int);
+extern void	eb_range	(editbuf*, Int, Int, void(*)(const char*), int);
 extern void	eb_startblock	(editbuf*);
-extern void	eb_addblock	(editbuf*, char*);
+extern void	eb_addblock	(editbuf*, const char*);
 extern void	eb_endblock	(editbuf*);

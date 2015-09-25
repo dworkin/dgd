@@ -97,7 +97,7 @@ void cb_del(cmdbuf *cb)
  * DESCRIPTION:	skip white space in a string. return a pointer to the first
  *		character after the white space (could be '\0')
  */
-char *skipst(char *p)
+const char *skipst(const char *p)
 {
     while (*p == ' ' || *p == HT) {
 	p++;
@@ -109,9 +109,9 @@ char *skipst(char *p)
  * NAME:	pattern()
  * DESCRIPTION:	scan a pattern and copy it to a buffer.
  */
-char *pattern(char *pat, int delim, char *buffer)
+const char *pattern(const char *pat, int delim, char *buffer)
 {
-    char *p;
+    const char *p;
     unsigned int size;
 
     p = pat;
@@ -166,7 +166,7 @@ static void cb_pattern(cmdbuf *cb, char delim)
 	    error("No previous regular expression");
 	}
     } else {
-	char *err;
+	const char *err;
 
 	err = rx_comp(cb->regexp, buffer);
 	if (err != (char *) NULL) {
@@ -183,7 +183,7 @@ static void cb_pattern(cmdbuf *cb, char delim)
 static Int cb_address(cmdbuf *cb, Int first)
 {
     Int l;
-    char *p;
+    const char *p;
 
     l = 0;
 
@@ -339,7 +339,7 @@ static void cb_range(cmdbuf *cb)
  */
 void cb_count(cmdbuf *cb)
 {
-    char *p;
+    const char *p;
 
     p = cb->cmd;
     if (isdigit(*p)) {
@@ -584,7 +584,7 @@ void startblock(cmdbuf *cb)
  * NAME:	addblock()
  * DESCRIPTION:	add a line to the current block of lines
  */
-void addblock(cmdbuf *cb, char *text)
+void addblock(cmdbuf *cb, const char *text)
 {
     eb_addblock(cb->edbuf, text);
 }
@@ -625,7 +625,7 @@ void endblock(cmdbuf *cb)
  * NAME:	find()
  * DESCRIPTION:	match a pattern in a global command
  */
-static void find(char *text)
+static void find(const char *text)
 {
     cmdbuf *cb;
 
@@ -643,7 +643,7 @@ static void find(char *text)
  */
 int cb_global(cmdbuf *cb)
 {
-    char *p;
+    const char *p;
     char buffer[STRINGSZ], delim;
     block undo;
     Int uthis, umark[26];
@@ -742,7 +742,7 @@ int cb_vglobal(cmdbuf *cb)
 typedef struct {
     char flags;			/* type of command */
     char chr;			/* first char of command */
-    char *cmd;			/* full command string */
+    const char *cmd;		/* full command string */
     int (*ftn)(cmdbuf*);	/* command function */
 } cmd;
 
@@ -812,7 +812,7 @@ static cmd ed_commands[] = {
  *		did not terminate the editor. Multiple commands may be
  *		specified, separated by |
  */
-bool cb_command(cmdbuf *cb, char *command)
+bool cb_command(cmdbuf *cb, const char *command)
 {
     cb->cmd = command;
     ccb = cb;
@@ -833,7 +833,7 @@ bool cb_command(cmdbuf *cb, char *command)
 	    }
 	} else {
 	    cmd *cm;
-	    char *p;
+	    const char *p;
 	    int ltype, ret;
 
 	    cb->flags &= ~(CB_EXCL | CB_NUMBER | CB_LIST);

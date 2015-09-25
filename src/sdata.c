@@ -2493,7 +2493,7 @@ void d_upgrade_mem(Object *tmpl, Object *newob)
  * NAME:	data->conv()
  * DESCRIPTION:	convert something from the snapshot
  */
-static Uint d_conv(char *m, sector *vec, char *layout, Uint n, Uint idx,
+static Uint d_conv(char *m, sector *vec, const char *layout, Uint n, Uint idx,
 		   void (*readv) (char*, sector*, Uint, Uint))
 {
     Uint bufsize;

@@ -42,7 +42,7 @@
 # include "table.h"
 
 typedef struct {
-    char *name;		/* name of the option */
+    const char *name;	/* name of the option */
     short type;		/* option type */
     bool resolv;	/* TRUE if path name must be resolved */
     bool set;		/* TRUE if option is set */
@@ -484,9 +484,9 @@ static bool conf_restore(int fd, int fd2)
  *		0x00ff0000 size
  *		0xff000000 alignment
  */
-Uint conf_dsize(char *layout)
+Uint conf_dsize(const char *layout)
 {
-    char *p;
+    const char *p;
     Uint sz, rsz, al, ral;
     Uint size, rsize, align, ralign;
 
@@ -600,10 +600,10 @@ Uint conf_dsize(char *layout)
  * NAME:	conf_dconv()
  * DESCRIPTION:	convert structs from snapshot format
  */
-Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
+Uint conf_dconv(char *buf, char *rbuf, const char *layout, Uint n)
 {
     Uint i, ri, j, size, rsize;
-    char *p;
+    const char *p;
 
     rsize = conf_dsize(layout);
     size = (rsize >> 16) & 0xff;
@@ -779,7 +779,7 @@ Uint conf_dconv(char *buf, char *rbuf, char *layout, Uint n)
  * NAME:	conf->dread()
  * DESCRIPTION:	read from snapshot
  */
-void conf_dread(int fd, char *buf, char *layout, Uint n)
+void conf_dread(int fd, char *buf, const char *layout, Uint n)
 {
     char buffer[16384];
     unsigned int i, size, rsize;
@@ -816,7 +816,7 @@ static int ntports, nbports;
  * NAME:	conferr()
  * DESCRIPTION:	error during the configuration phase
  */
-static void conferr(char *err)
+static void conferr(const char *err)
 {
     message("Config error, line %u: %s\012", tk_line(), err);	/* LF */
 }
@@ -1100,7 +1100,6 @@ static bool conf_config()
     return TRUE;
 }
 
-static char *fname;		/* file name */
 static int fd;			/* file descriptor */
 static char *obuf;		/* output buffer */
 static unsigned int bufsz;	/* buffer size */
@@ -1127,7 +1126,7 @@ static bool copen(char *file)
  * NAME:	config->put()
  * DESCRIPTION:	write a string to a file
  */
-static void cputs(char *str)
+static void cputs(const char *str)
 {
     unsigned int len, chunk;
 
@@ -1153,7 +1152,7 @@ static void cputs(char *str)
 static bool cclose()
 {
     if (bufsz > 0 && P_write(fd, obuf, bufsz) != bufsz) {
-	message("Config error: cannot write \"/%s\"\012", fname);	/* LF */
+	message("Config error: cannot write include file\012");		/* LF */
 	P_close(fd);
 	return FALSE;
     }
@@ -1711,7 +1710,7 @@ static void putval(Value *v, size_t n)
  */
 bool conf_statusi(Frame *f, Int idx, Value *v)
 {
-    char *version;
+    const char *version;
     uindex ncoshort, ncolong;
     Array *a;
     Uint t;

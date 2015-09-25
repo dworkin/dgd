@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,16 +29,16 @@ typedef struct {
     bool valid;			/* is the present matcher valid? */
     bool anchor;		/* is the match anchored (^pattern) */
     char firstc;		/* first character in match, if any */
-    char *start;		/* start of matching sequence */
+    const char *start;		/* start of matching sequence */
     int size;			/* size of matching sequence */
     struct {
-	char *start;		/* start of subexpression */
+	const char *start;	/* start of subexpression */
 	int size;		/* size of subexpression */
     } se[NSUBEXP];
     char buffer[RXBUFSZ];	/* buffer to hold matcher */
 } rxbuf;
 
-extern rxbuf *rx_new  (void);
-extern void   rx_del  (rxbuf*);
-extern char  *rx_comp (rxbuf*, char*);
-extern int    rx_exec (rxbuf*, char*, int, int);
+extern rxbuf	  *rx_new  (void);
+extern void	   rx_del  (rxbuf*);
+extern const char *rx_comp (rxbuf*, const char*);
+extern int	   rx_exec (rxbuf*, const char*, int, int);

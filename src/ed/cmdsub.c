@@ -26,18 +26,18 @@
  * This file defines the command subroutines for edcmd.c
  */
 
-extern char *skipst		(char*);
-extern char *pattern		(char*, int, char*);
-extern void  cb_count		(cmdbuf*);
-extern void  not_in_global	(cmdbuf*);
-extern void  cb_do		(cmdbuf*, Int);
-extern void  cb_buf		(cmdbuf*, block);
-extern void  add		(cmdbuf*, Int, block, Int);
-extern block dellines		(cmdbuf*, Int, Int);
-extern void  change		(cmdbuf*, Int, Int, block);
-extern void  startblock		(cmdbuf*);
-extern void  addblock		(cmdbuf*, char*);
-extern void  endblock		(cmdbuf*);
+extern const char *skipst	(const char*);
+extern const char *pattern	(const char*, int, char*);
+extern void	   cb_count	(cmdbuf*);
+extern void	   not_in_global(cmdbuf*);
+extern void	   cb_do	(cmdbuf*, Int);
+extern void	   cb_buf	(cmdbuf*, block);
+extern void	   add		(cmdbuf*, Int, block, Int);
+extern block	   dellines	(cmdbuf*, Int, Int);
+extern void	   change	(cmdbuf*, Int, Int, block);
+extern void	   startblock	(cmdbuf*);
+extern void	   addblock	(cmdbuf*, const char*);
+extern void	   endblock	(cmdbuf*);
 
 
 /*
@@ -45,7 +45,7 @@ extern void  endblock		(cmdbuf*);
  * DESCRIPTION:	scan a line for a pattern. If the pattern is found, longjump
  *		out.
  */
-static void find(char *text)
+static void find(const char *text)
 {
     if (rx_exec(ccb->regexp, text, 0, ccb->ignorecase) > 0) {
 	longjmp(ccb->env, TRUE);
@@ -78,7 +78,7 @@ Int cb_search(cmdbuf *cb, Int first, Int last, int reverse)
  * DESCRIPTION:	output a line of text. The format is decided by flags.
  *		Non-ascii characters (eight bit set) have no special processing.
  */
-static void println(char *text)
+static void println(const char *text)
 {
     char buffer[2 * MAX_LINE_SIZE + 14];	/* all ^x + number + list */
     cmdbuf *cb;
@@ -125,7 +125,7 @@ static void println(char *text)
  */
 int cb_print(cmdbuf *cb)
 {
-    char *p;
+    const char *p;
 
     /* handle flags right now */
     p = cb->cmd;
@@ -419,7 +419,7 @@ int cb_yank(cmdbuf *cb)
  * NAME:	shift()
  * DESCRIPTION:	shift a line left or right
  */
-static void shift(char *text)
+static void shift(const char *text)
 {
     cmdbuf *cb;
     int idx;
@@ -529,7 +529,7 @@ int cb_rshift(cmdbuf *cb)
  * NAME:	noshift()
  * DESCRIPTION:	add this line to the current block without shifting it
  */
-static void noshift(cmdbuf *cb, char *text)
+static void noshift(cmdbuf *cb, const char *text)
 {
     addblock(cb, text);
     cb->lineno++;
@@ -543,17 +543,18 @@ static void noshift(cmdbuf *cb, char *text)
  *		and last but not least everyone has his own taste of
  *		indentation.
  */
-static void indent(char *text)
+static void indent(const char *text)
 {
     static char f[] = { 7, 1, 7, 1, 2, 1, 6, 4, 2, 6, 7, 2, 0, };
     static char g[] = { 2, 2, 1, 7, 1, 5, 1, 3, 6, 2, 2, 2, 0, };
     char ident[MAX_LINE_SIZE];
     char line[MAX_LINE_SIZE];
     cmdbuf *cb;
-    char *p, *sp;
+    const char *p;
+    char *sp;
     int *ip, idx;
     int top, token;
-    char *start;
+    const char *start;
     bool do_indent;
 
     cb = ccb;
@@ -657,7 +658,7 @@ static void indent(char *text)
 			shift(text);
 			do_indent = FALSE;
 		    } else {
-			char *q;
+			const char *q;
 			int idx2;
 
 			/*
@@ -858,7 +859,7 @@ int cb_indent(cmdbuf *cb)
  * NAME:	join()
  * DESCRIPTION:	join a string to the one already in the join buffer
  */
-static void join(char *text)
+static void join(const char *text)
 {
     cmdbuf *cb;
     char *p;
@@ -931,9 +932,10 @@ int cb_join(cmdbuf *cb)
  * NAME:	sub()
  * DESCRIPTION:	add a string to the current substitute buffer
  */
-static void sub(cmdbuf *cb, char *text, unsigned int size)
+static void sub(cmdbuf *cb, const char *text, unsigned int size)
 {
-    char *p, *q;
+    char *p;
+    const char *q;
     unsigned int i;
 
     i = size;
@@ -984,7 +986,7 @@ static void sub(cmdbuf *cb, char *text, unsigned int size)
  *		N, and the next substitution happens on line N + 2, line N + 1
  *		is joined in the new block also.
  */
-static void subst(char *text)
+static void subst(const char *text)
 {
     char line[MAX_LINE_SIZE];
     cmdbuf *cb;
@@ -1185,7 +1187,7 @@ int cb_subst(cmdbuf *cb)
     char buf[MAX_LINE_SIZE], delim;
     Int m[26];
     Int edit;
-    char *p;
+    const char *p;
     Int *k, *l;
 
     delim = cb->cmd[0];
@@ -1547,7 +1549,8 @@ int cb_xit(cmdbuf *cb)
 int cb_set(cmdbuf *cb)
 {
     char buffer[STRINGSZ];
-    char *p, *q;
+    const char *p;
+    char *q;
 
     not_in_global(cb);
 

@@ -36,6 +36,6 @@ typedef struct _macro_ {
 
 extern void   mc_init	(void);
 extern void   mc_clear  (void);
-extern void   mc_define (char*, char*, int);
+extern void   mc_define (const char*, const char*, int);
 extern void   mc_undef  (char*);
 extern macro *mc_lookup (char*);

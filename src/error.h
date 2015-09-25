@@ -29,6 +29,6 @@ extern void	serror		(String*);
 extern void	set_errorstr	(String*);
 extern String  *errorstr	(void);
 
-extern void	message		(char *, ...);
-extern void	error		(char *, ...);
-extern void	fatal		(char *, ...);
+extern void	message		(const char *, ...);
+extern void	error		(const char *, ...);
+extern void	fatal		(const char *, ...);

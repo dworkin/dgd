@@ -28,14 +28,14 @@ extern void		 ctrl_dfunc	(String*, char*, String*);
 extern void		 ctrl_dprogram	(char*, unsigned int);
 extern void		 ctrl_dvar	(String*, unsigned int,
 					   unsigned int, String*);
-extern char		*ctrl_ifcall	(String*, char*, String**, long*);
+extern char		*ctrl_ifcall	(String*, const char*, String**, long*);
 extern char		*ctrl_fcall	(String*, String**, long*, int);
 extern unsigned short	 ctrl_gencall	(long);
 extern unsigned short	 ctrl_var	(String*, long*, String**);
 extern int		 ctrl_ninherits	(void);
 extern bool		 ctrl_chkfuncs	(void);
 extern void		 ctrl_mkvtypes	(Control*);
-extern dsymbol		*ctrl_symb	(Control*, char*, unsigned int);
+extern dsymbol		*ctrl_symb	(Control*, const char*, unsigned int);
 extern Control		*ctrl_construct	(void);
 extern void		 ctrl_clear	(void);
 extern unsigned short	*ctrl_varmap	(Control*, Control*);

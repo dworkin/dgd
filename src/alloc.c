@@ -44,7 +44,7 @@ typedef struct _header_ {
     Uint size;			/* size of chunk */
     struct _header_ *prev;	/* previous in list */
     struct _header_ *next;	/* next in list */
-    char *file;			/* file it was allocated from */
+    const char *file;		/* file it was allocated from */
     int line;			/* line it was allocated from */
 } header;
 # endif
@@ -712,7 +712,7 @@ static header *hlist;			/* list of all dynamic memory chunks */
  * DESCRIPTION:	allocate memory
  */
 # ifdef DEBUG
-char *m_alloc(size_t size, char *file, int line)
+char *m_alloc(size_t size, const char *file, int line)
 # else
 char *m_alloc(size_t size)
 # endif
@@ -794,7 +794,7 @@ void m_free(char *mem)
  * DESCRIPTION:	reallocate memory
  */
 # ifdef DEBUG
-char *m_realloc(char *mem, size_t size1, size_t size2, char *file, int line)
+char *m_realloc(char *mem, size_t size1, size_t size2, const char *file, int line)
 # else
 char *m_realloc(char *mem, size_t size1, size_t size2)
 # endif

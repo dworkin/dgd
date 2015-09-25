@@ -24,8 +24,8 @@ struct _string_ {
     char text[1];		/* actual characters following this struct */
 };
 
-extern String	       *str_alloc	(char*, long);
-extern String	       *str_new		(char*, long);
+extern String	       *str_alloc	(const char*, long);
+extern String	       *str_new		(const char*, long);
 # define str_ref(s)	((s)->ref++)
 extern void		str_del		(String*);
 

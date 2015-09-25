@@ -280,7 +280,7 @@ void kf_jit()
  * NAME:	kfun->index()
  * DESCRIPTION:	search for kfun in the kfun table, return raw index or -1
  */
-static int kf_index(kfunc *kf, unsigned int l, unsigned int h, char *name)
+static int kf_index(kfunc *kf, unsigned int l, unsigned int h, const char *name)
 {
     register unsigned int m;
     register int c;
@@ -305,7 +305,7 @@ static int kf_index(kfunc *kf, unsigned int l, unsigned int h, char *name)
  * NAME:	kfun->func()
  * DESCRIPTION:	search for kfun in the kfun table, return index or -1
  */
-int kf_func(char *name)
+int kf_func(const char *name)
 {
     int n;
 

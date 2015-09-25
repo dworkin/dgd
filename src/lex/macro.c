@@ -84,7 +84,7 @@ void mc_clear()
  * NAME:	macro->define()
  * DESCRIPTION:	define a macro
  */
-void mc_define(char *name, char *replace, int narg)
+void mc_define(const char *name, const char *replace, int narg)
 {
     macro **m;
 

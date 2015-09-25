@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,7 @@
 
 typedef struct _hte_ {
     struct _hte_ *next;	/* next entry in hash table */
-    char *name;		/* string to use in hashing */
+    const char *name;	/* string to use in hashing */
 } hte;
 
 typedef struct {
@@ -33,11 +33,11 @@ typedef struct {
 } hashtab;
 
 extern char		strhashtab[];
-extern unsigned short	hashstr		(char*, unsigned int);
-extern unsigned short	hashmem		(char*, unsigned int);
+extern unsigned short	hashstr		(const char*, unsigned int);
+extern unsigned short	hashmem		(const char*, unsigned int);
 
 extern hashtab	       *ht_new		(unsigned int, unsigned int, int);
 extern void		ht_del		(hashtab*);
-extern hte	      **ht_lookup	(hashtab*, char*, int);
+extern hte	      **ht_lookup	(hashtab*, const char*, int);
 
 # endif /* H_HASH */
