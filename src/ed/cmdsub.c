@@ -1285,7 +1285,7 @@ int cb_subst(cmdbuf *cb)
  */
 static bool getfname(cmdbuf *cb, char *buffer)
 {
-    char *p, *q;
+    const char *p, *q;
 
     /* find the end of the filename */
     p = strchr(cb->cmd, ' ');

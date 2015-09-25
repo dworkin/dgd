@@ -466,12 +466,12 @@ int rx_exec(rxbuf *rx, const char *text, int idx, int ic)
     } else {
 	for (;;) {
 	    if (rx->firstc != '\0') {
-		char *p;
+		const char *p;
 
 		/* find the first character of the pattern in the string */
 		p = strchr(text + idx, rx->firstc);
 		if (ic) {
-		    char *q;
+		    const char *q;
 
 		    q = strchr(text + idx, toupper(rx->firstc));
 		    if (q != (char*) NULL && (p == (char *) NULL || p > q)) {
