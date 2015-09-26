@@ -17,12 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# define ec_push(cleanup)	setjmp(*_ec_push_(cleanup))
-
 typedef void  (*ec_ftn)		(Frame*, Int);
 
 extern void	ec_clear	(void);
-extern jmp_buf *_ec_push_	(ec_ftn);
+extern void	ec_push		(ec_ftn);
 extern void	ec_pop		(void);
 
 extern void	serror		(String*);

@@ -2584,7 +2584,8 @@ int kf_store_aggr(Frame *f, int nargs, kfunc *kf)
 	kf_argerror(KF_STORE_AGGR, 2);
     }
 
-    if (!ec_push(NULL)) {
+    try {
+	ec_push(NULL);
 	val = *f->sp++;
 	for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
 	    i_push_value(f, --v);
@@ -2593,7 +2594,7 @@ int kf_store_aggr(Frame *f, int nargs, kfunc *kf)
 	}
 	*--f->sp = val;
 	ec_pop();
-    } else {
+    } catch (...) {
 	i_del_value(&val);
 	error(NULL);
     }

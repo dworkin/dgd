@@ -2271,7 +2271,8 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
     }
 
     m = (Array *) NULL;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	m = map_new(data, size);
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
@@ -2298,7 +2299,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 	    }
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */
 	    arr_ref(m);

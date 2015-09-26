@@ -672,7 +672,8 @@ int cb_global(cmdbuf *cb)
      * can be deallocated in case of an error.
      */
     cb->glob_rx = rx_new();
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	/* compile regexp */
 	p = rx_comp(cb->glob_rx, buffer);
 	if (p != (char *) NULL) {
@@ -706,7 +707,7 @@ int cb_global(cmdbuf *cb)
 	/* pop error context */
 	aborted = FALSE;
 	ec_pop();
-    } else {
+    } catch (...) {
 	aborted = TRUE;
     }
     /* come here if global is finished or in case of an error */

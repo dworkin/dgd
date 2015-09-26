@@ -28,7 +28,6 @@
 # include <stdarg.h>
 
 typedef struct _context_ {
-    jmp_buf env;			/* error context */
     Frame *f;				/* frame context */
     unsigned short offset;		/* sp offset */
     bool atomic;			/* atomic status */
@@ -55,10 +54,10 @@ void ec_clear()
 }
 
 /*
- * NAME:	errcontext->_push_()
- * DESCRIPTION:	push and return the current errorcontext
+ * NAME:	errcontext->push()
+ * DESCRIPTION:	push a new errorcontext
  */
-jmp_buf *_ec_push_(ec_ftn handler)
+void ec_push(ec_ftn handler)
 {
     context *e;
 
@@ -75,7 +74,6 @@ jmp_buf *_ec_push_(ec_ftn handler)
     e->handler = handler;
     e->next = econtext;
     econtext = e;
-    return &e->env;
 }
 
 /*
@@ -138,7 +136,6 @@ String *errorstr()
  */
 void serror(String *str)
 {
-    jmp_buf env;
     context *e;
     int offset;
     ec_ftn handler;
@@ -153,7 +150,6 @@ void serror(String *str)
 
     e = econtext;
     offset = e->offset;
-    memcpy(&env, &e->env, sizeof(jmp_buf));
 
     if (atomicec == (context *) NULL || atomicec == e) {
 	do {
@@ -187,7 +183,7 @@ void serror(String *str)
     cframe->atomic = econtext->atomic;
     cframe->rlim = econtext->rlim;
     ec_pop();
-    longjmp(env, 1);
+    throw "LPC error";
 }
 
 /*

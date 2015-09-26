@@ -588,10 +588,11 @@ void i_map_aggregate(Frame *f, unsigned int size)
 	    *--elts = *v++;
 	} while (--size != 0);
 	f->sp = v;
-	if (!ec_push((ec_ftn) NULL)) {
+	try {
+	    ec_push((ec_ftn) NULL);
 	    map_sort(a);
 	    ec_pop();
-	} else {
+	} catch (...) {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);
 	    arr_del(a);
@@ -2625,13 +2626,14 @@ static void i_interpret0(Frame *f, char *pc)
 	case II_CATCH:
 	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
-	    if (!ec_push((ec_ftn) i_catcherr)) {
+	    try {
+		ec_push((ec_ftn) i_catcherr);
 		f->atomic = FALSE;
 		i_interpret0(f, pc);
 		ec_pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
-	    } else {
+	    } catch (...) {
 		/* error */
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
@@ -3095,13 +3097,14 @@ static void i_interpret1(Frame *f, char *pc)
 	case I_CATCH | I_POP_BIT:
 	    atomic = f->atomic;
 	    p = f->prog + FETCH2U(pc, u);
-	    if (!ec_push((ec_ftn) i_catcherr)) {
+	    try {
+		ec_push((ec_ftn) i_catcherr);
 		f->atomic = FALSE;
 		i_interpret1(f, pc);
 		ec_pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
-	    } else {
+	    } catch (...) {
 		/* error */
 		f->pc = pc = p;
 		PUSH_STRVAL(f, errorstr());
@@ -3940,12 +3943,13 @@ bool i_call_critical(Frame *f, const char *func, int narg, int flag)
 
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
-    if (!ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler)) {
+    try {
+	ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler);
 	f->sp -= narg;	/* recover arguments */
 	call_driver_object(f, func, narg);
 	ok = TRUE;
 	ec_pop();
-    } else {
+    } catch (...) {
 	ok = FALSE;
     }
     i_set_rlimits(f, f->rlim->next);

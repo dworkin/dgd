@@ -1580,15 +1580,17 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     m_static();				/* allocate error context statically */
     ec_push((ec_ftn) NULL);		/* guard error context */
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	m_dynamic();
 	if (snapshot == (char *) NULL) {
 	    /* initialize mudlib */
 	    d_converted();
-	    if (!ec_push((ec_ftn) errhandler)) {
+	    try {
+		ec_push((ec_ftn) errhandler);
 		call_driver_object(cframe, "initialize", 0);
 		ec_pop();
-	    } else {
+	    } catch (...) {
 		error((char *) NULL);
 	    }
 	} else {
@@ -1598,7 +1600,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	    hotbooted = conf_restore(fd, fd2);
 
 	    /* notify mudlib */
-	    if (!ec_push((ec_ftn) errhandler)) {
+	    try {
+		ec_push((ec_ftn) errhandler);
 		if (hotbooted) {
 		    PUSH_INTVAL(cframe, TRUE);
 		    call_driver_object(cframe, "restored", 1);
@@ -1606,12 +1609,12 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 		    call_driver_object(cframe, "restored", 0);
 		}
 		ec_pop();
-	    } else {
+	    } catch (...) {
 		error((char *) NULL);
 	    }
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	message((char *) NULL);
 	endthread();
 	message("Config error: initialization failed\012");	/* LF */
@@ -1865,13 +1868,14 @@ Array *conf_status(Frame *f)
     Int i;
     Array *a;
 
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	a = arr_ext_new(f->data, 27L);
 	for (i = 0, v = a->elts; i < 27; i++, v++) {
 	    conf_statusi(f, i, v);
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);
@@ -1957,12 +1961,13 @@ Array *conf_object(Dataspace *data, Object *obj)
     Array *a;
 
     a = arr_ext_new(data, 7L);
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	for (i = 0, v = a->elts; i < 7; i++, v++) {
 	    conf_objecti(data, obj, i, v);
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);

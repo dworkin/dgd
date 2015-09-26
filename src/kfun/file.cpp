@@ -731,7 +731,8 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
     }
     i = a->size;
     v = a->elts;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -746,7 +747,7 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
 	    restore_error(x, "'})' expected");
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -782,7 +783,8 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
     }
     i = a->size;
     v = a->elts;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	/* restore the values */
 	while (i > 0) {
 	    buf = restore_value(x, buf, v);
@@ -803,7 +805,7 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
 	}
 	map_sort(a);
 	ec_pop();
-    } else {
+    } catch (...) {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
@@ -973,7 +975,8 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     x.narrays = 0;
     buf = buffer;
     pending = FALSE;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	for (;;) {
 	    if (f->lwobj != (Array *) NULL) {
 		var = &f->lwobj->elts[2];
@@ -1091,7 +1094,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 		}
 	    }
 	}
-    } else {
+    } catch (...) {
 	/* error; clean up */
 	ac_clear(&x);
 	if (onstack) {

@@ -210,11 +210,12 @@ int dgd_main(int argc, char **argv)
 	/* interrupts */
 	if (intr) {
 	    intr = FALSE;
-	    if (!ec_push((ec_ftn) errhandler)) {
+	    try {
+		ec_push((ec_ftn) errhandler);
 		call_driver_object(cframe, "interrupt", 0);
 		i_del_value(cframe->sp++);
 		ec_pop();
-	    }
+	    } catch (...) { }
 	    endthread();
 	}
 

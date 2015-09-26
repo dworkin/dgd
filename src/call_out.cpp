@@ -711,7 +711,8 @@ void co_call(Frame *f)
 	    freecallout(&running, i, i, 0);
 	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
 
-	    if (!ec_push((ec_ftn) errhandler)) {
+	    try {
+		ec_push((ec_ftn) errhandler);
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
 		    /* function exists */
@@ -719,7 +720,7 @@ void co_call(Frame *f)
 		}
 		str_del((f->sp++)->u.string);
 		ec_pop();
-	    }
+	    } catch (...) { }
 	    endthread();
 	}
     }

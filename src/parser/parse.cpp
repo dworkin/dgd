@@ -688,13 +688,14 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		}
 		ps->data->parser = (parser *) NULL;
 
-		if (!ec_push((ec_ftn) NULL)) {
+		try {
+		    ec_push((ec_ftn) NULL);
 		    PUSH_ARRVAL(ps->frame, a);
 		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
 				  (Array *) NULL, pn->u.text + 2 + n,
 				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
 		    ec_pop();
-		} else {
+		} catch (...) {
 		    /* error: restore original parser */
 		    if (ps->data->parser != (parser *) NULL) {
 			ps_del(ps->data->parser);
@@ -970,7 +971,8 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
      */
     a = (Array *) NULL;
     ps->maxalt = maxalt;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	/*
 	 * do the parse thing
 	 */
@@ -1013,7 +1015,7 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	ps->pnc = (pnchunk *) NULL;
 
 	ec_pop();
-    } else {
+    } catch (...) {
 	/*
 	 * error occurred; clean up
 	 */

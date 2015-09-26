@@ -478,7 +478,8 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
 	obj->flags &= ~O_USER;
     }
     olduser = this_user;
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	this_user = obj->index;
 	PUSH_INTVAL(f, destruct);
 	if (i_call(f, obj, (Array *) NULL, "close", 5, TRUE, 1)) {
@@ -486,7 +487,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
 	}
 	this_user = olduser;
 	ec_pop();
-    } else {
+    } catch (...) {
 	this_user = olduser;
 	error((char *) NULL);
     }
@@ -973,7 +974,8 @@ static void comm_taccept(Frame *f, struct _connection_ *conn, int port)
     user *usr;
     Object *obj;
 
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	PUSH_INTVAL(f, port);
 	call_driver_object(f, "telnet_connect", 1);
 	if (f->sp->type != T_OBJECT) {
@@ -983,7 +985,7 @@ static void comm_taccept(Frame *f, struct _connection_ *conn, int port)
 	f->sp++;
 	usr = comm_new(f, obj, conn, TRUE);
 	ec_pop();
-    } else {
+    } catch (...) {
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
     }
@@ -1006,7 +1008,8 @@ static void comm_baccept(Frame *f, struct _connection_ *conn, int port)
 {
     Object *obj;
 
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	PUSH_INTVAL(f, port);
 	call_driver_object(f, "binary_connect", 1);
 	if (f->sp->type != T_OBJECT) {
@@ -1016,7 +1019,7 @@ static void comm_baccept(Frame *f, struct _connection_ *conn, int port)
 	f->sp++;
 	comm_new(f, obj, conn, FALSE);
 	ec_pop();
-    } else {
+    } catch (...) {
 	conn_del(conn);		/* delete connection */
 	error((char *) NULL);	/* pass on error */
     }
@@ -1063,7 +1066,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	return;
     }
 
-    if (!ec_push(errhandler)) {
+    try {
+	ec_push(errhandler);
 #ifndef NETWORK_EXTENSIONS
 	if (ntport != 0 && nusers < maxusers) {
 	    n = nexttport;
@@ -1263,7 +1267,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			error("Maximum number of users exceeded");
 		    }
 
-		    if (!ec_push((ec_ftn) NULL)) {
+		    try {
+			ec_push((ec_ftn) NULL);
 			(--f->sp)->type = T_STRING;
 			conn_ipnum(conn,ip);
 			PUT_STRVAL(f->sp, str_new(ip, strlen(ip)));
@@ -1282,7 +1287,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			f->sp++;
 			newusr = comm_new(f,obj, conn, usr->flags & CF_TELNET);
 			ec_pop();
-		    } else {
+		    } catch (...) {
 			conn_del(conn);
 			error((char *) NULL);
 		    }
@@ -1592,7 +1597,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	}
 
 	ec_pop();
-    } else {
+    } catch (...) {
 	endthread();
 	this_user = OBJ_NONE;
 	return;

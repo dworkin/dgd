@@ -626,7 +626,8 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
     current = &c;
     ncompiled++;
 
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	for (;;) {
 	    if (c_autodriver() != 0) {
 		ctrl_init();
@@ -704,7 +705,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    }
 	}
 	ec_pop();
-    } else {
+    } catch (...) {
 	pp_clear();
 	ctrl_clear();
 	c_clear();

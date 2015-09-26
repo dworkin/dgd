@@ -118,7 +118,8 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
     } else {
 	strs = (String **) NULL;
     }
-    if (!ec_push((ec_ftn) NULL)) {
+    try {
+	ec_push((ec_ftn) NULL);
 	if (OBJR(f->oindex)->flags & O_DRIVER) {
 	    Frame *xf;
 
@@ -131,7 +132,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	}
 	obj = c_compile(f, file, obj, strs, nargs, iflag);
 	ec_pop();
-    } else {
+    } catch (...) {
 	if (nargs != 0) {
 	    AFREE(strs - nargs);
 	}
