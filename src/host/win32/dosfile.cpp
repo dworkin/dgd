@@ -54,14 +54,14 @@ static char *path_file(char *buf, const char *path)
     } else {
 	strcpy(buf, path);
 	valid = FALSE;
-	for (path = buf; *path != '\0'; path++) {
-	    if (*path == '/') {
+	for (char *p = buf; *p != '\0'; p++) {
+	    if (*p == '/') {
 		if (!valid) {
 		    return (char *) NULL;
 		}
-		*path = '\\';
+		*p = '\\';
 		valid = FALSE;
-	    } else if (*path != '.') {
+	    } else if (*p != '.') {
 		valid = TRUE;
 	    }
 	}
@@ -245,7 +245,7 @@ static struct _finddata_t fdata;
  * NAME:	P->opendir()
  * DESCRIPTION:	open a directory
  */
-char P_opendir(const char *dir)
+bool P_opendir(const char *dir)
 {
     char path[_MAX_PATH + 2];
 

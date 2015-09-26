@@ -213,7 +213,9 @@ typedef unsigned int Uint;
 # endif	/* GENERIC_SYSV */
 
 
+# ifndef __cplusplus
 # include <stdbool.h>
+# endif
 # ifndef TRUE
 # define TRUE		1
 # define FALSE		0
