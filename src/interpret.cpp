@@ -588,14 +588,15 @@ void i_map_aggregate(Frame *f, unsigned int size)
 	    *--elts = *v++;
 	} while (--size != 0);
 	f->sp = v;
-	if (ec_push((ec_ftn) NULL)) {
+	if (!ec_push((ec_ftn) NULL)) {
+	    map_sort(a);
+	    ec_pop();
+	} else {
 	    /* error in sorting, delete mapping and pass on error */
 	    arr_ref(a);
 	    arr_del(a);
 	    error((char *) NULL);
 	}
-	map_sort(a);
-	ec_pop();
 	d_ref_imports(a);
     }
     PUSH_MAPVAL(f, a);
@@ -3939,13 +3940,13 @@ bool i_call_critical(Frame *f, const char *func, int narg, int flag)
 
     i_new_rlimits(f, -1, -1);
     f->sp += narg;		/* so the error context knows what to pop */
-    if (ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler)) {
-	ok = FALSE;
-    } else {
+    if (!ec_push((flag) ? (ec_ftn) NULL : (ec_ftn) emptyhandler)) {
 	f->sp -= narg;	/* recover arguments */
 	call_driver_object(f, func, narg);
-	ec_pop();
 	ok = TRUE;
+	ec_pop();
+    } else {
+	ok = FALSE;
     }
     i_set_rlimits(f, f->rlim->next);
 

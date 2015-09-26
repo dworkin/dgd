@@ -115,26 +115,29 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	for (i = nargs, v = f->sp; i > 0; --i) {
 	    *strs++ = (v++)->u.string;
 	}
-	if (ec_push((ec_ftn) NULL)) {
-	    AFREE(strs - nargs);
-	    error((char *) NULL);
-	}
     } else {
 	strs = (String **) NULL;
     }
-    if (OBJR(f->oindex)->flags & O_DRIVER) {
-	Frame *xf;
+    if (!ec_push((ec_ftn) NULL)) {
+	if (OBJR(f->oindex)->flags & O_DRIVER) {
+	    Frame *xf;
 
-	for (xf = f; !xf->external; xf = xf->prev) ;
-	iflag = (strcmp(d_get_strconst(xf->p_ctrl, xf->func->inherit,
-				       xf->func->index)->text,
-			"inherit_program") == 0);
-    } else {
-	iflag = FALSE;
-    }
-    obj = c_compile(f, file, obj, strs, nargs, iflag);
-    if (nargs != 0) {
+	    for (xf = f; !xf->external; xf = xf->prev) ;
+	    iflag = (strcmp(d_get_strconst(xf->p_ctrl, xf->func->inherit,
+					   xf->func->index)->text,
+			    "inherit_program") == 0);
+	} else {
+	    iflag = FALSE;
+	}
+	obj = c_compile(f, file, obj, strs, nargs, iflag);
 	ec_pop();
+    } else {
+	if (nargs != 0) {
+	    AFREE(strs - nargs);
+	}
+	error((char *) NULL);
+    }
+    if (nargs != 0) {
 	AFREE(strs - nargs);
 	i_pop(f, nargs);
     }

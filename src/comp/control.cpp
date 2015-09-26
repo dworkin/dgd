@@ -2271,7 +2271,34 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
     }
 
     m = (Array *) NULL;
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	m = map_new(data, size);
+	memset(m->elts, '\0', size * sizeof(Value));
+	for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
+	    obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
+	    ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
+	    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
+	    if (f->sclass & C_UNDEFINED) {
+		u = &list[UCHAR(symb->inherit)];
+		v = &m->elts[u->index];
+		if (v->u.string == (String *) NULL) {
+		    String *str;
+		    unsigned short len;
+
+		    len = strlen(obj->chain.name);
+		    str = str_new((char *) NULL, len + 1L);
+		    str->text[0] = '/';
+		    memcpy(str->text + 1, obj->chain.name, len);
+		    PUT_STRVAL(v, str);
+		    PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
+		    u->count = 0;
+		}
+		v = &v[1].u.array->elts[u->count++];
+		PUT_STRVAL(v, d_get_strconst(ctrl, f->inherit, f->index));
+	    }
+	}
+	ec_pop();
+    } else {
 	if (m != (Array *) NULL) {
 	    /* discard mapping */
 	    arr_ref(m);
@@ -2280,32 +2307,6 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 	AFREE(list);
 	error((char *) NULL);	/* pass on error */
     }
-    m = map_new(data, size);
-    memset(m->elts, '\0', size * sizeof(Value));
-    for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
-	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
-	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
-	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
-	if (f->sclass & C_UNDEFINED) {
-	    u = &list[UCHAR(symb->inherit)];
-	    v = &m->elts[u->index];
-	    if (v->u.string == (String *) NULL) {
-		String *str;
-		unsigned short len;
-
-		len = strlen(obj->chain.name);
-		str = str_new((char *) NULL, len + 1L);
-		str->text[0] = '/';
-		memcpy(str->text + 1, obj->chain.name, len);
-		PUT_STRVAL(v, str);
-		PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
-		u->count = 0;
-	    }
-	    v = &v[1].u.array->elts[u->count++];
-	    PUT_STRVAL(v, d_get_strconst(ctrl, f->inherit, f->index));
-	}
-    }
-    ec_pop();
     AFREE(list);
 
     map_sort(m);

@@ -704,8 +704,8 @@ int cb_global(cmdbuf *cb)
 	} while (cb->glob_size > 0);
 
 	/* pop error context */
-	ec_pop();
 	aborted = FALSE;
+	ec_pop();
     } else {
 	aborted = TRUE;
     }

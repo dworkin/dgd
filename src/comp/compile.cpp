@@ -590,6 +590,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 {
     context c;
     char file_c[STRINGSZ + 2];
+    Control *ctrl;
 
     if (iflag) {
 	context *cc;
@@ -625,7 +626,85 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
     current = &c;
     ncompiled++;
 
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	for (;;) {
+	    if (c_autodriver() != 0) {
+		ctrl_init();
+	    } else {
+		Object *aobj;
+
+		if (!cg_compiled() &&
+		    o_find(driver_object, OACC_READ) == (Object *) NULL) {
+		    /*
+		     * compile the driver object to do pathname translation
+		     */
+		    current = (context *) NULL;
+		    c_compile(f, driver_object, (Object *) NULL,
+			      (String **) NULL, 0, FALSE);
+		    current = &c;
+		}
+
+		aobj = o_find(auto_object, OACC_READ);
+		if (aobj == (Object *) NULL) {
+		    /*
+		     * compile auto object
+		     */
+		    aobj = c_compile(f, auto_object, (Object *) NULL,
+				     (String **) NULL, 0, TRUE);
+		}
+		/* inherit auto object */
+		if (O_UPGRADING(aobj)) {
+		    error("Upgraded auto object while compiling \"/%s\"",
+			  file_c);
+		}
+		ctrl_init();
+		ctrl_inherit(c.frame, file, aobj, (String *) NULL, FALSE);
+	    }
+
+	    if (strs != (String **) NULL) {
+		pp_init(file_c, paths, strs, nstr, 1);
+	    } else if (!pp_init(file_c, paths, (String **) NULL, 0, 1)) {
+		error("Could not compile \"/%s\"", file_c);
+	    }
+	    if (!tk_include(include, (String **) NULL, 0)) {
+		error("Could not include \"/%s\"", include);
+	    }
+
+	    cg_init(c.prev != (context *) NULL);
+	    if (yyparse() == 0 && ctrl_chkfuncs()) {
+		if (obj != (Object *) NULL) {
+		    if (obj->count == 0) {
+			error("Object destructed during recompilation");
+		    }
+		    if (O_UPGRADING(obj)) {
+			error("Object recompiled during recompilation");
+		    }
+		    if (O_INHERITED(obj)) {
+			/* inherited */
+			error("Object inherited during recompilation");
+		    }
+		}
+		if (!o_space()) {
+		    error("Too many objects");
+		}
+
+		/*
+		 * successfully compiled
+		 */
+		break;
+
+	    } else if (nerrors == 0) {
+		/* another try */
+		pp_clear();
+		ctrl_clear();
+		c_clear();
+	    } else {
+		/* compilation failed */
+		error("Failed to compile \"/%s\"", file_c);
+	    }
+	}
+	ec_pop();
+    } else {
 	pp_clear();
 	ctrl_clear();
 	c_clear();
@@ -633,114 +712,37 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	error((char *) NULL);
     }
 
-    for (;;) {
-	if (c_autodriver() != 0) {
-	    ctrl_init();
-	} else {
-	    Object *aobj;
+    pp_clear();
+    if (!seen_decls) {
+	/*
+	 * object with inherit statements only (or nothing at all)
+	 */
+	ctrl_create();
+    }
+    ctrl = ctrl_construct();
+    ctrl_clear();
+    c_clear();
+    current = c.prev;
 
-	    if (!cg_compiled() &&
-		o_find(driver_object, OACC_READ) == (Object *) NULL) {
-		/*
-		 * compile the driver object to do pathname translation
-		 */
-		current = (context *) NULL;
-		c_compile(f, driver_object, (Object *) NULL, (String **) NULL,
-			  0, FALSE);
-		current = &c;
-	    }
-
-	    aobj = o_find(auto_object, OACC_READ);
-	    if (aobj == (Object *) NULL) {
-		/*
-		 * compile auto object
-		 */
-		aobj = c_compile(f, auto_object, (Object *) NULL,
-				 (String **) NULL, 0, TRUE);
-	    }
-	    /* inherit auto object */
-	    if (O_UPGRADING(aobj)) {
-		error("Upgraded auto object while compiling \"/%s\"", file_c);
-	    }
-	    ctrl_init();
-	    ctrl_inherit(c.frame, file, aobj, (String *) NULL, FALSE);
+    if (obj == (Object *) NULL) {
+	/* new object */
+	obj = o_new(file, ctrl);
+	if (strcmp(file, driver_object) == 0) {
+	    obj->flags |= O_DRIVER;
+	} else if (strcmp(file, auto_object) == 0) {
+	    obj->flags |= O_AUTO;
 	}
+    } else {
+	unsigned short *vmap;
 
-	if (strs != (String **) NULL) {
-	    pp_init(file_c, paths, strs, nstr, 1);
-	} else if (!pp_init(file_c, paths, (String **) NULL, 0, 1)) {
-	    error("Could not compile \"/%s\"", file_c);
-	}
-	if (!tk_include(include, (String **) NULL, 0)) {
-	    error("Could not include \"/%s\"", include);
-	}
-
-	cg_init(c.prev != (context *) NULL);
-	if (yyparse() == 0 && ctrl_chkfuncs()) {
-	    Control *ctrl;
-
-	    if (obj != (Object *) NULL) {
-		if (obj->count == 0) {
-		    error("Object destructed during recompilation");
-		}
-		if (O_UPGRADING(obj)) {
-		    error("Object recompiled during recompilation");
-		}
-		if (O_INHERITED(obj)) {
-		    /* inherited */
-		    error("Object inherited during recompilation");
-		}
-	    }
-	    if (!o_space()) {
-		error("Too many objects");
-	    }
-
-	    /*
-	     * successfully compiled
-	     */
-	    ec_pop();
-	    pp_clear();
-
-	    if (!seen_decls) {
-		/*
-		 * object with inherit statements only (or nothing at all)
-		 */
-		ctrl_create();
-	    }
-	    ctrl = ctrl_construct();
-	    ctrl_clear();
-	    c_clear();
-	    current = c.prev;
-
-	    if (obj == (Object *) NULL) {
-		/* new object */
-		obj = o_new(file, ctrl);
-		if (strcmp(file, driver_object) == 0) {
-		    obj->flags |= O_DRIVER;
-		} else if (strcmp(file, auto_object) == 0) {
-		    obj->flags |= O_AUTO;
-		}
-	    } else {
-		unsigned short *vmap;
-
-		/* recompiled object */
-		o_upgrade(obj, ctrl, f);
-		vmap = ctrl_varmap(obj->ctrl, ctrl);
-		if (vmap != (unsigned short *) NULL) {
-		    d_set_varmap(ctrl, vmap);
-		}
-	    }
-	    return obj;
-	} else if (nerrors == 0) {
-	    /* another try */
-	    pp_clear();
-	    ctrl_clear();
-	    c_clear();
-	} else {
-	    /* compilation failed */
-	    error("Failed to compile \"/%s\"", file_c);
+	/* recompiled object */
+	o_upgrade(obj, ctrl, f);
+	vmap = ctrl_varmap(obj->ctrl, ctrl);
+	if (vmap != (unsigned short *) NULL) {
+	    d_set_varmap(ctrl, vmap);
 	}
     }
+    return obj;
 }
 
 /*

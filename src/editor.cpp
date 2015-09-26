@@ -178,15 +178,7 @@ String *ed_command(Object *obj, char *cmd)
     e = &editors[EINDEX(obj->etabi)];
     outbufsz = 0;
     internal = FALSE;
-    if (ec_push((ec_ftn) ed_handler)) {
-	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
-	lb_inact(e->ed->edbuf->lb);
-	recursion = FALSE;
-	if (!internal) {
-	    error((char *) NULL);	/* pass on error */
-	}
-	output("%s\012", errorstr()->text);	/* LF */
-    } else {
+    if (!ec_push((ec_ftn) ed_handler)) {
 	recursion = TRUE;
 	if (cb_command(e->ed, cmd)) {
 	    lb_inact(e->ed->edbuf->lb);
@@ -196,6 +188,14 @@ String *ed_command(Object *obj, char *cmd)
 	    ed_del(obj);
 	}
 	ec_pop();
+    } else {
+	e->ed->flags &= ~(CB_INSERT | CB_CHANGE);
+	lb_inact(e->ed->edbuf->lb);
+	recursion = FALSE;
+	if (!internal) {
+	    error((char *) NULL);	/* pass on error */
+	}
+	output("%s\012", errorstr()->text);	/* LF */
     }
 
     if (outbufsz == 0) {

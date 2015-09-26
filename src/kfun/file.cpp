@@ -731,25 +731,26 @@ static char *restore_array(restcontext *x, char *buf, Value *val)
     }
     i = a->size;
     v = a->elts;
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	/* restore the values */
+	while (i > 0) {
+	    buf = restore_value(x, buf, v);
+	    i_ref_value(v++);
+	    if (*buf++ != ',') {
+		restore_error(x, "',' expected");
+	    }
+	    --i;
+	}
+	/* match }) */
+	if (*buf++ != '}' || *buf++ != ')') {
+	    restore_error(x, "'})' expected");
+	}
+	ec_pop();
+    } else {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
     }
-    /* restore the values */
-    while (i > 0) {
-	buf = restore_value(x, buf, v);
-	i_ref_value(v++);
-	if (*buf++ != ',') {
-	    restore_error(x, "',' expected");
-	}
-	--i;
-    }
-    /* match }) */
-    if (*buf++ != '}' || *buf++ != ')') {
-	restore_error(x, "'})' expected");
-    }
-    ec_pop();
 
     PUT_ARRVAL_NOREF(val, a);
     return buf;
@@ -781,31 +782,32 @@ static char *restore_mapping(restcontext *x, char *buf, Value *val)
     }
     i = a->size;
     v = a->elts;
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	/* restore the values */
+	while (i > 0) {
+	    buf = restore_value(x, buf, v);
+	    i_ref_value(v++);
+	    if (*buf++ != ':') {
+		restore_error(x, "':' expected");
+	    }
+	    buf = restore_value(x, buf, v);
+	    i_ref_value(v++);
+	    if (*buf++ != ',') {
+		restore_error(x, "',' expected");
+	    }
+	    i -= 2;
+	}
+	/* match ]) */
+	if (*buf++ != ']' || *buf++ != ')') {
+	    restore_error(x, "'])' expected");
+	}
+	map_sort(a);
+	ec_pop();
+    } else {
 	arr_ref(a);
 	arr_del(a);
 	error((char *) NULL);	/* pass on the error */
     }
-    /* restore the values */
-    while (i > 0) {
-	buf = restore_value(x, buf, v);
-	i_ref_value(v++);
-	if (*buf++ != ':') {
-	    restore_error(x, "':' expected");
-	}
-	buf = restore_value(x, buf, v);
-	i_ref_value(v++);
-	if (*buf++ != ',') {
-	    restore_error(x, "',' expected");
-	}
-	i -= 2;
-    }
-    /* match ]) */
-    if (*buf++ != ']' || *buf++ != ')') {
-	restore_error(x, "'])' expected");
-    }
-    map_sort(a);
-    ec_pop();
 
     PUT_MAPVAL_NOREF(val, a);
     return buf;
@@ -971,7 +973,125 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     x.narrays = 0;
     buf = buffer;
     pending = FALSE;
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	for (;;) {
+	    if (f->lwobj != (Array *) NULL) {
+		var = &f->lwobj->elts[2];
+	    } else {
+		var = data->variables;
+	    }
+	    nvars = 0;
+	    for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
+		if (inh->varoffset == nvars) {
+		    /*
+		     * Restore non-static variables.
+		     */
+		    ctrl = OBJR(inh->oindex)->ctrl;
+		    if (inh->priv) {
+			/* skip privately inherited variables */
+			var += ctrl->nvardefs;
+			nvars += ctrl->nvardefs;
+			continue;
+		    }
+		    for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++)
+		    {
+			if (pending && nvars == checkpoint) {
+			    /*
+			     * The saved variable is not in this object.
+			     * Skip it.
+			     */
+			    buf = strchr(buf, LF);
+			    if (buf == (char *) NULL) {
+				restore_error(&x, "'\\n' expected");
+			    }
+			    buf++;
+			    x.line++;
+			    pending = FALSE;
+			}
+			if (!pending) {
+			    /*
+			     * get a new variable name from the save file
+			     */
+			    while (*buf == '#') {
+				/* skip comment */
+				buf = strchr(buf, LF);
+				if (buf == (char *) NULL) {
+				    restore_error(&x, "'\\n' expected");
+				}
+				buf++;
+				x.line++;
+			    }
+			    if (*buf == '\0') {
+				/* end of file */
+				break;
+			    }
+
+			    name = buf;
+			    if (!isalpha(*buf) && *buf != '_') {
+				restore_error(&x, "alphanumeric expected");
+			    }
+			    do {
+				buf++;
+			    } while (isalnum(*buf) || *buf == '_');
+			    if (*buf != ' ') {
+				restore_error(&x, "' ' expected");
+			    }
+
+			    *buf++ = '\0';	/* terminate name */
+			    pending = TRUE;	/* start checking variables */
+			    checkpoint = nvars;	/* from here */
+			}
+
+			if (!(v->sclass & C_STATIC) &&
+			    strcmp(name, d_get_strconst(ctrl, v->inherit,
+							v->index)->text) == 0) {
+			    Value tmp;
+
+			    /*
+			     * found the proper variable to restore
+			     */
+			    buf = restore_value(&x, buf, &tmp);
+			    if (v->type != tmp.type && v->type != T_MIXED &&
+				conf_typechecking() &&
+				(!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
+				(tmp.type != T_ARRAY || (v->type & T_REF) == 0))
+			    {
+				i_ref_value(&tmp);
+				i_del_value(&tmp);
+				restore_error(&x, "value has wrong type");
+			    }
+			    if (f->lwobj != (Array *) NULL) {
+				d_assign_elt(data, f->lwobj, var, &tmp);
+			    } else {
+				d_assign_var(data, var, &tmp);
+			    }
+			    if (*buf++ != LF) {
+				restore_error(&x, "'\\n' expected");
+			    }
+			    x.line++;
+			    pending = FALSE;
+			}
+			var++;
+			nvars++;
+		    }
+		    if (!pending && *buf == '\0') {
+			/*
+			 * finished restoring
+			 */
+			ac_clear(&x);
+			if (onstack) {
+			    AFREE(buffer);
+			} else {
+			    FREE(buffer);
+			}
+			f->sp->u.number = 1;
+			ec_pop();
+			return 0;
+		    }
+		}
+	    }
+	}
+    } else {
 	/* error; clean up */
 	ac_clear(&x);
 	if (onstack) {
@@ -981,121 +1101,8 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 	}
 	error((char *) NULL);	/* pass on error */
     }
-    for (;;) {
-	if (f->lwobj != (Array *) NULL) {
-	    var = &f->lwobj->elts[2];
-	} else {
-	    var = data->variables;
-	}
-	nvars = 0;
-	for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	    if (inh->varoffset == nvars) {
-		/*
-		 * Restore non-static variables.
-		 */
-		ctrl = OBJR(inh->oindex)->ctrl;
-		if (inh->priv) {
-		    /* skip privately inherited variables */
-		    var += ctrl->nvardefs;
-		    nvars += ctrl->nvardefs;
-		    continue;
-		}
-		for (j = ctrl->nvardefs, v = ctrl->vardefs; j > 0; --j, v++) {
-		    if (pending && nvars == checkpoint) {
-			/*
-			 * The saved variable is not in this object.
-			 * Skip it.
-			 */
-			buf = strchr(buf, LF);
-			if (buf == (char *) NULL) {
-			    restore_error(&x, "'\\n' expected");
-			}
-			buf++;
-			x.line++;
-			pending = FALSE;
-		    }
-		    if (!pending) {
-			/*
-			 * get a new variable name from the save file
-			 */
-			while (*buf == '#') {
-			    /* skip comment */
-			    buf = strchr(buf, LF);
-			    if (buf == (char *) NULL) {
-				restore_error(&x, "'\\n' expected");
-			    }
-			    buf++;
-			    x.line++;
-			}
-			if (*buf == '\0') {
-			    /* end of file */
-			    break;
-			}
 
-			name = buf;
-			if (!isalpha(*buf) && *buf != '_') {
-			    restore_error(&x, "alphanumeric expected");
-			}
-			do {
-			    buf++;
-			} while (isalnum(*buf) || *buf == '_');
-			if (*buf != ' ') {
-			    restore_error(&x, "' ' expected");
-			}
-
-			*buf++ = '\0';		/* terminate name */
-			pending = TRUE;		/* start checking variables */
-			checkpoint = nvars;	/* from here */
-		    }
-
-		    if (!(v->sclass & C_STATIC) &&
-			strcmp(name, d_get_strconst(ctrl, v->inherit,
-						    v->index)->text) == 0) {
-			Value tmp;
-
-			/*
-			 * found the proper variable to restore
-			 */
-			buf = restore_value(&x, buf, &tmp);
-			if (v->type != tmp.type && v->type != T_MIXED &&
-			    conf_typechecking() &&
-			    (!VAL_NIL(&tmp) || !T_POINTER(v->type)) &&
-			    (tmp.type != T_ARRAY || (v->type & T_REF) == 0)) {
-			    i_ref_value(&tmp);
-			    i_del_value(&tmp);
-			    restore_error(&x, "value has wrong type");
-			}
-			if (f->lwobj != (Array *) NULL) {
-			    d_assign_elt(data, f->lwobj, var, &tmp);
-			} else {
-			    d_assign_var(data, var, &tmp);
-			}
-			if (*buf++ != LF) {
-			    restore_error(&x, "'\\n' expected");
-			}
-			x.line++;
-			pending = FALSE;
-		    }
-		    var++;
-		    nvars++;
-		}
-		if (!pending && *buf == '\0') {
-		    /*
-		     * finished restoring
-		     */
-		    ec_pop();
-		    ac_clear(&x);
-		    if (onstack) {
-			AFREE(buffer);
-		    } else {
-			FREE(buffer);
-		    }
-		    f->sp->u.number = 1;
-		    return 0;
-		}
-	    }
-	}
-    }
+    return 0;
 }
 # endif
 

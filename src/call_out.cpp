@@ -701,9 +701,6 @@ void co_call(Frame *f)
 	/*
 	 * callouts to do
 	 */
-	while (ec_push((ec_ftn) errhandler)) {
-	    endthread();
-	}
 #ifdef CO_THROTTLE
 	while ((i=running) != 0 && (quota-- > 0)) {
 #else
@@ -712,17 +709,19 @@ void co_call(Frame *f)
 	    handle = cotab[i].handle;
 	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
-
 	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
-	    if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
-		       nargs)) {
-		/* function exists */
-		i_del_value(f->sp++);
+
+	    if (!ec_push((ec_ftn) errhandler)) {
+		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
+			   nargs)) {
+		    /* function exists */
+		    i_del_value(f->sp++);
+		}
+		str_del((f->sp++)->u.string);
+		ec_pop();
 	    }
-	    str_del((f->sp++)->u.string);
 	    endthread();
 	}
-	ec_pop();
     }
 }
 

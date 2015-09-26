@@ -2584,18 +2584,19 @@ int kf_store_aggr(Frame *f, int nargs, kfunc *kf)
 	kf_argerror(KF_STORE_AGGR, 2);
     }
 
-    if (ec_push(NULL)) {
+    if (!ec_push(NULL)) {
+	val = *f->sp++;
+	for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
+	    i_push_value(f, --v);
+	    i_store(f);
+	    i_del_value(v);
+	}
+	*--f->sp = val;
+	ec_pop();
+    } else {
 	i_del_value(&val);
 	error(NULL);
     }
-    val = *f->sp++;
-    for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
-	i_push_value(f, --v);
-	i_store(f);
-	i_del_value(v);
-    }
-    *--f->sp = val;
-    ec_pop();
 
     return 0;
 }

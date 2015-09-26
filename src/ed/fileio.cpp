@@ -130,12 +130,13 @@ bool io_load(editbuf *eb, char *fname, Int l, io *iobuf)
     iostat->ill = FALSE;
 
     /* add the block to the edit buffer */
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	eb_add(eb, l, get_line);
+	ec_pop();
+    } else {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_add(eb, l, get_line);
-    ec_pop();
     P_close(ffd);
 
     return TRUE;
@@ -209,15 +210,16 @@ bool io_save(editbuf *eb, char *fname, Int first, Int last, int append, io *iobu
     iostat->ill = FALSE;
 
     /* write range */
-    if (ec_push((ec_ftn) NULL)) {
+    if (!ec_push((ec_ftn) NULL)) {
+	eb_range(eb, first, last, put_line, FALSE);
+	if (P_write(ffd, buffer, inbuf) != inbuf) {
+	    error("error while writing file \"/%s\"", filename);
+	}
+	ec_pop();
+    } else {
 	P_close(ffd);
 	error((char *) NULL);	/* pass on error */
     }
-    eb_range(eb, first, last, put_line, FALSE);
-    if (P_write(ffd, buffer, inbuf) != inbuf) {
-	error("error while writing file \"/%s\"", filename);
-    }
-    ec_pop();
     P_close(ffd);
 
     return TRUE;

@@ -688,19 +688,19 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		}
 		ps->data->parser = (parser *) NULL;
 
-		if (ec_push((ec_ftn) NULL)) {
+		if (!ec_push((ec_ftn) NULL)) {
+		    PUSH_ARRVAL(ps->frame, a);
+		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
+				  (Array *) NULL, pn->u.text + 2 + n,
+				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
+		    ec_pop();
+		} else {
 		    /* error: restore original parser */
 		    if (ps->data->parser != (parser *) NULL) {
 			ps_del(ps->data->parser);
 		    }
 		    ps->data->parser = ps;
 		    error((char *) NULL);	/* pass on error */
-		} else {
-		    PUSH_ARRVAL(ps->frame, a);
-		    call = i_call(ps->frame, OBJR(ps->frame->oindex),
-				  (Array *) NULL, pn->u.text + 2 + n,
-				  UCHAR(pn->u.text[1]) - n - 1, TRUE, 1);
-		    ec_pop();
 		}
 
 		/* restore original parser */
@@ -968,22 +968,9 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
     /*
      * parse string
      */
+    a = (Array *) NULL;
     ps->maxalt = maxalt;
-    if (ec_push((ec_ftn) NULL)) {
-	/*
-	 * error occurred; clean up
-	 */
-	sn_clear(&ps->list);
-	pn_clear(ps->pnc);
-	ps->pnc = (pnchunk *) NULL;
-
-	sc_clean(ps->strc);
-	ps->strc = (strchunk *) NULL;
-	ac_clean(ps->arrc);
-	ps->arrc = (arrchunk *) NULL;
-
-	error((char *) NULL);	/* pass on error */
-    } else {
+    if (!ec_push((ec_ftn) NULL)) {
 	/*
 	 * do the parse thing
 	 */
@@ -995,7 +982,6 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	/*
 	 * put result in array
 	 */
-	a = (Array *) NULL;
 	if (pn != (pnode *) NULL) {
 	    /*
 	     * valid parse tree was created
@@ -1027,9 +1013,21 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	ps->pnc = (pnchunk *) NULL;
 
 	ec_pop();
+    } else {
+	/*
+	 * error occurred; clean up
+	 */
+	sn_clear(&ps->list);
+	pn_clear(ps->pnc);
+	ps->pnc = (pnchunk *) NULL;
 
-	return a;
+	sc_clean(ps->strc);
+	ps->strc = (strchunk *) NULL;
+	ac_clean(ps->arrc);
+	ps->arrc = (arrchunk *) NULL;
+
+	error((char *) NULL);	/* pass on error */
     }
 
-    return NULL;
+    return a;
 }
