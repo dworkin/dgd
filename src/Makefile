@@ -45,8 +45,8 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CXXFLAGS=-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-CC=	g++
-LD=	$(CC)
+CXX=	g++
+LD=	$(CXX)
 YACC=	yacc
 BIN=	../bin
 
@@ -69,23 +69,23 @@ a.out:	$(OBJ) comp/dgd lex/dgd ed/dgd parser/dgd kfun/dgd host/dgd
 	      $(LIBS)
 
 comp/dgd::
-	$(MAKE) -C comp 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+	$(MAKE) -C comp 'CXX=$(CXX)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
 
 lex/dgd::
-	$(MAKE) -C lex 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C lex 'CXX=$(CXX)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 ed/dgd::
-	$(MAKE) -C ed 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C ed 'CXX=$(CXX)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 parser/dgd::
-	$(MAKE) -C parser 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C parser 'CXX=$(CXX)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 kfun/dgd::
-	$(MAKE) -C kfun 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C kfun 'CXX=$(CXX)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 
 host/dgd::
-	$(MAKE) -C host 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+	$(MAKE) -C host 'CXX=$(CXX)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
 
 all:	a.out
 
