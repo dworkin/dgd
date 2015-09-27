@@ -173,7 +173,7 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-typedef struct {
+struct rgxposn {
     hte chain;			/* hash table chain */
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
@@ -181,15 +181,15 @@ typedef struct {
     Uint nposn;			/* position number */
     bool final;			/* final position? */
     bool alloc;			/* position allocated separately? */
-} rgxposn;
+};
 
 # define RPCHUNKSZ	32
 
-typedef struct _rpchunk_ {
+struct rpchunk {
     int chunksz;		/* size of chunk */
-    struct _rpchunk_ *next;	/* next in linked list */
+    rpchunk *next;		/* next in linked list */
     rgxposn rp[RPCHUNKSZ];	/* rgxposn chunk */
-} rpchunk;
+};
 
 /*
  * NAME:	rgxposn->alloc()
@@ -597,7 +597,7 @@ static char *rp_save(rgxposn *rp, char *buf, char *grammar)
 }
 
 
-typedef struct {
+struct dfastate {
     union {			/* regexp positions */
 	rgxposn *e;		/* 1 */
 	rgxposn **a;		/* > 1 */
@@ -614,7 +614,7 @@ typedef struct {
     short final;		/* rule number, -1: not final */
     unsigned short next;	/* next in hash chain */
     bool alloc;			/* transitions allocated? */
-} dfastate;
+};
 
 # define POSNA(state)	(((state)->nposn == 1) ? \
 			  &(state)->posn.e : (state)->posn.a)
@@ -808,7 +808,7 @@ static char *ds_savetmp(dfastate *state, char *sbuf, char **pbuf, char *pbase, U
 }
 
 
-struct _dfa_ {
+struct dfa {
     char *source;		/* source grammar */
     char *grammar;		/* reference grammar */
     char *strings;		/* offset of strings in grammar */

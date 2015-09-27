@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,13 +21,13 @@
 # include "dgd.h"
 # include "swap.h"
 
-typedef struct _header_ {	/* swap slot header */
-    struct _header_ *prev;	/* previous in swap slot list */
-    struct _header_ *next;	/* next in swap slot list */
+struct header {			/* swap slot header */
+    header *prev;		/* previous in swap slot list */
+    header *next;		/* next in swap slot list */
     sector sec;			/* the sector that uses this slot */
     sector swap;		/* the swap sector (if any) */
     bool dirty;			/* has the swap slot been written to? */
-} header;
+};
 
 static char *swapfile;			/* swap file name */
 static int swap;			/* swap file descriptor */
@@ -520,13 +520,13 @@ sector sw_count()
 }
 
 
-typedef struct {
+struct dump_header {
     Uint secsize;		/* size of swap sector */
     sector nsectors;		/* # sectors */
     sector ssectors;		/* # swap sectors */
     sector nfree;		/* # free sectors */
     sector mfree;		/* free sector list */
-} dump_header;
+};
 
 static char dh_layout[] = "idddd";
 

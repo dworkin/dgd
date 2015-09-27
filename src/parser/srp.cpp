@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,21 +20,21 @@
 # include "dgd.h"
 # include "srp.h"
 
-typedef struct _item_ {
+struct item {
     char *ref;			/* pointer to rule in grammar */
     unsigned short ruleno;	/* rule number */
     unsigned short offset;	/* offset in rule */
-    struct _item_ *next;	/* next in linked list */
-} item;
+    item *next;			/* next in linked list */
+};
 
 # define ITCHUNKSZ	32
 
-typedef struct _itchunk_ {
+struct itchunk {
     int chunksz;		/* size of this chunk */
     item *flist;		/* list of free items */
-    struct _itchunk_ *next;	/* next in linked list */
+    itchunk *next;		/* next in linked list */
     item it[ITCHUNKSZ];		/* chunk of items */
-} itchunk;
+};
 
 /*
  * NAME:	item->new()
@@ -181,7 +181,7 @@ static char *it_save(item *it, char *buf, char *grammar)
 }
 
 
-typedef struct {
+struct srpstate {
     item *items;		/* rules and offsets */
     union {
 	char e[4];		/* 1 */
@@ -194,7 +194,7 @@ typedef struct {
     unsigned short shcheck;	/* shift offset check */
     unsigned short next;	/* next in linked list */
     bool alloc;			/* reductions allocated? */
-} srpstate;
+};
 
 # define REDA(state)   (((state)->nred == 1) ? \
 			(state)->reds.e : (state)->reds.a)
@@ -304,18 +304,18 @@ static char *ss_save(srpstate *state, char *buf, char **rbuf)
 }
 
 
-typedef struct _shlink_ {
+struct shlink {
     Int shifts;			/* offset in shift table */
-    struct _shlink_ *next;	/* next in linked list */
-} shlink;
+    shlink *next;	/* next in linked list */
+};
 
 # define SLCHUNKSZ	64
 
-typedef struct _slchunk_ {
+struct slchunk {
     int chunksz;		/* size of chunk */
-    struct _slchunk_ *next;	/* next in linked list */
+    slchunk *next;		/* next in linked list */
     shlink sl[SLCHUNKSZ];	/* shlinks */
-} slchunk;
+};
 
 /*
  * NAME:	shlink->hash()
@@ -376,7 +376,7 @@ static void sl_clear(slchunk *c)
 }
 
 
-struct _srp_ {
+struct srp {
     char *grammar;		/* grammar */
     unsigned short nsstring;	/* # of source grammar strings */
     unsigned short ntoken;	/* # of tokens (regexp & string) */

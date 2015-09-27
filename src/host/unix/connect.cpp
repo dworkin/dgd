@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2014 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -54,7 +54,7 @@
 
 # define NFREE		32
 
-typedef struct {
+struct in46addr {
     union {
 # ifdef INET6
 	struct in6_addr addr6;		/* IPv6 addr */
@@ -63,16 +63,16 @@ typedef struct {
 	int fd;				/* file descriptor */
     } in;
     char ipv6;				/* IPv6? */
-} in46addr;
+};
 
-typedef struct _ipaddr_ {
-    struct _ipaddr_ *link;		/* next in hash table */
-    struct _ipaddr_ *prev;		/* previous in linked list */
-    struct _ipaddr_ *next;		/* next in linked list */
+struct ipaddr {
+    ipaddr *link;			/* next in hash table */
+    ipaddr *prev;			/* previous in linked list */
+    ipaddr *next;			/* next in linked list */
     Uint ref;				/* reference count */
     in46addr ipnum;			/* ip number */
     char name[MAXHOSTNAMELEN];		/* ip name */
-} ipaddr;
+};
 
 static int in = -1, out = -1;		/* pipe to/from name resolver */
 static int addrtype;			/* network address family */
@@ -436,7 +436,7 @@ static void ipa_lookup()
     }
 }
 
-struct _connection_ {
+struct connection {
     hte chain;				/* UDP challenge hash chain */
     int fd;				/* file descriptor */
     int npkts;				/* # packets in buffer */
@@ -445,13 +445,13 @@ struct _connection_ {
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
     short at;				/* port connection was accepted at */
-    struct _connection_ *next;		/* next in list */
+    connection *next;			/* next in list */
 };
 
-typedef struct {
+struct portdesc {
     int in6;				/* IPv6 port descriptor */
     int in4;				/* IPv4 port descriptor */
-} portdesc;
+};
 
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */

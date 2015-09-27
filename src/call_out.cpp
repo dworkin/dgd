@@ -31,13 +31,13 @@
 # define CYCBUF_MASK	(CYCBUF_SIZE - 1) /* cyclic buffer mask */
 # define SWPERIOD	60		/* swaprate buffer size */
 
-typedef struct {
+struct call_out {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
     uindex htime;	/* when to call, high word */
     uindex mtime;	/* when to call in milliseconds */
-} call_out;
+};
 
 static char co_layout[] = "uuiuu";
 
@@ -819,7 +819,7 @@ long co_swaprate5()
 }
 
 
-typedef struct {
+struct dump_header {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -831,11 +831,11 @@ typedef struct {
     unsigned short hdiff;	/* timediff high word */
     Uint timestamp;		/* time the last alarm came */
     Uint timediff;		/* accumulated time difference */
-} dump_header;
+};
 
 static char dh_layout[] = "uuuuuuussii";
 
-typedef struct {
+struct old_header {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -845,11 +845,11 @@ typedef struct {
     uindex immediate;		/* immediate callouts list */
     Uint timestamp;		/* time the last alarm came */
     Uint timediff;		/* accumulated time difference */
-} old_header;
+};
 
 static char oh_layout[] = "uuuuuuuii";
 
-typedef struct {
+struct conv_header {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -858,31 +858,31 @@ typedef struct {
     uindex nlong0;		/* # of long-term callouts and imm. callouts */
     Uint timestamp;		/* time the last alarm came */
     Uint timediff;		/* accumulated time difference */
-} conv_header;
+};
 
 static char ch_layout[] = "uuuuuuii";
 
-typedef struct {
+struct cbuf {
     uindex list;	/* list */
     uindex last;	/* last in list */
-} cbuf;
+};
 
 static char cb_layout[] = "uu";
 
-typedef struct {
+struct conv_callout {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
     uindex mtime;	/* when to call in milliseconds */
-} conv_callout;
+};
 
 static char cco_layout[] = "uuiu";
 
-typedef struct {
+struct dump_callout {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
-} dump_callout;
+};
 
 static char dco_layout[] = "uui";
 

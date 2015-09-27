@@ -244,15 +244,15 @@
 # define SWITCH_STRING	2
 
 
-typedef struct _rlinfo_ {
+struct rlinfo {
     Int maxdepth;		/* max stack depth */
     Int ticks;			/* ticks left */
     bool nodepth;		/* no stack depth checking */
     bool noticks;		/* no ticks checking */
-    struct _rlinfo_ *next;	/* next in linked list */
-} rlinfo;
+    rlinfo *next;		/* next in linked list */
+};
 
-struct _frame_ {
+struct Frame {
     Frame *prev;		/* previous stack frame */
     uindex oindex;		/* current object index */
     Array *lwobj;		/* lightweight object */
@@ -264,7 +264,7 @@ struct _frame_ {
     bool external;		/* TRUE if it's an external call */
     bool sos;			/* stack on stack */
     uindex foffset;		/* program function offset */
-    struct _dfuncdef_ *func;	/* current function */
+    struct dfuncdef *func;	/* current function */
     char *prog;			/* start of program */
     char *pc;			/* program counter */
     Value *stack;		/* local value stack */

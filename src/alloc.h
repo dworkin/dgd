@@ -53,11 +53,11 @@ extern bool  m_check	(void);
 extern void  m_purge	(void);
 extern void  m_finish	(void);
 
-typedef struct {
+struct allocinfo {
     size_t smemsize;	/* static memory size */
     size_t smemused;	/* static memory used */
     size_t dmemsize;	/* dynamic memory used */
     size_t dmemused;	/* dynamic memory used */
-} allocinfo;
+};
 
 extern allocinfo *m_info (void);

@@ -60,7 +60,7 @@
 # define BLOCK_MASK	(~(BLOCK_SIZE-1))
 # define CAT		-1
 
-typedef struct {
+struct blk {
     block prev, next;		/* first and last */
     Int lines;			/* size of this block */
     union {
@@ -70,7 +70,7 @@ typedef struct {
 	    short u_index2;	/* index in last chain block */
 	} s;
     } u;
-} blk;
+};
 
 # define lfirst	prev
 # define llast	next

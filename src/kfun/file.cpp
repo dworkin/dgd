@@ -107,12 +107,12 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 # ifdef FUNCDEF
 FUNCDEF("save_object", kf_save_object, pt_save_object, 0)
 # else
-typedef struct {
+struct savecontext {
     int fd;			/* save/restore file descriptor */
     char *buffer;		/* save/restore buffer */
     unsigned int bufsz;		/* size of save/restore buffer */
     Uint narrays;		/* number of arrays/mappings encountered */
-} savecontext;
+};
 
 /*
  * NAME:	put()
@@ -500,19 +500,19 @@ FUNCDEF("restore_object", kf_restore_object, pt_restore_object, 0)
 # else
 # define ACHUNKSZ	16
 
-typedef struct _achunk_ {
-    struct _achunk_ *next;	/* next in list */
+struct achunk {
+    achunk *next;		/* next in list */
     Value a[ACHUNKSZ];		/* chunk of arrays */
-} achunk;
+};
 
-typedef struct {
+struct restcontext {
     int line;			/* current line number */
     Frame *f;			/* interpreter frame */
     achunk *alist;		/* list of array chunks */
     int achunksz;		/* size of current array chunk */
     Uint narrays;		/* # of arrays/mappings */
     char file[STRINGSZ];	/* current restore file */
-} restcontext;
+};
 
 /*
  * NAME:	achunk->put()
@@ -1497,11 +1497,11 @@ static int match(char *pat, char *text)
     }
 }
 
-typedef struct _fileinfo_ {
+struct fileinfo {
     String *name;		/* file name */
     Int size;			/* file size */
     Int time;			/* file time */
-} fileinfo;
+};
 
 /*
  * NAME:	getinfo()

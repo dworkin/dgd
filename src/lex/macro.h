@@ -19,11 +19,11 @@
 
 # include "hash.h"
 
-typedef struct _macro_ {
+struct macro {
     hte chain;			/* hash table entry chain */
     char *replace;		/* replace text */
     int narg;			/* number of arguments */
-} macro;
+};
 
 # define MA_NARG	0x1f
 # define MA_NOEXPAND	0x20

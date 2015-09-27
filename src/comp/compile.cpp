@@ -38,37 +38,37 @@
 # define COND_CHUNK	16
 # define COND_BMAP	BMAP(MAX_LOCALS)
 
-typedef struct _cond_ {
-    struct _cond_ *prev;	/* surrounding conditional */
+struct cond {
+    cond *prev;			/* surrounding conditional */
     Uint init[COND_BMAP];	/* initialize variable bitmap */
-} cond;
+};
 
-typedef struct _cchunk_ {
-    struct _cchunk_ *next;	/* next in cond chunk list */
+struct cchunk {
+    cchunk *next;		/* next in cond chunk list */
     cond c[COND_CHUNK];		/* chunk of conds */
-} cchunk;
+};
 
 # define BLOCK_CHUNK	16
 
-typedef struct _block_ {
+struct block {
     int vindex;			/* variable index */
     int nvars;			/* # variables in this block */
-    struct _block_ *prev;	/* surrounding block */
+    block *prev;		/* surrounding block */
     node *gotos;		/* gotos in this block */
     node *labels;		/* labels in this block */
-} block;
+};
 
-typedef struct _bchunk_ {
-    struct _bchunk_ *next;	/* next in block chunk list */
+struct bchunk {
+    bchunk *next;		/* next in block chunk list */
     block b[BLOCK_CHUNK];	/* chunk of blocks */
-} bchunk;
+};
 
-typedef struct {
+struct var {
     const char *name;		/* variable name */
     short type;			/* variable type */
     short unset;		/* used before set? */
     String *cvstr;		/* class name */
-} var;
+};
 
 static cchunk *clist;			/* list of all cond chunks */
 static cond *fclist;			/* list of free conditions */
@@ -344,7 +344,7 @@ static void block_clear()
 
 # define LOOP_CHUNK	16
 
-typedef struct _loop_ {
+struct loop {
     char type;			/* case label type */
     bool brk;			/* seen any breaks? */
     bool cont;			/* seen any continues? */
@@ -353,14 +353,14 @@ typedef struct _loop_ {
     unsigned short nesting;	/* rlimits/catch nesting level */
     node *case_list;		/* previous list of case nodes */
     node *vlist;		/* variable list */
-    struct _loop_ *prev;	/* previous loop or switch */
-    struct _loop_ *env;		/* enclosing loop */
-} loop;
+    loop *prev;			/* previous loop or switch */
+    loop *env;			/* enclosing loop */
+};
 
-typedef struct _lchunk_ {
-    struct _lchunk_ *next;	/* next in loop chunk list */
+struct lchunk {
+    lchunk *next;		/* next in loop chunk list */
     loop l[LOOP_CHUNK];		/* chunk of loops */
-} lchunk;
+};
 
 static lchunk *llist;		/* list of all loop chunks */
 static loop *fllist;		/* list of free loops */
@@ -432,11 +432,11 @@ static void loop_clear()
 }
 
 
-typedef struct _context_ {
+struct context {
     char *file;				/* file to compile */
     Frame *frame;			/* current interpreter stack frame */
-    struct _context_ *prev;		/* previous context */
-} context;
+    context *prev;			/* previous context */
+};
 
 static context *current;		/* current context */
 static char *auto_object;		/* auto object */

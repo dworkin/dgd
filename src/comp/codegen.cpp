@@ -32,10 +32,10 @@
 
 # define LINE_CHUNK	128
 
-typedef struct _linechunk_ {
-    struct _linechunk_ *next;		/* next in list */
+struct linechunk {
+    linechunk *next;			/* next in list */
     char info[LINE_CHUNK];		/* chunk of line number info */
-} linechunk;
+};
 
 static linechunk *lline, *tline;		/* line chunk list */
 static linechunk *fline;			/* free line chunk list */
@@ -152,10 +152,10 @@ static void line_clear()
 
 # define CODE_CHUNK	128
 
-typedef struct _codechunk_ {
-    struct _codechunk_ *next;		/* next in list */
+struct codechunk {
+    codechunk *next;			/* next in list */
     char code[CODE_CHUNK];		/* chunk of code */
-} codechunk;
+};
 
 static codechunk *lcode, *tcode;		/* code chunk list */
 static codechunk *fcode;			/* free code chunk list */
@@ -308,17 +308,17 @@ static void code_clear()
 
 # define JUMP_CHUNK	128
 
-typedef struct _jmplist_ {
+struct jmplist {
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
     node *label;			/* label to jump to */
-    struct _jmplist_ *next;		/* next in list */
-} jmplist;
+    jmplist *next;			/* next in list */
+};
 
-typedef struct _jmpchunk_ {
-    struct _jmpchunk_ *next;		/* next in list */
+struct jmpchunk {
+    jmpchunk *next;			/* next in list */
     jmplist jump[JUMP_CHUNK];		/* chunk of jumps */
-} jmpchunk;
+};
 
 static jmpchunk *ljump;			/* list of jump chunks */
 static jmpchunk *fjump;			/* list of free jump chunks */
@@ -1834,10 +1834,10 @@ static void cg_cond(node *n, int jmptrue)
     }
 }
 
-typedef struct {
+struct case_label {
     Uint where;				/* where to jump to */
     jmplist *jump;			/* list of unresolved jumps */
-} case_label;
+};
 
 static case_label *switch_table;	/* label table for current switch */
 

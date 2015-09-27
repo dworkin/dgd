@@ -34,19 +34,19 @@
 # define MOFFSET	UINTSIZE
 # endif
 
-typedef struct _chunk_ {
-    Uint size;			/* size of chunk */
-    struct _chunk_ *next;	/* next chunk */
-} chunk;
+struct chunk {
+    Uint size;		/* size of chunk */
+    chunk *next;	/* next chunk */
+};
 
 # ifdef DEBUG
-typedef struct _header_ {
-    Uint size;			/* size of chunk */
-    struct _header_ *prev;	/* previous in list */
-    struct _header_ *next;	/* next in list */
-    const char *file;		/* file it was allocated from */
-    int line;			/* line it was allocated from */
-} header;
+struct header {
+    Uint size;		/* size of chunk */
+    header *prev;	/* previous in list */
+    header *next;	/* next in list */
+    const char *file;	/* file it was allocated from */
+    int line;		/* line it was allocated from */
+};
 # endif
 
 
@@ -85,10 +85,10 @@ static char *newmem(size_t size, char **list)
 # define SCHUNKS	(STRINGSZ / STRUCT_AL - 1)
 # define LCHUNKS	32
 
-typedef struct {
+struct clist {
     size_t size;		/* size of chunks in list */
     chunk *list;		/* list of chunks (possibly empty) */
-} clist;
+};
 
 static char *slist;			/* list of static chunks */
 static chunk *schunk;			/* current chunk */
@@ -274,12 +274,12 @@ void m_dynamic()
  * dynamic memory manager
  */
 
-typedef struct _spnode_ {
+struct spnode {
     Uint size;			/* size of chunk */
-    struct _spnode_ *parent;	/* parent node */
-    struct _spnode_ *left;	/* left child node */
-    struct _spnode_ *right;	/* right child node */
-} spnode;
+    spnode *parent;		/* parent node */
+    spnode *left;		/* left child node */
+    spnode *right;		/* right child node */
+};
 
 static size_t dchunksz;		/* dynamic chunk size */
 static spnode *dtree;		/* splay tree of large dynamic free chunks */

@@ -44,7 +44,7 @@
 # define CB_TUPPER	0x1000
 # define CB_TLOWER	0x2000
 
-typedef struct {
+struct cmdbuf {
     const char *cmd;		/* command to do */
     editbuf *edbuf;		/* edit buffer */
     rxbuf *regexp;		/* current regular expression */
@@ -95,7 +95,7 @@ typedef struct {
 
     char search[STRINGSZ];	/* pattern to search for */
     char replace[STRINGSZ];	/* string to replace with */
-} cmdbuf;
+};
 
 # define RET_QUIT	1
 # define RET_FLAGS	2

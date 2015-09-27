@@ -19,7 +19,7 @@
 
 # include "line.h"
 
-typedef struct {
+struct editbuf {
     linebuf *lb;		/* line buffer */
     block buffer;		/* the actual edit buffer */
     Int lines;			/* # lines in edit buffer */
@@ -28,7 +28,7 @@ typedef struct {
     int szlines;		/* size of "last" insert add */
     char *llines;		/* llbuf pointer */
     char llbuf[4 * MAX_LINE_SIZE]; /* last lines buffer */
-} editbuf;
+};
 
 extern editbuf *eb_new		(char*);
 extern void	eb_del		(editbuf*);

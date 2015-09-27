@@ -95,7 +95,7 @@ static node *comma	(node*, node*);
     Int number;			/* lex input */
     xfloat real;		/* lex input */
     unsigned short type;	/* internal */
-    struct _node_ *node;	/* internal */
+    struct node *node;		/* internal */
 }
 
 /*

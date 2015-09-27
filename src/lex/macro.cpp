@@ -26,10 +26,10 @@
 
 # define MCHUNKSZ	32
 
-typedef struct _mchunk_ {
-    struct _mchunk_ *next;	/* next in list */
+struct mchunk {
+    mchunk *next;		/* next in list */
     macro m[MCHUNKSZ];		/* macros */
-} mchunk;
+};
 
 static mchunk *mlist;		/* list of macro chunks */
 static int mchunksz;		/* size of current macro chunk */

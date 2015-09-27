@@ -26,10 +26,10 @@
 # include "editor.h"
 # include <stdarg.h>
 
-typedef struct _editor_ {
+struct editor {
     cmdbuf *ed;			/* editor instance */
-    struct _editor_ *next;	/* next in free list */
-} editor;
+    editor *next;		/* next in free list */
+};
 
 static editor *editors;		/* editor table */
 static editor *flist;		/* free list */

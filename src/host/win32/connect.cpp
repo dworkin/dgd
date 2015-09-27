@@ -30,22 +30,22 @@
 
 # define NFREE		32
 
-typedef struct {
+struct in46addr {
     union {
 	struct in6_addr addr6;		/* IPv6 addr */
 	struct in_addr addr;		/* IPv4 addr */
     } in;
     bool ipv6;				/* IPv6? */
-} in46addr;
+};
 
-typedef struct _ipaddr_ {
-    struct _ipaddr_ *link;		/* next in hash table */
-    struct _ipaddr_ *prev;		/* previous in linked list */
-    struct _ipaddr_ *next;		/* next in linked list */
+struct ipaddr {
+    ipaddr *link;			/* next in hash table */
+    ipaddr *prev;			/* previous in linked list */
+    ipaddr *next;			/* next in linked list */
     Uint ref;				/* reference count */
     in46addr ipnum;			/* ip number */
     char name[MAXHOSTNAMELEN];		/* ip name */
-} ipaddr;
+};
 
 static SOCKET in = INVALID_SOCKET;	/* connection from name resolver */
 static SOCKET out = INVALID_SOCKET;	/* connection to name resolver */
@@ -346,7 +346,7 @@ static void ipa_lookup(void)
 }
 
 
-struct _connection_ {
+struct connection {
     hte chain;				/* UDP challenge hash chain */
     SOCKET fd;				/* file descriptor */
     int bufsz;				/* # bytes in buffer */
@@ -355,13 +355,13 @@ struct _connection_ {
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
     short at;				/* port connection was accepted at */
-    struct _connection_ *next;		/* next in list */
+    connection *next;			/* next in list */
 };
 
-typedef struct {
+struct portdesc {
     SOCKET in6;				/* IPv6 socket */
     SOCKET in4;				/* IPv4 socket */
-} portdesc;
+};
 
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */

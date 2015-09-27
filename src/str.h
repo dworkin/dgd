@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct _string_ {
-    struct _strref_ *primary;	/* primary reference */
+struct String {
+    struct strref *primary;	/* primary reference */
     Uint ref;			/* number of references + const bit */
     ssizet len;			/* string length */
     char text[1];		/* actual characters following this struct */

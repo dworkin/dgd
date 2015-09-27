@@ -33,12 +33,12 @@
 # define EXTRA_STACK  0
 # endif
 
-typedef struct _inhash_ {
+struct inhash {
     Uint ocount;		/* object count */
     uindex iindex;		/* inherit index */
     uindex coindex;		/* class name program reference */
     Uint sclass;		/* class name string reference */
-} inhash;
+};
 
 static Value stack[MIN_STACK];	/* initial stack */
 static Frame topframe;		/* top frame */

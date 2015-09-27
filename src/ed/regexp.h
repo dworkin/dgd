@@ -25,7 +25,7 @@
 # define RXBUFSZ	2048
 # define NSUBEXP	9
 
-typedef struct {
+struct rxbuf {
     bool valid;			/* is the present matcher valid? */
     bool anchor;		/* is the match anchored (^pattern) */
     char firstc;		/* first character in match, if any */
@@ -36,7 +36,7 @@ typedef struct {
 	int size;		/* size of subexpression */
     } se[NSUBEXP];
     char buffer[RXBUFSZ];	/* buffer to hold matcher */
-} rxbuf;
+};
 
 extern rxbuf	  *rx_new  (void);
 extern void	   rx_del  (rxbuf*);

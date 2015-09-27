@@ -17,20 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct _array_ {
+struct Array {
     unsigned short size;		/* number of elements */
     bool hashmod;			/* hashed part contains new elements */
     Uint ref;				/* number of references */
     Uint tag;				/* used in sorting */
     Uint odcount;			/* last destructed object count */
     Value *elts;			/* elements */
-    struct _maphash_ *hashed;		/* hashed mapping elements */
-    struct _arrref_ *primary;		/* primary reference */
+    struct maphash *hashed;		/* hashed mapping elements */
+    struct arrref *primary;		/* primary reference */
     Array *prev, *next;			/* per-object linked list */
 };
 
-typedef struct _arrmerge_ arrmerge;	/* array merge table */
-typedef struct _abchunk_ abchunk;	/* array backup chunk */
+struct abchunk;				/* array backup chunk */
 
 extern void		arr_init	(unsigned int);
 extern Array	       *arr_alloc	(unsigned int);

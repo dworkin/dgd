@@ -27,59 +27,59 @@
 
 # define ARR_CHUNK	128
 
-typedef struct _arrchunk_ {
-    struct _arrchunk_ *next;	/* next in list */
+struct arrchunk {
+    arrchunk *next;		/* next in list */
     Array a[ARR_CHUNK];		/* chunk of arrays */
-} arrchunk;
+};
 
-typedef struct _arrh_ {
-    struct _arrh_ *next;	/* next in hash table chain */
+struct arrh {
+    arrh *next;			/* next in hash table chain */
     Array *arr;			/* array entry */
     Uint index;			/* building index */
-    struct _arrh_ *link;	/* next in list */
-} arrh;
+    arrh *link;			/* next in list */
+};
 
-typedef struct _arrhchunk_ {
-    struct _arrhchunk_ *next;	/* next in list */
+struct arrhchunk {
+    arrhchunk *next;		/* next in list */
     arrh ah[ARR_CHUNK];		/* chunk of arrh entries */
-} arrhchunk;
+};
 
 # define MELT_CHUNK	128
 
-typedef struct _mapelt_ {
+struct mapelt {
     Uint hashval;		/* hash value of index */
     bool add;			/* new element? */
     Value idx;			/* index */
     Value val;			/* value */
-    struct _mapelt_ *next;	/* next in hash table */
-} mapelt;
+    mapelt *next;		/* next in hash table */
+};
 
-typedef struct _meltchunk_ {
-    struct _meltchunk_ *next;	/* next in list */
+struct meltchunk {
+    meltchunk *next;		/* next in list */
     mapelt e[MELT_CHUNK];	/* chunk of mapelt entries */
-} meltchunk;
+};
 
-typedef struct _maphash_ {
+struct maphash {
     unsigned short size;	/* # elements in hash table */
     unsigned short sizemod;	/* mapping size modification */
     Uint tablesize;		/* actual hash table size */
     mapelt *table[1];		/* hash table */
-} maphash;
+};
 
 # define MTABLE_SIZE	16	/* most mappings are quite small */
 
 # define ABCHUNKSZ	32
 
-typedef struct arrbak {
+struct arrbak {
     Array *arr;			/* array backed up */
     unsigned short size;	/* original size (of mapping) */
     Value *original;		/* original elements */
     Dataplane *plane;		/* original dataplane */
-} arrbak;
+};
 
-struct _abchunk_ {
+struct abchunk {
     short chunksz;		/* size of this chunk */
-    struct _abchunk_ *next;	/* next in linked list */
+    struct abchunk *next;	/* next in linked list */
     arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
 };
 

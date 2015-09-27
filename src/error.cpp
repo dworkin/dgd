@@ -27,14 +27,14 @@
 # include "comm.h"
 # include <stdarg.h>
 
-typedef struct _context_ {
+struct context {
     Frame *f;				/* frame context */
     unsigned short offset;		/* sp offset */
     bool atomic;			/* atomic status */
     rlinfo *rlim;			/* rlimits info */
     ec_ftn handler;			/* error handler */
-    struct _context_ *next;		/* next in linked list */
-} context;
+    context *next;			/* next in linked list */
+};
 
 static context firstcontext;		/* bottom context */
 static context *econtext;		/* current error context */

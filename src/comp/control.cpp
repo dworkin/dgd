@@ -30,13 +30,13 @@
 # include "compile.h"
 # include "control.h"
 
-typedef struct _oh_ {		/* object hash table */
+struct oh {			/* object hash table */
     hte chain;			/* hash table chain */
     Object *obj;		/* object */
     short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
-    struct _oh_ **next;		/* next in linked list */
-} oh;
+    oh **next;			/* next in linked list */
+};
 
 static hashtab *otab;		/* object hash table */
 static oh **olist;		/* list of all object hash table entries */
@@ -99,19 +99,19 @@ static void oh_clear()
 
 # define VFH_CHUNK	64
 
-typedef struct _vfh_ {		/* variable/function hash table */
+struct vfh {			/* variable/function hash table */
     hte chain;			/* hash table chain */
     String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     String *cvstr;		/* class variable string */
     unsigned short ct;		/* function call, or variable type */
     short index;		/* definition table index */
-} vfh;
+};
 
-typedef struct _vfhchunk_ {
-    struct _vfhchunk_ *next;	/* next in linked list */
+struct vfhchunk {
+    vfhchunk *next;		/* next in linked list */
     vfh vf[VFH_CHUNK];		/* vfh chunk */
-} vfhchunk;
+};
 
 static vfhchunk *vfhclist;	/* linked list of all vfh chunks */
 static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
@@ -172,11 +172,11 @@ static void vfh_clear()
 }
 
 
-typedef struct _lab_ {
+struct lab {
     String *str;		/* label */
     oh *ohash;			/* entry in hash table */
-    struct _lab_ *next;		/* next label */
-} lab;
+    lab *next;			/* next label */
+};
 
 static lab *labels;		/* list of labeled inherited objects */
 
@@ -804,26 +804,26 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 
 # define STRING_CHUNK	64
 
-typedef struct _strchunk_ {
-    struct _strchunk_ *next;		/* next in string chunk list */
+struct strchunk {
+    strchunk *next;			/* next in string chunk list */
     String *s[STRING_CHUNK];		/* chunk of strings */
-} strchunk;
+};
 
 # define FCALL_CHUNK	64
 
-typedef struct _fcchunk_ {
-    struct _fcchunk_ *next;		/* next in fcall chunk list */
+struct fcchunk {
+    fcchunk *next;			/* next in fcall chunk list */
     char *f[FCALL_CHUNK];		/* function reference */
-} fcchunk;
+};
 
-typedef struct _cfunc_ {
+struct cfunc {
     dfuncdef func;			/* function name/type */
     char *name;				/* function name */
     char *proto;			/* function prototype */
     String *cfstr;			/* function class string */
     char *prog;				/* function program */
     unsigned short progsize;		/* function program size */
-} cfunc;
+};
 
 static Control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
@@ -2234,11 +2234,10 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
  */
 Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 {
-    typedef struct {
+    struct ulist {
 	short count;		/* number of undefined functions */
 	short index;		/* index in inherits list */
-    } ulist;
-    ulist *u, *list;
+    } *u, *list;
     short i;
     dsymbol *symb;
     dfuncdef *f;

@@ -37,11 +37,11 @@
 
 # define MAXIACSEQLEN		7	/* longest IAC sequence sent */
 
-typedef struct _user_ {
+struct user {
     uindex oindex;		/* associated object index */
-    struct _user_ *prev;	/* preceding user */
-    struct _user_ *next;	/* next user */
-    struct _user_ *flush;	/* next in flush list */
+    user *prev;			/* preceding user */
+    user *next;			/* next user */
+    user *flush;		/* next in flush list */
     short flags;		/* connection flags */
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
@@ -51,7 +51,7 @@ typedef struct _user_ {
     String *outbuf;		/* output buffer string */
     ssizet inbufsz;		/* bytes in input buffer */
     ssizet osdone;		/* bytes of output string done */
-} user;
+};
 
 /* flags */
 # define CF_BINARY	0x0000	/* binary connection */
@@ -969,7 +969,7 @@ void comm_flush()
  * NAME:	comm->taccept()
  * DESCRIPTION:	accept a telnet connection
  */
-static void comm_taccept(Frame *f, struct _connection_ *conn, int port)
+static void comm_taccept(Frame *f, connection *conn, int port)
 {
     user *usr;
     Object *obj;
@@ -1004,7 +1004,7 @@ static void comm_taccept(Frame *f, struct _connection_ *conn, int port)
  * NAME:	comm->baccept()
  * DESCRIPTION:	accept a binary connection
  */
-static void comm_baccept(Frame *f, struct _connection_ *conn, int port)
+static void comm_baccept(Frame *f, connection *conn, int port)
 {
     Object *obj;
 
@@ -1758,16 +1758,16 @@ bool comm_is_connection(Object *obj)
     return FALSE;
 }
 
-typedef struct {
+struct dump_header {
     short version;		/* hotboot version */
     Uint nusers;		/* # users */
     Uint tbufsz;		/* total telnet buffer size */
     Uint ubufsz;		/* total UDP buffer size */
-} dump_header;
+};
 
 static char dh_layout[] = "siii";
 
-typedef struct {
+struct duser {
     uindex oindex;		/* object index */
     short flags;		/* user flags */
     char state;			/* user state */
@@ -1780,7 +1780,7 @@ typedef struct {
     Uint ubufsz;		/* UDB buffer size */
     unsigned short port;	/* connection port */
     short at;			/* connected at */
-} duser;
+};
 
 static char du_layout[] = "usccsiiiiiss";
 

@@ -31,7 +31,7 @@
 
 # define PRIV			0x0001	/* in sinherit->flags */
 
-typedef struct {
+struct scontrol {
     sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
@@ -48,11 +48,11 @@ typedef struct {
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} scontrol;
+};
 
 static char sc_layout[] = "dssuiissicccusss";
 
-typedef struct {
+struct tscontrol {
     sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
@@ -68,11 +68,11 @@ typedef struct {
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} tscontrol;
+};
 
 static char tsc_layout[] = "dssuiisicccusss";
 
-typedef struct {
+struct xscontrol {
     sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
@@ -87,11 +87,11 @@ typedef struct {
     unsigned short nsymbols;	/* # entries in symbol table */
     unsigned short nvariables;	/* # variables */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} xscontrol;
+};
 
 static char xsc_layout[] = "dssiisicccusss";
 
-typedef struct {
+struct ocontrol {
     sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
@@ -108,11 +108,11 @@ typedef struct {
     unsigned short nifdefs;	/* # int/float definitions */
     unsigned short nvinit;	/* # variables requiring initialization */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} ocontrol;
+};
 
 static char oc_layout[] = "dcciisicccusssss";
 
-typedef struct {
+struct oscontrol {
     sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
@@ -128,38 +128,38 @@ typedef struct {
     unsigned short nifdefs;	/* # int/float definitions */
     unsigned short nvinit;	/* # variables requiring initialization */
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
-} oscontrol;
+};
 
 static char os_layout[] = "dcciisiccusssss";
 
-typedef struct {
+struct sinherit {
     uindex oindex;		/* index in object table */
     uindex progoffset;		/* program offset */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
     unsigned short flags;	/* bit flags */
-} sinherit;
+};
 
 static char si_layout[] = "uuuss";
 
-typedef struct {
+struct osinherit {
     uindex oindex;		/* index in object table */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset + private bit */
-} osinherit;
+};
 
 static char osi_layout[] = "uus";
 
-typedef struct {
+struct ovardef {
     char sclass;		/* variable class */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
     unsigned short type;	/* variable type */
-} ovardef;
+};
 
 # define OV_LAYOUT	"ccss"
 
-typedef struct {
+struct sdataspace {
     sector nsectors;		/* number of sectors in data space */
     short flags;		/* dataspace flags: compression */
     unsigned short nvariables;	/* number of variables */
@@ -169,11 +169,11 @@ typedef struct {
     Uint strsize;		/* total size of strings */
     uindex ncallouts;		/* number of callouts */
     uindex fcallouts;		/* first free callout */
-} sdataspace;
+};
 
 static char sd_layout[] = "dssiiiiuu";
 
-struct _svalue_ {
+struct svalue {
     char type;			/* object, number, string, array */
     char pad;			/* 0 */
     uindex oindex;		/* index in object table */
@@ -187,102 +187,102 @@ struct _svalue_ {
 
 static char sv_layout[] = "ccui";
 
-typedef struct {
+struct osvalue {
     char type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
     Uint objcnt;		/* number, string, object, array */
-} osvalue;
+};
 
 static char osv_layout[] = "cui";
 
-typedef struct {
+struct oosvalue {
     short type;			/* old type */
     uindex oindex;		/* index in object table */
     Uint objcnt;		/* number, string, object, array */
-} oosvalue;
+};
 
 static char oosv_layout[] = "sui";
 
-typedef struct _sarray_ {
+struct sarray {
     Uint index;			/* index in array value table */
     char type;			/* array type */
     unsigned short size;	/* size of array */
     Uint ref;			/* refcount */
     Uint tag;			/* unique value for each array */
-} sarray;
+};
 
 static char sa_layout[] = "icsii";
 
-typedef struct {
+struct osarray {
     Uint index;			/* index in array value table */
     unsigned short size;	/* size of array */
     Uint ref;			/* refcount */
     Uint tag;			/* unique value for each array */
-} osarray;
+};
 
 static char osa_layout[] = "isii";
 
-typedef struct _sstring_ {
+struct sstring {
     Uint index;			/* index in string text table */
     ssizet len;			/* length of string */
     Uint ref;			/* refcount */
-} sstring;
+};
 
 static char ss_layout[] = "iti";
 
-typedef struct _scallout_ {
+struct scallout {
     Uint time;			/* time of call */
     unsigned short htime;	/* time of call, high word */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
-} scallout;
+};
 
 static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
 
-typedef struct {
+struct tscallout {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
-} tscallout;
+};
 
 static char tco_layout[] = "isu[ccui][ccui][ccui][ccui]";
 
-typedef struct {
+struct calloutso {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     osvalue val[4];		/* function name, 3 direct arguments */
-} calloutso;
+};
 
 static char cso_layout[] = "isu[cui][cui][cui][cui]";
 
-typedef struct {
+struct calloutos {
     Uint time;			/* time of call */
     uindex nargs;		/* number of arguments */
     osvalue val[4];		/* function name, 3 direct arguments */
-} calloutos;
+};
 
 static char cos_layout[] = "iu[cui][cui][cui][cui]";
 
-typedef struct {
+struct socallout {
     Uint time;			/* time of call */
     uindex nargs;		/* number of arguments */
     oosvalue val[4];		/* function name, 3 direct arguments */
-} socallout;
+};
 
 static char soc_layout[] = "iu[sui][sui][sui][sui]";
 
-typedef struct {
+struct oscallout {
     Uint time;			/* time of call */
     unsigned short nargs;	/* number of arguments */
     oosvalue val[4];		/* function name, 3 direct arguments */
-} oscallout;
+};
 
 static char osc_layout[] = "is[sui][sui][sui][sui]";
 
-typedef struct {
+struct savedata {
     Uint narr;				/* # of arrays */
     Uint nstr;				/* # of strings */
     Uint arrsize;			/* # of array elements */
@@ -293,7 +293,7 @@ typedef struct {
     char *stext;			/* save string elements */
     bool counting;			/* currently counting */
     Array alist;			/* linked list sentinel */
-} savedata;
+};
 
 static Control *chead, *ctail;		/* list of control blocks */
 static Dataspace *dhead, *dtail;	/* list of dataspace blocks */
@@ -476,13 +476,13 @@ static Dataspace *d_alloc_dataspace(Object *obj)
     data->base.alocal.state = AR_CHANGED;
     data->base.arrays = (arrref *) NULL;
     data->base.strings = (strref *) NULL;
-    data->base.coptab = (struct _coptable_ *) NULL;
+    data->base.coptab = (struct coptable *) NULL;
     data->base.prev = (Dataplane *) NULL;
     data->base.plist = (Dataplane *) NULL;
     data->plane = &data->base;
 
     /* parse_string data */
-    data->parser = (struct _parser_ *) NULL;
+    data->parser = (struct parser *) NULL;
 
     return data;
 }
@@ -1944,9 +1944,9 @@ static void d_free_values(Dataspace *data)
     Uint i;
 
     /* free parse_string data */
-    if (data->parser != (struct _parser_ *) NULL) {
+    if (data->parser != (struct parser *) NULL) {
 	ps_del(data->parser);
-	data->parser = (struct _parser_ *) NULL;
+	data->parser = (struct parser *) NULL;
     }
 
     /* free variables */
@@ -2031,7 +2031,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
     sdataspace header;
     Uint n;
 
-    if (data->parser != (struct _parser_ *) NULL &&
+    if (data->parser != (struct parser *) NULL &&
 	!(OBJ(data->oindex)->flags & O_SPECIAL)) {
 	ps_save(data->parser);
     }

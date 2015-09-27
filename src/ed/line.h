@@ -27,14 +27,14 @@
  */
 typedef Int block;
 
-typedef struct _btbuf_ {
+struct btbuf {
     long offset;			/* offset in tmpfile */
-    struct _btbuf_ *prev;		/* prev in linked list */
-    struct _btbuf_ *next;		/* next in linked list */
+    btbuf *prev;			/* prev in linked list */
+    btbuf *next;			/* next in linked list */
     char *buf;				/* buffer with blocks and text */
-} btbuf;
+};
 
-typedef struct {
+struct linebuf {
     char *file;				/* tmpfile name */
     int fd;				/* tmpfile fd */
     char *buf;				/* current low-level buffer */
@@ -44,7 +44,7 @@ typedef struct {
     bool reverse;			/* for bk_put() */
     btbuf *wb;				/* write buffer */
     btbuf bt[NR_EDBUFS];		/* read & write buffers */
-} linebuf;
+};
 
 extern linebuf *lb_new	  (linebuf*, char*);
 extern void	lb_del	  (linebuf*);

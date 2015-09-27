@@ -41,13 +41,13 @@
 # define TOK_TOOBIGSTR 12	/* string constant too long */
 # define TOK_TOOBIGSYM 13	/* symbol too long */
 
-typedef struct {
+struct rgxnode {
     unsigned short type;	/* node type */
     unsigned short left;	/* left child node or other info */
     unsigned short right;	/* right child node or other info */
     char offset;		/* high byte of offset */
     char len;			/* length */
-} rgxnode;
+};
 
 # define RGX_CHAR	0	/* single char */
 # define RGX_CONCAT	1	/* concatenation */
@@ -453,12 +453,12 @@ static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *bufl
 }
 
 
-typedef struct _rulesym_ {
-    struct _rule_ *rule;	/* symbol */
-    struct _rulesym_ *next;	/* next in rule */
-} rulesym;
+struct rulesym {
+    struct rule *rule;		/* symbol */
+    rulesym *next;		/* next in rule */
+};
 
-typedef struct _rule_ {
+struct rule {
     hte chain;			/* hash table chain */
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
@@ -469,24 +469,24 @@ typedef struct _rule_ {
 	rulesym *syms;		/* linked list of rule elements */
     } u;
     String *func;		/* optional LPC function */
-    struct _rule_ *alt, **last;	/* first and last in alternatives list */
-    struct _rule_ *next;	/* next in linked list */
-} rule;
+    rule *alt, **last;		/* first and last in alternatives list */
+    rule *next;			/* next in linked list */
+};
 
 # define RSCHUNKSZ	64
 # define RLCHUNKSZ	32
 
-typedef struct _rschunk_ {
+struct rschunk {
     int chunksz;		/* current chunk size */
-    struct _rschunk_ *next;	/* next in list */
+    rschunk *next;		/* next in list */
     rulesym rs[RSCHUNKSZ];	/* rulesym chunk */
-} rschunk;
+};
 
-typedef struct _rlchunk_ {
+struct rlchunk {
     int chunksz;		/* current chunk size */
-    struct _rlchunk_ *next;	/* next in list */
+    rlchunk *next;		/* next in list */
     rule rl[RLCHUNKSZ];		/* rule chunk */
-} rlchunk;
+};
 
 # define RULE_UNKNOWN	0	/* unknown rule symbol */
 # define RULE_REGEXP	1	/* regular expression rule */

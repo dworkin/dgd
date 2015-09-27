@@ -41,7 +41,7 @@ Array *pc_list(Dataspace *data)
 }
 
 
-typedef struct {
+struct dump_header {
     uindex nprecomps;		/* # precompiled objects */
     Uint ninherits;		/* total # inherits */
     Uint imapsz;		/* total imap size */
@@ -50,11 +50,11 @@ typedef struct {
     Uint nfuncdefs;		/* total # funcdefs */
     Uint nvardefs;		/* total # vardefs */
     Uint nfuncalls;		/* total # function calls */
-} dump_header;
+};
 
 static char dh_layout[] = "uiiiiiii";
 
-typedef struct {
+struct odump_header {
     uindex nprecomps;		/* # precompiled objects */
     Uint ninherits;		/* total # inherits */
     Uint nstrings;		/* total # strings */
@@ -62,7 +62,7 @@ typedef struct {
     Uint nfuncdefs;		/* total # funcdefs */
     Uint nvardefs;		/* total # vardefs */
     Uint nfuncalls;		/* total # function calls */
-} odump_header;
+};
 
 static char odh_layout[] = "uiiiiii";
 

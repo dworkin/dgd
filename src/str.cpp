@@ -26,16 +26,16 @@
 
 # define STR_CHUNK	128
 
-typedef struct _strh_ {
+struct strh {
     hte chain;			/* hash table chain */
     String *str;		/* string entry */
     Uint index;			/* building index */
-} strh;
+};
 
-typedef struct _strhchunk_ {
-    struct _strhchunk_ *next;	/* next in list */
+struct strhchunk {
+    strhchunk *next;		/* next in list */
     strh sh[STR_CHUNK];		/* chunk of strh entries */
-} strhchunk;
+};
 
 static hashtab *sht;		/* string merge table */
 static strhchunk *shlist;	/* list of all strh chunks */

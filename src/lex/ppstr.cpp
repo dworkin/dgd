@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,10 +26,10 @@
 
 # define SCHUNKSZ	8
 
-typedef struct _schunk_ {
-    struct _schunk_ *next;	/* next in list */
+struct schunk {
+    schunk *next;		/* next in list */
     str s[SCHUNKSZ];		/* chunk of pp strings */
-} schunk;
+};
 
 static schunk *slist;		/* list of pps string chunks */
 static int schunksz;		/* size of current chunk */

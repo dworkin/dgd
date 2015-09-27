@@ -19,14 +19,14 @@
 
 # include "host.h"
 
-typedef struct _string_ String;
-typedef struct _array_ Array;
-typedef struct _object_ Object;
-typedef struct _value_ Value;
-typedef struct _control_ Control;
-typedef struct _dataplane_ Dataplane;
-typedef struct _dataspace_ Dataspace;
-typedef struct _frame_ Frame;
+struct String;
+struct Array;
+struct Object;
+struct Value;
+struct Control;
+struct Dataplane;
+struct Dataspace;
+struct Frame;
 
 # include "config.h"
 # include "alloc.h"

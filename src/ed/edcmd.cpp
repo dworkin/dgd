@@ -740,12 +740,12 @@ int cb_vglobal(cmdbuf *cb)
 }
 
 
-typedef struct {
+struct cmd {
     char flags;			/* type of command */
     char chr;			/* first char of command */
     const char *cmd;		/* full command string */
     int (*ftn)(cmdbuf*);	/* command function */
-} cmd;
+};
 
 # define CM_LNMASK	0x03
 # define CM_LNNONE	0x00	/* range checking in function */

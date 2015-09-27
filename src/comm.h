@@ -21,7 +21,7 @@
 # define  P_UDP      17
 # define  P_TELNET   1
 
-typedef struct _connection_ connection;
+struct connection;
 
 extern bool	   conn_init	 (int, char**, char**, unsigned short*,
 				    unsigned short*, int, int);

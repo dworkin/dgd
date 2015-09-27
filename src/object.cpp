@@ -26,30 +26,30 @@
 # include "interpret.h"
 # include "data.h"
 
-typedef struct _objplane_ objplane;
+struct objplane;
 
-typedef struct _objpatch_ {
+struct objpatch {
     objplane *plane;			/* plane that patch is on */
-    struct _objpatch_ *prev;		/* previous patch */
-    struct _objpatch_ *next;		/* next in linked list */
+    objpatch *prev;			/* previous patch */
+    objpatch *next;			/* next in linked list */
     Object obj;				/* new object value */
-} objpatch;
+};
 
 # define OPCHUNKSZ		32
 
-typedef struct _opchunk_ {
-    struct _opchunk_ *next;		/* next in linked list */
+struct opchunk {
+    opchunk *next;			/* next in linked list */
     objpatch op[OPCHUNKSZ];		/* object patches */
-} opchunk;
+};
 
-typedef struct {
+struct optable {
     opchunk *chunk;			/* object patch chunk */
     unsigned short chunksz;		/* size of object patch chunk */
     objpatch *flist;			/* free list of object patches */
     objpatch *op[OBJPATCHHTABSZ];	/* hash table of object patches */
-} optable;
+};
 
-struct _objplane_ {
+struct objplane {
     hashtab *htab;		/* object name hash table */
     optable *optab;		/* object patch table */
     uintptr_t clean;		/* list of objects to clean */
@@ -60,7 +60,7 @@ struct _objplane_ {
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
     bool swap, dump, incr, stop, boot; /* state vars */
-    struct _objplane_ *prev;	/* previous object plane */
+    objplane *prev;		/* previous object plane */
 };
 
 Object *otable;			/* object table */
@@ -1224,22 +1224,22 @@ uindex o_dobjects()
 }
 
 
-typedef struct {
+struct dump_header {
     uindex free;	/* free object list */
     uindex nobjects;	/* # objects */
     uindex nfreeobjs;	/* # free objects */
     Uint onamelen;	/* length of all object names */
-} dump_header;
+};
 
 static char dh_layout[] = "uuui";
 
-typedef struct {
+struct map_header {
     uindex nctrl;	/* objects left to copy */
     uindex ndata;
     uindex cobject;	/* object to copy */
     uindex dobject;
     Uint count;		/* object count */
-} map_header;
+};
 
 static char mh_layout[] = "uuuui";
 

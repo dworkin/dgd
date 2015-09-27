@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct _node_ {
+struct node {
     unsigned char type;		/* type of node */
     char flags;			/* bitflags */
     unsigned short mod;		/* modifier */
@@ -28,14 +28,14 @@ typedef struct _node_ {
 	unsigned short fhigh;	/* high word of float */
 	String *string;		/* string value */
 	char *ptr;		/* character pointer */
-	struct _node_ *left;	/* left child */
+	node *left;		/* left child */
     } l;
     union {
 	Int number;		/* numeric value */
 	Uint flow;		/* low longword of float */
-	struct _node_ *right;	/* right child */
+	node *right;		/* right child */
     } r;
-} node;
+};
 
 # define NFLT_GET(n, f)	((f).high = (n)->l.fhigh, (f).low = (n)->r.flow)
 # define NFLT_PUT(n, f)	((n)->l.fhigh = (f).high, (n)->r.flow = (f).low)

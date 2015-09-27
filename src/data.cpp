@@ -33,37 +33,37 @@
 # define COP_REMOVE	1	/* remove callout patch */
 # define COP_REPLACE	2	/* replace callout patch */
 
-typedef struct _copatch_ {
+struct copatch {
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
     Dataplane *plane;		/* dataplane */
     Uint time;			/* start time */
     unsigned short mtime;	/* start time millisec component */
     uindex *queue;		/* callout queue */
-    struct _copatch_ *next;	/* next in linked list */
+    copatch *next;		/* next in linked list */
     dcallout aco;		/* added callout */
     dcallout rco;		/* removed callout */
-} copatch;
+};
 
 # define COPCHUNKSZ	32
 
-typedef struct _copchunk_ {
-    struct _copchunk_ *next;	/* next in linked list */
+struct copchunk {
+    copchunk *next;		/* next in linked list */
     copatch cop[COPCHUNKSZ];	/* callout patches */
-} copchunk;
+};
 
-typedef struct _coptable_ {
+struct coptable {
     copchunk *chunk;			/* callout patch chunk */
     unsigned short chunksz;		/* size of callout patch chunk */
     copatch *flist;			/* free list of callout patches */
     copatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
-} coptable;
+};
 
-typedef struct {
+struct arrimport {
     Array **itab;			/* imported array replacement table */
     Uint itabsz;			/* size of table */
     Uint narr;				/* # of arrays */
-} arrimport;
+};
 
 static Dataplane *plist;		/* list of dataplanes */
 static uindex ncallout;			/* # callouts added */
@@ -1077,12 +1077,12 @@ void d_wipe_extravar(Dataspace *data)
 {
     d_assign_var(data, d_get_variable(data, data->nvariables - 1), &nil_value);
 
-    if (data->parser != (struct _parser_ *) NULL) {
+    if (data->parser != (struct parser *) NULL) {
 	/*
 	 * get rid of the parser, too
 	 */
 	ps_del(data->parser);
-	data->parser = (struct _parser_ *) NULL;
+	data->parser = (struct parser *) NULL;
     }
 }
 
@@ -1750,7 +1750,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 		     */
 		    imp->narr++;
 
-		    if (a->hashed != (struct _maphash_ *) NULL) {
+		    if (a->hashed != (struct maphash *) NULL) {
 			map_rmhash(a);
 		    }
 
@@ -1822,7 +1822,7 @@ static void d_import(arrimport *imp, Dataspace *data, Value *val,
 		 * not previously encountered mapping or array
 		 */
 		imp->narr++;
-		if (a->hashed != (struct _maphash_ *) NULL) {
+		if (a->hashed != (struct maphash *) NULL) {
 		    map_rmhash(a);
 		    d_import(imp, data, a->elts, a->size);
 		} else if (a->elts != (Value *) NULL) {
@@ -1863,7 +1863,7 @@ void d_export()
 		    for (n = data->narrays, a = data->base.arrays; n > 0;
 			 --n, a++) {
 			if (a->arr != (Array *) NULL) {
-			    if (a->arr->hashed != (struct _maphash_ *) NULL) {
+			    if (a->arr->hashed != (struct maphash *) NULL) {
 				/* mapping */
 				map_rmhash(a->arr);
 				d_import(&imp, data, a->arr->elts,

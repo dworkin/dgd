@@ -31,18 +31,18 @@
 
 # define ICHUNKSZ	8
 
-typedef struct _ifstate_ {
+struct ifstate {
     bool active;		/* is this ifstate active? */
     bool skipping;		/* skipping this part? */
     bool expect_else;		/* expect #else or #endif? */
     char level;			/* include level */
-    struct _ifstate_ *prev;	/* previous ifstate */
-} ifstate;
+    ifstate *prev;		/* previous ifstate */
+};
 
-typedef struct _ichunk_ {
-    struct _ichunk_ *next;	/* next in list */
+struct ichunk {
+    ichunk *next;		/* next in list */
     ifstate i[ICHUNKSZ];	/* chunk of ifstates */
-} ichunk;
+};
 
 static char **idirs;		/* include directory array */
 static char pri[NR_TOKENS + 1];	/* operator priority table */

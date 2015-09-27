@@ -19,50 +19,48 @@
 
 # include "swap.h"
 
-typedef struct _svalue_ svalue;
-
-typedef struct {
+struct dinherit {
     uindex oindex;		/* inherited object */
     uindex progoffset;		/* program offset */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset */
     bool priv;			/* privately inherited? */
-} dinherit;
+};
 
-typedef struct {
+struct dstrconst {
     Uint index;			/* index in control block */
     ssizet len;			/* string length */
-} dstrconst;
+};
 
 # define DSTR_LAYOUT	"it"
 
-typedef struct _dfuncdef_ {
+struct dfuncdef {
     char sclass;		/* function class */
     char inherit;		/* function name inherit index */
     unsigned short index;	/* function name index */
     Uint offset;		/* offset in program text */
-} dfuncdef;
+};
 
 # define DF_LAYOUT	"ccsi"
 
-typedef struct {
+struct dvardef {
     char sclass;		/* variable class */
     char type;			/* variable type */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
-} dvardef;
+};
 
 # define DV_LAYOUT	"cccs"
 
-typedef struct {
+struct dsymbol {
     char inherit;		/* function object index */
     char index;			/* function index */
     unsigned short next;	/* next in hash table */
-} dsymbol;
+};
 
 # define DSYM_LAYOUT	"ccs"
 
-struct _control_ {
+struct Control {
     Control *prev, *next;
     uindex ndata;		/* # of data blocks using this control block */
 
@@ -125,21 +123,21 @@ struct _control_ {
 # define NEW_POINTER		((unsigned short) -3)
 # define NEW_VAR(x)		((x) >= NEW_POINTER)
 
-typedef struct _strref_ {
+struct strref {
     String *str;		/* string value */
     Dataspace *data;		/* dataspace this string is in */
     Uint ref;			/* # of refs */
-} strref;
+};
 
-typedef struct _arrref_ {
+struct arrref {
     Array *arr;			/* array value */
     Dataplane *plane;		/* value plane this array is in */
     Dataspace *data;		/* dataspace this array is in */
     short state;		/* state of mapping */
     Uint ref;			/* # of refs */
-} arrref;
+};
 
-struct _value_ {
+struct Value {
     char type;			/* value type */
     bool modified;		/* dirty bit */
     uindex oindex;		/* index in object table */
@@ -152,17 +150,17 @@ struct _value_ {
     } u;
 };
 
-typedef struct {
+struct dcallout {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     Value val[4];		/* function name, 3 direct arguments */
-} dcallout;
+};
 
 # define co_prev	time
 # define co_next	nargs
 
-struct _dataplane_ {
+struct Dataplane {
     Int level;			/* dataplane level */
 
     short flags;		/* modification flags */
@@ -175,13 +173,13 @@ struct _dataplane_ {
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
     strref *strings;		/* i/o? string constant table */
-    struct _coptable_ *coptab;	/* callout patch table */
+    struct coptable *coptab;	/* callout patch table */
 
     Dataplane *prev;		/* previous in per-dataspace linked list */
     Dataplane *plist;		/* next in per-level linked list */
 };
 
-struct _dataspace_ {
+struct Dataspace {
     Dataspace *prev, *next;	/* swap list */
     Dataspace *gcprev, *gcnext;	/* garbage collection list */
 
@@ -197,32 +195,32 @@ struct _dataspace_ {
 
     unsigned short nvariables;	/* o # variables */
     Value *variables;		/* i/o variables */
-    struct _svalue_ *svariables;/* o svariables */
+    struct svalue *svariables;	/* o svariables */
     Uint varoffset;		/* o offset of variables in data space */
 
     Uint narrays;		/* i/o # arrays */
     Uint eltsize;		/* o total size of array elements */
-    struct _sarray_ *sarrays;	/* o sarrays */
-    struct _svalue_ *selts;	/* o sarray elements */
+    struct sarray *sarrays;	/* o sarrays */
+    struct svalue *selts;	/* o sarray elements */
     Array alist;		/* array linked list sentinel */
     Uint arroffset;		/* o offset of array table in data space */
 
     Uint nstrings;		/* i/o # strings */
     Uint strsize;		/* o total size of string text */
-    struct _sstring_ *sstrings;	/* o sstrings */
+    struct sstring *sstrings;	/* o sstrings */
     char *stext;		/* o sstrings text */
     Uint stroffset;		/* o offset of string table */
 
     uindex ncallouts;		/* # callouts */
     uindex fcallouts;		/* free callout list */
     dcallout *callouts;		/* callouts */
-    struct _scallout_ *scallouts; /* o scallouts */
+    struct scallout *scallouts;	/* o scallouts */
     Uint cooffset;		/* offset of callout table */
 
     Dataplane base;		/* basic value plane */
     Dataplane *plane;		/* current value plane */
 
-    struct _parser_ *parser;	/* parse_string data */
+    struct parser *parser;	/* parse_string data */
 };
 
 # define THISPLANE(a)		((a)->plane == (a)->data->plane)

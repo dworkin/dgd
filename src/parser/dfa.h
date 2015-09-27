@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct _dfa_ dfa;
+struct dfa;
 
 # define DFA_EOS	-1
 # define DFA_REJECT	-2

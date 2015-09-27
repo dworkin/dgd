@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,10 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct {
+struct xfloat {
     unsigned short high;	/* high word of float */
     Uint low;			/* low longword of float */
-} xfloat;			/* 1 sign, 11 exponent, 36 mantissa */
+};				/* 1 sign, 11 exponent, 36 mantissa */
 
 # define FLT_ISZERO(h, l)	((h) == 0)
 # define FLT_ISNEG(h, l)	((h) & 0x8000)

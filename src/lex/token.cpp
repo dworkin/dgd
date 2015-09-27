@@ -33,7 +33,7 @@
 
 # define TCHUNKSZ	8
 
-typedef struct _tbuf_ {
+struct tbuf {
     String **strs;		/* input buffer array */
     int nstr;			/* number of input buffers */
     char *buffer;		/* token buffer */
@@ -48,13 +48,13 @@ typedef struct _tbuf_ {
 	char *filename;		/* file name */
 	macro *mc;		/* macro this buffer is an expansion of */
     } u;
-    struct _tbuf_ *prev;	/* previous token buffer */
-} tbuf;
+    tbuf *prev;			/* previous token buffer */
+};
 
-typedef struct _tchunk_ {
-    struct _tchunk_ *next;	/* next in list */
+struct tchunk {
+    tchunk *next;		/* next in list */
     tbuf t[TCHUNKSZ];		/* chunk of token buffers */
-} tchunk;
+};
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */

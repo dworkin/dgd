@@ -29,7 +29,7 @@
 # include "srp.h"
 # include "parse.h"
 
-typedef struct _pnode_ {
+struct pnode {
     short symbol;		/* node symbol */
     unsigned short state;	/* state reached after this symbol */
     Uint len;			/* token/reduction length or subtree size */
@@ -38,18 +38,18 @@ typedef struct _pnode_ {
 	String *str;		/* token string */
 	Array *arr;		/* rule array */
     } u;
-    struct _pnode_ *next;	/* next in linked list */
-    struct _pnode_ *list;	/* list of nodes for reduction */
-    struct _pnode_ *trav;	/* traverse list */
-} pnode;
+    pnode *next;		/* next in linked list */
+    pnode *list;		/* list of nodes for reduction */
+    pnode *trav;		/* traverse list */
+};
 
 # define PNCHUNKSZ	256
 
-typedef struct _pnchunk_ {
+struct pnchunk {
     int chunksz;		/* size of this chunk */
-    struct _pnchunk_ *next;	/* next in linked list */
+    pnchunk *next;		/* next in linked list */
     pnode pn[PNCHUNKSZ];	/* chunk of pnodes */
-} pnchunk;
+};
 
 /*
  * NAME:	pnode->new()
@@ -94,26 +94,26 @@ static void pn_clear(pnchunk *c)
     }
 }
 
-typedef struct _snode_ {
+struct snode {
     pnode *pn;			/* pnode */
-    struct _snode_ *next;	/* next to be treated */
-    struct _snode_ *slist;	/* per-state list */
-} snode;
+    snode *next;		/* next to be treated */
+    snode *slist;		/* per-state list */
+};
 
 # define SNCHUNKSZ	32
 
-typedef struct _snchunk_ {
+struct snchunk {
     int chunksz;		/* size of this chunk */
-    struct _snchunk_ *next;	/* next in linked list */
+    snchunk *next;		/* next in linked list */
     snode sn[SNCHUNKSZ];	/* chunk of snodes */
-} snchunk;
+};
 
-typedef struct {
+struct snlist {
     snchunk *snc;		/* snode chunk */
     snode *first;		/* first node in list */
     snode *last;		/* last node in list */
     snode *free;		/* first node in free list */
-} snlist;
+};
 
 /*
  * NAME:	snode->new()
@@ -202,11 +202,11 @@ static void sn_clear(snlist *list)
 
 # define STRCHUNKSZ	256
 
-typedef struct _strchunk_ {
+struct strchunk {
     int chunksz;		/* size of chunk */
-    struct _strchunk_ *next;	/* next in linked list */
+    strchunk *next;		/* next in linked list */
     String *str[STRCHUNKSZ];	/* strings */
-} strchunk;
+};
 
 /*
  * NAME:	strchunk->add()
@@ -248,11 +248,11 @@ static void sc_clean(strchunk *c)
 
 # define ARRCHUNKSZ	256
 
-typedef struct _arrchunk_ {
+struct arrchunk {
     int chunksz;		/* size of chunk */
-    struct _arrchunk_ *next;	/* next in linked list */
+    arrchunk *next;		/* next in linked list */
     Array *arr[ARRCHUNKSZ];	/* arrays */
-} arrchunk;
+};
 
 /*
  * NAME:	arrchunk->add()
@@ -292,7 +292,7 @@ static void ac_clean(arrchunk *c)
 }
 
 
-struct _parser_ {
+struct parser {
     Frame *frame;		/* interpreter stack frame */
     Dataspace *data;		/* dataspace for current object */
 

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct _parser_ parser;
+struct parser;
 
 extern void	ps_del		(parser*);
 extern Array   *ps_parse_string	(Frame*, String*, String*, Int);

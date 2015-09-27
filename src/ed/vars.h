@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-typedef struct {
+struct Vars {
     const char *name;	/* long variable name */
     const char *sname;	/* short variable name */
     Int val;		/* value */
-} Vars;
+};
 
 # define IGNORECASE(v)	(v[0].val)
 # define SHIFTWIDTH(v)	(v[1].val)

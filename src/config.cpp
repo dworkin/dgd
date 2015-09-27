@@ -41,7 +41,7 @@
 # include "csupport.h"
 # include "table.h"
 
-typedef struct {
+struct config {
     const char *name;	/* name of the option */
     short type;		/* option type */
     bool resolv;	/* TRUE if path name must be resolved */
@@ -51,7 +51,7 @@ typedef struct {
 	long num;	/* numeric value */
 	char *str;	/* string value */
     } u;
-} config;
+};
 
 static config conf[] = {
 # define ARRAY_SIZE	0
@@ -126,11 +126,11 @@ static config conf[] = {
 };
 
 
-typedef struct { char fill; char c;	} alignc;
-typedef struct { char fill; short s;	} aligns;
-typedef struct { char fill; Int i;	} aligni;
-typedef struct { char fill; char *p;	} alignp;
-typedef struct { char c;		} alignz;
+struct alignc { char fill; char c;	};
+struct aligns { char fill; short s;	};
+struct aligni { char fill; Int i;	};
+struct alignp { char fill; char *p;	};
+struct alignz { char c;			};
 
 # define FORMAT_VERSION	14
 

@@ -417,11 +417,11 @@ void kf_reclaim()
 }
 
 
-typedef struct {
+struct dump_header {
     short nbuiltin;	/* # builtin kfuns */
     short nkfun;	/* # other kfuns */
     short kfnamelen;	/* length of all kfun names */
-} dump_header;
+};
 
 static char dh_layout[] = "sss";
 
