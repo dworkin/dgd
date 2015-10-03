@@ -1351,7 +1351,7 @@ int kf_open_port(Frame *f, int nargs, kfunc *kf)
     unsigned short port;
     unsigned char protocol;
     char *protoname;
-    object *obj;
+    Object *obj;
 
     protocol = 0;
 
