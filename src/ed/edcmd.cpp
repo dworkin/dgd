@@ -740,7 +740,7 @@ int cb_vglobal(cmdbuf *cb)
 }
 
 
-struct cmd {
+struct Cmd {
     char flags;			/* type of command */
     char chr;			/* first char of command */
     const char *cmd;		/* full command string */
@@ -759,7 +759,7 @@ struct cmd {
 # define CM_ADDR	0x20	/* address argument */
 # define CM_COUNT	0x40	/* count argument */
 
-static cmd ed_commands[] = {
+static Cmd ed_commands[] = {
     { CM_LN0,				'a', "append",	cb_append },
 # define CM_ASSIGN 1
     { CM_LNNONE,			'=', (char *) NULL,
@@ -833,7 +833,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 		addblock(cb, command);
 	    }
 	} else {
-	    cmd *cm;
+	    Cmd *cm;
 	    const char *p;
 	    int ltype, ret;
 
@@ -858,7 +858,7 @@ bool cb_command(cmdbuf *cb, const char *command)
 		/* parse [range] */
 		cb_range(cb);
 		p = cb->cmd = skipst(cb->cmd);
-		cm = (cmd *) NULL;
+		cm = (Cmd *) NULL;
 
 		/* parse [command] */
 		if (*p == 'k') {
@@ -911,13 +911,13 @@ bool cb_command(cmdbuf *cb, const char *command)
 			    break;
 			}
 			if (++cm == &ed_commands[NR_CMD]) {
-			    cm = (cmd *) NULL;
+			    cm = (Cmd *) NULL;
 			    break;
 			}
 		    }
 		}
 
-		if (cm == (cmd *) NULL) {
+		if (cm == (Cmd *) NULL) {
 		    error("No such command");
 		}
 
