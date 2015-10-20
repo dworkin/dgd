@@ -479,25 +479,6 @@ static void cg_stmt (node*);
 static int nparams;		/* number of parameters */
 
 /*
- * NAME:	codegen->int()
- * DESCRIPTION:	generate code for an integer
- */
-static void cg_int(Int l)
-{
-    if (l >= -128 && l <= 127) {
-	code_instr(I_PUSH_INT1, 0);
-	code_byte(l);
-    } else if (l >= -32768 && l <= 32767) {
-	code_instr(I_PUSH_INT2, 0);
-	code_word(l);
-    } else {
-	code_instr(I_PUSH_INT4, 0);
-	code_word(l >> 16);
-	code_word(l);
-    }
-}
-
-/*
  * NAME:	codegen->type()
  * DESCRIPTION:	return the type of a node
  */
