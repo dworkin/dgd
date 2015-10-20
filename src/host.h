@@ -22,7 +22,7 @@
 typedef int Int;
 typedef unsigned int Uint;
 
-# include <stdint.h>
+# include <cstdint>
 # include <limits.h>
 # include <sys\types.h>
 # include <malloc.h>
@@ -47,7 +47,7 @@ typedef unsigned int Uint;
 # include "host\telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
@@ -139,7 +139,7 @@ typedef int (__stdcall _voidf_)();
 typedef int Int;
 typedef unsigned int Uint;
 
-# include <stdint.h>
+# include <cstdint>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -157,7 +157,7 @@ typedef unsigned int Uint;
 # include "host/telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
@@ -177,7 +177,7 @@ typedef unsigned int Uint;
 typedef int Int;
 typedef unsigned int Uint;
 
-# include <stdint.h>
+# include <cstdint>
 # include <limits.h>
 # include <sys/types.h>
 # include <unistd.h>
@@ -198,7 +198,7 @@ typedef unsigned int Uint;
 # include "host/telnet.h"
 # endif
 
-# include <stdlib.h>
+# include <cstdlib>
 # include <string.h>
 # include <setjmp.h>
 # include <stdio.h>
