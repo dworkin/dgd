@@ -49,7 +49,6 @@ struct cmdbuf {
     editbuf *edbuf;		/* edit buffer */
     rxbuf *regexp;		/* current regular expression */
     Vars *vars;			/* variables */
-    jmp_buf env;		/* environment to jump back to after search */
     bool reverse;		/* reverse search */
     bool ignorecase;		/* ignore case */
 

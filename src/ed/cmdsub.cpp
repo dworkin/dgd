@@ -48,7 +48,7 @@ extern void	   endblock	(cmdbuf*);
 static void find(const char *text)
 {
     if (rx_exec(ccb->regexp, text, 0, ccb->ignorecase) > 0) {
-	longjmp(ccb->env, TRUE);
+	throw "found";
     }
     ccb->lineno++;
 }
@@ -60,16 +60,16 @@ static void find(const char *text)
  */
 Int cb_search(cmdbuf *cb, Int first, Int last, int reverse)
 {
-    if (setjmp(cb->env)) {
+    try {
+	cb->lineno = 0;
+	cb->ignorecase = IGNORECASE(cb->vars);
+	eb_range(cb->edbuf, first, last, find, reverse);
+	/* not found */
+	return 0;
+    } catch (...) {
 	/* found */
 	return (reverse) ? last - cb->lineno : first + cb->lineno;
     }
-
-    cb->lineno = 0;
-    cb->ignorecase = IGNORECASE(cb->vars);
-    eb_range(cb->edbuf, first, last, find, reverse);
-    /* not found */
-    return 0;
 }
 
 

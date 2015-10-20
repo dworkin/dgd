@@ -633,7 +633,7 @@ static void find(const char *text)
     cb->glob_next++;
     cb->glob_size--;
     if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != cb->reverse) {
-	longjmp(cb->env, TRUE);
+	throw "found";
     }
 }
 
@@ -693,14 +693,14 @@ int cb_global(cmdbuf *cb)
 	cb->glob_size = cb->last - cb->first + 1;
 
 	do {
-	    if (setjmp(cb->env)) {
-		/* found: do the commands */
-		cb->cthis = cb->glob_next - 1;
-		cb_command(cb, p);
-	    } else {
+	    try {
 		/* search */
 		eb_range(cb->edbuf, cb->glob_next,
 			 cb->glob_next + cb->glob_size - 1, find, FALSE);
+	    } catch (...) {
+		/* found: do the commands */
+		cb->cthis = cb->glob_next - 1;
+		cb_command(cb, p);
 	    }
 	} while (cb->glob_size > 0);
 
