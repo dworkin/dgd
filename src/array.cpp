@@ -528,13 +528,13 @@ void arr_commit(abchunk **ac, Dataplane *plane, int merge)
  */
 void arr_discard(abchunk **ac)
 {
-    abchunk *c, *n;
+    abchunk *c, *next;
     arrbak *ab;
     short i;
     Array *a;
     unsigned short j;
 
-    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = n) {
+    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = next) {
 	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
 	    a = ab->arr;
 	    d_discard_arr(a, ab->plane);
@@ -573,7 +573,7 @@ void arr_discard(abchunk **ac)
 	    arr_del(a);
 	}
 
-	n = c->next;
+	next = c->next;
 	FREE(c);
     }
 }
