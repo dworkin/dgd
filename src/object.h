@@ -20,8 +20,7 @@
 # include "hash.h"
 # include "swap.h"
 
-struct Object {
-    hte chain;			/* object name hash table */
+struct Object : public hte {
     char flags;			/* object status */
     eindex etabi;		/* index in external table */
     uindex cref;		/* # clone references (sometimes) */

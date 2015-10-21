@@ -1158,7 +1158,7 @@ int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
     if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
 	h->sclass == sclass && h->iindex < ctrl->ninherits) {
 	oindex = ctrl->inherits[h->iindex].oindex;
-	if (strcmp(OBJR(oindex)->chain.name, prog) == 0) {
+	if (strcmp(OBJR(oindex)->name, prog) == 0) {
 	    return (ctrl->inherits[h->iindex].priv) ? -1 : 1;	/* found it */
 	}
     }
@@ -1167,7 +1167,7 @@ int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
     for (i = ctrl->ninherits, inh = ctrl->inherits + i; i != 0; ) {
 	--i;
 	--inh;
-	if (strcmp(prog, OBJR(inh->oindex)->chain.name) == 0) {
+	if (strcmp(prog, OBJR(inh->oindex)->name) == 0) {
 	    /* found it; update hashtable */
 	    h->ocount = obj->count;
 	    h->coindex = f->p_ctrl->oindex;
@@ -2045,7 +2045,7 @@ const char *i_prev_program(Frame *f, int n)
 	--n;
     }
 
-    return OBJR(f->p_ctrl->oindex)->chain.name;
+    return OBJR(f->p_ctrl->oindex)->name;
 }
 
 /*
@@ -3850,7 +3850,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     }
 
     /* program name */
-    name = OBJR(f->p_ctrl->oindex)->chain.name;
+    name = OBJR(f->p_ctrl->oindex)->name;
     PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';

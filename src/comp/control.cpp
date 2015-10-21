@@ -654,7 +654,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	return TRUE;
     }
 
-    ohash = oh_new(obj->chain.name);
+    ohash = oh_new(obj->name);
     if (label != (String *) NULL) {
 	/*
 	 * use a label
@@ -671,8 +671,8 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	 */
 	ctrl = o_control(obj);
 	inh = ctrl->inherits;
-	if (ninherits != 0 && strcmp(OBJR(inh->oindex)->chain.name,
-				     inherits[0]->obj->chain.name) != 0) {
+	if (ninherits != 0 && strcmp(OBJR(inh->oindex)->name,
+				     inherits[0]->obj->name) != 0) {
 	    c_error("inherited different auto objects");
 	}
 
@@ -685,7 +685,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	    if (o->count == 0) {
 		Uint ocount;
 
-		if (strcmp(o->chain.name, from) == 0) {
+		if (strcmp(o->name, from) == 0) {
 		    /*
 		     * inheriting old instance of the same object
 		     */
@@ -715,7 +715,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	     */
 	    --inh;
 	    o = OBJR(inh->oindex);
-	    ohash = oh_new(o->chain.name);
+	    ohash = oh_new(o->name);
 	    if (ohash->index < 0) {
 		/*
 		 * inherit a new object
@@ -736,7 +736,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 		/*
 		 * inherited two different objects with same name
 		 */
-		c_error("inherited different instances of /%s", o->chain.name);
+		c_error("inherited different instances of /%s", o->name);
 		return TRUE;
 	    } else if (!inh->priv && ohash->priv > priv) {
 		/*
@@ -754,7 +754,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	    /*
 	     * add to the inherited array
 	     */
-	    ohash = oh_new(OBJR(inh->oindex)->chain.name);
+	    ohash = oh_new(OBJR(inh->oindex)->name);
 	    if (ohash->index < 0) {
 		ohash->index = ninherits;
 		inherits[ninherits++] = ohash;
@@ -770,7 +770,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	/*
 	 * inherited two objects with same name
 	 */
-	c_error("inherited different instances of /%s", obj->chain.name);
+	c_error("inherited different instances of /%s", obj->name);
     } else if (ohash->priv > priv) {
 	/*
 	 * previously inherited with greater privateness; process all
@@ -780,7 +780,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
 	    --inh;
 	    o = OBJR(inh->oindex);
-	    ohash = oh_new(o->chain.name);
+	    ohash = oh_new(o->name);
 	    if (!inh->priv && ohash->priv > priv) {
 		/*
 		 * add to function and variable table
@@ -858,7 +858,7 @@ static void ctrl_imap(Control *ctrl)
 	(--inh)->progoffset = imapsz;
 	ctrl2 = OBJR(inh->oindex)->ctrl;
 	for (i = 0; i < ctrl2->ninherits; i++) {
-	    ctrl->imap[imapsz++] = oh_new(OBJR(ctrl2->inherits[UCHAR(ctrl2->imap[i])].oindex)->chain.name)->index;
+	    ctrl->imap[imapsz++] = oh_new(OBJR(ctrl2->inherits[UCHAR(ctrl2->imap[i])].oindex)->name)->index;
 	}
 	for (j = ctrl->ninherits - n; --j > 0; ) {
 	    if (memcmp(ctrl->imap + inh->progoffset,
@@ -895,7 +895,7 @@ void ctrl_convert(Control *ctrl)
     imapsz = 0;
     for (n = 0, inh = ctrl->inherits; n < ctrl->ninherits; n++, inh++) {
 	obj = OBJR(inh->oindex);
-	ohash = oh_new(obj->chain.name);
+	ohash = oh_new(obj->name);
 	if (ohash->index < 0) {
 	    ohash->obj = obj;
 	    ohash->index = n;
@@ -1301,7 +1301,7 @@ char *ctrl_ifcall(String *str, const char *label, String **cfstr, long *call)
 		return (char *) NULL;
 	    }
 	}
-	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
+	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->name);
 	index = UCHAR(symb->index);
     } else {
 	vfh *h;
@@ -1730,7 +1730,7 @@ static void ctrl_mkfcalls()
 	 * object, and fill in the function call table segment for each object
 	 * once.
 	 */
-	ohash = oh_new(OBJR(inh->oindex)->chain.name);
+	ohash = oh_new(OBJR(inh->oindex)->name);
 	if (ohash->index == i) {
 	    char *ofc;
 	    dfuncdef *f;
@@ -1758,7 +1758,7 @@ static void ctrl_mkfcalls()
 		     * keep old call
 		     */
 		    if (j != 0) {
-			j = oh_new(obj->chain.name)->index;
+			j = oh_new(obj->name)->index;
 		    }
 		    *fc++ = j;
 		    *fc++ = ofc[1];
@@ -1834,7 +1834,7 @@ static void ctrl_mksymbs()
 	if (i == ninherits) {
 	    ctrl = newctrl;
 	} else if (!inh->priv &&
-		   oh_new(OBJR(inh->oindex)->chain.name)->index == i) {
+		   oh_new(OBJR(inh->oindex)->name)->index == i) {
 	    ctrl = OBJR(inh->oindex)->ctrl;
 	} else {
 	    continue;
@@ -2135,8 +2135,8 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 
 	j = octrl->ninherits;
 	for (inh2 = octrl->inherits; ; inh2++) {
-	    if (strcmp(OBJR(inh->oindex)->chain.name,
-		       OBJR(inh2->oindex)->chain.name) == 0) {
+	    if (strcmp(OBJR(inh->oindex)->name, OBJR(inh2->oindex)->name) == 0)
+	    {
 		/*
 		 * put var names from old control block in string merge table
 		 */
@@ -2285,10 +2285,10 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 		    String *str;
 		    unsigned short len;
 
-		    len = strlen(obj->chain.name);
+		    len = strlen(obj->name);
 		    str = str_new((char *) NULL, len + 1L);
 		    str->text[0] = '/';
-		    memcpy(str->text + 1, obj->chain.name, len);
+		    memcpy(str->text + 1, obj->name, len);
 		    PUT_STRVAL(v, str);
 		    PUT_ARRVAL(v + 1, arr_ext_new(data, (long) u->count));
 		    u->count = 0;

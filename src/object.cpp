@@ -224,8 +224,8 @@ static Object *o_oaccess(unsigned int index, int access)
 
 	/* create new patch on current plane */
 	o = op_new(oplane, oo, o, obj = &o->obj);
-	if (obj->chain.name != (char *) NULL && obj->count != 0) {
-	    *ht_lookup(oplane->htab, obj->chain.name, FALSE) = (hte *) &o->obj;
+	if (obj->name != (char *) NULL && obj->count != 0) {
+	    *ht_lookup(oplane->htab, obj->name, FALSE) = &o->obj;
 	}
 	return &o->obj;
     } else {
@@ -238,21 +238,20 @@ static Object *o_oaccess(unsigned int index, int access)
 	}
 	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
 	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index))->obj;
-	if (obj->chain.name != (char *) NULL) {
+	if (obj->name != (char *) NULL) {
 	    char *name;
 	    hte **h;
 
 	    /* copy object name to higher plane */
-	    strcpy(name = ALLOC(char, strlen(obj->chain.name) + 1),
-		   obj->chain.name);
-	    obj->chain.name = name;
+	    strcpy(name = ALLOC(char, strlen(obj->name) + 1), obj->name);
+	    obj->name = name;
 	    if (obj->count != 0) {
 		if (oplane->htab == (hashtab *) NULL) {
 		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
 		}
 		h = ht_lookup(oplane->htab, name, FALSE);
-		obj->chain.next = *h;
-		*h = (hte *) obj;
+		obj->next = *h;
+		*h = obj;
 	    }
 	}
 	return obj;
@@ -389,45 +388,44 @@ void o_commit_plane()
 		    /*
 		     * commit to base plane
 		     */
-		    if (op->obj.chain.name != (char *) NULL) {
+		    if (op->obj.name != (char *) NULL) {
 			hte **h;
 
-			if (obj->chain.name == (char *) NULL) {
+			if (obj->name == (char *) NULL) {
 			    char *name;
 
 			    /*
 			     * make object name static
 			     */
 			    m_static();
-			    name = ALLOC(char, strlen(op->obj.chain.name) + 1);
+			    name = ALLOC(char, strlen(op->obj.name) + 1);
 			    m_dynamic();
-			    strcpy(name, op->obj.chain.name);
-			    FREE(op->obj.chain.name);
-			    op->obj.chain.name = name;
+			    strcpy(name, op->obj.name);
+			    FREE(op->obj.name);
+			    op->obj.name = name;
 			    if (op->obj.count != 0) {
 				/* put name in static hash table */
 				h = ht_lookup(prev->htab, name, FALSE);
-				op->obj.chain.next = *h;
-				*h = (hte *) obj;
+				op->obj.next = *h;
+				*h = obj;
 			    }
 			} else {
 			    /*
 			     * same name
 			     */
-			    FREE(op->obj.chain.name);
-			    op->obj.chain.name = obj->chain.name;
+			    FREE(op->obj.name);
+			    op->obj.name = obj->name;
 			    if (op->obj.count != 0) {
 				/* keep this name */
-				op->obj.chain.next = obj->chain.next;
+				op->obj.next = obj->next;
 			    } else if (obj->count != 0) {
 				/* remove from hash table */
-				h = ht_lookup(prev->htab, obj->chain.name,
-					      FALSE);
-				if (*h != (hte *) obj) {
+				h = ht_lookup(prev->htab, obj->name, FALSE);
+				if (*h != obj) {
 				    /* new object was compiled also */
 				    h = &(*h)->next;
 				}
-				*h = obj->chain.next;
+				*h = obj->next;
 			    }
 			}
 		    }
@@ -450,11 +448,9 @@ void o_commit_plane()
 			/*
 			 * copy onto previous plane
 			 */
-			if (op->obj.chain.name != (char *) NULL &&
-			    op->obj.count != 0) {
+			if (op->obj.name != (char *) NULL && op->obj.count != 0) {
 			    /* move name to previous plane */
-			    *ht_lookup(oplane->htab, op->obj.chain.name, FALSE)
-								= (hte *) obj;
+			    *ht_lookup(oplane->htab, op->obj.name, FALSE) = obj;
 			}
 			*obj = op->obj;
 			op_del(oplane, o);
@@ -515,18 +511,18 @@ void o_discard_plane()
 		    obj = OBJ(op->obj.index);
 		}
 
-		if (op->obj.chain.name != (char *) NULL) {
-		    if (obj->chain.name == (char *) NULL ||
+		if (op->obj.name != (char *) NULL) {
+		    if (obj->name == (char *) NULL ||
 			op->prev == (objpatch *) NULL) {
 			/*
 			 * remove new name
 			 */
 			if (op->obj.count != 0) {
 			    /* remove from hash table */
-			    *ht_lookup(oplane->htab, op->obj.chain.name, FALSE)
-							= op->obj.chain.next;
+			    *ht_lookup(oplane->htab, op->obj.name, FALSE)
+								= op->obj.next;
 			}
-			FREE(op->obj.chain.name);
+			FREE(op->obj.name);
 		    } else {
 			hte **h;
 
@@ -534,16 +530,16 @@ void o_discard_plane()
 			    /*
 			     * move name to previous plane
 			     */
-			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
-			    obj->chain.next = op->obj.chain.next;
-			    *h = (hte *) obj;
+			    h = ht_lookup(oplane->htab, obj->name, FALSE);
+			    obj->next = op->obj.next;
+			    *h = obj;
 			} else if (obj->count != 0) {
 			    /*
 			     * put name back in hashtable
 			     */
-			    h = ht_lookup(oplane->htab, obj->chain.name, FALSE);
-			    obj->chain.next = *h;
-			    *h = (hte *) obj;
+			    h = ht_lookup(oplane->htab, obj->name, FALSE);
+			    obj->next = *h;
+			    *h = obj;
 			}
 		    }
 		}
@@ -554,7 +550,7 @@ void o_discard_plane()
 		     */
 		    if ((op->obj.flags & O_MASTER) &&
 			op->obj.ctrl != (Control *) NULL) {
-			op->obj.chain.next = (hte *) clist;
+			op->obj.next = clist;
 			clist = &op->obj;
 		    }
 		    if (op->obj.data != (Dataspace *) NULL) {
@@ -574,7 +570,7 @@ void o_discard_plane()
 	/* discard new control blocks */
 	while (clist != (Object *) NULL) {
 	    obj = clist;
-	    clist = (Object *) obj->chain.next;
+	    clist = (Object *) obj->next;
 	    d_del_control(obj->ctrl);
 	}
     }
@@ -616,15 +612,15 @@ Object *o_new(char *name, Control *ctrl)
     if (obase) {
 	m_static();
     }
-    o->chain.name = strcpy(ALLOC(char, strlen(name) + 1), name);
+    o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
     if (obase) {
 	m_dynamic();
     } else if (oplane->htab == (hashtab *) NULL) {
 	oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
     h = ht_lookup(oplane->htab, name, FALSE);
-    o->chain.next = *h;
-    *h = (hte *) o;
+    o->next = *h;
+    *h = o;
 
     o->flags = O_MASTER;
     o->cref = 0;
@@ -653,7 +649,7 @@ Object *o_clone(Object *master)
 
     /* allocate object */
     o = o_alloc();
-    o->chain.name = (char *) NULL;
+    o->name = (char *) NULL;
     o->flags = 0;
     o->count = ++oplane->ocount;
     o->update = master->update;
@@ -692,9 +688,9 @@ static void o_delete(Object *o, Frame *f)
     oplane->destruct = o->index;
 
     /* callback to the system */
-    PUSH_STRVAL(f, str_new(NULL, strlen(o->chain.name) + 1L));
+    PUSH_STRVAL(f, str_new(NULL, strlen(o->name) + 1L));
     f->sp->u.string->text[0] = '/';
-    strcpy(f->sp->u.string->text + 1, o->chain.name);
+    strcpy(f->sp->u.string->text + 1, o->name);
     PUSH_INTVAL(f, ctrl->compiled);
     PUSH_INTVAL(f, o->index);
     if (i_call_critical(f, "remove_program", 3, TRUE)) {
@@ -722,7 +718,7 @@ void o_upgrade(Object *obj, Control *ctrl, Frame *f)
 
     /* allocate upgrade object */
     tmpl = o_alloc();
-    tmpl->chain.name = (char *) NULL;
+    tmpl->name = (char *) NULL;
     tmpl->flags = O_MASTER;
     tmpl->count = 0;
     tmpl->update = obj->update;
@@ -735,7 +731,7 @@ void o_upgrade(Object *obj, Control *ctrl, Frame *f)
     }
 
     /* add to upgrades list */
-    tmpl->chain.next = (hte *) oplane->upgrade;
+    tmpl->next = (hte *) oplane->upgrade;
     oplane->upgrade = tmpl->index;
 
     /* mark as upgrading */
@@ -768,7 +764,7 @@ void o_upgraded(Object *tmpl, Object *onew)
 	onew->update = OBJ(onew->u_master)->update;
     }
     if (tmpl->count == 0) {
-	tmpl->chain.next = (hte *) upgraded;
+	tmpl->next = upgraded;
 	upgraded = tmpl;
     }
     tmpl->count++;
@@ -793,7 +789,7 @@ void o_del(Object *obj, Frame *f)
 
     if (obj->flags & O_MASTER) {
 	/* remove from object name hash table */
-	*ht_lookup(oplane->htab, obj->chain.name, FALSE) = obj->chain.next;
+	*ht_lookup(oplane->htab, obj->name, FALSE) = obj->next;
 
 	if (--(obj->u_ref) == 0 && !O_UPGRADING(obj)) {
 	    o_delete(obj, f);
@@ -809,7 +805,7 @@ void o_del(Object *obj, Frame *f)
     }
 
     /* put in clean list */
-    obj->chain.next = (hte *) oplane->clean;
+    obj->next = (hte *) oplane->clean;
     oplane->clean = obj->index;
 }
 
@@ -820,8 +816,8 @@ void o_del(Object *obj, Frame *f)
  */
 const char *o_name(char *name, Object *o)
 {
-    if (o->chain.name != (char *) NULL) {
-	return o->chain.name;
+    if (o->name != (char *) NULL) {
+	return o->name;
     } else {
 	char num[12];
 	char *p;
@@ -839,7 +835,7 @@ const char *o_name(char *name, Object *o)
 	} while (n != 0);
 	*--p = '#';
 
-	strcpy(name, OBJR(o->u_master)->chain.name);
+	strcpy(name, OBJR(o->u_master)->name);
 	strcat(name, p);
 	return name;
     }
@@ -910,8 +906,8 @@ Object *o_find(char *name, int access)
 
 	o = OBJR(number);
 	if (o->count == 0 || (o->flags & O_MASTER) ||
-	    strncmp(name, (m=OBJR(o->u_master))->chain.name, hash-name) != 0 ||
-	    m->chain.name[hash - name] != '\0') {
+	    strncmp(name, (m=OBJR(o->u_master))->name, hash-name) != 0 ||
+	    m->name[hash - name] != '\0') {
 	    /*
 	     * no entry, not a clone, or object name doesn't match
 	     */
@@ -1004,7 +1000,7 @@ static void o_clean_upgrades()
     Uint count;
 
     while ((next=upgraded) != (Object *) NULL) {
-	upgraded = (Object *) next->chain.next;
+	upgraded = (Object *) next->next;
 
 	count = next->count;
 	next->count = 0;
@@ -1029,7 +1025,7 @@ static void o_clean_upgrades()
 		o->cref = baseplane.destruct;
 		baseplane.destruct = o->index;
 	    }
-	} while (next->chain.name == (char *) NULL);
+	} while (next->name == (char *) NULL);
     }
 }
 
@@ -1064,7 +1060,7 @@ void o_clean()
 
     while (baseplane.clean != OBJ_NONE) {
 	o = OBJ(baseplane.clean);
-	baseplane.clean = (uintptr_t) o->chain.next;
+	baseplane.clean = (uintptr_t) o->next;
 
 	/* free dataspace block (if it exists) */
 	if (o->data != (Dataspace *) NULL) {
@@ -1088,7 +1084,7 @@ void o_clean()
 		} while (tmpl->update != o->update);
 
 		if (tmpl->count == 0) {
-		    tmpl->chain.next = (hte *) upgraded;
+		    tmpl->next = upgraded;
 		    upgraded = tmpl;
 		}
 		tmpl->count++;
@@ -1108,7 +1104,7 @@ void o_clean()
 	Control *ctrl;
 
 	o = OBJ(baseplane.upgrade);
-	baseplane.upgrade = (uintptr_t) o->chain.next;
+	baseplane.upgrade = (uintptr_t) o->next;
 
 	up = OBJ(o->cref);
 	if (up->u_ref == 0) {
@@ -1184,10 +1180,10 @@ void o_clean()
 	/* free control block */
 	d_del_control(o_control(o));
 
-	if (o->chain.name != (char *) NULL) {
+	if (o->name != (char *) NULL) {
 	    /* free object name */
-	    FREE(o->chain.name);
-	    o->chain.name = (char *) NULL;
+	    FREE(o->name);
+	    o->name = (char *) NULL;
 	}
 	o->u_ref = 0;
 
@@ -1313,8 +1309,8 @@ bool o_dump(int fd, bool incr)
     dh.nfreeobjs = baseplane.nfreeobjs;
     dh.onamelen = 0;
     for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	if (o->chain.name != (char *) NULL) {
-	    dh.onamelen += strlen(o->chain.name) + 1;
+	if (o->name != (char *) NULL) {
+	    dh.onamelen += strlen(o->name) + 1;
 	}
     }
 
@@ -1327,15 +1323,15 @@ bool o_dump(int fd, bool incr)
     /* write object names */
     buflen = 0;
     for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	if (o->chain.name != (char *) NULL) {
-	    len = strlen(o->chain.name) + 1;
+	if (o->name != (char *) NULL) {
+	    len = strlen(o->name) + 1;
 	    if (buflen + len > CHUNKSZ) {
 		if (P_write(fd, buffer, buflen) < 0) {
 		    return FALSE;
 		}
 		buflen = 0;
 	    }
-	    memcpy(buffer + buflen, o->chain.name, len);
+	    memcpy(buffer + buflen, o->name, len);
 	    buflen += len;
 	}
     }
@@ -1393,8 +1389,8 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
      * Free object names of precompiled objects.
      */
     for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	*ht_lookup(baseplane.htab, o->chain.name, FALSE) = o->chain.next;
-	FREE(o->chain.name);
+	*ht_lookup(baseplane.htab, o->name, FALSE) = o->next;
+	FREE(o->name);
     }
 
     /* read header and object table */
@@ -1415,7 +1411,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 	if (rlwobj != 0) {
 	    o->flags &= ~O_LWOBJ;
 	}
-	if (o->chain.name != (char *) NULL) {
+	if (o->name != (char *) NULL) {
 	    /*
 	     * restore name
 	     */
@@ -1435,7 +1431,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 		p = buffer;
 	    }
 	    m_static();
-	    o->chain.name = strcpy(ALLOC(char, len = strlen(p) + 1), p);
+	    o->name = strcpy(ALLOC(char, len = strlen(p) + 1), p);
 	    m_dynamic();
 
 	    if (o->count != 0) {
@@ -1443,8 +1439,8 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 
 		/* add name to lookup table */
 		h = ht_lookup(baseplane.htab, p, FALSE);
-		o->chain.next = *h;
-		*h = (hte *) o;
+		o->next = *h;
+		*h = o;
 
 		/* fix O_LWOBJ */
 		if (o->cref & rlwobj) {

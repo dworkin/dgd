@@ -591,7 +591,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	    /*
 	     * function exists and is callable
 	     */
-	    name = o->chain.name;
+	    name = o->name;
 	    PUT_STR(f->sp, str_new((char *) NULL, strlen(name) + 1L));
 	    f->sp->u.string->text[0] = '/';
 	    strcpy(f->sp->u.string->text + 1, name);
