@@ -30,12 +30,11 @@
 # include "compile.h"
 # include "control.h"
 
-struct oh {			/* object hash table */
-    hte chain;			/* hash table chain */
+struct oh : public hte {	/* object hash table */
     Object *obj;		/* object */
     short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
-    oh **next;			/* next in linked list */
+    oh **list;			/* next in linked list */
 };
 
 static hashtab *otab;		/* object hash table */
@@ -64,11 +63,11 @@ static oh *oh_new(const char *name)
 	 * new object
 	 */
 	*h = ALLOC(oh, 1);
-	(*h)->chain.next = (hte *) NULL;
-	(*h)->chain.name = name;
+	(*h)->next = (hte *) NULL;
+	(*h)->name = name;
 	(*h)->index = -1;		/* new object */
 	(*h)->priv = 0;
-	(*h)->next = olist;
+	(*h)->list = olist;
 	olist = h;
     }
 
@@ -85,7 +84,7 @@ static void oh_clear()
 
     for (h = olist; h != (oh **) NULL; ) {
 	f = *h;
-	h = f->next;
+	h = f->list;
 	FREE(f);
     }
     olist = (oh **) NULL;
@@ -99,8 +98,7 @@ static void oh_clear()
 
 # define VFH_CHUNK	64
 
-struct vfh {			/* variable/function hash table */
-    hte chain;			/* hash table chain */
+struct vfh : public hte {	/* variable/function hash table */
     String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     String *cvstr;		/* class variable string */
@@ -134,9 +132,9 @@ static void vfh_new(String *str, oh *ohash, unsigned short ct,
 	vfhchunksz = 0;
     }
     h = &vfhclist->vf[vfhchunksz++];
-    h->chain.next = (hte *) *addr;
+    h->next = *addr;
     *addr = h;
-    h->chain.name = str->text;
+    h->name = str->text;
     str_ref(h->str = str);
     h->ohash = ohash;
     h->cvstr = cvstr;
@@ -286,7 +284,7 @@ static void ctrl_vardefs(oh *ohash, Control *ctrl)
 	    } else {
 	       /* duplicate variable */
 	       c_error("multiple inheritance of variable %s (/%s, /%s)",
-		       str->text, (*h)->ohash->chain.name, ohash->chain.name);
+		       str->text, (*h)->ohash->name, ohash->name);
 	    }
 	}
 	v++;
@@ -395,7 +393,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 	 * privately inherited nomask function is not allowed
 	 */
 	c_error("private inherit of nomask function %s (/%s)", str->text,
-		ohash->chain.name);
+		ohash->name);
 	return;
     }
 
@@ -434,8 +432,8 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 	privflag = FALSE;
 	o = ohash->obj;
 	for (l = h;
-	     *l != (vfh *) NULL && strcmp((*l)->chain.name, str->text) == 0;
-	     l = (vfh **) &(*l)->chain.next) {
+	     *l != (vfh *) NULL && strcmp((*l)->name, str->text) == 0;
+	     l = (vfh **) &(*l)->next) {
 	    if ((*l)->ohash == (oh *) NULL) {
 		continue;
 	    }
@@ -473,9 +471,9 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 	inhflag = firstsym = TRUE;
 	nfunc = npriv = 0;
 	l = h;
-	while (*l != (vfh *) NULL && strcmp((*l)->chain.name, str->text) == 0) {
+	while (*l != (vfh *) NULL && strcmp((*l)->name, str->text) == 0) {
 	    if ((*l)->ohash == (oh *) NULL) {
-		l = (vfh **) &(*l)->chain.next;
+		l = (vfh **) &(*l)->next;
 		continue;
 	    }
 
@@ -507,11 +505,11 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 				if (!(PROTO_CLASS(prot2) & C_UNDEFINED)) {
 				    nfunc++;
 				}
-				l = (vfh **) &(*l)->chain.next;
+				l = (vfh **) &(*l)->next;
 				break;
 			    }
 			}
-			*l = (vfh *) (*l)->chain.next;
+			*l = (vfh *) (*l)->next;
 			break;
 		    }
 		} else {
@@ -524,8 +522,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 			 * a nomask function is inherited more than once
 			 */
 			c_error("multiple inheritance of nomask function %s (/%s, /%s)",
-				str->text, (*l)->ohash->chain.name,
-				ohash->chain.name);
+				str->text, (*l)->ohash->name, ohash->name);
 			return;
 		    }
 		    if (((f->sclass | PROTO_CLASS(prot2)) & C_UNDEFINED) &&
@@ -534,8 +531,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 			 * prototype conflict
 			 */
 			c_error("unequal prototypes for function %s (/%s, /%s)",
-				str->text, (*l)->ohash->chain.name,
-				ohash->chain.name);
+				str->text, (*l)->ohash->name, ohash->name);
 			return;
 		    }
 
@@ -551,7 +547,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 		    if ((*l)->ohash->priv == 0) {
 			firstsym = FALSE;
 		    }
-		    l = (vfh **) &(*l)->chain.next;
+		    l = (vfh **) &(*l)->next;
 		    break;
 		}
 	    }
@@ -564,7 +560,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 	if (inhflag) {
 	    /* insert new prototype at the beginning */
 	    vfh_new(str, ohash, -1, (String *) NULL, idx, h);
-	    h = (vfh **) &(*h)->chain.next;
+	    h = (vfh **) &(*h)->next;
 	} else if (!(PROTO_CLASS(prot1) & C_UNDEFINED)) {
 	    /* add the new prototype to the count */
 	    if (ohash->priv == 0) {
@@ -576,12 +572,12 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 
 	if (privflag) {
 	    /* skip private function at the start */
-	    h = (vfh **) &(*h)->chain.next;
+	    h = (vfh **) &(*h)->next;
 	}
 
 	/* add/remove clash markers */
 	if (*h != (vfh *) NULL &&
-	    strcmp((*h)->chain.name, str->text) == 0) {
+	    strcmp((*h)->name, str->text) == 0) {
 	    /*
 	     * there are other prototypes
 	     */
@@ -589,18 +585,18 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 		/* first entry is clash marker */
 		if (nfunc + npriv <= 1) {
 		    /* remove it */
-		    *h = (vfh *) (*h)->chain.next;
+		    *h = (vfh *) (*h)->next;
 		    --nfclash;
 		} else {
 		    /* adjust it */
 		    (*h)->index = nfunc;
-		    h = (vfh **) &(*h)->chain.next;
+		    h = (vfh **) &(*h)->next;
 		}
 	    } else if (nfunc + npriv > 1) {
 		/* add new clash marker as first entry */
 		vfh_new(str, (oh *) NULL, 0, (String *) NULL, nfunc, h);
 		nfclash++;
-		h = (vfh **) &(*h)->chain.next;
+		h = (vfh **) &(*h)->next;
 	    }
 	}
 
@@ -1113,7 +1109,7 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
 		 * declaration does not match inherited prototype
 		 */
 		c_error("inherited different prototype for %s (/%s)",
-			str->text, (*h)->ohash->chain.name);
+			str->text, (*h)->ohash->name);
 	    } else if ((PROTO_CLASS(proto) & C_UNDEFINED) &&
 		       (*h)->ohash->priv == 0 &&
 		       (ctrl->ninherits != 1 ||
@@ -1132,11 +1128,11 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
 		 * attempt to redefine nomask function
 		 */
 		c_error("redeclaration of nomask function %s (/%s)",
-			str->text, (*h)->ohash->chain.name);
+			str->text, (*h)->ohash->name);
 	    }
 
 	    if ((*l)->ohash->priv != 0) {
-		l = (vfh **) &(*l)->chain.next;	/* skip private function */
+		l = (vfh **) &(*l)->next;	/* skip private function */
 	    }
 	}
     }
@@ -1145,7 +1141,7 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
 	/*
 	 * may be a new symbol
 	 */
-	if (*l == (vfh *) NULL || strcmp((*l)->chain.name, str->text) != 0) {
+	if (*l == (vfh *) NULL || strcmp((*l)->name, str->text) != 0) {
 	    nsymbs++;		/* no previous symbol */
 	} else if ((*l)->ohash == (oh *) NULL) {
 	    if ((*l)->index == 0) {
@@ -1231,7 +1227,7 @@ void ctrl_dvar(String *str, unsigned int sclass, unsigned int type, String *cvst
 	     * non-private redeclaration of a variable
 	     */
 	    c_error("redeclaration of variable %s (/%s)", str->text,
-		    (*h)->ohash->chain.name);
+		    (*h)->ohash->name);
 	    return;
 	}
     }
@@ -1309,8 +1305,8 @@ char *ctrl_ifcall(String *str, const char *label, String **cfstr, long *call)
 	/* check if the function exists */
 	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
 	if (h == (vfh *) NULL || (h->ohash == newohash &&
-	    ((h=(vfh *) h->chain.next) == (vfh *) NULL ||
-	     strcmp(h->chain.name, str->text) != 0))) {
+	    ((h=(vfh *) h->next) == (vfh *) NULL ||
+	     strcmp(h->name, str->text) != 0))) {
 
 	    index = kf_func(str->text);
 	    if (index >= 0) {
@@ -1561,7 +1557,7 @@ bool ctrl_chkfuncs()
 			 * erase clash which involves at most one function
 			 * that isn't privately inherited
 			 */
-			*f = (vfh *) (*f)->chain.next;
+			*f = (vfh *) (*f)->next;
 		    } else {
 			/*
 			 * list a clash (only the first two)
@@ -1570,30 +1566,29 @@ bool ctrl_chkfuncs()
 			    clash = TRUE;
 			    c_error("inherited multiple instances of:");
 			}
-			f = (vfh **) &(*f)->chain.next;
+			f = (vfh **) &(*f)->next;
 			while ((*f)->ohash->priv != 0) {
-			    f = (vfh **) &(*f)->chain.next;
+			    f = (vfh **) &(*f)->next;
 			}
-			n = (vfh **) &(*f)->chain.next;
+			n = (vfh **) &(*f)->next;
 			while ((*n)->ohash->priv != 0) {
-			    n = (vfh **) &(*n)->chain.next;
+			    n = (vfh **) &(*n)->next;
 			}
-			c_error("  %s (/%s, /%s)", (*f)->chain.name,
-				(*f)->ohash->chain.name,
-				(*n)->ohash->chain.name);
-			f = (vfh **) &(*n)->chain.next;
+			c_error("  %s (/%s, /%s)", (*f)->name,
+				(*f)->ohash->name, (*n)->ohash->name);
+			f = (vfh **) &(*n)->next;
 		    }
 		} else if ((*f)->ohash->priv != 0) {
 		    /*
 		     * skip privately inherited function
 		     */
-		    f = (vfh **) &(*f)->chain.next;
+		    f = (vfh **) &(*f)->next;
 		} else {
-		    n = (vfh **) &(*f)->chain.next;
+		    n = (vfh **) &(*f)->next;
 		    if (*n != (vfh *) NULL && (*n)->ohash != (oh *) NULL &&
 			(*n)->ohash->priv != 0) {
 			/* skip privately inherited function */
-			n = (vfh **) &(*n)->chain.next;
+			n = (vfh **) &(*n)->next;
 		    }
 		    if (*n != (vfh *) NULL && (*n)->ohash == (oh *) NULL &&
 			strcmp((*n)->str->text, (*f)->str->text) == 0 &&
@@ -1602,7 +1597,7 @@ bool ctrl_chkfuncs()
 			/*
 			 * this function was redefined, skip the clash marker
 			 */
-			n = (vfh **) &(*n)->chain.next;
+			n = (vfh **) &(*n)->next;
 		    }
 		    f = n;
 		}
@@ -1774,7 +1769,7 @@ static void ctrl_mkfcalls()
 			 * private redefinition of (guaranteed non-private)
 			 * inherited function
 			 */
-			h = (vfh *) h->chain.next;
+			h = (vfh *) h->next;
 		    }
 		    *fc++ = h->ohash->index;
 		    *fc++ = h->index;
@@ -1857,13 +1852,13 @@ static void ctrl_mksymbs()
 		 * private redefinition of inherited function:
 		 * use inherited function
 		 */
-		h = (vfh *) h->chain.next;
+		h = (vfh *) h->next;
 	    }
 	    while (h->ohash->priv != 0) {
 		/*
 		 * skip privately inherited function
 		 */
-		h = (vfh *) h->chain.next;
+		h = (vfh *) h->next;
 	    }
 	    if (i == h->ohash->index) {
 		/*

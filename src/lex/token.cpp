@@ -1124,7 +1124,7 @@ int tk_expand(macro *mc)
 	tb = tbuffer;
 	do {
 	    if (tb->fd < -1 && tb->u.mc != (macro *) NULL &&
-	      strcmp(mc->chain.name, tb->u.mc->chain.name) == 0) {
+	      strcmp(mc->name, tb->u.mc->name) == 0) {
 		return -1;
 	    }
 	    tb = tb->prev;
@@ -1380,7 +1380,7 @@ int tk_expand(macro *mc)
     } else {
 	char *p;
 
-	p = special_replace(mc->chain.name);
+	p = special_replace(mc->name);
 	push(mc, p, strlen(p), FALSE);
     }
 

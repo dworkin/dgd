@@ -26,8 +26,7 @@
 
 # define STR_CHUNK	128
 
-struct strh {
-    hte chain;			/* hash table chain */
+struct strh : public hte {
     String *str;		/* string entry */
     Uint index;			/* building index */
 };
@@ -128,8 +127,8 @@ Uint str_put(String *str, Uint n)
 		strhchunksz = 0;
 	    }
 	    s = *h = &shlist->sh[strhchunksz++];
-	    s->chain.next = (hte *) NULL;
-	    s->chain.name = str->text;
+	    s->next = (hte *) NULL;
+	    s->name = str->text;
 	    s->str = str;
 	    s->index = n;
 
@@ -138,7 +137,7 @@ Uint str_put(String *str, Uint n)
 	    /* already in the hash table */
 	    return (*h)->index;
 	}
-	h = (strh **) &(*h)->chain.next;
+	h = (strh **) &(*h)->next;
     }
 }
 

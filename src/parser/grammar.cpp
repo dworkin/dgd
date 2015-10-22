@@ -458,8 +458,7 @@ struct rulesym {
     rulesym *next;		/* next in rule */
 };
 
-struct rule {
-    hte chain;			/* hash table chain */
+struct rule : public hte {
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
@@ -838,8 +837,8 @@ String *parse_grammar(String *gram)
 		/* new rule */
 		rl = rl_new(&rlchunks, RULE_REGEXP);
 		str_ref(rl->symb = str_new(buffer, (long) buflen));
-		rl->chain.name = rl->symb->text;
-		rl->chain.next = (hte *) *r;
+		rl->name = rl->symb->text;
+		rl->next = *r;
 		*r = rl;
 		size += 4;
 		nrgx++;
@@ -925,8 +924,8 @@ String *parse_grammar(String *gram)
 		/* new rule */
 		rl = rl_new(&rlchunks, RULE_PROD);
 		str_ref(rl->symb = str_new(buffer, (long) buflen));
-		rl->chain.name = rl->symb->text;
-		rl->chain.next = (hte *) *r;
+		rl->name = rl->symb->text;
+		rl->next = *r;
 		*r = rl;
 		size += 4;
 		nprod++;
@@ -950,8 +949,8 @@ String *parse_grammar(String *gram)
 			/* new unknown rule */
 			rl = rl_new(&rlchunks, RULE_UNKNOWN);
 			str_ref(rl->symb = str_new(buffer, (long) buflen));
-			rl->chain.name = rl->symb->text;
-			rl->chain.next = (hte *) *r;
+			rl->name = rl->symb->text;
+			rl->next = *r;
 			*r = rl;
 
 			rl->next = tmplist;
@@ -979,14 +978,14 @@ String *parse_grammar(String *gram)
 			    memcmp((*r)->symb->text, buffer, buflen) == 0) {
 			    break;
 			}
-			r = (rule **) &(*r)->chain.next;
+			r = (rule **) &(*r)->next;
 		    }
 		    if (*r == (rule *) NULL) {
 			/* new string rule */
 			rl = rl_new(&rlchunks, RULE_STRING);
 			str_ref(rl->symb = str_new(buffer, (long) buflen));
-			rl->chain.name = rl->symb->text;
-			rl->chain.next = (hte *) *r;
+			rl->name = rl->symb->text;
+			rl->next = *r;
 			*r = rl;
 
 			if (token == TOK_STRING) {

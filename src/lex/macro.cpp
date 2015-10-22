@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -64,8 +64,8 @@ void mc_clear()
 
 	for (l = mlist; l != (mchunk *) NULL; ) {
 	    for (m = l->m; mchunksz > 0; m++, --mchunksz) {
-		if (m->chain.name != (char *) NULL) {
-		    FREE(m->chain.name);
+		if (m->name != (char *) NULL) {
+		    FREE(m->name);
 		    if (m->replace != (char *) NULL) {
 			FREE(m->replace);
 		    }
@@ -99,7 +99,7 @@ void mc_define(const char *name, const char *replace, int narg)
 	if (flist != (macro *) NULL) {
 	    /* get macro from free list */
 	    *m = flist;
-	    flist = (macro *) flist->chain.next;
+	    flist = (macro *) flist->next;
 	} else {
 	    /* allocate new macro */
 	    if (mchunksz == MCHUNKSZ) {
@@ -112,8 +112,8 @@ void mc_define(const char *name, const char *replace, int narg)
 	    }
 	    *m = &mlist->m[mchunksz++];
 	}
-	(*m)->chain.next = (hte *) NULL;
-	(*m)->chain.name = strcpy(ALLOC(char, strlen(name) + 1), name);
+	(*m)->next = (hte *) NULL;
+	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
     }
     /* fill in macro */
@@ -139,15 +139,15 @@ void mc_undef(char *name)
     if (*m != (macro *) NULL) {
 	/* it really exists. */
 	mac = *m;
-	FREE(mac->chain.name);
-	mac->chain.name = (char *) NULL;
+	FREE(mac->name);
+	mac->name = (char *) NULL;
 	if (mac->replace != (char *) NULL) {
 	    FREE(mac->replace);
 	    mac->replace = (char *) NULL;
 	}
-	*m = (macro *) mac->chain.next;
+	*m = (macro *) mac->next;
 	/* put macro in free list */
-	mac->chain.next = (hte *) flist;
+	mac->next = flist;
 	flist = mac;
     }
 }

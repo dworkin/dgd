@@ -173,8 +173,7 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-struct rgxposn {
-    hte chain;			/* hash table chain */
+struct rgxposn : public hte {
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
     unsigned short ruleno;	/* the rule this position is in */
@@ -213,9 +212,9 @@ static rgxposn *rp_alloc(hashtab *htab, char *posn, unsigned short size, rpchunk
 	x->chunksz = 0;
     }
     rp = &(*c)->rp[(*c)->chunksz++];
-    rp->chain.next = (hte *) *rrp;
+    rp->next = *rrp;
     *rrp = rp;
-    rp->chain.name = posn;
+    rp->name = posn;
     rp->rgx = rgx;
     rp->size = size;
     rp->nposn = nposn;
@@ -236,7 +235,7 @@ static rgxposn *rp_new(hashtab *htab, char *posn, unsigned short size, rpchunk *
 
     rp = rp_alloc(htab, posn, size, c, rgx, nposn, ruleno, final);
     if (rp->nposn == nposn) {
-	rp->chain.name = strcpy(ALLOC(char, size + 3), posn);
+	rp->name = strcpy(ALLOC(char, size + 3), posn);
 	rp->alloc = TRUE;
     }
     return rp;
@@ -255,7 +254,7 @@ static void rp_clear(rpchunk *c)
     while (c != (rpchunk *) NULL) {
 	for (rp = c->rp, i = c->chunksz; i != 0; rp++, --i) {
 	    if (rp->alloc) {
-		FREE(rp->chain.name);
+		FREE(rp->name);
 	    }
 	}
 	f = c;
@@ -400,7 +399,7 @@ static void rp_cset(rgxposn *rp, Uint *cset)
     int c, n, x;
     bool negate;
 
-    for (q = rp->chain.name + 2; *q != '\0'; q++) {
+    for (q = rp->name + 2; *q != '\0'; q++) {
 	memset(cset, '\0', 32);
 	p = rp->rgx + UCHAR(*q);
 	switch (*p) {
@@ -481,7 +480,7 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
     bool negate;
 
     t = trans;
-    for (q = rp->chain.name + 2; *q != '\0'; q++) {
+    for (q = rp->name + 2; *q != '\0'; q++) {
 	p = rp->rgx + UCHAR(*q);
 	found = 0;
 	switch (*p) {
@@ -592,7 +591,7 @@ static char *rp_save(rgxposn *rp, char *buf, char *grammar)
 	*buf++ = '\0';
     }
     *buf++ = rp->size;
-    memcpy(buf, rp->chain.name, rp->size + 3);
+    memcpy(buf, rp->name, rp->size + 3);
     return buf + rp->size + 3;
 }
 
@@ -1338,8 +1337,8 @@ static unsigned short dfa_newstate(dfa *fa, dfastate *state, dfastate *newstate,
 	    if (cs_intersect(ecset, cset)) {
 		final = rp_trans(rp, ecset, posn + 2, &size);
 		if (size != 0) {
-		    posn[0] = rp->chain.name[0];
-		    posn[1] = rp->chain.name[1];
+		    posn[0] = rp->name[0];
+		    posn[1] = rp->name[1];
 		    rp = rp_new(fa->posnhtab, posn, size, &fa->rpc, rp->rgx,
 				fa->nposn, rp->ruleno, final);
 		    if (rp->nposn == fa->nposn) {
