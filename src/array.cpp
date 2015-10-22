@@ -27,21 +27,11 @@
 
 # define ARR_CHUNK	128
 
-struct arrchunk {
-    arrchunk *next;		/* next in list */
-    Array a[ARR_CHUNK];		/* chunk of arrays */
-};
-
 struct arrh {
     arrh *next;			/* next in hash table chain */
     Array *arr;			/* array entry */
     Uint index;			/* building index */
     arrh *link;			/* next in list */
-};
-
-struct arrhchunk {
-    arrhchunk *next;		/* next in list */
-    arrh ah[ARR_CHUNK];		/* chunk of arrh entries */
 };
 
 # define MELT_CHUNK	128
@@ -52,11 +42,6 @@ struct mapelt {
     Value idx;			/* index */
     Value val;			/* value */
     mapelt *next;		/* next in hash table */
-};
-
-struct meltchunk {
-    meltchunk *next;		/* next in list */
-    mapelt e[MELT_CHUNK];	/* chunk of mapelt entries */
 };
 
 struct maphash {
@@ -83,17 +68,13 @@ struct abchunk {
     arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
 };
 
+static Blockallocator<Array, ARR_CHUNK> achunk;
+static Blockallocator<arrh, ARR_CHUNK> hchunk;
+static Blockallocator<mapelt, MELT_CHUNK> echunk;
+
 static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
-static arrchunk *aclist;	/* linked list of all array chunks */
-static int achunksz;		/* size of current array chunk */
-static Array *flist;		/* free array list */
-static mapelt *fmelt;		/* free mapelt list */
-static meltchunk *meltlist;	/* linked list of all mapelt chunks */
-static int meltchunksz;		/* size of current mapelt chunk */
 static arrh *alink;		/* linked list of merged arrays */
-static arrhchunk *ahlist;	/* linked list of all arrh chunks */
-static int ahchunksz;		/* size of current arrh chunk */
 static arrh *aht[ARRMERGETABSZ];/* array merge table */
 
 /*
@@ -104,12 +85,6 @@ void arr_init(unsigned int size)
 {
     max_size = size;
     tag = 0;
-    aclist = (arrchunk *) NULL;
-    achunksz = ARR_CHUNK;
-    flist = (Array *) NULL;
-    fmelt = (mapelt *) NULL;
-    meltlist = (meltchunk *) NULL;
-    meltchunksz = MELT_CHUNK;
 }
 
 /*
@@ -120,22 +95,7 @@ Array *arr_alloc(unsigned int size)
 {
     Array *a;
 
-    if (flist != (Array *) NULL) {
-	/* from free list */
-	a = flist;
-	flist = a->next;
-    } else {
-	if (achunksz == ARR_CHUNK) {
-	    arrchunk *l;
-
-	    /* new chunk */
-	    l = ALLOC(arrchunk, 1);
-	    l->next = aclist;
-	    aclist = l;
-	    achunksz = 0;
-	}
-	a = &aclist->a[achunksz++];
-    }
+    a = achunk.add();
     a->size = size;
     a->hashmod = FALSE;
     a->elts = (Value *) NULL;
@@ -212,6 +172,8 @@ void arr_del(Array *a)
 	dlist = a;
 
 	do {
+	    Array *prev;
+
 	    if ((v=a->elts) != (Value *) NULL) {
 		for (i = a->size; i > 0; --i) {
 		    i_del_value(v++);
@@ -232,17 +194,16 @@ void arr_del(Array *a)
 			    i_del_value(&e->val);
 			}
 			n = e->next;
-			e->next = fmelt;
-			fmelt = e;
+			echunk.del(e);
 			--i;
 		    }
 		}
 		FREE(a->hashed);
 	    }
 
-	    a->next = flist;
-	    flist = a;
-	    a = a->prev;
+	    prev = a->prev;
+	    achunk.del(a);
+	    a = prev;
 	} while (a != (Array *) NULL);
 
 	dlist = (Array *) NULL;
@@ -262,6 +223,8 @@ void arr_freelist(Array *alist)
 
     a = alist;
     do {
+	Array *prev;
+
 	if ((v=a->elts) != (Value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
 		if (v->type == T_STRING) {
@@ -287,17 +250,16 @@ void arr_freelist(Array *alist)
 			}
 		    }
 		    n = e->next;
-		    e->next = fmelt;
-		    fmelt = e;
+		    echunk.del(e);
 		    --i;
 		}
 	    }
 	    FREE(a->hashed);
 	}
 
-	a->next = flist;
-	flist = a;
-	a = a->prev;
+	prev = a->prev;
+	achunk.del(a);
+	a = prev;
     } while (a != alist);
 }
 
@@ -307,37 +269,8 @@ void arr_freelist(Array *alist)
  */
 void arr_freeall()
 {
-# ifdef DEBUG
-    arrchunk *ac;
-    meltchunk *mc;
-
-    /* free array chunks */
-    for (ac = aclist; ac != (arrchunk *) NULL; ) {
-	arrchunk *f;
-
-	f = ac;
-	ac = ac->next;
-	FREE(f);
-    }
-# endif
-    aclist = (arrchunk *) NULL;
-    achunksz = ARR_CHUNK;
-
-    flist = (Array *) NULL;
-
-# ifdef DEBUG
-    /* free mapping element chunks */
-    for (mc = meltlist; mc != (meltchunk *) NULL; ) {
-	meltchunk *f;
-
-	f = mc;
-	mc = mc->next;
-	FREE(f);
-    }
-# endif
-    meltlist = (meltchunk *) NULL;
-    meltchunksz = MELT_CHUNK;
-    fmelt = (mapelt *) NULL;
+    achunk.clean();
+    echunk.clean();
 }
 
 /*
@@ -347,8 +280,6 @@ void arr_freeall()
 void arr_merge()
 {
     alink = (arrh *) NULL;
-    ahlist = (arrhchunk *) NULL;
-    ahchunksz = ARR_CHUNK;
     memset(&aht, '\0', ARRMERGETABSZ * sizeof(arrh *));
 }
 
@@ -369,15 +300,7 @@ Uint arr_put(Array *a, Uint idx)
     /*
      * Add a new entry to the hash table.
      */
-    if (ahchunksz == ARR_CHUNK) {
-	arrhchunk *l;
-
-	l = ALLOC(arrhchunk, 1);
-	l->next = ahlist;
-	ahlist = l;
-	ahchunksz = 0;
-    }
-    *h = &ahlist->ah[ahchunksz++];
+    *h = hchunk.add();
     (*h)->next = (arrh *) NULL;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
@@ -394,7 +317,6 @@ Uint arr_put(Array *a, Uint idx)
 void arr_clear()
 {
     arrh *h;
-    arrhchunk *l;
 
     /* clear hash table */
     for (h = alink; h != (arrh *) NULL; ) {
@@ -402,14 +324,7 @@ void arr_clear()
 	h = h->link;
     }
 
-    /* free array hash chunks */
-    for (l = ahlist; l != (arrhchunk *) NULL; ) {
-	arrhchunk *f;
-
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
+    hchunk.clean();
 }
 
 
@@ -558,8 +473,7 @@ void arr_discard(abchunk **ac)
 			    i_del_value(&e->val);
 			}
 			n = e->next;
-			e->next = fmelt;
-			fmelt = e;
+			echunk.del(e);
 			--j;
 		    }
 		}
@@ -1314,8 +1228,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    e->next = fmelt;
-			    fmelt = e;
+			    echunk.del(e);
 			    continue;
 			}
 			break;
@@ -1331,8 +1244,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    e->next = fmelt;
-			    fmelt = e;
+			    echunk.del(e);
 			    continue;
 			}
 			break;
@@ -1347,8 +1259,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->idx, &nil_value);
 			    }
 			    *p = e->next;
-			    e->next = fmelt;
-			    fmelt = e;
+			    echunk.del(e);
 			    continue;
 			}
 			break;
@@ -1364,8 +1275,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    e->next = fmelt;
-			    fmelt = e;
+			    echunk.del(e);
 			    continue;
 			}
 			break;
@@ -1462,8 +1372,7 @@ void map_rmhash(Array *m)
 	for (i = m->hashed->size, t = m->hashed->table; i > 0; t++) {
 	    for (e = *t; e != (mapelt *) NULL; e = n) {
 		n = e->next;
-		e->next = fmelt;
-		fmelt = e;
+		echunk.del(e);
 		--i;
 	    }
 	}
@@ -1812,22 +1721,7 @@ static mapelt *map_grow(Dataspace *data, Array *m, Uint hashval, bool add)
     }
     h->size++;
 
-    if (fmelt != (mapelt *) NULL) {
-	/* from free list */
-	e = fmelt;
-	fmelt = e->next;
-    } else {
-	if (meltchunksz == MELT_CHUNK) {
-	    meltchunk *l;
-
-	    /* new chunk */
-	    l = ALLOC(meltchunk, 1);
-	    l->next = meltlist;
-	    meltlist = l;
-	    meltchunksz = 0;
-	}
-	e = &meltlist->e[meltchunksz++];
-    }
+    e = echunk.add();
     e->hashval = hashval;
     e->add = FALSE;
     e->idx = nil_value;
@@ -1936,8 +1830,7 @@ Value *map_index(Dataspace *data, Array *m, Value *val, Value *elt,
 		    }
 
 		    *p = e->next;
-		    e->next = fmelt;
-		    fmelt = e;
+		    echunk.del(e);
 		    m->hashed->size--;
 
 		    if (!add) {

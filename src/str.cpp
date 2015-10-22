@@ -31,14 +31,9 @@ struct strh : public hte {
     Uint index;			/* building index */
 };
 
-struct strhchunk {
-    strhchunk *next;		/* next in list */
-    strh sh[STR_CHUNK];		/* chunk of strh entries */
-};
+static Blockallocator<strh, STR_CHUNK> hchunk;
 
 static hashtab *sht;		/* string merge table */
-static strhchunk *shlist;	/* list of all strh chunks */
-static int strhchunksz;		/* size of current strh chunk */
 
 
 /*
@@ -94,7 +89,6 @@ void str_del(String *s)
 void str_merge()
 {
     sht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
-    strhchunksz = STR_CHUNK;
 }
 
 /*
@@ -118,15 +112,7 @@ Uint str_put(String *str, Uint n)
 	    /*
 	     * Not in the hash table. Make a new entry.
 	     */
-	    if (strhchunksz == STR_CHUNK) {
-		strhchunk *l;
-
-		l = ALLOC(strhchunk, 1);
-		l->next = shlist;
-		shlist = l;
-		strhchunksz = 0;
-	    }
-	    s = *h = &shlist->sh[strhchunksz++];
+	    s = *h = hchunk.add();
 	    s->next = (hte *) NULL;
 	    s->name = str->text;
 	    s->str = str;
@@ -148,20 +134,10 @@ Uint str_put(String *str, Uint n)
 void str_clear()
 {
     if (sht != (hashtab *) NULL) {
-	strhchunk *l;
-
 	ht_del(sht);
 
-	for (l = shlist; l != (strhchunk *) NULL; ) {
-	    strhchunk *f;
-
-	    f = l;
-	    l = l->next;
-	    FREE(f);
-	}
-
+	hchunk.clean();
 	sht = (hashtab *) NULL;
-	shlist = (strhchunk *) NULL;
     }
 }
 

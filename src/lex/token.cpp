@@ -51,10 +51,7 @@ struct tbuf {
     tbuf *prev;			/* previous token buffer */
 };
 
-struct tchunk {
-    tchunk *next;		/* next in list */
-    tbuf t[TCHUNKSZ];		/* chunk of token buffers */
-};
+static Blockallocator<tbuf, TCHUNKSZ> tchunk;
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */
@@ -63,9 +60,6 @@ int yyleng;			/* length of token */
 long yynumber;			/* integer constant */
 xfloat yyfloat;			/* floating point constant */
 
-static tchunk *tlist;		/* list of token buffer chunks */
-static int tchunksz;		/* token buffer chunk size */
-static tbuf *flist;		/* free token buffer list */
 static tbuf *tbuffer;		/* current token buffer */
 static tbuf *ibuffer;		/* current input buffer */
 static int pp_level;		/* the recursive preprocesing level */
@@ -80,9 +74,6 @@ void tk_init()
 {
     yytext1 = ALLOC(char, MAX_LINE_SIZE);
     yytext2 = ALLOC(char, MAX_LINE_SIZE);
-    tlist = (tchunk *) NULL;
-    tchunksz = TCHUNKSZ;
-    flist = (tbuf *) NULL;
     tbuffer = (tbuf *) NULL;
     ibuffer = (tbuf *) NULL;
     pp_level = 0;
@@ -98,22 +89,7 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 {
     tbuf *tb;
 
-    if (flist != (tbuf *) NULL) {
-	/* from free list */
-	tb = flist;
-	flist = tb->prev;
-    } else {
-	/* allocate new one */
-	if (tchunksz == TCHUNKSZ) {
-	    tchunk *l;
-
-	    l = ALLOC(tchunk, 1);
-	    l->next = tlist;
-	    tlist = l;
-	    tchunksz = 0;
-	}
-	tb = &tlist->t[tchunksz++];
-    }
+    tb = tchunk.add();
     tb->strs = (String **) NULL;
     tb->nstr = 0;
     tb->p = tb->buffer = buffer;
@@ -156,8 +132,7 @@ static void pop()
     }
     tbuffer = tb->prev;
 
-    tb->prev = flist;
-    flist = tb;
+    tchunk.del(tb);
 }
 
 /*
@@ -166,17 +141,10 @@ static void pop()
  */
 void tk_clear()
 {
-    tchunk *l, *f;
-
     while (tbuffer != (tbuf *) NULL) {
 	pop();
     }
-    for (l = tlist; l != (tchunk *) NULL; ) {
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    tlist = (tchunk *) NULL;
+    tchunk.clean();
     if (yytext1 != (char *) NULL) {
 	FREE(yytext2);
 	FREE(yytext1);

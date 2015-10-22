@@ -39,18 +39,12 @@ struct ifstate {
     ifstate *prev;		/* previous ifstate */
 };
 
-struct ichunk {
-    ichunk *next;		/* next in list */
-    ifstate i[ICHUNKSZ];	/* chunk of ifstates */
-};
+static Blockallocator<ifstate, ICHUNKSZ> ichunk;
 
 static char **idirs;		/* include directory array */
 static char pri[NR_TOKENS + 1];	/* operator priority table */
 static bool init_pri;		/* has the priority table been initialized? */
 static int include_level;	/* current #include level */
-static ichunk *ilist;		/* list of ifstate chunks */
-static int ichunksz;		/* ifstate chunk size */
-static ifstate *flist;		/* free ifstate list */
 static ifstate *ifs;		/* current conditional inclusion state */
 
 static ifstate top = {		/* initial ifstate */
@@ -82,9 +76,6 @@ bool pp_init(char *file, char **id, String **strs, int nstr, int level)
     pps_init();
     include_level = level;
     ifs = &top;
-    ilist = (ichunk *) NULL;
-    ichunksz = ICHUNKSZ;
-    flist = (ifstate *) NULL;
 
     if (!init_pri) {
 	/* #if operator priority table */
@@ -125,22 +116,7 @@ static void push()
 {
     ifstate *s;
 
-    if (flist != (ifstate *) NULL) {
-	/* from free list */
-	s = flist;
-	flist = s->prev;
-    } else {
-	/* allocate new one */
-	if (ichunksz == ICHUNKSZ) {
-	    ichunk *l;
-
-	    l = ALLOC(ichunk, 1);
-	    l->next = ilist;
-	    ilist = l;
-	    ichunksz = 0;
-	}
-	s = &ilist->i[ichunksz++];
-    }
+    s = ichunk.add();
     s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;
@@ -160,8 +136,7 @@ static void pop()
     s = ifs;
     ifs = ifs->prev;
 
-    s->prev = flist;
-    flist = s;
+    ichunk.del(s);
 }
 
 /*
@@ -170,18 +145,11 @@ static void pop()
  */
 void pp_clear()
 {
-    ichunk *l, *f;
-
     pps_clear();
     while (ifs != &top) {
 	pop();
     }
-    for (l = ilist; l != (ichunk *) NULL; ) {
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    ilist = (ichunk *) NULL;
+    ichunk.clean();
     mc_clear();
     tk_clear();
 }

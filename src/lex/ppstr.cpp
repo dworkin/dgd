@@ -26,14 +26,7 @@
 
 # define SCHUNKSZ	8
 
-struct schunk {
-    schunk *next;		/* next in list */
-    str s[SCHUNKSZ];		/* chunk of pp strings */
-};
-
-static schunk *slist;		/* list of pps string chunks */
-static int schunksz;		/* size of current chunk */
-static str *flist;		/* list of free pp strings */
+static Blockallocator<str, SCHUNKSZ> schunk;
 
 /*
  * NAME:	str->init()
@@ -41,9 +34,6 @@ static str *flist;		/* list of free pp strings */
  */
 void pps_init()
 {
-    slist = (schunk *) NULL;
-    schunksz = SCHUNKSZ;
-    flist = (str *) NULL;
 }
 
 /*
@@ -52,14 +42,7 @@ void pps_init()
  */
 void pps_clear()
 {
-    schunk *l, *f;
-
-    for (l = slist; l != (schunk *) NULL; ) {
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    slist = (schunk *) NULL;
+    schunk.clean();
 }
 
 /*
@@ -70,22 +53,7 @@ str *pps_new(char *buf, int sz)
 {
     str *sb;
 
-    if (flist != (str *) NULL) {
-	/* from free list */
-	sb = flist;
-	flist = (str *) sb->buffer;
-    } else {
-	/* allocate new string */
-	if (schunksz == SCHUNKSZ) {
-	    schunk *l;
-
-	    l = ALLOC(schunk, 1);
-	    l->next = slist;
-	    slist = l;
-	    schunksz = 0;
-	}
-	sb = &slist->s[schunksz++];
-    }
+    sb = schunk.add();
     sb->buffer = buf;
     sb->buffer[0] = '\0';
     sb->size = sz;
@@ -100,8 +68,7 @@ str *pps_new(char *buf, int sz)
  */
 void pps_del(str *sb)
 {
-    sb->buffer = (char *) flist;
-    flist = sb;
+    schunk.del(sb);
 }
 
 /*

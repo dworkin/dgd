@@ -53,6 +53,99 @@ extern bool  m_check	(void);
 extern void  m_purge	(void);
 extern void  m_finish	(void);
 
+template <class T, int CHUNK> class Blockallocator {
+private:
+    union Titem {
+	T item;			/* item */
+	Titem *list;		/* next in the free list */
+    };
+    struct Tblock {
+	Titem items[CHUNK];	/* array of allocated items */
+	Tblock *prev;		/* previous block of items */
+    };
+
+    Tblock *block;		/* block of items */
+    Titem *flist;		/* free list of items */
+    int blocksize;		/* size of block */
+
+public:
+    /*
+     * NAME:		add()
+     * DESCRIPTION:	add new item to block
+     */
+    T *add() {
+	if (flist == NULL) {
+	    if (block == NULL || blocksize == 0) {
+		Tblock *b;
+
+		b = ALLOC(Tblock, 1);
+		b->prev = block;
+		block = b;
+		blocksize = CHUNK;
+	    }
+	    return &block->items[--blocksize].item;
+	} else {
+	    Titem *item;
+
+	    item = flist;
+	    flist = item->list;
+	    return &item->item;
+	}
+    }
+
+    /*
+     * NAME:		del()
+     * DESCRITION:	remove item from block
+     */
+    void del(T *ptr) {
+	Titem *item;
+
+	item = (Titem *) ptr;
+	item->list = flist;
+	flist = item;
+    }
+
+    virtual bool item(T *item) {
+	return TRUE;
+    }
+
+    /*
+     * NAME:		items()
+     * DESCRIPTION:	visit items in blocks
+     */
+    void items() {
+	Tblock *b;
+	int i;
+
+	i = blocksize;
+	for (b = block; b != NULL; b = b->prev) {
+	    while (i < CHUNK) {
+		if (!b->items[i].item()) {
+		    return;
+		}
+		i++;
+	    }
+	    i = 0;
+	}
+    }
+
+    /*
+     * NAME:		clean()
+     * DESCRIPTION:	clean up item blocks
+     */
+    void clean() {
+	while (block != NULL) {
+	    Tblock *prev;
+
+	    prev = block->prev;
+	    FREE(block);
+	    block = prev;
+	}
+	flist = NULL;
+	blocksize = 0;
+    }
+};
+
 struct allocinfo {
     size_t smemsize;	/* static memory size */
     size_t smemused;	/* static memory used */

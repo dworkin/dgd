@@ -43,11 +43,6 @@ struct cond {
     Uint init[COND_BMAP];	/* initialize variable bitmap */
 };
 
-struct cchunk {
-    cchunk *next;		/* next in cond chunk list */
-    cond c[COND_CHUNK];		/* chunk of conds */
-};
-
 # define BLOCK_CHUNK	16
 
 struct block {
@@ -58,11 +53,6 @@ struct block {
     node *labels;		/* labels in this block */
 };
 
-struct bchunk {
-    bchunk *next;		/* next in block chunk list */
-    block b[BLOCK_CHUNK];	/* chunk of blocks */
-};
-
 struct var {
     const char *name;		/* variable name */
     short type;			/* variable type */
@@ -70,14 +60,11 @@ struct var {
     String *cvstr;		/* class name */
 };
 
-static cchunk *clist;			/* list of all cond chunks */
-static cond *fclist;			/* list of free conditions */
+static Blockallocator<cond, COND_CHUNK> cchunk;
+static Blockallocator<block, BLOCK_CHUNK> bchunk;
+
 static cond *thiscond;			/* current condition */
-static int cchunksz = COND_CHUNK;	/* size of current cond chunk */
-static bchunk *blist;			/* list of all block chunks */
-static block *fblist;			/* list of free statement blocks */
 static block *thisblock;		/* current statement block */
-static int bchunksz = BLOCK_CHUNK;	/* size of current block chunk */
 static int vindex;			/* variable index */
 static int nvars;			/* number of local variables */
 static int nparams;			/* number of parameters */
@@ -91,20 +78,7 @@ static void cond_new(cond *c2)
 {
     cond *c;
 
-    if (fclist != (cond *) NULL) {
-	c = fclist;
-	fclist = c->prev;
-    } else {
-	if (cchunksz == COND_CHUNK) {
-	    cchunk *cc;
-
-	    cc = ALLOC(cchunk, 1);
-	    cc->next = clist;
-	    clist = cc;
-	    cchunksz = 0;
-	}
-	c = &clist->c[cchunksz++];
-    }
+    c = cchunk.add();
     c->prev = thiscond;
     if (c2 != (cond *) NULL) {
 	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
@@ -124,8 +98,7 @@ static void cond_del()
 
     c = thiscond;
     thiscond = c->prev;
-    c->prev = fclist;
-    fclist = c;
+    cchunk.del(c);
 }
 
 /*
@@ -151,19 +124,8 @@ static void cond_match(cond *c1, cond *c2, cond *c3)
  */
 static void cond_clear()
 {
-    cchunk *c;
-
-    for (c = clist; c != (cchunk *) NULL; ) {
-	cchunk *f;
-
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
-    clist = (cchunk *) NULL;
-    fclist = (cond *) NULL;
+    cchunk.clean();
     thiscond = (cond *) NULL;
-    cchunksz = COND_CHUNK;
 }
 
 /*
@@ -174,20 +136,7 @@ static void block_new()
 {
     block *b;
 
-    if (fblist != (block *) NULL) {
-	b = fblist;
-	fblist = b->prev;
-    } else {
-	if (bchunksz == BLOCK_CHUNK) {
-	    bchunk *l;
-
-	    l = ALLOC(bchunk, 1);
-	    l->next = blist;
-	    blist = l;
-	    bchunksz = 0;
-	}
-	b = &blist->b[bchunksz++];
-    }
+    b = bchunk.add();
     if (thisblock == (block *) NULL) {
 	cond_new((cond *) NULL);
 	b->vindex = 0;
@@ -255,8 +204,7 @@ static void block_del(bool keep)
     if (thisblock == (block *) NULL) {
 	cond_del();
     }
-    f->prev = fblist;
-    fblist = f;
+    bchunk.del(f);
 }
 
 /*
@@ -323,18 +271,7 @@ static void block_vdef(char *name, short type, String *cvstr)
  */
 static void block_clear()
 {
-    bchunk *l;
-
-    for (l = blist; l != (bchunk *) NULL; ) {
-	bchunk *f;
-
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    blist = (bchunk *) NULL;
-    bchunksz = BLOCK_CHUNK;
-    fblist = (block *) NULL;
+    bchunk.clean();
     thisblock = (block *) NULL;
     vindex = 0;
     nvars = 0;
@@ -357,14 +294,8 @@ struct loop {
     loop *env;			/* enclosing loop */
 };
 
-struct lchunk {
-    lchunk *next;		/* next in loop chunk list */
-    loop l[LOOP_CHUNK];		/* chunk of loops */
-};
+static Blockallocator<loop, LOOP_CHUNK> lchunk;
 
-static lchunk *llist;		/* list of all loop chunks */
-static loop *fllist;		/* list of free loops */
-static int lchunksz = LOOP_CHUNK; /* size of current loop chunk */
 static unsigned short nesting;	/* current rlimits/catch nesting level */
 
 /*
@@ -375,20 +306,7 @@ static loop *loop_new(loop *prev)
 {
     loop *l;
 
-    if (fllist != (loop *) NULL) {
-	l = fllist;
-	fllist = l->prev;
-    } else {
-	if (lchunksz == LOOP_CHUNK) {
-	    lchunk *lc;
-
-	    lc = ALLOC(lchunk, 1);
-	    lc->next = llist;
-	    llist = lc;
-	    lchunksz = 0;
-	}
-	l = &llist->l[lchunksz++];
-    }
+    l = lchunk.add();
     l->brk = FALSE;
     l->cont = FALSE;
     l->nesting = nesting;
@@ -406,8 +324,7 @@ static loop *loop_del(loop *l)
 
     f = l;
     l = l->prev;
-    f->prev = fllist;
-    fllist = f;
+    lchunk.del(f);
     return l;
 }
 
@@ -417,18 +334,7 @@ static loop *loop_del(loop *l)
  */
 static void loop_clear()
 {
-    lchunk *l;
-
-    for (l = llist; l != (lchunk *) NULL; ) {
-	lchunk *f;
-
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    llist = (lchunk *) NULL;
-    lchunksz = LOOP_CHUNK;
-    fllist = (loop *) NULL;
+    lchunk.clean();
 }
 
 
