@@ -1168,8 +1168,8 @@ static bool cclose()
 static bool conf_includes()
 {
     char buf[BUF_SIZE], buffer[STRINGSZ];
-    register int i;
-    register char *p;
+    int i;
+    char *p;
 
     /* create status.h file */
     obuf = buf;

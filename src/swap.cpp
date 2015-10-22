@@ -652,7 +652,7 @@ int sw_dump(char *snapshot, bool keep)
 void sw_dump2(char *header, int size, bool incr)
 {
     static off_t prev;
-    register off_t sectors;
+    off_t sectors;
     Uint offset;
     dump_header dh;
     char save[4];

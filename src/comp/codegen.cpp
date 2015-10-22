@@ -772,8 +772,8 @@ static int cg_sumargs(node *n)
  */
 static int cg_funargs(node **l, int *nargs, bool *spread)
 {
-    register node *n, *m;
-    register int stack;
+    node *n, *m;
+    int stack;
 
     *spread = FALSE;
     n = *l;

@@ -3198,7 +3198,7 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	    }
 	    AFREE(cso - data->ncallouts);
 	} else if (conv_time) {
-	    register tscallout *tco;
+	    tscallout *tco;
 
 	    /*
 	     * convert callouts without htime

@@ -124,7 +124,7 @@ static void ext_int_putval(Value *val, Int i)
 static long double ext_float_getval(Value *val)
 {
     xfloat flt;
-    register double d;
+    double d;
 
     GET_FLT(val, flt);
     if ((flt.high | flt.low) == 0) {

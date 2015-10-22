@@ -181,7 +181,7 @@ static char *prototype(char *proto)
  */
 void kf_ext_kfun(extkfunc *kfadd, int n)
 {
-    register kfunc *kf;
+    kfunc *kf;
 
     for (; n != 0; kfadd++, --n) {
 	if (strncmp(kfadd->name, "encrypt ", 8) == 0) {
@@ -282,8 +282,8 @@ void kf_jit()
  */
 static int kf_index(kfunc *kf, unsigned int l, unsigned int h, const char *name)
 {
-    register unsigned int m;
-    register int c;
+    unsigned int m;
+    int c;
 
     do {
 	c = strcmp(name, kf[m = (l + h) >> 1].name);
