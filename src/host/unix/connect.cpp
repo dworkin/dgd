@@ -28,6 +28,7 @@
 # include "dgd.h"
 # include "hash.h"
 # include "comm.h"
+# include <sys/wait.h>
 
 #ifdef NETWORK_EXTENSIONS
 #undef INET6
@@ -203,8 +204,11 @@ static bool ipa_init(int maxusers)
  */
 static void ipa_finish()
 {
+    int status;
+
     close(out);
     close(in);
+    wait(&status);
 }
 
 /*
