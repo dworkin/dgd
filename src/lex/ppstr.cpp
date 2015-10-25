@@ -53,7 +53,7 @@ str *pps_new(char *buf, int sz)
 {
     str *sb;
 
-    sb = schunk.add();
+    sb = schunk.alloc();
     sb->buffer = buf;
     sb->buffer[0] = '\0';
     sb->size = sz;

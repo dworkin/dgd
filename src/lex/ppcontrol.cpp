@@ -116,7 +116,7 @@ static void push()
 {
     ifstate *s;
 
-    s = ichunk.add();
+    s = ichunk.alloc();
     s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;

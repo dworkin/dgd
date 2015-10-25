@@ -70,10 +70,10 @@ private:
 
 public:
     /*
-     * NAME:		add()
+     * NAME:		alloc()
      * DESCRIPTION:	add new item to block
      */
-    T *add() {
+    T *alloc() {
 	if (flist == NULL) {
 	    if (block == NULL || blocksize == 0) {
 		Tblock *b;

@@ -112,7 +112,7 @@ Uint str_put(String *str, Uint n)
 	    /*
 	     * Not in the hash table. Make a new entry.
 	     */
-	    s = *h = hchunk.add();
+	    s = *h = hchunk.alloc();
 	    s->next = (hte *) NULL;
 	    s->name = str->text;
 	    s->str = str;

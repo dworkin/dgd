@@ -89,7 +89,7 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 {
     tbuf *tb;
 
-    tb = tchunk.add();
+    tb = tchunk.alloc();
     tb->strs = (String **) NULL;
     tb->nstr = 0;
     tb->p = tb->buffer = buffer;

@@ -95,7 +95,7 @@ Array *arr_alloc(unsigned int size)
 {
     Array *a;
 
-    a = achunk.add();
+    a = achunk.alloc();
     a->size = size;
     a->hashmod = FALSE;
     a->elts = (Value *) NULL;
@@ -300,7 +300,7 @@ Uint arr_put(Array *a, Uint idx)
     /*
      * Add a new entry to the hash table.
      */
-    *h = hchunk.add();
+    *h = hchunk.alloc();
     (*h)->next = (arrh *) NULL;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
@@ -1721,7 +1721,7 @@ static mapelt *map_grow(Dataspace *data, Array *m, Uint hashval, bool add)
     }
     h->size++;
 
-    e = echunk.add();
+    e = echunk.alloc();
     e->hashval = hashval;
     e->add = FALSE;
     e->idx = nil_value;

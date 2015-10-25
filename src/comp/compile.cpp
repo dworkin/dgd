@@ -78,7 +78,7 @@ static void cond_new(cond *c2)
 {
     cond *c;
 
-    c = cchunk.add();
+    c = cchunk.alloc();
     c->prev = thiscond;
     if (c2 != (cond *) NULL) {
 	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
@@ -136,7 +136,7 @@ static void block_new()
 {
     block *b;
 
-    b = bchunk.add();
+    b = bchunk.alloc();
     if (thisblock == (block *) NULL) {
 	cond_new((cond *) NULL);
 	b->vindex = 0;
@@ -306,7 +306,7 @@ static loop *loop_new(loop *prev)
 {
     loop *l;
 
-    l = lchunk.add();
+    l = lchunk.alloc();
     l->brk = FALSE;
     l->cont = FALSE;
     l->nesting = nesting;
