@@ -60,8 +60,8 @@ struct var {
     String *cvstr;		/* class name */
 };
 
-static Blockallocator<cond, COND_CHUNK> cchunk;
-static Blockallocator<block, BLOCK_CHUNK> bchunk;
+static Chunk<cond, COND_CHUNK> cchunk;
+static Chunk<block, BLOCK_CHUNK> bchunk;
 
 static cond *thiscond;			/* current condition */
 static block *thisblock;		/* current statement block */
@@ -294,7 +294,7 @@ struct loop {
     loop *env;			/* enclosing loop */
 };
 
-static Blockallocator<loop, LOOP_CHUNK> lchunk;
+static Chunk<loop, LOOP_CHUNK> lchunk;
 
 static unsigned short nesting;	/* current rlimits/catch nesting level */
 

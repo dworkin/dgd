@@ -31,7 +31,7 @@ struct strh : public hte {
     Uint index;			/* building index */
 };
 
-static Blockallocator<strh, STR_CHUNK> hchunk;
+static Chunk<strh, STR_CHUNK> hchunk;
 
 static hashtab *sht;		/* string merge table */
 

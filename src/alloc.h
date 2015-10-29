@@ -53,37 +53,56 @@ extern bool  m_check	(void);
 extern void  m_purge	(void);
 extern void  m_finish	(void);
 
-template <class T, int CHUNK> class Blockallocator {
-private:
-    union Titem {
-	T item;			/* item */
-	Titem *list;		/* next in the free list */
-    };
-    struct Tblock {
-	Titem items[CHUNK];	/* array of allocated items */
-	Tblock *prev;		/* previous block of items */
-    };
-
-    Tblock *block;		/* block of items */
-    Titem *flist;		/* free list of items */
-    int blocksize;		/* size of block */
-
+class Allocated {
 public:
     /*
+     * NAME:		new()
+     * DESCRIPTION:	override new for class Allocated
+     */
+    static void *operator new(std::size_t size) {
+	return ALLOC(char, size);
+    }
+
+    /*
+     * NAME:		delete()
+     * DESCRIPTION:	override delete for class Allocated
+     */
+    static void operator delete(void *ptr) {
+	FREE(ptr);
+    }
+};
+
+template <class T, int CHUNK> class Chunk : public Allocated {
+public:
+    /*
+     * NAME:		Chunk()
+     * DESCRIPTION:	constructor
+     */
+    Chunk() {
+	chunk = (Tchunk *) NULL;
+	flist = (Titem *) NULL;
+	chunksize = 0;
+    }
+
+    virtual ~Chunk() {
+	clean();
+    }
+
+    /*
      * NAME:		alloc()
-     * DESCRIPTION:	add new item to block
+     * DESCRIPTION:	add new item to chunk
      */
     T *alloc() {
 	if (flist == NULL) {
-	    if (block == NULL || blocksize == 0) {
-		Tblock *b;
+	    if (chunk == NULL || chunksize == 0) {
+		Tchunk *b;
 
-		b = ALLOC(Tblock, 1);
-		b->prev = block;
-		block = b;
-		blocksize = CHUNK;
+		b = ALLOC(Tchunk, 1);
+		b->prev = chunk;
+		chunk = b;
+		chunksize = CHUNK;
 	    }
-	    return &block->items[--blocksize].item;
+	    return &chunk->items[--chunksize].item;
 	} else {
 	    Titem *item;
 
@@ -95,7 +114,7 @@ public:
 
     /*
      * NAME:		del()
-     * DESCRITION:	remove item from block
+     * DESCRITION:	remove item from chunk
      */
     void del(T *ptr) {
 	Titem *item;
@@ -111,16 +130,16 @@ public:
 
     /*
      * NAME:		items()
-     * DESCRIPTION:	visit items in blocks
+     * DESCRIPTION:	visit items in chunks
      */
     void items() {
-	Tblock *b;
+	Tchunk *b;
 	int i;
 
-	i = blocksize;
-	for (b = block; b != NULL; b = b->prev) {
+	i = chunksize;
+	for (b = chunk; b != NULL; b = b->prev) {
 	    while (i < CHUNK) {
-		if (!b->items[i].item()) {
+		if (!item(&b->items[i].item)) {
 		    return;
 		}
 		i++;
@@ -131,19 +150,33 @@ public:
 
     /*
      * NAME:		clean()
-     * DESCRIPTION:	clean up item blocks
+     * DESCRIPTION:	clean up item chunks
      */
     void clean() {
-	while (block != NULL) {
-	    Tblock *prev;
+	while (chunk != NULL) {
+	    Tchunk *prev;
 
-	    prev = block->prev;
-	    FREE(block);
-	    block = prev;
+	    prev = chunk->prev;
+	    FREE(chunk);
+	    chunk = prev;
 	}
 	flist = NULL;
-	blocksize = 0;
+	chunksize = 0;
     }
+
+private:
+    union Titem {
+	T item;			/* item */
+	Titem *list;		/* next in the free list */
+    };
+    struct Tchunk {
+	Titem items[CHUNK];	/* array of allocated items */
+	Tchunk *prev;		/* previous chunk of items */
+    };
+
+    Tchunk *chunk;		/* chunk of items */
+    Titem *flist;		/* list of free items */
+    int chunksize;		/* size of chunk */
 };
 
 struct allocinfo {

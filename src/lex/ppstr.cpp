@@ -26,7 +26,7 @@
 
 # define SCHUNKSZ	8
 
-static Blockallocator<str, SCHUNKSZ> schunk;
+static Chunk<str, SCHUNKSZ> schunk;
 
 /*
  * NAME:	str->init()

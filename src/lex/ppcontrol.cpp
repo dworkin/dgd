@@ -39,7 +39,7 @@ struct ifstate {
     ifstate *prev;		/* previous ifstate */
 };
 
-static Blockallocator<ifstate, ICHUNKSZ> ichunk;
+static Chunk<ifstate, ICHUNKSZ> ichunk;
 
 static char **idirs;		/* include directory array */
 static char pri[NR_TOKENS + 1];	/* operator priority table */

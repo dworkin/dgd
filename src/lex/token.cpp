@@ -51,7 +51,7 @@ struct tbuf {
     tbuf *prev;			/* previous token buffer */
 };
 
-static Blockallocator<tbuf, TCHUNKSZ> tchunk;
+static Chunk<tbuf, TCHUNKSZ> tchunk;
 
 char *yytext;			/* for strings and identifiers */
 static char *yytext1, *yytext2;	/* internal buffers */

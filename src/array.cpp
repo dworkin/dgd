@@ -68,9 +68,9 @@ struct abchunk {
     arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
 };
 
-static Blockallocator<Array, ARR_CHUNK> achunk;
-static Blockallocator<arrh, ARR_CHUNK> hchunk;
-static Blockallocator<mapelt, MELT_CHUNK> echunk;
+static Chunk<Array, ARR_CHUNK> achunk;
+static Chunk<arrh, ARR_CHUNK> hchunk;
+static Chunk<mapelt, MELT_CHUNK> echunk;
 
 static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
