@@ -475,11 +475,7 @@ struct rule : public hte {
 # define RSCHUNKSZ	64
 # define RLCHUNKSZ	32
 
-struct rschunk {
-    int chunksz;		/* current chunk size */
-    rschunk *next;		/* next in list */
-    rulesym rs[RSCHUNKSZ];	/* rulesym chunk */
-};
+typedef Chunk<rulesym, RSCHUNKSZ> rschunk;
 
 struct rlchunk {
     int chunksz;		/* current chunk size */
@@ -500,34 +496,14 @@ static rulesym *rs_new(rschunk **c, rule *rl)
 {
     rulesym *rs;
 
-    if (*c == (rschunk *) NULL || (*c)->chunksz == RSCHUNKSZ) {
-	rschunk *x;
-
-	x = ALLOC(rschunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (rschunk *) NULL) {
+	*c = new rschunk;
     }
 
-    rs = &(*c)->rs[(*c)->chunksz++];
+    rs = (*c)->alloc();
     rs->rule = rl;
     rs->next = (rulesym *) NULL;
     return rs;
-}
-
-/*
- * NAME:	rulesym->clear()
- * DESCRIPTION:	free all rulesyms
- */
-static void rs_clear(rschunk *c)
-{
-    rschunk *f;
-
-    while (c != (rschunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
 }
 
 /*
@@ -1060,7 +1036,7 @@ String *parse_grammar(String *gram)
 	    }
 	    gram = make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx,
 				nstr, nestr, nprod, size);
-	    rs_clear(rschunks);
+	    delete rschunks;
 	    rl_clear(rlchunks);
 	    ht_del(strtab);
 	    ht_del(ruletab);
@@ -1097,7 +1073,7 @@ String *parse_grammar(String *gram)
     }
 
 err:
-    rs_clear(rschunks);
+    delete rschunks;
     rl_clear(rlchunks);
     ht_del(strtab);
     ht_del(ruletab);

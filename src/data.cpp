@@ -47,15 +47,17 @@ struct copatch {
 
 # define COPCHUNKSZ	32
 
-struct copchunk {
-    copchunk *next;		/* next in linked list */
-    copatch cop[COPCHUNKSZ];	/* callout patches */
-};
+class coptable {
+public:
+    /*
+     * NAME:		coptable()
+     * DESCRIPTION:	initialize copatch table
+     */
+    coptable() {
+	memset(&cop, '\0', COPATCHHTABSZ * sizeof(copatch*));
+    }
 
-struct coptable {
-    copchunk *chunk;			/* callout patch chunk */
-    unsigned short chunksz;		/* size of callout patch chunk */
-    copatch *flist;			/* free list of callout patches */
+    Chunk<copatch, COPCHUNKSZ> chunk;	/* callout patch chunk */
     copatch *cop[COPATCHHTABSZ];	/* hash table of callout patches */
 };
 
@@ -314,34 +316,6 @@ static void d_free_call_out(Dataspace *data, unsigned int handle)
 
 
 /*
- * NAME:	copatch->init()
- * DESCRIPTION:	initialize copatch table
- */
-static void cop_init(Dataplane *plane)
-{
-    memset(plane->coptab = ALLOC(coptable, 1), '\0', sizeof(coptable));
-}
-
-/*
- * NAME:	copatch->clean()
- * DESCRIPTION:	free copatch table
- */
-static void cop_clean(Dataplane *plane)
-{
-    copchunk *c, *f;
-
-    c = plane->coptab->chunk;
-    while (c != (copchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
-
-    FREE(plane->coptab);
-    plane->coptab = (coptable *) NULL;
-}
-
-/*
  * NAME:	copatch->new()
  * DESCRIPTION:	create a new callout patch
  */
@@ -349,31 +323,12 @@ static copatch *cop_new(Dataplane *plane, copatch **c, int type,
 	unsigned int handle, dcallout *co, Uint time, unsigned int mtime,
 	uindex *q)
 {
-    coptable *tab;
     copatch *cop;
     int i;
     Value *v;
 
     /* allocate */
-    tab = plane->coptab;
-    if (tab->flist != (copatch *) NULL) {
-	/* from free list */
-	cop = tab->flist;
-	tab->flist = cop->next;
-    } else {
-	/* newly allocated */
-	if (tab->chunk == (copchunk *) NULL || tab->chunksz == COPCHUNKSZ) {
-	    copchunk *cc;
-
-	    /* create new chunk */
-	    cc = ALLOC(copchunk, 1);
-	    cc->next = tab->chunk;
-	    tab->chunk = cc;
-	    tab->chunksz = 0;
-	}
-
-	cop = &tab->chunk->cop[tab->chunksz++];
-    }
+    cop = plane->coptab->chunk.alloc();
 
     /* initialize */
     cop->type = type;
@@ -406,7 +361,6 @@ static void cop_del(Dataplane *plane, copatch **c, bool del)
     dcallout *co;
     int i;
     Value *v;
-    coptable *tab;
 
     /* remove from hash table */
     cop = *c;
@@ -422,9 +376,7 @@ static void cop_del(Dataplane *plane, copatch **c, bool del)
     }
 
     /* add to free list */
-    tab = plane->coptab;
-    cop->next = tab->flist;
-    tab->flist = cop;
+    plane->coptab->chunk.del(cop);
 }
 
 /*
@@ -784,7 +736,8 @@ void d_commit_plane(Int level, Value *retval)
 	    /* commit callout changes */
 	    commit_callouts(p, p->flags & PLANE_MERGE);
 	    if (p->level == 1) {
-		cop_clean(p);
+		delete p->coptab;
+		p->coptab = (coptable *) NULL;
 	    } else {
 		p->prev->coptab = p->coptab;
 	    }
@@ -913,7 +866,8 @@ void d_discard_plane(Int level)
 	    /* undo callout changes */
 	    discard_callouts(p);
 	    if (p->prev == &data->base) {
-		cop_clean(p);
+		delete p->coptab;
+		p->coptab = (coptable *) NULL;
 	    } else {
 		p->prev->coptab = p->coptab;
 	    }
@@ -1222,7 +1176,7 @@ uindex d_new_call_out(Dataspace *data, String *func, Int delay,
 	 */
 	plane = data->plane;
 	if (plane->coptab == (coptable *) NULL) {
-	    cop_init(plane);
+	    plane->coptab = new coptable;
 	}
 	co = &data->callouts[handle - 1];
 	cc = c = &plane->coptab->cop[handle % COPATCHHTABSZ];
@@ -1292,7 +1246,7 @@ Int d_del_call_out(Dataspace *data, Uint handle, unsigned short *mtime)
 
 	plane = data->plane;
 	if (plane->coptab == (coptable *) NULL) {
-	    cop_init(plane);
+	    plane->coptab = new coptable;
 	}
 	cc = c = &plane->coptab->cop[handle % COPATCHHTABSZ];
 	for (;;) {

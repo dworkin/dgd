@@ -45,11 +45,7 @@ struct pnode {
 
 # define PNCHUNKSZ	256
 
-struct pnchunk {
-    int chunksz;		/* size of this chunk */
-    pnchunk *next;		/* next in linked list */
-    pnode pn[PNCHUNKSZ];	/* chunk of pnodes */
-};
+typedef Chunk<pnode, PNCHUNKSZ> pnchunk;
 
 /*
  * NAME:	pnode->new()
@@ -59,15 +55,10 @@ static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, 
 {
     pnode *pn;
 
-    if (*c == (pnchunk *) NULL || (*c)->chunksz == PNCHUNKSZ) {
-	pnchunk *x;
-
-	x = ALLOC(pnchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (pnchunk *) NULL) {
+	*c = new pnchunk;
     }
-    pn = &(*c)->pn[(*c)->chunksz++];
+    pn = (*c)->alloc();
 
     pn->symbol = symb;
     pn->state = state;
@@ -79,21 +70,6 @@ static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, 
     return pn;
 }
 
-/*
- * NAME:	pnode->clear()
- * DESCRIPTION:	free all pnodes in memory
- */
-static void pn_clear(pnchunk *c)
-{
-    pnchunk *f;
-
-    while (c != (pnchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
-}
-
 struct snode {
     pnode *pn;			/* pnode */
     snode *next;		/* next to be treated */
@@ -102,17 +78,12 @@ struct snode {
 
 # define SNCHUNKSZ	32
 
-struct snchunk {
-    int chunksz;		/* size of this chunk */
-    snchunk *next;		/* next in linked list */
-    snode sn[SNCHUNKSZ];	/* chunk of snodes */
-};
+typedef Chunk<snode, SNCHUNKSZ> snchunk;
 
 struct snlist {
     snchunk *snc;		/* snode chunk */
     snode *first;		/* first node in list */
     snode *last;		/* last node in list */
-    snode *free;		/* first node in free list */
 };
 
 /*
@@ -123,20 +94,10 @@ static snode *sn_new(snlist *list, pnode *pn, snode *slist)
 {
     snode *sn;
 
-    if (list->free != (snode *) NULL) {
-	sn = list->free;
-	list->free = sn->next;
-    } else {
-	if (list->snc == (snchunk *) NULL || list->snc->chunksz == SNCHUNKSZ) {
-	    snchunk *x;
-
-	    x = ALLOC(snchunk, 1);
-	    x->next = list->snc;
-	    list->snc = x;
-	    x->chunksz = 0;
-	}
-	sn = &list->snc->sn[list->snc->chunksz++];
+    if (list->snc == (snchunk *) NULL) {
+	list->snc = new snchunk;
     }
+    sn = list->snc->alloc();
     if (list->first == (snode *) NULL) {
 	list->first = list->last = sn;
     } else {
@@ -177,8 +138,7 @@ static snode *sn_add(snlist *list, snode *sn, pnode *pn, snode *slist)
  */
 static void sn_del(snlist *list, snode *sn)
 {
-    sn->next = list->free;
-    list->free = sn;
+    list->snc->del(sn);
 }
 
 /*
@@ -187,16 +147,10 @@ static void sn_del(snlist *list, snode *sn)
  */
 static void sn_clear(snlist *list)
 {
-    snchunk *c, *f;
-
-    c = list->snc;
-    while (c != (snchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
+    list->snc->clean();
+    delete list->snc;
     list->snc = (snchunk *) NULL;
-    list->first = list->free = (snode *) NULL;
+    list->first = (snode *) NULL;
 }
 
 
@@ -340,7 +294,7 @@ static parser *ps_new(Frame *f, String *source, String *grammar)
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
-    ps->list.first = ps->list.free = (snode *) NULL;
+    ps->list.first = (snode *) NULL;
 
     ps->strc = (strchunk *) NULL;
     ps->arrc = (arrchunk *) NULL;
@@ -849,7 +803,7 @@ static parser *ps_load(Frame *f, Value *elts)
 
     ps->pnc = (pnchunk *) NULL;
     ps->list.snc = (snchunk *) NULL;
-    ps->list.first = ps->list.free = (snode *) NULL;
+    ps->list.first = (snode *) NULL;
 
     ps->strc = (strchunk *) NULL;
     ps->arrc = (arrchunk *) NULL;
@@ -1005,13 +959,13 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	     * lexer or parser has become too big
 	     */
 	    ec_pop();
-	    pn_clear(ps->pnc);
+	    delete ps->pnc;
 	    ps->data->parser = (parser *) NULL;
 	    ps_del(ps);
 
 	    error("Grammar too large");
 	}
-	pn_clear(ps->pnc);
+	delete ps->pnc;
 	ps->pnc = (pnchunk *) NULL;
 
 	ec_pop();
@@ -1020,7 +974,7 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	 * error occurred; clean up
 	 */
 	sn_clear(&ps->list);
-	pn_clear(ps->pnc);
+	delete ps->pnc;
 	ps->pnc = (pnchunk *) NULL;
 
 	sc_clean(ps->strc);

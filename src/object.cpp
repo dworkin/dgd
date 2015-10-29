@@ -37,15 +37,17 @@ struct objpatch {
 
 # define OPCHUNKSZ		32
 
-struct opchunk {
-    opchunk *next;			/* next in linked list */
-    objpatch op[OPCHUNKSZ];		/* object patches */
-};
+class optable {
+public:
+    /*
+     * NAME:		objpatch->init()
+     * DESCRIPTION:	initialize objpatch table
+     */
+    optable() {
+	memset(&op, '\0', OBJPATCHHTABSZ * sizeof(objpatch*));
+    }
 
-struct optable {
-    opchunk *chunk;			/* object patch chunk */
-    unsigned short chunksz;		/* size of object patch chunk */
-    objpatch *flist;			/* free list of object patches */
+    Chunk<objpatch, OPCHUNKSZ> chunk; 	/* object patch chunk */
     objpatch *op[OBJPATCHHTABSZ];	/* hash table of object patches */
 };
 
@@ -116,62 +118,15 @@ void o_init(unsigned int n, Uint interval)
 
 
 /*
- * NAME:	objpatch->init()
- * DESCRIPTION:	initialize objpatch table
- */
-static void op_init(objplane *plane)
-{
-    memset(plane->optab = ALLOC(optable, 1), '\0', sizeof(optable));
-}
-
-/*
- * NAME:	objpatch->clean()
- * DESCRIPTION:	free objpatch table
- */
-static void op_clean(objplane *plane)
-{
-    opchunk *c, *f;
-
-    c = plane->optab->chunk;
-    while (c != (opchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
-
-    FREE(plane->optab);
-    plane->optab = (optable *) NULL;
-}
-
-/*
  * NAME:	objpatch->new()
  * DESCRIPTION:	create a new object patch
  */
 static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, Object *obj)
 {
-    optable *tab;
     objpatch *op;
 
     /* allocate */
-    tab = plane->optab;
-    if (tab->flist != (objpatch *) NULL) {
-	/* from free list */
-	op = tab->flist;
-	tab->flist = op->next;
-    } else {
-	/* newly allocated */
-	if (tab->chunk == (opchunk *) NULL || tab->chunksz == OPCHUNKSZ) {
-	    opchunk *cc;
-
-	    /* create new chunk */
-	    cc = ALLOC(opchunk, 1);
-	    cc->next = tab->chunk;
-	    tab->chunk = cc;
-	    tab->chunksz = 0;
-	}
-
-	op = &tab->chunk->op[tab->chunksz++];
-    }
+    op = plane->optab->chunk.alloc();
 
     /* initialize */
     op->plane = plane;
@@ -190,16 +145,13 @@ static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, Object *o
 static void op_del(objplane *plane, objpatch **o)
 {
     objpatch *op;
-    optable *tab;
 
     /* remove from hash table */
     op = *o;
     *o = op->next;
 
     /* add to free list */
-    tab = plane->optab;
-    op->next = tab->flist;
-    tab->flist = op;
+    plane->optab->chunk.del(op);
 }
 
 
@@ -234,7 +186,7 @@ static Object *o_oaccess(unsigned int index, int access)
 	 */
 	BSET(ocmap, index);
 	if (oplane->optab == (optable *) NULL) {
-	    op_init(oplane);
+	    oplane->optab = new optable;
 	}
 	oo = &oplane->optab->op[index % OBJPATCHHTABSZ];
 	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index))->obj;
@@ -466,7 +418,7 @@ void o_commit_plane()
 	    if (oplane->htab != (hashtab *) NULL) {
 		ht_del(oplane->htab);
 	    }
-	    op_clean(oplane);
+	    delete oplane->optab;
 	}
     }
 
@@ -585,7 +537,7 @@ void o_discard_plane()
 	    if (p->htab != (hashtab *) NULL) {
 		ht_del(p->htab);
 	    }
-	    op_clean(p);
+	    delete p->optab;
 	}
     }
     FREE(p);

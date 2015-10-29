@@ -29,12 +29,7 @@ struct item {
 
 # define ITCHUNKSZ	32
 
-struct itchunk {
-    int chunksz;		/* size of this chunk */
-    item *flist;		/* list of free items */
-    itchunk *next;		/* next in linked list */
-    item it[ITCHUNKSZ];		/* chunk of items */
-};
+typedef Chunk<item, ITCHUNKSZ> itchunk;
 
 /*
  * NAME:	item->new()
@@ -44,22 +39,10 @@ static item *it_new(itchunk **c, char *ref, unsigned short ruleno, unsigned shor
 {
     item *it;
 
-    if (*c == (itchunk *) NULL ||
-	((*c)->flist == (item *) NULL && (*c)->chunksz == ITCHUNKSZ)) {
-	itchunk *x;
-
-	x = ALLOC(itchunk, 1);
-	x->flist = (*c != (itchunk *) NULL) ? (*c)->flist : (item *) NULL;
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (itchunk *) NULL) {
+	*c = new itchunk;
     }
-    if ((*c)->flist != (item *) NULL) {
-	it = (*c)->flist;
-	(*c)->flist = it->next;
-    } else {
-	it = &(*c)->it[(*c)->chunksz++];
-    }
+    it = (*c)->alloc();
 
     it->ref = ref;
     it->ruleno = ruleno;
@@ -78,24 +61,8 @@ static item *it_del(itchunk *c, item *it)
     item *next;
 
     next = it->next;
-    it->next = c->flist;
-    c->flist = it;
+    c->del(it);
     return next;
-}
-
-/*
- * NAME:	item->clear()
- * DESCRIPTION:	free all items in memory
- */
-static void it_clear(itchunk *c)
-{
-    itchunk *f;
-
-    while (c != (itchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
 }
 
 /*
@@ -501,7 +468,7 @@ void srp_del(srp *lr)
     if (lr->allocated) {
 	FREE(lr->srpstr);
     }
-    it_clear(lr->itc);
+    delete lr->itc;
     if (lr->sthtab != (unsigned short *) NULL) {
 	FREE(lr->sthtab);
     }
