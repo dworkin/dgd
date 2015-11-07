@@ -354,7 +354,6 @@ struct connection : public hte {
     ipaddr *addr;			/* internet address of connection */
     unsigned short port;		/* UDP port of connection */
     short at;				/* port connection was accepted at */
-    connection *next;			/* next in list */
 };
 
 struct portdesc {

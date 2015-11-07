@@ -469,7 +469,7 @@ struct rule : public hte {
     } u;
     String *func;		/* optional LPC function */
     rule *alt, **last;		/* first and last in alternatives list */
-    rule *next;			/* next in linked list */
+    rule *list;			/* next in linked list */
 };
 
 # define RSCHUNKSZ	64
@@ -529,7 +529,7 @@ static rule *rl_new(rlchunk **c, int type)
     rl->len = 0;
     rl->u.syms = (rulesym *) NULL;
     rl->func = (String *) NULL;
-    rl->alt = rl->next = (rule *) NULL;
+    rl->alt = rl->list = (rule *) NULL;
     rl->last = &rl->alt;
 
     return rl;
@@ -637,7 +637,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     p = gram->text + size;
 
     /* determine production rule offsets */
-    for (rl = prodlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = prodlist; rl != (rule *) NULL; rl = rl->list) {
 	size -= (rl->num << 1) + rl->len + 2;
 	p -= (rl->num << 1) + rl->len + 2;
 	q -= 2; STORE2(q, size);
@@ -654,7 +654,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     start = size;
 
     /* deal with strings */
-    for (rl = estrlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = estrlist; rl != (rule *) NULL; rl = rl->list) {
 	size -= rl->symb->len + 1;
 	p -= rl->symb->len + 1;
 	q -= 2; STORE2(q, size);
@@ -662,7 +662,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 	*p = rl->symb->len;
 	memcpy(p + 1, rl->symb->text, rl->symb->len);
     }
-    for (rl = strlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = strlist; rl != (rule *) NULL; rl = rl->list) {
 	*--q = rl->symb->len;
 	q -= 3; STORE3(q, rl->len);
 	rl->num = --n;
@@ -670,7 +670,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 
     /* deal with regexps */
     nrgx = 0;
-    for (rl = rgxlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = rgxlist; rl != (rule *) NULL; rl = rl->list) {
 	size -= rl->num + rl->len + 2;
 	q -= 2; STORE2(q, size);
 	p = gram->text + size;
@@ -698,7 +698,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 
     /* fill in production rules */
     nprod = 1;
-    for (rl = prodlist; rl != (rule *) NULL; rl = rl->next) {
+    for (rl = prodlist; rl != (rule *) NULL; rl = rl->list) {
 	q = gram->text + rl->len + 2;
 	for (r = rl; r != (rule *) NULL; r = r->alt) {
 	    p = q + 2;
@@ -787,15 +787,15 @@ String *parse_grammar(String *gram)
 		    nrgx++;
 
 		    if (rl->alt != (rule *) NULL) {
-			rl->alt->next = rl->next;
+			rl->alt->list = rl->list;
 		    } else {
-			tmplist = rl->next;
+			tmplist = rl->list;
 		    }
-		    if (rl->next != (rule *) NULL) {
-			rl->next->alt = rl->alt;
+		    if (rl->list != (rule *) NULL) {
+			rl->list->alt = rl->alt;
 		    }
 		    rl->alt = (rule *) NULL;
-		    rl->next = rgxlist;
+		    rl->list = rgxlist;
 		    rgxlist = rl;
 		} else if ((*r)->type == RULE_REGEXP) {
 		    /* new alternative regexp */
@@ -819,7 +819,7 @@ String *parse_grammar(String *gram)
 		size += 4;
 		nrgx++;
 
-		rl->next = rgxlist;
+		rl->list = rgxlist;
 		rgxlist = rl;
 	    }
 
@@ -875,15 +875,15 @@ String *parse_grammar(String *gram)
 		    nprod++;
 
 		    if (rl->alt != (rule *) NULL) {
-			rl->alt->next = rl->next;
+			rl->alt->list = rl->list;
 		    } else {
-			tmplist = rl->next;
+			tmplist = rl->list;
 		    }
-		    if (rl->next != (rule *) NULL) {
-			rl->next->alt = rl->alt;
+		    if (rl->list != (rule *) NULL) {
+			rl->list->alt = rl->alt;
 		    }
 		    rl->alt = (rule *) NULL;
-		    rl->next = prodlist;
+		    rl->list = prodlist;
 		    prodlist = rl;
 		} else if ((*r)->type == RULE_PROD) {
 		    /* new alternative production */
@@ -906,7 +906,7 @@ String *parse_grammar(String *gram)
 		size += 4;
 		nprod++;
 
-		rl->next = prodlist;
+		rl->list = prodlist;
 		prodlist = rl;
 	    }
 
@@ -929,7 +929,7 @@ String *parse_grammar(String *gram)
 			rl->next = *r;
 			*r = rl;
 
-			rl->next = tmplist;
+			rl->list = tmplist;
 			if (tmplist != (rule *) NULL) {
 			    tmplist->alt = rl;
 			}
@@ -954,7 +954,7 @@ String *parse_grammar(String *gram)
 			    memcmp((*r)->symb->text, buffer, buflen) == 0) {
 			    break;
 			}
-			r = (rule **) &(*r)->next;
+			r = (rule **) &(*r)->list;
 		    }
 		    if (*r == (rule *) NULL) {
 			/* new string rule */
@@ -968,12 +968,12 @@ String *parse_grammar(String *gram)
 			    size += 4;
 			    nstr++;
 			    rl->len = gram->len - glen - buflen - 1;
-			    rl->next = strlist;
+			    rl->list = strlist;
 			    strlist = rl;
 			} else {
 			    size += 3 + buflen;
 			    nestr++;
-			    rl->next = estrlist;
+			    rl->list = estrlist;
 			    estrlist = rl;
 			}
 		    } else {
