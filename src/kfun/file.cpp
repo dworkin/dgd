@@ -500,68 +500,64 @@ FUNCDEF("restore_object", kf_restore_object, pt_restore_object, 0)
 # else
 # define ACHUNKSZ	16
 
-struct achunk {
-    achunk *next;		/* next in list */
-    Value a[ACHUNKSZ];		/* chunk of arrays */
+class vchunk : public Chunk<Value, ACHUNKSZ> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	iterate through items until the right one is found
+     */
+    virtual bool item(Value *v) {
+	if (--count == 0) {
+	    found = v;
+	    return FALSE;
+	}
+	return TRUE;
+    }
+
+    /*
+     * NAME:		get()
+     * DESCRIPTION:	get an item by index
+     */
+    Value *get(Uint n) {
+	count = n;
+	items();
+	return found;
+    }
+
+private:
+    Uint count;			/* index counter */
+    Value *found;		/* value found */
 };
 
 struct restcontext {
     int line;			/* current line number */
     Frame *f;			/* interpreter frame */
-    achunk *alist;		/* list of array chunks */
-    int achunksz;		/* size of current array chunk */
+    vchunk alist;		/* list of array value chunks */
     Uint narrays;		/* # of arrays/mappings */
     char file[STRINGSZ];	/* current restore file */
 };
 
 /*
- * NAME:	achunk->put()
+ * NAME:	vchunk->put()
  * DESCRIPTION:	put an array into the array chunks
  */
 static void ac_put(restcontext *x, short type, Array *a)
 {
-    if (x->achunksz == ACHUNKSZ) {
-	achunk *l;
+    Value *v;
 
-	l = ALLOC(achunk, 1);
-	l->next = x->alist;
-	x->alist = l;
-	x->achunksz = 0;
-    }
-    x->alist->a[x->achunksz].type = type;
-    x->alist->a[x->achunksz++].u.array = a;
+    v = x->alist.alloc();
+    v->type = type;
+    v->u.array = a;
     x->narrays++;
 }
 
 /*
- * NAME:	achunk->get()
+ * NAME:	vchunk->get()
  * DESCRIPTION:	get an array from the array chunks
  */
 static Value *ac_get(restcontext *x, Uint n)
 {
-    Uint sz;
-    achunk *l;
-
-    n = x->narrays - n;
-    for (sz = x->achunksz, l = x->alist; n > sz; l = l->next, sz = ACHUNKSZ) {
-	n -= sz;
-    }
-    return &l->a[sz - n];
-}
-
-/*
- * NAME:	achunk->clear()
- * DESCRIPTION:	clear the array chunks
- */
-static void ac_clear(restcontext *x)
-{
-    achunk *l, *f;
-
-    for (l = x->alist; l != (achunk *) NULL; ) {
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
+    return x->alist.get(x->narrays - n);
 }
 
 
@@ -970,8 +966,6 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 
     x.line = 1;
     x.f = f;
-    x.alist = (achunk *) NULL;
-    x.achunksz = ACHUNKSZ;
     x.narrays = 0;
     buf = buffer;
     pending = FALSE;
@@ -1081,7 +1075,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 			/*
 			 * finished restoring
 			 */
-			ac_clear(&x);
+			x.alist.clean();
 			if (onstack) {
 			    AFREE(buffer);
 			} else {
@@ -1096,7 +1090,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 	}
     } catch (...) {
 	/* error; clean up */
-	ac_clear(&x);
+	x.alist.clean();
 	if (onstack) {
 	    AFREE(buffer);
 	} else {

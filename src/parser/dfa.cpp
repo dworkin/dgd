@@ -184,10 +184,26 @@ struct rgxposn : public hte {
 
 # define RPCHUNKSZ	32
 
-struct rpchunk {
-    int chunksz;		/* size of chunk */
-    rpchunk *next;		/* next in linked list */
-    rgxposn rp[RPCHUNKSZ];	/* rgxposn chunk */
+class rpchunk : public Chunk<rgxposn, RPCHUNKSZ> {
+public:
+    /*
+     * NAME:		~rpchunk()
+     * DESCRIPTION:	iterate through items from destructor
+     */
+    virtual ~rpchunk() {
+	items();
+    }
+
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	free strings when iterating through items
+     */
+    virtual bool item(rgxposn *rp) {
+	if (rp->alloc) {
+	    FREE(rp->name);
+	}
+	return TRUE;
+    }
 };
 
 /*
@@ -203,15 +219,10 @@ static rgxposn *rp_alloc(hashtab *htab, char *posn, unsigned short size, rpchunk
 	return *rrp;	/* already exists */
     }
 
-    if (*c == (rpchunk *) NULL || (*c)->chunksz == RPCHUNKSZ) {
-	rpchunk *x;
-
-	x = ALLOC(rpchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (rpchunk *) NULL) {
+	*c = new rpchunk;
     }
-    rp = &(*c)->rp[(*c)->chunksz++];
+    rp = (*c)->alloc();
     rp->next = *rrp;
     *rrp = rp;
     rp->name = posn;
@@ -239,28 +250,6 @@ static rgxposn *rp_new(hashtab *htab, char *posn, unsigned short size, rpchunk *
 	rp->alloc = TRUE;
     }
     return rp;
-}
-
-/*
- * NAME:	rgxposn->clear()
- * DESCRIPTION:	free all rgxposns
- */
-static void rp_clear(rpchunk *c)
-{
-    rpchunk *f;
-    rgxposn *rp;
-    int i;
-
-    while (c != (rpchunk *) NULL) {
-	for (rp = c->rp, i = c->chunksz; i != 0; rp++, --i) {
-	    if (rp->alloc) {
-		FREE(rp->name);
-	    }
-	}
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
 }
 
 /*
@@ -986,9 +975,7 @@ void dfa_del(dfa *fa)
     if (fa->ecsplit != (char *) NULL) {
 	FREE(fa->ecsplit);
     }
-    if (fa->rpc != (rpchunk *) NULL) {
-	rp_clear(fa->rpc);
-    }
+    delete fa->rpc;
     if (fa->posnhtab != (hashtab *) NULL) {
 	ht_del(fa->posnhtab);
     }

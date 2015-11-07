@@ -73,7 +73,6 @@ extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);
 extern void  node_tostr	(node*, String*);
-extern void  node_free	(void);
 extern void  node_clear	(void);
 
 # define N_ADD			  1

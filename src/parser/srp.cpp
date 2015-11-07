@@ -273,16 +273,12 @@ static char *ss_save(srpstate *state, char *buf, char **rbuf)
 
 struct shlink {
     Int shifts;			/* offset in shift table */
-    shlink *next;	/* next in linked list */
+    shlink *next;		/* next in linked list */
 };
 
 # define SLCHUNKSZ	64
 
-struct slchunk {
-    int chunksz;		/* size of chunk */
-    slchunk *next;		/* next in linked list */
-    shlink sl[SLCHUNKSZ];	/* shlinks */
-};
+typedef Chunk<shlink, SLCHUNKSZ> slchunk;
 
 /*
  * NAME:	shlink->hash()
@@ -311,35 +307,15 @@ static shlink *sl_hash(shlink **htab, Uint htabsize, slchunk **c, char *shtab, c
 	ssl = &(*ssl)->next;
     }
 
-    if (*c == (slchunk *) NULL || (*c)->chunksz == SLCHUNKSZ) {
-	slchunk *x;
-
-	x = ALLOC(slchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (slchunk *) NULL) {
+	*c = new slchunk;
     }
-    sl = &(*c)->sl[(*c)->chunksz++];
+    sl = (*c)->alloc();
     sl->next = *ssl;
     *ssl = sl;
     sl->shifts = NOSHIFT;
 
     return sl;
-}
-
-/*
- * NAME:	shlink->clear()
- * DESCRIPTION:	clean up shlinks
- */
-static void sl_clear(slchunk *c)
-{
-    slchunk *f;
-
-    while (c != (slchunk *) NULL) {
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
 }
 
 
@@ -482,7 +458,7 @@ void srp_del(srp *lr)
 	FREE(lr->data);
 	FREE(lr->check);
     }
-    sl_clear(lr->slc);
+    delete lr->slc;
     if (lr->shtab != (char *) NULL) {
 	FREE(lr->shtab);
     }

@@ -976,7 +976,7 @@ void c_funcbody(node *n)
 			   &size);
 	ctrl_dprogram(prog, size);
     }
-    node_free();
+    node_clear();
     vindex = 0;
     nvars = 0;
     nparams = 0;

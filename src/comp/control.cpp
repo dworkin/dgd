@@ -106,13 +106,20 @@ struct vfh : public hte {	/* variable/function hash table */
     short index;		/* definition table index */
 };
 
-struct vfhchunk {
-    vfhchunk *next;		/* next in linked list */
-    vfh vf[VFH_CHUNK];		/* vfh chunk */
-};
-
-static vfhchunk *vfhclist;	/* linked list of all vfh chunks */
-static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
+static class vfhchunk : public Chunk<vfh, VFH_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	dereference strings when iterating through items
+     */
+    virtual bool item(vfh *h) {
+	str_del(h->str);
+	if (h->cvstr != (String *) NULL) {
+	    str_del(h->cvstr);
+	}
+	return TRUE;
+    }
+} vchunk;
 
 /*
  * NAME:	vfh->new()
@@ -123,15 +130,7 @@ static void vfh_new(String *str, oh *ohash, unsigned short ct,
 {
     vfh *h;
 
-    if (vfhchunksz == VFH_CHUNK) {
-	vfhchunk *l;
-
-	l = ALLOC(vfhchunk, 1);
-	l->next = vfhclist;
-	vfhclist = l;
-	vfhchunksz = 0;
-    }
-    h = &vfhclist->vf[vfhchunksz++];
+    h = vchunk.alloc();
     h->next = *addr;
     *addr = h;
     h->name = str->text;
@@ -151,22 +150,8 @@ static void vfh_new(String *str, oh *ohash, unsigned short ct,
  */
 static void vfh_clear()
 {
-    vfhchunk *l, *f;
-    vfh *vf;
-
-    for (l = vfhclist; l != (vfhchunk *) NULL; ) {
-	for (vf = l->vf; vfhchunksz != 0; vf++, --vfhchunksz) {
-	    str_del(vf->str);
-	    if (vf->cvstr != (String *) NULL) {
-		str_del(vf->cvstr);
-	    }
-	}
-	vfhchunksz = VFH_CHUNK;
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    vfhclist = (vfhchunk *) NULL;
+    vchunk.items();
+    vchunk.clean();
 }
 
 
@@ -800,17 +785,79 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 
 # define STRING_CHUNK	64
 
-struct strchunk {
-    strchunk *next;			/* next in string chunk list */
-    String *s[STRING_CHUNK];		/* chunk of strings */
-};
+static class strchunk : public Chunk<String*, STRING_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	copy or dereference when iterating through items
+     */
+    virtual bool item(String **s) {
+	if (copy != (String **) NULL) {
+	    *--copy = *s;
+	    strsize += (*s)->len;
+	} else {
+	    str_del(*s);
+	}
+	return TRUE;
+    }
+
+    /*
+     * NAME:		mkstrings()
+     * DESCRIPTION:	build string constant table and clean up
+     */
+    long mkstrings(String **s) {
+	copy = s;
+	strsize = 0;
+	items();
+	Chunk<String*, STRING_CHUNK>::clean();
+	return strsize;
+    }
+
+    /*
+     * NAME:		clean()
+     * DESCRIPTION:	override Chunk::clean()
+     */
+    void clean()
+    {
+	copy = (String **) NULL;
+	items();
+	Chunk<String*, STRING_CHUNK>::clean();
+    }
+
+private:
+    String **copy;			/* string copy table or NULL */
+    long strsize;			/* cumulative length of all strings */
+} schunk;
 
 # define FCALL_CHUNK	64
 
-struct fcchunk {
-    fcchunk *next;			/* next in fcall chunk list */
-    char *f[FCALL_CHUNK];		/* function reference */
-};
+static class fcchunk : public Chunk<char*, FCALL_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	build function call table when iterating through items
+     */
+    virtual bool item(char **name) {
+	vfh *h;
+
+	h = *(vfh **) ht_lookup(ftab, *name, FALSE);
+	*--fcalls = h->index;
+	*--fcalls = h->ohash->index;
+	return TRUE;
+    }
+
+    /*
+     * NAME:		mkfcalls()
+     * DESCRIPTION:	build function call table
+     */
+    void mkfcalls(char *fc) {
+	fcalls = fc;
+	items();
+    }
+
+private:
+    char *fcalls;			/* function call pointer */
+} fchunk;
 
 struct cfunc {
     dfuncdef func;			/* function name/type */
@@ -823,11 +870,7 @@ struct cfunc {
 
 static Control *newctrl;		/* the new control block */
 static oh *newohash;			/* fake ohash entry for new object */
-static strchunk *str_list;		/* list of string chunks */
-static int strchunksz = STRING_CHUNK;	/* size of current string chunk */
 static Uint nstrs;			/* # of strings in all string chunks */
-static fcchunk *fclist;			/* list of fcall chunks */
-static int fcchunksz = FCALL_CHUNK;	/* size of current fcall chunk */
 static cfunc *functions;		/* defined functions table */
 static int nfdefs, fdef;		/* # defined functions, current func */
 static int nundefs;			/* # private undefined prototypes */
@@ -1003,15 +1046,7 @@ long ctrl_dstring(String *str)
 	/*
 	 * it is really a new string
 	 */
-	if (strchunksz == STRING_CHUNK) {
-	    strchunk *l;
-
-	    l = ALLOC(strchunk, 1);
-	    l->next = str_list;
-	    str_list = l;
-	    strchunksz = 0;
-	}
-	str_ref(str_list->s[strchunksz++] = str);
+	str_ref(*schunk.alloc() = str);
 	if (nstrs == USHRT_MAX) {
 	    c_error("too many string constants");
 	}
@@ -1460,15 +1495,7 @@ unsigned short ctrl_gencall(long call)
 	/*
 	 * add to function call table
 	 */
-	if (fcchunksz == FCALL_CHUNK) {
-	    fcchunk *l;
-
-	    l = ALLOC(fcchunk, 1);
-	    l->next = fclist;
-	    fclist = l;
-	    fcchunksz = 0;
-	}
-	fclist->f[fcchunksz++] = name;
+	*fchunk.alloc() = name;
 	if (nifcalls + nfcalls == UINDEX_MAX) {
 	    c_error("too many function calls");
 	}
@@ -1616,28 +1643,12 @@ bool ctrl_chkfuncs()
  */
 static void ctrl_mkstrings()
 {
-    String **s;
-    strchunk *l, *f;
-    unsigned short i;
     long strsize;
 
     strsize = 0;
     if ((newctrl->nstrings = nstrs) != 0) {
 	newctrl->strings = ALLOC(String*, newctrl->nstrings);
-	s = newctrl->strings + nstrs;
-	i = strchunksz;
-	for (l = str_list; l != (strchunk *) NULL; ) {
-	    while (i > 0) {
-		*--s = l->s[--i];	/* already referenced */
-		strsize += (*s)->len;
-	    }
-	    i = STRING_CHUNK;
-	    f = l;
-	    l = l->next;
-	    FREE(f);
-	}
-	str_list = (strchunk *) NULL;
-	strchunksz = i;
+	strsize = schunk.mkstrings(newctrl->strings + nstrs);
     }
     newctrl->strsize = strsize;
 }
@@ -1782,16 +1793,7 @@ static void ctrl_mkfcalls()
     /*
      * Now fill in the function call entries for the object just compiled.
      */
-    fc += 2L * nfcalls;
-    i = fcchunksz;
-    for (l = fclist; l != (fcchunk *) NULL; l = l->next) {
-	do {
-	    h = *(vfh **) ht_lookup(ftab, l->f[--i], FALSE);
-	    *--fc = h->index;
-	    *--fc = h->ohash->index;
-	} while (i != 0);
-	i = FCALL_CHUNK;
-    }
+    fchunk.mkfcalls(fc + 2L * nfcalls);
 }
 
 /*
@@ -2041,27 +2043,8 @@ void ctrl_clear()
 	newctrl = (Control *) NULL;
     }
     str_clear();
-    while (str_list != (strchunk *) NULL) {
-	strchunk *l;
-	String **s;
-
-	l = str_list;
-	s = &l->s[strchunksz];
-	while (--strchunksz >= 0) {
-	    str_del(*--s);
-	}
-	strchunksz = STRING_CHUNK;
-	str_list = l->next;
-	FREE(l);
-    }
-    while (fclist != (fcchunk *) NULL) {
-	fcchunk *l;
-
-	l = fclist;
-	fclist = l->next;
-	FREE(l);
-    }
-    fcchunksz = FCALL_CHUNK;
+    schunk.clean();
+    fchunk.clean();
     if (functions != (cfunc *) NULL) {
 	int i;
 	cfunc *f;

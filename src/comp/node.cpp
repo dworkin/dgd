@@ -29,14 +29,22 @@
 
 # define NODE_CHUNK	128
 
-struct nodelist {
-    nodelist *next;			/* next in linked list */
-    node n[NODE_CHUNK];			/* node array */
-};
+static class nodechunk : public Chunk<node, NODE_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	dereference strings when iterating through items
+     */
+    virtual bool item(node *n) {
+	if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
+	    str_del(n->l.string);
+	} else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
+	    str_del(n->sclass);
+	}
+	return TRUE;
+    }
+} nchunk;
 
-static nodelist *list;			/* linked list of all node chunks */
-static nodelist *flist;			/* list of free node chunks */
-static int chunksize = NODE_CHUNK;	/* part of list chunk used */
 int nil_node;				/* N_NIL or N_INT */
 
 /*
@@ -56,20 +64,7 @@ node *node_new(unsigned int line)
 {
     node *n;
 
-    if (chunksize == NODE_CHUNK) {
-	nodelist *l;
-
-	if (flist != (nodelist *) NULL) {
-	    l = flist;
-	    flist = l->next;
-	} else {
-	    l = ALLOC(nodelist, 1);
-	}
-	l->next = list;
-	list = l;
-	chunksize = 0;
-    }
-    n = &list->n[chunksize++];
+    n = nchunk.alloc();
     n->type = N_INT;
     n->flags = 0;
     n->mod = 0;
@@ -279,56 +274,11 @@ void node_tostr(node *n, String *str)
 }
 
 /*
- * NAME:	node->free()
- * DESCRIPTION:	free all nodes
- */
-void node_free()
-{
-    nodelist *l;
-    int i;
-
-    i = chunksize;
-    for (l = list; l != (nodelist *) NULL; ) {
-	node *n;
-	nodelist *f;
-
-	n = &l->n[i];
-	do {
-	    --n;
-	    if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
-		/*
-		 * only strings are deleted here
-		 */
-		str_del(n->l.string);
-	    } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
-		str_del(n->sclass);
-	    }
-	} while (--i > 0);
-	i = NODE_CHUNK;
-	f = l;
-	l = l->next;
-	f->next = flist;
-	flist = f;
-    }
-    list = (nodelist *) NULL;
-    chunksize = NODE_CHUNK;
-}
-
-/*
  * NAME:	node->clear()
  * DESCRIPTION:	cleanup after node handling
  */
 void node_clear()
 {
-    nodelist *l;
-
-    node_free();
-    for (l = flist; l != (nodelist *) NULL; ) {
-	nodelist *f;
-
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    flist = (nodelist *) NULL;
+    nchunk.items();
+    nchunk.clean();
 }

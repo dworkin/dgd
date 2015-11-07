@@ -156,93 +156,73 @@ static void sn_clear(snlist *list)
 
 # define STRCHUNKSZ	256
 
-struct strchunk {
-    int chunksz;		/* size of chunk */
-    strchunk *next;		/* next in linked list */
-    String *str[STRCHUNKSZ];	/* strings */
+class strpchunk : public Chunk<String*, STRCHUNKSZ> {
+public:
+    /*
+     * NAME:		~strpchunk()
+     * DESCRIPTION:	iterate through items from destructor
+     */
+    virtual ~strpchunk() {
+	items();
+    }
+
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	dereference strings when iterating through items
+     */
+    virtual bool item(String **str) {
+	str_del(*str);
+	return TRUE;
+    }
 };
 
 /*
- * NAME:	strchunk->add()
+ * NAME:	strpchunk->add()
  * DESCRIPTION:	add a string to the current chunk
  */
-static void sc_add(strchunk **c, String *str)
+static void sc_add(strpchunk **c, String *str)
 {
-    if (*c == (strchunk *) NULL || (*c)->chunksz == STRCHUNKSZ) {
-	strchunk *x;
-
-	x = ALLOC(strchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (strpchunk *) NULL) {
+	*c = new strpchunk;
     }
 
-    str_ref((*c)->str[(*c)->chunksz++] = str);
-}
-
-/*
- * NAME:	strchunk->clean()
- * DESCRIPTION:	remove string chunks, and strings, from memory
- */
-static void sc_clean(strchunk *c)
-{
-    strchunk *f;
-    int i;
-
-    while (c != (strchunk *) NULL) {
-	for (i = c->chunksz; --i >= 0; ) {
-	    str_del(c->str[i]);
-	}
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
+    str_ref(*(*c)->alloc() = str);
 }
 
 
 # define ARRCHUNKSZ	256
 
-struct arrchunk {
-    int chunksz;		/* size of chunk */
-    arrchunk *next;		/* next in linked list */
-    Array *arr[ARRCHUNKSZ];	/* arrays */
+class arrpchunk : public Chunk<Array*, ARRCHUNKSZ> {
+public:
+    /*
+     * NAME:		~arrpchunk()
+     * DESCRIPTION:	iterate through items from destructor
+     */
+    virtual ~arrpchunk() {
+	items();
+    }
+
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	dereference arrays when iterating through items
+     */
+    virtual bool item(Array **arr) {
+	arr_del(*arr);
+	return TRUE;
+    }
 };
 
 /*
- * NAME:	arrchunk->add()
+ * NAME:	arrpchunk->add()
  * DESCRIPTION:	add an array to the current chunk
  */
-static void ac_add(arrchunk **c, Array *arr)
+static void ac_add(arrpchunk **c, Array *arr)
 {
-    if (*c == (arrchunk *) NULL || (*c)->chunksz == ARRCHUNKSZ) {
-	arrchunk *x;
-
-	x = ALLOC(arrchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (arrpchunk *) NULL) {
+	*c = new arrpchunk;
     }
 
-    arr_ref((*c)->arr[(*c)->chunksz++] = arr);
-}
-
-/*
- * NAME:	arrchunk->clean()
- * DESCRIPTION:	remove array chunks, and arrays, from memory
- */
-static void ac_clean(arrchunk *c)
-{
-    arrchunk *f;
-    int i;
-
-    while (c != (arrchunk *) NULL) {
-	for (i = c->chunksz; --i >= 0; ) {
-	    arr_del(c->arr[i]);
-	}
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
+    arr_ref(*(*c)->alloc() = arr);
 }
 
 
@@ -266,8 +246,8 @@ struct parser {
     snode **states;		/* state table */
     snlist list;		/* snode list */
 
-    strchunk *strc;		/* string chunk */
-    arrchunk *arrc;		/* array chunk */
+    strpchunk *strc;		/* string chunk */
+    arrpchunk *arrc;		/* array chunk */
 
     Int maxalt;			/* max number of branches */
 };
@@ -296,8 +276,8 @@ static parser *ps_new(Frame *f, String *source, String *grammar)
     ps->list.snc = (snchunk *) NULL;
     ps->list.first = (snode *) NULL;
 
-    ps->strc = (strchunk *) NULL;
-    ps->arrc = (arrchunk *) NULL;
+    ps->strc = (strpchunk *) NULL;
+    ps->arrc = (arrpchunk *) NULL;
 
     p = grammar->text;
     ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9]) + UCHAR(p[11])) << 8) +
@@ -805,8 +785,8 @@ static parser *ps_load(Frame *f, Value *elts)
     ps->list.snc = (snchunk *) NULL;
     ps->list.first = (snode *) NULL;
 
-    ps->strc = (strchunk *) NULL;
-    ps->arrc = (arrchunk *) NULL;
+    ps->strc = (strpchunk *) NULL;
+    ps->arrc = (arrpchunk *) NULL;
 
     p = ps->grammar->text;
     ps->ntoken = ((UCHAR(p[5]) + UCHAR(p[9]) + UCHAR(p[11])) << 8) +
@@ -950,10 +930,10 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	    }
 
 	    /* clean up */
-	    sc_clean(ps->strc);
-	    ps->strc = (strchunk *) NULL;
-	    ac_clean(ps->arrc);
-	    ps->arrc = (arrchunk *) NULL;
+	    delete ps->strc;
+	    ps->strc = (strpchunk *) NULL;
+	    delete ps->arrc;
+	    ps->arrc = (arrpchunk *) NULL;
 	} else if (toobig) {
 	    /*
 	     * lexer or parser has become too big
@@ -977,10 +957,10 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	delete ps->pnc;
 	ps->pnc = (pnchunk *) NULL;
 
-	sc_clean(ps->strc);
-	ps->strc = (strchunk *) NULL;
-	ac_clean(ps->arrc);
-	ps->arrc = (arrchunk *) NULL;
+	delete ps->strc;
+	ps->strc = (strpchunk *) NULL;
+	delete ps->arrc;
+	ps->arrc = (arrpchunk *) NULL;
 
 	error((char *) NULL);	/* pass on error */
     }

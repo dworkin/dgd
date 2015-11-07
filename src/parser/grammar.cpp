@@ -475,18 +475,40 @@ struct rule : public hte {
 # define RSCHUNKSZ	64
 # define RLCHUNKSZ	32
 
-typedef Chunk<rulesym, RSCHUNKSZ> rschunk;
-
-struct rlchunk {
-    int chunksz;		/* current chunk size */
-    rlchunk *next;		/* next in list */
-    rule rl[RLCHUNKSZ];		/* rule chunk */
-};
-
 # define RULE_UNKNOWN	0	/* unknown rule symbol */
 # define RULE_REGEXP	1	/* regular expression rule */
 # define RULE_STRING	2	/* string rule */
 # define RULE_PROD	3	/* production rule */
+
+typedef Chunk<rulesym, RSCHUNKSZ> rschunk;
+
+class rlchunk : public Chunk<rule, RLCHUNKSZ> {
+public:
+    /*
+     * NAME:		~rlchunk()
+     * DESCRIPTION:	iterate through items from destructor
+     */
+    virtual ~rlchunk() {
+	items();
+    }
+
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	dereference strings when iterating through items
+     */
+    virtual bool item(rule *rl) {
+	if (rl->symb != (String *) NULL) {
+	    str_del(rl->symb);
+	}
+	if (rl->type == RULE_REGEXP && rl->u.rgx != (String *) NULL) {
+	    str_del(rl->u.rgx);
+	}
+	if (rl->func != (String *) NULL) {
+	    str_del(rl->func);
+	}
+	return TRUE;
+    }
+};
 
 /*
  * NAME:	rulesym->new()
@@ -514,15 +536,10 @@ static rule *rl_new(rlchunk **c, int type)
 {
     rule *rl;
 
-    if (*c == (rlchunk *) NULL || (*c)->chunksz == RLCHUNKSZ) {
-	rlchunk *x;
-
-	x = ALLOC(rlchunk, 1);
-	x->next = *c;
-	*c = x;
-	x->chunksz = 0;
+    if (*c == (rlchunk *) NULL) {
+	*c = new rlchunk;
     }
-    rl = &(*c)->rl[(*c)->chunksz++];
+    rl = (*c)->alloc();
     rl->symb = (String *) NULL;
     rl->type = type;
     rl->num = 0;
@@ -533,34 +550,6 @@ static rule *rl_new(rlchunk **c, int type)
     rl->last = &rl->alt;
 
     return rl;
-}
-
-/*
- * NAME:	rule->clear()
- * DESCRIPTION:	free all rules
- */
-static void rl_clear(rlchunk *c)
-{
-    rlchunk *f;
-    rule *rl;
-    int i;
-
-    while (c != (rlchunk *) NULL) {
-	for (rl = c->rl, i = c->chunksz; i != 0; rl++, --i) {
-	    if (rl->symb != (String *) NULL) {
-		str_del(rl->symb);
-	    }
-	    if (rl->type == RULE_REGEXP && rl->u.rgx != (String *) NULL) {
-		str_del(rl->u.rgx);
-	    }
-	    if (rl->func != (String *) NULL) {
-		str_del(rl->func);
-	    }
-	}
-	f = c;
-	c = c->next;
-	FREE(f);
-    }
 }
 
 /*
@@ -1037,7 +1026,7 @@ String *parse_grammar(String *gram)
 	    gram = make_grammar(rgxlist, strlist, estrlist, prodlist, nrgx,
 				nstr, nestr, nprod, size);
 	    delete rschunks;
-	    rl_clear(rlchunks);
+	    delete rlchunks;
 	    ht_del(strtab);
 	    ht_del(ruletab);
 	    return gram;
@@ -1074,7 +1063,7 @@ String *parse_grammar(String *gram)
 
 err:
     delete rschunks;
-    rl_clear(rlchunks);
+    delete rlchunks;
     ht_del(strtab);
     ht_del(ruletab);
     error(buffer);

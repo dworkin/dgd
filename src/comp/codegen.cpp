@@ -315,14 +315,41 @@ struct jmplist {
     jmplist *next;			/* next in list */
 };
 
-struct jmpchunk {
-    jmpchunk *next;			/* next in list */
-    jmplist jump[JUMP_CHUNK];		/* chunk of jumps */
-};
+static class jmpchunk : public Chunk<jmplist, JUMP_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	resolve jumps when iterating through items
+     */
+    virtual bool item(jmplist *j) {
+	code[j->where    ] = j->to >> 8;
+	code[j->where + 1] = j->to;
+	if ((code[j->to] & I_EINSTR_MASK) == I_JUMP) {
+	    /*
+	     * add to jump-to-jump list
+	     */
+	    j->next = jmpjmp;
+	    jmpjmp = j;
+	}
+	return TRUE;
+    }
 
-static jmpchunk *ljump;			/* list of jump chunks */
-static jmpchunk *fjump;			/* list of free jump chunks */
-static int jchunksz = JUMP_CHUNK;	/* size of jump chunk */
+    /*
+     * NAME:		mkjumps()
+     * DESCRIPTION:	resolve jumps, and return list of jumps to jumps
+     */
+    jmplist *mkjumps(char *prog) {
+	jmpjmp = NULL;
+	code = prog;
+	items();
+	return jmpjmp;
+    }
+
+private:
+    jmplist *jmpjmp;			/* list of jumps to jumps */
+    char *code;				/* program code */
+} jchunk;
+
 static jmplist *true_list;		/* list of true jumps */
 static jmplist *false_list;		/* list of false jumps */
 static jmplist *break_list;		/* list of break jumps */
@@ -337,22 +364,7 @@ static jmplist *jump_addr(jmplist *list)
 {
     jmplist *j;
 
-    if (jchunksz == JUMP_CHUNK) {
-	jmpchunk *l;
-
-	/* new chunk */
-	if (fjump != (jmpchunk *) NULL) {
-	    /* from free list */
-	    l = fjump;
-	    fjump = l->next;
-	} else {
-	    l = ALLOC(jmpchunk, 1);
-	}
-	l->next = ljump;
-	ljump = l;
-	jchunksz = 0;
-    }
-    j = &ljump->jump[jchunksz++];
+    j = jchunk.alloc();
     j->where = here;
     j->next = list;
     code_word(0);	/* empty space in code block filled in later */
@@ -388,44 +400,13 @@ static void jump_resolve(jmplist *list, Uint to)
  */
 static void jump_make(char *code)
 {
-    jmpchunk *l;
     jmplist *j;
-    int i;
-    jmplist *jmpjmp;
 
     for (j = goto_list; j != (jmplist *) NULL; j = j->next) {
 	j->to = j->label->mod;
     }
 
-    i = jchunksz;
-    jmpjmp = (jmplist *) NULL;
-    for (l = ljump; l != (jmpchunk *) NULL; ) {
-	jmpchunk *f;
-
-	/*
-	 * fill in jump addresses in code block
-	 */
-	j = &l->jump[i];
-	do {
-	    --j;
-	    code[j->where    ] = j->to >> 8;
-	    code[j->where + 1] = j->to;
-	    if ((code[j->to] & I_EINSTR_MASK) == I_JUMP) {
-		/*
-		 * add to jump-to-jump list
-		 */
-		j->next = jmpjmp;
-		jmpjmp = j;
-	    }
-	} while (--i > 0);
-	i = JUMP_CHUNK;
-	f = l;
-	l = l->next;
-	f->next = fjump;
-	fjump = f;
-    }
-
-    for (j = jmpjmp; j != (jmplist *) NULL; j = j->next) {
+    for (j = jchunk.mkjumps(code); j != (jmplist *) NULL; j = j->next) {
 	Uint where, to;
 
 	/*
@@ -450,8 +431,7 @@ static void jump_make(char *code)
 	code[j->where + 1] = to;
     }
 
-    ljump = (jmpchunk *) NULL;
-    jchunksz = JUMP_CHUNK;
+    jchunk.clean();
 }
 
 /*
@@ -460,15 +440,8 @@ static void jump_make(char *code)
  */
 static void jump_clear()
 {
-    jmpchunk *l, *f;
-
     goto_list = (jmplist *) NULL;
-    for (l = fjump; l != (jmpchunk *) NULL; ) {
-	f = l;
-	l = l->next;
-	FREE(f);
-    }
-    fjump = (jmpchunk *) NULL;
+    jchunk.clean();
 }
 
 

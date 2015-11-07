@@ -31,7 +31,6 @@ struct arrh {
     arrh *next;			/* next in hash table chain */
     Array *arr;			/* array entry */
     Uint index;			/* building index */
-    arrh *link;			/* next in list */
 };
 
 # define MELT_CHUNK	128
@@ -68,13 +67,24 @@ struct abchunk {
     arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
 };
 
+class arrhchunk : public Chunk<arrh, ARR_CHUNK> {
+public:
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	delete referenced array when iterating through items
+     */
+    virtual bool item(arrh *h) {
+	arr_del(h->arr);
+	return TRUE;
+    }
+};
+
 static Chunk<Array, ARR_CHUNK> achunk;
-static Chunk<arrh, ARR_CHUNK> hchunk;
+static arrhchunk hchunk;
 static Chunk<mapelt, MELT_CHUNK> echunk;
 
 static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
-static arrh *alink;		/* linked list of merged arrays */
 static arrh *aht[ARRMERGETABSZ];/* array merge table */
 
 /*
@@ -279,7 +289,6 @@ void arr_freeall()
  */
 void arr_merge()
 {
-    alink = (arrh *) NULL;
     memset(&aht, '\0', ARRMERGETABSZ * sizeof(arrh *));
 }
 
@@ -304,8 +313,6 @@ Uint arr_put(Array *a, Uint idx)
     (*h)->next = (arrh *) NULL;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
-    (*h)->link = alink;
-    alink = *h;
 
     return idx;
 }
@@ -316,14 +323,7 @@ Uint arr_put(Array *a, Uint idx)
  */
 void arr_clear()
 {
-    arrh *h;
-
-    /* clear hash table */
-    for (h = alink; h != (arrh *) NULL; ) {
-	arr_del(h->arr);
-	h = h->link;
-    }
-
+    hchunk.items();
     hchunk.clean();
 }
 

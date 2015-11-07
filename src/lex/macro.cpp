@@ -26,14 +26,22 @@
 
 # define MCHUNKSZ	32
 
-struct mchunk {
-    mchunk *next;		/* next in list */
-    macro m[MCHUNKSZ];		/* macros */
-};
-
-static mchunk *mlist;		/* list of macro chunks */
-static int mchunksz;		/* size of current macro chunk */
-static macro *flist;		/* list of free macros */
+static class macrochunk : public Chunk<macro, MCHUNKSZ> {
+public:
+    /*
+     * NAME:		items()
+     * DESCRIPTION:	free strings when iterating through items
+     */
+    virtual bool item(macro *m) {
+	if (m->name != (char *) NULL) {
+	    FREE(m->name);
+	    if (m->replace != (char *) NULL) {
+		FREE(m->replace);
+	    }
+	}
+	return TRUE;
+    }
+} mchunk;
 
 static hashtab *mt;		/* macro hash table */
 
@@ -44,9 +52,6 @@ static hashtab *mt;		/* macro hash table */
 void mc_init()
 {
     mt = ht_new(MACTABSZ, MACHASHSZ, FALSE);
-    mlist = (mchunk *) NULL;
-    mchunksz = MCHUNKSZ;
-    flist = (macro *) NULL;
 }
 
 /*
@@ -55,28 +60,12 @@ void mc_init()
  */
 void mc_clear()
 {
-    macro *m;
-    mchunk *l, *f;
-
     if (mt != (hashtab *) NULL) {
 	ht_del(mt);
 	mt = (hashtab *) NULL;
 
-	for (l = mlist; l != (mchunk *) NULL; ) {
-	    for (m = l->m; mchunksz > 0; m++, --mchunksz) {
-		if (m->name != (char *) NULL) {
-		    FREE(m->name);
-		    if (m->replace != (char *) NULL) {
-			FREE(m->replace);
-		    }
-		}
-	    }
-	    mchunksz = MCHUNKSZ;
-	    f = l;
-	    l = l->next;
-	    FREE(f);
-	}
-	mlist = (mchunk *) NULL;
+	mchunk.items();
+	mchunk.clean();
     }
 }
 
@@ -96,22 +85,7 @@ void mc_define(const char *name, const char *replace, int narg)
 	    warning("macro %s redefined", name);
 	}
     } else {
-	if (flist != (macro *) NULL) {
-	    /* get macro from free list */
-	    *m = flist;
-	    flist = (macro *) flist->next;
-	} else {
-	    /* allocate new macro */
-	    if (mchunksz == MCHUNKSZ) {
-		mchunk *l;
-
-		l = ALLOC(mchunk, 1);
-		l->next = mlist;
-		mlist = l;
-		mchunksz = 0;
-	    }
-	    *m = &mlist->m[mchunksz++];
-	}
+	*m = mchunk.alloc();
 	(*m)->next = (hte *) NULL;
 	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
@@ -146,9 +120,7 @@ void mc_undef(char *name)
 	    mac->replace = (char *) NULL;
 	}
 	*m = (macro *) mac->next;
-	/* put macro in free list */
-	mac->next = flist;
-	flist = mac;
+	mchunk.del(mac);
     }
 }
 
