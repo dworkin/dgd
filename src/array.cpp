@@ -61,13 +61,10 @@ struct arrbak {
     Dataplane *plane;		/* original dataplane */
 };
 
-struct abchunk {
-    short chunksz;		/* size of this chunk */
-    struct abchunk *next;	/* next in linked list */
-    arrbak ab[ABCHUNKSZ];	/* chunk of arrbaks */
-};
+static Chunk<Array, ARR_CHUNK> achunk;
+static Chunk<mapelt, MELT_CHUNK> echunk;
 
-class arrhchunk : public Chunk<arrh, ARR_CHUNK> {
+static class arrhchunk : public Chunk<arrh, ARR_CHUNK> {
 public:
     /*
      * NAME:		item()
@@ -77,11 +74,127 @@ public:
 	arr_del(h->arr);
 	return TRUE;
     }
-};
+} hchunk;
 
-static Chunk<Array, ARR_CHUNK> achunk;
-static arrhchunk hchunk;
-static Chunk<mapelt, MELT_CHUNK> echunk;
+class abchunk : public Chunk<arrbak, ABCHUNKSZ> {
+public:
+    /*
+     * NAME:		backup()
+     * DESCRIPTION:	add an array backup to the backup chunk
+     */
+    static void backup(abchunk **ac, Array *a, Value *elts, unsigned int size,
+		       Dataplane *plane) {
+	arrbak *ab;
+
+	if (*ac == (abchunk *) NULL) {
+	    *ac = new abchunk;
+	}
+
+	ab = (*ac)->alloc();
+	ab->arr = a;
+	ab->size = size;
+	ab->original = elts;
+	ab->plane = plane;
+    }
+
+    /*
+     * NAME:		item()
+     * DESCRIPTION:	commit or discard when iterating over items
+     */
+    virtual bool item(arrbak *ab) {
+	if (plane != (Dataplane *) NULL) {
+	    abchunk **ac;
+
+	    /*
+	     * commit
+	     */
+	    ac = d_commit_arr(ab->arr, plane, ab->plane);
+	    if (merge) {
+		if (ac != (abchunk **) NULL) {
+		    /* backup on previous plane */
+		    backup(ac, ab->arr, ab->original, ab->size, ab->plane);
+		} else {
+		    if (ab->original != (Value *) NULL) {
+			Value *v;
+			unsigned short i;
+
+			for (v = ab->original, i = ab->size; i != 0; v++, --i) {
+			    i_del_value(v);
+			}
+			FREE(ab->original);
+		    }
+		    arr_del(ab->arr);
+		}
+	    }
+	} else {
+	    Array *a;
+	    unsigned short i;
+
+	    /*
+	     * discard
+	     */
+	    a = ab->arr;
+	    d_discard_arr(a, ab->plane);
+
+	    if (a->elts != (Value *) NULL) {
+		Value *v;
+
+		for (v = a->elts, i = a->size; i != 0; v++, --i) {
+		    i_del_value(v);
+		}
+		FREE(a->elts);
+	    }
+
+	    if (a->hashed != (maphash *) NULL) {
+		mapelt *e, *n, **t;
+
+		for (i = a->hashed->size, t = a->hashed->table; i > 0; t++) {
+		    for (e = *t; e != (mapelt *) NULL; e = n) {
+			if (e->add) {
+			    i_del_value(&e->idx);
+			    i_del_value(&e->val);
+			}
+			n = e->next;
+			echunk.del(e);
+			--i;
+		    }
+		}
+		FREE(a->hashed);
+		a->hashed = (maphash *) NULL;
+		a->hashmod = FALSE;
+	    }
+
+	    a->elts = ab->original;
+	    a->size = ab->size;
+	    arr_del(a);
+	}
+
+	return TRUE;
+    }
+
+    /*
+     * NAME:		commit()
+     * DESCRIPTION:	commit array backups
+     */
+    void commit(Dataplane *p, bool flag) {
+	plane = p;
+	merge = flag;
+	items();
+    }
+
+    /*
+     * NAME:		discard()
+     * DESCRIPTION:	discard array backups
+     */
+    void discard() {
+	plane = (Dataplane *) NULL;
+	items();
+    }
+
+private:
+    Dataplane *plane;		/* plane to commit to */
+    bool merge;			/* merging? */
+};
 
 static unsigned long max_size;	/* max. size of array and mapping */
 static Uint tag;		/* current array tag */
@@ -329,32 +442,6 @@ void arr_clear()
 
 
 /*
- * NAME:	backup()
- * DESCRIPTION:	add an array backup to the backup chunk
- */
-static void backup(abchunk **ac, Array *a, Value *elts, unsigned int size,
-	Dataplane *plane)
-{
-    abchunk *c;
-    arrbak *ab;
-
-    if (*ac == (abchunk *) NULL || (*ac)->chunksz == ABCHUNKSZ) {
-	c = ALLOC(abchunk, 1);
-	c->next = *ac;
-	c->chunksz = 0;
-	*ac = c;
-    } else {
-	c = *ac;
-    }
-
-    ab = &c->ab[c->chunksz++];
-    ab->arr = a;
-    ab->size = size;
-    ab->original = elts;
-    ab->plane = plane;
-}
-
-/*
  * NAME:	Array->backup()
  * DESCRIPTION:	make a backup of the current elements of an array or mapping
  */
@@ -388,7 +475,7 @@ void arr_backup(abchunk **ac, Array *a)
     } else {
 	elts = (Value *) NULL;
     }
-    backup(ac, a, elts, a->size, a->primary->plane);
+    abchunk::backup(ac, a, elts, a->size, a->primary->plane);
     arr_ref(a);
 }
 
@@ -398,42 +485,12 @@ void arr_backup(abchunk **ac, Array *a)
  */
 void arr_commit(abchunk **ac, Dataplane *plane, int merge)
 {
-    abchunk *c, *n;
-    arrbak *ab;
-    short i;
-
-    c = *ac;
-    if (merge) {
-	*ac = (abchunk *) NULL;
-    }
-
-    while (c != (abchunk *) NULL) {
-	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
-	    ac = d_commit_arr(ab->arr, plane, ab->plane);
-	    if (merge) {
-		if (ac != (abchunk **) NULL) {
-		    /* backup on previous plane */
-		    backup(ac, ab->arr, ab->original, ab->size, ab->plane);
-		} else {
-		    if (ab->original != (Value *) NULL) {
-			Value *v;
-			unsigned short j;
-
-			for (v = ab->original, j = ab->size; j != 0; v++, --j) {
-			    i_del_value(v);
-			}
-			FREE(ab->original);
-		    }
-		    arr_del(ab->arr);
-		}
-	    }
-	}
-
-	n = c->next;
+    if (*ac != (abchunk *) NULL) {
+	(*ac)->commit(plane, merge);
 	if (merge) {
-	    FREE(c);
+	    delete *ac;
+	    *ac = (abchunk *) NULL;
 	}
-	c = n;
     }
 }
 
@@ -443,52 +500,9 @@ void arr_commit(abchunk **ac, Dataplane *plane, int merge)
  */
 void arr_discard(abchunk **ac)
 {
-    abchunk *c, *next;
-    arrbak *ab;
-    short i;
-    Array *a;
-    unsigned short j;
-
-    for (c = *ac, *ac = (abchunk *) NULL; c != (abchunk *) NULL; c = next) {
-	for (ab = c->ab, i = c->chunksz; --i >= 0; ab++) {
-	    a = ab->arr;
-	    d_discard_arr(a, ab->plane);
-
-	    if (a->elts != (Value *) NULL) {
-		Value *v;
-
-		for (v = a->elts, j = a->size; j != 0; v++, --j) {
-		    i_del_value(v);
-		}
-		FREE(a->elts);
-	    }
-
-	    if (a->hashed != (maphash *) NULL) {
-		mapelt *e, *n, **t;
-
-		for (j = a->hashed->size, t = a->hashed->table; j > 0; t++) {
-		    for (e = *t; e != (mapelt *) NULL; e = n) {
-			if (e->add) {
-			    i_del_value(&e->idx);
-			    i_del_value(&e->val);
-			}
-			n = e->next;
-			echunk.del(e);
-			--j;
-		    }
-		}
-		FREE(a->hashed);
-		a->hashed = (maphash *) NULL;
-		a->hashmod = FALSE;
-	    }
-
-	    a->elts = ab->original;
-	    a->size = ab->size;
-	    arr_del(a);
-	}
-
-	next = c->next;
-	FREE(c);
+    if (*ac != (abchunk *) NULL) {
+	(*ac)->discard();
+	delete *ac;
     }
 }
 

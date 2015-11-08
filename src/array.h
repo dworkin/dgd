@@ -29,7 +29,7 @@ struct Array {
     Array *prev, *next;			/* per-object linked list */
 };
 
-struct abchunk;				/* array backup chunk */
+class abchunk;				/* array backup chunk */
 
 extern void		arr_init	(unsigned int);
 extern Array	       *arr_alloc	(unsigned int);
