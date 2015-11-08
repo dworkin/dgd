@@ -125,6 +125,7 @@ public:
     }
 
     virtual bool item(T *item) {
+	UNREFERENCED_PARAMETER(item);
 	return TRUE;
     }
 
