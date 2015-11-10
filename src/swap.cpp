@@ -188,6 +188,7 @@ void sw_wipev(sector *vec, unsigned int size)
 	    /*
 	     * free sector in swap file
 	     */
+	    i -= sbarrier;
 	    smap[i] = sfree;
 	    sfree = i;
 	}
@@ -302,6 +303,7 @@ static header *sw_load(sector sec, bool restore, bool fill)
 		    } else {
 			save = sfree;
 			sfree = smap[save];
+			save += sbarrier;
 		    }
 		}
 
@@ -564,6 +566,7 @@ int sw_dump(char *snapshot, bool keep)
 		} else {
 		    sec = sfree;
 		    sfree = smap[sec];
+		    sec += sbarrier;
 		}
 		h->swap = sec;
 	    }
