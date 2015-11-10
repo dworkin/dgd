@@ -50,10 +50,14 @@ LD=	$(CXX)
 YACC=	yacc
 BIN=	../bin
 
+ifeq ($(HOST),LINUX)
+  DEFINES+=-D_FILE_OFFSET_BITS=64
+endif
 ifeq ($(HOST),FREEBSD)
   LIBS=
 endif
 ifeq ($(HOST),SOLARIS)
+  DEFINES+=-D_FILE_OFFSET_BITS=64
   LIBS+=-lsocket -lnsl
 endif
 
