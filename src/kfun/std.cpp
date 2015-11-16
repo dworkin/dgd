@@ -45,6 +45,9 @@ int kf_old_compile_object(Frame *f, int n, kfunc *kf)
     char file[STRINGSZ];
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
@@ -92,6 +95,8 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
     String **strs;
     int i;
     bool iflag;
+
+    UNREFERENCED_PARAMETER(kf);
 
     v = &f->sp[nargs - 1];
     if (path_string(file, v->u.string->text, v->u.string->len) == (char *) NULL)
@@ -166,6 +171,8 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
     Object *obj;
     Array *lwobj;
 
+    UNREFERENCED_PARAMETER(kf);
+
     obj = (Object *) NULL;
     lwobj = (Array *) NULL;
     val = &f->sp[nargs - 1];
@@ -228,6 +235,9 @@ int kf_call_touch(Frame *f, int n, kfunc *kf)
     xfloat flt;
     Value val, *elts;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->sp->type == T_LWOBJECT) {
 	elts = d_get_elts(f->sp->u.array);
 	GET_FLT(&elts[1], flt);
@@ -261,6 +271,9 @@ int kf_this_object(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     --f->sp;
     obj = OBJR(f->oindex);
     if (obj->count != 0) {
@@ -291,6 +304,8 @@ int kf_previous_object(Frame *f, int nargs, kfunc *kf)
 {
     Frame *prev;
     Object *obj;
+
+    UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
 	*--f->sp = nil_value;
@@ -332,6 +347,8 @@ int kf_previous_program(Frame *f, int nargs, kfunc *kf)
     const char *prog;
     String *str;
 
+    UNREFERENCED_PARAMETER(kf);
+
     if (nargs == 0) {
 	*--f->sp = nil_value;
     } else if (f->sp->u.number < 0) {
@@ -362,6 +379,9 @@ char pt_call_trace[] = { C_STATIC, 0, 0, 0, 6, T_MIXED | (2 << REFSHIFT) };
  */
 int kf_call_trace(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     PUSH_ARRVAL(f, i_call_trace(f));
     return 0;
 }
@@ -381,6 +401,9 @@ char pt_clone_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
 int kf_clone_object(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT) {
 	error("Cloning from a non-persistent object");
@@ -412,6 +435,9 @@ char pt_destruct_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
 int kf_destruct_object(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_LWOBJECT) {
 	error("Destructing a non-persistent object");
@@ -450,6 +476,9 @@ int kf_new_object(Frame *f, int n, kfunc *kf)
     Object *obj;
     Array *a;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->sp->type == T_OBJECT) {
 	if (!((obj=OBJW(f->sp->oindex))->flags & O_MASTER)) {
 	    error("Creating new instance from a non-master object");
@@ -486,6 +515,9 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
     const char *name;
     String *str;
     uindex n;
+
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_OBJECT) {
 	name = o_name(buffer, OBJR(f->sp->oindex));
@@ -527,6 +559,9 @@ int kf_find_object(Frame *f, int n, kfunc *kf)
     char path[STRINGSZ];
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (path_string(path, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	str_del(f->sp->u.string);
@@ -562,6 +597,9 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     uindex n;
     dsymbol *symb;
     const char *name;
+
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
     if (f->sp->type == T_OBJECT) {
@@ -617,6 +655,9 @@ int kf_this_user(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     obj = comm_user();
     if (obj != (Object *) NULL) {
 	PUSH_OBJVAL(f, obj);
@@ -641,6 +682,9 @@ char pt_query_ip_number[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_STRING,
 int kf_query_ip_number(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
@@ -672,6 +716,9 @@ int kf_query_ip_name(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
 	if (comm_is_connection(obj)) {
@@ -699,6 +746,9 @@ char pt_users[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT) };
  */
 int kf_users(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     PUSH_ARRVAL(f, comm_users(f->data));
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
@@ -718,6 +768,9 @@ char pt_strlen[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 int kf_strlen(Frame *f, int n, kfunc *kf)
 {
     ssizet len;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     len = f->sp->u.string->len;
     str_del(f->sp->u.string);
@@ -741,6 +794,9 @@ int kf_allocate(Frame *f, int n, kfunc *kf)
 {
     int i;
     Value *v;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->u.number < 0) {
 	return 1;
@@ -770,6 +826,9 @@ int kf_allocate_int(Frame *f, int n, kfunc *kf)
     int i;
     Value *v;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->sp->u.number < 0) {
 	return 1;
     }
@@ -798,6 +857,9 @@ int kf_allocate_float(Frame *f, int n, kfunc *kf)
     int i;
     Value *v;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->sp->u.number < 0) {
 	return 1;
     }
@@ -825,6 +887,9 @@ int kf_sizeof(Frame *f, int n, kfunc *kf)
 {
     unsigned short size;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     size = f->sp->u.array->size;
     arr_del(f->sp->u.array);
     PUT_INTVAL(f->sp, size);
@@ -846,6 +911,9 @@ char pt_map_indices[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
 int kf_map_indices(Frame *f, int n, kfunc *kf)
 {
     Array *a;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     a = map_indices(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
@@ -870,6 +938,9 @@ int kf_map_values(Frame *f, int n, kfunc *kf)
 {
     Array *a;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     a = map_values(f->data, f->sp->u.array);
     i_add_ticks(f, f->sp->u.array->size);
     arr_del(f->sp->u.array);
@@ -893,6 +964,9 @@ int kf_map_sizeof(Frame *f, int n, kfunc *kf)
 {
     unsigned short size;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, f->sp->u.array->size);
     size = map_size(f->data, f->sp->u.array);
     arr_del(f->sp->u.array);
@@ -913,6 +987,9 @@ char pt_typeof[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  */
 int kf_typeof(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_del_value(f->sp);
     PUT_INTVAL(f->sp, (f->sp->type == T_LWOBJECT) ? T_OBJECT : f->sp->type);
     return 0;
@@ -931,6 +1008,9 @@ char pt_error[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID, T_STRING };
  */
 int kf_error(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     serror(f->sp->u.string);
     return 0;
 }
@@ -950,6 +1030,9 @@ int kf_send_message(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
     int num;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type != T_STRING && f->sp->type != T_INT) {
 	return 1;
@@ -995,6 +1078,9 @@ int kf_send_datagram(Frame *f, int n, kfunc *kf)
     Object *obj;
     int num;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     num = 0;
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
@@ -1023,6 +1109,9 @@ int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJW(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
@@ -1049,6 +1138,9 @@ int kf_block_input(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->lwobj == (Array *) NULL) {
 	obj = OBJR(f->oindex);
 	if ((obj->flags & O_SPECIAL) == O_USER && obj->count != 0) {
@@ -1072,6 +1164,9 @@ char pt_time[] = { C_STATIC, 0, 0, 0, 6, T_INT };
  */
 int kf_time(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     PUSH_INTVAL(f, P_time());
     return 0;
 }
@@ -1092,6 +1187,9 @@ int kf_millitime(Frame *f, int n, kfunc *kf)
     Array *a;
     unsigned short milli;
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
     a = arr_new(f->data, 2L);
@@ -1121,6 +1219,8 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
     Uint mdelay;
     xfloat flt1, flt2;
     uindex handle;
+
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp[nargs - 2].type == T_INT) {
 	delay = f->sp[nargs - 2].u.number;
@@ -1181,6 +1281,9 @@ int kf_remove_call_out(Frame *f, int n, kfunc *kf)
     unsigned short mdelay;
     xfloat flt1, flt2;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->lwobj != (Array *) NULL) {
 	error("remove_call_out() in non-persistent object");
     }
@@ -1211,6 +1314,9 @@ char pt_swapout[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  */
 int kf_swapout(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     swapout();
 
     *--f->sp = nil_value;
@@ -1230,6 +1336,9 @@ char pt_old_dump_state[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  */
 int kf_old_dump_state(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     dump_state(FALSE);
 
     *--f->sp = nil_value;
@@ -1250,6 +1359,8 @@ char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 int kf_dump_state(Frame *f, int nargs, kfunc *kf)
 {
     bool incr;
+
+    UNREFERENCED_PARAMETER(kf);
 
     if (nargs == 0) {
 	incr = FALSE;
@@ -1287,6 +1398,7 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
     Object *obj;
 
     UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
     proto = 0;
 
     if (f->lwobj != (Array *) NULL) {
@@ -1353,6 +1465,8 @@ int kf_open_port(Frame *f, int nargs, kfunc *kf)
     char *protoname;
     Object *obj;
 
+    UNREFERENCED_PARAMETER(kf);
+
     protocol = 0;
 
     if (f->lwobj != (Array *) NULL) {
@@ -1412,6 +1526,9 @@ char pt_ports[] = { C_STATIC, 0, 0, 0, 6, T_OBJECT | (1 << REFSHIFT)};
  */
 int kf_ports(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     PUSH_ARRVAL(f, comm_ports(f->data));
     i_add_ticks(f, f->sp->u.array->size);
     return 0;
@@ -1429,6 +1546,9 @@ char pt_close_user[] = { C_STATIC, 0, 0, 0, 6, T_VOID};
 int kf_close_user(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->lwobj != (Array *) NULL) {
 	error("close_user() in non-persistent object");
@@ -1466,6 +1586,9 @@ int kf_send_datagram(Frame *f, int n, kfunc *kf)
     String *str,*ip;
     int port;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     num = 0;
     obj = OBJW(f->oindex);
     port = (f->sp++)->u.number;
@@ -1496,6 +1619,9 @@ char pt_old_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
  */
 int kf_old_shutdown(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     finish(FALSE);
 
     *--f->sp = nil_value;
@@ -1516,6 +1642,8 @@ char pt_shutdown[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
 int kf_shutdown(Frame *f, int nargs, kfunc *kf)
 {
     bool boot;
+
+    UNREFERENCED_PARAMETER(kf);
 
     if (nargs != 0) {
 	boot = (f->sp->u.number != 0);
@@ -1549,6 +1677,8 @@ int kf_status(Frame *f, int nargs, kfunc *kf)
 {
     Array *a;
     uindex n;
+
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 100);
     if (nargs == 0) {
@@ -1603,6 +1733,8 @@ int kf_new_function(Frame *f, int nargs, kfunc *kf)
     Value *v, *elts;
     Object *obj;
 
+    UNREFERENCED_PARAMETER(kf);
+
     a = arr_new(f->data, 4 + nargs);
     elts = a->elts;
 
@@ -1656,6 +1788,8 @@ int kf_extend_function(Frame *f, int nargs, kfunc *kf)
     Value *v, *elts;
     int n;
 
+    UNREFERENCED_PARAMETER(kf);
+
     --nargs;
     if (f->sp[nargs].type != T_LWOBJECT ||
 	(elts=d_get_elts(a=f->sp[nargs].u.array))[0].type != T_INT ||
@@ -1702,6 +1836,8 @@ int kf_call_function(Frame *f, int nargs, kfunc *kf)
     Value *elts, *v, *w;
     Object *obj;
     int n;
+
+    UNREFERENCED_PARAMETER(kf);
 
     --nargs;
     if (f->sp[nargs].type != T_LWOBJECT ||

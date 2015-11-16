@@ -325,6 +325,8 @@ int kf_encrypt(Frame *f, int nargs, kfunc *func)
     Value val;
     int n;
 
+    UNREFERENCED_PARAMETER(func);
+
     n = kf_index(kfenc, 0, ne, f->sp[nargs - 1].u.string->text);
     if (n < 0) {
 	error("Unknown cipher");
@@ -346,6 +348,8 @@ int kf_decrypt(Frame *f, int nargs, kfunc *func)
     Value val;
     int n;
 
+    UNREFERENCED_PARAMETER(func);
+
     n = kf_index(kfdec, 0, nd, f->sp[nargs - 1].u.string->text);
     if (n < 0) {
 	error("Unknown cipher");
@@ -366,6 +370,8 @@ int kf_hash_string(Frame *f, int nargs, kfunc *func)
 {
     Value val;
     int n;
+
+    UNREFERENCED_PARAMETER(func);
 
     n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].u.string->text);
     if (n < 0) {

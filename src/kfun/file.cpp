@@ -40,6 +40,8 @@ int kf_editor(Frame *f, int nargs, kfunc *kf)
     Object *obj;
     String *str;
 
+    UNREFERENCED_PARAMETER(kf);
+
     if (f->lwobj != (Array *) NULL) {
 	error("editor() in non-persistent object");
     }
@@ -86,6 +88,9 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
     const char *status;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
@@ -382,6 +387,9 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
@@ -887,6 +895,9 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     char *buffer, *name;
     bool onstack, pending;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     obj = OBJR(f->oindex);
     if (path_string(x.file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
@@ -1121,6 +1132,8 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
     Int l;
     int fd;
 
+    UNREFERENCED_PARAMETER(kf);
+
     l = (nargs < 3) ? 0 : (f->sp++)->u.number;
     if (path_string(file, f->sp[1].u.string->text,
 		    f->sp[1].u.string->len) == (char *) NULL) {
@@ -1183,6 +1196,8 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
     struct stat sbuf;
     Int l, size;
     static int fd;
+
+    UNREFERENCED_PARAMETER(kf);
 
     l = 0;
     size = 0;
@@ -1278,6 +1293,9 @@ int kf_rename_file(Frame *f, int n, kfunc *kf)
 {
     char from[STRINGSZ], to[STRINGSZ];
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (path_string(from, f->sp[1].u.string->text,
 		    f->sp[1].u.string->len) == (char *) NULL) {
 	return 1;
@@ -1311,6 +1329,9 @@ int kf_remove_file(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
 	return 1;
@@ -1339,6 +1360,9 @@ char pt_make_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_STRING };
 int kf_make_dir(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
@@ -1369,6 +1393,9 @@ char pt_remove_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 int kf_remove_dir(Frame *f, int n, kfunc *kf)
 {
     char file[STRINGSZ];
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     if (path_string(file, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
@@ -1552,6 +1579,9 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
     const char *dir;
     fileinfo finf;
     Array *a;
+
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
 
     file = path_string(buf, f->sp->u.string->text, f->sp->u.string->len);
 

@@ -120,6 +120,9 @@ int kf_ctime(Frame *f, int n, kfunc *kf)
 {
     char buf[26];
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 5);
     P_ctime(buf, f->sp->u.number);
     PUT_STRVAL(f->sp, str_new(buf, 24L));
@@ -145,6 +148,9 @@ int kf_explode(Frame *f, int n, kfunc *kf)
     char *p, *s;
     Value *v;
     Array *a;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     p = f->sp[1].u.string->text;
     len = f->sp[1].u.string->len;
@@ -251,6 +257,9 @@ int kf_implode(Frame *f, int n, kfunc *kf)
     Value *v;
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     s = f->sp->u.string->text;
     slen = f->sp->u.string->len;
 
@@ -304,6 +313,9 @@ char pt_random[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT, T_INT };
  */
 int kf_random(Frame *f, int n, kfunc *kf)
 {
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 1);
     PUT_INT(f->sp, (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0);
     return 0;
@@ -384,6 +396,8 @@ int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
     xfloat flt;
     bool skip;
     Value *top, *v;
+
+    UNREFERENCED_PARAMETER(kf);
 
     size = 0;
     x = NULL;
@@ -660,6 +674,8 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
     Value *top, *elts;
     Array *a;
 
+    UNREFERENCED_PARAMETER(kf);
+
     size = 0;
     x = NULL;
 
@@ -932,6 +948,8 @@ int kf_parse_string(Frame *f, int nargs, kfunc *kf)
     Int maxalt;
     Array *a;
 
+    UNREFERENCED_PARAMETER(kf);
+
     if (nargs > 2) {
 	maxalt = (f->sp++)->u.number + 1;
 	if (maxalt <= 0) {
@@ -1023,6 +1041,8 @@ int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
     ssizet len;
     char *p;
     Int cost;
+
+    UNREFERENCED_PARAMETER(kf);
 
     cost = 0;
     for (i = nargs; --i >= 0; ) {
@@ -1134,6 +1154,8 @@ int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
     ssizet len;
     char *p;
     Int cost;
+
+    UNREFERENCED_PARAMETER(kf);
 
     cost = 0;
     for (i = nargs; --i >= 0; ) {
@@ -1613,6 +1635,8 @@ int kf_crypt(Frame *f, int nargs, kfunc *kf)
 {
     Value val;
 
+    UNREFERENCED_PARAMETER(kf);
+
     kf_xcrypt(f, nargs, &val);
     i_ref_value(&val);
     i_pop(f, nargs);
@@ -1639,6 +1663,8 @@ int kf_hash_md5(Frame *f, int nargs, kfunc *kf)
     Int cost;
     Uint length;
     unsigned short bufsz;
+
+    UNREFERENCED_PARAMETER(kf);
 
     cost = hash_md5_start(f, nargs, digest);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
@@ -1674,6 +1700,8 @@ int kf_hash_sha1(Frame *f, int nargs, kfunc *kf)
     Uint length;
     unsigned short bufsz;
 
+    UNREFERENCED_PARAMETER(kf);
+
     cost = hash_sha1_start(f, nargs, digest);
     if (!f->rlim->noticks && f->rlim->ticks <= cost) {
 	f->rlim->ticks = 0;
@@ -1705,6 +1733,9 @@ int kf_asn_add(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_add(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
@@ -1729,6 +1760,9 @@ char pt_asn_sub[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 int kf_asn_sub(Frame *f, int n, kfunc *kf)
 {
     String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     str = asn_sub(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1755,6 +1789,9 @@ int kf_asn_cmp(Frame *f, int n, kfunc *kf)
 {
     int cmp;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     cmp = asn_cmp(f, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1778,6 +1815,9 @@ char pt_asn_mult[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 int kf_asn_mult(Frame *f, int n, kfunc *kf)
 {
     String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     str = asn_mult(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1804,6 +1844,9 @@ int kf_asn_div(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_div(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del((f->sp++)->u.string);
@@ -1829,6 +1872,9 @@ int kf_asn_mod(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_mod(f, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1852,6 +1898,9 @@ char pt_asn_pow[] = { C_TYPECHECKED | C_STATIC, 3, 0, 0, 9, T_STRING, T_STRING,
 int kf_asn_pow(Frame *f, int n, kfunc *kf)
 {
     String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     str = asn_pow(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
     str_del((f->sp++)->u.string);
@@ -1878,6 +1927,9 @@ int kf_asn_lshift(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_lshift(f, f->sp[2].u.string, f->sp[1].u.number, f->sp->u.string);
     str_del(f->sp->u.string);
     f->sp += 2;
@@ -1903,6 +1955,9 @@ int kf_asn_rshift(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_rshift(f, f->sp[1].u.string, f->sp->u.number);
     f->sp++;
     str_del(f->sp->u.string);
@@ -1926,6 +1981,9 @@ char pt_asn_and[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 int kf_asn_and(Frame *f, int n, kfunc *kf)
 {
     String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     str = asn_and(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
@@ -1951,6 +2009,9 @@ int kf_asn_or(Frame *f, int n, kfunc *kf)
 {
     String *str;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     str = asn_or(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);
     str_del(f->sp->u.string);
@@ -1974,6 +2035,9 @@ char pt_asn_xor[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 int kf_asn_xor(Frame *f, int n, kfunc *kf)
 {
     String *str;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     str = asn_xor(f, f->sp[1].u.string, f->sp->u.string);
     str_del((f->sp++)->u.string);

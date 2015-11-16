@@ -36,6 +36,9 @@ int kf_fabs(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 1);
     GET_FLT(f->sp, flt);
     FLT_ABS(flt.high, flt.low);
@@ -57,6 +60,9 @@ char pt_floor[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_floor(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, flt);
@@ -80,6 +86,9 @@ int kf_ceil(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 1);
     GET_FLT(f->sp, flt);
     flt_ceil(&flt);
@@ -102,6 +111,9 @@ char pt_fmod[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 int kf_fmod(Frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, f2);
@@ -130,6 +142,9 @@ int kf_frexp(Frame *f, int n, kfunc *kf)
     Int num;
     Array *a;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 2);
     GET_FLT(f->sp, flt);
     num = flt_frexp(&flt);
@@ -157,6 +172,9 @@ int kf_ldexp(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 1);
     GET_FLT(f->sp + 1, flt);
     flt_ldexp(&flt, f->sp->u.number);
@@ -181,6 +199,9 @@ int kf_modf(Frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
     Array *a;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 2);
     GET_FLT(f->sp, f1);
@@ -208,6 +229,9 @@ int kf_exp(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 21);
     GET_FLT(f->sp, flt);
     flt_exp(&flt);
@@ -229,6 +253,9 @@ char pt_log[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_log(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 35);
     GET_FLT(f->sp, flt);
@@ -252,6 +279,9 @@ int kf_log10(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 41);
     GET_FLT(f->sp, flt);
     flt_log10(&flt);
@@ -274,6 +304,9 @@ char pt_pow[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 int kf_pow(Frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 48);
     GET_FLT(f->sp, f2);
@@ -299,6 +332,9 @@ int kf_sqrt(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 11);
     GET_FLT(f->sp, flt);
     flt_sqrt(&flt);
@@ -320,6 +356,9 @@ char pt_cos[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_cos(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 25);
     GET_FLT(f->sp, flt);
@@ -343,6 +382,9 @@ int kf_sin(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 25);
     GET_FLT(f->sp, flt);
     flt_sin(&flt);
@@ -364,6 +406,9 @@ char pt_tan[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_tan(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 31);
     GET_FLT(f->sp, flt);
@@ -387,6 +432,9 @@ int kf_acos(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
     flt_acos(&flt);
@@ -408,6 +456,9 @@ char pt_asin[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_asin(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
@@ -431,6 +482,9 @@ int kf_atan(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
     flt_atan(&flt);
@@ -453,6 +507,9 @@ char pt_atan2[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT,
 int kf_atan2(Frame *f, int n, kfunc *kf)
 {
     xfloat f1, f2;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 27);
     GET_FLT(f->sp, f2);
@@ -478,6 +535,9 @@ int kf_cosh(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
     flt_cosh(&flt);
@@ -500,6 +560,9 @@ int kf_sinh(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
 
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
+
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
     flt_sinh(&flt);
@@ -521,6 +584,9 @@ char pt_tanh[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
 int kf_tanh(Frame *f, int n, kfunc *kf)
 {
     xfloat flt;
+
+    UNREFERENCED_PARAMETER(n);
+    UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 24);
     GET_FLT(f->sp, flt);
