@@ -1544,7 +1544,7 @@ char pt_get_dir[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7,
  * NAME:	kfun->get_dir()
  * DESCRIPTION:	get directory filelist + info
  */
-int kf_get_dir(Frame *f, int n, kfunc *kf)
+int kf_get_dir(Frame *f, int nargs, kfunc *kf)
 {
     unsigned int i, nfiles, ftabsz;
     fileinfo *ftable;
