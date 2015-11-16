@@ -236,7 +236,7 @@ void eb_put(editbuf *eb, Int ln, block b)
  *		a subrange block for it
  */
 void eb_range(editbuf *eb, Int first, Int last, void (*putline) (const char*),
-	      int reverse)
+	      bool reverse)
 {
     bk_put(eb->lb, eb->buffer, first - 1, last - first + 1, putline, reverse);
 }

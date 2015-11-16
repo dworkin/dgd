@@ -28,7 +28,7 @@
 /*
  * These functions are in cmdsub.c
  */
-extern Int  cb_search	(cmdbuf*, Int, Int, int);
+extern Int  cb_search	(cmdbuf*, Int, Int, bool);
 extern int  cb_print	(cmdbuf*);
 extern int  cb_list	(cmdbuf*);
 extern int  cb_number	(cmdbuf*);
@@ -632,7 +632,7 @@ static void find(const char *text)
     cb = ccb;
     cb->glob_next++;
     cb->glob_size--;
-    if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != cb->reverse) {
+    if (rx_exec(cb->glob_rx, text, 0, cb->ignorecase) != (int) cb->reverse) {
 	throw "found";
     }
 }

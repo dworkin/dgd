@@ -56,4 +56,4 @@ extern Int	bk_size	  (linebuf*, block);
 extern void	bk_split  (linebuf*, block, Int, block*, block*);
 extern block	bk_cat	  (linebuf*, block, block);
 extern void	bk_put	  (linebuf*, block, Int, Int, void(*)(const char*),
-			   int);
+			   bool);

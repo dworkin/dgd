@@ -173,7 +173,7 @@ struct Dataplane {
     arrref *arrays;		/* i/o? arrays */
     abchunk *achunk;		/* chunk of array backup info */
     strref *strings;		/* i/o? string constant table */
-    struct coptable *coptab;	/* callout patch table */
+    class coptable *coptab;	/* callout patch table */
 
     Dataplane *prev;		/* previous in per-dataspace linked list */
     Dataplane *plist;		/* next in per-level linked list */
@@ -229,8 +229,8 @@ struct Dataspace {
 /* sdata.c */
 
 extern void		d_init		 (void);
-extern void		d_init_conv	 (int, int, int, int, int, int, int,
-					    int, int);
+extern void		d_init_conv	 (bool, bool, bool, bool, bool, bool,
+					  bool, bool, bool);
 
 extern Control	       *d_new_control	 (void);
 extern Dataspace       *d_new_dataspace  (Object*);

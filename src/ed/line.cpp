@@ -708,7 +708,7 @@ static void bk_put1(linebuf *lb, blk *bp, Int idx, Int size)
  * DESCRIPTION:	output of a subrange of a block
  */
 void bk_put(linebuf *lb, block b, Int idx, Int size,
-	    void (*putline)(const char*), int reverse)
+	    void (*putline)(const char*), bool reverse)
 {
     blk *bp;
 

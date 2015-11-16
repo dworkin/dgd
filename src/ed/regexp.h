@@ -41,4 +41,4 @@ struct rxbuf {
 extern rxbuf	  *rx_new  (void);
 extern void	   rx_del  (rxbuf*);
 extern const char *rx_comp (rxbuf*, const char*);
-extern int	   rx_exec (rxbuf*, const char*, int, int);
+extern int	   rx_exec (rxbuf*, const char*, int, bool);

@@ -329,7 +329,7 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(int ctrl1, int ctrl2, int data, int callout1, int callout2, int type, int inherit, int time, int vm)
+void d_init_conv(bool ctrl1, bool ctrl2, bool data, bool callout1, bool callout2, bool type, bool inherit, bool time, bool vm)
 {
     conv_ctrl1 = ctrl1;
     conv_ctrl2 = ctrl2;
@@ -2524,7 +2524,7 @@ static void d_conv_proto(char **old, char **newp)
     type = UCHAR(*p++);
     n = UCHAR(*p++);
 
-    varargs = (tclass & C_VARARGS);
+    varargs = ((tclass & C_VARARGS) != 0);
     tclass &= ~C_VARARGS;
     nargs = vargs = 0;
     args = &PROTO_FTYPE(*newp);

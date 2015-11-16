@@ -58,7 +58,7 @@ Value nil_value = { T_NIL, TRUE };
  * NAME:	interpret->init()
  * DESCRIPTION:	initialize the interpreter
  */
-void i_init(char *create, int flag)
+void i_init(char *create, bool flag)
 {
     topframe.oindex = OBJ_NONE;
     topframe.fp = topframe.sp = stack + MIN_STACK;
@@ -2053,7 +2053,7 @@ const char *i_prev_program(Frame *f, int n)
  * DESCRIPTION:	check the argument types given to a function
  */
 void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
-		 char *proto, int nargs, int strict)
+		 char *proto, int nargs, bool strict)
 {
     char tnbuf[TNBUFSIZE];
     int i, n, atype, ptype;
@@ -2065,7 +2065,7 @@ void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
     sclass = 0;
     i = nargs;
     n = PROTO_NARGS(proto) + PROTO_VARGS(proto);
-    ellipsis = (PROTO_CLASS(proto) & C_ELLIPSIS);
+    ellipsis = ((PROTO_CLASS(proto) & C_ELLIPSIS) != 0);
     args = PROTO_ARGS(proto);
     while (n > 0 && i > 0) {
 	--i;
@@ -3237,7 +3237,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     }
 
     /* handle arguments */
-    ellipsis = (PROTO_CLASS(pc) & C_ELLIPSIS);
+    ellipsis = ((PROTO_CLASS(pc) & C_ELLIPSIS) != 0);
     n = PROTO_NARGS(pc) + PROTO_VARGS(pc);
     if (nargs < n) {
 	int i;

@@ -451,7 +451,7 @@ static bool match(rxbuf *rx, const char *start, const char *text, bool ic,
  *		pattern is invalid, 0 if no match was found, or 1 if a match
  *		was found.
  */
-int rx_exec(rxbuf *rx, const char *text, int idx, int ic)
+int rx_exec(rxbuf *rx, const char *text, int idx, bool ic)
 {
     rx->start = (char *) NULL;
     if (!rx->valid) {

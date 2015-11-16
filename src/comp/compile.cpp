@@ -2019,7 +2019,7 @@ static node *funcall(node *call, node *args, int funcptr)
      * check function arguments
      */
     typechecked = ((PROTO_CLASS(proto) & C_TYPECHECKED) != 0);
-    ellipsis = (PROTO_CLASS(proto) & C_ELLIPSIS);
+    ellipsis = ((PROTO_CLASS(proto) & C_ELLIPSIS) != 0);
     nargs = PROTO_NARGS(proto) + PROTO_VARGS(proto);
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {

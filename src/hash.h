@@ -36,8 +36,8 @@ extern char		strhashtab[];
 extern unsigned short	hashstr		(const char*, unsigned int);
 extern unsigned short	hashmem		(const char*, unsigned int);
 
-extern hashtab	       *ht_new		(unsigned int, unsigned int, int);
+extern hashtab	       *ht_new		(unsigned int, unsigned int, bool);
 extern void		ht_del		(hashtab*);
-extern hte	      **ht_lookup	(hashtab*, const char*, int);
+extern hte	      **ht_lookup	(hashtab*, const char*, bool);
 
 # endif /* H_HASH */

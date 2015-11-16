@@ -734,7 +734,7 @@ void d_commit_plane(Int level, Value *retval)
 
 	if (p->coptab != (coptable *) NULL) {
 	    /* commit callout changes */
-	    commit_callouts(p, p->flags & PLANE_MERGE);
+	    commit_callouts(p, (p->flags & PLANE_MERGE) != 0);
 	    if (p->level == 1) {
 		delete p->coptab;
 		p->coptab = (coptable *) NULL;

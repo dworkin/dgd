@@ -25,7 +25,7 @@ extern unsigned short	 tk_line	(void);
 extern char		*tk_filename	(void);
 extern void		 tk_setline	(unsigned short);
 extern void		 tk_setfilename	(char*);
-extern void		 tk_header	(int);
+extern void		 tk_header	(bool);
 extern void		 tk_setpp	(int);
 extern int		 tk_gettok	(void);
 extern void		 tk_skiptonl	(int);

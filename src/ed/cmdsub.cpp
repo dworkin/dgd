@@ -58,7 +58,7 @@ static void find(const char *text)
  * DESCRIPTION:	search a range of lines for the occurance of a pattern. When
  *		found, jump out immediately.
  */
-Int cb_search(cmdbuf *cb, Int first, Int last, int reverse)
+Int cb_search(cmdbuf *cb, Int first, Int last, bool reverse)
 {
     try {
 	cb->lineno = 0;

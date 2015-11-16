@@ -64,7 +64,7 @@ char strhashtab[] = {
  * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
  *		of each string are significant
  */
-hashtab *ht_new(unsigned int size, unsigned int maxlen, int mem)
+hashtab *ht_new(unsigned int size, unsigned int maxlen, bool mem)
 {
     hashtab *ht;
 
@@ -127,7 +127,7 @@ unsigned short hashmem(const char *s, unsigned int len)
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-hte **ht_lookup(hashtab *ht, const char *name, int move)
+hte **ht_lookup(hashtab *ht, const char *name, bool move)
 {
     hte **first, **e, *next;
 

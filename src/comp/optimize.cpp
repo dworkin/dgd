@@ -125,7 +125,7 @@ void opt_init()
     kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
 }
 
-static Uint opt_expr (node**, int);
+static Uint opt_expr (node**, bool);
 
 /*
  * NAME:	optimize->lvalue()
@@ -1333,7 +1333,7 @@ static Uint opt_cond(node **m, int pop)
  * NAME:	optimize->expr()
  * DESCRIPTION:	optimize an expression
  */
-static Uint opt_expr(node **m, int pop)
+static Uint opt_expr(node **m, bool pop)
 {
     Uint d1, d2, i;
     node *n;

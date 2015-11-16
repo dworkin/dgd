@@ -363,7 +363,7 @@ static bool rp_transposn(char *rgx, char *trans, char *buf, unsigned short *bufl
     }
     *p = '\0';
 
-    return a[UCHAR(rgx[0])];	/* final? */
+    return (a[UCHAR(rgx[0])] != '\0');	/* final? */
 }
 
 static Uint bits[] = {

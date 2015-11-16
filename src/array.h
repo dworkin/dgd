@@ -45,7 +45,7 @@ extern Uint		arr_put		(Array*, Uint);
 extern void		arr_clear	(void);
 
 extern void		arr_backup	(abchunk**, Array*);
-extern void		arr_commit	(abchunk**, Dataplane*, int);
+extern void		arr_commit	(abchunk**, Dataplane*, bool);
 extern void		arr_discard	(abchunk**);
 
 extern Array	       *arr_add		(Dataspace*, Array*, Array*);

@@ -278,7 +278,7 @@ struct Frame {
     bool atomic;		/* within uncaught atomic code */
 };
 
-extern void	i_init		(char*, int);
+extern void	i_init		(char*, bool);
 extern void	i_ref_value	(Value*);
 extern void	i_del_value	(Value*);
 extern void	i_copy		(Value*, Value*, unsigned int);
@@ -313,7 +313,7 @@ extern Frame   *i_set_sp	(Frame*, Value*);
 extern Frame   *i_prev_object	(Frame*, int);
 extern const char    *i_prev_program	(Frame*, int);
 extern void	i_typecheck	(Frame*, Frame*, const char*, const char*,
-				 char*, int, int);
+				 char*, int, bool);
 extern void	i_catcherr	(Frame*, Int);
 extern void	i_funcall	(Frame*, Object*, Array*, int, int, int);
 extern bool	i_call		(Frame*, Object*, Array*, const char*,

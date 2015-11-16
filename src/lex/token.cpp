@@ -267,7 +267,7 @@ void tk_setfilename(char *file)
  * DESCRIPTION:	set the current include string mode. if TRUE, '<' will be
  *		specially processed.
  */
-void tk_header(int incl)
+void tk_header(bool incl)
 {
     do_include = incl;
 }

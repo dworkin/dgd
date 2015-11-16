@@ -38,7 +38,8 @@ extern block	eb_delete	(editbuf*, Int, Int);
 extern void	eb_change	(editbuf*, Int, Int, block);
 extern block	eb_yank		(editbuf*, Int, Int);
 extern void	eb_put		(editbuf*, Int, block);
-extern void	eb_range	(editbuf*, Int, Int, void(*)(const char*), int);
+extern void	eb_range	(editbuf*, Int, Int, void(*)(const char*),
+				 bool);
 extern void	eb_startblock	(editbuf*);
 extern void	eb_addblock	(editbuf*, const char*);
 extern void	eb_endblock	(editbuf*);

@@ -1721,7 +1721,6 @@ static void ctrl_mkfcalls()
     char *fc;
     int i;
     vfh *h;
-    fcchunk *l;
     dinherit *inh;
     oh *ohash;
 

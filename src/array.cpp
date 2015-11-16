@@ -483,7 +483,7 @@ void arr_backup(abchunk **ac, Array *a)
  * NAME:	Array->commit()
  * DESCRIPTION:	commit current array values and discard originals
  */
-void arr_commit(abchunk **ac, Dataplane *plane, int merge)
+void arr_commit(abchunk **ac, Dataplane *plane, bool merge)
 {
     if (*ac != (abchunk *) NULL) {
 	(*ac)->commit(plane, merge);
