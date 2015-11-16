@@ -261,7 +261,7 @@ bool P_opendir(const char *dir)
  * NAME:	P->readdir()
  * DESCRIPTION:	read a directory
  */
-char *P_readdir(void)
+char *P_readdir()
 {
     static struct _finddata_t fd;
 
@@ -284,7 +284,7 @@ char *P_readdir(void)
  * NAME:	P->closedir()
  * DESCRIPTION:	close a directory
  */
-void P_closedir(void)
+void P_closedir()
 {
     if (d != -1) {
 	_findclose(d);

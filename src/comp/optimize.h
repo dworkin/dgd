@@ -17,5 +17,5 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void  opt_init	(void);
+extern void  opt_init	();
 extern node *opt_stmt	(node*, Uint*);

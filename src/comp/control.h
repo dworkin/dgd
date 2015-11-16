@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void		 ctrl_init	(void);
+extern void		 ctrl_init	();
 extern bool		 ctrl_inherit	(Frame*, char*, Object*, String*,
 					   int);
 extern void		 ctrl_convert	(Control*);
-extern void		 ctrl_create	(void);
+extern void		 ctrl_create	();
 extern long		 ctrl_dstring	(String*);
 extern void		 ctrl_dproto	(String*, char*, String*);
 extern void		 ctrl_dfunc	(String*, char*, String*);
@@ -32,12 +32,12 @@ extern char		*ctrl_ifcall	(String*, const char*, String**, long*);
 extern char		*ctrl_fcall	(String*, String**, long*, int);
 extern unsigned short	 ctrl_gencall	(long);
 extern unsigned short	 ctrl_var	(String*, long*, String**);
-extern int		 ctrl_ninherits	(void);
-extern bool		 ctrl_chkfuncs	(void);
+extern int		 ctrl_ninherits	();
+extern bool		 ctrl_chkfuncs	();
 extern void		 ctrl_mkvtypes	(Control*);
 extern dsymbol		*ctrl_symb	(Control*, const char*, unsigned int);
-extern Control		*ctrl_construct	(void);
-extern void		 ctrl_clear	(void);
+extern Control		*ctrl_construct	();
+extern void		 ctrl_clear	();
 extern unsigned short	*ctrl_varmap	(Control*, Control*);
 extern Array		*ctrl_undefined	(Dataspace*, Control*);
 

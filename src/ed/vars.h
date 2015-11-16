@@ -29,7 +29,7 @@ struct Vars {
 
 # define NUMBER_OF_VARS	3
 
-extern Vars *va_new  (void);
+extern Vars *va_new  ();
 extern void  va_del  (Vars*);
 extern void  va_set  (Vars*, char*);
 extern void  va_show (Vars*);

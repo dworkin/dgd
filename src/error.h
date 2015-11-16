@@ -19,13 +19,13 @@
 
 typedef void  (*ec_ftn)		(Frame*, Int);
 
-extern void	ec_clear	(void);
+extern void	ec_clear	();
 extern void	ec_push		(ec_ftn);
-extern void	ec_pop		(void);
+extern void	ec_pop		();
 
 extern void	serror		(String*);
 extern void	set_errorstr	(String*);
-extern String  *errorstr	(void);
+extern String  *errorstr	();
 
 extern void	message		(const char *, ...);
 extern void	error		(const char *, ...);

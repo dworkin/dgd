@@ -18,5 +18,5 @@
  */
 
 extern bool  pp_init	(char*, char**, String**, int, int);
-extern void  pp_clear	(void);
-extern int   pp_gettok	(void);
+extern void  pp_clear	();
+extern int   pp_gettok	();

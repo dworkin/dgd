@@ -324,7 +324,7 @@ extern bool	i_call_critical	(Frame*, const char*, int, int);
 extern void	i_runtime_error	(Frame*, Int);
 extern void	i_atomic_error	(Frame*, Int);
 extern Frame   *i_restore	(Frame*, Int);
-extern void	i_clear		(void);
+extern void	i_clear		();
 
 extern Frame *cframe;
 extern int nil_type;

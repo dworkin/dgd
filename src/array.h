@@ -38,11 +38,11 @@ extern Array	       *arr_ext_new	(Dataspace*, long);
 # define arr_ref(a)	((a)->ref++)
 extern void		arr_del		(Array*);
 extern void		arr_freelist	(Array*);
-extern void		arr_freeall	(void);
+extern void		arr_freeall	();
 
-extern void		arr_merge	(void);
+extern void		arr_merge	();
 extern Uint		arr_put		(Array*, Uint);
-extern void		arr_clear	(void);
+extern void		arr_clear	();
 
 extern void		arr_backup	(abchunk**, Array*);
 extern void		arr_commit	(abchunk**, Dataplane*, bool);

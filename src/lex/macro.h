@@ -33,8 +33,8 @@ struct macro : public hte {
 
 # define MAX_REPL_SIZE	(4 * MAX_LINE_SIZE)
 
-extern void   mc_init	(void);
-extern void   mc_clear  (void);
+extern void   mc_init	();
+extern void   mc_clear  ();
 extern void   mc_define (const char*, const char*, int);
 extern void   mc_undef  (char*);
 extern macro *mc_lookup (char*);

@@ -17,17 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern void		 tk_init	(void);
-extern void		 tk_clear	(void);
+extern void		 tk_init	();
+extern void		 tk_clear	();
 extern bool		 tk_include	(char*, String**, int);
-extern void		 tk_endinclude	(void);
-extern unsigned short	 tk_line	(void);
-extern char		*tk_filename	(void);
+extern void		 tk_endinclude	();
+extern unsigned short	 tk_line	();
+extern char		*tk_filename	();
 extern void		 tk_setline	(unsigned short);
 extern void		 tk_setfilename	(char*);
 extern void		 tk_header	(bool);
 extern void		 tk_setpp	(int);
-extern int		 tk_gettok	(void);
+extern int		 tk_gettok	();
 extern void		 tk_skiptonl	(int);
 extern int		 tk_expand	(macro*);
 

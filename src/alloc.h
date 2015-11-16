@@ -47,11 +47,11 @@ extern char *m_realloc	(char*, size_t, size_t);
 
 extern void  m_init	(size_t, size_t);
 extern void  m_free	(char*);
-extern void  m_dynamic	(void);
-extern void  m_static	(void);
-extern bool  m_check	(void);
-extern void  m_purge	(void);
-extern void  m_finish	(void);
+extern void  m_dynamic	();
+extern void  m_static	();
+extern bool  m_check	();
+extern void  m_purge	();
+extern void  m_finish	();
 
 class Allocated {
 public:
@@ -187,4 +187,4 @@ struct allocinfo {
     size_t dmemused;	/* dynamic memory used */
 };
 
-extern allocinfo *m_info (void);
+extern allocinfo *m_info ();

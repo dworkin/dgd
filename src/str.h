@@ -29,9 +29,9 @@ extern String	       *str_new		(const char*, long);
 # define str_ref(s)	((s)->ref++)
 extern void		str_del		(String*);
 
-extern void		str_merge	(void);
+extern void		str_merge	();
 extern Uint		str_put		(String*, Uint);
-extern void		str_clear	(void);
+extern void		str_clear	();
 
 extern int		str_cmp		(String*, String*);
 extern String	       *str_add		(String*, String*);

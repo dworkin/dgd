@@ -485,7 +485,7 @@ bool c_inherit(char *file, node *label, int priv)
 			priv);
 }
 
-extern int yyparse (void);
+extern int yyparse ();
 
 /*
  * NAME:	compile->compile()

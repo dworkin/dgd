@@ -38,12 +38,12 @@ struct extkfunc {
     extfunc func;	/* function address */
 };
 
-extern void kf_clear	(void);
+extern void kf_clear	();
 extern void kf_ext_kfun	(extkfunc*, int);
-extern void kf_init	(void);
-extern void kf_jit	(void);
+extern void kf_init	();
+extern void kf_jit	();
 extern int  kf_func	(const char*);
-extern void kf_reclaim	(void);
+extern void kf_reclaim	();
 extern bool kf_dump	(int);
 extern void kf_restore	(int, int);
 

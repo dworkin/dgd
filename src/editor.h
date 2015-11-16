@@ -18,8 +18,8 @@
  */
 
 extern void	   ed_init	(char*, int);
-extern void	   ed_finish	(void);
-extern void	   ed_clear	(void);
+extern void	   ed_finish	();
+extern void	   ed_clear	();
 extern void	   ed_new	(Object*);
 extern void	   ed_del	(Object*);
 extern String	  *ed_command	(Object*, char*);

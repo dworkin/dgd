@@ -63,7 +63,7 @@ extern void  node_init	(int);
 extern node *node_new	(unsigned int);
 extern node *node_int	(Int);
 extern node *node_float	(xfloat*);
-extern node *node_nil	(void);
+extern node *node_nil	();
 extern node *node_str	(String*);
 extern node *node_var	(unsigned int, int);
 extern node *node_type	(int, String*);
@@ -73,7 +73,7 @@ extern node *node_mon	(int, int, node*);
 extern node *node_bin	(int, int, node*, node*);
 extern void  node_toint	(node*, Int);
 extern void  node_tostr	(node*, String*);
-extern void  node_clear	(void);
+extern void  node_clear	();
 
 # define N_ADD			  1
 # define N_ADD_INT		  2

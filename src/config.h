@@ -95,11 +95,11 @@ typedef unsigned char kfindex;
 # define BIPREFIXLEN	8
 
 extern bool		conf_init	(char*, char*, char*, char*, sector*);
-extern char	       *conf_base_dir	(void);
-extern char	       *conf_driver	(void);
-extern char	      **conf_hotboot	(void);
-extern int		conf_typechecking (void);
-extern unsigned short	conf_array_size	(void);
+extern char	       *conf_base_dir	();
+extern char	       *conf_driver	();
+extern char	      **conf_hotboot	();
+extern int		conf_typechecking ();
+extern unsigned short	conf_array_size	();
 
 extern void   conf_dump		(bool, bool);
 extern Uint   conf_dsize	(const char*);

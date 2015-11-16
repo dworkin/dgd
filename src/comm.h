@@ -25,10 +25,10 @@ struct connection;
 
 extern bool	   conn_init	 (int, char**, char**, unsigned short*,
 				    unsigned short*, int, int);
-extern void	   conn_clear	 (void);
-extern void	   conn_finish	 (void);
+extern void	   conn_clear	 ();
+extern void	   conn_finish	 ();
 #ifndef NETWORK_EXTENSIONS
-extern void	   conn_listen	 (void);
+extern void	   conn_listen	 ();
 extern connection *conn_tnew6	 (int);
 extern connection *conn_tnew	 (int);
 extern connection *conn_bnew6	 (int);
@@ -73,20 +73,20 @@ extern bool	comm_init	(int, char**, char**, unsigned short*,
 				   unsigned short*, int, int);
 #endif
 
-extern void	comm_clear	(void);
-extern void	comm_finish	(void);
-extern void	comm_listen	(void);
+extern void	comm_clear	();
+extern void	comm_finish	();
+extern void	comm_listen	();
 extern int	comm_send	(Object*, String*);
 extern int	comm_udpsend	(Object*, String*);
 extern bool	comm_echo	(Object*, int);
 extern void	comm_challenge	(Object*, String*);
-extern void	comm_flush	(void);
+extern void	comm_flush	();
 extern void	comm_block	(Object*, int);
 extern void	comm_receive	(Frame*, Uint, unsigned int);
 extern String  *comm_ip_number	(Object*);
 extern String  *comm_ip_name	(Object*);
 extern void	comm_close	(Frame*, Object*);
-extern Object  *comm_user	(void);
+extern Object  *comm_user	();
 extern void	comm_connect	(Frame *f, Object *obj, char *addr,
 				   unsigned char protocol, unsigned short port);
 #ifdef NETWORK_EXTENSIONS

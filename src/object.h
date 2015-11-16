@@ -66,11 +66,11 @@ struct Object : public hte {
 extern void	  o_init		(unsigned int, Uint);
 extern Object	 *o_oread		(unsigned int);
 extern Object	 *o_owrite		(unsigned int);
-extern void	  o_new_plane		(void);
-extern void	  o_commit_plane	(void);
-extern void	  o_discard_plane	(void);
+extern void	  o_new_plane		();
+extern void	  o_commit_plane	();
+extern void	  o_discard_plane	();
 
-extern bool	  o_space		(void);
+extern bool	  o_space		();
 extern Object	 *o_new			(char*, Control*);
 extern Object	 *o_clone		(Object*);
 extern void	  o_lwobj		(Object*);
@@ -84,14 +84,14 @@ extern Object	 *o_find		(char*, int);
 extern Control   *o_control		(Object*);
 extern Dataspace *o_dataspace		(Object*);
 
-extern void	  o_clean		(void);
-extern uindex	  o_count		(void);
-extern uindex	  o_dobjects		(void);
+extern void	  o_clean		();
+extern uindex	  o_count		();
+extern uindex	  o_dobjects		();
 extern bool	  o_dump		(int, bool);
 extern void	  o_restore		(int, unsigned int, bool);
 extern bool	  o_copy		(Uint);
 
-extern void	  swapout		(void);
+extern void	  swapout		();
 extern void	  dump_state		(bool);
 extern void	  finish		(bool);
 

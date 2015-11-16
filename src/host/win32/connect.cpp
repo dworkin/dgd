@@ -132,7 +132,7 @@ static void ipa_start(SOCKET fd_in, SOCKET fd_out)
  * NAME:	ipaddr->finish()
  * DESCRIPTION:	stop name lookup
  */
-static void ipa_finish(void)
+static void ipa_finish()
 {
     closesocket(in);
     in = INVALID_SOCKET;
@@ -312,7 +312,7 @@ static void ipa_del(ipaddr *ipa)
  * NAME:	ipaddr->lookup()
  * DESCRIPTION:	lookup another ip name
  */
-static void ipa_lookup(void)
+static void ipa_lookup()
 {
     ipaddr *ipa;
 
@@ -385,7 +385,7 @@ static SOCKET cintr;			/* interrupt socket */
  * NAME:	conn->intr()
  * DESCRIPTION:	interrupt conn->select()
  */
-void conn_intr(void)
+void conn_intr()
 {
     send(cintr, "", 1, 0);
 }
@@ -699,7 +699,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
  * NAME:	conn->clear()
  * DESCRIPTION:	clean up connections
  */
-void conn_clear(void)
+void conn_clear()
 {
     ipa_finish();
 }
@@ -708,7 +708,7 @@ void conn_clear(void)
  * NAME:	conn->finish()
  * DESCRIPTION:	terminate connections
  */
-void conn_finish(void)
+void conn_finish()
 {
     WSACleanup();
 }
@@ -718,7 +718,7 @@ void conn_finish(void)
  * NAME:	conn->listen()
  * DESCRIPTION:	start listening on telnet port and binary port
  */
-void conn_listen(void)
+void conn_listen()
 {
     int n;
     unsigned long nonblock;

@@ -38,7 +38,7 @@ struct rxbuf {
     char buffer[RXBUFSZ];	/* buffer to hold matcher */
 };
 
-extern rxbuf	  *rx_new  (void);
+extern rxbuf	  *rx_new  ();
 extern void	   rx_del  (rxbuf*);
 extern const char *rx_comp (rxbuf*, const char*);
 extern int	   rx_exec (rxbuf*, const char*, int, bool);

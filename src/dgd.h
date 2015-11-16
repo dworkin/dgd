@@ -41,8 +41,8 @@ struct Frame;
 # define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
 extern bool call_driver_object	(Frame*, const char*, int);
-extern void interrupt		(void);
-extern void endthread		(void);
+extern void interrupt		();
+extern void endthread		();
 extern void errhandler		(Frame*, Int);
 extern int  dgd_main		(int, char**);
 

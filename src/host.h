@@ -281,8 +281,8 @@ extern int P_execv	(const char*, char**);
 # endif /* INCLUDE_FILE_IO */
 
 extern bool  P_opendir	(const char*);
-extern char *P_readdir	(void);
-extern void  P_closedir	(void);
+extern char *P_readdir	();
+extern void  P_closedir	();
 
 # ifndef voidf
 # define voidf		void
@@ -291,9 +291,9 @@ extern void  P_closedir	(void);
 extern voidf *P_dload	(char*, const char*);
 
 extern void  P_srandom	(long);
-extern long  P_random	(void);
+extern long  P_random	();
 
-extern Uint  P_time	(void);
+extern Uint  P_time	();
 extern Uint  P_mtime	(unsigned short*);
 extern char *P_ctime	(char*, Uint);
 

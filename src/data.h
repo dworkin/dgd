@@ -228,11 +228,11 @@ struct Dataspace {
 
 /* sdata.c */
 
-extern void		d_init		 (void);
+extern void		d_init		 ();
 extern void		d_init_conv	 (bool, bool, bool, bool, bool, bool,
 					  bool, bool, bool);
 
-extern Control	       *d_new_control	 (void);
+extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);
 extern Control	       *d_load_control	 (Object*);
 extern Dataspace       *d_load_dataspace (Object*);
@@ -259,7 +259,7 @@ extern Control	       *d_restore_ctrl	 (Object*,
 extern Dataspace       *d_restore_data	 (Object*, Uint*,
 					  void(*)(char*, sector*, Uint, Uint));
 extern void		d_restore_obj	 (Object*, Uint*, bool, bool);
-extern void		d_converted	 (void);
+extern void		d_converted	 ();
 
 extern void		d_free_control	 (Control*);
 extern void		d_free_dataspace (Dataspace*);
@@ -292,7 +292,7 @@ extern void		d_upgrade_data	(Dataspace*, unsigned int,
 					   unsigned short*, Object*);
 extern void		d_upgrade_clone	(Dataspace*);
 extern Object	       *d_upgrade_lwobj	(Array*, Object*);
-extern void		d_export	(void);
+extern void		d_export	();
 
 extern void		d_del_control	(Control*);
 extern void		d_del_dataspace	(Dataspace*);
