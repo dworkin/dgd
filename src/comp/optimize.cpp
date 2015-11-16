@@ -1318,7 +1318,7 @@ static bool opt_ctest(node *n)
  * NAME:	optimize->cond()
  * DESCRIPTION:	optimize a condition
  */
-static Uint opt_cond(node **m, int pop)
+static Uint opt_cond(node **m, bool pop)
 {
     Uint d;
 

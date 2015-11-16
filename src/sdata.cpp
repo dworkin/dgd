@@ -476,7 +476,7 @@ static Dataspace *d_alloc_dataspace(Object *obj)
     data->base.alocal.state = AR_CHANGED;
     data->base.arrays = (arrref *) NULL;
     data->base.strings = (strref *) NULL;
-    data->base.coptab = (struct coptable *) NULL;
+    data->base.coptab = (class coptable *) NULL;
     data->base.prev = (Dataplane *) NULL;
     data->base.plist = (Dataplane *) NULL;
     data->plane = &data->base;

@@ -743,7 +743,7 @@ void d_commit_plane(Int level, Value *retval)
 	    }
 	}
 
-	arr_commit(&p->achunk, p->prev, p->flags & PLANE_MERGE);
+	arr_commit(&p->achunk, p->prev, (p->flags & PLANE_MERGE) != 0);
 	if (p->flags & PLANE_MERGE) {
 	    if (p->arrays != (arrref *) NULL) {
 		arrref *a;
