@@ -133,6 +133,7 @@ void endthread()
 	}
 
 	comm_finish();
+	arr_freeall();
 	m_finish();
 	exit(boot);
     }
