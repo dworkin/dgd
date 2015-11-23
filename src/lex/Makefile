@@ -40,6 +40,5 @@ $(OBJ): ../comp/node.h ../comp/compile.h ../comp/parser.h
 $(OBJ): lex.h
 macro.o special.o token.o ppcontrol.o: macro.h
 ppstr.o token.o ppcontrol.o: ppstr.h
-special.o token.o ppcontrol.o: special.h
-token.o ppcontrol.o: token.h
+special.o token.o ppcontrol.o: special.h token.h
 ppcontrol.o: ppcontrol.h

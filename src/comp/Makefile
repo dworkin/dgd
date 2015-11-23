@@ -37,19 +37,17 @@ clean:
 	rm -f dgd a.out $(OBJ)
 
 
-$(OBJ): ../dgd.h ../config.h ../host.h ../error.h ../alloc.h
-$(OBJ): ../str.h ../array.h ../object.h ../xfloat.h ../interpret.h
+$(OBJ): ../dgd.h ../config.h ../host.h ../error.h ../alloc.h ../str.h
+$(OBJ): ../array.h ../object.h ../hash.h ../swap.h ../xfloat.h ../interpret.h
 control.o optimize.o codegen.o compile.o csupport.o: ../data.h
-control.o: ../hash.h ../path.h
+compile.o: ../path.h
 
 node.o parser.o compile.o: ../lex/macro.h ../lex/token.h
 parser.o compile.o: ../lex/ppcontrol.h
 
 control.o optimize.o codegen.o csupport.o: ../kfun/table.h
 
-$(OBJ): comp.h
-node.o parser.o optimize.o control.o codegen.o: node.h
-compile.o csupport.o: node.h
+$(OBJ): comp.h node.h
 control.o optimize.o codegen.o compile.o csupport.o: control.h
 codegen.o compile.o: codegen.h
 parser.o control.o optimize.o codegen.o compile.o: compile.h

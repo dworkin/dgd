@@ -24,7 +24,6 @@
 # include "xfloat.h"
 # include "interpret.h"
 # include "data.h"
-# include "hash.h"
 # include "table.h"
 # include "node.h"
 # include "compile.h"

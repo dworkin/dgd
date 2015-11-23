@@ -79,3 +79,6 @@ xfloat.cpp: simfloat.cpp
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
 connect.o: ../hash.h ../comm.h
 xfloat.o: ../xfloat.h
+crypt.o asn.o: ../str.h ../array.h ../object.h ../hash.h ../swap.h
+crypt.o asn.o: ../interpret.o ../data.h
+asn.o: ../asn.h

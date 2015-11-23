@@ -25,7 +25,6 @@
 # include "interpret.h"
 # include "data.h"
 # include "control.h"
-# include "csupport.h"
 # include "table.h"
 
 # ifdef DEBUG

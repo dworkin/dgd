@@ -21,7 +21,6 @@
 # define INCLUDE_FILE_IO
 # define INCLUDE_CTYPE
 # include "kfun.h"
-# include "table.h"
 # include "path.h"
 # include "editor.h"
 # endif

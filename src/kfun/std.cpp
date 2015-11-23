@@ -19,7 +19,6 @@
 
 # ifndef FUNCDEF
 # include "kfun.h"
-# include "table.h"
 # include "path.h"
 # include "comm.h"
 # include "call_out.h"

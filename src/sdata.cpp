@@ -26,7 +26,6 @@
 # include "call_out.h"
 # include "parse.h"
 # include "control.h"
-# include "csupport.h"
 
 
 # define PRIV			0x0001	/* in sinherit->flags */

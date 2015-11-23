@@ -20,7 +20,6 @@
 # ifndef FUNCDEF
 # define INCLUDE_CTYPE
 # include "kfun.h"
-# include "table.h"
 # include "parse.h"
 # include "asn.h"
 # endif

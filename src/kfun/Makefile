@@ -32,10 +32,9 @@ clean:
 
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h ../str.h ../array.h
-$(OBJ): ../object.h ../xfloat.h ../interpret.h ../data.h
+$(OBJ): ../object.h ../hash.h ../swap.h ../xfloat.h ../interpret.h ../data.h
 std.o file.o: ../path.h ../editor.h
 std.o: ../comm.h ../call_out.h
-file.o: ../editor.h
 extra.o: ../asn.h
 
 std.o: ../comp/node.h ../comp/control.h ../comp/compile.h
@@ -43,6 +42,5 @@ table.o: ../comp/control.h
 
 extra.o: ../parser/parse.h
 
-$(OBJ): kfun.h
-builtin.o: table.h
-table.o: table.h $(OBJ)
+$(OBJ): kfun.h table.h
+table.o: $(OBJ)

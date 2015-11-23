@@ -18,7 +18,6 @@
  */
 
 # include "dgd.h"
-# include "hash.h"
 # include "str.h"
 # include "array.h"
 # include "object.h"

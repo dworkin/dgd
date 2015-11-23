@@ -26,7 +26,6 @@
 # include "data.h"
 # include "call_out.h"
 # include "parse.h"
-# include "csupport.h"
 
 
 # define COP_ADD	0	/* add callout patch */

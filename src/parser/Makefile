@@ -33,7 +33,8 @@ clean:
 
 $(OBJ): ../dgd.h ../config.h ../host.h ../alloc.h ../error.h
 grammar.o dfa.o: ../hash.h ../str.h
-parse.o: ../str.h ../array.h ../object.h ../interpret.h ../data.h
+parse.o: ../str.h ../array.h ../object.h ../hash.h ../swap.h ../interpret.h
+parse.o: ../data.h
 
 grammar.o parse.o: grammar.h
 dfa.o parse.o: dfa.h

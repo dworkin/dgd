@@ -19,7 +19,6 @@
 
 # ifndef FUNCDEF
 # include "kfun.h"
-# include "table.h"
 # endif
 
 
