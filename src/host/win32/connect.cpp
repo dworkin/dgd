@@ -543,7 +543,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	sin6.sin6_family = AF_INET6;
 	if (thosts[n] == (char *) NULL) {
 	    sin6.sin6_addr = in6addr_any;
-	    sin.sin_addr.s_addr = INADDR_ANY;
+	    sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	    ipv6 = ipv4 = TRUE;
 	} else {
 	    length = sizeof(struct sockaddr_in6);
@@ -607,7 +607,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	sin6.sin6_family = AF_INET6;
 	if (bhosts[n] == (char *) NULL) {
 	    sin6.sin6_addr = in6addr_any;
-	    sin.sin_addr.s_addr = INADDR_ANY;
+	    sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	    ipv6 = ipv4 = TRUE;
 	} else {
 	    length = sizeof(struct sockaddr_in6);
@@ -765,8 +765,8 @@ void conn_listen()
 
 	    len = sizeof(struct sockaddr_in);
 	    getsockname(self, (struct sockaddr *) &addr, &len);
-	    if (addr.sin_addr.s_addr == INADDR_ANY) {
-		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	    if (addr.sin_addr.s_addr == htonl(INADDR_ANY)) {
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	    }
 	    in = socket(AF_INET, SOCK_STREAM, 0);
 	    FD_SET(in, &infds);
@@ -1720,7 +1720,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	memset(&sin, '\0', sizeof(sin));
 	sin.sin_port = htons(port);
 	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    P_message("bind");
 	    closesocket(sock);
@@ -1761,7 +1761,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	memset(&sin, '\0', sizeof(sin));
 	sin.sin_port = htons(port);
 	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr=INADDR_ANY;
+	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    P_message("bind");
 	    closesocket(sock);

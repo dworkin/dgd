@@ -627,7 +627,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	    sin6.sin6_addr = in6addr_any;
 	    ipv6 = TRUE;
 # endif
-	    sin.sin_addr.s_addr = INADDR_ANY;
+	    sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
@@ -689,7 +689,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	    sin6.sin6_addr = in6addr_any;
 	    ipv6 = TRUE;
 # endif
-	    sin.sin_addr.s_addr = INADDR_ANY;
+	    sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	    ipv4 = TRUE;
 	} else {
 # ifdef INET6
@@ -1845,7 +1845,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	memset(&sin, '\0', sizeof(sin));
 	sin.sin_port = htons(port);
 	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    perror("bind");
 	    close(sock);
@@ -1890,7 +1890,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
 	memset(&sin, '\0', sizeof(sin));
 	sin.sin_port = htons(port);
 	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr = INADDR_ANY;
+	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 	    perror("bind");
 	    close(sock);
