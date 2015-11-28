@@ -1010,6 +1010,7 @@ void conn_del(connection *conn)
     connection **hash;
 
     if (conn->fd != INVALID_SOCKET) {
+	shutdown(conn->fd, SD_SEND);
 	closesocket(conn->fd);
 	FD_CLR(conn->fd, &infds);
 	FD_CLR(conn->fd, &outfds);

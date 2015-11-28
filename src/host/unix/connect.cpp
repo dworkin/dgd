@@ -817,6 +817,7 @@ void conn_finish()
 
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	if (conn->fd >= 0) {
+	    shutdown(conn->fd, SHUT_WR);
 	    close(conn->fd);
 	}
     }
@@ -1107,6 +1108,7 @@ void conn_del(connection *conn)
     connection **hash;
 
     if (conn->fd >= 0) {
+	shutdown(conn->fd, SHUT_WR);
 	close(conn->fd);
 	FD_CLR(conn->fd, &infds);
 	FD_CLR(conn->fd, &outfds);
