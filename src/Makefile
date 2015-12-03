@@ -52,13 +52,16 @@ BIN=	../bin
 
 ifeq ($(HOST),LINUX)
   DEFINES+=-D_FILE_OFFSET_BITS=64
+  CXX+=-pthread
 endif
 ifeq ($(HOST),FREEBSD)
   LIBS=
+  CXX+=-pthread
 endif
 ifeq ($(HOST),SOLARIS)
   DEFINES+=-D_FILE_OFFSET_BITS=64
   LIBS+=-lsocket -lnsl
+  CXX+=-pthread
 endif
 
 SRC=	alloc.cpp error.cpp hash.cpp swap.cpp str.cpp array.cpp object.cpp \

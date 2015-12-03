@@ -23,6 +23,7 @@
 # include <arpa/inet.h>
 # include <netdb.h>
 # include <signal.h>
+# include <pthread.h>
 # include <errno.h>
 # define INCLUDE_FILE_IO
 # include "dgd.h"
@@ -75,6 +76,11 @@ struct ipaddr {
     char name[MAXHOSTNAMELEN];		/* ip name */
 };
 
+struct pipes {
+    int in;				/* input file descriptor */
+    int out;				/* output file descriptor */
+};
+
 static int in = -1, out = -1;		/* pipe to/from name resolver */
 static int addrtype;			/* network address family */
 static ipaddr **ipahtab;		/* ip address hash table */
@@ -84,29 +90,23 @@ static ipaddr *ffirst, *flast;		/* free list */
 static int nfree;			/* # in free list */
 static ipaddr *lastreq;			/* last request */
 static bool busy;			/* name resolver busy */
+static pthread_t lookup;		/* name lookup thread */
 
 
 /*
  * NAME:	ipaddr->run()
- * DESCRIPTION:	host name lookup sub-program
+ * DESCRIPTION:	host name lookup thread
  */
-static void ipa_run(int in, int out)
+static void *ipa_run(void *arg)
 {
     char buf[sizeof(in46addr)];
+    struct pipes *inout;
     struct hostent *host;
     int len;
 
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTRAP, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
+    inout = (pipes *) arg;
 
-    while (read(in, buf, sizeof(in46addr)) > 0) {
-	if (((in46addr *) &buf)->ipv6 > 1) {
-	    /* close fd copied after hotboot */
-	    close(((in46addr *) &buf)->in.fd);
-	    continue;
-	}
+    while (read(inout->in, buf, sizeof(in46addr)) > 0) {
 	/* lookup host */
 # ifdef INET6
 	if (((in46addr *) &buf)->ipv6) {
@@ -134,14 +134,16 @@ static void ipa_run(int in, int out)
 	    if (len >= MAXHOSTNAMELEN) {
 		len = MAXHOSTNAMELEN - 1;
 	    }
-	    (void) write(out, name, len);
+	    (void) write(inout->out, name, len);
 	    name[0] = '\0';
 	} else {
-	    (void) write(out, "", 1);	/* failure */
+	    (void) write(inout->out, "", 1);	/* failure */
 	}
     }
 
-    exit(0);	/* pipe closed */
+    close(inout->in);
+    close(inout->out);
+    return NULL;
 }
 
 /*
@@ -151,7 +153,8 @@ static void ipa_run(int in, int out)
 static bool ipa_init(int maxusers)
 {
     if (in < 0) {
-	int fd[4], pid;
+	int fd[4];
+	static pipes inout;
 
 	if (pipe(fd) < 0) {
 	    perror("pipe");
@@ -163,23 +166,16 @@ static bool ipa_init(int maxusers)
 	    close(fd[1]);
 	    return FALSE;
 	}
-	pid = fork();
-	if (pid < 0) {
-	    perror("fork");
+	inout.in = fd[0];
+	inout.out = fd[3];
+	if (pthread_create(&lookup, NULL, &ipa_run, &inout) < 0) {
+	    perror("pthread_create");
 	    close(fd[0]);
 	    close(fd[1]);
 	    close(fd[2]);
 	    close(fd[3]);
 	    return FALSE;
 	}
-	if (pid == 0) {
-	    /* child process */
-	    close(fd[1]);
-	    close(fd[2]);
-	    ipa_run(fd[0], fd[3]);
-	}
-	close(fd[0]);
-	close(fd[3]);
 	in = fd[2];
 	out = fd[1];
     } else if (busy) {
@@ -208,20 +204,7 @@ static void ipa_finish()
 
     close(out);
     close(in);
-    wait(&status);
-}
-
-/*
- * NAME:	ipaddr->close()
- * DESCRIPTION:	close a fd duplicated after a hotboot
- */
-static void ipa_close(int fd)
-{
-    in46addr ipnum;
-
-    ipnum.ipv6 = 2;
-    ipnum.in.fd = fd;
-    (void) write(out, &ipnum, sizeof(in46addr));
+    pthread_join(lookup, NULL);
 }
 
 /*
@@ -2073,7 +2056,6 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 		return (connection *) NULL;
 	    }
 	} else {
-	    ipa_close(fd);
 	    inaddr.ipv6 = FALSE;
 # ifdef INET6
 	    if (sin.sin6_family == AF_INET6) {
