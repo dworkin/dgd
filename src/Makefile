@@ -45,7 +45,7 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CXXFLAGS=-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-CXX=	g++ -std=c++11
+CXX=	g++
 LD=	$(CXX)
 YACC=	yacc
 BIN=	../bin

@@ -59,7 +59,7 @@ public:
      * NAME:		new()
      * DESCRIPTION:	override new for class Allocated
      */
-    static void *operator new(std::size_t size) {
+    static void *operator new(size_t size) {
 	return ALLOC(char, size);
     }
 
