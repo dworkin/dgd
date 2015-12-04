@@ -29,7 +29,6 @@
 # include "dgd.h"
 # include "hash.h"
 # include "comm.h"
-# include <sys/wait.h>
 
 #ifdef NETWORK_EXTENSIONS
 #undef INET6
