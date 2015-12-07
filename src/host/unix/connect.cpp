@@ -92,6 +92,8 @@ static bool busy;			/* name resolver busy */
 static pthread_t lookup;		/* name lookup thread */
 
 
+extern "C" {
+
 /*
  * NAME:	ipaddr->run()
  * DESCRIPTION:	host name lookup thread
@@ -143,6 +145,8 @@ static void *ipa_run(void *arg)
     close(inout->in);
     close(inout->out);
     return NULL;
+}
+
 }
 
 /*

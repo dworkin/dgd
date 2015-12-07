@@ -20,6 +20,8 @@
 # include "dgd.h"
 # include <signal.h>
 
+extern "C" {
+
 /*
  * NAME:	term()
  * DESCRIPTION:	catch SIGTERM
@@ -28,6 +30,8 @@ static void term(int arg)
 {
     signal(SIGTERM, term);
     interrupt();
+}
+
 }
 
 /*
