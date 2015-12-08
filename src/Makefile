@@ -45,7 +45,7 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CXXFLAGS=-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
 LIBS=	-ldl
-CXX=	g++
+CXX=	c++
 LD=	$(CXX)
 YACC=	yacc
 BIN=	../bin
@@ -61,7 +61,7 @@ endif
 ifeq ($(HOST),SOLARIS)
   DEFINES+=-D_FILE_OFFSET_BITS=64
   LIBS+=-lsocket -lnsl
-  CXX+=-pthread
+  CXX=CC -mt
 endif
 
 SRC=	alloc.cpp error.cpp hash.cpp swap.cpp str.cpp array.cpp object.cpp \
