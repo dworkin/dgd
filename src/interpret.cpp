@@ -2762,8 +2762,8 @@ static void i_interpret1(Frame *f, char *pc)
 	    break;
 
 	case I_INDEX2:
-	    --f->sp;
-	    i_index2(f, f->sp + 2, f->sp + 1, f->sp, TRUE);
+	    i_index2(f, f->sp + 1, f->sp, &val, TRUE);
+	    *--f->sp = val;
 	    continue;
 
 	case I_AGGREGATE:
