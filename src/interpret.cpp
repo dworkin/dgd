@@ -726,7 +726,8 @@ void i_global(Frame *f, int inherit, int index)
  * NAME:	interpret->global_lvalue()
  * DESCRIPTION:	push a global lvalue on the stack
  */
-void i_global_lvalue(Frame *f, int inherit, int index, int vtype, Uint sclass)
+static void i_global_lvalue(Frame *f, int inherit, int index, int vtype,
+			    Uint sclass)
 {
     i_add_ticks(f, 4);
     inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
@@ -771,7 +772,7 @@ static void i_operator(Frame *f, Array *lwobj, const char *op, int nargs,
  * NAME:	interpret->index()
  * DESCRIPTION:	index a value, REPLACING it with the indexed value
  */
-void i_index(Frame *f)
+static void i_index(Frame *f)
 {
     int i;
     Value *aval, *ival, *val;
@@ -924,7 +925,7 @@ void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
  * NAME:	interpret->index_lvalue()
  * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
  */
-void i_index_lvalue(Frame *f, int vtype, Uint sclass)
+static void i_index_lvalue(Frame *f, int vtype, Uint sclass)
 {
     int i;
     Value *lval, *ival, *val;
@@ -1152,8 +1153,8 @@ int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
     obj = OBJR(oindex);
     ctrl = o_control(obj);
     prog = i_classname(f, sclass);
-    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ sclass) %
-								    INHASHSZ];
+    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ sclass)
+								    % INHASHSZ];
     if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
 	h->sclass == sclass && h->iindex < ctrl->ninherits) {
 	oindex = ctrl->inherits[h->iindex].oindex;
@@ -1226,7 +1227,7 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
  * NAME:	interpret->dup()
  * DESCRIPTION:	duplicate a value on the stack
  */
-void i_dup(Frame *f)
+static void i_dup(Frame *f)
 {
     switch (f->sp->type) {
     case T_LVALUE:
@@ -2439,7 +2440,7 @@ static void i_interpret0(Frame *f, char *pc)
 
 	case II_PUSH_LOCAL_LVAL:
 	    u = FETCH1S(pc);
-	    if (instr & I_TYPE_BIT) {
+	    if (instr & II_TYPE_BIT) {
 		instr = FETCH1U(pc);
 		if (instr == T_CLASS) {
 		    FETCH3U(pc, l);
@@ -2456,7 +2457,7 @@ static void i_interpret0(Frame *f, char *pc)
 
 	case II_PUSH_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
-	    if (instr & I_TYPE_BIT) {
+	    if (instr & II_TYPE_BIT) {
 		instr = FETCH1U(pc);
 		if (instr == T_CLASS) {
 		    FETCH3U(pc, l);
@@ -2470,7 +2471,7 @@ static void i_interpret0(Frame *f, char *pc)
 	case II_PUSH_FAR_GLOBAL_LVAL:
 	    u = FETCH1U(pc);
 	    u2 = FETCH1U(pc);
-	    if (instr & I_TYPE_BIT) {
+	    if (instr & II_TYPE_BIT) {
 		instr = FETCH1U(pc);
 		if (instr == T_CLASS) {
 		    FETCH3U(pc, l);
@@ -2486,7 +2487,7 @@ static void i_interpret0(Frame *f, char *pc)
 	    break;
 
 	case II_INDEX_LVAL:
-	    if (instr & I_TYPE_BIT) {
+	    if (instr & II_TYPE_BIT) {
 		instr = FETCH1U(pc);
 		if (instr == T_CLASS) {
 		    FETCH3U(pc, l);
@@ -2507,7 +2508,7 @@ static void i_interpret0(Frame *f, char *pc)
 
 	case II_SPREAD:
 	    u = FETCH1S(pc);
-	    if (instr & I_TYPE_BIT) {
+	    if (instr & II_TYPE_BIT) {
 		instr = FETCH1U(pc);
 		if (instr == T_CLASS) {
 		    FETCH3U(pc, l);
@@ -3541,7 +3542,7 @@ static unsigned short i_line0(Frame *f)
 
 	switch (instr & II_INSTR_MASK) {
 	case II_INDEX_LVAL:
-	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
 		pc += 3;
 	    }
 	    /* fall through */
@@ -3571,7 +3572,7 @@ static unsigned short i_line0(Frame *f)
 	case II_PUSH_GLOBAL_LVAL:
 	case II_SPREAD:
 	    pc++;
-	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
 		pc += 3;
 	    }
 	    break;
@@ -3588,7 +3589,7 @@ static unsigned short i_line0(Frame *f)
 
 	case II_PUSH_FAR_GLOBAL_LVAL:
 	    pc += 2;
-	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
+	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
 		pc += 3;
 	    }
 	    break;
