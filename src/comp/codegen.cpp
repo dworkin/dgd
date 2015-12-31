@@ -324,7 +324,7 @@ public:
     virtual bool item(jmplist *j) {
 	code[j->where    ] = j->to >> 8;
 	code[j->where + 1] = j->to;
-	if ((code[j->to] & I_EINSTR_MASK) == I_JUMP) {
+	if ((code[j->to] & I_INSTR_MASK) == I_JUMP) {
 	    /*
 	     * add to jump-to-jump list
 	     */
@@ -414,7 +414,7 @@ static void jump_make(char *code)
 	 */
 	where = j->where;
 	to = j->to;
-	while ((code[to] & I_EINSTR_MASK) == I_JUMP && to != where - 1) {
+	while ((code[to] & I_INSTR_MASK) == I_JUMP && to != where - 1) {
 	    /*
 	     * Change to jump across the next jump.  If there is a loop, it
 	     * will eventually result in a jump to itself.

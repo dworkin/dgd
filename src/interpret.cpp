@@ -1540,7 +1540,7 @@ static void i_stores(Frame *f, int skip, int assign)
      */
     while (skip != 0) {
 	instr = FETCH1U(pc);
-	switch (instr & I_EINSTR_MASK) {
+	switch (instr & I_INSTR_MASK) {
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
 	    if (FETCH1U(pc) == T_CLASS) {
@@ -1611,7 +1611,7 @@ static void i_stores(Frame *f, int skip, int assign)
      */
     while (assign != 0) {
 	instr = FETCH1U(pc);
-	switch (instr & I_EINSTR_MASK) {
+	switch (instr & I_INSTR_MASK) {
 	case I_CAST:
 	case I_CAST | I_POP_BIT:
 	    u = FETCH1U(pc);
@@ -1752,7 +1752,7 @@ void i_lvalues(Frame *f)
     if (n != 0) {
 	nassign = f->sp->u.array->size;
 
-	if ((FETCH1U(pc) & I_EINSTR_MASK) == I_SPREAD) {
+	if ((FETCH1U(pc) & I_INSTR_MASK) == I_SPREAD) {
 	    /*
 	     * lvalue spread
 	     */
@@ -2386,7 +2386,7 @@ static void i_interpret0(Frame *f, char *pc)
 	instr = FETCH1U(pc);
 	f->pc = pc;
 
-	switch (instr & I_INSTR_MASK) {
+	switch (instr & II_INSTR_MASK) {
 	case II_PUSH_ZERO:
 	    PUSH_INTVAL(f, 0);
 	    break;
@@ -2708,7 +2708,7 @@ static void i_interpret1(Frame *f, char *pc)
 	instr = FETCH1U(pc);
 	f->pc = pc;
 
-	switch (instr & I_EINSTR_MASK) {
+	switch (instr & I_INSTR_MASK) {
 	case I_PUSH_INT1:
 	    PUSH_INTVAL(f, FETCH1S(pc));
 	    continue;
@@ -3539,7 +3539,7 @@ static unsigned short i_line0(Frame *f)
 	    }
 	}
 
-	switch (instr & I_INSTR_MASK) {
+	switch (instr & II_INSTR_MASK) {
 	case II_INDEX_LVAL:
 	    if ((instr & I_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
 		pc += 3;
@@ -3681,7 +3681,7 @@ static unsigned short i_line1(Frame *f)
 	    }
 	}
 
-	switch (instr & I_EINSTR_MASK) {
+	switch (instr & I_INSTR_MASK) {
 	case I_INDEX:
 	case I_INDEX | I_POP_BIT:
 	case I_INDEX2:

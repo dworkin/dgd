@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-# define I_INSTR_MASK		0x1f	/* instruction mask */
+# define II_INSTR_MASK		0x1f	/* instruction mask */
 
 # define II_PUSH_ZERO		  0
 # define II_PUSH_ONE		  1
@@ -52,7 +52,7 @@
 # define II_RLIMITS		 30
 # define II_RETURN		 31
 
-# define I_EINSTR_MASK		0x3f	/* extended instruction mask */
+# define I_INSTR_MASK		0x3f	/* extended instruction mask */
 
 # define I_PUSH_INT1		0x00	/* 1 signed */
 # define I_PUSH_INT2		0x20	/* 2 signed */
