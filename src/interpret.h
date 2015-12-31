@@ -239,7 +239,6 @@
 # define C_VARARGS	0x08
 # define C_ATOMIC	0x10
 # define C_TYPECHECKED	0x20
-# define C_COMPILED	0x40
 # define C_UNDEFINED	0x80
 
 

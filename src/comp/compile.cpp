@@ -372,7 +372,7 @@ void c_init(char *a, char *d, char *i, char **p, int tc)
     driver_object = d;
     include = i;
     paths = p;
-    typechecking = tc | cg_compiled();
+    typechecking = tc;
 }
 
 /*
@@ -540,8 +540,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    } else {
 		Object *aobj;
 
-		if (!cg_compiled() &&
-		    o_find(driver_object, OACC_READ) == (Object *) NULL) {
+		if (o_find(driver_object, OACC_READ) == (Object *) NULL) {
 		    /*
 		     * compile the driver object to do pathname translation
 		     */
@@ -847,10 +846,6 @@ static void c_decl_func(unsigned short sclass, node *type, String *str,
 
     /* define prototype */
     if (function) {
-	if (cg_compiled()) {
-	    /* LPC compiled to C */
-	    PROTO_CLASS(proto) |= C_COMPILED;
-	}
 	ctrl_dfunc(str, proto, fclass);
     } else {
 	PROTO_CLASS(proto) |= C_UNDEFINED;

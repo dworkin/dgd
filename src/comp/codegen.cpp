@@ -2302,16 +2302,6 @@ void cg_init(int inherited)
 }
 
 /*
- * NAME:	codegen->compiled()
- * DESCRIPTION:	return FALSE to signal that the code is interpreted, and not
- *		compiled
- */
-bool cg_compiled()
-{
-    return FALSE;
-}
-
-/*
  * NAME:	codegen->function()
  * DESCRIPTION:	generate code for a function
  */

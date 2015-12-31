@@ -3861,8 +3861,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     v++;
 
     /* line number */
-    PUT_INTVAL(v, (f->func->sclass & C_COMPILED) ? 0 :
-		   (f->p_ctrl->flags & CTRL_VM_1_0) ? i_line0(f) : i_line1(f));
+    PUT_INTVAL(v, (f->p_ctrl->flags & CTRL_VM_1_0) ? i_line0(f) : i_line1(f));
     v++;
 
     /* external flag */

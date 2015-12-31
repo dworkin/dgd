@@ -18,7 +18,6 @@
  */
 
 extern void  cg_init		(int);
-extern bool  cg_compiled	();
 extern char *cg_function	(String*, node*, int, int, unsigned int,
 				   unsigned short*);
 extern int   cg_nfuncs		();
