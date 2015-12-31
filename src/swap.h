@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern bool	sw_init		(char*, unsigned int, unsigned int,
+extern void	sw_init		(char*, unsigned int, unsigned int,
 				   unsigned int);
 extern void	sw_finish	();
 extern void	sw_newv		(sector*, unsigned int);

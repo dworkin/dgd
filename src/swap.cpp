@@ -39,7 +39,7 @@ static char *cbuf;			/* sector buffer */
 static sector cached;			/* sector currently cached in cbuf */
 static header *first, *last;		/* first and last swap slot */
 static header *lfree;			/* free swap slot list */
-static long slotsize;			/* sizeof(header) + size of sector */
+static size_t slotsize;			/* sizeof(header) + size of sector */
 static unsigned int sectorsize;		/* size of sector */
 static unsigned int restoresecsize;	/* size of sector in restore file */
 static sector swapsize, cachesize;	/* # of sectors in swap and cache */
@@ -53,7 +53,7 @@ static bool swapping;			/* currently using a swapfile? */
  * NAME:	swap->init()
  * DESCRIPTION:	initialize the swap device
  */
-bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
+void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
     header *h;
     sector i;
@@ -64,13 +64,6 @@ bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
     cachesize = cache;
     sectorsize = secsize;
     slotsize = sizeof(header) + secsize;
-
-    /* sanity check */
-    if (cache >= total || ((cache * slotsize) / cache) != slotsize) {
-	P_message("Config error: swap cache too big\012"); /* LF */
-	return 0;
-    }
-
     mem = ALLOC(char, slotsize * cache);
     map = ALLOC(sector, total);
     smap = ALLOC(sector, total);
@@ -101,7 +94,6 @@ bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int se
 
     swap = dump = -1;
     swapping = TRUE;
-    return 1;
 }
 
 /*

@@ -19,29 +19,29 @@
 
 # include "dgd.h"
 
-# define MAGIC_MASK	0xc0000000L	/* magic number mask */
-# define SIZE_MASK	0x3fffffffL	/* size mask */
+# define SIZE_SHIFT	(8 * (sizeof(size_t) - 1))
+# define MAGIC_MASK	((size_t) 0xc0 << SIZE_SHIFT)	/* magic number mask */
+# define SIZE_MASK	(~MAGIC_MASK)			/* size mask */
 
-# define SM_MAGIC	0x80000000L	/* static mem */
-# define DM_MAGIC	0xc0000000L	/* dynamic mem */
+# define SM_MAGIC	((size_t) 0x80 << SIZE_SHIFT)	/* static mem */
+# define DM_MAGIC	((size_t) 0xc0 << SIZE_SHIFT)	/* dynamic mem */
 
-# define UINTSIZE	ALGN(sizeof(Uint), STRUCT_AL)
 # define SIZETSIZE	ALGN(sizeof(size_t), STRUCT_AL)
 
 # ifdef DEBUG
 # define MOFFSET	ALGN(sizeof(header), STRUCT_AL)
 # else
-# define MOFFSET	UINTSIZE
+# define MOFFSET	SIZETSIZE
 # endif
 
 struct chunk {
-    Uint size;		/* size of chunk */
+    size_t size;	/* size of chunk */
     chunk *next;	/* next chunk */
 };
 
 # ifdef DEBUG
 struct header {
-    Uint size;		/* size of chunk */
+    size_t size;	/* size of chunk */
     header *prev;	/* previous in list */
     header *next;	/* next in list */
     const char *file;	/* file it was allocated from */
@@ -192,7 +192,7 @@ static chunk *salloc(size_t size)
 
     /* try current chunk */
     if (schunk == (chunk *) NULL || schunk->size < size) {
-	Uint chunksz;
+	size_t chunksz;
 
 	/*
 	 * allocate static memory block
@@ -275,7 +275,7 @@ void m_dynamic()
  */
 
 struct spnode {
-    Uint size;			/* size of chunk */
+    size_t size;		/* size of chunk */
     spnode *parent;		/* parent node */
     spnode *left;		/* left child node */
     spnode *right;		/* right child node */
@@ -292,7 +292,7 @@ static void insert(chunk *c)
 {
     spnode *n, *t;
     spnode *l, *r;
-    Uint size;
+    size_t size;
 
     n = dtree;
     dtree = t = (spnode *) c;
@@ -368,7 +368,7 @@ static void insert(chunk *c)
  * NAME:	seek()
  * DESCRIPTION:	find a chunk of the proper size in the splay tree
  */
-static chunk *seek(Uint size)
+static chunk *seek(size_t size)
 {
     spnode dummy;
     spnode *n, *t;
@@ -557,8 +557,8 @@ static chunk *dalloc(size_t size)
 	if (dchunk == (chunk *) NULL) {
 	    /* get new chunks chunk */
 	    dchunk = dalloc(DCHUNKSZ);	/* cannot use alloc() here */
-	    p = (char *) dchunk + UINTSIZE;
-	    ((chunk *) p)->size = dchunk->size - UINTSIZE - SIZETSIZE;
+	    p = (char *) dchunk + SIZETSIZE;
+	    ((chunk *) p)->size = dchunk->size - SIZETSIZE - SIZETSIZE;
 	    dchunk->size |= DM_MAGIC;
 	    dchunk = (chunk *) p;
 	}
@@ -577,7 +577,7 @@ static chunk *dalloc(size_t size)
     }
 
     size += SIZETSIZE;
-    c = seek((Uint) size);
+    c = seek(size);
     if (c != (chunk *) NULL) {
 	/*
 	 * remove from free list
@@ -587,7 +587,7 @@ static chunk *dalloc(size_t size)
 	/*
 	 * get new dynamic chunk
 	 */
-	for (sz = dchunksz; sz < size + SIZETSIZE + UINTSIZE; sz += dchunksz) ;
+	for (sz = dchunksz; sz < size + SIZETSIZE + SIZETSIZE; sz += dchunksz) ;
 	p = newmem(sz, &dlist);
 	mstat.dmemsize += sz;
 
@@ -595,7 +595,7 @@ static chunk *dalloc(size_t size)
 	*(size_t *) p = 0;
 	c = (chunk *) (p + SIZETSIZE);
 	/* initialize chunk */
-	c->size = sz - SIZETSIZE - UINTSIZE;
+	c->size = sz - SIZETSIZE - SIZETSIZE;
 	p += c->size;
 	*(size_t *) p = c->size;
 	/* no following chunk */

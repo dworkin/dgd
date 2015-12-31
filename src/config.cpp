@@ -1503,21 +1503,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     /* initialize swap device */
     cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].u.num : 100);
-    if (!sw_init(conf[SWAP_FILE].u.str,
-	    (sector) conf[SWAP_SIZE].u.num,
-	    cache,
-	    (unsigned int) conf[SECTOR_SIZE].u.num)) {
-	comm_clear();
-	comm_finish();
-	if (snapshot2 != (char *) NULL) {
-	    P_close(fd2);
-	}
-	if (snapshot != (char *) NULL) {
-	    P_close(fd);
-	}
-	m_finish();
-	return FALSE;
-    }
+    sw_init(conf[SWAP_FILE].u.str, (sector) conf[SWAP_SIZE].u.num, cache,
+	    (unsigned int) conf[SECTOR_SIZE].u.num);
 
     /* initialize swapped data handler */
     d_init();
