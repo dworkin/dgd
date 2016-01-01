@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,7 +42,7 @@ struct Frame;
 
 extern bool call_driver_object	(Frame*, const char*, int);
 extern void interrupt		();
-extern void endthread		();
+extern void endtask		();
 extern void errhandler		(Frame*, Int);
 extern int  dgd_main		(int, char**);
 

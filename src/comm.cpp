@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -996,7 +996,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
-    endthread();
+    endtask();
     this_user = OBJ_NONE;
 }
 
@@ -1028,7 +1028,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
     }
-    endthread();
+    endtask();
     this_user = OBJ_NONE;
 }
 
@@ -1172,7 +1172,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			    i_del_value(f->sp++);
 			}
 #endif
-			endthread();
+			endtask();
 		    /*
 		     * Connection completed, call open in the user object.
 		     */
@@ -1181,7 +1181,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			{
 			    i_del_value(f->sp++);
 			}
-			endthread();
+			endtask();
 		    }
 		    this_user = old_user;
 		}
@@ -1210,14 +1210,14 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    if (i_call(f, obj, (Array *) NULL, "datagram_done", 13,
 			       TRUE, 0)) {
 			i_del_value(f->sp++);
-			endthread();
+			endtask();
 		    }
 		} else
 #endif
 		if (i_call(f, obj, (Array *) NULL, "message_done", 12, TRUE, 0))
 		{
 		    i_del_value(f->sp++);
-		    endthread();
+		    endtask();
 		}
 
 		this_user = OBJ_NONE;
@@ -1244,7 +1244,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    if (i_call(f, obj, (Array *) NULL, "receive_datagram", 16,
 			       TRUE, 3)) {
 			i_del_value(f->sp++);
-			endthread();
+			endtask();
 		    }
 		}
 		continue;
@@ -1291,7 +1291,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			conn_del(conn);
 			error((char *) NULL);
 		    }
-		    endthread();
+		    endtask();
 
 		    newusr->flags |= CF_PROMPT;
 		    addtoflush(newusr,
@@ -1300,7 +1300,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    this_user = obj->index;
 		    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 			i_del_value(f->sp++);
-			endthread();
+			endtask();
 		    }
 		    this_user=olduser;
 		}
@@ -1334,7 +1334,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			     * empty buffer, no more input, no pending output
 			     */
 			    comm_del(f, usr, obj, FALSE);
-			    endthread();    /* this cannot be in comm_del() */
+			    endtask();    /* this cannot be in comm_del() */
 			    break;
 			}
 		    }
@@ -1553,7 +1553,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			    if (i_call(f, obj, (Array *) NULL,
 				       "receive_datagram", 16, TRUE, 1)) {
 				i_del_value(f->sp++);
-				endthread();
+				endtask();
 			    }
 			    this_user = OBJ_NONE;
 			}
@@ -1563,7 +1563,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			if (i_call(f, obj, (Array *) NULL, "open_datagram", 13,
 				   TRUE, 0)) {
 			    i_del_value(f->sp++);
-			    endthread();
+			    endtask();
 			}
 			this_user = OBJ_NONE;
 		    }
@@ -1577,7 +1577,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			 * no more input and no pending output
 			 */
 			comm_del(f, usr, obj, FALSE);
-			endthread();	/* this cannot be in comm_del() */
+			endtask();	/* this cannot be in comm_del() */
 			break;
 		    }
 		    continue;
@@ -1590,7 +1590,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    if (i_call(f, obj, (Array *) NULL, "receive_message", 15, TRUE, 1))
 	    {
 		i_del_value(f->sp++);
-		endthread();
+		endtask();
 	    }
 	    this_user = OBJ_NONE;
 	    break;
@@ -1598,7 +1598,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 
 	ec_pop();
     } catch (...) {
-	endthread();
+	endtask();
 	this_user = OBJ_NONE;
 	return;
     }

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -74,10 +74,10 @@ void interrupt()
 }
 
 /*
- * NAME:	endthread()
- * DESCRIPTION:	clean up after a thread has terminated
+ * NAME:	endtask()
+ * DESCRIPTION:	clean up after a task has terminated
  */
-void endthread()
+void endtask()
 {
     comm_flush();
     d_export();
@@ -217,7 +217,7 @@ int dgd_main(int argc, char **argv)
 		i_del_value(cframe->sp++);
 		ec_pop();
 	    } catch (...) { }
-	    endthread();
+	    endtask();
 	}
 
 	/* handle user input */
