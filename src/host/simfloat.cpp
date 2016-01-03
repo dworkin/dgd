@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,14 +38,22 @@ xfloat max_int =	{ 0x41df, 0xffffffc0L };	/* 0x7fffffff */
 xfloat thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
 xfloat thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 
-static flt half =	{ 0x0000, 0x7ffe, 0x4000, 0x00000000L };
-static flt one =	{ 0x0000, 0x7fff, 0x4000, 0x00000000L };
-static flt maxlog =	{ 0x0000, 0x8008, 0x58b9, 0x05fdf474L };
-static flt minlog =	{ 0x8000, 0x8008, 0x58b9, 0x05fdf474L };
-static flt sqrth =	{ 0x0000, 0x7ffe, 0x5a82, 0x3cccfe78L };
-static flt pi =		{ 0x0000, 0x8000, 0x6487, 0x76a8885cL };
-static flt pio2 =	{ 0x0000, 0x7fff, 0x6487, 0x76a8885cL };
-static flt pio4 =	{ 0x0000, 0x7ffe, 0x6487, 0x76a8885cL };
+# define FLT_CONST(s, e, h, l)	{ (unsigned short) (s) << 15,		\
+				  (e) + BIAS,				\
+				  0x4000 + ((h) >> 2),			\
+				  (((Uint) (h) << 29) +			\
+				   ((l) << 1) + 2) & 0x7ffffffcL }
+
+static flt half =	FLT_CONST(0,  -1, 0x0000, 0x0000000L);
+static flt one =	FLT_CONST(0,   0, 0x0000, 0x0000000L);
+static flt maxlog =	FLT_CONST(0,   9, 0x62e4, 0x2fefa39L);
+static flt minlog =	FLT_CONST(1,   9, 0x62e4, 0x2fefa39L);
+static flt sqrth =	FLT_CONST(0,  -1, 0x6a09, 0xe667f3bL);
+static flt pi =		FLT_CONST(0,   1, 0x921f, 0xb54442dL);
+static flt pio2 =	FLT_CONST(0,   0, 0x921f, 0xb54442dL);
+static flt pio4 =	FLT_CONST(0,  -1, 0x921f, 0xb54442dL);
+static flt ln2c1 =	FLT_CONST(0,  -1, 0x62e4, 0x0000000L);
+static flt ln2c2 =	FLT_CONST(0, -20, 0x7f7d, 0x1cf79abL);
 
 
 /*
@@ -477,7 +485,7 @@ static void f_37bits(flt *a)
  */
 static void f_round(flt *a)
 {
-    static flt half = { 0, 0x7ffe, 0x4000, 0x00000000L };
+    static flt half = FLT_CONST(0, -1, 0x0000, 0x0000000L);
 
     half.sign = a->sign;
     f_add(a, &half);
@@ -638,29 +646,29 @@ static void f_xftof(xfloat *f, flt *a)
 
 
 static flt tens[] = {
-    { 0, 0x8002, 0x5000, 0x00000000L },	/* 10 ** 1 */
-    { 0, 0x8005, 0x6400, 0x00000000L },	/* 10 ** 2 */
-    { 0, 0x800C, 0x4E20, 0x00000000L },	/* 10 ** 4 */
-    { 0, 0x8019, 0x5F5E, 0x08000000L },	/* 10 ** 8 */
-    { 0, 0x8034, 0x470D, 0x726FC100L },	/* 10 ** 16 */
-    { 0, 0x8069, 0x4EE2, 0x6B6A0ADCL },	/* 10 ** 32 */
-    { 0, 0x80D3, 0x613C, 0x07D27FF4L },	/* 10 ** 64 */
-    { 0, 0x81A8, 0x49DD, 0x11F2603CL },	/* 10 ** 128 */
-    { 0, 0x8351, 0x553F, 0x3AFEE780L },	/* 10 ** 256 */
-    { 0, 0x86A3, 0x718C, 0x682BA984L },	/* 10 ** 512 */
+    FLT_CONST(0,     3, 0x4000, 0x0000000L),	/* 10 ** 1 */
+    FLT_CONST(0,     6, 0x9000, 0x0000000L),	/* 10 ** 2 */
+    FLT_CONST(0,    13, 0x3880, 0x0000000L),	/* 10 ** 4 */
+    FLT_CONST(0,    26, 0x7d78, 0x4000000L),	/* 10 ** 8 */
+    FLT_CONST(0,    53, 0x1c37, 0x937e080L),	/* 10 ** 16 */
+    FLT_CONST(0,   106, 0x3b8b, 0x5b5056eL),	/* 10 ** 32 */
+    FLT_CONST(0,   212, 0x84f0, 0x3e93ff9L),	/* 10 ** 64 */
+    FLT_CONST(0,   425, 0x2774, 0x8f9301dL),	/* 10 ** 128 */
+    FLT_CONST(0,   850, 0x54fd, 0xd7f73bfL),	/* 10 ** 256 */
+    FLT_CONST(0,  1700, 0xc633, 0x415d4c1L),	/* 10 ** 512 */
 };
 
 static flt tenths[] = {
-    { 0, 0x7FFB, 0x6666, 0x33333334L },	/* 10 ** -1 */
-    { 0, 0x7FF8, 0x51EB, 0x428F5C28L },	/* 10 ** -2 */
-    { 0, 0x7FF1, 0x68DB, 0x45D63888L },	/* 10 ** -4 */
-    { 0, 0x7FE4, 0x55E6, 0x1DC46118L },	/* 10 ** -8 */
-    { 0, 0x7FC9, 0x734A, 0x652FB114L },	/* 10 ** -16 */
-    { 0, 0x7F94, 0x67D8, 0x47AB5150L },	/* 10 ** -32 */
-    { 0, 0x7F2A, 0x543F, 0x7A89E950L },	/* 10 ** -64 */
-    { 0, 0x7E55, 0x6EE8, 0x119F1930L },	/* 10 ** -128 */
-    { 0, 0x7CAC, 0x6018, 0x50C958E0L },	/* 10 ** -256 */
-    { 0, 0x795A, 0x4824, 0x7B8CB6C8L },	/* 10 ** -512 */
+    FLT_CONST(0,    -4, 0x9999, 0x9999999L),	/* 10 ** -1 */
+    FLT_CONST(0,    -7, 0x47ae, 0x147ae14L),	/* 10 ** -2 */
+    FLT_CONST(0,   -14, 0xa36e, 0x2eb1c43L),	/* 10 ** -4 */
+    FLT_CONST(0,   -27, 0x5798, 0xee2308cL),	/* 10 ** -8 */
+    FLT_CONST(0,   -54, 0xcd2b, 0x297d889L),	/* 10 ** -16 */
+    FLT_CONST(0,  -107, 0x9f62, 0x3d5a8a7L),	/* 10 ** -32 */
+    FLT_CONST(0,  -213, 0x50ff, 0xd44f4a7L),	/* 10 ** -64 */
+    FLT_CONST(0,  -426, 0xbba0, 0x8cf8c97L),	/* 10 ** -128 */
+    FLT_CONST(0,  -851, 0x8062, 0x864ac6fL),	/* 10 ** -256 */
+    FLT_CONST(0, -1701, 0x2093, 0xdc65b64L),	/* 10 ** -512 */
 };
 
 /*
@@ -1122,7 +1130,7 @@ void flt_modf(xfloat *f1, xfloat *f2)
 
 /*
  * The algorithms for much of the following are taken from the Cephes Math
- * Library 2.1, by Stephen L. Moshier.
+ * Library 2.9, by Stephen L. Moshier.
  */
 
 /*
@@ -1160,6 +1168,9 @@ static void f_poly1(flt *x, flt *coef, int n)
     *x = result;
 }
 
+# define POLY(x, c)	f_poly(x, c, sizeof(c) / sizeof(flt) - 1)
+# define POLY1(x, c)	f_poly1(x, c, sizeof(c) / sizeof(flt) - 1)
+
 /*
  * NAME:	f_exp()
  * DESCRIPTION:	internal version of exp(f)
@@ -1167,38 +1178,37 @@ static void f_poly1(flt *x, flt *coef, int n)
 static void f_exp(flt *a)
 {
     static flt p[] = {
-	{ 0x0000, 0x7ff2, 0x4228, 0x01073370L },
-	{ 0x0000, 0x7ff9, 0x7c1b, 0x4362a050L },
-	{ 0x0000, 0x7fff, 0x4000, 0x00000000L }
+	FLT_CONST(0, -13, 0x089c, 0xdd5e44bL),
+	FLT_CONST(0,  -6, 0xf06d, 0x10cca2cL),
+	FLT_CONST(0,   0, 0x0000, 0x0000000L)
     };
     static flt q[] = {
-	{ 0x0000, 0x7fec, 0x64bd, 0x3130af58L },
-	{ 0x0000, 0x7ff6, 0x52b9, 0x2c76e408L },
-	{ 0x0000, 0x7ffc, 0x745c, 0x1b8352c0L },
-	{ 0x0000, 0x8000, 0x4000, 0x00000000L }
+	FLT_CONST(0, -19, 0x92eb, 0x6bc365fL),
+	FLT_CONST(0,  -9, 0x4ae3, 0x9b508b6L),
+	FLT_CONST(0,  -3, 0xd170, 0x99887e0L),
+	FLT_CONST(0,   1, 0x0000, 0x0000000L)
     };
-    static flt log2e = { 0x0000, 0x7fff, 0x5c55, 0x0eca5704L };
-    static flt c1 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
-    static flt c2 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
+    static flt log2e = FLT_CONST(0, 0, 0x7154, 0x7652b82L);
     flt b, c;
     short n;
 
     b = *a;
     f_mult(&b, &log2e);
-    f_round(&b);
+    f_add(&b, &half);
+    f_trunc(&b);
     n = f_ftoi(&b);
     c = b;
-    f_mult(&c, &c1);
+    f_mult(&c, &ln2c1);
     f_sub(a, &c);
-    f_mult(&b, &c2);
-    f_add(a, &b);
+    f_mult(&b, &ln2c2);
+    f_sub(a, &b);
 
     b = *a;
     f_mult(&b, a);
     c = b;
-    f_poly(&c, p, 2);
+    POLY(&c, p);
     f_mult(a, &c);
-    f_poly(&b, q, 3);
+    POLY(&b, q);
     f_sub(&b, a);
     f_div(a, &b);
 
@@ -1235,22 +1245,110 @@ void flt_exp(xfloat *f)
 }
 
 static flt logp[] = {
-    { 0x0000, 0x7ff0, 0x6026, 0x4ed4bf30L },
-    { 0x0000, 0x7ffd, 0x7f9f, 0x5db2f2b4L },
-    { 0x0000, 0x8001, 0x6902, 0x458cd8e8L },
-    { 0x0000, 0x8003, 0x7726, 0x52fc7a84L },
-    { 0x0000, 0x8004, 0x7939, 0x5ac9d7b8L },
-    { 0x0000, 0x8004, 0x7178, 0x244a33a8L },
-    { 0x0000, 0x8003, 0x4f8e, 0x4b136264L }
+    FLT_CONST(0, -14, 0xab4c, 0x293c31bL),
+    FLT_CONST(0,  -2, 0xfd6f, 0x53f5652L),
+    FLT_CONST(0,   2, 0x2d2b, 0xaed9269L),
+    FLT_CONST(0,   3, 0xcff7, 0x2c63eebL),
+    FLT_CONST(0,   4, 0x1efd, 0x6924bc8L),
+    FLT_CONST(0,   2, 0xed56, 0x37d7edcL)
 };
 static flt logq[] = {
-    { 0x0000, 0x8002, 0x7840, 0x2c1bf7a0L },
-    { 0x0000, 0x8005, 0x52bd, 0x5a8f5cf4L },
-    { 0x0000, 0x8006, 0x6e55, 0x0548968cL },
-    { 0x0000, 0x8007, 0x4cd0, 0x22530620L },
-    { 0x0000, 0x8006, 0x6b7a, 0x28551a68L },
-    { 0x0000, 0x8004, 0x7755, 0x709d1394L }
+    FLT_CONST(0,   3, 0x6932, 0x0ae97efL),
+    FLT_CONST(0,   5, 0x69d2, 0xc4e19c0L),
+    FLT_CONST(0,   6, 0x4bf3, 0x3a326bdL),
+    FLT_CONST(0,   6, 0x1c9e, 0x2eb5eaeL),
+    FLT_CONST(0,   4, 0x7200, 0xa9e1f25L)
 };
+
+static flt logr[] = {
+    FLT_CONST(1,  -1, 0x9443, 0xddc6c0eL),
+    FLT_CONST(0,   4, 0x062f, 0xc73027bL),
+    FLT_CONST(1,   6, 0x0090, 0x611222aL)
+};
+static flt logs[] = {
+    FLT_CONST(1,   5, 0x1d60, 0xd43ec6dL),
+    FLT_CONST(0,   8, 0x3818, 0x0112ae4L),
+    FLT_CONST(1,   9, 0x80d8, 0x919b33fL)
+};
+
+/*
+ * NAME:	f_log()
+ * DESCRIPTION:	internal version of log(f)
+ */
+static void f_log(flt *a)
+{
+    flt b, c, d, e;
+    short n;
+
+    n = a->exp - BIAS + 1;
+    a->exp = BIAS - 1;
+
+    if (n > 2 || n < -2) {
+	if (f_cmp(a, &sqrth) < 0) {
+	    --n;
+	    f_sub(a, &half);
+	    b = *a;
+	} else {
+	    b = *a;
+	    f_sub(a, &half);
+	    f_sub(a, &half);
+	}
+	if (b.exp != 0) {
+	    --b.exp;
+	}
+	f_add(&b, &half);
+
+	f_div(a, &b);
+	b = *a;
+	f_mult(&b, &b);
+	c = b;
+	POLY(&c, logr);
+	f_mult(&c, &b);
+	POLY1(&b, logs);
+	f_div(&c, &b);
+	f_mult(&c, a);
+
+	f_itof(n, &d);
+	b = d;
+	f_mult(&b, &ln2c2);
+	f_add(a, &b);
+	f_add(a, &c);
+	f_mult(&d, &ln2c1);
+	f_add(a, &d);
+    } else {
+	if (f_cmp(a, &sqrth) < 0) {
+	    --n;
+	    a->exp++;
+	}
+	f_sub(a, &one);
+
+	b = *a;
+	f_mult(&b, a);
+	c = *a;
+	POLY(&c, logp);
+	f_mult(&c, &b);
+	d = *a;
+	POLY1(&d, logq);
+	f_div(&c, &d);
+	f_mult(&c, a);
+
+	if (n != 0) {
+	    f_itof(n, &d);
+	    e = d;
+	    f_mult(&e, &ln2c2);
+	    f_add(&c, &e);
+	}
+	if (b.exp != 0) {
+	    --b.exp;
+	    f_sub(&c, &b);
+	}
+	f_add(a, &c);
+	if (n != 0) {
+	    f_mult(&d, &ln2c1);
+	    f_add(a, &d);
+	}
+    }
+}
 
 /*
  * NAME:	float->log()
@@ -1258,19 +1356,28 @@ static flt logq[] = {
  */
 void flt_log(xfloat *f)
 {
-    static flt r[] = {
-	{ 0x8000, 0x7ffe, 0x6510, 0x7bb8d81cL },
-	{ 0x0000, 0x8003, 0x418b, 0x78e604f8L },
-	{ 0x8000, 0x8005, 0x4024, 0x0c224454L }
-    };
-    static flt s[] = {
-	{ 0x8000, 0x8004, 0x4758, 0x1a87d8dcL },
-	{ 0x0000, 0x8007, 0x4e06, 0x002255c8L },
-	{ 0x8000, 0x8008, 0x6036, 0x12336680L }
-    };
-    static flt c1 = { 0x0000, 0x7ff2, 0x6f40, 0x20b8c218L };
-    static flt c2 = { 0x0000, 0x7ffe, 0x58c0, 0x00000000L };
-    flt a, b, c, d;
+    flt a;
+
+    f_xftof(f, &a);
+    if (a.sign != 0 || a.exp == 0) {
+	/* <= 0.0 */
+	f_edom();
+    }
+
+    f_log(&a);
+    f_ftoxf(&a, f);
+}
+
+/*
+ * NAME:	float->log10()
+ * DESCRIPTION:	log10(f)
+ */
+void flt_log10(xfloat *f)
+{
+    static flt l102a = FLT_CONST(0, -2, 0x4000, 0x0000000L);
+    static flt l102b = FLT_CONST(1, -7, 0x77d9, 0x5ec10c0L);
+    static flt l10eb = FLT_CONST(1, -4, 0x0d21, 0x3ab646bL);
+    flt a, b, c, d, e;
     short n;
 
     f_xftof(f, &a);
@@ -1301,12 +1408,11 @@ void flt_log(xfloat *f)
 	b = a;
 	f_mult(&b, &b);
 	c = b;
-	f_poly(&b, r, 2);
-	f_mult(&b, &c);
-	f_poly1(&c, s, 2);
-	f_div(&b, &c);
-	f_mult(&b, &a);
-	f_add(&a, &b);
+	POLY(&c, logr);
+	f_mult(&c, &b);
+	POLY1(&b, logs);
+	f_div(&c, &b);
+	f_mult(&c, &a);
     } else {
 	if (f_cmp(&a, &sqrth) < 0) {
 	    --n;
@@ -1317,88 +1423,43 @@ void flt_log(xfloat *f)
 	b = a;
 	f_mult(&b, &a);
 	c = a;
-	f_poly(&c, logp, 6);
+	POLY(&c, logp);
 	f_mult(&c, &b);
 	d = a;
-	f_poly1(&d, logq, 5);
+	POLY1(&d, logq);
 	f_div(&c, &d);
 	f_mult(&c, &a);
 	if (b.exp != 0) {
 	    --b.exp;
+	    f_sub(&c, &b);
 	}
-	f_sub(&c, &b);
-	f_add(&a, &c);
     }
 
-    if (n != 0) {
-	f_itof((Int) n, &b);
-	c = b;
-	f_mult(&c, &c1);
-	f_sub(&a, &c);
-	f_mult(&b, &c2);
-	f_add(&a, &b);
-    }
-
-    f_ftoxf(&a, f);
-}
-
-/*
- * NAME:	float->log10()
- * DESCRIPTION:	log10(f)
- */
-void flt_log10(xfloat *f)
-{
-    static flt l102a = { 0x0000, 0x7ffd, 0x4d00, 0x00000000L };
-    static flt l102b = { 0x0000, 0x7ff3, 0x4135, 0x04fbcff8L };
-    static flt l10ea = { 0x0000, 0x7ffd, 0x6f00, 0x00000000L };
-    static flt l10eb = { 0x0000, 0x7ff4, 0x5bd8, 0x549b9438L };
-    flt a, b, c, d;
-    short n;
-
-    f_xftof(f, &a);
-    if (a.sign != 0 || a.exp == 0) {
-	/* <= 0.0 */
-	f_edom();
-    }
-
-    n = a.exp - BIAS + 1;
-    a.exp = BIAS - 1;
-
-    if (f_cmp(&a, &sqrth) < 0) {
-	--n;
-	a.exp++;
-    }
-    f_sub(&a, &one);
-
-    b = a;
-    f_mult(&b, &a);
-    c = a;
-    f_poly(&c, logp, 6);
-    f_mult(&c, &b);
-    d = a;
-    f_poly1(&d, logq, 5);
-    f_div(&c, &d);
-    f_mult(&c, &a);
-    if (b.exp != 0) {
-	--b.exp;
-    }
-    f_sub(&c, &b);
-
-    b = a;
-    f_add(&b, &c);
+    b = c;
     f_mult(&b, &l10eb);
-    f_mult(&a, &l10ea);
-    f_add(&a, &b);
-    f_mult(&c, &l10ea);
-    f_add(&a, &c);
-    f_itof((Int) n, &b);
-    c = b;
-    f_mult(&b, &l102b);
-    f_add(&a, &b);
-    f_mult(&c, &l102a);
-    f_add(&a, &c);
+    d = a;
+    f_mult(&d, &l10eb);
+    f_add(&b, &d);
+    if (n != 0) {
+	f_itof(n, &d);
+	e = d;
+	f_mult(&e, &l102b);
+	f_add(&b, &e);
+    }
+    if (c.exp != 0) {
+	--c.exp;
+	f_add(&b, &c);
+    }
+    if (a.exp != 0) {
+	--a.exp;
+	f_add(&b, &a);
+    }
+    if (n != 0) {
+	f_mult(&d, &l102a);
+	f_add(&b, &d);
+    }
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&b, f);
 }
 
 /*
@@ -1468,61 +1529,7 @@ static void f_powi(flt *a, int n)
  */
 void flt_pow(xfloat *f1, xfloat *f2)
 {
-    static flt p[] = {
-	{ 0x0000, 0x7ffd, 0x7f6e, 0x32feb6b8L },
-	{ 0x0000, 0x8000, 0x7777, 0x5fd53dc0L },
-	{ 0x0000, 0x8001, 0x7b32, 0x7afef1d8L },
-	{ 0x0000, 0x8001, 0x4aaa, 0x076cb938L }
-    };
-    static flt q[] = {
-	{ 0x0000, 0x8002, 0x4aaa, 0x69364124L },
-	{ 0x0000, 0x8003, 0x6fff, 0x7e838394L },
-	{ 0x0000, 0x8004, 0x4332, 0x78362ec8L },
-	{ 0x0000, 0x8002, 0x6fff, 0x0b2315d4L }
-    };
-    static flt aloga[] = {
-	{ 0x0000, 0x7fff, 0x4000, 0x00000000L },
-	{ 0x0000, 0x7ffe, 0x7a92, 0x5f454920L },
-	{ 0x0000, 0x7ffe, 0x7560, 0x31b9f748L },
-	{ 0x0000, 0x7ffe, 0x7066, 0x37bb0aa4L },
-	{ 0x0000, 0x7ffe, 0x6ba2, 0x3f32b5a8L },
-	{ 0x0000, 0x7ffe, 0x6712, 0x230547e0L },
-	{ 0x0000, 0x7ffe, 0x62b3, 0x4a845540L },
-	{ 0x0000, 0x7ffe, 0x5e84, 0x28e7d604L },
-	{ 0x0000, 0x7ffe, 0x5a82, 0x3cccfe78L },
-	{ 0x0000, 0x7ffe, 0x56ac, 0x0fba90a8L },
-	{ 0x0000, 0x7ffe, 0x52ff, 0x35aa6c54L },
-	{ 0x0000, 0x7ffe, 0x4f7a, 0x4c982468L },
-	{ 0x0000, 0x7ffe, 0x4c1b, 0x7c146370L },
-	{ 0x0000, 0x7ffe, 0x48e1, 0x74dceac4L },
-	{ 0x0000, 0x7ffe, 0x45ca, 0x7078faa4L },
-	{ 0x0000, 0x7ffe, 0x42d5, 0x30d9f314L },
-	{ 0x0000, 0x7ffe, 0x4000, 0x00000000L }
-    };
-    static flt alogb[] = {
-	{ 0x0000, 0x0000, 0x0000, 0x00000000L },
-	{ 0x0000, 0x7fc7, 0x4bb4, 0x05aeb670L },
-	{ 0x0000, 0x7fc8, 0x5e87, 0x1a68bb98L },
-	{ 0x0000, 0x7fc8, 0x5ba7, 0x62ad0c98L },
-	{ 0x8000, 0x7fc8, 0x6f74, 0x682764c8L },
-	{ 0x0000, 0x7fc6, 0x750e, 0x2f5fd884L },
-	{ 0x0000, 0x7fc7, 0x5bd1, 0x55a46304L },
-	{ 0x8000, 0x7fc7, 0x4641, 0x0373af14L },
-	{ 0x0000, 0x0000, 0x0000, 0x00000000L }
-    };
-    static flt r[] = {
-	{ 0x0000, 0x7fee, 0x7d8c, 0x0fafe528L },
-	{ 0x0000, 0x7ff2, 0x50be, 0x7cc1f924L },
-	{ 0x0000, 0x7ff5, 0x5761, 0x7d9095e0L },
-	{ 0x0000, 0x7ff8, 0x4eca, 0x56dde268L },
-	{ 0x0000, 0x7ffa, 0x71ac, 0x11ae0834L },
-	{ 0x0000, 0x7ffc, 0x7afe, 0x7bff058cL },
-	{ 0x0000, 0x7ffe, 0x58b9, 0x05fdf474L }
-    };
-    static flt log2ea = { 0x0000, 0x7ffd, 0x7154, 0x3b295c18L };
-    static flt sixteenth = { 0x0000, 0x7ffb, 0x4000, 0x00000000L };
-    flt a, b, c, d, e;
-    int n, i;
+    flt a, b, c;
     unsigned short sign;
 
     f_xftof(f1, &a);
@@ -1560,133 +1567,9 @@ void flt_pow(xfloat *f1, xfloat *f2)
 	return;
     }
 
-    n = a.exp - BIAS + 1;
-    a.exp = BIAS - 1;
-
-    if (f_cmp(&a, &aloga[1]) >= 0) {
-	i = 0;
-    } else {
-	i = 1;
-	if (f_cmp(&a, &aloga[9]) <= 0) {
-	    i = 9;
-	}
-	if (f_cmp(&a, &aloga[i + 4]) <= 0) {
-	    i += 4;
-	}
-	if (f_cmp(&a, &aloga[i + 2]) <= 0) {
-	    i += 2;
-	}
-	i++;
-    }
-    f_sub(&a, &aloga[i]);
-    f_sub(&a, &alogb[i >> 1]);
-    f_div(&a, &aloga[i]);
-
-    c = a;
-    f_mult(&c, &a);
-    d = a;
-    f_poly(&d, p, 3);
-    f_mult(&d, &c);
-    e = a;
-    f_poly1(&e, q, 3);
-    f_div(&d, &e);
-    f_mult(&d, &a);
-    if (c.exp != 0) {
-	--c.exp;
-    }
-    f_sub(&d, &c);
-
-    c = d;
-    f_mult(&d, &log2ea);
-    f_add(&c, &d);
-    d = a;
-    f_mult(&d, &log2ea);
-    f_add(&c, &d);
-    f_add(&c, &a);
-    f_mult(&c, &b);
-
-    f_itof((Int) -i, &d);
-    if (d.exp != 0) {
-	d.exp -= 4;
-    }
-    f_itof((Int) n, &e);
-    f_add(&d, &e);
-
-    e = b;
-    e.exp += 4;
-    f_trunc(&e);
-    if (e.exp != 0) {
-	e.exp -= 4;
-    }
-    f_sub(&b, &e);
-
-    f_mult(&b, &d);
-    f_add(&c, &b);
-    b = c;
-    if (b.exp != 0) {
-	b.exp += 4;
-	f_trunc(&b);
-	if (b.exp != 0) {
-	    b.exp -= 4;
-	}
-    }
-    f_sub(&c, &b);
-
-    f_mult(&d, &e);
-    f_add(&b, &d);
-    d = b;
-    if (d.exp != 0) {
-	d.exp += 4;
-	f_trunc(&d);
-	if (d.exp != 0) {
-	    d.exp -= 4;
-	}
-    }
-    f_sub(&b, &d);
-
-    f_add(&b, &c);
-    c = b;
-    if (c.exp != 0) {
-	c.exp += 4;
-	f_trunc(&c);
-	if (c.exp != 0) {
-	    c.exp -= 4;
-	}
-    }
-    f_add(&d, &c);
-    if (d.exp != 0) {
-	d.exp += 4;
-    }
-
-    if (d.exp >= 0x800d) {
-	/* exponent >= 16384 */
-	if (d.sign == 0) {
-	    /* overflow */
-	    f_erange();
-	}
-	/* underflow */
-	a.exp = 0;
-	f_ftoxf(&a, f1);
-	return;
-    }
-    n = f_ftoi(&d);
-    f_sub(&b, &c);
-    if (b.sign == 0 && b.exp != 0) {
-	n++;
-	f_sub(&b, &sixteenth);
-    }
-
-    a = b;
-    f_poly(&a, r, 6);
+    f_log(&a);
     f_mult(&a, &b);
-
-    i = n / 16 + ((n < 0) ? 0 : 1);
-    n = i * 16 - n;
-    f_mult(&a, &aloga[n]);
-    f_add(&a, &aloga[n]);
-    if (a.exp != 0) {
-	a.exp += i;
-    }
+    f_exp(&a);
     a.sign = sign;
 
     f_ftoxf(&a, f1);
@@ -1698,9 +1581,10 @@ void flt_pow(xfloat *f1, xfloat *f2)
  */
 static void f_sqrt(flt *a)
 {
-    static flt c1 = { 0x0000, 0x7ffe, 0x4b8a, 0x371e5fa0L };
-    static flt c2 = { 0x0000, 0x7ffd, 0x6ad4, 0x55de691cL };
-    static flt sqrt2 = { 0x0000, 0x7fff, 0x5a82, 0x3cccfe78L };
+    static flt c1 =    FLT_CONST(1, -3, 0xa29f, 0x864cdc3L);
+    static flt c2 =    FLT_CONST(0, -1, 0xc7c7, 0x8481a43L);
+    static flt c3 =    FLT_CONST(0, -2, 0x4117, 0xb9aebcaL);
+    static flt sqrt2 = FLT_CONST(0,  0, 0x6a09, 0xe667f3bL);
     flt b, c;
     int n;
 
@@ -1711,8 +1595,11 @@ static void f_sqrt(flt *a)
     b = *a;
     n = a->exp - BIAS + 1;
     a->exp = BIAS - 1;
-    f_mult(a, &c1);
-    f_add(a, &c2);
+    c = *a;
+    f_mult(&c, &c1);
+    f_add(&c, &c2);
+    f_mult(a, &c);
+    f_add(a, &c3);
     if (n & 1) {
 	f_mult(a, &sqrt2);
     }
@@ -1748,24 +1635,24 @@ void flt_sqrt(xfloat *f)
 }
 
 static flt sincof[] = {
-    { 0x0000, 0x7fde, 0x5763, 0x7a3fa338L },
-    { 0x8000, 0x7fe5, 0x6b97, 0x4b525240L },
-    { 0x0000, 0x7fec, 0x5c77, 0x46acfa90L },
-    { 0x8000, 0x7ff2, 0x6806, 0x40337fc0L },
-    { 0x0000, 0x7ff8, 0x4444, 0x222221f0L },
-    { 0x8000, 0x7ffc, 0x5555, 0x2aaaaaacL }
+    FLT_CONST(0, -33, 0x5d8f, 0xd1fd19cL),
+    FLT_CONST(1, -26, 0xae5e, 0x5a9291fL),
+    FLT_CONST(0, -19, 0x71de, 0x3567d48L),
+    FLT_CONST(1, -13, 0xa01a, 0x019bfdfL),
+    FLT_CONST(0,  -7, 0x1111, 0x11110f7L),
+    FLT_CONST(1,  -3, 0x5555, 0x5555555L)
 };
 static flt coscof[] = {
-    { 0x8000, 0x7fda, 0x63e9, 0x13410c34L },
-    { 0x0000, 0x7fe2, 0x47ba, 0x3af69c80L },
-    { 0x8000, 0x7fe9, 0x49f9, 0x1efd5898L },
-    { 0x0000, 0x7fef, 0x6806, 0x40339088L },
-    { 0x8000, 0x7ff5, 0x5b05, 0x582d82a0L },
-    { 0x0000, 0x7ffa, 0x5555, 0x2aaaaaacL }
+    FLT_CONST(1, -37, 0x8fa4, 0x9a0861aL),
+    FLT_CONST(0, -29, 0x1ee9, 0xd7b4e3fL),
+    FLT_CONST(1, -22, 0x27e4, 0xf7eac4bL),
+    FLT_CONST(0, -16, 0xa01a, 0x019c844L),
+    FLT_CONST(1, -10, 0x6c16, 0xc16c14fL),
+    FLT_CONST(0,  -5, 0x5555, 0x5555555L)
 };
-static flt sc1 = { 0x0000, 0x7ffe, 0x6487, 0x76800000L };
-static flt sc2 = { 0x0000, 0x7fe6, 0x5110, 0x5a000000L };
-static flt sc3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
+static flt sc1 = FLT_CONST(0,  -1, 0x921f, 0xb400000L);
+static flt sc2 = FLT_CONST(0, -25, 0x4442, 0xd000000L);
+static flt sc3 = FLT_CONST(0, -49, 0x8469, 0x898cc51L);
 
 /*
  * NAME:	float->cos()
@@ -1814,7 +1701,7 @@ void flt_cos(xfloat *f)
     if (n == 1 || n == 2) {
 	c = b;
 	f_mult(&b, &a);
-	f_poly(&c, sincof, 5);
+	POLY(&c, sincof);
     } else {
 	a = one;
 	c = b;
@@ -1824,7 +1711,7 @@ void flt_cos(xfloat *f)
 	f_sub(&a, &c);
 	c = b;
 	f_mult(&b, &b);
-	f_poly(&c, coscof, 5);
+	POLY(&c, coscof);
     }
     f_mult(&b, &c);
     f_add(&a, &b);
@@ -1884,11 +1771,11 @@ void flt_sin(xfloat *f)
 	f_sub(&a, &c);
 	c = b;
 	f_mult(&b, &b);
-	f_poly(&c, coscof, 5);
+	POLY(&c, coscof);
     } else {
 	c = b;
 	f_mult(&b, &a);
-	f_poly(&c, sincof, 5);
+	POLY(&c, sincof);
     }
     f_mult(&b, &c);
     f_add(&a, &b);
@@ -1904,19 +1791,19 @@ void flt_sin(xfloat *f)
 void flt_tan(xfloat *f)
 {
     static flt p[] = {
-	{ 0x8000, 0x800c, 0x664b, 0x31a49e80L },
-	{ 0x0000, 0x8013, 0x4667, 0x594bf93cL },
-	{ 0x8000, 0x8017, 0x447f, 0x55a65324L }
+	FLT_CONST(1, 13, 0x992d, 0x8d24f3fL),
+	FLT_CONST(0, 20, 0x199e, 0xca5fc9dL),
+	FLT_CONST(1, 24, 0x11fe, 0xad32991L)
     };
     static flt q[] = {
-	{ 0x0000, 0x800c, 0x6ae2, 0x4bdd66ccL },
-	{ 0x8000, 0x8013, 0x509e, 0x78b05578L },
-	{ 0x0000, 0x8017, 0x5f66, 0x1f85d5b0L },
-	{ 0x8000, 0x8018, 0x66bf, 0x40797cb4L }
+	FLT_CONST(0, 13, 0xab8a, 0x5eeb365L),
+	FLT_CONST(1, 20, 0x427b, 0xc582abcL),
+	FLT_CONST(0, 24, 0x7d98, 0xfc2ead8L),
+	FLT_CONST(1, 25, 0x9afe, 0x03cbe5aL)
     };
-    static flt p1 = { 0x0000, 0x7ffe, 0x6487, 0x76800000L };
-    static flt p2 = { 0x0000, 0x7fe6, 0x5110, 0x5a000000L };
-    static flt p3 = { 0x0000, 0x7fce, 0x611a, 0x313198a4L };
+    static flt p1 = FLT_CONST(0,  -1, 0x921f, 0xb500000L);
+    static flt p2 = FLT_CONST(0, -27, 0x110b, 0x4600000L);
+    static flt p3 = FLT_CONST(0, -55, 0x1a62, 0x633145cL);
     flt a, b, c;
     int n;
     unsigned short sign;
@@ -1950,9 +1837,9 @@ void flt_tan(xfloat *f)
     f_mult(&b, &a);
     if (b.exp > 0x7fd0) {	/* ~1e-14 */
 	c = b;
-	f_poly(&b, p, 2);
+	POLY(&b, p);
 	f_mult(&b, &c);
-	f_poly1(&c, q, 3);
+	POLY1(&c, q);
 	f_div(&b, &c);
 	f_mult(&b, &a);
 	f_add(&a, &b);
@@ -1970,18 +1857,19 @@ void flt_tan(xfloat *f)
 }
 
 static flt ascp[] = {
-    { 0x8000, 0x7ffe, 0x5931, 0x3dd1792cL },
-    { 0x0000, 0x8002, 0x5147, 0x2a1c6244L },
-    { 0x8000, 0x8004, 0x4f77, 0x6c7ab96cL },
-    { 0x0000, 0x8004, 0x7295, 0x0d081500L },
-    { 0x8000, 0x8003, 0x6da8, 0x634b0bb0L }
+    FLT_CONST(0, -8, 0x16b9, 0xb0bd48aL),
+    FLT_CONST(1, -1, 0x3434, 0x1333e5cL),
+    FLT_CONST(0,  2, 0x5c74, 0xb178a2dL),
+    FLT_CONST(1,  4, 0x0433, 0x1de2790L),
+    FLT_CONST(0,  4, 0x3900, 0x7da7792L),
+    FLT_CONST(1,  3, 0x0656, 0xc06ceafL)
 };
 static flt ascq[] = {
-    { 0x8000, 0x8003, 0x5f58, 0x7442cc70L },
-    { 0x0000, 0x8006, 0x4b8c, 0x15abd1acL },
-    { 0x8000, 0x8007, 0x5f95, 0x630cc2e0L },
-    { 0x0000, 0x8007, 0x6871, 0x0dbab9b8L },
-    { 0x8000, 0x8006, 0x523e, 0x4a7848c4L }
+    FLT_CONST(1,  3, 0xd7b5, 0x90b5e0eL),
+    FLT_CONST(0,  6, 0x19fc, 0x025fe90L),
+    FLT_CONST(1,  7, 0x265b, 0xb6d3576L),
+    FLT_CONST(0,  7, 0x1705, 0x684ffbfL),
+    FLT_CONST(1,  5, 0x8982, 0x20a3607L)
 };
 
 /*
@@ -2017,11 +1905,11 @@ void flt_acos(xfloat *f)
 	flag = FALSE;
     }
 
-    if (a.exp >= 0x7fe7) {	/* ~1e-7 */
+    if (a.exp >= 0x7fe4) {	/* ~1e-8 */
 	c = b;
-	f_poly(&c, ascp, 4);
+	POLY(&c, ascp);
 	f_mult(&c, &b);
-	f_poly1(&b, ascq, 4);
+	POLY1(&b, ascq);
 	f_div(&c, &b);
 	f_mult(&c, &a);
 	f_add(&a, &c);
@@ -2082,11 +1970,11 @@ void flt_asin(xfloat *f)
 	flag = FALSE;
     }
 
-    if (a.exp >= 0x7fe7) {	/* ~1e-7 */
+    if (a.exp >= 0x7fe4) {	/* ~1e-8 */
 	c = b;
-	f_poly(&c, ascp, 4);
+	POLY(&c, ascp);
 	f_mult(&c, &b);
-	f_poly1(&b, ascq, 4);
+	POLY1(&b, ascq);
 	f_div(&c, &b);
 	f_mult(&c, &a);
 	f_add(&a, &c);
@@ -2106,19 +1994,21 @@ void flt_asin(xfloat *f)
 }
 
 static flt atp[] = {
-    { 0x8000, 0x7ffe, 0x6ba5, 0x2175f64cL },
-    { 0x8000, 0x8002, 0x46b5, 0x3c27114cL },
-    { 0x8000, 0x8003, 0x5763, 0x7b6b8ba4L },
-    { 0x8000, 0x8002, 0x76a5, 0x2457275cL }
+    FLT_CONST(1, -1, 0xc007, 0xfa1f725L),
+    FLT_CONST(1,  4, 0x0285, 0x45b6b80L),
+    FLT_CONST(1,  6, 0x2c08, 0xc368802L),
+    FLT_CONST(1,  6, 0xeb8b, 0xf2d05baL),
+    FLT_CONST(1,  6, 0x0366, 0x9fd28ecL)
 };
 static flt atq[] = {
-    { 0x0000, 0x8002, 0x7bfa, 0x59b1a2acL },
-    { 0x0000, 0x8004, 0x7d94, 0x68676274L },
-    { 0x0000, 0x8005, 0x5c3c, 0x7b2444acL },
-    { 0x0000, 0x8004, 0x58fb, 0x7b415d88L }
+    FLT_CONST(0,  4, 0x8dbc, 0x45b1460L),
+    FLT_CONST(0,  7, 0x4a0d, 0xd43b8faL),
+    FLT_CONST(0,  8, 0xb0e1, 0x8d2e2beL),
+    FLT_CONST(0,  8, 0xe563, 0xf13b049L),
+    FLT_CONST(0,  7, 0x8519, 0xefbbd62L)
 };
-static flt t3p8 = { 0x0000, 0x8000, 0x4d41, 0x1e667f3cL };
-static flt tp8 = { 0x0000, 0x7ffd, 0x6a09, 0x7333f9e0L };
+static flt t3p8 = FLT_CONST(0,  1, 0x3504, 0xf333f9dL);
+static flt tp8 =  FLT_CONST(0, -2, 0xa827, 0x999fcefL);
 
 /*
  * NAME:	float->atan()
@@ -2152,8 +2042,8 @@ void flt_atan(xfloat *f)
     c = a;
     f_mult(&c, &a);
     d = e = c;
-    f_poly(&c, atp, 3);
-    f_poly1(&d, atq, 3);
+    POLY(&c, atp);
+    POLY1(&d, atq);
     f_div(&c, &d);
     f_mult(&c, &e);
     f_mult(&c, &a);
@@ -2219,8 +2109,8 @@ void flt_atan2(xfloat *f1, xfloat *f2)
     c = a;
     f_mult(&c, &a);
     d = e = c;
-    f_poly(&c, atp, 3);
-    f_poly1(&d, atq, 3);
+    POLY(&c, atp);
+    POLY1(&d, atq);
     f_div(&c, &d);
     f_mult(&c, &e);
     f_mult(&c, &a);
@@ -2269,15 +2159,15 @@ void flt_cosh(xfloat *f)
 void flt_sinh(xfloat *f)
 {
     static flt p[] = {
-	{ 0x8000, 0x7ffe, 0x650d, 0x3fd17678L },
-	{ 0x8000, 0x8006, 0x51dc, 0x74731fe8L },
-	{ 0x8000, 0x800c, 0x5a52, 0x718e3ac4L },
-	{ 0x8000, 0x8011, 0x55e0, 0x57b7ed58L }
+	FLT_CONST(1, -1, 0x9435, 0xfe8bb3cL),
+	FLT_CONST(1,  7, 0x4773, 0xa398ff4L),
+	FLT_CONST(1, 13, 0x694b, 0x8c71d61L),
+	FLT_CONST(1, 18, 0x5782, 0xbdbf6abL)
     };
     static flt q[] = {
-	{ 0x8000, 0x8007, 0x456d, 0x412dd2c8L },
-	{ 0x0000, 0x800e, 0x469e, 0x74fdae44L },
-	{ 0x8000, 0x8014, 0x4068, 0x41c9f200L }
+	FLT_CONST(1,  8, 0x15b6, 0x096e964L),
+	FLT_CONST(0, 15, 0x1a7b, 0xa7ed722L),
+	FLT_CONST(1, 21, 0x01a2, 0x0e4f900L)
     };
     flt a, b, c, d;
     unsigned short sign;
@@ -2301,8 +2191,8 @@ void flt_sinh(xfloat *f)
 	b = a;
 	f_mult(&b, &a);
 	c = d = b;
-	f_poly(&c, p, 3);
-	f_poly1(&d, q, 2);
+	POLY(&c, p);
+	POLY1(&d, q);
 	f_div(&c, &d);
 	f_mult(&b, &a);
 	f_mult(&b, &c);
@@ -2319,18 +2209,18 @@ void flt_sinh(xfloat *f)
 void flt_tanh(xfloat *f)
 {
     static flt p[] = {
-	{ 0x8000, 0x7ffe, 0x7b71, 0x3755fae0L },
-	{ 0x8000, 0x8005, 0x6349, 0x541c4cd0L },
-	{ 0x8000, 0x8009, 0x64eb, 0x0060b00cL }
+	FLT_CONST(1, -1, 0xedc5, 0xbaafd6fL),
+	FLT_CONST(1,  6, 0x8d26, 0xa0e2668L),
+	FLT_CONST(1, 10, 0x93ac, 0x0305805L)
     };
     static flt q[] = {
-	{ 0x0000, 0x8005, 0x70cf, 0x6514b038L },
-	{ 0x0000, 0x800a, 0x45db, 0x741caa6cL },
-	{ 0x0000, 0x800b, 0x4bb0, 0x20488408L }
+	FLT_CONST(0,  6, 0xc33f, 0x28a581bL),
+	FLT_CONST(0, 11, 0x176f, 0xa0e5535L),
+	FLT_CONST(0, 12, 0x2ec1, 0x0244204L)
     };
-    static flt mlog2 = { 0x0000, 0x8007, 0x58b9, 0x05fdf474L };
-    static flt d625 = { 0x0000, 0x7ffe, 0x5000, 0x00000000L };
-    static flt two = { 0x0000, 0x8000, 0x4000, 0x00000000L };
+    static flt mlog2 = FLT_CONST(0,  8, 0x62e4, 0x2fefa39L);
+    static flt d625 =  FLT_CONST(0, -1, 0x4000, 0x0000000L);
+    static flt two =   FLT_CONST(0,  1, 0x0000, 0x0000000L);
     flt a, b, c, d;
     unsigned short sign;
 
@@ -2354,8 +2244,8 @@ void flt_tanh(xfloat *f)
 	b = a;
 	f_mult(&b, &a);
 	c = d = b;
-	f_poly(&c, p, 2);
-	f_poly1(&d, q, 2);
+	POLY(&c, p);
+	POLY1(&d, q);
 	f_div(&c, &d);
 	f_mult(&b, &c);
 	f_mult(&b, &a);
