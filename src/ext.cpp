@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -140,12 +140,13 @@ static long double ext_float_getval(Value *val)
  * NAME:	ext->float_putval()
  * DESCRIPTION:	store a float in a value
  */
-static void ext_float_putval(Value *val, long double ld)
+static int ext_float_putval(Value *val, long double ld)
 {
     double d;
     xfloat flt;
-    bool sign;
+    unsigned short sign;
     int e;
+    Uuint m;
 
     d = (double) ld;
     if (d == 0.0) {
@@ -153,12 +154,25 @@ static void ext_float_putval(Value *val, long double ld)
 	flt.low = 0;
     } else {
 	sign = (d < 0.0);
-	d = ldexp(frexp(fabs(d), &e), 5);
-	flt.high = ((unsigned short) sign << 15) | ((e - 1 + 1023) << 4) |
-		   ((unsigned short) d & 0xf);
-	flt.low = (Uint) (ldexp(d - (int) d, 32) + 0.5);
+	d = frexp(fabs(d), &e) + ldexp(0.5, -37);
+	if (d >= 1.0) {
+	    if (++e > 1023) {
+		return FALSE;
+	    }
+	    d = ldexp(d, -1);
+	}
+	if (e <= -1023) {
+	    flt.high = 0;
+	    flt.low = 0;
+	} else {
+	    m = (Uuint) ldexp(d, 37);
+	    flt.high = (sign << 15) | ((e - 1 + 1023) << 4) |
+		       ((unsigned short) (m >> 32) & 0xf);
+	    flt.low = (Uuint) m;
+	}
     }
     PUT_FLTVAL(val, flt);
+    return TRUE;
 }
 # endif
 
