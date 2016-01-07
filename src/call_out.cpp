@@ -709,10 +709,10 @@ void co_call(Frame *f)
 	    handle = cotab[i].handle;
 	    obj = OBJ(cotab[i].oindex);
 	    freecallout(&running, i, i, 0);
-	    str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
 
 	    try {
 		ec_push((ec_ftn) errhandler);
+		str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
 		    /* function exists */
