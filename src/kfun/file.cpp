@@ -1128,7 +1128,7 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ];
     struct stat sbuf;
-    Int l;
+    off_t l;
     int fd;
 
     UNREFERENCED_PARAMETER(kf);
@@ -1193,7 +1193,8 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
 {
     char file[STRINGSZ], *buf;
     struct stat sbuf;
-    Int l, size;
+    off_t l;
+    Int size;
     static int fd;
 
     UNREFERENCED_PARAMETER(kf);
