@@ -1608,6 +1608,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 	if (snapshot != (char *) NULL) {
 	    P_close(fd);
 	}
+	arr_freeall();
 	m_finish();
 	return FALSE;
     }
