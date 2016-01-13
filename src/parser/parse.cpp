@@ -940,11 +940,6 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
 	    /*
 	     * lexer or parser has become too big
 	     */
-	    ec_pop();
-	    delete ps->pnc;
-	    ps->data->parser = (parser *) NULL;
-	    ps_del(ps);
-
 	    error("Grammar too large");
 	}
 	delete ps->pnc;
