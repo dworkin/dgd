@@ -147,10 +147,12 @@ static void sn_del(snlist *list, snode *sn)
  */
 static void sn_clear(snlist *list)
 {
-    list->snc->clean();
-    delete list->snc;
-    list->snc = (snchunk *) NULL;
-    list->first = (snode *) NULL;
+    if (list->snc != (snchunk *) NULL) {
+	list->snc->clean();
+	delete list->snc;
+	list->snc = (snchunk *) NULL;
+	list->first = (snode *) NULL;
+    }
 }
 
 
