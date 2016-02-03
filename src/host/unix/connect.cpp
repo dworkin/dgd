@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -894,7 +894,7 @@ void conn_listen()
 static connection *conn_accept6(int portfd, int port)
 {
     int fd;
-    unsigned int len;
+    socklen_t len;
     struct sockaddr_in6 sin6;
     in46addr addr;
     connection *conn;
@@ -944,7 +944,7 @@ static connection *conn_accept6(int portfd, int port)
 static connection *conn_accept(int portfd, int port)
 {
     int fd;
-    unsigned int len;
+    socklen_t len;
     struct sockaddr_in sin;
     in46addr addr;
     connection *conn;
@@ -1154,7 +1154,7 @@ static void conn_udprecv6(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in6 from;
-    unsigned int fromlen;
+    socklen_t fromlen;
     int size;
     connection **hash, *conn;
     char *p;
@@ -1233,7 +1233,7 @@ static void conn_udprecv(int n)
 {
     char buffer[BINBUF_SIZE];
     struct sockaddr_in from;
-    unsigned int fromlen;
+    socklen_t fromlen;
     int size;
     connection **hash, *conn;
     char *p;
@@ -1804,7 +1804,7 @@ connection *conn_openlisten(unsigned char protocol, unsigned short port)
     struct sockaddr_in sin;
     connection *conn;
     int on, n, sock;
-    unsigned int sz;
+    socklen_t sz;
 
 
     switch (protocol) {
@@ -1925,7 +1925,7 @@ int conn_at(connection *conn)
 connection *conn_accept(connection *conn)
 {
     int fd;
-    unsigned int len;
+    socklen_t len;
     struct sockaddr_in sin;
     in46addr addr;
     connection *newconn;
@@ -1971,7 +1971,7 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
 {
     if (FD_ISSET(conn->fd, &readfds)) {
 	struct sockaddr_in from;
-	unsigned int fromlen;
+	socklen_t fromlen;
 	int sz;
 
 	fromlen = sizeof(struct sockaddr_in);
