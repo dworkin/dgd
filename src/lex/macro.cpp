@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -43,7 +43,7 @@ public:
     }
 } mchunk;
 
-static hashtab *mt;		/* macro hash table */
+static Hashtab *mt;		/* macro hash table */
 
 /*
  * NAME:	macro->init()
@@ -51,7 +51,7 @@ static hashtab *mt;		/* macro hash table */
  */
 void mc_init()
 {
-    mt = ht_new(MACTABSZ, MACHASHSZ, FALSE);
+    mt = new Hashtab(MACTABSZ, MACHASHSZ, FALSE);
 }
 
 /*
@@ -60,9 +60,9 @@ void mc_init()
  */
 void mc_clear()
 {
-    if (mt != (hashtab *) NULL) {
-	ht_del(mt);
-	mt = (hashtab *) NULL;
+    if (mt != (Hashtab *) NULL) {
+	delete mt;
+	mt = (Hashtab *) NULL;
 
 	mchunk.items();
 	mchunk.clean();
@@ -77,7 +77,7 @@ void mc_define(const char *name, const char *replace, int narg)
 {
     macro **m;
 
-    m = (macro **) ht_lookup(mt, name, FALSE);
+    m = (macro **) mt->lookup(name, FALSE);
     if (*m != (macro *) NULL) {
 	/* the macro already exists. */
 	if ((*m)->replace != (char *) NULL &&
@@ -86,7 +86,7 @@ void mc_define(const char *name, const char *replace, int narg)
 	}
     } else {
 	*m = mchunk.alloc();
-	(*m)->next = (hte *) NULL;
+	(*m)->next = (Hte *) NULL;
 	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
     }
@@ -109,7 +109,7 @@ void mc_undef(char *name)
 {
     macro **m, *mac;
 
-    m = (macro **) ht_lookup(mt, name, FALSE);
+    m = (macro **) mt->lookup(name, FALSE);
     if (*m != (macro *) NULL) {
 	/* it really exists. */
 	mac = *m;
@@ -131,5 +131,5 @@ void mc_undef(char *name)
  */
 macro *mc_lookup(char *name)
 {
-    return *(macro **) ht_lookup(mt, name, TRUE);
+    return *(macro **) mt->lookup(name, TRUE);
 }

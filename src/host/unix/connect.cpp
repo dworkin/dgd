@@ -221,8 +221,8 @@ static ipaddr *ipa_new(in46addr *ipnum)
     /* check hash table */
 # ifdef INET6
     if (ipnum->ipv6) {
-	hash = &ipahtab[hashmem((char *) ipnum,
-			sizeof(struct in6_addr)) % ipahtabsz];
+	hash = &ipahtab[Hashtab::hashmem((char *) ipnum,
+					 sizeof(struct in6_addr)) % ipahtabsz];
     } else
 # endif
     {
@@ -301,8 +301,9 @@ static ipaddr *ipa_new(in46addr *ipnum)
 	    /* remove from hash table */
 # ifdef INET6
 	    if (ipa->ipnum.ipv6) {
-		h = &ipahtab[hashmem((char *) &ipa->ipnum,
-				     sizeof(struct in6_addr)) % ipahtabsz];
+		h = &ipahtab[Hashtab::hashmem((char *) &ipa->ipnum,
+					      sizeof(struct in6_addr)) %
+								    ipahtabsz];
 	    } else
 # endif
 	    {
@@ -426,7 +427,7 @@ static void ipa_lookup()
     }
 }
 
-struct connection : public hte {
+struct connection : public Hte {
     int fd;				/* file descriptor */
     int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
@@ -446,7 +447,7 @@ static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
 static connection **udphtab;		/* UDP hash table */
 static int udphtabsz;			/* UDP hash table size */
-static hashtab *chtab;			/* challenge hash table */
+static Hashtab *chtab;			/* challenge hash table */
 static portdesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
 static portdesc *udescs;		/* UDP port descriptor array */
@@ -752,7 +753,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 #ifndef NETWORK_EXTENSIONS
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
-    chtab = ht_new(maxusers, UDPHASHSZ, TRUE);
+    chtab = new Hashtab(maxusers, UDPHASHSZ, TRUE);
 #endif
 
     return TRUE;
@@ -1063,7 +1064,7 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
 	memset(buffer, '\0', UDPHASHSZ);
 	memcpy(buffer, challenge, len);
     }
-    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+    hash = (connection **) chtab->lookup(buffer, FALSE);
     while (*hash != (connection *) NULL &&
 	   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
 	if ((*hash)->bufsz == len &&
@@ -1105,11 +1106,11 @@ void conn_del(connection *conn)
     }
     if (conn->udpbuf != (char *) NULL) {
 	if (conn->name != (char *) NULL) {
-	    hash = (connection **) ht_lookup(chtab, conn->name, FALSE);
+	    hash = (connection **) chtab->lookup(conn->name, FALSE);
 # ifdef INET6
 	} else if (conn->addr->ipnum.ipv6) {
-	    hash = &udphtab[(hashmem((char *) &conn->addr->ipnum,
-			sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
+	    hash = &udphtab[(Hashtab::hashmem((char *) &conn->addr->ipnum,
+			    sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 # endif
 	} else {
 	    hash = &udphtab[(((Uint) conn->addr->ipnum.in.addr.s_addr) ^
@@ -1167,8 +1168,8 @@ static void conn_udprecv6(int n)
 	return;
     }
 
-    hash = &udphtab[(hashmem((char *) &from.sin6_addr,
-			     sizeof(struct in6_addr)) ^
+    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
+				      sizeof(struct in6_addr)) ^
 						from.sin6_port) % udphtabsz];
     for (;;) {
 	conn = *hash;
@@ -1176,7 +1177,7 @@ static void conn_udprecv6(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+	    hash = (connection **) chtab->lookup(buffer, FALSE);
 	    while ((conn=*hash) != (connection *) NULL &&
 		   memcmp(conn->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
@@ -1191,7 +1192,7 @@ static void conn_udprecv6(int n)
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin6_port;
-		    hash = &udphtab[(hashmem((char *) &from.sin6_addr,
+		    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
 			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 		    conn->next = *hash;
 		    *hash = conn;
@@ -1253,7 +1254,7 @@ static void conn_udprecv(int n)
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
-	    hash = (connection **) ht_lookup(chtab, buffer, FALSE);
+	    hash = (connection **) chtab->lookup(buffer, FALSE);
 	    while ((conn=*hash) != (connection *) NULL &&
 		   memcmp((*hash)->name, buffer, UDPHASHSZ) == 0) {
 		if (conn->bufsz == size &&
@@ -2122,7 +2123,7 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 		memcpy(conn->udpbuf, buf, bufsz);
 # ifdef INET6
 		if (inaddr.ipv6) {
-		    hash = &udphtab[(hashmem((char *) &inaddr.in.addr6,
+		    hash = &udphtab[(Hashtab::hashmem((char *) &inaddr.in.addr6,
 			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
 		} else
 # endif

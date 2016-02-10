@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -173,7 +173,7 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-struct rgxposn : public hte {
+struct rgxposn : public Hte {
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
     unsigned short ruleno;	/* the rule this position is in */
@@ -210,11 +210,11 @@ public:
  * NAME:	rgxposn->alloc()
  * DESCRIPTION:	allocate a new rgxposn (or return an old one)
  */
-static rgxposn *rp_alloc(hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
+static rgxposn *rp_alloc(Hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
 {
     rgxposn **rrp, *rp;
 
-    rrp = (rgxposn **) ht_lookup(htab, posn, TRUE);
+    rrp = (rgxposn **) htab->lookup(posn, TRUE);
     if (*rrp != (rgxposn *) NULL) {
 	return *rrp;	/* already exists */
     }
@@ -240,7 +240,7 @@ static rgxposn *rp_alloc(hashtab *htab, char *posn, unsigned short size, rpchunk
  * NAME:	rgxposn->new()
  * DESCRIPTION:	create a new rgxposn
  */
-static rgxposn *rp_new(hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
+static rgxposn *rp_new(Hashtab *htab, char *posn, unsigned short size, rpchunk **c, char *rgx, Uint nposn, unsigned short ruleno, bool final)
 {
     rgxposn *rp;
 
@@ -543,7 +543,7 @@ static bool rp_trans(rgxposn *rp, Uint *cset, char *posn, unsigned short *size)
  * NAME:	rgxposn->load()
  * DESCRIPTION:	load a rgxposn from a buffer
  */
-static rgxposn *rp_load(hashtab *htab, rpchunk **c, Uint nposn, char *buf, char *grammar)
+static rgxposn *rp_load(Hashtab *htab, rpchunk **c, Uint nposn, char *buf, char *grammar)
 {
     char *rgx;
     unsigned short ruleno, size;
@@ -693,7 +693,7 @@ static char *ds_load(dfastate *state, char *buf, unsigned short ntrans, char *ze
  * NAME:	dfastate->loadtmp()
  * DESCRIPTION:	load dfastate temporary data from a buffer
  */
-static char *ds_loadtmp(dfastate *state, char *sbuf, char *pbuf, hashtab *htab, rpchunk **c, Uint *nposn, char *grammar)
+static char *ds_loadtmp(dfastate *state, char *sbuf, char *pbuf, Hashtab *htab, rpchunk **c, Uint *nposn, char *grammar)
 {
     rgxposn *rp, **rrp;
     unsigned short i, *s;
@@ -815,7 +815,7 @@ struct dfa {
     unsigned short nregexp;	/* # regexps */
     Uint nposn;			/* number of unique positions */
     rpchunk *rpc;		/* current rgxposn chunk */
-    hashtab *posnhtab;		/* position hash table */
+    Hashtab *posnhtab;		/* position hash table */
 
     unsigned short nstates;	/* # states */
     unsigned short nexpanded;	/* # expanded states */
@@ -882,7 +882,7 @@ dfa *dfa_new(char *source, char *grammar)
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257, FALSE);
+    fa->posnhtab = new Hashtab((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->nstates = 2;
@@ -976,8 +976,8 @@ void dfa_del(dfa *fa)
 	FREE(fa->ecsplit);
     }
     delete fa->rpc;
-    if (fa->posnhtab != (hashtab *) NULL) {
-	ht_del(fa->posnhtab);
+    if (fa->posnhtab != (Hashtab *) NULL) {
+	delete fa->posnhtab;
     }
     for (i = fa->nstates, state = &fa->states[1]; --i > 0; state++) {
 	if (state->nposn > 1) {
@@ -1087,7 +1087,7 @@ dfa *dfa_load(char *source, char *grammar, char *str, Uint len)
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
-    fa->posnhtab = (hashtab *) NULL;
+    fa->posnhtab = (Hashtab *) NULL;
 
     /* states 1 */
     fa->nstates = (UCHAR(buf[1]) << 8) + UCHAR(buf[2]);
@@ -1165,7 +1165,7 @@ static void dfa_loadtmp(dfa *fa)
     }
 
     /* positions */
-    fa->posnhtab = ht_new((fa->nposn + 1) << 2, 257, FALSE);
+    fa->posnhtab = new Hashtab((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->sthtab = ALLOC(unsigned short, fa->sthsize);
@@ -1391,7 +1391,7 @@ static dfastate *dfa_expand(dfa *fa, dfastate *state)
     newposn = NULL;
     newstr = 0;
 
-    if (fa->posnhtab == (hashtab *) NULL) {
+    if (fa->posnhtab == (Hashtab *) NULL) {
 	dfa_loadtmp(fa);	/* load tmp info */
     }
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -782,7 +782,7 @@ static Uint compress(char *data, char *text, Uint size)
 	    buf = (buf >> 9) + 0x0080 + (UCHAR(*p) << 8);
 	    bufsize += 9;
 	}
-	x = ((x << 3) & 0x3fff) ^ UCHAR(strhashtab[UCHAR(*p++)]);
+	x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*p++));
 
 	if (bufsize >= 8) {
 	    if (bufsize == 16) {
@@ -869,7 +869,7 @@ static char *decompress(sector *sectors, void (*readv) (char*, sector*, Uint, Ui
 	    }
 	    --bufsize;
 
-	    x = ((x << 3) & 0x3fff) ^ UCHAR(strhashtab[UCHAR(*q++)]);
+	    x = ((x << 3) & 0x3fff) ^ Hashtab::hashchar(UCHAR(*q++));
 	}
 
 	if (size == 0) {

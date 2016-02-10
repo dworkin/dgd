@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -25,14 +25,14 @@
 
 # define STR_CHUNK	128
 
-struct strh : public hte {
+struct strh : public Hte {
     String *str;		/* string entry */
     Uint index;			/* building index */
 };
 
 static Chunk<strh, STR_CHUNK> hchunk;
 
-static hashtab *sht;		/* string merge table */
+static Hashtab *sht;		/* string merge table */
 
 
 /*
@@ -87,7 +87,7 @@ void str_del(String *s)
  */
 void str_merge()
 {
-    sht = ht_new(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
+    sht = new Hashtab(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -98,7 +98,7 @@ Uint str_put(String *str, Uint n)
 {
     strh **h;
 
-    h = (strh **) ht_lookup(sht, str->text, FALSE);
+    h = (strh **) sht->lookup(str->text, FALSE);
     for (;;) {
 	/*
 	 * The hasher doesn't handle \0 in strings, and so may not have
@@ -112,7 +112,7 @@ Uint str_put(String *str, Uint n)
 	     * Not in the hash table. Make a new entry.
 	     */
 	    s = *h = hchunk.alloc();
-	    s->next = (hte *) NULL;
+	    s->next = (Hte *) NULL;
 	    s->name = str->text;
 	    s->str = str;
 	    s->index = n;
@@ -132,11 +132,11 @@ Uint str_put(String *str, Uint n)
  */
 void str_clear()
 {
-    if (sht != (hashtab *) NULL) {
-	ht_del(sht);
+    if (sht != (Hashtab *) NULL) {
+	delete sht;
 
 	hchunk.clean();
-	sht = (hashtab *) NULL;
+	sht = (Hashtab *) NULL;
     }
 }
 

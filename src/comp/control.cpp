@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,14 +29,14 @@
 # include "compile.h"
 # include "control.h"
 
-struct oh : public hte {	/* object hash table */
+struct oh : public Hte {	/* object hash table */
     Object *obj;		/* object */
     short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
     oh **list;			/* next in linked list */
 };
 
-static hashtab *otab;		/* object hash table */
+static Hashtab *otab;		/* object hash table */
 static oh **olist;		/* list of all object hash table entries */
 
 /*
@@ -45,7 +45,7 @@ static oh **olist;		/* list of all object hash table entries */
  */
 static void oh_init()
 {
-    otab = ht_new(OMERGETABSZ, OBJHASHSZ, FALSE);
+    otab = new Hashtab(OMERGETABSZ, OBJHASHSZ, FALSE);
 }
 
 /*
@@ -56,13 +56,13 @@ static oh *oh_new(const char *name)
 {
     oh **h;
 
-    h = (oh **) ht_lookup(otab, name, FALSE);
+    h = (oh **) otab->lookup(name, FALSE);
     if (*h == (oh *) NULL) {
 	/*
 	 * new object
 	 */
 	*h = ALLOC(oh, 1);
-	(*h)->next = (hte *) NULL;
+	(*h)->next = (Hte *) NULL;
 	(*h)->name = name;
 	(*h)->index = -1;		/* new object */
 	(*h)->priv = 0;
@@ -88,16 +88,16 @@ static void oh_clear()
     }
     olist = (oh **) NULL;
 
-    if (otab != (hashtab *) NULL) {
-	ht_del(otab);
-	otab = (hashtab *) NULL;
+    if (otab != (Hashtab *) NULL) {
+	delete otab;
+	otab = (Hashtab *) NULL;
     }
 }
 
 
 # define VFH_CHUNK	64
 
-struct vfh : public hte {	/* variable/function hash table */
+struct vfh : public Hte {	/* variable/function hash table */
     String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     String *cvstr;		/* class variable string */
@@ -218,8 +218,8 @@ static void lab_clear()
 static oh *inherits[MAX_INHERITS * 2];	/* inherited objects */
 static int ninherits;			/* # inherited objects */
 static bool privinherit;		/* TRUE if private inheritance used */
-static hashtab *vtab;			/* variable merge table */
-static hashtab *ftab;			/* function merge table */
+static Hashtab *vtab;			/* variable merge table */
+static Hashtab *ftab;			/* function merge table */
 static unsigned short nvars;		/* # variables */
 static unsigned short nsymbs;		/* # symbols */
 static int nfclash;			/* # prototype clashes */
@@ -232,8 +232,8 @@ static Uint nifcalls;			/* # inherited function calls */
 void ctrl_init()
 {
     oh_init();
-    vtab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
-    ftab = ht_new(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    vtab = new Hashtab(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    ftab = new Hashtab(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -256,7 +256,7 @@ static void ctrl_vardefs(oh *ohash, Control *ctrl)
 	 */
 	if (!(v->sclass & C_PRIVATE)) {
 	    str = d_get_strconst(ctrl, v->inherit, v->index);
-	    h = (vfh **) ht_lookup(vtab, str->text, FALSE);
+	    h = (vfh **) vtab->lookup(str->text, FALSE);
 	    if (*h == (vfh *) NULL) {
 		/* new variable */
 		if (ctrl->nclassvars != 0) {
@@ -381,7 +381,7 @@ static void ctrl_funcdef(Control *ctrl, int idx, oh *ohash)
 	return;
     }
 
-    h = (vfh **) ht_lookup(ftab, str->text, FALSE);
+    h = (vfh **) ftab->lookup(str->text, FALSE);
     if (*h == (vfh *) NULL) {
 	/*
 	 * New function (-1: no calls to it yet)
@@ -839,7 +839,7 @@ public:
     virtual bool item(char **name) {
 	vfh *h;
 
-	h = *(vfh **) ht_lookup(ftab, *name, FALSE);
+	h = *(vfh **) ftab->lookup(*name, FALSE);
 	*--fcalls = h->index;
 	*--fcalls = h->ohash->index;
 	return TRUE;
@@ -922,7 +922,7 @@ void ctrl_convert(Control *ctrl)
     oh *ohash;
     dinherit *inh;
     Object *obj;
-    hashtab *xotab;
+    Hashtab *xotab;
     oh **xolist;
 
     xotab = otab;
@@ -1071,7 +1071,7 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
     long s;
 
     /* first check if prototype exists already */
-    h = l = (vfh **) ht_lookup(ftab, str->text, FALSE);
+    h = l = (vfh **) ftab->lookup(str->text, FALSE);
     if (*h != (vfh *) NULL) {
 	/*
 	 * redefinition
@@ -1251,7 +1251,7 @@ void ctrl_dvar(String *str, unsigned int sclass, unsigned int type, String *cvst
     char *p;
     long s;
 
-    h = (vfh **) ht_lookup(vtab, str->text, FALSE);
+    h = (vfh **) vtab->lookup(str->text, FALSE);
     if (*h != (vfh *) NULL) {
 	if ((*h)->ohash == newohash) {
 	    c_error("redeclaration of variable %s", str->text);
@@ -1337,7 +1337,7 @@ char *ctrl_ifcall(String *str, const char *label, String **cfstr, long *call)
 	vfh *h;
 
 	/* check if the function exists */
-	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
+	h = *(vfh **) ftab->lookup(str->text, FALSE);
 	if (h == (vfh *) NULL || (h->ohash == newohash &&
 	    ((h=(vfh *) h->next) == (vfh *) NULL ||
 	     strcmp(h->name, str->text) != 0))) {
@@ -1393,7 +1393,7 @@ char *ctrl_fcall(String *str, String **cfstr, long *call, int typechecking)
 
     *cfstr = (String *) NULL;
 
-    h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
+    h = *(vfh **) ftab->lookup(str->text, FALSE);
     if (h == (vfh *) NULL) {
 	static char uproto[] = { (char) C_UNDEFINED, 0, 0, 0, 6, T_IMPLICIT };
 	short kf;
@@ -1414,7 +1414,7 @@ char *ctrl_fcall(String *str, String **cfstr, long *call, int typechecking)
 	    return (char *) NULL;
 	}
 	ctrl_dproto(str, proto = uproto, (String *) NULL);
-	h = *(vfh **) ht_lookup(ftab, str->text, FALSE);
+	h = *(vfh **) ftab->lookup(str->text, FALSE);
     } else if (h->ohash == newohash) {
 	/*
 	 * call to new function
@@ -1489,7 +1489,7 @@ unsigned short ctrl_gencall(long call)
 	f = ctrl->funcdefs + index;
 	name = d_get_strconst(ctrl, f->inherit, f->index)->text;
     }
-    h = *(vfh **) ht_lookup(ftab, name, FALSE);
+    h = *(vfh **) ftab->lookup(name, FALSE);
     if (h->ct == (unsigned short) -1) {
 	/*
 	 * add to function call table
@@ -1512,7 +1512,7 @@ unsigned short ctrl_var(String *str, long *ref, String **cvstr)
     vfh *h;
 
     /* check if the variable exists */
-    h = *(vfh **) ht_lookup(vtab, str->text, TRUE);
+    h = *(vfh **) vtab->lookup(str->text, TRUE);
     if (h == (vfh *) NULL) {
 	c_error("undeclared variable %s", str->text);
 	if (nvars < 255) {
@@ -1566,7 +1566,7 @@ bool ctrl_chkfuncs()
     }
 
     if (nfclash != 0 || privinherit) {
-	hte **t;
+	Hte **t;
 	unsigned short sz;
 	vfh **f, **n;
 	bool clash;
@@ -1767,10 +1767,9 @@ static void ctrl_mkfcalls()
 		    *fc++ = j;
 		    *fc++ = ofc[1];
 		} else {
-		    h = *(vfh **) ht_lookup(ftab,
-					    d_get_strconst(obj->ctrl,
-							   f->inherit,
-							   f->index)->text,
+		    h = *(vfh **) ftab->lookup(d_get_strconst(obj->ctrl,
+							      f->inherit,
+							      f->index)->text,
 					    FALSE);
 		    if (h->ohash->index == ninherits &&
 			(functions[h->index].func.sclass & C_PRIVATE)) {
@@ -1845,7 +1844,7 @@ static void ctrl_mksymbs()
 		continue;	/* not in symbol table */
 	    }
 	    name = d_get_strconst(ctrl, f->inherit, f->index)->text;
-	    h = *(vfh **) ht_lookup(ftab, name, FALSE);
+	    h = *(vfh **) ftab->lookup(name, FALSE);
 	    if (h->ohash->index == ninherits &&
 		(functions[h->index].func.sclass & C_PRIVATE)) {
 		/*
@@ -1864,7 +1863,7 @@ static void ctrl_mksymbs()
 		/*
 		 * all non-private functions are put into the hash table
 		 */
-		x = hashstr(name, VFMERGEHASHSZ) % nsymbs;
+		x = Hashtab::hashstr(name, VFMERGEHASHSZ) % nsymbs;
 		if (symtab[x].next == (unsigned short) -1) {
 		    /*
 		     * new entry
@@ -1961,7 +1960,7 @@ dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
 
     inherits = ctrl->inherits;
     symtab = d_get_symbols(ctrl);
-    i = hashstr(func, VFMERGEHASHSZ) % i;
+    i = Hashtab::hashstr(func, VFMERGEHASHSZ) % i;
     symb1 = symb = &symtab[i];
     ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
     f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
@@ -2021,11 +2020,11 @@ void ctrl_clear()
 {
     oh_clear();
     vfh_clear();
-    if (vtab != (hashtab *) NULL) {
-	ht_del(vtab);
-	ht_del(ftab);
-	vtab = (hashtab *) NULL;
-	ftab = (hashtab *) NULL;
+    if (vtab != (Hashtab *) NULL) {
+	delete vtab;
+	delete ftab;
+	vtab = (Hashtab *) NULL;
+	ftab = (Hashtab *) NULL;
     }
     lab_clear();
 

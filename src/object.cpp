@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -52,7 +52,7 @@ public:
 };
 
 struct objplane {
-    hashtab *htab;		/* object name hash table */
+    Hashtab *htab;		/* object name hash table */
     optable *optab;		/* object patch table */
     uintptr_t clean;		/* list of objects to clean */
     uintptr_t upgrade;		/* list of upgrade objects */
@@ -95,7 +95,7 @@ void o_init(unsigned int n, Uint interval)
     ocmap = ALLOC(Uint, BMAP(n));
     memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
-    baseplane.htab = ht_new(n >> 2, OBJHASHSZ, FALSE);
+    baseplane.htab = new Hashtab(n >> 2, OBJHASHSZ, FALSE);
     baseplane.optab = (optable *) NULL;
     baseplane.upgrade = baseplane.clean = OBJ_NONE;
     baseplane.destruct = baseplane.free = OBJ_NONE;
@@ -177,7 +177,7 @@ static Object *o_oaccess(unsigned int index, int access)
 	/* create new patch on current plane */
 	o = op_new(oplane, oo, o, obj = &o->obj);
 	if (obj->name != (char *) NULL && obj->count != 0) {
-	    *ht_lookup(oplane->htab, obj->name, FALSE) = &o->obj;
+	    *oplane->htab->lookup(obj->name, FALSE) = &o->obj;
 	}
 	return &o->obj;
     } else {
@@ -192,16 +192,16 @@ static Object *o_oaccess(unsigned int index, int access)
 	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index))->obj;
 	if (obj->name != (char *) NULL) {
 	    char *name;
-	    hte **h;
+	    Hte **h;
 
 	    /* copy object name to higher plane */
 	    strcpy(name = ALLOC(char, strlen(obj->name) + 1), obj->name);
 	    obj->name = name;
 	    if (obj->count != 0) {
-		if (oplane->htab == (hashtab *) NULL) {
-		    oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
+		if (oplane->htab == (Hashtab *) NULL) {
+		    oplane->htab = new Hashtab(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
 		}
-		h = ht_lookup(oplane->htab, name, FALSE);
+		h = oplane->htab->lookup(name, FALSE);
 		obj->next = *h;
 		*h = obj;
 	    }
@@ -284,7 +284,7 @@ void o_new_plane()
     p = ALLOC(objplane, 1);
 
     if (oplane->optab == (optable *) NULL) {
-	p->htab = (hashtab *) NULL;
+	p->htab = (Hashtab *) NULL;
 	p->optab = (optable *) NULL;
     } else {
 	p->htab = oplane->htab;
@@ -341,7 +341,7 @@ void o_commit_plane()
 		     * commit to base plane
 		     */
 		    if (op->obj.name != (char *) NULL) {
-			hte **h;
+			Hte **h;
 
 			if (obj->name == (char *) NULL) {
 			    char *name;
@@ -357,7 +357,7 @@ void o_commit_plane()
 			    op->obj.name = name;
 			    if (op->obj.count != 0) {
 				/* put name in static hash table */
-				h = ht_lookup(prev->htab, name, FALSE);
+				h = prev->htab->lookup(name, FALSE);
 				op->obj.next = *h;
 				*h = obj;
 			    }
@@ -372,7 +372,7 @@ void o_commit_plane()
 				op->obj.next = obj->next;
 			    } else if (obj->count != 0) {
 				/* remove from hash table */
-				h = ht_lookup(prev->htab, obj->name, FALSE);
+				h = prev->htab->lookup(obj->name, FALSE);
 				if (*h != obj) {
 				    /* new object was compiled also */
 				    h = &(*h)->next;
@@ -402,7 +402,7 @@ void o_commit_plane()
 			 */
 			if (op->obj.name != (char *) NULL && op->obj.count != 0) {
 			    /* move name to previous plane */
-			    *ht_lookup(oplane->htab, op->obj.name, FALSE) = obj;
+			    *oplane->htab->lookup(op->obj.name, FALSE) = obj;
 			}
 			*obj = op->obj;
 			op_del(oplane, o);
@@ -415,8 +415,8 @@ void o_commit_plane()
 	    prev->htab = oplane->htab;
 	    prev->optab = oplane->optab;
 	} else {
-	    if (oplane->htab != (hashtab *) NULL) {
-		ht_del(oplane->htab);
+	    if (oplane->htab != (Hashtab *) NULL) {
+		delete oplane->htab;
 	    }
 	    delete oplane->optab;
 	}
@@ -471,25 +471,25 @@ void o_discard_plane()
 			 */
 			if (op->obj.count != 0) {
 			    /* remove from hash table */
-			    *ht_lookup(oplane->htab, op->obj.name, FALSE)
+			    *oplane->htab->lookup(op->obj.name, FALSE)
 								= op->obj.next;
 			}
 			FREE(op->obj.name);
 		    } else {
-			hte **h;
+			Hte **h;
 
 			if (op->obj.count != 0) {
 			    /*
 			     * move name to previous plane
 			     */
-			    h = ht_lookup(oplane->htab, obj->name, FALSE);
+			    h = oplane->htab->lookup(obj->name, FALSE);
 			    obj->next = op->obj.next;
 			    *h = obj;
 			} else if (obj->count != 0) {
 			    /*
 			     * put name back in hashtable
 			     */
-			    h = ht_lookup(oplane->htab, obj->name, FALSE);
+			    h = oplane->htab->lookup(obj->name, FALSE);
 			    obj->next = *h;
 			    *h = obj;
 			}
@@ -534,8 +534,8 @@ void o_discard_plane()
 	    oplane->htab = p->htab;
 	    oplane->optab = p->optab;
 	} else {
-	    if (p->htab != (hashtab *) NULL) {
-		ht_del(p->htab);
+	    if (p->htab != (Hashtab *) NULL) {
+		delete p->htab;
 	    }
 	    delete p->optab;
 	}
@@ -555,7 +555,7 @@ Object *o_new(char *name, Control *ctrl)
     Object *o;
     dinherit *inh;
     int i;
-    hte **h;
+    Hte **h;
 
     /* allocate object */
     o = o_alloc();
@@ -567,10 +567,10 @@ Object *o_new(char *name, Control *ctrl)
     o->name = strcpy(ALLOC(char, strlen(name) + 1), name);
     if (obase) {
 	m_dynamic();
-    } else if (oplane->htab == (hashtab *) NULL) {
-	oplane->htab = ht_new(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
+    } else if (oplane->htab == (Hashtab *) NULL) {
+	oplane->htab = new Hashtab(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
-    h = ht_lookup(oplane->htab, name, FALSE);
+    h = oplane->htab->lookup(name, FALSE);
     o->next = *h;
     *h = o;
 
@@ -683,7 +683,7 @@ void o_upgrade(Object *obj, Control *ctrl, Frame *f)
     }
 
     /* add to upgrades list */
-    tmpl->next = (hte *) oplane->upgrade;
+    tmpl->next = (Hte *) oplane->upgrade;
     oplane->upgrade = tmpl->index;
 
     /* mark as upgrading */
@@ -741,7 +741,7 @@ void o_del(Object *obj, Frame *f)
 
     if (obj->flags & O_MASTER) {
 	/* remove from object name hash table */
-	*ht_lookup(oplane->htab, obj->name, FALSE) = obj->next;
+	*oplane->htab->lookup(obj->name, FALSE) = obj->next;
 
 	if (--(obj->u_ref) == 0 && !O_UPGRADING(obj)) {
 	    o_delete(obj, f);
@@ -757,7 +757,7 @@ void o_del(Object *obj, Frame *f)
     }
 
     /* put in clean list */
-    obj->next = (hte *) oplane->clean;
+    obj->next = (Hte *) oplane->clean;
     oplane->clean = obj->index;
 }
 
@@ -867,11 +867,11 @@ Object *o_find(char *name, int access)
 	}
     } else {
 	/* look it up in the hash table */
-	if (oplane->htab == (hashtab *) NULL ||
-	    (o = (Object *) *ht_lookup(oplane->htab, name, TRUE)) ==
+	if (oplane->htab == (Hashtab *) NULL ||
+	    (o = (Object *) *oplane->htab->lookup(name, TRUE)) ==
 							    (Object *) NULL) {
 	    if (oplane != &baseplane) {
-		o = (Object *) *ht_lookup(baseplane.htab, name, FALSE);
+		o = (Object *) *baseplane.htab->lookup(name, FALSE);
 		if (o != (Object *) NULL) {
 		    number = o->index;
 		    o = (access == OACC_READ)? OBJR(number) : OBJW(number);
@@ -1341,7 +1341,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
      * Free object names of precompiled objects.
      */
     for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	*ht_lookup(baseplane.htab, o->name, FALSE) = o->next;
+	*baseplane.htab->lookup(o->name, FALSE) = o->next;
 	FREE(o->name);
     }
 
@@ -1387,10 +1387,10 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 	    m_dynamic();
 
 	    if (o->count != 0) {
-		hte **h;
+		Hte **h;
 
 		/* add name to lookup table */
-		h = ht_lookup(baseplane.htab, p, FALSE);
+		h = baseplane.htab->lookup(p, FALSE);
 		o->next = *h;
 		*h = o;
 

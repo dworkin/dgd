@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -458,7 +458,7 @@ struct rulesym {
     rulesym *next;		/* next in rule */
 };
 
-struct rule : public hte {
+struct rule : public Hte {
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
@@ -729,7 +729,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
 String *parse_grammar(String *gram)
 {
     char buffer[STRINGSZ];
-    hashtab *ruletab, *strtab;
+    Hashtab *ruletab, *strtab;
     rschunk *rschunks;
     rlchunk *rlchunks;
     rule *rgxlist, *strlist, *estrlist, *prodlist, *tmplist, *rr, *rrl;
@@ -749,8 +749,8 @@ String *parse_grammar(String *gram)
 # endif
 
     /* initialize */
-    ruletab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
-    strtab = ht_new(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    ruletab = new Hashtab(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    strtab = new Hashtab(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     rschunks = (rschunk *) NULL;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = estrlist = prodlist = tmplist = (rule *) NULL;
@@ -766,7 +766,7 @@ String *parse_grammar(String *gram)
 	    /*
 	     * token rule definition
 	     */
-	    r = (rule **) ht_lookup(ruletab, buffer, TRUE);
+	    r = (rule **) ruletab->lookup(buffer, TRUE);
 	    if (*r != (rule *) NULL) {
 		if ((*r)->type == RULE_UNKNOWN) {
 		    /* replace unknown rule */
@@ -854,7 +854,7 @@ String *parse_grammar(String *gram)
 	    /*
 	     * production rule definition
 	     */
-	    r = (rule **) ht_lookup(ruletab, buffer, TRUE);
+	    r = (rule **) ruletab->lookup(buffer, TRUE);
 	    if (*r != (rule *) NULL) {
 		if ((*r)->type == RULE_UNKNOWN) {
 		    /* replace unknown rule */
@@ -909,7 +909,7 @@ String *parse_grammar(String *gram)
 		    /*
 		     * symbol
 		     */
-		    r = (rule **) ht_lookup(ruletab, buffer, TRUE);
+		    r = (rule **) ruletab->lookup(buffer, TRUE);
 		    if (*r == (rule *) NULL) {
 			/* new unknown rule */
 			rl = rl_new(&rlchunks, RULE_UNKNOWN);
@@ -937,7 +937,7 @@ String *parse_grammar(String *gram)
 		    /*
 		     * string
 		     */
-		    r = (rule **) ht_lookup(strtab, buffer, FALSE);
+		    r = (rule **) strtab->lookup(buffer, FALSE);
 		    while (*r != (rule *) NULL) {
 			if ((*r)->symb->len == buflen &&
 			    memcmp((*r)->symb->text, buffer, buflen) == 0) {
@@ -1027,8 +1027,8 @@ String *parse_grammar(String *gram)
 				nstr, nestr, nprod, size);
 	    delete rschunks;
 	    delete rlchunks;
-	    ht_del(strtab);
-	    ht_del(ruletab);
+	    delete strtab;
+	    delete ruletab;
 	    return gram;
 
 	case TOK_ERROR:
@@ -1064,8 +1064,8 @@ String *parse_grammar(String *gram)
 err:
     delete rschunks;
     delete rlchunks;
-    ht_del(strtab);
-    ht_del(ruletab);
+    delete strtab;
+    delete ruletab;
     error(buffer);
     return NULL;
 }

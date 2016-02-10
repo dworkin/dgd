@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,7 @@
  * Generic string hash table.
  */
 
-char strhashtab[] = {
+unsigned char Hashtab::tab[256] = {
     '\001', '\127', '\061', '\014', '\260', '\262', '\146', '\246',
     '\171', '\301', '\006', '\124', '\371', '\346', '\054', '\243',
     '\016', '\305', '\325', '\265', '\241', '\125', '\332', '\120',
@@ -60,81 +60,77 @@ char strhashtab[] = {
 };
 
 /*
- * NAME:	hashtab->new()
+ * NAME:	Hashtab()
  * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
  *		of each string are significant
  */
-hashtab *ht_new(unsigned int size, unsigned int maxlen, bool mem)
+Hashtab::Hashtab(unsigned int size, unsigned int maxlen, bool mem)
 {
-    hashtab *ht;
-
-    ht = (hashtab *) ALLOC(char, sizeof(hashtab) + sizeof(hte*) * (size - 1));
-    ht->size = size;
-    ht->maxlen = maxlen;
-    ht->mem = mem;
-    memset(ht->table, '\0', size * sizeof(hte*));
-
-    return ht;
+    this->size = size;
+    this->maxlen = maxlen;
+    this->mem = mem;
+    table = ALLOC(Hte*, size);
+    memset(table, '\0', size * sizeof(Hte*));
 }
 
 /*
- * NAME:	hashtab->del()
+ * NAME:	~Hashtab()
  * DESCRIPTION:	delete a hash table
  */
-void ht_del(hashtab *ht)
+Hashtab::~Hashtab()
 {
-    FREE(ht);
+    FREE(table);
 }
 
 /*
- * NAME:	hashstr()
+ * NAME:	Hashtab::hashstr()
  * DESCRIPTION:	Hash string s, considering at most len characters. Return
  *		an unsigned modulo size.
  *		Based on Peter K. Pearson's article in CACM 33-6, pp 677.
  */
-unsigned short hashstr(const char *s, unsigned int len)
+unsigned short Hashtab::hashstr(const char *str, unsigned int len)
 {
-    char h, l;
+    unsigned char h, l;
 
     h = l = 0;
-    while (*s != '\0' && len > 0) {
+    while (*str != '\0' && len > 0) {
 	h = l;
-	l = strhashtab[UCHAR(l ^ *s++)];
+	l = tab[l ^ (unsigned char) *str++];
 	--len;
     }
-    return (unsigned short) ((UCHAR(h) << 8) | UCHAR(l));
+    return (unsigned short) ((h << 8) | l);
 }
 
 /*
- * NAME:	hashmem()
+ * NAME:	Hashtab::hashmem()
  * DESCRIPTION:	hash memory
  */
-unsigned short hashmem(const char *s, unsigned int len)
+unsigned short Hashtab::hashmem(const char *mem, unsigned int len)
 {
-    char h, l;
+    unsigned char h, l;
 
     h = l = 0;
     while (len > 0) {
 	h = l;
-	l = strhashtab[UCHAR(l ^ *s++)];
+	l = tab[l ^ (unsigned char) *mem++];
 	--len;
     }
-    return (unsigned short) ((UCHAR(h) << 8) | UCHAR(l));
+    return (unsigned short) ((h << 8) | l);
 }
 
 /*
- * NAME:	hashtab->lookup()
+ * NAME:	Hashtab::lookup()
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-hte **ht_lookup(hashtab *ht, const char *name, bool move)
+Hte **Hashtab::lookup(const char *name, bool move)
 {
-    hte **first, **e, *next;
+    Hte **first, **e, *next;
 
-    if (ht->mem) {
-	first = e = &(ht->table[hashmem(name, ht->maxlen) % ht->size]);
-	while (*e != (hte *) NULL) {
-	    if (memcmp((*e)->name, name, ht->maxlen) == 0) {
+    if (mem) {
+	first = e = &(table[hashmem(name, maxlen) % size]);
+	while (*e != (Hte *) NULL) {
+	    if (memcmp((*e)->name, name, maxlen) == 0) {
 		if (move && e != first) {
 		    /* move to first position */
 		    next = (*e)->next;
@@ -148,8 +144,8 @@ hte **ht_lookup(hashtab *ht, const char *name, bool move)
 	    e = &((*e)->next);
 	}
     } else {
-	first = e = &(ht->table[hashstr(name, ht->maxlen) % ht->size]);
-	while (*e != (hte *) NULL) {
+	first = e = &(table[hashstr(name, maxlen) % size]);
+	while (*e != (Hte *) NULL) {
 	    if (strcmp((*e)->name, name) == 0) {
 		if (move && e != first) {
 		    /* move to first position */
