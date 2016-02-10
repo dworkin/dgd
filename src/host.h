@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -308,13 +308,8 @@ struct _struct_al_ { jmp_buf buf; short s; };
 # define ALGN(x, s)	(((x) + (s) - 1) & ~((s) - 1))
 
 
-# if defined(CHAR_MAX) && CHAR_MAX == 255
-# define UCHAR(c)	((char) (c))			/* unsigned character */
-# define SCHAR(c)	((((char) (c)) - 128) ^ -128)	/* signed character */
-# else
-# define UCHAR(c)	((int) ((c) & 0xff))		/* unsigned character */
-# define SCHAR(c)	((char) (c))			/* signed character */
-# endif
+# define UCHAR(c)	((unsigned char) (c))
+# define SCHAR(c)	((signed char) (c))
 
 # ifndef UNREFERENCED_PARAMETER
 #  define UNREFERENCED_PARAMETER(P)	(void)(P)
