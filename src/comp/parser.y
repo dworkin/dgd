@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -115,7 +115,7 @@ static node *comma	(node*, node*);
 %type <type> class_specifier_list class_specifier_list2 class_specifier
 	     opt_private non_private star_list
 %type <node> opt_inherit_label string composite_string formals_declaration
-	     formal_declaration_list varargs_formal_declaration
+	     formal_declaration_list varargs_formal_declaration string_exp
 	     formal_declaration type_specifier data_dcltr operator
 	     function_name function_dcltr dcltr list_dcltr dcltr_or_stmt_list
 	     dcltr_or_stmt if_stmt stmt compound_stmt opt_caught_stmt
@@ -183,9 +183,13 @@ ident
 	;
 
 composite_string
-	: string
-	| composite_string '+' string
+	: string_exp
+	| composite_string '+' string_exp
 		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
+	;
+
+string_exp
+	: string
 	| '(' composite_string ')'
 		{ $$ = $2; }
 	;
@@ -657,23 +661,17 @@ primary_p1_exp
 		  c_endcond();
 		  $$ = node_mon(N_CATCH, T_STRING, $4);
 		}
-	| NEW opt_object string
+	| NEW opt_object string_exp
 		{ $$ = c_new_object($3, (node *) NULL); }
-	| NEW opt_object '(' composite_string ')'
-		{ $$ = c_new_object($4, (node *) NULL); }
-	| NEW opt_object string '(' opt_arg_list ')'
+	| NEW opt_object string_exp '(' opt_arg_list ')'
 		{ $$ = c_new_object($3, $5); }
-	| NEW opt_object '(' composite_string ')' '(' opt_arg_list ')'
-		{ $$ = c_new_object($4, $7); }
 	| primary_p2_exp RARROW ident '(' opt_arg_list ')'
 		{
 		  t_void($1);
 		  $$ = c_checkcall(c_arrow($1, $3, $5), typechecking);
 		}
-	| primary_p2_exp LARROW opt_object string
+	| primary_p2_exp LARROW opt_object string_exp
 		{ $$ = c_instanceof($1, $4); }
-	| primary_p2_exp LARROW opt_object '(' composite_string ')'
-		{ $$ = c_instanceof($1, $5); }
 	;
 
 primary_p2_exp
