@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -493,6 +493,64 @@ int kf_new_object(Frame *f, int n, kfunc *kf)
 	arr_del(f->sp->u.array);
 	PUT_LWOVAL(f->sp, a);
     }
+    return 0;
+}
+# endif
+
+
+ # ifdef FUNCDEF
+FUNCDEF("instanceof", kf_instanceof, pt_instanceof, 0)
+# else
+char pt_instanceof[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT,
+			 T_STRING };
+
+/*
+ * NAME:	kfun->instanceof()
+ * DESCRIPTION:	check whether an object is an instance of a type
+ */
+int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
+{
+    char buffer[STRINGSZ + 12];
+    uindex oindex;
+    const char *builtin, *name;
+    String *str;
+    int instance;
+
+    UNREFERENCED_PARAMETER(nargs);
+    UNREFERENCED_PARAMETER(kf);
+
+    builtin = (char *) NULL;
+    if (f->sp[1].type == T_OBJECT) {
+	oindex = f->sp[1].oindex;
+    } else if (f->sp[1].u.array->elts[0].type != T_OBJECT) {
+	builtin = o_builtin_name(f->sp[1].u.array->elts[0].u.number);
+    } else {
+	oindex = f->sp[1].u.array->elts[0].oindex;
+	arr_del(f->sp[1].u.array);
+    }
+    if (f->lwobj == (Array *) NULL) {
+	name = o_name(buffer, OBJR(f->oindex));
+	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 1));
+	str->text[0] = '/';
+	strcpy(str->text + 1, name);
+    } else {
+	name = o_name(buffer, OBJR(f->lwobj->elts[0].oindex));
+	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 4));
+	strcpy(str->text + 1, name);
+	strcpy(str->text + str->len - 3, "#-1");
+    }
+    call_driver_object(f, "object_type", 2);
+    if (f->sp->type != T_STRING) {
+	error("Invalid object type");
+    }
+    path_resolve(buffer, f->sp->u.string->text);
+    if (builtin != (char *) NULL) {
+	instance = (strcmp(builtin, buffer) == 0);
+    } else {
+	instance = i_instancestr(f, oindex, buffer);
+    }
+    str_del(f->sp->u.string);
+    PUT_INTVAL(f->sp, instance);
     return 0;
 }
 # endif

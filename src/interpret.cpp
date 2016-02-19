@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -32,13 +32,6 @@
 # define EXTRA_STACK  0
 # endif
 
-struct inhash {
-    Uint ocount;		/* object count */
-    uindex iindex;		/* inherit index */
-    uindex coindex;		/* class name program reference */
-    Uint sclass;		/* class name string reference */
-};
-
 static Value stack[MIN_STACK];	/* initial stack */
 static Frame topframe;		/* top frame */
 static rlinfo rlim;		/* top rlimits info */
@@ -46,7 +39,7 @@ Frame *cframe;			/* current frame */
 static char *creator;		/* creator function name */
 static unsigned int clen;	/* creator function name length */
 static bool stricttc;		/* strict typechecking */
-static inhash ihash[INHASHSZ];	/* instanceof hashtable */
+static char ihash[INHASHSZ];	/* instanceof hashtable */
 
 int nil_type;			/* type of nil value */
 Value zero_int = { T_INT, TRUE };
@@ -1137,13 +1130,12 @@ char *i_classname(Frame *f, Uint sclass)
 }
 
 /*
- * NAME:	interpret->instanceof()
+ * NAME:	instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
+static int instanceof(Frame *f, unsigned int oindex, char *prog, Uint hash)
 {
-    inhash *h;
-    char *prog;
+    char *h;
     unsigned short i;
     dinherit *inh;
     Object *obj;
@@ -1151,16 +1143,15 @@ int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
 
     /* first try hash table */
     obj = OBJR(oindex);
+    if (!(obj->flags & O_MASTER)) {
+	oindex = obj->u_master;
+	obj = OBJR(oindex);
+    }
     ctrl = o_control(obj);
-    prog = i_classname(f, sclass);
-    h = &ihash[(obj->count ^ (oindex << 2) ^ (f->p_ctrl->oindex << 4) ^ sclass)
-								    % INHASHSZ];
-    if (h->ocount == obj->count && h->coindex == f->p_ctrl->oindex &&
-	h->sclass == sclass && h->iindex < ctrl->ninherits) {
-	oindex = ctrl->inherits[h->iindex].oindex;
-	if (strcmp(OBJR(oindex)->name, prog) == 0) {
-	    return (ctrl->inherits[h->iindex].priv) ? -1 : 1;	/* found it */
-	}
+    h = &ihash[((oindex << 2) ^ hash) % INHASHSZ];
+    if (*h < ctrl->ninherits &&
+	strcmp(OBJR(ctrl->inherits[*h].oindex)->name, prog) == 0) {
+	return (ctrl->inherits[*h].priv) ? -1 : 1;	/* found it */
     }
 
     /* next, search for it the hard way */
@@ -1169,14 +1160,29 @@ int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
 	--inh;
 	if (strcmp(prog, OBJR(inh->oindex)->name) == 0) {
 	    /* found it; update hashtable */
-	    h->ocount = obj->count;
-	    h->coindex = f->p_ctrl->oindex;
-	    h->sclass = sclass;
-	    h->iindex = i;
+	    *h = i;
 	    return (ctrl->inherits[i].priv) ? -1 : 1;
 	}
     }
     return FALSE;
+}
+
+/*
+ * NAME:	interpret->instanceof()
+ * DESCRIPTION:	is an object an instance of the named program?
+ */
+int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
+{
+    return instanceof(f, oindex, i_classname(f, sclass), sclass);
+}
+
+/*
+ * NAME:	interpret->instancestr()
+ * DESCRIPTION:	is an object an instance of the named program?
+ */
+int i_instancestr(Frame *f, unsigned int oindex, char *prog)
+{
+    return instanceof(f, oindex, prog, Hashtab::hashstr(prog, OBJHASHSZ));
 }
 
 /*

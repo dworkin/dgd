@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2688,15 +2688,15 @@ int kf_nil(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("<-", kf_instanceof, pt_instanceof, 0)
+FUNCDEF("<-", kf_old_instanceof, pt_old_instanceof, 0)
 # else
-char pt_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
+char pt_old_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
 
 /*
- * NAME:	kfun->instanceof()
+ * NAME:	kfun->old_instanceof()
  * DESCRIPTION:	instanceof
  */
-int kf_instanceof(Frame *f, int n, kfunc *kf)
+int kf_old_instanceof(Frame *f, int n, kfunc *kf)
 {
     uindex oindex;
     Value *elts;
