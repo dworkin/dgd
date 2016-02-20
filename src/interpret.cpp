@@ -1150,8 +1150,8 @@ static int instanceof(Frame *f, unsigned int oindex, char *prog, Uint hash)
     ctrl = o_control(obj);
     h = &ihash[((oindex << 2) ^ hash) % INHASHSZ];
     if (*h < ctrl->ninherits &&
-	strcmp(OBJR(ctrl->inherits[*h].oindex)->name, prog) == 0) {
-	return (ctrl->inherits[*h].priv) ? -1 : 1;	/* found it */
+	strcmp(OBJR(ctrl->inherits[UCHAR(*h)].oindex)->name, prog) == 0) {
+	return (ctrl->inherits[UCHAR(*h)].priv) ? -1 : 1;	/* found it */
     }
 
     /* next, search for it the hard way */
