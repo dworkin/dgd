@@ -847,7 +847,6 @@ void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
     switch (aval->type) {
     case T_STRING:
 	if (ival->type != T_INT) {
-	    i_del_value(ival);
 	    error("Non-numeric string index");
 	}
 	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
@@ -860,7 +859,6 @@ void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 
     case T_ARRAY:
 	if (ival->type != T_INT) {
-	    i_del_value(ival);
 	    error("Non-numeric array index");
 	}
 	*val = d_get_elts(aval->u.array)[arr_index(aval->u.array,
