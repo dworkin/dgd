@@ -221,7 +221,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
 # ifdef FUNCDEF
 FUNCDEF("call_touch", kf_call_touch, pt_call_touch, 0)
 # else
-char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_VOID,
+char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 			 T_OBJECT };
 
 /*
@@ -244,14 +244,12 @@ int kf_call_touch(Frame *f, int n, kfunc *kf)
 	PUT_FLTVAL(&val, flt);
 	d_assign_elt(f->data, f->sp->u.array, &elts[1], &val);
 	arr_del(f->sp->u.array);
+	PUT_INTVAL(f->sp, TRUE);
     } else {
 	obj = OBJW(f->sp->oindex);
-	if (!O_HASDATA(obj)) {
-	    error("call_touch() on uninitialized object");
-	}
 	obj->flags &= ~O_TOUCHED;
+	PUT_INTVAL(f->sp, O_HASDATA(obj));
     }
-    *f->sp = nil_value;
     return 0;
 }
 # endif
