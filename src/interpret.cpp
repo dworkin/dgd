@@ -876,8 +876,9 @@ void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	i_operator(f, aval->u.array, "[]", 1, val, ival, (Value *) NULL);
 	if (!keep) {
 	    i_del_value(ival);
+	    arr_del(aval->u.array);
 	}
-	break;
+	return;
 
     default:
 	error("Index on bad type");
@@ -1516,9 +1517,10 @@ void i_store(Frame *f)
 	case LVAL_INDEX_INDEX:
 	    var = nil_value;
 	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		i_store_index(f, f->sp + 1, f->sp + 3, f->sp + 2, &var);
+		*f->sp = var;
+		i_store_index(f, f->sp + 1, f->sp + 3, f->sp + 2, f->sp);
+		str_del(f->sp->u.string);
 		str_del(f->sp[1].u.string);
-		str_del(var.u.string);
 	    }
 	    f->sp += 4;
 	    break;
@@ -1705,9 +1707,10 @@ static void i_stores(Frame *f, int skip, int assign)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->u.array->elts[assign - 1])) {
-		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, &val);
+		f->sp[1] = val;
+		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
+		str_del(f->sp[1].u.string);
 		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
@@ -2914,9 +2917,10 @@ static void i_interpret1(Frame *f, char *pc)
 	case I_STORE_INDEX_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
-		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, &val);
+		f->sp[1] = val;
+		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
+		str_del(f->sp[1].u.string);
 		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
