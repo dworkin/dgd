@@ -513,7 +513,14 @@ void o_discard_plane()
 		} else {
 		    /* pass on control block and dataspace */
 		    obj->ctrl = op->obj.ctrl;
-		    obj->data = op->obj.data;
+		    if (obj->data != op->obj.data) {
+			if (obj->dfirst != SW_UNUSED) {
+			    obj->data = op->obj.data;
+			} else {
+			    /* discard new initialized data block */
+			    d_del_dataspace(op->obj.data);
+			}
+		    }
 		}
 		op_del(oplane, o);
 	    }
