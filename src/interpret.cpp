@@ -1132,7 +1132,7 @@ char *i_classname(Frame *f, Uint sclass)
  * NAME:	instanceof()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-static int instanceof(Frame *f, unsigned int oindex, char *prog, Uint hash)
+static int instanceof(unsigned int oindex, char *prog, Uint hash)
 {
     char *h;
     unsigned short i;
@@ -1172,16 +1172,16 @@ static int instanceof(Frame *f, unsigned int oindex, char *prog, Uint hash)
  */
 int i_instanceof(Frame *f, unsigned int oindex, Uint sclass)
 {
-    return instanceof(f, oindex, i_classname(f, sclass), sclass);
+    return instanceof(oindex, i_classname(f, sclass), sclass);
 }
 
 /*
  * NAME:	interpret->instancestr()
  * DESCRIPTION:	is an object an instance of the named program?
  */
-int i_instancestr(Frame *f, unsigned int oindex, char *prog)
+int i_instancestr(unsigned int oindex, char *prog)
 {
-    return instanceof(f, oindex, prog, Hashtab::hashstr(prog, OBJHASHSZ));
+    return instanceof(oindex, prog, Hashtab::hashstr(prog, OBJHASHSZ));
 }
 
 /*

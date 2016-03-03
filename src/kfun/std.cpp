@@ -545,7 +545,7 @@ int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
     if (builtin != (char *) NULL) {
 	instance = (strcmp(builtin, buffer) == 0);
     } else {
-	instance = i_instancestr(f, oindex, buffer);
+	instance = i_instancestr(oindex, buffer);
     }
     str_del(f->sp->u.string);
     PUT_INTVAL(f->sp, instance);

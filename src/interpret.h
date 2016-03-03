@@ -299,7 +299,7 @@ extern void	i_index2	(Frame*, Value*, Value*, Value*, bool);
 extern char    *i_typename	(char*, unsigned int);
 extern char    *i_classname	(Frame*, Uint);
 extern int	i_instanceof	(Frame*, unsigned int, Uint);
-extern int	i_instancestr	(Frame*, unsigned int, char*);
+extern int	i_instancestr	(unsigned int, char*);
 extern void	i_cast		(Frame*, Value*, unsigned int, Uint);
 extern void	i_store_global	(Frame*, int, int, Value*, Value*);
 extern bool	i_store_index	(Frame*, Value*, Value*, Value*, Value*);
