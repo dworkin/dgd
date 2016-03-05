@@ -1,5 +1,3 @@
-bin/driver
-bin/driver.old
 *.o
 dgd
 src/a.out
