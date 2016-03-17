@@ -1579,9 +1579,9 @@ static void d_save_control(Control *ctrl)
 	    dstrconst *s;
 	    char *t;
 
-	    sstrings = ALLOCA(dstrconst, header.nstrings);
+	    sstrings = ALLOC(dstrconst, header.nstrings);
 	    if (header.strsize > 0) {
-		stext = ALLOCA(char, header.strsize);
+		stext = ALLOC(char, header.strsize);
 	    }
 
 	    strs = ctrl->strings;
@@ -1690,11 +1690,11 @@ static void d_save_control(Control *ctrl)
 		    FREE(text);
 		}
 		if (stext != ctrl->stext) {
-		    AFREE(stext);
+		    FREE(stext);
 		}
 	    }
 	    if (sstrings != ctrl->sstrings) {
-		AFREE(sstrings);
+		FREE(sstrings);
 	    }
 	}
 
@@ -2499,10 +2499,10 @@ static Uint d_conv(char *m, sector *vec, const char *layout, Uint n, Uint idx,
     char *buf;
 
     bufsize = (conf_dsize(layout) & 0xff) * n;
-    buf = ALLOCA(char, bufsize);
+    buf = ALLOC(char, bufsize);
     (*readv)(buf, vec, bufsize, idx);
     conf_dconv(m, buf, layout, n);
-    AFREE(buf);
+    FREE(buf);
 
     return bufsize;
 }
@@ -2921,10 +2921,10 @@ static Uint d_conv_osvalues(svalue *sv, sector *s, Uint n, Uint size)
 {
     osvalue *osv;
 
-    osv = ALLOCA(osvalue, n);
+    osv = ALLOC(osvalue, n);
     size = d_conv((char *) osv, s, osv_layout, n, size, &sw_conv);
     d_copy_osvalues(sv, osv, n);
-    AFREE(osv);
+    FREE(osv);
     return size;
 }
 
@@ -2936,10 +2936,10 @@ static Uint d_conv_oosvalues(svalue *sv, sector *s, Uint n, Uint size)
 {
     oosvalue *oosv;
 
-    oosv = ALLOCA(oosvalue, n);
+    oosv = ALLOC(oosvalue, n);
     size = d_conv((char *) oosv, s, oosv_layout, n, size, &sw_conv);
     d_copy_oosvalues(sv, oosv, n);
-    AFREE(oosv);
+    FREE(oosv);
     return size;
 }
 
@@ -2952,7 +2952,7 @@ static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
     osarray *osa;
     Uint i;
 
-    osa = ALLOCA(osarray, n);
+    osa = ALLOC(osarray, n);
     size = d_conv((char *) osa, s, osa_layout, n, size, &sw_conv);
     for (i = 0; i < n; i++) {
 	sa->index = osa->index;
@@ -2961,7 +2961,7 @@ static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
 	sa->ref = osa->ref;
 	(sa++)->tag = (osa++)->tag;
     }
-    AFREE(osa - n);
+    FREE(osa - n);
     return size;
 }
 
@@ -3114,7 +3114,7 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	    /*
 	     * convert old format callouts
 	     */
-	    osc = ALLOCA(oscallout, header.ncallouts);
+	    osc = ALLOC(oscallout, header.ncallouts);
 	    d_conv((char *) osc, data->sectors, osc_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
@@ -3130,14 +3130,14 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		sco++;
 		osc++;
 	    }
-	    AFREE(osc - data->ncallouts);
+	    FREE(osc - data->ncallouts);
 	} else if (conv_data) {
 	    socallout *soc;
 
 	    /*
 	     * convert callouts with old format svalues
 	     */
-	    soc = ALLOCA(socallout, header.ncallouts);
+	    soc = ALLOC(socallout, header.ncallouts);
 	    d_conv((char *) soc, data->sectors, soc_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
@@ -3153,14 +3153,14 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		sco++;
 		soc++;
 	    }
-	    AFREE(soc - data->ncallouts);
+	    FREE(soc - data->ncallouts);
 	} else if (conv_co2) {
 	    calloutos *cos;
 
 	    /*
 	     * convert callouts with encoded millitimes
 	     */
-	    cos = ALLOCA(calloutos, header.ncallouts);
+	    cos = ALLOC(calloutos, header.ncallouts);
 	    d_conv((char *) cos, data->sectors, cos_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
@@ -3176,14 +3176,14 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		sco++;
 		cos++;
 	    }
-	    AFREE(cos - data->ncallouts);
+	    FREE(cos - data->ncallouts);
 	} else if (conv_type) {
 	    calloutso *cso;
 
 	    /*
 	     * convert callouts with encoded millitimes
 	     */
-	    cso = ALLOCA(calloutso, header.ncallouts);
+	    cso = ALLOC(calloutso, header.ncallouts);
 	    d_conv((char *) cso, data->sectors, cso_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
@@ -3195,14 +3195,14 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		sco++;
 		cso++;
 	    }
-	    AFREE(cso - data->ncallouts);
+	    FREE(cso - data->ncallouts);
 	} else if (conv_time) {
 	    tscallout *tco;
 
 	    /*
 	     * convert callouts without htime
 	     */
-	    tco = ALLOCA(tscallout, header.ncallouts);
+	    tco = ALLOC(tscallout, header.ncallouts);
 	    d_conv((char *) tco, data->sectors, tco_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
@@ -3214,7 +3214,7 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		sco++;
 		tco++;
 	    }
-	    AFREE(tco - data->ncallouts);
+	    FREE(tco - data->ncallouts);
 
 	} else {
 	    d_conv((char *) data->scallouts, data->sectors, sco_layout,

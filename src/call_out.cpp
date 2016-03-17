@@ -987,7 +987,7 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	if (conv) {
 	    dump_callout *dc;
 
-	    dc = ALLOCA(dump_callout, n);
+	    dc = ALLOC(dump_callout, n);
 	    conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
 
 	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
@@ -1008,11 +1008,11 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 		co->next = dc->time;
 		dc++;
 	    }
-	    AFREE(dc - n);
+	    FREE(dc - n);
 	} else if (conv2) {
 	    conv_callout *dc;
 
-	    dc = ALLOCA(conv_callout, n);
+	    dc = ALLOC(conv_callout, n);
 	    conf_dread(fd, (char *) dc, cco_layout, (Uint) n);
 
 	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
@@ -1028,7 +1028,7 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 		co->next = dc->time;
 		dc++;
 	    }
-	    AFREE(dc - n);
+	    FREE(dc - n);
 	} else {
 	    conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
 	    conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
