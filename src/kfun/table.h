@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -101,7 +101,7 @@ extern void kf_restore	(int, int);
 # define KF_CKRANGEFT	51
 # define KF_CKRANGEF	52
 # define KF_CKRANGET	53
-# define KF_SUM		54
+# define KF_OLD_SUM	54
 # define KF_STATUS_IDX	55
 # define KF_STATUSO_IDX	56
 # define KF_CALLTR_IDX	57
@@ -136,5 +136,12 @@ extern void kf_restore	(int, int);
 # define KF_TST_FLT	86
 # define KF_TST_STR	87
 # define KF_UMIN_FLT	88
+# define KF_SUM		89
 
-# define KF_BUILTINS	89
+# define KF_BUILTINS	90
+
+# define SUM_SIMPLE		-2
+# define SUM_ALLOCATE_NIL	-3
+# define SUM_ALLOCATE_INT	-4
+# define SUM_ALLOCATE_FLT	-5
+# define SUM_AGGREGATE		-6

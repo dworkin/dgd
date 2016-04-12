@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -449,6 +449,7 @@ static void cg_expr (node*, int);
 static void cg_cond (node*, int);
 static void cg_stmt (node*);
 
+static Int kd_allocate, kd_allocate_int, kd_allocate_float;
 static int nparams;		/* number of parameters */
 
 /*
@@ -699,6 +700,7 @@ static void cg_store_aggr(node *n)
 static int cg_sumargs(node *n)
 {
     int i;
+    node *m;
 
     if (n->type == N_SUM) {
 	i = cg_sumargs(n->l.left);
@@ -707,11 +709,14 @@ static int cg_sumargs(node *n)
 	i = 0;
     }
 
-    if (n->type == N_AGGR) {
+    switch (n->type) {
+    case N_AGGR:
 	n->type = N_INT;
-	n->l.number = -3 - cg_aggr(n->l.left);
+	n->l.number = SUM_AGGREGATE - cg_aggr(n->l.left);
 	cg_expr(n, FALSE);
-    } else if (n->type == N_RANGE) {
+	break;
+
+    case N_RANGE:
 	cg_expr(n->l.left, FALSE);
 	n = n->r.right;
 	if (n->l.left != (node *) NULL) {
@@ -728,12 +733,37 @@ static int cg_sumargs(node *n)
 	} else {
 	    code_kfun(KF_RANGE, n->line);
 	    code_instr(I_PUSH_INT1, 0);
-	    code_byte(-2);
+	    code_byte(SUM_SIMPLE);
 	}
-    } else {
+	break;
+
+    case N_FUNC:
+	m = n->l.left->r.right;
+	if (m != (node *) NULL && m->type != N_PAIR && m->type != N_SPREAD &&
+	    m->mod == T_INT) {
+	    if (n->r.number == kd_allocate) {
+		cg_expr(m, FALSE);
+		code_instr(I_PUSH_INT1, 0);
+		code_byte(SUM_ALLOCATE_NIL);
+		break;
+	    } else if (n->r.number == kd_allocate_int) {
+		cg_expr(m, FALSE);
+		code_instr(I_PUSH_INT1, 0);
+		code_byte(SUM_ALLOCATE_INT);
+		break;
+	    } else if (n->r.number == kd_allocate_float) {
+		cg_expr(m, FALSE);
+		code_instr(I_PUSH_INT1, 0);
+		code_byte(SUM_ALLOCATE_FLT);
+		break;
+	    }
+	}
+	/* fall through */
+    default:
 	cg_expr(n, FALSE);
 	code_instr(I_PUSH_INT1, 0);
-	code_byte(-2);		/* no range */
+	code_byte(SUM_SIMPLE);		/* no range */
+	break;
     }
 
     return i + 1;
@@ -1567,7 +1597,7 @@ static void cg_expr(node *n, int pop)
     case N_SUM_EQ:
 	cg_lvalue(n->l.left, TRUE);
 	code_instr(I_PUSH_INT1, 0);
-	code_byte(-2);
+	code_byte(SUM_SIMPLE);
 	i = cg_sumargs(n->r.right) + 1;
 	code_kfun(KF_SUM, 0);
 	code_byte(i);
@@ -2298,6 +2328,9 @@ static int nfuncs;		/* # functions generated */
 void cg_init(int inherited)
 {
     UNREFERENCED_PARAMETER(inherited);
+    kd_allocate = ((Int) KFCALL << 24) | kf_func("allocate");
+    kd_allocate_int = ((Int) KFCALL << 24) | kf_func("allocate_int");
+    kd_allocate_float = ((Int) KFCALL << 24) | kf_func("allocate_float");
     nfuncs = 0;
 }
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -112,7 +112,8 @@ static Uint side_end(node **n, node *side, node **oldside, Uint olddepth)
 }
 
 
-static Int kf_status, kf_call_trace;	/* kfun descriptors */
+static Int kd_status, kd_call_trace, kd_allocate,	/* kfun descriptors */
+	   kd_allocate_int, kd_allocate_float;
 
 /*
  * NAME:	optimize->init()
@@ -121,8 +122,11 @@ static Int kf_status, kf_call_trace;	/* kfun descriptors */
 void opt_init()
 {
     /* kfuns are already initialized at this point */
-    kf_status = ((long) KFCALL << 24) | kf_func("status");
-    kf_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
+    kd_status = ((long) KFCALL << 24) | kf_func("status");
+    kd_call_trace = ((long) KFCALL << 24) | kf_func("call_trace");
+    kd_allocate = ((long) KFCALL << 24) | kf_func("allocate");
+    kd_allocate_int = ((long) KFCALL << 24) | kf_func("allocate_int");
+    kd_allocate_float = ((long) KFCALL << 24) | kf_func("allocate_float");
 }
 
 static Uint opt_expr (node**, bool);
@@ -641,7 +645,7 @@ static Uint opt_binop(node **m)
 	    switch (n->l.left->type) {
 	    case N_ADD:
 		n->l.left->type = N_SUM;
-		d1 += 2;			/* (-2) on both sides */
+		d1 += 2;			/* SUM_SIMPLE on both sides */
 		if (n->l.left->l.left->type == N_RANGE) {
 		    d1++;
 		}
@@ -649,22 +653,50 @@ static Uint opt_binop(node **m)
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
 		} else {
-		    d2++;			/* add (-2) */
+		    d2++;			/* add SUM_SIMPLE */
 		}
 		return d1 + d2;
 
+	    case N_FUNC:
+		if (n->l.left->r.number == kd_allocate ||
+		    n->l.left->r.number == kd_allocate_int ||
+		    n->l.left->r.number == kd_allocate_float) {
+		    t = n->l.left->l.left->r.right;
+		    if (t != (node *) NULL && t->type != N_PAIR &&
+			t->type != N_SPREAD && t->mod == T_INT) {
+			d1++;			/* add SUM_ALLOCATE */
+			n->type = N_SUM;
+			if (n->r.right->type == N_RANGE) {
+			    d2 = max2(d2, 3);	/* at least 3 */
+			} else {
+			    d2++;		/* add SUM_SIMPLE */
+			}
+			return d1 + d2;
+		    }
+		}
+		/* fall through */
 	    default:
 		if (n->r.right->type != N_RANGE && n->r.right->type != N_AGGR) {
-		    break;
+		    if (n->r.right->type != N_FUNC ||
+			(n->r.right->r.number != kd_allocate &&
+			 n->r.right->r.number != kd_allocate_int &&
+			 n->r.right->r.number != kd_allocate_float)) {
+			break;
+		    }
+		    t = n->r.right->l.left->r.right;
+		    if (t == (node *) NULL || t->type == N_PAIR ||
+			t->type == N_SPREAD || t->mod != T_INT) {
+			break;
+		    }
 		}
 		/* fall through */
 	    case N_AGGR:
-		d1++;				/* add (-2) */
+		d1++;				/* add SUM_SIMPLE */
 		n->type = N_SUM;
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
 		} else {
-		    d2++;			/* add (-2) */
+		    d2++;			/* add SUM_SIMPLE */
 		}
 		return d1 + d2;
 
@@ -676,7 +708,7 @@ static Uint opt_binop(node **m)
 		if (n->r.right->type == N_RANGE) {
 		    d2 = max2(d2, 3);		/* at least 3 */
 		} else {
-		    d2++;			/* add (-2) */
+		    d2++;			/* add SUM_SIMPLE */
 		}
 		return d1 + d2;
 	    }
@@ -1112,7 +1144,7 @@ static Uint opt_binop(node **m)
  */
 static Uint opt_asgnexp(node **m, bool pop)
 {
-    node *n;
+    node *n, *t;
     Uint d1, d2;
 
     n = *m;
@@ -1274,18 +1306,18 @@ static Uint opt_asgnexp(node **m, bool pop)
 	switch (n->r.right->type) {
 	case N_ADD:
 	    n->r.right->type = N_SUM;
-	    d2 += 2;				/* (-2) on both sides */
+	    d2 += 2;				/* SUM_SIMPLE on both sides */
 	    if (n->r.right->l.left->type == N_RANGE) {
 		d1++;
 	    }
 	    n->type = N_SUM_EQ;
-	    d1++;				/* add (-2) */
+	    d1++;				/* add SUM_SIMPLE */
 	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
 
 	case N_AGGR:
-	    d2++;				/* add (-2) */
+	    d2++;				/* add SUM_SIMPLE */
 	    n->type = N_SUM_EQ;
-	    d1++;				/* add (-2) */
+	    d1++;				/* add SUM_SIMPLE */
 	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
 
 	case N_RANGE:
@@ -1293,8 +1325,23 @@ static Uint opt_asgnexp(node **m, bool pop)
 	    /* fall through */
 	case N_SUM:
 	    n->type = N_SUM_EQ;
-	    d1++;				/* add (-2) */
+	    d1++;				/* add SUM_SIMPLE */
 	    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
+
+	case N_FUNC:
+	    if (n->r.right->r.number == kd_allocate ||
+		n->r.right->r.number == kd_allocate_int ||
+		n->r.right->r.number == kd_allocate_float) {
+		t = n->r.right->l.left->r.right;
+		if (t != (node *) NULL && t->type != N_PAIR &&
+		    t->type != N_SPREAD && t->mod == T_INT) {
+		    d2++;			/* add SUM_ALLOCATE */
+		    n->type = N_SUM_EQ;
+		    d1++;			/* add SUM_SIMPLE */
+		    return max2(d1, ((d1 < 6) ? d1 : 6) + d2);
+		}
+	    }
+	    break;
 	}
     }
 
@@ -1574,7 +1621,7 @@ static Uint opt_expr(node **m, bool pop)
 	    return !pop;
 	}
 	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
-	    if (n->l.left->r.number == kf_status) {
+	    if (n->l.left->r.number == kd_status) {
 		n->type = N_FUNC;
 		if (n->l.left->l.left->r.right != (node *) NULL) {
 		    /* status(obj)[i] */
@@ -1595,7 +1642,7 @@ static Uint opt_expr(node **m, bool pop)
 		}
 		return opt_expr(m, pop);
 	    }
-	    if (n->l.left->r.number == kf_call_trace) {
+	    if (n->l.left->r.number == kd_call_trace) {
 		/* call_trace()[i] */
 		n->type = N_FUNC;
 		n->l.left = n->l.left->l.left;

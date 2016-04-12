@@ -2392,15 +2392,15 @@ int kf_ckranget(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("sum", kf_sum, pt_sum, 0)
+FUNCDEF("sum", kf_old_sum, pt_old_sum, 0)
 # else
-char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
+char pt_old_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
 
 /*
- * NAME:	kfun->sum()
+ * NAME:	kfun->old_sum()
  * DESCRIPTION:	perform a summand operation
  */
-int kf_sum(Frame *f, int nargs, kfunc *kf)
+int kf_old_sum(Frame *f, int nargs, kfunc *kf)
 {
     char buffer[12], *num;
     String *s;
@@ -3523,6 +3523,237 @@ int kf_umin_float(Frame *f, int n, kfunc *kf)
 	FLT_NEG(flt.high, flt.low);
 	PUT_FLT(f->sp, flt);
     }
+    return 0;
+}
+# endif
+
+
+# ifdef FUNCDEF
+FUNCDEF("sum", kf_sum, pt_sum, 0)
+# else
+char pt_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
+
+/*
+ * NAME:	kfun->sum()
+ * DESCRIPTION:	perform a summand operation
+ */
+int kf_sum(Frame *f, int nargs, kfunc *kf)
+{
+    char buffer[12], *num;
+    String *s;
+    Array *a;
+    Value *v, *e1, *e2;
+    int i, type, vtype, nonint;
+    long size;
+    ssizet len;
+    Int result;
+    long isize;
+
+    UNREFERENCED_PARAMETER(kf);
+
+    /*
+     * pass 1: check the types of everything and calculate the size
+     */
+    i_add_ticks(f, nargs);
+    type = T_NIL;
+    isize = size = 0;
+    nonint = nargs;
+    result = 0;
+    for (v = f->sp, i = nargs; --i >= 0; v++) {
+	switch (v->u.number) {
+	case SUM_SIMPLE:
+	    /* simple term */
+	    v++;
+	    vtype = v->type;
+	    if (vtype == T_STRING) {
+		size += v->u.string->len;
+	    } else if (vtype == T_ARRAY) {
+		size += v->u.array->size;
+	    } else {
+		size += strlen(kf_itoa(v->u.number, buffer));
+	    }
+	    break;
+
+	case SUM_ALLOCATE_NIL:
+	    v++;
+	    if (v->u.number < 0) {
+		error("Bad argument 1 for kfun allocate");
+	    }
+	    if (v->u.number > conf_array_size()) {
+		error("Array too large");
+	    }
+	    size += v->u.number;
+	    vtype = T_ARRAY;
+	    break;
+
+	case SUM_ALLOCATE_INT:
+	    v++;
+	    if (v->u.number < 0) {
+		error("Bad argument 1 for kfun allocate_int");
+	    }
+	    if (v->u.number > conf_array_size()) {
+		error("Array too large");
+	    }
+	    size += v->u.number;
+	    vtype = T_ARRAY;
+	    break;
+
+	case SUM_ALLOCATE_FLT:
+	    v++;
+	    if (v->u.number < 0) {
+		error("Bad argument 1 for kfun allocate_float");
+	    }
+	    if (v->u.number > conf_array_size()) {
+		error("Array too large");
+	    }
+	    size += v->u.number;
+	    vtype = T_ARRAY;
+	    break;
+
+	default:
+	    if (v->u.number <= SUM_AGGREGATE) {
+		/* aggregate */
+		size += SUM_AGGREGATE - v->u.number;
+		v += SUM_AGGREGATE - v->u.number;
+		vtype = T_ARRAY;
+	    } else {
+		/* subrange term */
+		size += v->u.number - v[1].u.number + 1;
+		v += 2;
+		vtype = v->type;
+	    }
+	    break;
+	}
+
+	if (vtype == T_STRING || vtype == T_ARRAY) {
+	    nonint = i;
+	    isize = size;
+	    if (type == T_NIL && (vtype != T_ARRAY || i == nargs - 1)) {
+		type = vtype;
+	    } else if (type != vtype) {
+		error("Bad argument 2 for kfun +");
+	    }
+	} else if (vtype != T_INT || type == T_ARRAY) {
+	    error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
+	} else {
+	    result += v->u.number;
+	}
+    }
+    if (nonint > 1) {
+	size = isize + strlen(kf_itoa(result, buffer));
+    }
+
+    /*
+     * pass 2: build the string or array
+     */
+    result = 0;
+    if (type == T_STRING) {
+	s = str_new((char *) NULL, size);
+	s->text[size] = '\0';
+	for (v = f->sp, i = nargs; --i >= 0; v++) {
+	    if (v->u.number == SUM_SIMPLE) {
+		/* simple term */
+		v++;
+		if (v->type == T_STRING) {
+		    size -= v->u.string->len;
+		    memcpy(s->text + size, v->u.string->text, v->u.string->len);
+		    str_del(v->u.string);
+		    result = 0;
+		} else if (nonint < i) {
+		    num = kf_itoa(v->u.number, buffer);
+		    len = strlen(num);
+		    size -= len;
+		    memcpy(s->text + size, num, len);
+		    result = 0;
+		} else {
+		    result += v->u.number;
+		}
+	    } else {
+		/* subrange */
+		len = (v->u.number - v[1].u.number + 1);
+		size -= len;
+		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
+		       len);
+		v += 2;
+		str_del(v->u.string);
+		result = 0;
+	    }
+	}
+	if (nonint > 0) {
+	    num = kf_itoa(result, buffer);
+	    memcpy(s->text, num, strlen(num));
+	}
+
+	f->sp = v - 1;
+	PUT_STRVAL(f->sp, s);
+    } else if (type == T_ARRAY) {
+	a = arr_new(f->data, size);
+	e1 = a->elts + size;
+	for (v = f->sp, i = nargs; --i >= 0; v++) {
+	    switch (v->u.number) {
+	    case SUM_SIMPLE:
+		/* simple term */
+		v++;
+		len = v->u.array->size;
+		e2 = d_get_elts(v->u.array) + len;
+		break;
+
+	    case SUM_ALLOCATE_NIL:
+		v++;
+		for (len = v->u.number; len > 0; --len) {
+		    *--e1 = nil_value;
+		}
+		continue;
+
+	    case SUM_ALLOCATE_INT:
+		v++;
+		for (len = v->u.number; len > 0; --len) {
+		    *--e1 = zero_int;
+		}
+		continue;
+
+	    case SUM_ALLOCATE_FLT:
+		v++;
+		for (len = v->u.number; len > 0; --len) {
+		    *--e1 = zero_float;
+		}
+		continue;
+
+	    default:
+		if (v->u.number <= SUM_AGGREGATE) {
+		    /* aggregate */
+		    for (len = SUM_AGGREGATE - v->u.number; len > 0; --len) {
+			*--e1 = *++v;
+		    }
+		    continue;
+		} else {
+		    /* subrange */
+		    len = v->u.number - v[1].u.number + 1;
+		    e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
+		    v += 2;
+		    break;
+		}
+	    }
+
+	    e1 -= len;
+	    i_copy(e1, e2 - len, len);
+	    arr_del(v->u.array);
+	    size -= len;
+	}
+
+	f->sp = v - 1;
+	d_ref_imports(a);
+	PUT_ARRVAL(f->sp, a);
+    } else {
+	/* integers only */
+	for (v = f->sp, i = nargs; --i > 0; v += 2) {
+	    result += v[1].u.number;
+	}
+
+	f->sp = v + 1;
+	f->sp->u.number += result;
+    }
+
     return 0;
 }
 # endif
