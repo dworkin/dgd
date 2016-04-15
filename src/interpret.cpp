@@ -3500,8 +3500,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 
     /* check if the function can be called */
     if (!call_static && (fdef->sclass & C_STATIC) &&
-	((lwobj != (Array *) NULL) ?
-	 lwobj != f->lwobj : f->oindex != obj->index)) {
+	(f->oindex != obj->index || f->lwobj != lwobj)) {
 	i_pop(f, nargs);
 	return FALSE;
     }

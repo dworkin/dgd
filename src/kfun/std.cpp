@@ -649,6 +649,7 @@ char pt_function_object[] = { C_TYPECHECKED | C_STATIC, 2, 0, 0, 8, T_STRING,
 int kf_function_object(Frame *f, int nargs, kfunc *kf)
 {
     Object *obj;
+    bool callable;
     uindex n;
     dsymbol *symb;
     const char *name;
@@ -659,8 +660,10 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     i_add_ticks(f, 2);
     if (f->sp->type == T_OBJECT) {
 	obj = OBJR(f->sp->oindex);
+	callable = (f->oindex == obj->index && f->lwobj == (Array *) NULL);
     } else if (f->sp->u.array->elts[0].type == T_OBJECT) {
 	n = f->sp->u.array->elts[0].oindex;
+	callable = (f->lwobj == f->sp->u.array);
 	arr_del(f->sp->u.array);
 	obj = OBJR(n);
     } else {
@@ -680,7 +683,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 
 	o = OBJR(obj->ctrl->inherits[UCHAR(symb->inherit)].oindex);
 	if (!(d_get_funcdefs(o->ctrl)[UCHAR(symb->index)].sclass & C_STATIC) ||
-	    obj->index == f->oindex) {
+	    callable) {
 	    /*
 	     * function exists and is callable
 	     */
