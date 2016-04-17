@@ -65,53 +65,8 @@
 # define I_POP_BIT		0x20	/* pop 1 after instruction */
 # define I_LINE_SHIFT		6
 
-# define II_INSTR_MASK		0x1f	/* VM 1.0 instruction mask */
-
-# define II_PUSH_ZERO		  0
-# define II_PUSH_ONE		  1
-# define II_PUSH_INT1		  2	/* 1 signed */
-# define II_PUSH_INT4		  3	/* 4 signed */
-# define II_PUSH_FLOAT		  4	/* 6 unsigned */
-# define II_PUSH_STRING		  5	/* 1 unsigned */
-# define II_PUSH_NEAR_STRING	  6	/* 1 unsigned, 1 unsigned */
-# define II_PUSH_FAR_STRING	  7	/* 1 unsigned, 2 unsigned */
-# define II_PUSH_LOCAL		  8	/* 1 signed */
-# define II_PUSH_GLOBAL		  9	/* 1 unsigned */
-# define II_PUSH_FAR_GLOBAL	 10	/* 1 unsigned, 1 unsigned */
-# define II_PUSH_LOCAL_LVAL	 11	/* 1 signed */
-# define II_PUSH_GLOBAL_LVAL	 12	/* 1 unsigned */
-# define II_PUSH_FAR_GLOBAL_LVAL 13	/* 1 unsigned, 1 unsigned */
-# define II_INDEX		 14
-# define II_INDEX_LVAL		 15
-# define II_AGGREGATE		 16	/* 1 unsigned, 2 unsigned */
-# define II_SPREAD		 17	/* 1 signed */
-# define II_CAST		 18	/* 1 unsigned */
-# define II_DUP			 19
-# define II_STORE		 20
-# define II_JUMP		 21	/* 2 unsigned */
-# define II_JUMP_ZERO		 22	/* 2 unsigned */
-# define II_JUMP_NONZERO	 23	/* 2 unsigned */
-# define II_SWITCH		 24	/* n */
-# define II_CALL_KFUNC		 25	/* 1 unsigned (+ 1 unsigned) */
-# define II_CALL_AFUNC		 26	/* 1 unsigned, 1 unsigned */
-# define II_CALL_DFUNC		 27	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define II_CALL_FUNC		 28	/* 2 unsigned, 1 unsigned */
-# define II_CATCH		 29	/* 2 unsigned */
-# define II_RLIMITS		 30
-# define II_RETURN		 31
-
-# define II_TYPE_BIT		I_POP_BIT /* lvalue typechecks assignment */
-
 # define VERSION_VM_MAJOR	2
 # define VERSION_VM_MINOR	1
-
-/* VM 2.0 only */
-# define LVAL_LOCAL		0
-# define LVAL_GLOBAL		1
-# define LVAL_INDEX		2
-# define LVAL_LOCAL_INDEX	3
-# define LVAL_GLOBAL_INDEX	4
-# define LVAL_INDEX_INDEX	5
 
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
@@ -147,14 +102,7 @@
 # define T_CLASS	0x07	/* typechecking only */
 # define T_MIXED	0x08	/* declaration type only */
 # define T_VOID		0x09	/* function return type only */
-
-/* VM 1.0 only */
 # define T_LVALUE	0x0a	/* address of a value */
-# define T_SLVALUE	0x0b	/* indexed string lvalue */
-# define T_ALVALUE	0x0c	/* indexed array lvalue */
-# define T_MLVALUE	0x0d	/* indexed mapping lvalue */
-# define T_SALVALUE	0x0e	/* indexed string indexed array lvalue */
-# define T_SMLVALUE	0x0f	/* indexed string indexed mapping lvalue */
 
 # define T_VARARGS	0x10	/* or'ed with declaration type */
 # define T_ELLIPSIS	0x10	/* or'ed with declaration type */
