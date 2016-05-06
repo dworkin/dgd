@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -54,7 +54,7 @@ struct dump_header {
 
 static char dh_layout[] = "uiiiiiii";
 
-struct odump_header {
+struct dump_header0 {
     uindex nprecomps;		/* # precompiled objects */
     Uint ninherits;		/* total # inherits */
     Uint nstrings;		/* total # strings */
@@ -64,7 +64,7 @@ struct odump_header {
     Uint nfuncalls;		/* total # function calls */
 };
 
-static char odh_layout[] = "uiiiiii";
+static char dh0_layout[] = "uiiiiii";
 
 /*
  * NAME:	precomp->dump()
@@ -101,9 +101,9 @@ void pc_restore(int fd, int conv)
 
     /* read header */
     if (conv) {
-	odump_header odh;
+	dump_header0 odh;
 
-	conf_dread(fd, (char *) &odh, odh_layout, (Uint) 1);
+	conf_dread(fd, (char *) &odh, dh0_layout, (Uint) 1);
 	if (odh.nprecomps != 0) {
 	    fatal("precompiled objects during conversion");
 	}

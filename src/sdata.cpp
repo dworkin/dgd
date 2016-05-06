@@ -51,7 +51,7 @@ struct scontrol {
 
 static char sc_layout[] = "dssuiissicccusss";
 
-struct tscontrol {
+struct scontrol3 {
     sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
@@ -69,9 +69,9 @@ struct tscontrol {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char tsc_layout[] = "dssuiisicccusss";
+static char sc3_layout[] = "dssuiisicccusss";
 
-struct xscontrol {
+struct scontrol2 {
     sector nsectors;		/* # sectors in part one */
     short flags;		/* control flags: compression */
     short ninherits;		/* # objects in inherit table */
@@ -88,9 +88,9 @@ struct xscontrol {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char xsc_layout[] = "dssiisicccusss";
+static char sc2_layout[] = "dssiisicccusss";
 
-struct ocontrol {
+struct scontrol1 {
     sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
@@ -109,9 +109,9 @@ struct ocontrol {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char oc_layout[] = "dcciisicccusssss";
+static char sc1_layout[] = "dcciisicccusssss";
 
-struct oscontrol {
+struct scontrol0 {
     sector nsectors;		/* # sectors in part one */
     char flags;			/* control flags: compression */
     char ninherits;		/* # objects in inherit table */
@@ -129,7 +129,7 @@ struct oscontrol {
     unsigned short vmapsize;	/* size of variable map, or 0 for none */
 };
 
-static char os_layout[] = "dcciisiccusssss";
+static char sc0_layout[] = "dcciisiccusssss";
 
 struct sinherit {
     uindex oindex;		/* index in object table */
@@ -141,22 +141,22 @@ struct sinherit {
 
 static char si_layout[] = "uuuss";
 
-struct osinherit {
+struct sinherit0 {
     uindex oindex;		/* index in object table */
     uindex funcoffset;		/* function call offset */
     unsigned short varoffset;	/* variable offset + private bit */
 };
 
-static char osi_layout[] = "uus";
+static char si0_layout[] = "uus";
 
-struct ovardef {
+struct dvardef0 {
     char sclass;		/* variable class */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
     unsigned short type;	/* variable type */
 };
 
-# define OV_LAYOUT	"ccss"
+# define DV0_LAYOUT	"ccss"
 
 struct sdataspace {
     sector nsectors;		/* number of sectors in data space */
@@ -186,21 +186,21 @@ struct svalue {
 
 static char sv_layout[] = "ccui";
 
-struct osvalue {
+struct svalue1 {
     char type;			/* object, number, string, array */
     uindex oindex;		/* index in object table */
     Uint objcnt;		/* number, string, object, array */
 };
 
-static char osv_layout[] = "cui";
+static char sv1_layout[] = "cui";
 
-struct oosvalue {
+struct svalue0 {
     short type;			/* old type */
     uindex oindex;		/* index in object table */
     Uint objcnt;		/* number, string, object, array */
 };
 
-static char oosv_layout[] = "sui";
+static char sv0_layout[] = "sui";
 
 struct sarray {
     Uint index;			/* index in array value table */
@@ -212,14 +212,14 @@ struct sarray {
 
 static char sa_layout[] = "icsii";
 
-struct osarray {
+struct sarray0 {
     Uint index;			/* index in array value table */
     unsigned short size;	/* size of array */
     Uint ref;			/* refcount */
     Uint tag;			/* unique value for each array */
 };
 
-static char osa_layout[] = "isii";
+static char sa0_layout[] = "isii";
 
 struct sstring {
     Uint index;			/* index in string text table */
@@ -239,47 +239,47 @@ struct scallout {
 
 static char sco_layout[] = "issu[ccui][ccui][ccui][ccui]";
 
-struct tscallout {
+struct scallout4 {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
     svalue val[4];		/* function name, 3 direct arguments */
 };
 
-static char tco_layout[] = "isu[ccui][ccui][ccui][ccui]";
+static char sco4_layout[] = "isu[ccui][ccui][ccui][ccui]";
 
-struct calloutso {
+struct scallout3 {
     Uint time;			/* time of call */
     unsigned short mtime;	/* time of call milliseconds */
     uindex nargs;		/* number of arguments */
-    osvalue val[4];		/* function name, 3 direct arguments */
+    svalue1 val[4];		/* function name, 3 direct arguments */
 };
 
-static char cso_layout[] = "isu[cui][cui][cui][cui]";
+static char sco3_layout[] = "isu[cui][cui][cui][cui]";
 
-struct calloutos {
+struct scallout2 {
     Uint time;			/* time of call */
     uindex nargs;		/* number of arguments */
-    osvalue val[4];		/* function name, 3 direct arguments */
+    svalue1 val[4];		/* function name, 3 direct arguments */
 };
 
-static char cos_layout[] = "iu[cui][cui][cui][cui]";
+static char sco2_layout[] = "iu[cui][cui][cui][cui]";
 
-struct socallout {
+struct scallout1 {
     Uint time;			/* time of call */
     uindex nargs;		/* number of arguments */
-    oosvalue val[4];		/* function name, 3 direct arguments */
+    svalue0 val[4];		/* function name, 3 direct arguments */
 };
 
-static char soc_layout[] = "iu[sui][sui][sui][sui]";
+static char sco1_layout[] = "iu[sui][sui][sui][sui]";
 
-struct oscallout {
+struct scallout0 {
     Uint time;			/* time of call */
     unsigned short nargs;	/* number of arguments */
-    oosvalue val[4];		/* function name, 3 direct arguments */
+    svalue0 val[4];		/* function name, 3 direct arguments */
 };
 
-static char osc_layout[] = "is[sui][sui][sui][sui]";
+static char sco0_layout[] = "is[sui][sui][sui][sui]";
 
 struct savedata {
     Uint narr;				/* # of arrays */
@@ -2579,9 +2579,9 @@ static Control *d_conv_control(Object *obj,
      * restore from snapshot
      */
     if (conv_ctrl1) {
-	oscontrol oheader;
+	scontrol0 oheader;
 
-	size = d_conv((char *) &oheader, &obj->cfirst, os_layout, (Uint) 1,
+	size = d_conv((char *) &oheader, &obj->cfirst, sc0_layout, (Uint) 1,
 		      (Uint) 0, readv);
 	header.nsectors = oheader.nsectors;
 	header.flags = UCHAR(oheader.flags);
@@ -2599,9 +2599,9 @@ static Control *d_conv_control(Object *obj,
 	header.nvariables = oheader.nvariables;
 	header.vmapsize = oheader.vmapsize;
     } else if (conv_ctrl2) {
-	ocontrol oheader;
+	scontrol1 oheader;
 
-	size = d_conv((char *) &oheader, &obj->cfirst, oc_layout, (Uint) 1,
+	size = d_conv((char *) &oheader, &obj->cfirst, sc1_layout, (Uint) 1,
 		      (Uint) 0, readv);
 	header.nsectors = oheader.nsectors;
 	header.flags = UCHAR(oheader.flags);
@@ -2619,9 +2619,9 @@ static Control *d_conv_control(Object *obj,
 	header.nvariables = oheader.nvariables;
 	header.vmapsize = oheader.vmapsize;
     } else if (conv_inherit) {
-	xscontrol oheader;
+	scontrol2 oheader;
 
-	size = d_conv((char *) &oheader, &obj->cfirst, xsc_layout, (Uint) 1,
+	size = d_conv((char *) &oheader, &obj->cfirst, sc2_layout, (Uint) 1,
 		      (Uint) 0, readv);
 	header.nsectors = oheader.nsectors;
 	header.flags = oheader.flags;
@@ -2639,9 +2639,9 @@ static Control *d_conv_control(Object *obj,
 	header.nvariables = oheader.nvariables;
 	header.vmapsize = oheader.vmapsize;
     } else if (conv_time) {
-	tscontrol oheader;
+	scontrol3 oheader;
 
-	size = d_conv((char *) &oheader, &obj->cfirst, tsc_layout, (Uint) 1,
+	size = d_conv((char *) &oheader, &obj->cfirst, sc3_layout, (Uint) 1,
 		      (Uint) 0, readv);
 	header.nsectors = oheader.nsectors;
 	header.flags = oheader.flags;
@@ -2700,10 +2700,10 @@ static Control *d_conv_control(Object *obj,
 	n = header.ninherits; /* at least one */
 	ctrl->inherits = inherits = ALLOC(dinherit, n);
 	if (conv_inherit) {
-	    osinherit *osinherits;
+	    sinherit0 *osinherits;
 
-	    osinherits = ALLOCA(osinherit, n);
-	    size += d_conv((char *) osinherits, ctrl->sectors, osi_layout,
+	    osinherits = ALLOCA(sinherit0, n);
+	    size += d_conv((char *) osinherits, ctrl->sectors, si0_layout,
 			   (Uint) n, size, readv);
 	    do {
 		inherits->oindex = osinherits->oindex;
@@ -2807,10 +2807,10 @@ static Control *d_conv_control(Object *obj,
 	    /* variable definitions */
 	    ctrl->vardefs = ALLOC(dvardef, UCHAR(header.nvardefs));
 	    if (conv_vm) {
-		ovardef *ov;
+		dvardef0 *ov;
 
-		ov = ALLOC(ovardef, ctrl->nvardefs);
-		size += d_conv((char *) ov, ctrl->sectors, OV_LAYOUT,
+		ov = ALLOC(dvardef0, ctrl->nvardefs);
+		size += d_conv((char *) ov, ctrl->sectors, DV0_LAYOUT,
 			       (Uint) ctrl->nvardefs, size, readv);
 		for (n = 0; n < ctrl->nvardefs; n++) {
 		    ctrl->vardefs[n].sclass = ov[n].sclass;
@@ -2884,10 +2884,10 @@ static Control *d_conv_control(Object *obj,
 }
 
 /*
- * NAME:	data->copy_osvalues()
- * DESCRIPTION:	copy osvalues to svalues
+ * NAME:	data->copy_svalue1()
+ * DESCRIPTION:	copy svalue1s to svalues
  */
-static void d_copy_osvalues(svalue *sv, osvalue *osv, Uint n)
+static void d_copy_svalue1(svalue *sv, svalue1 *osv, Uint n)
 {
     while (n > 0) {
 	sv->type = osv->type;
@@ -2899,10 +2899,10 @@ static void d_copy_osvalues(svalue *sv, osvalue *osv, Uint n)
 }
 
 /*
- * NAME:	data->copy_oosvalues()
- * DESCRIPTION:	copy oosvalues to svalues
+ * NAME:	data->copy_svalue0()
+ * DESCRIPTION:	copy svalue0s to svalues
  */
-static void d_copy_oosvalues(svalue *sv, oosvalue *oosv, Uint n)
+static void d_copy_svalue0(svalue *sv, svalue0 *oosv, Uint n)
 {
     while (n > 0) {
 	sv->type = oosv->type;
@@ -2914,46 +2914,46 @@ static void d_copy_oosvalues(svalue *sv, oosvalue *oosv, Uint n)
 }
 
 /*
- * NAME:	data->conv_osvalues()
+ * NAME:	data->conv_svalue1()
  * DESCRIPTION:	convert old svalues
  */
-static Uint d_conv_osvalues(svalue *sv, sector *s, Uint n, Uint size)
+static Uint d_conv_svalue1(svalue *sv, sector *s, Uint n, Uint size)
 {
-    osvalue *osv;
+    svalue1 *osv;
 
-    osv = ALLOC(osvalue, n);
-    size = d_conv((char *) osv, s, osv_layout, n, size, &sw_conv);
-    d_copy_osvalues(sv, osv, n);
+    osv = ALLOC(svalue1, n);
+    size = d_conv((char *) osv, s, sv1_layout, n, size, &sw_conv);
+    d_copy_svalue1(sv, osv, n);
     FREE(osv);
     return size;
 }
 
 /*
- * NAME:	data->conv_oosvalues()
+ * NAME:	data->conv_svalue0()
  * DESCRIPTION:	convert old old svalues
  */
-static Uint d_conv_oosvalues(svalue *sv, sector *s, Uint n, Uint size)
+static Uint d_conv_svalue0(svalue *sv, sector *s, Uint n, Uint size)
 {
-    oosvalue *oosv;
+    svalue0 *oosv;
 
-    oosv = ALLOC(oosvalue, n);
-    size = d_conv((char *) oosv, s, oosv_layout, n, size, &sw_conv);
-    d_copy_oosvalues(sv, oosv, n);
+    oosv = ALLOC(svalue0, n);
+    size = d_conv((char *) oosv, s, sv0_layout, n, size, &sw_conv);
+    d_copy_svalue0(sv, oosv, n);
     FREE(oosv);
     return size;
 }
 
 /*
- * NAME:	data->conv_osarrays()
+ * NAME:	data->conv_sarray0()
  * DESCRIPTION:	convert old sarrays
  */
-static Uint d_conv_osarrays(sarray *sa, sector *s, Uint n, Uint size)
+static Uint d_conv_sarray0(sarray *sa, sector *s, Uint n, Uint size)
 {
-    osarray *osa;
+    sarray0 *osa;
     Uint i;
 
-    osa = ALLOC(osarray, n);
-    size = d_conv((char *) osa, s, osa_layout, n, size, &sw_conv);
+    osa = ALLOC(sarray0, n);
+    size = d_conv((char *) osa, s, sa0_layout, n, size, &sw_conv);
     for (i = 0; i < n; i++) {
 	sa->index = osa->index;
 	sa->type = 0;	/* filled in later */
@@ -3049,11 +3049,11 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
     /* variables */
     data->svariables = ALLOC(svalue, header.nvariables);
     if (conv_data) {
-	size += d_conv_oosvalues(data->svariables, data->sectors,
-				 (Uint) header.nvariables, size);
+	size += d_conv_svalue0(data->svariables, data->sectors,
+			       (Uint) header.nvariables, size);
     } else if (conv_type) {
-	size += d_conv_osvalues(data->svariables, data->sectors,
-				(Uint) header.nvariables, size);
+	size += d_conv_svalue1(data->svariables, data->sectors,
+			       (Uint) header.nvariables, size);
     } else {
 	size += d_conv((char *) data->svariables, data->sectors, sv_layout,
 		       (Uint) header.nvariables, size, readv);
@@ -3063,8 +3063,8 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	/* arrays */
 	data->sarrays = ALLOC(sarray, header.narrays);
 	if (conv_type) {
-	    size += d_conv_osarrays(data->sarrays, data->sectors,
-				    header.narrays, size);
+	    size += d_conv_sarray0(data->sarrays, data->sectors,
+				   header.narrays, size);
 	} else {
 	    size += d_conv((char *) data->sarrays, data->sectors, sa_layout,
 			   header.narrays, size, readv);
@@ -3072,11 +3072,11 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	if (header.eltsize != 0) {
 	    data->selts = ALLOC(svalue, header.eltsize);
 	    if (conv_data) {
-		size += d_conv_oosvalues(data->selts, data->sectors,
-					 header.eltsize, size);
+		size += d_conv_svalue0(data->selts, data->sectors,
+				       header.eltsize, size);
 	    } else if (conv_type) {
-		size += d_conv_osvalues(data->selts, data->sectors,
-					header.eltsize, size);
+		size += d_conv_svalue1(data->selts, data->sectors,
+				       header.eltsize, size);
 	    } else {
 		size += d_conv((char *) data->selts, data->sectors, sv_layout,
 			       header.eltsize, size, readv);
@@ -3109,13 +3109,13 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	co_time(&dummy);
 	sco = data->scallouts = ALLOC(scallout, header.ncallouts);
 	if (conv_co1) {
-	    oscallout *osc;
+	    scallout0 *osc;
 
 	    /*
 	     * convert old format callouts
 	     */
-	    osc = ALLOC(oscallout, header.ncallouts);
-	    d_conv((char *) osc, data->sectors, osc_layout,
+	    osc = ALLOC(scallout0, header.ncallouts);
+	    d_conv((char *) osc, data->sectors, sco0_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
 		if (osc->time >> 24 == 1) {
@@ -3126,19 +3126,19 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		}
 		sco->htime = 0;
 		sco->nargs = osc->nargs;
-		d_copy_oosvalues(sco->val, osc->val, 4);
+		d_copy_svalue0(sco->val, osc->val, 4);
 		sco++;
 		osc++;
 	    }
 	    FREE(osc - data->ncallouts);
 	} else if (conv_data) {
-	    socallout *soc;
+	    scallout1 *soc;
 
 	    /*
 	     * convert callouts with old format svalues
 	     */
-	    soc = ALLOC(socallout, header.ncallouts);
-	    d_conv((char *) soc, data->sectors, soc_layout,
+	    soc = ALLOC(scallout1, header.ncallouts);
+	    d_conv((char *) soc, data->sectors, sco1_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
 		if (soc->time >> 24 == 1) {
@@ -3149,19 +3149,19 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		}
 		sco->htime = 0;
 		sco->nargs = soc->nargs;
-		d_copy_oosvalues(sco->val, soc->val, 4);
+		d_copy_svalue0(sco->val, soc->val, 4);
 		sco++;
 		soc++;
 	    }
 	    FREE(soc - data->ncallouts);
 	} else if (conv_co2) {
-	    calloutos *cos;
+	    scallout2 *cos;
 
 	    /*
 	     * convert callouts with encoded millitimes
 	     */
-	    cos = ALLOC(calloutos, header.ncallouts);
-	    d_conv((char *) cos, data->sectors, cos_layout,
+	    cos = ALLOC(scallout2, header.ncallouts);
+	    d_conv((char *) cos, data->sectors, sco2_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
 		if (cos->time >> 24 == 1) {
@@ -3172,38 +3172,38 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 		}
 		sco->htime = 0;
 		sco->nargs = cos->nargs;
-		d_copy_osvalues(sco->val, cos->val, 4);
+		d_copy_svalue1(sco->val, cos->val, 4);
 		sco++;
 		cos++;
 	    }
 	    FREE(cos - data->ncallouts);
 	} else if (conv_type) {
-	    calloutso *cso;
+	    scallout3 *cso;
 
 	    /*
 	     * convert callouts with encoded millitimes
 	     */
-	    cso = ALLOC(calloutso, header.ncallouts);
-	    d_conv((char *) cso, data->sectors, cso_layout,
+	    cso = ALLOC(scallout3, header.ncallouts);
+	    d_conv((char *) cso, data->sectors, sco3_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = cso->time;
 		sco->htime = 0;
 		sco->mtime = cso->mtime;
 		sco->nargs = cso->nargs;
-		d_copy_osvalues(sco->val, cso->val, 4);
+		d_copy_svalue1(sco->val, cso->val, 4);
 		sco++;
 		cso++;
 	    }
 	    FREE(cso - data->ncallouts);
 	} else if (conv_time) {
-	    tscallout *tco;
+	    scallout4 *tco;
 
 	    /*
 	     * convert callouts without htime
 	     */
-	    tco = ALLOC(tscallout, header.ncallouts);
-	    d_conv((char *) tco, data->sectors, tco_layout,
+	    tco = ALLOC(scallout4, header.ncallouts);
+	    d_conv((char *) tco, data->sectors, sco4_layout,
 		   (Uint) header.ncallouts, size, readv);
 	    for (n = data->ncallouts; n > 0; --n) {
 		sco->time = tco->time;

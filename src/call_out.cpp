@@ -835,7 +835,7 @@ struct dump_header {
 
 static char dh_layout[] = "uuuuuuussii";
 
-struct old_header {
+struct dump_header1 {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -847,9 +847,9 @@ struct old_header {
     Uint timediff;		/* accumulated time difference */
 };
 
-static char oh_layout[] = "uuuuuuuii";
+static char dh1_layout[] = "uuuuuuuii";
 
-struct conv_header {
+struct dump_header0 {
     uindex cotabsz;		/* callout table size */
     uindex queuebrk;		/* queue brk */
     uindex cycbrk;		/* cyclic buffer brk */
@@ -860,31 +860,31 @@ struct conv_header {
     Uint timediff;		/* accumulated time difference */
 };
 
-static char ch_layout[] = "uuuuuuii";
+static char dh0_layout[] = "uuuuuuii";
 
-struct cbuf {
+struct convbuf {
     uindex list;	/* list */
     uindex last;	/* last in list */
 };
 
 static char cb_layout[] = "uu";
 
-struct conv_callout {
+struct call_out1 {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
     uindex mtime;	/* when to call in milliseconds */
 };
 
-static char cco_layout[] = "uuiu";
+static char co1_layout[] = "uuiu";
 
-struct dump_callout {
+struct call_out0 {
     uindex handle;	/* callout handle */
     uindex oindex;	/* index in object table */
     Uint time;		/* when to call */
 };
 
-static char dco_layout[] = "uui";
+static char co0_layout[] = "uui";
 
 /*
  * NAME:	call_out->dump()
@@ -937,9 +937,9 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
     /* read and check header */
     timediff = t;
     if (conv2) {
-	conv_header ch;
+	dump_header0 ch;
 
-	conf_dread(fd, (char *) &ch, ch_layout, (Uint) 1);
+	conf_dread(fd, (char *) &ch, dh0_layout, (Uint) 1);
 	queuebrk = ch.queuebrk;
 	offset = cotabsz - ch.cotabsz;
 	cycbrk = ch.cycbrk + offset;
@@ -949,9 +949,9 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	timestamp = ch.timestamp;
 	t = -ch.timediff;
     } else if (conv_time) {
-	old_header oh;
+	dump_header1 oh;
 
-	conf_dread(fd, (char *) &oh, oh_layout, (Uint) 1);
+	conf_dread(fd, (char *) &oh, dh1_layout, (Uint) 1);
 	queuebrk = oh.queuebrk;
 	offset = cotabsz - oh.cotabsz;
 	cycbrk = oh.cycbrk + offset;
@@ -985,10 +985,10 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
 	if (conv) {
-	    dump_callout *dc;
+	    call_out0 *dc;
 
-	    dc = ALLOC(dump_callout, n);
-	    conf_dread(fd, (char *) dc, dco_layout, (Uint) n);
+	    dc = ALLOC(call_out0, n);
+	    conf_dread(fd, (char *) dc, co0_layout, (Uint) n);
 
 	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
 		co->handle = dc->handle;
@@ -1010,10 +1010,10 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	    }
 	    FREE(dc - n);
 	} else if (conv2) {
-	    conv_callout *dc;
+	    call_out1 *dc;
 
-	    dc = ALLOC(conv_callout, n);
-	    conf_dread(fd, (char *) dc, cco_layout, (Uint) n);
+	    dc = ALLOC(call_out1, n);
+	    conf_dread(fd, (char *) dc, co1_layout, (Uint) n);
 
 	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
 		co->handle = dc->handle;
@@ -1040,7 +1040,7 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	}
     }
     if (conv2) {
-	cbuf cbuffer[CYCBUF_SIZE];
+	convbuf cbuffer[CYCBUF_SIZE];
 
 	/* convert free list */
 	for (i = flist; i != 0; i = cotab[i].next) {
