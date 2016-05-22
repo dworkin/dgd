@@ -1,6 +1,8 @@
 *.o
-dgd
+bin/dgd
+bin/dgd.old
 src/a.out
+src/*/dgd
 src/comp/parser.cpp
 src/comp/parser.h
 src/comp/a.out
@@ -21,3 +23,5 @@ src/host/win32/dgd.sdf
 src/host/win32/dgd.suo
 src/host/win32/dgd.v11.suo
 src/host/win32/dgd.vcxproj.user
+src/host/win32/dgd.VC.db
+src/host/win32/dgd.VC.VC.opendb
