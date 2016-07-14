@@ -60,26 +60,12 @@ unsigned char Hashtab::tab[256] = {
 };
 
 /*
- * NAME:	Hashtab()
- * DESCRIPTION:	create a hashtable of size "size", where "maxlen" characters
- *		of each string are significant
+ * NAME:	Hashtab::create()
+ * DESCRIPTION:	hashtable factory
  */
-Hashtab::Hashtab(unsigned int size, unsigned int maxlen, bool mem)
+Hashtab *Hashtab::create(unsigned int size, unsigned int maxlen, bool mem)
 {
-    this->size = size;
-    this->maxlen = maxlen;
-    this->mem = mem;
-    table = ALLOC(Hte*, size);
-    memset(table, '\0', size * sizeof(Hte*));
-}
-
-/*
- * NAME:	~Hashtab()
- * DESCRIPTION:	delete a hash table
- */
-Hashtab::~Hashtab()
-{
-    FREE(table);
+    return new HashtabImpl(size, maxlen, mem);
 }
 
 /*
@@ -118,19 +104,43 @@ unsigned short Hashtab::hashmem(const char *mem, unsigned int len)
     return (unsigned short) ((h << 8) | l);
 }
 
+
 /*
- * NAME:	Hashtab::lookup()
+ * NAME:	HashtabImpl()
+ * DESCRIPTION:	create a new hashtable of size "size", where "maxlen" characters
+ *		of each string are significant
+ */
+HashtabImpl::HashtabImpl(unsigned int size, unsigned int maxlen, bool mem)
+{
+    m_size = size;
+    m_maxlen = maxlen;
+    m_mem = mem;
+    m_table = ALLOC(Entry*, size);
+    memset(m_table, '\0', size * sizeof(Entry*));
+}
+
+/*
+ * NAME:	~HashtabImpl()
+ * DESCRIPTION:	delete a hash table
+ */
+HashtabImpl::~HashtabImpl()
+{
+    FREE(m_table);
+}
+
+/*
+ * NAME:	HashtabImpl::lookup()
  * DESCRIPTION:	lookup a name in a hashtable, return the address of the entry
  *		or &NULL if none found
  */
-Hte **Hashtab::lookup(const char *name, bool move)
+Hashtab::Entry **HashtabImpl::lookup(const char *name, bool move)
 {
-    Hte **first, **e, *next;
+    Entry **first, **e, *next;
 
-    if (mem) {
-	first = e = &(table[hashmem(name, maxlen) % size]);
-	while (*e != (Hte *) NULL) {
-	    if (memcmp((*e)->name, name, maxlen) == 0) {
+    if (m_mem) {
+	first = e = &(m_table[hashmem(name, m_maxlen) % m_size]);
+	while (*e != (Entry *) NULL) {
+	    if (memcmp((*e)->name, name, m_maxlen) == 0) {
 		if (move && e != first) {
 		    /* move to first position */
 		    next = (*e)->next;
@@ -144,8 +154,8 @@ Hte **Hashtab::lookup(const char *name, bool move)
 	    e = &((*e)->next);
 	}
     } else {
-	first = e = &(table[hashstr(name, maxlen) % size]);
-	while (*e != (Hte *) NULL) {
+	first = e = &(m_table[hashstr(name, m_maxlen) % m_size]);
+	while (*e != (Entry *) NULL) {
 	    if (strcmp((*e)->name, name) == 0) {
 		if (move && e != first) {
 		    /* move to first position */

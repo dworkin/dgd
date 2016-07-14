@@ -458,7 +458,7 @@ struct rulesym {
     rulesym *next;		/* next in rule */
 };
 
-struct rule : public Hte {
+struct rule : public Hashtab::Entry {
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
@@ -749,8 +749,8 @@ String *parse_grammar(String *gram)
 # endif
 
     /* initialize */
-    ruletab = new Hashtab(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
-    strtab = new Hashtab(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    ruletab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
+    strtab = Hashtab::create(PARSERULTABSZ, PARSERULHASHSZ, FALSE);
     rschunks = (rschunk *) NULL;
     rlchunks = (rlchunk *) NULL;
     rgxlist = strlist = estrlist = prodlist = tmplist = (rule *) NULL;

@@ -25,7 +25,7 @@
 
 # define STR_CHUNK	128
 
-struct strh : public Hte {
+struct strh : public Hashtab::Entry {
     String *str;		/* string entry */
     Uint index;			/* building index */
 };
@@ -87,7 +87,7 @@ void str_del(String *s)
  */
 void str_merge()
 {
-    sht = new Hashtab(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
+    sht = Hashtab::create(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -112,7 +112,7 @@ Uint str_put(String *str, Uint n)
 	     * Not in the hash table. Make a new entry.
 	     */
 	    s = *h = hchunk.alloc();
-	    s->next = (Hte *) NULL;
+	    s->next = (Hashtab::Entry *) NULL;
 	    s->name = str->text;
 	    s->str = str;
 	    s->index = n;

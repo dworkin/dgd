@@ -19,7 +19,7 @@
 
 # include "hash.h"
 
-struct macro : public Hte {
+struct macro : public Hashtab::Entry {
     char *replace;		/* replace text */
     int narg;			/* number of arguments */
 };

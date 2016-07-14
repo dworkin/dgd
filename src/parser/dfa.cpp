@@ -173,7 +173,7 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-struct rgxposn : public Hte {
+struct rgxposn : public Hashtab::Entry {
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
     unsigned short ruleno;	/* the rule this position is in */
@@ -882,7 +882,7 @@ dfa *dfa_new(char *source, char *grammar)
     /* positions */
     fa->nposn = (UCHAR(grammar[7]) << 8) + UCHAR(grammar[8]);
     fa->rpc = (rpchunk *) NULL;
-    fa->posnhtab = new Hashtab((fa->nposn + 1) << 2, 257, FALSE);
+    fa->posnhtab = Hashtab::create((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->nstates = 2;
@@ -1165,7 +1165,7 @@ static void dfa_loadtmp(dfa *fa)
     }
 
     /* positions */
-    fa->posnhtab = new Hashtab((fa->nposn + 1) << 2, 257, FALSE);
+    fa->posnhtab = Hashtab::create((fa->nposn + 1) << 2, 257, FALSE);
 
     /* states */
     fa->sthtab = ALLOC(unsigned short, fa->sthsize);

@@ -427,7 +427,7 @@ static void ipa_lookup()
     }
 }
 
-struct connection : public Hte {
+struct connection : public Hashtab::Entry {
     int fd;				/* file descriptor */
     int npkts;				/* # packets in buffer */
     int bufsz;				/* # bytes in buffer */
@@ -753,7 +753,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 #ifndef NETWORK_EXTENSIONS
     udphtab = ALLOC(connection*, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
-    chtab = new Hashtab(maxusers, UDPHASHSZ, TRUE);
+    chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
 #endif
 
     return TRUE;

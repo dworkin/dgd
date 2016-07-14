@@ -51,7 +51,7 @@ static Hashtab *mt;		/* macro hash table */
  */
 void mc_init()
 {
-    mt = new Hashtab(MACTABSZ, MACHASHSZ, FALSE);
+    mt = Hashtab::create(MACTABSZ, MACHASHSZ, FALSE);
 }
 
 /*
@@ -86,7 +86,7 @@ void mc_define(const char *name, const char *replace, int narg)
 	}
     } else {
 	*m = mchunk.alloc();
-	(*m)->next = (Hte *) NULL;
+	(*m)->next = (Hashtab::Entry *) NULL;
 	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
     }

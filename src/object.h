@@ -20,7 +20,7 @@
 # include "hash.h"
 # include "swap.h"
 
-struct Object : public Hte {
+struct Object : public Hashtab::Entry {
     char flags;			/* object status */
     eindex etabi;		/* index in external table */
     uindex cref;		/* # clone references (sometimes) */

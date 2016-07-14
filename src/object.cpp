@@ -95,7 +95,7 @@ void o_init(unsigned int n, Uint interval)
     ocmap = ALLOC(Uint, BMAP(n));
     memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
-    baseplane.htab = new Hashtab(n >> 2, OBJHASHSZ, FALSE);
+    baseplane.htab = Hashtab::create(n >> 2, OBJHASHSZ, FALSE);
     baseplane.optab = (optable *) NULL;
     baseplane.upgrade = baseplane.clean = OBJ_NONE;
     baseplane.destruct = baseplane.free = OBJ_NONE;
@@ -192,14 +192,15 @@ static Object *o_oaccess(unsigned int index, int access)
 	obj = &op_new(oplane, oo, (objpatch *) NULL, OBJ(index))->obj;
 	if (obj->name != (char *) NULL) {
 	    char *name;
-	    Hte **h;
+	    Hashtab::Entry **h;
 
 	    /* copy object name to higher plane */
 	    strcpy(name = ALLOC(char, strlen(obj->name) + 1), obj->name);
 	    obj->name = name;
 	    if (obj->count != 0) {
 		if (oplane->htab == (Hashtab *) NULL) {
-		    oplane->htab = new Hashtab(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
+		    oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ,
+						   FALSE);
 		}
 		h = oplane->htab->lookup(name, FALSE);
 		obj->next = *h;
@@ -341,7 +342,7 @@ void o_commit_plane()
 		     * commit to base plane
 		     */
 		    if (op->obj.name != (char *) NULL) {
-			Hte **h;
+			Hashtab::Entry **h;
 
 			if (obj->name == (char *) NULL) {
 			    char *name;
@@ -476,7 +477,7 @@ void o_discard_plane()
 			}
 			FREE(op->obj.name);
 		    } else {
-			Hte **h;
+			Hashtab::Entry **h;
 
 			if (op->obj.count != 0) {
 			    /*
@@ -562,7 +563,7 @@ Object *o_new(char *name, Control *ctrl)
     Object *o;
     dinherit *inh;
     int i;
-    Hte **h;
+    Hashtab::Entry **h;
 
     /* allocate object */
     o = o_alloc();
@@ -575,7 +576,7 @@ Object *o_new(char *name, Control *ctrl)
     if (obase) {
 	m_dynamic();
     } else if (oplane->htab == (Hashtab *) NULL) {
-	oplane->htab = new Hashtab(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
+	oplane->htab = Hashtab::create(OBJPATCHHTABSZ, OBJHASHSZ, FALSE);
     }
     h = oplane->htab->lookup(name, FALSE);
     o->next = *h;
@@ -690,7 +691,7 @@ void o_upgrade(Object *obj, Control *ctrl, Frame *f)
     }
 
     /* add to upgrades list */
-    tmpl->next = (Hte *) oplane->upgrade;
+    tmpl->next = (Hashtab::Entry *) oplane->upgrade;
     oplane->upgrade = tmpl->index;
 
     /* mark as upgrading */
@@ -764,7 +765,7 @@ void o_del(Object *obj, Frame *f)
     }
 
     /* put in clean list */
-    obj->next = (Hte *) oplane->clean;
+    obj->next = (Hashtab::Entry *) oplane->clean;
     oplane->clean = obj->index;
 }
 
@@ -1394,7 +1395,7 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 	    m_dynamic();
 
 	    if (o->count != 0) {
-		Hte **h;
+		Hashtab::Entry **h;
 
 		/* add name to lookup table */
 		h = baseplane.htab->lookup(p, FALSE);

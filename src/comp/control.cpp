@@ -29,7 +29,7 @@
 # include "compile.h"
 # include "control.h"
 
-struct oh : public Hte {	/* object hash table */
+struct oh : public Hashtab::Entry { /* object hash table */
     Object *obj;		/* object */
     short index;		/* -1: new */
     short priv;			/* 1: direct private, 2: indirect private */
@@ -45,7 +45,7 @@ static oh **olist;		/* list of all object hash table entries */
  */
 static void oh_init()
 {
-    otab = new Hashtab(OMERGETABSZ, OBJHASHSZ, FALSE);
+    otab = Hashtab::create(OMERGETABSZ, OBJHASHSZ, FALSE);
 }
 
 /*
@@ -62,7 +62,7 @@ static oh *oh_new(const char *name)
 	 * new object
 	 */
 	*h = ALLOC(oh, 1);
-	(*h)->next = (Hte *) NULL;
+	(*h)->next = (Hashtab::Entry *) NULL;
 	(*h)->name = name;
 	(*h)->index = -1;		/* new object */
 	(*h)->priv = 0;
@@ -97,7 +97,7 @@ static void oh_clear()
 
 # define VFH_CHUNK	64
 
-struct vfh : public Hte {	/* variable/function hash table */
+struct vfh : public Hashtab::Entry { /* variable/function hash table */
     String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     String *cvstr;		/* class variable string */
@@ -232,8 +232,8 @@ static Uint nifcalls;			/* # inherited function calls */
 void ctrl_init()
 {
     oh_init();
-    vtab = new Hashtab(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
-    ftab = new Hashtab(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    vtab = Hashtab::create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
+    ftab = Hashtab::create(VFMERGETABSZ, VFMERGEHASHSZ, FALSE);
 }
 
 /*
@@ -1566,13 +1566,13 @@ bool ctrl_chkfuncs()
     }
 
     if (nfclash != 0 || privinherit) {
-	Hte **t;
+	Hashtab::Entry **t;
 	unsigned short sz;
 	vfh **f, **n;
 	bool clash;
 
 	clash = FALSE;
-	for (t = ftab->table, sz = ftab->size; sz > 0; t++, --sz) {
+	for (t = ftab->table(), sz = ftab->size(); sz > 0; t++, --sz) {
 	    for (f = (vfh **) t; *f != (vfh *) NULL; ) {
 		if ((*f)->ohash == (oh *) NULL) {
 		    /*

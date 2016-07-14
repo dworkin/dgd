@@ -20,17 +20,11 @@
 # ifndef H_HASH
 # define H_HASH
 
-struct Hte {
-    Hte *next;		/* next entry in hash table */
-    const char *name;	/* string to use in hashing */
-};
-
 class Hashtab : public Allocated {
 public:
-    Hashtab(unsigned int size, unsigned int maxlen, bool mem);
-    ~Hashtab();
+    virtual ~Hashtab() { }
 
-    Hte **lookup(const char*, bool);
+    static Hashtab *create(unsigned int size, unsigned int maxlen, bool mem);
 
     static unsigned char hashchar(char c) {
 	return tab[(unsigned char) c];
@@ -38,13 +32,39 @@ public:
     static unsigned short hashstr(const char *str, unsigned int len);
     static unsigned short hashmem(const char *mem, unsigned int len);
 
-    Hte **table;		/* hash table entries */
-    Uint size;			/* size of hash table (power of two) */
+    struct Entry : public Allocated {
+	Entry *next;		/* next entry in hash table */
+	const char *name;	/* string to use in hashing */
+    };
+
+    virtual Entry **table() = 0;
+    virtual Uint size() = 0;
+    virtual Entry **lookup(const char*, bool) = 0;
 
 private:
-    unsigned short maxlen;	/* max length of string to be used in hashing */
-    bool mem;			/* \0-terminated string or raw memory? */
     static unsigned char tab[256];
+};
+
+class HashtabImpl : public Hashtab {
+public:
+    HashtabImpl(unsigned int size, unsigned int maxlen, bool mem);
+    virtual ~HashtabImpl();
+
+    virtual Entry **table() {
+	return m_table;
+    }
+
+    virtual Uint size() {
+	return m_size;
+    }
+
+    virtual Entry **lookup(const char *name, bool move);
+
+private:
+    Uint m_size;		/* size of hash table (power of two) */
+    unsigned short m_maxlen;	/* max length of string to be used in hashing */
+    bool m_mem;			/* \0-terminated string or raw memory? */
+    Entry **m_table;		/* hash table entries */
 };
 
 # endif /* H_HASH */
