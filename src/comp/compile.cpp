@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -946,9 +946,9 @@ void c_funcbody(node *n)
     char *prog;
     Uint depth;
     unsigned short size;
-    xfloat flt;
+    Float flt;
 
-    FLT_ZERO(flt.high, flt.low);
+    flt.initZero();
     switch (ftype) {
     case T_INT:
 	n = c_concat(n, node_mon(N_RETURN, 0, node_int((Int) 0)));
@@ -1819,9 +1819,9 @@ node *c_endcompound(node *n)
 		      v->line = 0;
 		      v->r.number = i;
 		      if (f == (node *) NULL) {
-			  xfloat flt;
+			  Float flt;
 
-			  FLT_ZERO(flt.high, flt.low);
+			  flt.initZero();
 			  f = node_float(&flt);
 			  f->line = 0;
 		      }

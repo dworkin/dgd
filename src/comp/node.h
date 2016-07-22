@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,9 +42,6 @@ struct node {
 # define NFLT_ISZERO(n)	FLT_ISZERO((n)->l.fhigh, (n)->r.flow)
 # define NFLT_ISONE(n)	FLT_ISONE((n)->l.fhigh, (n)->r.flow)
 # define NFLT_ISMONE(n)	FLT_ISMONE((n)->l.fhigh, (n)->r.flow)
-# define NFLT_ONE(n)	FLT_ONE((n)->l.fhigh, (n)->r.flow)
-# define NFLT_ABS(n)	FLT_ABS((n)->l.fhigh, (n)->r.flow)
-# define NFLT_NEG(n)	FLT_NEG((n)->l.fhigh, (n)->r.flow)
 
 # define F_CONST	0x01	/* constant expression */
 # define F_ENTRY	0x02	/* (first) statement has case/default entry */
@@ -62,7 +59,7 @@ struct node {
 extern void  node_init	(int);
 extern node *node_new	(unsigned int);
 extern node *node_int	(Int);
-extern node *node_float	(xfloat*);
+extern node *node_float	(Float*);
 extern node *node_nil	();
 extern node *node_str	(String*);
 extern node *node_var	(unsigned int, int);

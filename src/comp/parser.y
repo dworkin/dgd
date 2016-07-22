@@ -93,7 +93,7 @@ static node *comma	(node*, node*);
 
 %union {
     Int number;			/* lex input */
-    xfloat real;		/* lex input */
+    Float real;			/* lex input */
     unsigned short type;	/* internal */
     struct node *node;		/* internal */
 }
@@ -991,7 +991,7 @@ static node *prefix(int op, node *n, const char *name)
  */
 static node *cast(node *n, node *type)
 {
-    xfloat flt;
+    Float flt;
     Int i;
     char *p, buffer[18];
 
@@ -1002,7 +1002,7 @@ static node *cast(node *n, node *type)
 	    case N_FLOAT:
 		/* cast float constant to int */
 		NFLT_GET(n, flt);
-		return node_int(flt_ftoi(&flt));
+		return node_int(flt.ftoi());
 
 	    case N_STR:
 		/* cast string to int */
@@ -1036,13 +1036,13 @@ static node *cast(node *n, node *type)
 	    switch (n->type) {
 	    case N_INT:
 		/* cast int constant to float */
-		flt_itof(n->l.number, &flt);
+		Float::itof(n->l.number, &flt);
 		return node_float(&flt);
 
 	    case N_STR:
 		/* cast string to float */
 		p = n->l.string->text;
-		if (flt_atof(&p, &flt) &&
+		if (Float::atof(&p, &flt) &&
 		    p == n->l.string->text + n->l.string->len) {
 		    return node_float(&flt);
 		} else {
@@ -1075,7 +1075,7 @@ static node *cast(node *n, node *type)
 	    case N_FLOAT:
 		/* cast float constant to string */
 		NFLT_GET(n, flt);
-		flt_ftoa(&flt, buffer);
+		flt.ftoa(buffer);
 		return node_str(str_new(buffer, (long) strlen(buffer)));
 
 	    default:
@@ -1313,7 +1313,7 @@ static node *bina(int op, node *n1, node *n2, const char *name)
  */
 static node *mult(int op, node *n1, node *n2, const char *name)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	/* i * i */
@@ -1323,7 +1323,7 @@ static node *mult(int op, node *n1, node *n2, const char *name)
     if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_mult(&f1, &f2);
+	f1.mult(f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1336,7 +1336,7 @@ static node *mult(int op, node *n1, node *n2, const char *name)
  */
 static node *mdiv(int op, node *n1, node *n2, const char *name)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     if (n1->type == N_INT && n2->type == N_INT) {
 	Int i, d;
@@ -1360,7 +1360,7 @@ static node *mdiv(int op, node *n1, node *n2, const char *name)
 	}
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_div(&f1, &f2);
+	f1.div(f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1400,7 +1400,7 @@ static node *mod(int op, node *n1, node *n2, const char *name)
 static node *add(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
-    xfloat f1, f2;
+    Float f1, f2;
     unsigned short type;
 
     t_void(n1);
@@ -1426,7 +1426,7 @@ static node *add(int op, node *n1, node *n2, const char *name)
 	/* f + f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_add(&f1, &f2);
+	f1.add(f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1466,7 +1466,7 @@ static node *add(int op, node *n1, node *n2, const char *name)
 static node *sub(int op, node *n1, node *n2, const char *name)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
-    xfloat f1, f2;
+    Float f1, f2;
     unsigned short type;
 
     t_void(n1);
@@ -1481,7 +1481,7 @@ static node *sub(int op, node *n1, node *n2, const char *name)
 	/* f - f */
 	NFLT_GET(n1, f1);
 	NFLT_GET(n2, f2);
-	flt_sub(&f1, &f2);
+	f1.sub(f2);
 	NFLT_PUT(n1, f1);
 	return n1;
     }
@@ -1515,7 +1515,7 @@ static node *sub(int op, node *n1, node *n2, const char *name)
  */
 static node *umin(node *n)
 {
-    xfloat flt;
+    Float flt;
 
     if (n->mod == T_OBJECT || n->mod == T_CLASS) {
 	return node_mon(N_UMIN, T_OBJECT, n);
@@ -1523,7 +1523,7 @@ static node *umin(node *n)
 	return node_mon(N_UMIN, T_MIXED, n);
     } else if (t_unary(n, "unary -")) {
 	if (n->mod == T_FLOAT) {
-	    FLT_ZERO(flt.high, flt.low);
+	    flt.initZero();
 	    n = sub(N_SUB, node_float(&flt), n, "-");
 	} else {
 	    n = sub(N_SUB, node_int((Int) 0), n, "-");
@@ -1609,7 +1609,7 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 	return n1;
     }
     if (n1->type == N_FLOAT && n2->type == N_FLOAT) {
-	xfloat f1, f2;
+	Float f1, f2;
 
 	/* f . f */
 	NFLT_GET(n1, f1);
@@ -1617,16 +1617,16 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 
 	switch (op) {
 	case N_GE:
-	    return node_int((Int) (flt_cmp(&f1, &f2) >= 0));
+	    return node_int((Int) (f1.cmp(f2) >= 0));
 
 	case N_GT:
-	    return node_int((Int) (flt_cmp(&f1, &f2) > 0));
+	    return node_int((Int) (f1.cmp(f2) > 0));
 
 	case N_LE:
-	    return node_int((Int) (flt_cmp(&f1, &f2) <= 0));
+	    return node_int((Int) (f1.cmp(f2) <= 0));
 
 	case N_LT:
-	    return node_int((Int) (flt_cmp(&f1, &f2) < 0));
+	    return node_int((Int) (f1.cmp(f2) < 0));
 	}
 	return n1;
     }
@@ -1666,7 +1666,7 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 static node *eq(node *n1, node *n2)
 {
     char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
-    xfloat f1, f2;
+    Float f1, f2;
     int op;
 
     t_void(n1);
@@ -1690,7 +1690,7 @@ static node *eq(node *n1, node *n2)
 	    /* f == f */
 	    NFLT_GET(n1, f1);
 	    NFLT_GET(n2, f2);
-	    return node_int((Int) (flt_cmp(&f1, &f2) == 0));
+	    return node_int((Int) (f1.cmp(f2) == 0));
 	}
 	break;
 

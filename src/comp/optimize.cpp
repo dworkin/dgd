@@ -172,7 +172,7 @@ static Uint opt_lvalue(node *n)
 static Uint opt_binconst(node **m)
 {
     node *n;
-    xfloat f1, f2;
+    Float f1, f2;
     bool flag;
 
     n = *m;
@@ -275,7 +275,7 @@ static Uint opt_binconst(node **m)
 	switch (n->type) {
 	case N_ADD:
 	case N_ADD_FLOAT:
-	    flt_add(&f1, &f2);
+	    f1.add(f2);
 	    break;
 
 	case N_DIV:
@@ -283,47 +283,47 @@ static Uint opt_binconst(node **m)
 	    if (NFLT_ISZERO(n->r.right)) {
 		return 2;	/* runtime error: division by 0.0 */
 	    }
-	    flt_div(&f1, &f2);
+	    f1.div(f2);
 	    break;
 
 	case N_EQ:
 	case N_EQ_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) == 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) == 0));
 	    break;
 
 	case N_GE:
 	case N_GE_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) >= 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) >= 0));
 	    break;
 
 	case N_GT:
 	case N_GT_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) > 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) > 0));
 	    break;
 
 	case N_LE:
 	case N_LE_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) <= 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) <= 0));
 	    break;
 
 	case N_LT:
 	case N_LT_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) < 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) < 0));
 	    break;
 
 	case N_MULT:
 	case N_MULT_FLOAT:
-	    flt_mult(&f1, &f2);
+	    f1.mult(f2);
 	    break;
 
 	case N_NE:
 	case N_NE_FLOAT:
-	    node_toint(n->l.left, (Int) (flt_cmp(&f1, &f2) != 0));
+	    node_toint(n->l.left, (Int) (f1.cmp(f2) != 0));
 	    break;
 
 	case N_SUB:
 	case N_SUB_FLOAT:
-	    flt_sub(&f1, &f2);
+	    f1.sub(f2);
 	    break;
 
 	default:
@@ -594,7 +594,7 @@ static Uint opt_binop(node **m)
 {
     node *n, *t;
     Uint d1, d2, d;
-    xfloat f1, f2;
+    Float f1, f2;
 
     n = *m;
     if (n->type == N_ADD && n->r.right->type == N_ADD &&
@@ -794,7 +794,7 @@ static Uint opt_binop(node **m)
 		case N_SUB_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    flt_add(&f1, &f2);
+		    f1.add(f2);
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -819,7 +819,7 @@ static Uint opt_binop(node **m)
 		case N_MULT_FLOAT:
 		    NFLT_GET(n->l.left->r.right, f1);
 		    NFLT_GET(n->r.right, f2);
-		    flt_mult(&f1, &f2);
+		    f1.mult(f2);
 		    NFLT_PUT(n->l.left->r.right, f1);
 		    *m = n->l.left;
 		    d = d1;
@@ -852,7 +852,7 @@ static Uint opt_binop(node **m)
 			    /* (c1 - x) + c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_add(&f1, &f2);
+			    f1.add(f2);
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
@@ -861,7 +861,7 @@ static Uint opt_binop(node **m)
 			    /* (x - c1) + c2 */
 			    NFLT_GET(n->l.left->r.right, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_sub(&f1, &f2);
+			    f1.sub(f2);
 			    NFLT_PUT(n->l.left->r.right, f1);
 			    *m = n->l.left;
 			    d = d1;
@@ -895,7 +895,7 @@ static Uint opt_binop(node **m)
 			/* (x * c1) / c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			flt_div(&f1, &f2);
+			f1.div(f2);
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -908,7 +908,7 @@ static Uint opt_binop(node **m)
 			    /* (c1 / x) * c2 */
 			    NFLT_GET(n->l.left->l.left, f1);
 			    NFLT_GET(n->r.right, f2);
-			    flt_mult(&f1, &f2);
+			    f1.mult(f2);
 			    NFLT_PUT(n->l.left->l.left, f1);
 			    *m = n->l.left;
 			    return d1;
@@ -918,7 +918,7 @@ static Uint opt_binop(node **m)
 			    /* (x / c1) * c2 */
 			    NFLT_GET(n->r.right, f1);
 			    NFLT_GET(n->l.left->r.right, f2);
-			    flt_div(&f1, &f2);
+			    f1.div(f2);
 			    NFLT_PUT(n->r.right, f1);
 			    n->l.left = n->l.left->l.left;
 			    d = d1;
@@ -932,7 +932,7 @@ static Uint opt_binop(node **m)
 			/* (x + c1) - c2 */
 			NFLT_GET(n->l.left->r.right, f1);
 			NFLT_GET(n->r.right, f2);
-			flt_sub(&f1, &f2);
+			f1.sub(f2);
 			NFLT_PUT(n->l.left->r.right, f1);
 			*m = n->l.left;
 			d = d1;
@@ -959,7 +959,7 @@ static Uint opt_binop(node **m)
 			/* c1 - (c2 - x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			flt_sub(&f1, &f2);
+			f1.sub(f2);
 			n->type = N_ADD;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -969,7 +969,7 @@ static Uint opt_binop(node **m)
 			/* c1 - (x - c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			flt_add(&f1, &f2);
+			f1.add(f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
@@ -979,7 +979,7 @@ static Uint opt_binop(node **m)
 		    /* c1 - (x + c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    flt_sub(&f1, &f2);
+		    f1.sub(f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;
@@ -1020,7 +1020,7 @@ static Uint opt_binop(node **m)
 			/* c1 / (c2 / x) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->l.left, f2);
-			flt_div(&f1, &f2);
+			f1.div(f2);
 			n->type = N_MULT;
 			n->l.left = n->r.right->r.right;
 			n->r.right = n->r.right->l.left;
@@ -1030,7 +1030,7 @@ static Uint opt_binop(node **m)
 			/* c1 / (x / c2) */
 			NFLT_GET(n->l.left, f1);
 			NFLT_GET(n->r.right->r.right, f2);
-			flt_mult(&f1, &f2);
+			f1.mult(f2);
 			NFLT_PUT(n->l.left, f1);
 			n->r.right = n->r.right->l.left;
 			return d2 + 1;
@@ -1041,7 +1041,7 @@ static Uint opt_binop(node **m)
 		    /* c1 / (x * c2) */
 		    NFLT_GET(n->l.left, f1);
 		    NFLT_GET(n->r.right->r.right, f2);
-		    flt_div(&f1, &f2);
+		    f1.div(f2);
 		    NFLT_PUT(n->l.left, f1);
 		    n->r.right = n->r.right->l.left;
 		    return d2 + 1;

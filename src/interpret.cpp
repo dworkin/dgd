@@ -3480,7 +3480,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 
     if (lwobj != (Array *) NULL) {
 	uindex oindex;
-	xfloat flt;
+	Float flt;
 	Value val;
 
 	GET_FLT(&lwobj->elts[1], flt);

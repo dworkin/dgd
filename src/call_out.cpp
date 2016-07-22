@@ -561,7 +561,7 @@ void co_list(Array *a)
     unsigned short i;
     Uint t;
     unsigned short m;
-    xfloat flt1, flt2;
+    Float flt1, flt2;
 
     for (i = a->size, v = a->elts; i != 0; --i, v++) {
 	w = &v->u.array->elts[2];
@@ -577,10 +577,10 @@ void co_list(Array *a)
 	if (m == 0xffff) {
 	    PUT_INTVAL(w, t);
 	} else {
-	    flt_itof(t, &flt1);
-	    flt_itof(m, &flt2);
-	    flt_mult(&flt2, &thousandth);
-	    flt_add(&flt1, &flt2);
+	    Float::itof(t, &flt1);
+	    Float::itof(m, &flt2);
+	    flt2.mult(thousandth);
+	    flt1.add(flt2);
 	    PUT_FLTVAL(w, flt1);
 	}
     }

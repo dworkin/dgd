@@ -574,7 +574,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 {
     Value *v1, *v2;
     int i;
-    xfloat f1, f2;
+    Float f1, f2;
 
     v1 = (Value *) cv1;
     v2 = (Value *) cv2;
@@ -595,7 +595,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
     case T_FLOAT:
 	GET_FLT(v1, f1);
 	GET_FLT(v2, f2);
-	return flt_cmp(&f1, &f2);
+	return f1.cmp(f2);
 
     case T_STRING:
 	return str_cmp(v1->u.string, v2->u.string);
@@ -2023,7 +2023,7 @@ Array *lwo_new(Dataspace *data, Object *obj)
 {
     Control *ctrl;
     Array *a;
-    xfloat flt;
+    Float flt;
 
     o_lwobj(obj);
     ctrl = o_control(obj);

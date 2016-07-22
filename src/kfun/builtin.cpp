@@ -158,7 +158,7 @@ int kf_add(Frame *f, int n, kfunc *kf)
     String *str;
     Array *a;
     char *num, buffer[18];
-    xfloat f1, f2;
+    Float f1, f2;
     long l;
 
     UNREFERENCED_PARAMETER(n);
@@ -193,14 +193,14 @@ int kf_add(Frame *f, int n, kfunc *kf)
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    flt_add(&f1, &f2);
+	    f1.add(f2);
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 
 	case T_STRING:
 	    i_add_ticks(f, 2);
 	    GET_FLT(&f->sp[1], f1);
-	    flt_ftoa(&f1, buffer);
+	    f1.ftoa(buffer);
 	    str = str_new((char *) NULL,
 			  (l=(long) strlen(buffer)) + f->sp->u.string->len);
 	    strcpy(str->text, buffer);
@@ -229,7 +229,7 @@ int kf_add(Frame *f, int n, kfunc *kf)
 	case T_FLOAT:
 	    i_add_ticks(f, 1);
 	    GET_FLT(f->sp, f2);
-	    flt_ftoa(&f2, buffer);
+	    f2.ftoa(buffer);
 	    f->sp++;
 	    str = str_new((char *) NULL,
 			  f->sp->u.string->len + (long) strlen(buffer));
@@ -321,7 +321,7 @@ char pt_add1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_add1(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -331,8 +331,8 @@ int kf_add1(Frame *f, int n, kfunc *kf)
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
-	FLT_ONE(f2.high, f2.low);
-	flt_add(&f1, &f2);
+	f2.initOne();
+	f1.add(f2);
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
 	       f->sp->u.array->elts[0].type == T_OBJECT) {
@@ -462,7 +462,7 @@ char pt_div[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
 int kf_div(Frame *f, int n, kfunc *kf)
 {
     Int i, d;
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -489,7 +489,7 @@ int kf_div(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	flt_div(&f1, &f2);
+	f1.div(f2);
 	PUT_FLT(f->sp, f1);
 	return 0;
 
@@ -548,7 +548,7 @@ char pt_eq[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 int kf_eq(Frame *f, int n, kfunc *kf)
 {
     bool flag;
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -575,7 +575,7 @@ int kf_eq(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) == 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) == 0));
 	break;
 
     case T_STRING:
@@ -640,7 +640,7 @@ char pt_ge[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  */
 int kf_ge(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
     bool flag;
 
     UNREFERENCED_PARAMETER(n);
@@ -663,7 +663,7 @@ int kf_ge(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) >= 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) >= 0));
 	return 0;
 
     case T_STRING:
@@ -725,7 +725,7 @@ char pt_gt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  */
 int kf_gt(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
     bool flag;
 
     UNREFERENCED_PARAMETER(n);
@@ -748,7 +748,7 @@ int kf_gt(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) > 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) > 0));
 	return 0;
 
     case T_STRING:
@@ -810,7 +810,7 @@ char pt_le[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  */
 int kf_le(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
     bool flag;
 
     UNREFERENCED_PARAMETER(n);
@@ -833,7 +833,7 @@ int kf_le(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) <= 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) <= 0));
 	return 0;
 
     case T_STRING:
@@ -962,7 +962,7 @@ char pt_lt[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
  */
 int kf_lt(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
     bool flag;
 
     UNREFERENCED_PARAMETER(n);
@@ -985,7 +985,7 @@ int kf_lt(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) < 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) < 0));
 	return 0;
 
     case T_STRING:
@@ -1114,7 +1114,7 @@ char pt_mult[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  */
 int kf_mult(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1136,7 +1136,7 @@ int kf_mult(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	flt_mult(&f1, &f2);
+	f1.mult(f2);
 	PUT_FLT(f->sp, f1);
 	return 0;
 
@@ -1188,7 +1188,7 @@ char pt_ne[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_MIXED, T_MIXED };
 int kf_ne(Frame *f, int n, kfunc *kf)
 {
     bool flag;
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1215,7 +1215,7 @@ int kf_ne(Frame *f, int n, kfunc *kf)
 	GET_FLT(f->sp, f2);
 	f->sp++;
 	GET_FLT(f->sp, f1);
-	PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) != 0));
+	PUT_INTVAL(f->sp, (f1.cmp(f2) != 0));
 	break;
 
     case T_STRING:
@@ -1811,7 +1811,7 @@ char pt_sub[] = { C_STATIC, 2, 0, 0, 8, T_MIXED, T_MIXED, T_MIXED };
  */
 int kf_sub(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1831,7 +1831,7 @@ int kf_sub(Frame *f, int n, kfunc *kf)
 	    GET_FLT(f->sp, f2);
 	    f->sp++;
 	    GET_FLT(f->sp, f1);
-	    flt_sub(&f1, &f2);
+	    f1.sub(f2);
 	    PUT_FLT(f->sp, f1);
 	    return 0;
 	}
@@ -1913,7 +1913,7 @@ char pt_sub1[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_sub1(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1923,8 +1923,8 @@ int kf_sub1(Frame *f, int n, kfunc *kf)
     } else if (f->sp->type == T_FLOAT) {
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, f1);
-	FLT_ONE(f2.high, f2.low);
-	flt_sub(&f1, &f2);
+	f2.initOne();
+	f1.sub(f2);
 	PUT_FLT(f->sp, f1);
     } else if (f->sp->type == T_LWOBJECT &&
 	       f->sp->u.array->elts[0].type == T_OBJECT) {
@@ -1968,7 +1968,7 @@ char pt_tofloat[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_MIXED };
  */
 int kf_tofloat(Frame *f, int n, kfunc *kf)
 {
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1976,7 +1976,7 @@ int kf_tofloat(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 1);
     if (f->sp->type == T_INT) {
 	/* from int */
-	flt_itof(f->sp->u.number, &flt);
+	Float::itof(f->sp->u.number, &flt);
 	PUT_FLTVAL(f->sp, flt);
 	return 0;
     } else if (f->sp->type == T_STRING) {
@@ -1984,7 +1984,7 @@ int kf_tofloat(Frame *f, int n, kfunc *kf)
 
 	/* from string */
 	p = f->sp->u.string->text;
-	if (!flt_atof(&p, &flt) ||
+	if (!Float::atof(&p, &flt) ||
 	    p != f->sp->u.string->text + f->sp->u.string->len) {
 	    error("String cannot be converted to float");
 	}
@@ -2012,7 +2012,7 @@ char pt_toint[] = { C_STATIC, 1, 0, 0, 7, T_INT, T_MIXED };
  */
 int kf_toint(Frame *f, int n, kfunc *kf)
 {
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -2021,7 +2021,7 @@ int kf_toint(Frame *f, int n, kfunc *kf)
 	/* from float */
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, flt);
-	PUT_INTVAL(f->sp, flt_ftoi(&flt));
+	PUT_INTVAL(f->sp, flt.ftoi());
 	return 0;
     } else if (f->sp->type == T_STRING) {
 	char *p;
@@ -2119,7 +2119,7 @@ char pt_umin[] = { C_STATIC, 1, 0, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_umin(Frame *f, int n, kfunc *kf)
 {
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -2133,7 +2133,7 @@ int kf_umin(Frame *f, int n, kfunc *kf)
 	i_add_ticks(f, 1);
 	if (!VFLT_ISZERO(f->sp)) {
 	    GET_FLT(f->sp, flt);
-	    FLT_NEG(flt.high, flt.low);
+	    flt.negate();
 	    PUT_FLT(f->sp, flt);
 	}
 	return 0;
@@ -2258,7 +2258,7 @@ char pt_tostring[] = { C_STATIC, 1, 0, 0, 7, T_STRING, T_MIXED };
 int kf_tostring(Frame *f, int n, kfunc *kf)
 {
     char *num, buffer[18];
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -2273,7 +2273,7 @@ int kf_tostring(Frame *f, int n, kfunc *kf)
 	/* from float */
 	i_add_ticks(f, 1);
 	GET_FLT(f->sp, flt);
-	flt_ftoa(&flt, num = buffer);
+	flt.ftoa(num = buffer);
     } else if (f->sp->type == T_STRING) {
 	return 0;
     } else {
@@ -2796,7 +2796,7 @@ char pt_add_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
  */
 int kf_add_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -2805,7 +2805,7 @@ int kf_add_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_add(&f1, &f2);
+    f1.add(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -2825,7 +2825,7 @@ char pt_add_float_string[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_FLOAT,
 int kf_add_float_string(Frame *f, int n, kfunc *kf)
 {
     char buffer[18];
-    xfloat flt;
+    Float flt;
     String *str;
     long l;
 
@@ -2834,7 +2834,7 @@ int kf_add_float_string(Frame *f, int n, kfunc *kf)
 
     i_add_ticks(f, 3);
     GET_FLT(&f->sp[1], flt);
-    flt_ftoa(&flt, buffer);
+    flt.ftoa(buffer);
     str = str_new((char *) NULL, (l=strlen(buffer)) + f->sp->u.string->len);
     strcpy(str->text, buffer);
     memcpy(str->text + l, f->sp->u.string->text, f->sp->u.string->len);
@@ -2917,7 +2917,7 @@ char pt_add_string_float[] = { C_STATIC, 2, 0, 0, 8, T_STRING, T_STRING,
 int kf_add_string_float(Frame *f, int n, kfunc *kf)
 {
     char buffer[18];
-    xfloat flt;
+    Float flt;
     String *str;
 
     UNREFERENCED_PARAMETER(n);
@@ -2925,7 +2925,7 @@ int kf_add_string_float(Frame *f, int n, kfunc *kf)
 
     i_add_ticks(f, 3);
     GET_FLT(f->sp, flt);
-    flt_ftoa(&flt, buffer);
+    flt.ftoa(buffer);
     f->sp++;
     str = str_new((char *) NULL, f->sp->u.string->len + (long) strlen(buffer));
     memcpy(str->text, f->sp->u.string->text, f->sp->u.string->len);
@@ -2978,15 +2978,15 @@ char pt_add1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  */
 int kf_add1_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, f1);
-    FLT_ONE(f2.high, f2.low);
-    flt_add(&f1, &f2);
+    f2.initOne();
+    f1.add(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3004,7 +3004,7 @@ char pt_div_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
  */
 int kf_div_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3013,7 +3013,7 @@ int kf_div_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_div(&f1, &f2);
+    f1.div(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 
@@ -3032,7 +3032,7 @@ char pt_eq_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_eq_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3041,7 +3041,7 @@ int kf_eq_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) == 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) == 0));
     return 0;
 }
 # endif
@@ -3085,7 +3085,7 @@ char pt_ge_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_ge_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3094,7 +3094,7 @@ int kf_ge_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) >= 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) >= 0));
     return 0;
 }
 # endif
@@ -3138,7 +3138,7 @@ char pt_gt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_gt_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3147,7 +3147,7 @@ int kf_gt_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) > 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) > 0));
     return 0;
 }
 # endif
@@ -3191,7 +3191,7 @@ char pt_le_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_le_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3200,7 +3200,7 @@ int kf_le_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) <= 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) <= 0));
     return 0;
 }
 # endif
@@ -3244,7 +3244,7 @@ char pt_lt_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_lt_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3253,7 +3253,7 @@ int kf_lt_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) < 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) < 0));
     return 0;
 }
 # endif
@@ -3297,7 +3297,7 @@ char pt_mult_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
  */
 int kf_mult_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3306,7 +3306,7 @@ int kf_mult_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_mult(&f1, &f2);
+    f1.mult(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3324,7 +3324,7 @@ char pt_ne_float[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_FLOAT, T_FLOAT };
  */
 int kf_ne_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3333,7 +3333,7 @@ int kf_ne_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    PUT_INTVAL(f->sp, (flt_cmp(&f1, &f2) != 0));
+    PUT_INTVAL(f->sp, (f1.cmp(f2) != 0));
     return 0;
 }
 # endif
@@ -3418,7 +3418,7 @@ char pt_sub_float[] = { C_STATIC, 2, 0, 0, 8, T_FLOAT, T_FLOAT, T_FLOAT };
  */
 int kf_sub_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3427,7 +3427,7 @@ int kf_sub_float(Frame *f, int n, kfunc *kf)
     GET_FLT(f->sp, f2);
     f->sp++;
     GET_FLT(f->sp, f1);
-    flt_sub(&f1, &f2);
+    f1.sub(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3445,15 +3445,15 @@ char pt_sub1_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  */
 int kf_sub1_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
     GET_FLT(f->sp, f1);
-    FLT_ONE(f2.high, f2.low);
-    flt_sub(&f1, &f2);
+    f2.initOne();
+    f1.sub(f2);
     PUT_FLT(f->sp, f1);
     return 0;
 }
@@ -3512,7 +3512,7 @@ char pt_umin_float[] = { C_STATIC, 1, 0, 0, 7, T_FLOAT, T_FLOAT };
  */
 int kf_umin_float(Frame *f, int n, kfunc *kf)
 {
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -3520,7 +3520,7 @@ int kf_umin_float(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 1);
     if (!VFLT_ISZERO(f->sp)) {
 	GET_FLT(f->sp, flt);
-	FLT_NEG(flt.high, flt.low);
+	flt.negate();
 	PUT_FLT(f->sp, flt);
     }
     return 0;

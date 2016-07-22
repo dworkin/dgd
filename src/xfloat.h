@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,51 +17,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct xfloat {
+class Float {
+public:
+    static bool atof(char **buf, Float *f);
+    static void itof(Int i, Float *f);
+
+    void initZero() {
+	high = 0;
+	low = 0;
+    }
+    void initOne() {
+	high = 0x3ff0;
+	low = 0;
+    }
+
+    void ftoa(char *buffer);
+    Int ftoi();
+
+    void abs() {
+	high &= ~0x8000;
+    }
+    void negate() {
+	high ^= 0x8000;
+    }
+    bool negative() {
+	return !!(high & 0x8000);
+    }
+
+    void add(Float &f);
+    void sub(Float &f);
+    void mult(Float &f);
+    void div(Float &f);
+    int cmp(Float &f);
+    void floor();
+    void ceil();
+    void fmod(Float &f);
+    Int frexp();
+    void ldexp(Int exp);
+    void modf(Float *f);
+
+    void exp();
+    void log();
+    void log10();
+    void pow(Float &f);
+    void sqrt();
+    void cos();
+    void sin();
+    void tan();
+    void acos();
+    void asin();
+    void atan();
+    void atan2(Float &f);
+    void cosh();
+    void sinh();
+    void tanh();
+
     unsigned short high;	/* high word of float */
     Uint low;			/* low longword of float */
 };				/* 1 sign, 11 exponent, 36 mantissa */
 
 # define FLT_ISZERO(h, l)	((h) == 0)
-# define FLT_ISNEG(h, l)	((h) & 0x8000)
 # define FLT_ISONE(h, l)	((h) == 0x3ff0 && (l) == 0L)
 # define FLT_ISMONE(h, l)	((h) == 0xbff0 && (l) == 0L)
-# define FLT_ZERO(h, l)		((h) = 0, (l) = 0L)
-# define FLT_ONE(h, l)		((h) = 0x3ff0, (l) = 0L)
-# define FLT_ABS(h, l)		((h) &= ~0x8000)
-# define FLT_NEG(h, l)		((h) ^= 0x8000)
 
-extern bool	flt_atof	(char**, xfloat*);
-extern void	flt_ftoa	(xfloat*, char*);
-extern void	flt_itof	(Int, xfloat*);
-extern Int	flt_ftoi	(xfloat*);
-
-extern void	flt_add		(xfloat*, xfloat*);
-extern void	flt_sub		(xfloat*, xfloat*);
-extern void	flt_mult	(xfloat*, xfloat*);
-extern void	flt_div		(xfloat*, xfloat*);
-extern int	flt_cmp		(xfloat*, xfloat*);
-extern void	flt_floor	(xfloat*);
-extern void	flt_ceil	(xfloat*);
-extern void	flt_fmod	(xfloat*, xfloat*);
-extern Int	flt_frexp	(xfloat*);
-extern void	flt_ldexp	(xfloat*, Int);
-extern void	flt_modf	(xfloat*, xfloat*);
-
-extern void	flt_exp		(xfloat*);
-extern void	flt_log		(xfloat*);
-extern void	flt_log10	(xfloat*);
-extern void	flt_pow		(xfloat*, xfloat*);
-extern void	flt_sqrt	(xfloat*);
-extern void	flt_cos		(xfloat*);
-extern void	flt_sin		(xfloat*);
-extern void	flt_tan		(xfloat*);
-extern void	flt_acos	(xfloat*);
-extern void	flt_asin	(xfloat*);
-extern void	flt_atan	(xfloat*);
-extern void	flt_atan2	(xfloat*, xfloat*);
-extern void	flt_cosh	(xfloat*);
-extern void	flt_sinh	(xfloat*);
-extern void	flt_tanh	(xfloat*);
-
-extern xfloat max_int, thousand, thousandth;
+extern Float max_int, thousand, thousandth;

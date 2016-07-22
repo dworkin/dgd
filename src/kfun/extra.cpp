@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -392,7 +392,7 @@ int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
     int matches;
     char *s;
     Int i;
-    xfloat flt;
+    Float flt;
     bool skip;
     Value *top, *v;
 
@@ -592,7 +592,7 @@ int kf_old_sscanf(Frame *f, int nargs, kfunc *kf)
 		--slen;
 	    }
 	    s = x;
-	    if (!flt_atof(&s, &flt) || s == x) {
+	    if (!Float::atof(&s, &flt) || s == x) {
 		goto no_match;
 	    }
 	    slen -= (s - x);
@@ -668,7 +668,7 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
     int matches;
     char *s;
     Int i;
-    xfloat flt;
+    Float flt;
     bool skip;
     Value *top, *elts;
     Array *a;
@@ -860,7 +860,7 @@ int kf_sscanf(Frame *f, int nargs, kfunc *kf)
 		--slen;
 	    }
 	    s = x;
-	    if (!flt_atof(&s, &flt) || s == x) {
+	    if (!Float::atof(&s, &flt) || s == x) {
 		goto no_match;
 	    }
 	    slen -= (s - x);

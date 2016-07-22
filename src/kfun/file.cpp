@@ -197,7 +197,7 @@ static void save_array(savecontext *x, Array *a)
     char buf[18];
     Uint i;
     Value *v;
-    xfloat flt;
+    Float flt;
 
     i = arr_put(a, x->narrays);
     if (i < x->narrays) {
@@ -223,7 +223,7 @@ static void save_array(savecontext *x, Array *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt_ftoa(&flt, buf);
+	    flt.ftoa(buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
 	    put(x, buf, 13);
@@ -265,7 +265,7 @@ static void save_mapping(savecontext *x, Array *a)
     Uint i;
     uindex n;
     Value *v;
-    xfloat flt;
+    Float flt;
 
     i = arr_put(a, x->narrays);
     if (i < x->narrays) {
@@ -315,7 +315,7 @@ static void save_mapping(savecontext *x, Array *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt_ftoa(&flt, buf);
+	    flt.ftoa(buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
 	    put(x, buf, 13);
@@ -343,7 +343,7 @@ static void save_mapping(savecontext *x, Array *a)
 
 	case T_FLOAT:
 	    GET_FLT(v, flt);
-	    flt_ftoa(&flt, buf);
+	    flt.ftoa(buf);
 	    put(x, buf, strlen(buf));
 	    sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
 	    put(x, buf, 13);
@@ -385,7 +385,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
     dinherit *inh;
     char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -453,7 +453,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 
 		    case T_FLOAT:
 			GET_FLT(var, flt);
-			flt_ftoa(&flt, buf);
+			flt.ftoa(buf);
 			put(&x, buf, strlen(buf));
 			sprintf(buf, "=%04x%08lx", flt.high, (long) flt.low);
 			put(&x, buf, 13);
@@ -603,7 +603,7 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
     char *p;
     int i;
     char *q;
-    xfloat flt;
+    Float flt;
     bool isfloat;
 
     q = buf;
@@ -661,7 +661,7 @@ static char *restore_number(restcontext *x, char *buf, Value *val)
 	PUT_FLTVAL(val, flt);
 	return p + 1;
     } else if (isfloat) {
-	if (!flt_atof(&q, &flt)) {
+	if (!Float::atof(&q, &flt)) {
 	    restore_error(x, "float too large");
 	}
 	PUT_FLTVAL(val, flt);

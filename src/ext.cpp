@@ -123,7 +123,7 @@ static void ext_int_putval(Value *val, Int i)
  */
 static long double ext_float_getval(Value *val)
 {
-    xfloat flt;
+    Float flt;
     double d;
 
     GET_FLT(val, flt);
@@ -143,7 +143,7 @@ static long double ext_float_getval(Value *val)
 static int ext_float_putval(Value *val, long double ld)
 {
     double d;
-    xfloat flt;
+    Float flt;
     unsigned short sign;
     int e;
     Uuint m;

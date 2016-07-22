@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1367,7 +1367,7 @@ Array *d_list_callouts(Dataspace *host, Dataspace *data)
     Value *v, *v2, *elts;
     Array *list, *a;
     uindex max_args;
-    xfloat flt;
+    Float flt;
 
     if (data->ncallouts == 0) {
 	return arr_new(host, 0L);

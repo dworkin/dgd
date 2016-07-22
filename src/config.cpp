@@ -1676,15 +1676,15 @@ unsigned short conf_array_size()
  */
 static void putval(Value *v, size_t n)
 {
-    xfloat f1, f2;
+    Float f1, f2;
 
     if (n <= 0x7fffffffL) {
 	PUT_INTVAL(v, n);
     } else {
-	flt_itof((Int) (n >> 31), &f1);
-	flt_ldexp(&f1, (Int) 31);
-	flt_itof((Int) (n & 0x7fffffffL), &f2);
-	flt_add(&f1, &f2);
+	Float::itof(n >> 31, &f1);
+	f1.ldexp(31);
+	Float::itof(n & 0x7fffffffL, &f2);
+	f1.add(f2);
 	PUT_FLTVAL(v, f1);
     }
 }

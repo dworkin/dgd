@@ -34,9 +34,9 @@ struct flt {
 
 /* constants */
 
-xfloat max_int =	{ 0x41df, 0xffffffc0L };	/* 0x7fffffff */
-xfloat thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
-xfloat thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
+Float max_int =		{ 0x41df, 0xffffffc0L };	/* 0x7fffffff */
+Float thousand =	{ 0x408f, 0x40000000L };	/* 1e3 */
+Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 
 # define FLT_CONST(s, e, h, l)	{ (unsigned short) (s) << 15,		\
 				  (e) + BIAS,				\
@@ -582,9 +582,9 @@ static Int f_ftoi(flt *a)
 
 /*
  * NAME:	f_ftoxf()
- * DESCRIPTION:	convert flt to xfloat
+ * DESCRIPTION:	convert flt to Float
  */
-static void f_ftoxf(flt *a, xfloat *f)
+static void f_ftoxf(flt *a, Float *f)
 {
     unsigned short exp;
     unsigned short high;
@@ -626,9 +626,9 @@ static void f_ftoxf(flt *a, xfloat *f)
 
 /*
  * NAME:	f_xftof()
- * DESCRIPTION:	convert xfloat to flt
+ * DESCRIPTION:	convert Float to flt
  */
-static void f_xftof(xfloat *f, flt *a)
+static void f_xftof(Float *f, flt *a)
 {
     unsigned short exp;
 
@@ -672,12 +672,12 @@ static flt tenths[] = {
 };
 
 /*
- * NAME:	float->atof()
+ * NAME:	Float::atof()
  * DESCRIPTION:	Convert a string to a float.  The string must be in the
  *		proper format.  Return TRUE if the operation was successful,
  *		FALSE otherwise.
  */
-bool flt_atof(char **s, xfloat *f)
+bool Float::atof(char **s, Float *f)
 {
     flt a = { 0 };
     flt b, c, *t;
@@ -785,10 +785,10 @@ bool flt_atof(char **s, xfloat *f)
 }
 
 /*
- * NAME:	float->ftoa()
+ * NAME:	Float::ftoa()
  * DESCRIPTION:	convert a float to a string
  */
-void flt_ftoa(xfloat *f, char *buffer)
+void Float::ftoa(char *buffer)
 {
     unsigned short i;
     short e;
@@ -798,7 +798,7 @@ void flt_ftoa(xfloat *f, char *buffer)
     char digits[10];
     flt a;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.exp == 0) {
 	strcpy(buffer, "0");
 	return;
@@ -907,7 +907,7 @@ void flt_ftoa(xfloat *f, char *buffer)
  * NAME:	float->itof()
  * DESCRIPTION:	convert an integer to a float
  */
-void flt_itof(Int i, xfloat *f)
+void Float::itof(Int i, Float *f)
 {
     flt a;
 
@@ -916,141 +916,141 @@ void flt_itof(Int i, xfloat *f)
 }
 
 /*
- * NAME:	float->ftoi()
+ * NAME:	Float::ftoi()
  * DESCRIPTION:	convert a float to an integer
  */
-Int flt_ftoi(xfloat *f)
+Int Float::ftoi()
 {
     flt a;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     f_round(&a);
     return f_ftoi(&a);
 }
 
 /*
- * NAME:	float->add()
- * DESCRIPTION:	add two floats
+ * NAME:	Float::add()
+ * DESCRIPTION:	add a Float
  */
-void flt_add(xfloat *f1, xfloat *f2)
+void Float::add(Float &f)
 {
     flt a, b;
 
-    f_xftof(f2, &b);
-    f_xftof(f1, &a);
+    f_xftof(&f, &b);
+    f_xftof(this, &a);
     f_add(&a, &b);
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->sub()
- * DESCRIPTION:	subtract a float from a float
+ * NAME:	Float::sub()
+ * DESCRIPTION:	subtract a Float
  */
-void flt_sub(xfloat *f1, xfloat *f2)
+void Float::sub(Float &f)
 {
     flt a, b;
 
-    f_xftof(f2, &b);
-    f_xftof(f1, &a);
+    f_xftof(&f, &b);
+    f_xftof(this, &a);
     f_sub(&a, &b);
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->mult()
- * DESCRIPTION:	multiply two floats
+ * NAME:	Float::mult()
+ * DESCRIPTION:	multiply by a Float
  */
-void flt_mult(xfloat *f1, xfloat *f2)
+void Float::mult(Float &f)
 {
     flt a, b;
 
-    f_xftof(f1, &a);
-    f_xftof(f2, &b);
+    f_xftof(this, &a);
+    f_xftof(&f, &b);
     f_mult(&a, &b);
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->div()
- * DESCRIPTION:	divide a float by a float
+ * NAME:	Float::div()
+ * DESCRIPTION:	divide by a Float
  */
-void flt_div(xfloat *f1, xfloat *f2)
+void Float::div(Float &f)
 {
     flt a, b;
 
-    f_xftof(f2, &b);
-    f_xftof(f1, &a);
+    f_xftof(&f, &b);
+    f_xftof(this, &a);
     f_div(&a, &b);
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->cmp()
- * DESCRIPTION:	compare two xfloats
+ * NAME:	Float::cmp()
+ * DESCRIPTION:	compare with a Float
  */
-int flt_cmp(xfloat *f1, xfloat *f2)
+int Float::cmp(Float &f)
 {
-    if ((short) (f1->high ^ f2->high) < 0) {
-	return ((short) f1->high < 0) ? -1 : 1;
+    if ((short) (high ^ f.high) < 0) {
+	return ((short) high < 0) ? -1 : 1;
     }
 
-    if (f1->high == f2->high && f1->low == f2->low) {
+    if (high == f.high && low == f.low) {
 	return 0;
     }
-    if (f1->high <= f2->high && (f1->high < f2->high || f1->low < f2->low)) {
-	return ((short) f1->high < 0) ? 1 : -1;
+    if (high <= f.high && (high < f.high || low < f.low)) {
+	return ((short) high < 0) ? 1 : -1;
     }
-    return ((short) f1->high < 0) ? -1 : 1;
+    return ((short) high < 0) ? -1 : 1;
 }
 
 /*
- * NAME:	float->floor()
+ * NAME:	Float::floor()
  * DESCRIPTION:	round a float downwards
  */
-void flt_floor(xfloat *f)
+void Float::floor()
 {
     flt a, b;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     b = a;
     f_trunc(&b);
     if (b.sign != 0 && f_cmp(&a, &b) != 0) {
 	f_sub(&b, &one);
     }
-    f_ftoxf(&b, f);
+    f_ftoxf(&b, this);
 }
 
 /*
- * NAME:	float->ceil()
+ * NAME:	Float::ceil()
  * DESCRIPTION:	round a float upwards
  */
-void flt_ceil(xfloat *f)
+void Float::ceil()
 {
     flt a, b;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     b = a;
     f_trunc(&b);
     if (b.sign == 0 && f_cmp(&a, &b) != 0) {
 	f_add(&b, &one);
     }
-    f_ftoxf(&b, f);
+    f_ftoxf(&b, this);
 }
 
 /*
- * NAME:	float->fmod()
+ * NAME:	Float::fmod()
  * DESCRIPTION:	perform fmod
  */
-void flt_fmod(xfloat *f1, xfloat *f2)
+void Float::fmod(Float &f)
 {
     flt a, b, c;
     unsigned short sign;
 
-    f_xftof(f2, &b);
+    f_xftof(&f, &b);
     if (b.exp == 0) {
 	f_edom();
     }
-    f_xftof(f1, &a);
+    f_xftof(this, &a);
     if (a.exp == 0) {
 	return;
     }
@@ -1067,55 +1067,55 @@ void flt_fmod(xfloat *f1, xfloat *f2)
     }
 
     a.sign = sign;
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->frexp()
+ * NAME:	Float::frexp()
  * DESCRIPTION:	split a float into a fraction and an exponent
  */
-Int flt_frexp(xfloat *f)
+Int Float::frexp()
 {
     short e;
 
-    if (f->high == 0) {
+    if (high == 0) {
 	return 0;
     }
-    e = ((f->high & 0x7ff0) >> 4) - 1022;
-    f->high = (f->high & 0x800f) | (1022 << 4);
+    e = ((high & 0x7ff0) >> 4) - 1022;
+    high = (high & 0x800f) | (1022 << 4);
     return e;
 }
 
 /*
- * NAME:	float->ldexp()
+ * NAME:	Float::ldexp()
  * DESCRIPTION:	make a float from a fraction and an exponent
  */
-void flt_ldexp(xfloat *f, Int exp)
+void Float::ldexp(Int exp)
 {
-    if (f->high == 0) {
+    if (high == 0) {
 	return;
     }
-    exp += (f->high & 0x7ff0) >> 4;
+    exp += (high & 0x7ff0) >> 4;
     if (exp <= 0) {
-	f->high = 0;
-	f->low = 0;
+	high = 0;
+	low = 0;
 	return;
     }
     if (exp > 1023 + 1023) {
 	f_erange();
     }
-    f->high = (f->high & 0x800f) | (exp << 4);
+    high = (high & 0x800f) | (exp << 4);
 }
 
 /*
- * NAME:	float->modf()
+ * NAME:	Float::modf()
  * DESCRIPTION:	split float into fraction and integer part
  */
-void flt_modf(xfloat *f1, xfloat *f2)
+void Float::modf(Float *f)
 {
     flt a, b;
 
-    f_xftof(f1, &a);
+    f_xftof(this, &a);
     if (a.exp < BIAS) {
 	b.exp = 0;
     } else {
@@ -1123,8 +1123,8 @@ void flt_modf(xfloat *f1, xfloat *f2)
 	f_trunc(&b);
 	f_sub(&a, &b);
     }
-    f_ftoxf(&a, f1);
-    f_ftoxf(&b, f2);
+    f_ftoxf(&a, this);
+    f_ftoxf(&b, f);
 }
 
 
@@ -1222,14 +1222,14 @@ static void f_exp(flt *a)
 }
 
 /*
- * NAME:	float->exp()
+ * NAME:	Float::exp()
  * DESCRIPTION:	exp(f)
  */
-void flt_exp(xfloat *f)
+void Float::exp()
 {
     flt a;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (f_cmp(&a, &maxlog) > 0) {
 	/* overflow */
 	f_erange();
@@ -1241,7 +1241,7 @@ void flt_exp(xfloat *f)
 	f_exp(&a);
     }
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 static flt logp[] = {
@@ -1351,28 +1351,28 @@ static void f_log(flt *a)
 }
 
 /*
- * NAME:	float->log()
+ * NAME:	Float::log()
  * DESCRIPTION:	log(f)
  */
-void flt_log(xfloat *f)
+void Float::log()
 {
     flt a;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
 	f_edom();
     }
 
     f_log(&a);
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->log10()
+ * NAME:	Float::log10()
  * DESCRIPTION:	log10(f)
  */
-void flt_log10(xfloat *f)
+void Float::log10()
 {
     static flt l102a = FLT_CONST(0, -2, 0x4000, 0x0000000L);
     static flt l102b = FLT_CONST(1, -7, 0x77d9, 0x5ec10c0L);
@@ -1380,7 +1380,7 @@ void flt_log10(xfloat *f)
     flt a, b, c, d, e;
     short n;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.sign != 0 || a.exp == 0) {
 	/* <= 0.0 */
 	f_edom();
@@ -1459,7 +1459,7 @@ void flt_log10(xfloat *f)
 	f_add(&b, &d);
     }
 
-    f_ftoxf(&b, f);
+    f_ftoxf(&b, this);
 }
 
 /*
@@ -1512,7 +1512,7 @@ static void f_powi(flt *a, int n)
 	    f_mult(&b, a);
 	}
     }
-    /* range of b is checked when converting back to xfloat */
+    /* range of b is checked when converting back to Float */
 
     b.sign = sign;
     if (neg) {
@@ -1524,23 +1524,23 @@ static void f_powi(flt *a, int n)
 }
 
 /*
- * NAME:	float->pow()
+ * NAME:	Float::pow()
  * DESCRIPTION:	pow(f1, f2)
  */
-void flt_pow(xfloat *f1, xfloat *f2)
+void Float::pow(Float &f)
 {
     flt a, b, c;
     unsigned short sign;
 
-    f_xftof(f1, &a);
-    f_xftof(f2, &b);
+    f_xftof(this, &a);
+    f_xftof(&f, &b);
 
     c = b;
     f_trunc(&c);
     if (f_cmp(&b, &c) == 0 && b.exp < 0x800e) {
 	/* integer power < 32768 */
 	f_powi(&a, (int) f_ftoi(&c));
-	f_ftoxf(&a, f1);
+	f_ftoxf(&a, this);
 	return;
     }
 
@@ -1572,7 +1572,7 @@ void flt_pow(xfloat *f1, xfloat *f2)
     f_exp(&a);
     a.sign = sign;
 
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
@@ -1619,19 +1619,19 @@ static void f_sqrt(flt *a)
 }
 
 /*
- * NAME:	float->sqrt()
+ * NAME:	Float::sqrt()
  * DESCRIPTION:	sqrt(f)
  */
-void flt_sqrt(xfloat *f)
+void Float::sqrt()
 {
     flt a;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.sign != 0) {
 	f_edom();
     }
     f_sqrt(&a);
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 static flt sincof[] = {
@@ -1655,16 +1655,16 @@ static flt sc2 = FLT_CONST(0, -25, 0x4442, 0xd000000L);
 static flt sc3 = FLT_CONST(0, -49, 0x8469, 0x898cc51L);
 
 /*
- * NAME:	float->cos()
+ * NAME:	Float::cos()
  * DESCRIPTION:	cos(f)
  */
-void flt_cos(xfloat *f)
+void Float::cos()
 {
     flt a, b, c;
     int n;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.exp >= 0x801d) {
 	f_edom();
     }
@@ -1717,20 +1717,20 @@ void flt_cos(xfloat *f)
     f_add(&a, &b);
     a.sign ^= sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->sin()
+ * NAME:	Float::sin()
  * DESCRIPTION:	sin(f)
  */
-void flt_sin(xfloat *f)
+void Float::sin()
 {
     flt a, b, c;
     int n;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.exp >= 0x801d) {
 	f_edom();
     }
@@ -1781,14 +1781,14 @@ void flt_sin(xfloat *f)
     f_add(&a, &b);
     a.sign ^= sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->tan()
+ * NAME:	Float::tan()
  * DESCRIPTION:	float(f)
  */
-void flt_tan(xfloat *f)
+void Float::tan()
 {
     static flt p[] = {
 	FLT_CONST(1, 13, 0x992d, 0x8d24f3fL),
@@ -1808,7 +1808,7 @@ void flt_tan(xfloat *f)
     int n;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (a.exp >= 0x801d) {
 	f_edom();
     }
@@ -1853,7 +1853,7 @@ void flt_tan(xfloat *f)
     }
     a.sign ^= sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 static flt ascp[] = {
@@ -1873,16 +1873,16 @@ static flt ascq[] = {
 };
 
 /*
- * NAME:	float->acos()
+ * NAME:	Float::acos()
  * DESCRIPTION:	acos(f)
  */
-void flt_acos(xfloat *f)
+void Float::acos()
 {
     flt a, b, c;
     unsigned short sign;
     bool flag;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     sign = a.sign;
     a.sign = 0;
     if (f_cmp(&a, &one) > 0) {
@@ -1934,20 +1934,20 @@ void flt_acos(xfloat *f)
 	}
     }
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->asin()
+ * NAME:	Float::asin()
  * DESCRIPTION:	asin(f)
  */
-void flt_asin(xfloat *f)
+void Float::asin()
 {
     flt a, b, c;
     unsigned short sign;
     bool flag;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     sign = a.sign;
     a.sign = 0;
     if (f_cmp(&a, &one) > 0) {
@@ -1990,7 +1990,7 @@ void flt_asin(xfloat *f)
     }
     a.sign ^= sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 static flt atp[] = {
@@ -2011,15 +2011,15 @@ static flt t3p8 = FLT_CONST(0,  1, 0x3504, 0xf333f9dL);
 static flt tp8 =  FLT_CONST(0, -2, 0xa827, 0x999fcefL);
 
 /*
- * NAME:	float->atan()
+ * NAME:	Float::atan()
  * DESCRIPTION:	atan(f)
  */
-void flt_atan(xfloat *f)
+void Float::atan()
 {
     flt a, b, c, d, e;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     sign = a.sign;
     a.sign = 0;
 
@@ -2051,20 +2051,20 @@ void flt_atan(xfloat *f)
     f_add(&a, &c);
     a.sign ^= sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->atan2()
+ * NAME:	Float::atan2()
  * DESCRIPTION:	atan2(f)
  */
-void flt_atan2(xfloat *f1, xfloat *f2)
+void Float::atan2(Float &f)
 {
     flt a, b, c, d, e;
     unsigned short asign, bsign;
 
-    f_xftof(f1, &a);
-    f_xftof(f2, &b);
+    f_xftof(this, &a);
+    f_xftof(&f, &b);
 
     if (b.exp == 0) {
 	if (a.exp == 0) {
@@ -2074,14 +2074,14 @@ void flt_atan2(xfloat *f1, xfloat *f2)
 	a.exp = pio2.exp;
 	a.high = pio2.high;
 	a.low = pio2.low;
-	f_ftoxf(&a, f1);
+	f_ftoxf(&a, this);
 	return;
     }
     if (a.exp == 0) {
 	if (b.sign != 0) {
 	    a = pi;
 	}
-	f_ftoxf(&a, f1);
+	f_ftoxf(&a, this);
 	return;
     }
 
@@ -2126,18 +2126,18 @@ void flt_atan2(xfloat *f1, xfloat *f2)
 	}
     }
 
-    f_ftoxf(&a, f1);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->cosh()
+ * NAME:	Float::cosh()
  * DESCRIPTION:	cosh(f)
  */
-void flt_cosh(xfloat *f)
+void Float::cosh()
 {
     flt a, b;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     a.sign = 0;
     if (f_cmp(&a, &maxlog) > 0) {
 	f_erange();
@@ -2149,14 +2149,14 @@ void flt_cosh(xfloat *f)
     f_add(&a, &b);
     --a.exp;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->sinh()
+ * NAME:	Float::sinh()
  * DESCRIPTION:	sinh(f)
  */
-void flt_sinh(xfloat *f)
+void Float::sinh()
 {
     static flt p[] = {
 	FLT_CONST(1, -1, 0x9435, 0xfe8bb3cL),
@@ -2172,7 +2172,7 @@ void flt_sinh(xfloat *f)
     flt a, b, c, d;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     if (f_cmp(&a, &maxlog) > 0 || f_cmp(&a, &minlog) < 0) {
 	f_erange();
     }
@@ -2199,14 +2199,14 @@ void flt_sinh(xfloat *f)
 	f_add(&a, &b);
     }
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }
 
 /*
- * NAME:	float->tanh()
+ * NAME:	Float::tanh()
  * DESCRIPTION:	tanh(f)
  */
-void flt_tanh(xfloat *f)
+void Float::tanh()
 {
     static flt p[] = {
 	FLT_CONST(1, -1, 0xedc5, 0xbaafd6fL),
@@ -2224,7 +2224,7 @@ void flt_tanh(xfloat *f)
     flt a, b, c, d;
     unsigned short sign;
 
-    f_xftof(f, &a);
+    f_xftof(this, &a);
     sign = a.sign;
     a.sign = 0;
 
@@ -2253,5 +2253,5 @@ void flt_tanh(xfloat *f)
     }
     a.sign = sign;
 
-    f_ftoxf(&a, f);
+    f_ftoxf(&a, this);
 }

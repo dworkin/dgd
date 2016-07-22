@@ -231,7 +231,7 @@ char pt_call_touch[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_INT,
 int kf_call_touch(Frame *f, int n, kfunc *kf)
 {
     Object *obj;
-    xfloat flt;
+    Float flt;
     Value val, *elts;
 
     UNREFERENCED_PARAMETER(n);
@@ -1244,7 +1244,7 @@ int kf_millitime(Frame *f, int n, kfunc *kf)
 {
     Array *a;
     unsigned short milli;
-    xfloat flt;
+    Float flt;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1252,8 +1252,8 @@ int kf_millitime(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 2);
     a = arr_new(f->data, 2L);
     PUT_INTVAL(&a->elts[0], P_mtime(&milli));
-    flt_itof((Int) milli, &flt);
-    flt_mult(&flt, &thousandth);
+    Float::itof((Int) milli, &flt);
+    flt.mult(thousandth);
     PUT_FLTVAL(&a->elts[1], flt);
     PUSH_ARRVAL(f, a);
     return 0;
@@ -1275,7 +1275,7 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
 {
     Int delay;
     Uint mdelay;
-    xfloat flt1, flt2;
+    Float flt1, flt2;
     uindex handle;
 
     UNREFERENCED_PARAMETER(kf);
@@ -1289,14 +1289,14 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
 	mdelay = 0xffff;
     } else if (f->sp[nargs - 2].type == T_FLOAT) {
 	GET_FLT(&f->sp[nargs - 2], flt1);
-	if (FLT_ISNEG(flt1.high, flt1.low) || flt_cmp(&flt1, &max_int) > 0) {
+	if (flt1.negative() || flt1.cmp(max_int) > 0) {
 	    /* delay < 0.0 or delay > MAX_INT */
 	    return 2;
 	}
-	flt_modf(&flt1, &flt2);
-	delay = flt_ftoi(&flt2);
-	flt_mult(&flt1, &thousand);
-	mdelay = flt_ftoi(&flt1);
+	flt1.modf(&flt2);
+	delay = flt2.ftoi();
+	flt1.mult(thousand);
+	mdelay = flt1.ftoi();
     } else {
 	return 2;
     }
@@ -1337,7 +1337,7 @@ int kf_remove_call_out(Frame *f, int n, kfunc *kf)
 {
     Int delay;
     unsigned short mdelay;
-    xfloat flt1, flt2;
+    Float flt1, flt2;
 
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
@@ -1348,10 +1348,10 @@ int kf_remove_call_out(Frame *f, int n, kfunc *kf)
     i_add_ticks(f, 10);
     delay = d_del_call_out(f->data, (Uint) f->sp->u.number, &mdelay);
     if (mdelay != 0xffff) {
-	flt_itof(delay, &flt1);
-	flt_itof(mdelay, &flt2);
-	flt_mult(&flt2, &thousandth);
-	flt_add(&flt1, &flt2);
+	Float::itof(delay, &flt1);
+	Float::itof(mdelay, &flt2);
+	flt2.mult(thousandth);
+	flt1.add(flt2);
 	PUT_FLTVAL(f->sp, flt1);
     } else {
 	PUT_INT(f->sp, delay);
@@ -1787,7 +1787,7 @@ char pt_new_function[] = { C_STATIC | C_ELLIPSIS, 1, 1, 0, 8, T_OBJECT,
 int kf_new_function(Frame *f, int nargs, kfunc *kf)
 {
     Array *a;
-    xfloat flt;
+    Float flt;
     Value *v, *elts;
     Object *obj;
 
