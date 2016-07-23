@@ -39,9 +39,9 @@ struct node {
 
 # define NFLT_GET(n, f)	((f).high = (n)->l.fhigh, (f).low = (n)->r.flow)
 # define NFLT_PUT(n, f)	((n)->l.fhigh = (f).high, (n)->r.flow = (f).low)
-# define NFLT_ISZERO(n)	FLT_ISZERO((n)->l.fhigh, (n)->r.flow)
-# define NFLT_ISONE(n)	FLT_ISONE((n)->l.fhigh, (n)->r.flow)
-# define NFLT_ISMONE(n)	FLT_ISMONE((n)->l.fhigh, (n)->r.flow)
+# define NFLT_ISZERO(n)	FLOAT_ISZERO((n)->l.fhigh, (n)->r.flow)
+# define NFLT_ISONE(n)	FLOAT_ISONE((n)->l.fhigh, (n)->r.flow)
+# define NFLT_ISMONE(n)	FLOAT_ISMONE((n)->l.fhigh, (n)->r.flow)
 
 # define F_CONST	0x01	/* constant expression */
 # define F_ENTRY	0x02	/* (first) statement has case/default entry */

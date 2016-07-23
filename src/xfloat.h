@@ -76,8 +76,8 @@ public:
     Uint low;			/* low longword of float */
 };				/* 1 sign, 11 exponent, 36 mantissa */
 
-# define FLT_ISZERO(h, l)	((h) == 0)
-# define FLT_ISONE(h, l)	((h) == 0x3ff0 && (l) == 0L)
-# define FLT_ISMONE(h, l)	((h) == 0xbff0 && (l) == 0L)
+# define FLOAT_ISZERO(h, l)	((h) == 0)
+# define FLOAT_ISONE(h, l)	((h) == 0x3ff0 && (l) == 0L)
+# define FLOAT_ISMONE(h, l)	((h) == 0xbff0 && (l) == 0L)
 
 extern Float max_int, thousand, thousandth;

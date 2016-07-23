@@ -42,7 +42,7 @@ Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 				  (e) + BIAS,				\
 				  0x4000 + ((h) >> 2),			\
 				  (((Uint) (h) << 29) +			\
-				   ((l) << 1) + 2) & 0x7ffffffcL }
+				   ((l) << 1) + ((l) & 0x2)) & 0x7ffffffcL }
 
 static flt half =	FLT_CONST(0,  -1, 0x0000, 0x0000000L);
 static flt one =	FLT_CONST(0,   0, 0x0000, 0x0000000L);
@@ -137,9 +137,9 @@ static void f_add(flt *a, flt *b)
 	}
 
 	/*
-	 * rounding off
+	 * rounding
 	 */
-	if ((Int) (l += 2) < 0 && (short) ++h < 0) {
+	if ((Int) (l += (l >> 1) & 0x2) < 0 && (short) ++h < 0) {
 	    h >>= 1;
 	    a->exp++;
 	}
@@ -248,9 +248,9 @@ static void f_sub(flt *a, flt *b)
 	}
 
 	/*
-	 * rounding off
+	 * rounding
 	 */
-	if ((Int) (l += 2) < 0 && (short) ++h < 0) {
+	if ((Int) (l += (l >> 1) & 0x2) < 0 && (short) ++h < 0) {
 	    h >>= 1;
 	    a->exp++;
 	}
@@ -315,9 +315,9 @@ static void f_mult(flt *a, flt *b)
     l &= 0x7fffffffL;
 
     /*
-     * rounding off
+     * rounding
      */
-    if ((Int) (l += 2) < 0 && ++ah < 0) {
+    if ((Int) (l += (l >> 1) & 0x2) < 0 && ++ah < 0) {
 	ah = (unsigned short) ah >> 1;
 	a->exp++;
     }
@@ -413,9 +413,9 @@ static void f_div(flt *a, flt *b)
     }
 
     /*
-     * rounding off
+     * rounding
      */
-    if ((Int) (low += 2) < 0 && (short) ++high < 0) {
+    if ((Int) (low += (low >> 1) & 0x2) < 0 && (short) ++high < 0) {
 	high >>= 1;
 	a->exp++;
     }
@@ -459,23 +459,6 @@ static void f_trunc(flt *a)
     } else if (a->exp < BIAS + NBITS - 1) {
 	a->high &= maskh[a->exp - BIAS];
 	a->low &= maskl[a->exp - BIAS];
-    }
-}
-
-/*
- * NAME:	f_37bits()
- * DESCRIPTION:	round a flt to 37 binary digits of precision
- */
-static void f_37bits(flt *a)
-{
-    if ((Int) (a->low += 0x100) < 0) {
-	a->low = 0;
-	if ((short) ++(a->high) < 0) {
-	    a->high >>= 1;
-	    a->exp++;
-	}
-    } else {
-	a->low &= 0xfffffe00L;
     }
 }
 
@@ -600,8 +583,8 @@ static void f_ftoxf(flt *a, Float *f)
     high = a->high;
     low = a->low;
 
-    /* mantissa */
-    if ((Int) (low += 0x100) < 0) {
+    /* rounding */
+    if ((Int) (low += (low >> 1) & 0x100) < 0) {
 	low = 0;
 	if ((short) ++high < 0) {
 	    high >>= 1;
@@ -837,7 +820,6 @@ void Float::ftoa(char *buffer)
 	e = -e;
     }
     f_mult(&a, &tens[3]);
-    f_37bits(&a);
 
     /*
      * obtain digits

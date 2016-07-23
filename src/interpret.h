@@ -173,8 +173,8 @@
 # define PUT_LWOVAL_NOREF(v, o)	((v)->u.array = (o), (v)->type = T_LWOBJECT)
 # define PUT_LWO(v, o)		(arr_ref((v)->u.array = (o)))
 
-# define VFLT_ISZERO(v)	FLT_ISZERO((v)->oindex, (v)->u.objcnt)
-# define VFLT_ISONE(v)	FLT_ISONE((v)->oindex, (v)->u.objcnt)
+# define VFLT_ISZERO(v)	FLOAT_ISZERO((v)->oindex, (v)->u.objcnt)
+# define VFLT_ISONE(v)	FLOAT_ISONE((v)->oindex, (v)->u.objcnt)
 # define VFLT_HASH(v)	((v)->oindex ^ (v)->u.objcnt)
 
 # define DESTRUCTED(v)	(OBJR((v)->oindex)->count != (v)->u.objcnt)
