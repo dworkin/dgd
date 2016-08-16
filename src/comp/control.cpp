@@ -1809,8 +1809,8 @@ static void ctrl_mksymbs()
 
     /* initialize */
     symtab = newctrl->symbols = ALLOC(dsymbol, nsymbs);
-    for (i = nsymbs; i > 0; --i) {
-	symtab->next = -1;	/* mark as unused */
+    for (i = 0; i < nsymbs; i++) {
+	symtab->next = i;	/* mark as unused */
 	symtab++;
     }
     symtab = newctrl->symbols;
@@ -1864,13 +1864,13 @@ static void ctrl_mksymbs()
 		 * all non-private functions are put into the hash table
 		 */
 		x = Hashtab::hashstr(name, VFMERGEHASHSZ) % nsymbs;
-		if (symtab[x].next == (unsigned short) -1) {
+		if (symtab[x].next == x) {
 		    /*
 		     * new entry
 		     */
 		    symtab[x].inherit = i;
 		    symtab[x].index = n;
-		    symtab[x].next = x;
+		    symtab[x].next = -1;
 		} else {
 		    /*
 		     * collision
@@ -1892,15 +1892,12 @@ static void ctrl_mksymbs()
     n = 0;
     for (i = 0; i < ncoll; i++) {
 	/* find a free slot */
-	while (symtab[n].next != (unsigned short) -1) {
+	while (symtab[n].next != n) {
 	    n++;
 	}
 	x = coll[i].next;
 	/* add new entry to list */
 	symtab[n] = symtab[x];
-	if (symtab[n].next == x) {
-	    symtab[n].next = n;	/* adjust list terminator */
-	}
 	symtab[x].inherit = coll[i].inherit;
 	symtab[x].index = coll[i].index;
 	symtab[x].next = n++;	/* link to previous slot */
@@ -1969,7 +1966,7 @@ dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
 	/* found it */
 	return (f->sclass & C_UNDEFINED) ? (dsymbol *) NULL : symb1;
     }
-    while (i != symb->next) {
+    while (symb->next != i && symb->next != (unsigned short) -1) {
 	symb = &symtab[i = symb->next];
 	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
 	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
