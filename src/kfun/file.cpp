@@ -1257,12 +1257,12 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
 	P_close(fd);
 	error("String too long");
     }
-    buf = (size != 0) ? ALLOCA(char, size) : (char *) NULL;
+    buf = (size != 0) ? ALLOC(char, size) : (char *) NULL;
     if (size > 0 && (size=P_read(fd, buf, (unsigned int) size)) < 0) {
 	/* read failed */
 	P_close(fd);
 	if (buf != (char *) NULL) {
-	    AFREE(buf);
+	    FREE(buf);
 	}
 	error("Read failed in read_file()");
     }
@@ -1271,7 +1271,7 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
 
     PUT_STRVAL(f->sp, str_new((char *) buf, size));
     if (buf != (char *) NULL) {
-	AFREE(buf);
+	FREE(buf);
     }
 
     return 0;
