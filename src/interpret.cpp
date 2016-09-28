@@ -1673,6 +1673,7 @@ static void i_stores(Frame *f, int skip, int assign)
     /*
      * stores to perform
      */
+    sclass = 0;
     while (assign != 0) {
 	instr = FETCH1U(pc);
 	switch (instr & I_INSTR_MASK) {
@@ -1821,6 +1822,7 @@ void i_lvalues(Frame *f)
 	    /*
 	     * lvalue spread
 	     */
+	    sclass = 0;
 	    offset = FETCH1U(pc);
 	    type = FETCH1U(pc);
 	    if (type == T_CLASS) {
