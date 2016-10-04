@@ -1556,13 +1556,14 @@ bool o_copy(Uint time)
 	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
 	    dobject = obj->index + 1;
 	    o_restore_obj(obj, FALSE, FALSE);
+	    if (time == 0) {
+		o_clean();
+		d_swapout(1);
+	    }
 	}
     }
-    o_clean();
 
     if (dobjects == 0) {
-	d_swapout(1);
-
 	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
 		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))
