@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -61,6 +61,9 @@ typedef unsigned char kfindex;
 # define OUTBUF_SIZE	8192	/* telnet output buffer size */
 # define BINBUF_SIZE	8192	/* binary/UDP input buffer size */
 # define UDPHASHSZ	10	/* # characters in UDP challenge to hash */
+
+/* swap */
+# define SWAPCHUNK	(128 * 1024 * 1024)
 
 /* interpreter */
 # define MIN_STACK	5	/* minimal stack, # arguments in driver calls */

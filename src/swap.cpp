@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -114,6 +114,22 @@ void sw_finish()
 }
 
 /*
+ * NAME:	swap->write()
+ * DESCRIPTION:	write possibly large items to the swap
+ */
+bool sw_write(int fd, void *buffer, size_t size)
+{
+    while (size > SWAPCHUNK) {
+	if (P_write(fd, buffer, SWAPCHUNK) != SWAPCHUNK) {
+	    return FALSE;
+	}
+	buffer = (char *) buffer + SWAPCHUNK;
+	size -= SWAPCHUNK;
+    }
+    return (P_write(fd, buffer, size) == size);
+}
+
+/*
  * NAME:	create()
  * DESCRIPTION:	create the swap file
  */
@@ -125,7 +141,7 @@ static void sw_create()
     p = path_native(buf, swapfile);
     P_unlink(p);
     swap = P_open(p, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, 0600);
-    if (swap < 0 || P_write(swap, cbuf, sectorsize) < 0) {
+    if (swap < 0 || !sw_write(swap, cbuf, sectorsize)) {
 	fatal("cannot create swap file \"%s\"", swapfile);
     }
 }
@@ -303,7 +319,7 @@ static header *sw_load(sector sec, bool restore, bool fill)
 		    sw_create();
 		}
 		P_lseek(swap, (off_t) (save + 1L) * sectorsize, SEEK_SET);
-		if (P_write(swap, (char *) (h + 1), sectorsize) < 0) {
+		if (!sw_write(swap, (char *) (h + 1), sectorsize)) {
 		    fatal("cannot write swap file");
 		}
 	    }
@@ -563,7 +579,7 @@ int sw_dump(char *snapshot, bool keep)
 		h->swap = sec;
 	    }
 	    P_lseek(swap, (off_t) (sec + 1L) * sectorsize, SEEK_SET);
-	    if (P_write(swap, (char *) (h + 1), sectorsize) < 0) {
+	    if (!sw_write(swap, (char *) (h + 1), sectorsize)) {
 		fatal("cannot write swap file");
 	    }
 	}
@@ -601,7 +617,7 @@ int sw_dump(char *snapshot, bool keep)
 	    if (P_read(old, cbuf, sectorsize) <= 0) {
 		fatal("cannot read swap file");
 	    }
-	    if (P_write(swap, cbuf, sectorsize) < 0) {
+	    if (!sw_write(swap, cbuf, sectorsize)) {
 		fatal("cannot write snapshot");
 	    }
 	    /* copy swap sectors */
@@ -609,7 +625,7 @@ int sw_dump(char *snapshot, bool keep)
 		if (P_read(old, cbuf, sectorsize) <= 0) {
 		    fatal("cannot read swap file");
 		}
-		if (P_write(swap, cbuf, sectorsize) < 0) {
+		if (!sw_write(swap, cbuf, sectorsize)) {
 		    fatal("cannot write snapshot");
 		}
 	    }
@@ -627,7 +643,7 @@ int sw_dump(char *snapshot, bool keep)
 
     /* write map */
     P_lseek(swap, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (P_write(swap, (char *) map, nsectors * sizeof(sector)) < 0) {
+    if (!sw_write(swap, (char *) map, nsectors * sizeof(sector))) {
 	fatal("cannot write sector map to snapshot");
     }
 
@@ -660,7 +676,7 @@ void sw_dump2(char *header, int size, bool incr)
 	offset = sectors % sectorsize;
 	sectors /= sectorsize;
 	if (offset != 0) {
-	    if (P_write(swap, cbuf, sectorsize - offset) < 0) {
+	    if (!sw_write(swap, cbuf, sectorsize - offset)) {
 		fatal("cannot extend swap file");
 	    }
 	    sectors++;
@@ -680,7 +696,7 @@ void sw_dump2(char *header, int size, bool incr)
     dh.nfree = nfree;
     dh.mfree = mfree;
     memcpy(cbuf + sectorsize - sizeof(dump_header), &dh, sizeof(dump_header));
-    if (P_write(swap, cbuf, sectorsize) < 0) {
+    if (!sw_write(swap, cbuf, sectorsize)) {
 	fatal("cannot write snapshot header");
     }
 
@@ -691,7 +707,7 @@ void sw_dump2(char *header, int size, bool incr)
 	save[2] = sectors >> 8;
 	save[3] = sectors;
 	P_lseek(swap, prev * sectorsize + size - sizeof(save), SEEK_SET);
-	if (P_write(swap, save, sizeof(save)) < 0) {
+	if (!sw_write(swap, save, sizeof(save))) {
 	    fatal("cannot write offset");
 	}
 	prev = sectors;

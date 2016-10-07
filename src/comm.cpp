@@ -1845,7 +1845,7 @@ bool comm_dump(int fd)
     }
 
     /* write header */
-    if (P_write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+    if (!sw_write(fd, (char *) &dh, sizeof(dump_header))) {
 	fatal("failed to dump user header");
     }
 
@@ -1853,8 +1853,7 @@ bool comm_dump(int fd)
 	/*
 	 * write users
 	 */
-	if (P_write(fd, (char *) du, nusers * sizeof(duser)) !=
-						    nusers * sizeof(duser)) {
+	if (!sw_write(fd, (char *) du, nusers * sizeof(duser))) {
 	    fatal("failed to dump users");
 	}
 
@@ -1887,13 +1886,13 @@ bool comm_dump(int fd)
 	 * write buffer content
 	 */
 	if (dh.tbufsz != 0) {
-	    if (P_write(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
+	    if (!sw_write(fd, tbuf, dh.tbufsz)) {
 		fatal("failed to dump telnet buffers");
 	    }
 	    FREE(tbuf);
 	}
 	if (dh.ubufsz != 0) {
-	    if (P_write(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
+	    if (!sw_write(fd, ubuf, dh.ubufsz)) {
 		fatal("failed to dump UDP buffers");
 	    }
 	    FREE(ubuf);

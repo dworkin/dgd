@@ -84,7 +84,7 @@ bool pc_dump(int fd)
     dh.nfuncalls = 0;
 
     /* write header */
-    if (P_write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+    if (!sw_write(fd, (char *) &dh, sizeof(dump_header))) {
 	return FALSE;
     }
 

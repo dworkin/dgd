@@ -1275,8 +1275,8 @@ bool o_dump(int fd, bool incr)
     }
 
     /* write header and objects */
-    if (P_write(fd, (char *) &dh, sizeof(dump_header)) < 0 ||
-	P_write(fd, (char *) otable, baseplane.nobjects * sizeof(Object)) < 0) {
+    if (!sw_write(fd, (char *) &dh, sizeof(dump_header)) ||
+	!sw_write(fd, (char *) otable, baseplane.nobjects * sizeof(Object))) {
 	return FALSE;
     }
 
@@ -1286,7 +1286,7 @@ bool o_dump(int fd, bool incr)
 	if (o->name != (char *) NULL) {
 	    len = strlen(o->name) + 1;
 	    if (buflen + len > CHUNKSZ) {
-		if (P_write(fd, buffer, buflen) < 0) {
+		if (!sw_write(fd, buffer, buflen)) {
 		    return FALSE;
 		}
 		buflen = 0;
@@ -1295,7 +1295,7 @@ bool o_dump(int fd, bool incr)
 	    buflen += len;
 	}
     }
-    if (buflen != 0 && P_write(fd, buffer, buflen) < 0) {
+    if (buflen != 0 && !sw_write(fd, buffer, buflen)) {
 	return FALSE;
     }
 
@@ -1311,13 +1311,13 @@ bool o_dump(int fd, bool incr)
 	if (recount) {
 	    mh.count = baseplane.ocount;
 	}
-	if (P_write(fd, (char *) &mh, sizeof(map_header)) < 0 ||
-	    P_write(fd, (char *) (omap + BOFF(dobject)),
-		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
-	    P_write(fd, (char *) (omap + BOFF(dobject)),
-		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
+	if (!sw_write(fd, (char *) &mh, sizeof(map_header)) ||
+	    !sw_write(fd, (char *) (omap + BOFF(dobject)),
+		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
+	    !sw_write(fd, (char *) (omap + BOFF(dobject)),
+		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
 	    (mh.count != 0 &&
-	     P_write(fd, (char *) counttab, dh.nobjects * sizeof(Uint)) < 0)) {
+	     !sw_write(fd, (char *) counttab, dh.nobjects * sizeof(Uint)))) {
 	    return FALSE;
 	}
     }
