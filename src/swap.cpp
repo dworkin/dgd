@@ -120,13 +120,13 @@ void sw_finish()
 bool sw_write(int fd, void *buffer, size_t size)
 {
     while (size > SWAPCHUNK) {
-	if (P_write(fd, buffer, SWAPCHUNK) != SWAPCHUNK) {
+	if (P_write(fd, (char *) buffer, SWAPCHUNK) != SWAPCHUNK) {
 	    return FALSE;
 	}
 	buffer = (char *) buffer + SWAPCHUNK;
 	size -= SWAPCHUNK;
     }
-    return (P_write(fd, buffer, size) == size);
+    return (P_write(fd, (char *) buffer, size) == size);
 }
 
 /*
@@ -319,7 +319,7 @@ static header *sw_load(sector sec, bool restore, bool fill)
 		    sw_create();
 		}
 		P_lseek(swap, (off_t) (save + 1L) * sectorsize, SEEK_SET);
-		if (!sw_write(swap, (char *) (h + 1), sectorsize)) {
+		if (!sw_write(swap, h + 1, sectorsize)) {
 		    fatal("cannot write swap file");
 		}
 	    }
@@ -579,7 +579,7 @@ int sw_dump(char *snapshot, bool keep)
 		h->swap = sec;
 	    }
 	    P_lseek(swap, (off_t) (sec + 1L) * sectorsize, SEEK_SET);
-	    if (!sw_write(swap, (char *) (h + 1), sectorsize)) {
+	    if (!sw_write(swap, h + 1, sectorsize)) {
 		fatal("cannot write swap file");
 	    }
 	}
@@ -643,7 +643,7 @@ int sw_dump(char *snapshot, bool keep)
 
     /* write map */
     P_lseek(swap, (off_t) (ssectors + 1L) * sectorsize, SEEK_SET);
-    if (!sw_write(swap, (char *) map, nsectors * sizeof(sector))) {
+    if (!sw_write(swap, map, nsectors * sizeof(sector))) {
 	fatal("cannot write sector map to snapshot");
     }
 

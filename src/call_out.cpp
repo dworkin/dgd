@@ -913,13 +913,13 @@ bool co_dump(int fd)
     dh.timediff = timediff;
 
     /* write header and callouts */
-    return (sw_write(fd, (char *) &dh, sizeof(dump_header)) &&
+    return (sw_write(fd, &dh, sizeof(dump_header)) &&
 	    (queuebrk == 0 ||
-	     sw_write(fd, (char *) cotab, queuebrk * sizeof(call_out))) &&
+	     sw_write(fd, cotab, queuebrk * sizeof(call_out))) &&
 	    (cycbrk == cotabsz ||
-	     sw_write(fd, (char *) (cotab + cycbrk),
+	     sw_write(fd, cotab + cycbrk,
 		      (cotabsz - cycbrk) * sizeof(call_out))) &&
-	    sw_write(fd, (char *) cycbuf, CYCBUF_SIZE * sizeof(uindex)));
+	    sw_write(fd, cycbuf, CYCBUF_SIZE * sizeof(uindex)));
 }
 
 /*

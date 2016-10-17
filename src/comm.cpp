@@ -1845,7 +1845,7 @@ bool comm_dump(int fd)
     }
 
     /* write header */
-    if (!sw_write(fd, (char *) &dh, sizeof(dump_header))) {
+    if (!sw_write(fd, &dh, sizeof(dump_header))) {
 	fatal("failed to dump user header");
     }
 
@@ -1853,7 +1853,7 @@ bool comm_dump(int fd)
 	/*
 	 * write users
 	 */
-	if (!sw_write(fd, (char *) du, nusers * sizeof(duser))) {
+	if (!sw_write(fd, du, nusers * sizeof(duser))) {
 	    fatal("failed to dump users");
 	}
 

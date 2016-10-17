@@ -1275,8 +1275,8 @@ bool o_dump(int fd, bool incr)
     }
 
     /* write header and objects */
-    if (!sw_write(fd, (char *) &dh, sizeof(dump_header)) ||
-	!sw_write(fd, (char *) otable, baseplane.nobjects * sizeof(Object))) {
+    if (!sw_write(fd, &dh, sizeof(dump_header)) ||
+	!sw_write(fd, otable, baseplane.nobjects * sizeof(Object))) {
 	return FALSE;
     }
 
@@ -1311,13 +1311,13 @@ bool o_dump(int fd, bool incr)
 	if (recount) {
 	    mh.count = baseplane.ocount;
 	}
-	if (!sw_write(fd, (char *) &mh, sizeof(map_header)) ||
-	    !sw_write(fd, (char *) (omap + BOFF(dobject)),
+	if (!sw_write(fd, &mh, sizeof(map_header)) ||
+	    !sw_write(fd, omap + BOFF(dobject),
 		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
-	    !sw_write(fd, (char *) (omap + BOFF(dobject)),
+	    !sw_write(fd, omap + BOFF(dobject),
 		      (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) ||
 	    (mh.count != 0 &&
-	     !sw_write(fd, (char *) counttab, dh.nobjects * sizeof(Uint)))) {
+	     !sw_write(fd, counttab, dh.nobjects * sizeof(Uint)))) {
 	    return FALSE;
 	}
     }

@@ -460,7 +460,7 @@ bool kf_dump(int fd)
     }
 
     /* write header */
-    if (!sw_write(fd, (char *) &dh, sizeof(dump_header))) {
+    if (!sw_write(fd, &dh, sizeof(dump_header))) {
 	return FALSE;
     }
 
