@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2845,7 +2845,7 @@ static void i_interpret1(Frame *f, char *pc)
 	case I_SPREAD:
 	    u = FETCH1S(pc);
 	    if (f->p_ctrl->flags & CTRL_VM_2_1) {
-		size = i_spread1(f, (short) u);
+		size = i_spread1(f, -(short) u - 2);
 		continue;
 	    }
 	    if ((short) u >= 0) {
