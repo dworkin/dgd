@@ -124,7 +124,14 @@ static void pop()
 	    P_close(tb->fd);
 	    FREE(tb->buffer);
 	} else if (tb->prev != (tbuf *) NULL) {
-	    str_del(tb->strs[0]);
+	    for (;;) {
+		str_del(tb->strs[0]);
+		if (tb->nstr == 0) {
+		    break;
+		}
+		--(tb->strs);
+		--(tb->nstr);
+	    }
 	    FREE(tb->strs);
 	}
 	ibuffer = tbuffer->prev;
