@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -269,6 +269,9 @@ formal_declaration
 		  $$ = $2;
 		  $$->mod |= $1->mod;
 		  $$->sclass = $1->sclass;
+		  if ($$->sclass != (String *) NULL) {
+		      str_ref($$->sclass);
+		  }
 		}
 	| ident {
 		  $$ = $1;
@@ -638,6 +641,9 @@ primary_p1_exp
 			   */
 			  $$ = node_mon(N_CAST, $$->mod, $$);
 			  $$->sclass = $$->l.left->sclass;
+			  if ($$->sclass != (String *) NULL) {
+			      str_ref($$->sclass);
+			  }
 		      }
 		  } else {
 		      /* the variable could be anything */
@@ -1110,6 +1116,9 @@ static node *cast(node *n, node *type)
 		n->mod = type->mod;
 	    }
 	    n->sclass = type->sclass;
+	    if (n->sclass != (String *) NULL) {
+		str_ref(n->sclass);
+	    }
 	}
     } else if (type->mod == T_CLASS && str_cmp(type->sclass, n->sclass) != 0) {
 	/*
@@ -1117,6 +1126,9 @@ static node *cast(node *n, node *type)
 	 */
 	n = node_mon(N_CAST, type->mod, n);
 	n->sclass = type->sclass;
+	if (n->sclass != (String *) NULL) {
+	    str_ref(n->sclass);
+	}
     }
     return n;
 }
@@ -1155,6 +1167,9 @@ static node *idx(node *n1, node *n2)
 		/* you can't trust these arrays */
 		n2 = node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
 		n2->sclass = n1->sclass;
+		if (n2->sclass != (String *) NULL) {
+		    str_ref(n2->sclass);
+		}
 		return n2;
 	    }
 	}
@@ -1896,9 +1911,15 @@ static node *quest(node *n1, node *n2, node *n3)
     if ((type & T_TYPE) == T_CLASS) {
 	if (n2->sclass == (String *) NULL) {
 	    n1->sclass = n3->sclass;
+	    if (n1->sclass != (String *) NULL) {
+		str_ref(n1->sclass);
+	    }
 	} else if (n3->sclass == (String *) NULL ||
 		   str_cmp(n2->sclass, n3->sclass) == 0) {
 	    n1->sclass = n2->sclass;
+	    if (n1->sclass != (String *) NULL) {
+		str_ref(n1->sclass);
+	    }
 	} else {
 	    /* downgrade to object */
 	    n1->type = (n1->type & T_REF) | T_OBJECT;
@@ -1928,6 +1949,9 @@ static node *assign(node *n1, node *n2)
 		if (type != T_MIXED) {
 		    n = node_mon(N_TYPE, type, (node *) NULL);
 		    n->sclass = n2->sclass;
+		    if (n->sclass != (String *) NULL) {
+			str_ref(n->sclass);
+		    }
 		    n1->r.right = n;
 		}
 	    } else if (type != T_MIXED) {
@@ -1955,6 +1979,9 @@ static node *assign(node *n1, node *n2)
 	}
 	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
+	if (n1->sclass != (String *) NULL) {
+	    str_ref(n1->sclass);
+	}
 	return n1;
     } else {
 	if (typechecking && (!c_nil(n2) || !T_POINTER(n1->mod))) {
@@ -1971,11 +1998,17 @@ static node *assign(node *n1, node *n2)
 			 str_cmp(n1->sclass, n2->sclass) != 0))) {
 		n2 = node_mon(N_CAST, n1->mod, n2);
 		n2->sclass = n1->sclass;
+		if (n2->sclass != (String *) NULL) {
+		    str_ref(n2->sclass);
+		}
 	    }
 	}
 
 	n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
 	n2->sclass = n1->sclass;
+	if (n2->sclass != (String *) NULL) {
+	    str_ref(n2->sclass);
+	}
 	return n2;
     }
 }
@@ -1994,6 +2027,9 @@ static node *comma(node *n1, node *n2)
     } else {
 	n1 = node_bin(N_COMMA, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
+	    if (n1->sclass != (String *) NULL) {
+		str_ref(n1->sclass);
+	    }
 	return n1;
     }
 }

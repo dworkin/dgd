@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1747,6 +1747,9 @@ node *c_return(node *n, int typechecked)
 	     */
 	    n = node_mon(N_CAST, ftype, n);
 	    n->sclass = fclass;
+	    if (fclass != (String *) NULL) {
+		str_ref(fclass);
+	    }
 	}
     }
 
@@ -1936,6 +1939,9 @@ node *c_variable(node *n)
 	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
 	n->sclass = sclass;
 	n->r.number = ref;
+    }
+    if (n->sclass != (String *) NULL) {
+	str_ref(n->sclass);
     }
     return n;
 }
@@ -2138,7 +2144,7 @@ node *c_address(node *func, node *args, int typechecked)
     func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    str_ref(func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8));
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2171,7 +2177,7 @@ node *c_extend(node *func, node *args, int typechecked)
     func = funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    str_ref(func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8));
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2258,6 +2264,9 @@ node *c_checkcall(node *n, int typechecked)
 		 */
 		n = node_mon(N_CAST, n->mod, n);
 		n->sclass = n->l.left->sclass;
+		if (n->sclass != (String *) NULL) {
+		    str_ref(n->sclass);
+		}
 	    }
 	} else {
 	    /* could be anything */

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -38,7 +38,8 @@ public:
     virtual bool item(node *n) {
 	if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
 	    str_del(n->l.string);
-	} else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
+	}
+	if (n->sclass != (String *) NULL) {
 	    str_del(n->sclass);
 	}
 	return TRUE;
@@ -191,6 +192,9 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
     n->type = N_FUNC;
     n->mod = mod;
     n->sclass = tclass;
+    if (tclass != (String *) NULL) {
+	str_ref(tclass);
+    }
     n->l.ptr = func;
     n->r.number = call;
 
