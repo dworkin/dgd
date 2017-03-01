@@ -1385,6 +1385,7 @@ void i_store_global(Frame *f, int inherit, int index, Value *val, Value *verify)
  */
 bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 {
+    ssizet i;
     String *str;
     Array *arr;
 
@@ -1397,8 +1398,9 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	if (val->type != T_INT) {
 	    error("Non-numeric value in indexed string assignment");
 	}
+	i = str_index(aval->u.string, ival->u.number);
 	str = str_new(aval->u.string->text, aval->u.string->len);
-	str->text[str_index(str, ival->u.number)] = val->u.number;
+	str->text[i] = val->u.number;
 	PUT_STRVAL(var, str);
 	return TRUE;
 
