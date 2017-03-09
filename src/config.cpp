@@ -70,59 +70,65 @@ static config conf[] = {
 							0, UINDEX_MAX - 1 },
 # define CREATE		5
 				{ "create",		STRING_CONST },
-# define DIRECTORY	6
+# define DATAGRAM_PORT	6
+				{ "datagram_port",	'[', FALSE, FALSE,
+							1, USHRT_MAX },
+# define DATAGRAM_USERS	7
+				{ "datagram_users",	INT_CONST, FALSE, FALSE,
+							0, EINDEX_MAX },
+# define DIRECTORY	8
 				{ "directory",		STRING_CONST },
-# define DRIVER_OBJECT	7
+# define DRIVER_OBJECT	9
 				{ "driver_object",	STRING_CONST, TRUE },
-# define DUMP_FILE	8
+# define DUMP_FILE	10
 				{ "dump_file",		STRING_CONST },
-# define DUMP_INTERVAL	9
+# define DUMP_INTERVAL	11
 				{ "dump_interval",	INT_CONST },
-# define DYNAMIC_CHUNK	10
+# define DYNAMIC_CHUNK	12
 				{ "dynamic_chunk",	INT_CONST, FALSE, FALSE,
 							1024 },
-# define ED_TMPFILE	11
+# define ED_TMPFILE	13
 				{ "ed_tmpfile",		STRING_CONST },
-# define EDITORS	12
+# define EDITORS	14
 				{ "editors",		INT_CONST, FALSE, FALSE,
 							0, EINDEX_MAX },
-# define HOTBOOT	13
+# define HOTBOOT	15
 				{ "hotboot",		'(' },
-# define INCLUDE_DIRS	14
+# define INCLUDE_DIRS	16
 				{ "include_dirs",	'(' },
-# define INCLUDE_FILE	15
+# define INCLUDE_FILE	17
 				{ "include_file",	STRING_CONST, TRUE },
-# define MODULES	16
+# define MODULES	18
 				{ "modules",		']' },
-# define OBJECTS	17
+# define OBJECTS	19
 				{ "objects",		INT_CONST, FALSE, FALSE,
 							2, UINDEX_MAX },
-# define PORTS		18
+# define PORTS		20
 				{ "ports",		INT_CONST, FALSE, FALSE,
 							1, 32 },
-# define SECTOR_SIZE	19
+# define SECTOR_SIZE	21
 				{ "sector_size",	INT_CONST, FALSE, FALSE,
 							512, 65535 },
-# define STATIC_CHUNK	20
+# define STATIC_CHUNK	22
 				{ "static_chunk",	INT_CONST },
-# define SWAP_FILE	21
+# define SWAP_FILE	23
 				{ "swap_file",		STRING_CONST },
-# define SWAP_FRAGMENT	22
+# define SWAP_FRAGMENT	24
 				{ "swap_fragment",	INT_CONST, FALSE, FALSE,
 							0, SW_UNUSED },
-# define SWAP_SIZE	23
+# define SWAP_SIZE	25
 				{ "swap_size",		INT_CONST, FALSE, FALSE,
 							1024, SW_UNUSED },
-# define TELNET_PORT	24
+# define TELNET_PORT	26
 				{ "telnet_port",	'[', FALSE, FALSE,
 							1, USHRT_MAX },
-# define TYPECHECKING	25
+# define TYPECHECKING	27
 				{ "typechecking",	INT_CONST, FALSE, FALSE,
 							0, 2 },
-# define USERS		26
+# define USERS		28
 				{ "users",		INT_CONST, FALSE, FALSE,
-							1, EINDEX_MAX },
-# define NR_OPTIONS	27
+							0, EINDEX_MAX },
+# define NR_OPTIONS	29
 };
 
 
@@ -808,9 +814,10 @@ void conf_dread(int fd, char *buf, const char *layout, Uint n)
 
 static char *hotboot[MAX_STRINGS], *dirs[MAX_STRINGS];
 static char *modules[MAX_STRINGS], *modconf[MAX_STRINGS];
-static char *bhosts[MAX_PORTS], *thosts[MAX_PORTS];
-static unsigned short bports[MAX_PORTS], tports[MAX_PORTS];
-static int ntports, nbports;
+static char *bhosts[MAX_PORTS], *dhosts[MAX_PORTS], *thosts[MAX_PORTS];
+static unsigned short bports[MAX_PORTS], dports[MAX_PORTS], tports[MAX_PORTS];
+static bool attach[MAX_PORTS];
+static int ntports, nbports, ndports;
 
 /*
  * NAME:	conferr()
@@ -897,6 +904,12 @@ static bool conf_config()
 		nbports = 1;
 		break;
 
+	    case DATAGRAM_PORT:
+		dhosts[0] = (char *) NULL;
+		dports[0] = yylval.number;
+		ndports = 1;
+		break;
+
 	    case TELNET_PORT:
 		thosts[0] = (char *) NULL;
 		tports[0] = yylval.number;
@@ -966,12 +979,21 @@ static bool conf_config()
 	    }
 	    l = 0;
 	    if ((c=pp_gettok()) != ']') {
-		if (m == BINARY_PORT) {
+		switch (m) {
+		case BINARY_PORT:
 		    strs = bhosts;
 		    ports = bports;
-		} else {
+		    break;
+
+		case DATAGRAM_PORT:
+		    strs = dhosts;
+		    ports = dports;
+		    break;
+
+		case TELNET_PORT:
 		    strs = thosts;
 		    ports = tports;
+		    break;
 		}
 		for (;;) {
 		    if (l == MAX_PORTS) {
@@ -1017,10 +1039,18 @@ static bool conf_config()
 		conferr("')' expected");
 		return FALSE;
 	    }
-	    if (m == TELNET_PORT) {
+	    switch (m) {
+	    case TELNET_PORT:
 		ntports = l;
-	    } else {
+		break;
+
+	    case BINARY_PORT:
 		nbports = l;
+		break;
+
+	    case DATAGRAM_PORT:
+		ndports = 1;
+		break;
 	    }
 	    break;
 
@@ -1081,7 +1111,8 @@ static bool conf_config()
     }
 
     for (l = 0; l < NR_OPTIONS; l++) {
-	if (!conf[l].set && l != HOTBOOT && l != MODULES && l != CACHE_SIZE) {
+	if (!conf[l].set && l != HOTBOOT && l != MODULES && l != CACHE_SIZE &&
+	    l != DATAGRAM_PORT && l != DATAGRAM_USERS) {
 	    char buffer[64];
 
 #ifndef NETWORK_EXTENSIONS
@@ -1095,6 +1126,19 @@ static bool conf_config()
 	    conferr(buffer);
 	    return FALSE;
 	}
+    }
+
+    if (conf[USERS].u.num + conf[DATAGRAM_USERS].u.num > EINDEX_MAX) {
+	conferr("total number of users too high");
+	return FALSE;
+    }
+
+    h = (nbports < ndports) ? nbports : ndports;
+    for (l = 0; l < h; l++) {
+	attach[l] = (bports[l] == dports[l]);
+    }
+    while (l < ndports) {
+	attach[l++] = FALSE;
     }
 
     return TRUE;
@@ -1204,7 +1248,7 @@ static bool conf_includes()
     cputs("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
     cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
     cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
-    cputs("# define ST_PRECOMPILED\t24\t/* precompiled objects */\012");
+    cputs("# define ST_DATAGRAMPORTS\t24\t/* datagram ports */\012");
     cputs("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
     cputs("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
 
@@ -1662,6 +1706,16 @@ int conf_typechecking()
 }
 
 /*
+ * NAME:	config->attach()
+ * DESCRIPTION:	return TRUE if datagram channel can be attached to connections
+ *		on this port
+ */
+bool conf_attach(int port)
+{
+    return (port >= 0 && port < ndports && attach[port]);
+}
+
+/*
  * NAME:	config->array_size()
  * DESCRIPTION:	return the maximum array size
  */
@@ -1805,9 +1859,12 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	PUT_INTVAL(v, i_get_ticks(f));
 	break;
 
-    case 24:	/* ST_PRECOMPILED */
-	a = arr_new(f->data, 0L);
+    case 24:	/* ST_DATAGRAMPORTS */
+	a = arr_new(f->data, (long) ndports);
 	PUT_ARRVAL(v, a);
+	for (i = 0, v = a->elts; i < ndports; i++, v++) {
+	    PUT_INTVAL(v, dports[i]);
+	}
 	break;
 
     case 25:	/* ST_TELNETPORTS */
