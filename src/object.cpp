@@ -1345,14 +1345,6 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 
     p = NULL;
 
-    /*
-     * Free object names of precompiled objects.
-     */
-    for (i = baseplane.nobjects, o = otable; i > 0; --i, o++) {
-	*baseplane.htab->lookup(o->name, FALSE) = o->next;
-	FREE(o->name);
-    }
-
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
 

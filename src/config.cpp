@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1806,12 +1806,8 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 24:	/* ST_PRECOMPILED */
-	a = pc_list(f->data);
-	if (a != (Array *) NULL) {
-	    PUT_ARRVAL(v, a);
-	} else {
-	    *v = nil_value;
-	}
+	a = arr_new(f->data, 0L);
+	PUT_ARRVAL(v, a);
 	break;
 
     case 25:	/* ST_TELNETPORTS */
