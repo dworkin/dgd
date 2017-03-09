@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1560,8 +1560,8 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    } else if (conn_udpcheck(usr->conn)) {
 			usr->flags |= CF_UDPDATA;
 			this_user = obj->index;
-			if (i_call(f, obj, (Array *) NULL, "open_datagram", 13,
-				   TRUE, 0)) {
+			if (i_call(f, obj, (Array *) NULL, "datagram_attach",
+				   15, TRUE, 0)) {
 			    i_del_value(f->sp++);
 			    endtask();
 			}
