@@ -1514,10 +1514,12 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     if (!comm_init((int) conf[USERS].u.num,
 #ifdef NETWORK_EXTENSIONS
 		   (int) conf[PORTS].u.num,
+#else
+		   (int) conf[DATAGRAM_USERS].u.num,
 #endif
-		   thosts, bhosts,
-		   tports, bports,
-		   ntports, nbports)) {
+		   thosts, bhosts, dhosts,
+		   tports, bports, dports,
+		   ntports, nbports, ndports)) {
 	comm_clear();
 	comm_finish();
 	if (snapshot2 != (char *) NULL) {

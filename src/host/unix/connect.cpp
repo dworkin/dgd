@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -61,9 +61,8 @@ struct in46addr {
 	struct in6_addr addr6;		/* IPv6 addr */
 # endif
 	struct in_addr addr;		/* IPv4 addr */
-	int fd;				/* file descriptor */
     } in;
-    char ipv6;				/* IPv6? */
+    bool ipv6;				/* IPv6? */
 };
 
 struct ipaddr {
@@ -442,6 +441,10 @@ struct portdesc {
     int in4;				/* IPv4 port descriptor */
 };
 
+struct udpdesc {
+    struct portdesc fd;			/* port descriptors */
+};
+
 static int nusers;			/* # of users */
 static connection *connections;		/* connections array */
 static connection *flist;		/* list of free connections */
@@ -450,7 +453,8 @@ static int udphtabsz;			/* UDP hash table size */
 static Hashtab *chtab;			/* challenge hash table */
 static portdesc *tdescs, *bdescs;	/* telnet & binary descriptor arrays */
 static int ntdescs, nbdescs;		/* # telnet & binary ports */
-static portdesc *udescs;		/* UDP port descriptor array */
+static udpdesc *udescs;			/* UDP port descriptor array */
+static int nudescs;			/* # datagram ports */
 static fd_set infds;			/* file descriptor input bitmap */
 static fd_set outfds;			/* file descriptor output bitmap */
 static fd_set waitfds;			/* file descriptor wait-write bitmap */
@@ -551,9 +555,9 @@ static int conn_port(int *fd, int type, struct sockaddr_in *sin, unsigned int po
  * NAME:	conn->init()
  * DESCRIPTION:	initialize connection handling
  */
-bool conn_init(int maxusers, char **thosts, char **bhosts,
-	unsigned short *tports, unsigned short *bports, int ntports,
-	int nbports)
+bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
+	unsigned short *tports, unsigned short *bports, unsigned short *dports,
+	int ntports, int nbports, int ndports)
 {
 # ifdef INET6
     struct sockaddr_in6 sin6;
@@ -593,8 +597,11 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
     if (nbports != 0) {
 	bdescs = ALLOC(portdesc, nbports);
 	memset(bdescs, -1, nbports * sizeof(portdesc));
-	udescs = ALLOC(portdesc, nbports);
-	memset(udescs, -1, nbports * sizeof(portdesc));
+    }
+    nudescs = ndports;
+    if (ndports != 0) {
+	udescs = ALLOC(udpdesc, ndports);
+	memset(udescs, -1, ndports * sizeof(udpdesc));
     }
 #endif
 
@@ -719,22 +726,76 @@ bool conn_init(int maxusers, char **thosts, char **bhosts,
 	}
 
 # ifdef INET6
-	if (ipv6) {
-	    if (!conn_port6(&bdescs[n].in6, SOCK_STREAM, &sin6, bports[n])) {
-		return FALSE;
-	    }
-	    if (!conn_port6(&udescs[n].in6, SOCK_DGRAM, &sin6, bports[n])) {
-		return FALSE;
-	    }
+	if (ipv6 && !conn_port6(&bdescs[n].in6, SOCK_STREAM, &sin6, bports[n]))
+	{
+	    return FALSE;
 	}
 # endif
-	if (ipv4) {
-	    if (!conn_port(&bdescs[n].in4, SOCK_STREAM, &sin, bports[n])) {
-		return FALSE;
+	if (ipv4 && !conn_port(&bdescs[n].in4, SOCK_STREAM, &sin, bports[n])) {
+	    return FALSE;
+	}
+    }
+
+    for (n = 0; n < nudescs; n++) {
+	/* datagram ports */
+	ipv6 = FALSE;
+	ipv4 = FALSE;
+	if (dhosts[n] == (char *) NULL) {
+# ifdef INET6
+	    sin6.sin6_addr = in6addr_any;
+	    ipv6 = TRUE;
+# endif
+	    sin.sin_addr.s_addr = htonl(INADDR_ANY);
+	    ipv4 = TRUE;
+	} else {
+# ifdef INET6
+	    if (inet_pton(AF_INET6, dhosts[n], &sin6) > 0) {
+		sin6.sin6_family = AF_INET6;
+		ipv6 = TRUE;
+	    } else {
+# ifdef AI_DEFAULT
+		host = getipnodebyname(dhosts[n], AF_INET6, 0, &err);
+		if (host != (struct hostent *) NULL) {
+		    if (host->h_length != 4) {
+			memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
+			ipv6 = TRUE;
+		    }
+		    freehostent(host);
+		}
+# else
+		host = gethostbyname2(dhosts[n], AF_INET6);
+		if (host != (struct hostent *) NULL && host->h_length != 4) {
+		    memcpy(&sin6.sin6_addr, host->h_addr, host->h_length);
+		    ipv6 = TRUE;
+		}
+# endif
 	    }
-	    if (!conn_port(&udescs[n].in4, SOCK_DGRAM, &sin, bports[n])) {
-		return FALSE;
+# endif
+	    if ((sin.sin_addr.s_addr=inet_addr(dhosts[n])) != INADDR_NONE) {
+		ipv4 = TRUE;
+	    } else {
+		host = gethostbyname(dhosts[n]);
+		if (host != (struct hostent *) NULL) {
+		    memcpy(&sin.sin_addr, host->h_addr, host->h_length);
+		    ipv4 = TRUE;
+		}
 	    }
+	}
+
+	if (!ipv6 && !ipv4) {
+	    message("unknown host %s\012", dhosts[n]);	/* LF */
+	    return FALSE;
+	}
+
+# ifdef INET6
+	if (ipv6 &&
+	    !conn_port6(&udescs[n].fd.in6, SOCK_DGRAM, &sin6, dports[n])) {
+	    return FALSE;
+	}
+# endif
+	if (ipv4 &&
+	    !conn_port(&udescs[n].fd.in4, SOCK_DGRAM, &sin, dports[n])) {
+	    return FALSE;
 	}
     }
 
@@ -782,11 +843,13 @@ void conn_clear()
 	if (bdescs[n].in4 >= 0) {
 	    close(bdescs[n].in4);
 	}
-	if (udescs[n].in6 >= 0) {
-	    close(udescs[n].in6);
+    }
+    for (n = 0; n < nudescs; n++) {
+	if (udescs[n].fd.in6 >= 0) {
+	    close(udescs[n].fd.in6);
 	}
-	if (udescs[n].in4 >= 0) {
-	    close(udescs[n].in4);
+	if (udescs[n].fd.in4 >= 0) {
+	    close(udescs[n].fd.in4);
 	}
     }
 
@@ -856,8 +919,6 @@ void conn_listen()
 		perror("listen");
 	    } else if (fcntl(bdescs[n].in6, F_SETFL, FNDELAY) < 0) {
 		perror("fcntl");
-	    } else if (fcntl(udescs[n].in6, F_SETFL, FNDELAY) < 0) {
-		perror("fcntl");
 	    } else {
 		continue;
 	    }
@@ -877,11 +938,18 @@ void conn_listen()
 # endif
 	    } else if (fcntl(bdescs[n].in4, F_SETFL, FNDELAY) < 0) {
 		perror("fcntl");
-	    } else if (fcntl(udescs[n].in4, F_SETFL, FNDELAY) < 0) {
-		perror("fcntl");
 	    } else {
 		continue;
 	    }
+	    fatal("conn_listen failed");
+	}
+    }
+    for (n = 0; n < nudescs; n++) {
+	if ((udescs[n].fd.in6 >= 0 &&
+	     fcntl(udescs[n].fd.in6, F_SETFL, FNDELAY) < 0) ||
+	    (udescs[n].fd.in4 >= 0 &&
+	     fcntl(udescs[n].fd.in4, F_SETFL, FNDELAY) < 0)) {
+	    perror("fcntl");
 	    fatal("conn_listen failed");
 	}
     }
@@ -1016,6 +1084,15 @@ connection *conn_bnew6(int port)
 }
 
 /*
+ * NAME:	conn->dnew6()
+ * DESCRIPTION:	accept a new datagram connection
+ */
+connection *conn_dnew6(int port)
+{
+    return (connection *) NULL;
+}
+
+/*
  * NAME:	conn->tnew()
  * DESCRIPTION:	accept a new telnet connection
  */
@@ -1043,6 +1120,24 @@ connection *conn_bnew(int port)
 	return conn_accept(fd, port);
     }
     return (connection *) NULL;
+}
+
+/*
+ * NAME:	conn->dnew()
+ * DESCRIPTION:	accept a new datagram connection
+ */
+connection *conn_dnew(int port)
+{
+    return (connection *) NULL;
+}
+
+/*
+ * NAME:	conn->attach()
+ * DESCRIPTION:	can datagram channe be attached to this connection?
+ */
+bool conn_attach(connection *conn)
+{
+    return conf_attach(conn->at);
 }
 
 /*
@@ -1162,7 +1257,7 @@ static void conn_udprecv6(int n)
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in6);
-    size = recvfrom(udescs[n].in6, buffer, BINBUF_SIZE, 0,
+    size = recvfrom(udescs[n].fd.in6, buffer, BINBUF_SIZE, 0,
 		    (struct sockaddr *) &from, &fromlen);
     if (size < 0) {
 	return;
@@ -1173,7 +1268,7 @@ static void conn_udprecv6(int n)
 						from.sin6_port) % udphtabsz];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL) {
+	if (conn == (connection *) NULL && conf_attach(n)) {
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1241,7 +1336,7 @@ static void conn_udprecv(int n)
 
     memset(buffer, '\0', UDPHASHSZ);
     fromlen = sizeof(struct sockaddr_in);
-    size = recvfrom(udescs[n].in4, buffer, BINBUF_SIZE, 0,
+    size = recvfrom(udescs[n].fd.in4, buffer, BINBUF_SIZE, 0,
 		    (struct sockaddr *) &from, &fromlen);
     if (size < 0) {
 	return;
@@ -1250,7 +1345,7 @@ static void conn_udprecv(int n)
     hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL) {
+	if (conn == (connection *) NULL && conf_attach(n)) {
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1357,13 +1452,13 @@ int conn_select(Uint t, unsigned int mtime)
     }
 
     /* check for UDP packets */
-    for (n = 0; n < nbdescs; n++) {
+    for (n = 0; n < nudescs; n++) {
 # ifdef INET6
-	if (udescs[n].in6 >= 0 && FD_ISSET(udescs[n].in6, &readfds)) {
+	if (udescs[n].fd.in6 >= 0 && FD_ISSET(udescs[n].fd.in6, &readfds)) {
 	    conn_udprecv6(n);
 	}
 # endif
-	if (udescs[n].in4 >= 0 && FD_ISSET(udescs[n].in4, &readfds)) {
+	if (udescs[n].fd.in4 >= 0 && FD_ISSET(udescs[n].fd.in4, &readfds)) {
 	    conn_udprecv(n);
 	}
     }
@@ -1501,7 +1596,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 	    memcpy(&to.sin6_addr, &conn->addr->ipnum.in.addr6,
 		   sizeof(struct in6_addr));
 	    to.sin6_port = conn->port;
-	    return sendto(udescs[conn->at].in6, buf, len, 0,
+	    return sendto(udescs[conn->at].fd.in6, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in6));
 	} else
 # endif
@@ -1512,7 +1607,7 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 	    to.sin_family = AF_INET;
 	    to.sin_addr = conn->addr->ipnum.in.addr;
 	    to.sin_port = conn->port;
-	    return sendto(udescs[conn->at].in4, buf, len, 0,
+	    return sendto(udescs[conn->at].fd.in4, buf, len, 0,
 			  (struct sockaddr *) &to, sizeof(struct sockaddr_in));
 	}
     }

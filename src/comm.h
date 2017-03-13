@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,8 +23,9 @@
 
 struct connection;
 
-extern bool	   conn_init	 (int, char**, char**, unsigned short*,
-				    unsigned short*, int, int);
+extern bool	   conn_init	 (int, char**, char**, char**, unsigned short*,
+				    unsigned short*, unsigned short*, int, int,
+				    int);
 extern void	   conn_clear	 ();
 extern void	   conn_finish	 ();
 #ifndef NETWORK_EXTENSIONS
@@ -33,6 +34,9 @@ extern connection *conn_tnew6	 (int);
 extern connection *conn_tnew	 (int);
 extern connection *conn_bnew6	 (int);
 extern connection *conn_bnew	 (int);
+extern connection *conn_dnew6	 (int);
+extern connection *conn_dnew	 (int);
+extern bool	   conn_attach	 (connection*);
 extern bool	   conn_udp	 (connection*, char*, unsigned int);
 #endif
 extern void	   conn_del	 (connection*);
@@ -65,13 +69,9 @@ extern bool	   conn_export	 (connection*, int*, unsigned short*, short*,
 extern connection *conn_import	 (int, unsigned short, short, int, int, char*,
 				  char, bool);
 
-#ifdef NETWORK_EXTENSIONS
-extern bool	comm_init	(int, int, char**, char**, unsigned short*,
-				   unsigned short*, int, int);
-#else
-extern bool	comm_init	(int, char**, char**, unsigned short*,
-				   unsigned short*, int, int);
-#endif
+extern bool	comm_init	(int, int, char**, char**, char**,
+				   unsigned short*, unsigned short*,
+				   unsigned short*, int, int, int);
 
 extern void	comm_clear	();
 extern void	comm_finish	();

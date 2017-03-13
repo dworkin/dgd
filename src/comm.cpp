@@ -92,29 +92,28 @@ static int maxusers;		/* max # of users */
 #ifdef NETWORK_EXTENSIONS
 static int maxports;		/* max # of ports */
 static int nports;		/* # of ports */
+#else
+static int maxdgram;		/* max # of datagram users */
+static int ndgram;		/* # of datagram users */
 #endif
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
 static uindex this_user;	/* current user */
 static int ntport, nbport;	/* # telnet/binary ports */
+static int ndport;		/* # datagram ports */
 static int nexttport;		/* next telnet port to check */
 static int nextbport;		/* next binary port to check */
+static int nextdport;		/* next datagram port to check */
 static char ayt[22];		/* are you there? */
 
 /*
  * NAME:	comm->init()
  * DESCRIPTION:	initialize communications
  */
-#ifdef NETWORK_EXTENSIONS
-bool comm_init(int n, int p, char **thosts, char **bhosts,
-	unsigned short *tports, unsigned short *bports,
-	int ntelnet, int nbinary)
-#else
-bool comm_init(int n, char **thosts, char **bhosts,
-	unsigned short *tports, unsigned short *bports,
-	int ntelnet, int nbinary)
-#endif
+bool comm_init(int n, int p, char **thosts, char **bhosts, char **dhosts,
+	unsigned short *tports, unsigned short *bports, unsigned short *dports,
+	int ntelnet, int nbinary, int ndatagram)
 {
     int i;
     user *usr;
@@ -123,10 +122,14 @@ bool comm_init(int n, char **thosts, char **bhosts,
     maxusers = n;
     maxports = p;
     n += p;
-    users = ALLOC(user, n);
+    nports = 0;
 #else
-    users = ALLOC(user, maxusers = n);
+    n += p;
+    maxusers = n;
+    maxdgram = p;
+    ndgram = 0;
 #endif
+    users = ALLOC(user, n);
     for (i = n, usr = users + i; i > 0; --i) {
 	--usr;
 	usr->oindex = OBJ_NONE;
@@ -138,17 +141,14 @@ bool comm_init(int n, char **thosts, char **bhosts,
     lastuser = (user *) NULL;
     flush = outbound = (user *) NULL;
     nusers = odone = newlines = 0;
-#ifdef NETWORK_EXTENSIONS
-    nports = 0;
-#endif
     this_user = OBJ_NONE;
 
     sprintf(ayt, "\15\12[%s]\15\12", VERSION);
 
-    nexttport = nextbport = 0;
+    nexttport = nextbport = nextdport = 0;
 
-    return conn_init(n, thosts, bhosts, tports, bports, ntport = ntelnet,
-		     nbport = nbinary);
+    return conn_init(n, thosts, bhosts, dhosts, tports, bports, dports,
+		     ntport = ntelnet, nbport = nbinary, ndport = ndatagram);
 }
 
 #ifdef NETWORK_EXTENSIONS
@@ -327,7 +327,7 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
  * NAME:	comm->new()
  * DESCRIPTION:	accept a new connection
  */
-static user *comm_new(Frame *f, Object *obj, connection *conn, bool telnet)
+static user *comm_new(Frame *f, Object *obj, connection *conn, int flags)
 {
     static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
 			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
@@ -358,7 +358,8 @@ static user *comm_new(Frame *f, Object *obj, connection *conn, bool telnet)
 
     arr = comm_setup(usr, f, obj);
     usr->conn = conn;
-    if (telnet) {
+    usr->flags = flags;
+    if (flags & CF_TELNET) {
 	/* initialize connection */
 	usr->flags = CF_TELNET | CF_ECHO | CF_OUTPUT;
 	usr->state = TS_DATA;
@@ -401,7 +402,8 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 
     for (usr = outbound; ; usr = usr->flush) {
 	if (usr == (user *) NULL) {
-	    usr = comm_new(f, obj, (connection *) NULL, (protocol == P_TELNET));
+	    usr = comm_new(f, obj, (connection *) NULL,
+			   (protocol == P_TELNET) ? CF_TELNET : 0);
 	    arr = d_get_extravar(obj->data)->u.array;
 	    usr->flush = outbound;
 	    outbound = usr;
@@ -513,8 +515,11 @@ void comm_challenge(Object *obj, String *str)
     Value val;
 
     usr = &users[obj->etabi];
-    if (usr->flags & CF_TELNET) {
-	error("Datagram channel cannot be attached to telnet connection");
+    if (usr->flags & CF_TELNET || !conn_attach(usr->conn)) {
+	error("Datagram channel not available");
+    }
+    if (usr->flags & CF_UDPDATA) {
+	error("Datagram channel already established");
     }
     arr = d_get_extravar(data = obj->data)->u.array;
     if (!(usr->flags & CF_FLUSH)) {
@@ -650,6 +655,10 @@ int comm_send(Object *obj, String *str)
 	    size++;
 	}
     } else {
+	if ((usr->flags & (CF_UDP | CF_UDPDATA)) == CF_UDPDATA) {
+	    error("Message channel not enabled");
+	}
+
 	/*
 	 * binary connection
 	 */
@@ -670,11 +679,8 @@ int comm_udpsend(Object *obj, String *str)
     Value val;
 
     usr = &users[EINDEX(obj->etabi)];
-    if ((usr->flags & (CF_TELNET | CF_UDP)) != CF_UDP) {
-	error("Object has no datagram channel");
-    }
-    if (!(usr->flags & CF_UDPDATA)) {
-	error("No response to datagram challenge received yet");
+    if ((usr->flags & (CF_TELNET | CF_UDPDATA)) != CF_UDPDATA) {
+	error("Datagram channel not established");
     }
 
     arr = d_get_extravar(data = obj->data)->u.array;
@@ -956,6 +962,10 @@ void comm_flush()
 		--nusers;
 	    }
 #else
+	    if ((usr->flags & (CF_TELNET | CF_UDP | CF_UDPDATA)) == CF_UDPDATA)
+	    {
+		--ndgram;
+	    }
 	    --nusers;
 #endif
 	}
@@ -983,7 +993,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
-	usr = comm_new(f, obj, conn, TRUE);
+	usr = comm_new(f, obj, conn, CF_TELNET);
 	ec_pop();
     } catch (...) {
 	conn_del(conn);		/* delete connection */
@@ -1017,7 +1027,40 @@ static void comm_baccept(Frame *f, connection *conn, int port)
 	}
 	obj = OBJ(f->sp->oindex);
 	f->sp++;
-	comm_new(f, obj, conn, FALSE);
+	comm_new(f, obj, conn, 0);
+	ec_pop();
+    } catch (...) {
+	conn_del(conn);		/* delete connection */
+	error((char *) NULL);	/* pass on error */
+    }
+
+    this_user = obj->index;
+    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
+	i_del_value(f->sp++);
+    }
+    endtask();
+    this_user = OBJ_NONE;
+}
+
+/*
+ * NAME:	comm->daccept()
+ * DESCRIPTION:	accept a datagram connection
+ */
+static void comm_daccept(Frame *f, connection *conn, int port)
+{
+    Object *obj;
+
+    try {
+	ec_push((ec_ftn) NULL);
+	PUSH_INTVAL(f, port);
+	call_driver_object(f, "datagram_connect", 1);
+	if (f->sp->type != T_OBJECT) {
+	    fatal("driver->datagram_connect() did not return persistent object");
+	}
+	obj = OBJ(f->sp->oindex);
+	f->sp++;
+	comm_new(f, obj, conn, CF_UDPDATA);
+	ndgram++;
 	ec_pop();
     } catch (...) {
 	conn_del(conn);		/* delete connection */
@@ -1114,6 +1157,30 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    break;
 		}
 	    } while (n != nextbport);
+	}
+
+	if (ndport != 0 && ndgram < maxdgram) {
+	    n = nextdport;
+	    do {
+		/*
+		 * accept new datagram connection
+		 */
+		conn = conn_dnew6(n);
+		if (conn != (connection *) NULL) {
+		    comm_daccept(f, conn, n);
+		}
+		if (ndgram < maxdgram) {
+		    conn = conn_dnew(n);
+		    if (conn != (connection *) NULL) {
+			comm_daccept(f, conn, n);
+		    }
+		}
+		n = (n + 1) % ndport;
+		if (ndgram == maxdgram) {
+		    nextdport = n;
+		    break;
+		}
+	    } while (n != nextdport);
 	}
 
 	for (i = nusers; i > 0; --i) {
@@ -1541,32 +1608,30 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		 * binary connection
 		 */
 #ifndef NETWORK_EXTENSIONS
-		if (usr->flags & CF_UDP) {
-		    if (usr->flags & CF_UDPDATA) {
-			n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
-			if (n >= 0) {
-			    /*
-			     * received datagram
-			     */
-			    PUSH_STRVAL(f, str_new(buffer, (long) n));
-			    this_user = obj->index;
-			    if (i_call(f, obj, (Array *) NULL,
-				       "receive_datagram", 16, TRUE, 1)) {
-				i_del_value(f->sp++);
-				endtask();
-			    }
-			    this_user = OBJ_NONE;
-			}
-		    } else if (conn_udpcheck(usr->conn)) {
-			usr->flags |= CF_UDPDATA;
+		if (usr->flags & CF_UDPDATA) {
+		    n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
+		    if (n >= 0) {
+			/*
+			 * received datagram
+			 */
+			PUSH_STRVAL(f, str_new(buffer, (long) n));
 			this_user = obj->index;
-			if (i_call(f, obj, (Array *) NULL, "datagram_attach",
-				   15, TRUE, 0)) {
+			if (i_call(f, obj, (Array *) NULL, "receive_datagram",
+				   16, TRUE, 1)) {
 			    i_del_value(f->sp++);
 			    endtask();
 			}
 			this_user = OBJ_NONE;
 		    }
+		} else if ((usr->flags & CF_UDP) && conn_udpcheck(usr->conn)) {
+		    usr->flags |= CF_UDPDATA;
+		    this_user = obj->index;
+		    if (i_call(f, obj, (Array *) NULL, "datagram_attach", 15,
+			       TRUE, 0)) {
+			i_del_value(f->sp++);
+			endtask();
+		    }
+		    this_user = OBJ_NONE;
 		}
 #endif
 
