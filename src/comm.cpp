@@ -820,7 +820,7 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
     }
 
     if (v[2].type == T_STRING) {
-	if (usr->flags & CF_UDP) {
+	if (usr->flags & CF_UDPDATA) {
 	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
 #ifndef NETWORK_EXTENSIONS
 	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
@@ -1623,6 +1623,9 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			}
 			this_user = OBJ_NONE;
 		    }
+		    if (!(usr->flags & CF_UDP)) {
+			continue;	/* datagram only */
+		    }
 		} else if ((usr->flags & CF_UDP) && conn_udpcheck(usr->conn)) {
 		    usr->flags |= CF_UDPDATA;
 		    this_user = obj->index;
@@ -1833,6 +1836,7 @@ struct dump_header {
 static char dh_layout[] = "siii";
 
 struct duser {
+    char addr[24];		/* address */
     uindex oindex;		/* object index */
     short flags;		/* user flags */
     char state;			/* user state */
@@ -1847,7 +1851,7 @@ struct duser {
     short at;			/* connected at */
 };
 
-static char du_layout[] = "usccsiiiiiss";
+static char du_layout[] = "ccccccccccccccccccccccccusccsiiiiiss";
 
 /*
  * NAME:	comm->dump()
@@ -1866,7 +1870,7 @@ bool comm_dump(int fd)
     tbuf = ubuf = (char *) NULL;
 
     /* header */
-    dh.version = 0;
+    dh.version = 1;
     dh.nusers = nusers;
     dh.tbufsz = 0;
     dh.ubufsz = 0;
@@ -1889,8 +1893,9 @@ bool comm_dump(int fd)
 		du->tbufsz = usr->inbufsz;
 		du->osdone = usr->osdone;
 		*bufs++ = usr->inbuf;
-		if (!conn_export(usr->conn, &du->fd, &du->port, &du->at,
-				 &npkts, &ubufsz, bufs++, &du->cflags)) {
+		if (!conn_export(usr->conn, &du->fd, du->addr, &du->port,
+				 &du->at, &npkts, &ubufsz, bufs++,
+				 &du->cflags)) {
 		    /* no hotbooting support */
 		    FREE(du);
 		    FREE(bufs - 2);
@@ -2010,8 +2015,9 @@ bool comm_restore(int fd)
 
 	for (i = dh.nusers; i > 0; --i) {
 	    /* import connection */
-	    conn = conn_import(du->fd, du->port, du->at, du->npkts, du->ubufsz,
-			       ubuf, du->cflags, (du->flags & CF_TELNET) != 0);
+	    conn = conn_import(du->fd, du->addr, du->port, du->at, du->npkts,
+			       du->ubufsz, ubuf, du->cflags,
+			       (du->flags & CF_TELNET) != 0);
 	    if (conn == (connection *) NULL) {
 		if (nusers == 0) {
 		    if (dh.ubufsz != 0) {

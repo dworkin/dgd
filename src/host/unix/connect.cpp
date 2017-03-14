@@ -443,6 +443,12 @@ struct portdesc {
 
 struct udpdesc {
     struct portdesc fd;			/* port descriptors */
+    in46addr addr;			/* source of new packet */
+    unsigned short port;		/* source port of new datagram */
+    bool accept;			/* datagram ready to accept? */
+    unsigned short hashval;		/* address hash */
+    int size;				/* size in buffer */
+    char buffer[BINBUF_SIZE];		/* buffer */
 };
 
 static int nusers;			/* # of users */
@@ -797,6 +803,8 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    !conn_port(&udescs[n].fd.in4, SOCK_DGRAM, &sin, dports[n])) {
 	    return FALSE;
 	}
+
+	udescs[n].accept = FALSE;
     }
 
     flist = (connection *) NULL;
@@ -1050,6 +1058,38 @@ static connection *conn_accept(int portfd, int port)
 }
 
 /*
+ * NAME:	conn->udpaccept()
+ * DESCRIPTION:	accept a new UDP connection
+ */
+static connection *conn_udpaccept(int port)
+{
+    connection *conn, **hash;
+
+    conn = flist;
+    flist = (connection *) conn->next;
+    conn->name = (char *) NULL;
+    hash = &udphtab[udescs[port].hashval];
+    conn->next = *hash;
+    *hash = conn;
+    conn->fd = -2;
+    conn->addr = ipa_new(&udescs[port].addr);
+    conn->port = udescs[port].port;
+    conn->at = port;
+    m_static();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
+    m_dynamic();
+    conn->udpbuf[0] = udescs[port].size >> 8;
+    conn->udpbuf[1] = udescs[port].size;
+    memcpy(conn->udpbuf + 2, udescs[port].buffer, udescs[port].size);
+    conn->bufsz = udescs[port].size + 2;
+    conn->npkts = 1;
+    npackets++;
+    udescs[port].accept = FALSE;
+
+    return conn;
+}
+
+/*
  * NAME:	conn->tnew6()
  * DESCRIPTION:	accept a new telnet connection
  */
@@ -1089,6 +1129,11 @@ connection *conn_bnew6(int port)
  */
 connection *conn_dnew6(int port)
 {
+# ifdef INET6
+    if (udescs[port].accept) {
+	return conn_udpaccept(port);
+    }
+# endif
     return (connection *) NULL;
 }
 
@@ -1128,6 +1173,9 @@ connection *conn_bnew(int port)
  */
 connection *conn_dnew(int port)
 {
+    if (udescs[port].accept) {
+	return conn_udpaccept(port);
+    }
     return (connection *) NULL;
 }
 
@@ -1172,7 +1220,7 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
     *hash = conn;
     conn->npkts = 0;
     m_static();
-    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
     m_dynamic();
     memset(conn->udpbuf, '\0', UDPHASHSZ);
     conn->name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
@@ -1196,7 +1244,7 @@ void conn_del(connection *conn)
 	FD_CLR(conn->fd, &outfds);
 	FD_CLR(conn->fd, &waitfds);
 	conn->fd = -1;
-    } else {
+    } else if (conn->fd == -1) {
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
@@ -1252,6 +1300,7 @@ static void conn_udprecv6(int n)
     struct sockaddr_in6 from;
     socklen_t fromlen;
     int size;
+    unsigned short hashval;
     connection **hash, *conn;
     char *p;
 
@@ -1263,12 +1312,33 @@ static void conn_udprecv6(int n)
 	return;
     }
 
-    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
-				      sizeof(struct in6_addr)) ^
-						from.sin6_port) % udphtabsz];
+    hashval = (Hashtab::hashmem((char *) &from.sin6_addr,
+				sizeof(struct in6_addr)) ^ from.sin6_port) %
+								    udphtabsz;
+    hash = &udphtab[hashval];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL && conf_attach(n)) {
+	if (conn == (connection *) NULL) {
+	    if (!conf_attach(n)) {
+		if (!udescs[n].accept) {
+		    if (IN6_IS_ADDR_V4MAPPED(&from.sin6_addr)) {
+			/* convert to IPv4 address */
+			udescs[n].addr.in.addr = *(struct in_addr *)
+						    &from.sin6_addr.s6_addr[12];
+			udescs[n].addr.ipv6 = FALSE;
+		    } else {
+			udescs[n].addr.in.addr6 = from.sin6_addr;
+			udescs[n].addr.ipv6 = TRUE;
+		    }
+		    udescs[n].port = from.sin6_port;
+		    udescs[n].hashval = hashval;
+		    udescs[n].size = size;
+		    memcpy(udescs[n].buffer, buffer, size);
+		    udescs[n].accept = TRUE;
+		}
+		break;
+	    }
+
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1287,8 +1357,7 @@ static void conn_udprecv6(int n)
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin6_port;
-		    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
-			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
+		    hash = &udphtab[hashval];
 		    conn->next = *hash;
 		    *hash = conn;
 
@@ -1305,7 +1374,7 @@ static void conn_udprecv6(int n)
 	    /*
 	     * packet from known correspondent
 	     */
-	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+	    if (conn->bufsz + size <= BINBUF_SIZE) {
 		p = conn->udpbuf + conn->bufsz;
 		*p++ = size >> 8;
 		*p++ = size;
@@ -1331,6 +1400,7 @@ static void conn_udprecv(int n)
     struct sockaddr_in from;
     socklen_t fromlen;
     int size;
+    unsigned short hashval;
     connection **hash, *conn;
     char *p;
 
@@ -1342,10 +1412,24 @@ static void conn_udprecv(int n)
 	return;
     }
 
-    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz];
+    hashval = ((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz;
+    hash = &udphtab[hashval];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL && conf_attach(n)) {
+	if (conn == (connection *) NULL) {
+	    if (!conf_attach(n)) {
+		if (!udescs[n].accept) {
+		    udescs[n].addr.in.addr = from.sin_addr;
+		    udescs[n].addr.ipv6 = FALSE;
+		    udescs[n].port = from.sin_port;
+		    udescs[n].hashval = hashval;
+		    udescs[n].size = size;
+		    memcpy(udescs[n].buffer, buffer, size);
+		    udescs[n].accept = TRUE;
+		}
+		break;
+	    }
+
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1363,8 +1447,7 @@ static void conn_udprecv(int n)
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin_port;
-		    hash = &udphtab[((Uint) from.sin_addr.s_addr ^
-						    conn->port) % udphtabsz];
+		    hash = &udphtab[hashval];
 		    conn->next = *hash;
 		    *hash = conn;
 
@@ -1381,7 +1464,7 @@ static void conn_udprecv(int n)
 	    /*
 	     * packet from known correspondent
 	     */
-	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+	    if (conn->bufsz + size <= BINBUF_SIZE) {
 		p = conn->udpbuf + conn->bufsz;
 		*p++ = size >> 8;
 		*p++ = size;
@@ -1586,7 +1669,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
  */
 int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 {
-    if (conn->fd >= 0) {
+    if (conn->fd != -1) {
 # ifdef INET6
 	if (conn->addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
@@ -2097,12 +2180,12 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
  * NAME:	conn->export()
  * DESCRIPTION:	export a connection
  */
-bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
-		 int *npkts, int *bufsz, char **buf, char *flags)
+bool conn_export(connection *conn, int *fd, char *addr, unsigned short *port,
+		 short *at, int *npkts, int *bufsz, char **buf, char *flags)
 {
     *fd = conn->fd;
     *port = conn->port;
-    if (conn->fd >= 0) {
+    if (conn->fd != -1) {
 	*flags = 0;
 	*at = conn->at;
 	*npkts = conn->npkts;
@@ -2125,6 +2208,7 @@ bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
 	    }
 	}
 	if (conn->addr != (ipaddr *) NULL) {
+	    memcpy(addr, &conn->addr->ipnum, sizeof(in46addr));
 	    *flags |= CONN_ADDR;
 	}
     }
@@ -2136,37 +2220,12 @@ bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
  * NAME:	conn->import()
  * DESCRIPTION:	import a connection
  */
-connection *conn_import(int fd, unsigned short port, short at, int npkts,
-			int bufsz, char *buf, char flags, bool telnet)
+connection *conn_import(int fd, char *addr, unsigned short port, short at,
+			int npkts, int bufsz, char *buf, char flags,
+			bool telnet)
 {
-# ifdef INET6
-    struct sockaddr_in6 sin;
-# else
-    struct sockaddr_in sin;
-# endif
-    socklen_t len;
     in46addr inaddr;
     connection *conn;
-
-    if (fd >= 0) {
-	len = sizeof(sin);
-	if (getpeername(fd, (struct sockaddr *) &sin, &len) != 0) {
-	    if (errno == EBADF || errno == ENOTCONN || (flags & CONN_ADDR)) {
-		return (connection *) NULL;
-	    }
-	} else {
-	    inaddr.ipv6 = FALSE;
-# ifdef INET6
-	    if (sin.sin6_family == AF_INET6) {
-		inaddr.in.addr6 = sin.sin6_addr;
-		inaddr.ipv6 = TRUE;
-	    } else
-# endif
-	    inaddr.in.addr = ((struct sockaddr_in *) &sin)->sin_addr;
-	}
-    } else {
-	closed++;
-    }
 
     conn = flist;
     flist = (connection *) conn->next;
@@ -2194,12 +2253,15 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 	if (fd > maxfd) {
 	    maxfd = fd;
 	}
+    }
 
+    if (fd != -1) {
 	if (at >= 0 && at >= ((telnet) ? ntdescs : nbdescs)) {
 	    at = -1;
 	}
 	conn->at = at;
 	if (flags & CONN_ADDR) {
+	    memcpy(&inaddr, addr, sizeof(in46addr));
 	    conn->addr = ipa_new(&inaddr);
 	}
 
@@ -2213,7 +2275,7 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 
 		conn->bufsz = bufsz;
 		m_static();
-		conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+		conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
 		m_dynamic();
 		memcpy(conn->udpbuf, buf, bufsz);
 # ifdef INET6
@@ -2231,6 +2293,8 @@ connection *conn_import(int fd, unsigned short port, short at, int npkts,
 	    npackets += npkts;
 	}
 # endif
+    } else {
+	closed++;
     }
 
     return conn;

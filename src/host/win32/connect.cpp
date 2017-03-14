@@ -349,6 +349,7 @@ static void ipa_lookup()
 
 struct connection : public Hashtab::Entry {
     SOCKET fd;				/* file descriptor */
+    bool udp;				/* datagram only? */
     int bufsz;				/* # bytes in buffer */
     int npkts;				/* # packets in buffer */
     char *udpbuf;			/* datagram buffer */
@@ -364,6 +365,13 @@ struct portdesc {
 
 struct udpdesc {
     struct portdesc fd;			/* port descriptors */
+    in46addr addr;			/* source of new packet */
+    unsigned short port;		/* source port of new datagram */
+    bool accept;			/* datagram ready to accept? */
+    unsigned short hashval;		/* address hash */
+    int size;				/* size in buffer */
+    char buffer[BINBUF_SIZE];		/* buffer */
+
 };
 
 static int nusers;			/* # of users */
@@ -728,6 +736,8 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    !conn_port(&udescs[n].fd.in4, SOCK_DGRAM, &sin, dports[n])) {
 	    return FALSE;
 	}
+
+	udescs[n].accept = FALSE;
     }
 
     flist = (connection *) NULL;
@@ -902,6 +912,7 @@ static connection *conn_accept6(SOCKET portfd, int port)
     flist = (connection *) conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
+    conn->udp = FALSE;
     conn->udpbuf = (char *) NULL;
     addr.in.addr6 = sin6.sin6_addr;
     addr.ipv6 = TRUE;
@@ -944,6 +955,7 @@ static connection *conn_accept(SOCKET portfd, int port)
     flist = (connection *) conn->next;
     conn->name = (char *) NULL;
     conn->fd = fd;
+    conn->udp = FALSE;
     conn->udpbuf = (char *) NULL;
     addr.in.addr = sin.sin_addr;
     addr.ipv6 = FALSE;
@@ -953,6 +965,39 @@ static connection *conn_accept(SOCKET portfd, int port)
     FD_SET(fd, &outfds);
     FD_CLR(fd, &readfds);
     FD_SET(fd, &writefds);
+
+    return conn;
+}
+
+/*
+ * NAME:	conn->udpaccept()
+ * DESCRIPTION:	accept a new UDP connection
+ */
+static connection *conn_udpaccept(int port)
+{
+    connection *conn, **hash;
+
+    conn = flist;
+    flist = (connection *) conn->next;
+    conn->name = (char *) NULL;
+    hash = &udphtab[udescs[port].hashval];
+    conn->next = *hash;
+    *hash = conn;
+    conn->fd = INVALID_SOCKET;
+    conn->udp = TRUE;
+    conn->addr = ipa_new(&udescs[port].addr);
+    conn->port = udescs[port].port;
+    conn->at = port;
+    m_static();
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
+    m_dynamic();
+    conn->udpbuf[0] = udescs[port].size >> 8;
+    conn->udpbuf[1] = udescs[port].size;
+    memcpy(conn->udpbuf + 2, udescs[port].buffer, udescs[port].size);
+    conn->bufsz = udescs[port].size + 2;
+    conn->npkts = 1;
+    npackets++;
+    udescs[port].accept = FALSE;
 
     return conn;
 }
@@ -993,6 +1038,9 @@ connection *conn_bnew6(int port)
  */
 connection *conn_dnew6(int port)
 {
+    if (udescs[port].accept) {
+	return conn_udpaccept(port);
+    }
     return (connection *) NULL;
 }
 
@@ -1032,6 +1080,9 @@ connection *conn_bnew(int port)
  */
 connection *conn_dnew(int port)
 {
+    if (udescs[port].accept) {
+	return conn_udpaccept(port);
+    }
     return (connection *) NULL;
 }
 
@@ -1077,7 +1128,7 @@ bool conn_udp(connection *conn, char *challenge,
     *hash = conn;
     conn->npkts = 0;
     m_static();
-    conn->udpbuf = ALLOC(char, BINBUF_SIZE);
+    conn->udpbuf = ALLOC(char, BINBUF_SIZE + 2);
     m_dynamic();
     memset(conn->udpbuf, '\0', UDPHASHSZ);
     conn->name = (const char *) memcpy(conn->udpbuf, challenge, conn->bufsz = len);
@@ -1101,7 +1152,7 @@ void conn_del(connection *conn)
 	FD_CLR(conn->fd, &outfds);
 	FD_CLR(conn->fd, &waitfds);
 	conn->fd = INVALID_SOCKET;
-    } else {
+    } else if (!conn->udp) {
 	--closed;
     }
     if (conn->udpbuf != (char *) NULL) {
@@ -1154,6 +1205,7 @@ static void conn_udprecv6(int n)
     struct sockaddr_in6 from;
     int fromlen;
     int size;
+    unsigned short hashval;
     connection **hash, *conn;
     char *p;
 
@@ -1165,12 +1217,26 @@ static void conn_udprecv6(int n)
 	return;
     }
 
-    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
-				      sizeof(struct in6_addr)) ^ from.sin6_port)
-								% udphtabsz];
+    hashval = (Hashtab::hashmem((char *) &from.sin6_addr,
+			        sizeof(struct in6_addr)) ^ from.sin6_port) %
+								    udphtabsz;
+    hash = &udphtab[hashval];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL && conf_attach(n)) {
+	if (conn == (connection *) NULL) {
+	    if (!conf_attach(n)) {
+		if (!udescs[n].accept) {
+		    udescs[n].addr.in.addr6 = from.sin6_addr;
+		    udescs[n].addr.ipv6 = TRUE;
+		    udescs[n].port = from.sin6_port;
+		    udescs[n].hashval = hashval;
+		    udescs[n].size = size;
+		    memcpy(udescs[n].buffer, buffer, size);
+		    udescs[n].accept = TRUE;
+		}
+		break;
+	    }
+
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1189,8 +1255,7 @@ static void conn_udprecv6(int n)
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin6_port;
-		    hash = &udphtab[(Hashtab::hashmem((char *) &from.sin6_addr,
-			   sizeof(struct in6_addr)) ^ conn->port) % udphtabsz];
+		    hash = &udphtab[hashval];
 		    conn->next = *hash;
 		    *hash = conn;
 
@@ -1207,7 +1272,7 @@ static void conn_udprecv6(int n)
 	    /*
 	     * packet from known correspondent
 	     */
-	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+	    if (conn->bufsz + size <= BINBUF_SIZE) {
 		p = conn->udpbuf + conn->bufsz;
 		*p++ = size >> 8;
 		*p++ = size;
@@ -1232,6 +1297,7 @@ static void conn_udprecv(int n)
     struct sockaddr_in from;
     int fromlen;
     int size;
+    unsigned short hashval;
     connection **hash, *conn;
     char *p;
 
@@ -1243,10 +1309,24 @@ static void conn_udprecv(int n)
 	return;
     }
 
-    hash = &udphtab[((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz];
+    hashval = ((Uint) from.sin_addr.s_addr ^ from.sin_port) % udphtabsz;
+    hash = &udphtab[hashval];
     for (;;) {
 	conn = *hash;
-	if (conn == (connection *) NULL && conf_attach(n)) {
+	if (conn == (connection *) NULL) {
+	    if (!conf_attach(n)) {
+		if (!udescs[n].accept) {
+		    udescs[n].addr.in.addr = from.sin_addr;
+		    udescs[n].addr.ipv6 = FALSE;
+		    udescs[n].port = from.sin_port;
+		    udescs[n].hashval = hashval;
+		    udescs[n].size = size;
+		    memcpy(udescs[n].buffer, buffer, size);
+		    udescs[n].accept = TRUE;
+		}
+		break;
+	    }
+
 	    /*
 	     * see if the packet matches an outstanding challenge
 	     */
@@ -1264,8 +1344,7 @@ static void conn_udprecv(int n)
 		    conn->name = (char *) NULL;
 		    conn->bufsz = 0;
 		    conn->port = from.sin_port;
-		    hash = &udphtab[((Uint) from.sin_addr.s_addr ^
-						    conn->port) % udphtabsz];
+		    hash = &udphtab[hashval];
 		    conn->next = *hash;
 		    *hash = conn;
 
@@ -1282,7 +1361,7 @@ static void conn_udprecv(int n)
 	    /*
 	     * packet from known correspondent
 	     */
-	    if (conn->bufsz + size <= BINBUF_SIZE - 2) {
+	    if (conn->bufsz + size <= BINBUF_SIZE) {
 		p = conn->udpbuf + conn->bufsz;
 		*p++ = size >> 8;
 		*p++ = size;
@@ -1493,7 +1572,7 @@ int conn_write(connection *conn, char *buf, unsigned int len)
  */
 int conn_udpwrite(connection *conn, char *buf, unsigned int len)
 {
-    if (conn->fd >= 0) {
+    if (conn->fd != INVALID_SOCKET || conn->udp) {
 	if (conn->addr->ipnum.ipv6) {
 	    struct sockaddr_in6 to;
 
@@ -1959,11 +2038,12 @@ int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
  * NAME:	conn->export()
  * DESCRIPTION:	export a connection
  */
-bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
-		 int *npkts, int *bufsz, char **buf, char *flags)
+bool conn_export(connection *conn, int *fd, char *addr, unsigned short *port,
+		 short *at, int *npkts, int *bufsz, char **buf, char *flags)
 {
     UNREFERENCED_PARAMETER(conn);
     UNREFERENCED_PARAMETER(fd);
+    UNREFERENCED_PARAMETER(addr);
     UNREFERENCED_PARAMETER(port);
     UNREFERENCED_PARAMETER(at);
     UNREFERENCED_PARAMETER(npkts);
@@ -1977,10 +2057,12 @@ bool conn_export(connection *conn, int *fd, unsigned short *port, short *at,
  * NAME:	conn->import()
  * DESCRIPTION:	import a connection
  */
-connection *conn_import(int fd, unsigned short port, short at, int npkts,
-			int bufsz, char *buf, char flags, bool telnet)
+connection *conn_import(int fd, char *addr, unsigned short port, short at,
+			int npkts, int bufsz, char *buf, char flags,
+			bool telnet)
 {
     UNREFERENCED_PARAMETER(fd);
+    UNREFERENCED_PARAMETER(addr);
     UNREFERENCED_PARAMETER(port);
     UNREFERENCED_PARAMETER(at);
     UNREFERENCED_PARAMETER(npkts);
