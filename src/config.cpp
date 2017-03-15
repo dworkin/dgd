@@ -841,7 +841,8 @@ static bool conf_config()
     unsigned short *ports;
 
     for (h = NR_OPTIONS; h > 0; ) {
-	conf[--h].set = FALSE;
+	conf[--h].u.num = 0;
+	conf[h].set = FALSE;
     }
     memset(dirs, '\0', sizeof(dirs));
     strs = (char **) NULL;
@@ -1128,6 +1129,10 @@ static bool conf_config()
 	}
     }
 
+    if (conf[USERS].u.num + conf[DATAGRAM_USERS].u.num == 0) {
+	conferr("no users");
+	return FALSE;
+    }
     if (conf[USERS].u.num + conf[DATAGRAM_USERS].u.num > EINDEX_MAX) {
 	conferr("total number of users too high");
 	return FALSE;
