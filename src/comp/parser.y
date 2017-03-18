@@ -631,10 +631,32 @@ primary_p1_exp
 	| '(' '[' opt_assoc_arg_list_comma ']' ')'
 		{ $$ = c_aggregate($3, T_MAPPING); }
 	| ident	{
-		  $$ = c_variable($1);
+		  $$ = c_local_var($1);
+		  if ($$ == (node *) NULL) {
+		      $$ = c_global_var($1);
+		      if (typechecking) {
+			  if ($$->mod != T_MIXED && !conf_typechecking()) {
+			      /*
+			       * global vars might be modified by untypechecked
+			       * functions...
+			       */
+			      $$ = node_mon(N_CAST, $$->mod, $$);
+			      $$->sclass = $$->l.left->sclass;
+			      if ($$->sclass != (String *) NULL) {
+				  str_ref($$->sclass);
+			      }
+			  }
+		      }
+		  }
+		  if (!typechecking) {
+		      /* the variable could be anything */
+		      $$->mod = T_MIXED;
+		  }
+		}
+	| COLON_COLON ident {
+		  $$ = c_global_var($2);
 		  if (typechecking) {
-		      if ($$->type == N_GLOBAL && $$->mod != T_MIXED &&
-			  !conf_typechecking()) {
+		      if ($$->mod != T_MIXED && !conf_typechecking()) {
 			  /*
 			   * global vars might be modified by untypechecked
 			   * functions...

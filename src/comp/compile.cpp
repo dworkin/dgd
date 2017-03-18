@@ -1913,36 +1913,46 @@ node *c_aggregate(node *n, unsigned int type)
 }
 
 /*
- * NAME:	compile->variable()
- * DESCRIPTION:	create a reference to a variable
+ * NAME:	compile->local_var()
+ * DESCRIPTION:	create a reference to a local variable
  */
-node *c_variable(node *n)
+node *c_local_var(node *n)
 {
     int i;
 
     i = block_var(n->l.string->text);
-    if (i >= 0) {
-	/* local var */
-	if (!BTST(thiscond->init, i)) {
-	    variables[i].unset++;
-	}
-	n = node_mon(N_LOCAL, variables[i].type, n);
-	n->sclass = variables[i].cvstr;
-	n->r.number = i;
-    } else {
-	String *sclass;
-	long ref;
-
-	/*
-	 * try a global variable
-	 */
-	n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
-	n->sclass = sclass;
-	n->r.number = ref;
+    if (i < 0) {
+	return (node *) NULL;
     }
+
+    if (!BTST(thiscond->init, i)) {
+	variables[i].unset++;
+    }
+    n = node_mon(N_LOCAL, variables[i].type, n);
+    n->sclass = variables[i].cvstr;
     if (n->sclass != (String *) NULL) {
 	str_ref(n->sclass);
     }
+    n->r.number = i;
+    return n;
+}
+
+/*
+ * NAME:	compile->global_var()
+ * DESCRIPTION:	create a reference to a global variable
+ */
+node *c_global_var(node *n)
+{
+    String *sclass;
+    long ref;
+
+    n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
+    n->sclass = sclass;
+    if (sclass != (String *) NULL) {
+	str_ref(sclass);
+    }
+    n->r.number = ref;
+
     return n;
 }
 

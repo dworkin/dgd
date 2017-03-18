@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -62,7 +62,8 @@ extern node	*c_endcompound	(node*);
 extern node	*c_flookup	(node*, int);
 extern node	*c_iflookup	(node*, node*);
 extern node	*c_aggregate	(node*, unsigned int);
-extern node	*c_variable	(node*);
+extern node	*c_local_var	(node*);
+extern node	*c_global_var	(node*);
 extern short	 c_vtype	(int);
 extern node	*c_funcall	(node*, node*);
 extern node	*c_arrow	(node*, node*, node*);
