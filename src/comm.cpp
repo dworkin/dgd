@@ -502,6 +502,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     }
 }
 
+#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	comm->challenge()
  * DESCRIPTION:	set the UDP challenge for a binary connection
@@ -534,6 +535,7 @@ void comm_challenge(Object *obj, String *str)
     PUT_STRVAL_NOREF(&val, str);
     d_assign_elt(data, arr, v, &val);
 }
+#endif
 
 /*
  * NAME:	comm->write()
@@ -1042,6 +1044,7 @@ static void comm_baccept(Frame *f, connection *conn, int port)
     this_user = OBJ_NONE;
 }
 
+#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	comm->daccept()
  * DESCRIPTION:	accept a datagram connection
@@ -1074,6 +1077,7 @@ static void comm_daccept(Frame *f, connection *conn, int port)
     endtask();
     this_user = OBJ_NONE;
 }
+#endif
 
 /*
  * NAME:	comm->receive()
