@@ -110,7 +110,7 @@ void o_init(unsigned int n, Uint interval)
     counttab = ALLOC(Uint, n);
     upgraded = (Object *) NULL;
     uobjects = dobjects = mobjects = 0;
-    dinterval = (interval * 19) / 20;
+    dinterval = ((interval + 1) * 19) / 20;
     odcount = 1;
     obase = TRUE;
     recount = TRUE;
