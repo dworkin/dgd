@@ -1792,7 +1792,7 @@ connection *conn_connect(void *addr, int len)
 /*
  * check for a connection in pending state and see if it is connected.
  */
-int conn_check_connected(connection *conn, bool *refused)
+int conn_check_connected(connection *conn, int *errcode)
 {
     int optval;
      socklen_t lon;
@@ -1816,13 +1816,31 @@ int conn_check_connected(connection *conn, bool *refused)
     /*
      * Get error state for the socket
      */
-    *refused = FALSE;
+    *errcode = 0;
     if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (char*)(&optval), &lon) < 0) {
 	return -1;
     }
     if (optval != 0) {
-	if (optval == WSAECONNREFUSED || optval == ERROR_CONNECTION_REFUSED) {
-	    *refused = TRUE;
+	switch (optval) {
+	case WSAECONNREFUSED:
+	case ERROR_CONNECTION_REFUSED:
+	    *errcode = 1;
+	    break;
+
+	case WSAEHOSTUNREACH:
+	case ERROR_HOST_UNREACHABLE:
+	    *errcode = 2;
+	    break;
+
+	case WSAENETUNREACH:
+	case ERROR_NETWORK_UNREACHABLE:
+	    *errcode = 3;
+	    break;
+
+	case WSATIMEDOUT:
+	case ERROR_SEM_TIMROUT:
+	    *errcode = 4;
+	    break;
 	}
 	errno = optval;
 	return -1;

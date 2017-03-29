@@ -1912,7 +1912,7 @@ connection *conn_connect(void *addr, int len)
 /*
  * check for a connection in pending state and see if it is connected.
  */
-int conn_check_connected(connection *conn, bool *refused)
+int conn_check_connected(connection *conn, int *errcode)
 {
     int optval;
     socklen_t lon;
@@ -1936,14 +1936,28 @@ int conn_check_connected(connection *conn, bool *refused)
     /*
      * Get error state for the socket
      */
-    *refused = FALSE;
+    *errcode = 0;
     if (getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, (void *)(&optval), &lon) < 0)
     {
 	return -1;
     }
     if (optval != 0) {
-	if (optval == ECONNREFUSED) {
-	    *refused = TRUE;
+	switch (optval) {
+	case ECONNREFUSED:
+	    *errcode = 1;
+	    break;
+
+	case EHOSTUNREACH:
+	    *errcode = 2;
+	    break;
+
+	case ENETUNREACH:
+	    *errcode = 3;
+	    break;
+
+	case ETIMEDOUT:
+	    *errcode = 4;
+	    break;
 	}
 	errno = optval;
 	return -1;

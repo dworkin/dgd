@@ -54,7 +54,7 @@ extern void	   conn_ipnum	 (connection*, char*);
 extern void	   conn_ipname	 (connection*, char*);
 extern void	  *conn_host	 (char*, unsigned short, int*);
 extern connection *conn_connect	 (void*, int);
-extern int	   conn_check_connected (connection*, bool*);
+extern int	   conn_check_connected (connection*, int*);
 # ifdef NETWORK_EXTENSIONS
 extern connection *conn_openlisten (unsigned char, unsigned short);
 extern int	   conn_at	 (connection*);

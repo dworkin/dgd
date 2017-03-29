@@ -1202,10 +1202,9 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	     * handle it.
 	     */
 	    if (usr->flags & CF_OPENDING) {
-		int retval;
+		int retval, errcode;
 		uindex old_user;
-		bool refused;
-		retval = conn_check_connected(usr->conn, &refused);
+		retval = conn_check_connected(usr->conn, &errcode);
 		/*
 		 * Something happened to the connection..
 		 * its either connected or in error state now.
@@ -1237,7 +1236,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			    i_del_value(f->sp++);
 			}
 #else
-			PUSH_INTVAL(f, refused);
+			PUSH_INTVAL(f, errcode);
 			if (i_call(f, obj, (Array *) NULL, "unconnected", 11,
 				   TRUE, 1)) {
 			    i_del_value(f->sp++);
