@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -290,7 +290,6 @@ struct savedata {
     svalue *selts;			/* save array elements */
     sstring *sstrings;			/* save strings */
     char *stext;			/* save string elements */
-    bool counting;			/* currently counting */
     Array alist;			/* linked list sentinel */
 };
 
@@ -1740,8 +1739,6 @@ static void d_save_control(Control *ctrl)
 }
 
 
-static void d_count (savedata*, Value*, unsigned int);
-
 /*
  * NAME:	data->arrcount()
  * DESCRIPTION:	count the number of arrays and strings in an array
@@ -1755,16 +1752,6 @@ static void d_arrcount(savedata *save, Array *arr)
     arr->next->prev = arr;
     save->alist.next = arr;
     save->narr++;
-
-    if (!save->counting) {
-	save->counting = TRUE;
-	do {
-	    save->arrsize += arr->size;
-	    d_count(save, d_get_elts(arr), arr->size);
-	    arr = arr->prev;
-	} while (arr != &save->alist);
-	save->counting = FALSE;
-    }
 }
 
 /*
@@ -2186,7 +2173,6 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	save.nstr = 0;
 	save.arrsize = 0;
 	save.strsize = 0;
-	save.counting = FALSE;
 	save.alist.prev = save.alist.next = &save.alist;
 
 	d_get_variable(data, 0);
@@ -2232,6 +2218,11 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 		    }
 		}
 	    }
+	}
+
+	for (arr = save.alist.prev; arr != &save.alist; arr = arr->prev) {
+	    save.arrsize += arr->size;
+	    d_count(&save, d_get_elts(arr), arr->size);
 	}
 
 	/* fill in header */
