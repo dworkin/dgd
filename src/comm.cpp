@@ -68,8 +68,7 @@ struct user {
 # define CF_OPENDING	0x0100	/* waiting for connect() to complete */
 
 #ifdef NETWORK_EXTENSIONS
-# define CF_PORT	0x0200	/* port (listening) connection */
-# define CF_DATAGRAM	0x0400	/* independent UDP socket */
+# error network extensions are not currently supported
 #endif
 
 /* state */
@@ -89,13 +88,8 @@ static user *freeuser;		/* linked list of free users */
 static user *flush;		/* flush list */
 static user *outbound;		/* pending outbound list */
 static int maxusers;		/* max # of users */
-#ifdef NETWORK_EXTENSIONS
-static int maxports;		/* max # of ports */
-static int nports;		/* # of ports */
-#else
 static int maxdgram;		/* max # of datagram users */
 static int ndgram;		/* # of datagram users */
-#endif
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
@@ -118,17 +112,10 @@ bool comm_init(int n, int p, char **thosts, char **bhosts, char **dhosts,
     int i;
     user *usr;
 
-#ifdef NETWORK_EXTENSIONS
-    maxusers = n;
-    maxports = p;
-    n += p;
-    nports = 0;
-#else
     n += p;
     maxusers = n;
     maxdgram = p;
     ndgram = 0;
-#endif
     users = ALLOC(user, n);
     for (i = n, usr = users + i; i > 0; --i) {
 	--usr;
@@ -151,94 +138,6 @@ bool comm_init(int n, int p, char **thosts, char **bhosts, char **dhosts,
 		     ntport = ntelnet, nbport = nbinary, ndport = ndatagram);
 }
 
-#ifdef NETWORK_EXTENSIONS
-void comm_openport(Frame *f, Object *obj, unsigned char protocol,
-	unsigned short portnr)
-{
-    connection *conn;
-    uindex olduser;
-    short flags;
-    user *usr;
-    Dataspace *data;
-    Array *arr;
-    Value val;
-
-    flags = 0;
-
-    if (nports >= maxports)
-	error("Max number of port objects exceeded");
-
-    switch (protocol)
-    {
-    case P_TELNET:
-	flags = CF_TELNET | CF_PORT;
-	protocol = P_TCP;
-	break;
-    case P_UDP:
-	flags = CF_DATAGRAM | CF_PORT;
-	break;
-    case P_TCP:
-	flags = CF_PORT;
-	break;
-    default:
-	error("Unknown protocol");
-    }
-
-    conn = (connection *) conn_openlisten(protocol, portnr);
-    if (conn == (connection *) NULL)
-	error("Can't open port");
-
-    usr = freeuser;
-    freeuser = usr->next;
-    if (lastuser != (user *) NULL) {
-	usr->prev = lastuser->prev;
-	usr->prev->next = usr;
-	usr->next = lastuser;
-	lastuser->prev = usr;
-    } else {
-	usr->prev = usr;
-	usr->next = usr;
-	lastuser = usr;
-    }
-    d_wipe_extravar(data = o_dataspace(obj));
-    switch (protocol)
-    {
-    case P_TCP:
-	arr = arr_new(data, 3L);
-	arr->elts[0] = zero_int;
-	arr->elts[1] = arr->elts[2] = nil_value;
-	PUT_ARRVAL_NOREF(&val, arr);
-	d_set_extravar(data, &val);
-	break;
-    case P_UDP:
-	arr = arr_new(data, 4L);
-	arr->elts[0] = zero_int;
-	arr->elts[1] = nil_value;
-	arr->elts[2] = nil_value;
-	arr->elts[3] = nil_value;
-	PUT_ARRVAL_NOREF(&val, arr);
-	d_set_extravar(data, &val);
-	break;
-    }
-    usr->oindex = obj->index;
-    obj->flags |= O_USER;
-    obj->etabi = usr-users;
-    usr->conn = conn;
-    usr->outbuf = (String *) NULL;
-    usr->osdone = 0;
-    usr->flags = flags;
-    olduser = this_user;
-    this_user = obj->index;
-    (--f->sp)->type = T_INT;
-    f->sp->u.number = conn_at(conn);
-    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 1)) {
-	i_del_value(f->sp++);
-    }
-    nports++;
-    this_user = olduser;
-}
-#endif
-
 /*
  * NAME:	comm->clear()
  * DESCRIPTION:	clean up connections
@@ -257,7 +156,6 @@ void comm_finish()
     conn_finish();
 }
 
-#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	comm->listen()
  * DESCRIPTION:	start listening on telnet port and binary port
@@ -266,7 +164,6 @@ void comm_listen()
 {
     conn_listen();
 }
-#endif
 
 /*
  * NAME:	addtoflush()
@@ -426,42 +323,6 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
     usr->flags |= CF_OPENDING;
 }
 
-#ifdef NETWORK_EXTENSIONS
-int comm_senddatagram(Object *obj, String *str, String *ip, int port)
-{
-    user *usr;
-    Dataspace *data;
-    Array *arr;
-    Value *v1, *v2, *v3;
-    Value val;
-
-    usr = &users[EINDEX(obj->etabi)];
-
-    if ((usr->flags & (CF_PORT | CF_DATAGRAM)) != (CF_PORT | CF_DATAGRAM)) {
-	error("Object is not a udp port object");
-    }
-    if (!conn_checkaddr(ip->text)) {
-	error("Not a IP address");
-    }
-    arr = d_get_extravar(data = obj->data)->u.array;
-    if (!(usr->flags & CF_FLUSH)) {
-	addtoflush(usr, arr);
-    }
-
-    v1 = arr->elts + 1;/* used for string */
-    v2 = arr->elts + 2;/* used for ip */
-    v3 = arr->elts + 3;/* used for port */
-    usr->flags |= CF_OUTPUT;
-    PUT_STRVAL_NOREF(&val, str);
-    d_assign_elt(data, arr, v1, &val);
-    PUT_STRVAL_NOREF(&val, ip);
-    d_assign_elt(data, arr, v2, &val);
-    PUT_INTVAL(&val, port);
-    d_assign_elt(data, arr, v3, &val);
-    return str->len;
-}
-#endif
-
 /*
  * NAME:	comm->del()
  * DESCRIPTION:	delete a connection
@@ -502,7 +363,6 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     }
 }
 
-#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	comm->challenge()
  * DESCRIPTION:	set the UDP challenge for a binary connection
@@ -535,7 +395,6 @@ void comm_challenge(Object *obj, String *str)
     PUT_STRVAL_NOREF(&val, str);
     d_assign_elt(data, arr, v, &val);
 }
-#endif
 
 /*
  * NAME:	comm->write()
@@ -757,32 +616,6 @@ void comm_block(Object *obj, int block)
     }
 }
 
-#ifdef NETWORK_EXTENSIONS
-static void comm_udpflush(user *usr, Object *obj, Dataspace *data, Array *arr)
-{
-    Value *v;
-    char *buf;
-    int res;
-
-    UNREFERENCED_PARAMETER(data);
-    UNREFERENCED_PARAMETER(obj);
-
-    v = d_get_elts(arr);
-    if (!conn_wrdone(usr->conn)) {
-	return;
-    }
-    buf = v[1].u.string->text;
-    res = conn_udpsend(usr->conn, buf, strlen(buf), v[2].u.string->text,
-	(unsigned short) v[3].u.number);
-    if (res == -1) {
-	 /* EAGAIN occured, datagram could not be sent */
-    }
-    usr->flags &= ~CF_OUTPUT;
-    usr->flags |= CF_ODONE;
-    odone++;
-}
-#endif
-
 /*
  * NAME:	comm->uflush()
  * DESCRIPTION:	flush output buffers for a single user only
@@ -824,11 +657,9 @@ static void comm_uflush(user *usr, Object *obj, Dataspace *data, Array *arr)
     if (v[2].type == T_STRING) {
 	if (usr->flags & CF_UDPDATA) {
 	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
-#ifndef NETWORK_EXTENSIONS
 	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
 	{
 	    usr->flags |= CF_UDP;
-#endif
 	}
 	d_assign_elt(data, arr, &v[2], &nil_value);
     }
@@ -918,11 +749,6 @@ void comm_flush()
 	    usr->outbuf = (String *) NULL;
 	}
 	if (usr->flags & CF_OUTPUT) {
-#ifdef NETWORK_EXTENSIONS
-	    if ((usr->flags & CF_DATAGRAM)) {
-		comm_udpflush(usr, obj, obj->data, arr);
-	    } else
-#endif
 	    comm_uflush(usr, obj, obj->data, arr);
 	}
 	/*
@@ -933,11 +759,7 @@ void comm_flush()
 	    if (usr->conn != (connection *) NULL) {
 		conn_del(usr->conn);
 	    }
-#ifdef NETWORK_EXTENSIONS
-	    if ((usr->flags & (CF_TELNET | CF_PORT)) == CF_TELNET) {
-#else
 	    if (usr->flags & CF_TELNET) {
-#endif
 		newlines -= usr->newlines;
 		FREE(usr->inbuf - 1);
 	    }
@@ -957,19 +779,11 @@ void comm_flush()
 	    }
 	    usr->next = freeuser;
 	    freeuser = usr;
-#ifdef NETWORK_EXTENSIONS
-	    if (usr->flags & CF_PORT) {
-		--nports;
-	    } else {
-		--nusers;
-	    }
-#else
 	    if ((usr->flags & (CF_TELNET | CF_UDP | CF_UDPDATA)) == CF_UDPDATA)
 	    {
 		--ndgram;
 	    }
 	    --nusers;
-#endif
 	}
 
 	arr_del(arr);
@@ -1044,7 +858,6 @@ static void comm_baccept(Frame *f, connection *conn, int port)
     this_user = OBJ_NONE;
 }
 
-#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	comm->daccept()
  * DESCRIPTION:	accept a datagram connection
@@ -1077,7 +890,6 @@ static void comm_daccept(Frame *f, connection *conn, int port)
     endtask();
     this_user = OBJ_NONE;
 }
-#endif
 
 /*
  * NAME:	comm->receive()
@@ -1098,9 +910,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
     user *usr;
     int n, i, state, nls;
     char *p, *q;
-#ifndef NETWORK_EXTENSIONS
     connection *conn;
-#endif
 
     if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
@@ -1115,7 +925,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 
     try {
 	ec_push(errhandler);
-#ifndef NETWORK_EXTENSIONS
 	if (ntport != 0 && nusers < maxusers) {
 	    n = nexttport;
 	    do {
@@ -1188,9 +997,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	}
 
 	for (i = nusers; i > 0; --i) {
-#else
-	for (i = nusers + nports; i > 0; --i) {
-#endif
 	    usr = lastuser;
 	    lastuser = usr->next;
 
@@ -1222,31 +1028,16 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		     */
 		    if (retval < 0) {
 			obj->flags &= ~O_USER;
-#ifdef NETWORK_EXTENSIONS
-			if (retval == -1) {
-			    PUSH_STRVAL(f, str_new(strerror(errno),
-						   strlen(strerror(errno))));
-			} else {
-			    PUSH_STRVAL(f, str_new("socket unexpectedly closed",
-						   26));
-			}
-
-			if (i_call(f, obj, (Array *) NULL, "receive_error", 13,
-				   TRUE, 1)) {
-			    i_del_value(f->sp++);
-			}
-#else
 			PUSH_INTVAL(f, errcode);
 			if (i_call(f, obj, (Array *) NULL, "unconnected", 11,
 				   TRUE, 1)) {
 			    i_del_value(f->sp++);
 			}
-#endif
 			endtask();
-		    /*
-		     * Connection completed, call open in the user object.
-		     */
 		    } else if (retval > 0) {
+			/*
+			 * Connection completed, call open in the user object.
+			 */
 			if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0))
 			{
 			    i_del_value(f->sp++);
@@ -1272,18 +1063,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		usr->flags &= ~CF_ODONE;
 		--odone;
 		this_user = obj->index;
-#ifdef NETWORK_EXTENSIONS
-		/*
-		 * message_done for tcp, datagram_done for udp
-		 */
-		if (usr->flags & CF_DATAGRAM) {
-		    if (i_call(f, obj, (Array *) NULL, "datagram_done", 13,
-			       TRUE, 0)) {
-			i_del_value(f->sp++);
-			endtask();
-		    }
-		} else
-#endif
 		if (i_call(f, obj, (Array *) NULL, "message_done", 12, TRUE, 0))
 		{
 		    i_del_value(f->sp++);
@@ -1300,89 +1079,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		continue;	/* no input on this connection */
 	    }
 
-#ifdef NETWORK_EXTENSIONS
-	    if ((usr->flags & (CF_DATAGRAM | CF_PORT)) ==
-						    (CF_PORT | CF_DATAGRAM)) {
-		char *addr;
-		int port;
-		n = conn_udpreceive(usr->conn, buffer, BINBUF_SIZE, &addr,
-				    &port);
-		if (n >= 0) {
-		    PUSH_STRVAL(f, str_new(buffer, (long) n));
-		    PUSH_STRVAL(f, str_new(addr, strlen(addr)));
-		    PUSH_INTVAL(f, port);
-		    if (i_call(f, obj, (Array *) NULL, "receive_datagram", 16,
-			       TRUE, 3)) {
-			i_del_value(f->sp++);
-			endtask();
-		    }
-		}
-		continue;
-	    }
-
-	    if ((usr->flags & (CF_PORT | CF_DATAGRAM)) == CF_PORT) {
-		if (nusers <= maxusers) {
-		    connection *conn;
-		    char ip[40];
-		    user *newusr;
-		    uindex olduser;
-
-		    conn = (connection *) conn_accept(usr->conn);
-
-		    if (conn == (connection *) NULL) {
-			break;
-		    }
-		    if (nusers == maxusers) {
-			conn_del(conn);
-			error("Maximum number of users exceeded");
-		    }
-
-		    try {
-			ec_push((ec_ftn) NULL);
-			(--f->sp)->type = T_STRING;
-			conn_ipnum(conn,ip);
-			PUT_STRVAL(f->sp, str_new(ip, strlen(ip)));
-			(--f->sp)->type = T_INT;
-			f->sp->u.number = conn_at(conn);
-			if (!i_call(f, OBJ(usr->oindex), (Array *) NULL,
-				    "connection", 10, TRUE, 2)) {
-			    conn_del(conn);
-			    error("Missing connection()-function");
-			}
-			if (f->sp->type != T_OBJECT) {
-			    conn_del(conn);
-			    error("object->connection() did not return a persistent object");
-			}
-			obj = OBJ(f->sp->oindex);
-			f->sp++;
-			newusr = comm_new(f,obj, conn, usr->flags & CF_TELNET);
-			ec_pop();
-		    } catch (...) {
-			conn_del(conn);
-			error((char *) NULL);
-		    }
-		    endtask();
-
-		    newusr->flags |= CF_PROMPT;
-		    addtoflush(newusr,
-			       d_get_extravar(o_dataspace(obj))->u.array);
-		    olduser = this_user;
-		    this_user = obj->index;
-		    if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
-			i_del_value(f->sp++);
-			endtask();
-		    }
-		    this_user=olduser;
-		}
-		continue;
-
-	    }
-
-	    if ((obj->flags & O_USER) != O_USER) {
-		continue;
-	    }
-
-#endif
 	    if (usr->flags & CF_TELNET) {
 		/*
 		 * telnet connection
@@ -1610,7 +1306,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		/*
 		 * binary connection
 		 */
-#ifndef NETWORK_EXTENSIONS
 		if (usr->flags & CF_UDPDATA) {
 		    n = conn_udpread(usr->conn, buffer, BINBUF_SIZE);
 		    if (n >= 0) {
@@ -1639,7 +1334,6 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    }
 		    this_user = OBJ_NONE;
 		}
-#endif
 
 		n = conn_read(usr->conn, p = buffer, BINBUF_SIZE);
 		if (n <= 0) {
@@ -1722,43 +1416,6 @@ Object *comm_user()
 	    obj : (Object *) NULL;
 }
 
-# ifdef NETWORK_EXTENSIONS
-/*
- * NAME:	comm->ports()
- * DESCRIPTION:	return an array with all port objects
- */
-Array *comm_ports(Dataspace *data)
-{
-    Array *a;
-    int i, n;
-    user *usr;
-    Value *v;
-    Object *obj;
-
-    n = 0;
-    for (i = nports, usr = users; i > 0; usr++) {
-	if (usr->oindex != OBJ_NONE && (usr->flags & CF_PORT)) {
-	    --i;
-	    if (OBJR(usr->oindex)->count != 0) {
-		n++;
-	    }
-	}
-    }
-
-    a = arr_new(data, (long) n);
-    v = a->elts;
-    for (usr = users; n > 0; usr++) {
-	if (usr->oindex != OBJ_NONE && (usr->flags & CF_PORT) &&
-	    (obj=OBJR(usr->oindex))->count != 0) {
-	    PUT_OBJVAL(v, obj);
-	    v++;
-	    --n;
-	}
-    }
-    return a;
-}
-# endif
-
 /*
  * NAME:	comm->users()
  * DESCRIPTION:	return an array with all user objects
@@ -1774,11 +1431,6 @@ Array *comm_users(Dataspace *data)
     n = 0;
     for (i = nusers, usr = users; i > 0; usr++) {
 	if (usr->oindex != OBJ_NONE) {
-#ifdef NETWORK_EXTENSIONS
-	    if (usr->flags & CF_PORT) {
-		continue;
-	    }
-#endif
 	    --i;
 	    if (!(usr->flags & CF_OPENDING)) {
 		if (OBJR(usr->oindex)->count != 0) {
@@ -1792,11 +1444,6 @@ Array *comm_users(Dataspace *data)
     v = a->elts;
     for (usr = users; n > 0; usr++) {
 	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
-#ifdef NETWORK_EXTENSIONS
-	    if (usr->flags & CF_PORT) {
-		continue;
-	    }
-#endif
 	    if (!(usr->flags & CF_OPENDING)) {
 		PUT_OBJVAL(v, obj);
 		v++;
@@ -1817,11 +1464,6 @@ bool comm_is_connection(Object *obj)
 
     if ((obj->flags & O_SPECIAL) == O_USER) {
 	usr = &users[EINDEX(obj->etabi)];
-# ifdef NETWORK_EXTENSIONS
-	if (usr->flags & CF_PORT) {
-	    return FALSE;
-	}
-# endif
 	if (!(usr->flags & CF_OPENDING)) {
 	    return TRUE;
 	}

@@ -1479,11 +1479,7 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     /* initialize communications */
     if (!comm_init((int) conf[USERS].u.num,
-#ifdef NETWORK_EXTENSIONS
-		   (int) conf[PORTS].u.num,
-#else
 		   (int) conf[DATAGRAM_USERS].u.num,
-#endif
 		   thosts, bhosts, dhosts,
 		   tports, bports, dports,
 		   ntports, nbports, ndports)) {
@@ -1631,10 +1627,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
 
     kf_jit();				/* prepare JIT compiler */
 
-#ifndef NETWORK_EXTENSIONS
     /* start accepting connections */
     comm_listen();
-#endif
     return TRUE;
 }
 

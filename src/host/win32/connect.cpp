@@ -523,7 +523,6 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     npackets = 0;
     closed = 0;
 
-#ifndef NETWORK_EXTENSIONS
     ntdescs = ntports;
     if (ntports != 0) {
 	tdescs = ALLOC(portdesc, ntports);
@@ -548,7 +547,6 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
 	    udescs[n].fd.in4 = INVALID_SOCKET;
 	}
     }
-#endif
 
     memset(&sin6, '\0', sizeof(sin6));
     sin6.sin6_family = AF_INET6;
@@ -741,22 +739,16 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     }
 
     flist = (connection *) NULL;
-#ifndef NETWORK_EXTENSIONS
     connections = ALLOC(connection, nusers = maxusers);
-#else
-    connections = ALLOC(connection, nusers = maxusers + 1);
-#endif
     for (n = nusers, conn = connections; n > 0; --n, conn++) {
 	conn->fd = INVALID_SOCKET;
 	conn->next = flist;
 	flist = conn;
     }
 
-#ifndef NETWORK_EXTENSIONS
     udphtab = ALLOC(connection *, udphtabsz = maxusers);
     memset(udphtab, '\0', udphtabsz * sizeof(connection *));
     chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
-#endif
 
     return TRUE;
 }
@@ -779,7 +771,6 @@ void conn_finish()
     WSACleanup();
 }
 
-#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	conn->listen()
  * DESCRIPTION:	start listening on telnet port and binary port
@@ -1135,7 +1126,6 @@ bool conn_udp(connection *conn, char *challenge,
 
     return TRUE;
 }
-#endif /* NETWORK_EXTENSIONS */
 
 /*
  * NAME:	conn->del()
@@ -1463,7 +1453,6 @@ int conn_select(Uint t, unsigned int mtime)
     return retval;
 }
 
-#ifndef NETWORK_EXTENSIONS
 /*
  * NAME:	conn->udpcheck()
  * DESCRIPTION:	check if UDP challenge met
@@ -1472,7 +1461,6 @@ bool conn_udpcheck(connection *conn)
 {
     return (conn->name == (char *) NULL);
 }
-#endif
 
 /*
  * NAME:	conn->read()
@@ -1595,39 +1583,6 @@ int conn_udpwrite(connection *conn, char *buf, unsigned int len)
     }
     return -1;
 }
-
-#ifdef NETWORK_EXTENSIONS
-int conn_udpsend(connection *conn, char *buf, unsigned int len, char *addr,
-	unsigned short port)
-{
-    struct sockaddr_in to;
-
-    to.sin_family = addrtype;
-    to.sin_addr.s_addr = inet_addr(addr);  /* should have been checked for valid
-					      addresses already, so it should not
-					      fail */
-    to.sin_port = htons(port);
-    if (sendto(conn->fd, buf, len, 0, (struct sockaddr *) &to,
-		sizeof(struct sockaddr_in)) == SOCKET_ERROR)
-    {
-	if (WSAGetLastError() == WSAEWOULDBLOCK) {
-	    return -1;
-	}
-	P_message("sendto");
-	return -2;
-    }
-    return 0;
-}
-
-/*
- * NAME:	conn->checkaddr()
- * DESCRIPTION:	checks for valid ip address
- */
-int conn_checkaddr(char *ip)
-{
-    return inet_addr(ip);
-}
-#endif
 
 /*
  * NAME:	conn->wrdone()
@@ -1864,193 +1819,6 @@ int conn_check_connected(connection *conn, int *errcode)
     }
 }
 
-
-#ifdef NETWORK_EXTENSIONS
-/*
- * Name:	conn->openlisten()
- * DESCRIPTION: open a new listening connection
- */
-connection *conn_openlisten(unsigned char protocol, unsigned short port)
-{
-    struct sockaddr_in sin;
-    connection *conn;
-    int on, sock;
-    int sz;
-    unsigned long nonblock;
-
-    switch (protocol) {
-    case P_TCP:
-	sock = socket(addrtype, SOCK_STREAM, 0);
-	if (sock < 0){
-	    P_message("socket");
-	    return NULL;
-	}
-	on = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		       sizeof(on)) < 0){
-	    P_message("setsockopt");
-	    closesocket(sock);
-	    return NULL;
-	}
-	on = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_OOBINLINE, (char *) &on,
-		       sizeof(on))<0) {
-	    P_message("setsockopt");
-	    closesocket(sock);
-	    return NULL;
-	}
-
-	memset(&sin, '\0', sizeof(sin));
-	sin.sin_port = htons(port);
-	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	    P_message("bind");
-	    closesocket(sock);
-	    return NULL;
-	}
-
-	if (listen(sock, 64)) {
-	    P_message("listen");
-	    closesocket(sock);
-	    return NULL;
-	}
-
-	FD_SET(sock, &infds);
-	conn = flist;
-	flist = (connection *) conn->next;
-	conn->fd = sock;
-	conn->name = (char *) NULL;
-	conn->udpbuf = (char *) NULL;
-	conn->addr = (ipaddr *) NULL;
-	sz = sizeof(sin);
-	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
-	conn->port = ntohs(sin.sin_port);
-	conn->at = -1;
-	return conn;
-    case P_UDP:
-	sock = socket(addrtype, SOCK_DGRAM, 0);
-	if (sock < 0) {
-	    P_message("socket");
-	    return NULL;
-	}
-	on = 0;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &on,
-		       sizeof(on))<0) {
-	    P_message("setsockopt");
-	    closesocket(sock);
-	    return NULL;
-	}
-	memset(&sin, '\0', sizeof(sin));
-	sin.sin_port = htons(port);
-	sin.sin_family = addrtype;
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-	    P_message("bind");
-	    closesocket(sock);
-	    return NULL;
-	}
-	nonblock = TRUE;
-	if (ioctlsocket(sock, FIONBIO, &nonblock) != 0) {
-	    P_message("ioctlsocket");
-	    closesocket(sock);
-	    return NULL;
-	}
-
-	FD_SET(sock, &infds);
-	conn = flist;
-	flist = (connection *) conn->next;
-	conn->fd = sock;
-	conn->name = (char *) NULL;
-	conn->udpbuf = (char *) NULL;
-	conn->addr = (ipaddr *) NULL;
-	sz = sizeof(sin);
-	getsockname(conn->fd, (struct sockaddr *) &sin, &sz);
-	conn->port = ntohs(sin.sin_port);
-	conn->at = -1;
-	return conn;
-    default:
-	return NULL;
-    }
-}
-/*
- * NAME:	conn->port()
- * DESCRIPTION:	return the port number of a connection
- */
-int conn_at(connection *conn)
-{
-    return conn->port;
-}
-
-/*
- * NAME:	conn->accept()
- * DESCRIPTION:	return a new connction structure
- */
-connection *conn_accept(connection *conn)
-{
-    int fd;
-    int len;
-    unsigned long nonblock;
-    struct sockaddr_in sin;
-    in46addr addr;
-    connection *newconn;
-
-    if (!FD_ISSET(conn->fd, &readfds)) {
-	return (connection *) NULL;
-    }
-
-    len = sizeof(sin);
-    fd = accept(conn->fd, (struct sockaddr *) &sin, &len);
-    if (fd < 0) {
-	return (connection *) NULL;
-    }
-    nonblock = TRUE;
-    if (ioctlsocket(fd, FIONBIO, &nonblock) != 0) {
-	P_message("ioctlsocket");
-	closesocket(fd);
-	return NULL;
-    }
-
-    newconn = flist;
-    flist = (connection *)newconn->next;
-    newconn->fd = fd;
-    newconn->name = (char *) NULL;
-    newconn->udpbuf = (char *) NULL;
-    addr.in.addr = sin.sin_addr;
-    addr.ipv6 = FALSE;
-    newconn->addr = ipa_new(&addr);
-    newconn->port = ntohs(sin.sin_port);
-    newconn->at = -1;
-    FD_SET(fd, &infds);
-    FD_SET(fd, &outfds);
-    FD_CLR(fd, &readfds);
-    FD_SET(fd, &writefds);
-
-    return newconn;
-}
-
-int conn_udpreceive(connection *conn, char *buffer, int size, char **host,
-	int *port)
-{
-    if (FD_ISSET(conn->fd, &readfds)) {
-	struct sockaddr_in from;
-	int fromlen;
-	int sz;
-
-	fromlen = sizeof(struct sockaddr_in);
-	sz = recvfrom(conn->fd, buffer, size, 0, (struct sockaddr *) &from,
-		    &fromlen);
-	if (sz < 0) {
-	    P_message("recvfrom");
-	    return sz;
-	}
-	*host = inet_ntoa(from.sin_addr);
-	*port = ntohs(from.sin_port);
-	return sz;
-    }
-    return -1;
-}
-#endif
 
 /*
  * NAME:	conn->export()

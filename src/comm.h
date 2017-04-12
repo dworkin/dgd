@@ -28,7 +28,6 @@ extern bool	   conn_init	 (int, char**, char**, char**, unsigned short*,
 				    int);
 extern void	   conn_clear	 ();
 extern void	   conn_finish	 ();
-#ifndef NETWORK_EXTENSIONS
 extern void	   conn_listen	 ();
 extern connection *conn_tnew6	 (int);
 extern connection *conn_tnew	 (int);
@@ -38,13 +37,10 @@ extern connection *conn_dnew6	 (int);
 extern connection *conn_dnew	 (int);
 extern bool	   conn_attach	 (connection*);
 extern bool	   conn_udp	 (connection*, char*, unsigned int);
-#endif
 extern void	   conn_del	 (connection*);
 extern void	   conn_block	 (connection*, int);
 extern int	   conn_select	 (Uint, unsigned int);
-#ifndef NETWORK_EXTENSIONS
 extern bool	   conn_udpcheck (connection*);
-#endif
 extern int	   conn_read	 (connection*, char*, unsigned int);
 extern int	   conn_udpread	 (connection*, char*, unsigned int);
 extern int	   conn_write	 (connection*, char*, unsigned int);
@@ -55,15 +51,6 @@ extern void	   conn_ipname	 (connection*, char*);
 extern void	  *conn_host	 (char*, unsigned short, int*);
 extern connection *conn_connect	 (void*, int);
 extern int	   conn_check_connected (connection*, int*);
-# ifdef NETWORK_EXTENSIONS
-extern connection *conn_openlisten (unsigned char, unsigned short);
-extern int	   conn_at	 (connection*);
-extern int	   conn_checkaddr (char*);
-extern int	   conn_udpsend	 (connection*, char*, unsigned int, char*,
-				   unsigned short);
-extern int	   conn_udpreceive (connection*, char*, int, char**, int*);
-extern connection *conn_accept	 (connection*);
-# endif
 extern bool	   conn_export	 (connection*, int*, char*, unsigned short*,
 				  short*, int*, int*, char**, char*);
 extern connection *conn_import	 (int, char*, unsigned short, short, int, int,
@@ -89,12 +76,6 @@ extern void	comm_close	(Frame*, Object*);
 extern Object  *comm_user	();
 extern void	comm_connect	(Frame *f, Object *obj, char *addr,
 				   unsigned char protocol, unsigned short port);
-#ifdef NETWORK_EXTENSIONS
-extern void	comm_openport	(Frame *f, Object *obj, unsigned char protocol,
-				   unsigned short portnr);
-extern int	comm_senddatagram (Object *obj, String *str, String *ip, int port);
-extern Array   *comm_ports      (Dataspace*);
-#endif
 extern Array   *comm_users	(Dataspace*);
 extern bool     comm_is_connection (Object*);
 extern bool	comm_dump	(int);
