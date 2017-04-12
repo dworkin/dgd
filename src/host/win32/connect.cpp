@@ -1837,8 +1837,8 @@ int conn_check_connected(connection *conn, int *errcode)
 	    *errcode = 3;
 	    break;
 
-	case WSATIMEDOUT:
-	case ERROR_SEM_TIMROUT:
+	case WSAETIMEDOUT:
+	case ERROR_SEM_TIMEOUT:
 	    *errcode = 4;
 	    break;
 	}
