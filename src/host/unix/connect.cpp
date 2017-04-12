@@ -998,6 +998,7 @@ static connection *conn_accept6(int portfd, int port)
 
     return conn;
 }
+# endif
 
 /*
  * NAME:	conn->accept()
@@ -1212,7 +1213,6 @@ bool conn_udp(connection *conn, char *challenge, unsigned int len)
 
     return TRUE;
 }
-#endif
 
 /*
  * NAME:	conn->del()
