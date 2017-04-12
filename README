@@ -1,4 +1,4 @@
-This file was written for release 1.5 of DGD, Dworkin's Game Driver.
+This file was written for release 1.6 of DGD, Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS
 and many versions of Unix.  The source repository for DGD can be found at:
@@ -8,6 +8,11 @@ and many versions of Unix.  The source repository for DGD can be found at:
 DGD's home page is at:
 
     http://www.dworkin.nl/dgd/
+
+			*** PLEASE NOTE ***
+DGD 1.6 is backward compatible with snapshots from DGD 1.5.6 and later, only.
+To upgrade to DGD 1.6, first upgrade to the latest 1.5.x version, recompile
+all objects, and create a non-incremental snapshot.
 
 
 This distribution is organized as follows:
