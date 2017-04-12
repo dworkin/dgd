@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -2402,153 +2402,11 @@ char pt_old_sum[] = { C_STATIC | C_ELLIPSIS, 0, 1, 0, 7, T_MIXED, T_MIXED };
  */
 int kf_old_sum(Frame *f, int nargs, kfunc *kf)
 {
-    char buffer[12], *num;
-    String *s;
-    Array *a;
-    Value *v, *e1, *e2;
-    int i, type, vtype, nonint;
-    long size;
-    ssizet len;
-    Int result;
-    long isize;
-
+    UNREFERENCED_PARAMETER(f);
+    UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
 
-    /*
-     * pass 1: check the types of everything and calculate the size
-     */
-    i_add_ticks(f, nargs);
-    type = T_NIL;
-    isize = size = 0;
-    nonint = nargs;
-    result = 0;
-    for (v = f->sp, i = nargs; --i >= 0; v++) {
-	if (v->u.number == -2) {
-	    /* simple term */
-	    v++;
-	    vtype = v->type;
-	    if (vtype == T_STRING) {
-		size += v->u.string->len;
-	    } else if (vtype == T_ARRAY) {
-		size += v->u.array->size;
-	    } else {
-		size += strlen(kf_itoa(v->u.number, buffer));
-	    }
-	} else if (v->u.number < -2) {
-	    /* aggregate */
-	    size += -3 - v->u.number;
-	    v += -3 - v->u.number;
-	    vtype = T_ARRAY;
-	} else {
-	    /* subrange term */
-	    size += v->u.number - v[1].u.number + 1;
-	    v += 2;
-	    vtype = v->type;
-	}
-
-	if (vtype == T_STRING || vtype == T_ARRAY) {
-	    nonint = i;
-	    isize = size;
-	    if (type == T_NIL && (vtype != T_ARRAY || i == nargs - 1)) {
-		type = vtype;
-	    } else if (type != vtype) {
-		error("Bad argument 2 for kfun +");
-	    }
-	} else if (vtype != T_INT || type == T_ARRAY) {
-	    error("Bad argument %d for kfun +", (i == 0) ? 1 : 2);
-	} else {
-	    result += v->u.number;
-	}
-    }
-    if (nonint > 1) {
-	size = isize + strlen(kf_itoa(result, buffer));
-    }
-
-    /*
-     * pass 2: build the string or array
-     */
-    result = 0;
-    if (type == T_STRING) {
-	s = str_new((char *) NULL, size);
-	s->text[size] = '\0';
-	for (v = f->sp, i = nargs; --i >= 0; v++) {
-	    if (v->u.number == -2) {
-		/* simple term */
-		v++;
-		if (v->type == T_STRING) {
-		    size -= v->u.string->len;
-		    memcpy(s->text + size, v->u.string->text, v->u.string->len);
-		    str_del(v->u.string);
-		    result = 0;
-		} else if (nonint < i) {
-		    num = kf_itoa(v->u.number, buffer);
-		    len = strlen(num);
-		    size -= len;
-		    memcpy(s->text + size, num, len);
-		    result = 0;
-		} else {
-		    result += v->u.number;
-		}
-	    } else {
-		/* subrange */
-		len = (v->u.number - v[1].u.number + 1);
-		size -= len;
-		memcpy(s->text + size, v[2].u.string->text + v[1].u.number,
-		       len);
-		v += 2;
-		str_del(v->u.string);
-		result = 0;
-	    }
-	}
-	if (nonint > 0) {
-	    num = kf_itoa(result, buffer);
-	    memcpy(s->text, num, strlen(num));
-	}
-
-	f->sp = v - 1;
-	PUT_STRVAL(f->sp, s);
-    } else if (type == T_ARRAY) {
-	a = arr_new(f->data, size);
-	e1 = a->elts + size;
-	for (v = f->sp, i = nargs; --i >= 0; v++) {
-	    if (v->u.number == -2) {
-		/* simple term */
-		v++;
-		len = v->u.array->size;
-		e2 = d_get_elts(v->u.array) + len;
-	    } else if (v->u.number < -2) {
-		/* aggregate */
-		for (len = -3 - v->u.number; len > 0; --len) {
-		    *--e1 = *++v;
-		}
-		continue;
-	    } else {
-		/* subrange */
-		len = v->u.number - v[1].u.number + 1;
-		e2 = d_get_elts(v[2].u.array) + v->u.number + 1;
-		v += 2;
-	    }
-
-	    e1 -= len;
-	    i_copy(e1, e2 - len, len);
-	    arr_del(v->u.array);
-	    size -= len;
-	}
-
-	f->sp = v - 1;
-	d_ref_imports(a);
-	PUT_ARRVAL(f->sp, a);
-    } else {
-	/* integers only */
-	for (v = f->sp, i = nargs; --i > 0; v += 2) {
-	    result += v[1].u.number;
-	}
-
-	f->sp = v + 1;
-	f->sp->u.number += result;
-    }
-
-    return 0;
+    return 1;
 }
 # endif
 
@@ -2698,44 +2556,11 @@ char pt_old_instanceof[] = { C_STATIC, 2, 0, 0, 8, T_INT, T_OBJECT, T_INT };
  */
 int kf_old_instanceof(Frame *f, int n, kfunc *kf)
 {
-    uindex oindex;
-    Value *elts;
-    int instance;
-
+    UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    oindex = 0;
-
-    switch (f->sp[1].type) {
-    case T_OBJECT:
-	oindex = f->sp[1].oindex;
-	break;
-
-    case T_LWOBJECT:
-	elts = d_get_elts(f->sp[1].u.array);
-	if (elts->type != T_OBJECT) {
-	    /*
-	     * builtin types can only be an instance of their own type
-	     */
-	    instance = (strcmp(o_builtin_name(elts->u.number),
-			       i_classname(f, f->sp->u.number)) == 0);
-	    f->sp++;
-	    arr_del(f->sp->u.array);
-	    PUT_INTVAL(f->sp, instance);
-	    return 0;
-	}
-	oindex = elts->oindex;
-	arr_del(f->sp[1].u.array);
-	break;
-
-    default:
-	kf_argerror(KF_INSTANCEOF, 1);
-    }
-    instance = i_instanceof(f, oindex, f->sp->u.number);
-    f->sp++;
-    PUT_INTVAL(f->sp, instance);
-    return 0;
+    return 1;
 }
 # endif
 
@@ -2753,34 +2578,11 @@ char pt_store_aggr[] = { C_STATIC, 2, 0, 0, 8, T_MIXED,
  */
 int kf_store_aggr(Frame *f, int nargs, kfunc *kf)
 {
-    int n;
-    Value *v;
-    Value val;
-
+    UNREFERENCED_PARAMETER(f);
     UNREFERENCED_PARAMETER(nargs);
     UNREFERENCED_PARAMETER(kf);
 
-    n = (f->sp++)->u.number;
-    if (f->sp[0].type != T_ARRAY || f->sp[0].u.array->size != n) {
-	kf_argerror(KF_STORE_AGGR, 2);
-    }
-
-    try {
-	ec_push(NULL);
-	val = *f->sp++;
-	for (v = d_get_elts(val.u.array) + n; n > 0; --n) {
-	    i_push_value(f, --v);
-	    i_store(f);
-	    i_del_value(v);
-	}
-	*--f->sp = val;
-	ec_pop();
-    } catch (...) {
-	i_del_value(&val);
-	error(NULL);
-    }
-
-    return 0;
+    return 1;
 }
 # endif
 

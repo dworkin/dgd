@@ -305,7 +305,6 @@ extern void		d_del_dataspace	(Dataspace*);
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
 # define CTRL_VM_2_1		0x020	/* uses VM 2.1 or later */
 # define CTRL_VARMAP		0x040	/* varmap updated */
-# define CTRL_VM_1_0		0x100	/* uses VM 1.0 */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */

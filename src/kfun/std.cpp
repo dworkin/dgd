@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,53 +26,6 @@
 # include "node.h"
 # include "control.h"
 # include "compile.h"
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("0.compile_object", kf_old_compile_object, pt_old_compile_object, 0)
-# else
-char pt_old_compile_object[] = { C_TYPECHECKED | C_STATIC, 1, 0, 0, 7, T_OBJECT,
-				 T_STRING };
-
-/*
- * NAME:	kfun->old_compile_object()
- * DESCRIPTION:	compile an object
- */
-int kf_old_compile_object(Frame *f, int n, kfunc *kf)
-{
-    char file[STRINGSZ];
-    Object *obj;
-
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    if (path_string(file, f->sp->u.string->text,
-		    f->sp->u.string->len) == (char *) NULL) {
-	return 1;
-    }
-    obj = o_find(file, OACC_MODIFY);
-    if (obj != (Object *) NULL) {
-	if (!(obj->flags & O_MASTER)) {
-	    error("Cannot recompile cloned object");
-	}
-	if (O_UPGRADING(obj)) {
-	    error("Object is already being upgraded");
-	}
-	if (O_INHERITED(obj)) {
-	    error("Cannot recompile inherited object");
-	}
-    }
-    obj = c_compile(f, file, obj, (String **) NULL, 0,
-		    (OBJR(f->oindex)->flags & O_DRIVER) &&
-		    strcmp(d_get_strconst(f->p_ctrl, f->func->inherit,
-					  f->func->index)->text,
-			   "inherit_program") == 0);
-    str_del(f->sp->u.string);
-    PUT_OBJVAL(f->sp, obj);
-
-    return 0;
-}
 # endif
 
 
@@ -1384,28 +1337,6 @@ int kf_swapout(Frame *f, int n, kfunc *kf)
 
 
 # ifdef FUNCDEF
-FUNCDEF("0.dump_state", kf_old_dump_state, pt_old_dump_state, 0)
-# else
-char pt_old_dump_state[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
-
-/*
- * NAME:	kfun->old_dump_state()
- * DESCRIPTION:	dump state
- */
-int kf_old_dump_state(Frame *f, int n, kfunc *kf)
-{
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    dump_state(FALSE);
-
-    *--f->sp = nil_value;
-    return 0;
-}
-# endif
-
-
-# ifdef FUNCDEF
 FUNCDEF("dump_state", kf_dump_state, pt_dump_state, 1)
 # else
 char pt_dump_state[] = { C_TYPECHECKED | C_STATIC, 0, 1, 0, 7, T_VOID, T_INT };
@@ -1663,28 +1594,6 @@ int kf_send_datagram(Frame *f, int n, kfunc *kf)
     return 0;
 }
 # endif
-# endif
-
-
-# ifdef FUNCDEF
-FUNCDEF("0.shutdown", kf_old_shutdown, pt_old_shutdown, 0)
-# else
-char pt_old_shutdown[] = { C_STATIC, 0, 0, 0, 6, T_VOID };
-
-/*
- * NAME:	kfun->old_shutdown()
- * DESCRIPTION:	shut down the mud
- */
-int kf_old_shutdown(Frame *f, int n, kfunc *kf)
-{
-    UNREFERENCED_PARAMETER(n);
-    UNREFERENCED_PARAMETER(kf);
-
-    finish(FALSE);
-
-    *--f->sp = nil_value;
-    return 0;
-}
 # endif
 
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -220,7 +220,6 @@ struct Frame {
     char *pc;			/* program counter */
     Value *stack;		/* local value stack */
     Value *sp;			/* stack pointer */
-    Value *lip;			/* lvalue index pointer (VM 1.0) */
     Value *argp;		/* argument pointer (previous sp) */
     Value *fp;			/* frame pointer (at end of local stack) */
     Int depth;			/* stack depth */
@@ -236,7 +235,6 @@ extern void	i_copy		(Value*, Value*, unsigned int);
 extern void	i_grow_stack	(Frame*, int);
 extern void	i_push_value	(Frame*, Value*);
 extern void	i_pop		(Frame*, int);
-extern Value   *i_reverse	(Frame*, int);
 extern void	i_odest		(Frame*, Object*);
 extern void	i_string	(Frame*, int, unsigned int);
 extern void	i_aggregate	(Frame*, unsigned int);
@@ -251,7 +249,6 @@ extern int	i_instancestr	(unsigned int, char*);
 extern void	i_cast		(Frame*, Value*, unsigned int, Uint);
 extern void	i_store_global	(Frame*, int, int, Value*, Value*);
 extern bool	i_store_index	(Frame*, Value*, Value*, Value*, Value*);
-extern void	i_store		(Frame*);
 extern void	i_lvalues	(Frame*);
 extern Int	i_get_depth	(Frame*);
 extern Int	i_get_ticks	(Frame*);

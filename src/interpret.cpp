@@ -32,62 +32,6 @@
 # define EXTRA_STACK  0
 # endif
 
-/*
- * VM 1.0 only
- */
-# define II_INSTR_MASK		0x1f	/* instruction mask */
-
-# define II_PUSH_ZERO		  0
-# define II_PUSH_ONE		  1
-# define II_PUSH_INT1		  2	/* 1 signed */
-# define II_PUSH_INT4		  3	/* 4 signed */
-# define II_PUSH_FLOAT		  4	/* 6 unsigned */
-# define II_PUSH_STRING		  5	/* 1 unsigned */
-# define II_PUSH_NEAR_STRING	  6	/* 1 unsigned, 1 unsigned */
-# define II_PUSH_FAR_STRING	  7	/* 1 unsigned, 2 unsigned */
-# define II_PUSH_LOCAL		  8	/* 1 signed */
-# define II_PUSH_GLOBAL		  9	/* 1 unsigned */
-# define II_PUSH_FAR_GLOBAL	 10	/* 1 unsigned, 1 unsigned */
-# define II_PUSH_LOCAL_LVAL	 11	/* 1 signed */
-# define II_PUSH_GLOBAL_LVAL	 12	/* 1 unsigned */
-# define II_PUSH_FAR_GLOBAL_LVAL 13	/* 1 unsigned, 1 unsigned */
-# define II_INDEX		 14
-# define II_INDEX_LVAL		 15
-# define II_AGGREGATE		 16	/* 1 unsigned, 2 unsigned */
-# define II_SPREAD		 17	/* 1 signed */
-# define II_CAST		 18	/* 1 unsigned */
-# define II_DUP			 19
-# define II_STORE		 20
-# define II_JUMP		 21	/* 2 unsigned */
-# define II_JUMP_ZERO		 22	/* 2 unsigned */
-# define II_JUMP_NONZERO	 23	/* 2 unsigned */
-# define II_SWITCH		 24	/* n */
-# define II_CALL_KFUNC		 25	/* 1 unsigned (+ 1 unsigned) */
-# define II_CALL_AFUNC		 26	/* 1 unsigned, 1 unsigned */
-# define II_CALL_DFUNC		 27	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define II_CALL_FUNC		 28	/* 2 unsigned, 1 unsigned */
-# define II_CATCH		 29	/* 2 unsigned */
-# define II_RLIMITS		 30
-# define II_RETURN		 31
-
-# define II_TYPE_BIT		I_POP_BIT /* lvalue typechecks assignment */
-
-# define T_SLVALUE	0x0b	/* indexed string lvalue */
-# define T_ALVALUE	0x0c	/* indexed array lvalue */
-# define T_MLVALUE	0x0d	/* indexed mapping lvalue */
-# define T_SALVALUE	0x0e	/* indexed string indexed array lvalue */
-# define T_SMLVALUE	0x0f	/* indexed string indexed mapping lvalue */
-
-/*
- * VM 2.0 only
- */
-# define LVAL_LOCAL		0
-# define LVAL_GLOBAL		1
-# define LVAL_INDEX		2
-# define LVAL_LOCAL_INDEX	3
-# define LVAL_GLOBAL_INDEX	4
-# define LVAL_INDEX_INDEX	5
-
 
 static Value stack[MIN_STACK];	/* initial stack */
 static Frame topframe;		/* top frame */
@@ -111,7 +55,7 @@ void i_init(char *create, bool flag)
 {
     topframe.oindex = OBJ_NONE;
     topframe.fp = topframe.sp = stack + MIN_STACK;
-    topframe.stack = topframe.lip = stack;
+    topframe.stack = stack;
     rlim.maxdepth = 0;
     rlim.ticks = 0;
     rlim.nodepth = TRUE;
@@ -212,8 +156,8 @@ void i_copy(Value *v, Value *w, unsigned int len)
  */
 void i_grow_stack(Frame *f, int size)
 {
-    if (f->sp < f->lip + size + MIN_STACK) {
-	int spsize, lisize;
+    if (f->sp < f->stack + size + MIN_STACK) {
+	int spsize;
 	Value *v, *stk;
 	intptr_t offset;
 
@@ -221,30 +165,16 @@ void i_grow_stack(Frame *f, int size)
 	 * extend the local stack
 	 */
 	spsize = f->fp - f->sp;
-	lisize = f->lip - f->stack;
-	size = ALGN(spsize + lisize + size + MIN_STACK, 8);
+	size = ALGN(spsize + size + MIN_STACK, 8);
 	stk = ALLOC(Value, size);
 	offset = (intptr_t) (stk + size) - (intptr_t) f->fp;
-
-	/* move lvalue index stack values */
-	if (lisize != 0) {
-	    memcpy(stk, f->stack, lisize * sizeof(Value));
-	}
-	f->lip = stk + lisize;
 
 	/* move stack values */
 	v = stk + size;
 	if (spsize != 0) {
 	    memcpy(v - spsize, f->sp, spsize * sizeof(Value));
-	    do {
-		--v;
-		if ((v->type == T_LVALUE || v->type == T_SLVALUE) &&
-		    v->u.lval >= f->sp && v->u.lval < f->fp) {
-		    v->u.lval = (Value *) ((intptr_t) v->u.lval + offset);
-		}
-	    } while (--spsize > 0);
 	}
-	f->sp = v;
+	f->sp = v - spsize;
 
 	/* replace old stack */
 	if (f->sos) {
@@ -315,189 +245,14 @@ void i_pop(Frame *f, int n)
 	    str_del(v->u.string);
 	    break;
 
-	case T_LVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    break;
-
-	case T_ALVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    --f->lip;
-	    /* fall through */
 	case T_ARRAY:
 	case T_MAPPING:
 	case T_LWOBJECT:
 	    arr_del(v->u.array);
 	    break;
-
-	case T_SLVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    str_del((--f->lip)->u.string);
-	    break;
-
-	case T_MLVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    i_del_value(--f->lip);
-	    arr_del(v->u.array);
-	    break;
-
-	case T_SALVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    str_del((--f->lip)->u.string);
-	    --f->lip;
-	    arr_del(v->u.array);
-	    break;
-
-	case T_SMLVALUE:
-	    if (v->oindex == T_CLASS) {
-		--f->lip;
-	    }
-	    str_del((--f->lip)->u.string);
-	    i_del_value(--f->lip);
-	    arr_del(v->u.array);
-	    break;
 	}
     }
     f->sp = v;
-}
-
-/*
- * NAME:	interpret->reverse()
- * DESCRIPTION:	reverse the order of arguments on the stack
- */
-Value *i_reverse(Frame *f, int n)
-{
-    if (f->p_ctrl->flags & CTRL_VM_1_0) {
-	Value sp[MAX_LOCALS];
-	Value lip[3 * MAX_LOCALS];
-	Value *v1, *v2, *w1, *w2;
-	Value *top;
-
-	top = f->sp + n;
-	if (n > 1) {
-	    /*
-	     * more than one argument
-	     */
-	    v1 = f->sp;
-	    v2 = sp;
-	    w1 = lip;
-	    w2 = f->lip;
-	    memcpy(v2, v1, n * sizeof(Value));
-	    v1 += n;
-
-	    do {
-		switch (v2->type) {
-		case T_LVALUE:
-		    if (v2->oindex == T_CLASS) {
-			*w1++ = *--w2;
-		    }
-		    break;
-
-		case T_SLVALUE:
-		case T_ALVALUE:
-		case T_MLVALUE:
-		    if (v2->oindex == T_CLASS) {
-			w2 -= 2;
-			*w1++ = w2[0];
-			*w1++ = w2[1];
-		    } else {
-			*w1++ = *--w2;
-		    }
-		    break;
-
-		case T_SALVALUE:
-		case T_SMLVALUE:
-		    if (v2->oindex == T_CLASS) {
-			w2 -= 3;
-			*w1++ = w2[0];
-			*w1++ = w2[1];
-			*w1++ = w2[2];
-		    } else {
-			w2 -= 2;
-			*w1++ = w2[0];
-			*w1++ = w2[1];
-		    }
-		    break;
-		}
-
-		*--v1 = *v2++;
-	    } while (--n != 0);
-
-	    /*
-	     * copy back lvalue indices, if needed
-	     */
-	    n = f->lip - w2;
-	    if (n > 1) {
-		memcpy(w2, lip, n * sizeof(Value));
-	    }
-	}
-	return top;
-    } else {
-	Value stack[MAX_LOCALS * 6];
-	Value *v, *w;
-	int size;
-
-	size = 0;
-	v = f->sp;
-	if (n == 1) {
-	    switch (v->u.number >> 28) {
-	    case LVAL_LOCAL:
-	    case LVAL_GLOBAL:
-		size = 1;
-		break;
-
-	    case LVAL_INDEX:
-	    case LVAL_LOCAL_INDEX:
-	    case LVAL_GLOBAL_INDEX:
-		size = 3;
-		break;
-
-	    case LVAL_INDEX_INDEX:
-		size = 5;
-		break;
-	    }
-	    size += (((v->u.number >> 24) & 0xf) == T_CLASS);
-	    v += size;
-	} else if (n > 1) {
-	    w = stack + sizeof(stack) / sizeof(Value);
-	    do {
-		switch (v->u.number >> 28) {
-		case LVAL_LOCAL:
-		case LVAL_GLOBAL:
-		    size = 1;
-		    break;
-
-		case LVAL_INDEX:
-		case LVAL_LOCAL_INDEX:
-		case LVAL_GLOBAL_INDEX:
-		    size = 3;
-		    break;
-
-		case LVAL_INDEX_INDEX:
-		    size = 5;
-		    break;
-		}
-		size += (((v->u.number >> 24) & 0xf) == T_CLASS);
-
-		w -= size;
-		memcpy(w, v, size * sizeof(Value));
-		v += size;
-	    } while (--n != 0);
-
-	    memcpy(f->sp, w, (v - f->sp) * sizeof(Value));
-	}
-
-	return v;
-    }
 }
 
 /*
@@ -517,23 +272,6 @@ void i_odest(Frame *prev, Object *obj)
     for (;;) {
 	f = prev;
 	for (v = f->sp; v < f->fp; v++) {
-	    switch (v->type) {
-	    case T_OBJECT:
-		if (v->u.objcnt == count) {
-		    *v = nil_value;
-		}
-		break;
-
-	    case T_LWOBJECT:
-		if (v->u.array->elts[0].type == T_OBJECT &&
-		    v->u.array->elts[0].u.objcnt == count) {
-		    arr_del(v->u.array);
-		    *v = nil_value;
-		}
-		break;
-	    }
-	}
-	for (v = f->lip; --v >= f->stack; ) {
 	    switch (v->type) {
 	    case T_OBJECT:
 		if (v->u.objcnt == count) {
@@ -653,64 +391,6 @@ void i_map_aggregate(Frame *f, unsigned int size)
 }
 
 /*
- * NAME:	interpret->spread0()
- * DESCRIPTION:	push the values in an array on the stack, return the size
- *		of the array - 1
- */
-static int i_spread0(Frame *f, int n, int vtype, Uint sclass)
-{
-    Array *a;
-    int i;
-    Value *v;
-
-    if (f->sp->type != T_ARRAY) {
-	error("Spread of non-array");
-    }
-    a = f->sp->u.array;
-    if (n < 0 || n > a->size) {
-	/* no lvalues */
-	n = a->size;
-    }
-    if (a->size > 0) {
-	i_add_ticks(f, a->size);
-	i = a->size - n;
-	a->ref += i;
-	i_grow_stack(f, n + i * (3 + (vtype == T_CLASS)));
-    }
-    f->sp++;
-
-    /* values */
-    for (i = 0, v = d_get_elts(a); i < n; i++, v++) {
-	i_push_value(f, v);
-    }
-    /* lvalues */
-    for (n = a->size; i < n; i++) {
-	if (f->p_ctrl->flags & CTRL_VM_1_0) {
-	    (--f->sp)->type = T_ALVALUE;
-	    f->sp->oindex = vtype;
-	    f->sp->u.array = a;
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = i;
-	    if (vtype == T_CLASS) {
-		f->lip->type = T_INT;
-		(f->lip++)->u.number = sclass;
-	    }
-	} else {
-	    --f->sp;
-	    PUT_ARRVAL_NOREF(f->sp, a);
-	    PUSH_INTVAL(f, i);
-	    if (vtype == T_CLASS) {
-		PUSH_INTVAL(f, sclass);
-	    }
-	    PUSH_INTVAL(f, (LVAL_INDEX << 28) | (vtype << 24));
-	}
-    }
-
-    arr_del(a);
-    return n - 1;
-}
-
-/*
  * NAME:	interpret->spread1()
  * DESCRIPTION:	push the values in an array on the stack, return the number of
  *		extra arguments pushed
@@ -773,34 +453,6 @@ void i_global(Frame *f, int inherit, int index)
 }
 
 /*
- * NAME:	interpret->global_lvalue()
- * DESCRIPTION:	push a global lvalue on the stack
- */
-static void i_global_lvalue(Frame *f, int inherit, int index, int vtype,
-			    Uint sclass)
-{
-    i_add_ticks(f, 4);
-    inherit = UCHAR(f->ctrl->imap[f->p_index + inherit]);
-    inherit = f->ctrl->inherits[inherit].varoffset;
-    if (f->lwobj == (Array *) NULL) {
-	(--f->sp)->type = T_LVALUE;
-	f->sp->oindex = vtype;
-	f->sp->u.lval = d_get_variable(f->data, inherit + index);
-    } else {
-	(--f->sp)->type = T_ALVALUE;
-	f->sp->oindex = vtype;
-	arr_ref(f->sp->u.array = f->lwobj);
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = 2 + inherit + index;
-    }
-
-    if (vtype == T_CLASS) {
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = sclass;
-    }
-}
-
-/*
  * NAME:	interpret->operator()
  * DESCRIPTION:	index or indexed assignment
  */
@@ -816,80 +468,6 @@ static void i_operator(Frame *f, Array *lwobj, const char *op, int nargs,
     }
 
     *var = *f->sp++;
-}
-
-/*
- * NAME:	interpret->index()
- * DESCRIPTION:	index a value, REPLACING it with the indexed value
- */
-static void i_index(Frame *f)
-{
-    int i;
-    Value *aval, *ival, *val;
-    Array *a;
-
-    val = NULL;
-    i_add_ticks(f, 2);
-    ival = f->sp++;
-    aval = f->sp;
-    switch (aval->type) {
-    case T_STRING:
-	if (ival->type != T_INT) {
-	    i_del_value(ival);
-	    error("Non-numeric string index");
-	}
-	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
-						 (long) ival->u.number)]);
-	str_del(aval->u.string);
-	PUT_INTVAL(aval, i);
-	return;
-
-    case T_ARRAY:
-	if (ival->type != T_INT) {
-	    i_del_value(ival);
-	    error("Non-numeric array index");
-	}
-	val = &d_get_elts(aval->u.array)[arr_index(aval->u.array,
-						   (long) ival->u.number)];
-	break;
-
-    case T_MAPPING:
-	val = map_index(f->data, aval->u.array, ival, (Value *) NULL,
-			(Value *) NULL);
-	i_del_value(ival);
-	break;
-
-    default:
-	i_del_value(ival);
-	error("Index on bad type");
-    }
-
-    a = aval->u.array;
-    switch (val->type) {
-    case T_STRING:
-	str_ref(val->u.string);
-	break;
-
-    case T_OBJECT:
-	if (DESTRUCTED(val)) {
-	    val = &nil_value;
-	}
-	break;
-
-    case T_LWOBJECT:
-	ival = d_get_elts(val->u.array);
-	if (ival->type == T_OBJECT && DESTRUCTED(ival)) {
-	    val = &nil_value;
-	    break;
-	}
-	/* fall through */
-    case T_ARRAY:
-    case T_MAPPING:
-	arr_ref(val->u.array);
-	break;
-    }
-    *aval = *val;
-    arr_del(a);
 }
 
 /*
@@ -967,185 +545,6 @@ void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 
     if (!keep) {
 	arr_del(aval->u.array);
-    }
-}
-
-/*
- * NAME:	interpret->index_lvalue()
- * DESCRIPTION:	Index a value, REPLACING it by an indexed lvalue.
- */
-static void i_index_lvalue(Frame *f, int vtype, Uint sclass)
-{
-    int i;
-    Value *lval, *ival, *val;
-
-    i_add_ticks(f, 2);
-    ival = f->sp++;
-    lval = f->sp;
-    switch (lval->type) {
-    case T_STRING:
-	/* for instance, "foo"[1] = 'a'; */
-	i_del_value(ival);
-	error("Bad lvalue");
-
-    case T_ARRAY:
-	if (ival->type != T_INT) {
-	    i_del_value(ival);
-	    error("Non-numeric array index");
-	}
-	i = arr_index(lval->u.array, (long) ival->u.number);
-	lval->type = T_ALVALUE;
-	lval->oindex = vtype;
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = i;
-	break;
-
-    case T_MAPPING:
-	lval->type = T_MLVALUE;
-	lval->oindex = vtype;
-	*f->lip++ = *ival;
-	break;
-
-    case T_LVALUE:
-	/*
-	 * note: the lvalue is not yet referenced
-	 */
-	switch (lval->u.lval->type) {
-	case T_STRING:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric string index");
-	    }
-	    i = str_index(lval->u.lval->u.string, (long) ival->u.number);
-	    lval->type = T_SLVALUE;
-	    lval->oindex = vtype;
-	    f->lip->type = T_STRING;
-	    f->lip->oindex = i;
-	    str_ref((f->lip++)->u.string = lval->u.lval->u.string);
-	    break;
-
-	case T_ARRAY:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric array index");
-	    }
-	    i = arr_index(lval->u.lval->u.array, (long) ival->u.number);
-	    lval->type = T_ALVALUE;
-	    lval->oindex = vtype;
-	    arr_ref(lval->u.array = lval->u.lval->u.array);
-	    f->lip->type = T_INT;
-	    (f->lip++)->u.number = i;
-	    break;
-
-	case T_MAPPING:
-	    lval->type = T_MLVALUE;
-	    lval->oindex = vtype;
-	    arr_ref(lval->u.array = lval->u.lval->u.array);
-	    *f->lip++ = *ival;
-	    break;
-
-	default:
-	    i_del_value(ival);
-	    error("Index on bad type");
-	}
-	break;
-
-    case T_ALVALUE:
-	val = &d_get_elts(lval->u.array)[f->lip[-1].u.number];
-	switch (val->type) {
-	case T_STRING:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric string index");
-	    }
-	    i = str_index(val->u.string, (long) ival->u.number);
-	    lval->type = T_SALVALUE;
-	    lval->oindex = vtype;
-	    f->lip->type = T_STRING;
-	    f->lip->oindex = i;
-	    str_ref((f->lip++)->u.string = val->u.string);
-	    break;
-
-	case T_ARRAY:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric array index");
-	    }
-	    i = arr_index(val->u.array, (long) ival->u.number);
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(lval->u.array);	/* has to be second */
-	    lval->oindex = vtype;
-	    lval->u.array = val->u.array;
-	    f->lip[-1].u.number = i;
-	    break;
-
-	case T_MAPPING:
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(lval->u.array);	/* has to be second */
-	    lval->type = T_MLVALUE;
-	    lval->oindex = vtype;
-	    lval->u.array = val->u.array;
-	    f->lip[-1] = *ival;
-	    break;
-
-	default:
-	    i_del_value(ival);
-	    error("Index on bad type");
-	}
-	break;
-
-    case T_MLVALUE:
-	val = map_index(f->data, lval->u.array, &f->lip[-1], (Value *) NULL,
-			(Value *) NULL);
-	switch (val->type) {
-	case T_STRING:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric string index");
-	    }
-	    i = str_index(val->u.string, (long) ival->u.number);
-	    lval->type = T_SMLVALUE;
-	    lval->oindex = vtype;
-	    f->lip->type = T_STRING;
-	    f->lip->oindex = i;
-	    str_ref((f->lip++)->u.string = val->u.string);
-	    break;
-
-	case T_ARRAY:
-	    if (ival->type != T_INT) {
-		i_del_value(ival);
-		error("Non-numeric array index");
-	    }
-	    i = arr_index(val->u.array, (long) ival->u.number);
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(lval->u.array);	/* has to be second */
-	    lval->type = T_ALVALUE;
-	    lval->oindex = vtype;
-	    lval->u.array = val->u.array;
-	    i_del_value(&f->lip[-1]);
-	    f->lip[-1].type = T_INT;
-	    f->lip[-1].u.number = i;
-	    break;
-
-	case T_MAPPING:
-	    arr_ref(val->u.array);	/* has to be first */
-	    arr_del(lval->u.array);	/* has to be second */
-	    lval->oindex = vtype;
-	    lval->u.array = val->u.array;
-	    i_del_value(&f->lip[-1]);
-	    f->lip[-1] = *ival;
-	    break;
-
-	default:
-	    i_del_value(ival);
-	    error("Index on bad type");
-	}
-	break;
-    }
-
-    if (vtype == T_CLASS) {
-	f->lip->type = T_INT;
-	(f->lip++)->u.number = sclass;
     }
 }
 
@@ -1286,41 +685,6 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 }
 
 /*
- * NAME:	interpret->dup()
- * DESCRIPTION:	duplicate a value on the stack
- */
-static void i_dup(Frame *f)
-{
-    switch (f->sp->type) {
-    case T_LVALUE:
-	i_push_value(f, f->sp->u.lval);
-	break;
-
-    case T_ALVALUE:
-	i_push_value(f, d_get_elts(f->sp->u.array) + f->lip[-1].u.number);
-	break;
-
-    case T_MLVALUE:
-	i_push_value(f, map_index(f->data, f->sp->u.array, &f->lip[-1],
-				  (Value *) NULL, (Value *) NULL));
-	break;
-
-    case T_SLVALUE:
-    case T_SALVALUE:
-    case T_SMLVALUE:
-	/*
-	 * Indexed string.
-	 */
-	PUSH_INTVAL(f, UCHAR(f->lip[-1].u.string->text[f->lip[-1].oindex]));
-	break;
-
-    default:
-	i_push_value(f, f->sp);
-	break;
-    }
-}
-
-/*
  * NAME:	istr()
  * DESCRIPTION:	create a copy of the argument string, with one char replaced
  */
@@ -1440,151 +804,6 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
     }
 
     return FALSE;
-}
-
-/*
- * NAME:	interpret->store()
- * DESCRIPTION:	Perform an assignment.
- */
-void i_store(Frame *f)
-{
-    Value *val;
-    Uint sclass;
-
-    if (f->p_ctrl->flags & CTRL_VM_1_0) {
-	Value *lval;
-	Array *a;
-	Value ival;
-
-	lval = f->sp + 1;
-	val = f->sp;
-	if (lval->oindex != 0) {
-	    if (lval->oindex == T_CLASS) {
-		--f->lip;
-		sclass = f->lip->u.number;
-	    } else {
-		sclass = 0;
-	    }
-	    i_cast(f, val, lval->oindex, sclass);
-	}
-
-	i_add_ticks(f, 1);
-	switch (lval->type) {
-	case T_LVALUE:
-	    d_assign_var(f->data, lval->u.lval, val);
-	    break;
-
-	case T_SLVALUE:
-	    d_assign_var(f->data, lval->u.lval,
-			 istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex,
-			      val));
-	    str_del((--f->lip)->u.string);
-	    break;
-
-	case T_ALVALUE:
-	    a = lval->u.array;
-	    d_assign_elt(f->data, a, &d_get_elts(a)[(--f->lip)->u.number], val);
-	    arr_del(a);
-	    break;
-
-	case T_MLVALUE:
-	    map_index(f->data, a = lval->u.array, &f->lip[-1], val,
-		      (Value *) NULL);
-	    i_del_value(--f->lip);
-	    arr_del(a);
-	    break;
-
-	case T_SALVALUE:
-	    a = lval->u.array;
-	    d_assign_elt(f->data, a, &a->elts[f->lip[-2].u.number],
-			 istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex,
-			      val));
-	    str_del((--f->lip)->u.string);
-	    --f->lip;
-	    arr_del(a);
-	    break;
-
-	case T_SMLVALUE:
-	    map_index(f->data, a = lval->u.array, &f->lip[-2],
-		      istr(&ival, f->lip[-1].u.string, f->lip[-1].oindex, val),
-		      (Value *) NULL);
-	    str_del((--f->lip)->u.string);
-	    i_del_value(--f->lip);
-	    arr_del(a);
-	    break;
-	}
-	f->sp += 2;
-    } else {
-	Uint lval;
-	int type;
-	Value var, *val, *tmp;
-
-	val = f->sp + 1;
-	lval = (val++)->u.number;
-	type = (lval >> 24) & 0xf;
-	if (type == T_CLASS) {
-	    sclass = (val++)->u.number;
-	} else {
-	    sclass = 0;
-	}
-	if (type != 0) {
-	    i_cast(f, f->sp, type, sclass);
-	}
-	tmp = f->sp;
-	f->sp = val;
-	val = tmp;
-
-	switch (lval >> 28) {
-	case LVAL_LOCAL:
-	    i_store_local(f, SCHAR(lval), val, NULL);
-	    break;
-
-	case LVAL_GLOBAL:
-	    i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val, NULL);
-	    break;
-
-	case LVAL_INDEX:
-	    var = nil_value;
-	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		str_del(f->sp[1].u.string);
-		str_del(var.u.string);
-	    }
-	    f->sp += 2;
-	    break;
-
-	case LVAL_LOCAL_INDEX:
-	    var = nil_value;
-	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		i_store_local(f, SCHAR(lval), &var, f->sp + 1);
-		str_del(f->sp[1].u.string);
-		str_del(var.u.string);
-	    }
-	    f->sp += 2;
-	    break;
-
-	case LVAL_GLOBAL_INDEX:
-	    var = nil_value;
-	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		i_store_global(f, (lval >> 8) & 0xffff, UCHAR(lval), val,
-			       f->sp + 1);
-		str_del(f->sp[1].u.string);
-		str_del(var.u.string);
-	    }
-	    f->sp += 2;
-	    break;
-
-	case LVAL_INDEX_INDEX:
-	    var = nil_value;
-	    if (i_store_index(f, &var, f->sp + 1, f->sp, val)) {
-		*f->sp = var;
-		i_store_index(f, f->sp + 1, f->sp + 3, f->sp + 2, f->sp);
-		str_del(f->sp->u.string);
-		str_del(f->sp[1].u.string);
-	    }
-	    f->sp += 4;
-	    break;
-	}
-    }
 }
 
 /*
@@ -1993,16 +1212,14 @@ void i_set_rlimits(Frame *f, rlinfo *rlim)
  */
 Frame *i_set_sp(Frame *ftop, Value *sp)
 {
-    Value *v, *w;
+    Value *v;
     Frame *f;
 
     for (f = ftop; ; f = f->prev) {
 	v = f->sp;
-	w = f->lip;
 	for (;;) {
 	    if (v == sp) {
 		f->sp = v;
-		f->lip = w;
 		return f;
 	    }
 	    if (v == f->fp) {
@@ -2013,54 +1230,9 @@ Frame *i_set_sp(Frame *ftop, Value *sp)
 		str_del(v->u.string);
 		break;
 
-	    case T_LVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		break;
-
-	    case T_SLVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		str_del((--w)->u.string);
-		break;
-
-	    case T_ALVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		--w;
-		/* fall through */
 	    case T_ARRAY:
 	    case T_MAPPING:
 	    case T_LWOBJECT:
-		arr_del(v->u.array);
-		break;
-
-	    case T_MLVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		i_del_value(--w);
-		arr_del(v->u.array);
-		break;
-
-	    case T_SALVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		str_del((--w)->u.string);
-		--w;
-		arr_del(v->u.array);
-		break;
-
-	    case T_SMLVALUE:
-		if (v->oindex == T_CLASS) {
-		    --w;
-		}
-		str_del((--w)->u.string);
-		i_del_value(--w);
 		arr_del(v->u.array);
 		break;
 	    }
@@ -2423,327 +1595,6 @@ void i_catcherr(Frame *f, Int depth)
 }
 
 /*
- * NAME:	interpret->interpret0()
- * DESCRIPTION:	Old interpreter function. Interpret stack machine code.
- */
-static void i_interpret0(Frame *f, char *pc)
-{
-    unsigned short instr, u, u2;
-    Uint l;
-    char *p;
-    kfunc *kf;
-    int size;
-    bool atomic;
-    Int newdepth, newticks;
-
-    size = 0;
-    l = 0;
-
-    for (;;) {
-# ifdef DEBUG
-	if (f->sp < f->lip + MIN_STACK) {
-	    fatal("out of value stack");
-	}
-# endif
-	if (--f->rlim->ticks <= 0) {
-	    if (f->rlim->noticks) {
-		f->rlim->ticks = 0x7fffffff;
-	    } else {
-		error("Out of ticks");
-	    }
-	}
-	instr = FETCH1U(pc);
-	f->pc = pc;
-
-	switch (instr & II_INSTR_MASK) {
-	case II_PUSH_ZERO:
-	    PUSH_INTVAL(f, 0);
-	    break;
-
-	case II_PUSH_ONE:
-	    PUSH_INTVAL(f, 1);
-	    break;
-
-	case II_PUSH_INT1:
-	    PUSH_INTVAL(f, FETCH1S(pc));
-	    break;
-
-	case II_PUSH_INT4:
-	    PUSH_INTVAL(f, FETCH4S(pc, l));
-	    break;
-
-	case II_PUSH_FLOAT:
-	    FETCH2U(pc, u);
-	    PUSH_FLTCONST(f, u, FETCH4U(pc, l));
-	    break;
-
-	case II_PUSH_STRING:
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, f->p_ctrl->ninherits - 1,
-					  FETCH1U(pc)));
-	    break;
-
-	case II_PUSH_NEAR_STRING:
-	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH1U(pc)));
-	    break;
-
-	case II_PUSH_FAR_STRING:
-	    u = FETCH1U(pc);
-	    PUSH_STRVAL(f, d_get_strconst(f->p_ctrl, u, FETCH2U(pc, u2)));
-	    break;
-
-	case II_PUSH_LOCAL:
-	    u = FETCH1S(pc);
-	    i_push_value(f, ((short) u < 0) ? f->fp + (short) u : f->argp + u);
-	    break;
-
-	case II_PUSH_GLOBAL:
-	    i_global(f, f->p_ctrl->progindex, FETCH1U(pc));
-	    break;
-
-	case II_PUSH_FAR_GLOBAL:
-	    u = FETCH1U(pc);
-	    i_global(f, u, FETCH1U(pc));
-	    break;
-
-	case II_PUSH_LOCAL_LVAL:
-	    u = FETCH1S(pc);
-	    if (instr & II_TYPE_BIT) {
-		instr = FETCH1U(pc);
-		if (instr == T_CLASS) {
-		    FETCH3U(pc, l);
-		    f->lip->type = T_INT;
-		    (f->lip++)->u.number = l;
-		}
-	    } else {
-		instr = 0;
-	    }
-	    (--f->sp)->type = T_LVALUE;
-	    f->sp->oindex = instr;
-	    f->sp->u.lval = ((short) u < 0) ? f->fp + (short) u : f->argp + u;
-	    continue;
-
-	case II_PUSH_GLOBAL_LVAL:
-	    u = FETCH1U(pc);
-	    if (instr & II_TYPE_BIT) {
-		instr = FETCH1U(pc);
-		if (instr == T_CLASS) {
-		    FETCH3U(pc, l);
-		}
-	    } else {
-		instr = 0;
-	    }
-	    i_global_lvalue(f, f->p_ctrl->progindex, u, instr, l);
-	    continue;
-
-	case II_PUSH_FAR_GLOBAL_LVAL:
-	    u = FETCH1U(pc);
-	    u2 = FETCH1U(pc);
-	    if (instr & II_TYPE_BIT) {
-		instr = FETCH1U(pc);
-		if (instr == T_CLASS) {
-		    FETCH3U(pc, l);
-		}
-	    } else {
-		instr = 0;
-	    }
-	    i_global_lvalue(f, u, u2, instr, l);
-	    continue;
-
-	case II_INDEX:
-	    i_index(f);
-	    break;
-
-	case II_INDEX_LVAL:
-	    if (instr & II_TYPE_BIT) {
-		instr = FETCH1U(pc);
-		if (instr == T_CLASS) {
-		    FETCH3U(pc, l);
-		}
-	    } else {
-		instr = 0;
-	    }
-	    i_index_lvalue(f, instr, l);
-	    continue;
-
-	case II_AGGREGATE:
-	    if (FETCH1U(pc) == 0) {
-		i_aggregate(f, FETCH2U(pc, u));
-	    } else {
-		i_map_aggregate(f, FETCH2U(pc, u));
-	    }
-	    break;
-
-	case II_SPREAD:
-	    u = FETCH1S(pc);
-	    if (instr & II_TYPE_BIT) {
-		instr = FETCH1U(pc);
-		if (instr == T_CLASS) {
-		    FETCH3U(pc, l);
-		}
-	    } else {
-		instr = 0;
-	    }
-	    size = i_spread0(f, (short) u, instr, l);
-	    continue;
-
-	case II_CAST:
-	    u = FETCH1U(pc);
-	    if (u == T_CLASS) {
-		FETCH3U(pc, l);
-	    }
-	    i_cast(f, f->sp, u, l);
-	    break;
-
-	case II_DUP:
-	    i_dup(f);
-	    break;
-
-	case II_STORE:
-	    i_store(f);
-	    --f->sp;
-	    f->sp[0] = f->sp[-1];
-	    break;
-
-	case II_JUMP:
-	    p = f->prog + FETCH2U(pc, u);
-	    pc = p;
-	    break;
-
-	case II_JUMP_ZERO:
-	    p = f->prog + FETCH2U(pc, u);
-	    if (!VAL_TRUE(f->sp)) {
-		pc = p;
-	    }
-	    break;
-
-	case II_JUMP_NONZERO:
-	    p = f->prog + FETCH2U(pc, u);
-	    if (VAL_TRUE(f->sp)) {
-		pc = p;
-	    }
-	    break;
-
-	case II_SWITCH:
-	    switch (FETCH1U(pc)) {
-	    case SWITCH_INT:
-		pc = f->prog + i_switch_int(f, pc);
-		break;
-
-	    case SWITCH_RANGE:
-		pc = f->prog + i_switch_range(f, pc);
-		break;
-
-	    case SWITCH_STRING:
-		pc = f->prog + i_switch_str(f, pc);
-		break;
-	    }
-	    break;
-
-	case II_CALL_KFUNC:
-	    kf = &KFUN(FETCH1U(pc));
-	    if (PROTO_VARGS(kf->proto) != 0) {
-		/* variable # of arguments */
-		u = FETCH1U(pc) + size;
-		size = 0;
-	    } else {
-		/* fixed # of arguments */
-		u = PROTO_NARGS(kf->proto);
-	    }
-	    if (PROTO_CLASS(kf->proto) & C_TYPECHECKED) {
-		i_typecheck(f, (Frame *) NULL, kf->name, "kfun", kf->proto, u,
-			    TRUE);
-	    }
-	    f->pc = pc;
-	    u = (*kf->func)(f, u, kf);
-	    if (u != 0) {
-		if ((short) u < 0) {
-		    error("Too few arguments for kfun %s", kf->name);
-		} else if (u <= PROTO_NARGS(kf->proto) + PROTO_VARGS(kf->proto))
-		{
-		    error("Bad argument %d for kfun %s", u, kf->name);
-		} else {
-		    error("Too many arguments for kfun %s", kf->name);
-		}
-	    }
-	    pc = f->pc;
-	    break;
-
-	case II_CALL_AFUNC:
-	    u = FETCH1U(pc);
-	    i_funcall(f, (Object *) NULL, (Array *) NULL, 0, u,
-		      FETCH1U(pc) + size);
-	    size = 0;
-	    break;
-
-	case II_CALL_DFUNC:
-	    u = UCHAR(f->ctrl->imap[f->p_index + FETCH1U(pc)]);
-	    u2 = FETCH1U(pc);
-	    i_funcall(f, (Object *) NULL, (Array *) NULL, u, u2,
-		      FETCH1U(pc) + size);
-	    size = 0;
-	    break;
-
-	case II_CALL_FUNC:
-	    p = &f->ctrl->funcalls[2L * (f->foffset + FETCH2U(pc, u))];
-	    i_funcall(f, (Object *) NULL, (Array *) NULL, UCHAR(p[0]),
-		      UCHAR(p[1]), FETCH1U(pc) + size);
-	    size = 0;
-	    break;
-
-	case II_CATCH:
-	    atomic = f->atomic;
-	    p = f->prog + FETCH2U(pc, u);
-	    try {
-		ec_push((ec_ftn) i_catcherr);
-		f->atomic = FALSE;
-		i_interpret0(f, pc);
-		ec_pop();
-		pc = f->pc;
-		*--f->sp = nil_value;
-	    } catch (...) {
-		/* error */
-		f->pc = pc = p;
-		PUSH_STRVAL(f, errorstr());
-	    }
-	    f->atomic = atomic;
-	    break;
-
-	case II_RLIMITS:
-	    if (f->sp[1].type != T_INT) {
-		error("Bad rlimits depth type");
-	    }
-	    if (f->sp->type != T_INT) {
-		error("Bad rlimits ticks type");
-	    }
-	    newdepth = f->sp[1].u.number;
-	    newticks = f->sp->u.number;
-	    if (!FETCH1U(pc)) {
-		/* runtime check */
-		i_check_rlimits(f);
-	    } else {
-		/* pop limits */
-		f->sp += 2;
-	    }
-
-	    i_new_rlimits(f, newdepth, newticks);
-	    i_interpret0(f, pc);
-	    pc = f->pc;
-	    i_set_rlimits(f, f->rlim->next);
-	    break;
-
-	case II_RETURN:
-	    return;
-	}
-
-	if (instr & I_POP_BIT) {
-	    /* pop the result of the last operation (never an lvalue) */
-	    i_del_value(f->sp++);
-	}
-    }
-}
-
-/*
  * NAME:	interpret->interpret1()
  * DESCRIPTION:	Main interpreter function v1. Interpret stack machine code.
  */
@@ -2763,7 +1614,7 @@ static void i_interpret1(Frame *f, char *pc)
 
     for (;;) {
 # ifdef DEBUG
-	if (f->sp < f->lip + MIN_STACK) {
+	if (f->sp < f->stack + MIN_STACK) {
 	    fatal("out of value stack");
 	}
 # endif
@@ -2846,19 +1697,7 @@ static void i_interpret1(Frame *f, char *pc)
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
-	    if (f->p_ctrl->flags & CTRL_VM_2_1) {
-		size = i_spread1(f, -(short) u - 2);
-		continue;
-	    }
-	    if ((short) u >= 0) {
-		u2 = FETCH1U(pc);
-		if (u2 == T_CLASS) {
-		    FETCH3U(pc, l);
-		}
-	    } else {
-		u2 = 0;
-	    }
-	    size = i_spread0(f, (short) u, u2, l);
+	    size = i_spread1(f, -(short) u - 2);
 	    continue;
 
 	case I_CAST:
@@ -3415,7 +2254,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* create new local stack */
     f.argp = f.sp;
     FETCH2U(pc, n);
-    f.stack = f.lip = ALLOCA(Value, n + MIN_STACK + EXTRA_STACK);
+    f.stack = ALLOCA(Value, n + MIN_STACK + EXTRA_STACK);
     f.fp = f.sp = f.stack + n + MIN_STACK + EXTRA_STACK;
     f.sos = TRUE;
 
@@ -3433,16 +2272,12 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* execute code */
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     f.prog = pc += 2;
-    if (f.p_ctrl->flags & CTRL_VM_1_0) {
-	i_interpret0(&f, pc);
-    } else {
-	i_interpret1(&f, pc);
-    }
+    i_interpret1(&f, pc);
 
     /* clean up stack, move return value to outer stackframe */
     val = *f.sp++;
 # ifdef DEBUG
-    if (f.sp != f.fp - nargs || f.lip != f.stack) {
+    if (f.sp != f.fp - nargs) {
 	fatal("bad stack pointer after function call");
     }
 # endif
@@ -3571,148 +2406,6 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
     i_funcall(f, obj, lwobj, UCHAR(symb->inherit), UCHAR(symb->index), nargs);
 
     return TRUE;
-}
-
-/*
- * NAME:	interpret->line0()
- * DESCRIPTION:	return the line number the program counter of the specified
- *		frame is at
- */
-static unsigned short i_line0(Frame *f)
-{
-    char *pc, *numbers;
-    int instr;
-    short offset;
-    unsigned short line, u, sz;
-
-    line = 0;
-    pc = f->p_ctrl->prog + f->func->offset;
-    pc += PROTO_SIZE(pc) + 3;
-    FETCH2U(pc, u);
-    numbers = pc + u;
-
-    while (pc < f->pc) {
-	instr = FETCH1U(pc);
-
-	offset = instr >> I_LINE_SHIFT;
-	if (offset <= 2) {
-	    /* simple offset */
-	    line += offset;
-	} else {
-	    offset = FETCH1U(numbers);
-	    if (offset >= 128) {
-		/* one byte offset */
-		line += offset - 128 - 64;
-	    } else {
-		/* two byte offset */
-		line += ((offset << 8) | FETCH1U(numbers)) - 16384;
-	    }
-	}
-
-	switch (instr & II_INSTR_MASK) {
-	case II_INDEX_LVAL:
-	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
-		pc += 3;
-	    }
-	    /* fall through */
-	case II_PUSH_ZERO:
-	case II_PUSH_ONE:
-	case II_INDEX:
-	case II_DUP:
-	case II_STORE:
-	case II_RETURN:
-	    break;
-
-	case II_PUSH_INT1:
-	case II_PUSH_STRING:
-	case II_PUSH_LOCAL:
-	case II_PUSH_GLOBAL:
-	case II_RLIMITS:
-	    pc++;
-	    break;
-
-	case II_CAST:
-	    if (FETCH1U(pc) == T_CLASS) {
-		pc += 3;
-	    }
-	    break;
-
-	case II_PUSH_LOCAL_LVAL:
-	case II_PUSH_GLOBAL_LVAL:
-	case II_SPREAD:
-	    pc++;
-	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
-		pc += 3;
-	    }
-	    break;
-
-	case II_PUSH_NEAR_STRING:
-	case II_PUSH_FAR_GLOBAL:
-	case II_JUMP:
-	case II_JUMP_ZERO:
-	case II_JUMP_NONZERO:
-	case II_CALL_AFUNC:
-	case II_CATCH:
-	    pc += 2;
-	    break;
-
-	case II_PUSH_FAR_GLOBAL_LVAL:
-	    pc += 2;
-	    if ((instr & II_TYPE_BIT) && FETCH1U(pc) == T_CLASS) {
-		pc += 3;
-	    }
-	    break;
-
-	case II_PUSH_FAR_STRING:
-	case II_AGGREGATE:
-	case II_CALL_DFUNC:
-	case II_CALL_FUNC:
-	    pc += 3;
-	    break;
-
-	case II_PUSH_INT4:
-	    pc += 4;
-	    break;
-
-	case II_PUSH_FLOAT:
-	    pc += 6;
-	    break;
-
-	case II_SWITCH:
-	    switch (FETCH1U(pc)) {
-	    case 0:
-		FETCH2U(pc, u);
-		sz = FETCH1U(pc);
-		pc += 2 + (u - 1) * (sz + 2);
-		break;
-
-	    case 1:
-		FETCH2U(pc, u);
-		sz = FETCH1U(pc);
-		pc += 2 + (u - 1) * (2 * sz + 2);
-		break;
-
-	    case 2:
-		FETCH2U(pc, u);
-		pc += 2;
-		if (FETCH1U(pc) == 0) {
-		    pc += 2;
-		    --u;
-		}
-		pc += (u - 1) * 5;
-		break;
-	    }
-	    break;
-
-	case II_CALL_KFUNC:
-	    if (PROTO_VARGS(KFUN(FETCH1U(pc)).proto) != 0) {
-		pc++;
-	    }
-	    break;
-	}
-    }
-
-    return line;
 }
 
 /*
@@ -3930,7 +2623,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     v++;
 
     /* line number */
-    PUT_INTVAL(v, (f->p_ctrl->flags & CTRL_VM_1_0) ? i_line0(f) : i_line1(f));
+    PUT_INTVAL(v, i_line1(f));
     v++;
 
     /* external flag */
@@ -4104,7 +2797,7 @@ void i_clear()
     if (f->stack != stack) {
 	FREE(f->stack);
 	f->fp = f->sp = stack + MIN_STACK;
-	f->stack = f->lip = stack;
+	f->stack = stack;
     }
 
     f->rlim = &rlim;
