@@ -864,11 +864,10 @@ bool co_dump(int fd)
 void co_restore(int fd, Uint t)
 {
     dump_header dh;
-    uindex n, i, offset, last;
+    uindex n, i, offset;
     call_out *co;
     uindex *cb;
     uindex buffer[CYCBUF_SIZE];
-    unsigned short m;
 
     /* read and check header */
     timediff = t;

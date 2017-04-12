@@ -685,22 +685,6 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 }
 
 /*
- * NAME:	istr()
- * DESCRIPTION:	create a copy of the argument string, with one char replaced
- */
-static Value *istr(Value *val, String *str, ssizet i, Value *v)
-{
-    if (v->type != T_INT) {
-	error("Non-numeric value in indexed string assignment");
-    }
-
-    PUT_STRVAL_NOREF(val, (str->primary == (strref *) NULL && str->ref == 1) ?
-			   str : str_new(str->text, (long) str->len));
-    val->u.string->text[i] = v->u.number;
-    return val;
-}
-
-/*
  * NAME:	interpret->store_local()
  * DESCRIPTION:	assign a value to a local variable
  */
