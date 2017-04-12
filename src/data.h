@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,12 +27,12 @@ struct dinherit {
     bool priv;			/* privately inherited? */
 };
 
-struct dstrconst {
+struct dstrconst0 {
     Uint index;			/* index in control block */
     ssizet len;			/* string length */
 };
 
-# define DSTR_LAYOUT	"it"
+# define DSTR0_LAYOUT	"it"
 
 struct dfuncdef {
     char sclass;		/* function class */
@@ -86,7 +86,8 @@ struct Control {
 
     unsigned short nstrings;	/* i/o # strings */
     String **strings;		/* i/o? string table */
-    dstrconst *sstrings;	/* o sstrings */
+    ssizet *sslength;		/* o sstrings length */
+    Uint *ssindex;		/* o sstrings index */
     char *stext;		/* o sstrings text */
     Uint strsize;		/* o sstrings text size */
     Uint stroffset;		/* o offset of string index table */
@@ -201,6 +202,7 @@ struct Dataspace {
     Uint narrays;		/* i/o # arrays */
     Uint eltsize;		/* o total size of array elements */
     struct sarray *sarrays;	/* o sarrays */
+    Uint *saindex;		/* o sarrays index */
     struct svalue *selts;	/* o sarray elements */
     Array alist;		/* array linked list sentinel */
     Uint arroffset;		/* o offset of array table in data space */
@@ -208,6 +210,7 @@ struct Dataspace {
     Uint nstrings;		/* i/o # strings */
     Uint strsize;		/* o total size of string text */
     struct sstring *sstrings;	/* o sstrings */
+    Uint *ssindex;		/* o sstrings index */
     char *stext;		/* o sstrings text */
     Uint stroffset;		/* o offset of string table */
 
@@ -230,7 +233,7 @@ struct Dataspace {
 
 extern void		d_init		 ();
 extern void		d_init_conv	 (bool, bool, bool, bool, bool, bool,
-					  bool, bool, bool);
+					  bool, bool, bool, bool);
 
 extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);

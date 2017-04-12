@@ -203,6 +203,15 @@ struct svalue0 {
 static char sv0_layout[] = "sui";
 
 struct sarray {
+    Uint tag;			/* unique value for each array */
+    Uint ref;			/* refcount */
+    char type;			/* array type */
+    unsigned short size;	/* size of array */
+};
+
+static char sa_layout[] = "iics";
+
+struct sarray1 {
     Uint index;			/* index in array value table */
     char type;			/* array type */
     unsigned short size;	/* size of array */
@@ -210,7 +219,7 @@ struct sarray {
     Uint tag;			/* unique value for each array */
 };
 
-static char sa_layout[] = "icsii";
+static char sa1_layout[] = "icsii";
 
 struct sarray0 {
     Uint index;			/* index in array value table */
@@ -222,12 +231,19 @@ struct sarray0 {
 static char sa0_layout[] = "isii";
 
 struct sstring {
+    Uint ref;			/* refcount */
+    ssizet len;			/* length of string */
+};
+
+static char ss_layout[] = "it";
+
+struct sstring0 {
     Uint index;			/* index in string text table */
     ssizet len;			/* length of string */
     Uint ref;			/* refcount */
 };
 
-static char ss_layout[] = "iti";
+static char ss0_layout[] = "iti";
 
 struct scallout {
     Uint time;			/* time of call */
@@ -305,6 +321,7 @@ static bool conv_type;			/* convert types? */
 static bool conv_inherit;		/* convert inherits? */
 static bool conv_time;			/* convert time? */
 static bool conv_vm;			/* convert VM? */
+static bool conv_arrstr;		/* convert arrays & strings? */
 static bool converted;			/* conversion complete? */
 
 
@@ -319,7 +336,7 @@ void d_init()
     gcdata = (Dataspace *) NULL;
     nctrl = ndata = 0;
     conv_ctrl1 = conv_ctrl2 = conv_data = conv_co1 = conv_co2 = conv_type =
-		 conv_time = conv_vm = FALSE;
+		 conv_time = conv_vm = conv_arrstr = FALSE;
     converted = FALSE;
 }
 
@@ -327,7 +344,7 @@ void d_init()
  * NAME:	data->init_conv()
  * DESCRIPTION:	prepare for conversions
  */
-void d_init_conv(bool ctrl1, bool ctrl2, bool data, bool callout1, bool callout2, bool type, bool inherit, bool time, bool vm)
+void d_init_conv(bool ctrl1, bool ctrl2, bool data, bool callout1, bool callout2, bool type, bool inherit, bool time, bool vm, bool arrstr)
 {
     conv_ctrl1 = ctrl1;
     conv_ctrl2 = ctrl2;
@@ -338,6 +355,7 @@ void d_init_conv(bool ctrl1, bool ctrl2, bool data, bool callout1, bool callout2
     conv_inherit = inherit;
     conv_time = time;
     conv_vm = vm;
+    conv_arrstr = arrstr;
 }
 
 /*
@@ -378,7 +396,8 @@ Control *d_new_control()
     ctrl->prog = (char *) NULL;
     ctrl->nstrings = 0;
     ctrl->strings = (String **) NULL;
-    ctrl->sstrings = (dstrconst *) NULL;
+    ctrl->sslength = (ssizet *) NULL;
+    ctrl->ssindex = (Uint *) NULL;
     ctrl->stext = (char *) NULL;
     ctrl->nfuncdefs = 0;
     ctrl->funcdefs = (dfuncdef *) NULL;
@@ -447,6 +466,7 @@ static Dataspace *d_alloc_dataspace(Object *obj)
     data->narrays = 0;
     data->eltsize = 0;
     data->sarrays = (sarray *) NULL;
+    data->saindex = (Uint *) NULL;
     data->selts = (svalue *) NULL;
     data->alist.prev = data->alist.next = &data->alist;
 
@@ -454,6 +474,7 @@ static Dataspace *d_alloc_dataspace(Object *obj)
     data->nstrings = 0;
     data->strsize = 0;
     data->sstrings = (sstring *) NULL;
+    data->ssindex = (Uint *) NULL;
     data->stext = (char *) NULL;
 
     /* callouts */
@@ -587,7 +608,7 @@ static Control *load_control(Object *obj, void (*readv) (char*, sector*, Uint, U
     ctrl->stroffset = size;
     ctrl->nstrings = header.nstrings;
     ctrl->strsize = header.strsize;
-    size += header.nstrings * (Uint) sizeof(dstrconst) + header.strsize;
+    size += header.nstrings * (Uint) sizeof(ssizet) + header.strsize;
 
     /* function definitions */
     ctrl->funcdoffset = size;
@@ -926,12 +947,12 @@ static void get_stext(Control *ctrl, void (*readv) (char*, sector*, Uint, Uint))
 	ctrl->stext = decompress(ctrl->sectors, readv,
 				 ctrl->strsize,
 				 ctrl->stroffset +
-				 ctrl->nstrings * sizeof(dstrconst),
+				 ctrl->nstrings * sizeof(ssizet),
 				 &ctrl->strsize);
     } else {
 	ctrl->stext = ALLOC(char, ctrl->strsize);
 	(*readv)(ctrl->stext, ctrl->sectors, ctrl->strsize,
-		 ctrl->stroffset + ctrl->nstrings * (Uint) sizeof(dstrconst));
+		 ctrl->stroffset + ctrl->nstrings * (Uint) sizeof(ssizet));
     }
 }
 
@@ -943,9 +964,9 @@ static void get_strconsts(Control *ctrl, void (*readv) (char*, sector*, Uint, Ui
 {
     if (ctrl->nstrings != 0) {
 	/* load strings */
-	ctrl->sstrings = ALLOC(dstrconst, ctrl->nstrings);
-	(*readv)((char *) ctrl->sstrings, ctrl->sectors,
-		 ctrl->nstrings * (Uint) sizeof(dstrconst), ctrl->stroffset);
+	ctrl->sslength = ALLOC(ssizet, ctrl->nstrings);
+	(*readv)((char *) ctrl->sslength, ctrl->sectors,
+		 ctrl->nstrings * (Uint) sizeof(ssizet), ctrl->stroffset);
 	if (ctrl->strsize > 0 && ctrl->stext == (char *) NULL) {
 	    get_stext(ctrl, readv);	/* load strings text */
 	}
@@ -968,16 +989,26 @@ String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
 	ctrl->strings = ALLOC(String*, ctrl->nstrings);
 	memset(ctrl->strings, '\0', ctrl->nstrings * sizeof(String *));
 
-	if (ctrl->sstrings == (dstrconst *) NULL) {
+	if (ctrl->sslength == (ssizet *) NULL) {
 	    get_strconsts(ctrl, sw_readv);
+	}
+	if (ctrl->ssindex == (Uint *) NULL) {
+	    Uint size;
+	    unsigned short i;
+
+	    ctrl->ssindex = ALLOC(Uint, ctrl->nstrings);
+	    for (size = 0, i = 0; i < ctrl->nstrings; i++) {
+		ctrl->ssindex[i] = size;
+		size += ctrl->sslength[i];
+	    }
 	}
     }
 
     if (ctrl->strings[idx] == (String *) NULL) {
 	String *str;
 
-	str = str_alloc(ctrl->stext + ctrl->sstrings[idx].index,
-			(long) ctrl->sstrings[idx].len);
+	str = str_alloc(ctrl->stext + ctrl->ssindex[idx],
+			(long) ctrl->sslength[idx]);
 	str_ref(ctrl->strings[idx] = str);
     }
 
@@ -1150,7 +1181,7 @@ Uint d_get_progsize(Control *ctrl)
     return ctrl->ninherits * sizeof(dinherit) +
 	   ctrl->imapsz +
 	   ctrl->progsize +
-	   ctrl->nstrings * (Uint) sizeof(dstrconst) +
+	   ctrl->nstrings * (Uint) sizeof(ssizet) +
 	   ctrl->strsize +
 	   ctrl->nfuncdefs * sizeof(dfuncdef) +
 	   ctrl->nvardefs * sizeof(dvardef) +
@@ -1204,8 +1235,17 @@ static String *d_get_string(Dataspace *data, Uint idx)
 	if (data->sstrings == (sstring *) NULL) {
 	    get_strings(data, sw_readv);
 	}
+	if (data->ssindex == (Uint *) NULL) {
+	    Uint size;
 
-	str = str_alloc(data->stext + data->sstrings[idx].index,
+	    data->ssindex = ALLOC(Uint, data->nstrings);
+	    for (size = 0, i = 0; i < data->nstrings; i++) {
+		data->ssindex[i] = size;
+		size += data->sstrings[i].len;
+	    }
+	}
+
+	str = str_alloc(data->stext + data->ssindex[idx],
 			(long) data->sstrings[idx].len);
 	str->ref = 0;
 	p = data->plane;
@@ -1432,8 +1472,18 @@ Value *d_get_elts(Array *arr)
 	if (data->selts == (svalue *) NULL) {
 	    get_elts(data, sw_readv);
 	}
+	if (data->saindex == (Uint *) NULL) {
+	    Uint size;
+
+	    data->saindex = ALLOC(Uint, data->narrays);
+	    for (size = 0, idx = 0; idx < data->narrays; idx++) {
+		data->saindex[idx] = size;
+		size += data->sarrays[idx].size;
+	    }
+	}
+
 	v = arr->elts = ALLOC(Value, arr->size);
-	idx = data->sarrays[arr->primary - data->plane->arrays].index;
+	idx = data->saindex[arr->primary - data->plane->arrays];
 	d_get_values(data, &data->selts[idx], v, arr->size);
     }
 
@@ -1522,12 +1572,12 @@ static void d_save_control(Control *ctrl)
 {
     scontrol header;
     char *prog, *stext, *text;
-    dstrconst *sstrings;
+    ssizet *sslength;
     Uint size, i;
     sinherit *sinherits;
     dinherit *inherits;
 
-    sstrings = NULL;
+    sslength = NULL;
     prog = stext = text = NULL;
 
     /*
@@ -1570,28 +1620,27 @@ static void d_save_control(Control *ctrl)
 	    }
 	}
 
-	sstrings = ctrl->sstrings;
+	sslength = ctrl->sslength;
 	stext = ctrl->stext;
-	if (header.nstrings > 0 && sstrings == (dstrconst *) NULL) {
+	if (header.nstrings > 0 && sslength == (ssizet *) NULL) {
 	    String **strs;
 	    Uint strsize;
-	    dstrconst *s;
+	    ssizet *l;
 	    char *t;
 
-	    sstrings = ALLOC(dstrconst, header.nstrings);
+	    sslength = ALLOC(ssizet, header.nstrings);
 	    if (header.strsize > 0) {
 		stext = ALLOC(char, header.strsize);
 	    }
 
 	    strs = ctrl->strings;
 	    strsize = 0;
-	    s = sstrings;
+	    l = sslength;
 	    t = stext;
 	    for (i = header.nstrings; i > 0; --i) {
-		s->index = strsize;
-		strsize += s->len = (*strs)->len;
-		memcpy(t, (*strs++)->text, s->len);
-		t += (s++)->len;
+		strsize += *l = (*strs)->len;
+		memcpy(t, (*strs++)->text, *l);
+		t += *l++;
 	    }
 	}
 
@@ -1612,7 +1661,7 @@ static void d_save_control(Control *ctrl)
 	       header.ninherits * sizeof(sinherit) +
 	       header.imapsz +
 	       header.progsize +
-	       header.nstrings * (Uint) sizeof(dstrconst) +
+	       header.nstrings * (Uint) sizeof(ssizet) +
 	       header.strsize +
 	       UCHAR(header.nfuncdefs) * sizeof(dfuncdef) +
 	       UCHAR(header.nvardefs) * sizeof(dvardef) +
@@ -1679,9 +1728,9 @@ static void d_save_control(Control *ctrl)
 
 	/* save string constants */
 	if (header.nstrings > 0) {
-	    sw_writev((char *) sstrings, ctrl->sectors,
-		      header.nstrings * (Uint) sizeof(dstrconst), size);
-	    size += header.nstrings * (Uint) sizeof(dstrconst);
+	    sw_writev((char *) sslength, ctrl->sectors,
+		      header.nstrings * (Uint) sizeof(ssizet), size);
+	    size += header.nstrings * (Uint) sizeof(ssizet);
 	    if (header.strsize > 0) {
 		sw_writev(text, ctrl->sectors, header.strsize, size);
 		size += header.strsize;
@@ -1692,8 +1741,8 @@ static void d_save_control(Control *ctrl)
 		    FREE(stext);
 		}
 	    }
-	    if (sstrings != ctrl->sstrings) {
-		FREE(sstrings);
+	    if (sslength != ctrl->sslength) {
+		FREE(sslength);
 	    }
 	}
 
@@ -1843,7 +1892,6 @@ static void d_save(savedata *save, svalue *sv, Value *v, unsigned short n)
 	    sv->u.string = i;
 	    if (save->sstrings[i].ref++ == 0) {
 		/* new string value */
-		save->sstrings[i].index = save->strsize;
 		save->sstrings[i].len = v->u.string->len;
 		memcpy(save->stext + save->strsize, v->u.string->text,
 		       v->u.string->len);
@@ -2082,7 +2130,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	    for (n = 0; n < data->narrays; n++) {
 		if (a->arr != (Array *) NULL && (a->ref & ARR_MOD)) {
 		    a->ref &= ~ARR_MOD;
-		    idx = data->sarrays[n].index;
+		    idx = data->saindex[n];
 		    d_put_values(data, &data->selts[idx], a->arr->elts,
 				 a->arr->size);
 		    if (swap) {
@@ -2279,7 +2327,6 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	}
 	for (arr = save.alist.prev, sarr = save.sarrays; arr != &save.alist;
 	     arr = arr->prev, sarr++) {
-	    sarr->index = save.arrsize;
 	    sarr->size = arr->size;
 	    sarr->tag = arr->tag;
 	    d_save(&save, save.selts + save.arrsize, arr->elts, arr->size);
@@ -2371,6 +2418,14 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	}
 
 	d_free_values(data);
+	if (data->saindex != (Uint *) NULL) {
+	    FREE(data->saindex);
+	    data->saindex = NULL;
+	}
+	if (data->ssindex != (Uint *) NULL) {
+	    FREE(data->ssindex);
+	    data->ssindex = NULL;
+	}
 
 	data->flags = header.flags;
 	data->narrays = header.narrays;
@@ -2738,9 +2793,22 @@ static Control *d_conv_control(Object *obj,
 
 	if (header.nstrings != 0) {
 	    /* strings */
-	    ctrl->sstrings = ALLOC(dstrconst, header.nstrings);
-	    size += d_conv((char *) ctrl->sstrings, ctrl->sectors, DSTR_LAYOUT,
-			   (Uint) header.nstrings, size, readv);
+	    ctrl->sslength = ALLOC(ssizet, header.nstrings);
+	    if (conv_arrstr) {
+		dstrconst0 *sstrings;
+		unsigned short i;
+
+		sstrings = ALLOCA(dstrconst0, header.nstrings);
+		size += d_conv((char *) sstrings, ctrl->sectors, DSTR0_LAYOUT,
+			       (Uint) header.nstrings, size, readv);
+		for (i = 0; i < header.nstrings; i++) {
+		    ctrl->sslength[i] = sstrings[i].len;
+		}
+		AFREE(sstrings);
+	    } else {
+		size += d_conv((char *) ctrl->sslength, ctrl->sectors, "t",
+			       (Uint) header.nstrings, size, readv);
+	    }
 	    if (header.strsize != 0) {
 		if (header.flags & (CMP_TYPE << 2)) {
 		    ctrl->stext = decompress(ctrl->sectors, readv,
@@ -2935,6 +3003,27 @@ static Uint d_conv_svalue0(svalue *sv, sector *s, Uint n, Uint size)
 }
 
 /*
+ * NAME:	data->conv_sarray1()
+ * DESCRIPTION:	convert old sarrays
+ */
+static Uint d_conv_sarray1(sarray *sa, sector *s, Uint n, Uint size)
+{
+    sarray1 *osa;
+    Uint i;
+
+    osa = ALLOC(sarray1, n);
+    size = d_conv((char *) osa, s, sa1_layout, n, size, &sw_conv);
+    for (i = 0; i < n; i++) {
+	sa->tag = osa->tag;
+	sa->ref = osa->ref;
+	sa->type = osa->type;
+	(sa++)->size = (osa++)->size;
+    }
+    FREE(osa - n);
+    return size;
+}
+
+/*
  * NAME:	data->conv_sarray0()
  * DESCRIPTION:	convert old sarrays
  */
@@ -2946,13 +3035,31 @@ static Uint d_conv_sarray0(sarray *sa, sector *s, Uint n, Uint size)
     osa = ALLOC(sarray0, n);
     size = d_conv((char *) osa, s, sa0_layout, n, size, &sw_conv);
     for (i = 0; i < n; i++) {
-	sa->index = osa->index;
 	sa->type = 0;	/* filled in later */
 	sa->size = osa->size;
 	sa->ref = osa->ref;
 	(sa++)->tag = (osa++)->tag;
     }
     FREE(osa - n);
+    return size;
+}
+
+/*
+ * NAME:	data->conv_sstring0()
+ * DESCRIPTION:	convert old sstrings
+ */
+static Uint d_conv_sstring0(sstring *ss, sector *s, Uint n, Uint size)
+{
+    sstring0 *oss;
+    Uint i;
+
+    oss = ALLOC(sstring0, n);
+    size = d_conv((char *) oss, s, ss0_layout, n, size, &sw_conv);
+    for (i = 0; i < n; i++) {
+	ss->ref = oss->ref;
+	(ss++)->len = (oss++)->len;
+    }
+    FREE(oss - n);
     return size;
 }
 
@@ -3056,6 +3163,9 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	if (conv_type) {
 	    size += d_conv_sarray0(data->sarrays, data->sectors,
 				   header.narrays, size);
+	} else if (conv_arrstr) {
+	    size += d_conv_sarray1(data->sarrays, data->sectors,
+				   header.narrays, size);
 	} else {
 	    size += d_conv((char *) data->sarrays, data->sectors, sa_layout,
 			   header.narrays, size, readv);
@@ -3078,8 +3188,13 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
     if (header.nstrings != 0) {
 	/* strings */
 	data->sstrings = ALLOC(sstring, header.nstrings);
-	size += d_conv((char *) data->sstrings, data->sectors, ss_layout,
-		       header.nstrings, size, readv);
+	if (conv_arrstr) {
+	    size += d_conv_sstring0(data->sstrings, data->sectors,
+				    (Uint) header.nstrings, size);
+	} else {
+	    size += d_conv((char *) data->sstrings, data->sectors, ss_layout,
+			   header.nstrings, size, readv);
+	}
 	if (header.strsize != 0) {
 	    if (header.flags & CMP_TYPE) {
 		data->stext = decompress(data->sectors, readv, header.strsize,
@@ -3403,8 +3518,11 @@ void d_free_control(Control *ctrl)
     }
 
     /* delete string constants */
-    if (ctrl->sstrings != (dstrconst *) NULL) {
-	FREE(ctrl->sstrings);
+    if (ctrl->sslength != (ssizet *) NULL) {
+	FREE(ctrl->sslength);
+    }
+    if (ctrl->ssindex != (Uint *) NULL) {
+	FREE(ctrl->ssindex);
     }
     if (ctrl->stext != (char *) NULL) {
 	FREE(ctrl->stext);
@@ -3483,6 +3601,9 @@ void d_free_dataspace(Dataspace *data)
 	if (data->selts != (svalue *) NULL) {
 	    FREE(data->selts);
 	}
+	if (data->saindex != (Uint *) NULL) {
+	    FREE(data->saindex);
+	}
 	FREE(data->sarrays);
     }
 
@@ -3490,6 +3611,9 @@ void d_free_dataspace(Dataspace *data)
     if (data->sstrings != (sstring *) NULL) {
 	if (data->stext != (char *) NULL) {
 	    FREE(data->stext);
+	}
+	if (data->ssindex != (Uint *) NULL) {
+	    FREE(data->ssindex);
 	}
 	FREE(data->sstrings);
     }
