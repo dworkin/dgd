@@ -975,7 +975,6 @@ void ctrl_create()
     inh = newctrl->inherits =
 	  ALLOC(dinherit, newctrl->ninherits = ninherits + 1);
     newctrl->imap = ALLOC(char, (ninherits + 2) * (ninherits + 1) / 2);
-    newctrl->progindex = ninherits;
     nvars = 0;
     str_merge();
 

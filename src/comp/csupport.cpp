@@ -45,60 +45,16 @@ struct dump_header {
 
 static char dh_layout[] = "uiiiiiii";
 
-struct dump_header0 {
-    uindex nprecomps;		/* # precompiled objects */
-    Uint ninherits;		/* total # inherits */
-    Uint nstrings;		/* total # strings */
-    Uint stringsz;		/* total strings size */
-    Uint nfuncdefs;		/* total # funcdefs */
-    Uint nvardefs;		/* total # vardefs */
-    Uint nfuncalls;		/* total # function calls */
-};
-
-static char dh0_layout[] = "uiiiiii";
-
-/*
- * NAME:	precomp->dump()
- * DESCRIPTION:	dump precompiled objects
- */
-bool pc_dump(int fd)
-{
-    dump_header dh;
-
-    dh.nprecomps = 0;
-    dh.ninherits = 0;
-    dh.imapsz = 0;
-    dh.nstrings = 0;
-    dh.stringsz = 0;
-    dh.nfuncdefs = 0;
-    dh.nvardefs = 0;
-    dh.nfuncalls = 0;
-
-    /* write header */
-    if (!sw_write(fd, (char *) &dh, sizeof(dump_header))) {
-	return FALSE;
-    }
-
-    return TRUE;
-}
-
 /*
  * NAME:	precomp->restore()
  * DESCRIPTION:	restore and replace precompiled objects
  */
-void pc_restore(int fd, int conv)
+void pc_restore(int fd)
 {
     dump_header dh = {0};
 
     /* read header */
-    if (conv) {
-	dump_header0 odh;
-
-	conf_dread(fd, (char *) &odh, dh0_layout, (Uint) 1);
-	dh.nprecomps = odh.nprecomps;
-    } else {
-	conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
-    }
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
     if (dh.nprecomps != 0) {
 	fatal("precompiled objects in snapshot");
     }

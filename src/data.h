@@ -73,7 +73,6 @@ struct Control {
 
     short ninherits;		/* i/o # inherited objects */
     dinherit *inherits;		/* i/o inherit objects */
-    short progindex;		/* i/o program index */
 
     uindex imapsz;		/* i/o inherit map size */
     char *imap;			/* i/o inherit map */
@@ -232,8 +231,7 @@ struct Dataspace {
 /* sdata.c */
 
 extern void		d_init		 ();
-extern void		d_init_conv	 (bool, bool, bool, bool, bool, bool,
-					  bool, bool, bool, bool);
+extern void		d_init_conv	 (bool);
 
 extern Control	       *d_new_control	 ();
 extern Dataspace       *d_new_dataspace  (Object*);
@@ -307,7 +305,6 @@ extern void		d_del_dataspace	(Dataspace*);
 # define CTRL_UNDEFINED		0x010	/* has undefined functions */
 # define CTRL_VM_2_1		0x020	/* uses VM 2.1 or later */
 # define CTRL_VARMAP		0x040	/* varmap updated */
-# define CTRL_CONVERTED		0x080	/* converted control block */
 # define CTRL_VM_1_0		0x100	/* uses VM 1.0 */
 
 /* bit values for dataspace->flags */

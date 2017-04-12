@@ -305,9 +305,6 @@ void conf_dump(bool incr, bool boot)
     if (!o_dump(fd, incr)) {
 	fatal("failed to dump object table");
     }
-    if (!pc_dump(fd)) {
-	fatal("failed to dump precompiled objects");
-    }
     if (!co_dump(fd)) {
 	fatal("failed to dump callout table");
     }
@@ -358,59 +355,21 @@ static unsigned int conf_header(int fd, dumpinfo h)
  */
 static bool conf_restore(int fd, int fd2)
 {
-    bool conv_co1, conv_co2, conv_co3, conv_lwo, conv_ctrl1, conv_ctrl2,
-    conv_data, conv_type, conv_inherit, conv_time, conv_vm, conv_arrstr;
+    bool conv_14;
     unsigned int secsize;
 
     secsize = conf_header(fd, rheader);
-    conv_co1 = conv_co2 = conv_co3 = conv_lwo = conv_ctrl1 = conv_ctrl2 =
-	       conv_data = conv_type = conv_inherit = conv_time = conv_vm =
-	       conv_arrstr = FALSE;
-    if (rheader[DUMP_VERSION] < 3) {
-	conv_co1 = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 4) {
-	conv_lwo = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 5) {
-	conv_ctrl1 = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 6) {
-	conv_data = TRUE;
-	rzero1 = rzero2 = 0;
-    }
-    if (rheader[DUMP_VERSION] < 7) {
-	conv_co2 = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 8) {
-	conv_type = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 9) {
-	conv_ctrl2 = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 10) {
-	conv_inherit = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 11) {
-	conv_co3 = TRUE;
-    }
-    if (rheader[DUMP_VERSION] < 12) {
-	memmove(rheader + 20, rheader + 12, 18);
-	rzero3 = rzero4 = rdflags = rzero5 = 0;
-    }
-    if (rheader[DUMP_VERSION] < 13) {
-	conv_time = TRUE;
-    }
+    conv_14 = FALSE;
     if (rheader[DUMP_VERSION] < 14) {
-	conv_vm = TRUE;
+	error("Incompatible snapshot version");
     }
     if (rheader[DUMP_VERSION] < 15) {
-	conv_arrstr = TRUE;
+	conv_14 = TRUE;
     }
     header[DUMP_VERSION] = rheader[DUMP_VERSION];
     if (memcmp(header, rheader, DUMP_TYPE) != 0 || rzero1 != 0 || rzero2 != 0 ||
 	rzero3 != 0 || rzero4 != 0 || rzero5 != 0) {
-	error("Bad or incompatible restore file header");
+	error("Bad or incompatible snapshot header");
     }
     if (rdflags & FLAGS_PARTIAL) {
 	dumpinfo h;
@@ -469,14 +428,14 @@ static bool conf_restore(int fd, int fd2)
     rpsize &= 0xf;
 
     sw_restore(fd, secsize);
-    kf_restore(fd, conv_co1);
-    o_restore(fd, (uindex) ((conv_lwo) ? 1 << (rusize * 8 - 1) : 0),
-	      rdflags & FLAGS_PARTIAL);
-    d_init_conv(conv_ctrl1, conv_ctrl2, conv_data, conv_co1, conv_co2,
-		conv_type, conv_inherit, conv_time, conv_vm, conv_arrstr);
-    pc_restore(fd, conv_inherit);
+    kf_restore(fd);
+    o_restore(fd, rdflags & FLAGS_PARTIAL);
+    d_init_conv(conv_14);
+    if (conv_14) {
+	pc_restore(fd);
+    }
     boottime = P_time();
-    co_restore(fd, boottime, conv_co2, conv_co3, conv_time);
+    co_restore(fd, boottime);
 
     if (fd2 >= 0) {
 	P_close(fd2);

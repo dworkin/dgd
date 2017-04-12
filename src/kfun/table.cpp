@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -490,7 +490,7 @@ bool kf_dump(int fd)
  * NAME:	kfun->restore()
  * DESCRIPTION:	restore the kfun table
  */
-void kf_restore(int fd, int oldcomp)
+void kf_restore(int fd)
 {
     int i, n, buflen;
     dump_header dh;
@@ -518,25 +518,7 @@ void kf_restore(int fd, int oldcomp)
 	} else {
 	    n = kf_index(kftab, KF_BUILTINS, nkfun, buffer + buflen);
 	    if (n < 0) {
-		if (strcmp(buffer + buflen, "(compile_object)") == 0) {
-		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.compile_object");
-		} else if (strcmp(buffer + buflen, "hash_md5") == 0 ||
-			   strcmp(buffer + buflen, "(hash_md5)") == 0) {
-		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.hash_md5");
-		} else if (strcmp(buffer + buflen, "hash_sha1") == 0 ||
-			   strcmp(buffer + buflen, "(hash_sha1)") == 0) {
-		    n = kf_index(kftab, KF_BUILTINS, nkfun, "0.hash_sha1");
-		} else {
-		    error("Restored unknown kfun: %s", buffer + buflen);
-		}
-	    }
-	    if (kftab[n].func == kf_dump_state) {
-		n = kf_index(kftab, KF_BUILTINS, nkfun, "0.dump_state");
-	    } else if (kftab[n].func == kf_old_compile_object) {
-		oldcomp = FALSE;
-	    } else if (kftab[n].func == kf_compile_object && oldcomp) {
-		/* convert compile_object() */
-		n = kf_index(kftab, KF_BUILTINS, nkfun, "0.compile_object");
+		error("Restored unknown kfun: %s", buffer + buflen);
 	    }
 	}
 	kfx[n] = i + 128;

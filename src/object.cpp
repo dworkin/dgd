@@ -1334,7 +1334,7 @@ bool o_dump(int fd, bool incr)
  * NAME:	Object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(int fd, unsigned int rlwobj, bool part)
+void o_restore(int fd, bool part)
 {
     uindex i;
     Object *o;
@@ -1360,9 +1360,6 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
     /* read object names */
     buflen = 0;
     for (i = 0, o = otable; i < baseplane.nobjects; i++, o++) {
-	if (rlwobj != 0) {
-	    o->flags &= ~O_LWOBJ;
-	}
 	if (o->name != (char *) NULL) {
 	    /*
 	     * restore name
@@ -1393,19 +1390,9 @@ void o_restore(int fd, unsigned int rlwobj, bool part)
 		h = baseplane.htab->lookup(p, FALSE);
 		o->next = *h;
 		*h = o;
-
-		/* fix O_LWOBJ */
-		if (o->cref & rlwobj) {
-		    o->flags |= O_LWOBJ;
-		    o->cref &= ~rlwobj;
-		}
 	    }
 	    p += len;
 	    buflen -= len;
-	} else if (o->ref & rlwobj) {
-	    o->flags |= O_LWOBJ;
-	    o->ref &= ~rlwobj;
-	    o->ref++;
 	}
 
 	if (o->count != 0) {

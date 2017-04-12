@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -293,20 +293,6 @@ static void freecallout(uindex *cyc, uindex j, uindex i, Uint t)
 	l->next = flist;
 	flist = i;
     }
-}
-
-/*
- * NAME:	call_out->decode()
- * DESCRIPTION:	decode millisecond time
- */
-Uint co_decode(Uint time, unsigned short *mtime)
-{
-    *mtime = time & 0xffff;
-    time = ((timestamp - timediff) & 0xffffff00L) + ((time >> 16) & 0xff);
-    if (time + timediff < timestamp) {
-	time += 0x100;
-    }
-    return time;
 }
 
 /*
@@ -835,57 +821,6 @@ struct dump_header {
 
 static char dh_layout[] = "uuuuuuussii";
 
-struct dump_header1 {
-    uindex cotabsz;		/* callout table size */
-    uindex queuebrk;		/* queue brk */
-    uindex cycbrk;		/* cyclic buffer brk */
-    uindex flist;		/* free list index */
-    uindex nshort;		/* # of short-term callouts */
-    uindex running;		/* running callouts */
-    uindex immediate;		/* immediate callouts list */
-    Uint timestamp;		/* time the last alarm came */
-    Uint timediff;		/* accumulated time difference */
-};
-
-static char dh1_layout[] = "uuuuuuuii";
-
-struct dump_header0 {
-    uindex cotabsz;		/* callout table size */
-    uindex queuebrk;		/* queue brk */
-    uindex cycbrk;		/* cyclic buffer brk */
-    uindex flist;		/* free list index */
-    uindex nshort;		/* # of short-term callouts */
-    uindex nlong0;		/* # of long-term callouts and imm. callouts */
-    Uint timestamp;		/* time the last alarm came */
-    Uint timediff;		/* accumulated time difference */
-};
-
-static char dh0_layout[] = "uuuuuuii";
-
-struct convbuf {
-    uindex list;	/* list */
-    uindex last;	/* last in list */
-};
-
-static char cb_layout[] = "uu";
-
-struct call_out1 {
-    uindex handle;	/* callout handle */
-    uindex oindex;	/* index in object table */
-    Uint time;		/* when to call */
-    uindex mtime;	/* when to call in milliseconds */
-};
-
-static char co1_layout[] = "uuiu";
-
-struct call_out0 {
-    uindex handle;	/* callout handle */
-    uindex oindex;	/* index in object table */
-    Uint time;		/* when to call */
-};
-
-static char co0_layout[] = "uui";
-
 /*
  * NAME:	call_out->dump()
  * DESCRIPTION:	dump callout table
@@ -926,8 +861,9 @@ bool co_dump(int fd)
  * NAME:	call_out->restore()
  * DESCRIPTION:	restore callout table
  */
-void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
+void co_restore(int fd, Uint t)
 {
+    dump_header dh;
     uindex n, i, offset, last;
     call_out *co;
     uindex *cb;
@@ -936,45 +872,18 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 
     /* read and check header */
     timediff = t;
-    if (conv2) {
-	dump_header0 ch;
 
-	conf_dread(fd, (char *) &ch, dh0_layout, (Uint) 1);
-	queuebrk = ch.queuebrk;
-	offset = cotabsz - ch.cotabsz;
-	cycbrk = ch.cycbrk + offset;
-	flist = ch.flist;
-	nshort = ch.nshort;
-	nzero = ch.nlong0 - ch.queuebrk;
-	timestamp = ch.timestamp;
-	t = -ch.timediff;
-    } else if (conv_time) {
-	dump_header1 oh;
+    conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+    queuebrk = dh.queuebrk;
+    offset = cotabsz - dh.cotabsz;
+    cycbrk = dh.cycbrk + offset;
+    flist = dh.flist;
+    nshort = dh.nshort;
+    running = dh.running;
+    immediate = dh.immediate;
+    timestamp = dh.timestamp;
+    t = 0;
 
-	conf_dread(fd, (char *) &oh, dh1_layout, (Uint) 1);
-	queuebrk = oh.queuebrk;
-	offset = cotabsz - oh.cotabsz;
-	cycbrk = oh.cycbrk + offset;
-	flist = oh.flist;
-	nshort = oh.nshort;
-	running = oh.running;
-	immediate = oh.immediate;
-	timestamp = oh.timestamp;
-	t = -oh.timediff;
-    } else {
-	dump_header dh;
-
-	conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
-	queuebrk = dh.queuebrk;
-	offset = cotabsz - dh.cotabsz;
-	cycbrk = dh.cycbrk + offset;
-	flist = dh.flist;
-	nshort = dh.nshort;
-	running = dh.running;
-	immediate = dh.immediate;
-	timestamp = dh.timestamp;
-	t = 0;
-    }
     timestamp += t;
     timediff -= timestamp;
     if (queuebrk > cycbrk || cycbrk == 0) {
@@ -984,90 +893,15 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
     /* read tables */
     n = queuebrk + cotabsz - cycbrk;
     if (n != 0) {
-	if (conv) {
-	    call_out0 *dc;
+	conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
+	conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
+		   (Uint) (cotabsz - cycbrk));
 
-	    dc = ALLOC(call_out0, n);
-	    conf_dread(fd, (char *) dc, co0_layout, (Uint) n);
-
-	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
-		co->handle = dc->handle;
-		co->oindex = dc->oindex;
-		if (dc->time >> 24 == 1) {
-		    co->time = co_decode(dc->time, &m);
-		    co->mtime = m;
-		} else {
-		    co->time = dc->time + t;
-		    co->mtime = 0;
-		}
-		dc++;
-	    }
-	    for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
-		co->handle = dc->handle;
-		co->oindex = dc->oindex;
-		co->next = dc->time;
-		dc++;
-	    }
-	    FREE(dc - n);
-	} else if (conv2) {
-	    call_out1 *dc;
-
-	    dc = ALLOC(call_out1, n);
-	    conf_dread(fd, (char *) dc, co1_layout, (Uint) n);
-
-	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
-		co->handle = dc->handle;
-		co->oindex = dc->oindex;
-		co->time = dc->time + t;
-		co->mtime = dc->mtime;
-		dc++;
-	    }
-	    for (co = cotab + cycbrk, i = cotabsz - cycbrk; i != 0; co++, --i) {
-		co->handle = dc->handle;
-		co->oindex = dc->oindex;
-		co->next = dc->time;
-		dc++;
-	    }
-	    FREE(dc - n);
-	} else {
-	    conf_dread(fd, (char *) cotab, co_layout, (Uint) queuebrk);
-	    conf_dread(fd, (char *) (cotab + cycbrk), co_layout,
-		       (Uint) (cotabsz - cycbrk));
-
-	    for (co = cotab, i = queuebrk; i != 0; co++, --i) {
-		co->time += t;
-	    }
+	for (co = cotab, i = queuebrk; i != 0; co++, --i) {
+	    co->time += t;
 	}
     }
-    if (conv2) {
-	convbuf cbuffer[CYCBUF_SIZE];
-
-	/* convert free list */
-	for (i = flist; i != 0; i = cotab[i].next) {
-	    i += offset;
-	    cotab[i].prev = cotab[i].oindex;
-	}
-
-	conf_dread(fd, (char *) cbuffer, cb_layout, (Uint) CYCBUF_SIZE);
-
-	/* convert cyclic buffer lists */
-	for (i = 0, cb = buffer; i < CYCBUF_SIZE; i++, cb++) {
-	    *cb = cbuffer[i].list;
-	    if (*cb != 0) {
-		n = 1;
-		last = *cb;
-		while (cotab[last + offset].next != 0) {
-		    last = cotab[last + offset].next;
-		    n++;
-		}
-		cotab[*cb + offset].count = n;
-		cotab[*cb + offset].last = last;
-		cotab[last + offset].prev = 0;
-	    }
-	}
-    } else {
-	conf_dread(fd, (char *) buffer, "u", (Uint) CYCBUF_SIZE);
-    }
+    conf_dread(fd, (char *) buffer, "u", (Uint) CYCBUF_SIZE);
 
     /* cycle around cyclic buffer */
     t &= CYCBUF_MASK;
@@ -1075,40 +909,14 @@ void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 	   (unsigned int) (CYCBUF_SIZE - t) * sizeof(uindex));
     memcpy(cycbuf, buffer + CYCBUF_SIZE - t, (unsigned int) t * sizeof(uindex));
 
-    if (conv2) {
-	/* fix immediate callouts */
-	if (nzero != 0) {
-	    cb = &cycbuf[timestamp & CYCBUF_MASK];
-	    immediate = *cb + offset;
-	    if (cotab[immediate].count == nzero) {
-		*cb = 0;
-	    } else {
-		for (i = nzero - 1, last = *cb; i != 0; --i) {
-		    last = cotab[last + offset].next;
-		}
-		*cb = cotab[last + offset].next;
-		cotab[*cb + offset].count = cotab[immediate].count - nzero;
-		n = cotab[immediate].last;
-		cotab[*cb + offset].last = n;
-		cotab[n + offset].prev = 0;
-		cotab[n + offset].next = 0;
-
-		cotab[immediate].count = nzero;
-		cotab[immediate].last = last;
-		cotab[last + offset].prev = 0;
-		cotab[last + offset].next = 0;
-	    }
-	}
-    } else {
-	nzero = 0;
-	if (running != 0) {
-	    running += offset;
-	    nzero += cotab[running].count;
-	}
-	if (immediate != 0) {
-	    immediate += offset;
-	    nzero += cotab[immediate].count;
-	}
+    nzero = 0;
+    if (running != 0) {
+	running += offset;
+	nzero += cotab[running].count;
+    }
+    if (immediate != 0) {
+	immediate += offset;
+	nzero += cotab[immediate].count;
     }
 
     if (offset != 0) {

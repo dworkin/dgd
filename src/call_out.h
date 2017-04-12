@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,11 +28,10 @@ extern void	co_del		(unsigned int, unsigned int, Uint,
 extern void	co_list		(Array*);
 extern void	co_call		(Frame*);
 extern void	co_info		(uindex*, uindex*);
-extern Uint	co_decode	(Uint, unsigned short*);
 extern Uint	co_time		(unsigned short*);
 extern Uint	co_delay	(Uint, unsigned int, unsigned short*);
 extern void	co_swapcount	(unsigned int);
 extern long	co_swaprate1	();
 extern long	co_swaprate5	();
 extern bool	co_dump		(int);
-extern void	co_restore	(int, Uint, int, int, int);
+extern void	co_restore	(int, Uint);
