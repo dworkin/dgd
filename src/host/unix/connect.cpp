@@ -502,10 +502,8 @@ static void udp_recv6(int n)
 		    udescs[n].hashval = hashval;
 		    udescs[n].size = size;
 		    memcpy(udescs[n].buffer, buffer, size);
-		    if (!udescs[n].accept) {
-			udescs[n].accept = TRUE;
-			write(outpkts, buffer, 1);
-		    }
+		    udescs[n].accept = TRUE;
+		    write(outpkts, buffer, 1);
 		}
 		break;
 	    }
@@ -598,10 +596,8 @@ static void udp_recv(int n)
 		    udescs[n].hashval = hashval;
 		    udescs[n].size = size;
 		    memcpy(udescs[n].buffer, buffer, size);
-		    if (!udescs[n].accept) {
-			udescs[n].accept = TRUE;
-			write(outpkts, buffer, 1);
-		    }
+		    udescs[n].accept = TRUE;
+		    write(outpkts, buffer, 1);
 		}
 		break;
 	    }
@@ -1091,6 +1087,7 @@ bool conn_init(int maxusers, char **thosts, char **bhosts, char **dhosts,
     memset(udphtab, '\0', udphtabsz * sizeof(connection*));
     chtab = Hashtab::create(maxusers, UDPHASHSZ, TRUE);
     if (nudescs != 0) {
+	udpstop = FALSE;
 	pthread_mutex_init(&udpmutex, NULL);
 	if (pthread_create(&udp, NULL, &udp_run, (void *) NULL) < 0) {
 	    perror("pthread_create");
