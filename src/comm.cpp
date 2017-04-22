@@ -716,7 +716,7 @@ void comm_flush()
 
 		/* change echo */
 		buf[0] = (char) IAC;
-		buf[1] = (v->u.number & CF_ECHO) ? WONT : WILL;
+		buf[1] = (v->u.number & CF_ECHO) ? (char) WONT : (char) WILL;
 		buf[2] = TELOPT_ECHO;
 		if (comm_write(usr, obj, (String *) NULL, buf, 3) != 0) {
 		    usr->flags ^= CF_ECHO;
