@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -222,7 +222,16 @@ static Uint opt_binconst(node **m)
 	    break;
 
 	case N_LSHIFT_INT:
-	    n->l.left->l.number <<= n->r.right->l.number;
+	    if (n->r.right->l.number & ~31) {
+		if (n->r.right->l.number < 0) {
+		    return 2;
+		} else {
+		    n->l.left->l.number = 0;
+		}
+	    } else {
+		n->l.left->l.number = (Uint) n->l.left->l.number <<
+				      n->r.right->l.number;
+	    }
 	    break;
 
 	case N_LT_INT:
@@ -249,7 +258,15 @@ static Uint opt_binconst(node **m)
 	    break;
 
 	case N_RSHIFT_INT:
-	    n->l.left->l.number >>= n->r.right->l.number;
+	    if (n->r.right->l.number & ~31) {
+		if (n->r.right->l.number < 0) {
+		    return 2;
+		}
+		n->l.left->l.number = 0;
+	    } else {
+		n->l.left->l.number = (Uint) n->l.left->l.number >>
+				      n->r.right->l.number;
+	    }
 	    break;
 
 	case N_SUB_INT:
