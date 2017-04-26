@@ -316,7 +316,11 @@ int kf_random(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     i_add_ticks(f, 1);
-    PUT_INT(f->sp, (f->sp->u.number > 0) ? P_random() % f->sp->u.number : 0);
+    if (f->sp->u.number < 0) {
+	return 1;
+    }
+    PUT_INT(f->sp, (f->sp->u.number > 0) ?
+		    P_random() % f->sp->u.number : P_random());
     return 0;
 }
 # endif
