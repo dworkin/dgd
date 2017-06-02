@@ -1686,105 +1686,136 @@ Object *d_upgrade_lwobj(Array *lwobj, Object *obj)
 static void d_import(arrimport *imp, Dataspace *data, Value *val,
 	unsigned short n)
 {
-    while (n > 0) {
-	if (T_INDEXED(val->type)) {
-	    Array *a;
-	    Uint i, j;
+    Array *import, *a;
 
-	    a = val->u.array;
-	    if (a->primary->data != data) {
-		/*
-		 * imported array
-		 */
-		i = arr_put(a, imp->narr);
-		if (i == imp->narr) {
+    import = (Array *) NULL;
+    for (;;) {
+	while (n > 0) {
+	    if (T_INDEXED(val->type)) {
+		Uint i, j;
+
+		a = val->u.array;
+		if (a->primary->data != data) {
 		    /*
-		     * first time encountered
+		     * imported array
 		     */
-		    imp->narr++;
-
-		    if (a->hashed != (struct maphash *) NULL) {
-			map_rmhash(a);
-		    }
-
-		    if (a->ref == 2) {	/* + 1 for array merge table */
+		    i = arr_put(a, imp->narr);
+		    if (i == imp->narr) {
 			/*
-			 * move array to new dataspace
+			 * first time encountered
 			 */
-			a->prev->next = a->next;
-			a->next->prev = a->prev;
+			imp->narr++;
+
+			if (a->hashed != (struct maphash *) NULL) {
+			    map_rmhash(a);
+			}
+
+			if (a->ref == 2) {	/* + 1 for array merge table */
+			    /*
+			     * move array to new dataspace
+			     */
+			    a->prev->next = a->next;
+			    a->next->prev = a->prev;
+			} else {
+			    /*
+			     * make new array
+			     */
+			    a = arr_alloc(a->size);
+			    a->tag = val->u.array->tag;
+			    a->odcount = val->u.array->odcount;
+
+			    if (a->size > 0) {
+				/*
+				 * copy elements
+				 */
+				i_copy(a->elts = ALLOC(Value, a->size),
+				       d_get_elts(val->u.array), a->size);
+			    }
+
+			    /*
+			     * replace
+			     */
+			    arr_del(val->u.array);
+			    arr_ref(val->u.array = a);
+
+			    /*
+			     * store in itab
+			     */
+			    if (i >= imp->itabsz) {
+				/*
+				 * increase size of itab
+				 */
+				for (j = imp->itabsz; j <= i; j += j) ;
+				imp->itab = REALLOC(imp->itab, Array*,
+						    imp->itabsz, j);
+				imp->itabsz = j;
+			    }
+			    arr_put(imp->itab[i] = a, imp->narr++);
+			}
+
+			a->primary = &data->base.alocal;
+			if (a->size == 0) {
+			    /*
+			     * put empty array in dataspace
+			     */
+			    a->prev = &data->alist;
+			    a->next = data->alist.next;
+			    a->next->prev = a;
+			    data->alist.next = a;
+			} else {
+			    /*
+			     * import elements too
+			     */
+			    a->next = import;
+			    import = a;
+			}
 		    } else {
 			/*
-			 * make new array
+			 * array was previously replaced
 			 */
-			a = arr_alloc(a->size);
-			a->tag = val->u.array->tag;
-			a->odcount = val->u.array->odcount;
-
-			if (a->size > 0) {
-			    /*
-			     * copy elements
-			     */
-			    i_copy(a->elts = ALLOC(Value, a->size),
-				   d_get_elts(val->u.array), a->size);
-			}
-
-			/*
-			 * replace
-			 */
+			arr_ref(a = imp->itab[i]);
 			arr_del(val->u.array);
-			arr_ref(val->u.array = a);
-
-			/*
-			 * store in itab
-			 */
-			if (i >= imp->itabsz) {
-			    /*
-			     * increase size of itab
-			     */
-			    for (j = imp->itabsz; j <= i; j += j) ;
-			    imp->itab = REALLOC(imp->itab, Array*, imp->itabsz,
-						j);
-			    imp->itabsz = j;
-			}
-			arr_put(imp->itab[i] = a, imp->narr++);
+			val->u.array = a;
 		    }
-
-		    a->primary = &data->base.alocal;
-		    a->prev = &data->alist;
-		    a->next = data->alist.next;
-		    a->next->prev = a;
-		    data->alist.next = a;
-
-		    if (a->size > 0) {
-			/*
-			 * import elements too
-			 */
-			d_import(imp, data, a->elts, a->size);
-		    }
-		} else {
+		} else if (arr_put(a, imp->narr) == imp->narr) {
 		    /*
-		     * array was previously replaced
+		     * not previously encountered mapping or array
 		     */
-		    arr_ref(a = imp->itab[i]);
-		    arr_del(val->u.array);
-		    val->u.array = a;
-		}
-	    } else if (arr_put(a, imp->narr) == imp->narr) {
-		/*
-		 * not previously encountered mapping or array
-		 */
-		imp->narr++;
-		if (a->hashed != (struct maphash *) NULL) {
-		    map_rmhash(a);
-		    d_import(imp, data, a->elts, a->size);
-		} else if (a->elts != (Value *) NULL) {
-		    d_import(imp, data, a->elts, a->size);
+		    imp->narr++;
+		    if (a->hashed != (struct maphash *) NULL) {
+			map_rmhash(a);
+			a->prev->next = a->next;
+			a->next->prev = a->prev;
+			a->next = import;
+			import = a;
+		    } else if (a->elts != (Value *) NULL) {
+			a->prev->next = a->next;
+			a->next->prev = a->prev;
+			a->next = import;
+			import = a;
+		    }
 		}
 	    }
+	    val++;
+	    --n;
 	}
-	val++;
-	--n;
+
+	/*
+	 * retrieve next array from the import list
+	 */
+	if (import == (Array *) NULL) {
+	    break;
+	}
+	a = import;
+	import = import->next;
+	a->prev = &data->alist;
+	a->next = data->alist.next;
+	a->next->prev = a;
+	data->alist.next = a;
+
+	/* import array elements */
+	val = a->elts;
+	n = a->size;
     }
 }
 
