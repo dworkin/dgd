@@ -996,7 +996,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    } while (n != nextdport);
 	}
 
-	for (i = nusers; i > 0; --i) {
+	for (i = nusers; lastuser != (user *) NULL && i > 0; --i) {
 	    usr = lastuser;
 	    lastuser = usr->next;
 
