@@ -1050,7 +1050,7 @@ static bool conf_config()
 		break;
 
 	    case DATAGRAM_PORT:
-		ndports = 1;
+		ndports = l;
 		break;
 	    }
 	    break;
