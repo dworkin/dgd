@@ -391,11 +391,11 @@ void i_map_aggregate(Frame *f, unsigned int size)
 }
 
 /*
- * NAME:	interpret->spread1()
+ * NAME:	interpret->spread()
  * DESCRIPTION:	push the values in an array on the stack, return the number of
  *		extra arguments pushed
  */
-int i_spread1(Frame *f, int n)
+int i_spread(Frame *f, int n)
 {
     Array *a;
     int i;
@@ -471,10 +471,10 @@ static void i_operator(Frame *f, Array *lwobj, const char *op, int nargs,
 }
 
 /*
- * NAME:	interpret->index2()
+ * NAME:	interpret->index()
  * DESCRIPTION:	index a value
  */
-void i_index2(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
+void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 {
     int i;
 
@@ -1579,10 +1579,10 @@ void i_catcherr(Frame *f, Int depth)
 }
 
 /*
- * NAME:	interpret->interpret1()
- * DESCRIPTION:	Main interpreter function v1. Interpret stack machine code.
+ * NAME:	interpret->interpret()
+ * DESCRIPTION:	Main interpreter function. Interpret stack machine code.
  */
-static void i_interpret1(Frame *f, char *pc)
+static void i_interpret(Frame *f, char *pc)
 {
     unsigned short instr, u, u2;
     Uint l;
@@ -1661,12 +1661,12 @@ static void i_interpret1(Frame *f, char *pc)
 
 	case I_INDEX:
 	case I_INDEX | I_POP_BIT:
-	    i_index2(f, f->sp + 1, f->sp, &val, FALSE);
+	    i_index(f, f->sp + 1, f->sp, &val, FALSE);
 	    *++f->sp = val;
 	    break;
 
 	case I_INDEX2:
-	    i_index2(f, f->sp + 1, f->sp, &val, TRUE);
+	    i_index(f, f->sp + 1, f->sp, &val, TRUE);
 	    *--f->sp = val;
 	    continue;
 
@@ -1681,7 +1681,7 @@ static void i_interpret1(Frame *f, char *pc)
 
 	case I_SPREAD:
 	    u = FETCH1S(pc);
-	    size = i_spread1(f, -(short) u - 2);
+	    size = i_spread(f, -(short) u - 2);
 	    continue;
 
 	case I_CAST:
@@ -1993,7 +1993,7 @@ static void i_interpret1(Frame *f, char *pc)
 	    try {
 		ec_push((ec_ftn) i_catcherr);
 		f->atomic = FALSE;
-		i_interpret1(f, pc);
+		i_interpret(f, pc);
 		ec_pop();
 		pc = f->pc;
 		*--f->sp = nil_value;
@@ -2022,7 +2022,7 @@ static void i_interpret1(Frame *f, char *pc)
 		f->sp += 2;
 	    }
 	    i_new_rlimits(f, newdepth, newticks);
-	    i_interpret1(f, pc);
+	    i_interpret(f, pc);
 	    pc = f->pc;
 	    i_set_rlimits(f, f->rlim->next);
 	    continue;
@@ -2256,7 +2256,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* execute code */
     d_get_funcalls(f.ctrl);	/* make sure they are available */
     f.prog = pc += 2;
-    i_interpret1(&f, pc);
+    i_interpret(&f, pc);
 
     /* clean up stack, move return value to outer stackframe */
     val = *f.sp++;
@@ -2393,11 +2393,11 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 }
 
 /*
- * NAME:	interpret->line1()
+ * NAME:	interpret->line()
  * DESCRIPTION:	return the line number the program counter of the specified
  *		frame is at
  */
-static unsigned short i_line1(Frame *f)
+static unsigned short i_line(Frame *f)
 {
     char *pc, *numbers;
     int instr;
@@ -2607,7 +2607,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     v++;
 
     /* line number */
-    PUT_INTVAL(v, i_line1(f));
+    PUT_INTVAL(v, i_line(f));
     v++;
 
     /* external flag */
