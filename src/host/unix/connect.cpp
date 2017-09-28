@@ -709,6 +709,7 @@ static void *udp_run(void *arg)
 	}
     }
 
+    pthread_mutex_destroy(&udpmutex);
     close(inpkts);
     close(outpkts);
     return (void *) NULL;
@@ -1133,10 +1134,6 @@ void conn_clear()
     }
 
     ipa_finish();
-    if (nudescs != 0) {
-	pthread_join(udp, NULL);
-	pthread_mutex_destroy(&udpmutex);
-    }
 }
 
 /*
