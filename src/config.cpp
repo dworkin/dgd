@@ -1843,7 +1843,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 18:	/* ST_UTABSIZE */
-	PUT_INTVAL(v, conf[USERS].u.num);
+	PUT_INTVAL(v, conf[USERS].u.num + conf[DATAGRAM_USERS].u.num);
 	break;
 
     case 19:	/* ST_ETABSIZE */
