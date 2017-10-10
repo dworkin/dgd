@@ -1215,7 +1215,7 @@ static bool conf_includes()
     cputs("# define ST_ARRAYSIZE\t21\t/* max array/mapping size */\012");
     cputs("# define ST_STACKDEPTH\t22\t/* remaining stack depth */\012");
     cputs("# define ST_TICKS\t23\t/* remaining ticks */\012");
-    cputs("# define ST_DATAGRAMPORTS\t24\t/* datagram ports */\012");
+    cputs("# define ST_DATAGRAMPORTS 24\t/* datagram ports */\012");
     cputs("# define ST_TELNETPORTS\t25\t/* telnet ports */\012");
     cputs("# define ST_BINARYPORTS\t26\t/* binary ports */\012");
 
