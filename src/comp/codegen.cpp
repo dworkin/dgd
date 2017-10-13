@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -658,8 +658,8 @@ static int cg_lval_aggr(node **l)
     i = 1;
     n = *l;
     if (n->type == N_PAIR) {
-	for (;;) {
-	    cg_lvalue(n->l.left, FALSE);
+	for (m = n->l.left; ; m = n->l.left->r.right) {
+	    cg_lvalue(m, FALSE);
 	    i++;
 	    m = n->r.right;
 	    if (m->type != N_PAIR) {
