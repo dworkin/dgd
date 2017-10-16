@@ -1721,7 +1721,10 @@ static void i_interpret(Frame *f, char *pc)
 
 	case I_STORES:
 	    u = FETCH1U(pc);
-	    if (f->sp->type != T_ARRAY || u > f->sp->u.array->size) {
+	    if (f->sp->type != T_ARRAY) {
+		error("Value is not an array");
+	    }
+	    if (u > f->sp->u.array->size) {
 		error("Wrong number of lvalues");
 	    }
 	    d_get_elts(f->sp->u.array);
