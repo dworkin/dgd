@@ -81,6 +81,7 @@ typedef unsigned char kfindex;
 /*# define TMPFILE_SIZE	2097152 */ /* max. editor tmpfile size */
 
 /* lexical scanner */
+# define INCLUDEDEPTH	64	/* maximum include depth */
 # define MACTABSZ	16384	/* macro hash table size */
 # define MACHASHSZ	10	/* # characters in macros to hash */
 
