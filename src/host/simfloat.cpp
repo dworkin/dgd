@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,7 +42,7 @@ Float thousandth =	{ 0x3f50, 0x624dd2f2L };	/* 1e-3 */
 				  (e) + BIAS,				\
 				  0x4000 + ((h) >> 2),			\
 				  (((Uint) (h) << 29) +			\
-				   ((l) << 1) + ((l) & 0x2)) & 0x7ffffffcL }
+				   ((l) << 1) + 2) & 0x7ffffffcL }
 
 static flt half =	FLT_CONST(0,  -1, 0x0000, 0x0000000L);
 static flt one =	FLT_CONST(0,   0, 0x0000, 0x0000000L);
@@ -139,7 +139,7 @@ static void f_add(flt *a, flt *b)
 	/*
 	 * rounding
 	 */
-	if ((Int) (l += (l >> 1) & 0x2) < 0 && (short) ++h < 0) {
+	if ((Int) (l += 2) < 0 && (short) ++h < 0) {
 	    h >>= 1;
 	    a->exp++;
 	}
@@ -250,7 +250,7 @@ static void f_sub(flt *a, flt *b)
 	/*
 	 * rounding
 	 */
-	if ((Int) (l += (l >> 1) & 0x2) < 0 && (short) ++h < 0) {
+	if ((Int) (l += 2) < 0 && (short) ++h < 0) {
 	    h >>= 1;
 	    a->exp++;
 	}
@@ -317,7 +317,7 @@ static void f_mult(flt *a, flt *b)
     /*
      * rounding
      */
-    if ((Int) (l += (l >> 1) & 0x2) < 0 && ++ah < 0) {
+    if ((Int) (l += 2) < 0 && ++ah < 0) {
 	ah = (unsigned short) ah >> 1;
 	a->exp++;
     }
@@ -415,7 +415,7 @@ static void f_div(flt *a, flt *b)
     /*
      * rounding
      */
-    if ((Int) (low += (low >> 1) & 0x2) < 0 && (short) ++high < 0) {
+    if ((Int) (low += 2) < 0 && (short) ++high < 0) {
 	high >>= 1;
 	a->exp++;
     }
@@ -584,7 +584,7 @@ static void f_ftoxf(flt *a, Float *f)
     low = a->low;
 
     /* rounding */
-    if ((Int) (low += (low >> 1) & 0x100) < 0) {
+    if ((Int) (low += 0x100) < 0) {
 	low = 0;
 	if ((short) ++high < 0) {
 	    high >>= 1;
