@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1551,7 +1551,16 @@ void Float::pow(Float &f)
 
     f_log(&a);
     f_mult(&a, &b);
-    f_exp(&a);
+    if (f_cmp(&a, &maxlog) > 0) {
+	/* overflow */
+	f_erange();
+    }
+    if (f_cmp(&a, &minlog) < 0) {
+	/* underflow */
+	a.exp = 0;
+    } else {
+	f_exp(&a);
+    }
     a.sign = sign;
 
     f_ftoxf(&a, this);
