@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,6 +26,7 @@
 # include "interpret.h"
 # include "control.h"
 # include "table.h"
+# include <float.h>
 # include <math.h>
 
 # define EXTENSION_MAJOR	0
@@ -154,13 +155,17 @@ static int ext_float_putval(Value *val, long double ld)
 	flt.low = 0;
     } else {
 	sign = (d < 0.0);
-	d = frexp(fabs(d), &e) + ldexp(0.5, -37);
+	d = frexp(fabs(d), &e);
+# if (DBL_MANT_DIG > 37)
+	d += (double) (1 << (DBL_MANT_DIG - 38));
+	d -= (double) (1 << (DBL_MANT_DIG - 38));
 	if (d >= 1.0) {
 	    if (++e > 1023) {
 		return FALSE;
 	    }
 	    d = ldexp(d, -1);
 	}
+# endif
 	if (e <= -1023) {
 	    flt.high = 0;
 	    flt.low = 0;
