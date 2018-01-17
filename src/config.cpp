@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1327,7 +1327,7 @@ static bool conf_includes()
     cputs("# define FLT_ROUNDS\t1\t\t\t/* round to nearest */\012");
     cputs("# define FLT_EPSILON\t7.2759576142E-12\t/* smallest x: 1.0 + x != 1.0 */\012");
     cputs("# define FLT_DIG\t11\t\t\t/* decimal digits of precision*/\012");
-    cputs("# define FLT_MANT_DIG\t36\t\t\t/* binary digits of precision */\012");
+    cputs("# define FLT_MANT_DIG\t37\t\t\t/* binary digits of precision */\012");
     cputs("# define FLT_MIN\t2.22507385851E-308\t/* positive minimum */\012");
     cputs("# define FLT_MIN_EXP\t(-1021)\t\t\t/* minimum binary exponent */\012");
     cputs("# define FLT_MIN_10_EXP\t(-307)\t\t\t/* minimum decimal exponent */\012");
