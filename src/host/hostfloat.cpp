@@ -224,8 +224,7 @@ bool Float::atof(char **s, Float *f)
  */
 void Float::ftoa(char *buffer)
 {
-    unsigned short i;
-    short e;
+    short i, e;
     Uint n;
     char *p;
     char digits[10];
