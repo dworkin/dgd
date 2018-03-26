@@ -31,16 +31,23 @@ ifeq ($(HOST),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 
-SRC=	local.cpp dirent.cpp dload.cpp time.cpp connect.cpp xfloat.cpp
-COMPOBJ=local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+SRC=	local.cpp dirent.cpp dload.cpp time.cpp connect.cpp
+HOSTOBJ=local.o dirent.o dload.o time.o crypt.o asn.o
+ifdef HOSTFLOAT
+  SRC+=hostfloat.cpp
+  HOSTOBJ+=hostfloat.o
+else
+  SRC+=simfloat.cpp
+  HOSTOBJ+=simfloat.o
+endif
 ifdef SYSV_STYLE
   SRC+=lrand48.cpp
-  COMPOBJ+=lrand48.o
+  HOSTOBJ+=lrand48.o
 else
   SRC+=random.cpp
-  COMPOBJ+=random.o
+  HOSTOBJ+=random.o
 endif
-OBJ=	$(COMPOBJ) connect.o
+OBJ=	$(HOSTOBJ) connect.o
 
 all:
 	@echo Please run make from the src directory.
@@ -73,17 +80,9 @@ time.cpp: unix/time.cpp
 connect.cpp: unix/connect.cpp
 	cp unix/$@ $@
 
-ifdef HOSTFLOAT
-xfloat.cpp: hostfloat.cpp
-	cp hostfloat.cpp $@
-else
-xfloat.cpp: simfloat.cpp
-	cp simfloat.cpp $@
-endif
-
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
 connect.o: ../hash.h ../comm.h
-xfloat.o: ../xfloat.h
+simfloat.o hostfloat.o: ../xfloat.h
 crypt.o asn.o: ../str.h ../array.h ../object.h ../hash.h ../swap.h
 crypt.o asn.o: ../interpret.h ../data.h
 asn.o: ../asn.h
