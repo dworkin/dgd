@@ -32,22 +32,19 @@ ifeq ($(HOST),GENERIC_SYSV)
 endif
 
 SRC=	local.cpp dirent.cpp dload.cpp time.cpp connect.cpp
-HOSTOBJ=local.o dirent.o dload.o time.o crypt.o asn.o
+OBJ=	local.o dirent.o dload.o time.o connect.o crypt.o asn.o
 ifdef HOSTFLOAT
-  SRC+=hostfloat.cpp
-  HOSTOBJ+=hostfloat.o
+  OBJ+=hostfloat.o
 else
-  SRC+=simfloat.cpp
-  HOSTOBJ+=simfloat.o
+  OBJ+=simfloat.o
 endif
 ifdef SYSV_STYLE
   SRC+=lrand48.cpp
-  HOSTOBJ+=lrand48.o
+  OBJ+=lrand48.o
 else
   SRC+=random.cpp
-  HOSTOBJ+=random.o
+  OBJ+=random.o
 endif
-OBJ=	$(HOSTOBJ) connect.o
 
 all:
 	@echo Please run make from the src directory.
