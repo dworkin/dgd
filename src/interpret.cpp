@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -262,11 +262,11 @@ void i_pop(Frame *f, int n)
 void i_odest(Frame *prev, Object *obj)
 {
     Frame *f;
-    Uint count;
+    Uint index;
     Value *v;
     unsigned short n;
 
-    count = obj->count;
+    index = obj->index;
 
     /* wipe out objects in stack frames */
     for (;;) {
@@ -274,14 +274,14 @@ void i_odest(Frame *prev, Object *obj)
 	for (v = f->sp; v < f->fp; v++) {
 	    switch (v->type) {
 	    case T_OBJECT:
-		if (v->u.objcnt == count) {
+		if (v->oindex == index) {
 		    *v = nil_value;
 		}
 		break;
 
 	    case T_LWOBJECT:
 		if (v->u.array->elts[0].type == T_OBJECT &&
-		    v->u.array->elts[0].u.objcnt == count) {
+		    v->u.array->elts[0].oindex == index) {
 		    arr_del(v->u.array);
 		    *v = nil_value;
 		}
@@ -300,14 +300,14 @@ void i_odest(Frame *prev, Object *obj)
 	    for (n = f->nargs, v = prev->sp; n != 0; --n, v++) {
 		switch (v->type) {
 		case T_OBJECT:
-		    if (v->u.objcnt == count) {
+		    if (v->oindex == index) {
 			*v = nil_value;
 		    }
 		    break;
 
 		case T_LWOBJECT:
 		    if (v->u.array->elts[0].type == T_OBJECT &&
-			v->u.array->elts[0].u.objcnt == count) {
+			v->u.array->elts[0].oindex == index) {
 			arr_del(v->u.array);
 			*v = nil_value;
 		    }
