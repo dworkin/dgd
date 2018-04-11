@@ -33,10 +33,10 @@ endif
 
 SRC=	local.cpp dirent.cpp dload.cpp time.cpp connect.cpp
 OBJ=	local.o dirent.o dload.o time.o connect.o crypt.o asn.o
-ifdef HOSTFLOAT
-  OBJ+=hostfloat.o
-else
+ifdef SIMFLOAT
   OBJ+=simfloat.o
+else
+  OBJ+=hostfloat.o
 endif
 ifdef SYSV_STYLE
   SRC+=lrand48.cpp
