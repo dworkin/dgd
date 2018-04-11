@@ -173,7 +173,7 @@ static char *prototype(char *proto)
  * NAME:	kfun->ext_kfun()
  * DESCRIPTION:	add new kfuns
  */
-void kf_ext_kfun(extkfunc *kfadd, int n)
+void kf_ext_kfun(const extkfunc *kfadd, int n)
 {
     kfunc *kf;
 
