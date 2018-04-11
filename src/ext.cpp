@@ -100,6 +100,18 @@ static Value *ext_value_temp(Dataspace *data)
 }
 
 /*
+ * NAME:	ext->value_temp2()
+ * DESCRIPTION:	return another scratch value
+ */
+static Value *ext_value_temp2(Dataspace *data)
+{
+    static Value temp2;
+
+    UNREFERENCED_PARAMETER(data);
+    return &temp2;
+}
+
+/*
  * NAME:	ext->int_getval()
  * DESCRIPTION:	retrieve an int from a value
  */
@@ -467,7 +479,7 @@ bool ext_dgd(char *module, char *config)
     voidf *ext_ext[4];
     voidf *ext_frame[4];
     voidf *ext_data[2];
-    voidf *ext_value[3];
+    voidf *ext_value[4];
     voidf *ext_int[2];
     voidf *ext_float[2];
     voidf *ext_string[5];
@@ -498,6 +510,7 @@ bool ext_dgd(char *module, char *config)
     ext_value[0] = (voidf *) &ext_value_type;
     ext_value[1] = (voidf *) &ext_value_nil;
     ext_value[2] = (voidf *) &ext_value_temp;
+    ext_value[3] = (voidf *) &ext_value_temp2;
     ext_int[0] = (voidf *) &ext_int_getval;
     ext_int[1] = (voidf *) &ext_int_putval;
 # ifndef NOFLOAT
@@ -536,7 +549,7 @@ bool ext_dgd(char *module, char *config)
     ftabs[ 0] = ext_ext;	sizes[ 0] = 4;
     ftabs[ 1] = ext_frame;	sizes[ 1] = 4;
     ftabs[ 2] = ext_data;	sizes[ 2] = 2;
-    ftabs[ 3] = ext_value;	sizes[ 3] = 3;
+    ftabs[ 3] = ext_value;	sizes[ 3] = 4;
     ftabs[ 4] = ext_int;	sizes[ 4] = 2;
     ftabs[ 5] = ext_float;	sizes[ 5] = 2;
     ftabs[ 6] = ext_string;	sizes[ 6] = 5;

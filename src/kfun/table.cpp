@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -133,13 +133,8 @@ static char *prototype(char *proto)
 		varargs = TRUE;
 	    } else {
 		if (*p != T_MIXED) {
-		    if (*p == T_LVALUE) {
-			/* lvalue arguments: turn off typechecking */
-			tclass &= ~C_TYPECHECKED;
-		    } else {
-			/* non-mixed arguments: typecheck this function */
-			tclass |= C_TYPECHECKED;
-		    }
+		    /* non-mixed arguments: typecheck this function */
+		    tclass |= C_TYPECHECKED;
 		}
 		if (varargs) {
 		    vargs++;
