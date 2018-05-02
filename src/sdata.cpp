@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -334,7 +334,7 @@ Dataspace *d_new_dataspace(Object *obj)
 
     data = d_alloc_dataspace(obj);
     data->base.flags = MOD_VARIABLE;
-    data->ctrl = o_control(obj);
+    data->ctrl = obj->control();
     data->ctrl->ndata++;
     data->nvariables = data->ctrl->nvariables + 1;
 
@@ -471,7 +471,7 @@ static Dataspace *load_dataspace(Object *obj, void (*readv) (char*, sector*, Uin
     Uint size;
 
     data = d_alloc_dataspace(obj);
-    data->ctrl = o_control(obj);
+    data->ctrl = obj->control();
     data->ctrl->ndata++;
 
     /* header */
@@ -525,7 +525,7 @@ Dataspace *d_load_dataspace(Object *obj)
 
     data = load_dataspace(obj, sw_readv);
 
-    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->u_master)->update &&
+    if (!(obj->flags & O_MASTER) && obj->update != OBJ(obj->master)->update &&
 	obj->count != 0) {
 	d_upgrade_clone(data);
     }
@@ -793,7 +793,7 @@ String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
 {
     if (UCHAR(inherit) < ctrl->ninherits - 1) {
 	/* get the proper control block */
-	ctrl = o_control(OBJR(ctrl->inherits[UCHAR(inherit)].oindex));
+	ctrl = OBJR(ctrl->inherits[UCHAR(inherit)].oindex)->control();
     }
 
     if (ctrl->strings == (String **) NULL) {
@@ -2332,7 +2332,7 @@ void d_upgrade_mem(Object *tmpl, Object *newob)
     for (data = dtail; data != (Dataspace *) NULL; data = data->prev) {
 	obj = OBJ(data->oindex);
 	if ((obj == newob ||
-	     (!(obj->flags & O_MASTER) && obj->u_master == newob->index)) &&
+	     (!(obj->flags & O_MASTER) && obj->master == newob->index)) &&
 	    obj->count != 0) {
 	    /* upgrade clone */
 	    if (nvar != 0) {
@@ -2702,7 +2702,7 @@ static Dataspace *d_conv_dataspace(Object *obj, Uint *counttab,
 	       (Uint) header.ncallouts, size, readv);
     }
 
-    data->ctrl = o_control(obj);
+    data->ctrl = obj->control();
     data->ctrl->ndata++;
 
     return data;
@@ -2766,7 +2766,7 @@ Dataspace *d_restore_data(Object *obj, Uint *counttab,
 	}
 
 	if (!(obj->flags & O_MASTER) &&
-	    obj->update != OBJ(obj->u_master)->update) {
+	    obj->update != OBJ(obj->master)->update) {
 	    /* handle object upgrading right away */
 	    d_upgrade_clone(data);
 	}

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -1477,7 +1477,7 @@ static unsigned short *d_get_varmap(Object **obj, Uint update, unsigned short *n
 	/* in the middle of an upgrade */
 	tmpl = OBJ(tmpl->prev);
     }
-    vmap = o_control(tmpl)->vmap;
+    vmap = tmpl->control()->vmap;
     nvar = tmpl->ctrl->vmapsize;
 
     if (tmpl->update != update) {
@@ -1487,7 +1487,7 @@ static unsigned short *d_get_varmap(Object **obj, Uint update, unsigned short *n
 	vmap = ALLOC(unsigned short, n = nvar);
 	do {
 	    tmpl = OBJ(tmpl->prev);
-	    m2 = o_control(tmpl)->vmap;
+	    m2 = tmpl->control()->vmap;
 	    while (n > 0) {
 		*vmap++ = (NEW_VAR(*m1)) ? *m1++ : m2[*m1++];
 		--n;
@@ -1564,7 +1564,7 @@ void d_upgrade_data(Dataspace *data, unsigned int nvar, unsigned short *vmap,
 	data->base.achange++;	/* force rebuild on swapout */
     }
 
-    o_upgraded(tmpl, OBJ(data->oindex));
+    OBJ(data->oindex)->upgraded(tmpl);
 }
 
 /*
@@ -1582,7 +1582,7 @@ void d_upgrade_clone(Dataspace *data)
      */
     obj = OBJ(data->oindex);
     update = obj->update;
-    obj = OBJ(obj->u_master);
+    obj = OBJ(obj->master);
     vmap = d_get_varmap(&obj, update, &nvar);
     d_upgrade_data(data, nvar, vmap, obj);
     if (vmap != obj->ctrl->vmap) {

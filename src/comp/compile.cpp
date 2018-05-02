@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -432,7 +432,7 @@ bool c_inherit(char *file, node *label, int priv)
 	    c_error("illegal inherit from driver object");
 	    return FALSE;
 	}
-	obj = o_find(file, OACC_READ);
+	obj = Object::find(file, OACC_READ);
 	if (obj == (Object *) NULL) {
 	    c_compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
 	    return FALSE;
@@ -465,7 +465,7 @@ bool c_inherit(char *file, node *label, int priv)
 	    /* precompiling */
 	    f->sp++;
 	    file = path_from(buf, current->file, file);
-	    obj = o_find(file, OACC_READ);
+	    obj = Object::find(file, OACC_READ);
 	    if (obj == (Object *) NULL) {
 		c_compile(f, file, (Object *) NULL, (String **) NULL, 0, TRUE);
 		return FALSE;
@@ -540,7 +540,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	    } else {
 		Object *aobj;
 
-		if (o_find(driver_object, OACC_READ) == (Object *) NULL) {
+		if (Object::find(driver_object, OACC_READ) == (Object *) NULL) {
 		    /*
 		     * compile the driver object to do pathname translation
 		     */
@@ -550,7 +550,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 		    current = &c;
 		}
 
-		aobj = o_find(auto_object, OACC_READ);
+		aobj = Object::find(auto_object, OACC_READ);
 		if (aobj == (Object *) NULL) {
 		    /*
 		     * compile auto object
@@ -590,7 +590,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 			error("Object inherited during recompilation");
 		    }
 		}
-		if (!o_space()) {
+		if (!Object::space()) {
 		    error("Too many objects");
 		}
 
@@ -632,7 +632,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 
     if (obj == (Object *) NULL) {
 	/* new object */
-	obj = o_new(file, ctrl);
+	obj = Object::create(file, ctrl);
 	if (strcmp(file, driver_object) == 0) {
 	    obj->flags |= O_DRIVER;
 	} else if (strcmp(file, auto_object) == 0) {
@@ -642,7 +642,7 @@ Object *c_compile(Frame *f, char *file, Object *obj, String **strs,
 	unsigned short *vmap;
 
 	/* recompiled object */
-	o_upgrade(obj, ctrl, f);
+	obj->upgrade(ctrl, f);
 	vmap = ctrl_varmap(obj->ctrl, ctrl);
 	if (vmap != (unsigned short *) NULL) {
 	    d_set_varmap(ctrl, vmap);
@@ -2549,7 +2549,7 @@ void c_error(const char *format, ...)
     char *fname, buf[4 * STRINGSZ];	/* file name + 2 * string + overhead */
 
     if (driver_object != (char *) NULL &&
-	o_find(driver_object, OACC_READ) != (Object *) NULL) {
+	Object::find(driver_object, OACC_READ) != (Object *) NULL) {
 	Frame *f;
 
 	f = current->frame;

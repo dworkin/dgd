@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -429,7 +429,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 	     * This is the program that has the next variables in the object.
 	     * Save non-static variables.
 	     */
-	    ctrl = o_control(OBJR(inh->oindex));
+	    ctrl = OBJR(inh->oindex)->control();
 	    if (inh->priv) {
 		/* skip privately inherited variables */
 		var += ctrl->nvardefs;
@@ -940,7 +940,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     /*
      * First, reset all non-static variables that do not hold object values.
      */
-    ctrl = o_control(obj);
+    ctrl = obj->control();
     data = f->data;
     if (f->lwobj != (Array *) NULL) {
 	var = &f->lwobj->elts[2];
@@ -953,7 +953,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
 	    /*
 	     * This is the program that has the next variables in the object.
 	     */
-	    ctrl = o_control(OBJR(inh->oindex));
+	    ctrl = OBJR(inh->oindex)->control();
 	    if (inh->priv) {
 		/* skip privately inherited variables */
 		var += ctrl->nvardefs;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -50,7 +50,7 @@ bool call_driver_object(Frame *f, const char *func, int narg)
     if (dindex == UINDEX_MAX || dcount != (driver=OBJR(dindex))->count ||
 	!(driver->flags & O_DRIVER)) {
 	driver_name = conf_driver();
-	driver = o_find(driver_name, OACC_READ);
+	driver = Object::find(driver_name, OACC_READ);
 	if (driver == (Object *) NULL) {
 	    driver = c_compile(f, driver_name, (Object *) NULL,
 			       (String **) NULL, 0, FALSE);
@@ -81,47 +81,47 @@ void endtask()
 {
     comm_flush();
     d_export();
-    o_clean();
+    Object::clean();
     i_clear();
     ed_clear();
     ec_clear();
 
     co_swapcount(d_swapout(fragment));
 
-    if (stop) {
+    if (Object::stop) {
 	comm_clear();
 	ed_finish();
 # ifdef DEBUG
-	swap = 1;
+	Object::swap = TRUE;
 # endif
     }
 
-    if (swap || !m_check()) {
+    if (Object::swap || !m_check()) {
 	/*
 	 * swap out everything and possibly extend the static memory area
 	 */
 	d_swapout(1);
 	arr_freeall();
 	m_purge();
-	swap = FALSE;
+	Object::swap = FALSE;
     }
 
-    if (dump) {
+    if (Object::dump) {
 	/*
 	 * create a snapshot
 	 */
-	conf_dump(incr, boot);
-	dump = FALSE;
-	if (!incr) {
+	conf_dump(Object::incr, Object::boot);
+	Object::dump = FALSE;
+	if (!Object::incr) {
 	    rebuild = TRUE;
 	    dindex = UINDEX_MAX;
 	}
     }
 
-    if (stop) {
+    if (Object::stop) {
 	sw_finish();
 
-	if (boot) {
+	if (Object::boot) {
 	    char **hotboot;
 
 	    /*
@@ -135,7 +135,7 @@ void endtask()
 	comm_finish();
 	arr_freeall();
 	m_finish();
-	exit(boot);
+	exit(Object::boot);
     }
 }
 
@@ -183,7 +183,7 @@ int dgd_main(int argc, char **argv)
 
     /* initialize */
     dindex = UINDEX_MAX;
-    swap = dump = intr = stop = FALSE;
+    Object::swap = Object::dump = Object::incr = Object::stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
     if (!conf_init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
@@ -197,7 +197,7 @@ int dgd_main(int argc, char **argv)
 	if (rebuild) {
 	    timeout = co_time(&mtime);
 	    if (timeout > rtime || (timeout == rtime && mtime >= rmtime)) {
-		rebuild = o_copy(timeout);
+		rebuild = Object::copy(timeout);
 		co_swapcount(d_swapout(fragment));
 		if (rebuild) {
 		    rtime = timeout + 1;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,8 +40,7 @@ struct objpatch {
 class optable {
 public:
     /*
-     * NAME:		objpatch->init()
-     * DESCRIPTION:	initialize objpatch table
+     * initialize objpatch table
      */
     optable() {
 	memset(&op, '\0', OBJPATCHHTABSZ * sizeof(objpatch*));
@@ -65,30 +64,30 @@ struct objplane {
     objplane *prev;		/* previous object plane */
 };
 
-Object *otable;			/* object table */
-Uint *ocmap;			/* object change map */
-bool obase;			/* object base plane flag */
-bool swap, dump, incr, stop, boot; /* global state vars */
-static bool recount;		/* object counts recalculated? */
+Object *Object::otable;		/* object table */
+Uint *Object::ocmap;		/* object change map */
+bool Object::obase;		/* object base plane flag */
+bool Object::swap, Object::dump, Object::incr, Object::stop, Object::boot;
+				/* global state vars */
+static bool rcount;		/* object counts recalculated? */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
 static Uint *omap;		/* object dump bitmap */
 static Uint *counttab;		/* object count table */
-static Object *upgraded;	/* list of upgraded objects */
-static uindex dobjects, dobject;/* objects to copy */
+static Object *upgradeList;	/* list of upgraded objects */
+static uindex ndobject, dobject;/* objects to copy */
 static uindex mobjects;		/* max objects to copy */
 static uindex dchunksz;		/* copy chunk size */
 static Uint dinterval;		/* copy interval */
 static Uint dtime;		/* time copying started */
-Uint odcount;			/* objects destructed count */
+Uint Object::odcount;		/* objects destructed count */
 
 /*
- * NAME:	Object->init()
- * DESCRIPTION:	initialize the object tables
+ * initialize the object tables
  */
-void o_init(unsigned int n, Uint interval)
+void Object::init(unsigned int n, Uint interval)
 {
     otable = ALLOC(Object, otabsize = n);
     memset(otable, '\0', n * sizeof(Object));
@@ -108,12 +107,12 @@ void o_init(unsigned int n, Uint interval)
     omap = ALLOC(Uint, BMAP(n));
     memset(omap, '\0', BMAP(n) * sizeof(Uint));
     counttab = ALLOC(Uint, n);
-    upgraded = (Object *) NULL;
-    uobjects = dobjects = mobjects = 0;
+    upgradeList = (Object *) NULL;
+    uobjects = ndobject = mobjects = 0;
     dinterval = ((interval + 1) * 19) / 20;
     odcount = 1;
     obase = TRUE;
-    recount = TRUE;
+    rcount = TRUE;
 }
 
 
@@ -156,10 +155,9 @@ static void op_del(objplane *plane, objpatch **o)
 
 
 /*
- * NAME:	Object->oaccess()
- * DESCRIPTION:	access to object from atomic code
+ * access to object from atomic code
  */
-static Object *o_oaccess(unsigned int index, int access)
+Object *Object::access(unsigned int index, int access)
 {
     objpatch *o, **oo;
     Object *obj;
@@ -212,28 +210,25 @@ static Object *o_oaccess(unsigned int index, int access)
 }
 
 /*
- * NAME:	Object->oread()
- * DESCRIPTION:	read access to object in patch table
+ * read access to object in patch table
  */
-Object *o_oread(unsigned int index)
+Object *Object::oread(unsigned int index)
 {
-    return o_oaccess(index, OACC_READ);
+    return access(index, OACC_READ);
 }
 
 /*
- * NAME:	Object->owrite()
- * DESCRIPTION:	write access to object in atomic code
+ * write access to object in atomic code
  */
-Object *o_owrite(unsigned int index)
+Object *Object::owrite(unsigned int index)
 {
-    return o_oaccess(index, OACC_MODIFY);
+    return access(index, OACC_MODIFY);
 }
 
 /*
- * NAME:	Object->space()
- * DESCRIPTION:	check if there's space for another object
+ * check if there's space for another object
  */
-bool o_space()
+bool Object::space()
 {
     return (oplane->free != OBJ_NONE) ? TRUE : (oplane->nobjects != otabsize);
 }
@@ -275,10 +270,9 @@ static Object *o_alloc()
 
 
 /*
- * NAME:	Object->new_plane()
- * DESCRIPTION:	create a new object plane
+ * create a new object plane
  */
-void o_new_plane()
+void Object::newPlane()
 {
     objplane *p;
 
@@ -310,10 +304,9 @@ void o_new_plane()
 }
 
 /*
- * NAME:	Object->commit_plane()
- * DESCRIPTION:	commit the current object plane
+ * commit the current object plane
  */
-void o_commit_plane()
+void Object::commitPlane()
 {
     objplane *prev;
     objpatch **t, **o, *op;
@@ -401,7 +394,8 @@ void o_commit_plane()
 			/*
 			 * copy onto previous plane
 			 */
-			if (op->obj.name != (char *) NULL && op->obj.count != 0) {
+			if (op->obj.name != (char *) NULL && op->obj.count != 0)
+			{
 			    /* move name to previous plane */
 			    *oplane->htab->lookup(op->obj.name, FALSE) = obj;
 			}
@@ -442,10 +436,9 @@ void o_commit_plane()
 }
 
 /*
- * NAME:	Object->discard_plane()
- * DESCRIPTION:	discard the current object plane without committing it
+ * discard the current object plane without committing it
  */
-void o_discard_plane()
+void Object::discardPlane()
 {
     objpatch **o, *op;
     int i;
@@ -555,10 +548,9 @@ void o_discard_plane()
 
 
 /*
- * NAME:	Object->new()
- * DESCRIPTION:	create a new object
+ * create a new object
  */
-Object *o_new(char *name, Control *ctrl)
+Object *Object::create(char *name, Control *ctrl)
 {
     Object *o;
     dinherit *inh;
@@ -591,19 +583,18 @@ Object *o_new(char *name, Control *ctrl)
     ctrl->inherits[ctrl->ninherits - 1].oindex = ctrl->oindex = o->index;
 
     /* add reference to all inherited objects */
-    o->u_ref = 0;	/* increased to 1 in following loop */
+    o->ref = 0;	/* increased to 1 in following loop */
     for (i = ctrl->ninherits, inh = ctrl->inherits; i > 0; --i, inh++) {
-	OBJW(inh->oindex)->u_ref++;
+	OBJW(inh->oindex)->ref++;
     }
 
     return o;
 }
 
 /*
- * NAME:	Object->clone()
- * DESCRIPTION:	clone an object
+ * clone an object
  */
-Object *o_clone(Object *master)
+Object *Object::clone()
 {
     Object *o;
 
@@ -612,23 +603,22 @@ Object *o_clone(Object *master)
     o->name = (char *) NULL;
     o->flags = 0;
     o->count = ++oplane->ocount;
-    o->update = master->update;
-    o->u_master = master->index;
+    o->update = update;
+    o->master = index;
 
     /* add reference to master object */
-    master->cref++;
-    master->u_ref++;
+    cref++;
+    ref++;
 
     return o;
 }
 
 /*
- * NAME:	Object->lwobj()
- * DESCRIPTION:	create light-weight instance of object
+ * create light-weight instance of object
  */
-void o_lwobj(Object *obj)
+void Object::lightWeight()
 {
-    obj->flags |= O_LWOBJ;
+    flags |= O_LWOBJ;
 }
 
 /*
@@ -641,7 +631,7 @@ static void o_delete(Object *o, Frame *f)
     dinherit *inh;
     int i;
 
-    ctrl = (O_UPGRADING(o)) ? OBJR(o->prev)->ctrl : o_control(o);
+    ctrl = (O_UPGRADING(o)) ? OBJR(o->prev)->ctrl : o->control();
 
     /* put in deleted list */
     o->cref = oplane->destruct;
@@ -660,124 +650,120 @@ static void o_delete(Object *o, Frame *f)
     /* remove references to inherited objects too */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
 	o = OBJW(inh->oindex);
-	if (--(o->u_ref) == 0) {
+	if (--(o->ref) == 0) {
 	    o_delete(o, f);
 	}
     }
 }
 
 /*
- * NAME:	Object->upgrade()
- * DESCRIPTION:	upgrade an object to a new program
+ * upgrade an object to a new program
  */
-void o_upgrade(Object *obj, Control *ctrl, Frame *f)
+void Object::upgrade(Control *ctrl, Frame *f)
 {
-    Object *tmpl;
+    Object *obj;
     dinherit *inh;
     int i;
 
     /* allocate upgrade object */
-    tmpl = o_alloc();
-    tmpl->name = (char *) NULL;
-    tmpl->flags = O_MASTER;
-    tmpl->count = 0;
-    tmpl->update = obj->update;
-    tmpl->ctrl = ctrl;
-    ctrl->inherits[ctrl->ninherits - 1].oindex = tmpl->cref = obj->index;
+    obj = o_alloc();
+    obj->name = (char *) NULL;
+    obj->flags = O_MASTER;
+    obj->count = 0;
+    obj->update = update;
+    obj->ctrl = ctrl;
+    ctrl->inherits[ctrl->ninherits - 1].oindex = obj->cref = index;
 
     /* add reference to inherited objects */
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
-	OBJW(inh->oindex)->u_ref++;
+	OBJW(inh->oindex)->ref++;
     }
 
     /* add to upgrades list */
-    tmpl->next = (Hashtab::Entry *) oplane->upgrade;
-    oplane->upgrade = tmpl->index;
+    obj->next = (Hashtab::Entry *) oplane->upgrade;
+    oplane->upgrade = obj->index;
 
     /* mark as upgrading */
-    obj->cref += 2;
-    tmpl->prev = obj->prev;
-    obj->prev = tmpl->index;
+    cref += 2;
+    obj->prev = prev;
+    prev = obj->index;
 
     /* remove references to old inherited objects */
-    ctrl = o_control(obj);
+    ctrl = control();
     for (i = ctrl->ninherits, inh = ctrl->inherits; --i > 0; inh++) {
 	obj = OBJW(inh->oindex);
-	if (--(obj->u_ref) == 0) {
+	if (--(obj->ref) == 0) {
 	    o_delete(obj, f);
 	}
     }
 }
 
 /*
- * NAME:	Object->upgraded()
- * DESCRIPTION:	an object has been upgraded
+ * an object has been upgraded
  */
-void o_upgraded(Object *tmpl, Object *onew)
+void Object::upgraded(Object *tmpl)
 {
 # ifdef DEBUG
-    if (onew->count == 0) {
+    if (count == 0) {
 	fatal("upgrading destructed object");
     }
 # endif
-    if (!(onew->flags & O_MASTER)) {
-	onew->update = OBJ(onew->u_master)->update;
+    if (!(flags & O_MASTER)) {
+	update = OBJ(master)->update;
     }
     if (tmpl->count == 0) {
-	tmpl->next = upgraded;
-	upgraded = tmpl;
+	tmpl->next = upgradeList;
+	upgradeList = tmpl;
     }
     tmpl->count++;
 }
 
 /*
- * NAME:	Object->del()
- * DESCRIPTION:	delete an object
+ * delete an object
  */
-void o_del(Object *obj, Frame *f)
+void Object::del(Frame *f)
 {
-    if (obj->count == 0) {
+    if (count == 0) {
 	/* can happen if object selfdestructs in close()-on-destruct */
 	error("Destructing destructed object");
     }
-    i_odest(f, obj);	/* wipe out occurrences on the stack */
-    if (obj->data == (Dataspace *) NULL && obj->dfirst != SW_UNUSED) {
-	o_dataspace(obj);	/* load dataspace now */
+    i_odest(f, this);	/* wipe out occurrences on the stack */
+    if (data == (Dataspace *) NULL && dfirst != SW_UNUSED) {
+	dataspace();	/* load dataspace now */
     }
-    obj->count = 0;
+    count = 0;
     odcount++;
 
-    if (obj->flags & O_MASTER) {
+    if (flags & O_MASTER) {
 	/* remove from object name hash table */
-	*oplane->htab->lookup(obj->name, FALSE) = obj->next;
+	*oplane->htab->lookup(name, FALSE) = next;
 
-	if (--(obj->u_ref) == 0 && !O_UPGRADING(obj)) {
-	    o_delete(obj, f);
+	if (--ref == 0 && !O_UPGRADING(this)) {
+	    o_delete(this, f);
 	}
     } else {
 	Object *master;
 
-	master = OBJW(obj->u_master);
+	master = OBJW(this->master);
 	master->cref--;
-	if (--(master->u_ref) == 0 && !O_UPGRADING(master)) {
+	if (--(master->ref) == 0 && !O_UPGRADING(master)) {
 	    o_delete(master, f);
 	}
     }
 
     /* put in clean list */
-    obj->next = (Hashtab::Entry *) oplane->clean;
-    oplane->clean = obj->index;
+    next = (Hashtab::Entry *) oplane->clean;
+    oplane->clean = index;
 }
 
 
 /*
- * NAME:	Object->name()
- * DESCRIPTION:	return the name of an object
+ * return the name of an object
  */
-const char *o_name(char *name, Object *o)
+const char *Object::objName(char *name)
 {
-    if (o->name != (char *) NULL) {
-	return o->name;
+    if (this->name != (char *) NULL) {
+	return this->name;
     } else {
 	char num[12];
 	char *p;
@@ -786,7 +772,7 @@ const char *o_name(char *name, Object *o)
 	/*
 	 * return the name of the master object with the index appended
 	 */
-	n = o->index;
+	n = index;
 	p = num + 11;
 	*p = '\0';
 	do {
@@ -795,17 +781,16 @@ const char *o_name(char *name, Object *o)
 	} while (n != 0);
 	*--p = '#';
 
-	strcpy(name, OBJR(o->u_master)->name);
+	strcpy(name, OBJR(master)->name);
 	strcat(name, p);
 	return name;
     }
 }
 
 /*
- * NAME:	Object->builtin_name()
- * DESCRIPTION:	return the base name of a builtin type
+ * return the base name of a builtin type
  */
-const char *o_builtin_name(Int type)
+const char *Object::builtinName(Int type)
 {
     /*
      * builtin types have names like: /builtin/type#-1
@@ -826,10 +811,9 @@ const char *o_builtin_name(Int type)
 }
 
 /*
- * NAME:	Object->find()
- * DESCRIPTION:	find an object by name
+ * find an object by name
  */
-Object *o_find(char *name, int access)
+Object *Object::find(char *name, int access)
 {
     Object *o;
     unsigned long number;
@@ -866,7 +850,7 @@ Object *o_find(char *name, int access)
 
 	o = OBJR(number);
 	if (o->count == 0 || (o->flags & O_MASTER) ||
-	    strncmp(name, (m=OBJR(o->u_master))->name, hash-name) != 0 ||
+	    strncmp(name, (m=OBJR(o->master))->name, hash-name) != 0 ||
 	    m->name[hash - name] != '\0') {
 	    /*
 	     * no entry, not a clone, or object name doesn't match
@@ -903,22 +887,21 @@ Object *o_find(char *name, int access)
 static void o_restore_obj(Object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
-    --dobjects;
-    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, cactive, dactive);
+    --ndobject;
+    d_restore_obj(obj, (rcount) ? counttab : (Uint *) NULL, cactive, dactive);
 }
 
 /*
- * NAME:	Object->control()
- * DESCRIPTION:	return the control block for an object
+ * return the control block for an object
  */
-Control *o_control(Object *obj)
+Control *Object::control()
 {
     Object *o;
 
-    o = obj;
+    o = this;
     if (!(o->flags & O_MASTER)) {
 	/* get control block of master object */
-	o = OBJR(o->u_master);
+	o = OBJR(o->master);
     }
     if (o->ctrl == (Control *) NULL) {
 	if (BTST(omap, o->index)) {
@@ -929,25 +912,24 @@ Control *o_control(Object *obj)
     } else {
 	d_ref_control(o->ctrl);
     }
-    return obj->ctrl = o->ctrl;
+    return ctrl = o->ctrl;
 }
 
 /*
- * NAME:	Object->dataspace()
- * DESCRIPTION:	return the dataspace block for an object
+ * return the dataspace block for an object
  */
-Dataspace *o_dataspace(Object *o)
+Dataspace *Object::dataspace()
 {
-    if (o->data == (Dataspace *) NULL) {
-	if (BTST(omap, o->index)) {
-	    o_restore_obj(o, TRUE, TRUE);
+    if (data == (Dataspace *) NULL) {
+	if (BTST(omap, index)) {
+	    o_restore_obj(this, TRUE, TRUE);
 	} else {
-	    o->data = d_load_dataspace(o);
+	    data = d_load_dataspace(this);
 	}
     } else {
-	d_ref_dataspace(o->data);
+	d_ref_dataspace(data);
     }
-    return o->data;
+    return data;
 }
 
 /*
@@ -959,8 +941,8 @@ static void o_clean_upgrades()
     Object *o, *next;
     Uint count;
 
-    while ((next=upgraded) != (Object *) NULL) {
-	upgraded = (Object *) next->next;
+    while ((next=upgradeList) != (Object *) NULL) {
+	upgradeList = (Object *) next->next;
 
 	count = next->count;
 	next->count = 0;
@@ -1011,10 +993,9 @@ static bool o_purge_upgrades(Object *o)
 }
 
 /*
- * NAME:	Object->clean()
- * DESCRIPTION:	clean up the object table
+ * clean up the object table
  */
-void o_clean()
+void Object::clean()
 {
     Object *o;
 
@@ -1036,7 +1017,7 @@ void o_clean()
 	    Object *tmpl;
 
 	    /* check if clone still had to be upgraded */
-	    tmpl = OBJW(o->u_master);
+	    tmpl = OBJW(o->master);
 	    if (tmpl->update != o->update) {
 		/* non-upgraded clone of old issue */
 		do {
@@ -1044,8 +1025,8 @@ void o_clean()
 		} while (tmpl->update != o->update);
 
 		if (tmpl->count == 0) {
-		    tmpl->next = upgraded;
-		    upgraded = tmpl;
+		    tmpl->next = upgradeList;
+		    upgradeList = tmpl;
 		}
 		tmpl->count++;
 	    }
@@ -1067,24 +1048,24 @@ void o_clean()
 	baseplane.upgrade = (uintptr_t) o->next;
 
 	up = OBJ(o->cref);
-	if (up->u_ref == 0) {
+	if (up->ref == 0) {
 	    /* no more instances of object around */
 	    o->cref = baseplane.destruct;
 	    baseplane.destruct = o->index;
 	} else {
 	    /* upgrade objects */
 	    up->cref -= 2;
-	    o->u_ref = up->cref;
+	    o->ref = up->cref;
 	    if (up->flags & O_LWOBJ) {
 		o->flags |= O_LWOBJ;
-		o->u_ref++;
+		o->ref++;
 	    }
 	    if (up->count != 0 && O_HASDATA(up)) {
-		o->u_ref++;
+		o->ref++;
 	    }
 	    ctrl = up->ctrl;
 
-	    if (o->ctrl->vmapsize != 0 && o->u_ref != 0) {
+	    if (o->ctrl->vmapsize != 0 && o->ref != 0) {
 		/*
 		 * upgrade variables
 		 */
@@ -1092,7 +1073,7 @@ void o_clean()
 		    OBJ(o->prev)->cref = o->index;
 		}
 
-		if (o->u_ref > (Uint) (up->count != 0)) {
+		if (o->ref > (Uint) (up->count != 0)) {
 		    up->update++;
 		}
 		if (up->count != 0 && up->data == (Dataspace *) NULL &&
@@ -1138,14 +1119,14 @@ void o_clean()
 	baseplane.destruct = o->cref;
 
 	/* free control block */
-	d_del_control(o_control(o));
+	d_del_control(o->control());
 
 	if (o->name != (char *) NULL) {
 	    /* free object name */
 	    FREE(o->name);
 	    o->name = (char *) NULL;
 	}
-	o->u_ref = 0;
+	o->ref = 0;
 
 	/* put object in free list */
 	o->prev = baseplane.free;
@@ -1162,21 +1143,19 @@ void o_clean()
 }
 
 /*
- * NAME:	Object->count()
- * DESCRIPTION:	return the number of objects in use
+ * return the number of objects in use
  */
-uindex o_count()
+uindex Object::ocount()
 {
     return oplane->nobjects - oplane->nfreeobjs;
 }
 
 /*
- * NAME:	Object->dobjects()
- * DESCRIPTION:	return the number of objects left to copy
+ * return the number of objects left to copy
  */
-uindex o_dobjects()
+uindex Object::dobjects()
 {
-    return dobjects;
+    return ndobject;
 }
 
 
@@ -1202,10 +1181,9 @@ static char mh_layout[] = "uuuui";
 # define CHUNKSZ	16384
 
 /*
- * NAME:	Object->sweep()
- * DESCRIPTION:	sweep through the object table after a dump or restore
+ * sweep through the object table after a dump or restore
  */
-static void o_sweep(uindex n)
+void Object::sweep(uindex n)
 {
     Object *obj;
 
@@ -1215,22 +1193,21 @@ static void o_sweep(uindex n)
 	if (obj->count != 0) {
 	    if (obj->cfirst != SW_UNUSED || obj->dfirst != SW_UNUSED) {
 		BSET(omap, obj->index);
-		dobjects++;
+		ndobject++;
 	    }
-	} else if ((obj->flags & O_MASTER) && obj->u_ref != 0 &&
+	} else if ((obj->flags & O_MASTER) && obj->ref != 0 &&
 		   obj->cfirst != SW_UNUSED) {
 	    BSET(omap, obj->index);
-	    dobjects++;
+	    ndobject++;
 	}
     }
-    mobjects = dobjects;
+    mobjects = ndobject;
 }
 
 /*
- * NAME:	Object->recount()
- * DESCRIPTION:	update object counts
+ * update object counts
  */
-static Uint o_recount(uindex n)
+Uint Object::recount(uindex n)
 {
     Uint count, *ct;
     Object *obj;
@@ -1246,15 +1223,14 @@ static Uint o_recount(uindex n)
     }
 
     odcount = 1;
-    recount = TRUE;
+    rcount = TRUE;
     return count;
 }
 
 /*
- * NAME:	Object->dump()
- * DESCRIPTION:	dump the object table
+ * save the object table
  */
-bool o_dump(int fd, bool incr)
+bool Object::save(int fd, bool incr)
 {
     uindex i;
     Object *o;
@@ -1299,16 +1275,16 @@ bool o_dump(int fd, bool incr)
 	return FALSE;
     }
 
-    if (dobjects != 0) {
+    if (ndobject != 0) {
 	/*
 	 * partial snapshot: write bitmap and counts
 	 */
-	mh.nctrl = dobjects;
-	mh.ndata = dobjects;
+	mh.nctrl = ndobject;
+	mh.ndata = ndobject;
 	mh.cobject = dobject;
 	mh.dobject = dobject;
 	mh.count = 0;
-	if (recount) {
+	if (rcount) {
 	    mh.count = baseplane.ocount;
 	}
 	if (!sw_write(fd, &mh, sizeof(map_header)) ||
@@ -1323,18 +1299,17 @@ bool o_dump(int fd, bool incr)
     }
 
     if (!incr) {
-	o_sweep(baseplane.nobjects);
-	baseplane.ocount = o_recount(baseplane.nobjects);
+	sweep(baseplane.nobjects);
+	baseplane.ocount = recount(baseplane.nobjects);
     }
 
     return TRUE;
 }
 
 /*
- * NAME:	Object->restore()
- * DESCRIPTION:	restore the object table
+ * restore the object table
  */
-void o_restore(int fd, bool part)
+void Object::restore(int fd, bool part)
 {
     uindex i;
     Object *o;
@@ -1403,7 +1378,7 @@ void o_restore(int fd, bool part)
 	}
     }
 
-    o_sweep(baseplane.nobjects);
+    sweep(baseplane.nobjects);
 
     if (part) {
 	map_header mh;
@@ -1432,9 +1407,9 @@ void o_restore(int fd, bool part)
 
 	if (count != 0) {
 	    conf_dread(fd, (char *) counttab, "i", dh.nobjects);
-	    recount = FALSE;
+	    rcount = FALSE;
 	} else {
-	    count = o_recount(baseplane.nobjects);
+	    count = recount(baseplane.nobjects);
 	}
 
 	/*
@@ -1452,7 +1427,7 @@ void o_restore(int fd, bool part)
 	    if (o->cfirst != SW_UNUSED) {
 		if (BTST(omap, i)) {
 		    BCLR(omap, i);
-		    --dobjects;
+		    --ndobject;
 		}
 		d_restore_ctrl(o, &sw_conv2);
 		d_swapout(1);
@@ -1471,7 +1446,7 @@ void o_restore(int fd, bool part)
 	    if (o->dfirst != SW_UNUSED) {
 		if (BTST(omap, i)) {
 		    BCLR(omap, i);
-		    --dobjects;
+		    --ndobject;
 		}
 		d_restore_data(o, counttab, &sw_conv2);
 		d_swapout(1);
@@ -1488,22 +1463,21 @@ void o_restore(int fd, bool part)
 	}
 	P_lseek(fd, offset, SEEK_SET);
     } else {
-	count = o_recount(baseplane.nobjects);
+	count = recount(baseplane.nobjects);
     }
 
     baseplane.ocount = count;
 }
 
 /*
- * NAME:	Object->copy()
- * DESCRIPTION:	copy objects from dump to swap
+ * copy objects from dump to swap
  */
-bool o_copy(Uint time)
+bool Object::copy(Uint time)
 {
     uindex n;
     Object *obj, *tmpl;
 
-    if (dobjects != 0) {
+    if (ndobject != 0) {
 	if (time == 0) {
 	    n = 0;  /* copy all objects */
 	} else {
@@ -1531,18 +1505,18 @@ bool o_copy(Uint time)
 	    }
 	}
 
-	while (dobjects > n) {
+	while (ndobject > n) {
 	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
 	    dobject = obj->index + 1;
 	    o_restore_obj(obj, FALSE, FALSE);
 	    if (time == 0) {
-		o_clean();
+		Object::clean();
 		d_swapout(1);
 	    }
 	}
     }
 
-    if (dobjects == 0) {
+    if (ndobject == 0) {
 	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
 		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))
@@ -1559,7 +1533,7 @@ bool o_copy(Uint time)
 		}
 	    }
 	}
-	o_clean();
+	Object::clean();
 
 	d_converted();
 	dtime = 0;
@@ -1571,29 +1545,26 @@ bool o_copy(Uint time)
 
 
 /*
- * NAME:	swapout()
- * DESCRIPTION:	indicate that objects are to be swapped out
+ * indicate that objects are to be swapped out
  */
-void swapout()
+void Object::swapout()
 {
     oplane->swap = TRUE;
 }
 
 /*
- * NAME:	dump_state()
- * DESCRIPTION:	indicate that the state must be dumped
+ * indicate that the state must be dumped
  */
-void dump_state(bool incr)
+void Object::dumpState(bool incr)
 {
     oplane->dump = TRUE;
     oplane->incr = incr;
 }
 
 /*
- * NAME:	finish()
- * DESCRIPTION:	indicate that the program must finish
+ * indicate that the program must finish
  */
-void finish(bool boot)
+void Object::finish(bool boot)
 {
     if (boot && !oplane->dump) {
 	error("Hotbooting without snapshot");

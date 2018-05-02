@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -245,7 +245,7 @@ Array *arr_new(Dataspace *data, long size)
 	a->elts = ALLOC(Value, size);
     }
     a->tag = tag++;
-    a->odcount = odcount;
+    a->odcount = Object::odcount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -517,7 +517,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
     unsigned short n;
 
     v2 = d_get_elts(a);
-    if (a->odcount == odcount) {
+    if (a->odcount == Object::odcount) {
 	/*
 	 * no need to check for destructed objects
 	 */
@@ -527,7 +527,7 @@ static void copytmp(Dataspace *data, Value *v1, Array *a)
 	 * Copy and check for destructed objects.  If destructed objects are
 	 * found, they will be replaced by nil in the original array.
 	 */
-	a->odcount = odcount;
+	a->odcount = Object::odcount;
 	for (n = a->size; n != 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
@@ -726,7 +726,7 @@ Array *arr_sub(Dataspace *data, Array *a1, Array *a2)
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
-    if (a1->odcount == odcount) {
+    if (a1->odcount == Object::odcount) {
 	for (n = a1->size; n > 0; --n) {
 	    if (search(v1, v2, size, 1, FALSE) < 0) {
 		/*
@@ -738,7 +738,7 @@ Array *arr_sub(Dataspace *data, Array *a1, Array *a2)
 	    v1++;
 	}
     } else {
-	a1->odcount = odcount;
+	a1->odcount = Object::odcount;
 	for (n = a1->size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
@@ -803,7 +803,7 @@ Array *arr_intersect(Dataspace *data, Array *a1, Array *a2)
 
     v1 = d_get_elts(a1);
     v3 = a3->elts;
-    if (a1->odcount == odcount) {
+    if (a1->odcount == Object::odcount) {
 	for (n = a1->size; n > 0; --n) {
 	    if (search(v1, v2, a2->size, 1, FALSE) >= 0) {
 		/*
@@ -815,7 +815,7 @@ Array *arr_intersect(Dataspace *data, Array *a1, Array *a2)
 	    v1++;
 	}
     } else {
-	a1->odcount = odcount;
+	a1->odcount = Object::odcount;
 	for (n = a1->size; n > 0; --n) {
 	    switch (v1->type) {
 	    case T_OBJECT:
@@ -890,7 +890,7 @@ Array *arr_setadd(Dataspace *data, Array *a1, Array *a2)
 
     v = v3;
     v2 = d_get_elts(a2);
-    if (a2->odcount == odcount) {
+    if (a2->odcount == Object::odcount) {
 	for (n = a2->size; n > 0; --n) {
 	    if (search(v2, v1, size, 1, FALSE) < 0) {
 		/*
@@ -901,7 +901,7 @@ Array *arr_setadd(Dataspace *data, Array *a1, Array *a2)
 	    v2++;
 	}
     } else {
-	a2->odcount = odcount;
+	a2->odcount = Object::odcount;
 	for (n = a2->size; n > 0; --n) {
 	    switch (v2->type) {
 	    case T_OBJECT:
@@ -1094,7 +1094,7 @@ Array *map_new(Dataspace *data, long size)
 	m->elts = ALLOC(Value, size);
     }
     m->tag = tag++;
-    m->odcount = odcount;
+    m->odcount = Object::odcount;
     m->primary = &data->plane->alocal;
     m->prev = &data->alist;
     m->next = data->alist.next;
@@ -1402,14 +1402,14 @@ void map_rmhash(Array *m)
  */
 void map_compact(Dataspace *data, Array *m)
 {
-    if (m->hashmod || m->odcount != odcount) {
+    if (m->hashmod || m->odcount != Object::odcount) {
 	if (m->hashmod &&
 	    (!THISPLANE(m->primary) || !SAMEPLANE(data, m->primary->data))) {
 	    map_dehash(data, m, FALSE);
 	}
 
 	map_dehash(data, m, TRUE);
-	m->odcount = odcount;
+	m->odcount = Object::odcount;
     }
 }
 
@@ -2025,8 +2025,8 @@ Array *lwo_new(Dataspace *data, Object *obj)
     Array *a;
     Float flt;
 
-    o_lwobj(obj);
-    ctrl = o_control(obj);
+    obj->lightWeight();
+    ctrl = obj->control();
     a = arr_alloc(ctrl->nvariables + 2);
     a->elts = ALLOC(Value, ctrl->nvariables + 2);
     PUT_OBJVAL(&a->elts[0], obj);
@@ -2035,7 +2035,7 @@ Array *lwo_new(Dataspace *data, Object *obj)
     PUT_FLTVAL(&a->elts[1], flt);
     d_new_variables(ctrl, a->elts + 2);
     a->tag = tag++;
-    a->odcount = odcount;
+    a->odcount = Object::odcount;
     a->primary = &data->plane->alocal;
     a->prev = &data->alist;
     a->next = data->alist.next;
@@ -2055,7 +2055,7 @@ Array *lwo_copy(Dataspace *data, Array *a)
     copy = arr_alloc(a->size);
     i_copy(copy->elts = ALLOC(Value, a->size), a->elts, a->size);
     copy->tag = tag++;
-    copy->odcount = odcount;
+    copy->odcount = Object::odcount;
     copy->primary = &data->plane->alocal;
     copy->prev = &data->alist;
     copy->next = data->alist.next;

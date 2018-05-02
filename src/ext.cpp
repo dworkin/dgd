@@ -255,7 +255,7 @@ static void ext_object_putval(Value *val, Object *obj)
 static const char *ext_object_name(Frame *f, Object *obj, char *buf)
 {
     UNREFERENCED_PARAMETER(f);
-    return o_name(buf, obj);
+    return obj->objName(buf);
 }
 
 /*

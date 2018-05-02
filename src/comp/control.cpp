@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -649,7 +649,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	/*
 	 * new inherited object
 	 */
-	ctrl = o_control(obj);
+	ctrl = obj->control();
 	inh = ctrl->inherits;
 	if (ninherits != 0 && strcmp(OBJR(inh->oindex)->name,
 				     inherits[0]->obj->name) != 0) {
@@ -701,7 +701,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 		 * inherit a new object
 		 */
 		ohash->obj = o;
-		o_control(o);		/* load the control block */
+		o->control();		/* load the control block */
 		if (inh->priv) {
 		    ohash->priv = 2;	/* indirect private */
 		} else {
@@ -756,7 +756,7 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 	 * previously inherited with greater privateness; process all
 	 * objects inherited by this object
 	 */
-	ctrl = o_control(obj);
+	ctrl = obj->control();
 	for (i = ctrl->ninherits, inh = ctrl->inherits + i; i > 0; --i) {
 	    --inh;
 	    o = OBJR(inh->oindex);
@@ -938,7 +938,7 @@ void ctrl_convert(Control *ctrl)
 	    ohash->obj = obj;
 	    ohash->index = n;
 	}
-	imapsz += o_control(obj)->ninherits;
+	imapsz += obj->control()->ninherits;
     }
     ctrl->imap = ALLOC(char, ctrl->imapsz = imapsz);
     imapsz = 0;
@@ -1926,7 +1926,7 @@ void ctrl_mkvtypes(Control *ctrl)
     ctrl->vtypes = type = ALLOC(char, max);
     for (nv = 0, inh = ctrl->inherits; nv != max; inh++) {
 	if (inh->varoffset == nv) {
-	    ctrl = o_control(OBJR(inh->oindex));
+	    ctrl = OBJR(inh->oindex)->control();
 	    for (n = ctrl->nvardefs, nv += n, var = d_get_vardefs(ctrl);
 		 n != 0; --n, var++) {
 		if (T_ARITHMETIC(var->type)) {
@@ -1960,7 +1960,7 @@ dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
     symtab = d_get_symbols(ctrl);
     i = Hashtab::hashstr(func, VFMERGEHASHSZ) % i;
     symb1 = symb = &symtab[i];
-    ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
+    ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
     f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
     str = d_get_strconst(ctrl, f->inherit, f->index);
     if (len == str->len && memcmp(func, str->text, len) == 0) {
@@ -1969,7 +1969,7 @@ dsymbol *ctrl_symb(Control *ctrl, const char *func, unsigned int len)
     }
     while (symb->next != i && symb->next != (unsigned short) -1) {
 	symb = &symtab[i = symb->next];
-	ctrl = o_control(OBJR(inherits[UCHAR(symb->inherit)].oindex));
+	ctrl = OBJR(inherits[UCHAR(symb->inherit)].oindex)->control();
 	f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	str = d_get_strconst(ctrl, f->inherit, f->index);
 	if (len == str->len && memcmp(func, str->text, len) == 0) {
@@ -2114,7 +2114,7 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 		 * put var names from old control block in string merge table
 		 */
 		str_merge();
-		ctrl2 = o_control(OBJR(inh2->oindex));
+		ctrl2 = OBJR(inh2->oindex)->control();
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
 		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),
@@ -2234,7 +2234,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
      */
     for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
 	obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
-	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
+	ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : obj->control();
 	if ((d_get_funcdefs(ctrl)[UCHAR(symb->index)].sclass & C_UNDEFINED) &&
 	    list[UCHAR(symb->inherit)].count++ == 0) {
 	    list[UCHAR(symb->inherit)].index = size;
@@ -2249,7 +2249,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 	memset(m->elts, '\0', size * sizeof(Value));
 	for (i = nsymbols, symb = symtab; i != 0; --i, symb++) {
 	    obj = OBJR(inherits[UCHAR(symb->inherit)].oindex);
-	    ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : o_control(obj);
+	    ctrl = (O_UPGRADING(obj)) ? OBJR(obj->prev)->ctrl : obj->control();
 	    f = d_get_funcdefs(ctrl) + UCHAR(symb->index);
 	    if (f->sclass & C_UNDEFINED) {
 		u = &list[UCHAR(symb->inherit)];

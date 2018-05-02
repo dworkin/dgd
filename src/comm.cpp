@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -202,7 +202,7 @@ static Array *comm_setup(user *usr, Frame *f, Object *obj)
 	i_del_value(f->sp++);
     }
 
-    d_wipe_extravar(data = o_dataspace(obj));
+    d_wipe_extravar(data = obj->dataspace());
     arr = arr_new(data, 3L);
     arr->elts[0] = zero_int;
     arr->elts[1] = arr->elts[2] = nil_value;
@@ -332,7 +332,7 @@ static void comm_del(Frame *f, user *usr, Object *obj, bool destruct)
     Dataspace *data;
     uindex olduser;
 
-    data = o_dataspace(obj);
+    data = obj->dataspace();
     if (!destruct) {
 	/* if not destructing, make sure the connection terminates */
 	if (!(usr->flags & CF_FLUSH)) {
@@ -409,7 +409,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
     ssizet osdone, olen;
     Value val;
 
-    arr = d_get_extravar(data = o_dataspace(obj))->u.array;
+    arr = d_get_extravar(data = obj->dataspace())->u.array;
     if (!(usr->flags & CF_FLUSH)) {
 	addtoflush(usr, arr);
     }
@@ -817,7 +817,7 @@ static void comm_taccept(Frame *f, connection *conn, int port)
     }
 
     usr->flags |= CF_PROMPT;
-    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+    addtoflush(usr, d_get_extravar(obj->dataspace())->u.array);
     this_user = obj->index;
     if (i_call(f, obj, (Array *) NULL, "open", 4, TRUE, 0)) {
 	i_del_value(f->sp++);
@@ -1019,7 +1019,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    usr->flags &= ~CF_OPENDING;
 		    if (!(usr->flags & CF_FLUSH)) {
 			addtoflush(usr,
-				   d_get_extravar(o_dataspace(obj))->u.array);
+				   d_get_extravar(obj->dataspace())->u.array);
 		    }
 		    old_user = this_user;
 		    this_user = obj->index;
@@ -1055,7 +1055,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 	    if (usr->flags & CF_OUTPUT) {
 		Dataspace *data;
 
-		data = o_dataspace(obj);
+		data = obj->dataspace();
 		comm_uflush(usr, obj, data, d_get_extravar(data)->u.array);
 	    }
 	    if (usr->flags & CF_ODONE) {
@@ -1300,7 +1300,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		}
 		usr->flags |= CF_PROMPT;
 		if (!(usr->flags & CF_FLUSH)) {
-		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		    addtoflush(usr, d_get_extravar(obj->dataspace())->u.array);
 		}
 	    } else {
 		/*

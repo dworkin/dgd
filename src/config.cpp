@@ -291,18 +291,18 @@ void conf_dump(bool incr, bool boot)
     header[DUMP_ELAPSED + 3] = etime;
 
     if (!incr) {
-	o_copy(0);
+	Object::copy(0);
     }
     d_swapout(1);
     dflags = 0;
-    if (o_dobjects() > 0) {
+    if (Object::dobjects() > 0) {
 	dflags |= FLAGS_PARTIAL;
     }
     fd = sw_dump(conf[DUMP_FILE].u.str, dflags & FLAGS_PARTIAL);
     if (!kf_dump(fd)) {
 	fatal("failed to dump kfun table");
     }
-    if (!o_dump(fd, incr)) {
+    if (!Object::save(fd, incr)) {
 	fatal("failed to dump object table");
     }
     if (!co_dump(fd)) {
@@ -429,7 +429,7 @@ static bool conf_restore(int fd, int fd2)
 
     sw_restore(fd, secsize);
     kf_restore(fd);
-    o_restore(fd, rdflags & FLAGS_PARTIAL);
+    Object::restore(fd, rdflags & FLAGS_PARTIAL);
     d_init_conv(conv_14);
     if (conv_14) {
 	pc_restore(fd);
@@ -1499,7 +1499,8 @@ bool conf_init(char *configfile, char *snapshot, char *snapshot2, char *module,
     arr_init((int) conf[ARRAY_SIZE].u.num);
 
     /* initialize objects */
-    o_init((uindex) conf[OBJECTS].u.num, (Uint) conf[DUMP_INTERVAL].u.num);
+    Object::init((uindex) conf[OBJECTS].u.num,
+		 (Uint) conf[DUMP_INTERVAL].u.num);
 
     /* initialize swap device */
     cache = (sector) ((conf[CACHE_SIZE].set) ? conf[CACHE_SIZE].u.num : 100);
@@ -1781,7 +1782,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
 	break;
 
     case 14:	/* ST_NOBJECTS */
-	PUT_INTVAL(v, o_count());
+	PUT_INTVAL(v, Object::ocount());
 	break;
 
     case 15:	/* ST_COTABSIZE */
@@ -1889,8 +1890,8 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
     Object *prog;
     Array *a;
 
-    prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->u_master);
-    ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : o_control(prog);
+    prog = (obj->flags & O_MASTER) ? obj : OBJR(obj->master);
+    ctrl = (O_UPGRADING(prog)) ? OBJR(prog->prev)->ctrl : prog->control();
 
     switch (idx) {
     case 0:	/* O_COMPILETIME */
@@ -1906,7 +1907,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 	break;
 
     case 3:	/* O_NSECTORS */
-	PUT_INTVAL(v, (O_HASDATA(obj)) ?  o_dataspace(obj)->nsectors : 0);
+	PUT_INTVAL(v, (O_HASDATA(obj)) ?  obj->dataspace()->nsectors : 0);
 	if (obj->flags & O_MASTER) {
 	    v->u.number += ctrl->nsectors;
 	}
@@ -1914,7 +1915,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 
     case 4:	/* O_CALLOUTS */
 	if (O_HASDATA(obj)) {
-	    a = d_list_callouts(data, o_dataspace(obj));
+	    a = d_list_callouts(data, obj->dataspace());
 	    if (a != (Array *) NULL) {
 		PUT_ARRVAL(v, a);
 	    } else {
@@ -1927,7 +1928,7 @@ bool conf_objecti(Dataspace *data, Object *obj, Int idx, Value *v)
 
     case 5:	/* O_INDEX */
 	PUT_INTVAL(v, (obj->flags & O_MASTER) ?
-		       (Uint) obj->index : obj->u_master);
+		       (Uint) obj->index : obj->master);
 	break;
 
     case 6:	/* O_UNDEFINED */

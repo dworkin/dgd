@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -55,7 +55,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
     {
 	return 1;
     }
-    obj = o_find(file, OACC_MODIFY);
+    obj = Object::find(file, OACC_MODIFY);
     if (obj != (Object *) NULL) {
 	if (!(obj->flags & O_MASTER)) {
 	    error("Cannot recompile cloned object");
@@ -362,7 +362,7 @@ int kf_clone_object(Frame *f, int n, kfunc *kf)
     if (!(obj->flags & O_MASTER)) {
 	error("Cloning from a clone");
     }
-    obj = o_clone(obj);
+    obj = obj->clone();
     PUT_OBJ(f->sp, obj);
     if (i_call(f, obj, (Array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
@@ -405,7 +405,7 @@ int kf_destruct_object(Frame *f, int n, kfunc *kf)
 	ed_del(obj);
 	break;
     }
-    o_del(obj, f);
+    obj->del(f);
     return 0;
 }
 # endif
@@ -474,18 +474,18 @@ int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
     if (f->sp[1].type == T_OBJECT) {
 	oindex = f->sp[1].oindex;
     } else if (f->sp[1].u.array->elts[0].type != T_OBJECT) {
-	builtin = o_builtin_name(f->sp[1].u.array->elts[0].u.number);
+	builtin = Object::builtinName(f->sp[1].u.array->elts[0].u.number);
     } else {
 	oindex = f->sp[1].u.array->elts[0].oindex;
 	arr_del(f->sp[1].u.array);
     }
     if (f->lwobj == (Array *) NULL) {
-	name = o_name(buffer, OBJR(f->oindex));
+	name = OBJR(f->oindex)->objName(buffer);
 	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 1));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
-	name = o_name(buffer, OBJR(f->lwobj->elts[0].oindex));
+	name = OBJR(f->lwobj->elts[0].oindex)->objName(buffer);
 	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 4));
 	strcpy(str->text + 1, name);
 	strcpy(str->text + str->len - 3, "#-1");
@@ -528,7 +528,7 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     if (f->sp->type == T_OBJECT) {
-	name = o_name(buffer, OBJR(f->sp->oindex));
+	name = OBJR(f->sp->oindex)->objName(buffer);
 	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 1L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
@@ -537,10 +537,10 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
 	    /* ordinary light-weight object */
 	    n = f->sp->u.array->elts[0].oindex;
 	    arr_del(f->sp->u.array);
-	    name = o_name(buffer, OBJR(n));
+	    name = OBJR(n)->objName(buffer);
 	} else {
 	    /* builtin type */
-	    name = o_builtin_name(f->sp->u.array->elts[0].u.number);
+	    name = Object::builtinName(f->sp->u.array->elts[0].u.number);
 	}
 	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 4L));
 	str->text[0] = '/';
@@ -577,7 +577,7 @@ int kf_find_object(Frame *f, int n, kfunc *kf)
 	return 0;
     }
     i_add_ticks(f, 2);
-    obj = o_find(path, OACC_READ);
+    obj = Object::find(path, OACC_READ);
     str_del(f->sp->u.string);
     if (obj != (Object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
@@ -627,7 +627,7 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	return 0;
     }
     f->sp++;
-    symb = ctrl_symb(o_control(obj), f->sp->u.string->text,
+    symb = ctrl_symb(obj->control(), f->sp->u.string->text,
 		     f->sp->u.string->len);
     str_del(f->sp->u.string);
 
@@ -1327,7 +1327,7 @@ int kf_swapout(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(n);
     UNREFERENCED_PARAMETER(kf);
 
-    swapout();
+    Object::swapout();
 
     *--f->sp = nil_value;
     return 0;
@@ -1358,7 +1358,7 @@ int kf_dump_state(Frame *f, int nargs, kfunc *kf)
     }
     *f->sp = nil_value;
 
-    dump_state(incr);
+    Object::dumpState(incr);
 
     return 0;
 }
@@ -1435,7 +1435,7 @@ int kf_shutdown(Frame *f, int nargs, kfunc *kf)
     } else {
 	boot = FALSE;
     }
-    finish(boot);
+    Object::finish(boot);
 
     *--f->sp = nil_value;
     return 0;

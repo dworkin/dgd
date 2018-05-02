@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,8 @@
 # include "hash.h"
 # include "swap.h"
 
-struct Object : public Hashtab::Entry {
+class Object : public Hashtab::Entry {
+public:
     char flags;			/* object status */
     eindex etabi;		/* index in external table */
     uindex cref;		/* # clone references (sometimes) */
@@ -28,14 +29,58 @@ struct Object : public Hashtab::Entry {
     uindex index;		/* index in object table */
     Uint count;			/* object creation count */
     Uint update;		/* object update count */
-    Uint ref;			/* ref count (if master object) */
+    union {
+	Uint ref;		/* ref count (if master object) */
+	Uint master;		/* master (if clone) */
+    };
     Control *ctrl;		/* control block (master object only) */
     Dataspace *data;		/* dataspace block */
     sector cfirst;		/* first sector of control block */
     sector dfirst;		/* first sector of dataspace block */
+
+    Object *clone();
+    void lightWeight();
+    void upgrade(Control*, Frame*);
+    void upgraded(Object*);
+    void del(Frame*);
+
+    const char *objName(char*);
+    Control *control();
+    Dataspace *dataspace();
+
+    static void init(unsigned int, Uint);
+    static void newPlane();
+    static void	commitPlane();
+    static void	discardPlane();
+
+    static Object *oread(unsigned int);
+    static Object *owrite(unsigned int);
+    static Object *create(char*, Control*);
+    static const char *builtinName(Int);
+    static Object *find(char*, int);
+
+    static bool	space();
+    static void	clean();
+    static uindex ocount();
+    static uindex dobjects();
+    static bool save(int, bool);
+    static void restore(int, bool);
+    static bool	copy(Uint);
+
+    static void	swapout();
+    static void	dumpState(bool);
+    static void finish(bool);
+
+    static Object *otable;
+    static Uint *ocmap;
+    static bool obase, swap, dump, incr, stop, boot;
+    static Uint odcount;
+
+private:
+    static Object *access(unsigned int, int);
+    static void sweep(uindex);
+    static Uint recount(uindex);
 };
-# define u_ref			ref
-# define u_master		ref
 
 # define O_MASTER		0x01
 # define O_AUTO			0x02
@@ -49,12 +94,12 @@ struct Object : public Hashtab::Entry {
 
 # define OBJ_LAYOUT		"xceuuuiiippdd"
 
-# define OBJ(i)			(&otable[i])
-# define OBJR(i)		((BTST(ocmap, (i))) ? o_oread((i)) : &otable[i])
-# define OBJW(i)		((!obase) ? o_owrite((i)) : &otable[i])
+# define OBJ(i)			(&Object::otable[i])
+# define OBJR(i)		((BTST(Object::ocmap, (i))) ? Object::oread((i)) : &Object::otable[i])
+# define OBJW(i)		((!Object::obase) ? Object::owrite((i)) : &Object::otable[i])
 
-# define O_UPGRADING(o)		((o)->cref > (o)->u_ref)
-# define O_INHERITED(o)		((o)->u_ref - 1 != (o)->cref)
+# define O_UPGRADING(o)		((o)->cref > (o)->ref)
+# define O_INHERITED(o)		((o)->ref - 1 != (o)->cref)
 # define O_HASDATA(o)		((o)->data != (Dataspace *) NULL || \
 				 (o)->dfirst != SW_UNUSED)
 
@@ -62,44 +107,6 @@ struct Object : public Hashtab::Entry {
 # define OACC_MODIFY		0x01	/* write access */
 
 # define OBJ_NONE		UINDEX_MAX
-
-extern void	  o_init		(unsigned int, Uint);
-extern Object	 *o_oread		(unsigned int);
-extern Object	 *o_owrite		(unsigned int);
-extern void	  o_new_plane		();
-extern void	  o_commit_plane	();
-extern void	  o_discard_plane	();
-
-extern bool	  o_space		();
-extern Object	 *o_new			(char*, Control*);
-extern Object	 *o_clone		(Object*);
-extern void	  o_lwobj		(Object*);
-extern void	  o_upgrade		(Object*, Control*, Frame*);
-extern void	  o_upgraded		(Object*, Object*);
-extern void	  o_del			(Object*, Frame*);
-
-extern const char *o_name		(char*, Object*);
-extern const char *o_builtin_name	(Int);
-extern Object	 *o_find		(char*, int);
-extern Control   *o_control		(Object*);
-extern Dataspace *o_dataspace		(Object*);
-
-extern void	  o_clean		();
-extern uindex	  o_count		();
-extern uindex	  o_dobjects		();
-extern bool	  o_dump		(int, bool);
-extern void	  o_restore		(int, bool);
-extern bool	  o_copy		(Uint);
-
-extern void	  swapout		();
-extern void	  dump_state		(bool);
-extern void	  finish		(bool);
-
-extern Object    *otable;
-extern Uint	 *ocmap;
-extern bool	  obase, swap, dump, incr, stop, boot;
-extern Uint	  odcount;
-
 
 # ifdef CLOSURES
 # define BUILTIN_FUNCTION	0

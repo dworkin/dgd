@@ -599,10 +599,10 @@ static int instanceof(unsigned int oindex, char *prog, Uint hash)
     /* first try hash table */
     obj = OBJR(oindex);
     if (!(obj->flags & O_MASTER)) {
-	oindex = obj->u_master;
+	oindex = obj->master;
 	obj = OBJR(oindex);
     }
-    ctrl = o_control(obj);
+    ctrl = obj->control();
     h = &ihash[((oindex << 2) ^ hash) % INHASHSZ];
     if (*h < ctrl->ninherits &&
 	strcmp(OBJR(ctrl->inherits[UCHAR(*h)].oindex)->name, prog) == 0) {
@@ -662,7 +662,7 @@ void i_cast(Frame *f, Value *val, unsigned int type, Uint sclass)
 		    error("Value is not of object type /%s",
 			  i_classname(f, sclass));
 		}
-	    } else if (strcmp(o_builtin_name(elts->u.number),
+	    } else if (strcmp(Object::builtinName(elts->u.number),
 			      i_classname(f, sclass)) != 0) {
 		/*
 		 * builtin types can only be cast to their own type
@@ -1329,7 +1329,7 @@ void i_typecheck(Frame *f, Frame *prog_f, const char *name, const char *ftype,
 			    error("Bad object argument %d for function %s",
 				  nargs - i, name);
 			}
-		    } else if (strcmp(o_builtin_name(elts->u.number),
+		    } else if (strcmp(Object::builtinName(elts->u.number),
 				      i_classname(prog_f, sclass)) != 0) {
 			error("Bad object argument %d for function %s",
 			      nargs - i, name);
@@ -1704,8 +1704,8 @@ static void i_interpret(Frame *f, char *pc)
 	    case T_LWOBJECT:
 		if (f->sp->u.array->elts->type != T_OBJECT) {
 		    instance =
-			(strcmp(o_builtin_name(f->sp->u.array->elts->u.number),
-				i_classname(f, l)) == 0);
+		    (strcmp(Object::builtinName(f->sp->u.array->elts->u.number),
+			    i_classname(f, l)) == 0);
 		} else {
 		    instance = i_instanceof(f, f->sp->u.array->elts->oindex, l);
 		}
@@ -2067,7 +2067,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	f.oindex = obj->index;
 	f.lwobj = (Array *) NULL;
 	f.ctrl = obj->ctrl;
-	f.data = o_dataspace(obj);
+	f.data = obj->dataspace();
 	f.external = TRUE;
     } else if (lwobj != (Array *) NULL) {
 	/*
@@ -2085,7 +2085,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 	f.oindex = obj->index;
 	f.lwobj = (Array *) NULL;
 	f.ctrl = obj->ctrl;
-	f.data = o_dataspace(obj);
+	f.data = obj->dataspace();
 	f.external = TRUE;
     } else {
 	/*
@@ -2113,7 +2113,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* set the program control block */
     obj = OBJR(f.ctrl->inherits[p_ctrli].oindex);
     f.foffset = f.ctrl->inherits[p_ctrli].funcoffset;
-    f.p_ctrl = o_control(obj);
+    f.p_ctrl = obj->control();
     f.p_index = f.ctrl->inherits[p_ctrli].progoffset;
 
     /* get the function */
@@ -2223,7 +2223,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
     /* deal with atomic functions */
     f.level = prev_f->level;
     if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
-	o_new_plane();
+	Object::newPlane();
 	d_new_plane(f.data, ++f.level);
 	f.atomic = TRUE;
 	if (!f.rlim->noticks) {
@@ -2286,7 +2286,7 @@ void i_funcall(Frame *prev_f, Object *obj, Array *lwobj, int p_ctrli, int funci,
 
     if ((f.func->sclass & C_ATOMIC) && !prev_f->atomic) {
 	d_commit_plane(f.level, &val);
-	o_commit_plane();
+	Object::commitPlane();
 	if (!f.rlim->noticks) {
 	    f.rlim->ticks *= 2;
 	}
@@ -2371,7 +2371,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
     }
 
     /* find the function in the symbol table */
-    ctrl = o_control(obj);
+    ctrl = obj->control();
     symb = ctrl_symb(ctrl, func, len);
     if (symb == (dsymbol *) NULL) {
 	/* function doesn't exist in symbol table */
@@ -2584,7 +2584,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     v = a->elts;
 
     /* object name */
-    name = o_name(buffer, OBJR(f->oindex));
+    name = OBJR(f->oindex)->objName(buffer);
     if (f->lwobj == (Array *) NULL) {
 	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
 	v++;
@@ -2767,7 +2767,7 @@ Frame *i_restore(Frame *ftop, Int level)
     }
     i_set_sp(ftop, f->sp);
     d_discard_plane(ftop->level);
-    o_discard_plane();
+    Object::discardPlane();
 
     return f;
 }

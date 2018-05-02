@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -698,7 +698,7 @@ void co_call(Frame *f)
 
 	    try {
 		ec_push((ec_ftn) errhandler);
-		str = d_get_call_out(o_dataspace(obj), handle, f, &nargs);
+		str = d_get_call_out(obj->dataspace(), handle, f, &nargs);
 		if (i_call(f, obj, (Array *) NULL, str->text, str->len, TRUE,
 			   nargs)) {
 		    /* function exists */
