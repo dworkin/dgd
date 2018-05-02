@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,19 +56,24 @@ extern void  m_finish	();
 class Allocated {
 public:
     /*
-     * NAME:		new()
-     * DESCRIPTION:	override new for class Allocated
+     * override new for class Allocated
      */
-    static void *operator new(size_t size) {
-	return ALLOC(char, size);
+# ifdef DEBUG
+    static void *operator new(size_t size, const char *file, int line) {
+	return m_alloc(size, file, line);
     }
+# define new		new (__FILE__, __LINE__)
+# else
+    static void *operator new(size_t size) {
+	return m_alloc(size);
+    }
+# endif
 
     /*
-     * NAME:		delete()
-     * DESCRIPTION:	override delete for class Allocated
+     * override delete for class Allocated
      */
     static void operator delete(void *ptr) {
-	FREE(ptr);
+	m_free((char *) ptr);
     }
 };
 
