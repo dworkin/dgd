@@ -37,7 +37,7 @@ struct objpatch {
 
 # define OPCHUNKSZ		32
 
-class optable {
+class optable : public Allocated {
 public:
     /*
      * initialize objpatch table

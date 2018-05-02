@@ -46,7 +46,7 @@ struct copatch {
 
 # define COPCHUNKSZ	32
 
-class coptable {
+class coptable : public Allocated {
 public:
     /*
      * NAME:		coptable()
