@@ -29,8 +29,8 @@ struct Dataspace;
 struct Frame;
 
 # include "config.h"
-# include "alloc.h"
 # include "error.h"
+# include "alloc.h"
 
 # define BOFF(bit)		((bit) >> 5)
 # define BBIT(bit)		(1 << ((bit) & 31))

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -173,7 +173,7 @@ static int cs_eclass(Uint *cset, char *eclass, int sclass)
 }
 
 
-struct rgxposn : public Hashtab::Entry {
+struct rgxposn : public Hashtab::Entry, public ChunkAllocated {
     char *rgx;			/* regular expression this position is in */
     unsigned short size;	/* size of position (length of string - 2) */
     unsigned short ruleno;	/* the rule this position is in */
@@ -222,7 +222,7 @@ static rgxposn *rp_alloc(Hashtab *htab, char *posn, unsigned short size, rpchunk
     if (*c == (rpchunk *) NULL) {
 	*c = new rpchunk;
     }
-    rp = (*c)->alloc();
+    rp = chunknew (**c) rgxposn;
     rp->next = *rrp;
     *rrp = rp;
     rp->name = posn;

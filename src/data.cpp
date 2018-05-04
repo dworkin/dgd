@@ -32,7 +32,7 @@
 # define COP_REMOVE	1	/* remove callout patch */
 # define COP_REPLACE	2	/* replace callout patch */
 
-struct copatch {
+struct copatch : public ChunkAllocated {
     short type;			/* add, remove, replace */
     uindex handle;		/* callout handle */
     Dataplane *plane;		/* dataplane */
@@ -327,7 +327,7 @@ static copatch *cop_new(Dataplane *plane, copatch **c, int type,
     Value *v;
 
     /* allocate */
-    cop = plane->coptab->chunk.alloc();
+    cop = chunknew (plane->coptab->chunk) copatch;
 
     /* initialize */
     cop->type = type;
@@ -375,7 +375,7 @@ static void cop_del(Dataplane *plane, copatch **c, bool del)
     }
 
     /* add to free list */
-    plane->coptab->chunk.del(cop);
+    delete cop;
 }
 
 /*

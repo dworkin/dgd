@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,7 +31,7 @@
 
 # define ICHUNKSZ	8
 
-struct ifstate {
+struct ifstate : public ChunkAllocated {
     bool active;		/* is this ifstate active? */
     bool skipping;		/* skipping this part? */
     bool expect_else;		/* expect #else or #endif? */
@@ -46,10 +46,7 @@ static char pri[NR_TOKENS + 1];	/* operator priority table */
 static bool init_pri;		/* has the priority table been initialized? */
 static int include_level;	/* current #include level */
 static ifstate *ifs;		/* current conditional inclusion state */
-
-static ifstate top = {		/* initial ifstate */
-    TRUE, FALSE, FALSE, 0, (ifstate *) NULL
-};
+static ifstate top;		/* initial ifstate */
 
 # define UNARY	0x10
 
@@ -60,6 +57,12 @@ static ifstate top = {		/* initial ifstate */
  */
 bool pp_init(char *file, char **id, String **strs, int nstr, int level)
 {
+    top.active = TRUE;
+    top.skipping = FALSE;
+    top.expect_else = FALSE;
+    top.level = 0;
+    top.prev = (ifstate *) NULL;
+
     tk_init();
     if (strs != (String **) NULL) {
 	tk_include(file, strs, nstr);
@@ -116,7 +119,7 @@ static void push()
 {
     ifstate *s;
 
-    s = ichunk.alloc();
+    s = chunknew (ichunk) ifstate;
     s->active = !ifs->skipping;
     s->skipping = TRUE;	/* ! */
     s->expect_else = TRUE;
@@ -136,7 +139,7 @@ static void pop()
     s = ifs;
     ifs = ifs->prev;
 
-    ichunk.del(s);
+    delete s;
 }
 
 /*

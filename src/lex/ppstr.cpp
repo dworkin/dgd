@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -53,7 +53,7 @@ str *pps_new(char *buf, int sz)
 {
     str *sb;
 
-    sb = schunk.alloc();
+    sb = chunknew (schunk) str;
     sb->buffer = buf;
     sb->buffer[0] = '\0';
     sb->size = sz;
@@ -68,7 +68,7 @@ str *pps_new(char *buf, int sz)
  */
 void pps_del(str *sb)
 {
-    schunk.del(sb);
+    delete sb;
 }
 
 /*

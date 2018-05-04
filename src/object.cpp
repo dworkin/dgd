@@ -28,7 +28,7 @@
 
 struct objplane;
 
-struct objpatch {
+struct objpatch : public ChunkAllocated {
     objplane *plane;			/* plane that patch is on */
     objpatch *prev;			/* previous patch */
     objpatch *next;			/* next in linked list */
@@ -125,7 +125,7 @@ static objpatch *op_new(objplane *plane, objpatch **o, objpatch *prev, Object *o
     objpatch *op;
 
     /* allocate */
-    op = plane->optab->chunk.alloc();
+    op = chunknew (plane->optab->chunk) objpatch;
 
     /* initialize */
     op->plane = plane;
@@ -150,7 +150,7 @@ static void op_del(objplane *plane, objpatch **o)
     *o = op->next;
 
     /* add to free list */
-    plane->optab->chunk.del(op);
+    delete op;
 }
 
 

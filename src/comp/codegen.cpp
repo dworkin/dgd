@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -308,7 +308,7 @@ static void code_clear()
 
 # define JUMP_CHUNK	128
 
-struct jmplist {
+struct jmplist : public ChunkAllocated {
     Uint where;				/* where to jump from */
     Uint to;				/* where to jump to */
     node *label;			/* label to jump to */
@@ -364,7 +364,7 @@ static jmplist *jump_addr(jmplist *list)
 {
     jmplist *j;
 
-    j = jchunk.alloc();
+    j = chunknew (jchunk) jmplist;
     j->where = here;
     j->next = list;
     code_word(0);	/* empty space in code block filled in later */

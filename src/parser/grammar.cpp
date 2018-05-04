@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -453,12 +453,12 @@ static int gramtok(String *str, ssizet *strlen, char *buffer, unsigned int *bufl
 }
 
 
-struct rulesym {
+struct rulesym : public ChunkAllocated {
     struct rule *rule;		/* symbol */
     rulesym *next;		/* next in rule */
 };
 
-struct rule : public Hashtab::Entry {
+struct rule : public Hashtab::Entry, public ChunkAllocated {
     String *symb;		/* rule symbol */
     short type;			/* unknown, token or production rule */
     unsigned short num;		/* number of alternatives, or symbol number */
@@ -522,7 +522,7 @@ static rulesym *rs_new(rschunk **c, rule *rl)
 	*c = new rschunk;
     }
 
-    rs = (*c)->alloc();
+    rs = chunknew (**c) rulesym;
     rs->rule = rl;
     rs->next = (rulesym *) NULL;
     return rs;
@@ -539,7 +539,7 @@ static rule *rl_new(rlchunk **c, int type)
     if (*c == (rlchunk *) NULL) {
 	*c = new rlchunk;
     }
-    rl = (*c)->alloc();
+    rl = chunknew (**c) rule;
     rl->symb = (String *) NULL;
     rl->type = type;
     rl->num = 0;

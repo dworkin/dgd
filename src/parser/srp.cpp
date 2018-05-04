@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@
 # include "dgd.h"
 # include "srp.h"
 
-struct item {
+struct item : public ChunkAllocated {
     char *ref;			/* pointer to rule in grammar */
     unsigned short ruleno;	/* rule number */
     unsigned short offset;	/* offset in rule */
@@ -42,7 +42,7 @@ static item *it_new(itchunk **c, char *ref, unsigned short ruleno, unsigned shor
     if (*c == (itchunk *) NULL) {
 	*c = new itchunk;
     }
-    it = (*c)->alloc();
+    it = chunknew (**c) item;
 
     it->ref = ref;
     it->ruleno = ruleno;
@@ -61,7 +61,7 @@ static item *it_del(itchunk *c, item *it)
     item *next;
 
     next = it->next;
-    c->del(it);
+    delete it;
     return next;
 }
 
@@ -271,7 +271,7 @@ static char *ss_save(srpstate *state, char *buf, char **rbuf)
 }
 
 
-struct shlink {
+struct shlink : public ChunkAllocated {
     Int shifts;			/* offset in shift table */
     shlink *next;		/* next in linked list */
 };
@@ -310,7 +310,7 @@ static shlink *sl_hash(shlink **htab, Uint htabsize, slchunk **c, char *shtab, c
     if (*c == (slchunk *) NULL) {
 	*c = new slchunk;
     }
-    sl = (*c)->alloc();
+    sl = chunknew (**c) shlink;
     sl->next = *ssl;
     *ssl = sl;
     sl->shifts = NOSHIFT;

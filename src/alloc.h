@@ -53,36 +53,86 @@ extern bool  m_check	();
 extern void  m_purge	();
 extern void  m_finish	();
 
+/*
+ * inherit from this to use DGD's memory manager
+ */
 class Allocated {
 public:
-    /*
-     * override new for class Allocated
-     */
 # ifdef DEBUG
     static void *operator new(size_t size, const char *file, int line) {
 	return m_alloc(size, file, line);
     }
-# define new		new (__FILE__, __LINE__)
 # else
     static void *operator new(size_t size) {
 	return m_alloc(size);
     }
 # endif
 
-    /*
-     * override delete for class Allocated
-     */
     static void operator delete(void *ptr) {
 	m_free((char *) ptr);
     }
 };
 
-template <class T, int CHUNK> class Chunk : public Allocated {
+class ChunkAllocator {
+private:
+    virtual void *alloc() = 0;
+    virtual void del(void *ptr) = 0;
+
+    friend class ChunkAllocated;
+};
+
+/*
+ * inherited by classes that are allocated in chunks
+ */
+class ChunkAllocated {
 public:
+    static void *operator new(size_t size, ChunkAllocator &chunk) {
+	ChunkAllocated *item;
+
+	/* ask chunk allocator for memory */
+	item = (ChunkAllocated *) chunk.alloc();
+	item->setChunk(&chunk);
+	return item;
+    }
+
+    static void operator delete(void *ptr) {
+	/* let the chunk allocator reuse this memory */
+	((ChunkAllocated *) ptr)->chunk()->del(ptr);
+    }
+
+private:
     /*
-     * NAME:		Chunk()
-     * DESCRIPTION:	constructor
+     * save chunk allocator in instance (pre-constructor)
      */
+    void setChunk(ChunkAllocator *c) {
+	allocator = c;
+    }
+
+    /*
+     * get chunk allocator from instance (post-destructor)
+     */
+    ChunkAllocator *chunk() {
+	return allocator;
+    }
+
+    ChunkAllocator *allocator;	/* chunk allocator for this instance */
+};
+
+# ifdef DEBUG
+# define _N_		new
+# define new_F_		new
+# define _N__F_(b, c)	new
+# define _B_(a, b, c)	a ## _F_(b, c)
+# define _A_(a, b, c)	_B_(a, b, c)
+# define new		_A_(_N_, __FILE__, __LINE__)
+# define chunknew(c)	_N_ (c)
+# else
+# define chunknew(c)	new (c)
+# endif
+
+template <class T, int CHUNK> class Chunk :
+				    public Allocated, public ChunkAllocator {
+public:
     Chunk() {
 	chunk = (Tchunk *) NULL;
 	flist = (Titem *) NULL;
@@ -93,11 +143,51 @@ public:
 	clean();
     }
 
+
+    virtual bool item(T *item) {
+	UNREFERENCED_PARAMETER(item);
+	return TRUE;
+    }
+
     /*
-     * NAME:		alloc()
-     * DESCRIPTION:	add new item to chunk
+     * visit items in chunks
      */
-    T *alloc() {
+    void items() {
+	Tchunk *b;
+	int i;
+
+	i = chunksize;
+	for (b = chunk; b != NULL; b = b->prev) {
+	    while (i < CHUNK) {
+		if (!item(&b->items[i].item)) {
+		    return;
+		}
+		i++;
+	    }
+	    i = 0;
+	}
+    }
+
+    /*
+     * clean up item chunks
+     */
+    void clean() {
+	while (chunk != NULL) {
+	    Tchunk *prev;
+
+	    prev = chunk->prev;
+	    FREE(chunk);
+	    chunk = prev;
+	}
+	flist = NULL;
+	chunksize = 0;
+    }
+
+private:
+    /*
+     * add new item to chunk
+     */
+    virtual void *alloc() {
 	if (flist == NULL) {
 	    if (chunk == NULL || chunksize == 0) {
 		Tchunk *b;
@@ -118,10 +208,9 @@ public:
     }
 
     /*
-     * NAME:		del()
-     * DESCRITION:	remove item from chunk
+     * remove item from chunk
      */
-    void del(T *ptr) {
+    virtual void del(void *ptr) {
 	Titem *item;
 
 	item = (Titem *) ptr;
@@ -129,49 +218,7 @@ public:
 	flist = item;
     }
 
-    virtual bool item(T *item) {
-	UNREFERENCED_PARAMETER(item);
-	return TRUE;
-    }
-
-    /*
-     * NAME:		items()
-     * DESCRIPTION:	visit items in chunks
-     */
-    void items() {
-	Tchunk *b;
-	int i;
-
-	i = chunksize;
-	for (b = chunk; b != NULL; b = b->prev) {
-	    while (i < CHUNK) {
-		if (!item(&b->items[i].item)) {
-		    return;
-		}
-		i++;
-	    }
-	    i = 0;
-	}
-    }
-
-    /*
-     * NAME:		clean()
-     * DESCRIPTION:	clean up item chunks
-     */
-    void clean() {
-	while (chunk != NULL) {
-	    Tchunk *prev;
-
-	    prev = chunk->prev;
-	    FREE(chunk);
-	    chunk = prev;
-	}
-	flist = NULL;
-	chunksize = 0;
-    }
-
-private:
-    union Titem {
+    struct Titem {
 	T item;			/* item */
 	Titem *list;		/* next in the free list */
     };

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,7 +29,7 @@
 # include "srp.h"
 # include "parse.h"
 
-struct pnode {
+struct pnode : public ChunkAllocated {
     short symbol;		/* node symbol */
     unsigned short state;	/* state reached after this symbol */
     Uint len;			/* token/reduction length or subtree size */
@@ -58,7 +58,7 @@ static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, 
     if (*c == (pnchunk *) NULL) {
 	*c = new pnchunk;
     }
-    pn = (*c)->alloc();
+    pn = chunknew (**c) pnode;
 
     pn->symbol = symb;
     pn->state = state;
@@ -70,7 +70,7 @@ static pnode *pn_new(pnchunk **c, short symb, unsigned short state, char *text, 
     return pn;
 }
 
-struct snode {
+struct snode : public ChunkAllocated {
     pnode *pn;			/* pnode */
     snode *next;		/* next to be treated */
     snode *slist;		/* per-state list */
@@ -97,7 +97,7 @@ static snode *sn_new(snlist *list, pnode *pn, snode *slist)
     if (list->snc == (snchunk *) NULL) {
 	list->snc = new snchunk;
     }
-    sn = list->snc->alloc();
+    sn = chunknew (*list->snc) snode;
     if (list->first == (snode *) NULL) {
 	list->first = list->last = sn;
     } else {
@@ -138,7 +138,7 @@ static snode *sn_add(snlist *list, snode *sn, pnode *pn, snode *slist)
  */
 static void sn_del(snlist *list, snode *sn)
 {
-    list->snc->del(sn);
+    delete sn;
 }
 
 /*
@@ -158,7 +158,11 @@ static void sn_clear(snlist *list)
 
 # define STRCHUNKSZ	256
 
-class strpchunk : public Chunk<String*, STRCHUNKSZ> {
+struct strptr : public ChunkAllocated {
+    String *str;
+};
+
+class strpchunk : public Chunk<strptr, STRCHUNKSZ> {
 public:
     /*
      * NAME:		~strpchunk()
@@ -172,8 +176,8 @@ public:
      * NAME:		item()
      * DESCRIPTION:	dereference strings when iterating through items
      */
-    virtual bool item(String **str) {
-	str_del(*str);
+    virtual bool item(strptr *str) {
+	str_del(str->str);
 	return TRUE;
     }
 };
@@ -188,13 +192,17 @@ static void sc_add(strpchunk **c, String *str)
 	*c = new strpchunk;
     }
 
-    str_ref(*(*c)->alloc() = str);
+    str_ref((chunknew (**c) strptr)->str = str);
 }
 
 
 # define ARRCHUNKSZ	256
 
-class arrpchunk : public Chunk<Array*, ARRCHUNKSZ> {
+struct arrptr : public ChunkAllocated {
+    Array *arr;
+};
+
+class arrpchunk : public Chunk<arrptr, ARRCHUNKSZ> {
 public:
     /*
      * NAME:		~arrpchunk()
@@ -208,8 +216,8 @@ public:
      * NAME:		item()
      * DESCRIPTION:	dereference arrays when iterating through items
      */
-    virtual bool item(Array **arr) {
-	arr_del(*arr);
+    virtual bool item(arrptr *arr) {
+	arr_del(arr->arr);
 	return TRUE;
     }
 };
@@ -224,7 +232,7 @@ static void ac_add(arrpchunk **c, Array *arr)
 	*c = new arrpchunk;
     }
 
-    arr_ref(*(*c)->alloc() = arr);
+    arr_ref((chunknew (**c) arrptr)->arr = arr);
 }
 
 

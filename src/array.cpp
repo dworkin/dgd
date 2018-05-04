@@ -27,7 +27,7 @@
 
 # define ARR_CHUNK	128
 
-struct arrh {
+struct arrh : public ChunkAllocated {
     arrh *next;			/* next in hash table chain */
     Array *arr;			/* array entry */
     Uint index;			/* building index */
@@ -35,7 +35,7 @@ struct arrh {
 
 # define MELT_CHUNK	128
 
-struct mapelt {
+struct mapelt : public ChunkAllocated {
     Uint hashval;		/* hash value of index */
     bool add;			/* new element? */
     Value idx;			/* index */
@@ -54,7 +54,7 @@ struct maphash {
 
 # define ABCHUNKSZ	32
 
-struct arrbak {
+struct arrbak : public ChunkAllocated {
     Array *arr;			/* array backed up */
     unsigned short size;	/* original size (of mapping) */
     Value *original;		/* original elements */
@@ -90,7 +90,7 @@ public:
 	    *ac = new abchunk;
 	}
 
-	ab = (*ac)->alloc();
+	ab = chunknew (**ac) arrbak;
 	ab->arr = a;
 	ab->size = size;
 	ab->original = elts;
@@ -155,7 +155,7 @@ public:
 			    i_del_value(&e->val);
 			}
 			n = e->next;
-			echunk.del(e);
+			delete e;
 			--i;
 		    }
 		}
@@ -218,7 +218,7 @@ Array *arr_alloc(unsigned int size)
 {
     Array *a;
 
-    a = achunk.alloc();
+    a = chunknew (achunk) Array;
     a->size = size;
     a->hashmod = FALSE;
     a->elts = (Value *) NULL;
@@ -317,7 +317,7 @@ void arr_del(Array *a)
 			    i_del_value(&e->val);
 			}
 			n = e->next;
-			echunk.del(e);
+			delete e;
 			--i;
 		    }
 		}
@@ -325,7 +325,7 @@ void arr_del(Array *a)
 	    }
 
 	    prev = a->prev;
-	    achunk.del(a);
+	    delete a;
 	    a = prev;
 	} while (a != (Array *) NULL);
 
@@ -373,7 +373,7 @@ void arr_freelist(Array *alist)
 			}
 		    }
 		    n = e->next;
-		    echunk.del(e);
+		    delete e;
 		    --i;
 		}
 	    }
@@ -381,7 +381,7 @@ void arr_freelist(Array *alist)
 	}
 
 	prev = a->prev;
-	achunk.del(a);
+	delete a;
 	a = prev;
     } while (a != alist);
 }
@@ -422,7 +422,7 @@ Uint arr_put(Array *a, Uint idx)
     /*
      * Add a new entry to the hash table.
      */
-    *h = hchunk.alloc();
+    *h = chunknew (hchunk) arrh;
     (*h)->next = (arrh *) NULL;
     arr_ref((*h)->arr = a);
     (*h)->index = idx;
@@ -1242,7 +1242,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    echunk.del(e);
+			    delete e;
 			    continue;
 			}
 			break;
@@ -1258,7 +1258,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    echunk.del(e);
+			    delete e;
 			    continue;
 			}
 			break;
@@ -1273,7 +1273,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->idx, &nil_value);
 			    }
 			    *p = e->next;
-			    echunk.del(e);
+			    delete e;
 			    continue;
 			}
 			break;
@@ -1289,7 +1289,7 @@ static void map_dehash(Dataspace *data, Array *m, bool clean)
 				d_assign_elt(data, m, &e->val, &nil_value);
 			    }
 			    *p = e->next;
-			    echunk.del(e);
+			    delete e;
 			    continue;
 			}
 			break;
@@ -1386,7 +1386,7 @@ void map_rmhash(Array *m)
 	for (i = m->hashed->size, t = m->hashed->table; i > 0; t++) {
 	    for (e = *t; e != (mapelt *) NULL; e = n) {
 		n = e->next;
-		echunk.del(e);
+		delete e;
 		--i;
 	    }
 	}
@@ -1735,7 +1735,7 @@ static mapelt *map_grow(Dataspace *data, Array *m, Uint hashval, bool add)
     }
     h->size++;
 
-    e = echunk.alloc();
+    e = chunknew (echunk) mapelt;
     e->hashval = hashval;
     e->add = FALSE;
     e->idx = nil_value;
@@ -1845,7 +1845,7 @@ Value *map_index(Dataspace *data, Array *m, Value *val, Value *elt,
 		    }
 
 		    *p = e->next;
-		    echunk.del(e);
+		    delete e;
 		    m->hashed->size--;
 
 		    if (!add) {

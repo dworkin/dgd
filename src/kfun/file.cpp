@@ -507,15 +507,19 @@ FUNCDEF("restore_object", kf_restore_object, pt_restore_object, 0)
 # else
 # define ACHUNKSZ	16
 
-class vchunk : public Chunk<Value, ACHUNKSZ> {
+struct saveval : public ChunkAllocated {
+    Value val;
+};
+
+class vchunk : public Chunk<saveval, ACHUNKSZ> {
 public:
     /*
      * NAME:		item()
      * DESCRIPTION:	iterate through items until the right one is found
      */
-    virtual bool item(Value *v) {
+    virtual bool item(saveval *v) {
 	if (--count == 0) {
-	    found = v;
+	    found = &v->val;
 	    return FALSE;
 	}
 	return TRUE;
@@ -552,7 +556,7 @@ static void ac_put(restcontext *x, short type, Array *a)
 {
     Value *v;
 
-    v = x->alist.alloc();
+    v = &(chunknew (x->alist) saveval)->val;
     v->type = type;
     v->u.array = a;
     x->narrays++;

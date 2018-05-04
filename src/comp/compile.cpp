@@ -38,14 +38,14 @@
 # define COND_CHUNK	16
 # define COND_BMAP	BMAP(MAX_LOCALS)
 
-struct cond {
+struct cond : public ChunkAllocated {
     cond *prev;			/* surrounding conditional */
     Uint init[COND_BMAP];	/* initialize variable bitmap */
 };
 
 # define BLOCK_CHUNK	16
 
-struct block {
+struct block : public ChunkAllocated {
     int vindex;			/* variable index */
     int nvars;			/* # variables in this block */
     block *prev;		/* surrounding block */
@@ -78,7 +78,7 @@ static void cond_new(cond *c2)
 {
     cond *c;
 
-    c = cchunk.alloc();
+    c = chunknew (cchunk) cond;
     c->prev = thiscond;
     if (c2 != (cond *) NULL) {
 	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
@@ -98,7 +98,7 @@ static void cond_del()
 
     c = thiscond;
     thiscond = c->prev;
-    cchunk.del(c);
+    delete c;
 }
 
 /*
@@ -136,7 +136,7 @@ static void block_new()
 {
     block *b;
 
-    b = bchunk.alloc();
+    b = chunknew (bchunk) block;
     if (thisblock == (block *) NULL) {
 	cond_new((cond *) NULL);
 	b->vindex = 0;
@@ -204,7 +204,7 @@ static void block_del(bool keep)
     if (thisblock == (block *) NULL) {
 	cond_del();
     }
-    bchunk.del(f);
+    delete f;
 }
 
 /*
@@ -281,7 +281,7 @@ static void block_clear()
 
 # define LOOP_CHUNK	16
 
-struct loop {
+struct loop : public ChunkAllocated {
     char type;			/* case label type */
     bool brk;			/* seen any breaks? */
     bool cont;			/* seen any continues? */
@@ -306,7 +306,7 @@ static loop *loop_new(loop *prev)
 {
     loop *l;
 
-    l = lchunk.alloc();
+    l = chunknew (lchunk) loop;
     l->brk = FALSE;
     l->cont = FALSE;
     l->nesting = nesting;
@@ -324,7 +324,7 @@ static loop *loop_del(loop *l)
 
     f = l;
     l = l->prev;
-    lchunk.del(f);
+    delete f;
     return l;
 }
 

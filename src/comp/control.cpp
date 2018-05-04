@@ -97,7 +97,8 @@ static void oh_clear()
 
 # define VFH_CHUNK	64
 
-struct vfh : public Hashtab::Entry { /* variable/function hash table */
+/* variable/function hash table */
+struct vfh : public Hashtab::Entry, public ChunkAllocated {
     String *str;		/* name string */
     oh *ohash;			/* controlling object hash table entry */
     String *cvstr;		/* class variable string */
@@ -129,7 +130,7 @@ static void vfh_new(String *str, oh *ohash, unsigned short ct,
 {
     vfh *h;
 
-    h = vchunk.alloc();
+    h = chunknew (vchunk) vfh;
     h->next = *addr;
     *addr = h;
     h->name = str->text;
@@ -784,18 +785,22 @@ bool ctrl_inherit(Frame *f, char *from, Object *obj, String *label, int priv)
 
 # define STRING_CHUNK	64
 
-static class strchunk : public Chunk<String*, STRING_CHUNK> {
+struct strptr : public ChunkAllocated {
+    String *str;
+};
+
+static class strchunk : public Chunk<strptr, STRING_CHUNK> {
 public:
     /*
      * NAME:		item()
      * DESCRIPTION:	copy or dereference when iterating through items
      */
-    virtual bool item(String **s) {
+    virtual bool item(strptr *s) {
 	if (copy != (String **) NULL) {
-	    *--copy = *s;
-	    strsize += (*s)->len;
+	    *--copy = s->str;
+	    strsize += s->str->len;
 	} else {
-	    str_del(*s);
+	    str_del(s->str);
 	}
 	return TRUE;
     }
@@ -808,7 +813,7 @@ public:
 	copy = s;
 	strsize = 0;
 	items();
-	Chunk<String*, STRING_CHUNK>::clean();
+	Chunk<strptr, STRING_CHUNK>::clean();
 	return strsize;
     }
 
@@ -820,7 +825,7 @@ public:
     {
 	copy = (String **) NULL;
 	items();
-	Chunk<String*, STRING_CHUNK>::clean();
+	Chunk<strptr, STRING_CHUNK>::clean();
     }
 
 private:
@@ -830,16 +835,20 @@ private:
 
 # define FCALL_CHUNK	64
 
-static class fcchunk : public Chunk<char*, FCALL_CHUNK> {
+struct charptr : public ChunkAllocated {
+    char *name;
+};
+
+static class fcchunk : public Chunk<charptr, FCALL_CHUNK> {
 public:
     /*
      * NAME:		item()
      * DESCRIPTION:	build function call table when iterating through items
      */
-    virtual bool item(char **name) {
+    virtual bool item(charptr *name) {
 	vfh *h;
 
-	h = *(vfh **) ftab->lookup(*name, FALSE);
+	h = *(vfh **) ftab->lookup(name->name, FALSE);
 	*--fcalls = h->index;
 	*--fcalls = h->ohash->index;
 	return TRUE;
@@ -1044,7 +1053,7 @@ long ctrl_dstring(String *str)
 	/*
 	 * it is really a new string
 	 */
-	str_ref(*schunk.alloc() = str);
+	str_ref((chunknew (schunk) strptr)->str = str);
 	if (nstrs == USHRT_MAX) {
 	    c_error("too many string constants");
 	}
@@ -1493,7 +1502,7 @@ unsigned short ctrl_gencall(long call)
 	/*
 	 * add to function call table
 	 */
-	*fchunk.alloc() = name;
+	(chunknew (fchunk) charptr)->name = name;
 	if (nifcalls + nfcalls == UINDEX_MAX) {
 	    c_error("too many function calls");
 	}

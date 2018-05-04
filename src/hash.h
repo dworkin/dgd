@@ -22,6 +22,8 @@
 
 class Hashtab : public Allocated {
 public:
+    virtual ~Hashtab() { }
+
     static Hashtab *create(unsigned int size, unsigned int maxlen, bool mem);
 
     static unsigned char hashchar(char c) {
@@ -30,7 +32,7 @@ public:
     static unsigned short hashstr(const char *str, unsigned int len);
     static unsigned short hashmem(const char *mem, unsigned int len);
 
-    struct Entry : public Allocated {
+    struct Entry {
 	Entry *next;		/* next entry in hash table */
 	const char *name;	/* string to use in hashing */
     };

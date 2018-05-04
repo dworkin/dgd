@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2016 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -85,7 +85,7 @@ void mc_define(const char *name, const char *replace, int narg)
 	    warning("macro %s redefined", name);
 	}
     } else {
-	*m = mchunk.alloc();
+	*m = chunknew (mchunk) macro;
 	(*m)->next = (Hashtab::Entry *) NULL;
 	(*m)->name = strcpy(ALLOC(char, strlen(name) + 1), name);
 	(*m)->replace = (char *) NULL;
@@ -120,7 +120,7 @@ void mc_undef(char *name)
 	    mac->replace = (char *) NULL;
 	}
 	*m = (macro *) mac->next;
-	mchunk.del(mac);
+	delete mac;
     }
 }
 

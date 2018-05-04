@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,7 +33,7 @@
 
 # define TCHUNKSZ	8
 
-struct tbuf {
+struct tbuf : public ChunkAllocated {
     String **strs;		/* input buffer array */
     int nstr;			/* number of input buffers */
     char *buffer;		/* token buffer */
@@ -89,7 +89,7 @@ static void push(macro *mc, char *buffer, unsigned int buflen, bool eof)
 {
     tbuf *tb;
 
-    tb = tchunk.alloc();
+    tb = chunknew (tchunk) tbuf;
     tb->strs = (String **) NULL;
     tb->nstr = 0;
     tb->p = tb->buffer = buffer;
@@ -139,7 +139,7 @@ static void pop()
     }
     tbuffer = tb->prev;
 
-    tchunk.del(tb);
+    delete tb;
 }
 
 /*
