@@ -218,7 +218,7 @@ static void ext_string_putval(Value *val, String *str)
 static String *ext_string_new(Dataspace *data, char *text, int len)
 {
     UNREFERENCED_PARAMETER(data);
-    return str_new(text, len);
+    return String::create(text, len);
 }
 
 /*

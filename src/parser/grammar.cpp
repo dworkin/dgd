@@ -498,13 +498,13 @@ public:
      */
     virtual bool item(rule *rl) {
 	if (rl->symb != (String *) NULL) {
-	    str_del(rl->symb);
+	    rl->symb->del();
 	}
 	if (rl->type == RULE_REGEXP && rl->u.rgx != (String *) NULL) {
-	    str_del(rl->u.rgx);
+	    rl->u.rgx->del();
 	}
 	if (rl->func != (String *) NULL) {
-	    str_del(rl->func);
+	    rl->func->del();
 	}
 	return TRUE;
     }
@@ -608,7 +608,7 @@ static String *make_grammar(rule *rgxlist, rule *strlist, rule *estrlist, rule *
     rulesym *rs;
     int n;
 
-    gram = str_new((char *) NULL, size);
+    gram = String::create((char *) NULL, size);
 
     /* header */
     p = gram->text;
@@ -801,7 +801,8 @@ String *parse_grammar(String *gram)
 	    } else {
 		/* new rule */
 		rl = rl_new(&rlchunks, RULE_REGEXP);
-		str_ref(rl->symb = str_new(buffer, (long) buflen));
+		rl->symb = String::create(buffer, buflen);
+		rl->symb->ref();
 		rl->name = rl->symb->text;
 		rl->next = *r;
 		*r = rl;
@@ -814,7 +815,8 @@ String *parse_grammar(String *gram)
 
 	    switch (gramtok(gram, &glen, buffer, &buflen)) {
 	    case TOK_REGEXP:
-		str_ref(rl->u.rgx = str_new(buffer, (long) buflen));
+		rl->u.rgx = String::create(buffer, buflen);
+		rl->u.rgx->ref();
 		(*r)->num++;
 		(*r)->len += buflen;
 		size += buflen + 1;
@@ -888,7 +890,8 @@ String *parse_grammar(String *gram)
 	    } else {
 		/* new rule */
 		rl = rl_new(&rlchunks, RULE_PROD);
-		str_ref(rl->symb = str_new(buffer, (long) buflen));
+		rl->symb = String::create(buffer, buflen);
+		rl->symb->ref();
 		rl->name = rl->symb->text;
 		rl->next = *r;
 		*r = rl;
@@ -913,7 +916,8 @@ String *parse_grammar(String *gram)
 		    if (*r == (rule *) NULL) {
 			/* new unknown rule */
 			rl = rl_new(&rlchunks, RULE_UNKNOWN);
-			str_ref(rl->symb = str_new(buffer, (long) buflen));
+			rl->symb = String::create(buffer, buflen);
+			rl->symb->ref();
 			rl->name = rl->symb->text;
 			rl->next = *r;
 			*r = rl;
@@ -948,7 +952,8 @@ String *parse_grammar(String *gram)
 		    if (*r == (rule *) NULL) {
 			/* new string rule */
 			rl = rl_new(&rlchunks, RULE_STRING);
-			str_ref(rl->symb = str_new(buffer, (long) buflen));
+			rl->symb = String::create(buffer, buflen);
+			rl->symb->ref();
 			rl->name = rl->symb->text;
 			rl->next = *r;
 			*r = rl;
@@ -983,7 +988,8 @@ String *parse_grammar(String *gram)
 				ruleno);
 			goto err;
 		    }
-		    str_ref(rrl->func = str_new(buffer, (long) buflen));
+		    rrl->func = String::create(buffer, buflen);
+		    rrl->func->ref();
 		    len += buflen + 1;
 
 		    token = gramtok(gram, &glen, buffer, &buflen);

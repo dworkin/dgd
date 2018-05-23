@@ -638,7 +638,7 @@ static void o_delete(Object *o, Frame *f)
     oplane->destruct = o->index;
 
     /* callback to the system */
-    PUSH_STRVAL(f, str_new(NULL, strlen(o->name) + 1L));
+    PUSH_STRVAL(f, String::create(NULL, strlen(o->name) + 1L));
     f->sp->u.string->text[0] = '/';
     strcpy(f->sp->u.string->text + 1, o->name);
     PUSH_INTVAL(f, ctrl->compiled);

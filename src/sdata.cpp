@@ -819,9 +819,10 @@ String *d_get_strconst(Control *ctrl, int inherit, Uint idx)
     if (ctrl->strings[idx] == (String *) NULL) {
 	String *str;
 
-	str = str_alloc(ctrl->stext + ctrl->ssindex[idx],
-			(long) ctrl->sslength[idx]);
-	str_ref(ctrl->strings[idx] = str);
+	str = String::alloc(ctrl->stext + ctrl->ssindex[idx],
+			    ctrl->sslength[idx]);
+	ctrl->strings[idx] = str;
+	str->ref();
     }
 
     return ctrl->strings[idx];
@@ -891,7 +892,8 @@ dvardef *d_get_vardefs(Control *ctrl)
 	for (n = ctrl->nclassvars, vars = ctrl->vardefs; n != 0; vars++) {
 	    if ((vars->type & T_TYPE) == T_CLASS) {
 		inherit = FETCH1U(p);
-		str_ref(*strs = d_get_strconst(ctrl, inherit, FETCH2U(p, u)));
+		*strs = d_get_strconst(ctrl, inherit, FETCH2U(p, u));
+		(*strs)->ref();
 		--n;
 	    }
 	    strs++;
@@ -1057,9 +1059,8 @@ static String *d_get_string(Dataspace *data, Uint idx)
 	    }
 	}
 
-	str = str_alloc(data->stext + data->ssindex[idx],
-			(long) data->sstrings[idx].len);
-	str->ref = 0;
+	str = String::alloc(data->stext + data->ssindex[idx],
+			    data->sstrings[idx].len);
 	p = data->plane;
 
 	do {
@@ -1071,7 +1072,8 @@ static String *d_get_string(Dataspace *data, Uint idx)
 		}
 	    }
 	    s = &p->strings[idx];
-	    str_ref(s->str = str);
+	    s->str = str;
+	    s->str->ref();
 	    s->data = data;
 	    s->ref = data->sstrings[idx].ref;
 	    p = p->prev;
@@ -1165,7 +1167,8 @@ static void d_get_values(Dataspace *data, svalue *sv, Value *v, int n)
 	    break;
 
 	case T_STRING:
-	    str_ref(v->u.string = d_get_string(data, sv->u.string));
+	    v->u.string = d_get_string(data, sv->u.string);
+	    v->u.string->ref();
 	    break;
 
 	case T_FLOAT:
@@ -1627,7 +1630,7 @@ static void d_count(savedata *save, Value *v, Uint n)
     while (n > 0) {
 	switch (v->type) {
 	case T_STRING:
-	    if (str_put(v->u.string, save->nstr) == save->nstr) {
+	    if (v->u.string->put(save->nstr) == save->nstr) {
 		save->nstr++;
 		save->strsize += v->u.string->len;
 	    }
@@ -1698,7 +1701,7 @@ static void d_save(savedata *save, svalue *sv, Value *v, unsigned short n)
 	    break;
 
 	case T_STRING:
-	    i = str_put(v->u.string, save->nstr);
+	    i = v->u.string->put(save->nstr);
 	    sv->oindex = 0;
 	    sv->u.string = i;
 	    if (save->sstrings[i].ref++ == 0) {
@@ -1850,7 +1853,7 @@ static void d_free_values(Dataspace *data)
 	for (i = data->nstrings, s = data->base.strings; i > 0; --i, s++) {
 	    if (s->str != (String *) NULL) {
 		s->str->primary = (strref *) NULL;
-		str_del(s->str);
+		s->str->del();
 	    }
 	}
 
@@ -2027,7 +2030,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 	 * count the number and sizes of strings and arrays
 	 */
 	arr_merge();
-	str_merge();
+	String::merge();
 	save.narr = 0;
 	save.nstr = 0;
 	save.arrsize = 0;
@@ -2152,7 +2155,7 @@ static bool d_save_dataspace(Dataspace *data, bool swap)
 
 	/* clear merge tables */
 	arr_clear();
-	str_clear();
+	String::clear();
 
 	if (swap) {
 	    text = save.stext;
@@ -2850,7 +2853,7 @@ void d_free_control(Control *ctrl)
 	strs = ctrl->strings;
 	for (i = ctrl->nstrings; i > 0; --i) {
 	    if (*strs != (String *) NULL) {
-		str_del(*strs);
+		(*strs)->del();
 	    }
 	    strs++;
 	}
@@ -2860,7 +2863,7 @@ void d_free_control(Control *ctrl)
 	strs = ctrl->cvstrings;
 	for (i = ctrl->nvardefs; i > 0; --i) {
 	    if (*strs != (String *) NULL) {
-		str_del(*strs);
+		(*strs)->del();
 	    }
 	    strs++;
 	}

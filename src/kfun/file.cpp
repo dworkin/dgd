@@ -61,7 +61,7 @@ int kf_editor(Frame *f, int nargs, kfunc *kf)
 	*--f->sp = nil_value;
     } else {
 	str = ed_command(obj, f->sp->u.string->text);
-	str_del(f->sp->u.string);
+	f->sp->u.string->del();
 	if (str != (String *) NULL) {
 	    PUT_STR(f->sp, str);
 	} else {
@@ -95,7 +95,7 @@ int kf_query_editor(Frame *f, int n, kfunc *kf)
 	obj = OBJR(f->sp->oindex);
 	if ((obj->flags & O_SPECIAL) == O_EDITOR) {
 	    status = ed_status(obj);
-	    PUT_STRVAL(f->sp, str_new(status, (long) strlen(status)));
+	    PUT_STRVAL(f->sp, String::create(status, strlen(status)));
 	    return 0;
 	}
     } else {
@@ -495,7 +495,7 @@ int kf_save_object(Frame *f, int n, kfunc *kf)
 	error("Cannot rename temporary save file to \"/%s\"", file);
     }
 
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     *f->sp = nil_value;
     return 0;
 }
@@ -705,7 +705,7 @@ static char *restore_string(restcontext *x, char *buf, Value *val)
 	*q++ = *p;
     }
 
-    PUT_STRVAL_NOREF(val, str_new(buf, (intptr_t) q - (intptr_t) buf));
+    PUT_STRVAL_NOREF(val, String::create(buf, (intptr_t) q - (intptr_t) buf));
     return p + 1;
 }
 
@@ -908,7 +908,7 @@ int kf_restore_object(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 2000);	/* arbitrary */
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, 0);
     fd = P_open(x.file, O_RDONLY | O_BINARY, 0);
     if (fd < 0) {
@@ -1147,12 +1147,12 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
     }
 
     i_add_ticks(f, 1000 + (Int) 2 * f->sp->u.string->len);
-    str_del(f->sp[1].u.string);
+    f->sp[1].u.string->del();
     PUT_INTVAL(&f->sp[1], 0);
 
     fd = P_open(file, O_CREAT | O_WRONLY | O_BINARY, 0664);
     if (fd < 0) {
-	str_del((f->sp++)->u.string);
+	(f->sp++)->u.string->del();
 	return 0;
     }
 
@@ -1177,7 +1177,7 @@ int kf_write_file(Frame *f, int nargs, kfunc *kf)
     }
     P_close(fd);
 
-    str_del((f->sp++)->u.string);
+    (f->sp++)->u.string->del();
     return 0;
 }
 # endif
@@ -1217,7 +1217,7 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
 	return 1;
     }
 
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     *f->sp = nil_value;
 
     if (size < 0) {
@@ -1273,7 +1273,7 @@ int kf_read_file(Frame *f, int nargs, kfunc *kf)
     P_close(fd);
     i_add_ticks(f, 2 * size);
 
-    PUT_STRVAL(f->sp, str_new((char *) buf, size));
+    PUT_STRVAL(f->sp, String::create((char *) buf, size));
     if (buf != (char *) NULL) {
 	FREE(buf);
     }
@@ -1310,8 +1310,8 @@ int kf_rename_file(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, (P_access(from, W_OK) >= 0 && P_access(to, F_OK) < 0 &&
 		       P_rename(from, to) >= 0));
     return 0;
@@ -1345,7 +1345,7 @@ int kf_remove_file(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, (P_access(file, W_OK) >= 0 && P_unlink(file) >= 0));
     return 0;
 }
@@ -1377,7 +1377,7 @@ int kf_make_dir(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, (P_mkdir(file, 0775) >= 0));
     return 0;
 }
@@ -1410,7 +1410,7 @@ int kf_remove_dir(Frame *f, int n, kfunc *kf)
     }
 
     i_add_ticks(f, 1000);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, (P_rmdir(file) >= 0));
     return 0;
 }
@@ -1543,7 +1543,8 @@ static bool getinfo(char *path, char *file, fileinfo *finf)
 	return FALSE;
     }
 
-    str_ref(finf->name = str_new(file, (long) strlen(file)));
+    finf->name = String::create(file, strlen(file));
+    finf->name->ref();
     if ((sbuf.st_mode & S_IFMT) == S_IFDIR) {
 	finf->size = -2;	/* special value for directory */
     } else {
@@ -1642,7 +1643,7 @@ int kf_get_dir(Frame *f, int nargs, kfunc *kf)
     }
 
     /* prepare return value */
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_ARRVAL(f->sp, a = arr_new(f->data, 3L));
     PUT_ARRVAL(&a->elts[0], arr_new(f->data, (long) nfiles));
     PUT_ARRVAL(&a->elts[1], arr_new(f->data, (long) nfiles));

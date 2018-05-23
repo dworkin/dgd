@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -179,13 +179,13 @@ opt_inherit_label
 
 ident
 	: IDENTIFIER
-		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
+		{ $$ = node_str(String::create(yytext, yyleng)); }
 	;
 
 composite_string
 	: string_exp
 	| composite_string '+' string_exp
-		{ $$ = node_str(str_add($1->l.string, $3->l.string)); }
+		{ $$ = node_str($1->l.string->add($3->l.string)); }
 	;
 
 string_exp
@@ -196,7 +196,7 @@ string_exp
 
 string
 	: STRING_CONST
-		{ $$ = node_str(str_new(yytext, (long) yyleng)); }
+		{ $$ = node_str(String::create(yytext, yyleng)); }
 	;
 
 data_declaration
@@ -270,7 +270,7 @@ formal_declaration
 		  $$->mod |= $1->mod;
 		  $$->sclass = $1->sclass;
 		  if ($$->sclass != (String *) NULL) {
-		      str_ref($$->sclass);
+		      $$->sclass->ref();
 		  }
 		}
 	| ident {
@@ -329,8 +329,8 @@ type_specifier
 		{ $$ = node_type(T_MAPPING, (String *) NULL); }
 	| FUNCTION
 		{
-		  $$ = node_str(str_new("/" BIPREFIX "function",
-					BIPREFIXLEN + 9));
+		  $$ = node_str(String::create("/" BIPREFIX "function",
+					       BIPREFIXLEN + 9));
 		  $$ = node_type(T_CLASS, c_objecttype($$));
 		}
 	| MIXED	{ $$ = node_type(T_MIXED, (String *) NULL); }
@@ -643,7 +643,7 @@ primary_p1_exp
 			      $$ = node_mon(N_CAST, $$->mod, $$);
 			      $$->sclass = $$->l.left->sclass;
 			      if ($$->sclass != (String *) NULL) {
-				  str_ref($$->sclass);
+				  $$->sclass->ref();
 			      }
 			  }
 		      }
@@ -664,7 +664,7 @@ primary_p1_exp
 			  $$ = node_mon(N_CAST, $$->mod, $$);
 			  $$->sclass = $$->l.left->sclass;
 			  if ($$->sclass != (String *) NULL) {
-			      str_ref($$->sclass);
+			      $$->sclass->ref();
 			  }
 		      }
 		  } else {
@@ -1098,13 +1098,13 @@ static node *cast(node *n, node *type)
 	    case N_INT:
 		/* cast int constant to string */
 		sprintf(buffer, "%ld", (long) n->l.number);
-		return node_str(str_new(buffer, (long) strlen(buffer)));
+		return node_str(String::create(buffer, strlen(buffer)));
 
 	    case N_FLOAT:
 		/* cast float constant to string */
 		NFLT_GET(n, flt);
 		flt.ftoa(buffer);
-		return node_str(str_new(buffer, (long) strlen(buffer)));
+		return node_str(String::create(buffer, strlen(buffer)));
 
 	    default:
 		if (n->mod == T_INT || n->mod == T_FLOAT || n->mod == T_MIXED) {
@@ -1139,17 +1139,17 @@ static node *cast(node *n, node *type)
 	    }
 	    n->sclass = type->sclass;
 	    if (n->sclass != (String *) NULL) {
-		str_ref(n->sclass);
+		n->sclass->ref();
 	    }
 	}
-    } else if (type->mod == T_CLASS && str_cmp(type->sclass, n->sclass) != 0) {
+    } else if (type->mod == T_CLASS && type->sclass->cmp(n->sclass) != 0) {
 	/*
 	 * cast to different object class
 	 */
 	n = node_mon(N_CAST, type->mod, n);
 	n->sclass = type->sclass;
 	if (n->sclass != (String *) NULL) {
-	    str_ref(n->sclass);
+	    n->sclass->ref();
 	}
     }
     return n;
@@ -1170,8 +1170,7 @@ static node *idx(node *n1, node *n2)
 	    c_error("string index out of range");
 	} else {
 	    n2->l.number =
-		    UCHAR(n1->l.string->text[str_index(n1->l.string,
-						       (long) n2->l.number)]);
+		    UCHAR(n1->l.string->text[n1->l.string->index(n2->l.number)]);
 	}
 	return n2;
     }
@@ -1190,7 +1189,7 @@ static node *idx(node *n1, node *n2)
 		n2 = node_mon(N_CAST, type, node_bin(N_INDEX, type, n1, n2));
 		n2->sclass = n1->sclass;
 		if (n2->sclass != (String *) NULL) {
-		    str_ref(n2->sclass);
+		    n2->sclass->ref();
 		}
 		return n2;
 	    }
@@ -1232,7 +1231,7 @@ static node *range(node *n1, node *n2, node *n3)
 	if (from < 0 || from > to + 1 || to >= n1->l.string->len) {
 	    c_error("invalid string range");
 	} else {
-	    return node_str(str_range(n1->l.string, (long) from, (long) to));
+	    return node_str(n1->l.string->range(from, to));
 	}
     }
 
@@ -1469,7 +1468,7 @@ static node *add(int op, node *n1, node *n2, const char *name)
     }
     if (n1->type == N_STR && n2->type == N_STR) {
 	/* s + s */
-	return node_str(str_add(n1->l.string, n2->l.string));
+	return node_str(n1->l.string->add(n2->l.string));
     }
 
     if (n1->mod == T_OBJECT || n1->mod == T_CLASS) {
@@ -1671,16 +1670,16 @@ static node *rel(int op, node *n1, node *n2, const char *name)
 	/* s . s */
 	switch (op) {
 	case N_GE:
-	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) >= 0));
+	    return node_int((Int) (n1->l.string->cmp(n2->l.string) >= 0));
 
 	case N_GT:
-	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) > 0));
+	    return node_int((Int) (n1->l.string->cmp(n2->l.string) > 0));
 
 	case N_LE:
-	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) <= 0));
+	    return node_int((Int) (n1->l.string->cmp(n2->l.string) <= 0));
 
 	case N_LT:
-	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) < 0));
+	    return node_int((Int) (n1->l.string->cmp(n2->l.string) < 0));
 	}
     }
 
@@ -1734,7 +1733,7 @@ static node *eq(node *n1, node *n2)
     case N_STR:
 	if (n2->type == N_STR) {
 	    /* s == s */
-	    return node_int((Int) (str_cmp(n1->l.string, n2->l.string) == 0));
+	    return node_int((Int) (n1->l.string->cmp(n2->l.string) == 0));
 	}
 	if (n2->type == nil_node && n2->l.number == 0) {
 	    /* s == nil */
@@ -1934,13 +1933,13 @@ static node *quest(node *n1, node *n2, node *n3)
 	if (n2->sclass == (String *) NULL) {
 	    n1->sclass = n3->sclass;
 	    if (n1->sclass != (String *) NULL) {
-		str_ref(n1->sclass);
+		n1->sclass->ref();
 	    }
 	} else if (n3->sclass == (String *) NULL ||
-		   str_cmp(n2->sclass, n3->sclass) == 0) {
+		   n2->sclass->cmp(n3->sclass) == 0) {
 	    n1->sclass = n2->sclass;
 	    if (n1->sclass != (String *) NULL) {
-		str_ref(n1->sclass);
+		n1->sclass->ref();
 	    }
 	} else {
 	    /* downgrade to object */
@@ -1972,7 +1971,7 @@ static node *assign(node *n1, node *n2)
 		    n = node_mon(N_TYPE, type, (node *) NULL);
 		    n->sclass = n2->sclass;
 		    if (n->sclass != (String *) NULL) {
-			str_ref(n->sclass);
+			n->sclass->ref();
 		    }
 		    n1->r.right = n;
 		}
@@ -2002,7 +2001,7 @@ static node *assign(node *n1, node *n2)
 	n1 = node_bin(N_ASSIGN, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
 	if (n1->sclass != (String *) NULL) {
-	    str_ref(n1->sclass);
+	    n1->sclass->ref();
 	}
 	return n1;
     } else {
@@ -2017,11 +2016,11 @@ static node *assign(node *n1, node *n2)
 	    } else if ((n1->mod != T_MIXED && n2->mod == T_MIXED) ||
 		       (n1->mod == T_CLASS &&
 			(n2->mod != T_CLASS ||
-			 str_cmp(n1->sclass, n2->sclass) != 0))) {
+			 n1->sclass->cmp(n2->sclass) != 0))) {
 		n2 = node_mon(N_CAST, n1->mod, n2);
 		n2->sclass = n1->sclass;
 		if (n2->sclass != (String *) NULL) {
-		    str_ref(n2->sclass);
+		    n2->sclass->ref();
 		}
 	    }
 	}
@@ -2029,7 +2028,7 @@ static node *assign(node *n1, node *n2)
 	n2 = node_bin(N_ASSIGN, n1->mod, n1, n2);
 	n2->sclass = n1->sclass;
 	if (n2->sclass != (String *) NULL) {
-	    str_ref(n2->sclass);
+	    n2->sclass->ref();
 	}
 	return n2;
     }
@@ -2050,7 +2049,7 @@ static node *comma(node *n1, node *n2)
 	n1 = node_bin(N_COMMA, n2->mod, n1, n2);
 	n1->sclass = n2->sclass;
 	    if (n1->sclass != (String *) NULL) {
-		str_ref(n1->sclass);
+		n1->sclass->ref();
 	    }
 	return n1;
     }

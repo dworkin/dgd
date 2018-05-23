@@ -704,7 +704,7 @@ void co_call(Frame *f)
 		    /* function exists */
 		    i_del_value(f->sp++);
 		}
-		str_del((f->sp++)->u.string);
+		(f->sp++)->u.string->del();
 		ec_pop();
 	    } catch (...) { }
 	    endtask();

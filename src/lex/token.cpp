@@ -125,7 +125,7 @@ static void pop()
 	    FREE(tb->buffer);
 	} else if (tb->prev != (tbuf *) NULL) {
 	    for (;;) {
-		str_del(tb->strs[0]);
+		tb->strs[0]->del();
 		if (tb->nstr == 0) {
 		    break;
 		}
@@ -323,7 +323,7 @@ static int gc()
 		    return '\\';
 		} else if (tb->nstr != 0) {
 		    if (tb->prev != (tbuf *) NULL) {
-			str_del(tb->strs[0]);
+			tb->strs[0]->del();
 		    }
 		    --(tb->strs);
 		    --(tb->nstr);

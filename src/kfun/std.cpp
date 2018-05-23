@@ -99,7 +99,7 @@ int kf_compile_object(Frame *f, int nargs, kfunc *kf)
 	AFREE(strs - nargs);
 	i_pop(f, nargs);
     }
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_OBJVAL(f->sp, obj);
 
     return 0;
@@ -163,7 +163,7 @@ int kf_call_other(Frame *f, int nargs, kfunc *kf)
     } else {
 	val = &nil_value;	/* function doesn't exist */
     }
-    str_del((f->sp++)->u.string);
+    (f->sp++)->u.string->del();
     i_del_value(f->sp);
     *f->sp = *val;
     return 0;
@@ -307,7 +307,8 @@ int kf_previous_program(Frame *f, int nargs, kfunc *kf)
 
     prog = i_prev_program(f, (int) f->sp->u.number);
     if (prog != (char *) NULL) {
-	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(prog) + 1L));
+	PUT_STRVAL(f->sp,
+		   str = String::create((char *) NULL, strlen(prog) + 1L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, prog);
     } else {
@@ -481,12 +482,14 @@ int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
     }
     if (f->lwobj == (Array *) NULL) {
 	name = OBJR(f->oindex)->objName(buffer);
-	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 1));
+	PUT_STRVAL(f->sp + 1,
+		   str = String::create((char *) NULL, strlen(name) + 1L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
 	name = OBJR(f->lwobj->elts[0].oindex)->objName(buffer);
-	PUT_STRVAL(f->sp + 1, str = str_new((char *) NULL, strlen(name) + 4));
+	PUT_STRVAL(f->sp + 1,
+		   str = String::create((char *) NULL, strlen(name) + 4L));
 	strcpy(str->text + 1, name);
 	strcpy(str->text + str->len - 3, "#-1");
     }
@@ -500,7 +503,7 @@ int kf_instanceof(register Frame *f, int nargs, kfunc *kf)
     } else {
 	instance = i_instancestr(oindex, buffer);
     }
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, instance);
     return 0;
 }
@@ -529,7 +532,8 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
 
     if (f->sp->type == T_OBJECT) {
 	name = OBJR(f->sp->oindex)->objName(buffer);
-	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 1L));
+	PUT_STRVAL(f->sp,
+		   str = String::create((char *) NULL, strlen(name) + 1L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
@@ -542,7 +546,8 @@ int kf_object_name(Frame *f, int nargs, kfunc *kf)
 	    /* builtin type */
 	    name = Object::builtinName(f->sp->u.array->elts[0].u.number);
 	}
-	PUT_STRVAL(f->sp, str = str_new((char *) NULL, strlen(name) + 4L));
+	PUT_STRVAL(f->sp,
+		   str = String::create((char *) NULL, strlen(name) + 4L));
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
 	strcpy(str->text + str->len - 3, "#-1");
@@ -572,13 +577,13 @@ int kf_find_object(Frame *f, int n, kfunc *kf)
 
     if (path_string(path, f->sp->u.string->text,
 		    f->sp->u.string->len) == (char *) NULL) {
-	str_del(f->sp->u.string);
+	f->sp->u.string->del();
 	*f->sp = nil_value;
 	return 0;
     }
     i_add_ticks(f, 2);
     obj = Object::find(path, OACC_READ);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     if (obj != (Object *) NULL) {
 	PUT_OBJVAL(f->sp, obj);
     } else {
@@ -622,14 +627,14 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
     } else {
 	/* no user-probeable functions within (right?) */
 	arr_del((f->sp++)->u.array);
-	str_del(f->sp->u.string);
+	f->sp->u.string->del();
 	*f->sp = nil_value;
 	return 0;
     }
     f->sp++;
     symb = ctrl_symb(obj->control(), f->sp->u.string->text,
 		     f->sp->u.string->len);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
 
     if (symb != (dsymbol *) NULL) {
 	Object *o;
@@ -641,7 +646,8 @@ int kf_function_object(Frame *f, int nargs, kfunc *kf)
 	     * function exists and is callable
 	     */
 	    name = o->name;
-	    PUT_STR(f->sp, str_new((char *) NULL, strlen(name) + 1L));
+	    PUT_STR(f->sp,
+		    String::create((char *) NULL, strlen(name) + 1L));
 	    f->sp->u.string->text[0] = '/';
 	    strcpy(f->sp->u.string->text + 1, name);
 	    return 0;
@@ -784,7 +790,7 @@ int kf_strlen(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     len = f->sp->u.string->len;
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, len);
     return 0;
 }
@@ -1066,7 +1072,7 @@ int kf_send_message(Frame *f, int n, kfunc *kf)
 	}
     }
     if (f->sp->type == T_STRING) {
-	str_del(f->sp->u.string);
+	f->sp->u.string->del();
     }
     PUT_INTVAL(f->sp, num);
     return 0;
@@ -1098,7 +1104,7 @@ int kf_send_datagram(Frame *f, int n, kfunc *kf)
 	    num = comm_udpsend(obj, f->sp->u.string);
 	}
     }
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, num);
     return 0;
 }
@@ -1128,7 +1134,7 @@ int kf_datagram_challenge(Frame *f, int n, kfunc *kf)
 	    comm_challenge(obj, f->sp->u.string);
 	}
     }
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     *f->sp = nil_value;
     return 0;
 }
@@ -1267,7 +1273,7 @@ int kf_call_out(Frame *f, int nargs, kfunc *kf)
 	i_pop(f, nargs - 1);
 	handle = 0;
     }
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, handle);
 
     return 0;
@@ -1404,7 +1410,7 @@ int kf_connect(Frame *f, int nargs, kfunc *kf)
     addr = f->sp->u.string->text;
 
     comm_connect(f, obj, addr, proto, port);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     *f->sp = nil_value;
     return 0;
 }

@@ -30,62 +30,71 @@ struct strh : public Hashtab::Entry, public ChunkAllocated {
     Uint index;			/* building index */
 };
 
+static Chunk<String, STR_CHUNK> schunk;
 static Chunk<strh, STR_CHUNK> hchunk;
 
 static Hashtab *sht;		/* string merge table */
 
 
-/*
- * NAME:	String->alloc()
- * DESCRIPTION:	Create a new string. The text can be a NULL pointer, in which
- *		case it must be filled in later.
- */
-String *str_alloc(const char *text, long len)
+String::String(const char *text, long len)
 {
-    String *s;
-    String dummy;
-
-    /* allocate string struct & text in one block */
-    s = (String *) ALLOC(char, dummy.text - (char *) &dummy + 1 + len);
+    this->text = ALLOC(char, len + 1);
     if (text != (char *) NULL && len > 0) {
-	memcpy(s->text, text, (unsigned int) len);
+	memcpy(this->text, text, (unsigned int) len);
     }
-    s->text[s->len = len] = '\0';
-    s->ref = 0;
-    s->primary = (strref *) NULL;
+    this->text[this->len = len] = '\0';
+    refCount = 0;
+    primary = (strref *) NULL;
+}
 
-    return s;
+String::~String()
+{
+    FREE(text);
 }
 
 /*
- * NAME:	String->new()
- * DESCRIPTION:	create a new string with size check
+ * Create a new string. The text can be a NULL pointer, in which case it must
+ * be filled in later.
  */
-String *str_new(const char *text, long len)
+String *String::alloc(const char *text, long len)
+{
+    return chunknew (schunk) String(text, len);
+}
+
+/*
+ * create a new string with size check
+ */
+String *String::create(const char *text, long len)
 {
     if (len > (unsigned long) MAX_STRLEN) {
 	error("String too long");
     }
-    return str_alloc(text, len);
+    return alloc(text, len);
 }
 
 /*
- * NAME:	String->del()
- * DESCRIPTION:	remove a reference from a string. If there are none left, the
- *		string is removed.
+ * Remove a reference from a string. If there are none left, the string is
+ * removed.
  */
-void str_del(String *s)
+void String::del()
 {
-    if (--(s->ref) == 0) {
-	FREE(s);
+    if (--refCount == 0) {
+	delete this;
     }
 }
 
 /*
- * NAME:	String->merge()
- * DESCRIPTION:	prepare string merge
+ * remove string chunks from memory
  */
-void str_merge()
+void String::clean()
+{
+    schunk.clean();
+}
+
+/*
+ * prepare string merge
+ */
+void String::merge()
 {
     sht = Hashtab::create(STRMERGETABSZ, STRMERGEHASHSZ, FALSE);
 }
@@ -94,16 +103,16 @@ void str_merge()
  * NAME:	String->put()
  * DESCRIPTION:	put a string in the string merge table
  */
-Uint str_put(String *str, Uint n)
+Uint String::put(Uint n)
 {
     strh **h;
 
-    h = (strh **) sht->lookup(str->text, FALSE);
+    h = (strh **) sht->lookup(text, FALSE);
     for (;;) {
 	/*
 	 * The hasher doesn't handle \0 in strings, and so may not have
 	 * found the proper string. Follow the hash table chain until
-	 * the end is reached, or until a match is found using str_cmp().
+	 * the end is reached, or until a match is found using cmp().
 	 */
 	if (*h == (strh *) NULL) {
 	    strh *s;
@@ -113,12 +122,12 @@ Uint str_put(String *str, Uint n)
 	     */
 	    s = *h = chunknew (hchunk) strh;
 	    s->next = (Hashtab::Entry *) NULL;
-	    s->name = str->text;
-	    s->str = str;
+	    s->name = text;
+	    s->str = this;
 	    s->index = n;
 
 	    return n;
-	} else if (str_cmp(str, (*h)->str) == 0) {
+	} else if (cmp((*h)->str) == 0) {
 	    /* already in the hash table */
 	    return (*h)->index;
 	}
@@ -127,10 +136,9 @@ Uint str_put(String *str, Uint n)
 }
 
 /*
- * NAME:	String->clear()
- * DESCRIPTION:	clear the string merge table
+ * clear the string merge table
  */
-void str_clear()
+void String::clear()
 {
     if (sht != (Hashtab *) NULL) {
 	delete sht;
@@ -142,59 +150,58 @@ void str_clear()
 
 
 /*
- * NAME:	String->cmp()
- * DESCRIPTION:	compare two strings
+ * compare two strings
  */
-int str_cmp(String *s1, String *s2)
+int String::cmp(String *str)
 {
-    if (s1 == s2) {
+    if (this == str) {
 	return 0;
     } else {
-	ssizet len;
+	ssizet length;
 	char *p, *q;
 	long cmplen;
 	int cmp;
 
-	cmplen = (long) s1->len - s2->len;
+	cmplen = (long) len - str->len;
 	if (cmplen > 0) {
 	    /* s1 longer */
 	    cmplen = 1;
-	    len = s2->len;
+	    length = str->len;
 	} else {
-	    /* s2 longer or equally long */
+	    /* str longer or equally long */
 	    if (cmplen < 0) {
 		cmplen = -1;
 	    }
-	    len = s1->len;
+	    length = len;
 	}
-	for (p = s1->text, q = s2->text; len > 0 && *p == *q; p++, q++, --len) ;
+	for (p = text, q = str->text; length > 0 && *p == *q;
+	     p++, q++, --length)
+	    ;
 	cmp = UCHAR(*p) - UCHAR(*q);
 	return (cmp != 0) ? cmp : cmplen;
     }
 }
 
 /*
- * NAME:	String->add()
- * DESCRIPTION:	add two strings
+ * add two strings
  */
-String *str_add(String *s1, String *s2)
+String *String::add(String *str)
 {
     String *s;
 
-    s = str_new((char *) NULL, (long) s1->len + s2->len);
-    memcpy(s->text, s1->text, s1->len);
-    memcpy(s->text + s1->len, s2->text, s2->len);
+    s = create((char *) NULL, (long) len + str->len);
+    memcpy(s->text, text, len);
+    memcpy(s->text + len, str->text, str->len);
 
     return s;
 }
 
 /*
- * NAME:	String->index()
- * DESCRIPTION:	index a string
+ * index a string
  */
-ssizet str_index(String *s, long l)
+ssizet String::index(long l)
 {
-    if (l < 0 || l >= (long) s->len) {
+    if (l < 0 || l >= (long) len) {
 	error("String index out of range");
     }
 
@@ -202,25 +209,23 @@ ssizet str_index(String *s, long l)
 }
 
 /*
- * NAME:	String->ckrange()
- * DESCRIPTION:	check a string subrange
+ * check a string subrange
  */
-void str_ckrange(String *s, long l1, long l2)
+void String::checkRange(long l1, long l2)
 {
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
 	error("Invalid string range");
     }
 }
 
 /*
- * NAME:	String->range()
- * DESCRIPTION:	return a subrange of a string
+ * return a subrange of a string
  */
-String *str_range(String *s, long l1, long l2)
+String *String::range(long l1, long l2)
 {
-    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) s->len) {
+    if (l1 < 0 || l1 > l2 + 1 || l2 >= (long) len) {
 	error("Invalid string range");
     }
 
-    return str_new(s->text + l1, l2 - l1 + 1);
+    return create(text + l1, l2 - l1 + 1);
 }

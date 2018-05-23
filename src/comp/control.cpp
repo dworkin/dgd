@@ -113,9 +113,9 @@ public:
      * DESCRIPTION:	dereference strings when iterating through items
      */
     virtual bool item(vfh *h) {
-	str_del(h->str);
+	h->str->del();
 	if (h->cvstr != (String *) NULL) {
-	    str_del(h->cvstr);
+	    h->cvstr->del();
 	}
 	return TRUE;
     }
@@ -134,11 +134,12 @@ static void vfh_new(String *str, oh *ohash, unsigned short ct,
     h->next = *addr;
     *addr = h;
     h->name = str->text;
-    str_ref(h->str = str);
+    h->str = str;
+    h->str->ref();
     h->ohash = ohash;
     h->cvstr = cvstr;
     if (cvstr != (String *) NULL) {
-	str_ref(cvstr);
+	cvstr->ref();
     }
     h->ct = ct;
     h->index = idx;
@@ -172,7 +173,8 @@ static void lab_new(String *str, oh *ohash)
     lab *l;
 
     l = ALLOC(lab, 1);
-    str_ref(l->str = str);
+    l->str = str;
+    l->str->ref();
     l->ohash = ohash;
     l->next = labels;
     labels = l;
@@ -204,7 +206,7 @@ static void lab_clear()
 
     l = labels;
     while (l != (lab *) NULL) {
-	str_del(l->str);
+	l->str->del();
 	f = l;
 	l = l->next;
 	FREE(f);
@@ -291,8 +293,7 @@ static bool cmp_class(Control *ctrl1, Uint s1, Control *ctrl2, Uint s2)
     if (ctrl2->compiled == 0 && (s2 >> 16) == ninherits) {
 	return FALSE;	/* one is new, and therefore different */
     }
-    return !str_cmp(d_get_strconst(ctrl1, s1 >> 16, s1 & 0xffff),
-		    d_get_strconst(ctrl2, s2 >> 16, s2 & 0xffff));
+    return !d_get_strconst(ctrl1, s1 >> 16, s1 & 0xffff)->cmp(d_get_strconst(ctrl2, s2 >> 16, s2 & 0xffff));
 }
 
 /*
@@ -800,7 +801,7 @@ public:
 	    *--copy = s->str;
 	    strsize += s->str->len;
 	} else {
-	    str_del(s->str);
+	    s->str->del();
 	}
 	return TRUE;
     }
@@ -985,7 +986,7 @@ void ctrl_create()
 	  ALLOC(dinherit, newctrl->ninherits = ninherits + 1);
     newctrl->imap = ALLOC(char, (ninherits + 2) * (ninherits + 1) / 2);
     nvars = 0;
-    str_merge();
+    String::merge();
 
     /*
      * Fix function offsets and variable offsets, and collect all string
@@ -1012,7 +1013,7 @@ void ctrl_create()
 
 	for (n = ctrl->nstrings; n > 0; ) {
 	    --n;
-	    str_put(d_get_strconst(ctrl, i, n), ((Uint) count << 16) | n);
+	    d_get_strconst(ctrl, i, n)->put(((Uint) count << 16) | n);
 	}
 	inh->priv = (ohash->priv != 0);
 	inh++;
@@ -1048,12 +1049,13 @@ long ctrl_dstring(String *str)
 {
     Uint desc, ndesc;
 
-    desc = str_put(str, ndesc = ((Uint) ninherits << 16) | nstrs);
+    desc = str->put(ndesc = ((Uint) ninherits << 16) | nstrs);
     if (desc == ndesc) {
 	/*
 	 * it is really a new string
 	 */
-	str_ref((chunknew (schunk) strptr)->str = str);
+	(chunknew (schunk) strptr)->str = str;
+	str->ref();
 	if (nstrs == USHRT_MAX) {
 	    c_error("too many string constants");
 	}
@@ -1129,11 +1131,11 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
 			(char *) memcpy(REALLOC(proto2, char, 0, i), proto, i);
 		functions[fdef].func.sclass = PROTO_CLASS(proto);
 		if (functions[fdef].cfstr != (String *) NULL) {
-		    str_del(functions[fdef].cfstr);
+		    functions[fdef].cfstr->del();
 		}
 		functions[fdef].cfstr = sclass;
 		if (sclass != (String *) NULL) {
-		    str_ref(sclass);
+		    sclass->ref();
 		}
 	    }
 	    return;
@@ -1217,7 +1219,7 @@ void ctrl_dproto(String *str, char *proto, String *sclass)
     functions[nfdefs].proto = (char *) memcpy(ALLOC(char, i), proto, i);
     functions[nfdefs].cfstr = sclass;
     if (sclass != (String *) NULL) {
-	str_ref(sclass);
+	sclass->ref();
     }
     functions[nfdefs].progsize = 0;
     progsize += i;
@@ -1287,7 +1289,7 @@ void ctrl_dvar(String *str, unsigned int sclass, unsigned int type, String *cvst
     var->type = type;
     cvstrings[nvars++] = cvstr;
     if (cvstr != (String *) NULL) {
-	str_ref(cvstr);
+	cvstr->ref();
 	s = ctrl_dstring(cvstr);
 	p = classvars + nclassvars++ * 3;
 	*p++ = s >> 16;
@@ -1712,7 +1714,7 @@ static void ctrl_mkvars()
 	    memcpy(newctrl->cvstrings, cvstrings, nvars * sizeof(String*));
 	    for (i = nvars, s = newctrl->cvstrings; i != 0; --i, s++) {
 		if (*s != (String *) NULL) {
-		    str_ref(*s);
+		    (*s)->ref();
 		}
 	    }
 	    newctrl->classvars = ALLOC(char, nclassvars * 3);
@@ -2046,7 +2048,7 @@ void ctrl_clear()
 	d_del_control(newctrl);
 	newctrl = (Control *) NULL;
     }
-    str_clear();
+    String::clear();
     schunk.clean();
     fchunk.clean();
     if (functions != (cfunc *) NULL) {
@@ -2059,7 +2061,7 @@ void ctrl_clear()
 		FREE(f->prog);
 	    }
 	    if (f->cfstr != (String *) NULL) {
-		str_del(f->cfstr);
+		f->cfstr->del();
 	    }
 	}
 	FREE(functions);
@@ -2075,7 +2077,7 @@ void ctrl_clear()
 
 	for (i = nvars, s = cvstrings; i != 0; --i, s++) {
 	    if (*s != (String *) NULL) {
-		str_del(*s);
+		(*s)->del();
 	    }
 	}
 	FREE(cvstrings);
@@ -2122,12 +2124,11 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 		/*
 		 * put var names from old control block in string merge table
 		 */
-		str_merge();
+		String::merge();
 		ctrl2 = OBJR(inh2->oindex)->control();
 		v = d_get_vardefs(ctrl2);
 		for (k = 0; k < ctrl2->nvardefs; k++, v++) {
-		    str_put(d_get_strconst(ctrl2, v->inherit, v->index),
-			    ((Uint) k << 8) | v->type);
+		    d_get_strconst(ctrl2, v->inherit, v->index)->put(((Uint) k << 8) | v->type);
 		}
 
 		/*
@@ -2135,13 +2136,12 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 		 */
 		for (k = 0, v = d_get_vardefs(ctrl); k < ctrl->nvardefs;
 		     k++, v++) {
-		    n = str_put(d_get_strconst(ctrl, v->inherit, v->index),
-				(Uint) 0);
+		    n = d_get_strconst(ctrl, v->inherit, v->index)->put(0);
 		    if (n != 0 &&
 			(((n & 0xff) == v->type &&
 			  ((n & T_TYPE) != T_CLASS ||
-			   str_cmp(ctrl->cvstrings[k],
-				   ctrl2->cvstrings[n >> 8]) == 0)) ||
+			   ctrl->cvstrings[k]->cmp(ctrl2->cvstrings[n >> 8])
+								    == 0)) ||
 			 ((v->type & T_REF) <= (n & T_REF) &&
 			  (v->type & T_TYPE) == T_MIXED))) {
 			*vmap = inh2->varoffset + (n >> 8);
@@ -2162,7 +2162,7 @@ unsigned short *ctrl_varmap(Control *octrl, Control *nctrl)
 		    }
 		    vmap++;
 		}
-		str_clear();
+		String::clear();
 		break;
 	    }
 
@@ -2268,7 +2268,7 @@ Array *ctrl_undefined(Dataspace *data, Control *ctrl)
 		    unsigned short len;
 
 		    len = strlen(obj->name);
-		    str = str_new((char *) NULL, len + 1L);
+		    str = String::create((char *) NULL, len + 1L);
 		    str->text[0] = '/';
 		    memcpy(str->text + 1, obj->name, len);
 		    PUT_STRVAL(v, str);

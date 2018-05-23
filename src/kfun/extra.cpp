@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -124,7 +124,7 @@ int kf_ctime(Frame *f, int n, kfunc *kf)
 
     i_add_ticks(f, 5);
     P_ctime(buf, f->sp->u.number);
-    PUT_STRVAL(f->sp, str_new(buf, 24L));
+    PUT_STRVAL(f->sp, String::create(buf, 24));
 
     return 0;
 }
@@ -167,7 +167,7 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	 */
 	a = arr_new(f->data, (long) len);
 	for (v = a->elts; len > 0; v++, --len) {
-	    PUT_STRVAL(v, str_new(p, 1L));
+	    PUT_STRVAL(v, String::create(p, 1));
 	    p++;
 	}
     } else {
@@ -207,7 +207,7 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	while (len > slen) {
 	    if (memcmp(p, s, slen) == 0) {
 		/* separator found */
-		PUT_STRVAL(v, str_new(p - size, (long) size));
+		PUT_STRVAL(v, String::create(p - size, size));
 		v++;
 		p += slen;
 		len -= slen;
@@ -225,11 +225,11 @@ int kf_explode(Frame *f, int n, kfunc *kf)
 	    p += len;
 	}
 	/* final array element */
-	PUT_STRVAL(v, str_new(p - size, (long) size));
+	PUT_STRVAL(v, String::create(p - size, size));
     }
 
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_ARRVAL(f->sp, a);
     i_add_ticks(f, (Int) 2 * a->size);
 
@@ -274,7 +274,7 @@ int kf_implode(Frame *f, int n, kfunc *kf)
 	    }
 	    len += v->u.string->len;
 	}
-	str = str_new((char *) NULL, len);
+	str = String::create((char *) NULL, len);
 
 	/* create the imploded string */
 	p = str->text;
@@ -290,10 +290,10 @@ int kf_implode(Frame *f, int n, kfunc *kf)
 	memcpy(p, v->u.string->text, v->u.string->len);
     } else {
 	/* zero size array gives zero size string */
-	str = str_new((char *) NULL, 0L);
+	str = String::create((char *) NULL, 0);
     }
 
-    str_del((f->sp++)->u.string);
+    (f->sp++)->u.string->del();
     arr_del(f->sp->u.array);
     PUT_STRVAL(f->sp, str);
     return 0;
@@ -650,14 +650,14 @@ no_match:
 	    break;
 
 	case T_STRING:
-	    PUT_STRVAL(elts,
-		       str_new(results[size].u.text, results[size].o.len));
+	    PUT_STRVAL(elts, String::create(results[size].u.text,
+					    results[size].o.len));
 	    break;
 	}
     }
 
-    str_del(top[0].u.string);
-    str_del(top[1].u.string);
+    top[0].u.string->del();
+    top[1].u.string->del();
     memmove(f->sp + 2, f->sp, (top - f->sp) * sizeof(Value));
     f->sp++;
 
@@ -703,8 +703,8 @@ int kf_parse_string(Frame *f, int nargs, kfunc *kf)
     }
 
     a = ps_parse_string(f, f->sp[1].u.string, f->sp->u.string, maxalt);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
 
     if (a != (Array *) NULL) {
 	/* return parse tree */
@@ -800,7 +800,7 @@ int kf_hash_crc16(Frame *f, int nargs, kfunc *kf)
 	for (len = f->sp[i].u.string->len; len != 0; --len) {
 	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
 	}
-	str_del(f->sp[i].u.string);
+	f->sp[i].u.string->del();
     }
     crc = (crc >> 8) + (crc << 8);
 
@@ -913,7 +913,7 @@ int kf_hash_crc32(Frame *f, int nargs, kfunc *kf)
 	for (len = f->sp[i].u.string->len; len != 0; --len) {
 	    crc = (crc >> 8) ^ crctab[UCHAR(crc ^ *p++)];
 	}
-	str_del(f->sp[i].u.string);
+	f->sp[i].u.string->del();
     }
     crc ^= 0xffffffffL;
 
@@ -961,7 +961,7 @@ void kf_xcrypt(Frame *f, int nargs, Value *val)
     s[2] = '\0';
 
     i_add_ticks(f, 900);
-    str = str_new(P_crypt(f->sp[nargs - 1].u.string->text, s), 13);
+    str = String::create(P_crypt(f->sp[nargs - 1].u.string->text, s), 13);
     PUT_STRVAL_NOREF(val, str);
 }
 
@@ -1124,7 +1124,7 @@ static String *hash_md5_end(Uint *digest, char *buffer, unsigned int bufsz, Uint
 	buffer[bufsz + 2] = digest[i] >> 16;
 	buffer[bufsz + 3] = digest[i] >> 24;
     }
-    return str_new(buffer, 16L);
+    return String::create(buffer, 16);
 }
 
 /*
@@ -1247,7 +1247,7 @@ static String *hash_sha1_end(Uint *digest, char *buffer, unsigned int bufsz, Uin
 	buffer[bufsz + 2] = digest[i] >> 8;
 	buffer[bufsz + 3] = digest[i];
     }
-    return str_new(buffer, 20L);
+    return String::create(buffer, 20);
 }
 
 /*
@@ -1403,9 +1403,9 @@ int kf_asn_add(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_add(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1431,9 +1431,9 @@ int kf_asn_sub(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_sub(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1459,8 +1459,8 @@ int kf_asn_cmp(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     cmp = asn_cmp(f, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_INTVAL(f->sp, cmp);
 
     return 0;
@@ -1486,9 +1486,9 @@ int kf_asn_mult(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_mult(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1514,9 +1514,9 @@ int kf_asn_div(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_div(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1542,8 +1542,8 @@ int kf_asn_mod(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_mod(f, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1569,9 +1569,9 @@ int kf_asn_pow(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_pow(f, f->sp[2].u.string, f->sp[1].u.string, f->sp[0].u.string);
-    str_del((f->sp++)->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1597,9 +1597,9 @@ int kf_asn_lshift(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_lshift(f, f->sp[2].u.string, f->sp[1].u.number, f->sp->u.string);
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     f->sp += 2;
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1626,7 +1626,7 @@ int kf_asn_rshift(Frame *f, int n, kfunc *kf)
 
     str = asn_rshift(f, f->sp[1].u.string, f->sp->u.number);
     f->sp++;
-    str_del(f->sp->u.string);
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1652,8 +1652,8 @@ int kf_asn_and(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_and(f, f->sp[1].u.string, f->sp->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1679,8 +1679,8 @@ int kf_asn_or(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_or(f, f->sp[1].u.string, f->sp->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;
@@ -1706,8 +1706,8 @@ int kf_asn_xor(Frame *f, int n, kfunc *kf)
     UNREFERENCED_PARAMETER(kf);
 
     str = asn_xor(f, f->sp[1].u.string, f->sp->u.string);
-    str_del((f->sp++)->u.string);
-    str_del(f->sp->u.string);
+    (f->sp++)->u.string->del();
+    f->sp->u.string->del();
     PUT_STR(f->sp, str);
 
     return 0;

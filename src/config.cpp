@@ -1722,7 +1722,7 @@ bool conf_statusi(Frame *f, Int idx, Value *v)
     switch (idx) {
     case 0:	/* ST_VERSION */
 	version = VERSION;
-	PUT_STRVAL(v, str_new(version, (long) strlen(version)));
+	PUT_STRVAL(v, String::create(version, strlen(version)));
 	break;
 
     case 1:	/* ST_STARTTIME */

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -439,7 +439,7 @@ String *P_encrypt_des_key(Frame *f, String *keystr)
     i_add_ticks(f, 60);
 
     P_setkey(keys, keystr->text);
-    str = str_new((char *) NULL, 32L * sizeof(Uint));
+    str = String::create((char *) NULL, 32 * sizeof(Uint));
     p = str->text;
     key = keys;
     for (i = 31; i >= 0; --i) {
@@ -471,7 +471,7 @@ String *P_decrypt_des_key(Frame *f, String *keystr)
     i_add_ticks(f, 60);
 
     P_setkey(keys, keystr->text);
-    str = str_new((char *) NULL, 32L * sizeof(Uint));
+    str = String::create((char *) NULL, 32 * sizeof(Uint));
     p = str->text;
     key = keys + 32;
     for (i = 15; i >= 0; --i) {
@@ -515,7 +515,7 @@ String *P_encrypt_des(Frame *f, String *keystr, String *mesg)
 	    error("Out of ticks");
 	}
     }
-    str = str_new((char *) NULL, (long) (mesg->len + 7) & ~7);
+    str = String::create((char *) NULL, ((long) mesg->len + 7) & ~7);
 
     p = keystr->text;
     key = keys;

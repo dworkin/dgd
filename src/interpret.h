@@ -140,12 +140,15 @@
 				 (v)->u.objcnt = (fl).low)
 # define GET_FLT(v, fl)		((fl).high = (v)->oindex,		\
 				 (fl).low = (v)->u.objcnt)
-# define PUSH_STRVAL(f, s)	(str_ref((--(f)->sp)->u.string = (s)),	\
+# define PUSH_STRVAL(f, s)	((--(f)->sp)->u.string = (s),		\
+				 (f)->sp->u.string->ref(),		\
 				 (f)->sp->type = T_STRING)
-# define PUT_STRVAL(v, s)	(str_ref((v)->u.string = (s)),		\
+# define PUT_STRVAL(v, s)	((v)->u.string = (s),			\
+				 (v)->u.string->ref(),			\
 				 (v)->type = T_STRING)
 # define PUT_STRVAL_NOREF(v, s)	((v)->u.string = (s), (v)->type = T_STRING)
-# define PUT_STR(v, s)		(str_ref((v)->u.string = (s)))
+# define PUT_STR(v, s)		((v)->u.string = (s),			\
+				 (v)->u.string->ref())
 # define PUSH_OBJVAL(f, o)	((--(f)->sp)->oindex = (o)->index,	\
 				 (f)->sp->u.objcnt = (o)->count,	\
 				 (f)->sp->type = T_OBJECT)

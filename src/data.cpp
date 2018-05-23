@@ -142,7 +142,7 @@ static void del_lhs(Dataspace *data, Value *lhs)
 	    if (--(str->primary->ref) == 0) {
 		str->primary->str = (String *) NULL;
 		str->primary = (strref *) NULL;
-		str_del(str);
+		str->del();
 		data->plane->schange++;	/* last reference removed */
 	    }
 	    data->plane->flags |= MOD_STRINGREF;
@@ -298,7 +298,7 @@ static void d_free_call_out(Dataspace *data, unsigned int handle)
 	/* fall through */
     case 0:
 	del_lhs(data, &v[0]);
-	str_del(v[0].u.string);
+	v[0].u.string->del();
 	break;
     }
     v[0] = nil_value;
@@ -492,7 +492,7 @@ void d_new_plane(Dataspace *data, Int level)
 	    if (t->str != (String *) NULL) {
 		*s = *t;
 		s->str->primary = s;
-		str_ref(s->str);
+		s->str->ref();
 	    } else {
 		s->str = (String *) NULL;
 	    }
@@ -767,7 +767,7 @@ void d_commit_plane(Int level, Value *retval)
 		for (s = p->prev->strings, i = data->nstrings; i != 0; s++, --i)
 		{
 		    if (s->str != (String *) NULL) {
-			str_del(s->str);
+			s->str->del();
 		    }
 		}
 		FREE(p->prev->strings);
@@ -897,7 +897,7 @@ void d_discard_plane(Int level)
 	    /* delete new string refs */
 	    for (s = p->strings, i = data->nstrings; i != 0; s++, --i) {
 		if (s->str != (String *) NULL) {
-		    str_del(s->str);
+		    s->str->del();
 		}
 	    }
 	    FREE(p->strings);

@@ -19,7 +19,7 @@
 
 # include "host.h"
 
-struct String;
+class String;
 struct Array;
 class Object;
 struct Value;

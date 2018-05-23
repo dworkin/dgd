@@ -102,6 +102,7 @@ void endtask()
 	 */
 	d_swapout(1);
 	arr_freeall();
+	String::clean();
 	m_purge();
 	Object::swap = FALSE;
     }

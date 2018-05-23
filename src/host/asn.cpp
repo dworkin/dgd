@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -639,7 +639,7 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     while (num[size - 1] == 0) {
 	if (--size == 0) {
 	    /* +0, -0 */
-	    return str_new("\0", 1L);
+	    return String::create("\0", 1);
 	}
     }
 
@@ -672,7 +672,8 @@ static String *asi_numtostr(Uint *num, Uint size, bool minus)
     }
     len = (len >> 3) + 1;
 
-    str = str_new((char *) NULL, (long) size * sizeof(Uint) + len + prefix);
+    str = String::create((char *) NULL,
+			 (long) size * sizeof(Uint) + len + prefix);
     text = str->text;
     if (prefix) {
 	/* extra sign indicator */
@@ -1834,7 +1835,7 @@ String *asn_and(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = str_new((char *) NULL, (long) i + j);
+    str = String::create((char *) NULL, (long) i + j);
     p = str->text;
     if (q[0] & 0x80) {
 	while (j != 0) {
@@ -1878,7 +1879,7 @@ String *asn_or(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = str_new((char *) NULL, (long) i + j);
+    str = String::create((char *) NULL, (long) i + j);
     p = str->text;
     if (q[0] & 0x80) {
 	r += j;
@@ -1922,7 +1923,7 @@ String *asn_xor(Frame *f, String *s1, String *s2)
 	r = s1->text;
     }
     i_add_ticks(f, 4 + ((i + j) >> 4));
-    str = str_new((char *) NULL, (long) i + j);
+    str = String::create((char *) NULL, (long) i + j);
     p = str->text;
     if (q[0] & 0x80) {
 	while (j != 0) {

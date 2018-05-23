@@ -162,7 +162,7 @@ static void block_goto(node *g)
 
     for (b = thisblock; b != (block *) NULL; b = b->prev) {
 	for (l = b->labels; l != (node *) NULL; l = l->r.right) {
-	    if (str_cmp(l->l.string, g->l.string) == 0) {
+	    if (l->l.string->cmp(g->l.string) == 0) {
 		g->mod -= l->mod;
 		g->r.right = l;
 		return;
@@ -441,10 +441,10 @@ bool c_inherit(char *file, node *label, int priv)
 	ncomp = ncompiled;
 
 	/* get associated object */
-	PUSH_STRVAL(f, str_new(NULL, strlen(current->file) + 1L));
+	PUSH_STRVAL(f, String::create(NULL, strlen(current->file) + 1L));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
-	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
+	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	PUSH_INTVAL(f, priv);
 
 	strncpy(buf, file, STRINGSZ - 1);
@@ -703,7 +703,7 @@ String *c_objecttype(node *n)
 
 	f = current->frame;
 	p = tk_filename();
-	PUSH_STRVAL(f, str_new(p, strlen(p)));
+	PUSH_STRVAL(f, String::create(p, strlen(p)));
 	PUSH_STRVAL(f, n->l.string);
 	call_driver_object(f, "object_type", 2);
 	if (f->sp->type != T_STRING) {
@@ -718,7 +718,7 @@ String *c_objecttype(node *n)
 	path_resolve(path, n->l.string->text);
     }
 
-    return str_new(path, (long) strlen(path));
+    return String::create(path, strlen(path));
 }
 
 /*
@@ -1218,7 +1218,8 @@ node *c_endrlimits(node *n1, node *n2, node *n3)
 	Frame *f;
 
 	f = current->frame;
-	PUSH_STRVAL(f, str_new((char *) NULL, strlen(current->file) + 1L));
+	PUSH_STRVAL(f, String::create((char *) NULL,
+				      strlen(current->file) + 1));
 	f->sp->u.string->text[0] = '/';
 	strcpy(f->sp->u.string->text + 1, current->file);
 	call_driver_object(f, "compile_rlimits", 1);
@@ -1316,7 +1317,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
     n2 = (node **) cv2;
     if (n1[0]->l.left->type == N_STR) {
 	if (n2[0]->l.left->type == N_STR) {
-	    return str_cmp(n1[0]->l.left->l.string, n2[0]->l.left->l.string);
+	    return n1[0]->l.left->l.string->cmp(n2[0]->l.left->l.string);
 	} else {
 	    return 1;	/* str > nil */
 	}
@@ -1405,8 +1406,7 @@ node *c_endswitch(node *expr, node *stmt)
 		    } else {
 			i = (v[0]->l.left->type == nil_node);
 			for (w = v + i, i = size - i - 1; i > 0; w++, --i) {
-			    if (str_cmp(w[0]->l.left->l.string,
-					w[1]->l.left->l.string) == 0) {
+			    if (w[0]->l.left->l.string->cmp(w[1]->l.left->l.string) == 0) {
 				c_error("duplicate case labels in switch");
 				break;
 			    }
@@ -1640,7 +1640,7 @@ node *c_label(node *n)
 
     for (b = thisblock; b != (block *) NULL; b = b->prev) {
 	for (l = b->labels; l != (node *) NULL; l = l->r.right) {
-	    if (str_cmp(n->l.string, l->l.string) == 0) {
+	    if (n->l.string->cmp(l->l.string) == 0) {
 		c_error("redeclaration of label: %s", n->l.string->text);
 		return NULL;
 	    }
@@ -1741,14 +1741,14 @@ node *c_return(node *n, int typechecked)
 		    i_typename(tnbuf1, ftype), i_typename(tnbuf2, n->mod));
 	} else if ((ftype != T_MIXED && n->mod == T_MIXED) ||
 		   (ftype == T_CLASS &&
-		    (n->mod != T_CLASS || str_cmp(fclass, n->sclass) != 0))) {
+		    (n->mod != T_CLASS || fclass->cmp(n->sclass) != 0))) {
 	    /*
 	     * typecheck at runtime
 	     */
 	    n = node_mon(N_CAST, ftype, n);
 	    n->sclass = fclass;
 	    if (fclass != (String *) NULL) {
-		str_ref(fclass);
+		fclass->ref();
 	    }
 	}
     }
@@ -1931,7 +1931,7 @@ node *c_local_var(node *n)
     n = node_mon(N_LOCAL, variables[i].type, n);
     n->sclass = variables[i].cvstr;
     if (n->sclass != (String *) NULL) {
-	str_ref(n->sclass);
+	n->sclass->ref();
     }
     n->r.number = i;
     return n;
@@ -1949,7 +1949,7 @@ node *c_global_var(node *n)
     n = node_mon(N_GLOBAL, ctrl_var(n->l.string, &ref, &sclass), n);
     n->sclass = sclass;
     if (sclass != (String *) NULL) {
-	str_ref(sclass);
+	sclass->ref();
     }
     n->r.number = ref;
 
@@ -2132,7 +2132,8 @@ node *c_arrow(node *other, node *func, node *args)
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
+    return funcall(c_flookup(node_str(String::create("call_other", 10)),
+			     FALSE),
 		   node_bin(N_PAIR, 0, other, args), FALSE);
 }
 
@@ -2151,10 +2152,12 @@ node *c_address(node *func, node *args, int typechecked)
     } else {
 	args = node_bin(N_PAIR, 0, func, args);
     }
-    func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
+    func = funcall(c_flookup(node_str(String::create("new.function", 12)),
+			     FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    str_ref(func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8));
+    func->sclass = String::create(BIPREFIX "function", BIPREFIXLEN + 8);
+    func->sclass->ref();
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2184,10 +2187,12 @@ node *c_extend(node *func, node *args, int typechecked)
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    func = funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
+    func = funcall(c_flookup(node_str(String::create("extend.function", 15)),
+			     FALSE),
 		   args, FALSE);
     func->mod = T_CLASS;
-    str_ref(func->sclass = str_new(BIPREFIX "function", BIPREFIXLEN + 8));
+    func->sclass = String::create(BIPREFIX "function", BIPREFIXLEN + 8);
+    func->sclass->ref();
     return func;
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2217,7 +2222,8 @@ node *c_call(node *func, node *args, int typechecked)
     } else {
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
-    return funcall(c_flookup(node_str(str_new("call.function", 13L)), FALSE),
+    return funcall(c_flookup(node_str(String::create("call.function", 13)),
+			     FALSE),
 		   args, FALSE);
 # else
     UNREFERENCED_PARAMETER(func);
@@ -2239,7 +2245,8 @@ node *c_new_object(node *o, node *args)
     } else {
 	args = o;
     }
-    return funcall(c_flookup(node_str(str_new("new_object", 10L)), FALSE),
+    return funcall(c_flookup(node_str(String::create("new_object", 10)),
+			     FALSE),
 		   args, FALSE);
 }
 
@@ -2255,8 +2262,9 @@ node *c_instanceof(node *n, node *prog)
 	c_error("bad argument 1 for function <- (needs object)");
     }
     str = c_objecttype(prog);
-    str_del(prog->l.string);
-    str_ref(prog->l.string = str);
+    prog->l.string->del();
+    prog->l.string = str;
+    prog->l.string->ref();
     return node_bin(N_INSTANCEOF, T_INT, n, prog);
 }
 
@@ -2275,7 +2283,7 @@ node *c_checkcall(node *n, int typechecked)
 		n = node_mon(N_CAST, n->mod, n);
 		n->sclass = n->l.left->sclass;
 		if (n->sclass != (String *) NULL) {
-		    str_ref(n->sclass);
+		    n->sclass->ref();
 		}
 	    }
 	} else {
@@ -2554,12 +2562,12 @@ void c_error(const char *format, ...)
 
 	f = current->frame;
 	fname = tk_filename();
-	PUSH_STRVAL(f, str_new(fname, strlen(fname)));
+	PUSH_STRVAL(f, String::create(fname, strlen(fname)));
 	PUSH_INTVAL(f, tk_line());
 	va_start(args, format);
 	vsprintf(buf, format, args);
 	va_end(args);
-	PUSH_STRVAL(f, str_new(buf, (long) strlen(buf)));
+	PUSH_STRVAL(f, String::create(buf, strlen(buf)));
 
 	call_driver_object(f, "compile_error", 3);
 	i_del_value(f->sp++);

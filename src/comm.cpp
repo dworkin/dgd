@@ -178,7 +178,8 @@ static void addtoflush(user *usr, Array *arr)
 
     /* remember initial buffer */
     if (d_get_elts(arr)[1].type == T_STRING) {
-	str_ref(usr->outbuf = arr->elts[1].u.string);
+	usr->outbuf = arr->elts[1].u.string;
+	usr->outbuf->ref();
     }
 }
 
@@ -268,7 +269,7 @@ static user *comm_new(Frame *f, Object *obj, connection *conn, int flags)
 	m_dynamic();
 
 	arr->elts[0].u.number = CF_ECHO;
-	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
+	PUT_STRVAL_NOREF(&val, String::create(init, sizeof(init)));
 	d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     }
     nusers++;
@@ -316,7 +317,7 @@ void comm_connect(Frame *f, Object *obj, char *addr, unsigned char protocol,
 	}
     }
 
-    PUT_STRVAL_NOREF(&val, str_new((char *) host, len));
+    PUT_STRVAL_NOREF(&val, String::create((char *) host, len));
     d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     usr->flags |= CF_FLUSH;
     arr_ref(usr->extra = arr);
@@ -427,7 +428,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
 		return 0;
 	    }
 	}
-	str = str_new((char *) NULL, (long) olen + len);
+	str = String::create((char *) NULL, (long) olen + len);
 	memcpy(str->text, v->u.string->text + osdone, olen);
 	memcpy(str->text + olen, text, len);
     } else {
@@ -438,7 +439,7 @@ static int comm_write(user *usr, Object *obj, String *str, char *text,
 	}
 	usr->flags |= CF_OUTPUT;
 	if (str == (String *) NULL) {
-	    str = str_new(text, (long) len);
+	    str = String::create(text, len);
 	}
     }
 
@@ -745,7 +746,7 @@ void comm_flush()
 	    if (usr->outbuf != v[1].u.string) {
 		usr->osdone = 0;	/* new mesg before buffer drained */
 	    }
-	    str_del(usr->outbuf);
+	    usr->outbuf->del();
 	    usr->outbuf = (String *) NULL;
 	}
 	if (usr->flags & CF_OUTPUT) {
@@ -1286,7 +1287,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    p++;			/* skip \n */
 		    usr->inbufsz -= n + 1;
 
-		    PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
+		    PUSH_STRVAL(f, String::create(usr->inbuf, n));
 		    for (n = usr->inbufsz; n != 0; --n) {
 			*q++ = *p++;
 		    }
@@ -1296,7 +1297,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		     */
 		    n = usr->inbufsz;
 		    usr->inbufsz = 0;
-		    PUSH_STRVAL(f, str_new(usr->inbuf, (long) n));
+		    PUSH_STRVAL(f, String::create(usr->inbuf, n));
 		}
 		usr->flags |= CF_PROMPT;
 		if (!(usr->flags & CF_FLUSH)) {
@@ -1312,7 +1313,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 			/*
 			 * received datagram
 			 */
-			PUSH_STRVAL(f, str_new(buffer, (long) n));
+			PUSH_STRVAL(f, String::create(buffer, n));
 			this_user = obj->index;
 			if (i_call(f, obj, (Array *) NULL, "receive_datagram",
 				   16, TRUE, 1)) {
@@ -1348,7 +1349,7 @@ void comm_receive(Frame *f, Uint timeout, unsigned int mtime)
 		    continue;
 		}
 
-		PUSH_STRVAL(f, str_new(buffer, (long) n));
+		PUSH_STRVAL(f, String::create(buffer, n));
 	    }
 
 	    this_user = obj->index;
@@ -1380,7 +1381,7 @@ String *comm_ip_number(Object *obj)
     char ipnum[40];
 
     conn_ipnum(users[EINDEX(obj->etabi)].conn, ipnum);
-    return str_new(ipnum, (long) strlen(ipnum));
+    return String::create(ipnum, strlen(ipnum));
 }
 
 /*
@@ -1392,7 +1393,7 @@ String *comm_ip_name(Object *obj)
     char ipname[1024];
 
     conn_ipname(users[EINDEX(obj->etabi)].conn, ipname);
-    return str_new(ipname, (long) strlen(ipname));
+    return String::create(ipname, strlen(ipname));
 }
 
 /*

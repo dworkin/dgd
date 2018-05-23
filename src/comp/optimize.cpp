@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2017 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -355,31 +355,31 @@ static Uint opt_binconst(node **m)
     case N_STR:
 	switch (n->type) {
 	case N_ADD:
-	    node_tostr(n, str_add(n->l.left->l.string, n->r.right->l.string));
+	    node_tostr(n, n->l.left->l.string->add(n->r.right->l.string));
 	    return 1;
 
 	case N_EQ:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) == 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) == 0);
 	    break;
 
 	case N_GE:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) >= 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) >= 0);
 	    break;
 
 	case N_GT:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) > 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) > 0);
 	    break;
 
 	case N_LE:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) <= 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) <= 0);
 	    break;
 
 	case N_LT:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) < 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) < 0);
 	    break;
 
 	case N_NE:
-	    flag = (str_cmp(n->l.left->l.string, n->r.right->l.string) != 0);
+	    flag = (n->l.left->l.string->cmp(n->r.right->l.string) != 0);
 	    break;
 
 	default:
@@ -649,8 +649,8 @@ static Uint opt_binop(node **m)
 	    (n->l.left->type == N_ADD || n->l.left->type == N_SUM) &&
 	    n->l.left->r.right->type == N_STR) {
 	    /* (x + s1) + s2 */
-	    node_tostr(n->r.right, str_add(n->l.left->r.right->l.string,
-					   n->r.right->l.string));
+	    node_tostr(n->r.right,
+		       n->l.left->r.right->l.string->add(n->r.right->l.string));
 	    n->l.left = n->l.left->l.left;
 	    return d1;
 	}
@@ -1633,8 +1633,7 @@ static Uint opt_expr(node **m, bool pop)
 		n->r.right->l.number >= (long) n->l.left->l.string->len) {
 		return 2;
 	    }
-	    node_toint(n, (Int) str_index(n->l.left->l.string,
-					  (long) n->r.right->l.number));
+	    node_toint(n, (Int) n->l.left->l.string->index(n->r.right->l.number));
 	    return !pop;
 	}
 	if (n->l.left->type == N_FUNC && n->r.right->mod == T_INT) {
@@ -1901,7 +1900,7 @@ static Uint opt_expr(node **m, bool pop)
 	    }
 	    if (from >= 0 && from <= to + 1 &&
 		to < (long) n->l.left->l.string->len) {
-		node_tostr(n, str_range(n->l.left->l.string, from, to));
+		node_tostr(n, n->l.left->l.string->range(from, to));
 		return !pop;
 	    }
 	    return d1;

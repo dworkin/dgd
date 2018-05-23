@@ -74,6 +74,9 @@ public:
 };
 
 class ChunkAllocator {
+public:
+    virtual ~ChunkAllocator() { }
+
 private:
     virtual void *alloc() = 0;
     virtual void del(void *ptr) = 0;
@@ -82,7 +85,8 @@ private:
 };
 
 /*
- * inherited by classes that are allocated in chunks
+ * Inherited by classes that are allocated in chunks. Such classes should not
+ * have a virtual destructor.
  */
 class ChunkAllocated {
 public:

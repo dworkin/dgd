@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -48,7 +48,7 @@ static String *errstr;			/* current error string */
 void ec_clear()
 {
     if (errstr != (String *) NULL) {
-	str_del(errstr);
+	errstr->del();
 	errstr = (String *) NULL;
     }
 }
@@ -116,9 +116,10 @@ static void ec_handler(Frame *f, Int depth)
 void set_errorstr(String *err)
 {
     if (errstr != (String *) NULL) {
-	str_del(errstr);
+	errstr->del();
     }
-    str_ref(errstr = err);
+    errstr = err;
+    errstr->ref();
 }
 
 /*
@@ -198,7 +199,7 @@ void error(const char *format, ...)
     if (format != (char *) NULL) {
 	va_start(args, format);
 	vsprintf(ebuf, format, args);
-	serror(str_new(ebuf, (long) strlen(ebuf)));
+	serror(String::create(ebuf, strlen(ebuf)));
 	va_end(args);
     } else {
 	serror((String *) NULL);

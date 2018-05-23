@@ -80,7 +80,7 @@ void i_ref_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
-	str_ref(v->u.string);
+	v->u.string->ref();
 	break;
 
     case T_ARRAY:
@@ -99,7 +99,7 @@ void i_del_value(Value *v)
 {
     switch (v->type) {
     case T_STRING:
-	str_del(v->u.string);
+	v->u.string->del();
 	break;
 
     case T_ARRAY:
@@ -121,7 +121,7 @@ void i_copy(Value *v, Value *w, unsigned int len)
     for ( ; len != 0; --len) {
 	switch (w->type) {
 	case T_STRING:
-	    str_ref(w->u.string);
+	    w->u.string->ref();
 	    break;
 
 	case T_OBJECT:
@@ -200,7 +200,7 @@ void i_push_value(Frame *f, Value *v)
     *--f->sp = *v;
     switch (v->type) {
     case T_STRING:
-	str_ref(v->u.string);
+	v->u.string->ref();
 	break;
 
     case T_OBJECT:
@@ -242,7 +242,7 @@ void i_pop(Frame *f, int n)
     for (v = f->sp; --n >= 0; v++) {
 	switch (v->type) {
 	case T_STRING:
-	    str_del(v->u.string);
+	    v->u.string->del();
 	    break;
 
 	case T_ARRAY:
@@ -484,10 +484,9 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 	if (ival->type != T_INT) {
 	    error("Non-numeric string index");
 	}
-	i = UCHAR(aval->u.string->text[str_index(aval->u.string,
-						 ival->u.number)]);
+	i = UCHAR(aval->u.string->text[aval->u.string->index(ival->u.number)]);
 	if (!keep) {
-	    str_del(aval->u.string);
+	    aval->u.string->del();
 	}
 	PUT_INTVAL(val, i);
 	return;
@@ -521,7 +520,7 @@ void i_index(Frame *f, Value *aval, Value *ival, Value *val, bool keep)
 
     switch (val->type) {
     case T_STRING:
-	str_ref(val->u.string);
+	val->u.string->ref();
 	break;
 
     case T_OBJECT:
@@ -746,8 +745,8 @@ bool i_store_index(Frame *f, Value *var, Value *aval, Value *ival, Value *val)
 	if (val->type != T_INT) {
 	    error("Non-numeric value in indexed string assignment");
 	}
-	i = str_index(aval->u.string, ival->u.number);
-	str = str_new(aval->u.string->text, aval->u.string->len);
+	i = aval->u.string->index(ival->u.number);
+	str = String::create(aval->u.string->text, aval->u.string->len);
 	str->text[i] = val->u.number;
 	PUT_STRVAL(var, str);
 	return TRUE;
@@ -915,8 +914,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->u.array->elts[assign - 1])) {
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -929,8 +928,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->u.array->elts[assign - 1])) {
 		i_store_local(f, (short) u, &val, &f->sp[2]);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -943,8 +942,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->u.array->elts[assign - 1])) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, &f->sp[2]);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -958,8 +957,8 @@ static void i_stores(Frame *f, int skip, int assign)
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1,
 			      &f->sp->u.array->elts[assign - 1])) {
 		i_store_global(f, u, u2, &val, &f->sp[2]);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -972,8 +971,8 @@ static void i_stores(Frame *f, int skip, int assign)
 			      &f->sp->u.array->elts[assign - 1])) {
 		f->sp[1] = val;
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
-		str_del(f->sp[1].u.string);
-		str_del(f->sp[2].u.string);
+		f->sp[1].u.string->del();
+		f->sp[2].u.string->del();
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
@@ -1211,7 +1210,7 @@ Frame *i_set_sp(Frame *ftop, Value *sp)
 	    }
 	    switch (v->type) {
 	    case T_STRING:
-		str_del(v->u.string);
+		v->u.string->del();
 		break;
 
 	    case T_ARRAY:
@@ -1557,7 +1556,7 @@ static unsigned short i_switch_str(Frame *f, char *pc)
 	m = (l + h) >> 1;
 	p = pc + 5 * m;
 	u = FETCH1U(p);
-	cmp = str_cmp(f->sp->u.string, d_get_strconst(ctrl, u, FETCH2U(p, u2)));
+	cmp = f->sp->u.string->cmp(d_get_strconst(ctrl, u, FETCH2U(p, u2)));
 	if (cmp == 0) {
 	    return FETCH2U(p, l);
 	} else if (cmp < 0) {
@@ -1754,8 +1753,8 @@ static void i_interpret(Frame *f, char *pc)
 	case I_STORE_INDEX | I_POP_BIT:
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1767,8 +1766,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_local(f, (short) u, &val, f->sp + 2);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1780,8 +1779,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, f->p_ctrl->ninherits - 1, u, &val, f->sp + 2);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1794,8 +1793,8 @@ static void i_interpret(Frame *f, char *pc)
 	    val = nil_value;
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		i_store_global(f, u, u2, &val, f->sp + 2);
-		str_del(f->sp[2].u.string);
-		str_del(val.u.string);
+		f->sp[2].u.string->del();
+		val.u.string->del();
 	    }
 	    f->sp[2] = f->sp[0];
 	    f->sp += 2;
@@ -1807,8 +1806,8 @@ static void i_interpret(Frame *f, char *pc)
 	    if (i_store_index(f, &val, f->sp + 2, f->sp + 1, f->sp)) {
 		f->sp[1] = val;
 		i_store_index(f, f->sp + 2, f->sp + 4, f->sp + 3, f->sp + 1);
-		str_del(f->sp[1].u.string);
-		str_del(f->sp[2].u.string);
+		f->sp[1].u.string->del();
+		f->sp[2].u.string->del();
 	    } else {
 		i_del_value(f->sp + 3);
 		i_del_value(f->sp + 4);
@@ -2329,7 +2328,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	    PUT_FLTVAL(&val, flt);
 	    d_assign_elt(f->data, lwobj, &lwobj->elts[1], &val);
 	    PUSH_LWOVAL(f, lwobj);
-	    PUSH_STRVAL(f, str_new(func, len));
+	    PUSH_STRVAL(f, String::create(func, len));
 	    call_driver_object(f, "touch", 2);
 	    if (VAL_TRUE(f->sp)) {
 		/* preserve through call */
@@ -2351,7 +2350,7 @@ bool i_call(Frame *f, Object *obj, Array *lwobj, const char *func,
 	obj->flags |= O_TOUCHED;
 	if (O_HASDATA(obj)) {
 	    PUSH_OBJVAL(f, obj);
-	    PUSH_STRVAL(f, str_new(func, len));
+	    PUSH_STRVAL(f, String::create(func, len));
 	    call_driver_object(f, "touch", 2);
 	    if (VAL_TRUE(f->sp)) {
 		obj->flags &= ~O_TOUCHED;	/* preserve though call */
@@ -2586,12 +2585,12 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
     /* object name */
     name = OBJR(f->oindex)->objName(buffer);
     if (f->lwobj == (Array *) NULL) {
-	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
+	PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 1L));
 	v++;
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
     } else {
-	PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 4L));
+	PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 4L));
 	v++;
 	str->text[0] = '/';
 	strcpy(str->text + 1, name);
@@ -2600,7 +2599,7 @@ static Array *i_func_trace(Frame *f, Dataspace *data)
 
     /* program name */
     name = OBJR(f->p_ctrl->oindex)->name;
-    PUT_STRVAL(v, str = str_new((char *) NULL, strlen(name) + 1L));
+    PUT_STRVAL(v, str = String::create((char *) NULL, strlen(name) + 1L));
     v++;
     str->text[0] = '/';
     strcpy(str->text + 1, name);

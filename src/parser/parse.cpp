@@ -177,7 +177,7 @@ public:
      * DESCRIPTION:	dereference strings when iterating through items
      */
     virtual bool item(strptr *str) {
-	str_del(str->str);
+	str->str->del();
 	return TRUE;
     }
 };
@@ -192,7 +192,8 @@ static void sc_add(strpchunk **c, String *str)
 	*c = new strpchunk;
     }
 
-    str_ref((chunknew (**c) strptr)->str = str);
+    (chunknew (**c) strptr)->str = str;
+    str->ref();
 }
 
 
@@ -275,8 +276,10 @@ static parser *ps_new(Frame *f, String *source, String *grammar)
     ps->frame = f;
     ps->data = f->data;
     ps->data->parser = ps;
-    str_ref(ps->source = source);
-    str_ref(ps->grammar = grammar);
+    ps->source = source;
+    ps->source->ref();
+    ps->grammar = grammar;
+    ps->grammar->ref();
     ps->fastr = (char *) NULL;
     ps->lrstr = (char *) NULL;
     ps->fa = dfa_new(source->text, grammar->text);
@@ -304,8 +307,8 @@ static parser *ps_new(Frame *f, String *source, String *grammar)
 void ps_del(parser *ps)
 {
     ps->data->parser = (parser *) NULL;
-    str_del(ps->source);
-    str_del(ps->grammar);
+    ps->source->del();
+    ps->grammar->del();
     if (ps->fastr != (char *) NULL) {
 	FREE(ps->fastr);
     }
@@ -583,7 +586,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 	    /*
 	     * token
 	     */
-	    pn->u.str = str_new(pn->u.text, (long) pn->len);
+	    pn->u.str = String::create(pn->u.text, pn->len);
 	    sc_add(&ps->strc, pn->u.str);
 
 	    pn->symbol = PN_STRING;
@@ -754,8 +757,10 @@ static parser *ps_load(Frame *f, Value *elts)
     ps->data->parser = ps;
     fasize = elts->u.number >> 16;
     lrsize = (elts++)->u.number & 0xffff;
-    str_ref(ps->source = (elts++)->u.string);
-    str_ref(ps->grammar = (elts++)->u.string);
+    ps->source = (elts++)->u.string;
+    ps->source->ref();
+    ps->grammar = (elts++)->u.string;
+    ps->grammar->ref();
 
     if (fasize > 1) {
 	for (i = fasize, len = 0; --i >= 0; ) {
@@ -845,7 +850,7 @@ void ps_save(parser *ps)
 	}
 	do {
 	    len = (falen > USHRT_MAX) ? USHRT_MAX : falen;
-	    PUT_STRVAL(v, str_new(fastr, (long) len));
+	    PUT_STRVAL(v, String::create(fastr, len));
 	    v++;
 	    fastr += len;
 	    falen -= len;
@@ -858,7 +863,7 @@ void ps_save(parser *ps)
 	}
 	do {
 	    len = (lrlen > USHRT_MAX) ? USHRT_MAX : lrlen;
-	    PUT_STRVAL(v, str_new(lrstr, (long) len));
+	    PUT_STRVAL(v, String::create(lrstr, len));
 	    v++;
 	    lrstr += len;
 	    lrlen -= len;
@@ -889,11 +894,11 @@ Array *ps_parse_string(Frame *f, String *source, String *str, Int maxalt)
     if (data->parser != (parser *) NULL) {
 	ps = data->parser;
 	ps->frame = f;
-	same = (str_cmp(ps->source, source) == 0);
+	same = (ps->source->cmp(source) == 0);
     } else {
 	val = d_get_extravar(data);
 	if (val->type == T_ARRAY && d_get_elts(val->u.array)->type == T_INT &&
-	    str_cmp(val->u.array->elts[1].u.string, source) == 0 &&
+	    val->u.array->elts[1].u.string->cmp(source) == 0 &&
 	    val->u.array->elts[2].u.string->text[0] == GRAM_VERSION) {
 	    ps = ps_load(f, val->u.array->elts);
 	    same = TRUE;

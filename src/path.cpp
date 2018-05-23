@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -116,14 +116,14 @@ char *path_ed_read(char *buf, char *file)
     if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
+	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_read", 1);
 	if (f->sp->type != T_STRING) {
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->u.string->text);
-	str_del((f->sp++)->u.string);
+	(f->sp++)->u.string->del();
 	return buf;
     }
 }
@@ -140,14 +140,14 @@ char *path_ed_write(char *buf, char *file)
     if (OBJR(f->oindex)->flags & O_DRIVER) {
 	return path_resolve(buf, file);
     } else {
-	PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
+	PUSH_STRVAL(f, String::create(file, strlen(file)));
 	call_driver_object(f, "path_write", 1);
 	if (f->sp->type != T_STRING) {
 	    i_del_value(f->sp++);
 	    return (char *) NULL;
 	}
 	path_resolve(buf, f->sp->u.string->text);
-	str_del((f->sp++)->u.string);
+	(f->sp++)->u.string->del();
 	return buf;
     }
 }
@@ -170,8 +170,8 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
     }
 
     f = cframe;
-    PUSH_STRVAL(f, str_new(from, strlen(from)));
-    PUSH_STRVAL(f, str_new(file, (long) strlen(file)));
+    PUSH_STRVAL(f, String::create(from, strlen(from)));
+    PUSH_STRVAL(f, String::create(file, strlen(file)));
     if (!call_driver_object(f, "include_file", 2)) {
 	f->sp++;
 	return path_from(buf, from, file);
@@ -180,7 +180,7 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
     if (f->sp->type == T_STRING) {
 	/* simple path */
 	path_resolve(buf, f->sp->u.string->text);
-	str_del((f->sp++)->u.string);
+	(f->sp++)->u.string->del();
 	return buf;
     } else if (f->sp->type == T_ARRAY) {
 	/*
@@ -195,7 +195,8 @@ char *path_include(char *buf, char *from, char *file, String ***strs, int *nstr)
 		    *nstr = i = f->sp->u.array->size;
 		    str = ALLOC(String*, i);
 		    do {
-			str_ref(*str++ = (--v)->u.string);
+			*str = (--v)->u.string;
+			(*str++)->ref();
 		    } while (--i != 0);
 		    *strs = str;
 		    arr_del((f->sp++)->u.array);

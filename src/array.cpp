@@ -351,7 +351,7 @@ void arr_freelist(Array *alist)
 	if ((v=a->elts) != (Value *) NULL) {
 	    for (i = a->size; i > 0; --i) {
 		if (v->type == T_STRING) {
-		    str_del(v->u.string);
+		    v->u.string->del();
 		}
 		v++;
 	    }
@@ -366,10 +366,10 @@ void arr_freelist(Array *alist)
 		for (e = *t; e != (mapelt *) NULL; e = n) {
 		    if (e->add) {
 			if (e->idx.type == T_STRING) {
-			    str_del(e->idx.u.string);
+			    e->idx.u.string->del();
 			}
 			if (e->val.type == T_STRING) {
-			    str_del(e->val.u.string);
+			    e->val.u.string->del();
 			}
 		    }
 		    n = e->next;
@@ -460,7 +460,7 @@ void arr_backup(abchunk **ac, Array *a)
 	for (i = a->size; i != 0; --i) {
 	    switch (elts->type) {
 	    case T_STRING:
-		str_ref(elts->u.string);
+		elts->u.string->ref();
 		break;
 
 	    case T_ARRAY:
@@ -598,7 +598,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
 	return f1.cmp(f2);
 
     case T_STRING:
-	return str_cmp(v1->u.string, v2->u.string);
+	return v1->u.string->cmp(v2->u.string);
 
     case T_OBJECT:
 	return (v1->oindex <= v2->oindex) ?

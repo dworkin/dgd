@@ -37,10 +37,10 @@ public:
      */
     virtual bool item(node *n) {
 	if (n->type == N_STR || n->type == N_GOTO || n->type == N_LABEL) {
-	    str_del(n->l.string);
+	    n->l.string->del();
 	}
 	if (n->sclass != (String *) NULL) {
-	    str_del(n->sclass);
+	    n->sclass->del();
 	}
 	return TRUE;
     }
@@ -139,7 +139,8 @@ node *node_str(String *str)
     n->type = N_STR;
     n->flags = F_CONST;
     n->mod = T_STRING;
-    str_ref(n->l.string = str);
+    n->l.string = str;
+    n->l.string->ref();
     n->r.right = (node *) NULL;
 
     return n;
@@ -174,7 +175,7 @@ node *node_type(int type, String *tclass)
     n->mod = type;
     n->sclass = tclass;
     if (tclass != (String *) NULL) {
-	str_ref(tclass);
+	tclass->ref();
     }
 
     return n;
@@ -193,7 +194,7 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
     n->mod = mod;
     n->sclass = tclass;
     if (tclass != (String *) NULL) {
-	str_ref(tclass);
+	tclass->ref();
     }
     n->l.ptr = func;
     n->r.number = call;
@@ -207,7 +208,7 @@ node *node_fcall(int mod, String *tclass, char *func, Int call)
  */
 node *node_op(const char *op)
 {
-    return node_str(str_new(op, strlen(op)));
+    return node_str(String::create(op, strlen(op)));
 }
 
 /*
@@ -251,9 +252,9 @@ node *node_bin(int type, int mod, node *left, node *right)
 void node_toint(node *n, Int i)
 {
     if (n->type == N_STR) {
-	str_del(n->l.string);
+	n->l.string->del();
     } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
-	str_del(n->sclass);
+	n->sclass->del();
     }
     n->type = N_INT;
     n->flags = F_CONST;
@@ -266,11 +267,11 @@ void node_toint(node *n, Int i)
  */
 void node_tostr(node *n, String *str)
 {
-    str_ref(str);
+    str->ref();
     if (n->type == N_STR) {
-	str_del(n->l.string);
+	n->l.string->del();
     } else if (n->type == N_TYPE && n->sclass != (String *) NULL) {
-	str_del(n->sclass);
+	n->sclass->del();
     }
     n->type = N_STR;
     n->flags = F_CONST;

@@ -1,7 +1,7 @@
 /*
  * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2015 DGD Authors (see the commit log for details)
+ * Copyright (C) 2010-2018 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,24 +17,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-struct String {
+class String : public ChunkAllocated {
+public:
+    void ref() { refCount++; }
+    void del();
+    int cmp(String *str);
+    String *add(String *str);
+    ssizet index(long idx);
+    void checkRange(long from, long to);
+    String *range(long from, long to);
+    Uint put(Uint n);
+
+    static String *alloc(const char *text, long length);
+    static String *create(const char *text, long length);
+    static void clean();
+    static void merge();
+    static void clear();
+
     struct strref *primary;	/* primary reference */
-    Uint ref;			/* number of references + const bit */
+    Uint refCount;		/* number of references */
     ssizet len;			/* string length */
-    char text[1];		/* actual characters following this struct */
+    char *text;			/* string text */
+
+private:
+    String(const char *text, long length);
+    ~String();
 };
-
-extern String	       *str_alloc	(const char*, long);
-extern String	       *str_new		(const char*, long);
-# define str_ref(s)	((s)->ref++)
-extern void		str_del		(String*);
-
-extern void		str_merge	();
-extern Uint		str_put		(String*, Uint);
-extern void		str_clear	();
-
-extern int		str_cmp		(String*, String*);
-extern String	       *str_add		(String*, String*);
-extern ssizet		str_index	(String*, long);
-extern void		str_ckrange	(String*, long, long);
-extern String	       *str_range	(String*, long, long);
